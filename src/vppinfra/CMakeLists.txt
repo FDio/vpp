@@ -27,11 +27,11 @@ endif(VPP_VECTOR_GROW_BY_ONE)
 
 configure_file(
   ${CMAKE_SOURCE_DIR}/vppinfra/config.h.in
-  ${CMAKE_BINARY_DIR}/vppinfra/config.h
+  ${CMAKE_CURRENT_BINARY_DIR}/config.h
 )
 
 install(
-  FILES ${CMAKE_BINARY_DIR}/vppinfra/config.h
+  FILES ${CMAKE_CURRENT_BINARY_DIR}/config.h
   DESTINATION include/vppinfra
   COMPONENT vpp-dev
 )

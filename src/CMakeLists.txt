@@ -64,6 +64,7 @@ set(VPP_LIBRARY_DIR "lib" CACHE STRING "Relative library directory path")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${VPP_RUNTIME_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${VPP_LIBRARY_DIR})
+set(VPP_BINARY_DIR ${CMAKE_BINARY_DIR}/CMakeFiles)
 
 if (CMAKE_BUILD_TYPE)
   set(CMAKE_C_FLAGS "-g -fPIC -Werror -Wall ${CMAKE_C_FLAGS}")
@@ -151,8 +152,7 @@ set(CMAKE_INSTALL_MESSAGE NEVER)
 
 include_directories (
 	${CMAKE_SOURCE_DIR}
-	${CMAKE_BINARY_DIR}
-	${CMAKE_BINARY_DIR}/include
+	${VPP_BINARY_DIR}
 )
 set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "vpp")
 
@@ -185,7 +185,7 @@ else()
 endif()
 
 foreach(DIR ${SUBDIRS})
-  add_subdirectory(${DIR})
+  add_subdirectory(${DIR} ${VPP_BINARY_DIR}/${DIR})
 endforeach()
 
 ##############################################################################
@@ -205,6 +205,36 @@ if (VPP_GIT_TOPLEVEL_DIR)
     CMAKE_CONFIGURE_DEPENDS ${VPP_GIT_TOPLEVEL_DIR}/.git/index
   )
 endif()
+
+##############################################################################
+# custom targets
+##############################################################################
+
+add_custom_target(run
+  COMMAND ./${VPP_RUNTIME_DIR}/vpp -c startup.conf
+  COMMENT "Starting VPP..."
+  USES_TERMINAL
+)
+
+add_custom_target(debug
+  COMMAND gdb --args ./${VPP_RUNTIME_DIR}/vpp -c startup.conf
+  COMMENT "Starting VPP in the debugger..."
+  USES_TERMINAL
+)
+
+add_custom_target(menu
+  COMMAND ccmake ${CMAKE_BINARY_DIR}
+  COMMENT "Starting Configuration TUI..."
+  USES_TERMINAL
+)
+
+add_custom_target(compdb
+  COMMAND ninja -C ${CMAKE_BINARY_DIR} -t compdb |
+          ${CMAKE_SOURCE_DIR}/scripts/compdb_cleanup.py >
+	  ${CMAKE_BINARY_DIR}/compile_commands.json
+  COMMENT "Generating compile_commands.json"
+  USES_TERMINAL
+)
 
 ##############################################################################
 # print configuration
