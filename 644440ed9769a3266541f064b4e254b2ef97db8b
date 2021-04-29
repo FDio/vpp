@@ -46,6 +46,30 @@
       "revId": "644440ed9769a3266541f064b4e254b2ef97db8b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cac045df_a86face1",
+        "filename": "src/plugins/crypto_sw_scheduler/main.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 183,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2021-04-29T15:50:15Z",
+      "side": 1,
+      "message": "Thanks for the explaination. Acked.",
+      "parentUuid": "539137af_c2736b27",
+      "range": {
+        "startLine": 183,
+        "startChar": 0,
+        "endLine": 183,
+        "endChar": 61
+      },
+      "revId": "644440ed9769a3266541f064b4e254b2ef97db8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
