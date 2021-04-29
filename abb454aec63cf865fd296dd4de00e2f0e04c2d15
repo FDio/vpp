@@ -22,6 +22,30 @@
       "revId": "abb454aec63cf865fd296dd4de00e2f0e04c2d15",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b39058fb_04d60f36",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1163,
+      "author": {
+        "id": 2462
+      },
+      "writtenOn": "2021-04-29T03:02:25Z",
+      "side": 1,
+      "message": "Yes! It seems the segment manager does NOT close session when it goes down. I remember that it does in v20.01. I found a commit(https://gerrit.fd.io/r/c/vpp/+/26489) which change the behavior. Em..Should we distinguish between a ESTABLISHED session and a SYN_RCVD session on unlisten ? This may means we need to track sessions that have not yet been notified to the app ?",
+      "parentUuid": "2f46989f_09d5ab8a",
+      "range": {
+        "startLine": 1163,
+        "startChar": 12,
+        "endLine": 1163,
+        "endChar": 36
+      },
+      "revId": "abb454aec63cf865fd296dd4de00e2f0e04c2d15",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
