@@ -1,4 +1,4 @@
-#include <errno.h>
+#include <poll.h>
 #include <string.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
@@ -90,31 +90,29 @@ af_xdp_device_output_tx_db (vlib_main_t * vm,
 			    af_xdp_device_t * ad,
 			    af_xdp_txq_t * txq, const u32 n_tx)
 {
-  int ret;
-
   xsk_ring_prod__submit (&txq->tx, n_tx);
 
   if (!xsk_ring_prod__needs_wakeup (&txq->tx))
     return;
 
-  vlib_error_count (vm, node->node_index, AF_XDP_TX_ERROR_SENDTO_REQUIRED, 1);
+  vlib_error_count (vm, node->node_index, AF_XDP_TX_ERROR_SYSCALL_REQUIRED, 1);
 
-  ret = sendto (txq->xsk_fd, NULL, 0, MSG_DONTWAIT, NULL, 0);
-  if (PREDICT_TRUE (ret >= 0))
-    return;
+  clib_spinlock_lock_if_init (&txq->syscall_lock);
 
-  /* those errors are fine */
-  switch (errno)
+  if (xsk_ring_prod__needs_wakeup (&txq->tx))
     {
-    case ENOBUFS:
-    case EAGAIN:
-    case EBUSY:
-      return;
+      struct pollfd fd = { .fd = txq->xsk_fd, .events = POLLIN | POLLOUT };
+      int ret = poll (&fd, 1, 0);
+      if (PREDICT_FALSE (ret < 0))
+	{
+	  /* something bad is happening */
+	  vlib_error_count (vm, node->node_index,
+			    AF_XDP_TX_ERROR_SYSCALL_FAILURES, 1);
+	  af_xdp_device_error (ad, "tx poll() failed");
+	}
     }
 
-  /* something bad is happening */
-  vlib_error_count (vm, node->node_index, AF_XDP_TX_ERROR_SENDTO_FAILURES, 1);
-  af_xdp_device_error (ad, "sendto() failed");
+  clib_spinlock_unlock_if_init (&txq->syscall_lock);
 }
 
 static_always_inline u32
@@ -218,7 +216,7 @@ VNET_DEVICE_CLASS_TX_FN (af_xdp_device_class) (vlib_main_t * vm,
   vnet_interface_output_runtime_t *ord = (void *) node->runtime_data;
   af_xdp_device_t *ad = pool_elt_at_index (rm->devices, ord->dev_instance);
   u32 thread_index = vm->thread_index;
-  af_xdp_txq_t *txq = vec_elt_at_index (ad->txqs, thread_index % ad->txq_num);
+  af_xdp_txq_t *txq = vec_elt_at_index (ad->txqs, (thread_index - 1) % ad->txq_num);
   u32 *from;
   u32 n, n_tx;
   int i;

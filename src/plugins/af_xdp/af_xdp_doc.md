@@ -12,11 +12,15 @@ Under development: it should work, but has not been thoroughly tested.
  - custom eBPF program
  - polling, interrupt and adaptive mode
 
-## Limitations
+## Known limitations
+
+### MTU
 Because of AF_XDP restrictions, the MTU is limited to below PAGE_SIZE
 (4096-bytes on most systems) minus 256-bytes, and they are additional
 limitations depending upon specific Linux device drivers.
 As a rule of thumb, a MTU of 3000-bytes or less should be safe.
+
+### Number of buffers
 Furthermore, upon UMEM creation, the kernel allocates a
 physically-contiguous structure, whose size is proportional to the number
 of 4KB pages contained in the UMEM. That allocation might fail when
@@ -25,7 +29,30 @@ controlled with the `buffers { buffers-per-numa }` configuration option.
 Finally, note that because of this limitation, this plugin is unlikely
 to be compatible with the use of 1GB hugepages.
 
+### Interrupt mode
+Interrupt and adaptive mode are supported but is limited by default to single
+threaded (no worker) configurations because of a kernel limitation prior to
+5.6. You can bypass the limitation at interface creation time by adding the
+`fixed-kernel` parameter, but you must be sure that your kernel can support
+it, otherwise you will experience double-frees.
+See
+https://lore.kernel.org/bpf/BYAPR11MB365382C5DB1E5FCC53242609C1549@BYAPR11MB3653.namprd11.prod.outlook.com/
+for more details.
+
+### Mellanox
+When setting the number of queues on Mellanox NIC with `ethtool -L`, you must
+use twice the amount of configured queues: it looks like the Linux driver will
+create separate RX queues and TX queues (but all queues can be used for both
+RX and TX, the NIC will just not sent any packet on "pure" TX queues.
+Confused? So I am.). For example if you set `combined 2` you will effectively
+have to create 4 rx queues in AF_XDP if you want to be sure to receive all
+packets.
+
 ## Requirements
+This drivers supports Linux kernel 5.4 to 5.9. Kernels older than 5.4 are
+missing unaligned buffers support, and starting from 5.9 the ABI changed,
+breaking copy mode.
+
 The Linux kernel interface must be up and have enough queues before
 creating the VPP AF_XDP interface, otherwise Linux will deny creating
 the AF_XDP socket.
