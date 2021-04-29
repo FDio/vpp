@@ -24,9 +24,9 @@
 #include <vnet/interface/rx_queue_funcs.h>
 #include "af_xdp.h"
 
-#define foreach_af_xdp_input_error \
-  _(POLL_REQUIRED, "poll required") \
-  _(POLL_FAILURES, "poll failures")
+#define foreach_af_xdp_input_error                                            \
+  _ (SYSCALL_REQUIRED, "syscall required")                                    \
+  _ (SYSCALL_FAILURES, "syscall failures")
 
 typedef enum
 {
@@ -77,25 +77,28 @@ af_xdp_device_input_refill_db (vlib_main_t * vm,
 			       af_xdp_device_t * ad, af_xdp_rxq_t * rxq,
 			       const u32 n_alloc)
 {
-  int ret;
-
   xsk_ring_prod__submit (&rxq->fq, n_alloc);
 
-  if (!xsk_ring_prod__needs_wakeup (&rxq->fq))
+  if (AF_XDP_RXQ_MODE_INTERRUPT == rxq->mode ||
+      !xsk_ring_prod__needs_wakeup (&rxq->fq))
     return;
 
-  vlib_error_count (vm, node->node_index, AF_XDP_INPUT_ERROR_POLL_REQUIRED,
+  vlib_error_count (vm, node->node_index, AF_XDP_INPUT_ERROR_SYSCALL_REQUIRED,
 		    1);
 
-  struct pollfd fd = {.fd = rxq->xsk_fd,.events = POLLIN };
-  ret = poll (&fd, 1, 0);
-  if (PREDICT_TRUE (ret >= 0))
-    return;
-
-  /* something bad is happening */
-  vlib_error_count (vm, node->node_index, AF_XDP_INPUT_ERROR_POLL_FAILURES,
-		    1);
-  af_xdp_device_error (ad, "poll() failed");
+  if (clib_spinlock_trylock_if_init (&rxq->syscall_lock))
+    {
+      struct pollfd fd = { .fd = rxq->xsk_fd, .events = POLLIN | POLLOUT };
+      int ret = poll (&fd, 1, 0);
+      clib_spinlock_unlock_if_init (&rxq->syscall_lock);
+      if (PREDICT_FALSE (ret < 0))
+	{
+	  /* something bad is happening */
+	  vlib_error_count (vm, node->node_index,
+			    AF_XDP_INPUT_ERROR_SYSCALL_FAILURES, 1);
+	  af_xdp_device_error (ad, "rx poll() failed");
+	}
+    }
 }
 
 static_always_inline void
