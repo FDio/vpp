@@ -81,6 +81,8 @@ api_af_xdp_create (vat_main_t * vam)
   mp->rxq_size = clib_host_to_net_u16 (args.rxq_size);
   mp->txq_size = clib_host_to_net_u16 (args.txq_size);
   mp->mode = api_af_xdp_mode (args.mode);
+  if (args.flags & AF_XDP_CREATE_FLAGS_NO_SYSCALL_LOCK)
+    mp->flags |= AF_XDP_API_FLAGS_NO_SYSCALL_LOCK;
   snprintf ((char *) mp->prog, sizeof (mp->prog), "%s", args.prog ? : "");
 
   S (mp);
