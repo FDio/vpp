@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d0535f9f_b6cef5f1",
+        "filename": "src/plugins/crypto_sw_scheduler/main.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 183,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2021-04-29T15:19:18Z",
+      "side": 1,
+      "message": "Do we need an ASSERT and then check for the same condition?",
+      "range": {
+        "startLine": 183,
+        "startChar": 0,
+        "endLine": 183,
+        "endChar": 61
+      },
+      "revId": "644440ed9769a3266541f064b4e254b2ef97db8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
