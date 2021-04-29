@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bb87cd02_768f7ae8",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 656,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-04-29T15:05:06Z",
+      "side": 1,
+      "message": "You can remove this comment and the one lower because they\u0027re not a good match here as we\u0027re removing only part of the sessions.",
+      "range": {
+        "startLine": 652,
+        "startChar": 0,
+        "endLine": 656,
+        "endChar": 6
+      },
+      "revId": "e38c28377f1d39f055f02104b97707c21c6eae8f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
