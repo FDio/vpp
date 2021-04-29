@@ -30,8 +30,8 @@ override_dh_install:
 	  @CMAKE_COMMAND@ \
 	    -D CMAKE_INSTALL_CONFIG_NAME=@CMAKE_BUILD_TYPE@ \
 	    -D CMAKE_INSTALL_COMPONENT=$$c \
-	    -D CMAKE_INSTALL_PREFIX=@CMAKE_BINARY_DIR@/debian/$$c \
-	    -P @CMAKE_BINARY_DIR@/cmake_install.cmake 2>&1 \
+	    -D CMAKE_INSTALL_PREFIX=@VPP_BINARY_DIR@/debian/$$c \
+	    -P @VPP_BINARY_DIR@/cmake_install.cmake 2>&1 \
 	    | grep -v 'Set runtime path of' ; \
 	  if [ -d debian/$$c/lib ] ; then \
 	    mv debian/$$c/lib debian/$$c/$(DEB_HOST_MULTIARCH) ; \

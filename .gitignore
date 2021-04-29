@@ -39,7 +39,6 @@ config.log
 config.guess
 config.sub
 config.status
-configure
 configure.scan
 coverage_report
 depcomp
