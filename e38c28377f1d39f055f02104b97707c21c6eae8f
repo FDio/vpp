@@ -22,6 +22,30 @@
       "revId": "e38c28377f1d39f055f02104b97707c21c6eae8f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5b2dfa15_b9778d08",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 656,
+      "author": {
+        "id": 2462
+      },
+      "writtenOn": "2021-04-29T15:20:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "bb87cd02_768f7ae8",
+      "range": {
+        "startLine": 652,
+        "startChar": 0,
+        "endLine": 656,
+        "endChar": 6
+      },
+      "revId": "e38c28377f1d39f055f02104b97707c21c6eae8f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
