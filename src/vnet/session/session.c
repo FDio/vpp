@@ -1133,6 +1133,8 @@ session_stream_accept_notify (transport_connection_t * tc)
   app_wrk = app_worker_get_if_valid (s->app_wrk_index);
   if (!app_wrk)
     return -1;
+  if (s->session_state != SESSION_STATE_CREATED)
+    return 0;
   s->session_state = SESSION_STATE_ACCEPTING;
   if (app_worker_accept_notify (app_wrk, s))
     {
