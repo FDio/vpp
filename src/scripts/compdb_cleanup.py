@@ -18,6 +18,11 @@ for i in range(len(objects) - 1, -1, -1):
         objects.remove(obj)
         continue
 
+    # remove if there is no command
+    if obj["command"] == "":
+        objects.remove(obj)
+        continue
+
     # remove ccache prefix
     s = str.split(obj["command"])
     if s[0] == "ccache":

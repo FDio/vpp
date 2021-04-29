@@ -1,0 +1,47 @@
+
+unix {
+  interactive
+  # log @CMAKE_BINARY_DIR@/vpp.log
+  # full-coredump
+  # cli-listen @CMAKE_BINARY_DIR@/cli.sock
+  # exec @CMAKE_BINARY_DIR@/startup.vpp
+}
+
+api-trace {
+  on
+}
+
+memory {
+  main-heap-size 1G
+  # main-heap-page-size 1G
+}
+
+cpu {
+  # main-core 1
+  # corelist-workers 2-3,18-19
+}
+
+# buffers {
+  # buffers-per-numa 128000
+  # page-size default-hugepage
+# }
+
+plugins {
+  plugin dpdk_plugin.so { disable }
+  plugin unittest_plugin.so { enable }
+}
+
+# dpdk {
+#  no-pci
+#}
+
+statseg {
+  size 32m
+  # page-size 4k
+  # socket-name @CMAKE_BINARY_DIR@/stats.sock
+}
+
+#logging {
+  # default-syslog-log-level debug
+  # class dpdk/cryptodev { rate-limit 100 level debug syslog-level error }
+#}

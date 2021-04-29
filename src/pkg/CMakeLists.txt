@@ -41,7 +41,7 @@ set(VPP_DEB_WITH_PYTHON2 "no")
 foreach(f rules changelog control)
   configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/debian/${f}.in
-    ${CMAKE_BINARY_DIR}/debian/${f}
+    ${VPP_BINARY_DIR}/debian/${f}
     @ONLY
   )
 endforeach()
@@ -49,15 +49,15 @@ endforeach()
 foreach(f copyright vpp.preinst vpp.postrm vpp.postinst vpp.service)
   file(COPY
     ${CMAKE_CURRENT_SOURCE_DIR}/debian/${f}
-    DESTINATION ${CMAKE_BINARY_DIR}/debian
+    DESTINATION ${VPP_BINARY_DIR}/debian
   )
 endforeach()
 
-file(WRITE ${CMAKE_BINARY_DIR}/debian/compat "10\n")
+file(WRITE ${VPP_BINARY_DIR}/debian/compat "10\n")
 
-add_custom_target(package-deb
+add_custom_target(pkg-deb
   COMMENT "Building .deb packages..."
-  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+  WORKING_DIRECTORY ${VPP_BINARY_DIR}
   COMMAND "dpkg-buildpackage" "-us" "-uc" "-b"
   USES_TERMINAL
 )

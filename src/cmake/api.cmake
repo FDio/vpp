@@ -80,7 +80,7 @@ endfunction()
 ##############################################################################
 function(vpp_generate_vapi_c_header f)
   get_filename_component(output ${f}.vapi.h NAME)
-  set (output_name ${CMAKE_BINARY_DIR}/vpp-api/vapi/${output})
+  set (output_name ${VPP_BINARY_DIR}/vpp-api/vapi/${output})
   if(NOT VPP_VAPI_C_GEN)
     set(VPP_VAPI_C_GEN ${CMAKE_SOURCE_DIR}/vpp-api/vapi/vapi_c_gen.py)
     set(VPP_VAPI_C_GEN_DEPENDS
@@ -93,7 +93,7 @@ function(vpp_generate_vapi_c_header f)
   set(input ${CMAKE_CURRENT_BINARY_DIR}/${f}.json)
   add_custom_command(
     OUTPUT ${output_name}
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/vpp-api/vapi
+    WORKING_DIRECTORY ${VPP_BINARY_DIR}/vpp-api/vapi
     COMMAND ${VPP_VAPI_C_GEN}
     ARGS --remove-path ${input}
     DEPENDS ${input} ${VPP_VAPI_C_GEN_DEPENDS}
@@ -108,7 +108,7 @@ endfunction ()
 
 function (vpp_generate_vapi_cpp_header f)
   get_filename_component(output ${f}.vapi.hpp NAME)
-  set (output_name ${CMAKE_BINARY_DIR}/vpp-api/vapi/${output})
+  set (output_name ${VPP_BINARY_DIR}/vpp-api/vapi/${output})
   if(NOT VPP_VAPI_CPP_GEN)
     set(VPP_VAPI_CPP_GEN ${CMAKE_SOURCE_DIR}/vpp-api/vapi/vapi_cpp_gen.py)
     set(VPP_VAPI_CPP_GEN_DEPENDS
@@ -120,7 +120,7 @@ function (vpp_generate_vapi_cpp_header f)
   set(input ${CMAKE_CURRENT_BINARY_DIR}/${f}.json)
   add_custom_command(
     OUTPUT ${output_name}
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/vpp-api/vapi
+    WORKING_DIRECTORY ${VPP_BINARY_DIR}/vpp-api/vapi
     COMMAND ${VPP_VAPI_CPP_GEN}
     ARGS --gen-h-prefix=vapi --remove-path ${input}
     DEPENDS ${input} ${VPP_VAPI_CPP_GEN_DEPENDS}
@@ -164,8 +164,8 @@ function(vpp_add_api_files name dir component)
       ${file}_enum.h
       ${file}_types.h
       ${file}.json
-      ${CMAKE_BINARY_DIR}/vpp-api/vapi/${name}.vapi.h
-      ${CMAKE_BINARY_DIR}/vpp-api/vapi/${name}.vapi.hpp
+      ${VPP_BINARY_DIR}/vpp-api/vapi/${name}.vapi.h
+      ${VPP_BINARY_DIR}/vpp-api/vapi/${name}.vapi.hpp
     )
   endforeach()
   add_custom_target(${target} DEPENDS ${header_files})
