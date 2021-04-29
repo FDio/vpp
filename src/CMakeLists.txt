@@ -64,6 +64,7 @@ set(VPP_LIBRARY_DIR "lib" CACHE STRING "Relative library directory path")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${VPP_RUNTIME_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${VPP_LIBRARY_DIR})
+set(VPP_BINARY_DIR ${CMAKE_BINARY_DIR}/CMakeFiles)
 
 if (CMAKE_BUILD_TYPE)
   set(CMAKE_C_FLAGS "-g -fPIC -Werror -Wall ${CMAKE_C_FLAGS}")
@@ -151,8 +152,7 @@ set(CMAKE_INSTALL_MESSAGE NEVER)
 
 include_directories (
 	${CMAKE_SOURCE_DIR}
-	${CMAKE_BINARY_DIR}
-	${CMAKE_BINARY_DIR}/include
+	${VPP_BINARY_DIR}
 )
 set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "vpp")
 
@@ -185,7 +185,7 @@ else()
 endif()
 
 foreach(DIR ${SUBDIRS})
-  add_subdirectory(${DIR})
+  add_subdirectory(${DIR} ${VPP_BINARY_DIR}/${DIR})
 endforeach()
 
 ##############################################################################
@@ -205,6 +205,22 @@ if (VPP_GIT_TOPLEVEL_DIR)
     CMAKE_CONFIGURE_DEPENDS ${VPP_GIT_TOPLEVEL_DIR}/.git/index
   )
 endif()
+
+
+add_custom_target(run
+  COMMAND ./${VPP_RUNTIME_DIR}/vpp -c startup.conf
+  USES_TERMINAL
+)
+
+add_custom_target(debug
+  COMMAND gdb --args ./${VPP_RUNTIME_DIR}/vpp -c startup.conf
+  USES_TERMINAL
+)
+
+add_custom_target(menu
+  COMMAND ccmake ${CMAKE_BINARY_DIR}
+  USES_TERMINAL
+)
 
 ##############################################################################
 # print configuration

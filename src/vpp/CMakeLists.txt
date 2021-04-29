@@ -15,17 +15,17 @@
 # Generate vpp/app/version.h
 ##############################################################################
 add_custom_command(
-  OUTPUT ${CMAKE_BINARY_DIR}/include/vpp/app/version.h
+  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/app/version.h
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
   COMMAND mkdir
-  ARGS -p ${CMAKE_BINARY_DIR}/include/vpp/app
+  ARGS -p ${CMAKE_CURRENT_BINARY_DIR}/app
   COMMAND scripts/generate_version_h
-  ARGS ${CMAKE_BINARY_DIR}/include/vpp/app/version.h
+  ARGS ${CMAKE_CURRENT_BINARY_DIR}/app/version.h
   COMMENT "Generating VPP version.h"
 )
 
 add_custom_target(vpp_version_h
-  DEPENDS ${CMAKE_BINARY_DIR}/include/vpp/app/version.h
+  DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/app/version.h
 )
 
 ##############################################################################
@@ -35,7 +35,7 @@ option(VPP_API_TEST_BUILTIN "Use builtin VPP API test." ON)
 
 configure_file(
   ${CMAKE_SOURCE_DIR}/vpp/vnet/config.h.in
-  ${CMAKE_BINARY_DIR}/vpp/vnet/config.h
+  ${CMAKE_CURRENT_BINARY_DIR}/vnet/config.h
 )
 
 set(VPP_API_FILES
@@ -141,3 +141,13 @@ install(FILES conf/80-vpp.conf DESTINATION etc/sysctl.d COMPONENT vpp)
 add_vpp_test_library(vpp
   ${VPP_API_FILES}
 )
+
+##############################################################################
+# minimal interactive startup.conf  - only if not present
+##############################################################################
+if(NOT EXISTS ${CMAKE_BINARY_DIR}/startup.conf)
+  configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/conf/startup.conf.interactive.in
+    ${CMAKE_BINARY_DIR}/startup.conf
+  )
+endif()

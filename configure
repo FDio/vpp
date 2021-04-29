@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+
+# Experimental script, please consult with dmarion@me.com before
+# submitting any changes
+
+# defaults
+build_dir=.
+build_type=release
+prefix_path=/opt/vpp/external/$(uname -m)/
+
+help()
+{
+  cat << __EOF__
+VPP Build Configuration Script
+
+USAGE: ${0} [options]
+
+OPTIONS:
+  --help, -h              This help
+  --build-dir, -b         Build directory
+  --type, -t              Build type (release, debug, ... )
+__EOF__
+}
+
+while (( "$#" )); do
+  case "$1" in
+    -h|--help)
+      help
+      exit 1
+      ;;
+    -b|--build-dir)
+      if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        build_dir=$2
+        shift 2
+      else
+        echo "Error: Argument for $1 is missing" >&2
+        exit 1
+      fi
+      ;;
+    -t|--build-type)
+      if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        build_type=$2
+        shift 2
+      else
+        echo "Error: Argument for $1 is missing" >&2
+        exit 1
+      fi
+      ;;
+    -*|--*=) # unsupported flags
+      echo "Error: Unsupported flag $1" >&2
+      exit 1
+      ;;
+    *) # preserve positional arguments
+      PARAMS="$PARAMS $1"
+      shift
+      ;;
+  esac
+done
+
+cmake \
+  -G Ninja \
+  -S src \
+  -B ${build_dir} \
+  -DCMAKE_PREFIX_PATH=${prefix_path} \
+  -DCMAKE_BUILD_TYPE:STRING=${build_type}
+
