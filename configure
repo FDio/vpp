@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+
+# Experimental script, please consult with dmarion@me.com before
+# submitting any changes
+
+# defaults
+build_dir=.
+install_dir=/usr/local
+build_type=release
+prefix_path=/opt/vpp/external/$(uname -m)/
+
+help()
+{
+  cat << __EOF__
+VPP Build Configuration Script
+
+USAGE: ${0} [options]
+
+OPTIONS:
+  --help, -h              This help
+  --build-dir, -b         Build directory
+  --install-dir, -i       Install directory
+  --type, -t              Build type (release, debug, ... )
+  --wipe, -w              Wipe whole repo (except startup.* files)
+__EOF__
+}
+
+while (( "$#" )); do
+  case "$1" in
+    -h|--help)
+      help
+      exit 1
+      ;;
+    -b|--build-dir)
+      if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        build_dir=$2
+        shift 2
+      else
+        echo "Error: Argument for $1 is missing" >&2
+        exit 1
+      fi
+      ;;
+    -i|--install-dir)
+      if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        install_dir=$2
+        shift 2
+      else
+        echo "Error: Argument for $1 is missing" >&2
+        exit 1
+      fi
+      ;;
+    -t|--build-type)
+      if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        build_type=$2
+        shift 2
+      else
+        echo "Error: Argument for $1 is missing" >&2
+        exit 1
+      fi
+      ;;
+    -w|--wipe)
+      git clean -fdx --exclude=startup.\*
+      exit 1
+      ;;
+    -*|--*=) # unsupported flags
+      echo "Error: Unsupported flag $1" >&2
+      exit 1
+      ;;
+    *) # preserve positional arguments
+      PARAMS="$PARAMS $1"
+      shift
+      ;;
+  esac
+done
+
+cmake \
+  -G Ninja \
+  -S src \
+  -B ${build_dir} \
+  -DCMAKE_PREFIX_PATH=${prefix_path} \
+  -DCMAKE_INSTALL_PREFIX=${install_dir} \
+  -DCMAKE_BUILD_TYPE:STRING=${build_type}
+
+  cat << __EOF__
+
+  Usable build commands:
+
+  ninja             Build VPP
+  ninja menu        Start build configuration TUI
+  ninja compdb      Generate compile_commands.json
+  ninja run         Runs VPP using startup.conf in the build directory
+  ninja debug       Runs VPP inside GDB using startup.conf in the build directory
+  ninja pkg-deb     Create .deb packages
+  ninja install     Install VPP to $install_dir
+
+__EOF__
