@@ -86,7 +86,7 @@ cmake \
   Useful build commands:
 
   ninja             Build VPP
-  ninja menu        Start build configuration TUI
+  ninja config      Start build configuration TUI
   ninja compdb      Generate compile_commands.json
   ninja run         Runs VPP using startup.conf in the build directory
   ninja debug       Runs VPP inside GDB using startup.conf in the build directory
