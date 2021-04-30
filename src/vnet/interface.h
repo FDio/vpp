@@ -868,7 +868,15 @@ typedef enum
   VNET_INTERFACE_COUNTER_RX_ERROR = 6,
   VNET_INTERFACE_COUNTER_TX_ERROR = 7,
   VNET_INTERFACE_COUNTER_MPLS = 8,
-  VNET_N_SIMPLE_INTERFACE_COUNTER = 9,
+  VNET_INTERFACE_COUNTER_TX_QUEUE_0_DEPTH = 9,
+  VNET_INTERFACE_COUNTER_TX_QUEUE_1_DEPTH = 10,
+  VNET_INTERFACE_COUNTER_TX_QUEUE_2_DEPTH = 11,
+  VNET_INTERFACE_COUNTER_TX_QUEUE_3_DEPTH = 12,
+  VNET_INTERFACE_COUNTER_TX_QUEUE_4_DEPTH = 13,
+  VNET_INTERFACE_COUNTER_TX_QUEUE_5_DEPTH = 14,
+  VNET_INTERFACE_COUNTER_TX_QUEUE_6_DEPTH = 15,
+  VNET_INTERFACE_COUNTER_TX_QUEUE_7_DEPTH = 16,
+  VNET_N_SIMPLE_INTERFACE_COUNTER = 17,
   /* Combined counters. */
   VNET_INTERFACE_COUNTER_RX = 0,
   VNET_INTERFACE_COUNTER_RX_UNICAST = 1,
@@ -879,6 +887,7 @@ typedef enum
   VNET_INTERFACE_COUNTER_TX_MULTICAST = 6,
   VNET_INTERFACE_COUNTER_TX_BROADCAST = 7,
   VNET_N_COMBINED_INTERFACE_COUNTER = 8,
+
 } vnet_interface_counter_type_t;
 
 #define foreach_rx_combined_interface_counter(_x)               \
@@ -891,16 +900,24 @@ typedef enum
        _x <= VNET_INTERFACE_COUNTER_TX_BROADCAST;               \
        _x++)
 
-#define foreach_simple_interface_counter_name	\
-  _(DROP, drops, if)				\
-  _(PUNT, punt, if)				\
-  _(IP4, ip4, if)				\
-  _(IP6, ip6, if)				\
-  _(RX_NO_BUF, rx-no-buf, if)			\
-  _(RX_MISS, rx-miss, if)			\
-  _(RX_ERROR, rx-error, if)			\
-  _(TX_ERROR, tx-error, if)         \
-  _(MPLS, mpls, if)
+#define foreach_simple_interface_counter_name                                 \
+  _ (DROP, drops, if)                                                         \
+  _ (PUNT, punt, if)                                                          \
+  _ (IP4, ip4, if)                                                            \
+  _ (IP6, ip6, if)                                                            \
+  _ (RX_NO_BUF, rx - no - buf, if)                                            \
+  _ (RX_MISS, rx - miss, if)                                                  \
+  _ (RX_ERROR, rx - error, if)                                                \
+  _ (TX_ERROR, tx - error, if)                                                \
+  _ (MPLS, mpls, if)                                                          \
+  _ (TX_QUEUE_0_DEPTH, tx - queue - 0 - depth, if)                            \
+  _ (TX_QUEUE_1_DEPTH, tx - queue - 1 - depth, if)                            \
+  _ (TX_QUEUE_2_DEPTH, tx - queue - 2 - depth, if)                            \
+  _ (TX_QUEUE_3_DEPTH, tx - queue - 3 - depth, if)                            \
+  _ (TX_QUEUE_4_DEPTH, tx - queue - 4 - depth, if)                            \
+  _ (TX_QUEUE_5_DEPTH, tx - queue - 5 - depth, if)                            \
+  _ (TX_QUEUE_6_DEPTH, tx - queue - 6 - depth, if)                            \
+  _ (TX_QUEUE_7_DEPTH, tx - queue - 7 - depth, if)
 
 #define foreach_combined_interface_counter_name	\
   _(RX, rx, if)					\
@@ -929,6 +946,12 @@ collect_detailed_interface_stats (void)
 void collect_detailed_interface_stats_flag_set (void);
 void collect_detailed_interface_stats_flag_clear (void);
 
+static inline int
+vnet_interface_counter_tx_queue (u32 queue_id)
+{
+  ASSERT (queue_id >= 0 && queue_id < 8);
+  return (VNET_INTERFACE_COUNTER_TX_QUEUE_0_DEPTH + queue_id);
+}
 
 typedef struct
 {
