@@ -223,6 +223,11 @@ typedef struct quic_worker_ctx_
   quicly_cid_plaintext_t next_cid;
   crypto_context_t *crypto_ctx_pool;		/**< per thread pool of crypto contexes */
   clib_bihash_24_8_t crypto_context_hash;	/**< per thread [params:crypto_ctx_index] hash */
+
+  CLIB_CACHE_LINE_ALIGN_MARK (tx_context);
+
+  struct iovec *tx_pkts;
+  u8 *tx_buf;
 } quic_worker_ctx_t;
 
 typedef struct quic_rx_packet_ctx_
