@@ -48,6 +48,7 @@ typedef struct
   uint8_t dump_cfg;
   vcl_test_t post_test;
   uint8_t proto;
+  uint8_t incremental_stats;
   uint32_t n_workers;
   volatile int active_workers;
   volatile int test_running;
@@ -172,15 +173,19 @@ vtc_worker_test_setup (vcl_test_client_worker_t * wrk)
 {
   vcl_test_cfg_t *cfg = &wrk->cfg;
   vcl_test_session_t *ts;
+  struct timespec now;
   uint32_t sidx;
   int i, j;
 
   FD_ZERO (&wrk->wr_fdset);
   FD_ZERO (&wrk->rd_fdset);
 
+  clock_gettime (CLOCK_REALTIME, &now);
+
   for (i = 0; i < cfg->num_test_sessions; i++)
     {
       ts = &wrk->sessions[i];
+      ts->old_stats.stop = now;
 
       switch (cfg->test)
 	{
@@ -288,6 +293,21 @@ vtc_worker_sessions_exit (vcl_test_client_worker_t * wrk)
   wrk->n_sessions = 0;
 }
 
+static void
+vtc_inc_stats_check (vcl_test_session_t *ts)
+{
+  /* Avoid checking time too often because of syscall cost */
+  if (ts->stats.tx_bytes - ts->old_stats.tx_bytes < 1 << 20)
+    return;
+
+  clock_gettime (CLOCK_REALTIME, &ts->stats.stop);
+  if (vcl_test_time_diff (&ts->old_stats.stop, &ts->stats.stop) > 1)
+    {
+      vcl_test_stats_dump_inc (&ts->old_stats, &ts->stats);
+      ts->old_stats = ts->stats;
+    }
+}
+
 static void *
 vtc_worker_loop (void *arg)
 {
@@ -353,6 +373,8 @@ vtc_worker_loop (void *arg)
 			 ts->fd);
 		  goto exit;
 		}
+	      if (vcm->incremental_stats)
+		vtc_inc_stats_check (ts);
 	    }
 	  if ((!check_rx && ts->stats.tx_bytes >= ts->cfg.total_bytes)
 	      || (check_rx && ts->stats.rx_bytes >= ts->cfg.total_bytes))
@@ -642,27 +664,29 @@ parse_input ()
 void
 print_usage_and_exit (void)
 {
-  fprintf (stderr,
-	   "vcl_test_client [OPTIONS] <ipaddr> <port>\n"
-	   "  OPTIONS\n"
-	   "  -h               Print this message and exit.\n"
-	   "  -6               Use IPv6\n"
-	   "  -c               Print test config before test.\n"
-	   "  -w <dir>         Write test results to <dir>.\n"
-	   "  -X               Exit after running test.\n"
-	   "  -p <proto>       Use <proto> transport layer\n"
-	   "  -D               Use UDP transport layer\n"
-	   "  -L               Use TLS transport layer\n"
-	   "  -E               Run Echo test.\n"
-	   "  -N <num-writes>  Test Cfg: number of writes.\n"
-	   "  -R <rxbuf-size>  Test Cfg: rx buffer size.\n"
-	   "  -T <txbuf-size>  Test Cfg: tx buffer size.\n"
-	   "  -U               Run Uni-directional test.\n"
-	   "  -B               Run Bi-directional test.\n"
-	   "  -V               Verbose mode.\n"
-	   "  -I <N>           Use N sessions.\n"
-	   "  -s <N>           Use N sessions.\n"
-	   "  -q <n>           QUIC : use N Ssessions on top of n Qsessions\n");
+  fprintf (
+    stderr,
+    "vcl_test_client [OPTIONS] <ipaddr> <port>\n"
+    "  OPTIONS\n"
+    "  -h               Print this message and exit.\n"
+    "  -6               Use IPv6\n"
+    "  -c               Print test config before test.\n"
+    "  -w <dir>         Write test results to <dir>.\n"
+    "  -X               Exit after running test.\n"
+    "  -p <proto>       Use <proto> transport layer\n"
+    "  -D               Use UDP transport layer\n"
+    "  -L               Use TLS transport layer\n"
+    "  -E               Run Echo test.\n"
+    "  -N <num-writes>  Test Cfg: number of writes.\n"
+    "  -R <rxbuf-size>  Test Cfg: rx buffer size.\n"
+    "  -T <txbuf-size>  Test Cfg: tx buffer size.\n"
+    "  -U               Run Uni-directional test.\n"
+    "  -B               Run Bi-directional test.\n"
+    "  -V               Verbose mode.\n"
+    "  -I <N>           Use N sessions.\n"
+    "  -s <N>           Use N sessions.\n"
+    "  -S	       	Print incremental stats per session.\n"
+    "  -q <n>           QUIC : use N Ssessions on top of n Qsessions\n");
   exit (1);
 }
 
@@ -673,7 +697,7 @@ vtc_process_opts (vcl_test_client_main_t * vcm, int argc, char **argv)
   int c, v;
 
   opterr = 0;
-  while ((c = getopt (argc, argv, "chnp:w:XE:I:N:R:T:UBV6DLs:q:")) != -1)
+  while ((c = getopt (argc, argv, "chnp:w:XE:I:N:R:T:UBV6DLs:q:S")) != -1)
     switch (c)
       {
       case 'c':
@@ -826,6 +850,10 @@ vtc_process_opts (vcl_test_client_main_t * vcm, int argc, char **argv)
 
       case 'L':		/* deprecated */
 	vcm->proto = VPPCOM_PROTO_TLS;
+	break;
+
+      case 'S':
+	vcm->incremental_stats = 1;
 	break;
 
       case '?':
