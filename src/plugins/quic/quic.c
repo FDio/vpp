@@ -715,9 +715,7 @@ quic_send_packets (quic_ctx_t * ctx)
   quicly_conn_t *conn;
   size_t num_packets, i, max_packets;
   quicly_address_t dest, src;
-
-  num_packets = QUIC_SEND_PACKET_VEC_SIZE;
-
+  u32 n_sent = 0;
   int err = 0;
 
   /* We have sctx, get qctx */
@@ -731,19 +729,16 @@ quic_send_packets (quic_ctx_t * ctx)
     goto quicly_error;
 
   conn = ctx->conn;
-
   if (!conn)
     return 0;
 
-  /* TODO : quicly can assert it can send min_packets up to 2 */
-  if (quic_sendable_packet_count (udp_session) < 2)
-    goto stop_sending;
-
   do
     {
+      /* TODO : quicly can assert it can send min_packets up to 2 */
       max_packets = quic_sendable_packet_count (udp_session);
       if (max_packets < 2)
 	break;
+
       num_packets = max_packets;
       if ((err = quicly_send (conn, &dest, &src, packets, &num_packets, buf,
 			      sizeof (buf))))
@@ -757,23 +752,23 @@ quic_send_packets (quic_ctx_t * ctx)
 	    goto quicly_error;
 
 	}
+      n_sent += num_packets;
     }
   while (num_packets > 0 && num_packets == max_packets);
 
-stop_sending:
   quic_set_udp_tx_evt (udp_session);
 
   QUIC_DBG (3, "%u[TX] %u[RX]", svm_fifo_max_dequeue (udp_session->tx_fifo),
 	    svm_fifo_max_dequeue (udp_session->rx_fifo));
   quic_update_timer (ctx);
-  return 0;
+  return n_sent;
 
 quicly_error:
   if (err && err != QUICLY_ERROR_PACKET_IGNORED
       && err != QUICLY_ERROR_FREE_CONNECTION)
     clib_warning ("Quic error '%U'.", quic_format_err, err);
   quic_connection_closed (ctx);
-  return 1;
+  return 0;
 }
 
 /* Quicly callbacks */
@@ -1993,7 +1988,7 @@ quic_custom_tx_callback (void *s, transport_send_params_t * sp)
   if (!quicly_sendstate_is_open (&stream->sendstate))
     {
       QUIC_ERR ("Warning: tried to send on closed stream");
-      return -1;
+      return 0;
     }
 
   stream_data = (quic_stream_data_t *) stream->data;
@@ -2010,8 +2005,7 @@ quic_custom_tx_callback (void *s, transport_send_params_t * sp)
   QUIC_ASSERT (!rv);
 
 tx_end:
-  quic_send_packets (ctx);
-  return 0;
+  return quic_send_packets (ctx);
 }
 
 /*
