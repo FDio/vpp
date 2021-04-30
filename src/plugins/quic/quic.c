@@ -683,19 +683,16 @@ quic_send_datagram (session_t *udp_session, struct iovec *packet,
       QUIC_ASSERT (dest->sa.sa_family == AF_INET6);
       struct sockaddr_in6 *sa6 = (struct sockaddr_in6 *) &dest->sa;
       hdr.rmt_port = sa6->sin6_port;
-      clib_memcpy (&hdr.rmt_ip.ip6, &sa6->sin6_addr, 16);
+      clib_memcpy_fast (&hdr.rmt_ip.ip6, &sa6->sin6_addr, 16);
     }
 
-  ret = svm_fifo_enqueue (f, sizeof (hdr), (u8 *) & hdr);
-  if (ret != sizeof (hdr))
+  svm_fifo_seg_t segs[2] = { { (u8 *) &hdr, sizeof (hdr) },
+			     { packet->iov_base, len } };
+
+  ret = svm_fifo_enqueue_segments (f, segs, 2, 0 /* allow partial */);
+  if (PREDICT_FALSE (ret < 0))
     {
-      QUIC_ERR ("Not enough space to enqueue header");
-      return QUIC_ERROR_FULL_FIFO;
-    }
-  ret = svm_fifo_enqueue (f, len, packet->iov_base);
-  if (ret != len)
-    {
-      QUIC_ERR ("Not enough space to enqueue payload");
+      QUIC_ERR ("Not enough space to enqueue dgram");
       return QUIC_ERROR_FULL_FIFO;
     }
 
@@ -707,10 +704,7 @@ quic_send_datagram (session_t *udp_session, struct iovec *packet,
 static int
 quic_send_packets (quic_ctx_t * ctx)
 {
-  struct iovec packets[QUIC_SEND_PACKET_VEC_SIZE];
-  uint8_t
-    buf[QUIC_SEND_PACKET_VEC_SIZE * quic_get_quicly_ctx_from_ctx (ctx)
-				      ->transport_params.max_udp_payload_size];
+  quic_worker_ctx_t *wrk = &quic_main.wrk_ctx[ctx->c_thread_index];
   session_t *udp_session;
   quicly_conn_t *conn;
   size_t num_packets, i, max_packets;
@@ -740,15 +734,15 @@ quic_send_packets (quic_ctx_t * ctx)
 	break;
 
       num_packets = max_packets;
-      if ((err = quicly_send (conn, &dest, &src, packets, &num_packets, buf,
-			      sizeof (buf))))
+      if ((err = quicly_send (conn, &dest, &src, wrk->tx_pkts, &num_packets,
+			      wrk->tx_buf, vec_len (wrk->tx_buf))))
 	goto quicly_error;
 
       for (i = 0; i != num_packets; ++i)
 	{
 
-	  if ((err =
-		 quic_send_datagram (udp_session, &packets[i], &dest, &src)))
+	  if ((err = quic_send_datagram (udp_session, &wrk->tx_pkts[i], &dest,
+					 &src)))
 	    goto quicly_error;
 
 	}
@@ -2494,6 +2488,7 @@ quic_init (vlib_main_t * vm)
   vnet_app_attach_args_t _a, *a = &_a;
   u64 options[APP_OPTIONS_N_OPTIONS];
   quic_main_t *qm = &quic_main;
+  quic_worker_ctx_t *wrk;
   u32 num_threads, i;
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
@@ -2525,13 +2520,17 @@ quic_init (vlib_main_t * vm)
 
   for (i = 0; i < num_threads; i++)
     {
-      qm->wrk_ctx[i].next_cid.thread_id = i;
-      tw = &qm->wrk_ctx[i].timer_wheel;
+      wrk = &qm->wrk_ctx[i];
+      wrk->next_cid.thread_id = i;
+      tw = &wrk->timer_wheel;
       tw_timer_wheel_init_1t_3w_1024sl_ov (tw, quic_expired_timers_dispatch,
 					   1e-3 /* timer period 1ms */ , ~0);
       tw->last_run_time = vlib_time_now (vlib_get_main ());
       clib_bihash_init_24_8 (&qm->wrk_ctx[i].crypto_context_hash,
 			     "quic crypto contexts", 64, 128 << 10);
+
+      vec_validate (wrk->tx_pkts, QUIC_SEND_PACKET_VEC_SIZE - 1);
+      vec_validate (wrk->tx_buf, QUIC_SEND_PACKET_VEC_SIZE * (9 << 10));
     }
 
   clib_bihash_init_16_8 (&qm->connection_hash, "quic connections", 1024,
