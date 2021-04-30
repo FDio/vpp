@@ -330,7 +330,7 @@ static __clib_unused vnet_device_class_t __clib_unused_##x
     r->next_registration = devclass.tx_fn_registrations;                      \
     devclass.tx_fn_registrations = r;                                         \
   }                                                                           \
-  uword CLIB_CPU_OPTIMIZED CLIB_MARCH_SFX (devclass##_tx_fn)
+  uword CLIB_MARCH_SFX (devclass##_tx_fn)
 
 /**
  * Link Type: A description of the protocol of packets on the link.

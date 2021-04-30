@@ -216,7 +216,7 @@ static __clib_unused vlib_node_registration_t __clib_unused_##x
     r->next_registration = node.node_fn_registrations;                        \
     node.node_fn_registrations = r;                                           \
   }                                                                           \
-  uword CLIB_CPU_OPTIMIZED CLIB_MARCH_SFX (node##_fn)
+  uword CLIB_MARCH_SFX (node##_fn)
 
 unformat_function_t unformat_vlib_node_variant;
 

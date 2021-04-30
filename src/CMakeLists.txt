@@ -76,7 +76,7 @@ endif()
 # release
 list(APPEND BUILD_TYPES "release")
 string(CONCAT CMAKE_C_FLAGS_RELEASE
-  "-O2 "
+  "-O3 "
   "-fstack-protector "
   "-D_FORTIFY_SOURCE=2 "
   "-fno-common "

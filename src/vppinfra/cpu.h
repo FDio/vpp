@@ -45,12 +45,6 @@ typedef enum
     CLIB_MARCH_TYPE_N_VARIANTS
 } clib_march_variant_type_t;
 
-#if __GNUC__ > 4  && !__clang__ && CLIB_DEBUG == 0
-#define CLIB_CPU_OPTIMIZED __attribute__ ((optimize ("O3")))
-#else
-#define CLIB_CPU_OPTIMIZED
-#endif
-
 #ifdef CLIB_MARCH_VARIANT
 #define __CLIB_MULTIARCH_FN(a,b) a##_##b
 #define _CLIB_MULTIARCH_FN(a,b) __CLIB_MULTIARCH_FN(a,b)
@@ -403,19 +397,18 @@ CLIB_MARCH_SFX(fn ## _march_constructor) (void)				\
 }									\
 
 #ifndef CLIB_MARCH_VARIANT
-#define CLIB_MARCH_FN(fn, rtype, _args...)				\
-  static rtype CLIB_CPU_OPTIMIZED CLIB_MARCH_SFX (fn ## _ma)(_args);	\
-  rtype (*fn ## _selected) (_args) = & CLIB_MARCH_SFX (fn ## _ma);	\
-  int fn ## _selected_priority = 0;					\
-  static inline rtype CLIB_CPU_OPTIMIZED 				\
-  CLIB_MARCH_SFX (fn ## _ma)(_args)
+#define CLIB_MARCH_FN(fn, rtype, _args...)                                    \
+  static rtype CLIB_MARCH_SFX (fn##_ma) (_args);                              \
+  rtype (*fn##_selected) (_args) = &CLIB_MARCH_SFX (fn##_ma);                 \
+  int fn##_selected_priority = 0;                                             \
+  static inline rtype CLIB_MARCH_SFX (fn##_ma) (_args)
 #else
-#define CLIB_MARCH_FN(fn, rtype, _args...)				\
-  static rtype CLIB_CPU_OPTIMIZED CLIB_MARCH_SFX (fn ## _ma)(_args);	\
-  extern rtype (*fn ## _selected) (_args);				\
-  extern int fn ## _selected_priority;					\
-  CLIB_MARCH_FN_CONSTRUCTOR (fn)					\
-  static rtype CLIB_CPU_OPTIMIZED CLIB_MARCH_SFX (fn ## _ma)(_args)
+#define CLIB_MARCH_FN(fn, rtype, _args...)                                    \
+  static rtype CLIB_MARCH_SFX (fn##_ma) (_args);                              \
+  extern rtype (*fn##_selected) (_args);                                      \
+  extern int fn##_selected_priority;                                          \
+  CLIB_MARCH_FN_CONSTRUCTOR (fn)                                              \
+  static rtype CLIB_MARCH_SFX (fn##_ma) (_args)
 #endif
 
 #define CLIB_MARCH_FN_SELECT(fn) (* fn ## _selected)
