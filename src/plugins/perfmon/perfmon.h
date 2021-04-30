@@ -91,9 +91,14 @@ typedef struct perfmon_source
 } perfmon_source_t;
 
 struct perfmon_bundle;
+struct perfmon_reading;
 
-typedef clib_error_t *(perfmon_bundle_init_fn_t) (vlib_main_t *vm,
-						  struct perfmon_bundle *);
+typedef clib_error_t *(*perfmon_bundle_init_fn_t) (vlib_main_t *vm,
+						   struct perfmon_bundle *);
+
+typedef void (perfmon_bundle_update_function_t) (
+  vlib_simple_counter_main_t *cm, struct perfmon_reading *, int thread_idx,
+  int idx);
 
 typedef struct perfmon_bundle
 {
@@ -107,19 +112,22 @@ typedef struct perfmon_bundle
   u32 metrics[PERF_MAX_EVENTS];
   u32 n_events;
 
-  perfmon_bundle_init_fn_t *init_fn;
+  perfmon_bundle_init_fn_t init_fn;
 
   char **column_headers;
   char **raw_column_headers;
   format_function_t *format_fn;
+  perfmon_bundle_update_function_t *update_stats_fn;
   clib_cpu_supports_func_t cpu_supports;
+
+  vlib_simple_counter_main_t counters;
 
   /* do not set manually */
   perfmon_source_t *src;
   struct perfmon_bundle *next;
 } perfmon_bundle_t;
 
-typedef struct
+typedef struct perfmon_reading
 {
   u64 nr;
   u64 time_enabled;

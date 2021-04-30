@@ -71,6 +71,26 @@ format_context_switches (u8 *s, va_list *args)
   return s;
 }
 
+static void
+update_context_switches_stats (vlib_simple_counter_main_t *cm,
+			       perfmon_reading_t *r, int thread_idx, int idx)
+{
+  f64 t = (f64) r->time_running * 1e-9;
+  u64 sv = 0;
+
+  switch (idx)
+    {
+    case 0:
+      sv = (u64) t;
+      break;
+    case 1:
+      if (r->time_running)
+	sv = (f64) r->value[0] / t;
+      break;
+    }
+  vlib_set_simple_counter (cm, thread_idx, idx, sv);
+}
+
 PERFMON_REGISTER_BUNDLE (context_switches) = {
   .name = "context-switches",
   .description = "per-thread context switches",
@@ -79,6 +99,7 @@ PERFMON_REGISTER_BUNDLE (context_switches) = {
   .events[0] = CONTEXT_SWITCHES,
   .n_events = 1,
   .format_fn = format_context_switches,
+  .update_stats_fn = update_context_switches_stats,
   .column_headers = PERFMON_STRINGS ("RunTime", "ContextSwitches/Sec"),
 };
 
@@ -106,6 +127,31 @@ format_page_faults (u8 *s, va_list *args)
   return s;
 }
 
+static void
+update_page_faults_stats (vlib_simple_counter_main_t *cm, perfmon_reading_t *r,
+			  int thread_idx, int idx)
+{
+  f64 t = (f64) r->time_running * 1e-9;
+  u64 sv = 0;
+
+  switch (idx)
+    {
+    case 0:
+      sv = (u64) t;
+      break;
+    case 1:
+      if (r->time_running)
+	sv = (u64) r->value[0] / t;
+      break;
+    case 2:
+      if (r->time_running)
+	sv = (u64) r->value[1] / t;
+      break;
+    }
+
+  vlib_set_simple_counter (cm, thread_idx, idx, sv);
+}
+
 PERFMON_REGISTER_BUNDLE (page_faults) = {
   .name = "page-faults",
   .description = "per-thread page faults",
@@ -115,6 +161,7 @@ PERFMON_REGISTER_BUNDLE (page_faults) = {
   .events[1] = PAGE_FAULTS_MAJ,
   .n_events = 2,
   .format_fn = format_page_faults,
+  .update_stats_fn = update_page_faults_stats,
   .column_headers = PERFMON_STRINGS ("RunTime", "MinorPageFaults/Sec",
 				     "MajorPageFaults/Sec"),
 };

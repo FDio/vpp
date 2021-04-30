@@ -19,6 +19,7 @@
 #include <vlibmemory/api.h>
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>
+#include <vpp/stats/stat_segment.h>
 #include <linux/limits.h>
 #include <sys/ioctl.h>
 
@@ -289,6 +290,56 @@ perfmon_stop (vlib_main_t *vm)
 }
 
 static clib_error_t *
+perfmon_stats_update (void *p)
+{
+  perfmon_main_t *pm = (perfmon_main_t *) p;
+  perfmon_bundle_t *b = pm->active_bundle;
+  clib_error_t *err = 0;
+  u32 n_instances;
+  perfmon_reading_t *r, *readings = 0;
+  perfmon_instance_type_t *it = pm->active_instance_type;
+  perfmon_instance_t *in;
+  int n_row = 0;
+
+  if (pm->is_running && b->type == PERFMON_BUNDLE_TYPE_THREAD)
+    {
+      n_instances = vec_len (it->instances);
+      vec_validate (readings, n_instances - 1);
+
+      char **hdr = b->column_headers;
+      while (hdr[0])
+	{
+	  n_row++;
+	  hdr++;
+	};
+
+      /*Only perform read() for THREAD or SYSTEM bundles*/
+      for (int i = 0; i < n_instances; i++)
+	{
+	  in = vec_elt_at_index (it->instances, i);
+	  r = vec_elt_at_index (readings, i);
+
+	  if (read (pm->group_fds[i], r, (b->n_events + 3) * sizeof (u64)) ==
+	      -1)
+	    {
+	      err = clib_error_return_unix (0, "read");
+	      goto done;
+	    }
+	}
+
+      for (int i = 0; i < n_instances; i++)
+	{
+	  r = vec_elt_at_index (readings, i);
+	  for (int j = 0; j < n_row; j++)
+	    b->update_stats_fn (&b->counters, r, i, j);
+	}
+    }
+done:
+  vec_free (readings);
+  return err;
+}
+
+static clib_error_t *
 perfmon_init (vlib_main_t *vm)
 {
   perfmon_main_t *pm = &perfmon_main;
@@ -331,6 +382,27 @@ perfmon_init (vlib_main_t *vm)
 	  continue;
 	}
 
+      /* stats are limited to thread support for the moment*/
+      if (b->type == PERFMON_BUNDLE_TYPE_THREAD)
+	{
+	  int n_columns = 0;
+	  vlib_simple_counter_main_t *counter = &b->counters;
+
+	  counter->name = b->name;
+	  counter->stat_segment_name =
+	    (char *) format (0, "/permon/%s", b->name);
+
+	  char **hdr = b->column_headers;
+	  while (hdr[0])
+	    {
+	      n_columns++;
+	      hdr++;
+	    };
+
+	  vlib_validate_simple_counter (counter, n_columns);
+	  vlib_zero_simple_counter (counter, n_columns);
+	}
+
       b->src = (perfmon_source_t *) p[0];
       if (b->init_fn && ((err = (b->init_fn) (vm, b))))
 	{
@@ -346,6 +418,8 @@ perfmon_init (vlib_main_t *vm)
 
       b = b->next;
     }
+
+  stat_segment_register_plugin_callback (perfmon_stats_update, &perfmon_main);
 
   return 0;
 }

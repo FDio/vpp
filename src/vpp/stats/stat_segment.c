@@ -671,6 +671,13 @@ do_stat_segment_updates (vlib_main_t *vm, stat_segment_main_t *sm)
    {
     g->fn(&sm->directory_vector[g->directory_index], g->caller_index);
   }
+
+  /* call any plugin specific callbacks */
+  stat_segment_plugin_pool_t *cb;
+  pool_foreach (cb, sm->plugins)
+    {
+      cb->fn (cb->opaque);
+    }
   /* *INDENT-ON* */
 
   /* Heartbeat, so clients detect we're still here */
@@ -823,7 +830,22 @@ stat_segment_register_gauge (u8 * name, stat_segment_update_fn update_fn,
 }
 
 clib_error_t *
-stat_segment_register_state_counter (u8 * name, u32 * index)
+stat_segment_register_plugin_callback (stat_segment_plugin_update_fn plugin_cb,
+				       void *p)
+{
+  stat_segment_main_t *sm = &stat_segment_main;
+  stat_segment_plugin_pool_t *plugin;
+
+  /* Back on our own heap */
+  pool_get (sm->plugins, plugin);
+  plugin->fn = plugin_cb;
+  plugin->opaque = p;
+
+  return NULL;
+}
+
+clib_error_t *
+stat_segment_register_state_counter (u8 *name, u32 *index)
 {
   stat_segment_main_t *sm = &stat_segment_main;
   stat_segment_shared_header_t *shared_header = sm->shared_header;

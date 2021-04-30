@@ -66,7 +66,9 @@ typedef enum
 
 #define STAT_SEGMENT_INDEX_INVALID	UINT32_MAX
 
-typedef void (*stat_segment_update_fn)(stat_segment_directory_entry_t * e, u32 i);
+typedef void (*stat_segment_update_fn) (stat_segment_directory_entry_t *e,
+					u32 i);
+typedef clib_error_t *(*stat_segment_plugin_update_fn) (void *p);
 
 typedef struct {
   u32 directory_index;
@@ -76,8 +78,15 @@ typedef struct {
 
 typedef struct
 {
+  stat_segment_plugin_update_fn fn;
+  void *opaque;
+} stat_segment_plugin_pool_t;
+
+typedef struct
+{
   /* internal, does not point to shared memory */
   stat_segment_gauges_pool_t *gauges;
+  stat_segment_plugin_pool_t *plugins;
 
   /* statistics segment */
   uword *directory_vector_by_name;
@@ -107,10 +116,11 @@ extern stat_segment_main_t stat_segment_main;
 
 clib_error_t *
 stat_segment_register_gauge (u8 *names, stat_segment_update_fn update_fn, u32 index);
+clib_error_t *stat_segment_register_state_counter (u8 *name, u32 *index);
 clib_error_t *
-stat_segment_register_state_counter(u8 *name, u32 *index);
-clib_error_t *
-stat_segment_deregister_state_counter(u32 index);
+stat_segment_register_plugin_callback (stat_segment_plugin_update_fn plugin_cb,
+				       void *);
+clib_error_t *stat_segment_deregister_state_counter (u32 index);
 void stat_segment_set_state_counter (u32 index, u64 value);
 
 #endif
