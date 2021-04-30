@@ -8,10 +8,10 @@ include (CheckFunctionExists)
 set(EXPECTED_QUICLY_VERSION "0.1.3-vpp")
 
 
-find_path(QUICLY_INCLUDE_DIR NAMES quicly.h)
-find_path (PICOTLS_INCLUDE_DIR NAMES picotls.h)
-find_library (PICOTLS_CORE_LIBRARY NAMES "libpicotls-core.a")
-find_library (PICOTLS_OPENSSL_LIBRARY NAMES "libpicotls-openssl.a")
+vpp_find_path(QUICLY_INCLUDE_DIR NAMES quicly.h)
+vpp_find_path(PICOTLS_INCLUDE_DIR NAMES picotls.h)
+vpp_find_library(PICOTLS_CORE_LIBRARY NAMES "libpicotls-core.a")
+vpp_find_library(PICOTLS_OPENSSL_LIBRARY NAMES "libpicotls-openssl.a")
 
 list (APPEND PICOTLS_LINK_LIBRARIES
     ${PICOTLS_CORE_LIBRARY}

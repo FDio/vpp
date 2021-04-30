@@ -25,7 +25,7 @@ else()
     ##############################################################################
     # Find lib and include files
     ##############################################################################
-    find_path(DPDK_INCLUDE_DIR PATH_SUFFIXES dpdk NAMES rte_config.h)
+    vpp_find_path(DPDK_INCLUDE_DIR PATH_SUFFIXES dpdk NAMES rte_config.h)
     vpp_plugin_find_library(dpdk DPDK_LIB "libdpdk.a")
 
     if (NOT DPDK_INCLUDE_DIR)

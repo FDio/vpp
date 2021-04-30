@@ -49,8 +49,8 @@ install(
 # Find lib and include files
 ##############################################################################
 message(STATUS "Looking for libuuid")
-find_path(UUID_INCLUDE_DIR NAMES uuid/uuid.h)
-find_library(UUID_LIB NAMES uuid)
+vpp_find_path(UUID_INCLUDE_DIR NAMES uuid/uuid.h)
+vpp_find_library(UUID_LIB NAMES uuid)
 
 if(UUID_INCLUDE_DIR AND UUID_LIB)
   include_directories(${UUID_INCLUDE_DIR})

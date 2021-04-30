@@ -115,6 +115,7 @@ endmacro()
 
 macro(vpp_plugin_find_library plugin var name)
   find_library(${var} NAMES ${name} ${ARGN})
+  mark_as_advanced(${var})
 if (NOT ${var})
   message(WARNING "-- ${name} library not found - ${plugin} plugin disabled")
   return()

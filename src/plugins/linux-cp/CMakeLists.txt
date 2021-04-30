@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-find_path(LIBNL3_INCLUDE_DIR NAMES libnl3/netlink/route/link/vlan.h)
+vpp_find_path(LIBNL3_INCLUDE_DIR NAMES libnl3/netlink/route/link/vlan.h)
 
 if (NOT LIBNL3_INCLUDE_DIR)
   message(WARNING "-- libnl3 headers not found - linux-cp plugin disabled")

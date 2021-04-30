@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-find_path(IBVERBS_INCLUDE_DIR NAMES infiniband/verbs.h)
+vpp_find_path(IBVERBS_INCLUDE_DIR NAMES infiniband/verbs.h)
 
 if (NOT IBVERBS_INCLUDE_DIR)
   message(WARNING "-- rdma headers not found - rdma plugin disabled")

@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-find_path(MBEDTLS_INCLUDE_DIR NAMES mbedtls/ssl.h)
+vpp_find_path(MBEDTLS_INCLUDE_DIR NAMES mbedtls/ssl.h)
 
 if (NOT MBEDTLS_INCLUDE_DIR)
   message(WARNING "-- mbedtls headers not found - tlsmbedtls plugin disabled")
