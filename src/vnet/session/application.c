@@ -101,6 +101,8 @@ app_listener_lookup (application_t * app, session_endpoint_cfg_t * sep_ext)
   session_endpoint_t *sep;
   session_handle_t handle;
   session_t *ls;
+  void *iface_ip;
+  ip46_address_t original_ip;
 
   sep = (session_endpoint_t *) sep_ext;
   if (application_has_local_scope (app) && session_endpoint_is_local (sep))
@@ -121,6 +123,25 @@ app_listener_lookup (application_t * app, session_endpoint_cfg_t * sep_ext)
     {
       ls = listen_session_get_from_handle (handle);
       return app_listener_get_w_session ((session_t *) ls);
+    }
+
+  if (!application_has_local_scope (app) &&
+      ip_is_zero (&sep_ext->ip, sep_ext->is_ip4) &&
+      sep_ext->sw_if_index != ENDPOINT_INVALID_INDEX)
+    {
+      if ((iface_ip = ip_interface_get_first_ip (sep_ext->sw_if_index,
+						 sep_ext->is_ip4)))
+	{
+	  ip_set (&original_ip, &sep_ext->ip, sep_ext->is_ip4);
+	  ip_set (&sep_ext->ip, iface_ip, sep_ext->is_ip4);
+	  handle = session_lookup_endpoint_listener (table_index, sep, 1);
+	  ip_set (&sep_ext->ip, &original_ip, sep_ext->is_ip4);
+	  if (handle != SESSION_INVALID_HANDLE)
+	    {
+	      ls = listen_session_get_from_handle (handle);
+	      return app_listener_get_w_session ((session_t *) ls);
+	    }
+	}
     }
 
   return 0;
