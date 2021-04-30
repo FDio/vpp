@@ -222,7 +222,7 @@ add_custom_target(debug
   USES_TERMINAL
 )
 
-add_custom_target(menu
+add_custom_target(config
   COMMAND ccmake ${CMAKE_BINARY_DIR}
   COMMENT "Starting Configuration TUI..."
   USES_TERMINAL

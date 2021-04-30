@@ -74,55 +74,95 @@ endif()
 ##############################################################################
 # CPU optimizations and multiarch support
 ##############################################################################
+macro(add_vpp_march_variant v)
+  cmake_parse_arguments(ARG
+    "OFF"
+    "N_PREFETCHES"
+    "FLAGS"
+    ${ARGN}
+  )
+
+  if(ARG_FLAGS)
+    set(flags_ok 1)
+    set(fs "")
+    foreach(f ${ARG_FLAGS})
+      string(APPEND fs " ${f}")
+      string(REGEX REPLACE "[-=+]" "_" sfx ${f})
+      if(NOT DEFINED compiler_flag${sfx})
+        check_c_compiler_flag(${f} compiler_flag${sfx})
+      endif()
+      if(NOT compiler_flag${sfx})
+        unset(flags_ok)
+      endif()
+    endforeach()
+    if(ARG_N_PREFETCHES)
+      string(APPEND fs " -DCLIB_N_PREFETCHES=${ARG_N_PREFETCHES}")
+    endif()
+    if(flags_ok)
+      string(TOUPPER ${v} uv)
+      if(ARG_OFF)
+        option(VPP_MARCH_VARIANT_${uv} "Build ${v} multiarch variant." OFF)
+      else()
+        option(VPP_MARCH_VARIANT_${uv} "Build ${v} multiarch variant." ON)
+      endif()
+      if (VPP_MARCH_VARIANT_${uv})
+        list(APPEND MARCH_VARIANTS "${v}\;${fs}")
+      endif()
+    endif()
+  endif()
+endmacro()
+
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
   set(CMAKE_C_FLAGS "-march=corei7 -mtune=corei7-avx ${CMAKE_C_FLAGS}")
-  check_c_compiler_flag("-march=haswell" compiler_flag_march_haswell)
-  if(compiler_flag_march_haswell)
-    list(APPEND MARCH_VARIANTS "hsw\;-march=haswell -mtune=haswell")
-  endif()
-  check_c_compiler_flag("-march=tremont" compiler_flag_march_tremont)
-  if(compiler_flag_march_tremont)
-    list(APPEND MARCH_VARIANTS "trm\;-march=tremont -mtune=tremont")
-  endif()
+
+  add_vpp_march_variant(hsw
+    FLAGS -march=haswell -mtune=haswell
+  )
+
+  add_vpp_march_variant(trm
+    FLAGS -march=tremont -mtune=tremont
+    OFF
+  )
+
   if (GNU_ASSEMBLER_AVX512_BUG)
      message(WARNING "AVX-512 multiarch variant(s) disabled due to GNU Assembler bug")
   else()
-    check_c_compiler_flag("-mprefer-vector-width=256" compiler_flag_mprefer_vector_width)
-    check_c_compiler_flag("-march=skylake-avx512" compiler_flag_march_skylake_avx512)
-    check_c_compiler_flag("-march=icelake-client" compiler_flag_march_icelake_client)
-    if(compiler_flag_march_skylake_avx512 AND compiler_flag_mprefer_vector_width)
-      list(APPEND MARCH_VARIANTS "skx\;-march=skylake-avx512 -mtune=skylake-avx512 -mprefer-vector-width=256")
-    endif()
-    if(compiler_flag_march_icelake_client AND compiler_flag_mprefer_vector_width)
-      list(APPEND MARCH_VARIANTS "icl\;-march=icelake-client -mtune=icelake-client -mprefer-vector-width=512")
-    endif()
+    add_vpp_march_variant(skx
+      FLAGS -march=skylake-avx512 -mtune=skylake-avx512 -mprefer-vector-width=256
+    )
+
+    add_vpp_march_variant(icl
+      FLAGS -march=icelake-client -mtune=icelake-client -mprefer-vector-width=512
+    )
   endif()
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
   set(CMAKE_C_FLAGS "-march=armv8-a+crc ${CMAKE_C_FLAGS}")
-  check_c_compiler_flag("-march=armv8-a+crc+crypto -mtune=qdf24xx" compiler_flag_march_core_qdf24xx)
-  if(compiler_flag_march_core_qdf24xx)
-    list(APPEND MARCH_VARIANTS "qdf24xx\;-march=armv8-a+crc+crypto -DCLIB_N_PREFETCHES=8")
-  endif()
-  check_c_compiler_flag("-march=armv8.2-a+crc+crypto+lse" compiler_flag_march_core_octeontx2)
-  if(compiler_flag_march_core_octeontx2)
-    list(APPEND MARCH_VARIANTS "octeontx2\;-march=armv8.2-a+crc+crypto+lse -DCLIB_N_PREFETCHES=8")
-  endif()
-  check_c_compiler_flag("-march=armv8.1-a+crc+crypto -mtune=thunderx2t99" compiler_flag_march_thunderx2t99)
-  if(compiler_flag_march_thunderx2t99)
-    if (CMAKE_C_COMPILER_ID STREQUAL "GNU" AND (NOT CMAKE_C_COMPILER_VERSION VERSION_LESS 8.3))
-      list(APPEND MARCH_VARIANTS "thunderx2t99\;-march=armv8.1-a+crc+crypto -mtune=thunderx2t99 -DCLIB_N_PREFETCHES=8")
-    else()
-      list(APPEND MARCH_VARIANTS "thunderx2t99\;-march=armv8.1-a+crc+crypto -DCLIB_N_PREFETCHES=8")
-    endif()
-  endif()
-  check_c_compiler_flag("-march=armv8-a+crc+crypto -mtune=cortex-a72" compiler_flag_march_cortexa72)
-  if(compiler_flag_march_cortexa72)
-    list(APPEND MARCH_VARIANTS "cortexa72\;-march=armv8-a+crc+crypto -mtune=cortex-a72 -DCLIB_N_PREFETCHES=6")
-  endif()
-  check_c_compiler_flag("-march=armv8.2-a+crc+crypto -mtune=neoverse-n1" compiler_flag_march_neoversen1)
-  if(compiler_flag_march_neoversen1)
-    list(APPEND MARCH_VARIANTS "neoversen1\;-march=armv8.2-a+crc+crypto -mtune=neoverse-n1 -DCLIB_N_PREFETCHES=6")
-  endif()
+
+  add_vpp_march_variant(qdf24xx
+    FLAGS -march=armv8-a+crc+crypto -mtune=qdf24xx
+    N_PREFETCHES 8
+    OFF
+  )
+
+  add_vpp_march_variant(octeontx2
+    FLAGS -march=armv8.2-a+crc+crypto+lse
+    N_PREFETCHES 8
+  )
+
+  add_vpp_march_variant(thunderx2t99
+    FLAGS -march=armv8.1-a+crc+crypto -mtune=thunderx2t99
+    N_PREFETCHES 8
+  )
+
+  add_vpp_march_variant(cortexa72
+    FLAGS -march=armv8-a+crc+crypto -mtune=cortex-a72
+    N_PREFETCHES 6
+  )
+
+  add_vpp_march_variant(neoversen1
+    FLAGS -march=armv8.2-a+crc+crypto -mtune=neoverse-n1
+    N_PREFETCHES 6
+  )
 endif()
 
 macro(vpp_library_set_multiarch_sources lib)
