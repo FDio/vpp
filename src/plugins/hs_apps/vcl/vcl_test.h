@@ -136,6 +136,7 @@ typedef struct vcl_test_session
   char *rxbuf;
   vcl_test_cfg_t cfg;
   vcl_test_stats_t stats;
+  vcl_test_stats_t old_stats;
   int session_index;
   vppcom_endpt_t endpt;
   uint8_t ip[16];
@@ -394,6 +395,37 @@ vcl_test_stats_dump (char *header, vcl_test_stats_t * stats,
 	    stats->stop.tv_sec, stats->stop.tv_nsec);
 
   printf (VCL_TEST_SEPARATOR_STRING);
+}
+
+static inline double
+vcl_test_time_diff (struct timespec *old, struct timespec *new)
+{
+  uint64_t sec, nsec;
+  if ((new->tv_nsec - old->tv_nsec) < 0)
+    {
+      sec = new->tv_sec - old->tv_sec - 1;
+      nsec = new->tv_nsec - old->tv_nsec + 1e9;
+    }
+  else
+    {
+      sec = new->tv_sec - old->tv_sec;
+      nsec = new->tv_nsec - old->tv_nsec;
+    }
+  return (double) sec + (1e-9 * nsec);
+}
+
+static inline void
+vcl_test_stats_dump_inc (vcl_test_stats_t *old, vcl_test_stats_t *new)
+{
+  double duration, rate;
+  uint64_t total_bytes;
+
+  duration = vcl_test_time_diff (&old->stop, &new->stop);
+
+  total_bytes = new->tx_bytes - old->tx_bytes;
+  rate = (double) total_bytes * 8 / duration / 1e9;
+  printf ("Sent %lu Mbytes in %.2lf seconds %.2lf Gbps\n",
+	  (uint64_t) (total_bytes / 1e6), duration, rate);
 }
 
 static inline int
