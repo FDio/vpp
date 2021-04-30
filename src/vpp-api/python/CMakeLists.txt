@@ -12,7 +12,7 @@
 # limitations under the License.
 
 if (CMAKE_VERSION VERSION_LESS 3.12)
-  find_package(PythonInterp 2.7)
+  find_package(PythonInterp 3)
 else()
   find_package(Python3 COMPONENTS Interpreter)
 endif()
