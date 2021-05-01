@@ -1581,6 +1581,8 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
       if (PREDICT_FALSE (vm->check_frame_queues + frame_queue_check_counter))
 	{
 	  u32 processed = 0;
+	  vlib_frame_queue_dequeue_fn_t *fn =
+	    vlib_buffer_func_main.frame_queue_dequeue_fn;
 
 	  if (vm->check_frame_queues)
 	    {
@@ -1589,7 +1591,7 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	    }
 
 	  vec_foreach (fqm, tm->frame_queue_mains)
-	    processed += vlib_frame_queue_dequeue (vm, fqm);
+	    processed += (fn) (vm, fqm);
 
 	  /* No handoff queue work found? */
 	  if (processed)
