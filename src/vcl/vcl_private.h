@@ -665,7 +665,7 @@ void vcl_segment_table_del (u64 segment_handle);
 int vcl_session_read_ready (vcl_session_t * session);
 int vcl_session_write_ready (vcl_session_t * session);
 int vcl_session_alloc_ext_cfg (vcl_session_t *s,
-			       transport_endpt_ext_cfg_type_t type);
+			       transport_endpt_ext_cfg_type_t type, u32 len);
 
 static inline vcl_worker_t *
 vcl_worker_get (u32 wrk_index)
