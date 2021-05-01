@@ -179,9 +179,6 @@ int vlib_frame_queue_enqueue (vlib_main_t * vm, u32 node_runtime_index,
 			      u32 frame_queue_index, vlib_frame_t * frame,
 			      vlib_frame_queue_msg_type_t type);
 
-int
-vlib_frame_queue_dequeue (vlib_main_t * vm, vlib_frame_queue_main_t * fqm);
-
 void vlib_worker_thread_node_runtime_update (void);
 
 void vlib_create_worker_threads (vlib_main_t * vm, int n,
