@@ -3697,7 +3697,8 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
 	}
       if (!session->ext_config)
 	{
-	  vcl_session_alloc_ext_cfg (session, TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
+	  vcl_session_alloc_ext_cfg (session, TRANSPORT_ENDPT_EXT_CFG_CRYPTO,
+	                             sizeof (transport_endpt_ext_cfg_t));
 	}
       else if (session->ext_config->type != TRANSPORT_ENDPT_EXT_CFG_CRYPTO)
 	{
@@ -3742,6 +3743,22 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
 
       VDBG (2, "VPPCOM_ATTR_GET_DOMAIN: %d, buflen %u", *(int *) buffer,
 	    *buflen);
+      break;
+
+    case VPPCOM_ATTR_SET_ENDPT_EXT_CFG:
+      if (!(buffer && buflen && (*buflen > sizeof (u32))))
+	{
+	  rv = VPPCOM_EINVAL;
+	  break;
+	}
+      if (session->ext_config)
+	{
+	  rv = VPPCOM_EINVAL;
+	  break;
+	}
+      vcl_session_alloc_ext_cfg (session, TRANSPORT_ENDPT_EXT_CFG_NONE,
+	                         *buflen);
+      clib_memcpy (session->ext_config, buffer, *buflen);
       break;
 
     default:
