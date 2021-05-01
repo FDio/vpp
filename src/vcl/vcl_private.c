@@ -317,14 +317,14 @@ vcl_session_write_ready (vcl_session_t * s)
 
 int
 vcl_session_alloc_ext_cfg (vcl_session_t *s,
-			   transport_endpt_ext_cfg_type_t type)
+			   transport_endpt_ext_cfg_type_t type, u32 len)
 {
   if (s->ext_config)
     return -1;
 
-  s->ext_config = clib_mem_alloc (sizeof (transport_endpt_ext_cfg_t));
-  clib_memset (s->ext_config, 0, sizeof (*s->ext_config));
-  s->ext_config->len = sizeof (*s->ext_config);
+  s->ext_config = clib_mem_alloc (len);
+  clib_memset (s->ext_config, 0, len);
+  s->ext_config->len = len;
   s->ext_config->type = type;
 
   return 0;
