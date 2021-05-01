@@ -683,19 +683,16 @@ quic_send_datagram (session_t *udp_session, struct iovec *packet,
       QUIC_ASSERT (dest->sa.sa_family == AF_INET6);
       struct sockaddr_in6 *sa6 = (struct sockaddr_in6 *) &dest->sa;
       hdr.rmt_port = sa6->sin6_port;
-      clib_memcpy (&hdr.rmt_ip.ip6, &sa6->sin6_addr, 16);
+      clib_memcpy_fast (&hdr.rmt_ip.ip6, &sa6->sin6_addr, 16);
     }
 
-  ret = svm_fifo_enqueue (f, sizeof (hdr), (u8 *) & hdr);
-  if (ret != sizeof (hdr))
+  svm_fifo_seg_t segs[2] = { { (u8 *) &hdr, sizeof (hdr) },
+			     { packet->iov_base, len } };
+
+  ret = svm_fifo_enqueue_segments (f, segs, 2, 0 /* allow partial */);
+  if (PREDICT_FALSE (ret < 0))
     {
-      QUIC_ERR ("Not enough space to enqueue header");
-      return QUIC_ERROR_FULL_FIFO;
-    }
-  ret = svm_fifo_enqueue (f, len, packet->iov_base);
-  if (ret != len)
-    {
-      QUIC_ERR ("Not enough space to enqueue payload");
+      QUIC_ERR ("Not enough space to enqueue dgram");
       return QUIC_ERROR_FULL_FIFO;
     }
 
