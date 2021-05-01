@@ -279,6 +279,7 @@ typedef struct transport_endpt_ext_cfg_
   union
   {
     transport_endpt_crypto_cfg_t crypto;
+    u8 default_size[4000];
     u8 data[0];
   };
 } transport_endpt_ext_cfg_t;

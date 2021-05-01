@@ -3744,6 +3744,25 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
 	    *buflen);
       break;
 
+    case VPPCOM_ATTR_SET_ENDPT_EXT_CFG:
+      if (!(buffer && buflen))
+	{
+	  rv = VPPCOM_EINVAL;
+	  break;
+	}
+      if (!session->ext_config)
+	{
+	  vcl_session_alloc_ext_cfg (session, TRANSPORT_ENDPT_EXT_CFG_NONE);
+	}
+      else if (session->ext_config->type != TRANSPORT_ENDPT_EXT_CFG_NONE)
+	{
+	  rv = VPPCOM_EINVAL;
+	  break;
+	}
+      clib_memcpy (session->ext_config->data, buffer, *buflen);
+      session->ext_config->len = sizeof (u32) + *buflen;
+      break;
+
     default:
       rv = VPPCOM_EINVAL;
       break;
