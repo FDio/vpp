@@ -61,15 +61,20 @@ openssl_ctx_free (tls_ctx_t * ctx)
 {
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
 
-  if (SSL_is_init_finished (oc->ssl) && !ctx->is_passive_close)
-    SSL_shutdown (oc->ssl);
+  /* Cleanup ssl ctx unless migrated */
+  if (!ctx->is_migrated)
+    {
+      if (SSL_is_init_finished (oc->ssl) && !ctx->is_passive_close)
+	SSL_shutdown (oc->ssl);
 
-  SSL_free (oc->ssl);
+      SSL_free (oc->ssl);
+      vec_free (ctx->srv_hostname);
 
 #ifdef HAVE_OPENSSL_ASYNC
   openssl_evt_free (ctx->evt_index, ctx->c_thread_index);
 #endif
-  vec_free (ctx->srv_hostname);
+    }
+
   pool_put_index (openssl_main.ctx_pool[ctx->c_thread_index],
 		  oc->openssl_ctx_index);
 }
