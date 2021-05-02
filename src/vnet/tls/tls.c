@@ -617,7 +617,7 @@ tls_app_session_cleanup (session_t * s, session_cleanup_ntf_t ntf)
 }
 
 static void
-dtls_migrate_udp (void *arg)
+dtls_migrate_ctx (void *arg)
 {
   tls_ctx_t *ctx = (tls_ctx_t *) arg;
   u32 ctx_handle, thread_index;
@@ -641,15 +641,18 @@ static void
 dtls_session_migrate_callback (session_t *us, session_handle_t new_sh)
 {
   u32 new_thread = session_thread_from_handle (new_sh);
-  tls_ctx_t *ctx;
+  tls_ctx_t *ctx, *cloned_ctx;
 
   /* Migrate dtls context to new thread */
   ctx = tls_ctx_get_w_thread (us->opaque, us->thread_index);
   ctx->tls_session_handle = new_sh;
-  ctx = tls_ctx_detach (ctx);
+  cloned_ctx = tls_ctx_detach (ctx);
   ctx->is_migrated = 1;
 
-  session_send_rpc_evt_to_thread (new_thread, dtls_migrate_udp, (void *) ctx);
+  session_send_rpc_evt_to_thread (new_thread, dtls_migrate_ctx,
+				  (void *) cloned_ctx);
+
+  tls_ctx_free (ctx);
 }
 
 static session_cb_vft_t tls_app_cb_vft = {
