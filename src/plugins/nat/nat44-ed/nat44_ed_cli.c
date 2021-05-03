@@ -27,27 +27,21 @@
 #include <nat/nat44-ed/nat44_ed_inlines.h>
 #include <nat/nat44-ed/nat44_ed_affinity.h>
 
+#define NAT44_ED_EXPECTED_ARGUMENT "expected required argument(s)"
+
 static clib_error_t *
-nat44_enable_command_fn (vlib_main_t * vm,
-			 unformat_input_t * input, vlib_cli_command_t * cmd)
+nat44_ed_enable_disable_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				 vlib_cli_command_t *cmd)
 {
   snat_main_t *sm = &snat_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
 
   nat44_config_t c = { 0 };
-  u8 mode_set = 0;
+  u8 enable_set = 0, enable = 0, mode_set = 0;
 
-  if (sm->enabled)
-    return clib_error_return (0, "nat44 already enabled");
-
-  /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    {
-      if (nat44_plugin_enable (c) != 0)
-	return clib_error_return (0, "nat44 enable failed");
-      return 0;
-    }
+    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -63,6 +57,14 @@ nat44_enable_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "inside-vrf %u", &c.inside_vrf));
       else if (unformat (line_input, "outside-vrf %u", &c.outside_vrf));
       else if (unformat (line_input, "sessions %u", &c.sessions));
+      else if (!enable_set)
+	{
+	  enable_set = 1;
+	  if (unformat (line_input, "disable"))
+	    ;
+	  else if (unformat (line_input, "enable"))
+	    enable = 1;
+	}
       else
 	{
 	  error = clib_error_return (0, "unknown input '%U'",
@@ -71,32 +73,37 @@ nat44_enable_command_fn (vlib_main_t * vm,
 	}
     }
 
-  if (!c.sessions)
+  if (!enable_set)
     {
-      error = clib_error_return (0, "number of sessions is required");
+      error = clib_error_return (0, "expected enable | disable");
       goto done;
     }
 
-  if (nat44_plugin_enable (c) != 0)
-    error = clib_error_return (0, "nat44 enable failed");
+  if (enable)
+    {
+      if (sm->enabled)
+	{
+	  error = clib_error_return (0, "already enabled");
+	  goto done;
+	}
+
+      if (nat44_plugin_enable (c) != 0)
+	error = clib_error_return (0, "enable failed");
+    }
+  else
+    {
+      if (!sm->enabled)
+	{
+	  error = clib_error_return (0, "already disabled");
+	  goto done;
+	}
+
+      if (nat44_plugin_disable () != 0)
+	error = clib_error_return (0, "disable failed");
+    }
+
 done:
   unformat_free (line_input);
-  return error;
-}
-
-static clib_error_t *
-nat44_disable_command_fn (vlib_main_t * vm,
-			  unformat_input_t * input, vlib_cli_command_t * cmd)
-{
-  snat_main_t *sm = &snat_main;
-  clib_error_t *error = 0;
-
-  if (!sm->enabled)
-    return clib_error_return (0, "nat44 already disabled");
-
-  if (nat44_plugin_disable () != 0)
-    error = clib_error_return (0, "nat44 disable failed");
-
   return error;
 }
 
@@ -111,7 +118,7 @@ set_workers_command_fn (vlib_main_t * vm,
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -187,7 +194,7 @@ snat_set_log_level_command_fn (vlib_main_t * vm,
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
 
   if (!unformat (line_input, "%d", &log_level))
     {
@@ -214,21 +221,13 @@ snat_ipfix_logging_enable_disable_command_fn (vlib_main_t * vm,
 					      vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  u32 domain_id = 0;
-  u32 src_port = 0;
-  u8 enable = 1;
-  int rv = 0;
   clib_error_t *error = 0;
 
-  /* Get a line of input. */
+  u32 domain_id = 0, src_port = 0;
+  u8 enable_set = 0, enable = 0;
+
   if (!unformat_user (input, unformat_line_input, line_input))
-    {
-      rv = nat_ipfix_logging_enable_disable (enable, domain_id,
-					     (u16) src_port);
-      if (rv)
-	return clib_error_return (0, "ipfix logging enable failed");
-      return 0;
-    }
+    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -236,8 +235,14 @@ snat_ipfix_logging_enable_disable_command_fn (vlib_main_t * vm,
 	;
       else if (unformat (line_input, "src-port %d", &src_port))
 	;
-      else if (unformat (line_input, "disable"))
-	enable = 0;
+      else if (!enable_set)
+	{
+	  enable_set = 1;
+	  if (unformat (line_input, "disable"))
+	    ;
+	  else if (unformat (line_input, "enable"))
+	    enable = 1;
+	}
       else
 	{
 	  error = clib_error_return (0, "unknown input '%U'",
@@ -246,9 +251,13 @@ snat_ipfix_logging_enable_disable_command_fn (vlib_main_t * vm,
 	}
     }
 
-  rv = nat_ipfix_logging_enable_disable (enable, domain_id, (u16) src_port);
+  if (!enable_set)
+    {
+      error = clib_error_return (0, "expected enable | disable");
+      goto done;
+    }
 
-  if (rv)
+  if (nat_ipfix_logging_enable_disable (enable, domain_id, (u16) src_port))
     {
       error = clib_error_return (0, "ipfix logging enable failed");
       goto done;
@@ -306,7 +315,7 @@ nat_set_mss_clamping_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -359,7 +368,7 @@ add_address_command_fn (vlib_main_t * vm,
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -663,7 +672,7 @@ snat_feature_command_fn (vlib_main_t * vm,
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -805,7 +814,7 @@ add_static_mapping_command_fn (vlib_main_t * vm,
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -925,7 +934,7 @@ add_identity_mapping_command_fn (vlib_main_t * vm,
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -999,7 +1008,7 @@ add_lb_static_mapping_command_fn (vlib_main_t * vm,
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1103,7 +1112,7 @@ add_lb_backend_command_fn (vlib_main_t * vm,
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1207,7 +1216,7 @@ snat_add_interface_address_command_fn (vlib_main_t * vm,
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1322,9 +1331,8 @@ nat44_set_session_limit_command_fn (vlib_main_t * vm,
 
   u32 session_limit = 0, vrf_id = 0;
 
-  /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1365,9 +1373,8 @@ nat44_del_session_command_fn (vlib_main_t * vm,
   int is_in = 0;
   int rv;
 
-  /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1426,25 +1433,22 @@ snat_forwarding_set_command_fn (vlib_main_t * vm,
 {
   snat_main_t *sm = &snat_main;
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 forwarding_enable;
-  u8 forwarding_enable_set = 0;
   clib_error_t *error = 0;
 
-  /* Get a line of input. */
+  u8 enable_set = 0, enable = 0;
+
   if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, "'enable' or 'disable' expected");
+    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (!forwarding_enable_set && unformat (line_input, "enable"))
+      if (!enable_set)
 	{
-	  forwarding_enable = 1;
-	  forwarding_enable_set = 1;
-	}
-      else if (!forwarding_enable_set && unformat (line_input, "disable"))
-	{
-	  forwarding_enable = 0;
-	  forwarding_enable_set = 1;
+	  enable_set = 1;
+	  if (unformat (line_input, "disable"))
+	    ;
+	  else if (unformat (line_input, "enable"))
+	    enable = 1;
 	}
       else
 	{
@@ -1454,17 +1458,13 @@ snat_forwarding_set_command_fn (vlib_main_t * vm,
 	}
     }
 
-  if (!forwarding_enable_set)
-    {
-      error = clib_error_return (0, "'enable' or 'disable' expected");
-      goto done;
-    }
-
-  sm->forwarding_enabled = forwarding_enable;
+  if (!enable_set)
+    error = clib_error_return (0, "expected enable | disable");
+  else
+    sm->forwarding_enabled = enable;
 
 done:
   unformat_free (line_input);
-
   return error;
 }
 
@@ -1476,9 +1476,8 @@ set_timeout_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
 
-  /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1526,9 +1525,10 @@ set_frame_queue_nelts_command_fn (vlib_main_t *vm, unformat_input_t *input,
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
   u32 frame_queue_nelts = 0;
-  /* Get a line of input. */
+
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
+
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "%u", &frame_queue_nelts))
@@ -1557,38 +1557,25 @@ done:
 
 /*?
  * @cliexpar
- * @cliexstart{nat44 enable}
+ * @cliexstart{nat44}
  * Enable nat44 plugin
- * To enable nat44, use:
- *  vpp# nat44 enable sessions <n>
- * To enable nat44 static mapping only, use:
- *  vpp# nat44 enable sessions <n> static-mapping
- * To enable nat44 static mapping with connection tracking, use:
- *  vpp# nat44 enable sessions <n> static-mapping connection-tracking
- * To set inside-vrf outside-vrf, use:
- *  vpp# nat44 enable sessions <n> inside-vrf <id> outside-vrf <id>
- * @cliexend
-?*/
-VLIB_CLI_COMMAND (nat44_enable_command, static) = {
-  .path = "nat44 enable",
-  .short_help =
-    "nat44 enable sessions <max-number> [static-mappig-only "
-    "[connection-tracking]] [inside-vrf <vrf-id>] [outside-vrf <vrf-id>]",
-  .function = nat44_enable_command_fn,
-};
-
-/*?
- * @cliexpar
- * @cliexstart{nat44 disable}
- * Disable nat44 plugin
- * To disable nat44, use:
+ * To enable nat44-ed, use:
+ *  vpp# nat44 enable
+ * To disable nat44-ed, use:
  *  vpp# nat44 disable
+ * To enable nat44-ed static mapping with connection tracking, use:
+ *  vpp# nat44-ed enable static-mapping connection-tracking
+ * To set inside-vrf outside-vrf, use:
+ *  vpp# nat44 enable inside-vrf <id> outside-vrf <id>
  * @cliexend
 ?*/
-VLIB_CLI_COMMAND (nat44_disable_command, static) = {
-  .path = "nat44 disable",
-  .short_help = "nat44 disable",
-  .function = nat44_disable_command_fn,
+VLIB_CLI_COMMAND (nat44_ed_enable_disable_command, static) = {
+  .path = "nat44",
+  .short_help =
+    "nat44 <enable [sessions <max-number>] [static-mapping-only "
+    "connection-tracking] [inside-vrf <vrf-id>] "
+    "[outside-vrf <vrf-id>]>|disable",
+  .function = nat44_ed_enable_disable_command_fn,
 };
 
 /*?
@@ -1691,7 +1678,8 @@ VLIB_CLI_COMMAND (snat_set_log_level_command, static) = {
 VLIB_CLI_COMMAND (snat_ipfix_logging_enable_disable_command, static) = {
   .path = "nat ipfix logging",
   .function = snat_ipfix_logging_enable_disable_command_fn,
-  .short_help = "nat ipfix logging [domain <domain-id>] [src-port <port>] [disable]",
+  .short_help = "nat ipfix logging disable|<enable [domain <domain-id>] "
+		"[src-port <port>]>",
 };
 
 /*?
