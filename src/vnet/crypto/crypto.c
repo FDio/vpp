@@ -343,7 +343,13 @@ vnet_crypto_key_len_check (vnet_crypto_alg_t alg, u16 length)
 #define _(n, s) \
       case VNET_CRYPTO_ALG_HMAC_##n: \
         return 1;
-        foreach_crypto_hmac_alg
+	foreach_crypto_hmac_alg
+#undef _
+
+#define _(n, s)                                                               \
+  case VNET_CRYPTO_ALG_HASH_##n:                                              \
+    return 1;
+	  foreach_crypto_hash_alg
 #undef _
     }
 
@@ -669,6 +675,20 @@ vnet_crypto_init_cipher_data (vnet_crypto_alg_t alg, vnet_crypto_op_id_t eid,
 }
 
 static void
+vnet_crypto_init_hash_data (vnet_crypto_alg_t alg, vnet_crypto_op_id_t id,
+			    char *name)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  cm->algs[alg].name = name;
+  cm->algs[alg].op_by_type[VNET_CRYPTO_OP_TYPE_HASH] = id;
+  cm->opt_data[id].alg = alg;
+  cm->opt_data[id].active_engine_index_simple = ~0;
+  cm->opt_data[id].active_engine_index_chained = ~0;
+  cm->opt_data[id].type = VNET_CRYPTO_OP_TYPE_HASH;
+  hash_set_mem (cm->alg_index_by_name, name, alg);
+}
+
+static void
 vnet_crypto_init_hmac_data (vnet_crypto_alg_t alg,
 			    vnet_crypto_op_id_t id, char *name)
 {
@@ -739,6 +759,11 @@ vnet_crypto_init (vlib_main_t * vm)
   vnet_crypto_init_hmac_data (VNET_CRYPTO_ALG_HMAC_##n, \
 			      VNET_CRYPTO_OP_##n##_HMAC, "hmac-" s);
   foreach_crypto_hmac_alg;
+#undef _
+#define _(n, s)                                                               \
+  vnet_crypto_init_hash_data (VNET_CRYPTO_ALG_HASH_##n,                       \
+			      VNET_CRYPTO_OP_##n##_HASH, s);
+  foreach_crypto_hash_alg;
 #undef _
 #define _(n, s, k, t, a) \
   vnet_crypto_init_async_data (VNET_CRYPTO_ALG_##n##_TAG##t##_AAD##a, \
