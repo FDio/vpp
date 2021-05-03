@@ -85,12 +85,13 @@ cmake \
 
   Useful build commands:
 
-  ninja             Build VPP
-  ninja config      Start build configuration TUI
-  ninja compdb      Generate compile_commands.json
-  ninja run         Runs VPP using startup.conf in the build directory
-  ninja debug       Runs VPP inside GDB using startup.conf in the build directory
-  ninja pkg-deb     Create .deb packages
-  ninja install     Install VPP to $install_dir
+  ninja                   Build VPP
+  ninja set-build-type-*  Change build type to <debug|release|gcov|...>
+  ninja config            Start build configuration TUI
+  ninja compdb            Generate compile_commands.json
+  ninja run               Runs VPP using startup.conf in the build directory
+  ninja debug             Runs VPP inside GDB using startup.conf in the build directory
+  ninja pkg-deb           Create .deb packages
+  ninja install           Install VPP to $install_dir
 
 __EOF__
