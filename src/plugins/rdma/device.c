@@ -617,15 +617,29 @@ rdma_rxq_finalize (vlib_main_t * vm, rdma_device_t * rd)
   struct ibv_rwq_ind_table_init_attr rwqia;
   struct ibv_qp_init_attr_ex qpia;
   struct ibv_wq **ind_tbl;
+  const u32 rxq_sz = vec_len (rd->rxqs);
+  u32 ind_tbl_sz = rxq_sz;
   u32 i;
 
-  ASSERT (is_pow2 (vec_len (rd->rxqs))
-	  && "rxq number should be a power of 2");
+  if (!is_pow2 (ind_tbl_sz))
+    {
+      /* in case we do not have a power-of-2 number of rxq, we try to use the
+       * maximum supported to minimize the imbalance */
+      struct ibv_device_attr_ex attr;
+      if (ibv_query_device_ex (rd->ctx, 0, &attr))
+	return clib_error_return_unix (0, "device query failed");
+      ind_tbl_sz = attr.rss_caps.max_rwq_indirection_table_size;
+      if (ind_tbl_sz < rxq_sz)
+	return clib_error_create ("too many rxqs requested (%d) compared to "
+				  "max indirection table size (%d)",
+				  rxq_sz, ind_tbl_sz);
+    }
 
-  ind_tbl = vec_new (struct ibv_wq *, vec_len (rd->rxqs));
-  vec_foreach_index (i, rd->rxqs)
-    ind_tbl[i] = vec_elt_at_index (rd->rxqs, i)->wq;
+  ind_tbl = vec_new (struct ibv_wq *, ind_tbl_sz);
+  vec_foreach_index (i, ind_tbl)
+    vec_elt (ind_tbl, i) = vec_elt (rd->rxqs, i % rxq_sz).wq;
   memset (&rwqia, 0, sizeof (rwqia));
+  ASSERT (is_pow2 (vec_len (ind_tbl)));
   rwqia.log_ind_tbl_size = min_log2 (vec_len (ind_tbl));
   rwqia.ind_tbl = ind_tbl;
   if ((rd->rx_rwq_ind_tbl = ibv_create_rwq_ind_table (rd->ctx, &rwqia)) == 0)
@@ -842,14 +856,6 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
   args->rxq_size = args->rxq_size ? args->rxq_size : 1024;
   args->txq_size = args->txq_size ? args->txq_size : 1024;
   args->rxq_num = args->rxq_num ? args->rxq_num : 2;
-
-  if (!is_pow2 (args->rxq_num))
-    {
-      args->rv = VNET_API_ERROR_INVALID_VALUE;
-      args->error =
-	clib_error_return (0, "rx queue number must be a power of two");
-      goto err0;
-    }
 
   if (args->rxq_size < VLIB_FRAME_SIZE || args->txq_size < VLIB_FRAME_SIZE ||
       args->rxq_size > 65535 || args->txq_size > 65535 ||
