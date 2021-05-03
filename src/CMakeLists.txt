@@ -110,9 +110,9 @@ string(CONCAT CMAKE_C_FLAGS_GCOV
 string(TOUPPER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_UC)
 
 
-string(REPLACE ";" " " BUILD_TYPES "${BUILD_TYPES}")
+string(REPLACE ";" " " BUILD_TYPES_STR "${BUILD_TYPES}")
 set_property(CACHE CMAKE_BUILD_TYPE PROPERTY
-	     HELPSTRING "Build type - valid options are: ${BUILD_TYPES}")
+	     HELPSTRING "Build type - valid options are: ${BUILD_TYPES_STR}")
 
 ##############################################################################
 # link time optimizations
@@ -244,6 +244,14 @@ add_custom_target(compdb
   COMMENT "Generating compile_commands.json"
   USES_TERMINAL
 )
+
+foreach(bt ${BUILD_TYPES})
+  add_custom_target(set-build-type-${bt}
+    COMMAND cmake -DCMAKE_BUILD_TYPE:STRING=${bt} .
+    COMMENT "Changing build type to ${bt}"
+    USES_TERMINAL
+  )
+endforeach()
 
 ##############################################################################
 # print configuration
