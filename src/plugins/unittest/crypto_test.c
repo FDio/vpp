@@ -75,6 +75,9 @@ print_results (vlib_main_t * vm, unittest_crypto_test_registration_t ** rv,
       case VNET_CRYPTO_OP_TYPE_HMAC:
 	exp_digest = &r->digest;
 	break;
+      case VNET_CRYPTO_OP_TYPE_HASH:
+	exp_digest = &r->digest;
+	break;
       default:
 	ASSERT (0);
       }
@@ -629,6 +632,12 @@ test_crypto_static (vlib_main_t * vm, crypto_test_main_t * tm,
               op->len = r->plaintext.length;
               }
 	      break;
+	    case VNET_CRYPTO_OP_TYPE_HASH:
+	      op->digest = computed_data + computed_data_total_len;
+	      computed_data_total_len += r->digest.length;
+	      op->src = r->plaintext.data;
+	      op->len = r->plaintext.length;
+	      break;
 	    default:
 	      break;
 	    };
@@ -801,6 +810,10 @@ test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
 		  else
 		    n_ops_static += 1;
 		}
+	      break;
+	    case VNET_CRYPTO_OP_TYPE_HASH:
+	      computed_data_total_len += r->digest.length;
+	      n_ops_static += 1;
 	      break;
 	    default:
 	      break;
