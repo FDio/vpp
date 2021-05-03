@@ -29,6 +29,7 @@ add_vpp_plugin(unittest
   crypto/rfc2202_hmac_md5.c
   crypto/rfc2202_hmac_sha1.c
   crypto/rfc4231.c
+  crypto/sha.c
   crypto_test.c
   fib_test.c
   interface_test.c
