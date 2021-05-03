@@ -646,11 +646,11 @@ static int
 quic_send_datagram (session_t *udp_session, struct iovec *packet,
 		    quicly_address_t *dest, quicly_address_t *src)
 {
-  u32 max_enqueue;
+  u32 max_enqueue, len;
   session_dgram_hdr_t hdr;
-  u32 len, ret;
   svm_fifo_t *f;
   transport_connection_t *tc;
+  int ret;
 
   len = packet->iov_len;
   f = udp_session->tx_fifo;
