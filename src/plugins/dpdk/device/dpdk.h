@@ -303,6 +303,11 @@ typedef struct
   u8 enable_tcp_udp_checksum;
   u8 no_tx_checksum_offload;
   u8 enable_telemetry;
+  u16 max_simd_bitwidth;
+
+#define DPDK_MAX_SIMD_BITWIDTH_DEFAULT 0
+#define DPDK_MAX_SIMD_BITWIDTH_256     256
+#define DPDK_MAX_SIMD_BITWIDTH_512     512
 
   /* Required config parameters */
   u8 coremask_set_manually;
