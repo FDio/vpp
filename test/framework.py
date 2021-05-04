@@ -450,7 +450,7 @@ class VppTestCase(CPUInterface, unittest.TestCase):
             coredump_size, "runtime-dir", cls.tempdir, "}",
             "api-trace", "{", "on", "}",
             "api-segment", "{", "prefix", cls.get_api_segment_prefix(), "}",
-            "cpu", "{", "main-core", str(cls.cpus[0]), ]
+            "cpu", "{", "main-core", str(cls.cpus[0]) if cls.cpus else "1", ]
         if cls.get_vpp_worker_count():
             cls.vpp_cmdline.extend([
                 "corelist-workers", ",".join([str(x) for x in cls.cpus[1:]])])
