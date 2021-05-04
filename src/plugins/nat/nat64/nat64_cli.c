@@ -16,6 +16,8 @@
 #include <vnet/fib/fib_table.h>
 #include <nat/nat64/nat64.h>
 
+#define NAT64_EXPECTED_ARGUMENT "expected required argument(s)"
+
 static clib_error_t *
 nat64_plugin_enable_disable_command_fn (vlib_main_t * vm,
 					unformat_input_t * input,
@@ -27,7 +29,7 @@ nat64_plugin_enable_disable_command_fn (vlib_main_t * vm,
   nat64_config_t c = { 0 };
 
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, NAT64_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -79,7 +81,7 @@ nat64_add_del_pool_addr_command_fn (vlib_main_t * vm,
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, NAT64_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -193,7 +195,7 @@ nat64_interface_feature_command_fn (vlib_main_t * vm,
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, NAT64_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -335,7 +337,7 @@ nat64_add_del_static_bib_command_fn (vlib_main_t *
   int rv;
 
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, NAT64_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -462,7 +464,7 @@ nat64_show_bib_command_fn (vlib_main_t * vm,
   nat64_db_t *db;
 
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, NAT64_EXPECTED_ARGUMENT);
 
   if (unformat (line_input, "%U", unformat_nat_protocol, &proto))
     p = nat_proto_to_ip_proto (proto);
@@ -565,7 +567,7 @@ nat64_show_st_command_fn (vlib_main_t * vm,
   };
 
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, NAT64_EXPECTED_ARGUMENT);
 
   if (unformat (line_input, "%U", unformat_nat_protocol, &proto))
     p = nat_proto_to_ip_proto (proto);
@@ -613,7 +615,7 @@ nat64_add_del_prefix_command_fn (vlib_main_t * vm, unformat_input_t * input,
   int rv;
 
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, NAT64_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -737,7 +739,7 @@ nat64_add_interface_address_command_fn (vlib_main_t * vm,
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, NAT64_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
