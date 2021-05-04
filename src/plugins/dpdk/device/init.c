@@ -1136,6 +1136,25 @@ dpdk_bind_vmbus_devices_to_uio (dpdk_config_main_t * conf)
   /* *INDENT-ON* */
 }
 
+uword
+unformat_max_simd_bitwidth (unformat_input_t *input, va_list *va)
+{
+  uword *max_simd_bitwidth = va_arg (*va, uword *);
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (!unformat (input, "%u", max_simd_bitwidth))
+	goto error;
+
+      if (*max_simd_bitwidth != DPDK_MAX_SIMD_BITWIDTH_256 &&
+	  *max_simd_bitwidth != DPDK_MAX_SIMD_BITWIDTH_512)
+	goto error;
+    }
+  return 1;
+error:
+  return 0;
+}
+
 static clib_error_t *
 dpdk_device_config (dpdk_config_main_t *conf, void *addr,
 		    dpdk_device_addr_type_t addr_type, unformat_input_t *input,
@@ -1347,7 +1366,9 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
       else if (unformat (input, "no-multi-seg"))
 	conf->no_multi_seg = 1;
-
+      else if (unformat (input, "max-simd-bitwidth %U",
+			 unformat_max_simd_bitwidth, &conf->max_simd_bitwidth))
+	;
       else if (unformat (input, "dev default %U", unformat_vlib_cli_sub_input,
 			 &sub_input))
 	{
@@ -1691,8 +1712,14 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 		      (char **) conf->eal_init_args);
 
   /* enable the AVX-512 vPMDs in DPDK */
-  if (clib_cpu_supports_avx512_bitalg ())
+  if (clib_cpu_supports_avx512_bitalg () &&
+      conf->max_simd_bitwidth == DPDK_MAX_SIMD_BITWIDTH_DEFAULT)
     rte_vect_set_max_simd_bitwidth (RTE_VECT_SIMD_512);
+  else if (conf->max_simd_bitwidth != DPDK_MAX_SIMD_BITWIDTH_DEFAULT)
+    rte_vect_set_max_simd_bitwidth (conf->max_simd_bitwidth ==
+					DPDK_MAX_SIMD_BITWIDTH_256 ?
+				      RTE_VECT_SIMD_256 :
+				      RTE_VECT_SIMD_512);
 
   /* lazy umount hugepages */
   umount2 ((char *) huge_dir_path, MNT_DETACH);
