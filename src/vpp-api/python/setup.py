@@ -18,11 +18,11 @@ try:
 except ImportError:
     from distutils.core import setup, find_packages
 
-requirements = ['cffi >= 1.6']
+requirements = []
 
 setup(
     name='vpp_papi',
-    version='1.6.2',
+    version='1.7.0',
     description='VPP Python binding',
     author='Ole Troan',
     author_email='ot@cisco.com',
