@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1e858b88_a8246342",
+        "filename": "src/vnet/devices/virtio/virtio.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 224,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-05-04T13:52:44Z",
+      "side": 1,
+      "message": "I think this should be declared as static as it is not called outside of virtio.c",
+      "revId": "eba44c63aafe3bcf6c7d8d5476cce02fd38c38b0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
