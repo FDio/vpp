@@ -422,15 +422,11 @@ class VPPApiClient:
         self.async_thread = async_thread
         self.event_thread = None
         self.testmode = testmode
-        self.use_socket = use_socket
         self.server_address = server_address
         self._apifiles = apifiles
         self.stats = {}
 
-        if use_socket:
-            from . vpp_transport_socket import VppTransport
-        else:
-            from . vpp_transport_shmem import VppTransport
+        from . vpp_transport_socket import VppTransport
 
         if not apifiles:
             # Pick up API definitions from default directory
@@ -906,11 +902,10 @@ class VPPApiClient:
 
     def __repr__(self):
         return "<VPPApiClient apifiles=%s, testmode=%s, async_thread=%s, " \
-               "logger=%s, read_timeout=%s, use_socket=%s, " \
+               "logger=%s, read_timeout=%s, " \
                "server_address='%s'>" % (
                    self._apifiles, self.testmode, self.async_thread,
-                   self.logger, self.read_timeout, self.use_socket,
-                   self.server_address)
+                   self.logger, self.read_timeout, self.server_address)
 
     def details_iter(self, f, **kwargs):
         cursor = 0
