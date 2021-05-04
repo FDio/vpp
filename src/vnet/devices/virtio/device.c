@@ -136,10 +136,14 @@ virtio_tx_trace (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b0,
 }
 
 static void
-virtio_interface_drop_inline (vlib_main_t *vm, uword node_index, u32 *buffers,
-			      u16 n, virtio_tx_func_error_t error)
+virtio_interface_drop_inline (vlib_main_t *vm, virtio_if_t *vif,
+			      uword node_index, u32 *buffers, u16 n,
+			      virtio_tx_func_error_t error)
 {
   vlib_error_count (vm, node_index, error, n);
+  vlib_increment_simple_counter (vnet_main.interface_main.sw_if_counters +
+				   VNET_INTERFACE_COUNTER_DROP,
+				 vm->thread_index, vif->sw_if_index, n);
   vlib_buffer_free (vm, buffers, n);
 }
 
@@ -369,10 +373,10 @@ set_gso_offsets (vlib_buffer_t *b, virtio_net_hdr_v1_t *hdr, const int is_l2)
 
 static u16
 add_buffer_to_slot (vlib_main_t *vm, vlib_node_runtime_t *node,
-		    virtio_vring_t *vring, u32 bi, u16 free_desc_count,
-		    u16 avail, u16 next, u16 mask, int hdr_sz, int do_gso,
-		    int csum_offload, int is_pci, int is_tun, int is_indirect,
-		    int is_any_layout)
+		    virtio_if_t *vif, virtio_vring_t *vring, u32 bi,
+		    u16 free_desc_count, u16 avail, u16 next, u16 mask,
+		    int hdr_sz, int do_gso, int csum_offload, int is_pci,
+		    int is_tun, int is_indirect, int is_any_layout)
 {
   u16 n_added = 0;
   vring_desc_t *d;
@@ -554,16 +558,18 @@ add_buffer_to_slot (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 done:
   if (drop_inline != ~0)
-    virtio_interface_drop_inline (vm, node->node_index, &bi, 1, drop_inline);
+    virtio_interface_drop_inline (vm, vif, node->node_index, &bi, 1,
+				  drop_inline);
 
   return n_added;
 }
 
 static u16
 add_buffer_to_slot_packed (vlib_main_t *vm, vlib_node_runtime_t *node,
-			   virtio_vring_t *vring, u32 bi, u16 next, int hdr_sz,
-			   int do_gso, int csum_offload, int is_pci,
-			   int is_tun, int is_indirect, int is_any_layout)
+			   virtio_if_t *vif, virtio_vring_t *vring, u32 bi,
+			   u16 next, int hdr_sz, int do_gso, int csum_offload,
+			   int is_pci, int is_tun, int is_indirect,
+			   int is_any_layout)
 {
   u16 n_added = 0, flags = 0;
   int is_l2 = !is_tun;
@@ -693,7 +699,8 @@ add_buffer_to_slot_packed (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 done:
   if (drop_inline != ~0)
-    virtio_interface_drop_inline (vm, node->node_index, &bi, 1, drop_inline);
+    virtio_interface_drop_inline (vm, vif, node->node_index, &bi, 1,
+				  drop_inline);
 
   return n_added;
 }
@@ -732,11 +739,9 @@ virtio_interface_tx_packed_gso_inline (vlib_main_t *vm,
 	  u32 bi = virtio_vring_buffering_read_from_front (vring->buffering);
 	  if (bi == ~0)
 	    break;
-	  n_added = add_buffer_to_slot_packed (vm, node,
-					       vring, bi, next,
-					       hdr_sz, do_gso, csum_offload,
-					       is_pci, is_tun, is_indirect,
-					       is_any_layout);
+	  n_added = add_buffer_to_slot_packed (
+	    vm, node, vif, vring, bi, next, hdr_sz, do_gso, csum_offload,
+	    is_pci, is_tun, is_indirect, is_any_layout);
 	  n_buffers_left--;
 	  if (PREDICT_FALSE (n_added == 0))
 	    continue;
@@ -755,11 +760,9 @@ virtio_interface_tx_packed_gso_inline (vlib_main_t *vm,
     {
       u16 n_added = 0;
 
-      n_added = add_buffer_to_slot_packed (vm, node,
-					   vring, buffers[0], next,
-					   hdr_sz, do_gso, csum_offload,
-					   is_pci, is_tun, is_indirect,
-					   is_any_layout);
+      n_added = add_buffer_to_slot_packed (
+	vm, node, vif, vring, buffers[0], next, hdr_sz, do_gso, csum_offload,
+	is_pci, is_tun, is_indirect, is_any_layout);
       buffers++;
       n_left--;
       if (PREDICT_FALSE (n_added == 0))
@@ -873,10 +876,10 @@ virtio_interface_tx_split_gso_inline (vlib_main_t *vm,
 	  if (bi == ~0)
 	    break;
 
-	  n_added = add_buffer_to_slot (vm, node, vring, bi, free_desc_count,
-					avail, next, mask, hdr_sz, do_gso,
-					csum_offload, is_pci, is_tun,
-					is_indirect, is_any_layout);
+	  n_added = add_buffer_to_slot (vm, node, vif, vring, bi,
+					free_desc_count, avail, next, mask,
+					hdr_sz, do_gso, csum_offload, is_pci,
+					is_tun, is_indirect, is_any_layout);
 	  if (PREDICT_FALSE (n_added == 0))
 	    {
 	      n_buffers_left--;
@@ -897,10 +900,10 @@ virtio_interface_tx_split_gso_inline (vlib_main_t *vm,
     {
       u16 n_added = 0;
 
-      n_added = add_buffer_to_slot (vm, node, vring, buffers[0],
-				    free_desc_count, avail, next, mask,
-				    hdr_sz, do_gso, csum_offload, is_pci,
-				    is_tun, is_indirect, is_any_layout);
+      n_added =
+	add_buffer_to_slot (vm, node, vif, vring, buffers[0], free_desc_count,
+			    avail, next, mask, hdr_sz, do_gso, csum_offload,
+			    is_pci, is_tun, is_indirect, is_any_layout);
 
       if (PREDICT_FALSE (n_added == 0))
 	{
@@ -1036,7 +1039,7 @@ retry:
       n_left -= n_buffered;
     }
   if (n_left)
-    virtio_interface_drop_inline (vm, node->node_index,
+    virtio_interface_drop_inline (vm, vif, node->node_index,
 				  &buffers[n_vectors - n_left], n_left,
 				  VIRTIO_TX_ERROR_NO_FREE_SLOTS);
 
