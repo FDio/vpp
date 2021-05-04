@@ -63,8 +63,13 @@ avf_tx_prepare_cksum (vlib_buffer_t * b, u8 is_tso)
   u32 oflags = vnet_buffer2 (b)->oflags;
   u32 is_tcp = is_tso || oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM;
   u32 is_udp = !is_tso && oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM;
+
+  if (!is_tcp && !is_udp)
+    return 0;
+
   u32 is_ip4 = b->flags & VNET_BUFFER_F_IS_IP4;
   u32 is_ip6 = b->flags & VNET_BUFFER_F_IS_IP6;
+
   ASSERT (!is_tcp || !is_udp);
   ASSERT (is_ip4 || is_ip6);
   i16 l2_hdr_offset = b->current_data;
