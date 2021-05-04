@@ -2547,48 +2547,68 @@ VLIB_REGISTER_NODE (tcp6_rcv_process_node) =
 };
 /* *INDENT-ON* */
 
+static void
+tcp46_listen_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
+			  u32 *to_next, u32 n_bufs)
+{
+  tcp_connection_t *tc = 0;
+  tcp_rx_trace_t *t;
+  vlib_buffer_t *b;
+  int i;
+
+  for (i = 0; i < n_bufs; i++)
+    {
+      b = vlib_get_buffer (vm, to_next[i]);
+      if (!(b->flags & VLIB_BUFFER_IS_TRACED))
+	continue;
+      if (vnet_buffer (b)->tcp.flags == TCP_STATE_LISTEN)
+	tc = tcp_listener_get (vnet_buffer (b)->tcp.connection_index);
+      t = vlib_add_trace (vm, node, b, sizeof (*t));
+      tcp_set_rx_trace_data (t, tc, tcp_buffer_hdr (b), b, 1);
+    }
+}
+
 /**
  * LISTEN state processing as per RFC 793 p. 65
  */
 always_inline uword
-tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-		     vlib_frame_t * from_frame, int is_ip4)
+tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		     vlib_frame_t *frame, int is_ip4)
 {
-  u32 n_left_from, *from, n_syns = 0, *first_buffer;
+  u32 n_left_from, *from, n_syns = 0;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u32 thread_index = vm->thread_index;
 
-  from = first_buffer = vlib_frame_vector_args (from_frame);
-  n_left_from = from_frame->n_vectors;
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+
+  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
+    tcp46_listen_trace_frame (vm, node, from, n_left_from);
+
+  vlib_get_buffers (vm, from, bufs, n_left_from);
+  b = bufs;
 
   while (n_left_from > 0)
     {
-      u32 bi, error = TCP_ERROR_NONE;
+      u32 error = TCP_ERROR_NONE;
       tcp_connection_t *lc, *child;
-      vlib_buffer_t *b;
-
-      bi = from[0];
-      from += 1;
-      n_left_from -= 1;
-
-      b = vlib_get_buffer (vm, bi);
 
       /* Flags initialized with connection state after lookup */
-      if (vnet_buffer (b)->tcp.flags == TCP_STATE_LISTEN)
+      if (vnet_buffer (b[0])->tcp.flags == TCP_STATE_LISTEN)
 	{
-	  lc = tcp_listener_get (vnet_buffer (b)->tcp.connection_index);
+	  lc = tcp_listener_get (vnet_buffer (b[0])->tcp.connection_index);
 	}
       else
 	{
 	  tcp_connection_t *tc;
-	  tc = tcp_connection_get (vnet_buffer (b)->tcp.connection_index,
+	  tc = tcp_connection_get (vnet_buffer (b[0])->tcp.connection_index,
 				   thread_index);
 	  if (tc->state != TCP_STATE_TIME_WAIT)
 	    {
-	      lc = 0;
 	      error = TCP_ERROR_CREATE_EXISTS;
 	      goto done;
 	    }
-	  lc = tcp_lookup_listener (b, tc->c_fib_index, is_ip4);
+	  lc = tcp_lookup_listener (b[0], tc->c_fib_index, is_ip4);
 	  /* clean up the old session */
 	  tcp_connection_del (tc);
 	  /* listener was cleaned up */
@@ -2600,8 +2620,8 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
 
       /* Make sure connection wasn't just created */
-      child = tcp_lookup_connection (lc->c_fib_index, b, thread_index,
-				     is_ip4);
+      child =
+	tcp_lookup_connection (lc->c_fib_index, b[0], thread_index, is_ip4);
       if (PREDICT_FALSE (child->state != TCP_STATE_LISTEN))
 	{
 	  error = TCP_ERROR_CREATE_EXISTS;
@@ -2610,32 +2630,23 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       /* Create child session. For syn-flood protection use filter */
 
-      /* 1. first check for an RST: handled in dispatch */
-      /* if (tcp_rst (th0))
-         goto drop;
-       */
+      /* 1. first check for an RST: handled by input dispatch */
 
-      /* 2. second check for an ACK: handled in dispatch */
-      /* if (tcp_ack (th0))
-         {
-         tcp_send_reset (b0, is_ip4);
-         goto drop;
-         }
-       */
+      /* 2. second check for an ACK: handled by input dispatch */
 
       /* 3. check for a SYN (did that already) */
 
       /* Create child session and send SYN-ACK */
       child = tcp_connection_alloc (thread_index);
 
-      if (tcp_options_parse (tcp_buffer_hdr (b), &child->rcv_opts, 1))
+      if (tcp_options_parse (tcp_buffer_hdr (b[0]), &child->rcv_opts, 1))
 	{
 	  error = TCP_ERROR_OPTIONS;
 	  tcp_connection_free (child);
 	  goto done;
 	}
 
-      tcp_init_w_buffer (child, b, is_ip4);
+      tcp_init_w_buffer (child, b[0], is_ip4);
 
       child->state = TCP_STATE_SYN_RCVD;
       child->c_fib_index = lc->c_fib_index;
@@ -2665,19 +2676,15 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
     done:
 
-      if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
-	{
-	  tcp_rx_trace_t *t = vlib_add_trace (vm, node, b, sizeof (*t));
-	  tcp_set_rx_trace_data (t, lc, tcp_buffer_hdr (b), b, is_ip4);
-	}
-
+      b += 1;
+      n_left_from -= 1;
       n_syns += (error == TCP_ERROR_NONE);
     }
 
   tcp_inc_counter (listen, TCP_ERROR_SYNS_RCVD, n_syns);
-  vlib_buffer_free (vm, first_buffer, from_frame->n_vectors);
+  vlib_buffer_free (vm, from, frame->n_vectors);
 
-  return from_frame->n_vectors;
+  return frame->n_vectors;
 }
 
 VLIB_NODE_FN (tcp4_listen_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
