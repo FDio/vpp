@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f28d15f7_27cca96c",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1712,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2021-05-04T12:32:50Z",
+      "side": 1,
+      "message": "just nitpicking, but maybe for consistency sake it should be added to eal_init_args rather than calling rte_vect_set_max_simd_bitwidth",
+      "revId": "5ba9af62289f9afe77c33aedb4b631a3a1b95de0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
