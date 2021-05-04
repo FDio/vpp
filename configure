@@ -8,6 +8,7 @@ build_dir=.
 install_dir=/usr/local
 build_type=release
 prefix_path=/opt/vpp/external/$(uname -m)/
+src_dir="$(dirname "$(readlink -f "$0")")"
 
 help()
 {
@@ -75,7 +76,7 @@ done
 
 cmake \
   -G Ninja \
-  -S src \
+  -S ${src_dir}/src \
   -B ${build_dir} \
   -DCMAKE_PREFIX_PATH=${prefix_path} \
   -DCMAKE_INSTALL_PREFIX=${install_dir} \
