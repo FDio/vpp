@@ -21,7 +21,7 @@ OPTIONS:
   --help, -h              This help
   --build-dir, -b         Build directory
   --install-dir, -i       Install directory
-  --type, -t              Build type (release, debug, ... )
+  --build-type, -t        Build type (release, debug, ...)
   --wipe, -w              Wipe whole repo (except startup.* files)
 __EOF__
 }
