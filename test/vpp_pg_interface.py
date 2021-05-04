@@ -125,6 +125,7 @@ class VppPGInterface(VppInterface):
         self._gso_enabled = gso
         self._gso_size = gso_size
         self._coalesce_enabled = 0
+        self._pcap_reader = None
         self._out_file = "pg%u_out.pcap" % self.pg_index
         self._out_path = self.test.tempdir + "/" + self._out_file
         self._capture_cli = "packet-generator capture pg%u pcap %s" % (
@@ -155,7 +156,8 @@ class VppPGInterface(VppInterface):
             If n < 0, this is no limit
         """
         # disable the capture to flush the capture
-        self.disable_capture()
+        if self._pcap_reader:
+            self.disable_capture()
         self.rename_old_pcap_file(self.out_path, self.out_history_counter)
         # FIXME this should be an API, but no such exists atm
         self.test.vapi.cli(self.capture_cli)
@@ -163,6 +165,7 @@ class VppPGInterface(VppInterface):
 
     def disable_capture(self):
         self.test.vapi.cli("%s disable" % self.capture_cli)
+        self._pcap_reader.close()
 
     def coalesce_enable(self):
         """ Enable packet coalesce on this packet-generator interface"""
