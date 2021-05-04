@@ -18,6 +18,8 @@
  */
 #include <nat/det44/det44.h>
 
+#define DET44_EXPECTED_ARGUMENT "expected required argument(s)"
+
 static clib_error_t *
 det44_map_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		      vlib_cli_command_t * cmd)
@@ -29,7 +31,7 @@ det44_map_command_fn (vlib_main_t * vm, unformat_input_t * input,
   clib_error_t *error = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, DET44_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -74,7 +76,6 @@ det44_show_mappings_command_fn (vlib_main_t * vm,
   det44_main_t *dm = &det44_main;
   snat_det_map_t *mp;
   vlib_cli_output (vm, "NAT44 deterministic mappings:");
-  /* *INDENT-OFF* */
   pool_foreach (mp, dm->det_maps)
    {
     vlib_cli_output (vm, " in %U/%d out %U/%d\n",
@@ -86,7 +87,6 @@ det44_show_mappings_command_fn (vlib_main_t * vm,
                      mp->ports_per_host);
     vlib_cli_output (vm, "  sessions number: %d\n", mp->ses_num);
   }
-  /* *INDENT-ON* */
   return 0;
 }
 
@@ -101,7 +101,7 @@ det44_forward_command_fn (vlib_main_t * vm,
   clib_error_t *error = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, DET44_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -142,7 +142,7 @@ det44_reverse_command_fn (vlib_main_t * vm,
   u32 out_port;
 
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, DET44_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -187,7 +187,6 @@ det44_show_sessions_command_fn (vlib_main_t * vm,
   snat_det_session_t *ses;
   snat_det_map_t *mp;
   vlib_cli_output (vm, "NAT44 deterministic sessions:");
-  /* *INDENT-OFF* */
   pool_foreach (mp, dm->det_maps)
    {
     int i;
@@ -198,7 +197,6 @@ det44_show_sessions_command_fn (vlib_main_t * vm,
           vlib_cli_output (vm, "  %U", format_det_map_ses, mp, ses, &i);
       }
   }
-  /* *INDENT-ON* */
   return 0;
 }
 
@@ -216,7 +214,7 @@ det44_close_session_out_fn (vlib_main_t * vm,
   clib_error_t *error = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, DET44_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -269,7 +267,7 @@ det44_close_session_in_fn (vlib_main_t * vm,
   clib_error_t *error = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, DET44_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -319,7 +317,7 @@ det44_set_timeouts_command_fn (vlib_main_t * vm,
   u8 reset = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, DET44_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -380,7 +378,7 @@ det44_plugin_enable_disable_command_fn (vlib_main_t * vm,
   det44_config_t c = { 0 };
 
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, DET44_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -432,7 +430,7 @@ det44_feature_command_fn (vlib_main_t * vm,
   u8 is_del = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, DET44_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -458,7 +456,6 @@ det44_feature_command_fn (vlib_main_t * vm,
 	}
     }
 
-  /* *INDENT-OFF* */
   vec_foreach (p, sw_if_indices)
     {
       if (det44_interface_add_del (p->sw_if_index, p->is_inside, is_del))
@@ -471,7 +468,6 @@ det44_feature_command_fn (vlib_main_t * vm,
           break;
         }
     }
-  /* *INDENT-ON* */
 done:
   unformat_free (line_input);
   vec_free (sw_if_indices);
@@ -486,7 +482,6 @@ det44_show_interfaces_command_fn (vlib_main_t * vm, unformat_input_t * input,
   det44_main_t *dm = &det44_main;
   det44_interface_t *i;
   vlib_cli_output (vm, "DET44 interfaces:");
-  /* *INDENT-OFF* */
   pool_foreach (i, dm->interfaces)
    {
     vlib_cli_output (vm, " %U %s", format_vnet_sw_if_index_name, vnm,
@@ -495,11 +490,9 @@ det44_show_interfaces_command_fn (vlib_main_t * vm, unformat_input_t * input,
                       det44_interface_is_outside(i)) ? "in out" :
                      (det44_interface_is_inside(i) ? "in" : "out"));
   }
-  /* *INDENT-ON* */
   return 0;
 }
 
-/* *INDENT-OFF* */
 /*?
  * @cliexpar
  * @cliexstart{det44 add}
@@ -693,7 +686,6 @@ VLIB_CLI_COMMAND (det44_show_interfaces_command, static) =
   .short_help = "show det44 interfaces",
   .function = det44_show_interfaces_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON
