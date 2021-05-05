@@ -745,7 +745,7 @@ unformat_vnet_buffer_offload_flags (unformat_input_t *input, va_list *args)
 {
   u32 *flagp = va_arg (*args, u32 *);
   int rv = 0;
-  u32 oflags = 0;
+  vnet_buffer_oflags_t oflags = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -762,7 +762,7 @@ unformat_vnet_buffer_offload_flags (unformat_input_t *input, va_list *args)
 	else break;
     }
   if (rv)
-    *flagp = oflags;
+    *flagp = (u32) oflags;
   return rv;
 }
 

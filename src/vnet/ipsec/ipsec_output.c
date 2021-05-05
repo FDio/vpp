@@ -309,7 +309,7 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      if (PREDICT_FALSE (b0->flags & VNET_BUFFER_F_OFFLOAD))
 		{
-		  u32 oflags = vnet_buffer (b0)->oflags;
+		  vnet_buffer_oflags_t oflags = vnet_buffer (b0)->oflags;
 
 		  /*
 		   * Clearing offload flags before checksum is computed

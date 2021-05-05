@@ -75,7 +75,7 @@ virtio_needs_csum (vlib_buffer_t * b0, virtio_net_hdr_v1_t * hdr,
   if (hdr->flags & VIRTIO_NET_HDR_F_NEEDS_CSUM)
     {
       u16 ethertype = 0, l2hdr_sz = 0;
-      u32 oflags = 0;
+      vnet_buffer_oflags_t oflags = 0;
 
       if (type == VIRTIO_IF_TYPE_TUN)
 	{

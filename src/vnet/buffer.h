@@ -107,6 +107,21 @@ enum
 STATIC_ASSERT (((VNET_BUFFER_FLAGS_ALL_AVAIL & VLIB_BUFFER_FLAGS_ALL) == 0),
 	       "VLIB / VNET buffer flags overlap");
 
+#define foreach_vnet_buffer_offload_flag                                      \
+  _ (0, IP_CKSUM, "offload-ip-cksum", 1)                                      \
+  _ (1, TCP_CKSUM, "offload-tcp-cksum", 1)                                    \
+  _ (2, UDP_CKSUM, "offload-udp-cksum", 1)                                    \
+  _ (3, OUTER_IP_CKSUM, "offload-outer-ip-cksum", 1)                          \
+  _ (4, OUTER_TCP_CKSUM, "offload-outer-tcp-cksum", 1)                        \
+  _ (5, OUTER_UDP_CKSUM, "offload-outer-udp-cksum", 1)
+
+typedef enum
+{
+#define _(bit, name, s, v) VNET_BUFFER_OFFLOAD_F_##name = (1 << bit),
+  foreach_vnet_buffer_offload_flag
+#undef _
+} vnet_buffer_oflags_t;
+
 #define foreach_buffer_opaque_union_subtype     \
 _(ip)                                           \
 _(l2)                                           \
@@ -139,7 +154,7 @@ typedef struct
   i16 l4_hdr_offset;
   u8 feature_arc_index;
   /* offload flags */
-  u8 oflags;
+  vnet_buffer_oflags_t oflags : 8;
 
   union
   {
@@ -421,21 +436,6 @@ STATIC_ASSERT (sizeof (vnet_buffer_opaque_t) <=
 
 #define vnet_buffer(b) ((vnet_buffer_opaque_t *) (b)->opaque)
 
-#define foreach_vnet_buffer_offload_flag                                      \
-  _ (0, IP_CKSUM, "offload-ip-cksum", 1)                                      \
-  _ (1, TCP_CKSUM, "offload-tcp-cksum", 1)                                    \
-  _ (2, UDP_CKSUM, "offload-udp-cksum", 1)                                    \
-  _ (3, OUTER_IP_CKSUM, "offload-outer-ip-cksum", 1)                          \
-  _ (4, OUTER_TCP_CKSUM, "offload-outer-tcp-cksum", 1)                        \
-  _ (5, OUTER_UDP_CKSUM, "offload-outer-udp-cksum", 1)
-
-enum
-{
-#define _(bit, name, s, v) VNET_BUFFER_OFFLOAD_F_##name = (1 << bit),
-  foreach_vnet_buffer_offload_flag
-#undef _
-};
-
 /* Full cache line (64 bytes) of additional space */
 typedef struct
 {
@@ -519,7 +519,7 @@ format_function_t format_vnet_buffer_opaque;
 format_function_t format_vnet_buffer_opaque2;
 
 static_always_inline void
-vnet_buffer_offload_flags_set (vlib_buffer_t *b, u32 oflags)
+vnet_buffer_offload_flags_set (vlib_buffer_t *b, vnet_buffer_oflags_t oflags)
 {
   if (b->flags & VNET_BUFFER_F_OFFLOAD)
     {
@@ -535,7 +535,7 @@ vnet_buffer_offload_flags_set (vlib_buffer_t *b, u32 oflags)
 }
 
 static_always_inline void
-vnet_buffer_offload_flags_clear (vlib_buffer_t *b, u32 oflags)
+vnet_buffer_offload_flags_clear (vlib_buffer_t *b, vnet_buffer_oflags_t oflags)
 {
   vnet_buffer (b)->oflags &= ~oflags;
   if (0 == vnet_buffer (b)->oflags)

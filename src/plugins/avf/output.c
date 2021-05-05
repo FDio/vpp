@@ -60,7 +60,7 @@ avf_tx_prepare_cksum (vlib_buffer_t * b, u8 is_tso)
   if (!is_tso && !(b->flags & VNET_BUFFER_F_OFFLOAD))
     return 0;
 
-  u32 oflags = vnet_buffer (b)->oflags;
+  vnet_buffer_oflags_t oflags = vnet_buffer (b)->oflags;
   u32 is_tcp = is_tso || oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM;
   u32 is_udp = !is_tso && oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM;
   u32 is_ip4 = b->flags & VNET_BUFFER_F_IS_IP4;

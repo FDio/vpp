@@ -79,7 +79,7 @@ vmxnet3_handle_offload (vmxnet3_rx_comp * rx_comp, vlib_buffer_t * hb,
 			u16 gso_size)
 {
   u8 l4_hdr_sz = 0;
-  u32 oflags = 0;
+  vnet_buffer_oflags_t oflags = 0;
 
   if (rx_comp->flags & VMXNET3_RXCF_IP4)
     {

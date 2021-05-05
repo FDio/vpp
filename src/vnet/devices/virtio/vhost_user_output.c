@@ -225,7 +225,7 @@ vhost_user_handle_tx_offload (vhost_user_intf_t * vui, vlib_buffer_t * b,
   generic_header_offset_t gho = { 0 };
   int is_ip4 = b->flags & VNET_BUFFER_F_IS_IP4;
   int is_ip6 = b->flags & VNET_BUFFER_F_IS_IP6;
-  u32 oflags = vnet_buffer (b)->oflags;
+  vnet_buffer_oflags_t oflags = vnet_buffer (b)->oflags;
 
   ASSERT (!(is_ip4 && is_ip6));
   vnet_generic_header_offset_parser (b, &gho, 1 /* l2 */ , is_ip4, is_ip6);

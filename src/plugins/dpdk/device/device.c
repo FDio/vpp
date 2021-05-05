@@ -221,8 +221,9 @@ dpdk_buffer_tx_offload (dpdk_device_t * xd, vlib_buffer_t * b,
 {
   int is_ip4 = b->flags & VNET_BUFFER_F_IS_IP4;
   u32 tso = b->flags & VNET_BUFFER_F_GSO, max_pkt_len;
-  u32 oflags, ip_cksum, tcp_cksum, udp_cksum;
+  u32 ip_cksum, tcp_cksum, udp_cksum;
   u64 ol_flags;
+  vnet_buffer_oflags_t oflags = 0;
 
   /* Is there any work for us? */
   if (PREDICT_TRUE (((b->flags & VNET_BUFFER_F_OFFLOAD) | tso) == 0))
