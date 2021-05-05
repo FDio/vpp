@@ -119,15 +119,12 @@ session_mq_listen_uri_handler (void *data)
 }
 
 static void
-session_mq_connect_handler (void *data)
+session_mq_connect_one (session_connect_msg_t *mp)
 {
-  session_connect_msg_t *mp = (session_connect_msg_t *) data;
   vnet_connect_args_t _a, *a = &_a;
   app_worker_t *app_wrk;
   application_t *app;
   int rv;
-
-  app_check_thread_and_barrier (session_mq_connect_handler, mp);
 
   app = application_lookup (mp->client_index);
   if (!app)
@@ -165,6 +162,95 @@ session_mq_connect_handler (void *data)
 
   if (mp->ext_config)
     session_mq_free_ext_config (app, mp->ext_config);
+}
+
+/*
+ * Kept here for now because session.h and implicitly the workers are
+ * not api messages aware. They're only used to bounce connect messages
+ * between the first worker and main.
+ */
+//static session_connect_msg_t *pending_connects;
+//static int pending_connects_ntf;
+
+static void
+session_mq_handle_connects_rpc (void *arg)
+{
+  vlib_main_t *vm = vlib_get_main ();
+//  session_connect_msg_t mp;
+  session_evt_elt_t *he, *elt;
+  session_worker_t *fwrk;
+  u32 max_connects = 32, n_connects = 0;
+  clib_llist_index_t ei;
+
+  ASSERT (vlib_get_thread_index () == 0);
+//  wrk = session_main_get_worker (0);
+
+  fwrk = session_main_get_worker (1);
+
+  vlib_worker_thread_barrier_sync (vm);
+
+  he = pool_elt_at_index (fwrk->event_elts, fwrk->pending_connects);
+  ei = clib_llist_next_index (he, evt_list);
+
+  /* Avoid holding the barrier for too long */
+//  n_connects = clib_min (clib_fifo_elts (pending_connects), n_connects);
+  while (n_connects < max_connects && ei != fwrk->pending_connects)
+    {
+      elt = pool_elt_at_index (fwrk->event_elts, ei);
+      ei = clib_llist_next_index (elt, evt_list);
+      clib_llist_remove (fwrk->event_elts, evt_list, elt);
+      session_mq_connect_one (session_evt_ctrl_data (fwrk, elt));
+      n_connects += 1;
+    }
+
+  vlib_worker_thread_barrier_release (vm);
+
+  if (n_connects == max_connects
+      && !clib_llist_is_empty (fwrk->event_elts, evt_list, he))
+    {
+      vlib_node_set_interrupt_pending (vm, session_queue_node.index);
+      elt = session_evt_alloc_ctrl (session_main_get_worker (0));
+      elt->evt.event_type = SESSION_CTRL_EVT_RPC;
+      elt->evt.rpc_args.fp = session_mq_handle_connects_rpc;
+    }
+  else
+    {
+      fwrk->pending_connects_ntf = 0;
+    }
+
+}
+
+static void
+session_mq_connect_handler (session_worker_t * wrk, session_evt_elt_t * elt)
+{
+  u32 thread_index = wrk - session_main.wrk;
+
+  /* No workers, so just deal with the connect now */
+  if (PREDICT_FALSE (!thread_index))
+    {
+      session_mq_connect_one (session_evt_ctrl_data (wrk, elt));
+      return;
+    }
+
+  if (PREDICT_FALSE (thread_index != 1))
+    {
+      clib_warning ("Connect on wrong thread. Dropping");
+      return;
+    }
+
+  clib_llist_add_tail (wrk->event_elts, evt_list, elt,
+                       pool_elt_at_index (wrk->event_elts,
+                                          wrk->pending_connects));
+
+//  clib_fifo_add1 (pending_connects, *mp);
+
+  if (!wrk->pending_connects_ntf)
+    {
+      vlib_node_set_interrupt_pending (vlib_get_main_by_index (0),
+				       session_queue_node.index);
+      session_send_rpc_evt_to_thread (0, session_mq_handle_connects_rpc, 0);
+      wrk->pending_connects_ntf = 1;
+    }
 }
 
 static void
@@ -1331,7 +1417,7 @@ session_event_dispatch_ctrl (session_worker_t * wrk, session_evt_elt_t * elt)
       session_mq_unlisten_handler (session_evt_ctrl_data (wrk, elt));
       break;
     case SESSION_CTRL_EVT_CONNECT:
-      session_mq_connect_handler (session_evt_ctrl_data (wrk, elt));
+      session_mq_connect_handler (wrk, elt);
       break;
     case SESSION_CTRL_EVT_CONNECT_URI:
       session_mq_connect_uri_handler (session_evt_ctrl_data (wrk, elt));
