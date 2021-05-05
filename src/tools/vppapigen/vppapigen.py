@@ -89,7 +89,7 @@ class VPPAPILexer:
         'description': 'DESCRIPTION',
     }
 
-    tokens = ['STRING_LITERAL',
+    tokens = ['STRING_LITERAL', 'COMMENT',
               'ID', 'NUM'] + list(reserved.values())
 
     t_ignore_LINE_COMMENT = '//.*'
@@ -126,9 +126,10 @@ class VPPAPILexer:
         return t
 
     # C or C++ comment (ignore)
-    def t_comment(self, t):
+    def t_COMMENT(self, t):
         r'(/\*(.|\n)*?\*/)|(//.*)'
         t.lexer.lineno += t.value.count('\n')
+        return t
 
     # Error handling rule
     def t_error(self, t):
@@ -301,7 +302,7 @@ class Union(Processable):
 class Define(Processable):
     type = 'Define'
 
-    def __init__(self, name, flags, block):
+    def __init__(self, name, flags, block, comment=None):
         self.name = name
         self.flags = flags
         self.block = block
@@ -311,6 +312,7 @@ class Define(Processable):
         self.autoreply = False
         self.autoendian = 0
         self.options = {}
+        self.comment = comment
         for f in flags:
             if f == 'dont_trace':
                 self.dont_trace = True
@@ -559,6 +561,7 @@ class VPPAPIParser:
         self.logger = logger
         self.fields = []
         self.revision = revision
+        self.last_comment = None
 
     def _parse_error(self, msg, coord):
         raise ParseError("%s: %s" % (coord, msg))
@@ -601,6 +604,7 @@ class VPPAPIParser:
                 | union
                 | service
                 | paths
+                | comment
                 | counters'''
         p[0] = p[1]
 
@@ -747,7 +751,7 @@ class VPPAPIParser:
     def p_define(self, p):
         '''define : DEFINE ID '{' block_statements_opt '}' ';' '''
         self.fields = []
-        p[0] = Define(p[2], [], p[4])
+        p[0] = Define(p[2], [], p[4], self.last_comment)
 
     def p_define_flist(self, p):
         '''define : flist DEFINE ID '{' block_statements_opt '}' ';' '''
@@ -757,7 +761,7 @@ class VPPAPIParser:
                               .format(p[1], p[2], p[4]),
                               self._token_coord(p, 1))
         else:
-            p[0] = Define(p[3], p[1], p[5])
+            p[0] = Define(p[3], p[1], p[5], self.last_comment)
 
     def p_flist(self, p):
         '''flist : flag
@@ -864,6 +868,11 @@ class VPPAPIParser:
         '''
         p[0] = p[1]
 
+    def p_comment(self, p):
+        '''comment : COMMENT'''
+        self.last_comment = p[1]
+        p[0] = []
+
     def p_declaration(self, p):
         '''declaration : type_specifier variable_name ';'
                        | type_specifier variable_name '[' field_options ']' ';'
@@ -948,30 +957,35 @@ class VPPAPIParser:
         '''union : flist UNION ID '{' block_statements_opt '}' ';' '''
         p[0] = Union(p[3], p[1], p[5])
 
+
     # Error rule for syntax errors
     def p_error(self, p):
         if p:
+            if p.type == 'COMMENT':
+                self.parser.errok()
+                return
             self._parse_error(
                 'before: %s' % p.value,
                 self._coord(lineno=p.lineno))
         else:
             self._parse_error('At end of input', self.filename)
 
+    def build(self, **kwargs):
+        self.parser = yacc.yacc(module=self, **kwargs)
 
 class VPPAPI():
 
     def __init__(self, debug=False, filename='', logger=None, revision=None):
         self.lexer = lex.lex(module=VPPAPILexer(filename), debug=debug)
-        self.parser = yacc.yacc(module=VPPAPIParser(filename, logger,
-                                                    revision=revision),
-                                write_tables=False, debug=debug)
+        self.parser = VPPAPIParser(filename, logger, revision=revision)
+        self.parser.build(write_tables=False, debug=debug)
         self.logger = logger
         self.revision = revision
         self.filename = filename
 
     def parse_string(self, code, debug=0, lineno=1):
         self.lexer.lineno = lineno
-        return self.parser.parse(code, lexer=self.lexer, debug=debug)
+        return self.parser.parser.parse(code, lexer=self.lexer, debug=debug)
 
     def parse_fd(self, fd, debug=0):
         data = fd.read()
