@@ -1544,7 +1544,7 @@ fill_buffer_offload_flags (vlib_main_t *vm, u32 *buffers, u32 n_buffers,
     {
       vlib_buffer_t *b0 = vlib_get_buffer (vm, buffers[i]);
       u8 l4_proto = 0;
-      u32 oflags = 0;
+      vnet_buffer_oflags_t oflags = 0;
 
       ethernet_header_t *eh =
 	(ethernet_header_t *) vlib_buffer_get_current (b0);

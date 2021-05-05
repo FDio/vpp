@@ -285,7 +285,7 @@ static void
 set_checksum_offsets (vlib_buffer_t *b, virtio_net_hdr_v1_t *hdr,
 		      const int is_l2)
 {
-  u32 oflags = vnet_buffer (b)->oflags;
+  vnet_buffer_oflags_t oflags = vnet_buffer (b)->oflags;
 
   if (b->flags & VNET_BUFFER_F_IS_IP4)
     {
@@ -334,7 +334,7 @@ set_checksum_offsets (vlib_buffer_t *b, virtio_net_hdr_v1_t *hdr,
 static void
 set_gso_offsets (vlib_buffer_t *b, virtio_net_hdr_v1_t *hdr, const int is_l2)
 {
-  u32 oflags = vnet_buffer (b)->oflags;
+  vnet_buffer_oflags_t oflags = vnet_buffer (b)->oflags;
 
   if (b->flags & VNET_BUFFER_F_IS_IP4)
     {

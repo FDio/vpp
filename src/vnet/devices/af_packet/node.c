@@ -120,7 +120,7 @@ static_always_inline void
 mark_tcp_udp_cksum_calc (vlib_buffer_t *b, u8 *l4_hdr_sz)
 {
   ethernet_header_t *eth = vlib_buffer_get_current (b);
-  u32 oflags = 0;
+  vnet_buffer_oflags_t oflags = 0;
   if (clib_net_to_host_u16 (eth->type) == ETHERNET_TYPE_IP4)
     {
       ip4_header_t *ip4 =

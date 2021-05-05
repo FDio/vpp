@@ -44,7 +44,8 @@
 
 static_always_inline void
 vnet_calc_ip4_checksums (vlib_main_t *vm, vlib_buffer_t *b, ip4_header_t *ip4,
-			 tcp_header_t *th, udp_header_t *uh, u32 oflags)
+			 tcp_header_t *th, udp_header_t *uh,
+			 vnet_buffer_oflags_t oflags)
 {
   if (oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM)
     ip4->checksum = ip4_header_checksum (ip4);
@@ -62,7 +63,8 @@ vnet_calc_ip4_checksums (vlib_main_t *vm, vlib_buffer_t *b, ip4_header_t *ip4,
 
 static_always_inline void
 vnet_calc_ip6_checksums (vlib_main_t *vm, vlib_buffer_t *b, ip6_header_t *ip6,
-			 tcp_header_t *th, udp_header_t *uh, u32 oflags)
+			 tcp_header_t *th, udp_header_t *uh,
+			 vnet_buffer_oflags_t oflags)
 {
   int bogus;
   if (oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM)
@@ -85,7 +87,7 @@ vnet_calc_checksums_inline (vlib_main_t * vm, vlib_buffer_t * b,
   ip6_header_t *ip6;
   tcp_header_t *th;
   udp_header_t *uh;
-  u32 oflags;
+  vnet_buffer_oflags_t oflags;
 
   if (!(b->flags & VNET_BUFFER_F_OFFLOAD))
     return;

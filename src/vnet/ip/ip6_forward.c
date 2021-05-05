@@ -1333,7 +1333,7 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  flags[0] = b[0]->flags;
 	  flags[1] = b[1]->flags;
 
-	  u32 oflags[2];
+	  vnet_buffer_oflags_t oflags[2];
 	  oflags[0] = vnet_buffer (b[0])->oflags;
 	  oflags[1] = vnet_buffer (b[1])->oflags;
 
@@ -1524,7 +1524,7 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  u32 flags = b[0]->flags;
 
-	  u32 oflags = vnet_buffer (b[0])->oflags;
+	  vnet_buffer_oflags_t oflags = vnet_buffer (b[0])->oflags;
 
 	  u32 l4_offload = (flags & VNET_BUFFER_F_OFFLOAD) &&
 			   (oflags & (VNET_BUFFER_OFFLOAD_F_TCP_CKSUM |

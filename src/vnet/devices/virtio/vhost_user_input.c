@@ -253,7 +253,7 @@ vhost_user_handle_rx_offload (vlib_buffer_t * b0, u8 * b0_data,
   ethernet_header_t *eh = (ethernet_header_t *) b0_data;
   u16 ethertype = clib_net_to_host_u16 (eh->type);
   u16 l2hdr_sz = sizeof (ethernet_header_t);
-  u32 oflags = 0;
+  vnet_buffer_oflags_t oflags = 0;
 
   if (ethernet_frame_is_tagged (ethertype))
     {
