@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d72babcc_19935a93",
+        "filename": "src/vlibmemory/vlib_api_api.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-05-05T19:43:17Z",
+      "side": 1,
+      "message": "Any particular reason why this is not part of vlib_api.c and the vlib_api.api part of memclnt.api. The latter is a misnomer as it has in it apis for socket clients as well.",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 1,
+        "endChar": 2
+      },
+      "revId": "be015f2d4879c5c84556f7b03001f8f7109808df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "45293943_3f7a7947",
+        "filename": "src/vlibmemory/vlib_api_api.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-05-05T19:43:17Z",
+      "side": 1,
+      "message": "Can we reuse vl_msg_api_trace_save?",
+      "range": {
+        "startLine": 41,
+        "startChar": 0,
+        "endLine": 41,
+        "endChar": 31
+      },
+      "revId": "be015f2d4879c5c84556f7b03001f8f7109808df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "70c6214b_df4afa18",
+        "filename": "src/vlibmemory/vlib_api_api.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-05-05T19:43:17Z",
+      "side": 1,
+      "message": "Why not use vl_msg_api_process_file? Ideally we should have only one implementation for this.",
+      "range": {
+        "startLine": 96,
+        "startChar": 0,
+        "endLine": 96,
+        "endChar": 23
+      },
+      "revId": "be015f2d4879c5c84556f7b03001f8f7109808df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
