@@ -514,7 +514,8 @@ vnet_gro_flow_table_inline (vlib_main_t * vm, gro_flow_table_t * flow_table,
 
       if (PREDICT_TRUE (action == GRO_PACKET_ACTION_ENQUEUE))
 	{
-	  if (PREDICT_TRUE ((pkt_len_s + payload_len0) < TCP_MAX_GSO_SZ))
+	  if (PREDICT_TRUE (((pkt_len_s + payload_len0) < TCP_MAX_GSO_SZ) &&
+			    gro_flow->n_buffers < GRO_FLOW_N_BUFFERS))
 	    {
 	      flow_table->total_vectors++;
 	      gro_merge_buffers (vm, b_s, b0, bi0, payload_len0, l234_sz0);
