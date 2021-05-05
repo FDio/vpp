@@ -34,6 +34,24 @@
       "revId": "0641e7d836299f79f0c113918b7f1a8691c31d91",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "76714a3b_5a8093f6",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 502,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-05-05T16:41:51Z",
+      "side": 1,
+      "message": "ok but what is the consequence if it arrives in release mode? A crash is a no-no. Silently sending a truncated or dropping might be ok.",
+      "parentUuid": "b218d60e_0ea65853",
+      "revId": "0641e7d836299f79f0c113918b7f1a8691c31d91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
