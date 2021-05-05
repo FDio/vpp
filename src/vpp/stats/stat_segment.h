@@ -35,8 +35,6 @@ typedef enum
  STAT_COUNTER_NODE_SUSPENDS,
  STAT_COUNTER_INTERFACE_NAMES,
  STAT_COUNTER_NODE_NAMES,
- STAT_COUNTER_MEM_STATSEG_TOTAL,
- STAT_COUNTER_MEM_STATSEG_USED,
  STAT_COUNTERS
 } stat_segment_counter_t;
 
@@ -58,8 +56,6 @@ typedef enum
   _ (HEARTBEAT, SCALAR_INDEX, heartbeat, /sys)                                \
   _ (INTERFACE_NAMES, NAME_VECTOR, names, /if)                                \
   _ (NODE_NAMES, NAME_VECTOR, names, /sys/node)                               \
-  _ (MEM_STATSEG_TOTAL, SCALAR_INDEX, total, /mem/statseg)                    \
-  _ (MEM_STATSEG_USED, SCALAR_INDEX, used, /mem/statseg)                      \
   foreach_stat_segment_node_counter_name
 /* clang-format on */
 
@@ -117,5 +113,14 @@ stat_segment_register_state_counter(u8 *name, u32 *index);
 clib_error_t *
 stat_segment_deregister_state_counter(u32 index);
 void stat_segment_set_state_counter (u32 index, u64 value);
+void stat_segment_poll_add (u32 vector_index, stat_segment_update_fn update_fn,
+			    u32 caller_index, u32 interval);
+
+u32 stat_segment_new_entry (u8 *name, stat_directory_type_t t);
+void vlib_stats_register_mem_heap (clib_mem_heap_t *heap);
+void vlib_stat_segment_lock (void);
+void vlib_stat_segment_unlock (void);
+void vlib_stats_register_symlink (void *oldheap, u8 *name, u32 index1,
+				  u32 index2, u8 lock);
 
 #endif

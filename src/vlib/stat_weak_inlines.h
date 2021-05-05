@@ -63,4 +63,10 @@ vlib_stats_delete_cm (void *notused)
 {
 }
 
+void vlib_stats_register_mem_heap (void *) __attribute__ ((weak));
+void
+vlib_stats_register_mem_heap (void *notused)
+{
+}
+
 #endif
