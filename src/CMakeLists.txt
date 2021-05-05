@@ -25,6 +25,8 @@ set(CMAKE_C_COMPILER_NAMES
 
 project(vpp C)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS on)
+
 include(CheckCCompilerFlag)
 include(CheckIPOSupported)
 include(cmake/misc.cmake)
