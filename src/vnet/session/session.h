@@ -145,6 +145,12 @@ typedef struct session_worker_
   /** Clib file for timerfd. Used only if adaptive mode is on */
   uword timerfd_file;
 
+  /** List of pending connects for first worker */
+  clib_llist_index_t pending_connects;
+
+  /** Flag that is set if main thread signaled to handle connects */
+  u32 pending_connects_ntf;
+
 #if SESSION_DEBUG
   /** last event poll time by thread */
   clib_time_type_t last_event_poll;
