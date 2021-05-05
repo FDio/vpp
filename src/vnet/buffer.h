@@ -519,7 +519,7 @@ format_function_t format_vnet_buffer_opaque;
 format_function_t format_vnet_buffer_opaque2;
 
 static_always_inline void
-vnet_buffer_offload_flags_set (vlib_buffer_t *b, u32 oflags)
+vnet_buffer_offload_flags_set (vlib_buffer_t *b, u8 oflags)
 {
   if (b->flags & VNET_BUFFER_F_OFFLOAD)
     {
@@ -535,7 +535,7 @@ vnet_buffer_offload_flags_set (vlib_buffer_t *b, u32 oflags)
 }
 
 static_always_inline void
-vnet_buffer_offload_flags_clear (vlib_buffer_t *b, u32 oflags)
+vnet_buffer_offload_flags_clear (vlib_buffer_t *b, u8 oflags)
 {
   vnet_buffer (b)->oflags &= ~oflags;
   if (0 == vnet_buffer (b)->oflags)
