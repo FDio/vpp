@@ -80,6 +80,30 @@
       "revId": "c209e16e0930ade8be3d3f44d75cdecc10335b5b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "eaaea2e8_93ebf33a",
+        "filename": "src/plugins/wireguard/wireguard_peer.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 2280
+      },
+      "writtenOn": "2021-05-05T08:18:16Z",
+      "side": 1,
+      "message": "If we use IPvX over IPvX - all is ok.\nThe problem is using IPvX over IPvY. Then we have a situation where the peer-\u003esrc and peer-\u003edst is IPv4, but encapsulated traffic is IPv6.\nAnd we have to redirect packets from IPv6 to IPv4 after encoding.\nI have a guess we should use wg-interface address instead of peer-\u003eallowed-ips[], but what if it has many IPs (IPv6 AND IPv4)? What address should we use?\nI think correctly?",
+      "parentUuid": "2106adc9_a1de9e36",
+      "range": {
+        "startLine": 258,
+        "startChar": 33,
+        "endLine": 258,
+        "endChar": 58
+      },
+      "revId": "c209e16e0930ade8be3d3f44d75cdecc10335b5b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
