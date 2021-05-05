@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "53907dd7_de871d74",
+        "filename": "src/plugins/avf/output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-05-05T11:10:45Z",
+      "side": 1,
+      "message": "u8",
+      "revId": "244235669db6c0a6663cd55cd0e2023a5e7386a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3f9550e2_3412d966",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 284,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-05-05T11:10:45Z",
+      "side": 1,
+      "message": "u8",
+      "revId": "244235669db6c0a6663cd55cd0e2023a5e7386a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b1e29b72_94ed43fb",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 333,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-05-05T11:10:45Z",
+      "side": 1,
+      "message": "u8",
+      "revId": "244235669db6c0a6663cd55cd0e2023a5e7386a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d98af115_ddde0990",
+        "filename": "src/vnet/devices/virtio/vhost_user_output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 228,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-05-05T11:10:45Z",
+      "side": 1,
+      "message": "u8",
+      "revId": "244235669db6c0a6663cd55cd0e2023a5e7386a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7834b882_4aeb4f2f",
+        "filename": "src/vnet/interface_output.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-05-05T11:10:45Z",
+      "side": 1,
+      "message": "u8",
+      "revId": "244235669db6c0a6663cd55cd0e2023a5e7386a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4261e901_11c3fdc1",
+        "filename": "src/vnet/ip/ip6_forward.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1527,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-05-05T11:10:45Z",
+      "side": 1,
+      "message": "u8",
+      "revId": "244235669db6c0a6663cd55cd0e2023a5e7386a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
