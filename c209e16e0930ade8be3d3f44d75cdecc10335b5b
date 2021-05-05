@@ -56,6 +56,30 @@
       "revId": "c209e16e0930ade8be3d3f44d75cdecc10335b5b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2106adc9_a1de9e36",
+        "filename": "src/plugins/wireguard/wireguard_peer.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-05-05T06:54:08Z",
+      "side": 1,
+      "message": "You want the address family of the peer here I think?\nSo assuming you have a check somewhere that peer-\u003esrc and peer-\u003edst is of the same AF.\nThen wouldn\u0027t fib_proto_to_link(fib_proto) work?",
+      "parentUuid": "7bdf9215_587a2466",
+      "range": {
+        "startLine": 258,
+        "startChar": 33,
+        "endLine": 258,
+        "endChar": 58
+      },
+      "revId": "c209e16e0930ade8be3d3f44d75cdecc10335b5b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
