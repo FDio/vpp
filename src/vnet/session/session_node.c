@@ -119,15 +119,12 @@ session_mq_listen_uri_handler (void *data)
 }
 
 static void
-session_mq_connect_handler (void *data)
+session_mq_connect_one (session_connect_msg_t *mp)
 {
-  session_connect_msg_t *mp = (session_connect_msg_t *) data;
   vnet_connect_args_t _a, *a = &_a;
   app_worker_t *app_wrk;
   application_t *app;
   int rv;
-
-  app_check_thread_and_barrier (session_mq_connect_handler, mp);
 
   app = application_lookup (mp->client_index);
   if (!app)
@@ -165,6 +162,78 @@ session_mq_connect_handler (void *data)
 
   if (mp->ext_config)
     session_mq_free_ext_config (app, mp->ext_config);
+}
+
+/*
+ * Kept here for now because session.h and implicitly the workers are
+ * not api messages aware. They're only used to bounce connect messages
+ * between the first worker and main.
+ */
+static session_connect_msg_t *pending_connects;
+static int pending_connects_ntf;
+
+static void
+session_mq_handle_connects_rpc (void *arg)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  session_connect_msg_t mp;
+  session_evt_elt_t *elt;
+  session_worker_t *wrk;
+  u32 n_connects = 32, i;
+
+  ASSERT (vlib_get_thread_index () == 0);
+  wrk = session_main_get_worker (0);
+
+  vlib_worker_thread_barrier_sync (vm);
+
+  /* Avoid holding the barrier for too long */
+  n_connects = clib_min (clib_fifo_elts (pending_connects), n_connects);
+
+  for (i = 0; i < n_connects; i++)
+    {
+      clib_fifo_sub1 (pending_connects, mp);
+      session_mq_connect_one (&mp);
+    }
+
+  if (clib_fifo_elts (pending_connects))
+    {
+      vlib_node_set_interrupt_pending (vm, session_queue_node.index);
+      elt = session_evt_alloc_ctrl (wrk);
+      elt->evt.event_type = SESSION_CTRL_EVT_RPC;
+      elt->evt.rpc_args.fp = session_mq_handle_connects_rpc;
+    }
+  else
+    {
+      pending_connects_ntf = 0;
+    }
+
+  vlib_worker_thread_barrier_release (vm);
+}
+
+static void
+session_mq_connect_handler (void *data)
+{
+  session_connect_msg_t *mp = (session_connect_msg_t *) data;
+  u32 thread_index = vlib_get_thread_index ();
+
+  if (!thread_index)
+    {
+      session_mq_connect_one (mp);
+      return;
+    }
+
+  if (PREDICT_FALSE (thread_index != 1))
+    app_check_thread_and_barrier (session_mq_connect_handler, mp);
+
+  clib_fifo_add1 (pending_connects, *mp);
+
+  if (!pending_connects_ntf)
+    {
+      vlib_node_set_interrupt_pending (vlib_get_main_by_index (0),
+				       session_queue_node.index);
+      session_send_rpc_evt_to_thread (0, session_mq_handle_connects_rpc, 0);
+      pending_connects_ntf = 1;
+    }
 }
 
 static void
