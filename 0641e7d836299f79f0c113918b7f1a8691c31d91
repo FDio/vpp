@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7f0ac5ac_0b8ca9f6",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 502,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-05-05T15:46:20Z",
+      "side": 1,
+      "message": "what happens in release mode then? Shouldn\u0027t it be a if (PREDICT_FALSE()) with an associated error counter?",
+      "revId": "0641e7d836299f79f0c113918b7f1a8691c31d91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
