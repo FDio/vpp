@@ -16,6 +16,24 @@
       "revId": "0641e7d836299f79f0c113918b7f1a8691c31d91",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b218d60e_0ea65853",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 502,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2021-05-05T16:10:42Z",
+      "side": 1,
+      "message": "The probability of hitting the specific situation is quite low. Putting conditional statement will consume unnecessary cycles in the data path per packet. That\u0027s why I prefer to use ASSERT, in case if someone hits the problem in release mode, can be able to debug it in debug mode.",
+      "parentUuid": "7f0ac5ac_0b8ca9f6",
+      "revId": "0641e7d836299f79f0c113918b7f1a8691c31d91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
