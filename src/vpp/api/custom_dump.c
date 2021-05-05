@@ -2390,7 +2390,7 @@ static void *vl_api_pg_capture_t_print
 
   s = format (0, "SCRIPT: pg_capture ");
   s = format (s, "if_id %d ", (mp->interface_id));
-  s = format (s, "pcap %s", mp->pcap_file_name);
+  s = format (s, "pcap %U", vl_api_format_string, &mp->pcap_file_name);
   if (mp->count != ~0)
     s = format (s, "count %d ", (mp->count));
   if (!mp->is_enabled)
