@@ -654,6 +654,7 @@ start_workers (vlib_main_t * vm)
   u32 n_vlib_mains = tm->n_vlib_mains;
   u32 worker_thread_index;
   clib_mem_heap_t *main_heap = clib_mem_get_per_cpu_heap ();
+  vlib_stats_register_mem_heap (main_heap);
 
   vec_reset_length (vlib_worker_threads);
 

@@ -474,14 +474,17 @@ clib_mem_get_heap_usage (clib_mem_heap_t * heap, clib_mem_usage_t * usage)
 {
   struct dlmallinfo mi = mspace_mallinfo (heap->mspace);
 
-  /* TODO: Fill in some more values */
+  usage->bytes_total = mi.arena; /* non-mmapped space allocated from system */
+  usage->bytes_used = mi.uordblks;	    /* total allocated space */
+  usage->bytes_free = mi.fordblks;	    /* total free space */
+  usage->bytes_used_mmap = mi.hblkhd;	    /* space in mmapped regions */
+  usage->bytes_max = mi.usmblks;	    /* maximum total allocated space */
+  usage->bytes_free_reclaimed = mi.ordblks; /* number of free chunks */
+  usage->bytes_overhead = mi.keepcost; /* releasable (via malloc_trim) space */
+
+  /* Not supported */
+  usage->bytes_used_sbrk = 0;
   usage->object_count = 0;
-  usage->bytes_total = mi.arena;
-  usage->bytes_overhead = 0;
-  usage->bytes_max = 0;
-  usage->bytes_used = mi.uordblks;
-  usage->bytes_free = mi.fordblks;
-  usage->bytes_free_reclaimed = 0;
 }
 
 /* Call serial number for debugger breakpoints. */

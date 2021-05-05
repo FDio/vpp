@@ -61,6 +61,7 @@ set(VPP_SOURCES
   app/vpe_cli.c
   app/version.c
   stats/stat_segment.c
+  stats/stat_segment_provider.c
   api/api.c
   api/json_format.c
   api/custom_dump.c
