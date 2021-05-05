@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "4c5fa1ef_4e402561",
+        "filename": "src/vlibmemory/vlib_api_api.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2021-05-05T21:40:51Z",
+      "side": 1,
+      "message": "Hi Florin.\n\nI don\u0027t know how widespread the practice is, but vpp_papi has a dependency on the structure of memclnt.api file.  The positions of messages 15/16 must not change.  I don\u0027t know if there is a way to statically assign message ids for certain critical/bootstrapping messages, but it would be great if we could. \n\n        # Initialise sockclnt_create\n        sockclnt_create \u003d self.parent.messages[\u0027sockclnt_create\u0027]\n        sockclnt_create_reply \u003d self.parent.messages[\u0027sockclnt_create_reply\u0027]\n\n        args \u003d {\u0027_vl_msg_id\u0027: 15,\n                \u0027name\u0027: name,\n                \u0027context\u0027: 124}\n        b \u003d sockclnt_create.pack(args)\n        self.write(b)\n        msg \u003d self._read()\n        hdr, length \u003d self.parent.header.unpack(msg, 0)\n        if hdr.msgid !\u003d 16:",
+      "parentUuid": "d72babcc_19935a93",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 1,
+        "endChar": 2
+      },
+      "revId": "be015f2d4879c5c84556f7b03001f8f7109808df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "45293943_3f7a7947",
         "filename": "src/vlibmemory/vlib_api_api.c",
         "patchSetId": 8
