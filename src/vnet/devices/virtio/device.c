@@ -498,6 +498,8 @@ add_buffer_to_slot (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      id->len = b->current_length;
 	    }
 	}
+      /* descriptors chain should not exceed 128 */
+      ASSERT (count <= 128);
       id->flags = 0;
       id->next = 0;
       d->len = count * sizeof (vring_desc_t);
