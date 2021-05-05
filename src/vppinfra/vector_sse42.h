@@ -184,74 +184,18 @@ u32x2_interleave_lo (u32x2 a, u32x2 b)
 }
 
 /* 128 bit packs. */
-always_inline u8x16
-u16x8_pack (u16x8 lo, u16x8 hi)
-{
-  return (u8x16) _mm_packus_epi16 ((__m128i) lo, (__m128i) hi);
-}
+#define _(f, t, fn)                                                           \
+  always_inline t t##_pack (f lo, f hi)                                       \
+  {                                                                           \
+    return (t) fn ((__m128i) lo, (__m128i) hi);                               \
+  }
 
-always_inline i8x16
-i16x8_pack (i16x8 lo, i16x8 hi)
-{
-  return (i8x16) _mm_packs_epi16 ((__m128i) lo, (__m128i) hi);
-}
+_ (i16x8, i8x16, _mm_packs_epi16)
+_ (i16x8, u8x16, _mm_packus_epi16)
+_ (i32x4, i16x8, _mm_packs_epi32)
+_ (i32x4, u16x8, _mm_packus_epi32)
 
-always_inline u16x8
-u32x4_pack (u32x4 lo, u32x4 hi)
-{
-  return (u16x8) _mm_packs_epi32 ((__m128i) lo, (__m128i) hi);
-}
-
-/* 64 bit packs. */
-always_inline u8x8
-u16x4_pack (u16x4 lo, u16x4 hi)
-{
-  return (u8x8) _m_packuswb ((__m64) lo, (__m64) hi);
-}
-
-always_inline i8x8
-i16x4_pack (i16x4 lo, i16x4 hi)
-{
-  return (i8x8) _m_packsswb ((__m64) lo, (__m64) hi);
-}
-
-always_inline u16x4
-u32x2_pack (u32x2 lo, u32x2 hi)
-{
-  return (u16x4) _m_packssdw ((__m64) lo, (__m64) hi);
-}
-
-always_inline i16x4
-i32x2_pack (i32x2 lo, i32x2 hi)
-{
-  return (i16x4) _m_packssdw ((__m64) lo, (__m64) hi);
-}
-
-#ifndef __ICC
-always_inline u64x2
-u64x2_read_lo (u64x2 x, u64 * a)
-{
-  return (u64x2) _mm_loadl_pi ((__m128) x, (__m64 *) a);
-}
-
-always_inline u64x2
-u64x2_read_hi (u64x2 x, u64 * a)
-{
-  return (u64x2) _mm_loadh_pi ((__m128) x, (__m64 *) a);
-}
-
-always_inline void
-u64x2_write_lo (u64x2 x, u64 * a)
-{
-  _mm_storel_pi ((__m64 *) a, (__m128) x);
-}
-
-always_inline void
-u64x2_write_hi (u64x2 x, u64 * a)
-{
-  _mm_storeh_pi ((__m64 *) a, (__m128) x);
-}
-#endif
+#undef _
 
 #define _signed_binop(n,m,f,g)                                         \
   /* Unsigned */                                                       \

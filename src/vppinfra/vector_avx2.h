@@ -105,17 +105,19 @@ _(u64x2, u64x4)
 #undef _
 /* *INDENT-ON* */
 
-always_inline u8x32
-u16x16_pack (u16x16 lo, u16x16 hi)
-{
-  return (u8x32) _mm256_packus_epi16 ((__m256i) lo, (__m256i) hi);
-}
+/* 256 bit packs. */
+#define _(f, t, fn)                                                           \
+  always_inline t t##_pack (f lo, f hi)                                       \
+  {                                                                           \
+    return (t) fn ((__m256i) lo, (__m256i) hi);                               \
+  }
 
-always_inline i8x32
-i16x16_pack (i16x16 lo, i16x16 hi)
-{
-  return (i8x32) _mm256_packs_epi16 ((__m256i) lo, (__m256i) hi);
-}
+_ (i16x16, i8x32, _mm256_packs_epi16)
+_ (i16x16, u8x32, _mm256_packus_epi16)
+_ (i32x8, i16x16, _mm256_packs_epi32)
+_ (i32x8, u16x16, _mm256_packus_epi32)
+
+#undef _
 
 static_always_inline u32
 u8x32_msb_mask (u8x32 v)

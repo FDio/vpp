@@ -85,6 +85,19 @@ u16x32_msb_mask (u16x32 v)
   return (u32) _mm512_movepi16_mask ((__m512i) v);
 }
 
+/* 512-bit packs */
+#define _(f, t, fn)                                                           \
+  always_inline t t##_pack (f lo, f hi)                                       \
+  {                                                                           \
+    return (t) fn ((__m512i) lo, (__m512i) hi);                               \
+  }
+
+_ (i16x32, i8x64, _mm512_packs_epi16)
+_ (i16x32, u8x64, _mm512_packus_epi16)
+_ (i32x16, i16x32, _mm512_packs_epi32)
+_ (i32x16, u16x32, _mm512_packus_epi32)
+#undef _
+
 static_always_inline u32x16
 u32x16_byte_swap (u32x16 v)
 {
