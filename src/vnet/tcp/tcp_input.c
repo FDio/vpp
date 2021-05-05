@@ -2089,55 +2089,77 @@ VLIB_REGISTER_NODE (tcp6_syn_sent_node) =
 };
 /* *INDENT-ON* */
 
+static void
+tcp46_rcv_process_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
+			       u32 *from, u32 n_bufs)
+{
+  u32 thread_index = vm->thread_index;
+  tcp_connection_t *tc = 0;
+  tcp_rx_trace_t *t;
+  vlib_buffer_t *b;
+  int i;
+
+  for (i = 0; i < n_bufs; i++)
+    {
+      b = vlib_get_buffer (vm, from[i]);
+      if (!(b->flags & VLIB_BUFFER_IS_TRACED))
+	continue;
+      tc = tcp_connection_get (vnet_buffer (b)->tcp.connection_index,
+			       thread_index);
+      t = vlib_add_trace (vm, node, b, sizeof (*t));
+      tcp_set_rx_trace_data (t, tc, tcp_buffer_hdr (b), b, 1);
+    }
+}
+
 /**
  * Handles reception for all states except LISTEN, SYN-SENT and ESTABLISHED
  * as per RFC793 p. 64
  */
 always_inline uword
-tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-			  vlib_frame_t * from_frame, int is_ip4)
+tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+			  vlib_frame_t *frame, int is_ip4)
 {
-  u32 thread_index = vm->thread_index, errors = 0, *first_buffer;
+  u32 thread_index = vm->thread_index, errors, n_left_from, *from, max_deq;
   tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
-  u32 n_left_from, *from, max_dequeue;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
 
-  from = first_buffer = vlib_frame_vector_args (from_frame);
-  n_left_from = from_frame->n_vectors;
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+
+  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
+    tcp46_rcv_process_trace_frame (vm, node, from, n_left_from);
+
+  vlib_get_buffers (vm, from, bufs, n_left_from);
+  b = bufs;
 
   while (n_left_from > 0)
     {
-      u32 bi0, error0 = TCP_ERROR_NONE;
-      tcp_header_t *tcp0 = 0;
-      tcp_connection_t *tc0;
-      vlib_buffer_t *b0;
-      u8 is_fin0;
+      u32 error = TCP_ERROR_NONE;
+      tcp_header_t *tcp = 0;
+      tcp_connection_t *tc;
+      u8 is_fin;
 
-      bi0 = from[0];
-      from += 1;
-      n_left_from -= 1;
-
-      b0 = vlib_get_buffer (vm, bi0);
-      tc0 = tcp_connection_get (vnet_buffer (b0)->tcp.connection_index,
-				thread_index);
-      if (PREDICT_FALSE (tc0 == 0))
+      tc = tcp_connection_get (vnet_buffer (b[0])->tcp.connection_index,
+			       thread_index);
+      if (PREDICT_FALSE (tc == 0))
 	{
-	  error0 = TCP_ERROR_INVALID_CONNECTION;
+	  error = TCP_ERROR_INVALID_CONNECTION;
 	  goto drop;
 	}
 
-      tcp0 = tcp_buffer_hdr (b0);
-      is_fin0 = tcp_is_fin (tcp0);
+      tcp = tcp_buffer_hdr (b[0]);
+      is_fin = tcp_is_fin (tcp);
 
       if (CLIB_DEBUG)
 	{
-	  if (!(tc0->connection.flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
+	  if (!(tc->connection.flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
 	    {
 	      tcp_connection_t *tmp;
-	      tmp = tcp_lookup_connection (tc0->c_fib_index, b0, thread_index,
+	      tmp = tcp_lookup_connection (tc->c_fib_index, b[0], thread_index,
 					   is_ip4);
-	      if (tmp->state != tc0->state)
+	      if (tmp->state != tc->state)
 		{
-		  if (tc0->state != TCP_STATE_CLOSED)
+		  if (tc->state != TCP_STATE_CLOSED)
 		    clib_warning ("state changed");
 		  goto drop;
 		}
@@ -2147,9 +2169,9 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       /*
        * Special treatment for CLOSED
        */
-      if (PREDICT_FALSE (tc0->state == TCP_STATE_CLOSED))
+      if (PREDICT_FALSE (tc->state == TCP_STATE_CLOSED))
 	{
-	  error0 = TCP_ERROR_CONNECTION_CLOSED;
+	  error = TCP_ERROR_CONNECTION_CLOSED;
 	  goto drop;
 	}
 
@@ -2158,19 +2180,19 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
        */
 
       /* 1-4: check SEQ, RST, SYN */
-      if (PREDICT_FALSE (tcp_segment_validate (wrk, tc0, b0, tcp0, &error0)))
+      if (PREDICT_FALSE (tcp_segment_validate (wrk, tc, b[0], tcp, &error)))
 	goto drop;
 
       /* 5: check the ACK field  */
-      switch (tc0->state)
+      switch (tc->state)
 	{
 	case TCP_STATE_SYN_RCVD:
 
 	  /* Make sure the segment is exactly right */
-	  if (tc0->rcv_nxt != vnet_buffer (b0)->tcp.seq_number || is_fin0)
+	  if (tc->rcv_nxt != vnet_buffer (b[0])->tcp.seq_number || is_fin)
 	    {
-	      tcp_send_reset_w_pkt (tc0, b0, thread_index, is_ip4);
-	      error0 = TCP_ERROR_SEGMENT_INVALID;
+	      tcp_send_reset_w_pkt (tc, b[0], thread_index, is_ip4);
+	      error = TCP_ERROR_SEGMENT_INVALID;
 	      goto drop;
 	    }
 
@@ -2180,47 +2202,47 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	   *  <SEQ=SEG.ACK><CTL=RST>
 	   * and send it.
 	   */
-	  if (tcp_rcv_ack_no_cc (tc0, b0, &error0))
+	  if (tcp_rcv_ack_no_cc (tc, b[0], &error))
 	    {
-	      tcp_send_reset_w_pkt (tc0, b0, thread_index, is_ip4);
-	      error0 = TCP_ERROR_SEGMENT_INVALID;
+	      tcp_send_reset_w_pkt (tc, b[0], thread_index, is_ip4);
+	      error = TCP_ERROR_SEGMENT_INVALID;
 	      goto drop;
 	    }
 
 	  /* Update rtt and rto */
-	  tcp_estimate_initial_rtt (tc0);
-	  tcp_connection_tx_pacer_update (tc0);
+	  tcp_estimate_initial_rtt (tc);
+	  tcp_connection_tx_pacer_update (tc);
 
 	  /* Switch state to ESTABLISHED */
-	  tc0->state = TCP_STATE_ESTABLISHED;
-	  TCP_EVT (TCP_EVT_STATE_CHANGE, tc0);
+	  tc->state = TCP_STATE_ESTABLISHED;
+	  TCP_EVT (TCP_EVT_STATE_CHANGE, tc);
 
-	  if (!(tc0->cfg_flags & TCP_CFG_F_NO_TSO))
-	    tcp_check_tx_offload (tc0, is_ip4);
+	  if (!(tc->cfg_flags & TCP_CFG_F_NO_TSO))
+	    tcp_check_tx_offload (tc, is_ip4);
 
 	  /* Initialize session variables */
-	  tc0->snd_una = vnet_buffer (b0)->tcp.ack_number;
-	  tc0->snd_wnd = clib_net_to_host_u16 (tcp0->window)
-	    << tc0->rcv_opts.wscale;
-	  tc0->snd_wl1 = vnet_buffer (b0)->tcp.seq_number;
-	  tc0->snd_wl2 = vnet_buffer (b0)->tcp.ack_number;
+	  tc->snd_una = vnet_buffer (b[0])->tcp.ack_number;
+	  tc->snd_wnd = clib_net_to_host_u16 (tcp->window)
+			<< tc->rcv_opts.wscale;
+	  tc->snd_wl1 = vnet_buffer (b[0])->tcp.seq_number;
+	  tc->snd_wl2 = vnet_buffer (b[0])->tcp.ack_number;
 
 	  /* Reset SYN-ACK retransmit and SYN_RCV establish timers */
-	  tcp_retransmit_timer_reset (&wrk->timer_wheel, tc0);
-	  if (session_stream_accept_notify (&tc0->connection))
+	  tcp_retransmit_timer_reset (&wrk->timer_wheel, tc);
+	  if (session_stream_accept_notify (&tc->connection))
 	    {
-	      error0 = TCP_ERROR_MSG_QUEUE_FULL;
-	      tcp_send_reset (tc0);
-	      session_transport_delete_notify (&tc0->connection);
-	      tcp_connection_cleanup (tc0);
+	      error = TCP_ERROR_MSG_QUEUE_FULL;
+	      tcp_send_reset (tc);
+	      session_transport_delete_notify (&tc->connection);
+	      tcp_connection_cleanup (tc);
 	      goto drop;
 	    }
-	  error0 = TCP_ERROR_ACK_OK;
+	  error = TCP_ERROR_ACK_OK;
 	  break;
 	case TCP_STATE_ESTABLISHED:
 	  /* We can get packets in established state here because they
 	   * were enqueued before state change */
-	  if (tcp_rcv_ack (wrk, tc0, b0, tcp0, &error0))
+	  if (tcp_rcv_ack (wrk, tc, b[0], tcp, &error))
 	    goto drop;
 
 	  break;
@@ -2228,93 +2250,93 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* In addition to the processing for the ESTABLISHED state, if
 	   * our FIN is now acknowledged then enter FIN-WAIT-2 and
 	   * continue processing in that state. */
-	  if (tcp_rcv_ack (wrk, tc0, b0, tcp0, &error0))
+	  if (tcp_rcv_ack (wrk, tc, b[0], tcp, &error))
 	    goto drop;
 
 	  /* Still have to send the FIN */
-	  if (tc0->flags & TCP_CONN_FINPNDG)
+	  if (tc->flags & TCP_CONN_FINPNDG)
 	    {
 	      /* TX fifo finally drained */
-	      max_dequeue = transport_max_tx_dequeue (&tc0->connection);
-	      if (max_dequeue <= tc0->burst_acked)
-		tcp_send_fin (tc0);
+	      max_deq = transport_max_tx_dequeue (&tc->connection);
+	      if (max_deq <= tc->burst_acked)
+		tcp_send_fin (tc);
 	      /* If a fin was received and data was acked extend wait */
-	      else if ((tc0->flags & TCP_CONN_FINRCVD) && tc0->bytes_acked)
-		tcp_timer_update (&wrk->timer_wheel, tc0, TCP_TIMER_WAITCLOSE,
+	      else if ((tc->flags & TCP_CONN_FINRCVD) && tc->bytes_acked)
+		tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
 				  tcp_cfg.closewait_time);
 	    }
 	  /* If FIN is ACKed */
-	  else if (tc0->snd_una == tc0->snd_nxt)
+	  else if (tc->snd_una == tc->snd_nxt)
 	    {
 	      /* Stop all retransmit timers because we have nothing more
 	       * to send. */
-	      tcp_connection_timers_reset (tc0);
+	      tcp_connection_timers_reset (tc);
 
 	      /* We already have a FIN but didn't transition to CLOSING
 	       * because of outstanding tx data. Close the connection. */
-	      if (tc0->flags & TCP_CONN_FINRCVD)
+	      if (tc->flags & TCP_CONN_FINRCVD)
 		{
-		  tcp_connection_set_state (tc0, TCP_STATE_CLOSED);
-		  session_transport_closed_notify (&tc0->connection);
-		  tcp_program_cleanup (wrk, tc0);
+		  tcp_connection_set_state (tc, TCP_STATE_CLOSED);
+		  session_transport_closed_notify (&tc->connection);
+		  tcp_program_cleanup (wrk, tc);
 		  goto drop;
 		}
 
-	      tcp_connection_set_state (tc0, TCP_STATE_FIN_WAIT_2);
+	      tcp_connection_set_state (tc, TCP_STATE_FIN_WAIT_2);
 	      /* Enable waitclose because we're willing to wait for peer's
 	       * FIN but not indefinitely. */
-	      tcp_timer_set (&wrk->timer_wheel, tc0, TCP_TIMER_WAITCLOSE,
+	      tcp_timer_set (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
 			     tcp_cfg.finwait2_time);
 
 	      /* Don't try to deq the FIN acked */
-	      if (tc0->burst_acked > 1)
-		session_tx_fifo_dequeue_drop (&tc0->connection,
-					      tc0->burst_acked - 1);
-	      tc0->burst_acked = 0;
+	      if (tc->burst_acked > 1)
+		session_tx_fifo_dequeue_drop (&tc->connection,
+					      tc->burst_acked - 1);
+	      tc->burst_acked = 0;
 	    }
 	  break;
 	case TCP_STATE_FIN_WAIT_2:
 	  /* In addition to the processing for the ESTABLISHED state, if
 	   * the retransmission queue is empty, the user's CLOSE can be
 	   * acknowledged ("ok") but do not delete the TCB. */
-	  if (tcp_rcv_ack_no_cc (tc0, b0, &error0))
+	  if (tcp_rcv_ack_no_cc (tc, b[0], &error))
 	    goto drop;
-	  tc0->burst_acked = 0;
+	  tc->burst_acked = 0;
 	  break;
 	case TCP_STATE_CLOSE_WAIT:
 	  /* Do the same processing as for the ESTABLISHED state. */
-	  if (tcp_rcv_ack (wrk, tc0, b0, tcp0, &error0))
+	  if (tcp_rcv_ack (wrk, tc, b[0], tcp, &error))
 	    goto drop;
 
-	  if (!(tc0->flags & TCP_CONN_FINPNDG))
+	  if (!(tc->flags & TCP_CONN_FINPNDG))
 	    break;
 
 	  /* Still have outstanding tx data */
-	  max_dequeue = transport_max_tx_dequeue (&tc0->connection);
-	  if (max_dequeue > tc0->burst_acked)
+	  max_deq = transport_max_tx_dequeue (&tc->connection);
+	  if (max_deq > tc->burst_acked)
 	    break;
 
-	  tcp_send_fin (tc0);
-	  tcp_connection_timers_reset (tc0);
-	  tcp_connection_set_state (tc0, TCP_STATE_LAST_ACK);
-	  tcp_timer_set (&wrk->timer_wheel, tc0, TCP_TIMER_WAITCLOSE,
+	  tcp_send_fin (tc);
+	  tcp_connection_timers_reset (tc);
+	  tcp_connection_set_state (tc, TCP_STATE_LAST_ACK);
+	  tcp_timer_set (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
 			 tcp_cfg.lastack_time);
 	  break;
 	case TCP_STATE_CLOSING:
 	  /* In addition to the processing for the ESTABLISHED state, if
 	   * the ACK acknowledges our FIN then enter the TIME-WAIT state,
 	   * otherwise ignore the segment. */
-	  if (tcp_rcv_ack_no_cc (tc0, b0, &error0))
+	  if (tcp_rcv_ack_no_cc (tc, b[0], &error))
 	    goto drop;
 
-	  if (tc0->snd_una != tc0->snd_nxt)
+	  if (tc->snd_una != tc->snd_nxt)
 	    goto drop;
 
-	  tcp_connection_timers_reset (tc0);
-	  tcp_connection_set_state (tc0, TCP_STATE_TIME_WAIT);
-	  tcp_timer_set (&wrk->timer_wheel, tc0, TCP_TIMER_WAITCLOSE,
+	  tcp_connection_timers_reset (tc);
+	  tcp_connection_set_state (tc, TCP_STATE_TIME_WAIT);
+	  tcp_timer_set (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
 			 tcp_cfg.timewait_time);
-	  session_transport_closed_notify (&tc0->connection);
+	  session_transport_closed_notify (&tc->connection);
 	  goto drop;
 
 	  break;
@@ -2323,24 +2345,24 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	   * acknowledgment of our FIN. If our FIN is now acknowledged,
 	   * delete the TCB, enter the CLOSED state, and return. */
 
-	  if (tcp_rcv_ack_no_cc (tc0, b0, &error0))
+	  if (tcp_rcv_ack_no_cc (tc, b[0], &error))
 	    goto drop;
 
 	  /* Apparently our ACK for the peer's FIN was lost */
-	  if (is_fin0 && tc0->snd_una != tc0->snd_nxt)
+	  if (is_fin && tc->snd_una != tc->snd_nxt)
 	    {
-	      tcp_send_fin (tc0);
+	      tcp_send_fin (tc);
 	      goto drop;
 	    }
 
-	  tcp_connection_set_state (tc0, TCP_STATE_CLOSED);
-	  session_transport_closed_notify (&tc0->connection);
+	  tcp_connection_set_state (tc, TCP_STATE_CLOSED);
+	  session_transport_closed_notify (&tc->connection);
 
 	  /* Don't free the connection from the data path since
 	   * we can't ensure that we have no packets already enqueued
 	   * to output. Rely instead on the waitclose timer */
-	  tcp_connection_timers_reset (tc0);
-	  tcp_program_cleanup (tcp_get_worker (tc0->c_thread_index), tc0);
+	  tcp_connection_timers_reset (tc);
+	  tcp_program_cleanup (tcp_get_worker (tc->c_thread_index), tc);
 
 	  goto drop;
 
@@ -2350,14 +2372,14 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	   * retransmission of the remote FIN. Acknowledge it, and restart
 	   * the 2 MSL timeout. */
 
-	  if (tcp_rcv_ack_no_cc (tc0, b0, &error0))
+	  if (tcp_rcv_ack_no_cc (tc, b[0], &error))
 	    goto drop;
 
-	  if (!is_fin0)
+	  if (!is_fin)
 	    goto drop;
 
-	  tcp_program_ack (tc0);
-	  tcp_timer_update (&wrk->timer_wheel, tc0, TCP_TIMER_WAITCLOSE,
+	  tcp_program_ack (tc);
+	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
 			    tcp_cfg.timewait_time);
 	  goto drop;
 
@@ -2369,15 +2391,15 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       /* 6: check the URG bit TODO */
 
       /* 7: process the segment text */
-      switch (tc0->state)
+      switch (tc->state)
 	{
 	case TCP_STATE_ESTABLISHED:
 	case TCP_STATE_FIN_WAIT_1:
 	case TCP_STATE_FIN_WAIT_2:
-	  if (vnet_buffer (b0)->tcp.data_len)
-	    error0 = tcp_segment_rcv (wrk, tc0, b0);
+	  if (vnet_buffer (b[0])->tcp.data_len)
+	    error = tcp_segment_rcv (wrk, tc, b[0]);
 	  /* Don't accept out of order fins lower */
-	  if (vnet_buffer (b0)->tcp.seq_end != tc0->rcv_nxt)
+	  if (vnet_buffer (b[0])->tcp.seq_end != tc->rcv_nxt)
 	    goto drop;
 	  break;
 	case TCP_STATE_CLOSE_WAIT:
@@ -2390,31 +2412,31 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
 
       /* 8: check the FIN bit */
-      if (!is_fin0)
+      if (!is_fin)
 	goto drop;
 
-      TCP_EVT (TCP_EVT_FIN_RCVD, tc0);
+      TCP_EVT (TCP_EVT_FIN_RCVD, tc);
 
-      switch (tc0->state)
+      switch (tc->state)
 	{
 	case TCP_STATE_ESTABLISHED:
 	  /* Account for the FIN and send ack */
-	  tc0->rcv_nxt += 1;
-	  tcp_program_ack (tc0);
-	  tcp_connection_set_state (tc0, TCP_STATE_CLOSE_WAIT);
-	  tcp_program_disconnect (wrk, tc0);
-	  tcp_timer_update (&wrk->timer_wheel, tc0, TCP_TIMER_WAITCLOSE,
+	  tc->rcv_nxt += 1;
+	  tcp_program_ack (tc);
+	  tcp_connection_set_state (tc, TCP_STATE_CLOSE_WAIT);
+	  tcp_program_disconnect (wrk, tc);
+	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
 			    tcp_cfg.closewait_time);
 	  break;
 	case TCP_STATE_SYN_RCVD:
 	  /* Send FIN-ACK, enter LAST-ACK and because the app was not
 	   * notified yet, set a cleanup timer instead of relying on
 	   * disconnect notify and the implicit close call. */
-	  tcp_connection_timers_reset (tc0);
-	  tc0->rcv_nxt += 1;
-	  tcp_send_fin (tc0);
-	  tcp_connection_set_state (tc0, TCP_STATE_LAST_ACK);
-	  tcp_timer_set (&wrk->timer_wheel, tc0, TCP_TIMER_WAITCLOSE,
+	  tcp_connection_timers_reset (tc);
+	  tc->rcv_nxt += 1;
+	  tcp_send_fin (tc);
+	  tcp_connection_set_state (tc, TCP_STATE_LAST_ACK);
+	  tcp_timer_set (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
 			 tcp_cfg.lastack_time);
 	  break;
 	case TCP_STATE_CLOSE_WAIT:
@@ -2423,54 +2445,51 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* move along .. */
 	  break;
 	case TCP_STATE_FIN_WAIT_1:
-	  tc0->rcv_nxt += 1;
+	  tc->rcv_nxt += 1;
 
-	  if (tc0->flags & TCP_CONN_FINPNDG)
+	  if (tc->flags & TCP_CONN_FINPNDG)
 	    {
 	      /* If data is outstanding, stay in FIN_WAIT_1 and try to finish
 	       * sending it. Since we already received a fin, do not wait
 	       * for too long. */
-	      tc0->flags |= TCP_CONN_FINRCVD;
-	      tcp_timer_update (&wrk->timer_wheel, tc0, TCP_TIMER_WAITCLOSE,
+	      tc->flags |= TCP_CONN_FINRCVD;
+	      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
 				tcp_cfg.closewait_time);
 	    }
 	  else
 	    {
-	      tcp_connection_set_state (tc0, TCP_STATE_CLOSING);
-	      tcp_program_ack (tc0);
+	      tcp_connection_set_state (tc, TCP_STATE_CLOSING);
+	      tcp_program_ack (tc);
 	      /* Wait for ACK for our FIN but not forever */
-	      tcp_timer_update (&wrk->timer_wheel, tc0, TCP_TIMER_WAITCLOSE,
+	      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
 				tcp_cfg.closing_time);
 	    }
 	  break;
 	case TCP_STATE_FIN_WAIT_2:
 	  /* Got FIN, send ACK! Be more aggressive with resource cleanup */
-	  tc0->rcv_nxt += 1;
-	  tcp_connection_set_state (tc0, TCP_STATE_TIME_WAIT);
-	  tcp_connection_timers_reset (tc0);
-	  tcp_timer_set (&wrk->timer_wheel, tc0, TCP_TIMER_WAITCLOSE,
+	  tc->rcv_nxt += 1;
+	  tcp_connection_set_state (tc, TCP_STATE_TIME_WAIT);
+	  tcp_connection_timers_reset (tc);
+	  tcp_timer_set (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
 			 tcp_cfg.timewait_time);
-	  tcp_program_ack (tc0);
-	  session_transport_closed_notify (&tc0->connection);
+	  tcp_program_ack (tc);
+	  session_transport_closed_notify (&tc->connection);
 	  break;
 	case TCP_STATE_TIME_WAIT:
 	  /* Remain in the TIME-WAIT state. Restart the time-wait
 	   * timeout.
 	   */
-	  tcp_timer_update (&wrk->timer_wheel, tc0, TCP_TIMER_WAITCLOSE,
+	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
 			    tcp_cfg.timewait_time);
 	  break;
 	}
-      error0 = TCP_ERROR_FIN_RCVD;
+      error = TCP_ERROR_FIN_RCVD;
 
     drop:
 
-      tcp_inc_counter (rcv_process, error0, 1);
-      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
-	{
-	  tcp_rx_trace_t *t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
-	  tcp_set_rx_trace_data (t0, tc0, tcp0, b0, is_ip4);
-	}
+      b += 1;
+      n_left_from -= 1;
+      tcp_inc_counter (rcv_process, error, 1);
     }
 
   errors = session_main_flush_enqueue_events (TRANSPORT_PROTO_TCP,
@@ -2478,9 +2497,9 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   tcp_inc_counter (rcv_process, TCP_ERROR_MSG_QUEUE_FULL, errors);
   tcp_handle_postponed_dequeues (wrk);
   tcp_handle_disconnects (wrk);
-  vlib_buffer_free (vm, first_buffer, from_frame->n_vectors);
+  vlib_buffer_free (vm, from, frame->n_vectors);
 
-  return from_frame->n_vectors;
+  return frame->n_vectors;
 }
 
 VLIB_NODE_FN (tcp4_rcv_process_node) (vlib_main_t * vm,
