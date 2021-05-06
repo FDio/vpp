@@ -287,6 +287,10 @@ cryptodev_sess_handler (vlib_main_t *vm, vnet_crypto_key_op_t kop,
 
       vec_foreach_index (i, cmt->per_numa_data)
 	{
+	  if (!ckey->keys)
+	    continue;
+	  if (!ckey->keys[i])
+	    continue;
 	  if (ckey->keys[i][CRYPTODEV_OP_TYPE_ENCRYPT])
 	    {
 	      cryptodev_session_del (ckey->keys[i][CRYPTODEV_OP_TYPE_ENCRYPT]);
