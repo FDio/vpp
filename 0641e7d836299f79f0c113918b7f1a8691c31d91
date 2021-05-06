@@ -52,6 +52,24 @@
       "revId": "0641e7d836299f79f0c113918b7f1a8691c31d91",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2de8b0e6_23fabeab",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 502,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2021-05-06T09:40:43Z",
+      "side": 1,
+      "message": "The proposed solutions requires vlib_buffer_t chain length should be known or precomputed. There is no information about the vlib_buffer_t chain length except manually calculating it in loop. It will be consume extra cycles per packet and it will make the data path code complex and non-optimized.",
+      "parentUuid": "76714a3b_5a8093f6",
+      "revId": "0641e7d836299f79f0c113918b7f1a8691c31d91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
