@@ -38,7 +38,7 @@ u8 *format_ip4_address(u8 *s, va_list *args) {
 u8 *format_pnat_match_tuple(u8 *s, va_list *args) { return 0; }
 u8 *format_pnat_rewrite_tuple(u8 *s, va_list *args) { return 0; }
 
-vl_counter_t pnat_error_counters[10];
+vlib_error_desc_t pnat_error_counters[10];
 
 int ip4_sv_reass_enable_disable_with_refcnt(u32 sw_if_index, int is_enable) {
     return 0;
