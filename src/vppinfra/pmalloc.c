@@ -483,8 +483,8 @@ clib_pmalloc_alloc_aligned (clib_pmalloc_main_t * pm, uword size, uword align)
 				    CLIB_PMALLOC_NUMA_LOCAL);
 }
 
-void *
-clib_pmalloc_alloc_from_arena (clib_pmalloc_main_t * pm, void *arena_va,
+__clib_export void *
+clib_pmalloc_alloc_from_arena (clib_pmalloc_main_t *pm, void *arena_va,
 			       uword size, uword align)
 {
   clib_pmalloc_arena_t *a = clib_pmalloc_get_arena (pm, arena_va);

@@ -65,9 +65,9 @@ elf_get_section_by_start_address_no_check (elf_main_t * em,
   return p ? vec_elt_at_index (em->sections, p[0]) : 0;
 }
 
-clib_error_t *
-elf_get_section_by_start_address (elf_main_t * em, uword start_address,
-				  elf_section_t ** result)
+__clib_export clib_error_t *
+elf_get_section_by_start_address (elf_main_t *em, uword start_address,
+				  elf_section_t **result)
 {
   elf_section_t *s =
     elf_get_section_by_start_address_no_check (em, start_address);
@@ -541,8 +541,8 @@ elf_segment_va_compare (void *a1, void *a2)
 	  (i64) s2->header.virtual_address);
 }
 
-u8 *
-format_elf_main (u8 * s, va_list * args)
+__clib_export u8 *
+format_elf_main (u8 *s, va_list *args)
 {
   elf_main_t *em = va_arg (*args, elf_main_t *);
   u32 verbose = va_arg (*args, u32);
@@ -895,8 +895,8 @@ elf_parse_symbols (elf_main_t * em)
   }
 }
 
-void
-elf_set_dynamic_entries (elf_main_t * em)
+__clib_export void
+elf_set_dynamic_entries (elf_main_t *em)
 {
   uword i;
 
@@ -1750,8 +1750,8 @@ layout_sections (elf_main_t * em)
   }
 }
 
-clib_error_t *
-elf_write_file (elf_main_t * em, char *file_name)
+__clib_export clib_error_t *
+elf_write_file (elf_main_t *em, char *file_name)
 {
   int fd;
   FILE *f;

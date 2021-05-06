@@ -18,8 +18,8 @@
 
 clib_macro_main_t clib_macro_main;
 
-int
-test_macros_main (unformat_input_t * input)
+__clib_export int
+test_macros_main (unformat_input_t *input)
 {
   clib_macro_main_t *mm = &clib_macro_main;
 

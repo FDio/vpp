@@ -930,9 +930,9 @@ serialize_close_vector (serialize_main_t * m)
   return result;
 }
 
-void
-serialize_multiple_1 (serialize_main_t * m,
-		      void *data, uword data_stride, uword n_data)
+__clib_export void
+serialize_multiple_1 (serialize_main_t *m, void *data, uword data_stride,
+		      uword n_data)
 {
   u8 *d = data;
   u8 *p;
@@ -962,9 +962,9 @@ serialize_multiple_1 (serialize_main_t * m,
     }
 }
 
-void
-serialize_multiple_2 (serialize_main_t * m,
-		      void *data, uword data_stride, uword n_data)
+__clib_export void
+serialize_multiple_2 (serialize_main_t *m, void *data, uword data_stride,
+		      uword n_data)
 {
   void *d = data;
   u16 *p;
@@ -999,9 +999,9 @@ serialize_multiple_2 (serialize_main_t * m,
     }
 }
 
-void
-serialize_multiple_4 (serialize_main_t * m,
-		      void *data, uword data_stride, uword n_data)
+__clib_export void
+serialize_multiple_4 (serialize_main_t *m, void *data, uword data_stride,
+		      uword n_data)
 {
   void *d = data;
   u32 *p;
@@ -1036,9 +1036,9 @@ serialize_multiple_4 (serialize_main_t * m,
     }
 }
 
-void
-unserialize_multiple_1 (serialize_main_t * m,
-			void *data, uword data_stride, uword n_data)
+__clib_export void
+unserialize_multiple_1 (serialize_main_t *m, void *data, uword data_stride,
+			uword n_data)
 {
   u8 *d = data;
   u8 *p;
@@ -1068,9 +1068,9 @@ unserialize_multiple_1 (serialize_main_t * m,
     }
 }
 
-void
-unserialize_multiple_2 (serialize_main_t * m,
-			void *data, uword data_stride, uword n_data)
+__clib_export void
+unserialize_multiple_2 (serialize_main_t *m, void *data, uword data_stride,
+			uword n_data)
 {
   void *d = data;
   u16 *p;
@@ -1105,9 +1105,9 @@ unserialize_multiple_2 (serialize_main_t * m,
     }
 }
 
-void
-unserialize_multiple_4 (serialize_main_t * m,
-			void *data, uword data_stride, uword n_data)
+__clib_export void
+unserialize_multiple_4 (serialize_main_t *m, void *data, uword data_stride,
+			uword n_data)
 {
   void *d = data;
   u32 *p;

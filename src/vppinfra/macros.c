@@ -197,8 +197,8 @@ clib_macro_eval (clib_macro_main_t * mm, i8 * s, i32 complain, u16 level,
  * eval: takes a string, returns a vector.
  * looks up $foobar in the variable table.
  */
-i8 *
-clib_macro_eval_dollar (clib_macro_main_t * mm, i8 * s, i32 complain)
+__clib_export i8 *
+clib_macro_eval_dollar (clib_macro_main_t *mm, i8 *s, i32 complain)
 {
   i8 *s2;
   i8 *rv;

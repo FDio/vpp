@@ -23,6 +23,10 @@
 #define BIIHASH_MIN_ALLOC_LOG2_PAGES 10
 #endif
 
+#ifndef BIHASH_USE_HEAP
+#define BIHASH_USE_HEAP 1
+#endif
+
 static inline void *BV (alloc_aligned) (BVT (clib_bihash) * h, uword nbytes)
 {
   uword rv;
