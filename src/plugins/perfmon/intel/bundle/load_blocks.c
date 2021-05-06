@@ -17,28 +17,50 @@
 #include <perfmon/perfmon.h>
 #include <perfmon/intel/core.h>
 
+static f64
+calculate_load_blocks (struct perfmon_stats *ts, int idx)
+{
+  f64 sv = 0;
+
+  if (!ts->n_calls)
+    return 0;
+
+  switch (idx)
+    {
+    case 0:
+      sv = ts->n_calls;
+      break;
+    case 1:
+      sv = ts->n_packets;
+      break;
+    case 2:
+      sv = (u64) ts->value[0] / ts->n_calls;
+      break;
+    case 3:
+      sv = (u64) ts->value[1] / ts->n_calls;
+      break;
+    case 4:
+      sv = (u64) ts->value[2] / ts->n_calls;
+      break;
+    }
+  return sv;
+}
+
 static u8 *
 format_load_blocks (u8 *s, va_list *args)
 {
-  perfmon_node_stats_t *ns = va_arg (*args, perfmon_node_stats_t *);
-  int row = va_arg (*args, int);
+  perfmon_stats_t *ss = va_arg (*args, perfmon_stats_t *);
+  int idx = va_arg (*args, int);
+  f64 sv = calculate_load_blocks (ss, idx);
 
-  switch (row)
+  switch (idx)
     {
     case 0:
-      s = format (s, "%12lu", ns->n_calls);
-      break;
     case 1:
-      s = format (s, "%12lu", ns->n_packets);
+      s = format (s, "%12lu", sv);
       break;
-    case 2:
-      s = format (s, "%9.2f", (f64) ns->value[0] / ns->n_calls);
-      break;
-    case 3:
-      s = format (s, "%9.2f", (f64) ns->value[1] / ns->n_calls);
-      break;
-    case 4:
-      s = format (s, "%9.2f", (f64) ns->value[2] / ns->n_calls);
+    default:
+      s = format (s, "%9.2f", sv);
       break;
     }
   return s;
@@ -48,7 +70,8 @@ PERFMON_REGISTER_BUNDLE (load_blocks) = {
   .name = "load-blocks",
   .description = "load operations blocked due to various uarch reasons",
   .source = "intel-core",
-  .type = PERFMON_BUNDLE_TYPE_NODE,
+  .type_flags = PERFMON_BUNDLE_TYPE_NODE_FLAG |
+		PERFMON_BUNDLE_TYPE_THREAD_FLAG,
   .events[0] = INTEL_CORE_E_LD_BLOCKS_STORE_FORWARD,
   .events[1] = INTEL_CORE_E_LD_BLOCKS_NO_SR,
   .events[2] = INTEL_CORE_E_LD_BLOCKS_PARTIAL_ADDRESS_ALIAS,
