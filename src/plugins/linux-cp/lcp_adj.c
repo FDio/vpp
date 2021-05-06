@@ -20,6 +20,7 @@
 #include <vppinfra/bihash_template.c>
 
 static adj_delegate_type_t adj_type;
+static lcp_adj_key_t *adj_keys;
 
 /**
  * The table of adjacencies indexed by the rewrite string
@@ -50,23 +51,79 @@ lcp_adj_delegate_adj_deleted (adj_delegate_t *aed)
   lcp_adj_mk_key_adj (adj, &kv.k);
 
   BV (clib_bihash_add_del) (&lcp_adj_tbl, &kv.kv, 0);
+
+  if (aed->ad_index != INDEX_INVALID)
+    pool_put_index (adj_keys, aed->ad_index);
 }
 
+/* when an adj is modified:
+ *
+ * An existing hash entry may need to be deleted. This may occur when:
+ * * The newly modified adj does not have IP_LOOKUP_NEXT_REWRITE as next idx
+ * * The rewrite (== major component of hash key) changed
+ *
+ * A new hash entry may need to be added. This may occur when:
+ * * The newly modified adj has IP_LOOKUP_NEXT_REWRITE as next idx
+ * * The rewrite changed or there was no existing hash entry
+ */
 static void
 lcp_adj_delegate_adj_modified (adj_delegate_t *aed)
 {
   ip_adjacency_t *adj;
   lcp_adj_kv_t kv;
+  lcp_adj_key_t *adj_key = NULL;
+  u8 save_adj, key_changed;
+
+  key_changed = 0;
 
   adj = adj_get (aed->ad_adj_index);
+  save_adj = (IP_LOOKUP_NEXT_REWRITE == adj->lookup_next_index);
 
-  if (IP_LOOKUP_NEXT_REWRITE != adj->lookup_next_index)
+  if (aed->ad_index != INDEX_INVALID)
+    adj_key = pool_elt_at_index (adj_keys, aed->ad_index);
+
+  /* return if there was no stored adj and we will not add one */
+  if (!adj_key && !save_adj)
     return;
 
-  lcp_adj_mk_key_adj (adj, &kv.k);
-  kv.v = aed->ad_adj_index;
+  /* build kv if a new entry should be stored */
+  if (save_adj)
+    {
+      lcp_adj_mk_key_adj (adj, &kv.k);
+      kv.v = aed->ad_adj_index;
+      if (adj_key)
+	key_changed = (clib_memcmp (adj_key, &kv.k, sizeof (*adj_key)) != 0);
+    }
 
-  BV (clib_bihash_add_del) (&lcp_adj_tbl, &kv.kv, 1);
+  /* delete old entry if needed */
+  if (adj_key && ((save_adj && key_changed) || (!save_adj)))
+    {
+      lcp_adj_kv_t old_kv;
+
+      clib_memcpy_fast (&old_kv.k, adj_key, sizeof (*adj_key));
+      old_kv.v = 0;
+
+      BV (clib_bihash_add_del) (&lcp_adj_tbl, &old_kv.kv, 0);
+
+      if (!save_adj)
+	{
+	  pool_put (adj_keys, adj_key);
+	  aed->ad_index = INDEX_INVALID;
+	}
+    }
+
+  /* add new entry if needed */
+  if (save_adj)
+    {
+      BV (clib_bihash_add_del) (&lcp_adj_tbl, &kv.kv, 1);
+
+      if (!adj_key)
+	{
+	  pool_get (adj_keys, adj_key);
+	  aed->ad_index = adj_key - adj_keys;
+	}
+      clib_memcpy_fast (adj_key, &kv.k, sizeof (*adj_key));
+    }
 }
 
 static void
@@ -74,16 +131,23 @@ lcp_adj_delegate_adj_created (adj_index_t ai)
 {
   ip_adjacency_t *adj;
   lcp_adj_kv_t kv;
+  index_t lai = INDEX_INVALID;
+  lcp_adj_key_t *adj_key;
 
   adj = adj_get (ai);
 
-  if (IP_LOOKUP_NEXT_REWRITE != adj->lookup_next_index)
-    return;
+  if (IP_LOOKUP_NEXT_REWRITE == adj->lookup_next_index)
+    {
+      lcp_adj_mk_key_adj (adj, &kv.k);
+      pool_get (adj_keys, adj_key);
+      clib_memcpy_fast (adj_key, &kv.k, sizeof (*adj_key));
+      kv.v = ai;
 
-  lcp_adj_mk_key_adj (adj, &kv.k);
-  kv.v = ai;
+      BV (clib_bihash_add_del) (&lcp_adj_tbl, &kv.kv, 1);
+      lai = adj_key - adj_keys;
+    }
 
-  BV (clib_bihash_add_del) (&lcp_adj_tbl, &kv.kv, 1);
+  adj_delegate_add (adj, adj_type, lai);
 }
 
 u8 *
