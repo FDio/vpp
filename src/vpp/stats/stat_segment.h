@@ -22,20 +22,18 @@
 
 typedef enum
 {
- STAT_COUNTER_VECTOR_RATE = 0,
- STAT_COUNTER_NUM_WORKER_THREADS,
- STAT_COUNTER_VECTOR_RATE_PER_WORKER,
- STAT_COUNTER_INPUT_RATE,
- STAT_COUNTER_LAST_UPDATE,
- STAT_COUNTER_LAST_STATS_CLEAR,
- STAT_COUNTER_HEARTBEAT,
- STAT_COUNTER_NODE_CLOCKS,
- STAT_COUNTER_NODE_VECTORS,
- STAT_COUNTER_NODE_CALLS,
- STAT_COUNTER_NODE_SUSPENDS,
- STAT_COUNTER_INTERFACE_NAMES,
- STAT_COUNTER_NODE_NAMES,
- STAT_COUNTERS
+  STAT_COUNTER_NUM_WORKER_THREADS = 0,
+  STAT_COUNTER_INPUT_RATE,
+  STAT_COUNTER_LAST_UPDATE,
+  STAT_COUNTER_LAST_STATS_CLEAR,
+  STAT_COUNTER_HEARTBEAT,
+  STAT_COUNTER_NODE_CLOCKS,
+  STAT_COUNTER_NODE_VECTORS,
+  STAT_COUNTER_NODE_CALLS,
+  STAT_COUNTER_NODE_SUSPENDS,
+  STAT_COUNTER_INTERFACE_NAMES,
+  STAT_COUNTER_NODE_NAMES,
+  STAT_COUNTERS
 } stat_segment_counter_t;
 
 /* clang-format off */
@@ -46,9 +44,6 @@ typedef enum
   _ (NODE_SUSPENDS, COUNTER_VECTOR_SIMPLE, suspends, /sys/node)
 
 #define foreach_stat_segment_counter_name                                     \
-  _ (VECTOR_RATE, SCALAR_INDEX, vector_rate, /sys)                            \
-  _ (VECTOR_RATE_PER_WORKER, COUNTER_VECTOR_SIMPLE, vector_rate_per_worker,   \
-     /sys)                                                                    \
   _ (NUM_WORKER_THREADS, SCALAR_INDEX, num_worker_threads, /sys)              \
   _ (INPUT_RATE, SCALAR_INDEX, input_rate, /sys)                              \
   _ (LAST_UPDATE, SCALAR_INDEX, last_update, /sys)                            \
@@ -122,5 +117,7 @@ void vlib_stat_segment_lock (void);
 void vlib_stat_segment_unlock (void);
 void vlib_stats_register_symlink (void *oldheap, u8 *name, u32 index1,
 				  u32 index2, u8 lock);
+
+void stat_provider_register_vector_rate (u32 num_workers);
 
 #endif
