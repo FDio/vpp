@@ -211,27 +211,6 @@ vhost_user_update_iface_state (vhost_user_intf_t * vui)
     }
 }
 
-static void
-vhost_user_set_interrupt_pending (vhost_user_intf_t * vui, u32 ifq)
-{
-  u32 qid;
-  vnet_main_t *vnm = vnet_get_main ();
-  vhost_user_vring_t *txvq;
-
-  qid = ifq & 0xff;
-  if ((qid & 1) == 0)
-    /* Only care about the odd number, or TX, virtqueue */
-    return;
-
-  // qid >> 1 is to convert virtqueue number to vring queue index
-  qid >>= 1;
-  txvq = &vui->vrings[VHOST_VRING_IDX_TX (qid)];
-  if (vhost_user_intf_ready (vui) &&
-      ((txvq->mode == VNET_HW_IF_RX_MODE_ADAPTIVE) ||
-       (txvq->mode == VNET_HW_IF_RX_MODE_INTERRUPT)))
-    vnet_hw_if_rx_queue_set_int_pending (vnm, txvq->queue_index);
-}
-
 static clib_error_t *
 vhost_user_callfd_read_ready (clib_file_t * uf)
 {
@@ -258,27 +237,32 @@ vhost_user_thread_placement (vhost_user_intf_t * vui, u32 qid)
 static clib_error_t *
 vhost_user_kickfd_read_ready (clib_file_t * uf)
 {
-  __attribute__ ((unused)) int n;
+  __attribute__ ((unused)) ssize_t n;
   u8 buff[8];
+  vhost_user_main_t *vum = &vhost_user_main;
   vhost_user_intf_t *vui =
-    pool_elt_at_index (vhost_user_main.vhost_user_interfaces,
-		       uf->private_data >> 8);
+    pool_elt_at_index (vum->vhost_user_interfaces, uf->private_data >> 8);
   u32 qid = uf->private_data & 0xff;
+  u32 is_txq = qid & 1;
+  vhost_user_vring_t *vq = &vui->vrings[qid];
+  vnet_main_t *vnm = vnet_get_main ();
 
-  n = read (uf->file_descriptor, ((char *) &buff), 8);
-  vu_log_debug (vui, "if %d KICK queue %d", vui->hw_if_index, qid);
-  if (!vui->vrings[qid].started ||
-      (vhost_user_intf_ready (vui) != vui->is_ready))
+  n = read (uf->file_descriptor, buff, 8);
+  if (vq->started == 0)
     {
-      if (vui->vrings[qid].started == 0)
-	{
-	  vui->vrings[qid].started = 1;
-	  vhost_user_thread_placement (vui, qid);
-	  vhost_user_update_iface_state (vui);
-	}
+      vq->started = 1;
+      vhost_user_thread_placement (vui, qid);
+      vhost_user_update_iface_state (vui);
+      if (is_txq)
+	vnet_hw_if_set_rx_queue_file_index (vnm, vq->queue_index,
+					    vq->kickfd_idx);
     }
 
-  vhost_user_set_interrupt_pending (vui, uf->private_data);
+  if (is_txq && (vhost_user_intf_ready (vui) &&
+		 ((vq->mode == VNET_HW_IF_RX_MODE_ADAPTIVE) ||
+		  (vq->mode == VNET_HW_IF_RX_MODE_INTERRUPT))))
+    vnet_hw_if_rx_queue_set_int_pending (vnm, vq->queue_index);
+
   return 0;
 }
 
