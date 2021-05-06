@@ -1451,9 +1451,6 @@ quic_start_listen (u32 quic_listen_session_index, transport_endpoint_t * tep)
 
   ccfg = &sep->ext_cfg->crypto;
   app_wrk = app_worker_get (sep->app_wrk_index);
-  /* We need to call this because we call app_worker_init_connected in
-   * quic_accept_stream, which assumes the connect segment manager exists */
-  app_worker_alloc_connects_segment_manager (app_wrk);
   app = application_get (app_wrk->app_index);
   QUIC_DBG (2, "Called quic_start_listen for app %d", app_wrk->app_index);
 

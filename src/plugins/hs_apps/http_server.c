@@ -671,8 +671,7 @@ http_server_session_connected_callback (u32 app_index, u32 api_context,
 static int
 http_server_add_segment_callback (u32 client_index, u64 segment_handle)
 {
-  clib_warning ("called...");
-  return -1;
+  return 0;
 }
 
 static void
@@ -732,6 +731,7 @@ http_server_attach ()
   a->session_cb_vft = &http_server_session_cb_vft;
   a->options = options;
   a->options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
+  a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = segment_size;
   a->options[APP_OPTIONS_RX_FIFO_SIZE] =
     hsm->fifo_size ? hsm->fifo_size : 8 << 10;
   a->options[APP_OPTIONS_TX_FIFO_SIZE] =
