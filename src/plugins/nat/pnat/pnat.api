@@ -30,7 +30,7 @@ enum pnat_mask
 
 enum pnat_attachment_point
 {
-    PNAT_IP4_INPUT,
+    PNAT_IP4_INPUT = 0,
     PNAT_IP4_OUTPUT,
     PNAT_ATTACHMENT_POINT_MAX,
 };
