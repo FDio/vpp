@@ -27,11 +27,25 @@
 
 typedef enum
 {
-  PERFMON_BUNDLE_TYPE_UNKNOWN,
+  PERFMON_BUNDLE_TYPE_NOT_SUPPORTED = 0,
   PERFMON_BUNDLE_TYPE_NODE,
   PERFMON_BUNDLE_TYPE_THREAD,
   PERFMON_BUNDLE_TYPE_SYSTEM,
+  PERFMON_BUNDLE_TYPE_MAX,
 } perfmon_bundle_type_t;
+
+#define foreach_perfmon_bundle_type                                           \
+  _ (PERFMON_BUNDLE_TYPE_NOT_SUPPORTED, "not supported")                      \
+  _ (PERFMON_BUNDLE_TYPE_NODE, "node")                                        \
+  _ (PERFMON_BUNDLE_TYPE_THREAD, "thread")                                    \
+  _ (PERFMON_BUNDLE_TYPE_SYSTEM, "system")
+
+typedef enum
+{
+#define _(e, str) e##_FLAG = 1 << e,
+  foreach_perfmon_bundle_type
+#undef _
+} perfmon_bundle_type_flag_t;
 
 typedef enum
 {
@@ -71,8 +85,9 @@ typedef struct
 struct perfmon_source;
 vlib_node_function_t perfmon_dispatch_wrapper_mmap;
 vlib_node_function_t perfmon_dispatch_wrapper_metrics;
+vlib_node_function_t perfmon_dispatch_wrapper_stats;
 
-#define foreach_permon_offset_type                                            \
+#define foreach_perfmon_offset_type                                           \
   _ (PERFMON_OFFSET_TYPE_MMAP, perfmon_dispatch_wrapper_mmap)                 \
   _ (PERFMON_OFFSET_TYPE_METRICS, perfmon_dispatch_wrapper_metrics)
 
@@ -91,9 +106,16 @@ typedef struct perfmon_source
 } perfmon_source_t;
 
 struct perfmon_bundle;
+struct perfmon_stats;
 
 typedef clib_error_t *(perfmon_bundle_init_fn_t) (vlib_main_t *vm,
 						  struct perfmon_bundle *);
+
+typedef struct
+{
+  clib_cpu_supports_func_t cpu_supports;
+  uword bundle_type;
+} perfmon_cpu_supports_t;
 
 typedef struct perfmon_bundle
 {
@@ -101,36 +123,48 @@ typedef struct perfmon_bundle
   char *description;
   char *source;
   char *footer;
-  perfmon_bundle_type_t type;
+  uword type_flags;
   perfmon_offset_type_t offset_type;
+
   u32 events[PERF_MAX_EVENTS];
-  u32 metrics[PERF_MAX_EVENTS];
   u32 n_events;
+
+  u32 metrics[PERF_MAX_EVENTS];
+  u32 n_metrics;
+
+  perfmon_cpu_supports_t *cpu_supports;
+  u32 n_cpu_supports;
 
   perfmon_bundle_init_fn_t *init_fn;
 
   char **column_headers;
+  u32 n_column_headers;
+
   format_function_t *format_fn;
-  clib_cpu_supports_func_t cpu_supports;
 
   /* do not set manually */
   perfmon_source_t *src;
   struct perfmon_bundle *next;
+  uword active_type;
 } perfmon_bundle_t;
 
-typedef struct
-{
-  u64 nr;
-  u64 time_enabled;
-  u64 time_running;
-  u64 value[PERF_MAX_EVENTS];
-} perfmon_reading_t;
-
-typedef struct
+typedef struct perfmon_stats
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  u64 n_calls;
-  u64 n_packets;
+  union
+  {
+    struct
+    {
+      u64 n_calls;
+      u64 n_packets;
+    };
+    struct
+    {
+      u64 nr;
+      u64 time_enabled;
+    };
+  };
+  u64 time_running;
   union
   {
     struct
@@ -139,13 +173,13 @@ typedef struct
     } t[2];
     u64 value[PERF_MAX_EVENTS * 2];
   };
-} perfmon_node_stats_t;
+} perfmon_stats_t;
 
 typedef struct
 {
   u8 n_events;
   u16 n_nodes;
-  perfmon_node_stats_t *node_stats;
+  perfmon_stats_t *node_stats;
   perfmon_bundle_t *bundle;
   struct perf_event_mmap_page *mmap_pages[PERF_MAX_EVENTS];
 } perfmon_thread_runtime_t;
@@ -168,6 +202,33 @@ typedef struct
 
 extern perfmon_main_t perfmon_main;
 
+always_inline u32
+perfmon_count_column_headers (perfmon_bundle_t *b)
+{
+  char **hdr = b->column_headers;
+  while (hdr[0])
+    hdr++;
+
+  return hdr - b->column_headers;
+}
+
+always_inline uword
+perfmon_cpu_supported_bundle_types (perfmon_bundle_t *b)
+{
+  perfmon_cpu_supports_t *supports = b->cpu_supports;
+  uword supported_types = 0;
+
+  /* if nothing specific for this bundle, go with the default */
+  if (!supports)
+    return b->type_flags;
+
+  for (int i = 0; i < b->n_cpu_supports; ++i)
+    if (supports[i].cpu_supports ())
+      supported_types |= supports[i].bundle_type;
+
+  return supported_types;
+}
+
 #define PERFMON_REGISTER_SOURCE(x)                                            \
   perfmon_source_t __perfmon_source_##x;                                      \
   static void __clib_constructor __perfmon_source_registration_##x (void)     \
@@ -184,6 +245,10 @@ extern perfmon_main_t perfmon_main;
   {                                                                           \
     perfmon_main_t *pm = &perfmon_main;                                       \
     __perfmon_bundle_##x.next = pm->bundles;                                  \
+    __perfmon_bundle_##x.n_column_headers =                                   \
+      perfmon_count_column_headers (&__perfmon_bundle_##x);                   \
+    __perfmon_bundle_##x.type_flags =                                         \
+      perfmon_cpu_supported_bundle_types (&__perfmon_bundle_##x);             \
     pm->bundles = &__perfmon_bundle_##x;                                      \
   }                                                                           \
   perfmon_bundle_t __perfmon_bundle_##x
