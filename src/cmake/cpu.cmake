@@ -107,6 +107,8 @@ macro(add_vpp_march_variant v)
       endif()
       if (VPP_MARCH_VARIANT_${uv})
         list(APPEND MARCH_VARIANTS "${v}\;${fs}")
+      else()
+        list(APPEND MARCH_VARIANTS_DISABLED "${v}\;${fs}")
       endif()
     endif()
   endif()
@@ -169,11 +171,25 @@ macro(vpp_library_set_multiarch_sources lib)
   cmake_parse_arguments(ARG
     ""
     ""
-    "SOURCES;DEPENDS"
+    "SOURCES;DEPENDS;FORCE_ON"
     ${ARGN}
   )
 
-  foreach(V ${MARCH_VARIANTS})
+  set(VARIANTS "${MARCH_VARIANTS}")
+
+  if(ARG_FORCE_ON)
+    foreach(F ${ARG_FORCE_ON})
+      foreach(V ${MARCH_VARIANTS_DISABLED})
+        list(GET V 0 VARIANT)
+	if (VARIANT STREQUAL F)
+          list(GET V 1 VARIANT_FLAGS)
+          list(APPEND VARIANTS "${VARIANT}\;${VARIANT_FLAGS}")
+	endif()
+      endforeach()
+    endforeach()
+  endif()
+
+  foreach(V ${VARIANTS})
     list(GET V 0 VARIANT)
     list(GET V 1 VARIANT_FLAGS)
     set(l ${lib}_${VARIANT})
