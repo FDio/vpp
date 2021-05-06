@@ -711,7 +711,6 @@ tls_connect (transport_endpoint_cfg_t * tep)
     }
   tls_ctx_half_open_reader_unlock ();
 
-  app_worker_alloc_connects_segment_manager (app_wrk);
   ctx->tls_ctx_engine = engine_type;
 
   clib_memcpy_fast (&cargs->sep, sep, sizeof (session_endpoint_t));
@@ -1138,7 +1137,6 @@ dtls_connect (transport_endpoint_cfg_t *tep)
       vec_terminate_c_string (ctx->srv_hostname);
     }
 
-  app_worker_alloc_connects_segment_manager (app_wrk);
   ctx->tls_ctx_engine = engine_type;
 
   clib_memcpy_fast (&cargs->sep, sep, sizeof (session_endpoint_t));

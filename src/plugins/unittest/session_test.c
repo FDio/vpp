@@ -337,6 +337,9 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
 
   attach_args.name = format (0, "session_test_server");
   attach_args.namespace_id = appns_id;
+  /* Allow server to allocate another segment for listens. Needed
+   * because by default we do not allow segment additions */
+  attach_args.options[APP_OPTIONS_ADD_SEGMENT_SIZE] = 32 << 20;
   attach_args.options[APP_OPTIONS_NAMESPACE_SECRET] = placeholder_secret;
   error = vnet_application_attach (&attach_args);
   SESSION_TEST ((error == 0), "server app attached: %U", format_clib_error,
@@ -1839,7 +1842,7 @@ session_test_mq_speed (vlib_main_t * vm, unformat_input_t * input)
       SESSION_TEST (prod_fd != -1, "mq producer eventd valid %u", prod_fd);
     }
 
-  sm = app_worker_get_or_alloc_connect_segment_manager (app_wrk);
+  sm = app_worker_get_connect_segment_manager (app_wrk);
   segment_manager_alloc_session_fifos (sm, 0, &rx_fifo, &tx_fifo);
   s.rx_fifo = rx_fifo;
   s.tx_fifo = tx_fifo;
