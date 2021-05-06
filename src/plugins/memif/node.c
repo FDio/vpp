@@ -43,7 +43,7 @@ typedef enum
     MEMIF_INPUT_N_ERROR,
 } memif_input_error_t;
 
-static vl_counter_t memif_input_error_counters[] = {
+static vlib_error_desc_t memif_input_error_counters[] = {
 #define _(f, n, s, d) { #n, d, VL_COUNTER_SEVERITY_##s },
   foreach_memif_input_error
 #undef _

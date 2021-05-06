@@ -1210,7 +1210,7 @@ def generate_include_counters(s, stream):
         write('   {}_N_ERROR\n'.format(csetname.upper()))
         write('}} vl_counter_{}_enum_t;\n'.format(csetname))
 
-        write('extern vl_counter_t {}_error_counters[];\n'.format(csetname))
+        write('extern vlib_error_desc_t {}_error_counters[];\n'.format(csetname))
 
 
 def generate_include_types(s, module, stream):
@@ -1373,7 +1373,7 @@ def generate_c_boilerplate(services, defines, counters, file_crc,
 
     for cnt in counters:
         csetname = cnt.name
-        write('vl_counter_t {}_error_counters[] = {{\n'.format(csetname))
+        write('vlib_error_desc_t {}_error_counters[] = {{\n'.format(csetname))
         for c in cnt.block:
             write('  {\n')
             write('   .name = "{}",\n'.format(c['name']))

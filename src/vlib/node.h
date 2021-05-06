@@ -115,7 +115,7 @@ typedef struct _vlib_node_registration
 
   /* Error strings indexed by error code for this node. */
   char **error_strings;
-  vl_counter_t *error_counters;
+  vlib_error_desc_t *error_counters;
 
   /* Buffer format/unformat for this node. */
   format_function_t *format_buffer;
@@ -316,7 +316,7 @@ typedef struct vlib_node_t
   u32 error_heap_index;
 
   /* Counter structures indexed by counter code for this node. */
-  vl_counter_t *error_counters;
+  vlib_error_desc_t *error_counters;
 
   /* Vector of next node names.
      Only used before next_nodes array is initialized. */

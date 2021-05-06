@@ -40,7 +40,7 @@ typedef enum
     MEMIF_TX_N_ERROR,
 } memif_tx_func_error_t;
 
-static vl_counter_t memif_tx_func_error_counters[] = {
+static vlib_error_desc_t memif_tx_func_error_counters[] = {
 #define _(f, n, s, d) { #n, d, VL_COUNTER_SEVERITY_##s },
   foreach_memif_tx_func_error
 #undef _
