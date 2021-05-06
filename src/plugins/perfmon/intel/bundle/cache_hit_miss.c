@@ -18,39 +18,49 @@
 #include <perfmon/perfmon.h>
 #include <perfmon/intel/core.h>
 
+static f64
+calculate_inst_and_clock (perfmon_stats_t *ts, int idx)
+{
+  f64 sv = 0;
+
+  if (!ts->n_packets)
+    return sv;
+
+  switch (idx)
+    {
+    case 0:
+      sv = (u64) ts->value[0] / ts->n_packets;
+      break;
+    case 1:
+      sv = (u64) ts->value[1] / ts->n_packets;
+      break;
+    case 2:
+      sv = (u64) (ts->value[1] - clib_min (ts->value[1], ts->value[2])) /
+	   ts->n_packets;
+      break;
+    case 3:
+      sv = (u64) ts->value[2] / ts->n_packets;
+      break;
+    case 4:
+      sv = (u64) (ts->value[2] - clib_min (ts->value[2], ts->value[3])) /
+	   ts->n_packets;
+      break;
+    case 5:
+      sv = (u64) ts->value[3] / ts->n_packets;
+      break;
+    }
+
+  return sv;
+}
+
 static u8 *
 format_intel_core_cache_hit_miss (u8 *s, va_list *args)
 {
-  perfmon_node_stats_t *ns = va_arg (*args, perfmon_node_stats_t *);
+  perfmon_stats_t *ss = va_arg (*args, perfmon_stats_t *);
   int row = va_arg (*args, int);
+  f64 sv = calculate_inst_and_clock (ss, row);
 
-  switch (row)
-    {
-    case 0:
-      s = format (s, "%0.2f", (f64) ns->value[0] / ns->n_packets);
-      break;
-    case 1:
-      s = format (s, "%0.2f", (f64) ns->value[1] / ns->n_packets);
-      break;
-    case 2:
-      s =
-	format (s, "%0.2f",
-		(f64) (ns->value[1] - clib_min (ns->value[1], ns->value[2])) /
-		  ns->n_packets);
-      break;
-    case 3:
-      s = format (s, "%0.2f", (f64) ns->value[2] / ns->n_packets);
-      break;
-    case 4:
-      s =
-	format (s, "%0.2f",
-		(f64) (ns->value[2] - clib_min (ns->value[2], ns->value[3])) /
-		  ns->n_packets);
-      break;
-    case 5:
-      s = format (s, "%0.2f", (f64) ns->value[3] / ns->n_packets);
-      break;
-    }
+  s = format (s, "%0.2f", sv);
 
   return s;
 }
@@ -59,8 +69,8 @@ PERFMON_REGISTER_BUNDLE (intel_core_cache_miss_hit) = {
   .name = "cache-hierarchy",
   .description = "cache hits and misses",
   .source = "intel-core",
-  .type = PERFMON_BUNDLE_TYPE_NODE,
-
+  .type_flags = PERFMON_BUNDLE_TYPE_NODE_FLAG |
+		PERFMON_BUNDLE_TYPE_THREAD_FLAG,
   .events[0] = INTEL_CORE_E_MEM_LOAD_RETIRED_L1_HIT,
   .events[1] = INTEL_CORE_E_MEM_LOAD_RETIRED_L1_MISS,
   .events[2] = INTEL_CORE_E_MEM_LOAD_RETIRED_L2_MISS,
