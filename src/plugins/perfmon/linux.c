@@ -54,9 +54,9 @@ PERFMON_REGISTER_SOURCE (linux) = {
 static u8 *
 format_context_switches (u8 *s, va_list *args)
 {
-  perfmon_reading_t *r = va_arg (*args, perfmon_reading_t *);
+  perfmon_stats_t *ss = va_arg (*args, perfmon_stats_t *);
   int row = va_arg (*args, int);
-  f64 t = (f64) r->time_running * 1e-9;
+  f64 t = (f64) ss->time_running * 1e-9;
 
   switch (row)
     {
@@ -64,8 +64,8 @@ format_context_switches (u8 *s, va_list *args)
       s = format (s, "%9.2f", t);
       break;
     case 1:
-      if (r->time_running)
-	s = format (s, "%9.2f", (f64) r->value[0] / t);
+      if (ss->time_running)
+	s = format (s, "%9.2f", (f64) ss->value[0] / t);
       break;
     }
   return s;
@@ -75,7 +75,7 @@ PERFMON_REGISTER_BUNDLE (context_switches) = {
   .name = "context-switches",
   .description = "per-thread context switches",
   .source = "linux",
-  .type = PERFMON_BUNDLE_TYPE_THREAD,
+  .type_flags = PERFMON_BUNDLE_TYPE_THREAD_FLAG,
   .events[0] = CONTEXT_SWITCHES,
   .n_events = 1,
   .format_fn = format_context_switches,
@@ -85,9 +85,9 @@ PERFMON_REGISTER_BUNDLE (context_switches) = {
 static u8 *
 format_page_faults (u8 *s, va_list *args)
 {
-  perfmon_reading_t *r = va_arg (*args, perfmon_reading_t *);
+  perfmon_stats_t *ss = va_arg (*args, perfmon_stats_t *);
   int row = va_arg (*args, int);
-  f64 t = (f64) r->time_running * 1e-9;
+  f64 t = (f64) ss->time_running * 1e-9;
 
   switch (row)
     {
@@ -95,12 +95,12 @@ format_page_faults (u8 *s, va_list *args)
       s = format (s, "%9.2f", t);
       break;
     case 1:
-      if (r->time_running)
-	s = format (s, "%9.2f", (f64) r->value[0] / t);
+      if (ss->time_running)
+	s = format (s, "%9.2f", (f64) ss->value[0] / t);
       break;
     case 2:
-      if (r->time_running)
-	s = format (s, "%9.2f", (f64) r->value[1] / t);
+      if (ss->time_running)
+	s = format (s, "%9.2f", (f64) ss->value[1] / t);
       break;
     }
   return s;
@@ -110,7 +110,7 @@ PERFMON_REGISTER_BUNDLE (page_faults) = {
   .name = "page-faults",
   .description = "per-thread page faults",
   .source = "linux",
-  .type = PERFMON_BUNDLE_TYPE_THREAD,
+  .type_flags = PERFMON_BUNDLE_TYPE_THREAD_FLAG,
   .events[0] = PAGE_FAULTS_MIN,
   .events[1] = PAGE_FAULTS_MAJ,
   .n_events = 2,
