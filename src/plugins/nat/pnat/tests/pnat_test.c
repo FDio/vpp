@@ -347,6 +347,7 @@ extern vlib_node_registration_t pnat_input_node;
 static void test_table(test_t *t, int no_tests) {
     // walk through table of tests
     int i;
+    vlib_main_init();
     vlib_main_t *vm = vlib_get_first_main();
 
     /* Generate packet data */
@@ -559,6 +560,7 @@ int main(int argc, char **argv) {
 
     clib_mem_init(0, 3ULL << 30);
 
+    vlib_main_init();
     vlib_main_t *vm = vlib_get_first_main();
 
     buffers_vector = buffer_init(buffers_vector, 256);

@@ -110,9 +110,14 @@ static clib_error_t *pnat_enable_interface(u32 sw_if_index,
 
         if (input) {
             /* TODO: Make shallow virtual reassembly configurable */
-            ip4_sv_reass_enable_disable_with_refcnt(sw_if_index, 1);
+            if (ip4_sv_reass_enable_disable_with_refcnt(sw_if_index, 1) != 0)
+                return clib_error_return(0, "PNAT SVR enable failed on %u",
+                                         sw_if_index);
+
         } else {
-            ip4_sv_reass_output_enable_disable_with_refcnt(sw_if_index, 1);
+            if (ip4_sv_reass_output_enable_disable_with_refcnt(sw_if_index, 1) != 0)
+                return clib_error_return(0, "PNAT SVR enable failed on %u",
+                                         sw_if_index);
         }
 
         interface->lookup_mask[attachment] = mask;
