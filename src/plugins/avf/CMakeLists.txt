@@ -27,6 +27,8 @@ add_vpp_plugin(avf
   input.c
   output.c
 
+  MULTIARCH_FORCE_ON trm
+
   API_FILES
   avf.api
 
