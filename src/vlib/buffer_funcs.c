@@ -6,123 +6,12 @@
 #include <vlib/vlib.h>
 #include <vppinfra/vector_funcs.h>
 
-typedef struct
-{
-  uword used_elts[VLIB_FRAME_SIZE / 64];
-  u32 uword_offset;
-} extract_data_t;
-
-static_always_inline u32 *
-extract_unused_elts_x64 (u32 *elts, u16 *indices, u16 index, int n_left,
-			 u64 *bmp, u32 *dst)
-{
-  u64 mask = 0;
-#if defined(CLIB_HAVE_VEC128)
-  mask = clib_compare_u16_x64 (index, indices);
-  if (n_left == 64)
-    {
-      if (mask == ~0ULL)
-	{
-	  clib_memcpy_u32 (dst, elts, 64);
-	  *bmp = ~0ULL;
-	  return dst + 64;
-	}
-    }
-  else
-    mask &= pow2_mask (n_left);
-
-  *bmp |= mask;
-
-#if defined(CLIB_HAVE_VEC512_COMPRESS)
-  u32x16u *ev = (u32x16u *) elts;
-  for (int i = 0; i < 4; i++)
-    {
-      int cnt = _popcnt32 ((u16) mask);
-      u32x16_compress_store (ev[i], mask, dst);
-      dst += cnt;
-      mask >>= 16;
-    }
-
-#elif defined(CLIB_HAVE_VEC256_COMPRESS)
-  u32x8u *ev = (u32x8u *) elts;
-  for (int i = 0; i < 8; i++)
-    {
-      int cnt = _popcnt32 ((u8) mask);
-      u32x8_compress_store (ev[i], mask, dst);
-      dst += cnt;
-      mask >>= 8;
-    }
-#elif defined(CLIB_HAVE_VEC256)
-  while (mask)
-    {
-      u16 bit = count_trailing_zeros (mask);
-      mask = clear_lowest_set_bit (mask);
-      dst++[0] = elts[bit];
-    }
-#else
-  while (mask)
-    {
-      u16 bit = count_trailing_zeros (mask);
-      mask ^= 1ULL << bit;
-      dst++[0] = elts[bit];
-    }
-#endif
-#else
-  for (int i = 0; i < n_left; i++)
-    {
-      if (indices[i] == index)
-	{
-	  dst++[0] = elts[i];
-	  mask |= 1ULL << i;
-	}
-    }
-  *bmp |= mask;
-#endif
-  return dst;
-}
-
 static_always_inline u32
-extract_unused_elts_by_index (extract_data_t *d, u32 *elts, u16 *indices,
-			      u16 index, int n_left, u32 *dst)
-{
-  u32 *dst0 = dst;
-  u64 *bmp = d->used_elts;
-  while (n_left >= 64)
-    {
-      dst = extract_unused_elts_x64 (elts, indices, index, 64, bmp, dst);
-
-      /* next */
-      indices += 64;
-      elts += 64;
-      bmp++;
-      n_left -= 64;
-    }
-
-  if (n_left)
-    dst = extract_unused_elts_x64 (elts, indices, index, n_left, bmp, dst);
-
-  return dst - dst0;
-}
-
-static_always_inline u32
-find_first_unused_elt (extract_data_t *d)
-{
-  u64 *ue = d->used_elts + d->uword_offset;
-
-  while (PREDICT_FALSE (ue[0] == ~0))
-    {
-      ue++;
-      d->uword_offset++;
-    }
-
-  return d->uword_offset * 64 + count_trailing_zeros (~ue[0]);
-}
-
-static_always_inline u32
-enqueue_one (vlib_main_t *vm, vlib_node_runtime_t *node, extract_data_t *d,
+enqueue_one (vlib_main_t *vm, vlib_node_runtime_t *node, u64 *used_elt_bmp,
 	     u16 next_index, u32 *buffers, u16 *nexts, u32 n_buffers,
 	     u32 n_left, u32 *tmp)
 {
+  u64 match_bmp[VLIB_FRAME_SIZE / 64];
   vlib_frame_t *f;
   u32 n_extracted, n_free;
   u32 *to;
@@ -138,8 +27,12 @@ enqueue_one (vlib_main_t *vm, vlib_node_runtime_t *node, extract_data_t *d,
   else
     to = tmp;
 
-  n_extracted = extract_unused_elts_by_index (d, buffers, nexts, next_index,
-					      n_buffers, to);
+  clib_mask_compare_u16 (next_index, nexts, match_bmp, n_buffers);
+
+  n_extracted = clib_compress_u32 (to, buffers, match_bmp, n_buffers);
+
+  for (int i = 0; i < ARRAY_LEN (match_bmp); i++)
+    used_elt_bmp[i] |= match_bmp[i];
 
   if (to != tmp)
     {
@@ -183,18 +76,23 @@ CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_next_fn)
 
   while (count >= VLIB_FRAME_SIZE)
     {
-      extract_data_t d = {};
+      u64 used_elt_bmp[VLIB_FRAME_SIZE / 64] = {};
       n_left = VLIB_FRAME_SIZE;
+      u32 off = 0;
 
       next_index = nexts[0];
-      n_left = enqueue_one (vm, node, &d, next_index, buffers, nexts,
+      n_left = enqueue_one (vm, node, used_elt_bmp, next_index, buffers, nexts,
 			    VLIB_FRAME_SIZE, n_left, tmp);
 
       while (n_left)
 	{
-	  next_index = nexts[find_first_unused_elt (&d)];
-	  n_left = enqueue_one (vm, node, &d, next_index, buffers, nexts,
-				VLIB_FRAME_SIZE, n_left, tmp);
+	  while (PREDICT_FALSE (used_elt_bmp[off] == ~0))
+	    off++;
+
+	  next_index =
+	    nexts[off * 64 + count_trailing_zeros (~used_elt_bmp[off])];
+	  n_left = enqueue_one (vm, node, used_elt_bmp, next_index, buffers,
+				nexts, VLIB_FRAME_SIZE, n_left, tmp);
 	}
 
       buffers += VLIB_FRAME_SIZE;
@@ -204,18 +102,23 @@ CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_next_fn)
 
   if (count)
     {
-      extract_data_t d = {};
+      u64 used_elt_bmp[VLIB_FRAME_SIZE / 64] = {};
       next_index = nexts[0];
       n_left = count;
+      u32 off = 0;
 
-      n_left = enqueue_one (vm, node, &d, next_index, buffers, nexts, count,
-			    n_left, tmp);
+      n_left = enqueue_one (vm, node, used_elt_bmp, next_index, buffers, nexts,
+			    count, n_left, tmp);
 
       while (n_left)
 	{
-	  next_index = nexts[find_first_unused_elt (&d)];
-	  n_left = enqueue_one (vm, node, &d, next_index, buffers, nexts,
-				count, n_left, tmp);
+	  while (PREDICT_FALSE (used_elt_bmp[off] == ~0))
+	    off++;
+
+	  next_index =
+	    nexts[off * 64 + count_trailing_zeros (~used_elt_bmp[off])];
+	  n_left = enqueue_one (vm, node, used_elt_bmp, next_index, buffers,
+				nexts, count, n_left, tmp);
 	}
     }
 }
