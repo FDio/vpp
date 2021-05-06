@@ -90,8 +90,7 @@ perfmon_dispatch_wrapper_mmap (vlib_main_t *vm, vlib_node_runtime_t *node,
   perfmon_main_t *pm = &perfmon_main;
   perfmon_thread_runtime_t *rt =
     vec_elt_at_index (pm->thread_runtimes, vm->thread_index);
-  perfmon_node_stats_t *s =
-    vec_elt_at_index (rt->node_stats, node->node_index);
+  perfmon_stats_t *s = vec_elt_at_index (rt->node_stats, node->node_index);
 
   u8 n_events = rt->n_events;
 
@@ -154,8 +153,7 @@ perfmon_dispatch_wrapper_metrics (vlib_main_t *vm, vlib_node_runtime_t *node,
   perfmon_main_t *pm = &perfmon_main;
   perfmon_thread_runtime_t *rt =
     vec_elt_at_index (pm->thread_runtimes, vm->thread_index);
-  perfmon_node_stats_t *s =
-    vec_elt_at_index (rt->node_stats, node->node_index);
+  perfmon_stats_t *s = vec_elt_at_index (rt->node_stats, node->node_index);
 
   u8 n_events = rt->n_events;
 
@@ -190,6 +188,29 @@ perfmon_dispatch_wrapper_metrics (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   clib_memcpy_fast (&s->t[0].value[0], &before, sizeof (before));
   perfmon_metric_read_pmcs (&s->t[1].value[0], pmc_index, n_events);
+
+  if (rv == 0)
+    return rv;
+
+  s->n_calls += 1;
+  s->n_packets += rv;
+
+  return rv;
+}
+
+uword
+perfmon_dispatch_wrapper_stats (vlib_main_t *vm, vlib_node_runtime_t *node,
+				vlib_frame_t *frame)
+{
+  perfmon_main_t *pm = &perfmon_main;
+  perfmon_thread_runtime_t *rt =
+    vec_elt_at_index (pm->thread_runtimes, vm->thread_index);
+  perfmon_stats_t *s = vec_elt_at_index (rt->node_stats, node->node_index);
+  uword rv;
+
+  clib_prefetch_load (s);
+
+  rv = node->function (vm, node, frame);
 
   if (rv == 0)
     return rv;
