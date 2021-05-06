@@ -29,8 +29,14 @@
      "Reference cycles when the core is not in halt state.")                  \
   _ (0x00, 0x04, 0, 0, 0, 0x00, TOPDOWN, SLOTS,                               \
      "TMA slots available for an unhalted logical processor.")                \
-  _ (0x00, 0x80, 0, 0, 0, 0x00, TOPDOWN, L1_METRICS,                          \
-     "TMA slots metrics for an unhalted logical processor.")                  \
+  _ (0x00, 0x80, 0, 0, 0, 0x00, TOPDOWN, L1_RETIRING_METRIC,                  \
+     "TMA retiring slots for an unhalted logical processor.")                 \
+  _ (0x00, 0x81, 0, 0, 0, 0x00, TOPDOWN, L1_BAD_SPEC_METRIC,                  \
+     "TMA bad spec slots or an unhalted logical processor.")                  \
+  _ (0x00, 0x82, 0, 0, 0, 0x00, TOPDOWN, L1_FE_BOUND_METRIC,                  \
+     "TMA fe bound slots for an unhalted logical processor.")                 \
+  _ (0x00, 0x83, 0, 0, 0, 0x00, TOPDOWN, L1_BE_BOUND_METRIC,                  \
+     "TMA be bound slots for an unhalted logical processor.")                 \
   _ (0x03, 0x02, 0, 0, 0, 0x00, LD_BLOCKS, STORE_FORWARD,                     \
      "Loads blocked due to overlapping with a preceding store that cannot be" \
      " forwarded.")                                                           \

@@ -17,31 +17,56 @@
 #include <perfmon/perfmon.h>
 #include <perfmon/intel/core.h>
 
+static f64
+calculate_inst_and_clock (perfmon_stats_t *ts, int idx)
+{
+  f64 t = (f64) ts->time_running * 1e-9;
+  f64 sv = 0;
+
+  switch (idx)
+    {
+    case 0:
+      sv = (u64) ts->n_calls / t;
+      break;
+    case 1:
+      sv = (u64) ts->n_packets / t;
+      break;
+    case 2:
+      if (ts->n_calls) /* catch div by 0 */
+	sv = (u64) ts->n_packets / ts->n_calls;
+      break;
+    case 3:
+      if (ts->n_packets) /* catch div by 0 */
+	sv = (u64) ts->value[1] / ts->n_packets;
+      break;
+    case 4:
+      if (ts->n_packets) /* catch div by 0 */
+	sv = (u64) ts->value[0] / ts->n_packets;
+      break;
+    case 5:
+      sv = (u64) ts->value[0] / ts->value[1];
+      break;
+    }
+
+  return sv;
+}
+
 static u8 *
 format_inst_and_clock (u8 *s, va_list *args)
 {
-  perfmon_node_stats_t *ns = va_arg (*args, perfmon_node_stats_t *);
-  int row = va_arg (*args, int);
+  perfmon_stats_t *ss = va_arg (*args, perfmon_stats_t *);
+  int idx = va_arg (*args, int);
 
-  switch (row)
+  f64 sv = calculate_inst_and_clock (ss, idx);
+
+  switch (idx)
     {
     case 0:
-      s = format (s, "%lu", ns->n_calls);
-      break;
     case 1:
-      s = format (s, "%lu", ns->n_packets);
+      s = format (s, "%lu", (u64) sv);
       break;
-    case 2:
-      s = format (s, "%.2f", (f64) ns->n_packets / ns->n_calls);
-      break;
-    case 3:
-      s = format (s, "%.2f", (f64) ns->value[1] / ns->n_packets);
-      break;
-    case 4:
-      s = format (s, "%.2f", (f64) ns->value[0] / ns->n_packets);
-      break;
-    case 5:
-      s = format (s, "%.2f", (f64) ns->value[0] / ns->value[1]);
+    default:
+      s = format (s, "%.2f", sv);
       break;
     }
   return s;
@@ -51,13 +76,14 @@ PERFMON_REGISTER_BUNDLE (inst_and_clock) = {
   .name = "inst-and-clock",
   .description = "instructions/packet, cycles/packet and IPC",
   .source = "intel-core",
-  .type = PERFMON_BUNDLE_TYPE_NODE,
+  .type_flags = PERFMON_BUNDLE_TYPE_NODE_FLAG |
+		PERFMON_BUNDLE_TYPE_THREAD_FLAG,
   .events[0] = INTEL_CORE_E_INST_RETIRED_ANY_P,
   .events[1] = INTEL_CORE_E_CPU_CLK_UNHALTED_THREAD_P,
   .events[2] = INTEL_CORE_E_CPU_CLK_UNHALTED_REF_TSC,
   .n_events = 3,
   .format_fn = format_inst_and_clock,
-  .column_headers = PERFMON_STRINGS ("Calls", "Packets", "Packets/Call",
-				     "Clocks/Packet", "Instructions/Packet",
-				     "IPC"),
+  .column_headers = PERFMON_STRINGS ("Calls/Sec", "Packets/Sec",
+				     "Packets/Call", "Clocks/Packet",
+				     "Instructions/Packet", "IPC"),
 };
