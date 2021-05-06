@@ -73,6 +73,30 @@
     },
     {
       "key": {
+        "uuid": "4388e359_4e98bfb2",
+        "filename": "src/vlibmemory/vlib_api_api.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2021-05-06T00:17:04Z",
+      "side": 1,
+      "message": "\u003e Hi Paul, \n\u003e \n\u003e Adding a new message at the end of memclnt.api should not affect the order of the first messages to be registered but it will shift everything else. \n\nAgreed.  We should probably document the fact in the .api file.\n\n\u003e \n\u003e As for statically assigned messages, I suspect we can\u0027t do anything beyond maintaining a strict order for the ones registered by the api implementation, i.e., the ones in vl_memory_api_h.h, which are registered first.\n\nThis is directed more toward Ole, but I believe this is a relatively simple addition.  vppapigen_c can determine the order in which it renders the messages, but isn\u0027t very useful beyond the first file.  Might not be worth the effort, until you consider the api process.",
+      "parentUuid": "fe7cf5dc_f0e0a17d",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 1,
+        "endChar": 2
+      },
+      "revId": "be015f2d4879c5c84556f7b03001f8f7109808df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "45293943_3f7a7947",
         "filename": "src/vlibmemory/vlib_api_api.c",
         "patchSetId": 8
