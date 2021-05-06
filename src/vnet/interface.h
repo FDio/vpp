@@ -752,6 +752,7 @@ typedef struct
 typedef struct
 {
   vnet_hw_if_rxq_poll_vector_t *rxq_poll_vector;
+  vnet_hw_if_rxq_poll_vector_t *rxq_poll_vector_full;
   void *rxq_interrupts;
 } vnet_hw_if_rx_node_runtime_t;
 
