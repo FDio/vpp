@@ -83,6 +83,7 @@ class serverSocketThread(threading.Thread):
     def close(self):
         self.sock.close()
         self.keep_running = False
+        threading.Thread.join(self)
         return self.rx_pkts
 
 
@@ -131,7 +132,6 @@ class TestPuntSocket(VppTestCase):
         rx_pkts = []
         for thread in self.sock_servers:
             rx_pkts += thread.close()
-            thread.join()
         return rx_pkts
 
     def verify_port(self, pr, vpr):
