@@ -653,8 +653,8 @@ _hash_get_pair (void *v, uword key)
   return lookup (v, key, GET, 0, 0);
 }
 
-hash_pair_t *
-hash_next (void *v, hash_next_t * hn)
+__clib_export hash_pair_t *
+hash_next (void *v, hash_next_t *hn)
 {
   hash_t *h = hash_header (v);
   hash_pair_t *p;
@@ -1015,8 +1015,8 @@ hash_bytes (void *v)
   return bytes;
 }
 
-u8 *
-format_hash (u8 * s, va_list * va)
+__clib_export u8 *
+format_hash (u8 *s, va_list *va)
 {
   void *v = va_arg (*va, void *);
   int verbose = va_arg (*va, int);
@@ -1110,7 +1110,7 @@ unformat_hash_string (unformat_input_t * input, va_list * va)
   return unformat_hash_string_internal (input, va, /* is_vec */ 0);
 }
 
-clib_error_t *
+__clib_export clib_error_t *
 hash_validate (void *v)
 {
   hash_t *h = hash_header (v);

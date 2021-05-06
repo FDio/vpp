@@ -184,8 +184,6 @@ test_word_key (hash_test_t * ht)
 	  /* *INDENT-ON* */
       }
 
-      clib_mem_validate ();
-
       if ((error = hash_validate (h)))
 	goto done;
 
@@ -221,8 +219,6 @@ test_word_key (hash_test_t * ht)
       if (ht->n_iterations_per_validate == 0
 	  || (i + 1) % ht->n_iterations_per_validate)
 	continue;
-
-      clib_mem_validate ();
 
       if ((error = hash_validate (h)))
 	goto done;
@@ -317,8 +313,6 @@ test_string_key (hash_test_t * ht)
 	  || (i + 1) % ht->n_iterations_per_validate)
 	continue;
 
-      clib_mem_validate ();
-
       if ((error = hash_validate (h)))
 	goto done;
 
@@ -354,8 +348,6 @@ test_string_key (hash_test_t * ht)
       if (ht->n_iterations_per_validate == 0
 	  || (i + 1) % ht->n_iterations_per_validate)
 	continue;
-
-      clib_mem_validate ();
 
       if ((error = hash_validate (h)))
 	goto done;

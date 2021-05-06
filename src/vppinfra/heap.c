@@ -597,7 +597,7 @@ combine_free_blocks (void *v, heap_elt_t * e0, heap_elt_t * e1)
   set_free_elt (v, elt_at (h, g.index), g.bin_index);
 }
 
-uword
+__clib_export uword
 heap_len (void *v, word handle)
 {
   heap_header_t *h = heap_header (v);
@@ -694,8 +694,8 @@ debug_elt (u8 * s, void *v, word i, word n)
   return s;
 }
 
-u8 *
-format_heap (u8 * s, va_list * va)
+__clib_export u8 *
+format_heap (u8 *s, va_list *va)
 {
   void *v = va_arg (*va, void *);
   uword verbose = va_arg (*va, uword);
@@ -722,7 +722,7 @@ format_heap (u8 * s, va_list * va)
   return s;
 }
 
-void
+__clib_export void
 heap_validate (void *v)
 {
   heap_header_t *h = heap_header (v);
