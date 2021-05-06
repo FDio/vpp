@@ -1839,7 +1839,7 @@ session_test_mq_speed (vlib_main_t * vm, unformat_input_t * input)
       SESSION_TEST (prod_fd != -1, "mq producer eventd valid %u", prod_fd);
     }
 
-  sm = app_worker_get_or_alloc_connect_segment_manager (app_wrk);
+  sm = app_worker_get_connect_segment_manager (app_wrk);
   segment_manager_alloc_session_fifos (sm, 0, &rx_fifo, &tx_fifo);
   s.rx_fifo = rx_fifo;
   s.tx_fifo = tx_fifo;
