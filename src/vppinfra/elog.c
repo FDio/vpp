@@ -1143,8 +1143,8 @@ serialize_elog_main (serialize_main_t * m, va_list * va)
   vec_foreach (e, em->events) serialize (m, serialize_elog_event, em, e);
 }
 
-void
-unserialize_elog_main (serialize_main_t * m, va_list * va)
+__clib_export void
+unserialize_elog_main (serialize_main_t *m, va_list *va)
 {
   elog_main_t *em = va_arg (*va, elog_main_t *);
   uword i;
