@@ -22,6 +22,30 @@
       "revId": "ca86af1f4f5a310ad056900bb05f7045d4424aad",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c2d0c4ef_a0426c7d",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 232,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-05-06T08:18:24Z",
+      "side": 1,
+      "message": "The binary API commonly uses the vl_ prefix, which is where this came from.\nCould be renamed to vlib_counter_t or something else.\nShould if so be done in a separate patch.",
+      "parentUuid": "ea8583b9_6ba3a677",
+      "range": {
+        "startLine": 232,
+        "startChar": 2,
+        "endLine": 232,
+        "endChar": 14
+      },
+      "revId": "ca86af1f4f5a310ad056900bb05f7045d4424aad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
