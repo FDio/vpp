@@ -32,7 +32,7 @@ app_worker_alloc (application_t * app)
   app_wrk->app_index = app->app_index;
   app_wrk->wrk_map_index = ~0;
   app_wrk->connects_seg_manager = APP_INVALID_SEGMENT_MANAGER_INDEX;
-  app_wrk->first_segment_manager = APP_INVALID_SEGMENT_MANAGER_INDEX;
+//  app_wrk->first_segment_manager = APP_INVALID_SEGMENT_MANAGER_INDEX;
   clib_spinlock_init (&app_wrk->detached_seg_managers_lock);
   APP_DBG ("New app %v worker %u", app->name, app_wrk->wrk_index);
   return app_wrk;
@@ -145,14 +145,14 @@ app_worker_free (app_worker_t * app_wrk)
 
   /* If first segment manager is used by a listener that recently
    * stopped listening, mark it as detached */
-  if (app_wrk->first_segment_manager != app_wrk->connects_seg_manager
-      && (sm = segment_manager_get_if_valid (app_wrk->first_segment_manager))
-      && !segment_manager_app_detached (sm))
-    {
-      sm->first_is_protected = 0;
-      sm->app_wrk_index = SEGMENT_MANAGER_INVALID_APP_INDEX;
-      segment_manager_init_free (sm);
-    }
+//  if (app_wrk->first_segment_manager != app_wrk->connects_seg_manager
+//      && (sm = segment_manager_get_if_valid (app_wrk->first_segment_manager))
+//      && !segment_manager_app_detached (sm))
+//    {
+//      sm->first_is_protected = 0;
+//      sm->app_wrk_index = SEGMENT_MANAGER_INVALID_APP_INDEX;
+//      segment_manager_init_free (sm);
+//    }
 
   if (CLIB_DEBUG)
     clib_memset (app_wrk, 0xfe, sizeof (*app_wrk));
@@ -175,16 +175,16 @@ app_worker_alloc_segment_manager (app_worker_t * app_wrk)
   segment_manager_t *sm = 0;
 
   /* If the first segment manager is not in use, don't allocate a new one */
-  if (app_wrk->first_segment_manager != APP_INVALID_SEGMENT_MANAGER_INDEX
-      && app_wrk->first_segment_manager_in_use == 0)
-    {
-      sm = segment_manager_get (app_wrk->first_segment_manager);
-      app_wrk->first_segment_manager_in_use = 1;
-    }
-  else
-    {
+//  if (app_wrk->first_segment_manager != APP_INVALID_SEGMENT_MANAGER_INDEX
+//      && app_wrk->first_segment_manager_in_use == 0)
+//    {
+//      sm = segment_manager_get (app_wrk->first_segment_manager);
+//      app_wrk->first_segment_manager_in_use = 1;
+//    }
+//  else
+//    {
       sm = segment_manager_alloc ();
-    }
+//    }
   sm->app_wrk_index = app_wrk->wrk_index;
   segment_manager_init (sm);
   return sm;
@@ -316,7 +316,8 @@ app_worker_stop_listen_session (app_worker_t * app_wrk, session_t * ls)
       segment_manager_del_sessions_filter (sm, states);
       vec_free (states);
     }
-  if (sm && app_wrk->first_segment_manager != *sm_indexp)
+//  if (sm && app_wrk->first_segment_manager != *sm_indexp)
+  if (sm)
     {
       segment_manager_app_detach (sm);
       if (!segment_manager_has_fifos (sm))

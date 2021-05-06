@@ -56,7 +56,7 @@ typedef struct app_worker_
    * event fifo. Depending on what the app does, it may be either used for
    * a listener or for connects.
    */
-  u32 first_segment_manager;
+//  u32 first_segment_manager;
   u8 first_segment_manager_in_use;
 
   /** API index for the worker. Needed for multi-process apps */

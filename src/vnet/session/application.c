@@ -1008,7 +1008,8 @@ application_alloc_worker_and_init (application_t * app, app_worker_t ** wrk)
   /*
    * Setup app worker
    */
-  app_wrk->first_segment_manager = segment_manager_index (sm);
+  app_wrk->connects_seg_manager = segment_manager_index (sm);
+//  app_wrk->first_segment_manager = segment_manager_index (sm);
   app_wrk->listeners_table = hash_create (0, sizeof (u64));
   app_wrk->event_queue = segment_manager_event_queue (sm);
   app_wrk->app_is_builtin = application_is_builtin (app);
@@ -1041,7 +1042,8 @@ vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a)
       app_wrk->api_client_index = a->api_client_index;
       application_api_table_add (app->app_index, a->api_client_index);
 
-      sm = segment_manager_get (app_wrk->first_segment_manager);
+//      sm = segment_manager_get (app_wrk->first_segment_manager);
+      sm = segment_manager_get (app_wrk->connects_seg_manager);
       fs = segment_manager_get_segment_w_lock (sm, 0);
       a->segment = &fs->ssvm;
       a->segment_handle = segment_manager_segment_handle (sm, fs);
@@ -1157,7 +1159,8 @@ vnet_application_attach (vnet_app_attach_args_t * a)
 
   a->app_evt_q = app_wrk->event_queue;
   app_wrk->api_client_index = a->api_client_index;
-  sm = segment_manager_get (app_wrk->first_segment_manager);
+//  sm = segment_manager_get (app_wrk->first_segment_manager);
+  sm = segment_manager_get (app_wrk->connects_seg_manager);
   fs = segment_manager_get_segment_w_lock (sm, 0);
 
   if (application_is_proxy (app))
@@ -1165,7 +1168,7 @@ vnet_application_attach (vnet_app_attach_args_t * a)
       application_setup_proxy (app);
       /* The segment manager pool is reallocated because a new listener
        * is added. Re-grab segment manager to avoid dangling reference */
-      sm = segment_manager_get (app_wrk->first_segment_manager);
+      sm = segment_manager_get (app_wrk->connects_seg_manager);
     }
 
   ASSERT (vec_len (fs->ssvm.name) <= 128);
