@@ -17,35 +17,45 @@
 #include <perfmon/perfmon.h>
 #include <perfmon/intel/core.h>
 
+static f64
+calculate_power_licensing (perfmon_stats_t *ss, int idx)
+{
+  f64 sv = 0;
+
+  switch (idx)
+    {
+    case 0:
+      sv = (ss->value[1] / (f64) ss->value[0]) * 100;
+      break;
+    case 1:
+      sv = (ss->value[2] / (f64) ss->value[0]) * 100;
+      break;
+    case 2:
+      sv = (ss->value[3] / (f64) ss->value[0]) * 100;
+      break;
+    case 3:
+      sv = (ss->value[4] / (f64) ss->value[0]) * 100;
+      break;
+    }
+
+  return sv;
+}
+
 static u8 *
 format_power_licensing (u8 *s, va_list *args)
 {
-  perfmon_node_stats_t *ns = va_arg (*args, perfmon_node_stats_t *);
-  int row = va_arg (*args, int);
+  perfmon_stats_t *ss = va_arg (*args, perfmon_stats_t *);
+  int idx = va_arg (*args, int);
+  f64 sv = calculate_power_licensing (ss, idx);
 
-  switch (row)
-    {
-    case 0:
-      s = format (s, "%.2f", (ns->value[1] / (f64) ns->value[0]) * 100);
-      break;
-    case 1:
-      s = format (s, "%.2f", (ns->value[2] / (f64) ns->value[0]) * 100);
-      break;
-    case 2:
-      s = format (s, "%.2f", (ns->value[3] / (f64) ns->value[0]) * 100);
-      break;
-    case 3:
-      s = format (s, "%.2f", (ns->value[4] / (f64) ns->value[0]) * 100);
-      break;
-    }
-  return s;
+  return format (s, "%.2f", sv);
 }
 
 PERFMON_REGISTER_BUNDLE (power_licensing) = {
   .name = "power-licensing",
   .description = "Thread power licensing",
   .source = "intel-core",
-  .type = PERFMON_BUNDLE_TYPE_NODE,
+  .type_flags = PERFMON_BUNDLE_TYPE_THREAD_FLAG,
   .events[0] = INTEL_CORE_E_CPU_CLK_UNHALTED_THREAD_P,
   .events[1] = INTEL_CORE_E_CORE_POWER_LVL0_TURBO_LICENSE,
   .events[2] = INTEL_CORE_E_CORE_POWER_LVL1_TURBO_LICENSE,
