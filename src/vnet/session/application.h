@@ -45,19 +45,16 @@ typedef struct app_worker_
   /** Application listens for events on this svm queue */
   svm_msg_q_t *event_queue;
 
-  /** Segment manager used for outgoing connects issued by the app */
+  /**
+   * Segment manager used for outgoing connects issued by the app. By
+   * convention this is the first segment manager allocated by the worker
+   * so it's also the one that holds the first segment with the app's
+   * message queue in it.
+   */
   u32 connects_seg_manager;
 
   /** Lookup tables for listeners. Value is segment manager index */
   uword *listeners_table;
-
-  /**
-   * First segment manager has in the the first segment the application's
-   * event fifo. Depending on what the app does, it may be either used for
-   * a listener or for connects.
-   */
-  u32 first_segment_manager;
-  u8 first_segment_manager_in_use;
 
   /** API index for the worker. Needed for multi-process apps */
   u32 api_client_index;
@@ -339,9 +336,6 @@ int app_worker_session_fifo_tuning (app_worker_t * app_wrk, session_t * s,
 segment_manager_t *app_worker_get_listen_segment_manager (app_worker_t *,
 							  session_t *);
 segment_manager_t *app_worker_get_connect_segment_manager (app_worker_t *);
-segment_manager_t
-  * app_worker_get_or_alloc_connect_segment_manager (app_worker_t *);
-int app_worker_alloc_connects_segment_manager (app_worker_t * app);
 int app_worker_add_segment_notify (app_worker_t * app_wrk,
 				   u64 segment_handle);
 int app_worker_del_segment_notify (app_worker_t * app_wrk,
