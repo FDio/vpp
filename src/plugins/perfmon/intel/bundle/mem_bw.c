@@ -18,34 +18,44 @@
 #include <perfmon/perfmon.h>
 #include <perfmon/intel/uncore.h>
 
-static u8 *
-format_intel_uncore_imc_bw (u8 *s, va_list *args)
+static f64
+calculate_intel_uncore_imc_bc (perfmon_stats_t *ss, int col)
 {
-  perfmon_reading_t *r = va_arg (*args, perfmon_reading_t *);
-  int col = va_arg (*args, int);
-  f64 tr = r->time_running * 1e-9;
+  f64 tr = (f64) ss->time_running * 1e-9;
+  f64 sv = 0;
 
   switch (col)
     {
     case 0:
-      s = format (s, "%9.2f", tr);
+      sv = (u64) tr;
       break;
     case 1:
-      if (r->time_running)
-	s = format (s, "%9.2f", (f64) r->value[0] * 64 * 1e-6 / tr);
+      if (ss->time_running)
+	sv = (u64) ss->value[0] * 64 * 1e-6 / tr;
       break;
     case 2:
-      if (r->time_running)
-	s = format (s, "%9.2f", (f64) r->value[1] * 64 * 1e-6 / tr);
+      if (ss->time_running)
+	sv = (f64) ss->value[1] * 64 * 1e-6 / tr;
       break;
     case 3:
-      if (r->time_running)
-	s = format (s, "%9.2f",
-		    (f64) (r->value[0] + r->value[1]) * 64 * 1e-6 / tr);
+      if (ss->time_running)
+	sv = (u64) (ss->value[0] + ss->value[1]) * 64 * 1e-6 / tr;
       break;
     default:
       break;
     }
+  return sv;
+}
+
+static u8 *
+format_intel_uncore_imc_bw (u8 *s, va_list *args)
+{
+  perfmon_stats_t *ss = va_arg (*args, perfmon_stats_t *);
+  int col = va_arg (*args, int);
+  f64 sv = calculate_intel_uncore_imc_bc (ss, col);
+
+  if (sv)
+    s = format (s, "%9.2f", sv);
 
   return s;
 }
@@ -54,7 +64,7 @@ PERFMON_REGISTER_BUNDLE (intel_uncore_imc_bw) = {
   .name = "memory-bandwidth",
   .description = "memory reads and writes per memory controller channel",
   .source = "intel-uncore",
-  .type = PERFMON_BUNDLE_TYPE_SYSTEM,
+  .type_flags = PERFMON_BUNDLE_TYPE_SYSTEM_FLAG,
   .events[0] = INTEL_UNCORE_E_IMC_UNC_M_CAS_COUNT_RD,
   .events[1] = INTEL_UNCORE_E_IMC_UNC_M_CAS_COUNT_WR,
   .n_events = 2,
