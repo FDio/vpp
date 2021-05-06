@@ -62,7 +62,7 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
   u32 node_index = hi->input_node_index;
   vnet_hw_if_rx_queue_t *rxq;
-  vnet_hw_if_rxq_poll_vector_t *pv, **d = 0;
+  vnet_hw_if_rxq_poll_vector_t *pv, **d = 0, **a = 0;
   vnet_hw_if_output_node_runtime_t *new_out_runtimes = 0;
   vlib_node_state_t *per_thread_node_state = 0;
   u32 n_threads = vlib_get_n_threads ();
@@ -76,6 +76,7 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
 	     format_vlib_node_name, vm, node_index, hi->name);
 
   vec_validate (d, n_threads - 1);
+  vec_validate (a, n_threads - 1);
   vec_validate_init_empty (per_thread_node_state, n_threads - 1,
 			   VLIB_NODE_STATE_DISABLED);
   vec_validate_init_empty (per_thread_node_adaptive, n_threads - 1, 0);
@@ -126,6 +127,13 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
 	  rxq->mode == VNET_HW_IF_RX_MODE_ADAPTIVE)
 	last_int = clib_max (last_int, rxq - im->hw_if_rx_queues);
 
+      if (per_thread_node_adaptive[ti])
+	{
+	  vec_add2_aligned (a[ti], pv, 1, CLIB_CACHE_LINE_BYTES);
+	  pv->dev_instance = rxq->dev_instance;
+	  pv->queue_id = rxq->queue_id;
+	}
+
       if (per_thread_node_state[ti] != VLIB_NODE_STATE_POLLING)
 	continue;
 
@@ -157,13 +165,22 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
 	{
 	  vnet_hw_if_rx_node_runtime_t *rt;
 	  rt = vlib_node_get_runtime_data (ovm, node_index);
-	  if (vec_len (rt->rxq_poll_vector) != vec_len (d[i]))
+	  if (vec_len (rt->rxq_vector_int) != vec_len (d[i]))
 	    something_changed_on_rx = 1;
-	  else if (memcmp (d[i], rt->rxq_poll_vector,
+	  else if (memcmp (d[i], rt->rxq_vector_int,
 			   vec_len (d[i]) * sizeof (**d)))
 	    something_changed_on_rx = 1;
 	  if (clib_interrupt_get_n_int (rt->rxq_interrupts) != last_int + 1)
 	    something_changed_on_rx = 1;
+
+	  if (something_changed_on_rx == 0 && per_thread_node_adaptive[i])
+	    {
+	      if (vec_len (rt->rxq_vector_poll) != vec_len (a[i]))
+		something_changed_on_rx = 1;
+	      else if (memcmp (a[i], rt->rxq_vector_poll,
+			       vec_len (a[i]) * sizeof (*a)))
+		something_changed_on_rx = 1;
+	    }
 	}
     }
 
@@ -223,9 +240,16 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
 	      vlib_main_t *vm = vlib_get_main_by_index (i);
 	      vnet_hw_if_rx_node_runtime_t *rt;
 	      rt = vlib_node_get_runtime_data (vm, node_index);
-	      pv = rt->rxq_poll_vector;
-	      rt->rxq_poll_vector = d[i];
+	      pv = rt->rxq_vector_int;
+	      rt->rxq_vector_int = d[i];
 	      d[i] = pv;
+
+	      if (per_thread_node_adaptive[i])
+		{
+		  pv = rt->rxq_vector_poll;
+		  rt->rxq_vector_poll = a[i];
+		  a[i] = pv;
+		}
 
 	      if (rt->rxq_interrupts)
 		{
@@ -276,9 +300,13 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
     }
 
   for (int i = 0; i < n_threads; i++)
-    vec_free (d[i]);
+    {
+      vec_free (d[i]);
+      vec_free (a[i]);
+    }
 
   vec_free (d);
+  vec_free (a);
   vec_free (per_thread_node_state);
   vec_free (per_thread_node_adaptive);
   vec_free (new_out_runtimes);

@@ -69,11 +69,14 @@ static_always_inline vnet_hw_if_rxq_poll_vector_t *
 vnet_hw_if_get_rxq_poll_vector (vlib_main_t *vm, vlib_node_runtime_t *node)
 {
   vnet_hw_if_rx_node_runtime_t *rt = (void *) node->runtime_data;
+  vnet_hw_if_rxq_poll_vector_t *pv = rt->rxq_vector_int;
 
   if (PREDICT_FALSE (node->state == VLIB_NODE_STATE_INTERRUPT))
     vnet_hw_if_generate_rxq_int_poll_vector (vm, node);
+  else if (node->flags & VLIB_NODE_FLAG_ADAPTIVE_MODE)
+    pv = rt->rxq_vector_poll;
 
-  return rt->rxq_poll_vector;
+  return pv;
 }
 
 static_always_inline u8
