@@ -359,16 +359,6 @@ stat_validate_counter_vector (stat_segment_directory_entry_t *ep, u32 max)
   stat_validate_counter_vector2 (ep, tm->n_vlib_mains, max);
 }
 
-always_inline void
-stat_set_simple_counter (stat_segment_directory_entry_t * ep,
-			 u32 thread_index, u32 index, u64 value)
-{
-  ASSERT (ep->data);
-  counter_t **counters = ep->data;
-  counter_t *cb = counters[thread_index];
-  cb[index] = value;
-}
-
 void
 vlib_stats_pop_heap2 (u64 * error_vector, u32 thread_index, void *oldheap,
 		      int lock)
@@ -751,11 +741,8 @@ update_node_counters (stat_segment_main_t * sm)
 static void
 do_stat_segment_updates (vlib_main_t *vm, stat_segment_main_t *sm)
 {
-  f64 vector_rate;
   u64 input_packets;
   f64 dt, now;
-  vlib_main_t *this_vlib_main;
-  int i;
   static int num_worker_threads_set;
 
   /*
@@ -765,44 +752,13 @@ do_stat_segment_updates (vlib_main_t *vm, stat_segment_main_t *sm)
    */
   if (PREDICT_FALSE (num_worker_threads_set == 0))
     {
-      void *oldheap = clib_mem_set_heap (sm->heap);
-      vlib_stat_segment_lock ();
-
-      stat_validate_counter_vector (&sm->directory_vector
-				    [STAT_COUNTER_VECTOR_RATE_PER_WORKER], 0);
+      vlib_thread_main_t *tm = vlib_get_thread_main ();
+      ASSERT (tm->n_vlib_mains > 0);
+      stat_provider_register_vector_rate (tm->n_vlib_mains - 1);
+      sm->directory_vector[STAT_COUNTER_NUM_WORKER_THREADS].value =
+	tm->n_vlib_mains - 1;
       num_worker_threads_set = 1;
-      vlib_stat_segment_unlock ();
-      clib_mem_set_heap (oldheap);
     }
-
-  /*
-   * Compute per-worker vector rates, and the average vector rate
-   * across all workers
-   */
-  vector_rate = 0.0;
-
-  for (i = 0; i < vlib_get_n_threads (); i++)
-    {
-
-      f64 this_vector_rate;
-
-      this_vlib_main = vlib_get_main_by_index (i);
-
-      this_vector_rate = vlib_internal_node_vector_rate (this_vlib_main);
-      vlib_clear_internal_node_vector_rate (this_vlib_main);
-
-      vector_rate += this_vector_rate;
-
-      /* Set the per-worker rate */
-      stat_set_simple_counter (&sm->directory_vector
-			       [STAT_COUNTER_VECTOR_RATE_PER_WORKER], i, 0,
-			       this_vector_rate);
-    }
-
-  /* And set the system average rate */
-  vector_rate /= (f64) (i > 1 ? i - 1 : 1);
-
-  sm->directory_vector[STAT_COUNTER_VECTOR_RATE].value = vector_rate;
 
   /*
    * Compute the aggregate input rate
