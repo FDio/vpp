@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6ebb7b70_7fab9030",
+        "filename": "src/tools/vppapigen/VPPAPI.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 297,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2021-05-07T23:10:52Z",
+      "side": 1,
+      "message": "Can you document that the 2nd string literal in the path entry corresponds to a counter ID?",
+      "range": {
+        "startLine": 297,
+        "startChar": 0,
+        "endLine": 297,
+        "endChar": 31
+      },
+      "revId": "7a6864d14e7ed1a1d5a70917851d4df8195f639d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
