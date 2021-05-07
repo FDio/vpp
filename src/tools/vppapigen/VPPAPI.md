@@ -258,7 +258,7 @@ receive sw_interface_event messages whenever interface states changes.
                     | service_statements service_statement
     service_statement : RPC ID RETURNS NULL ';'
                          | RPC ID RETURNS ID ';'
-                         | RPC ID RETURNS STREAM ID ';'
+                         | RPC ID RETURNS ID STREAM ID ';'
                          | RPC ID RETURNS ID EVENTS event_list ';'
     event_list : events
                | event_list events
@@ -266,6 +266,47 @@ receive sw_interface_event messages whenever interface states changes.
            | ID ','
 ```
 
+
+### Counters
+
+The counters statement describes the shared memory stats counters exported by a module.
+
+```
+counters : COUNTERS ID '{' counter_list '}' ';'
+
+counter_list : counter
+             | counter_list counter
+
+
+counter : ID '{' counter_element_list '}' ';'
+
+counter_element_list : counter_element
+                     | counter_element_list counter_element
+
+FIXME: the below may not be self-describing, probably worth adding another layer
+
+counter_element : SEVERITY ID
+                | TYPE ID
+                | UNITS STRING_LITERAL
+                | DESCRIPTION STRING_LITERAL
+
+```
+
+### Paths
+
+FIXME: add a proper description
+
+```
+
+paths : PATHS '{' path_list '}' ';'
+
+path_list : path_entry
+          | path_list path_entry
+
+
+path_entry : STRING_LITERAL STRING_LITERAL ';'
+
+```
 
 ## Types
 ### Scalar Value Types
