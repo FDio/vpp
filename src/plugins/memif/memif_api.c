@@ -42,19 +42,14 @@
  * @param mp the vl_api_memif_socket_filename_add_del_t API message
  */
 void
-  vl_api_memif_socket_filename_add_del_t_handler
-  (vl_api_memif_socket_filename_add_del_t * mp)
+vl_api_memif_socket_filename_add_del_t_handler (
+  vl_api_memif_socket_filename_add_del_t *mp)
 {
-  memif_main_t *mm = &memif_main;
-  u8 is_add;
-  u32 socket_id;
-  u32 len;
-  u8 *socket_filename;
   vl_api_memif_socket_filename_add_del_reply_t *rmp;
+  memif_main_t *mm = &memif_main;
+  u8 *socket_filename = 0;
+  u32 socket_id, len;
   int rv;
-
-  /* is_add */
-  is_add = mp->is_add;
 
   /* socket_id */
   socket_id = clib_net_to_host_u32 (mp->socket_id);
@@ -74,7 +69,8 @@ void
       memcpy (socket_filename, mp->socket_filename, len);
     }
 
-  rv = memif_socket_filename_add_del (is_add, socket_id, socket_filename);
+  rv = memif_socket_filename_add_del (mp->is_add, socket_id, socket_filename,
+				      NULL /* namespace */);
 
   vec_free (socket_filename);
 
@@ -82,6 +78,49 @@ reply:
   REPLY_MACRO (VL_API_MEMIF_SOCKET_FILENAME_ADD_DEL_REPLY);
 }
 
+/**
+ * @brief Message handler for memif_socket_filename_add_del API.
+ * @param mp the vl_api_memif_socket_filename_add_del_t API message
+ */
+void
+vl_api_memif_socket_filename_add_del_v2_t_handler (
+  vl_api_memif_socket_filename_add_del_v2_t *mp)
+{
+  vl_api_memif_socket_filename_add_del_v2_reply_t *rmp;
+  memif_main_t *mm = &memif_main;
+  u8 *socket_filename = 0;
+  u8 *namespace = 0;
+  u32 socket_id, len;
+  int rv;
+
+  /* socket_id */
+  socket_id = clib_net_to_host_u32 (mp->socket_id);
+  if (socket_id == 0 || socket_id == ~0)
+    {
+      rv = VNET_API_ERROR_INVALID_ARGUMENT;
+      goto reply;
+    }
+
+  /* socket filename */
+  socket_filename = 0;
+  mp->socket_filename[ARRAY_LEN (mp->socket_filename) - 1] = 0;
+  len = strlen ((char *) mp->socket_filename);
+  if (mp->is_add)
+    {
+      vec_validate (socket_filename, len);
+      memcpy (socket_filename, mp->socket_filename, len);
+      namespace = vl_api_from_api_to_new_vec (mp, &mp->namespace);
+    }
+
+  rv = memif_socket_filename_add_del (mp->is_add, socket_id, socket_filename,
+				      namespace);
+
+  vec_free (socket_filename);
+  vec_free (namespace);
+
+reply:
+  REPLY_MACRO (VL_API_MEMIF_SOCKET_FILENAME_ADD_DEL_V2_REPLY);
+}
 
 /**
  * @brief Message handler for memif_create API.
