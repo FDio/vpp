@@ -71,6 +71,7 @@ type MemoryConfig struct {
 type Arguments struct {
 	Id               uint32 // Interface identifier unique across socket. Used to identify peer interface when connecting
 	IsMaster         bool   // Interface role master/slave
+	Mode             interfaceMode
 	Name             string
 	Secret           [24]byte // optional parameter, secrets of the interfaces must match if they are to connect
 	MemoryConfig     MemoryConfig
