@@ -500,9 +500,6 @@ memif_create_socket (memif_socket_handle_t *sock, memif_socket_args_t *args,
 
   /* copy arguments to internal struct */
   memcpy (&ms->args, args, sizeof (*args));
-  /* Handle abstract socket by converting '@' -> '\0' */
-  if (ms->args.path[0] == '@')
-    ms->args.path[0] = '\0';
   ms->private_ctx = private_ctx;
 
   if (ms->args.alloc == NULL)
@@ -723,6 +720,12 @@ error:
   return err;
 }
 
+static inline int
+memif_path_is_abstract (const char *filename)
+{
+  return (filename[0] == '@');
+}
+
 int
 memif_request_connection (memif_conn_handle_t c)
 {
@@ -736,6 +739,7 @@ memif_request_connection (memif_conn_handle_t c)
   memif_control_channel_t *cc = NULL;
   memif_fd_event_t fde;
   memif_fd_event_data_t *fdata = NULL;
+  int sunlen = sizeof (un);
   void *ctx;
 
   if (conn == NULL)
@@ -773,6 +777,16 @@ memif_request_connection (memif_conn_handle_t c)
       goto error;
     }
 
+  if (memif_path_is_abstract (ms->args.path))
+    {
+      /* Ensure the string is NULL terminated */
+      un.sun_path[sizeof (un.sun_path) - 1] = '\0';
+      /* sunlen is strlen(un.sun_path) + sizeof(un.sun_family) */
+      sunlen = strlen (un.sun_path) + (sizeof (un) - sizeof (un.sun_path));
+      /* Handle abstract socket by converting '@' -> '\0' */
+      un.sun_path[0] = '\0';
+    }
+
   if (conn->args.is_master != 0)
     {
       /* Configure socket optins */
@@ -781,7 +795,7 @@ memif_request_connection (memif_conn_handle_t c)
 	  err = memif_syscall_error_handler (errno);
 	  goto error;
 	}
-      if (bind (sockfd, (struct sockaddr *) &un, sizeof (un)) < 0)
+      if (bind (sockfd, (struct sockaddr *) &un, sunlen) < 0)
 	{
 	  err = memif_syscall_error_handler (errno);
 	  goto error;
@@ -791,7 +805,7 @@ memif_request_connection (memif_conn_handle_t c)
 	  err = memif_syscall_error_handler (errno);
 	  goto error;
 	}
-      if (ms->args.path[0] != '\0')
+      if (!memif_path_is_abstract (ms->args.path))
 	{
 	  /* Verify that the socket was created */
 	  if (stat ((char *) ms->args.path, &file_stat) < 0)
@@ -815,8 +829,7 @@ memif_request_connection (memif_conn_handle_t c)
 	  err = MEMIF_ERR_NOMEM;
 	  goto error;
 	}
-      if (connect (sockfd, (struct sockaddr *) &un,
-		   sizeof (struct sockaddr_un)) != 0)
+      if (connect (sockfd, (struct sockaddr *) &un, sunlen) != 0)
 	{
 	  err = MEMIF_ERR_CONNREFUSED;
 	  goto error;
@@ -1739,7 +1752,7 @@ memif_tx_burst (memif_conn_handle_t conn, uint16_t qid,
 	      if ((data_offset < 0) ||
 		  ((data_offset + b0->len) > c->run_args.buffer_size))
 		{
-		  DBG ("slot: %d, data_offset: %d, length: %d",
+		  DBG ("slot: %d, data_offset: %ld, length: %d",
 		       b0->desc_index & mask, data_offset, b0->len);
 		  err = MEMIF_ERR_INVAL_ARG;
 		  goto done;
@@ -1947,10 +1960,6 @@ memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
   if (l0 + l1 < buflen)
     {
       md->socket_path = (uint8_t *) memcpy (buf + l0, ms->args.path, 108);
-      if (md->socket_path[0] == '\0')
-	{
-	  md->socket_path[0] = '@';
-	}
       l0 += l1;
     }
   else
