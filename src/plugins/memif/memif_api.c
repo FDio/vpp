@@ -42,46 +42,89 @@
  * @param mp the vl_api_memif_socket_filename_add_del_t API message
  */
 void
-  vl_api_memif_socket_filename_add_del_t_handler
-  (vl_api_memif_socket_filename_add_del_t * mp)
+vl_api_memif_socket_filename_add_del_t_handler (
+  vl_api_memif_socket_filename_add_del_t *mp)
 {
-  memif_main_t *mm = &memif_main;
-  u8 is_add;
-  u32 socket_id;
-  u32 len;
-  u8 *socket_filename;
   vl_api_memif_socket_filename_add_del_reply_t *rmp;
+  memif_socket_create_args_t _args = { 0 }, *args = &_args;
+  memif_main_t *mm = &memif_main;
+  u32 len;
   int rv;
 
-  /* is_add */
-  is_add = mp->is_add;
-
   /* socket_id */
-  socket_id = clib_net_to_host_u32 (mp->socket_id);
-  if (socket_id == 0 || socket_id == ~0)
+  args->socket_id = clib_net_to_host_u32 (mp->socket_id);
+  if (args->socket_id == 0 || args->socket_id == ~0)
     {
       rv = VNET_API_ERROR_INVALID_ARGUMENT;
       goto reply;
     }
 
   /* socket filename */
-  socket_filename = 0;
+  args->socket_filename = 0;
   mp->socket_filename[ARRAY_LEN (mp->socket_filename) - 1] = 0;
   len = strlen ((char *) mp->socket_filename);
   if (mp->is_add)
     {
-      vec_validate (socket_filename, len);
-      memcpy (socket_filename, mp->socket_filename, len);
+      vec_validate (args->socket_filename, len);
+      memcpy (args->socket_filename, mp->socket_filename, len);
     }
 
-  rv = memif_socket_filename_add_del (is_add, socket_id, socket_filename);
+  if (mp->is_add)
+    rv = memif_add_socket_filename (args);
+  else
+    rv = memif_delete_socket_filename (args->socket_id);
 
-  vec_free (socket_filename);
+  vec_free (args->socket_filename);
 
 reply:
   REPLY_MACRO (VL_API_MEMIF_SOCKET_FILENAME_ADD_DEL_REPLY);
 }
 
+/**
+ * @brief Message handler for memif_socket_filename_add_del API.
+ * @param mp the vl_api_memif_socket_filename_add_del_t API message
+ */
+void
+vl_api_memif_socket_filename_add_del_v2_t_handler (
+  vl_api_memif_socket_filename_add_del_v2_t *mp)
+{
+  vl_api_memif_socket_filename_add_del_v2_reply_t *rmp;
+  memif_socket_create_args_t _args = { 0 }, *args = &_args;
+  memif_main_t *mm = &memif_main;
+  u32 len;
+  int rv;
+
+  /* socket_id */
+  args->socket_id = clib_net_to_host_u32 (mp->socket_id);
+  if (args->socket_id == 0)
+    {
+      rv = VNET_API_ERROR_INVALID_ARGUMENT;
+      goto reply;
+    }
+
+  /* socket filename */
+  args->socket_filename = 0;
+  mp->socket_filename[ARRAY_LEN (mp->socket_filename) - 1] = 0;
+  len = strlen ((char *) mp->socket_filename);
+  if (mp->is_add)
+    {
+      vec_validate (args->socket_filename, len);
+      memcpy (args->socket_filename, mp->socket_filename, len);
+      args->namespace = vl_api_from_api_to_new_vec (mp, &mp->namespace);
+    }
+
+  if (mp->is_add)
+    rv = memif_add_socket_filename (args);
+  else
+    rv = memif_delete_socket_filename (args->socket_id);
+
+  vec_free (args->socket_filename);
+  vec_free (args->namespace);
+
+reply:
+  REPLY_MACRO2 (VL_API_MEMIF_SOCKET_FILENAME_ADD_DEL_V2_REPLY,
+		({ rmp->socket_id = htonl (args->socket_id); }));
+}
 
 /**
  * @brief Message handler for memif_create API.
@@ -169,12 +212,10 @@ vl_api_memif_create_t_handler (vl_api_memif_create_t * mp)
   vec_free (args.secret);
 
 reply:
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_MEMIF_CREATE_REPLY,
     ({
       rmp->sw_if_index = htonl (args.sw_if_index);
     }));
-  /* *INDENT-ON* */
 }
 
 /**
@@ -279,7 +320,6 @@ vl_api_memif_dump_t_handler (vl_api_memif_dump_t * mp)
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   pool_foreach (mif, mm->interfaces)
      {
       swif = vnet_get_sw_interface (vnm, mif->sw_if_index);
@@ -291,7 +331,6 @@ vl_api_memif_dump_t_handler (vl_api_memif_dump_t * mp)
       send_memif_details (reg, mif, swif, if_name, mp->context);
       _vec_len (if_name) = 0;
     }
-  /* *INDENT-ON* */
 
   vec_free (if_name);
 }
@@ -335,7 +374,6 @@ void
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   hash_foreach (sock_id, msf_idx, mm->socket_file_index_by_sock_id,
     ({
       memif_socket_file_t *msf;
@@ -345,7 +383,56 @@ void
       filename = msf->filename;
       send_memif_socket_filename_details(reg, sock_id, filename, mp->context);
     }));
-  /* *INDENT-ON* */
+}
+
+static void
+send_memif_socket_filename_v2_details (vl_api_registration_t *reg,
+				       u32 socket_id, memif_socket_file_t *msf,
+				       u32 context)
+{
+  vl_api_memif_socket_filename_v2_details_t *mp;
+  memif_main_t *mm = &memif_main;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
+
+  mp->_vl_msg_id =
+    htons (VL_API_MEMIF_SOCKET_FILENAME_V2_DETAILS + mm->msg_id_base);
+  mp->context = context;
+
+  mp->socket_id = clib_host_to_net_u32 (socket_id);
+  strncpy ((char *) mp->socket_filename, (char *) msf->filename,
+	   ARRAY_LEN (mp->socket_filename) - 1);
+
+  vl_api_vec_to_api_string (msf->namespace, &mp->namespace);
+
+  vl_api_send_msg (reg, (u8 *) mp);
+}
+
+/**
+ * @brief Message handler for memif_socket_filename_v2_dump API.
+ * @param mp vl_api_memif_socket_filename_v2_dump_t api message
+ */
+void
+vl_api_memif_socket_filename_v2_dump_t_handler (
+  vl_api_memif_socket_filename_v2_dump_t *mp)
+{
+  memif_main_t *mm = &memif_main;
+  vl_api_registration_t *reg;
+  u32 sock_id;
+  u32 msf_idx;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  hash_foreach (sock_id, msf_idx, mm->socket_file_index_by_sock_id, ({
+		  memif_socket_file_t *msf;
+
+		  msf = pool_elt_at_index (mm->socket_files, msf_idx);
+		  send_memif_socket_filename_v2_details (reg, sock_id, msf,
+							 mp->context);
+		}));
 }
 
 /* Set up the API message handling tables */
