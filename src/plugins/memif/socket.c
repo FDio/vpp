@@ -446,14 +446,12 @@ memif_msg_receive (memif_if_t ** mifp, clib_socket_t * sock, clib_file_t * uf)
       if ((err = memif_init_regions_and_queues (mif)))
 	goto error;
       memif_msg_enq_init (mif);
-      /* *INDENT-OFF* */
       vec_foreach_index (i, mif->regions)
 	memif_msg_enq_add_region (mif, i);
       vec_foreach_index (i, mif->tx_queues)
 	memif_msg_enq_add_ring (mif, i, MEMIF_RING_S2M);
       vec_foreach_index (i, mif->rx_queues)
 	memif_msg_enq_add_ring (mif, i, MEMIF_RING_M2S);
-      /* *INDENT-ON* */
       memif_msg_enq_connect (mif);
       break;
 
