@@ -1059,14 +1059,6 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
   goto done;
 
 error:
-  if (mif->hw_if_index != ~0)
-    {
-      if (mif->mode == MEMIF_INTERFACE_MODE_IP)
-	vnet_delete_hw_interface (vnm, mif->hw_if_index);
-      else
-	ethernet_delete_interface (vnm, mif->hw_if_index);
-      mif->hw_if_index = ~0;
-    }
   memif_delete_if (vm, mif);
   if (error)
     {
