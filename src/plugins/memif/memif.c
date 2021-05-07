@@ -33,6 +33,7 @@
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
+#include <vppinfra/linux/netns.h>
 #include <vnet/plugin/plugin.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/interface/rx_queue_funcs.h>
@@ -133,7 +134,6 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
       clib_mem_free (mif->sock);
     }
 
-  /* *INDENT-OFF* */
   vec_foreach_index (i, mif->rx_queues)
     {
       mq = vec_elt_at_index (mif->rx_queues, i);
@@ -148,7 +148,6 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
     }
   vnet_hw_if_unregister_all_rx_queues (vnm, mif->hw_if_index);
 
-  /* *INDENT-OFF* */
   vec_foreach_index (i, mif->tx_queues)
   {
     mq = vec_elt_at_index (mif->tx_queues, i);
@@ -185,7 +184,6 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
       if (mr->fd > -1)
 	close (mr->fd);
     }
-  /* *INDENT-ON* */
   vec_free (mif->regions);
   vec_free (mif->remote_name);
   vec_free (mif->remote_if_name);
@@ -236,7 +234,7 @@ memif_connect (memif_if_t * mif)
   clib_file_t template = { 0 };
   memif_region_t *mr;
   int i, j;
-  u32 n_txqs = 0, n_threads = vlib_get_n_threads ();
+  u32 n_txqs = 0;
   clib_error_t *err = NULL;
 
   memif_log_debug (mif, "connect %u", mif->dev_instance);
@@ -244,7 +242,6 @@ memif_connect (memif_if_t * mif)
   vec_free (mif->local_disc_string);
   vec_free (mif->remote_disc_string);
 
-  /* *INDENT-OFF* */
   vec_foreach (mr, mif->regions)
     {
       if (mr->shm)
@@ -263,12 +260,12 @@ memif_connect (memif_if_t * mif)
 	  goto error;
 	}
     }
-  /* *INDENT-ON* */
 
   template.read_function = memif_int_fd_read_ready;
   template.write_function = memif_int_fd_write_ready;
 
   /* *INDENT-OFF* */
+  u32 n_threads = vlib_get_n_threads ();
   vec_foreach_index (i, mif->tx_queues)
     {
       memif_queue_t *mq = vec_elt_at_index (mif->tx_queues, i);
@@ -341,7 +338,6 @@ memif_connect (memif_if_t * mif)
 	    vnet_hw_if_rx_queue_set_int_pending (vnm, qi);
 	}
     }
-  /* *INDENT-ON* */
 
   mif->flags &= ~MEMIF_IF_FLAG_CONNECTING;
   mif->flags |= MEMIF_IF_FLAG_CONNECTED;
@@ -422,7 +418,6 @@ memif_init_regions_and_queues (memif_if_t * mif)
   if (mif->flags & MEMIF_IF_FLAG_ZERO_COPY)
     {
       vlib_buffer_pool_t *bp;
-      /* *INDENT-OFF* */
       vec_foreach (bp, vm->buffer_main->buffer_pools)
 	{
 	  vlib_physmem_map_t *pm;
@@ -433,7 +428,6 @@ memif_init_regions_and_queues (memif_if_t * mif)
 	  r->shm = pm->base;
 	  r->is_external = 1;
 	}
-      /* *INDENT-ON* */
     }
 
   for (i = 0; i < mif->run.num_s2m_rings; i++)
@@ -478,7 +472,6 @@ memif_init_regions_and_queues (memif_if_t * mif)
   vec_validate_aligned (mif->tx_queues, mif->run.num_s2m_rings - 1,
 			CLIB_CACHE_LINE_BYTES);
 
-  /* *INDENT-OFF* */
   vec_foreach_index (i, mif->tx_queues)
     {
       memif_queue_t *mq = vec_elt_at_index (mif->tx_queues, i);
@@ -499,13 +492,11 @@ memif_init_regions_and_queues (memif_if_t * mif)
 	vec_validate_aligned (mq->buffers, 1 << mq->log2_ring_size,
 			      CLIB_CACHE_LINE_BYTES);
     }
-  /* *INDENT-ON* */
 
   ASSERT (mif->rx_queues == 0);
   vec_validate_aligned (mif->rx_queues, mif->run.num_m2s_rings - 1,
 			CLIB_CACHE_LINE_BYTES);
 
-  /* *INDENT-OFF* */
   vec_foreach_index (i, mif->rx_queues)
     {
       memif_queue_t *mq = vec_elt_at_index (mif->rx_queues, i);
@@ -525,7 +516,6 @@ memif_init_regions_and_queues (memif_if_t * mif)
 	vec_validate_aligned (mq->buffers, 1 << mq->log2_ring_size,
 			      CLIB_CACHE_LINE_BYTES);
     }
-  /* *INDENT-ON* */
 
   return 0;
 
@@ -576,7 +566,6 @@ memif_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	}
 
       last_run_duration = start_time = vlib_time_now (vm);
-      /* *INDENT-OFF* */
       pool_foreach (mif, mm->interfaces)
          {
 	  memif_socket_file_t * msf = vec_elt_at_index (mm->socket_files, mif->socket_file_index);
@@ -604,7 +593,7 @@ memif_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	      sock->flags = CLIB_SOCKET_F_IS_CLIENT | CLIB_SOCKET_F_SEQPACKET |
 			    CLIB_SOCKET_F_BLOCKING;
 
-	      if ((err = clib_socket_init (sock)))
+	      if ((err = clib_socket_init_netns (sock, msf->namespace)))
 		{
 	          clib_error_free (err);
 		}
@@ -629,59 +618,28 @@ memif_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	        }
 	    }
         }
-      /* *INDENT-ON* */
       last_run_duration = vlib_time_now (vm) - last_run_duration;
     }
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (memif_process_node,static) = {
   .function = memif_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "memif-process",
 };
-/* *INDENT-ON* */
 
-static int
-memif_add_socket_file (u32 sock_id, u8 * socket_filename)
+int
+memif_delete_socket_filename (u32 sock_id)
 {
   memif_main_t *mm = &memif_main;
   uword *p;
   memif_socket_file_t *msf;
 
-  p = hash_get (mm->socket_file_index_by_sock_id, sock_id);
-  if (p)
+  if (sock_id == 0)
     {
-      msf = pool_elt_at_index (mm->socket_files, *p);
-      if (strcmp ((char *) msf->filename, (char *) socket_filename) == 0)
-	{
-	  /* Silently accept identical "add". */
-	  return 0;
-	}
-
-      /* But don't allow a direct add of a different filename. */
-      return VNET_API_ERROR_ENTRY_ALREADY_EXISTS;
+      return VNET_API_ERROR_INVALID_ARGUMENT;
     }
-
-  pool_get (mm->socket_files, msf);
-  clib_memset (msf, 0, sizeof (memif_socket_file_t));
-
-  msf->filename = socket_filename;
-  msf->socket_id = sock_id;
-
-  hash_set (mm->socket_file_index_by_sock_id, sock_id,
-	    msf - mm->socket_files);
-
-  return 0;
-}
-
-static int
-memif_delete_socket_file (u32 sock_id)
-{
-  memif_main_t *mm = &memif_main;
-  uword *p;
-  memif_socket_file_t *msf;
 
   p = hash_get (mm->socket_file_index_by_sock_id, sock_id);
   if (!p)
@@ -698,6 +656,7 @@ memif_delete_socket_file (u32 sock_id)
 
   vec_free (msf->filename);
   pool_put (mm->socket_files, msf);
+  clib_bitmap_set (mm->socket_ids, sock_id, 0);
 
   hash_unset (mm->socket_file_index_by_sock_id, sock_id);
 
@@ -705,28 +664,33 @@ memif_delete_socket_file (u32 sock_id)
 }
 
 int
-memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 * sock_filename)
+memif_add_socket_filename (memif_socket_create_args_t *args)
 {
+  memif_main_t *mm = &memif_main;
+  memif_socket_file_t *msf;
   char *dir = 0, *tmp;
   u32 idx = 0;
+  u8 *sock_filename;
+  uword *p;
 
-  /* allow adding socket id 0 */
-  if ((sock_id == 0 && is_add == 0) || sock_id == ~0)
+  if (args->sock_id == (u32) ~0)
+    {
+      args->sock_id = clib_bitmap_next_clear (mm->socket_ids, 1);
+    }
+
+  if (args->sock_filename == 0 || args->sock_filename[0] == 0)
     {
       return VNET_API_ERROR_INVALID_ARGUMENT;
     }
 
-  if (is_add == 0)
+  if (args->sock_filename[0] == '@')
     {
-      return memif_delete_socket_file (sock_id);
+      /* Abstract socket */
+      if (args->sock_filename[1] == 0)
+	return VNET_API_ERROR_INVALID_ARGUMENT;
+      sock_filename = format (0, "%s%c", args->sock_filename, 0);
     }
-
-  if (sock_filename == 0 || sock_filename[0] == 0)
-    {
-      return VNET_API_ERROR_INVALID_ARGUMENT;
-    }
-
-  if (sock_filename[0] != '/')
+  else if (args->sock_filename[0] != '/')
     {
       clib_error_t *error;
 
@@ -736,11 +700,11 @@ memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 * sock_filename)
       vec_add1 (dir, '/');
 
       /* if sock_filename contains dirs, add them to path */
-      tmp = strrchr ((char *) sock_filename, '/');
+      tmp = strrchr ((char *) args->sock_filename, '/');
       if (tmp)
 	{
-	  idx = tmp - (char *) sock_filename;
-	  vec_add (dir, sock_filename, idx);
+	  idx = tmp - (char *) args->sock_filename;
+	  vec_add (dir, args->sock_filename, idx);
 	}
 
       vec_add1 (dir, '\0');
@@ -753,18 +717,18 @@ memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 * sock_filename)
 	}
 
       sock_filename = format (0, "%s/%s%c", vlib_unix_get_runtime_dir (),
-			      sock_filename, 0);
+			      args->sock_filename, 0);
     }
   else
     {
-      sock_filename = vec_dup (sock_filename);
+      sock_filename = vec_dup (args->sock_filename);
 
       /* check if directory exists */
-      tmp = strrchr ((char *) sock_filename, '/');
+      tmp = strrchr ((char *) args->sock_filename, '/');
       if (tmp)
 	{
-	  idx = tmp - (char *) sock_filename;
-	  vec_add (dir, sock_filename, idx);
+	  idx = tmp - (char *) args->sock_filename;
+	  vec_add (dir, args->sock_filename, idx);
 	  vec_add1 (dir, '\0');
 	}
 
@@ -780,7 +744,34 @@ memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 * sock_filename)
     }
   vec_free (dir);
 
-  return memif_add_socket_file (sock_id, sock_filename);
+  p = hash_get (mm->socket_file_index_by_sock_id, args->sock_id);
+  if (p)
+    {
+      msf = pool_elt_at_index (mm->socket_files, *p);
+      if (strcmp ((char *) msf->filename, (char *) sock_filename) == 0)
+	{
+	  /* Silently accept identical "add". */
+	  return 0;
+	}
+
+      /* But don't allow a direct add of a different filename. */
+      return VNET_API_ERROR_ENTRY_ALREADY_EXISTS;
+    }
+
+  pool_get (mm->socket_files, msf);
+  clib_memset (msf, 0, sizeof (memif_socket_file_t));
+
+  msf->filename = sock_filename;
+  msf->socket_id = args->sock_id;
+  msf->namespace = 0;
+  if (args->namespace != 0 && args->namespace[0] != 0)
+    msf->namespace = format (0, "%s%c", args->namespace, 0);
+
+  hash_set (mm->socket_file_index_by_sock_id, args->sock_id,
+	    msf - mm->socket_files);
+  clib_bitmap_set (mm->socket_ids, args->sock_id, 1);
+
+  return 0;
 }
 
 int
@@ -823,10 +814,8 @@ memif_delete_if (vlib_main_t * vm, memif_if_t * mif)
       if (msf->is_listener)
 	{
 	  int i;
-	  /* *INDENT-OFF* */
 	  vec_foreach_index (i, msf->pending_clients)
 	    memif_socket_close (msf->pending_clients + i);
-	  /* *INDENT-ON* */
 	  memif_socket_close (&msf->sock);
 	  vec_free (msf->pending_clients);
 	}
@@ -854,13 +843,11 @@ memif_delete_if (vlib_main_t * vm, memif_if_t * mif)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (memif_ip_hw_if_class, static) =
 {
   .name = "memif-ip",
   .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
 };
-/* *INDENT-ON* */
 
 int
 memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
@@ -910,7 +897,8 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
 
       /* If we are creating listener make sure file doesn't exist or if it
        * exists thn delete it if it is old socket file */
-      if (args->is_master && (stat ((char *) msf->filename, &file_stat) == 0))
+      if (args->is_master && msf->filename[0] != '@' &&
+	  (stat ((char *) msf->filename, &file_stat) == 0))
 	{
 	  if (S_ISSOCK (file_stat.st_mode))
 	    {
@@ -1032,13 +1020,14 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
 	CLIB_SOCKET_F_ALLOW_GROUP_WRITE |
 	CLIB_SOCKET_F_SEQPACKET | CLIB_SOCKET_F_PASSCRED;
 
-      if ((error = clib_socket_init (s)))
+      if ((error = clib_socket_init_netns (s, msf->namespace)))
 	{
 	  ret = VNET_API_ERROR_SYSCALL_ERROR_4;
 	  goto error;
 	}
 
-      if (stat ((char *) msf->filename, &file_stat) == -1)
+      if (msf->filename[0] != '@' &&
+	  stat ((char *) msf->filename, &file_stat) == -1)
 	{
 	  ret = VNET_API_ERROR_SYSCALL_ERROR_8;
 	  goto error;
@@ -1121,6 +1110,9 @@ memif_init (vlib_main_t * vm)
   mm->log_class = vlib_log_register_class ("memif_plugin", 0);
   memif_log_debug (0, "initialized");
 
+  clib_bitmap_alloc (mm->socket_ids, 1);
+  clib_bitmap_zero (mm->socket_ids);
+
   /* initialize binary API */
   memif_plugin_api_hookup (vm);
 
@@ -1129,19 +1121,19 @@ memif_init (vlib_main_t * vm)
    * for socket-id 0 to MEMIF_DEFAULT_SOCKET_FILENAME in the
    * default run-time directory.
    */
-  memif_socket_filename_add_del (1, 0, (u8 *) MEMIF_DEFAULT_SOCKET_FILENAME);
+  memif_socket_create_args_t _args = { 0 }, *args = &_args;
+  args->sock_filename = (u8 *) MEMIF_DEFAULT_SOCKET_FILENAME;
+  memif_add_socket_filename (args);
 
   return 0;
 }
 
 VLIB_INIT_FUNCTION (memif_init);
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
     .description = "Packet Memory Interface (memif) -- Experimental",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON
