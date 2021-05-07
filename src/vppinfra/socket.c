@@ -113,6 +113,17 @@ socket_config (char *config,
       *addr_len = sizeof (su[0]);
     }
 
+  /* Treat everything that starts with @ as an abstract socket. */
+  else if (config[0] == '@')
+    {
+      struct sockaddr_un *su = addr;
+      su->sun_family = PF_LOCAL;
+      clib_memcpy (&su->sun_path, config,
+		   clib_min (sizeof (su->sun_path), 1 + strlen (config)));
+      *addr_len = 2 + strlen (config);
+      su->sun_path[0] = '\0';
+    }
+
   /* Hostname or hostname:port or port. */
   else
     {
@@ -440,7 +451,8 @@ clib_socket_init (clib_socket_t * s)
 	      need_bind = 0;
 	    }
 	}
-      if (addr.sa.sa_family == PF_LOCAL)
+      if (addr.sa.sa_family == PF_LOCAL &&
+	  ((struct sockaddr_un *) &addr)->sun_path[0] != 0)
 	unlink (((struct sockaddr_un *) &addr)->sun_path);
 
       /* Make address available for multiple users. */
@@ -477,8 +489,9 @@ clib_socket_init (clib_socket_t * s)
 					  s->fd, s->config);
 	  goto done;
 	}
-      if (addr.sa.sa_family == PF_LOCAL
-	  && s->flags & CLIB_SOCKET_F_ALLOW_GROUP_WRITE)
+      if (addr.sa.sa_family == PF_LOCAL &&
+	  s->flags & CLIB_SOCKET_F_ALLOW_GROUP_WRITE &&
+	  ((struct sockaddr_un *) &addr)->sun_path[0] != 0)
 	{
 	  struct stat st = { 0 };
 	  if (stat (((struct sockaddr_un *) &addr)->sun_path, &st) < 0)

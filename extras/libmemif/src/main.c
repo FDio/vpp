@@ -856,12 +856,13 @@ memif_socket_start_listening (memif_socket_t * ms)
   struct sockaddr_un un = { 0 };
   int on = 1;
   int err = MEMIF_ERR_SUCCESS;
+  int un_size = sizeof (un);
 
   if (ms->type == MEMIF_SOCKET_TYPE_CLIENT)
     return MEMIF_ERR_INVAL_ARG;
 
   /* check if file exists */
-  if (stat ((char *) ms->filename, &file_stat) == 0)
+  if (ms->filename[0] != '@' && stat ((char *) ms->filename, &file_stat) == 0)
     {
       if (S_ISSOCK (file_stat.st_mode))
 	unlink ((char *) ms->filename);
@@ -879,12 +880,17 @@ memif_socket_start_listening (memif_socket_t * ms)
   DBG ("socket %d created", ms->fd);
   un.sun_family = AF_UNIX;
   strlcpy ((char *) un.sun_path, (char *) ms->filename, sizeof (un.sun_path));
+  if (un.sun_path[0] == '@')
+    {
+      un_size += strlen (un.sun_path);
+      un.sun_path[0] = '\0';
+    }
   if (setsockopt (ms->fd, SOL_SOCKET, SO_PASSCRED, &on, sizeof (on)) < 0)
     {
       err = memif_syscall_error_handler (errno);
       goto error;
     }
-  if (bind (ms->fd, (struct sockaddr *) &un, sizeof (un)) < 0)
+  if (bind (ms->fd, (struct sockaddr *) &un, un_size) < 0)
     {
       err = memif_syscall_error_handler (errno);
       goto error;
@@ -894,7 +900,7 @@ memif_socket_start_listening (memif_socket_t * ms)
       err = memif_syscall_error_handler (errno);
       goto error;
     }
-  if (stat ((char *) ms->filename, &file_stat) < 0)
+  if (ms->filename[0] != '@' && stat ((char *) ms->filename, &file_stat) < 0)
     {
       err = memif_syscall_error_handler (errno);
       goto error;
@@ -1208,6 +1214,7 @@ memif_request_connection (memif_conn_handle_t c)
   int err = MEMIF_ERR_SUCCESS;
   int sockfd = -1;
   struct sockaddr_un sun;
+  int sun_size = sizeof (struct sockaddr_un);
 
   if (conn == NULL)
     return MEMIF_ERR_NOCONN;
@@ -1231,9 +1238,13 @@ memif_request_connection (memif_conn_handle_t c)
   sun.sun_family = AF_UNIX;
 
   strlcpy (sun.sun_path, (char *) ms->filename, sizeof (sun.sun_path));
+  if (sun.sun_path[0] == '@')
+    {
+      sun_size += strlen (sun.sun_path);
+      sun.sun_path[0] = '\0';
+    }
 
-  if (connect (sockfd, (struct sockaddr *) &sun,
-	       sizeof (struct sockaddr_un)) == 0)
+  if (connect (sockfd, (struct sockaddr *) &sun, sun_size) == 0)
     {
       conn->fd = sockfd;
       conn->read_fn = memif_conn_fd_read_ready;

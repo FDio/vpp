@@ -375,7 +375,6 @@ func (socket *Socket) addListener() (err error) {
 		return fmt.Errorf("Failed to create UNIX domain socket")
 	}
 	usa := &syscall.SockaddrUnix{Name: socket.filename}
-
 	// Bind to address and start listening
 	err = syscall.SetsockoptInt(fd, syscall.SOL_SOCKET, syscall.SO_PASSCRED, 1)
 	if err != nil {
@@ -518,7 +517,7 @@ func (cc *controlChannel) msgEnqInit() (err error) {
 	init := MsgInit{
 		Version: Version,
 		Id:      cc.i.args.Id,
-		Mode:    interfaceModeEthernet,
+		Mode:    cc.i.args.Mode,
 	}
 
 	copy(init.Name[:], []byte(cc.socket.appName))

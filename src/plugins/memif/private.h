@@ -102,6 +102,8 @@ typedef struct
 
   /* hash of all registered fds */
   uword *dev_instance_by_fd;
+
+  u8 *namespace;
 } memif_socket_file_t;
 
 typedef struct
@@ -291,8 +293,8 @@ typedef struct
   u32 sw_if_index;
 } memif_create_if_args_t;
 
-int memif_socket_filename_add_del (u8 is_add, u32 sock_id,
-				   u8 * sock_filename);
+int memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 *sock_filename,
+				   u8 *namespace);
 int memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args);
 int memif_delete_if (vlib_main_t * vm, memif_if_t * mif);
 clib_error_t *memif_plugin_api_hookup (vlib_main_t * vm);
