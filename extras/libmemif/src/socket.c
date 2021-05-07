@@ -327,7 +327,7 @@ memif_msg_send_disconnect (int fd, uint8_t * err_string, uint32_t err_code)
   uint16_t l = strlen ((char *) err_string);
   if (l > sizeof (d->string) - 1)
     {
-      DBG ("Disconnect string too long. Sending the first %d characters.",
+      DBG ("Disconnect string too long. Sending the first %ld characters.",
 	   sizeof (d->string) - 1);
     }
   strlcpy ((char *) d->string, (char *) err_string, sizeof (d->string));
