@@ -33,6 +33,7 @@
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
+#include <vppinfra/linux/netns.h>
 #include <vnet/plugin/plugin.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/interface/rx_queue_funcs.h>
@@ -133,7 +134,6 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
       clib_mem_free (mif->sock);
     }
 
-  /* *INDENT-OFF* */
   vec_foreach_index (i, mif->rx_queues)
     {
       mq = vec_elt_at_index (mif->rx_queues, i);
@@ -148,7 +148,6 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
     }
   vnet_hw_if_unregister_all_rx_queues (vnm, mif->hw_if_index);
 
-  /* *INDENT-OFF* */
   vec_foreach_index (i, mif->tx_queues)
   {
     mq = vec_elt_at_index (mif->tx_queues, i);
@@ -185,7 +184,6 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
       if (mr->fd > -1)
 	close (mr->fd);
     }
-  /* *INDENT-ON* */
   vec_free (mif->regions);
   vec_free (mif->remote_name);
   vec_free (mif->remote_if_name);
@@ -244,7 +242,6 @@ memif_connect (memif_if_t * mif)
   vec_free (mif->local_disc_string);
   vec_free (mif->remote_disc_string);
 
-  /* *INDENT-OFF* */
   vec_foreach (mr, mif->regions)
     {
       if (mr->shm)
@@ -263,12 +260,10 @@ memif_connect (memif_if_t * mif)
 	  goto error;
 	}
     }
-  /* *INDENT-ON* */
 
   template.read_function = memif_int_fd_read_ready;
   template.write_function = memif_int_fd_write_ready;
 
-  /* *INDENT-OFF* */
   vec_foreach_index (i, mif->tx_queues)
     {
       memif_queue_t *mq = vec_elt_at_index (mif->tx_queues, i);
@@ -341,7 +336,6 @@ memif_connect (memif_if_t * mif)
 	    vnet_hw_if_rx_queue_set_int_pending (vnm, qi);
 	}
     }
-  /* *INDENT-ON* */
 
   mif->flags &= ~MEMIF_IF_FLAG_CONNECTING;
   mif->flags |= MEMIF_IF_FLAG_CONNECTED;
@@ -422,7 +416,6 @@ memif_init_regions_and_queues (memif_if_t * mif)
   if (mif->flags & MEMIF_IF_FLAG_ZERO_COPY)
     {
       vlib_buffer_pool_t *bp;
-      /* *INDENT-OFF* */
       vec_foreach (bp, vm->buffer_main->buffer_pools)
 	{
 	  vlib_physmem_map_t *pm;
@@ -433,7 +426,6 @@ memif_init_regions_and_queues (memif_if_t * mif)
 	  r->shm = pm->base;
 	  r->is_external = 1;
 	}
-      /* *INDENT-ON* */
     }
 
   for (i = 0; i < mif->run.num_s2m_rings; i++)
@@ -478,7 +470,6 @@ memif_init_regions_and_queues (memif_if_t * mif)
   vec_validate_aligned (mif->tx_queues, mif->run.num_s2m_rings - 1,
 			CLIB_CACHE_LINE_BYTES);
 
-  /* *INDENT-OFF* */
   vec_foreach_index (i, mif->tx_queues)
     {
       memif_queue_t *mq = vec_elt_at_index (mif->tx_queues, i);
@@ -499,13 +490,11 @@ memif_init_regions_and_queues (memif_if_t * mif)
 	vec_validate_aligned (mq->buffers, 1 << mq->log2_ring_size,
 			      CLIB_CACHE_LINE_BYTES);
     }
-  /* *INDENT-ON* */
 
   ASSERT (mif->rx_queues == 0);
   vec_validate_aligned (mif->rx_queues, mif->run.num_m2s_rings - 1,
 			CLIB_CACHE_LINE_BYTES);
 
-  /* *INDENT-OFF* */
   vec_foreach_index (i, mif->rx_queues)
     {
       memif_queue_t *mq = vec_elt_at_index (mif->rx_queues, i);
@@ -525,7 +514,6 @@ memif_init_regions_and_queues (memif_if_t * mif)
 	vec_validate_aligned (mq->buffers, 1 << mq->log2_ring_size,
 			      CLIB_CACHE_LINE_BYTES);
     }
-  /* *INDENT-ON* */
 
   return 0;
 
@@ -576,7 +564,6 @@ memif_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	}
 
       last_run_duration = start_time = vlib_time_now (vm);
-      /* *INDENT-OFF* */
       pool_foreach (mif, mm->interfaces)
          {
 	  memif_socket_file_t * msf = vec_elt_at_index (mm->socket_files, mif->socket_file_index);
@@ -629,28 +616,161 @@ memif_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	        }
 	    }
         }
-      /* *INDENT-ON* */
       last_run_duration = vlib_time_now (vm) - last_run_duration;
     }
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (memif_process_node,static) = {
   .function = memif_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "memif-process",
 };
-/* *INDENT-ON* */
 
-static int
-memif_add_socket_file (u32 sock_id, u8 * socket_filename)
+int
+memif_delete_socket_filename (u32 socket_id)
 {
   memif_main_t *mm = &memif_main;
   uword *p;
   memif_socket_file_t *msf;
 
-  p = hash_get (mm->socket_file_index_by_sock_id, sock_id);
+  if (socket_id == 0)
+    {
+      return VNET_API_ERROR_INVALID_ARGUMENT;
+    }
+
+  p = hash_get (mm->socket_file_index_by_sock_id, socket_id);
+  if (!p)
+    {
+      /* Don't delete non-existent entries. */
+      return VNET_API_ERROR_INVALID_ARGUMENT;
+    }
+
+  msf = pool_elt_at_index (mm->socket_files, *p);
+  if (msf->ref_cnt > 0)
+    {
+      return VNET_API_ERROR_UNEXPECTED_INTF_STATE;
+    }
+
+  vec_free (msf->filename);
+  pool_put (mm->socket_files, msf);
+
+  hash_unset (mm->socket_file_index_by_sock_id, socket_id);
+
+  return 0;
+}
+
+/*
+ * Returns an unused socket id, and ~0 if it can't find one.
+ */
+u32
+memif_get_unused_socket_id ()
+{
+  memif_main_t *mm = &memif_main;
+  uword *p;
+  int i, j;
+
+  static u32 seed = 0;
+  /* limit to 1M tries */
+  for (j = 0; j < 1 << 10; j++)
+    {
+      seed = random_u32 (&seed);
+      for (i = 0; i < 1 << 10; i++)
+	{
+	  /* look around randomly generated id */
+	  seed += (2 * (i % 2) - 1) * i;
+	  if (seed == (u32) ~0)
+	    continue;
+	  p = hash_get (mm->socket_file_index_by_sock_id, seed);
+	  if (!p)
+	    return seed;
+	}
+    }
+
+  return ~0;
+}
+
+int
+memif_add_socket_filename (u32 socket_id, u8 *socket_filename)
+{
+  memif_main_t *mm = &memif_main;
+  memif_socket_file_t *msf;
+  char *dir = 0, *tmp;
+  u32 idx = 0;
+  uword *p;
+
+  if (socket_id == (u32) ~0)
+    {
+      return VNET_API_ERROR_INVALID_ARGUMENT;
+    }
+
+  if (socket_filename == 0 || socket_filename[0] == 0)
+    {
+      return VNET_API_ERROR_INVALID_ARGUMENT;
+    }
+
+  if (clib_socket_name_is_abstract (socket_filename))
+    {
+      /* Abstract socket */
+      if (socket_filename[1] == 0)
+	return VNET_API_ERROR_INVALID_ARGUMENT;
+      socket_filename = format (0, "%s%c", socket_filename, 0);
+    }
+  else if (socket_filename[0] != '/')
+    {
+      clib_error_t *error;
+
+      /* copy runtime dir path */
+      vec_add (dir, vlib_unix_get_runtime_dir (),
+	       strlen (vlib_unix_get_runtime_dir ()));
+      vec_add1 (dir, '/');
+
+      /* if socket_filename contains dirs, add them to path */
+      tmp = strrchr ((char *) socket_filename, '/');
+      if (tmp)
+	{
+	  idx = tmp - (char *) socket_filename;
+	  vec_add (dir, socket_filename, idx);
+	}
+
+      vec_add1 (dir, '\0');
+      /* create socket dir */
+      error = vlib_unix_recursive_mkdir (dir);
+      if (error)
+	{
+	  clib_error_free (error);
+	  return VNET_API_ERROR_SYSCALL_ERROR_1;
+	}
+
+      socket_filename = format (0, "%s/%s%c", vlib_unix_get_runtime_dir (),
+				socket_filename, 0);
+    }
+  else
+    {
+      socket_filename = vec_dup (socket_filename);
+
+      /* check if directory exists */
+      tmp = strrchr ((char *) socket_filename, '/');
+      if (tmp)
+	{
+	  idx = tmp - (char *) socket_filename;
+	  vec_add (dir, socket_filename, idx);
+	  vec_add1 (dir, '\0');
+	}
+
+      /* check dir existance and access rights for effective user/group IDs */
+      if ((dir == NULL)
+	  ||
+	  (faccessat ( /* ignored */ -1, dir, F_OK | R_OK | W_OK, AT_EACCESS)
+	   < 0))
+	{
+	  vec_free (dir);
+	  return VNET_API_ERROR_INVALID_ARGUMENT;
+	}
+    }
+  vec_free (dir);
+
+  p = hash_get (mm->socket_file_index_by_sock_id, socket_id);
   if (p)
     {
       msf = pool_elt_at_index (mm->socket_files, *p);
@@ -668,119 +788,12 @@ memif_add_socket_file (u32 sock_id, u8 * socket_filename)
   clib_memset (msf, 0, sizeof (memif_socket_file_t));
 
   msf->filename = socket_filename;
-  msf->socket_id = sock_id;
+  msf->socket_id = socket_id;
 
-  hash_set (mm->socket_file_index_by_sock_id, sock_id,
+  hash_set (mm->socket_file_index_by_sock_id, socket_id,
 	    msf - mm->socket_files);
 
   return 0;
-}
-
-static int
-memif_delete_socket_file (u32 sock_id)
-{
-  memif_main_t *mm = &memif_main;
-  uword *p;
-  memif_socket_file_t *msf;
-
-  p = hash_get (mm->socket_file_index_by_sock_id, sock_id);
-  if (!p)
-    {
-      /* Don't delete non-existent entries. */
-      return VNET_API_ERROR_INVALID_ARGUMENT;
-    }
-
-  msf = pool_elt_at_index (mm->socket_files, *p);
-  if (msf->ref_cnt > 0)
-    {
-      return VNET_API_ERROR_UNEXPECTED_INTF_STATE;
-    }
-
-  vec_free (msf->filename);
-  pool_put (mm->socket_files, msf);
-
-  hash_unset (mm->socket_file_index_by_sock_id, sock_id);
-
-  return 0;
-}
-
-int
-memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 * sock_filename)
-{
-  char *dir = 0, *tmp;
-  u32 idx = 0;
-
-  /* allow adding socket id 0 */
-  if ((sock_id == 0 && is_add == 0) || sock_id == ~0)
-    {
-      return VNET_API_ERROR_INVALID_ARGUMENT;
-    }
-
-  if (is_add == 0)
-    {
-      return memif_delete_socket_file (sock_id);
-    }
-
-  if (sock_filename == 0 || sock_filename[0] == 0)
-    {
-      return VNET_API_ERROR_INVALID_ARGUMENT;
-    }
-
-  if (sock_filename[0] != '/')
-    {
-      clib_error_t *error;
-
-      /* copy runtime dir path */
-      vec_add (dir, vlib_unix_get_runtime_dir (),
-	       strlen (vlib_unix_get_runtime_dir ()));
-      vec_add1 (dir, '/');
-
-      /* if sock_filename contains dirs, add them to path */
-      tmp = strrchr ((char *) sock_filename, '/');
-      if (tmp)
-	{
-	  idx = tmp - (char *) sock_filename;
-	  vec_add (dir, sock_filename, idx);
-	}
-
-      vec_add1 (dir, '\0');
-      /* create socket dir */
-      error = vlib_unix_recursive_mkdir (dir);
-      if (error)
-	{
-	  clib_error_free (error);
-	  return VNET_API_ERROR_SYSCALL_ERROR_1;
-	}
-
-      sock_filename = format (0, "%s/%s%c", vlib_unix_get_runtime_dir (),
-			      sock_filename, 0);
-    }
-  else
-    {
-      sock_filename = vec_dup (sock_filename);
-
-      /* check if directory exists */
-      tmp = strrchr ((char *) sock_filename, '/');
-      if (tmp)
-	{
-	  idx = tmp - (char *) sock_filename;
-	  vec_add (dir, sock_filename, idx);
-	  vec_add1 (dir, '\0');
-	}
-
-      /* check dir existance and access rights for effective user/group IDs */
-      if ((dir == NULL)
-	  ||
-	  (faccessat ( /* ignored */ -1, dir, F_OK | R_OK | W_OK, AT_EACCESS)
-	   < 0))
-	{
-	  vec_free (dir);
-	  return VNET_API_ERROR_INVALID_ARGUMENT;
-	}
-    }
-  vec_free (dir);
-
-  return memif_add_socket_file (sock_id, sock_filename);
 }
 
 int
@@ -823,10 +836,8 @@ memif_delete_if (vlib_main_t * vm, memif_if_t * mif)
       if (msf->is_listener)
 	{
 	  int i;
-	  /* *INDENT-OFF* */
 	  vec_foreach_index (i, msf->pending_clients)
 	    memif_socket_close (msf->pending_clients + i);
-	  /* *INDENT-ON* */
 	  memif_socket_close (&msf->sock);
 	  vec_free (msf->pending_clients);
 	}
@@ -910,7 +921,8 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
 
       /* If we are creating listener make sure file doesn't exist or if it
        * exists thn delete it if it is old socket file */
-      if (args->is_master && (stat ((char *) msf->filename, &file_stat) == 0))
+      if (args->is_master && !clib_socket_name_is_abstract (msf->filename) &&
+	  (stat ((char *) msf->filename, &file_stat) == 0))
 	{
 	  if (S_ISSOCK (file_stat.st_mode))
 	    {
@@ -1038,7 +1050,8 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
 	  goto error;
 	}
 
-      if (stat ((char *) msf->filename, &file_stat) == -1)
+      if (!clib_socket_name_is_abstract (msf->filename) &&
+	  stat ((char *) msf->filename, &file_stat) == -1)
 	{
 	  ret = VNET_API_ERROR_SYSCALL_ERROR_8;
 	  goto error;
@@ -1071,7 +1084,9 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
       vlib_process_signal_event (vm, memif_process_node.index,
 				 MEMIF_PROCESS_EVENT_START, 0);
     }
-  goto done;
+
+done:
+  return rv;
 
 error:
   memif_delete_if (vm, mif);
@@ -1081,9 +1096,6 @@ error:
       clib_error_free (error);
     }
   return ret;
-
-done:
-  return rv;
 }
 
 clib_error_t *
@@ -1129,19 +1141,17 @@ memif_init (vlib_main_t * vm)
    * for socket-id 0 to MEMIF_DEFAULT_SOCKET_FILENAME in the
    * default run-time directory.
    */
-  memif_socket_filename_add_del (1, 0, (u8 *) MEMIF_DEFAULT_SOCKET_FILENAME);
+  memif_add_socket_filename (0, (u8 *) MEMIF_DEFAULT_SOCKET_FILENAME);
 
   return 0;
 }
 
 VLIB_INIT_FUNCTION (memif_init);
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
     .description = "Packet Memory Interface (memif) -- Experimental",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON
