@@ -81,14 +81,13 @@ avf_tx_prepare_cksum (vlib_buffer_t * b, u8 is_tso)
   ip6_header_t *ip6 = (void *) (b->data + l3_hdr_offset);
   tcp_header_t *tcp = (void *) (b->data + l4_hdr_offset);
   udp_header_t *udp = (void *) (b->data + l4_hdr_offset);
-  u16 l4_len =
-    is_tcp ? tcp_header_bytes (tcp) : is_udp ? sizeof (udp_header_t) : 0;
+  u16 l4_len = is_tcp ? tcp_header_bytes (tcp) : sizeof (udp_header_t);
   u16 sum = 0;
 
   flags |= AVF_TXD_OFFSET_MACLEN (l2_len) |
     AVF_TXD_OFFSET_IPLEN (l3_len) | AVF_TXD_OFFSET_L4LEN (l4_len);
   flags |= is_ip4 ? AVF_TXD_CMD_IIPT_IPV4 : AVF_TXD_CMD_IIPT_IPV6;
-  flags |= is_tcp ? AVF_TXD_CMD_L4T_TCP : is_udp ? AVF_TXD_CMD_L4T_UDP : 0;
+  flags |= is_tcp ? AVF_TXD_CMD_L4T_TCP : AVF_TXD_CMD_L4T_UDP;
 
   if (is_ip4)
     ip4->checksum = 0;
@@ -101,8 +100,6 @@ avf_tx_prepare_cksum (vlib_buffer_t * b, u8 is_tso)
 	ip6->payload_length = 0;
     }
 
-  if (is_tcp || is_udp)
-    {
       if (is_ip4)
 	{
 	  struct avf_ip4_psh psh = { 0 };
@@ -124,12 +121,12 @@ avf_tx_prepare_cksum (vlib_buffer_t * b, u8 is_tso)
 	  psh.l4len = is_tso ? 0 : ip6->payload_length;
 	  sum = ~ip_csum (&psh, sizeof (psh));
 	}
-    }
+
   /* ip_csum does a byte swap for some reason... */
   sum = clib_net_to_host_u16 (sum);
   if (is_tcp)
     tcp->checksum = sum;
-  else if (is_udp)
+  else
     udp->checksum = sum;
   return flags;
 }
