@@ -33,6 +33,7 @@
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
+#include <vppinfra/netns.h>
 #include <vnet/plugin/plugin.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/interface/rx_queue_funcs.h>
@@ -586,7 +587,7 @@ memif_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	      sock->flags = CLIB_SOCKET_F_IS_CLIENT | CLIB_SOCKET_F_SEQPACKET |
 			    CLIB_SOCKET_F_BLOCKING;
 
-	      if ((err = clib_socket_init (sock)))
+	      if ((err = clib_socket_init_netns (sock, msf->namespace)))
 		{
 	          clib_error_free (err);
 		}
@@ -626,7 +627,7 @@ VLIB_REGISTER_NODE (memif_process_node,static) = {
 /* *INDENT-ON* */
 
 static int
-memif_add_socket_file (u32 sock_id, u8 * socket_filename)
+memif_add_socket_file (u32 sock_id, u8 *socket_filename, u8 *namespace)
 {
   memif_main_t *mm = &memif_main;
   uword *p;
@@ -651,6 +652,9 @@ memif_add_socket_file (u32 sock_id, u8 * socket_filename)
 
   msf->filename = socket_filename;
   msf->socket_id = sock_id;
+  msf->namespace = 0;
+  if (namespace != 0 && namespace[0] != 0)
+    msf->namespace = format (0, "%s%c", namespace, 0);
 
   hash_set (mm->socket_file_index_by_sock_id, sock_id,
 	    msf - mm->socket_files);
@@ -687,7 +691,8 @@ memif_delete_socket_file (u32 sock_id)
 }
 
 int
-memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 * sock_filename)
+memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 *sock_filename,
+			       u8 *namespace)
 {
   char *dir = 0, *tmp;
   u32 idx = 0;
@@ -708,7 +713,14 @@ memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 * sock_filename)
       return VNET_API_ERROR_INVALID_ARGUMENT;
     }
 
-  if (sock_filename[0] != '/')
+  if (sock_filename[0] == '@')
+    {
+      /* Abstract socket */
+      if (sock_filename[1] == 0)
+	return VNET_API_ERROR_INVALID_ARGUMENT;
+      sock_filename = format (0, "%s%c", sock_filename, 0);
+    }
+  else if (sock_filename[0] != '/')
     {
       clib_error_t *error;
 
@@ -762,7 +774,7 @@ memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 * sock_filename)
     }
   vec_free (dir);
 
-  return memif_add_socket_file (sock_id, sock_filename);
+  return memif_add_socket_file (sock_id, sock_filename, namespace);
 }
 
 int
@@ -893,7 +905,8 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
 
       /* If we are creating listener make sure file doesn't exist or if it
        * exists thn delete it if it is old socket file */
-      if (args->is_master && (stat ((char *) msf->filename, &file_stat) == 0))
+      if (args->is_master && msf->filename[0] != '@' &&
+	  (stat ((char *) msf->filename, &file_stat) == 0))
 	{
 	  if (S_ISSOCK (file_stat.st_mode))
 	    {
@@ -1018,13 +1031,14 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
 	CLIB_SOCKET_F_ALLOW_GROUP_WRITE |
 	CLIB_SOCKET_F_SEQPACKET | CLIB_SOCKET_F_PASSCRED;
 
-      if ((error = clib_socket_init (s)))
+      if ((error = clib_socket_init_netns (s, msf->namespace)))
 	{
 	  ret = VNET_API_ERROR_SYSCALL_ERROR_4;
 	  goto error;
 	}
 
-      if (stat ((char *) msf->filename, &file_stat) == -1)
+      if (msf->filename[0] != '@' &&
+	  stat ((char *) msf->filename, &file_stat) == -1)
 	{
 	  ret = VNET_API_ERROR_SYSCALL_ERROR_8;
 	  goto error;
@@ -1108,7 +1122,8 @@ memif_init (vlib_main_t * vm)
    * for socket-id 0 to MEMIF_DEFAULT_SOCKET_FILENAME in the
    * default run-time directory.
    */
-  memif_socket_filename_add_del (1, 0, (u8 *) MEMIF_DEFAULT_SOCKET_FILENAME);
+  memif_socket_filename_add_del (1, 0, (u8 *) MEMIF_DEFAULT_SOCKET_FILENAME,
+				 NULL);
 
   return 0;
 }

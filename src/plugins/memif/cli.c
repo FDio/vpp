@@ -36,6 +36,7 @@ memif_socket_filename_create_command_fn (vlib_main_t * vm,
   int r;
   u32 socket_id;
   u8 *socket_filename;
+  u8 *namespace = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -47,6 +48,8 @@ memif_socket_filename_create_command_fn (vlib_main_t * vm,
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "id %u", &socket_id))
+	;
+      else if (unformat (line_input, "ns %s", &namespace))
 	;
       else if (unformat (line_input, "filename %s", &socket_filename))
 	;
@@ -66,13 +69,13 @@ memif_socket_filename_create_command_fn (vlib_main_t * vm,
       return clib_error_return (0, "Invalid socket id");
     }
 
-  if (!socket_filename || *socket_filename == 0)
+  if (!socket_filename || (socket_filename[0] == 0 && socket_filename[1] == 0))
     {
       vec_free (socket_filename);
       return clib_error_return (0, "Invalid socket filename");
     }
 
-  r = memif_socket_filename_add_del (1, socket_id, socket_filename);
+  r = memif_socket_filename_add_del (1, socket_id, socket_filename, namespace);
 
   vec_free (socket_filename);
 
@@ -137,7 +140,7 @@ memif_socket_filename_delete_command_fn (vlib_main_t * vm,
       return clib_error_return (0, "Invalid socket id");
     }
 
-  r = memif_socket_filename_add_del (0, socket_id, 0);
+  r = memif_socket_filename_add_del (0, socket_id, 0, NULL);
 
   if (r < 0)
     {
@@ -435,13 +438,14 @@ memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
     }
 
   vlib_cli_output (vm, "sockets\n");
-  vlib_cli_output (vm, "  %-3s %-11s %s\n", "id", "listener", "filename");
+  vlib_cli_output (vm, "  %-3s %-11s %-20s %s\n", "id", "listener",
+		   "namespace", "filename");
 
   /* *INDENT-OFF* */
   hash_foreach (sock_id, msf_idx, mm->socket_file_index_by_sock_id,
     ({
       memif_socket_file_t *msf;
-      u8 *filename;
+      u8 *filename, *namespace = 0;
 
       msf = pool_elt_at_index(mm->socket_files, msf_idx);
       filename = msf->filename;
@@ -450,8 +454,15 @@ memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
       else
         s = format (s, "no");
 
-      vlib_cli_output(vm, "  %-3u %-11v %s\n", sock_id, s, filename);
+      if (msf->namespace != NULL)
+      namespace = msf->namespace;
+      else namespace = format (namespace, "default");
+
+      vlib_cli_output (vm, "  %-3u %-11v %-20s %s\n", sock_id, s, namespace,
+		       filename);
       vec_reset_length (s);
+      vec_reset_length (namespace);
+
     }));
   /* *INDENT-ON* */
   vec_free (s);

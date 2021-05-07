@@ -40,6 +40,7 @@ enum memif_mode
     @param socket_filename - filename of the socket to be used for connection
            establishment; id 0 always maps to default "/var/vpp/memif.sock";
 	   no socket filename needed when is_add == 0.
+	   socket_filename starting with '@' will create an abstract socket.
 */
 autoreply define memif_socket_filename_add_del
 {
@@ -49,6 +50,29 @@ autoreply define memif_socket_filename_add_del
   u32 socket_id;	/* unique non-0 id for given socket file name */
   string socket_filename[108];	/* NUL terminated filename */
   option vat_help = "[add|del] id <id> filename <file>";
+};
+
+/** \brief Create or remove named socket file for memif interfaces
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 0 = remove, 1 = add association
+    @param socket_id - non-0 32-bit integer used to identify a socket file
+    @param socket_filename - filename of the socket to be used for connection
+           establishment; id 0 always maps to default "/var/vpp/memif.sock";
+	   no socket filename needed when is_add == 0.
+	   socket_filename starting with '@' will create an abstract socket
+	   in the given namespace
+    @param namespace - Name of the netns to create the socket in (if abstract)
+*/
+autoreply define memif_socket_filename_add_del_v2
+{
+  u32 client_index;
+  u32 context;
+  bool is_add;		/* 0 = remove, 1 = add association */
+  u32 socket_id;	/* unique non-0 id for given socket file name */
+  string socket_filename[108];	/* NUL terminated filename */
+  string namespace[];
+  option vat_help = "[add|del] id <id> filename <file> namespace <name>";
 };
 
 /** \brief Create memory interface

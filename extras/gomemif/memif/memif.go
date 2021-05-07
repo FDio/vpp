@@ -52,9 +52,9 @@ const (
 type interfaceMode uint8
 
 const (
-	interfaceModeEthernet interfaceMode = iota
-	interfaceModeIp
-	interfaceModePuntInject
+	InterfaceModeEthernet interfaceMode = iota
+	InterfaceModeIp
+	InterfaceModePuntInject
 )
 
 const msgSize = 128
