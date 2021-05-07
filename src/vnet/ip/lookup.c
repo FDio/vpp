@@ -465,13 +465,13 @@ vnet_show_ip_table_cmd (vlib_main_t *vm, unformat_input_t *main_input,
 	}
 
       fib = fib_table_get (fib_index, fproto);
-      vlib_cli_output (vm, "[%3u] table_id:%3u %v", fib->ft_index,
+      vlib_cli_output (vm, "[%3u] table_id:%u %v", fib->ft_index,
 		       fib->ft_table_id, fib->ft_desc);
     }
   else
     {
       pool_foreach (fib, fibs)
-	vlib_cli_output (vm, "[%3u] table_id:%3u %v", fib->ft_index,
+	vlib_cli_output (vm, "[%3u] table_id:%u %v", fib->ft_index,
 			 fib->ft_table_id, fib->ft_desc);
     }
 
