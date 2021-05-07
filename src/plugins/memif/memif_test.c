@@ -121,6 +121,95 @@ api_memif_socket_filename_add_del (vat_main_t * vam)
   return ret;
 }
 
+/* memif_socket_filename_add_del API */
+static int
+api_memif_socket_filename_add_del_v2 (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_memif_socket_filename_add_del_v2_t *mp;
+  u8 is_add;
+  u32 socket_id;
+  u8 *socket_filename, *namespace;
+  int ret;
+
+  is_add = 1;
+  socket_id = ~0;
+  socket_filename = 0;
+  namespace = 0;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "id %u", &socket_id))
+	;
+      else if (unformat (i, "filename %s", &socket_filename))
+	;
+      else if (unformat (i, "namespace %s", &namespace))
+	;
+      else if (unformat (i, "del"))
+	is_add = 0;
+      else if (unformat (i, "add"))
+	is_add = 1;
+      else
+	{
+	  vec_free (socket_filename);
+	  vec_free (namespace);
+	  clib_warning ("unknown input `%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (socket_id == 0 || socket_id == ~0)
+    {
+      vec_free (socket_filename);
+      vec_free (namespace);
+      errmsg ("Invalid socket id");
+      return -99;
+    }
+
+  if (is_add && (!socket_filename || *socket_filename == 0))
+    {
+      vec_free (socket_filename);
+      vec_free (namespace);
+      errmsg ("Invalid socket filename");
+      return -99;
+    }
+
+  M2 (MEMIF_SOCKET_FILENAME_ADD_DEL_V2, mp, strlen ((char *) namespace));
+
+  mp->is_add = is_add;
+  mp->socket_id = htonl (socket_id);
+  char *p = (char *) &mp->socket_filename;
+  p += vl_api_vec_to_api_string (socket_filename, (vl_api_string_t *) p);
+  p = (char *) &mp->namespace;
+  p += vl_api_vec_to_api_string (namespace, (vl_api_string_t *) p);
+
+  vec_free (socket_filename);
+  vec_free (namespace);
+
+  S (mp);
+  W (ret);
+
+  return ret;
+}
+
+/* memif socket-create reply handler */
+static void
+vl_api_memif_socket_filename_add_del_v2_reply_t_handler (
+  vl_api_memif_socket_filename_add_del_v2_reply_t *mp)
+{
+  vat_main_t *vam = memif_test_main.vat_main;
+  i32 retval = ntohl (mp->retval);
+
+  if (retval == 0)
+    {
+      fformat (vam->ofp, "created memif socket with socket_id %d\n",
+	       ntohl (mp->socket_id));
+    }
+
+  vam->retval = retval;
+  vam->result_ready = 1;
+}
+
 /* memif_socket_filename_add_del reply handler */
 #define VL_API_MEMIF_SOCKET_FILENAME_ADD_DEL_REPLY_T_HANDLER
 static void vl_api_memif_socket_filename_add_del_reply_t_handler
@@ -369,6 +458,41 @@ api_memif_socket_filename_dump (vat_main_t * vam)
   return ret;
 }
 
+/* memif_socket_filename_v2_dump API */
+static int
+api_memif_socket_filename_v2_dump (vat_main_t *vam)
+{
+  memif_test_main_t *mm = &memif_test_main;
+  vl_api_memif_socket_filename_v2_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  int ret;
+
+  if (vam->json_output)
+    {
+      clib_warning (
+	"JSON output not supported for memif_socket_filename_dump");
+      return -99;
+    }
+
+  M (MEMIF_SOCKET_FILENAME_V2_DUMP, mp);
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  if (!mm->ping_id)
+    mm->ping_id = vl_msg_api_get_msg_index ((u8 *) (VL_API_CONTROL_PING_CRC));
+  mp_ping = vl_msg_api_alloc_as_if_client (sizeof (*mp_ping));
+  mp_ping->_vl_msg_id = htons (mm->ping_id);
+  mp_ping->client_index = vam->my_client_index;
+
+  fformat (vam->ofp, "Sending ping id=%d\n", mm->ping_id);
+
+  vam->result_ready = 0;
+  S (mp_ping);
+
+  W (ret);
+  return ret;
+}
+
 /* memif_socket_format_details message handler */
 static void vl_api_memif_socket_filename_details_t_handler
   (vl_api_memif_socket_filename_details_t * mp)
@@ -378,6 +502,17 @@ static void vl_api_memif_socket_filename_details_t_handler
   fformat (vam->ofp,
 	   "id %u : filename %s\n",
 	   ntohl (mp->socket_id), mp->socket_filename);
+}
+
+/* memif_socket_format_details message handler */
+static void
+vl_api_memif_socket_filename_v2_details_t_handler (
+  vl_api_memif_socket_filename_v2_details_t *mp)
+{
+  vat_main_t *vam = memif_test_main.vat_main;
+
+  fformat (vam->ofp, "id %u : filename %s namespace %s\n",
+	   ntohl (mp->socket_id), mp->socket_filename, mp->namespace);
 }
 
 #include <memif/memif.api_test.c>
