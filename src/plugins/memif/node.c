@@ -880,7 +880,6 @@ VLIB_NODE_FN (memif_input_node) (vlib_main_t * vm,
   return n_rx;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (memif_input_node) = {
   .name = "memif-input",
   .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
@@ -891,9 +890,6 @@ VLIB_REGISTER_NODE (memif_input_node) = {
   .n_errors = MEMIF_INPUT_N_ERROR,
   .error_counters = memif_input_error_counters,
 };
-
-/* *INDENT-ON* */
-
 
 /*
  * fd.io coding-style-patch-verification: ON
