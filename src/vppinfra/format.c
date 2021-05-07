@@ -278,6 +278,7 @@ do_percent (u8 ** _s, const u8 * fmt, va_list * va)
 	case 'x':
 	case 'X':
 	case 'u':
+	case 'o':
 	case 'd':
 	  {
 	    u64 number;
@@ -310,6 +311,9 @@ do_percent (u8 ** _s, const u8 * fmt, va_list * va)
 		o.n_bits = BITS (int);
 		break;
 	      }
+
+	    if (c == 'o')
+	      o.n_bits = 8;
 
 	    s = format_integer (s, number, &o);
 	  }
