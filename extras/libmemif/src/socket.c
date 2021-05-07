@@ -274,7 +274,7 @@ memif_msg_enq_disconnect (memif_control_channel_t *cc, uint8_t *err_string,
   uint16_t l = sizeof (d->string);
   if (l > 96)
     {
-      DBG ("Disconnect string too long. Sending the first %d characters.",
+      DBG ("Disconnect string too long. Sending the first %ld characters.",
 	   sizeof (d->string) - 1);
     }
   strlcpy ((char *) d->string, (char *) err_string, sizeof (d->string));
