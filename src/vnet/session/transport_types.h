@@ -147,7 +147,6 @@ typedef struct _transport_connection
 #define c_pacer connection.pacer
 #define c_flags connection.flags
 #define s_ho_handle pacer.bytes_per_sec
-#define c_s_ho_handle connection.pacer.bytes_per_sec
 } transport_connection_t;
 
 STATIC_ASSERT (STRUCT_OFFSET_OF (transport_connection_t, s_index)
