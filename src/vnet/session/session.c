@@ -302,11 +302,11 @@ session_cleanup_half_open (transport_proto_t tp, session_handle_t ho_handle)
 }
 
 void
-session_half_open_delete_notify (transport_proto_t tp,
-				 session_handle_t ho_handle)
+session_half_open_delete_notify (transport_connection_t *tc)
 {
-  app_worker_t *app_wrk = app_worker_get (session_handle_data (ho_handle));
-  app_worker_del_half_open (app_wrk, tp, ho_handle);
+  app_worker_t *app_wrk;
+  app_wrk = app_worker_get (session_handle_data (tc->s_ho_handle));
+  app_worker_del_half_open (app_wrk, tc);
 }
 
 session_t *
@@ -1223,7 +1223,6 @@ session_open_cl (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
   transport_connection_t *tc;
   transport_endpoint_cfg_t *tep;
   app_worker_t *app_wrk;
-  session_handle_t sh;
   session_t *s;
   int rv;
 
@@ -1237,19 +1236,19 @@ session_open_cl (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
 
   tc = transport_get_half_open (rmt->transport_proto, (u32) rv);
 
-  /* For dgram type of service, allocate session and fifos now */
+  /* For cl type of service, allocate session and fifos now */
   app_wrk = app_worker_get (app_wrk_index);
   s = session_alloc_for_connection (tc);
   s->app_wrk_index = app_wrk->wrk_index;
   s->session_state = SESSION_STATE_OPENED;
-  if (app_worker_init_connected (app_wrk, s))
+  if ((rv = app_worker_init_connected (app_wrk, s)) < 0)
     {
       session_free (s);
-      return -1;
+      return rv;
     }
 
-  sh = session_handle (s);
-  session_lookup_add_connection (tc, sh);
+  /* Session allocated so notify app */
+  session_lookup_add_connection (tc, session_handle (s));
   return app_worker_connect_notify (app_wrk, s, SESSION_E_NONE, opaque);
 }
 

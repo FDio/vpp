@@ -248,6 +248,11 @@ tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
 
   app_session->app_wrk_index = ctx->parent_app_wrk_index;
 
+  /*
+   * Try to notify app. Similar to @ref session_stream_connect_notify. No
+   * half-open session lookup table cleanup needed and app worker state will
+   * be cleaned up on notification from tcp
+   */
   if ((err = app_worker_init_connected (app_wrk, app_session)))
     goto failed;
 
@@ -679,6 +684,7 @@ tls_connect (transport_endpoint_cfg_t * tep)
   app_worker_t *app_wrk;
   application_t *app;
   tls_ctx_t *ctx;
+  u64 wrk_handle;
   u32 ctx_index;
   int rv;
 
@@ -700,7 +706,8 @@ tls_connect (transport_endpoint_cfg_t * tep)
   ctx_index = tls_ctx_half_open_alloc ();
   ctx = tls_ctx_half_open_get (ctx_index);
   ctx->parent_app_wrk_index = sep->app_wrk_index;
-  ctx->parent_app_api_context = sep->opaque;
+//  ctx->parent_app_api_context = sep->opaque;
+  ctx->c_c_index = ctx_index;
   ctx->tcp_is_ip4 = sep->is_ip4;
   ctx->tls_type = sep->transport_proto;
   ctx->ckpair_index = ccfg->ckpair_index;
@@ -720,6 +727,16 @@ tls_connect (transport_endpoint_cfg_t * tep)
   cargs->sep_ext.ns_index = app->ns_index;
   if ((rv = vnet_connect (cargs)))
     return rv;
+
+  // FIXME no tcp session half-open to track if forced cleanup!
+
+  /* Track the half-open connections in case we want to forcefully
+   * clean them up @ref session_cleanup_half_open. Similar to what
+   * @ref session_open_vc but we don't care about app index in handle
+   */
+  wrk_handle = session_make_handle (ctx_index, sep->opaque);
+  app_worker_add_half_open (app_wrk, TRANSPORT_PROTO_TLS, wrk_handle,
+                            wrk_handle);
 
   TLS_DBG (1, "New connect request %u engine %d", ctx_index, engine_type);
   return 0;
@@ -869,6 +886,20 @@ tls_listener_get (u32 listener_index)
   tls_ctx_t *ctx;
   ctx = tls_listener_ctx_get (listener_index);
   return &ctx->connection;
+}
+
+static void
+tls_cleanup_ho (u32 conn_index)
+{
+  tls_ctx_t *ctx;
+
+  ctx = tls_ctx_half_open_get (conn_index);
+
+  // FIXME no tcp session half-open to track if forced cleanup!
+//  session_cleanup_half_open (TRANSPORT_PROTO_TCP, 1234);
+  tls_ctx_half_open_reader_unlock ();
+
+  tls_ctx_half_open_free (conn_index);
 }
 
 int
@@ -1080,6 +1111,7 @@ static const transport_proto_vft_t tls_proto = {
   .stop_listen = tls_stop_listen,
   .get_connection = tls_connection_get,
   .get_listener = tls_listener_get,
+  /*.cleanup_ho = tls_cleanuo_ho,*/
   .custom_tx = tls_custom_tx_callback,
   .format_connection = format_tls_connection,
   .format_half_open = format_tls_half_open,
@@ -1104,6 +1136,7 @@ dtls_connect (transport_endpoint_cfg_t *tep)
   tls_main_t *tm = &tls_main;
   app_worker_t *app_wrk;
   application_t *app;
+  u64 wrk_handle;
   tls_ctx_t *ctx;
   u32 ctx_handle;
   int rv;
@@ -1147,6 +1180,14 @@ dtls_connect (transport_endpoint_cfg_t *tep)
   cargs->sep_ext.transport_flags = TRANSPORT_CFG_F_CONNECTED;
   if ((rv = vnet_connect (cargs)))
     return rv;
+
+  /* Track the half-open connections in case we want to forcefully
+   * clean them up @ref session_cleanup_half_open. Similar to what
+   * @ref session_open_vc but we don't care about app index in handle
+   */
+  wrk_handle = session_make_handle (ctx_handle, sep->opaque);
+  app_worker_add_half_open (app_wrk, TRANSPORT_PROTO_DTLS, wrk_handle,
+                            wrk_handle);
 
   TLS_DBG (1, "New DTLS connect request %x engine %d", ctx_handle,
 	   engine_type);

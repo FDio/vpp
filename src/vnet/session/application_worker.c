@@ -407,11 +407,14 @@ app_worker_add_half_open (app_worker_t * app_wrk, transport_proto_t tp,
 }
 
 int
-app_worker_del_half_open (app_worker_t * app_wrk, transport_proto_t tp,
-			  session_handle_t ho_handle)
+app_worker_del_half_open (app_worker_t * app_wrk,
+                          transport_connection_t *tc)
 {
+  application_t *app = application_get (app_wrk->app_index);
   ASSERT (vlib_get_thread_index () == 0);
-  hash_unset (app_wrk->half_open_table[tp], ho_handle);
+  hash_unset (app_wrk->half_open_table[tc->proto], tc->s_ho_handle);
+  if (app->cb_fns.half_open_cleanup_callback)
+    app->cb_fns.half_open_cleanup_callback (tc);
   return 0;
 }
 
@@ -532,12 +535,7 @@ int
 app_worker_connect_session (app_worker_t * app_wrk, session_endpoint_t * sep,
 			    u32 api_context)
 {
-  int rv;
-
-  if ((rv = session_open (app_wrk->wrk_index, sep, api_context)))
-    return rv;
-
-  return 0;
+  return session_open (app_wrk->wrk_index, sep, api_context);
 }
 
 int
