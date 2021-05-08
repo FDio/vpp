@@ -124,14 +124,14 @@ u8 *
 format_transport_half_open_connection (u8 * s, va_list * args)
 {
   u32 transport_proto = va_arg (*args, u32);
-  u32 listen_index = va_arg (*args, u32);
+  u32 ho_index = va_arg (*args, u32);
   transport_proto_vft_t *tp_vft;
 
   tp_vft = transport_protocol_get_vft (transport_proto);
   if (!tp_vft)
     return s;
 
-  s = format (s, "%U", tp_vft->format_half_open, listen_index);
+  s = format (s, "%U", tp_vft->format_half_open, ho_index);
   return s;
 }
 
