@@ -148,13 +148,14 @@ typedef enum
     SESSION_N_STATES,
 } session_state_t;
 
-#define foreach_session_flag				\
-  _(RX_EVT, "rx-event")					\
-  _(PROXY, "proxy")					\
-  _(CUSTOM_TX, "custom-tx")				\
-  _(IS_MIGRATING, "migrating")				\
-  _(UNIDIRECTIONAL, "unidirectional")			\
-  _(CUSTOM_FIFO_TUNING, "custom-fifo-tuning")		\
+#define foreach_session_flag                                                  \
+  _ (RX_EVT, "rx-event")                                                      \
+  _ (PROXY, "proxy")                                                          \
+  _ (CUSTOM_TX, "custom-tx")                                                  \
+  _ (IS_MIGRATING, "migrating")                                               \
+  _ (UNIDIRECTIONAL, "unidirectional")                                        \
+  _ (CUSTOM_FIFO_TUNING, "custom-fifo-tuning")                                \
+  _ (HALF_OPEN, "half-open")
 
 typedef enum session_flags_bits_
 {
@@ -208,6 +209,9 @@ typedef struct session_
 
     /** App listener index in app's listener pool if a listener */
     u32 al_index;
+
+    /** Index in app worker's half-open table if a half-open */
+    u32 ho_index;
   };
 
   /** Opaque, for general use */

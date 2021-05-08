@@ -61,8 +61,8 @@ typedef struct app_worker_
 
   u8 app_is_builtin;
 
-  /** Per transport proto hash tables of half-open connection handles */
-  uword **half_open_table;
+  /** Pool of half-open session handles. Tracked in case worker detaches */
+  session_handle_t *half_open_table;
 
   /** Protects detached seg managers */
   clib_spinlock_t detached_seg_managers_lock;
@@ -313,13 +313,8 @@ int app_worker_accept_notify (app_worker_t * app_wrk, session_t * s);
 int app_worker_init_connected (app_worker_t * app_wrk, session_t * s);
 int app_worker_connect_notify (app_worker_t * app_wrk, session_t * s,
 			       session_error_t err, u32 opaque);
-int app_worker_add_half_open (app_worker_t * app_wrk, transport_proto_t tp,
-			      session_handle_t ho_handle,
-			      session_handle_t wrk_handle);
-int app_worker_del_half_open (app_worker_t * app_wrk, transport_proto_t tp,
-			      session_handle_t ho_handle);
-u64 app_worker_lookup_half_open (app_worker_t * app_wrk, transport_proto_t tp,
-				 session_handle_t ho_handle);
+int app_worker_add_half_open (app_worker_t *app_wrk, session_handle_t sh);
+int app_worker_del_half_open (app_worker_t *app_wrk, u32 ho_index);
 int app_worker_close_notify (app_worker_t * app_wrk, session_t * s);
 int app_worker_transport_closed_notify (app_worker_t * app_wrk,
 					session_t * s);
