@@ -59,8 +59,9 @@ app_worker_free (app_worker_t * app_wrk)
   u64 handle, *handles = 0, *sm_indices = 0;
   segment_manager_t *sm;
   session_t *ls;
+  session_handle_t *sh;
   u32 sm_index;
-  int i, j;
+  int i;
 
   /*
    *  Listener cleanup
@@ -110,26 +111,28 @@ app_worker_free (app_worker_t * app_wrk)
    * Half-open cleanup
    */
 
-  for (i = 0; i < vec_len (app_wrk->half_open_table); i++)
-    {
-      if (!app_wrk->half_open_table[i])
-	continue;
+  pool_foreach (sh, app_wrk->half_opens)
+    session_cleanup_half_open (*sh);
 
-      /* *INDENT-OFF* */
-      hash_foreach (handle, sm_index, app_wrk->half_open_table[i], ({
-	vec_add1 (handles, handle);
-      }));
-      /* *INDENT-ON* */
-
-      for (j = 0; j < vec_len (handles); j++)
-	session_cleanup_half_open (i, handles[j]);
-
-      hash_free (app_wrk->half_open_table[i]);
-      vec_reset_length (handles);
-    }
-
-  vec_free (app_wrk->half_open_table);
-  vec_free (handles);
+  pool_free (app_wrk->half_opens);
+  //  for (i = 0; i < vec_len (app_wrk->half_open_table); i++)
+  //    {
+  //      if (!app_wrk->half_open_table[i])
+  //	continue;
+  //
+  //      hash_foreach (handle, sm_index, app_wrk->half_open_table[i], ({
+  //	vec_add1 (handles, handle);
+  //      }));
+  //
+  //      for (j = 0; j < vec_len (handles); j++)
+  //	session_cleanup_half_open (i, handles[j]);
+  //
+  //      hash_free (app_wrk->half_open_table[i]);
+  //      vec_reset_length (handles);
+  //    }
+  //
+  //  vec_free (app_wrk->half_open_table);
+  //  vec_free (handles);
 
   /*
    * Detached listener segment managers cleanup
@@ -396,22 +399,22 @@ app_worker_connect_notify (app_worker_t * app_wrk, session_t * s,
 }
 
 int
-app_worker_add_half_open (app_worker_t * app_wrk, transport_proto_t tp,
-			  session_handle_t ho_handle,
-			  session_handle_t wrk_handle)
+app_worker_add_half_open (app_worker_t *app_wrk, session_handle_t sh)
 {
+  session_handle_t *shp;
+
   ASSERT (vlib_get_thread_index () == 0);
-  vec_validate (app_wrk->half_open_table, tp);
-  hash_set (app_wrk->half_open_table[tp], ho_handle, wrk_handle);
-  return 0;
+  pool_get (app_wrk->half_opens, shp);
+  *shp = sh;
+
+  return (shp - app_wrk->half_opens);
 }
 
 int
-app_worker_del_half_open (app_worker_t * app_wrk, transport_proto_t tp,
-			  session_handle_t ho_handle)
+app_worker_del_half_open (app_worker_t *app_wrk, u32 ho_index)
 {
   ASSERT (vlib_get_thread_index () == 0);
-  hash_unset (app_wrk->half_open_table[tp], ho_handle);
+  pool_put_index (app_wrk->half_opens, ho_index);
   return 0;
 }
 
@@ -419,14 +422,15 @@ u64
 app_worker_lookup_half_open (app_worker_t * app_wrk, transport_proto_t tp,
 			     session_handle_t ho_handle)
 {
-  u64 *ho_wrk_handlep;
-
-  /* No locking because all updates are done from main thread */
-  ho_wrk_handlep = hash_get (app_wrk->half_open_table[tp], ho_handle);
-  if (!ho_wrk_handlep)
-    return SESSION_INVALID_HANDLE;
-
-  return *ho_wrk_handlep;
+  //  u64 *ho_wrk_handlep;
+  //
+  //  /* No locking because all updates are done from main thread */
+  //  ho_wrk_handlep = hash_get (app_wrk->half_open_table[tp], ho_handle);
+  //  if (!ho_wrk_handlep)
+  //    return SESSION_INVALID_HANDLE;
+  //
+  //  return *ho_wrk_handlep;
+  return 0;
 }
 
 int
