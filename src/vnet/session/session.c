@@ -296,17 +296,24 @@ session_delete (session_t * s)
 }
 
 void
-session_cleanup_half_open (transport_proto_t tp, session_handle_t ho_handle)
+session_cleanup_half_open (session_handle_t ho_handle)
 {
-  transport_cleanup_half_open (tp, session_handle_index (ho_handle));
+  session_t *s = session_get_from_handle (ho_handle);
+  transport_cleanup_half_open (session_get_transport_proto (s),
+			       s->connection_index);
 }
 
 void
-session_half_open_delete_notify (transport_proto_t tp,
-				 session_handle_t ho_handle)
+session_half_open_delete_notify (transport_connection_t *tc)
 {
-  app_worker_t *app_wrk = app_worker_get (session_handle_data (ho_handle));
-  app_worker_del_half_open (app_wrk, tp, ho_handle);
+  app_worker_t *app_wrk;
+  session_t *s;
+
+  s = session_get (tc->s_index, tc->thread_index);
+  app_wrk = app_worker_get (s->app_wrk_index);
+  app_worker_del_half_open (app_wrk, s->opaque);
+  session_free (s);
+  clib_warning ("half-open deleted");
 }
 
 session_t *
@@ -323,6 +330,22 @@ session_alloc_for_connection (transport_connection_t * tc)
   s->session_state = SESSION_STATE_CLOSED;
 
   /* Attach transport to session and vice versa */
+  s->connection_index = tc->c_index;
+  tc->s_index = s->session_index;
+  return s;
+}
+
+static session_t *
+session_alloc_for_half_open (transport_connection_t *tc)
+{
+  u32 thread_index = tc->thread_index;
+  session_t *s;
+
+  ASSERT (thread_index == 0);
+
+  s = session_alloc (thread_index);
+  s->session_type = session_type_from_proto_and_ip (tc->proto, tc->is_ip4);
+  s->session_state = SESSION_STATE_CLOSED;
   s->connection_index = tc->c_index;
   tc->s_index = s->session_index;
   return s;
@@ -797,10 +820,10 @@ int
 session_stream_connect_notify (transport_connection_t * tc,
 			       session_error_t err)
 {
-  session_handle_t ho_handle, wrk_handle;
+  session_handle_t ho_handle;
   u32 opaque = 0, new_ti, new_si;
   app_worker_t *app_wrk;
-  session_t *s = 0;
+  session_t *s = 0, *ho;
 
   /*
    * Find connection handle and cleanup half-open table
@@ -813,22 +836,12 @@ session_stream_connect_notify (transport_connection_t * tc,
     }
   session_lookup_del_half_open (tc);
 
-  /* Get the app's index from the handle we stored when opening connection
-   * and the opaque (api_context for external apps) from transport session
-   * index */
-  app_wrk = app_worker_get_if_valid (session_handle_data (ho_handle));
+  ho = session_get (tc->s_index, 0 /* half-open*/);
+  app_wrk = app_worker_get_if_valid (ho->app_wrk_index);
   if (!app_wrk)
     return -1;
 
-  wrk_handle = app_worker_lookup_half_open (app_wrk, tc->proto, ho_handle);
-  if (wrk_handle == SESSION_INVALID_HANDLE)
-    return -1;
-
-  /* Make sure this is the same half-open index */
-  if (session_handle_index (wrk_handle) != session_handle_index (ho_handle))
-    return -1;
-
-  opaque = session_handle_data (wrk_handle);
+  opaque = session_handle_data (ho_handle);
 
   if (err)
     return app_worker_connect_notify (app_wrk, s, err, opaque);
@@ -1258,7 +1271,9 @@ session_open_vc (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
 {
   transport_connection_t *tc;
   transport_endpoint_cfg_t *tep;
-  u64 handle, wrk_handle;
+  app_worker_t *app_wrk;
+  session_t *s;
+  u64 handle;
   int rv;
 
   tep = session_endpoint_to_transport_cfg (rmt);
@@ -1271,27 +1286,23 @@ session_open_vc (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
 
   tc = transport_get_half_open (rmt->transport_proto, (u32) rv);
 
-  /* If transport offers a stream service, only allocate session once the
-   * connection has been established.
-   * Add connection to half-open table and save app and tc index. The
-   * latter is needed to help establish the connection while the former
-   * is needed when the connect notify comes and we have to notify the
-   * external app
+  app_wrk = app_worker_get (app_wrk_index);
+  s = session_alloc_for_half_open (tc);
+  s->app_wrk_index = app_wrk->wrk_index;
+  s->session_state = SESSION_STATE_CREATED;
+
+  /* If transport offers a vc service, only allocate established
+   * session once the connection has been established.
+   * In the meantime allocate half-open session for tracking purposes
+   * associate half-open connection to it and add session to app-worker
+   * half-open table. These are needed to allocate the established
+   * session on transport notification, and to cleanup the half-open
+   * session if the app detaches before connection establishment.
    */
-  handle = session_make_handle (tc->c_index, app_wrk_index);
+  s->opaque = app_worker_add_half_open (app_wrk, session_handle (s));
+
+  handle = session_make_handle (tc->c_index, opaque);
   session_lookup_add_half_open (tc, handle);
-
-  /* Store the half-open handle in the connection. Transport will use it
-   * when cleaning up @ref session_half_open_delete_notify
-   */
-  tc->s_ho_handle = handle;
-
-  /* Track the half-open connections in case we want to forcefully
-   * clean them up @ref session_cleanup_half_open
-   */
-  wrk_handle = session_make_handle (tc->c_index, opaque);
-  app_worker_add_half_open (app_worker_get (app_wrk_index),
-			    rmt->transport_proto, handle, wrk_handle);
 
   return 0;
 }
