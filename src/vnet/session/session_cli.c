@@ -144,8 +144,12 @@ format_session (u8 * s, va_list * args)
     }
   else if (ss->session_state == SESSION_STATE_CONNECTING)
     {
-      s = format (s, "%-40U%v", format_transport_half_open_connection,
-		  tp, ss->connection_index, ss->thread_index, str);
+      if (ss->flags & SESSION_F_HALF_OPEN)
+	s = format (s, "%U%v", format_transport_half_open_connection, tp,
+		    ss->connection_index, ss->thread_index, verbose, str);
+      else
+	s = format (s, "%U", format_transport_connection, tp,
+		    ss->connection_index, ss->thread_index, verbose);
     }
   else
     {

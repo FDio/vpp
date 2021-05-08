@@ -214,7 +214,7 @@ tcp_half_open_connection_cleanup (tcp_connection_t * tc)
   if (tc->c_thread_index != vlib_get_thread_index ())
     return 1;
 
-  session_half_open_delete_notify (TRANSPORT_PROTO_TCP, tc->c_s_ho_handle);
+  session_half_open_delete_notify (&tc->connection);
   wrk = tcp_get_worker (tc->c_thread_index);
   tcp_timer_reset (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT_SYN);
   tcp_half_open_connection_free (tc);
@@ -853,8 +853,20 @@ format_tcp_half_open_session (u8 * s, va_list * args)
 {
   u32 tci = va_arg (*args, u32);
   u32 __clib_unused thread_index = va_arg (*args, u32);
-  tcp_connection_t *tc = tcp_half_open_connection_get (tci);
-  return format (s, "%U", format_tcp_connection_id, tc);
+  u32 verbose = va_arg (*args, u32);
+  tcp_connection_t *tc;
+  u8 *state = 0;
+
+  tc = tcp_half_open_connection_get (tci);
+  if (tc->flags & TCP_CONN_HALF_OPEN_DONE)
+    state = format (state, "%s", "CLOSED");
+  else
+    state = format (state, "%U", format_tcp_state, tc->state);
+  s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_tcp_connection_id, tc);
+  if (verbose)
+    s = format (s, "%-" SESSION_CLI_STATE_LEN "v", state);
+  vec_free (state);
+  return s;
 }
 
 static transport_connection_t *
