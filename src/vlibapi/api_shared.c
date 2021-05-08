@@ -654,7 +654,21 @@ vl_msg_api_handler_with_vm_node (api_main_t * am, svm_region_t * vlib_rp,
    * main thread without copying them...
    */
   if (id >= vec_len (am->message_bounce) || !(am->message_bounce[id]))
-    vl_msg_api_free (the_msg);
+    {
+      if (is_private)
+	{
+	  old_vlib_rp = am->vlib_rp;
+	  save_shmem_hdr = am->shmem_hdr;
+	  am->vlib_rp = vlib_rp;
+	  am->shmem_hdr = (void *) vlib_rp->user_ctx;
+	}
+      vl_msg_api_free (the_msg);
+      if (is_private)
+	{
+	  am->vlib_rp = old_vlib_rp;
+	  am->shmem_hdr = save_shmem_hdr;
+	}
+    }
 
   if (PREDICT_FALSE (am->elog_trace_api_messages))
     {
