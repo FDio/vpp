@@ -331,8 +331,7 @@ int session_wrk_handle_mq (session_worker_t *wrk, svm_msg_q_t *mq);
 session_t *session_alloc (u32 thread_index);
 void session_free (session_t * s);
 void session_free_w_fifos (session_t * s);
-void session_cleanup_half_open (transport_proto_t tp,
-				session_handle_t ho_handle);
+void session_cleanup_half_open (session_handle_t ho_handle);
 u8 session_is_valid (u32 si, u8 thread_index);
 
 always_inline session_t *
@@ -504,8 +503,7 @@ int session_dgram_connect_notify (transport_connection_t * tc,
 int session_stream_accept_notify (transport_connection_t * tc);
 void session_transport_closing_notify (transport_connection_t * tc);
 void session_transport_delete_notify (transport_connection_t * tc);
-void session_half_open_delete_notify (transport_proto_t tp,
-				      session_handle_t ho_handle);
+void session_half_open_delete_notify (transport_connection_t *tc);
 void session_transport_closed_notify (transport_connection_t * tc);
 void session_transport_reset_notify (transport_connection_t * tc);
 int session_stream_accept (transport_connection_t * tc, u32 listener_index,
@@ -653,6 +651,29 @@ always_inline void
 listen_session_free (session_t * s)
 {
   ASSERT (!s->rx_fifo);
+  session_free (s);
+}
+
+always_inline session_t *
+ho_session_alloc (void)
+{
+  session_t *s;
+  ASSERT (vlib_get_thread_index () == 0);
+  s = session_alloc (0);
+  s->session_state = SESSION_STATE_CREATED;
+  return s;
+}
+
+always_inline session_t *
+ho_session_get (u32 ho_index)
+{
+  return session_get (ho_index, 0 /* half-open thread */);
+}
+
+always_inline void
+ho_session_free (session_t *s)
+{
+  ASSERT (!s->rx_fifo && s->thread_index == 0);
   session_free (s);
 }
 
