@@ -694,7 +694,8 @@ free_list:
       if (data_bytes <= fss_fl_chunk_bytes (fss) + n_free)
 	{
 	  u32 min_size = FIFO_SEGMENT_MIN_FIFO_SIZE;
-
+	  if (n_free < min_size)
+	    goto done;
 	  batch = (data_bytes - fss_fl_chunk_bytes (fss)) / min_size;
 	  batch = clib_min (batch + 1, n_free / min_size);
 	  if (fsh_try_alloc_chunk_batch (fsh, fss, 0, batch))
