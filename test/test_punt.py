@@ -46,11 +46,11 @@ class serverSocketThread(threading.Thread):
         self.sockName = sockName
         self.sock = None
         self.rx_pkts = []
-        self.keep_running = True
+        self.stop_running = False
 
     def rx_packets(self):
         # Wait for some packets on socket
-        while self.keep_running:
+        while True:
             try:
                 data = self.sock.recv(65536)
 
@@ -61,7 +61,9 @@ class serverSocketThread(threading.Thread):
                 self.rx_pkts.append(Ether(data[8:]))
             except IOError as e:
                 if e.errno == 11:
-                    # nothing to receive, sleep a little
+                    # nothing to receive, stop running or sleep a little
+                    if self.stop_running:
+                        break
                     time.sleep(0.1)
                     pass
                 else:
@@ -81,9 +83,9 @@ class serverSocketThread(threading.Thread):
         self.rx_packets()
 
     def close(self):
-        self.sock.close()
-        self.keep_running = False
+        self.stop_running = True
         threading.Thread.join(self)
+        self.sock.close()
         return self.rx_pkts
 
 
