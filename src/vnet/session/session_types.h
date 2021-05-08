@@ -208,6 +208,9 @@ typedef struct session_
 
     /** App listener index in app's listener pool if a listener */
     u32 al_index;
+
+    /** Index in app worker's half-open table if a half-open */
+    u32 ho_index;
   };
 
   /** Opaque, for general use */
