@@ -97,9 +97,10 @@ session_send_io_evt_to_thread_custom (void *data, u32 thread_index,
 int
 session_send_ctrl_evt_to_thread (session_t * s, session_evt_type_t evt_type)
 {
-  /* only events supported are disconnect and reset */
-  ASSERT (evt_type == SESSION_CTRL_EVT_CLOSE
-	  || evt_type == SESSION_CTRL_EVT_RESET);
+  /* only events supported are disconnect, shutdown and reset */
+  ASSERT (evt_type == SESSION_CTRL_EVT_CLOSE ||
+	  evt_type == SESSION_CTRL_EVT_HALF_CLOSE ||
+	  evt_type == SESSION_CTRL_EVT_RESET);
   return session_send_evt_to_thread (s, 0, s->thread_index, evt_type);
 }
 
@@ -1087,7 +1088,9 @@ session_transport_closed_notify (transport_connection_t * tc)
     return;
 
   /* Transport thinks that app requested close but it actually didn't.
-   * Can happen for tcp if fin and rst are received in close succession. */
+   * Can happen for tcp:
+   * 1)if fin and rst are received in close succession.
+   * 2)if app shutdown the connection.  */
   if (s->session_state == SESSION_STATE_READY)
     {
       session_transport_closing_notify (tc);
@@ -1399,6 +1402,20 @@ session_stop_listen (session_t * s)
 }
 
 /**
+ * Initialize session half-closing procedure.
+ *
+ * Note that half-closing will not change the state of the session.
+ */
+void
+session_half_close (session_t *s)
+{
+  if (!s)
+    return;
+
+  session_program_transport_ctrl_evt (s, SESSION_CTRL_EVT_HALF_CLOSE);
+}
+
+/**
  * Initialize session closing procedure.
  *
  * Request is always sent to session node to ensure that all outstanding
@@ -1436,6 +1453,24 @@ session_reset (session_t * s)
   svm_fifo_dequeue_drop_all (s->tx_fifo);
   s->session_state = SESSION_STATE_CLOSING;
   session_program_transport_ctrl_evt (s, SESSION_CTRL_EVT_RESET);
+}
+
+/**
+ * Notify transport the session can be half-disconnected.
+ *
+ * Must be called from the session's thread.
+ */
+void
+session_transport_half_close (session_t *s)
+{
+  /* Only READY session can be half-closed */
+  if (s->session_state != SESSION_STATE_READY)
+    {
+      return;
+    }
+
+  transport_half_close (session_get_transport_proto (s), s->connection_index,
+			s->thread_index);
 }
 
 /**
