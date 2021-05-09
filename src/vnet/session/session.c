@@ -98,8 +98,9 @@ int
 session_send_ctrl_evt_to_thread (session_t * s, session_evt_type_t evt_type)
 {
   /* only events supported are disconnect and reset */
-  ASSERT (evt_type == SESSION_CTRL_EVT_CLOSE
-	  || evt_type == SESSION_CTRL_EVT_RESET);
+  ASSERT (evt_type == SESSION_CTRL_EVT_CLOSE ||
+	  evt_type == SESSION_CTRL_EVT_RESET ||
+	  evt_type == SESSION_CTRL_EVT_SHUTDOWN);
   return session_send_evt_to_thread (s, 0, s->thread_index, evt_type);
 }
 
@@ -1029,6 +1030,8 @@ session_transport_delete_notify (transport_connection_t * tc)
     case SESSION_STATE_TRANSPORT_CLOSING:
     case SESSION_STATE_CLOSING:
     case SESSION_STATE_TRANSPORT_CLOSED:
+    case SESSION_STATE_HALF_CLOSED:
+    case SESSION_STATE_APP_HALF_CLOSED:
       /* If transport finishes or times out before we get a reply
        * from the app, mark transport as closed and wait for reply
        * before removing the session. Cleanup session table in advance
@@ -1082,6 +1085,8 @@ session_transport_closed_notify (transport_connection_t * tc)
   if (!(s = session_get_if_valid (tc->s_index, tc->thread_index)))
     return;
 
+  app_wrk = app_worker_get_if_valid (s->app_wrk_index);
+
   /* Transport thinks that app requested close but it actually didn't.
    * Can happen for tcp if fin and rst are received in close succession. */
   if (s->session_state == SESSION_STATE_READY)
@@ -1089,6 +1094,13 @@ session_transport_closed_notify (transport_connection_t * tc)
       session_transport_closing_notify (tc);
       svm_fifo_dequeue_drop_all (s->tx_fifo);
       s->session_state = SESSION_STATE_TRANSPORT_CLOSED;
+    }
+  /* If app was shutdown, switch to half-closed and notify app */
+  else if (s->session_state == SESSION_STATE_APP_HALF_CLOSED)
+    {
+      s->session_state = SESSION_STATE_HALF_CLOSED;
+      if (app_wrk)
+	app_worker_close_notify (app_wrk, s);
     }
   /* If app close has not been received or has not yet resulted in
    * a transport close, only mark the session transport as closed */
@@ -1100,7 +1112,6 @@ session_transport_closed_notify (transport_connection_t * tc)
   else if (s->session_state == SESSION_STATE_APP_CLOSED)
     s->session_state = SESSION_STATE_CLOSED;
 
-  app_wrk = app_worker_get_if_valid (s->app_wrk_index);
   if (app_wrk)
     app_worker_transport_closed_notify (app_wrk, s);
 }
@@ -1399,6 +1410,30 @@ session_stop_listen (session_t * s)
 }
 
 /**
+ * Initialize session half-closing procedure.
+ *
+ * Request is always sent to session node to ensure that all outstanding
+ * requests are served before transport is notified.
+ */
+void
+session_half_close (session_t *s)
+{
+  if (!s)
+    return;
+
+  if (s->session_state >= SESSION_STATE_HALF_CLOSING)
+    {
+      if (s->session_state == SESSION_STATE_TRANSPORT_CLOSED ||
+	  s->session_state == SESSION_STATE_TRANSPORT_DELETED)
+	session_program_transport_ctrl_evt (s, SESSION_CTRL_EVT_HALF_CLOSE);
+      return;
+    }
+
+  s->session_state = SESSION_STATE_HALF_CLOSING;
+  session_program_transport_ctrl_evt (s, SESSION_CTRL_EVT_HALF_CLOSE);
+}
+
+/**
  * Initialize session closing procedure.
  *
  * Request is always sent to session node to ensure that all outstanding
@@ -1414,8 +1449,9 @@ session_close (session_t * s)
     {
       /* Session will only be removed once both app and transport
        * acknowledge the close */
-      if (s->session_state == SESSION_STATE_TRANSPORT_CLOSED
-	  || s->session_state == SESSION_STATE_TRANSPORT_DELETED)
+      if (s->session_state == SESSION_STATE_TRANSPORT_CLOSED ||
+	  s->session_state == SESSION_STATE_TRANSPORT_DELETED ||
+	  s->session_state == SESSION_STATE_HALF_CLOSED)
 	session_program_transport_ctrl_evt (s, SESSION_CTRL_EVT_CLOSE);
       return;
     }
@@ -1439,6 +1475,24 @@ session_reset (session_t * s)
 }
 
 /**
+ * Notify transport the session can be half-disconnected.
+ *
+ * Must be called from the session's thread.
+ */
+void
+session_transport_half_close (session_t *s)
+{
+  if (s->session_state >= SESSION_STATE_APP_HALF_CLOSED)
+    {
+      return;
+    }
+
+  s->session_state = SESSION_STATE_APP_HALF_CLOSED;
+  transport_half_close (session_get_transport_proto (s), s->connection_index,
+			s->thread_index);
+}
+
+/**
  * Notify transport the session can be disconnected. This should eventually
  * result in a delete notification that allows us to cleanup session state.
  * Called for both active/passive disconnects.
@@ -1450,7 +1504,8 @@ session_transport_close (session_t * s)
 {
   if (s->session_state >= SESSION_STATE_APP_CLOSED)
     {
-      if (s->session_state == SESSION_STATE_TRANSPORT_CLOSED)
+      if (s->session_state == SESSION_STATE_TRANSPORT_CLOSED ||
+	  s->session_state == SESSION_STATE_HALF_CLOSED)
 	s->session_state = SESSION_STATE_CLOSED;
       /* If transport is already deleted, just free the session */
       else if (s->session_state >= SESSION_STATE_TRANSPORT_DELETED)

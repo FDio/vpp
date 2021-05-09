@@ -126,19 +126,22 @@ typedef enum session_ft_action_
 /*
  * Session states
  */
-#define foreach_session_state				\
-  _(CREATED, "created")					\
-  _(LISTENING, "listening")				\
-  _(CONNECTING, "connecting")				\
-  _(ACCEPTING, "accepting")				\
-  _(READY, "ready")					\
-  _(OPENED, "opened")					\
-  _(TRANSPORT_CLOSING, "transport-closing")		\
-  _(CLOSING, "closing")					\
-  _(APP_CLOSED, "app-closed")				\
-  _(TRANSPORT_CLOSED, "transport-closed")		\
-  _(CLOSED, "closed")					\
-  _(TRANSPORT_DELETED, "transport-deleted")		\
+#define foreach_session_state                                                 \
+  _ (CREATED, "created")                                                      \
+  _ (LISTENING, "listening")                                                  \
+  _ (CONNECTING, "connecting")                                                \
+  _ (ACCEPTING, "accepting")                                                  \
+  _ (READY, "ready")                                                          \
+  _ (OPENED, "opened")                                                        \
+  _ (TRANSPORT_CLOSING, "transport-closing")                                  \
+  _ (HALF_CLOSING, "half-closing")                                            \
+  _ (APP_HALF_CLOSED, "app-half-closed")                                      \
+  _ (CLOSING, "closing")                                                      \
+  _ (APP_CLOSED, "app-closed")                                                \
+  _ (TRANSPORT_CLOSED, "transport-closed")                                    \
+  _ (HALF_CLOSED, "half-closed")                                              \
+  _ (CLOSED, "closed")                                                        \
+  _ (TRANSPORT_DELETED, "transport-deleted")
 
 typedef enum
 {
@@ -327,6 +330,7 @@ typedef enum
   SESSION_IO_EVT_BUILTIN_RX,
   SESSION_IO_EVT_BUILTIN_TX,
   SESSION_CTRL_EVT_RPC,
+  SESSION_CTRL_EVT_HALF_CLOSE,
   SESSION_CTRL_EVT_CLOSE,
   SESSION_CTRL_EVT_RESET,
   SESSION_CTRL_EVT_BOUND,
@@ -340,6 +344,7 @@ typedef enum
   SESSION_CTRL_EVT_REQ_WORKER_UPDATE,
   SESSION_CTRL_EVT_WORKER_UPDATE,
   SESSION_CTRL_EVT_WORKER_UPDATE_REPLY,
+  SESSION_CTRL_EVT_SHUTDOWN,
   SESSION_CTRL_EVT_DISCONNECT,
   SESSION_CTRL_EVT_CONNECT,
   SESSION_CTRL_EVT_CONNECT_URI,
@@ -367,6 +372,7 @@ typedef enum
   _ (CONNECT, connect)                                                        \
   _ (CONNECT_URI, connect_uri)                                                \
   _ (CONNECTED, connected)                                                    \
+  _ (SHUTDOWN, shutdown)                                                      \
   _ (DISCONNECT, disconnect)                                                  \
   _ (DISCONNECTED, disconnected)                                              \
   _ (DISCONNECTED_REPLY, disconnected_reply)                                  \

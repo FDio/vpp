@@ -354,7 +354,6 @@ tcp_program_cleanup (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
  * 2) TIME_WAIT (active close) whereby after 2MSL the 2MSL timer triggers
  * and cleanup is called.
  *
- * N.B. Half-close connections are not supported
  */
 void
 tcp_connection_close (tcp_connection_t * tc)
@@ -380,7 +379,8 @@ tcp_connection_close (tcp_connection_t * tc)
       break;
     case TCP_STATE_ESTABLISHED:
       /* If closing with unread data, reset the connection */
-      if (transport_max_rx_dequeue (&tc->connection))
+      if (!(tc->flags & TCP_CONN_HALF_CLOSING) &&
+	  transport_max_rx_dequeue (&tc->connection))
 	{
 	  tcp_send_reset (tc);
 	  tcp_connection_timers_reset (tc);
@@ -426,10 +426,20 @@ tcp_connection_close (tcp_connection_t * tc)
 }
 
 static void
+tcp_session_half_close (u32 conn_index, u32 thread_index)
+{
+  tcp_connection_t *tc;
+  tc = tcp_connection_get (conn_index, thread_index);
+  tc->flags |= TCP_CONN_HALF_CLOSING;
+  tcp_connection_close (tc);
+}
+
+static void
 tcp_session_close (u32 conn_index, u32 thread_index)
 {
   tcp_connection_t *tc;
   tc = tcp_connection_get (conn_index, thread_index);
+  tc->flags &= ~TCP_CONN_HALF_CLOSING;
   tcp_connection_close (tc);
 }
 
@@ -1304,6 +1314,7 @@ const static transport_proto_vft_t tcp_proto = {
   .get_half_open = tcp_half_open_session_get_transport,
   .attribute = tcp_session_attribute,
   .connect = tcp_session_open,
+  .half_close = tcp_session_half_close,
   .close = tcp_session_close,
   .cleanup = tcp_session_cleanup,
   .cleanup_ho = tcp_session_cleanup_ho,

@@ -68,6 +68,8 @@ typedef enum vcl_session_state_
   VCL_STATE_LISTEN,
   VCL_STATE_READY,
   VCL_STATE_VPP_CLOSING,
+  VCL_STATE_SHUTDOWN,
+  VCL_STATE_SHUTDOWN_VPP_CLOSING,
   VCL_STATE_DISCONNECT,
   VCL_STATE_DETACHED,
   VCL_STATE_UPDATED,
@@ -559,8 +561,9 @@ vcl_session_has_crypto (vcl_session_t *s)
 static inline u8
 vcl_session_is_ready (vcl_session_t * s)
 {
-  return (s->session_state == VCL_STATE_READY
-	  || s->session_state == VCL_STATE_VPP_CLOSING);
+  return (s->session_state == VCL_STATE_READY ||
+	  s->session_state == VCL_STATE_VPP_CLOSING ||
+	  s->session_state == VCL_STATE_SHUTDOWN);
 }
 
 static inline u8
@@ -568,6 +571,13 @@ vcl_session_is_open (vcl_session_t * s)
 {
   return ((vcl_session_is_ready (s))
 	  || (s->session_state == VCL_STATE_LISTEN && vcl_session_is_cl (s)));
+}
+
+static inline u8
+vcl_session_is_shutdown (vcl_session_t *s)
+{
+  return (s->session_state == VCL_STATE_SHUTDOWN ||
+	  s->session_state == VCL_STATE_SHUTDOWN_VPP_CLOSING);
 }
 
 static inline u8

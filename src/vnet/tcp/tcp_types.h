@@ -115,20 +115,21 @@ typedef enum tcp_cfg_flag_
 } tcp_cfg_flags_e;
 
 /** TCP connection flags */
-#define foreach_tcp_connection_flag             \
-  _(SNDACK, "Send ACK")                         \
-  _(FINSNT, "FIN sent")				\
-  _(RECOVERY, "Recovery")                    	\
-  _(FAST_RECOVERY, "Fast Recovery")		\
-  _(DCNT_PENDING, "Disconnect pending")		\
-  _(HALF_OPEN_DONE, "Half-open completed")	\
-  _(FINPNDG, "FIN pending")			\
-  _(RXT_PENDING, "Retransmit pending")		\
-  _(FRXT_FIRST, "Retransmit first")		\
-  _(DEQ_PENDING, "Dequeue pending ")		\
-  _(PSH_PENDING, "PSH pending")			\
-  _(FINRCVD, "FIN received")			\
-  _(ZERO_RWND_SENT, "Zero RWND sent")		\
+#define foreach_tcp_connection_flag                                           \
+  _ (SNDACK, "Send ACK")                                                      \
+  _ (FINSNT, "FIN sent")                                                      \
+  _ (RECOVERY, "Recovery")                                                    \
+  _ (FAST_RECOVERY, "Fast Recovery")                                          \
+  _ (DCNT_PENDING, "Disconnect pending")                                      \
+  _ (HALF_OPEN_DONE, "Half-open completed")                                   \
+  _ (FINPNDG, "FIN pending")                                                  \
+  _ (RXT_PENDING, "Retransmit pending")                                       \
+  _ (FRXT_FIRST, "Retransmit first")                                          \
+  _ (DEQ_PENDING, "Dequeue pending ")                                         \
+  _ (PSH_PENDING, "PSH pending")                                              \
+  _ (FINRCVD, "FIN received")                                                 \
+  _ (ZERO_RWND_SENT, "Zero RWND sent")                                        \
+  _ (HALF_CLOSING, "Half closing")
 
 typedef enum tcp_connection_flag_bits_
 {
