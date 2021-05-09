@@ -354,7 +354,6 @@ tcp_program_cleanup (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
  * 2) TIME_WAIT (active close) whereby after 2MSL the 2MSL timer triggers
  * and cleanup is called.
  *
- * N.B. Half-close connections are not supported
  */
 void
 tcp_connection_close (tcp_connection_t * tc)
@@ -423,6 +422,30 @@ tcp_connection_close (tcp_connection_t * tc)
     default:
       TCP_DBG ("state: %u", tc->state);
     }
+}
+
+static void
+tcp_session_half_close (u32 conn_index, u32 thread_index)
+{
+  tcp_worker_ctx_t *wrk;
+  tcp_connection_t *tc;
+
+  tc = tcp_connection_get (conn_index, thread_index);
+  wrk = tcp_get_worker (tc->c_thread_index);
+
+  /* If the connection is not in ESTABLISHED state, ignore it */
+  if (tc->state != TCP_STATE_ESTABLISHED)
+    return;
+  if (!transport_max_tx_dequeue (&tc->connection))
+    tcp_send_fin (tc);
+  else
+    tc->flags |= TCP_CONN_FINPNDG;
+  tcp_connection_set_state (tc, TCP_STATE_FIN_WAIT_1);
+  /* Set a timer in case the peer stops responding. Otherwise the
+   * connection will be stuck here forever. */
+  ASSERT (tc->timers[TCP_TIMER_WAITCLOSE] == TCP_TIMER_HANDLE_INVALID);
+  tcp_timer_set (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
+		 tcp_cfg.finwait1_time);
 }
 
 static void
@@ -1304,6 +1327,7 @@ const static transport_proto_vft_t tcp_proto = {
   .get_half_open = tcp_half_open_session_get_transport,
   .attribute = tcp_session_attribute,
   .connect = tcp_session_open,
+  .half_close = tcp_session_half_close,
   .close = tcp_session_close,
   .cleanup = tcp_session_cleanup,
   .cleanup_ho = tcp_session_cleanup_ho,

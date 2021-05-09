@@ -260,6 +260,23 @@ vcl_send_session_unlisten (vcl_worker_t * wrk, vcl_session_t * s)
 }
 
 static void
+vcl_send_session_shutdown (vcl_worker_t *wrk, vcl_session_t *s)
+{
+  app_session_evt_t _app_evt, *app_evt = &_app_evt;
+  session_shutdown_msg_t *mp;
+  svm_msg_q_t *mq;
+
+  /* Send to thread that owns the session */
+  mq = s->vpp_evt_q;
+  app_alloc_ctrl_evt_to_vpp (mq, app_evt, SESSION_CTRL_EVT_SHUTDOWN);
+  mp = (session_shutdown_msg_t *) app_evt->evt->data;
+  memset (mp, 0, sizeof (*mp));
+  mp->client_index = wrk->api_client_handle;
+  mp->handle = s->vpp_handle;
+  app_send_ctrl_evt_to_vpp (mq, app_evt);
+}
+
+static void
 vcl_send_session_disconnect (vcl_worker_t * wrk, vcl_session_t * s)
 {
   app_session_evt_t _app_evt, *app_evt = &_app_evt;
@@ -787,6 +804,42 @@ vcl_session_disconnected_handler (vcl_worker_t * wrk,
     session->session_state = VCL_STATE_VPP_CLOSING;
 
   return session;
+}
+
+int
+vppcom_session_shutdown (uint32_t session_handle)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  vcl_session_t *session;
+  vcl_session_state_t state;
+  u64 vpp_handle;
+
+  session = vcl_session_get_w_handle (wrk, session_handle);
+  if (PREDICT_FALSE (!session))
+    return VPPCOM_EBADFD;
+
+  vpp_handle = session->vpp_handle;
+  state = session->session_state;
+
+  VDBG (1, "session %u [0x%llx] state 0x%x (%s)", session->session_index,
+	vpp_handle, state, vppcom_session_state_str (state));
+
+  if (PREDICT_FALSE (state == VCL_STATE_LISTEN))
+    {
+      VDBG (0, "ERROR: Cannot shutdown a listen socket!");
+      return VPPCOM_EBADFD;
+    }
+
+  if (PREDICT_TRUE (state == VCL_STATE_READY))
+    {
+      VDBG (1, "session %u [0x%llx]: sending shutdown...",
+	    session->session_index, vpp_handle);
+
+      vcl_send_session_shutdown (wrk, session);
+      session->flags |= VCL_SESSION_F_SHUTDOWN;
+    }
+
+  return VPPCOM_OK;
 }
 
 static int
@@ -2101,7 +2154,8 @@ vppcom_session_write_inline (vcl_worker_t * wrk, vcl_session_t * s, void *buf,
       return VPPCOM_EBADFD;
     }
 
-  if (PREDICT_FALSE (!vcl_session_is_open (s)))
+  if (PREDICT_FALSE (!vcl_session_is_open (s) ||
+		     s->flags & VCL_SESSION_F_SHUTDOWN))
     {
       VDBG (1, "session %u [0x%llx]: is not open! state 0x%x (%s)",
 	    s->session_index, s->vpp_handle, s->session_state,

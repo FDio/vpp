@@ -74,6 +74,7 @@ typedef struct _transport_proto_vft
   u32 (*start_listen) (u32 session_index, transport_endpoint_t * lcl);
   u32 (*stop_listen) (u32 conn_index);
   int (*connect) (transport_endpoint_cfg_t * rmt);
+  void (*half_close) (u32 conn_index, u32 thread_index);
   void (*close) (u32 conn_index, u32 thread_index);
   void (*reset) (u32 conn_index, u32 thread_index);
   void (*cleanup) (u32 conn_index, u32 thread_index);
@@ -134,6 +135,8 @@ do {								\
 } while (0)
 
 int transport_connect (transport_proto_t tp, transport_endpoint_cfg_t * tep);
+void transport_half_close (transport_proto_t tp, u32 conn_index,
+			   u8 thread_index);
 void transport_close (transport_proto_t tp, u32 conn_index, u8 thread_index);
 void transport_reset (transport_proto_t tp, u32 conn_index, u8 thread_index);
 u32 transport_start_listen (transport_proto_t tp, u32 session_index,

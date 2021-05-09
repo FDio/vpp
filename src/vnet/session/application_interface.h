@@ -141,6 +141,12 @@ typedef struct _vnet_connect_args
   u32 api_context;
 } vnet_connect_args_t;
 
+typedef struct _vnet_shutdown_args_t
+{
+  session_handle_t handle;
+  u32 app_index;
+} vnet_shutdown_args_t;
+
 typedef struct _vnet_disconnect_args_t
 {
   session_handle_t handle;
@@ -266,6 +272,7 @@ int vnet_application_detach (vnet_app_detach_args_t * a);
 int vnet_listen (vnet_listen_args_t * a);
 int vnet_connect (vnet_connect_args_t * a);
 int vnet_unlisten (vnet_unlisten_args_t * a);
+int vnet_shutdown_session (vnet_shutdown_args_t *a);
 int vnet_disconnect_session (vnet_disconnect_args_t * a);
 
 int vnet_app_add_cert_key_pair (vnet_app_add_cert_key_pair_args_t * a);
@@ -425,6 +432,13 @@ typedef struct session_connected_msg_
   u8 segment_name[64];
   transport_endpoint_t lcl;
 } __clib_packed session_connected_msg_t;
+
+typedef struct session_shutdown_msg_
+{
+  u32 client_index;
+  u32 context;
+  session_handle_t handle;
+} __clib_packed session_shutdown_msg_t;
 
 typedef struct session_disconnect_msg_
 {

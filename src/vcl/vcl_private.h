@@ -137,6 +137,7 @@ typedef enum vcl_session_flags_
   VCL_SESSION_F_IS_VEP = 1 << 1,
   VCL_SESSION_F_IS_VEP_SESSION = 1 << 2,
   VCL_SESSION_F_HAS_RX_EVT = 1 << 3,
+  VCL_SESSION_F_SHUTDOWN = 1 << 4,
 } __clib_packed vcl_session_flags_t;
 
 typedef struct vcl_session_

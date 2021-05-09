@@ -1313,6 +1313,24 @@ vls_close (vls_handle_t vlsh)
   return rv;
 }
 
+int
+vls_shutdown (vls_handle_t vlsh)
+{
+  vcl_locked_session_t *vls;
+  int rv;
+
+  vls_mt_detect ();
+  if (!(vls = vls_get_w_dlock (vlsh)))
+    return VPPCOM_EBADFD;
+
+  vls_mt_guard (vls, VLS_MT_OP_SPOOL);
+  rv = vppcom_session_shutdown (vls_to_sh (vls));
+  vls_mt_unguard ();
+  vls_get_and_unlock (vlsh);
+
+  return rv;
+}
+
 vls_handle_t
 vls_epoll_create (void)
 {
