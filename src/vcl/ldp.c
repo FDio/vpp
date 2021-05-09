@@ -2219,6 +2219,8 @@ shutdown (int fd, int how)
 
       if (flags == SHUT_RDWR)
 	rv = close (fd);
+      else if (flags == SHUT_WR)
+	rv = vls_shutdown (vlsh);
     }
   else
     {
