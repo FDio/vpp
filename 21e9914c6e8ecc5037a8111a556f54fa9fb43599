@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fc96c03b_8ff6a00d",
+        "filename": "src/vcl/vcl_private.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-05-09T18:43:02Z",
+      "side": 1,
+      "message": "Could we leave the session in whatever state it was and only mark it as half-closed with a flag? That flag can be:\n- checked in the write function, to refuse write after shutdown\n- checked in vcl_session_cleanup_handler and it should be interpreted as a clean close from vpp that 1) should be propagated to the app (probably we need to make vppcom_epoll_wait aware of it) 2) should move the session to closed state, i.e., wait for app close to clean it up.",
+      "range": {
+        "startLine": 71,
+        "startChar": 0,
+        "endLine": 72,
+        "endChar": 33
+      },
+      "revId": "21e9914c6e8ecc5037a8111a556f54fa9fb43599",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "37fff8a4_ba597e2d",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 899,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-05-09T18:43:02Z",
+      "side": 1,
+      "message": "In line with my session layer comments, here it might be enough to update the attribute on the tcp connection and then send a normal close. The one problem we\u0027re facing now is that attribute updates are synchronous (we end up waiting for reply) so we\u0027d have to allow attribute updates without replies.",
+      "range": {
+        "startLine": 899,
+        "startChar": 6,
+        "endLine": 899,
+        "endChar": 47
+      },
+      "revId": "21e9914c6e8ecc5037a8111a556f54fa9fb43599",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
