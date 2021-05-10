@@ -2248,6 +2248,8 @@ show_dns_cache_command_fn (vlib_main_t * vm,
 
   vlib_cli_output (vm, "%U", format_dns_cache, dm, now, verbose, name);
 
+  vec_free (name);
+
   return 0;
 }
 
@@ -2338,13 +2340,13 @@ dns_cache_add_del_command_fn (vlib_main_t * vm,
   /* Delete (by name)? */
   if (is_add == 0)
     {
-      if (unformat (input, "%v", &name))
+      if (unformat (input, "%s", &name))
 	{
 	  rv = dns_delete_by_name (dm, name);
 	  switch (rv)
 	    {
 	    case VNET_API_ERROR_NO_SUCH_ENTRY:
-	      error = clib_error_return (0, "%v not in the cache...", name);
+	      error = clib_error_return (0, "%s not in the cache...", name);
 	      vec_free (name);
 	      return error;
 
@@ -2371,17 +2373,21 @@ dns_cache_add_del_command_fn (vlib_main_t * vm,
   /* Note: dns_add_static_entry consumes the name vector if OK... */
   if (unformat (input, "%U", unformat_dns_reply, &dns_reply_data, &name))
     {
+      vec_terminate_c_string (name);
       rv = dns_add_static_entry (dm, name, dns_reply_data);
       switch (rv)
 	{
 	case VNET_API_ERROR_ENTRY_ALREADY_EXISTS:
+	  error = clib_error_return (0, "%s already in the cache...", name);
 	  vec_free (name);
 	  vec_free (dns_reply_data);
-	  return clib_error_return (0, "%v already in the cache...", name);
+	  return error;
 	case 0:
 	  return 0;
 
 	default:
+	  vec_free (name);
+	  vec_free (dns_reply_data);
 	  return clib_error_return (0, "dns_add_static_entry returned %d",
 				    rv);
 	}
@@ -2698,7 +2704,7 @@ test_dns_expire_command_fn (vlib_main_t * vm,
   clib_error_t *e;
   dns_cache_entry_t *ep;
 
-  if (unformat (input, "%v", &name))
+  if (unformat (input, "%s", &name))
     {
       vec_add1 (name, 0);
       _vec_len (name) -= 1;
@@ -2720,6 +2726,8 @@ test_dns_expire_command_fn (vlib_main_t * vm,
   ep = pool_elt_at_index (dm->entries, p[0]);
 
   ep->expiration_time = 0;
+
+  vec_free (name);
 
   return 0;
 }
