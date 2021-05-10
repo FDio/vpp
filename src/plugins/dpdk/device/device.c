@@ -470,11 +470,15 @@ dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   if (is_up)
     {
       if ((xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP) == 0)
-	dpdk_device_start (xd);
-      xd->flags |= DPDK_DEVICE_FLAG_ADMIN_UP;
-      f64 now = vlib_time_now (dm->vlib_main);
-      dpdk_update_counters (xd, now);
-      dpdk_update_link_state (xd, now);
+	{
+	  dpdk_device_start (xd);
+	  if (vec_len (xd->errors))
+	    return clib_error_create ("Interface start failed");
+	  xd->flags |= DPDK_DEVICE_FLAG_ADMIN_UP;
+	  f64 now = vlib_time_now (dm->vlib_main);
+	  dpdk_update_counters (xd, now);
+	  dpdk_update_link_state (xd, now);
+	}
     }
   else
     {
