@@ -25,7 +25,9 @@
 
 #include <vlib/vlib.h>
 #include <vlib/pci/pci.h>
+#include <vlib/stat_weak_inlines.h>
 #include <vlib/unix/unix.h>
+
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
@@ -218,6 +220,11 @@ virtio_set_packet_buffering (virtio_if_t * vif, u16 buffering_size)
       }
   }
 
+  vif->n_ranges = 10;
+  vif->range = buffering_size / 10;
+  vlib_node_t *n = vlib_get_node (vlib_get_main (), hw->tx_node_index);
+  virtio_initialize_histogram (vif->dev_instance, n->name, vif->num_txqs,
+			       vif->n_ranges);
   return error;
 }
 
@@ -611,6 +618,62 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 
 }
 
+static void
+virtio_zero_histogram (vlib_simple_counter_main_t *cm)
+{
+  u32 i, j;
+
+  for (i = 0; i < vec_len (cm->counters); i++)
+    for (j = 0; j < vec_len (cm->counters[i]); j++)
+      cm->counters[i][j] = 0;
+}
+
+static void
+virtio_validate_histogram (vlib_simple_counter_main_t *cm, u16 n_txqs,
+			   u16 n_ranges)
+{
+  int i, j, resized = 0;
+  void *oldheap = vlib_stats_push_heap (cm->counters);
+
+  vec_validate (cm->counters, n_txqs - 1);
+  for (i = 0; i < n_txqs; i++)
+    for (j = 0; j < n_ranges; j++)
+      if (j >= vec_len (cm->counters[i]))
+	{
+	  if (vec_resize_will_expand (cm->counters[i],
+				      j - vec_len (cm->counters[i]) +
+					1 /* length_increment */))
+	    resized++;
+	  vec_validate_aligned (cm->counters[i], j, CLIB_CACHE_LINE_BYTES);
+	}
+
+  /* Avoid the epoch increase when there was no counter vector resize. */
+  if (resized)
+    vlib_stats_pop_heap (cm, oldheap, j,
+			 2 /* STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE */);
+  else
+    clib_mem_set_heap (oldheap);
+}
+
+void
+virtio_initialize_histogram (u32 dev_instance, u8 *node_name, u16 n_txqs,
+			     u16 n_ranges)
+{
+  virtio_main_t *vim = &virtio_main;
+
+  clib_spinlock_lock (&vim->histogram_lock);
+  vec_validate (vim->hcm, dev_instance);
+  vim->hcm[dev_instance].name =
+    (char *) format (0, "/if/%v/queue-depth", node_name);
+  vim->hcm[dev_instance].stat_segment_name =
+    (char *) format (0, "/if/%v/queue-depth", node_name);
+
+  virtio_validate_histogram (&vim->hcm[dev_instance], n_txqs, n_ranges);
+  virtio_zero_histogram (&vim->hcm[dev_instance]);
+
+  clib_spinlock_unlock (&vim->histogram_lock);
+}
+
 static clib_error_t *
 virtio_init (vlib_main_t * vm)
 {
@@ -619,6 +682,7 @@ virtio_init (vlib_main_t * vm)
 
   vim->log_default = vlib_log_register_class ("virtio", 0);
   vlib_log_debug (vim->log_default, "initialized");
+  clib_spinlock_init (&vim->histogram_lock);
 
   return error;
 }

@@ -1008,13 +1008,17 @@ VNET_DEVICE_CLASS_TX_FN (virtio_device_class) (vlib_main_t * vm,
   virtio_main_t *nm = &virtio_main;
   vnet_interface_output_runtime_t *rund = (void *) node->runtime_data;
   virtio_if_t *vif = pool_elt_at_index (nm->interfaces, rund->dev_instance);
-  u16 qid = vm->thread_index % vif->num_txqs;
+  vlib_simple_counter_main_t *histogram =
+    vec_elt_at_index (nm->hcm, rund->dev_instance);
+  u32 thread_index = vm->thread_index;
+  u16 qid = thread_index % vif->num_txqs;
   virtio_vring_t *vring = vec_elt_at_index (vif->txq_vrings, qid);
   u16 n_left = frame->n_vectors;
   u32 *buffers = vlib_frame_vector_args (frame);
   u32 to[GRO_TO_VECTOR_SIZE (n_left)];
   int packed = vif->is_packed;
   u16 n_vectors = frame->n_vectors;
+  u16 n_buffers_in_buffering = 0;
 
   clib_spinlock_lock_if_init (&vring->lockp);
 
@@ -1060,6 +1064,9 @@ retry:
 							      - n_left],
 							     n_left);
       n_left -= n_buffered;
+      n_buffers_in_buffering = virtio_vring_n_buffers (vring->buffering);
+      vlib_increment_simple_counter (histogram, qid,
+				     n_buffers_in_buffering / vif->range, 1);
     }
   if (n_left)
     virtio_interface_drop_inline (vm, vif, node->node_index,
