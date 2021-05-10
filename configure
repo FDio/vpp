@@ -80,6 +80,7 @@ cmake \
   -B ${build_dir} \
   -DCMAKE_PREFIX_PATH=${prefix_path} \
   -DCMAKE_INSTALL_PREFIX=${install_dir} \
+  -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=ON \
   -DCMAKE_BUILD_TYPE:STRING=${build_type}
 
   cat << __EOF__
@@ -89,7 +90,6 @@ cmake \
   ninja                   Build VPP
   ninja set-build-type-*  Change build type to <debug|release|gcov|...>
   ninja config            Start build configuration TUI
-  ninja compdb            Generate compile_commands.json
   ninja run               Runs VPP using startup.conf in the build directory
   ninja debug             Runs VPP inside GDB using startup.conf in the build directory
   ninja pkg-deb           Create .deb packages
