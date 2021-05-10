@@ -115,7 +115,7 @@ macro(add_vpp_march_variant v)
 endmacro()
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
-  set(CMAKE_C_FLAGS "-march=corei7 -mtune=corei7-avx ${CMAKE_C_FLAGS}")
+  set(VPP_DEFAULT_MARCH_FLAGS -march=corei7 -mtune=corei7-avx)
 
   add_vpp_march_variant(hsw
     FLAGS -march=haswell -mtune=haswell
@@ -138,7 +138,7 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
     )
   endif()
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
-  set(CMAKE_C_FLAGS "-march=armv8-a+crc ${CMAKE_C_FLAGS}")
+  set(VPP_DEFAULT_MARCH_FLAGS -march=armv8-a+crc)
 
   add_vpp_march_variant(qdf24xx
     FLAGS -march=armv8-a+crc+crypto -mtune=qdf24xx
@@ -198,7 +198,7 @@ macro(vpp_library_set_multiarch_sources lib)
       add_dependencies(${l} ${ARG_DEPENDS})
     endif()
     set_target_properties(${l} PROPERTIES POSITION_INDEPENDENT_CODE ON)
-    target_compile_options(${l} PUBLIC "-DCLIB_MARCH_VARIANT=${VARIANT}")
+    target_compile_definitions(${l} PUBLIC CLIB_MARCH_VARIANT=${VARIANT})
     separate_arguments(VARIANT_FLAGS)
     target_compile_options(${l} PUBLIC ${VARIANT_FLAGS})
     target_sources(${lib} PRIVATE $<TARGET_OBJECTS:${l}>)
