@@ -25,7 +25,9 @@
 
 #include <vlib/vlib.h>
 #include <vlib/pci/pci.h>
+#include <vlib/stat_weak_inlines.h>
 #include <vlib/unix/unix.h>
+
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
@@ -218,6 +220,9 @@ virtio_set_packet_buffering (virtio_if_t * vif, u16 buffering_size)
       }
   }
 
+  vif->n_ranges = 8; // power of 2^3
+  vif->range = (buffering_size / vif->n_ranges) + 1;
+  virtio_initialize_histogram (vif);
   return error;
 }
 
@@ -609,6 +614,58 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 
     }
 
+}
+
+static void
+virtio_zero_histogram (vlib_simple_counter_main_t *cm)
+{
+  u32 i, j;
+
+  for (i = 0; i < vec_len (cm->counters); i++)
+    for (j = 0; j < vec_len (cm->counters[i]); j++)
+      cm->counters[i][j] = 0;
+}
+
+static void
+virtio_validate_histogram (vlib_simple_counter_main_t *cm, u16 n_txqs,
+			   u16 n_ranges)
+{
+  int i, j, resized = 0;
+  void *oldheap = vlib_stats_push_heap (cm->counters);
+
+  vec_validate (cm->counters, n_txqs - 1);
+  for (i = 0; i < n_txqs; i++)
+    for (j = 0; j < n_ranges; j++)
+      if (j >= vec_len (cm->counters[i]))
+	{
+	  if (vec_resize_will_expand (cm->counters[i],
+				      j - vec_len (cm->counters[i]) +
+					1 /* length_increment */))
+	    resized++;
+	  vec_validate_aligned (cm->counters[i], j, CLIB_CACHE_LINE_BYTES);
+	}
+
+  /* Avoid the epoch increase when there was no counter vector resize. */
+  if (resized)
+    vlib_stats_pop_heap (cm, oldheap, j,
+			 2 /* STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE */);
+  else
+    clib_mem_set_heap (oldheap);
+}
+
+void
+virtio_initialize_histogram (virtio_if_t *vif)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vif->hcm.name =
+    (char *) format (0, "/interfaces/%U/tx-queue-depth",
+		     format_vnet_hw_if_index_name, vnm, vif->hw_if_index);
+  vif->hcm.stat_segment_name =
+    (char *) format (0, "/interfaces/%U/tx-queue-depth",
+		     format_vnet_hw_if_index_name, vnm, vif->hw_if_index);
+
+  virtio_validate_histogram (&vif->hcm, vif->num_txqs, vif->n_ranges);
+  virtio_zero_histogram (&vif->hcm);
 }
 
 static clib_error_t *
