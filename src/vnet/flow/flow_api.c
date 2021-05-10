@@ -186,7 +186,7 @@ ipv4_vxlan_flow_convert (vl_api_flow_ip4_vxlan_t *vl_api_flow,
   port_and_mask_convert (&vl_api_flow->src_port, &f->src_port);
   port_and_mask_convert (&vl_api_flow->dst_port, &f->dst_port);
 
-  f->vni = ntohs (vl_api_flow->vni);
+  f->vni = ntohl (vl_api_flow->vni);
 }
 
 static inline void
@@ -200,7 +200,7 @@ ipv6_vxlan_flow_convert (vl_api_flow_ip6_vxlan_t *vl_api_flow,
   port_and_mask_convert (&vl_api_flow->src_port, &f->src_port);
   port_and_mask_convert (&vl_api_flow->dst_port, &f->dst_port);
 
-  f->vni = ntohs (vl_api_flow->vni);
+  f->vni = ntohl (vl_api_flow->vni);
 }
 
 static inline void
