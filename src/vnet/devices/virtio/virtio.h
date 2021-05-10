@@ -209,6 +209,11 @@ typedef struct
   };
   const virtio_pci_func_t *virtio_pci_func;
   int is_packed;
+
+  /* histogram counter for queue-depth */
+  vlib_simple_counter_main_t hcm;
+  u16 n_ranges;
+  u16 range;
 } virtio_if_t;
 
 typedef struct
@@ -216,7 +221,6 @@ typedef struct
   u32 interrupt_queues_count;
   /* logging */
   vlib_log_class_t log_default;
-
   virtio_if_t *interfaces;
 } virtio_main_t;
 
@@ -232,6 +236,7 @@ clib_error_t *virtio_vring_free_rx (vlib_main_t * vm, virtio_if_t * vif,
 clib_error_t *virtio_vring_free_tx (vlib_main_t * vm, virtio_if_t * vif,
 				    u32 idx);
 void virtio_vring_set_rx_queues (vlib_main_t *vm, virtio_if_t *vif);
+void virtio_initialize_histogram (virtio_if_t *vif);
 extern void virtio_free_buffers (vlib_main_t * vm, virtio_vring_t * vring);
 extern void virtio_set_net_hdr_size (virtio_if_t * vif);
 extern void virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr,
