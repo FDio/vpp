@@ -20,6 +20,7 @@ macro(add_vpp_executable exec)
   )
 
   add_executable(${exec} ${ARG_SOURCES})
+  target_compile_options(${exec} PUBLIC ${VPP_DEFAULT_MARCH_FLAGS})
   if(ARG_LINK_LIBRARIES)
     target_link_libraries(${exec} ${ARG_LINK_LIBRARIES})
   endif()

@@ -25,8 +25,6 @@ set(CMAKE_C_COMPILER_NAMES
 
 project(vpp C)
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS on)
-
 include(CheckCCompilerFlag)
 include(CheckIPOSupported)
 include(cmake/misc.cmake)
@@ -69,49 +67,35 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${VPP_LIBRARY_DIR})
 set(VPP_BINARY_DIR ${CMAKE_BINARY_DIR}/CMakeFiles)
 
 if (CMAKE_BUILD_TYPE)
-  set(CMAKE_C_FLAGS "-g -fPIC -Werror -Wall ${CMAKE_C_FLAGS}")
+  add_compile_options(-g -fPIC -Werror -Wall)
 endif()
 
 if (compiler_flag_no_address_of_packed_member)
-  set(CMAKE_C_FLAGS "-Wno-address-of-packed-member ${CMAKE_C_FLAGS}")
+  add_compile_options(-Wno-address-of-packed-member)
 endif()
 
-# release
-list(APPEND BUILD_TYPES "release")
-string(CONCAT CMAKE_C_FLAGS_RELEASE
-  "-O3 "
-  "-fstack-protector "
-  "-D_FORTIFY_SOURCE=2 "
-  "-fno-common "
-)
-
-string(CONCAT CMAKE_EXE_LINKER_FLAGS_RELEASE "-pie")
-
-# debug
-list(APPEND BUILD_TYPES "debug")
-string(CONCAT CMAKE_C_FLAGS_DEBUG
-  "-O0 "
-  "-DCLIB_DEBUG "
-  "-fstack-protector "
-  "-fno-common "
-)
-
-# coverity
-list(APPEND BUILD_TYPES "coverity")
-string(CONCAT CMAKE_C_FLAGS_COVERITY "-O2 -D__COVERITY__")
-
-# gcov
-list(APPEND BUILD_TYPES "gcov")
-string(CONCAT CMAKE_C_FLAGS_GCOV
-  "-O0 "
-  "-DCLIB_DEBUG "
-  "-DCLIB_GCOV "
-  "-fprofile-arcs "
-  "-ftest-coverage ")
-
+string(TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_LC)
 string(TOUPPER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_UC)
 
+set(CMAKE_C_FLAGS_RELEASE "")
+set(CMAKE_C_FLAGS_DEBUG "")
 
+if (${CMAKE_BUILD_TYPE_LC} MATCHES "release")
+  add_compile_options(-O3 -fstack-protector -fno-common)
+  add_compile_definitions(_FORTIFY_SOURCE=2)
+  string(CONCAT CMAKE_EXE_LINKER_FLAGS_RELEASE "-pie")
+elseif (${CMAKE_BUILD_TYPE_LC} MATCHES "debug")
+  add_compile_options(-O0 -fstack-protector -fno-common)
+  add_compile_definitions(CLIB_DEBUG)
+elseif (${CMAKE_BUILD_TYPE_LC} MATCHES "coverity")
+  add_compile_options(-O0)
+  add_compile_definitions(__COVERITY__)
+elseif (${CMAKE_BUILD_TYPE_LC} MATCHES "gcov")
+  add_compile_options(-O0 -fprofile-arcs -ftest-coverage)
+  add_compile_definitions(CLIB_DEBUG CLIB_GCOV)
+endif()
+
+set(BUILD_TYPES release debug coverity gcov)
 string(REPLACE ";" " " BUILD_TYPES_STR "${BUILD_TYPES}")
 set_property(CACHE CMAKE_BUILD_TYPE PROPERTY
 	     HELPSTRING "Build type - valid options are: ${BUILD_TYPES_STR}")
@@ -138,7 +122,8 @@ set(VPP_SANITIZE_ADDR_OPTIONS
 )
 
 if (VPP_ENABLE_SANITIZE_ADDR)
-  set(CMAKE_C_FLAGS "-fsanitize=address -DCLIB_SANITIZE_ADDR ${CMAKE_C_FLAGS}")
+  add_compile_options(-fsanitize=address)
+  add_compile_definitions(CLIB_SANITIZE_ADDR)
   set(CMAKE_EXE_LINKER_FLAGS "-fsanitize=address ${CMAKE_EXE_LINKER_FLAGS}")
   set(CMAKE_SHARED_LINKER_FLAGS "-fsanitize=address ${CMAKE_SHARED_LINKER_FLAGS}")
 endif (VPP_ENABLE_SANITIZE_ADDR)
@@ -149,7 +134,7 @@ endif (VPP_ENABLE_SANITIZE_ADDR)
 
 option(VPP_ENABLE_TRAJECTORY_TRACE "Build vpp with trajectory tracing enabled" OFF)
 if(VPP_ENABLE_TRAJECTORY_TRACE)
-  set(CMAKE_C_FLAGS "-DVLIB_BUFFER_TRACE_TRAJECTORY=1 ${CMAKE_C_FLAGS}")
+  add_compile_definitions(VLIB_BUFFER_TRACE_TRAJECTORY=1)
 endif()
 
 ##############################################################################
@@ -239,14 +224,6 @@ add_custom_target(config
   USES_TERMINAL
 )
 
-add_custom_target(compdb
-  COMMAND ninja -C ${CMAKE_BINARY_DIR} -t compdb |
-          ${CMAKE_SOURCE_DIR}/scripts/compdb_cleanup.py >
-	  ${CMAKE_BINARY_DIR}/compile_commands.json
-  COMMENT "Generating compile_commands.json"
-  USES_TERMINAL
-)
-
 foreach(bt ${BUILD_TYPES})
   add_custom_target(set-build-type-${bt}
     COMMAND cmake -DCMAKE_BUILD_TYPE:STRING=${bt} .
@@ -254,6 +231,16 @@ foreach(bt ${BUILD_TYPES})
     USES_TERMINAL
   )
 endforeach()
+
+mark_as_advanced(CLEAR
+  CMAKE_C_FLAGS
+  CMAKE_C_COMPILER
+  CMAKE_EXPORT_COMPILE_COMMANDS
+  CMAKE_INSTALL_PREFIX
+  CMAKE_LINKER
+  CMAKE_SHARED_LINKER_FLAGS
+  CMAKE_VERBOSE_MAKEFILE
+)
 
 ##############################################################################
 # print configuration
