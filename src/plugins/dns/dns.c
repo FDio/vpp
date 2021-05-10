@@ -2283,7 +2283,7 @@ show_dns_servers_command_fn (vlib_main_t * vm,
       vlib_cli_output (vm, "ip6 name servers:");
       for (i = 0; i < vec_len (dm->ip6_name_servers); i++)
 	vlib_cli_output (vm, "%U", format_ip6_address,
-			 dm->ip4_name_servers + i);
+			 dm->ip6_name_servers + i);
     }
   return 0;
 }
