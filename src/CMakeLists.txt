@@ -138,7 +138,8 @@ set(VPP_SANITIZE_ADDR_OPTIONS
 )
 
 if (VPP_ENABLE_SANITIZE_ADDR)
-  set(CMAKE_C_FLAGS "-fsanitize=address -DCLIB_SANITIZE_ADDR ${CMAKE_C_FLAGS}")
+  add_compile_options(-fsanitize=address)
+  add_compile_definitions(CLIB_SANITIZE_ADDR)
   set(CMAKE_EXE_LINKER_FLAGS "-fsanitize=address ${CMAKE_EXE_LINKER_FLAGS}")
   set(CMAKE_SHARED_LINKER_FLAGS "-fsanitize=address ${CMAKE_SHARED_LINKER_FLAGS}")
 endif (VPP_ENABLE_SANITIZE_ADDR)
