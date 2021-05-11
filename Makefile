@@ -400,6 +400,10 @@ define test
 	  $(3)
 endef
 
+.PHONY: test-apps
+test-apps:
+	$(call test,vpp,vpp,ext-test-apps)
+
 .PHONY: test
 test:
 	$(call test,vpp,vpp,test)
