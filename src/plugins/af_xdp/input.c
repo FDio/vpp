@@ -83,8 +83,9 @@ af_xdp_device_input_refill_db (vlib_main_t * vm,
       !xsk_ring_prod__needs_wakeup (&rxq->fq))
     return;
 
-  vlib_error_count (vm, node->node_index, AF_XDP_INPUT_ERROR_SYSCALL_REQUIRED,
-		    1);
+  if (node)
+    vlib_error_count (vm, node->node_index,
+		      AF_XDP_INPUT_ERROR_SYSCALL_REQUIRED, 1);
 
   if (clib_spinlock_trylock_if_init (&rxq->syscall_lock))
     {
@@ -94,18 +95,19 @@ af_xdp_device_input_refill_db (vlib_main_t * vm,
       if (PREDICT_FALSE (ret < 0))
 	{
 	  /* something bad is happening */
-	  vlib_error_count (vm, node->node_index,
-			    AF_XDP_INPUT_ERROR_SYSCALL_FAILURES, 1);
+	  if (node)
+	    vlib_error_count (vm, node->node_index,
+			      AF_XDP_INPUT_ERROR_SYSCALL_FAILURES, 1);
 	  af_xdp_device_error (ad, "rx poll() failed");
 	}
     }
 }
 
 static_always_inline void
-af_xdp_device_input_refill (vlib_main_t * vm,
-			    const vlib_node_runtime_t * node,
-			    af_xdp_device_t * ad, af_xdp_rxq_t * rxq,
-			    const int copy)
+af_xdp_device_input_refill_inline (vlib_main_t *vm,
+				   const vlib_node_runtime_t *node,
+				   af_xdp_device_t *ad, af_xdp_rxq_t *rxq,
+				   const int copy)
 {
   __u64 *fill;
   const u32 size = rxq->fq.size;
@@ -313,7 +315,7 @@ af_xdp_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
      ad->hw_if_index, n_rx_packets, n_rx_bytes);
 
 refill:
-  af_xdp_device_input_refill (vm, node, ad, rxq, copy);
+  af_xdp_device_input_refill_inline (vm, node, ad, rxq, copy);
 
   return n_rx_packets;
 }
@@ -342,6 +344,18 @@ VLIB_NODE_FN (af_xdp_input_node) (vlib_main_t * vm,
 
   return n_rx;
 }
+
+#ifndef CLIB_MARCH_VARIANT
+void
+af_xdp_device_input_refill (af_xdp_device_t *ad)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  af_xdp_rxq_t *rxq;
+  vec_foreach (rxq, ad->rxqs)
+    af_xdp_device_input_refill_inline (
+      vm, 0, ad, rxq, 0 == (ad->flags & AF_XDP_DEVICE_F_ZEROCOPY));
+}
+#endif /* CLIB_MARCH_VARIANT */
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (af_xdp_input_node) = {

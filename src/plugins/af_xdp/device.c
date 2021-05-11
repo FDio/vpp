@@ -550,6 +550,7 @@ af_xdp_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
       vnet_hw_interface_set_flags (vnm, ad->hw_if_index,
 				   VNET_HW_INTERFACE_FLAG_LINK_UP);
       ad->flags |= AF_XDP_DEVICE_F_ADMIN_UP;
+      af_xdp_device_input_refill (ad);
     }
   else
     {
