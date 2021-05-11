@@ -24,6 +24,7 @@
 #include <vnet/udp/udp_packet.h>
 #include <vnet/tcp/tcp_packet.h>
 #include <vnet/vnet.h>
+#include <vnet/interface.h>
 
 static_always_inline u8
 gro_is_bad_packet (vlib_buffer_t * b, u8 flags, i16 l234_sz)
@@ -406,9 +407,9 @@ vnet_gro_flow_table_flush (vlib_main_t * vm, gro_flow_table_t * flow_table,
 }
 
 static_always_inline void
-vnet_gro_flow_table_schedule_node_on_dispatcher (vlib_main_t * vm,
-						 gro_flow_table_t *
-						 flow_table)
+vnet_gro_flow_table_schedule_node_on_dispatcher (vlib_main_t *vm,
+						 vnet_hw_if_tx_queue_t *txq,
+						 gro_flow_table_t *flow_table)
 {
   if (gro_flow_table_is_timeout (vm, flow_table))
     {
@@ -419,8 +420,12 @@ vnet_gro_flow_table_schedule_node_on_dispatcher (vlib_main_t * vm,
 	{
 	  u32 node_index = flow_table->node_index;
 	  vlib_frame_t *f = vlib_get_frame_to_node (vm, node_index);
+	  vnet_hw_if_tx_frame_t *ft = vlib_frame_scalar_args (f);
 	  u32 *f_to = vlib_frame_vector_args (f);
 	  u32 i = 0;
+
+	  ft->shared_queue = txq->shared_queue;
+	  ft->queue_id = txq->queue_id;
 
 	  while (i < n_to)
 	    {

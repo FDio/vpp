@@ -1657,7 +1657,11 @@ pg_generate_packets (vlib_node_runtime_t * node,
     }
 
   if (PREDICT_FALSE (pi->coalesce_enabled))
-    vnet_gro_flow_table_schedule_node_on_dispatcher (vm, pi->flow_table);
+    {
+      vnet_hw_if_tx_queue_t txq = { 0 };
+      vnet_gro_flow_table_schedule_node_on_dispatcher (vm, &txq,
+						       pi->flow_table);
+    }
 
   while (n_packets_to_generate > 0)
     {
