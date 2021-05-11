@@ -123,19 +123,20 @@ tls_ctx_half_open_alloc (void)
   if (PREDICT_FALSE (will_expand && vlib_num_workers ()))
     {
       clib_rwlock_writer_lock (&tm->half_open_rwlock);
-      pool_get (tm->half_open_ctx_pool, ctx);
-      ctx_index = ctx - tm->half_open_ctx_pool;
+      pool_get_zero (tm->half_open_ctx_pool, ctx);
+      ctx->c_c_index = ctx - tm->half_open_ctx_pool;
+      ctx_index = ctx->c_c_index;
       clib_rwlock_writer_unlock (&tm->half_open_rwlock);
     }
   else
     {
       /* reader lock assumption: only main thread will call pool_get */
       clib_rwlock_reader_lock (&tm->half_open_rwlock);
-      pool_get (tm->half_open_ctx_pool, ctx);
-      ctx_index = ctx - tm->half_open_ctx_pool;
+      pool_get_zero (tm->half_open_ctx_pool, ctx);
+      ctx->c_c_index = ctx - tm->half_open_ctx_pool;
+      ctx_index = ctx->c_c_index;
       clib_rwlock_reader_unlock (&tm->half_open_rwlock);
     }
-  clib_memset (ctx, 0, sizeof (*ctx));
   return ctx_index;
 }
 
@@ -420,6 +421,20 @@ tls_session_reset_callback (session_t * s)
     }
 }
 
+static void
+tls_session_cleanup_ho (session_t *s)
+{
+  tls_ctx_t *ctx;
+  u32 ho_index;
+
+  /* session opaque stores the opaque passed on connect */
+  ho_index = s->opaque;
+  ctx = tls_ctx_half_open_get (ho_index);
+  session_half_open_delete_notify (&ctx->connection);
+  tls_ctx_half_open_reader_unlock ();
+  tls_ctx_half_open_free (ho_index);
+}
+
 int
 tls_add_segment_callback (u32 client_index, u64 segment_handle)
 {
@@ -533,7 +548,6 @@ tls_session_connected_cb (u32 tls_app_index, u32 ho_ctx_index,
 	  app_worker_connect_notify (app_wrk, 0, err, api_context);
 	}
       tls_ctx_half_open_reader_unlock ();
-      tls_ctx_half_open_free (ho_ctx_index);
       return rv;
     }
 
@@ -541,7 +555,6 @@ tls_session_connected_cb (u32 tls_app_index, u32 ho_ctx_index,
   ctx = tls_ctx_get (ctx_handle);
   clib_memcpy_fast (ctx, ho_ctx, sizeof (*ctx));
   tls_ctx_half_open_reader_unlock ();
-  tls_ctx_half_open_free (ho_ctx_index);
 
   ctx->c_thread_index = vlib_get_thread_index ();
   ctx->tls_ctx_handle = ctx_handle;
@@ -660,6 +673,7 @@ static session_cb_vft_t tls_app_cb_vft = {
   .session_disconnect_callback = tls_session_disconnect_callback,
   .session_connected_callback = tls_session_connected_callback,
   .session_reset_callback = tls_session_reset_callback,
+  .half_open_cleanup_callback = tls_session_cleanup_ho,
   .add_segment_callback = tls_add_segment_callback,
   .del_segment_callback = tls_del_segment_callback,
   .builtin_app_rx_callback = tls_app_rx_callback,
@@ -704,6 +718,7 @@ tls_connect (transport_endpoint_cfg_t * tep)
   ctx->tcp_is_ip4 = sep->is_ip4;
   ctx->tls_type = sep->transport_proto;
   ctx->ckpair_index = ccfg->ckpair_index;
+  ctx->c_proto = TRANSPORT_PROTO_TLS;
   if (ccfg->hostname[0])
     {
       ctx->srv_hostname = format (0, "%s", ccfg->hostname);
@@ -721,8 +736,11 @@ tls_connect (transport_endpoint_cfg_t * tep)
   if ((rv = vnet_connect (cargs)))
     return rv;
 
+  /* Track half-open tcp session in case we need to clean it up */
+  ctx->tls_session_handle = cargs->sh;
+
   TLS_DBG (1, "New connect request %u engine %d", ctx_index, engine_type);
-  return 0;
+  return ctx_index;
 }
 
 void
@@ -869,6 +887,26 @@ tls_listener_get (u32 listener_index)
   tls_ctx_t *ctx;
   ctx = tls_listener_ctx_get (listener_index);
   return &ctx->connection;
+}
+
+static transport_connection_t *
+tls_half_open_get (u32 ho_index)
+{
+  tls_main_t *tm = &tls_main;
+  tls_ctx_t *ctx;
+  ctx = tls_ctx_half_open_get (ho_index);
+  clib_rwlock_reader_unlock (&tm->half_open_rwlock);
+  return &ctx->connection;
+}
+
+static void
+tls_cleanup_ho (u32 ho_index)
+{
+  tls_main_t *tm = &tls_main;
+  tls_ctx_t *ctx;
+  ctx = tls_ctx_half_open_get (ho_index);
+  clib_rwlock_reader_unlock (&tm->half_open_rwlock);
+  session_cleanup_half_open (ctx->tls_session_handle);
 }
 
 int
@@ -1080,6 +1118,8 @@ static const transport_proto_vft_t tls_proto = {
   .stop_listen = tls_stop_listen,
   .get_connection = tls_connection_get,
   .get_listener = tls_listener_get,
+  .get_half_open = tls_half_open_get,
+  .cleanup_ho = tls_cleanup_ho,
   .custom_tx = tls_custom_tx_callback,
   .format_connection = format_tls_connection,
   .format_half_open = format_tls_half_open,
@@ -1090,7 +1130,7 @@ static const transport_proto_vft_t tls_proto = {
     .name = "tls",
     .short_name = "J",
     .tx_type = TRANSPORT_TX_INTERNAL,
-    .service_type = TRANSPORT_SERVICE_APP,
+    .service_type = TRANSPORT_SERVICE_VC,
   },
 };
 

@@ -315,7 +315,7 @@ session_half_open_delete_notify (transport_connection_t *tc)
 
   s = ho_session_get (tc->s_index);
   app_wrk = app_worker_get (s->app_wrk_index);
-  app_worker_del_half_open (app_wrk, s->ho_index);
+  app_worker_del_half_open (app_wrk, s);
   session_free (s);
 }
 
@@ -338,7 +338,7 @@ session_alloc_for_connection (transport_connection_t * tc)
   return s;
 }
 
-static session_t *
+session_t *
 session_alloc_for_half_open (transport_connection_t *tc)
 {
   session_t *s;
