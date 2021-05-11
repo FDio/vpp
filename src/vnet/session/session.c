@@ -315,7 +315,7 @@ session_half_open_delete_notify (transport_connection_t *tc)
 
   s = ho_session_get (tc->s_index);
   app_wrk = app_worker_get (s->app_wrk_index);
-  app_worker_del_half_open (app_wrk, s->ho_index);
+  app_worker_del_half_open (app_wrk, s);
   session_free (s);
 }
 
@@ -338,7 +338,7 @@ session_alloc_for_connection (transport_connection_t * tc)
   return s;
 }
 
-static session_t *
+session_t *
 session_alloc_for_half_open (transport_connection_t *tc)
 {
   session_t *s;
@@ -1294,7 +1294,8 @@ session_open_vc (session_endpoint_cfg_t *rmt, session_handle_t *rsh)
   ho->opaque = rmt->opaque;
   *rsh = session_handle (ho);
 
-  session_lookup_add_half_open (tc, tc->c_index);
+  if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
+    session_lookup_add_half_open (tc, tc->c_index);
 
   return 0;
 }
