@@ -395,10 +395,13 @@ app_worker_add_half_open (app_worker_t *app_wrk, session_handle_t sh)
 }
 
 int
-app_worker_del_half_open (app_worker_t *app_wrk, u32 ho_index)
+app_worker_del_half_open (app_worker_t *app_wrk, session_t *s)
 {
+  application_t *app = application_get (app_wrk->app_index);
   ASSERT (vlib_get_thread_index () == 0);
-  pool_put_index (app_wrk->half_open_table, ho_index);
+  pool_put_index (app_wrk->half_open_table, s->ho_index);
+  if (app->cb_fns.half_open_cleanup_callback)
+    app->cb_fns.half_open_cleanup_callback (s);
   return 0;
 }
 
