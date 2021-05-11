@@ -1008,7 +1008,8 @@ VNET_DEVICE_CLASS_TX_FN (virtio_device_class) (vlib_main_t * vm,
   virtio_main_t *nm = &virtio_main;
   vnet_interface_output_runtime_t *rund = (void *) node->runtime_data;
   virtio_if_t *vif = pool_elt_at_index (nm->interfaces, rund->dev_instance);
-  u16 qid = vm->thread_index % vif->num_txqs;
+  vnet_hw_if_tx_frame_t *tf = vlib_frame_scalar_args (frame);
+  u16 qid = tf->queue_id;
   virtio_vring_t *vring = vec_elt_at_index (vif->txq_vrings, qid);
   u16 n_left = frame->n_vectors;
   u32 *buffers = vlib_frame_vector_args (frame);
@@ -1016,7 +1017,8 @@ VNET_DEVICE_CLASS_TX_FN (virtio_device_class) (vlib_main_t * vm,
   int packed = vif->is_packed;
   u16 n_vectors = frame->n_vectors;
 
-  clib_spinlock_lock_if_init (&vring->lockp);
+  if (tf->shared_queue)
+    clib_spinlock_lock (&vring->lockp);
 
   if (vif->packet_coalesce)
     {
@@ -1066,7 +1068,8 @@ retry:
 				  &buffers[n_vectors - n_left], n_left,
 				  VIRTIO_TX_ERROR_NO_FREE_SLOTS);
 
-  clib_spinlock_unlock_if_init (&vring->lockp);
+  if (tf->shared_queue)
+    clib_spinlock_unlock (&vring->lockp);
 
   return frame->n_vectors - n_left;
 }

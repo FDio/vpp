@@ -727,7 +727,6 @@ clib_error_t *
 virtio_pci_vring_split_init (vlib_main_t * vm, virtio_if_t * vif,
 			     u16 queue_num)
 {
-  vlib_thread_main_t *vtm = vlib_get_thread_main ();
   clib_error_t *error = 0;
   u16 queue_size = 0;
   virtio_vring_t *vring;
@@ -753,8 +752,7 @@ virtio_pci_vring_split_init (vlib_main_t * vm, virtio_if_t * vif,
       vec_validate_aligned (vif->txq_vrings, TX_QUEUE_ACCESS (queue_num),
 			    CLIB_CACHE_LINE_BYTES);
       vring = vec_elt_at_index (vif->txq_vrings, TX_QUEUE_ACCESS (queue_num));
-      if (vif->max_queue_pairs < vtm->n_vlib_mains)
-	clib_spinlock_init (&vring->lockp);
+      clib_spinlock_init (&vring->lockp);
     }
   else
     {
@@ -807,7 +805,6 @@ clib_error_t *
 virtio_pci_vring_packed_init (vlib_main_t * vm, virtio_if_t * vif,
 			      u16 queue_num)
 {
-  vlib_thread_main_t *vtm = vlib_get_thread_main ();
   clib_error_t *error = 0;
   u16 queue_size = 0;
   virtio_vring_t *vring;
@@ -827,8 +824,7 @@ virtio_pci_vring_packed_init (vlib_main_t * vm, virtio_if_t * vif,
       vec_validate_aligned (vif->txq_vrings, TX_QUEUE_ACCESS (queue_num),
 			    CLIB_CACHE_LINE_BYTES);
       vring = vec_elt_at_index (vif->txq_vrings, TX_QUEUE_ACCESS (queue_num));
-      if (vif->max_queue_pairs < vtm->n_vlib_mains)
-	clib_spinlock_init (&vring->lockp);
+      clib_spinlock_init (&vring->lockp);
     }
   else
     {
@@ -1264,8 +1260,7 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
 	   * workers are more than tx queues. In this case, 1:N mapping
 	   * between tx queue and vpp worker thread.
 	   */
-	  virtio_log_debug (vif, "%s %u, %s", "tx-queue: number",
-			    TX_QUEUE (i),
+	  virtio_log_debug (vif, "%s %u, %s", "tx-queue: number", TX_QUEUE (i),
 			    "no VPP worker thread is available");
 	  continue;
 	}
@@ -1516,6 +1511,7 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
     }
 
   virtio_vring_set_rx_queues (vm, vif);
+  virtio_vring_set_tx_queues (vm, vif);
 
   if (virtio_pci_is_link_up (vm, vif) & VIRTIO_NET_S_LINK_UP)
     {

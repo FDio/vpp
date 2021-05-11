@@ -127,6 +127,11 @@ typedef struct _virtio_pci_func virtio_pci_func_t;
 
 typedef struct
 {
+  u32 queue_index;
+} virtio_queue_index_by_thread_index_t;
+
+typedef struct
+{
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u64 features;
   u32 flags;
@@ -158,6 +163,9 @@ typedef struct
   u32 dev_instance;
   u32 numa_node;
   u64 remote_features;
+
+  /* access queue_index by thread_index */
+  virtio_queue_index_by_thread_index_t *qi;
 
   /* error */
   clib_error_t *error;
@@ -232,6 +240,7 @@ clib_error_t *virtio_vring_free_rx (vlib_main_t * vm, virtio_if_t * vif,
 clib_error_t *virtio_vring_free_tx (vlib_main_t * vm, virtio_if_t * vif,
 				    u32 idx);
 void virtio_vring_set_rx_queues (vlib_main_t *vm, virtio_if_t *vif);
+void virtio_vring_set_tx_queues (vlib_main_t *vm, virtio_if_t *vif);
 extern void virtio_free_buffers (vlib_main_t * vm, virtio_vring_t * vring);
 extern void virtio_set_net_hdr_size (virtio_if_t * vif);
 extern void virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr,
