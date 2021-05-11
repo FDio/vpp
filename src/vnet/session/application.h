@@ -304,8 +304,8 @@ app_worker_t *app_worker_get_if_valid (u32 wrk_index);
 application_t *app_worker_get_app (u32 wrk_index);
 int app_worker_own_session (app_worker_t * app_wrk, session_t * s);
 void app_worker_free (app_worker_t * app_wrk);
-int app_worker_connect_session (app_worker_t * app, session_endpoint_t * tep,
-				u32 api_context);
+int app_worker_connect_session (app_worker_t *app, session_endpoint_cfg_t *sep,
+				session_handle_t *rsh);
 int app_worker_start_listen (app_worker_t * app_wrk, app_listener_t * lstnr);
 int app_worker_stop_listen (app_worker_t * app_wrk, app_listener_t * al);
 int app_worker_init_accepted (session_t * s);
