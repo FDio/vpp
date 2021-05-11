@@ -60,8 +60,9 @@ typedef void (vlib_buffer_enqueue_to_single_next_fn_t) (
   u32 count);
 
 typedef u32 (vlib_buffer_enqueue_to_thread_fn_t) (
-  vlib_main_t *vm, u32 frame_queue_index, u32 *buffer_indices,
-  u16 *thread_indices, u32 n_packets, int drop_on_congestion);
+  vlib_main_t *vm, vlib_node_runtime_t *node, u32 frame_queue_index,
+  u32 *buffer_indices, u16 *thread_indices, u32 n_packets,
+  int drop_on_congestion);
 
 typedef u32 (vlib_frame_queue_dequeue_fn_t) (vlib_main_t *vm,
 					     vlib_frame_queue_main_t *fqm);
