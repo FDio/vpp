@@ -500,15 +500,12 @@ app_worker_own_session (app_worker_t * app_wrk, session_t * s)
 }
 
 int
-app_worker_connect_session (app_worker_t * app_wrk, session_endpoint_t * sep,
-			    u32 api_context)
+app_worker_connect_session (app_worker_t *app_wrk, session_endpoint_cfg_t *sep,
+			    session_handle_t *rsh)
 {
-  int rv;
+  sep->app_wrk_index = app_wrk->wrk_index;
 
-  if ((rv = session_open (app_wrk->wrk_index, sep, api_context)))
-    return rv;
-
-  return 0;
+  return session_open (sep, rsh);
 }
 
 int
