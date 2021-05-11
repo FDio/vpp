@@ -164,6 +164,8 @@ typedef struct
 void af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args);
 void af_xdp_delete_if (vlib_main_t * vm, af_xdp_device_t * ad);
 
+void af_xdp_device_input_refill (af_xdp_device_t *ad);
+
 extern vlib_node_registration_t af_xdp_input_node;
 extern vnet_device_class_t af_xdp_device_class;
 
