@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "826e1388_216777b1",
+        "filename": "src/vnet/tcp/tcp.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 383,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-05-11T18:00:28Z",
+      "side": 1,
+      "message": "Do we expect half-closes in any other state beyond established? If not, let\u0027s explicitly do line 393 to 402 lower in tcp_session_half_close, and refuse to handle the request in any other state.",
+      "range": {
+        "startLine": 382,
+        "startChar": 0,
+        "endLine": 383,
+        "endChar": 46
+      },
+      "revId": "fa456fc97c5c0c71ed57a118899e862e60a4b5f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
