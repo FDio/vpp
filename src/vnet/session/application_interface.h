@@ -53,6 +53,9 @@ typedef struct session_cb_vft_
   /** Notify app that session or transport are about to be removed */
   void (*session_cleanup_callback) (session_t * s, session_cleanup_ntf_t ntf);
 
+  /** Notify app that half open state was cleaned up (optional) */
+  void (*half_open_cleanup_callback) (session_t *s);
+
   /** Notify app that session was reset */
   void (*session_reset_callback) (session_t * s);
 

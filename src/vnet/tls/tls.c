@@ -420,6 +420,20 @@ tls_session_reset_callback (session_t * s)
     }
 }
 
+static void
+tls_session_cleanup_ho (session_t *s)
+{
+  tls_ctx_t *ctx;
+  u32 ho_index;
+
+  /* session opaque stores the opaque passed on connect */
+  ho_index = s->opaque;
+  ctx = tls_ctx_half_open_get (ho_index);
+  session_half_open_delete_notify (&ctx->connection);
+  tls_ctx_half_open_reader_unlock ();
+  tls_ctx_half_open_free (ho_index);
+}
+
 int
 tls_add_segment_callback (u32 client_index, u64 segment_handle)
 {
@@ -533,7 +547,7 @@ tls_session_connected_cb (u32 tls_app_index, u32 ho_ctx_index,
 	  app_worker_connect_notify (app_wrk, 0, err, api_context);
 	}
       tls_ctx_half_open_reader_unlock ();
-      tls_ctx_half_open_free (ho_ctx_index);
+      //      tls_ctx_half_open_free (ho_ctx_index);
       return rv;
     }
 
@@ -541,7 +555,7 @@ tls_session_connected_cb (u32 tls_app_index, u32 ho_ctx_index,
   ctx = tls_ctx_get (ctx_handle);
   clib_memcpy_fast (ctx, ho_ctx, sizeof (*ctx));
   tls_ctx_half_open_reader_unlock ();
-  tls_ctx_half_open_free (ho_ctx_index);
+  //  tls_ctx_half_open_free (ho_ctx_index);
 
   ctx->c_thread_index = vlib_get_thread_index ();
   ctx->tls_ctx_handle = ctx_handle;
@@ -660,6 +674,7 @@ static session_cb_vft_t tls_app_cb_vft = {
   .session_disconnect_callback = tls_session_disconnect_callback,
   .session_connected_callback = tls_session_connected_callback,
   .session_reset_callback = tls_session_reset_callback,
+  .half_open_cleanup_callback = tls_session_cleanup_ho,
   .add_segment_callback = tls_add_segment_callback,
   .del_segment_callback = tls_del_segment_callback,
   .builtin_app_rx_callback = tls_app_rx_callback,
@@ -667,6 +682,17 @@ static session_cb_vft_t tls_app_cb_vft = {
   .session_migrate_callback = dtls_session_migrate_callback,
   .session_cleanup_callback = tls_app_session_cleanup,
 };
+
+static void
+tls_register_half_open (app_worker_t *app_wrk, tls_ctx_t *ctx)
+{
+  session_t *ho;
+  ho = session_alloc_for_half_open (&ctx->connection);
+  ho->app_wrk_index = app_wrk->wrk_index;
+  ho->ho_index = app_worker_add_half_open (app_wrk, session_handle (ho));
+  ho->opaque = ctx->parent_app_api_context;
+  ctx->c_s_index = ho->session_index;
+}
 
 int
 tls_connect (transport_endpoint_cfg_t * tep)
@@ -720,6 +746,10 @@ tls_connect (transport_endpoint_cfg_t * tep)
   cargs->sep_ext.ns_index = app->ns_index;
   if ((rv = vnet_connect (cargs)))
     return rv;
+
+  /* Manual registration of half-open. Might be possible to offload to
+   * session layer infra at one point. */
+  tls_register_half_open (app_wrk, ctx);
 
   TLS_DBG (1, "New connect request %u engine %d", ctx_index, engine_type);
   return 0;
