@@ -313,7 +313,7 @@ session_half_open_delete_notify (transport_connection_t *tc)
   app_worker_t *app_wrk;
   session_t *s;
 
-  s = session_get (tc->s_index, tc->thread_index);
+  s = ho_session_get (tc->s_index);
   app_wrk = app_worker_get (s->app_wrk_index);
   app_worker_del_half_open (app_wrk, s->ho_index);
   session_free (s);
@@ -1222,7 +1222,7 @@ session_dgram_accept (transport_connection_t * tc, u32 listener_index,
 }
 
 int
-session_open_cl (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
+session_open_cl (session_endpoint_cfg_t *rmt, session_handle_t *rsh)
 {
   transport_connection_t *tc;
   transport_endpoint_cfg_t *tep;
@@ -1242,7 +1242,7 @@ session_open_cl (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
   tc = transport_get_half_open (rmt->transport_proto, (u32) rv);
 
   /* For dgram type of service, allocate session and fifos now */
-  app_wrk = app_worker_get (app_wrk_index);
+  app_wrk = app_worker_get (rmt->app_wrk_index);
   s = session_alloc_for_connection (tc);
   s->app_wrk_index = app_wrk->wrk_index;
   s->session_state = SESSION_STATE_OPENED;
@@ -1253,17 +1253,19 @@ session_open_cl (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
     }
 
   sh = session_handle (s);
+  *rsh = sh;
+
   session_lookup_add_connection (tc, sh);
-  return app_worker_connect_notify (app_wrk, s, SESSION_E_NONE, opaque);
+  return app_worker_connect_notify (app_wrk, s, SESSION_E_NONE, rmt->opaque);
 }
 
 int
-session_open_vc (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
+session_open_vc (session_endpoint_cfg_t *rmt, session_handle_t *rsh)
 {
   transport_connection_t *tc;
   transport_endpoint_cfg_t *tep;
   app_worker_t *app_wrk;
-  session_t *s;
+  session_t *ho;
   int rv;
 
   tep = session_endpoint_to_transport_cfg (rmt);
@@ -1276,7 +1278,7 @@ session_open_vc (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
 
   tc = transport_get_half_open (rmt->transport_proto, (u32) rv);
 
-  app_wrk = app_worker_get (app_wrk_index);
+  app_wrk = app_worker_get (rmt->app_wrk_index);
 
   /* If transport offers a vc service, only allocate established
    * session once the connection has been established.
@@ -1286,10 +1288,11 @@ session_open_vc (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
    * session on transport notification, and to cleanup the half-open
    * session if the app detaches before connection establishment.
    */
-  s = session_alloc_for_half_open (tc);
-  s->app_wrk_index = app_wrk->wrk_index;
-  s->ho_index = app_worker_add_half_open (app_wrk, session_handle (s));
-  s->opaque = opaque;
+  ho = session_alloc_for_half_open (tc);
+  ho->app_wrk_index = app_wrk->wrk_index;
+  ho->ho_index = app_worker_add_half_open (app_wrk, session_handle (ho));
+  ho->opaque = rmt->opaque;
+  *rsh = session_handle (ho);
 
   session_lookup_add_half_open (tc, tc->c_index);
 
@@ -1297,18 +1300,16 @@ session_open_vc (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
 }
 
 int
-session_open_app (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
+session_open_app (session_endpoint_cfg_t *rmt, session_handle_t *rsh)
 {
-  session_endpoint_cfg_t *sep = (session_endpoint_cfg_t *) rmt;
-  transport_endpoint_cfg_t *tep_cfg = session_endpoint_to_transport_cfg (sep);
+  transport_endpoint_cfg_t *tep_cfg = session_endpoint_to_transport_cfg (rmt);
 
-  sep->app_wrk_index = app_wrk_index;
-  sep->opaque = opaque;
-
+  *rsh = SESSION_INVALID_HANDLE;
   return transport_connect (rmt->transport_proto, tep_cfg);
 }
 
-typedef int (*session_open_service_fn) (u32, session_endpoint_t *, u32);
+typedef int (*session_open_service_fn) (session_endpoint_cfg_t *,
+					session_handle_t *);
 
 /* *INDENT-OFF* */
 static session_open_service_fn session_open_srv_fns[TRANSPORT_N_SERVICES] = {
@@ -1332,11 +1333,11 @@ static session_open_service_fn session_open_srv_fns[TRANSPORT_N_SERVICES] = {
  * 		 on open completion.
  */
 int
-session_open (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
+session_open (session_endpoint_cfg_t *rmt, session_handle_t *rsh)
 {
   transport_service_type_t tst;
   tst = transport_protocol_service_type (rmt->transport_proto);
-  return session_open_srv_fns[tst] (app_wrk_index, rmt, opaque);
+  return session_open_srv_fns[tst](rmt, rsh);
 }
 
 /**
