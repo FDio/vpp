@@ -1636,6 +1636,7 @@ pg_generate_packets (vlib_node_runtime_t * node,
   u8 feature_arc_index = fm->device_input_feature_arc_index;
   cm = &fm->feature_config_mains[feature_arc_index];
   u32 current_config_index = ~(u32) 0;
+  vnet_hw_if_tx_queue_t *txq = 0;
   pg_interface_t *pi;
   int i;
 
@@ -1657,7 +1658,7 @@ pg_generate_packets (vlib_node_runtime_t * node,
     }
 
   if (PREDICT_FALSE (pi->coalesce_enabled))
-    vnet_gro_flow_table_schedule_node_on_dispatcher (vm, pi->flow_table);
+    vnet_gro_flow_table_schedule_node_on_dispatcher (vm, txq, pi->flow_table);
 
   while (n_packets_to_generate > 0)
     {
