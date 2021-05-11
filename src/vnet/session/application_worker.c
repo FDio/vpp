@@ -389,6 +389,8 @@ app_worker_add_half_open (app_worker_t *app_wrk, session_handle_t sh)
   pool_get (app_wrk->half_open_table, shp);
   *shp = sh;
 
+  clib_warning ("added app wrk ho for 0x%x conn %u", sh,
+                session_get_from_handle (sh)->connection_index);
   return (shp - app_wrk->half_open_table);
 }
 
@@ -500,12 +502,14 @@ app_worker_own_session (app_worker_t * app_wrk, session_t * s)
 }
 
 int
-app_worker_connect_session (app_worker_t * app_wrk, session_endpoint_t * sep,
-			    u32 api_context)
+app_worker_connect_session (app_worker_t *app_wrk, session_endpoint_cfg_t *sep,
+                            session_handle_t *rsh)
 {
   int rv;
 
-  if ((rv = session_open (app_wrk->wrk_index, sep, api_context)))
+  sep->app_wrk_index = app_wrk->wrk_index;
+
+  if ((rv = session_open (sep, rsh)))
     return rv;
 
   return 0;
