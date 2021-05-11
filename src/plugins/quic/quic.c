@@ -1298,16 +1298,17 @@ quic_connect_connection (session_endpoint_cfg_t * sep)
   vnet_connect_args_t _cargs, *cargs = &_cargs;
   transport_endpt_crypto_cfg_t *ccfg;
   quic_main_t *qm = &quic_main;
+  u32 ctx_index, thread_index;
   quic_ctx_t *ctx;
   app_worker_t *app_wrk;
   application_t *app;
-  u32 ctx_index;
-  u32 thread_index = vlib_get_thread_index ();
   int error;
 
   if (!sep->ext_cfg)
     return SESSION_E_NOEXTCFG;
 
+  /* Use pool on thread 1 if we have workers because of UDP */
+  thread_index = vlib_num_workers () ? 1 : 0;
   ccfg = &sep->ext_cfg->crypto;
 
   clib_memset (cargs, 0, sizeof (*cargs));
@@ -1785,11 +1786,15 @@ quic_udp_session_connected_callback (u32 quic_app_index, u32 ctx_index,
   app_worker_t *app_wrk;
   quicly_conn_t *conn;
   quic_ctx_t *ctx;
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index;
   int ret;
   quicly_context_t *quicly_ctx;
 
-
+  /* Allocate session on whatever thread udp used, i.e., probably first
+   * worker, although this may be main thread. If it is main, it's done
+   * with a worker barrier */
+  thread_index = udp_session->thread_index;
+  ASSERT (thread_index == 0 || thread_index == 1);
   ctx = quic_ctx_get (ctx_index, thread_index);
   if (err)
     {
@@ -1833,11 +1838,7 @@ quic_udp_session_connected_callback (u32 quic_app_index, u32 ctx_index,
   QUIC_DBG (2, "Registering conn with id %lu %lu", kv.key[0], kv.key[1]);
   clib_bihash_add_del_16_8 (&quic_main.connection_hash, &kv, 1 /* is_add */ );
 
-  /*  UDP stack quirk? preemptively transfer connection if that happens */
-  if (udp_session->thread_index != thread_index)
-    quic_transfer_connection (ctx_index, udp_session->thread_index);
-  else
-    quic_send_packets (ctx);
+  quic_send_packets (ctx);
 
   return ret;
 }
