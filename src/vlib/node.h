@@ -765,7 +765,6 @@ typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u64 head;
-  u64 head_hint;
   u64 tail;
   u32 n_in_use;
   u32 nelts;

@@ -346,26 +346,13 @@ vlib_frame_queue_alloc (int nelts)
   fq = clib_mem_alloc_aligned (sizeof (*fq), CLIB_CACHE_LINE_BYTES);
   clib_memset (fq, 0, sizeof (*fq));
   fq->nelts = nelts;
-  fq->vector_threshold = 128;	// packets
+  fq->vector_threshold = 2 * VLIB_FRAME_SIZE;
   vec_validate_aligned (fq->elts, nelts - 1, CLIB_CACHE_LINE_BYTES);
 
-  if (1)
+  if (nelts & (nelts - 1))
     {
-      if (((uword) & fq->tail) & (CLIB_CACHE_LINE_BYTES - 1))
-	fformat (stderr, "WARNING: fq->tail unaligned\n");
-      if (((uword) & fq->head) & (CLIB_CACHE_LINE_BYTES - 1))
-	fformat (stderr, "WARNING: fq->head unaligned\n");
-      if (((uword) fq->elts) & (CLIB_CACHE_LINE_BYTES - 1))
-	fformat (stderr, "WARNING: fq->elts unaligned\n");
-
-      if (sizeof (fq->elts[0]) % CLIB_CACHE_LINE_BYTES)
-	fformat (stderr, "WARNING: fq->elts[0] size %d\n",
-		 sizeof (fq->elts[0]));
-      if (nelts & (nelts - 1))
-	{
-	  fformat (stderr, "FATAL: nelts MUST be a power of 2\n");
-	  abort ();
-	}
+      fformat (stderr, "FATAL: nelts MUST be a power of 2\n");
+      abort ();
     }
 
   return (fq);
@@ -1587,23 +1574,13 @@ vlib_frame_queue_main_init (u32 node_index, u32 frame_queue_nelts)
 
   fqm->node_index = node_index;
   fqm->frame_queue_nelts = frame_queue_nelts;
-  fqm->queue_hi_thresh = frame_queue_nelts - num_threads;
 
   vec_validate (fqm->vlib_frame_queues, tm->n_vlib_mains - 1);
-  vec_validate (fqm->per_thread_data, tm->n_vlib_mains - 1);
   _vec_len (fqm->vlib_frame_queues) = 0;
   for (i = 0; i < tm->n_vlib_mains; i++)
     {
-      vlib_frame_queue_per_thread_data_t *ptd;
       fq = vlib_frame_queue_alloc (frame_queue_nelts);
       vec_add1 (fqm->vlib_frame_queues, fq);
-
-      ptd = vec_elt_at_index (fqm->per_thread_data, i);
-      vec_validate (ptd->handoff_queue_elt_by_thread_index,
-		    tm->n_vlib_mains - 1);
-      vec_validate_init_empty (ptd->congested_handoff_queue_by_thread_index,
-			       tm->n_vlib_mains - 1,
-			       (vlib_frame_queue_t *) (~0));
     }
 
   return (fqm - tm->frame_queue_mains);

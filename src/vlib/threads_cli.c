@@ -290,8 +290,8 @@ show_frame_queue_internal (vlib_main_t * vm,
 	  vlib_cli_output (vm,
 			   "  vector-threshold %d  ring size %d  in use %d\n",
 			   fqt->threshold, fqt->nelts, fqt->n_in_use);
-	  vlib_cli_output (vm, "  head %12d  head_hint %12d  tail %12d\n",
-			   fqt->head, fqt->head_hint, fqt->tail);
+	  vlib_cli_output (vm, "  head %12d  tail %12d\n", fqt->head,
+			   fqt->tail);
 	  vlib_cli_output (vm,
 			   "  %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d\n",
 			   fqt->n_vectors[0], fqt->n_vectors[1],
