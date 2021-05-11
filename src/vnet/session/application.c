@@ -1331,6 +1331,8 @@ vnet_connect (vnet_connect_args_t * a)
   session_endpoint_update_for_app (&a->sep_ext, client, 1 /* is_connect */ );
   client_wrk = application_get_worker (client, a->wrk_map_index);
 
+  a->sep_ext.opaque = a->api_context;
+
   /*
    * First check the local scope for locally attached destinations.
    * If we have local scope, we pass *all* connects through it since we may
@@ -1342,7 +1344,7 @@ vnet_connect (vnet_connect_args_t * a)
 
       a->sep_ext.original_tp = a->sep_ext.transport_proto;
       a->sep_ext.transport_proto = TRANSPORT_PROTO_NONE;
-      rv = app_worker_connect_session (client_wrk, &a->sep, a->api_context);
+      rv = app_worker_connect_session (client_wrk, &a->sep_ext);
       if (rv <= 0)
 	return rv;
       a->sep_ext.transport_proto = a->sep_ext.original_tp;
@@ -1350,7 +1352,7 @@ vnet_connect (vnet_connect_args_t * a)
   /*
    * Not connecting to a local server, propagate to transport
    */
-  return app_worker_connect_session (client_wrk, &a->sep, a->api_context);
+  return app_worker_connect_session (client_wrk, &a->sep_ext);
 }
 
 int
