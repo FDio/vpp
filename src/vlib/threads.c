@@ -349,23 +349,10 @@ vlib_frame_queue_alloc (int nelts)
   fq->vector_threshold = 128;	// packets
   vec_validate_aligned (fq->elts, nelts - 1, CLIB_CACHE_LINE_BYTES);
 
-  if (1)
+  if (nelts & (nelts - 1))
     {
-      if (((uword) & fq->tail) & (CLIB_CACHE_LINE_BYTES - 1))
-	fformat (stderr, "WARNING: fq->tail unaligned\n");
-      if (((uword) & fq->head) & (CLIB_CACHE_LINE_BYTES - 1))
-	fformat (stderr, "WARNING: fq->head unaligned\n");
-      if (((uword) fq->elts) & (CLIB_CACHE_LINE_BYTES - 1))
-	fformat (stderr, "WARNING: fq->elts unaligned\n");
-
-      if (sizeof (fq->elts[0]) % CLIB_CACHE_LINE_BYTES)
-	fformat (stderr, "WARNING: fq->elts[0] size %d\n",
-		 sizeof (fq->elts[0]));
-      if (nelts & (nelts - 1))
-	{
-	  fformat (stderr, "FATAL: nelts MUST be a power of 2\n");
-	  abort ();
-	}
+      fformat (stderr, "FATAL: nelts MUST be a power of 2\n");
+      abort ();
     }
 
   return (fq);
@@ -376,127 +363,6 @@ void
 vl_msg_api_handler_no_free (void *v)
 {
 }
-
-/* Turned off, save as reference material... */
-#if 0
-static inline int
-vlib_frame_queue_dequeue_internal (int thread_id,
-				   vlib_main_t * vm, vlib_node_main_t * nm)
-{
-  vlib_frame_queue_t *fq = vlib_frame_queues[thread_id];
-  vlib_frame_queue_elt_t *elt;
-  vlib_frame_t *f;
-  vlib_pending_frame_t *p;
-  vlib_node_runtime_t *r;
-  u32 node_runtime_index;
-  int msg_type;
-  u64 before;
-  int processed = 0;
-
-  ASSERT (vm == vlib_mains[thread_id]);
-
-  while (1)
-    {
-      if (fq->head == fq->tail)
-	return processed;
-
-      elt = fq->elts + ((fq->head + 1) & (fq->nelts - 1));
-
-      if (!elt->valid)
-	return processed;
-
-      before = clib_cpu_time_now ();
-
-      f = elt->frame;
-      node_runtime_index = elt->node_runtime_index;
-      msg_type = elt->msg_type;
-
-      switch (msg_type)
-	{
-	case VLIB_FRAME_QUEUE_ELT_FREE_BUFFERS:
-	  vlib_buffer_free (vm, vlib_frame_vector_args (f), f->n_vectors);
-	  /* note fallthrough... */
-	case VLIB_FRAME_QUEUE_ELT_FREE_FRAME:
-	  r = vec_elt_at_index (nm->nodes_by_type[VLIB_NODE_TYPE_INTERNAL],
-				node_runtime_index);
-	  vlib_frame_free (vm, r, f);
-	  break;
-	case VLIB_FRAME_QUEUE_ELT_DISPATCH_FRAME:
-	  vec_add2 (vm->node_main.pending_frames, p, 1);
-	  f->flags |= (VLIB_FRAME_PENDING | VLIB_FRAME_FREE_AFTER_DISPATCH);
-	  p->node_runtime_index = elt->node_runtime_index;
-	  p->frame_index = vlib_frame_index (vm, f);
-	  p->next_frame_index = VLIB_PENDING_FRAME_NO_NEXT_FRAME;
-	  fq->dequeue_vectors += (u64) f->n_vectors;
-	  break;
-	case VLIB_FRAME_QUEUE_ELT_API_MSG:
-	  vl_msg_api_handler_no_free (f);
-	  break;
-	default:
-	  clib_warning ("bogus frame queue message, type %d", msg_type);
-	  break;
-	}
-      elt->valid = 0;
-      fq->dequeues++;
-      fq->dequeue_ticks += clib_cpu_time_now () - before;
-      CLIB_MEMORY_BARRIER ();
-      fq->head++;
-      processed++;
-    }
-  ASSERT (0);
-  return processed;
-}
-
-int
-vlib_frame_queue_dequeue (int thread_id,
-			  vlib_main_t * vm, vlib_node_main_t * nm)
-{
-  return vlib_frame_queue_dequeue_internal (thread_id, vm, nm);
-}
-
-int
-vlib_frame_queue_enqueue (vlib_main_t * vm, u32 node_runtime_index,
-			  u32 frame_queue_index, vlib_frame_t * frame,
-			  vlib_frame_queue_msg_type_t type)
-{
-  vlib_frame_queue_t *fq = vlib_frame_queues[frame_queue_index];
-  vlib_frame_queue_elt_t *elt;
-  u32 save_count;
-  u64 new_tail;
-  u64 before = clib_cpu_time_now ();
-
-  ASSERT (fq);
-
-  new_tail = clib_atomic_add_fetch (&fq->tail, 1);
-
-  /* Wait until a ring slot is available */
-  while (new_tail >= fq->head + fq->nelts)
-    {
-      f64 b4 = vlib_time_now_ticks (vm, before);
-      vlib_worker_thread_barrier_check (vm, b4);
-      /* Bad idea. Dequeue -> enqueue -> dequeue -> trouble */
-      // vlib_frame_queue_dequeue (vm->thread_index, vm, nm);
-    }
-
-  elt = fq->elts + (new_tail & (fq->nelts - 1));
-
-  /* this would be very bad... */
-  while (elt->valid)
-    {
-    }
-
-  /* Once we enqueue the frame, frame->n_vectors is owned elsewhere... */
-  save_count = frame->n_vectors;
-
-  elt->frame = frame;
-  elt->node_runtime_index = node_runtime_index;
-  elt->msg_type = type;
-  CLIB_MEMORY_BARRIER ();
-  elt->valid = 1;
-
-  return save_count;
-}
-#endif /* 0 */
 
 /* To be called by vlib worker threads upon startup */
 void
@@ -1708,23 +1574,13 @@ vlib_frame_queue_main_init (u32 node_index, u32 frame_queue_nelts)
 
   fqm->node_index = node_index;
   fqm->frame_queue_nelts = frame_queue_nelts;
-  fqm->queue_hi_thresh = frame_queue_nelts - num_threads;
 
   vec_validate (fqm->vlib_frame_queues, tm->n_vlib_mains - 1);
-  vec_validate (fqm->per_thread_data, tm->n_vlib_mains - 1);
   _vec_len (fqm->vlib_frame_queues) = 0;
   for (i = 0; i < tm->n_vlib_mains; i++)
     {
-      vlib_frame_queue_per_thread_data_t *ptd;
       fq = vlib_frame_queue_alloc (frame_queue_nelts);
       vec_add1 (fqm->vlib_frame_queues, fq);
-
-      ptd = vec_elt_at_index (fqm->per_thread_data, i);
-      vec_validate (ptd->handoff_queue_elt_by_thread_index,
-		    tm->n_vlib_mains - 1);
-      vec_validate_init_empty (ptd->congested_handoff_queue_by_thread_index,
-			       tm->n_vlib_mains - 1,
-			       (vlib_frame_queue_t *) (~0));
     }
 
   return (fqm - tm->frame_queue_mains);
