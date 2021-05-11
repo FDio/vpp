@@ -155,7 +155,7 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
 	  if (vec_len (rt->rxq_poll_vector) != vec_len (d[i]))
 	    something_changed = 1;
 	  else if (memcmp (d[i], rt->rxq_poll_vector,
-			   vec_len (d[i]) * sizeof (*d)))
+			   vec_len (d[i]) * sizeof (**d)))
 	    something_changed = 1;
 	  if (clib_interrupt_get_n_int (rt->rxq_interrupts) != last_int + 1)
 	    something_changed = 1;
