@@ -31,6 +31,8 @@
 #include <vnet/udp/udp_packet.h>
 #include <vnet/devices/virtio/virtio.h>
 
+#define VIRTIO_TX_MAX_CHAIN_LEN 127
+
 #define foreach_virtio_tx_func_error	       \
 _(NO_FREE_SLOTS, "no free tx slots")           \
 _(TRUNC_PACKET, "packet > buffer size -- truncated in tx ring") \
@@ -478,6 +480,13 @@ add_buffer_to_slot (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      b = vlib_get_buffer (vm, b->next_buffer);
 	      id->addr = vlib_buffer_get_current_pa (vm, b);
 	      id->len = b->current_length;
+	      if (PREDICT_FALSE (count == VIRTIO_TX_MAX_CHAIN_LEN))
+		{
+		  if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+		    vlib_error_count (vm, node->node_index,
+				      VIRTIO_TX_ERROR_TRUNC_PACKET, 1);
+		  break;
+		}
 	    }
 	}
       else			/* VIRTIO_IF_TYPE_[TAP | TUN] */
@@ -496,6 +505,13 @@ add_buffer_to_slot (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      b = vlib_get_buffer (vm, b->next_buffer);
 	      id->addr = pointer_to_uword (vlib_buffer_get_current (b));
 	      id->len = b->current_length;
+	      if (PREDICT_FALSE (count == VIRTIO_TX_MAX_CHAIN_LEN))
+		{
+		  if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+		    vlib_error_count (vm, node->node_index,
+				      VIRTIO_TX_ERROR_TRUNC_PACKET, 1);
+		  break;
+		}
 	    }
 	}
       id->flags = 0;
@@ -670,6 +686,13 @@ add_buffer_to_slot_packed (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      b = vlib_get_buffer (vm, b->next_buffer);
 	      id->addr = vlib_buffer_get_current_pa (vm, b);
 	      id->len = b->current_length;
+	      if (PREDICT_FALSE (count == VIRTIO_TX_MAX_CHAIN_LEN))
+		{
+		  if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+		    vlib_error_count (vm, node->node_index,
+				      VIRTIO_TX_ERROR_TRUNC_PACKET, 1);
+		  break;
+		}
 	    }
 	}
       id->flags = 0;
