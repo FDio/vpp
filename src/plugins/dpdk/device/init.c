@@ -372,6 +372,11 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_TCP_CKSUM;
 	}
 
+      if (dm->conf->enable_lro)
+	{
+	  if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_TCP_LRO)
+	    xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_TCP_LRO;
+	}
       if (dm->conf->no_multi_seg)
 	{
 	  xd->port_conf.txmode.offloads &= ~DEV_TX_OFFLOAD_MULTI_SEGS;
@@ -1366,6 +1371,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
       else if (unformat (input, "no-multi-seg"))
 	conf->no_multi_seg = 1;
+      else if (unformat (input, "enable-lro"))
+	conf->enable_lro = 1;
       else if (unformat (input, "max-simd-bitwidth %U",
 			 unformat_max_simd_bitwidth, &conf->max_simd_bitwidth))
 	;
