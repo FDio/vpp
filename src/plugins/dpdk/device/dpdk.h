@@ -251,11 +251,12 @@ typedef struct
 #define DPDK_LINK_POLL_INTERVAL       (3.0)
 #define DPDK_MIN_LINK_POLL_INTERVAL   (0.001)	/* 1msec */
 
-#define foreach_dpdk_device_config_item \
-  _ (num_rx_queues) \
-  _ (num_tx_queues) \
-  _ (num_rx_desc) \
-  _ (num_tx_desc) \
+#define foreach_dpdk_device_config_item                                       \
+  _ (num_rx_queues)                                                           \
+  _ (num_tx_queues)                                                           \
+  _ (num_rx_desc)                                                             \
+  _ (num_tx_desc)                                                             \
+  _ (max_lro_pkt_size)                                                        \
   _ (rss_fn)
 
 typedef enum
@@ -301,6 +302,7 @@ typedef struct
   u8 *eal_init_args_str;
   u8 *uio_driver_name;
   u8 no_multi_seg;
+  u8 enable_lro;
   u8 enable_tcp_udp_checksum;
   u8 no_tx_checksum_offload;
   u8 enable_telemetry;
@@ -347,7 +349,7 @@ typedef struct
   u32 buffers[DPDK_RX_BURST_SZ];
   u16 next[DPDK_RX_BURST_SZ];
   u16 etype[DPDK_RX_BURST_SZ];
-  u16 flags[DPDK_RX_BURST_SZ];
+  u32 flags[DPDK_RX_BURST_SZ];
   vlib_buffer_t buffer_template;
 } dpdk_per_thread_data_t;
 

@@ -36,9 +36,9 @@ static char *dpdk_error_strings[] = {
 #undef _
 };
 
-/* make sure all flags we need are stored in lower 8 bits */
-STATIC_ASSERT ((PKT_RX_IP_CKSUM_BAD | PKT_RX_FDIR) <
-	       256, "dpdk flags not un lower byte, fix needed");
+/* make sure all flags we need are stored in lower 32 bits */
+STATIC_ASSERT ((PKT_RX_IP_CKSUM_BAD | PKT_RX_FDIR | PKT_RX_LRO) < (1 << 32),
+	       "dpdk flags not in lower word, fix needed");
 
 static_always_inline uword
 dpdk_process_subseq_segs (vlib_main_t * vm, vlib_buffer_t * b,
@@ -145,31 +145,30 @@ dpdk_prefetch_buffer_x4 (struct rte_mbuf *mb[])
       <code>xd->per_interface_next_index</code>
 */
 
-static_always_inline u16
-dpdk_ol_flags_extract (struct rte_mbuf **mb, u16 * flags, int count)
+static_always_inline u32
+dpdk_ol_flags_extract (struct rte_mbuf **mb, u32 *flags, int count)
 {
-  u16 rv = 0;
+  u32 rv = 0;
   int i;
   for (i = 0; i < count; i++)
     {
       /* all flags we are interested in are in lower 8 bits but
          that might change */
-      flags[i] = (u16) mb[i]->ol_flags;
+      flags[i] = (u32) mb[i]->ol_flags;
       rv |= flags[i];
     }
   return rv;
 }
 
 static_always_inline uword
-dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
-		       uword n_rx_packets, int maybe_multiseg,
-		       u16 * or_flagsp)
+dpdk_process_rx_burst (vlib_main_t *vm, dpdk_per_thread_data_t *ptd,
+		       uword n_rx_packets, int maybe_multiseg, u32 *or_flagsp)
 {
   u32 n_left = n_rx_packets;
   vlib_buffer_t *b[4];
   struct rte_mbuf **mb = ptd->mbufs;
   uword n_bytes = 0;
-  u16 *flags, or_flags = 0;
+  u32 *flags, or_flags = 0;
   vlib_buffer_t bt;
 
   mb = ptd->mbufs;
@@ -277,6 +276,65 @@ dpdk_process_flow_offload (dpdk_device_t * xd, dpdk_per_thread_data_t * ptd,
     }
 }
 
+static_always_inline u16
+dpdk_lro_find_l4_hdr_sz (vlib_buffer_t *b)
+{
+  u16 l4_hdr_sz = 0;
+  u16 current_offset = 0;
+  ethernet_header_t *e;
+  tcp_header_t *tcp;
+  u8 *data = vlib_buffer_get_current (b);
+  u16 ethertype;
+  e = (void *) data;
+  current_offset += sizeof (e[0]);
+  ethertype = clib_net_to_host_u16 (e->type);
+  if (ethernet_frame_is_tagged (ethertype))
+    {
+      ethernet_vlan_header_t *vlan = (ethernet_vlan_header_t *) (e + 1);
+      ethertype = clib_net_to_host_u16 (vlan->type);
+      current_offset += sizeof (*vlan);
+      if (ethertype == ETHERNET_TYPE_VLAN)
+	{
+	  vlan++;
+	  current_offset += sizeof (*vlan);
+	  ethertype = clib_net_to_host_u16 (vlan->type);
+	}
+    }
+  data += current_offset;
+  if (ethertype == ETHERNET_TYPE_IP4)
+    {
+      data += sizeof (ip4_header_t);
+      tcp = (void *) data;
+      l4_hdr_sz = tcp_header_bytes (tcp);
+    }
+  else
+    {
+      /* FIXME: extension headers...*/
+      data += sizeof (ip6_header_t);
+      tcp = (void *) data;
+      l4_hdr_sz = tcp_header_bytes (tcp);
+    }
+  return l4_hdr_sz;
+}
+
+static_always_inline void
+dpdk_process_lro_offload (dpdk_device_t *xd, dpdk_per_thread_data_t *ptd,
+			  uword n_rx_packets)
+{
+  uword n;
+  vlib_buffer_t *b0;
+  for (n = 0; n < n_rx_packets; n++)
+    {
+      b0 = vlib_buffer_from_rte_mbuf (ptd->mbufs[n]);
+      if (ptd->flags[n] & PKT_RX_LRO)
+	{
+	  b0->flags |= VNET_BUFFER_F_GSO;
+	  vnet_buffer2 (b0)->gso_size = ptd->mbufs[n]->tso_segsz;
+	  vnet_buffer2 (b0)->gso_l4_hdr_sz = dpdk_lro_find_l4_hdr_sz (b0);
+	}
+    }
+}
+
 static_always_inline u32
 dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
 		   vlib_node_runtime_t * node, u32 thread_index, u16 queue_id)
@@ -289,7 +347,7 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
   struct rte_mbuf **mb;
   vlib_buffer_t *b0;
   u16 *next;
-  u16 or_flags;
+  u32 or_flags;
   u32 n;
   int single_next = 0;
 
@@ -338,6 +396,9 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
     n_rx_bytes = dpdk_process_rx_burst (vm, ptd, n_rx_packets, 1, &or_flags);
   else
     n_rx_bytes = dpdk_process_rx_burst (vm, ptd, n_rx_packets, 0, &or_flags);
+
+  if (PREDICT_FALSE ((or_flags & PKT_RX_LRO)))
+    dpdk_process_lro_offload (xd, ptd, n_rx_packets);
 
   if (PREDICT_FALSE (or_flags & PKT_RX_FDIR))
     {
