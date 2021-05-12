@@ -110,6 +110,9 @@ void vls_send_clone_and_share_rpc (vcl_worker_t *wrk, u32 origin_vls_index,
 				   u32 session_index, u32 vls_wrk_index,
 				   u32 dst_wrk_index, u32 dst_vls_index,
 				   u32 dst_session_index);
+static void vls_cleanup_forked_child (vcl_worker_t *wrk,
+				      vcl_worker_t *child_wrk);
+static void vls_handle_pending_wrk_cleanup (void);
 
 static inline u32
 vls_get_worker_index (void)
@@ -1410,6 +1413,7 @@ vls_epoll_wait (vls_handle_t ep_vlsh, struct epoll_event *events,
 			  wait_for_time);
   vls_mt_unguard ();
   vls_get_and_unlock (ep_vlsh);
+  vls_handle_pending_wrk_cleanup ();
   return rv;
 }
 
@@ -1458,6 +1462,7 @@ vls_select (int n_bits, vcl_si_set * read_map, vcl_si_set * write_map,
     vls_select_mp_checks (read_map);
   rv = vppcom_select (n_bits, read_map, write_map, except_map, wait_for_time);
   vls_mt_unguard ();
+  vls_handle_pending_wrk_cleanup ();
   return rv;
 }
 
@@ -1519,6 +1524,25 @@ vls_cleanup_forked_child (vcl_worker_t * wrk, vcl_worker_t * child_wrk)
   wrk->forked_child = ~0;
 }
 
+static void
+vls_handle_pending_wrk_cleanup (void)
+{
+  u32 *wip;
+  vcl_worker_t *child_wrk, *wrk = vcl_worker_get_current ();
+
+  if (PREDICT_TRUE (vec_len (wrk->pending_wrk_cleanup) == 0))
+    return;
+
+  vec_foreach (wip, wrk->pending_wrk_cleanup)
+    {
+      child_wrk = vcl_worker_get_if_valid (*wip);
+      if (!child_wrk)
+	continue;
+      vls_cleanup_forked_child (wrk, child_wrk);
+    }
+  vec_reset_length (wrk->pending_session_wrk_updates);
+}
+
 static struct sigaction old_sa;
 
 static void
@@ -1548,7 +1572,13 @@ vls_intercept_sigchld_handler (int signum, siginfo_t * si, void *uc)
       VDBG (0, "unexpected child pid %u", si->si_pid);
       goto done;
     }
-  vls_cleanup_forked_child (wrk, child_wrk);
+
+  /* Parent process may enter sighandler with a lock, such as lock in localtime
+   * or in mspace_free, and child wrk cleanup may try to get such locks and
+   * cause deadlock.
+   * So move child wrk cleanup from sighandler to vls_epoll_wait/vls_select.
+   */
+  vec_add1 (wrk->pending_wrk_cleanup, child_wrk->wrk_index);
 
 done:
   if (old_sa.sa_flags & SA_SIGINFO)
