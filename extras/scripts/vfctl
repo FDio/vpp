@@ -96,12 +96,16 @@ function create () {
 	mac_prefix=$(cat ${netdev_path}/address | cut -d: -f1,3,4,5,6 )
 	for vf_path in ${path}/virtfn*; do
 		vf=$(basename $(readlink ${vf_path}))
+		iommu_group=$(basename $(readlink ${vf_path}/iommu_group))
 		vfid=$(basename ${vf_path//virtfn/})
 		mac="${mac_prefix}:$(printf "%02x" ${vfid})"
 		sudo ip link set dev ${netdev} vf ${vfid} mac ${mac}
 		sudo ip link set dev ${netdev} vf ${vfid} trust on
 		sudo ip link set dev ${netdev} vf ${vfid} spoofchk off
 		pci-bind ${vf} vfio-pci
+		sudo chmod g+rw /dev/vfio/${iommu_group}
+		sudo chgrp sudo /dev/vfio/${iommu_group}
+		echo "VFIO group ${iommu_group} group ownership changed to sudo, group permissions changed to rw"
 	done
 
 	[ $(cat ${path}/sriov_numvfs) -gt 0 ] && show_vfs ${path} ${netdev}
