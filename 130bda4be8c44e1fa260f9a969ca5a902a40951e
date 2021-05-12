@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "291de17d_9daf543a",
+        "filename": "src/vnet/gso/gro_func.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 473,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2021-05-12T14:53:08Z",
+      "side": 1,
+      "message": "Why do you need to make the branch here?\nIn all cases, either we need to find the existing flow or add (if it doesn\u0027t exist) it. We don\u0027t coalesce packet here. In my opinion, there shouldn\u0027t be any check.",
+      "revId": "130bda4be8c44e1fa260f9a969ca5a902a40951e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
