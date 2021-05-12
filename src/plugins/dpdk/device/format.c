@@ -60,6 +60,7 @@
   _ (PKT_RX_L4_CKSUM_GOOD, "L4 cksum of RX pkt. is valid")                    \
   _ (PKT_RX_IEEE1588_PTP, "RX IEEE1588 L2 Ethernet PT Packet")                \
   _ (PKT_RX_IEEE1588_TMST, "RX IEEE1588 L2/L4 timestamped packet")            \
+  _ (PKT_RX_LRO, "LRO packet")                                                \
   _ (PKT_RX_QINQ_STRIPPED, "RX packet QinQ tags stripped")
 
 #define foreach_dpdk_pkt_type                                           \
