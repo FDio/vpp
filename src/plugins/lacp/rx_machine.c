@@ -371,9 +371,8 @@ lacp_rx_action_current (void *p1, void *p2)
   mif->actor.state &= ~LACP_STATE_EXPIRED;
   if (lacp_port_is_moved (vm, mif))
     lacp_set_port_moved (vm, mif, 1);
-  lacp_selection_logic (vm, mif);
 
-  return 0;
+  return lacp_selection_logic (vm, mif);
 }
 
 static u8 *
