@@ -428,6 +428,9 @@ no_more_desc:
   rxq->next = next;
   rxq->n_enqueued -= n_rx_packets + n_tail_desc;
 
+  /* avoid eating our own tail */
+  rxq->descs[(next + rxq->n_enqueued) & mask].qword[1] = 0;
+
 #if defined(CLIB_HAVE_VEC256) || defined(CLIB_HAVE_VEC128)
   or_qw1 |= or_q1x4[0] | or_q1x4[1] | or_q1x4[2] | or_q1x4[3];
 #endif
