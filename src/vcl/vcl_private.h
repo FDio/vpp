@@ -360,6 +360,8 @@ typedef struct vppcom_main_t_
   elog_track_t elog_track;
 #endif
 
+  /** Vector of child wrk to cleanup */
+  u32 *pending_wrk_cleanup;
 } vppcom_main_t;
 
 extern vppcom_main_t *vcm;
