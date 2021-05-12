@@ -300,6 +300,9 @@ typedef struct vcl_worker_
   /** vcl needs next epoll_create to go to libc_epoll */
   u8 vcl_needs_real_epoll;
   volatile int rpc_done;
+
+  /** Vector of child wrk to cleanup */
+  u32 *pending_wrk_cleanup;
 } vcl_worker_t;
 
 STATIC_ASSERT (sizeof (session_disconnected_msg_t) <= 16,
