@@ -372,6 +372,19 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_TCP_CKSUM;
 	}
 
+      if (dm->conf->enable_lro)
+	{
+	  if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_TCP_LRO)
+	    {
+	      xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_TCP_LRO;
+	      if (devconf->max_lro_pkt_size)
+		xd->port_conf.rxmode.max_lro_pkt_size =
+		  devconf->max_lro_pkt_size;
+	      else
+		xd->port_conf.rxmode.max_lro_pkt_size =
+		  DPDK_MAX_LRO_SIZE_DEFAULT;
+	    }
+	}
       if (dm->conf->no_multi_seg)
 	{
 	  xd->port_conf.txmode.offloads &= ~DEV_TX_OFFLOAD_MULTI_SEGS;
@@ -474,9 +487,16 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	      xd->port_conf.intr_conf.rxq = 1;
 	      break;
+	    case VNET_DPDK_PMD_MLX5:
+	      if (dm->conf->no_tx_checksum_offload == 0)
+		{
+		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
+		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
+		  xd->flags |= DPDK_DEVICE_FLAG_TX_OFFLOAD |
+			       DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
+		}
 	    case VNET_DPDK_PMD_CXGBE:
 	    case VNET_DPDK_PMD_MLX4:
-	    case VNET_DPDK_PMD_MLX5:
 	    case VNET_DPDK_PMD_QEDE:
 	    case VNET_DPDK_PMD_BNXT:
 	      xd->port_type = port_type_from_speed_capa (&dev_info);
@@ -1270,6 +1290,9 @@ dpdk_device_config (dpdk_config_main_t *conf, void *addr,
       else if (unformat (input, "rss-queues %U",
 			 unformat_bitmap_list, &devconf->rss_queues))
 	;
+      else if (unformat (input, "max-lro-pkt-size %u",
+			 &devconf->max_lro_pkt_size))
+	;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -1376,6 +1399,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
       else if (unformat (input, "no-multi-seg"))
 	conf->no_multi_seg = 1;
+      else if (unformat (input, "enable-lro"))
+	conf->enable_lro = 1;
       else if (unformat (input, "max-simd-bitwidth %U",
 			 unformat_max_simd_bitwidth, &conf->max_simd_bitwidth))
 	;
