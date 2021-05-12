@@ -19,8 +19,8 @@
 #include <vnet/bonding/node.h>
 #include <lacp/node.h>
 
-static void
-lacp_set_port_selected (vlib_main_t * vm, member_if_t * mif)
+static int
+lacp_set_port_selected (vlib_main_t *vm, bond_if_t *bif, member_if_t *mif)
 {
   /* Handle loopback port */
   if (!memcmp (mif->partner.system, mif->actor.system, 6) &&
@@ -28,6 +28,26 @@ lacp_set_port_selected (vlib_main_t * vm, member_if_t * mif)
     {
       mif->loopback_port = 1;
       mif->actor.state &= ~LACP_STATE_AGGREGATION;
+      mif->selected = LACP_PORT_UNSELECTED;
+      lacp_machine_dispatch (&lacp_mux_machine, vm, mif,
+			     LACP_MUX_EVENT_UNSELECTED, &mif->mux_state);
+      return LACP_ERROR_LOOPBACK_PORT;
+    }
+  if (vec_len (bif->active_members))
+    {
+      uword p = *vec_elt_at_index (bif->active_members, 0);
+      if (p != mif->sw_if_index)
+	{
+	  member_if_t *mif2 = bond_get_member_by_sw_if_index (p);
+	  if (mif2->partner.key != mif->partner.key)
+	    {
+	      mif->selected = LACP_PORT_UNSELECTED;
+	      lacp_machine_dispatch (&lacp_mux_machine, vm, mif,
+				     LACP_MUX_EVENT_UNSELECTED,
+				     &mif->mux_state);
+	      return LACP_ERROR_BAD_KEY;
+	    }
+	}
     }
   mif->selected = LACP_PORT_SELECTED;
 
@@ -37,23 +57,23 @@ lacp_set_port_selected (vlib_main_t * vm, member_if_t * mif)
       break;
     case LACP_MUX_STATE_WAITING:
       if (!mif->ready)
-	return;
+	return LACP_ERROR_NONE;
       break;
     case LACP_MUX_STATE_ATTACHED:
       if (!(mif->partner.state & LACP_STATE_SYNCHRONIZATION))
-	return;
+	return LACP_ERROR_NONE;
       break;
     case LACP_MUX_STATE_COLLECTING_DISTRIBUTING:
       break;
     default:
       break;
     }
-  lacp_machine_dispatch (&lacp_mux_machine, vm, mif, LACP_MUX_EVENT_SELECTED,
-			 &mif->mux_state);
+  return lacp_machine_dispatch (&lacp_mux_machine, vm, mif,
+				LACP_MUX_EVENT_SELECTED, &mif->mux_state);
 }
 
-void
-lacp_selection_logic (vlib_main_t * vm, member_if_t * mif)
+int
+lacp_selection_logic (vlib_main_t *vm, member_if_t *mif)
 {
   member_if_t *mif2;
   bond_if_t *bif;
@@ -80,7 +100,7 @@ lacp_selection_logic (vlib_main_t * vm, member_if_t * mif)
       }
   }
 out:
-  lacp_set_port_selected (vm, mif);
+  return lacp_set_port_selected (vm, bif, mif);
 }
 
 /*
