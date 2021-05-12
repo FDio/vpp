@@ -58,13 +58,15 @@ typedef enum
   }
 
 /* Packet counters */
-#define foreach_lacp_error                                               \
-_ (NONE, "good lacp packets -- consumed")	                         \
-_ (CACHE_HIT, "good lacp packets -- cache hit")                          \
-_ (UNSUPPORTED, "unsupported slow protocol packets")                     \
-_ (TOO_SMALL, "bad lacp packets -- packet too small")                    \
-_ (BAD_TLV, "bad lacp packets -- bad TLV length")                        \
-_ (DISABLED, "lacp packets received on disabled interfaces")
+#define foreach_lacp_error                                                    \
+  _ (NONE, "good lacp packets -- consumed")                                   \
+  _ (CACHE_HIT, "good lacp packets -- cache hit")                             \
+  _ (UNSUPPORTED, "unsupported slow protocol packets")                        \
+  _ (TOO_SMALL, "bad lacp packets -- packet too small")                       \
+  _ (BAD_TLV, "bad lacp packets -- bad TLV length")                           \
+  _ (BAD_KEY, "Bad key")                                                      \
+  _ (LOOPBACK_PORT, "loopback port")                                          \
+  _ (DISABLED, "lacp packets received on disabled interfaces")
 
 typedef enum
 {
@@ -153,7 +155,7 @@ void lacp_init_rx_machine (vlib_main_t * vm, member_if_t * mif);
 void lacp_init_tx_machine (vlib_main_t * vm, member_if_t * mif);
 void lacp_init_ptx_machine (vlib_main_t * vm, member_if_t * mif);
 void lacp_init_mux_machine (vlib_main_t * vm, member_if_t * mif);
-void lacp_selection_logic (vlib_main_t * vm, member_if_t * mif);
+int lacp_selection_logic (vlib_main_t *vm, member_if_t *mif);
 void lacp_send_lacp_pdu (vlib_main_t * vm, member_if_t * mif);
 
 static inline void

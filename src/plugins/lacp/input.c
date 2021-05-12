@@ -36,10 +36,8 @@ lacp_packet_scan (vlib_main_t * vm, member_if_t * mif)
       (lacpdu->terminator.tlv_length != 0))
     return (LACP_ERROR_BAD_TLV);
 
-  lacp_machine_dispatch (&lacp_rx_machine, vm, mif,
-			 LACP_RX_EVENT_PDU_RECEIVED, &mif->rx_state);
-
-  return LACP_ERROR_NONE;
+  return lacp_machine_dispatch (&lacp_rx_machine, vm, mif,
+				LACP_RX_EVENT_PDU_RECEIVED, &mif->rx_state);
 }
 
 static void
