@@ -42,6 +42,8 @@ typedef struct vls_worker_
   vcl_locked_session_t *vls_pool;
   uword *session_handle_to_vlsh_table;
   u32 wrk_index;
+  /** Vector of child wrk to cleanup */
+  u32 *pending_wrk_cleanup;
 } vls_worker_t;
 
 typedef struct vls_local_
@@ -110,6 +112,9 @@ void vls_send_clone_and_share_rpc (vcl_worker_t *wrk, u32 origin_vls_index,
 				   u32 session_index, u32 vls_wrk_index,
 				   u32 dst_wrk_index, u32 dst_vls_index,
 				   u32 dst_session_index);
+static void vls_cleanup_forked_child (vcl_worker_t *wrk,
+				      vcl_worker_t *child_wrk);
+static void vls_handle_pending_wrk_cleanup (void);
 
 static inline u32
 vls_get_worker_index (void)
@@ -315,6 +320,8 @@ vls_worker_alloc (void)
   if (vls_mt_wrk_supported ())
     clib_rwlock_init (&wrk->sh_to_vlsh_table_lock);
   wrk->wrk_index = vcl_get_worker_index ();
+  vec_validate (wrk->pending_wrk_cleanup, 16);
+  vec_reset_length (wrk->pending_wrk_cleanup);
 }
 
 static void
@@ -1410,6 +1417,7 @@ vls_epoll_wait (vls_handle_t ep_vlsh, struct epoll_event *events,
 			  wait_for_time);
   vls_mt_unguard ();
   vls_get_and_unlock (ep_vlsh);
+  vls_handle_pending_wrk_cleanup ();
   return rv;
 }
 
@@ -1458,6 +1466,7 @@ vls_select (int n_bits, vcl_si_set * read_map, vcl_si_set * write_map,
     vls_select_mp_checks (read_map);
   rv = vppcom_select (n_bits, read_map, write_map, except_map, wait_for_time);
   vls_mt_unguard ();
+  vls_handle_pending_wrk_cleanup ();
   return rv;
 }
 
@@ -1519,12 +1528,34 @@ vls_cleanup_forked_child (vcl_worker_t * wrk, vcl_worker_t * child_wrk)
   wrk->forked_child = ~0;
 }
 
+static void
+vls_handle_pending_wrk_cleanup (void)
+{
+  u32 *wip;
+  vcl_worker_t *child_wrk, *wrk;
+  vls_worker_t *vls_wrk = vls_worker_get_current ();
+
+  if (PREDICT_TRUE (vec_len (vls_wrk->pending_wrk_cleanup) == 0))
+    return;
+
+  wrk = vcl_worker_get_current ();
+  vec_foreach (wip, vls_wrk->pending_wrk_cleanup)
+    {
+      child_wrk = vcl_worker_get_if_valid (*wip);
+      if (!child_wrk)
+	continue;
+      vls_cleanup_forked_child (wrk, child_wrk);
+    }
+  vec_reset_length (vls_wrk->pending_wrk_cleanup);
+}
+
 static struct sigaction old_sa;
 
 static void
 vls_intercept_sigchld_handler (int signum, siginfo_t * si, void *uc)
 {
   vcl_worker_t *wrk, *child_wrk;
+  vls_worker_t *vls_wrk;
 
   if (vcl_get_worker_index () == ~0)
     return;
@@ -1548,7 +1579,14 @@ vls_intercept_sigchld_handler (int signum, siginfo_t * si, void *uc)
       VDBG (0, "unexpected child pid %u", si->si_pid);
       goto done;
     }
-  vls_cleanup_forked_child (wrk, child_wrk);
+
+  /* Parent process may enter sighandler with a lock, such as lock in localtime
+   * or in mspace_free, and child wrk cleanup may try to get such locks and
+   * cause deadlock.
+   * So move child wrk cleanup from sighandler to vls_epoll_wait/vls_select.
+   */
+  vls_wrk = vls_worker_get_current ();
+  vec_add1 (vls_wrk->pending_wrk_cleanup, child_wrk->wrk_index);
 
 done:
   if (old_sa.sa_flags & SA_SIGINFO)
@@ -1644,6 +1682,9 @@ void
 vls_app_exit (void)
 {
   vls_worker_t *wrk = vls_worker_get_current ();
+
+  /* Handle pending wrk cleanup */
+  vls_handle_pending_wrk_cleanup ();
 
   /* Unshare the sessions. VCL will clean up the worker */
   vls_unshare_vcl_worker_sessions (vcl_worker_get_current ());
