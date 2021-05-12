@@ -478,6 +478,8 @@ add_buffer_to_slot (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      b = vlib_get_buffer (vm, b->next_buffer);
 	      id->addr = vlib_buffer_get_current_pa (vm, b);
 	      id->len = b->current_length;
+	      if (PREDICT_FALSE (count >= 128))
+		break;
 	    }
 	}
       else			/* VIRTIO_IF_TYPE_[TAP | TUN] */
@@ -496,6 +498,8 @@ add_buffer_to_slot (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      b = vlib_get_buffer (vm, b->next_buffer);
 	      id->addr = pointer_to_uword (vlib_buffer_get_current (b));
 	      id->len = b->current_length;
+	      if (PREDICT_FALSE (count >= 128))
+		break;
 	    }
 	}
       id->flags = 0;
