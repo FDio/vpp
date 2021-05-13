@@ -366,6 +366,10 @@ slow_path_ed (snat_main_t * sm,
   ip4_address_t sm_addr;
   u16 sm_port;
   u32 sm_fib_index;
+
+  ctx.now = now;
+  ctx.thread_index = thread_index;
+
   /* First try to match static mapping by local address and port */
   if (snat_static_mapping_match
       (sm, l_addr, l_port, rx_fib_index, nat_proto, &sm_addr, &sm_port,
@@ -458,8 +462,6 @@ slow_path_ed (snat_main_t * sm,
   clib_bihash_kv_16_8_t in2out_ed_kv;
   init_ed_kv (&in2out_ed_kv, l_addr, l_port, r_addr, r_port, rx_fib_index,
 	      proto, thread_index, s - tsm->sessions);
-  ctx.now = now;
-  ctx.thread_index = thread_index;
   if (clib_bihash_add_or_overwrite_stale_16_8 (&tsm->in2out_ed, &in2out_ed_kv,
 					       nat44_i2o_ed_is_idle_session_cb,
 					       &ctx))
