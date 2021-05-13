@@ -1,4 +1,4 @@
-# VPP stats segment FUSE filesystem
+# VPP stats segment FUSE filesystem  {#stats_fs_doc}
 
 The statfs binary allows to create a FUSE filesystem to expose and to browse the stats segment.
 Is is leaned on the Go-FUSE library and requires Go-VPP stats bindings to work.
