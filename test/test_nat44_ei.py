@@ -3806,6 +3806,12 @@ class TestNAT44EI(MethodHolder):
                 "Invalid packet (src IP %s translated to %s, but expected %s)"
                 % (p_sent[IP].src, p_recvd[IP].src, a))
 
+    def test_default_user_sessions(self):
+        """ NAT44EI default per-user session limit is used and reported """
+        nat44_ei_config = self.vapi.nat44_ei_show_running_config()
+        # a nonzero default should be reported for user_sessions
+        self.assertNotEqual(nat44_ei_config.user_sessions, 0)
+
 
 class TestNAT44Out2InDPO(MethodHolder):
     """ NAT44EI Test Cases using out2in DPO """
