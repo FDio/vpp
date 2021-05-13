@@ -1345,9 +1345,9 @@ vnet_connect (vnet_connect_args_t * a)
       a->sep_ext.original_tp = a->sep_ext.transport_proto;
       a->sep_ext.transport_proto = TRANSPORT_PROTO_NONE;
       rv = app_worker_connect_session (client_wrk, &a->sep_ext, &a->sh);
-      if (rv <= 0)
-	return rv;
       a->sep_ext.transport_proto = a->sep_ext.original_tp;
+      if (!rv || rv != SESSION_E_LOCAL_CONNECT)
+	return rv;
     }
   /*
    * Not connecting to a local server, propagate to transport
