@@ -15051,13 +15051,11 @@ foreach_standalone_reply_msg;
 void
 vat_api_hookup (vat_main_t * vam)
 {
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler_uni,          \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler_uni,        \
+			   vl_noop_handler, vl_api_##n##_t_endian,            \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1,  \
+			   vl_api_##n##_t_print_json);
   foreach_vpe_api_reply_msg;
 #if VPP_API_TEST_BUILTIN == 0
   foreach_standalone_reply_msg;

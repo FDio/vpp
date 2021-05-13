@@ -344,7 +344,7 @@ VLIB_CLI_COMMAND (cli_show_api_plugin_command, static) =
 typedef enum
 {
   DUMP,
-  CUSTOM_DUMP,
+  DUMP_JSON,
   REPLAY,
   INITIALIZERS,
 } vl_api_replay_t;
@@ -385,13 +385,6 @@ format_vl_msg_api_trace_status (u8 * s, va_list * args)
   return s;
 }
 
-void vl_msg_api_custom_dump_configure (api_main_t * am)
-  __attribute__ ((weak));
-void
-vl_msg_api_custom_dump_configure (api_main_t * am)
-{
-}
-
 static void
 vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 			 u32 first_index, u32 last_index,
@@ -405,7 +398,6 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
   api_main_t *am = vlibapi_get_main ();
   u8 *tmpbuf = 0;
   u32 nitems, nitems_msgtbl;
-  void **saved_print_handlers = 0;
 
   fd = open ((char *) filename, O_RDONLY);
 
@@ -461,12 +453,6 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
   if (hp->wrapped)
     vlib_cli_output (vm,
 		     "Note: wrapped/incomplete trace, results may vary\n");
-
-  if (which == CUSTOM_DUMP)
-    {
-      saved_print_handlers = (void **) vec_dup (am->msg_print_handlers);
-      vl_msg_api_custom_dump_configure (am);
-    }
 
   msg = (u8 *) (hp + 1);
 
@@ -551,8 +537,8 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
        * Endian swap if needed. All msg data is supposed to be in
        * network byte order.
        */
-      if (((which == DUMP || which == CUSTOM_DUMP)
-	   && clib_arch_is_little_endian))
+      if (((which == DUMP || which == DUMP_JSON) &&
+	   clib_arch_is_little_endian))
 	{
 	  void (*endian_fp) (void *);
 	  if (msg_id >= vec_len (am->msg_endian_handlers)
@@ -577,7 +563,23 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 
       switch (which)
 	{
-	case CUSTOM_DUMP:
+	case DUMP_JSON:
+	  if (msg_id < vec_len (am->msg_print_json_handlers) &&
+	      am->msg_print_json_handlers[msg_id])
+	    {
+	      u8 *(*print_fp) (void *, void *);
+
+	      print_fp = (void *) am->msg_print_json_handlers[msg_id];
+	      (*print_fp) (tmpbuf + sizeof (uword), vm);
+	    }
+	  else
+	    {
+	      vlib_cli_output (vm, "Skipping msg id %d: no JSON print fcn\n",
+			       msg_id);
+	      break;
+	    }
+	  break;
+
 	case DUMP:
 	  if (msg_id < vec_len (am->msg_print_handlers) &&
 	      am->msg_print_handlers[msg_id])
@@ -652,13 +654,6 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 
       _vec_len (tmpbuf) = 0;
       msg += size;
-    }
-
-  if (saved_print_handlers)
-    {
-      clib_memcpy (am->msg_print_handlers, saved_print_handlers,
-		   vec_len (am->msg_print_handlers) * sizeof (void *));
-      vec_free (saved_print_handlers);
     }
 
   munmap (hp, file_size);
@@ -756,13 +751,13 @@ api_trace_command_fn (vlib_main_t * vm,
 	    vlib_cli_output (vm, "API trace saved to %s\n", chroot_filename);
 	  goto out;
 	}
+      else if (unformat (line_input, "json %s", &filename))
+	{
+	  vl_msg_api_process_file (vm, filename, first, last, DUMP_JSON);
+	}
       else if (unformat (line_input, "dump %s", &filename))
 	{
 	  vl_msg_api_process_file (vm, filename, first, last, DUMP);
-	}
-      else if (unformat (line_input, "custom-dump %s", &filename))
-	{
-	  vl_msg_api_process_file (vm, filename, first, last, CUSTOM_DUMP);
 	}
       else if (unformat (line_input, "replay %s", &filename))
 	{
@@ -816,91 +811,13 @@ out:
 ?*/
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (api_trace_command, static) =
-{
+VLIB_CLI_COMMAND (api_trace_command, static) = {
   .path = "api trace",
-  .short_help = "api trace [on|off][first <n>][last <n>][status][free]"
-                "[post-mortem-on][dump|custom-dump|save|replay <file>]",
+  .short_help = "api trace [tx][on|off][first <n>][last <n>][status][free]"
+		"[post-mortem-on][dump|json|save|replay <file>]"
+		"[initializers <file>]",
   .function = api_trace_command_fn,
   .is_mp_safe = 1,
-};
-/* *INDENT-ON* */
-
-static clib_error_t *
-vl_api_trace_command (vlib_main_t * vm,
-		      unformat_input_t * input, vlib_cli_command_t * cli_cmd)
-{
-  u32 nitems = 1024;
-  vl_api_trace_which_t which = VL_API_TRACE_RX;
-  api_main_t *am = vlibapi_get_main ();
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "rx nitems %u", &nitems) || unformat (input, "rx"))
-	goto configure;
-      else if (unformat (input, "tx nitems %u", &nitems)
-	       || unformat (input, "tx"))
-	{
-	  which = VL_API_TRACE_RX;
-	  goto configure;
-	}
-      else if (unformat (input, "on rx"))
-	{
-	  vl_msg_api_trace_onoff (am, VL_API_TRACE_RX, 1);
-	}
-      else if (unformat (input, "on tx"))
-	{
-	  vl_msg_api_trace_onoff (am, VL_API_TRACE_TX, 1);
-	}
-      else if (unformat (input, "on"))
-	{
-	  vl_msg_api_trace_onoff (am, VL_API_TRACE_RX, 1);
-	}
-      else if (unformat (input, "off"))
-	{
-	  vl_msg_api_trace_onoff (am, VL_API_TRACE_RX, 0);
-	  vl_msg_api_trace_onoff (am, VL_API_TRACE_TX, 0);
-	}
-      else if (unformat (input, "free"))
-	{
-	  vl_msg_api_trace_onoff (am, VL_API_TRACE_RX, 0);
-	  vl_msg_api_trace_onoff (am, VL_API_TRACE_TX, 0);
-	  vl_msg_api_trace_free (am, VL_API_TRACE_RX);
-	  vl_msg_api_trace_free (am, VL_API_TRACE_TX);
-	}
-      else if (unformat (input, "debug on"))
-	{
-	  am->msg_print_flag = 1;
-	}
-      else if (unformat (input, "debug off"))
-	{
-	  am->msg_print_flag = 0;
-	}
-      else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
-    }
-  return 0;
-
-configure:
-  if (vl_msg_api_trace_configure (am, which, nitems))
-    {
-      vlib_cli_output (vm, "warning: trace configure error (%d, %d)",
-		       which, nitems);
-    }
-
-  return 0;
-}
-
-/*?
- * Control the binary API trace mechanism
-?*/
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (trace, static) =
-{
-  .path = "set api-trace",
-  .short_help = "API trace [on][on tx][on rx][off][free][debug on][debug off]",
-  .function = vl_api_trace_command,
 };
 /* *INDENT-ON* */
 
