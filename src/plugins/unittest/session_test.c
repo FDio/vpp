@@ -625,15 +625,12 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   SESSION_TEST ((error == 0), "client connect should not return error code");
 
   /* wait for accept */
-  if (vlib_num_workers ())
+  tries = 0;
+  while (!placeholder_accept && ++tries < 100)
     {
-      tries = 0;
-      while (!placeholder_accept && ++tries < 100)
-	{
-	  vlib_worker_thread_barrier_release (vm);
-	  vlib_process_suspend (vm, 100e-3);
-	  vlib_worker_thread_barrier_sync (vm);
-	}
+      vlib_worker_thread_barrier_release (vm);
+      vlib_process_suspend (vm, 100e-3);
+      vlib_worker_thread_barrier_sync (vm);
     }
 
   SESSION_TEST ((placeholder_segment_count == 1),
