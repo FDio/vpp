@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "906b1013_01e5ecb9",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1531,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-05-13T16:07:58Z",
+      "side": 1,
+      "message": "Let\u0027s grab this after the PREDICT_TRUE check lower, to avoid accessing the TLS if not needed.",
+      "range": {
+        "startLine": 1531,
+        "startChar": 34,
+        "endLine": 1531,
+        "endChar": 59
+      },
+      "revId": "a070d60bad9487ca5b643dc024c8aae9790436ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d37297bb_60e195fc",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1579,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-05-13T16:07:58Z",
+      "side": 1,
+      "message": "I\u0027m still trying to come up with scenarios where this could fail and the two I may have found are:\n- parent crashes before cleanup\n- parent exits before cleanup\n\nThe second we can solve by forcing a cleanup before exit. But probably the first we can\u0027t solve.",
+      "range": {
+        "startLine": 1579,
+        "startChar": 50,
+        "endLine": 1579,
+        "endChar": 75
+      },
+      "revId": "a070d60bad9487ca5b643dc024c8aae9790436ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b85588af_b306cd56",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1581,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-05-13T16:07:58Z",
+      "side": 1,
+      "message": "As you\u0027ve implemented the important parts in vls, let\u0027s store the state here as well. That is, you could grab the vls worker with vls_worker_get_current and store the indices there.",
+      "range": {
+        "startLine": 1581,
+        "startChar": 12,
+        "endLine": 1581,
+        "endChar": 36
+      },
+      "revId": "a070d60bad9487ca5b643dc024c8aae9790436ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
