@@ -15,7 +15,7 @@ Several modules provide operational, dataplane-user focused documentation.
 - @subpage lb_plugin_doc
 - @subpage lldp_doc
 - @subpage map_doc
-- @subpage marvel_plugin_doc
+- @subpage marvell_plugin_doc
 - @subpage srv6_mobile_plugin
 - @subpage mtu_doc
 - @subpage nat64_doc
@@ -31,3 +31,5 @@ Several modules provide operational, dataplane-user focused documentation.
 - @subpage vmxnet3_doc
 - @subpage af_xdp_doc
 - @subpage wireguard_plugin_doc
+- @subpage vpp_top_doc
+- @subpage stats_fs_doc
