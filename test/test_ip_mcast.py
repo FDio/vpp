@@ -6,13 +6,13 @@ from framework import tag_fixme_vpp_workers
 from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpMRoute, VppMRoutePath, VppMFibSignal, \
-    VppIpTable, FibPathProto
+    VppIpTable, FibPathProto, FibPathType
 from vpp_gre_interface import VppGreInterface
 from vpp_papi import VppEnum
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, GRE
-from scapy.layers.inet import IP, UDP, getmacbyip
+from scapy.layers.inet import IP, UDP, getmacbyip, ICMP
 from scapy.layers.inet6 import IPv6, getmacbyip6
 
 #
@@ -845,6 +845,43 @@ class TestIPMcast(VppTestCase):
         # We expect replications on Pg1 & 2
         self.verify_capture_ip4(self.pg1, tx)
         self.verify_capture_ip4(self.pg2, tx)
+
+        #
+        # An (S,G). for for-us
+        #
+        route_0_0_0_0_224_0_0_5 = VppIpMRoute(
+            self,
+            "0.0.0.0",
+            "224.0.0.5", 32,
+            MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
+            [VppMRoutePath(self.pg8.sw_if_index,
+                           MRouteItfFlags.MFIB_API_ITF_FLAG_ACCEPT),
+             VppMRoutePath(0xffffffff,
+                           MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD,
+                           type=FibPathType.FIB_PATH_TYPE_LOCAL)],
+            table_id=10)
+        route_0_0_0_0_224_0_0_5.add_vpp_config()
+
+        #
+        # a stream that matches the route for (0.0.0.0, 224.0.0.5)
+        #  small packets
+        #
+        self.vapi.cli("clear trace")
+        self.pg8.resolve_arp()
+
+        #
+        # send a ping to mcast address from peer on pg8
+        #  expect a response
+        #
+        icmp_id = 0xb
+        icmp_seq = 5
+        icmp_load = b'\x0a' * 18
+        tx = (Ether(dst=getmacbyip("224.0.0.5"), src=self.pg8.remote_mac) /
+              IP(src=self.pg8.remote_ip4, dst="224.0.0.5") /
+              ICMP(id=icmp_id, seq=icmp_seq) /
+              Raw(load=icmp_load)) * 2
+
+        self.send_and_expect(self.pg8, tx, self.pg8)
 
     def test_ip_mcast_gre(self):
         """ IP Multicast Replication over GRE"""
