@@ -20,6 +20,9 @@
 /test/run/
 /test/build/
 /test/coverage/
+/test/venv/
+/test/vapi_test/
+/test/doc/build/
 /build-config.mk
 /build/external/*.tar.gz
 /build/external/*.tar.xz

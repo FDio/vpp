@@ -19,9 +19,6 @@ endif
 ifndef TEST_DOC_BR
 	$(error TEST_DOC_BR is not set)
 endif
-ifndef BUILD_TEST_SRC
-	$(error BUILD_TEST_SRC is not set)
-endif
 ifeq ($(IN_VENV),0)
 	$(error "Not running inside virtualenv (are you running 'make test-doc' from root?)")
 endif
@@ -32,7 +29,7 @@ regen-api-doc: verify-virtualenv
 	@cp $(SRC_DOC_DIR)/index.rst $(API_DOC_GEN_DIR)
 	@cp $(SRC_DOC_DIR)/indices.rst $(API_DOC_GEN_DIR)
 	@cp $(SRC_DOC_DIR)/overview.rst $(API_DOC_GEN_DIR)
-	sphinx-apidoc -o $(API_DOC_GEN_DIR) -H "Module documentation" $(BUILD_TEST_SRC)
+	sphinx-apidoc -o $(API_DOC_GEN_DIR) -H "Module documentation" $(TEST_DIR)
 
 .PHONY: html
 html: regen-api-doc verify-virtualenv

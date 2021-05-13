@@ -13,14 +13,10 @@ ifndef TEST_DIR
 	$(error TEST_DIR is not set)
 endif
 
-export TEST_BR = $(BR)/build-test
-export TEST_DOC_BR = $(TEST_BR)/doc
-export BUILD_TEST_SRC = $(TEST_BR)/src
+export TEST_BR = $(TEST_DIR)
+export TEST_DOC_BR = $(TEST_DIR)/doc/build
 FAILED_DIR=/tmp/vpp-failed-unittests/
-PLUGIN_TEST_DIRS=$(shell find $(PLUGIN_SRC_DIR) -type d -name test -exec echo -n " -d {}" \;)
-CORE_TEST_DIRS=$(shell find $(WS_ROOT)/src -not \( -path $(INTERN_PLUGIN_SRC_DIR) -prune \) -type d -name test -exec echo -n " -d {}" \;)
-VPP_TEST_DIRS=$(shell ls -d $(TEST_DIR)$(PLUGIN_TEST_DIRS)$(CORE_TEST_DIRS) $(EXTERN_TESTS))
-VPP_TEST_SRC=$(shell for dir in $(VPP_TEST_DIRS) ; do ls $$dir/*.py 2>/dev/null; done)
+VPP_TEST_DIRS=$(shell ls -d $(TEST_DIR) $(EXTERN_TESTS))
 
 FORCE_NO_WIPE=0
 ifeq ($(DEBUG),gdb)
@@ -70,7 +66,7 @@ ifneq ($(EXTERN_TESTS),)
 UNITTEST_EXTRA_OPTS=$(UNITTEST_FAILFAST_OPTS) -d $(EXTERN_TESTS)
 endif
 
-VENV_PATH=$(TEST_BR)/venv
+VENV_PATH=$(TEST_DIR)/venv
 
 ifeq ($(TEST_DEBUG),1)
 VENV_RUN_DIR:=$(VENV_PATH)/run-debug
@@ -83,11 +79,6 @@ PYTHON_INTERP=python3
 else
 PYTHON_INTERP=$(PYTHON)
 endif
-
-empty:=
-space:= $(empty) $(empty)
-export PYTHONPATH=$(subst $(space),:,$(VPP_TEST_DIRS))
-export PYTHONPYCACHEPREFIX=$(TEST_BR)/pycache
 
 PYTHON_VERSION=$(shell $(PYTHON_INTERP) -c 'import sys; print(sys.version_info.major)')
 PIP_VERSION=20.1.1
@@ -158,7 +149,7 @@ PLUGIN_SRC_DIR=$(INTERN_PLUGIN_SRC_DIR)
 endif
 
 define retest-func
-@env VPP_IN_GDB=$(VPP_IN_GDB) FORCE_FOREGROUND=$(FORCE_FOREGROUND) FAILED_DIR=$(FAILED_DIR) VENV_PATH=$(VENV_PATH) scripts/setsid_wrapper.sh $(FORCE_FOREGROUND) $(VENV_PATH)/bin/activate $(PYTHON_INTERP) $(PYTHON_PROFILE_OPTS) $(BUILD_TEST_SRC)/run_tests.py -d $(BUILD_TEST_SRC) $(UNITTEST_EXTRA_OPTS) || env FAILED_DIR=$(FAILED_DIR) COMPRESS_FAILED_TEST_LOGS=$(COMPRESS_FAILED_TEST_LOGS) scripts/compress_failed.sh
+@env VPP_IN_GDB=$(VPP_IN_GDB) FORCE_FOREGROUND=$(FORCE_FOREGROUND) FAILED_DIR=$(FAILED_DIR) VENV_PATH=$(VENV_PATH) scripts/setsid_wrapper.sh $(FORCE_FOREGROUND) $(VENV_PATH)/bin/activate $(PYTHON_INTERP) $(PYTHON_PROFILE_OPTS) run_tests.py -d $(TEST_DIR) $(UNITTEST_EXTRA_OPTS) || env FAILED_DIR=$(FAILED_DIR) COMPRESS_FAILED_TEST_LOGS=$(COMPRESS_FAILED_TEST_LOGS) scripts/compress_failed.sh
 endef
 
 .PHONY: sanity
@@ -167,8 +158,8 @@ ifeq ($(SANITY),no)
 SANITY_IMPORT_VPP_PAPI_CMD=true
 SANITY_RUN_VPP_CMD=true
 else
-SANITY_IMPORT_VPP_PAPI_CMD=source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) $(BUILD_TEST_SRC)/sanity_import_vpp_papi.py
-SANITY_RUN_VPP_CMD=source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) $(BUILD_TEST_SRC)/sanity_run_vpp.py
+SANITY_IMPORT_VPP_PAPI_CMD=source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) sanity_import_vpp_papi.py
+SANITY_RUN_VPP_CMD=source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) sanity_run_vpp.py
 endif
 
 ifndef TEST_JOBS
@@ -207,16 +198,11 @@ sanity: test-dep
 ext-test-apps:
 	make -C ext test-apps
 
-$(BUILD_TEST_SRC): verify-env
-	@rm -rf $@
-	@mkdir -p $@
-	@for file in $(VPP_TEST_SRC); do if [ ! -L $$file ] && [ ! -e $(BUILD_TEST_SRC)/$$(basename $$file) ] ; then ln -s $$file $(BUILD_TEST_SRC) ; fi ; done
-
 $(FAILED_DIR): reset
 	@mkdir -p $@
 
 .PHONY: test-dep
-test-dep: $(BUILD_TEST_SRC) $(PAPI_INSTALL_DONE) $(FAILED_DIR)
+test-dep: $(PAPI_INSTALL_DONE) $(FAILED_DIR)
 
 .PHONY: test
 test: test-dep ext-test-apps sanity
@@ -229,8 +215,6 @@ retest: verify-env sanity $(FAILED_DIR)
 .PHONY: shell
 shell: test-dep
 	@echo "source $(VENV_PATH)/bin/activate;\
-		cd $(BUILD_TEST_SRC);\
-		export PYTHONPATH=$(PYTHONPATH);\
 		export RND_SEED=$(RND_SEED);\
 		echo '***';\
 		echo PYTHONPATH=$(PYTHONPATH);\
@@ -259,14 +243,13 @@ wipe: reset
 	@make -C ext clean
 	@rm -rf $(VENV_PATH)
 	@rm -rf $(patsubst %,%/__pycache__, $(VPP_TEST_DIRS))
-	@rm -rf  $(BUILD_TEST_SRC)
 
 $(TEST_DOC_BR): $(PIP_INSTALL_DONE)
 	@mkdir -p $@
 	@bash -c "source $(VENV_PATH)/bin/activate && make -C doc html"
 
 .PHONY: doc
-doc: $(BUILD_TEST_SRC) $(PIP_PATCH_DONE) $(TEST_DOC_BR)
+doc: $(PIP_PATCH_DONE) $(TEST_DOC_BR)
 	@echo
 	@echo "Test Documentation URL: $(TEST_DOC_BR)/html/index.html"
 	@echo "Run 'make test-wipe-doc test-doc' to rebuild the test docs"
@@ -305,7 +288,7 @@ wipe-all: wipe wipe-papi wipe-doc wipe-cov
 	@rm -rf $(TEST_BR)
 
 .PHONY: checkstyle-diff
-checkstyle-diff: $(BUILD_TEST_SRC) $(PIP_INSTALL_DONE)
+checkstyle-diff: $(PIP_INSTALL_DONE)
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
 		  $(PYTHON_INTERP) -m pip install pycodestyle"
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
@@ -326,11 +309,11 @@ start-gdb: sanity
 	$(call retest-func)
 
 .PHONY: checkstyle
-checkstyle: $(BUILD_TEST_SRC) $(PIP_INSTALL_DONE)
+checkstyle: $(PIP_INSTALL_DONE)
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
 		  $(PYTHON_INTERP) -m pip install pycodestyle"
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
-		pycodestyle --show-source --ignore=W504,E126,E241,E226,E305,E704,E741,E722 -v $(BUILD_TEST_SRC)/*.py ||\
+		pycodestyle --show-source --ignore=W504,E126,E241,E226,E305,E704,E741,E722 -v *.py ||\
 		(echo \"*******************************************************************\" &&\
 		 echo \"* Test framework PEP8 compliance check FAILED (checked all files)\" &&\
 	         echo \"*******************************************************************\" &&\
