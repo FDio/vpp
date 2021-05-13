@@ -43,6 +43,7 @@ add_vpp_executable(vpp_api_test ENABLE_EXPORTS
   vppinfra
   Threads::Threads
   rt m dl crypto
+  jpl
 )
 
 ##############################################################################
@@ -50,7 +51,7 @@ add_vpp_executable(vpp_api_test ENABLE_EXPORTS
 ##############################################################################
 add_vpp_executable(vpp_json_test ENABLE_EXPORTS NO_INSTALL
   SOURCES json_format.c json_test.c
-  LINK_LIBRARIES vppinfra m
+  LINK_LIBRARIES vppinfra m jpl
 )
 
 ##############################################################################

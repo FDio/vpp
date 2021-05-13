@@ -680,14 +680,11 @@ static clib_error_t *
 nsh_plugin_api_hookup (vlib_main_t * vm)
 {
   nsh_main_t *nm __attribute__ ((unused)) = &nsh_main;
-#define _(N,n)                                                  \
-  vl_msg_api_set_handlers((VL_API_##N + nm->msg_id_base),	\
-			  #n,					\
-			  vl_api_##n##_t_handler,		\
-			  vl_noop_handler,			\
-			  vl_api_##n##_t_endian,		\
-			  vl_api_##n##_t_print,			\
-			  sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (                                                   \
+    (VL_API_##N + nm->msg_id_base), #n, vl_api_##n##_t_handler,               \
+    vl_noop_handler, vl_api_##n##_t_endian, vl_api_##n##_t_print,             \
+    sizeof (vl_api_##n##_t), 1, vl_api_##n##_t_print_json);
   foreach_nsh_plugin_api_msg;
 #undef _
 

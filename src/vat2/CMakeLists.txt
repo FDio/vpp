@@ -18,7 +18,6 @@ add_vpp_executable(vat2 ENABLE_EXPORTS NO_INSTALL
   SOURCES
   main.c
   plugin.c
-  jsonconvert.c
 
   DEPENDS api_headers
 
@@ -27,8 +26,15 @@ add_vpp_executable(vat2 ENABLE_EXPORTS NO_INSTALL
   svm
   vppinfra
   vppapiclient
+  jpl
   Threads::Threads
   rt m dl crypto
+)
+
+# JSON print library contains print functions for basic API types
+add_vpp_library(jpl
+  SOURCES
+  jsonconvert.c
 )
 
 #

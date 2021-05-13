@@ -437,13 +437,6 @@ vl_api_c_string_to_api_string (const char *buf, vl_api_string_t * str)
   return len + sizeof (u32);
 }
 
-u8 *
-format_vl_api_interface_index_t (u8 *s, va_list *args)
-{
-  u32 *a = va_arg (*args, u32 *);
-  return format (s, "%u", *a);
-}
-
 void
 vl_api_string_cJSON_AddToObject(cJSON * const object, const char * const name, vl_api_string_t *astr)
 {
@@ -487,10 +480,6 @@ unformat_vl_api_timedelta_t(unformat_input_t * input, va_list * args)
 
 uword
 unformat_vl_api_timestamp_t(unformat_input_t * input, va_list * args)
-{
-    return 0;
-}
-u8 *format_vl_api_gbp_scope_t(u8 * s, va_list * args)
 {
     return 0;
 }

@@ -67,12 +67,8 @@ uword unformat_ip6_address (unformat_input_t *input, va_list *args);
 u8 *format_ip6_address (u8 *s, va_list *args);
 uword unformat_mac_address (unformat_input_t *input, va_list *args);
 u8 *format_ip4_address (u8 *s, va_list *args);
-u8 *format_vl_api_interface_index_t (u8 *s, va_list *args);
-u8 *format_vl_api_timestamp_t (u8 *s, va_list *args);
-u8 *format_vl_api_timedelta_t (u8 *s, va_list *args);
 uword unformat_vl_api_timedelta_t (unformat_input_t *input, va_list *args);
 uword unformat_vl_api_timestamp_t (unformat_input_t *input, va_list *args);
-u8 *format_vl_api_gbp_scope_t (u8 *s, va_list *args);
 uword unformat_vl_api_gbp_scope_t (unformat_input_t *input, va_list *args);
 
 int vl_api_c_string_to_api_string (const char *buf, vl_api_string_t *str);

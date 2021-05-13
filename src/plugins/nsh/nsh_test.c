@@ -370,14 +370,11 @@ nsh_vat_api_hookup (vat_main_t *vam)
 {
     nsh_test_main_t * sm = &nsh_test_main;
     /* Hook up handlers for replies from the data plane plug-in */
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + sm->msg_id_base),     \
-                           #n,                                  \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (                                                   \
+    (VL_API_##N + sm->msg_id_base), #n, vl_api_##n##_t_handler,               \
+    vl_noop_handler, vl_api_##n##_t_endian, vl_api_##n##_t_print,             \
+    sizeof (vl_api_##n##_t), 1, vl_api_##n##_t_print_json);
     foreach_vpe_api_reply_msg;
 #undef _
 

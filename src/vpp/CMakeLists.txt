@@ -64,7 +64,6 @@ set(VPP_SOURCES
   stats/stat_segment_provider.c
   api/api.c
   api/json_format.c
-  api/custom_dump.c
   api/types.c
 )
 
@@ -82,7 +81,7 @@ endif()
 add_vpp_executable(vpp
   ENABLE_EXPORTS
   SOURCES ${VPP_SOURCES}
-  LINK_LIBRARIES svm vlib vppinfra vlibmemory vnet Threads::Threads ${CMAKE_DL_LIBS}
+  LINK_LIBRARIES svm vlib vppinfra vlibmemory vnet Threads::Threads ${CMAKE_DL_LIBS} jpl
   DEPENDS vpp_version_h api_headers
 )
 
