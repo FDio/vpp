@@ -259,6 +259,7 @@ vl_msg_api_trace_save (api_main_t * am, vl_api_trace_which_t which, FILE * fp)
   /* Write the file header */
   fh.wrapped = tp->wrapped;
   fh.nitems = clib_host_to_net_u32 (vec_len (tp->traces));
+
   u8 *m = vl_api_serialize_message_table (am, 0);
   fh.msgtbl_size = clib_host_to_net_u32 (vec_len (m));
 
@@ -807,16 +808,17 @@ vl_msg_api_socket_handler (void *the_msg)
 			1 /* do_it */ , 0 /* free_it */ );
 }
 
-#define foreach_msg_api_vector                  \
-_(msg_names)                                    \
-_(msg_handlers)                                 \
-_(msg_cleanup_handlers)                         \
-_(msg_endian_handlers)                          \
-_(msg_print_handlers)                           \
-_(api_trace_cfg)				\
-_(message_bounce)				\
-_(is_mp_safe)					\
-_(is_autoendian)
+#define foreach_msg_api_vector                                                \
+  _ (msg_names)                                                               \
+  _ (msg_handlers)                                                            \
+  _ (msg_cleanup_handlers)                                                    \
+  _ (msg_endian_handlers)                                                     \
+  _ (msg_print_handlers)                                                      \
+  _ (msg_print_json_handlers)                                                 \
+  _ (api_trace_cfg)                                                           \
+  _ (message_bounce)                                                          \
+  _ (is_mp_safe)                                                              \
+  _ (is_autoendian)
 
 void
 vl_msg_api_config (vl_msg_api_msg_config_t * c)
@@ -855,6 +857,7 @@ vl_msg_api_config (vl_msg_api_msg_config_t * c)
   am->msg_cleanup_handlers[c->id] = c->cleanup;
   am->msg_endian_handlers[c->id] = c->endian;
   am->msg_print_handlers[c->id] = c->print;
+  am->msg_print_json_handlers[c->id] = c->print_json;
   am->message_bounce[c->id] = c->message_bounce;
   am->is_mp_safe[c->id] = c->is_mp_safe;
   am->is_autoendian[c->id] = c->is_autoendian;
@@ -870,7 +873,8 @@ vl_msg_api_config (vl_msg_api_msg_config_t * c)
  */
 void
 vl_msg_api_set_handlers (int id, char *name, void *handler, void *cleanup,
-			 void *endian, void *print, int size, int traced)
+			 void *endian, void *print, int size, int traced,
+			 void *print_json)
 {
   vl_msg_api_msg_config_t cfg;
   vl_msg_api_msg_config_t *c = &cfg;
@@ -888,6 +892,7 @@ vl_msg_api_set_handlers (int id, char *name, void *handler, void *cleanup,
   c->message_bounce = 0;
   c->is_mp_safe = 0;
   c->is_autoendian = 0;
+  c->print_json = print_json;
   vl_msg_api_config (c);
 }
 
