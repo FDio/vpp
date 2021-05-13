@@ -21,6 +21,8 @@ typedef struct ct_main_
   ct_connection_t **connections;	/**< Per-worker connection pools */
   u32 n_workers;			/**< Number of vpp workers */
   u32 n_sessions;			/**< Cumulative sessions counter */
+  u32 *ho_reusable;			/**< Vector of reusable ho indices */
+  clib_spinlock_t ho_reuseable_lock;	/**< Lock for reusable ho indices */
 } ct_main_t;
 
 static ct_main_t ct_main;
@@ -57,6 +59,31 @@ ct_connection_free (ct_connection_t * ct)
       return;
     }
   pool_put (ct_main.connections[ct->c_thread_index], ct);
+}
+
+static ct_connection_t *
+ct_half_open_alloc (void)
+{
+  ct_main_t *cm = &ct_main;
+  u32 *hip;
+
+  clib_spinlock_lock (&cm->ho_reuseable_lock);
+  vec_foreach (hip, cm->ho_reusable)
+    pool_put_index (cm->connections[0], *hip);
+  vec_reset_length (cm->ho_reusable);
+  clib_spinlock_unlock (&cm->ho_reuseable_lock);
+
+  return ct_connection_alloc (0);
+}
+
+void
+ct_half_open_add_reusable (u32 ho_index)
+{
+  ct_main_t *cm = &ct_main;
+
+  clib_spinlock_lock (&cm->ho_reuseable_lock);
+  vec_add1 (cm->ho_reusable, ho_index);
+  clib_spinlock_unlock (&cm->ho_reuseable_lock);
 }
 
 session_t *
@@ -116,6 +143,7 @@ ct_session_connect_notify (session_t * ss)
 
   /* Alloc client session */
   cct = ct_connection_get (sct->peer_index, thread_index);
+  session_half_open_delete_notify (&cct->connection);
 
   cs = session_alloc (thread_index);
   ss = session_get (ss_index, thread_index);
@@ -234,55 +262,61 @@ failed:
   return rv;
 }
 
-typedef struct ct_accept_rpc_args
-{
-  u32 ll_s_index;
-  u32 thread_index;
-  ip46_address_t ip;
-  u16 port;
-  u8 is_ip4;
-  u32 opaque;
-  u32 client_wrk_index;
-} ct_accept_rpc_args_t;
-
 static void
 ct_accept_rpc_wrk_handler (void *accept_args)
 {
-  ct_accept_rpc_args_t *args = (ct_accept_rpc_args_t *) accept_args;
-  ct_connection_t *sct, *cct, *ll_ct;
+  u32 cct_index, ho_index, thread_index, ll_index;
+  ct_connection_t *sct, *cct, *ll_ct, *ho;
   app_worker_t *server_wrk;
   session_t *ss, *ll;
-  u32 cct_index;
 
-  ll = listen_session_get (args->ll_s_index);
-
-  cct = ct_connection_alloc (args->thread_index);
+  /*
+   * Alloc client ct and initialize from ho
+   */
+  thread_index = vlib_get_thread_index ();
+  cct = ct_connection_alloc (thread_index);
   cct_index = cct->c_c_index;
-  sct = ct_connection_alloc (args->thread_index);
+
+  ho_index = pointer_to_uword (accept_args);
+  ho = ct_connection_get (ho_index, 0);
+
+  /* Unlikely but half-open session and transport could have been freed */
+  if (PREDICT_FALSE (!ho))
+    {
+      ct_connection_free (cct);
+      return;
+    }
+
+  clib_memcpy (cct, ho, sizeof (*ho));
+  cct->c_c_index = cct_index;
+  cct->c_thread_index = thread_index;
+
+  /* Notify session layer that half-open is on a different thread
+   * and mark ho connection index reusable. Avoids another rpc
+   */
+  session_half_open_migrated_notify (&cct->connection);
+  ct_half_open_add_reusable (ho_index);
+
+  /*
+   * Alloc and init server transport
+   */
+
+  ll_index = cct->peer_index;
+  ll = listen_session_get (ll_index);
+  sct = ct_connection_alloc (thread_index);
   ll_ct = ct_connection_get (ll->connection_index, 0 /* listener thread */ );
 
-  /*
-   * Alloc and init client transport
-   */
-  cct = ct_connection_get (cct_index, args->thread_index);
-  cct->c_rmt_port = args->port;
-  cct->c_lcl_port = 0;
-  cct->c_is_ip4 = args->is_ip4;
-  clib_memcpy (&cct->c_rmt_ip, &args->ip, sizeof (args->ip));
+  /* Make sure cct is valid after sct alloc */
+  cct = ct_connection_get (cct_index, thread_index);
   cct->actual_tp = ll_ct->actual_tp;
-  cct->is_client = 1;
-  cct->c_s_index = ~0;
 
-  /*
-   * Init server transport
-   */
   sct->c_rmt_port = 0;
   sct->c_lcl_port = ll_ct->c_lcl_port;
-  sct->c_is_ip4 = args->is_ip4;
+  sct->c_is_ip4 = cct->c_is_ip4;
   clib_memcpy (&sct->c_lcl_ip, &ll_ct->c_lcl_ip, sizeof (ll_ct->c_lcl_ip));
-  sct->client_wrk = args->client_wrk_index;
+  sct->client_wrk = cct->client_wrk;
   sct->c_proto = TRANSPORT_PROTO_NONE;
-  sct->client_opaque = args->opaque;
+  sct->client_opaque = cct->client_opaque;
   sct->actual_tp = ll_ct->actual_tp;
 
   sct->peer_index = cct->c_c_index;
@@ -292,8 +326,8 @@ ct_accept_rpc_wrk_handler (void *accept_args)
    * Accept server session. Client session is created only after
    * server confirms accept.
    */
-  ss = session_alloc (args->thread_index);
-  ll = listen_session_get (args->ll_s_index);
+  ss = session_alloc (thread_index);
+  ll = listen_session_get (ll_index);
   ss->session_type = session_type_from_proto_and_ip (TRANSPORT_PROTO_NONE,
 						     sct->c_is_ip4);
   ss->connection_index = sct->c_c_index;
@@ -323,17 +357,15 @@ ct_accept_rpc_wrk_handler (void *accept_args)
     }
 
   cct->segment_handle = sct->segment_handle;
-
-  clib_mem_free (args);
 }
 
 static int
 ct_connect (app_worker_t * client_wrk, session_t * ll,
 	    session_endpoint_cfg_t * sep)
 {
-  ct_accept_rpc_args_t *args;
+  u32 thread_index, ho_index;
   ct_main_t *cm = &ct_main;
-  u32 thread_index;
+  ct_connection_t *ho;
 
   /* Simple round-robin policy for spreading sessions over workers. We skip
    * thread index 0, i.e., offset the index by 1, when we have workers as it
@@ -342,18 +374,32 @@ ct_connect (app_worker_t * client_wrk, session_t * ll,
   cm->n_sessions += 1;
   thread_index = cm->n_workers ? (cm->n_sessions % cm->n_workers) + 1 : 0;
 
-  args = clib_mem_alloc (sizeof (*args));
-  args->ll_s_index = ll->session_index;
-  args->thread_index = thread_index;
-  clib_memcpy_fast (&args->ip, &sep->ip, sizeof (ip46_address_t));
-  args->port = sep->port;
-  args->is_ip4 = sep->is_ip4;
-  args->opaque = sep->opaque;
-  args->client_wrk_index = client_wrk->wrk_index;
+  /*
+   * Alloc and init client half-open transport
+   */
 
-  session_send_rpc_evt_to_thread (thread_index, ct_accept_rpc_wrk_handler,
-				  args);
-  return 0;
+  ho = ct_half_open_alloc ();
+  ho_index = ho->c_c_index;
+  ho->c_rmt_port = sep->port;
+  ho->c_lcl_port = 0;
+  ho->c_is_ip4 = sep->is_ip4;
+  ho->client_opaque = sep->opaque;
+  ho->client_wrk = client_wrk->wrk_index;
+  ho->peer_index = ll->session_index;
+  ho->c_proto = TRANSPORT_PROTO_NONE;
+  clib_memcpy (&ho->c_rmt_ip, &sep->ip, sizeof (&sep->ip));
+  ho->is_client = 1;
+  ho->c_s_index = ~0;
+
+  /*
+   * Accept connection on thread selected above. Connected reply comes
+   * after server accepts the connection.
+   */
+
+  session_send_rpc_evt_to_thread_force (thread_index, ct_accept_rpc_wrk_handler,
+	                                uword_to_pointer(ho_index, void*));
+
+  return ho_index;
 }
 
 static u32
@@ -388,11 +434,18 @@ ct_listener_get (u32 ct_index)
   return (transport_connection_t *) ct_connection_get (ct_index, 0);
 }
 
+static transport_connection_t *
+ct_half_open_get (u32 ct_index)
+{
+  return (transport_connection_t *) ct_connection_get (ct_index, 0);
+}
+
+
 static int
 ct_session_connect (transport_endpoint_cfg_t * tep)
 {
   session_endpoint_cfg_t *sep_ext;
-  session_endpoint_t *sep;
+  session_endpoint_t _sep, *sep = &_sep;
   app_worker_t *app_wrk;
   session_handle_t lh;
   application_t *app;
@@ -402,7 +455,7 @@ ct_session_connect (transport_endpoint_cfg_t * tep)
   u8 fib_proto;
 
   sep_ext = (session_endpoint_cfg_t *) tep;
-  sep = (session_endpoint_t *) tep;
+  _sep = *(session_endpoint_t *) tep;
   app_wrk = app_worker_get (sep_ext->app_wrk_index);
   app = application_get (app_wrk->app_index);
 
@@ -448,7 +501,7 @@ global_scope:
     return ct_connect (app_wrk, ll, sep_ext);
 
   /* Failed to connect but no error */
-  return 1;
+  return SESSION_E_LOCAL_CONNECT;
 }
 
 static void
@@ -560,6 +613,18 @@ format_ct_listener (u8 * s, va_list * args)
 }
 
 static u8 *
+format_ct_half_open (u8 * s, va_list * args)
+{
+  u32 ho_index = va_arg (*args, u32);
+  u32 verbose = va_arg (*args, u32);
+  ct_connection_t *ct = ct_connection_get (ho_index, 0);
+  s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_ct_connection_id, ct);
+  if (verbose)
+    s = format (s, "%-" SESSION_CLI_STATE_LEN "s", "HALF-OPEN");
+  return s;
+}
+
+static u8 *
 format_ct_connection (u8 * s, va_list * args)
 {
   ct_connection_t *ct = va_arg (*args, ct_connection_t *);
@@ -601,8 +666,12 @@ format_ct_session (u8 * s, va_list * args)
 clib_error_t *
 ct_enable_disable (vlib_main_t * vm, u8 is_en)
 {
-  ct_main.n_workers = vlib_num_workers ();
-  vec_validate (ct_main.connections, ct_main.n_workers);
+  ct_main_t *cm = &ct_main;
+
+  cm->n_workers = vlib_num_workers ();
+  vec_validate (cm->connections, cm->n_workers);
+  clib_spinlock_init (&cm->ho_reuseable_lock);
+
   return 0;
 }
 
@@ -612,18 +681,20 @@ static const transport_proto_vft_t cut_thru_proto = {
   .start_listen = ct_start_listen,
   .stop_listen = ct_stop_listen,
   .get_listener = ct_listener_get,
+  .get_half_open = ct_half_open_get,
   .connect = ct_session_connect,
   .close = ct_session_close,
   .get_connection = ct_session_get,
   .custom_tx = ct_custom_tx,
   .app_rx_evt = ct_app_rx_evt,
   .format_listener = format_ct_listener,
+  .format_half_open = format_ct_half_open,
   .format_connection = format_ct_session,
   .transport_options = {
     .name = "ct",
     .short_name = "C",
     .tx_type = TRANSPORT_TX_INTERNAL,
-    .service_type = TRANSPORT_SERVICE_APP,
+    .service_type = TRANSPORT_SERVICE_VC,
   },
 };
 /* *INDENT-ON* */

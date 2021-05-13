@@ -325,13 +325,11 @@ session_cleanup_half_open (session_handle_t ho_handle)
 }
 
 static void
-session_half_open_free (u32 ho_index)
+session_half_open_free (session_t *ho)
 {
   app_worker_t *app_wrk;
-  session_t *ho;
 
   ASSERT (vlib_get_thread_index () <= 1);
-  ho = ho_session_get (ho_index);
   app_wrk = app_worker_get (ho->app_wrk_index);
   app_worker_del_half_open (app_wrk, ho);
   session_free (ho);
@@ -340,16 +338,25 @@ session_half_open_free (u32 ho_index)
 static void
 session_half_open_free_rpc (void *args)
 {
-  session_half_open_free (pointer_to_uword (args));
+  session_t *ho = ho_session_get (pointer_to_uword (args));
+  session_half_open_free (ho);
 }
 
 void
 session_half_open_delete_notify (transport_connection_t *tc)
 {
-  void *args = uword_to_pointer ((uword) tc->s_index, void *);
-  u32 ctrl_thread = vlib_num_workers () ? 1 : 0;
-  session_send_rpc_evt_to_thread (ctrl_thread, session_half_open_free_rpc,
-				  args);
+  /* Notification from ctrl thread accepted without rpc */
+  if (tc->thread_index <= 1)
+    {
+      session_half_open_free (ho_session_get (tc->s_index));
+    }
+  else
+    {
+      void *args = uword_to_pointer((uword ) tc->s_index, void*);
+      u32 ctrl_thread = vlib_num_workers () ? 1 : 0;
+      session_send_rpc_evt_to_thread (ctrl_thread, session_half_open_free_rpc,
+	                              args);
+    }
 }
 
 void
