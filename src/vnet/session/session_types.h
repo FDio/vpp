@@ -485,7 +485,8 @@ STATIC_ASSERT (sizeof (session_dgram_hdr_t) == (SESSION_CONN_ID_LEN + 8),
   _ (EVENTFD_ALLOC, "failed to alloc eventfd")                                \
   _ (NOEXTCFG, "no extended transport config")                                \
   _ (NOCRYPTOENG, "no crypto engine")                                         \
-  _ (NOCRYPTOCKP, "cert key pair not found ")
+  _ (NOCRYPTOCKP, "cert key pair not found ")                                 \
+  _ (LOCAL_CONNECT, "could not connect with local scope")
 
 typedef enum session_error_p_
 {
