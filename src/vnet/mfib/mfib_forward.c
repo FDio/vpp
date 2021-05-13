@@ -150,32 +150,34 @@ mfib_forward_lookup (vlib_main_t * vm,
             {
                 ip4_header_t * ip0;
 
-                fib_index0 = vec_elt (ip4_main.mfib_index_by_sw_if_index,
-                                      vnet_buffer(p0)->sw_if_index[VLIB_RX]);
-                ip0 = vlib_buffer_get_current (p0);
-                mfei0 = ip4_mfib_table_lookup(ip4_mfib_get(fib_index0),
-                                              &ip0->src_address,
-                                              &ip0->dst_address,
-                                              64);
-            }
-            else
-            {
-                ip6_header_t * ip0;
+		ip_lookup_set_buffer_fib_index (
+		  ip4_main.fib_index_by_sw_if_index, p0);
+		fib_index0 = vec_elt (ip4_main.mfib_index_by_sw_if_index,
+				      vnet_buffer (p0)->sw_if_index[VLIB_RX]);
+		ip0 = vlib_buffer_get_current (p0);
+		mfei0 = ip4_mfib_table_lookup (ip4_mfib_get (fib_index0),
+					       &ip0->src_address,
+					       &ip0->dst_address, 64);
+	    }
+	    else
+	      {
+		ip6_header_t *ip0;
 
-                fib_index0 = vec_elt (ip6_main.mfib_index_by_sw_if_index,
-                                      vnet_buffer(p0)->sw_if_index[VLIB_RX]);
-                ip0 = vlib_buffer_get_current (p0);
-                mfei0 = ip6_mfib_table_fwd_lookup(ip6_mfib_get(fib_index0),
-                                                  &ip0->src_address,
-                                                  &ip0->dst_address);
-            }
+		ip_lookup_set_buffer_fib_index (
+		  ip6_main.fib_index_by_sw_if_index, p0);
+		fib_index0 = vec_elt (ip6_main.mfib_index_by_sw_if_index,
+				      vnet_buffer (p0)->sw_if_index[VLIB_RX]);
+		ip0 = vlib_buffer_get_current (p0);
+		mfei0 = ip6_mfib_table_fwd_lookup (ip6_mfib_get (fib_index0),
+						   &ip0->src_address,
+						   &ip0->dst_address);
+	      }
 
-            vnet_buffer (p0)->ip.adj_index[VLIB_TX] = mfei0;
-        }
+	    vnet_buffer (p0)->ip.adj_index[VLIB_TX] = mfei0;
+	}
 
-        vlib_put_next_frame(vm, node,
-                            MFIB_FORWARD_LOOKUP_NEXT_RPF,
-                            n_left_to_next);
+	vlib_put_next_frame (vm, node, MFIB_FORWARD_LOOKUP_NEXT_RPF,
+			     n_left_to_next);
     }
 
     if (node->flags & VLIB_NODE_FLAG_TRACE)
