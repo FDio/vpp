@@ -303,21 +303,82 @@ session_delete (session_t * s)
 void
 session_cleanup_half_open (session_handle_t ho_handle)
 {
-  session_t *s = session_get_from_handle (ho_handle);
-  transport_cleanup_half_open (session_get_transport_proto (s),
-			       s->connection_index);
+  session_t *ho = session_get_from_handle (ho_handle);
+
+  /* App transports can migrate their half-opens */
+  if (ho->flags & SESSION_F_IS_MIGRATING)
+    {
+      /* Session still migrating, move to closed state to signal that the
+       * session should be removed. */
+      if (ho->connection_index == ~0)
+	{
+	  ho->session_state = SESSION_STATE_CLOSED;
+	  return;
+	}
+      /* Migrated transports are no longer half-opens */
+      transport_cleanup (session_get_transport_proto (ho),
+			 ho->connection_index, ho->app_index /* overloaded */);
+      return;
+    }
+  transport_cleanup_half_open (session_get_transport_proto (ho),
+			       ho->connection_index);
+}
+
+static void
+session_half_open_free (u32 ho_index)
+{
+  app_worker_t *app_wrk;
+  session_t *ho;
+
+  ASSERT (vlib_get_thread_index () <= 1);
+  ho = ho_session_get (ho_index);
+  app_wrk = app_worker_get (ho->app_wrk_index);
+  app_worker_del_half_open (app_wrk, ho);
+  session_free (ho);
+}
+
+static void
+session_half_open_free_rpc (void *args)
+{
+  session_half_open_free (pointer_to_uword (args));
 }
 
 void
 session_half_open_delete_notify (transport_connection_t *tc)
 {
+  void *args = uword_to_pointer ((uword) tc->s_index, void *);
+  session_send_rpc_evt_to_thread (1, session_half_open_free_rpc, args);
+}
+
+void
+session_half_open_migrate_notify (transport_connection_t *tc)
+{
+  session_t *ho;
+
+  ho = ho_session_get (tc->s_index);
+  ho->flags |= SESSION_F_IS_MIGRATING;
+  ho->connection_index = ~0;
+}
+
+int
+session_half_open_migrated_notify (transport_connection_t *tc)
+{
+  session_t *ho;
+
+  ho = ho_session_get (tc->s_index);
   app_worker_t *app_wrk;
   session_t *s;
 
-  s = ho_session_get (tc->s_index);
-  app_wrk = app_worker_get (s->app_wrk_index);
-  app_worker_del_half_open (app_wrk, s);
-  session_free (s);
+  /* App probably detached so the half-open must be cleaned up */
+  if (ho->session_state == SESSION_STATE_CLOSED)
+    {
+      session_half_open_delete_notify (tc);
+      return -1;
+    }
+  ho->connection_index = tc->c_index;
+  /* Overload app index for half-open with new thread */
+  ho->app_index = tc->thread_index;
+  return 0;
 }
 
 session_t *

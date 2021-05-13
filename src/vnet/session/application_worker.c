@@ -396,7 +396,7 @@ int
 app_worker_del_half_open (app_worker_t *app_wrk, session_t *s)
 {
   application_t *app = application_get (app_wrk->app_index);
-  ASSERT (vlib_get_thread_index () == 0);
+  ASSERT (vlib_get_thread_index () <= 1);
   pool_put_index (app_wrk->half_open_table, s->ho_index);
   if (app->cb_fns.half_open_cleanup_callback)
     app->cb_fns.half_open_cleanup_callback (s);
