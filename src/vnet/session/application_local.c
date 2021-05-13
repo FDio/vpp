@@ -448,7 +448,7 @@ global_scope:
     return ct_connect (app_wrk, ll, sep_ext);
 
   /* Failed to connect but no error */
-  return 1;
+  return SESSION_E_LOCAL_CONNECT;
 }
 
 static void
