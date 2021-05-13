@@ -234,6 +234,8 @@ tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
   if (ctx->tls_type == TRANSPORT_PROTO_DTLS)
     {
       session_type_t st;
+      /* Cleanup half-open session as we don't get notification from udp */
+      session_half_open_delete_notify (&ctx->connection);
       app_session = session_alloc (ctx->c_thread_index);
       app_session->session_state = SESSION_STATE_CREATED;
       ctx->c_s_index = app_session->session_index;
@@ -647,6 +649,15 @@ dtls_migrate_ctx (void *arg)
   us = session_get_from_handle (ctx->tls_session_handle);
   us->opaque = ctx_handle;
   us->flags &= ~SESSION_F_IS_MIGRATING;
+
+  /* Probably the app detached while the session was migrating. Cleanup */
+  if (session_half_open_migrated_notify (&ctx->connection))
+    {
+      ctx->no_app_session = 1;
+      tls_disconnect (ctx->tls_ctx_handle, vlib_get_thread_index ());
+      return;
+    }
+
   if (svm_fifo_max_dequeue (us->tx_fifo))
     session_send_io_evt_to_thread (us->tx_fifo, SESSION_IO_EVT_TX);
 }
@@ -662,6 +673,7 @@ dtls_session_migrate_callback (session_t *us, session_handle_t new_sh)
   ctx->tls_session_handle = new_sh;
   cloned_ctx = tls_ctx_detach (ctx);
   ctx->is_migrated = 1;
+  session_half_open_migrate_notify (&ctx->connection);
 
   session_send_rpc_evt_to_thread (new_thread, dtls_migrate_ctx,
 				  (void *) cloned_ctx);
@@ -905,10 +917,14 @@ static void
 tls_cleanup_ho (u32 ho_index)
 {
   tls_main_t *tm = &tls_main;
+  session_handle_t tcp_sh;
   tls_ctx_t *ctx;
+
   ctx = tls_ctx_half_open_get (ho_index);
+  tcp_sh = ctx->tls_session_handle;
   clib_rwlock_reader_unlock (&tm->half_open_rwlock);
-  session_cleanup_half_open (ctx->tls_session_handle);
+  session_cleanup_half_open (tcp_sh);
+  tls_ctx_half_open_free (ho_index);
 }
 
 int
@@ -1182,6 +1198,8 @@ dtls_connect (transport_endpoint_cfg_t *tep)
   ctx->ckpair_index = ccfg->ckpair_index;
   ctx->tls_type = sep->transport_proto;
   ctx->tls_ctx_handle = ctx_handle;
+  ctx->c_proto = TRANSPORT_PROTO_DTLS;
+  ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
   if (ccfg->hostname[0])
     {
       ctx->srv_hostname = format (0, "%s", ccfg->hostname);
@@ -1201,13 +1219,51 @@ dtls_connect (transport_endpoint_cfg_t *tep)
 
   TLS_DBG (1, "New DTLS connect request %x engine %d", ctx_handle,
 	   engine_type);
-  return 0;
+  return ctx_handle;
+}
+
+static transport_connection_t *
+dtls_half_open_get (u32 ho_index)
+{
+  tls_ctx_t *ho_ctx;
+  ho_ctx = tls_ctx_get_w_thread (ho_index, 1 /* udp connects */);
+  return &ho_ctx->connection;
 }
 
 static void
 dtls_cleanup_callback (u32 ctx_index, u32 thread_index)
 {
   /* No op */
+}
+
+static void
+dtls_cleanup_ho (u32 ho_index)
+{
+  tls_ctx_t *ctx;
+  ctx = tls_ctx_get_w_thread (ho_index, 1 /* udp connects */);
+  if (ctx)
+    tls_ctx_free (ctx);
+  else
+    clib_warning ("this");
+}
+
+u8 *
+format_dtls_half_open (u8 *s, va_list *args)
+{
+  u32 ho_index = va_arg (*args, u32);
+  u32 __clib_unused thread_index = va_arg (*args, u32);
+  tls_ctx_t *ho_ctx;
+  session_t *us;
+
+  ho_ctx = tls_ctx_get_w_thread (ho_index, 1 /* udp connects */);
+
+  us = session_get_from_handle (ho_ctx->tls_session_handle);
+  s = format (s, "[%d:%d][%s] half-open app_wrk %u engine %u us %d:%d",
+	      ho_ctx->c_thread_index, ho_ctx->c_s_index, "DTLS",
+	      ho_ctx->parent_app_wrk_index, ho_ctx->tls_ctx_engine,
+	      us->thread_index, us->session_index);
+
+  return s;
 }
 
 static const transport_proto_vft_t dtls_proto = {
@@ -1218,10 +1274,12 @@ static const transport_proto_vft_t dtls_proto = {
   .stop_listen = tls_stop_listen,
   .get_connection = tls_connection_get,
   .get_listener = tls_listener_get,
+  .get_half_open = dtls_half_open_get,
   .custom_tx = tls_custom_tx_callback,
   .cleanup = dtls_cleanup_callback,
+  .cleanup_ho = dtls_cleanup_ho,
   .format_connection = format_tls_connection,
-  .format_half_open = format_tls_half_open,
+  .format_half_open = format_dtls_half_open,
   .format_listener = format_tls_listener,
   .get_transport_endpoint = tls_transport_endpoint_get,
   .get_transport_listener_endpoint = tls_transport_listener_endpoint_get,
@@ -1229,7 +1287,7 @@ static const transport_proto_vft_t dtls_proto = {
     .name = "dtls",
     .short_name = "D",
     .tx_type = TRANSPORT_TX_INTERNAL,
-    .service_type = TRANSPORT_SERVICE_APP,
+    .service_type = TRANSPORT_SERVICE_VC,
   },
 };
 
