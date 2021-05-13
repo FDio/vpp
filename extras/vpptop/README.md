@@ -1,4 +1,4 @@
-## VPPTop installer
+# VPP Top Installation {#vpp_top_doc}
 
 [VPPTop]((https://github.com/PANTHEONtech/vpptop)) is a real-time data viewer for VPP interfaces and metrics displayed in dynamic terminal user interface, written in GO.
 
@@ -23,5 +23,3 @@ GOROOT=/root/.go/
 GOPATH=/root/go/
 
 If you have the GO already installed and have to run the installer with `sudo`, use the `-E` switch to provide those variables to the installer.
-
-
