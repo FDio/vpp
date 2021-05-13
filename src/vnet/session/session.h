@@ -455,10 +455,8 @@ session_clone_safe (u32 session_index, u32 thread_index)
 int session_open (session_endpoint_cfg_t *sep, session_handle_t *rsh);
 int session_listen (session_t * s, session_endpoint_cfg_t * sep);
 int session_stop_listen (session_t * s);
-void session_half_close (session_t *s);
 void session_close (session_t * s);
 void session_reset (session_t * s);
-void session_transport_half_close (session_t *s);
 void session_transport_close (session_t * s);
 void session_transport_reset (session_t * s);
 void session_transport_cleanup (session_t * s);
@@ -506,6 +504,8 @@ int session_stream_accept_notify (transport_connection_t * tc);
 void session_transport_closing_notify (transport_connection_t * tc);
 void session_transport_delete_notify (transport_connection_t * tc);
 void session_half_open_delete_notify (transport_connection_t *tc);
+void session_half_open_migrate_notify (transport_connection_t *tc);
+int session_half_open_migrated_notify (transport_connection_t *tc);
 void session_transport_closed_notify (transport_connection_t * tc);
 void session_transport_reset_notify (transport_connection_t * tc);
 int session_stream_accept (transport_connection_t * tc, u32 listener_index,

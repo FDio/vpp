@@ -195,22 +195,6 @@ session_mq_connect_uri_handler (void *data)
 }
 
 static void
-session_mq_shutdown_handler (void *data)
-{
-  session_shutdown_msg_t *mp = (session_shutdown_msg_t *) data;
-  vnet_shutdown_args_t _a, *a = &_a;
-  application_t *app;
-
-  app = application_lookup (mp->client_index);
-  if (!app)
-    return;
-
-  a->app_index = app->app_index;
-  a->handle = mp->handle;
-  vnet_shutdown_session (a);
-}
-
-static void
 session_mq_disconnect_handler (void *data)
 {
   session_disconnect_msg_t *mp = (session_disconnect_msg_t *) data;
@@ -1303,12 +1287,6 @@ session_event_dispatch_ctrl (session_worker_t * wrk, session_evt_elt_t * elt)
       fp = e->rpc_args.fp;
       (*fp) (e->rpc_args.arg);
       break;
-    case SESSION_CTRL_EVT_HALF_CLOSE:
-      s = session_get_from_handle_if_valid (e->session_handle);
-      if (PREDICT_FALSE (!s))
-	break;
-      session_transport_half_close (s);
-      break;
     case SESSION_CTRL_EVT_CLOSE:
       s = session_get_from_handle_if_valid (e->session_handle);
       if (PREDICT_FALSE (!s))
@@ -1335,9 +1313,6 @@ session_event_dispatch_ctrl (session_worker_t * wrk, session_evt_elt_t * elt)
       break;
     case SESSION_CTRL_EVT_CONNECT_URI:
       session_mq_connect_uri_handler (session_evt_ctrl_data (wrk, elt));
-      break;
-    case SESSION_CTRL_EVT_SHUTDOWN:
-      session_mq_shutdown_handler (session_evt_ctrl_data (wrk, elt));
       break;
     case SESSION_CTRL_EVT_DISCONNECT:
       session_mq_disconnect_handler (session_evt_ctrl_data (wrk, elt));
