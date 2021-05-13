@@ -150,6 +150,7 @@ mfib_forward_lookup (vlib_main_t * vm,
             {
                 ip4_header_t * ip0;
 
+                ip_lookup_set_buffer_fib_index (ip4_main.fib_index_by_sw_if_index, p0);
                 fib_index0 = vec_elt (ip4_main.mfib_index_by_sw_if_index,
                                       vnet_buffer(p0)->sw_if_index[VLIB_RX]);
                 ip0 = vlib_buffer_get_current (p0);
@@ -162,6 +163,7 @@ mfib_forward_lookup (vlib_main_t * vm,
             {
                 ip6_header_t * ip0;
 
+                ip_lookup_set_buffer_fib_index (ip6_main.fib_index_by_sw_if_index, p0);
                 fib_index0 = vec_elt (ip6_main.mfib_index_by_sw_if_index,
                                       vnet_buffer(p0)->sw_if_index[VLIB_RX]);
                 ip0 = vlib_buffer_get_current (p0);
