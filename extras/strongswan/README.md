@@ -1,4 +1,4 @@
-## vpp-sswan-test
+# VPP Swanstrong Testing Recipe {#strongswan_test_doc}
 
 Simple test framework for VPP and strongSwan scenarios.
 
