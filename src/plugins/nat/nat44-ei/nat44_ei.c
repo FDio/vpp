@@ -428,6 +428,9 @@ nat44_ei_plugin_enable (nat44_ei_config_t c)
   if (!c.sessions)
     c.sessions = 10 * 1024;
 
+  if (!c.user_sessions)
+    c.user_sessions = c.sessions;
+
   nm->rconfig = c;
 
   if (!nm->frame_queue_nelts)
@@ -448,8 +451,7 @@ nat44_ei_plugin_enable (nat44_ei_config_t c)
 
   nm->max_users_per_thread = c.users;
   nm->max_translations_per_thread = c.sessions;
-  nm->max_translations_per_user =
-    c.user_sessions ? c.user_sessions : nm->max_translations_per_thread;
+  nm->max_translations_per_user = c.user_sessions;
 
   nm->inside_vrf_id = c.inside_vrf;
   nm->inside_fib_index = fib_table_find_or_create_and_lock (
