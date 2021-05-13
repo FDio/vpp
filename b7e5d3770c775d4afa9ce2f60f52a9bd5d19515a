@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e93cfbb3_cd28a831",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1416,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-05-13T02:41:20Z",
+      "side": 1,
+      "message": "Maybe add to select as well? Something common would be better but don\u0027t think we have anything though.",
+      "range": {
+        "startLine": 1416,
+        "startChar": 2,
+        "endLine": 1416,
+        "endChar": 12
+      },
+      "revId": "b7e5d3770c775d4afa9ce2f60f52a9bd5d19515a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "38dda394_0e55b4f8",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1527,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-05-13T02:41:20Z",
+      "side": 1,
+      "message": "vls",
+      "range": {
+        "startLine": 1527,
+        "startChar": 0,
+        "endLine": 1527,
+        "endChar": 3
+      },
+      "revId": "b7e5d3770c775d4afa9ce2f60f52a9bd5d19515a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "23b8a6c9_4a34d569",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1574,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-05-13T02:41:20Z",
+      "side": 1,
+      "message": "This might expand the vector, so we might have to preallocate at worker init time to a moderate size (\u003e expected number of forked children), to avoid surprises.\n\nAlso, could you add a comment above explaining why we\u0027re doing this?",
+      "range": {
+        "startLine": 1574,
+        "startChar": 2,
+        "endLine": 1574,
+        "endChar": 60
+      },
+      "revId": "b7e5d3770c775d4afa9ce2f60f52a9bd5d19515a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
