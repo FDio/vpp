@@ -234,9 +234,7 @@ typedef struct
   memif_packet_op_t packet_ops[MEMIF_RX_VECTOR_SZ];
   memif_copy_op_t *copy_ops;
   u32 *buffers;
-
-  /* buffer template */
-  vlib_buffer_t buffer_template;
+  u16 nexts[VLIB_FRAME_SIZE];
 } memif_per_thread_data_t;
 
 typedef struct
