@@ -304,6 +304,7 @@ avf_txq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 txq_size)
     {
       qid = qid % ad->num_queue_pairs;
       txq = vec_elt_at_index (ad->txqs, qid);
+      ASSERT (txq->lock == 0);
       clib_spinlock_init (&txq->lock);
       ad->flags |= AVF_DEVICE_F_SHARED_TXQ_LOCK;
       return 0;
@@ -1529,6 +1530,7 @@ avf_delete_if (vlib_main_t * vm, avf_device_t * ad, int with_barrier)
       clib_ring_free (txq->rs_slots);
       vec_free (txq->tmp_bufs);
       vec_free (txq->tmp_descs);
+      clib_spinlock_free (&txq->lock);
     }
   /* *INDENT-ON* */
   vec_free (ad->txqs);
