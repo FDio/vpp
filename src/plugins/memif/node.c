@@ -150,7 +150,7 @@ memif_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   memif_ring_t *ring;
   memif_queue_t *mq;
   u16 buffer_size = vlib_buffer_get_default_data_size (vm);
-  uword n_trace = vlib_get_trace_count (vm, node);
+  uword n_trace;
   u16 nexts[MEMIF_RX_VECTOR_SZ], *next = nexts;
   u32 _to_next_bufs[MEMIF_RX_VECTOR_SZ], *to_next_bufs = _to_next_bufs, *bi;
   u32 n_rx_packets = 0, n_rx_bytes = 0;
