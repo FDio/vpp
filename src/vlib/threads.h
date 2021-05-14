@@ -120,19 +120,12 @@ typedef struct
   /* enqueue side */
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   volatile u64 tail;
-  u64 enqueues;
-  u64 enqueue_ticks;
-  u64 enqueue_vectors;
   u32 enqueue_full_events;
 
   /* dequeue side */
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
   volatile u64 head;
-  u64 dequeues;
-  u64 dequeue_ticks;
-  u64 dequeue_vectors;
   u64 trace;
-  u64 vector_threshold;
 
   /* dequeue hint to enqueue side */
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
