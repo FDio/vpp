@@ -112,6 +112,7 @@ memif_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   memif_copy_op_t *co;
   memif_region_index_t last_region = ~0;
   void *last_region_shm = 0;
+  u16 head, tail;
 
   ring = mq->ring;
   ring_size = 1 << mq->log2_ring_size;
@@ -119,14 +120,20 @@ memif_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 retry:
 
-  free_slots = ring->tail - mq->last_tail;
-  mq->last_tail += free_slots;
-  slot = (type == MEMIF_RING_S2M) ? ring->head : ring->tail;
-
   if (type == MEMIF_RING_S2M)
-    free_slots = ring_size - ring->head + mq->last_tail;
+    {
+      slot = head = ring->head;
+      tail = __atomic_load_n (&ring->tail, __ATOMIC_ACQUIRE);
+      mq->last_tail += tail - mq->last_tail;
+      free_slots = ring_size - head + mq->last_tail;
+    }
   else
-    free_slots = ring->head - ring->tail;
+    {
+      slot = tail = ring->tail;
+      head = __atomic_load_n (&ring->head, __ATOMIC_ACQUIRE);
+      mq->last_tail += tail - mq->last_tail;
+      free_slots = head - tail;
+    }
 
   while (n_left && free_slots)
     {
@@ -263,11 +270,10 @@ no_free_slots:
   vec_reset_length (ptd->copy_ops);
   vec_reset_length (ptd->buffers);
 
-  CLIB_MEMORY_STORE_BARRIER ();
   if (type == MEMIF_RING_S2M)
-    ring->head = slot;
+    __atomic_store_n (&ring->head, slot, __ATOMIC_RELEASE);
   else
-    ring->tail = slot;
+    __atomic_store_n (&ring->tail, slot, __ATOMIC_RELEASE);
 
   if (n_left && n_retries--)
     goto retry;
@@ -306,9 +312,13 @@ memif_interface_tx_zc_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 mask = ring_size - 1;
   int n_retries = 5;
   vlib_buffer_t *b0;
+  u16 head, tail;
 
 retry:
-  n_free = ring->tail - mq->last_tail;
+  slot = tail = __atomic_load_n (&ring->tail, __ATOMIC_ACQUIRE);
+  head = ring->head;
+
+  n_free = tail - mq->last_tail;
   if (n_free >= 16)
     {
       vlib_buffer_free_from_ring_no_next (vm, mq->buffers,
@@ -317,8 +327,7 @@ retry:
       mq->last_tail += n_free;
     }
 
-  slot = ring->head;
-  free_slots = ring_size - ring->head + mq->last_tail;
+  free_slots = ring_size - head + mq->last_tail;
 
   while (n_left && free_slots)
     {
@@ -375,8 +384,7 @@ retry:
     }
 no_free_slots:
 
-  CLIB_MEMORY_STORE_BARRIER ();
-  ring->head = slot;
+  __atomic_store_n (&ring->head, slot, __ATOMIC_RELEASE);
 
   if (n_left && n_retries--)
     goto retry;
