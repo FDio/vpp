@@ -212,7 +212,12 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   /* for S2M rings, we are consumers of packet buffers, and for M2S rings we
      are producers of empty buffers */
   cur_slot = (type == MEMIF_RING_S2M) ? mq->last_head : mq->last_tail;
-  last_slot = (type == MEMIF_RING_S2M) ? ring->head : ring->tail;
+
+  if (type == MEMIF_RING_S2M)
+    last_slot = __atomic_load_n (&ring->head, __ATOMIC_ACQUIRE);
+  else
+    last_slot = __atomic_load_n (&ring->tail, __ATOMIC_ACQUIRE);
+
   if (cur_slot == last_slot)
     goto refill;
   n_slots = last_slot - cur_slot;
@@ -336,8 +341,8 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   /* release slots from the ring */
   if (type == MEMIF_RING_S2M)
     {
-      CLIB_MEMORY_STORE_BARRIER ();
-      ring->tail = mq->last_head = cur_slot;
+      __atomic_store_n (&ring->tail, cur_slot, __ATOMIC_RELEASE);
+      mq->last_head = cur_slot;
     }
   else
     {
@@ -537,8 +542,7 @@ refill:
 	  d->length = mif->run.buffer_size;
 	}
 
-      CLIB_MEMORY_STORE_BARRIER ();
-      ring->head = head;
+      __atomic_store_n (&ring->head, head, __ATOMIC_RELEASE);
     }
 
   return n_rx_packets;
@@ -583,7 +587,7 @@ memif_device_input_zc_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   buffer_length = vlib_buffer_get_default_data_size (vm) - start_offset;
 
   cur_slot = mq->last_tail;
-  last_slot = ring->tail;
+  last_slot = __atomic_load_n (&ring->tail, __ATOMIC_ACQUIRE);
   if (cur_slot == last_slot)
     goto refill;
   n_slots = last_slot - cur_slot;
@@ -867,8 +871,7 @@ refill:
       n_alloc -= 1;
     }
 
-  CLIB_MEMORY_STORE_BARRIER ();
-  ring->head = head;
+  __atomic_store_n (&ring->head, head, __ATOMIC_RELEASE);
 
 done:
   return n_rx_packets;
