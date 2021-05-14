@@ -163,8 +163,9 @@ CLIB_MARCH_FN_REGISTRATION (vlib_buffer_enqueue_to_single_next_fn);
 
 u32 __clib_section (".vlib_buffer_enqueue_to_thread_fn")
 CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_thread_fn)
-(vlib_main_t *vm, u32 frame_queue_index, u32 *buffer_indices,
- u16 *thread_indices, u32 n_packets, int drop_on_congestion)
+(vlib_main_t *vm, vlib_node_runtime_t *node, u32 frame_queue_index,
+ u32 *buffer_indices, u16 *thread_indices, u32 n_packets,
+ int drop_on_congestion)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vlib_frame_queue_main_t *fqm;
