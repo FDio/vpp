@@ -67,10 +67,8 @@ always_inline tcp_connection_t *
 tcp_half_open_connection_get (u32 conn_index)
 {
   tcp_connection_t *tc = 0;
-  clib_spinlock_lock_if_init (&tcp_main.half_open_lock);
   if (!pool_is_free_index (tcp_main.half_open_connections, conn_index))
     tc = pool_elt_at_index (tcp_main.half_open_connections, conn_index);
-  clib_spinlock_unlock_if_init (&tcp_main.half_open_lock);
   return tc;
 }
 
