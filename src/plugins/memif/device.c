@@ -97,14 +97,12 @@ memif_add_copy_op (memif_per_thread_data_t * ptd, void *data, u32 len,
 }
 
 static_always_inline uword
-memif_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-			   vlib_frame_t * frame, memif_if_t * mif,
-			   memif_ring_type_t type, memif_queue_t * mq,
-			   memif_per_thread_data_t * ptd)
+memif_interface_tx_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+			   u32 *buffers, memif_if_t *mif,
+			   memif_ring_type_t type, memif_queue_t *mq,
+			   memif_per_thread_data_t *ptd, u32 n_left)
 {
   memif_ring_t *ring;
-  u32 *buffers = vlib_frame_vector_args (frame);
-  u32 n_left = frame->n_vectors;
   u32 n_copy_op;
   u16 ring_size, mask, slot, free_slots;
   int n_retries = 5;
@@ -278,35 +276,15 @@ no_free_slots:
   if (n_left && n_retries--)
     goto retry;
 
-  clib_spinlock_unlock_if_init (&mif->lockp);
-
-  if (n_left)
-    {
-      vlib_error_count (vm, node->node_index, MEMIF_TX_ERROR_NO_FREE_SLOTS,
-			n_left);
-    }
-
-  if ((ring->flags & MEMIF_RING_FLAG_MASK_INT) == 0 && mq->int_fd > -1)
-    {
-      u64 b = 1;
-      CLIB_UNUSED (int r) = write (mq->int_fd, &b, sizeof (b));
-      mq->int_count++;
-    }
-
-  vlib_buffer_free (vm, vlib_frame_vector_args (frame), frame->n_vectors);
-
-  return frame->n_vectors;
+  return n_left;
 }
 
 static_always_inline uword
-memif_interface_tx_zc_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-			      vlib_frame_t * frame, memif_if_t * mif,
-			      memif_queue_t * mq,
-			      memif_per_thread_data_t * ptd)
+memif_interface_tx_zc_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+			      u32 *buffers, memif_if_t *mif, memif_queue_t *mq,
+			      memif_per_thread_data_t *ptd, u32 n_left)
 {
   memif_ring_t *ring = mq->ring;
-  u32 *buffers = vlib_frame_vector_args (frame);
-  u32 n_left = frame->n_vectors;
   u16 slot, free_slots, n_free;
   u16 ring_size = 1 << mq->log2_ring_size;
   u16 mask = ring_size - 1;
@@ -389,23 +367,7 @@ no_free_slots:
   if (n_left && n_retries--)
     goto retry;
 
-  clib_spinlock_unlock_if_init (&mif->lockp);
-
-  if (n_left)
-    {
-      vlib_error_count (vm, node->node_index, MEMIF_TX_ERROR_NO_FREE_SLOTS,
-			n_left);
-      vlib_buffer_free (vm, buffers, n_left);
-    }
-
-  if ((ring->flags & MEMIF_RING_FLAG_MASK_INT) == 0 && mq->int_fd > -1)
-    {
-      u64 b = 1;
-      CLIB_UNUSED (int r) = write (mq->int_fd, &b, sizeof (b));
-      mq->int_count++;
-    }
-
-  return frame->n_vectors;
+  return n_left;
 }
 
 VNET_DEVICE_CLASS_TX_FN (memif_device_class) (vlib_main_t * vm,
@@ -416,10 +378,11 @@ VNET_DEVICE_CLASS_TX_FN (memif_device_class) (vlib_main_t * vm,
   vnet_interface_output_runtime_t *rund = (void *) node->runtime_data;
   memif_if_t *mif = pool_elt_at_index (nm->interfaces, rund->dev_instance);
   memif_queue_t *mq;
-  u32 thread_index = vm->thread_index;
+  u32 *from, thread_index = vm->thread_index;
   memif_per_thread_data_t *ptd = vec_elt_at_index (memif_main.per_thread_data,
 						   thread_index);
   u8 tx_queues = vec_len (mif->tx_queues);
+  uword n_left;
 
   if (tx_queues < vlib_get_n_threads ())
     {
@@ -430,14 +393,37 @@ VNET_DEVICE_CLASS_TX_FN (memif_device_class) (vlib_main_t * vm,
   else
     mq = vec_elt_at_index (mif->tx_queues, thread_index);
 
+  from = vlib_frame_vector_args (frame);
+  n_left = frame->n_vectors;
   if (mif->flags & MEMIF_IF_FLAG_ZERO_COPY)
-    return memif_interface_tx_zc_inline (vm, node, frame, mif, mq, ptd);
+    n_left =
+      memif_interface_tx_zc_inline (vm, node, from, mif, mq, ptd, n_left);
   else if (mif->flags & MEMIF_IF_FLAG_IS_SLAVE)
-    return memif_interface_tx_inline (vm, node, frame, mif, MEMIF_RING_S2M,
-				      mq, ptd);
+    n_left = memif_interface_tx_inline (vm, node, from, mif, MEMIF_RING_S2M,
+					mq, ptd, n_left);
   else
-    return memif_interface_tx_inline (vm, node, frame, mif, MEMIF_RING_M2S,
-				      mq, ptd);
+    n_left = memif_interface_tx_inline (vm, node, from, mif, MEMIF_RING_M2S,
+					mq, ptd, n_left);
+
+  clib_spinlock_unlock_if_init (&mif->lockp);
+
+  if (n_left)
+    vlib_error_count (vm, node->node_index, MEMIF_TX_ERROR_NO_FREE_SLOTS,
+		      n_left);
+
+  if ((mq->ring->flags & MEMIF_RING_FLAG_MASK_INT) == 0 && mq->int_fd > -1)
+    {
+      u64 b = 1;
+      int __clib_unused r = write (mq->int_fd, &b, sizeof (b));
+      mq->int_count++;
+    }
+
+  if ((mif->flags & MEMIF_IF_FLAG_ZERO_COPY) == 0)
+    vlib_buffer_free (vm, from, frame->n_vectors);
+  else if (n_left)
+    vlib_buffer_free (vm, from + frame->n_vectors - n_left, n_left);
+
+  return frame->n_vectors - n_left;
 }
 
 static void
