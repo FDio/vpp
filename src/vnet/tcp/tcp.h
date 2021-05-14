@@ -221,8 +221,6 @@ typedef struct _tcp_main
   /** Dispatch table by state and flags */
   tcp_lookup_dispatch_t dispatch_table[TCP_N_STATES][64];
 
-  clib_spinlock_t half_open_lock;
-
   /** Pool of half-open connections on which we've sent a SYN */
   tcp_connection_t *half_open_connections;
 
