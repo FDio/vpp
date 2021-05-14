@@ -40,8 +40,8 @@ lacp_set_port_selected (vlib_main_t *vm, bond_if_t *bif, member_if_t *mif)
     {
       p = *vec_elt_at_index (bif->active_members, 0);
       mif2 = bond_get_member_by_sw_if_index (p);
-      if ((mif2->partner.key != mif->partner.key) ||
-	  memcmp (mif2->partner.system, mif->partner.system, 6))
+      if (mif2 && ((mif2->partner.key != mif->partner.key) ||
+		   memcmp (mif2->partner.system, mif->partner.system, 6)))
 	{
 	  mif->selected = LACP_PORT_UNSELECTED;
 	  lacp_machine_dispatch (&lacp_mux_machine, vm, mif,
