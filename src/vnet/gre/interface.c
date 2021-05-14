@@ -225,9 +225,11 @@ gre_tunnel_restack (gre_tunnel_t * gt)
     switch (gt->mode)
       {
       case TUNNEL_MODE_P2P:
-	return (adj_nbr_walk (gt->sw_if_index, proto, gre_adj_walk_cb, NULL));
+	adj_nbr_walk (gt->sw_if_index, proto, gre_adj_walk_cb, NULL);
+	break;
       case TUNNEL_MODE_MP:
-	return (adj_nbr_walk (gt->sw_if_index, proto, mgre_adj_walk_cb, NULL));
+	adj_nbr_walk (gt->sw_if_index, proto, mgre_adj_walk_cb, NULL);
+	break;
       }
   }
 }
