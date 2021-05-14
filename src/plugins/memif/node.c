@@ -562,14 +562,15 @@ memif_device_input_zc_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_rx_packets = 0, n_rx_bytes = 0;
   u32 *to_next = 0, *buffers;
   u32 bi0, bi1, bi2, bi3;
-  u16 s0, s1, s2, s3;
-  memif_desc_t *d0, *d1, *d2, *d3;
+  u16 slot, s0;
+  memif_desc_t *d0;
   vlib_buffer_t *b0, *b1, *b2, *b3;
   u32 thread_index = vm->thread_index;
   memif_per_thread_data_t *ptd = vec_elt_at_index (mm->per_thread_data,
 						   thread_index);
   u16 cur_slot, last_slot, ring_size, n_slots, mask, head;
   i16 start_offset;
+  u64 offset;
   u32 buffer_length;
   u16 n_alloc, n_from;
 
@@ -793,81 +794,63 @@ refill:
 
   head = ring->head;
   n_slots = ring_size - head + mq->last_tail;
+  slot = head & mask;
+
+  n_slots &= ~7;
 
   if (n_slots < 32)
     goto done;
 
-  memif_desc_t *dt = &ptd->desc_template;
+  memif_desc_t desc_template, *dt = &desc_template;
   clib_memset (dt, 0, sizeof (memif_desc_t));
   dt->length = buffer_length;
 
-  n_alloc = vlib_buffer_alloc_to_ring_from_pool (vm, mq->buffers, head & mask,
-						 ring_size, n_slots,
-						 mq->buffer_pool_index);
+  n_alloc = vlib_buffer_alloc_to_ring_from_pool (
+    vm, mq->buffers, slot, ring_size, n_slots, mq->buffer_pool_index);
+  dt->region = mq->buffer_pool_index + 1;
+  offset = (u64) mif->regions[dt->region].shm + start_offset;
 
   if (PREDICT_FALSE (n_alloc != n_slots))
-    {
-      vlib_error_count (vm, node->node_index,
-			MEMIF_INPUT_ERROR_BUFFER_ALLOC_FAIL, 1);
-    }
+    vlib_error_count (vm, node->node_index,
+		      MEMIF_INPUT_ERROR_BUFFER_ALLOC_FAIL, 1);
 
-  while (n_alloc >= 32)
-    {
-      bi0 = mq->buffers[(head + 4) & mask];
-      vlib_prefetch_buffer_with_index (vm, bi0, LOAD);
-      bi1 = mq->buffers[(head + 5) & mask];
-      vlib_prefetch_buffer_with_index (vm, bi1, LOAD);
-      bi2 = mq->buffers[(head + 6) & mask];
-      vlib_prefetch_buffer_with_index (vm, bi2, LOAD);
-      bi3 = mq->buffers[(head + 7) & mask];
-      vlib_prefetch_buffer_with_index (vm, bi3, LOAD);
+  head += n_alloc;
 
-      s0 = head++ & mask;
-      s1 = head++ & mask;
-      s2 = head++ & mask;
-      s3 = head++ & mask;
-
-      d0 = &ring->desc[s0];
-      d1 = &ring->desc[s1];
-      d2 = &ring->desc[s2];
-      d3 = &ring->desc[s3];
-
-      clib_memcpy_fast (d0, dt, sizeof (memif_desc_t));
-      clib_memcpy_fast (d1, dt, sizeof (memif_desc_t));
-      clib_memcpy_fast (d2, dt, sizeof (memif_desc_t));
-      clib_memcpy_fast (d3, dt, sizeof (memif_desc_t));
-
-      b0 = vlib_get_buffer (vm, mq->buffers[s0]);
-      b1 = vlib_get_buffer (vm, mq->buffers[s1]);
-      b2 = vlib_get_buffer (vm, mq->buffers[s2]);
-      b3 = vlib_get_buffer (vm, mq->buffers[s3]);
-
-      d0->region = b0->buffer_pool_index + 1;
-      d1->region = b1->buffer_pool_index + 1;
-      d2->region = b2->buffer_pool_index + 1;
-      d3->region = b3->buffer_pool_index + 1;
-
-      d0->offset =
-	(void *) b0->data - mif->regions[d0->region].shm + start_offset;
-      d1->offset =
-	(void *) b1->data - mif->regions[d1->region].shm + start_offset;
-      d2->offset =
-	(void *) b2->data - mif->regions[d2->region].shm + start_offset;
-      d3->offset =
-	(void *) b3->data - mif->regions[d3->region].shm + start_offset;
-
-      n_alloc -= 4;
-    }
   while (n_alloc)
     {
-      s0 = head++ & mask;
-      d0 = &ring->desc[s0];
-      clib_memcpy_fast (d0, dt, sizeof (memif_desc_t));
-      b0 = vlib_get_buffer (vm, mq->buffers[s0]);
-      d0->region = b0->buffer_pool_index + 1;
-      d0->offset =
-	(void *) b0->data - mif->regions[d0->region].shm + start_offset;
+      memif_desc_t *d = ring->desc + slot;
+      u32 *bi = mq->buffers + slot;
 
+      if (PREDICT_FALSE (((slot + 7 > mask) || (n_alloc < 8))))
+	goto one_by_one;
+
+      clib_memcpy_fast (d + 0, dt, sizeof (memif_desc_t));
+      clib_memcpy_fast (d + 1, dt, sizeof (memif_desc_t));
+      clib_memcpy_fast (d + 2, dt, sizeof (memif_desc_t));
+      clib_memcpy_fast (d + 3, dt, sizeof (memif_desc_t));
+      clib_memcpy_fast (d + 4, dt, sizeof (memif_desc_t));
+      clib_memcpy_fast (d + 5, dt, sizeof (memif_desc_t));
+      clib_memcpy_fast (d + 6, dt, sizeof (memif_desc_t));
+      clib_memcpy_fast (d + 7, dt, sizeof (memif_desc_t));
+
+      d[0].offset = (u64) vlib_get_buffer (vm, bi[0])->data - offset;
+      d[1].offset = (u64) vlib_get_buffer (vm, bi[1])->data - offset;
+      d[2].offset = (u64) vlib_get_buffer (vm, bi[2])->data - offset;
+      d[3].offset = (u64) vlib_get_buffer (vm, bi[3])->data - offset;
+      d[4].offset = (u64) vlib_get_buffer (vm, bi[4])->data - offset;
+      d[5].offset = (u64) vlib_get_buffer (vm, bi[5])->data - offset;
+      d[6].offset = (u64) vlib_get_buffer (vm, bi[6])->data - offset;
+      d[7].offset = (u64) vlib_get_buffer (vm, bi[7])->data - offset;
+
+      slot += 8;
+      n_alloc -= 8;
+      continue;
+
+    one_by_one:
+      clib_memcpy_fast (d, dt, sizeof (memif_desc_t));
+      d[0].offset = (u64) vlib_get_buffer (vm, bi[0])->data - offset;
+
+      slot = (slot + 1) & mask;
       n_alloc -= 1;
     }
 

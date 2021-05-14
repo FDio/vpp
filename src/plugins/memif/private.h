@@ -235,7 +235,6 @@ typedef struct
   memif_copy_op_t *copy_ops;
   u32 *buffers;
 
-  memif_desc_t desc_template;
   /* buffer template */
   vlib_buffer_t buffer_template;
 } memif_per_thread_data_t;
