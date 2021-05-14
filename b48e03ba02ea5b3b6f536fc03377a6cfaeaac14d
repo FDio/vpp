@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5d3da472_54358ced",
+        "filename": "src/vcl/vcl_private.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 530,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-05-14T02:54:24Z",
+      "side": 1,
+      "message": "Could you add a new check if session is in disconnect state and only then return 0? That way we can keep the assert and make sure we notice it. Otherwise we may miss the message.",
+      "range": {
+        "startLine": 530,
+        "startChar": 0,
+        "endLine": 530,
+        "endChar": 7
+      },
+      "revId": "b48e03ba02ea5b3b6f536fc03377a6cfaeaac14d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
