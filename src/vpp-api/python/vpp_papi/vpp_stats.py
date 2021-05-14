@@ -69,7 +69,7 @@ def get_string(stats, ptr):
     namevector = ptr - stats.base
     namevectorlen = get_vec_len(stats, namevector)
     if namevector + namevectorlen >= stats.size:
-        raise ValueError('String overruns stats segment')
+        raise IOError('String overruns stats segment')
     return stats.statseg[namevector:namevector+namevectorlen-1].decode('ascii')
 
 
@@ -86,7 +86,7 @@ class StatsVector:
         self.stats = stats
 
         if self.vec_start + self.vec_len * self.elementsize >= stats.size:
-            raise ValueError('Vector overruns stats segment')
+            raise IOError('Vector overruns stats segment')
 
     def __iter__(self):
         with self.stats.lock:
@@ -95,7 +95,7 @@ class StatsVector:
 
     def __getitem__(self, index):
         if index > self.vec_len:
-            raise ValueError('Index beyond end of vector')
+            raise IOError('Index beyond end of vector')
         with self.stats.lock:
             if self.fmtlen == 1:
                 return self.struct.unpack_from(self.statseg, self.vec_start +
