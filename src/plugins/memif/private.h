@@ -226,17 +226,33 @@ typedef struct
 
 #define MEMIF_RX_VECTOR_SZ VLIB_FRAME_SIZE
 
+typedef union
+{
+  struct
+  {
+    memif_region_offset_t offset;
+    memif_region_index_t region;
+    u16 flags;
+  };
+  u64 as_u64;
+  void *ptr;
+} memif_off_region_flags_t;
+
+STATIC_ASSERT_SIZEOF (memif_off_region_flags_t, 8);
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-
-  /* copy vector */
-  memif_packet_op_t packet_ops[MEMIF_RX_VECTOR_SZ];
+  u32 n_bytes;
+  u16 n_packets, n_descs;
   memif_copy_op_t *copy_ops;
   u32 *buffers;
-
-  /* buffer template */
-  vlib_buffer_t buffer_template;
+  u64 desc_next_flag_bmp[VLIB_FRAME_SIZE / 64];
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+  memif_off_region_flags_t desc_off_region_flags[VLIB_FRAME_SIZE];
+  u32 desc_len[VLIB_FRAME_SIZE];
+  u16 nexts[VLIB_FRAME_SIZE];
+  u32 bufs[VLIB_FRAME_SIZE];
 } memif_per_thread_data_t;
 
 typedef struct
