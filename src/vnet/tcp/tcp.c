@@ -189,11 +189,9 @@ static void
 tcp_half_open_connection_free (tcp_connection_t * tc)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
-  clib_spinlock_lock_if_init (&tm->half_open_lock);
   if (CLIB_DEBUG)
     clib_memset (tc, 0xFA, sizeof (*tc));
   pool_put (tm->half_open_connections, tc);
-  clib_spinlock_unlock_if_init (&tm->half_open_lock);
 }
 
 /**
@@ -818,7 +816,6 @@ tcp_session_open (transport_endpoint_cfg_t * rmt)
   /*
    * Create connection and send SYN
    */
-  clib_spinlock_lock_if_init (&tm->half_open_lock);
   tc = tcp_half_open_connection_new ();
   ip_copy (&tc->c_rmt_ip, &rmt->ip, rmt->is_ip4);
   ip_copy (&tc->c_lcl_ip, &lcl_addr, rmt->is_ip4);
@@ -836,7 +833,6 @@ tcp_session_open (transport_endpoint_cfg_t * rmt)
   tc->state = TCP_STATE_SYN_SENT;
   tcp_init_snd_vars (tc);
   tcp_send_syn (tc);
-  clib_spinlock_unlock_if_init (&tm->half_open_lock);
 
   return tc->c_c_index;
 }
@@ -1525,11 +1521,6 @@ tcp_main_enable (vlib_main_t * vm)
   if (tcp_cfg.preallocated_half_open_connections)
     pool_init_fixed (tm->half_open_connections,
 		     tcp_cfg.preallocated_half_open_connections);
-
-  if (num_threads > 1)
-    {
-      clib_spinlock_init (&tm->half_open_lock);
-    }
 
   tcp_initialize_iss_seed (tm);
 
