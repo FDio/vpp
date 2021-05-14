@@ -169,7 +169,11 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
 
   new_out_runtimes =
     vec_dup_aligned (hi->output_node_thread_runtimes, CLIB_CACHE_LINE_BYTES);
-  vec_validate_aligned (new_out_runtimes, n_threads, CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (new_out_runtimes, n_threads - 1,
+			CLIB_CACHE_LINE_BYTES);
+
+  if (vec_len (hi->output_node_thread_runtimes) != vec_len (new_out_runtimes))
+    something_changed_on_tx = 1;
 
   for (int i = 0; i < vec_len (hi->tx_queue_indices); i++)
     {
