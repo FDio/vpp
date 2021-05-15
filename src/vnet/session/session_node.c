@@ -223,7 +223,7 @@ session_mq_connect_handler (void *data)
     }
 
   if (PREDICT_FALSE (thread_index != 1))
-    app_check_thread_and_barrier (session_mq_listen_uri_handler, mp);
+    app_check_thread_and_barrier (session_mq_connect_handler, mp);
 
   clib_fifo_add1 (pending_connects, *mp);
 
