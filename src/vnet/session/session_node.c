@@ -26,6 +26,79 @@
 #include <svm/queue.h>
 #include <sys/timerfd.h>
 
+static void
+session_wrk_timerfd_update (session_worker_t *wrk, u64 time_ns)
+{
+  struct itimerspec its;
+
+  its.it_value.tv_sec = 0;
+  its.it_value.tv_nsec = time_ns;
+  its.it_interval.tv_sec = 0;
+  its.it_interval.tv_nsec = its.it_value.tv_nsec;
+
+  if (timerfd_settime (wrk->timerfd, 0, &its, NULL) == -1)
+    clib_warning ("timerfd_settime");
+}
+
+always_inline u64
+session_wrk_tfd_timeout (session_wrk_state_t state, u32 thread_index)
+{
+  if (state == SESSION_WRK_INTERRUPT)
+    return thread_index ? 1e6 : vlib_num_workers () ? 5e8 : 1e6;
+  else if (state == SESSION_WRK_IDLE)
+    return thread_index ? 1e8 : vlib_num_workers () ? 5e8 : 1e8;
+  else
+    return 0;
+}
+
+static inline void
+session_wrk_set_state (session_worker_t *wrk, session_wrk_state_t state)
+{
+  u64 time_ns;
+
+  wrk->state = state;
+  time_ns = session_wrk_tfd_timeout (state, wrk->vm->thread_index);
+  session_wrk_timerfd_update (wrk, time_ns);
+}
+
+static void
+session_wrk_update_state (session_worker_t *wrk)
+{
+  vlib_main_t *vm = wrk->vm;
+
+  if (wrk->state == SESSION_WRK_POLLING)
+    {
+      if (pool_elts (wrk->event_elts) == 3 &&
+	  vlib_last_vectors_per_main_loop (vm) < 1)
+	{
+	  session_wrk_set_state (wrk, SESSION_WRK_INTERRUPT);
+	  vlib_node_set_state (vm, session_queue_node.index,
+			       VLIB_NODE_STATE_INTERRUPT);
+	}
+    }
+  else if (wrk->state == SESSION_WRK_INTERRUPT)
+    {
+      if (pool_elts (wrk->event_elts) > 3 ||
+	  vlib_last_vectors_per_main_loop (vm) > 1)
+	{
+	  session_wrk_set_state (wrk, SESSION_WRK_POLLING);
+	  vlib_node_set_state (vm, session_queue_node.index,
+			       VLIB_NODE_STATE_POLLING);
+	}
+      else if (PREDICT_FALSE (!pool_elts (wrk->sessions)))
+	{
+	  session_wrk_set_state (wrk, SESSION_WRK_IDLE);
+	}
+    }
+  else
+    {
+      if (pool_elts (wrk->event_elts))
+	{
+	  session_wrk_set_state (wrk, SESSION_WRK_INTERRUPT);
+	}
+    }
+}
+
 #define app_check_thread_and_barrier(_fn, _arg)				\
   if (!vlib_thread_is_main_w_barrier ())				\
     {									\
@@ -206,6 +279,7 @@ session_mq_handle_connects_rpc (void *arg)
     {
       fwrk->pending_connects_ntf = 0;
     }
+  session_wrk_update_state (session_main_get_worker (0));
 }
 
 static void
@@ -1580,79 +1654,6 @@ session_wrk_handle_mq (session_worker_t *wrk, svm_msg_q_t *mq)
     }
 
   return n_to_dequeue;
-}
-
-static void
-session_wrk_timerfd_update (session_worker_t *wrk, u64 time_ns)
-{
-  struct itimerspec its;
-
-  its.it_value.tv_sec = 0;
-  its.it_value.tv_nsec = time_ns;
-  its.it_interval.tv_sec = 0;
-  its.it_interval.tv_nsec = its.it_value.tv_nsec;
-
-  if (timerfd_settime (wrk->timerfd, 0, &its, NULL) == -1)
-    clib_warning ("timerfd_settime");
-}
-
-always_inline u64
-session_wrk_tfd_timeout (session_wrk_state_t state, u32 thread_index)
-{
-  if (state == SESSION_WRK_INTERRUPT)
-    return thread_index ? 1e6 : vlib_num_workers () ? 5e8 : 1e6;
-  else if (state == SESSION_WRK_IDLE)
-    return thread_index ? 1e8 : vlib_num_workers () ? 5e8 : 1e8;
-  else
-    return 0;
-}
-
-static inline void
-session_wrk_set_state (session_worker_t *wrk, session_wrk_state_t state)
-{
-  u64 time_ns;
-
-  wrk->state = state;
-  time_ns = session_wrk_tfd_timeout (state, wrk->vm->thread_index);
-  session_wrk_timerfd_update (wrk, time_ns);
-}
-
-static void
-session_wrk_update_state (session_worker_t *wrk)
-{
-  vlib_main_t *vm = wrk->vm;
-
-  if (wrk->state == SESSION_WRK_POLLING)
-    {
-      if (pool_elts (wrk->event_elts) == 3 &&
-	  vlib_last_vectors_per_main_loop (vm) < 1)
-	{
-	  session_wrk_set_state (wrk, SESSION_WRK_INTERRUPT);
-	  vlib_node_set_state (vm, session_queue_node.index,
-			       VLIB_NODE_STATE_INTERRUPT);
-	}
-    }
-  else if (wrk->state == SESSION_WRK_INTERRUPT)
-    {
-      if (pool_elts (wrk->event_elts) > 3 ||
-	  vlib_last_vectors_per_main_loop (vm) > 1)
-	{
-	  session_wrk_set_state (wrk, SESSION_WRK_POLLING);
-	  vlib_node_set_state (vm, session_queue_node.index,
-			       VLIB_NODE_STATE_POLLING);
-	}
-      else if (PREDICT_FALSE (!pool_elts (wrk->sessions)))
-	{
-	  session_wrk_set_state (wrk, SESSION_WRK_IDLE);
-	}
-    }
-  else
-    {
-      if (pool_elts (wrk->event_elts))
-	{
-	  session_wrk_set_state (wrk, SESSION_WRK_INTERRUPT);
-	}
-    }
 }
 
 static uword
