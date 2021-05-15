@@ -403,7 +403,7 @@ ct_connect (app_worker_t * client_wrk, session_t * ll,
   ho->peer_index = ll->session_index;
   ho->c_proto = TRANSPORT_PROTO_NONE;
   ho->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
-  clib_memcpy (&ho->c_rmt_ip, &sep->ip, sizeof (&sep->ip));
+  clib_memcpy (&ho->c_rmt_ip, &sep->ip, sizeof (sep->ip));
   ho->flags |= CT_CONN_F_CLIENT;
   ho->c_s_index = ~0;
 
