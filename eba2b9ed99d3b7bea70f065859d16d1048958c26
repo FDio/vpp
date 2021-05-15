@@ -2,6 +2,52 @@
   "comments": [
     {
       "key": {
+        "uuid": "8a787d3e_7e9a2ac6",
+        "filename": "src/vnet/interface_types.api",
+        "patchSetId": 32
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2021-05-15T02:54:15Z",
+      "side": 1,
+      "message": "enumflag",
+      "range": {
+        "startLine": 75,
+        "startChar": 0,
+        "endLine": 75,
+        "endChar": 4
+      },
+      "revId": "eba2b9ed99d3b7bea70f065859d16d1048958c26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "102ce2b3_ad4d6382",
+        "filename": "src/vnet/interface_types.api",
+        "patchSetId": 32
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2021-05-15T02:54:15Z",
+      "side": 1,
+      "message": "enumflag",
+      "range": {
+        "startLine": 84,
+        "startChar": 0,
+        "endLine": 84,
+        "endChar": 4
+      },
+      "revId": "eba2b9ed99d3b7bea70f065859d16d1048958c26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "70365744_dd9357c0",
         "filename": "src/vnet/interface_types.api",
         "patchSetId": 32
