@@ -33,6 +33,41 @@
       return;								\
    }
 
+static void
+session_wrk_timerfd_update (session_worker_t *wrk, u64 time_ns)
+{
+  struct itimerspec its;
+
+  its.it_value.tv_sec = 0;
+  its.it_value.tv_nsec = time_ns;
+  its.it_interval.tv_sec = 0;
+  its.it_interval.tv_nsec = its.it_value.tv_nsec;
+
+  if (timerfd_settime (wrk->timerfd, 0, &its, NULL) == -1)
+    clib_warning ("timerfd_settime");
+}
+
+always_inline u64
+session_wrk_tfd_timeout (session_wrk_state_t state, u32 thread_index)
+{
+  if (state == SESSION_WRK_INTERRUPT)
+    return thread_index ? 1e6 : vlib_num_workers () ? 5e8 : 1e6;
+  else if (state == SESSION_WRK_IDLE)
+    return thread_index ? 1e8 : vlib_num_workers () ? 5e8 : 1e8;
+  else
+    return 0;
+}
+
+static inline void
+session_wrk_set_state (session_worker_t *wrk, session_wrk_state_t state)
+{
+  u64 time_ns;
+
+  wrk->state = state;
+  time_ns = session_wrk_tfd_timeout (state, wrk->vm->thread_index);
+  session_wrk_timerfd_update (wrk, time_ns);
+}
+
 static transport_endpt_ext_cfg_t *
 session_mq_get_ext_config (application_t *app, uword offset)
 {
@@ -170,7 +205,7 @@ session_mq_handle_connects_rpc (void *arg)
   u32 max_connects = 32, n_connects = 0;
   vlib_main_t *vm = vlib_get_main ();
   session_evt_elt_t *he, *elt, *next;
-  session_worker_t *fwrk;
+  session_worker_t *fwrk, *wrk;
   u8 need_reschedule = 1;
 
   ASSERT (vlib_get_thread_index () == 0);
@@ -202,12 +237,37 @@ session_mq_handle_connects_rpc (void *arg)
 
   vlib_worker_thread_barrier_release (vm);
 
+  wrk = session_main_get_worker (0);
   if (need_reschedule)
     {
-      vlib_node_set_interrupt_pending (vm, session_queue_node.index);
-      elt = session_evt_alloc_ctrl (session_main_get_worker (0));
+//      vlib_node_set_interrupt_pending (vm, session_queue_node.index);
+      elt = session_evt_alloc_ctrl (wrk);
       elt->evt.event_type = SESSION_CTRL_EVT_RPC;
       elt->evt.rpc_args.fp = session_mq_handle_connects_rpc;
+    }
+
+  if (wrk->state == SESSION_WRK_INTERRUPT)
+    {
+      if (n_connects > 1)
+	{
+	  session_wrk_set_state (wrk, SESSION_WRK_POLLING);
+	  vlib_node_set_state (vm, session_queue_node.index,
+			       VLIB_NODE_STATE_POLLING);
+	  wrk->no_connect_loops = 0;
+	}
+    }
+  else if (wrk->state == SESSION_WRK_POLLING)
+    {
+      if (!n_connects)
+	{
+	  wrk->no_connect_loops += 1;
+	  if (wrk->no_connect_loops > 1000)
+	    {
+	      session_wrk_set_state (wrk, SESSION_WRK_INTERRUPT);
+	      vlib_node_set_state (vm, session_queue_node.index,
+		                   VLIB_NODE_STATE_INTERRUPT);
+	    }
+	}
     }
 }
 
@@ -1583,41 +1643,6 @@ session_wrk_handle_mq (session_worker_t *wrk, svm_msg_q_t *mq)
     }
 
   return n_to_dequeue;
-}
-
-static void
-session_wrk_timerfd_update (session_worker_t *wrk, u64 time_ns)
-{
-  struct itimerspec its;
-
-  its.it_value.tv_sec = 0;
-  its.it_value.tv_nsec = time_ns;
-  its.it_interval.tv_sec = 0;
-  its.it_interval.tv_nsec = its.it_value.tv_nsec;
-
-  if (timerfd_settime (wrk->timerfd, 0, &its, NULL) == -1)
-    clib_warning ("timerfd_settime");
-}
-
-always_inline u64
-session_wrk_tfd_timeout (session_wrk_state_t state, u32 thread_index)
-{
-  if (state == SESSION_WRK_INTERRUPT)
-    return thread_index ? 1e6 : vlib_num_workers () ? 5e8 : 1e6;
-  else if (state == SESSION_WRK_IDLE)
-    return thread_index ? 1e8 : vlib_num_workers () ? 5e8 : 1e8;
-  else
-    return 0;
-}
-
-static inline void
-session_wrk_set_state (session_worker_t *wrk, session_wrk_state_t state)
-{
-  u64 time_ns;
-
-  wrk->state = state;
-  time_ns = session_wrk_tfd_timeout (state, wrk->vm->thread_index);
-  session_wrk_timerfd_update (wrk, time_ns);
 }
 
 static void
