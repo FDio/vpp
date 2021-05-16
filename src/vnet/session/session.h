@@ -151,6 +151,8 @@ typedef struct session_worker_
   /** Flag that is set if main thread signaled to handle connects */
   u32 pending_connects_ntf;
 
+  u32 no_connect_loops;
+
 #if SESSION_DEBUG
   /** last event poll time by thread */
   clib_time_type_t last_event_poll;
