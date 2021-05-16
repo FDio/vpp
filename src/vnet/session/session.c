@@ -1822,6 +1822,7 @@ session_manager_main_enable (vlib_main_t * vm)
       wrk->vm = vlib_get_main_by_index (i);
       wrk->last_vlib_time = vlib_time_now (vm);
       wrk->last_vlib_us_time = wrk->last_vlib_time * CLIB_US_TIME_FREQ;
+      wrk->timerfd = -1;
       vec_validate (wrk->session_to_enqueue, smm->last_transport_proto_type);
 
       if (num_threads > 1)
@@ -1899,6 +1900,7 @@ session_node_enable_disable (u8 is_en)
       if (i == 0 && n_vlibs > 1)
 	{
 	  vlib_node_set_state (vm, session_queue_node.index, mstate);
+	  session_main_get_worker (0)->state = SESSION_WRK_INTERRUPT;
 	  if (is_en)
 	    {
 	      vlib_node_set_state (vm, session_queue_process_node.index,
