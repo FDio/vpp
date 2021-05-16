@@ -1899,6 +1899,7 @@ session_node_enable_disable (u8 is_en)
       if (i == 0 && n_vlibs > 1)
 	{
 	  vlib_node_set_state (vm, session_queue_node.index, mstate);
+	  session_main_get_worker (0)->state = SESSION_WRK_INTERRUPT;
 	  if (is_en)
 	    {
 	      vlib_node_set_state (vm, session_queue_process_node.index,
