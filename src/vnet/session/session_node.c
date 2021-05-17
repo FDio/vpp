@@ -1691,12 +1691,18 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
    * Handle control events
    */
 
-  ctrl_he = pool_elt_at_index (wrk->event_elts, wrk->ctrl_head);
-
-  clib_llist_foreach_safe (wrk->event_elts, evt_list, ctrl_he, elt, ({
-    clib_llist_remove (wrk->event_elts, evt_list, elt);
-    session_event_dispatch_ctrl (wrk, elt);
-  }));
+  ei = wrk->ctrl_head;
+  ctrl_he = pool_elt_at_index (wrk->event_elts, ei);
+  next_ei = clib_llist_next_index (ctrl_he, evt_list);
+  old_ti = clib_llist_prev_index (ctrl_he, evt_list);
+  while (ei != old_ti)
+    {
+      ei = next_ei;
+      elt = pool_elt_at_index (wrk->event_elts, next_ei);
+      next_ei = clib_llist_next_index (elt, evt_list);
+      clib_llist_remove (wrk->event_elts, evt_list, elt);
+      session_event_dispatch_ctrl (wrk, elt);
+    }
 
   SESSION_EVT (SESSION_EVT_DSP_CNTRS, CTRL_EVTS, wrk);
 
