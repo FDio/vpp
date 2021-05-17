@@ -128,6 +128,30 @@
       "revId": "c209e16e0930ade8be3d3f44d75cdecc10335b5b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6f940d78_e095e642",
+        "filename": "src/plugins/wireguard/wireguard_peer.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2021-05-17T15:38:13Z",
+      "side": 1,
+      "message": "Artem... my suggestion, simply try replacing here:\n\nfib_proto_to_link (allowed_ips[0].fp_proto)\n\nwith the address family of \u0026peer-\u003edst.addr.\n\nAnd try it.  Either cross AF lookup will work (in which case we are fine) or it won\u0027t (in which case we are really really not fine).\n\nI did a quick spot check to see if via the CLI it would add the route it does.  So definitely worth trying out :)",
+      "parentUuid": "95d88a16_2a5c2e16",
+      "range": {
+        "startLine": 258,
+        "startChar": 33,
+        "endLine": 258,
+        "endChar": 58
+      },
+      "revId": "c209e16e0930ade8be3d3f44d75cdecc10335b5b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
