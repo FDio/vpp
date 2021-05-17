@@ -1590,26 +1590,15 @@ class TestNAT44ED(NAT44EDTestCase):
         for p in capture:
             self.assertEqual(p[IP].dst, backend)
 
-    def test_multiple_vrf(self):
-        """ NAT44ED Multiple VRF setup """
+    def test_multiple_vrf_1(self):
+        """ Multiple VRF - both client & service in VRF1 """
 
         external_addr = '1.2.3.4'
         external_port = 80
         local_port = 8080
         port = 0
 
-        self.vapi.nat44_forwarding_enable_disable(enable=1)
-        self.nat_add_address(self.nat_addr)
         flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
-            sw_if_index=self.pg0.sw_if_index,
-            is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
-            sw_if_index=self.pg0.sw_if_index,
-            is_add=1, flags=flags)
-        self.vapi.nat44_interface_add_del_output_feature(
-            sw_if_index=self.pg1.sw_if_index,
-            is_add=1)
         self.vapi.nat44_interface_add_del_feature(
             sw_if_index=self.pg5.sw_if_index,
             is_add=1)
@@ -1623,17 +1612,7 @@ class TestNAT44ED(NAT44EDTestCase):
         self.nat_add_static_mapping(self.pg5.remote_ip4, external_addr,
                                     local_port, external_port, vrf_id=1,
                                     proto=IP_PROTOS.tcp, flags=flags)
-        self.nat_add_static_mapping(
-            self.pg0.remote_ip4,
-            external_sw_if_index=self.pg0.sw_if_index,
-            local_port=local_port,
-            vrf_id=0,
-            external_port=external_port,
-            proto=IP_PROTOS.tcp,
-            flags=flags
-        )
 
-        # from client to service (both VRF1)
         p = (Ether(src=self.pg6.remote_mac, dst=self.pg6.local_mac) /
              IP(src=self.pg6.remote_ip4, dst=external_addr) /
              TCP(sport=12345, dport=external_port))
@@ -1652,7 +1631,6 @@ class TestNAT44ED(NAT44EDTestCase):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
-        # from service back to client (both VRF1)
         p = (Ether(src=self.pg5.remote_mac, dst=self.pg5.local_mac) /
              IP(src=self.pg5.remote_ip4, dst=self.pg6.remote_ip4) /
              TCP(sport=local_port, dport=12345))
@@ -1671,7 +1649,30 @@ class TestNAT44ED(NAT44EDTestCase):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
-        # dynamic NAT from VRF1 to VRF0 (output-feature)
+    def test_multiple_vrf_2(self):
+        """ Multiple VRF - dynamic NAT from VRF1 to VRF0 (output-feature) """
+
+        external_addr = '1.2.3.4'
+        external_port = 80
+        local_port = 8080
+        port = 0
+
+        self.nat_add_address(self.nat_addr)
+        flags = self.config_flags.NAT_IS_INSIDE
+        self.vapi.nat44_interface_add_del_output_feature(
+            sw_if_index=self.pg1.sw_if_index,
+            is_add=1)
+        self.vapi.nat44_interface_add_del_feature(
+            sw_if_index=self.pg5.sw_if_index,
+            is_add=1)
+        self.vapi.nat44_interface_add_del_feature(
+            sw_if_index=self.pg5.sw_if_index,
+            is_add=1, flags=flags)
+        flags = self.config_flags.NAT_IS_OUT2IN_ONLY
+        self.nat_add_static_mapping(self.pg5.remote_ip4, external_addr,
+                                    local_port, external_port, vrf_id=1,
+                                    proto=IP_PROTOS.tcp, flags=flags)
+
         p = (Ether(src=self.pg5.remote_mac, dst=self.pg5.local_mac) /
              IP(src=self.pg5.remote_ip4, dst=self.pg1.remote_ip4) /
              TCP(sport=2345, dport=22))
@@ -1707,6 +1708,35 @@ class TestNAT44ED(NAT44EDTestCase):
         except:
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
+
+    def test_multiple_vrf_3(self):
+        """ Multiple VRF - client in VRF1, service in VRF0 """
+
+        external_addr = '1.2.3.4'
+        external_port = 80
+        local_port = 8080
+        port = 0
+
+        flags = self.config_flags.NAT_IS_INSIDE
+        self.vapi.nat44_interface_add_del_feature(
+            sw_if_index=self.pg0.sw_if_index,
+            is_add=1)
+        self.vapi.nat44_interface_add_del_feature(
+            sw_if_index=self.pg0.sw_if_index,
+            is_add=1, flags=flags)
+        self.vapi.nat44_interface_add_del_feature(
+            sw_if_index=self.pg6.sw_if_index,
+            is_add=1)
+        flags = self.config_flags.NAT_IS_OUT2IN_ONLY
+        self.nat_add_static_mapping(
+            self.pg0.remote_ip4,
+            external_sw_if_index=self.pg0.sw_if_index,
+            local_port=local_port,
+            vrf_id=0,
+            external_port=external_port,
+            proto=IP_PROTOS.tcp,
+            flags=flags
+        )
 
         # from client VRF1 to service VRF0
         p = (Ether(src=self.pg6.remote_mac, dst=self.pg6.local_mac) /
@@ -1746,6 +1776,32 @@ class TestNAT44ED(NAT44EDTestCase):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
+    def test_multiple_vrf_4(self):
+        """ Multiple VRF - client in VRF0, service in VRF1 """
+
+        external_addr = '1.2.3.4'
+        external_port = 80
+        local_port = 8080
+        port = 0
+
+        flags = self.config_flags.NAT_IS_INSIDE
+        self.vapi.nat44_interface_add_del_feature(
+            sw_if_index=self.pg0.sw_if_index,
+            is_add=1)
+        self.vapi.nat44_interface_add_del_feature(
+            sw_if_index=self.pg0.sw_if_index,
+            is_add=1, flags=flags)
+        self.vapi.nat44_interface_add_del_feature(
+            sw_if_index=self.pg5.sw_if_index,
+            is_add=1)
+        self.vapi.nat44_interface_add_del_feature(
+            sw_if_index=self.pg5.sw_if_index,
+            is_add=1, flags=flags)
+        flags = self.config_flags.NAT_IS_OUT2IN_ONLY
+        self.nat_add_static_mapping(self.pg5.remote_ip4, external_addr,
+                                    local_port, external_port, vrf_id=1,
+                                    proto=IP_PROTOS.tcp, flags=flags)
+
         # from client VRF0 to service VRF1
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=external_addr) /
@@ -1783,6 +1839,45 @@ class TestNAT44ED(NAT44EDTestCase):
         except:
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
+
+    def test_multiple_vrf_5(self):
+        """ Multiple VRF - forwarding - no translation """
+
+        external_addr = '1.2.3.4'
+        external_port = 80
+        local_port = 8080
+        port = 0
+
+        self.vapi.nat44_forwarding_enable_disable(enable=1)
+        flags = self.config_flags.NAT_IS_INSIDE
+        self.vapi.nat44_interface_add_del_feature(
+            sw_if_index=self.pg0.sw_if_index,
+            is_add=1)
+        self.vapi.nat44_interface_add_del_feature(
+            sw_if_index=self.pg0.sw_if_index,
+            is_add=1, flags=flags)
+        self.vapi.nat44_interface_add_del_feature(
+            sw_if_index=self.pg5.sw_if_index,
+            is_add=1)
+        self.vapi.nat44_interface_add_del_feature(
+            sw_if_index=self.pg5.sw_if_index,
+            is_add=1, flags=flags)
+        self.vapi.nat44_interface_add_del_feature(
+            sw_if_index=self.pg6.sw_if_index,
+            is_add=1)
+        flags = self.config_flags.NAT_IS_OUT2IN_ONLY
+        self.nat_add_static_mapping(self.pg5.remote_ip4, external_addr,
+                                    local_port, external_port, vrf_id=1,
+                                    proto=IP_PROTOS.tcp, flags=flags)
+        self.nat_add_static_mapping(
+            self.pg0.remote_ip4,
+            external_sw_if_index=self.pg0.sw_if_index,
+            local_port=local_port,
+            vrf_id=0,
+            external_port=external_port,
+            proto=IP_PROTOS.tcp,
+            flags=flags
+        )
 
         # from client to server (both VRF1, no translation)
         p = (Ether(src=self.pg6.remote_mac, dst=self.pg6.local_mac) /
