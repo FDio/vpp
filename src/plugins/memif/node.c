@@ -140,39 +140,9 @@ memif_add_to_chain (vlib_main_t * vm, vlib_buffer_t * b, u32 * buffers,
     }
 }
 
-static_always_inline u32
-sat_sub (u32 x, u32 y)
-{
-  u32 res = x - y;
-  res &= -(res <= x);
-  return res;
-}
-
-/* branchless validation of the descriptor - uses saturated subtraction */
-static_always_inline u32
-memif_desc_is_invalid (memif_if_t * mif, memif_desc_t * d, u32 buffer_length)
-{
-  u32 rv;
-  u16 valid_flags = MEMIF_DESC_FLAG_NEXT;
-
-  rv = d->flags & (~valid_flags);
-  rv |= sat_sub (d->region + 1, vec_len (mif->regions));
-  rv |= sat_sub (d->length, buffer_length);
-  rv |= sat_sub (d->offset + d->length, mif->regions[d->region].region_size);
-
-  if (PREDICT_FALSE (rv))
-    {
-      mif->flags |= MEMIF_IF_FLAG_ERROR;
-      return 1;
-    }
-
-  return 0;
-}
-
 static_always_inline uword
-memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-			   vlib_frame_t * frame, memif_if_t * mif,
-			   memif_ring_type_t type, u16 qid,
+memif_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+			   memif_if_t *mif, memif_ring_type_t type, u16 qid,
 			   memif_interface_mode_t mode)
 {
   vnet_main_t *vnm = vnet_get_main ();
@@ -549,9 +519,9 @@ refill:
 }
 
 static_always_inline uword
-memif_device_input_zc_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-			      vlib_frame_t * frame, memif_if_t * mif,
-			      u16 qid, memif_interface_mode_t mode)
+memif_device_input_zc_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+			      memif_if_t *mif, u16 qid,
+			      memif_interface_mode_t mode)
 {
   vnet_main_t *vnm = vnet_get_main ();
   memif_main_t *mm = &memif_main;
@@ -610,9 +580,6 @@ memif_device_input_zc_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       b0->current_data = start_offset;
       b0->current_length = d0->length;
       n_rx_bytes += d0->length;
-
-      if (0 && memif_desc_is_invalid (mif, d0, buffer_length))
-	return 0;
 
       cur_slot++;
       n_slots--;
@@ -901,29 +868,29 @@ VLIB_NODE_FN (memif_input_node) (vlib_main_t * vm,
 	  if (mif->flags & MEMIF_IF_FLAG_ZERO_COPY)
 	    {
 	      if (mif->mode == MEMIF_INTERFACE_MODE_IP)
-		n_rx += memif_device_input_zc_inline (vm, node, frame, mif,
-						      qid, mode_ip);
+		n_rx +=
+		  memif_device_input_zc_inline (vm, node, mif, qid, mode_ip);
 	      else
-		n_rx += memif_device_input_zc_inline (vm, node, frame, mif,
-						      qid, mode_eth);
+		n_rx +=
+		  memif_device_input_zc_inline (vm, node, mif, qid, mode_eth);
 	    }
 	  else if (mif->flags & MEMIF_IF_FLAG_IS_SLAVE)
 	    {
 	      if (mif->mode == MEMIF_INTERFACE_MODE_IP)
 		n_rx += memif_device_input_inline (
-		  vm, node, frame, mif, MEMIF_RING_M2S, qid, mode_ip);
+		  vm, node, mif, MEMIF_RING_M2S, qid, mode_ip);
 	      else
 		n_rx += memif_device_input_inline (
-		  vm, node, frame, mif, MEMIF_RING_M2S, qid, mode_eth);
+		  vm, node, mif, MEMIF_RING_M2S, qid, mode_eth);
 	    }
 	  else
 	    {
 	      if (mif->mode == MEMIF_INTERFACE_MODE_IP)
 		n_rx += memif_device_input_inline (
-		  vm, node, frame, mif, MEMIF_RING_S2M, qid, mode_ip);
+		  vm, node, mif, MEMIF_RING_S2M, qid, mode_ip);
 	      else
 		n_rx += memif_device_input_inline (
-		  vm, node, frame, mif, MEMIF_RING_S2M, qid, mode_eth);
+		  vm, node, mif, MEMIF_RING_S2M, qid, mode_eth);
 	    }
 	}
     }
