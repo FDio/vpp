@@ -315,8 +315,8 @@ memif_interface_tx_zc_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 head, tail;
 
 retry:
-  slot = tail = __atomic_load_n (&ring->tail, __ATOMIC_ACQUIRE);
-  head = ring->head;
+  tail = __atomic_load_n (&ring->tail, __ATOMIC_ACQUIRE);
+  slot = head = ring->head;
 
   n_free = tail - mq->last_tail;
   if (n_free >= 16)
