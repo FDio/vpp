@@ -84,7 +84,7 @@ llist_test_basic (vlib_main_t * vm, unformat_input_t * input)
     }
 
   head = clib_llist_make_head (pelts, ll_test);
-  he = pool_elt_at_index (pelts, head);
+  he = clib_llist_elt (pelts, head);
 
   LLIST_TEST (he->ll_test.next == head, "head next points to itself");
   LLIST_TEST (he->ll_test.prev == head, "head prev points to itself");
@@ -96,9 +96,9 @@ llist_test_basic (vlib_main_t * vm, unformat_input_t * input)
   /*
    * Add and remove one element
    */
-  pool_get (pelts, e);
+  clib_llist_get (pelts, e);
   e->data = 1;
-  he = pool_elt_at_index (pelts, head);
+  he = clib_llist_elt (pelts, head);
   clib_llist_add (pelts, ll_test, e, he);
 
   LLIST_TEST (e->ll_test.next == head, "next should be head");
@@ -107,7 +107,7 @@ llist_test_basic (vlib_main_t * vm, unformat_input_t * input)
   LLIST_TEST (he->ll_test.next == e - pelts, "prev should be new");
 
   clib_llist_remove (pelts, ll_test, e);
-  pool_put (pelts, e);
+  clib_llist_put (pelts, e);
   LLIST_TEST (he->ll_test.prev == head, "prev should be head");
   LLIST_TEST (he->ll_test.prev == head, "next should be head");
   LLIST_TEST (he == clib_llist_next (pelts, ll_test, he),
@@ -120,13 +120,13 @@ llist_test_basic (vlib_main_t * vm, unformat_input_t * input)
    */
   for (i = 0; i < 100; i++)
     {
-      pool_get (pelts, e);
+      clib_llist_get (pelts, e);
       e->data = i;
-      he = pool_elt_at_index (pelts, head);
+      he = clib_llist_elt (pelts, head);
       clib_llist_add (pelts, ll_test, e, he);
     }
 
-  he = pool_elt_at_index (pelts, head);
+  he = clib_llist_elt (pelts, head);
   LLIST_TEST (!clib_llist_is_empty (pelts, ll_test, he),
 	      "shoud not be empty");
   list_test_is_sane (pelts, ll_test, he);
@@ -151,16 +151,16 @@ llist_test_basic (vlib_main_t * vm, unformat_input_t * input)
     {
       next = clib_llist_next (pelts, ll_test, e);
       clib_llist_remove (pelts, ll_test, e);
-      pool_put (pelts, e);
+      clib_llist_put (pelts, e);
       i--;
       e = next;
     }
 
-  he = pool_elt_at_index (pelts, head);
+  he = clib_llist_elt (pelts, head);
   list_test_is_sane (pelts, ll_test, he);
   LLIST_TEST (clib_llist_is_empty (pelts, ll_test, he),
 	      "list should be empty");
-  LLIST_TEST (pool_elts (pelts) == 1, "pool should have only 1 element");
+  LLIST_TEST (clib_llist_elts (pelts) == 1, "pool should have only 1 element");
 
   /*
    * Add tail elements to ll_test2 and test
@@ -168,13 +168,13 @@ llist_test_basic (vlib_main_t * vm, unformat_input_t * input)
   head2 = clib_llist_make_head (pelts, ll_test2);
   for (i = 0; i < 100; i++)
     {
-      pool_get (pelts, e);
+      clib_llist_get (pelts, e);
       e->data = i;
-      he2 = pool_elt_at_index (pelts, head2);
+      he2 = clib_llist_elt (pelts, head2);
       clib_llist_add_tail (pelts, ll_test2, e, he2);
     }
 
-  he2 = pool_elt_at_index (pelts, head2);
+  he2 = clib_llist_elt (pelts, head2);
   list_test_is_sane (pelts, ll_test2, he2);
   LLIST_TEST (!clib_llist_is_empty (pelts, ll_test2, he2),
 	      "list should not be empty");
@@ -193,7 +193,7 @@ llist_test_basic (vlib_main_t * vm, unformat_input_t * input)
    * Remove in from ll_test2 and add to ll_test
    */
   i = 0;
-  he = pool_elt_at_index (pelts, head);
+  he = clib_llist_elt (pelts, head);
   e = clib_llist_next (pelts, ll_test2, he2);
   while (e != he2)
     {
@@ -208,8 +208,8 @@ llist_test_basic (vlib_main_t * vm, unformat_input_t * input)
       e = next;
     }
 
-  he = pool_elt_at_index (pelts, head);
-  he2 = pool_elt_at_index (pelts, head2);
+  he = clib_llist_elt (pelts, head);
+  he2 = clib_llist_elt (pelts, head2);
   list_test_is_sane (pelts, ll_test, he);
   LLIST_TEST (!clib_llist_is_empty (pelts, ll_test, he),
 	      "shoud not be empty");
@@ -230,7 +230,7 @@ llist_test_basic (vlib_main_t * vm, unformat_input_t * input)
   /*
    * Delete and insert at random position
    */
-  e = pool_elt_at_index (pelts, head);
+  e = clib_llist_elt (pelts, head);
   for (i = 0; i < 10; i++)
     e = clib_llist_next (pelts, ll_test, e);
 
@@ -242,14 +242,14 @@ llist_test_basic (vlib_main_t * vm, unformat_input_t * input)
   LLIST_TEST (nnext->data == 11, "data should be 11");
 
   clib_llist_remove (pelts, ll_test, next);
-  pool_put (pelts, next);
+  clib_llist_put (pelts, next);
   memset (next, 0xfc, sizeof (*next));
 
   next = clib_llist_next (pelts, ll_test, e);
   LLIST_TEST (next->data == 11, "data should be 11");
   LLIST_TEST (next == nnext, "should be nnext");
 
-  pool_get (pelts, next);
+  clib_llist_get (pelts, next);
   next->data = 10;
   clib_llist_insert (pelts, ll_test, next, e);
 
@@ -258,7 +258,7 @@ llist_test_basic (vlib_main_t * vm, unformat_input_t * input)
   next = clib_llist_next (pelts, ll_test, next);
   LLIST_TEST (nnext == next, "next should be linked to old nnext");
 
-  he = pool_elt_at_index (pelts, head);
+  he = clib_llist_elt (pelts, head);
   list_test_is_sane (pelts, ll_test, he);
 
   /*
@@ -268,14 +268,14 @@ llist_test_basic (vlib_main_t * vm, unformat_input_t * input)
   head3 = clib_llist_make_head (pelts, ll_test);
   for (i = 0; i < 10; i++)
     {
-      pool_get (pelts, e);
+      clib_llist_get (pelts, e);
       e->data = 300 + i;
-      he3 = pool_elt_at_index (pelts, head3);
+      he3 = clib_llist_elt (pelts, head3);
       clib_llist_add (pelts, ll_test, e, he3);
     }
 
-  he = pool_elt_at_index (pelts, head);
-  he3 = pool_elt_at_index (pelts, head3);
+  he = clib_llist_elt (pelts, head);
+  he3 = clib_llist_elt (pelts, head3);
   list_test_is_sane (pelts, ll_test, he3);
   e = clib_llist_prev (pelts, ll_test, he);
   old_tail = e->data;
@@ -304,7 +304,7 @@ llist_test_basic (vlib_main_t * vm, unformat_input_t * input)
   /*
    * Cleanup
    */
-  pool_free (pelts);
+  clib_llist_free (pelts);
   return 0;
 }
 
