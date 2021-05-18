@@ -608,6 +608,8 @@ typedef struct snat_main_s
 
   /* counters */
   vlib_simple_counter_main_t total_sessions;
+  u32 max_cfg_sessions_gauge; /* Index of max configured sessions gauge in
+				 stats */
 
 #define _(x) vlib_simple_counter_main_t x;
   struct
