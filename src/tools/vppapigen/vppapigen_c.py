@@ -1344,6 +1344,8 @@ def generate_c_boilerplate(services, defines, counters, file_crc,
               '   .cleanup = vl_noop_handler,\n'
               '   .endian = vl_api_{n}_t_endian,\n'
               '   .print = vl_api_{n}_t_print,\n'
+              '   .traced = 1,\n'
+              '   .replay = 1,\n'
               '   .is_autoendian = {auto}}};\n'
               .format(n=s.caller, ID=s.caller.upper(),
                       auto=d.autoendian))
