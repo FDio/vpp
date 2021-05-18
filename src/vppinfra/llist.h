@@ -52,6 +52,24 @@ typedef struct clib_llist_anchor
  */
 #define clib_llist_entry_index(LP,E) ((E) - (LP))
 /**
+ * Get list elt at index
+ *
+ * @param LP 	linked list pool
+ * @param EI	element index
+ * @return	element
+ */
+#define clib_llist_elt(LP, EI) pool_elt_at_index (LP, EI)
+/**
+ * Get number of elements in supporting container
+ *
+ * This is not the elements linked in the list but the number of
+ * elements consumed out of the supporting pool
+ *
+ * @param LP 	linked list pool
+ * @return	number of elements
+ */
+#define clib_llist_elts(LP) pool_elts (LP)
+/**
  * Get prev list entry index
  *
  * @param E	pool entry
