@@ -589,7 +589,7 @@ dtls_session_connected_cb (u32 app_wrk_index, u32 ctx_handle, session_t *us,
 {
   tls_ctx_t *ctx;
 
-  ctx = tls_ctx_get_w_thread (ctx_handle, 1 /* udp allocs on thread 1 */);
+  ctx = tls_ctx_get_w_thread (ctx_handle, transport_cl_thread ());
 
   ctx->tls_session_handle = session_handle (us);
   ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
@@ -1190,8 +1190,8 @@ dtls_connect (transport_endpoint_cfg_t *tep)
       return -1;
     }
 
-  ctx_handle = tls_ctx_alloc_w_thread (engine_type, 1 /* because of udp */);
-  ctx = tls_ctx_get_w_thread (ctx_handle, 1);
+  ctx_handle = tls_ctx_alloc_w_thread (engine_type, transport_cl_thread ());
+  ctx = tls_ctx_get_w_thread (ctx_handle, transport_cl_thread ());
   ctx->parent_app_wrk_index = sep->app_wrk_index;
   ctx->parent_app_api_context = sep->opaque;
   ctx->tcp_is_ip4 = sep->is_ip4;
@@ -1226,7 +1226,7 @@ static transport_connection_t *
 dtls_half_open_get (u32 ho_index)
 {
   tls_ctx_t *ho_ctx;
-  ho_ctx = tls_ctx_get_w_thread (ho_index, 1 /* udp connects */);
+  ho_ctx = tls_ctx_get_w_thread (ho_index, transport_cl_thread ());
   return &ho_ctx->connection;
 }
 
@@ -1240,7 +1240,7 @@ static void
 dtls_cleanup_ho (u32 ho_index)
 {
   tls_ctx_t *ctx;
-  ctx = tls_ctx_get_w_thread (ho_index, 1 /* udp connects */);
+  ctx = tls_ctx_get_w_thread (ho_index, transport_cl_thread ());
   tls_ctx_free (ctx);
 }
 
@@ -1252,7 +1252,7 @@ format_dtls_half_open (u8 *s, va_list *args)
   tls_ctx_t *ho_ctx;
   session_t *us;
 
-  ho_ctx = tls_ctx_get_w_thread (ho_index, 1 /* udp connects */);
+  ho_ctx = tls_ctx_get_w_thread (ho_index, transport_cl_thread ());
 
   us = session_get_from_handle (ho_ctx->tls_session_handle);
   s = format (s, "[%d:%d][%s] half-open app_wrk %u engine %u us %d:%d",
