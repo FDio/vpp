@@ -172,7 +172,7 @@ typedef struct
     MEMIF_CACHELINE_ALIGN_MARK (cacheline1);
   volatile uint16_t tail;
     MEMIF_CACHELINE_ALIGN_MARK (cacheline2);
-  memif_desc_t desc[0];
+    memif_desc_t desc[];
 } memif_ring_t;
 
 #endif /* _MEMIF_H_ */
