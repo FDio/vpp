@@ -189,6 +189,9 @@ typedef struct session_main_
    * Trade memory for speed, for now */
   u32 *session_type_to_next;
 
+  /** Thread for half-opens and cl allocs */
+  u32 transport_ho_cl_thread;
+
   transport_proto_t last_transport_proto_type;
 
   /*
@@ -603,6 +606,12 @@ transport_add_tx_event (transport_connection_t * tc)
   if (svm_fifo_has_event (s->tx_fifo))
     return;
   session_send_io_evt_to_thread (s->tx_fifo, SESSION_IO_EVT_TX);
+}
+
+always_inline u32
+transport_ho_cl_thread (void)
+{
+  return session_main.transport_ho_cl_thread;
 }
 
 /*

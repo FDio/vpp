@@ -853,7 +853,10 @@ transport_init (void)
 			 smm->local_endpoints_table_memory);
   num_threads = 1 /* main thread */  + vtm->n_threads;
   if (num_threads > 1)
-    clib_spinlock_init (&local_endpoints_lock);
+    {
+      clib_spinlock_init (&local_endpoints_lock);
+      smm->transport_ho_cl_thread = 1;
+    }
 }
 
 /*

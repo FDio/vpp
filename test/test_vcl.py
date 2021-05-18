@@ -466,9 +466,9 @@ class VCLThruHostStackDTLS(VCLTestCase):
 
         self.thru_host_stack_setup()
         self.client_uni_dir_dtls_timeout = 20
-        self.server_dtls_args = ["-p dtls", self.server_port]
+        self.server_dtls_args = ["-p", "dtls", self.server_port]
         self.client_uni_dir_dtls_test_args = ["-N", "1000", "-U", "-X",
-                                              "-p dtls", "-T 1400",
+                                              "-p", "dtls", "-T 1400",
                                               self.loop0.local_ip4,
                                               self.server_port]
 
