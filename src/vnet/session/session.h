@@ -254,32 +254,18 @@ typedef enum session_q_process_evt_
 #define TRANSPORT_PROTO_INVALID (session_main.last_transport_proto_type + 1)
 #define TRANSPORT_N_PROTOS (session_main.last_transport_proto_type + 1)
 
-static inline session_evt_elt_t *
-session_evt_elt_alloc (session_worker_t * wrk)
-{
-  session_evt_elt_t *elt;
-  pool_get (wrk->event_elts, elt);
-  return elt;
-}
-
-static inline void
-session_evt_elt_free (session_worker_t * wrk, session_evt_elt_t * elt)
-{
-  pool_put (wrk->event_elts, elt);
-}
-
 static inline void
 session_evt_add_old (session_worker_t * wrk, session_evt_elt_t * elt)
 {
   clib_llist_add_tail (wrk->event_elts, evt_list, elt,
-		       pool_elt_at_index (wrk->event_elts, wrk->old_head));
+		       clib_llist_elt (wrk->event_elts, wrk->old_head));
 }
 
 static inline void
 session_evt_add_head_old (session_worker_t * wrk, session_evt_elt_t * elt)
 {
   clib_llist_add (wrk->event_elts, evt_list, elt,
-		  pool_elt_at_index (wrk->event_elts, wrk->old_head));
+		  clib_llist_elt (wrk->event_elts, wrk->old_head));
 }
 
 
@@ -295,9 +281,9 @@ static inline session_evt_elt_t *
 session_evt_alloc_ctrl (session_worker_t * wrk)
 {
   session_evt_elt_t *elt;
-  elt = session_evt_elt_alloc (wrk);
+  clib_llist_get (wrk->event_elts, elt);
   clib_llist_add_tail (wrk->event_elts, evt_list, elt,
-		       pool_elt_at_index (wrk->event_elts, wrk->ctrl_head));
+		       clib_llist_elt (wrk->event_elts, wrk->ctrl_head));
   return elt;
 }
 
@@ -319,9 +305,9 @@ static inline session_evt_elt_t *
 session_evt_alloc_new (session_worker_t * wrk)
 {
   session_evt_elt_t *elt;
-  elt = session_evt_elt_alloc (wrk);
+  clib_llist_get (wrk->event_elts, elt);
   clib_llist_add_tail (wrk->event_elts, evt_list, elt,
-		       pool_elt_at_index (wrk->event_elts, wrk->new_head));
+		       clib_llist_elt (wrk->event_elts, wrk->new_head));
   return elt;
 }
 
@@ -329,9 +315,9 @@ static inline session_evt_elt_t *
 session_evt_alloc_old (session_worker_t * wrk)
 {
   session_evt_elt_t *elt;
-  elt = session_evt_elt_alloc (wrk);
+  clib_llist_get (wrk->event_elts, elt);
   clib_llist_add_tail (wrk->event_elts, evt_list, elt,
-		       pool_elt_at_index (wrk->event_elts, wrk->old_head));
+		       clib_llist_elt (wrk->event_elts, wrk->old_head));
   return elt;
 }
 

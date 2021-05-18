@@ -455,9 +455,9 @@ session_cli_show_events_thread (vlib_main_t * vm, u32 thread_index)
 
   vlib_cli_output (vm, "Thread %d:\n", thread_index);
   vlib_cli_output (vm, " evt elements alloc: %u",
-		   pool_elts (wrk->event_elts));
+		   clib_llist_elts (wrk->event_elts));
   vlib_cli_output (vm, " ctrl evt elt data alloc: %d",
-		   pool_elts (wrk->ctrl_evts_data));
+		   clib_llist_elts (wrk->ctrl_evts_data));
 }
 
 static void
