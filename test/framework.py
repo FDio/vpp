@@ -1727,8 +1727,9 @@ class Worker(Thread):
         env.update(self.env)
         env["CK_LOG_FILE_NAME"] = "-"
         self.process = subprocess.Popen(
-            self.args, shell=False, env=env, preexec_fn=os.setpgrp,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            ['stdbuf', '-o0', '-e0'] + self.args, shell=False, env=env,
+            preexec_fn=os.setpgrp, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
         self.wait_for_enter()
         out, err = self.process.communicate()
         self.logger.debug("Finished running `{app}'".format(app=self.app_name))
