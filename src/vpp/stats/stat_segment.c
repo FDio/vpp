@@ -387,6 +387,7 @@ vlib_stats_pop_heap2 (u64 * error_vector, u32 thread_index, void *oldheap,
  * Create a new entry and add name to directory hash.
  * Returns ~0 if name exists.
  * Called from main heap.
+ * The name is either C-string or nul-terminated vector
  */
 u32
 stat_segment_new_entry (u8 *name, stat_directory_type_t t)
@@ -404,7 +405,7 @@ stat_segment_new_entry (u8 *name, stat_directory_type_t t)
 
   memset (&e, 0, sizeof (e));
   e.type = t;
-  memcpy (e.name, name, vec_len (name));
+  strcpy_s (e.name, sizeof(e.name), (char *)name);
 
   oldheap = vlib_stats_push_heap (NULL);
   vlib_stat_segment_lock ();
