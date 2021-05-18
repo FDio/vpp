@@ -216,7 +216,7 @@ session_mq_handle_connects_rpc (void *arg)
 
   vlib_worker_thread_barrier_sync (vm);
 
-  he = pool_elt_at_index (fwrk->event_elts, fwrk->pending_connects);
+  he = clib_llist_elt (fwrk->event_elts, fwrk->pending_connects);
   elt = clib_llist_next (fwrk->event_elts, evt_list, he);
 
   /* Avoid holding the barrier for too long */
@@ -225,7 +225,7 @@ session_mq_handle_connects_rpc (void *arg)
       next = clib_llist_next (fwrk->event_elts, evt_list, elt);
       clib_llist_remove (fwrk->event_elts, evt_list, elt);
       session_mq_connect_one (session_evt_ctrl_data (fwrk, elt));
-      session_evt_elt_free (fwrk, elt);
+      clib_llist_put (fwrk->event_elts, elt);
       elt = next;
       n_connects += 1;
     }
@@ -289,7 +289,7 @@ session_mq_connect_handler (session_worker_t *wrk, session_evt_elt_t *elt)
     }
 
   /* Add to pending list to be handled by main thread */
-  he = pool_elt_at_index (wrk->event_elts, wrk->pending_connects);
+  he = clib_llist_elt (wrk->event_elts, wrk->pending_connects);
   clib_llist_add_tail (wrk->event_elts, evt_list, elt, he);
 
   if (!wrk->pending_connects_ntf)
@@ -1506,13 +1506,13 @@ session_event_dispatch_ctrl (session_worker_t * wrk, session_evt_elt_t * elt)
     }
 
   /* Regrab elements in case pool moved */
-  elt = pool_elt_at_index (wrk->event_elts, ei);
+  elt = clib_llist_elt (wrk->event_elts, ei);
   if (!clib_llist_elt_is_linked (elt, evt_list))
     {
       e = &elt->evt;
       if (e->event_type >= SESSION_CTRL_EVT_BOUND)
 	session_evt_ctrl_data_free (wrk, elt);
-      session_evt_elt_free (wrk, elt);
+      clib_llist_put (wrk->event_elts, elt);
     }
   SESSION_EVT (SESSION_EVT_COUNTS, CNT_CTRL_EVTS, 1, wrk);
 }
@@ -1571,9 +1571,9 @@ session_event_dispatch_io (session_worker_t * wrk, vlib_node_runtime_t * node,
   SESSION_EVT (SESSION_IO_EVT_COUNTS, e->event_type, 1, wrk);
 
   /* Regrab elements in case pool moved */
-  elt = pool_elt_at_index (wrk->event_elts, ei);
+  elt = clib_llist_elt (wrk->event_elts, ei);
   if (!clib_llist_elt_is_linked (elt, evt_list))
-    session_evt_elt_free (wrk, elt);
+    clib_llist_put (wrk->event_elts, elt);
 }
 
 /* *INDENT-OFF* */
@@ -1650,7 +1650,7 @@ session_wrk_update_state (session_worker_t *wrk)
 
   if (wrk->state == SESSION_WRK_POLLING)
     {
-      if (pool_elts (wrk->event_elts) == 3 &&
+      if (clib_llist_elts (wrk->event_elts) == 4 &&
 	  vlib_last_vectors_per_main_loop (vm) < 1)
 	{
 	  session_wrk_set_state (wrk, SESSION_WRK_INTERRUPT);
@@ -1660,7 +1660,7 @@ session_wrk_update_state (session_worker_t *wrk)
     }
   else if (wrk->state == SESSION_WRK_INTERRUPT)
     {
-      if (pool_elts (wrk->event_elts) > 3 ||
+      if (clib_llist_elts (wrk->event_elts) > 4 ||
 	  vlib_last_vectors_per_main_loop (vm) > 1)
 	{
 	  session_wrk_set_state (wrk, SESSION_WRK_POLLING);
@@ -1674,7 +1674,7 @@ session_wrk_update_state (session_worker_t *wrk)
     }
   else
     {
-      if (pool_elts (wrk->event_elts))
+      if (clib_llist_elts (wrk->event_elts))
 	{
 	  session_wrk_set_state (wrk, SESSION_WRK_INTERRUPT);
 	}
@@ -1715,13 +1715,13 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
    */
 
   ei = wrk->ctrl_head;
-  ctrl_he = pool_elt_at_index (wrk->event_elts, ei);
+  ctrl_he = clib_llist_elt (wrk->event_elts, ei);
   next_ei = clib_llist_next_index (ctrl_he, evt_list);
   old_ti = clib_llist_prev_index (ctrl_he, evt_list);
   while (ei != old_ti)
     {
       ei = next_ei;
-      elt = pool_elt_at_index (wrk->event_elts, next_ei);
+      elt = clib_llist_elt (wrk->event_elts, next_ei);
       next_ei = clib_llist_next_index (elt, evt_list);
       clib_llist_remove (wrk->event_elts, evt_list, elt);
       session_event_dispatch_ctrl (wrk, elt);
@@ -1733,14 +1733,14 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
    * Handle the new io events.
    */
 
-  new_he = pool_elt_at_index (wrk->event_elts, wrk->new_head);
-  old_he = pool_elt_at_index (wrk->event_elts, wrk->old_head);
+  new_he = clib_llist_elt (wrk->event_elts, wrk->new_head);
+  old_he = clib_llist_elt (wrk->event_elts, wrk->old_head);
   old_ti = clib_llist_prev_index (old_he, evt_list);
 
   ei = clib_llist_next_index (new_he, evt_list);
   while (ei != wrk->new_head && n_tx_packets < SESSION_NODE_FRAME_SIZE)
     {
-      elt = pool_elt_at_index (wrk->event_elts, ei);
+      elt = clib_llist_elt (wrk->event_elts, ei);
       ei = clib_llist_next_index (elt, evt_list);
       clib_llist_remove (wrk->event_elts, evt_list, elt);
       session_event_dispatch_io (wrk, node, elt, &n_tx_packets);
@@ -1754,12 +1754,12 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   if (old_ti != wrk->old_head)
     {
-      old_he = pool_elt_at_index (wrk->event_elts, wrk->old_head);
+      old_he = clib_llist_elt (wrk->event_elts, wrk->old_head);
       ei = clib_llist_next_index (old_he, evt_list);
 
       while (n_tx_packets < SESSION_NODE_FRAME_SIZE)
 	{
-	  elt = pool_elt_at_index (wrk->event_elts, ei);
+	  elt = clib_llist_elt (wrk->event_elts, ei);
 	  next_ei = clib_llist_next_index (elt, evt_list);
 	  clib_llist_remove (wrk->event_elts, evt_list, elt);
 
