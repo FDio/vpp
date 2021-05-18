@@ -56,6 +56,9 @@ typedef struct session_tx_context_
   u8 n_bufs_per_seg;
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
   session_dgram_hdr_t hdr;
+
+  /** Vector of tx buffer free lists */
+  u32 *tx_buffers;
 } session_tx_context_t;
 
 typedef struct session_evt_elt
@@ -114,9 +117,6 @@ typedef struct session_worker_
 
   /** Context for session tx */
   session_tx_context_t ctx;
-
-  /** Vector of tx buffer free lists */
-  u32 *tx_buffers;
 
   /** Pool of session event list elements */
   session_evt_elt_t *event_elts;
