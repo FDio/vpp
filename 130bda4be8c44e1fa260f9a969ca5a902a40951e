@@ -16,6 +16,24 @@
       "revId": "130bda4be8c44e1fa260f9a969ca5a902a40951e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7abd6585_e9bda191",
+        "filename": "src/vnet/gso/gro_func.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 473,
+      "author": {
+        "id": 1632
+      },
+      "writtenOn": "2021-05-19T20:42:02Z",
+      "side": 1,
+      "message": "I think if the packet is small we don\u0027t want to create a flow, but if a flow exists we need to flush it - so we call gro_flow_table_get_flow instead of gro_flow_table_find_or_add_flow.",
+      "parentUuid": "291de17d_9daf543a",
+      "revId": "130bda4be8c44e1fa260f9a969ca5a902a40951e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
