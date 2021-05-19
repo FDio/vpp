@@ -329,6 +329,7 @@ vtc_worker_loop (void *arg)
 
   vtinf ("Starting test ...");
 
+      vtinf ("max fd index %u", wrk->max_fd_index);
   if (wrk->wrk_index == 0)
     clock_gettime (CLOCK_REALTIME, &ctrl->stats.start);
 
