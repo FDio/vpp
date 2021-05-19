@@ -112,7 +112,6 @@ extern vlib_log_class_registration_t avf_stats_log;
   _ (2, ADMIN_UP, "admin-up")                                                 \
   _ (3, VA_DMA, "vaddr-dma")                                                  \
   _ (4, LINK_UP, "link-up")                                                   \
-  _ (5, SHARED_TXQ_LOCK, "shared-txq-lock")                                   \
   _ (6, ELOG, "elog")                                                         \
   _ (7, PROMISC, "promisc")                                                   \
   _ (8, RX_INT, "rx-interrupts")                                              \
@@ -335,6 +334,7 @@ typedef struct
   u8 *name;
   int enable_elog;
   u16 rxq_num;
+  u16 txq_num;
   u16 rxq_size;
   u16 txq_size;
   /* return */

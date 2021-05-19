@@ -52,6 +52,8 @@ avf_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	args.txq_size = tmp;
       else if (unformat (line_input, "num-rx-queues %u", &tmp))
 	args.rxq_num = tmp;
+      else if (unformat (line_input, "num-tx-queues %u", &tmp))
+	args.txq_num = tmp;
       else if (unformat (line_input, "name %s", &args.name))
 	;
       else
