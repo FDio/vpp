@@ -385,6 +385,8 @@ app_worker_add_half_open (app_worker_t *app_wrk, session_handle_t sh)
 {
   session_handle_t *shp;
 
+  if (vlib_get_thread_index () !=0)
+    os_panic ();
   ASSERT (vlib_get_thread_index () == 0);
   pool_get (app_wrk->half_open_table, shp);
   *shp = sh;
@@ -397,6 +399,8 @@ app_worker_del_half_open (app_worker_t *app_wrk, session_t *s)
 {
   application_t *app = application_get (app_wrk->app_index);
   ASSERT (vlib_get_thread_index () <= 1);
+  if (s->ho_index == 0)
+    clib_warning ("PUT 0 session %u wrk %u", s->session_index, app_wrk->wrk_index);
   pool_put_index (app_wrk->half_open_table, s->ho_index);
   if (app->cb_fns.half_open_cleanup_callback)
     app->cb_fns.half_open_cleanup_callback (s);

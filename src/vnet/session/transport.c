@@ -307,7 +307,7 @@ transport_cleanup (transport_proto_t tp, u32 conn_index, u8 thread_index)
 void
 transport_cleanup_half_open (transport_proto_t tp, u32 conn_index)
 {
-  if (tp_vfts[tp].cleanup)
+  if (tp_vfts[tp].cleanup_ho)
     tp_vfts[tp].cleanup_ho (conn_index);
 }
 
