@@ -65,7 +65,7 @@
 #define VCL_TEST_CFG_TXBUF_SIZE_DEF  	8192
 #define VCL_TEST_CFG_RXBUF_SIZE_DEF  	(64*VCL_TEST_CFG_TXBUF_SIZE_DEF)
 #define VCL_TEST_CFG_BUF_SIZE_MIN    	128
-#define VCL_TEST_CFG_MAX_TEST_SESS 	32
+#define VCL_TEST_CFG_MAX_TEST_SESS	512
 #define VCL_TEST_CFG_MAX_EPOLL_EVENTS 	16
 
 #define VCL_TEST_CTRL_LISTENER		(~0 - 1)
@@ -415,16 +415,30 @@ vcl_test_time_diff (struct timespec *old, struct timespec *new)
 }
 
 static inline void
-vcl_test_stats_dump_inc (vcl_test_stats_t *old, vcl_test_stats_t *new)
+vcl_test_stats_dump_inc (vcl_test_session_t *ts, int is_rx)
 {
+  vcl_test_stats_t *old, *new;
   double duration, rate;
   uint64_t total_bytes;
+  char *dir_str;
 
+  old = &ts->old_stats;
+  new = &ts->stats;
   duration = vcl_test_time_diff (&old->stop, &new->stop);
 
-  total_bytes = new->tx_bytes - old->tx_bytes;
+  if (is_rx)
+    {
+      total_bytes = new->rx_bytes - old->rx_bytes;
+      dir_str = "Received";
+    }
+  else
+    {
+      total_bytes = new->tx_bytes - old->tx_bytes;
+      dir_str = "Sent";
+    }
+
   rate = (double) total_bytes * 8 / duration / 1e9;
-  printf ("Sent %lu Mbytes in %.2lf seconds %.2lf Gbps\n",
+  printf ("%d: %s %lu Mbytes in %.2lf seconds %.2lf Gbps\n", ts->fd, dir_str,
 	  (uint64_t) (total_bytes / 1e6), duration, rate);
 }
 
@@ -447,33 +461,32 @@ static inline int
 vcl_test_read (vcl_test_session_t *ts, void *buf, uint32_t nbytes)
 {
   vcl_test_stats_t *stats = &ts->stats;
-  int rx_bytes;
+  int rv, rx_bytes = 0;
 
   do
     {
       stats->rx_xacts++;
-      rx_bytes = vppcom_session_read (ts->fd, buf, nbytes);
-
-      if (rx_bytes < 0)
+      rv = vppcom_session_read (ts->fd, buf, nbytes);
+      if (rv <= 0)
 	{
-	  errno = -rx_bytes;
-	  rx_bytes = -1;
+	  errno = -rv;
+	  if (errno == EAGAIN || errno == EWOULDBLOCK)
+	    {
+	      stats->rx_eagain++;
+	      continue;
+	    }
+
+	  vterr ("vppcom_session_read()", -errno);
+	  break;
 	}
-      if ((rx_bytes == 0) ||
-	  ((rx_bytes < 0) && ((errno == EAGAIN) || (errno == EWOULDBLOCK))))
-	stats->rx_eagain++;
-      else if (rx_bytes < nbytes)
+
+      rx_bytes = rv;
+      if (rv < nbytes)
 	stats->rx_incomp++;
     }
-  while ((rx_bytes == 0) ||
-	 ((rx_bytes < 0) && ((errno == EAGAIN) || (errno == EWOULDBLOCK))));
+  while (!rx_bytes);
 
-  if (rx_bytes < 0)
-    {
-      vterr ("vppcom_session_read()", -errno);
-    }
-  else
-    stats->rx_bytes += rx_bytes;
+  stats->rx_bytes += rx_bytes;
 
   return (rx_bytes);
 }
@@ -533,7 +546,8 @@ vcl_test_write (vcl_test_session_t *ts, void *buf, uint32_t nbytes)
 
       nbytes_left = nbytes_left - rv;
       buf += rv;
-      stats->tx_incomp++;
+      if (rv < nbytes_left)
+	stats->tx_incomp++;
     }
   while (tx_bytes != nbytes);
 
