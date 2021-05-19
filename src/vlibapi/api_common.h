@@ -70,6 +70,7 @@ typedef struct vl_api_registration_
   u32 unprocessed_msg_length;	/**< Socket only: unprocssed length */
   u8 *output_vector;		/**< Socket only: output vector */
   int *additional_fds_to_close;
+  u8 *buf;
 
   /* socket client only */
   u32 server_handle;		/**< Socket client only: server handle */

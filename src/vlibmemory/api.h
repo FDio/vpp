@@ -44,6 +44,18 @@ vl_api_send_msg (vl_api_registration_t * rp, u8 * elem)
     }
 }
 
+always_inline void *
+vl_msg_api_alloc_w_reg (vl_api_registration_t *rp, int nbytes)
+{
+  if (PREDICT_FALSE (rp->registration_type > REGISTRATION_TYPE_SHMEM))
+    {
+      vec_validate (rp->buf, nbytes);
+      return rp->buf;
+    }
+
+  return vl_msg_api_alloc (nbytes);
+}
+
 always_inline int
 vl_api_can_send_msg (vl_api_registration_t * rp)
 {

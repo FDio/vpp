@@ -189,6 +189,7 @@ vl_socket_free_registration_index (u32 pool_index)
   vec_free (rp->name);
   vec_free (rp->unprocessed_input);
   vec_free (rp->output_vector);
+  vec_free (rp->buf);
   rp->registration_type = REGISTRATION_TYPE_FREE;
   pool_put (socket_main.registration_pool, rp);
 }
