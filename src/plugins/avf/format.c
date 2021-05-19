@@ -239,3 +239,22 @@ format_avf_vlan_caps (u8 *s, va_list *args)
 	      vc->offloads.ethertype_match);
   return s;
 }
+
+u8 *
+format_avf_eth_stats (u8 *s, va_list *args)
+{
+  virtchnl_eth_stats_t *es = va_arg (*args, virtchnl_eth_stats_t *);
+  u32 indent = format_get_indent (s);
+  u8 *v = 0;
+
+#define _(st)                                                                 \
+  if (v)                                                                      \
+    v = format (v, "\n%U", format_white_space, indent);                       \
+  v = format (v, "%-20s = %lu", #st, es->st);
+  foreach_virtchnl_eth_stats
+#undef _
+
+    s = format (s, "%v", v);
+  vec_free (v);
+  return s;
+}

@@ -85,6 +85,7 @@
 
 
 extern vlib_log_class_registration_t avf_log;
+extern vlib_log_class_registration_t avf_stats_log;
 
 #define avf_log_err(dev, f, ...)                        \
   vlib_log (VLIB_LOG_LEVEL_ERR, avf_log.class, "%U: " f, \
@@ -100,6 +101,10 @@ extern vlib_log_class_registration_t avf_log;
   vlib_log (VLIB_LOG_LEVEL_DEBUG, avf_log.class, "%U: " f, \
             format_vlib_pci_addr, &dev->pci_addr, \
             ## __VA_ARGS__)
+
+#define avf_stats_log_debug(dev, f, ...)                                      \
+  vlib_log (VLIB_LOG_LEVEL_DEBUG, avf_stats_log.class, "%U: " f,              \
+	    format_vlib_pci_addr, &dev->pci_addr, ##__VA_ARGS__)
 
 #define foreach_avf_device_flags                                              \
   _ (0, INITIALIZED, "initialized")                                           \
@@ -356,6 +361,7 @@ format_function_t format_avf_vf_cap_flags;
 format_function_t format_avf_vlan_supported_caps;
 format_function_t format_avf_vlan_caps;
 format_function_t format_avf_vlan_support;
+format_function_t format_avf_eth_stats;
 vnet_flow_dev_ops_function_t avf_flow_ops_fn;
 
 static_always_inline avf_device_t *

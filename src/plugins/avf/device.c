@@ -36,11 +36,14 @@
 #define PCI_DEVICE_ID_INTEL_X710_VF		0x154c
 #define PCI_DEVICE_ID_INTEL_X722_VF		0x37cd
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_LOG_CLASS (avf_log) = {
   .class_name = "avf",
 };
-/* *INDENT-ON* */
+
+VLIB_REGISTER_LOG_CLASS (avf_stats_log) = {
+  .class_name = "avf",
+  .subclass_name = "stats",
+};
 
 avf_main_t avf_main;
 void avf_delete_if (vlib_main_t * vm, avf_device_t * ad, int with_barrier);
@@ -815,13 +818,17 @@ avf_op_get_stats (vlib_main_t * vm, avf_device_t * ad,
 		  virtchnl_eth_stats_t * es)
 {
   virtchnl_queue_select_t qs = { 0 };
+  clib_error_t *err;
   qs.vsi_id = ad->vsi_id;
 
-  avf_log_debug (ad, "get_stats: vsi_id %u", ad->vsi_id);
+  err = avf_send_to_pf (vm, ad, VIRTCHNL_OP_GET_STATS, &qs,
+			sizeof (virtchnl_queue_select_t), es,
+			sizeof (virtchnl_eth_stats_t));
 
-  return avf_send_to_pf (vm, ad, VIRTCHNL_OP_GET_STATS,
-			 &qs, sizeof (virtchnl_queue_select_t),
-			 es, sizeof (virtchnl_eth_stats_t));
+  avf_stats_log_debug (ad, "get_stats: vsi_id %u\n  %U", ad->vsi_id,
+		       format_avf_eth_stats, es);
+
+  return err;
 }
 
 clib_error_t *
