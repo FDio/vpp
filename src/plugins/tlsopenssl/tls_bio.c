@@ -60,6 +60,7 @@ bio_tls_read (BIO * b, char *out, int outl)
   if (PREDICT_FALSE (!out))
     return 0;
 
+  errno = 0;
   s = bio_session (b);
   if (!s)
     {
@@ -70,12 +71,15 @@ bio_tls_read (BIO * b, char *out, int outl)
 
   rv = app_recv_stream_raw (s->rx_fifo, (u8 *) out, outl,
 			    0 /* clear evt */ , 0 /* peek */ );
+  BIO_clear_retry_flags (b);
   if (rv < 0)
     {
       BIO_set_retry_read (b);
       errno = EAGAIN;
       return -1;
     }
+  if (rv == 0)
+    clib_warning ("WHAT");
 
   if (svm_fifo_needs_deq_ntf (s->rx_fifo, rv))
     {
@@ -86,10 +90,10 @@ bio_tls_read (BIO * b, char *out, int outl)
   if (svm_fifo_is_empty_cons (s->rx_fifo))
     svm_fifo_unset_event (s->rx_fifo);
 
-  BIO_clear_retry_flags (b);
-
   return rv;
 }
+
+static int bflags[2000];
 
 static int
 bio_tls_write (BIO * b, const char *in, int inl)
@@ -101,6 +105,8 @@ bio_tls_write (BIO * b, const char *in, int inl)
   if (PREDICT_FALSE (!in))
     return 0;
 
+  errno = 0;
+
   s = bio_session (b);
   if (!s)
     {
@@ -109,18 +115,39 @@ bio_tls_write (BIO * b, const char *in, int inl)
       return -1;
     }
 
-  mq = session_main_get_vpp_event_queue (s->thread_index);
-  rv = app_send_stream_raw (s->tx_fifo, mq, (u8 *) in, inl,
-			    SESSION_IO_EVT_TX, 1 /* do_evt */ ,
-			    0 /* noblock */ );
+  BIO_clear_retry_flags (b);
+
+  if (svm_fifo_max_enqueue (s->tx_fifo) < (2 << 10))
+    {
+//      clib_warning ("s %u hit inl %u", s->session_index, inl);
+      BIO_set_retry_write (b);
+//      errno = EAGAIN;
+      return -1;
+    }
+
+  svm_fifo_seg_t seg = { (u8 *) in, inl };
+  rv = svm_fifo_enqueue_segments (s->tx_fifo, &seg, 1, 0);
+
+//  mq = session_main_get_vpp_event_queue (s->thread_index);
+//  rv = app_send_stream_raw (s->tx_fifo, mq, (u8 *) in, inl,
+//			    SESSION_IO_EVT_TX, 1 /* do_evt */ ,
+//			    0 /* noblock */ );
+
   if (rv < 0)
     {
+      clib_warning ("%u tx is full", s->session_index);
       BIO_set_retry_write (b);
+      bflags[s->session_index] = 1;
       errno = EAGAIN;
       return -1;
     }
 
-  BIO_clear_retry_flags (b);
+  mq = session_main_get_vpp_event_queue (s->thread_index);
+  if (svm_fifo_set_event (s->tx_fifo))
+    app_send_io_evt_to_vpp (mq, s->tx_fifo->shr->master_session_index,
+	                    SESSION_IO_EVT_TX, 0 /* noblock */);
+
+  bflags[s->session_index] = 0;
 
   return rv;
 }
@@ -139,17 +166,25 @@ bio_tls_ctrl (BIO * b, int cmd, long larg, void *ptr)
       ASSERT (0);
       break;
     case BIO_CTRL_GET_CLOSE:
+      clib_warning ("THIS 3");
       ret = BIO_get_shutdown (b);
       break;
     case BIO_CTRL_SET_CLOSE:
+      clib_warning ("THIS 4");
       BIO_set_shutdown (b, (int) larg);
       break;
     case BIO_CTRL_DUP:
     case BIO_CTRL_FLUSH:
+//      clib_warning ("THIS 5 %u", bio_session (b)->session_index);
       ret = 1;
       break;
     case BIO_CTRL_PENDING:
-      ret = 0;
+//      clib_warning ("THIS 6");
+      ret = svm_fifo_max_dequeue (bio_session (b)->rx_fifo);
+      break;
+    case BIO_CTRL_WPENDING:
+      clib_warning ("THIS 7");
+      ret = svm_fifo_max_dequeue (bio_session (b)->tx_fifo);
       break;
     default:
       ret = 0;
