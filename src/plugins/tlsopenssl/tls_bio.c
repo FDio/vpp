@@ -60,6 +60,7 @@ bio_tls_read (BIO * b, char *out, int outl)
   if (PREDICT_FALSE (!out))
     return 0;
 
+  errno = 0;
   s = bio_session (b);
   if (!s)
     {
@@ -70,6 +71,7 @@ bio_tls_read (BIO * b, char *out, int outl)
 
   rv = app_recv_stream_raw (s->rx_fifo, (u8 *) out, outl,
 			    0 /* clear evt */ , 0 /* peek */ );
+  BIO_clear_retry_flags (b);
   if (rv < 0)
     {
       BIO_set_retry_read (b);
@@ -86,8 +88,6 @@ bio_tls_read (BIO * b, char *out, int outl)
   if (svm_fifo_is_empty_cons (s->rx_fifo))
     svm_fifo_unset_event (s->rx_fifo);
 
-  BIO_clear_retry_flags (b);
-
   return rv;
 }
 
@@ -101,6 +101,8 @@ bio_tls_write (BIO * b, const char *in, int inl)
   if (PREDICT_FALSE (!in))
     return 0;
 
+  errno = 0;
+
   s = bio_session (b);
   if (!s)
     {
@@ -113,14 +115,14 @@ bio_tls_write (BIO * b, const char *in, int inl)
   rv = app_send_stream_raw (s->tx_fifo, mq, (u8 *) in, inl,
 			    SESSION_IO_EVT_TX, 1 /* do_evt */ ,
 			    0 /* noblock */ );
+  BIO_clear_retry_flags (b);
+
   if (rv < 0)
     {
       BIO_set_retry_write (b);
       errno = EAGAIN;
       return -1;
     }
-
-  BIO_clear_retry_flags (b);
 
   return rv;
 }
@@ -139,16 +141,20 @@ bio_tls_ctrl (BIO * b, int cmd, long larg, void *ptr)
       ASSERT (0);
       break;
     case BIO_CTRL_GET_CLOSE:
+      clib_warning ("THIS 3");
       ret = BIO_get_shutdown (b);
       break;
     case BIO_CTRL_SET_CLOSE:
+      clib_warning ("THIS 4");
       BIO_set_shutdown (b, (int) larg);
       break;
     case BIO_CTRL_DUP:
     case BIO_CTRL_FLUSH:
+//      clib_warning ("THIS 5 %u", bio_session (b)->session_index);
       ret = 1;
       break;
     case BIO_CTRL_PENDING:
+//      clib_warning ("THIS 6");
       ret = 0;
       break;
     default:

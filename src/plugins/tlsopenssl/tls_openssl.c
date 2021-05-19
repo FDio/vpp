@@ -171,10 +171,20 @@ openssl_read_from_ssl_into_fifo (svm_fifo_t * f, SSL * ssl)
   if (n_fs < 0)
     return 0;
 
+again:
   /* Return early if we can't read anything */
   read = SSL_read (ssl, fs[0].data, fs[0].len);
   if (read <= 0)
-    return 0;
+    {
+//      if (read < 0)
+
+      if (read < 0 && SSL_get_error(ssl, read) == 1)
+	goto again;
+
+      if (SSL_get_error (ssl, read) > 2)
+      clib_warning ("%u: %u", f->shr->master_session_index, SSL_get_error(ssl, read));
+      return 0;
+    }
 
   for (i = 1; i < n_fs; i++)
     {
@@ -205,6 +215,10 @@ openssl_write_from_fifo_into_ssl (svm_fifo_t *f, SSL *ssl, u32 max_len)
     {
       rv = SSL_write (ssl, fs[i].data, fs[i].len);
       wrote += (rv > 0) ? rv : 0;
+
+      if (rv < 0 &&  SSL_get_error (ssl, rv) > 2)
+	clib_warning ("%u: %u",f->shr->master_session_index, SSL_get_error (ssl, rv));
+//	os_panic ();
       if (rv < fs[i].len)
 	break;
       i++;
