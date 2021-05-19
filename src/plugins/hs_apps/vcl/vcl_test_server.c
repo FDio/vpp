@@ -58,6 +58,7 @@ typedef struct
   volatile int worker_fails;
   volatile int active_workers;
   u8 use_ds;
+  u8 incremental_stats;
 } vcl_test_server_main_t;
 
 vcl_test_main_t vcl_test_main;
@@ -101,10 +102,10 @@ again:
       if (!wrk->conn_pool[i].is_alloc)
 	{
 	  conn = &wrk->conn_pool[i];
+	  memset (conn, 0, sizeof (*conn));
 	  conn->endpt.ip = wrk->conn_pool[i].ip;
 	  conn->is_alloc = 1;
 	  conn->session_index = i;
-	  memset (&conn->stats, 0, sizeof (vcl_test_stats_t));
 	  vcl_test_cfg_init (&conn->cfg);
 	  return (&wrk->conn_pool[i]);
 	}
@@ -324,6 +325,7 @@ vts_accept_client (vcl_test_server_worker_t *wrk, int listen_fd)
   if (vsm->ctrl)
     conn->cfg = vsm->ctrl->cfg;
   vcl_test_session_buf_alloc (conn);
+  clock_gettime (CLOCK_REALTIME, &conn->old_stats.stop);
 
   tp = vcl_test_main.protos[vsm->server_cfg.proto];
   if (tp->accept (listen_fd, conn))
@@ -348,15 +350,15 @@ vts_accept_client (vcl_test_server_worker_t *wrk, int listen_fd)
 static void
 print_usage_and_exit (void)
 {
-  fprintf (stderr,
-	   "vcl_test_server [OPTIONS] <port>\n"
-	   "  OPTIONS\n"
-	   "  -h               Print this message and exit.\n"
-	   "  -6               Use IPv6\n"
-	   "  -w <num>         Number of workers\n"
-	   "  -p <PROTO>       Use <PROTO> transport layer\n"
-	   "  -D               Use UDP transport layer\n"
-	   "  -L               Use TLS transport layer\n");
+  fprintf (stderr, "vcl_test_server [OPTIONS] <port>\n"
+		   "  OPTIONS\n"
+		   "  -h               Print this message and exit.\n"
+		   "  -6               Use IPv6\n"
+		   "  -w <num>         Number of workers\n"
+		   "  -p <PROTO>       Use <PROTO> transport layer\n"
+		   "  -D               Use UDP transport layer\n"
+		   "  -L               Use TLS transport layer\n"
+		   "  -S	       Incremental stats\n");
   exit (1);
 }
 
@@ -406,7 +408,7 @@ vcl_test_server_process_opts (vcl_test_server_main_t * vsm, int argc,
   vsm->server_cfg.proto = VPPCOM_PROTO_TCP;
 
   opterr = 0;
-  while ((c = getopt (argc, argv, "6DLsw:hp:")) != -1)
+  while ((c = getopt (argc, argv, "6DLsw:hp:S")) != -1)
     switch (c)
       {
       case '6':
@@ -435,6 +437,9 @@ vcl_test_server_process_opts (vcl_test_server_main_t * vsm, int argc,
 	break;
       case 's':
 	vsm->use_ds = 1;
+	break;
+      case 'S':
+	vsm->incremental_stats = 1;
 	break;
       case '?':
 	switch (optopt)
@@ -578,6 +583,21 @@ vts_conn_read (vcl_test_session_t *conn)
     return conn->read (conn, conn->rxbuf, conn->rxbuf_size);
 }
 
+static void
+vts_inc_stats_check (vcl_test_session_t *ts)
+{
+  /* Avoid checking time too often because of syscall cost */
+  if (ts->stats.rx_bytes - ts->old_stats.rx_bytes < 1 << 20)
+    return;
+
+  clock_gettime (CLOCK_REALTIME, &ts->stats.stop);
+  if (vcl_test_time_diff (&ts->old_stats.stop, &ts->stats.stop) > 1)
+    {
+      vcl_test_stats_dump_inc (ts, 1 /* is_rx */);
+      ts->old_stats = ts->stats;
+    }
+}
+
 static void *
 vts_worker_loop (void *arg)
 {
@@ -700,6 +720,8 @@ vts_worker_loop (void *arg)
 	      if (vppcom_session_attr (conn->fd, VPPCOM_ATTR_GET_NREAD, 0, 0) >
 		  0)
 		goto read_again;
+	      if (vsm->incremental_stats)
+		vts_inc_stats_check (conn);
 	      continue;
 	    }
 	  else
