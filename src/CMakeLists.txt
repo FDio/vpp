@@ -89,7 +89,7 @@ set(CMAKE_C_FLAGS_RELEASE "")
 set(CMAKE_C_FLAGS_DEBUG "")
 
 if (${CMAKE_BUILD_TYPE_LC} MATCHES "release")
-  add_compile_options(-O3 -fstack-protector -fno-common)
+  add_compile_options(-O2 -fstack-protector -fno-common)
   add_compile_definitions(_FORTIFY_SOURCE=2)
   string(CONCAT CMAKE_EXE_LINKER_FLAGS_RELEASE "-pie")
 elseif (${CMAKE_BUILD_TYPE_LC} MATCHES "debug")
