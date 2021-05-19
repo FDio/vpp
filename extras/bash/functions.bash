@@ -29,14 +29,23 @@ vpp-make-test()
     local run_make_test
     local old_pwd
     local test_desc
+    local grep_results
+    local result
+    local fail
+    local i
+    local line
     local is_feature="false"
     local retry_count=100
     local tester=${GERRIT_USER:-$USER}
     local jobs="auto"
 
     if [ -z "$WS_ROOT" ] ; then
-        echo "ERROR: WS_ROOT is not set!"
-        return
+        if [ -d "./extras/bash" ] ; then
+            export WS_ROOT="$(pwd)"
+        else
+            echo "ERROR: WS_ROOT is not set!"
+            return
+        fi
     elif [ ! -d "$WS_ROOT/src/vppinfra" ] ; then
         echo "ERROR: WS_ROOT is not set to a VPP workspace!"
         return
