@@ -572,6 +572,12 @@ quic_connection_delete (quic_ctx_t * ctx)
   clib_bihash_kv_16_8_t kv;
   quicly_conn_t *conn;
 
+  if (ctx->conn == NULL)
+    {
+      QUIC_DBG (2, "Skipping redundant delete of connection %u",
+		ctx->c_c_index);
+      return;
+    }
   QUIC_DBG (2, "Deleting connection %u", ctx->c_c_index);
 
   QUIC_ASSERT (!quic_ctx_is_stream (ctx));
@@ -587,8 +593,8 @@ quic_connection_delete (quic_ctx_t * ctx)
 
   quic_disconnect_transport (ctx);
 
-  if (ctx->conn)
-    quicly_free (ctx->conn);
+  if (conn)
+    quicly_free (conn);
   session_transport_delete_notify (&ctx->connection);
 }
 
