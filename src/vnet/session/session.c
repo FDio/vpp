@@ -305,6 +305,7 @@ session_cleanup_half_open (session_handle_t ho_handle)
 {
   session_t *ho = session_get_from_handle (ho_handle);
 
+  clib_warning ("forced half-open cleanup %u", ho_handle);
   /* App transports can migrate their half-opens */
   if (ho->flags & SESSION_F_IS_MIGRATING)
     {
@@ -349,6 +350,7 @@ session_half_open_delete_notify (transport_connection_t *tc)
   /* Notification from ctrl thread accepted without rpc */
   if (tc->thread_index <= 1)
     {
+//      clib_warning ("request from transport %u to cleanup ho %u", tc->c_index, tc->s_index);
       session_half_open_free (ho_session_get (tc->s_index));
     }
   else
@@ -1366,6 +1368,8 @@ session_open_vc (session_endpoint_cfg_t *rmt, session_handle_t *rsh)
   ho->opaque = rmt->opaque;
   *rsh = session_handle (ho);
 
+  if (ho->ho_index == 0)
+    clib_warning ("GOT 0 session %u wrk %u", ho->session_index, app_wrk->wrk_index);
   if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
     session_lookup_add_half_open (tc, tc->c_index);
 

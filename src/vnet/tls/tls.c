@@ -208,6 +208,9 @@ tls_notify_app_accept (tls_ctx_t * ctx)
   return app_worker_accept_notify (app_wrk, app_session);
 }
 
+u8
+tls_ctx_handshake_is_over (tls_ctx_t * ctx);
+
 int
 tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
 {
@@ -222,12 +225,7 @@ tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
     }
 
   if (err)
-    {
-      /* Free app session pre-allocated when transport was established */
-      if (ctx->tls_type == TRANSPORT_PROTO_TLS)
-	session_free (session_get (ctx->c_s_index, ctx->c_thread_index));
-      goto failed;
-    }
+    goto failed;
 
   /* For DTLS the app session is not preallocated because the underlying udp
    * session might migrate to a different worker during the handshake */
@@ -269,6 +267,7 @@ tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
   return 0;
 
 failed:
+  clib_warning ("failed");
   ctx->no_app_session = 1;
   tls_disconnect (ctx->tls_ctx_handle, vlib_get_thread_index ());
   return app_worker_connect_notify (app_wrk, 0, err,
@@ -516,6 +515,15 @@ tls_app_rx_callback (session_t * tls_session)
 }
 
 int
+tls_session_rx_callback (transport_connection_t * tc)
+{
+  tls_ctx_t *ctx = (tls_ctx_t *) tc;
+
+  tls_ctx_read (ctx, session_get_from_handle (ctx->tls_session_handle));
+  return 0;
+}
+
+int
 tls_app_tx_callback (session_t * tls_session)
 {
   tls_ctx_t *ctx;
@@ -542,6 +550,8 @@ tls_session_connected_cb (u32 tls_app_index, u32 ho_ctx_index,
       app_worker_t *app_wrk;
       u32 api_context;
       int rv = 0;
+
+      clib_warning ("failed tcp handshake?!");
 
       app_wrk = app_worker_get_if_valid (ho_ctx->parent_app_wrk_index);
       if (app_wrk)
@@ -1002,7 +1012,7 @@ format_tls_ctx_state (u8 * s, va_list * args)
       else if (tls_ctx_handshake_is_over (ctx))
 	s = format (s, "%s", "ESTABLISHED");
       else
-	s = format (s, "%s", "HANDSHAKE");
+	s = format (s, "%s%d", "HANDSHAKE", ts->session_state);
     }
 
   return s;
@@ -1092,7 +1102,8 @@ tls_transport_listener_endpoint_get (u32 ctx_handle,
 static clib_error_t *
 tls_enable (vlib_main_t * vm, u8 is_en)
 {
-  u32 add_segment_size = 256 << 20, first_seg_size = 32 << 20;
+//  u32 add_segment_size = 256 << 20, first_seg_size = 32 << 20;
+  uword add_segment_size = 256 << 20, first_seg_size = 32ULL << 30;
   vnet_app_detach_args_t _da, *da = &_da;
   vnet_app_attach_args_t _a, *a = &_a;
   u64 options[APP_OPTIONS_N_OPTIONS];
@@ -1148,6 +1159,7 @@ static const transport_proto_vft_t tls_proto = {
   .get_half_open = tls_half_open_get,
   .cleanup_ho = tls_cleanup_ho,
   .custom_tx = tls_custom_tx_callback,
+  .app_rx_evt = tls_session_rx_callback,
   .format_connection = format_tls_connection,
   .format_half_open = format_tls_half_open,
   .format_listener = format_tls_listener,

@@ -174,14 +174,25 @@ openssl_read_from_ssl_into_fifo (svm_fifo_t * f, SSL * ssl)
   /* Return early if we can't read anything */
   read = SSL_read (ssl, fs[0].data, fs[0].len);
   if (read <= 0)
-    return 0;
+    {
+      if (SSL_get_error(ssl, read) == 1)
+	os_panic ();
+
+      return 0;
+    }
 
   for (i = 1; i < n_fs; i++)
     {
       rv = SSL_read (ssl, fs[i].data, fs[i].len);
       read += rv > 0 ? rv : 0;
 
-      if (rv < fs[i].len)
+      if (rv < 0 && SSL_get_error (ssl, rv) == 1)
+	{
+	  clib_warning("%u: %u", f->shr->master_session_index,
+		       SSL_get_error (ssl, rv));
+	  os_panic ();
+	}
+      if (rv < (int)fs[i].len)
 	break;
     }
 
@@ -195,7 +206,7 @@ openssl_write_from_fifo_into_ssl (svm_fifo_t *f, SSL *ssl, u32 max_len)
 {
   int wrote = 0, rv, i = 0, len;
   const int n_segs = 2;
-  svm_fifo_seg_t fs[n_segs];
+  svm_fifo_seg_t fs[n_segs] = {0};
 
   len = svm_fifo_segments (f, 0, fs, n_segs, max_len);
   if (len <= 0)
@@ -205,8 +216,16 @@ openssl_write_from_fifo_into_ssl (svm_fifo_t *f, SSL *ssl, u32 max_len)
     {
       rv = SSL_write (ssl, fs[i].data, fs[i].len);
       wrote += (rv > 0) ? rv : 0;
-      if (rv < fs[i].len)
+
+//	  clib_warning ("%u: rv %d reason %u",f->shr->master_session_index, rv, SSL_get_error (ssl, rv));
+      if (rv < 0 && SSL_get_error (ssl, rv) == 1)
+	os_panic ();
+
+      if (rv < (int)fs[i].len)
 	break;
+
+//      clib_warning ("i %u wrote %u rv %d %u %u", i, wrote, rv, fs[i].len,
+//                    rv < fs[i].len);
       i++;
     }
 
@@ -358,6 +377,15 @@ openssl_confirm_app_close (tls_ctx_t * ctx)
   session_transport_closed_notify (&ctx->connection);
 }
 
+static void
+validate_pair (tls_ctx_t *ctx, session_t *app_session)
+{
+  if (ctx->c_s_index != app_session->session_index)
+    os_panic ();
+  if (app_session->connection_index != ctx->c_c_index)
+    os_panic ();
+}
+
 static int
 openssl_ctx_write_tls (tls_ctx_t *ctx, session_t *app_session,
 		       transport_send_params_t *sp)
@@ -368,6 +396,7 @@ openssl_ctx_write_tls (tls_ctx_t *ctx, session_t *app_session,
   int wrote = 0;
   svm_fifo_t *f;
 
+  validate_pair (ctx, app_session);
   ts = session_get_from_handle (ctx->tls_session_handle);
   space = svm_fifo_max_enqueue_prod (ts->tx_fifo);
   /* Leave a bit of extra space for tls ctrl data, if any needed */
