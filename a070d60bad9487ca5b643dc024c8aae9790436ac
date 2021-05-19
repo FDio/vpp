@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "691aacfc_7d33fc9a",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1531,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2021-05-19T06:43:56Z",
+      "side": 1,
+      "message": "I have changed to vls_wrk, but vls_wrk must be grabbed before in order to access vls_wrk-\u003epending_wrk_cleanup.",
+      "parentUuid": "906b1013_01e5ecb9",
+      "range": {
+        "startLine": 1531,
+        "startChar": 34,
+        "endLine": 1531,
+        "endChar": 59
+      },
+      "revId": "a070d60bad9487ca5b643dc024c8aae9790436ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "d37297bb_60e195fc",
         "filename": "src/vcl/vcl_locked.c",
         "patchSetId": 6
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "76042916_9bb16507",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1579,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2021-05-19T06:43:56Z",
+      "side": 1,
+      "message": "Yes, and I have added to vls_app_exit for the second scenarios.",
+      "parentUuid": "d37297bb_60e195fc",
+      "range": {
+        "startLine": 1579,
+        "startChar": 50,
+        "endLine": 1579,
+        "endChar": 75
+      },
+      "revId": "a070d60bad9487ca5b643dc024c8aae9790436ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "b85588af_b306cd56",
         "filename": "src/vcl/vcl_locked.c",
         "patchSetId": 6
@@ -59,6 +107,30 @@
       "writtenOn": "2021-05-13T16:07:58Z",
       "side": 1,
       "message": "As you\u0027ve implemented the important parts in vls, let\u0027s store the state here as well. That is, you could grab the vls worker with vls_worker_get_current and store the indices there.",
+      "range": {
+        "startLine": 1581,
+        "startChar": 12,
+        "endLine": 1581,
+        "endChar": 36
+      },
+      "revId": "a070d60bad9487ca5b643dc024c8aae9790436ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3114b817_cd51c4f0",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1581,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2021-05-19T06:43:56Z",
+      "side": 1,
+      "message": "Yes, fixed!",
+      "parentUuid": "b85588af_b306cd56",
       "range": {
         "startLine": 1581,
         "startChar": 12,
