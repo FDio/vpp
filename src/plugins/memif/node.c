@@ -365,10 +365,10 @@ memif_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   while (n_from >= 8)
     {
-      b0 = vlib_get_buffer (vm, ptd->buffers[po[0].first_buffer_vec_index]);
-      b1 = vlib_get_buffer (vm, ptd->buffers[po[1].first_buffer_vec_index]);
-      b2 = vlib_get_buffer (vm, ptd->buffers[po[2].first_buffer_vec_index]);
-      b3 = vlib_get_buffer (vm, ptd->buffers[po[3].first_buffer_vec_index]);
+      b0 = vlib_get_buffer (vm, ptd->buffers[po[4].first_buffer_vec_index]);
+      b1 = vlib_get_buffer (vm, ptd->buffers[po[5].first_buffer_vec_index]);
+      b2 = vlib_get_buffer (vm, ptd->buffers[po[6].first_buffer_vec_index]);
+      b3 = vlib_get_buffer (vm, ptd->buffers[po[7].first_buffer_vec_index]);
 
       vlib_prefetch_buffer_header (b0, STORE);
       vlib_prefetch_buffer_header (b1, STORE);
