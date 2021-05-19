@@ -180,22 +180,24 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
       u32 thread_index;
       u32 queue_index = hi->tx_queue_indices[i];
       vnet_hw_if_tx_queue_t *txq = vnet_hw_if_get_tx_queue (vnm, queue_index);
+      uword n_threads = clib_bitmap_count_set_bits (txq->threads);
 
       clib_bitmap_foreach (thread_index, txq->threads)
 	{
 	  vnet_hw_if_output_node_runtime_t *rt;
 	  rt = vec_elt_at_index (new_out_runtimes, thread_index);
 	  if ((rt->frame.queue_id != txq->queue_id) ||
-	      (rt->frame.shared_queue != txq->shared_queue))
+	      (rt->n_threads != n_threads))
 	    {
 	      log_debug ("tx queue data changed for interface %v, thread %u "
-			 "(queue_id %u -> %u, shared_queue %u -> %u)",
+			 "(queue_id %u -> %u, n_threads %u -> %u)",
 			 hi->name, thread_index, rt->frame.queue_id,
-			 txq->queue_id, rt->frame.shared_queue,
-			 txq->shared_queue);
+			 txq->queue_id, rt->n_threads, n_threads);
 	      something_changed_on_tx = 1;
 	      rt->frame.queue_id = txq->queue_id;
 	      rt->frame.shared_queue = txq->shared_queue;
+	      rt->frame.shared_queue = n_threads > 1 ? 1 : 0;
+	      rt->n_threads = n_threads;
 	    }
 	}
     }
