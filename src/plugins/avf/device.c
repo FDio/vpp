@@ -287,7 +287,6 @@ avf_rxq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 rxq_size)
       d++;
     }
 
-  ad->n_rx_queues = clib_min (ad->num_queue_pairs, qid + 1);
   return 0;
 }
 
@@ -300,20 +299,11 @@ avf_txq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 txq_size)
   u8 bpi = vlib_buffer_pool_get_default_for_numa (vm,
 						  ad->numa_node);
 
-  if (qid >= ad->num_queue_pairs)
-    {
-      qid = qid % ad->num_queue_pairs;
-      txq = vec_elt_at_index (ad->txqs, qid);
-      ASSERT (txq->lock == 0);
-      clib_spinlock_init (&txq->lock);
-      ad->flags |= AVF_DEVICE_F_SHARED_TXQ_LOCK;
-      return 0;
-    }
-
   vec_validate_aligned (ad->txqs, qid, CLIB_CACHE_LINE_BYTES);
   txq = vec_elt_at_index (ad->txqs, qid);
   txq->size = txq_size;
   txq->next = 0;
+  clib_spinlock_init (&txq->lock);
 
   /* Prepare a placeholder buffer(s) to maintain a 1-1 relationship between
    * bufs and descs when a context descriptor is added in descs. Worst case
@@ -345,7 +335,6 @@ avf_txq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 txq_size)
   vec_validate_aligned (txq->tmp_descs, txq->size, CLIB_CACHE_LINE_BYTES);
   vec_validate_aligned (txq->tmp_bufs, txq->size, CLIB_CACHE_LINE_BYTES);
 
-  ad->n_tx_queues = clib_min (ad->num_queue_pairs, qid + 1);
   return 0;
 }
 
@@ -951,13 +940,15 @@ avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
   virtchnl_version_info_t ver = { 0 };
   virtchnl_vf_resource_t res = { 0 };
   clib_error_t *error;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
   int i, wb_on_itr;
+  u16 rxq_num, txq_num;
 
   avf_adminq_init (vm, ad);
 
-  if ((error = avf_request_queues (vm, ad, clib_max (tm->n_vlib_mains,
-						     args->rxq_num))))
+  rxq_num = args->rxq_num ? args->rxq_num : 1;
+  txq_num = args->txq_num ? args->txq_num : vlib_get_n_threads ();
+
+  if ((error = avf_request_queues (vm, ad, clib_max (txq_num, rxq_num))))
     {
       /* we failed to get more queues, but still we want to proceed */
       clib_error_free (error);
@@ -991,13 +982,32 @@ avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
   ad->vsi_id = res.vsi_res[0].vsi_id;
   ad->cap_flags = res.vf_cap_flags;
   ad->num_queue_pairs = res.num_queue_pairs;
+  ad->n_rx_queues = clib_min (rxq_num, res.num_queue_pairs);
+  ad->n_tx_queues = clib_min (txq_num, res.num_queue_pairs);
   ad->max_vectors = res.max_vectors;
   ad->max_mtu = res.max_mtu;
   ad->rss_key_size = res.rss_key_size;
   ad->rss_lut_size = res.rss_lut_size;
+  ad->n_rx_irqs = ad->max_vectors > ad->n_rx_queues ? ad->n_rx_queues : 1;
+
+  if (ad->max_vectors > ad->n_rx_queues)
+    ad->flags |= AVF_DEVICE_F_RX_INT;
+
   wb_on_itr = (ad->cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR) != 0;
 
   clib_memcpy_fast (ad->hwaddr, res.vsi_res[0].default_mac_addr, 6);
+
+  if (args->rxq_num != 0 && ad->n_rx_queues != args->rxq_num)
+    return clib_error_return (0,
+			      "Number of requested RX queues (%u) is "
+			      "higher than mumber of available queues (%u)",
+			      args->rxq_num, ad->num_queue_pairs);
+
+  if (args->txq_num != 0 && ad->n_tx_queues != args->txq_num)
+    return clib_error_return (0,
+			      "Number of requested TX queues (%u) is "
+			      "higher than mumber of available queues (%u)",
+			      args->txq_num, ad->num_queue_pairs);
 
   /*
    * Disable VLAN stripping
@@ -1024,32 +1034,13 @@ avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
   /*
    * Init Queues
    */
-  if (args->rxq_num == 0)
-    {
-      args->rxq_num = 1;
-    }
-  else if (args->rxq_num > ad->num_queue_pairs)
-    {
-      args->rxq_num = ad->num_queue_pairs;
-      avf_log_warn (ad, "Requested more rx queues than queue pairs available."
-		    "Using %u rx queues.", args->rxq_num);
-    }
-
-  for (i = 0; i < args->rxq_num; i++)
+  for (i = 0; i < ad->n_rx_queues; i++)
     if ((error = avf_rxq_init (vm, ad, i, args->rxq_size)))
       return error;
 
-  for (i = 0; i < tm->n_vlib_mains; i++)
+  for (i = 0; i < ad->n_tx_queues; i++)
     if ((error = avf_txq_init (vm, ad, i, args->txq_size)))
       return error;
-
-  if (ad->max_vectors > ad->n_rx_queues)
-    {
-      ad->flags |= AVF_DEVICE_F_RX_INT;
-      ad->n_rx_irqs = args->rxq_num;
-    }
-  else
-    ad->n_rx_irqs = 1;
 
   if ((ad->cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF) &&
       (error = avf_op_config_rss_lut (vm, ad)))
@@ -1754,8 +1745,13 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   for (i = 0; i < ad->n_tx_queues; i++)
     {
       u32 qi = vnet_hw_if_register_tx_queue (vnm, ad->hw_if_index, i);
-      vnet_hw_if_tx_queue_assign_thread (vnm, qi, i);
       ad->txqs[i].queue_index = qi;
+    }
+
+  for (i = 0; i < vlib_get_n_threads (); i++)
+    {
+      u32 qi = ad->txqs[i % ad->n_tx_queues].queue_index;
+      vnet_hw_if_tx_queue_assign_thread (vnm, qi, i);
     }
 
   vnet_hw_if_update_runtime_data (vnm, ad->hw_if_index);
