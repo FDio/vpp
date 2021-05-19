@@ -215,18 +215,7 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
   umem_config.comp_size = args->txq_size;
   umem_config.frame_size =
     sizeof (vlib_buffer_t) + vlib_buffer_get_default_data_size (vm);
-  /*
-   * Note about headroom: for some reasons, there seem to be a discrepency
-   * between 0-copy and copy mode:
-   *   - 0-copy: XDP_PACKET_HEADROOM will be added to the user headroom
-   *   - copy: nothing is added to the user headroom
-   * We privileged 0-copy and set headroom so that frame_headroom +
-   * XDP_PACKET_HEADROOM == sizeof(vlib_buffer_t), ie data will correctly
-   * point to vlib_buffer_t->data for 0-copy. In copy mode, we have to add
-   * XDP_PACKET_HEADROOM to desc offset during refill.
-   */
-  STATIC_ASSERT (sizeof (vlib_buffer_t) >= XDP_PACKET_HEADROOM, "wrong size");
-  umem_config.frame_headroom = sizeof (vlib_buffer_t) - XDP_PACKET_HEADROOM;
+  umem_config.frame_headroom = sizeof (vlib_buffer_t);
   umem_config.flags = XDP_UMEM_UNALIGNED_CHUNK_FLAG;
   if (xsk_umem__create
       (umem, uword_to_pointer (vm->buffer_main->buffer_mem_start, void *),
