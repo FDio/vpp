@@ -303,7 +303,7 @@ vtc_inc_stats_check (vcl_test_session_t *ts)
   clock_gettime (CLOCK_REALTIME, &ts->stats.stop);
   if (vcl_test_time_diff (&ts->old_stats.stop, &ts->stats.stop) > 1)
     {
-      vcl_test_stats_dump_inc (&ts->old_stats, &ts->stats);
+      vcl_test_stats_dump_inc (ts, 0 /* is_rx */);
       ts->old_stats = ts->stats;
     }
 }
