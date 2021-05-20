@@ -16,6 +16,7 @@
 #include <vnet/vnet.h>
 #include <vlibmemory/api.h>
 
+#include <vnet/udp/udp_local.h>
 #include <vnet/udp/udp_encap.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/ip/ip_types_api.h>
@@ -38,11 +39,11 @@
 
 #include <vlibapi/api_helper_macros.h>
 
-
-#define foreach_udp_api_msg            \
-_(UDP_ENCAP_DEL, udp_encap_del)        \
-_(UDP_ENCAP_ADD, udp_encap_add)        \
-_(UDP_ENCAP_DUMP, udp_encap_dump)
+#define foreach_udp_api_msg                                                   \
+  _ (UDP_ENCAP_DEL, udp_encap_del)                                            \
+  _ (UDP_ENCAP_ADD, udp_encap_add)                                            \
+  _ (UDP_ENCAP_DUMP, udp_encap_dump)                                          \
+  _ (UDP_DECAP_ADD_DEL, udp_decap_add_del)
 
 static void
 send_udp_encap_details (const udp_encap_t * ue, vl_api_registration_t * reg,
@@ -92,8 +93,7 @@ send_udp_encap_details (const udp_encap_t * ue, vl_api_registration_t * reg,
 }
 
 static void
-vl_api_udp_encap_dump_t_handler (vl_api_udp_encap_dump_t * mp,
-				 vlib_main_t * vm)
+vl_api_udp_encap_dump_t_handler (vl_api_udp_encap_dump_t *mp)
 {
   vl_api_registration_t *reg;
   udp_encap_t *ue;
@@ -111,7 +111,7 @@ vl_api_udp_encap_dump_t_handler (vl_api_udp_encap_dump_t * mp,
 }
 
 static void
-vl_api_udp_encap_add_t_handler (vl_api_udp_encap_add_t * mp, vlib_main_t * vm)
+vl_api_udp_encap_add_t_handler (vl_api_udp_encap_add_t *mp)
 {
   vl_api_udp_encap_add_reply_t *rmp;
   ip46_address_t src_ip, dst_ip;
@@ -152,7 +152,7 @@ done:
 }
 
 static void
-vl_api_udp_encap_del_t_handler (vl_api_udp_encap_del_t * mp, vlib_main_t * vm)
+vl_api_udp_encap_del_t_handler (vl_api_udp_encap_del_t *mp)
 {
   vl_api_udp_encap_del_reply_t *rmp;
   int rv = 0;
@@ -160,6 +160,45 @@ vl_api_udp_encap_del_t_handler (vl_api_udp_encap_del_t * mp, vlib_main_t * vm)
   udp_encap_unlock (ntohl (mp->id));
 
   REPLY_MACRO (VL_API_UDP_ENCAP_DEL_REPLY);
+}
+
+u32
+udp_api_decap_proto_to_index (vlib_main_t *vm,
+			      vl_api_udp_decap_next_proto_t iproto)
+{
+  switch (iproto)
+    {
+    case UDP_API_DECAP_PROTO_IP4:
+      return vlib_get_node_by_name (vm, (u8 *) "ip4-input")->index;
+    case UDP_API_DECAP_PROTO_IP6:
+      return vlib_get_node_by_name (vm, (u8 *) "ip6-input")->index;
+    case UDP_API_DECAP_PROTO_MPLS:
+      return vlib_get_node_by_name (vm, (u8 *) "mpls-input")->index;
+    }
+  return ~0;
+}
+
+static void
+vl_api_udp_decap_add_del_t_handler (vl_api_udp_decap_add_del_t *mp)
+{
+  vl_api_udp_decap_add_del_reply_t *rmp;
+  vlib_main_t *vm = vlib_get_main ();
+  int rv = 0;
+
+  u32 node_index =
+    udp_api_decap_proto_to_index (vm, ntohl (mp->udp_decap.next_proto));
+  if (mp->is_add)
+    {
+      if (node_index == ~0)
+	rv = VNET_API_ERROR_INVALID_PROTOCOL;
+      else
+	udp_register_dst_port (vm, ntohs (mp->udp_decap.port), node_index,
+			       mp->udp_decap.is_ip4);
+    }
+  else
+    udp_unregister_dst_port (vm, ntohs (mp->udp_decap.port),
+			     mp->udp_decap.is_ip4);
+  REPLY_MACRO (VL_API_UDP_DECAP_ADD_DEL_REPLY);
 }
 
 #define vl_msg_name_crc_list

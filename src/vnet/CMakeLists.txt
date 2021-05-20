@@ -663,6 +663,7 @@ list(APPEND VNET_SOURCES
   udp/udp_pg.c
   udp/udp_encap_node.c
   udp/udp_encap.c
+  udp/udp_decap.c
   udp/udp_api.c
 )
 
