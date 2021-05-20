@@ -45,6 +45,26 @@ typedef udp_encap
   u32 id;
 };
 
+enum udp_decap_next_proto
+{
+    UDP_API_DECAP_PROTO_IP4,
+    UDP_API_DECAP_PROTO_IP6,
+    UDP_API_DECAP_PROTO_MPLS,
+};
+
+/**
+ * @brief UDP Decap object
+ * @param is_ip4 - IPv4 if non-zero, else IPv6
+ * @param port - port to listen on for the decap
+ * @param next_proto - the protocol of the inner header
+ */
+typedef udp_decap
+{
+  u8 is_ip4;
+  u16 port;
+  vl_api_udp_decap_next_proto_t next_proto;
+};
+
 /**
  * @brief Add UDP encap
  * @param client_index - opaque cookie to identify the sender
@@ -101,6 +121,21 @@ define udp_encap_details
 {
   u32 context;
   vl_api_udp_encap_t udp_encap;
+};
+
+/**
+ * @brief Add/Del UDP decap
+ * @param client_index - opaque cookie to identify the sender
+ * @param context - sender context, to match reply w/ request
+ * @param is_add - add decap if non-zero, else delete
+ * @param udp_decap - UDP decap description
+ */
+autoreply define udp_decap_add_del
+{
+  u32 client_index;
+  u32 context;
+  bool is_add;
+  vl_api_udp_decap_t udp_decap;
 };
 
 /*
