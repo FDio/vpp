@@ -157,8 +157,6 @@ typedef struct
   // convenience
   vlib_main_t *vlib_main;
 
-  // node index of ip6-drop node
-  u32 ip6_drop_idx;
   u32 ip6_icmp_error_idx;
   u32 ip6_full_reass_expire_node_idx;
 
@@ -408,7 +406,7 @@ ip6_full_reass_free (ip6_full_reass_main_t * rm,
 
 always_inline void
 ip6_full_reass_drop_all (vlib_main_t *vm, vlib_node_runtime_t *node,
-			 ip6_full_reass_t *reass)
+			 ip6_full_reass_t *reass, u32 offending_bi)
 {
   u32 range_bi = reass->first_bi;
   vlib_buffer_t *range_b;
@@ -422,6 +420,10 @@ ip6_full_reass_drop_all (vlib_main_t *vm, vlib_node_runtime_t *node,
       while (~0 != bi)
 	{
 	  vec_add1 (to_free, bi);
+	  if (bi == offending_bi)
+	    {
+	      offending_bi = ~0;
+	    }
 	  vlib_buffer_t *b = vlib_get_buffer (vm, bi);
 	  if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
 	    {
@@ -434,6 +436,10 @@ ip6_full_reass_drop_all (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    }
 	}
       range_bi = range_vnb->ip.reass.next_range_bi;
+    }
+  if (~0 != offending_bi)
+    {
+      vec_add1 (to_free, offending_bi);
     }
   /* send to next_error_index */
   if (~0 != reass->error_next_index)
@@ -503,7 +509,7 @@ ip6_full_reass_on_timeout (vlib_main_t * vm, vlib_node_runtime_t * node,
 				       0);
 	}
     }
-  ip6_full_reass_drop_all (vm, node, reass);
+  ip6_full_reass_drop_all (vm, node, reass, ~0);
 }
 
 always_inline ip6_full_reass_t *
@@ -665,13 +671,13 @@ ip6_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      if (trim_front > tmp->current_length)
 		{
 		  /* drop whole buffer */
-		  vec_add1 (vec_drop_compress, tmp_bi);
-		  trim_front -= tmp->current_length;
 		  if (!(tmp->flags & VLIB_BUFFER_NEXT_PRESENT))
 		    {
 		      rv = IP6_FULL_REASS_RC_INTERNAL_ERROR;
 		      goto free_buffers_and_return;
 		    }
+		  trim_front -= tmp->current_length;
+		  vec_add1 (vec_drop_compress, tmp_bi);
 		  tmp->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
 		  tmp_bi = tmp->next_buffer;
 		  tmp = vlib_get_buffer (vm, tmp_bi);
@@ -709,12 +715,12 @@ ip6_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
-	      vec_add1 (vec_drop_compress, tmp_bi);
 	      if (reass->first_bi == tmp_bi)
 		{
 		  rv = IP6_FULL_REASS_RC_INTERNAL_ERROR;
 		  goto free_buffers_and_return;
 		}
+	      vec_add1 (vec_drop_compress, tmp_bi);
 	      ++dropped_cnt;
 	    }
 	  if (tmp->flags & VLIB_BUFFER_NEXT_PRESENT)
@@ -965,7 +971,7 @@ ip6_full_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      ip6_full_reass_add_trace (vm, node, reass, *bi0, frag_hdr,
 					RANGE_OVERLAP, ~0);
 	    }
-	  ip6_full_reass_drop_all (vm, node, reass);
+	  ip6_full_reass_drop_all (vm, node, reass, *bi0);
 	  ip6_full_reass_free (rm, rt, reass);
 	  *next0 = IP6_FULL_REASSEMBLY_NEXT_DROP;
 	  *error0 = IP6_ERROR_REASS_OVERLAPPING_FRAGMENT;
@@ -1234,9 +1240,10 @@ ip6_full_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		{
 		  vlib_node_increment_counter (vm, node->node_index, counter,
 					       1);
-		  ip6_full_reass_drop_all (vm, node, reass);
+		  ip6_full_reass_drop_all (vm, node, reass, bi0);
 		  ip6_full_reass_free (rm, rt, reass);
 		  goto next_packet;
+		  break;
 		}
 	    }
 	  else
@@ -1529,9 +1536,6 @@ ip6_full_reass_init_function (vlib_main_t * vm)
   clib_bihash_init_48_8 (&rm->hash, "ip6-full-reass", nbuckets,
 			 nbuckets * 1024);
 
-  node = vlib_get_node_by_name (vm, (u8 *) "ip6-drop");
-  ASSERT (node);
-  rm->ip6_drop_idx = node->index;
   node = vlib_get_node_by_name (vm, (u8 *) "ip6-icmp-error");
   ASSERT (node);
   rm->ip6_icmp_error_idx = node->index;
@@ -1929,7 +1933,6 @@ VLIB_NODE_FN (ip6_full_reassembly_feature_handoff_node) (vlib_main_t * vm,
   return ip6_full_reassembly_handoff_inline (
     vm, node, frame, true /* is_feature */, false /* is_forus */);
 }
-
 
 VLIB_REGISTER_NODE (ip6_full_reassembly_feature_handoff_node) = {
   .name = "ip6-full-reass-feature-hoff",

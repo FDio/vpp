@@ -177,8 +177,6 @@ typedef struct
   // convenience
   vlib_main_t *vlib_main;
 
-  // node index of ip4-drop node
-  u32 ip4_drop_idx;
   u32 ip4_full_reass_expire_node_idx;
 
   /** Worker handoff */
@@ -421,7 +419,7 @@ ip4_full_reass_free (ip4_full_reass_main_t * rm,
 
 always_inline void
 ip4_full_reass_drop_all (vlib_main_t *vm, vlib_node_runtime_t *node,
-			 ip4_full_reass_t *reass)
+			 ip4_full_reass_t *reass, u32 offending_bi)
 {
   u32 range_bi = reass->first_bi;
   vlib_buffer_t *range_b;
@@ -435,6 +433,10 @@ ip4_full_reass_drop_all (vlib_main_t *vm, vlib_node_runtime_t *node,
       while (~0 != bi)
 	{
 	  vec_add1 (to_free, bi);
+	  if (offending_bi == bi)
+	    {
+	      offending_bi = ~0;
+	    }
 	  vlib_buffer_t *b = vlib_get_buffer (vm, bi);
 	  if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
 	    {
@@ -447,6 +449,10 @@ ip4_full_reass_drop_all (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    }
 	}
       range_bi = range_vnb->ip.reass.next_range_bi;
+    }
+  if (~0 != offending_bi)
+    {
+      vec_add1 (to_free, offending_bi);
     }
   /* send to next_error_index */
   if (~0 != reass->error_next_index)
@@ -518,7 +524,7 @@ again:
 
       if (now > reass->last_heard + rm->timeout)
 	{
-	  ip4_full_reass_drop_all (vm, node, reass);
+	  ip4_full_reass_drop_all (vm, node, reass, ~0);
 	  ip4_full_reass_free (rm, rt, reass);
 	  reass = NULL;
 	}
@@ -1219,7 +1225,7 @@ ip4_full_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		{
 		  vlib_node_increment_counter (vm, node->node_index, counter,
 					       1);
-		  ip4_full_reass_drop_all (vm, node, reass);
+		  ip4_full_reass_drop_all (vm, node, reass, bi0);
 		  ip4_full_reass_free (rm, rt, reass);
 		  goto next_packet;
 		}
@@ -1531,10 +1537,6 @@ ip4_full_reass_init_function (vlib_main_t * vm)
   nbuckets = ip4_full_reass_get_nbuckets ();
   clib_bihash_init_16_8 (&rm->hash, "ip4-dr", nbuckets, nbuckets * 1024);
 
-  node = vlib_get_node_by_name (vm, (u8 *) "ip4-drop");
-  ASSERT (node);
-  rm->ip4_drop_idx = node->index;
-
   rm->fq_index = vlib_frame_queue_main_init (ip4_full_reass_node.index, 0);
   rm->fq_forus_index =
     vlib_frame_queue_main_init (ip4_full_forus_reass_node.index, 0);
@@ -1605,7 +1607,7 @@ ip4_full_reass_walk_expired (vlib_main_t *vm, vlib_node_runtime_t *node,
           vec_foreach (i, pool_indexes_to_free)
           {
             ip4_full_reass_t *reass = pool_elt_at_index (rt->pool, i[0]);
-	    ip4_full_reass_drop_all (vm, node, reass);
+	    ip4_full_reass_drop_all (vm, node, reass, ~0);
 	    ip4_full_reass_free (rm, rt, reass);
 	  }
 
@@ -1911,7 +1913,6 @@ VLIB_NODE_FN (ip4_full_reass_feature_handoff_node) (vlib_main_t * vm,
 					     false /* is_forus */);
 }
 
-
 VLIB_REGISTER_NODE (ip4_full_reass_feature_handoff_node) = {
   .name = "ip4-full-reass-feature-hoff",
   .vector_size = sizeof (u32),
@@ -1934,7 +1935,6 @@ VLIB_NODE_FN (ip4_full_reass_custom_handoff_node) (vlib_main_t * vm,
   return ip4_full_reass_handoff_node_inline (vm, node, frame, CUSTOM,
 					     false /* is_forus */);
 }
-
 
 VLIB_REGISTER_NODE (ip4_full_reass_custom_handoff_node) = {
   .name = "ip4-full-reass-custom-hoff",
