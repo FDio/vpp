@@ -741,6 +741,11 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
     {
       virtio_set_packet_coalesce (vif);
     }
+  if (vif->type == VIRTIO_IF_TYPE_TUN && args->host_mtu_set)
+    {
+      hw->max_packet_bytes = args->host_mtu_size;
+      vnet_sw_interface_set_mtu (vnm, hw->sw_if_index, args->host_mtu_size);
+    }
 
   virtio_vring_set_rx_queues (vm, vif);
 
