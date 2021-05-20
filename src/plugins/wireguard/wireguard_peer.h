@@ -111,9 +111,9 @@ index_t wg_peer_walk (wg_peer_walk_cb_t fn, void *data);
 
 u8 *format_wg_peer (u8 * s, va_list * va);
 
-walk_rc_t wg_peer_if_admin_state_change (wg_if_t * wgi, index_t peeri,
-					 void *data);
-walk_rc_t wg_peer_if_table_change (wg_if_t * wgi, index_t peeri, void *data);
+walk_rc_t wg_peer_if_admin_state_change (index_t peeri, void *data);
+walk_rc_t wg_peer_if_adj_change (index_t peeri, void *data);
+adj_walk_rc_t wg_peer_adj_walk (adj_index_t ai, void *data);
 
 /*
  * Expoed for the data-plane

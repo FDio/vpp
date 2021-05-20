@@ -22,6 +22,7 @@ from noise.connection import NoiseConnection, Keypair
 
 from vpp_ipip_tun_interface import VppIpIpTunInterface
 from vpp_interface import VppInterface
+from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_object import VppObject
 from framework import VppTestCase
 from re import compile
@@ -133,14 +134,6 @@ class VppWgPeer(VppObject):
 
         self.noise = NoiseConnection.from_name(NOISE_HANDSHAKE_NAME)
 
-    def validate_routing(self):
-        for a in self.allowed_ips:
-            self._test.assertTrue(find_route(self._test, a))
-
-    def validate_no_routing(self):
-        for a in self.allowed_ips:
-            self._test.assertFalse(find_route(self._test, a))
-
     def add_vpp_config(self):
         rv = self._test.vapi.wireguard_peer_add(
             peer={
@@ -154,12 +147,10 @@ class VppWgPeer(VppObject):
         self.index = rv.peer_index
         self.receiver_index = self.index + 1
         self._test.registry.register(self, self._test.logger)
-        self.validate_routing()
         return self
 
     def remove_vpp_config(self):
         self._test.vapi.wireguard_peer_remove(peer_index=self.index)
-        self.validate_no_routing()
 
     def object_id(self):
         return ("wireguard-peer-%s" % self.index)
@@ -441,6 +432,13 @@ class TestWg(VppTestCase):
                             "10.11.3.0/24"]).add_vpp_config()
         self.assertEqual(len(self.vapi.wireguard_peers_dump()), 1)
 
+        r1 = VppIpRoute(self, "10.11.2.0", 24,
+                        [VppRoutePath(self.pg1.remote_ip4,
+                                      wg0.sw_if_index)]).add_vpp_config()
+        r2 = VppIpRoute(self, "10.11.3.0", 24,
+                        [VppRoutePath(self.pg1.remote_ip4,
+                                      wg0.sw_if_index)]).add_vpp_config()
+
         # wait for the peer to send a handshake
         rx = self.pg1.get_capture(1, timeout=2)
 
@@ -483,6 +481,11 @@ class TestWg(VppTestCase):
             self.assertEqual(rx[IP].dst, self.pg0.remote_ip4)
             self.assertEqual(rx[IP].ttl, 19)
 
+        r1.remove_vpp_config()
+        r2.remove_vpp_config
+        peer_1.remove_vpp_config()
+        wg0.remove_vpp_config()
+
     def test_wg_peer_init(self):
         """ Send handshake init """
         wg_output_node_name = '/err/wg-output-tun/'
@@ -504,6 +507,13 @@ class TestWg(VppTestCase):
                            ["10.11.2.0/24",
                             "10.11.3.0/24"]).add_vpp_config()
         self.assertEqual(len(self.vapi.wireguard_peers_dump()), 1)
+
+        r1 = VppIpRoute(self, "10.11.2.0", 24,
+                        [VppRoutePath(self.pg1.remote_ip4,
+                                      wg0.sw_if_index)]).add_vpp_config()
+        r2 = VppIpRoute(self, "10.11.3.0", 24,
+                        [VppRoutePath(self.pg1.remote_ip4,
+                                      wg0.sw_if_index)]).add_vpp_config()
 
         # route a packet into the wg interface
         #  use the allowed-ip prefix
@@ -597,6 +607,8 @@ class TestWg(VppTestCase):
             self.assertEqual(rx[IP].dst, self.pg0.remote_ip4)
             self.assertEqual(rx[IP].ttl, 19)
 
+        r1.remove_vpp_config()
+        r2.remove_vpp_config()
         peer_1.remove_vpp_config()
         wg0.remove_vpp_config()
 
@@ -629,17 +641,26 @@ class TestWg(VppTestCase):
 
         peers_1 = []
         peers_2 = []
+        routes_1 = []
+        routes_2 = []
         for i in range(NUM_PEERS):
             peers_1.append(VppWgPeer(self,
                                      wg0,
                                      self.pg1.remote_hosts[i].ip4,
                                      port+1+i,
                                      ["10.0.%d.4/32" % i]).add_vpp_config())
+            routes_1.append(VppIpRoute(self, "10.0.%d.4" % i, 32,
+                            [VppRoutePath(self.pg1.remote_hosts[i].ip4,
+                                          wg0.sw_if_index)]).add_vpp_config())
+
             peers_2.append(VppWgPeer(self,
                                      wg1,
                                      self.pg2.remote_hosts[i].ip4,
                                      port+100+i,
                                      ["10.100.%d.4/32" % i]).add_vpp_config())
+            routes_2.append(VppIpRoute(self, "10.100.%d.4" % i, 32,
+                            [VppRoutePath(self.pg2.remote_hosts[i].ip4,
+                                          wg1.sw_if_index)]).add_vpp_config())
 
         self.assertEqual(len(self.vapi.wireguard_peers_dump()), NUM_PEERS*2)
 
@@ -648,6 +669,12 @@ class TestWg(VppTestCase):
         self.logger.info(self.vapi.cli("show adj 37"))
         self.logger.info(self.vapi.cli("sh ip fib 172.16.3.17"))
         self.logger.info(self.vapi.cli("sh ip fib 10.11.3.0"))
+
+        # remove routes
+        for r in routes_1:
+            r.remove_vpp_config()
+        for r in routes_2:
+            r.remove_vpp_config()
 
         # remove peers
         for p in peers_1:
@@ -686,6 +713,13 @@ class WireguardHandoffTests(TestWg):
                            ["10.11.2.0/24",
                             "10.11.3.0/24"]).add_vpp_config()
         self.assertEqual(len(self.vapi.wireguard_peers_dump()), 1)
+
+        r1 = VppIpRoute(self, "10.11.2.0", 24,
+                        [VppRoutePath(self.pg1.remote_ip4,
+                                      wg0.sw_if_index)]).add_vpp_config()
+        r2 = VppIpRoute(self, "10.11.3.0", 24,
+                        [VppRoutePath(self.pg1.remote_ip4,
+                                      wg0.sw_if_index)]).add_vpp_config()
 
         # send a valid handsake init for which we expect a response
         p = peer_1.mk_handshake(self.pg1)
@@ -744,5 +778,7 @@ class WireguardHandoffTests(TestWg):
 
         peer_1.validate_encapped(rxs, pe)
 
+        r1.remove_vpp_config()
+        r2.remove_vpp_config()
         peer_1.remove_vpp_config()
         wg0.remove_vpp_config()
