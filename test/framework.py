@@ -1721,8 +1721,9 @@ class Worker(Thread):
             self.result = os.EX_OSFILE
             raise EnvironmentError(
                 "executable '%s' is not found or executable." % executable)
-        self.logger.debug("Running executable: '{app}'"
-                          .format(app=' '.join(self.args)))
+        self.logger.debug("Running executable '{app}': '{cmd}'"
+                          .format(app=self.app_name,
+                                  cmd=' '.join(self.args)))
         env = os.environ.copy()
         env.update(self.env)
         env["CK_LOG_FILE_NAME"] = "-"
