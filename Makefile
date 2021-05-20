@@ -176,51 +176,9 @@ define banner
 endef
 
 .PHONY: help
-help:
+help: ## show this help
 	@echo "Make Targets:"
-	@echo " install-dep[s]       - install software dependencies"
-	@echo " wipe                 - wipe all products of debug build "
-	@echo " wipe-release         - wipe all products of release build "
-	@echo " build                - build debug binaries"
-	@echo " build-release        - build release binaries"
-	@echo " build-coverity       - build coverity artifacts"
-	@echo " rebuild              - wipe and build debug binaries"
-	@echo " rebuild-release      - wipe and build release binaries"
-	@echo " run                  - run debug binary"
-	@echo " run-release          - run release binary"
-	@echo " debug                - run debug binary with debugger"
-	@echo " debug-release        - run release binary with debugger"
-	@echo " test                 - build and run tests"
-	@echo " test-help            - show help on test framework"
-	@echo " run-vat              - run vpp-api-test tool"
-	@echo " pkg-deb              - build DEB packages"
-	@echo " pkg-deb-debug        - build DEB debug packages"
-	@echo " pkg-snap             - build SNAP package"
-	@echo " snap-clean           - clean up snap build environment"
-	@echo " pkg-rpm              - build RPM packages"
-	@echo " install-ext-dep[s]   - install external development dependencies"
-	@echo " ctags                - (re)generate ctags database"
-	@echo " gtags                - (re)generate gtags database"
-	@echo " cscope               - (re)generate cscope database"
-	@echo " compdb               - (re)generate compile_commands.json"
-	@echo " checkstyle           - check coding style"
-	@echo " checkstyle-commit    - check commit message format"
-	@echo " checkstyle-test      - check test framework coding style"
-	@echo " checkstyle-test-diff - check test framework coding style (only changed files)"
-	@echo " checkstyle-api       - check api for incompatible changes"
-	@echo " fixstyle             - fix coding style"
-	@echo " doxygen              - (re)generate documentation"
-	@echo " bootstrap-doxygen    - setup Doxygen dependencies"
-	@echo " wipe-doxygen         - wipe all generated documentation"
-	@echo " checkfeaturelist     - check FEATURE.yaml according to schema"
-	@echo " featurelist          - dump feature list in markdown"
-	@echo " json-api-files       - (re)-generate json api files"
-	@echo " json-api-files-debug - (re)-generate json api files for debug target"
-	@echo " go-api-files         - (re)-generate golang api files"
-	@echo " docs                 - Build the Sphinx documentation"
-	@echo " docs-venv            - Build the virtual environment for the Sphinx docs"
-	@echo " docs-clean           - Remove the generated files from the Sphinx docs"
-	@echo " stats-fs-help        - Help to build the stats segment file system"
+	@echo -e "$$(grep -hE '^\S+:.*##' $(MAKEFILE_LIST) | sed -e 's/:.*##\s*/:/' -e 's/^\(.\+\):\(.*\)/\\x1b[36m\1\\x1b[m: - \2/' | column -c2 -t -s :)"
 	@echo ""
 	@echo "Make Arguments:"
 	@echo " V=[0|1]                  - set build verbosity level"
@@ -281,7 +239,7 @@ bootstrap:
 	@echo "'make bootstrap' is not needed anymore"
 
 .PHONY: install-dep
-install-dep:
+install-dep: ## install software dependencies
 ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
 	@sudo -E apt-get update
 	@sudo -E apt-get $(APT_ARGS) $(CONFIRM) $(FORCE) install $(DEB_DEPENDS)
@@ -352,7 +310,7 @@ dist:
 	@ln -rs $(DIST_FILE).xz $(BR)/vpp-latest.tar.xz
 
 .PHONY: build
-build: $(BR)/.deps.ok
+build: $(BR)/.deps.ok ## build debug binaries
 	$(call make,$(PLATFORM)_debug,$(addsuffix -install,$(TARGETS)))
 
 .PHONY: wipedist
@@ -360,23 +318,23 @@ wipedist:
 	@$(RM) $(BR)/*.tar.xz
 
 .PHONY: wipe
-wipe: wipedist test-wipe $(BR)/.deps.ok
+wipe: wipedist test-wipe $(BR)/.deps.ok ## wipe all products of debug build
 	$(call make,$(PLATFORM)_debug,$(addsuffix -wipe,$(TARGETS)))
 	@find . -type f -name "*.api.json" ! -path "./test/*" -exec rm {} \;
 
 .PHONY: rebuild
-rebuild: wipe build
+rebuild: wipe build ## wipe and build debug binaries
 
 .PHONY: build-release
-build-release: $(BR)/.deps.ok
+build-release: $(BR)/.deps.ok ## build release binaries
 	$(call make,$(PLATFORM),$(addsuffix -install,$(TARGETS)))
 
 .PHONY: wipe-release
-wipe-release: test-wipe $(BR)/.deps.ok
+wipe-release: test-wipe $(BR)/.deps.ok ## wipe all products of release build
 	$(call make,$(PLATFORM),$(addsuffix -wipe,$(TARGETS)))
 
 .PHONY: rebuild-release
-rebuild-release: wipe-release build-release
+rebuild-release: wipe-release build-release ## wipe and build release binaries
 
 libexpand = $(subst $(subst ,, ),:,$(foreach lib,$(1),$(BR)/install-$(2)-native/vpp/$(lib)/$(3)))
 
@@ -402,7 +360,7 @@ define test
 endef
 
 .PHONY: test
-test:
+test: ## build and run tests
 	$(call test,vpp,vpp,test)
 
 .PHONY: test-debug
@@ -432,7 +390,7 @@ test-wipe-papi:
 	@make -C test wipe-papi
 
 .PHONY: test-help
-test-help:
+test-help: ## show help on test framework
 	@make -C test help
 
 .PHONY: test-wipe
@@ -534,24 +492,24 @@ endif
 .FORCE:
 
 .PHONY: run
-run:
+run: ## run debug binary
 	$(call run, $(BR)/install-$(PLATFORM)_debug-native)
 
 .PHONY: run-release
-run-release:
+run-release: ## run release binary
 	$(call run, $(BR)/install-$(PLATFORM)-native)
 
 .PHONY: debug
-debug:
+debug: ## run debug binary with debugger
 	$(call run, $(BR)/install-$(PLATFORM)_debug-native,$(GDB) $(GDB_ARGS) --args)
 
 .PHONY: build-coverity
-build-coverity:
+build-coverity: ## build coverity artifacts
 	$(call make,$(PLATFORM)_coverity,install-packages)
 	@make -C build-root PLATFORM=vpp TAG=vpp_coverity libmemif-install
 
 .PHONY: debug-release
-debug-release:
+debug-release: ## run release binary with debugger
 	$(call run, $(BR)/install-$(PLATFORM)-native,$(GDB) $(GDB_ARGS) --args)
 
 .PHONY: build-vat
@@ -559,15 +517,15 @@ build-vat:
 	$(call make,$(PLATFORM)_debug,vpp-api-test-install)
 
 .PHONY: run-vat
-run-vat:
+run-vat: ## run vpp-api-test tool
 	@$(SUDO) $(BR)/install-$(PLATFORM)_debug-native/vpp/bin/vpp_api_test
 
 .PHONY: pkg-deb
-pkg-deb:
+pkg-deb: ## build DEB packages
 	$(call make,$(PLATFORM),vpp-package-deb)
 
 .PHONY: pkg-snap
-pkg-snap:
+pkg-snap: ## build SNAP package
 	cd extras/snap ;			\
         ./prep ;				\
 	SNAPCRAFT_BUILD_ENVIRONMENT_MEMORY=8G 	\
@@ -581,11 +539,11 @@ snap-clean:
 	rm -f *.snap *.tgz
 
 .PHONY: pkg-deb-debug
-pkg-deb-debug:
+pkg-deb-debug: ## build DEB debug packages
 	$(call make,$(PLATFORM)_debug,vpp-package-deb)
 
 .PHONY: pkg-rpm
-pkg-rpm: dist
+pkg-rpm: dist ## build RPM packages
 	make -C extras/rpm
 
 .PHONY: pkg-srpm
@@ -593,63 +551,63 @@ pkg-srpm: dist
 	make -C extras/rpm srpm
 
 .PHONY: install-ext-deps
-install-ext-deps:
+install-ext-deps: ## install external development dependencies
 	make -C build/external install-$(PKG)
 
 .PHONY: install-ext-dep
 install-ext-dep: install-ext-deps
 
 .PHONY: json-api-files
-json-api-files:
+json-api-files: ## (re)-generate json api files
 	$(WS_ROOT)/src/tools/vppapigen/generate_json.py
 
 .PHONY: json-api-files-debug
-json-api-files-debug:
+json-api-files-debug: ## (re)-generate json api files for debug target
 	$(WS_ROOT)/src/tools/vppapigen/generate_json.py --debug-target
 
 .PHONY: go-api-files
-go-api-files: json-api-files
+go-api-files: json-api-files ## (re)-generate golang api files
 	$(WS_ROOT)/src/tools/vppapigen/generate_go.py
 
 .PHONY: ctags
-ctags: ctags.files
+ctags: ctags.files ## (re)generate ctags database
 	@ctags --totals --tag-relative=yes -L $<
 	@rm $<
 
 .PHONY: gtags
-gtags: ctags
+gtags: ctags ## (re)generate gtags database
 	@gtags --gtagslabel=ctags
 
 .PHONY: cscope
-cscope: cscope.files
+cscope: cscope.files ## (re)generate cscope database
 	@cscope -b -q -v
 
 .PHONY: compdb
-compdb:
+compdb: ## (re)generate compile_commands.json
 	@ninja -C build-root/build-vpp_debug-native/vpp build.ninja
 	@ninja -C build-root/build-vpp_debug-native/vpp -t compdb | \
 	  src/scripts/compdb_cleanup.py > compile_commands.json
 
 .PHONY: checkstyle
-checkstyle: checkfeaturelist
+checkstyle: checkfeaturelist ## check coding style
 	@extras/scripts/checkstyle.sh
 
 .PHONY: checkstyle-commit
-checkstyle-commit:
+checkstyle-commit: ## check commit message format
 	@extras/scripts/check_commit_msg.sh
 
 .PHONY: checkstyle-test
-checkstyle-test: test-checkstyle
+checkstyle-test: test-checkstyle ## check test framework coding style
 
 .PHONY: checkstyle-all
 checkstyle-all: checkstyle-commit checkstyle checkstyle-test
 
 .PHONY: fixstyle
-fixstyle:
+fixstyle: ## fix coding style
 	@extras/scripts/checkstyle.sh --fix
 
 .PHONY: checkstyle-api
-checkstyle-api:
+checkstyle-api: ## check api for incompatible changes
 	@extras/scripts/crcchecker.py --check-patchset
 
 # necessary because Bug 1696324 - Update to python3.6 breaks PyYAML dependencies
@@ -662,11 +620,11 @@ ifeq ($(OS_ID)-$(OS_VERSION_ID),centos-8)
 endif
 
 .PHONY: featurelist
-featurelist: centos-pyyaml
+featurelist: centos-pyyaml ## dump feature list in markdown
 	@extras/scripts/fts.py --all --markdown
 
 .PHONY: checkfeaturelist
-checkfeaturelist: centos-pyyaml
+checkfeaturelist: centos-pyyaml ## check FEATURE.yaml according to schema
 	@extras/scripts/fts.py --validate --all
 
 
@@ -685,7 +643,7 @@ stats-fs-cleanup:
 	@extras/vpp_stats_fs/install.sh cleanup
 
 .PHONY: stats-fs-help
-stats-fs-help:
+stats-fs-help: ## Help to build the stats segment file system
 	@extras/vpp_stats_fs/install.sh help
 
 .PHONY: stats-fs-force-unmount
@@ -708,15 +666,15 @@ define make-doxy
 endef
 
 .PHONY: bootstrap-doxygen
-bootstrap-doxygen:
+bootstrap-doxygen: ## setup Doxygen dependencies
 	$(call make-doxy)
 
 .PHONY: doxygen
-doxygen: bootstrap-doxygen
+doxygen: bootstrap-doxygen ## (re)generate documentation
 	$(call make-doxy)
 
 .PHONY: wipe-doxygen
-wipe-doxygen:
+wipe-doxygen: # wipe all generated documentation
 	$(call make-doxy)
 
 # Sphinx Documents
@@ -725,15 +683,15 @@ export VENV_DIR = $(WS_ROOT)/sphinx_venv
 export SPHINX_SCRIPTS_DIR = $(WS_ROOT)/docs/scripts
 
 .PHONY: docs-venv
-docs-venv:
+docs-venv: ## Build the virtual environment for the Sphinx docs
 	@($(SPHINX_SCRIPTS_DIR)/sphinx-make.sh venv)
 
 .PHONY: docs
-docs: $(DOCS_DIR)
+docs: $(DOCS_DIR) ## Build the Sphinx documentation
 	@($(SPHINX_SCRIPTS_DIR)/sphinx-make.sh html)
 
 .PHONY: docs-clean
-docs-clean:
+docs-clean: ## Remove the generated files from the Sphinx docs
 	@rm -rf $(DOCS_DIR)/_build
 	@rm -rf $(VENV_DIR)
 
