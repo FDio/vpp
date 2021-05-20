@@ -7,14 +7,14 @@ import unittest
 from parameterized import parameterized
 import scapy.compat
 import scapy.layers.inet6 as inet6
-from scapy.layers.inet import UDP
+from scapy.layers.inet import UDP, IP
 from scapy.contrib.mpls import MPLS
 from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_RS, \
     ICMPv6ND_RA, ICMPv6NDOptMTU, ICMPv6NDOptSrcLLAddr, ICMPv6NDOptPrefixInfo, \
     ICMPv6ND_NA, ICMPv6NDOptDstLLAddr, ICMPv6DestUnreach, icmp6types, \
     ICMPv6TimeExceeded, ICMPv6EchoRequest, ICMPv6EchoReply, \
     IPv6ExtHdrHopByHop, ICMPv6MLReport2, ICMPv6MLDMultAddrRec
-from scapy.layers.l2 import Ether, Dot1Q
+from scapy.layers.l2 import Ether, Dot1Q, GRE
 from scapy.packet import Raw
 from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ptop, in6_islladdr, \
     in6_mactoifaceid
@@ -35,6 +35,8 @@ from vpp_pg_interface import is_ipv6_misc
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint
 from vpp_policer import VppPolicer, PolicerAction
 from ipaddress import IPv6Network, IPv6Address
+from vpp_gre_interface import VppGreInterface
+from vpp_teib import VppTeib
 
 AF_INET6 = socket.AF_INET6
 
@@ -3002,6 +3004,11 @@ class TestIP6LinkLocal(VppTestCase):
         ll2 = "fe80:2::2"
         ll3 = "fe80:3::3"
 
+        VppNeighbor(self,
+                    self.pg0.sw_if_index,
+                    self.pg0.remote_mac,
+                    ll2).add_vpp_config()
+
         VppIpInterfaceAddress(self, self.pg0, ll1, 128).add_vpp_config()
 
         #
@@ -3048,6 +3055,75 @@ class TestIP6LinkLocal(VppTestCase):
 
         VppIp6LinkLocalAddress(self, self.pg1, ll3).add_vpp_config()
         self.send_and_expect(self.pg1, [p_echo_request_3], self.pg1)
+
+    def test_ip6_ll_p2p(self):
+        """ IPv6 Link Local P2P (GRE)"""
+
+        self.pg0.config_ip4()
+        self.pg0.resolve_arp()
+        gre_if = VppGreInterface(self,
+                                 self.pg0.local_ip4,
+                                 self.pg0.remote_ip4).add_vpp_config()
+        gre_if.admin_up()
+
+        ll1 = "fe80:1::1"
+        ll2 = "fe80:2::2"
+
+        VppIpInterfaceAddress(self, gre_if, ll1, 128).add_vpp_config()
+
+        self.logger.info(self.vapi.cli("sh ip6-ll gre0 fe80:2::2"))
+
+        p_echo_request_1 = (Ether(src=self.pg0.remote_mac,
+                                  dst=self.pg0.local_mac) /
+                            IP(src=self.pg0.remote_ip4,
+                               dst=self.pg0.local_ip4) /
+                            GRE() /
+                            IPv6(src=ll2, dst=ll1) /
+                            ICMPv6EchoRequest())
+        self.send_and_expect(self.pg0, [p_echo_request_1], self.pg0)
+
+        self.pg0.unconfig_ip4()
+        gre_if.remove_vpp_config()
+
+    def test_ip6_ll_p2mp(self):
+        """ IPv6 Link Local P2MP (GRE)"""
+
+        self.pg0.config_ip4()
+        self.pg0.resolve_arp()
+
+        gre_if = VppGreInterface(
+            self,
+            self.pg0.local_ip4,
+            "0.0.0.0",
+            mode=(VppEnum.vl_api_tunnel_mode_t.
+                  TUNNEL_API_MODE_MP)).add_vpp_config()
+        gre_if.admin_up()
+
+        ll1 = "fe80:1::1"
+        ll2 = "fe80:2::2"
+
+        VppIpInterfaceAddress(self, gre_if, ll1, 128).add_vpp_config()
+
+        p_echo_request_1 = (Ether(src=self.pg0.remote_mac,
+                                  dst=self.pg0.local_mac) /
+                            IP(src=self.pg0.remote_ip4,
+                               dst=self.pg0.local_ip4) /
+                            GRE() /
+                            IPv6(src=ll2, dst=ll1) /
+                            ICMPv6EchoRequest())
+
+        # no route back at this point
+        self.send_and_assert_no_replies(self.pg0, [p_echo_request_1])
+
+        # add teib entry for the peer
+        teib = VppTeib(self, gre_if, ll2, self.pg0.remote_ip4)
+        teib.add_vpp_config()
+
+        self.logger.info(self.vapi.cli("sh ip6-ll gre0 %s" % ll2))
+        self.send_and_expect(self.pg0, [p_echo_request_1], self.pg0)
+
+        # teardown
+        self.pg0.unconfig_ip4()
 
 
 class TestIPv6PathMTU(VppTestCase):
