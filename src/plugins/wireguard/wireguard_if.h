@@ -52,8 +52,7 @@ u8 *format_wg_if (u8 * s, va_list * va);
 typedef walk_rc_t (*wg_if_walk_cb_t) (index_t wgi, void *data);
 void wg_if_walk (wg_if_walk_cb_t fn, void *data);
 
-typedef walk_rc_t (*wg_if_peer_walk_cb_t) (wg_if_t * wgi, index_t peeri,
-					   void *data);
+typedef walk_rc_t (*wg_if_peer_walk_cb_t) (index_t peeri, void *data);
 index_t wg_if_peer_walk (wg_if_t * wgi, wg_if_peer_walk_cb_t fn, void *data);
 
 void wg_if_peer_add (wg_if_t * wgi, index_t peeri);

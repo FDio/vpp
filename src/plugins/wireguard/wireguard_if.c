@@ -151,7 +151,10 @@ wg_if_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 void
 wg_if_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
 {
-  /* The peers manage the adjacencies */
+  index_t wgii;
+
+  wgii = wg_if_find_by_sw_if_index (sw_if_index);
+  wg_if_peer_walk (wg_if_get (wgii), wg_peer_if_adj_change, &ai);
 }
 
 
@@ -387,83 +390,14 @@ wg_if_peer_walk (wg_if_t * wgi, wg_if_peer_walk_cb_t fn, void *data)
   index_t peeri, val;
 
   /* *INDENT-OFF* */
-  hash_foreach (peeri, val, wgi->peers,
-  {
-    if (WALK_STOP == fn(wgi, peeri, data))
+  hash_foreach (peeri, val, wgi->peers, {
+    if (WALK_STOP == fn (peeri, data))
       return peeri;
   });
   /* *INDENT-ON* */
 
   return INDEX_INVALID;
 }
-
-
-static void
-wg_if_table_bind_v4 (ip4_main_t * im,
-		     uword opaque,
-		     u32 sw_if_index, u32 new_fib_index, u32 old_fib_index)
-{
-  wg_if_t *wg_if;
-
-  wg_if = wg_if_get (wg_if_find_by_sw_if_index (sw_if_index));
-  if (NULL == wg_if)
-    return;
-
-  wg_peer_table_bind_ctx_t ctx = {
-    .af = AF_IP4,
-    .old_fib_index = old_fib_index,
-    .new_fib_index = new_fib_index,
-  };
-
-  wg_if_peer_walk (wg_if, wg_peer_if_table_change, &ctx);
-}
-
-static void
-wg_if_table_bind_v6 (ip6_main_t * im,
-		     uword opaque,
-		     u32 sw_if_index, u32 new_fib_index, u32 old_fib_index)
-{
-  wg_if_t *wg_if;
-
-  wg_if = wg_if_get (wg_if_find_by_sw_if_index (sw_if_index));
-  if (NULL == wg_if)
-    return;
-
-  wg_peer_table_bind_ctx_t ctx = {
-    .af = AF_IP6,
-    .old_fib_index = old_fib_index,
-    .new_fib_index = new_fib_index,
-  };
-
-  wg_if_peer_walk (wg_if, wg_peer_if_table_change, &ctx);
-}
-
-static clib_error_t *
-wg_if_module_init (vlib_main_t * vm)
-{
-  {
-    ip4_table_bind_callback_t cb = {
-      .function = wg_if_table_bind_v4,
-    };
-    vec_add1 (ip4_main.table_bind_callbacks, cb);
-  }
-  {
-    ip6_table_bind_callback_t cb = {
-      .function = wg_if_table_bind_v6,
-    };
-    vec_add1 (ip6_main.table_bind_callbacks, cb);
-  }
-
-  return (NULL);
-}
-
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (wg_if_module_init) =
-{
-  .runs_after = VLIB_INITS("ip_main_init"),
-};
-/* *INDENT-ON* */
-
 
 /*
  * fd.io coding-style-patch-verification: ON
