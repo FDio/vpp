@@ -182,3 +182,49 @@ csit-env()
         echo "ERROR: WS_ROOT not set to a CSIT workspace!"
     fi
 }
+
+# bash function to set up VPP workspace with quicly source code
+set-quicly-ws ()
+{
+    local ext_quicly_version_file="/opt/vpp/external/x86_64/include/quicly/version.h"
+    if [ ! -f "$ext_quicly_version_file" ] ; then
+        echo -e "\nCannot find quicly version file: $ext_quicly_version_file"
+        echo -e "\nPlease run VPP 'make install-ext-deps' to install it."
+        return
+    fi
+
+    if [ -d "$1" ]; then
+        if [ -z "$WS_ROOT" ] ; then
+            if [ -d "./extras/bash" ] ; then
+                export WS_ROOT="$(pwd)"
+            else
+                echo "ERROR: WS_ROOT is not set!"
+                return
+            fi
+        elif [ ! -d "$WS_ROOT/extras/bash" ] ; then
+            echo "ERROR: WS_ROOT is not set to a VPP workspace!"
+            return
+        fi
+        export WS_QUICLY="$1"
+        export QUICLY_LIBRARY="$WS_QUICLY/libquicly.a"
+        export QUICLY_INCLUDE_DIR="$WS_QUICLY/include"
+        export WS_PICOTLS="$WS_QUICLY/deps/picotls"
+        export PICOTLS_INCLUDE_DIR="$WS_PICOTLS/include"
+        export PICOTLS_CORE_LIBRARY="$WS_PICOTLS/libpicotls-core.a"
+        export PICOTLS_OPENSSL_LIBRARY="$WS_PICOTLS/libpicotls-openssl.a"
+        export VPP_EXTRA_CMAKE_ARGS="-DQUICLY_LIBRARY=$QUICLY_LIBRARY -DQUICLY_INCLUDE_DIR=$QUICLY_INCLUDE_DIR -DPICOTLS_CORE_LIBRARY=$PICOTLS_CORE_LIBRARY -DPICOTLS_OPENSSL_LIBRARY=$PICOTLS_OPENSSL_LIBRARY -DPICOTLS_INCLUDE_DIR=$PICOTLS_INCLUDE_DIR"
+        local quicly_ws_version_file="$QUICLY_INCLUDE_DIR/quicly/version.h"
+        cp -f $ext_quicly_version_file $quicly_ws_version_file
+        local expected_quicly_version="$(grep 'set(EXPECTED_QUICLY_VERSION' $WS_ROOT/src/plugins/quic/CMakeLists.txt | cut -d'"' -f2)"
+        sed -ie "s/LIBQUICLY_VERSION \".*\"/LIBQUICLY_VERSION \"$expected_quicly_version\"/" $quicly_ws_version_file
+    else
+        echo -e "\nUsage: set-quicly-ws <path-to-quicly>"
+        echo -e "\nPrerequisites:"
+        echo -e "\n1. Clone quicly repo:\n   git clone https://github.com/h2o/quicly"
+        echo -e "\n2. Build quicly and picotls following instructions in:"
+        echo "   .../quicly/README.md"
+        echo "   .../quicly/deps/picotls/README.md"
+        echo -e "\n3. Run set-quicly-ws <path-to-quicly>"
+        echo -e "\n4. Build vpp as desired\n"
+    fi;
+}
