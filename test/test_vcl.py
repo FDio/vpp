@@ -27,8 +27,8 @@ class VCLAppWorker(Worker):
     """ VCL Test Application Worker """
 
     def __init__(self, build_dir, appname, executable_args, logger, env=None,
-                 *args, **kwargs):
-
+                 role=None, *args, **kwargs):
+        self.role = role
         if env is None:
             env = {}
         vcl_lib_dir = "%s/vpp/lib" % build_dir
@@ -90,11 +90,11 @@ class VCLTestCase(VppTestCase):
         self.env = {'VCL_VPP_API_SOCKET': self.get_api_sock_path(),
                     'VCL_APP_SCOPE_LOCAL': "true"}
         worker_server = VCLAppWorker(self.build_dir, server_app, server_args,
-                                     self.logger, self.env)
+                                     self.logger, self.env, "server")
         worker_server.start()
         self.sleep(self.pre_test_sleep)
         worker_client = VCLAppWorker(self.build_dir, client_app, client_args,
-                                     self.logger, self.env)
+                                     self.logger, self.env, "client")
         worker_client.start()
         worker_client.join(self.timeout)
         try:
@@ -198,14 +198,14 @@ class VCLTestCase(VppTestCase):
                     'VCL_APP_NAMESPACE_SECRET': "1234"}
 
         worker_server = VCLAppWorker(self.build_dir, server_app, server_args,
-                                     self.logger, self.env)
+                                     self.logger, self.env, "server")
         worker_server.start()
         self.sleep(self.pre_test_sleep)
 
         self.env.update({'VCL_APP_NAMESPACE_ID': "2",
                          'VCL_APP_NAMESPACE_SECRET': "5678"})
         worker_client = VCLAppWorker(self.build_dir, client_app, client_args,
-                                     self.logger, self.env)
+                                     self.logger, self.env, "client")
         worker_client.start()
         worker_client.join(self.timeout)
 
