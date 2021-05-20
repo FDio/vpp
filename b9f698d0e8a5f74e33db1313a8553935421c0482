@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "56ffedb7_3b085b98",
+        "filename": "src/vnet/fib/fib_path.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2335,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-05-20T13:40:46Z",
+      "side": 1,
+      "message": "I think we should only add it for udp encap, not for deag, receive etc. Be careful of switch/case fallthrough :)",
+      "revId": "b9f698d0e8a5f74e33db1313a8553935421c0482",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "427dc525_4dae44d2",
+        "filename": "src/vnet/udp/udp.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-05-20T13:40:46Z",
+      "side": 1,
+      "message": "I wonder if we should not use an enum here instead, with ip4, ip6 and mpls",
+      "revId": "b9f698d0e8a5f74e33db1313a8553935421c0482",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "48aae3ec_14d0d791",
+        "filename": "src/vnet/udp/udp_decap.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-05-20T13:40:46Z",
+      "side": 1,
+      "message": "maybe we should add a keyword \"next\" or similar and use \"next mpls\", and also add \"next ip4\" and \"next ip6\" to mimic the api",
+      "revId": "b9f698d0e8a5f74e33db1313a8553935421c0482",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
