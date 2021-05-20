@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "20db64f1_f84c0bc8",
+        "filename": "src/plugins/snort/daq_vpp.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 120,
+      "author": {
+        "id": 2229
+      },
+      "writtenOn": "2021-05-20T18:06:08Z",
+      "side": 1,
+      "message": "Minor comment: clib_spinlock_lock can be used here.",
+      "range": {
+        "startLine": 120,
+        "startChar": 0,
+        "endLine": 120,
+        "endChar": 19
+      },
+      "revId": "d07d0092b97b057b6a6d571ede125ce392f59b3d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
