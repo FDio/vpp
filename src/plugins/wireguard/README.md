@@ -28,8 +28,13 @@ OpenSSL:
 
 ### Add a peer configuration:
 ```
-> vpp# wireguard peer add <wg_interface> public-key <pub_key_other> endpoint <ip4_dst> allowed-ip <prefix> dst-port <port_dst> persistent-keepalive [keepalive_interval]
+> vpp# wireguard peer add <wg_interface> public-key <pub_key_other> endpoint <ip4_dst> allowed-ip <prefix> port <port_dst> persistent-keepalive [keepalive_interval]
 > vpp# *peer_idx*
+```
+
+### Add routes for allowed-ip:
+```
+> ip route add <prefix> via <ip4_dst> <wg_interface>
 ```
 
 ### Show config
