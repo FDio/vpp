@@ -33,12 +33,6 @@ typedef struct ip4_udp_header_t_
 
 u8 *format_ip4_udp_header (u8 * s, va_list * va);
 
-typedef struct wg_peer_allowed_ip_t_
-{
-  fib_prefix_t prefix;
-  fib_node_index_t fib_entry_index;
-} wg_peer_allowed_ip_t;
-
 typedef struct wg_peer_endpoint_t_
 {
   ip46_address_t addr;
@@ -63,7 +57,7 @@ typedef struct wg_peer
   u8 *rewrite;
 
   /* Vector of allowed-ips */
-  wg_peer_allowed_ip_t *allowed_ips;
+  fib_prefix_t *allowed_ips;
 
   /* The WG interface this peer is attached to */
   u32 wg_sw_if_index;
@@ -111,9 +105,9 @@ index_t wg_peer_walk (wg_peer_walk_cb_t fn, void *data);
 
 u8 *format_wg_peer (u8 * s, va_list * va);
 
-walk_rc_t wg_peer_if_admin_state_change (wg_if_t * wgi, index_t peeri,
-					 void *data);
-walk_rc_t wg_peer_if_table_change (wg_if_t * wgi, index_t peeri, void *data);
+walk_rc_t wg_peer_if_admin_state_change (index_t peeri, void *data);
+walk_rc_t wg_peer_if_adj_change (index_t peeri, void *data);
+adj_walk_rc_t wg_peer_adj_walk (adj_index_t ai, void *data);
 
 /*
  * Expoed for the data-plane
@@ -143,6 +137,22 @@ wg_peer_assign_thread (u32 thread_id)
 	  : (vlib_num_workers ()?
 	     ((unix_time_now_nsec () % vlib_num_workers ()) +
 	      1) : thread_id));
+}
+
+static_always_inline bool
+fib_prefix_is_cover_addr_4 (const fib_prefix_t *p1, const ip4_address_t *ip4)
+{
+  switch (p1->fp_proto)
+    {
+    case FIB_PROTOCOL_IP4:
+      return (ip4_destination_matches_route (&ip4_main, &p1->fp_addr.ip4, ip4,
+					     p1->fp_len) != 0);
+    case FIB_PROTOCOL_IP6:
+      return (false);
+    case FIB_PROTOCOL_MPLS:
+      break;
+    }
+  return (false);
 }
 
 #endif // __included_wg_peer_h__

@@ -254,24 +254,6 @@ wg_handshake_process (vlib_main_t * vm, wg_main_t * wmp, vlib_buffer_t * b)
   return WG_INPUT_ERROR_NONE;
 }
 
-static_always_inline bool
-fib_prefix_is_cover_addr_4 (const fib_prefix_t * p1,
-			    const ip4_address_t * ip4)
-{
-  switch (p1->fp_proto)
-    {
-    case FIB_PROTOCOL_IP4:
-      return (ip4_destination_matches_route (&ip4_main,
-					     &p1->fp_addr.ip4,
-					     ip4, p1->fp_len) != 0);
-    case FIB_PROTOCOL_IP6:
-      return (false);
-    case FIB_PROTOCOL_MPLS:
-      break;
-    }
-  return (false);
-}
-
 VLIB_NODE_FN (wg_input_node) (vlib_main_t * vm,
 			      vlib_node_runtime_t * node,
 			      vlib_frame_t * frame)
@@ -386,7 +368,7 @@ VLIB_NODE_FN (wg_input_node) (vlib_main_t * vm,
 
 	  ip4_header_t *iph = vlib_buffer_get_current (b[0]);
 
-	  const wg_peer_allowed_ip_t *allowed_ip;
+	  const fib_prefix_t *allowed_ip;
 	  bool allowed = false;
 
 	  /*
@@ -396,8 +378,7 @@ VLIB_NODE_FN (wg_input_node) (vlib_main_t * vm,
 	   */
 	  vec_foreach (allowed_ip, peer->allowed_ips)
 	  {
-	    if (fib_prefix_is_cover_addr_4 (&allowed_ip->prefix,
-					    &iph->src_address))
+	    if (fib_prefix_is_cover_addr_4 (allowed_ip, &iph->src_address))
 	      {
 		allowed = true;
 		break;

@@ -249,8 +249,7 @@ send_wg_peers_details (index_t peeri, void *data)
 
   int ii;
   for (ii = 0; ii < n_allowed_ips; ii++)
-    ip_prefix_encode (&peer->allowed_ips[ii].prefix,
-		      &rmp->peer.allowed_ips[ii]);
+    ip_prefix_encode (&peer->allowed_ips[ii], &rmp->peer.allowed_ips[ii]);
 
   rmp->context = ctx->context;
 
