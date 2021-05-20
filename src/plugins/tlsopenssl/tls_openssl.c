@@ -382,6 +382,13 @@ openssl_ctx_write_tls (tls_ctx_t *ctx, session_t *app_session,
 
   deq_max = clib_min (deq_max, sp->max_burst_size);
 
+  /* Make sure tcp's tx fifo can actually buffer all bytes to be dequeued.
+   * If under memory pressure, tls's fifo segment might not be able to
+   * allocate the chunks needed. This also avoids errors from the underlying
+   * custom bio to the ssl infra which at times can get stuck. */
+  if (svm_fifo_provision_chunks (ts->tx_fifo, 0, 0, deq_max + TLSO_CTRL_BYTES))
+    goto check_tls_fifo;
+
   wrote = openssl_write_from_fifo_into_ssl (f, oc->ssl, deq_max);
   if (!wrote)
     goto check_tls_fifo;
