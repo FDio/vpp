@@ -305,6 +305,7 @@ ipsec_itf_create (u32 user_instance, tunnel_mode_t mode, u32 * sw_if_indexp)
 					 t_idx);
 
   hi = vnet_get_hw_interface (vnm, hw_if_index);
+  vnet_sw_interface_set_mtu (vnm, hi->sw_if_index, 9000);
 
   vec_validate_init_empty (ipsec_itf_index_by_sw_if_index, hi->sw_if_index,
 			   INDEX_INVALID);
