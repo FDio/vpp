@@ -36,11 +36,12 @@ struct cipher_context_t
 struct aead_crypto_context_t
 {
   ptls_aead_context_t super;
+  EVP_CIPHER_CTX *evp_ctx;
+  uint8_t static_iv[PTLS_MAX_IV_SIZE];
   vnet_crypto_op_t op;
   u32 key_index;
   vnet_crypto_op_id_t id;
   uint8_t iv[PTLS_MAX_IV_SIZE];
-  uint8_t static_iv[PTLS_MAX_IV_SIZE];
 };
 
 static int
