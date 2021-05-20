@@ -97,6 +97,30 @@
     },
     {
       "key": {
+        "uuid": "6ba4dcc2_42f00242",
+        "filename": "src/vlibmemory/vlib_api_api.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 865
+      },
+      "writtenOn": "2021-05-20T06:53:11Z",
+      "side": 1,
+      "message": "Hi, to be honest, i don\u0027t have much knowledge about memclnt.api so I\u0027m wandering what should be the next steps deciding where to put the code? If the implementation should be moved to memclnt.api, are there any extra steps to take? Thanks.",
+      "parentUuid": "4388e359_4e98bfb2",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 1,
+        "endChar": 2
+      },
+      "revId": "be015f2d4879c5c84556f7b03001f8f7109808df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "45293943_3f7a7947",
         "filename": "src/vlibmemory/vlib_api_api.c",
         "patchSetId": 8
@@ -108,6 +132,30 @@
       "writtenOn": "2021-05-05T19:43:17Z",
       "side": 1,
       "message": "Can we reuse vl_msg_api_trace_save?",
+      "range": {
+        "startLine": 41,
+        "startChar": 0,
+        "endLine": 41,
+        "endChar": 31
+      },
+      "revId": "be015f2d4879c5c84556f7b03001f8f7109808df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ecc76cb1_994abf5b",
+        "filename": "src/vlibmemory/vlib_api_api.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 865
+      },
+      "writtenOn": "2021-05-20T06:53:11Z",
+      "side": 1,
+      "message": "Hi Florin, I\u0027m sure there was a reason why I didn\u0027t reuse the code, but I don\u0027t remember since it was some time ago. I\u0027ll see what I can do about reusing the code and come back with a patch set or an explanation.",
+      "parentUuid": "45293943_3f7a7947",
       "range": {
         "startLine": 41,
         "startChar": 0,
