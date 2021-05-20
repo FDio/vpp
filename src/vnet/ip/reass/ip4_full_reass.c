@@ -413,8 +413,9 @@ ip4_full_reass_free (ip4_full_reass_main_t * rm,
 }
 
 always_inline void
-ip4_full_reass_drop_all (vlib_main_t * vm, vlib_node_runtime_t * node,
-			 ip4_full_reass_main_t * rm, ip4_full_reass_t * reass)
+ip4_full_reass_drop_all (vlib_main_t *vm, vlib_node_runtime_t *node,
+			 ip4_full_reass_main_t *rm, ip4_full_reass_t *reass,
+			 u32 offending_bi)
 {
   u32 range_bi = reass->first_bi;
   vlib_buffer_t *range_b;
@@ -428,6 +429,10 @@ ip4_full_reass_drop_all (vlib_main_t * vm, vlib_node_runtime_t * node,
       while (~0 != bi)
 	{
 	  vec_add1 (to_free, bi);
+	  if (offending_bi == bi)
+	    {
+	      offending_bi = ~0;
+	    }
 	  vlib_buffer_t *b = vlib_get_buffer (vm, bi);
 	  if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
 	    {
@@ -440,6 +445,10 @@ ip4_full_reass_drop_all (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	}
       range_bi = range_vnb->ip.reass.next_range_bi;
+    }
+  if (~0 != offending_bi)
+    {
+      vec_add1 (to_free, offending_bi);
     }
   /* send to next_error_index */
   if (~0 != reass->error_next_index)
@@ -511,7 +520,7 @@ again:
 
       if (now > reass->last_heard + rm->timeout)
 	{
-	  ip4_full_reass_drop_all (vm, node, rm, reass);
+	  ip4_full_reass_drop_all (vm, node, rm, reass, ~0);
 	  ip4_full_reass_free (rm, rt, reass);
 	  reass = NULL;
 	}
@@ -1207,14 +1216,14 @@ ip4_full_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  vlib_node_increment_counter (vm, node->node_index,
 					       IP4_ERROR_REASS_FRAGMENT_CHAIN_TOO_LONG,
 					       1);
-		  ip4_full_reass_drop_all (vm, node, rm, reass);
+		  ip4_full_reass_drop_all (vm, node, rm, reass, bi0);
 		  ip4_full_reass_free (rm, rt, reass);
 		  goto next_packet;
 		  break;
 		case IP4_REASS_RC_NO_BUF:
 		  vlib_node_increment_counter (vm, node->node_index,
 					       IP4_ERROR_REASS_NO_BUF, 1);
-		  ip4_full_reass_drop_all (vm, node, rm, reass);
+		  ip4_full_reass_drop_all (vm, node, rm, reass, bi0);
 		  ip4_full_reass_free (rm, rt, reass);
 		  goto next_packet;
 		  break;
@@ -1223,7 +1232,7 @@ ip4_full_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  vlib_node_increment_counter (vm, node->node_index,
 					       IP4_ERROR_REASS_INTERNAL_ERROR,
 					       1);
-		  ip4_full_reass_drop_all (vm, node, rm, reass);
+		  ip4_full_reass_drop_all (vm, node, rm, reass, bi0);
 		  ip4_full_reass_free (rm, rt, reass);
 		  goto next_packet;
 		  break;
@@ -1596,9 +1605,9 @@ ip4_full_reass_walk_expired (vlib_main_t * vm,
           vec_foreach (i, pool_indexes_to_free)
           {
             ip4_full_reass_t *reass = pool_elt_at_index (rt->pool, i[0]);
-            ip4_full_reass_drop_all (vm, node, rm, reass);
-            ip4_full_reass_free (rm, rt, reass);
-          }
+	    ip4_full_reass_drop_all (vm, node, rm, reass, ~0);
+	    ip4_full_reass_free (rm, rt, reass);
+	  }
           /* *INDENT-ON* */
 
 	  clib_spinlock_unlock (&rt->lock);
