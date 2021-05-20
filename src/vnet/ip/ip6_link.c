@@ -155,7 +155,7 @@ ip6_link_enable (u32 sw_if_index, const ip6_address_t * link_local_addr)
 
   if (NULL == il)
     {
-      const vnet_sw_interface_t *sw, *sw_sup;
+      const vnet_sw_interface_t *sw_sup;
       const ethernet_interface_t *eth;
       vnet_main_t *vnm;
 
@@ -165,33 +165,31 @@ ip6_link_enable (u32 sw_if_index, const ip6_address_t * link_local_addr)
 		     format_vnet_sw_if_index_name, vnm, sw_if_index);
 
       sw_sup = vnet_get_sup_sw_interface (vnm, sw_if_index);
-      if (sw_sup->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
-	{
-	  rv = VNET_API_ERROR_UNSUPPORTED;
-	  goto out;
-	}
-
-      eth = ethernet_get_interface (&ethernet_main, sw_sup->hw_if_index);
-
-      if (NULL == eth)
-	{
-	  rv = VNET_API_ERROR_UNSUPPORTED;
-	  goto out;
-	}
-
       vec_validate (ip6_links, sw_if_index);
 
       il = &ip6_links[sw_if_index];
       il->il_locks = 0;
       il->il_sw_if_index = sw_if_index;
+      il->il_mcast_adj = ADJ_INDEX_INVALID;
 
-      sw = vnet_get_sup_sw_interface (vnm, sw_if_index);
-
+      // use a user provided LL address if given
       if (NULL != link_local_addr)
 	ip6_address_copy (&il->il_ll_addr, link_local_addr);
-      else if (sw->type == VNET_SW_INTERFACE_TYPE_SUB ||
-	       sw->type == VNET_SW_INTERFACE_TYPE_PIPE ||
-	       sw->type == VNET_SW_INTERFACE_TYPE_P2P)
+
+      if (ip6_address_is_zero (&il->il_ll_addr))
+	{
+	  if (sw_sup->type == VNET_SW_INTERFACE_TYPE_HARDWARE)
+	    {
+	      eth =
+		ethernet_get_interface (&ethernet_main, sw_sup->hw_if_index);
+
+	      if (NULL != eth)
+		ip6_link_local_address_from_mac (&il->il_ll_addr,
+						 eth->address.mac.bytes);
+	    }
+	}
+
+      if (ip6_address_is_zero (&il->il_ll_addr))
 	{
 	  il->il_ll_addr.as_u64[0] =
 	    clib_host_to_net_u64 (0xFE80000000000000ULL);
@@ -201,11 +199,6 @@ ip6_link_enable (u32 sw_if_index, const ip6_address_t * link_local_addr)
 
 	  /* clear u bit */
 	  il->il_ll_addr.as_u8[8] &= 0xfd;
-	}
-      else
-	{
-	  ip6_link_local_address_from_mac (&il->il_ll_addr,
-					   eth->address.mac.bytes);
 	}
 
       {
@@ -221,8 +214,10 @@ ip6_link_enable (u32 sw_if_index, const ip6_address_t * link_local_addr)
       ip6_mfib_interface_enable_disable (sw_if_index, 1);
       ip6_sw_interface_enable_disable (sw_if_index, 1);
 
-      il->il_mcast_adj = adj_mcast_add_or_lock (FIB_PROTOCOL_IP6,
-						VNET_LINK_IP6, sw_if_index);
+      if (sw_sup->type == VNET_SW_INTERFACE_TYPE_HARDWARE ||
+	  !vnet_sw_interface_is_p2p (vnm, sw_if_index))
+	il->il_mcast_adj =
+	  adj_mcast_add_or_lock (FIB_PROTOCOL_IP6, VNET_LINK_IP6, sw_if_index);
 
       /* inform all register clients */
       ip6_link_delegate_id_t id;
@@ -241,7 +236,6 @@ ip6_link_enable (u32 sw_if_index, const ip6_address_t * link_local_addr)
 
   il->il_locks++;
 
-out:
   return (rv);
 }
 
