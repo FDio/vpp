@@ -1257,6 +1257,9 @@ svm_fifo_provision_chunks (svm_fifo_t *f, svm_fifo_seg_t *fs, u32 n_segs,
   if (n_avail < len && f_try_chunk_alloc (f, head, tail, len))
     return SVM_FIFO_EGROW;
 
+  if (!fs || !n_segs)
+    return 0;
+
   c = f_tail_cptr (f);
   head_pos = (tail - c->start_byte);
   fs[0].data = c->data + head_pos;

@@ -226,7 +226,8 @@ tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
       /* Free app session pre-allocated when transport was established */
       if (ctx->tls_type == TRANSPORT_PROTO_TLS)
 	session_free (session_get (ctx->c_s_index, ctx->c_thread_index));
-      goto failed;
+      ctx->no_app_session = 1;
+      goto send_reply;
     }
 
   /* For DTLS the app session is not preallocated because the underlying udp
@@ -271,6 +272,7 @@ tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
 failed:
   ctx->no_app_session = 1;
   tls_disconnect (ctx->tls_ctx_handle, vlib_get_thread_index ());
+send_reply:
   return app_worker_connect_notify (app_wrk, 0, err,
 				    ctx->parent_app_api_context);
 }
