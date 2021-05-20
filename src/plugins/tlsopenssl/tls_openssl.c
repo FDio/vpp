@@ -181,7 +181,7 @@ openssl_read_from_ssl_into_fifo (svm_fifo_t * f, SSL * ssl)
       rv = SSL_read (ssl, fs[i].data, fs[i].len);
       read += rv > 0 ? rv : 0;
 
-      if (rv < fs[i].len)
+      if (rv < (int) fs[i].len)
 	break;
     }
 
@@ -205,7 +205,7 @@ openssl_write_from_fifo_into_ssl (svm_fifo_t *f, SSL *ssl, u32 max_len)
     {
       rv = SSL_write (ssl, fs[i].data, fs[i].len);
       wrote += (rv > 0) ? rv : 0;
-      if (rv < fs[i].len)
+      if (rv < (int) fs[i].len)
 	break;
       i++;
     }
