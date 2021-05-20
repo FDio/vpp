@@ -4,12 +4,14 @@ from framework import tag_fixme_vpp_workers
 from framework import VppTestCase, VppTestRunner
 
 from vpp_udp_encap import find_udp_encap, VppUdpEncap
+from vpp_udp_decap import VppUdpDecap
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, VppMplsLabel, \
-    FibPathType
+    VppMplsTable, VppMplsIpBind, FibPathType
+from vpp_neighbor import VppNeighbor
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
-from scapy.layers.inet import IP, UDP
+from scapy.layers.inet import IP, UDP, ICMP
 from scapy.layers.inet6 import IPv6
 from scapy.contrib.mpls import MPLS
 
@@ -87,10 +89,13 @@ class TestUdpEncap(VppTestCase):
         else:
             self.assertEqual(rx[IP].ttl, tx[IP].ttl)
 
-    def validate_inner6(self, rx, tx):
+    def validate_inner6(self, rx, tx, hlim=None):
         self.assertEqual(rx.src, tx[IPv6].src)
         self.assertEqual(rx.dst, tx[IPv6].dst)
-        self.assertEqual(rx.hlim, tx[IPv6].hlim)
+        if hlim:
+            self.assertEqual(rx.hlim, hlim)
+        else:
+            self.assertEqual(rx.hlim, tx[IPv6].hlim)
 
     def test_udp_encap(self):
         """ UDP Encap test
@@ -247,6 +252,131 @@ class TestUdpEncap(VppTestCase):
             p = MPLS(p["UDP"].payload.load)
             self.validate_inner4(p, p_4omo4, ttl=63)
         self.assertEqual(udp_encap_1.get_stats()['packets'], 2*NUM_PKTS)
+
+    def test_udp_decap(self):
+        """ UDP Decap test
+        """
+
+        #
+        # construct a UDP decap object for each type of protocol
+        #
+        udp_decap_0 = VppUdpDecap(self, 1, 220, "ip4-input")
+
+        # IPv6
+        udp_decap_1 = VppUdpDecap(self, 0, 221, "ip6-input")
+
+        # MPLS
+        udp_decap_2 = VppUdpDecap(self, 1, 222, "mpls-input")
+
+        udp_decap_0.add_vpp_config()
+        udp_decap_1.add_vpp_config()
+        udp_decap_2.add_vpp_config()
+
+        #
+        # Routes via the corresponding pg after the UDP decap
+        #
+        route_4 = VppIpRoute(
+            self, "1.1.1.1", 32,
+            [VppRoutePath("0.0.0.0", self.pg0.sw_if_index)],
+            table_id=0)
+
+        route_6 = VppIpRoute(
+            self, "2001::1", 128,
+            [VppRoutePath("::", self.pg1.sw_if_index)],
+            table_id=1)
+
+        route_mo4 = VppIpRoute(
+            self, "3.3.3.3", 32,
+            [VppRoutePath("0.0.0.0", self.pg2.sw_if_index)],
+            table_id=2)
+
+        route_4.add_vpp_config()
+        route_6.add_vpp_config()
+        route_mo4.add_vpp_config()
+
+        #
+        # Adding neighbors to route the packets
+        #
+        n_4 = VppNeighbor(self,
+                          self.pg0.sw_if_index,
+                          "00:11:22:33:44:55",
+                          "1.1.1.1")
+        n_6 = VppNeighbor(self,
+                          self.pg1.sw_if_index,
+                          "11:22:33:44:55:66",
+                          "2001::1")
+        n_mo4 = VppNeighbor(self,
+                            self.pg2.sw_if_index,
+                            "22:33:44:55:66:77",
+                            "3.3.3.3")
+
+        n_4.add_vpp_config()
+        n_6.add_vpp_config()
+        n_mo4.add_vpp_config()
+
+        #
+        # MPLS decapsulation config
+        #
+        mpls_table = VppMplsTable(self, 0)
+        mpls_table.add_vpp_config()
+        mpls_bind = VppMplsIpBind(self, 77, "3.3.3.3",
+                                  32, ip_table_id=2)
+        mpls_bind.add_vpp_config()
+
+        #
+        # UDP over ipv4 decap
+        #
+        p_4 = (Ether(src=self.pg0.remote_mac,
+                     dst=self.pg0.local_mac) /
+               IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4) /
+               UDP(sport=1111, dport=220) /
+               IP(src="2.2.2.2", dst="1.1.1.1") /
+               UDP(sport=1234, dport=4321) /
+               Raw(b'\xa5' * 100))
+
+        rx = self.send_and_expect(self.pg0, p_4*NUM_PKTS, self.pg0)
+        p_4 = IP(p_4["UDP"].payload)
+        for p in rx:
+            p = IP(p["Ether"].payload)
+            self.validate_inner4(p, p_4, ttl=63)
+
+        #
+        # UDP over ipv6 decap
+        #
+        p_6 = (Ether(src=self.pg1.remote_mac,
+                     dst=self.pg1.local_mac) /
+               IPv6(src=self.pg1.remote_ip6, dst=self.pg1.local_ip6) /
+               UDP(sport=2222, dport=221) /
+               IPv6(src="2001::100", dst="2001::1") /
+               UDP(sport=1234, dport=4321) /
+               Raw(b'\xa5' * 100))
+
+        rx = self.send_and_expect(self.pg1, p_6*NUM_PKTS, self.pg1)
+        p_6 = IPv6(p_6["UDP"].payload)
+        p = IPv6(rx[0]["Ether"].payload)
+        for p in rx:
+            p = IPv6(p["Ether"].payload)
+            self.validate_inner6(p, p_6, hlim=63)
+
+        #
+        # UDP over mpls decap
+        #
+        p_mo4 = (Ether(src=self.pg2.remote_mac,
+                       dst=self.pg2.local_mac) /
+                 IP(src=self.pg2.remote_ip4, dst=self.pg2.local_ip4) /
+                 UDP(sport=3333, dport=222) /
+                 MPLS(label=77, ttl=1) /
+                 IP(src="4.4.4.4", dst="3.3.3.3") /
+                 UDP(sport=1234, dport=4321) /
+                 Raw(b'\xa5' * 100))
+
+        self.pg2.enable_mpls()
+        rx = self.send_and_expect(self.pg2, p_mo4*NUM_PKTS, self.pg2)
+        self.pg2.disable_mpls()
+        p_mo4 = IP(MPLS(p_mo4["UDP"].payload).payload)
+        for p in rx:
+            p = IP(p["Ether"].payload)
+            self.validate_inner4(p, p_mo4, ttl=63)
 
 
 @tag_fixme_vpp_workers
