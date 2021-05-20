@@ -1149,7 +1149,9 @@ quic_update_timer (quic_ctx_t * ctx)
 	}
     }
 
-  tw = &quic_main.wrk_ctx[vlib_get_thread_index ()].timer_wheel;
+  ASSERT (vlib_get_thread_index () == ctx->c_thread_index ||
+	  vlib_get_thread_index () == 0);
+  tw = &quic_main.wrk_ctx[ctx->c_thread_index].timer_wheel;
 
   QUIC_DBG (4, "Timer set to %ld (int %ld) for ctx %u", next_timeout,
 	    next_interval, ctx->c_c_index);
