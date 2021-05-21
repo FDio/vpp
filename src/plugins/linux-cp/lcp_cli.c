@@ -93,7 +93,7 @@ lcp_itf_pair_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	0, "Namespace name should be fewer than %d characters", LCP_NS_LEN);
     }
 
-  r = lcp_itf_pair_create (sw_if_index, host_if_name, host_if_type, ns);
+  r = lcp_itf_pair_create (sw_if_index, host_if_name, host_if_type, ns, NULL);
 
   vec_free (host_if_name);
   vec_free (ns);

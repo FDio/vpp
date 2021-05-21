@@ -98,7 +98,8 @@ extern int lcp_itf_pair_del (u32 phy_sw_if_index);
  * @return error code
  */
 extern int lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
-				lip_host_type_t host_if_type, u8 *ns);
+				lip_host_type_t host_if_type, u8 *ns,
+				u32 *host_sw_if_indexp);
 
 /**
  * Delete a LCP_ITF_PAIR
