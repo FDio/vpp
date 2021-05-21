@@ -213,6 +213,8 @@ session_mq_handle_connects_rpc (void *arg)
 
   /* Pending connects on linked list pertaining to first worker */
   fwrk = session_main_get_worker (1);
+  if (!fwrk->n_pending_connects)
+    goto update_state;
 
   vlib_worker_thread_barrier_sync (vm);
 
@@ -230,19 +232,26 @@ session_mq_handle_connects_rpc (void *arg)
       n_connects += 1;
     }
 
+  /* Decrement with worker barrier */
+  fwrk->n_pending_connects -= n_connects;
+
+  vlib_worker_thread_barrier_release (vm);
+
+update_state:
+
   /* Switch worker to poll mode if it was in interrupt mode and had work or
    * back to interrupt if threshold of loops without a connect is passed.
    * While in poll mode, reprogram connects rpc */
   wrk = session_main_get_worker (0);
   if (wrk->state != SESSION_WRK_POLLING)
     {
-      if (!n_connects)
-	goto done;
-
-      session_wrk_set_state (wrk, SESSION_WRK_POLLING);
-      vlib_node_set_state (vm, session_queue_node.index,
-			   VLIB_NODE_STATE_POLLING);
-      wrk->no_connect_loops = 0;
+      if (n_connects)
+	{
+	  session_wrk_set_state (wrk, SESSION_WRK_POLLING);
+	  vlib_node_set_state (vm, session_queue_node.index,
+			       VLIB_NODE_STATE_POLLING);
+	  wrk->no_connect_loops = 0;
+	}
     }
   else
     {
@@ -253,20 +262,18 @@ session_mq_handle_connects_rpc (void *arg)
 	      session_wrk_set_state (wrk, SESSION_WRK_INTERRUPT);
 	      vlib_node_set_state (vm, session_queue_node.index,
 				   VLIB_NODE_STATE_INTERRUPT);
-	      fwrk->pending_connects_ntf = 0;
-	      goto done;
 	    }
 	}
       else
 	wrk->no_connect_loops = 0;
     }
 
-  elt = session_evt_alloc_ctrl (wrk);
-  elt->evt.event_type = SESSION_CTRL_EVT_RPC;
-  elt->evt.rpc_args.fp = session_mq_handle_connects_rpc;
-
-done:
-  vlib_worker_thread_barrier_release (vm);
+  if (wrk->state == SESSION_WRK_POLLING)
+    {
+      elt = session_evt_alloc_ctrl (wrk);
+      elt->evt.event_type = SESSION_CTRL_EVT_RPC;
+      elt->evt.rpc_args.fp = session_mq_handle_connects_rpc;
+    }
 }
 
 static void
@@ -292,12 +299,13 @@ session_mq_connect_handler (session_worker_t *wrk, session_evt_elt_t *elt)
   he = clib_llist_elt (wrk->event_elts, wrk->pending_connects);
   clib_llist_add_tail (wrk->event_elts, evt_list, elt, he);
 
-  if (!wrk->pending_connects_ntf)
+  /* Decremented with worker barrier */
+  wrk->n_pending_connects += 1;
+  if (wrk->n_pending_connects == 1)
     {
       vlib_node_set_interrupt_pending (vlib_get_main_by_index (0),
 				       session_queue_node.index);
       session_send_rpc_evt_to_thread (0, session_mq_handle_connects_rpc, 0);
-      wrk->pending_connects_ntf = 1;
     }
 }
 
