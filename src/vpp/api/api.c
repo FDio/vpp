@@ -213,8 +213,7 @@ vl_api_cli_inband_t_handler (vl_api_cli_inband_t * mp)
   u8 *out_vec = 0;
   u8 *cmd_vec = 0;
 
-  if (vl_msg_api_get_msg_length (mp) <
-      vl_api_string_len (&mp->cmd) + sizeof (*mp))
+  if (vl_msg_api_get_msg_length (mp) < sizeof (*mp))
     {
       rv = -1;
       goto error;
