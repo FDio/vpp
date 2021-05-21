@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "129b9c00_0e87753d",
+        "filename": "src/plugins/wireguard/wireguard_output_tun.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 172,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-05-21T07:13:19Z",
+      "side": 1,
+      "message": "alternatively:\n  offset is vnet_buffer(b[0]).ip_save_rewrite_length.\n  plain_data_len is vlib_buffer_length_in_chain() - offset.",
+      "revId": "c209e16e0930ade8be3d3f44d75cdecc10335b5b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a716e01c_77e05def",
         "filename": "src/plugins/wireguard/wireguard_peer.c",
         "patchSetId": 1
