@@ -640,7 +640,8 @@ lcp_itf_set_vif_link_state (u32 vif_index, u8 up, u8 *ns)
 
 int
 lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
-		     lip_host_type_t host_if_type, u8 *ns)
+		     lip_host_type_t host_if_type, u8 *ns,
+		     u32 *host_sw_if_indexp)
 {
   vlib_main_t *vm;
   vnet_main_t *vnm;
@@ -823,6 +824,9 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
 		     format_vnet_sw_if_index_name, vnet_get_main (),
 		     host_sw_if_index, host_if_name);
 
+  if (host_sw_if_indexp)
+    *host_sw_if_indexp = host_sw_if_index;
+
   return 0;
 }
 
@@ -902,7 +906,7 @@ lcp_itf_pair_process (vlib_main_t *vm, vlib_node_runtime_t *rt,
 	  lipn = &lipn_names[*lipn_index];
 	  lcp_itf_pair_create (lipn->lipn_phy_sw_if_index,
 			       lipn->lipn_host_name, LCP_ITF_HOST_TAP,
-			       lipn->lipn_namespace);
+			       lipn->lipn_namespace, NULL);
 	}
 
       vec_reset_length (event_data);

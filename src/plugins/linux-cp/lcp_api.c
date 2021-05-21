@@ -57,6 +57,35 @@ lcp_auto_intf (void)
   return lcpm->auto_intf;
 }
 
+static int
+vl_api_lcp_itf_pair_add (u32 phy_sw_if_index, lip_host_type_t lip_host_type,
+			 u8 *mp_host_if_name, size_t sizeof_host_if_name,
+			 u8 *mp_namespace, size_t sizeof_mp_namespace,
+			 u32 *host_sw_if_index_p)
+{
+  u8 *host_if_name, *netns;
+  int host_len, netns_len, rv;
+
+  host_if_name = netns = 0;
+
+  /* lcp_itf_pair_create expects vec of u8 */
+  host_len = clib_strnlen ((char *) mp_host_if_name, sizeof_host_if_name - 1);
+  vec_add (host_if_name, mp_host_if_name, host_len);
+  vec_add1 (host_if_name, 0);
+
+  netns_len = clib_strnlen ((char *) mp_namespace, sizeof_mp_namespace - 1);
+  vec_add (netns, mp_namespace, netns_len);
+  vec_add1 (netns, 0);
+
+  rv = lcp_itf_pair_create (phy_sw_if_index, host_if_name, lip_host_type,
+			    netns, host_sw_if_index_p);
+
+  vec_free (host_if_name);
+  vec_free (netns);
+
+  return rv;
+}
+
 static void
 vl_api_lcp_itf_pair_add_del_t_handler (vl_api_lcp_itf_pair_add_del_t *mp)
 {
@@ -75,27 +104,10 @@ vl_api_lcp_itf_pair_add_del_t_handler (vl_api_lcp_itf_pair_add_del_t *mp)
   lip_host_type = api_decode_host_type (mp->host_if_type);
   if (mp->is_add)
     {
-      u8 *host_if_name, *netns;
-      int host_len, netns_len;
-
-      host_if_name = netns = 0;
-
-      /* lcp_itf_pair_create expects vec of u8 */
-      host_len = clib_strnlen ((char *) mp->host_if_name,
-			       sizeof (mp->host_if_name) - 1);
-      vec_add (host_if_name, mp->host_if_name, host_len);
-      vec_add1 (host_if_name, 0);
-
-      netns_len =
-	clib_strnlen ((char *) mp->namespace, sizeof (mp->namespace) - 1);
-      vec_add (netns, mp->namespace, netns_len);
-      vec_add1 (netns, 0);
-
-      rv = lcp_itf_pair_create (phy_sw_if_index, host_if_name, lip_host_type,
-				netns);
-
-      vec_free (host_if_name);
-      vec_free (netns);
+      rv =
+	vl_api_lcp_itf_pair_add (phy_sw_if_index, lip_host_type,
+				 mp->host_if_name, sizeof (mp->host_if_name),
+				 mp->namespace, sizeof (mp->namespace), NULL);
     }
   else
     {
@@ -104,6 +116,39 @@ vl_api_lcp_itf_pair_add_del_t_handler (vl_api_lcp_itf_pair_add_del_t *mp)
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_LCP_ITF_PAIR_ADD_DEL_REPLY);
+}
+
+static void
+vl_api_lcp_itf_pair_add_del_v2_t_handler (vl_api_lcp_itf_pair_add_del_v2_t *mp)
+{
+  u32 phy_sw_if_index, host_sw_if_index = ~0;
+  vl_api_lcp_itf_pair_add_del_v2_reply_t *rmp;
+  lip_host_type_t lip_host_type;
+  int rv;
+
+  if (!vnet_sw_if_index_is_api_valid (mp->sw_if_index))
+    {
+      rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
+      goto bad_sw_if_index;
+    }
+
+  phy_sw_if_index = mp->sw_if_index;
+  lip_host_type = api_decode_host_type (mp->host_if_type);
+  if (mp->is_add)
+    {
+      rv = vl_api_lcp_itf_pair_add (phy_sw_if_index, lip_host_type,
+				    mp->host_if_name,
+				    sizeof (mp->host_if_name), mp->namespace,
+				    sizeof (mp->namespace), &host_sw_if_index);
+    }
+  else
+    {
+      rv = lcp_itf_pair_delete (phy_sw_if_index);
+    }
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO2 (VL_API_LCP_ITF_PAIR_ADD_DEL_V2_REPLY,
+		{ rmp->host_sw_if_index = ntohl (host_sw_if_index); });
 }
 
 static void
