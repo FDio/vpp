@@ -149,7 +149,7 @@ typedef struct session_worker_
   clib_llist_index_t pending_connects;
 
   /** Flag that is set if main thread signaled to handle connects */
-  u32 pending_connects_ntf;
+  u32 n_pending_connects;
 
   /** Main thread loops in poll mode without a connect */
   u32 no_connect_loops;
