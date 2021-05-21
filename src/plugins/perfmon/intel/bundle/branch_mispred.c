@@ -40,15 +40,6 @@ format_branch_mispredictions (u8 *s, va_list *args)
     case 4:
       s = format (s, "%05.2f", (ns->value[2] / (f64) ns->value[0]) * 100);
       break;
-    case 5:
-      s = format (s, "%9f", (f64) ns->value[0]);
-      break;
-    case 6:
-      s = format (s, "%9f", (f64) ns->value[1]);
-      break;
-    case 7:
-      s = format (s, "%9f", (f64) ns->value[2]);
-      break;
     }
   return s;
 }
@@ -65,5 +56,4 @@ PERFMON_REGISTER_BUNDLE (branch_mispredictions) = {
   .format_fn = format_branch_mispredictions,
   .column_headers = PERFMON_STRINGS ("Branches/call", "Branches/pkt",
 				     "Taken/call", "Taken/pkt", "% MisPred"),
-  .raw_column_headers = PERFMON_STRINGS ("branches", "taken", "misses"),
 };

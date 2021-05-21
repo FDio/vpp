@@ -110,7 +110,6 @@ typedef struct perfmon_bundle
   perfmon_bundle_init_fn_t *init_fn;
 
   char **column_headers;
-  char **raw_column_headers;
   format_function_t *format_fn;
   clib_cpu_supports_func_t cpu_supports;
 
