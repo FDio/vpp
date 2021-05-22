@@ -212,14 +212,16 @@ format_vnet_hw_interface (u8 * s, va_list * args)
   if (vec_len (hi->tx_queue_indices))
     {
       s = format (s, "\n%UTX Queues:", format_white_space, indent + 2);
-      s = format (s, "\n%U%-6s%-15s", format_white_space, indent + 4, "queue",
-		  "thread(s)");
+      s = format (s, "\n%U%-6s%-7s%-15s", format_white_space, indent + 4,
+		  "queue", "shared", "thread(s)");
       for (int i = 0; i < vec_len (hi->tx_queue_indices); i++)
 	{
 	  vnet_hw_if_tx_queue_t *txq;
 	  txq = vnet_hw_if_get_tx_queue (vnm, hi->tx_queue_indices[i]);
-	  s = format (s, "\n%U%-6u%U", format_white_space, indent + 4,
-		      txq->queue_id, format_bitmap_list, txq->threads);
+	  s = format (
+	    s, "\n%U%-6u%-7s%U", format_white_space, indent + 4, txq->queue_id,
+	    clib_bitmap_count_set_bits (txq->threads) > 1 ? "yes" : "no",
+	    format_bitmap_list, txq->threads);
 	}
     }
 
