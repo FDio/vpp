@@ -110,7 +110,7 @@ bio_dtls_write (BIO *b, const char *in, int inl)
   rv = app_send_dgram_raw (s->tx_fifo, &at, mq, (u8 *) in, inl,
 			   SESSION_IO_EVT_TX, 1 /* do_evt */, 0 /* noblock */);
 
-  if (rv < 0)
+  if (rv <= 0)
     {
       BIO_set_retry_read (b);
       errno = EAGAIN;
