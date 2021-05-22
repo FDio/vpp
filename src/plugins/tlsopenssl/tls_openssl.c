@@ -425,7 +425,7 @@ openssl_ctx_write_dtls (tls_ctx_t *ctx, session_t *app_session,
   session_dgram_pre_hdr_t hdr;
   session_t *us;
   int wrote, rv;
-  u32 read = 0, to_deq, dgram_sz;
+  u32 read = 0, to_deq, dgram_sz, enq_max;
   u8 *buf;
 
   us = session_get_from_handle (ctx->tls_session_handle);
@@ -440,7 +440,9 @@ openssl_ctx_write_dtls (tls_ctx_t *ctx, session_t *app_session,
       ASSERT (to_deq >= hdr.data_length + SESSION_CONN_HDR_LEN);
 
       dgram_sz = hdr.data_length + SESSION_CONN_HDR_LEN;
-      if (svm_fifo_max_enqueue_prod (us->tx_fifo) < dgram_sz + TLSO_CTRL_BYTES)
+      enq_max = dgram_sz + TLSO_CTRL_BYTES;
+      if (svm_fifo_max_enqueue_prod (us->tx_fifo) < enq_max ||
+	  svm_fifo_provision_chunks (us->tx_fifo, 0, 0, enq_max))
 	{
 	  svm_fifo_add_want_deq_ntf (us->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
 	  transport_connection_deschedule (&ctx->connection);
