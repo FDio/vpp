@@ -11,7 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_definitions (-DWITH_LIBSSL=1)
+if(NOT OPENSSL_FOUND)
+  message(WARNING "openssl headers not found - ikev2 plugin disabled")
+  return()
+endif()
+
 include_directories(${OPENSSL_INCLUDE_DIR})
 
 add_vpp_plugin(ikev2
