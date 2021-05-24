@@ -34,6 +34,24 @@
       "revId": "130bda4be8c44e1fa260f9a969ca5a902a40951e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "435c1188_82e36ee4",
+        "filename": "src/vnet/gso/gro_func.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 473,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2021-05-24T11:45:07Z",
+      "side": 1,
+      "message": "BUT the comment is bit confusing \"still add small packets to the flow if it exists\". Please update it to something like \"Don\u0027t add flow for small packets\".",
+      "parentUuid": "7abd6585_e9bda191",
+      "revId": "130bda4be8c44e1fa260f9a969ca5a902a40951e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
