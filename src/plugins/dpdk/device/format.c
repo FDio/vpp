@@ -44,18 +44,18 @@
   _ (tx_bytes_ok, q_obytes)                     \
   _ (rx_errors, q_errors)
 
-#define foreach_dpdk_pkt_rx_offload_flag                                \
-  _ (PKT_RX_VLAN, "RX packet is a 802.1q VLAN packet")                  \
-  _ (PKT_RX_RSS_HASH, "RX packet with RSS hash result")                 \
-  _ (PKT_RX_FDIR, "RX packet with FDIR infos")                          \
-  _ (PKT_RX_L4_CKSUM_BAD, "L4 cksum of RX pkt. is not OK")              \
-  _ (PKT_RX_IP_CKSUM_BAD, "IP cksum of RX pkt. is not OK")              \
-  _ (PKT_RX_EIP_CKSUM_BAD, "External IP header checksum error")         \
-  _ (PKT_RX_VLAN_STRIPPED, "RX packet VLAN tag stripped")               \
-  _ (PKT_RX_IP_CKSUM_GOOD, "IP cksum of RX pkt. is valid")              \
-  _ (PKT_RX_L4_CKSUM_GOOD, "L4 cksum of RX pkt. is valid")              \
-  _ (PKT_RX_IEEE1588_PTP, "RX IEEE1588 L2 Ethernet PT Packet")          \
-  _ (PKT_RX_IEEE1588_TMST, "RX IEEE1588 L2/L4 timestamped packet")      \
+#define foreach_dpdk_pkt_rx_offload_flag                                      \
+  _ (PKT_RX_VLAN, "RX packet is a 802.1q VLAN packet")                        \
+  _ (PKT_RX_RSS_HASH, "RX packet with RSS hash result")                       \
+  _ (PKT_RX_FDIR, "RX packet with FDIR infos")                                \
+  _ (PKT_RX_L4_CKSUM_BAD, "L4 cksum of RX pkt. is not OK")                    \
+  _ (PKT_RX_IP_CKSUM_BAD, "IP cksum of RX pkt. is not OK")                    \
+  _ (PKT_RX_OUTER_IP_CKSUM_BAD, "External IP header checksum error")          \
+  _ (PKT_RX_VLAN_STRIPPED, "RX packet VLAN tag stripped")                     \
+  _ (PKT_RX_IP_CKSUM_GOOD, "IP cksum of RX pkt. is valid")                    \
+  _ (PKT_RX_L4_CKSUM_GOOD, "L4 cksum of RX pkt. is valid")                    \
+  _ (PKT_RX_IEEE1588_PTP, "RX IEEE1588 L2 Ethernet PT Packet")                \
+  _ (PKT_RX_IEEE1588_TMST, "RX IEEE1588 L2/L4 timestamped packet")            \
   _ (PKT_RX_QINQ_STRIPPED, "RX packet QinQ tags stripped")
 
 #define foreach_dpdk_pkt_type                                           \

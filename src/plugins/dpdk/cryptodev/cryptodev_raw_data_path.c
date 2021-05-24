@@ -515,7 +515,7 @@ cryptodev_raw_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
     goto end_deq;
 
   n_deq = rte_cryptodev_raw_dequeue_burst (
-    cet->ctx, cryptodev_get_frame_n_elts, cryptodev_post_dequeue,
+    cet->ctx, cryptodev_get_frame_n_elts, 0, cryptodev_post_dequeue,
     (void **) &frame, 0, &n_success, &dequeue_status);
   if (!n_deq)
     goto end_deq;
@@ -542,7 +542,7 @@ cryptodev_raw_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
   while (inflight && n_room_left && !no_job_to_deq)
     {
       n_deq = rte_cryptodev_raw_dequeue_burst (
-	cet->ctx, cryptodev_get_frame_n_elts, cryptodev_post_dequeue,
+	cet->ctx, cryptodev_get_frame_n_elts, 0, cryptodev_post_dequeue,
 	(void **) &frame, 0, &n_success, &dequeue_status);
       if (!n_deq)
 	break;
