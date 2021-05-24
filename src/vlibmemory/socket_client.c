@@ -462,7 +462,7 @@ vl_socket_client_connect_internal (socket_client_main_t * scm,
 
   sock = &scm->client_socket;
   sock->config = socket_path;
-  sock->flags = CLIB_SOCKET_F_IS_CLIENT | CLIB_SOCKET_F_NON_BLOCKING_CONNECT;
+  sock->flags = CLIB_SOCKET_F_IS_CLIENT;
 
   if ((error = clib_socket_init (sock)))
     {
