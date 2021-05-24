@@ -21,6 +21,7 @@
 #include <vnet/interface.h>
 #include <vnet/fib/fib.h>
 #include <vnet/ipip/ipip.h>
+#include <vnet/scheduler/scheduler.h>
 
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/ipsec_tun.h>
@@ -473,8 +474,11 @@ show_ipsec_command_fn (vlib_main_t * vm,
   ipsec_spd_bindings_show_all (vm, im);
   ipsec_tun_protect_walk (ipsec_tun_protect_show_one, vm);
 
-  vlib_cli_output (vm, "IPSec async mode: %s",
-		   (im->async_mode ? "on" : "off"));
+  vlib_cli_output (vm, "IPSec modes:");
+  vlib_cli_output (vm, "\tasync: %s",
+		   (ipsec_op_mode_is_set_ASYNC () ? "on" : "off"));
+  vlib_cli_output (vm, "\tscheduler: %s",
+		   (ipsec_op_mode_is_set_SCHED () ? "on" : "off"));
 
   return 0;
 }
@@ -942,13 +946,46 @@ set_async_mode_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_async_mode_command, static) = {
     .path = "set ipsec async mode",
     .short_help = "set ipsec async mode on|off",
     .function = set_async_mode_command_fn,
 };
-/* *INDENT-ON* */
+
+static clib_error_t *
+set_scheduler_mode_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			       vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "on"))
+	{
+	  vnet_scheduler_enable_disable (1);
+	  ipsec_op_mode_set_SCHED ();
+	}
+      else if (unformat (line_input, "off"))
+	{
+	  ipsec_op_mode_unset_SCHED ();
+	  vnet_scheduler_enable_disable (0);
+	}
+      else
+	return (clib_error_return (0, "unknown input '%U'",
+				   format_unformat_error, line_input));
+    }
+  unformat_free (line_input);
+  return (NULL);
+}
+
+VLIB_CLI_COMMAND (set_scheduler_mode_command, static) = {
+  .path = "set ipsec scheduler mode",
+  .short_help = "set ipsec scheduler mode on|off",
+  .function = set_scheduler_mode_command_fn,
+};
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -20,6 +20,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/interface.h>
 #include <vnet/udp/udp_local.h>
+#include <vnet/scheduler/scheduler.h>
 
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
@@ -28,6 +29,7 @@
 ipsec_main_t ipsec_main;
 esp_async_post_next_t esp_encrypt_async_next;
 esp_async_post_next_t esp_decrypt_async_next;
+esp_sched_post_next_t esp_encrypt_sched_next;
 
 static clib_error_t *
 ipsec_check_ah_support (ipsec_sa_t * sa)
@@ -326,12 +328,14 @@ ipsec_select_esp_backend (ipsec_main_t * im, u32 backend_idx)
 void
 ipsec_set_async_mode (u32 is_enabled)
 {
-  ipsec_main_t *im = &ipsec_main;
   ipsec_sa_t *sa;
 
   vnet_crypto_request_async_mode (is_enabled);
 
-  im->async_mode = is_enabled;
+  if (is_enabled)
+    ipsec_op_mode_set_ASYNC ();
+  else
+    ipsec_op_mode_unset_ASYNC ();
 
   /* change SA crypto op data */
   pool_foreach (sa, ipsec_sa_pool)
@@ -368,6 +372,29 @@ crypto_engine_backend_register_post_node (vlib_main_t * vm)
     vnet_crypto_register_post_node (vm, "esp4-decrypt-tun-post");
   dit->esp6_tun_post_next =
     vnet_crypto_register_post_node (vm, "esp6-decrypt-tun-post");
+}
+
+static void
+ipsc_register_sched_node (vlib_main_t *vm)
+{
+  esp_sched_post_next_t *enc_sched_next = &esp_encrypt_sched_next;
+
+  /* esp_encrypt */
+  vnet_scheduler_create_instance (
+    vm, "esp4-encrypt-sched-process", "esp4-encrypt-post",
+    &enc_sched_next->esp4_distribute, &enc_sched_next->esp4_aggregate);
+  vnet_scheduler_create_instance (
+    vm, "esp6-encrypt-sched-process", "esp6-encrypt-post",
+    &enc_sched_next->esp6_distribute, &enc_sched_next->esp6_aggregate);
+  vnet_scheduler_create_instance (
+    vm, "esp4-encrypt-tun-sched-process", "esp4-encrypt-tun-post",
+    &enc_sched_next->esp4_tun_distribute, &enc_sched_next->esp4_tun_aggregate);
+  vnet_scheduler_create_instance (
+    vm, "esp6-encrypt-tun-sched-process", "esp6-encrypt-tun-post",
+    &enc_sched_next->esp6_tun_distribute, &enc_sched_next->esp6_tun_aggregate);
+  vnet_scheduler_create_instance (
+    vm, "esp-mpls-encrypt-tun-sched-process", "esp-mpls-encrypt-tun-post",
+    &enc_sched_next->esp_mpls_distribute, &enc_sched_next->esp_mpls_aggregate);
 }
 
 static clib_error_t *
@@ -541,8 +568,10 @@ ipsec_init (vlib_main_t * vm)
 
   vec_validate_aligned (im->ptd, vlib_num_workers (), CLIB_CACHE_LINE_BYTES);
 
-  im->async_mode = 0;
+  im->op_mode_flags = 0;
   crypto_engine_backend_register_post_node (vm);
+
+  ipsc_register_sched_node (vm);
 
   return 0;
 }

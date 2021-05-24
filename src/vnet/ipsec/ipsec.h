@@ -206,7 +206,8 @@ typedef struct
   u32 esp4_dec_tun_fq_index;
   u32 esp6_dec_tun_fq_index;
 
-  u8 async_mode;
+  /* operation mode flags (e.g. async) */
+  u8 op_mode_flags;
 } ipsec_main_t;
 
 typedef enum ipsec_format_flags_t_
@@ -226,17 +227,50 @@ clib_error_t *ipsec_check_support_cb (ipsec_main_t * im, ipsec_sa_t * sa);
 extern vlib_node_registration_t ipsec4_tun_input_node;
 extern vlib_node_registration_t ipsec6_tun_input_node;
 
-/*
- * functions
- */
+/**
+ * IPsec operation mode
+ **/
+#define foreach_ipsec_op_mode_flags                                           \
+  _ (0, ASYNC, "async")                                                       \
+  _ (1, SCHED, "scheduler")
 
-/*
- *  inline functions
- */
+/**
+ * Helper function to set/unset and check op modes
+ **/
+typedef enum ipsec_op_mode_flags_t_
+{
+#define _(v, f, s) IPSEC_OP_MODE_FLAG_##f = 1 << v,
+  foreach_ipsec_op_mode_flags
+#undef _
+} __clib_packed ipsec_op_mode_flags_t;
 
-static_always_inline u32
-get_next_output_feature_node_index (vlib_buffer_t * b,
-				    vlib_node_runtime_t * nr)
+#define _(a, v, s)                                                            \
+  always_inline int ipsec_op_mode_set_##v (void)                              \
+  {                                                                           \
+    return (ipsec_main.op_mode_flags |= IPSEC_OP_MODE_FLAG_##v);              \
+  }                                                                           \
+  always_inline int ipsec_op_mode_unset_##v (void)                            \
+  {                                                                           \
+    return (ipsec_main.op_mode_flags &= ~IPSEC_OP_MODE_FLAG_##v);             \
+  }                                                                           \
+  always_inline int ipsec_op_mode_is_set_##v (void)                           \
+  {                                                                           \
+    return (ipsec_main.op_mode_flags & IPSEC_OP_MODE_FLAG_##v);               \
+  }
+foreach_ipsec_op_mode_flags
+#undef _
+
+  /*
+   * functions
+   */
+
+  /*
+   *  inline functions
+   */
+
+  static_always_inline u32
+  get_next_output_feature_node_index (vlib_buffer_t *b,
+				      vlib_node_runtime_t *nr)
 {
   u32 next;
   vlib_main_t *vm = vlib_get_main ();
