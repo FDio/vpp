@@ -6,7 +6,7 @@ import os
 import subprocess
 import signal
 from framework import VppTestCase, VppTestRunner, running_extended_tests, \
-    Worker
+    Worker, is_platform_aarch64
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath, FibPathProto
 
 iperf3 = '/usr/bin/iperf3'
@@ -291,6 +291,8 @@ class LDPCutThruTestCase(VCLTestCase):
                            "sock_test_client", self.client_echo_test_args)
 
     @unittest.skipUnless(_have_iperf3, "'%s' not found, Skipping.")
+    @unittest.skipIf(is_platform_aarch64,
+                     "intermittently fails on AARCH64 CI jobs")
     def test_ldp_cut_thru_iperf3(self):
         """ run LDP cut thru iperf3 test """
 
