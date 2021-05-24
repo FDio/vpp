@@ -52,6 +52,7 @@
 #include <vnet/l2/l2_input.h>
 #include <vnet/classify/vnet_classify.h>
 #include <vnet/interface/rx_queue_funcs.h>
+#include <vnet/interface/tx_queue_funcs.h>
 static int
 compare_interface_names (void *a1, void *a2)
 {
@@ -1807,6 +1808,102 @@ VLIB_CLI_COMMAND (cmd_set_if_rx_placement,static) = {
     .is_mp_safe = 1,
 };
 /* *INDENT-ON* */
+
+clib_error_t *
+set_hw_interface_tx_queue (u32 hw_if_index, u32 queue_id, uword *bitmap)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_device_main_t *vdm = &vnet_device_main;
+  vnet_hw_interface_t *hw;
+  vnet_hw_if_tx_queue_t *txq;
+  u32 queue_index;
+  u32 thread_index;
+
+  hw = vnet_get_hw_interface (vnm, hw_if_index);
+
+  /* highest set bit in bitmap should not exceed last worker thread index */
+  thread_index =
+    clib_bitmap_last_set (bitmap) + vdm->first_worker_thread_index;
+  if (thread_index > vdm->last_worker_thread_index)
+    return clib_error_return (0, "please specify valid threads bitmap");
+
+  queue_index =
+    vnet_hw_if_get_tx_queue_index_by_id (vnm, hw_if_index, queue_id);
+  if (queue_index == ~0)
+    return clib_error_return (0, "unknown queue %u on interface %s", queue_id,
+			      hw->name);
+
+  txq = vnet_hw_if_get_tx_queue (vnm, queue_index);
+
+  // free the existing bitmap
+  if (clib_bitmap_count_set_bits (txq->threads))
+    {
+      txq->shared_queue = 0;
+      clib_bitmap_free (txq->threads);
+    }
+
+  clib_bitmap_foreach (thread_index, bitmap)
+    vnet_hw_if_tx_queue_assign_thread (vnm, queue_index, thread_index);
+
+  vnet_hw_if_update_runtime_data (vnm, hw_if_index);
+  return 0;
+}
+
+static clib_error_t *
+set_interface_tx_queue (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
+{
+  clib_error_t *error = 0;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 hw_if_index = (u32) ~0;
+  u32 queue_id = (u32) 0;
+  uword *bitmap = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U", unformat_vnet_hw_interface, vnm,
+		    &hw_if_index))
+	;
+      else if (unformat (line_input, "queue %d", &queue_id))
+	;
+      else if (unformat (line_input, "threads %U", unformat_bitmap_list,
+			 &bitmap))
+	;
+      else
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  unformat_free (line_input);
+	  return error;
+	}
+    }
+
+  unformat_free (line_input);
+
+  if (hw_if_index == (u32) ~0)
+    {
+      error = clib_error_return (0, "please specify valid interface name");
+      goto error;
+    }
+
+  error = set_hw_interface_tx_queue (hw_if_index, queue_id, bitmap);
+
+error:
+  clib_bitmap_free (bitmap);
+  return (error);
+}
+
+VLIB_CLI_COMMAND (cmd_set_if_tx_queue, static) = {
+  .path = "set interface tx-queue",
+  .short_help = "set interface tx-queue <interface> queue <n> "
+		"threads <bitmap>",
+  .function = set_interface_tx_queue,
+  .is_mp_safe = 1,
+};
 
 clib_error_t *
 set_interface_rss_queues (vlib_main_t * vm, u32 hw_if_index,
