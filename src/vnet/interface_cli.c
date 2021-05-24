@@ -52,6 +52,7 @@
 #include <vnet/l2/l2_input.h>
 #include <vnet/classify/vnet_classify.h>
 #include <vnet/interface/rx_queue_funcs.h>
+#include <vnet/interface/tx_queue_funcs.h>
 static int
 compare_interface_names (void *a1, void *a2)
 {
@@ -1807,6 +1808,99 @@ VLIB_CLI_COMMAND (cmd_set_if_rx_placement,static) = {
     .is_mp_safe = 1,
 };
 /* *INDENT-ON* */
+
+clib_error_t *
+set_hw_interface_tx_placement (u32 hw_if_index, u32 queue_id, u32 thread_index,
+			       u32 is_assign, u8 is_main)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_device_main_t *vdm = &vnet_device_main;
+  vnet_hw_interface_t *hw;
+  u32 queue_index;
+
+  if (is_main)
+    thread_index = 0;
+  else
+    thread_index += vdm->first_worker_thread_index;
+
+  if (thread_index > vdm->last_worker_thread_index)
+    return clib_error_return (0, "please specify valid worker thread or main");
+
+  hw = vnet_get_hw_interface (vnm, hw_if_index);
+
+  queue_index =
+    vnet_hw_if_get_tx_queue_index_by_id (vnm, hw_if_index, queue_id);
+  if (queue_index == ~0)
+    return clib_error_return (0, "unknown queue %u on interface %s", queue_id,
+			      hw->name);
+  if (is_assign)
+    vnet_hw_if_tx_queue_assign_thread (vnm, queue_index, thread_index);
+  else
+    vnet_hw_if_tx_queue_unassign_thread (vnm, queue_index, thread_index);
+  vnet_hw_if_update_runtime_data (vnm, hw_if_index);
+  return 0;
+}
+
+static clib_error_t *
+set_interface_tx_placement (vlib_main_t *vm, unformat_input_t *input,
+			    vlib_cli_command_t *cmd)
+{
+  clib_error_t *error = 0;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 hw_if_index = (u32) ~0;
+  u32 queue_id = (u32) 0;
+  u32 thread_index = (u32) ~0;
+  u32 is_assign = ~0;
+  u8 is_main = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U", unformat_vnet_hw_interface, vnm,
+		    &hw_if_index))
+	;
+      else if (unformat (line_input, "queue %d", &queue_id))
+	;
+      else if (unformat (line_input, "main", &thread_index))
+	is_main = 1;
+      else if (unformat (line_input, "worker %d", &thread_index))
+	;
+      else if (unformat (line_input, "add"))
+	is_assign = 1;
+      else if (unformat (line_input, "del"))
+	is_assign = 0;
+      else
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  unformat_free (line_input);
+	  return error;
+	}
+    }
+
+  unformat_free (line_input);
+
+  if (hw_if_index == (u32) ~0)
+    return clib_error_return (0, "please specify valid interface name");
+  if (is_assign == ~0)
+    return clib_error_return (0, "please specify add or del");
+
+  error = set_hw_interface_tx_placement (hw_if_index, queue_id, thread_index,
+					 is_assign, is_main);
+
+  return (error);
+}
+
+VLIB_CLI_COMMAND (cmd_set_if_tx_placement, static) = {
+  .path = "set interface tx-placement",
+  .short_help = "set interface tx-placement <interface> [queue <n>] "
+		"[add |  del] [worker <n> | main]",
+  .function = set_interface_tx_placement,
+  .is_mp_safe = 1,
+};
 
 clib_error_t *
 set_interface_rss_queues (vlib_main_t * vm, u32 hw_if_index,
