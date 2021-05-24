@@ -769,6 +769,11 @@ I:	vat2
 M:	Ole Troan <ot@cisco.com>
 F:	src/vat2/
 
+Scheduler
+I:      scheduler
+M:      N/A
+F:      src/vnet/scheduler
+
 THE REST
 I:	misc
 M:	vpp-dev Mailing List <vpp-dev@fd.io>
