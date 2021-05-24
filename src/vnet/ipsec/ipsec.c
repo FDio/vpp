@@ -30,6 +30,7 @@ ipsec_main_t ipsec_main;
 esp_async_post_next_t esp_encrypt_async_next;
 esp_async_post_next_t esp_decrypt_async_next;
 esp_sched_post_next_t esp_encrypt_sched_next;
+esp_sched_post_next_t esp_decrypt_sched_next;
 
 static clib_error_t *
 ipsec_check_ah_support (ipsec_sa_t * sa)
@@ -378,6 +379,7 @@ static void
 ipsc_register_sched_node (vlib_main_t *vm)
 {
   esp_sched_post_next_t *enc_sched_next = &esp_encrypt_sched_next;
+  esp_sched_post_next_t *dec_sched_next = &esp_decrypt_sched_next;
 
   /* esp_encrypt */
   vnet_scheduler_create_instance (
@@ -395,6 +397,20 @@ ipsc_register_sched_node (vlib_main_t *vm)
   vnet_scheduler_create_instance (
     vm, "esp-mpls-encrypt-tun-sched-process", "esp-mpls-encrypt-tun-post",
     &enc_sched_next->esp_mpls_distribute, &enc_sched_next->esp_mpls_aggregate);
+
+  /* esp_decrypt */
+  vnet_scheduler_create_instance (
+    vm, "esp4-decrypt-sched-process", "esp4-decrypt-sched-post",
+    &dec_sched_next->esp4_distribute, &dec_sched_next->esp4_aggregate);
+  vnet_scheduler_create_instance (
+    vm, "esp6-decrypt-sched-process", "esp6-decrypt-sched-post",
+    &dec_sched_next->esp6_distribute, &dec_sched_next->esp6_aggregate);
+  vnet_scheduler_create_instance (
+    vm, "esp4-decrypt-tun-sched-process", "esp4-decrypt-tun-sched-post",
+    &dec_sched_next->esp4_tun_distribute, &dec_sched_next->esp4_tun_aggregate);
+  vnet_scheduler_create_instance (
+    vm, "esp6-decrypt-tun-sched-process", "esp6-decrypt-tun-sched-post",
+    &dec_sched_next->esp6_tun_distribute, &dec_sched_next->esp6_tun_aggregate);
 }
 
 static clib_error_t *

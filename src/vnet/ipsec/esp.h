@@ -217,26 +217,40 @@ typedef struct
 {
   union
   {
+    u32 seq;
+    u32 last_seq;
+  };
+  i16 current_data;
+  i16 current_length;
+  union
+  {
     struct
     {
       u8 icv_sz;
       u8 iv_sz;
       ipsec_sa_flags_t flags;
-      u32 sa_index;
+      u32 sa_index; /* overlaps vnet_buffer_opaque_t.ipsec.sad_index */
     };
     u64 sa_data;
   };
-
-  u32 seq;
-  i16 current_data;
-  i16 current_length;
-  u16 hdr_sz;
-  u16 is_chain;
-  u32 protect_index;
+  u32 protect_index; /* overlaps vnet_buffer_opaque_t.ipsec.protect_index */
+  union
+  {
+    struct
+    {
+      union
+      {
+	u16 hdr_sz;
+	u16 next_index;
+      };
+      u8 is_chain;
+    };
+    u32 seq_hi;
+  };
 } esp_decrypt_packet_data_t;
 
 STATIC_ASSERT_SIZEOF (esp_decrypt_packet_data_t, 3 * sizeof (u64));
-STATIC_ASSERT_OFFSET_OF (esp_decrypt_packet_data_t, seq, sizeof (u64));
+STATIC_ASSERT_OFFSET_OF (esp_decrypt_packet_data_t, seq, 0);
 
 /* we are forced to store the decrypt post data into 2 separate places -
    vlib_opaque and opaque2. */
@@ -300,6 +314,7 @@ typedef struct
 } esp_sched_post_next_t;
 
 extern esp_sched_post_next_t esp_encrypt_sched_next;
+extern esp_sched_post_next_t esp_decrypt_sched_next;
 
 #endif /* __ESP_H__ */
 
