@@ -112,8 +112,12 @@ vnet_hw_if_tx_queue_assign_thread (vnet_main_t *vnm, u32 queue_index,
   vnet_hw_if_tx_queue_t *txq = vnet_hw_if_get_tx_queue (vnm, queue_index);
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, txq->hw_if_index);
   txq->threads = clib_bitmap_set (txq->threads, thread_index, 1);
-  log_debug ("assign_thread: interface %v queue-id %u thread %u", hi->name,
-	     txq->queue_id, thread_index);
+  if (clib_bitmap_count_set_bits (txq->threads) > 1)
+    txq->shared_queue = 1;
+  log_debug (
+    "assign_thread: interface %v queue-id %u thread %u queue-shared %s",
+    hi->name, txq->queue_id, thread_index,
+    (txq->shared_queue == 1 ? "yes" : "no"));
 }
 
 void
@@ -123,6 +127,10 @@ vnet_hw_if_tx_queue_unassign_thread (vnet_main_t *vnm, u32 queue_index,
   vnet_hw_if_tx_queue_t *txq = vnet_hw_if_get_tx_queue (vnm, queue_index);
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, txq->hw_if_index);
   txq->threads = clib_bitmap_set (txq->threads, thread_index, 0);
-  log_debug ("unassign_thread: interface %v queue-id %u thread %u", hi->name,
-	     txq->queue_id, thread_index);
+  if (clib_bitmap_count_set_bits (txq->threads) < 2)
+    txq->shared_queue = 0;
+  log_debug (
+    "unassign_thread: interface %v queue-id %u thread %u queue-shared %s",
+    hi->name, txq->queue_id, thread_index,
+    (txq->shared_queue == 1 ? "yes" : "no"));
 }

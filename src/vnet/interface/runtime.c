@@ -196,7 +196,6 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
 	      something_changed_on_tx = 1;
 	      rt->frame.queue_id = txq->queue_id;
 	      rt->frame.shared_queue = txq->shared_queue;
-	      rt->frame.shared_queue = n_threads > 1 ? 1 : 0;
 	      rt->n_threads = n_threads;
 	    }
 	}
