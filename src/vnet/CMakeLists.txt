@@ -1478,6 +1478,22 @@ list(APPEND VNET_API_FILES
 )
 
 ##############################################################################
+# Scheduler
+##############################################################################
+
+list(APPEND VNET_SOURCES
+  scheduler/cli.c
+  scheduler/scheduler.c
+  scheduler/node.c
+)
+
+list(APPEND VNET_HEADERS
+  scheduler/scheduler.h
+)
+
+list(APPEND VNET_MULTIARCH_SOURCES scheduler/node.c)
+
+##############################################################################
 # VNET Library
 ##############################################################################
 
@@ -1505,5 +1521,3 @@ add_vpp_library (vatclient
 add_vpp_test_library(vnet
   ${VNET_API_FILES}
 )
-
-##############################################################################
