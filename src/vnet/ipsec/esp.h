@@ -118,17 +118,17 @@ esp_seq_advance (ipsec_sa_t * sa)
 }
 
 always_inline u16
-esp_aad_fill (u8 * data, const esp_header_t * esp, const ipsec_sa_t * sa)
+esp_aad_fill_seq (u8 *data, const esp_header_t *esp, u32 seq_hi, u8 is_esn)
 {
   esp_aead_t *aad;
 
   aad = (esp_aead_t *) data;
   aad->data[0] = esp->spi;
 
-  if (ipsec_sa_is_set_USE_ESN (sa))
+  if (is_esn)
     {
       /* SPI, seq-hi, seq-low */
-      aad->data[1] = (u32) clib_host_to_net_u32 (sa->seq_hi);
+      aad->data[1] = (u32) clib_host_to_net_u32 (seq_hi);
       aad->data[2] = esp->seq;
       return 12;
     }
@@ -138,6 +138,13 @@ esp_aad_fill (u8 * data, const esp_header_t * esp, const ipsec_sa_t * sa)
       aad->data[1] = esp->seq;
       return 8;
     }
+}
+
+always_inline u16
+esp_aad_fill (u8 *data, const esp_header_t *esp, const ipsec_sa_t *sa)
+{
+  return esp_aad_fill_seq (data, esp, sa->seq_hi,
+			   ipsec_sa_is_set_USE_ESN (sa));
 }
 
 /* Special case to drop or hand off packets for sync/async modes.
@@ -174,6 +181,32 @@ esp_async_recycle_failed_submit (vlib_main_t *vm, vnet_crypto_async_frame_t *f,
 
   return (f->n_elts);
 }
+
+typedef struct
+{
+  u32 seq;
+  u32 __pad;
+  union
+  {
+    u32 seq_hi;
+    u16 next_index;
+  };
+  u32 sad_index; /* overlaps vnet_buffer_opaque_t.ipsec.sad_index */
+  u64 ctr_iv_counter;
+} esp_encrypt_tunnel_data_t;
+
+typedef struct
+{
+  u64 ctr_iv_counter;
+  u32 __pad;
+  u32 sad_index; /* overlaps vnet_buffer_opaque_t.ipsec.sad_index */
+  u32 seq;
+  union
+  {
+    u32 seq_hi;
+    u16 next_index;
+  };
+} esp_encrypt_transport_data_t;
 
 /**
  * The post data structure to for esp_encrypt/decrypt_inline to write to
@@ -216,25 +249,27 @@ typedef struct
 
 typedef union
 {
-  u16 next_index;
   esp_decrypt_packet_data_t decrypt_data;
+  esp_encrypt_tunnel_data_t enc_tun_data;
+  esp_encrypt_transport_data_t enc_tra_data;
 } esp_post_data_t;
 
 STATIC_ASSERT (sizeof (esp_post_data_t) <=
-	       STRUCT_SIZE_OF (vnet_buffer_opaque_t, unused),
+		 STRUCT_SIZE_OF (vnet_buffer_opaque_t, unused),
 	       "Custom meta-data too large for vnet_buffer_opaque_t");
 
-#define esp_post_data(b) \
-    ((esp_post_data_t *)((u8 *)((b)->opaque) \
-        + STRUCT_OFFSET_OF (vnet_buffer_opaque_t, unused)))
+#define esp_post_data(b)                                                      \
+  ((esp_post_data_t *) ((u8 *) ((b)->opaque) +                                \
+			STRUCT_OFFSET_OF (vnet_buffer_opaque_t, unused)))
 
 STATIC_ASSERT (sizeof (esp_decrypt_packet_data2_t) <=
-	       STRUCT_SIZE_OF (vnet_buffer_opaque2_t, unused),
+		 STRUCT_SIZE_OF (vnet_buffer_opaque2_t, unused),
 	       "Custom meta-data too large for vnet_buffer_opaque2_t");
 
-#define esp_post_data2(b) \
-    ((esp_decrypt_packet_data2_t *)((u8 *)((b)->opaque2) \
-        + STRUCT_OFFSET_OF (vnet_buffer_opaque2_t, unused)))
+#define esp_post_data2(b)                                                     \
+  ((esp_decrypt_packet_data2_t *) ((u8 *) ((b)->opaque2) +                    \
+				   STRUCT_OFFSET_OF (vnet_buffer_opaque2_t,   \
+						     unused)))
 
 typedef struct
 {
@@ -248,6 +283,23 @@ typedef struct
 
 extern esp_async_post_next_t esp_encrypt_async_next;
 extern esp_async_post_next_t esp_decrypt_async_next;
+
+typedef struct
+{
+  /* esp schedule post node index */
+  u16 esp4_distribute;
+  u16 esp6_distribute;
+  u16 esp4_aggregate;
+  u16 esp6_aggregate;
+  u16 esp_mpls_distribute;
+  u16 esp_mpls_aggregate;
+  u16 esp4_tun_distribute;
+  u16 esp6_tun_distribute;
+  u16 esp4_tun_aggregate;
+  u16 esp6_tun_aggregate;
+} esp_sched_post_next_t;
+
+extern esp_sched_post_next_t esp_encrypt_sched_next;
 
 #endif /* __ESP_H__ */
 

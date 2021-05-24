@@ -242,7 +242,7 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 				    sa->integ_key_index);
     }
 
-  if (im->async_mode)
+  if (ipsec_op_mode_is_set_ASYNC ())
     sa->crypto_op_data = sa->async_op_data.data;
   else
     {

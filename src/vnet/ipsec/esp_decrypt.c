@@ -1037,7 +1037,7 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   vnet_crypto_op_t _op, *op = &_op;
   vnet_crypto_op_t **crypto_ops = &ptd->crypto_ops;
   vnet_crypto_op_t **integ_ops = &ptd->integ_ops;
-  int is_async = im->async_mode;
+  int is_async = ipsec_op_mode_is_set_ASYNC ();
   vnet_crypto_async_op_id_t async_op = ~0;
   vnet_crypto_async_frame_t *async_frames[VNET_CRYPTO_ASYNC_OP_N_IDS];
   esp_decrypt_error_t err;
@@ -1097,7 +1097,8 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  cpd.iv_sz = sa0->crypto_iv_size;
 	  cpd.flags = sa0->flags;
 	  cpd.sa_index = current_sa_index;
-	  is_async = im->async_mode | ipsec_sa_is_set_IS_ASYNC (sa0);
+	  is_async =
+	    ipsec_op_mode_is_set_ASYNC () | ipsec_sa_is_set_IS_ASYNC (sa0);
 	}
 
       if (is_async)
