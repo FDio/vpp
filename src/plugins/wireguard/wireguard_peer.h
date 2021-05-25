@@ -114,6 +114,7 @@ u8 *format_wg_peer (u8 * s, va_list * va);
 walk_rc_t wg_peer_if_admin_state_change (wg_if_t * wgi, index_t peeri,
 					 void *data);
 walk_rc_t wg_peer_if_table_change (wg_if_t * wgi, index_t peeri, void *data);
+walk_rc_t wg_peer_if_delete (wg_if_t *wgi, index_t peeri, void *data);
 
 /*
  * Expoed for the data-plane
