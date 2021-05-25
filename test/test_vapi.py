@@ -20,11 +20,11 @@ class VAPITestCase(VppTestCase):
 
     def test_vapi_c(self):
         """ run C VAPI tests """
-        var = "TEST_BR"
-        built_root = os.getenv(var, None)
-        self.assertIsNotNone(built_root,
+        var = "VPP_BUILD_DIR"
+        build_dir = os.getenv(var, None)
+        self.assertIsNotNone(build_dir,
                              "Environment variable `%s' not set" % var)
-        executable = "%s/vapi_test/vapi_c_test" % built_root
+        executable = f"{build_dir}/vpp/bin/vapi_c_test"
         worker = Worker([executable, "vapi client",
                          self.get_api_segment_prefix()], self.logger)
         worker.start()
@@ -49,11 +49,11 @@ class VAPITestCase(VppTestCase):
 
     def test_vapi_cpp(self):
         """ run C++ VAPI tests """
-        var = "TEST_BR"
-        built_root = os.getenv(var, None)
-        self.assertIsNotNone(built_root,
+        var = "VPP_BUILD_DIR"
+        build_dir = os.getenv(var, None)
+        self.assertIsNotNone(build_dir,
                              "Environment variable `%s' not set" % var)
-        executable = "%s/vapi_test/vapi_cpp_test" % built_root
+        executable = f"{build_dir}/vpp/bin/vapi_cpp_test"
         worker = Worker([executable, "vapi client",
                          self.get_api_segment_prefix()], self.logger)
         worker.start()

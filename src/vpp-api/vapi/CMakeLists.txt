@@ -14,6 +14,7 @@
 include_directories (
   ${CMAKE_CURRENT_SOURCE_DIR}/..
   ${CMAKE_CURRENT_BINARY_DIR}/..
+  ${CMAKE_CURRENT_BINARY_DIR}
 )
 
 add_vpp_library(vapiclient
@@ -58,3 +59,51 @@ install(
   DESTINATION ${VPP_RUNTIME_DIR}
   COMPONENT vpp-dev
 )
+
+vpp_find_path(SUBUNIT_INCLUDE_DIR NAMES subunit/child.h)
+vpp_find_library(SUBUNIT_LIB NAMES subunit)
+
+if(SUBUNIT_INCLUDE_DIR AND SUBUNIT_LIB)
+  message (STATUS "Found subunit in ${SUBUNIT_INCLUDE_DIR} and ${SUBUNIT_LIB}")
+
+  add_custom_command(
+    OUTPUT fake.api.vapi.h
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/vapi_c_gen.py
+    ARGS --remove-path ${CMAKE_CURRENT_SOURCE_DIR}/fake.api.json
+    DEPENDS fake.api.json
+    COMMENT "Generating fake VAPI C header ${output_name}"
+  )
+
+  add_custom_command(
+    OUTPUT fake.api.vapi.hpp
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/vapi_cpp_gen.py
+    ARGS --remove-path ${CMAKE_CURRENT_SOURCE_DIR}/fake.api.json
+    DEPENDS fake.api.json
+    COMMENT "Generating fake VAPI C++ header ${output_name}"
+  )
+
+  add_custom_target(fake_api_vapi_h DEPENDS fake.api.vapi.h)
+  add_custom_target(fake_api_vapi_hpp DEPENDS fake.api.vapi.hpp)
+
+  set(libs vppinfra vlibmemoryclient svm pthread check rt m vapiclient ${SUBUNIT_LIB})
+
+  add_vpp_executable(vapi_c_test
+    SOURCES
+    vapi_c_test.c
+    DEPENDS fake_api_vapi_h
+    LINK_LIBRARIES ${libs}
+  )
+
+  enable_language(CXX)
+  add_vpp_executable(vapi_cpp_test
+    SOURCES
+    vapi_cpp_test.cpp
+    DEPENDS fake_api_vapi_hpp
+    LINK_LIBRARIES ${libs}
+  )
+
+else()
+  message (WARNING "subunit library not found - vapi tests disabled")
+endif()
