@@ -339,6 +339,7 @@ lcp_xc_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 	  const lcp_itf_pair_t *lip;
 	  u32 next0, bi0, lipi, ai;
 	  vlib_buffer_t *b0;
+	  const ip_adjacency_t *adj;
 
 	  bi0 = to_next[0] = from[0];
 
@@ -357,30 +358,24 @@ lcp_xc_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 	  vlib_buffer_advance (b0, -lip->lip_rewrite_len);
 	  eth = vlib_buffer_get_current (b0);
 
-	  if (ethernet_address_cast (eth->dst_address))
-	    ai = lip->lip_phy_adjs.adj_index[af];
-	  else
+	  ai = ADJ_INDEX_INVALID;
+	  if (!ethernet_address_cast (eth->dst_address))
 	    ai = lcp_adj_lkup ((u8 *) eth, lip->lip_rewrite_len,
 			       vnet_buffer (b0)->sw_if_index[VLIB_TX]);
+	  if (ai == ADJ_INDEX_INVALID)
+	    ai = lip->lip_phy_adjs.adj_index[af];
 
-	  if (ADJ_INDEX_INVALID != ai)
-	    {
-	      const ip_adjacency_t *adj;
+	  adj = adj_get (ai);
+	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ai;
+	  next0 = adj->rewrite_header.next_index;
+	  vnet_buffer (b0)->ip.save_rewrite_length = lip->lip_rewrite_len;
 
-	      adj = adj_get (ai);
-	      vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ai;
-	      next0 = adj->rewrite_header.next_index;
-	      vnet_buffer (b0)->ip.save_rewrite_length = lip->lip_rewrite_len;
-
-	      if (PREDICT_FALSE (adj->rewrite_header.flags &
-				 VNET_REWRITE_HAS_FEATURES))
-		vnet_feature_arc_start_w_cfg_index (
-		  lm->output_feature_arc_index,
-		  vnet_buffer (b0)->sw_if_index[VLIB_TX], &next0, b0,
-		  adj->ia_cfg_index);
-	    }
-	  else
-	    next0 = LCP_XC_NEXT_DROP;
+	  if (PREDICT_FALSE (adj->rewrite_header.flags &
+			     VNET_REWRITE_HAS_FEATURES))
+	    vnet_feature_arc_start_w_cfg_index (
+	      lm->output_feature_arc_index,
+	      vnet_buffer (b0)->sw_if_index[VLIB_TX], &next0, b0,
+	      adj->ia_cfg_index);
 
 	  if (PREDICT_FALSE ((b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
