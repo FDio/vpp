@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a1800918_05d83c2b",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1068,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2021-05-25T13:26:51Z",
+      "side": 1,
+      "message": "What is the cycle cost for these instructions on a per packet basis?",
+      "range": {
+        "startLine": 1066,
+        "startChar": 0,
+        "endLine": 1068,
+        "endChar": 49
+      },
+      "revId": "45c74e494aa4d9e760d2fa69c7670f91b17b3ebd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "571c07eb_67b2b0f6",
+        "filename": "src/vnet/devices/virtio/virtio.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 223,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2021-05-25T13:26:51Z",
+      "side": 1,
+      "message": "Why 8, or not say 16, or 32?",
+      "range": {
+        "startLine": 223,
+        "startChar": 0,
+        "endLine": 223,
+        "endChar": 36
+      },
+      "revId": "45c74e494aa4d9e760d2fa69c7670f91b17b3ebd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
