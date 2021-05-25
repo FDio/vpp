@@ -31,17 +31,17 @@ class VCLAppWorker(Worker):
         self.role = role
         if env is None:
             env = {}
-        vcl_lib_dir = "%s/vpp/lib" % build_dir
+        vcl_lib_dir = "%s/lib" % build_dir
         if "iperf" in appname:
             app = appname
             env.update({'LD_PRELOAD':
                         "%s/libvcl_ldpreload.so" % vcl_lib_dir})
         elif "sock" in appname:
-            app = "%s/vpp/bin/%s" % (build_dir, appname)
+            app = "%s/bin/%s" % (build_dir, appname)
             env.update({'LD_PRELOAD':
                         "%s/libvcl_ldpreload.so" % vcl_lib_dir})
         else:
-            app = "%s/vpp/bin/%s" % (build_dir, appname)
+            app = "%s/bin/%s" % (build_dir, appname)
         self.args = [app] + executable_args
         super(VCLAppWorker, self).__init__(self.args, logger, env,
                                            *args, **kwargs)
