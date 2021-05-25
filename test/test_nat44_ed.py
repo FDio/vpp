@@ -17,6 +17,7 @@ from util import ppp, ip4_range
 from vpp_acl import AclRule, VppAcl, VppAclInterface
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_papi import VppEnum
+from nat_util import nat_rand_port
 
 
 class TestNAT44ED(VppTestCase):
@@ -1699,6 +1700,8 @@ class TestNAT44ED(VppTestCase):
     def test_multiple_vrf_1(self):
         """ Multiple VRF - both client & service in VRF1 """
 
+        pkts_per_worker = 5
+
         external_addr = '1.2.3.4'
         external_port = 80
         local_port = 8080
@@ -1719,41 +1722,48 @@ class TestNAT44ED(VppTestCase):
                                     local_port, external_port, vrf_id=1,
                                     proto=IP_PROTOS.tcp, flags=flags)
 
-        p = (Ether(src=self.pg6.remote_mac, dst=self.pg6.local_mac) /
+        ports = [nat_rand_port(self.vpp_worker_count, thread)
+                 for thread in range(0, max(1, self.vpp_worker_count))
+                 for _ in range(pkts_per_worker)]
+
+        p = [(Ether(src=self.pg6.remote_mac, dst=self.pg6.local_mac) /
              IP(src=self.pg6.remote_ip4, dst=external_addr) /
-             TCP(sport=12345, dport=external_port))
+             TCP(sport=port, dport=external_port))
+             for port in ports]
         self.pg6.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg5.get_capture(1)
-        p = capture[0]
-        try:
-            ip = p[IP]
-            tcp = p[TCP]
-            self.assertEqual(ip.dst, self.pg5.remote_ip4)
-            self.assertEqual(tcp.dport, local_port)
-            self.assert_packet_checksums_valid(p)
-        except:
-            self.logger.error(ppp("Unexpected or invalid packet:", p))
-            raise
+        capture = self.pg5.get_capture(len(p))
+        for p in capture:
+            try:
+                ip = p[IP]
+                tcp = p[TCP]
+                self.assertEqual(ip.dst, self.pg5.remote_ip4)
+                self.assertEqual(tcp.dport, local_port)
+                self.assert_packet_checksums_valid(p)
+            except:
+                self.logger.error(ppp("Unexpected or invalid packet:", p))
+                raise
 
-        p = (Ether(src=self.pg5.remote_mac, dst=self.pg5.local_mac) /
+        p = [(Ether(src=self.pg5.remote_mac, dst=self.pg5.local_mac) /
              IP(src=self.pg5.remote_ip4, dst=self.pg6.remote_ip4) /
-             TCP(sport=local_port, dport=12345))
+             TCP(sport=local_port, dport=port))
+             for port in ports]
+
         self.pg5.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg6.get_capture(1)
-        p = capture[0]
-        try:
-            ip = p[IP]
-            tcp = p[TCP]
-            self.assertEqual(ip.src, external_addr)
-            self.assertEqual(tcp.sport, external_port)
-            self.assert_packet_checksums_valid(p)
-        except:
-            self.logger.error(ppp("Unexpected or invalid packet:", p))
-            raise
+        capture = self.pg6.get_capture(len(p))
+        for p in capture:
+            try:
+                ip = p[IP]
+                tcp = p[TCP]
+                self.assertEqual(ip.src, external_addr)
+                self.assertEqual(tcp.sport, external_port)
+                self.assert_packet_checksums_valid(p)
+            except:
+                self.logger.error(ppp("Unexpected or invalid packet:", p))
+                raise
 
     def test_multiple_vrf_2(self):
         """ Multiple VRF - dynamic NAT from VRF1 to VRF0 (output-feature) """

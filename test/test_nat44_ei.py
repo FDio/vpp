@@ -25,6 +25,7 @@ from util import ppp
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_neighbor import VppNeighbor
 from vpp_papi import VppEnum
+from nat_util import nat_rand_port
 
 
 # NAT HA protocol event data
@@ -3523,11 +3524,8 @@ class TestNAT44EI(MethodHolder):
 
         # now pick a port which is correct for given thread
         port_per_thread = int((0xffff-1024) / max(1, self.vpp_worker_count))
-        self.tcp_port_out = 1024 + random.randint(1, port_per_thread)
-        self.udp_port_out = 1024 + random.randint(1, port_per_thread)
-        if self.vpp_worker_count > 0:
-            self.tcp_port_out += port_per_thread * (thread_index - 1)
-            self.udp_port_out += port_per_thread * (thread_index - 1)
+        self.tcp_port_out = nat_rand_port(self.vpp_worker_count, thread_index)
+        self.udp_port_out = nat_rand_port(self.vpp_worker_count, thread_index)
 
         # send HA session add events to failover/passive
         p = (Ether(dst=self.pg3.local_mac, src=self.pg3.remote_mac) /
