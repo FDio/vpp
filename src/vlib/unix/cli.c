@@ -3352,7 +3352,6 @@ unix_cli_exec (vlib_main_t * vm,
   char *file_name;
   int fd;
   unformat_input_t sub_input;
-  unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error;
   unix_cli_main_t *cm = &unix_cli_main;
   unix_cli_file_t *cf;
@@ -3436,11 +3435,7 @@ unix_cli_exec (vlib_main_t * vm,
       vec_free (expanded);
     }
 
-  while (unformat_user (&sub_input, unformat_line_input, line_input))
-    {
-      vlib_cli_input (vm, line_input, 0, 0);
-      unformat_free (line_input);
-    }
+  vlib_cli_input (vm, &sub_input, 0, 0);
   unformat_free (&sub_input);
 
 done:
