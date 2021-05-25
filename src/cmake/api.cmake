@@ -38,7 +38,7 @@ function(vpp_generate_api_c_header file)
   add_custom_command (
     OUTPUT ${OUTPUT_HEADERS}
     COMMAND mkdir -p ${output_dir}
-    COMMAND ${VPP_APIGEN}
+    COMMAND ${PYENV} ${VPP_APIGEN}
     ARGS ${includedir} --includedir ${CMAKE_SOURCE_DIR} --input ${CMAKE_CURRENT_SOURCE_DIR}/${file} --outputdir ${output_dir} --output ${output_name}
     DEPENDS ${VPP_APIGEN} ${CMAKE_CURRENT_SOURCE_DIR}/${file}
     COMMENT "Generating API header ${output_name}"
@@ -63,7 +63,7 @@ function(vpp_generate_api_json_header file dir component)
   endif()
   add_custom_command (OUTPUT ${output_name}
     COMMAND mkdir -p ${output_dir}
-    COMMAND ${VPP_APIGEN}
+    COMMAND ${PYENV} ${VPP_APIGEN}
     ARGS ${includedir} --includedir ${CMAKE_SOURCE_DIR} --input ${CMAKE_CURRENT_SOURCE_DIR}/${file} JSON --output ${output_name}
     DEPENDS ${VPP_APIGEN} ${CMAKE_CURRENT_SOURCE_DIR}/${file}
     COMMENT "Generating API header ${output_name}"
@@ -94,7 +94,7 @@ function(vpp_generate_vapi_c_header f)
   add_custom_command(
     OUTPUT ${output_name}
     WORKING_DIRECTORY ${VPP_BINARY_DIR}/vpp-api/vapi
-    COMMAND ${VPP_VAPI_C_GEN}
+    COMMAND ${PYENV} ${VPP_VAPI_C_GEN}
     ARGS --remove-path ${input}
     DEPENDS ${input} ${VPP_VAPI_C_GEN_DEPENDS}
     COMMENT "Generating VAPI C header ${output_name}"
@@ -121,7 +121,7 @@ function (vpp_generate_vapi_cpp_header f)
   add_custom_command(
     OUTPUT ${output_name}
     WORKING_DIRECTORY ${VPP_BINARY_DIR}/vpp-api/vapi
-    COMMAND ${VPP_VAPI_CPP_GEN}
+    COMMAND ${PYENV} ${VPP_VAPI_CPP_GEN}
     ARGS --gen-h-prefix=vapi --remove-path ${input}
     DEPENDS ${input} ${VPP_VAPI_CPP_GEN_DEPENDS}
     COMMENT "Generating VAPI C++ header ${output_name}"
