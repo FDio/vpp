@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0d0b4dc3_e511de0e",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_api.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 494,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2021-05-25T15:03:05Z",
+      "side": 1,
+      "message": "Re https://gerrit.fd.io/r/c/vpp/+/32087/12/src/plugins/nat/lib/nat_proto.h#34\nall \"u8 proto\" should then be \"ip_protocol_t proto\" instead.",
+      "range": {
+        "startLine": 494,
+        "startChar": 2,
+        "endLine": 494,
+        "endChar": 10
+      },
+      "revId": "0c4b11b313e76b3f960d0885eceb4a63b7651b08",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e5f8ea70_329a84d2",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_api.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 508,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2021-05-25T15:03:05Z",
+      "side": 1,
+      "message": "Only here is the left hand side u8, due to .api definition.",
+      "range": {
+        "startLine": 508,
+        "startChar": 2,
+        "endLine": 508,
+        "endChar": 22
+      },
+      "revId": "0c4b11b313e76b3f960d0885eceb4a63b7651b08",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
