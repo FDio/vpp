@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c39c4391_f8c12170",
+        "filename": "src/plugins/nat/lib/nat_proto.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2021-05-25T09:17:06Z",
+      "side": 1,
+      "message": "Should this be ip_protocol_t from src/vnet/ip/ip_packet.h?\n\nI guess types can be tweaked later, as I see nat44_add_del_static_mapping API message still defines the type of the \"protocol\" field as u8.",
+      "range": {
+        "startLine": 34,
+        "startChar": 23,
+        "endLine": 34,
+        "endChar": 25
+      },
+      "revId": "6720d974d2aa1b8b4bf9a6e2df3a9bff9561a64c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
