@@ -194,10 +194,6 @@ sanity: test-dep
 	         echo \"*******************************************************************\" &&\
 		 false)"
 
-.PHONY: ext-test-apps
-ext-test-apps:
-	make -C ext test-apps
-
 $(FAILED_DIR): reset
 	@mkdir -p $@
 
@@ -205,7 +201,7 @@ $(FAILED_DIR): reset
 test-dep: $(PAPI_INSTALL_DONE) $(FAILED_DIR)
 
 .PHONY: test
-test: test-dep ext-test-apps sanity
+test: test-dep sanity
 	$(call retest-func)
 
 .PHONY: retest
