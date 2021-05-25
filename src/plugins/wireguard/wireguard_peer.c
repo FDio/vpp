@@ -204,6 +204,13 @@ wg_peer_if_table_change (wg_if_t * wgi, index_t peeri, void *data)
   return (WALK_CONTINUE);
 }
 
+walk_rc_t
+wg_peer_if_delete (wg_if_t *wgi, index_t peeri, void *data)
+{
+  wg_peer_remove (peeri);
+  return (WALK_CONTINUE);
+}
+
 static int
 wg_peer_fill (vlib_main_t * vm, wg_peer_t * peer,
 	      u32 table_id,

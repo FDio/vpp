@@ -660,6 +660,99 @@ class TestWg(VppTestCase):
         wg0.remove_vpp_config()
         wg1.remove_vpp_config()
 
+    def test_wg_multi_interface(self):
+        """ Multi-tunnel on the same port """
+        port = 12500
+
+        # Create many wireguard interfaces
+        NUM_IFS = 16
+        self.pg1.generate_remote_hosts(NUM_IFS)
+        self.pg1.configure_ipv4_neighbors()
+        self.pg0.generate_remote_hosts(NUM_IFS)
+        self.pg0.configure_ipv4_neighbors()
+
+        # Create interfaces with a peer on each
+        peers = []
+        wg_ifs = []
+        for i in range(NUM_IFS):
+            # Use the same port for each interface
+            wg0 = VppWgInterface(self,
+                                 self.pg1.local_ip4,
+                                 port).add_vpp_config()
+            wg0.admin_up()
+            wg0.config_ip4()
+            wg_ifs.append(wg0)
+            peers.append(VppWgPeer(self,
+                                   wg0,
+                                   self.pg1.remote_hosts[i].ip4,
+                                   port+1+i,
+                                   ["10.0.%d.4/32" % i]).add_vpp_config())
+
+        self.assertEqual(len(self.vapi.wireguard_peers_dump()), NUM_IFS)
+
+        for i in range(NUM_IFS):
+            # send a valid handsake init for which we expect a response
+            p = peers[i].mk_handshake(self.pg1)
+            rx = self.send_and_expect(self.pg1, [p], self.pg1)
+            peers[i].consume_response(rx[0])
+
+            # send a data packet from the peer through the tunnel
+            # this completes the handshake
+            p = (IP(src="10.0.%d.4" % i,
+                    dst=self.pg0.remote_hosts[i].ip4, ttl=20) /
+                 UDP(sport=222, dport=223) /
+                 Raw())
+            d = peers[i].encrypt_transport(p)
+            p = (peers[i].mk_tunnel_header(self.pg1) /
+                 (Wireguard(message_type=4, reserved_zero=0) /
+                  WireguardTransport(receiver_index=peers[i].sender,
+                                     counter=0,
+                                     encrypted_encapsulated_packet=d)))
+            rxs = self.send_and_expect(self.pg1, [p], self.pg0)
+            for rx in rxs:
+                self.assertEqual(rx[IP].dst, self.pg0.remote_hosts[i].ip4)
+                self.assertEqual(rx[IP].ttl, 19)
+
+        # send a packets that are routed into the tunnel
+        for i in range(NUM_IFS):
+            p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+                 IP(src=self.pg0.remote_hosts[i].ip4, dst="10.0.%d.4" % i) /
+                 UDP(sport=555, dport=556) /
+                 Raw(b'\x00' * 80))
+
+            rxs = self.send_and_expect(self.pg0, p * 64, self.pg1)
+
+            for rx in rxs:
+                rx = IP(peers[i].decrypt_transport(rx))
+
+                # check the oringial packet is present
+                self.assertEqual(rx[IP].dst, p[IP].dst)
+                self.assertEqual(rx[IP].ttl, p[IP].ttl-1)
+
+        # send packets into the tunnel
+        for i in range(NUM_IFS):
+            p = [(peers[i].mk_tunnel_header(self.pg1) /
+                  Wireguard(message_type=4, reserved_zero=0) /
+                  WireguardTransport(
+                      receiver_index=peers[i].sender,
+                      counter=ii+1,
+                      encrypted_encapsulated_packet=peers[i].encrypt_transport(
+                          (IP(src="10.0.%d.4" % i,
+                              dst=self.pg0.remote_hosts[i].ip4, ttl=20) /
+                           UDP(sport=222, dport=223) /
+                           Raw())))) for ii in range(64)]
+
+            rxs = self.send_and_expect(self.pg1, p, self.pg0)
+
+            for rx in rxs:
+                self.assertEqual(rx[IP].dst, self.pg0.remote_hosts[i].ip4)
+                self.assertEqual(rx[IP].ttl, 19)
+
+        for p in peers:
+            p.remove_vpp_config()
+        for i in wg_ifs:
+            i.remove_vpp_config()
+
 
 class WireguardHandoffTests(TestWg):
     """ Wireguard Tests in multi worker setup """
@@ -746,3 +839,7 @@ class WireguardHandoffTests(TestWg):
 
         peer_1.remove_vpp_config()
         wg0.remove_vpp_config()
+
+    @unittest.skip("test disabled")
+    def test_wg_multi_interface(self):
+        """ Multi-tunnel on the same port """
