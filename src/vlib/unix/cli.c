@@ -3436,28 +3436,10 @@ unix_cli_exec (vlib_main_t * vm,
       vec_free (expanded);
     }
 
-  while (1)
+  while (unformat_user (&sub_input, unformat_line_input, line_input))
     {
-      int rv = unformat_user (&sub_input, unformat_line_input, line_input);
-
-      /* No match? */
-      if (rv == 0)
-	{
-	  /* Out of input, we're done... */
-	  if (sub_input.index == UNFORMAT_END_OF_INPUT)
-	    {
-	      unformat_free (line_input);
-	      break;
-	    }
-	  /* Blank line... */
-	  sub_input.index++;
-	}
-      else
-	{
-	  /* Process the line we just read */
-	  vlib_cli_input (vm, line_input, 0, 0);
-	  unformat_free (line_input);
-	}
+      vlib_cli_input (vm, line_input, 0, 0);
+      unformat_free (line_input);
     }
   unformat_free (&sub_input);
 
