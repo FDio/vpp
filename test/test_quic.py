@@ -19,7 +19,7 @@ class QUICAppWorker(Worker):
                  testcase, env=None, *args, **kwargs):
         if env is None:
             env = {}
-        app = "%s/vpp/bin/%s" % (build_dir, appname)
+        app = "%s/bin/%s" % (build_dir, appname)
         self.args = [app] + executable_args
         self.role = role
         self.wait_for_gdb = 'wait-for-gdb'
