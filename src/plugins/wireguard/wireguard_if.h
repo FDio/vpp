@@ -72,16 +72,16 @@ wg_if_get (index_t wgii)
   return (pool_elt_at_index (wg_if_pool, wgii));
 }
 
-extern index_t *wg_if_index_by_port;
+extern index_t **wg_if_indexes_by_port;
 
-static_always_inline wg_if_t *
-wg_if_get_by_port (u16 port)
+static_always_inline index_t *
+wg_if_indexes_get_by_port (u16 port)
 {
-  if (vec_len (wg_if_index_by_port) < port)
+  if (vec_len (wg_if_indexes_by_port) == 0)
     return (NULL);
-  if (INDEX_INVALID == wg_if_index_by_port[port])
+  if (vec_len (wg_if_indexes_by_port[port]) == 0)
     return (NULL);
-  return (wg_if_get (wg_if_index_by_port[port]));
+  return (wg_if_indexes_by_port[port]);
 }
 
 

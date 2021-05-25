@@ -32,7 +32,7 @@ static uword *wg_if_instances;
 static index_t *wg_if_index_by_sw_if_index;
 
 /* vector of interfaces key'd on their UDP port (in network order) */
-index_t *wg_if_index_by_port;
+index_t **wg_if_indexes_by_port;
 
 static u8 *
 format_wg_if_name (u8 * s, va_list * args)
@@ -253,9 +253,14 @@ wg_if_create (u32 user_instance,
   /*
    * Check if the required port is already in use
    */
-  udp_dst_port_info_t *pi = udp_get_dst_port_info (&udp_main, port, UDP_IP4);
-  if (pi)
-    return VNET_API_ERROR_UDP_PORT_TAKEN;
+  if (vec_len (wg_if_indexes_by_port) <= port ||
+      vec_len (wg_if_indexes_by_port[port]) == 0)
+    {
+      udp_dst_port_info_t *pi =
+	udp_get_dst_port_info (&udp_main, port, UDP_IP4);
+      if (pi)
+	return VNET_API_ERROR_UDP_PORT_TAKEN;
+    }
 
   /*
    * Allocate a wg_if instance. Either select on dynamically
@@ -292,10 +297,11 @@ wg_if_create (u32 user_instance,
   if (~0 == wg_if->user_instance)
     wg_if->user_instance = t_idx;
 
-  udp_register_dst_port (vlib_get_main (), port, wg_input_node.index, 1);
+  vec_validate_init_empty (wg_if_indexes_by_port, port, NULL);
+  if (vec_len (wg_if_indexes_by_port[port]) == 0)
+    udp_register_dst_port (vlib_get_main (), port, wg_input_node.index, 1);
 
-  vec_validate_init_empty (wg_if_index_by_port, port, INDEX_INVALID);
-  wg_if_index_by_port[port] = wg_if - wg_if_pool;
+  vec_add1 (wg_if_indexes_by_port[port], t_idx);
 
   wg_if->port = port;
   wg_if->local_idx = local - noise_local_pool;
@@ -331,15 +337,30 @@ wg_if_delete (u32 sw_if_index)
     return VNET_API_ERROR_INVALID_VALUE;
 
   wg_if_t *wg_if;
-  wg_if = wg_if_get (wg_if_find_by_sw_if_index (sw_if_index));
+  index_t wgii = wg_if_find_by_sw_if_index (sw_if_index);
+  wg_if = wg_if_get (wgii);
   if (NULL == wg_if)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX_2;
 
   if (wg_if_instance_free (wg_if->user_instance) < 0)
     return VNET_API_ERROR_INVALID_VALUE_2;
 
-  udp_unregister_dst_port (vlib_get_main (), wg_if->port, 1);
-  wg_if_index_by_port[wg_if->port] = INDEX_INVALID;
+  // Remove peers before interface deletion
+  wg_if_peer_walk (wg_if, wg_peer_if_delete, NULL);
+
+  index_t *ii;
+  index_t *ifs = wg_if_indexes_get_by_port (wg_if->port);
+  vec_foreach (ii, ifs)
+    {
+      if (*ii == wgii)
+	{
+	  vec_del1 (ifs, ifs - ii);
+	  break;
+	}
+    }
+  if (vec_len (ifs) == 0)
+    udp_unregister_dst_port (vlib_get_main (), wg_if->port, 1);
+
   vnet_delete_hw_interface (vnm, hw->hw_if_index);
   pool_put_index (noise_local_pool, wg_if->local_idx);
   pool_put (wg_if_pool, wg_if);

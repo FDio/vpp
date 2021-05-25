@@ -116,6 +116,7 @@ wg_handshake_process (vlib_main_t * vm, wg_main_t * wmp, vlib_buffer_t * b)
   enum cookie_mac_state mac_state;
   bool packet_needs_cookie;
   bool under_load;
+  index_t *wg_ifs;
   wg_if_t *wg_if;
   wg_peer_t *peer = NULL;
 
@@ -130,11 +131,6 @@ wg_handshake_process (vlib_main_t * vm, wg_main_t * wmp, vlib_buffer_t * b)
 
   message_header_t *header = current_b_data;
   under_load = false;
-
-  wg_if = wg_if_get_by_port (udp_dst_port);
-
-  if (NULL == wg_if)
-    return WG_INPUT_ERROR_INTERFACE;
 
   if (PREDICT_FALSE (header->type == MESSAGE_HANDSHAKE_COOKIE))
     {
@@ -159,10 +155,30 @@ wg_handshake_process (vlib_main_t * vm, wg_main_t * wmp, vlib_buffer_t * b)
   message_macs_t *macs = (message_macs_t *)
     ((u8 *) current_b_data + len - sizeof (*macs));
 
-  mac_state =
-    cookie_checker_validate_macs (vm, &wg_if->cookie_checker, macs,
-				  current_b_data, len, under_load, ip4_src,
-				  udp_src_port);
+  index_t *ii;
+  wg_ifs = wg_if_indexes_get_by_port (udp_dst_port);
+  if (NULL == wg_ifs)
+    return WG_INPUT_ERROR_INTERFACE;
+
+  vec_foreach (ii, wg_ifs)
+    {
+      wg_if = wg_if_get (*ii);
+      if (NULL == wg_if)
+	continue;
+
+      mac_state = cookie_checker_validate_macs (
+	vm, &wg_if->cookie_checker, macs, current_b_data, len, under_load,
+	ip4_src, udp_src_port);
+      if (mac_state == INVALID_MAC)
+	{
+	  wg_if = NULL;
+	  continue;
+	}
+      break;
+    }
+
+  if (NULL == wg_if)
+    return WG_INPUT_ERROR_HANDSHAKE_MAC;
 
   if ((under_load && mac_state == VALID_MAC_WITH_COOKIE)
       || (!under_load && mac_state == VALID_MAC_BUT_NO_COOKIE))
