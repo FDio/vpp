@@ -1842,11 +1842,15 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   if (error)
     clib_error_report (error);
 
-  error = dpdk_cryptodev_init (vm);
-  if (error)
+  if (dpdk_cryptodev_init)
     {
-      vlib_log_warn (dpdk_main.log_cryptodev, "%U", format_clib_error, error);
-      clib_error_free (error);
+      error = dpdk_cryptodev_init (vm);
+      if (error)
+	{
+	  vlib_log_warn (dpdk_main.log_cryptodev, "%U", format_clib_error,
+			 error);
+	  clib_error_free (error);
+	}
     }
 
   tm->worker_thread_release = 1;

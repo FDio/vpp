@@ -200,7 +200,6 @@ clib_error_t *cryptodev_register_cop_hdl (vlib_main_t *vm, u32 eidx);
 clib_error_t *__clib_weak cryptodev_register_raw_hdl (vlib_main_t *vm,
 						      u32 eidx);
 
-clib_error_t *
-dpdk_cryptodev_init (vlib_main_t * vm);
+clib_error_t *__clib_weak dpdk_cryptodev_init (vlib_main_t *vm);
 
 #endif

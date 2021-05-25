@@ -117,9 +117,15 @@ endif()
 # DPDK plugin
 ##############################################################################
 
-if (${DPDK_VERSION} VERSION_GREATER_EQUAL "20.8.0")
-  set(DPDK_CRYPTODEV_RAW_SOURCE cryptodev/cryptodev_raw_data_path.c)
-endif ()
+if(OPENSSL_FOUND)
+  include_directories(${OPENSSL_INCLUDE_DIR})
+
+  set(DPDK_CRYPTODEV_OP_SOURCE cryptodev/cryptodev_op_data_path.c)
+  set(DPDK_CRYPTODEV_SOURCE cryptodev/cryptodev.c)
+  if (${DPDK_VERSION} VERSION_GREATER_EQUAL "20.8.0")
+    set(DPDK_CRYPTODEV_RAW_SOURCE cryptodev/cryptodev_raw_data_path.c)
+  endif()
+endif()
 
 add_vpp_plugin(dpdk
   SOURCES
@@ -133,8 +139,8 @@ add_vpp_plugin(dpdk
   device/format.c
   device/init.c
   device/node.c
-  cryptodev/cryptodev_op_data_path.c
-  cryptodev/cryptodev.c
+  ${DPDK_CRYPTODEV_OP_SOURCE}
+  ${DPDK_CRYPTODEV_SOURCE}
   ${DPDK_CRYPTODEV_RAW_SOURCE}
 
   MULTIARCH_SOURCES
@@ -150,6 +156,9 @@ add_vpp_plugin(dpdk
 
   LINK_LIBRARIES
   ${DPDK_LINK_LIBRARIES}
+
+  LINK_LIBRARIES
+  ${OPENSSL_LIBRARIES}
 
   COMPONENT
   vpp-plugin-dpdk
