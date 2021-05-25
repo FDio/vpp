@@ -69,7 +69,7 @@ if(SUBUNIT_INCLUDE_DIR AND SUBUNIT_LIB)
   add_custom_command(
     OUTPUT fake.api.vapi.h
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/vapi_c_gen.py
+    COMMAND ${PYENV} ${CMAKE_CURRENT_SOURCE_DIR}/vapi_c_gen.py
     ARGS --remove-path ${CMAKE_CURRENT_SOURCE_DIR}/fake.api.json
     DEPENDS fake.api.json
     COMMENT "Generating fake VAPI C header ${output_name}"
@@ -78,7 +78,7 @@ if(SUBUNIT_INCLUDE_DIR AND SUBUNIT_LIB)
   add_custom_command(
     OUTPUT fake.api.vapi.hpp
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/vapi_cpp_gen.py
+    COMMAND ${PYENV} ${CMAKE_CURRENT_SOURCE_DIR}/vapi_cpp_gen.py
     ARGS --remove-path ${CMAKE_CURRENT_SOURCE_DIR}/fake.api.json
     DEPENDS fake.api.json
     COMMENT "Generating fake VAPI C++ header ${output_name}"
