@@ -37,11 +37,11 @@ class VCLAppWorker(Worker):
             env.update({'LD_PRELOAD':
                         "%s/libvcl_ldpreload.so" % vcl_lib_dir})
         elif "sock" in appname:
-            app = "%s/vpp/bin/%s" % (build_dir, appname)
+            app = "%s/bin/%s" % (build_dir, appname)
             env.update({'LD_PRELOAD':
                         "%s/libvcl_ldpreload.so" % vcl_lib_dir})
         else:
-            app = "%s/vpp/bin/%s" % (build_dir, appname)
+            app = "%s/bin/%s" % (build_dir, appname)
         self.args = [app] + executable_args
         super(VCLAppWorker, self).__init__(self.args, logger, env,
                                            *args, **kwargs)
