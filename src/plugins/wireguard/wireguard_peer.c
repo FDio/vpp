@@ -200,6 +200,13 @@ wg_peer_adj_walk (adj_index_t ai, void *data)
 	   ADJ_WALK_RC_STOP;
 }
 
+walk_rc_t
+wg_peer_if_delete (index_t peeri, void *data)
+{
+  wg_peer_remove (peeri);
+  return (WALK_CONTINUE);
+}
+
 static int
 wg_peer_fill (vlib_main_t *vm, wg_peer_t *peer, u32 table_id,
 	      const ip46_address_t *dst, u16 port,
