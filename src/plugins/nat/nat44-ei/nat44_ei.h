@@ -32,6 +32,7 @@
 #include <vppinfra/dlist.h>
 #include <vppinfra/error.h>
 #include <vppinfra/bihash_8_8.h>
+#include <vppinfra/hash.h>
 
 #include <nat/lib/lib.h>
 #include <nat/lib/inlines.h>
@@ -304,7 +305,7 @@ typedef struct
 typedef struct
 {
   u32 cached_sw_if_index;
-  u32 cached_ip4_address;
+  uword *cached_presence_by_ip4_address;
 } nat44_ei_runtime_t;
 
 typedef struct
