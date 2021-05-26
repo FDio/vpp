@@ -40,6 +40,7 @@
 #include <nat/lib/lib.h>
 #include <nat/lib/inlines.h>
 #include <nat/lib/ipfix_logging.h>
+#include <nat/lib/nat_proto.h>
 
 /* Session state */
 #define foreach_det44_session_state        \

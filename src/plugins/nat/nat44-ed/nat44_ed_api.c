@@ -628,7 +628,7 @@ static void
   ip4_address_t l_addr, e_addr, pool_addr = { 0 };
   u32 sw_if_index, flags = 0, vrf_id;
   u16 l_port = 0, e_port = 0;
-  nat_protocol_t proto = 0;
+  ip_protocol_t proto = 0;
   u8 *tag = 0;
 
   memcpy (&l_addr.as_u8, mp->local_ip_address, 4);
@@ -641,7 +641,7 @@ static void
     {
       l_port = mp->local_port;
       e_port = mp->external_port;
-      proto = ip_proto_to_nat_proto (mp->protocol);
+      proto = mp->protocol;
     }
 
   if (mp->flags & NAT_API_IS_TWICE_NAT)
@@ -702,7 +702,7 @@ static void
   ip4_address_t l_addr, e_addr, pool_addr;
   u32 sw_if_index, flags = 0, vrf_id;
   u16 l_port = 0, e_port = 0;
-  nat_protocol_t proto;
+  ip_protocol_t proto;
   u8 *tag = 0;
 
   memcpy (&l_addr.as_u8, mp->local_ip_address, 4);
@@ -748,7 +748,7 @@ static void
       memcpy (&e_addr.as_u8, mp->external_ip_address, 4);
     }
 
-  proto = ip_proto_to_nat_proto (mp->protocol);
+  proto = mp->protocol;
   vrf_id = clib_net_to_host_u32 (mp->vrf_id);
 
   if (mp->is_add)
@@ -812,7 +812,7 @@ send_nat44_static_mapping_details (snat_static_mapping_t * m,
     }
   else
     {
-      rmp->protocol = nat_proto_to_ip_proto (m->proto);
+      rmp->protocol = m->proto;
       rmp->external_port = m->external_port;
       rmp->local_port = m->local_port;
     }
@@ -849,7 +849,7 @@ send_nat44_static_map_resolve_details (snat_static_map_resolve_t * m,
     }
   else
     {
-      rmp->protocol = nat_proto_to_ip_proto (m->proto);
+      rmp->protocol = m->proto;
       rmp->external_port = m->e_port;
       rmp->local_port = m->l_port;
     }
@@ -898,7 +898,7 @@ static void
 
   ip4_address_t addr, pool_addr = { 0 };
   u32 sw_if_index, flags, vrf_id;
-  nat_protocol_t proto = 0;
+  ip_protocol_t proto = 0;
   u16 port = 0;
   u8 *tag = 0;
 
@@ -911,7 +911,7 @@ static void
   else
     {
       port = mp->port;
-      proto = ip_proto_to_nat_proto (mp->protocol);
+      proto = mp->protocol;
     }
 
   sw_if_index = clib_net_to_host_u32 (mp->sw_if_index);
@@ -964,7 +964,7 @@ send_nat44_identity_mapping_details (snat_static_mapping_t * m, int index,
   rmp->port = m->local_port;
   rmp->sw_if_index = ~0;
   rmp->vrf_id = htonl (local->vrf_id);
-  rmp->protocol = nat_proto_to_ip_proto (m->proto);
+  rmp->protocol = m->proto;
   rmp->context = context;
   if (m->tag)
     strncpy ((char *) rmp->tag, (char *) m->tag, vec_len (m->tag));
@@ -991,7 +991,7 @@ send_nat44_identity_map_resolve_details (snat_static_map_resolve_t * m,
   rmp->port = m->l_port;
   rmp->sw_if_index = htonl (m->sw_if_index);
   rmp->vrf_id = htonl (m->vrf_id);
-  rmp->protocol = nat_proto_to_ip_proto (m->proto);
+  rmp->protocol = m->proto;
   rmp->context = context;
   if (m->tag)
     strncpy ((char *) rmp->tag, (char *) m->tag, vec_len (m->tag));
@@ -1140,7 +1140,7 @@ vl_api_nat44_add_del_lb_static_mapping_t_handler (
   vl_api_nat44_add_del_lb_static_mapping_reply_t *rmp;
   nat44_lb_addr_port_t *locals = 0;
   ip4_address_t e_addr;
-  nat_protocol_t proto;
+  ip_protocol_t proto;
   u32 flags = 0;
   u8 *tag = 0;
   int rv = 0;
@@ -1148,7 +1148,7 @@ vl_api_nat44_add_del_lb_static_mapping_t_handler (
   locals = unformat_nat44_lb_addr_port (mp->locals,
 					clib_net_to_host_u32 (mp->local_num));
   clib_memcpy (&e_addr, mp->external_addr, 4);
-  proto = ip_proto_to_nat_proto (mp->protocol);
+  proto = mp->protocol;
 
   if (mp->flags & NAT_API_IS_TWICE_NAT)
     {
@@ -1193,11 +1193,11 @@ vl_api_nat44_lb_static_mapping_add_del_local_t_handler (
   vl_api_nat44_lb_static_mapping_add_del_local_reply_t *rmp;
   int rv = 0;
   ip4_address_t e_addr, l_addr;
-  nat_protocol_t proto;
+  ip_protocol_t proto;
 
   clib_memcpy (&e_addr, mp->external_addr, 4);
   clib_memcpy (&l_addr, mp->local.addr, 4);
-  proto = ip_proto_to_nat_proto (mp->protocol);
+  proto = mp->protocol;
 
   rv = nat44_ed_add_del_lb_static_mapping_local (
     e_addr, mp->external_port, l_addr, mp->local.port, proto,
@@ -1219,13 +1219,14 @@ send_nat44_lb_static_mapping_details (snat_static_mapping_t *m,
 
   rmp = vl_msg_api_alloc (
     sizeof (*rmp) + (pool_elts (m->locals) * sizeof (nat44_lb_addr_port_t)));
+
   clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id =
     ntohs (VL_API_NAT44_LB_STATIC_MAPPING_DETAILS + sm->msg_id_base);
 
   clib_memcpy (rmp->external_addr, &(m->external_addr), 4);
   rmp->external_port = m->external_port;
-  rmp->protocol = nat_proto_to_ip_proto (m->proto);
+  rmp->protocol = m->proto;
   rmp->context = context;
 
   if (is_sm_self_twice_nat (m->flags))
@@ -1740,25 +1741,16 @@ send_nat44_user_session_details (snat_session_t * s,
   rmp->total_bytes = clib_host_to_net_u64 (s->total_bytes);
   rmp->total_pkts = ntohl (s->total_pkts);
   rmp->context = context;
-  if (snat_is_unk_proto_session (s))
+  rmp->outside_port = s->out2in.port;
+  rmp->inside_port = s->in2out.port;
+  rmp->protocol = clib_host_to_net_u16(s->proto);
+  clib_memcpy (rmp->ext_host_address, &s->ext_host_addr, 4);
+  rmp->ext_host_port = s->ext_host_port;
+  if (nat44_ed_is_twice_nat_session (s))
     {
-      rmp->outside_port = 0;
-      rmp->inside_port = 0;
-      rmp->protocol = ntohs (s->in2out.port);
+      clib_memcpy (rmp->ext_host_nat_address, &s->ext_host_nat_addr, 4);
+      rmp->ext_host_nat_port = s->ext_host_nat_port;
     }
-  else
-    {
-      rmp->outside_port = s->out2in.port;
-      rmp->inside_port = s->in2out.port;
-      rmp->protocol = ntohs (nat_proto_to_ip_proto (s->nat_proto));
-    }
-      clib_memcpy (rmp->ext_host_address, &s->ext_host_addr, 4);
-      rmp->ext_host_port = s->ext_host_port;
-      if (nat44_ed_is_twice_nat_session (s))
-	{
-	  clib_memcpy (rmp->ext_host_nat_address, &s->ext_host_nat_addr, 4);
-	  rmp->ext_host_nat_port = s->ext_host_nat_port;
-	}
 
   vl_api_send_msg (reg, (u8 *) rmp);
 }
@@ -1824,18 +1816,9 @@ send_nat44_user_session_v2_details (snat_session_t *s,
   rmp->total_bytes = clib_host_to_net_u64 (s->total_bytes);
   rmp->total_pkts = ntohl (s->total_pkts);
   rmp->context = context;
-  if (snat_is_unk_proto_session (s))
-    {
-      rmp->outside_port = 0;
-      rmp->inside_port = 0;
-      rmp->protocol = ntohs (s->in2out.port);
-    }
-  else
-    {
-      rmp->outside_port = s->out2in.port;
-      rmp->inside_port = s->in2out.port;
-      rmp->protocol = ntohs (nat_proto_to_ip_proto (s->nat_proto));
-    }
+  rmp->outside_port = s->out2in.port;
+  rmp->inside_port = s->in2out.port;
+  rmp->protocol = clib_host_to_net_u16(s->proto);
   clib_memcpy (rmp->ext_host_address, &s->ext_host_addr, 4);
   rmp->ext_host_port = s->ext_host_port;
   if (nat44_ed_is_twice_nat_session (s))
@@ -1844,8 +1827,26 @@ send_nat44_user_session_v2_details (snat_session_t *s,
       rmp->ext_host_nat_port = s->ext_host_nat_port;
     }
 
-  sess_timeout_time = s->last_heard + (f64) nat_session_get_timeout (
-					&sm->timeouts, s->nat_proto, s->state);
+  sess_timeout_time = s->last_heard;
+  switch (s->proto)
+    {
+    case IP_PROTOCOL_TCP:
+      if (s->state)
+	sess_timeout_time += sm->timeouts.tcp.established;
+      else
+	sess_timeout_time += sm->timeouts.tcp.transitory;
+      break;
+    case IP_PROTOCOL_UDP:
+      sess_timeout_time += sm->timeouts.udp;
+      break;
+    case IP_PROTOCOL_ICMP:
+      sess_timeout_time += sm->timeouts.icmp;
+      break;
+    default:
+      sess_timeout_time += sm->timeouts.udp;
+      break;
+    }
+
   rmp->is_timed_out = (now >= sess_timeout_time);
 
   vl_api_send_msg (reg, (u8 *) rmp);
