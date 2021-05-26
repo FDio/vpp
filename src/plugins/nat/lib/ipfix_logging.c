@@ -51,7 +51,7 @@ typedef struct
   u8 nat_event;
   u32 src_ip;
   u32 nat_src_ip;
-  nat_protocol_t nat_proto;
+  ip_protocol_t proto;
   u16 src_port;
   u16 nat_src_port;
   u32 vrf_id;
@@ -577,9 +577,8 @@ nat_ipfix_send (flow_report_main_t *frm, vlib_frame_t *f, vlib_buffer_t *b0,
 
 static void
 nat_ipfix_logging_nat44_ses (u32 thread_index, u8 nat_event, u32 src_ip,
-                              u32 nat_src_ip, nat_protocol_t nat_proto,
-                              u16 src_port, u16 nat_src_port, u32 fib_index,
-                              int do_flush)
+			     u32 nat_src_ip, ip_protocol_t proto, u16 src_port,
+			     u16 nat_src_port, u32 fib_index, int do_flush)
 {
   nat_ipfix_logging_main_t *silm = &nat_ipfix_logging_main;
   nat_ipfix_per_thread_data_t *sitd = &silm->per_thread_data[thread_index];
@@ -590,11 +589,8 @@ nat_ipfix_logging_nat44_ses (u32 thread_index, u8 nat_event, u32 src_ip,
   u32 offset;
   vlib_main_t *vm = vlib_get_main ();
   u64 now;
-  u8 proto;
   u16 template_id;
   u32 vrf_id;
-
-  proto = nat_proto_to_ip_proto (nat_proto);
 
   now = (u64) ((vlib_time_now (vm) - silm->vlib_time_0) * 1e3);
   now += silm->milisecond_time_0;
@@ -1307,54 +1303,34 @@ nat_ipfix_flush_from_main (void)
 
 /**
  * @brief Generate NAT44 session create event
- *
- * @param thread_index thread index
- * @param src_ip       source IPv4 address
- * @param nat_src_ip   transaltes source IPv4 address
- * @param nat_proto   NAT transport protocol
- * @param src_port     source port
- * @param nat_src_port translated source port
- * @param vrf_id       VRF ID
  */
 void
-nat_ipfix_logging_nat44_ses_create (u32 thread_index,
-                                     u32 src_ip,
-				     u32 nat_src_ip,
-				     nat_protocol_t nat_proto,
-				     u16 src_port,
-				     u16 nat_src_port, u32 fib_index)
+nat_ipfix_logging_nat44_ses_create (u32 thread_index, u32 src_ip,
+				    u32 nat_src_ip, ip_protocol_t proto,
+				    u16 src_port, u16 nat_src_port,
+				    u32 fib_index)
 {
   skip_if_disabled ();
 
   nat_ipfix_logging_nat44_ses (thread_index, NAT44_SESSION_CREATE, src_ip,
-                                nat_src_ip, nat_proto, src_port, nat_src_port,
-				fib_index, 0);
+			       nat_src_ip, proto, src_port, nat_src_port,
+			       fib_index, 0);
 }
 
 /**
  * @brief Generate NAT44 session delete event
- *
- * @param thread_index thread index
- * @param src_ip       source IPv4 address
- * @param nat_src_ip   transaltes source IPv4 address
- * @param nat_proto   NAT transport protocol
- * @param src_port     source port
- * @param nat_src_port translated source port
- * @param vrf_id       VRF ID
  */
 void
-nat_ipfix_logging_nat44_ses_delete (u32 thread_index,
-                                     u32 src_ip,
-				     u32 nat_src_ip,
-				     nat_protocol_t nat_proto,
-				     u16 src_port,
-				     u16 nat_src_port, u32 fib_index)
+nat_ipfix_logging_nat44_ses_delete (u32 thread_index, u32 src_ip,
+				    u32 nat_src_ip, ip_protocol_t proto,
+				    u16 src_port, u16 nat_src_port,
+				    u32 fib_index)
 {
   skip_if_disabled ();
 
   nat_ipfix_logging_nat44_ses (thread_index, NAT44_SESSION_DELETE, src_ip,
-                                nat_src_ip, nat_proto, src_port, nat_src_port,
-				fib_index, 0);
+			       nat_src_ip, proto, src_port, nat_src_port,
+			       fib_index, 0);
 }
 
 /**

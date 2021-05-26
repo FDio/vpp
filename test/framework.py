@@ -1284,6 +1284,8 @@ class VppTestCase(CPUInterface, unittest.TestCase):
             n_rx = len(pkts)
         self.pg_send(intf, pkts, worker=worker, trace=trace)
         rx = output.get_capture(n_rx)
+        if trace:
+            self.logger.debug(self.vapi.cli("show trace"))
         return rx
 
     def send_and_expect_only(self, intf, pkts, output, timeout=None):
