@@ -14,6 +14,7 @@
  */
 
 #include <nat/lib/lib.h>
+#include <nat/lib/nat_proto.h>
 
 uword
 unformat_nat_protocol (unformat_input_t *input, va_list *args)
