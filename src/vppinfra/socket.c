@@ -518,8 +518,10 @@ clib_socket_init (clib_socket_t * s)
 					  s->fd, s->config);
 	  goto done;
 	}
-      /* Connect was blocking so set fd to non-blocking now */
+      /* Connect was blocking so set fd to non-blocking now unless
+       * blocking mode explicitly requested. */
       if (!(s->flags & CLIB_SOCKET_F_NON_BLOCKING_CONNECT) &&
+	  !(s->flags & CLIB_SOCKET_F_BLOCKING) &&
 	  fcntl (s->fd, F_SETFL, O_NONBLOCK) < 0)
 	{
 	  error = clib_error_return_unix (0, "fcntl NONBLOCK2 (fd %d, '%s')",
