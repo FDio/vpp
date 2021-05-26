@@ -605,7 +605,7 @@ class MethodHolder(VppTestCase):
                 self.assertEqual(struct.pack("!H", self.udp_port_out),
                                  record[227])
             else:
-                self.fail("Invalid protocol")
+                self.fail(f"Invalid protocol {scapy.compat.orb(record[4])}")
         self.assertEqual(3, nat44_ses_create_num)
         self.assertEqual(3, nat44_ses_delete_num)
 

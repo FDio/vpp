@@ -1100,7 +1100,8 @@ nat44_ei_free_session_data_v2 (nat44_ei_main_t *nm, nat44_ei_session_t *s,
       /* log NAT event */
       nat_ipfix_logging_nat44_ses_delete (
 	thread_index, s->in2out.addr.as_u32, s->out2in.addr.as_u32,
-	s->nat_proto, s->in2out.port, s->out2in.port, s->in2out.fib_index);
+	nat_proto_to_ip_proto (s->nat_proto), s->in2out.port, s->out2in.port,
+	s->in2out.fib_index);
 
       nat_ha_sdel (&s->out2in.addr, s->out2in.port, &s->ext_host_addr,
 		   s->ext_host_port, s->nat_proto, s->out2in.fib_index,
@@ -1268,7 +1269,8 @@ nat44_ei_free_session_data (nat44_ei_main_t *nm, nat44_ei_session_t *s,
 
       nat_ipfix_logging_nat44_ses_delete (
 	thread_index, s->in2out.addr.as_u32, s->out2in.addr.as_u32,
-	s->nat_proto, s->in2out.port, s->out2in.port, s->in2out.fib_index);
+	nat_proto_to_ip_proto (s->nat_proto), s->in2out.port, s->out2in.port,
+	s->in2out.fib_index);
 
       nat_ha_sdel (&s->out2in.addr, s->out2in.port, &s->ext_host_addr,
 		   s->ext_host_port, s->nat_proto, s->out2in.fib_index,
