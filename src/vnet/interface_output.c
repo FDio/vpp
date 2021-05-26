@@ -327,7 +327,7 @@ store_tx_frame_scalar_data (vnet_hw_if_output_node_runtime_t *r,
 			    vnet_hw_if_tx_frame_t *tf)
 {
   if (r)
-    clib_memcpy_fast (tf, &r->frame, sizeof (vnet_hw_if_tx_frame_t));
+    clib_memcpy_fast (tf, &r->frame[0], sizeof (vnet_hw_if_tx_frame_t));
 }
 
 static_always_inline void
@@ -345,10 +345,19 @@ enqueu_to_tx_node (vlib_main_t *vm, vlib_node_runtime_t *node,
   if (hi->output_node_thread_runtimes)
     r = vec_elt_at_index (hi->output_node_thread_runtimes, vm->thread_index);
 
+  if (r && r->n_queues == 0)
+    {
+      vlib_error_drop_buffers (
+	vm, node, from,
+	/* buffer stride */ 1, n_vectors, VNET_INTERFACE_OUTPUT_NEXT_DROP,
+	node->node_index, VNET_INTERFACE_OUTPUT_ERROR_NO_TX_QUEUE);
+      return;
+    }
+
   f = vlib_get_next_frame_internal (vm, node, next_index, 0);
   tf = vlib_frame_scalar_args (f);
 
-  if (f->n_vectors > 0 && (r == 0 || tf->queue_id == r->frame.queue_id))
+  if (f->n_vectors > 0 && (r == 0 || tf->queue_id == r->frame[0].queue_id))
     {
       /* append current next frame */
       n_free = VLIB_FRAME_SIZE - f->n_vectors;
@@ -1123,7 +1132,16 @@ more:
   f = vlib_get_next_frame_internal (vm, node, next_index, 0);
   tf = vlib_frame_scalar_args (f);
 
-  if (f->n_vectors > 0 && (r == 0 || r->frame.queue_id == tf->queue_id))
+  if (f->n_vectors > 0 && r && r->n_queues == 0)
+    {
+      return vlib_error_drop_buffers (vm, node, from,
+				      /* buffer stride */ 1, frame->n_vectors,
+				      VNET_INTERFACE_OUTPUT_NEXT_DROP,
+				      node->node_index,
+				      VNET_INTERFACE_OUTPUT_ERROR_NO_TX_QUEUE);
+    }
+
+  if (r == 0 || r->frame[0].queue_id == tf->queue_id)
     {
       /* append frame */
       n_free = VLIB_FRAME_SIZE - f->n_vectors;

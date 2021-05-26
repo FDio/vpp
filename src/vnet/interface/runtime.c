@@ -175,30 +175,31 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
   if (vec_len (hi->output_node_thread_runtimes) != vec_len (new_out_runtimes))
     something_changed_on_tx = 1;
 
-  for (int i = 0; i < vec_len (hi->tx_queue_indices); i++)
+  for (u32 i = 0; i < vec_len (new_out_runtimes); i++)
     {
-      u32 thread_index;
-      u32 queue_index = hi->tx_queue_indices[i];
-      vnet_hw_if_tx_queue_t *txq = vnet_hw_if_get_tx_queue (vnm, queue_index);
-      uword n_threads = clib_bitmap_count_set_bits (txq->threads);
-
-      clib_bitmap_foreach (thread_index, txq->threads)
+      vnet_hw_if_output_node_runtime_t *rt;
+      rt = vec_elt_at_index (new_out_runtimes, i);
+      u32 total_queues = vec_len (hi->tx_queue_indices);
+      vec_validate_aligned (rt->frame, total_queues - 1,
+			    CLIB_CACHE_LINE_BYTES);
+      u32 n_queues = 0;
+      for (u32 j = 0; j < total_queues; j++)
 	{
-	  vnet_hw_if_output_node_runtime_t *rt;
-	  rt = vec_elt_at_index (new_out_runtimes, thread_index);
-	  if ((rt->frame.queue_id != txq->queue_id) ||
-	      (rt->n_threads != n_threads))
-	    {
-	      log_debug ("tx queue data changed for interface %v, thread %u "
-			 "(queue_id %u -> %u, n_threads %u -> %u)",
-			 hi->name, thread_index, rt->frame.queue_id,
-			 txq->queue_id, rt->n_threads, n_threads);
-	      something_changed_on_tx = 1;
-	      rt->frame.queue_id = txq->queue_id;
-	      rt->frame.shared_queue = txq->shared_queue;
-	      rt->n_threads = n_threads;
-	    }
+	  u32 queue_index = hi->tx_queue_indices[j];
+	  vnet_hw_if_tx_queue_t *txq =
+	    vnet_hw_if_get_tx_queue (vnm, queue_index);
+	  if (clib_bitmap_get (txq->threads, i) != 1)
+	    continue;
+
+	  log_debug ("tx queue data changed for interface %v, thread %u "
+		     "(queue_id %u -> %u)",
+		     hi->name, i, rt->frame[j].queue_id, txq->queue_id);
+	  something_changed_on_tx = 1;
+	  rt->frame[j].queue_id = txq->queue_id;
+	  rt->frame[j].shared_queue = txq->shared_queue;
+	  n_queues++;
 	}
+      rt->n_queues = n_queues;
     }
 
   if (something_changed_on_rx || something_changed_on_tx)

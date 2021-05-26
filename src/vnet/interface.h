@@ -629,8 +629,8 @@ typedef struct
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  vnet_hw_if_tx_frame_t frame;
-  u32 n_threads;
+  vnet_hw_if_tx_frame_t *frame;
+  u32 n_queues;
 } vnet_hw_if_output_node_runtime_t;
 
 /* Hardware-interface.  This corresponds to a physical wire
