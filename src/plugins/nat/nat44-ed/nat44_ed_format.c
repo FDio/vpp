@@ -20,39 +20,6 @@
 #include <nat/nat44-ed/nat44_ed.h>
 #include <nat/nat44-ed/nat44_ed_inlines.h>
 
-uword
-unformat_nat_protocol (unformat_input_t * input, va_list * args)
-{
-  u32 *r = va_arg (*args, u32 *);
-
-  if (0);
-#define _(N, i, n, s) else if (unformat (input, s)) *r = NAT_PROTOCOL_##N;
-  foreach_nat_protocol
-#undef _
-    else
-    return 0;
-  return 1;
-}
-
-u8 *
-format_nat_protocol (u8 * s, va_list * args)
-{
-  u32 i = va_arg (*args, u32);
-  u8 *t = 0;
-
-  switch (i)
-    {
-#define _(N, j, n, str) case NAT_PROTOCOL_##N: t = (u8 *) str; break;
-      foreach_nat_protocol
-#undef _
-    default:
-      s = format (s, "unknown");
-      return s;
-    }
-  s = format (s, "%s", t);
-  return s;
-}
-
 u8 *
 format_nat_addr_and_port_alloc_alg (u8 * s, va_list * args)
 {
@@ -69,25 +36,6 @@ format_nat_addr_and_port_alloc_alg (u8 * s, va_list * args)
       return s;
     }
   s = format (s, "%s", t);
-  return s;
-}
-
-u8 *
-format_snat_key (u8 * s, va_list * args)
-{
-  u64 key = va_arg (*args, u64);
-
-  ip4_address_t addr;
-  u16 port;
-  nat_protocol_t protocol;
-  u32 fib_index;
-
-  split_nat_key (key, &addr, &port, &fib_index, &protocol);
-
-  s = format (s, "%U proto %U port %d fib %d",
-	      format_ip4_address, &addr,
-	      format_nat_protocol, protocol,
-	      clib_net_to_host_u16 (port), fib_index);
   return s;
 }
 
@@ -116,7 +64,7 @@ format_snat_session (u8 * s, va_list * args)
     va_arg (*args, snat_main_per_thread_data_t *);
   snat_session_t *sess = va_arg (*args, snat_session_t *);
 
-  if (snat_is_unk_proto_session (sess))
+  if (nat44_ed_is_unk_proto (sess->proto))
     {
       s = format (s, "  i2o %U proto %u fib %u\n",
 		  format_ip4_address, &sess->in2out.addr,
@@ -127,14 +75,13 @@ format_snat_session (u8 * s, va_list * args)
     }
   else
     {
-      s = format (s, "  i2o %U proto %U port %d fib %d\n",
-		  format_ip4_address, &sess->in2out.addr,
-		  format_nat_protocol, sess->nat_proto,
+      s = format (s, "  i2o %U proto %U port %d fib %d\n", format_ip4_address,
+		  &sess->in2out.addr, format_ip_protocol, sess->proto,
 		  clib_net_to_host_u16 (sess->in2out.port),
 		  sess->in2out.fib_index);
       s = format (s, "    o2i %U proto %U port %d fib %d\n",
-		  format_ip4_address, &sess->out2in.addr, format_nat_protocol,
-		  sess->nat_proto, clib_net_to_host_u16 (sess->out2in.port),
+		  format_ip4_address, &sess->out2in.addr, format_ip_protocol,
+		  sess->proto, clib_net_to_host_u16 (sess->out2in.port),
 		  sess->out2in.fib_index);
     }
   if (nat44_ed_is_twice_nat_session (sess))
@@ -183,9 +130,8 @@ format_snat_static_mapping (u8 * s, va_list * args)
 	s = format (s, "identity mapping %U",
 		    format_ip4_address, &m->local_addr);
       else
-	s = format (s, "identity mapping %U %U:%d",
-		    format_nat_protocol, m->proto,
-		    format_ip4_address, &m->local_addr,
+	s = format (s, "identity mapping %U %U:%d", format_ip_protocol,
+		    m->proto, format_ip4_address, &m->local_addr,
 		    clib_net_to_host_u16 (m->local_port));
 
       pool_foreach (local, m->locals)
@@ -209,8 +155,8 @@ format_snat_static_mapping (u8 * s, va_list * args)
       if (is_sm_lb (m->flags))
 	{
 	  s =
-	    format (s, "%U external %U:%d %s %s", format_nat_protocol,
-		    m->proto, format_ip4_address, &m->external_addr,
+	    format (s, "%U external %U:%d %s %s", format_ip_protocol, m->proto,
+		    format_ip4_address, &m->external_addr,
 		    clib_net_to_host_u16 (m->external_port),
 		    is_sm_twice_nat (m->flags) ?
 		      "twice-nat" :
@@ -227,7 +173,7 @@ format_snat_static_mapping (u8 * s, va_list * args)
 	}
       else
 	s = format (s, "%U local %U:%d external %U:%d vrf %d %s %s",
-		    format_nat_protocol, m->proto, format_ip4_address,
+		    format_ip_protocol, m->proto, format_ip4_address,
 		    &m->local_addr, clib_net_to_host_u16 (m->local_port),
 		    format_ip4_address, &m->external_addr,
 		    clib_net_to_host_u16 (m->external_port), m->vrf_id,
@@ -250,12 +196,11 @@ format_snat_static_map_to_resolve (u8 * s, va_list * args)
 		format_ip4_address, &m->l_addr,
 		format_vnet_sw_if_index_name, vnm, m->sw_if_index, m->vrf_id);
   else
-    s = format (s, "%U local %U:%d external %U:%d vrf %d",
-		format_nat_protocol, m->proto,
-		format_ip4_address, &m->l_addr,
-		clib_net_to_host_u16 (m->l_port),
-		format_vnet_sw_if_index_name, vnm, m->sw_if_index,
-		clib_net_to_host_u16 (m->e_port), m->vrf_id);
+    s = format (s, "%U local %U:%d external %U:%d vrf %d", format_ip_protocol,
+		m->proto, format_ip4_address, &m->l_addr,
+		clib_net_to_host_u16 (m->l_port), format_vnet_sw_if_index_name,
+		vnm, m->sw_if_index, clib_net_to_host_u16 (m->e_port),
+		m->vrf_id);
 
   return s;
 }
