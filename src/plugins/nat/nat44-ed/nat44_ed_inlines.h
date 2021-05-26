@@ -26,114 +26,50 @@
 #include <nat/lib/log.h>
 #include <nat/nat44-ed/nat44_ed.h>
 
-always_inline u64
-calc_nat_key (ip4_address_t addr, u16 port, u32 fib_index, u8 proto)
-{
-  ASSERT (fib_index <= (1 << 14) - 1);
-  ASSERT (proto <= (1 << 3) - 1);
-  return (u64) addr.as_u32 << 32 | (u64) port << 16 | fib_index << 3 |
-	 (proto & 0x7);
-}
-
 always_inline void
-split_nat_key (u64 key, ip4_address_t *addr, u16 *port, u32 *fib_index,
-	       nat_protocol_t *proto)
+init_ed_k (clib_bihash_kv_16_8_t *kv, u32 l_addr, u16 l_port, u32 r_addr,
+	   u16 r_port, u32 fib_index, ip_protocol_t proto)
 {
-  if (addr)
-    {
-      addr->as_u32 = key >> 32;
-    }
-  if (port)
-    {
-      *port = (key >> 16) & (u16) ~0;
-    }
-  if (fib_index)
-    {
-      *fib_index = key >> 3 & ((1 << 13) - 1);
-    }
-  if (proto)
-    {
-      *proto = key & 0x7;
-    }
-}
-
-always_inline void
-init_nat_k (clib_bihash_kv_8_8_t *kv, ip4_address_t addr, u16 port,
-	    u32 fib_index, nat_protocol_t proto)
-{
-  kv->key = calc_nat_key (addr, port, fib_index, proto);
-  kv->value = ~0ULL;
-}
-
-always_inline void
-init_nat_kv (clib_bihash_kv_8_8_t *kv, ip4_address_t addr, u16 port,
-	     u32 fib_index, nat_protocol_t proto, u32 thread_index,
-	     u32 session_index)
-{
-  init_nat_k (kv, addr, port, fib_index, proto);
-  kv->value = (u64) thread_index << 32 | session_index;
-}
-
-always_inline void
-init_nat_i2o_k (clib_bihash_kv_8_8_t *kv, snat_session_t *s)
-{
-  return init_nat_k (kv, s->in2out.addr, s->in2out.port, s->in2out.fib_index,
-		     s->nat_proto);
-}
-
-always_inline void
-init_nat_i2o_kv (clib_bihash_kv_8_8_t *kv, snat_session_t *s, u32 thread_index,
-		 u32 session_index)
-{
-  init_nat_k (kv, s->in2out.addr, s->in2out.port, s->in2out.fib_index,
-	      s->nat_proto);
-  kv->value = (u64) thread_index << 32 | session_index;
-}
-
-always_inline void
-init_nat_o2i_k (clib_bihash_kv_8_8_t *kv, snat_session_t *s)
-{
-  return init_nat_k (kv, s->out2in.addr, s->out2in.port, s->out2in.fib_index,
-		     s->nat_proto);
-}
-
-always_inline void
-init_nat_o2i_kv (clib_bihash_kv_8_8_t *kv, snat_session_t *s, u32 thread_index,
-		 u32 session_index)
-{
-  init_nat_k (kv, s->out2in.addr, s->out2in.port, s->out2in.fib_index,
-	      s->nat_proto);
-  kv->value = (u64) thread_index << 32 | session_index;
-}
-
-always_inline u32
-nat_value_get_thread_index (clib_bihash_kv_8_8_t *value)
-{
-  return value->value >> 32;
-}
-
-always_inline u32
-nat_value_get_session_index (clib_bihash_kv_8_8_t *value)
-{
-  return value->value & ~(u32) 0;
-}
-
-always_inline void
-init_ed_k (clib_bihash_kv_16_8_t *kv, ip4_address_t l_addr, u16 l_port,
-	   ip4_address_t r_addr, u16 r_port, u32 fib_index, u8 proto)
-{
-  kv->key[0] = (u64) r_addr.as_u32 << 32 | l_addr.as_u32;
+  kv->key[0] = (u64) r_addr << 32 | l_addr;
   kv->key[1] =
     (u64) r_port << 48 | (u64) l_port << 32 | fib_index << 8 | proto;
 }
 
 always_inline void
-init_ed_kv (clib_bihash_kv_16_8_t *kv, ip4_address_t l_addr, u16 l_port,
-	    ip4_address_t r_addr, u16 r_port, u32 fib_index, u8 proto,
-	    u32 thread_index, u32 session_index)
+init_ed_kv (clib_bihash_kv_16_8_t *kv, u32 l_addr, u16 l_port, u32 r_addr,
+	    u16 r_port, u32 fib_index, u8 proto, u32 thread_index,
+	    u32 session_index)
 {
   init_ed_k (kv, l_addr, l_port, r_addr, r_port, fib_index, proto);
   kv->value = (u64) thread_index << 32 | session_index;
+}
+
+always_inline void
+nat44_ed_sm_init_i2o_kv (clib_bihash_kv_16_8_t *kv, u32 addr, u16 port,
+			 u32 fib_index, u8 proto, u32 sm_index)
+{
+  return init_ed_kv (kv, addr, port, 0, 0, fib_index, proto, 0, sm_index);
+}
+
+always_inline void
+nat44_ed_sm_init_o2i_kv (clib_bihash_kv_16_8_t *kv, u32 e_addr, u16 e_port,
+			 u32 fib_index, u8 proto, u32 sm_index)
+{
+  return init_ed_kv (kv, 0, 0, e_addr, e_port, fib_index, proto, 0, sm_index);
+}
+
+always_inline void
+nat44_ed_sm_init_i2o_k (clib_bihash_kv_16_8_t *kv, u32 addr, u16 port,
+			u32 fib_index, u8 proto)
+{
+  return nat44_ed_sm_init_i2o_kv (kv, addr, port, fib_index, proto, 0);
+}
+
+always_inline void
+nat44_ed_sm_init_o2i_k (clib_bihash_kv_16_8_t *kv, u32 e_addr, u16 e_port,
+			u32 fib_index, u8 proto)
+{
+  return nat44_ed_sm_init_o2i_kv (kv, e_addr, e_port, fib_index, proto, 0);
 }
 
 always_inline u32
@@ -215,16 +151,16 @@ nat_get_icmp_session_lookup_values (vlib_buffer_t *b, ip4_header_t *ip0,
       *lookup_protocol = inner_ip0->protocol;
       lookup_saddr->as_u32 = inner_ip0->dst_address.as_u32;
       lookup_daddr->as_u32 = inner_ip0->src_address.as_u32;
-      switch (ip_proto_to_nat_proto (inner_ip0->protocol))
+      switch (inner_ip0->protocol)
 	{
-	case NAT_PROTOCOL_ICMP:
+	case IP_PROTOCOL_ICMP:
 	  inner_icmp0 = (icmp46_header_t *) l4_header;
 	  inner_echo0 = (icmp_echo_header_t *) (inner_icmp0 + 1);
 	  *lookup_sport = inner_echo0->identifier;
 	  *lookup_dport = inner_echo0->identifier;
 	  break;
-	case NAT_PROTOCOL_UDP:
-	case NAT_PROTOCOL_TCP:
+	case IP_PROTOCOL_UDP:
+	case IP_PROTOCOL_TCP:
 	  *lookup_sport = ((tcp_udp_header_t *) l4_header)->dst_port;
 	  *lookup_dport = ((tcp_udp_header_t *) l4_header)->src_port;
 	  break;
@@ -238,13 +174,15 @@ nat_get_icmp_session_lookup_values (vlib_buffer_t *b, ip4_header_t *ip0,
 always_inline u32
 nat44_session_get_timeout (snat_main_t *sm, snat_session_t *s)
 {
-  switch (s->nat_proto)
+  switch (s->proto)
     {
-    case NAT_PROTOCOL_ICMP:
+    case IP_PROTOCOL_ICMP:
+      /* fallthrough */
+    case IP_PROTOCOL_ICMP6:
       return sm->timeouts.icmp;
-    case NAT_PROTOCOL_UDP:
+    case IP_PROTOCOL_UDP:
       return sm->timeouts.udp;
-    case NAT_PROTOCOL_TCP:
+    case IP_PROTOCOL_TCP:
       {
 	if (s->state)
 	  return sm->timeouts.tcp.transitory;
@@ -300,7 +238,7 @@ nat_ed_lru_insert (snat_main_per_thread_data_t *tsm, snat_session_t *s,
 static_always_inline void
 nat_6t_flow_to_ed_k (clib_bihash_kv_16_8_t *kv, nat_6t_flow_t *f)
 {
-  init_ed_k (kv, f->match.saddr, f->match.sport, f->match.daddr,
+  init_ed_k (kv, f->match.saddr.as_u32, f->match.sport, f->match.daddr.as_u32,
 	     f->match.dport, f->match.fib_index, f->match.proto);
 }
 
@@ -308,7 +246,7 @@ static_always_inline void
 nat_6t_flow_to_ed_kv (clib_bihash_kv_16_8_t *kv, nat_6t_flow_t *f,
 		      u32 thread_idx, u32 session_idx)
 {
-  init_ed_kv (kv, f->match.saddr, f->match.sport, f->match.daddr,
+  init_ed_kv (kv, f->match.saddr.as_u32, f->match.sport, f->match.daddr.as_u32,
 	      f->match.dport, f->match.fib_index, f->match.proto, thread_idx,
 	      session_idx);
 }
@@ -348,6 +286,15 @@ nat_ed_ses_o2i_flow_hash_add_del (snat_main_t *sm, u32 thread_idx,
   else
     {
       nat_6t_flow_to_ed_kv (&kv, &s->o2i, thread_idx, s - tsm->sessions);
+      if (!(s->flags & SNAT_SESSION_FLAG_STATIC_MAPPING))
+	{
+	  if (nat44_ed_sm_o2i_lookup (sm, s->o2i.match.daddr,
+				      s->o2i.match.dport, 0,
+				      s->o2i.match.proto))
+	    {
+	      return -1;
+	    }
+	}
       nat_6t_l3_l4_csum_calc (&s->o2i);
     }
   ASSERT (thread_idx == s->thread_index);
@@ -396,7 +343,7 @@ nat_lru_free_one_with_head (snat_main_t *sm, int thread_index, f64 now,
       if (now >= sess_timeout_time ||
 	  (s->tcp_closed_timestamp && now >= s->tcp_closed_timestamp))
 	{
-	  nat_free_session_data (sm, s, thread_index, 0);
+	  nat44_ed_free_session_data (sm, s, thread_index, 0);
 	  nat_ed_session_delete (sm, s, thread_index, 0);
 	  return 1;
 	}
@@ -866,6 +813,19 @@ nat44_session_update_lru (snat_main_t *sm, snat_session_t *s, u32 thread_index)
 			  s->lru_head_index, s->lru_index);
       s->last_lru_update = s->last_heard;
     }
+}
+
+static_always_inline int
+nat44_ed_is_unk_proto (u8 proto)
+{
+  static const int lookup_table[256] = {
+    [IP_PROTOCOL_TCP] = 1,
+    [IP_PROTOCOL_UDP] = 1,
+    [IP_PROTOCOL_ICMP] = 1,
+    [IP_PROTOCOL_ICMP6] = 1,
+  };
+
+  return 1 - lookup_table[proto];
 }
 
 #endif /* __included_nat44_ed_inlines_h__ */
