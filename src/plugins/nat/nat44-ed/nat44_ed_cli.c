@@ -801,18 +801,17 @@ add_static_mapping_command_fn (vlib_main_t * vm,
 			       vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  clib_error_t *error = 0;
-  ip4_address_t l_addr, e_addr, exact_addr;
-  u32 l_port = 0, e_port = 0, vrf_id = ~0;
-  int is_add = 1, addr_only = 1, rv, exact = 0;
-  u32 sw_if_index = ~0;
   vnet_main_t *vnm = vnet_get_main ();
-  nat_protocol_t proto = NAT_PROTOCOL_OTHER;
-  u8 proto_set = 0;
-  twice_nat_type_t twice_nat = TWICE_NAT_DISABLED;
-  u8 out2in_only = 0;
+  clib_error_t *error = 0;
+  int rv;
 
-  /* Get a line of input. */
+  nat_protocol_t proto = NAT_PROTOCOL_OTHER;
+  ip4_address_t l_addr, e_addr, pool_addr;
+  u32 l_port = 0, e_port = 0, vrf_id = ~0;
+  u8 l_port_set = 0, e_port_set = 0;
+  u32 sw_if_index, flags = 0;
+  int is_add = 1;
+
   if (!unformat_user (input, unformat_line_input, line_input))
     return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
 
@@ -820,38 +819,57 @@ add_static_mapping_command_fn (vlib_main_t * vm,
     {
       if (unformat (line_input, "local %U %u", unformat_ip4_address, &l_addr,
 		    &l_port))
-	addr_only = 0;
+	{
+	  l_port_set = 1;
+	}
       else
 	if (unformat (line_input, "local %U", unformat_ip4_address, &l_addr))
 	;
       else if (unformat (line_input, "external %U %u", unformat_ip4_address,
 			 &e_addr, &e_port))
-	addr_only = 0;
+	{
+	  e_port_set = 1;
+	}
       else if (unformat (line_input, "external %U", unformat_ip4_address,
 			 &e_addr))
 	;
       else if (unformat (line_input, "external %U %u",
 			 unformat_vnet_sw_interface, vnm, &sw_if_index,
 			 &e_port))
-	addr_only = 0;
+	{
+	  flags |= NAT_SM_FLAG_SWITCH_ADDRESS;
+	  e_port_set = 1;
+	}
       else if (unformat (line_input, "external %U",
 			 unformat_vnet_sw_interface, vnm, &sw_if_index))
-	;
+	{
+	  flags |= NAT_SM_FLAG_SWITCH_ADDRESS;
+	}
       else if (unformat (line_input, "exact %U", unformat_ip4_address,
-			 &exact_addr))
-	exact = 1;
+			 &pool_addr))
+	{
+	  flags |= NAT_SM_FLAG_EXACT_ADDRESS;
+	}
       else if (unformat (line_input, "vrf %u", &vrf_id))
 	;
       else if (unformat (line_input, "%U", unformat_nat_protocol, &proto))
-	proto_set = 1;
-      else if (unformat (line_input, "twice-nat"))
-	twice_nat = TWICE_NAT;
+	;
       else if (unformat (line_input, "self-twice-nat"))
-	twice_nat = TWICE_NAT_SELF;
+	{
+	  flags |= NAT_SM_FLAG_SELF_TWICE_NAT;
+	}
+      else if (unformat (line_input, "twice-nat"))
+	{
+	  flags |= NAT_SM_FLAG_TWICE_NAT;
+	}
       else if (unformat (line_input, "out2in-only"))
-	out2in_only = 1;
+	{
+	  flags |= NAT_SM_FLAG_OUT2IN_ONLY;
+	}
       else if (unformat (line_input, "del"))
-	is_add = 0;
+	{
+	  is_add = 0;
+	}
       else
 	{
 	  error = clib_error_return (0, "unknown input: '%U'",
@@ -860,32 +878,37 @@ add_static_mapping_command_fn (vlib_main_t * vm,
 	}
     }
 
-  if (twice_nat && addr_only)
+  if (l_port_set != e_port_set)
     {
-      error = clib_error_return (0, "twice NAT only for 1:1 NAPT");
+      error = clib_error_return (0, "Either both ports are set or none.");
       goto done;
     }
 
-  if (addr_only)
+  if (!l_port_set)
     {
-      if (proto_set)
-	{
-	  error =
-	    clib_error_return (0,
-			       "address only mapping doesn't support protocol");
-	  goto done;
-	}
+      flags |= NAT_SM_FLAG_ADDR_ONLY;
     }
-  else if (!proto_set)
+  else
     {
-      error = clib_error_return (0, "protocol is required");
-      goto done;
+      l_port = clib_host_to_net_u16 (l_port);
+      e_port = clib_host_to_net_u16 (e_port);
     }
 
-  rv = snat_add_static_mapping (
-    l_addr, e_addr, clib_host_to_net_u16 (l_port),
-    clib_host_to_net_u16 (e_port), vrf_id, addr_only, sw_if_index, proto,
-    is_add, twice_nat, out2in_only, 0, 0, exact_addr, exact);
+  // TODO: specific pool_addr for both pool & twice nat pool ?
+
+  if (is_add)
+    {
+      rv =
+	nat44_ed_add_static_mapping (l_addr, e_addr, l_port, e_port, proto,
+				     vrf_id, sw_if_index, flags, pool_addr, 0);
+    }
+  else
+    {
+      rv = nat44_ed_del_static_mapping (l_addr, e_addr, l_port, e_port, proto,
+					vrf_id, sw_if_index, flags);
+    }
+
+  // TODO: fix returns
 
   switch (rv)
     {
@@ -914,23 +937,22 @@ done:
   return error;
 }
 
+// TODO: either delete this bullshit or update it
 static clib_error_t *
 add_identity_mapping_command_fn (vlib_main_t * vm,
 				 unformat_input_t * input,
 				 vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  clib_error_t *error = 0;
-  ip4_address_t addr, pool_addr = { 0 };
-  u32 port = 0, vrf_id = ~0;
-  int is_add = 1;
-  int addr_only = 1;
-  u32 sw_if_index = ~0;
   vnet_main_t *vnm = vnet_get_main ();
-  int rv;
-  nat_protocol_t proto;
+  clib_error_t *error = 0;
 
-  addr.as_u32 = 0;
+  int rv, is_add = 1, port_set = 0;
+  u32 sw_if_index, port, flags, vrf_id = ~0;
+  nat_protocol_t proto;
+  ip4_address_t addr;
+
+  flags = NAT_SM_FLAG_IDENTITY_NAT;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -942,14 +964,20 @@ add_identity_mapping_command_fn (vlib_main_t * vm,
 	;
       else if (unformat (line_input, "external %U",
 			 unformat_vnet_sw_interface, vnm, &sw_if_index))
-	;
+	{
+	  flags |= NAT_SM_FLAG_SWITCH_ADDRESS;
+	}
       else if (unformat (line_input, "vrf %u", &vrf_id))
 	;
       else if (unformat (line_input, "%U %u", unformat_nat_protocol, &proto,
 			 &port))
-	addr_only = 0;
+	{
+	  port_set = 1;
+	}
       else if (unformat (line_input, "del"))
-	is_add = 0;
+	{
+	  is_add = 0;
+	}
       else
 	{
 	  error = clib_error_return (0, "unknown input: '%U'",
@@ -958,9 +986,28 @@ add_identity_mapping_command_fn (vlib_main_t * vm,
 	}
     }
 
-  rv = snat_add_static_mapping (
-    addr, addr, clib_host_to_net_u16 (port), clib_host_to_net_u16 (port),
-    vrf_id, addr_only, sw_if_index, proto, is_add, 0, 0, 0, 1, pool_addr, 0);
+  if (!port_set)
+    {
+      flags |= NAT_SM_FLAG_ADDR_ONLY;
+    }
+  else
+    {
+      port = clib_host_to_net_u16 (port);
+    }
+
+  if (is_add)
+    {
+
+      rv = nat44_ed_add_static_mapping (addr, addr, port, port, proto, vrf_id,
+					sw_if_index, flags, addr, 0);
+    }
+  else
+    {
+      rv = nat44_ed_del_static_mapping (addr, addr, port, port, proto, vrf_id,
+					sw_if_index, flags);
+    }
+
+  // TODO: fix returns
 
   switch (rv)
     {
@@ -998,13 +1045,11 @@ add_lb_static_mapping_command_fn (vlib_main_t * vm,
   clib_error_t *error = 0;
   ip4_address_t l_addr, e_addr;
   u32 l_port = 0, e_port = 0, vrf_id = 0, probability = 0, affinity = 0;
-  int is_add = 1;
-  int rv;
-  nat_protocol_t proto;
   u8 proto_set = 0;
+  nat_protocol_t proto;
   nat44_lb_addr_port_t *locals = 0, local;
-  twice_nat_type_t twice_nat = TWICE_NAT_DISABLED;
-  u8 out2in_only = 0;
+  int rv, is_add = 1;
+  u32 flags = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -1037,15 +1082,25 @@ add_lb_static_mapping_command_fn (vlib_main_t * vm,
 	;
       else if (unformat (line_input, "protocol %U", unformat_nat_protocol,
 			 &proto))
-	proto_set = 1;
+	{
+	  proto_set = 1;
+	}
       else if (unformat (line_input, "twice-nat"))
-	twice_nat = TWICE_NAT;
+	{
+	  flags |= NAT_SM_FLAG_TWICE_NAT;
+	}
       else if (unformat (line_input, "self-twice-nat"))
-	twice_nat = TWICE_NAT_SELF;
+	{
+	  flags |= NAT_SM_FLAG_SELF_TWICE_NAT;
+	}
       else if (unformat (line_input, "out2in-only"))
-	out2in_only = 1;
+	{
+	  flags |= NAT_SM_FLAG_OUT2IN_ONLY;
+	}
       else if (unformat (line_input, "del"))
-	is_add = 0;
+	{
+	  is_add = 0;
+	}
       else if (unformat (line_input, "affinity %u", &affinity))
 	;
       else
@@ -1068,9 +1123,15 @@ add_lb_static_mapping_command_fn (vlib_main_t * vm,
       goto done;
     }
 
-  rv = nat44_add_del_lb_static_mapping (e_addr, (u16) e_port, proto, locals,
-					is_add, twice_nat, out2in_only, 0,
-					affinity);
+  if (is_add)
+    {
+      rv = nat44_add_lb_static_mapping (e_addr, (u16) e_port, proto, locals,
+					flags, 0, affinity);
+    }
+  else
+    {
+      rv = nat44_del_lb_static_mapping (e_addr, (u16) e_port, proto, flags);
+    }
 
   switch (rv)
     {
