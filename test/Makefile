@@ -236,7 +236,6 @@ reset:
 
 .PHONY: wipe
 wipe: reset
-	@make -C ext clean
 	@rm -rf $(VENV_PATH)
 	@rm -rf $(patsubst %,%/__pycache__, $(VPP_TEST_DIRS))
 
