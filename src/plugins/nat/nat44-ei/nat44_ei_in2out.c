@@ -271,13 +271,10 @@ nat44_i2o_is_idle_session_cb (clib_bihash_kv_8_8_t * kv, void *arg)
       if (clib_bihash_add_del_8_8 (&nm->out2in, &s_kv, 0))
 	nat_elog_warn (nm, "out2in key del failed");
 
-      nat_ipfix_logging_nat44_ses_delete (ctx->thread_index,
-					  s->in2out.addr.as_u32,
-					  s->out2in.addr.as_u32,
-					  s->nat_proto,
-					  s->in2out.port,
-					  s->out2in.port,
-					  s->in2out.fib_index);
+      nat_ipfix_logging_nat44_ses_delete (
+	ctx->thread_index, s->in2out.addr.as_u32, s->out2in.addr.as_u32,
+	nat_proto_to_ip_proto (s->nat_proto), s->in2out.port, s->out2in.port,
+	s->in2out.fib_index);
 
       nat_syslog_nat44_apmdel (s->user_index, s->in2out.fib_index,
 			       &s->in2out.addr, s->in2out.port,
@@ -430,8 +427,9 @@ slow_path (nat44_ei_main_t *nm, vlib_buffer_t *b0, ip4_header_t *ip0,
 
   /* log NAT event */
   nat_ipfix_logging_nat44_ses_create (
-    thread_index, s->in2out.addr.as_u32, s->out2in.addr.as_u32, s->nat_proto,
-    s->in2out.port, s->out2in.port, s->in2out.fib_index);
+    thread_index, s->in2out.addr.as_u32, s->out2in.addr.as_u32,
+    nat_proto_to_ip_proto (s->nat_proto), s->in2out.port, s->out2in.port,
+    s->in2out.fib_index);
 
   nat_syslog_nat44_apmadd (s->user_index, s->in2out.fib_index, &s->in2out.addr,
 			   s->in2out.port, &s->out2in.addr, s->out2in.port,
