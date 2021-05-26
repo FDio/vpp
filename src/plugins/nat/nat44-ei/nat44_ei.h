@@ -36,6 +36,7 @@
 
 #include <nat/lib/lib.h>
 #include <nat/lib/inlines.h>
+#include <nat/lib/nat_proto.h>
 
 /* default number of worker handoff frame queue elements */
 #define NAT_FQ_NELTS_DEFAULT 64
