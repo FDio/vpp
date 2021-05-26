@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2087ab12_59adbf54",
+        "filename": "src/vnet/interface_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1828,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-05-26T06:43:40Z",
+      "side": 1,
+      "message": "user should not know that this is bitmap. -\u003e \"please specify valid thread(s)\"",
+      "revId": "73224e70b2cbb2226145c06f15f28ab5031603fc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "93515fc3_9e401d17",
+        "filename": "src/vnet/interface_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1903,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-05-26T06:43:40Z",
+      "side": 1,
+      "message": "\u003cbitmap\u003e -\u003e \u003clist\u003e",
+      "revId": "73224e70b2cbb2226145c06f15f28ab5031603fc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
