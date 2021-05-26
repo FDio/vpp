@@ -37,10 +37,9 @@ format_affinity_kvp (u8 * s, va_list * args)
   k.as_u64[1] = v->key[1];
 
   s = format (s, "client %U backend %U:%d proto %U index %llu",
-	      format_ip4_address, &k.client_addr,
-	      format_ip4_address, &k.service_addr,
-	      clib_net_to_host_u16 (k.service_port),
-	      format_nat_protocol, k.proto);
+	      format_ip4_address, &k.client_addr, format_ip4_address,
+	      &k.service_addr, clib_net_to_host_u16 (k.service_port),
+	      format_ip_protocol, k.proto);
 
   return s;
 }

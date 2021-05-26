@@ -20,6 +20,7 @@
 
 #include <nat/nat44-ei/nat44_ei.h>
 #include <nat/nat44-ei/nat44_ei_ha.h>
+#include <nat/lib/nat_proto.h>
 
 always_inline u64
 calc_nat_key (ip4_address_t addr, u16 port, u32 fib_index, u8 proto)
@@ -218,6 +219,29 @@ nat44_ei_session_update_counters (nat44_ei_session_t *s, f64 now, uword bytes,
 	       s->ext_host_port, s->nat_proto, s->out2in.fib_index,
 	       s->total_pkts, s->total_bytes, thread_index,
 	       &s->ha_last_refreshed, now);
+}
+
+static_always_inline u32
+nat_session_get_timeout (nat_timeouts_t *timeouts, nat_protocol_t proto,
+			 u8 state)
+{
+  switch (proto)
+    {
+    case NAT_PROTOCOL_ICMP:
+      return timeouts->icmp;
+    case NAT_PROTOCOL_UDP:
+      return timeouts->udp;
+    case NAT_PROTOCOL_TCP:
+      {
+	if (state)
+	  return timeouts->tcp.transitory;
+	else
+	  return timeouts->tcp.established;
+      }
+    default:
+      return timeouts->udp;
+    }
+  return 0;
 }
 
 #endif /* __included_nat44_ei_inlines_h__ */
