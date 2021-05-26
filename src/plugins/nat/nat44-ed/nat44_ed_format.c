@@ -180,9 +180,9 @@ format_snat_static_mapping (u8 * s, va_list * args)
   snat_static_mapping_t *m = va_arg (*args, snat_static_mapping_t *);
   nat44_lb_addr_port_t *local;
 
-  if (is_identity_static_mapping (m))
+  if (is_identity_nat (m->flags))
     {
-      if (is_addr_only_static_mapping (m))
+      if (is_addr_only (m->flags))
 	s = format (s, "identity mapping %U",
 		    format_ip4_address, &m->local_addr);
       else
@@ -191,58 +191,52 @@ format_snat_static_mapping (u8 * s, va_list * args)
 		    format_ip4_address, &m->local_addr,
 		    clib_net_to_host_u16 (m->local_port));
 
-      /* *INDENT-OFF* */
       pool_foreach (local, m->locals)
        {
         s = format (s, " vrf %d", local->vrf_id);
       }
-      /* *INDENT-ON* */
 
       return s;
     }
 
-  if (is_addr_only_static_mapping (m))
-    s = format (s, "local %U external %U vrf %d %s %s",
-		format_ip4_address, &m->local_addr,
-		format_ip4_address, &m->external_addr,
-		m->vrf_id,
-		m->twice_nat == TWICE_NAT ? "twice-nat" :
-		m->twice_nat == TWICE_NAT_SELF ? "self-twice-nat" : "",
-		is_out2in_only_static_mapping (m) ? "out2in-only" : "");
+  if (is_addr_only (m->flags))
+    s =
+      format (s, "local %U external %U vrf %d %s %s", format_ip4_address,
+	      &m->local_addr, format_ip4_address, &m->external_addr, m->vrf_id,
+	      is_twice_nat (m->flags) ?
+		"twice-nat" :
+		is_self_twice_nat (m->flags) ? "self-twice-nat" : "",
+	      is_out2in_only (m->flags) ? "out2in-only" : "");
   else
     {
-      if (is_lb_static_mapping (m))
+      if (is_lb (m->flags))
 	{
-	  s = format (s, "%U external %U:%d %s %s",
-		      format_nat_protocol, m->proto,
-		      format_ip4_address, &m->external_addr,
+	  s = format (s, "%U external %U:%d %s %s", format_nat_protocol,
+		      m->proto, format_ip4_address, &m->external_addr,
 		      clib_net_to_host_u16 (m->external_port),
-		      m->twice_nat == TWICE_NAT ? "twice-nat" :
-		      m->twice_nat == TWICE_NAT_SELF ? "self-twice-nat" : "",
-		      is_out2in_only_static_mapping (m) ? "out2in-only" : "");
+		      is_twice_nat (m->flags) ?
+			"twice-nat" :
+			is_self_twice_nat (m->flags) ? "self-twice-nat" : "",
+		      is_out2in_only (m->flags) ? "out2in-only" : "");
 
-          /* *INDENT-OFF* */
-          pool_foreach (local, m->locals)
-           {
-	    s = format (s, "\n  local %U:%d vrf %d probability %d\%",
-			format_ip4_address, &local->addr,
-                        clib_net_to_host_u16 (local->port),
-			local->vrf_id, local->probability);
-          }
-          /* *INDENT-ON* */
-
+	  pool_foreach (local, m->locals)
+	    {
+	      s = format (s, "\n  local %U:%d vrf %d probability %d\%",
+			  format_ip4_address, &local->addr,
+			  clib_net_to_host_u16 (local->port), local->vrf_id,
+			  local->probability);
+	    }
 	}
       else
 	s = format (s, "%U local %U:%d external %U:%d vrf %d %s %s",
-		    format_nat_protocol, m->proto,
-		    format_ip4_address, &m->local_addr,
-		    clib_net_to_host_u16 (m->local_port),
+		    format_nat_protocol, m->proto, format_ip4_address,
+		    &m->local_addr, clib_net_to_host_u16 (m->local_port),
 		    format_ip4_address, &m->external_addr,
-		    clib_net_to_host_u16 (m->external_port),
-		    m->vrf_id,
-		    m->twice_nat == TWICE_NAT ? "twice-nat" :
-		    m->twice_nat == TWICE_NAT_SELF ? "self-twice-nat" : "",
-		    is_out2in_only_static_mapping (m) ? "out2in-only" : "");
+		    clib_net_to_host_u16 (m->external_port), m->vrf_id,
+		    is_twice_nat (m->flags) ?
+		      "twice-nat" :
+		      is_self_twice_nat (m->flags) ? "self-twice-nat" : "",
+		    is_out2in_only (m->flags) ? "out2in-only" : "");
     }
   return s;
 }
