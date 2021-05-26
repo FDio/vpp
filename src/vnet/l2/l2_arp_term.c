@@ -332,8 +332,8 @@ arp_term_l2bd (vlib_main_t * vm,
 	      || ethernet_address_cast (arp0->ip4_over_ethernet[0].mac.bytes))
 	    {
 	      /* VRRP virtual MAC may be different to SMAC in ARP reply */
-	      if (!ethernet_mac_address_equal
-		  (arp0->ip4_over_ethernet[0].mac.bytes, vrrp_prefix))
+	      if (!clib_memcmp (arp0->ip4_over_ethernet[0].mac.bytes,
+				vrrp_prefix, sizeof (vrrp_prefix)))
 		{
 		  error0 = ETHERNET_ARP_ERROR_l2_address_mismatch;
 		  goto drop;
