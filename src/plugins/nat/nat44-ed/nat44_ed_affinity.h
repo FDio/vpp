@@ -41,7 +41,6 @@ typedef struct
   };
 } nat_affinity_key_t;
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED(struct
 {
   nat_affinity_key_t key;
@@ -51,7 +50,6 @@ typedef CLIB_PACKED(struct
   u8 backend_index;
   f64 expire;
 }) nat_affinity_t;
-/* *INDENT-ON* */
 
 typedef struct
 {

@@ -484,43 +484,73 @@ static void
   vl_api_nat44_add_del_static_mapping_t_handler
   (vl_api_nat44_add_del_static_mapping_t * mp)
 {
-  snat_main_t *sm = &snat_main;
   vl_api_nat44_add_del_static_mapping_reply_t *rmp;
-  ip4_address_t local_addr, external_addr, pool_addr = { 0 };
-  u16 local_port = 0, external_port = 0;
-  u32 vrf_id, external_sw_if_index;
-  twice_nat_type_t twice_nat = TWICE_NAT_DISABLED;
+
+  snat_main_t *sm = &snat_main;
   int rv = 0;
-  nat_protocol_t proto;
+
+  ip4_address_t l_addr, e_addr, pool_addr = { 0 };
+  u32 sw_if_index, flags = 0, vrf_id;
+  u16 l_port = 0, e_port = 0;
+  nat_protocol_t proto = 0;
   u8 *tag = 0;
 
-  memcpy (&local_addr.as_u8, mp->local_ip_address, 4);
-  memcpy (&external_addr.as_u8, mp->external_ip_address, 4);
+  memcpy (&l_addr.as_u8, mp->local_ip_address, 4);
 
-  if (!(mp->flags & NAT_API_IS_ADDR_ONLY))
+  if (mp->flags & NAT_API_IS_ADDR_ONLY)
     {
-      local_port = mp->local_port;
-      external_port = mp->external_port;
+      flags |= NAT_SM_FLAG_ADDR_ONLY;
+    }
+  else
+    {
+      l_port = mp->local_port;
+      e_port = mp->external_port;
+      proto = ip_proto_to_nat_proto (mp->protocol);
+    }
+
+  if (mp->flags & NAT_API_IS_TWICE_NAT)
+    {
+      flags |= NAT_SM_FLAG_TWICE_NAT;
+    }
+
+  if (mp->flags & NAT_API_IS_SELF_TWICE_NAT)
+    {
+      flags |= NAT_SM_FLAG_SELF_TWICE_NAT;
+    }
+
+  if (mp->flags & NAT_API_IS_OUT2IN_ONLY)
+    {
+      flags |= NAT_SM_FLAG_OUT2IN_ONLY;
+    }
+
+  sw_if_index = clib_net_to_host_u32 (mp->external_sw_if_index);
+  if (sw_if_index != ~0)
+    {
+      flags |= NAT_SM_FLAG_SWITCH_ADDRESS;
+    }
+  else
+    {
+      memcpy (&e_addr.as_u8, mp->external_ip_address, 4);
     }
 
   vrf_id = clib_net_to_host_u32 (mp->vrf_id);
-  external_sw_if_index = clib_net_to_host_u32 (mp->external_sw_if_index);
-  proto = ip_proto_to_nat_proto (mp->protocol);
 
-  if (mp->flags & NAT_API_IS_TWICE_NAT)
-    twice_nat = TWICE_NAT;
-  else if (mp->flags & NAT_API_IS_SELF_TWICE_NAT)
-    twice_nat = TWICE_NAT_SELF;
-  mp->tag[sizeof (mp->tag) - 1] = 0;
-  tag = format (0, "%s", mp->tag);
-  vec_terminate_c_string (tag);
+  if (mp->is_add)
+    {
+      mp->tag[sizeof (mp->tag) - 1] = 0;
+      tag = format (0, "%s", mp->tag);
+      vec_terminate_c_string (tag);
 
-  rv = snat_add_static_mapping (
-    local_addr, external_addr, local_port, external_port, vrf_id,
-    mp->flags & NAT_API_IS_ADDR_ONLY, external_sw_if_index, proto, mp->is_add,
-    twice_nat, mp->flags & NAT_API_IS_OUT2IN_ONLY, tag, 0, pool_addr, 0);
-  vec_free (tag);
-
+      rv = nat44_ed_add_static_mapping (l_addr, e_addr, l_port, e_port, proto,
+					vrf_id, sw_if_index, flags, pool_addr,
+					tag);
+      vec_free (tag);
+    }
+  else
+    {
+      rv = nat44_ed_del_static_mapping (l_addr, e_addr, l_port, e_port, proto,
+					vrf_id, sw_if_index, flags);
+    }
   REPLY_MACRO (VL_API_NAT44_ADD_DEL_STATIC_MAPPING_REPLY);
 }
 
@@ -528,47 +558,79 @@ static void
   vl_api_nat44_add_del_static_mapping_v2_t_handler
   (vl_api_nat44_add_del_static_mapping_v2_t * mp)
 {
-  snat_main_t *sm = &snat_main;
   vl_api_nat44_add_del_static_mapping_v2_reply_t *rmp;
-  ip4_address_t local_addr, external_addr, pool_addr;
-  u16 local_port = 0, external_port = 0;
-  u32 vrf_id, external_sw_if_index;
-  twice_nat_type_t twice_nat = TWICE_NAT_DISABLED;
+
+  snat_main_t *sm = &snat_main;
   int rv = 0;
+
+  ip4_address_t l_addr, e_addr, pool_addr;
+  u32 sw_if_index, flags = 0, vrf_id;
+  u16 l_port = 0, e_port = 0;
   nat_protocol_t proto;
   u8 *tag = 0;
 
+  memcpy (&l_addr.as_u8, mp->local_ip_address, 4);
   memcpy (&pool_addr.as_u8, mp->pool_ip_address, 4);
-  memcpy (&local_addr.as_u8, mp->local_ip_address, 4);
-  memcpy (&external_addr.as_u8, mp->external_ip_address, 4);
 
-  if (!(mp->flags & NAT_API_IS_ADDR_ONLY))
+  if (pool_addr.as_u32 != 0)
     {
-      local_port = mp->local_port;
-      external_port = mp->external_port;
+      flags |= NAT_SM_FLAG_EXACT_ADDRESS;
     }
 
-  vrf_id = clib_net_to_host_u32 (mp->vrf_id);
-  external_sw_if_index = clib_net_to_host_u32 (mp->external_sw_if_index);
-  proto = ip_proto_to_nat_proto (mp->protocol);
+  if (mp->flags & NAT_API_IS_ADDR_ONLY)
+    {
+      flags |= NAT_SM_FLAG_ADDR_ONLY;
+    }
+  else
+    {
+      l_port = mp->local_port;
+      e_port = mp->external_port;
+    }
 
   if (mp->flags & NAT_API_IS_TWICE_NAT)
-    twice_nat = TWICE_NAT;
-  else if (mp->flags & NAT_API_IS_SELF_TWICE_NAT)
-    twice_nat = TWICE_NAT_SELF;
-  mp->tag[sizeof (mp->tag) - 1] = 0;
-  tag = format (0, "%s", mp->tag);
-  vec_terminate_c_string (tag);
+    {
+      flags |= NAT_SM_FLAG_TWICE_NAT;
+    }
 
-  rv = snat_add_static_mapping (local_addr, external_addr, local_port,
-				external_port, vrf_id,
-				mp->flags & NAT_API_IS_ADDR_ONLY,
-				external_sw_if_index, proto,
-				mp->is_add, twice_nat,
-				mp->flags & NAT_API_IS_OUT2IN_ONLY, tag, 0,
-				pool_addr, mp->match_pool);
-  vec_free (tag);
+  if (mp->flags & NAT_API_IS_SELF_TWICE_NAT)
+    {
+      flags |= NAT_SM_FLAG_SELF_TWICE_NAT;
+    }
 
+  if (mp->flags & NAT_API_IS_OUT2IN_ONLY)
+    {
+      flags |= NAT_SM_FLAG_OUT2IN_ONLY;
+    }
+
+  sw_if_index = clib_net_to_host_u32 (mp->external_sw_if_index);
+  if (sw_if_index)
+    {
+      flags |= NAT_SM_FLAG_SWITCH_ADDRESS;
+    }
+  else
+    {
+      memcpy (&e_addr.as_u8, mp->external_ip_address, 4);
+    }
+
+  proto = ip_proto_to_nat_proto (mp->protocol);
+  vrf_id = clib_net_to_host_u32 (mp->vrf_id);
+
+  if (mp->is_add)
+    {
+      mp->tag[sizeof (mp->tag) - 1] = 0;
+      tag = format (0, "%s", mp->tag);
+      vec_terminate_c_string (tag);
+
+      rv = nat44_ed_add_static_mapping (l_addr, e_addr, l_port, e_port, proto,
+					vrf_id, sw_if_index, flags, pool_addr,
+					tag);
+      vec_free (tag);
+    }
+  else
+    {
+      rv = nat44_ed_del_static_mapping (l_addr, e_addr, l_port, e_port, proto,
+					vrf_id, sw_if_index, flags);
+    }
   REPLY_MACRO (VL_API_NAT44_ADD_DEL_STATIC_MAPPING_V2_REPLY);
 }
 
@@ -591,15 +653,24 @@ send_nat44_static_mapping_details (snat_static_mapping_t * m,
   rmp->vrf_id = htonl (m->vrf_id);
   rmp->context = context;
 
-  if (m->twice_nat == TWICE_NAT)
-    rmp->flags |= NAT_API_IS_TWICE_NAT;
-  else if (m->twice_nat == TWICE_NAT_SELF)
-    rmp->flags |= NAT_API_IS_SELF_TWICE_NAT;
+  // convert these in new api
 
-  if (is_out2in_only_static_mapping (m))
-    rmp->flags |= NAT_API_IS_OUT2IN_ONLY;
+  if (is_sm_self_twice_nat (m->flags))
+    {
+      rmp->flags |= NAT_API_IS_SELF_TWICE_NAT;
+    }
 
-  if (is_addr_only_static_mapping (m))
+  if (is_sm_out2in_only (m->flags))
+    {
+      rmp->flags |= NAT_API_IS_OUT2IN_ONLY;
+    }
+
+  if (is_sm_twice_nat (m->flags))
+    {
+      rmp->flags |= NAT_API_IS_TWICE_NAT;
+    }
+
+  if (is_sm_addr_only (m->flags))
     {
       rmp->flags |= NAT_API_IS_ADDR_ONLY;
     }
@@ -668,8 +739,8 @@ vl_api_nat44_static_mapping_dump_t_handler (vl_api_nat44_static_mapping_dump_t
 
   pool_foreach (m, sm->static_mappings)
    {
-      if (!is_identity_static_mapping(m) && !is_lb_static_mapping (m))
-        send_nat44_static_mapping_details (m, reg, mp->context);
+     if (!is_sm_identity_nat (m->flags) && !is_sm_lb (m->flags))
+       send_nat44_static_mapping_details (m, reg, mp->context);
   }
 
   for (j = 0; j < vec_len (sm->to_resolve); j++)
@@ -684,36 +755,56 @@ static void
   vl_api_nat44_add_del_identity_mapping_t_handler
   (vl_api_nat44_add_del_identity_mapping_t * mp)
 {
-  snat_main_t *sm = &snat_main;
   vl_api_nat44_add_del_identity_mapping_reply_t *rmp;
-  ip4_address_t addr, pool_addr = { 0 };
-  u16 port = 0;
-  u32 vrf_id, sw_if_index;
+
+  snat_main_t *sm = &snat_main;
   int rv = 0;
-  nat_protocol_t proto = NAT_PROTOCOL_OTHER;
+
+  ip4_address_t addr, pool_addr = { 0 };
+  u32 sw_if_index, flags, vrf_id;
+  nat_protocol_t proto = 0;
+  u16 port = 0;
   u8 *tag = 0;
 
-  if (!(mp->flags & NAT_API_IS_ADDR_ONLY))
+  flags = NAT_SM_FLAG_IDENTITY_NAT;
+
+  if (mp->flags & NAT_API_IS_ADDR_ONLY)
+    {
+      flags |= NAT_SM_FLAG_ADDR_ONLY;
+    }
+  else
     {
       port = mp->port;
       proto = ip_proto_to_nat_proto (mp->protocol);
     }
-  vrf_id = clib_net_to_host_u32 (mp->vrf_id);
+
   sw_if_index = clib_net_to_host_u32 (mp->sw_if_index);
   if (sw_if_index != ~0)
-    addr.as_u32 = 0;
+    {
+      flags |= NAT_SM_FLAG_SWITCH_ADDRESS;
+    }
   else
-    memcpy (&addr.as_u8, mp->ip_address, 4);
-  mp->tag[sizeof (mp->tag) - 1] = 0;
-  tag = format (0, "%s", mp->tag);
-  vec_terminate_c_string (tag);
+    {
+      memcpy (&addr.as_u8, mp->ip_address, 4);
+    }
 
-  rv =
-    snat_add_static_mapping (addr, addr, port, port, vrf_id,
-			     mp->flags & NAT_API_IS_ADDR_ONLY, sw_if_index,
-			     proto, mp->is_add, 0, 0, tag, 1, pool_addr, 0);
-  vec_free (tag);
+  vrf_id = clib_net_to_host_u32 (mp->vrf_id);
 
+  if (mp->is_add)
+    {
+      mp->tag[sizeof (mp->tag) - 1] = 0;
+      tag = format (0, "%s", mp->tag);
+      vec_terminate_c_string (tag);
+
+      rv = nat44_ed_add_static_mapping (addr, addr, port, port, proto, vrf_id,
+					sw_if_index, flags, pool_addr, tag);
+      vec_free (tag);
+    }
+  else
+    {
+      rv = nat44_ed_del_static_mapping (addr, addr, port, port, proto, vrf_id,
+					sw_if_index, flags);
+    }
   REPLY_MACRO (VL_API_NAT44_ADD_DEL_IDENTITY_MAPPING_REPLY);
 }
 
@@ -730,7 +821,7 @@ send_nat44_identity_mapping_details (snat_static_mapping_t * m, int index,
   rmp->_vl_msg_id =
     ntohs (VL_API_NAT44_IDENTITY_MAPPING_DETAILS + sm->msg_id_base);
 
-  if (is_addr_only_static_mapping (m))
+  if (is_sm_addr_only (m->flags))
     rmp->flags |= NAT_API_IS_ADDR_ONLY;
 
   clib_memcpy (rmp->ip_address, &(m->local_addr), 4);
@@ -788,13 +879,13 @@ static void
 
   pool_foreach (m, sm->static_mappings)
    {
-      if (is_identity_static_mapping(m) && !is_lb_static_mapping (m))
-        {
-          pool_foreach_index (j, m->locals)
-           {
-            send_nat44_identity_mapping_details (m, j, reg, mp->context);
-          }
-        }
+     if (is_sm_identity_nat (m->flags) && !is_sm_lb (m->flags))
+       {
+	 pool_foreach_index (j, m->locals)
+	   {
+	     send_nat44_identity_mapping_details (m, j, reg, mp->context);
+	   }
+       }
   }
 
   for (j = 0; j < vec_len (sm->to_resolve); j++)
@@ -905,12 +996,12 @@ vl_api_nat44_add_del_lb_static_mapping_t_handler (
 {
   snat_main_t *sm = &snat_main;
   vl_api_nat44_add_del_lb_static_mapping_reply_t *rmp;
-  twice_nat_type_t twice_nat = TWICE_NAT_DISABLED;
-  int rv = 0;
   nat44_lb_addr_port_t *locals = 0;
   ip4_address_t e_addr;
   nat_protocol_t proto;
+  u32 flags = 0;
   u8 *tag = 0;
+  int rv = 0;
 
   locals = unformat_nat44_lb_addr_port (mp->locals,
 					clib_net_to_host_u32 (mp->local_num));
@@ -918,17 +1009,34 @@ vl_api_nat44_add_del_lb_static_mapping_t_handler (
   proto = ip_proto_to_nat_proto (mp->protocol);
 
   if (mp->flags & NAT_API_IS_TWICE_NAT)
-    twice_nat = TWICE_NAT;
+    {
+      flags |= NAT_SM_FLAG_TWICE_NAT;
+    }
   else if (mp->flags & NAT_API_IS_SELF_TWICE_NAT)
-    twice_nat = TWICE_NAT_SELF;
-  mp->tag[sizeof (mp->tag) - 1] = 0;
-  tag = format (0, "%s", mp->tag);
-  vec_terminate_c_string (tag);
+    {
+      flags |= NAT_SM_FLAG_SELF_TWICE_NAT;
+    }
 
-  rv = nat44_add_del_lb_static_mapping (
-    e_addr, mp->external_port, proto, locals, mp->is_add, twice_nat,
-    mp->flags & NAT_API_IS_OUT2IN_ONLY, tag,
-    clib_net_to_host_u32 (mp->affinity));
+  if (mp->flags & NAT_API_IS_OUT2IN_ONLY)
+    {
+      flags |= NAT_SM_FLAG_OUT2IN_ONLY;
+    }
+
+  if (mp->is_add)
+    {
+      mp->tag[sizeof (mp->tag) - 1] = 0;
+      tag = format (0, "%s", mp->tag);
+      vec_terminate_c_string (tag);
+
+      rv = nat44_add_lb_static_mapping (e_addr, mp->external_port, proto,
+					locals, flags, tag,
+					clib_net_to_host_u32 (mp->affinity));
+    }
+  else
+    {
+      rv =
+	nat44_del_lb_static_mapping (e_addr, mp->external_port, proto, flags);
+    }
 
   vec_free (locals);
   vec_free (tag);
@@ -978,12 +1086,21 @@ send_nat44_lb_static_mapping_details (snat_static_mapping_t *m,
   rmp->protocol = nat_proto_to_ip_proto (m->proto);
   rmp->context = context;
 
-  if (m->twice_nat == TWICE_NAT)
-    rmp->flags |= NAT_API_IS_TWICE_NAT;
-  else if (m->twice_nat == TWICE_NAT_SELF)
-    rmp->flags |= NAT_API_IS_SELF_TWICE_NAT;
-  if (is_out2in_only_static_mapping (m))
-    rmp->flags |= NAT_API_IS_OUT2IN_ONLY;
+  if (is_sm_self_twice_nat (m->flags))
+    {
+      rmp->flags |= NAT_API_IS_SELF_TWICE_NAT;
+    }
+
+  if (is_sm_out2in_only (m->flags))
+    {
+      rmp->flags |= NAT_API_IS_OUT2IN_ONLY;
+    }
+
+  if (is_sm_twice_nat (m->flags))
+    {
+      rmp->flags |= NAT_API_IS_TWICE_NAT;
+    }
+
   if (m->tag)
     strncpy ((char *) rmp->tag, (char *) m->tag, vec_len (m->tag));
 
@@ -1016,7 +1133,7 @@ vl_api_nat44_lb_static_mapping_dump_t_handler (
 
   pool_foreach (m, sm->static_mappings)
     {
-      if (is_lb_static_mapping (m))
+      if (is_sm_lb (m->flags))
 	send_nat44_lb_static_mapping_details (m, reg, mp->context);
     }
 }
@@ -1186,9 +1303,7 @@ vl_api_nat44_plugin_enable_disable_t_handler (
 
   if (mp->enable)
     {
-      if (!(mp->flags & NAT44_API_IS_ENDPOINT_DEPENDENT) ||
-	  (mp->flags & NAT44_API_IS_OUT2IN_DPO) || mp->users ||
-	  mp->user_sessions)
+      if (mp->users || mp->user_sessions)
 	{
 	  rv = VNET_API_ERROR_UNSUPPORTED;
 	}
