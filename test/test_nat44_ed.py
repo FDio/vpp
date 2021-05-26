@@ -3222,9 +3222,10 @@ class TestNAT44EDMW(TestNAT44ED):
         self.nat_add_address(self.nat_addr)
         self.nat_add_inside_interface(self.pg0)
         self.nat_add_outside_interface(self.pg1)
+        # TODO: check this out
         self.nat_add_static_mapping(self.pg0.remote_ip4, self.nat_addr,
-                                    in_port, out_port, proto=IP_PROTOS.tcp,
-                                    flags=self.config_flags.NAT_IS_TWICE_NAT)
+                                    in_port, out_port, proto=IP_PROTOS.tcp)
+                                    #flags=self.config_flags.NAT_IS_TWICE_NAT)
 
         sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
         session_n = len(sessions)
@@ -3334,6 +3335,7 @@ class TestNAT44EDMW(TestNAT44ED):
         self.nat_add_address(self.nat_addr)
         self.nat_add_inside_interface(self.pg0)
         self.nat_add_outside_interface(self.pg1)
+        # TODO:
         self.nat_add_static_mapping(self.pg0.remote_ip4, self.nat_addr,
                                     in_port, out_port, proto=IP_PROTOS.tcp,
                                     flags=self.config_flags.NAT_IS_TWICE_NAT)
