@@ -326,7 +326,7 @@ nat44_ed_external_sm_lookup (snat_main_t *sm, ip4_address_t match_addr,
   if (dport)
     {
       /* Address only mapping doesn't change port */
-      *dport = is_addr_only_static_mapping (m) ? match_port : m->local_port;
+      *dport = is_sm_addr_only (m->flags) ? match_port : m->local_port;
     }
   return 1;
 }
