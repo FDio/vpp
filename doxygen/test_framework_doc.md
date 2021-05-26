@@ -4,6 +4,7 @@ Test Framework Documentation    {#test_framework_doc}
 PyDoc generated documentation for the "make test" framework is available for
 the following releases:
 
+- [Test framework documentation for VPP 21.10](https://docs.fd.io/vpp/21.10/vpp_make_test/html)
 - [Test framework documentation for VPP 21.06](https://docs.fd.io/vpp/21.06/vpp_make_test/html)
 - [Test framework documentation for VPP 21.01](https://docs.fd.io/vpp/21.01/vpp_make_test/html)
 - [Test framework documentation for VPP 20.09](https://docs.fd.io/vpp/20.09/vpp_make_test/html)
