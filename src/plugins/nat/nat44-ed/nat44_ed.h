@@ -28,6 +28,7 @@
 #include <vppinfra/elog.h>
 #include <vppinfra/bihash_8_8.h>
 #include <vppinfra/bihash_16_8.h>
+#include <vppinfra/hash.h>
 #include <vppinfra/dlist.h>
 #include <vppinfra/error.h>
 #include <vlibapi/api.h>
@@ -683,7 +684,7 @@ typedef struct
 typedef struct
 {
   u32 cached_sw_if_index;
-  u32 cached_ip4_address;
+  uword *cached_presence_by_ip4_address;
 } snat_runtime_t;
 
 extern snat_main_t snat_main;
