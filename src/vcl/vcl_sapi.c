@@ -23,7 +23,8 @@ vcl_api_connect_app_socket (vcl_worker_t * wrk)
   int rv = 0;
 
   cs->config = (char *) vcm->cfg.vpp_app_socket_api;
-  cs->flags = CLIB_SOCKET_F_IS_CLIENT | CLIB_SOCKET_F_SEQPACKET;
+  cs->flags =
+    CLIB_SOCKET_F_IS_CLIENT | CLIB_SOCKET_F_SEQPACKET | CLIB_SOCKET_F_BLOCKING;
 
   wrk->vcl_needs_real_epoll = 1;
 
