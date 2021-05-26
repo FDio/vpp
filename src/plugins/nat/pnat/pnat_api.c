@@ -193,7 +193,7 @@ clib_error_t *pnat_plugin_api_hookup(vlib_main_t *vm) {
  */
 #include <vnet/plugin/plugin.h>
 VLIB_PLUGIN_REGISTER() = {
-    .version = "0.0.1",
+    .version = VPP_BUILD_VER,
     .description = "Policy 1:1 NAT",
 };
 
