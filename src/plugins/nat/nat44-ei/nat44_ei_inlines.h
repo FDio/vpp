@@ -118,20 +118,31 @@ nat44_ei_is_interface_addr (ip4_main_t *im, vlib_node_runtime_t *node,
 			    u32 sw_if_index0, u32 ip4_addr)
 {
   nat44_ei_runtime_t *rt = (nat44_ei_runtime_t *) node->runtime_data;
-  ip4_address_t *first_int_addr;
+  u8 ip4_addr_exists;
 
   if (PREDICT_FALSE (rt->cached_sw_if_index != sw_if_index0))
     {
-      first_int_addr = ip4_interface_first_address (
-	im, sw_if_index0, 0 /* just want the address */);
-      rt->cached_sw_if_index = sw_if_index0;
-      if (first_int_addr)
-	rt->cached_ip4_address = first_int_addr->as_u32;
-      else
-	rt->cached_ip4_address = 0;
+      ip_lookup_main_t *lm = &im->lookup_main;
+      ip_interface_address_t *ia;
+      ip4_address_t *a;
+
+      rt->cached_sw_if_index = ~0;
+      hash_free(rt->cached_presence_by_ip4_address);
+
+      foreach_ip_interface_address
+	(lm, ia, sw_if_index0, 1 /* honor unnumbered */,
+	 ({
+	   a = ip_interface_address_get_address (lm, ia);
+	   hash_set (rt->cached_presence_by_ip4_address, a->as_u32, 1);
+	   rt->cached_sw_if_index = sw_if_index0;
+	 }));
+
+      if (rt->cached_sw_if_index == ~0)
+	return 0;
     }
 
-  if (PREDICT_FALSE (ip4_addr == rt->cached_ip4_address))
+  ip4_addr_exists = ! !hash_get (rt->cached_presence_by_ip4_address, ip4_addr);
+  if (PREDICT_FALSE (ip4_addr_exists))
     return 1;
   else
     return 0;
