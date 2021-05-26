@@ -22,6 +22,7 @@
 #include <vnet/ip/reass/ip4_sv_reass.h>
 #include <vnet/ip/reass/ip6_full_reass.h>
 #include <vnet/ip/reass/ip6_sv_reass.h>
+#include <vpp/app/version.h>
 
 /*
  * This file contains the API handlers for the pnat.api
@@ -193,7 +194,7 @@ clib_error_t *pnat_plugin_api_hookup(vlib_main_t *vm) {
  */
 #include <vnet/plugin/plugin.h>
 VLIB_PLUGIN_REGISTER() = {
-    .version = "0.0.1",
+    .version = VPP_BUILD_VER,
     .description = "Policy 1:1 NAT",
 };
 
