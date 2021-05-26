@@ -19,7 +19,8 @@ from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_papi import VppEnum
 
 
-class NAT44EDTestCase(VppTestCase):
+class TestNAT44ED(VppTestCase):
+    """ NAT44ED Test Case """
 
     nat_addr = '10.0.0.3'
 
@@ -37,17 +38,18 @@ class NAT44EDTestCase(VppTestCase):
     max_sessions = 100
 
     def setUp(self):
-        super(NAT44EDTestCase, self).setUp()
+        super().setUp()
         self.plugin_enable()
 
     def tearDown(self):
-        super(NAT44EDTestCase, self).tearDown()
+        super().tearDown()
         if not self.vpp_dead:
             self.plugin_disable()
 
     def plugin_enable(self):
         self.vapi.nat44_ed_plugin_enable_disable(
-            sessions=self.max_sessions, enable=1)
+            sessions=self.max_sessions, enable=1,
+            inside_vrf=0, outside_vrf=1)
 
     def plugin_disable(self):
         self.vapi.nat44_ed_plugin_enable_disable(enable=0)
@@ -146,7 +148,7 @@ class NAT44EDTestCase(VppTestCase):
 
     @classmethod
     def setUpClass(cls):
-        super(NAT44EDTestCase, cls).setUpClass()
+        super().setUpClass()
 
         cls.create_pg_interfaces(range(12))
         cls.interfaces = list(cls.pg_interfaces[:4])
@@ -909,10 +911,6 @@ class NAT44EDTestCase(VppTestCase):
             self.assertEqual(sd_params.get('XDADDR'), self.pg1.remote_ip4)
             self.assertEqual(sd_params.get('XDPORT'),
                              "%d" % self.tcp_external_port)
-
-
-class TestNAT44ED(NAT44EDTestCase):
-    """ NAT44ED Test Case """
 
     def test_users_dump(self):
         """ NAT44ED API test - nat44_user_dump """
@@ -2149,7 +2147,7 @@ class TestNAT44EDMW(TestNAT44ED):
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg1.get_capture(pkt_count * 3)
+        capture = self.pg1.get_capture(pkt_count * 3, timeout=5)
 
         if_idx = self.pg0.sw_if_index
         tc2 = self.statistics['/nat44-ed/in2out/slowpath/tcp']
