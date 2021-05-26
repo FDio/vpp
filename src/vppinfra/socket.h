@@ -62,7 +62,7 @@ typedef struct _socket_t
 #define CLIB_SOCKET_F_ALLOW_GROUP_WRITE (1 << 4)
 #define CLIB_SOCKET_F_SEQPACKET (1 << 5)
 #define CLIB_SOCKET_F_PASSCRED  (1 << 6)
-
+#define CLIB_SOCKET_F_BLOCKING		   (1 << 7)
 
   /* Transmit buffer.  Holds data waiting to be written. */
   u8 *tx_buffer;

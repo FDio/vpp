@@ -583,9 +583,10 @@ memif_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	    {
               clib_memset (sock, 0, sizeof(clib_socket_t));
 	      sock->config = (char *) msf->filename;
-              sock->flags = CLIB_SOCKET_F_IS_CLIENT| CLIB_SOCKET_F_SEQPACKET;
+	      sock->flags = CLIB_SOCKET_F_IS_CLIENT | CLIB_SOCKET_F_SEQPACKET |
+			    CLIB_SOCKET_F_BLOCKING;
 
-              if ((err = clib_socket_init (sock)))
+	      if ((err = clib_socket_init (sock)))
 		{
 	          clib_error_free (err);
 		}
