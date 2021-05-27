@@ -993,7 +993,6 @@ vnet_register_interface (vnet_main_t * vnm,
 	static char *e[] = {
 	  "interface is down",
 	  "interface is deleted",
-	  "no buffers to segment GSO",
 	};
 
 	r.n_errors = ARRAY_LEN (e);

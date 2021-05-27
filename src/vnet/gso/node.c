@@ -25,6 +25,30 @@
 #include <vnet/ip/ip6.h>
 #include <vnet/udp/udp_packet.h>
 
+#define foreach_gso_error                                                     \
+  _ (NO_BUFFERS, "no buffers to segment GSO")                                 \
+  _ (UNHANDLED_TYPE, "unhandled gso type")
+
+static char *gso_error_strings[] = {
+#define _(sym, string) string,
+  foreach_gso_error
+#undef _
+};
+
+typedef enum
+{
+#define _(sym, str) GSO_ERROR_##sym,
+  foreach_gso_error
+#undef _
+    GSO_N_ERROR,
+} gso_error_t;
+
+typedef enum
+{
+  GSO_NEXT_DROP,
+  GSO_N_NEXT,
+} gso_next_t;
+
 typedef struct
 {
   u32 flags;
@@ -459,9 +483,8 @@ drop_one_buffer_and_count (vlib_main_t * vm, vnet_main_t * vnm,
 
   vlib_error_drop_buffers (vm, node, pbi0,
 			   /* buffer stride */ 1,
-			   /* n_buffers */ 1,
-			   VNET_INTERFACE_OUTPUT_NEXT_DROP,
-			   node->node_index, drop_error_code);
+			   /* n_buffers */ 1, GSO_NEXT_DROP, node->node_index,
+			   drop_error_code);
 }
 
 static_always_inline uword
@@ -670,7 +693,7 @@ vnet_gso_node_inline (vlib_main_t * vm,
 			  /* not supported yet */
 			  drop_one_buffer_and_count (vm, vnm, node, from - 1,
 						     hi->sw_if_index,
-						     VNET_INTERFACE_OUTPUT_ERROR_UNHANDLED_GSO_TYPE);
+						     GSO_ERROR_UNHANDLED_TYPE);
 			  b += 1;
 			  continue;
 			}
@@ -689,7 +712,7 @@ vnet_gso_node_inline (vlib_main_t * vm,
 		    {
 		      drop_one_buffer_and_count (vm, vnm, node, from - 1,
 						 hi->sw_if_index,
-						 VNET_INTERFACE_OUTPUT_ERROR_NO_BUFFERS_FOR_GSO);
+						 GSO_ERROR_NO_BUFFERS);
 		      b += 1;
 		      continue;
 		    }
@@ -822,8 +845,12 @@ VLIB_REGISTER_NODE (gso_l2_ip4_node) = {
   .vector_size = sizeof (u32),
   .format_trace = format_gso_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = 0,
-  .n_next_nodes = 0,
+  .n_errors = ARRAY_LEN(gso_error_strings),
+  .error_strings = gso_error_strings,
+  .n_next_nodes = GSO_N_NEXT,
+  .next_nodes = {
+        [GSO_NEXT_DROP] = "error-drop",
+  },
   .name = "gso-l2-ip4",
 };
 
@@ -831,8 +858,12 @@ VLIB_REGISTER_NODE (gso_l2_ip6_node) = {
   .vector_size = sizeof (u32),
   .format_trace = format_gso_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = 0,
-  .n_next_nodes = 0,
+  .n_errors = ARRAY_LEN(gso_error_strings),
+  .error_strings = gso_error_strings,
+  .n_next_nodes = GSO_N_NEXT,
+  .next_nodes = {
+        [GSO_NEXT_DROP] = "error-drop",
+  },
   .name = "gso-l2-ip6",
 };
 
@@ -840,8 +871,12 @@ VLIB_REGISTER_NODE (gso_ip4_node) = {
   .vector_size = sizeof (u32),
   .format_trace = format_gso_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = 0,
-  .n_next_nodes = 0,
+  .n_errors = ARRAY_LEN(gso_error_strings),
+  .error_strings = gso_error_strings,
+  .n_next_nodes = GSO_N_NEXT,
+  .next_nodes = {
+        [GSO_NEXT_DROP] = "error-drop",
+  },
   .name = "gso-ip4",
 };
 
@@ -849,8 +884,12 @@ VLIB_REGISTER_NODE (gso_ip6_node) = {
   .vector_size = sizeof (u32),
   .format_trace = format_gso_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = 0,
-  .n_next_nodes = 0,
+  .n_errors = ARRAY_LEN(gso_error_strings),
+  .error_strings = gso_error_strings,
+  .n_next_nodes = GSO_N_NEXT,
+  .next_nodes = {
+        [GSO_NEXT_DROP] = "error-drop",
+  },
   .name = "gso-ip6",
 };
 
