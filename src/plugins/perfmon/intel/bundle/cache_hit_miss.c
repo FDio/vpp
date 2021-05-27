@@ -53,6 +53,12 @@ calculate_inst_and_clock (perfmon_stats_t *ts, int idx)
   return sv;
 }
 
+static u64
+update_inst_and_clock (perfmon_stats_t *ts, int idx)
+{
+  return (f64) calculate_inst_and_clock (ts, idx);
+}
+
 static u8 *
 format_intel_core_cache_hit_miss (u8 *s, va_list *args)
 {
@@ -77,6 +83,7 @@ PERFMON_REGISTER_BUNDLE (intel_core_cache_miss_hit) = {
   .events[3] = INTEL_CORE_E_MEM_LOAD_RETIRED_L3_MISS,
   .n_events = 4,
   .format_fn = format_intel_core_cache_hit_miss,
+  .update_fn = update_inst_and_clock,
   .column_headers = PERFMON_STRINGS ("L1 hit/pkt", "L1 miss/pkt", "L2 hit/pkt",
 				     "L2 miss/pkt", "L3 hit/pkt",
 				     "L3 miss/pkt"),
