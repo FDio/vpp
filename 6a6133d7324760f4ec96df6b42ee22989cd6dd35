@@ -33,6 +33,23 @@
       "revId": "6a6133d7324760f4ec96df6b42ee22989cd6dd35",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "20e685cb_741db712",
+        "filename": "src/vnet/vxlan-gpe/decap.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1014,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2021-05-27T16:36:13Z",
+      "side": 1,
+      "message": "Please combine this statement to \"if (is_ip4)\"\nif (is_ip4)\n  {\n    udp0 \u003d...\n    iuvn4_0 \u003d ...\n    di0 \u003d ...\n  }\nelse\n  {\n    ...\n  }\n\nand do the same for the other instances above.",
+      "revId": "6a6133d7324760f4ec96df6b42ee22989cd6dd35",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
