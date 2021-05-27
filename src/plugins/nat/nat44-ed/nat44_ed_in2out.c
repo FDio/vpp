@@ -1329,9 +1329,10 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
 	  if (!s0)
 	    next[0] = NAT_NEXT_DROP;
 
-	  if (NAT_ED_TRNSL_ERR_SUCCESS !=
-	      (translation_error = nat_6t_flow_buf_translate (
-		 sm, b0, ip0, &s0->i2o, proto0, is_output_feature)))
+	  if (NAT_NEXT_DROP != next[0] && s0 &&
+	      NAT_ED_TRNSL_ERR_SUCCESS !=
+		(translation_error = nat_6t_flow_buf_translate (
+		   sm, b0, ip0, &s0->i2o, proto0, is_output_feature)))
 	    {
 	      goto trace0;
 	    }
