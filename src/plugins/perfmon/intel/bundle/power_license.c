@@ -41,6 +41,12 @@ calculate_power_licensing (perfmon_stats_t *ss, int idx)
   return sv;
 }
 
+static u64
+update_power_licensing (perfmon_stats_t *ss, int idx)
+{
+  return (u64) calculate_power_licensing (ss, idx);
+}
+
 static u8 *
 format_power_licensing (u8 *s, va_list *args)
 {
@@ -63,5 +69,6 @@ PERFMON_REGISTER_BUNDLE (power_licensing) = {
   .events[4] = INTEL_CORE_E_CORE_POWER_THROTTLE,
   .n_events = 5,
   .format_fn = format_power_licensing,
+  .update_fn = update_power_licensing,
   .column_headers = PERFMON_STRINGS ("LVL0", "LVL1", "LVL2", "Throttle"),
 };

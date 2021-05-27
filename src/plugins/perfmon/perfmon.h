@@ -110,6 +110,8 @@ struct perfmon_stats;
 
 typedef clib_error_t *(perfmon_bundle_init_fn_t) (vlib_main_t *vm,
 						  struct perfmon_bundle *);
+typedef u64 (perfmon_bundle_update_function_t) (struct perfmon_stats *,
+						int idx);
 
 typedef struct
 {
@@ -124,6 +126,7 @@ typedef struct perfmon_bundle
   char *source;
   char *footer;
   uword type_flags;
+
   perfmon_offset_type_t offset_type;
 
   u32 events[PERF_MAX_EVENTS];
@@ -136,6 +139,7 @@ typedef struct perfmon_bundle
   u32 n_cpu_supports;
 
   perfmon_bundle_init_fn_t *init_fn;
+  perfmon_bundle_update_function_t *update_fn;
 
   char **column_headers;
   u32 n_column_headers;
@@ -146,6 +150,7 @@ typedef struct perfmon_bundle
   perfmon_source_t *src;
   struct perfmon_bundle *next;
   uword active_type;
+  uword stats_index;
 } perfmon_bundle_t;
 
 typedef struct perfmon_stats

@@ -51,6 +51,25 @@ PERFMON_REGISTER_SOURCE (linux) = {
   .n_events = ARRAY_LEN (events),
 };
 
+static u64
+update_context_switches (perfmon_stats_t *ss, int idx)
+{
+  f64 t = (f64) ss->time_running * 1e-9;
+  u64 sv = 0;
+
+  switch (idx)
+    {
+    case 0:
+      sv = (u64) t;
+      break;
+    case 1:
+      if (ss->time_running)
+	sv = (u64) ss->value[0] / t;
+      break;
+    }
+  return sv;
+}
+
 static u8 *
 format_context_switches (u8 *s, va_list *args)
 {
@@ -79,8 +98,32 @@ PERFMON_REGISTER_BUNDLE (context_switches) = {
   .events[0] = CONTEXT_SWITCHES,
   .n_events = 1,
   .format_fn = format_context_switches,
+  .update_fn = update_context_switches,
   .column_headers = PERFMON_STRINGS ("RunTime", "ContextSwitches/Sec"),
 };
+
+static u64
+update_page_faults (struct perfmon_stats *ss, int idx)
+{
+  f64 t = (f64) ss->time_running * 1e-9;
+  u64 sv = 0;
+
+  switch (idx)
+    {
+    case 0:
+      sv = (u64) t;
+      break;
+    case 1:
+      if (ss->time_running)
+	sv = (u64) ss->value[0] / t;
+      break;
+    case 2:
+      if (ss->time_running)
+	sv = (u64) ss->value[1] / t;
+      break;
+    }
+  return sv;
+}
 
 static u8 *
 format_page_faults (u8 *s, va_list *args)
@@ -115,6 +158,7 @@ PERFMON_REGISTER_BUNDLE (page_faults) = {
   .events[1] = PAGE_FAULTS_MAJ,
   .n_events = 2,
   .format_fn = format_page_faults,
+  .update_fn = update_page_faults,
   .column_headers = PERFMON_STRINGS ("RunTime", "MinorPageFaults/Sec",
 				     "MajorPageFaults/Sec"),
 };

@@ -46,6 +46,12 @@ calculate_load_blocks (struct perfmon_stats *ts, int idx)
   return sv;
 }
 
+static u64
+update_load_blocks (struct perfmon_stats *ts, int idx)
+{
+  return (u64) calculate_load_blocks (ts, idx);
+}
+
 static u8 *
 format_load_blocks (u8 *s, va_list *args)
 {
@@ -77,6 +83,7 @@ PERFMON_REGISTER_BUNDLE (load_blocks) = {
   .events[2] = INTEL_CORE_E_LD_BLOCKS_PARTIAL_ADDRESS_ALIAS,
   .n_events = 3,
   .format_fn = format_load_blocks,
+  .update_fn = update_load_blocks,
   .column_headers = PERFMON_STRINGS ("Calls", "Packets", "[1]", "[2]", "[3]"),
   .footer = "Per node call statistics:\n"
 	    "[1] Loads blocked due to overlapping with a preceding store that "
