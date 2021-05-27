@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "47edae21_00460813",
+        "filename": "src/plugins/ioam/lib-vxlan-gpe/vxlan_gpe_api.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-05-27T09:33:08Z",
+      "side": 1,
+      "message": "you don\u0027t need a cast here, right?",
+      "revId": "6a6133d7324760f4ec96df6b42ee22989cd6dd35",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cf74cf9d_e3c6bced",
+        "filename": "src/vnet/vxlan-gpe/decap.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 171,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-05-27T09:33:08Z",
+      "side": 1,
+      "message": "clib_memcpy_fast",
+      "revId": "6a6133d7324760f4ec96df6b42ee22989cd6dd35",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
