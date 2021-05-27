@@ -46,16 +46,49 @@ linearize_negative_current_data (vlib_main_t * vm)
 	"buff alloc");
   u32 data_size = vlib_buffer_get_default_data_size (vm);
   u32 i;
+  clib_random_buffer_t randbuf;
+  u8 *rand = 0;
+  vlib_buffer_t *b;
+  u32 randlen = (ARRAY_LEN (bi) - 1) * (data_size + 14);
+  int fail = 0;
+
+  clib_random_buffer_init (&randbuf, 0);
+  vec_add (rand, clib_random_buffer_get_data (&randbuf, randlen), randlen);
+  clib_random_buffer_free (&randbuf);
+
+  randlen = 0;
   for (i = 0; i < ARRAY_LEN (bi) - 1; ++i)
     {
-      vlib_buffer_t *b = vlib_get_buffer (vm, bi[i]);
+      b = vlib_get_buffer (vm, bi[i]);
       b->next_buffer = bi[i + 1];
       b->flags |= VLIB_BUFFER_NEXT_PRESENT;
       b->current_data = -14;
       b->current_length = 14 + data_size;
+      clib_memcpy_fast (vlib_buffer_get_current (b),
+			vec_elt_at_index (rand, randlen), b->current_length);
+      randlen += b->current_length;
     }
 
-  (void) vlib_buffer_chain_linearize (vm, vlib_get_buffer (vm, bi[0]));
+  b = vlib_get_buffer (vm, bi[0]);
+  (void) vlib_buffer_chain_linearize (vm, b);
+
+  randlen = 0;
+  fail +=
+    clib_memcmp (vlib_buffer_get_current (b), vec_elt_at_index (rand, randlen),
+		 b->current_length) == 0;
+  randlen += b->current_length;
+  while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+    {
+      b = vlib_get_buffer (vm, b->next_buffer);
+      fail +=
+	clib_memcmp (vlib_buffer_get_current (b),
+		     vec_elt_at_index (rand, randlen), b->current_length) == 0;
+      randlen += b->current_length;
+    }
+
+  TEST (fail == 0, "checking for data corruption");
+  TEST (randlen == vec_len (rand), "checking for data truncation");
+  vec_free (rand);
 
   return 0;
 }
