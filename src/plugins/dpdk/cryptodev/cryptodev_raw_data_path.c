@@ -514,9 +514,16 @@ cryptodev_raw_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
   if (!inflight || no_job_to_deq || !n_room_left)
     goto end_deq;
 
+#if RTE_VERSION >= RTE_VERSION_NUM(21, 5, 0, 0)
+  n_deq = rte_cryptodev_raw_dequeue_burst (
+    cet->ctx, cryptodev_get_frame_n_elts, 0, cryptodev_post_dequeue,
+    (void **) &frame, 0, &n_success, &dequeue_status);
+#else
   n_deq = rte_cryptodev_raw_dequeue_burst (
     cet->ctx, cryptodev_get_frame_n_elts, cryptodev_post_dequeue,
     (void **) &frame, 0, &n_success, &dequeue_status);
+#endif
+
   if (!n_deq)
     goto end_deq;
 
@@ -541,9 +548,15 @@ cryptodev_raw_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
   /* see if we can dequeue more */
   while (inflight && n_room_left && !no_job_to_deq)
     {
+#if RTE_VERSION >= RTE_VERSION_NUM(21, 5, 0, 0)
+      n_deq = rte_cryptodev_raw_dequeue_burst (
+	cet->ctx, cryptodev_get_frame_n_elts, 0, cryptodev_post_dequeue,
+	(void **) &frame, 0, &n_success, &dequeue_status);
+#else
       n_deq = rte_cryptodev_raw_dequeue_burst (
 	cet->ctx, cryptodev_get_frame_n_elts, cryptodev_post_dequeue,
 	(void **) &frame, 0, &n_success, &dequeue_status);
+#endif
       if (!n_deq)
 	break;
       inflight -= n_deq;
