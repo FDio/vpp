@@ -475,7 +475,10 @@ VLIB_NODE_FN (vnet_interface_output_node)
 
   ccm = im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX;
 
-  if ((hi->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TX_CKSUM) == 0)
+  /* if not all three flags IP4_,TCP_,UDP_CKSUM set, do compute them
+   * here before sending to the interface */
+  if ((hi->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TX_CKSUM) !=
+      VNET_HW_INTERFACE_CAP_SUPPORTS_TX_CKSUM)
     do_tx_offloads = 1;
 
   if (do_tx_offloads == 0 && arc_or_subif == 0)
