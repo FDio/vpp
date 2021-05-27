@@ -1,0 +1,232 @@
+From 7b44e3f10ac886eaece0ee3ed217ba7219ec41c1 Mon Sep 17 00:00:00 2001
+From: Robin Zhang <robinx.zhang@intel.com>
+Date: Mon, 19 Apr 2021 03:05:39 +0000
+Subject: [PATCH] net/iavf: deprecate i40evf pmd
+
+The i40evf PMD will be deprecated, iavf will be the only VF driver for
+Intel 700 serial (i40e) NIC family. To reach this, there will be 2 steps:
+
+Step 1: iavf will be the default VF driver, while i40evf still can be
+selected by devarg: "driver=i40evf".
+This is covered by this patch, which include:
+1) add all 700 serial NIC VF device ID into iavf PMD
+2) skip probe if devargs contain "driver=i40evf" in iavf
+3) continue probe if devargs contain "driver=i40evf" in i40evf
+
+Step 2: i40evf and related devarg are removed, this will happen at DPDK
+21.11
+
+Between step 1 and step 2, no new feature will be added into i40evf except
+bug fix.
+
+Signed-off-by: Robin Zhang <robinx.zhang@intel.com>
+Acked-by: Qi Zhang <qi.z.zhang@intel.com>
+Acked-by: Ferruh Yigit <ferruh.yigit@intel.com>
+Acked-by: Beilei Xing <beilei.xing@intel.com>
+---
+ doc/guides/nics/intel_vf.rst         |  6 +++
+ doc/guides/rel_notes/deprecation.rst |  8 ++++
+ drivers/common/iavf/iavf_devids.h    |  2 +
+ drivers/net/i40e/i40e_ethdev_vf.c    | 45 ++++++++++++++++++++++
+ drivers/net/iavf/iavf_ethdev.c       | 57 +++++++++++++++++++++++++++-
+ 5 files changed, 116 insertions(+), 2 deletions(-)
+
+diff --git a/doc/guides/nics/intel_vf.rst b/doc/guides/nics/intel_vf.rst
+index 529ff4a955..fcea8151bf 100644
+--- a/doc/guides/nics/intel_vf.rst
++++ b/doc/guides/nics/intel_vf.rst
+@@ -88,6 +88,12 @@ For more detail on SR-IOV, please refer to the following documents:
+     assignment in hypervisor. Take qemu for example, the device assignment should carry the IAVF device id (0x1889) like
+     ``-device vfio-pci,x-pci-device-id=0x1889,host=03:0a.0``.
+ 
++    Starting from DPDK 21.05, the default VF driver for Intel® 700 Series Ethernet Controller will be IAVF. No new feature
++    will be added into i40evf except bug fix until it's removed in DPDK 21.11. Between DPDK 21.05 and 21.11, by using the
++    ``devargs`` option ``driver=i40evf``, i40evf PMD still can be used on Intel® 700 Series Ethernet Controller, for example::
++
++    -a 81:02.0,driver=i40evf
++
+     When IAVF is backed by an Intel® E810 device, the "Protocol Extraction" feature which is supported by ice PMD is also
+     available for IAVF PMD. The same devargs with the same parameters can be applied to IAVF PMD, for detail please reference
+     the section ``Protocol extraction for per queue`` of ice.rst.
+diff --git a/doc/guides/rel_notes/deprecation.rst b/doc/guides/rel_notes/deprecation.rst
+index 82c1a90a37..ea41be51a7 100644
+--- a/doc/guides/rel_notes/deprecation.rst
++++ b/doc/guides/rel_notes/deprecation.rst
+@@ -125,3 +125,11 @@ Deprecation Notices
+ * cmdline: ``cmdline`` structure will be made opaque to hide platform-specific
+   content. On Linux and FreeBSD, supported prior to DPDK 20.11,
+   original structure will be kept until DPDK 21.11.
++
++* i40e: As there are both i40evf and iavf pmd, the functions of them are
++  duplicated. And now more and more advanced features are developed on iavf.
++  To keep consistent with kernel driver's name
++  (https://patchwork.ozlabs.org/patch/970154/), i40evf is no need to maintain.
++  Starting from 21.05, the default VF driver of i40e will be iavf, but i40evf
++  can still be used if users specify the devarg "driver=i40evf". I40evf will
++  be deleted in DPDK 21.11.
+diff --git a/drivers/common/iavf/iavf_devids.h b/drivers/common/iavf/iavf_devids.h
+index 722c2e4f49..0f98375a09 100644
+--- a/drivers/common/iavf/iavf_devids.h
++++ b/drivers/common/iavf/iavf_devids.h
+@@ -13,5 +13,7 @@
+ #define IAVF_DEV_ID_VF_HV		0x1571
+ #define IAVF_DEV_ID_ADAPTIVE_VF		0x1889
+ #define IAVF_DEV_ID_X722_VF		0x37CD
++#define IAVF_DEV_ID_X722_A0_VF          0x374D
++
+ 
+ #endif /* _IAVF_DEVIDS_H_ */
+diff --git a/drivers/net/i40e/i40e_ethdev_vf.c b/drivers/net/i40e/i40e_ethdev_vf.c
+index 2909b4d894..b5706a6a7f 100644
+--- a/drivers/net/i40e/i40e_ethdev_vf.c
++++ b/drivers/net/i40e/i40e_ethdev_vf.c
+@@ -1656,9 +1656,53 @@ i40evf_dev_uninit(struct rte_eth_dev *eth_dev)
+ 	return 0;
+ }
+ 
++static int
++i40evf_check_driver_handler(__rte_unused const char *key,
++			    const char *value, __rte_unused void *opaque)
++{
++	if (strcmp(value, "i40evf"))
++		return -1;
++
++	return 0;
++}
++
++static int
++i40evf_driver_selected(struct rte_devargs *devargs)
++{
++	struct rte_kvargs *kvlist;
++	const char *key = "driver";
++	int ret = 0;
++
++	if (devargs == NULL)
++		return 0;
++
++	kvlist = rte_kvargs_parse(devargs->args, NULL);
++	if (kvlist == NULL)
++		return 0;
++
++	if (!rte_kvargs_count(kvlist, key))
++		goto exit;
++
++	/* i40evf driver selected when there's a key-value pair:
++	 * driver=i40evf
++	 */
++	if (rte_kvargs_process(kvlist, key,
++			       i40evf_check_driver_handler, NULL) < 0)
++		goto exit;
++
++	ret = 1;
++
++exit:
++	rte_kvargs_free(kvlist);
++	return ret;
++}
++
+ static int eth_i40evf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+ 	struct rte_pci_device *pci_dev)
+ {
++	if (!i40evf_driver_selected(pci_dev->device.devargs))
++		return 1;
++
+ 	return rte_eth_dev_pci_generic_probe(pci_dev,
+ 		sizeof(struct i40e_adapter), i40evf_dev_init);
+ }
+@@ -1681,6 +1725,7 @@ static struct rte_pci_driver rte_i40evf_pmd = {
+ RTE_PMD_REGISTER_PCI(net_i40e_vf, rte_i40evf_pmd);
+ RTE_PMD_REGISTER_PCI_TABLE(net_i40e_vf, pci_id_i40evf_map);
+ RTE_PMD_REGISTER_KMOD_DEP(net_i40e_vf, "* igb_uio | vfio-pci");
++RTE_PMD_REGISTER_PARAM_STRING(net_i40e_vf, "driver=i40evf");
+ 
+ static int
+ i40evf_dev_configure(struct rte_eth_dev *dev)
+diff --git a/drivers/net/iavf/iavf_ethdev.c b/drivers/net/iavf/iavf_ethdev.c
+index 4d37722022..721cdcc14e 100644
+--- a/drivers/net/iavf/iavf_ethdev.c
++++ b/drivers/net/iavf/iavf_ethdev.c
+@@ -127,6 +127,10 @@ static int iavf_set_mc_addr_list(struct rte_eth_dev *dev,
+ 
+ static const struct rte_pci_id pci_id_iavf_map[] = {
+ 	{ RTE_PCI_DEVICE(IAVF_INTEL_VENDOR_ID, IAVF_DEV_ID_ADAPTIVE_VF) },
++	{ RTE_PCI_DEVICE(IAVF_INTEL_VENDOR_ID, IAVF_DEV_ID_VF) },
++	{ RTE_PCI_DEVICE(IAVF_INTEL_VENDOR_ID, IAVF_DEV_ID_VF_HV) },
++	{ RTE_PCI_DEVICE(IAVF_INTEL_VENDOR_ID, IAVF_DEV_ID_X722_VF) },
++	{ RTE_PCI_DEVICE(IAVF_INTEL_VENDOR_ID, IAVF_DEV_ID_X722_A0_VF) },
+ 	{ .vendor_id = 0, /* sentinel */ },
+ };
+ 
+@@ -2331,10 +2335,59 @@ iavf_dcf_cap_selected(struct rte_devargs *devargs)
+ 	return ret;
+ }
+ 
++static int
++iavf_drv_i40evf_check_handler(__rte_unused const char *key,
++			      const char *value, __rte_unused void *opaque)
++{
++	if (strcmp(value, "i40evf"))
++		return -1;
++
++	return 0;
++}
++
++static int
++iavf_drv_i40evf_selected(struct rte_devargs *devargs, uint16_t device_id)
++{
++	struct rte_kvargs *kvlist;
++	const char *key = "driver";
++	int ret = 0;
++
++	if (device_id != IAVF_DEV_ID_VF &&
++	    device_id != IAVF_DEV_ID_VF_HV &&
++	    device_id != IAVF_DEV_ID_X722_VF &&
++	    device_id != IAVF_DEV_ID_X722_A0_VF)
++		return 0;
++
++	if (devargs == NULL)
++		return 0;
++
++	kvlist = rte_kvargs_parse(devargs->args, NULL);
++	if (kvlist == NULL)
++		return 0;
++
++	if (!rte_kvargs_count(kvlist, key))
++		goto exit;
++
++	/* i40evf driver selected when there's a key-value pair:
++	 * driver=i40evf
++	 */
++	if (rte_kvargs_process(kvlist, key,
++			       iavf_drv_i40evf_check_handler, NULL) < 0)
++		goto exit;
++
++	ret = 1;
++
++exit:
++	rte_kvargs_free(kvlist);
++	return ret;
++}
++
+ static int eth_iavf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+ 			     struct rte_pci_device *pci_dev)
+ {
+-	if (iavf_dcf_cap_selected(pci_dev->device.devargs))
++	if (iavf_dcf_cap_selected(pci_dev->device.devargs) ||
++	    iavf_drv_i40evf_selected(pci_dev->device.devargs,
++				     pci_dev->id.device_id))
+ 		return 1;
+ 
+ 	return rte_eth_dev_pci_generic_probe(pci_dev,
+@@ -2357,7 +2410,7 @@ static struct rte_pci_driver rte_iavf_pmd = {
+ RTE_PMD_REGISTER_PCI(net_iavf, rte_iavf_pmd);
+ RTE_PMD_REGISTER_PCI_TABLE(net_iavf, pci_id_iavf_map);
+ RTE_PMD_REGISTER_KMOD_DEP(net_iavf, "* igb_uio | vfio-pci");
+-RTE_PMD_REGISTER_PARAM_STRING(net_iavf, "cap=dcf");
++RTE_PMD_REGISTER_PARAM_STRING(net_iavf, "cap=dcf driver=i40evf");
+ RTE_LOG_REGISTER(iavf_logtype_init, pmd.net.iavf.init, NOTICE);
+ RTE_LOG_REGISTER(iavf_logtype_driver, pmd.net.iavf.driver, NOTICE);
+ #ifdef RTE_LIBRTE_IAVF_DEBUG_RX
+-- 
+2.20.1
+
