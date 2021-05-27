@@ -30,6 +30,7 @@
 #include <vnet/tcp/tcp_packet.h>
 #include <vnet/udp/udp_packet.h>
 #include <vnet/devices/virtio/virtio.h>
+#include <vnet/interface_output.h>
 
 #define VIRTIO_TX_MAX_CHAIN_LEN 127
 
@@ -406,8 +407,10 @@ add_buffer_to_slot (vlib_main_t *vm, vlib_node_runtime_t *node,
 	set_checksum_offsets (b, hdr, is_l2);
       else
 	{
-	  drop_inline = VIRTIO_TX_ERROR_CSUM_OFFLOAD_PACKET_DROP;
-	  goto done;
+	  vlib_error_count (vm, node->node_index,
+			    VIRTIO_TX_ERROR_CSUM_OFFLOAD_PACKET_DROP, 1);
+	  vnet_calc_checksums_inline (vm, b, b->flags & VNET_BUFFER_F_IS_IP4,
+				      b->flags & VNET_BUFFER_F_IS_IP6);
 	}
     }
 
@@ -612,8 +615,10 @@ add_buffer_to_slot_packed (vlib_main_t *vm, vlib_node_runtime_t *node,
 	set_checksum_offsets (b, hdr, is_l2);
       else
 	{
-	  drop_inline = VIRTIO_TX_ERROR_CSUM_OFFLOAD_PACKET_DROP;
-	  goto done;
+	  vlib_error_count (vm, node->node_index,
+			    VIRTIO_TX_ERROR_CSUM_OFFLOAD_PACKET_DROP, 1);
+	  vnet_calc_checksums_inline (vm, b, b->flags & VNET_BUFFER_F_IS_IP4,
+				      b->flags & VNET_BUFFER_F_IS_IP6);
 	}
     }
   if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
