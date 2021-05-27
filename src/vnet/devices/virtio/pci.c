@@ -1237,7 +1237,8 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
 	}
     }
 
-  for (int i = 0; i < vif->max_queue_pairs; i++)
+  u32 num_tx_rx_queues = clib_min (vif->max_queue_pairs, vtm->n_vlib_mains);
+  for (int i = 0; i < num_tx_rx_queues; i++)
     {
       if ((error = virtio_pci_vring_init (vm, vif, RX_QUEUE (i))))
 	{
@@ -1252,22 +1253,6 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
       else
 	{
 	  vif->num_rxqs++;
-	}
-
-      if (i >= vtm->n_vlib_mains)
-	{
-	  /*
-	   * There is 1:1 mapping between tx queue and vpp worker thread.
-	   * tx queue 0 is bind with thread index 0, tx queue 1 on thread
-	   * index 1 and so on.
-	   * Multiple worker threads can poll same tx queue when number of
-	   * workers are more than tx queues. In this case, 1:N mapping
-	   * between tx queue and vpp worker thread.
-	   */
-	  virtio_log_debug (vif, "%s %u, %s", "tx-queue: number",
-			    TX_QUEUE (i),
-			    "no VPP worker thread is available");
-	  continue;
 	}
 
       if ((error = virtio_pci_vring_init (vm, vif, TX_QUEUE (i))))
@@ -1318,7 +1303,7 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
 	{
 	  virtio_log_debug (vif, "config msix vector is set at 0");
 	}
-      for (i = 0, j = 1; i < vif->max_queue_pairs; i++, j++)
+      for (i = 0, j = 1; i < vif->num_rxqs; i++, j++)
 	{
 	  if (vif->virtio_pci_func->set_queue_irq (vm, vif, j,
 						   RX_QUEUE (i)) ==
@@ -1348,6 +1333,7 @@ void
 virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
 {
   vnet_main_t *vnm = vnet_get_main ();
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
   virtio_main_t *vim = &virtio_main;
   virtio_if_t *vif;
   vlib_pci_dev_handle_t h;
@@ -1532,7 +1518,8 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
   if ((vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_VQ)) &&
       (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_MQ)))
     {
-      if (virtio_pci_enable_multiqueue (vm, vif, vif->max_queue_pairs))
+      if (virtio_pci_enable_multiqueue (
+	    vm, vif, clib_min (vif->max_queue_pairs, vtm->n_vlib_mains)))
 	virtio_log_warning (vif, "multiqueue is not set");
     }
   return;
