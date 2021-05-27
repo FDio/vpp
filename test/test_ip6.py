@@ -7,7 +7,7 @@ import unittest
 from parameterized import parameterized
 import scapy.compat
 import scapy.layers.inet6 as inet6
-from scapy.layers.inet import UDP
+from scapy.layers.inet import UDP, IP
 from scapy.contrib.mpls import MPLS
 from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_RS, \
     ICMPv6ND_RA, ICMPv6NDOptMTU, ICMPv6NDOptSrcLLAddr, ICMPv6NDOptPrefixInfo, \
@@ -3381,6 +3381,130 @@ class TestIPFibSource(VppTestCase):
         r1.remove_vpp_config()
 
         self.assertFalse(find_route(self, "2001::1", 128))
+
+
+class TestIPxAF(VppTestCase):
+    """ IP cross AF """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPxAF, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPxAF, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestIPxAF, self).setUp()
+
+        self.create_pg_interfaces(range(2))
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip6()
+            i.config_ip4()
+            i.resolve_arp()
+            i.resolve_ndp()
+
+    def tearDown(self):
+        super(TestIPxAF, self).tearDown()
+        for i in self.pg_interfaces:
+            i.admin_down()
+            i.unconfig_ip4()
+            i.unconfig_ip6()
+
+    def test_x_af(self):
+        """ Cross AF routing """
+
+        N_PKTS = 63
+        # a v4 route via a v6 attached next-hop
+        VppIpRoute(
+            self, "1.1.1.1", 32,
+            [VppRoutePath(self.pg1.remote_ip6,
+                          self.pg1.sw_if_index)]).add_vpp_config()
+
+        p = (Ether(src=self.pg0.remote_mac,
+                   dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst="1.1.1.1") /
+             UDP(sport=1234, dport=1234) /
+             Raw(b'\xa5' * 100))
+        rxs = self.send_and_expect(self.pg0, p * N_PKTS, self.pg1)
+
+        for rx in rxs:
+            self.assertEqual(rx[IP].dst, "1.1.1.1")
+
+        # a v6 route via a v4 attached next-hop
+        VppIpRoute(
+            self, "2001::1", 128,
+            [VppRoutePath(self.pg1.remote_ip4,
+                          self.pg1.sw_if_index)]).add_vpp_config()
+
+        p = (Ether(src=self.pg0.remote_mac,
+                   dst=self.pg0.local_mac) /
+             IPv6(src=self.pg0.remote_ip6, dst="2001::1") /
+             UDP(sport=1234, dport=1234) /
+             Raw(b'\xa5' * 100))
+        rxs = self.send_and_expect(self.pg0, p * N_PKTS, self.pg1)
+
+        for rx in rxs:
+            self.assertEqual(rx[IPv6].dst, "2001::1")
+
+        # a recursive v4 route via a v6 next-hop (from above)
+        VppIpRoute(
+            self, "2.2.2.2", 32,
+            [VppRoutePath("2001::1",
+                          0xffffffff)]).add_vpp_config()
+
+        p = (Ether(src=self.pg0.remote_mac,
+                   dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst="2.2.2.2") /
+             UDP(sport=1234, dport=1234) /
+             Raw(b'\xa5' * 100))
+        rxs = self.send_and_expect(self.pg0, p * N_PKTS, self.pg1)
+
+        # a recursive v4 route via a v6 next-hop
+        VppIpRoute(
+            self, "2.2.2.3", 32,
+            [VppRoutePath(self.pg1.remote_ip6,
+                          0xffffffff)]).add_vpp_config()
+
+        p = (Ether(src=self.pg0.remote_mac,
+                   dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst="2.2.2.3") /
+             UDP(sport=1234, dport=1234) /
+             Raw(b'\xa5' * 100))
+        rxs = self.send_and_expect(self.pg0, p * N_PKTS, self.pg1)
+
+        # a recursive v6 route via a v4 next-hop
+        VppIpRoute(
+            self, "3001::1", 128,
+            [VppRoutePath(self.pg1.remote_ip4,
+                          0xffffffff)]).add_vpp_config()
+
+        p = (Ether(src=self.pg0.remote_mac,
+                   dst=self.pg0.local_mac) /
+             IPv6(src=self.pg0.remote_ip6, dst="3001::1") /
+             UDP(sport=1234, dport=1234) /
+             Raw(b'\xa5' * 100))
+        rxs = self.send_and_expect(self.pg0, p * N_PKTS, self.pg1)
+
+        for rx in rxs:
+            self.assertEqual(rx[IPv6].dst, "3001::1")
+
+        VppIpRoute(
+            self, "3001::2", 128,
+            [VppRoutePath("1.1.1.1",
+                          0xffffffff)]).add_vpp_config()
+
+        p = (Ether(src=self.pg0.remote_mac,
+                   dst=self.pg0.local_mac) /
+             IPv6(src=self.pg0.remote_ip6, dst="3001::2") /
+             UDP(sport=1234, dport=1234) /
+             Raw(b'\xa5' * 100))
+        rxs = self.send_and_expect(self.pg0, p * N_PKTS, self.pg1)
+
+        for rx in rxs:
+            self.assertEqual(rx[IPv6].dst, "3001::2")
 
 
 if __name__ == '__main__':
