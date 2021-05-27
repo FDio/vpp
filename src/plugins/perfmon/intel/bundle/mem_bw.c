@@ -47,6 +47,12 @@ calculate_intel_uncore_imc_bc (perfmon_stats_t *ss, int col)
   return sv;
 }
 
+static u64
+update_intel_uncore_imc_bc (perfmon_stats_t *ss, int col)
+{
+  return (u64) calculate_intel_uncore_imc_bc (ss, col);
+}
+
 static u8 *
 format_intel_uncore_imc_bw (u8 *s, va_list *args)
 {
@@ -69,6 +75,7 @@ PERFMON_REGISTER_BUNDLE (intel_uncore_imc_bw) = {
   .events[1] = INTEL_UNCORE_E_IMC_UNC_M_CAS_COUNT_WR,
   .n_events = 2,
   .format_fn = format_intel_uncore_imc_bw,
+  .update_fn = update_intel_uncore_imc_bc,
   .column_headers = PERFMON_STRINGS ("RunTime", "Reads (MB/s)",
 				     "Writes (MB/s)", "Total (MB/s)"),
 };
