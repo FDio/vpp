@@ -30,17 +30,18 @@
 #include <vnet/tcp/tcp_packet.h>
 #include <vnet/udp/udp_packet.h>
 #include <vnet/devices/virtio/virtio.h>
+#include <vnet/interface_output.h>
 
 #define VIRTIO_TX_MAX_CHAIN_LEN 127
 
-#define foreach_virtio_tx_func_error	       \
-_(NO_FREE_SLOTS, "no free tx slots")           \
-_(TRUNC_PACKET, "packet > buffer size -- truncated in tx ring") \
-_(PENDING_MSGS, "pending msgs in tx ring") \
-_(INDIRECT_DESC_ALLOC_FAILED, "indirect descriptor allocation failed - packet drop") \
-_(OUT_OF_ORDER, "out-of-order buffers in used ring") \
-_(GSO_PACKET_DROP, "gso disabled on itf  -- gso packet drop") \
-_(CSUM_OFFLOAD_PACKET_DROP, "checksum offload disabled on itf -- csum offload packet drop")
+#define foreach_virtio_tx_func_error                                          \
+  _ (NO_FREE_SLOTS, "no free tx slots")                                       \
+  _ (TRUNC_PACKET, "packet > buffer size -- truncated in tx ring")            \
+  _ (PENDING_MSGS, "pending msgs in tx ring")                                 \
+  _ (INDIRECT_DESC_ALLOC_FAILED,                                              \
+     "indirect descriptor allocation failed - packet drop")                   \
+  _ (OUT_OF_ORDER, "out-of-order buffers in used ring")                       \
+  _ (GSO_PACKET_DROP, "gso disabled on itf  -- gso packet drop")
 
 typedef enum
 {
@@ -405,10 +406,8 @@ add_buffer_to_slot (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (csum_offload)
 	set_checksum_offsets (b, hdr, is_l2);
       else
-	{
-	  drop_inline = VIRTIO_TX_ERROR_CSUM_OFFLOAD_PACKET_DROP;
-	  goto done;
-	}
+	vnet_calc_checksums_inline (vm, b, b->flags & VNET_BUFFER_F_IS_IP4,
+				    b->flags & VNET_BUFFER_F_IS_IP6);
     }
 
   if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
@@ -611,10 +610,8 @@ add_buffer_to_slot_packed (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (csum_offload)
 	set_checksum_offsets (b, hdr, is_l2);
       else
-	{
-	  drop_inline = VIRTIO_TX_ERROR_CSUM_OFFLOAD_PACKET_DROP;
-	  goto done;
-	}
+	vnet_calc_checksums_inline (vm, b, b->flags & VNET_BUFFER_F_IS_IP4,
+				    b->flags & VNET_BUFFER_F_IS_IP6);
     }
   if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
     {
