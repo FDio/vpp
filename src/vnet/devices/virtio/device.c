@@ -34,14 +34,15 @@
 
 #define VIRTIO_TX_MAX_CHAIN_LEN 127
 
-#define foreach_virtio_tx_func_error	       \
-_(NO_FREE_SLOTS, "no free tx slots")           \
-_(TRUNC_PACKET, "packet > buffer size -- truncated in tx ring") \
-_(PENDING_MSGS, "pending msgs in tx ring") \
-_(INDIRECT_DESC_ALLOC_FAILED, "indirect descriptor allocation failed - packet drop") \
-_(OUT_OF_ORDER, "out-of-order buffers in used ring") \
-_(GSO_PACKET_DROP, "gso disabled on itf  -- gso packet drop") \
-_(CSUM_OFFLOAD_PACKET_DROP, "checksum offload disabled on itf -- csum offload packet drop")
+#define foreach_virtio_tx_func_error                                          \
+  _ (NO_FREE_SLOTS, "no free tx slots")                                       \
+  _ (TRUNC_PACKET, "packet > buffer size -- truncated in tx ring")            \
+  _ (PENDING_MSGS, "pending msgs in tx ring")                                 \
+  _ (INDIRECT_DESC_ALLOC_FAILED,                                              \
+     "indirect descriptor allocation failed - packet drop")                   \
+  _ (OUT_OF_ORDER, "out-of-order buffers in used ring")                       \
+  _ (GSO_PACKET_DROP, "gso disabled on itf  -- gso packet drop")              \
+  _ (CSUM_OFFLOAD_PACKET_DROP, "virtio -- cksum offload disabled on itf")
 
 typedef enum
 {
@@ -427,7 +428,9 @@ add_buffer_to_slot (vlib_main_t *vm, vlib_node_runtime_t *node,
     {
       if (csum_offload)
 	set_checksum_offsets (b, hdr, is_l2);
-      else
+      else if (vnet_buffer (b)->oflags & (VNET_BUFFER_OFFLOAD_F_IP_CKSUM |
+					  VNET_BUFFER_OFFLOAD_F_TCP_CKSUM |
+					  VNET_BUFFER_OFFLOAD_F_UDP_CKSUM))
 	{
 	  drop_inline = VIRTIO_TX_ERROR_CSUM_OFFLOAD_PACKET_DROP;
 	  goto done;
@@ -633,7 +636,9 @@ add_buffer_to_slot_packed (vlib_main_t *vm, vlib_node_runtime_t *node,
     {
       if (csum_offload)
 	set_checksum_offsets (b, hdr, is_l2);
-      else
+      else if (vnet_buffer (b)->oflags & (VNET_BUFFER_OFFLOAD_F_IP_CKSUM |
+					  VNET_BUFFER_OFFLOAD_F_TCP_CKSUM |
+					  VNET_BUFFER_OFFLOAD_F_UDP_CKSUM))
 	{
 	  drop_inline = VIRTIO_TX_ERROR_CSUM_OFFLOAD_PACKET_DROP;
 	  goto done;
