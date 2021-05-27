@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9671605a_688daf64",
+        "filename": "src/vnet/ipsec/ipsec_output.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 114,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2021-05-27T06:21:42Z",
+      "side": 1,
+      "message": "what is the reason of using 16 value bit hash instead of 32-bit",
+      "range": {
+        "startLine": 114,
+        "startChar": 30,
+        "endLine": 114,
+        "endChar": 32
+      },
+      "revId": "c40381ee8b19fded970e360a389fe3b05f95aba8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fb54738e_cb0dc033",
+        "filename": "src/vnet/ipsec/ipsec_output.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 339,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2021-05-27T06:21:42Z",
+      "side": 1,
+      "message": "Can we add separate output SPD node (something like ipsec4-policy-output-bihash) calling this function with new const flag as argument to this function. We can avoid im-\u003eflow_cache_flag)",
+      "range": {
+        "startLine": 339,
+        "startChar": 7,
+        "endLine": 339,
+        "endChar": 26
+      },
+      "revId": "c40381ee8b19fded970e360a389fe3b05f95aba8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "492e1893_1452d633",
+        "filename": "src/vnet/ipsec/ipsec_output.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 341,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2021-05-27T06:21:42Z",
+      "side": 1,
+      "message": "i think this function can be moved to ipsec_output_policy_match() with additional const flag being propagated (which i described above) from top node to down functions",
+      "range": {
+        "startLine": 341,
+        "startChar": 12,
+        "endLine": 341,
+        "endChar": 48
+      },
+      "revId": "c40381ee8b19fded970e360a389fe3b05f95aba8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
