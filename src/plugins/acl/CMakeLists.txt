@@ -17,11 +17,19 @@ add_vpp_plugin(acl
   hash_lookup.c
   lookup_context.c
   sess_mgmt_node.c
-  dataplane_node.c
   dataplane_node_nonip.c
+  dataplane_node.h
+  dataplane_node_def.h
 
   MULTIARCH_SOURCES
-  dataplane_node.c
+  dataplane_node_in_fa_ip4.c
+  dataplane_node_out_fa_ip4.c
+  dataplane_node_in_fa_ip6.c
+  dataplane_node_out_fa_ip6.c
+  dataplane_node_in_l2_ip4.c
+  dataplane_node_out_l2_ip4.c
+  dataplane_node_in_l2_ip6.c
+  dataplane_node_out_l2_ip6.c
   dataplane_node_nonip.c
 
   API_FILES
