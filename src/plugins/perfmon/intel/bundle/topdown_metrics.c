@@ -97,6 +97,14 @@ calculate_topdown_lvl1 (perfmon_stats_t *ts, int idx, uword type)
   return sv;
 }
 
+static u64
+update_topdown_lvl1 (perfmon_stats_t *ts, int idx)
+{
+  /* stats are always thread type */
+  return (u64) calculate_topdown_lvl1 (ts, idx, PERFMON_BUNDLE_TYPE_THREAD);
+}
+
+/* Parse thread level states from metrics*/
 static u8 *
 format_topdown_lvl1 (u8 *s, va_list *args)
 {
@@ -133,6 +141,7 @@ PERFMON_REGISTER_BUNDLE (topdown_lvl1_metric) = {
   .cpu_supports = topdown_lvl1_cpu_supports,
   .n_cpu_supports = ARRAY_LEN (topdown_lvl1_cpu_supports),
   .format_fn = format_topdown_lvl1,
+  .update_fn = update_topdown_lvl1,
   .column_headers = PERFMON_STRINGS ("% NS", "% ST", "% NS.RT", "% NS.BS",
 				     "% ST.FE", "% ST.BE"),
   .footer = "Not Stalled (NS),STalled (ST),\n"

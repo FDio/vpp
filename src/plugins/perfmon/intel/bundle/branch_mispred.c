@@ -43,6 +43,12 @@ calculate_branch_mispredications (perfmon_stats_t *ss, int idx)
   return sv;
 }
 
+static u64
+update_branch_mispredictions (perfmon_stats_t *ss, int idx)
+{
+  return (u64) calculate_branch_mispredications (ss, idx);
+}
+
 static u8 *
 format_branch_mispredictions (u8 *s, va_list *args)
 {
@@ -57,6 +63,7 @@ format_branch_mispredictions (u8 *s, va_list *args)
       break;
     case 4:
       s = format (s, "%05.2f", sv);
+      break;
     }
   return s;
 }
@@ -72,6 +79,7 @@ PERFMON_REGISTER_BUNDLE (branch_mispredictions) = {
   .events[2] = INTEL_CORE_E_BR_MISP_RETIRED_ALL_BRANCHES,
   .n_events = 3,
   .format_fn = format_branch_mispredictions,
+  .update_fn = update_branch_mispredictions,
   .column_headers = PERFMON_STRINGS ("Branches/call", "Branches/pkt",
 				     "Taken/call", "Taken/pkt", "% MisPred"),
 };
