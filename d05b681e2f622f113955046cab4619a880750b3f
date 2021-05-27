@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "64eaafde_8abadc5b",
+        "filename": "src/vnet/ip/ip6_link.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 218,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-05-27T07:48:50Z",
+      "side": 1,
+      "message": "what happens if link_local_addr is not 0? In that case, eth will be 0 so this could change the behavior for some config?",
+      "revId": "d05b681e2f622f113955046cab4619a880750b3f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
