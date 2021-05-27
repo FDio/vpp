@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bea6a65a_ca2aa965",
+        "filename": "src/plugins/gtpu/gtpu.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 915,
+      "author": {
+        "id": 1692
+      },
+      "writtenOn": "2021-05-27T05:29:04Z",
+      "side": 1,
+      "message": "Why you add a dot here?",
+      "revId": "05e75053358924be3041b522663cf5e8121f7f9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
