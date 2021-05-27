@@ -154,7 +154,7 @@ fss_chunk_free_list_push (fifo_segment_header_t *fsh,
 
   csp = fs_chunk_sptr (fsh, c);
   ASSERT (csp <= FS_CL_HEAD_MASK);
-  old_head = clib_atomic_load_relax_n (&fss->free_chunks[fl_index]);
+  old_head = clib_atomic_load_acq_n (&fss->free_chunks[fl_index]);
 
   do
     {
@@ -174,7 +174,7 @@ fss_chunk_free_list_push_list (fifo_segment_header_t *fsh,
 
   headsp = fs_chunk_sptr (fsh, head);
   ASSERT (headsp <= FS_CL_HEAD_MASK);
-  old_head = clib_atomic_load_relax_n (&fss->free_chunks[fl_index]);
+  old_head = clib_atomic_load_acq_n (&fss->free_chunks[fl_index]);
 
   do
     {
@@ -194,7 +194,7 @@ fss_chunk_free_list_pop (fifo_segment_header_t *fsh, fifo_segment_slice_t *fss,
 
   ASSERT (fss_chunk_fl_index_is_valid (fss, fl_index));
 
-  old_head = clib_atomic_load_relax_n (&fss->free_chunks[fl_index]);
+  old_head = clib_atomic_load_acq_n (&fss->free_chunks[fl_index]);
 
   /* Lock-free stacks are affected by ABA if a side allocates a chunk and
    * shortly thereafter frees it. To circumvent that, reuse the upper bits
