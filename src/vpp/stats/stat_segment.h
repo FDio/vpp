@@ -111,6 +111,9 @@ void stat_segment_set_state_counter (u32 index, u64 value);
 void stat_segment_poll_add (u32 vector_index, stat_segment_update_fn update_fn,
 			    u32 caller_index, u32 interval);
 
+counter_t **stat_validate_counter_vector3 (counter_t **counters, u32 max1,
+					   u32 max2);
+
 u32 stat_segment_new_entry (u8 *name, stat_directory_type_t t);
 void vlib_stats_register_mem_heap (clib_mem_heap_t *heap);
 void vlib_stat_segment_lock (void);
