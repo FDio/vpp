@@ -1468,138 +1468,134 @@ vlib_buffer_space_left_at_end (vlib_main_t * vm, vlib_buffer_t * b)
     ((u8 *) vlib_buffer_get_current (b) + b->current_length);
 }
 
+#define VLIB_BUFFER_LINEARIZE_MAX 64
+
 always_inline u32
 vlib_buffer_chain_linearize (vlib_main_t * vm, vlib_buffer_t * b)
 {
-  vlib_buffer_t *db = b, *sb, *first = b;
-  int is_cloned = 0;
-  u32 bytes_left = 0, data_size;
-  u16 src_left, dst_left, n_buffers = 1;
-  u8 *dp, *sp;
-  u32 to_free = 0;
+  vlib_buffer_t *dst_b;
+  u32 n_buffers = 1, to_free = 0;
+  u16 rem_len, dst_len, data_size, src_len = 0;
+  u8 *dst;
 
   if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0))
     return 1;
 
-  data_size = vlib_buffer_get_default_data_size (vm);
+  ASSERT (1 == b->ref_count);
+  if (PREDICT_FALSE (1 != b->ref_count))
+    return 0;
 
-  dst_left = vlib_buffer_space_left_at_end (vm, b);
+  data_size =
+    vlib_buffer_get_default_data_size (vm) + VLIB_BUFFER_PRE_DATA_SIZE;
+  rem_len = vlib_buffer_length_in_chain (vm, b) - b->current_length;
 
-  while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+  dst_b = b;
+  dst = vlib_buffer_get_tail (dst_b);
+  dst_len = vlib_buffer_space_left_at_end (vm, dst_b);
+
+  b->total_length_not_including_first_buffer -= dst_len;
+
+  while (rem_len > 0)
     {
-      b = vlib_get_buffer (vm, b->next_buffer);
-      if (b->ref_count > 1)
-	is_cloned = 1;
-      bytes_left += b->current_length;
-      n_buffers++;
-    }
+      u8 *src;
+      u16 copy_len;
 
-  /* if buffer is cloned, create completely new chain - unless everything fits
-   * into one buffer */
-  if (is_cloned && bytes_left >= dst_left)
-    {
-      u32 len = 0;
-      u32 space_needed = bytes_left - dst_left;
-      u32 tail;
-
-      if (vlib_buffer_alloc (vm, &tail, 1) == 0)
-	return 0;
-
-      ++n_buffers;
-      len += data_size;
-      b = vlib_get_buffer (vm, tail);
-
-      while (len < space_needed)
+      while (0 == src_len)
 	{
-	  u32 bi;
-	  if (vlib_buffer_alloc (vm, &bi, 1) == 0)
-	    {
-	      vlib_buffer_free_one (vm, tail);
-	      return 0;
-	    }
-	  b->flags = VLIB_BUFFER_NEXT_PRESENT;
-	  b->next_buffer = bi;
-	  b = vlib_get_buffer (vm, bi);
-	  len += data_size;
-	  n_buffers++;
+	  ASSERT (b->flags & VLIB_BUFFER_NEXT_PRESENT);
+	  b = vlib_get_buffer (vm, b->next_buffer);
+	  src = vlib_buffer_get_current (b);
+	  src_len = b->current_length;
 	}
-      sb = vlib_get_buffer (vm, first->next_buffer);
-      to_free = first->next_buffer;
-      first->next_buffer = tail;
-    }
-  else
-    sb = vlib_get_buffer (vm, first->next_buffer);
 
-  src_left = sb->current_length;
-  sp = vlib_buffer_get_current (sb);
-  dp = vlib_buffer_get_tail (db);
-
-  while (bytes_left)
-    {
-      u16 bytes_to_copy;
-
-      if (dst_left == 0)
+      if (0 == dst_len)
 	{
-	  db->current_length = dp - (u8 *) vlib_buffer_get_current (db);
-	  ASSERT (db->flags & VLIB_BUFFER_NEXT_PRESENT);
-	  db = vlib_get_buffer (vm, db->next_buffer);
-	  dst_left = data_size;
-	  if (db->current_data > 0)
+	  ASSERT (dst_b->flags & VLIB_BUFFER_NEXT_PRESENT);
+	  vlib_buffer_t *next_dst_b = vlib_get_buffer (vm, dst_b->next_buffer);
+
+	  if (PREDICT_TRUE (1 == next_dst_b->ref_count))
 	    {
-	      db->current_data = 0;
+	      /* normal case: buffer is not cloned, just use it */
+	      dst_b = next_dst_b;
 	    }
 	  else
 	    {
-	      dst_left += -db->current_data;
+	      /* cloned buffer, build a new dest chain from there */
+	      vlib_buffer_t *bufs[VLIB_BUFFER_LINEARIZE_MAX];
+	      u32 bis[VLIB_BUFFER_LINEARIZE_MAX + 1];
+	      const int n = (rem_len + data_size - 1) / data_size;
+	      int n_alloc;
+	      int i;
+
+	      ASSERT (n <= VLIB_BUFFER_LINEARIZE_MAX);
+	      if (PREDICT_FALSE (n > VLIB_BUFFER_LINEARIZE_MAX))
+		return 0;
+
+	      n_alloc = vlib_buffer_alloc (vm, bis, n);
+	      if (PREDICT_FALSE (n_alloc != n))
+		{
+		  vlib_buffer_free (vm, bis, n_alloc);
+		  return 0;
+		}
+
+	      vlib_get_buffers (vm, bis, bufs, n);
+
+	      for (i = 0; i < n - 1; i++)
+		{
+		  bufs[i]->flags |= VLIB_BUFFER_NEXT_PRESENT;
+		  bufs[i]->next_buffer = bis[i + 1];
+		}
+
+	      to_free = dst_b->next_buffer;
+	      dst_b->next_buffer = bis[0];
+	      dst_b = bufs[0];
 	    }
-	  dp = vlib_buffer_get_current (db);
+
+	  n_buffers++;
+
+	  dst = dst_b->pre_data;
+	  dst_len = data_size;
+
+	  if (src + src_len > dst && dst + src_len > src)
+	    {
+	      /* src and dst overlap: moving data inside the buffer to free
+	       * some space at the end is probably not worth it in this case,
+	       * just leave the data where it is */
+	      ASSERT (b == dst_b);
+	      dst_b->current_data = (word) src - (word) dst_b->data;
+	      dst_b->current_length = src_len;
+	      ASSERT (dst_b->pre_data + data_size >= src + src_len);
+	      dst_len = (dst_b->pre_data + data_size) - (src + src_len);
+	      dst = src + src_len;
+	      rem_len -= src_len;
+	      src_len = 0;
+	      continue;
+	    }
+
+	  dst_b->current_data = -VLIB_BUFFER_PRE_DATA_SIZE;
+	  dst_b->current_length = 0;
 	}
 
-      while (src_left == 0)
-	{
-	  ASSERT (sb->flags & VLIB_BUFFER_NEXT_PRESENT);
-	  sb = vlib_get_buffer (vm, sb->next_buffer);
-	  src_left = sb->current_length;
-	  sp = vlib_buffer_get_current (sb);
-	}
+      copy_len = clib_min (src_len, dst_len);
+      clib_memcpy_fast (dst, src, copy_len);
 
-      bytes_to_copy = clib_min (dst_left, src_left);
+      dst_b->current_length += copy_len;
 
-      if (dp != sp)
-	{
-	  if (sb == db)
-	    bytes_to_copy = clib_min (bytes_to_copy, sp - dp);
-
-	  clib_memcpy_fast (dp, sp, bytes_to_copy);
-	}
-
-      src_left -= bytes_to_copy;
-      dst_left -= bytes_to_copy;
-      dp += bytes_to_copy;
-      sp += bytes_to_copy;
-      bytes_left -= bytes_to_copy;
+      dst += copy_len;
+      src += copy_len;
+      dst_len -= copy_len;
+      src_len -= copy_len;
+      rem_len -= copy_len;
     }
-  if (db != first)
-    db->current_data = 0;
-  db->current_length = dp - (u8 *) vlib_buffer_get_current (db);
 
-  if (is_cloned && to_free)
+  if (to_free)
     vlib_buffer_free_one (vm, to_free);
-  else
-    {
-      if (db->flags & VLIB_BUFFER_NEXT_PRESENT)
-	vlib_buffer_free_one (vm, db->next_buffer);
-      db->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
-      b = first;
-      n_buffers = 1;
-      while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
-	{
-	  b = vlib_get_buffer (vm, b->next_buffer);
-	  ++n_buffers;
-	}
-    }
 
-  first->flags &= ~VLIB_BUFFER_TOTAL_LENGTH_VALID;
+  if (dst_b->flags & VLIB_BUFFER_NEXT_PRESENT)
+    {
+      dst_b->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
+      vlib_buffer_free_one (vm, dst_b->next_buffer);
+    }
 
   return n_buffers;
 }
