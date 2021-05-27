@@ -24,20 +24,21 @@
 #include <vnet/vnet.h>
 #include <vnet/vxlan/vxlan_packet.h>
 
-#define foreach_gho_flag        \
-  _( 0, IP4)                    \
-  _( 1, IP6)                    \
-  _( 2, TCP)                    \
-  _( 3, UDP)                    \
-  _( 4, OUTER_IP4)              \
-  _( 5, OUTER_IP6)              \
-  _( 6, OUTER_TCP)              \
-  _( 7, OUTER_UDP)              \
-  _( 8, VXLAN_TUNNEL)           \
-  _( 9, GRE_TUNNEL)             \
-  _( 10, IPIP_TUNNEL)           \
-  _( 11, IPIP6_TUNNEL)          \
-  _( 12, GENEVE_TUNNEL)
+#define foreach_gho_flag                                                      \
+  _ (0, IP4)                                                                  \
+  _ (1, IP6)                                                                  \
+  _ (2, TCP)                                                                  \
+  _ (3, UDP)                                                                  \
+  _ (4, OUTER_IP4)                                                            \
+  _ (5, OUTER_IP6)                                                            \
+  _ (6, OUTER_TCP)                                                            \
+  _ (7, OUTER_UDP)                                                            \
+  _ (8, VXLAN_TUNNEL)                                                         \
+  _ (9, GRE_TUNNEL)                                                           \
+  _ (10, IPIP_TUNNEL)                                                         \
+  _ (11, IPIP6_TUNNEL)                                                        \
+  _ (12, GENEVE_TUNNEL)                                                       \
+  _ (13, IS_PSH)
 
 typedef enum gho_flag_t_
 {
