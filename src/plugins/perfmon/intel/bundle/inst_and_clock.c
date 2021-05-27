@@ -51,6 +51,12 @@ calculate_inst_and_clock (perfmon_stats_t *ts, int idx)
   return sv;
 }
 
+static u64
+update_inst_and_clock (perfmon_stats_t *ss, int idx)
+{
+  return (u64) calculate_inst_and_clock (ss, idx);
+}
+
 static u8 *
 format_inst_and_clock (u8 *s, va_list *args)
 {
@@ -83,6 +89,7 @@ PERFMON_REGISTER_BUNDLE (inst_and_clock) = {
   .events[2] = INTEL_CORE_E_CPU_CLK_UNHALTED_REF_TSC,
   .n_events = 3,
   .format_fn = format_inst_and_clock,
+  .update_fn = update_inst_and_clock,
   .column_headers = PERFMON_STRINGS ("Calls/Sec", "Packets/Sec",
 				     "Packets/Call", "Clocks/Packet",
 				     "Instructions/Packet", "IPC"),
