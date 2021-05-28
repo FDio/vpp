@@ -1813,7 +1813,7 @@ clib_error_t *
 set_hw_interface_tx_queue (u32 hw_if_index, u32 queue_id, uword *bitmap)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  vnet_device_main_t *vdm = &vnet_device_main;
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
   vnet_hw_interface_t *hw;
   vnet_hw_if_tx_queue_t *txq;
   u32 queue_index;
@@ -1822,10 +1822,11 @@ set_hw_interface_tx_queue (u32 hw_if_index, u32 queue_id, uword *bitmap)
   hw = vnet_get_hw_interface (vnm, hw_if_index);
 
   /* highest set bit in bitmap should not exceed last worker thread index */
-  thread_index =
-    clib_bitmap_last_set (bitmap) + vdm->first_worker_thread_index;
-  if (thread_index > vdm->last_worker_thread_index)
-    return clib_error_return (0, "please specify valid thread(s)");
+  thread_index = clib_bitmap_last_set (bitmap);
+  if (thread_index != ~0 && thread_index > vtm->n_vlib_mains)
+    return clib_error_return (
+      0, "please specify valid thread(s) - last thread index %u",
+      thread_index);
 
   queue_index =
     vnet_hw_if_get_tx_queue_index_by_id (vnm, hw_if_index, queue_id);
