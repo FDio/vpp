@@ -28,7 +28,8 @@
 static_always_inline u8
 gro_is_bad_packet (vlib_buffer_t * b, u8 flags, i16 l234_sz)
 {
-  if (((b->current_length - l234_sz) <= 0) || ((flags &= ~TCP_FLAG_ACK) != 0))
+  if (((b->current_length - l234_sz) <= 0) ||
+      ((flags &= ~(TCP_FLAG_ACK | TCP_FLAG_PSH)) != 0))
     return 1;
   return 0;
 }
@@ -60,7 +61,7 @@ gro_get_ip6_flow_from_packet (u32 * sw_if_index,
 }
 
 static_always_inline u32
-gro_is_ip4_or_ip6_packet (vlib_buffer_t * b0, int is_l2)
+gro_is_ip4_or_ip6_packet (vlib_buffer_t *b0, u8 is_l2)
 {
   if (b0->flags & VNET_BUFFER_F_IS_IP4)
     return VNET_BUFFER_F_IS_IP4;
@@ -159,9 +160,9 @@ gro_validate_checksum (vlib_main_t * vm, vlib_buffer_t * b0,
 }
 
 static_always_inline u32
-gro_get_packet_data (vlib_main_t * vm, vlib_buffer_t * b0,
-		     generic_header_offset_t * gho0,
-		     gro_flow_key_t * flow_key0, int is_l2)
+gro_get_packet_data (vlib_main_t *vm, vlib_buffer_t *b0,
+		     generic_header_offset_t *gho0, gro_flow_key_t *flow_key0,
+		     u8 is_l2)
 {
   ip4_header_t *ip4_0 = 0;
   ip6_header_t *ip6_0 = 0;
@@ -214,7 +215,7 @@ gro_get_packet_data (vlib_main_t * vm, vlib_buffer_t * b0,
   else
     return 0;
 
-  if ((flags & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) == 0)
+  if (PREDICT_FALSE ((flags & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) == 0))
     return 0;
 
   pkt_len0 = vlib_buffer_length_in_chain (vm, b0);
@@ -225,8 +226,8 @@ gro_get_packet_data (vlib_main_t * vm, vlib_buffer_t * b0,
 }
 
 static_always_inline u32
-gro_coalesce_buffers (vlib_main_t * vm, vlib_buffer_t * b0,
-		      vlib_buffer_t * b1, u32 bi1, int is_l2)
+gro_coalesce_buffers (vlib_main_t *vm, vlib_buffer_t *b0, vlib_buffer_t *b1,
+		      u32 bi1, u8 is_l2)
 {
   generic_header_offset_t gho0 = { 0 };
   generic_header_offset_t gho1 = { 0 };
@@ -323,6 +324,7 @@ gro_coalesce_buffers (vlib_main_t * vm, vlib_buffer_t * b0,
       GRO_PACKET_ACTION_ENQUEUE)
     {
       gro_merge_buffers (vm, b0, b1, bi1, payload_len1, l234_sz1);
+      tcp0->flags |= tcp1->flags;
       return tcp1->ack_number;
     }
 
@@ -330,8 +332,7 @@ gro_coalesce_buffers (vlib_main_t * vm, vlib_buffer_t * b0,
 }
 
 static_always_inline void
-gro_fixup_header (vlib_main_t * vm, vlib_buffer_t * b0, u32 ack_number,
-		  int is_l2)
+gro_fixup_header (vlib_main_t *vm, vlib_buffer_t *b0, u32 ack_number, u8 is_l2)
 {
   generic_header_offset_t gho0 = { 0 };
 
@@ -435,6 +436,21 @@ vnet_gro_flow_table_schedule_node_on_dispatcher (vlib_main_t * vm,
 }
 
 static_always_inline u32
+vnet_gro_flush_all_packets (vlib_main_t *vm, gro_flow_table_t *flow_table,
+			    gro_flow_t *gro_flow, vlib_buffer_t *b_s, u32 *to,
+			    u32 bi_s, u32 bi0, u8 is_l2)
+{
+  flow_table->n_vectors++;
+  flow_table->total_vectors++;
+  gro_fixup_header (vm, b_s, gro_flow->last_ack_number, is_l2);
+  gro_flow->n_buffers = 0;
+  gro_flow_table_reset_flow (flow_table, gro_flow);
+  to[0] = bi_s;
+  to[1] = bi0;
+  return 2;
+}
+
+static_always_inline u32
 vnet_gro_flow_table_inline (vlib_main_t * vm, gro_flow_table_t * flow_table,
 			    u32 bi0, u32 * to)
 {
@@ -444,7 +460,8 @@ vnet_gro_flow_table_inline (vlib_main_t * vm, gro_flow_table_t * flow_table,
   gro_flow_key_t flow_key0 = { };
   tcp_header_t *tcp0 = 0;
   u32 pkt_len0 = 0;
-  int is_l2 = flow_table->is_l2;
+  u32 is_flush = 0;
+  u8 is_l2 = flow_table->is_l2;
 
   if (!gro_flow_table_is_enable (flow_table))
     {
@@ -465,7 +482,15 @@ vnet_gro_flow_table_inline (vlib_main_t * vm, gro_flow_table_t * flow_table,
       return 1;
     }
 
-  gro_flow = gro_flow_table_find_or_add_flow (flow_table, &flow_key0);
+  tcp0 = (tcp_header_t *) (vlib_buffer_get_current (b0) + gho0.l4_hdr_offset);
+  if (PREDICT_TRUE ((tcp0->flags & TCP_FLAG_PSH) == 0))
+    gro_flow = gro_flow_table_find_or_add_flow (flow_table, &flow_key0);
+  else
+    {
+      is_flush = 1;
+      gro_flow = gro_flow_table_get_flow (flow_table, &flow_key0);
+    }
+
   if (!gro_flow)
     {
       to[0] = bi0;
@@ -476,16 +501,12 @@ vnet_gro_flow_table_inline (vlib_main_t * vm, gro_flow_table_t * flow_table,
     {
       flow_table->total_vectors++;
       gro_flow_store_packet (gro_flow, bi0);
-      tcp0 =
-	(tcp_header_t *) (vlib_buffer_get_current (b0) + gho0.l4_hdr_offset);
       gro_flow->last_ack_number = tcp0->ack_number;
       gro_flow_set_timeout (vm, gro_flow, GRO_FLOW_TIMEOUT);
       return 0;
     }
   else
     {
-      tcp0 =
-	(tcp_header_t *) (vlib_buffer_get_current (b0) + gho0.l4_hdr_offset);
       generic_header_offset_t gho_s = { 0 };
       tcp_header_t *tcp_s;
       u16 l234_sz0, l234_sz_s;
@@ -515,14 +536,28 @@ vnet_gro_flow_table_inline (vlib_main_t * vm, gro_flow_table_t * flow_table,
       if (PREDICT_TRUE (action == GRO_PACKET_ACTION_ENQUEUE))
 	{
 	  if (PREDICT_TRUE (((pkt_len_s + payload_len0) < TCP_MAX_GSO_SZ) &&
-			    gro_flow->n_buffers < GRO_FLOW_N_BUFFERS))
+			    (gro_flow->n_buffers < GRO_FLOW_N_BUFFERS)))
 	    {
 	      flow_table->total_vectors++;
 	      gro_merge_buffers (vm, b_s, b0, bi0, payload_len0, l234_sz0);
 	      gro_flow_store_packet (gro_flow, bi0);
 	      gro_flow->last_ack_number = tcp0->ack_number;
+	      if (PREDICT_FALSE (is_flush))
+		{
+		  flow_table->n_vectors++;
+		  tcp_s->flags |= tcp0->flags;
+		  gro_fixup_header (vm, b_s, gro_flow->last_ack_number, is_l2);
+		  gro_flow->n_buffers = 0;
+		  gro_flow_table_reset_flow (flow_table, gro_flow);
+		  to[0] = bi_s;
+		  return 1;
+		}
 	      return 0;
 	    }
+	  else if (PREDICT_FALSE (is_flush))
+	    // flush the all (current and stored) packets
+	    return vnet_gro_flush_all_packets (vm, flow_table, gro_flow, b_s,
+					       to, bi_s, bi0, is_l2);
 	  else
 	    {
 	      // flush the stored GSO size packet and buffer the current packet
@@ -540,14 +575,8 @@ vnet_gro_flow_table_inline (vlib_main_t * vm, gro_flow_table_t * flow_table,
       else
 	{
 	  // flush the all (current and stored) packets
-	  flow_table->n_vectors++;
-	  flow_table->total_vectors++;
-	  gro_fixup_header (vm, b_s, gro_flow->last_ack_number, is_l2);
-	  gro_flow->n_buffers = 0;
-	  gro_flow_table_reset_flow (flow_table, gro_flow);
-	  to[0] = bi_s;
-	  to[1] = bi0;
-	  return 2;
+	  return vnet_gro_flush_all_packets (vm, flow_table, gro_flow, b_s, to,
+					     bi_s, bi0, is_l2);
 	}
     }
 }
