@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ce1f21aa_60d1d821",
+        "filename": "src/plugins/srtp/CMakeLists.txt",
+        "patchSetId": 47
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-05-28T15:30:07Z",
+      "side": 1,
+      "message": "What this does? I don\u0027t see any function existance check bellow...",
+      "revId": "6621abf49aec6d764e654316ff75274c75d4c1a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9dc30bed_96c2792d",
+        "filename": "src/plugins/srtp/CMakeLists.txt",
+        "patchSetId": 47
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-05-28T15:30:07Z",
+      "side": 1,
+      "message": "If you look at macro vpp_plugin_find_library() you will see that this is redundant.",
+      "revId": "6621abf49aec6d764e654316ff75274c75d4c1a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "95480fd2_661dc068",
+        "filename": "src/plugins/srtp/CMakeLists.txt",
+        "patchSetId": 47
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-05-28T15:30:07Z",
+      "side": 1,
+      "message": "What CMAKE_REQUIRED_FLAGS does? I don\u0027t see that variable in the list of public variables?\n\nWhat about using target_compile_options()",
+      "revId": "6621abf49aec6d764e654316ff75274c75d4c1a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0fed5a2b_57d88768",
+        "filename": "src/plugins/srtp/CMakeLists.txt",
+        "patchSetId": 47
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-05-28T15:30:07Z",
+      "side": 1,
+      "message": "Similar like the one above.\n\nWhat about using include_directories() instead?",
+      "revId": "6621abf49aec6d764e654316ff75274c75d4c1a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
