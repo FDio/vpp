@@ -982,7 +982,7 @@ VLIB_INIT_FUNCTION (srtp_transport_init);
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "Secure Real-time Transport Protocol (SRTP)",
-  /* .default_disabled = 1, */
+  .default_disabled = 1,
 };
 
 /*
