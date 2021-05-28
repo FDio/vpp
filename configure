@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -o pipefail -o errtrace -o nounset -o errexit
 
 # Experimental script, please consult with dmarion@me.com before
 # submitting any changes
