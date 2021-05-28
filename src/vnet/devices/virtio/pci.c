@@ -1147,7 +1147,6 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
 			virtio_pci_create_if_args_t * args, void **bar)
 {
   clib_error_t *error = 0;
-  vlib_thread_main_t *vtm = vlib_get_thread_main ();
   u8 status = 0;
 
   if ((error = virtio_pci_read_caps (vm, vif, bar)))
@@ -1252,22 +1251,6 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
       else
 	{
 	  vif->num_rxqs++;
-	}
-
-      if (i >= vtm->n_vlib_mains)
-	{
-	  /*
-	   * There is 1:1 mapping between tx queue and vpp worker thread.
-	   * tx queue 0 is bind with thread index 0, tx queue 1 on thread
-	   * index 1 and so on.
-	   * Multiple worker threads can poll same tx queue when number of
-	   * workers are more than tx queues. In this case, 1:N mapping
-	   * between tx queue and vpp worker thread.
-	   */
-	  virtio_log_debug (vif, "%s %u, %s", "tx-queue: number",
-			    TX_QUEUE (i),
-			    "no VPP worker thread is available");
-	  continue;
 	}
 
       if ((error = virtio_pci_vring_init (vm, vif, TX_QUEUE (i))))
