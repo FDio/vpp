@@ -838,10 +838,10 @@ memif_delete_if (vlib_main_t * vm, memif_if_t * mif)
 }
 
 /* *INDENT-OFF* */
-VNET_HW_INTERFACE_CLASS (memif_ip_hw_if_class, static) =
-{
+VNET_HW_INTERFACE_CLASS (memif_ip_hw_if_class, static) = {
   .name = "memif-ip",
   .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
+  .default_tx_hash_type = VNET_HASH_FN_TYPE_IP,
 };
 /* *INDENT-ON* */
 
