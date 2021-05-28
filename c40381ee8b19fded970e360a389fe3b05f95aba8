@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "7157032d_8e493e3c",
+        "filename": "src/vnet/ipsec/ipsec_output.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 114,
+      "author": {
+        "id": 2229
+      },
+      "writtenOn": "2021-05-28T04:45:25Z",
+      "side": 1,
+      "message": "It is the size of key and not the number of hash bits. The number of hash bits are derived based on the number of buckets configured through startup conf.",
+      "parentUuid": "9671605a_688daf64",
+      "range": {
+        "startLine": 114,
+        "startChar": 30,
+        "endLine": 114,
+        "endChar": 32
+      },
+      "revId": "c40381ee8b19fded970e360a389fe3b05f95aba8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "fb54738e_cb0dc033",
         "filename": "src/vnet/ipsec/ipsec_output.c",
         "patchSetId": 15
@@ -36,6 +60,30 @@
       "writtenOn": "2021-05-27T06:21:42Z",
       "side": 1,
       "message": "Can we add separate output SPD node (something like ipsec4-policy-output-bihash) calling this function with new const flag as argument to this function. We can avoid im-\u003eflow_cache_flag)",
+      "range": {
+        "startLine": 339,
+        "startChar": 7,
+        "endLine": 339,
+        "endChar": 26
+      },
+      "revId": "c40381ee8b19fded970e360a389fe3b05f95aba8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "977702e2_7fd732c8",
+        "filename": "src/vnet/ipsec/ipsec_output.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 339,
+      "author": {
+        "id": 2229
+      },
+      "writtenOn": "2021-05-28T04:45:25Z",
+      "side": 1,
+      "message": "Do you see a performance drop with this check when flow cache is disabled ? Introducing a new node is duplicating the same code to avoid an if check.",
+      "parentUuid": "fb54738e_cb0dc033",
       "range": {
         "startLine": 339,
         "startChar": 7,
