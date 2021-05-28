@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "2.0.0";
+option version = "2.1.0";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
@@ -32,7 +32,43 @@ define vxlan_gpe_add_del_tunnel
   bool is_add [default=true];
 };
 
+/** \brief Create or delete a VXLAN-GPE tunnel
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param local - Source IP address
+    @param remote - Destination IP address, can be multicast
+    @param local_port - Source UDP port. It is not included in sent packets. Used only for port registration
+    @param remote_port - Destination UDP port
+    @param mcast_sw_if_index - Interface for multicast destination
+    @param encap_vrf_id - Encap route table FIB index
+    @param decap_vrf_id - Decap route table FIB index
+    @param protocol - Encapsulated protocol
+    @param vni - The VXLAN Network Identifier, uint24
+    @param is_add - Use 1 to create the tunnel, 0 to remove it
+*/
+define vxlan_gpe_add_del_tunnel_v2
+{
+  u32 client_index;
+  u32 context;
+  vl_api_address_t local;
+  vl_api_address_t remote;
+  u16 local_port;
+  u16 remote_port;
+  vl_api_interface_index_t mcast_sw_if_index;
+  u32 encap_vrf_id;
+  u32 decap_vrf_id;
+  vl_api_ip_proto_t protocol;
+  u32 vni;
+  bool is_add [default=true];
+};
+
 define vxlan_gpe_add_del_tunnel_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_interface_index_t sw_if_index;
+};
+define vxlan_gpe_add_del_tunnel_v2_reply
 {
   u32 context;
   i32 retval;
@@ -45,6 +81,12 @@ define vxlan_gpe_tunnel_dump
   u32 context;
   vl_api_interface_index_t sw_if_index;
 };
+define vxlan_gpe_tunnel_v2_dump
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+};
 
 define vxlan_gpe_tunnel_details
 {
@@ -52,6 +94,21 @@ define vxlan_gpe_tunnel_details
   vl_api_interface_index_t sw_if_index;
   vl_api_address_t local;
   vl_api_address_t remote;
+  u32 vni;
+  vl_api_ip_proto_t protocol;
+  vl_api_interface_index_t mcast_sw_if_index;
+  u32 encap_vrf_id;
+  u32 decap_vrf_id;
+  bool is_ipv6;
+};
+define vxlan_gpe_tunnel_v2_details
+{
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_address_t local;
+  vl_api_address_t remote;
+  u16 local_port;
+  u16 remote_port;
   u32 vni;
   vl_api_ip_proto_t protocol;
   vl_api_interface_index_t mcast_sw_if_index;
