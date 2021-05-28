@@ -993,6 +993,7 @@ vnet_register_interface (vnet_main_t * vnm,
 	static char *e[] = {
 	  "interface is down",
 	  "interface is deleted",
+	  "no tx queue available",
 	};
 
 	r.n_errors = ARRAY_LEN (e);
