@@ -48,9 +48,6 @@
  * This file contains the source code for vHost User interface.
  */
 
-
-vlib_node_registration_t vhost_user_send_interrupt_node;
-
 /* *INDENT-OFF* */
 vhost_user_main_t vhost_user_main = {
   .mtu_bytes = 1518,
@@ -1231,14 +1228,6 @@ vhost_user_send_interrupt_process (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (vhost_user_send_interrupt_node) = {
-    .function = vhost_user_send_interrupt_process,
-    .type = VLIB_NODE_TYPE_PROCESS,
-    .name = "vhost-user-send-interrupt-process",
-};
-/* *INDENT-ON* */
-
 static uword
 vhost_user_process (vlib_main_t * vm,
 		    vlib_node_runtime_t * rt, vlib_frame_t * f)
@@ -1341,14 +1330,6 @@ vhost_user_process (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (vhost_user_process_node,static) = {
-    .function = vhost_user_process,
-    .type = VLIB_NODE_TYPE_PROCESS,
-    .name = "vhost-user-process",
-};
-/* *INDENT-ON* */
-
 /**
  * Disables and reset interface structure.
  * It can then be either init again, or removed from used interfaces.
@@ -1418,8 +1399,7 @@ vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm, u32 sw_if_index)
 	  if ((vum->ifq_count == 0) &&
 	      (vum->coalesce_time > 0.0) && (vum->coalesce_frames > 0))
 	    {
-	      vlib_process_signal_event (vm,
-					 vhost_user_send_interrupt_node.index,
+	      vlib_process_signal_event (vm, vum->send_interrupt_node_index,
 					 VHOST_USER_EVENT_STOP_TIMER, 0);
 	      break;
 	    }
@@ -1618,6 +1598,20 @@ vhost_user_vui_init (vnet_main_t * vnm, vhost_user_intf_t * vui,
   vhost_user_tx_thread_placement (vui);
 }
 
+static void
+vhost_user_create_process (vlib_main_t *vm, vhost_user_main_t *vum)
+{
+  if (vum->process_node_index == 0)
+    vum->process_node_index =
+      vlib_process_create (vm, "vhost-user-process", vhost_user_process,
+			   16 /* log2_n_stack_bytes */);
+
+  if (vum->send_interrupt_node_index == 0)
+    vum->send_interrupt_node_index = vlib_process_create (
+      vm, "vhost-user-send-interrupt-xprocess",
+      vhost_user_send_interrupt_process, 16 /* log2_n_stack_bytes */);
+}
+
 int
 vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
 		      vhost_user_create_if_args_t * args)
@@ -1653,6 +1647,10 @@ vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
 	}
     }
 
+  vhost_user_create_process (vm, vum);
+  if ((vum->process_node_index == 0) || (vum->send_interrupt_node_index == 0))
+    return VNET_API_ERROR_INIT_FAILED;
+
   /* Protect the uninitialized vui from being dispatched by rx/tx */
   vlib_worker_thread_barrier_sync (vm);
   pool_get (vhost_user_main.vhost_user_interfaces, vui);
@@ -1669,7 +1667,7 @@ vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
   args->sw_if_index = sw_if_idx;
 
   // Process node must connect
-  vlib_process_signal_event (vm, vhost_user_process_node.index, 0, 0);
+  vlib_process_signal_event (vm, vum->process_node_index, 0, 0);
 
   return rv;
 }
@@ -1718,7 +1716,7 @@ vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
     vnet_interface_name_renumber (sw_if_idx, args->custom_dev_instance);
 
   // Process node must connect
-  vlib_process_signal_event (vm, vhost_user_process_node.index, 0, 0);
+  vlib_process_signal_event (vm, vum->process_node_index, 0, 0);
 
   return rv;
 }

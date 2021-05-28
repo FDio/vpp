@@ -1062,8 +1062,7 @@ vhost_user_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index,
 	  // interface/queue
 	  if ((vum->ifq_count == 1) &&
 	      (vum->coalesce_time > 0.0) && (vum->coalesce_frames > 0))
-	    vlib_process_signal_event (vm,
-				       vhost_user_send_interrupt_node.index,
+	    vlib_process_signal_event (vm, vum->send_interrupt_node_index,
 				       VHOST_USER_EVENT_START_TIMER, 0);
 	}
     }
@@ -1076,8 +1075,7 @@ vhost_user_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index,
 	  // Stop the timer if there is no more interrupt interface/queue
 	  if ((vum->ifq_count == 0) &&
 	      (vum->coalesce_time > 0.0) && (vum->coalesce_frames > 0))
-	    vlib_process_signal_event (vm,
-				       vhost_user_send_interrupt_node.index,
+	    vlib_process_signal_event (vm, vum->send_interrupt_node_index,
 				       VHOST_USER_EVENT_STOP_TIMER, 0);
 	}
     }
