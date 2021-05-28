@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8bba65a9_3a217913",
+        "filename": "src/vnet/gso/gro_func.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 473,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2021-05-28T09:10:56Z",
+      "side": 1,
+      "message": "Do we want to add small packet to existing flow? I don\u0027t think so!\nIt is still confusing for readers.",
+      "range": {
+        "startLine": 473,
+        "startChar": 49,
+        "endLine": 473,
+        "endChar": 77
+      },
+      "revId": "817331dd1118eee024514171f61a381b2f939a60",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
