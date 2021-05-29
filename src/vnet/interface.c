@@ -1640,13 +1640,20 @@ vnet_sw_interface_update_unnumbered (u32 unnumbered_sw_if_index,
     }
   else
     {
-      si->flags &= ~(VNET_SW_INTERFACE_FLAG_UNNUMBERED);
-      si->unnumbered_sw_if_index = (u32) ~ 0;
+      /*
+       * Unless the interface is actually unnumbered, don't
+       * smash e.g. if_address_pool_index_by_sw_if_index
+       */
+      if (si->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED)
+	{
+	  si->flags &= ~(VNET_SW_INTERFACE_FLAG_UNNUMBERED);
+	  si->unnumbered_sw_if_index = (u32) ~0;
 
-      ip4_main.lookup_main.if_address_pool_index_by_sw_if_index
-	[unnumbered_sw_if_index] = ~0;
-      ip6_main.lookup_main.if_address_pool_index_by_sw_if_index
-	[unnumbered_sw_if_index] = ~0;
+	  ip4_main.lookup_main
+	    .if_address_pool_index_by_sw_if_index[unnumbered_sw_if_index] = ~0;
+	  ip6_main.lookup_main
+	    .if_address_pool_index_by_sw_if_index[unnumbered_sw_if_index] = ~0;
+	}
     }
 
   if (was_unnum != (si->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED))
