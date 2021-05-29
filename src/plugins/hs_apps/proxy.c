@@ -646,6 +646,7 @@ proxy_server_attach ()
   a->session_cb_vft = &proxy_session_cb_vft;
   a->options = options;
   a->options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
+  a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = segment_size;
   a->options[APP_OPTIONS_RX_FIFO_SIZE] = pm->fifo_size;
   a->options[APP_OPTIONS_TX_FIFO_SIZE] = pm->fifo_size;
   a->options[APP_OPTIONS_MAX_FIFO_SIZE] = pm->max_fifo_size;
