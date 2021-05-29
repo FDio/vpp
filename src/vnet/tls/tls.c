@@ -539,22 +539,6 @@ tls_session_connected_cb (u32 tls_app_index, u32 ho_ctx_index,
 
   ho_ctx = tls_ctx_half_open_get (ho_ctx_index);
 
-  if (err)
-    {
-      app_worker_t *app_wrk;
-      u32 api_context;
-      int rv = 0;
-
-      app_wrk = app_worker_get_if_valid (ho_ctx->parent_app_wrk_index);
-      if (app_wrk)
-	{
-	  api_context = ho_ctx->parent_app_api_context;
-	  app_worker_connect_notify (app_wrk, 0, err, api_context);
-	}
-      tls_ctx_half_open_reader_unlock ();
-      return rv;
-    }
-
   ctx_handle = tls_ctx_alloc (ho_ctx->tls_ctx_engine);
   ctx = tls_ctx_get (ctx_handle);
   clib_memcpy_fast (ctx, ho_ctx, sizeof (*ctx));
@@ -607,6 +591,23 @@ int
 tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
 				session_t *tls_session, session_error_t err)
 {
+  if (err)
+    {
+      app_worker_t *app_wrk;
+      tls_ctx_t *ho_ctx;
+      u32 api_context;
+
+      ho_ctx = tls_ctx_half_open_get (ho_ctx_index);
+      app_wrk = app_worker_get_if_valid (ho_ctx->parent_app_wrk_index);
+      if (app_wrk)
+	{
+	  api_context = ho_ctx->parent_app_api_context;
+	  app_worker_connect_notify (app_wrk, 0, err, api_context);
+	}
+      tls_ctx_half_open_reader_unlock ();
+      return 0;
+    }
+
   if (session_get_transport_proto (tls_session) == TRANSPORT_PROTO_TCP)
     return tls_session_connected_cb (tls_app_index, ho_ctx_index, tls_session,
 				     err);
