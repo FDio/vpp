@@ -341,9 +341,18 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
     {
       /* Need to check transport status */
       if (ctx->is_passive_close)
-	openssl_handle_handshake_failure (ctx);
-      else
-	tls_notify_app_accept (ctx);
+	{
+	  openssl_handle_handshake_failure (ctx);
+	  return -1;
+	}
+
+      /* Accept failed, cleanup */
+      if (tls_notify_app_accept (ctx))
+	{
+	  ctx->c_s_index = SESSION_INVALID_INDEX;
+	  tls_disconnect_transport (ctx);
+	  return -1;
+	}
     }
 
   TLS_DBG (1, "Handshake for %u complete. TLS cipher is %s",
