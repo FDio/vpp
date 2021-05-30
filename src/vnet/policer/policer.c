@@ -599,7 +599,7 @@ policer_bind_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	;
       else if (unformat (line_input, "unapply"))
 	bind = 0;
-      else if (unformat (line_input, "%d", &bind))
+      else if (unformat (line_input, "%d", &worker))
 	;
       else
 	{
@@ -699,7 +699,7 @@ VLIB_CLI_COMMAND (policer_del_command, static) = {
 };
 VLIB_CLI_COMMAND (policer_bind_command, static) = {
   .path = "policer bind",
-  .short_help = "policer bind [unbind] name <name> <worker>",
+  .short_help = "policer bind [unapply] name <name> <worker>",
   .function = policer_bind_command_fn,
 };
 VLIB_CLI_COMMAND (policer_input_command, static) = {
@@ -750,7 +750,7 @@ show_policer_command_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_policer_command, static) = {
     .path = "show policer",
-    .short_help = "show policer [name]",
+    .short_help = "show policer [name <name>]",
     .function = show_policer_command_fn,
 };
 /* *INDENT-ON* */
