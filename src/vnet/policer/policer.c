@@ -597,9 +597,9 @@ policer_bind_command_fn (vlib_main_t *vm, unformat_input_t *input,
     {
       if (unformat (line_input, "name %s", &name))
 	;
-      else if (unformat (line_input, "unapply"))
+      else if (unformat (line_input, "unbind"))
 	bind = 0;
-      else if (unformat (line_input, "%d", &bind))
+      else if (unformat (line_input, "%d", &worker))
 	;
       else
 	{
