@@ -9,7 +9,7 @@ from io import BytesIO
 from time import sleep
 
 import scapy.compat
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import VppTestCase, VppTestRunner
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
 from scapy.all import bind_layers, Packet, ByteEnumField, ShortField, \
     IPField, IntField, LongField, XByteField, FlagsField, FieldLenField, \

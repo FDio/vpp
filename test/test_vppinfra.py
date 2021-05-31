@@ -2,8 +2,7 @@
 
 import unittest
 
-from framework import VppTestCase, VppTestRunner, running_extended_tests
-from framework import running_gcov_tests
+from framework import VppTestCase, VppTestRunner
 
 
 class TestVppinfra(VppTestCase):

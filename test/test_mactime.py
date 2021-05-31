@@ -2,7 +2,8 @@
 
 import unittest
 
-from framework import VppTestCase, VppTestRunner, running_gcov_tests
+from config import config
+from framework import VppTestCase, VppTestRunner
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
@@ -31,7 +32,7 @@ class TestMactime(VppTestCase):
             self.logger.critical(error)
         self.assertNotIn('FAILED', error)
 
-    @unittest.skipUnless(running_gcov_tests, "part of code coverage tests")
+    @unittest.skipUnless(config.gcov, "part of code coverage tests")
     def test_mactime_unittest(self):
         """ Mactime Plugin Code Coverage Test """
         cmds = ["loopback create",

@@ -3,7 +3,7 @@
 import os
 import unittest
 
-from framework import VppTestCase, VppTestRunner, running_gcov_tests
+from framework import VppTestCase, VppTestRunner
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
