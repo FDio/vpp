@@ -19,10 +19,11 @@ from scapy.layers.inet6 import IPv6
 from scapy.layers.l2 import Ether, GRE
 from scapy.packet import Raw
 
+from config import config
 from bfd import VppBFDAuthKey, BFD, BFDAuthType, VppBFDUDPSession, \
     BFDDiagCode, BFDState, BFD_vpp_echo
 from framework import tag_fixme_vpp_workers
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import VppTestCase, VppTestRunner
 from framework import tag_run_solo
 from util import ppp
 from vpp_ip import DpoProto
@@ -1054,7 +1055,7 @@ class BFD4TestCase(VppTestCase):
                          "Poll bit set in BFD packet")
 
     # returning inconsistent results requiring retries in per-patch tests
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_poll_response(self):
         """ test correct response to control frame with poll bit set """
         bfd_session_up(self)
@@ -1809,7 +1810,7 @@ class BFDFIBTestCase(VppTestCase):
                              packet[IPv6].dst)
 
 
-@unittest.skipUnless(running_extended_tests, "part of extended tests")
+@unittest.skipUnless(config.extended, "part of extended tests")
 class BFDTunTestCase(VppTestCase):
     """ BFD over GRE tunnel """
 

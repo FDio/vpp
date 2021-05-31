@@ -84,7 +84,7 @@ Current “make test-help” output:
 
       STEP=[yes|no]          - ease debugging by stepping through a testcase
       SANITY=[yes|no]        - perform sanity import of vpp-api/sanity vpp run before running tests (default: yes)
-      EXTENDED_TESTS=[1|y]   - used by '[re]test-all' & '[re]test-all-debug' to run extended tests
+      EXTENDED_TESTS=[0|1]   - used by '[re]test-all' & '[re]test-all-debug' to run extended tests
       TEST=<filter>          - filter the set of tests:
          by file-name        - only run tests from specified file, e.g. TEST=test_bfd selects all tests from test_bfd.py
          by file-suffix      - same as file-name, but 'test_' is omitted e.g. TEST=bfd selects all tests from test_bfd.py
