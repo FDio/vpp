@@ -10,6 +10,7 @@ import time
 from collections import deque
 import queue
 from six import moves, iteritems
+from config import config
 from vpp_papi import VPPApiClient, mac_pton
 from hook import Hook
 from vpp_ip_route import MPLS_IETF_MAX_LABEL, MPLS_LABEL_INVALID
@@ -135,7 +136,7 @@ class VppPapiProvider(object):
 
         # install_dir is a class attribute. We need to set it before
         # calling the constructor.
-        VPPApiClient.apidir = os.getenv('VPP_INSTALL_PATH')
+        VPPApiClient.apidir = config.vpp_install_dir
 
         self.vpp = VPPApiClient(logger=test_class.logger,
                                 read_timeout=read_timeout,

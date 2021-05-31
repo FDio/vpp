@@ -3,7 +3,8 @@
 import socket
 from util import ip4_range
 import unittest
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+from config import config
+from framework import VppTestCase, VppTestRunner
 from template_bd import BridgeDomain
 
 from scapy.layers.l2 import Ether
@@ -17,7 +18,7 @@ from vpp_vxlan_gpe_tunnel import VppVxlanGpeTunnel
 from vpp_ip import INVALID_INDEX
 
 
-@unittest.skipUnless(running_extended_tests, "part of extended tests")
+@unittest.skipUnless(config.extended, "part of extended tests")
 class TestVxlanGpe(BridgeDomain, VppTestCase):
     """ VXLAN-GPE Test Case """
 
