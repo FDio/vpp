@@ -8,22 +8,24 @@ import unittest
 import argparse
 import time
 import threading
+import traceback
 import signal
 import re
 from multiprocessing import Process, Pipe, get_context
 from multiprocessing.queues import Queue
 from multiprocessing.managers import BaseManager
 import framework
-from framework import VppTestRunner, running_extended_tests, VppTestCase, \
+from config import config, num_cpus, available_cpus, max_vpp_cpus
+from framework import VppTestRunner, VppTestCase, \
     get_testcase_doc_name, get_test_description, PASS, FAIL, ERROR, SKIP, \
     TEST_RUN, SKIP_CPU_SHORTAGE
 from debug import spawn_gdb, start_vpp_in_gdb
 from log import get_parallel_logger, double_line_delim, RED, YELLOW, GREEN, \
     colorize, single_line_delim
 from discover_tests import discover_tests
+import sanity_run_vpp
 from subprocess import check_output, CalledProcessError
 from util import check_core_path, get_core_path, is_core_present
-from cpu_config import num_cpus, max_vpp_cpus, available_cpus
 
 # timeout which controls how long the child has to finish after seeing
 # a core dump in test temporary directory. If this is exceeded, parent assumes
@@ -126,9 +128,9 @@ def test_runner_wrapper(suite, keep_alive_pipe, stdouterr_queue,
     VppTestCase.parallel_handler = logger.handlers[0]
     result = VppTestRunner(keep_alive_pipe=keep_alive_pipe,
                            descriptions=descriptions,
-                           verbosity=verbose,
+                           verbosity=config.verbose,
                            result_pipe=result_pipe,
-                           failfast=failfast,
+                           failfast=config.failfast,
                            print_summary=False).run(suite)
     finished_pipe.send(result.wasSuccessful())
     finished_pipe.close()
@@ -241,8 +243,7 @@ def handle_failed_suite(logger, last_test_temp_dir, vpp_pid):
     if last_test_temp_dir:
         # Need to create link in case of a timeout or core dump without failure
         lttd = os.path.basename(last_test_temp_dir)
-        failed_dir = os.getenv('FAILED_DIR')
-        link_path = '%s%s-FAILED' % (failed_dir, lttd)
+        link_path = '%s%s-FAILED' % (config.failed_dir, lttd)
         if not os.path.exists(link_path):
             os.symlink(last_test_temp_dir, link_path)
         logger.error("Symlink to failed testcase directory: %s -> %s"
@@ -272,8 +273,7 @@ def handle_failed_suite(logger, last_test_temp_dir, vpp_pid):
             except Exception as e:
                 logger.exception("Unexpected error running `file' utility "
                                  "on core-file")
-            logger.error("gdb %s %s" %
-                         (os.getenv('VPP_BIN', 'vpp'), core_path))
+            logger.error(f"gdb {config.vpp_bin} {core_path}")
 
     if vpp_pid:
         # Copy api post mortem
@@ -292,7 +292,7 @@ def check_and_handle_core(vpp_binary, tempdir, core_crash_test):
             print(single_line_delim)
             spawn_gdb(vpp_binary, get_core_path(tempdir))
             print(single_line_delim)
-        elif compress_core:
+        elif config.compress_core:
             print("Compressing core-file in test directory `%s'" % tempdir)
             os.system("gzip %s" % get_core_path(tempdir))
 
@@ -312,7 +312,7 @@ def process_finished_testsuite(wrapped_testcase_suite,
     results.append(wrapped_testcase_suite.result)
     finished_testcase_suites.add(wrapped_testcase_suite)
     stop_run = False
-    if failfast and not wrapped_testcase_suite.was_successful():
+    if config.failfast and not wrapped_testcase_suite.was_successful():
         stop_run = True
 
     if not wrapped_testcase_suite.was_successful():
@@ -421,7 +421,7 @@ def run_forked(testcase_suites):
                     continue
 
                 fail = False
-                if wrapped_testcase_suite.last_heard + test_timeout < \
+                if wrapped_testcase_suite.last_heard + config.timeout < \
                         time.time():
                     fail = True
                     wrapped_testcase_suite.logger.critical(
@@ -515,7 +515,7 @@ def run_forked(testcase_suites):
         raise
     finally:
         read_from_testcases.clear()
-        stdouterr_thread.join(test_timeout)
+        stdouterr_thread.join(config.timeout)
         manager.shutdown()
 
     handle_cores(failed_wrapped_testcases)
@@ -566,11 +566,8 @@ class SplitToSuitesCallback:
             self.filtered.addTest(test_method)
 
 
-test_option = "TEST"
-
-
-def parse_test_option():
-    f = os.getenv(test_option, None)
+def parse_test_filter(test_filter):
+    f = test_filter
     filter_file_name = None
     filter_class_name = None
     filter_func_name = None
@@ -807,46 +804,32 @@ def parse_results(results):
     return return_code, results_per_suite.rerun
 
 
-def parse_digit_env(env_var, default):
-    value = os.getenv(env_var, default)
-    if value != default:
-        if value.isdigit():
-            value = int(value)
-        else:
-            print('WARNING: unsupported value "%s" for env var "%s",'
-                  'defaulting to %s' % (value, env_var, default))
-            value = default
-    return value
-
-
 if __name__ == '__main__':
 
-    verbose = parse_digit_env("V", 0)
+    print(f"Config is: {config}")
 
-    test_timeout = parse_digit_env("TIMEOUT", 600)  # default = 10 minutes
+    if config.sanity:
+        print("Running sanity test case.")
+        try:
+            rc = sanity_run_vpp.main()
+            if rc != 0:
+                sys.exit(rc)
+        except Exception as e:
+            print(traceback.format_exc())
+            print("Couldn't run sanity test case.")
+            sys.exit(-1)
 
     test_finished_join_timeout = 15
 
-    retries = parse_digit_env("RETRIES", 0)
+    debug_gdb = config.debug in ["gdb", "gdbserver", "attach"]
+    debug_core = config.debug == "core"
 
-    debug = os.getenv("DEBUG", "n").lower() in ["gdb", "gdbserver", "attach"]
-
-    debug_core = os.getenv("DEBUG", "").lower() == "core"
-    compress_core = framework.BoolEnvironmentVariable("CORE_COMPRESS")
-
-    if os.getenv("VPP_IN_GDB", "n").lower() in ["1", "y", "yes"]:
-        start_vpp_in_gdb()
-        exit()
-
-    step = framework.BoolEnvironmentVariable("STEP")
-    force_foreground = framework.BoolEnvironmentVariable("FORCE_FOREGROUND")
-
-    run_interactive = debug or step or force_foreground
+    run_interactive = debug_gdb or config.step or config.force_foreground
 
     max_concurrent_tests = 0
     print(f"OS reports {num_cpus} available cpu(s).")
 
-    test_jobs = os.getenv("TEST_JOBS", "1").lower()  # default = 1 process
+    test_jobs = config.jobs
     if test_jobs == 'auto':
         if run_interactive:
             max_concurrent_tests = 1
@@ -856,15 +839,7 @@ if __name__ == '__main__':
             print(f"Running at most {max_concurrent_tests} python test "
                   "processes concurrently.")
     else:
-        try:
-            test_jobs = int(test_jobs)
-        except ValueError as e:
-            raise ValueError("Invalid TEST_JOBS value specified, valid "
-                             "values are a positive integer or 'auto'") from e
-        if test_jobs <= 0:
-            raise ValueError("Invalid TEST_JOBS value specified, valid "
-                             "values are a positive integer or 'auto'")
-        max_concurrent_tests = int(test_jobs)
+        max_concurrent_tests = test_jobs
         print(f"Running at most {max_concurrent_tests} python test processes "
               "concurrently as set by 'TEST_JOBS'.")
 
@@ -876,27 +851,20 @@ if __name__ == '__main__':
             'STEP is set) in parallel (TEST_JOBS is more than 1) is not '
             'supported')
 
-    parser = argparse.ArgumentParser(description="VPP unit tests")
-    parser.add_argument("-f", "--failfast", action='store_true',
-                        help="fast failure flag")
-    parser.add_argument("-d", "--dir", action='append', type=str,
-                        help="directory containing test files "
-                             "(may be specified multiple times)")
-    args = parser.parse_args()
-    failfast = args.failfast
     descriptions = True
 
     print("Running tests using custom test runner.")
-    filter_file, filter_class, filter_func = parse_test_option()
+    filter_file, filter_class, filter_func = \
+        parse_test_filter(config.filter)
 
-    print("Active filters: file=%s, class=%s, function=%s" % (
+    print("Selected filters: file=%s, class=%s, function=%s" % (
         filter_file, filter_class, filter_func))
 
     filter_cb = FilterByTestOption(filter_file, filter_class, filter_func)
 
-    ignore_path = os.getenv("VENV_PATH", None)
+    ignore_path = config.venv_dir
     cb = SplitToSuitesCallback(filter_cb)
-    for d in args.dir:
+    for d in config.test_src_dir:
         print("Adding tests from directory tree %s" % d)
         discover_tests(d, cb, ignore_path)
 
@@ -925,10 +893,10 @@ if __name__ == '__main__':
     print("%s out of %s tests match specified filters" % (
         tests_amount, tests_amount + cb.filtered.countTestCases()))
 
-    if not running_extended_tests:
+    if not config.extended:
         print("Not running extended tests (some tests will be skipped)")
 
-    attempts = retries + 1
+    attempts = config.retries + 1
     if attempts > 1:
         print("Perform %s attempts to pass the suite..." % attempts)
 
@@ -945,8 +913,8 @@ if __name__ == '__main__':
                 suite.assign_cpus([])
                 cpu_shortage = True
         full_suite.addTests(suites)
-        result = VppTestRunner(verbosity=verbose,
-                               failfast=failfast,
+        result = VppTestRunner(verbosity=config.verbose,
+                               failfast=config.failfast,
                                print_summary=True).run(full_suite)
         was_successful = result.wasSuccessful()
         if not was_successful:
