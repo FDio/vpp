@@ -5,6 +5,7 @@ import struct
 import time
 from traceback import format_exc, format_stack
 
+from config import config
 import scapy.compat
 from scapy.utils import wrpcap, rdpcap, PcapReader
 from scapy.plist import PacketList
@@ -133,9 +134,20 @@ class VppPGInterface(VppInterface):
         self._cap_name = "pcap%u-sw_if_index-%s" % (
             self.pg_index, self.sw_if_index)
 
-    def rename_old_pcap_file(self, path, counter):
+    def handle_old_pcap_file(self, path, counter):
         filename = os.path.basename(path)
+
+        if not config.keep_pcaps:
+            try:
+                self.test.logger.debug(f"Removing {path}")
+                os.remove(path)
+            except OSError:
+                self.test.logger.debug(f"OSError: Could not remove {path}")
+            return
+
+        # keep
         try:
+
             if os.path.isfile(path):
                 name = "%s/history.[timestamp:%f].[%s-counter:%04d].%s" % \
                     (self.test.tempdir,
@@ -143,8 +155,7 @@ class VppPGInterface(VppInterface):
                      self.name,
                      counter,
                      filename)
-                self.test.logger.debug("Renaming %s->%s" %
-                                       (path, name))
+                self.test.logger.debug("Renaming %s->%s" % (path, name))
                 os.rename(path, name)
         except OSError:
             self.test.logger.debug("OSError: Could not rename %s %s" %
@@ -157,7 +168,7 @@ class VppPGInterface(VppInterface):
         """
         # disable the capture to flush the capture
         self.disable_capture()
-        self.rename_old_pcap_file(self.out_path, self.out_history_counter)
+        self.handle_old_pcap_file(self.out_path, self.out_history_counter)
         # FIXME this should be an API, but no such exists atm
         self.test.vapi.cli(self.capture_cli)
         self._pcap_reader = None
