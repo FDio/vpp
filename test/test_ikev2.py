@@ -13,6 +13,7 @@ from cryptography.hazmat.primitives.ciphers import (
 )
 from ipaddress import IPv4Address, IPv6Address, ip_address
 import unittest
+from config import config
 from scapy.layers.ipsec import ESP
 from scapy.layers.inet import IP, UDP, Ether
 from scapy.layers.inet6 import IPv6
@@ -1380,7 +1381,7 @@ class Ikev2Params(object):
 
         if 'auth' in params and params['auth'] == 'rsa-sig':
             auth_method = 'rsa-sig'
-            work_dir = os.getenv('BR') + '/../src/plugins/ikev2/test/certs/'
+            work_dir = f"{config.vpp_ws_dir}/src/plugins/ikev2/test/certs/"
             self.vapi.ikev2_set_local_key(
                     key_file=work_dir + params['server-key'])
 

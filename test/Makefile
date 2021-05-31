@@ -50,19 +50,8 @@ PROFILE_SORT_BY=cumtime
 endif
 
 ifeq ($(PROFILE),1)
-PYTHON_PROFILE_OPTS=-m cProfile $(PROFILE_OUTPUT_OPTS) -s $(PROFILE_SORT_BY)
+PYTHON_OPTS="-m cProfile $(PROFILE_OUTPUT_OPTS) -s $(PROFILE_SORT_BY)"
 FORCE_FOREGROUND=1
-endif
-
-UNITTEST_EXTRA_OPTS=
-UNITTEST_FAILFAST_OPTS=
-
-ifeq ($(FAILFAST),1)
-UNITTEST_EXTRA_OPTS=-f
-endif
-
-ifneq ($(EXTERN_TESTS),)
-UNITTEST_EXTRA_OPTS=$(UNITTEST_FAILFAST_OPTS) -d $(EXTERN_TESTS)
 endif
 
 VENV_PATH=$(TEST_DIR)/venv
@@ -77,6 +66,10 @@ ifeq ($(PYTHON),)
 PYTHON_INTERP=python3
 else
 PYTHON_INTERP=$(PYTHON)
+endif
+
+ifeq ($(V),)
+V=0
 endif
 
 PYTHON_VERSION=$(shell $(PYTHON_INTERP) -c 'import sys; print(sys.version_info.major)')
@@ -150,31 +143,118 @@ else
 PLUGIN_SRC_DIR=$(INTERN_PLUGIN_SRC_DIR)
 endif
 
-define retest-func
-@env VPP_IN_GDB=$(VPP_IN_GDB) FORCE_FOREGROUND=$(FORCE_FOREGROUND) FAILED_DIR=$(FAILED_DIR) VENV_PATH=$(VENV_PATH) scripts/setsid_wrapper.sh $(FORCE_FOREGROUND) $(VENV_PATH)/bin/activate $(PYTHON_INTERP) $(PYTHON_PROFILE_OPTS) run_tests.py -d $(TEST_DIR) $(UNITTEST_EXTRA_OPTS) || env FAILED_DIR=$(FAILED_DIR) COMPRESS_FAILED_TEST_LOGS=$(COMPRESS_FAILED_TEST_LOGS) scripts/compress_failed.sh
-endef
-
 .PHONY: sanity
-
-ifeq ($(SANITY),no)
-SANITY_IMPORT_VPP_PAPI_CMD=true
-SANITY_RUN_VPP_CMD=true
-else
-SANITY_IMPORT_VPP_PAPI_CMD=source $(VENV_PATH)/bin/activate && python3 sanity_import_vpp_papi.py
-SANITY_RUN_VPP_CMD=source $(VENV_PATH)/bin/activate && python3 sanity_run_vpp.py
-endif
 
 ifndef TEST_JOBS
 PARALLEL_ILLEGAL=0
+TEST_JOBS=1
 else ifeq ($(FORCE_FOREGROUND),0)
 PARALLEL_ILLEGAL=0
-else ifeq ($(TEST_JOBS),auto)
-PARALLEL_ILLEGAL=0
-else ifeq ($(TEST_JOBS),1)
+else ifneq ($(findstring $(TEST_JOBS),1 auto),)
 PARALLEL_ILLEGAL=0
 else
 PARALLEL_ILLEGAL=1
 endif
+
+ifneq ($(DEBUG),)
+SANITY=no
+endif
+
+ifneq ($(findstring $(SANITY),0 n no),)
+SANITY_IMPORT_VPP_PAPI_CMD=true
+ARG0=
+else
+SANITY_IMPORT_VPP_PAPI_CMD=source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) sanity_import_vpp_papi.py
+ARG0=--sanity
+endif
+
+ARG1=
+ifneq ($(findstring $(FAILFAST),1 y yes),)
+ARG1=--failfast
+endif
+
+ARG2=
+ifneq ($(findstring $(EXTENDED_TESTS),1 y yes),)
+ARG2=--extended
+endif
+
+ARG3=
+ifneq ($(EXTERN_TESTS),)
+ARG3=--test-src-dir $(EXTERN_TESTS)
+endif
+
+ARG4=
+ifneq ($(findstring $(FORCE_FOREGROUND),1 y yes),)
+ARG4=--force-foreground
+endif
+
+ARG5=
+ifneq ($(findstring $(COREDUMP_COMPRESS),1 y yes),)
+ARG5=--compress-core
+endif
+
+ARG6=
+ifneq ($(findstring $(STEP),1 y yes),)
+ARG6=--step
+endif
+
+ARG7=
+ifneq ($(findstring $(TESTS_GCOV),1 y yes),)
+ARG7=--gcov
+endif
+
+ARG8=
+ifneq ($(EXTERN_PLUGINS),)
+ARG8=--extern-plugin-dir=$(EXTERN_PLUGINS)
+endif
+
+ARG9=
+ifneq ($(DEBUG),)
+ARG9=--debug=$(DEBUG)
+endif
+
+ARG10=
+ifneq ($(COREDUMP_SIZE),)
+ARG10=--coredump-size=$(COREDUMP_SIZE)
+endif
+
+ARG11=
+ifneq ($(VARIANT),)
+ARG11=--variant=$(VARIANT)
+endif
+
+ARG12=--cache-vpp-output
+ifneq ($(findstring $(CACHE_OUTPUT),0 n no),)
+ARG12=
+endif
+
+ARG13=
+ifneq ($(MAX_VPP_CPUS),)
+ARG13=--max-vpp-cpus=$(MAX_VPP_CPUS)
+endif
+
+ARG14=
+ifneq ($(TIMEOUT),)
+ARG14=--timeout=$(TIMEOUT)
+endif
+
+ARG15=
+ifneq ($(findstring $(TEST_DEBUG),1 y yes),)
+ARG15=--debug-framework
+endif
+
+ARG16=
+ifneq ($(findstring $(API_FUZZ),1 y yes),)
+ARG16=--api-fuzz=on
+endif
+
+EXTRA_ARGS=$(ARG0) $(ARG1) $(ARG2) $(ARG3) $(ARG4) $(ARG5) $(ARG6) $(ARG7) $(ARG8) $(ARG9) $(ARG10) $(ARG11) $(ARG12) $(ARG13) $(ARG14) $(ARG15) $(ARG16)
+
+RUN_TESTS_ARGS=--failed-dir=$(FAILED_DIR) --verbose=$(V) --jobs=$(TEST_JOBS) --filter=$(TEST) --retries=$(RETRIES) --venv-dir=$(VENV_PATH) --vpp-ws-dir=$(WS_ROOT) --vpp-tag=$(TAG) --rnd-seed=$(RND_SEED) --vpp-worker-count="$(VPP_WORKER_COUNT)" --keep-pcaps --python-opts=$(PYTHON_OPTS) $(PLUGIN_PATH_ARGS) $(TEST_PLUGIN_PATH_ARGS) $(EXTRA_ARGS)
+
+define retest-func
+@scripts/run.sh $(RUN_TESTS_ARGS) || env FAILED_DIR=$(FAILED_DIR) COMPRESS_FAILED_TEST_LOGS=$(COMPRESS_FAILED_TEST_LOGS) scripts/compress_failed.sh
+endef
 
 sanity: test-dep
 	@bash -c "test $(PARALLEL_ILLEGAL) -eq 0 ||\
@@ -188,11 +268,6 @@ sanity: test-dep
 		 echo \"* to debug: \" &&\
 		 echo \"* 1. enter test shell:   make test-shell\" &&\
 		 echo \"* 2. execute debugger:   gdb python -ex 'run sanity_import_vpp_papi.py'\" &&\
-	         echo \"*******************************************************************\" &&\
-		 false)"
-	@bash -c "$(SANITY_RUN_VPP_CMD) ||\
-		(echo \"*******************************************************************\" &&\
-		 echo \"* Sanity check failed, cannot run vpp\" &&\
 	         echo \"*******************************************************************\" &&\
 		 false)"
 
@@ -218,13 +293,12 @@ shell: test-dep
 		echo PYTHONPATH=$(PYTHONPATH);\
 		echo RND_SEED=$(RND_SEED);\
 		echo VPP_BUILD_DIR=$(VPP_BUILD_DIR);\
-		echo VPP_BIN=$(VPP_BIN);\
 		echo VPP_PLUGIN_PATH=$(VPP_PLUGIN_PATH);\
 		echo VPP_TEST_PLUGIN_PATH=$(VPP_TEST_PLUGIN_PATH);\
 		echo VPP_INSTALL_PATH=$(VPP_INSTALL_PATH);\
 		echo EXTERN_TESTS=$(EXTERN_TESTS);\
 		echo EXTERN_PLUGINS=$(EXTERN_PLUGINS);\
-                echo EXTERN_COV_DIR=$(EXTERN_COV_DIR);\
+        echo EXTERN_COV_DIR=$(EXTERN_COV_DIR);\
 		echo LD_LIBRARY_PATH=$(LD_LIBRARY_PATH);\
 		echo '***';\
 		exec </dev/tty" | bash -i
@@ -286,9 +360,7 @@ checkstyle-diff: $(PIP_INSTALL_DONE)
 
 .PHONY: start-gdb
 start-gdb: sanity
-	$(eval VPP_IN_GDB=1)
-	$(eval FORCE_FOREGROUND=1)
-	$(call retest-func)
+	@bash -c "source $(VENV_PATH)/bin/activate && python3 -c 'from debug import start_vpp_in_gdb; start_vpp_in_gdb()' $(RUN_TESTS_ARGS)"
 
 .PHONY: checkstyle
 checkstyle: $(PIP_INSTALL_DONE)
@@ -328,12 +400,13 @@ help:
 	@echo " test-refresh-deps      - refresh the Python dependencies for the tests"
 	@echo ""
 	@echo "Arguments controlling test runs:"
+	@echo ""
 	@echo " V=[0|1|2]              - set test verbosity level"
 	@echo "                          0=ERROR, 1=INFO, 2=DEBUG"
 	@echo " TEST_JOBS=[<n>|auto]   - use at most <n> parallel python processes for test execution, if auto, set to number of available cpus (default: 1)"
 	@echo " MAX_VPP_CPUS=[<n>|auto]- use at most <n> cpus for running vpp main and worker threads, if auto, set to number of available cpus (default: auto)"
-	@echo " CACHE_OUTPUT=[0|1]     - cache VPP stdout/stderr and log as one block after test finishes (default: 1)"
-	@echo " FAILFAST=[0|1]         - fail fast if 1, complete all tests if 0"
+	@echo " CACHE_OUTPUT=[0|n|no]  - disable cache VPP stdout/stderr and log as one block after test finishes (default: yes)"
+	@echo " FAILFAST=[1|y|yes]     - fail fast if 1, otherwise complete all tests"
 	@echo " TIMEOUT=<timeout>      - fail test suite if any single test takes longer than <timeout> (in seconds) to finish (default: 600)"
 	@echo " RETRIES=<n>            - retry failed tests <n> times"
 	@echo " DEBUG=<type>           - set VPP debugging kind"
@@ -344,10 +417,9 @@ help:
 	@echo "    DEBUG=gdbserver     - run gdb inside a gdb server, otherwise"
 	@echo "                          same as above"
 	@echo "    DEBUG=attach        - attach test case to already running vpp in gdb (see test-start-vpp-in-gdb)"
-	@echo ""
-	@echo " STEP=[yes|no]          - ease debugging by stepping through a testcase"
-	@echo " SANITY=[yes|no]        - perform sanity import of vpp-api/sanity vpp run before running tests (default: yes)"
-	@echo " EXTENDED_TESTS=[1|y]   - used by '[re]test-all' & '[re]test-all-debug' to run extended tests"
+	@echo " STEP=[1|y|yes]         - enable stepping through a testcase (for testcase debugging)"
+	@echo " SANITY=[0|n|no]        - disable sanity import of vpp-api/sanity vpp run before running tests"
+	@echo " EXTENDED_TESTS=[1|y|yes] - run extended tests"
 	@echo " TEST=<filter>          - filter the set of tests:"
 	@echo "    by file-name        - only run tests from specified file, e.g. TEST=test_bfd selects all tests from test_bfd.py"
 	@echo "    by file-suffix      - same as file-name, but 'test_' is omitted e.g. TEST=bfd selects all tests from test_bfd.py"
@@ -357,44 +429,34 @@ help:
 	@echo "                               TEST='bfd.BFDAPITestCase.*' selects all tests from test_bfd.py which are part of BFDAPITestCase class"
 	@echo "                               TEST='bfd.BFDAPITestCase.test_add_bfd' selects a single test named test_add_bfd from test_bfd.py/BFDAPITestCase"
 	@echo "                               TEST='*.*.test_add_bfd' selects all test functions named test_add_bfd from all files/classes"
-	@echo ""
 	@echo " VARIANT=<variant>      - specify which march node variant to unit test"
 	@echo "                          e.g. VARIANT=skx test the skx march variants"
 	@echo "                          e.g. VARIANT=icl test the icl march variants"
-	@echo ""
 	@echo " COREDUMP_SIZE=<size>   - pass <size> as unix { coredump-size <size> } argument to vpp"
 	@echo "                          e.g. COREDUMP_SIZE=4g"
 	@echo "                               COREDUMP_SIZE=unlimited"
-	@echo " COREDUMP_COMPRESS=1    - compress core files if not debugging them"
+	@echo " COREDUMP_COMPRESS=[1|y|yes] - compress core files if not debugging them"
 	@echo " EXTERN_TESTS=<path>    - path to out-of-tree test_<name>.py files containing test cases"
 	@echo " EXTERN_PLUGINS=<path>  - path to out-of-tree plugins to be loaded by vpp under test"
 	@echo " EXTERN_COV_DIR=<path>  - path to out-of-tree prefix, where source, object and .gcda files can be found for coverage report"
-	@echo ""
-	@echo " PROFILE=1              - enable profiling of test framework via cProfile module"
+	@echo " PROFILE=[1|y|yes]      - enable profiling of test framework via cProfile module"
 	@echo " PROFILE_SORT_BY=opt    - sort profiling report by opt - consult cProfile documentation for possible values (default: cumtime)"
 	@echo " PROFILE_OUTPUT=file    - output profiling info to file - use absolute path (default: stdout)"
-	@echo ""
-	@echo " TEST_DEBUG=1           - turn on debugging of the test framework itself (expert)"
-	@echo ""
-	@echo " SKIP_AARCH64=1         - skip tests that are failing on the ARM platorm in FD.io CI"
-	@echo ""
-	@echo " RND_SEED=seed          - Seed RND with given seed"
+	@echo " TEST_DEBUG=[1|y|yes]   - enable debugging of the test framework itself (expert)"
+	@echo " API_FUZZ=[1|y|yes]     - enable VPP api fuzz testing"
+	@echo " RND_SEED=<seed>        - Seed RND with given seed"
 	@echo ""
 	@echo "Starting VPP in GDB for use with DEBUG=attach:"
 	@echo ""
 	@echo " test-start-vpp-in-gdb       - start VPP in gdb (release)"
 	@echo " test-start-vpp-debug-in-gdb - start VPP in gdb (debug)"
 	@echo ""
-	@echo "Arguments controlling VPP in GDB runs:"
-	@echo " "
-	@echo " VPP_IN_GDB_TMP_DIR     - specify directory to run VPP IN (default: /tmp/unittest-attach-gdb)"
-	@echo " VPP_IN_GDB_NO_RMDIR=0  - don't remove existing tmp dir but fail instead"
-	@echo " VPP_IN_GDB_CMDLINE=1   - add 'interactive' to VPP arguments to run with command line"
+	@echo "Creating test code coverage report:"
 	@echo ""
-	@echo "Creating test code coverage report"
 	@echo " test-cov               - generate code coverage report for test framework"
 	@echo " test-wipe-cov          - wipe code coverage report for test framework"
 	@echo ""
-	@echo "Verifying code-style"
+	@echo "Verifying code-style:"
+	@echo ""
 	@echo " test-checkstyle        - check PEP8 compliance"
 	@echo ""

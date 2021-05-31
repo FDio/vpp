@@ -6,8 +6,8 @@ import os
 import subprocess
 import signal
 import glob
-from framework import VppTestCase, VppTestRunner, running_extended_tests, \
-    Worker
+from config import config
+from framework import VppTestCase, VppTestRunner, Worker
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath, FibPathProto
 
 iperf3 = '/usr/bin/iperf3'
@@ -32,12 +32,10 @@ class VCLAppWorker(Worker):
     class LibraryNotFound(Exception):
         pass
 
-    def __init__(self, build_dir, appname, executable_args, logger, env=None,
+    def __init__(self, appname, executable_args, logger, env=None,
                  role=None, *args, **kwargs):
         self.role = role
-        vpp_install_path = os.getenv('VPP_INSTALL_PATH')
-
-        vcl_ldpreload_glob = "{}/**/{}".format(vpp_install_path, self.libname)
+        vcl_ldpreload_glob = f"{config.vpp_install_dir}/**/{self.libname}"
         vcl_ldpreload_so = glob.glob(vcl_ldpreload_glob, recursive=True)
 
         if len(vcl_ldpreload_so) < 1:
@@ -52,10 +50,10 @@ class VCLAppWorker(Worker):
             app = appname
             env.update({'LD_PRELOAD': vcl_ldpreload_so})
         elif "sock" in appname:
-            app = "%s/bin/%s" % (build_dir, appname)
+            app = f"{config.vpp_build_dir}/vpp/bin/{appname}"
             env.update({'LD_PRELOAD': vcl_ldpreload_so})
         else:
-            app = "%s/bin/%s" % (build_dir, appname)
+            app = f"{config.vpp_build_dir}/vpp/bin/{appname}"
         self.args = [app] + executable_args
         super(VCLAppWorker, self).__init__(self.args, logger, env,
                                            *args, **kwargs)
@@ -77,11 +75,7 @@ class VCLTestCase(VppTestCase):
         super(VCLTestCase, cls).tearDownClass()
 
     def setUp(self):
-        var = "VPP_BUILD_DIR"
-        self.build_dir = os.getenv(var, None)
-        if self.build_dir is None:
-            raise EnvironmentError("Environment variable `%s' not set" % var)
-        self.vppDebug = 'vpp_debug' in self.build_dir
+        self.vppDebug = 'vpp_debug' in config.vpp_install_dir
         self.server_addr = "127.0.0.1"
         self.server_port = "22000"
         self.server_args = [self.server_port]
@@ -132,13 +126,13 @@ class VCLTestCase(VppTestCase):
         self.vcl_app_env = {'VCL_APP_SCOPE_LOCAL': "true"}
 
         self.update_vcl_app_env("", "", self.sapi_server_sock)
-        worker_server = VCLAppWorker(self.build_dir, server_app, server_args,
+        worker_server = VCLAppWorker(server_app, server_args,
                                      self.logger, self.vcl_app_env, "server")
         worker_server.start()
         self.sleep(self.pre_test_sleep)
 
         self.update_vcl_app_env("", "", self.sapi_client_sock)
-        worker_client = VCLAppWorker(self.build_dir, client_app, client_args,
+        worker_client = VCLAppWorker(client_app, client_args,
                                      self.logger, self.vcl_app_env, "client")
         worker_client.start()
         worker_client.join(self.timeout)
@@ -240,13 +234,13 @@ class VCLTestCase(VppTestCase):
         self.vcl_app_env = {'VCL_APP_SCOPE_GLOBAL': "true"}
 
         self.update_vcl_app_env("1", "1234", self.sapi_server_sock)
-        worker_server = VCLAppWorker(self.build_dir, server_app, server_args,
+        worker_server = VCLAppWorker(server_app, server_args,
                                      self.logger, self.vcl_app_env, "server")
         worker_server.start()
         self.sleep(self.pre_test_sleep)
 
         self.update_vcl_app_env("2", "5678", self.sapi_client_sock)
-        worker_client = VCLAppWorker(self.build_dir, client_app, client_args,
+        worker_client = VCLAppWorker(client_app, client_args,
                                      self.logger, self.vcl_app_env, "client")
         worker_client.start()
         worker_client.join(self.timeout)
@@ -328,14 +322,13 @@ class LDPCutThruTestCase(VCLTestCase):
         self.logger.debug(self.vapi.cli("show session verbose 2"))
         self.logger.debug(self.vapi.cli("show app mq"))
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_ldp_cut_thru_echo(self):
         """ run LDP cut thru echo test """
 
         self.cut_thru_test("sock_test_server", self.server_args,
                            "sock_test_client", self.client_echo_test_args)
 
-    @unittest.skipUnless(_have_iperf3, "'%s' not found, Skipping.")
     def test_ldp_cut_thru_iperf3(self):
         """ run LDP cut thru iperf3 test """
 
@@ -343,7 +336,7 @@ class LDPCutThruTestCase(VCLTestCase):
         self.cut_thru_test(iperf3, self.server_iperf3_args,
                            iperf3, self.client_iperf3_args)
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_ldp_cut_thru_uni_dir_nsock(self):
         """ run LDP cut thru uni-directional (multiple sockets) test """
 
@@ -352,7 +345,7 @@ class LDPCutThruTestCase(VCLTestCase):
                            "sock_test_client",
                            self.client_uni_dir_nsock_test_args)
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    @unittest.skipUnless(config.extended, "part of extended tests")
     @unittest.skip("sock test apps need to be improved")
     def test_ldp_cut_thru_bi_dir_nsock(self):
         """ run LDP cut thru bi-directional (multiple sockets) test """
@@ -569,7 +562,7 @@ class VCLThruHostStackQUIC(VCLTestCase):
                                               self.loop0.local_ip4,
                                               self.server_port]
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_vcl_thru_host_stack_quic_uni_dir(self):
         """ run VCL thru host stack uni-directional QUIC test """
 
@@ -867,6 +860,7 @@ class LDPIpv6CutThruTestCase(VCLTestCase):
         super(LDPIpv6CutThruTestCase, self).tearDown()
         self.cut_thru_tear_down()
 
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_ldp_ipv6_cut_thru_echo(self):
         """ run LDP IPv6 cut thru echo test """
 
@@ -876,7 +870,6 @@ class LDPIpv6CutThruTestCase(VCLTestCase):
                            self.client_ipv6_echo_test_args)
 
     @unittest.skipUnless(_have_iperf3, "'%s' not found, Skipping.")
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_ldp_ipv6_cut_thru_iperf3(self):
         """ run LDP IPv6 cut thru iperf3 test """
 
@@ -884,7 +877,7 @@ class LDPIpv6CutThruTestCase(VCLTestCase):
         self.cut_thru_test(iperf3, self.server_ipv6_iperf3_args,
                            iperf3, self.client_ipv6_iperf3_args)
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_ldp_ipv6_cut_thru_uni_dir_nsock(self):
         """ run LDP IPv6 cut thru uni-directional (multiple sockets) test """
 
@@ -893,7 +886,7 @@ class LDPIpv6CutThruTestCase(VCLTestCase):
                            "sock_test_client",
                            self.client_ipv6_uni_dir_nsock_test_args)
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    @unittest.skipUnless(config.extended, "part of extended tests")
     @unittest.skip("sock test apps need to be improved")
     def test_ldp_ipv6_cut_thru_bi_dir_nsock(self):
         """ run LDP IPv6 cut thru bi-directional (multiple sockets) test """
@@ -955,7 +948,7 @@ class VCLIpv6CutThruTestCase(VCLTestCase):
                            "vcl_test_client",
                            self.client_ipv6_echo_test_args)
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_vcl_ipv6_cut_thru_uni_dir_nsock(self):
         """ run VCL IPv6 cut thru uni-directional (multiple sockets) test """
 
@@ -964,7 +957,7 @@ class VCLIpv6CutThruTestCase(VCLTestCase):
                            "vcl_test_client",
                            self.client_ipv6_uni_dir_nsock_test_args)
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_vcl_ipv6_cut_thru_bi_dir_nsock(self):
         """ run VCL IPv6 cut thru bi-directional (multiple sockets) test """
 
