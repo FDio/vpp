@@ -2,7 +2,8 @@
 """ Container integration tests """
 
 import unittest
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+from config import config
+from framework import VppTestCase, VppTestRunner
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
 from scapy.layers.inet import IP, UDP, TCP
@@ -21,7 +22,7 @@ class Conn(L4_Conn):
     pass
 
 
-@unittest.skipUnless(running_extended_tests, "part of extended tests")
+@unittest.skipUnless(config.extended, "part of extended tests")
 class ContainerIntegrationTestCase(VppTestCase):
     """ Container integration extended testcases """
 

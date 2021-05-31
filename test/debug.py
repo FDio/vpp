@@ -6,7 +6,7 @@ import sys
 
 from sanity_run_vpp import SanityTestCase
 from shutil import rmtree
-from cpu_config import available_cpus
+from config import available_cpus
 
 gdb_path = '/usr/bin/gdb'
 
@@ -33,21 +33,12 @@ def start_vpp_in_gdb():
     # but any test case class could be used ...
     SanityTestCase.set_debug_flags("attach")
     SanityTestCase.tempdir = SanityTestCase.get_tempdir()
-    if os.path.exists(SanityTestCase.tempdir):
-        if os.getenv("VPP_IN_GDB_NO_RMDIR", "0") in ["1", "y", "yes"]:
-            raise FileExistsError(
-                "Temporary directory exists and removal denied.")
-        print("Removing existing temp dir '%s'." % SanityTestCase.tempdir)
-        rmtree(SanityTestCase.tempdir)
-    print("Creating temp dir '%s'." % SanityTestCase.tempdir)
-    os.mkdir(SanityTestCase.tempdir)
     SanityTestCase.assign_cpus(
         available_cpus[:SanityTestCase.get_cpus_required()])
     SanityTestCase.setUpConstants()
     vpp_cmdline = SanityTestCase.vpp_cmdline
-    if os.getenv("VPP_IN_GDB_CMDLINE", "y").lower() in ["1", "y", "yes"]:
-        print("Hacking cmdline to make VPP interactive.")
-        vpp_cmdline.insert(vpp_cmdline.index("nodaemon"), "interactive")
+    print("Hacking cmdline to make VPP interactive.")
+    vpp_cmdline.insert(vpp_cmdline.index("nodaemon"), "interactive")
     print("VPP cmdline is %s" % " ".join(vpp_cmdline))
     print("Running GDB.")
 

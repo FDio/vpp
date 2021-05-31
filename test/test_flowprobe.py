@@ -12,8 +12,9 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, TCP, UDP
 from scapy.layers.inet6 import IPv6
 
+from config import config
 from framework import tag_fixme_vpp_workers
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import VppTestCase, VppTestRunner
 from framework import tag_run_solo
 from vpp_object import VppObject
 from vpp_pg_interface import CaptureTimeoutError
@@ -827,7 +828,7 @@ class Datapath(MethodHolder):
         self.logger.info("FFP_TEST_FINISH_0002")
 
 
-@unittest.skipUnless(running_extended_tests, "part of extended tests")
+@unittest.skipUnless(config.extended, "part of extended tests")
 class DisableIPFIX(MethodHolder):
     """Disable IPFIX"""
 
@@ -875,7 +876,7 @@ class DisableIPFIX(MethodHolder):
         self.logger.info("FFP_TEST_FINISH_0001")
 
 
-@unittest.skipUnless(running_extended_tests, "part of extended tests")
+@unittest.skipUnless(config.extended, "part of extended tests")
 class ReenableIPFIX(MethodHolder):
     """Re-enable IPFIX"""
 
@@ -943,7 +944,7 @@ class ReenableIPFIX(MethodHolder):
         self.logger.info("FFP_TEST_FINISH_0001")
 
 
-@unittest.skipUnless(running_extended_tests, "part of extended tests")
+@unittest.skipUnless(config.extended, "part of extended tests")
 class DisableFP(MethodHolder):
     """Disable Flowprobe feature"""
 
@@ -990,7 +991,7 @@ class DisableFP(MethodHolder):
         self.logger.info("FFP_TEST_FINISH_0001")
 
 
-@unittest.skipUnless(running_extended_tests, "part of extended tests")
+@unittest.skipUnless(config.extended, "part of extended tests")
 class ReenableFP(MethodHolder):
     """Re-enable Flowprobe feature"""
 

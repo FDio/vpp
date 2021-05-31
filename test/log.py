@@ -4,6 +4,8 @@ import sys
 import os
 import logging
 
+from config import config
+
 """ @var formatting delimiter consisting of '=' characters """
 double_line_delim = '=' * 78
 """ @var formatting delimiter consisting of '-' characters """
@@ -24,15 +26,12 @@ class ColorFormatter(logging.Formatter):
         if hasattr(record, 'color'):
             message = colorize(message, record.color)
         return message
-try:
-    verbose = int(os.getenv("V", 0))
-except:
-    verbose = 0
+
 
 # 40 = ERROR, 30 = WARNING, 20 = INFO, 10 = DEBUG, 0 = NOTSET (all messages)
-if verbose >= 2:
+if config.verbose >= 2:
     log_level = 10
-elif verbose == 1:
+elif config.verbose == 1:
     log_level = 20
 else:
     log_level = 40
@@ -65,6 +64,7 @@ def get_parallel_logger(stream):
     handler.setLevel(log_level)
     logger.addHandler(handler)
     return logger
+
 
 # Static variables to store color formatting strings.
 #

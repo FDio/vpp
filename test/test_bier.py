@@ -2,7 +2,8 @@
 
 import unittest
 
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+from config import config
+from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, \
     VppMplsTable, VppIpMRoute, VppMRoutePath, VppIpTable, \
@@ -183,22 +184,22 @@ class TestBier(VppTestCase):
         for nhr in nh_routes:
             nhr.remove_vpp_config()
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_bier_midpoint_1024(self):
         """BIER midpoint BSL:1024"""
         self.bier_midpoint(BIERLength.BIER_LEN_1024, 128, 1024)
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_bier_midpoint_512(self):
         """BIER midpoint BSL:512"""
         self.bier_midpoint(BIERLength.BIER_LEN_512, 64, 512)
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_bier_midpoint_256(self):
         """BIER midpoint BSL:256"""
         self.bier_midpoint(BIERLength.BIER_LEN_256, 32, 256)
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_bier_midpoint_128(self):
         """BIER midpoint BSL:128"""
         self.bier_midpoint(BIERLength.BIER_LEN_128, 16, 128)
@@ -674,22 +675,22 @@ class TestBier(VppTestCase):
         self.assertEqual(rx[0][IP].src, "1.1.1.1")
         self.assertEqual(rx[0][IP].dst, "232.1.1.2")
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_bier_e2e_1024(self):
         """ BIER end-to-end BSL:1024"""
         self.bier_e2e(BIERLength.BIER_LEN_1024, 128, 1024)
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_bier_e2e_512(self):
         """ BIER end-to-end BSL:512"""
         self.bier_e2e(BIERLength.BIER_LEN_512, 64, 512)
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_bier_e2e_256(self):
         """ BIER end-to-end BSL:256"""
         self.bier_e2e(BIERLength.BIER_LEN_256, 32, 256)
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_bier_e2e_128(self):
         """ BIER end-to-end BSL:128"""
         self.bier_e2e(BIERLength.BIER_LEN_128, 16, 128)

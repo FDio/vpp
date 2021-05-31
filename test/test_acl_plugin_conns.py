@@ -2,7 +2,8 @@
 """ ACL plugin extended stateful tests """
 
 import unittest
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+from config import config
+from framework import VppTestCase, VppTestRunner
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
 from scapy.layers.inet import IP, UDP, TCP
@@ -118,7 +119,7 @@ class Conn(L4_Conn):
         return new_rule
 
 
-@unittest.skipUnless(running_extended_tests, "part of extended tests")
+@unittest.skipUnless(config.extended, "part of extended tests")
 class ACLPluginConnTestCase(VppTestCase):
     """ ACL plugin connection-oriented extended testcases """
 

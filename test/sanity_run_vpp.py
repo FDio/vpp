@@ -24,7 +24,7 @@ class SanityTestCase(VppTestCase):
             pass
 
 
-if __name__ == '__main__':
+def main():
     rc = 0
     tc = SanityTestCase
     x, y = Pipe()
@@ -46,5 +46,8 @@ if __name__ == '__main__':
         print('Sanity test case passed.')
     else:
         print('Sanity test case failed.')
+    return rc
 
-    sys.exit(rc)
+
+if __name__ == '__main__':
+    sys.exit(main())
