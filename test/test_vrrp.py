@@ -23,7 +23,8 @@ from scapy.layers.inet6 import IPv6, ipv6nh, IPv6ExtHdrHopByHop, \
 from scapy.contrib.igmpv3 import IGMPv3, IGMPv3mr, IGMPv3gr
 from scapy.layers.vrrp import IPPROTO_VRRP, VRRPv3
 from scapy.utils6 import in6_getnsma, in6_getnsmac
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+from config import config
+from framework import VppTestCase, VppTestRunner
 from util import ip6_normalize
 
 VRRP_VR_FLAG_PREEMPT = 1
@@ -217,7 +218,7 @@ class VrrpCommonMixin:
         return pkt
 
 
-@unittest.skipUnless(running_extended_tests, "part of extended tests")
+@unittest.skipUnless(config.extended, "part of extended tests")
 class TestVRRP4(VrrpCommonMixin, VppTestCase):
     """ IPv4 VRRP Test Case """
 
@@ -750,7 +751,7 @@ class TestVRRP4(VrrpCommonMixin, VppTestCase):
         self.assertEqual(rx[VRRPv3].addrlist, [vip])
 
 
-@unittest.skipUnless(running_extended_tests, "part of extended tests")
+@unittest.skipUnless(config.extended, "part of extended tests")
 class TestVRRP6(VrrpCommonMixin, VppTestCase):
     """ IPv6 VRRP Test Case """
 
