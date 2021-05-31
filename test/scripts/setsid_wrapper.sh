@@ -1,10 +1,15 @@
 #!/bin/bash
 
-if [[ "$1" == "1" ]]
+cmd=$1
+force_foreground=$2
+shift
+shift
+
+if [[ "$force_foreground" == "1" ]]
 then
-	setsid scripts/run_in_venv_with_cleanup.sh $*
+	setsid $cmd $force_foreground $*
 else
-	setsid scripts/run_in_venv_with_cleanup.sh $* &
+	setsid $cmd $force_foreground $* &
 	pid=$!
 	trap "echo setsid_wrapper.sh: got signal, killing child pid ${pid}; kill ${pid}; sleep .1;" SIGINT SIGTERM
 	wait ${pid}

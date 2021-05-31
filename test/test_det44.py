@@ -4,7 +4,9 @@ import socket
 import struct
 import unittest
 import scapy.compat
-from framework import VppTestCase, running_extended_tests
+from time import sleep
+from config import config
+from framework import VppTestCase
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
 from scapy.layers.inet import IP, TCP, UDP, ICMP
 from scapy.layers.inet import IPerror, UDPerror
@@ -603,7 +605,7 @@ class TestDET44(VppTestCase):
         self.assertEqual(0, dms[0].ses_num)
 
     # TODO: ipfix needs to be separated from NAT base plugin
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_session_limit_per_user(self):
         """ Deterministic NAT maximum sessions per user limit """
         self.vapi.det44_add_del_map(is_add=1, in_addr=self.pg0.remote_ip4,
