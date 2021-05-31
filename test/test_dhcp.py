@@ -5,7 +5,7 @@ import socket
 import struct
 import six
 
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import VppTestCase, VppTestRunner
 from framework import tag_run_solo
 from vpp_neighbor import VppNeighbor
 from vpp_ip_route import find_route, VppIpTable
