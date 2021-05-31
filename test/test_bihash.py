@@ -2,7 +2,8 @@
 
 import unittest
 
-from framework import VppTestCase, VppTestRunner, running_gcov_tests
+from config import config
+from framework import VppTestCase, VppTestRunner
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
@@ -53,7 +54,7 @@ class TestBihash(VppTestCase):
             self.logger.critical(error)
             self.assertNotIn('failed', error)
 
-    @unittest.skipUnless(running_gcov_tests, "part of code coverage tests")
+    @unittest.skipUnless(config.gcov, "part of code coverage tests")
     def test_bihash_coverage(self):
         """ Improve Code Coverage """
 

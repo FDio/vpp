@@ -7,7 +7,7 @@ import unittest
 import time
 import re
 
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import VppTestCase
 from vpp_object import VppObject
 from vpp_pg_interface import CaptureTimeoutError
 from vpp_ip_route import VppIpRoute, VppRoutePath

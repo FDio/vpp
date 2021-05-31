@@ -6,7 +6,7 @@ import struct
 import random
 
 from framework import tag_fixme_vpp_workers
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import VppTestCase, VppTestRunner
 
 import scapy.compat
 from scapy.layers.inet import IP, TCP, UDP, ICMP

@@ -8,8 +8,9 @@ import unittest
 from io import BytesIO
 
 import scapy.compat
+from config import config
 from framework import tag_fixme_vpp_workers
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import VppTestCase, VppTestRunner
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
 from scapy.data import IP_PROTOS
 from scapy.layers.inet import IP, TCP, UDP, ICMP
@@ -1647,7 +1648,7 @@ class TestNAT64(VppTestCase):
         addresses = self.vapi.nat64_pool_addr_dump()
         self.assertEqual(0, len(addresses))
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_ipfix_max_bibs_sessions(self):
         """ IPFIX logging maximum session and BIB entries exceeded """
         max_bibs = 1280
