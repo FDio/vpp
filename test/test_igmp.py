@@ -8,7 +8,7 @@ from scapy.layers.inet import IP, IPOption
 from scapy.contrib.igmpv3 import IGMPv3, IGMPv3gr, IGMPv3mq, IGMPv3mr
 
 from framework import tag_fixme_vpp_workers
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import VppTestCase, VppTestRunner
 from vpp_igmp import find_igmp_state, IGMP_FILTER, IgmpRecord, IGMP_MODE, \
     IgmpSG, VppHostState, wait_for_igmp_event
 from vpp_ip_route import find_mroute, VppIpTable

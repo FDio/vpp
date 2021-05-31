@@ -4,6 +4,7 @@
 import unittest
 import os
 import signal
+from config import config
 from framework import VppTestCase, VppTestRunner, Worker
 
 
@@ -20,11 +21,7 @@ class VAPITestCase(VppTestCase):
 
     def test_vapi_c(self):
         """ run C VAPI tests """
-        var = "VPP_BUILD_DIR"
-        build_dir = os.getenv(var, None)
-        self.assertIsNotNone(build_dir,
-                             "Environment variable `%s' not set" % var)
-        executable = f"{build_dir}/vpp/bin/vapi_c_test"
+        executable = f"{config.vpp_build_dir}/vpp/bin/vapi_c_test"
         worker = Worker([executable, "vapi client",
                          self.get_api_segment_prefix()], self.logger)
         worker.start()
@@ -49,11 +46,7 @@ class VAPITestCase(VppTestCase):
 
     def test_vapi_cpp(self):
         """ run C++ VAPI tests """
-        var = "VPP_BUILD_DIR"
-        build_dir = os.getenv(var, None)
-        self.assertIsNotNone(build_dir,
-                             "Environment variable `%s' not set" % var)
-        executable = f"{build_dir}/vpp/bin/vapi_cpp_test"
+        executable = f"{config.vpp_build_dir}/vpp/bin/vapi_cpp_test"
         worker = Worker([executable, "vapi client",
                          self.get_api_segment_prefix()], self.logger)
         worker.start()
