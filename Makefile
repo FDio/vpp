@@ -411,41 +411,41 @@ export TEST_DIR ?= $(WS_ROOT)/test
 export RND_SEED ?= $(shell python3 -c 'import time; print(time.time())')
 
 define test
-	$(if $(filter-out $(3),retest),make -C $(BR) PLATFORM=$(1) TAG=$(2) vpp-install,)
+	$(if $(filter-out $(2),retest),make -C $(BR) PLATFORM=vpp TAG=$(1) vpp-install,)
 	$(eval libs:=lib lib64)
 	make -C test \
-	  VPP_BUILD_DIR=$(BR)/build-$(2)-native \
-	  VPP_BIN=$(BR)/install-$(2)-native/vpp/bin/vpp \
-	  VPP_INSTALL_PATH=$(BR)/install-$(2)-native/ \
+	  VPP_BUILD_DIR=$(BR)/build-$(1)-native \
+	  VPP_BIN=$(BR)/install-$(1)-native/vpp/bin/vpp \
+	  VPP_INSTALL_PATH=$(BR)/install-$(1)-native/ \
 	  EXTENDED_TESTS=$(EXTENDED_TESTS) \
 	  PYTHON=$(PYTHON) \
 	  OS_ID=$(OS_ID) \
 	  RND_SEED=$(RND_SEED) \
 	  CACHE_OUTPUT=$(CACHE_OUTPUT) \
-	  $(3)
+	  $(2)
 endef
 
 .PHONY: test
 test:
-	$(call test,vpp,vpp,test)
+	$(call test,vpp,test)
 
 .PHONY: test-debug
 test-debug:
-	$(call test,vpp,vpp_debug,test)
+	$(call test,vpp_debug,test)
 
 .PHONY: test-gcov
 test-gcov:
-	$(call test,vpp,vpp_gcov,test)
+	$(call test,vpp_gcov,test)
 
 .PHONY: test-all
 test-all:
 	$(eval EXTENDED_TESTS=yes)
-	$(call test,vpp,vpp,test)
+	$(call test,vpp,test)
 
 .PHONY: test-all-debug
 test-all-debug:
 	$(eval EXTENDED_TESTS=yes)
-	$(call test,vpp,vpp_debug,test)
+	$(call test,vpp_debug,test)
 
 .PHONY: papi-wipe
 papi-wipe: test-wipe-papi
@@ -465,15 +465,15 @@ test-wipe:
 
 .PHONY: test-shell
 test-shell:
-	$(call test,vpp,vpp,shell)
+	$(call test,vpp,shell)
 
 .PHONY: test-shell-debug
 test-shell-debug:
-	$(call test,vpp,vpp_debug,shell)
+	$(call test,vpp_debug,shell)
 
 .PHONY: test-shell-gcov
 test-shell-gcov:
-	$(call test,vpp,vpp_gcov,shell)
+	$(call test,vpp_gcov,shell)
 
 .PHONY: test-dep
 test-dep:
@@ -492,7 +492,7 @@ test-wipe-doc:
 .PHONY: test-cov
 test-cov:
 	$(eval EXTENDED_TESTS=yes)
-	$(call test,vpp,vpp_gcov,cov)
+	$(call test,vpp_gcov,cov)
 
 .PHONY: test-wipe-cov
 test-wipe-cov:
@@ -516,29 +516,29 @@ test-refresh-deps:
 
 .PHONY: retest
 retest:
-	$(call test,vpp,vpp,retest)
+	$(call test,vpp,retest)
 
 .PHONY: retest-debug
 retest-debug:
-	$(call test,vpp,vpp_debug,retest)
+	$(call test,vpp_debug,retest)
 
 .PHONY: retest-all
 retest-all:
 	$(eval EXTENDED_TESTS=yes)
-	$(call test,vpp,vpp,retest)
+	$(call test,vpp,retest)
 
 .PHONY: retest-all-debug
 retest-all-debug:
 	$(eval EXTENDED_TESTS=yes)
-	$(call test,vpp,vpp_debug,retest)
+	$(call test,vpp_debug,retest)
 
 .PHONY: test-start-vpp-in-gdb
 test-start-vpp-in-gdb:
-	$(call test,vpp,vpp,start-gdb)
+	$(call test,vpp,start-gdb)
 
 .PHONY: test-start-vpp-debug-in-gdb
 test-start-vpp-debug-in-gdb:
-	$(call test,vpp,vpp_debug,start-gdb)
+	$(call test,vpp_debug,start-gdb)
 
 ifeq ("$(wildcard $(STARTUP_CONF))","")
 define run
