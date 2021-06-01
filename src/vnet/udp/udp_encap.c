@@ -64,7 +64,7 @@ udp_encap_add_and_lock (fib_protocol_t proto,
   u8 pfx_len = 0;
   index_t uei;
 
-  pool_get_aligned (udp_encap_pool, ue, CLIB_CACHE_LINE_BYTES);
+  pool_get_aligned_zero (udp_encap_pool, ue, CLIB_CACHE_LINE_BYTES);
   uei = ue - udp_encap_pool;
 
   vlib_validate_combined_counter (&(udp_encap_counters), uei);

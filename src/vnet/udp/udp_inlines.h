@@ -70,6 +70,9 @@ ip_udp_fixup_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 is_ip4)
       new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
 				     - sizeof (*ip0));
       udp0->length = new_l0;
+
+      vnet_buffer_offload_flags_clear (b0, VNET_BUFFER_OFFLOAD_F_IP_CKSUM |
+					     VNET_BUFFER_OFFLOAD_F_UDP_CKSUM);
     }
   else
     {
@@ -92,6 +95,8 @@ ip_udp_fixup_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 is_ip4)
 
       if (udp0->checksum == 0)
 	udp0->checksum = 0xffff;
+
+      vnet_buffer_offload_flags_clear (b0, VNET_BUFFER_OFFLOAD_F_UDP_CKSUM);
     }
 }
 
@@ -179,6 +184,11 @@ ip_udp_encap_two (vlib_main_t * vm, vlib_buffer_t * b0, vlib_buffer_t * b1,
 			      sizeof (*ip1));
       udp0->length = new_l0;
       udp1->length = new_l1;
+
+      vnet_buffer_offload_flags_clear (b0, VNET_BUFFER_OFFLOAD_F_IP_CKSUM |
+					     VNET_BUFFER_OFFLOAD_F_UDP_CKSUM);
+      vnet_buffer_offload_flags_clear (b1, VNET_BUFFER_OFFLOAD_F_IP_CKSUM |
+					     VNET_BUFFER_OFFLOAD_F_UDP_CKSUM);
     }
   else
     {
@@ -217,6 +227,9 @@ ip_udp_encap_two (vlib_main_t * vm, vlib_buffer_t * b0, vlib_buffer_t * b1,
 	udp0->checksum = 0xffff;
       if (udp1->checksum == 0)
 	udp1->checksum = 0xffff;
+
+      vnet_buffer_offload_flags_clear (b0, VNET_BUFFER_OFFLOAD_F_UDP_CKSUM);
+      vnet_buffer_offload_flags_clear (b1, VNET_BUFFER_OFFLOAD_F_UDP_CKSUM);
     }
 }
 
