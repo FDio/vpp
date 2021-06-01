@@ -16,6 +16,24 @@
       "revId": "977b475e330eea2ecda7b2f9b379aabf0ae5c3e0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d1dcb475_7b045b88",
+        "filename": "src/vnet/fib/fib_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 216,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2021-06-01T10:46:15Z",
+      "side": 1,
+      "message": "My issue is:\n - I set the path with sw_if_index ~0\n - I add the route in a non-default table\nThis makes VPP crash because, as the sw_if_index is not set in out, it is considered to be 0. Thus, VPP thinks the path is attached to an interface and checks if that interface is in the same table as the route. As it is not the case here, it considers it is a cross-table route. But then, with the flag IMPORT set, it causes a crash at some point.\n\nThe current tests for UDP encap work because the route is in the same VRF as the interface local 0 (sw_if_index 0), so we do not see any crash. I\u0027ll try to create a test case this afternoon that causes the crash.",
+      "parentUuid": "8227baa2_b3f836e9",
+      "revId": "977b475e330eea2ecda7b2f9b379aabf0ae5c3e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
