@@ -41,7 +41,7 @@ api_encode_host_type (lip_host_type_t type)
   return LCP_API_ITF_HOST_TAP;
 }
 
-void
+__clib_export void
 lcp_set_auto_intf (u8 is_auto)
 {
   lcp_main_t *lcpm = &lcp_main;
