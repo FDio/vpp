@@ -213,6 +213,7 @@ fib_api_path_decode (vl_api_fib_path_t *in,
         out->frp_classify_table_id = ntohl (in->nh.classify_table_index);
         break;
     case FIB_API_PATH_TYPE_UDP_ENCAP:
+        out->frp_sw_if_index = ntohl(in->sw_if_index);
         out->frp_flags |= FIB_ROUTE_PATH_UDP_ENCAP;
         out->frp_udp_encap_id = ntohl(in->nh.obj_id);
         break;
