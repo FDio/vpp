@@ -141,11 +141,11 @@ class TestUdpEncap(VppTestCase):
         # Routes via each UDP encap object - all combinations of v4 and v6.
         #
         route_4o4 = VppIpRoute(
-            self, "1.1.0.1", 32,
+            self, "1.1.0.1", 24,
             [VppRoutePath("0.0.0.0",
                           0xFFFFFFFF,
                           type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
-                          next_hop_id=udp_encap_0.id)])
+                          next_hop_id=udp_encap_0.id)], table_id=1)
         route_4o6 = VppIpRoute(
             self, "1.1.2.1", 32,
             [VppRoutePath("0.0.0.0",
@@ -172,12 +172,12 @@ class TestUdpEncap(VppTestCase):
         #
         # 4o4 encap
         #
-        p_4o4 = (Ether(src=self.pg0.remote_mac,
-                       dst=self.pg0.local_mac) /
+        p_4o4 = (Ether(src=self.pg1.remote_mac,
+                       dst=self.pg1.local_mac) /
                  IP(src="2.2.2.2", dst="1.1.0.1") /
                  UDP(sport=1234, dport=1234) /
                  Raw(b'\xa5' * 100))
-        rx = self.send_and_expect(self.pg0, p_4o4*NUM_PKTS, self.pg0)
+        rx = self.send_and_expect(self.pg1, p_4o4*NUM_PKTS, self.pg0)
         for p in rx:
             self.validate_outer4(p, udp_encap_0)
             p = IP(p["UDP"].payload.load)
