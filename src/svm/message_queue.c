@@ -277,7 +277,7 @@ svm_msg_q_alloc_msg (svm_msg_q_t * mq, u32 nbytes)
     msg.ring_index = ring - mq->rings;
     msg.elt_index = sr->tail;
     sr->tail = (sr->tail + 1) % ring->nitems;
-    clib_atomic_fetch_add_relax (&sr->cursize, 1);
+    clib_atomic_fetch_add_rel (&sr->cursize, 1);
     break;
   }
   return msg;
@@ -313,7 +313,7 @@ svm_msg_q_free_msg (svm_msg_q_t * mq, svm_msg_q_msg_t * msg)
     }
 
   need_signal = clib_atomic_load_relax_n (&sr->cursize) == ring->nitems;
-  clib_atomic_fetch_sub_relax (&sr->cursize, 1);
+  clib_atomic_fetch_sub_rel (&sr->cursize, 1);
 
   if (PREDICT_FALSE (need_signal))
     svm_msg_q_send_signal (mq, 1 /* is consumer */);
@@ -412,7 +412,7 @@ svm_msg_q_sub_raw (svm_msg_q_t *mq, svm_msg_q_msg_t *elem)
 
   sq->head = (sq->head + 1) % sq->maxsize;
 
-  sz = clib_atomic_fetch_sub_relax (&sq->cursize, 1);
+  sz = clib_atomic_fetch_sub_rel (&sq->cursize, 1);
   if (PREDICT_FALSE (sz == sq->maxsize))
     svm_msg_q_send_signal (mq, 1 /* is consumer */);
 
@@ -446,7 +446,7 @@ svm_msg_q_sub_raw_batch (svm_msg_q_t *mq, svm_msg_q_msg_t *msg_buf, u32 n_msgs)
       sq->head = (sq->head + to_deq) % sq->maxsize;
     }
 
-  clib_atomic_fetch_sub_relax (&sq->cursize, to_deq);
+  clib_atomic_fetch_sub_rel (&sq->cursize, to_deq);
   if (PREDICT_FALSE (sz == sq->maxsize))
     svm_msg_q_send_signal (mq, 1 /* is consumer */);
 
