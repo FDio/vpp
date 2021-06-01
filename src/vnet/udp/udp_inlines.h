@@ -20,6 +20,7 @@
 #include <vnet/ip/ip4.h>
 #include <vnet/ip/ip6.h>
 #include <vnet/udp/udp_packet.h>
+#include <vnet/interface_output.h>
 
 always_inline void *
 vlib_buffer_push_udp (vlib_buffer_t * b, u16 sp, u16 dp, u8 offload_csum)
@@ -99,6 +100,8 @@ always_inline void
 ip_udp_encap_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 * ec0, word ec_len,
 		  u8 is_ip4)
 {
+  vnet_calc_checksums_inline (vm, b0, is_ip4, !is_ip4);
+
   vlib_buffer_advance (b0, -ec_len);
 
   if (is_ip4)
@@ -131,6 +134,9 @@ ip_udp_encap_two (vlib_main_t * vm, vlib_buffer_t * b0, vlib_buffer_t * b1,
   udp_header_t *udp0, *udp1;
 
   ASSERT (_vec_len (ec0) == _vec_len (ec1));
+
+  vnet_calc_checksums_inline (vm, b0, is_v4, !is_v4);
+  vnet_calc_checksums_inline (vm, b1, is_v4, !is_v4);
 
   vlib_buffer_advance (b0, -ec_len);
   vlib_buffer_advance (b1, -ec_len);
