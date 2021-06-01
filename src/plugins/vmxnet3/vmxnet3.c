@@ -543,7 +543,31 @@ vmxnet3_rxq_irq_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
   vmxnet3_rxq_t *rxq = vec_elt_at_index (vd->rxqs, qid);
 
   if (vec_len (vd->rxqs) > qid && vd->rxqs[qid].int_mode != 0)
-    vnet_hw_if_rx_queue_set_int_pending (vnm, rxq->queue_index);
+    {
+      u32 thread_index =
+	vnet_hw_if_get_rx_queue_thread_index (vnm, vd->rxqs[qid].queue_index);
+      u32 q;
+      u8 skip = 0;
+      /*
+       * If the thread has more than 1 queue and the other queue is in polling
+       * mode, there is no need to trigger an interrupt
+       */
+      vec_foreach_index (q, vd->rxqs)
+	{
+	  vmxnet3_rxq_t *rxq = vec_elt_at_index (vd->rxqs, q);
+
+	  if (q == qid)
+	    continue;
+	  if ((rxq->int_mode == 0) && vnet_hw_if_get_rx_queue_thread_index (
+					vnm, rxq->queue_index) == thread_index)
+	    {
+	      skip = 1;
+	      break;
+	    }
+	}
+      if (skip == 0)
+	vnet_hw_if_rx_queue_set_int_pending (vnm, rxq->queue_index);
+    }
 }
 
 static void
