@@ -954,15 +954,6 @@ clib_error_t *nat44_api_hookup (vlib_main_t * vm);
 int snat_set_workers (uword * bitmap);
 
 /**
- * @brief Set NAT plugin number of frame queue elements
- *
- * @param frame_queue_nelts number of worker handoff frame queue elements
- *
- * @return 0 on success, non-zero value otherwise
- */
-int snat_set_frame_queue_nelts (u32 frame_queue_nelts);
-
-/**
  * @brief Enable/disable NAT44 feature on the interface
  *
  * @param sw_if_index software index of the interface
