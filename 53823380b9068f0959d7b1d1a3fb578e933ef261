@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bbb5b3b8_9e4682f4",
+        "filename": "src/plugins/wireguard/wireguard_peer.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 172,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2021-06-01T17:36:14Z",
+      "side": 1,
+      "message": "You should be matching against peer-\u003eallowed_ips using and address family agnostic version of fib_prefix_is_cover_addr_v4",
+      "revId": "53823380b9068f0959d7b1d1a3fb578e933ef261",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8e0a22b7_2d48a8c0",
+        "filename": "src/plugins/wireguard/wireguard_peer.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2021-06-01T17:36:14Z",
+      "side": 1,
+      "message": "Is this used any more?  Can it be removed?",
+      "revId": "53823380b9068f0959d7b1d1a3fb578e933ef261",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
