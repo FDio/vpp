@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8cfc8a3f_f69d5a81",
+        "filename": "src/vnet/udp/udp_inlines.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-06-01T13:46:36Z",
+      "side": 1,
+      "message": "maybe this should be a configurable parameter. not all UDP encap schemes need a UDP checksum. they want the chksum to be zero.",
+      "revId": "7aeb647c69d5d583d6df319ee7eac7a32bc9fced",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
