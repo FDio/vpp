@@ -1545,7 +1545,7 @@ set_frame_queue_nelts_command_fn (vlib_main_t *vm, unformat_input_t *input,
       error = clib_error_return (0, "frame_queue_nelts cannot be zero");
       goto done;
     }
-  if (snat_set_frame_queue_nelts (frame_queue_nelts) != 0)
+  if (nat44_ed_set_frame_queue_nelts (frame_queue_nelts) != 0)
     {
       error = clib_error_return (0, "snat_set_frame_queue_nelts failed");
       goto done;
