@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8227baa2_b3f836e9",
+        "filename": "src/vnet/fib/fib_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 216,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-06-01T09:57:27Z",
+      "side": 1,
+      "message": "neither the VRF nor the sw_if_index should be required when the path resolves via a UDP encap object.\nplease add a test case for the setup you see crashing.",
+      "revId": "977b475e330eea2ecda7b2f9b379aabf0ae5c3e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
