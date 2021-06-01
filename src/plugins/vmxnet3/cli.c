@@ -213,6 +213,15 @@ show_vmxnet3 (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr,
   vmxnet3_tx_comp *tx_comp;
   u16 qid;
 
+  vlib_cli_output (vm, "Global:");
+  for (u32 tid = 0; tid <= vlib_num_workers (); tid++)
+    {
+      vmxnet3_per_thread_data_t *ptd =
+	vec_elt_at_index (vmxm->per_thread_data, tid);
+      vlib_cli_output (vm, "  Thread %u: polling queue count %u", tid,
+		       ptd->polling_q_count);
+    }
+
   if (!hw_if_indices)
     return;
 
@@ -581,11 +590,14 @@ clib_error_t *
 vmxnet3_cli_init (vlib_main_t * vm)
 {
   vmxnet3_main_t *vmxm = &vmxnet3_main;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
 
   /* initialize binary API */
   vmxnet3_plugin_api_hookup (vm);
 
   vmxm->log_default = vlib_log_register_class ("vmxnet3", 0);
+
+  vec_validate (vmxm->per_thread_data, tm->n_vlib_mains - 1);
   return 0;
 }
 
