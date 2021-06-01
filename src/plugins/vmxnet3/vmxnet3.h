@@ -513,10 +513,17 @@ typedef struct
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  u32 polling_q_count;
+} vmxnet3_per_thread_data_t;
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u16 size;
-  u8 int_mode;
+  u32 mode;
   u8 buffer_pool_index;
   u32 queue_index;
+  u32 thread_index;
   vmxnet3_rx_ring rx_ring[VMXNET3_RX_RING_SIZE];
   vmxnet3_rx_desc *rx_desc[VMXNET3_RX_RING_SIZE];
   vmxnet3_rx_comp *rx_comp;
@@ -594,6 +601,7 @@ typedef struct
   vmxnet3_device_t *devices;
   u16 msg_id_base;
   vlib_log_class_t log_default;
+  vmxnet3_per_thread_data_t *per_thread_data;
 } vmxnet3_main_t;
 
 extern vmxnet3_main_t vmxnet3_main;
