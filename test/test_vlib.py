@@ -204,6 +204,19 @@ class TestVlib(VppTestCase):
         time.sleep(70)
         self.logger.info("Reaper should be complete...")
 
+    def test_pool(self):
+        """ Fixed-size Pool Test """
+
+        cmds = ["test pool",
+                ]
+
+        for cmd in cmds:
+            r = self.vapi.cli_return_response(cmd)
+            if r.retval != 0:
+                if hasattr(r, 'reply'):
+                    self.logger.info(cmd + " FAIL reply " + r.reply)
+                else:
+                    self.logger.info(cmd + " FAIL retval " + str(r.retval))
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
