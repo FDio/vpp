@@ -52,6 +52,24 @@
       "revId": "977b475e330eea2ecda7b2f9b379aabf0ae5c3e0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "76d2bd01_496f5c8f",
+        "filename": "src/vnet/fib/fib_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 216,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2021-06-02T16:43:25Z",
+      "side": 1,
+      "message": "I have modified the test udp_encap so that it fails without my patch and succeeds with it.\nHere are a few reasons why the bug was not detected in precedent tests:\n - If the table of the route is the default one, then fib_route_attached_cross_table() is happy\n - If the udp_encap ID is different than 0, as it is in the same union as the ip address in the path, ip46_address_is_zero(\u0026rpath-\u003efrp_addr) returns false and fib_route_attached_cross_table() returns false as well\n - If the udp_encap ID is 0 and the IP is 0, it still passes the test when the prefix of the route is a host (prefix-\u003elen\u003d32), because in this case the IP of the path is rewritten as the IP of the route (in function fib_table_route_path_fixup() ), thus, ip46_address_is_zero(\u0026rpath-\u003efrp_addr) returns false again.\n\nNow, if you think that the best way to deal with it is to change fib_route_attached_cross_table(), I see no objection in that. I\u0027ll update my patch in this direction.",
+      "parentUuid": "f1687c57_5b8bf6b2",
+      "revId": "977b475e330eea2ecda7b2f9b379aabf0ae5c3e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
