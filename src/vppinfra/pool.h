@@ -173,8 +173,12 @@ pool_free_elts (void *v)
     {
       n_free += vec_len (p->free_indices);
 
-      /* Space left at end of vector? */
-      n_free += vec_capacity (v, sizeof (p[0])) - vec_len (v);
+      /*
+       * Space left at end of vector?
+       * Fixed-size pools have max_elts set non-zero,
+       */
+      if (p->max_elts == 0)
+	n_free += vec_capacity (v, sizeof (p[0])) - vec_len (v);
     }
 
   return n_free;
@@ -298,33 +302,36 @@ do {                                                                    \
 #define pool_is_free_index(P,I) pool_is_free((P),(P)+(I))
 
 /** Free an object E in pool P. */
-#define pool_put(P,E)							\
-do {									\
-  typeof (P) _pool_var(p__) = (P);			                \
-  typeof (E) _pool_var(e__) = (E);			                \
-  pool_header_t * _pool_var (p) = pool_header (_pool_var(p__));		\
-  uword _pool_var (l) = _pool_var(e__) - _pool_var(p__);		\
-  ASSERT (vec_is_member (_pool_var(p__), _pool_var(e__)));		\
-  ASSERT (! pool_is_free (_pool_var(p__), _pool_var(e__)));		\
-									\
-  /* Add element to free bitmap and to free list. */			\
-  _pool_var (p)->free_bitmap =						\
-    clib_bitmap_ori_notrim (_pool_var (p)->free_bitmap,              	\
-                             _pool_var (l));	                        \
-                                                                        \
-  /* Preallocated pool? */                                              \
-  if (_pool_var (p)->max_elts)                                          \
-    {                                                                   \
-      ASSERT(_pool_var(l) < _pool_var (p)->max_elts);                   \
-      _pool_var(p)->free_indices[_vec_len(_pool_var(p)->free_indices)] = \
-                                 _pool_var(l);                          \
-      _vec_len(_pool_var(p)->free_indices) += 1;                        \
-    }                                                                   \
-  else                                                                  \
-    vec_add1 (_pool_var (p)->free_indices, _pool_var (l));		\
-                                                                        \
-  CLIB_MEM_POISON(_pool_var(e__), sizeof(_pool_var(e__)[0]));                                 \
-} while (0)
+#define pool_put(P, E)                                                        \
+  do                                                                          \
+    {                                                                         \
+      typeof (P) _pool_var (p__) = (P);                                       \
+      typeof (E) _pool_var (e__) = (E);                                       \
+      pool_header_t *_pool_var (p) = pool_header (_pool_var (p__));           \
+      uword _pool_var (l) = _pool_var (e__) - _pool_var (p__);                \
+      if (_pool_var (p)->max_elts == 0)                                       \
+	ASSERT (vec_is_member (_pool_var (p__), _pool_var (e__)));            \
+      ASSERT (!pool_is_free (_pool_var (p__), _pool_var (e__)));              \
+                                                                              \
+      /* Add element to free bitmap and to free list. */                      \
+      _pool_var (p)->free_bitmap =                                            \
+	clib_bitmap_ori_notrim (_pool_var (p)->free_bitmap, _pool_var (l));   \
+                                                                              \
+      /* Preallocated pool? */                                                \
+      if (_pool_var (p)->max_elts)                                            \
+	{                                                                     \
+	  ASSERT (_pool_var (l) < _pool_var (p)->max_elts);                   \
+	  _pool_var (p)                                                       \
+	    ->free_indices[_vec_len (_pool_var (p)->free_indices)] =          \
+	    _pool_var (l);                                                    \
+	  _vec_len (_pool_var (p)->free_indices) += 1;                        \
+	}                                                                     \
+      else                                                                    \
+	vec_add1 (_pool_var (p)->free_indices, _pool_var (l));                \
+                                                                              \
+      CLIB_MEM_POISON (_pool_var (e__), sizeof (_pool_var (e__)[0]));         \
+    }                                                                         \
+  while (0)
 
 /** Free pool element with given index. */
 #define pool_put_index(p,i)			\

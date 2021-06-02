@@ -20,11 +20,9 @@
 #include <vpp/app/version.h>
 
 /* *INDENT-OFF* */
-VLIB_PLUGIN_REGISTER () =
-{
-  .version = VPP_BUILD_VER,
-  .description = "C unit tests",
-  .default_disabled = 1,
+VLIB_PLUGIN_REGISTER () = {
+  .version = VPP_BUILD_VER, .description = "C unit tests",
+  // .default_disabled = 1,
 };
 /* *INDENT-ON* */
 
