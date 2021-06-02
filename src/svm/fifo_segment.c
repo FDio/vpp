@@ -161,8 +161,9 @@ fss_chunk_free_list_push (fifo_segment_header_t *fsh,
       c->next = old_head & FS_CL_HEAD_MASK;
       new_head = csp + ((old_head + FS_CL_HEAD_TINC) & FS_CL_HEAD_TMASK);
     }
-  while (!clib_atomic_cmp_and_swap_acq_relax (
-    &fss->free_chunks[fl_index], &old_head, &new_head, 1 /* weak */));
+  while (!__atomic_compare_exchange (&fss->free_chunks[fl_index], &old_head,
+				     &new_head, 0 /* weak */, __ATOMIC_RELEASE,
+				     __ATOMIC_RELAXED));
 }
 
 static void
@@ -181,8 +182,9 @@ fss_chunk_free_list_push_list (fifo_segment_header_t *fsh,
       tail->next = old_head & FS_CL_HEAD_MASK;
       new_head = headsp + ((old_head + FS_CL_HEAD_TINC) & FS_CL_HEAD_TMASK);
     }
-  while (!clib_atomic_cmp_and_swap_acq_relax (
-    &fss->free_chunks[fl_index], &old_head, &new_head, 1 /* weak */));
+  while (!__atomic_compare_exchange (&fss->free_chunks[fl_index], &old_head,
+				     &new_head, 0 /* weak */, __ATOMIC_RELEASE,
+				     __ATOMIC_RELAXED));
 }
 
 static svm_fifo_chunk_t *
@@ -210,8 +212,9 @@ fss_chunk_free_list_pop (fifo_segment_header_t *fsh, fifo_segment_slice_t *fss,
       c = fs_chunk_ptr (fsh, old_head & FS_CL_HEAD_MASK);
       new_head = c->next + ((old_head + FS_CL_HEAD_TINC) & FS_CL_HEAD_TMASK);
     }
-  while (!clib_atomic_cmp_and_swap_acq_relax (
-    &fss->free_chunks[fl_index], &old_head, &new_head, 1 /* weak */));
+  while (!__atomic_compare_exchange (&fss->free_chunks[fl_index], &old_head,
+				     &new_head, 0 /* weak */, __ATOMIC_RELEASE,
+				     __ATOMIC_RELAXED));
 
   return c;
 }
