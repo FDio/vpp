@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c3eae1af_1d0c3982",
+        "filename": "extras/vpp_stats_fs/README.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-06-02T12:00:59Z",
+      "side": 1,
+      "message": "did you forget to update the doc here? maybe the best would be to point to the go dep files otherwise the doc risks to become outdated quickly",
+      "revId": "979d935ab6119d068f1bebeb6bd9b8db82cc0e5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6b7e7590_2398f026",
+        "filename": "extras/vpp_stats_fs/README.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-06-02T12:00:59Z",
+      "side": 1,
+      "message": "ditto",
+      "revId": "979d935ab6119d068f1bebeb6bd9b8db82cc0e5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3e6b165e_63e8c3dc",
+        "filename": "extras/vpp_stats_fs/cmd.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-06-02T12:00:59Z",
+      "side": 1,
+      "message": "- is the LOG_PERROR flag also supported in Go? it would allow to automatically dump to stderr too.\n- it would be nice to also dump debug messages to syslog when debug is set",
+      "revId": "979d935ab6119d068f1bebeb6bd9b8db82cc0e5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "db3808c0_568c81f6",
+        "filename": "extras/vpp_stats_fs/cmd.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-06-02T12:00:59Z",
+      "side": 1,
+      "message": "maybe use a log() function which does the format and print to stderr and syslog? Esp. to avoid to forget to print a message to stderr or to syslog",
+      "revId": "979d935ab6119d068f1bebeb6bd9b8db82cc0e5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "25c51a0a_f8e30bb7",
+        "filename": "extras/vpp_stats_fs/stats_fs.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-06-02T12:00:59Z",
+      "side": 1,
+      "message": "here is an example where we dump to syslog but not to stderr",
+      "revId": "979d935ab6119d068f1bebeb6bd9b8db82cc0e5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
