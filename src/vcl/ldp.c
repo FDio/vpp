@@ -2067,6 +2067,9 @@ setsockopt (int fd, int level, int optname,
 	      rv = vls_attr (vlsh, VPPCOM_ATTR_SET_BROADCAST,
 			     (void *) optval, &optlen);
 	      break;
+	    case SO_LINGER:
+	      rv = 0;
+	      break;
 	    default:
 	      LDBG (0, "ERROR: fd %d: setsockopt SOL_SOCKET: vlsh %u "
 		    "optname %d unsupported!", fd, vlsh, optname);
