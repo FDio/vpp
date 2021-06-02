@@ -386,6 +386,8 @@ typedef struct
   bond_per_thread_data_t *per_thread_data;
 
   lacp_stats_t **stats;
+
+  u32 process_node_index;
 } bond_main_t;
 
 /* bond packet trace capture */
@@ -406,7 +408,6 @@ typedef struct
 } bond_load_balance_func_t;
 
 extern vlib_node_registration_t bond_input_node;
-extern vlib_node_registration_t bond_process_node;
 extern vnet_device_class_t bond_dev_class;
 extern bond_main_t bond_main;
 
