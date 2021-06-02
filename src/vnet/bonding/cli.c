@@ -15,12 +15,10 @@
  *------------------------------------------------------------------
  */
 
-#include <stdint.h>
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
-#include <vnet/ethernet/ethernet.h>
 #include <vnet/bonding/node.h>
 #include <vpp/stats/stat_segment.h>
+#include <vnet/ip-neighbor/ip4_neighbor.h>
+#include <vnet/ip-neighbor/ip6_neighbor.h>
 
 void
 bond_disable_collecting_distributing (vlib_main_t * vm, member_if_t * mif)
@@ -60,7 +58,7 @@ bond_disable_collecting_distributing (vlib_main_t * vm, member_if_t * mif)
 
   /* We get a new member just becoming active */
   if (switching_active)
-    vlib_process_signal_event (bm->vlib_main, bond_process_node.index,
+    vlib_process_signal_event (bm->vlib_main, bm->process_node_index,
 			       BOND_SEND_GARP_NA, bif->hw_if_index);
   clib_spinlock_unlock_if_init (&bif->lockp);
 }
@@ -126,7 +124,7 @@ bond_sort_members (bond_if_t * bif)
 
   vec_sort_with_function (bif->active_members, bond_member_sort);
   if (old_active != bif->active_members[0])
-    vlib_process_signal_event (bm->vlib_main, bond_process_node.index,
+    vlib_process_signal_event (bm->vlib_main, bm->process_node_index,
 			       BOND_SEND_GARP_NA, bif->hw_if_index);
 }
 
@@ -163,7 +161,7 @@ bond_enable_collecting_distributing (vlib_main_t * vm, member_if_t * mif)
     {
       if (vec_len (bif->active_members) == 1)
 	/* First member becomes active? */
-	vlib_process_signal_event (bm->vlib_main, bond_process_node.index,
+	vlib_process_signal_event (bm->vlib_main, bm->process_node_index,
 				   BOND_SEND_GARP_NA, bif->hw_if_index);
       else
 	bond_sort_members (bif);
@@ -373,6 +371,52 @@ bond_delete_if (vlib_main_t * vm, u32 sw_if_index)
   return 0;
 }
 
+static walk_rc_t
+bond_active_interface_switch_cb (vnet_main_t *vnm, u32 sw_if_index, void *arg)
+{
+  bond_main_t *bm = &bond_main;
+
+  ip4_neighbor_advertise (bm->vlib_main, bm->vnet_main, sw_if_index, NULL);
+  ip6_neighbor_advertise (bm->vlib_main, bm->vnet_main, sw_if_index, NULL);
+
+  return (WALK_CONTINUE);
+}
+
+static uword
+bond_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  uword event_type, *event_data = 0;
+
+  while (1)
+    {
+      u32 i;
+      u32 hw_if_index;
+
+      vlib_process_wait_for_event (vm);
+      event_type = vlib_process_get_events (vm, &event_data);
+      ASSERT (event_type == BOND_SEND_GARP_NA);
+      for (i = 0; i < vec_len (event_data); i++)
+	{
+	  hw_if_index = event_data[i];
+	  if (vnet_get_hw_interface_or_null (vnm, hw_if_index))
+	    /* walk hw interface to process all subinterfaces */
+	    vnet_hw_interface_walk_sw (vnm, hw_if_index,
+				       bond_active_interface_switch_cb, 0);
+	}
+      vec_reset_length (event_data);
+    }
+  return 0;
+}
+
+static void
+bond_create_process (vlib_main_t *vm, bond_main_t *bm)
+{
+  if (bm->process_node_index == 0)
+    bm->process_node_index = vlib_process_create (
+      vm, "bond-process", bond_process, 16 /* log2_n_stack_bytes */);
+}
+
 void
 bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
 {
@@ -398,6 +442,13 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
     {
       args->rv = VNET_API_ERROR_INVALID_ARGUMENT;
       args->error = clib_error_return (0, "Invalid load-balance");
+      return;
+    }
+  bond_create_process (vm, bm);
+  if (bm->process_node_index == 0)
+    {
+      args->rv = VNET_API_ERROR_INIT_FAILED;
+      args->error = clib_error_return (0, "process create failed");
       return;
     }
   pool_get (bm->interfaces, bif);
