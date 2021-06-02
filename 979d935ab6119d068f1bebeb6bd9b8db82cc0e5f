@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "5a83c61b_8b580860",
+        "filename": "extras/vpp_stats_fs/README.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2021-06-02T14:05:17Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c3eae1af_1d0c3982",
+      "revId": "979d935ab6119d068f1bebeb6bd9b8db82cc0e5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6b7e7590_2398f026",
         "filename": "extras/vpp_stats_fs/README.md",
         "patchSetId": 1
@@ -33,6 +51,24 @@
       "revId": "979d935ab6119d068f1bebeb6bd9b8db82cc0e5f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2de89320_ca15d2b2",
+        "filename": "extras/vpp_stats_fs/README.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2021-06-02T14:05:17Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6b7e7590_2398f026",
+      "revId": "979d935ab6119d068f1bebeb6bd9b8db82cc0e5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "36bbcc76_755cdc95",
+        "filename": "extras/vpp_stats_fs/cmd.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2021-06-02T14:05:17Z",
+      "side": 1,
+      "message": "Debug messages correspond are in fact Go-Fuse debug messages (READ, OPEN, GETATTR, ...) and these are dump as well when the flag is set to true",
+      "parentUuid": "3e6b165e_63e8c3dc",
+      "revId": "979d935ab6119d068f1bebeb6bd9b8db82cc0e5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "db3808c0_568c81f6",
         "filename": "extras/vpp_stats_fs/cmd.go",
         "patchSetId": 1
@@ -70,6 +124,24 @@
     },
     {
       "key": {
+        "uuid": "b0f8fa21_1c399763",
+        "filename": "extras/vpp_stats_fs/cmd.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2021-06-02T14:05:17Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "db3808c0_568c81f6",
+      "revId": "979d935ab6119d068f1bebeb6bd9b8db82cc0e5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "25c51a0a_f8e30bb7",
         "filename": "extras/vpp_stats_fs/stats_fs.go",
         "patchSetId": 1
@@ -84,6 +156,24 @@
       "revId": "979d935ab6119d068f1bebeb6bd9b8db82cc0e5f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d7e4aade_b8d8f327",
+        "filename": "extras/vpp_stats_fs/stats_fs.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2021-06-02T14:05:17Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "25c51a0a_f8e30bb7",
+      "revId": "979d935ab6119d068f1bebeb6bd9b8db82cc0e5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
