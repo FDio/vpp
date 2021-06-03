@@ -32,6 +32,7 @@ from vpp_sub_interface import VppSubInterface
 from vpp_lo_interface import VppLoInterface
 from vpp_bvi_interface import VppBviInterface
 from vpp_papi_provider import VppPapiProvider
+from vpp_papi import VppEnum
 import vpp_papi
 from vpp_papi.vpp_stats import VPPStats
 from vpp_papi.vpp_transport_socket import VppTransportSocketIOError
@@ -915,7 +916,8 @@ class VppTestCase(CPUInterface, unittest.TestCase):
         cls._pcaps = []
 
     @classmethod
-    def create_pg_interfaces(cls, interfaces, gso=0, gso_size=0):
+    def create_pg_interfaces_internal(cls, interfaces, gso=0, gso_size=0,
+                                      mode=None):
         """
         Create packet-generator interfaces.
 
@@ -925,11 +927,35 @@ class VppTestCase(CPUInterface, unittest.TestCase):
         """
         result = []
         for i in interfaces:
-            intf = VppPGInterface(cls, i, gso, gso_size)
+            intf = VppPGInterface(cls, i, gso, gso_size, mode)
             setattr(cls, intf.name, intf)
             result.append(intf)
         cls.pg_interfaces = result
         return result
+
+    @classmethod
+    def create_pg_ip4_interfaces(cls, interfaces, gso=0, gso_size=0):
+        pgmode = VppEnum.vl_api_pg_interface_mode_t
+        return cls.create_pg_interfaces_internal(interfaces, gso, gso_size,
+                                                 pgmode.PG_API_MODE_IP4)
+
+    @classmethod
+    def create_pg_ip6_interfaces(cls, interfaces, gso=0, gso_size=0):
+        pgmode = VppEnum.vl_api_pg_interface_mode_t
+        return cls.create_pg_interfaces_internal(interfaces, gso, gso_size,
+                                                 pgmode.PG_API_MODE_IP6)
+
+    @classmethod
+    def create_pg_interfaces(cls, interfaces, gso=0, gso_size=0):
+        pgmode = VppEnum.vl_api_pg_interface_mode_t
+        return cls.create_pg_interfaces_internal(interfaces, gso, gso_size,
+                                                 pgmode.PG_API_MODE_ETHERNET)
+
+    @classmethod
+    def create_pg_ethernet_interfaces(cls, interfaces, gso=0, gso_size=0):
+        pgmode = VppEnum.vl_api_pg_interface_mode_t
+        return cls.create_pg_interfaces_internal(interfaces, gso, gso_size,
+                                                 pgmode.PG_API_MODE_ETHERNET)
 
     @classmethod
     def create_loopback_interfaces(cls, count):
