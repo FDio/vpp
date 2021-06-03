@@ -111,6 +111,7 @@ memif_interface_tx_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   memif_region_index_t last_region = ~0;
   void *last_region_shm = 0;
   u16 head, tail;
+  f64 now;
 
   ring = mq->ring;
   ring_size = 1 << mq->log2_ring_size;
@@ -132,6 +133,34 @@ retry:
       mq->last_tail += tail - mq->last_tail;
       free_slots = head - tail;
     }
+
+  now = vlib_time_now(vm);
+  if (free_slots > mq->saved_free_slots) {
+	  /* the queue has been drained since the last TX */
+	  f64 queue_wait_time = now - mq->last_known_drain_time;
+	  f64 queue_wait_measurement_uncertainty = now - mq->last_tx_start_time;
+	  if (queue_wait_measurement_uncertainty < 0.1) {
+	      u32 jitter_ns = queue_wait_measurement_uncertainty * 1000000000.0;
+	      u32 queue_wait_time_ns = queue_wait_time * 1000000000.0;
+	      if (queue_wait_time > 4.0) {
+		  queue_wait_time_ns = ~0;
+	      }
+	      u8 bin_index = count_leading_zeros((u64)queue_wait_time_ns) - 32;
+	      u8 jitter_bin_index = count_leading_zeros((u64)jitter_ns) - 32;
+
+	      vlib_increment_simple_counter (
+                  &mq->q_wait_bin_counters[bin_index], vm->thread_index,
+                  0,
+                  1);
+	      vlib_increment_simple_counter (
+                  &mq->q_wait_jitter_bin_counters[jitter_bin_index], vm->thread_index,
+                  0,
+                  1);
+	      }
+
+	  mq->last_known_drain_time = now;
+  }
+  mq->last_tx_start_time = now;
 
   while (n_left && free_slots)
     {
@@ -267,6 +296,8 @@ no_free_slots:
 
   vec_reset_length (ptd->copy_ops);
   vec_reset_length (ptd->buffers);
+
+  mq->saved_free_slots = free_slots;
 
   if (type == MEMIF_RING_S2M)
     __atomic_store_n (&ring->head, slot, __ATOMIC_RELEASE);
