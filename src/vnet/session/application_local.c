@@ -535,7 +535,8 @@ global_scope:
   table_index = session_lookup_get_index_for_fib (fib_proto, sep->fib_index);
   ll = session_lookup_listener_wildcard (table_index, sep);
 
-  if (ll)
+  /* Avoid connecting app to own listener */
+  if (ll && ll->app_index != app->app_index)
     return ct_connect (app_wrk, ll, sep_ext);
 
   /* Failed to connect but no error */
