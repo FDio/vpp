@@ -18,7 +18,7 @@
 #ifndef __included_wg_cookie_h__
 #define __included_wg_cookie_h__
 
-#include <vnet/ip/ip4_packet.h>
+#include <vnet/ip/ip46_address.h>
 #include <wireguard/wireguard_noise.h>
 
 enum cookie_mac_state
@@ -83,12 +83,10 @@ typedef struct cookie_checker
 void cookie_maker_init (cookie_maker_t *, const uint8_t[COOKIE_INPUT_SIZE]);
 void cookie_checker_update (cookie_checker_t *, uint8_t[COOKIE_INPUT_SIZE]);
 void cookie_maker_mac (cookie_maker_t *, message_macs_t *, void *, size_t);
-enum cookie_mac_state cookie_checker_validate_macs (vlib_main_t * vm,
-						    cookie_checker_t *,
-						    message_macs_t *, void *,
-						    size_t, bool,
-						    ip4_address_t ip4,
-						    u16 udp_port);
+enum cookie_mac_state
+cookie_checker_validate_macs (vlib_main_t *vm, cookie_checker_t *,
+			      message_macs_t *, void *, size_t, bool,
+			      ip46_address_t *ip, u16 udp_port);
 
 #endif /* __included_wg_cookie_h__ */
 

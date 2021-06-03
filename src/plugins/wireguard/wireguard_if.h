@@ -31,8 +31,6 @@ typedef struct wg_if_t_
   cookie_checker_t cookie_checker;
   u16 port;
 
-  wg_index_table_t index_table;
-
   /* Source IP address for originated packets */
   ip_address_t src_ip;
 
