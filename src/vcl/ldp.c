@@ -179,14 +179,13 @@ ldp_alloc_workers (void)
   pool_alloc (ldp->workers, LDP_MAX_NWORKERS);
 }
 
-static inline int
+static int
 ldp_init (void)
 {
   ldp_worker_ctx_t *ldpw;
   int rv;
 
-  if (PREDICT_TRUE (ldp->init))
-    return 0;
+  ASSERT (!ldp->init);
 
   ldp->init = 1;
   ldp->vcl_needs_real_epoll = 1;
@@ -295,14 +294,20 @@ ldp_init (void)
   return 0;
 }
 
+#define ldp_init_check()                                                      \
+  if (PREDICT_FALSE (!ldp->init))                                             \
+    {                                                                         \
+      if ((errno = -ldp_init ()))                                             \
+	return -1;                                                            \
+    }
+
 int
 close (int fd)
 {
   vls_handle_t vlsh;
   int rv, epfd;
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
@@ -353,8 +358,7 @@ read (int fd, void *buf, size_t nbytes)
   vls_handle_t vlsh;
   ssize_t size;
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
@@ -381,8 +385,7 @@ readv (int fd, const struct iovec * iov, int iovcnt)
   vls_handle_t vlsh;
   ssize_t size = 0;
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
@@ -421,8 +424,7 @@ write (int fd, const void *buf, size_t nbytes)
   vls_handle_t vlsh;
   ssize_t size = 0;
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
@@ -449,8 +451,7 @@ writev (int fd, const struct iovec * iov, int iovcnt)
   vls_handle_t vlsh;
   int i, rv = 0;
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
@@ -543,8 +544,7 @@ fcntl (int fd, int cmd, ...)
   va_list ap;
   int rv;
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   va_start (ap, cmd);
   rv = fcntl_internal (fd, cmd, ap);
@@ -559,8 +559,7 @@ fcntl64 (int fd, int cmd, ...)
   va_list ap;
   int rv;
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   va_start (ap, cmd);
   rv = fcntl_internal (fd, cmd, ap);
@@ -575,8 +574,7 @@ ioctl (int fd, unsigned long int cmd, ...)
   va_list ap;
   int rv;
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   va_start (ap, cmd);
 
@@ -980,8 +978,7 @@ socket (int domain, int type, int protocol)
   u8 is_nonblocking = type & SOCK_NONBLOCK ? 1 : 0;
   vls_handle_t vlsh;
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   if (((domain == AF_INET) || (domain == AF_INET6)) &&
       ((sock_type == SOCK_STREAM) || (sock_type == SOCK_DGRAM)))
@@ -1035,8 +1032,7 @@ socketpair (int domain, int type, int protocol, int fds[2])
 {
   int rv, sock_type = type & ~(SOCK_CLOEXEC | SOCK_NONBLOCK);
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   if (((domain == AF_INET) || (domain == AF_INET6)) &&
       ((sock_type == SOCK_STREAM) || (sock_type == SOCK_DGRAM)))
@@ -1060,8 +1056,7 @@ bind (int fd, __CONST_SOCKADDR_ARG addr, socklen_t len)
   vls_handle_t vlsh;
   int rv;
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
@@ -1134,8 +1129,7 @@ ldp_copy_ep_to_sockaddr (__SOCKADDR_ARG addr, socklen_t * __restrict len,
   int rv = 0;
   int sa_len, copy_len;
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   if (addr && len && ep)
     {
@@ -1179,8 +1173,7 @@ getsockname (int fd, __SOCKADDR_ARG addr, socklen_t * __restrict len)
   vls_handle_t vlsh;
   int rv;
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
@@ -1221,8 +1214,7 @@ connect (int fd, __CONST_SOCKADDR_ARG addr, socklen_t len)
   vls_handle_t vlsh;
   int rv;
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   if (!addr)
     {
@@ -1303,8 +1295,7 @@ getpeername (int fd, __SOCKADDR_ARG addr, socklen_t * __restrict len)
   vls_handle_t vlsh;
   int rv;
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
@@ -1344,8 +1335,7 @@ send (int fd, const void *buf, size_t n, int flags)
   vls_handle_t vlsh = ldp_fd_to_vlsh (fd);
   ssize_t size;
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   if (vlsh != VLS_INVALID_HANDLE)
     {
@@ -1371,8 +1361,7 @@ sendfile (int out_fd, int in_fd, off_t * offset, size_t len)
   vls_handle_t vlsh;
   ssize_t size = 0;
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   vlsh = ldp_fd_to_vlsh (out_fd);
   if (vlsh != VLS_INVALID_HANDLE)
@@ -1521,8 +1510,7 @@ recv (int fd, void *buf, size_t n, int flags)
   vls_handle_t vlsh;
   ssize_t size;
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
@@ -1612,8 +1600,7 @@ sendto (int fd, const void *buf, size_t n, int flags,
   vls_handle_t vlsh;
   ssize_t size;
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != INVALID_SESSION_ID)
@@ -1640,8 +1627,7 @@ recvfrom (int fd, void *__restrict buf, size_t n, int flags,
   vls_handle_t vlsh;
   ssize_t size;
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
@@ -1667,8 +1653,7 @@ sendmsg (int fd, const struct msghdr * msg, int flags)
   vls_handle_t vlsh;
   ssize_t size;
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
@@ -1715,8 +1700,7 @@ sendmmsg (int fd, struct mmsghdr *vmessages, unsigned int vlen, int flags)
   const char *func_str;
   u32 sh = ldp_fd_to_vlsh (fd);
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   if (sh != INVALID_SESSION_ID)
     {
@@ -1761,8 +1745,7 @@ recvmsg (int fd, struct msghdr * msg, int flags)
   vls_handle_t vlsh;
   ssize_t size;
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
@@ -1817,8 +1800,7 @@ recvmmsg (int fd, struct mmsghdr *vmessages,
   const char *func_str;
   u32 sh = ldp_fd_to_vlsh (fd);
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   if (sh != INVALID_SESSION_ID)
     {
@@ -1865,8 +1847,7 @@ getsockopt (int fd, int level, int optname,
   vls_handle_t vlsh;
   int rv;
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
@@ -1995,8 +1976,7 @@ setsockopt (int fd, int level, int optname,
   vls_handle_t vlsh;
   int rv;
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
@@ -2100,8 +2080,7 @@ listen (int fd, int n)
   vls_handle_t vlsh;
   int rv;
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
@@ -2132,8 +2111,7 @@ ldp_accept4 (int listen_fd, __SOCKADDR_ARG addr,
   vls_handle_t listen_vlsh, accept_vlsh;
   int rv;
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   listen_vlsh = ldp_fd_to_vlsh (listen_fd);
   if (listen_vlsh != VLS_INVALID_HANDLE)
@@ -2200,8 +2178,7 @@ shutdown (int fd, int how)
   int rv = 0, flags;
   u32 flags_len = sizeof (flags);
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
@@ -2241,8 +2218,7 @@ epoll_create1 (int flags)
   vls_handle_t vlsh;
   int rv;
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   if (ldp->vcl_needs_real_epoll || vls_use_real_epoll ())
     {
@@ -2285,8 +2261,7 @@ epoll_ctl (int epfd, int op, int fd, struct epoll_event *event)
   vls_handle_t vep_vlsh, vlsh;
   int rv;
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   vep_vlsh = ldp_fd_to_vlsh (epfd);
   if (PREDICT_FALSE (vep_vlsh == VLS_INVALID_HANDLE))
@@ -2373,8 +2348,7 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
   int libc_epfd, rv = 0;
   vls_handle_t ep_vlsh;
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   if (PREDICT_FALSE (!events || (timeout < -1)))
     {
@@ -2450,8 +2424,7 @@ ldp_epoll_pwait_eventfd (int epfd, struct epoll_event *events,
   int libc_epfd, rv = 0, num_ev;
   vls_handle_t ep_vlsh;
 
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   if (PREDICT_FALSE (!events || (timeout < -1)))
     {
@@ -2686,8 +2659,7 @@ int
 ppoll (struct pollfd *fds, nfds_t nfds,
        const struct timespec *timeout, const sigset_t * sigmask)
 {
-  if ((errno = -ldp_init ()))
-    return -1;
+  ldp_init_check ();
 
   clib_warning ("LDP<%d>: LDP-TBD", getpid ());
   errno = ENOSYS;
