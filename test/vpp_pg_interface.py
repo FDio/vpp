@@ -9,6 +9,7 @@ import scapy.compat
 from scapy.utils import wrpcap, rdpcap, PcapReader
 from scapy.plist import PacketList
 from vpp_interface import VppInterface
+from vpp_papi import VppEnum
 
 from scapy.layers.l2 import Ether, ARP
 from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_NA,\
@@ -111,11 +112,11 @@ class VppPGInterface(VppInterface):
         self._out_history_counter += 1
         return v
 
-    def __init__(self, test, pg_index, gso, gso_size):
+    def __init__(self, test, pg_index, gso, gso_size, mode):
         """ Create VPP packet-generator interface """
         super().__init__(test)
 
-        r = test.vapi.pg_create_interface(pg_index, gso, gso_size)
+        r = test.vapi.pg_create_interface_v2(pg_index, gso, gso_size, mode)
         self.set_sw_if_index(r.sw_if_index)
 
         self._in_history_counter = 0

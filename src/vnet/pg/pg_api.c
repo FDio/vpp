@@ -40,12 +40,13 @@
 
 #include <vlibapi/api_helper_macros.h>
 
-
-#define foreach_pg_api_msg                                              \
-_(PG_CREATE_INTERFACE, pg_create_interface)                             \
-_(PG_CAPTURE, pg_capture)                                               \
-_(PG_ENABLE_DISABLE, pg_enable_disable)                                 \
-_(PG_INTERFACE_ENABLE_DISABLE_COALESCE, pg_interface_enable_disable_coalesce)
+#define foreach_pg_api_msg                                                    \
+  _ (PG_CREATE_INTERFACE, pg_create_interface)                                \
+  _ (PG_CREATE_INTERFACE_V2, pg_create_interface_v2)                          \
+  _ (PG_CAPTURE, pg_capture)                                                  \
+  _ (PG_ENABLE_DISABLE, pg_enable_disable)                                    \
+  _ (PG_INTERFACE_ENABLE_DISABLE_COALESCE,                                    \
+     pg_interface_enable_disable_coalesce)
 
 static void
 vl_api_pg_create_interface_t_handler (vl_api_pg_create_interface_t * mp)
@@ -54,9 +55,9 @@ vl_api_pg_create_interface_t_handler (vl_api_pg_create_interface_t * mp)
   int rv = 0;
 
   pg_main_t *pg = &pg_main;
-  u32 pg_if_id = pg_interface_add_or_get (pg, ntohl (mp->interface_id),
-					  mp->gso_enabled,
-					  ntohl (mp->gso_size), 0);
+  u32 pg_if_id =
+    pg_interface_add_or_get (pg, ntohl (mp->interface_id), mp->gso_enabled,
+			     ntohl (mp->gso_size), 0, PG_MODE_ETHERNET);
   pg_interface_t *pi = pool_elt_at_index (pg->interfaces, pg_if_id);
 
   /* *INDENT-OFF* */
@@ -65,6 +66,22 @@ vl_api_pg_create_interface_t_handler (vl_api_pg_create_interface_t * mp)
     rmp->sw_if_index = ntohl(pi->sw_if_index);
   }));
   /* *INDENT-ON* */
+}
+
+static void
+vl_api_pg_create_interface_v2_t_handler (vl_api_pg_create_interface_v2_t *mp)
+{
+  vl_api_pg_create_interface_v2_reply_t *rmp;
+  int rv = 0;
+
+  pg_main_t *pg = &pg_main;
+  u32 pg_if_id =
+    pg_interface_add_or_get (pg, ntohl (mp->interface_id), mp->gso_enabled,
+			     ntohl (mp->gso_size), 0, (u8) mp->mode);
+  pg_interface_t *pi = pool_elt_at_index (pg->interfaces, pg_if_id);
+
+  REPLY_MACRO2 (VL_API_PG_CREATE_INTERFACE_V2_REPLY,
+		({ rmp->sw_if_index = ntohl (pi->sw_if_index); }));
 }
 
 static void
