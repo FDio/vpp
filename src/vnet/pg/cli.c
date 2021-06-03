@@ -333,6 +333,23 @@ validate_stream (pg_stream_t * s)
   return 0;
 }
 
+const char *
+pg_interface_get_input_node (pg_interface_t *pi)
+{
+  switch (pi->mode)
+    {
+    case PG_MODE_ETHERNET:
+      return ("ethernet-input");
+    case PG_MODE_IP4:
+      return ("ip4-input");
+    case PG_MODE_IP6:
+      return ("ip6-input");
+    }
+
+  ASSERT (0);
+  return ("ethernet-input");
+}
+
 static clib_error_t *
 new_stream (vlib_main_t * vm,
 	    unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -351,7 +368,7 @@ new_stream (vlib_main_t * vm,
   s.node_index = ~0;
   s.max_packet_bytes = s.min_packet_bytes = 64;
   s.buffer_bytes = vlib_buffer_get_default_data_size (vm);
-  s.if_id = 0;
+  s.if_id = ~0;
   s.n_max_frame = VLIB_FRAME_SIZE;
   pcap_file_name = 0;
 
@@ -423,12 +440,19 @@ new_stream (vlib_main_t * vm,
       goto done;
     }
 
+  ASSERT (s.if_id != ~0);
+
   if (s.node_index == ~0)
     {
       if (pcap_file_name != 0)
 	{
-	  vlib_node_t *n =
-	    vlib_get_node_by_name (vm, (u8 *) "ethernet-input");
+	  vlib_node_t *n;
+
+	  if (s.if_id != ~0)
+	    n = vlib_get_node_by_name (vm, (u8 *) pg_interface_get_input_node (
+					     &pg->interfaces[s.if_id]));
+	  else
+	    n = vlib_get_node_by_name (vm, (u8 *) "ethernet-input");
 	  s.node_index = n->index;
 	}
       else
@@ -694,8 +718,8 @@ create_pg_if_cmd_fn (vlib_main_t * vm,
 	}
     }
 
-  pg_interface_add_or_get (pg, if_id, gso_enabled, gso_size,
-			   coalesce_enabled);
+  pg_interface_add_or_get (pg, if_id, gso_enabled, gso_size, coalesce_enabled,
+			   PG_MODE_ETHERNET);
 
 done:
   unformat_free (line_input);
