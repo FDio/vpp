@@ -480,6 +480,21 @@ memif_init_regions_and_queues (memif_if_t * mif)
       if (mif->flags & MEMIF_IF_FLAG_ZERO_COPY)
 	vec_validate_aligned (mq->buffers, 1 << mq->log2_ring_size,
 			      CLIB_CACHE_LINE_BYTES);
+
+      u32 j;
+      for (j = 0; j < MEMIF_N_Q_WAIT_BIN_COUNTERS; j++) {
+	      mq->q_wait_bin_counters[j].name = 0;
+              /* filled in once only */
+              mq->q_wait_bin_counters[j].stat_segment_name = (void *)
+                           format (0, "/memif/%d/queues/%d/q_wait_bins/%d/hits%c", mif->sw_if_index, i, j, 0);
+	      vlib_validate_simple_counter(&mq->q_wait_bin_counters[j], 0);
+	      vlib_zero_simple_counter(&mq->q_wait_bin_counters[j], 0);
+      }
+      f64 now = vlib_time_now(vm);
+      mq->last_tx_start_time = now;
+      mq->last_known_drain_time = now;
+      mq->saved_free_slots = (1 << mq->log2_ring_size);
+
     }
   /* *INDENT-ON* */
 
@@ -506,6 +521,19 @@ memif_init_regions_and_queues (memif_if_t * mif)
       if (mif->flags & MEMIF_IF_FLAG_ZERO_COPY)
 	vec_validate_aligned (mq->buffers, 1 << mq->log2_ring_size,
 			      CLIB_CACHE_LINE_BYTES);
+      u32 j;
+      for (j = 0; j < MEMIF_N_Q_WAIT_BIN_COUNTERS; j++) {
+	      mq->q_wait_bin_counters[j].name = 0;
+              mq->q_wait_bin_counters[j].stat_segment_name = (void *)
+                           format (0, "/memif/%d/queues/%d/q_wait_bins/%d/hits%c", mif->sw_if_index, i, j, 0);
+	      vlib_validate_simple_counter(&mq->q_wait_bin_counters[j], 0);
+	      vlib_zero_simple_counter(&mq->q_wait_bin_counters[j], 0);
+      }
+      f64 now = vlib_time_now(vm);
+      mq->last_tx_start_time = now;
+      mq->last_known_drain_time = now;
+      mq->saved_free_slots = (1 << mq->log2_ring_size);
+
     }
   /* *INDENT-ON* */
 

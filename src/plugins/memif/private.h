@@ -139,6 +139,14 @@ typedef struct
   uword int_clib_file_index;
   u64 int_count;
 
+  /* queue drain monitoring */
+  f64 last_tx_start_time;
+  f64 last_known_drain_time;
+  u16 saved_free_slots;
+#define MEMIF_N_Q_WAIT_BIN_COUNTERS (32+1)
+  vlib_simple_counter_main_t q_wait_bin_counters[MEMIF_N_Q_WAIT_BIN_COUNTERS];
+  //vlib_simple_counter_main_t q_wait_jitter_bin_counters[MEMIF_N_Q_WAIT_COUNTERS];
+
   /* queue type */
   memif_ring_type_t type;
   u32 queue_index;
