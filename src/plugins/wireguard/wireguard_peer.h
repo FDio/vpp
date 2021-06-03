@@ -31,7 +31,14 @@ typedef struct ip4_udp_header_t_
   udp_header_t udp;
 } __clib_packed ip4_udp_header_t;
 
+typedef struct ip6_udp_header_t_
+{
+  ip6_header_t ip6;
+  udp_header_t udp;
+} __clib_packed ip6_udp_header_t;
+
 u8 *format_ip4_udp_header (u8 * s, va_list * va);
+u8 *format_ip6_udp_header (u8 *s, va_list *va);
 
 typedef struct wg_peer_endpoint_t_
 {
@@ -141,15 +148,16 @@ wg_peer_assign_thread (u32 thread_id)
 }
 
 static_always_inline bool
-fib_prefix_is_cover_addr_4 (const fib_prefix_t *p1, const ip4_address_t *ip4)
+fib_prefix_is_cover_addr_46 (const fib_prefix_t *p1, const ip46_address_t *ip)
 {
   switch (p1->fp_proto)
     {
     case FIB_PROTOCOL_IP4:
-      return (ip4_destination_matches_route (&ip4_main, &p1->fp_addr.ip4, ip4,
-					     p1->fp_len) != 0);
+      return (ip4_destination_matches_route (&ip4_main, &p1->fp_addr.ip4,
+					     &ip->ip4, p1->fp_len) != 0);
     case FIB_PROTOCOL_IP6:
-      return (false);
+      return (ip6_destination_matches_route (&ip6_main, &p1->fp_addr.ip6,
+					     &ip->ip6, p1->fp_len) != 0);
     case FIB_PROTOCOL_MPLS:
       break;
     }

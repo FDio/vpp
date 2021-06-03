@@ -22,6 +22,7 @@
 #include <wireguard/wireguard_key.h>
 #include <wireguard/wireguard_send.h>
 #include <wireguard/wireguard.h>
+#include <vnet/tunnel/tunnel_dp.h>
 
 wg_peer_t *wg_peer_pool;
 
@@ -91,25 +92,44 @@ wg_peer_init (vlib_main_t * vm, wg_peer_t * peer)
 }
 
 static u8 *
-wg_peer_build_rewrite (const wg_peer_t * peer)
+wg_peer_build_rewrite (const wg_peer_t *peer, u8 is_ip4)
 {
-  // v4 only for now
-  ip4_udp_header_t *hdr;
   u8 *rewrite = NULL;
+  if (is_ip4)
+    {
+      ip4_udp_header_t *hdr;
 
-  vec_validate (rewrite, sizeof (*hdr) - 1);
-  hdr = (ip4_udp_header_t *) rewrite;
+      vec_validate (rewrite, sizeof (*hdr) - 1);
+      hdr = (ip4_udp_header_t *) rewrite;
 
-  hdr->ip4.ip_version_and_header_length = 0x45;
-  hdr->ip4.ttl = 64;
-  hdr->ip4.src_address = peer->src.addr.ip4;
-  hdr->ip4.dst_address = peer->dst.addr.ip4;
-  hdr->ip4.protocol = IP_PROTOCOL_UDP;
-  hdr->ip4.checksum = ip4_header_checksum (&hdr->ip4);
+      hdr->ip4.ip_version_and_header_length = 0x45;
+      hdr->ip4.ttl = 64;
+      hdr->ip4.src_address = peer->src.addr.ip4;
+      hdr->ip4.dst_address = peer->dst.addr.ip4;
+      hdr->ip4.protocol = IP_PROTOCOL_UDP;
+      hdr->ip4.checksum = ip4_header_checksum (&hdr->ip4);
 
-  hdr->udp.src_port = clib_host_to_net_u16 (peer->src.port);
-  hdr->udp.dst_port = clib_host_to_net_u16 (peer->dst.port);
-  hdr->udp.checksum = 0;
+      hdr->udp.src_port = clib_host_to_net_u16 (peer->src.port);
+      hdr->udp.dst_port = clib_host_to_net_u16 (peer->dst.port);
+      hdr->udp.checksum = 0;
+    }
+  else
+    {
+      ip6_udp_header_t *hdr;
+
+      vec_validate (rewrite, sizeof (*hdr) - 1);
+      hdr = (ip6_udp_header_t *) rewrite;
+
+      hdr->ip6.ip_version_traffic_class_and_flow_label = 0x60;
+      ip6_address_copy (&hdr->ip6.src_address, &peer->src.addr.ip6);
+      ip6_address_copy (&hdr->ip6.dst_address, &peer->dst.addr.ip6);
+      hdr->ip6.protocol = IP_PROTOCOL_UDP;
+      hdr->ip6.hop_limit = 64;
+
+      hdr->udp.src_port = clib_host_to_net_u16 (peer->src.port);
+      hdr->udp.dst_port = clib_host_to_net_u16 (peer->dst.port);
+      hdr->udp.checksum = 0;
+    }
 
   return (rewrite);
 }
@@ -120,12 +140,15 @@ wg_peer_adj_stack (wg_peer_t *peer, adj_index_t ai)
   ip_adjacency_t *adj;
   u32 sw_if_index;
   wg_if_t *wgi;
+  fib_protocol_t fib_proto;
 
   if (!adj_is_valid (ai))
     return;
 
   adj = adj_get (ai);
   sw_if_index = adj->rewrite_header.sw_if_index;
+  u8 is_ip4 = ip46_address_is_ip4 (&peer->src.addr);
+  fib_proto = is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
 
   wgi = wg_if_get (wg_if_find_by_sw_if_index (sw_if_index));
 
@@ -140,17 +163,74 @@ wg_peer_adj_stack (wg_peer_t *peer, adj_index_t ai)
     {
       /* *INDENT-OFF* */
       fib_prefix_t dst = {
-        .fp_len = 32,
-        .fp_proto = FIB_PROTOCOL_IP4,
-        .fp_addr = peer->dst.addr,
+	.fp_len = is_ip4 ? 32 : 128,
+	.fp_proto = fib_proto,
+	.fp_addr = peer->dst.addr,
       };
       /* *INDENT-ON* */
       u32 fib_index;
 
-      fib_index = fib_table_find (FIB_PROTOCOL_IP4, peer->table_id);
+      fib_index = fib_table_find (fib_proto, peer->table_id);
 
       adj_midchain_delegate_stack (ai, fib_index, &dst);
     }
+}
+
+static void
+wg_peer_66_fixup (vlib_main_t *vm, const ip_adjacency_t *adj, vlib_buffer_t *b,
+		  const void *data)
+{
+  u8 iph_offset = 0;
+  ip6_header_t *ip6_out;
+  ip6_header_t *ip6_in;
+
+  /* Must set locally originated otherwise we're not allowed to
+     fragment the packet later */
+  b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
+
+  ip6_out = vlib_buffer_get_current (b);
+  iph_offset = vnet_buffer (b)->ip.save_rewrite_length;
+  ip6_in = vlib_buffer_get_current (b) + iph_offset;
+
+  ip6_out->ip_version_traffic_class_and_flow_label =
+    ip6_in->ip_version_traffic_class_and_flow_label;
+}
+
+static void
+wg_peer_46_fixup (vlib_main_t *vm, const ip_adjacency_t *adj, vlib_buffer_t *b,
+		  const void *data)
+{
+  u8 iph_offset = 0;
+  ip6_header_t *ip6_out;
+  ip4_header_t *ip4_in;
+
+  /* Must set locally originated otherwise we're not allowed to
+     fragment the packet later */
+  b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
+
+  ip6_out = vlib_buffer_get_current (b);
+  iph_offset = vnet_buffer (b)->ip.save_rewrite_length;
+  ip4_in = vlib_buffer_get_current (b) + iph_offset;
+
+  u32 vtcfl = 0x6 << 28;
+  vtcfl |= ip4_in->tos << 20;
+  vtcfl |= vnet_buffer (b)->ip.flow_hash & 0x000fffff;
+
+  ip6_out->ip_version_traffic_class_and_flow_label =
+    clib_host_to_net_u32 (vtcfl);
+}
+
+static adj_midchain_fixup_t
+wg_peer_get_fixup (wg_peer_t *peer, vnet_link_t lt)
+{
+  if (!ip46_address_is_ip4 (&peer->dst.addr))
+    {
+      if (lt == VNET_LINK_IP4)
+	return (wg_peer_46_fixup);
+      if (lt == VNET_LINK_IP6)
+	return (wg_peer_66_fixup);
+    }
+  return (NULL);
 }
 
 walk_rc_t
@@ -170,6 +250,7 @@ walk_rc_t
 wg_peer_if_adj_change (index_t peeri, void *data)
 {
   adj_index_t *adj_index = data;
+  adj_midchain_fixup_t fixup;
   ip_adjacency_t *adj;
   wg_peer_t *peer;
   fib_prefix_t *allowed_ip;
@@ -179,15 +260,16 @@ wg_peer_if_adj_change (index_t peeri, void *data)
   peer = wg_peer_get (peeri);
   vec_foreach (allowed_ip, peer->allowed_ips)
     {
-      if (fib_prefix_is_cover_addr_4 (allowed_ip,
-				      &adj->sub_type.nbr.next_hop.ip4))
+      if (fib_prefix_is_cover_addr_46 (allowed_ip,
+				       &adj->sub_type.nbr.next_hop))
 	{
 	  vec_add1 (peer->adj_indices, *adj_index);
 	  vec_validate_init_empty (wg_peer_by_adj_index, *adj_index,
 				   INDEX_INVALID);
 	  wg_peer_by_adj_index[*adj_index] = peer - wg_peer_pool;
 
-	  adj_nbr_midchain_update_rewrite (*adj_index, NULL, NULL,
+	  fixup = wg_peer_get_fixup (peer, adj_get_link_type (*adj_index));
+	  adj_nbr_midchain_update_rewrite (*adj_index, fixup, NULL,
 					   ADJ_FLAG_MIDCHAIN_IP_STACK,
 					   vec_dup (peer->rewrite));
 
@@ -236,7 +318,9 @@ wg_peer_fill (vlib_main_t *vm, wg_peer_t *peer, u32 table_id,
 
   ip_address_to_46 (&wgi->src_ip, &peer->src.addr);
   peer->src.port = wgi->port;
-  peer->rewrite = wg_peer_build_rewrite (peer);
+
+  u8 is_ip4 = ip46_address_is_ip4 (&peer->dst.addr);
+  peer->rewrite = wg_peer_build_rewrite (peer, is_ip4);
 
   u32 ii;
   vec_validate (peer->allowed_ips, vec_len (allowed_ips) - 1);
