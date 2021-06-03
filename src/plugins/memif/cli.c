@@ -354,6 +354,26 @@ format_memif_queue (u8 * s, va_list * args)
 	      format_white_space, indent + 4,
 	      mq->region, mq->offset, (1 << mq->log2_ring_size), mq->int_fd);
 
+  s = format (
+    s,
+    "%Ulast tx start time %f last known drain time %f saved-free-slots %d\n",
+    format_white_space, indent + 4, mq->last_tx_start_time,
+    mq->last_known_drain_time, mq->saved_free_slots);
+
+  u32 j;
+  s = format (s, "%UQueue service time estimate bins [jitter] / fullq\n",
+	      format_white_space, indent + 4);
+
+  for (j = 0; j < MEMIF_N_Q_WAIT_BIN_COUNTERS; j++)
+    {
+      s = format (
+	s, "%Ubin %d (%ld .. %ld ns): %d [ %d ] / %d\n", format_white_space,
+	indent + 6, j, (1LL << (32 - j)) >> 1, (1LL << (32 - j)),
+	vlib_get_simple_counter (&mq->q_wait_bin_counters[j], 0),
+	vlib_get_simple_counter (&mq->q_wait_jitter_bin_counters[j], 0),
+	vlib_get_simple_counter (&mq->q_wait_fullq_bin_counters[j], 0));
+    }
+
   if (mq->ring)
     s = format (s, "%Uhead %u tail %u flags 0x%04x interrupts %u\n",
 		format_white_space, indent + 4,
@@ -411,7 +431,7 @@ memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
   vnet_main_t *vnm = vnet_get_main ();
   memif_region_t *mr;
   memif_queue_t *mq;
-  uword i;
+  uword i, j;
   int show_descr = 0;
   clib_error_t *error = 0;
   u32 hw_if_index, *hw_if_indices = 0;
@@ -511,6 +531,15 @@ memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  vlib_cli_output (vm, "  %U", format_memif_queue, mq, i);
 	  if (show_descr)
 	    vlib_cli_output (vm, "  %U", format_memif_descriptor, mif, mq);
+	  for (j = 0; j < MEMIF_N_Q_WAIT_BIN_COUNTERS; j++)
+	    {
+	      vlib_set_simple_counter (&mq->q_wait_bin_counters[j],
+				       vm->thread_index, 0, 0);
+	      vlib_set_simple_counter (&mq->q_wait_jitter_bin_counters[j],
+				       vm->thread_index, 0, 0);
+	      vlib_set_simple_counter (&mq->q_wait_fullq_bin_counters[j],
+				       vm->thread_index, 0, 0);
+	    }
 	}
       vec_foreach_index (i, mif->rx_queues)
 	{
