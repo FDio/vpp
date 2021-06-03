@@ -51,18 +51,28 @@ typedef enum
 
 typedef struct
 {
-  ip4_udp_header_t hdr;
   index_t peer;
+  u8 header[sizeof (ip6_udp_header_t)];
+  u8 is_ip4;
 } wg_output_tun_trace_t;
 
 u8 *
 format_ip4_udp_header (u8 * s, va_list * args)
 {
-  ip4_udp_header_t *hdr = va_arg (*args, ip4_udp_header_t *);
+  ip4_udp_header_t *hdr4 = va_arg (*args, ip4_udp_header_t *);
 
-  s = format (s, "%U:$U",
-	      format_ip4_header, &hdr->ip4, format_udp_header, &hdr->udp);
+  s = format (s, "%U:$U", format_ip4_header, &hdr4->ip4, format_udp_header,
+	      &hdr4->udp);
+  return (s);
+}
 
+u8 *
+format_ip6_udp_header (u8 *s, va_list *args)
+{
+  ip6_udp_header_t *hdr6 = va_arg (*args, ip6_udp_header_t *);
+
+  s = format (s, "%U:$U", format_ip6_header, &hdr6->ip6, format_udp_header,
+	      &hdr6->udp);
   return (s);
 }
 
@@ -76,16 +86,22 @@ format_wg_output_tun_trace (u8 * s, va_list * args)
   wg_output_tun_trace_t *t = va_arg (*args, wg_output_tun_trace_t *);
 
   s = format (s, "peer: %d\n", t->peer);
-  s = format (s, "  Encrypted packet: %U", format_ip4_udp_header, &t->hdr);
+  s = format (s, "  Encrypted packet: ");
+
+  s = t->is_ip4 ? format (s, "%U", format_ip4_udp_header, t->header) :
+		  format (s, "%U", format_ip6_udp_header, t->header);
   return s;
 }
 
-VLIB_NODE_FN (wg_output_tun_node) (vlib_main_t * vm,
-				   vlib_node_runtime_t * node,
-				   vlib_frame_t * frame)
+/* is_ip4 - inner header flag */
+always_inline uword
+wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		      vlib_frame_t *frame, u8 is_ip4)
 {
   u32 n_left_from;
   u32 *from;
+  ip4_udp_header_t *hdr4_out = NULL;
+  ip6_udp_header_t *hdr6_out = NULL;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 nexts[VLIB_FRAME_SIZE], *next;
   u32 thread_index = vm->thread_index;
@@ -102,12 +118,10 @@ VLIB_NODE_FN (wg_output_tun_node) (vlib_main_t * vm,
 
   while (n_left_from > 0)
     {
-      ip4_udp_header_t *hdr = vlib_buffer_get_current (b[0]);
-      u8 *plain_data = (vlib_buffer_get_current (b[0]) +
-			sizeof (ip4_udp_header_t));
-      u16 plain_data_len =
-	clib_net_to_host_u16 (((ip4_header_t *) plain_data)->length);
       index_t peeri;
+      u8 is_ip4_out = 1;
+      u8 *plain_data;
+      u16 plain_data_len;
 
       next[0] = WG_OUTPUT_NEXT_ERROR;
       peeri =
@@ -119,7 +133,6 @@ VLIB_NODE_FN (wg_output_tun_node) (vlib_main_t * vm,
 	  b[0]->error = node->errors[WG_OUTPUT_ERROR_PEER];
 	  goto out;
 	}
-
       if (PREDICT_FALSE (~0 == peer->output_thread_index))
 	{
 	  /* this is the first packet to use this peer, claim the peer
@@ -141,6 +154,27 @@ VLIB_NODE_FN (wg_output_tun_node) (vlib_main_t * vm,
 	  b[0]->error = node->errors[WG_OUTPUT_ERROR_KEYPAIR];
 	  goto out;
 	}
+
+      u8 offset;
+      is_ip4_out = ip46_address_is_ip4 (&peer->src.addr);
+      if (is_ip4_out)
+	{
+	  hdr4_out = vlib_buffer_get_current (b[0]);
+	  offset = sizeof (ip4_udp_header_t);
+	}
+      else
+	{
+	  hdr6_out = vlib_buffer_get_current (b[0]);
+	  offset = sizeof (ip6_udp_header_t);
+	}
+
+      plain_data = vlib_buffer_get_current (b[0]) + offset;
+      plain_data_len =
+	is_ip4 ? clib_net_to_host_u16 (((ip4_header_t *) plain_data)->length) :
+		 clib_net_to_host_u16 (
+		   ((ip6_header_t *) plain_data)->payload_length) +
+		   sizeof (ip6_header_t);
+
       size_t encrypted_packet_len = message_data_len (plain_data_len);
 
       /*
@@ -159,13 +193,10 @@ VLIB_NODE_FN (wg_output_tun_node) (vlib_main_t * vm,
 	(message_data_t *) wmp->per_thread_data[thread_index].data;
 
       enum noise_state_crypt state;
-      state =
-	noise_remote_encrypt (vm,
-			      &peer->remote,
-			      &encrypted_packet->receiver_index,
-			      &encrypted_packet->counter, plain_data,
-			      plain_data_len,
-			      encrypted_packet->encrypted_data);
+      state = noise_remote_encrypt (
+	vm, &peer->remote, &encrypted_packet->receiver_index,
+	&encrypted_packet->counter, plain_data, plain_data_len,
+	encrypted_packet->encrypted_data);
 
       if (PREDICT_FALSE (state == SC_KEEP_KEY_FRESH))
 	{
@@ -184,12 +215,24 @@ VLIB_NODE_FN (wg_output_tun_node) (vlib_main_t * vm,
 
       clib_memcpy (plain_data, (u8 *) encrypted_packet, encrypted_packet_len);
 
-      hdr->udp.length = clib_host_to_net_u16 (encrypted_packet_len +
-					      sizeof (udp_header_t));
-      b[0]->current_length = (encrypted_packet_len +
-			      sizeof (ip4_header_t) + sizeof (udp_header_t));
-      ip4_header_set_len_w_chksum
-	(&hdr->ip4, clib_host_to_net_u16 (b[0]->current_length));
+      if (is_ip4_out)
+	{
+	  hdr4_out->udp.length = clib_host_to_net_u16 (encrypted_packet_len +
+						       sizeof (udp_header_t));
+	  b[0]->current_length =
+	    (encrypted_packet_len + sizeof (ip4_udp_header_t));
+	  ip4_header_set_len_w_chksum (
+	    &hdr4_out->ip4, clib_host_to_net_u16 (b[0]->current_length));
+	}
+      else
+	{
+	  hdr6_out->udp.length = clib_host_to_net_u16 (encrypted_packet_len +
+						       sizeof (udp_header_t));
+	  b[0]->current_length =
+	    (encrypted_packet_len + sizeof (ip6_udp_header_t));
+	  hdr6_out->ip6.payload_length =
+	    clib_host_to_net_u16 (b[0]->current_length);
+	}
 
       wg_timers_any_authenticated_packet_sent (peer);
       wg_timers_data_sent (peer);
@@ -201,9 +244,15 @@ VLIB_NODE_FN (wg_output_tun_node) (vlib_main_t * vm,
 	{
 	  wg_output_tun_trace_t *t =
 	    vlib_add_trace (vm, node, b[0], sizeof (*t));
-	  t->hdr = *hdr;
+
 	  t->peer = peeri;
+	  t->is_ip4 = is_ip4_out;
+	  if (hdr4_out)
+	    clib_memcpy (t->header, hdr4_out, sizeof (*hdr4_out));
+	  else if (hdr6_out)
+	    clib_memcpy (t->header, hdr6_out, sizeof (*hdr6_out));
 	}
+
     next:
       n_left_from -= 1;
       next += 1;
@@ -214,10 +263,22 @@ VLIB_NODE_FN (wg_output_tun_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (wg_output_tun_node) =
+VLIB_NODE_FN (wg4_output_tun_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  .name = "wg-output-tun",
+  return wg_output_tun_inline (vm, node, frame, /* is_ip4 */ 1);
+}
+
+VLIB_NODE_FN (wg6_output_tun_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return wg_output_tun_inline (vm, node, frame, /* is_ip4 */ 0);
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (wg4_output_tun_node) =
+{
+  .name = "wg4-output-tun",
   .vector_size = sizeof (u32),
   .format_trace = format_wg_output_tun_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -225,7 +286,23 @@ VLIB_REGISTER_NODE (wg_output_tun_node) =
   .error_strings = wg_output_error_strings,
   .n_next_nodes = WG_OUTPUT_N_NEXT,
   .next_nodes = {
-        [WG_OUTPUT_NEXT_HANDOFF] = "wg-output-tun-handoff",
+        [WG_OUTPUT_NEXT_HANDOFF] = "wg4-output-tun-handoff",
+        [WG_OUTPUT_NEXT_INTERFACE_OUTPUT] = "adj-midchain-tx",
+        [WG_OUTPUT_NEXT_ERROR] = "error-drop",
+  },
+};
+
+VLIB_REGISTER_NODE (wg6_output_tun_node) =
+{
+  .name = "wg6-output-tun",
+  .vector_size = sizeof (u32),
+  .format_trace = format_wg_output_tun_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN (wg_output_error_strings),
+  .error_strings = wg_output_error_strings,
+  .n_next_nodes = WG_OUTPUT_N_NEXT,
+  .next_nodes = {
+        [WG_OUTPUT_NEXT_HANDOFF] = "wg6-output-tun-handoff",
         [WG_OUTPUT_NEXT_INTERFACE_OUTPUT] = "adj-midchain-tx",
         [WG_OUTPUT_NEXT_ERROR] = "error-drop",
   },
