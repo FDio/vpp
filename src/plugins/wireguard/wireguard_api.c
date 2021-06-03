@@ -47,19 +47,13 @@ static void
 
   ip_address_decode2 (&mp->interface.src_ip, &src);
 
-  if (AF_IP6 == ip_addr_version (&src))
-    rv = VNET_API_ERROR_INVALID_PROTOCOL;
+  if (mp->generate_key)
+    curve25519_gen_secret (private_key);
   else
-    {
-      if (mp->generate_key)
-	curve25519_gen_secret (private_key);
-      else
-	clib_memcpy (private_key, mp->interface.private_key,
-		     NOISE_PUBLIC_KEY_LEN);
+    clib_memcpy (private_key, mp->interface.private_key, NOISE_PUBLIC_KEY_LEN);
 
-      rv = wg_if_create (ntohl (mp->interface.user_instance), private_key,
-			 ntohs (mp->interface.port), &src, &sw_if_index);
-    }
+  rv = wg_if_create (ntohl (mp->interface.user_instance), private_key,
+		     ntohs (mp->interface.port), &src, &sw_if_index);
 
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_WIREGUARD_INTERFACE_CREATE_REPLY,
@@ -177,19 +171,10 @@ vl_api_wireguard_peer_add_t_handler (vl_api_wireguard_peer_add_t * mp)
   for (ii = 0; ii < mp->peer.n_allowed_ips; ii++)
     ip_prefix_decode (&mp->peer.allowed_ips[ii], &allowed_ips[ii]);
 
-  if (AF_IP6 == ip_addr_version (&endpoint) ||
-      FIB_PROTOCOL_IP6 == allowed_ips[0].fp_proto)
-    /* ip6 currently not supported, but the API needs to support it
-     * else we'll need to change it later, and that's a PITA */
-    rv = VNET_API_ERROR_INVALID_PROTOCOL;
-  else
-    rv = wg_peer_add (ntohl (mp->peer.sw_if_index),
-		      mp->peer.public_key,
-		      ntohl (mp->peer.table_id),
-		      &ip_addr_46 (&endpoint),
-		      allowed_ips,
-		      ntohs (mp->peer.port),
-		      ntohs (mp->peer.persistent_keepalive), &peeri);
+  rv = wg_peer_add (ntohl (mp->peer.sw_if_index), mp->peer.public_key,
+		    ntohl (mp->peer.table_id), &ip_addr_46 (&endpoint),
+		    allowed_ips, ntohs (mp->peer.port),
+		    ntohs (mp->peer.persistent_keepalive), &peeri);
 
   vec_free (allowed_ips);
 done:
