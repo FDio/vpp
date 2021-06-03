@@ -295,7 +295,7 @@ else ifeq ($(OS_ID)-$(OS_VERSION_ID),centos-8)
 	@sudo -E dnf config-manager --set-enabled \
           $(shell dnf repolist all 2>/dev/null|grep -i powertools|cut -d' ' -f1)
 	@sudo -E dnf groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
-	@sudo -E dnf install $(CONFIRM) $(RPM_DEPENDS)
+	@sudo -E dnf install --skip-broken $(CONFIRM) $(RPM_DEPENDS)
 else ifeq ($(OS_ID),centos)
 	@sudo -E yum install $(CONFIRM) centos-release-scl-rh epel-release
 	@sudo -E yum groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
