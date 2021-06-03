@@ -41,7 +41,6 @@
 #define included_llc_h
 
 #include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
 
 /* Protocol (SSAP/DSAP) types. */
 #define foreach_llc_protocol			\
@@ -168,17 +167,6 @@ unformat_function_t unformat_llc_protocol;
 /* Parse llc header. */
 unformat_function_t unformat_llc_header;
 unformat_function_t unformat_pg_llc_header;
-
-always_inline void
-llc_setup_node (vlib_main_t * vm, u32 node_index)
-{
-  vlib_node_t *n = vlib_get_node (vm, node_index);
-  pg_node_t *pn = pg_get_node (node_index);
-
-  n->format_buffer = format_llc_header_with_length;
-  n->unformat_buffer = unformat_llc_header;
-  pn->unformat_edit = unformat_pg_llc_header;
-}
 
 #endif /* included_llc_h */
 

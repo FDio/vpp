@@ -324,6 +324,17 @@ hdlc_input_runtime_init (vlib_main_t * vm)
   return 0;
 }
 
+static void
+hdlc_setup_node (vlib_main_t *vm, u32 node_index)
+{
+  vlib_node_t *n = vlib_get_node (vm, node_index);
+  pg_node_t *pn = pg_get_node (node_index);
+
+  n->format_buffer = format_hdlc_header_with_length;
+  n->unformat_buffer = unformat_hdlc_header;
+  pn->unformat_edit = unformat_pg_hdlc_header;
+}
+
 static clib_error_t *
 hdlc_input_init (vlib_main_t * vm)
 {

@@ -42,6 +42,9 @@
 #include <vnet/devices/virtio/vhost_user.h>
 #include <vnet/devices/virtio/vhost_user_inline.h>
 
+#include <vnet/ip/ip4_packet.h>
+#include <vnet/ip/ip6_packet.h>
+
 /*
  * When an RX queue is down but active, received packets
  * must be discarded. This value controls up to how many

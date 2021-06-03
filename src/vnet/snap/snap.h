@@ -41,7 +41,6 @@
 #define included_snap_h
 
 #include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
 
 #define foreach_ieee_oui			\
   _ (0x000000, ethernet)			\
@@ -183,17 +182,6 @@ unformat_function_t unformat_snap_protocol;
 /* Parse snap header. */
 unformat_function_t unformat_snap_header;
 unformat_function_t unformat_pg_snap_header;
-
-always_inline void
-snap_setup_node (vlib_main_t * vm, u32 node_index)
-{
-  vlib_node_t *n = vlib_get_node (vm, node_index);
-  pg_node_t *pn = pg_get_node (node_index);
-
-  n->format_buffer = format_snap_header_with_length;
-  n->unformat_buffer = unformat_snap_header;
-  pn->unformat_edit = unformat_pg_snap_header;
-}
 
 #endif /* included_snap_h */
 

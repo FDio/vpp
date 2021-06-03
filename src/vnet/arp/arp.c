@@ -22,6 +22,7 @@
 #include <vnet/fib/fib_entry_src.h>
 #include <vnet/adj/adj_nbr.h>
 #include <vnet/adj/adj_mcast.h>
+#include <vnet/pg/pg.h>
 
 #include <vnet/ip-neighbor/ip_neighbor.h>
 #include <vnet/ip-neighbor/ip_neighbor_dp.h>

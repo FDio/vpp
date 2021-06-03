@@ -55,6 +55,7 @@
 #include <vnet/dpo/classify_dpo.h>
 #include <vnet/mfib/mfib_table.h>	/* for mFIB table and entry creation */
 #include <vnet/adj/adj_dp.h>
+#include <vnet/pg/pg.h>
 
 #include <vnet/ip/ip4_forward.h>
 #include <vnet/interface_output.h>

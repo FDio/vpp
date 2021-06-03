@@ -41,6 +41,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ppp/ppp.h>
 #include <vnet/hdlc/hdlc.h>
+#include <vnet/pg/pg.h>
 
 typedef struct
 {
