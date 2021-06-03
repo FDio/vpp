@@ -43,7 +43,6 @@
 #include <vnet/vnet.h>
 #include <vnet/srp/packet.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/pg/pg.h>
 
 extern vnet_hw_interface_class_t srp_hw_interface_class;
 
@@ -188,16 +187,6 @@ uword
 unformat_srp_header (unformat_input_t * input, va_list * args);
 
 uword unformat_pg_srp_header (unformat_input_t * input, va_list * args);
-
-always_inline void
-srp_setup_node (vlib_main_t * vm, u32 node_index)
-{
-  vlib_node_t * n = vlib_get_node (vm, node_index);
-  pg_node_t * pn = pg_get_node (node_index);
-  n->format_buffer = format_srp_header_with_length;
-  n->unformat_buffer = unformat_srp_header;
-  pn->unformat_edit = unformat_pg_srp_header;
-}
 
 #define foreach_srp_error						\
   _ (NONE, "no error")							\

@@ -43,7 +43,6 @@
 #include <vnet/vnet.h>
 #include <vnet/ethernet/packet.h>
 #include <vnet/ethernet/mac_address.h>
-#include <vnet/pg/pg.h>
 #include <vnet/feature/feature.h>
 
 /* ethernet-input frame flags and scalar data */
@@ -404,16 +403,7 @@ uword unformat_ethernet_interface (unformat_input_t * input, va_list * args);
 
 uword unformat_pg_ethernet_header (unformat_input_t * input, va_list * args);
 
-always_inline void
-ethernet_setup_node (vlib_main_t * vm, u32 node_index)
-{
-  vlib_node_t *n = vlib_get_node (vm, node_index);
-  pg_node_t *pn = pg_get_node (node_index);
-
-  n->format_buffer = format_ethernet_header_with_length;
-  n->unformat_buffer = unformat_ethernet_header;
-  pn->unformat_edit = unformat_pg_ethernet_header;
-}
+void ethernet_setup_node (vlib_main_t *vm, u32 node_index);
 
 always_inline ethernet_header_t *
 ethernet_buffer_get_header (vlib_buffer_t * b)

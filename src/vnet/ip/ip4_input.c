@@ -39,6 +39,7 @@
 
 #include <vnet/ip/ip4_input.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/pg/pg.h>
 #include <vnet/ppp/ppp.h>
 #include <vnet/hdlc/hdlc.h>
 #include <vnet/util/throttle.h>

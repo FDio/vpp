@@ -284,6 +284,17 @@ VLIB_REGISTER_NODE (snap_input_node) = {
 };
 /* *INDENT-ON* */
 
+static void
+snap_setup_node (vlib_main_t *vm, u32 node_index)
+{
+  vlib_node_t *n = vlib_get_node (vm, node_index);
+  pg_node_t *pn = pg_get_node (node_index);
+
+  n->format_buffer = format_snap_header_with_length;
+  n->unformat_buffer = unformat_snap_header;
+  pn->unformat_edit = unformat_pg_snap_header;
+}
+
 static clib_error_t *
 snap_input_init (vlib_main_t * vm)
 {

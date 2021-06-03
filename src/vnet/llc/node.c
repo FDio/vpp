@@ -38,6 +38,7 @@
  */
 
 #include <vlib/vlib.h>
+#include <vnet/pg/pg.h>
 #include <vnet/llc/llc.h>
 
 #define foreach_llc_input_next			\
@@ -267,6 +268,17 @@ VLIB_REGISTER_NODE (llc_input_node) = {
   .unformat_buffer = unformat_llc_header,
 };
 /* *INDENT-ON* */
+
+static void
+llc_setup_node (vlib_main_t *vm, u32 node_index)
+{
+  vlib_node_t *n = vlib_get_node (vm, node_index);
+  pg_node_t *pn = pg_get_node (node_index);
+
+  n->format_buffer = format_llc_header_with_length;
+  n->unformat_buffer = unformat_llc_header;
+  pn->unformat_edit = unformat_pg_llc_header;
+}
 
 static clib_error_t *
 llc_input_init (vlib_main_t * vm)

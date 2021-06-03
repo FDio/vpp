@@ -50,6 +50,7 @@
 #include <vnet/dpo/load_balance_map.h>
 #include <vnet/dpo/classify_dpo.h>
 #include <vnet/classify/vnet_classify.h>
+#include <vnet/pg/pg.h>
 
 #ifndef CLIB_MARCH_VARIANT
 #include <vppinfra/bihash_template.c>

@@ -42,7 +42,6 @@
 
 #include <vnet/vnet.h>
 #include <vnet/hdlc/packet.h>
-#include <vnet/pg/pg.h>
 
 extern vnet_hw_interface_class_t hdlc_hw_interface_class;
 
@@ -105,17 +104,6 @@ unformat_function_t unformat_hdlc_protocol_net_byte_order;
 /* Parse hdlc header. */
 unformat_function_t unformat_hdlc_header;
 unformat_function_t unformat_pg_hdlc_header;
-
-always_inline void
-hdlc_setup_node (vlib_main_t * vm, u32 node_index)
-{
-  vlib_node_t *n = vlib_get_node (vm, node_index);
-  pg_node_t *pn = pg_get_node (node_index);
-
-  n->format_buffer = format_hdlc_header_with_length;
-  n->unformat_buffer = unformat_hdlc_header;
-  pn->unformat_edit = unformat_pg_hdlc_header;
-}
 
 void
 hdlc_register_input_protocol (vlib_main_t * vm,

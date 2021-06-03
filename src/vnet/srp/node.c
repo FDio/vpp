@@ -40,6 +40,7 @@
 #include <vlib/vlib.h>
 #include <vnet/ip/ip_packet.h>	/* for ip_csum_fold */
 #include <vnet/srp/srp.h>
+#include <vnet/pg/pg.h>
 
 srp_main_t srp_main;
 
@@ -860,6 +861,16 @@ vlib_node_registration_t srp_ips_process_node = {
     .name = "srp-ips-process",
     .state = VLIB_NODE_STATE_DISABLED,
 };
+
+static void
+srp_setup_node (vlib_main_t *vm, u32 node_index)
+{
+  vlib_node_t *n = vlib_get_node (vm, node_index);
+  pg_node_t *pn = pg_get_node (node_index);
+  n->format_buffer = format_srp_header_with_length;
+  n->unformat_buffer = unformat_srp_header;
+  pn->unformat_edit = unformat_pg_srp_header;
+}
 
 static clib_error_t * srp_init (vlib_main_t * vm)
 {

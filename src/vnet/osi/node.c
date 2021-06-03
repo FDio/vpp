@@ -262,6 +262,17 @@ VLIB_REGISTER_NODE (osi_input_node) = {
 };
 /* *INDENT-ON* */
 
+static void
+osi_setup_node (vlib_main_t *vm, u32 node_index)
+{
+  vlib_node_t *n = vlib_get_node (vm, node_index);
+  pg_node_t *pn = pg_get_node (node_index);
+
+  n->format_buffer = format_osi_header_with_length;
+  n->unformat_buffer = unformat_osi_header;
+  pn->unformat_edit = unformat_pg_osi_header;
+}
+
 static clib_error_t *
 osi_input_init (vlib_main_t * vm)
 {
