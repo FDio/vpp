@@ -29,9 +29,9 @@ static void cookie_macs_mac1 (message_macs_t *, const void *, size_t,
 			      const uint8_t[COOKIE_KEY_SIZE]);
 static void cookie_macs_mac2 (message_macs_t *, const void *, size_t,
 			      const uint8_t[COOKIE_COOKIE_SIZE]);
-static void cookie_checker_make_cookie (vlib_main_t * vm, cookie_checker_t *,
+static void cookie_checker_make_cookie (vlib_main_t *vm, cookie_checker_t *,
 					uint8_t[COOKIE_COOKIE_SIZE],
-					ip4_address_t ip4, u16 udp_port);
+					ip46_address_t *ip, u16 udp_port);
 
 /* Public Functions */
 void
@@ -76,9 +76,9 @@ cookie_maker_mac (cookie_maker_t * cp, message_macs_t * cm, void *buf,
 }
 
 enum cookie_mac_state
-cookie_checker_validate_macs (vlib_main_t * vm, cookie_checker_t * cc,
-			      message_macs_t * cm, void *buf, size_t len,
-			      bool busy, ip4_address_t ip4, u16 udp_port)
+cookie_checker_validate_macs (vlib_main_t *vm, cookie_checker_t *cc,
+			      message_macs_t *cm, void *buf, size_t len,
+			      bool busy, ip46_address_t *ip, u16 udp_port)
 {
   message_macs_t our_cm;
   uint8_t cookie[COOKIE_COOKIE_SIZE];
@@ -93,7 +93,7 @@ cookie_checker_validate_macs (vlib_main_t * vm, cookie_checker_t * cc,
   if (!busy)
     return VALID_MAC_BUT_NO_COOKIE;
 
-  cookie_checker_make_cookie (vm, cc, cookie, ip4, udp_port);
+  cookie_checker_make_cookie (vm, cc, cookie, ip, udp_port);
   cookie_macs_mac2 (&our_cm, buf, len, cookie);
 
   /* If the mac2 is invalid, we want to send a cookie response */
@@ -139,9 +139,9 @@ cookie_macs_mac2 (message_macs_t * cm, const void *buf, size_t len,
 }
 
 static void
-cookie_checker_make_cookie (vlib_main_t * vm, cookie_checker_t * cc,
+cookie_checker_make_cookie (vlib_main_t *vm, cookie_checker_t *cc,
 			    uint8_t cookie[COOKIE_COOKIE_SIZE],
-			    ip4_address_t ip4, u16 udp_port)
+			    ip46_address_t *ip, u16 udp_port)
 {
   blake2s_state_t state;
 
@@ -155,7 +155,14 @@ cookie_checker_make_cookie (vlib_main_t * vm, cookie_checker_t * cc,
   blake2s_init_key (&state, COOKIE_COOKIE_SIZE, cc->cc_secret,
 		    COOKIE_SECRET_SIZE);
 
-  blake2s_update (&state, ip4.as_u8, sizeof (ip4_address_t));	//TODO: IP6
+  if (ip46_address_is_ip4 (ip))
+    {
+      blake2s_update (&state, ip->ip4.as_u8, sizeof (ip4_address_t));
+    }
+  else
+    {
+      blake2s_update (&state, ip->ip6.as_u8, sizeof (ip6_address_t));
+    }
   blake2s_update (&state, (u8 *) & udp_port, sizeof (u16));
   blake2s_final (&state, cookie, COOKIE_COOKIE_SIZE);
 }
