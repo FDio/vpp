@@ -21,8 +21,10 @@
 
 #define WG_DEFAULT_DATA_SIZE 2048
 
-extern vlib_node_registration_t wg_input_node;
-extern vlib_node_registration_t wg_output_tun_node;
+extern vlib_node_registration_t wg4_input_node;
+extern vlib_node_registration_t wg6_input_node;
+extern vlib_node_registration_t wg4_output_tun_node;
+extern vlib_node_registration_t wg6_output_tun_node;
 
 typedef struct wg_per_thread_data_t_
 {
@@ -37,8 +39,10 @@ typedef struct
 
   wg_index_table_t index_table;
 
-  u32 in_fq_index;
-  u32 out_fq_index;
+  u32 in4_fq_index;
+  u32 in6_fq_index;
+  u32 out4_fq_index;
+  u32 out6_fq_index;
 
   wg_per_thread_data_t *per_thread_data;
   u8 feature_init;

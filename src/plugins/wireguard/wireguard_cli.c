@@ -213,16 +213,8 @@ wg_peer_add_command_fn (vlib_main_t * vm,
 	}
     }
 
-  if (AF_IP6 == ip_addr_version (&ip) ||
-      FIB_PROTOCOL_IP6 == allowed_ip.fp_proto)
-    rv = VNET_API_ERROR_INVALID_PROTOCOL;
-  else
-    rv = wg_peer_add (tun_sw_if_index,
-		      public_key,
-		      table_id,
-		      &ip_addr_46 (&ip),
-		      allowed_ips,
-		      portDst, persistent_keepalive, &peer_index);
+  rv = wg_peer_add (tun_sw_if_index, public_key, table_id, &ip_addr_46 (&ip),
+		    allowed_ips, portDst, persistent_keepalive, &peer_index);
 
   switch (rv)
     {
