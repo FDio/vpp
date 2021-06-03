@@ -224,6 +224,29 @@ memif_int_fd_read_ready (clib_file_t * uf)
   return 0;
 }
 
+void
+memif_init_queue_stats(vlib_main_t *vm, memif_if_t * mif, memif_queue_t *mq, char *kind, u32 i)
+{
+      u32 j;
+      for (j = 0; j < MEMIF_N_Q_WAIT_BIN_COUNTERS; j++) {
+	      mq->q_wait_bin_counters[j].name = 0;
+              mq->q_wait_bin_counters[j].stat_segment_name = (void *)
+                           format (0, "/memif/%d/queues/%s/%d/q_wait_bins/%d/hits%c", mif->sw_if_index, kind, i, j, 0);
+	      vlib_validate_simple_counter(&mq->q_wait_bin_counters[j], 0);
+	      vlib_zero_simple_counter(&mq->q_wait_bin_counters[j], 0);
+
+	      mq->q_wait_jitter_bin_counters[j].name = 0;
+              mq->q_wait_jitter_bin_counters[j].stat_segment_name = (void *)
+                           format (0, "/memif/%d/queues/%s/%d/q_wait_jitter_bins/%d/hits%c", mif->sw_if_index, kind, i, j, 0);
+	      vlib_validate_simple_counter(&mq->q_wait_jitter_bin_counters[j], 0);
+	      vlib_zero_simple_counter(&mq->q_wait_jitter_bin_counters[j], 0);
+      }
+      f64 now = vlib_time_now(vm);
+      mq->last_tx_start_time = now;
+      mq->last_known_drain_time = now;
+      mq->saved_free_slots = (1 << mq->log2_ring_size);
+}
+
 
 clib_error_t *
 memif_connect (memif_if_t * mif)
@@ -236,6 +259,7 @@ memif_connect (memif_if_t * mif)
   clib_error_t *err = NULL;
 
   memif_log_debug (mif, "connect %u", mif->dev_instance);
+  clib_warning("connect");
 
   vec_free (mif->local_disc_string);
   vec_free (mif->remote_disc_string);
@@ -275,6 +299,7 @@ memif_connect (memif_if_t * mif)
 	  err = clib_error_return (0, "wrong cookie on tx ring %u", i);
 	  goto error;
 	}
+      memif_init_queue_stats(vm, mif, mq, "tx", i);
     }
 
   vec_foreach_index (i, mif->rx_queues)
@@ -323,6 +348,7 @@ memif_connect (memif_if_t * mif)
 	  else
 	    vnet_hw_if_rx_queue_set_int_pending (vnm, qi);
 	}
+      memif_init_queue_stats(vm, mif, mq, "rx", i);
     }
   /* *INDENT-ON* */
 
@@ -362,6 +388,7 @@ memif_init_regions_and_queues (memif_if_t * mif)
   u64 buffer_offset;
   memif_region_t *r;
   clib_error_t *err;
+  clib_warning("init regions and queues");
 
   ASSERT (vec_len (mif->regions) == 0);
   vec_add2_aligned (mif->regions, r, 1, CLIB_CACHE_LINE_BYTES);
@@ -480,6 +507,8 @@ memif_init_regions_and_queues (memif_if_t * mif)
       if (mif->flags & MEMIF_IF_FLAG_ZERO_COPY)
 	vec_validate_aligned (mq->buffers, 1 << mq->log2_ring_size,
 			      CLIB_CACHE_LINE_BYTES);
+
+      memif_init_queue_stats(vm, mif, mq, "tx", i);
     }
   /* *INDENT-ON* */
 
@@ -506,6 +535,8 @@ memif_init_regions_and_queues (memif_if_t * mif)
       if (mif->flags & MEMIF_IF_FLAG_ZERO_COPY)
 	vec_validate_aligned (mq->buffers, 1 << mq->log2_ring_size,
 			      CLIB_CACHE_LINE_BYTES);
+      memif_init_queue_stats(vm, mif, mq, "rx", i);
+
     }
   /* *INDENT-ON* */
 
