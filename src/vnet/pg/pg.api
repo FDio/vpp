@@ -22,6 +22,13 @@ option version = "2.0.0";
 
 import "vnet/interface_types.api";
 
+enum pg_interface_mode : u8
+{
+ PG_API_MODE_ETHERNET = 0,
+ PG_API_MODE_IP4,
+ PG_API_MODE_IP6,
+};
+
 /** \brief PacketGenerator create interface request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -37,12 +44,27 @@ define pg_create_interface
   bool gso_enabled;
   u32 gso_size;
 };
+define pg_create_interface_v2
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t interface_id;
+  bool gso_enabled;
+  u32 gso_size;
+  vl_api_pg_interface_mode_t mode;
+};
 
 /** \brief PacketGenerator create interface response
     @param context - sender context, to match reply w/ request
     @param retval - return value for request
 */
 define pg_create_interface_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_interface_index_t sw_if_index;
+};
+define pg_create_interface_v2_reply
 {
   u32 context;
   i32 retval;

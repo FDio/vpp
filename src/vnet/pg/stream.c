@@ -229,9 +229,29 @@ pg_interface_enable_disable_coalesce (pg_interface_t * pi, u8 enable,
     }
 }
 
+u8 *
+format_pg_tun_tx_trace (u8 *s, va_list *args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+
+  s = format (s, "PG: tunnel (no-encap)");
+  return s;
+}
+
+VNET_HW_INTERFACE_CLASS (pg_tun_hw_interface_class) = {
+  .name = "PG-tun",
+  //.format_header = format_gre_header_with_length,
+  //.unformat_header = unformat_gre_header,
+  .build_rewrite = NULL,
+  //.update_adjacency = gre_update_adj,
+  .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
+};
+
 u32
-pg_interface_add_or_get (pg_main_t * pg, uword if_id, u8 gso_enabled,
-			 u32 gso_size, u8 coalesce_enabled)
+pg_interface_add_or_get (pg_main_t *pg, uword if_id, u8 gso_enabled,
+			 u32 gso_size, u8 coalesce_enabled,
+			 pg_interface_mode_t mode)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
@@ -262,8 +282,20 @@ pg_interface_add_or_get (pg_main_t * pg, uword if_id, u8 gso_enabled,
       hw_addr[1] = 0xfe;
 
       pi->id = if_id;
-      ethernet_register_interface (vnm, pg_dev_class.index, i, hw_addr,
-				   &pi->hw_if_index, pg_eth_flag_change);
+      pi->mode = mode;
+
+      switch (pi->mode)
+	{
+	case PG_MODE_ETHERNET:
+	  ethernet_register_interface (vnm, pg_dev_class.index, i, hw_addr,
+				       &pi->hw_if_index, pg_eth_flag_change);
+	  break;
+	case PG_MODE_IP4:
+	case PG_MODE_IP6:
+	  pi->hw_if_index = vnet_register_interface (
+	    vnm, pg_dev_class.index, i, pg_tun_hw_interface_class.index, i);
+	  break;
+	}
       hi = vnet_get_hw_interface (vnm, pi->hw_if_index);
       if (gso_enabled)
 	{
@@ -510,9 +542,9 @@ pg_stream_add (pg_main_t * pg, pg_stream_t * s_init)
   }
 
   /* Find an interface to use. */
-  s->pg_if_index =
-    pg_interface_add_or_get (pg, s->if_id, 0 /* gso_enabled */ ,
-			     0 /* gso_size */ , 0 /* coalesce_enabled */ );
+  s->pg_if_index = pg_interface_add_or_get (
+    pg, s->if_id, 0 /* gso_enabled */, 0 /* gso_size */,
+    0 /* coalesce_enabled */, PG_MODE_ETHERNET);
 
   if (s->sw_if_index[VLIB_RX] == ~0)
     {
