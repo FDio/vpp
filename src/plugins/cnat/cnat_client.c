@@ -34,10 +34,42 @@ cnat_client_is_clone (cnat_client_t * cc)
 static void
 cnat_client_db_remove (cnat_client_t * cc)
 {
+  clib_bihash_kv_16_8_t bkey;
   if (ip_addr_version (&cc->cc_ip) == AF_IP4)
-    hash_unset (cnat_client_db.crd_cip4, ip_addr_v4 (&cc->cc_ip).as_u32);
+    {
+      bkey.key[0] = ip_addr_v4 (&cc->cc_ip).as_u32;
+      bkey.key[1] = 0;
+    }
   else
-    hash_unset_mem_free (&cnat_client_db.crd_cip6, &ip_addr_v6 (&cc->cc_ip));
+    {
+      bkey.key[0] = ip_addr_v6 (&cc->cc_ip).as_u64[0];
+      bkey.key[1] = ip_addr_v6 (&cc->cc_ip).as_u64[1];
+    }
+
+  clib_bihash_add_del_16_8 (&cnat_client_db.cc_ip_id_hash, &bkey, 0 /* del */);
+}
+
+static void
+cnat_client_db_add (cnat_client_t *cc)
+{
+  index_t cci;
+
+  cci = cc - cnat_client_pool;
+
+  clib_bihash_kv_16_8_t bkey;
+  bkey.value = cci;
+  if (ip_addr_version (&cc->cc_ip) == AF_IP4)
+    {
+      bkey.key[0] = ip_addr_v4 (&cc->cc_ip).as_u32;
+      bkey.key[1] = 0;
+    }
+  else
+    {
+      bkey.key[0] = ip_addr_v6 (&cc->cc_ip).as_u64[0];
+      bkey.key[1] = ip_addr_v6 (&cc->cc_ip).as_u64[1];
+    }
+
+  clib_bihash_add_del_16_8 (&cnat_client_db.cc_ip_id_hash, &bkey, 1 /* add */);
 }
 
 static void
@@ -117,21 +149,6 @@ cnat_client_translation_deleted (index_t cci)
   if (0 == cc->tr_refcnt && 0 == cc->session_refcnt)
     cnat_client_destroy (cc);
 }
-
-static void
-cnat_client_db_add (cnat_client_t * cc)
-{
-  index_t cci;
-
-  cci = cc - cnat_client_pool;
-
-  if (ip_addr_version (&cc->cc_ip) == AF_IP4)
-    hash_set (cnat_client_db.crd_cip4, ip_addr_v4 (&cc->cc_ip).as_u32, cci);
-  else
-    hash_set_mem_alloc (&cnat_client_db.crd_cip6,
-			&ip_addr_v6 (&cc->cc_ip), cci);
-}
-
 
 index_t
 cnat_client_add (const ip_address_t * ip, u8 flags)
@@ -228,12 +245,6 @@ int
 cnat_client_purge (void)
 {
   int rv = 0, rrv = 0;
-  if ((rv = hash_elts (cnat_client_db.crd_cip6)))
-    clib_warning ("len(crd_cip6) isnt 0 but %d", rv);
-  rrv |= rv;
-  if ((rv = hash_elts (cnat_client_db.crd_cip4)))
-    clib_warning ("len(crd_cip4) isnt 0 but %d", rv);
-  rrv |= rv;
   if ((rv = pool_elts (cnat_client_pool)))
     clib_warning ("len(cnat_client_pool) isnt 0 but %d", rv);
   rrv |= rv;
@@ -371,12 +382,12 @@ const static dpo_vft_t cnat_client_dpo_vft = {
 static clib_error_t *
 cnat_client_init (vlib_main_t * vm)
 {
+  cnat_main_t *cm = &cnat_main;
   cnat_client_dpo = dpo_register_new_type (&cnat_client_dpo_vft,
 					   cnat_client_dpo_nodes);
 
-  cnat_client_db.crd_cip6 = hash_create_mem (0,
-					     sizeof (ip6_address_t),
-					     sizeof (uword));
+  clib_bihash_init_16_8 (&cnat_client_db.cc_ip_id_hash, "CNat client DB",
+			 cm->client_hash_buckets, cm->client_hash_memory);
 
   clib_spinlock_init (&cnat_client_db.throttle_lock);
   cnat_client_db.throttle_mem =
