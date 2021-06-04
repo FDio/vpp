@@ -122,7 +122,10 @@ cnat_allocate_port (u16 * port, ip_protocol_t iproto)
       if (PREDICT_FALSE (*port >= UINT16_MAX))
 	*port = clib_bitmap_next_clear (ca->bmap, MIN_SRC_PORT);
       if (PREDICT_FALSE (*port >= UINT16_MAX))
-	return -1;
+	{
+	  clib_spinlock_unlock (&ca->lock);
+	  return -1;
+	}
     }
   clib_bitmap_set_no_check (ca->bmap, *port, 1);
   *port = clib_host_to_net_u16 (*port);
