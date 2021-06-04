@@ -665,22 +665,6 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  is_async = im->async_mode | ipsec_sa_is_set_IS_ASYNC (sa0);
 	}
 
-      if (is_async)
-	{
-	  async_op = sa0->crypto_async_enc_op_id;
-
-	  /* get a frame for this op if we don't yet have one or it's full
-	   */
-	  if (NULL == async_frames[async_op] ||
-	      vnet_crypto_async_frame_is_full (async_frames[async_op]))
-	    {
-	      async_frames[async_op] =
-		vnet_crypto_async_get_frame (vm, async_op);
-	      /* Save the frame to the list we'll submit at the end */
-	      vec_add1 (ptd->async_frames, async_frames[async_op]);
-	    }
-	}
-
       if (PREDICT_FALSE (~0 == sa0->thread_index))
 	{
 	  /* this is the first packet to use this SA, claim the SA
@@ -951,10 +935,25 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       esp->seq = clib_net_to_host_u32 (sa0->seq);
 
       if (is_async)
-	esp_prepare_async_frame (vm, ptd, async_frames[async_op], sa0, b[0],
-				 esp, payload, payload_len, iv_sz, icv_sz,
-				 from[b - bufs], sync_next[0], hdr_len,
-				 async_next_node, lb);
+	{
+	  async_op = sa0->crypto_async_enc_op_id;
+
+	  /* get a frame for this op if we don't yet have one or it's full
+	   */
+	  if (NULL == async_frames[async_op] ||
+	      vnet_crypto_async_frame_is_full (async_frames[async_op]))
+	    {
+	      async_frames[async_op] =
+		vnet_crypto_async_get_frame (vm, async_op);
+	      /* Save the frame to the list we'll submit at the end */
+	      vec_add1 (ptd->async_frames, async_frames[async_op]);
+	    }
+
+	  esp_prepare_async_frame (vm, ptd, async_frames[async_op], sa0, b[0],
+				   esp, payload, payload_len, iv_sz, icv_sz,
+				   from[b - bufs], sync_next[0], hdr_len,
+				   async_next_node, lb);
+	}
       else
 	esp_prepare_sync_op (vm, ptd, crypto_ops, integ_ops, sa0, payload,
 			     payload_len, iv_sz, icv_sz, n_sync, b, lb,
