@@ -551,42 +551,6 @@ unformat_policer_action_type (unformat_input_t * input, va_list * va)
   return 1;
 }
 
-static uword
-unformat_policer_classify_table_type (unformat_input_t * input, va_list * va)
-{
-  u32 *r = va_arg (*va, u32 *);
-  u32 tid;
-
-  if (unformat (input, "ip4"))
-    tid = POLICER_CLASSIFY_TABLE_IP4;
-  else if (unformat (input, "ip6"))
-    tid = POLICER_CLASSIFY_TABLE_IP6;
-  else if (unformat (input, "l2"))
-    tid = POLICER_CLASSIFY_TABLE_L2;
-  else
-    return 0;
-
-  *r = tid;
-  return 1;
-}
-
-static uword
-unformat_flow_classify_table_type (unformat_input_t * input, va_list * va)
-{
-  u32 *r = va_arg (*va, u32 *);
-  u32 tid;
-
-  if (unformat (input, "ip4"))
-    tid = FLOW_CLASSIFY_TABLE_IP4;
-  else if (unformat (input, "ip6"))
-    tid = FLOW_CLASSIFY_TABLE_IP6;
-  else
-    return 0;
-
-  *r = tid;
-  return 1;
-}
-
 #if (VPP_API_TEST_BUILTIN==0)
 
 static const char *mfib_flag_names[] = MFIB_ENTRY_NAMES_SHORT;
@@ -1178,55 +1142,6 @@ vl_api_cli_inband_reply_t_handler_json (vl_api_cli_inband_reply_t * mp)
   vat_json_print (vam->ofp, &node);
   vat_json_free (&node);
   vec_free (reply);
-
-  vam->retval = ntohl (mp->retval);
-  vam->result_ready = 1;
-}
-
-static void vl_api_classify_add_del_table_reply_t_handler
-  (vl_api_classify_add_del_table_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  i32 retval = ntohl (mp->retval);
-  if (vam->async_mode)
-    {
-      vam->async_errors += (retval < 0);
-    }
-  else
-    {
-      vam->retval = retval;
-      if (retval == 0 &&
-	  ((mp->new_table_index != 0xFFFFFFFF) ||
-	   (mp->skip_n_vectors != 0xFFFFFFFF) ||
-	   (mp->match_n_vectors != 0xFFFFFFFF)))
-	/*
-	 * Note: this is just barely thread-safe, depends on
-	 * the main thread spinning waiting for an answer...
-	 */
-	errmsg ("new index %d, skip_n_vectors %d, match_n_vectors %d",
-		ntohl (mp->new_table_index),
-		ntohl (mp->skip_n_vectors), ntohl (mp->match_n_vectors));
-      vam->result_ready = 1;
-    }
-}
-
-static void vl_api_classify_add_del_table_reply_t_handler_json
-  (vl_api_classify_add_del_table_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t node;
-
-  vat_json_init_object (&node);
-  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
-  vat_json_object_add_uint (&node, "new_table_index",
-			    ntohl (mp->new_table_index));
-  vat_json_object_add_uint (&node, "skip_n_vectors",
-			    ntohl (mp->skip_n_vectors));
-  vat_json_object_add_uint (&node, "match_n_vectors",
-			    ntohl (mp->match_n_vectors));
-
-  vat_json_print (vam->ofp, &node);
-  vat_json_free (&node);
 
   vam->retval = ntohl (mp->retval);
   vam->result_ready = 1;
@@ -2896,93 +2811,6 @@ static void vl_api_policer_details_t_handler_json
   vec_free (violate_action_str);
 }
 
-static void
-vl_api_classify_table_ids_reply_t_handler (vl_api_classify_table_ids_reply_t *
-					   mp)
-{
-  vat_main_t *vam = &vat_main;
-  int i, count = ntohl (mp->count);
-
-  if (count > 0)
-    print (vam->ofp, "classify table ids (%d) : ", count);
-  for (i = 0; i < count; i++)
-    {
-      print (vam->ofp, "%d", ntohl (mp->ids[i]));
-      print (vam->ofp, (i < count - 1) ? "," : "");
-    }
-  vam->retval = ntohl (mp->retval);
-  vam->result_ready = 1;
-}
-
-static void
-  vl_api_classify_table_ids_reply_t_handler_json
-  (vl_api_classify_table_ids_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  int i, count = ntohl (mp->count);
-
-  if (count > 0)
-    {
-      vat_json_node_t node;
-
-      vat_json_init_object (&node);
-      for (i = 0; i < count; i++)
-	{
-	  vat_json_object_add_uint (&node, "table_id", ntohl (mp->ids[i]));
-	}
-      vat_json_print (vam->ofp, &node);
-      vat_json_free (&node);
-    }
-  vam->retval = ntohl (mp->retval);
-  vam->result_ready = 1;
-}
-
-static void
-  vl_api_classify_table_by_interface_reply_t_handler
-  (vl_api_classify_table_by_interface_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  u32 table_id;
-
-  table_id = ntohl (mp->l2_table_id);
-  if (table_id != ~0)
-    print (vam->ofp, "l2 table id : %d", table_id);
-  else
-    print (vam->ofp, "l2 table id : No input ACL tables configured");
-  table_id = ntohl (mp->ip4_table_id);
-  if (table_id != ~0)
-    print (vam->ofp, "ip4 table id : %d", table_id);
-  else
-    print (vam->ofp, "ip4 table id : No input ACL tables configured");
-  table_id = ntohl (mp->ip6_table_id);
-  if (table_id != ~0)
-    print (vam->ofp, "ip6 table id : %d", table_id);
-  else
-    print (vam->ofp, "ip6 table id : No input ACL tables configured");
-  vam->retval = ntohl (mp->retval);
-  vam->result_ready = 1;
-}
-
-static void
-  vl_api_classify_table_by_interface_reply_t_handler_json
-  (vl_api_classify_table_by_interface_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t node;
-
-  vat_json_init_object (&node);
-
-  vat_json_object_add_int (&node, "l2_table_id", ntohl (mp->l2_table_id));
-  vat_json_object_add_int (&node, "ip4_table_id", ntohl (mp->ip4_table_id));
-  vat_json_object_add_int (&node, "ip6_table_id", ntohl (mp->ip6_table_id));
-
-  vat_json_print (vam->ofp, &node);
-  vat_json_free (&node);
-
-  vam->retval = ntohl (mp->retval);
-  vam->result_ready = 1;
-}
-
 static void vl_api_policer_add_del_reply_t_handler
   (vl_api_policer_add_del_reply_t * mp)
 {
@@ -3050,97 +2878,6 @@ format_hex_bytes (u8 * s, va_list * va)
   return s;
 }
 
-static void
-vl_api_classify_table_info_reply_t_handler (vl_api_classify_table_info_reply_t
-					    * mp)
-{
-  vat_main_t *vam = &vat_main;
-  i32 retval = ntohl (mp->retval);
-  if (retval == 0)
-    {
-      print (vam->ofp, "classify table info :");
-      print (vam->ofp, "sessions: %d nexttbl: %d nextnode: %d",
-	     ntohl (mp->active_sessions), ntohl (mp->next_table_index),
-	     ntohl (mp->miss_next_index));
-      print (vam->ofp, "nbuckets: %d skip: %d match: %d",
-	     ntohl (mp->nbuckets), ntohl (mp->skip_n_vectors),
-	     ntohl (mp->match_n_vectors));
-      print (vam->ofp, "mask: %U", format_hex_bytes, mp->mask,
-	     ntohl (mp->mask_length));
-    }
-  vam->retval = retval;
-  vam->result_ready = 1;
-}
-
-static void
-  vl_api_classify_table_info_reply_t_handler_json
-  (vl_api_classify_table_info_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t node;
-
-  i32 retval = ntohl (mp->retval);
-  if (retval == 0)
-    {
-      vat_json_init_object (&node);
-
-      vat_json_object_add_int (&node, "sessions",
-			       ntohl (mp->active_sessions));
-      vat_json_object_add_int (&node, "nexttbl",
-			       ntohl (mp->next_table_index));
-      vat_json_object_add_int (&node, "nextnode",
-			       ntohl (mp->miss_next_index));
-      vat_json_object_add_int (&node, "nbuckets", ntohl (mp->nbuckets));
-      vat_json_object_add_int (&node, "skip", ntohl (mp->skip_n_vectors));
-      vat_json_object_add_int (&node, "match", ntohl (mp->match_n_vectors));
-      u8 *s = format (0, "%U%c", format_hex_bytes, mp->mask,
-		      ntohl (mp->mask_length), 0);
-      vat_json_object_add_string_copy (&node, "mask", s);
-
-      vat_json_print (vam->ofp, &node);
-      vat_json_free (&node);
-    }
-  vam->retval = ntohl (mp->retval);
-  vam->result_ready = 1;
-}
-
-static void
-vl_api_classify_session_details_t_handler (vl_api_classify_session_details_t *
-					   mp)
-{
-  vat_main_t *vam = &vat_main;
-
-  print (vam->ofp, "next_index: %d advance: %d opaque: %d ",
-	 ntohl (mp->hit_next_index), ntohl (mp->advance),
-	 ntohl (mp->opaque_index));
-  print (vam->ofp, "mask: %U", format_hex_bytes, mp->match,
-	 ntohl (mp->match_length));
-}
-
-static void
-  vl_api_classify_session_details_t_handler_json
-  (vl_api_classify_session_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t *node = NULL;
-
-  if (VAT_JSON_ARRAY != vam->json_tree.type)
-    {
-      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
-      vat_json_init_array (&vam->json_tree);
-    }
-  node = vat_json_array_add (&vam->json_tree);
-
-  vat_json_init_object (node);
-  vat_json_object_add_int (node, "next_index", ntohl (mp->hit_next_index));
-  vat_json_object_add_int (node, "advance", ntohl (mp->advance));
-  vat_json_object_add_int (node, "opaque", ntohl (mp->opaque_index));
-  u8 *s =
-    format (0, "%U%c", format_hex_bytes, mp->match, ntohl (mp->match_length),
-	    0);
-  vat_json_object_add_string_copy (node, "match", s);
-}
-
 static void vl_api_pg_create_interface_reply_t_handler
   (vl_api_pg_create_interface_reply_t * mp)
 {
@@ -3168,60 +2905,6 @@ static void vl_api_pg_create_interface_reply_t_handler_json
     }
   vam->retval = ntohl (mp->retval);
   vam->result_ready = 1;
-}
-
-static void vl_api_policer_classify_details_t_handler
-  (vl_api_policer_classify_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-
-  print (vam->ofp, "%10d%20d", ntohl (mp->sw_if_index),
-	 ntohl (mp->table_index));
-}
-
-static void vl_api_policer_classify_details_t_handler_json
-  (vl_api_policer_classify_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t *node;
-
-  if (VAT_JSON_ARRAY != vam->json_tree.type)
-    {
-      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
-      vat_json_init_array (&vam->json_tree);
-    }
-  node = vat_json_array_add (&vam->json_tree);
-
-  vat_json_init_object (node);
-  vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
-  vat_json_object_add_uint (node, "table_index", ntohl (mp->table_index));
-}
-
-static void vl_api_flow_classify_details_t_handler
-  (vl_api_flow_classify_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-
-  print (vam->ofp, "%10d%20d", ntohl (mp->sw_if_index),
-	 ntohl (mp->table_index));
-}
-
-static void vl_api_flow_classify_details_t_handler_json
-  (vl_api_flow_classify_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t *node;
-
-  if (VAT_JSON_ARRAY != vam->json_tree.type)
-    {
-      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
-      vat_json_init_array (&vam->json_tree);
-    }
-  node = vat_json_array_add (&vam->json_tree);
-
-  vat_json_init_object (node);
-  vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
-  vat_json_object_add_uint (node, "table_index", ntohl (mp->table_index));
 }
 
 /*
@@ -3271,9 +2954,6 @@ _(sr_policy_mod_reply)                                  \
 _(sr_policy_del_reply)                                  \
 _(sr_localsid_add_del_reply)                            \
 _(sr_steering_add_del_reply)                            \
-_(classify_add_del_session_reply)                       \
-_(classify_set_interface_ip_table_reply)                \
-_(classify_set_interface_l2_tables_reply)               \
 _(l2_fib_clear_table_reply)                             \
 _(l2_interface_efp_filter_reply)                        \
 _(l2_interface_vlan_tag_rewrite_reply)                  \
@@ -3281,7 +2961,6 @@ _(modify_vhost_user_if_reply)                           \
 _(modify_vhost_user_if_v2_reply)                        \
 _(delete_vhost_user_if_reply)                           \
 _(want_l2_macs_events_reply)                            \
-_(input_acl_set_interface_reply)                        \
 _(ipsec_spd_add_del_reply)                              \
 _(ipsec_interface_add_del_spd_reply)                    \
 _(ipsec_spd_entry_add_del_reply)                        \
@@ -3294,11 +2973,9 @@ _(sw_interface_clear_stats_reply)                       \
 _(ioam_enable_reply)                                    \
 _(ioam_disable_reply)                                   \
 _(af_packet_delete_reply)                               \
-_(policer_classify_set_interface_reply)                 \
 _(set_ipfix_exporter_reply)                             \
 _(set_ipfix_classify_stream_reply)                      \
 _(ipfix_classify_table_add_del_reply)                   \
-_(flow_classify_set_interface_reply)                    \
 _(sw_interface_span_enable_disable_reply)               \
 _(pg_capture_reply)                                     \
 _(pg_enable_disable_reply)                              \
@@ -3318,7 +2995,6 @@ _(p2p_ethernet_del_reply)                               \
 _(tcp_configure_src_addresses_reply)			\
 _(session_rule_add_del_reply)				\
 _(ip_container_proxy_add_del_reply)                     \
-_(output_acl_set_interface_reply)                       \
 _(qos_record_enable_disable_reply)			\
 _(flow_add_reply)
 
@@ -3429,12 +3105,6 @@ _(SR_POLICY_MOD_REPLY, sr_policy_mod_reply)                             \
 _(SR_POLICY_DEL_REPLY, sr_policy_del_reply)                             \
 _(SR_LOCALSID_ADD_DEL_REPLY, sr_localsid_add_del_reply)                 \
 _(SR_STEERING_ADD_DEL_REPLY, sr_steering_add_del_reply)                 \
-_(CLASSIFY_ADD_DEL_TABLE_REPLY, classify_add_del_table_reply)           \
-_(CLASSIFY_ADD_DEL_SESSION_REPLY, classify_add_del_session_reply)       \
-_(CLASSIFY_SET_INTERFACE_IP_TABLE_REPLY,                                \
-classify_set_interface_ip_table_reply)                                  \
-_(CLASSIFY_SET_INTERFACE_L2_TABLES_REPLY,                               \
-  classify_set_interface_l2_tables_reply)                               \
 _(GET_NODE_INDEX_REPLY, get_node_index_reply)                           \
 _(ADD_NODE_NEXT_REPLY, add_node_next_reply)                             \
 _(VXLAN_ADD_DEL_TUNNEL_REPLY, vxlan_add_del_tunnel_reply)               \
@@ -3457,7 +3127,6 @@ _(VXLAN_GPE_TUNNEL_DETAILS, vxlan_gpe_tunnel_details)                   \
 _(INTERFACE_NAME_RENUMBER_REPLY, interface_name_renumber_reply)		\
 _(WANT_L2_MACS_EVENTS_REPLY, want_l2_macs_events_reply)			\
 _(L2_MACS_EVENT, l2_macs_event)						\
-_(INPUT_ACL_SET_INTERFACE_REPLY, input_acl_set_interface_reply)         \
 _(IP_ADDRESS_DETAILS, ip_address_details)                               \
 _(IP_DETAILS, ip_details)                                               \
 _(IPSEC_SPD_ADD_DEL_REPLY, ipsec_spd_add_del_reply)                     \
@@ -3480,23 +3149,15 @@ _(AF_PACKET_DELETE_REPLY, af_packet_delete_reply)                       \
 _(AF_PACKET_DETAILS, af_packet_details)					\
 _(POLICER_ADD_DEL_REPLY, policer_add_del_reply)                         \
 _(POLICER_DETAILS, policer_details)                                     \
-_(POLICER_CLASSIFY_SET_INTERFACE_REPLY, policer_classify_set_interface_reply) \
-_(POLICER_CLASSIFY_DETAILS, policer_classify_details)                   \
 _(MPLS_TUNNEL_DETAILS, mpls_tunnel_details)                             \
 _(MPLS_TABLE_DETAILS, mpls_table_details)                               \
 _(MPLS_ROUTE_DETAILS, mpls_route_details)                               \
-_(CLASSIFY_TABLE_IDS_REPLY, classify_table_ids_reply)                   \
-_(CLASSIFY_TABLE_BY_INTERFACE_REPLY, classify_table_by_interface_reply) \
-_(CLASSIFY_TABLE_INFO_REPLY, classify_table_info_reply)                 \
-_(CLASSIFY_SESSION_DETAILS, classify_session_details)                   \
 _(SET_IPFIX_EXPORTER_REPLY, set_ipfix_exporter_reply)                   \
 _(IPFIX_EXPORTER_DETAILS, ipfix_exporter_details)                       \
 _(SET_IPFIX_CLASSIFY_STREAM_REPLY, set_ipfix_classify_stream_reply)     \
 _(IPFIX_CLASSIFY_STREAM_DETAILS, ipfix_classify_stream_details)         \
 _(IPFIX_CLASSIFY_TABLE_ADD_DEL_REPLY, ipfix_classify_table_add_del_reply) \
 _(IPFIX_CLASSIFY_TABLE_DETAILS, ipfix_classify_table_details)           \
-_(FLOW_CLASSIFY_SET_INTERFACE_REPLY, flow_classify_set_interface_reply) \
-_(FLOW_CLASSIFY_DETAILS, flow_classify_details)                         \
 _(SW_INTERFACE_SPAN_ENABLE_DISABLE_REPLY, sw_interface_span_enable_disable_reply) \
 _(SW_INTERFACE_SPAN_DETAILS, sw_interface_span_details)                 \
 _(GET_NEXT_INDEX_REPLY, get_next_index_reply)                           \
@@ -3527,7 +3188,6 @@ _(APP_NAMESPACE_ADD_DEL_REPLY, app_namespace_add_del_reply)		\
 _(SESSION_RULE_ADD_DEL_REPLY, session_rule_add_del_reply)		\
 _(SESSION_RULES_DETAILS, session_rules_details)				\
 _(IP_CONTAINER_PROXY_ADD_DEL_REPLY, ip_container_proxy_add_del_reply)	\
-_(OUTPUT_ACL_SET_INTERFACE_REPLY, output_acl_set_interface_reply)       \
 _(QOS_RECORD_ENABLE_DISABLE_REPLY, qos_record_enable_disable_reply)		\
 _(FLOW_ADD_REPLY, flow_add_reply)   \
 
@@ -7978,114 +7638,6 @@ unformat_policer_precolor (unformat_input_t * input, va_list * args)
   return 1;
 }
 
-static int
-api_classify_add_del_table (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_classify_add_del_table_t *mp;
-
-  u32 nbuckets = 2;
-  u32 skip = ~0;
-  u32 match = ~0;
-  int is_add = 1;
-  int del_chain = 0;
-  u32 table_index = ~0;
-  u32 next_table_index = ~0;
-  u32 miss_next_index = ~0;
-  u32 memory_size = 32 << 20;
-  u8 *mask = 0;
-  u32 current_data_flag = 0;
-  int current_data_offset = 0;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "del"))
-	is_add = 0;
-      else if (unformat (i, "del-chain"))
-	{
-	  is_add = 0;
-	  del_chain = 1;
-	}
-      else if (unformat (i, "buckets %d", &nbuckets))
-	;
-      else if (unformat (i, "memory_size %d", &memory_size))
-	;
-      else if (unformat (i, "skip %d", &skip))
-	;
-      else if (unformat (i, "match %d", &match))
-	;
-      else if (unformat (i, "table %d", &table_index))
-	;
-      else if (unformat (i, "mask %U", unformat_classify_mask,
-			 &mask, &skip, &match))
-	;
-      else if (unformat (i, "next-table %d", &next_table_index))
-	;
-      else if (unformat (i, "miss-next %U", api_unformat_ip_next_index,
-			 &miss_next_index))
-	;
-      else if (unformat (i, "l2-miss-next %U", unformat_l2_next_index,
-			 &miss_next_index))
-	;
-      else if (unformat (i, "acl-miss-next %U", api_unformat_acl_next_index,
-			 &miss_next_index))
-	;
-      else if (unformat (i, "current-data-flag %d", &current_data_flag))
-	;
-      else if (unformat (i, "current-data-offset %d", &current_data_offset))
-	;
-      else
-	break;
-    }
-
-  if (is_add && mask == 0)
-    {
-      errmsg ("Mask required");
-      return -99;
-    }
-
-  if (is_add && skip == ~0)
-    {
-      errmsg ("skip count required");
-      return -99;
-    }
-
-  if (is_add && match == ~0)
-    {
-      errmsg ("match count required");
-      return -99;
-    }
-
-  if (!is_add && table_index == ~0)
-    {
-      errmsg ("table index required for delete");
-      return -99;
-    }
-
-  M2 (CLASSIFY_ADD_DEL_TABLE, mp, vec_len (mask));
-
-  mp->is_add = is_add;
-  mp->del_chain = del_chain;
-  mp->table_index = ntohl (table_index);
-  mp->nbuckets = ntohl (nbuckets);
-  mp->memory_size = ntohl (memory_size);
-  mp->skip_n_vectors = ntohl (skip);
-  mp->match_n_vectors = ntohl (match);
-  mp->next_table_index = ntohl (next_table_index);
-  mp->miss_next_index = ntohl (miss_next_index);
-  mp->current_data_flag = ntohl (current_data_flag);
-  mp->current_data_offset = ntohl (current_data_offset);
-  mp->mask_len = ntohl (vec_len (mask));
-  clib_memcpy (mp->mask, mask, vec_len (mask));
-
-  vec_free (mask);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
 #if VPP_API_TEST_BUILTIN == 0
 uword
 unformat_l4_match (unformat_input_t * input, va_list * args)
@@ -8543,200 +8095,7 @@ api_unformat_classify_match (unformat_input_t * input, va_list * args)
 }
 
 static int
-api_classify_add_del_session (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_classify_add_del_session_t *mp;
-  int is_add = 1;
-  u32 table_index = ~0;
-  u32 hit_next_index = ~0;
-  u32 opaque_index = ~0;
-  u8 *match = 0;
-  i32 advance = 0;
-  u32 skip_n_vectors = 0;
-  u32 match_n_vectors = 0;
-  u32 action = 0;
-  u32 metadata = 0;
-  int ret;
-
-  /*
-   * Warning: you have to supply skip_n and match_n
-   * because the API client cant simply look at the classify
-   * table object.
-   */
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "del"))
-	is_add = 0;
-      else if (unformat (i, "hit-next %U", api_unformat_ip_next_index,
-			 &hit_next_index))
-	;
-      else if (unformat (i, "l2-hit-next %U", unformat_l2_next_index,
-			 &hit_next_index))
-	;
-      else if (unformat (i, "acl-hit-next %U", api_unformat_acl_next_index,
-			 &hit_next_index))
-	;
-      else if (unformat (i, "policer-hit-next %d", &hit_next_index))
-	;
-      else if (unformat (i, "%U", unformat_policer_precolor, &opaque_index))
-	;
-      else if (unformat (i, "opaque-index %d", &opaque_index))
-	;
-      else if (unformat (i, "skip_n %d", &skip_n_vectors))
-	;
-      else if (unformat (i, "match_n %d", &match_n_vectors))
-	;
-      else if (unformat (i, "match %U", api_unformat_classify_match,
-			 &match, skip_n_vectors, match_n_vectors))
-	;
-      else if (unformat (i, "advance %d", &advance))
-	;
-      else if (unformat (i, "table-index %d", &table_index))
-	;
-      else if (unformat (i, "action set-ip4-fib-id %d", &metadata))
-	action = 1;
-      else if (unformat (i, "action set-ip6-fib-id %d", &metadata))
-	action = 2;
-      else if (unformat (i, "action %d", &action))
-	;
-      else if (unformat (i, "metadata %d", &metadata))
-	;
-      else
-	break;
-    }
-
-  if (table_index == ~0)
-    {
-      errmsg ("Table index required");
-      return -99;
-    }
-
-  if (is_add && match == 0)
-    {
-      errmsg ("Match value required");
-      return -99;
-    }
-
-  M2 (CLASSIFY_ADD_DEL_SESSION, mp, vec_len (match));
-
-  mp->is_add = is_add;
-  mp->table_index = ntohl (table_index);
-  mp->hit_next_index = ntohl (hit_next_index);
-  mp->opaque_index = ntohl (opaque_index);
-  mp->advance = ntohl (advance);
-  mp->action = action;
-  mp->metadata = ntohl (metadata);
-  mp->match_len = ntohl (vec_len (match));
-  clib_memcpy (mp->match, match, vec_len (match));
-  vec_free (match);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_classify_set_interface_ip_table (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_classify_set_interface_ip_table_t *mp;
-  u32 sw_if_index;
-  int sw_if_index_set;
-  u32 table_index = ~0;
-  u8 is_ipv6 = 0;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "sw_if_index %d", &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "table %d", &table_index))
-	;
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  if (sw_if_index_set == 0)
-    {
-      errmsg ("missing interface name or sw_if_index");
-      return -99;
-    }
-
-
-  M (CLASSIFY_SET_INTERFACE_IP_TABLE, mp);
-
-  mp->sw_if_index = ntohl (sw_if_index);
-  mp->table_index = ntohl (table_index);
-  mp->is_ipv6 = is_ipv6;
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_classify_set_interface_l2_tables (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_classify_set_interface_l2_tables_t *mp;
-  u32 sw_if_index;
-  int sw_if_index_set;
-  u32 ip4_table_index = ~0;
-  u32 ip6_table_index = ~0;
-  u32 other_table_index = ~0;
-  u32 is_input = 1;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "sw_if_index %d", &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "ip4-table %d", &ip4_table_index))
-	;
-      else if (unformat (i, "ip6-table %d", &ip6_table_index))
-	;
-      else if (unformat (i, "other-table %d", &other_table_index))
-	;
-      else if (unformat (i, "is-input %d", &is_input))
-	;
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  if (sw_if_index_set == 0)
-    {
-      errmsg ("missing interface name or sw_if_index");
-      return -99;
-    }
-
-
-  M (CLASSIFY_SET_INTERFACE_L2_TABLES, mp);
-
-  mp->sw_if_index = ntohl (sw_if_index);
-  mp->ip4_table_index = ntohl (ip4_table_index);
-  mp->ip6_table_index = ntohl (ip6_table_index);
-  mp->other_table_index = ntohl (other_table_index);
-  mp->is_input = (u8) is_input;
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_set_ipfix_exporter (vat_main_t * vam)
+api_set_ipfix_exporter (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_set_ipfix_exporter_t *mp;
@@ -10504,112 +9863,6 @@ api_want_l2_macs_events (vat_main_t * vam)
 }
 
 static int
-api_input_acl_set_interface (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_input_acl_set_interface_t *mp;
-  u32 sw_if_index;
-  int sw_if_index_set;
-  u32 ip4_table_index = ~0;
-  u32 ip6_table_index = ~0;
-  u32 l2_table_index = ~0;
-  u8 is_add = 1;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "sw_if_index %d", &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "del"))
-	is_add = 0;
-      else if (unformat (i, "ip4-table %d", &ip4_table_index))
-	;
-      else if (unformat (i, "ip6-table %d", &ip6_table_index))
-	;
-      else if (unformat (i, "l2-table %d", &l2_table_index))
-	;
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  if (sw_if_index_set == 0)
-    {
-      errmsg ("missing interface name or sw_if_index");
-      return -99;
-    }
-
-  M (INPUT_ACL_SET_INTERFACE, mp);
-
-  mp->sw_if_index = ntohl (sw_if_index);
-  mp->ip4_table_index = ntohl (ip4_table_index);
-  mp->ip6_table_index = ntohl (ip6_table_index);
-  mp->l2_table_index = ntohl (l2_table_index);
-  mp->is_add = is_add;
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_output_acl_set_interface (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_output_acl_set_interface_t *mp;
-  u32 sw_if_index;
-  int sw_if_index_set;
-  u32 ip4_table_index = ~0;
-  u32 ip6_table_index = ~0;
-  u32 l2_table_index = ~0;
-  u8 is_add = 1;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "sw_if_index %d", &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "del"))
-	is_add = 0;
-      else if (unformat (i, "ip4-table %d", &ip4_table_index))
-	;
-      else if (unformat (i, "ip6-table %d", &ip6_table_index))
-	;
-      else if (unformat (i, "l2-table %d", &l2_table_index))
-	;
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  if (sw_if_index_set == 0)
-    {
-      errmsg ("missing interface name or sw_if_index");
-      return -99;
-    }
-
-  M (OUTPUT_ACL_SET_INTERFACE, mp);
-
-  mp->sw_if_index = ntohl (sw_if_index);
-  mp->ip4_table_index = ntohl (ip4_table_index);
-  mp->ip6_table_index = ntohl (ip6_table_index);
-  mp->l2_table_index = ntohl (l2_table_index);
-  mp->is_add = is_add;
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
 api_ip_address_dump (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
@@ -11453,95 +10706,6 @@ api_policer_dump (vat_main_t * vam)
   return ret;
 }
 
-static int
-api_policer_classify_set_interface (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_policer_classify_set_interface_t *mp;
-  u32 sw_if_index;
-  int sw_if_index_set;
-  u32 ip4_table_index = ~0;
-  u32 ip6_table_index = ~0;
-  u32 l2_table_index = ~0;
-  u8 is_add = 1;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "sw_if_index %d", &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "del"))
-	is_add = 0;
-      else if (unformat (i, "ip4-table %d", &ip4_table_index))
-	;
-      else if (unformat (i, "ip6-table %d", &ip6_table_index))
-	;
-      else if (unformat (i, "l2-table %d", &l2_table_index))
-	;
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  if (sw_if_index_set == 0)
-    {
-      errmsg ("missing interface name or sw_if_index");
-      return -99;
-    }
-
-  M (POLICER_CLASSIFY_SET_INTERFACE, mp);
-
-  mp->sw_if_index = ntohl (sw_if_index);
-  mp->ip4_table_index = ntohl (ip4_table_index);
-  mp->ip6_table_index = ntohl (ip6_table_index);
-  mp->l2_table_index = ntohl (l2_table_index);
-  mp->is_add = is_add;
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_policer_classify_dump (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_policer_classify_dump_t *mp;
-  vl_api_control_ping_t *mp_ping;
-  u8 type = POLICER_CLASSIFY_N_TABLES;
-  int ret;
-
-  if (unformat (i, "type %U", unformat_policer_classify_table_type, &type))
-    ;
-  else
-    {
-      errmsg ("classify table type must be specified");
-      return -99;
-    }
-
-  if (!vam->json_output)
-    {
-      print (vam->ofp, "%10s%20s", "Intfc idx", "Classify table");
-    }
-
-  M (POLICER_CLASSIFY_DUMP, mp);
-  mp->type = type;
-  /* send it... */
-  S (mp);
-
-  /* Use a control ping for synchronization */
-  MPING (CONTROL_PING, mp_ping);
-  S (mp_ping);
-
-  /* Wait for a reply... */
-  W (ret);
-  return ret;
-}
-
 static u8 *
 format_fib_api_path_nh_proto (u8 * s, va_list * args)
 {
@@ -12076,121 +11240,6 @@ api_ip_route_dump (vat_main_t * vam)
   mp->table.table_id = table_id;
   mp->table.is_ip6 = is_ip6;
 
-  S (mp);
-
-  /* Use a control ping for synchronization */
-  MPING (CONTROL_PING, mp_ping);
-  S (mp_ping);
-
-  W (ret);
-  return ret;
-}
-
-int
-api_classify_table_ids (vat_main_t * vam)
-{
-  vl_api_classify_table_ids_t *mp;
-  int ret;
-
-  /* Construct the API message */
-  M (CLASSIFY_TABLE_IDS, mp);
-  mp->context = 0;
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-int
-api_classify_table_by_interface (vat_main_t * vam)
-{
-  unformat_input_t *input = vam->input;
-  vl_api_classify_table_by_interface_t *mp;
-
-  u32 sw_if_index = ~0;
-  int ret;
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
-	;
-      else if (unformat (input, "sw_if_index %d", &sw_if_index))
-	;
-      else
-	break;
-    }
-  if (sw_if_index == ~0)
-    {
-      errmsg ("missing interface name or sw_if_index");
-      return -99;
-    }
-
-  /* Construct the API message */
-  M (CLASSIFY_TABLE_BY_INTERFACE, mp);
-  mp->context = 0;
-  mp->sw_if_index = ntohl (sw_if_index);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-int
-api_classify_table_info (vat_main_t * vam)
-{
-  unformat_input_t *input = vam->input;
-  vl_api_classify_table_info_t *mp;
-
-  u32 table_id = ~0;
-  int ret;
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "table_id %d", &table_id))
-	;
-      else
-	break;
-    }
-  if (table_id == ~0)
-    {
-      errmsg ("missing table id");
-      return -99;
-    }
-
-  /* Construct the API message */
-  M (CLASSIFY_TABLE_INFO, mp);
-  mp->context = 0;
-  mp->table_id = ntohl (table_id);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-int
-api_classify_session_dump (vat_main_t * vam)
-{
-  unformat_input_t *input = vam->input;
-  vl_api_classify_session_dump_t *mp;
-  vl_api_control_ping_t *mp_ping;
-
-  u32 table_id = ~0;
-  int ret;
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "table_id %d", &table_id))
-	;
-      else
-	break;
-    }
-  if (table_id == ~0)
-    {
-      errmsg ("missing table id");
-      return -99;
-    }
-
-  /* Construct the API message */
-  M (CLASSIFY_SESSION_DUMP, mp);
-  mp->context = 0;
-  mp->table_id = ntohl (table_id);
   S (mp);
 
   /* Use a control ping for synchronization */
@@ -13048,91 +12097,6 @@ api_l2_interface_pbb_tag_rewrite (vat_main_t * vam)
   mp->i_sid = ntohl (sid);
 
   S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_flow_classify_set_interface (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_flow_classify_set_interface_t *mp;
-  u32 sw_if_index;
-  int sw_if_index_set;
-  u32 ip4_table_index = ~0;
-  u32 ip6_table_index = ~0;
-  u8 is_add = 1;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "sw_if_index %d", &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "del"))
-	is_add = 0;
-      else if (unformat (i, "ip4-table %d", &ip4_table_index))
-	;
-      else if (unformat (i, "ip6-table %d", &ip6_table_index))
-	;
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  if (sw_if_index_set == 0)
-    {
-      errmsg ("missing interface name or sw_if_index");
-      return -99;
-    }
-
-  M (FLOW_CLASSIFY_SET_INTERFACE, mp);
-
-  mp->sw_if_index = ntohl (sw_if_index);
-  mp->ip4_table_index = ntohl (ip4_table_index);
-  mp->ip6_table_index = ntohl (ip6_table_index);
-  mp->is_add = is_add;
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_flow_classify_dump (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_flow_classify_dump_t *mp;
-  vl_api_control_ping_t *mp_ping;
-  u8 type = FLOW_CLASSIFY_N_TABLES;
-  int ret;
-
-  if (unformat (i, "type %U", unformat_flow_classify_table_type, &type))
-    ;
-  else
-    {
-      errmsg ("classify table type must be specified");
-      return -99;
-    }
-
-  if (!vam->json_output)
-    {
-      print (vam->ofp, "%10s%20s", "Intfc idx", "Classify table");
-    }
-
-  M (FLOW_CLASSIFY_DUMP, mp);
-  mp->type = type;
-  /* send it... */
-  S (mp);
-
-  /* Use a control ping for synchronization */
-  MPING (CONTROL_PING, mp_ping);
-  S (mp_ping);
-
-  /* Wait for a reply... */
   W (ret);
   return ret;
 }
@@ -14683,21 +13647,6 @@ _(l2_patch_add_del,                                                     \
 _(sr_localsid_add_del,                                                  \
   "(del) address <addr> next_hop <addr> behavior <beh>\n"               \
   "fib-table <num> (end.psp) sw_if_index <num>")                        \
-_(classify_add_del_table,                                               \
-  "buckets <nn> [skip <n>] [match <n>] [memory_size <nn-bytes>]\n"	\
-  " [del] [del-chain] mask <mask-value>\n"                              \
-  " [l2-miss-next | miss-next | acl-miss-next] <name|nn>\n" 		\
-  " [current-data-flag <n>] [current-data-offset <nn>] [table <nn>]")   \
-_(classify_add_del_session,                                             \
-  "[hit-next|l2-hit-next|acl-hit-next|policer-hit-next] <name|nn>\n"    \
-  "  table-index <nn> skip_n <nn> match_n <nn> match [hex] [l2]\n"      \
-  "  [l3 [ip4|ip6]] [action set-ip4-fib-id <nn>]\n"                     \
-  "  [action set-ip6-fib-id <nn> | action <n> metadata <nn>] [del]")    \
-_(classify_set_interface_ip_table,                                      \
-  "<intfc> | sw_if_index <nn> table <nn>")				\
-_(classify_set_interface_l2_tables,                                     \
-  "<intfc> | sw_if_index <nn> [ip4-table <nn>] [ip6-table <nn>]\n"      \
-  "  [other-table <nn>]")                                               \
 _(get_node_index, "node <node-name")                                    \
 _(add_node_next, "node <node-name> next <next-node-name>")              \
 _(vxlan_offload_rx,                                                     \
@@ -14741,9 +13690,6 @@ _(vxlan_gpe_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                \
 _(l2_fib_table_dump, "bd_id <bridge-domain-id>")			\
 _(interface_name_renumber,                                              \
   "<intfc> | sw_if_index <nn> new_show_dev_instance <nn>")		\
-_(input_acl_set_interface,                                              \
-  "<intfc> | sw_if_index <nn> [ip4-table <nn>] [ip6-table <nn>]\n"      \
-  "  [l2-table <nn>] [del]")                                            \
 _(want_l2_macs_events, "[disable] [learn-limit <n>] [scan-delay <n>] [max-entries <n>]") \
 _(ip_address_dump, "(ipv4 | ipv6) (<intfc> | sw_if_index <id>)")        \
 _(ip_dump, "ipv4 | ipv6")                                               \
@@ -14773,17 +13719,9 @@ _(af_packet_delete, "name <host interface name>")                       \
 _(af_packet_dump, "")							\
 _(policer_add_del, "name <policer name> <params> [del]")                \
 _(policer_dump, "[name <policer name>]")                                \
-_(policer_classify_set_interface,                                       \
-  "<intfc> | sw_if_index <nn> [ip4-table <nn>] [ip6-table <nn>]\n"      \
-  "  [l2-table <nn>] [del]")                                            \
-_(policer_classify_dump, "type [ip4|ip6|l2]")                           \
 _(mpls_tunnel_dump, "tunnel_index <tunnel-id>")                         \
 _(mpls_table_dump, "")                                                  \
 _(mpls_route_dump, "table-id <ID>")                                     \
-_(classify_table_ids, "")                                               \
-_(classify_table_by_interface, "sw_if_index <sw_if_index>")             \
-_(classify_table_info, "table_id <nn>")                                 \
-_(classify_session_dump, "table_id <nn>")                               \
 _(set_ipfix_exporter, "collector_address <ip4> [collector_port <nn>] "  \
     "src_address <ip4> [vrf_id <nn>] [path_mtu <nn>] "                  \
     "[template_interval <nn>] [udp_checksum]")                          \
@@ -14810,9 +13748,6 @@ _(l2_interface_pbb_tag_rewrite,                                         \
   "[disable | push | pop | translate_pbb_stag <outer_tag>] \n"          \
   "dmac <mac> smac <mac> sid <nn> [vlanid <nn>]")                       \
 _(set_punt, "protocol <l4-protocol> [ip <ver>] [port <l4-port>] [del]")     \
-_(flow_classify_set_interface,                                          \
-  "<intfc> | sw_if_index <nn> [ip4-table <nn>] [ip6-table <nn>] [del]") \
-_(flow_classify_dump, "type [ip4|ip6]")                                 \
 _(ip_table_dump, "")                                                    \
 _(ip_route_dump, "table-id [ip4|ip6]")                                  \
 _(ip_mtable_dump, "")                                                   \
@@ -14837,9 +13772,6 @@ _(session_rule_add_del, "[add|del] proto <tcp/udp> <lcl-ip>/<plen> "	\
   "<lcl-port> <rmt-ip>/<plen> <rmt-port> action <nn>")			\
 _(session_rules_dump, "")						\
 _(ip_container_proxy_add_del, "[add|del] <address> <sw_if_index>")	\
-_(output_acl_set_interface,                                             \
-  "<intfc> | sw_if_index <nn> [ip4-table <nn>] [ip6-table <nn>]\n"      \
-  "  [l2-table <nn>] [del]")                                            \
 _(qos_record_enable_disable, "<record-source> <intfc> | sw_if_index <id> [disable]")
 
 /* List of command functions, CLI names map directly to functions */
