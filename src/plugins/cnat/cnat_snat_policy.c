@@ -105,36 +105,53 @@ cnat_snat_policy_add_del_if_command_fn (vlib_main_t *vm,
 					unformat_input_t *input,
 					vlib_cli_command_t *cmd)
 {
+  unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
   int is_add = 1;
   u32 sw_if_index = ~0;
+  clib_error_t *e = 0;
   u32 table;
   int rv;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "del"))
+      if (unformat (line_input, "del"))
 	is_add = 0;
-      else if (unformat (input, "table %U",
+      else if (unformat (line_input, "table %U",
 			 unformat_cnat_snat_interface_map_type, &table))
 	;
       else if (unformat (input, "%U", unformat_vnet_sw_interface, vnm,
 			 &sw_if_index))
 	;
       else
-	return clib_error_return (0, "unknown input '%U'",
-				  format_unformat_error, input);
+	{
+	  e = clib_error_return (0, "unknown input '%U'",
+				 format_unformat_error, line_input);
+	  goto done;
+	}
     }
 
   if (sw_if_index == ~0)
-    return clib_error_return (0, "Interface not specified");
+    {
+      e = clib_error_return (0, "Interface not specified");
+      goto done;
+    }
 
   rv = cnat_snat_policy_add_del_if (sw_if_index, is_add, table);
 
   if (rv)
-    return clib_error_return (0, "Error %d", rv);
+    {
+      e = clib_error_return (0, "Error %d", rv);
+      goto done;
+    }
 
-  return NULL;
+done:
+  unformat_free (line_input);
+  return (e);
 }
 
 VLIB_CLI_COMMAND (cnat_snat_policy_add_del_if_command, static) = {
@@ -403,19 +420,28 @@ cnat_snat_policy_add_del_pfx_command_fn (vlib_main_t *vm,
 					 unformat_input_t *input,
 					 vlib_cli_command_t *cmd)
 {
+  unformat_input_t _line_input, *line_input = &_line_input;
   ip_prefix_t pfx;
   u8 is_add = 1;
+  clib_error_t *e = 0;
   int rv;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "%U", unformat_ip_prefix, &pfx))
+      if (unformat (line_input, "%U", unformat_ip_prefix, &pfx))
 	;
-      else if (unformat (input, "del"))
+      else if (unformat (line_input, "del"))
 	is_add = 0;
       else
-	return (clib_error_return (0, "unknown input '%U'",
-				   format_unformat_error, input));
+	{
+	  e = clib_error_return (0, "unknown input '%U'",
+				 format_unformat_error, line_input);
+	  goto done;
+	}
     }
 
   if (is_add)
@@ -424,9 +450,15 @@ cnat_snat_policy_add_del_pfx_command_fn (vlib_main_t *vm,
     rv = cnat_snat_policy_del_pfx (&pfx);
 
   if (rv)
-    return (clib_error_return (0, "error %d", rv, input));
+    {
+      e = (clib_error_return (0, "error %d", rv, line_input));
+      goto done;
+    }
 
-  return (NULL);
+done:
+  unformat_free (line_input);
+
+  return (e);
 }
 
 VLIB_CLI_COMMAND (cnat_snat_policy_add_del_pfx_command, static) = {
@@ -494,7 +526,14 @@ static clib_error_t *
 cnat_snat_policy_set_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 			     vlib_cli_command_t *cmd)
 {
+  unformat_input_t _line_input, *line_input = &_line_input;
   cnat_snat_policy_type_t policy = CNAT_SNAT_POLICY_NONE;
+  clib_error_t *e = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "none"))
@@ -504,12 +543,18 @@ cnat_snat_policy_set_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
       else if (unformat (input, "k8s"))
 	policy = CNAT_SNAT_POLICY_K8S;
       else
-	return clib_error_return (0, "unknown input '%U'",
-				  format_unformat_error, input);
+	{
+	  e = clib_error_return (0, "unknown input '%U'",
+				 format_unformat_error, input);
+	  goto done;
+	}
     }
 
   cnat_set_snat_policy (policy);
-  return NULL;
+done:
+  unformat_free (line_input);
+
+  return (e);
 }
 
 VLIB_CLI_COMMAND (cnat_snat_policy_set_cmd, static) = {
