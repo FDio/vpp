@@ -1438,6 +1438,23 @@ vppcom_session_create (u8 proto, u8 is_nonblocking)
   return vcl_session_handle (session);
 }
 
+static void
+vcl_epoll_wait_clean_lt (vcl_worker_t *wrk, u32 sid)
+{
+  u32 *indices = 0, *pos, i;
+
+  for (i = 0; i < vec_len (wrk->level_evts); i++)
+    {
+      if (wrk->level_evts[i] == sid)
+	vec_add1 (indices, i);
+    }
+
+  vec_foreach (pos, indices)
+    vec_del1 (wrk->level_evts, pos[0]);
+
+  vec_free (indices);
+}
+
 int
 vcl_session_cleanup (vcl_worker_t * wrk, vcl_session_t * s,
 		     vcl_session_handle_t sh, u8 do_disconnect)
@@ -1468,6 +1485,8 @@ vcl_session_cleanup (vcl_worker_t * wrk, vcl_session_t * s,
 	VDBG (0, "session %u [0x%llx]: EPOLL_CTL_DEL vep_idx %u "
 	      "failed! rv %d (%s)", s->session_index, s->vpp_handle,
 	      s->vep.vep_sh, rv, vppcom_retval_str (rv));
+      if (PREDICT_FALSE (vec_len (wrk->level_evts)))
+	vcl_epoll_wait_clean_lt (wrk, s->session_index);
     }
 
   if (!do_disconnect)
@@ -2170,6 +2189,9 @@ vppcom_session_write_inline (vcl_worker_t * wrk, vcl_session_t * s, void *buf,
 		     (s->flags & VCL_SESSION_F_SHUTDOWN)))
     {
       VDBG (1, "session %u [0x%llx]: is not open! state 0x%x (%s)",
+	    s->session_index, s->vpp_handle, s->session_state,
+	    vppcom_session_state_str (s->session_state));
+      clib_warning ("session %u [0x%llx]: is not open! state 0x%x (%s)",
 	    s->session_index, s->vpp_handle, s->session_state,
 	    vppcom_session_state_str (s->session_state));
       return vcl_session_closed_error (s);;
@@ -3037,6 +3059,11 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	  s = vcl_session_get (wrk, sid);
 	  s->vep.ev.events = 0;
 	}
+      if (!(EPOLLET & session_events))
+	{
+	  //	  clib_warning ("\n\nHIT\n\n");
+	  vec_add1 (wrk->level_evts, sid);
+	}
       *num_ev += 1;
     }
 }
@@ -3151,6 +3178,52 @@ vppcom_epoll_wait_eventfd (vcl_worker_t *wrk, struct epoll_event *events,
   return 0;
 }
 
+static void
+vcl_epoll_wait_check_lt (vcl_worker_t *wrk, struct epoll_event *events,
+			 int maxevents, u32 *n_evts)
+{
+  u32 *sid, add_event, *le;
+  u64 evt_data;
+  vcl_session_t *s;
+
+  le = wrk->level_evts;
+  vec_reset_length (wrk->level_evts_fl);
+  wrk->level_evts = wrk->level_evts_fl;
+  wrk->level_evts_fl = le;
+
+  vec_foreach (sid, le)
+    {
+      s = vcl_session_get (wrk, sid[0]);
+      if (!s)
+	continue;
+      if ((s->vep.ev.events & EPOLLIN) && vcl_session_read_ready (s))
+	{
+	  add_event = 1;
+	  events[*n_evts].events |= EPOLLIN;
+	  evt_data = s->vep.ev.data.u64;
+	}
+      if ((s->vep.ev.events & EPOLLOUT) && vcl_session_write_ready (s))
+	{
+	  add_event = 1;
+	  events[*n_evts].events |= EPOLLOUT;
+	  evt_data = s->vep.ev.data.u64;
+	}
+      if (add_event)
+	{
+	  events[*n_evts].data.u64 = evt_data;
+	  *n_evts += 1;
+	  add_event = 0;
+	  vec_add1 (wrk->level_evts, sid[0]);
+	  if (*n_evts == maxevents)
+	    {
+	      u32 pos = (sid - le) + 1;
+	      vec_add (wrk->level_evts, &le[pos], vec_len (le) - pos);
+	      break;
+	    }
+	}
+    }
+}
+
 int
 vppcom_epoll_wait (uint32_t vep_handle, struct epoll_event *events,
 		   int maxevents, double wait_for_time)
@@ -3197,11 +3270,16 @@ vppcom_epoll_wait (uint32_t vep_handle, struct epoll_event *events,
     return n_evts;
 
   if (vcm->cfg.use_mq_eventfd)
-    return vppcom_epoll_wait_eventfd (wrk, events, maxevents, n_evts,
+    n_evts = vppcom_epoll_wait_eventfd (wrk, events, maxevents, n_evts,
 				      wait_for_time);
+  else
+    n_evts =vppcom_epoll_wait_condvar (wrk, events, maxevents, n_evts,
+                                       wait_for_time);
 
-  return vppcom_epoll_wait_condvar (wrk, events, maxevents, n_evts,
-				    wait_for_time);
+  if (PREDICT_FALSE (vec_len (wrk->level_evts)))
+    vcl_epoll_wait_check_lt (wrk, events, maxevents, &n_evts);
+
+  return n_evts;
 }
 
 int
