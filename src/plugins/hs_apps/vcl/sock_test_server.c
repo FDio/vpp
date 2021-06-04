@@ -292,7 +292,7 @@ new_client (void)
   struct epoll_event ev;
   int rv;
 
-  ev.events = EPOLLIN;
+  ev.events = EPOLLET | EPOLLIN;
   ev.data.u64 = conn - ssm->conn_pool;
   rv = epoll_ctl (ssm->epfd, EPOLL_CTL_ADD, client_fd, &ev);
 
@@ -329,7 +329,7 @@ socket_server_echo_af_unix_init (sock_server_main_t * ssm)
   if (rv < 0)
     stfail ("echo_af_unix_init listen()");
 
-  ssm->af_unix_listen_ev.events = EPOLLIN;
+  ssm->af_unix_listen_ev.events = EPOLLET | EPOLLIN;
   ssm->af_unix_listen_ev.data.u32 = SOCK_TEST_AF_UNIX_ACCEPT_DATA;
   rv = epoll_ctl (ssm->epfd, EPOLL_CTL_ADD, ssm->af_unix_listen_fd,
 		  &ssm->af_unix_listen_ev);
@@ -542,7 +542,7 @@ main (int argc, char **argv)
   if (ssm->epfd < 0)
     stfail ("main epoll_create()");
 
-  ssm->listen_ev.events = EPOLLIN;
+  ssm->listen_ev.events = EPOLLET | EPOLLIN;
   ssm->listen_ev.data.u32 = ~0;
 
   rv = epoll_ctl (ssm->epfd, EPOLL_CTL_ADD, ssm->listen_fd, &ssm->listen_ev);

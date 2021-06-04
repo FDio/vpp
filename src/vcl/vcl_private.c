@@ -131,6 +131,8 @@ vcl_worker_cleanup (vcl_worker_t * wrk, u8 notify_vpp)
   hash_free (wrk->session_index_by_vpp_handles);
   vec_free (wrk->mq_events);
   vec_free (wrk->mq_msg_vector);
+  vec_free (wrk->ep_level_evts);
+  vec_free (wrk->ep_level_evts_fl);
   vcl_worker_free (wrk);
   clib_spinlock_unlock (&vcm->workers_lock);
 }

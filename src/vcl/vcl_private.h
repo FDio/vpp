@@ -253,6 +253,12 @@ typedef struct vcl_worker_
   /** Per worker buffer for receiving mq epoll events */
   struct epoll_event *mq_events;
 
+  /** Vector of session indices recently notified of epoll level events */
+  u32 *ep_level_evts;
+
+  /** Storage for level events session while new ones are processed */
+  u32 *ep_level_evts_fl;
+
   /** Hash table for disconnect processing */
   uword *session_index_by_vpp_handles;
 
