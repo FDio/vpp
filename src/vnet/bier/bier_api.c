@@ -32,37 +32,19 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/mfib/mfib_table.h>
 
-#include <vnet/vnet_msg_enum.h>
+#include <vnet/format_fns.h>
+#include <bier/bier.api_enum.h>
+#include <bier/bier.api_types.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vnet/vnet_all_api_h.h>
-#undef vl_printfun
-
+#define REPLY_MSG_ID_BASE bier_main.msg_id_base
 #include <vlibapi/api_helper_macros.h>
-#include <vnet/fib/fib_api.h>
 
-#define foreach_bier_api_msg                            \
-    _(BIER_TABLE_ADD_DEL, bier_table_add_del)           \
-    _(BIER_TABLE_DUMP, bier_table_dump)                 \
-    _(BIER_ROUTE_ADD_DEL, bier_route_add_del)           \
-    _(BIER_ROUTE_DUMP, bier_route_dump)                 \
-    _(BIER_IMP_ADD, bier_imp_add)                       \
-    _(BIER_IMP_DEL, bier_imp_del)                       \
-    _(BIER_IMP_DUMP, bier_imp_dump)                     \
-    _(BIER_DISP_TABLE_ADD_DEL, bier_disp_table_add_del) \
-    _(BIER_DISP_TABLE_DUMP, bier_disp_table_dump)       \
-    _(BIER_DISP_ENTRY_ADD_DEL, bier_disp_entry_add_del) \
-    _(BIER_DISP_ENTRY_DUMP, bier_disp_entry_dump)
+typedef struct
+{
+  u16 msg_id_base;
+} bier_main_t;
+
+bier_main_t bier_main;
 
 static void
 vl_api_bier_table_add_del_t_handler (vl_api_bier_table_add_del_t * mp)
@@ -124,7 +106,7 @@ send_bier_table_details (vl_api_registration_t * reg,
     if (!mp)
         return;
     clib_memset(mp, 0, sizeof(*mp));
-    mp->_vl_msg_id = ntohs(VL_API_BIER_TABLE_DETAILS);
+    mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_BIER_TABLE_DETAILS);
     mp->context = context;
 
     mp->bt_label = bt->bt_ll;
@@ -258,7 +240,7 @@ send_bier_route_details (const bier_table_t *bt,
         return;
 
     clib_memset(mp, 0, m_size);
-    mp->_vl_msg_id = ntohs(VL_API_BIER_ROUTE_DETAILS);
+    mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_BIER_ROUTE_DETAILS);
     mp->context = ctx->context;
 
     mp->br_route.br_tbl_id.bt_set = bt->bt_id.bti_set;
@@ -381,7 +363,7 @@ send_bier_imp_details (vl_api_registration_t * reg,
     if (!mp)
         return;
     clib_memset(mp, 0, sizeof(*mp)+n_bytes);
-    mp->_vl_msg_id = ntohs(VL_API_BIER_IMP_DETAILS);
+    mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_BIER_IMP_DETAILS);
     mp->context = context;
 
     mp->bi_tbl_id.bt_set = bi->bi_tbl.bti_set;
@@ -448,7 +430,8 @@ send_bier_disp_table_details (vl_api_registration_t * reg,
     if (!mp)
         return;
     clib_memset(mp, 0, sizeof(*mp));
-    mp->_vl_msg_id = ntohs(VL_API_BIER_DISP_TABLE_DETAILS);
+    mp->_vl_msg_id =
+      ntohs (REPLY_MSG_ID_BASE + VL_API_BIER_DISP_TABLE_DETAILS);
     mp->context = context;
 
     mp->bdt_tbl_id = htonl(bdt->bdt_table_id);
@@ -629,10 +612,11 @@ send_bier_disp_entry_details (const bier_disp_table_t *bdt,
                 return;
 
             clib_memset(mp, 0, m_size);
-            mp->_vl_msg_id = ntohs(VL_API_BIER_DISP_ENTRY_DETAILS);
-            mp->context = ctx->context;
+	    mp->_vl_msg_id =
+	      ntohs (REPLY_MSG_ID_BASE + VL_API_BIER_DISP_ENTRY_DETAILS);
+	    mp->context = ctx->context;
 
-            mp->bde_tbl_id = htonl(bdt->bdt_table_id);
+	    mp->bde_tbl_id = htonl(bdt->bdt_table_id);
             mp->bde_n_paths = htonl(n_paths);
             mp->bde_payload_proto = pproto;
             mp->bde_bp = htons(bp);
@@ -673,39 +657,14 @@ vl_api_bier_disp_entry_dump_t_handler (vl_api_bier_disp_entry_dump_t * mp)
                          &ctx);
 }
 
-#define vl_msg_name_crc_list
-#include <vnet/bier/bier.api.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-    foreach_vl_msg_name_crc_bier;
-#undef _
-}
+#include <bier/bier.api.c>
 
 static clib_error_t *
 bier_api_hookup (vlib_main_t * vm)
 {
-    api_main_t *am = vlibapi_get_main();
+  bier_main.msg_id_base = setup_message_id_table ();
 
-#define _(N,n)                                          \
-    vl_msg_api_set_handlers(VL_API_##N, #n,             \
-                            vl_api_##n##_t_handler,     \
-                            vl_noop_handler,            \
-                            vl_api_##n##_t_endian,      \
-                            vl_api_##n##_t_print,       \
-                            sizeof(vl_api_##n##_t), 1);
-    foreach_bier_api_msg;
-#undef _
-
-    /*
-     * Set up the (msg_name, crc, message-id) table
-     */
-    setup_message_id_table (am);
-
-    return 0;
+  return 0;
 }
 
 VLIB_API_INIT_FUNCTION (bier_api_hookup);
