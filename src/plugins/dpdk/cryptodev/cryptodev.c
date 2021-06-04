@@ -881,6 +881,7 @@ cryptodev_get_common_capabilities ()
   const struct rte_cryptodev_capabilities *cap;
   const struct rte_cryptodev_capabilities *dev_caps;
 
+  clib_memset (&tmp_cap, 0, sizeof (cryptodev_capability_t));
   if (vec_len (cmt->cryptodev_inst) == 0)
     return;
   dev_inst = vec_elt_at_index (cmt->cryptodev_inst, 0);
