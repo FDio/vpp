@@ -19,43 +19,14 @@
 #include <vlibmemory/api.h>
 #include <vppinfra/error.h>
 #include <nsh/nsh.h>
-
+#include <nsh/nsh.api_types.h>
+#include <nsh/nsh.api_enum.h>
 uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
-
-/* define message IDs */
-#define vl_msg_id(n,h) n,
-typedef enum {
-#include <nsh/nsh.api.h>
-    /* We'll want to know how many messages IDs we need... */
-    VL_MSG_FIRST_AVAILABLE,
-} vl_msg_id_t;
-#undef vl_msg_id
 
 /* define message structures */
 #define vl_typedefs
 #include <nsh/nsh.api.h>
 #undef vl_typedefs
-
-/* define generated endian-swappers */
-#define vl_endianfun
-#include <nsh/nsh.api.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <nsh/nsh.api.h>
-#undef vl_printfun
-
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <nsh/nsh.api.h>
-#undef vl_api_version
-
-#define vl_msg_name_crc_list
-#include <nsh/nsh.api.h>
-#undef vl_msg_name_crc_list
-
 
 typedef struct {
     /* API message ID base */
@@ -355,59 +326,4 @@ static int api_nsh_map_dump (vat_main_t * vam)
     W;
 }
 
-/*
- * List of messages that the api test plugin sends,
- * and that the data plane plugin processes
- */
-#define foreach_vpe_api_msg \
-_(nsh_add_del_entry, "{nsp <nn> nsi <nn>} c1 <nn> c2 <nn> c3 <nn> c4 <nn> [md-type <nn>] [tlv <xx>] [del]") \
-_(nsh_entry_dump, "")   \
-_(nsh_add_del_map, "nsp <nn> nsi <nn> [del] mapped-nsp <nn> mapped-nsi <nn> [encap-gre-intf <nn> | encap-vxlan-gpe-intf <nn> | encap-none]")  \
-_(nsh_map_dump, "")
-
-static void
-nsh_vat_api_hookup (vat_main_t *vam)
-{
-    nsh_test_main_t * sm = &nsh_test_main;
-    /* Hook up handlers for replies from the data plane plug-in */
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + sm->msg_id_base),     \
-                           #n,                                  \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-    foreach_vpe_api_reply_msg;
-#undef _
-
-    /* API messages we can send */
-#define _(n,h) hash_set_mem (vam->function_by_name, #n, api_##n);
-    foreach_vpe_api_msg;
-#undef _
-
-    /* Help strings */
-#define _(n,h) hash_set_mem (vam->help_by_name, #n, h);
-    foreach_vpe_api_msg;
-#undef _
-}
-
-clib_error_t * vat_plugin_register (vat_main_t *vam)
-{
-  nsh_test_main_t * sm = &nsh_test_main;
-  u8 * name;
-
-  sm->vat_main = vam;
-
-  /* Ask the vpp engine for the first assigned message-id */
-  name = format (0, "nsh_%08x%c", api_version, 0);
-  sm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
-  vec_free(name);
-
-  if (sm->msg_id_base != (u16) ~0)
-    nsh_vat_api_hookup (vam);
-  else
-    return clib_error_return (0, "nsh plugin not loaded...");
-
-  return 0;
-}
+#include <nsh/nsh.api_test.c>
