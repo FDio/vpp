@@ -1253,6 +1253,7 @@ vls_create (uint8_t proto, uint8_t is_nonblocking)
     return VLS_INVALID_HANDLE;
 
   vlsh = vls_alloc (sh);
+  clib_warning ("created %u %p", vlsh, vls_get (vlsh));
   if (PREDICT_FALSE (vlsh == VLS_INVALID_HANDLE))
     vppcom_session_close (sh);
 
@@ -1305,6 +1306,7 @@ vls_close (vls_handle_t vlsh)
   if (vls_mt_wrk_supported ())
     vls_mt_session_cleanup (vls);
 
+  clib_warning ("closing vlsh = %u vls %p", vlsh, vls);
   vls_free (vls);
   vls_mt_unguard ();
 
@@ -1381,6 +1383,7 @@ vls_epoll_ctl (vls_handle_t ep_vlsh, int op, vls_handle_t vlsh,
   ep_sh = vls_to_sh (ep_vls);
   vls = vls_get_and_lock (vlsh);
   sh = vls_to_sh (vls);
+  clib_warning ("ctl on vlsh = %u vls %p", vlsh, vls);
 
   vls_epoll_ctl_mp_checks (vls, op);
   vls_mt_table_runlock ();

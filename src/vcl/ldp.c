@@ -312,6 +312,8 @@ close (int fd)
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
+      fprintf (stderr, "\n\n CLOSE %d VCL SH %u \n\n", fd, vlsh);
+
       epfd = vls_attr (vlsh, VPPCOM_ATTR_GET_LIBC_EPFD, 0, 0);
       if (epfd > 0)
 	{
@@ -344,6 +346,7 @@ close (int fd)
     }
   else
     {
+      fprintf (stderr, "\n\n CLOSE for %u \n\n", fd);
       LDBG (0, "fd %d: calling libc_close", fd);
       rv = libc_close (fd);
     }

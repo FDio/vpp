@@ -2708,10 +2708,26 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
   switch (op)
     {
     case EPOLL_CTL_ADD:
+      clib_warning ("\n\n ADD called %u %x state %u read %u evts %x\n\n", session_handle, s->vpp_handle,
+                    s->session_state, vcl_session_read_ready (s), event->events);
+      if (s->session_index == 7)
+	fprintf (stderr, "stuff to 7\n");
+
       if (PREDICT_FALSE (!event))
 	{
 	  VDBG (0, "EPOLL_CTL_ADD: NULL pointer to epoll_event structure!");
 	  return VPPCOM_EINVAL;
+	}
+      if (s->flags & VCL_SESSION_F_IS_VEP_SESSION)
+	{
+	  clib_warning ("THIS WAS HIT %u %u read ready %x", s->session_index, s->vpp_handle,
+	                vcl_session_read_ready (s));
+	  s->vep.ev = *event;
+	  goto check_fifos;
+//	  if (s->session_index == 6)
+//	    clib_warning ("why? current ev %x", s->vep.ev.events);
+//	  rv = VPPCOM_EEXIST;
+//	  goto done;
 	}
       if (vep_session->vep.next_sh != ~0)
 	{
@@ -2736,6 +2752,7 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
       s->flags |= VCL_SESSION_F_IS_VEP_SESSION;
       vep_session->vep.next_sh = session_handle;
 
+    check_fifos:
       txf = vcl_session_is_ct (s) ? s->ct_tx_fifo : s->tx_fifo;
       if (txf && (event->events & EPOLLOUT))
 	svm_fifo_add_want_deq_ntf (txf, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
@@ -2762,6 +2779,7 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
       break;
 
     case EPOLL_CTL_MOD:
+      clib_warning ("\n\n MOD called \n\n");
       if (PREDICT_FALSE (!event))
 	{
 	  VDBG (0, "EPOLL_CTL_MOD: NULL pointer to epoll_event structure!");
@@ -2771,7 +2789,7 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
       else if (PREDICT_FALSE (!(s->flags & VCL_SESSION_F_IS_VEP_SESSION)))
 	{
 	  VDBG (0, "sh %u EPOLL_CTL_MOD: not a vep session!", session_handle);
-	  rv = VPPCOM_EINVAL;
+	  rv = VPPCOM_ENOENT;
 	  goto done;
 	}
       else if (PREDICT_FALSE (s->vep.vep_sh != vep_handle))
@@ -2791,6 +2809,15 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
 	  e.session_index = s->session_index;
 	  vec_add1 (wrk->unhandled_evts_vector, e);
 	}
+      /* Generate EPOLLIN if rx fifo has data */
+      if ((event->events & EPOLLIN) &&
+	  !(s->vep.ev.events & EPOLLIN) && (vcl_session_read_ready (s) > 0))
+	{
+	  session_event_t e = { 0 };
+	  e.event_type = SESSION_IO_EVT_RX;
+	  e.session_index = s->session_index;
+	  vec_add1 (wrk->unhandled_evts_vector, e);
+	}
       s->vep.et_mask = VEP_DEFAULT_ET_MASK;
       s->vep.ev = *event;
       txf = vcl_session_is_ct (s) ? s->ct_tx_fifo : s->tx_fifo;
@@ -2806,10 +2833,12 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
       break;
 
     case EPOLL_CTL_DEL:
+      clib_warning ("\n\n DEL called %u %x\n\n", session_handle, s->vpp_handle);
+
       if (PREDICT_FALSE (!(s->flags & VCL_SESSION_F_IS_VEP_SESSION)))
 	{
 	  VDBG (0, "EPOLL_CTL_DEL: %u not a vep session!", session_handle);
-	  rv = VPPCOM_EINVAL;
+	  rv = VPPCOM_ENOENT;
 	  goto done;
 	}
       else if (PREDICT_FALSE (s->vep.vep_sh != vep_handle))
@@ -2889,21 +2918,31 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
   switch (e->event_type)
     {
     case SESSION_IO_EVT_RX:
+      if (e->session_index == 7 || e->session_index == 6)
+	clib_warning ("\n\n %u GOT RX\n\n", e->session_index);
       sid = e->session_index;
       s = vcl_session_get (wrk, sid);
       if (vcl_session_is_closed (s))
 	break;
+      if (s->session_index == 7 || s->session_index == 6)
+	clib_warning ("\n\n %u IS ACTIVE and has rx %u flag %u evt %u\n\n", s->session_index,
+	              vcl_session_read_ready (s), s->flags & VCL_SESSION_F_HAS_RX_EVT,
+	              EPOLLIN & s->vep.ev.events);
       vcl_fifo_rx_evt_valid_or_break (s);
       session_events = s->vep.ev.events;
       if (!(EPOLLIN & s->vep.ev.events)
 	  || (s->flags & VCL_SESSION_F_HAS_RX_EVT))
 	break;
+      if (s->session_index == 7 || s->session_index == 6)
+	clib_warning ("delivering ntf that %u has event", s->session_index);
       add_event = 1;
       events[*num_ev].events |= EPOLLIN;
       session_evt_data = s->vep.ev.data.u64;
       s->flags |= VCL_SESSION_F_HAS_RX_EVT;
       break;
     case SESSION_IO_EVT_TX:
+      if (e->session_index == 7)
+	clib_warning ("\n\n %u GOT TX\n\n", e->session_index);
       sid = e->session_index;
       s = vcl_session_get (wrk, sid);
       if (vcl_session_is_closed (s))
@@ -2958,6 +2997,7 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       s = vcl_session_disconnected_handler (wrk, disconnected_msg);
       if (vcl_session_is_closed (s))
 	break;
+      clib_warning ("\n\n DISCONNECTED ISSUE \n\n");
       sid = s->session_index;
       session_events = s->vep.ev.events;
       add_event = 1;
