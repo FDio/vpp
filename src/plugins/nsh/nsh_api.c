@@ -21,52 +21,10 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <vpp/app/version.h>
-
-/* define message IDs */
-#define vl_msg_id(n,h) n,
-typedef enum
-{
-#include <nsh/nsh.api.h>
-  /* We'll want to know how many messages IDs we need... */
-  VL_MSG_FIRST_AVAILABLE,
-} vl_msg_id_t;
-#undef vl_msg_id
-
-/* define message structures */
-#define vl_typedefs
-#include <nsh/nsh.api.h>
-#undef vl_typedefs
-
-/* define generated endian-swappers */
-#define vl_endianfun
-#include <nsh/nsh.api.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <nsh/nsh.api.h>
-#undef vl_printfun
-
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <nsh/nsh.api.h>
-#undef vl_api_version
-
-#define vl_msg_name_crc_list
-#include <nsh/nsh.api.h>
-#undef vl_msg_name_crc_list
-
-#define REPLY_MSG_ID_BASE nm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
-/* List of message types that this plugin understands */
-
-#define foreach_nsh_plugin_api_msg		\
-  _(NSH_ADD_DEL_ENTRY, nsh_add_del_entry)	\
-  _(NSH_ENTRY_DUMP, nsh_entry_dump)             \
-  _(NSH_ADD_DEL_MAP, nsh_add_del_map)           \
-  _(NSH_MAP_DUMP, nsh_map_dump)
+#include <plugins/nsh/nsh.api_enum.h>
+#include <plugins/nsh/nsh.api_types.h>
 
 /**
  * @brief CLI function for NSH admin up/down
@@ -210,7 +168,6 @@ static void
 vl_api_nsh_add_del_map_t_handler (vl_api_nsh_add_del_map_t * mp)
 {
   vl_api_nsh_add_del_map_reply_t *rmp;
-  nsh_main_t *nm = &nsh_main;
   int rv;
   nsh_add_del_map_args_t _a, *a = &_a;
   u32 map_index = ~0;
@@ -592,7 +549,6 @@ static void vl_api_nsh_add_del_entry_t_handler
   (vl_api_nsh_add_del_entry_t * mp)
 {
   vl_api_nsh_add_del_entry_reply_t *rmp;
-  nsh_main_t *nm = &nsh_main;
   int rv;
   nsh_add_del_entry_args_t _a, *a = &_a;
   u32 entry_index = ~0;
@@ -666,54 +622,16 @@ vl_api_nsh_entry_dump_t_handler (vl_api_nsh_entry_dump_t * mp)
     }
 }
 
-static void
-setup_message_id_table (nsh_main_t * nm, api_main_t * am)
-{
-#define _(id,n,crc) \
-  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + nm->msg_id_base);
-  foreach_vl_msg_name_crc_nsh;
-#undef _
-}
+#include <nsh/nsh.api.c>
 
 /* Set up the API message handling tables */
-static clib_error_t *
-nsh_plugin_api_hookup (vlib_main_t * vm)
-{
-  nsh_main_t *nm __attribute__ ((unused)) = &nsh_main;
-#define _(N,n)                                                  \
-  vl_msg_api_set_handlers((VL_API_##N + nm->msg_id_base),	\
-			  #n,					\
-			  vl_api_##n##_t_handler,		\
-			  vl_noop_handler,			\
-			  vl_api_##n##_t_endian,		\
-			  vl_api_##n##_t_print,			\
-			  sizeof(vl_api_##n##_t), 1);
-  foreach_nsh_plugin_api_msg;
-#undef _
-
-  return 0;
-}
-
 clib_error_t *
 nsh_api_init (vlib_main_t * vm, nsh_main_t * nm)
 {
-  clib_error_t *error;
-  u8 *name;
-
-  name = format (0, "nsh_%08x%c", api_version, 0);
-
-  /* Set up the API */
-  nm->msg_id_base = vl_msg_api_get_msg_ids
-    ((char *) name, VL_MSG_FIRST_AVAILABLE);
-
-  error = nsh_plugin_api_hookup (vm);
-
   /* Add our API messages to the global name_crc hash table */
-  setup_message_id_table (nm, vlibapi_get_main ());
+  nm->msg_id_base = setup_message_id_table ();
 
-  vec_free (name);
-
-  return error;
+  return 0;
 }
 
 /*
