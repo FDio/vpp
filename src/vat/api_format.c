@@ -27,8 +27,6 @@
 #include <vnet/ip-neighbor/ip_neighbor.h>
 #include <vnet/ip/ip_types_api.h>
 #include <vnet/l2/l2_input.h>
-#include <vnet/vxlan/vxlan.h>
-#include <vnet/vxlan-gpe/vxlan_gpe.h>
 #include <vnet/udp/udp_local.h>
 
 #include <vpp/api/vpe_msg_enum.h>
@@ -192,12 +190,6 @@ api_unformat_sw_if_index (unformat_input_t * input, va_list * args)
     return 0;
   *result = p[0];
   return 1;
-}
-
-static uword
-api_unformat_hw_if_index (unformat_input_t * input, va_list * args)
-{
-  return 0;
 }
 
 /* Parse an IP4 address %d.%d.%d.%d. */
@@ -430,16 +422,6 @@ api_unformat_sw_if_index (unformat_input_t * input, va_list * args)
   u32 *result = va_arg (*args, u32 *);
 
   return unformat (input, "%U", unformat_vnet_sw_interface, vnm, result);
-}
-
-static uword
-api_unformat_hw_if_index (unformat_input_t * input, va_list * args)
-{
-  vat_main_t *vam __clib_unused = va_arg (*args, vat_main_t *);
-  vnet_main_t *vnm = vnet_get_main ();
-  u32 *result = va_arg (*args, u32 *);
-
-  return unformat (input, "%U", unformat_vnet_hw_interface, vnm, result);
 }
 
 #endif /* VPP_API_TEST_BUILTIN */
@@ -2205,108 +2187,6 @@ static void vl_api_mpls_tunnel_add_del_reply_t_handler_json
   vam->result_ready = 1;
 }
 
-static void vl_api_vxlan_add_del_tunnel_reply_t_handler
-  (vl_api_vxlan_add_del_tunnel_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  i32 retval = ntohl (mp->retval);
-  if (vam->async_mode)
-    {
-      vam->async_errors += (retval < 0);
-    }
-  else
-    {
-      vam->retval = retval;
-      vam->sw_if_index = ntohl (mp->sw_if_index);
-      vam->result_ready = 1;
-    }
-  vam->regenerate_interface_table = 1;
-}
-
-static void vl_api_vxlan_add_del_tunnel_reply_t_handler_json
-  (vl_api_vxlan_add_del_tunnel_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t node;
-
-  vat_json_init_object (&node);
-  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
-  vat_json_object_add_uint (&node, "sw_if_index", ntohl (mp->sw_if_index));
-
-  vat_json_print (vam->ofp, &node);
-  vat_json_free (&node);
-
-  vam->retval = ntohl (mp->retval);
-  vam->result_ready = 1;
-}
-
-static void vl_api_vxlan_offload_rx_reply_t_handler
-  (vl_api_vxlan_offload_rx_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  i32 retval = ntohl (mp->retval);
-  if (vam->async_mode)
-    {
-      vam->async_errors += (retval < 0);
-    }
-  else
-    {
-      vam->retval = retval;
-      vam->result_ready = 1;
-    }
-}
-
-static void vl_api_vxlan_offload_rx_reply_t_handler_json
-  (vl_api_vxlan_offload_rx_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t node;
-
-  vat_json_init_object (&node);
-  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
-
-  vat_json_print (vam->ofp, &node);
-  vat_json_free (&node);
-
-  vam->retval = ntohl (mp->retval);
-  vam->result_ready = 1;
-}
-
-static void vl_api_vxlan_gpe_add_del_tunnel_reply_t_handler
-  (vl_api_vxlan_gpe_add_del_tunnel_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  i32 retval = ntohl (mp->retval);
-  if (vam->async_mode)
-    {
-      vam->async_errors += (retval < 0);
-    }
-  else
-    {
-      vam->retval = retval;
-      vam->sw_if_index = ntohl (mp->sw_if_index);
-      vam->result_ready = 1;
-    }
-  vam->regenerate_interface_table = 1;
-}
-
-static void vl_api_vxlan_gpe_add_del_tunnel_reply_t_handler_json
-  (vl_api_vxlan_gpe_add_del_tunnel_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t node;
-
-  vat_json_init_object (&node);
-  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
-  vat_json_object_add_uint (&node, "sw_if_index", ntohl (mp->sw_if_index));
-
-  vat_json_print (vam->ofp, &node);
-  vat_json_free (&node);
-
-  vam->retval = ntohl (mp->retval);
-  vam->result_ready = 1;
-}
-
 static void vl_api_create_vhost_user_if_reply_t_handler
   (vl_api_create_vhost_user_if_reply_t * mp)
 {
@@ -2924,8 +2804,6 @@ _(sw_interface_set_rx_placement_reply)                  \
 _(sw_interface_set_table_reply)                         \
 _(sw_interface_set_mpls_enable_reply)                   \
 _(sw_interface_set_vpath_reply)                         \
-_(sw_interface_set_vxlan_bypass_reply)                  \
-_(sw_interface_set_vxlan_gpe_bypass_reply)              \
 _(sw_interface_set_l2_bridge_reply)                     \
 _(sw_interface_set_bond_weight_reply)                   \
 _(bridge_domain_add_del_reply)                          \
@@ -3050,8 +2928,6 @@ _(SW_INTERFACE_RX_PLACEMENT_DETAILS, sw_interface_rx_placement_details)	\
 _(SW_INTERFACE_SET_TABLE_REPLY, sw_interface_set_table_reply) 		\
 _(SW_INTERFACE_SET_MPLS_ENABLE_REPLY, sw_interface_set_mpls_enable_reply) \
 _(SW_INTERFACE_SET_VPATH_REPLY, sw_interface_set_vpath_reply) 		\
-_(SW_INTERFACE_SET_VXLAN_BYPASS_REPLY, sw_interface_set_vxlan_bypass_reply) \
-_(SW_INTERFACE_SET_VXLAN_GPE_BYPASS_REPLY, sw_interface_set_vxlan_gpe_bypass_reply) \
 _(SW_INTERFACE_SET_L2_XCONNECT_REPLY,                                   \
   sw_interface_set_l2_xconnect_reply)                                   \
 _(SW_INTERFACE_SET_L2_BRIDGE_REPLY,                                     \
@@ -3107,9 +2983,6 @@ _(SR_LOCALSID_ADD_DEL_REPLY, sr_localsid_add_del_reply)                 \
 _(SR_STEERING_ADD_DEL_REPLY, sr_steering_add_del_reply)                 \
 _(GET_NODE_INDEX_REPLY, get_node_index_reply)                           \
 _(ADD_NODE_NEXT_REPLY, add_node_next_reply)                             \
-_(VXLAN_ADD_DEL_TUNNEL_REPLY, vxlan_add_del_tunnel_reply)               \
-_(VXLAN_OFFLOAD_RX_REPLY, vxlan_offload_rx_reply)               \
-_(VXLAN_TUNNEL_DETAILS, vxlan_tunnel_details)                           \
 _(L2_FIB_CLEAR_TABLE_REPLY, l2_fib_clear_table_reply)                   \
 _(L2_INTERFACE_EFP_FILTER_REPLY, l2_interface_efp_filter_reply)         \
 _(L2_INTERFACE_VLAN_TAG_REWRITE_REPLY, l2_interface_vlan_tag_rewrite_reply) \
@@ -3122,8 +2995,6 @@ _(DELETE_VHOST_USER_IF_REPLY, delete_vhost_user_if_reply)               \
 _(SHOW_VERSION_REPLY, show_version_reply)                               \
 _(SHOW_THREADS_REPLY, show_threads_reply)                               \
 _(L2_FIB_TABLE_DETAILS, l2_fib_table_details)				\
-_(VXLAN_GPE_ADD_DEL_TUNNEL_REPLY, vxlan_gpe_add_del_tunnel_reply)	\
-_(VXLAN_GPE_TUNNEL_DETAILS, vxlan_gpe_tunnel_details)                   \
 _(INTERFACE_NAME_RENUMBER_REPLY, interface_name_renumber_reply)		\
 _(WANT_L2_MACS_EVENTS_REPLY, want_l2_macs_events_reply)			\
 _(L2_MACS_EVENT, l2_macs_event)						\
@@ -4116,57 +3987,6 @@ api_sw_interface_set_vpath (vat_main_t * vam)
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->enable = is_enable;
-
-  /* send it... */
-  S (mp);
-
-  /* Wait for a reply... */
-  W (ret);
-  return ret;
-}
-
-static int
-api_sw_interface_set_vxlan_bypass (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_sw_interface_set_vxlan_bypass_t *mp;
-  u32 sw_if_index = 0;
-  u8 sw_if_index_set = 0;
-  u8 is_enable = 1;
-  u8 is_ipv6 = 0;
-  int ret;
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "sw_if_index %d", &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "enable"))
-	is_enable = 1;
-      else if (unformat (i, "disable"))
-	is_enable = 0;
-      else if (unformat (i, "ip4"))
-	is_ipv6 = 0;
-      else if (unformat (i, "ip6"))
-	is_ipv6 = 1;
-      else
-	break;
-    }
-
-  if (sw_if_index_set == 0)
-    {
-      errmsg ("missing interface name or sw_if_index");
-      return -99;
-    }
-
-  /* Construct the API message */
-  M (SW_INTERFACE_SET_VXLAN_BYPASS, mp);
-
-  mp->sw_if_index = ntohl (sw_if_index);
-  mp->enable = is_enable;
-  mp->is_ipv6 = is_ipv6;
 
   /* send it... */
   S (mp);
@@ -8565,345 +8385,6 @@ api_sw_interface_virtio_pci_dump (vat_main_t * vam)
 }
 
 static int
-api_vxlan_offload_rx (vat_main_t * vam)
-{
-  unformat_input_t *line_input = vam->input;
-  vl_api_vxlan_offload_rx_t *mp;
-  u32 hw_if_index = ~0, rx_if_index = ~0;
-  u8 is_add = 1;
-  int ret;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "del"))
-	is_add = 0;
-      else if (unformat (line_input, "hw %U", api_unformat_hw_if_index, vam,
-			 &hw_if_index))
-	;
-      else if (unformat (line_input, "hw hw_if_index %u", &hw_if_index))
-	;
-      else if (unformat (line_input, "rx %U", api_unformat_sw_if_index, vam,
-			 &rx_if_index))
-	;
-      else if (unformat (line_input, "rx sw_if_index %u", &rx_if_index))
-	;
-      else
-	{
-	  errmsg ("parse error '%U'", format_unformat_error, line_input);
-	  return -99;
-	}
-    }
-
-  if (hw_if_index == ~0)
-    {
-      errmsg ("no hw interface");
-      return -99;
-    }
-
-  if (rx_if_index == ~0)
-    {
-      errmsg ("no rx tunnel");
-      return -99;
-    }
-
-  M (VXLAN_OFFLOAD_RX, mp);
-
-  mp->hw_if_index = ntohl (hw_if_index);
-  mp->sw_if_index = ntohl (rx_if_index);
-  mp->enable = is_add;
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static uword unformat_vxlan_decap_next
-  (unformat_input_t * input, va_list * args)
-{
-  u32 *result = va_arg (*args, u32 *);
-  u32 tmp;
-
-  if (unformat (input, "l2"))
-    *result = VXLAN_INPUT_NEXT_L2_INPUT;
-  else if (unformat (input, "%d", &tmp))
-    *result = tmp;
-  else
-    return 0;
-  return 1;
-}
-
-static int
-api_vxlan_add_del_tunnel (vat_main_t * vam)
-{
-  unformat_input_t *line_input = vam->input;
-  vl_api_vxlan_add_del_tunnel_t *mp;
-  ip46_address_t src, dst;
-  u8 is_add = 1;
-  u8 ipv4_set = 0, ipv6_set = 0;
-  u8 src_set = 0;
-  u8 dst_set = 0;
-  u8 grp_set = 0;
-  u32 instance = ~0;
-  u32 mcast_sw_if_index = ~0;
-  u32 encap_vrf_id = 0;
-  u32 decap_next_index = ~0;
-  u32 vni = 0;
-  int ret;
-
-  /* Can't "universally zero init" (={0}) due to GCC bug 53119 */
-  clib_memset (&src, 0, sizeof src);
-  clib_memset (&dst, 0, sizeof dst);
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "del"))
-	is_add = 0;
-      else if (unformat (line_input, "instance %d", &instance))
-	;
-      else
-	if (unformat (line_input, "src %U", unformat_ip4_address, &src.ip4))
-	{
-	  ipv4_set = 1;
-	  src_set = 1;
-	}
-      else
-	if (unformat (line_input, "dst %U", unformat_ip4_address, &dst.ip4))
-	{
-	  ipv4_set = 1;
-	  dst_set = 1;
-	}
-      else
-	if (unformat (line_input, "src %U", unformat_ip6_address, &src.ip6))
-	{
-	  ipv6_set = 1;
-	  src_set = 1;
-	}
-      else
-	if (unformat (line_input, "dst %U", unformat_ip6_address, &dst.ip6))
-	{
-	  ipv6_set = 1;
-	  dst_set = 1;
-	}
-      else if (unformat (line_input, "group %U %U",
-			 unformat_ip4_address, &dst.ip4,
-			 api_unformat_sw_if_index, vam, &mcast_sw_if_index))
-	{
-	  grp_set = dst_set = 1;
-	  ipv4_set = 1;
-	}
-      else if (unformat (line_input, "group %U",
-			 unformat_ip4_address, &dst.ip4))
-	{
-	  grp_set = dst_set = 1;
-	  ipv4_set = 1;
-	}
-      else if (unformat (line_input, "group %U %U",
-			 unformat_ip6_address, &dst.ip6,
-			 api_unformat_sw_if_index, vam, &mcast_sw_if_index))
-	{
-	  grp_set = dst_set = 1;
-	  ipv6_set = 1;
-	}
-      else if (unformat (line_input, "group %U",
-			 unformat_ip6_address, &dst.ip6))
-	{
-	  grp_set = dst_set = 1;
-	  ipv6_set = 1;
-	}
-      else
-	if (unformat (line_input, "mcast_sw_if_index %u", &mcast_sw_if_index))
-	;
-      else if (unformat (line_input, "encap-vrf-id %d", &encap_vrf_id))
-	;
-      else if (unformat (line_input, "decap-next %U",
-			 unformat_vxlan_decap_next, &decap_next_index))
-	;
-      else if (unformat (line_input, "vni %d", &vni))
-	;
-      else
-	{
-	  errmsg ("parse error '%U'", format_unformat_error, line_input);
-	  return -99;
-	}
-    }
-
-  if (src_set == 0)
-    {
-      errmsg ("tunnel src address not specified");
-      return -99;
-    }
-  if (dst_set == 0)
-    {
-      errmsg ("tunnel dst address not specified");
-      return -99;
-    }
-
-  if (grp_set && !ip46_address_is_multicast (&dst))
-    {
-      errmsg ("tunnel group address not multicast");
-      return -99;
-    }
-  if (grp_set && mcast_sw_if_index == ~0)
-    {
-      errmsg ("tunnel nonexistent multicast device");
-      return -99;
-    }
-  if (grp_set == 0 && ip46_address_is_multicast (&dst))
-    {
-      errmsg ("tunnel dst address must be unicast");
-      return -99;
-    }
-
-
-  if (ipv4_set && ipv6_set)
-    {
-      errmsg ("both IPv4 and IPv6 addresses specified");
-      return -99;
-    }
-
-  if ((vni == 0) || (vni >> 24))
-    {
-      errmsg ("vni not specified or out of range");
-      return -99;
-    }
-
-  M (VXLAN_ADD_DEL_TUNNEL, mp);
-
-  if (ipv6_set)
-    {
-      clib_memcpy (mp->src_address.un.ip6, &src.ip6, sizeof (src.ip6));
-      clib_memcpy (mp->dst_address.un.ip6, &dst.ip6, sizeof (dst.ip6));
-    }
-  else
-    {
-      clib_memcpy (mp->src_address.un.ip4, &src.ip4, sizeof (src.ip4));
-      clib_memcpy (mp->dst_address.un.ip4, &dst.ip4, sizeof (dst.ip4));
-    }
-  mp->src_address.af = ipv6_set;
-  mp->dst_address.af = ipv6_set;
-
-  mp->instance = htonl (instance);
-  mp->encap_vrf_id = ntohl (encap_vrf_id);
-  mp->decap_next_index = ntohl (decap_next_index);
-  mp->mcast_sw_if_index = ntohl (mcast_sw_if_index);
-  mp->vni = ntohl (vni);
-  mp->is_add = is_add;
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static void vl_api_vxlan_tunnel_details_t_handler
-  (vl_api_vxlan_tunnel_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  ip46_address_t src =
-    to_ip46 (mp->dst_address.af, (u8 *) & mp->dst_address.un);
-  ip46_address_t dst =
-    to_ip46 (mp->dst_address.af, (u8 *) & mp->src_address.un);
-
-  print (vam->ofp, "%11d%11d%24U%24U%14d%18d%13d%19d",
-	 ntohl (mp->sw_if_index),
-	 ntohl (mp->instance),
-	 format_ip46_address, &src, IP46_TYPE_ANY,
-	 format_ip46_address, &dst, IP46_TYPE_ANY,
-	 ntohl (mp->encap_vrf_id),
-	 ntohl (mp->decap_next_index), ntohl (mp->vni),
-	 ntohl (mp->mcast_sw_if_index));
-}
-
-static void vl_api_vxlan_tunnel_details_t_handler_json
-  (vl_api_vxlan_tunnel_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t *node = NULL;
-
-  if (VAT_JSON_ARRAY != vam->json_tree.type)
-    {
-      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
-      vat_json_init_array (&vam->json_tree);
-    }
-  node = vat_json_array_add (&vam->json_tree);
-
-  vat_json_init_object (node);
-  vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
-
-  vat_json_object_add_uint (node, "instance", ntohl (mp->instance));
-
-  if (mp->src_address.af)
-    {
-      struct in6_addr ip6;
-
-      clib_memcpy (&ip6, mp->src_address.un.ip6, sizeof (ip6));
-      vat_json_object_add_ip6 (node, "src_address", ip6);
-      clib_memcpy (&ip6, mp->dst_address.un.ip6, sizeof (ip6));
-      vat_json_object_add_ip6 (node, "dst_address", ip6);
-    }
-  else
-    {
-      struct in_addr ip4;
-
-      clib_memcpy (&ip4, mp->src_address.un.ip4, sizeof (ip4));
-      vat_json_object_add_ip4 (node, "src_address", ip4);
-      clib_memcpy (&ip4, mp->dst_address.un.ip4, sizeof (ip4));
-      vat_json_object_add_ip4 (node, "dst_address", ip4);
-    }
-  vat_json_object_add_uint (node, "encap_vrf_id", ntohl (mp->encap_vrf_id));
-  vat_json_object_add_uint (node, "decap_next_index",
-			    ntohl (mp->decap_next_index));
-  vat_json_object_add_uint (node, "vni", ntohl (mp->vni));
-  vat_json_object_add_uint (node, "mcast_sw_if_index",
-			    ntohl (mp->mcast_sw_if_index));
-}
-
-static int
-api_vxlan_tunnel_dump (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_vxlan_tunnel_dump_t *mp;
-  vl_api_control_ping_t *mp_ping;
-  u32 sw_if_index;
-  u8 sw_if_index_set = 0;
-  int ret;
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "sw_if_index %d", &sw_if_index))
-	sw_if_index_set = 1;
-      else
-	break;
-    }
-
-  if (sw_if_index_set == 0)
-    {
-      sw_if_index = ~0;
-    }
-
-  if (!vam->json_output)
-    {
-      print (vam->ofp, "%11s%11s%24s%24s%14s%18s%13s%19s",
-	     "sw_if_index", "instance", "src_address", "dst_address",
-	     "encap_vrf_id", "decap_next_index", "vni", "mcast_sw_if_index");
-    }
-
-  /* Get list of vxlan-tunnel interfaces */
-  M (VXLAN_TUNNEL_DUMP, mp);
-
-  mp->sw_if_index = htonl (sw_if_index);
-
-  S (mp);
-
-  /* Use a control ping for synchronization */
-  MPING (CONTROL_PING, mp_ping);
-  S (mp_ping);
-
-  W (ret);
-  return ret;
-}
-
-static int
 api_l2_fib_clear_table (vat_main_t * vam)
 {
 //  unformat_input_t * i = vam->input;
@@ -9476,231 +8957,6 @@ api_show_version (vat_main_t * vam)
   M (SHOW_VERSION, mp);
 
   S (mp);
-  W (ret);
-  return ret;
-}
-
-
-static int
-api_vxlan_gpe_add_del_tunnel (vat_main_t * vam)
-{
-  unformat_input_t *line_input = vam->input;
-  vl_api_vxlan_gpe_add_del_tunnel_t *mp;
-  ip46_address_t local, remote;
-  u8 is_add = 1;
-  u8 local_set = 0;
-  u8 remote_set = 0;
-  u8 grp_set = 0;
-  u32 mcast_sw_if_index = ~0;
-  u32 encap_vrf_id = 0;
-  u32 decap_vrf_id = 0;
-  u8 protocol = ~0;
-  u32 vni;
-  u8 vni_set = 0;
-  int ret;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "del"))
-	is_add = 0;
-      else if (unformat (line_input, "local %U",
-			 unformat_ip46_address, &local))
-	{
-	  local_set = 1;
-	}
-      else if (unformat (line_input, "remote %U",
-			 unformat_ip46_address, &remote))
-	{
-	  remote_set = 1;
-	}
-      else if (unformat (line_input, "group %U %U",
-			 unformat_ip46_address, &remote,
-			 api_unformat_sw_if_index, vam, &mcast_sw_if_index))
-	{
-	  grp_set = remote_set = 1;
-	}
-      else if (unformat (line_input, "group %U",
-			 unformat_ip46_address, &remote))
-	{
-	  grp_set = remote_set = 1;
-	}
-      else
-	if (unformat (line_input, "mcast_sw_if_index %u", &mcast_sw_if_index))
-	;
-      else if (unformat (line_input, "encap-vrf-id %d", &encap_vrf_id))
-	;
-      else if (unformat (line_input, "decap-vrf-id %d", &decap_vrf_id))
-	;
-      else if (unformat (line_input, "vni %d", &vni))
-	vni_set = 1;
-      else if (unformat (line_input, "next-ip4"))
-	protocol = 1;
-      else if (unformat (line_input, "next-ip6"))
-	protocol = 2;
-      else if (unformat (line_input, "next-ethernet"))
-	protocol = 3;
-      else if (unformat (line_input, "next-nsh"))
-	protocol = 4;
-      else
-	{
-	  errmsg ("parse error '%U'", format_unformat_error, line_input);
-	  return -99;
-	}
-    }
-
-  if (local_set == 0)
-    {
-      errmsg ("tunnel local address not specified");
-      return -99;
-    }
-  if (remote_set == 0)
-    {
-      errmsg ("tunnel remote address not specified");
-      return -99;
-    }
-  if (grp_set && mcast_sw_if_index == ~0)
-    {
-      errmsg ("tunnel nonexistent multicast device");
-      return -99;
-    }
-  if (ip46_address_is_ip4 (&local) != ip46_address_is_ip4 (&remote))
-    {
-      errmsg ("both IPv4 and IPv6 addresses specified");
-      return -99;
-    }
-
-  if (vni_set == 0)
-    {
-      errmsg ("vni not specified");
-      return -99;
-    }
-
-  M (VXLAN_GPE_ADD_DEL_TUNNEL, mp);
-
-  ip_address_encode (&local,
-		     ip46_address_is_ip4 (&local) ? IP46_TYPE_IP4 :
-		     IP46_TYPE_IP6, &mp->local);
-  ip_address_encode (&remote,
-		     ip46_address_is_ip4 (&remote) ? IP46_TYPE_IP4 :
-		     IP46_TYPE_IP6, &mp->remote);
-
-  mp->mcast_sw_if_index = ntohl (mcast_sw_if_index);
-  mp->encap_vrf_id = ntohl (encap_vrf_id);
-  mp->decap_vrf_id = ntohl (decap_vrf_id);
-  mp->protocol = protocol;
-  mp->vni = ntohl (vni);
-  mp->is_add = is_add;
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static void vl_api_vxlan_gpe_tunnel_details_t_handler
-  (vl_api_vxlan_gpe_tunnel_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  ip46_address_t local, remote;
-
-  ip_address_decode (&mp->local, &local);
-  ip_address_decode (&mp->remote, &remote);
-
-  print (vam->ofp, "%11d%24U%24U%13d%12d%19d%14d%14d",
-	 ntohl (mp->sw_if_index),
-	 format_ip46_address, &local, IP46_TYPE_ANY,
-	 format_ip46_address, &remote, IP46_TYPE_ANY,
-	 ntohl (mp->vni), mp->protocol,
-	 ntohl (mp->mcast_sw_if_index),
-	 ntohl (mp->encap_vrf_id), ntohl (mp->decap_vrf_id));
-}
-
-
-static void vl_api_vxlan_gpe_tunnel_details_t_handler_json
-  (vl_api_vxlan_gpe_tunnel_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t *node = NULL;
-  struct in_addr ip4;
-  struct in6_addr ip6;
-  ip46_address_t local, remote;
-
-  ip_address_decode (&mp->local, &local);
-  ip_address_decode (&mp->remote, &remote);
-
-  if (VAT_JSON_ARRAY != vam->json_tree.type)
-    {
-      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
-      vat_json_init_array (&vam->json_tree);
-    }
-  node = vat_json_array_add (&vam->json_tree);
-
-  vat_json_init_object (node);
-  vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
-  if (ip46_address_is_ip4 (&local))
-    {
-      clib_memcpy (&ip4, &local.ip4, sizeof (ip4));
-      vat_json_object_add_ip4 (node, "local", ip4);
-      clib_memcpy (&ip4, &remote.ip4, sizeof (ip4));
-      vat_json_object_add_ip4 (node, "remote", ip4);
-    }
-  else
-    {
-      clib_memcpy (&ip6, &local.ip6, sizeof (ip6));
-      vat_json_object_add_ip6 (node, "local", ip6);
-      clib_memcpy (&ip6, &remote.ip6, sizeof (ip6));
-      vat_json_object_add_ip6 (node, "remote", ip6);
-    }
-  vat_json_object_add_uint (node, "vni", ntohl (mp->vni));
-  vat_json_object_add_uint (node, "protocol", ntohl (mp->protocol));
-  vat_json_object_add_uint (node, "mcast_sw_if_index",
-			    ntohl (mp->mcast_sw_if_index));
-  vat_json_object_add_uint (node, "encap_vrf_id", ntohl (mp->encap_vrf_id));
-  vat_json_object_add_uint (node, "decap_vrf_id", ntohl (mp->decap_vrf_id));
-  vat_json_object_add_uint (node, "is_ipv6", mp->is_ipv6 ? 1 : 0);
-}
-
-static int
-api_vxlan_gpe_tunnel_dump (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_vxlan_gpe_tunnel_dump_t *mp;
-  vl_api_control_ping_t *mp_ping;
-  u32 sw_if_index;
-  u8 sw_if_index_set = 0;
-  int ret;
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "sw_if_index %d", &sw_if_index))
-	sw_if_index_set = 1;
-      else
-	break;
-    }
-
-  if (sw_if_index_set == 0)
-    {
-      sw_if_index = ~0;
-    }
-
-  if (!vam->json_output)
-    {
-      print (vam->ofp, "%11s%24s%24s%13s%15s%19s%14s%14s",
-	     "sw_if_index", "local", "remote", "vni",
-	     "protocol", "mcast_sw_if_index", "encap_vrf_id", "decap_vrf_id");
-    }
-
-  /* Get list of vxlan-tunnel interfaces */
-  M (VXLAN_GPE_TUNNEL_DUMP, mp);
-
-  mp->sw_if_index = htonl (sw_if_index);
-
-  S (mp);
-
-  /* Use a control ping for synchronization */
-  MPING (CONTROL_PING, mp_ping);
-  S (mp_ping);
-
   W (ret);
   return ret;
 }
@@ -13549,8 +12805,6 @@ _(sw_interface_set_mpls_enable,                                         \
   "<intfc> | sw_if_index [disable | dis]")                              \
 _(sw_interface_set_vpath,                                               \
   "<intfc> | sw_if_index <id> enable | disable")                        \
-_(sw_interface_set_vxlan_bypass,                                        \
-  "<intfc> | sw_if_index <id> [ip4 | ip6] [enable | disable]")          \
 _(sw_interface_set_l2_xconnect,                                         \
   "rx <intfc> | rx_sw_if_index <id> tx <intfc> | tx_sw_if_index <id>\n" \
   "enable | disable")                                                   \
@@ -13649,14 +12903,6 @@ _(sr_localsid_add_del,                                                  \
   "fib-table <num> (end.psp) sw_if_index <num>")                        \
 _(get_node_index, "node <node-name")                                    \
 _(add_node_next, "node <node-name> next <next-node-name>")              \
-_(vxlan_offload_rx,                                                     \
-  "hw { <interface name> | hw_if_index <nn>} "                          \
-  "rx { <vxlan tunnel name> | sw_if_index <nn> } [del]")                \
-_(vxlan_add_del_tunnel,                                                 \
-  "src <ip-addr> { dst <ip-addr> | group <mcast-ip-addr>\n"             \
-  "{ <intfc> | mcast_sw_if_index <nn> } [instance <id>]}\n"		\
-  "vni <vni> [encap-vrf-id <nn>] [decap-next <l2|nn>] [del]")           \
-_(vxlan_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                    \
 _(l2_fib_clear_table, "")                                               \
 _(l2_interface_efp_filter, "sw_if_index <nn> enable | disable")         \
 _(l2_interface_vlan_tag_rewrite,                                        \
@@ -13681,12 +12927,6 @@ _(delete_vhost_user_if, "<intfc> | sw_if_index <nn>")                   \
 _(sw_interface_vhost_user_dump, "<intfc> | sw_if_index <nn>")           \
 _(show_version, "")                                                     \
 _(show_threads, "")                                                     \
-_(vxlan_gpe_add_del_tunnel,                                             \
-  "local <addr> remote <addr>  | group <mcast-ip-addr>\n"               \
-  "{ <intfc> | mcast_sw_if_index <nn> } }\n"                            \
-  "vni <nn> [encap-vrf-id <nn>] [decap-vrf-id <nn>]\n"                  \
-  "[next-ip4][next-ip6][next-ethernet] [next-nsh] [del]\n")             \
-_(vxlan_gpe_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                \
 _(l2_fib_table_dump, "bd_id <bridge-domain-id>")			\
 _(interface_name_renumber,                                              \
   "<intfc> | sw_if_index <nn> new_show_dev_instance <nn>")		\

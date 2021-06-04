@@ -41,8 +41,6 @@
 #include <vnet/l2/l2.api.h>
 #include <vnet/span/span.api.h>
 #include <vnet/ip/ip.api.h>
-#include <vnet/vxlan/vxlan.api.h>
-#include <vnet/vxlan-gpe/vxlan_gpe.api.h>
 #include <vnet/bfd/bfd.api.h>
 #include <vnet/ipsec/ipsec.api.h>
 #include <vnet/session/session.api.h>
@@ -59,7 +57,6 @@
 #include <vnet/feature/feature.api.h>
 #include <vnet/qos/qos.api.h>
 #include <vnet/devices/pipe/pipe.api.h>
-#include <vnet/vxlan-gbp/vxlan_gbp.api.h>
 #include <vnet/syslog/syslog.api.h>
 #include <vnet/devices/virtio/virtio.api.h>
 #include <vnet/gso/gso.api.h>
