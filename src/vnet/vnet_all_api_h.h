@@ -55,7 +55,6 @@
 #include <vnet/ethernet/p2p_ethernet.api.h>
 #include <vnet/tcp/tcp.api.h>
 #include <vnet/udp/udp.api.h>
-#include <vnet/bier/bier.api.h>
 #include <vnet/ip/punt.api.h>
 #include <vnet/pg/pg.api.h>
 #include <vnet/feature/feature.api.h>
