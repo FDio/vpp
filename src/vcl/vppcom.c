@@ -1987,6 +1987,10 @@ read_again:
     rv = app_recv_stream_raw (rx_fifo, buf, n, 0, peek);
 
   ASSERT (rv >= 0);
+
+  if (peek)
+    return n_read;
+
   n_read += rv;
 
   if (svm_fifo_is_empty_cons (rx_fifo))
