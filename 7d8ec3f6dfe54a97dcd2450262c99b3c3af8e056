@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c10ca43c_a1f4d7fa",
+        "filename": "src/vnet/gso/gro_func.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 564,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-06-04T11:25:34Z",
+      "side": 1,
+      "message": "maybe make it an inline function we can call from both site instead of using a goto in an else branch?",
+      "revId": "7d8ec3f6dfe54a97dcd2450262c99b3c3af8e056",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
