@@ -334,7 +334,7 @@ vts_accept_client (vcl_test_server_worker_t *wrk, int listen_fd)
   vtinf ("Got a connection -- fd = %d (0x%08x) on listener fd = %d (0x%08x)",
 	 conn->fd, conn->fd, listen_fd, listen_fd);
 
-  ev.events = EPOLLIN;
+  ev.events = EPOLLET | EPOLLIN;
   ev.data.u64 = conn - wrk->conn_pool;
   rv = vppcom_epoll_ctl (wrk->epfd, EPOLL_CTL_ADD, conn->fd, &ev);
   if (rv < 0)
@@ -561,7 +561,7 @@ vts_worker_init (vcl_test_server_worker_t * wrk)
 	vtfail ("vppcom_epoll_create()", wrk->epfd);
     }
 
-  listen_ev.events = EPOLLIN;
+  listen_ev.events = EPOLLET | EPOLLIN;
   listen_ev.data.u32 = VCL_TEST_DATA_LISTENER;
   rv =
     vppcom_epoll_ctl (wrk->epfd, EPOLL_CTL_ADD, wrk->listener.fd, &listen_ev);
@@ -769,7 +769,7 @@ vts_ctrl_session_init (vcl_test_server_worker_t *wrk)
   if (wrk->epfd < 0)
     vtfail ("vppcom_epoll_create()", wrk->epfd);
 
-  listen_ev.events = EPOLLIN;
+  listen_ev.events = EPOLLET | EPOLLIN;
   listen_ev.data.u32 = VCL_TEST_CTRL_LISTENER;
   rv = vppcom_epoll_ctl (wrk->epfd, EPOLL_CTL_ADD, vsm->ctrl_listen_fd,
 			 &listen_ev);
