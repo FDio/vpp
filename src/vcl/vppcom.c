@@ -2008,7 +2008,8 @@ read_again:
        * or fill the buffer. Avoid doing that for dgrams */
       buf += rv;
       n -= rv;
-      goto read_again;
+      if (!peek)
+	goto read_again;
     }
 
   if (PREDICT_FALSE (svm_fifo_needs_deq_ntf (rx_fifo, n_read)))
@@ -2722,12 +2723,12 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
 	{
 	  clib_warning ("THIS WAS HIT %u %u read ready %x", s->session_index, s->vpp_handle,
 	                vcl_session_read_ready (s));
-	  s->vep.ev = *event;
-	  goto check_fifos;
-//	  if (s->session_index == 6)
-//	    clib_warning ("why? current ev %x", s->vep.ev.events);
-//	  rv = VPPCOM_EEXIST;
-//	  goto done;
+//	  s->vep.ev = *event;
+//	  goto check_fifos;
+	  if (s->session_index == 6)
+	    clib_warning ("why? current ev %x", s->vep.ev.events);
+	  rv = VPPCOM_EEXIST;
+	  goto done;
 	}
       if (vep_session->vep.next_sh != ~0)
 	{
@@ -2752,7 +2753,7 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
       s->flags |= VCL_SESSION_F_IS_VEP_SESSION;
       vep_session->vep.next_sh = session_handle;
 
-    check_fifos:
+//    check_fifos:
       txf = vcl_session_is_ct (s) ? s->ct_tx_fifo : s->tx_fifo;
       if (txf && (event->events & EPOLLOUT))
 	svm_fifo_add_want_deq_ntf (txf, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
@@ -3053,7 +3054,8 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	}
       if (!(EPOLLET & session_events))
 	{
-	  clib_warning ("\n\nHIT\n\n");
+	  clib_warning ("\n\n EPOLL LT %x rx data %u \n\n", events[*num_ev].events,
+	                vcl_session_read_ready (s));
 	  vec_add1 (wrk->level_evts, sid);
 	}
       *num_ev += 1;
@@ -3969,7 +3971,10 @@ vppcom_session_sendto (uint32_t session_handle, void *buffer,
   if (!s)
     return VPPCOM_EBADFD;
 
-  if (!buffer)
+  if (PREDICT_FALSE (!buflen))
+    return VPPCOM_OK;
+
+  if (PREDICT_FALSE (!buffer))
     return VPPCOM_EINVAL;
 
   if (ep)
