@@ -50,6 +50,8 @@ autoreply define bier_table_add_del
   vl_api_bier_table_id_t bt_tbl_id;
   u32 bt_label;
   bool bt_is_add;
+
+  option vat_help="<label> <sub-domain> <set> <bsl> [del]";
 };
 
 define bier_table_dump
@@ -93,6 +95,8 @@ autoreply define bier_route_add_del
   bool br_is_add;
   bool br_is_replace;
   vl_api_bier_route_t br_route;
+
+  option vat_help="<bit-position> <sub-domain> <set> <bsl> via <addr> [table-id <n>]\n[<intfc> | sw_if_index <id>] [weight <n>] [del] [multipath]";
 };
 
 define bier_route_dump
