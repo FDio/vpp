@@ -361,7 +361,7 @@ wipedist:
 .PHONY: wipe
 wipe: wipedist test-wipe $(BR)/.deps.ok
 	$(call make,$(PLATFORM)_debug,$(addsuffix -wipe,$(TARGETS)))
-	@find . -type f -name "*.api.json" ! -path "./test/*" -exec rm {} \;
+	@find . -type f -name "*.api.json" ! -path "./src/*" -exec rm {} \;
 
 .PHONY: rebuild
 rebuild: wipe build
