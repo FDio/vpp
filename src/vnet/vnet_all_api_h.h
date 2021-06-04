@@ -41,7 +41,6 @@
 #include <vnet/l2/l2.api.h>
 #include <vnet/span/span.api.h>
 #include <vnet/ip/ip.api.h>
-#include <vnet/vxlan/vxlan.api.h>
 #include <vnet/vxlan-gpe/vxlan_gpe.api.h>
 #include <vnet/bfd/bfd.api.h>
 #include <vnet/ipsec/ipsec.api.h>
