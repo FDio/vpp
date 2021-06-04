@@ -36,12 +36,14 @@
 
 #define CNAT_DEFAULT_SESSION_BUCKETS     1024
 #define CNAT_DEFAULT_TRANSLATION_BUCKETS 1024
+#define CNAT_DEFAULT_CLIENT_BUCKETS	 1024
 #define CNAT_DEFAULT_SNAT_BUCKETS        1024
 #define CNAT_DEFAULT_SNAT_IF_MAP_LEN	 4096
 
 #define CNAT_DEFAULT_SESSION_MEMORY      (1 << 20)
 #define CNAT_DEFAULT_TRANSLATION_MEMORY  (256 << 10)
-#define CNAT_DEFAULT_SNAT_MEMORY         (64 << 20)
+#define CNAT_DEFAULT_CLIENT_MEMORY	 (256 << 10)
+#define CNAT_DEFAULT_SNAT_MEMORY	 (64 << 10)
 
 /* Should be prime >~ 100 * numBackends */
 #define CNAT_DEFAULT_MAGLEV_LEN 1009
@@ -119,6 +121,12 @@ typedef struct cnat_main_
 
   /* Number of buckets of the  translation bihash */
   u32 translation_hash_buckets;
+
+  /* Memory size of the client bihash */
+  uword client_hash_memory;
+
+  /* Number of buckets of the  client bihash */
+  u32 client_hash_buckets;
 
   /* Memory size of the source NAT prefix bihash */
   uword snat_hash_memory;
