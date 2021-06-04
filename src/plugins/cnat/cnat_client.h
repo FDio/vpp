@@ -17,6 +17,7 @@
 #define __CNAT_CLIENT_H__
 
 #include <cnat/cnat_types.h>
+#include <vppinfra/bihash_16_8.h>
 
 /**
  * A client is a representation of an IP address behind the NAT.
@@ -132,8 +133,7 @@ extern void cnat_client_throttle_pool_process ();
  */
 typedef struct cnat_client_db_t_
 {
-  uword *crd_cip4;
-  uword *crd_cip6;
+  clib_bihash_16_8_t cc_ip_id_hash;
   /* Pool of addresses that have been throttled
      and need to be refcounted before calling
      cnat_client_free_by_ip */
@@ -149,27 +149,15 @@ extern cnat_client_db_t cnat_client_db;
 static_always_inline cnat_client_t *
 cnat_client_ip4_find (const ip4_address_t * ip)
 {
-  uword *p;
+  clib_bihash_kv_16_8_t bkey, bval;
 
-  p = hash_get (cnat_client_db.crd_cip4, ip->as_u32);
+  bkey.key[0] = ip->as_u32;
+  bkey.key[1] = 0;
 
-  if (p)
-    return (pool_elt_at_index (cnat_client_pool, p[0]));
+  if (clib_bihash_search_16_8 (&cnat_client_db.cc_ip_id_hash, &bkey, &bval))
+    return (NULL);
 
-  return (NULL);
-}
-
-static_always_inline u32
-cnat_client_ip4_find_index (const ip4_address_t * ip)
-{
-  uword *p;
-
-  p = hash_get (cnat_client_db.crd_cip4, ip->as_u32);
-
-  if (p)
-    return p[0];
-
-  return -1;
+  return (pool_elt_at_index (cnat_client_pool, bval.value));
 }
 
 /**
@@ -178,14 +166,15 @@ cnat_client_ip4_find_index (const ip4_address_t * ip)
 static_always_inline cnat_client_t *
 cnat_client_ip6_find (const ip6_address_t * ip)
 {
-  uword *p;
+  clib_bihash_kv_16_8_t bkey, bval;
 
-  p = hash_get_mem (cnat_client_db.crd_cip6, ip);
+  bkey.key[0] = ip->as_u64[0];
+  bkey.key[1] = ip->as_u64[1];
 
-  if (p)
-    return (pool_elt_at_index (cnat_client_pool, p[0]));
+  if (clib_bihash_search_16_8 (&cnat_client_db.cc_ip_id_hash, &bkey, &bval))
+    return (NULL);
 
-  return (NULL);
+  return (pool_elt_at_index (cnat_client_pool, bval.value));
 }
 
 /**
