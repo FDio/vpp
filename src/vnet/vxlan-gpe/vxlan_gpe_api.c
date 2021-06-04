@@ -25,31 +25,16 @@
 #include <vnet/feature/feature.h>
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/format_fns.h>
 
 #include <vnet/ip/ip_types_api.h>
+#include <vnet/vxlan-gpe/vxlan_gpe.api_enum.h>
+#include <vnet/vxlan-gpe/vxlan_gpe.api_types.h>
 
-#include <vnet/vnet_msg_enum.h>
-
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vnet/vnet_all_api_h.h>
-#undef vl_printfun
-
+#define REPLY_MSG_ID_BASE msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
-#define foreach_vpe_api_msg                             \
-_(SW_INTERFACE_SET_VXLAN_GPE_BYPASS, sw_interface_set_vxlan_gpe_bypass)         \
-_(VXLAN_GPE_ADD_DEL_TUNNEL, vxlan_gpe_add_del_tunnel)                   \
-_(VXLAN_GPE_TUNNEL_DUMP, vxlan_gpe_tunnel_dump)
+static u16 msg_id_base;
 
 static void
   vl_api_sw_interface_set_vxlan_gpe_bypass_t_handler
@@ -147,7 +132,8 @@ static void send_vxlan_gpe_tunnel_details
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_VXLAN_GPE_TUNNEL_DETAILS);
+  rmp->_vl_msg_id =
+    ntohs (REPLY_MSG_ID_BASE + VL_API_VXLAN_GPE_TUNNEL_DETAILS);
 
   ip_address_encode (&t->local, is_ipv6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4,
 		     &rmp->local);
@@ -208,40 +194,12 @@ static void vl_api_vxlan_gpe_tunnel_dump_t_handler
     }
 }
 
-
-/*
- * vpe_api_hookup
- * Add vpe's API message handlers to the table.
- * vlib has already mapped shared memory and
- * added the client registration handlers.
- * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
- */
-#define vl_msg_name_crc_list
-#include <vnet/vnet_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_vxlan_gpe;
-#undef _
-}
+#include <vxlan-gpe/vxlan_gpe.api.c>
 
 static clib_error_t *
 vxlan_gpe_api_hookup (vlib_main_t * vm)
 {
   api_main_t *am = vlibapi_get_main ();
-
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_api_msg;
-#undef _
 
   am->api_trace_cfg[VL_API_VXLAN_GPE_ADD_DEL_TUNNEL].size +=
     17 * sizeof (u32);
@@ -249,7 +207,7 @@ vxlan_gpe_api_hookup (vlib_main_t * vm)
   /*
    * Set up the (msg_name, crc, message-id) table
    */
-  setup_message_id_table (am);
+  msg_id_base = setup_message_id_table ();
 
   return 0;
 }
