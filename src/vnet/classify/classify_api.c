@@ -31,46 +31,9 @@
 #include <vnet/ip/ip6.h>
 #include <vnet/ip/ip4.h>
 
-#include <vnet/vnet_msg_enum.h>
-
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vnet/vnet_all_api_h.h>
-#undef vl_printfun
-
+#include <classify/classify.api_enum.h>
+#include <classify/classify.api_types.h>
 #include <vlibapi/api_helper_macros.h>
-
-#define foreach_vpe_api_msg                                             \
-_(CLASSIFY_ADD_DEL_TABLE, classify_add_del_table)                       \
-_(CLASSIFY_ADD_DEL_SESSION, classify_add_del_session)                   \
-_(CLASSIFY_TABLE_IDS, classify_table_ids)                               \
-_(CLASSIFY_TABLE_BY_INTERFACE, classify_table_by_interface)             \
-_(CLASSIFY_TABLE_INFO, classify_table_info)                             \
-_(CLASSIFY_SESSION_DUMP, classify_session_dump)                         \
-_(POLICER_CLASSIFY_SET_INTERFACE, policer_classify_set_interface)       \
-_(POLICER_CLASSIFY_DUMP, policer_classify_dump)                         \
-_(FLOW_CLASSIFY_SET_INTERFACE, flow_classify_set_interface)             \
-_(FLOW_CLASSIFY_DUMP, flow_classify_dump)                               \
-_(INPUT_ACL_SET_INTERFACE, input_acl_set_interface)                     \
-_(CLASSIFY_SET_INTERFACE_IP_TABLE, classify_set_interface_ip_table)     \
-_(CLASSIFY_SET_INTERFACE_L2_TABLES, classify_set_interface_l2_tables)   \
-_(OUTPUT_ACL_SET_INTERFACE, output_acl_set_interface)			\
-_(CLASSIFY_PCAP_LOOKUP_TABLE, classify_pcap_lookup_table)		\
-_(CLASSIFY_PCAP_SET_TABLE, classify_pcap_set_table)			\
-_(CLASSIFY_PCAP_GET_TABLES, classify_pcap_get_tables)			\
-_(CLASSIFY_TRACE_LOOKUP_TABLE, classify_trace_lookup_table)		\
-_(CLASSIFY_TRACE_SET_TABLE, classify_trace_set_table)			\
-_(CLASSIFY_TRACE_GET_TABLES, classify_trace_get_tables)			\
-
 
 #define foreach_classify_add_del_table_field    \
 _(table_index)                                  \
@@ -943,44 +906,15 @@ static void vl_api_output_acl_set_interface_t_handler
   REPLY_MACRO (VL_API_OUTPUT_ACL_SET_INTERFACE_REPLY);
 }
 
-/*
- * classify_api_hookup
- * Add vpe's API message handlers to the table.
- * vlib has already mapped shared memory and
- * added the client registration handlers.
- * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
- */
-#define vl_msg_name_crc_list
-#include <vnet/vnet_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_classify;
-#undef _
-}
+#include <classify/classify.api.c>
 
 static clib_error_t *
 classify_api_hookup (vlib_main_t * vm)
 {
-  api_main_t *am = vlibapi_get_main ();
-
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_api_msg;
-#undef _
-
   /*
    * Set up the (msg_name, crc, message-id) table
    */
-  setup_message_id_table (am);
+  setup_message_id_table ();
 
   return 0;
 }
