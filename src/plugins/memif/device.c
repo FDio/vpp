@@ -388,10 +388,11 @@ VNET_DEVICE_CLASS_TX_FN (memif_device_class) (vlib_main_t * vm,
     {
       ASSERT (tx_queues > 0);
       mq = vec_elt_at_index (mif->tx_queues, thread_index % tx_queues);
-      clib_spinlock_lock_if_init (&mif->lockp);
     }
   else
     mq = vec_elt_at_index (mif->tx_queues, thread_index);
+
+  clib_spinlock_lock_if_init (&mif->lockp);
 
   from = vlib_frame_vector_args (frame);
   n_left = frame->n_vectors;
