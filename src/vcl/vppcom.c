@@ -2152,8 +2152,12 @@ vppcom_session_write_inline (vcl_worker_t * wrk, vcl_session_t * s, void *buf,
   svm_msg_q_t *mq;
   u8 is_ct;
 
-  if (PREDICT_FALSE (!buf || n == 0))
-    return VPPCOM_EINVAL;
+  /* Accept zero length writes but just return */
+  if (PREDICT_FALSE (!n))
+    return VPPCOM_OK;
+
+  if (PREDICT_FALSE (!buf))
+    return VPPCOM_EFAULT;
 
   if (PREDICT_FALSE (s->flags & VCL_SESSION_F_IS_VEP))
     {
@@ -2163,7 +2167,7 @@ vppcom_session_write_inline (vcl_worker_t * wrk, vcl_session_t * s, void *buf,
     }
 
   if (PREDICT_FALSE (!vcl_session_is_open (s) ||
-		     s->flags & VCL_SESSION_F_SHUTDOWN))
+		     (s->flags & VCL_SESSION_F_SHUTDOWN)))
     {
       VDBG (1, "session %u [0x%llx]: is not open! state 0x%x (%s)",
 	    s->session_index, s->vpp_handle, s->session_state,
@@ -3889,11 +3893,8 @@ vppcom_session_sendto (uint32_t session_handle, void *buffer,
   vcl_session_t *s;
 
   s = vcl_session_get_w_handle (wrk, session_handle);
-  if (!s)
+  if (PREDICT_FALSE (!s))
     return VPPCOM_EBADFD;
-
-  if (!buffer)
-    return VPPCOM_EINVAL;
 
   if (ep)
     {
