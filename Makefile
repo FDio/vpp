@@ -131,7 +131,7 @@ else ifeq ($(OS_ID)-$(OS_VERSION_ID),centos-8)
 	RPM_DEPENDS += compat-openssl10 openssl-devel
 	RPM_DEPENDS += python2-devel python36-devel python3-ply
 	RPM_DEPENDS += python3-virtualenv python3-jsonschema
-	RPM_DEPENDS += cmake
+	RPM_DEPENDS += libarchive cmake
 	RPM_DEPENDS_GROUPS = 'Development Tools'
 else
 	RPM_DEPENDS += yum-utils
