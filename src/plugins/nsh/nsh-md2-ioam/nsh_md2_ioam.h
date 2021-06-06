@@ -59,11 +59,6 @@ typedef struct nsh_md2_ioam_main_
 #define PPC_DECAP 2
   u8 has_ppc_option;
 
-#define TSP_SECONDS              0
-#define TSP_MILLISECONDS         1
-#define TSP_MICROSECONDS         2
-#define TSP_NANOSECONDS          3
-
 
   /* API message ID base */
   u16 msg_id_base;
