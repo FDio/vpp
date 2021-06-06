@@ -14,6 +14,7 @@
  */
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
+#include <vnet/pg/pg.h>
 #include <vppinfra/error.h>
 
 #include <vppinfra/hash.h>
@@ -44,7 +45,7 @@ typedef CLIB_PACKED(struct {
   u8 type;
   u8 length;
   u8 data_list_elts_left;
-  u16 ioam_trace_type;
+  u32 ioam_trace_type;
   u8 reserve;
   u32 elts[0]; /* Variable type. So keep it generic */
 }) nsh_md2_ioam_trace_option_t;
@@ -112,8 +113,7 @@ format_ioam_data_list_element (u8 * s, va_list * args)
   u8 *trace_type_p = va_arg (*args, u8 *);
   u8 trace_type = *trace_type_p;
 
-
-  if (trace_type & BIT_TTL_NODEID)
+  if (trace_type & IOAM_BIT_TTL_NODEID_SHORT)
     {
       u32 ttl_node_id_host_byte_order = clib_net_to_host_u32 (*elt);
       s = format (s, "ttl 0x%x node id 0x%x ",
@@ -123,7 +123,7 @@ format_ioam_data_list_element (u8 * s, va_list * args)
       elt++;
     }
 
-  if (trace_type & BIT_ING_INTERFACE && trace_type & BIT_ING_INTERFACE)
+  if (trace_type & IOAM_BIT_ING_EGR_INT_SHORT)
     {
       u32 ingress_host_byte_order = clib_net_to_host_u32 (*elt);
       s = format (s, "ingress 0x%x egress 0x%x ",
@@ -132,14 +132,14 @@ format_ioam_data_list_element (u8 * s, va_list * args)
       elt++;
     }
 
-  if (trace_type & BIT_TIMESTAMP)
+  if (trace_type & IOAM_BIT_TIMESTAMP_SEC)
     {
       u32 ts_in_host_byte_order = clib_net_to_host_u32 (*elt);
       s = format (s, "ts 0x%x \n", ts_in_host_byte_order);
       elt++;
     }
 
-  if (trace_type & BIT_APPDATA)
+  if (trace_type & IOAM_BIT_APPDATA_SHORT_DATA)
     {
       u32 appdata_in_host_byte_order = clib_net_to_host_u32 (*elt);
       s = format (s, "app 0x%x ", appdata_in_host_byte_order);
@@ -155,7 +155,7 @@ int
 nsh_md2_ioam_trace_rewrite_handler (u8 * rewrite_string, u8 * rewrite_size)
 {
   nsh_md2_ioam_trace_option_t *trace_option = NULL;
-  u8 trace_data_size = 0;
+  u32 trace_data_size = 0;
   u8 trace_option_elts = 0;
   trace_profile *profile = NULL;
 
@@ -170,7 +170,7 @@ nsh_md2_ioam_trace_rewrite_handler (u8 * rewrite_string, u8 * rewrite_size)
     return -1;
 
   trace_option_elts = profile->num_elts;
-  trace_data_size = fetch_trace_data_size (profile->trace_type);
+  trace_data_size = fetch_trace_data_size (profile);
 
   trace_option = (nsh_md2_ioam_trace_option_t *) rewrite_string;
   trace_option->class = clib_host_to_net_u16 (0x9);
@@ -178,7 +178,7 @@ nsh_md2_ioam_trace_rewrite_handler (u8 * rewrite_string, u8 * rewrite_size)
   trace_option->length = (trace_option_elts * trace_data_size) + 4;
   trace_option->data_list_elts_left = trace_option_elts;
   trace_option->ioam_trace_type =
-    clib_host_to_net_u16 (profile->trace_type & TRACE_TYPE_MASK);
+    clib_host_to_net_u16 (profile->trace_type & IOAM_INSTR_BITMAP_MASK);
 
   *rewrite_size =
     sizeof (nsh_md2_ioam_trace_option_t) +
@@ -201,7 +201,7 @@ nsh_md2_ioam_trace_data_list_handler (vlib_buffer_t * b,
   trace_profile *profile = NULL;
   nsh_md2_ioam_main_t *hm = &nsh_md2_ioam_main;
   nsh_main_t *gm = &nsh_main;
-  u16 ioam_trace_type = 0;
+  u32 ioam_trace_type = 0;
 
   profile = nsh_trace_profile_find ();
 
@@ -211,7 +211,7 @@ nsh_md2_ioam_trace_data_list_handler (vlib_buffer_t * b,
     }
 
 
-  ioam_trace_type = profile->trace_type & TRACE_TYPE_MASK;
+  ioam_trace_type = profile->trace_type & IOAM_INSTR_BITMAP_MASK;
   time_u64.as_u64 = 0;
 
   if (PREDICT_TRUE (trace->data_list_elts_left))
@@ -221,18 +221,17 @@ nsh_md2_ioam_trace_data_list_handler (vlib_buffer_t * b,
        * to skip to this node's location.
        */
       elt_index =
-	trace->data_list_elts_left *
-	fetch_trace_data_size (ioam_trace_type) / 4;
+	trace->data_list_elts_left * fetch_trace_data_size (profile) / 4;
       elt = &trace->elts[elt_index];
-      if (ioam_trace_type & BIT_TTL_NODEID)
+      if (ioam_trace_type & IOAM_BIT_TTL_NODEID_SHORT)
 	{
 	  ip4_header_t *ip0 = vlib_buffer_get_current (b);
 	  *elt = clib_host_to_net_u32 (((ip0->ttl - 1) << 24) |
-				       profile->node_id);
+				       profile->node_id_short);
 	  elt++;
 	}
 
-      if (ioam_trace_type & BIT_ING_INTERFACE)
+      if (ioam_trace_type & IOAM_BIT_ING_EGR_INT_SHORT)
 	{
 	  u16 tx_if = vnet_buffer (b)->sw_if_index[VLIB_TX];
 
@@ -243,22 +242,22 @@ nsh_md2_ioam_trace_data_list_handler (vlib_buffer_t * b,
 	}
 
 
-      if (ioam_trace_type & BIT_TIMESTAMP)
+      if (ioam_trace_type & IOAM_BIT_TIMESTAMP_SEC)
 	{
 	  /* Send least significant 32 bits */
 	  f64 time_f64 =
 	    (f64) (((f64) hm->unix_time_0) +
 		   (vlib_time_now (gm->vlib_main) - hm->vlib_time_0));
 
-	  time_u64.as_u64 = time_f64 * trace_tsp_mul[profile->trace_tsp];
+	  time_u64.as_u64 = time_f64 * trace_tsp_mul[profile->ts_format];
 	  *elt = clib_host_to_net_u32 (time_u64.as_u32[0]);
 	  elt++;
 	}
 
-      if (ioam_trace_type & BIT_APPDATA)
+      if (ioam_trace_type & IOAM_BIT_APPDATA_SHORT_DATA)
 	{
 	  /* $$$ set elt0->app_data */
-	  *elt = clib_host_to_net_u32 (profile->app_data);
+	  *elt = clib_host_to_net_u32 (profile->app_data_short);
 	  elt++;
 	}
       nsh_md2_ioam_trace_stats_increment_counter
@@ -266,8 +265,8 @@ nsh_md2_ioam_trace_data_list_handler (vlib_buffer_t * b,
     }
   else
     {
-      nsh_md2_ioam_trace_stats_increment_counter
-	(NSH_MD2_IOAM_TRACE_FAILED, 1);
+      nsh_md2_ioam_trace_stats_increment_counter (NSH_MD2_IOAM_TRACE_FAILED,
+						  1);
     }
   return (rv);
 }
@@ -281,11 +280,11 @@ nsh_md2_ioam_trace_data_list_trace_handler (u8 * s, nsh_tlv_header_t * opt)
   u8 trace_data_size_in_words = 0;
   u32 *elt;
   int elt_index = 0;
-  u16 ioam_trace_type = 0;
+  u32 ioam_trace_type = 0;
 
   trace = (nsh_md2_ioam_trace_option_t *) ((u8 *) opt);
   ioam_trace_type = clib_net_to_host_u16 (trace->ioam_trace_type);
-  trace_data_size_in_words = fetch_trace_data_size (ioam_trace_type) / 4;
+  trace_data_size_in_words = fetch_trace_data_size (nsh_trace_profile_find ()) / 4;	// NOTE: origianlly ioam_trace_type
   elt = &trace->elts[0];
   s =
     format (s, "  Trace Type 0x%x , %d elts left\n", ioam_trace_type,
@@ -398,7 +397,7 @@ static int
 nsh_md2_ioam_trace_get_sizeof_handler (u32 * result)
 {
   u16 size = 0;
-  u8 trace_data_size = 0;
+  u32 trace_data_size = 0;
   trace_profile *profile = NULL;
 
   *result = 0;
@@ -410,7 +409,7 @@ nsh_md2_ioam_trace_get_sizeof_handler (u32 * result)
       return (-1);
     }
 
-  trace_data_size = fetch_trace_data_size (profile->trace_type);
+  trace_data_size = fetch_trace_data_size (profile);
   if (PREDICT_FALSE (trace_data_size == 0))
     return VNET_API_ERROR_INVALID_VALUE;
 

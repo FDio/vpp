@@ -87,7 +87,7 @@ udp_ping_create_ip6_pak (u8 * buf,	/*u16 len, */
 
   /* Calculate hbh header len */
   //profile = trace_profile_find();
-  trace_data_size = fetch_trace_data_size (TRACE_TYPE_IF_TS_APP);
+  trace_data_size = fetch_trace_data_size (trace_profile_find ());	// NOTE: INSTR_BITMAP_MASK & ~(BIT_VAR_LEN_OP_ST_SNSH));
   /* We need 2 times data for trace as packet traverse back to source */
   trace_len = sizeof (ioam_trace_option_t) +
     (5 * trace_data_size * 2) - sizeof (ip6_hop_by_hop_option_t);
@@ -107,10 +107,12 @@ udp_ping_create_ip6_pak (u8 * buf,	/*u16 len, */
   trace_option->hdr.type = HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST |
     HBH_OPTION_TYPE_DATA_CHANGE_ENROUTE;
   trace_option->hdr.length = trace_len;
-  trace_option->trace_hdr.ioam_trace_type =
-    TRACE_TYPE_IF_TS_APP & TRACE_TYPE_MASK;
+  trace_option->trace_hdr.trace_type =
+    IOAM_INSTR_BITMAP_MASK & ~(IOAM_BIT_VAR_LEN_OP_ST_SNSH);
 
-  trace_option->trace_hdr.data_list_elts_left = 5 * 2;
+  trace_option->trace_hdr.node_len_flags_remaining_len &=
+    (~IOAM_REMAIN_LEN_MASK);
+  trace_option->trace_hdr.node_len_flags_remaining_len |= 5 * 2;
   //profile->num_elts * 2;
 
   current += trace_option->hdr.length + sizeof (ip6_hop_by_hop_option_t);
@@ -293,7 +295,7 @@ udp_ping_send_ip6_pak (vlib_main_t * vm, ip46_udp_ping_flow * flow)
 	{
 	  ioam_trace_option_t *opt = (ioam_trace_option_t *)
 	    ip6_hbh_get_option (hbh, HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST);
-	  ip6_hbh_ioam_trace_set_bit (opt, BIT_LOOPBACK);
+	  ip6_hbh_ioam_trace_set_flag_bit (opt, IOAM_BIT_FLAG_LOOPBACK);
 	}
 
       /* Checksum not pre-computed as we intend to vary packet length for every
