@@ -42,9 +42,7 @@ static void vl_api_trace_profile_add_t_handler
   if (profile)
     {
       rv =
-	trace_profile_create (profile, mp->trace_type, mp->num_elts,
-			      mp->trace_tsp, ntohl (mp->node_id),
-			      ntohl (mp->app_data));
+	trace_profile_create (profile, mp);
       if (rv != 0)
 	goto ERROROUT;
     }
@@ -56,9 +54,8 @@ ERROROUT:
   REPLY_MACRO (VL_API_TRACE_PROFILE_ADD_REPLY);
 }
 
-
-static void vl_api_trace_profile_del_t_handler
-  (vl_api_trace_profile_del_t * mp)
+static void
+vl_api_trace_profile_del_t_handler (vl_api_trace_profile_del_t *mp)
 {
   int rv = 0;
   vl_api_trace_profile_del_reply_t *rmp;
@@ -99,7 +96,6 @@ static clib_error_t *
 trace_init (vlib_main_t * vm)
 {
   trace_main_t *sm = &trace_main;
-
   bzero (sm, sizeof (trace_main));
   (void) trace_util_init ();
 
