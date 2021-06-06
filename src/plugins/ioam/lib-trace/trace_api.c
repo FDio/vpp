@@ -37,14 +37,26 @@ static void vl_api_trace_profile_add_t_handler
   int rv = 0;
   vl_api_trace_profile_add_reply_t *rmp;
   trace_profile *profile = NULL;
+  trace_profile mp_profile;
 
   profile = trace_profile_find ();
+
+  mp_profile.namespace_id = mp->namespace_id;
+  mp_profile.num_elts = mp->num_elts;
+  mp_profile.node_id_short = mp->node_id_short;
+  mp_profile.node_id_wide = mp->node_id_wide;
+  mp_profile.app_data_short = mp->app_data_short;
+  mp_profile.app_data_wide = mp->app_data_wide;
+  mp_profile.option_type = mp->option_type;
+  mp_profile.trace_type = mp->trace_type;
+  mp_profile.node_type = mp->node_type;
+  mp_profile.ts_format = mp->ts_format;
+  mp_profile.queue_depth_type = mp->queue_depth_type;
+  mp_profile.opaque = mp->opaque;
+
   if (profile)
     {
-      rv =
-	trace_profile_create (profile, mp->trace_type, mp->num_elts,
-			      mp->trace_tsp, ntohl (mp->node_id),
-			      ntohl (mp->app_data));
+      rv = trace_profile_create (profile, &mp_profile);
       if (rv != 0)
 	goto ERROROUT;
     }
@@ -56,9 +68,8 @@ ERROROUT:
   REPLY_MACRO (VL_API_TRACE_PROFILE_ADD_REPLY);
 }
 
-
-static void vl_api_trace_profile_del_t_handler
-  (vl_api_trace_profile_del_t * mp)
+static void
+vl_api_trace_profile_del_t_handler (vl_api_trace_profile_del_t *mp)
 {
   int rv = 0;
   vl_api_trace_profile_del_reply_t *rmp;
@@ -99,7 +110,6 @@ static clib_error_t *
 trace_init (vlib_main_t * vm)
 {
   trace_main_t *sm = &trace_main;
-
   bzero (sm, sizeof (trace_main));
   (void) trace_util_init ();
 
