@@ -24,6 +24,7 @@ CLANG_FORMAT_DIFF_ARGS="-style file -p1"
 SUFFIX="-${CLANG_FORMAT_VER}"
 
 # Attempt to find clang-format to confirm Clang version.
+echo $command
 if command -v clang-format${SUFFIX} &> /dev/null;
 then
     CLANG_FORMAT=clang-format${SUFFIX}
