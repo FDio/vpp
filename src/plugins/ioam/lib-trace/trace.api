@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "1.0.0";
+option version = "1.1.0";
 
 /** \brief iOAM6 Trace - Set the iOAM6 trace profile
     @param trace_type - Type of trace requested
@@ -32,6 +32,8 @@ autoreply define trace_profile_add {
   u32 node_id;
   u32 app_data;
 };
+
+
 
 /** \brief Delete trace Profile
     @param client_index - opaque cookie to identify the sender
@@ -68,4 +70,67 @@ define trace_profile_show_config_reply {
   u8 trace_tsp;
   u32 node_id;
   u32 app_data;
+};
+/** \brief iOAM6 Trace - Set the iOAM6 trace profile
+	@param namespace_id - iOAM namespace ID
+	@param num_elts - Number of trace elements to be inserted
+	@param node_id_short - Trace Node ID (32 bits)
+	@param node_id_wide - Trace Node ID (64 bits)
+	@param app_data_short - Application specific (32 bits)
+	@param app_data_wide - Application specific (64 bits)
+	@param option_type - iOAM options
+	@param trace_type - iOAM trace type
+	@param node_type - Trace element type. ENCAP, TRANSIT, or DECAP
+	@param ts_format - Timestamp resolution
+	@param queue_depth_type - Allow for queue depth
+	@param len_schemeid - Opaque length and scheme ID
+*/
+define trace_profile_add_v2 {
+  u32 client_index;
+  u32 context;
+  u16 namespace_id;
+  u8 num_elts;
+  u32 node_id_short;
+  u64 node_id_wide;
+  u32 app_data_short;
+  u64 app_data_wide;
+  u8 option_type;
+  u32 trace_type;
+  u8 node_type;
+  u8 ts_format;
+  u8 queue_depth_type;
+  u32 len_schemeid;
+};
+
+/** \brief Show trace config response
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+	@param namespace_id - iOAM namespace ID
+	@param num_elts - Number of trace elements to be inserted
+	@param node_id_short - Trace Node ID (32 bits)
+	@param node_id_wide - Trace Node ID (64 bits)
+	@param app_data_short - Application specific (32 bits)
+	@param app_data_wide - Application specific (64 bits)
+	@param option_type - iOAM options
+	@param trace_type - iOAM trace type
+	@param node_type - Trace element type. ENCAP, TRANSIT, or DECAP
+	@param ts_format - Timestamp resolution
+	@param queue_depth_type - Allow for queue depth
+	@param len_schemeid - Opaque length and scheme ID
+*/
+define trace_profile_show_config_reply_v2 {
+  u32 context;
+  i32 retval;
+  u16 namespace_id;
+  u8 num_elts;
+  u32 node_id_short;
+  u64 node_id_wide;
+  u32 app_data_short;
+  u64 app_data_wide;
+  u8 option_type;
+  u32 trace_type;
+  u8 node_type;
+  u8 ts_format;
+  u8 queue_depth_type;
+  u32 len_schemeid;
 };
