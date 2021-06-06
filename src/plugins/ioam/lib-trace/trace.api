@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "1.0.0";
+option version = "1.1.0";
 
 /** \brief iOAM6 Trace - Set the iOAM6 trace profile
     @param trace_type - Type of trace requested
@@ -32,6 +32,8 @@ autoreply define trace_profile_add {
   u32 node_id;
   u32 app_data;
 };
+
+
 
 /** \brief Delete trace Profile
     @param client_index - opaque cookie to identify the sender
@@ -69,3 +71,4 @@ define trace_profile_show_config_reply {
   u32 node_id;
   u32 app_data;
 };
+
