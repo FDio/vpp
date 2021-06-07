@@ -1183,6 +1183,15 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    {
 	      async_frames[async_op] =
 		vnet_crypto_async_get_frame (vm, async_op);
+	      if (PREDICT_FALSE (!async_frames[async_op]))
+		{
+		  err = ESP_DECRYPT_ERROR_NO_AVAIL_FRAME;
+		  esp_decrypt_set_next_index (
+		    b[0], node, thread_index, err, n_noop, noop_nexts,
+		    ESP_DECRYPT_NEXT_DROP, current_sa_index);
+		  goto next;
+		}
+
 	      /* Save the frame to the list we'll submit at the end */
 	      vec_add1 (ptd->async_frames, async_frames[async_op]);
 	    }
