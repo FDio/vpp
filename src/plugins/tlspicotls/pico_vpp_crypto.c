@@ -141,7 +141,8 @@ ptls_vpp_crypto_aead_decrypt (ptls_aead_context_t *_ctx, void *_output,
   ctx->op.dst = _output;
   ctx->op.src = (void *) input;
   ctx->op.len = inlen - tag_size;;
-  ctx->op.iv = ctx->static_iv;
+  ctx->op.iv = ctx->iv;
+  ptls_aead__build_iv (ctx->super.algo, ctx->op.iv, ctx->static_iv, seq);
   ctx->op.aad = (void *) aad;
   ctx->op.aad_len = aadlen;
   ctx->op.tag = (void *) input + inlen - tag_size;
@@ -160,7 +161,6 @@ ptls_vpp_crypto_aead_encrypt_init (ptls_aead_context_t *_ctx, uint64_t seq,
   struct vpp_aead_context_t *ctx = (struct vpp_aead_context_t *) _ctx;
   ctx->op.iv = ctx->iv;
   ptls_aead__build_iv (ctx->super.algo, ctx->op.iv, ctx->static_iv, seq);
-  ctx->op.iv = ctx->static_iv;
   ctx->op.aad = (void *) aad;
   ctx->op.aad_len = aadlen;
   ctx->op.n_chunks = 2;
