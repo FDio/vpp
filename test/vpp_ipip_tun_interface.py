@@ -34,6 +34,9 @@ class VppIpIpTunInterface(VppTunnelInterface):
                 'mode': self.mode,
             })
         self.set_sw_if_index(r.sw_if_index)
+        r = self.test.vapi.ipip_tunnel_dump(
+            sw_if_index=self.sw_if_index)
+        self.instance = r[0].tunnel.instance
         self.test.registry.register(self, self.test.logger)
         return self
 
@@ -51,7 +54,7 @@ class VppIpIpTunInterface(VppTunnelInterface):
         return self.object_id()
 
     def object_id(self):
-        return "ipip-%d" % self._sw_if_index
+        return "ipip%d" % self.instance
 
     @property
     def remote_ip(self):

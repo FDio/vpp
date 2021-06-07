@@ -342,6 +342,18 @@ ipsec_itf_delete (u32 sw_if_index)
   return 0;
 }
 
+void
+ipsec_itf_walk (ipsec_itf_walk_cb_t cb, void *ctx)
+{
+  ipsec_itf_t *itf;
+
+  pool_foreach (itf, ipsec_itf_pool)
+    {
+      if (WALK_CONTINUE != cb (itf, ctx))
+	break;
+    }
+}
+
 static clib_error_t *
 ipsec_itf_create_cli (vlib_main_t * vm,
 		      unformat_input_t * input, vlib_cli_command_t * cmd)
