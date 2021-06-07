@@ -50,7 +50,8 @@ typedef enum
   _ (SEQ_CYCLED, "sequence number cycled (packet dropped)")                   \
   _ (CRYPTO_ENGINE_ERROR, "crypto engine error (packet dropped)")             \
   _ (CRYPTO_QUEUE_FULL, "crypto queue full (packet dropped)")                 \
-  _ (NO_BUFFERS, "no buffers (packet dropped)")
+  _ (NO_BUFFERS, "no buffers (packet dropped)")                               \
+  _ (NO_AVAIL_FRAME, "no available frame (packet dropped)")
 
 typedef enum
 {
@@ -945,6 +946,15 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    {
 	      async_frames[async_op] =
 		vnet_crypto_async_get_frame (vm, async_op);
+
+	      if (PREDICT_FALSE (!async_frames[async_op]))
+		{
+		  err = ESP_ENCRYPT_ERROR_NO_AVAIL_FRAME;
+		  esp_set_next_index (b[0], node, err, n_noop, noop_nexts,
+				      drop_next);
+		  goto trace;
+		}
+
 	      /* Save the frame to the list we'll submit at the end */
 	      vec_add1 (ptd->async_frames, async_frames[async_op]);
 	    }

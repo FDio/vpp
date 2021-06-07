@@ -566,12 +566,15 @@ vnet_crypto_async_get_frame (vlib_main_t * vm, vnet_crypto_async_op_id_t opt)
   vnet_crypto_thread_t *ct = cm->threads + vm->thread_index;
   vnet_crypto_async_frame_t *f = NULL;
 
-  pool_get_aligned (ct->frame_pool, f, CLIB_CACHE_LINE_BYTES);
-  if (CLIB_DEBUG > 0)
-    clib_memset (f, 0xfe, sizeof (*f));
-  f->state = VNET_CRYPTO_FRAME_STATE_NOT_PROCESSED;
-  f->op = opt;
-  f->n_elts = 0;
+  if (pool_free_elts (ct->frame_pool))
+    {
+      pool_get_aligned (ct->frame_pool, f, CLIB_CACHE_LINE_BYTES);
+      if (CLIB_DEBUG > 0)
+	clib_memset (f, 0xfe, sizeof (*f));
+      f->state = VNET_CRYPTO_FRAME_STATE_NOT_PROCESSED;
+      f->op = opt;
+      f->n_elts = 0;
+    }
 
   return f;
 }
