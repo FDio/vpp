@@ -763,6 +763,11 @@ I:	bufmon
 M:	Benoît Ganne <bganne@cisco.com>
 F:	src/plugins/bufmon/
 
+Plugin - HSI
+I:	hsi
+M:	Florin Coras <fcoras@cisco.com>
+F:	src/plugins/hsi/
+
 cJSON
 I:	cjson
 M:	Ole Troan <ot@cisco.com>

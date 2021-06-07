@@ -1,0 +1,8 @@
+---
+name: HSI (Host Stack Intercept)
+maintainer: Florin Coras <fcoras@cisco.com>
+features:
+  - Host stack intercept feature
+description: "Feature that enables selective punting of flows to the host stack"
+state: experimental
+properties: [MULTITHREAD]
