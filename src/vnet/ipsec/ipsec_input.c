@@ -294,7 +294,12 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	  if (PREDICT_TRUE ((p0 != NULL)))
 	    {
 	      ipsec_bypassed += 1;
+
 	      pi0 = p0 - im->policies;
+	      vlib_increment_combined_counter (
+		&ipsec_spd_policy_counters, thread_index, pi0, 1,
+		clib_net_to_host_u16 (ip0->length));
+
 	      goto trace0;
 	    }
 	  else
@@ -312,7 +317,12 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	  if (PREDICT_TRUE ((p0 != NULL)))
 	    {
 	      ipsec_dropped += 1;
+
 	      pi0 = p0 - im->policies;
+	      vlib_increment_combined_counter (
+		&ipsec_spd_policy_counters, thread_index, pi0, 1,
+		clib_net_to_host_u16 (ip0->length));
+
 	      next[0] = IPSEC_INPUT_NEXT_DROP;
 	      goto trace0;
 	    }
@@ -380,7 +390,12 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	  if (PREDICT_TRUE ((p0 != NULL)))
 	    {
 	      ipsec_bypassed += 1;
+
 	      pi0 = p0 - im->policies;
+	      vlib_increment_combined_counter (
+		&ipsec_spd_policy_counters, thread_index, pi0, 1,
+		clib_net_to_host_u16 (ip0->length));
+
 	      goto trace1;
 	    }
 	  else
@@ -398,7 +413,12 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	  if (PREDICT_TRUE ((p0 != NULL)))
 	    {
 	      ipsec_dropped += 1;
+
 	      pi0 = p0 - im->policies;
+	      vlib_increment_combined_counter (
+		&ipsec_spd_policy_counters, thread_index, pi0, 1,
+		clib_net_to_host_u16 (ip0->length));
+
 	      next[0] = IPSEC_INPUT_NEXT_DROP;
 	      goto trace1;
 	    }
