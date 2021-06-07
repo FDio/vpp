@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4f3581a6_8509504d",
+        "filename": "src/plugins/tlspicotls/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-06-07T14:26:53Z",
+      "side": 1,
+      "message": "Is this really needed?",
+      "range": {
+        "startLine": 36,
+        "startChar": 49,
+        "endLine": 36,
+        "endChar": 69
+      },
+      "revId": "d6b9bc8ef886daaf79ed6d7e6df7451fe03d5103",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
