@@ -696,9 +696,40 @@ vl_api_ipsec_itf_delete_t_handler (vl_api_ipsec_itf_delete_t * mp)
   REPLY_MACRO (VL_API_IPSEC_ITF_DELETE_REPLY);
 }
 
+static walk_rc_t
+send_ipsec_itf_details (ipsec_itf_t *itf, void *arg)
+{
+  ipsec_dump_walk_ctx_t *ctx = arg;
+  vl_api_ipsec_itf_details_t *mp;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_IPSEC_ITF_DETAILS);
+  mp->context = ctx->context;
+
+  mp->itf.mode = tunnel_mode_encode (itf->ii_mode);
+  mp->itf.user_instance = htonl (itf->ii_user_instance);
+  mp->itf.sw_if_index = htonl (itf->ii_sw_if_index);
+  vl_api_send_msg (ctx->reg, (u8 *) mp);
+
+  return (WALK_CONTINUE);
+}
+
 static void
 vl_api_ipsec_itf_dump_t_handler (vl_api_ipsec_itf_dump_t * mp)
 {
+  vl_api_registration_t *reg;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  ipsec_dump_walk_ctx_t ctx = {
+    .reg = reg,
+    .context = mp->context,
+  };
+
+  ipsec_itf_walk (send_ipsec_itf_details, &ctx);
 }
 
 typedef struct ipsec_sa_dump_match_ctx_t_
