@@ -611,6 +611,8 @@ wg_input_process (vlib_main_t *vm, wg_per_thread_data_t *ptd,
 	{
 	  *async_frame = vnet_crypto_async_get_frame (
 	    vm, VNET_CRYPTO_OP_CHACHA20_POLY1305_TAG16_AAD0_DEC);
+	  if (PREDICT_FALSE (NULL == *async_frame))
+	    goto error;
 	  /* Save the frame to the list we'll submit at the end */
 	  vec_add1 (ptd->async_frames, *async_frame);
 	}

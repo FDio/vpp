@@ -706,8 +706,7 @@ vnet_crypto_init (vlib_main_t * vm)
   cm->async_alg_index_by_name = hash_create_string (0, sizeof (uword));
   vec_validate_aligned (cm->threads, tm->n_vlib_mains, CLIB_CACHE_LINE_BYTES);
   vec_foreach (ct, cm->threads)
-    pool_alloc_aligned (ct->frame_pool, VNET_CRYPTO_FRAME_POOL_SIZE,
-			CLIB_CACHE_LINE_BYTES);
+    pool_init_fixed (ct->frame_pool, VNET_CRYPTO_FRAME_POOL_SIZE);
   vec_validate (cm->algs, VNET_CRYPTO_N_ALGS);
   vec_validate (cm->async_algs, VNET_CRYPTO_N_ASYNC_ALGS);
 
