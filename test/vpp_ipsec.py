@@ -412,6 +412,8 @@ class VppIpsecInterface(VppInterface):
         })
         self.set_sw_if_index(r.sw_if_index)
         self.test.registry.register(self, self.test.logger)
+        ts = self.test.vapi.ipsec_itf_dump(sw_if_index=self._sw_if_index)
+        self.instance = ts[0].itf.user_instance
         return self
 
     def remove_vpp_config(self):
@@ -420,7 +422,7 @@ class VppIpsecInterface(VppInterface):
     def query_vpp_config(self):
         ts = self.test.vapi.ipsec_itf_dump(sw_if_index=0xffffffff)
         for t in ts:
-            if t.tunnel.sw_if_index == self._sw_if_index:
+            if t.itf.sw_if_index == self._sw_if_index:
                 return True
         return False
 
@@ -428,4 +430,4 @@ class VppIpsecInterface(VppInterface):
         return self.object_id()
 
     def object_id(self):
-        return "ipsec-%d" % self._sw_if_index
+        return "ipsec%d" % self.instance
