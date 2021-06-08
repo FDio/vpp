@@ -113,7 +113,7 @@ format_nat_in2out_ed_trace (u8 * s, va_list * args)
  */
 static inline int
 snat_not_translate_fast (snat_main_t *sm, vlib_node_runtime_t *node,
-			 u32 sw_if_index0, ip4_header_t *ip0, u32 proto0,
+			 u32 sw_if_index0, ip4_header_t *ip0,
 			 u32 rx_fib_index0)
 {
   fib_node_index_t fei = FIB_NODE_INDEX_INVALID;
@@ -233,7 +233,7 @@ nat_ed_alloc_addr_and_port (snat_main_t *sm, u32 rx_fib_index, u32 nat_proto,
 
   if (vec_len (sm->addresses) > 0)
     {
-      int s_addr_offset = s_addr.as_u32 % vec_len (sm->addresses);
+      u32 s_addr_offset = s_addr.as_u32 % vec_len (sm->addresses);
 
       for (i = s_addr_offset; i < vec_len (sm->addresses); ++i)
 	{
@@ -559,8 +559,7 @@ error:
 static_always_inline int
 nat44_ed_not_translate (vlib_main_t *vm, snat_main_t *sm,
 			vlib_node_runtime_t *node, u32 sw_if_index,
-			vlib_buffer_t *b, ip4_header_t *ip, u32 proto,
-			u32 rx_fib_index, u32 thread_index)
+			vlib_buffer_t *b, ip4_header_t *ip, u32 proto)
 {
   clib_bihash_kv_16_8_t kv, value;
 
@@ -587,8 +586,7 @@ nat44_ed_not_translate (vlib_main_t *vm, snat_main_t *sm,
   if (sm->forwarding_enabled)
     return 1;
 
-  return snat_not_translate_fast (sm, node, sw_if_index, ip, proto,
-				  rx_fib_index);
+  return snat_not_translate_fast (sm, node, sw_if_index, ip, proto);
 }
 
 static_always_inline int
@@ -738,8 +736,7 @@ icmp_in2out_ed_slow_path (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
 			  icmp46_header_t *icmp, u32 sw_if_index,
 			  u32 rx_fib_index, vlib_node_runtime_t *node,
 			  u32 next, f64 now, u32 thread_index,
-			  nat_protocol_t nat_proto, snat_session_t **s_p,
-			  int is_multi_worker)
+			  snat_session_t **s_p, int is_multi_worker)
 {
   vlib_main_t *vm = vlib_get_main ();
   u16 checksum;
@@ -770,8 +767,7 @@ icmp_in2out_ed_slow_path (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
   else
     {
       if (PREDICT_FALSE (nat44_ed_not_translate (vm, sm, node, sw_if_index, b,
-						 ip, NAT_PROTOCOL_ICMP,
-						 rx_fib_index, thread_index)))
+						 ip, NAT_PROTOCOL_ICMP)))
 	{
 	  return next;
 	}
@@ -1346,7 +1342,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
 	{
 	  next[0] = icmp_in2out_ed_slow_path (
 	    sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node, next[0],
-	    now, thread_index, proto0, &s0, is_multi_worker);
+	    now, thread_index, &s0, is_multi_worker);
 	  if (NAT_NEXT_DROP != next[0] && s0 &&
 	      NAT_ED_TRNSL_ERR_SUCCESS !=
 		(translation_error = nat_6t_flow_buf_translate_i2o (
@@ -1404,8 +1400,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
 	  else
 	    {
 	      if (PREDICT_FALSE (nat44_ed_not_translate (
-		    vm, sm, node, sw_if_index0, b0, ip0, proto0, rx_fib_index0,
-		    thread_index)))
+		    vm, sm, node, sw_if_index0, b0, ip0, proto0)))
 		goto trace0;
 	    }
 
