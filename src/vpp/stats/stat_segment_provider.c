@@ -88,10 +88,10 @@ vlib_stats_register_mem_heap (clib_mem_heap_t *heap)
   u32 heap_index = vec_len (memory_heaps_vec) - 1;
 
   /* Memory counters provider */
-  u8 *s = format (0, "/mem/%s", heap->name);
-  u8 *s_used = format (0, "/mem/%s/used", heap->name);
-  u8 *s_total = format (0, "/mem/%s/total", heap->name);
-  u8 *s_free = format (0, "/mem/%s/free", heap->name);
+  u8 *s = format (0, "/mem/%s%c", heap->name, 0);
+  u8 *s_used = format (0, "/mem/%s/used%c", heap->name, 0);
+  u8 *s_total = format (0, "/mem/%s/total%c", heap->name, 0);
+  u8 *s_free = format (0, "/mem/%s/free%c", heap->name, 0);
   mem_vector_index =
     stat_segment_new_entry (s, STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE);
   vec_free (s);
@@ -174,7 +174,7 @@ stat_provider_register_vector_rate (u32 num_workers)
 {
   int i;
 
-  u8 *s = format (0, "/sys/vector_rate");
+  u8 *s = format (0, "/sys/vector_rate%c", 0);
 
   i = stat_segment_new_entry (s, STAT_DIR_TYPE_SCALAR_INDEX);
   if (i == ~0)
@@ -182,7 +182,7 @@ stat_provider_register_vector_rate (u32 num_workers)
   vec_free (s);
   stat_segment_poll_add (i, stat_provider_vector_rate_update_fn, ~0, 10);
 
-  s = format (0, "/sys/vector_rate_per_worker");
+  s = format (0, "/sys/vector_rate_per_worker%c", 0);
   i = stat_segment_new_entry (s, STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE);
   if (i == ~0)
     ASSERT (0);
