@@ -23,7 +23,7 @@
 #include <vppinfra/cpu.h>
 #include <vlib/vlib.h>
 
-#define PERF_MAX_EVENTS 7 /* 3 fixed and 4 programmable */
+#define PERF_MAX_EVENTS 8 /* 4 fixed and 8 programmable on ICX */
 
 typedef enum
 {
