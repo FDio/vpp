@@ -18,14 +18,12 @@ Architectures
 Operating Systems and Packaging
 -------------------------------
 
-FD.io VPP supports package installation on the following 
-recent LTS operating systems releases:
+FD.io VPP supports package installation on the following
+recent LTS releases:
 
-* Operating Systems:
+* Distributions:
 
    * Debian
-   * Ubuntu 
-   * CentOS 
-   * OpenSUSE
+   * Ubuntu
 
 For more about VPP performance press next.
