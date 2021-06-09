@@ -76,7 +76,9 @@ clib_mask_compare_u16 (u16 v, u16 *a, u64 *mask, u32 n_elts)
   if (PREDICT_TRUE (n_elts == 0))
     return;
 
-  mask[0] = clib_mask_compare_u16_x64 (v, a, n_elts) & pow2_mask (n_elts);
+  mask[0] = CLIB_MEM_OVERFLOW (clib_mask_compare_u16_x64 (v, a, n_elts), a,
+			       64 * sizeof (a[0])) &
+	    pow2_mask (n_elts);
 }
 
 static_always_inline u64
@@ -160,7 +162,9 @@ clib_mask_compare_u32 (u32 v, u32 *a, u64 *bitmap, u32 n_elts)
   if (PREDICT_TRUE (n_elts == 0))
     return;
 
-  bitmap[0] = clib_mask_compare_u32_x64 (v, a, n_elts) & pow2_mask (n_elts);
+  bitmap[0] = CLIB_MEM_OVERFLOW (clib_mask_compare_u32_x64 (v, a, n_elts), a,
+				 64 * sizeof (a[0])) &
+	      pow2_mask (n_elts);
 }
 
 static_always_inline u32 *
@@ -228,7 +232,10 @@ clib_compress_u32 (u32 *dst, u32 *src, u64 *mask, u32 n_elts)
   if (PREDICT_TRUE (n_elts == 0))
     return dst - dst0;
 
-  return clib_compress_u32_x64 (dst, src, mask[0] & pow2_mask (n_elts)) - dst0;
+  return CLIB_MEM_OVERFLOW (
+	   clib_compress_u32_x64 (dst, src, mask[0] & pow2_mask (n_elts)), src,
+	   64 * sizeof (src[0])) -
+	 dst0;
 }
 
 #endif
