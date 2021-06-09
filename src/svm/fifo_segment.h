@@ -38,6 +38,7 @@ typedef enum fifo_segment_flags_
   FIFO_SEGMENT_F_IS_PREALLOCATED = 1 << 0,
   FIFO_SEGMENT_F_WILL_DELETE = 1 << 1,
   FIFO_SEGMENT_F_MEM_LIMIT = 1 << 2,
+  FIFO_SEGMENT_F_CUSTOM_USE = 1 << 3,
 } fifo_segment_flags_t;
 
 #define foreach_segment_mem_status	\
