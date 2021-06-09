@@ -43,12 +43,14 @@ typedef struct ct_connection_
   transport_connection_t connection;
   u32 client_wrk;
   u32 server_wrk;
-  transport_proto_t actual_tp;
   u32 client_opaque;
   u32 peer_index;
   u64 segment_handle;
+  u32 seg_ctx_index;
+  u32 ct_seg_index;
   svm_fifo_t *client_rx_fifo;
   svm_fifo_t *client_tx_fifo;
+  transport_proto_t actual_tp;
   ct_connection_flags_t flags;
 } ct_connection_t;
 
