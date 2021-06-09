@@ -47,6 +47,7 @@ typedef struct ct_connection_
   u32 client_opaque;
   u32 peer_index;
   u64 segment_handle;
+  u32 seg_ctx_index;
   svm_fifo_t *client_rx_fifo;
   svm_fifo_t *client_tx_fifo;
   ct_connection_flags_t flags;
