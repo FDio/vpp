@@ -23,6 +23,13 @@ typedef struct ct_main_
   u32 n_sessions;			/**< Cumulative sessions counter */
   u32 *ho_reusable;			/**< Vector of reusable ho indices */
   clib_spinlock_t ho_reuseable_lock;	/**< Lock for reusable ho indices */
+
+  clib_rwlock_t app_segs_lock;
+  /** Hash map from custom handle to custom segment pool */
+  uword *peer_apps_seg_table;
+
+  /** Per custom handle index pool of vectors of segment indices */
+  u32 **peer_apps_segments;
 } ct_main_t;
 
 static ct_main_t ct_main;
@@ -104,6 +111,22 @@ ct_session_endpoint (session_t * ll, session_endpoint_t * sep)
   sep->port = ct->c_lcl_port;
   sep->is_ip4 = ct->c_is_ip4;
   ip_copy (&sep->ip, &ct->c_lcl_ip, ct->c_is_ip4);
+}
+
+static void
+ct_session_dealloc_fifos (svm_fifo_t *rx_fifo, svm_fifo_t *tx_fifo)
+{
+  segment_manager_t *sm;
+  fifo_segment_t *fs;
+
+  if (!(sm = segment_manager_get_if_valid (rx_fifo->segment_manager)))
+    return;
+
+  fs = segment_manager_get_segment_w_lock (sm, rx_fifo->segment_index);
+  fifo_segment_free_fifo (fs, rx_fifo);
+  fifo_segment_free_fifo (fs, tx_fifo);
+
+  segment_manager_segment_reader_unlock (sm);
 }
 
 int
@@ -188,7 +211,8 @@ ct_session_connect_notify (session_t * ss)
   if (app_worker_connect_notify (client_wrk, cs, err, opaque))
     {
       session_close (ss);
-      segment_manager_dealloc_fifos (cs->rx_fifo, cs->tx_fifo);
+      //      segment_manager_dealloc_fifos (cs->rx_fifo, cs->tx_fifo);
+      ct_session_dealloc_fifos (cs->rx_fifo, cs->tx_fifo);
       session_free (cs);
       return -1;
     }
@@ -203,38 +227,113 @@ error:
   return -1;
 }
 
+static u32
+ct_get_or_alloc_inter_app_segment (app_worker_t *server_wrk,
+				   segment_manager_t *sm,
+				   segment_manager_props_t *props,
+				   u32 client_wrk_index)
+{
+  ct_main_t *cm = &ct_main;
+  fifo_segment_t *fs;
+  uword free_bytes, max_free_bytes = 0;
+  uword *spp;
+  u32 seg_index = ~0, min_space, *segp, pi;
+  u64 table_handle;
+  int rv;
+
+  table_handle = client_wrk_index << 16 | server_wrk->wrk_index;
+  table_handle = (u64) segment_manager_index (sm) << 32 | table_handle;
+  min_space = props->rx_fifo_size + props->tx_fifo_size;
+
+  clib_rwlock_reader_lock (&cm->app_segs_lock);
+
+  spp = hash_get (cm->peer_apps_seg_table, table_handle);
+  if (spp)
+    {
+      u32 pair_bytes, max_fifos;
+      pair_bytes = props->rx_fifo_size + props->tx_fifo_size + (1 << 14);
+      max_free_bytes = pair_bytes;
+      vec_foreach (segp, cm->peer_apps_segments[*spp])
+	{
+	  fs = segment_manager_get_segment (sm, segp[0]);
+	  free_bytes = fifo_segment_available_bytes (fs);
+	  max_fifos = fifo_segment_size (fs) / pair_bytes;
+	  if (free_bytes > max_free_bytes &&
+	      fifo_segment_num_fifos (fs) / 2 < max_fifos)
+	    {
+	      max_free_bytes = free_bytes;
+	      seg_index = segp[0];
+	    }
+	}
+    }
+
+  clib_rwlock_reader_unlock (&cm->app_segs_lock);
+
+  if (seg_index == ~0)
+    {
+      clib_rwlock_writer_lock (&cm->app_segs_lock);
+
+      rv = segment_manager_add_segment (sm, props->segment_size, 0);
+      if (rv < 0)
+	{
+	  clib_warning ("failed to add new cut-through segment");
+	  clib_rwlock_writer_unlock (&cm->app_segs_lock);
+	  return -1;
+	}
+      seg_index = rv;
+      if (!spp)
+	{
+	  u32 **seg_vec;
+	  pool_get_zero (cm->peer_apps_segments, seg_vec);
+	  pi = seg_vec - cm->peer_apps_segments;
+	  hash_set (cm->peer_apps_seg_table, table_handle, pi);
+	}
+      else
+	pi = *spp;
+      vec_add1 (cm->peer_apps_segments[pi], seg_index);
+
+      clib_rwlock_writer_unlock (&cm->app_segs_lock);
+    }
+
+  return seg_index;
+}
+
 static int
 ct_init_accepted_session (app_worker_t * server_wrk,
 			  ct_connection_t * ct, session_t * ls,
 			  session_t * ll)
 {
-  u32 round_rx_fifo_sz, round_tx_fifo_sz, sm_index, seg_size;
+  u32 sm_index;
   segment_manager_props_t *props;
-  application_t *server;
+  //  application_t *server;
   segment_manager_t *sm;
-  u32 margin = 16 << 10;
+  //  u32 margin = 16 << 10;
   fifo_segment_t *seg;
   u64 segment_handle;
   int seg_index, rv;
-
-  server = application_get (server_wrk->app_index);
-
-  props = application_segment_manager_properties (server);
-  round_rx_fifo_sz = 1 << max_log2 (props->rx_fifo_size);
-  round_tx_fifo_sz = 1 << max_log2 (props->tx_fifo_size);
-  /* Increase size because of inefficient chunk allocations. Depending on
-   * how data is consumed, it may happen that more chunks than needed are
-   * allocated.
-   * TODO should remove once allocations are done more efficiently */
-  seg_size = 4 * (round_rx_fifo_sz + round_tx_fifo_sz + margin);
+  application_t *server;
 
   sm = app_worker_get_listen_segment_manager (server_wrk, ll);
-  seg_index = segment_manager_add_segment (sm, seg_size, 0);
-  if (seg_index < 0)
-    {
-      clib_warning ("failed to add new cut-through segment");
-      return seg_index;
-    }
+  server = application_get (server_wrk->app_index);
+  props = application_segment_manager_properties (server);
+
+  seg_index =
+    ct_get_or_alloc_inter_app_segment (server_wrk, sm, props, ct->client_wrk);
+
+  //  props = application_segment_manager_properties (server);
+  //  round_rx_fifo_sz = 1 << max_log2 (props->rx_fifo_size);
+  //  round_tx_fifo_sz = 1 << max_log2 (props->tx_fifo_size);
+  //  /* Increase size because of inefficient chunk allocations. Depending on
+  //   * how data is consumed, it may happen that more chunks than needed are
+  //   * allocated.
+  //   * TODO should remove once allocations are done more efficiently */
+  //  seg_size = 4 * (round_rx_fifo_sz + round_tx_fifo_sz + margin);
+  //
+  //  sm = app_worker_get_listen_segment_manager (server_wrk, ll);
+  //  seg_index = segment_manager_add_segment (sm, seg_size, 0);
+  if (seg_index == ~0)
+    return -1;
+
   seg = segment_manager_get_segment_w_lock (sm, seg_index);
 
   rv = segment_manager_try_alloc_fifos (seg, ls->thread_index,
@@ -366,7 +465,8 @@ ct_accept_rpc_wrk_handler (void *accept_args)
   if (app_worker_accept_notify (server_wrk, ss))
     {
       ct_connection_free (sct);
-      segment_manager_dealloc_fifos (ss->rx_fifo, ss->tx_fifo);
+      ct_session_dealloc_fifos (ss->rx_fifo, ss->tx_fifo);
+      //      segment_manager_dealloc_fifos (ss->rx_fifo, ss->tx_fifo);
       session_free (ss);
       return;
     }
@@ -569,12 +669,21 @@ ct_session_close (u32 ct_index, u32 thread_index)
     }
 
   s = session_get (ct->c_s_index, ct->c_thread_index);
+
+  /* Manual session and fifo segment cleanup to avoid implicit
+   * segment manager cleanups and notifications */
   app_wrk = app_worker_get_if_valid (s->app_wrk_index);
   if (app_wrk)
-    app_worker_del_segment_notify (app_wrk, ct->segment_handle);
-  session_free_w_fifos (s);
+    app_worker_cleanup_notify (app_wrk, s, SESSION_CLEANUP_SESSION);
+  //    app_worker_del_segment_notify (app_wrk, ct->segment_handle);
+  //  session_free_w_fifos (s);
+
+  ct_session_dealloc_fifos (s->rx_fifo, s->tx_fifo);
+  session_free (s);
+
   if (ct->flags & CT_CONN_F_CLIENT)
-    segment_manager_dealloc_fifos (ct->client_rx_fifo, ct->client_tx_fifo);
+    ct_session_dealloc_fifos (ct->client_rx_fifo, ct->client_tx_fifo);
+  //    segment_manager_dealloc_fifos (ct->client_rx_fifo, ct->client_tx_fifo);
 
   ct_connection_free (ct);
 }
@@ -716,7 +825,7 @@ ct_enable_disable (vlib_main_t * vm, u8 is_en)
   cm->n_workers = vlib_num_workers ();
   vec_validate (cm->connections, cm->n_workers);
   clib_spinlock_init (&cm->ho_reuseable_lock);
-
+  clib_rwlock_init (&cm->app_segs_lock);
   return 0;
 }
 
