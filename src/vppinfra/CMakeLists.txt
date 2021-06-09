@@ -77,6 +77,7 @@ set(VPPINFRA_SRCS
   random.c
   random_isaac.c
   rbtree.c
+  sanitizer.c
   serialize.c
   socket.c
   std-formats.c
