@@ -66,33 +66,34 @@ extern vlib_node_registration_t admin_up_down_process_node;
 #define DPDK_MLX5_PMD_NAME "mlx5_pci"
 #endif
 
-#define foreach_dpdk_pmd          \
-  _ ("net_thunderx", THUNDERX)    \
-  _ ("net_e1000_em", E1000EM)     \
-  _ ("net_e1000_igb", IGB)        \
-  _ ("net_e1000_igb_vf", IGBVF)   \
-  _ ("net_ixgbe", IXGBE)          \
-  _ ("net_ixgbe_vf", IXGBEVF)     \
-  _ ("net_i40e", I40E)            \
-  _ ("net_i40e_vf", I40EVF)       \
-  _ ("net_ice", ICE)              \
-  _ ("net_iavf", IAVF)            \
-  _ ("net_virtio", VIRTIO)        \
-  _ ("net_enic", ENIC)            \
-  _ ("net_vmxnet3", VMXNET3)      \
-  _ ("AF_PACKET PMD", AF_PACKET)  \
-  _ ("net_fm10k", FM10K)          \
-  _ ("net_cxgbe", CXGBE)          \
-  _ ("net_mlx4", MLX4)            \
-  _ (DPDK_MLX5_PMD_NAME, MLX5)    \
-  _ ("net_dpaa2", DPAA2)          \
-  _ ("net_virtio_user", VIRTIO_USER) \
-  _ ("net_vhost", VHOST_ETHER)    \
-  _ ("net_ena", ENA)              \
-  _ ("net_failsafe", FAILSAFE)    \
-  _ ("net_liovf", LIOVF_ETHER)    \
-  _ ("net_qede", QEDE)		  \
-  _ ("net_netvsc", NETVSC)        \
+#define foreach_dpdk_pmd                                                      \
+  _ ("net_thunderx", THUNDERX)                                                \
+  _ ("net_e1000_em", E1000EM)                                                 \
+  _ ("net_e1000_igb", IGB)                                                    \
+  _ ("net_e1000_igb_vf", IGBVF)                                               \
+  _ ("net_ixgbe", IXGBE)                                                      \
+  _ ("net_ixgbe_vf", IXGBEVF)                                                 \
+  _ ("net_i40e", I40E)                                                        \
+  _ ("net_i40e_vf", I40EVF)                                                   \
+  _ ("net_ice", ICE)                                                          \
+  _ ("net_iavf", IAVF)                                                        \
+  _ ("net_igc", IGC)                                                          \
+  _ ("net_virtio", VIRTIO)                                                    \
+  _ ("net_enic", ENIC)                                                        \
+  _ ("net_vmxnet3", VMXNET3)                                                  \
+  _ ("AF_PACKET PMD", AF_PACKET)                                              \
+  _ ("net_fm10k", FM10K)                                                      \
+  _ ("net_cxgbe", CXGBE)                                                      \
+  _ ("net_mlx4", MLX4)                                                        \
+  _ (DPDK_MLX5_PMD_NAME, MLX5)                                                \
+  _ ("net_dpaa2", DPAA2)                                                      \
+  _ ("net_virtio_user", VIRTIO_USER)                                          \
+  _ ("net_vhost", VHOST_ETHER)                                                \
+  _ ("net_ena", ENA)                                                          \
+  _ ("net_failsafe", FAILSAFE)                                                \
+  _ ("net_liovf", LIOVF_ETHER)                                                \
+  _ ("net_qede", QEDE)                                                        \
+  _ ("net_netvsc", NETVSC)                                                    \
   _ ("net_bnxt", BNXT)
 
 typedef enum
