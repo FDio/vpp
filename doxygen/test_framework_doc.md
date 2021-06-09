@@ -2,21 +2,7 @@ Test Framework Documentation    {#test_framework_doc}
 ============================
 
 PyDoc generated documentation for the "make test" framework is available for
-the following releases:
+the following actively supported releases:
 
 - [Test framework documentation for VPP 21.10](https://docs.fd.io/vpp/21.10/vpp_make_test/html)
 - [Test framework documentation for VPP 21.06](https://docs.fd.io/vpp/21.06/vpp_make_test/html)
-- [Test framework documentation for VPP 21.01](https://docs.fd.io/vpp/21.01/vpp_make_test/html)
-- [Test framework documentation for VPP 20.09](https://docs.fd.io/vpp/20.09/vpp_make_test/html)
-- [Test framework documentation for VPP 20.05](https://docs.fd.io/vpp/20.05/vpp_make_test/html)
-- [Test framework documentation for VPP 20.01](https://docs.fd.io/vpp/20.01/vpp_make_test/html)
-- [Test framework documentation for VPP 19.08](https://docs.fd.io/vpp/19.08/vpp_make_test/html)
-- [Test framework documentation for VPP 19.04](https://docs.fd.io/vpp/19.04/vpp_make_test/html)
-- [Test framework documentation for VPP 19.01](https://docs.fd.io/vpp/19.01/vpp_make_test/html)
-- [Test framework documentation for VPP 18.10](https://docs.fd.io/vpp/18.10/vpp_make_test/html)
-- [Test framework documentation for VPP 18.07](https://docs.fd.io/vpp/18.07/vpp_make_test/html)
-- [Test framework documentation for VPP 18.04](https://docs.fd.io/vpp/18.04/vpp_make_test/html)
-- [Test framework documentation for VPP 18.01](https://docs.fd.io/vpp/18.01/vpp_make_test/html)
-- [Test framework documentation for VPP 17.10](https://docs.fd.io/vpp/17.10/vpp_make_test/html)
-- [Test framework documentation for VPP 17.04](https://docs.fd.io/vpp/17.04/vpp_make_test/html)
-- [Test framework documentation for VPP 17.01](https://docs.fd.io/vpp/17.01/vpp_make_test/html)
