@@ -452,6 +452,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      xd->flags |= DPDK_DEVICE_FLAG_INT_UNMASKABLE;
 	    case VNET_DPDK_PMD_E1000EM:
 	    case VNET_DPDK_PMD_IGB:
+	    case VNET_DPDK_PMD_IGC:
 	    case VNET_DPDK_PMD_IXGBE:
 	    case VNET_DPDK_PMD_ICE:
 	      xd->port_type = port_type_from_speed_capa (&dev_info);
