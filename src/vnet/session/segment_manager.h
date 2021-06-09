@@ -90,6 +90,7 @@ int segment_manager_init_first (segment_manager_t * sm);
  * @param sm	segment manager to be freed
  */
 void segment_manager_free (segment_manager_t * sm);
+void segment_manager_free_safe (segment_manager_t *sm);
 
 /**
  * Initiate segment manager cleanup
