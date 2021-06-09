@@ -498,8 +498,8 @@ sm_free_w_index_helper (void *arg)
     segment_manager_free (sm);
 }
 
-static void
-segment_manager_free_safe (segment_manager_t * sm)
+void
+segment_manager_free_safe (segment_manager_t *sm)
 {
   if (!vlib_thread_is_main_w_barrier ())
     {
@@ -738,16 +738,16 @@ segment_manager_alloc_session_fifos (segment_manager_t * sm,
 
   segment_manager_segment_reader_lock (sm);
 
-  /* *INDENT-OFF* */
   pool_foreach (cur, sm->segments)  {
-    free_bytes = fifo_segment_available_bytes (cur);
-    if (free_bytes > max_free_bytes)
-      {
-        max_free_bytes = free_bytes;
-        fs = cur;
-      }
+      if (fifo_segment_flags (cur) & FIFO_SEGMENT_F_CUSTOM_USE)
+	continue;
+      free_bytes = fifo_segment_available_bytes (cur);
+      if (free_bytes > max_free_bytes)
+	{
+	  max_free_bytes = free_bytes;
+	  fs = cur;
+	}
   }
-  /* *INDENT-ON* */
 
   if (fs)
     {
