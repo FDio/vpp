@@ -105,6 +105,22 @@
   _ (0x9C, 0x01, 0, 0, 0, 0x00, IDQ_UOPS_NOT_DELIVERED, CORE,                 \
      "Uops not delivered to Resource Allocation Table (RAT) per thread when " \
      "backend of the machine is not stalled")                                 \
+  _ (0xA2, 0x08, 0, 0, 0, 0x00, RESOURCE_STALLS, SB,                          \
+     "Counts allocation stall cycles caused by the store buffer (SB) being "  \
+     "full. This counts cycles that the pipeline back-end blocked uop "       \
+     "delivery"                                                               \
+     "from the front-end.")                                                   \
+  _ (0xA3, 0x04, 0, 0, 0, 0x04, CYCLE_ACTIVITY, CYCLES_NO_EXECUTE,            \
+     "This event counts cycles during which no instructions were executed in" \
+     " the execution stage of the pipeline.")                                 \
+  _ (0xA3, 0x05, 0, 0, 0, 0x05, CYCLE_ACTIVITY, STALLS_L2_MISS,               \
+     "Execution stalls while L2 cache miss demand load is outstanding")       \
+  _ (0xA3, 0x06, 0, 0, 0, 0x06, CYCLE_ACTIVITY, STALLS_L3_MISS,               \
+     "Execution stalls while L3 cache miss demand load is outstanding")       \
+  _ (0xA3, 0x0C, 0, 0, 0, 0x0C, CYCLE_ACTIVITY, STALLS_L1D_MISS,              \
+     "Execution stalls while L1 cache miss demand load is outstanding")       \
+  _ (0xA3, 0x14, 0, 0, 0, 0x14, CYCLE_ACTIVITY, STALLS_MEM_ANY,               \
+     "Execution stalls while memory subsystem has an outstanding load.")      \
   _ (0xC0, 0x00, 0, 0, 0, 0x00, INST_RETIRED, ANY_P,                          \
      "Number of instructions retired. General Counter - architectural event") \
   _ (0xC2, 0x02, 0, 0, 0, 0x00, UOPS_RETIRED, RETIRE_SLOTS,                   \
@@ -162,6 +178,9 @@
      "L2 writebacks that access L2 cache")                                    \
   _ (0xF1, 0x1F, 0, 0, 0, 0x00, L2_LINES_IN, ALL,                             \
      "L2 cache lines filling L2")                                             \
+  _ (0xF4, 0x04, 0, 0, 0, 0x00, SQ_MISC, SQ_FULL,                             \
+     "Counts the cycles for which the thread is active and the superQ cannot" \
+     "take any more entries.")                                                \
   _ (0xFE, 0x02, 0, 0, 0, 0x00, IDI_MISC, WB_UPGRADE,                         \
      "Counts number of cache lines that are allocated and written back to L3" \
      " with the intention that they are more likely to be reused shortly")    \
