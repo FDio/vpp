@@ -15,7 +15,7 @@ VPP's high performance network stack is quickly becoming the network stack of
 choice for applications around the world.
 
 VPP is continually being enhanced through the extensive use of plugins. The
-`Data Plane Development Kit (DPDK) <https://en.wikipedia.org/wiki/Data_Plane_Development_Kit>`_ 
+`Data Plane Development Kit (DPDK) <https://en.wikipedia.org/wiki/Data_Plane_Development_Kit>`_
 is a great example of this. It provides some important features and drivers
 for VPP.
 
@@ -37,10 +37,7 @@ For more details click on the links below or press next.
    gettingstarted/index
    links/index
    usecases/index
-   featuresbyrelease/index
    troubleshooting/index
-   events/index
    reference/index
    relatedprojects/index
-   archive/index
    about.rst

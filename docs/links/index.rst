@@ -29,8 +29,5 @@ Much of the VPP developer documentation can be found on the VPP wiki.
 Source code Documents (doxygen)
 ********************************
 
-Some of VPP is documented in the sources with Doxygen. The links to these documents
-can be found here.
-
-`<https://docs.fd.io/vpp/18.10/>`_
-
+Some of VPP is documented in the sources with Doxygen. See
+`<https://docs.fd.io/vpp>`_ for links to Doxygen documentation by release.
