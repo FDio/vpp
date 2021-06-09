@@ -498,7 +498,7 @@ sm_free_w_index_helper (void *arg)
     segment_manager_free (sm);
 }
 
-static void
+void
 segment_manager_free_safe (segment_manager_t * sm)
 {
   if (!vlib_thread_is_main_w_barrier ())
