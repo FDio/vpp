@@ -38,30 +38,4 @@ packet-generator new {
   }
 }
 
-packet-generator new {
-  name v6-1-to-2
-  limit -1
-  node ip6-input
-  size 64-64
-  interface pg0
-  data {
-    UDP: 192:168:1::2 -> 192:168:2::2
-    UDP: 4321 -> 1234
-      length 128 checksum 0 incrementing 1
-  }
-}
-
-packet-generator new {
-  name v6-2-to-1
-  limit -1
-  node ip6-input
-  size 64-64
-  interface pg0
-  data {
-    UDP: 192:168:2::2 -> 192:168:1::2
-    UDP: 1234 -> 4321
-      length 128 checksum 0 incrementing 1
-  }
-}
-
 packet-generator enable
