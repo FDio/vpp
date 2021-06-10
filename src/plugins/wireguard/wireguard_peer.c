@@ -46,7 +46,10 @@ wg_peer_endpoint_init (wg_peer_endpoint_t *ep, const ip46_address_t *addr,
 static void
 wg_peer_clear (vlib_main_t * vm, wg_peer_t * peer)
 {
+  index_t perri = peer - wg_peer_pool;
   wg_timers_stop (peer);
+  wg_peer_update_flags (perri, WG_PEER_ESTABLISHED, false);
+  wg_peer_update_flags (perri, WG_PEER_STATUS_DEAD, true);
   for (int i = 0; i < WG_N_TIMERS; i++)
     {
       peer->timers[i] = ~0;
@@ -80,7 +83,6 @@ wg_peer_clear (vlib_main_t * vm, wg_peer_t * peer)
   peer->new_handshake_interval_tick = 0;
   peer->rehandshake_interval_tick = 0;
   peer->timer_need_another_keepalive = false;
-  peer->is_dead = true;
   vec_free (peer->allowed_ips);
   vec_free (peer->adj_indices);
 }
@@ -88,6 +90,8 @@ wg_peer_clear (vlib_main_t * vm, wg_peer_t * peer)
 static void
 wg_peer_init (vlib_main_t * vm, wg_peer_t * peer)
 {
+  peer->api_client_by_client_index = hash_create (0, sizeof (u32));
+  peer->api_clients = NULL;
   wg_peer_clear (vm, peer);
 }
 
@@ -243,6 +247,7 @@ wg_peer_fill (vlib_main_t *vm, wg_peer_t *peer, u32 table_id,
 	      u16 persistent_keepalive_interval,
 	      const fib_prefix_t *allowed_ips, u32 wg_sw_if_index)
 {
+  index_t perri = peer - wg_peer_pool;
   wg_peer_endpoint_init (&peer->dst, dst, port);
 
   peer->table_id = table_id;
@@ -250,7 +255,7 @@ wg_peer_fill (vlib_main_t *vm, wg_peer_t *peer, u32 table_id,
   peer->timer_wheel = &wg_main.timer_wheel;
   peer->persistent_keepalive_interval = persistent_keepalive_interval;
   peer->last_sent_handshake = vlib_time_now (vm) - (REKEY_TIMEOUT + 1);
-  peer->is_dead = false;
+  wg_peer_update_flags (perri, WG_PEER_STATUS_DEAD, false);
 
   const wg_if_t *wgi = wg_if_get (wg_if_find_by_sw_if_index (wg_sw_if_index));
 
@@ -270,13 +275,25 @@ wg_peer_fill (vlib_main_t *vm, wg_peer_t *peer, u32 table_id,
     peer->allowed_ips[ii] = allowed_ips[ii];
   }
 
-  index_t perri = peer - wg_peer_pool;
   fib_protocol_t proto;
   FOR_EACH_FIB_IP_PROTOCOL (proto)
   {
     adj_nbr_walk (wg_sw_if_index, proto, wg_peer_adj_walk, &perri);
   }
   return (0);
+}
+
+void
+wg_peer_update_flags (index_t peeri, wg_peer_flags flag, bool add_del)
+{
+  wg_peer_t *peer = wg_peer_get (peeri);
+  if ((add_del && (peer->flags & flag)) || (!add_del && !(peer->flags & flag)))
+    {
+      return;
+    }
+
+  peer->flags ^= flag;
+  wg_api_peer_event (peeri, peer->flags);
 }
 
 int
@@ -329,6 +346,7 @@ wg_peer_add (u32 tun_sw_if_index, const u8 public_key[NOISE_PUBLIC_KEY_LEN],
 		     wg_if->local_idx);
   cookie_maker_init (&peer->cookie_maker, public_key);
 
+  wg_send_handshake (vm, peer, false);
   if (peer->persistent_keepalive_interval != 0)
     {
       wg_send_keepalive (vm, peer);
@@ -400,14 +418,17 @@ format_wg_peer (u8 * s, va_list * va)
   peer = wg_peer_get (peeri);
   key_to_base64 (peer->remote.r_public, NOISE_PUBLIC_KEY_LEN, key);
 
-  s = format (s, "[%d] endpoint:[%U->%U] %U keep-alive:%d", peeri,
-	      format_wg_peer_endpoint, &peer->src, format_wg_peer_endpoint,
-	      &peer->dst, format_vnet_sw_if_index_name, vnet_get_main (),
-	      peer->wg_sw_if_index, peer->persistent_keepalive_interval);
+  s = format (
+    s,
+    "[%d] endpoint:[%U->%U] %U keep-alive:%d flags: %d, api-clients count: %d",
+    peeri, format_wg_peer_endpoint, &peer->src, format_wg_peer_endpoint,
+    &peer->dst, format_vnet_sw_if_index_name, vnet_get_main (),
+    peer->wg_sw_if_index, peer->persistent_keepalive_interval, peer->flags,
+    pool_elts (peer->api_clients));
   s = format (s, "\n  adj:");
   vec_foreach (adj_index, peer->adj_indices)
     {
-      s = format (s, " %d", adj_index);
+      s = format (s, " %d", *adj_index);
     }
   s = format (s, "\n  key:%=s %U", key, format_hex_bytes,
 	      peer->remote.r_public, NOISE_PUBLIC_KEY_LEN);
