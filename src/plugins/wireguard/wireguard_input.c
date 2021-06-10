@@ -236,6 +236,10 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
 	    vlib_node_increment_counter (vm, node_idx,
 					 WG_INPUT_ERROR_HANDSHAKE_SEND, 1);
 	  }
+	else
+	  {
+	    wg_peer_update_flags (rp->r_peer_idx, WG_PEER_ESTABLISHED, true);
+	  }
 	break;
       }
     case MESSAGE_HANDSHAKE_RESPONSE:
@@ -247,7 +251,7 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
 	if (PREDICT_TRUE (entry != NULL))
 	  {
 	    peer = wg_peer_get (*entry);
-	    if (peer->is_dead)
+	    if (wg_peer_is_dead (peer))
 	      return WG_INPUT_ERROR_PEER;
 	  }
 	else
@@ -275,6 +279,10 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
 	      {
 		vlib_node_increment_counter (vm, node_idx,
 					     WG_INPUT_ERROR_KEEPALIVE_SEND, 1);
+	      }
+	    else
+	      {
+		wg_peer_update_flags (*entry, WG_PEER_ESTABLISHED, true);
 	      }
 	  }
 	break;
@@ -378,6 +386,7 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    }
 	  else if (PREDICT_FALSE (state_cr == SC_FAILED))
 	    {
+	      wg_peer_update_flags (*peer_idx, WG_PEER_ESTABLISHED, false);
 	      next[0] = WG_INPUT_NEXT_ERROR;
 	      b[0]->error = node->errors[WG_INPUT_ERROR_DECRYPTION];
 	      goto out;

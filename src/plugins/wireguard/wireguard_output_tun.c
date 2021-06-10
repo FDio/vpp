@@ -129,7 +129,7 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	wg_peer_get_by_adj_index (vnet_buffer (b[0])->ip.adj_index[VLIB_TX]);
       peer = wg_peer_get (peeri);
 
-      if (!peer || peer->is_dead)
+      if (wg_peer_is_dead (peer))
 	{
 	  b[0]->error = node->errors[WG_OUTPUT_ERROR_PEER];
 	  goto out;
@@ -201,6 +201,7 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	{
 	  //TODO: Maybe wrong
 	  wg_send_handshake_from_mt (peeri, false);
+	  wg_peer_update_flags (peeri, WG_PEER_ESTABLISHED, false);
 	  goto out;
 	}
 
