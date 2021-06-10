@@ -106,8 +106,8 @@ wg_send_handshake (vlib_main_t * vm, wg_peer_t * peer, bool is_retry)
   if (!is_retry)
     peer->timer_handshake_attempts = 0;
 
-  if (!wg_birthdate_has_expired (peer->last_sent_handshake,
-				 REKEY_TIMEOUT) || peer->is_dead)
+  if (!wg_birthdate_has_expired (peer->last_sent_handshake, REKEY_TIMEOUT) ||
+      wg_peer_is_dead (peer))
     return true;
 
   if (noise_create_initiation (vm,
@@ -199,6 +199,7 @@ wg_send_keepalive (vlib_main_t * vm, wg_peer_t * peer)
     }
   else if (PREDICT_FALSE (state == SC_FAILED))
     {
+      wg_peer_update_flags (peer - wg_peer_pool, WG_PEER_ESTABLISHED, false);
       ret = false;
       goto out;
     }
@@ -252,13 +253,11 @@ wg_send_handshake_response (vlib_main_t * vm, wg_peer_t * peer)
 	    return false;
 
 	  ip46_enqueue_packet (vm, bi0, is_ip4);
+	  return true;
 	}
-      else
-	return false;
+      return false;
     }
-  else
-    return false;
-  return true;
+  return false;
 }
 
 /*
