@@ -809,7 +809,7 @@ refill:
       d[6].offset = (u64) vlib_get_buffer (vm, bi[6])->data - offset;
       d[7].offset = (u64) vlib_get_buffer (vm, bi[7])->data - offset;
 
-      slot += 8;
+      slot = (slot + 8) & mask;
       n_alloc -= 8;
       continue;
 
