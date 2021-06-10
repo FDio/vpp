@@ -17,6 +17,8 @@
 #ifndef __included_wg_peer_h__
 #define __included_wg_peer_h__
 
+#include <vlibapi/api_helper_macros.h>
+
 #include <vnet/ip/ip.h>
 
 #include <wireguard/wireguard_cookie.h>
@@ -46,6 +48,12 @@ typedef struct wg_peer_endpoint_t_
   u16 port;
 } wg_peer_endpoint_t;
 
+typedef enum
+{
+  WG_PEER_STATUS_DEAD = 0x1,
+  WG_PEER_ESTABLISHED = 0x2,
+} wg_peer_flags;
+
 typedef struct wg_peer
 {
   noise_remote_t remote;
@@ -69,6 +77,11 @@ typedef struct wg_peer
   /* The WG interface this peer is attached to */
   u32 wg_sw_if_index;
 
+  /* API client registered for events */
+  vpe_client_registration_t *api_clients;
+  uword *api_client_by_client_index;
+  wg_peer_flags flags;
+
   /* Timers */
   tw_timer_wheel_16t_2w_512sl_t *timer_wheel;
   u32 timers[WG_N_TIMERS];
@@ -88,8 +101,6 @@ typedef struct wg_peer
   u32 rehandshake_interval_tick;
 
   bool timer_need_another_keepalive;
-
-  bool is_dead;
 } wg_peer_t;
 
 typedef struct wg_peer_table_bind_ctx_t_
@@ -116,6 +127,15 @@ walk_rc_t wg_peer_if_admin_state_change (index_t peeri, void *data);
 walk_rc_t wg_peer_if_delete (index_t peeri, void *data);
 walk_rc_t wg_peer_if_adj_change (index_t peeri, void *data);
 adj_walk_rc_t wg_peer_adj_walk (adj_index_t ai, void *data);
+
+void wg_api_peer_event (index_t peeri, wg_peer_flags flags);
+void wg_peer_update_flags (index_t peeri, wg_peer_flags flag, bool add_del);
+
+static inline bool
+wg_peer_is_dead (wg_peer_t *peer)
+{
+  return peer && peer->flags & WG_PEER_STATUS_DEAD;
+}
 
 /*
  * Expoed for the data-plane
