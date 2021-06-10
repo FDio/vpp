@@ -191,7 +191,7 @@ wg_expired_zero_key_material (vlib_main_t * vm, wg_peer_t * peer)
       return;
     }
 
-  if (!peer->is_dead)
+  if (!wg_peer_is_dead (peer))
     {
       noise_remote_clear (vm, &peer->remote);
     }
