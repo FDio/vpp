@@ -2878,6 +2878,9 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
       s->vep.vep_sh = ~0;
       s->flags &= ~VCL_SESSION_F_IS_VEP_SESSION;
 
+      if (!vcl_session_is_open (s))
+	break;
+
       txf = vcl_session_is_ct (s) ? s->ct_tx_fifo : s->tx_fifo;
       if (txf)
 	svm_fifo_del_want_deq_ntf (txf, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
