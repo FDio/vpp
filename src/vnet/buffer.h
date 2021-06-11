@@ -112,8 +112,9 @@ STATIC_ASSERT (((VNET_BUFFER_FLAGS_ALL_AVAIL & VLIB_BUFFER_FLAGS_ALL) == 0),
   _ (1, TCP_CKSUM, "offload-tcp-cksum", 1)                                    \
   _ (2, UDP_CKSUM, "offload-udp-cksum", 1)                                    \
   _ (3, OUTER_IP_CKSUM, "offload-outer-ip-cksum", 1)                          \
-  _ (4, OUTER_TCP_CKSUM, "offload-outer-tcp-cksum", 1)                        \
-  _ (5, OUTER_UDP_CKSUM, "offload-outer-udp-cksum", 1)
+  _ (4, OUTER_UDP_CKSUM, "offload-outer-udp-cksum", 1)                        \
+  _ (5, TNL_VXLAN, "offload-tunnel-vxlan", 1)                                 \
+  _ (6, TNL_IPIP, "offload-tunnel-IPIP", 1)
 
 typedef enum
 {
@@ -473,6 +474,8 @@ typedef struct
     u16 gso_size;
     /* size of L4 prototol header */
     u16 gso_l4_hdr_sz;
+    i16 outer_l3_hdr_offset;
+    i16 outer_l4_hdr_offset;
   };
 
   struct
