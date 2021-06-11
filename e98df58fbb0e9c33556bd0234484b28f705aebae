@@ -1,0 +1,61 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a0da95ba_edc8ebaa",
+        "filename": "test/run.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2021-06-11T20:23:07Z",
+      "side": 1,
+      "message": "The docker image builder scripts require an option that builds the environment up to this point, then exits (e.g. --download-requirements) so that the python packages are included in the docker image python cache, thus preventing external package downloading during CI job runs.",
+      "revId": "e98df58fbb0e9c33556bd0234484b28f705aebae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b1cc3f72_e4ff82be",
+        "filename": "test/scripts/run_vpp_in_vm.sh",
+        "patchSetId": 7
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2021-06-11T20:23:07Z",
+      "side": 1,
+      "message": "FAILED_DIR needs to have a default specified above.\n\nI\u0027d recommend adding \u0027set -u\u0027 (or set -o nounset) to ensure that there are no unset variables being used in the script.",
+      "range": {
+        "startLine": 24,
+        "startChar": 11,
+        "endLine": 24,
+        "endChar": 24
+      },
+      "revId": "e98df58fbb0e9c33556bd0234484b28f705aebae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "022902b6_41659c9e",
+        "filename": "test/scripts/run_vpp_in_vm.sh",
+        "patchSetId": 7
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2021-06-11T20:23:07Z",
+      "side": 1,
+      "message": "This function is debian specific without testing what OS this script is running on.  \n\nIt would be better to simply test for the package and fail if it is not available with the error message to run \u0027make install-deps\u0027 from the workspace root and add the appropriate installation dependency to DEB_DEPENDS and RPM_DEPENDS in .../vpp/Makefile",
+      "revId": "e98df58fbb0e9c33556bd0234484b28f705aebae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
