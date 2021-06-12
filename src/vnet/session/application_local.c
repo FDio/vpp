@@ -495,7 +495,8 @@ static void
 ct_accept_rpc_wrk_handler (void *accept_args)
 {
   u32 cct_index, ho_index, thread_index, ll_index;
-  ct_connection_t *sct, *cct, *ll_ct, *ho;
+  ct_connection_t *sct, *cct, *ho;
+  transport_connection_t *ll_ct;
   app_worker_t *server_wrk;
   session_t *ss, *ll;
 
@@ -535,20 +536,20 @@ ct_accept_rpc_wrk_handler (void *accept_args)
   ll_index = cct->peer_index;
   ll = listen_session_get (ll_index);
   sct = ct_connection_alloc (thread_index);
-  ll_ct = ct_connection_get (ll->connection_index, 0 /* listener thread */);
+  /* Transport not necessarily ct but it might, so grab after sct alloc */
+  ll_ct = listen_session_get_transport (ll);
 
   /* Make sure cct is valid after sct alloc */
   cct = ct_connection_get (cct_index, thread_index);
-  cct->actual_tp = ll_ct->actual_tp;
 
   sct->c_rmt_port = 0;
-  sct->c_lcl_port = ll_ct->c_lcl_port;
+  sct->c_lcl_port = ll_ct->lcl_port;
   sct->c_is_ip4 = cct->c_is_ip4;
-  clib_memcpy (&sct->c_lcl_ip, &ll_ct->c_lcl_ip, sizeof (ll_ct->c_lcl_ip));
+  clib_memcpy (&sct->c_lcl_ip, &ll_ct->lcl_ip, sizeof (ll_ct->lcl_ip));
   sct->client_wrk = cct->client_wrk;
   sct->c_proto = TRANSPORT_PROTO_NONE;
   sct->client_opaque = cct->client_opaque;
-  sct->actual_tp = ll_ct->actual_tp;
+  sct->actual_tp = cct->actual_tp;
 
   sct->peer_index = cct->c_c_index;
   cct->peer_index = sct->c_c_index;
@@ -624,6 +625,7 @@ ct_connect (app_worker_t * client_wrk, session_t * ll,
   clib_memcpy (&ho->c_rmt_ip, &sep->ip, sizeof (sep->ip));
   ho->flags |= CT_CONN_F_CLIENT;
   ho->c_s_index = ~0;
+  ho->actual_tp = sep->transport_proto;
 
   /*
    * Accept connection on thread selected above. Connected reply comes
