@@ -2175,8 +2175,7 @@ int
 shutdown (int fd, int how)
 {
   vls_handle_t vlsh;
-  int rv = 0, flags;
-  u32 flags_len = sizeof (flags);
+  int rv = 0;
 
   ldp_init_check ();
 
@@ -2184,23 +2183,7 @@ shutdown (int fd, int how)
   if (vlsh != VLS_INVALID_HANDLE)
     {
       LDBG (0, "called shutdown: fd %u vlsh %u how %d", fd, vlsh, how);
-
-      if (vls_attr (vlsh, VPPCOM_ATTR_SET_SHUT, &how, &flags_len))
-	{
-	  close (fd);
-	  return -1;
-	}
-
-      if (vls_attr (vlsh, VPPCOM_ATTR_GET_SHUT, &flags, &flags_len))
-	{
-	  close (fd);
-	  return -1;
-	}
-
-      if (flags == SHUT_RDWR)
-	rv = close (fd);
-      else if (flags == SHUT_WR)
-	rv = vls_shutdown (vlsh);
+      rv = vls_shutdown (vlsh, how);
     }
   else
     {

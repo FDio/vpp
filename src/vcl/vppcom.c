@@ -807,7 +807,7 @@ vcl_session_disconnected_handler (vcl_worker_t * wrk,
 }
 
 int
-vppcom_session_shutdown (uint32_t session_handle)
+vppcom_session_shutdown (uint32_t session_handle, int how)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vcl_session_t *session;
@@ -830,13 +830,20 @@ vppcom_session_shutdown (uint32_t session_handle)
       return VPPCOM_EBADFD;
     }
 
+  if (how == SHUT_RD || how == SHUT_RDWR)
+    {
+      session->flags |= VCL_SESSION_F_RD_SHUTDOWN;
+      if (how == SHUT_RD)
+	return VPPCOM_OK;
+    }
+  session->flags |= VCL_SESSION_F_WR_SHUTDOWN;
+
   if (PREDICT_TRUE (state == VCL_STATE_READY))
     {
       VDBG (1, "session %u [0x%llx]: sending shutdown...",
 	    session->session_index, vpp_handle);
 
       vcl_send_session_shutdown (wrk, session);
-      session->flags |= VCL_SESSION_F_SHUTDOWN;
     }
 
   return VPPCOM_OK;
@@ -1956,6 +1963,17 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
 
   if (svm_fifo_is_empty_cons (rx_fifo))
     {
+      /* We check SHUT_RD flag only when rxfifo is emply, which means
+       * that we can read() the data after SHUT_RD
+       */
+      if (PREDICT_FALSE (s->flags & VCL_SESSION_F_RD_SHUTDOWN))
+	{
+	  VDBG (0, "session %u[0x%llx] is shutdown! state 0x%x (%s)",
+		s->session_index, s->vpp_handle, s->session_state,
+		vppcom_session_state_str (s->session_state));
+	  return 0;
+	}
+
       if (is_nonblocking)
 	{
 	  if (vcl_session_is_closing (s))
@@ -2166,13 +2184,20 @@ vppcom_session_write_inline (vcl_worker_t * wrk, vcl_session_t * s, void *buf,
       return VPPCOM_EBADFD;
     }
 
-  if (PREDICT_FALSE (!vcl_session_is_open (s) ||
-		     (s->flags & VCL_SESSION_F_SHUTDOWN)))
+  if (PREDICT_FALSE (!vcl_session_is_open (s)))
     {
       VDBG (1, "session %u [0x%llx]: is not open! state 0x%x (%s)",
 	    s->session_index, s->vpp_handle, s->session_state,
 	    vppcom_session_state_str (s->session_state));
       return vcl_session_closed_error (s);;
+    }
+
+  if (s->flags & VCL_SESSION_F_WR_SHUTDOWN)
+    {
+      VDBG (1, "session %u [0x%llx]: is shutdown! state 0x%x (%s)",
+	    s->session_index, s->vpp_handle, s->session_state,
+	    vppcom_session_state_str (s->session_state));
+      return VPPCOM_EPIPE;
     }
 
   is_ct = vcl_session_is_ct (s);
@@ -3209,7 +3234,7 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
 		     void *buffer, uint32_t * buflen)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
-  u32 *flags = buffer, tmp_flags = 0;
+  u32 *flags = buffer;
   vppcom_endpt_t *ep = buffer;
   transport_endpt_attr_t tea;
   vcl_session_t *session;
@@ -3745,27 +3770,6 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
 
       VDBG (2, "VPPCOM_ATTR_SET_TCP_USER_MSS: %u, buflen %d", tea.mss,
 	    *buflen);
-      break;
-
-    case VPPCOM_ATTR_SET_SHUT:
-      if (*flags == SHUT_RD || *flags == SHUT_RDWR)
-	vcl_session_set_attr (session, VCL_SESS_ATTR_SHUT_RD);
-      if (*flags == SHUT_WR || *flags == SHUT_RDWR)
-	vcl_session_set_attr (session, VCL_SESS_ATTR_SHUT_WR);
-      break;
-
-    case VPPCOM_ATTR_GET_SHUT:
-      if (vcl_session_has_attr (session, VCL_SESS_ATTR_SHUT_RD))
-	tmp_flags = 1;
-      if (vcl_session_has_attr (session, VCL_SESS_ATTR_SHUT_WR))
-	tmp_flags |= 2;
-      if (tmp_flags == 1)
-	*(int *) buffer = SHUT_RD;
-      else if (tmp_flags == 2)
-	*(int *) buffer = SHUT_WR;
-      else if (tmp_flags == 3)
-	*(int *) buffer = SHUT_RDWR;
-      *buflen = sizeof (int);
       break;
 
     case VPPCOM_ATTR_SET_CONNECTED:

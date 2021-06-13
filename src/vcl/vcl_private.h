@@ -126,8 +126,6 @@ typedef enum
   VCL_SESS_ATTR_TCP_NODELAY,	// SOL_TCP,TCP_NODELAY
   VCL_SESS_ATTR_TCP_KEEPIDLE,	// SOL_TCP,TCP_KEEPIDLE
   VCL_SESS_ATTR_TCP_KEEPINTVL,	// SOL_TCP,TCP_KEEPINTVL
-  VCL_SESS_ATTR_SHUT_RD,
-  VCL_SESS_ATTR_SHUT_WR,
   VCL_SESS_ATTR_MAX
 } vppcom_session_attr_t;
 
@@ -137,7 +135,8 @@ typedef enum vcl_session_flags_
   VCL_SESSION_F_IS_VEP = 1 << 1,
   VCL_SESSION_F_IS_VEP_SESSION = 1 << 2,
   VCL_SESSION_F_HAS_RX_EVT = 1 << 3,
-  VCL_SESSION_F_SHUTDOWN = 1 << 4,
+  VCL_SESSION_F_RD_SHUTDOWN = 1 << 4,
+  VCL_SESSION_F_WR_SHUTDOWN = 1 << 5,
 } __clib_packed vcl_session_flags_t;
 
 typedef struct vcl_session_
