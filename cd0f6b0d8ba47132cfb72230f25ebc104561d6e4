@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fb9743d1_f0bbffa6",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1975,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-06-13T18:45:43Z",
+      "side": 1,
+      "message": "Although we\u0027ll end up doing more work, could we move this check after the open check on line 1950? Something like \n\n```\nif (PREDICT_FALSE (s-\u003eflags \u0026 VCL_SESSION_F_RD_SHUTDOWN))\n  {\n    /* comment */\n    if (!vcl_session_read_ready (s))\n      return 0;\n  }\n```\n\nThis keeps the \"exception\" checks above and outside of the \"fast path\" so it makes the code a bit more readable. Also, thanks for adding the comment!",
+      "range": {
+        "startLine": 1966,
+        "startChar": 0,
+        "endLine": 1975,
+        "endChar": 2
+      },
+      "revId": "cd0f6b0d8ba47132cfb72230f25ebc104561d6e4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2ca70f6d_87905d91",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2195,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-06-13T18:45:43Z",
+      "side": 1,
+      "message": "PREDICT_FALSE. Probably it won\u0027t do much but at least that\u0027s what we expect.",
+      "range": {
+        "startLine": 2195,
+        "startChar": 6,
+        "endLine": 2195,
+        "endChar": 42
+      },
+      "revId": "cd0f6b0d8ba47132cfb72230f25ebc104561d6e4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
