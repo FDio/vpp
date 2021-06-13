@@ -99,6 +99,7 @@ typedef enum
   VPPCOM_ETIMEDOUT = -ETIMEDOUT,
   VPPCOM_EEXIST = -EEXIST,
   VPPCOM_ENOPROTOOPT = -ENOPROTOOPT,
+  VPPCOM_EPIPE = -EPIPE,
   VPPCOM_ENOENT = -ENOENT,
 } vppcom_error_t;
 
@@ -138,8 +139,6 @@ typedef enum
   VPPCOM_ATTR_SET_TCP_KEEPINTVL,
   VPPCOM_ATTR_GET_TCP_USER_MSS,
   VPPCOM_ATTR_SET_TCP_USER_MSS,
-  VPPCOM_ATTR_SET_SHUT,
-  VPPCOM_ATTR_GET_SHUT,
   VPPCOM_ATTR_SET_CONNECTED,
   VPPCOM_ATTR_SET_CKPAIR,
   VPPCOM_ATTR_SET_VRF,
@@ -174,7 +173,7 @@ extern int vppcom_app_create (const char *app_name);
 extern void vppcom_app_destroy (void);
 
 extern int vppcom_session_create (uint8_t proto, uint8_t is_nonblocking);
-extern int vppcom_session_shutdown (uint32_t session_handle);
+extern int vppcom_session_shutdown (uint32_t session_handle, int how);
 extern int vppcom_session_close (uint32_t session_handle);
 extern int vppcom_session_bind (uint32_t session_handle, vppcom_endpt_t * ep);
 extern int vppcom_session_listen (uint32_t session_handle, uint32_t q_len);
