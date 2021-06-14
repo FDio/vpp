@@ -192,15 +192,6 @@ check_l3cache ()
   return 0;
 }
 
-static void
-dpdk_enable_l4_csum_offload (dpdk_device_t * xd)
-{
-  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
-  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
-  xd->flags |= DPDK_DEVICE_FLAG_TX_OFFLOAD |
-    DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
-}
-
 static clib_error_t *
 dpdk_lib_init (dpdk_main_t * dm)
 {
@@ -372,6 +363,42 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_TCP_CKSUM;
 	}
 
+      if (!dm->conf->no_tx_checksum_offload)
+	{
+	  if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_IPV4_CKSUM)
+	    {
+	      xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_IPV4_CKSUM;
+	      xd->flags |= DPDK_DEVICE_FLAG_TX_IP4_OFFLOAD;
+	    }
+
+	  if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_TCP_CKSUM)
+	    {
+	      xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
+	      xd->flags |= DPDK_DEVICE_FLAG_TX_TCP_OFFLOAD;
+	    }
+	  if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_UDP_CKSUM)
+	    {
+	      xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
+	      xd->flags |= DPDK_DEVICE_FLAG_TX_UDP_OFFLOAD;
+	    }
+	  if (dm->conf->enable_outer_checksum_offload &&
+	      dev_info.tx_offload_capa & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM)
+	    {
+	      xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
+	      xd->flags |= DPDK_DEVICE_FLAG_TX_OUTER_IP4_OFFLOAD;
+	    }
+	  if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_IPIP_TNL_TSO)
+	    {
+	      xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_IPIP_TNL_TSO;
+	      xd->flags |= DPDK_DEVICE_FLAG_TX_IPIP_TUNNEL_OFFLOAD;
+	    }
+	  if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_VXLAN_TNL_TSO)
+	    {
+	      xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_VXLAN_TNL_TSO;
+	      xd->flags |= DPDK_DEVICE_FLAG_TX_VXLAN_TUNNEL_OFFLOAD;
+	    }
+	}
+
       if (dm->conf->no_multi_seg)
 	{
 	  xd->port_conf.txmode.offloads &= ~DEV_TX_OFFLOAD_MULTI_SEGS;
@@ -450,13 +477,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      /* Drivers with valid speed_capa set */
 	    case VNET_DPDK_PMD_I40E:
 	      xd->flags |= DPDK_DEVICE_FLAG_INT_UNMASKABLE;
-	      if (dm->conf->no_tx_checksum_offload == 0 &&
-		  dm->conf->enable_outer_checksum_offload)
-		{
-		  xd->port_conf.txmode.offloads |=
-		    DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
-		  xd->flags |= DPDK_DEVICE_FLAG_TX_OFFLOAD;
-		}
 	    case VNET_DPDK_PMD_E1000EM:
 	    case VNET_DPDK_PMD_IGB:
 	    case VNET_DPDK_PMD_IXGBE:
@@ -469,15 +489,8 @@ dpdk_lib_init (dpdk_main_t * dm)
 		VNET_FLOW_ACTION_COUNT | VNET_FLOW_ACTION_DROP |
 		VNET_FLOW_ACTION_RSS;
 
-	      if (dm->conf->no_tx_checksum_offload == 0)
-		{
-	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
-	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
-		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_IPV4_CKSUM;
-		  xd->flags |=
-		    DPDK_DEVICE_FLAG_TX_OFFLOAD |
-		    DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
-		}
+	      if (xd->flags & DPDK_DEVICE_FLAG_TX_TCP_OFFLOAD)
+		xd->flags |= DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
 
 	      xd->port_conf.intr_conf.rxq = 1;
 	      break;
@@ -495,14 +508,8 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    case VNET_DPDK_PMD_IGBVF:
 	    case VNET_DPDK_PMD_IXGBEVF:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
-	      if (dm->conf->no_tx_checksum_offload == 0)
-		{
-	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
-	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
-		  xd->flags |=
-		    DPDK_DEVICE_FLAG_TX_OFFLOAD |
-		    DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
-		}
+	      if (xd->flags & DPDK_DEVICE_FLAG_TX_TCP_OFFLOAD)
+		xd->flags |= DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
 	      /* DPDK bug in multiqueue... */
 	      /* xd->port_conf.intr_conf.rxq = 1; */
 	      break;
@@ -517,14 +524,8 @@ dpdk_lib_init (dpdk_main_t * dm)
 		VNET_FLOW_ACTION_BUFFER_ADVANCE | VNET_FLOW_ACTION_COUNT |
 		VNET_FLOW_ACTION_DROP | VNET_FLOW_ACTION_RSS;
 
-	      if (dm->conf->no_tx_checksum_offload == 0)
-		{
-                  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
-                  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
-		  xd->flags |=
-		    DPDK_DEVICE_FLAG_TX_OFFLOAD |
-		    DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
-		}
+	      if (xd->flags & DPDK_DEVICE_FLAG_TX_TCP_OFFLOAD)
+		xd->flags |= DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
 	      /* DPDK bug in multiqueue... */
 	      /* xd->port_conf.intr_conf.rxq = 1; */
 	      break;
@@ -534,9 +535,10 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	      if (dm->conf->no_tx_checksum_offload == 0)
 		{
-	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
-	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
-		  xd->flags |= DPDK_DEVICE_FLAG_TX_OFFLOAD;
+		  xd->port_conf.txmode.offloads |=
+		    DEV_TX_OFFLOAD_TCP_CKSUM | DEV_TX_OFFLOAD_UDP_CKSUM;
+		  xd->flags |= DPDK_DEVICE_FLAG_TX_TCP_OFFLOAD |
+			       DPDK_DEVICE_FLAG_TX_UDP_OFFLOAD;
 		}
 	      break;
 
@@ -556,9 +558,15 @@ dpdk_lib_init (dpdk_main_t * dm)
                   struct rte_eth_link l;
                   rte_eth_link_get_nowait (i, &l);
                   xd->port_type = port_type_from_link_speed (l.link_speed);
-                  if (dm->conf->enable_tcp_udp_checksum)
-                    dpdk_enable_l4_csum_offload (xd);
-                }
+		  if (dm->conf->enable_tcp_udp_checksum)
+		    {
+		      xd->port_conf.txmode.offloads |=
+			DEV_TX_OFFLOAD_TCP_CKSUM | DEV_TX_OFFLOAD_UDP_CKSUM;
+		      xd->flags |= DPDK_DEVICE_FLAG_TX_TCP_OFFLOAD |
+				   DPDK_DEVICE_FLAG_TX_UDP_OFFLOAD |
+				   DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
+		    }
+		}
 	      break;
 
 	      /* Intel Red Rock Canyon */
@@ -788,16 +796,14 @@ dpdk_lib_init (dpdk_main_t * dm)
 	}
 
       if (dm->conf->no_tx_checksum_offload == 0)
-	if (xd->flags & DPDK_DEVICE_FLAG_TX_OFFLOAD && hi != NULL)
-	  {
-	    hi->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_TX_IP4_CKSUM |
-			VNET_HW_INTERFACE_CAP_SUPPORTS_TX_TCP_CKSUM |
-			VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_CKSUM;
-	    if (dm->conf->enable_outer_checksum_offload)
-	      {
-		hi->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_TX_IP4_OUTER_CKSUM;
-	      }
-	  }
+	{
+	  if (xd->flags & DPDK_DEVICE_FLAG_TX_IP4_OFFLOAD && hi != NULL)
+	    hi->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_TX_IP4_CKSUM;
+	  if (xd->flags & DPDK_DEVICE_FLAG_TX_TCP_OFFLOAD && hi != NULL)
+	    hi->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_TX_TCP_CKSUM;
+	  if (xd->flags & DPDK_DEVICE_FLAG_TX_UDP_OFFLOAD && hi != NULL)
+	    hi->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_CKSUM;
+	}
       if (devconf->tso == DPDK_DEVICE_TSO_ON && hi != NULL)
 	{
 	  /*tcp_udp checksum must be enabled*/
@@ -809,10 +815,10 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	      if (dm->conf->enable_outer_checksum_offload)
 		{
-		  hi->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_VXLAN_TNL_GSO |
-			      VNET_HW_INTERFACE_CAP_SUPPORTS_IPIP_TNL_GSO;
-		  xd->port_conf.txmode.offloads |=
-		    DEV_TX_OFFLOAD_VXLAN_TNL_TSO | DEV_TX_OFFLOAD_IPIP_TNL_TSO;
+		  if (xd->flags & DPDK_DEVICE_FLAG_TX_IPIP_TUNNEL_OFFLOAD)
+		    hi->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_IPIP_TNL_GSO;
+		  if (xd->flags & DPDK_DEVICE_FLAG_TX_VXLAN_TUNNEL_OFFLOAD)
+		    hi->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_VXLAN_TNL_GSO;
 		}
 	    }
 	  else
@@ -1375,11 +1381,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	conf->enable_telemetry = 1;
 
       else if (unformat (input, "enable-tcp-udp-checksum"))
-	{
-	  conf->enable_tcp_udp_checksum = 1;
-	  if (unformat (input, "enable-outer-checksum-offload"))
-	    conf->enable_outer_checksum_offload = 1;
-	}
+	conf->enable_tcp_udp_checksum = 1;
+
       else if (unformat (input, "no-tx-checksum-offload"))
 	conf->no_tx_checksum_offload = 1;
 

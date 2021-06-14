@@ -206,12 +206,12 @@ vnet_ipip_inner_header_parser_inline (vlib_buffer_t * b0,
   vnet_get_inner_header (b0, gho);
 
   gho->l2_hdr_offset = b0->current_data;
-  gho->l3_hdr_offset = 0;
+  gho->l3_hdr_offset = gho->l2_hdr_offset;
 
   if (PREDICT_TRUE (gho->gho_flags & GHO_F_IPIP_TUNNEL))
     {
       ip4_header_t *ip4 = (ip4_header_t *) vlib_buffer_get_current (b0);
-      gho->l4_hdr_offset = ip4_header_bytes (ip4);
+      gho->l4_hdr_offset = gho->l3_hdr_offset + ip4_header_bytes (ip4);
       l4_proto = ip4->protocol;
       gho->gho_flags |= GHO_F_IP4;
     }
@@ -219,7 +219,7 @@ vnet_ipip_inner_header_parser_inline (vlib_buffer_t * b0,
     {
       ip6_header_t *ip6 = (ip6_header_t *) vlib_buffer_get_current (b0);
       /* FIXME IPv6 EH traversal */
-      gho->l4_hdr_offset = sizeof (ip6_header_t);
+      gho->l4_hdr_offset = gho->l3_hdr_offset + sizeof (ip6_header_t);
       l4_proto = ip6->protocol;
       gho->gho_flags |= GHO_F_IP6;
     }
@@ -242,7 +242,7 @@ vnet_ipip_inner_header_parser_inline (vlib_buffer_t * b0,
     }
 
   gho->l4_hdr_sz = l4_hdr_sz;
-  gho->hdr_sz += gho->l4_hdr_offset + l4_hdr_sz;
+  gho->hdr_sz += (gho->l4_hdr_offset - gho->l2_hdr_offset) + l4_hdr_sz;
 
   vnet_get_outer_header (b0, gho);
 }
@@ -307,7 +307,7 @@ vnet_vxlan_inner_header_parser_inline (vlib_buffer_t * b0,
 	}
     }
 
-  gho->l3_hdr_offset = l2hdr_sz;
+  gho->l3_hdr_offset = gho->l2_hdr_offset + l2hdr_sz;
 
   if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP4))
     {
@@ -345,7 +345,7 @@ vnet_vxlan_inner_header_parser_inline (vlib_buffer_t * b0,
     }
 
   gho->l4_hdr_sz = l4_hdr_sz;
-  gho->hdr_sz += gho->l4_hdr_offset + l4_hdr_sz;
+  gho->hdr_sz += (gho->l4_hdr_offset - gho->l2_hdr_offset) + l4_hdr_sz;
 
   vnet_get_outer_header (b0, gho);
 }
@@ -402,13 +402,13 @@ vnet_generic_outer_header_parser_inline (vlib_buffer_t * b0,
     l2hdr_sz = vnet_buffer (b0)->ip.save_rewrite_length;
 
   gho->l2_hdr_offset = b0->current_data;
-  gho->l3_hdr_offset = l2hdr_sz;
+  gho->l3_hdr_offset = gho->l2_hdr_offset + l2hdr_sz;
 
   if (PREDICT_TRUE (is_ip4))
     {
       ip4_header_t *ip4 =
 	(ip4_header_t *) (vlib_buffer_get_current (b0) + l2hdr_sz);
-      gho->l4_hdr_offset = l2hdr_sz + ip4_header_bytes (ip4);
+      gho->l4_hdr_offset = gho->l3_hdr_offset + ip4_header_bytes (ip4);
       l4_proto = ip4->protocol;
       gho->gho_flags |= GHO_F_IP4;
     }
@@ -417,7 +417,7 @@ vnet_generic_outer_header_parser_inline (vlib_buffer_t * b0,
       ip6_header_t *ip6 =
 	(ip6_header_t *) (vlib_buffer_get_current (b0) + l2hdr_sz);
       /* FIXME IPv6 EH traversal */
-      gho->l4_hdr_offset = l2hdr_sz + sizeof (ip6_header_t);
+      gho->l4_hdr_offset = gho->l3_hdr_offset + sizeof (ip6_header_t);
       l4_proto = ip6->protocol;
       gho->gho_flags |= GHO_F_IP6;
     }
@@ -464,7 +464,7 @@ vnet_generic_outer_header_parser_inline (vlib_buffer_t * b0,
     }
 
   gho->l4_hdr_sz = l4_hdr_sz;
-  gho->hdr_sz += gho->l4_hdr_offset + l4_hdr_sz;
+  gho->hdr_sz += (gho->l4_hdr_offset - gho->l2_hdr_offset) + l4_hdr_sz;
 }
 
 static_always_inline void
