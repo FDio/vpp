@@ -138,40 +138,40 @@ crypto_sw_scheduler_get_completed_frame (crypto_sw_scheduler_queue_t * q)
 }
 
 static_always_inline void
-cryptodev_sw_scheduler_sgl (vlib_main_t * vm,
-			    crypto_sw_scheduler_per_thread_data_t * ptd,
-			    vlib_buffer_t * b, vnet_crypto_op_t * op,
-			    i32 offset, i32 len)
+cryptodev_sw_scheduler_sgl (vlib_main_t *vm,
+			    crypto_sw_scheduler_per_thread_data_t *ptd,
+			    vlib_buffer_t *b, vnet_crypto_op_t *op, i16 offset,
+			    u32 len)
 {
   vnet_crypto_op_chunk_t *ch;
-  vlib_buffer_t *nb = b;
-  u32 n_chunks = 0;
-  u32 chunk_index = vec_len (ptd->chunks);
+  u32 n_chunks;
 
-  while (len)
+  /*
+   * offset is relative to b->data (can be negative if we stay in pre_data
+   * area). Make sure it does not go beyond the 1st buffer.
+   */
+  ASSERT (b->current_data + b->current_length > offset);
+  offset = clib_min (b->current_data + b->current_length, offset);
+
+  op->chunk_index = vec_len (ptd->chunks);
+
+  vec_add2 (ptd->chunks, ch, 1);
+  ch->src = ch->dst = b->data + offset;
+  ch->len = clib_min (b->current_data + b->current_length - offset, len);
+  len -= ch->len;
+  n_chunks = 1;
+
+  while (len && b->flags & VLIB_BUFFER_NEXT_PRESENT)
     {
-      if (nb->current_data + nb->current_length > offset)
-	{
-	  vec_add2 (ptd->chunks, ch, 1);
-	  ch->src = ch->dst = nb->data + offset;
-	  ch->len
-	    = clib_min (nb->current_data + nb->current_length - offset, len);
-	  len -= ch->len;
-	  offset = 0;
-	  n_chunks++;
-	  if (!len)
-	    break;
-	}
-      if (offset)
-	offset -= nb->current_data + nb->current_length;
-      if (nb->flags & VLIB_BUFFER_NEXT_PRESENT)
-	nb = vlib_get_buffer (vm, nb->next_buffer);
-      else
-	break;
+      b = vlib_get_buffer (vm, b->next_buffer);
+      vec_add2 (ptd->chunks, ch, 1);
+      ch->src = ch->dst = vlib_buffer_get_current (b);
+      ch->len = clib_min (b->current_length, len);
+      len -= ch->len;
+      n_chunks++;
     }
 
-  ASSERT (offset == 0);
-  if (n_chunks && len)
+  if (len)
     {
       /* Some async crypto users can use buffers in creative ways, let's allow
        * some flexibility here...
@@ -180,12 +180,11 @@ cryptodev_sw_scheduler_sgl (vlib_main_t * vm,
        * of the integrity check but it will not update the buffer length.
        * Fixup the last operation chunk length if we have room.
        */
-      ASSERT (vlib_buffer_space_left_at_end (vm, nb) >= len);
-      if (vlib_buffer_space_left_at_end (vm, nb) >= len)
+      ASSERT (vlib_buffer_space_left_at_end (vm, b) >= len);
+      if (vlib_buffer_space_left_at_end (vm, b) >= len)
 	ch->len += len;
     }
 
-  op->chunk_index = chunk_index;
   op->n_chunks = n_chunks;
 }
 
