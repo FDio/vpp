@@ -129,7 +129,8 @@ esp_add_footer_and_icv (vlib_main_t *vm, vlib_buffer_t **last, u8 esp_align,
 				      last[0]->current_length + pad_bytes);
   u16 tail_sz = sizeof (esp_footer_t) + pad_bytes + icv_sz;
 
-  if (last[0]->current_length + tail_sz > buffer_data_size)
+  if (last[0]->current_data + last[0]->current_length + tail_sz >
+      buffer_data_size)
     {
       u32 tmp_bi = 0;
       if (vlib_buffer_alloc (vm, &tmp_bi, 1) != 1)
