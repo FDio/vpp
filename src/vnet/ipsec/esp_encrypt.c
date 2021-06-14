@@ -15,9 +15,11 @@
  * limitations under the License.
  */
 
+#include <assert.h>
 #include <vnet/vnet.h>
 #include <vnet/api_errno.h>
 #include <vnet/ip/ip.h>
+#include <vnet/interface_output.h>
 
 #include <vnet/crypto/crypto.h>
 
@@ -160,27 +162,13 @@ esp_add_footer_and_icv (vlib_main_t *vm, vlib_buffer_t **last, u8 esp_align,
 static_always_inline void
 esp_update_ip4_hdr (ip4_header_t * ip4, u16 len, int is_transport, int is_udp)
 {
-  ip_csum_t sum;
-  u16 old_len;
-
   len = clib_net_to_host_u16 (len);
-  old_len = ip4->length;
-
   if (is_transport)
     {
       u8 prot = is_udp ? IP_PROTOCOL_UDP : IP_PROTOCOL_IPSEC_ESP;
-
-      sum = ip_csum_update (ip4->checksum, ip4->protocol,
-			    prot, ip4_header_t, protocol);
       ip4->protocol = prot;
-
-      sum = ip_csum_update (sum, old_len, len, ip4_header_t, length);
     }
-  else
-    sum = ip_csum_update (ip4->checksum, old_len, len, ip4_header_t, length);
-
   ip4->length = len;
-  ip4->checksum = ip_csum_fold (sum);
 }
 
 static_always_inline void
@@ -636,6 +624,9 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       if (is_tun)
 	{
+	  vnet_calc_checksums_inline (vm, b[0],
+				      b[0]->flags & VNET_BUFFER_F_IS_IP4,
+				      b[0]->flags & VNET_BUFFER_F_IS_IP6);
 	  /* we are on a ipsec tunnel's feature arc */
 	  vnet_buffer (b[0])->ipsec.sad_index =
 	    sa_index0 = ipsec_tun_protect_get_sa_out
@@ -877,7 +868,12 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      clib_memcpy_le32 (l2_hdr, old_ip_hdr - l2_len, l2_len);
 	    }
 	  else
-	    l2_len = 0;
+	    {
+	      /* update the L3 outer header offset*/
+	      vnet_buffer2 (b[0])->outer_l3_hdr_offset =
+		(u8 *) ip_hdr - b[0]->data;
+	      l2_len = 0;
+	    }
 
 	  if (VNET_LINK_IP6 == lt)
 	    {
@@ -898,6 +894,8 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    }
 	  else if (VNET_LINK_IP4 == lt)
 	    {
+	      assert ((vnet_buffer (b[0])->oflags &
+		       VNET_BUFFER_OFFLOAD_F_OUTER_IP_CKSUM) != 0);
 	      u16 len;
 	      ip4_header_t *ip4 = (ip4_header_t *) (old_ip_hdr);
 	      *next_hdr_ptr = ip4->protocol;
