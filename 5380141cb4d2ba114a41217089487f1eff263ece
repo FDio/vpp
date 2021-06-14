@@ -1,0 +1,142 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "74903209_f2484510",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 824,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-06-14T18:15:38Z",
+      "side": 1,
+      "message": "Let\u0027s make this configurable (tcp_cfg.alloc_err_timeout or something like that) or at least it\u0027s own macro.\n\nAs for the default value, 200ms seems like a lot and 0.1ms, as you\u0027ve noted, maybe too little. Before changing tcp\u0027s tick, we were at 100ms. I agree that the timers should not worsen a buffer exhaustion situation, but ideally vpp should not be run with more than 1ms / dispatch loop (as reported in sh run) so how many dispatch loops should we typically wait, in the worst case? Let\u0027s start with 100ms (or at least 1000 dispatch loops)?\n\nEither way, probably the only general solution to this problem is to increase the number of buffers. Although yes, that will also affect performance a bit.",
+      "range": {
+        "startLine": 824,
+        "startChar": 3,
+        "endLine": 824,
+        "endChar": 34
+      },
+      "revId": "5380141cb4d2ba114a41217089487f1eff263ece",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7ab70158_9f4145d8",
+        "filename": "src/vnet/tcp/tcp_timer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-06-14T18:15:38Z",
+      "side": 1,
+      "message": "The 1 here is just extra cautious because rto should not be less than 0.2s. So this should not be needed.",
+      "range": {
+        "startLine": 60,
+        "startChar": 43,
+        "endLine": 60,
+        "endChar": 74
+      },
+      "revId": "5380141cb4d2ba114a41217089487f1eff263ece",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "eabd537a_49309c64",
+        "filename": "src/vnet/tcp/tcp_timer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-06-14T18:15:38Z",
+      "side": 1,
+      "message": "ditto",
+      "range": {
+        "startLine": 75,
+        "startChar": 43,
+        "endLine": 75,
+        "endChar": 74
+      },
+      "revId": "5380141cb4d2ba114a41217089487f1eff263ece",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0922bf81_20463b8e",
+        "filename": "src/vnet/tcp/tcp_timer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-06-14T18:15:38Z",
+      "side": 1,
+      "message": "This is not going to be an out of buffer scenario, and it genuinely asks that a packet be generated asap",
+      "range": {
+        "startLine": 84,
+        "startChar": 15,
+        "endLine": 84,
+        "endChar": 47
+      },
+      "revId": "5380141cb4d2ba114a41217089487f1eff263ece",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1e59a7af_2432c11e",
+        "filename": "src/vnet/tcp/tcp_timer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 87,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-06-14T18:15:38Z",
+      "side": 1,
+      "message": "Should not be needed",
+      "range": {
+        "startLine": 87,
+        "startChar": 45,
+        "endLine": 87,
+        "endChar": 76
+      },
+      "revId": "5380141cb4d2ba114a41217089487f1eff263ece",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8bf3333b_118a1dc2",
+        "filename": "src/vnet/tcp/tcp_timer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-06-14T18:15:38Z",
+      "side": 1,
+      "message": "ditto",
+      "range": {
+        "startLine": 110,
+        "startChar": 45,
+        "endLine": 110,
+        "endChar": 76
+      },
+      "revId": "5380141cb4d2ba114a41217089487f1eff263ece",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
