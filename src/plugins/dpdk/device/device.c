@@ -258,7 +258,10 @@ dpdk_buffer_tx_offload (dpdk_device_t * xd, vlib_buffer_t * b,
   if (oflags & VNET_BUFFER_OFFLOAD_F_TNL_VXLAN)
     ol_flags |= PKT_TX_TUNNEL_VXLAN;
   if (oflags & VNET_BUFFER_OFFLOAD_F_TNL_IPIP)
-    ol_flags |= PKT_TX_TUNNEL_IPIP;
+    {
+      ol_flags |= PKT_TX_TUNNEL_IPIP;
+      mb->l2_len = 0;
+    }
 
   if (tso)
     {
@@ -343,7 +346,9 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
 	  dpdk_validate_rte_mbuf (vm, b[3], 0);
 	}
 
-      if (PREDICT_FALSE ((xd->flags & DPDK_DEVICE_FLAG_TX_OFFLOAD) &&
+      if (PREDICT_FALSE ((xd->flags & (DPDK_DEVICE_FLAG_TX_IP4_OFFLOAD |
+				       DPDK_DEVICE_FLAG_TX_TCP_OFFLOAD |
+				       DPDK_DEVICE_FLAG_TX_UDP_OFFLOAD)) &&
 			 (or_flags & VNET_BUFFER_F_OFFLOAD)))
 	{
 	  dpdk_buffer_tx_offload (xd, b[0], mb[0]);
@@ -397,7 +402,9 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
 	  dpdk_validate_rte_mbuf (vm, b[1], 0);
 	}
 
-      if (PREDICT_FALSE ((xd->flags & DPDK_DEVICE_FLAG_TX_OFFLOAD) &&
+      if (PREDICT_FALSE ((xd->flags & (DPDK_DEVICE_FLAG_TX_IP4_OFFLOAD |
+				       DPDK_DEVICE_FLAG_TX_TCP_OFFLOAD |
+				       DPDK_DEVICE_FLAG_TX_UDP_OFFLOAD)) &&
 			 (or_flags & VNET_BUFFER_F_OFFLOAD)))
 	{
 	  dpdk_buffer_tx_offload (xd, b[0], mb[0]);
