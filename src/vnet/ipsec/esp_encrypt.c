@@ -18,6 +18,7 @@
 #include <vnet/vnet.h>
 #include <vnet/api_errno.h>
 #include <vnet/ip/ip.h>
+#include <vnet/interface_output.h>
 
 #include <vnet/crypto/crypto.h>
 
@@ -637,6 +638,11 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (is_tun)
 	{
 	  /* we are on a ipsec tunnel's feature arc */
+	  vnet_calc_checksums_inline (vm, b[0],
+				      b[0]->flags & VNET_BUFFER_F_IS_IP4,
+				      b[0]->flags & VNET_BUFFER_F_IS_IP6);
+	  vnet_buffer_offload_flags_clear (
+	    b[0], VNET_BUFFER_OFFLOAD_F_OUTER_IP_CKSUM);
 	  vnet_buffer (b[0])->ipsec.sad_index =
 	    sa_index0 = ipsec_tun_protect_get_sa_out
 	    (vnet_buffer (b[0])->ip.adj_index[VLIB_TX]);
