@@ -222,7 +222,7 @@ dpdk_buffer_tx_offload (dpdk_device_t * xd, vlib_buffer_t * b,
   int is_ip4 = b->flags & VNET_BUFFER_F_IS_IP4;
   u32 tso = b->flags & VNET_BUFFER_F_GSO, max_pkt_len;
   u32 ip_cksum, tcp_cksum, udp_cksum;
-  u32 outer_ip_cksum, vxlan_tunnel;
+  u32 outer_ip_cksum, vxlan_tunnel, ipip_tunnel;
   u64 ol_flags;
   vnet_buffer_oflags_t oflags = 0;
 
@@ -236,6 +236,7 @@ dpdk_buffer_tx_offload (dpdk_device_t * xd, vlib_buffer_t * b,
   udp_cksum = oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM;
   outer_ip_cksum = oflags & VNET_BUFFER_OFFLOAD_F_OUTER_IP_CKSUM;
   vxlan_tunnel = oflags & VNET_BUFFER_OFFLOAD_F_TNL_VXLAN;
+  ipip_tunnel = oflags & VNET_BUFFER_OFFLOAD_F_TNL_IPIP;
 
   ol_flags = is_ip4 ? PKT_TX_IPV4 : PKT_TX_IPV6;
   ol_flags |= ip_cksum ? PKT_TX_IP_CKSUM : 0;
@@ -256,6 +257,19 @@ dpdk_buffer_tx_offload (dpdk_device_t * xd, vlib_buffer_t * b,
       mb->outer_l3_len = vnet_buffer2 (b)->outer_l4_hdr_offset -
 			 vnet_buffer2 (b)->outer_l3_hdr_offset;
     }
+  else if (ipip_tunnel)
+    {
+      ol_flags |= outer_ip_cksum ? PKT_TX_OUTER_IPV4 | PKT_TX_OUTER_IP_CKSUM :
+				   PKT_TX_OUTER_IPV6;
+      ol_flags |= PKT_TX_TUNNEL_IPIP;
+      mb->l2_len = 0;
+      mb->l3_len =
+	vnet_buffer (b)->l4_hdr_offset - vnet_buffer (b)->l3_hdr_offset;
+      mb->outer_l2_len =
+	vnet_buffer2 (b)->outer_l3_hdr_offset - b->current_data;
+      mb->outer_l3_len =
+	vnet_buffer (b)->l3_hdr_offset - vnet_buffer2 (b)->outer_l3_hdr_offset;
+    }
   else
     {
       mb->l2_len =
@@ -271,8 +285,8 @@ dpdk_buffer_tx_offload (dpdk_device_t * xd, vlib_buffer_t * b,
       mb->l4_len = vnet_buffer2 (b)->gso_l4_hdr_sz;
       mb->tso_segsz = vnet_buffer2 (b)->gso_size;
       /* ensure packet is large enough to require tso */
-      max_pkt_len = mb->l2_len + mb->l3_len + mb->l4_len + mb->tso_segsz;
-      max_pkt_len += vxlan_tunnel ? (mb->outer_l2_len + mb->outer_l3_len) : 0;
+      max_pkt_len = mb->l2_len + mb->l3_len + mb->l4_len + mb->outer_l2_len +
+		    mb->outer_l3_len + mb->tso_segsz;
       if (mb->tso_segsz != 0 && mb->pkt_len > max_pkt_len)
 	ol_flags |= (tcp_cksum ? PKT_TX_TCP_SEG : PKT_TX_UDP_SEG);
     }
@@ -350,7 +364,9 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
 	  dpdk_validate_rte_mbuf (vm, b[3], 0);
 	}
 
-      if (PREDICT_FALSE ((xd->flags & DPDK_DEVICE_FLAG_TX_OFFLOAD) &&
+      if (PREDICT_FALSE ((xd->flags & (DPDK_DEVICE_FLAG_TX_IP4_OFFLOAD |
+				       DPDK_DEVICE_FLAG_TX_TCP_OFFLOAD |
+				       DPDK_DEVICE_FLAG_TX_UDP_OFFLOAD)) &&
 			 (or_flags & VNET_BUFFER_F_OFFLOAD)))
 	{
 	  dpdk_buffer_tx_offload (xd, b[0], mb[0]);
@@ -404,7 +420,9 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
 	  dpdk_validate_rte_mbuf (vm, b[1], 0);
 	}
 
-      if (PREDICT_FALSE ((xd->flags & DPDK_DEVICE_FLAG_TX_OFFLOAD) &&
+      if (PREDICT_FALSE ((xd->flags & (DPDK_DEVICE_FLAG_TX_IP4_OFFLOAD |
+				       DPDK_DEVICE_FLAG_TX_TCP_OFFLOAD |
+				       DPDK_DEVICE_FLAG_TX_UDP_OFFLOAD)) &&
 			 (or_flags & VNET_BUFFER_F_OFFLOAD)))
 	{
 	  dpdk_buffer_tx_offload (xd, b[0], mb[0]);

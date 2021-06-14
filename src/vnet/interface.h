@@ -562,8 +562,7 @@ typedef enum vnet_hw_interface_capabilities_t_
    VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_CKSUM)
 
 #define VNET_HW_INTERFACE_CAP_SUPPORTS_TX_OUTER_CKSUM                         \
-  (VNET_HW_INTERFACE_CAP_SUPPORTS_TX_IP4_OUTER_CKSUM |                        \
-   VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_OUTER_CKSUM)
+  (VNET_HW_INTERFACE_CAP_SUPPORTS_TX_IP4_OUTER_CKSUM)
 
 #define VNET_HW_INTERFACE_CAP_SUPPORTS_TX_CKSUM_MASK                          \
   (VNET_HW_INTERFACE_CAP_SUPPORTS_TX_CKSUM |                                  \
