@@ -18,6 +18,7 @@
 #include <assert.h>
 
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/gso/hdr_offset_parser.h>
 #include <dpdk/buffer.h>
 #include <dpdk/device/dpdk.h>
 #include <dpdk/device/dpdk_priv.h>
@@ -252,6 +253,22 @@ dpdk_buffer_tx_offload (dpdk_device_t * xd, vlib_buffer_t * b,
       max_pkt_len = mb->l2_len + mb->l3_len + mb->l4_len + mb->tso_segsz;
       if (mb->tso_segsz != 0 && mb->pkt_len > max_pkt_len)
 	ol_flags |= (tcp_cksum ? PKT_TX_TCP_SEG : PKT_TX_UDP_SEG);
+
+      if (xd->flags & (DPDK_DEVICE_FLAG_TX_IPIP_TUNNEL_OFFLOAD |
+		       DPDK_DEVICE_FLAG_TX_GRE_TUNNEL_OFFLOAD |
+		       DPDK_DEVICE_FLAG_TX_VXLAN_TUNNEL_OFFLOAD |
+		       DPDK_DEVICE_FLAG_TX_GENEVE_TUNNEL_OFFLOAD))
+	{
+	  generic_header_offset_t gho = { 0 };
+	  int is_ip6 = b->flags & VNET_BUFFER_F_IS_IP6;
+	  vnet_generic_header_offset_parser (b, &gho, 0, is_ip4, is_ip6);
+	  if ((gho.gho_flags & GHO_F_IPIP_TUNNEL) &&
+	      (xd->flags & DPDK_DEVICE_FLAG_TX_IPIP_TUNNEL_OFFLOAD))
+	    {
+	      ol_flags |= PKT_TX_TUNNEL_IPIP;
+	      mb->outer_l3_len = gho.l3_hdr_offset - gho.outer_l3_hdr_offset;
+	    }
+	}
     }
 
   mb->ol_flags |= ol_flags;

@@ -487,307 +487,112 @@ drop_one_buffer_and_count (vlib_main_t * vm, vnet_main_t * vnm,
 			   drop_error_code);
 }
 
-static_always_inline uword
-vnet_gso_node_inline (vlib_main_t * vm,
-		      vlib_node_runtime_t * node,
-		      vlib_frame_t * frame,
-		      vnet_main_t * vnm,
-		      vnet_hw_interface_t * hi,
-		      int is_l2, int is_ip4, int is_ip6, int do_segmentation)
+static_always_inline void
+vnet_gso_do_segmentation (vlib_main_t *vm, vlib_node_runtime_t *node,
+			  vnet_main_t *vnm, vnet_hw_interface_t *hi,
+			  vlib_buffer_t ***b_ptr, u32 bi0,
+			  generic_header_offset_t *gho, u32 **to_next_ptr,
+			  u32 *from, u32 *n_left_to_next_ptr, u32 *next0_ptr,
+			  u32 next_index, u32 is_l2, u32 is_ip6)
 {
-  u32 *to_next;
-  u32 next_index = node->cached_next_index;
-  u32 *from = vlib_frame_vector_args (frame);
-  u32 n_left_from = frame->n_vectors;
-  u32 *from_end = from + n_left_from;
+  vlib_buffer_t **b = *b_ptr;
+  u32 *to_next = *to_next_ptr;
+  u32 n_left_to_next = *n_left_to_next_ptr;
+  u32 next0 = *next0_ptr;
+
   u32 thread_index = vm->thread_index;
   vnet_interface_main_t *im = &vnm->interface_main;
   vnet_interface_per_thread_data_t *ptd =
     vec_elt_at_index (im->per_thread_data, thread_index);
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
+  /*
+   * Undo the enqueue of the b0 - it is not going anywhere,
+   * and will be freed either after it's segmented or
+   * when dropped, if there is no buffers to segment into.
+   */
+  to_next -= 1;
+  n_left_to_next += 1;
+  /* undo the counting. */
+  u32 n_bytes_b0 = vlib_buffer_length_in_chain (vm, b[0]);
+  u32 n_tx_bytes = 0;
+  u32 inner_is_ip6 = is_ip6;
 
-  vlib_get_buffers (vm, from, b, n_left_from);
-
-  while (n_left_from > 0)
+  if (PREDICT_FALSE (gho->gho_flags & GHO_F_TUNNEL))
     {
-      u32 n_left_to_next;
-
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
-
-      if (!do_segmentation)
-	while (from + 8 <= from_end && n_left_to_next >= 4)
-	  {
-	    u32 bi0, bi1, bi2, bi3;
-	    u32 next0, next1, next2, next3;
-	    u32 swif0, swif1, swif2, swif3;
-	    gso_trace_t *t0, *t1, *t2, *t3;
-	    vnet_hw_interface_t *hi0, *hi1, *hi2, *hi3;
-
-	    /* Prefetch next iteration. */
-	    vlib_prefetch_buffer_header (b[4], LOAD);
-	    vlib_prefetch_buffer_header (b[5], LOAD);
-	    vlib_prefetch_buffer_header (b[6], LOAD);
-	    vlib_prefetch_buffer_header (b[7], LOAD);
-
-	    bi0 = from[0];
-	    bi1 = from[1];
-	    bi2 = from[2];
-	    bi3 = from[3];
-	    to_next[0] = bi0;
-	    to_next[1] = bi1;
-	    to_next[2] = bi2;
-	    to_next[3] = bi3;
-
-	    swif0 = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
-	    swif1 = vnet_buffer (b[1])->sw_if_index[VLIB_TX];
-	    swif2 = vnet_buffer (b[2])->sw_if_index[VLIB_TX];
-	    swif3 = vnet_buffer (b[3])->sw_if_index[VLIB_TX];
-
-	    if (PREDICT_FALSE (hi->sw_if_index != swif0))
-	      {
-		hi0 = vnet_get_sup_hw_interface (vnm, swif0);
-		if ((hi0->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO) ==
-		      0 &&
-		    (b[0]->flags & VNET_BUFFER_F_GSO))
-		  break;
-	      }
-	    if (PREDICT_FALSE (hi->sw_if_index != swif1))
-	      {
-		hi1 = vnet_get_sup_hw_interface (vnm, swif1);
-		if (!(hi1->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO) &&
-		    (b[1]->flags & VNET_BUFFER_F_GSO))
-		  break;
-	      }
-	    if (PREDICT_FALSE (hi->sw_if_index != swif2))
-	      {
-		hi2 = vnet_get_sup_hw_interface (vnm, swif2);
-		if ((hi2->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO) ==
-		      0 &&
-		    (b[2]->flags & VNET_BUFFER_F_GSO))
-		  break;
-	      }
-	    if (PREDICT_FALSE (hi->sw_if_index != swif3))
-	      {
-		hi3 = vnet_get_sup_hw_interface (vnm, swif3);
-		if (!(hi3->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO) &&
-		    (b[3]->flags & VNET_BUFFER_F_GSO))
-		  break;
-	      }
-
-	    if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
-	      {
-		t0 = vlib_add_trace (vm, node, b[0], sizeof (t0[0]));
-		t0->flags = b[0]->flags & VNET_BUFFER_F_GSO;
-		t0->gso_size = vnet_buffer2 (b[0])->gso_size;
-		t0->gso_l4_hdr_sz = vnet_buffer2 (b[0])->gso_l4_hdr_sz;
-		vnet_generic_header_offset_parser (b[0], &t0->gho, is_l2,
-						   is_ip4, is_ip6);
-	      }
-	    if (b[1]->flags & VLIB_BUFFER_IS_TRACED)
-	      {
-		t1 = vlib_add_trace (vm, node, b[1], sizeof (t1[0]));
-		t1->flags = b[1]->flags & VNET_BUFFER_F_GSO;
-		t1->gso_size = vnet_buffer2 (b[1])->gso_size;
-		t1->gso_l4_hdr_sz = vnet_buffer2 (b[1])->gso_l4_hdr_sz;
-		vnet_generic_header_offset_parser (b[1], &t1->gho, is_l2,
-						   is_ip4, is_ip6);
-	      }
-	    if (b[2]->flags & VLIB_BUFFER_IS_TRACED)
-	      {
-		t2 = vlib_add_trace (vm, node, b[2], sizeof (t2[0]));
-		t2->flags = b[2]->flags & VNET_BUFFER_F_GSO;
-		t2->gso_size = vnet_buffer2 (b[2])->gso_size;
-		t2->gso_l4_hdr_sz = vnet_buffer2 (b[2])->gso_l4_hdr_sz;
-		vnet_generic_header_offset_parser (b[2], &t2->gho, is_l2,
-						   is_ip4, is_ip6);
-	      }
-	    if (b[3]->flags & VLIB_BUFFER_IS_TRACED)
-	      {
-		t3 = vlib_add_trace (vm, node, b[3], sizeof (t3[0]));
-		t3->flags = b[3]->flags & VNET_BUFFER_F_GSO;
-		t3->gso_size = vnet_buffer2 (b[3])->gso_size;
-		t3->gso_l4_hdr_sz = vnet_buffer2 (b[3])->gso_l4_hdr_sz;
-		vnet_generic_header_offset_parser (b[3], &t3->gho, is_l2,
-						   is_ip4, is_ip6);
-	      }
-
-	    from += 4;
-	    to_next += 4;
-	    n_left_to_next -= 4;
-	    n_left_from -= 4;
-
-	    next0 = next1 = 0;
-	    next2 = next3 = 0;
-	    vnet_feature_next (&next0, b[0]);
-	    vnet_feature_next (&next1, b[1]);
-	    vnet_feature_next (&next2, b[2]);
-	    vnet_feature_next (&next3, b[3]);
-	    vlib_validate_buffer_enqueue_x4 (vm, node, next_index, to_next,
-					     n_left_to_next, bi0, bi1, bi2,
-					     bi3, next0, next1, next2, next3);
-	    b += 4;
-	  }
-
-      while (from + 1 <= from_end && n_left_to_next > 0)
+      if (PREDICT_FALSE (gho->gho_flags &
+			 (GHO_F_GRE_TUNNEL | GHO_F_GENEVE_TUNNEL)))
 	{
-	  u32 bi0, swif0;
-	  gso_trace_t *t0;
-	  vnet_hw_interface_t *hi0;
-	  u32 next0 = 0;
-	  u32 do_segmentation0 = 0;
-
-	  swif0 = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
-	  if (PREDICT_FALSE (hi->sw_if_index != swif0))
-	    {
-	      hi0 = vnet_get_sup_hw_interface (vnm, swif0);
-	      if ((hi0->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO) == 0 &&
-		  (b[0]->flags & VNET_BUFFER_F_GSO))
-		do_segmentation0 = 1;
-	    }
-	  else
-	    do_segmentation0 = do_segmentation;
-
-	  /* speculatively enqueue b0 to the current next frame */
-	  to_next[0] = bi0 = from[0];
-	  to_next += 1;
-	  n_left_to_next -= 1;
-	  from += 1;
-	  n_left_from -= 1;
-
-	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
-	    {
-	      t0 = vlib_add_trace (vm, node, b[0], sizeof (t0[0]));
-	      t0->flags = b[0]->flags & VNET_BUFFER_F_GSO;
-	      t0->gso_size = vnet_buffer2 (b[0])->gso_size;
-	      t0->gso_l4_hdr_sz = vnet_buffer2 (b[0])->gso_l4_hdr_sz;
-	      vnet_generic_header_offset_parser (b[0], &t0->gho, is_l2,
-						 is_ip4, is_ip6);
-	    }
-
-	  if (do_segmentation0)
-	    {
-	      if (PREDICT_FALSE (b[0]->flags & VNET_BUFFER_F_GSO))
-		{
-		  /*
-		   * Undo the enqueue of the b0 - it is not going anywhere,
-		   * and will be freed either after it's segmented or
-		   * when dropped, if there is no buffers to segment into.
-		   */
-		  to_next -= 1;
-		  n_left_to_next += 1;
-		  /* undo the counting. */
-		  generic_header_offset_t gho = { 0 };
-		  u32 n_bytes_b0 = vlib_buffer_length_in_chain (vm, b[0]);
-		  u32 n_tx_bytes = 0;
-		  u32 inner_is_ip6 = is_ip6;
-
-		  vnet_generic_header_offset_parser (b[0], &gho, is_l2,
-						     is_ip4, is_ip6);
-
-		  if (PREDICT_FALSE (gho.gho_flags & GHO_F_TUNNEL))
-		    {
-		      if (PREDICT_FALSE
-			  (gho.gho_flags & (GHO_F_GRE_TUNNEL |
-					    GHO_F_GENEVE_TUNNEL)))
-			{
-			  /* not supported yet */
-			  drop_one_buffer_and_count (vm, vnm, node, from - 1,
-						     hi->sw_if_index,
-						     GSO_ERROR_UNHANDLED_TYPE);
-			  b += 1;
-			  continue;
-			}
-
-		      vnet_get_inner_header (b[0], &gho);
-
-		      n_bytes_b0 -= gho.outer_hdr_sz;
-		      inner_is_ip6 = (gho.gho_flags & GHO_F_IP6) != 0;
-		    }
-
-		  n_tx_bytes =
-		    tso_segment_buffer (vm, ptd, bi0, b[0], &gho, n_bytes_b0,
-					is_l2, inner_is_ip6);
-
-		  if (PREDICT_FALSE (n_tx_bytes == 0))
-		    {
-		      drop_one_buffer_and_count (vm, vnm, node, from - 1,
-						 hi->sw_if_index,
-						 GSO_ERROR_NO_BUFFERS);
-		      b += 1;
-		      continue;
-		    }
-
-
-		  if (PREDICT_FALSE (gho.gho_flags & GHO_F_VXLAN_TUNNEL))
-		    {
-		      vnet_get_outer_header (b[0], &gho);
-		      n_tx_bytes +=
-			tso_segment_vxlan_tunnel_fixup (vm, ptd, b[0], &gho);
-		    }
-		  else
-		    if (PREDICT_FALSE
-			(gho.gho_flags & (GHO_F_IPIP_TUNNEL |
-					  GHO_F_IPIP6_TUNNEL)))
-		    {
-		      vnet_get_outer_header (b[0], &gho);
-		      n_tx_bytes +=
-			tso_segment_ipip_tunnel_fixup (vm, ptd, b[0], &gho);
-		    }
-
-		  u16 n_tx_bufs = vec_len (ptd->split_buffers);
-		  u32 *from_seg = ptd->split_buffers;
-
-		  while (n_tx_bufs > 0)
-		    {
-		      u32 sbi0;
-		      vlib_buffer_t *sb0;
-		      while (n_tx_bufs > 0 && n_left_to_next > 0)
-			{
-			  sbi0 = to_next[0] = from_seg[0];
-			  sb0 = vlib_get_buffer (vm, sbi0);
-			  ASSERT (sb0->current_length > 0);
-			  to_next += 1;
-			  from_seg += 1;
-			  n_left_to_next -= 1;
-			  n_tx_bufs -= 1;
-			  next0 = 0;
-			  vnet_feature_next (&next0, sb0);
-			  vlib_validate_buffer_enqueue_x1 (vm, node,
-							   next_index,
-							   to_next,
-							   n_left_to_next,
-							   sbi0, next0);
-			}
-		      vlib_put_next_frame (vm, node, next_index,
-					   n_left_to_next);
-		      if (n_tx_bufs > 0)
-			vlib_get_next_frame (vm, node, next_index,
-					     to_next, n_left_to_next);
-		    }
-		  /* The buffers were enqueued. Reset the length */
-		  _vec_len (ptd->split_buffers) = 0;
-		  /* Free the now segmented buffer */
-		  vlib_buffer_free_one (vm, bi0);
-		  b += 1;
-		  continue;
-		}
-	    }
-
-	  vnet_feature_next (&next0, b[0]);
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
-					   n_left_to_next, bi0, next0);
+	  /* not supported yet */
+	  drop_one_buffer_and_count (vm, vnm, node, from - 1, hi->sw_if_index,
+				     GSO_ERROR_UNHANDLED_TYPE);
 	  b += 1;
+	  return;
 	}
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+
+      vnet_get_inner_header (b[0], gho);
+
+      n_bytes_b0 -= gho->outer_hdr_sz;
+      inner_is_ip6 = (gho->gho_flags & GHO_F_IP6) != 0;
     }
 
-  return frame->n_vectors;
+  n_tx_bytes = tso_segment_buffer (vm, ptd, bi0, b[0], gho, n_bytes_b0, is_l2,
+				   inner_is_ip6);
+
+  if (PREDICT_FALSE (n_tx_bytes == 0))
+    {
+      drop_one_buffer_and_count (vm, vnm, node, from - 1, hi->sw_if_index,
+				 GSO_ERROR_NO_BUFFERS);
+      b += 1;
+      return;
+    }
+
+  if (PREDICT_FALSE (gho->gho_flags & GHO_F_VXLAN_TUNNEL))
+    {
+      vnet_get_outer_header (b[0], gho);
+      n_tx_bytes += tso_segment_vxlan_tunnel_fixup (vm, ptd, b[0], gho);
+    }
+  else if (PREDICT_FALSE (gho->gho_flags &
+			  (GHO_F_IPIP_TUNNEL | GHO_F_IPIP6_TUNNEL)))
+    {
+      vnet_get_outer_header (b[0], gho);
+      n_tx_bytes += tso_segment_ipip_tunnel_fixup (vm, ptd, b[0], gho);
+    }
+
+  u16 n_tx_bufs = vec_len (ptd->split_buffers);
+  u32 *from_seg = ptd->split_buffers;
+
+  while (n_tx_bufs > 0)
+    {
+      u32 sbi0;
+      vlib_buffer_t *sb0;
+      while (n_tx_bufs > 0 && n_left_to_next > 0)
+	{
+	  sbi0 = to_next[0] = from_seg[0];
+	  sb0 = vlib_get_buffer (vm, sbi0);
+	  ASSERT (sb0->current_length > 0);
+	  to_next += 1;
+	  from_seg += 1;
+	  n_left_to_next -= 1;
+	  n_tx_bufs -= 1;
+	  next0 = 0;
+	  vnet_feature_next (&next0, sb0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, sbi0, next0);
+	}
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+      if (n_tx_bufs > 0)
+	vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+    }
+  /* The buffers were enqueued. Reset the length */
+  _vec_len (ptd->split_buffers) = 0;
+  /* Free the now segmented buffer */
+  vlib_buffer_free_one (vm, bi0);
+  b += 1;
+  return;
 }
 
 static_always_inline uword
-vnet_gso_inline (vlib_main_t * vm,
-		 vlib_node_runtime_t * node, vlib_frame_t * frame, int is_l2,
-		 int is_ip4, int is_ip6)
+vnet_gso_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		 vlib_frame_t *frame, int is_l2, int is_ip4, int is_ip6)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hi;
@@ -795,18 +600,180 @@ vnet_gso_inline (vlib_main_t * vm,
   if (frame->n_vectors > 0)
     {
       u32 *from = vlib_frame_vector_args (frame);
-      vlib_buffer_t *b = vlib_get_buffer (vm, from[0]);
-      hi = vnet_get_sup_hw_interface (vnm,
-				      vnet_buffer (b)->sw_if_index[VLIB_TX]);
+      u32 *to_next;
+      u32 next_index = node->cached_next_index;
+      u32 n_left_from = frame->n_vectors;
+      u32 *from_end = from + n_left_from;
+      vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
+      hi = vnet_get_sup_hw_interface (
+	vnm, vnet_buffer (b[0])->sw_if_index[VLIB_TX]);
+      vlib_get_buffers (vm, from, b, n_left_from);
 
-      if (hi->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO)
-	return vnet_gso_node_inline (vm, node, frame, vnm, hi,
-				     is_l2, is_ip4, is_ip6,
-				     /* do_segmentation */ 0);
-      else
-	return vnet_gso_node_inline (vm, node, frame, vnm, hi,
-				     is_l2, is_ip4, is_ip6,
-				     /* do_segmentation */ 1);
+      while (n_left_from > 0)
+	{
+	  u32 n_left_to_next;
+
+	  vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+
+	  while (from + 8 <= from_end && n_left_to_next >= 4)
+	    {
+	      u32 bi0, bi1, bi2, bi3;
+	      u32 next0, next1, next2, next3;
+	      u32 swif0, swif1, swif2, swif3;
+	      gso_trace_t *t0, *t1, *t2, *t3;
+
+	      /* Prefetch next iteration. */
+	      vlib_prefetch_buffer_header (b[4], LOAD);
+	      vlib_prefetch_buffer_header (b[5], LOAD);
+	      vlib_prefetch_buffer_header (b[6], LOAD);
+	      vlib_prefetch_buffer_header (b[7], LOAD);
+
+	      bi0 = from[0];
+	      bi1 = from[1];
+	      bi2 = from[2];
+	      bi3 = from[3];
+	      to_next[0] = bi0;
+	      to_next[1] = bi1;
+	      to_next[2] = bi2;
+	      to_next[3] = bi3;
+
+	      swif0 = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
+	      swif1 = vnet_buffer (b[1])->sw_if_index[VLIB_TX];
+	      swif2 = vnet_buffer (b[2])->sw_if_index[VLIB_TX];
+	      swif3 = vnet_buffer (b[3])->sw_if_index[VLIB_TX];
+
+	      if (b[0]->flags & VNET_BUFFER_F_GSO)
+		break;
+	      if (b[1]->flags & VNET_BUFFER_F_GSO)
+		break;
+	      if (b[2]->flags & VNET_BUFFER_F_GSO)
+		break;
+	      if (b[3]->flags & VNET_BUFFER_F_GSO)
+		break;
+
+	      if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
+		{
+		  t0 = vlib_add_trace (vm, node, b[0], sizeof (t0[0]));
+		  t0->flags = b[0]->flags & VNET_BUFFER_F_GSO;
+		  t0->gso_size = vnet_buffer2 (b[0])->gso_size;
+		  t0->gso_l4_hdr_sz = vnet_buffer2 (b[0])->gso_l4_hdr_sz;
+		  vnet_generic_header_offset_parser (b[0], &t0->gho, is_l2,
+						     is_ip4, is_ip6);
+		}
+	      if (b[1]->flags & VLIB_BUFFER_IS_TRACED)
+		{
+		  t1 = vlib_add_trace (vm, node, b[1], sizeof (t1[0]));
+		  t1->flags = b[1]->flags & VNET_BUFFER_F_GSO;
+		  t1->gso_size = vnet_buffer2 (b[1])->gso_size;
+		  t1->gso_l4_hdr_sz = vnet_buffer2 (b[1])->gso_l4_hdr_sz;
+		  vnet_generic_header_offset_parser (b[1], &t1->gho, is_l2,
+						     is_ip4, is_ip6);
+		}
+	      if (b[2]->flags & VLIB_BUFFER_IS_TRACED)
+		{
+		  t2 = vlib_add_trace (vm, node, b[2], sizeof (t2[0]));
+		  t2->flags = b[2]->flags & VNET_BUFFER_F_GSO;
+		  t2->gso_size = vnet_buffer2 (b[2])->gso_size;
+		  t2->gso_l4_hdr_sz = vnet_buffer2 (b[2])->gso_l4_hdr_sz;
+		  vnet_generic_header_offset_parser (b[2], &t2->gho, is_l2,
+						     is_ip4, is_ip6);
+		}
+	      if (b[3]->flags & VLIB_BUFFER_IS_TRACED)
+		{
+		  t3 = vlib_add_trace (vm, node, b[3], sizeof (t3[0]));
+		  t3->flags = b[3]->flags & VNET_BUFFER_F_GSO;
+		  t3->gso_size = vnet_buffer2 (b[3])->gso_size;
+		  t3->gso_l4_hdr_sz = vnet_buffer2 (b[3])->gso_l4_hdr_sz;
+		  vnet_generic_header_offset_parser (b[3], &t3->gho, is_l2,
+						     is_ip4, is_ip6);
+		}
+
+	      from += 4;
+	      to_next += 4;
+	      n_left_to_next -= 4;
+	      n_left_from -= 4;
+
+	      next0 = next1 = 0;
+	      next2 = next3 = 0;
+	      vnet_feature_next (&next0, b[0]);
+	      vnet_feature_next (&next1, b[1]);
+	      vnet_feature_next (&next2, b[2]);
+	      vnet_feature_next (&next3, b[3]);
+	      vlib_validate_buffer_enqueue_x4 (
+		vm, node, next_index, to_next, n_left_to_next, bi0, bi1, bi2,
+		bi3, next0, next1, next2, next3);
+	      b += 4;
+	    }
+
+	  while (from + 1 <= from_end && n_left_to_next > 0)
+	    {
+	      u32 bi0, swif0;
+	      gso_trace_t *t0;
+	      vnet_hw_interface_t *hi0;
+	      u32 next0 = 0;
+	      generic_header_offset_t gho = { 0 };
+
+	      swif0 = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
+	      vnet_generic_header_offset_parser (b[0], &gho, is_l2, is_ip4,
+						 is_ip6);
+
+	      /* speculatively enqueue b0 to the current next frame */
+	      to_next[0] = bi0 = from[0];
+	      to_next += 1;
+	      n_left_to_next -= 1;
+	      from += 1;
+	      n_left_from -= 1;
+
+	      if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
+		{
+		  t0 = vlib_add_trace (vm, node, b[0], sizeof (t0[0]));
+		  t0->flags = b[0]->flags & VNET_BUFFER_F_GSO;
+		  t0->gso_size = vnet_buffer2 (b[0])->gso_size;
+		  t0->gso_l4_hdr_sz = vnet_buffer2 (b[0])->gso_l4_hdr_sz;
+		  memcpy (&t0->gho, &gho, sizeof (gho));
+		}
+
+	      if (PREDICT_FALSE (b[0]->flags & VNET_BUFFER_F_GSO))
+		{
+		  if (PREDICT_FALSE (hi->sw_if_index != swif0))
+		    {
+		      hi0 = vnet_get_sup_hw_interface (vnm, swif0);
+		      if ((!vnet_gso_hw_interface_supports_l4 (gho.gho_flags,
+							       hi0->caps) ||
+			   (gho.gho_flags & GHO_F_TUNNEL &&
+			    !vnet_gso_hw_interface_supports_tunnel (
+			      gho.gho_flags, hi0->caps))))
+			{
+			  vnet_gso_do_segmentation (vm, node, vnm, hi, &b, bi0,
+						    &gho, &to_next, from,
+						    &n_left_to_next, &next0,
+						    next_index, is_l2, is_ip6);
+			  continue;
+			}
+		    }
+		  else if (PREDICT_FALSE (
+			     !vnet_gso_hw_interface_supports_l4 (gho.gho_flags,
+								 hi->caps) ||
+			     (gho.gho_flags & GHO_F_TUNNEL &&
+			      !vnet_gso_hw_interface_supports_tunnel (
+				gho.gho_flags, hi->caps))))
+		    {
+		      vnet_gso_do_segmentation (
+			vm, node, vnm, hi, &b, bi0, &gho, &to_next, from,
+			&n_left_to_next, &next0, next_index, is_l2, is_ip6);
+		      continue;
+		    }
+		}
+
+	      vnet_feature_next (&next0, b[0]);
+	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					       n_left_to_next, bi0, next0);
+	      b += 1;
+	    }
+	  vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+	}
+
+      return frame->n_vectors;
     }
   return 0;
 }
