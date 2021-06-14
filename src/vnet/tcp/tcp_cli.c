@@ -1118,6 +1118,8 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	tcp_cfg.lastack_time = tmp_time / TCP_TIMER_TICK;
       else if (unformat (input, "closing-time %u", &tmp_time))
 	tcp_cfg.closing_time = tmp_time / TCP_TIMER_TICK;
+      else if (unformat (input, "alloc-err-timeout %u", &tmp_time))
+	tcp_cfg.alloc_err_timeout = tmp_time / TCP_TIMER_TICK;
       else if (unformat (input, "cleanup-time %u", &tmp_time))
 	tcp_cfg.cleanup_time = tmp_time / 1000.0;
       else

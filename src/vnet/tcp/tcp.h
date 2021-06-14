@@ -184,6 +184,9 @@ typedef struct tcp_configuration_
   /** Timer ticks to wait in closing for fin ack */
   u32 closing_time;
 
+  /** Timer ticks to wait for free buffer */
+  u32 alloc_err_timeout;
+
   /** Time to wait (sec) before cleaning up the connection */
   f32 cleanup_time;
 
