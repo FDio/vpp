@@ -1590,6 +1590,7 @@ tcp_configuration_init (void)
   tcp_cfg.lastack_time = 300000;	/* 30s */
   tcp_cfg.finwait2_time = 300000;	/* 30s */
   tcp_cfg.closing_time = 300000;	/* 30s */
+  tcp_cfg.alloc_err_timeout = 1000;	/* 100ms */
 
   /* This value is seconds */
   tcp_cfg.cleanup_time = 0.1;	/* 100ms */

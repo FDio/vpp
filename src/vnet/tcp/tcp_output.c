@@ -820,7 +820,8 @@ tcp_send_syn (tcp_connection_t * tc)
 
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
-      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT_SYN, 1);
+      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT_SYN,
+			tcp_cfg.alloc_err_timeout);
       tcp_worker_stats_inc (wrk, no_buffer, 1);
       return;
     }
@@ -852,7 +853,8 @@ tcp_send_synack (tcp_connection_t * tc)
 
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
-      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT, 1);
+      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT,
+			tcp_cfg.alloc_err_timeout);
       tcp_worker_stats_inc (wrk, no_buffer, 1);
       return;
     }
@@ -884,7 +886,8 @@ tcp_send_fin (tcp_connection_t * tc)
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
       /* Out of buffers so program fin retransmit ASAP */
-      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT, 1);
+      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT,
+			tcp_cfg.alloc_err_timeout);
       if (fin_snt)
 	tc->snd_nxt += 1;
       else
@@ -1374,7 +1377,8 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
       n_bytes = tcp_prepare_retransmit_segment (wrk, tc, 0, n_bytes, &b);
       if (!n_bytes)
 	{
-	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT, 1);
+	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT,
+			    tcp_cfg.alloc_err_timeout);
 	  return;
 	}
 
@@ -1416,7 +1420,8 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
 
       if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
 	{
-	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT, 1);
+	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT,
+			    tcp_cfg.alloc_err_timeout);
 	  tcp_worker_stats_inc (wrk, no_buffer, 1);
 	  return;
 	}
@@ -1481,7 +1486,8 @@ tcp_timer_retransmit_syn_handler (tcp_connection_t * tc)
 
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
-      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT_SYN, 1);
+      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT_SYN,
+			tcp_cfg.alloc_err_timeout);
       tcp_worker_stats_inc (wrk, no_buffer, 1);
       return;
     }
