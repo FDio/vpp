@@ -35,6 +35,16 @@ adj_midchain_ipip44_fixup (vlib_main_t * vm,
   ip4 = vlib_buffer_get_current (b);
   ip4->length = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b));
 
+  if (b->flags & VNET_BUFFER_F_OFFLOAD)
+    {
+      b->flags |= VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
+		  VNET_BUFFER_F_L4_HDR_OFFSET_VALID;
+      vnet_buffer2 (b)->outer_l3_hdr_offset = (u8 *) ip4 - b->data;
+      vnet_buffer2 (b)->outer_l4_hdr_offset = (u8 *) (ip4 + 1) - b->data;
+      vnet_buffer_offload_flags_set (b, VNET_BUFFER_OFFLOAD_F_OUTER_IP_CKSUM |
+					  VNET_BUFFER_OFFLOAD_F_TNL_IPIP);
+    }
+
   if (PREDICT_TRUE(TUNNEL_ENCAP_DECAP_FLAG_NONE == flags))
   {
       ip_csum_t sum;
@@ -45,12 +55,14 @@ adj_midchain_ipip44_fixup (vlib_main_t * vm,
 
       sum = ip4->checksum;
       sum = ip_csum_update (sum, old, new, ip4_header_t, length);
-      ip4->checksum = ip_csum_fold (sum);
+      if (!(b->flags & VNET_BUFFER_F_OFFLOAD))
+        ip4->checksum = ip_csum_fold (sum);
   }
   else
   {
       tunnel_encap_fixup_4o4 (flags, ip4 + 1, ip4);
-      ip4->checksum = ip4_header_checksum (ip4);
+      if (!(b->flags & VNET_BUFFER_F_OFFLOAD))
+        ip4->checksum = ip4_header_checksum (ip4);
   }
 }
 
