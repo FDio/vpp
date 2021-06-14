@@ -136,11 +136,15 @@ typedef uint16_t dpdk_portid_t;
   _ (4, MAYBE_MULTISEG, "maybe-multiseg")                                     \
   _ (5, HAVE_SUBIF, "subif")                                                  \
   _ (9, TX_OFFLOAD, "tx-offload")                                             \
-  _ (10, INTEL_PHDR_CKSUM, "intel-phdr-cksum")                                \
-  _ (11, RX_FLOW_OFFLOAD, "rx-flow-offload")                                  \
-  _ (12, RX_IP4_CKSUM, "rx-ip4-cksum")                                        \
-  _ (13, INT_SUPPORTED, "int-supported")                                      \
-  _ (14, INT_UNMASKABLE, "int-unmaskable")
+  _ (9, TX_IPIP_TUNNEL_OFFLOAD, "tx-ipip-tunnel-offload")                     \
+  _ (10, TX_GRE_TUNNEL_OFFLOAD, "tx-gre-tunnel-offload")                      \
+  _ (11, TX_VXLAN_TUNNEL_OFFLOAD, "tx-vxlan-tunnel-offload")                  \
+  _ (12, TX_GENEVE_TUNNEL_OFFLOAD, "tx-geneve-tunnel-offload")                \
+  _ (13, INTEL_PHDR_CKSUM, "intel-phdr-cksum")                                \
+  _ (14, RX_FLOW_OFFLOAD, "rx-flow-offload")                                  \
+  _ (15, RX_IP4_CKSUM, "rx-ip4-cksum")                                        \
+  _ (16, INT_SUPPORTED, "int-supported")                                      \
+  _ (17, INT_UNMASKABLE, "int-unmaskable")
 
 enum
 {
@@ -196,7 +200,7 @@ typedef struct
 
   u16 rx_q_used;
   u16 tx_q_used;
-  u16 flags;
+  u32 flags;
 
   /* DPDK device port number */
   dpdk_portid_t port_id;

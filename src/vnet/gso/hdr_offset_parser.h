@@ -77,6 +77,30 @@ typedef struct
   gho_flag_t gho_flags;
 } generic_header_offset_t;
 
+static_always_inline int
+vnet_gso_hw_interface_supports_l4 (gho_flag_t gho_flags, int caps)
+{
+  if (gho_flags & GHO_F_TCP)
+    return caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO;
+  else if (gho_flags & GHO_F_UDP)
+    return caps & VNET_HW_INTERFACE_CAP_SUPPORTS_UDP_GSO;
+  return 0;
+}
+
+static_always_inline int
+vnet_gso_hw_interface_supports_tunnel (gho_flag_t gho_flags, int caps)
+{
+  if (gho_flags & GHO_F_VXLAN_TUNNEL)
+    return caps & VNET_HW_INTERFACE_CAP_SUPPORTS_VXLAN_TNL_GSO;
+  else if (gho_flags & (GHO_F_IPIP_TUNNEL | GHO_F_IPIP6_TUNNEL))
+    return caps & VNET_HW_INTERFACE_CAP_SUPPORTS_IPIP_TNL_GSO;
+  else if (gho_flags & GHO_F_GRE_TUNNEL)
+    return caps & VNET_HW_INTERFACE_CAP_SUPPORTS_GRE_TNL_GSO;
+  else if (gho_flags & GHO_F_GENEVE_TUNNEL)
+    return caps & VNET_HW_INTERFACE_CAP_SUPPORTS_GENEVE_TNL_GSO;
+  return 0;
+}
+
 static_always_inline u8 *
 format_generic_header_offset (u8 * s, va_list * args)
 {
