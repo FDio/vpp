@@ -55,8 +55,9 @@ always_inline void
 tcp_retransmit_timer_set (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
 {
   ASSERT (tc->snd_una != tc->snd_nxt);
-  tcp_timer_set (tw, tc, TCP_TIMER_RETRANSMIT,
-		 clib_max (tc->rto * TCP_TO_TIMER_TICK, 1));
+  tcp_timer_set (
+    tw, tc, TCP_TIMER_RETRANSMIT,
+    clib_max (tc->rto * TCP_TO_TIMER_TICK, TCP_RTO_MIN * TCP_TO_TIMER_TICK));
 }
 
 always_inline void
@@ -69,8 +70,9 @@ always_inline void
 tcp_persist_timer_set (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
 {
   /* Reuse RTO. It's backed off in handler */
-  tcp_timer_set (tw, tc, TCP_TIMER_PERSIST,
-		 clib_max (tc->rto * TCP_TO_TIMER_TICK, 1));
+  tcp_timer_set (
+    tw, tc, TCP_TIMER_PERSIST,
+    clib_max (tc->rto * TCP_TO_TIMER_TICK, TCP_RTO_MIN * TCP_TO_TIMER_TICK));
 }
 
 always_inline void
@@ -79,9 +81,10 @@ tcp_persist_timer_update (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
   u32 interval;
 
   if (seq_leq (tc->snd_una, tc->snd_congestion + tc->burst_acked))
-    interval = 1;
+    interval = TCP_RTO_MIN * TCP_TO_TIMER_TICK;
   else
-    interval = clib_max (tc->rto * TCP_TO_TIMER_TICK, 1);
+    interval =
+      clib_max (tc->rto * TCP_TO_TIMER_TICK, TCP_RTO_MIN * TCP_TO_TIMER_TICK);
 
   tcp_timer_update (tw, tc, TCP_TIMER_PERSIST, interval);
 }
@@ -102,8 +105,9 @@ tcp_retransmit_timer_update (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
 	tcp_persist_timer_update (tw, tc);
     }
   else
-    tcp_timer_update (tw, tc, TCP_TIMER_RETRANSMIT,
-		      clib_max (tc->rto * TCP_TO_TIMER_TICK, 1));
+    tcp_timer_update (
+      tw, tc, TCP_TIMER_RETRANSMIT,
+      clib_max (tc->rto * TCP_TO_TIMER_TICK, TCP_RTO_MIN * TCP_TO_TIMER_TICK));
 }
 
 always_inline u8
