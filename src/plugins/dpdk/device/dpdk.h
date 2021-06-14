@@ -136,12 +136,19 @@ typedef uint16_t dpdk_portid_t;
   _ (3, PMD_INIT_FAIL, "pmd-init-fail")                                       \
   _ (4, MAYBE_MULTISEG, "maybe-multiseg")                                     \
   _ (5, HAVE_SUBIF, "subif")                                                  \
-  _ (9, TX_OFFLOAD, "tx-offload")                                             \
-  _ (10, INTEL_PHDR_CKSUM, "intel-phdr-cksum")                                \
-  _ (11, RX_FLOW_OFFLOAD, "rx-flow-offload")                                  \
-  _ (12, RX_IP4_CKSUM, "rx-ip4-cksum")                                        \
-  _ (13, INT_SUPPORTED, "int-supported")                                      \
-  _ (14, INT_UNMASKABLE, "int-unmaskable")
+  _ (6, TX_IP4_OFFLOAD, "tx-offload")                                         \
+  _ (7, TX_TCP_OFFLOAD, "tx-offload")                                         \
+  _ (8, TX_UDP_OFFLOAD, "tx-offload")                                         \
+  _ (9, TX_OUTER_IP4_OFFLOAD, "tx-outer-ip4-offload")                         \
+  _ (10, TX_IPIP_TUNNEL_OFFLOAD, "tx-ipip-tunnel-offload")                    \
+  _ (11, TX_GRE_TUNNEL_OFFLOAD, "tx-gre-tunnel-offload")                      \
+  _ (12, TX_VXLAN_TUNNEL_OFFLOAD, "tx-vxlan-tunnel-offload")                  \
+  _ (13, TX_GENEVE_TUNNEL_OFFLOAD, "tx-geneve-tunnel-offload")                \
+  _ (14, INTEL_PHDR_CKSUM, "intel-phdr-cksum")                                \
+  _ (15, RX_FLOW_OFFLOAD, "rx-flow-offload")                                  \
+  _ (16, RX_IP4_CKSUM, "rx-ip4-cksum")                                        \
+  _ (17, INT_SUPPORTED, "int-supported")                                      \
+  _ (18, INT_UNMASKABLE, "int-unmaskable")
 
 enum
 {
@@ -197,7 +204,7 @@ typedef struct
 
   u16 rx_q_used;
   u16 tx_q_used;
-  u16 flags;
+  u32 flags;
 
   /* DPDK device port number */
   dpdk_portid_t port_id;
