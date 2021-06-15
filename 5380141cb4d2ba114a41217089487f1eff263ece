@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "fca1a384_daf4f8b1",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 824,
+      "author": {
+        "id": 2462
+      },
+      "writtenOn": "2021-06-15T03:44:54Z",
+      "side": 1,
+      "message": "Ok! Let\u0027s start with 100ms. \nIn fact, I noticed in v20.09 the tcp timer tick is 100ms, which make tcp sometimes send two-consecutive SYN or SYNACK packet, and then packetdrill test fail. I guess it\u0027s because of the flaw of the timer wheel that the first timeout may be randomly distributed between 0 and interval",
+      "parentUuid": "74903209_f2484510",
+      "range": {
+        "startLine": 824,
+        "startChar": 3,
+        "endLine": 824,
+        "endChar": 34
+      },
+      "revId": "5380141cb4d2ba114a41217089487f1eff263ece",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "7ab70158_9f4145d8",
         "filename": "src/vnet/tcp/tcp_timer.h",
         "patchSetId": 1
