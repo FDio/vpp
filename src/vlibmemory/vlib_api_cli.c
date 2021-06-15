@@ -344,7 +344,6 @@ VLIB_CLI_COMMAND (cli_show_api_plugin_command, static) =
 typedef enum
 {
   DUMP,
-  CUSTOM_DUMP,
   REPLAY,
   INITIALIZERS,
 } vl_api_replay_t;
@@ -385,13 +384,6 @@ format_vl_msg_api_trace_status (u8 * s, va_list * args)
   return s;
 }
 
-void vl_msg_api_custom_dump_configure (api_main_t * am)
-  __attribute__ ((weak));
-void
-vl_msg_api_custom_dump_configure (api_main_t * am)
-{
-}
-
 static void
 vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 			 u32 first_index, u32 last_index,
@@ -405,7 +397,6 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
   api_main_t *am = vlibapi_get_main ();
   u8 *tmpbuf = 0;
   u32 nitems, nitems_msgtbl;
-  void **saved_print_handlers = 0;
 
   fd = open ((char *) filename, O_RDONLY);
 
@@ -461,12 +452,6 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
   if (hp->wrapped)
     vlib_cli_output (vm,
 		     "Note: wrapped/incomplete trace, results may vary\n");
-
-  if (which == CUSTOM_DUMP)
-    {
-      saved_print_handlers = (void **) vec_dup (am->msg_print_handlers);
-      vl_msg_api_custom_dump_configure (am);
-    }
 
   msg = (u8 *) (hp + 1);
 
@@ -551,8 +536,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
        * Endian swap if needed. All msg data is supposed to be in
        * network byte order.
        */
-      if (((which == DUMP || which == CUSTOM_DUMP)
-	   && clib_arch_is_little_endian))
+      if (((which == DUMP) && clib_arch_is_little_endian))
 	{
 	  void (*endian_fp) (void *);
 	  if (msg_id >= vec_len (am->msg_endian_handlers)
@@ -577,7 +561,6 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 
       switch (which)
 	{
-	case CUSTOM_DUMP:
 	case DUMP:
 	  if (msg_id < vec_len (am->msg_print_handlers) &&
 	      am->msg_print_handlers[msg_id])
@@ -652,13 +635,6 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 
       _vec_len (tmpbuf) = 0;
       msg += size;
-    }
-
-  if (saved_print_handlers)
-    {
-      clib_memcpy (am->msg_print_handlers, saved_print_handlers,
-		   vec_len (am->msg_print_handlers) * sizeof (void *));
-      vec_free (saved_print_handlers);
     }
 
   munmap (hp, file_size);
@@ -760,10 +736,6 @@ api_trace_command_fn (vlib_main_t * vm,
 	{
 	  vl_msg_api_process_file (vm, filename, first, last, DUMP);
 	}
-      else if (unformat (line_input, "custom-dump %s", &filename))
-	{
-	  vl_msg_api_process_file (vm, filename, first, last, CUSTOM_DUMP);
-	}
       else if (unformat (line_input, "replay %s", &filename))
 	{
 	  vl_msg_api_process_file (vm, filename, first, last, REPLAY);
@@ -816,11 +788,10 @@ out:
 ?*/
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (api_trace_command, static) =
-{
+VLIB_CLI_COMMAND (api_trace_command, static) = {
   .path = "api trace",
   .short_help = "api trace [on|off][first <n>][last <n>][status][free]"
-                "[post-mortem-on][dump|custom-dump|save|replay <file>]",
+		"[post-mortem-on][dump|save|replay <file>]",
   .function = api_trace_command_fn,
   .is_mp_safe = 1,
 };
