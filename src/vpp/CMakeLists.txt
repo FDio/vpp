@@ -64,7 +64,6 @@ set(VPP_SOURCES
   stats/stat_segment_provider.c
   api/api.c
   api/json_format.c
-  api/custom_dump.c
   api/types.c
 )
 
