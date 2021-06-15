@@ -1,0 +1,136 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d64e48f1_7ddf2493",
+        "filename": "test/scripts/run_vpp_in_vm.sh",
+        "patchSetId": 8
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2021-06-15T19:01:58Z",
+      "side": 1,
+      "message": "The drawback of using \"set -nounset\" to catch un-set envvars is that it does not provide any feedback to the user which envvar is unset.\n\nIt would be better to explicitly test the variables and provide an error message:\n\nif [ -z \"${WS_ROOT:-}\" ] ; then \n  echo \"ERROR: WS_ROOT envvar is not set!\"\n  exit 1; \nfi",
+      "range": {
+        "startLine": 65,
+        "startChar": 0,
+        "endLine": 65,
+        "endChar": 24
+      },
+      "revId": "51d7f1e27cb0fa8503273f0c1da771190220eeaa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e41c12a0_9dbafb76",
+        "filename": "test/scripts/run_vpp_in_vm.sh",
+        "patchSetId": 8
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2021-06-15T19:01:58Z",
+      "side": 1,
+      "message": "Indentation wrong inside function.",
+      "revId": "51d7f1e27cb0fa8503273f0c1da771190220eeaa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d6edf674_5c8483b0",
+        "filename": "test/scripts/run_vpp_in_vm.sh",
+        "patchSetId": 8
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2021-06-15T19:01:58Z",
+      "side": 1,
+      "message": "Same comment.",
+      "range": {
+        "startLine": 113,
+        "startChar": 46,
+        "endLine": 113,
+        "endChar": 47
+      },
+      "revId": "51d7f1e27cb0fa8503273f0c1da771190220eeaa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6f552902_7e20f513",
+        "filename": "test/scripts/run_vpp_in_vm.sh",
+        "patchSetId": 8
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2021-06-15T19:01:58Z",
+      "side": 1,
+      "message": "Same comment.",
+      "range": {
+        "startLine": 113,
+        "startChar": 36,
+        "endLine": 113,
+        "endChar": 37
+      },
+      "revId": "51d7f1e27cb0fa8503273f0c1da771190220eeaa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6d31fb57_ab062b3c",
+        "filename": "test/scripts/run_vpp_in_vm.sh",
+        "patchSetId": 8
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2021-06-15T19:01:58Z",
+      "side": 1,
+      "message": "Same comment.  Maybe this can be derived from cpu mask.",
+      "range": {
+        "startLine": 113,
+        "startChar": 18,
+        "endLine": 113,
+        "endChar": 19
+      },
+      "revId": "51d7f1e27cb0fa8503273f0c1da771190220eeaa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5bea4d75_4814b2c1",
+        "filename": "test/scripts/run_vpp_in_vm.sh",
+        "patchSetId": 8
+      },
+      "lineNbr": 114,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2021-06-15T19:01:58Z",
+      "side": 1,
+      "message": "Same comment.",
+      "range": {
+        "startLine": 114,
+        "startChar": 16,
+        "endLine": 114,
+        "endChar": 18
+      },
+      "revId": "51d7f1e27cb0fa8503273f0c1da771190220eeaa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
