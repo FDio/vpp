@@ -140,3 +140,75 @@ VLIB_CLI_COMMAND (set_interface_ip_table_command, static) = {
   .function = mpls_interface_enable_disable,
   .short_help = "Enable/Disable an interface for MPLS forwarding",
 };
+
+static void
+show_mpls_one_interface (vnet_main_t * vnm,
+                         vlib_main_t * vm,
+                         u32 sw_if_index,
+                         bool verbose)
+{
+  mpls_main_t * mm = &mpls_main;
+  u8 enabled;
+
+  enabled = mm->mpls_enabled_by_sw_if_index[sw_if_index];
+
+  if (enabled)
+    {
+      vlib_cli_output (vm, "%U\n", format_vnet_sw_if_index_name, vnm, sw_if_index);
+      vlib_cli_output (vm, "  MPLS enabled");
+    }
+  else if (verbose)
+    {
+      vlib_cli_output (vm, "%U\n", format_vnet_sw_if_index_name, vnm, sw_if_index);
+      vlib_cli_output (vm, "  MPLS disabled");
+    }
+}
+
+static walk_rc_t
+show_mpls_interface_walk (vnet_main_t * vnm,
+                          vnet_sw_interface_t * si,
+                          void *ctx)
+{
+  show_mpls_one_interface(vnm, ctx, si->sw_if_index, false);
+
+  return (WALK_CONTINUE);
+}
+
+static clib_error_t *
+show_mpls_interface (vlib_main_t * vm,
+                     unformat_input_t * input,
+                     vlib_cli_command_t * cmd)
+{
+  vnet_main_t * vnm = vnet_get_main();
+  u32 sw_if_index;
+
+  sw_if_index = ~0;
+
+  if (! unformat_user (input, unformat_vnet_sw_interface, vnm, &sw_if_index))
+    ;
+
+  if (~0 == sw_if_index)
+    {
+      vnet_sw_interface_walk (vnm, show_mpls_interface_walk, vm);
+    }
+  else
+    {
+      show_mpls_one_interface(vnm, vm, sw_if_index, true);
+    }
+
+  return NULL;
+}
+
+/*?
+ * This command displays the MPLS forwarding state of an interface
+ *
+ * @cliexpar
+ * @cliexstart{show mpls interface}
+ *  set mpls interface GigEthernet0/8/0
+ * @cliexend
+ ?*/
+VLIB_CLI_COMMAND (show_mpls_interface_command, static) = {
+  .path = "show mpls interface",
+  .function = show_mpls_interface,
+  .short_help = "Show MPLS interface forwarding",
+};
