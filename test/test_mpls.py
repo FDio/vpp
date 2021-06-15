@@ -1594,6 +1594,10 @@ class TestMPLSDisabled(VppTestCase):
     def test_mpls_disabled(self):
         """ MPLS Disabled """
 
+        self.logger.info(self.vapi.cli("show mpls interface"))
+        self.logger.info(self.vapi.cli("show mpls interface pg1"))
+        self.logger.info(self.vapi.cli("show mpls interface pg0"))
+
         tx = (Ether(src=self.pg1.remote_mac,
                     dst=self.pg1.local_mac) /
               MPLS(label=32, ttl=64) /
@@ -1619,6 +1623,9 @@ class TestMPLSDisabled(VppTestCase):
         # MPLS enable PG1
         #
         self.pg1.enable_mpls()
+
+        self.logger.info(self.vapi.cli("show mpls interface"))
+        self.logger.info(self.vapi.cli("show mpls interface pg1"))
 
         #
         # Now we get packets through
