@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "8b68603c_5cc9aa6d",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 824,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-06-15T05:29:32Z",
+      "side": 1,
+      "message": "Thanks! Let me know if the issue persists with 21.10.",
+      "parentUuid": "fca1a384_daf4f8b1",
+      "range": {
+        "startLine": 824,
+        "startChar": 3,
+        "endLine": 824,
+        "endChar": 34
+      },
+      "revId": "5380141cb4d2ba114a41217089487f1eff263ece",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "7ab70158_9f4145d8",
         "filename": "src/vnet/tcp/tcp_timer.h",
         "patchSetId": 1
