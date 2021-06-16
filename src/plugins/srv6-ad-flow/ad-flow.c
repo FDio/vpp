@@ -55,12 +55,17 @@ ad_flow_calc_bihash_memory (u32 n_buckets, uword kv_size)
 /*****************************************/
 /* SRv6 LocalSID instantiation and removal functions */
 static int
-srv6_ad_flow_localsid_creation_fn (ip6_sr_localsid_t *localsid)
+srv6_ad_flow_localsid_creation_fn (ip6_sr_localsid_t * localsid)
 {
   ip6_sr_main_t *srm = &sr_main;
   srv6_ad_flow_main_t *sm = &srv6_ad_flow_main;
   srv6_ad_flow_localsid_t *ls_mem = localsid->plugin_mem;
   u32 localsid_index = localsid - srm->localsids;
+
+  u32 cache_buckets =
+    ad_flow_calc_bihash_buckets (SRV6_AD_FLOW_DEFAULT_CACHE_SIZE);
+  u32 cache_memory_size =
+    ad_flow_calc_bihash_memory (cache_buckets, sizeof (clib_bihash_40_8_t));
 
   /* Step 1: Prepare xconnect adjacency for sending packets to the VNF */
 
@@ -121,8 +126,8 @@ srv6_ad_flow_localsid_creation_fn (ip6_sr_localsid_t *localsid)
       if (ls_mem->sw_if_index_in >= vec_len (sm->sw_iface_localsid4))
 	{
 	  vec_resize (sm->sw_iface_localsid4,
-		      (pool_len (sm->vnet_main->interface_main.sw_interfaces) -
-		       vec_len (sm->sw_iface_localsid4)));
+		      (pool_len (sm->vnet_main->interface_main.sw_interfaces)
+		       - vec_len (sm->sw_iface_localsid4)));
 	}
       sm->sw_iface_localsid4[ls_mem->sw_if_index_in] = localsid_index;
     }
@@ -144,28 +149,33 @@ srv6_ad_flow_localsid_creation_fn (ip6_sr_localsid_t *localsid)
       if (ls_mem->sw_if_index_in >= vec_len (sm->sw_iface_localsid6))
 	{
 	  vec_resize (sm->sw_iface_localsid6,
-		      (pool_len (sm->vnet_main->interface_main.sw_interfaces) -
-		       vec_len (sm->sw_iface_localsid6)));
+		      (pool_len (sm->vnet_main->interface_main.sw_interfaces)
+		       - vec_len (sm->sw_iface_localsid6)));
 	}
       sm->sw_iface_localsid6[ls_mem->sw_if_index_in] = localsid_index;
     }
 
   /* Initialize flow and cache tables */
-  ls_mem->cache_size = SRV6_AD_FLOW_DEFAULT_CACHE_SIZE;
-  ls_mem->cache_buckets = ad_flow_calc_bihash_buckets (ls_mem->cache_size);
-  ls_mem->cache_memory_size = ad_flow_calc_bihash_memory (
-    ls_mem->cache_buckets, sizeof (clib_bihash_40_8_t));
+  vec_validate (ls_mem->per_thread_data, vlib_num_workers ());
+  adflow_per_thread_data_t *rt;
+  vec_foreach (rt, ls_mem->per_thread_data)
+  {
+    /* Initialize flow and cache tables */
+    rt->cache_size = SRV6_AD_FLOW_DEFAULT_CACHE_SIZE;
+    rt->cache_buckets = ad_flow_calc_bihash_buckets (rt->cache_size);
 
-  pool_alloc (ls_mem->cache, ls_mem->cache_size);
-  pool_alloc (ls_mem->lru_pool, ls_mem->cache_size);
+    pool_alloc (rt->cache, rt->cache_size);
+    pool_alloc (rt->lru_pool, rt->cache_size);
 
-  dlist_elt_t *head;
-  pool_get (ls_mem->lru_pool, head);
-  ls_mem->lru_head_index = head - ls_mem->lru_pool;
-  clib_dlist_init (ls_mem->lru_pool, ls_mem->lru_head_index);
+    dlist_elt_t *head;
+    pool_get (rt->lru_pool, head);
+    rt->lru_head_index = head - rt->lru_pool;
+    clib_dlist_init (rt->lru_pool, rt->lru_head_index);
 
-  clib_bihash_init_40_8 (&ls_mem->ftable, "ad-flow", ls_mem->cache_buckets,
-			 ls_mem->cache_memory_size);
+  }
+
+  clib_bihash_init_40_8 (&ls_mem->ftable, "ad-flow", cache_buckets,
+			 cache_memory_size);
 
   /* Step 3: Initialize rewrite counters */
   srv6_ad_flow_localsid_t **ls_p;
@@ -190,7 +200,7 @@ srv6_ad_flow_localsid_creation_fn (ip6_sr_localsid_t *localsid)
 }
 
 static int
-srv6_ad_flow_localsid_removal_fn (ip6_sr_localsid_t *localsid)
+srv6_ad_flow_localsid_removal_fn (ip6_sr_localsid_t * localsid)
 {
   srv6_ad_flow_main_t *sm = &srv6_ad_flow_main;
   srv6_ad_flow_localsid_t *ls_mem = localsid->plugin_mem;
@@ -227,13 +237,20 @@ srv6_ad_flow_localsid_removal_fn (ip6_sr_localsid_t *localsid)
   pool_put (sm->sids, pool_elt_at_index (sm->sids, ls_mem->index));
 
   /* Clean up local SID memory */
-  srv6_ad_flow_entry_t *e;
-  pool_foreach (e, ls_mem->cache)
-    {
-      vec_free (e->rw_data);
-    }
-  pool_free (ls_mem->cache);
-  pool_free (ls_mem->lru_pool);
+  adflow_per_thread_data_t *td;
+  pool_foreach (td, ls_mem->per_thread_data, (
+					       {
+					       srv6_ad_flow_entry_t * e;
+					       pool_foreach (e, td->cache, (
+									      {
+									      vec_free
+									      (e->rw_data);
+									      }
+							     ));
+					       pool_free (td->cache);
+					       pool_free (td->lru_pool);
+					       }
+		));
   clib_bihash_free_40_8 (&ls_mem->ftable);
   clib_mem_free (localsid->plugin_mem);
 
@@ -247,7 +264,7 @@ srv6_ad_flow_localsid_removal_fn (ip6_sr_localsid_t *localsid)
  * Example: print "Table 5"
  */
 u8 *
-format_srv6_ad_flow_localsid (u8 *s, va_list *args)
+format_srv6_ad_flow_localsid (u8 * s, va_list * args)
 {
   srv6_ad_flow_localsid_t *ls_mem = va_arg (*args, void *);
 
@@ -283,17 +300,22 @@ format_srv6_ad_flow_localsid (u8 *s, va_list *args)
 			     &rw_invalid);
 
   s =
-    format (s, "\tTraffic that bypassed the NF: \t[%Ld packets : %Ld bytes]\n",
+    format (s,
+	    "\tTraffic that bypassed the NF: \t[%Ld packets : %Ld bytes]\n",
 	    sid_bypass.packets, sid_bypass.bytes);
-  s = format (s, "\tPunted traffic: \t[%Ld packets : %Ld bytes]\n",
-	      sid_punt.packets, sid_punt.bytes);
   s =
-    format (s, "\tDropped traffic (cache full): \t[%Ld packets : %Ld bytes]\n",
+    format (s, "\tPunted traffic: \t[%Ld packets : %Ld bytes]\n",
+	    sid_punt.packets, sid_punt.bytes);
+  s =
+    format (s,
+	    "\tDropped traffic (cache full): \t[%Ld packets : %Ld bytes]\n",
 	    sid_full.packets, sid_full.bytes);
-  s = format (s, "\tGood rewrite traffic: \t[%Ld packets : %Ld bytes]\n",
-	      rw_valid.packets, rw_valid.bytes);
-  s = format (s, "\tBad rewrite traffic:  \t[%Ld packets : %Ld bytes]\n",
-	      rw_invalid.packets, rw_invalid.bytes);
+  s =
+    format (s, "\tGood rewrite traffic: \t[%Ld packets : %Ld bytes]\n",
+	    rw_valid.packets, rw_valid.bytes);
+  s =
+    format (s, "\tBad rewrite traffic:  \t[%Ld packets : %Ld bytes]\n",
+	    rw_invalid.packets, rw_invalid.bytes);
 
   return s;
 }
@@ -306,7 +328,7 @@ format_srv6_ad_flow_localsid (u8 *s, va_list *args)
  * Notice that it MUST match the keyword_str and params_str defined above.
  */
 uword
-unformat_srv6_ad_flow_localsid (unformat_input_t *input, va_list *args)
+unformat_srv6_ad_flow_localsid (unformat_input_t * input, va_list * args)
 {
   void **plugin_mem_p = va_arg (*args, void **);
   srv6_ad_flow_localsid_t *ls_mem;
@@ -385,7 +407,7 @@ unformat_srv6_ad_flow_localsid (unformat_input_t *input, va_list *args)
 /*************************/
 /* SRv6 LocalSID FIB DPO */
 static u8 *
-format_srv6_ad_flow_dpo (u8 *s, va_list *args)
+format_srv6_ad_flow_dpo (u8 * s, va_list * args)
 {
   index_t index = va_arg (*args, index_t);
   CLIB_UNUSED (u32 indent) = va_arg (*args, u32);
@@ -394,12 +416,12 @@ format_srv6_ad_flow_dpo (u8 *s, va_list *args)
 }
 
 void
-srv6_ad_flow_dpo_lock (dpo_id_t *dpo)
+srv6_ad_flow_dpo_lock (dpo_id_t * dpo)
 {
 }
 
 void
-srv6_ad_flow_dpo_unlock (dpo_id_t *dpo)
+srv6_ad_flow_dpo_unlock (dpo_id_t * dpo)
 {
 }
 
@@ -420,7 +442,7 @@ const static char *const *const srv6_ad_flow_nodes[DPO_PROTO_NUM] = {
 
 /**********************/
 static clib_error_t *
-srv6_ad_flow_init (vlib_main_t *vm)
+srv6_ad_flow_init (vlib_main_t * vm)
 {
   srv6_ad_flow_main_t *sm = &srv6_ad_flow_main;
   int rv = 0;
@@ -433,15 +455,21 @@ srv6_ad_flow_init (vlib_main_t *vm)
     dpo_register_new_type (&srv6_ad_flow_vft, srv6_ad_flow_nodes);
 
   /* Register SRv6 LocalSID */
-  rv = sr_localsid_register_function (
-    vm, function_name, keyword_str, def_str, params_str, 128,
-    &sm->srv6_ad_flow_dpo_type, format_srv6_ad_flow_localsid,
-    unformat_srv6_ad_flow_localsid, srv6_ad_flow_localsid_creation_fn,
-    srv6_ad_flow_localsid_removal_fn);
+  rv =
+    sr_localsid_register_function (vm, function_name, keyword_str, def_str,
+				   params_str, 128,
+				   &sm->srv6_ad_flow_dpo_type,
+				   format_srv6_ad_flow_localsid,
+				   unformat_srv6_ad_flow_localsid,
+				   srv6_ad_flow_localsid_creation_fn,
+				   srv6_ad_flow_localsid_removal_fn);
   if (rv < 0)
     clib_error_return (0, "SRv6 LocalSID function could not be registered.");
   else
     sm->srv6_localsid_behavior_id = rv;
+
+
+
 
   return 0;
 }
