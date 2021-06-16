@@ -128,11 +128,18 @@ vcl_worker_cleanup (vcl_worker_t * wrk, u8 notify_vpp)
 
   if (wrk->mqs_epfd > 0)
     close (wrk->mqs_epfd);
+  pool_free (wrk->sessions);
+  pool_free (wrk->mq_evt_conns);
   hash_free (wrk->session_index_by_vpp_handles);
   vec_free (wrk->mq_events);
   vec_free (wrk->mq_msg_vector);
   vec_free (wrk->ep_level_evts);
   vec_free (wrk->ep_level_evts_fl);
+  vec_free (wrk->unhandled_evts_vector);
+  vec_free (wrk->pending_session_wrk_updates);
+  clib_bitmap_free (wrk->rd_bitmap);
+  clib_bitmap_free (wrk->wr_bitmap);
+  clib_bitmap_free (wrk->ex_bitmap);
   vcl_worker_free (wrk);
   clib_spinlock_unlock (&vcm->workers_lock);
 }
