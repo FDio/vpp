@@ -69,8 +69,8 @@ vlib_node_registration_t srv6_ad6_flow_rewrite_node;
 
 /****************************** Packet counters ******************************/
 
-#define foreach_srv6_ad_flow_rewrite_counter                                  \
-  _ (PROCESSED, "srv6-ad-flow rewritten packets")                             \
+#define foreach_srv6_ad_flow_rewrite_counter      \
+  _ (PROCESSED, "srv6-ad-flow rewritten packets") \
   _ (NO_RW, "(Error) No header for rewriting.")
 
 typedef enum
@@ -108,8 +108,6 @@ typedef enum
 
 /***************************** Inline functions ******************************/
 
-
-
 static_always_inline int
 ad_flow_per_thread_lru_insert (adflow_per_thread_data_t * td,
 			       srv6_ad_flow_entry_t * e, f64 now)
@@ -122,10 +120,8 @@ ad_flow_per_thread_lru_insert (adflow_per_thread_data_t * td,
   lru_list_elt->value = e - td->cache;
   e->last_lru_update = now;
 
-
   return 1;
 }
-
 
 always_inline void
 ad_flow_per_thread_entry_update_lru (adflow_per_thread_data_t * td,
@@ -138,9 +134,7 @@ ad_flow_per_thread_entry_update_lru (adflow_per_thread_data_t * td,
       clib_dlist_addtail (td->lru_pool, td->lru_head_index, e->lru_index);
       e->last_lru_update = e->last_heard;
     }
-
 }
-
 
 always_inline void
 ad_flow_per_thread_entry_delete (srv6_ad_flow_localsid_t * ls,
@@ -178,7 +172,6 @@ ad_flow_per_thread_entry_delete (srv6_ad_flow_localsid_t * ls,
     }
   pool_put_index (td->lru_pool, e->lru_index);
   pool_put (td->cache, e);
-
 }
 
 static_always_inline int
@@ -209,7 +202,6 @@ ad_flow_per_thread_lru_free_one (srv6_ad_flow_localsid_t * ls,
 	}
     }
 
-
   return 0;
 }
 
@@ -229,7 +221,6 @@ ad_flow_per_thread_entry_alloc (srv6_ad_flow_localsid_t * ls,
   return e;
 }
 
-
 always_inline u32
 ad_flow_per_thread_value_get_session_index (clib_bihash_kv_40_8_t * value)
 {
@@ -242,7 +233,6 @@ ad_flow_per_thread_value_get_thread_index (clib_bihash_kv_40_8_t * value)
   return value->value & ~(u32) 0;
 }
 
-
 int
 ad_flow_per_thread_is_idle_entry_cb (clib_bihash_kv_40_8_t * kv, void *arg)
 {
@@ -252,9 +242,8 @@ ad_flow_per_thread_is_idle_entry_cb (clib_bihash_kv_40_8_t * kv, void *arg)
   srv6_ad_flow_localsid_t *ls = ctx->ls;
   adflow_per_thread_data_t *td = ctx->per_thread_data;
 
-  e =
-    pool_elt_at_index (td->cache,
-		       ad_flow_per_thread_value_get_session_index (kv));
+  e = pool_elt_at_index (td->cache,
+			 ad_flow_per_thread_value_get_session_index (kv));
   entry_timeout_time = e->last_heard + (f64) SRV6_AD_CACHE_TIMEOUT;
   if (ctx->now >= entry_timeout_time)
     {
@@ -448,7 +437,6 @@ end_ad_flow_processing_v6 (vlib_main_t * vm, vlib_buffer_t * b,
       kv.value =
 	(u64) ((u32) (e - per_thread_data->cache)) << 32 | vm->thread_index;
 
-
       ctx.now = now;
       ctx.ls = ls_mem;
       clib_bihash_add_or_overwrite_stale_40_8 (h, &kv,
@@ -496,7 +484,6 @@ end_ad_flow_processing_v4 (vlib_main_t * vm, vlib_buffer_t * b,
   srv6_ad_flow_entry_t *e = NULL;
   clib_bihash_kv_40_8_t kv, value;
   srv6_ad_is_idle_entry_ctx_t ctx;
-
 
   adflow_per_thread_data_t *per_thread_data =
     &ls_mem->per_thread_data[vm->thread_index];
@@ -571,7 +558,6 @@ end_ad_flow_processing_v4 (vlib_main_t * vm, vlib_buffer_t * b,
       e = pool_elt_at_index (per_thread_data->cache,
 			     ad_flow_per_thread_value_get_session_index
 			     (&value));
-
     }
 
   if (!e)
@@ -589,7 +575,6 @@ end_ad_flow_processing_v4 (vlib_main_t * vm, vlib_buffer_t * b,
 	    }
 	}
 
-
       e = ad_flow_per_thread_entry_alloc (ls_mem, per_thread_data, now);
       ASSERT (e);
       e->key.s_addr.ip4 = ulh->src_address;
@@ -597,7 +582,6 @@ end_ad_flow_processing_v4 (vlib_main_t * vm, vlib_buffer_t * b,
       e->key.s_port = src_port;
       e->key.d_port = dst_port;
       e->key.proto = ulh->protocol;
-
 
       kv.value =
 	(u64) ((u32) (e - per_thread_data->cache)) << 32 | vm->thread_index;
@@ -637,8 +621,8 @@ end_ad_flow_processing_v4 (vlib_main_t * vm, vlib_buffer_t * b,
  * @brief SRv6 AD Localsid graph node
  */
 static uword
-srv6_ad_flow_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-			  vlib_frame_t * frame)
+srv6_ad_flow_localsid_fn (vlib_main_t * vm,
+			  vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   ip6_sr_main_t *srm = &sr_main;
   f64 now = vlib_time_now (vm);
@@ -738,8 +722,8 @@ VLIB_REGISTER_NODE (srv6_ad_flow_localsid_node) = {
  * Encapsulation
  */
 static uword
-srv6_ad4_flow_rewrite_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-			  vlib_frame_t * frame)
+srv6_ad4_flow_rewrite_fn (vlib_main_t * vm,
+			  vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   ip6_sr_main_t *srm = &sr_main;
   srv6_ad_flow_main_t *sm = &srv6_ad_flow_main;
@@ -827,12 +811,10 @@ srv6_ad4_flow_rewrite_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		    &ls0_mem->per_thread_data
 		    [ad_flow_per_thread_value_get_thread_index (&value0)];
 
-
 		  /* found */
-		  s0 =
-		    pool_elt_at_index (td->cache,
-				       ad_flow_per_thread_value_get_session_index
-				       (&value0));
+		  s0 = pool_elt_at_index (td->cache,
+					  ad_flow_per_thread_value_get_session_index
+					  (&value0));
 		  ASSERT (s0);
 		  ASSERT (VLIB_BUFFER_PRE_DATA_SIZE >=
 			  (s0->rw_len + b0->current_data));
@@ -924,8 +906,8 @@ VLIB_REGISTER_NODE (srv6_ad4_flow_rewrite_node) = {
  * Encapsulation
  */
 static uword
-srv6_ad6_flow_rewrite_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-			  vlib_frame_t * frame)
+srv6_ad6_flow_rewrite_fn (vlib_main_t * vm,
+			  vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   ip6_sr_main_t *srm = &sr_main;
   srv6_ad_flow_main_t *sm = &srv6_ad_flow_main;
@@ -1011,12 +993,10 @@ srv6_ad6_flow_rewrite_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		    &ls0_mem->per_thread_data
 		    [ad_flow_per_thread_value_get_thread_index (&value0)];
 
-
 		  /* found */
-		  s0 =
-		    pool_elt_at_index (td->cache,
-				       ad_flow_per_thread_value_get_session_index
-				       (&value0));
+		  s0 = pool_elt_at_index (td->cache,
+					  ad_flow_per_thread_value_get_session_index
+					  (&value0));
 		  ASSERT (s0);
 
 		  ASSERT (VLIB_BUFFER_PRE_DATA_SIZE >=

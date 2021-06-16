@@ -28,9 +28,9 @@
 #include <vppinfra/bihash_template.c>
 
 #define SID_CREATE_IFACE_FEATURE_ERROR -1
-#define SID_CREATE_INVALID_IFACE_TYPE  -3
+#define SID_CREATE_INVALID_IFACE_TYPE -3
 #define SID_CREATE_INVALID_IFACE_INDEX -4
-#define SID_CREATE_INVALID_ADJ_INDEX   -5
+#define SID_CREATE_INVALID_ADJ_INDEX -5
 
 unsigned char function_name[] = "SRv6-AD-Flow-plugin";
 unsigned char keyword_str[] = "End.AD.Flow";
@@ -171,7 +171,6 @@ srv6_ad_flow_localsid_creation_fn (ip6_sr_localsid_t * localsid)
     pool_get (rt->lru_pool, head);
     rt->lru_head_index = head - rt->lru_pool;
     clib_dlist_init (rt->lru_pool, rt->lru_head_index);
-
   }
 
   clib_bihash_init_40_8 (&ls_mem->ftable, "ad-flow", cache_buckets,
@@ -244,8 +243,7 @@ srv6_ad_flow_localsid_removal_fn (ip6_sr_localsid_t * localsid)
 					       pool_foreach (e, td->cache, (
 									      {
 									      vec_free
-									      (e->rw_data);
-									      }
+									      (e->rw_data);}
 							     ));
 					       pool_free (td->cache);
 					       pool_free (td->lru_pool);
@@ -299,23 +297,18 @@ format_srv6_ad_flow_localsid (u8 * s, va_list * args)
   vlib_get_combined_counter (&(sm->rw_invalid_counters), ls_mem->index,
 			     &rw_invalid);
 
-  s =
-    format (s,
-	    "\tTraffic that bypassed the NF: \t[%Ld packets : %Ld bytes]\n",
-	    sid_bypass.packets, sid_bypass.bytes);
-  s =
-    format (s, "\tPunted traffic: \t[%Ld packets : %Ld bytes]\n",
-	    sid_punt.packets, sid_punt.bytes);
-  s =
-    format (s,
-	    "\tDropped traffic (cache full): \t[%Ld packets : %Ld bytes]\n",
-	    sid_full.packets, sid_full.bytes);
-  s =
-    format (s, "\tGood rewrite traffic: \t[%Ld packets : %Ld bytes]\n",
-	    rw_valid.packets, rw_valid.bytes);
-  s =
-    format (s, "\tBad rewrite traffic:  \t[%Ld packets : %Ld bytes]\n",
-	    rw_invalid.packets, rw_invalid.bytes);
+  s = format (s,
+	      "\tTraffic that bypassed the NF: \t[%Ld packets : %Ld bytes]\n",
+	      sid_bypass.packets, sid_bypass.bytes);
+  s = format (s, "\tPunted traffic: \t[%Ld packets : %Ld bytes]\n",
+	      sid_punt.packets, sid_punt.bytes);
+  s = format (s,
+	      "\tDropped traffic (cache full): \t[%Ld packets : %Ld bytes]\n",
+	      sid_full.packets, sid_full.bytes);
+  s = format (s, "\tGood rewrite traffic: \t[%Ld packets : %Ld bytes]\n",
+	      rw_valid.packets, rw_valid.bytes);
+  s = format (s, "\tBad rewrite traffic:  \t[%Ld packets : %Ld bytes]\n",
+	      rw_invalid.packets, rw_invalid.bytes);
 
   return s;
 }
@@ -341,7 +334,7 @@ unformat_srv6_ad_flow_localsid (unformat_input_t * input, va_list * args)
   u32 sw_if_index_in;
 
   u8 params = 0;
-#define PARAM_AD_NH  (1 << 0)
+#define PARAM_AD_NH (1 << 0)
 #define PARAM_AD_OIF (1 << 1)
 #define PARAM_AD_IIF (1 << 2)
 
@@ -467,9 +460,6 @@ srv6_ad_flow_init (vlib_main_t * vm)
     clib_error_return (0, "SRv6 LocalSID function could not be registered.");
   else
     sm->srv6_localsid_behavior_id = rv;
-
-
-
 
   return 0;
 }
