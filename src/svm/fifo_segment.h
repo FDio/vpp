@@ -132,6 +132,7 @@ svm_fifo_t *fifo_segment_alloc_fifo_w_slice (fifo_segment_t * fs,
 					     fifo_segment_ftype_t ftype);
 svm_fifo_t *fifo_segment_alloc_fifo_w_offset (fifo_segment_t *fs,
 					      uword offset);
+svm_fifo_t *fifo_segment_duplicate_fifo (fifo_segment_t *fs, svm_fifo_t *f);
 
 /**
  * Free fifo allocated in fifo segment
