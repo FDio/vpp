@@ -730,6 +730,8 @@ int vcl_segment_discover_mqs (uword segment_handle, int *fds, u32 n_fds);
 svm_fifo_chunk_t *vcl_segment_alloc_chunk (uword segment_handle,
 					   u32 slice_index, u32 size,
 					   uword *offset);
+int vcl_session_share_fifos (vcl_session_t *s, svm_fifo_t *rxf,
+			     svm_fifo_t *txf);
 
 /*
  * VCL Binary API

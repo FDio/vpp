@@ -569,6 +569,26 @@ vcl_segment_alloc_chunk (uword segment_handle, u32 slice_index, u32 size,
   return c;
 }
 
+int
+vcl_session_share_fifos (vcl_session_t *s, svm_fifo_t *rxf, svm_fifo_t *txf)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  fifo_segment_t *fs;
+
+  clib_rwlock_reader_lock (&vcm->segment_table_lock);
+
+  fs = fifo_segment_get_segment (&vcm->segment_main, rxf->segment_index);
+  s->rx_fifo = fifo_segment_duplicate_fifo (fs, rxf);
+  s->tx_fifo = fifo_segment_duplicate_fifo (fs, txf);
+
+  clib_rwlock_reader_unlock (&vcm->segment_table_lock);
+
+  svm_fifo_add_subscriber (s->rx_fifo, wrk->vpp_wrk_index);
+  svm_fifo_add_subscriber (s->tx_fifo, wrk->vpp_wrk_index);
+
+  return 0;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
