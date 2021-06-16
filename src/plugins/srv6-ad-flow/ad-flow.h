@@ -61,6 +61,21 @@ typedef struct
   f64 last_heard;
 } srv6_ad_flow_entry_t;
 
+
+typedef struct
+{
+
+  u32 cache_size;
+  u32 cache_buckets;
+  uword cache_memory_size;
+
+  srv6_ad_flow_entry_t *cache; /**< Cache table */
+  dlist_elt_t *lru_pool;
+  u32 lru_head_index;
+
+} adflow_per_thread_data_t;
+
+
 /*
  * This is the memory that will be stored per each localsid
  * the user instantiates
@@ -74,14 +89,9 @@ typedef struct
 
   u32 sw_if_index_in; /**< Incoming iface from proxied dev. */
 
-  u32 cache_size;
-  u32 cache_buckets;
-  uword cache_memory_size;
-
   clib_bihash_40_8_t ftable;   /**< Flow table */
-  srv6_ad_flow_entry_t *cache; /**< Cache table */
-  dlist_elt_t *lru_pool;
-  u32 lru_head_index;
+
+  adflow_per_thread_data_t *per_thread_data;
 
   u32 index;
 } srv6_ad_flow_localsid_t;
@@ -112,12 +122,16 @@ typedef struct
     rw_valid_counters; /**< Valid rewrite counters */
   vlib_combined_counter_main_t
     rw_invalid_counters; /**< Invalid rewrite counters */
+
 } srv6_ad_flow_main_t;
 
 typedef struct
 {
   srv6_ad_flow_localsid_t *ls;
   f64 now;
+
+  adflow_per_thread_data_t *per_thread_data;
+
 } srv6_ad_is_idle_entry_ctx_t;
 
 extern srv6_ad_flow_main_t srv6_ad_flow_main;
