@@ -62,6 +62,11 @@ srv6_ad_flow_localsid_creation_fn (ip6_sr_localsid_t *localsid)
   srv6_ad_flow_localsid_t *ls_mem = localsid->plugin_mem;
   u32 localsid_index = localsid - srm->localsids;
 
+  u32 cache_buckets =
+    ad_flow_calc_bihash_buckets (SRV6_AD_FLOW_DEFAULT_CACHE_SIZE);
+  u32 cache_memory_size =
+    ad_flow_calc_bihash_memory (cache_buckets, sizeof (clib_bihash_40_8_t));
+
   /* Step 1: Prepare xconnect adjacency for sending packets to the VNF */
 
   /* Retrieve the adjacency corresponding to the (OIF, next_hop) */
@@ -151,21 +156,25 @@ srv6_ad_flow_localsid_creation_fn (ip6_sr_localsid_t *localsid)
     }
 
   /* Initialize flow and cache tables */
-  ls_mem->cache_size = SRV6_AD_FLOW_DEFAULT_CACHE_SIZE;
-  ls_mem->cache_buckets = ad_flow_calc_bihash_buckets (ls_mem->cache_size);
-  ls_mem->cache_memory_size = ad_flow_calc_bihash_memory (
-    ls_mem->cache_buckets, sizeof (clib_bihash_40_8_t));
+  vec_validate (ls_mem->per_thread_data, vlib_num_workers ());
+  adflow_per_thread_data_t *rt;
+  vec_foreach (rt, ls_mem->per_thread_data)
+    {
+      /* Initialize flow and cache tables */
+      rt->cache_size = SRV6_AD_FLOW_DEFAULT_CACHE_SIZE;
+      rt->cache_buckets = ad_flow_calc_bihash_buckets (rt->cache_size);
 
-  pool_alloc (ls_mem->cache, ls_mem->cache_size);
-  pool_alloc (ls_mem->lru_pool, ls_mem->cache_size);
+      pool_alloc (rt->cache, rt->cache_size);
+      pool_alloc (rt->lru_pool, rt->cache_size);
 
-  dlist_elt_t *head;
-  pool_get (ls_mem->lru_pool, head);
-  ls_mem->lru_head_index = head - ls_mem->lru_pool;
-  clib_dlist_init (ls_mem->lru_pool, ls_mem->lru_head_index);
+      dlist_elt_t *head;
+      pool_get (rt->lru_pool, head);
+      rt->lru_head_index = head - rt->lru_pool;
+      clib_dlist_init (rt->lru_pool, rt->lru_head_index);
+    }
 
-  clib_bihash_init_40_8 (&ls_mem->ftable, "ad-flow", ls_mem->cache_buckets,
-			 ls_mem->cache_memory_size);
+  clib_bihash_init_40_8 (&ls_mem->ftable, "ad-flow", cache_buckets,
+			 cache_memory_size);
 
   /* Step 3: Initialize rewrite counters */
   srv6_ad_flow_localsid_t **ls_p;
@@ -227,13 +236,15 @@ srv6_ad_flow_localsid_removal_fn (ip6_sr_localsid_t *localsid)
   pool_put (sm->sids, pool_elt_at_index (sm->sids, ls_mem->index));
 
   /* Clean up local SID memory */
-  srv6_ad_flow_entry_t *e;
-  pool_foreach (e, ls_mem->cache)
-    {
-      vec_free (e->rw_data);
-    }
-  pool_free (ls_mem->cache);
-  pool_free (ls_mem->lru_pool);
+  adflow_per_thread_data_t *td;
+  pool_foreach (td, ls_mem->per_thread_data, ({
+		  srv6_ad_flow_entry_t *e;
+		  pool_foreach (e, td->cache, ({ vec_free (e->rw_data); }))
+		    ;
+		  pool_free (td->cache);
+		  pool_free (td->lru_pool);
+		}))
+    ;
   clib_bihash_free_40_8 (&ls_mem->ftable);
   clib_mem_free (localsid->plugin_mem);
 
