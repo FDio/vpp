@@ -903,6 +903,14 @@ fifo_segment_alloc_fifo_w_offset (fifo_segment_t *fs, uword offset)
   return f;
 }
 
+svm_fifo_t *
+fifo_segment_duplicate_fifo (fifo_segment_t *fs, svm_fifo_t *f)
+{
+  svm_fifo_t *nf = fs_fifo_alloc (fs, 0);
+  clib_memcpy (nf, f, sizeof (*f));
+  return nf;
+}
+
 /**
  * Free fifo allocated in fifo segment
  */

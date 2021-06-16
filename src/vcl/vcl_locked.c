@@ -766,8 +766,7 @@ vls_share_session (vls_worker_t * vls_wrk, vcl_locked_session_t * vls)
 
   if (s->rx_fifo)
     {
-      svm_fifo_add_subscriber (s->rx_fifo, vcl_wrk->vpp_wrk_index);
-      svm_fifo_add_subscriber (s->tx_fifo, vcl_wrk->vpp_wrk_index);
+      vcl_session_share_fifos (s, s->rx_fifo, s->tx_fifo);
     }
   else if (s->session_state == VCL_STATE_LISTEN)
     {

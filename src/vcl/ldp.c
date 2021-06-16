@@ -1945,6 +1945,9 @@ getsockopt (int fd, int level, int optname,
 	    case SO_ERROR:
 	      rv = vls_attr (vlsh, VPPCOM_ATTR_GET_ERROR, optval, optlen);
 	      break;
+	    case SO_BINDTODEVICE:
+	      rv = 0;
+	      break;
 	    default:
 	      LDBG (0, "ERROR: fd %d: getsockopt SOL_SOCKET: vlsh %u "
 		    "optname %d unsupported!", fd, vlsh, optname);
