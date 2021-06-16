@@ -42,7 +42,7 @@ format_srv6_ad_flow_localsid_trace (u8 *s, va_list *args)
     va_arg (*args, srv6_ad_flow_localsid_trace_t *);
 
   return format (s, "SRv6-AD-Flow-localsid: localsid_index %d",
-		 t->localsid_index);
+	   t->localsid_index);
 }
 
 static u8 *
@@ -114,7 +114,7 @@ static_always_inline int
 ad_flow_per_thread_lru_insert (adflow_per_thread_data_t *td, srv6_ad_flow_entry_t *e,
 		    f64 now)
 {
-  
+
   dlist_elt_t *lru_list_elt;
   pool_get (td->lru_pool, lru_list_elt);
   e->lru_index = lru_list_elt - td->lru_pool;
@@ -122,7 +122,7 @@ ad_flow_per_thread_lru_insert (adflow_per_thread_data_t *td, srv6_ad_flow_entry_
   lru_list_elt->value = e - td->cache;
   e->last_lru_update = now;
 
-  
+
   return 1;
 }
 
@@ -137,7 +137,7 @@ ad_flow_per_thread_entry_update_lru (adflow_per_thread_data_t *td, srv6_ad_flow_
       clib_dlist_addtail (td->lru_pool, td->lru_head_index, e->lru_index);
       e->last_lru_update = e->last_heard;
     }
-  
+
 }
 
 
@@ -182,7 +182,7 @@ ad_flow_per_thread_entry_delete (srv6_ad_flow_localsid_t *ls, adflow_per_thread_
 static_always_inline int
 ad_flow_per_thread_lru_free_one (srv6_ad_flow_localsid_t *ls, adflow_per_thread_data_t *td, f64 now)
 {
-  
+
   srv6_ad_flow_entry_t *e = NULL;
   dlist_elt_t *oldest_elt;
   f64 entry_timeout_time;
@@ -481,9 +481,9 @@ end_ad_flow_processing_v4 (vlib_main_t *vm, vlib_buffer_t *b, ip6_header_t *ip,
   clib_bihash_kv_40_8_t kv, value;
   srv6_ad_is_idle_entry_ctx_t ctx;
 
-  
+
   adflow_per_thread_data_t *per_thread_data = &ls_mem->per_thread_data[vm->thread_index];
-  
+
   /* Find SRH in the extension header chain */
   end_ad_flow_walk_expect_first_hdr (vm, b, (void *) (ip + 1), ip->protocol,
 				     IP_PROTOCOL_IPV6_ROUTE, &encap_length,
@@ -547,18 +547,18 @@ end_ad_flow_processing_v4 (vlib_main_t *vm, vlib_buffer_t *b, ip6_header_t *ip,
   /* Lookup flow in hashtable */
   if (!clib_bihash_search_40_8 (h, &kv, &value))
     {
-      
+
       e = pool_elt_at_index (per_thread_data->cache,
 			     ad_flow_per_thread_value_get_session_index (&value));
-      
+
     }
 
   if (!e)
     {
-      
+
       if (pool_elts (per_thread_data->cache) >= per_thread_data->cache_size)
 	{
-	  
+
 	  if (!ad_flow_per_thread_lru_free_one (ls_mem, per_thread_data, now))
 	    {
 	      *next = SRV6_AD_FLOW_LOCALSID_NEXT_ERROR;
@@ -568,7 +568,7 @@ end_ad_flow_processing_v4 (vlib_main_t *vm, vlib_buffer_t *b, ip6_header_t *ip,
 	    }
 	}
 
-      
+
       e = ad_flow_per_thread_entry_alloc (ls_mem, per_thread_data, now);
       ASSERT (e);
       e->key.s_addr.ip4 = ulh->src_address;
@@ -577,7 +577,7 @@ end_ad_flow_processing_v4 (vlib_main_t *vm, vlib_buffer_t *b, ip6_header_t *ip,
       e->key.d_port = dst_port;
       e->key.proto = ulh->protocol;
 
-      
+
       kv.value = (u64)((u32) (e - per_thread_data->cache))<<32|vm->thread_index;
 
       ctx.now = now;
@@ -799,7 +799,7 @@ srv6_ad4_flow_rewrite_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       adflow_per_thread_data_t *td =
         &ls0_mem->per_thread_data[ad_flow_per_thread_value_get_thread_index(&value0)];
-      
+
 
 		  /* found */
       s0 = pool_elt_at_index (
@@ -976,7 +976,6 @@ srv6_ad6_flow_rewrite_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 		{
 		  adflow_per_thread_data_t *td =
           &ls0_mem->per_thread_data[ad_flow_per_thread_value_get_thread_index(&value0)];
-
 
 		  /* found */
 		  s0 = pool_elt_at_index (

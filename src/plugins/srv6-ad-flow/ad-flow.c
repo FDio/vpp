@@ -61,7 +61,7 @@ srv6_ad_flow_localsid_creation_fn (ip6_sr_localsid_t *localsid)
   srv6_ad_flow_main_t *sm = &srv6_ad_flow_main;
   srv6_ad_flow_localsid_t *ls_mem = localsid->plugin_mem;
   u32 localsid_index = localsid - srm->localsids;
-   
+
   u32 cache_buckets = ad_flow_calc_bihash_buckets(SRV6_AD_FLOW_DEFAULT_CACHE_SIZE);
   u32 cache_memory_size =
     ad_flow_calc_bihash_memory (
@@ -163,7 +163,7 @@ srv6_ad_flow_localsid_creation_fn (ip6_sr_localsid_t *localsid)
     /* Initialize flow and cache tables */
     rt->cache_size = SRV6_AD_FLOW_DEFAULT_CACHE_SIZE;
     rt->cache_buckets = ad_flow_calc_bihash_buckets (rt->cache_size);
-    
+
     pool_alloc (rt->cache, rt->cache_size);
     pool_alloc (rt->lru_pool, rt->cache_size);
 
@@ -245,7 +245,7 @@ srv6_ad_flow_localsid_removal_fn (ip6_sr_localsid_t *localsid)
     ({
       vec_free (e->rw_data);
      }));
-    
+
       pool_free (td->cache);
       pool_free (td->lru_pool);
     }));
@@ -458,8 +458,8 @@ srv6_ad_flow_init (vlib_main_t *vm)
   else
     sm->srv6_localsid_behavior_id = rv;
 
-  
-  
+
+
 
   return 0;
 }
