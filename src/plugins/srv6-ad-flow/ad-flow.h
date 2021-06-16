@@ -30,7 +30,7 @@
 #define AD_TYPE_IP6 IP_PROTOCOL_IPV6
 
 #define SRV6_AD_FLOW_DEFAULT_CACHE_SIZE 100
-#define SRV6_AD_CACHE_TIMEOUT		300
+#define SRV6_AD_CACHE_TIMEOUT 300
 
 /*
  * Cache entries
@@ -61,7 +61,6 @@ typedef struct
   f64 last_heard;
 } srv6_ad_flow_entry_t;
 
-
 typedef struct
 {
 
@@ -75,7 +74,6 @@ typedef struct
 
 } adflow_per_thread_data_t;
 
-
 /*
  * This is the memory that will be stored per each localsid
  * the user instantiates
@@ -83,13 +81,13 @@ typedef struct
 typedef struct
 {
   ip46_address_t nh_addr; /**< Proxied device address */
-  u32 sw_if_index_out;	  /**< Outgoing iface to proxied dev. */
-  u32 nh_adj;		  /**< Adjacency index for out. iface */
+  u32 sw_if_index_out;    /**< Outgoing iface to proxied dev. */
+  u32 nh_adj;             /**< Adjacency index for out. iface */
   u8 inner_type;
 
   u32 sw_if_index_in; /**< Incoming iface from proxied dev. */
 
-  clib_bihash_40_8_t ftable;   /**< Flow table */
+  clib_bihash_40_8_t ftable; /**< Flow table */
 
   adflow_per_thread_data_t *per_thread_data;
 
@@ -113,15 +111,15 @@ typedef struct
 
   srv6_ad_flow_localsid_t **sids; /**< Pool of AD SID pointers */
 
-  vlib_combined_counter_main_t
-    sid_bypass_counters; /**< Packets/bytes bypassing NF */
+  vlib_combined_counter_main_t sid_bypass_counters; /**< Packets/bytes
+                                                       bypassing NF */
   vlib_combined_counter_main_t sid_punt_counters; /**< Packets/bytes punted */
   vlib_combined_counter_main_t sid_cache_full_counters;
 
-  vlib_combined_counter_main_t
-    rw_valid_counters; /**< Valid rewrite counters */
-  vlib_combined_counter_main_t
-    rw_invalid_counters; /**< Invalid rewrite counters */
+  vlib_combined_counter_main_t rw_valid_counters;   /**< Valid rewrite counters
+                                                     */
+  vlib_combined_counter_main_t rw_invalid_counters; /**< Invalid rewrite
+                                                       counters */
 
 } srv6_ad_flow_main_t;
 
