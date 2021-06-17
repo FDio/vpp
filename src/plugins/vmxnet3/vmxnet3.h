@@ -543,6 +543,7 @@ typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u16 size;
+  u32 queue_index;
   u32 reg_txprod;
   clib_spinlock_t lock;
 
