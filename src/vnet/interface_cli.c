@@ -1822,9 +1822,8 @@ set_hw_interface_tx_queue (u32 hw_if_index, u32 queue_id, uword *bitmap)
   hw = vnet_get_hw_interface (vnm, hw_if_index);
 
   /* highest set bit in bitmap should not exceed last worker thread index */
-  thread_index =
-    clib_bitmap_last_set (bitmap) + vdm->first_worker_thread_index;
-  if (thread_index > vdm->last_worker_thread_index)
+  thread_index = clib_bitmap_last_set (bitmap);
+  if ((thread_index != ~0) && (thread_index > vdm->last_worker_thread_index))
     return clib_error_return (0, "please specify valid thread(s)");
 
   queue_index =
@@ -1900,7 +1899,7 @@ error:
 VLIB_CLI_COMMAND (cmd_set_if_tx_queue, static) = {
   .path = "set interface tx-queue",
   .short_help = "set interface tx-queue <interface> queue <n> "
-		"threads <list>",
+		"[threads <list>]",
   .function = set_interface_tx_queue,
   .is_mp_safe = 1,
 };
