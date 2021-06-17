@@ -2510,12 +2510,17 @@ class TemplateIpsecItf4(object):
     def config_sa_tun(self, p, src, dst):
         config_tun_params(p, self.encryption_type, None, src, dst)
 
+        if not hasattr(p, 'tun_flags'):
+            tf = VppEnum.vl_api_tunnel_flags_t
+            p.tun_flags = tf.TUNNEL_API_FLAG_NONE
+
         p.tun_sa_out = VppIpsecSA(self, p.scapy_tun_sa_id, p.scapy_tun_spi,
                                   p.auth_algo_vpp_id, p.auth_key,
                                   p.crypt_algo_vpp_id, p.crypt_key,
                                   self.vpp_esp_protocol,
                                   src, dst,
-                                  flags=p.flags)
+                                  flags=p.flags,
+                                  tun_flags=p.tun_flags)
         p.tun_sa_out.add_vpp_config()
 
         p.tun_sa_in = VppIpsecSA(self, p.vpp_tun_sa_id, p.vpp_tun_spi,
@@ -2647,6 +2652,82 @@ class TestIpsecItf4(TemplateIpsec,
         # teardown
         self.unconfig_protect(np)
         self.unconfig_sa(np)
+        self.unconfig_network(p)
+
+    def test_tun_44_pin_egress_attached(self):
+        """IPSEC interface IPv4 pinned egress"""
+
+        tf = VppEnum.vl_api_tunnel_flags_t
+        n_pkts = 127
+        p = self.ipv4_params
+        p.tun_flags = tf.TUNNEL_API_FLAG_PIN_EGRESS_INTERFACE
+
+        r4 = VppIpRoute(self, "100.1.1.1", 32,
+                        [VppRoutePath(
+                            self.pg0.remote_ip4,
+                            self.pg0.sw_if_index),
+                         VppRoutePath(
+                            self.pg1.remote_ip4,
+                            self.pg1.sw_if_index)]).add_vpp_config()
+
+        self.config_network(p)
+        self.config_sa_tun(p,
+                           self.pg0.local_ip4,
+                           "100.1.1.1")
+        self.config_protect(p)
+
+        self.logger.info(self.vapi.cli("sh ipsec sa 0"))
+        self.logger.info(self.vapi.cli("sh ipsec sa 1"))
+        self.logger.info(self.vapi.cli("sh ip fib 100.1.1.1"))
+        self.logger.info(self.vapi.cli("sh adj 21"))
+
+        self.verify_tun_44(p, count=n_pkts)
+
+        self.unconfig_protect(p)
+        self.unconfig_sa(p)
+        self.unconfig_network(p)
+
+    def test_tun_44_pin_egress_recursive(self):
+        """IPSEC interface IPv4 pinned egress"""
+
+        tf = VppEnum.vl_api_tunnel_flags_t
+        n_pkts = 127
+        p = self.ipv4_params
+        p.tun_flags = tf.TUNNEL_API_FLAG_PIN_EGRESS_INTERFACE
+
+        VppIpRoute(self, "100.2.1.1", 32,
+                   [VppRoutePath(
+                       self.pg0.remote_ip4,
+                       self.pg0.sw_if_index),
+                    VppRoutePath(
+                        self.pg1.remote_ip4,
+                        self.pg1.sw_if_index)]).add_vpp_config()
+        VppIpRoute(self, "100.2.1.2", 32,
+                   [VppRoutePath(
+                       self.pg0.remote_ip4,
+                       self.pg0.sw_if_index),
+                    VppRoutePath(
+                        self.pg1.remote_ip4,
+                        self.pg1.sw_if_index)]).add_vpp_config()
+        VppIpRoute(self, "100.1.1.1", 32,
+                   [VppRoutePath("100.2.1.1", 0xffffffff),
+                    VppRoutePath("100.2.1.2", 0xffffffff)]).add_vpp_config()
+
+        self.config_network(p)
+        self.config_sa_tun(p,
+                           self.pg0.local_ip4,
+                           "100.1.1.1")
+        self.config_protect(p)
+
+        self.logger.info(self.vapi.cli("sh ipsec sa 0"))
+        self.logger.info(self.vapi.cli("sh ipsec sa 1"))
+        self.logger.info(self.vapi.cli("sh ip fib 100.1.1.1"))
+        self.logger.info(self.vapi.cli("sh adj 21"))
+
+        self.verify_tun_44(p, count=n_pkts)
+
+        self.unconfig_protect(p)
+        self.unconfig_sa(p)
         self.unconfig_network(p)
 
     def test_tun_44_null(self):
@@ -2811,27 +2892,29 @@ class TemplateIpsecItf6(object):
     def config_sa_tun(self, p, src, dst):
         config_tun_params(p, self.encryption_type, None, src, dst)
 
-        if not hasattr(p, 'tun_flags'):
-            p.tun_flags = None
+        if not hasattr(p, 'tun_encap_decap_flags'):
+            p.tun_encap_decap_flags = None
         if not hasattr(p, 'hop_limit'):
             p.hop_limit = 255
 
-        p.tun_sa_out = VppIpsecSA(self, p.scapy_tun_sa_id, p.scapy_tun_spi,
-                                  p.auth_algo_vpp_id, p.auth_key,
-                                  p.crypt_algo_vpp_id, p.crypt_key,
-                                  self.vpp_esp_protocol,
-                                  src, dst,
-                                  flags=p.flags,
-                                  tun_flags=p.tun_flags,
-                                  hop_limit=p.hop_limit)
+        p.tun_sa_out = VppIpsecSA(
+            self, p.scapy_tun_sa_id, p.scapy_tun_spi,
+            p.auth_algo_vpp_id, p.auth_key,
+            p.crypt_algo_vpp_id, p.crypt_key,
+            self.vpp_esp_protocol,
+            src, dst,
+            flags=p.flags,
+            tun_encap_decap_flags=p.tun_encap_decap_flags,
+            hop_limit=p.hop_limit)
         p.tun_sa_out.add_vpp_config()
 
-        p.tun_sa_in = VppIpsecSA(self, p.vpp_tun_sa_id, p.vpp_tun_spi,
-                                 p.auth_algo_vpp_id, p.auth_key,
-                                 p.crypt_algo_vpp_id, p.crypt_key,
-                                 self.vpp_esp_protocol,
-                                 dst, src,
-                                 flags=p.flags)
+        p.tun_sa_in = VppIpsecSA(
+            self, p.vpp_tun_sa_id, p.vpp_tun_spi,
+            p.auth_algo_vpp_id, p.auth_key,
+            p.crypt_algo_vpp_id, p.crypt_key,
+            self.vpp_esp_protocol,
+            dst, src,
+            flags=p.flags)
         p.tun_sa_in.add_vpp_config()
 
     def config_protect(self, p):
@@ -2895,7 +2978,8 @@ class TestIpsecItf6(TemplateIpsec,
         p.inner_hop_limit = 24
         p.outer_hop_limit = 23
         p.outer_flow_label = 243224
-        p.tun_flags = tf.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_HOP_LIMIT
+        p.tun_encap_decap_flags = \
+            tf.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_HOP_LIMIT
 
         self.config_network(p)
         self.config_sa_tun(p,
@@ -2940,7 +3024,8 @@ class TestIpsecItf6(TemplateIpsec,
         np.inner_flow_label = 0xabcde
         np.outer_flow_label = 0xabcde
         np.hop_limit = 128
-        np.tun_flags = tf.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_FLOW_LABEL
+        np.tun_encap_decap_flags = \
+            tf.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_FLOW_LABEL
 
         self.config_sa_tun(np,
                            self.pg0.local_ip6,
@@ -2965,7 +3050,8 @@ class TestIpsecItf6(TemplateIpsec,
         p.inner_hop_limit = 24
         p.outer_hop_limit = 23
         p.outer_flow_label = 243224
-        p.tun_flags = tf.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_HOP_LIMIT
+        p.tun_encap_decap_flags = \
+            tf.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_HOP_LIMIT
 
         self.config_network(p)
         self.config_sa_tun(p,

@@ -332,7 +332,9 @@ extern fib_forward_chain_type_t fib_entry_chain_type_fixup(const fib_entry_t *en
 extern void fib_entry_src_mk_lb (fib_entry_t *fib_entry,
 				 fib_source_t source,
 				 fib_forward_chain_type_t fct,
-				 dpo_id_t *dpo_lb);
+				 dpo_id_t *dpo_lb,
+                                 fib_path_contribute_filter_t filter,
+                                 void *data);
 
 extern fib_protocol_t fib_entry_get_proto(const fib_entry_t * fib_entry);
 extern dpo_proto_t fib_entry_get_dpo_proto(const fib_entry_t * fib_entry);

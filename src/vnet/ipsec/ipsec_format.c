@@ -316,8 +316,10 @@ format_ipsec_sa (u8 * s, va_list * args)
   s = format (s, "\n   packets %u bytes %u", counts.packets, counts.bytes);
 
   if (ipsec_sa_is_set_IS_TUNNEL (sa))
-    s = format (s, "\n%U", format_tunnel, &sa->tunnel, 3);
-
+    {
+      s = format (s, "\n%U", format_tunnel, &sa->tunnel, 3);
+      s = format (s, "\n   %U", format_dpo_id, &sa->dpo, 6);
+    }
 done:
   return (s);
 }

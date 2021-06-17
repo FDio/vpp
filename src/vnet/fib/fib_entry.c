@@ -434,9 +434,54 @@ fib_entry_chain_type_mcast_to_ucast (fib_forward_chain_type_t fct)
  * Get an lock the forwarding information (DPO) contributed by the FIB entry.
  */
 void
-fib_entry_contribute_forwarding (fib_node_index_t fib_entry_index,
-				 fib_forward_chain_type_t fct,
-				 dpo_id_t *dpo)
+fib_entry_contribute_forwarding_w_filter (fib_node_index_t fib_entry_index,
+                                          fib_forward_chain_type_t fct,
+                                          dpo_id_t *dpo,
+                                          fib_path_contribute_filter_t filter,
+                                          void *data)
+{
+    fib_entry_t *fib_entry;
+
+    if (NULL == filter)
+        return fib_entry_contribute_forwarding(fib_entry_index, fct, dpo);
+
+    fib_entry = fib_entry_get(fib_entry_index);
+
+    /*
+     * mfib children ask for mcast chains. fix these to the appropriate ucast types.
+     */
+    fct = fib_entry_chain_type_mcast_to_ucast(fct);
+
+    /*
+     * on-demand create eos/non-eos.
+     * There is no on-demand delete because:
+     *   - memory versus complexity & reliability:
+     *      leaving unrequired [n]eos LB arounds wastes memory, cleaning
+     *      then up on the right trigger is more code. i favour the latter.
+     */
+    fib_entry_src_mk_lb(fib_entry,
+                        fib_entry_get_best_source(fib_entry_index),
+                        fct, dpo, filter, data);
+
+    /*
+     * use the drop DPO is nothing else is present
+     */
+    if (!dpo_id_is_valid(dpo))
+    {
+        dpo_copy(dpo, drop_dpo_get(fib_forw_chain_type_to_dpo_proto(fct)));
+    }
+
+    /*
+     * don't allow the special index indicating replicate.vs.load-balance
+     * to escape to the clients
+     */
+    dpo->dpoi_index &= ~MPLS_IS_REPLICATE;
+}
+
+extern void fib_entry_contribute_forwarding(
+    fib_node_index_t fib_entry_index,
+    fib_forward_chain_type_t fct,
+    dpo_id_t *dpo)
 {
     fib_entry_delegate_t *fed;
     fib_entry_t *fib_entry;
@@ -474,8 +519,7 @@ fib_entry_contribute_forwarding (fib_node_index_t fib_entry_index,
              */
             fib_entry_src_mk_lb(fib_entry,
                                 fib_entry_get_best_source(fib_entry_index),
-                                fct,
-                                &tmp);
+                                fct, &tmp, NULL, NULL);
 
             fed = fib_entry_delegate_find_or_add(
                 fib_entry,
@@ -1453,7 +1497,7 @@ fib_entry_recursive_loop_detect (fib_node_index_t entry_index,
                 fib_entry_src_mk_lb(fib_entry,
                                     fib_entry_get_best_source(entry_index),
                                     fib_entry_delegate_type_to_chain_type(fdt),
-                                    &fed->fd_dpo);
+                                    &fed->fd_dpo, NULL, NULL);
 	    });
 	}
     }

@@ -193,10 +193,12 @@ class VppIpsecSA(VppObject):
                  crypto_alg, crypto_key,
                  proto,
                  tun_src=None, tun_dst=None,
-                 flags=None, salt=0, tun_flags=None,
-                 dscp=None,
+                 flags=None, salt=0, tun_encap_decap_flags=None,
+                 dscp=None, tun_flags=None,
                  udp_src=None, udp_dst=None, hop_limit=None):
         e = VppEnum.vl_api_ipsec_sad_flags_t
+        te = VppEnum.vl_api_tunnel_encap_decap_flags_t
+        tf = VppEnum.vl_api_tunnel_flags_t
         self.test = test
         self.id = id
         self.spi = spi
@@ -223,8 +225,10 @@ class VppIpsecSA(VppObject):
             self.tun_dst = ip_address(text_type(tun_dst))
         self.udp_src = udp_src
         self.udp_dst = udp_dst
-        self.tun_flags = (VppEnum.vl_api_tunnel_encap_decap_flags_t.
-                          TUNNEL_API_ENCAP_DECAP_FLAG_NONE)
+        self.tun_encap_decap_flags = te.TUNNEL_API_ENCAP_DECAP_FLAG_NONE
+        if tun_encap_decap_flags:
+            self.tun_encap_decap_flags = tun_encap_decap_flags
+        self.tun_flags = tf.TUNNEL_API_FLAG_NONE
         if tun_flags:
             self.tun_flags = tun_flags
         self.dscp = VppEnum.vl_api_ip_dscp_t.IP_API_DSCP_CS0
@@ -237,7 +241,8 @@ class VppIpsecSA(VppObject):
     def tunnel_encode(self):
         return {'src': (self.tun_src if self.tun_src else []),
                 'dst': (self.tun_dst if self.tun_dst else []),
-                'encap_decap_flags': self.tun_flags,
+                'encap_decap_flags': self.tun_encap_decap_flags,
+                'flags': self.tun_flags,
                 'dscp': self.dscp,
                 'hop_limit': self.hop_limit,
                 'table_id': self.table_id

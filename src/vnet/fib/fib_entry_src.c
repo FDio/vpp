@@ -257,6 +257,8 @@ typedef struct fib_entry_src_collect_forwarding_ctx_t_
     fib_forward_chain_type_t fct;
     int n_recursive_constrained;
     u16 preference;
+    fib_path_contribute_filter_t filter;
+    void *data;
 } fib_entry_src_collect_forwarding_ctx_t;
 
 /**
@@ -351,8 +353,6 @@ static void
 fib_entry_src_get_path_forwarding (fib_node_index_t path_index,
                                    fib_entry_src_collect_forwarding_ctx_t *ctx)
 {
-    load_balance_path_t *nh;
-
     /*
      * no extension => no out-going label for this path. that's OK
      * in the case of an IP or EOS chain, but not for non-EOS
@@ -364,27 +364,45 @@ fib_entry_src_get_path_forwarding (fib_node_index_t path_index,
     case FIB_FORW_CHAIN_TYPE_MCAST_IP4:
     case FIB_FORW_CHAIN_TYPE_MCAST_IP6:
     case FIB_FORW_CHAIN_TYPE_BIER:
+    {
         /*
          * EOS traffic with no label to stack, we need the IP Adj
          */
-        vec_add2(ctx->next_hops, nh, 1);
+        load_balance_path_t next_hop = {
+            .path_dpo = DPO_INVALID,
+            .path_index = path_index,
+            .path_weight = fib_path_get_weight(path_index),
+        };
 
-        nh->path_index = path_index;
-        nh->path_weight = fib_path_get_weight(path_index);
-        fib_path_contribute_forwarding(path_index, ctx->fct, &nh->path_dpo);
+        fib_path_contribute_forwarding_w_filter(path_index, ctx->fct,
+                                                &next_hop.path_dpo,
+                                                ctx->filter, ctx->data);
 
+        if (!dpo_is_drop(&next_hop.path_dpo))
+        {
+            vec_add1(ctx->next_hops, next_hop);
+        }
         break;
+    }
     case FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS:
         if (fib_path_is_exclusive(path_index) ||
             fib_path_is_deag(path_index))
         {
-            vec_add2(ctx->next_hops, nh, 1);
+            load_balance_path_t next_hop = {
+                .path_dpo = DPO_INVALID,
+                .path_index = path_index,
+                .path_weight = fib_path_get_weight(path_index),
+            };
 
-            nh->path_index = path_index;
-            nh->path_weight = fib_path_get_weight(path_index);
-            fib_path_contribute_forwarding(path_index,
-                                           FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
-                                           &nh->path_dpo);
+            fib_path_contribute_forwarding_w_filter(path_index,
+                                                    FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
+                                                    &next_hop.path_dpo,
+                                                    ctx->filter, ctx->data);
+
+            if (!dpo_is_drop(&next_hop.path_dpo))
+            {
+                vec_add1(ctx->next_hops, next_hop);
+            }
         }
         break;
     case FIB_FORW_CHAIN_TYPE_MPLS_EOS:
@@ -392,19 +410,25 @@ fib_entry_src_get_path_forwarding (fib_node_index_t path_index,
             /*
              * no label. we need a chain based on the payload. fixup.
              */
-            vec_add2(ctx->next_hops, nh, 1);
+            load_balance_path_t next_hop = {
+                .path_dpo = DPO_INVALID,
+                .path_index = path_index,
+                .path_weight = fib_path_get_weight(path_index),
+            };
 
-            nh->path_index = path_index;
-            nh->path_weight = fib_path_get_weight(path_index);
-            fib_path_contribute_forwarding(path_index,
-                                           fib_entry_chain_type_fixup(ctx->fib_entry,
-                                                                      ctx->fct),
-                                           &nh->path_dpo);
-            fib_path_stack_mpls_disp(path_index,
-                                     fib_prefix_get_payload_proto(&ctx->fib_entry->fe_prefix),
-                                     FIB_MPLS_LSP_MODE_PIPE,
-                                     &nh->path_dpo);
-
+            fib_path_contribute_forwarding_w_filter(path_index,
+                                                    fib_entry_chain_type_fixup(ctx->fib_entry,
+                                                                               ctx->fct),
+                                                    &next_hop.path_dpo,
+                                                    ctx->filter, ctx->data);
+            if (!dpo_is_drop(&next_hop.path_dpo))
+            {
+                fib_path_stack_mpls_disp(path_index,
+                                         fib_prefix_get_payload_proto(&ctx->fib_entry->fe_prefix),
+                                         FIB_MPLS_LSP_MODE_PIPE,
+                                         &next_hop.path_dpo);
+                                vec_add1(ctx->next_hops, next_hop);
+            }
             break;
         }
     case FIB_FORW_CHAIN_TYPE_ETHERNET:
@@ -483,7 +507,7 @@ fib_entry_src_collect_forwarding (fib_node_index_t pl_index,
                                        ctx->fct,
                                        fib_entry_chain_type_fixup(ctx->fib_entry,
                                                                   ctx->fct),
-                                       ctx->next_hops);
+                                       ctx->next_hops, ctx->filter, ctx->data);
             }
             else
             {
@@ -563,7 +587,9 @@ void
 fib_entry_src_mk_lb (fib_entry_t *fib_entry,
                      fib_source_t source,
 		     fib_forward_chain_type_t fct,
-		     dpo_id_t *dpo_lb)
+		     dpo_id_t *dpo_lb,
+                     fib_path_contribute_filter_t filter,
+                     void *data)
 {
     const fib_entry_src_t *esrc;
     dpo_proto_t lb_proto;
@@ -609,6 +635,8 @@ fib_entry_src_mk_lb (fib_entry_t *fib_entry,
         .preference = 0xffff,
         .start_source_index = start,
         .end_source_index = end,
+        .filter = filter,
+        .data = data,
     };
 
     /*
@@ -749,7 +777,7 @@ fib_entry_src_action_install (fib_entry_t *fib_entry,
      */
     insert = !dpo_id_is_valid(&fib_entry->fe_lb);
 
-    fib_entry_src_mk_lb(fib_entry, source, fct, &fib_entry->fe_lb);
+    fib_entry_src_mk_lb(fib_entry, source, fct, &fib_entry->fe_lb, NULL, NULL);
 
     ASSERT(dpo_id_is_valid(&fib_entry->fe_lb));
     FIB_ENTRY_DBG(fib_entry, "install: %d", fib_entry->fe_lb);
@@ -775,7 +803,7 @@ fib_entry_src_action_install (fib_entry_t *fib_entry,
     {
         fib_entry_src_mk_lb(fib_entry, source,
                             fib_entry_delegate_type_to_chain_type(fdt),
-                            &fed->fd_dpo);
+                            &fed->fd_dpo, NULL, NULL);
     });
 }
 
