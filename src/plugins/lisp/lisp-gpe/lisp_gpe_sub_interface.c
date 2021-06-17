@@ -20,6 +20,7 @@
 #include <lisp/lisp-gpe/lisp_gpe_tenant.h>
 #include <lisp/lisp-gpe/lisp_gpe_sub_interface.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/ip/ip6_link.h>
 #include <vnet/interface.h>
 
 /**
@@ -115,7 +116,8 @@ lisp_gpe_sub_interface_unset_table (u32 sw_if_index, u32 table_id)
   fib_table_unlock (ip6_main.fib_index_by_sw_if_index[sw_if_index],
 		    FIB_PROTOCOL_IP6, FIB_SOURCE_LISP);
   ip6_main.fib_index_by_sw_if_index[sw_if_index] = 0;
-  ip6_sw_interface_enable_disable (sw_if_index, 0);
+  ip6_link_forwarding_disable (sw_if_index);
+  ip6_link_disable (sw_if_index);
 }
 
 index_t
@@ -164,7 +166,8 @@ lisp_gpe_sub_interface_find_or_create_and_lock (const ip_address_t * lrloc,
       l3si = (l3s - lisp_gpe_sub_interface_pool);
 
       // FIXME. enable When we get an adj
-      ip6_sw_interface_enable_disable (l3s->sw_if_index, 1);
+      ip6_link_enable (l3s->sw_if_index, NULL);
+      ip6_link_forwarding_enable (l3s->sw_if_index);
       ip4_sw_interface_enable_disable (l3s->sw_if_index, 1);
 
       vnet_sw_interface_set_flags (vnet_get_main (),

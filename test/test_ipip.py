@@ -465,6 +465,11 @@ class TestIPIP(VppTestCase):
             self.assert_packet_checksums_valid(p)
             self.assertEqual(p[IP].ttl, 63)
 
+        # unconfigure each tunnel
+        for t in tuns:
+            # Set interface up and enable IP on it
+            t.unset_unnumbered(self.pg0.sw_if_index)
+
     def test_ipip_create(self):
         """ ipip create / delete interface test """
         rv = ipip_add_tunnel(self, '1.2.3.4', '2.3.4.5')
@@ -699,6 +704,10 @@ class TestIPIP6(VppTestCase):
         self.tunnel_ip4_via_tunnel.remove_vpp_config()
         self.tunnel_ip6_via_tunnel.remove_vpp_config()
 
+        self.vapi.sw_interface_set_unnumbered(
+            sw_if_index=self.pg0.sw_if_index,
+            unnumbered_sw_if_index=self.tunnel_if_index,
+            is_add=0)
         rv = self.vapi.ipip_del_tunnel(sw_if_index=self.tunnel_if_index)
 
     def validate(self, rx, expected):
@@ -1054,6 +1063,10 @@ class TestIPIP6(VppTestCase):
         err = self.statistics.get_err_counter(
             '/err/ipip6-input/packets decapsulated')
         self.assertEqual(err, n_packets_decapped)
+
+        for t in tuns:
+            # Set interface up and enable IP on it
+            t.unset_unnumbered(self.pg0.sw_if_index)
 
     def test_frag(self):
         """ ip{v4,v6} over ip6 test frag """

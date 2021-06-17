@@ -20,6 +20,7 @@
 
 #include <vnet/dpo/dvr_dpo.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/ip/ip6_link.h>
 
 #include <vlib/unix/plugin.h>
 
@@ -91,7 +92,8 @@ gbp_recirc_add (u32 sw_if_index, sclass_t sclass, u8 is_ext)
        * IP enable the recirc interface
        */
       ip4_sw_interface_enable_disable (gr->gr_sw_if_index, 1);
-      ip6_sw_interface_enable_disable (gr->gr_sw_if_index, 1);
+      ip6_link_enable (gr->gr_sw_if_index, NULL);
+      ip6_link_forwarding_enable (gr->gr_sw_if_index);
 
       /*
        * cache the FIB indicies of the EPG
@@ -208,7 +210,8 @@ gbp_recirc_delete (u32 sw_if_index)
 	}
 
       ip4_sw_interface_enable_disable (gr->gr_sw_if_index, 0);
-      ip6_sw_interface_enable_disable (gr->gr_sw_if_index, 0);
+      ip6_link_forwarding_disable (gr->gr_sw_if_index);
+      ip6_link_disable (gr->gr_sw_if_index);
       l2e_disable (gr->gr_sw_if_index);
 
       gbp_itf_unlock (&gr->gr_itf);

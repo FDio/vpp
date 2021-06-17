@@ -18,6 +18,7 @@
 #include <plugins/gbp/gbp_route_domain.h>
 
 #include <vnet/ip/ip.h>
+#include <vnet/ip/ip6_link.h>
 
 #define foreach_gbp_itf_mode  \
   _(L2, "l2")                 \
@@ -229,7 +230,8 @@ gbp_itf_l3_add_and_lock_i (u32 sw_if_index, index_t gri, gbp_itf_free_fn_t ff)
       grd = gbp_route_domain_get (gi->gi_gri);
 
       ip4_sw_interface_enable_disable (gi->gi_sw_if_index, 1);
-      ip6_sw_interface_enable_disable (gi->gi_sw_if_index, 1);
+      ip6_link_enable (gi->gi_sw_if_index, NULL);
+      ip6_link_forwarding_enable (gi->gi_sw_if_index);
 
       FOR_EACH_FIB_IP_PROTOCOL (fproto)
 	ip_table_bind (fproto, gi->gi_sw_if_index,
@@ -315,7 +317,8 @@ gbp_itf_unlock (gbp_itf_hdl_t * gh)
 	    ip_table_bind (fproto, gi->gi_sw_if_index, 0, 0);
 
 	  ip4_sw_interface_enable_disable (gi->gi_sw_if_index, 0);
-	  ip6_sw_interface_enable_disable (gi->gi_sw_if_index, 0);
+	  ip6_link_forwarding_disable (gi->gi_sw_if_index);
+	  ip6_link_disable (gi->gi_sw_if_index);
 	}
 
       hash_unset (gbp_itf_db, gi->gi_sw_if_index);

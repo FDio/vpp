@@ -1728,16 +1728,9 @@ class IPv6NDProxyTest(TestIPv6ND):
         self.send_and_assert_no_replies(self.pg2, ns_pg2, "Proxy unconfigured")
 
         #
-        # no longer forwarding. traffic generates NS out of the glean/main
-        # interface
+        # no longer forwarding. interfaces by default in host mode
         #
-        self.pg2.add_stream(t2)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-
-        rx = self.pg0.get_capture(1)
-
-        self.assertTrue(rx[0].haslayer(ICMPv6ND_NS))
+        self.send_and_assert_no_replies(self.pg2, [t2], "Host Mode")
 
 
 class TestIPNull(VppTestCase):
@@ -3124,6 +3117,111 @@ class TestIP6LinkLocal(VppTestCase):
 
         # teardown
         self.pg0.unconfig_ip4()
+
+
+class TestIP6HostMode(VppTestCase):
+    """ IPv6 Host Mode """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIP6HostMode, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIP6HostMode, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestIP6HostMode, self).setUp()
+
+        self.create_pg_interfaces(range(2))
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+
+        self.pg1.config_ip6()
+        self.pg1.resolve_ndp()
+
+    def tearDown(self):
+        super(TestIP6HostMode, self).tearDown()
+        for i in self.pg_interfaces:
+            i.admin_down()
+            i.unconfig_ip6()
+
+    def test_ip6_host_mode(self):
+        """ IPv6 Host Mode """
+
+        #
+        # toggle the IP6 forwarding state of an interface
+        #
+
+        #
+        # Enable host-mode by setting a link-local address
+        #
+        ll1 = "fe80:1::1"
+        ll2 = "fe80:2::2"
+
+        VppNeighbor(self,
+                    self.pg0.sw_if_index,
+                    self.pg0.remote_mac,
+                    ll2).add_vpp_config()
+
+        VppIpInterfaceAddress(self, self.pg0, ll1, 128).add_vpp_config()
+
+        #
+        # should be able to ping the ll
+        #
+        p = (Ether(src=self.pg0.remote_mac,
+                   dst=self.pg0.local_mac) /
+             IPv6(src=ll2,
+                  dst=ll1) /
+             ICMPv6EchoRequest())
+        self.send_and_expect(self.pg0, [p], self.pg0)
+
+        #
+        # global destinations can't be reached
+        #
+        p = (Ether(src=self.pg0.remote_mac,
+                   dst=self.pg0.local_mac) /
+             IPv6(src="2001::1",
+                  dst=self.pg1.remote_ip6) /
+             UDP(sport=3, dport=3) /
+             Raw('0' * 64))
+        self.send_and_assert_no_replies(self.pg0, [p])
+
+        #
+        # enable/disable forwarding on the interface
+        #
+        self.vapi.sw_interface_ip_forwarding(
+            sw_if_index=self.pg0.sw_if_index,
+            af=VppEnum.vl_api_address_family_t.ADDRESS_IP6,
+            enable=True)
+        self.send_and_expect(self.pg0, [p], self.pg1)
+
+        self.vapi.sw_interface_ip_forwarding(
+            sw_if_index=self.pg0.sw_if_index,
+            af=VppEnum.vl_api_address_family_t.ADDRESS_IP6,
+            enable=False)
+        self.send_and_assert_no_replies(self.pg0, [p])
+
+        # set an address whilst forwarding is enabled
+        self.vapi.sw_interface_ip_forwarding(
+            sw_if_index=self.pg0.sw_if_index,
+            af=VppEnum.vl_api_address_family_t.ADDRESS_IP6,
+            enable=True)
+        self.send_and_expect(self.pg0, [p], self.pg1)
+        self.pg0.config_ip6()
+        self.send_and_expect(self.pg0, [p], self.pg1)
+
+        # disable forwarding with an address set
+        self.vapi.sw_interface_ip_forwarding(
+            sw_if_index=self.pg0.sw_if_index,
+            af=VppEnum.vl_api_address_family_t.ADDRESS_IP6,
+            enable=False)
+        self.send_and_expect(self.pg0, [p], self.pg1)
+
+        # remove address
+        self.pg0.unconfig_ip6()
+        self.send_and_assert_no_replies(self.pg0, p * 1)
 
 
 class TestIPv6PathMTU(VppTestCase):

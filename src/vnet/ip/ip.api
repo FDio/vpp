@@ -351,7 +351,12 @@ autoreply define set_ip_flow_hash_router_id
   u32 router_id;
 };
 
-/** \brief IPv6 interface enable / disable request
+/** \brief IPv[46] interface enable / disable request
+
+    Calling this API ONLY will set the interface into weak host mode.
+    To make the interface also forward packets, either add an address
+    or also use the sw_interface_ip_forwarding(enable) API
+
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param sw_if_index - interface used to reach neighbor
@@ -359,10 +364,40 @@ autoreply define set_ip_flow_hash_router_id
 */
 autoreply define sw_interface_ip6_enable_disable
 {
+  option deprecated;
   u32 client_index;
   u32 context;
   vl_api_interface_index_t sw_if_index;
   bool enable;			/* set to true if enable */
+};
+autoreply define sw_interface_ip_enable_disable
+{
+  u32 client_index;
+  u32 context;
+  vl_api_address_family_t af;
+  vl_api_interface_index_t sw_if_index;
+  bool enable;
+};
+
+/** \brief IPv[46] interface forwarding enable / disable request
+
+    Calling this API move the interface from host mode to
+    forwarding. If the interface already has an address, then
+    this API is not required to be called (but does no harm if it is).
+    N.B. If this API is called to enable, it must also be called to disable
+
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface used to reach neighbor
+    @param enable - if non-zero enable ip6 on interface, else disable
+*/
+autoreply define sw_interface_ip_forwarding
+{
+  u32 client_index;
+  u32 context;
+  vl_api_address_family_t af;
+  vl_api_interface_index_t sw_if_index;
+  bool enable;
 };
 
 /** \brief Dump IP multicast fib table
