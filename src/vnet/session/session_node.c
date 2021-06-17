@@ -457,7 +457,7 @@ session_mq_accepted_reply_handler (void *data)
   if (!session_has_transport (s))
     {
       s->session_state = SESSION_STATE_READY;
-      if (ct_session_connect_notify (s))
+      if (ct_session_connect_notify (s, SESSION_E_NONE))
 	return;
     }
   else
