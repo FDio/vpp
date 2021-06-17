@@ -715,9 +715,6 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
 	  rpath->frp_weight = 1;
 	  rpath->frp_flags |= FIB_ROUTE_PATH_LOCAL;
         }
-      else if (unformat (input, "%U",
-			 unformat_mfib_itf_flags, &rpath->frp_mitf_flags))
-	;
       else if (unformat (input, "out-labels"))
         {
             while (unformat (input, "%U",
@@ -735,6 +732,9 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
         {
             rpath->frp_proto = *payload_proto;
         }
+        else if (unformat (input, "%U",
+			 unformat_mfib_itf_flags, &rpath->frp_mitf_flags))
+	;
         else if (unformat (input, "via"))
         {
             /* new path, back up and return */
