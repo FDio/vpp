@@ -54,8 +54,8 @@ class IPsecIPv4Params:
         self.salt = 0
         self.flags = 0
         self.nat_header = None
-        self.tun_flags = (VppEnum.vl_api_tunnel_encap_decap_flags_t.
-                          TUNNEL_API_ENCAP_DECAP_FLAG_NONE)
+        te = VppEnum.vl_api_tunnel_encap_decap_flags_t
+        self.tun_encap_decap_flags = te.TUNNEL_API_ENCAP_DECAP_FLAG_NONE
         self.dscp = 0
         self.async_mode = False
 
@@ -99,8 +99,8 @@ class IPsecIPv6Params:
         self.salt = 0
         self.flags = 0
         self.nat_header = None
-        self.tun_flags = (VppEnum.vl_api_tunnel_encap_decap_flags_t.
-                          TUNNEL_API_ENCAP_DECAP_FLAG_NONE)
+        te = VppEnum.vl_api_tunnel_encap_decap_flags_t
+        self.tun_encap_decap_flags = te.TUNNEL_API_ENCAP_DECAP_FLAG_NONE
         self.dscp = 0
         self.async_mode = False
 

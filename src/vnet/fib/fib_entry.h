@@ -412,6 +412,13 @@ extern void fib_entry_contribute_forwarding(
     fib_node_index_t fib_entry_index,
     fib_forward_chain_type_t type,
     dpo_id_t *dpo);
+
+extern void fib_entry_contribute_forwarding_w_filter(
+    fib_node_index_t fib_entry_index,
+    fib_forward_chain_type_t type,
+    dpo_id_t *dpo,
+    fib_path_contribute_filter_t filter,
+    void *data);
 extern const dpo_id_t * fib_entry_contribute_ip_forwarding(
     fib_node_index_t fib_entry_index);
 extern adj_index_t fib_entry_get_adj_for_source(

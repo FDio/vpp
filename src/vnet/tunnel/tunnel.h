@@ -64,7 +64,8 @@ extern uword unformat_tunnel_encap_decap_flags (unformat_input_t *input,
 
 #define foreach_tunnel_flag                                                   \
   _ (RESOLVED, 0, "resolved")                                                 \
-  _ (TRACK_MTU, 1, "track-mtu")
+  _ (TRACK_MTU, 1, "track-mtu")                                               \
+  _ (PIN_EG_ITF, 2, "pin-egress-interface")
 
 typedef enum tunnel_flags_t_
 {
@@ -98,9 +99,17 @@ typedef struct tunnel_t_
    */
   u32 t_fib_index;
 
-  fib_node_index_t t_fib_entry_index;
-  u32 t_sibling;
+  /**
+   * nodes for the track destinaton
+   */
+  fib_node_index_t t_dst_fib_entry_index;
+  u32 t_dst_sibling;
 
+  /**
+   * nodes for the tracked source
+   */
+  fib_node_index_t t_src_fib_entry_index;
+  u32 t_src_sibling;
 } tunnel_t;
 
 extern u8 *format_tunnel (u8 *s, va_list *args);

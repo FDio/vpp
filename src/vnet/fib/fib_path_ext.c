@@ -165,7 +165,9 @@ load_balance_path_t *
 fib_path_ext_stack (fib_path_ext_t *path_ext,
                     fib_forward_chain_type_t child_fct,
                     fib_forward_chain_type_t imp_null_fct,
-		    load_balance_path_t *nhs)
+		    load_balance_path_t *nhs,
+                    fib_path_contribute_filter_t filter,
+                    void *data)
 {
     fib_forward_chain_type_t parent_fct;
     load_balance_path_t *nh;
@@ -238,9 +240,9 @@ fib_path_ext_stack (fib_path_ext_t *path_ext,
      * will be the DPO contributed by the path through which the packets
      * are to be sent. We stack the MPLS Label DPO on this path DPO
      */
-    fib_path_contribute_forwarding(path_ext->fpe_path_index,
-				   parent_fct,
-				   &via_dpo);
+    fib_path_contribute_forwarding_w_filter(path_ext->fpe_path_index,
+                                            parent_fct,
+                                            &via_dpo, filter, data);
 
     if (dpo_is_drop(&via_dpo) ||
 	load_balance_is_drop(&via_dpo))

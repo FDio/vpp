@@ -286,6 +286,11 @@ extern dpo_proto_t fib_proto_to_dpo(fib_protocol_t fib_proto);
 extern fib_protocol_t dpo_proto_to_fib(dpo_proto_t dpo_proto);
 
 /**
+ * A filter function for selecting path to contribute forwarding
+ */
+typedef u8 (*fib_path_contribute_filter_t)(index_t fib_path_index, void *arg);
+
+/**
  * Convert from BIER next-hop proto to FIB proto
  */
 extern fib_protocol_t bier_hdr_proto_to_fib(bier_hdr_proto_id_t bproto);

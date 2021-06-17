@@ -111,32 +111,34 @@ class ConfigIpsecESP(TemplateIpsec):
         addr_bcast = params.addr_bcast
         e = VppEnum.vl_api_ipsec_spd_action_t
         flags = params.flags
-        tun_flags = params.tun_flags
+        tun_encap_decap_flags = params.tun_encap_decap_flags
         salt = params.salt
         objs = []
 
-        params.tun_sa_in = VppIpsecSA(self, scapy_tun_sa_id, scapy_tun_spi,
-                                      auth_algo_vpp_id, auth_key,
-                                      crypt_algo_vpp_id, crypt_key,
-                                      self.vpp_esp_protocol,
-                                      self.tun_if.local_addr[addr_type],
-                                      self.tun_if.remote_addr[addr_type],
-                                      tun_flags=tun_flags,
-                                      dscp=params.dscp,
-                                      flags=flags,
-                                      salt=salt,
-                                      hop_limit=params.outer_hop_limit)
-        params.tun_sa_out = VppIpsecSA(self, vpp_tun_sa_id, vpp_tun_spi,
-                                       auth_algo_vpp_id, auth_key,
-                                       crypt_algo_vpp_id, crypt_key,
-                                       self.vpp_esp_protocol,
-                                       self.tun_if.remote_addr[addr_type],
-                                       self.tun_if.local_addr[addr_type],
-                                       tun_flags=tun_flags,
-                                       dscp=params.dscp,
-                                       flags=flags,
-                                       salt=salt,
-                                       hop_limit=params.outer_hop_limit)
+        params.tun_sa_in = VppIpsecSA(
+            self, scapy_tun_sa_id, scapy_tun_spi,
+            auth_algo_vpp_id, auth_key,
+            crypt_algo_vpp_id, crypt_key,
+            self.vpp_esp_protocol,
+            self.tun_if.local_addr[addr_type],
+            self.tun_if.remote_addr[addr_type],
+            tun_encap_decap_flags=tun_encap_decap_flags,
+            dscp=params.dscp,
+            flags=flags,
+            salt=salt,
+            hop_limit=params.outer_hop_limit)
+        params.tun_sa_out = VppIpsecSA(
+            self, vpp_tun_sa_id, vpp_tun_spi,
+            auth_algo_vpp_id, auth_key,
+            crypt_algo_vpp_id, crypt_key,
+            self.vpp_esp_protocol,
+            self.tun_if.remote_addr[addr_type],
+            self.tun_if.local_addr[addr_type],
+            tun_encap_decap_flags=tun_encap_decap_flags,
+            dscp=params.dscp,
+            flags=flags,
+            salt=salt,
+            hop_limit=params.outer_hop_limit)
         objs.append(params.tun_sa_in)
         objs.append(params.tun_sa_out)
 
@@ -391,8 +393,8 @@ class TestIpsecEspTun(TemplateIpsecEsp, IpsecTun46Tests):
         c1 = c | (VppEnum.vl_api_tunnel_encap_decap_flags_t.
                   TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_ECN)
 
-        self.ipv4_params.tun_flags = c
-        self.ipv6_params.tun_flags = c1
+        self.ipv4_params.tun_encap_decap_flags = c
+        self.ipv6_params.tun_encap_decap_flags = c1
 
         super(TestIpsecEspTun, self).setUp()
 
