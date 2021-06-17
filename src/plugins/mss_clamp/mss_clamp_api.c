@@ -92,8 +92,8 @@ vl_api_mss_clamp_get_t_handler (vl_api_mss_clamp_get_t *mp)
 	  return;
 	}
 
-      REPLY_AND_DETAILS_MACRO (
-	VL_API_MSS_CLAMP_GET_REPLY, cm->dir_enabled4,
+      REPLY_AND_DETAILS_VEC_MACRO (
+	VL_API_MSS_CLAMP_GET_REPLY, cm->dir_enabled4, mp, rmp, rv,
 	({ send_mss_clamp_details (cursor, reg, mp->context); }));
     }
   else
