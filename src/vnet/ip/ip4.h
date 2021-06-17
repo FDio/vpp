@@ -241,7 +241,7 @@ clib_error_t *ip4_add_del_interface_address (vlib_main_t * vm,
 
 void ip4_directed_broadcast (u32 sw_if_index, u8 enable);
 
-void ip4_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable);
+int ip4_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable);
 
 int ip4_address_compare (ip4_address_t * a1, ip4_address_t * a2);
 

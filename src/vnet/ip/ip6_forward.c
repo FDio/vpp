@@ -41,6 +41,8 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip_frag.h>
 #include <vnet/ip/ip6_link.h>
+#include <vnet/ip/ip6_ll_table.h>
+#include <vnet/dpo/ip6_ll_dpo.h>
 #include <vnet/ethernet/ethernet.h>	/* for ethernet_header_t */
 #include <vnet/srp/srp.h>	/* for srp_hw_interface_class */
 #include <vppinfra/cache.h>
@@ -166,6 +168,13 @@ ip6_add_interface_routes (vnet_main_t * vnm, u32 sw_if_index,
 				   &pfx.fp_addr,
 				   sw_if_index, ~0,
 				   1, NULL, FIB_ROUTE_PATH_FLAG_NONE);
+
+  /* Add the /128 to the link-local/host-mode table too */
+  ip6_ll_prefix_t ll_pfx = {
+    .ilp_sw_if_index = sw_if_index,
+    .ilp_addr = pfx.fp_addr.ip6,
+  };
+  ip6_ll_table_entry_update (&ll_pfx, FIB_ROUTE_PATH_LOCAL);
 }
 
 static void
@@ -233,6 +242,13 @@ ip6_del_interface_routes (u32 sw_if_index, ip6_main_t * im,
 				   address, address_length);
 
   fib_table_entry_delete (fib_index, &pfx, FIB_SOURCE_INTERFACE);
+
+  /* remove the /128 from the link-local/host-mode table too */
+  ip6_ll_prefix_t ll_pfx = {
+    .ilp_sw_if_index = sw_if_index,
+    .ilp_addr = pfx.fp_addr.ip6,
+  };
+  ip6_ll_table_entry_delete (&ll_pfx);
 }
 
 #ifndef CLIB_MARCH_VARIANT
@@ -492,7 +508,10 @@ ip6_add_del_interface_address (vlib_main_t * vm,
 
   ip6_sw_interface_enable_disable (sw_if_index, !is_del);
   if (!is_del)
-    ip6_link_enable (sw_if_index, NULL);
+    {
+      ip6_link_enable (sw_if_index, NULL);
+      ip6_link_forwarding_enable (sw_if_index);
+    }
 
   /* intf addr routes are added/deleted on admin up/down */
   if (vnet_sw_interface_is_admin_up (vnm, sw_if_index))
@@ -514,7 +533,10 @@ ip6_add_del_interface_address (vlib_main_t * vm,
 		  address, address_length, if_address_index, is_del);
 
   if (is_del)
-    ip6_link_disable (sw_if_index);
+    {
+      ip6_link_forwarding_disable (sw_if_index);
+      ip6_link_disable (sw_if_index);
+    }
 
 done:
   vec_free (addr_fib);
@@ -628,6 +650,13 @@ VNET_FEATURE_INIT (ip6_not_enabled, static) =
   .runs_before = VNET_FEATURES ("ip6-lookup"),
 };
 
+VNET_FEATURE_INIT (ip6_not_forwarding, static) = {
+  .arc_name = "ip6-unicast",
+  .node_name = "ip6-not-forwarding",
+  .runs_before = VNET_FEATURES ("ip6-lookup"),
+  .runs_after = VNET_FEATURES ("ip6-not-enabled"),
+};
+
 VNET_FEATURE_INIT (ip6_lookup, static) =
 {
   .arc_name = "ip6-unicast",
@@ -720,8 +749,11 @@ ip6_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 
   vnet_feature_enable_disable ("ip6-unicast", "ip6-not-enabled", sw_if_index,
 			       is_add, 0, 0);
-
   vnet_feature_enable_disable ("ip6-multicast", "ip6-not-enabled",
+			       sw_if_index, is_add, 0, 0);
+  vnet_feature_enable_disable ("ip6-unicast", "ip6-not-forwarding",
+			       sw_if_index, is_add, 0, 0);
+  vnet_feature_enable_disable ("ip6-multicast", "ip6-not-forwarding",
 			       sw_if_index, is_add, 0, 0);
 
   return /* no error */ 0;

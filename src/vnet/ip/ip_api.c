@@ -70,6 +70,8 @@
 
 #define foreach_ip_api_msg                                                    \
   _ (SW_INTERFACE_IP6_ENABLE_DISABLE, sw_interface_ip6_enable_disable)        \
+  _ (SW_INTERFACE_IP_ENABLE_DISABLE, sw_interface_ip_enable_disable)          \
+  _ (SW_INTERFACE_IP_FORWARDING, sw_interface_ip_forwarding)                  \
   _ (IP_TABLE_DUMP, ip_table_dump)                                            \
   _ (IP_ROUTE_DUMP, ip_route_dump)                                            \
   _ (IP_ROUTE_V2_DUMP, ip_route_v2_dump)                                      \
@@ -130,6 +132,56 @@ static void
   BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_SW_INTERFACE_IP6_ENABLE_DISABLE_REPLY);
+}
+
+static void
+vl_api_sw_interface_ip_enable_disable_t_handler (
+  vl_api_sw_interface_ip_enable_disable_t *mp)
+{
+  vl_api_sw_interface_ip_enable_disable_reply_t *rmp;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  switch (mp->af)
+    {
+    case ADDRESS_IP4:
+      ip4_sw_interface_enable_disable (ntohl (mp->sw_if_index), mp->enable);
+      break;
+    case ADDRESS_IP6:
+      rv =
+	((mp->enable == 1) ? ip6_link_enable (ntohl (mp->sw_if_index), NULL) :
+			     ip6_link_disable (ntohl (mp->sw_if_index)));
+    }
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_SW_INTERFACE_IP_ENABLE_DISABLE_REPLY);
+}
+
+static void
+vl_api_sw_interface_ip_forwarding_t_handler (
+  vl_api_sw_interface_ip_forwarding_t *mp)
+{
+  vl_api_sw_interface_ip_forwarding_reply_t *rmp;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  switch (mp->af)
+    {
+    case ADDRESS_IP4:
+      // TODO
+      break;
+    case ADDRESS_IP6:
+      if (mp->enable)
+	ip6_link_forwarding_enable (ntohl (mp->sw_if_index));
+      else
+	ip6_link_forwarding_disable (ntohl (mp->sw_if_index));
+      break;
+    }
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_SW_INTERFACE_IP_FORWARDING_REPLY);
 }
 
 static void

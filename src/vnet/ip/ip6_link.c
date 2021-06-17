@@ -15,6 +15,7 @@
 
 #include <vnet/ip/ip6_link.h>
 #include <vnet/ip/ip6_ll_table.h>
+#include <vnet/dpo/ip6_ll_dpo.h>
 
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/mfib/ip6_mfib.h>
@@ -47,6 +48,9 @@ typedef struct ip6_link_t_
 
   /** number of references to IP6 enabled on this link */
   u32 il_locks;
+
+  /** number of references to IP6 forwarding on this link */
+  u32 il_forwarding_locks;
 } ip6_link_t;
 
 #define FOREACH_IP6_LINK_DELEGATE(_ild, _il, body)      \
@@ -144,6 +148,64 @@ ip6_link_is_enabled (u32 sw_if_index)
   return (NULL != ip6_link_get (sw_if_index));
 }
 
+int
+ip6_link_forwarding_enable (u32 sw_if_index)
+{
+  ip6_link_t *il;
+  int rv;
+
+  il = ip6_link_get (sw_if_index);
+
+  if (NULL == il)
+    {
+      rv = ip6_link_enable (sw_if_index, NULL);
+      if (rv)
+	return rv;
+      il = ip6_link_get (sw_if_index);
+    }
+
+  il->il_forwarding_locks++;
+
+  if (1 == il->il_forwarding_locks)
+    {
+      /* first time enabled, swap the sentinel node on
+       * the input arc to the global IP6 lookup */
+      vnet_feature_enable_disable ("ip6-unicast", "ip6-not-forwarding",
+				   sw_if_index, 0, 0, 0);
+      vnet_feature_enable_disable ("ip6-multicast", "ip6-not-forwarding",
+				   sw_if_index, 0, 0, 0);
+    }
+
+  return (0);
+}
+
+int
+ip6_link_forwarding_disable (u32 sw_if_index)
+{
+  ip6_link_t *il;
+  // int rv;
+
+  il = ip6_link_get (sw_if_index);
+
+  if (NULL == il)
+    {
+      return (0);
+    }
+
+  il->il_forwarding_locks--;
+
+  if (0 == il->il_forwarding_locks)
+    {
+      /* last time disabled, enable the LL only lookup feature on
+       * the input arc to the link-local/host-table IP6 lookup */
+      vnet_feature_enable_disable ("ip6-unicast", "ip6-not-forwarding",
+				   sw_if_index, 1, 0, 0);
+      vnet_feature_enable_disable ("ip6-multicast", "ip6-not-forwarding",
+				   sw_if_index, 1, 0, 0);
+    }
+
+  return (0);
+}
 
 int
 ip6_link_enable (u32 sw_if_index, const ip6_address_t * link_local_addr)
@@ -270,6 +332,8 @@ ip6_link_last_lock_gone (ip6_link_t * il)
 
   ip6_mfib_interface_enable_disable (il->il_sw_if_index, 0);
   ip6_sw_interface_enable_disable (il->il_sw_if_index, 0);
+
+  ASSERT (0 == il->il_forwarding_locks);
 
   ip6_address_set_zero (&il->il_ll_addr);
   adj_unlock (il->il_mcast_adj);
