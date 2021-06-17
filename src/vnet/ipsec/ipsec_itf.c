@@ -74,10 +74,11 @@ ipsec_itf_adj_stack (adj_index_t ai, u32 sai)
 
       sa = ipsec_sa_get (sai);
       ip_address_to_fib_prefix (&sa->tunnel.t_dst, &dst);
-      adj_midchain_delegate_stack (ai, sa->tunnel.t_fib_index, &dst);
+      /* use the DPO that the SA has already stacked */
+      adj_nbr_midchain_stack (ai, &sa->dpo);
     }
   else
-    adj_midchain_delegate_unstack (ai);
+    adj_nbr_midchain_unstack (ai);
 }
 
 static adj_walk_rc_t

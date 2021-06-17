@@ -2414,6 +2414,62 @@ fib_path_stack_mpls_disp (fib_node_index_t path_index,
 }
 
 void
+fib_path_contribute_forwarding_w_filter (fib_node_index_t path_index,
+                                         fib_forward_chain_type_t fct,
+                                         dpo_id_t *dpo,
+                                         fib_path_contribute_filter_t filter,
+                                         void *data)
+{
+    fib_path_t *path;
+
+    path = fib_path_get(path_index);
+
+    switch (path->fp_type)
+    {
+    case FIB_PATH_TYPE_RECURSIVE:
+        /*
+         * get the DPO to resolve through from the via-entry
+         */
+        fib_entry_contribute_forwarding_w_filter(path->fp_via_fib,
+                                                 fct, dpo,
+                                                 filter, data);
+
+        /*
+         * It's possible the filter has removed all of the
+         * choices. if swap the LB on drop DPO for the drop
+         * so the caller does not include this path in its LB
+         */
+        if (filter && load_balance_is_drop(dpo))
+        {
+            dpo_copy(dpo, drop_dpo_get(fib_forw_chain_type_to_dpo_proto(fct)));
+        }
+        break;
+    case FIB_PATH_TYPE_ATTACHED_NEXT_HOP:
+    case FIB_PATH_TYPE_DEAG:
+    case FIB_PATH_TYPE_RECEIVE:
+    case FIB_PATH_TYPE_ATTACHED:
+    case FIB_PATH_TYPE_INTF_RX:
+    case FIB_PATH_TYPE_UDP_ENCAP:
+    case FIB_PATH_TYPE_EXCLUSIVE:
+    case FIB_PATH_TYPE_SPECIAL:
+    case FIB_PATH_TYPE_BIER_FMASK:
+    case FIB_PATH_TYPE_BIER_TABLE:
+    case FIB_PATH_TYPE_BIER_IMP:
+    case FIB_PATH_TYPE_DVR:
+        /*
+         * allow the caller to filter out unwanted paths
+         */
+        if (filter && filter(path_index, data))
+        {
+            dpo_copy(dpo, drop_dpo_get(fib_forw_chain_type_to_dpo_proto(fct)));
+            return;
+        }
+
+        return fib_path_contribute_forwarding(path_index, fct, dpo);
+    }
+}
+
+void
 fib_path_contribute_forwarding (fib_node_index_t path_index,
 				fib_forward_chain_type_t fct,
 				dpo_id_t *dpo)

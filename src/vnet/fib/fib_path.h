@@ -199,6 +199,11 @@ extern void fib_path_stack_mpls_disp(fib_node_index_t path_index,
 extern void fib_path_contribute_forwarding(fib_node_index_t path_index,
 					   fib_forward_chain_type_t type,
 					   dpo_id_t *dpo);
+extern void fib_path_contribute_forwarding_w_filter(fib_node_index_t path_index,
+                                                    fib_forward_chain_type_t type,
+                                                    dpo_id_t *dpo,
+                                                    fib_path_contribute_filter_t filter,
+                                                    void *data);
 extern void fib_path_contribute_urpf(fib_node_index_t path_index,
 				     index_t urpf);
 extern adj_index_t fib_path_get_adj(fib_node_index_t path_index);

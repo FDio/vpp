@@ -18,6 +18,7 @@
 #include <vnet/tunnel/tunnel.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/fib_entry_track.h>
+#include <vnet/fib/fib_path.h>
 
 #include <vnet/ip/ip6_inlines.h>
 
@@ -142,8 +143,10 @@ tunnel_copy (const tunnel_t *src, tunnel_t *dst)
   dst->t_fib_index = src->t_fib_index;
 
   dst->t_flags &= ~TUNNEL_FLAG_RESOLVED;
-  dst->t_fib_entry_index = FIB_NODE_INDEX_INVALID;
-  dst->t_sibling = ~0;
+  dst->t_src_fib_entry_index = FIB_NODE_INDEX_INVALID;
+  dst->t_src_sibling = ~0;
+  dst->t_dst_fib_entry_index = FIB_NODE_INDEX_INVALID;
+  dst->t_dst_sibling = ~0;
 }
 
 u8 *
@@ -159,7 +162,11 @@ format_tunnel (u8 *s, va_list *args)
 	      format_tunnel_flags, t->t_flags, format_tunnel_encap_decap_flags,
 	      t->t_encap_decap_flags);
   if (t->t_flags & TUNNEL_FLAG_RESOLVED)
-    s = format (s, " [resolved via fib-entry: %d]", t->t_fib_entry_index);
+    s =
+      format (s, " [resolved via fib-entry:[dst:%d", t->t_dst_fib_entry_index);
+  if (t->t_flags & TUNNEL_FLAG_PIN_EG_ITF)
+    s = format (s, " src:%d", t->t_src_fib_entry_index);
+  s = format (s, "]]");
 
   return (s);
 }
@@ -197,8 +204,16 @@ tunnel_resolve (tunnel_t *t, fib_node_type_t child_type, index_t child_index)
   if (t->t_fib_index == ~((u32) 0))
     return VNET_API_ERROR_NO_SUCH_FIB;
 
-  t->t_fib_entry_index = fib_entry_track (t->t_fib_index, &pfx, child_type,
-					  child_index, &t->t_sibling);
+  t->t_dst_fib_entry_index = fib_entry_track (t->t_fib_index, &pfx, child_type,
+					      child_index, &t->t_dst_sibling);
+
+  if (t->t_flags & TUNNEL_FLAG_PIN_EG_ITF)
+    {
+      ip_address_to_fib_prefix (&t->t_src, &pfx);
+
+      t->t_src_fib_entry_index = fib_entry_track (
+	t->t_fib_index, &pfx, child_type, child_index, &t->t_src_sibling);
+    }
 
   t->t_flags |= TUNNEL_FLAG_RESOLVED;
 
@@ -209,9 +224,23 @@ void
 tunnel_unresolve (tunnel_t *t)
 {
   if (t->t_flags & TUNNEL_FLAG_RESOLVED)
-    fib_entry_untrack (t->t_fib_entry_index, t->t_sibling);
-
+    {
+      fib_entry_untrack (t->t_dst_fib_entry_index, t->t_dst_sibling);
+      if (t->t_flags & TUNNEL_FLAG_PIN_EG_ITF)
+	fib_entry_untrack (t->t_src_fib_entry_index, t->t_src_sibling);
+    }
   t->t_flags &= ~TUNNEL_FLAG_RESOLVED;
+}
+
+static u8
+tunnel_egress_path_filter (fib_node_index_t path_index, void *arg)
+{
+  u32 sw_if_index = *(u32 *) arg;
+
+  if (sw_if_index != fib_path_get_resolving_interface (path_index))
+    return 1;
+
+  return 0;
 }
 
 void
@@ -222,7 +251,21 @@ tunnel_contribute_forwarding (const tunnel_t *t, dpo_id_t *dpo)
   fct = fib_forw_chain_type_from_fib_proto (
     ip_address_family_to_fib_proto (ip_addr_version (&t->t_src)));
 
-  fib_entry_contribute_forwarding (t->t_fib_entry_index, fct, dpo);
+  if (t->t_flags & TUNNEL_FLAG_PIN_EG_ITF)
+    {
+      u32 src_sw_if_index;
+
+      src_sw_if_index =
+	fib_entry_get_any_resolving_interface (t->t_src_fib_entry_index);
+
+      fib_entry_contribute_forwarding_w_filter (t->t_dst_fib_entry_index, fct,
+						dpo, tunnel_egress_path_filter,
+						&src_sw_if_index);
+    }
+  else
+    {
+      fib_entry_contribute_forwarding (t->t_dst_fib_entry_index, fct, dpo);
+    }
 }
 
 void
