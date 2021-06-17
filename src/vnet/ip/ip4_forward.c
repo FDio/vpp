@@ -598,7 +598,7 @@ ip4_del_interface_routes (u32 sw_if_index,
 }
 
 #ifndef CLIB_MARCH_VARIANT
-void
+int
 ip4_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable)
 {
   ip4_main_t *im = &ip4_main;
@@ -613,18 +613,16 @@ ip4_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable)
   if (is_enable)
     {
       if (1 != ++im->ip_enabled_by_sw_if_index[sw_if_index])
-	return;
+	return 0;
     }
   else
     {
       ASSERT (im->ip_enabled_by_sw_if_index[sw_if_index] > 0);
       if (0 != --im->ip_enabled_by_sw_if_index[sw_if_index])
-	return;
+	return 0;
     }
   vnet_feature_enable_disable ("ip4-unicast", "ip4-not-enabled", sw_if_index,
 			       !is_enable, 0, 0);
-
-
   vnet_feature_enable_disable ("ip4-multicast", "ip4-not-enabled",
 			       sw_if_index, !is_enable, 0, 0);
 
@@ -638,6 +636,8 @@ ip4_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable)
     vec_foreach (cb, im->enable_disable_interface_callbacks)
       cb->function (im, cb->function_opaque, sw_if_index, is_enable);
   }
+
+  return 0;
 }
 
 static clib_error_t *

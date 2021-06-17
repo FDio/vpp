@@ -125,12 +125,12 @@ ip6_ll_table_entry_update (const ip6_ll_prefix_t * ilp,
   vec_add1 (rpaths, rpath);
 
   ip6_ll_prefix_to_fib (ilp, &fp);
-  ip6_ll_entry_index =
-    fib_table_entry_update (ip6_ll_fib_get (ilp->ilp_sw_if_index), &fp,
-			    FIB_SOURCE_IP6_ND,
-			    (flags & FIB_ROUTE_PATH_LOCAL ?
-			     FIB_ENTRY_FLAG_LOCAL : FIB_ENTRY_FLAG_NONE),
-			    rpaths);
+  ip6_ll_entry_index = fib_table_entry_update (
+    ip6_ll_fib_get (ilp->ilp_sw_if_index), &fp, FIB_SOURCE_IP6_ND,
+    FIB_ENTRY_FLAG_NO_ATTACHED_EXPORT |
+      (flags & FIB_ROUTE_PATH_LOCAL ? FIB_ENTRY_FLAG_LOCAL :
+				      FIB_ENTRY_FLAG_NONE),
+    rpaths);
   vec_free (rpaths);
 
   return (ip6_ll_entry_index);

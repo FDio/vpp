@@ -17,6 +17,7 @@
 
 #include <vnet/ip6-nd/ip6_nd.h>
 #include <vnet/ip-neighbor/ip_neighbor.h>
+#include <vnet/ip/ip6_link.h>
 
 #include <vnet/fib/ip6_fib.h>
 
@@ -44,6 +45,7 @@ ip6_nd_proxy_add_del (u32 sw_if_index, const ip6_address_t * addr, u8 is_del)
 
   if (is_del)
     {
+      ip6_link_forwarding_disable (sw_if_index);
       fib_table_entry_path_remove (fib_index,
 				   &pfx,
 				   FIB_SOURCE_IP6_ND_PROXY,
@@ -60,6 +62,7 @@ ip6_nd_proxy_add_del (u32 sw_if_index, const ip6_address_t * addr, u8 is_del)
     }
   else
     {
+      ip6_link_forwarding_enable (sw_if_index);
       fib_table_entry_path_add (fib_index,
 				&pfx,
 				FIB_SOURCE_IP6_ND_PROXY,

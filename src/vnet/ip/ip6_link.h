@@ -23,6 +23,8 @@ extern int ip6_link_enable (u32 sw_if_index,
 			    const ip6_address_t * link_local_addr);
 extern bool ip6_link_is_enabled (u32 sw_if_index);
 extern int ip6_link_disable (u32 sw_if_index);
+extern int ip6_link_forwarding_enable (u32 sw_if_index);
+extern int ip6_link_forwarding_disable (u32 sw_if_index);
 
 extern const ip6_address_t *ip6_get_link_local_address (u32 sw_if_index);
 
