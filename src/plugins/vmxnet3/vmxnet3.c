@@ -20,6 +20,7 @@
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>
 #include <vnet/interface/rx_queue_funcs.h>
+#include <vnet/interface/tx_queue_funcs.h>
 #include <vmxnet3/vmxnet3.h>
 
 #define PCI_VENDOR_ID_VMWARE				0x15ad
@@ -325,23 +326,15 @@ vmxnet3_txq_init (vlib_main_t * vm, vmxnet3_device_t * vd, u16 qid, u16 qsz)
   vmxnet3_tx_stats *txs;
   u32 size;
 
-  if (qid >= vd->num_tx_queues)
-    {
-      qid = qid % vd->num_tx_queues;
-      txq = vec_elt_at_index (vd->txqs, qid);
-      if (txq->lock == 0)
-	clib_spinlock_init (&txq->lock);
-      vd->flags |= VMXNET3_DEVICE_F_SHARED_TXQ_LOCK;
-      return 0;
-    }
+  vec_validate_aligned (vd->txqs, qid, CLIB_CACHE_LINE_BYTES);
+  txq = vec_elt_at_index (vd->txqs, qid);
+  clib_memset (txq, 0, sizeof (*txq));
+  clib_spinlock_init (&txq->lock);
 
   vec_validate (vd->tx_stats, qid);
   txs = vec_elt_at_index (vd->tx_stats, qid);
   clib_memset (txs, 0, sizeof (*txs));
 
-  vec_validate_aligned (vd->txqs, qid, CLIB_CACHE_LINE_BYTES);
-  txq = vec_elt_at_index (vd->txqs, qid);
-  clib_memset (txq, 0, sizeof (*txq));
   txq->size = qsz;
   txq->reg_txprod = qid * 8 + VMXNET3_REG_TXPROD;
 
@@ -351,7 +344,7 @@ vmxnet3_txq_init (vlib_main_t * vm, vmxnet3_device_t * vd, u16 qid, u16 qsz)
   if (txq->tx_desc == 0)
     return vlib_physmem_last_error (vm);
 
-  memset (txq->tx_desc, 0, size);
+  clib_memset (txq->tx_desc, 0, size);
 
   size = qsz * sizeof (*txq->tx_comp);
   txq->tx_comp =
@@ -407,7 +400,6 @@ vmxnet3_device_init (vlib_main_t * vm, vmxnet3_device_t * vd,
 {
   clib_error_t *error = 0;
   u32 ret, i, size;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
 
   /* Quiesce the device */
   vmxnet3_reg_write (vd, 1, VMXNET3_REG_CMD, VMXNET3_CMD_QUIESCE_DEV);
@@ -506,7 +498,7 @@ vmxnet3_device_init (vlib_main_t * vm, vmxnet3_device_t * vd,
 	return error;
     }
 
-  for (i = 0; i < tm->n_vlib_mains; i++)
+  for (i = 0; i < vd->num_tx_queues; i++)
     {
       error = vmxnet3_txq_init (vm, vd, i, args->txq_size);
       if (error)
@@ -834,6 +826,18 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
     vmxnet3_rxq_refill_ring0 (vm, vd, rxq);
     vmxnet3_rxq_refill_ring1 (vm, vd, rxq);
   }
+
+  vec_foreach_index (qid, vd->txqs)
+    {
+      vmxnet3_txq_t *txq = vec_elt_at_index (vd->txqs, qid);
+      txq->queue_index =
+	vnet_hw_if_register_tx_queue (vnm, vd->hw_if_index, qid);
+    }
+  for (u32 i = 0; i < vlib_get_n_threads (); i++)
+    {
+      u32 qi = vd->txqs[i % vd->num_tx_queues].queue_index;
+      vnet_hw_if_tx_queue_assign_thread (vnm, qi, i);
+    }
   vnet_hw_if_update_runtime_data (vnm, vd->hw_if_index);
 
   vd->flags |= VMXNET3_DEVICE_F_INITIALIZED;
