@@ -26,6 +26,14 @@ format_vnet_buffer_offload (u8 *s, va_list *args)
     s = format (s, "%s ", ss);
   foreach_vnet_buffer_offload_flag
 #undef _
+
+    if (vnet_buffer (b)->oflags & VNET_BUFFER_OFFLOAD_F_TNL_MASK)
+  {
+    s = format (s, "outer-l3-hdr-offset %d ",
+		vnet_buffer2 (b)->outer_l3_hdr_offset);
+    s = format (s, "outer-l4-hdr-offset %d ",
+		vnet_buffer2 (b)->outer_l4_hdr_offset);
+  }
     return s;
 }
 
@@ -54,7 +62,8 @@ format_vnet_buffer (u8 * s, va_list * args)
     a = format (a, "l4-hdr-offset %d ", vnet_buffer (b)->l4_hdr_offset);
 
   if (b->flags & VNET_BUFFER_F_GSO)
-    a = format (a, "gso gso-size %d", vnet_buffer2 (b)->gso_size);
+    a = format (a, "gso l4-hdr-len %d gso-size %d",
+		vnet_buffer2 (b)->gso_l4_hdr_sz, vnet_buffer2 (b)->gso_size);
 
   if (b->flags & VNET_BUFFER_F_QOS_DATA_VALID)
     a = format (a, "qos %d.%d ",
