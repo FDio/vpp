@@ -1,6 +1,18 @@
 #ifndef _included_clib_sanitizer_h
 #define _included_clib_sanitizer_h
 
+/* If the request crosses a 4k boundary, it's not OK to assume
+ * that the overflow game is safe. 4k is the minimum known page size. */
+#define CLIB_MEM_ASSERT_SINGLE_PAGE(a, s)                                     \
+  do                                                                          \
+    {                                                                         \
+      const clib_address_t clib_mem_first__ = (clib_address_t) (a);           \
+      const clib_address_t clib_mem_last__ = clib_mem_first__ + s - 1;        \
+      ASSERT ((clib_mem_first__ >> 12) == (clib_mem_last__ >> 12) &&          \
+	      "overflow is not safe accross pages");                          \
+    }                                                                         \
+  while (0)
+
 #ifdef CLIB_SANITIZE_ADDR
 
 #include <sanitizer/asan_interface.h>
@@ -82,6 +94,8 @@ sanitizer_unpoison_pop__ (const u64 *restrict shadow, const void *ptr,
     const void *clib_mem_overflow_src__ = (src);                              \
     size_t clib_mem_overflow_n__ = (n);                                       \
     u64 clib_mem_overflow_shadow__[CLIB_MEM_OVERFLOW_MAX];                    \
+    CLIB_MEM_ASSERT_SINGLE_PAGE (clib_mem_overflow_src__,                     \
+				 clib_mem_overflow_n__);                      \
     sanitizer_unpoison_push__ (clib_mem_overflow_shadow__,                    \
 			       clib_mem_overflow_src__,                       \
 			       clib_mem_overflow_n__);                        \
@@ -112,7 +126,11 @@ CLIB_MEM_POISON_LEN (void *src, size_t oldlen, size_t newlen)
 #define CLIB_NOSANITIZE_ADDR
 #define CLIB_MEM_POISON(a, s)                   (void)(a)
 #define CLIB_MEM_UNPOISON(a, s)                 (void)(a)
-#define CLIB_MEM_OVERFLOW(a, b, c)              a
+#define CLIB_MEM_OVERFLOW(f, src, n)                                          \
+  ({                                                                          \
+    CLIB_MEM_ASSERT_SINGLE_PAGE ((src), (n));                                 \
+    f;                                                                        \
+  })
 #define CLIB_MEM_OVERFLOW_LOAD(f, src)          f(src)
 #define CLIB_MEM_POISON_LEN(a, b, c)
 
