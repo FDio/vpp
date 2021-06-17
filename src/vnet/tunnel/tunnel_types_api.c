@@ -55,7 +55,15 @@ tunnel_flags_decode (vl_api_tunnel_flags_t f, tunnel_flags_t *o)
     /* unknown flags set */
     return (VNET_API_ERROR_INVALID_VALUE_2);
 
-  *o = (tunnel_flags_t) f;
+  tunnel_flags_t tmp = TUNNEL_FLAG_NONE;
+
+  if (f & TUNNEL_API_FLAG_TRACK_MTU)
+    tmp |= TUNNEL_FLAG_TRACK_MTU;
+  if (f & TUNNEL_API_FLAG_PIN_EGRESS_INTERFACE)
+    tmp |= TUNNEL_FLAG_PIN_EG_ITF;
+
+  *o = tmp;
+
   return (0);
 }
 

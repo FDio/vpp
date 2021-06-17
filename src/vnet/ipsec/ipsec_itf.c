@@ -54,65 +54,10 @@ format_ipsec_itf_name (u8 * s, va_list * args)
   return format (s, "ipsec%d", dev_instance);
 }
 
-void
-ipsec_itf_adj_unstack (adj_index_t ai)
-{
-  adj_midchain_delegate_unstack (ai);
-}
-
-void
-ipsec_itf_adj_stack (adj_index_t ai, u32 sai)
-{
-  const vnet_hw_interface_t *hw;
-
-  hw = vnet_get_sup_hw_interface (vnet_get_main (), adj_get_sw_if_index (ai));
-
-  if (hw->flags & VNET_HW_INTERFACE_FLAG_LINK_UP)
-    {
-      const ipsec_sa_t *sa;
-      fib_prefix_t dst;
-
-      sa = ipsec_sa_get (sai);
-      ip_address_to_fib_prefix (&sa->tunnel.t_dst, &dst);
-      adj_midchain_delegate_stack (ai, sa->tunnel.t_fib_index, &dst);
-    }
-  else
-    adj_midchain_delegate_unstack (ai);
-}
-
-static adj_walk_rc_t
-ipsec_itf_adj_stack_cb (adj_index_t ai, void *arg)
-{
-  ipsec_tun_protect_t *itp = arg;
-
-  ipsec_itf_adj_stack (ai, itp->itp_out_sa);
-
-  return (ADJ_WALK_RC_CONTINUE);
-}
-
-static void
-ipsec_itf_restack (index_t itpi, const ipsec_itf_t * itf)
-{
-  ipsec_tun_protect_t *itp;
-  fib_protocol_t proto;
-
-  itp = ipsec_tun_protect_get (itpi);
-
-  /*
-   * walk all the adjacencies on the interface and restack them
-   */
-  FOR_EACH_FIB_IP_PROTOCOL (proto)
-  {
-    adj_nbr_walk (itf->ii_sw_if_index, proto, ipsec_itf_adj_stack_cb, itp);
-  }
-}
-
 static walk_rc_t
-ipsec_tun_protect_walk_state_change (index_t itpi, void *arg)
+ipsec_itf_walk_state_change (index_t itpi, void *arg)
 {
-  const ipsec_itf_t *itf = arg;
-
-  ipsec_itf_restack (itpi, itf);
+  ipsec_tun_protect_restack (itpi);
 
   return (WALK_CONTINUE);
 }
@@ -133,7 +78,7 @@ ipsec_itf_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 
   if (itf)
     ipsec_tun_protect_walk_itf (itf->ii_sw_if_index,
-				ipsec_tun_protect_walk_state_change, itf);
+				ipsec_itf_walk_state_change, NULL);
 
   return (NULL);
 }

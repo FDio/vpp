@@ -52,6 +52,11 @@ static adj_delegate_type_t ipsec_tun_adj_delegate_type;
  */
 index_t *ipsec_tun_protect_sa_by_adj_index;
 
+/**
+ * SA index to protection mapping
+ */
+index_t *ipsec_tun_protect_tun_by_sa_index;
+
 const ip_address_t IP_ADDR_ALL_0 = IP_ADDRESS_V4_ALL_0S;
 
 /**
@@ -205,6 +210,22 @@ ipsec_tun_protect_add_adj (adj_index_t ai, const ipsec_tun_protect_t * itp)
     }
 }
 
+static void
+ipsec_tun_protect_add_sa (index_t sai, const ipsec_tun_protect_t *itp)
+{
+  vec_validate_init_empty (ipsec_tun_protect_tun_by_sa_index, sai,
+			   INDEX_INVALID);
+
+  if (NULL == itp)
+    {
+      ipsec_tun_protect_tun_by_sa_index[sai] = INDEX_INVALID;
+    }
+  else
+    {
+      ipsec_tun_protect_tun_by_sa_index[sai] = itp - ipsec_tun_protect_pool;
+    }
+}
+
 static index_t
 ipsec_tun_protect_find (u32 sw_if_index, const ip_address_t * nh)
 {
@@ -295,6 +316,29 @@ ipsec_tun_protect_rx_db_add (ipsec_main_t * im,
   /* *INDENT-ON* */
 }
 
+static void
+ipsec_tun_protect_adj_stack (adj_index_t ai, u32 sai)
+{
+  const vnet_hw_interface_t *hw;
+
+  hw = vnet_get_sup_hw_interface (vnet_get_main (), adj_get_sw_if_index (ai));
+
+  if (hw->flags & VNET_HW_INTERFACE_FLAG_LINK_UP)
+    {
+      const ipsec_sa_t *sa;
+      fib_prefix_t dst;
+
+      sa = ipsec_sa_get (sai);
+      ip_address_to_fib_prefix (&sa->tunnel.t_dst, &dst);
+      /* use the DPO that the SA has already stacked */
+      adj_nbr_midchain_stack (ai, &sa->dpo);
+    }
+  else
+    {
+      adj_nbr_midchain_unstack (ai);
+    }
+}
+
 static adj_walk_rc_t
 ipsec_tun_protect_adj_add (adj_index_t ai, void *arg)
 {
@@ -304,7 +348,7 @@ ipsec_tun_protect_adj_add (adj_index_t ai, void *arg)
   ipsec_tun_protect_add_adj (ai, itp);
 
   if (itp->itp_flags & IPSEC_PROTECT_ITF)
-    ipsec_itf_adj_stack (ai, itp->itp_out_sa);
+    ipsec_tun_protect_adj_stack (ai, itp->itp_out_sa);
 
   return (ADJ_WALK_RC_CONTINUE);
 }
@@ -324,6 +368,7 @@ ipsec_tun_protect_tx_db_add (ipsec_tun_protect_t * itp)
 			   IPSEC_TUN_PROTECT_DEFAULT_DB_ENTRY);
 
   idi = &itp_db.id_itf[itp->itp_sw_if_index];
+  ipsec_tun_protect_add_sa (itp->itp_out_sa, itp);
 
   if (vnet_sw_interface_is_p2p (vnet_get_main (), itp->itp_sw_if_index))
     {
@@ -418,7 +463,7 @@ ipsec_tun_protect_adj_remove (adj_index_t ai, void *arg)
   ipsec_tun_protect_add_adj (ai, NULL);
 
   if (itp->itp_flags & IPSEC_PROTECT_ITF)
-    ipsec_itf_adj_unstack (ai);
+    adj_nbr_midchain_unstack (ai);
 
   return (ADJ_WALK_RC_CONTINUE);
 }
@@ -432,6 +477,7 @@ ipsec_tun_protect_tx_db_remove (ipsec_tun_protect_t * itp)
 
   nh_proto = ip_address_to_46 (itp->itp_key, &nh);
   idi = &itp_db.id_itf[itp->itp_sw_if_index];
+  ipsec_tun_protect_add_sa (itp->itp_out_sa, NULL);
 
   if (vnet_sw_interface_is_p2p (vnet_get_main (), itp->itp_sw_if_index))
     {
@@ -908,6 +954,50 @@ ipsec_tun_teib_entry_deleted (const teib_entry_t * ne)
   ipsec_tun_protect_set_crypto_addr (itp);
 
   ITP_DBG (itp, "teib-removed");
+}
+
+static adj_walk_rc_t
+ipsec_tun_protect_adj_stack_cb (adj_index_t ai, void *arg)
+{
+  ipsec_tun_protect_t *itp = arg;
+
+  ipsec_tun_protect_adj_stack (ai, itp->itp_out_sa);
+
+  return (ADJ_WALK_RC_CONTINUE);
+}
+
+void
+ipsec_tun_protect_restack (index_t itpi)
+{
+  ipsec_tun_protect_t *itp;
+  fib_protocol_t proto;
+
+  itp = ipsec_tun_protect_get (itpi);
+
+  /*
+   * walk all the adjacencies on the interface and restack them
+   */
+  FOR_EACH_FIB_IP_PROTOCOL (proto)
+  {
+    adj_nbr_walk (itp->itp_sw_if_index, proto, ipsec_tun_protect_adj_stack_cb,
+		  itp);
+  }
+}
+
+void
+ipsec_tun_protect_sa_updated (index_t sai)
+{
+  index_t itpi;
+
+  if (vec_len (ipsec_tun_protect_tun_by_sa_index) <= sai)
+    return;
+
+  itpi = ipsec_tun_protect_tun_by_sa_index[sai];
+
+  if (INDEX_INVALID == itpi)
+    return;
+
+  ipsec_tun_protect_restack (itpi);
 }
 
 /**

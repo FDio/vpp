@@ -162,6 +162,8 @@ extern u8 *format_ipsec_tun_protect_index (u8 * s, va_list * args);
 
 extern void ipsec_tun_register_nodes (ip_address_family_t af);
 extern void ipsec_tun_unregister_nodes (ip_address_family_t af);
+extern void ipsec_tun_protect_restack (index_t itpi);
+extern void ipsec_tun_protect_sa_updated (index_t sai);
 
 /*
  * DP API

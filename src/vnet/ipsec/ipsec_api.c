@@ -793,7 +793,7 @@ send_ipsec_sa_details (ipsec_sa_t * sa, void *arg)
   if (ipsec_sa_is_set_IS_PROTECT (sa))
     {
       ipsec_sa_dump_match_ctx_t ctx = {
-	.sai = sa - ipsec_sa_pool,
+	.sai = ipsec_sa_get_index (sa),
 	.sw_if_index = ~0,
       };
       ipsec_tun_protect_walk (ipsec_sa_dump_match_sa, &ctx);
@@ -876,7 +876,7 @@ send_ipsec_sa_v2_details (ipsec_sa_t * sa, void *arg)
   if (ipsec_sa_is_set_IS_PROTECT (sa))
     {
       ipsec_sa_dump_match_ctx_t ctx = {
-	.sai = sa - ipsec_sa_pool,
+	.sai = ipsec_sa_get_index (sa),
 	.sw_if_index = ~0,
       };
       ipsec_tun_protect_walk (ipsec_sa_dump_match_sa, &ctx);
@@ -962,7 +962,7 @@ send_ipsec_sa_v3_details (ipsec_sa_t *sa, void *arg)
   if (ipsec_sa_is_set_IS_PROTECT (sa))
     {
       ipsec_sa_dump_match_ctx_t ctx = {
-	.sai = sa - ipsec_sa_pool,
+	.sai = ipsec_sa_get_index (sa),
 	.sw_if_index = ~0,
       };
       ipsec_tun_protect_walk (ipsec_sa_dump_match_sa, &ctx);

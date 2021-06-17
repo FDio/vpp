@@ -10688,6 +10688,347 @@ fib_test_sticky (void)
     return 0;
 }
 
+static u8
+fib_test_egress_path_filter (fib_node_index_t path_index, void *arg)
+{
+  u32 sw_if_index = *(u32 *) arg;
+
+  if (sw_if_index != fib_path_get_resolving_interface (path_index))
+    return 1;
+
+  return 0;
+}
+
+static int
+fib_test_filter (void)
+{
+    fib_node_index_t fei;
+    int n_feis, res;
+    test_main_t *tm;
+    ip4_main_t *im4;
+    ip6_main_t *im6;
+    u32 ii, jj;
+
+    tm = &test_main;
+    im4 = &ip4_main;
+    im6 = &ip6_main;
+    res = 0;
+
+    vec_validate(im4->fib_index_by_sw_if_index, tm->hw[3]->sw_if_index);
+    vec_validate(im6->fib_index_by_sw_if_index, tm->hw[3]->sw_if_index);
+
+    for (ii = 0; ii < 4; ii++)
+    {
+        im4->fib_index_by_sw_if_index[tm->hw[ii]->sw_if_index] = 0;
+        im6->fib_index_by_sw_if_index[tm->hw[ii]->sw_if_index] = 0;
+    }
+    n_feis = fib_entry_pool_size();
+
+    /*
+     * Next-hops and their adjacencies
+     */
+    const ip46_address_t nhs[4] =
+    {
+        [0] = {
+            .ip4.as_u32 = clib_host_to_net_u32(0x0a0a0a01),
+        },
+        [1] = {
+            .ip4.as_u32 = clib_host_to_net_u32(0x0a0a0a02),
+        },
+        [2] = {
+            .ip4.as_u32 = clib_host_to_net_u32(0x0a0a0a03),
+        },
+        [3] = {
+            .ip4.as_u32 = clib_host_to_net_u32(0x0a0a0a04),
+        },
+    };
+    fib_test_lb_bucket_t buckets[4];
+    adj_index_t ais[4];
+
+    for (ii = 0; ii < 4; ii++)
+    {
+        ais[ii] = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
+                                      VNET_LINK_IP4,
+                                      &nhs[ii],
+                                      tm->hw[ii]->sw_if_index);
+
+        buckets[ii].type = FT_LB_ADJ;
+        buckets[ii].adj.adj = ais[ii];
+    }
+
+    fib_test_lb_bucket_t bucket_drop = {
+        .type = FT_LB_DROP,
+    };
+
+    /*
+     * source a FIB entry with only one next-hop
+     */
+    const fib_prefix_t pfx_s_32[2] = {
+        [0] = {
+            .fp_len = 32,
+            .fp_proto = FIB_PROTOCOL_IP4,
+            .fp_addr = {
+                .ip4.as_u32 = clib_host_to_net_u32(0x01010101),
+            },
+        },
+        [1] = {
+            .fp_len = 32,
+            .fp_proto = FIB_PROTOCOL_IP4,
+            .fp_addr = {
+                .ip4.as_u32 = clib_host_to_net_u32(0x01010102),
+            },
+        },
+    };
+
+    fei = fib_table_entry_update_one_path(0,
+                                          &pfx_s_32[0],
+                                          FIB_SOURCE_API,
+                                          FIB_ENTRY_FLAG_NONE,
+                                          DPO_PROTO_IP4,
+                                          &nhs[0],
+                                          tm->hw[0]->sw_if_index,
+                                          ~0,
+                                          1,
+                                          NULL,
+                                          FIB_ROUTE_PATH_FLAG_NONE);
+
+    /* Get output interface filter forwarding  */
+    dpo_id_t filtered = DPO_INVALID;
+
+    /* filter on an interface that is present */
+    fib_entry_contribute_forwarding_w_filter (fei,
+                                              FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                              &filtered, fib_test_egress_path_filter,
+                                              &tm->hw[0]->sw_if_index);
+
+    FIB_TEST(!fib_test_validate_lb(&filtered, 1, &buckets[0]), "");
+
+    /* filter for an interface that isn't present */
+    fib_entry_contribute_forwarding_w_filter (fei,
+                                              FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                              &filtered, fib_test_egress_path_filter,
+                                              &tm->hw[1]->sw_if_index);
+
+    FIB_TEST(!fib_test_validate_lb(&filtered, 1, &bucket_drop),
+             "Filtered on interface not present is drop");
+
+    /* Update the FIB entry so it has two paths */
+    fib_route_path_t *r_paths = NULL;
+
+    for (ii = 0; ii < 2; ii++)
+    {
+        fib_route_path_t r_path = {
+            .frp_proto = DPO_PROTO_IP4,
+            .frp_addr = nhs[ii],
+            .frp_sw_if_index = tm->hw[ii]->sw_if_index,
+            .frp_weight = 1,
+            .frp_fib_index = ~0,
+        };
+        vec_add1(r_paths, r_path);
+    }
+
+    fei = fib_table_entry_update(0,
+                                 &pfx_s_32[0],
+                                 FIB_SOURCE_API,
+                                 FIB_ENTRY_FLAG_NONE,
+                                 r_paths);
+
+    /* filter on an interface that is present */
+    for (ii = 0; ii < 2; ii++)
+    {
+        fib_entry_contribute_forwarding_w_filter (fei,
+                                                  FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                                  &filtered, fib_test_egress_path_filter,
+                                                  &tm->hw[ii]->sw_if_index);
+        FIB_TEST(!fib_test_validate_lb(&filtered, 1, &buckets[ii]), "");
+    }
+    /* filter for an interface that isn't present */
+    fib_entry_contribute_forwarding_w_filter (fei,
+                                              FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                              &filtered, fib_test_egress_path_filter,
+                                              &tm->hw[2]->sw_if_index);
+    FIB_TEST(!fib_test_validate_lb(&filtered, 1, &bucket_drop),
+             "Filtered on interface not present is drop");
+
+    /* Update the FIB entry so it has 4 paths */
+    r_paths = NULL;
+
+    for (ii = 0; ii < 4; ii++)
+    {
+        fib_route_path_t r_path = {
+            .frp_proto = DPO_PROTO_IP4,
+            .frp_addr = nhs[ii],
+            .frp_sw_if_index = tm->hw[ii]->sw_if_index,
+            .frp_weight = 1,
+            .frp_fib_index = ~0,
+        };
+        vec_add1(r_paths, r_path);
+    }
+
+    fei = fib_table_entry_update(0,
+                                 &pfx_s_32[0],
+                                 FIB_SOURCE_API,
+                                 FIB_ENTRY_FLAG_NONE,
+                                 r_paths);
+
+    /* filter on an interface that is present */
+    /* filter on an interface that is present */
+    for (ii = 0; ii < 4; ii++)
+    {
+        fib_entry_contribute_forwarding_w_filter (fei,
+                                                  FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                                  &filtered, fib_test_egress_path_filter,
+                                                  &tm->hw[ii]->sw_if_index);
+        FIB_TEST(!fib_test_validate_lb(&filtered, 1, &buckets[ii]), "");
+    }
+    /* filter for an interface that isn't present */
+    u32 bogus_sw_if_index = 55;
+    fib_entry_contribute_forwarding_w_filter (fei,
+                                              FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                              &filtered, fib_test_egress_path_filter,
+                                              &bogus_sw_if_index);
+    FIB_TEST(!fib_test_validate_lb(&filtered, 1, &bucket_drop),
+             "Filtered on interface not present is drop");
+
+    /*
+     * Another /32 prefix with 4 paths
+     */
+    r_paths = NULL;
+
+    for (ii = 0; ii < 4; ii++)
+    {
+        fib_route_path_t r_path = {
+            .frp_proto = DPO_PROTO_IP4,
+            .frp_addr = nhs[ii],
+            .frp_sw_if_index = tm->hw[ii]->sw_if_index,
+            .frp_weight = 1,
+            .frp_fib_index = ~0,
+        };
+        vec_add1(r_paths, r_path);
+    }
+
+    fei = fib_table_entry_update(0,
+                                 &pfx_s_32[1],
+                                 FIB_SOURCE_API,
+                                 FIB_ENTRY_FLAG_NONE,
+                                 r_paths);
+
+    /* A recursive via each */
+    const fib_prefix_t pfx_2_2_2_2_s_32 = {
+        .fp_len = 32,
+        .fp_proto = FIB_PROTOCOL_IP4,
+        .fp_addr = {
+            .ip4.as_u32 = clib_host_to_net_u32(0x02020202),
+        },
+    };
+    r_paths = NULL;
+
+    for (ii = 0; ii < 2; ii++)
+    {
+        fib_route_path_t r_path = {
+            .frp_proto = DPO_PROTO_IP4,
+            .frp_addr = pfx_s_32[ii].fp_addr,
+            .frp_sw_if_index = ~0,
+            .frp_weight = 1,
+        };
+        vec_add1(r_paths, r_path);
+    }
+
+    fei = fib_table_entry_update(0,
+                                 &pfx_2_2_2_2_s_32,
+                                 FIB_SOURCE_API,
+                                 FIB_ENTRY_FLAG_NONE,
+                                 r_paths);
+
+    /* check we can build a filtered LB for each interface
+     * for the recursive entry */
+    for (ii = 0; ii < 4; ii++)
+    {
+        fib_entry_contribute_forwarding_w_filter (fei,
+                                                  FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                                  &filtered, fib_test_egress_path_filter,
+                                                  &tm->hw[ii]->sw_if_index);
+
+        /* the resulting load-balance should have 2 choices for the nhs
+         * that in turn have the filtered paths */
+        FIB_TEST(2 == load_balance_n_buckets(filtered.dpoi_index),
+                 "Filter recursive has 2 buckets");
+        for (jj = 0; jj < 2; jj++)
+        {
+            FIB_TEST(!fib_test_validate_lb(load_balance_get_bucket(filtered.dpoi_index, jj),
+                                           1, &buckets[ii]), "");
+        }
+    }
+
+    /* remove an interfaces from one of the via fibs */
+    r_paths = NULL;
+
+    for (ii = 0; ii < 2; ii++)
+    {
+        fib_route_path_t r_path = {
+            .frp_proto = DPO_PROTO_IP4,
+            .frp_addr = nhs[ii],
+            .frp_sw_if_index = tm->hw[ii]->sw_if_index,
+            .frp_weight = 1,
+            .frp_fib_index = ~0,
+        };
+        vec_add1(r_paths, r_path);
+    }
+
+    fib_table_entry_update(0,
+                           &pfx_s_32[1],
+                           FIB_SOURCE_API,
+                           FIB_ENTRY_FLAG_NONE,
+                           r_paths);
+
+    for (ii = 0; ii < 2; ii++)
+    {
+        fib_entry_contribute_forwarding_w_filter (fei,
+                                                  FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                                  &filtered, fib_test_egress_path_filter,
+                                                  &tm->hw[ii]->sw_if_index);
+
+        /* the resulting load-balance should have 2 choices for the nhs
+         * that in turn have the filtered paths */
+        FIB_TEST(2 == load_balance_n_buckets(filtered.dpoi_index),
+                 "Filter recursive has 2 buckets");
+        for (jj = 0; jj < 2; jj++)
+        {
+            FIB_TEST(!fib_test_validate_lb(load_balance_get_bucket(filtered.dpoi_index, jj),
+                                           1, &buckets[ii]), "");
+        }
+    }
+    for (ii = 2; ii < 4; ii++)
+    {
+        fib_entry_contribute_forwarding_w_filter (fei,
+                                                  FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                                  &filtered, fib_test_egress_path_filter,
+                                                  &tm->hw[ii]->sw_if_index);
+
+        /* the resulting load-balance should have 2 choices for the nhs
+         * that in turn have the filtered paths */
+        FIB_TEST(1 == load_balance_n_buckets(filtered.dpoi_index),
+                 "Filter recursive has 1 buckets");
+        FIB_TEST(!fib_test_validate_lb(load_balance_get_bucket(filtered.dpoi_index, 0),
+                                       1, &buckets[ii]), "");
+    }
+
+    /*
+     * Cleanup
+     */
+    fib_table_entry_delete(0, &pfx_s_32[0], FIB_SOURCE_API);
+    fib_table_entry_delete(0, &pfx_s_32[1], FIB_SOURCE_API);
+    fib_table_entry_delete(0, &pfx_2_2_2_2_s_32, FIB_SOURCE_API);
+
+    dpo_reset(&filtered);
+    for (ii = 0; ii < 4; ii++)
+        adj_unlock(ais[ii]);
+
+    FIB_TEST(0 == adj_nbr_db_size(), "All adjacencies removed");
+    FIB_TEST((n_feis == fib_entry_pool_size()), "Entries gone");
+    return 0;
+}
+
 static clib_error_t *
 fib_test (vlib_main_t * vm,
           unformat_input_t * input,
@@ -10749,6 +11090,10 @@ fib_test (vlib_main_t * vm,
     {
         res += fib_test_sticky();
     }
+    else if (unformat (input, "filter"))
+    {
+        res += fib_test_filter();
+    }
     else
     {
         res += fib_test_v4();
@@ -10758,6 +11103,7 @@ fib_test (vlib_main_t * vm,
         res += fib_test_pref();
         res += fib_test_label();
         res += fib_test_inherit();
+        res += fib_test_filter();
         res += lfib_test();
 
         /*

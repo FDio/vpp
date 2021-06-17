@@ -1227,6 +1227,16 @@ mpls_label_dpo_get_mtu (const dpo_id_t *dpo)
     return (dpo_get_mtu (&mld->mld_dpo) - sizeof(mpls_label_t) * mld->mld_n_labels);
 }
 
+static u32
+mpls_label_dpo_get_urpf (const dpo_id_t *dpo)
+{
+    mpls_label_dpo_t *mld;
+
+    mld = mpls_label_dpo_get(dpo->dpoi_index);
+
+    return (dpo_get_urpf (&mld->mld_dpo));
+}
+
 const static dpo_vft_t mld_vft = {
     .dv_lock = mpls_label_dpo_lock,
     .dv_unlock = mpls_label_dpo_unlock,
@@ -1234,6 +1244,7 @@ const static dpo_vft_t mld_vft = {
     .dv_mem_show = mpls_label_dpo_mem_show,
     .dv_mk_interpose = mpls_label_interpose,
     .dv_get_mtu = mpls_label_dpo_get_mtu,
+    .dv_get_urpf = mpls_label_dpo_get_urpf,
 };
 
 const static char* const mpls_label_imp_pipe_ip4_nodes[] =

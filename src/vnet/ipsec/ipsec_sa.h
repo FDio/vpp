@@ -208,6 +208,7 @@ typedef struct
   fib_node_t node;
 
   /* elements with u32 size */
+  adj_index_t adj_index;
   u32 id;
   u32 stat_index;
   vnet_crypto_alg_t integ_calg;
@@ -519,6 +520,12 @@ always_inline ipsec_sa_t *
 ipsec_sa_get (u32 sa_index)
 {
   return (pool_elt_at_index (ipsec_sa_pool, sa_index));
+}
+
+always_inline u32
+ipsec_sa_get_index (const ipsec_sa_t *sa)
+{
+  return (sa - ipsec_sa_pool);
 }
 
 #endif /* __IPSEC_SPD_SA_H__ */

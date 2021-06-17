@@ -19,6 +19,7 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/fib_entry_track.h>
 #include <vnet/ipsec/ipsec_tun.h>
+#include <vnet/ipsec/ipsec_itf.h>
 
 /**
  * @brief
@@ -86,6 +87,8 @@ ipsec_sa_stack (ipsec_sa_t * sa)
 			  im->esp6_encrypt_node_index :
 			  im->esp4_encrypt_node_index), &sa->dpo, &tmp);
   dpo_reset (&tmp);
+
+  ipsec_tun_protect_sa_updated (ipsec_sa_get_index (sa));
 }
 
 void
@@ -201,6 +204,7 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
   sa->protocol = proto;
   sa->flags = flags;
   sa->salt = salt;
+  sa->adj_index = ADJ_INDEX_INVALID;
   sa->thread_index = (vlib_num_workers ()) ? ~0 : 0;
   if (integ_alg != IPSEC_INTEG_ALG_NONE)
     {

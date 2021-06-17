@@ -54,8 +54,8 @@ class IPsecIPv4Params:
         self.salt = 0
         self.flags = 0
         self.nat_header = None
-        self.tun_flags = (VppEnum.vl_api_tunnel_encap_decap_flags_t.
-                          TUNNEL_API_ENCAP_DECAP_FLAG_NONE)
+        te = VppEnum.vl_api_tunnel_encap_decap_flags_t
+        self.tun_encap_decap_flags = te.TUNNEL_API_ENCAP_DECAP_FLAG_NONE
         self.dscp = 0
         self.async_mode = False
 
@@ -99,8 +99,8 @@ class IPsecIPv6Params:
         self.salt = 0
         self.flags = 0
         self.nat_header = None
-        self.tun_flags = (VppEnum.vl_api_tunnel_encap_decap_flags_t.
-                          TUNNEL_API_ENCAP_DECAP_FLAG_NONE)
+        te = VppEnum.vl_api_tunnel_encap_decap_flags_t
+        self.tun_encap_decap_flags = te.TUNNEL_API_ENCAP_DECAP_FLAG_NONE
         self.dscp = 0
         self.async_mode = False
 
@@ -881,10 +881,13 @@ class IpsecTun4(object):
         for pkt in pkts:
             self.assert_packet_checksums_valid(pkt)
 
-    def verify_tun_44(self, p, count=1, payload_size=64, n_rx=None):
+    def verify_tun_44(self, p, count=1, payload_size=64, n_rx=None,
+                      out_itf=None):
         self.vapi.cli("clear errors")
         self.vapi.cli("clear ipsec counters")
         self.vapi.cli("clear ipsec sa")
+        if not out_itf:
+            out_itf = self.pg0
         if not n_rx:
             n_rx = count
         try:
@@ -900,7 +903,7 @@ class IpsecTun4(object):
                                       dst=p.remote_tun_if_host, count=count,
                                       payload_size=payload_size)
             recv_pkts = self.send_and_expect(self.pg1, send_pkts,
-                                             self.tun_if, n_rx)
+                                             out_itf, n_rx)
             self.verify_encrypted(p, p.vpp_tun_sa, recv_pkts)
 
             for rx in recv_pkts:

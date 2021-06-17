@@ -54,7 +54,7 @@ enum tunnel_mode : u8
 };
 
 /**
- * tunnel mode
+ * tunnel flags
  */
 enumflag tunnel_flags : u8
 {
@@ -63,6 +63,13 @@ enumflag tunnel_flags : u8
    *  Currently NOT IMPLEMENTATION (this is a API place-holder)
    */
   TUNNEL_API_FLAG_TRACK_MTU = 0x1,
+
+  TUNNEL_API_FLAG_NONE = 0x0 [backwards_compatible],
+  /**
+   * the tunnel's output interface is pinned to the interface on
+   * which its source address is a receive
+   */
+  TUNNEL_API_FLAG_PIN_EGRESS_INTERFACE = 0x2 [backwards_compatible],
 };
 
 /**
