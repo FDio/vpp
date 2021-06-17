@@ -67,7 +67,6 @@ static int fib_test_do_debug;
 #define FIB_TEST(_cond, _comment, _args...)			\
 {								\
     if (FIB_TEST_I(_cond, _comment, ##_args)) {                 \
-        return 1;                                               \
         ASSERT(!("FAIL: " _comment));				\
     }								\
 }
@@ -503,8 +502,9 @@ fib_test_validate_lb_v (const load_balance_t *lb,
 
 		FIB_TEST_LB((vnet_mpls_uc_get_label(hdr) ==
 			     exp->label_o_adj.label),
-			    "bucket %d stacks on label %d",
+			    "bucket %d stacks on label %d not %d",
 			    bucket,
+                            vnet_mpls_uc_get_label(hdr),
 			    exp->label_o_adj.label);
 
 		FIB_TEST_LB((vnet_mpls_uc_get_s(hdr) ==
@@ -7389,6 +7389,73 @@ fib_test_label (void)
              "2.2.5.5/32 LB 1 buckets via: "
              "adj 10.10.11.1");
     fib_table_entry_delete_index(fei, FIB_SOURCE_API);
+
+    /*
+     * A prefix with outgoing labels. We'll RR source a /32 it covers
+     * and test that the RR source picks up the out-going labels
+     */
+    fib_prefix_t pfx_100_s_8 = {
+        .fp_len = 8,
+        .fp_proto = FIB_PROTOCOL_IP4,
+        .fp_addr = {
+            .ip4.as_u32 = clib_host_to_net_u32(0x64000000),
+        },
+    };
+    fib_test_lb_bucket_t l_100_eos_o_10_10_10_1 = {
+        .type = FT_LB_LABEL_O_ADJ,
+        .label_o_adj = {
+            .adj = ai_mpls_10_10_11_1,
+            .label = 1602,
+            .eos = MPLS_EOS,
+        },
+    };
+    fib_mpls_label_t *l1602 = NULL, fml1602 = {
+        .fml_value = 1602,
+    };
+    vec_add1(l1602, fml1602);
+    fei = fib_table_entry_update_one_path(fib_index,
+                                          &pfx_100_s_8,
+                                          FIB_SOURCE_API,
+                                          FIB_ENTRY_FLAG_NONE,
+                                          DPO_PROTO_IP4,
+                                          &nh_10_10_11_1,
+                                          tm->hw[1]->sw_if_index,
+                                          ~0, // invalid fib index
+                                          1,
+                                          l1602,
+                                          FIB_ROUTE_PATH_FLAG_NONE);
+
+    FIB_TEST(!fib_test_validate_entry(fei,
+                                      FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                      1,
+                                      &l_100_eos_o_10_10_10_1),
+             "100.0.0.0/8 LB 1 buckets via: lbl 101 "
+             "adj 10.10.11.1");
+
+    fib_prefix_t pfx_100_1_1_1_s_32 = {
+        .fp_len = 32,
+        .fp_proto = FIB_PROTOCOL_IP4,
+        .fp_addr = {
+            .ip4.as_u32 = clib_host_to_net_u32(0x64010101),
+        },
+    };
+
+    fei = fib_table_entry_special_add(fib_index,
+                                      &pfx_100_1_1_1_s_32,
+                                      FIB_SOURCE_RR,
+                                      FIB_ENTRY_FLAG_NONE);
+
+    FIB_TEST(!fib_test_validate_entry(fei,
+                                      FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                      1,
+                                      &l_100_eos_o_10_10_10_1),
+             "100.1.1.1/32 LB 1 buckets via: "
+             "adj 10.10.11.1");
+
+    fib_table_entry_delete(fib_index,
+                           &pfx_100_s_8,
+                           FIB_SOURCE_API);
+    fib_table_entry_delete_index(fei, FIB_SOURCE_RR);
 
     /*
      * cleanup
