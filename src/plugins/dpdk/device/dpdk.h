@@ -302,6 +302,7 @@ typedef struct
   u8 *uio_driver_name;
   u8 no_multi_seg;
   u8 enable_tcp_udp_checksum;
+  u8 enable_outer_checksum_offload;
   u8 no_tx_checksum_offload;
   u8 enable_telemetry;
   u16 max_simd_bitwidth;

@@ -150,6 +150,10 @@ dpdk {{
 	## Enable UDP / TCP TX checksum offload
 	## This is the reversed option of 'no-tx-checksum-offload'
 	# enable-tcp-udp-checksum
+
+        ## Enable outer UDP / IPv4 checksum offload
+        ## This is only enabled when tunnels offload are available
+        # enable-outer-checksum-offload
 }}
 
 ## node variant defaults

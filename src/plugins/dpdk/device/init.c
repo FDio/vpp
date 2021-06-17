@@ -370,6 +370,18 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_UDP_CKSUM;
 	  if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_TCP_CKSUM)
 	    xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_TCP_CKSUM;
+	  if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_IPV4_CKSUM)
+	    xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_IPV4_CKSUM;
+
+	  if (dm->conf->enable_outer_checksum_offload)
+	    {
+	      if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM)
+		xd->port_conf.txmode.offloads |=
+		  DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
+	      if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_OUTER_UDP_CKSUM)
+		xd->port_conf.txmode.offloads |=
+		  DEV_TX_OFFLOAD_OUTER_UDP_CKSUM;
+	    }
 	}
 
       if (dm->conf->no_multi_seg)
@@ -467,9 +479,8 @@ dpdk_lib_init (dpdk_main_t * dm)
 		{
 	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
 	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
-		  xd->flags |=
-		    DPDK_DEVICE_FLAG_TX_OFFLOAD |
-		    DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
+		  xd->flags |= DPDK_DEVICE_FLAG_TX_OFFLOAD |
+			       DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
 		}
 
 	      xd->port_conf.intr_conf.rxq = 1;
@@ -794,6 +805,11 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    hi->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_TX_IP4_CKSUM |
 			VNET_HW_INTERFACE_CAP_SUPPORTS_TX_TCP_CKSUM |
 			VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_CKSUM;
+	    if (dm->conf->enable_outer_checksum_offload)
+	      {
+		hi->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_TX_IP4_OUTER_CKSUM |
+			    VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_OUTER_CKSUM;
+	      }
 	  }
       if (devconf->tso == DPDK_DEVICE_TSO_ON && hi != NULL)
 	{
@@ -801,10 +817,16 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  if ((dm->conf->enable_tcp_udp_checksum) &&
 	      (hi->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TX_CKSUM))
 	    {
-	      hi->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO |
-			  VNET_HW_INTERFACE_CAP_SUPPORTS_UDP_GSO;
-	      xd->port_conf.txmode.offloads |=
-		DEV_TX_OFFLOAD_TCP_TSO | DEV_TX_OFFLOAD_UDP_TSO;
+	      hi->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO;
+	      xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_TSO;
+
+	      if (dm->conf->enable_outer_checksum_offload &&
+		  (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_VXLAN_TNL_TSO))
+		{
+		  xd->port_conf.txmode.offloads |=
+		    DEV_TX_OFFLOAD_VXLAN_TNL_TSO;
+		  hi->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_VXLAN_TNL_GSO;
+		}
 	    }
 	  else
 	    clib_warning ("%s: TCP/UDP checksum offload must be enabled",
@@ -1366,8 +1388,11 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	conf->enable_telemetry = 1;
 
       else if (unformat (input, "enable-tcp-udp-checksum"))
-	conf->enable_tcp_udp_checksum = 1;
-
+	{
+	  conf->enable_tcp_udp_checksum = 1;
+	  if (unformat (input, "enable-outer-checksum-offload"))
+	    conf->enable_outer_checksum_offload = 1;
+	}
       else if (unformat (input, "no-tx-checksum-offload"))
 	conf->no_tx_checksum_offload = 1;
 
