@@ -22,7 +22,7 @@ static tls_engine_vft_t *tls_vfts;
 
 #define TLS_INVALID_HANDLE 	~0
 #define TLS_IDX_MASK 		0x00FFFFFF
-#define TLS_ENGINE_TYPE_SHIFT 	29
+#define TLS_ENGINE_TYPE_SHIFT 	28
 
 void tls_disconnect (u32 ctx_handle, u32 thread_index);
 
