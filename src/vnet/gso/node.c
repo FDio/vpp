@@ -799,7 +799,8 @@ vnet_gso_inline (vlib_main_t * vm,
       hi = vnet_get_sup_hw_interface (vnm,
 				      vnet_buffer (b)->sw_if_index[VLIB_TX]);
 
-      if (hi->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO)
+      if (hi->caps & (VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO |
+		      VNET_HW_INTERFACE_CAP_SUPPORTS_VXLAN_TNL_GSO))
 	return vnet_gso_node_inline (vm, node, frame, vnm, hi,
 				     is_l2, is_ip4, is_ip6,
 				     /* do_segmentation */ 0);
