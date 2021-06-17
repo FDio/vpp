@@ -36,6 +36,7 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/fib_entry_track.h>
 #include <vnet/fib/ip6_fib.h>
+#include <vnet/ip/ip6_link.h>
 #include <vnet/plugin/plugin.h>
 
 extern vlib_node_registration_t ip4_sixrd_node;
@@ -251,10 +252,11 @@ sixrd_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 }
 
 /* *INDENT-OFF* */
-VNET_HW_INTERFACE_CLASS(sixrd_hw_interface_class) = {
-    .name = "ip6ip-6rd",
-    .build_rewrite = sixrd_build_rewrite,
-    .update_adjacency = sixrd_update_adj,
+VNET_HW_INTERFACE_CLASS (sixrd_hw_interface_class) = {
+  .name = "ip6ip-6rd",
+  .build_rewrite = sixrd_build_rewrite,
+  .update_adjacency = sixrd_update_adj,
+  .flags = VNET_HW_INTERFACE_CLASS_FLAG_NBMA,
 };
 
 VNET_DEVICE_CLASS(sixrd_device_class) = {
@@ -336,7 +338,8 @@ sixrd_add_tunnel (ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
 			       VNET_HW_INTERFACE_FLAG_LINK_UP);
   vnet_sw_interface_set_flags (vnet_get_main (), hi->sw_if_index,
 			       VNET_SW_INTERFACE_FLAG_ADMIN_UP);
-  ip6_sw_interface_enable_disable (t->sw_if_index, true);
+  ip6_link_enable (t->sw_if_index, NULL);
+  ip6_link_forwarding_enable (t->sw_if_index);
 
   /* Create IPv6 route/adjacency */
   /* *INDENT-OFF* */
@@ -403,7 +406,8 @@ sixrd_del_tunnel (u32 sw_if_index)
 
   vnet_sw_interface_set_flags (vnet_get_main (), t->sw_if_index,
 			       0 /* down */ );
-  ip6_sw_interface_enable_disable (t->sw_if_index, false);
+  ip6_link_forwarding_disable (t->sw_if_index);
+  ip6_link_disable (t->sw_if_index);
   gm->tunnel_index_by_sw_if_index[t->sw_if_index] = ~0;
 
   vnet_delete_hw_interface (vnet_get_main (), t->hw_if_index);

@@ -15,6 +15,7 @@
 #include <vnet/vxlan-gbp/vxlan_gbp.h>
 #include <vnet/ip/format.h>
 #include <vnet/ip/punt.h>
+#include <vnet/ip/ip6_link.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/fib_entry_track.h>
@@ -124,6 +125,12 @@ VNET_HW_INTERFACE_CLASS (vxlan_gbp_hw_class) = {
   .name = "VXLAN-GBP",
   .format_header = format_vxlan_gbp_header_with_length,
   .build_rewrite = default_build_rewrite,
+};
+VNET_HW_INTERFACE_CLASS (vxlan_gbp_l3_hw_class) = {
+  .name = "VXLAN-GBP",
+  .format_header = format_vxlan_gbp_header_with_length,
+  .build_rewrite = default_build_rewrite,
+  .flags = VNET_HW_INTERFACE_CLASS_FLAG_NBMA,
 };
 /* *INDENT-ON* */
 
@@ -485,9 +492,11 @@ int vnet_vxlan_gbp_tunnel_add_del
 
       vxlan_gbp_register_udp_ports ();
 
-      t->hw_if_index = vnet_register_interface
-	(vnm, vxlan_gbp_device_class.index, dev_instance,
-	 vxlan_gbp_hw_class.index, dev_instance);
+      t->hw_if_index = vnet_register_interface (
+	vnm, vxlan_gbp_device_class.index, dev_instance,
+	(VXLAN_GBP_TUNNEL_MODE_L3 == t->mode ? vxlan_gbp_l3_hw_class.index :
+					       vxlan_gbp_hw_class.index),
+	dev_instance);
       vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, t->hw_if_index);
 
       /* Set vxlan_gbp tunnel output node */
@@ -500,7 +509,8 @@ int vnet_vxlan_gbp_tunnel_add_del
       if (VXLAN_GBP_TUNNEL_MODE_L3 == t->mode)
 	{
 	  ip4_sw_interface_enable_disable (t->sw_if_index, 1);
-	  ip6_sw_interface_enable_disable (t->sw_if_index, 1);
+	  ip6_link_enable (t->sw_if_index, NULL);
+	  ip6_link_forwarding_enable (t->sw_if_index);
 	}
 
       vec_validate_init_empty (vxm->tunnel_index_by_sw_if_index, sw_if_index,
@@ -626,7 +636,8 @@ int vnet_vxlan_gbp_tunnel_add_del
       if (VXLAN_GBP_TUNNEL_MODE_L3 == t->mode)
 	{
 	  ip4_sw_interface_enable_disable (t->sw_if_index, 0);
-	  ip6_sw_interface_enable_disable (t->sw_if_index, 0);
+	  ip6_link_forwarding_disable (t->sw_if_index);
+	  ip6_link_disable (t->sw_if_index);
 	}
 
       vxm->tunnel_index_by_sw_if_index[sw_if_index] = ~0;

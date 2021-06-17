@@ -42,6 +42,7 @@
 #include <vnet/adj/adj.h>
 #include <vnet/adj/adj_mcast.h>
 #include <vnet/ip/ip.h>
+#include <vnet/ip/ip6_link.h>
 #include <vnet/interface/rx_queue_funcs.h>
 #include <vnet/interface/tx_queue_funcs.h>
 
@@ -1696,7 +1697,18 @@ vnet_sw_interface_update_unnumbered (u32 unnumbered_sw_if_index,
   if (was_unnum != (si->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED))
     {
       ip4_sw_interface_enable_disable (unnumbered_sw_if_index, enable);
-      ip6_sw_interface_enable_disable (unnumbered_sw_if_index, enable);
+
+      // For IPv6 being unnumbered means accpeting and forwarding
+      if (enable)
+	{
+	  ip6_link_enable (unnumbered_sw_if_index, NULL);
+	  ip6_link_forwarding_enable (unnumbered_sw_if_index);
+	}
+      else
+	{
+	  ip6_link_forwarding_disable (unnumbered_sw_if_index);
+	  ip6_link_disable (unnumbered_sw_if_index);
+	}
     }
 
   return 0;

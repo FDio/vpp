@@ -186,6 +186,18 @@ VLIB_REGISTER_NODE (ip6_ll_dpo_node) =
     [IP6_LL_NEXT_LOOKUP] = "ip6-lookup",
   },
 };
+VLIB_REGISTER_NODE (ip6_not_forwarding_node) =
+{
+  .function = ip6_ll_dpo_switch,
+  .name = "ip6-not-forwarding",
+  .vector_size = sizeof (u32),
+  .format_trace = format_ip6_ll_dpo_trace,
+  .n_next_nodes = IP6_LL_NEXT_NUM,
+  .next_nodes = {
+    [IP6_LL_NEXT_DROP] = "ip6-drop",
+    [IP6_LL_NEXT_LOOKUP] = "ip6-lookup",
+  },
+};
 /* *INDENT-ON* */
 
 void

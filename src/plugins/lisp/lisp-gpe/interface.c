@@ -23,6 +23,7 @@
 #include <vppinfra/hash.h>
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
+#include <vnet/ip/ip6_link.h>
 #include <vnet/udp/udp_inlines.h>
 #include <vnet/ethernet/ethernet.h>
 #include <lisp/lisp-gpe/lisp_gpe.h>
@@ -196,6 +197,7 @@ VNET_HW_INTERFACE_CLASS (lisp_gpe_hw_class) = {
   .format_header = format_lisp_gpe_header_with_length,
   .build_rewrite = lisp_gpe_build_rewrite,
   .update_adjacency = lisp_gpe_update_adjacency,
+  .flags = VNET_HW_INTERFACE_CLASS_FLAG_NBMA,
 };
 /* *INDENT-ON* */
 
@@ -515,7 +517,8 @@ lisp_gpe_iface_set_table (u32 sw_if_index, u32 table_id)
 						 FIB_SOURCE_LISP);
   vec_validate (ip6_main.fib_index_by_sw_if_index, sw_if_index);
   ip6_main.fib_index_by_sw_if_index[sw_if_index] = fib_index;
-  ip6_sw_interface_enable_disable (sw_if_index, 1);
+  ip6_link_enable (sw_if_index, NULL);
+  ip6_link_forwarding_enable (sw_if_index);
 }
 
 static void
@@ -638,7 +641,8 @@ lisp_gpe_del_l3_iface (lisp_gpe_main_t * lgm, u32 vni, u32 table_id)
 
   /* unset default routes */
   ip4_sw_interface_enable_disable (hi->sw_if_index, 0);
-  ip6_sw_interface_enable_disable (hi->sw_if_index, 0);
+  ip6_link_forwarding_disable (hi->sw_if_index);
+  ip6_link_disable (hi->sw_if_index);
   lisp_gpe_tenant_del_default_routes (table_id);
 }
 
