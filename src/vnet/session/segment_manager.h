@@ -104,6 +104,8 @@ u32 segment_manager_index (segment_manager_t * sm);
 
 int segment_manager_add_segment (segment_manager_t *sm, uword segment_size,
 				 u8 notify_app);
+int segment_manager_add_segment2 (segment_manager_t *sm, uword segment_size,
+                                  u8 flags);
 void segment_manager_del_segment (segment_manager_t * sm,
 				  fifo_segment_t * fs);
 void segment_manager_lock_and_del_segment (segment_manager_t * sm,

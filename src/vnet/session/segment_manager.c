@@ -87,9 +87,9 @@ segment_manager_segment_index (segment_manager_t * sm, fifo_segment_t * seg)
  * If needed a writer's lock is acquired before allocating a new segment
  * to avoid affecting any of the segments pool readers.
  */
-int
-segment_manager_add_segment (segment_manager_t *sm, uword segment_size,
-			     u8 notify_app)
+static inline int
+segment_manager_add_segment_inline (segment_manager_t *sm, uword segment_size,
+			     u8 notify_app, u8 flags)
 {
   segment_manager_main_t *smm = &sm_main;
   segment_manager_props_t *props;
@@ -161,7 +161,9 @@ segment_manager_add_segment (segment_manager_t *sm, uword segment_size,
   fs->h->high_watermark = sm->high_watermark;
   fs->h->low_watermark = sm->low_watermark;
   fs->h->pct_first_alloc = props->pct_first_alloc;
+  fs->h->flags = flags;
   fs->h->flags &= ~FIFO_SEGMENT_F_MEM_LIMIT;
+
 
   if (notify_app)
     {
@@ -179,6 +181,20 @@ done:
     clib_rwlock_writer_unlock (&sm->segments_rwlock);
 
   return fs_index;
+}
+
+int
+segment_manager_add_segment (segment_manager_t *sm, uword segment_size,
+			     u8 notify_app)
+{
+  return segment_manager_add_segment_inline (sm, segment_size, notify_app, 0);
+}
+
+int
+segment_manager_add_segment2 (segment_manager_t *sm, uword segment_size,
+			     u8 flags)
+{
+  return segment_manager_add_segment_inline (sm, segment_size, 0, flags);
 }
 
 /**
