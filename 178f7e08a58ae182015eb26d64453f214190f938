@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "82f0f715_799bfd74",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2021-06-18T17:43:16Z",
+      "side": 1,
+      "message": "\"cleanup\" is really vague.  What is really happening here?\nAnd why are these functions being removed?",
+      "range": {
+        "startLine": 7,
+        "startChar": 10,
+        "endLine": 7,
+        "endChar": 21
+      },
+      "revId": "178f7e08a58ae182015eb26d64453f214190f938",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
