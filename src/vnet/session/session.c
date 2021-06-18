@@ -1287,8 +1287,6 @@ session_dgram_accept (transport_connection_t * tc, u32 listener_index,
       return rv;
     }
 
-  s->session_state = SESSION_STATE_READY;
-
   return 0;
 }
 

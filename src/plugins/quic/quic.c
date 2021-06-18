@@ -1929,6 +1929,7 @@ quic_udp_session_accepted_callback (session_t * udp_session)
   ctx->ckpair_index = lctx->ckpair_index;
   quic_acquire_crypto_context (ctx);
   udp_session->opaque = ctx_index;
+  udp_session->session_state = SESSION_STATE_READY;
 
   /* TODO timeout to delete these if they never connect */
   return 0;
