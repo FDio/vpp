@@ -914,6 +914,41 @@ class NAT44EDTestCase(VppTestCase):
 class TestNAT44ED(NAT44EDTestCase):
     """ NAT44ED Test Case """
 
+    def test_icmp_error(self):
+        """ NAT44ED test ICMP error message with inner header"""
+
+        payload = "H" * 10
+
+        self.nat_add_address(self.nat_addr)
+        self.nat_add_inside_interface(self.pg0)
+        self.nat_add_outside_interface(self.pg1)
+
+        # in2out (initiate connection)
+        p1 = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+              UDP(sport=21, dport=20) / payload)
+
+        self.pg0.add_stream(p1)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(1)[0]
+
+        # out2in (send error message)
+        p2 = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+              IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
+              ICMP(type='dest-unreach', code='port-unreachable') /
+              capture[IP:])
+
+        self.pg1.add_stream(p2)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        capture = self.pg0.get_capture(1)[0]
+
+        self.logger.info(ppp("p1 packet:", p1))
+        self.logger.info(ppp("p2 packet:", p2))
+        self.logger.info(ppp("capture packet:", capture))
+
     def test_users_dump(self):
         """ NAT44ED API test - nat44_user_dump """
 
