@@ -279,6 +279,7 @@ typedef struct
   /* vector of flow ranges */
   vnet_flow_range_t *ranges;
 
+  u16 msg_id_base;
 } vnet_flow_main_t;
 
 extern vnet_flow_main_t flow_main;
