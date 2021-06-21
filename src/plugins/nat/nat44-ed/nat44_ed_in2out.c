@@ -1030,7 +1030,7 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t *vm,
 	fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4, sw_if_index0);
       lookup.fib_index = rx_fib_index0;
 
-      if (PREDICT_FALSE (ip0->ttl == 1))
+      if (PREDICT_FALSE (!is_output_feature && ip0->ttl == 1))
 	{
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 	  icmp4_error_set_vnet_buffer (b0, ICMP4_time_exceeded,
@@ -1308,7 +1308,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
       rx_fib_index0 =
 	fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4, sw_if_index0);
 
-      if (PREDICT_FALSE (ip0->ttl == 1))
+      if (PREDICT_FALSE (!is_output_feature && ip0->ttl == 1))
 	{
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 	  icmp4_error_set_vnet_buffer (b0, ICMP4_time_exceeded,
