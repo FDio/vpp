@@ -320,6 +320,8 @@ typedef struct
 
   /** log class */
   vlib_log_class_t log_class;
+
+  u16 msg_id_base;
 } bfd_main_t;
 
 extern bfd_main_t bfd_main;
