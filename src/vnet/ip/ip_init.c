@@ -119,8 +119,7 @@ VLIB_INIT_FUNCTION (ip_main_init) =
               "ip_classify_init",
               "in_out_acl_init",
               "policer_classify_init",
-              "flow_classify_init",
-              "dns_init"),
+              "flow_classify_init"),
 };
 /* *INDENT-ON* */
 

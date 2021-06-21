@@ -632,13 +632,10 @@ VNET_FEATURE_INIT (ip4_dvr_reinject_feat_node, static) =
 {
   .arc_name = "ip4-output",
   .node_name = "ip4-dvr-reinject",
-  .runs_after = VNET_FEATURES ("nat44-in2out-output",
-                               "acl-plugin-out-ip4-fa"),
 };
 VNET_FEATURE_INIT (ip6_dvr_reinject_feat_node, static) =
 {
   .arc_name = "ip6-output",
   .node_name = "ip6-dvr-reinject",
-  .runs_after = VNET_FEATURES ("acl-plugin-out-ip6-fa"),
 };
 
