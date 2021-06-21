@@ -2758,35 +2758,6 @@ format_hex_bytes (u8 * s, va_list * va)
   return s;
 }
 
-static void vl_api_pg_create_interface_reply_t_handler
-  (vl_api_pg_create_interface_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-
-  vam->retval = ntohl (mp->retval);
-  vam->result_ready = 1;
-}
-
-static void vl_api_pg_create_interface_reply_t_handler_json
-  (vl_api_pg_create_interface_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t node;
-
-  i32 retval = ntohl (mp->retval);
-  if (retval == 0)
-    {
-      vat_json_init_object (&node);
-
-      vat_json_object_add_int (&node, "sw_if_index", ntohl (mp->sw_if_index));
-
-      vat_json_print (vam->ofp, &node);
-      vat_json_free (&node);
-    }
-  vam->retval = ntohl (mp->retval);
-  vam->result_ready = 1;
-}
-
 /*
  * Generate boilerplate reply handlers, which
  * dig the return value out of the xxx_reply_t API message,
@@ -2852,9 +2823,6 @@ _(ioam_enable_reply)                                    \
 _(ioam_disable_reply)                                   \
 _(af_packet_delete_reply)                               \
 _(sw_interface_span_enable_disable_reply)               \
-_(pg_capture_reply)                                     \
-_(pg_enable_disable_reply)                              \
-_(pg_interface_enable_disable_coalesce_reply)           \
 _(ip_source_and_port_range_check_add_del_reply)         \
 _(ip_source_and_port_range_check_interface_add_del_reply)\
 _(delete_subif_reply)                                   \
@@ -3021,10 +2989,6 @@ _(MPLS_ROUTE_DETAILS, mpls_route_details)                               \
 _(SW_INTERFACE_SPAN_ENABLE_DISABLE_REPLY, sw_interface_span_enable_disable_reply) \
 _(SW_INTERFACE_SPAN_DETAILS, sw_interface_span_details)                 \
 _(GET_NEXT_INDEX_REPLY, get_next_index_reply)                           \
-_(PG_CREATE_INTERFACE_REPLY, pg_create_interface_reply)                 \
-_(PG_CAPTURE_REPLY, pg_capture_reply)                                   \
-_(PG_ENABLE_DISABLE_REPLY, pg_enable_disable_reply)                     \
-_(PG_INTERFACE_ENABLE_DISABLE_COALESCE_REPLY, pg_interface_enable_disable_coalesce_reply) \
 _(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL_REPLY,                         \
  ip_source_and_port_range_check_add_del_reply)                          \
 _(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL_REPLY,               \
@@ -10495,188 +10459,6 @@ api_sw_interface_span_dump (vat_main_t * vam)
 }
 
 int
-api_pg_create_interface (vat_main_t * vam)
-{
-  unformat_input_t *input = vam->input;
-  vl_api_pg_create_interface_t *mp;
-
-  u32 if_id = ~0, gso_size = 0;
-  u8 gso_enabled = 0;
-  int ret;
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "if_id %d", &if_id))
-	;
-      else if (unformat (input, "gso-enabled"))
-	{
-	  gso_enabled = 1;
-	  if (unformat (input, "gso-size %u", &gso_size))
-	    ;
-	  else
-	    {
-	      errmsg ("missing gso-size");
-	      return -99;
-	    }
-	}
-      else
-	break;
-    }
-  if (if_id == ~0)
-    {
-      errmsg ("missing pg interface index");
-      return -99;
-    }
-
-  /* Construct the API message */
-  M (PG_CREATE_INTERFACE, mp);
-  mp->context = 0;
-  mp->interface_id = ntohl (if_id);
-  mp->gso_enabled = gso_enabled;
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-int
-api_pg_capture (vat_main_t * vam)
-{
-  unformat_input_t *input = vam->input;
-  vl_api_pg_capture_t *mp;
-
-  u32 if_id = ~0;
-  u8 enable = 1;
-  u32 count = 1;
-  u8 pcap_file_set = 0;
-  u8 *pcap_file = 0;
-  int ret;
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "if_id %d", &if_id))
-	;
-      else if (unformat (input, "pcap %s", &pcap_file))
-	pcap_file_set = 1;
-      else if (unformat (input, "count %d", &count))
-	;
-      else if (unformat (input, "disable"))
-	enable = 0;
-      else
-	break;
-    }
-  if (if_id == ~0)
-    {
-      errmsg ("missing pg interface index");
-      return -99;
-    }
-  if (pcap_file_set > 0)
-    {
-      if (vec_len (pcap_file) > 255)
-	{
-	  errmsg ("pcap file name is too long");
-	  return -99;
-	}
-    }
-
-  /* Construct the API message */
-  M (PG_CAPTURE, mp);
-  mp->context = 0;
-  mp->interface_id = ntohl (if_id);
-  mp->is_enabled = enable;
-  mp->count = ntohl (count);
-  if (pcap_file_set != 0)
-    {
-      vl_api_vec_to_api_string (pcap_file, &mp->pcap_file_name);
-    }
-  vec_free (pcap_file);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-int
-api_pg_enable_disable (vat_main_t * vam)
-{
-  unformat_input_t *input = vam->input;
-  vl_api_pg_enable_disable_t *mp;
-
-  u8 enable = 1;
-  u8 stream_name_set = 0;
-  u8 *stream_name = 0;
-  int ret;
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "stream %s", &stream_name))
-	stream_name_set = 1;
-      else if (unformat (input, "disable"))
-	enable = 0;
-      else
-	break;
-    }
-
-  if (stream_name_set > 0)
-    {
-      if (vec_len (stream_name) > 255)
-	{
-	  errmsg ("stream name too long");
-	  return -99;
-	}
-    }
-
-  /* Construct the API message */
-  M (PG_ENABLE_DISABLE, mp);
-  mp->context = 0;
-  mp->is_enabled = enable;
-  if (stream_name_set != 0)
-    {
-      vl_api_vec_to_api_string (stream_name, &mp->stream_name);
-    }
-  vec_free (stream_name);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-int
-api_pg_interface_enable_disable_coalesce (vat_main_t * vam)
-{
-  unformat_input_t *input = vam->input;
-  vl_api_pg_interface_enable_disable_coalesce_t *mp;
-
-  u32 sw_if_index = ~0;
-  u8 enable = 1;
-  int ret;
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
-	;
-      else if (unformat (input, "sw_if_index %d", &sw_if_index))
-	;
-      else if (unformat (input, "disable"))
-	enable = 0;
-      else
-	break;
-    }
-
-  if (sw_if_index == ~0)
-    {
-      errmsg ("Interface required but not specified");
-      return -99;
-    }
-
-  /* Construct the API message */
-  M (PG_INTERFACE_ENABLE_DISABLE_COALESCE, mp);
-  mp->context = 0;
-  mp->coalesce_enabled = enable;
-  mp->sw_if_index = htonl (sw_if_index);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-int
 api_ip_source_and_port_range_check_add_del (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
@@ -12587,10 +12369,6 @@ _(mpls_route_dump, "table-id <ID>")                                     \
 _(sw_interface_span_enable_disable, "[l2] [src <intfc> | src_sw_if_index <id>] [disable | [[dst <intfc> | dst_sw_if_index <id>] [both|rx|tx]]]") \
 _(sw_interface_span_dump, "[l2]")                                           \
 _(get_next_index, "node-name <node-name> next-node-name <node-name>")   \
-_(pg_create_interface, "if_id <nn> [gso-enabled gso-size <size>]")      \
-_(pg_capture, "if_id <nnn> pcap <file_name> count <nnn> [disable]")     \
-_(pg_enable_disable, "[stream <id>] disable")                           \
-_(pg_interface_enable_disable_coalesce, "<intf> | sw_if_index <nn> enable | disable")  \
 _(ip_source_and_port_range_check_add_del,                               \
   "<ip-addr>/<mask> range <nn>-<nn> vrf <id>")                          \
 _(ip_source_and_port_range_check_interface_add_del,                     \

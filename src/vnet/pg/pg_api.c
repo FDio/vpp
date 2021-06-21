@@ -19,34 +19,14 @@
 
 #include <vnet/vnet.h>
 #include <vlibmemory/api.h>
-
 #include <vnet/pg/pg.h>
 
-#include <vnet/vnet_msg_enum.h>
+#include <vnet/format_fns.h>
+#include <vnet/pg/pg.api_enum.h>
+#include <vnet/pg/pg.api_types.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vnet/vnet_all_api_h.h>
-#undef vl_printfun
-
+#define REPLY_MSG_ID_BASE pg->msg_id_base
 #include <vlibapi/api_helper_macros.h>
-
-#define foreach_pg_api_msg                                                    \
-  _ (PG_CREATE_INTERFACE, pg_create_interface)                                \
-  _ (PG_CREATE_INTERFACE_V2, pg_create_interface_v2)                          \
-  _ (PG_CAPTURE, pg_capture)                                                  \
-  _ (PG_ENABLE_DISABLE, pg_enable_disable)                                    \
-  _ (PG_INTERFACE_ENABLE_DISABLE_COALESCE,                                    \
-     pg_interface_enable_disable_coalesce)
 
 static void
 vl_api_pg_create_interface_t_handler (vl_api_pg_create_interface_t * mp)
@@ -122,6 +102,7 @@ static void
 static void
 vl_api_pg_capture_t_handler (vl_api_pg_capture_t * mp)
 {
+  pg_main_t *pg = &pg_main;
   vl_api_pg_capture_reply_t *rmp;
   int rv = 0;
 
@@ -187,37 +168,15 @@ vl_api_pg_enable_disable_t_handler (vl_api_pg_enable_disable_t * mp)
   REPLY_MACRO (VL_API_PG_ENABLE_DISABLE_REPLY);
 }
 
-#define vl_msg_name_crc_list
-#include <vnet/pg/pg.api.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_pg;
-#undef _
-}
-
+#include <vnet/pg/pg.api.c>
 static clib_error_t *
 pg_api_hookup (vlib_main_t * vm)
 {
-  api_main_t *am = vlibapi_get_main ();
-
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_pg_api_msg;
-#undef _
-
+  pg_main_t *pg = &pg_main;
   /*
    * Set up the (msg_name, crc, message-id) table
    */
-  setup_message_id_table (am);
+  pg->msg_id_base = setup_message_id_table ();
 
   return 0;
 }

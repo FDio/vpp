@@ -356,6 +356,8 @@ typedef struct pg_main_t
 
   /* Per VLIB node information. */
   pg_node_t *nodes;
+
+  u16 msg_id_base;
 } pg_main_t;
 
 /* Global main structure. */

@@ -52,7 +52,6 @@
 #include <vnet/tcp/tcp.api.h>
 #include <vnet/udp/udp.api.h>
 #include <vnet/ip/punt.api.h>
-#include <vnet/pg/pg.api.h>
 #include <vnet/feature/feature.api.h>
 #include <vnet/qos/qos.api.h>
 #include <vnet/devices/pipe/pipe.api.h>
