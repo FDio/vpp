@@ -134,6 +134,8 @@ typedef struct flow_report_main
   /* convenience variables */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
+
+  u16 msg_id_base;
 } flow_report_main_t;
 
 extern flow_report_main_t flow_report_main;
