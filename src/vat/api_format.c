@@ -2828,7 +2828,6 @@ _(ip_source_and_port_range_check_interface_add_del_reply)\
 _(delete_subif_reply)                                   \
 _(l2_interface_pbb_tag_rewrite_reply)                   \
 _(set_punt_reply)                                       \
-_(feature_enable_disable_reply)				\
 _(sw_interface_tag_add_del_reply)			\
 _(sw_interface_add_del_mac_address_reply)		\
 _(hw_interface_set_mtu_reply)                           \
@@ -2998,7 +2997,6 @@ _(L2_INTERFACE_PBB_TAG_REWRITE_REPLY, l2_interface_pbb_tag_rewrite_reply) \
 _(SET_PUNT_REPLY, set_punt_reply)                                       \
 _(IP_TABLE_DETAILS, ip_table_details)                                   \
 _(IP_ROUTE_DETAILS, ip_route_details)                                   \
-_(FEATURE_ENABLE_DISABLE_REPLY, feature_enable_disable_reply)           \
 _(SW_INTERFACE_TAG_ADD_DEL_REPLY, sw_interface_tag_add_del_reply)     	\
 _(SW_INTERFACE_ADD_DEL_MAC_ADDRESS_REPLY, sw_interface_add_del_mac_address_reply) \
 _(L2_XCONNECT_DETAILS, l2_xconnect_details)                             \
@@ -10801,74 +10799,6 @@ api_l2_interface_pbb_tag_rewrite (vat_main_t * vam)
 }
 
 static int
-api_feature_enable_disable (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_feature_enable_disable_t *mp;
-  u8 *arc_name = 0;
-  u8 *feature_name = 0;
-  u32 sw_if_index = ~0;
-  u8 enable = 1;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "arc_name %s", &arc_name))
-	;
-      else if (unformat (i, "feature_name %s", &feature_name))
-	;
-      else
-	if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
-	;
-      else if (unformat (i, "sw_if_index %d", &sw_if_index))
-	;
-      else if (unformat (i, "disable"))
-	enable = 0;
-      else
-	break;
-    }
-
-  if (arc_name == 0)
-    {
-      errmsg ("missing arc name");
-      return -99;
-    }
-  if (vec_len (arc_name) > 63)
-    {
-      errmsg ("arc name too long");
-    }
-
-  if (feature_name == 0)
-    {
-      errmsg ("missing feature name");
-      return -99;
-    }
-  if (vec_len (feature_name) > 63)
-    {
-      errmsg ("feature name too long");
-    }
-
-  if (sw_if_index == ~0)
-    {
-      errmsg ("missing interface name or sw_if_index");
-      return -99;
-    }
-
-  /* Construct the API message */
-  M (FEATURE_ENABLE_DISABLE, mp);
-  mp->sw_if_index = ntohl (sw_if_index);
-  mp->enable = enable;
-  clib_memcpy (mp->arc_name, arc_name, vec_len (arc_name));
-  clib_memcpy (mp->feature_name, feature_name, vec_len (feature_name));
-  vec_free (arc_name);
-  vec_free (feature_name);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
 api_sw_interface_tag_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
@@ -12384,8 +12314,6 @@ _(ip_table_dump, "")                                                    \
 _(ip_route_dump, "table-id [ip4|ip6]")                                  \
 _(ip_mtable_dump, "")                                                   \
 _(ip_mroute_dump, "table-id [ip4|ip6]")                                 \
-_(feature_enable_disable, "arc_name <arc_name> "                        \
-  "feature_name <feature_name> <intfc> | sw_if_index <nn> [disable]")	\
 _(sw_interface_tag_add_del, "<intfc> | sw_if_index <nn> tag <text>"	\
 "[disable]")                                                        	\
 _(sw_interface_add_del_mac_address, "<intfc> | sw_if_index <nn> "	\
