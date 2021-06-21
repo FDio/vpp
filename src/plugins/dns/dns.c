@@ -3020,9 +3020,11 @@ dns_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (dns_init);
-
 /* *INDENT-OFF* */
+VLIB_INIT_FUNCTION (dns_init) = {
+  .init_order = VLIB_INITS ("flow_classify_init", "dns_init"),
+};
+
 VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
