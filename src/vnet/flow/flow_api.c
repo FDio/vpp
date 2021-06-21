@@ -30,27 +30,12 @@
 #include <vnet/ip/ip_types_api.h>
 #include <vnet/vnet_msg_enum.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
+#include <vnet/format_fns.h>
+#include <vnet/flow/flow.api_enum.h>
+#include <vnet/flow/flow.api_types.h>
 
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vnet/vnet_all_api_h.h>
-#undef vl_printfun
-
+#define REPLY_MSG_ID_BASE flow_main.msg_id_base
 #include <vlibapi/api_helper_macros.h>
-
-#define foreach_vpe_api_msg         \
-_(FLOW_ADD, flow_add)               \
-_(FLOW_DEL, flow_del)               \
-_(FLOW_ENABLE, flow_enable)         \
-_(FLOW_DISABLE, flow_disable)
 
 static inline void
 ipv4_addr_and_mask_convert (vl_api_ip4_address_and_mask_t * vl_api_addr,
@@ -351,46 +336,11 @@ vl_api_flow_disable_t_handler (vl_api_flow_disable_t * mp)
   REPLY_MACRO (VL_API_FLOW_DISABLE_REPLY);
 }
 
-#define vl_msg_name_crc_list
-#include <vnet/flow/flow.api.h>
-#undef vl_msg_name_crc_list
-
-/*
- * flow_api_hookup
- * Add vpe's API message handlers to the table.
- * vlib has already mapped shared memory and
- * added the client registration handlers.
- * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
- */
-
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_flow;
-#undef _
-}
-
+#include <vnet/flow/flow.api.c>
 static clib_error_t *
 hw_flow_api_hookup (vlib_main_t * vm)
 {
-  api_main_t *am = vlibapi_get_main ();
-
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_api_msg;
-#undef _
-
-  /*
-   * Set up the (msg_name, crc, message-id) table
-   */
-  setup_message_id_table (am);
+  flow_main.msg_id_base = setup_message_id_table ();
 
   return 0;
 }
