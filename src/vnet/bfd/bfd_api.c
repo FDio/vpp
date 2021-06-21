@@ -30,39 +30,13 @@
 #include <vnet/bfd/bfd_api.h>
 #include <vnet/ip/ip_types_api.h>
 
-#include <vnet/vnet_msg_enum.h>
+#include <vnet/format_fns.h>
+#include <vnet/bfd/bfd.api_enum.h>
+#include <vnet/bfd/bfd.api_types.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vnet/vnet_all_api_h.h>
-#undef vl_printfun
-
+#define REPLY_MSG_ID_BASE bfd_main.msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
-#define foreach_vpe_api_msg                                \
-  _ (BFD_UDP_ADD, bfd_udp_add)                             \
-  _ (BFD_UDP_MOD, bfd_udp_mod)                             \
-  _ (BFD_UDP_DEL, bfd_udp_del)                             \
-  _ (BFD_UDP_SESSION_DUMP, bfd_udp_session_dump)           \
-  _ (BFD_UDP_SESSION_SET_FLAGS, bfd_udp_session_set_flags) \
-  _ (WANT_BFD_EVENTS, want_bfd_events)                     \
-  _ (BFD_AUTH_SET_KEY, bfd_auth_set_key)                   \
-  _ (BFD_AUTH_DEL_KEY, bfd_auth_del_key)                   \
-  _ (BFD_AUTH_KEYS_DUMP, bfd_auth_keys_dump)               \
-  _ (BFD_UDP_AUTH_ACTIVATE, bfd_udp_auth_activate)         \
-  _ (BFD_UDP_AUTH_DEACTIVATE, bfd_udp_auth_deactivate)     \
-  _ (BFD_UDP_SET_ECHO_SOURCE, bfd_udp_set_echo_source)     \
-  _ (BFD_UDP_DEL_ECHO_SOURCE, bfd_udp_del_echo_source)     \
-  _ (BFD_UDP_GET_ECHO_SOURCE, bfd_udp_get_echo_source)
 
 pub_sub_handler (bfd_events, BFD_EVENTS);
 
@@ -436,41 +410,14 @@ vl_api_bfd_udp_get_echo_source_t_handler (vl_api_bfd_udp_get_echo_source_t *
   /* *INDENT-ON* */
 }
 
-/*
- * bfd_api_hookup
- * Add vpe's API message handlers to the table.
- * vlib has already mapped shared memory and
- * added the client registration handlers.
- * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
- */
-#define vl_msg_name_crc_list
-#include <vnet/vnet_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id, n, crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_bfd;
-#undef _
-}
-
+#include <vnet/bfd/bfd.api.c>
 static clib_error_t *
 bfd_api_hookup (vlib_main_t * vm)
 {
-  api_main_t *am = vlibapi_get_main ();
-
-#define _(N, n)                                                    \
-  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler, \
-                           vl_noop_handler, vl_api_##n##_t_endian, \
-                           vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1);
-  foreach_vpe_api_msg;
-#undef _
-
   /*
    * Set up the (msg_name, crc, message-id) table
    */
-  setup_message_id_table (am);
+  REPLY_MSG_ID_BASE = setup_message_id_table ();
 
   return 0;
 }
