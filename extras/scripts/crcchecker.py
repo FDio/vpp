@@ -82,13 +82,15 @@ def filelist_from_git_ls():
 
 def is_uncommitted_changes():
     """Returns true if there are uncommitted changes in the repo"""
-    git_status = "git status --porcelain -uno"
-    returncode = run(git_status.split(), stdout=PIPE, stderr=PIPE)
-    if returncode.returncode != 0:
-        sys.exit(returncode.returncode)
+    # Don't run this check in the Jenkins CI
+    if os.getenv('FDIOTOOLS_IMAGE') is None:
+        git_status = "git status --porcelain -uno"
+        returncode = run(git_status.split(), stdout=PIPE, stderr=PIPE)
+        if returncode.returncode != 0:
+            sys.exit(returncode.returncode)
 
-    if returncode.stdout:
-        return True
+        if returncode.stdout:
+            return True
     return False
 
 
