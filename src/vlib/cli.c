@@ -433,10 +433,10 @@ vlib_cli_cmp_command (void *a1, void *a2)
 }
 
 static clib_error_t *
-vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
-				vlib_cli_main_t * cm,
-				unformat_input_t * input,
-				uword parent_command_index)
+vlib_cli_dispatch_sub_commands (vlib_main_t *vm, vlib_cli_main_t *cm,
+				unformat_input_t *input,
+				uword parent_command_index,
+				u8 *found_sub_command)
 {
   vlib_global_main_t *vgm = vlib_get_global_main ();
   vlib_cli_command_t *parent, *c;
@@ -543,9 +543,8 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
   else if (unformat (input, "uncomment %U",
 		     unformat_vlib_cli_sub_input, &sub_input))
     {
-      error =
-	vlib_cli_dispatch_sub_commands (vm, cm, &sub_input,
-					parent_command_index);
+      error = vlib_cli_dispatch_sub_commands (vm, cm, &sub_input,
+					      parent_command_index, NULL);
       unformat_free (&sub_input);
     }
   else if (unformat (input, "leak-check %U",
@@ -561,9 +560,8 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 	  current_traced_heap = 0;
 	}
       clib_mem_trace (1);
-      error =
-	vlib_cli_dispatch_sub_commands (vm, cm, &sub_input,
-					parent_command_index);
+      error = vlib_cli_dispatch_sub_commands (vm, cm, &sub_input,
+					      parent_command_index, NULL);
       unformat_free (&sub_input);
 
       /* Otherwise, the clib_error_t shows up as a leak... */
@@ -586,6 +584,7 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
     if (unformat_user (input, unformat_vlib_cli_sub_command, vm, parent, &c))
     {
       unformat_input_t *si;
+      u8 found_sub_command = 1;
       uword has_sub_commands =
 	vec_len (c->sub_commands) + vec_len (c->sub_rules) > 0;
 
@@ -594,9 +593,10 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 	si = &sub_input;
 
       if (has_sub_commands)
-	error = vlib_cli_dispatch_sub_commands (vm, cm, si, c - cm->commands);
+	error = vlib_cli_dispatch_sub_commands (vm, cm, si, c - cm->commands,
+						&found_sub_command);
 
-      if (has_sub_commands && !error)
+      if (has_sub_commands && found_sub_command)
 	/* Found valid sub-command. */ ;
 
       else if (c->function)
@@ -669,6 +669,7 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 
 	      if (c_error)
 		{
+		  clib_error_free (error);
 		  error =
 		    clib_error_return (0, "%v: %v", c->path, c_error->what);
 		  clib_error_free (c_error);
@@ -698,6 +699,8 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
   return error;
 
 unknown:
+  if (found_sub_command)
+    *found_sub_command = 0;
   if (parent->path)
     return clib_error_return (0, "%v: unknown input `%U'", parent->path,
 			      format_unformat_error, input);
@@ -736,8 +739,9 @@ vlib_cli_input (vlib_main_t * vm,
 
   do
     {
-      error = vlib_cli_dispatch_sub_commands (vm, &vgm->cli_main, input,
-					      /* parent */ 0);
+      error =
+	vlib_cli_dispatch_sub_commands (vm, &vgm->cli_main, input,
+					/* parent */ 0, /* known */ NULL);
     }
   while (!error && !unformat (input, "%U", unformat_eof));
 
