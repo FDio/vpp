@@ -50,7 +50,6 @@
 #include <vnet/policer/policer.api.h>
 #include <vnet/ethernet/p2p_ethernet.api.h>
 #include <vnet/tcp/tcp.api.h>
-#include <vnet/udp/udp.api.h>
 #include <vnet/ip/punt.api.h>
 #include <vnet/qos/qos.api.h>
 #include <vnet/devices/pipe/pipe.api.h>
