@@ -61,6 +61,18 @@ fib_sas4_get (u32 sw_if_index,
         d_tmp.ip4 = *dst;
     }
 
+    if (vnet_sw_interface_is_p2p(vnet_get_main(), sw_if_index))
+    {
+        ip4_address_t *ip4;
+        ip4 = ip_interface_get_first_ip (sw_if_index, 1);
+        if (ip4) {
+            src->as_u32 = ip4->as_u32;
+            return (true);
+        } else {
+            return (false);
+        }
+    }
+
     /*
      * If the interface is unnumbered then use the IP interface
      */
@@ -109,6 +121,18 @@ fib_sas6_get (u32 sw_if_index,
         }
         ip6_address_copy (src, ll);
         return (true);
+    }
+
+    if (vnet_sw_interface_is_p2p(vnet_get_main(), sw_if_index))
+    {
+        ip6_address_t *ip6;
+        ip6 = ip_interface_get_first_ip (sw_if_index, 0);
+        if (ip6) {
+            ip6_address_copy(src, ip6);
+            return (true);
+        } else {
+            return (false);
+        }
     }
 
     /*
