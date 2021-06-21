@@ -21,26 +21,13 @@
 #include <vlibmemory/api.h>
 #include <vnet/feature/feature.h>
 
-#include <vnet/vnet_msg_enum.h>
+#include <vnet/feature/feature.api_enum.h>
+#include <vnet/feature/feature.api_types.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vnet/vnet_all_api_h.h>
-#undef vl_printfun
-
+#define REPLY_MSG_ID_BASE msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
-#define foreach_feature_api_msg                                              \
-_(FEATURE_ENABLE_DISABLE, feature_enable_disable)
+static u16 msg_id_base;
 
 static void
 vl_api_feature_enable_disable_t_handler (vl_api_feature_enable_disable_t * mp)
@@ -87,37 +74,15 @@ vl_api_feature_enable_disable_t_handler (vl_api_feature_enable_disable_t * mp)
   REPLY_MACRO (VL_API_FEATURE_ENABLE_DISABLE_REPLY);
 }
 
-#define vl_msg_name_crc_list
-#include <vnet/feature/feature.api.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_feature;
-#undef _
-}
+#include <vnet/feature/feature.api.c>
 
 static clib_error_t *
 feature_api_hookup (vlib_main_t * vm)
 {
-  api_main_t *am = vlibapi_get_main ();
-
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_feature_api_msg;
-#undef _
-
   /*
    * Set up the (msg_name, crc, message-id) table
    */
-  setup_message_id_table (am);
+  msg_id_base = setup_message_id_table ();
 
   return 0;
 }
