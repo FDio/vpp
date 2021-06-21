@@ -945,11 +945,10 @@ VLIB_REGISTER_NODE (acl_out_fa_ip6_node) =
   }
 };
 
-VNET_FEATURE_INIT (acl_out_ip6_fa_feature, static) =
-{
+VNET_FEATURE_INIT (acl_out_ip6_fa_feature, static) = {
   .arc_name = "ip6-output",
   .node_name = "acl-plugin-out-ip6-fa",
-  .runs_before = VNET_FEATURES ("interface-output"),
+  .runs_before = VNET_FEATURES ("ip6-dvr-reinject", "interface-output"),
 };
 
 VLIB_REGISTER_NODE (acl_out_fa_ip4_node) =
@@ -968,11 +967,10 @@ VLIB_REGISTER_NODE (acl_out_fa_ip4_node) =
   }
 };
 
-VNET_FEATURE_INIT (acl_out_ip4_fa_feature, static) =
-{
+VNET_FEATURE_INIT (acl_out_ip4_fa_feature, static) = {
   .arc_name = "ip4-output",
   .node_name = "acl-plugin-out-ip4-fa",
-  .runs_before = VNET_FEATURES ("interface-output"),
+  .runs_before = VNET_FEATURES ("ip4-dvr-reinject", "interface-output"),
 };
 
 /* *INDENT-ON* */
