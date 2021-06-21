@@ -37,6 +37,18 @@ class TestCLI(VppAsfTestCase):
         rv = self.vapi.papi.cli_inband(cmd="show version")
         self.assertEqual(rv.retval, 0)
 
+    def test_nested_cli(self):
+        """Nested CLI retval"""
+        rv = self.vapi.papi.cli_inband(cmd="set cnat snat-policy if undefined")
+        self.assertEqual(
+            rv.reply.strip(), "set cnat snat-policy if: unknown input 'undefined'"
+        )
+
+        rv = self.vapi.papi.cli_inband(cmd="set cnat snat-policy undefined")
+        self.assertEqual(
+            rv.reply.strip(), "set cnat snat-policy: unknown input 'undefined'"
+        )
+
     def test_long_cli_delay(self):
         """Test that VppApiClient raises VppIOError if timeout."""  # noqa
         with self.assertRaises(VPPIOError) as ctx:
