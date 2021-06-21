@@ -2831,8 +2831,6 @@ _(set_punt_reply)                                       \
 _(sw_interface_tag_add_del_reply)			\
 _(sw_interface_add_del_mac_address_reply)		\
 _(hw_interface_set_mtu_reply)                           \
-_(p2p_ethernet_add_reply)                               \
-_(p2p_ethernet_del_reply)                               \
 _(tcp_configure_src_addresses_reply)			\
 _(session_rule_add_del_reply)				\
 _(ip_container_proxy_add_del_reply)                     \
@@ -3002,8 +3000,6 @@ _(SW_INTERFACE_ADD_DEL_MAC_ADDRESS_REPLY, sw_interface_add_del_mac_address_reply
 _(L2_XCONNECT_DETAILS, l2_xconnect_details)                             \
 _(HW_INTERFACE_SET_MTU_REPLY, hw_interface_set_mtu_reply)               \
 _(SW_INTERFACE_GET_TABLE_REPLY, sw_interface_get_table_reply)           \
-_(P2P_ETHERNET_ADD_REPLY, p2p_ethernet_add_reply)                       \
-_(P2P_ETHERNET_DEL_REPLY, p2p_ethernet_del_reply)                       \
 _(TCP_CONFIGURE_SRC_ADDRESSES_REPLY, tcp_configure_src_addresses_reply)	\
 _(APP_NAMESPACE_ADD_DEL_REPLY, app_namespace_add_del_reply)		\
 _(SESSION_RULE_ADD_DEL_REPLY, session_rule_add_del_reply)		\
@@ -10992,111 +10988,6 @@ api_hw_interface_set_mtu (vat_main_t * vam)
 }
 
 static int
-api_p2p_ethernet_add (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_p2p_ethernet_add_t *mp;
-  u32 parent_if_index = ~0;
-  u32 sub_id = ~0;
-  u8 remote_mac[6];
-  u8 mac_set = 0;
-  int ret;
-
-  clib_memset (remote_mac, 0, sizeof (remote_mac));
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &parent_if_index))
-	;
-      else if (unformat (i, "sw_if_index %d", &parent_if_index))
-	;
-      else
-	if (unformat
-	    (i, "remote_mac %U", unformat_ethernet_address, remote_mac))
-	mac_set++;
-      else if (unformat (i, "sub_id %d", &sub_id))
-	;
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  if (parent_if_index == ~0)
-    {
-      errmsg ("missing interface name or sw_if_index");
-      return -99;
-    }
-  if (mac_set == 0)
-    {
-      errmsg ("missing remote mac address");
-      return -99;
-    }
-  if (sub_id == ~0)
-    {
-      errmsg ("missing sub-interface id");
-      return -99;
-    }
-
-  M (P2P_ETHERNET_ADD, mp);
-  mp->parent_if_index = ntohl (parent_if_index);
-  mp->subif_id = ntohl (sub_id);
-  clib_memcpy (mp->remote_mac, remote_mac, sizeof (remote_mac));
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_p2p_ethernet_del (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_p2p_ethernet_del_t *mp;
-  u32 parent_if_index = ~0;
-  u8 remote_mac[6];
-  u8 mac_set = 0;
-  int ret;
-
-  clib_memset (remote_mac, 0, sizeof (remote_mac));
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &parent_if_index))
-	;
-      else if (unformat (i, "sw_if_index %d", &parent_if_index))
-	;
-      else
-	if (unformat
-	    (i, "remote_mac %U", unformat_ethernet_address, remote_mac))
-	mac_set++;
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  if (parent_if_index == ~0)
-    {
-      errmsg ("missing interface name or sw_if_index");
-      return -99;
-    }
-  if (mac_set == 0)
-    {
-      errmsg ("missing remote mac address");
-      return -99;
-    }
-
-  M (P2P_ETHERNET_DEL, mp);
-  mp->parent_if_index = ntohl (parent_if_index);
-  clib_memcpy (mp->remote_mac, remote_mac, sizeof (remote_mac));
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
 api_tcp_configure_src_addresses (vat_main_t * vam)
 {
   vl_api_tcp_configure_src_addresses_t *mp;
@@ -12321,8 +12212,6 @@ _(sw_interface_add_del_mac_address, "<intfc> | sw_if_index <nn> "	\
 _(l2_xconnect_dump, "")                                             	\
 _(hw_interface_set_mtu, "<intfc> | hw_if_index <nn> mtu <nn>")        \
 _(sw_interface_get_table, "<intfc> | sw_if_index <id> [ipv6]")          \
-_(p2p_ethernet_add, "<intfc> | sw_if_index <nn> remote_mac <mac-address> sub_id <id>") \
-_(p2p_ethernet_del, "<intfc> | sw_if_index <nn> remote_mac <mac-address>") \
 _(tcp_configure_src_addresses, "<ip4|6>first-<ip4|6>last [vrf <id>]")	\
 _(sock_init_shm, "size <nnn>")						\
 _(app_namespace_add_del, "[add] id <ns-id> secret <nn> sw_if_index <nn>")\
