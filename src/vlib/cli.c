@@ -1224,6 +1224,9 @@ add_sub_command (vlib_cli_main_t * cm, uword parent_index, uword child_index)
       vec_add (sub_name, c->path + l + 1, vec_len (c->path) - (l + 1));
     }
 
+  /* "Can't happen," check mainly to shut up coverity */
+  ALWAYS_ASSERT (sub_name != 0);
+
   if (sub_name[0] == '%')
     {
       uword *q;
