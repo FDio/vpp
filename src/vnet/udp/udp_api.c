@@ -20,30 +20,14 @@
 #include <vnet/udp/udp_encap.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/ip/ip_types_api.h>
+#include <vnet/udp/udp.h>
 
-#include <vnet/vnet_msg_enum.h>
+#include <vnet/format_fns.h>
+#include <vnet/udp/udp.api_enum.h>
+#include <vnet/udp/udp.api_types.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vnet/vnet_all_api_h.h>
-#undef vl_printfun
-
+#define REPLY_MSG_ID_BASE udp_main.msg_id_base
 #include <vlibapi/api_helper_macros.h>
-
-#define foreach_udp_api_msg                                                   \
-  _ (UDP_ENCAP_DEL, udp_encap_del)                                            \
-  _ (UDP_ENCAP_ADD, udp_encap_add)                                            \
-  _ (UDP_ENCAP_DUMP, udp_encap_dump)                                          \
-  _ (UDP_DECAP_ADD_DEL, udp_decap_add_del)
 
 static void
 send_udp_encap_details (const udp_encap_t * ue, vl_api_registration_t * reg,
@@ -201,37 +185,14 @@ vl_api_udp_decap_add_del_t_handler (vl_api_udp_decap_add_del_t *mp)
   REPLY_MACRO (VL_API_UDP_DECAP_ADD_DEL_REPLY);
 }
 
-#define vl_msg_name_crc_list
-#include <vnet/udp/udp.api.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_udp;
-#undef _
-}
-
+#include <vnet/udp/udp.api.c>
 static clib_error_t *
 udp_api_hookup (vlib_main_t * vm)
 {
-  api_main_t *am = vlibapi_get_main ();
-
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_udp_api_msg;
-#undef _
-
   /*
    * Set up the (msg_name, crc, message-id) table
    */
-  setup_message_id_table (am);
+  REPLY_MSG_ID_BASE = setup_message_id_table ();
 
   return 0;
 }
