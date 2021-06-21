@@ -105,36 +105,52 @@ cnat_snat_policy_add_del_if_command_fn (vlib_main_t *vm,
 					unformat_input_t *input,
 					vlib_cli_command_t *cmd)
 {
+  unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
   int is_add = 1;
   u32 sw_if_index = ~0;
-  u32 table;
+  clib_error_t *e = 0;
+  u8 table;
   int rv;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return clib_error_return (0, "Interface not specified");
+  ;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "del"))
+      if (unformat (line_input, "del"))
 	is_add = 0;
-      else if (unformat (input, "table %U",
+      else if (unformat (line_input, "table %U",
 			 unformat_cnat_snat_interface_map_type, &table))
 	;
-      else if (unformat (input, "%U", unformat_vnet_sw_interface, vnm,
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
 			 &sw_if_index))
 	;
       else
-	return clib_error_return (0, "unknown input '%U'",
-				  format_unformat_error, input);
+	{
+	  e = clib_error_return (0, "unknown input '%U'",
+				 format_unformat_error, input);
+	  goto done;
+	}
     }
 
-  if (sw_if_index == ~0)
-    return clib_error_return (0, "Interface not specified");
+  if ((u32) ~0 == sw_if_index)
+    {
+      e = clib_error_return (0, "Interface not specified");
+      goto done;
+    }
 
   rv = cnat_snat_policy_add_del_if (sw_if_index, is_add, table);
 
   if (rv)
-    return clib_error_return (0, "Error %d", rv);
+    e = clib_error_return (0, "Error %d", rv);
 
-  return NULL;
+done:
+  unformat_free (line_input);
+
+  return (e);
 }
 
 VLIB_CLI_COMMAND (cnat_snat_policy_add_del_if_command, static) = {
@@ -300,7 +316,9 @@ cnat_snat_policy_k8s (vlib_buffer_t *b, cnat_session_t *session)
   if (cnat_snat_policy_interface_enabled (in_if, af))
     if (cnat_search_snat_prefix (dst_addr, af))
       /* Destination is not in the prefixes that don't require snat */
-      return 1;
+      {
+	return 1;
+      }
 
   /* source nat for translations that come from the outside:
      src not not a pod interface, dst not a pod interface */
@@ -322,7 +340,9 @@ cnat_snat_policy_k8s (vlib_buffer_t *b, cnat_session_t *session)
 
   /* handle the case where a container is connecting to itself via a service */
   if (ip46_address_is_equal (src_addr, dst_addr))
-    return 1;
+    {
+      return 1;
+    }
 
   return 0;
 }
@@ -350,8 +370,8 @@ cnat_set_snat (ip4_address_t *ip4, ip6_address_t *ip6, u32 sw_if_index)
 }
 
 static clib_error_t *
-cnat_set_snat_cli (vlib_main_t *vm, unformat_input_t *input,
-		   vlib_cli_command_t *cmd)
+cnat_set_snat_addr_cli (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
@@ -364,7 +384,7 @@ cnat_set_snat_cli (vlib_main_t *vm, unformat_input_t *input,
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, "Missing snat address");
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -391,11 +411,11 @@ done:
   return (e);
 }
 
-VLIB_CLI_COMMAND (cnat_set_snat_command, static) = {
+VLIB_CLI_COMMAND (cnat_set_snat_addr_command, static) = {
   .path = "set cnat snat-policy addr",
   .short_help =
     "set cnat snat-policy addr [<ip4-address>][<ip6-address>][sw_if_index]",
-  .function = cnat_set_snat_cli,
+  .function = cnat_set_snat_addr_cli,
 };
 
 static clib_error_t *
@@ -403,19 +423,29 @@ cnat_snat_policy_add_del_pfx_command_fn (vlib_main_t *vm,
 					 unformat_input_t *input,
 					 vlib_cli_command_t *cmd)
 {
+  unformat_input_t _line_input, *line_input = &_line_input;
   ip_prefix_t pfx;
   u8 is_add = 1;
+  clib_error_t *e = 0;
   int rv;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return clib_error_return (0, "Missing prefix");
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "%U", unformat_ip_prefix, &pfx))
+      if (unformat (line_input, "%U", unformat_ip_prefix, &pfx))
 	;
-      else if (unformat (input, "del"))
+      else if (unformat (line_input, "del"))
 	is_add = 0;
       else
-	return (clib_error_return (0, "unknown input '%U'",
-				   format_unformat_error, input));
+	{
+
+	  e = clib_error_return (0, "unknown input '%U'",
+				 format_unformat_error, line_input);
+	  goto done;
+	}
     }
 
   if (is_add)
@@ -424,9 +454,12 @@ cnat_snat_policy_add_del_pfx_command_fn (vlib_main_t *vm,
     rv = cnat_snat_policy_del_pfx (&pfx);
 
   if (rv)
-    return (clib_error_return (0, "error %d", rv, input));
+    e = clib_error_return (0, "error %d", rv, input);
 
-  return (NULL);
+done:
+  unformat_free (line_input);
+
+  return (e);
 }
 
 VLIB_CLI_COMMAND (cnat_snat_policy_add_del_pfx_command, static) = {
@@ -494,22 +527,39 @@ static clib_error_t *
 cnat_snat_policy_set_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 			     vlib_cli_command_t *cmd)
 {
+  unformat_input_t _line_input, *line_input = &_line_input;
   cnat_snat_policy_type_t policy = CNAT_SNAT_POLICY_NONE;
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  clib_error_t *e = 0;
+  int rv = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return clib_error_return (0, "No snat policy passed");
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "none"))
+      if (unformat (line_input, "none"))
 	;
-      else if (unformat (input, "if-pfx"))
+      else if (unformat (line_input, "if-pfx"))
 	policy = CNAT_SNAT_POLICY_IF_PFX;
-      else if (unformat (input, "k8s"))
+      else if (unformat (line_input, "k8s"))
 	policy = CNAT_SNAT_POLICY_K8S;
       else
-	return clib_error_return (0, "unknown input '%U'",
-				  format_unformat_error, input);
+	{
+	  e = clib_error_return (0, "unknown input '%U'",
+				 format_unformat_error, line_input);
+	  goto done;
+	}
     }
 
-  cnat_set_snat_policy (policy);
-  return NULL;
+  rv = cnat_set_snat_policy (policy);
+  if (rv)
+    e = clib_error_return (0, "cnat_set_snat_policy returned %d", rv);
+
+done:
+  unformat_free (line_input);
+
+  return (e);
 }
 
 VLIB_CLI_COMMAND (cnat_snat_policy_set_cmd, static) = {
