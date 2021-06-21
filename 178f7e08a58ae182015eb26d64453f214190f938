@@ -22,6 +22,30 @@
       "revId": "178f7e08a58ae182015eb26d64453f214190f938",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "40167d65_c3a34621",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2021-06-21T07:24:24Z",
+      "side": 1,
+      "message": "This removes code that is generated automatically during build. Also prepares for future removal of VAT (as there is already a replacement VAT2).",
+      "parentUuid": "82f0f715_799bfd74",
+      "range": {
+        "startLine": 7,
+        "startChar": 10,
+        "endLine": 7,
+        "endChar": 21
+      },
+      "revId": "178f7e08a58ae182015eb26d64453f214190f938",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
