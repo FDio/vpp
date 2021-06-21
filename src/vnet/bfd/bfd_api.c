@@ -143,7 +143,7 @@ send_bfd_udp_session_details (vl_api_registration_t * reg, u32 context,
 
   vl_api_bfd_udp_session_details_t *mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_BFD_UDP_SESSION_DETAILS);
+  mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_BFD_UDP_SESSION_DETAILS);
   mp->context = context;
   mp->state = clib_host_to_net_u32 (bs->local_state);
   bfd_udp_session_t *bus = &bs->udp;
@@ -186,7 +186,7 @@ send_bfd_udp_session_event (vl_api_registration_t *reg, u32 pid,
 
   vl_api_bfd_udp_session_event_t *mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_BFD_UDP_SESSION_EVENT);
+  mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_BFD_UDP_SESSION_EVENT);
   mp->pid = pid;
   mp->state = clib_host_to_net_u32 (bs->local_state);
   bfd_udp_session_t *bus = &bs->udp;
@@ -310,7 +310,7 @@ vl_api_bfd_auth_keys_dump_t_handler (vl_api_bfd_auth_keys_dump_t * mp)
   pool_foreach (key, bfd_main.auth_keys)  {
     rmp = vl_msg_api_alloc (sizeof (*rmp));
     clib_memset (rmp, 0, sizeof (*rmp));
-    rmp->_vl_msg_id = ntohs (VL_API_BFD_AUTH_KEYS_DETAILS);
+    rmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_BFD_AUTH_KEYS_DETAILS);
     rmp->context = mp->context;
     rmp->conf_key_id = clib_host_to_net_u32 (key->conf_key_id);
     rmp->auth_type = key->auth_type;

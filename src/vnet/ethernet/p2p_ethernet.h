@@ -33,6 +33,8 @@ typedef struct {
   /* convenience */
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;
+
+  u16 msg_id_base;
 } p2p_ethernet_main_t;
 
 extern p2p_ethernet_main_t p2p_main;
