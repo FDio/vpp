@@ -46,7 +46,6 @@
 #include <vnet/mpls/mpls.api.h>
 #include <vnet/srv6/sr.api.h>
 #include <vnet/srmpls/sr_mpls.api.h>
-#include <vnet/policer/policer.api.h>
 #include <vnet/ethernet/p2p_ethernet.api.h>
 #include <vnet/tcp/tcp.api.h>
 #include <vnet/ip/punt.api.h>
