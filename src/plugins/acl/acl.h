@@ -173,6 +173,9 @@ typedef struct {
   /* Total count of interface+direction pairs enabled */
   u32 fa_total_enabled_count;
 
+  /* Force bypass the checking of session state */
+  int bypass_session_check;
+
   /* Do we use hash-based ACL matching or linear */
   int use_hash_acl_matching;
 

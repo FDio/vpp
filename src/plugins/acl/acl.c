@@ -2538,6 +2538,11 @@ acl_set_aclplugin_fn (vlib_main_t * vm,
       am->use_hash_acl_matching = (val != 0);
       goto done;
     }
+  if (unformat (input, "bypass-session-check %u", &val))
+    {
+      am->bypass_session_check = (val != 0);
+      goto done;
+    }
   if (unformat (input, "l4-match-nonfirst-fragment %u", &val))
     {
       am->l4_match_nonfirst_fragment = (val != 0);
