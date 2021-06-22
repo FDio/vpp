@@ -223,7 +223,7 @@ _clib_error_report (clib_error_t * errors)
 {
   if (errors)
     {
-      u8 *msg = format (0, "%U", format_clib_error, errors);
+      u8 *msg = format (0, "%U ", format_clib_error, errors);
 
       msg = dispatch_message (msg);
       vec_free (msg);
