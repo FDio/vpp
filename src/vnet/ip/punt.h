@@ -161,6 +161,7 @@ typedef struct
   u32 *rx_buffers;
   punt_thread_data_t *thread_data;
   vlib_punt_hdl_t hdl;
+  u16 msg_id_base;
 } punt_main_t;
 
 extern punt_main_t punt_main;
