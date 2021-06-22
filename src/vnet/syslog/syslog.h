@@ -137,6 +137,8 @@ typedef struct
 
   /** convenience variables */
   vnet_main_t *vnet_main;
+
+  u16 msg_id_base;
 } syslog_main_t;
 
 extern syslog_main_t syslog_main;

@@ -18,33 +18,15 @@
 
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
-
 #include <vnet/fib/fib_table.h>
 #include <vnet/syslog/syslog.h>
 
-#include <vnet/vnet_msg_enum.h>
+#include <vnet/format_fns.h>
+#include <vnet/syslog/syslog.api_enum.h>
+#include <vnet/syslog/syslog.api_types.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vnet/vnet_all_api_h.h>
-#undef vl_printfun
-
+#define REPLY_MSG_ID_BASE syslog_main.msg_id_base
 #include <vlibapi/api_helper_macros.h>
-
-#define foreach_vpe_api_msg             \
-_(SYSLOG_SET_SENDER, syslog_set_sender) \
-_(SYSLOG_GET_SENDER, syslog_get_sender) \
-_(SYSLOG_SET_FILTER, syslog_set_filter) \
-_(SYSLOG_GET_FILTER, syslog_get_filter)
 
 static int
 syslog_severity_decode (vl_api_syslog_severity_t v, syslog_severity_t * s)
@@ -197,37 +179,15 @@ vl_api_syslog_get_filter_t_handler (vl_api_syslog_get_filter_t * mp)
   /* *INDENT-ON* */
 }
 
-#define vl_msg_name_crc_list
-#include <vnet/vnet_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_syslog;
-#undef _
-}
+#include <vnet/syslog/syslog.api.c>
 
 static clib_error_t *
 syslog_api_hookup (vlib_main_t * vm)
 {
-  api_main_t *am = vlibapi_get_main ();
-
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_api_msg;
-#undef _
-
   /*
    * Set up the (msg_name, crc, message-id) table
    */
-  setup_message_id_table (am);
+  REPLY_MSG_ID_BASE = setup_message_id_table ();
 
   return 0;
 }
