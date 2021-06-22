@@ -1026,7 +1026,7 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 	}
 
       if (NAT_ED_TRNSL_ERR_SUCCESS !=
-	  (translation_error = nat_6t_flow_buf_translate (
+	  (translation_error = nat_6t_flow_buf_translate_o2i (
 	     sm, b0, ip0, f, proto0, 0 /* is_output_feature */)))
 	{
 	  next[0] = NAT_NEXT_DROP;
@@ -1182,7 +1182,7 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
 	    }
 	  if (NAT_NEXT_DROP != next[0] &&
 	      NAT_ED_TRNSL_ERR_SUCCESS !=
-		(translation_error = nat_6t_flow_buf_translate (
+		(translation_error = nat_6t_flow_buf_translate_o2i (
 		   sm, b0, ip0, &s0->o2i, proto0, 0 /* is_output_feature */)))
 	    {
 	      goto trace0;
@@ -1201,7 +1201,7 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
 
 	  if (NAT_NEXT_DROP != next[0] && s0 &&
 	      NAT_ED_TRNSL_ERR_SUCCESS !=
-		(translation_error = nat_6t_flow_buf_translate (
+		(translation_error = nat_6t_flow_buf_translate_o2i (
 		   sm, b0, ip0, &s0->o2i, proto0, 0 /* is_output_feature */)))
 	    {
 	      goto trace0;
@@ -1311,7 +1311,7 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
 	}
 
       if (NAT_ED_TRNSL_ERR_SUCCESS !=
-	  (translation_error = nat_6t_flow_buf_translate (
+	  (translation_error = nat_6t_flow_buf_translate_o2i (
 	     sm, b0, ip0, &s0->o2i, proto0, 0 /* is_output_feature */)))
 	{
 	  next[0] = NAT_NEXT_DROP;
