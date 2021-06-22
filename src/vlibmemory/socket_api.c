@@ -295,7 +295,7 @@ vl_socket_read_ready (clib_file_t * uf)
     }
 
   /* Fake smaller length teporarily, so input_buffer can be used as msg_buffer. */
-  _vec_len (socket_main.input_buffer) = n;
+  vec_set_len (socket_main.input_buffer, n);
 
   /*
    * Look for bugs here. This code is tricky because
@@ -340,10 +340,10 @@ vl_socket_read_ready (clib_file_t * uf)
 	      vec_validate (rp->unprocessed_input, vec_len (msg_buffer) - 1);
 	      clib_memcpy_fast (rp->unprocessed_input, msg_buffer,
 				vec_len (msg_buffer));
-	      _vec_len (rp->unprocessed_input) = vec_len (msg_buffer);
+	      vec_set_len (rp->unprocessed_input, vec_len (msg_buffer));
 	    }
 	  /* No more full messages, restore original input_buffer length. */
-	  _vec_len (socket_main.input_buffer) = save_input_buffer_length;
+	  vec_set_len (socket_main.input_buffer, save_input_buffer_length);
 	  return 0;
 	}
 
@@ -353,7 +353,7 @@ vl_socket_read_ready (clib_file_t * uf)
        * so we can overwrite its length to what single message has.
        */
       data_for_process = (u8 *) vec_dup (msg_buffer);
-      _vec_len (data_for_process) = msgbuf_len;
+      vec_set_len (data_for_process, msgbuf_len);
       /* Everything is ready to signal the SOCKET_READ_EVENT. */
       pool_get (socket_main.process_args, a);
       a->reg_index = reg_index;
@@ -367,12 +367,12 @@ vl_socket_read_ready (clib_file_t * uf)
 	vec_delete (msg_buffer, msgbuf_len, 0);
       else
 	/* We are done with msg_buffer. */
-	_vec_len (msg_buffer) = 0;
+	vec_set_length (msg_buffer, 0);
     }
   while (vec_len (msg_buffer) > 0);
 
   /* Restore input_buffer, it could have been msg_buffer. */
-  _vec_len (socket_main.input_buffer) = save_input_buffer_length;
+  vec_set_len (socket_main.input_buffer, save_input_buffer_length);
   return 0;
 }
 
