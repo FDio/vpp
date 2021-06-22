@@ -561,6 +561,14 @@ typedef enum vnet_hw_interface_capabilities_t_
    VNET_HW_INTERFACE_CAP_SUPPORTS_TX_TCP_CKSUM |                              \
    VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_CKSUM)
 
+#define VNET_HW_INTERFACE_CAP_SUPPORTS_TX_OUTER_CKSUM                         \
+  (VNET_HW_INTERFACE_CAP_SUPPORTS_TX_IP4_OUTER_CKSUM |                        \
+   VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_OUTER_CKSUM)
+
+#define VNET_HW_INTERFACE_CAP_SUPPORTS_TX_CKSUM_MASK                          \
+  (VNET_HW_INTERFACE_CAP_SUPPORTS_TX_CKSUM |                                  \
+   VNET_HW_INTERFACE_CAP_SUPPORTS_TX_OUTER_CKSUM)
+
 #define VNET_HW_INTERFACE_CAP_SUPPORTS_L4_RX_CKSUM                            \
   (VNET_HW_INTERFACE_CAP_SUPPORTS_RX_TCP_CKSUM |                              \
    VNET_HW_INTERFACE_CAP_SUPPORTS_RX_UDP_CKSUM)
@@ -569,6 +577,10 @@ typedef enum vnet_hw_interface_capabilities_t_
   (VNET_HW_INTERFACE_CAP_SUPPORTS_RX_IP4_CKSUM |                              \
    VNET_HW_INTERFACE_CAP_SUPPORTS_RX_TCP_CKSUM |                              \
    VNET_HW_INTERFACE_CAP_SUPPORTS_RX_UDP_CKSUM)
+
+#define VNET_HW_INTERFACE_CAP_SUPPORTS_TNL_GSO_MASK                           \
+  VNET_HW_INTERFACE_CAP_SUPPORTS_VXLAN_TNL_GSO |                              \
+    VNET_HW_INTERFACE_CAP_SUPPORTS_IPIP_TNL_GSO
 
 #define VNET_HW_INTERFACE_FLAG_DUPLEX_SHIFT 1
 #define VNET_HW_INTERFACE_FLAG_SPEED_SHIFT  3
