@@ -49,6 +49,8 @@ typedef struct
 
   /* frame queue for thread handoff */
   u32 fq_index;
+
+  u16 msg_id_base;
 } vnet_policer_main_t;
 
 extern vnet_policer_main_t vnet_policer_main;
