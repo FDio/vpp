@@ -73,6 +73,7 @@ udp_connection_unregister_port (u16 lcl_port, u8 is_ip4)
       return;
     }
 
+  clib_warning ("unregisterging %u", lcl_port);
   if (!clib_atomic_sub_fetch (&pi->n_connections, 1))
     udp_unregister_dst_port (0, lcl_port, is_ip4);
 }
@@ -220,6 +221,7 @@ udp_session_unbind (u32 listener_index)
   udp_connection_t *listener;
 
   listener = udp_listener_get (listener_index);
+  clib_warning ("CALLED port %u", listener->c_lcl_port);
   udp_connection_unregister_port (clib_net_to_host_u16 (listener->c_lcl_port),
 				  listener->c_is_ip4);
   clib_spinlock_free (&listener->rx_lock);
@@ -357,7 +359,8 @@ udp_open_connection (transport_endpoint_cfg_t * rmt)
   if (udp_is_valid_dst_port (lcl_port, rmt->is_ip4))
     {
       /* If specific source port was requested abort */
-      if (rmt->peer.port)
+      if (udp_connection_port_used_extern (lcl_port, rmt->is_ip4)
+	  && rmt->peer.port)
 	return SESSION_E_PORTINUSE;
 
       /* Try to find a port that's not used */
