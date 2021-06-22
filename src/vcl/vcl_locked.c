@@ -800,6 +800,34 @@ vls_share_sessions (vls_worker_t * vls_parent_wrk, vls_worker_t * vls_wrk)
   /* *INDENT-ON* */
 }
 
+static void
+vls_validate_veps (vcl_worker_t *wrk)
+{
+  vcl_session_t *s;
+  u32 session_index, wrk_index;
+
+  pool_foreach (s, wrk->sessions)
+    {
+      if (s->vep.vep_sh != ~0)
+	{
+	  vcl_session_handle_parse (s->vep.vep_sh, &wrk_index, &session_index);
+	  s->vep.vep_sh = vcl_session_handle_from_index (session_index);
+	}
+      if (s->vep.next_sh != ~0)
+	{
+	  vcl_session_handle_parse (s->vep.next_sh, &wrk_index,
+				    &session_index);
+	  s->vep.next_sh = vcl_session_handle_from_index (session_index);
+	}
+      if (s->vep.prev_sh != ~0)
+	{
+	  vcl_session_handle_parse (s->vep.prev_sh, &wrk_index,
+				    &session_index);
+	  s->vep.prev_sh = vcl_session_handle_from_index (session_index);
+	}
+    }
+}
+
 void
 vls_worker_copy_on_fork (vcl_worker_t * parent_wrk)
 {
@@ -828,6 +856,9 @@ vls_worker_copy_on_fork (vcl_worker_t * parent_wrk)
     }));
   /* *INDENT-ON* */
   vls_wrk->vls_pool = pool_dup (vls_parent_wrk->vls_pool);
+
+  /* Validate vep's handle */
+  vls_validate_veps (wrk);
 
   vls_share_sessions (vls_parent_wrk, vls_wrk);
 }
