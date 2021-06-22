@@ -1981,7 +1981,6 @@ _(ip_source_and_port_range_check_add_del_reply)         \
 _(ip_source_and_port_range_check_interface_add_del_reply)\
 _(delete_subif_reply)                                   \
 _(l2_interface_pbb_tag_rewrite_reply)                   \
-_(set_punt_reply)                                       \
 _(sw_interface_tag_add_del_reply)			\
 _(sw_interface_add_del_mac_address_reply)		\
 _(hw_interface_set_mtu_reply)                           \
@@ -2116,7 +2115,6 @@ _(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL_REPLY,               \
  ip_source_and_port_range_check_interface_add_del_reply)                \
 _(DELETE_SUBIF_REPLY, delete_subif_reply)                               \
 _(L2_INTERFACE_PBB_TAG_REWRITE_REPLY, l2_interface_pbb_tag_rewrite_reply) \
-_(SET_PUNT_REPLY, set_punt_reply)                                       \
 _(IP_TABLE_DETAILS, ip_table_details)                                   \
 _(IP_ROUTE_DETAILS, ip_route_details)                                   \
 _(SW_INTERFACE_TAG_ADD_DEL_REPLY, sw_interface_tag_add_del_reply)     	\
@@ -8333,47 +8331,6 @@ api_ip_source_and_port_range_check_interface_add_del (vat_main_t * vam)
 }
 
 static int
-api_set_punt (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_address_family_t af;
-  vl_api_set_punt_t *mp;
-  u32 protocol = ~0;
-  u32 port = ~0;
-  int is_add = 1;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "%U", unformat_vl_api_address_family, &af))
-	;
-      else if (unformat (i, "protocol %d", &protocol))
-	;
-      else if (unformat (i, "port %d", &port))
-	;
-      else if (unformat (i, "del"))
-	is_add = 0;
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  M (SET_PUNT, mp);
-
-  mp->is_add = (u8) is_add;
-  mp->punt.type = PUNT_API_TYPE_L4;
-  mp->punt.punt.l4.af = af;
-  mp->punt.punt.l4.protocol = (u8) protocol;
-  mp->punt.punt.l4.port = htons ((u16) port);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
 api_delete_subif (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
@@ -9806,7 +9763,6 @@ _(l2_interface_pbb_tag_rewrite,                                         \
   "<intfc> | sw_if_index <nn> \n"                                       \
   "[disable | push | pop | translate_pbb_stag <outer_tag>] \n"          \
   "dmac <mac> smac <mac> sid <nn> [vlanid <nn>]")                       \
-_(set_punt, "protocol <l4-protocol> [ip <ver>] [port <l4-port>] [del]")     \
 _(ip_table_dump, "")                                                    \
 _(ip_route_dump, "table-id [ip4|ip6]")                                  \
 _(ip_mtable_dump, "")                                                   \
