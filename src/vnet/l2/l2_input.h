@@ -95,6 +95,8 @@ typedef struct
   /* convenience variables */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
+
+  u16 msg_id_base;
 } l2input_main_t;
 
 extern l2input_main_t l2input_main;

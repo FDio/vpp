@@ -624,17 +624,6 @@ ip_set (ip46_address_t * dst, void *src, u8 is_ip4)
 }
 
 static void
-increment_mac_address (u8 * mac)
-{
-  u64 tmp = *((u64 *) mac);
-  tmp = clib_net_to_host_u64 (tmp);
-  tmp += 1 << 16;		/* skip unused (least significant) octets */
-  tmp = clib_host_to_net_u64 (tmp);
-
-  clib_memcpy (mac, &tmp, 6);
-}
-
-static void
 vat_json_object_add_address (vat_json_node_t * node,
 			     const char *str, const vl_api_address_t * addr)
 {
@@ -1210,130 +1199,8 @@ api_show_threads (vat_main_t * vam)
   return ret;
 }
 
-static void
-vl_api_l2_macs_event_t_handler (vl_api_l2_macs_event_t * mp)
-{
-  u32 n_macs = ntohl (mp->n_macs);
-  errmsg ("L2MAC event received with pid %d cl-idx %d for %d macs: \n",
-	  ntohl (mp->pid), mp->client_index, n_macs);
-  int i;
-  for (i = 0; i < n_macs; i++)
-    {
-      vl_api_mac_entry_t *mac = &mp->mac[i];
-      errmsg (" [%d] sw_if_index %d  mac_addr %U  action %d \n",
-	      i + 1, ntohl (mac->sw_if_index),
-	      format_ethernet_address, mac->mac_addr, mac->action);
-      if (i == 1000)
-	break;
-    }
-}
-
-static void
-vl_api_l2_macs_event_t_handler_json (vl_api_l2_macs_event_t * mp)
-{
-  /* JSON output not supported */
-}
-
 #define vl_api_bridge_domain_details_t_endian vl_noop_handler
 #define vl_api_bridge_domain_details_t_print vl_noop_handler
-
-/*
- * Special-case: build the bridge domain table, maintain
- * the next bd id vbl.
- */
-static void vl_api_bridge_domain_details_t_handler
-  (vl_api_bridge_domain_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  u32 n_sw_ifs = ntohl (mp->n_sw_ifs);
-  int i;
-
-  print (vam->ofp, "\n%-3s %-3s %-3s %-3s %-3s %-6s %-3s",
-	 " ID", "LRN", "FWD", "FLD", "BVI", "UU-FWD", "#IF");
-
-  print (vam->ofp, "%3d %3d %3d %3d %3d %6d %3d",
-	 ntohl (mp->bd_id), mp->learn, mp->forward,
-	 mp->flood, ntohl (mp->bvi_sw_if_index),
-	 ntohl (mp->uu_fwd_sw_if_index), n_sw_ifs);
-
-  if (n_sw_ifs)
-    {
-      vl_api_bridge_domain_sw_if_t *sw_ifs;
-      print (vam->ofp, "\n\n%s %s  %s", "sw_if_index", "SHG",
-	     "Interface Name");
-
-      sw_ifs = mp->sw_if_details;
-      for (i = 0; i < n_sw_ifs; i++)
-	{
-	  u8 *sw_if_name = 0;
-	  u32 sw_if_index;
-	  hash_pair_t *p;
-
-	  sw_if_index = ntohl (sw_ifs->sw_if_index);
-
-	  /* *INDENT-OFF* */
-	  hash_foreach_pair (p, vam->sw_if_index_by_interface_name,
-			     ({
-			       if ((u32) p->value[0] == sw_if_index)
-				 {
-				   sw_if_name = (u8 *)(p->key);
-				   break;
-				 }
-			     }));
-	  /* *INDENT-ON* */
-	  print (vam->ofp, "%7d     %3d  %s", sw_if_index,
-		 sw_ifs->shg, sw_if_name ? (char *) sw_if_name :
-		 "sw_if_index not found!");
-
-	  sw_ifs++;
-	}
-    }
-}
-
-static void vl_api_bridge_domain_details_t_handler_json
-  (vl_api_bridge_domain_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t *node, *array = NULL;
-  u32 n_sw_ifs = ntohl (mp->n_sw_ifs);
-
-  if (VAT_JSON_ARRAY != vam->json_tree.type)
-    {
-      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
-      vat_json_init_array (&vam->json_tree);
-    }
-  node = vat_json_array_add (&vam->json_tree);
-
-  vat_json_init_object (node);
-  vat_json_object_add_uint (node, "bd_id", ntohl (mp->bd_id));
-  vat_json_object_add_uint (node, "flood", mp->flood);
-  vat_json_object_add_uint (node, "forward", mp->forward);
-  vat_json_object_add_uint (node, "learn", mp->learn);
-  vat_json_object_add_uint (node, "bvi_sw_if_index",
-			    ntohl (mp->bvi_sw_if_index));
-  vat_json_object_add_uint (node, "n_sw_ifs", n_sw_ifs);
-  array = vat_json_object_add (node, "sw_if");
-  vat_json_init_array (array);
-
-
-
-  if (n_sw_ifs)
-    {
-      vl_api_bridge_domain_sw_if_t *sw_ifs;
-      int i;
-
-      sw_ifs = mp->sw_if_details;
-      for (i = 0; i < n_sw_ifs; i++)
-	{
-	  node = vat_json_array_add (array);
-	  vat_json_init_object (node);
-	  vat_json_object_add_uint (node, "sw_if_index",
-				    ntohl (sw_ifs->sw_if_index));
-	  vat_json_object_add_uint (node, "shg", sw_ifs->shg);
-	  sw_ifs++;
-	}
-    }
-}
 
 static void vl_api_control_ping_reply_t_handler
   (vl_api_control_ping_reply_t * mp)
@@ -1374,107 +1241,6 @@ static void vl_api_control_ping_reply_t_handler_json
     }
 
   vam->retval = retval;
-  vam->result_ready = 1;
-}
-
-static void
-  vl_api_bridge_domain_set_mac_age_reply_t_handler
-  (vl_api_bridge_domain_set_mac_age_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  i32 retval = ntohl (mp->retval);
-  if (vam->async_mode)
-    {
-      vam->async_errors += (retval < 0);
-    }
-  else
-    {
-      vam->retval = retval;
-      vam->result_ready = 1;
-    }
-}
-
-static void vl_api_bridge_domain_set_mac_age_reply_t_handler_json
-  (vl_api_bridge_domain_set_mac_age_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t node;
-
-  vat_json_init_object (&node);
-  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
-
-  vat_json_print (vam->ofp, &node);
-  vat_json_free (&node);
-
-  vam->retval = ntohl (mp->retval);
-  vam->result_ready = 1;
-}
-
-static void
-vl_api_l2_flags_reply_t_handler (vl_api_l2_flags_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  i32 retval = ntohl (mp->retval);
-  if (vam->async_mode)
-    {
-      vam->async_errors += (retval < 0);
-    }
-  else
-    {
-      vam->retval = retval;
-      vam->result_ready = 1;
-    }
-}
-
-static void vl_api_l2_flags_reply_t_handler_json
-  (vl_api_l2_flags_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t node;
-
-  vat_json_init_object (&node);
-  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
-  vat_json_object_add_uint (&node, "resulting_feature_bitmap",
-			    ntohl (mp->resulting_feature_bitmap));
-
-  vat_json_print (vam->ofp, &node);
-  vat_json_free (&node);
-
-  vam->retval = ntohl (mp->retval);
-  vam->result_ready = 1;
-}
-
-static void vl_api_bridge_flags_reply_t_handler
-  (vl_api_bridge_flags_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  i32 retval = ntohl (mp->retval);
-  if (vam->async_mode)
-    {
-      vam->async_errors += (retval < 0);
-    }
-  else
-    {
-      vam->retval = retval;
-      vam->result_ready = 1;
-    }
-}
-
-static void vl_api_bridge_flags_reply_t_handler_json
-  (vl_api_bridge_flags_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t node;
-
-  vat_json_init_object (&node);
-  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
-  vat_json_object_add_uint (&node, "resulting_feature_bitmap",
-			    ntohl (mp->resulting_feature_bitmap));
-
-  vat_json_print (vam->ofp, &node);
-  vat_json_free (&node);
-
-  vam->retval = ntohl (mp->retval);
   vam->result_ready = 1;
 }
 
@@ -1868,17 +1634,9 @@ format_hex_bytes (u8 * s, va_list * va)
 #define foreach_standard_reply_retval_handler           \
 _(sw_interface_set_flags_reply)                         \
 _(sw_interface_add_del_address_reply)                   \
-_(sw_interface_set_rx_mode_reply)                       \
 _(sw_interface_set_rx_placement_reply)                  \
 _(sw_interface_set_table_reply)                         \
 _(sw_interface_set_mpls_enable_reply)                   \
-_(sw_interface_set_vpath_reply)                         \
-_(sw_interface_set_l2_bridge_reply)                     \
-_(bridge_domain_add_del_reply)                          \
-_(sw_interface_set_l2_xconnect_reply)                   \
-_(l2fib_add_del_reply)                                  \
-_(l2fib_flush_int_reply)                                \
-_(l2fib_flush_bd_reply)                                 \
 _(ip_route_add_del_reply)                               \
 _(ip_table_add_del_reply)                               \
 _(ip_table_replace_begin_reply)                         \
@@ -1891,14 +1649,7 @@ _(mpls_ip_bind_unbind_reply)                            \
 _(sw_interface_set_unnumbered_reply)                    \
 _(set_ip_flow_hash_reply)                               \
 _(sw_interface_ip6_enable_disable_reply)                \
-_(l2_patch_add_del_reply)                               \
-_(l2_fib_clear_table_reply)                             \
-_(l2_interface_efp_filter_reply)                        \
-_(l2_interface_vlan_tag_rewrite_reply)                  \
-_(want_l2_macs_events_reply)                            \
 _(delete_loopback_reply)                                \
-_(bd_ip_mac_add_del_reply)                              \
-_(bd_ip_mac_flush_reply)                                \
 _(want_interface_events_reply)                          \
 _(sw_interface_clear_stats_reply)                       \
 _(ioam_enable_reply)                                    \
@@ -1906,7 +1657,6 @@ _(ioam_disable_reply)                                   \
 _(ip_source_and_port_range_check_add_del_reply)         \
 _(ip_source_and_port_range_check_interface_add_del_reply)\
 _(delete_subif_reply)                                   \
-_(l2_interface_pbb_tag_rewrite_reply)                   \
 _(sw_interface_tag_add_del_reply)			\
 _(sw_interface_add_del_mac_address_reply)		\
 _(hw_interface_set_mtu_reply)                           \
@@ -1959,24 +1709,10 @@ _(CLI_REPLY, cli_reply)                                                 \
 _(CLI_INBAND_REPLY, cli_inband_reply)                                   \
 _(SW_INTERFACE_ADD_DEL_ADDRESS_REPLY,                                   \
   sw_interface_add_del_address_reply)                                   \
-_(SW_INTERFACE_SET_RX_MODE_REPLY, sw_interface_set_rx_mode_reply)       \
 _(SW_INTERFACE_SET_RX_PLACEMENT_REPLY, sw_interface_set_rx_placement_reply)	\
 _(SW_INTERFACE_RX_PLACEMENT_DETAILS, sw_interface_rx_placement_details)	\
 _(SW_INTERFACE_SET_TABLE_REPLY, sw_interface_set_table_reply) 		\
 _(SW_INTERFACE_SET_MPLS_ENABLE_REPLY, sw_interface_set_mpls_enable_reply) \
-_(SW_INTERFACE_SET_VPATH_REPLY, sw_interface_set_vpath_reply) 		\
-_(SW_INTERFACE_SET_L2_XCONNECT_REPLY,                                   \
-  sw_interface_set_l2_xconnect_reply)                                   \
-_(SW_INTERFACE_SET_L2_BRIDGE_REPLY,                                     \
-  sw_interface_set_l2_bridge_reply)                                     \
-_(BRIDGE_DOMAIN_ADD_DEL_REPLY, bridge_domain_add_del_reply)             \
-_(BRIDGE_DOMAIN_DETAILS, bridge_domain_details)                         \
-_(BRIDGE_DOMAIN_SET_MAC_AGE_REPLY, bridge_domain_set_mac_age_reply)     \
-_(L2FIB_ADD_DEL_REPLY, l2fib_add_del_reply)                             \
-_(L2FIB_FLUSH_INT_REPLY, l2fib_flush_int_reply)                         \
-_(L2FIB_FLUSH_BD_REPLY, l2fib_flush_bd_reply)                           \
-_(L2_FLAGS_REPLY, l2_flags_reply)                                       \
-_(BRIDGE_FLAGS_REPLY, bridge_flags_reply)                               \
 _(VIRTIO_PCI_CREATE_REPLY, virtio_pci_create_reply)			\
 _(VIRTIO_PCI_CREATE_V2_REPLY, virtio_pci_create_v2_reply)		\
 _(VIRTIO_PCI_DELETE_REPLY, virtio_pci_delete_reply)			\
@@ -1998,24 +1734,14 @@ _(CREATE_SUBIF_REPLY, create_subif_reply)                     		\
 _(SET_IP_FLOW_HASH_REPLY, set_ip_flow_hash_reply)                       \
 _(SW_INTERFACE_IP6_ENABLE_DISABLE_REPLY,                                \
   sw_interface_ip6_enable_disable_reply)                                \
-_(L2_PATCH_ADD_DEL_REPLY, l2_patch_add_del_reply)                       \
 _(GET_NODE_INDEX_REPLY, get_node_index_reply)                           \
 _(ADD_NODE_NEXT_REPLY, add_node_next_reply)                             \
-_(L2_FIB_CLEAR_TABLE_REPLY, l2_fib_clear_table_reply)                   \
-_(L2_INTERFACE_EFP_FILTER_REPLY, l2_interface_efp_filter_reply)         \
-_(L2_INTERFACE_VLAN_TAG_REWRITE_REPLY, l2_interface_vlan_tag_rewrite_reply) \
 _(SHOW_VERSION_REPLY, show_version_reply)                               \
 _(SHOW_THREADS_REPLY, show_threads_reply)                               \
-_(L2_FIB_TABLE_DETAILS, l2_fib_table_details)				\
 _(INTERFACE_NAME_RENUMBER_REPLY, interface_name_renumber_reply)		\
-_(WANT_L2_MACS_EVENTS_REPLY, want_l2_macs_events_reply)			\
-_(L2_MACS_EVENT, l2_macs_event)						\
 _(IP_ADDRESS_DETAILS, ip_address_details)                               \
 _(IP_DETAILS, ip_details)                                               \
 _(DELETE_LOOPBACK_REPLY, delete_loopback_reply)                         \
-_(BD_IP_MAC_ADD_DEL_REPLY, bd_ip_mac_add_del_reply)                     \
-_(BD_IP_MAC_FLUSH_REPLY, bd_ip_mac_flush_reply)                         \
-_(BD_IP_MAC_DETAILS, bd_ip_mac_details)                                 \
 _(WANT_INTERFACE_EVENTS_REPLY, want_interface_events_reply)             \
 _(GET_FIRST_MSG_ID_REPLY, get_first_msg_id_reply)    			\
 _(GET_NODE_GRAPH_REPLY, get_node_graph_reply)                           \
@@ -2031,12 +1757,10 @@ _(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL_REPLY,                         \
 _(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL_REPLY,               \
  ip_source_and_port_range_check_interface_add_del_reply)                \
 _(DELETE_SUBIF_REPLY, delete_subif_reply)                               \
-_(L2_INTERFACE_PBB_TAG_REWRITE_REPLY, l2_interface_pbb_tag_rewrite_reply) \
 _(IP_TABLE_DETAILS, ip_table_details)                                   \
 _(IP_ROUTE_DETAILS, ip_route_details)                                   \
 _(SW_INTERFACE_TAG_ADD_DEL_REPLY, sw_interface_tag_add_del_reply)     	\
 _(SW_INTERFACE_ADD_DEL_MAC_ADDRESS_REPLY, sw_interface_add_del_mac_address_reply) \
-_(L2_XCONNECT_DETAILS, l2_xconnect_details)                             \
 _(HW_INTERFACE_SET_MTU_REPLY, hw_interface_set_mtu_reply)               \
 _(SW_INTERFACE_GET_TABLE_REPLY, sw_interface_get_table_reply)           \
 _(APP_NAMESPACE_ADD_DEL_REPLY, app_namespace_add_del_reply)		\
@@ -2477,64 +2201,6 @@ api_sw_interface_set_flags (vat_main_t * vam)
 }
 
 static int
-api_sw_interface_set_rx_mode (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_sw_interface_set_rx_mode_t *mp;
-  u32 sw_if_index;
-  u8 sw_if_index_set = 0;
-  int ret;
-  u8 queue_id_valid = 0;
-  u32 queue_id;
-  vnet_hw_if_rx_mode mode = VNET_HW_IF_RX_MODE_UNKNOWN;
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "queue %d", &queue_id))
-	queue_id_valid = 1;
-      else if (unformat (i, "polling"))
-	mode = VNET_HW_IF_RX_MODE_POLLING;
-      else if (unformat (i, "interrupt"))
-	mode = VNET_HW_IF_RX_MODE_INTERRUPT;
-      else if (unformat (i, "adaptive"))
-	mode = VNET_HW_IF_RX_MODE_ADAPTIVE;
-      else
-	if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "sw_if_index %d", &sw_if_index))
-	sw_if_index_set = 1;
-      else
-	break;
-    }
-
-  if (sw_if_index_set == 0)
-    {
-      errmsg ("missing interface name or sw_if_index");
-      return -99;
-    }
-  if (mode == VNET_HW_IF_RX_MODE_UNKNOWN)
-    {
-      errmsg ("missing rx-mode");
-      return -99;
-    }
-
-  /* Construct the API message */
-  M (SW_INTERFACE_SET_RX_MODE, mp);
-  mp->sw_if_index = ntohl (sw_if_index);
-  mp->mode = (vl_api_rx_mode_t) mode;
-  mp->queue_id_valid = queue_id_valid;
-  mp->queue_id = queue_id_valid ? ntohl (queue_id) : ~0;
-
-  /* send it... */
-  S (mp);
-
-  /* Wait for a reply, return the good/bad news... */
-  W (ret);
-  return ret;
-}
-
-static int
 api_sw_interface_set_rx_placement (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
@@ -2933,850 +2599,8 @@ api_sw_interface_get_table (vat_main_t * vam)
   return ret;
 }
 
-static int
-api_sw_interface_set_vpath (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_sw_interface_set_vpath_t *mp;
-  u32 sw_if_index = 0;
-  u8 sw_if_index_set = 0;
-  u8 is_enable = 0;
-  int ret;
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "sw_if_index %d", &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "enable"))
-	is_enable = 1;
-      else if (unformat (i, "disable"))
-	is_enable = 0;
-      else
-	break;
-    }
-
-  if (sw_if_index_set == 0)
-    {
-      errmsg ("missing interface name or sw_if_index");
-      return -99;
-    }
-
-  /* Construct the API message */
-  M (SW_INTERFACE_SET_VPATH, mp);
-
-  mp->sw_if_index = ntohl (sw_if_index);
-  mp->enable = is_enable;
-
-  /* send it... */
-  S (mp);
-
-  /* Wait for a reply... */
-  W (ret);
-  return ret;
-}
-
-static int
-api_sw_interface_set_l2_xconnect (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_sw_interface_set_l2_xconnect_t *mp;
-  u32 rx_sw_if_index;
-  u8 rx_sw_if_index_set = 0;
-  u32 tx_sw_if_index;
-  u8 tx_sw_if_index_set = 0;
-  u8 enable = 1;
-  int ret;
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "rx_sw_if_index %d", &rx_sw_if_index))
-	rx_sw_if_index_set = 1;
-      else if (unformat (i, "tx_sw_if_index %d", &tx_sw_if_index))
-	tx_sw_if_index_set = 1;
-      else if (unformat (i, "rx"))
-	{
-	  if (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-	    {
-	      if (unformat (i, "%U", api_unformat_sw_if_index, vam,
-			    &rx_sw_if_index))
-		rx_sw_if_index_set = 1;
-	    }
-	  else
-	    break;
-	}
-      else if (unformat (i, "tx"))
-	{
-	  if (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-	    {
-	      if (unformat (i, "%U", api_unformat_sw_if_index, vam,
-			    &tx_sw_if_index))
-		tx_sw_if_index_set = 1;
-	    }
-	  else
-	    break;
-	}
-      else if (unformat (i, "enable"))
-	enable = 1;
-      else if (unformat (i, "disable"))
-	enable = 0;
-      else
-	break;
-    }
-
-  if (rx_sw_if_index_set == 0)
-    {
-      errmsg ("missing rx interface name or rx_sw_if_index");
-      return -99;
-    }
-
-  if (enable && (tx_sw_if_index_set == 0))
-    {
-      errmsg ("missing tx interface name or tx_sw_if_index");
-      return -99;
-    }
-
-  M (SW_INTERFACE_SET_L2_XCONNECT, mp);
-
-  mp->rx_sw_if_index = ntohl (rx_sw_if_index);
-  mp->tx_sw_if_index = ntohl (tx_sw_if_index);
-  mp->enable = enable;
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_sw_interface_set_l2_bridge (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_sw_interface_set_l2_bridge_t *mp;
-  vl_api_l2_port_type_t port_type;
-  u32 rx_sw_if_index;
-  u8 rx_sw_if_index_set = 0;
-  u32 bd_id;
-  u8 bd_id_set = 0;
-  u32 shg = 0;
-  u8 enable = 1;
-  int ret;
-
-  port_type = L2_API_PORT_TYPE_NORMAL;
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "sw_if_index %d", &rx_sw_if_index))
-	rx_sw_if_index_set = 1;
-      else if (unformat (i, "bd_id %d", &bd_id))
-	bd_id_set = 1;
-      else
-	if (unformat
-	    (i, "%U", api_unformat_sw_if_index, vam, &rx_sw_if_index))
-	rx_sw_if_index_set = 1;
-      else if (unformat (i, "shg %d", &shg))
-	;
-      else if (unformat (i, "bvi"))
-	port_type = L2_API_PORT_TYPE_BVI;
-      else if (unformat (i, "uu-fwd"))
-	port_type = L2_API_PORT_TYPE_UU_FWD;
-      else if (unformat (i, "enable"))
-	enable = 1;
-      else if (unformat (i, "disable"))
-	enable = 0;
-      else
-	break;
-    }
-
-  if (rx_sw_if_index_set == 0)
-    {
-      errmsg ("missing rx interface name or sw_if_index");
-      return -99;
-    }
-
-  if (enable && (bd_id_set == 0))
-    {
-      errmsg ("missing bridge domain");
-      return -99;
-    }
-
-  M (SW_INTERFACE_SET_L2_BRIDGE, mp);
-
-  mp->rx_sw_if_index = ntohl (rx_sw_if_index);
-  mp->bd_id = ntohl (bd_id);
-  mp->shg = (u8) shg;
-  mp->port_type = ntohl (port_type);
-  mp->enable = enable;
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_bridge_domain_dump (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_bridge_domain_dump_t *mp;
-  vl_api_control_ping_t *mp_ping;
-  u32 bd_id = ~0;
-  int ret;
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "bd_id %d", &bd_id))
-	;
-      else
-	break;
-    }
-
-  M (BRIDGE_DOMAIN_DUMP, mp);
-  mp->bd_id = ntohl (bd_id);
-  S (mp);
-
-  /* Use a control ping for synchronization */
-  MPING (CONTROL_PING, mp_ping);
-  S (mp_ping);
-
-  W (ret);
-  return ret;
-}
-
-static int
-api_bridge_domain_add_del (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_bridge_domain_add_del_t *mp;
-  u32 bd_id = ~0;
-  u8 is_add = 1;
-  u32 flood = 1, forward = 1, learn = 1, uu_flood = 1, arp_term = 0;
-  u8 *bd_tag = NULL;
-  u32 mac_age = 0;
-  int ret;
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "bd_id %d", &bd_id))
-	;
-      else if (unformat (i, "flood %d", &flood))
-	;
-      else if (unformat (i, "uu-flood %d", &uu_flood))
-	;
-      else if (unformat (i, "forward %d", &forward))
-	;
-      else if (unformat (i, "learn %d", &learn))
-	;
-      else if (unformat (i, "arp-term %d", &arp_term))
-	;
-      else if (unformat (i, "mac-age %d", &mac_age))
-	;
-      else if (unformat (i, "bd-tag %s", &bd_tag))
-	;
-      else if (unformat (i, "del"))
-	{
-	  is_add = 0;
-	  flood = uu_flood = forward = learn = 0;
-	}
-      else
-	break;
-    }
-
-  if (bd_id == ~0)
-    {
-      errmsg ("missing bridge domain");
-      ret = -99;
-      goto done;
-    }
-
-  if (mac_age > 255)
-    {
-      errmsg ("mac age must be less than 256 ");
-      ret = -99;
-      goto done;
-    }
-
-  if ((bd_tag) && (vec_len (bd_tag) > 63))
-    {
-      errmsg ("bd-tag cannot be longer than 63");
-      ret = -99;
-      goto done;
-    }
-
-  M (BRIDGE_DOMAIN_ADD_DEL, mp);
-
-  mp->bd_id = ntohl (bd_id);
-  mp->flood = flood;
-  mp->uu_flood = uu_flood;
-  mp->forward = forward;
-  mp->learn = learn;
-  mp->arp_term = arp_term;
-  mp->is_add = is_add;
-  mp->mac_age = (u8) mac_age;
-  if (bd_tag)
-    {
-      clib_memcpy (mp->bd_tag, bd_tag, vec_len (bd_tag));
-      mp->bd_tag[vec_len (bd_tag)] = 0;
-    }
-  S (mp);
-  W (ret);
-
-done:
-  vec_free (bd_tag);
-  return ret;
-}
-
-static int
-api_l2fib_flush_bd (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_l2fib_flush_bd_t *mp;
-  u32 bd_id = ~0;
-  int ret;
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "bd_id %d", &bd_id));
-      else
-	break;
-    }
-
-  if (bd_id == ~0)
-    {
-      errmsg ("missing bridge domain");
-      return -99;
-    }
-
-  M (L2FIB_FLUSH_BD, mp);
-
-  mp->bd_id = htonl (bd_id);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_l2fib_flush_int (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_l2fib_flush_int_t *mp;
-  u32 sw_if_index = ~0;
-  int ret;
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "sw_if_index %d", &sw_if_index));
-      else
-	if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index));
-      else
-	break;
-    }
-
-  if (sw_if_index == ~0)
-    {
-      errmsg ("missing interface name or sw_if_index");
-      return -99;
-    }
-
-  M (L2FIB_FLUSH_INT, mp);
-
-  mp->sw_if_index = ntohl (sw_if_index);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_l2fib_add_del (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_l2fib_add_del_t *mp;
-  f64 timeout;
-  u8 mac[6] = { 0 };
-  u8 mac_set = 0;
-  u32 bd_id;
-  u8 bd_id_set = 0;
-  u32 sw_if_index = 0;
-  u8 sw_if_index_set = 0;
-  u8 is_add = 1;
-  u8 static_mac = 0;
-  u8 filter_mac = 0;
-  u8 bvi_mac = 0;
-  int count = 1;
-  f64 before = 0;
-  int j;
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "mac %U", unformat_ethernet_address, mac))
-	mac_set = 1;
-      else if (unformat (i, "bd_id %d", &bd_id))
-	bd_id_set = 1;
-      else if (unformat (i, "sw_if_index %d", &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "sw_if"))
-	{
-	  if (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-	    {
-	      if (unformat
-		  (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
-		sw_if_index_set = 1;
-	    }
-	  else
-	    break;
-	}
-      else if (unformat (i, "static"))
-	static_mac = 1;
-      else if (unformat (i, "filter"))
-	{
-	  filter_mac = 1;
-	  static_mac = 1;
-	}
-      else if (unformat (i, "bvi"))
-	{
-	  bvi_mac = 1;
-	  static_mac = 1;
-	}
-      else if (unformat (i, "del"))
-	is_add = 0;
-      else if (unformat (i, "count %d", &count))
-	;
-      else
-	break;
-    }
-
-  if (mac_set == 0)
-    {
-      errmsg ("missing mac address");
-      return -99;
-    }
-
-  if (bd_id_set == 0)
-    {
-      errmsg ("missing bridge domain");
-      return -99;
-    }
-
-  if (is_add && sw_if_index_set == 0 && filter_mac == 0)
-    {
-      errmsg ("missing interface name or sw_if_index");
-      return -99;
-    }
-
-  if (count > 1)
-    {
-      /* Turn on async mode */
-      vam->async_mode = 1;
-      vam->async_errors = 0;
-      before = vat_time_now (vam);
-    }
-
-  for (j = 0; j < count; j++)
-    {
-      M (L2FIB_ADD_DEL, mp);
-
-      clib_memcpy (mp->mac, mac, 6);
-      mp->bd_id = ntohl (bd_id);
-      mp->is_add = is_add;
-      mp->sw_if_index = ntohl (sw_if_index);
-
-      if (is_add)
-	{
-	  mp->static_mac = static_mac;
-	  mp->filter_mac = filter_mac;
-	  mp->bvi_mac = bvi_mac;
-	}
-      increment_mac_address (mac);
-      /* send it... */
-      S (mp);
-    }
-
-  if (count > 1)
-    {
-      vl_api_control_ping_t *mp_ping;
-      f64 after;
-
-      /* Shut off async mode */
-      vam->async_mode = 0;
-
-      MPING (CONTROL_PING, mp_ping);
-      S (mp_ping);
-
-      timeout = vat_time_now (vam) + 1.0;
-      while (vat_time_now (vam) < timeout)
-	if (vam->result_ready == 1)
-	  goto out;
-      vam->retval = -99;
-
-    out:
-      if (vam->retval == -99)
-	errmsg ("timeout");
-
-      if (vam->async_errors > 0)
-	{
-	  errmsg ("%d asynchronous errors", vam->async_errors);
-	  vam->retval = -98;
-	}
-      vam->async_errors = 0;
-      after = vat_time_now (vam);
-
-      print (vam->ofp, "%d routes in %.6f secs, %.2f routes/sec",
-	     count, after - before, count / (after - before));
-    }
-  else
-    {
-      int ret;
-
-      /* Wait for a reply... */
-      W (ret);
-      return ret;
-    }
-  /* Return the good/bad news */
-  return (vam->retval);
-}
-
-static int
-api_bridge_domain_set_mac_age (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_bridge_domain_set_mac_age_t *mp;
-  u32 bd_id = ~0;
-  u32 mac_age = 0;
-  int ret;
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "bd_id %d", &bd_id));
-      else if (unformat (i, "mac-age %d", &mac_age));
-      else
-	break;
-    }
-
-  if (bd_id == ~0)
-    {
-      errmsg ("missing bridge domain");
-      return -99;
-    }
-
-  if (mac_age > 255)
-    {
-      errmsg ("mac age must be less than 256 ");
-      return -99;
-    }
-
-  M (BRIDGE_DOMAIN_SET_MAC_AGE, mp);
-
-  mp->bd_id = htonl (bd_id);
-  mp->mac_age = (u8) mac_age;
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_l2_flags (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_l2_flags_t *mp;
-  u32 sw_if_index;
-  u32 flags = 0;
-  u8 sw_if_index_set = 0;
-  u8 is_set = 0;
-  int ret;
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "sw_if_index %d", &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "sw_if"))
-	{
-	  if (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-	    {
-	      if (unformat
-		  (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
-		sw_if_index_set = 1;
-	    }
-	  else
-	    break;
-	}
-      else if (unformat (i, "learn"))
-	flags |= L2_LEARN;
-      else if (unformat (i, "forward"))
-	flags |= L2_FWD;
-      else if (unformat (i, "flood"))
-	flags |= L2_FLOOD;
-      else if (unformat (i, "uu-flood"))
-	flags |= L2_UU_FLOOD;
-      else if (unformat (i, "arp-term"))
-	flags |= L2_ARP_TERM;
-      else if (unformat (i, "off"))
-	is_set = 0;
-      else if (unformat (i, "disable"))
-	is_set = 0;
-      else
-	break;
-    }
-
-  if (sw_if_index_set == 0)
-    {
-      errmsg ("missing interface name or sw_if_index");
-      return -99;
-    }
-
-  M (L2_FLAGS, mp);
-
-  mp->sw_if_index = ntohl (sw_if_index);
-  mp->feature_bitmap = ntohl (flags);
-  mp->is_set = is_set;
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_bridge_flags (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_bridge_flags_t *mp;
-  u32 bd_id;
-  u8 bd_id_set = 0;
-  u8 is_set = 1;
-  bd_flags_t flags = 0;
-  int ret;
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "bd_id %d", &bd_id))
-	bd_id_set = 1;
-      else if (unformat (i, "learn"))
-	flags |= BRIDGE_API_FLAG_LEARN;
-      else if (unformat (i, "forward"))
-	flags |= BRIDGE_API_FLAG_FWD;
-      else if (unformat (i, "flood"))
-	flags |= BRIDGE_API_FLAG_FLOOD;
-      else if (unformat (i, "uu-flood"))
-	flags |= BRIDGE_API_FLAG_UU_FLOOD;
-      else if (unformat (i, "arp-term"))
-	flags |= BRIDGE_API_FLAG_ARP_TERM;
-      else if (unformat (i, "off"))
-	is_set = 0;
-      else if (unformat (i, "disable"))
-	is_set = 0;
-      else
-	break;
-    }
-
-  if (bd_id_set == 0)
-    {
-      errmsg ("missing bridge domain");
-      return -99;
-    }
-
-  M (BRIDGE_FLAGS, mp);
-
-  mp->bd_id = ntohl (bd_id);
-  mp->flags = ntohl (flags);
-  mp->is_set = is_set;
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_bd_ip_mac_add_del (vat_main_t * vam)
-{
-  vl_api_address_t ip = VL_API_ZERO_ADDRESS;
-  vl_api_mac_address_t mac = { 0 };
-  unformat_input_t *i = vam->input;
-  vl_api_bd_ip_mac_add_del_t *mp;
-  u32 bd_id;
-  u8 is_add = 1;
-  u8 bd_id_set = 0;
-  u8 ip_set = 0;
-  u8 mac_set = 0;
-  int ret;
-
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "bd_id %d", &bd_id))
-	{
-	  bd_id_set++;
-	}
-      else if (unformat (i, "%U", unformat_vl_api_address, &ip))
-	{
-	  ip_set++;
-	}
-      else if (unformat (i, "%U", unformat_vl_api_mac_address, &mac))
-	{
-	  mac_set++;
-	}
-      else if (unformat (i, "del"))
-	is_add = 0;
-      else
-	break;
-    }
-
-  if (bd_id_set == 0)
-    {
-      errmsg ("missing bridge domain");
-      return -99;
-    }
-  else if (ip_set == 0)
-    {
-      errmsg ("missing IP address");
-      return -99;
-    }
-  else if (mac_set == 0)
-    {
-      errmsg ("missing MAC address");
-      return -99;
-    }
-
-  M (BD_IP_MAC_ADD_DEL, mp);
-
-  mp->entry.bd_id = ntohl (bd_id);
-  mp->is_add = is_add;
-
-  clib_memcpy (&mp->entry.ip, &ip, sizeof (ip));
-  clib_memcpy (&mp->entry.mac, &mac, sizeof (mac));
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_bd_ip_mac_flush (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_bd_ip_mac_flush_t *mp;
-  u32 bd_id;
-  u8 bd_id_set = 0;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "bd_id %d", &bd_id))
-	{
-	  bd_id_set++;
-	}
-      else
-	break;
-    }
-
-  if (bd_id_set == 0)
-    {
-      errmsg ("missing bridge domain");
-      return -99;
-    }
-
-  M (BD_IP_MAC_FLUSH, mp);
-
-  mp->bd_id = ntohl (bd_id);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static void vl_api_bd_ip_mac_details_t_handler
-  (vl_api_bd_ip_mac_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-
-  print (vam->ofp,
-	 "\n%-5d %U %U",
-	 ntohl (mp->entry.bd_id),
-	 format_vl_api_mac_address, mp->entry.mac,
-	 format_vl_api_address, &mp->entry.ip);
-}
-
-static void vl_api_bd_ip_mac_details_t_handler_json
-  (vl_api_bd_ip_mac_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t *node = NULL;
-
-  if (VAT_JSON_ARRAY != vam->json_tree.type)
-    {
-      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
-      vat_json_init_array (&vam->json_tree);
-    }
-  node = vat_json_array_add (&vam->json_tree);
-
-  vat_json_init_object (node);
-  vat_json_object_add_uint (node, "bd_id", ntohl (mp->entry.bd_id));
-  vat_json_object_add_string_copy (node, "mac_address",
-				   format (0, "%U", format_vl_api_mac_address,
-					   &mp->entry.mac));
-  u8 *ip = 0;
-
-  ip = format (0, "%U", format_vl_api_address, &mp->entry.ip);
-  vat_json_object_add_string_copy (node, "ip_address", ip);
-  vec_free (ip);
-}
-
-static int
-api_bd_ip_mac_dump (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_bd_ip_mac_dump_t *mp;
-  vl_api_control_ping_t *mp_ping;
-  int ret;
-  u32 bd_id;
-  u8 bd_id_set = 0;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "bd_id %d", &bd_id))
-	{
-	  bd_id_set++;
-	}
-      else
-	break;
-    }
-
-  print (vam->ofp,
-	 "\n%-5s %-7s %-20s %-30s",
-	 "bd_id", "is_ipv6", "mac_address", "ip_address");
-
-  /* Dump Bridge Domain Ip to Mac entries */
-  M (BD_IP_MAC_DUMP, mp);
-
-  if (bd_id_set)
-    mp->bd_id = htonl (bd_id);
-  else
-    mp->bd_id = ~0;
-
-  S (mp);
-
-  /* Use a control ping for synchronization */
-  MPING (CONTROL_PING, mp_ping);
-  S (mp_ping);
-
-  W (ret);
-  return ret;
-}
-
 uword
-unformat_vlib_pci_addr (unformat_input_t * input, va_list * args)
+unformat_vlib_pci_addr (unformat_input_t *input, va_list *args)
 {
   vlib_pci_addr_t *addr = va_arg (*args, vlib_pci_addr_t *);
   u32 x[4];
@@ -3793,14 +2617,14 @@ unformat_vlib_pci_addr (unformat_input_t * input, va_list * args)
 }
 
 static int
-api_virtio_pci_create_v2 (vat_main_t * vam)
+api_virtio_pci_create_v2 (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_virtio_pci_create_v2_t *mp;
   u8 mac_address[6];
   u8 random_mac = 1;
   u32 pci_addr = 0;
-  u64 features = (u64) ~ (0ULL);
+  u64 features = (u64) ~(0ULL);
   u32 virtio_flags = 0;
   int ret;
 
@@ -3864,7 +2688,7 @@ api_virtio_pci_create_v2 (vat_main_t * vam)
 }
 
 static int
-api_virtio_pci_delete (vat_main_t * vam)
+api_virtio_pci_delete (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_virtio_pci_delete_t *mp;
@@ -5033,77 +3857,6 @@ api_sw_interface_ip6_enable_disable (vat_main_t * vam)
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->enable = enable;
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-
-static int
-api_l2_patch_add_del (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_l2_patch_add_del_t *mp;
-  u32 rx_sw_if_index;
-  u8 rx_sw_if_index_set = 0;
-  u32 tx_sw_if_index;
-  u8 tx_sw_if_index_set = 0;
-  u8 is_add = 1;
-  int ret;
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "rx_sw_if_index %d", &rx_sw_if_index))
-	rx_sw_if_index_set = 1;
-      else if (unformat (i, "tx_sw_if_index %d", &tx_sw_if_index))
-	tx_sw_if_index_set = 1;
-      else if (unformat (i, "rx"))
-	{
-	  if (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-	    {
-	      if (unformat (i, "%U", api_unformat_sw_if_index, vam,
-			    &rx_sw_if_index))
-		rx_sw_if_index_set = 1;
-	    }
-	  else
-	    break;
-	}
-      else if (unformat (i, "tx"))
-	{
-	  if (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-	    {
-	      if (unformat (i, "%U", api_unformat_sw_if_index, vam,
-			    &tx_sw_if_index))
-		tx_sw_if_index_set = 1;
-	    }
-	  else
-	    break;
-	}
-      else if (unformat (i, "del"))
-	is_add = 0;
-      else
-	break;
-    }
-
-  if (rx_sw_if_index_set == 0)
-    {
-      errmsg ("missing rx interface name or rx_sw_if_index");
-      return -99;
-    }
-
-  if (tx_sw_if_index_set == 0)
-    {
-      errmsg ("missing tx interface name or tx_sw_if_index");
-      return -99;
-    }
-
-  M (L2_PATCH_ADD_DEL, mp);
-
-  mp->rx_sw_if_index = ntohl (rx_sw_if_index);
-  mp->tx_sw_if_index = ntohl (tx_sw_if_index);
-  mp->is_add = is_add;
 
   S (mp);
   W (ret);
@@ -6459,63 +5212,6 @@ api_sw_interface_virtio_pci_dump (vat_main_t * vam)
   return ret;
 }
 
-static int
-api_l2_fib_clear_table (vat_main_t * vam)
-{
-//  unformat_input_t * i = vam->input;
-  vl_api_l2_fib_clear_table_t *mp;
-  int ret;
-
-  M (L2_FIB_CLEAR_TABLE, mp);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_l2_interface_efp_filter (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_l2_interface_efp_filter_t *mp;
-  u32 sw_if_index;
-  u8 enable = 1;
-  u8 sw_if_index_set = 0;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "sw_if_index %d", &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "enable"))
-	enable = 1;
-      else if (unformat (i, "disable"))
-	enable = 0;
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  if (sw_if_index_set == 0)
-    {
-      errmsg ("missing sw_if_index");
-      return -99;
-    }
-
-  M (L2_INTERFACE_EFP_FILTER, mp);
-
-  mp->sw_if_index = ntohl (sw_if_index);
-  mp->enable_disable = enable;
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
 #define foreach_vtr_op                          \
 _("disable",  L2_VTR_DISABLED)                  \
 _("push-1",  L2_VTR_PUSH_1)                     \
@@ -6528,62 +5224,6 @@ _("translate-2-1",  L2_VTR_TRANSLATE_2_1)       \
 _("translate-2-2",  L2_VTR_TRANSLATE_2_2)
 
 static int
-api_l2_interface_vlan_tag_rewrite (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_l2_interface_vlan_tag_rewrite_t *mp;
-  u32 sw_if_index;
-  u8 sw_if_index_set = 0;
-  u8 vtr_op_set = 0;
-  u32 vtr_op = 0;
-  u32 push_dot1q = 1;
-  u32 tag1 = ~0;
-  u32 tag2 = ~0;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "sw_if_index %d", &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "vtr_op %d", &vtr_op))
-	vtr_op_set = 1;
-#define _(n,v) else if (unformat(i, n)) {vtr_op = v; vtr_op_set = 1;}
-      foreach_vtr_op
-#undef _
-	else if (unformat (i, "push_dot1q %d", &push_dot1q))
-	;
-      else if (unformat (i, "tag1 %d", &tag1))
-	;
-      else if (unformat (i, "tag2 %d", &tag2))
-	;
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  if ((sw_if_index_set == 0) || (vtr_op_set == 0))
-    {
-      errmsg ("missing vtr operation or sw_if_index");
-      return -99;
-    }
-
-  M (L2_INTERFACE_VLAN_TAG_REWRITE, mp);
-  mp->sw_if_index = ntohl (sw_if_index);
-  mp->vtr_op = ntohl (vtr_op);
-  mp->push_dot1q = ntohl (push_dot1q);
-  mp->tag1 = ntohl (tag1);
-  mp->tag2 = ntohl (tag2);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
 api_show_version (vat_main_t *vam)
 {
   vl_api_show_version_t *mp;
@@ -6592,80 +5232,6 @@ api_show_version (vat_main_t *vam)
   M (SHOW_VERSION, mp);
 
   S (mp);
-  W (ret);
-  return ret;
-}
-
-static void
-vl_api_l2_fib_table_details_t_handler (vl_api_l2_fib_table_details_t *mp)
-{
-  vat_main_t *vam = &vat_main;
-
-  print (vam->ofp,
-	 "%3" PRIu32 "    %U    %3" PRIu32 "       %d       %d     %d",
-	 ntohl (mp->bd_id), format_ethernet_address, mp->mac,
-	 ntohl (mp->sw_if_index), mp->static_mac, mp->filter_mac, mp->bvi_mac);
-}
-
-static void
-vl_api_l2_fib_table_details_t_handler_json (vl_api_l2_fib_table_details_t *mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t *node = NULL;
-
-  if (VAT_JSON_ARRAY != vam->json_tree.type)
-    {
-      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
-      vat_json_init_array (&vam->json_tree);
-    }
-  node = vat_json_array_add (&vam->json_tree);
-
-  vat_json_init_object (node);
-  vat_json_object_add_uint (node, "bd_id", ntohl (mp->bd_id));
-  vat_json_object_add_bytes (node, "mac", mp->mac, 6);
-  vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
-  vat_json_object_add_uint (node, "static_mac", mp->static_mac);
-  vat_json_object_add_uint (node, "filter_mac", mp->filter_mac);
-  vat_json_object_add_uint (node, "bvi_mac", mp->bvi_mac);
-}
-
-static int
-api_l2_fib_table_dump (vat_main_t *vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_l2_fib_table_dump_t *mp;
-  vl_api_control_ping_t *mp_ping;
-  u32 bd_id;
-  u8 bd_id_set = 0;
-  int ret;
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "bd_id %d", &bd_id))
-	bd_id_set = 1;
-      else
-	break;
-    }
-
-  if (bd_id_set == 0)
-    {
-      errmsg ("missing bridge domain");
-      return -99;
-    }
-
-  print (vam->ofp, "BD-ID     Mac Address      sw-ndx  Static  Filter  BVI");
-
-  /* Get list of l2 fib entries */
-  M (L2_FIB_TABLE_DUMP, mp);
-
-  mp->bd_id = ntohl (bd_id);
-  S (mp);
-
-  /* Use a control ping for synchronization */
-  MPING (CONTROL_PING, mp_ping);
-  S (mp_ping);
-
   W (ret);
   return ret;
 }
@@ -6710,42 +5276,6 @@ api_interface_name_renumber (vat_main_t *vam)
   mp->sw_if_index = ntohl (sw_if_index);
   mp->new_show_dev_instance = ntohl (new_show_dev_instance);
 
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_want_l2_macs_events (vat_main_t *vam)
-{
-  unformat_input_t *line_input = vam->input;
-  vl_api_want_l2_macs_events_t *mp;
-  u8 enable_disable = 1;
-  u32 scan_delay = 0;
-  u32 max_macs_in_event = 0;
-  u32 learn_limit = 0;
-  int ret;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "learn-limit %d", &learn_limit))
-	;
-      else if (unformat (line_input, "scan-delay %d", &scan_delay))
-	;
-      else if (unformat (line_input, "max-entries %d", &max_macs_in_event))
-	;
-      else if (unformat (line_input, "disable"))
-	enable_disable = 0;
-      else
-	break;
-    }
-
-  M (WANT_L2_MACS_EVENTS, mp);
-  mp->enable_disable = enable_disable;
-  mp->pid = htonl (getpid ());
-  mp->learn_limit = htonl (learn_limit);
-  mp->scan_delay = (u8) scan_delay;
-  mp->max_macs_in_event = (u8) (max_macs_in_event / 10);
   S (mp);
   W (ret);
   return ret;
@@ -7679,90 +6209,6 @@ _("disable",  L2_VTR_DISABLED)  \
 _("pop",  L2_VTR_POP_2)         \
 _("push",  L2_VTR_PUSH_2)
 
-static int
-api_l2_interface_pbb_tag_rewrite (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_l2_interface_pbb_tag_rewrite_t *mp;
-  u32 sw_if_index = ~0, vtr_op = ~0;
-  u16 outer_tag = ~0;
-  u8 dmac[6], smac[6];
-  u8 dmac_set = 0, smac_set = 0;
-  u16 vlanid = 0;
-  u32 sid = ~0;
-  u32 tmp;
-  int ret;
-
-  /* Shut up coverity */
-  clib_memset (dmac, 0, sizeof (dmac));
-  clib_memset (smac, 0, sizeof (smac));
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
-	;
-      else if (unformat (i, "sw_if_index %d", &sw_if_index))
-	;
-      else if (unformat (i, "vtr_op %d", &vtr_op))
-	;
-#define _(n,v) else if (unformat(i, n)) {vtr_op = v;}
-      foreach_pbb_vtr_op
-#undef _
-	else if (unformat (i, "translate_pbb_stag"))
-	{
-	  if (unformat (i, "%d", &tmp))
-	    {
-	      vtr_op = L2_VTR_TRANSLATE_2_1;
-	      outer_tag = tmp;
-	    }
-	  else
-	    {
-	      errmsg
-		("translate_pbb_stag operation requires outer tag definition");
-	      return -99;
-	    }
-	}
-      else if (unformat (i, "dmac %U", unformat_ethernet_address, dmac))
-	dmac_set++;
-      else if (unformat (i, "smac %U", unformat_ethernet_address, smac))
-	smac_set++;
-      else if (unformat (i, "sid %d", &sid))
-	;
-      else if (unformat (i, "vlanid %d", &tmp))
-	vlanid = tmp;
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  if ((sw_if_index == ~0) || (vtr_op == ~0))
-    {
-      errmsg ("missing sw_if_index or vtr operation");
-      return -99;
-    }
-  if (((vtr_op == L2_VTR_PUSH_2) || (vtr_op == L2_VTR_TRANSLATE_2_2))
-      && ((dmac_set == 0) || (smac_set == 0) || (sid == ~0)))
-    {
-      errmsg
-	("push and translate_qinq operations require dmac, smac, sid and optionally vlanid");
-      return -99;
-    }
-
-  M (L2_INTERFACE_PBB_TAG_REWRITE, mp);
-  mp->sw_if_index = ntohl (sw_if_index);
-  mp->vtr_op = ntohl (vtr_op);
-  mp->outer_tag = ntohs (outer_tag);
-  clib_memcpy (mp->b_dmac, dmac, sizeof (dmac));
-  clib_memcpy (mp->b_smac, smac, sizeof (smac));
-  mp->b_vlanid = ntohs (vlanid);
-  mp->i_sid = ntohl (sid);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
 
 static int
 api_sw_interface_tag_add_del (vat_main_t * vam)
@@ -7857,59 +6303,6 @@ api_sw_interface_add_del_mac_address (vat_main_t * vam)
   clib_memcpy (&mp->addr, &mac, sizeof (mac));
 
   S (mp);
-  W (ret);
-  return ret;
-}
-
-static void vl_api_l2_xconnect_details_t_handler
-  (vl_api_l2_xconnect_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-
-  print (vam->ofp, "%15d%15d",
-	 ntohl (mp->rx_sw_if_index), ntohl (mp->tx_sw_if_index));
-}
-
-static void vl_api_l2_xconnect_details_t_handler_json
-  (vl_api_l2_xconnect_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t *node = NULL;
-
-  if (VAT_JSON_ARRAY != vam->json_tree.type)
-    {
-      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
-      vat_json_init_array (&vam->json_tree);
-    }
-  node = vat_json_array_add (&vam->json_tree);
-
-  vat_json_init_object (node);
-  vat_json_object_add_uint (node, "rx_sw_if_index",
-			    ntohl (mp->rx_sw_if_index));
-  vat_json_object_add_uint (node, "tx_sw_if_index",
-			    ntohl (mp->tx_sw_if_index));
-}
-
-static int
-api_l2_xconnect_dump (vat_main_t * vam)
-{
-  vl_api_l2_xconnect_dump_t *mp;
-  vl_api_control_ping_t *mp_ping;
-  int ret;
-
-  if (!vam->json_output)
-    {
-      print (vam->ofp, "%15s%15s", "rx_sw_if_index", "tx_sw_if_index");
-    }
-
-  M (L2_XCONNECT_DUMP, mp);
-
-  S (mp);
-
-  /* Use a control ping for synchronization */
-  MPING (CONTROL_PING, mp_ping);
-  S (mp_ping);
-
   W (ret);
   return ret;
 }
@@ -8892,8 +7285,6 @@ _(sw_interface_set_flags,                                               \
   "<intfc> | sw_if_index <id> admin-up | admin-down link-up | link down") \
 _(sw_interface_add_del_address,                                         \
   "<intfc> | sw_if_index <id> <ip4-address> | <ip6-address> [del] [del-all] ") \
-_(sw_interface_set_rx_mode,                                             \
-  "<intfc> | sw_if_index <id> [queue <id>] <polling | interrupt | adaptive>") \
 _(sw_interface_set_rx_placement,                                        \
   "<intfc> | sw_if_index <id> [queue <id>] [worker <id> | main]")       \
 _(sw_interface_rx_placement_dump,                                       \
@@ -8902,27 +7293,6 @@ _(sw_interface_set_table,                                               \
   "<intfc> | sw_if_index <id> vrf <table-id> [ipv6]")                   \
 _(sw_interface_set_mpls_enable,                                         \
   "<intfc> | sw_if_index [disable | dis]")                              \
-_(sw_interface_set_vpath,                                               \
-  "<intfc> | sw_if_index <id> enable | disable")                        \
-_(sw_interface_set_l2_xconnect,                                         \
-  "rx <intfc> | rx_sw_if_index <id> tx <intfc> | tx_sw_if_index <id>\n" \
-  "enable | disable")                                                   \
-_(sw_interface_set_l2_bridge,                                           \
-  "{<intfc> | sw_if_index <id>} bd_id <bridge-domain-id>\n"             \
-  "[shg <split-horizon-group>] [bvi]\n"                                 \
-  "enable | disable")                                                   \
-_(bridge_domain_set_mac_age, "bd_id <bridge-domain-id> mac-age 0-255")  \
-_(bridge_domain_add_del,                                                \
-  "bd_id <bridge-domain-id> [flood 1|0] [uu-flood 1|0] [forward 1|0] [learn 1|0] [arp-term 1|0] [mac-age 0-255] [bd-tag <text>] [del]\n") \
-_(bridge_domain_dump, "[bd_id <bridge-domain-id>]\n")                   \
-_(l2fib_add_del,                                                        \
-  "mac <mac-addr> bd_id <bridge-domain-id> [del] | sw_if <intfc> | sw_if_index <id> [static] [filter] [bvi] [count <nn>]\n") \
-_(l2fib_flush_bd, "bd_id <bridge-domain-id>")                           \
-_(l2fib_flush_int, "<intfc> | sw_if_index <id>")                        \
-_(l2_flags,                                                             \
-  "sw_if <intfc> | sw_if_index <id> [learn] [forward] [uu-flood] [flood] [arp-term] [disable]\n") \
-_(bridge_flags,                                                         \
-  "bd_id <bridge-domain-id> [learn] [forward] [uu-flood] [flood] [arp-term] [disable]\n") \
 _(virtio_pci_create_v2,                                                    \
   "pci-addr <pci-address> [use_random_mac | hw-addr <mac-addr>] [features <hex-value>] [gso-enabled [gro-coalesce] | csum-offload-enabled] [packed] [in-order] [buffering]") \
 _(virtio_pci_delete,                                                    \
@@ -8967,29 +7337,15 @@ _(set_ip_flow_hash,                                                     \
   "vrf <n> [src] [dst] [sport] [dport] [proto] [reverse] [ipv6]")       \
 _(sw_interface_ip6_enable_disable,                                      \
   "<intfc> | sw_if_index <id> enable | disable")                        \
-_(l2_patch_add_del,                                                     \
-  "rx <intfc> | rx_sw_if_index <id> tx <intfc> | tx_sw_if_index <id>\n" \
-  "enable | disable")                                                   \
 _(get_node_index, "node <node-name")                                    \
 _(add_node_next, "node <node-name> next <next-node-name>")              \
-_(l2_fib_clear_table, "")                                               \
-_(l2_interface_efp_filter, "sw_if_index <nn> enable | disable")         \
-_(l2_interface_vlan_tag_rewrite,                                        \
-  "<intfc> | sw_if_index <nn> \n"                                       \
-  "[disable][push-[1|2]][pop-[1|2]][translate-1-[1|2]] \n"              \
-  "[translate-2-[1|2]] [push_dot1q 0] tag1 <nn> tag2 <nn>")             \
 _(show_version, "")                                                     \
 _(show_threads, "")                                                     \
-_(l2_fib_table_dump, "bd_id <bridge-domain-id>")			\
 _(interface_name_renumber,                                              \
   "<intfc> | sw_if_index <nn> new_show_dev_instance <nn>")		\
-_(want_l2_macs_events, "[disable] [learn-limit <n>] [scan-delay <n>] [max-entries <n>]") \
 _(ip_address_dump, "(ipv4 | ipv6) (<intfc> | sw_if_index <id>)")        \
 _(ip_dump, "ipv4 | ipv6")                                               \
 _(delete_loopback,"sw_if_index <nn>")                                   \
-_(bd_ip_mac_add_del, "bd_id <bridge-domain-id> <ip4/6-addr> <mac-addr> [del]") \
-_(bd_ip_mac_flush, "bd_id <bridge-domain-id>")                          \
-_(bd_ip_mac_dump, "[bd_id] <bridge-domain-id>")                         \
 _(want_interface_events,  "enable|disable")                             \
 _(get_first_msg_id, "client <name>")					\
 _(get_node_graph, " ")                                                  \
@@ -9006,10 +7362,6 @@ _(ip_source_and_port_range_check_interface_add_del,                     \
   "<intf> | sw_if_index <nn> [tcp-out-vrf <id>] [tcp-in-vrf <id>]"      \
   "[udp-in-vrf <id>] [udp-out-vrf <id>]")                               \
 _(delete_subif,"<intfc> | sw_if_index <nn>")                            \
-_(l2_interface_pbb_tag_rewrite,                                         \
-  "<intfc> | sw_if_index <nn> \n"                                       \
-  "[disable | push | pop | translate_pbb_stag <outer_tag>] \n"          \
-  "dmac <mac> smac <mac> sid <nn> [vlanid <nn>]")                       \
 _(ip_table_dump, "")                                                    \
 _(ip_route_dump, "table-id [ip4|ip6]")                                  \
 _(ip_mtable_dump, "")                                                   \
@@ -9018,7 +7370,6 @@ _(sw_interface_tag_add_del, "<intfc> | sw_if_index <nn> tag <text>"	\
 "[disable]")                                                        	\
 _(sw_interface_add_del_mac_address, "<intfc> | sw_if_index <nn> "	\
   "mac <mac-address> [del]")                                            \
-_(l2_xconnect_dump, "")                                             	\
 _(hw_interface_set_mtu, "<intfc> | hw_if_index <nn> mtu <nn>")        \
 _(sw_interface_get_table, "<intfc> | sw_if_index <id> [ipv6]")          \
 _(sock_init_shm, "size <nnn>")						\
