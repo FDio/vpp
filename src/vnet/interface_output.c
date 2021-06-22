@@ -164,17 +164,30 @@ vnet_interface_output_trace (vlib_main_t * vm,
 }
 
 static_always_inline void
-vnet_interface_output_handle_offload (vlib_main_t *vm, vlib_buffer_t *b)
+vnet_interface_output_handle_offload (vlib_main_t *vm, vlib_buffer_t *b,
+				      u32 outer_ip_offload,
+				      u32 outer_udp_offload)
 {
+  /*
+   * Don't compute checksum for GSO packets
+   */
+  if (b->flags & VNET_BUFFER_F_GSO)
+    return;
+
   vnet_calc_checksums_inline (vm, b, b->flags & VNET_BUFFER_F_IS_IP4,
 			      b->flags & VNET_BUFFER_F_IS_IP6);
+  if (outer_ip_offload)
+    vnet_calc_outer_checksums_inline (vm, b, 1, 0);
+  else if (outer_udp_offload)
+    vnet_calc_outer_checksums_inline (vm, b, 0, 1);
 }
 
 static_always_inline uword
 vnet_interface_output_node_inline (vlib_main_t *vm, u32 sw_if_index,
 				   vlib_combined_counter_main_t *ccm,
 				   vlib_buffer_t **b, u32 config_index, u8 arc,
-				   u32 n_left, int do_tx_offloads,
+				   u32 n_left, u32 outer_ip_offload,
+				   u32 outer_udp_offload, int do_tx_offloads,
 				   int arc_or_subif)
 {
   u32 n_bytes = 0;
@@ -242,10 +255,18 @@ vnet_interface_output_node_inline (vlib_main_t *vm, u32 sw_if_index,
 
       if (do_tx_offloads && (or_flags & VNET_BUFFER_F_OFFLOAD))
 	{
-	  vnet_interface_output_handle_offload (vm, b[0]);
-	  vnet_interface_output_handle_offload (vm, b[1]);
-	  vnet_interface_output_handle_offload (vm, b[2]);
-	  vnet_interface_output_handle_offload (vm, b[3]);
+	  /**
+	   * Do offloads which are not supported by TX interface
+	   * on behalf of it.
+	   */
+	  vnet_interface_output_handle_offload (vm, b[0], outer_ip_offload,
+						outer_udp_offload);
+	  vnet_interface_output_handle_offload (vm, b[1], outer_ip_offload,
+						outer_udp_offload);
+	  vnet_interface_output_handle_offload (vm, b[2], outer_ip_offload,
+						outer_udp_offload);
+	  vnet_interface_output_handle_offload (vm, b[3], outer_ip_offload,
+						outer_udp_offload);
 	}
 
       n_left -= 4;
@@ -275,7 +296,8 @@ vnet_interface_output_node_inline (vlib_main_t *vm, u32 sw_if_index,
 	}
 
       if (do_tx_offloads)
-	vnet_interface_output_handle_offload (vm, b[0]);
+	vnet_interface_output_handle_offload (vm, b[0], outer_ip_offload,
+					      outer_udp_offload);
 
       n_left -= 1;
       b += 1;
@@ -407,6 +429,7 @@ VLIB_NODE_FN (vnet_interface_output_node)
   int arc_or_subif = 0;
   int do_tx_offloads = 0;
   u32 *from;
+  u32 outer_ip_offload = 0, outer_udp_offload = 0;
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     vnet_interface_output_trace (vm, node, frame, n_buffers);
@@ -456,21 +479,32 @@ VLIB_NODE_FN (vnet_interface_output_node)
 
   ccm = im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX;
 
-  if ((hi->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TX_CKSUM) == 0)
-    do_tx_offloads = 1;
+  if ((hi->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TX_CKSUM_MASK) !=
+      VNET_HW_INTERFACE_CAP_SUPPORTS_TX_CKSUM_MASK)
+    {
+      u32 caps = VNET_HW_INTERFACE_CAP_SUPPORTS_TX_CKSUM_MASK;
+      caps &= ~hi->caps;
+      do_tx_offloads = 1;
+      outer_ip_offload =
+	(caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TX_IP4_OUTER_CKSUM) ? 1 : 0;
+      outer_udp_offload =
+	(caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_OUTER_CKSUM) ? 1 : 0;
+    }
 
   if (do_tx_offloads == 0 && arc_or_subif == 0)
     n_bytes = vnet_interface_output_node_inline (
-      vm, sw_if_index, ccm, bufs, config_index, arc, n_buffers, 0, 0);
+      vm, sw_if_index, ccm, bufs, config_index, arc, n_buffers, 0, 0, 0, 0);
   else if (do_tx_offloads == 0 && arc_or_subif == 1)
     n_bytes = vnet_interface_output_node_inline (
-      vm, sw_if_index, ccm, bufs, config_index, arc, n_buffers, 0, 1);
+      vm, sw_if_index, ccm, bufs, config_index, arc, n_buffers, 0, 0, 0, 1);
   else if (do_tx_offloads == 1 && arc_or_subif == 0)
     n_bytes = vnet_interface_output_node_inline (
-      vm, sw_if_index, ccm, bufs, config_index, arc, n_buffers, 1, 0);
+      vm, sw_if_index, ccm, bufs, config_index, arc, n_buffers,
+      outer_ip_offload, outer_udp_offload, 1, 0);
   else
     n_bytes = vnet_interface_output_node_inline (
-      vm, sw_if_index, ccm, bufs, config_index, arc, n_buffers, 1, 1);
+      vm, sw_if_index, ccm, bufs, config_index, arc, n_buffers,
+      outer_ip_offload, outer_udp_offload, 1, 1);
 
   from = vlib_frame_vector_args (frame);
   if (PREDICT_TRUE (next_index == VNET_INTERFACE_OUTPUT_NEXT_TX))
