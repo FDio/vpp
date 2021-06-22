@@ -207,6 +207,7 @@ typedef struct
   u32 esp6_dec_tun_fq_index;
 
   u8 async_mode;
+  u16 msg_id_base;
 } ipsec_main_t;
 
 typedef enum ipsec_format_flags_t_
