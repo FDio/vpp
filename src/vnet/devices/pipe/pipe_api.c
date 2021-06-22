@@ -17,31 +17,17 @@
 
 #include <vnet/vnet.h>
 #include <vlibmemory/api.h>
-
 #include <vnet/devices/pipe/pipe.h>
-#include <vnet/vnet_msg_enum.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
+#include <vnet/format_fns.h>
+#include <vnet/devices/pipe/pipe.api_enum.h>
+#include <vnet/devices/pipe/pipe.api_types.h>
 
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vnet/vnet_all_api_h.h>
-#undef vl_printfun
-
+#define REPLY_MSG_ID_BASE msg_id_base
 #include <vlibapi/api_helper_macros.h>
 extern vpe_api_main_t vpe_api_main;
 
-#define foreach_vpe_api_msg                                     \
-  _(PIPE_CREATE, pipe_create)                                   \
-  _(PIPE_DELETE, pipe_delete)                                   \
-  _(PIPE_DUMP,   pipe_dump)
+static u16 msg_id_base;
 
 static void
 vl_api_pipe_create_t_handler (vl_api_pipe_create_t * mp)
@@ -94,7 +80,7 @@ pipe_send_details (u32 parent_sw_if_index,
   if (!mp)
     return (WALK_STOP);
 
-  mp->_vl_msg_id = ntohs (VL_API_PIPE_DETAILS);
+  mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_PIPE_DETAILS);
   mp->context = ctx->context;
 
   mp->instance = ntohl (instance);
@@ -124,44 +110,14 @@ vl_api_pipe_dump_t_handler (vl_api_pipe_dump_t * mp)
   pipe_walk (pipe_send_details, &ctx);
 }
 
-/*
- * vpe_api_hookup
- * Add vpe's API message handlers to the table.
- * vlib has already mapped shared memory and
- * added the client registration handlers.
- * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
- */
-#define vl_msg_name_crc_list
-#include <vnet/devices/pipe/pipe.api.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_pipe;
-#undef _
-}
-
+#include <vnet/devices/pipe/pipe.api.c>
 static clib_error_t *
 pipe_api_hookup (vlib_main_t * vm)
 {
-  api_main_t *am = vlibapi_get_main ();
-
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_api_msg;
-#undef _
-
   /*
    * Set up the (msg_name, crc, message-id) table
    */
-  setup_message_id_table (am);
+  REPLY_MSG_ID_BASE = setup_message_id_table ();
 
   return 0;
 }
