@@ -27,18 +27,14 @@
 #include <vnet/l2/l2_fib.h>
 #include <vnet/l2/l2_learn.h>
 #include <vnet/l2/l2_bd.h>
-
 #include <vppinfra/bihash_template.c>
-
 #include <vlibmemory/api.h>
-#include <vnet/vnet_msg_enum.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
+#include <vnet/l2/l2.api_enum.h>
+#include <vnet/l2/l2.api_types.h>
 
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
+#define vl_endianfun
+#include <vnet/l2/l2.api.h>
 #undef vl_endianfun
 
 /**
@@ -1078,7 +1074,7 @@ allocate_mac_evt_buf (u32 client, u32 client_index)
   l2fib_main_t *fm = &l2fib_main;
   vl_api_l2_macs_event_t *mp = vl_msg_api_alloc
     (sizeof (*mp) + (fm->max_macs_in_event * sizeof (vl_api_mac_entry_t)));
-  mp->_vl_msg_id = htons (VL_API_L2_MACS_EVENT);
+  mp->_vl_msg_id = htons (l2input_main.msg_id_base + VL_API_L2_MACS_EVENT);
   mp->pid = htonl (client);
   mp->client_index = client_index;
   return mp;
