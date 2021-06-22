@@ -32,56 +32,12 @@
 #include <vnet/ip/ip_types_api.h>
 #include <vnet/ethernet/ethernet_types_api.h>
 
-#include <vnet/vnet_msg_enum.h>
+#include <vnet/format_fns.h>
+#include <vnet/l2/l2.api_enum.h>
+#include <vnet/l2/l2.api_types.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vnet/vnet_all_api_h.h>
-#undef vl_printfun
-
+#define REPLY_MSG_ID_BASE l2input_main.msg_id_base
 #include <vlibapi/api_helper_macros.h>
-
-#define foreach_vpe_api_msg                                                   \
-  _ (L2_XCONNECT_DUMP, l2_xconnect_dump)                                      \
-  _ (L2_FIB_CLEAR_TABLE, l2_fib_clear_table)                                  \
-  _ (L2_FIB_TABLE_DUMP, l2_fib_table_dump)                                    \
-  _ (L2FIB_FLUSH_ALL, l2fib_flush_all)                                        \
-  _ (L2FIB_FLUSH_INT, l2fib_flush_int)                                        \
-  _ (L2FIB_FLUSH_BD, l2fib_flush_bd)                                          \
-  _ (L2FIB_ADD_DEL, l2fib_add_del)                                            \
-  _ (L2FIB_SET_SCAN_DELAY, l2fib_set_scan_delay)                              \
-  _ (WANT_L2_MACS_EVENTS, want_l2_macs_events)                                \
-  _ (WANT_L2_MACS_EVENTS2, want_l2_macs_events2)                              \
-  _ (L2_FLAGS, l2_flags)                                                      \
-  _ (SW_INTERFACE_SET_L2_XCONNECT, sw_interface_set_l2_xconnect)              \
-  _ (SW_INTERFACE_SET_L2_BRIDGE, sw_interface_set_l2_bridge)                  \
-  _ (L2_PATCH_ADD_DEL, l2_patch_add_del)                                      \
-  _ (L2_INTERFACE_EFP_FILTER, l2_interface_efp_filter)                        \
-  _ (BD_IP_MAC_ADD_DEL, bd_ip_mac_add_del)                                    \
-  _ (BD_IP_MAC_FLUSH, bd_ip_mac_flush)                                        \
-  _ (BD_IP_MAC_DUMP, bd_ip_mac_dump)                                          \
-  _ (BRIDGE_DOMAIN_ADD_DEL, bridge_domain_add_del)                            \
-  _ (BRIDGE_DOMAIN_DUMP, bridge_domain_dump)                                  \
-  _ (BRIDGE_FLAGS, bridge_flags)                                              \
-  _ (L2_INTERFACE_VLAN_TAG_REWRITE, l2_interface_vlan_tag_rewrite)            \
-  _ (L2_INTERFACE_PBB_TAG_REWRITE, l2_interface_pbb_tag_rewrite)              \
-  _ (BRIDGE_DOMAIN_SET_MAC_AGE, bridge_domain_set_mac_age)                    \
-  _ (SW_INTERFACE_SET_VPATH, sw_interface_set_vpath)                          \
-  _ (BVI_CREATE, bvi_create)                                                  \
-  _ (BVI_DELETE, bvi_delete)                                                  \
-  _ (WANT_L2_ARP_TERM_EVENTS, want_l2_arp_term_events)                        \
-  _ (BRIDGE_DOMAIN_SET_LEARN_LIMIT, bridge_domain_set_learn_limit)            \
-  _ (BRIDGE_DOMAIN_SET_DEFAULT_LEARN_LIMIT,                                   \
-     bridge_domain_set_default_learn_limit)
 
 static void
 send_l2_xconnect_details (vl_api_registration_t * reg, u32 context,
@@ -91,7 +47,7 @@ send_l2_xconnect_details (vl_api_registration_t * reg, u32 context,
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_L2_XCONNECT_DETAILS);
+  mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_L2_XCONNECT_DETAILS);
   mp->context = context;
   mp->rx_sw_if_index = htonl (rx_sw_if_index);
   mp->tx_sw_if_index = htonl (tx_sw_if_index);
@@ -144,7 +100,7 @@ send_l2fib_table_entry (vpe_api_main_t * am,
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_L2_FIB_TABLE_DETAILS);
+  mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_L2_FIB_TABLE_DETAILS);
 
   mp->bd_id =
     ntohl (l2input_main.bd_configs[l2fe_key->fields.bd_index].bd_id);
@@ -568,7 +524,7 @@ send_bridge_domain_details (l2input_main_t * l2im,
   mp = vl_msg_api_alloc (sizeof (*mp) +
 			 (n_sw_ifs * sizeof (vl_api_bridge_domain_sw_if_t)));
   clib_memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_BRIDGE_DOMAIN_DETAILS);
+  mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_BRIDGE_DOMAIN_DETAILS);
   mp->bd_id = ntohl (bd_config->bd_id);
   mp->flood = bd_feature_flood (bd_config);
   mp->uu_flood = bd_feature_uu_flood (bd_config);
@@ -907,7 +863,7 @@ send_bd_ip_mac_entry (vpe_api_main_t * am,
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_BD_IP_MAC_DETAILS);
+  mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_BD_IP_MAC_DETAILS);
 
   mp->context = context;
   mp->entry.bd_id = ntohl (bd_id);
@@ -1219,7 +1175,8 @@ l2_arp_term_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		    vl_api_l2_arp_term_event_t *vevent;
 		    vevent = vl_msg_api_alloc (sizeof *vevent);
 		    clib_memset (vevent, 0, sizeof *vevent);
-		    vevent->_vl_msg_id = htons (VL_API_L2_ARP_TERM_EVENT);
+		    vevent->_vl_msg_id =
+		      htons (REPLY_MSG_ID_BASE + VL_API_L2_ARP_TERM_EVENT);
 		    vevent->client_index = reg->client_index;
 		    vevent->pid = reg->client_pid;
 		    ip_address_encode (&event->ip, event->type, &vevent->ip);
@@ -1317,39 +1274,11 @@ want_l2_arp_term_events_reaper (u32 client_index)
 
 VL_MSG_API_REAPER_FUNCTION (want_l2_arp_term_events_reaper);
 
-/*
- * l2_api_hookup
- * Add vpe's API message handlers to the table.
- * vlib has already mapped shared memory and
- * added the client registration handlers.
- * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
- */
-#define vl_msg_name_crc_list
-#include <vnet/vnet_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_l2;
-#undef _
-}
-
+#include <vnet/l2/l2.api.c>
 static clib_error_t *
 l2_api_hookup (vlib_main_t * vm)
 {
   api_main_t *am = vlibapi_get_main ();
-
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_api_msg;
-#undef _
 
   /* Mark VL_API_BRIDGE_DOMAIN_DUMP as mp safe */
   am->is_mp_safe[VL_API_BRIDGE_DOMAIN_DUMP] = 1;
@@ -1357,7 +1286,7 @@ l2_api_hookup (vlib_main_t * vm)
   /*
    * Set up the (msg_name, crc, message-id) table
    */
-  setup_message_id_table (am);
+  REPLY_MSG_ID_BASE = setup_message_id_table ();
 
   return 0;
 }
