@@ -718,35 +718,6 @@ static void vl_api_create_loopback_instance_reply_t_handler_json
   vam->result_ready = 1;
 }
 
-static void vl_api_af_packet_create_reply_t_handler
-  (vl_api_af_packet_create_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  i32 retval = ntohl (mp->retval);
-
-  vam->retval = retval;
-  vam->regenerate_interface_table = 1;
-  vam->sw_if_index = ntohl (mp->sw_if_index);
-  vam->result_ready = 1;
-}
-
-static void vl_api_af_packet_create_reply_t_handler_json
-  (vl_api_af_packet_create_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t node;
-
-  vat_json_init_object (&node);
-  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
-  vat_json_object_add_uint (&node, "sw_if_index", ntohl (mp->sw_if_index));
-
-  vat_json_print (vam->ofp, &node);
-  vat_json_free (&node);
-
-  vam->retval = ntohl (mp->retval);
-  vam->result_ready = 1;
-}
-
 static void vl_api_create_vlan_subif_reply_t_handler
   (vl_api_create_vlan_subif_reply_t * mp)
 {
@@ -2073,7 +2044,6 @@ _(want_interface_events_reply)                          \
 _(sw_interface_clear_stats_reply)                       \
 _(ioam_enable_reply)                                    \
 _(ioam_disable_reply)                                   \
-_(af_packet_delete_reply)                               \
 _(sw_interface_span_enable_disable_reply)               \
 _(ip_source_and_port_range_check_add_del_reply)         \
 _(ip_source_and_port_range_check_interface_add_del_reply)\
@@ -2206,9 +2176,6 @@ _(GET_NODE_GRAPH_REPLY, get_node_graph_reply)                           \
 _(SW_INTERFACE_CLEAR_STATS_REPLY, sw_interface_clear_stats_reply)      \
 _(IOAM_ENABLE_REPLY, ioam_enable_reply)                   \
 _(IOAM_DISABLE_REPLY, ioam_disable_reply)                     \
-_(AF_PACKET_CREATE_REPLY, af_packet_create_reply)                       \
-_(AF_PACKET_DELETE_REPLY, af_packet_delete_reply)                       \
-_(AF_PACKET_DETAILS, af_packet_details)					\
 _(MPLS_TUNNEL_DETAILS, mpls_tunnel_details)                             \
 _(MPLS_TABLE_DETAILS, mpls_table_details)                               \
 _(MPLS_ROUTE_DETAILS, mpls_route_details)                               \
@@ -7881,145 +7848,6 @@ api_get_node_graph (vat_main_t * vam)
   return ret;
 }
 
-static int
-api_af_packet_create (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_af_packet_create_t *mp;
-  u8 *host_if_name = 0;
-  u8 hw_addr[6];
-  u8 random_hw_addr = 1;
-  int ret;
-
-  clib_memset (hw_addr, 0, sizeof (hw_addr));
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "name %s", &host_if_name))
-	vec_add1 (host_if_name, 0);
-      else if (unformat (i, "hw_addr %U", unformat_ethernet_address, hw_addr))
-	random_hw_addr = 0;
-      else
-	break;
-    }
-
-  if (!vec_len (host_if_name))
-    {
-      errmsg ("host-interface name must be specified");
-      return -99;
-    }
-
-  if (vec_len (host_if_name) > 64)
-    {
-      errmsg ("host-interface name too long");
-      return -99;
-    }
-
-  M (AF_PACKET_CREATE, mp);
-
-  clib_memcpy (mp->host_if_name, host_if_name, vec_len (host_if_name));
-  clib_memcpy (mp->hw_addr, hw_addr, 6);
-  mp->use_random_hw_addr = random_hw_addr;
-  vec_free (host_if_name);
-
-  S (mp);
-
-  /* *INDENT-OFF* */
-  W2 (ret,
-      ({
-        if (ret == 0)
-          fprintf (vam->ofp ? vam->ofp : stderr,
-                   " new sw_if_index = %d\n", vam->sw_if_index);
-      }));
-  /* *INDENT-ON* */
-  return ret;
-}
-
-static int
-api_af_packet_delete (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_af_packet_delete_t *mp;
-  u8 *host_if_name = 0;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "name %s", &host_if_name))
-	vec_add1 (host_if_name, 0);
-      else
-	break;
-    }
-
-  if (!vec_len (host_if_name))
-    {
-      errmsg ("host-interface name must be specified");
-      return -99;
-    }
-
-  if (vec_len (host_if_name) > 64)
-    {
-      errmsg ("host-interface name too long");
-      return -99;
-    }
-
-  M (AF_PACKET_DELETE, mp);
-
-  clib_memcpy (mp->host_if_name, host_if_name, vec_len (host_if_name));
-  vec_free (host_if_name);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static void vl_api_af_packet_details_t_handler
-  (vl_api_af_packet_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-
-  print (vam->ofp, "%-16s %d",
-	 mp->host_if_name, clib_net_to_host_u32 (mp->sw_if_index));
-}
-
-static void vl_api_af_packet_details_t_handler_json
-  (vl_api_af_packet_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t *node = NULL;
-
-  if (VAT_JSON_ARRAY != vam->json_tree.type)
-    {
-      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
-      vat_json_init_array (&vam->json_tree);
-    }
-  node = vat_json_array_add (&vam->json_tree);
-
-  vat_json_init_object (node);
-  vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
-  vat_json_object_add_string_copy (node, "dev_name", mp->host_if_name);
-}
-
-static int
-api_af_packet_dump (vat_main_t * vam)
-{
-  vl_api_af_packet_dump_t *mp;
-  vl_api_control_ping_t *mp_ping;
-  int ret;
-
-  print (vam->ofp, "\n%-16s %s", "dev_name", "sw_if_index");
-  /* Get list of tap interfaces */
-  M (AF_PACKET_DUMP, mp);
-  S (mp);
-
-  /* Use a control ping for synchronization */
-  MPING (CONTROL_PING, mp_ping);
-  S (mp_ping);
-
-  W (ret);
-  return ret;
-}
-
 static u8 *
 format_fib_api_path_nh_proto (u8 * s, va_list * args)
 {
@@ -10417,9 +10245,6 @@ _(get_node_graph, " ")                                                  \
 _(sw_interface_clear_stats,"<intfc> | sw_if_index <nn>")                \
 _(ioam_enable, "[trace] [pow] [ppc <encap|decap>]")                     \
 _(ioam_disable, "")                                                     \
-_(af_packet_create, "name <host interface name> [hw_addr <mac>]")       \
-_(af_packet_delete, "name <host interface name>")                       \
-_(af_packet_dump, "")							\
 _(mpls_tunnel_dump, "tunnel_index <tunnel-id>")                         \
 _(mpls_table_dump, "")                                                  \
 _(mpls_route_dump, "table-id <ID>")                                     \
