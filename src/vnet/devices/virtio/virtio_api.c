@@ -26,29 +26,12 @@
 #include <vnet/devices/virtio/pci.h>
 #include <vlib/pci/pci_types_api.h>
 
-#include <vnet/vnet_msg_enum.h>
+#include <vnet/format_fns.h>
+#include <vnet/devices/virtio/virtio.api_enum.h>
+#include <vnet/devices/virtio/virtio.api_types.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vnet/vnet_all_api_h.h>
-#undef vl_printfun
-
+#define REPLY_MSG_ID_BASE virtio_main.msg_id_base
 #include <vlibapi/api_helper_macros.h>
-
-#define foreach_virtio_pci_api_msg                        \
-_(VIRTIO_PCI_CREATE, virtio_pci_create)                   \
-_(VIRTIO_PCI_CREATE_V2, virtio_pci_create_v2)             \
-_(VIRTIO_PCI_DELETE, virtio_pci_delete)                   \
-_(SW_INTERFACE_VIRTIO_PCI_DUMP, sw_interface_virtio_pci_dump)
 
 /* It will be deprecated in 21.01 */
 static void
@@ -86,7 +69,7 @@ vl_api_virtio_pci_create_t_handler (vl_api_virtio_pci_create_t * mp)
     return;;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  rmp->_vl_msg_id = htons (VL_API_VIRTIO_PCI_CREATE_REPLY);
+  rmp->_vl_msg_id = htons (REPLY_MSG_ID_BASE + VL_API_VIRTIO_PCI_CREATE_REPLY);
   rmp->context = mp->context;
   rmp->retval = htonl (ap->rv);
   rmp->sw_if_index = htonl (ap->sw_if_index);
@@ -148,7 +131,8 @@ vl_api_virtio_pci_create_v2_t_handler (vl_api_virtio_pci_create_v2_t * mp)
     return;;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  rmp->_vl_msg_id = htons (VL_API_VIRTIO_PCI_CREATE_V2_REPLY);
+  rmp->_vl_msg_id =
+    htons (REPLY_MSG_ID_BASE + VL_API_VIRTIO_PCI_CREATE_V2_REPLY);
   rmp->context = mp->context;
   rmp->retval = htonl (ap->rv);
   rmp->sw_if_index = htonl (ap->sw_if_index);
@@ -187,7 +171,7 @@ reply:
     return;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  rmp->_vl_msg_id = htons (VL_API_VIRTIO_PCI_DELETE_REPLY);
+  rmp->_vl_msg_id = htons (REPLY_MSG_ID_BASE + VL_API_VIRTIO_PCI_DELETE_REPLY);
   rmp->context = mp->context;
   rmp->retval = htonl (rv);
 
@@ -204,7 +188,8 @@ virtio_pci_send_sw_interface_details (vpe_api_main_t * am,
 
   clib_memset (mp, 0, sizeof (*mp));
 
-  mp->_vl_msg_id = htons (VL_API_SW_INTERFACE_VIRTIO_PCI_DETAILS);
+  mp->_vl_msg_id =
+    htons (REPLY_MSG_ID_BASE + VL_API_SW_INTERFACE_VIRTIO_PCI_DETAILS);
   pci_address_encode ((vlib_pci_addr_t *) & vif->pci_addr.as_u32,
 		      &mp->pci_addr);
   mp->sw_if_index = htonl (vif->sw_if_index);
@@ -241,37 +226,15 @@ static void
   }
 }
 
-#define vl_msg_name_crc_list
-#include <vnet/vnet_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_virtio;
-#undef _
-}
+#include <vnet/devices/virtio/virtio.api.c>
 
 static clib_error_t *
 virtio_pci_api_hookup (vlib_main_t * vm)
 {
-  api_main_t *am = vlibapi_get_main ();
-
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_virtio_pci_api_msg;
-#undef _
-
   /*
    * Set up the (msg_name, crc, message-id) table
    */
-  setup_message_id_table (am);
+  REPLY_MSG_ID_BASE = setup_message_id_table ();
 
   return 0;
 }
