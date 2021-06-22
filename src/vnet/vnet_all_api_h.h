@@ -33,7 +33,6 @@
 #include <vnet/format_fns.h>
 #endif
 
-#include <vnet/devices/virtio/vhost_user.api.h>
 #include <vnet/interface.api.h>
 #include <vnet/l2/l2.api.h>
 #include <vnet/span/span.api.h>

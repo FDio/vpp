@@ -27,31 +27,14 @@
 #include <vnet/ethernet/ethernet_types_api.h>
 #include <vnet/devices/virtio/virtio_types_api.h>
 
-#include <vnet/vnet_msg_enum.h>
+#include <vnet/format_fns.h>
+#include <vnet/devices/virtio/vhost_user.api_enum.h>
+#include <vnet/devices/virtio/vhost_user.api_types.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vnet/vnet_all_api_h.h>
-#undef vl_printfun
-
+#define REPLY_MSG_ID_BASE msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
-#define foreach_vpe_api_msg                                             \
-_(CREATE_VHOST_USER_IF, create_vhost_user_if)                           \
-_(MODIFY_VHOST_USER_IF, modify_vhost_user_if)                           \
-_(CREATE_VHOST_USER_IF_V2, create_vhost_user_if_v2)                     \
-_(MODIFY_VHOST_USER_IF_V2, modify_vhost_user_if_v2)                     \
-_(DELETE_VHOST_USER_IF, delete_vhost_user_if)                           \
-_(SW_INTERFACE_VHOST_USER_DUMP, sw_interface_vhost_user_dump)
+static u16 msg_id_base;
 
 static void
 vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t * mp)
@@ -286,7 +269,8 @@ send_sw_interface_vhost_user_details (vpe_api_main_t * am,
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_VHOST_USER_DETAILS);
+  mp->_vl_msg_id =
+    ntohs (REPLY_MSG_ID_BASE + VL_API_SW_INTERFACE_VHOST_USER_DETAILS);
   mp->sw_if_index = ntohl (vui->sw_if_index);
   mp->virtio_net_hdr_sz = ntohl (vui->virtio_net_hdr_sz);
   virtio_features_encode (vui->features, (u32 *) & mp->features_first_32,
@@ -339,40 +323,11 @@ static void
   vec_free (ifaces);
 }
 
-/*
- * vhost-user_api_hookup
- * Add vpe's API message handlers to the table.
- * vlib has already mapped shared memory and
- * added the client registration handlers.
- * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
- */
-#define vl_msg_name_crc_list
-#include <vnet/vnet_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_vhost_user;
-#undef _
-}
-
+#include <vnet/devices/virtio/vhost_user.api.c>
 static clib_error_t *
 vhost_user_api_hookup (vlib_main_t * vm)
 {
   api_main_t *am = vlibapi_get_main ();
-
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_api_msg;
-#undef _
-
   /* Mark CREATE_VHOST_USER_IF as mp safe */
   am->is_mp_safe[VL_API_CREATE_VHOST_USER_IF] = 1;
   am->is_mp_safe[VL_API_CREATE_VHOST_USER_IF_V2] = 1;
@@ -380,7 +335,7 @@ vhost_user_api_hookup (vlib_main_t * vm)
   /*
    * Set up the (msg_name, crc, message-id) table
    */
-  setup_message_id_table (am);
+  REPLY_MSG_ID_BASE = setup_message_id_table ();
 
   return 0;
 }
