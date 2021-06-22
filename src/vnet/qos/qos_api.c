@@ -24,35 +24,14 @@
 #include <vnet/qos/qos_mark.h>
 #include <vnet/qos/qos_egress_map.h>
 
-#include <vnet/vnet_msg_enum.h>
+#include <vnet/format_fns.h>
+#include <vnet/qos/qos.api_enum.h>
+#include <vnet/qos/qos.api_types.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vnet/vnet_all_api_h.h>
-#undef vl_printfun
-
+#define REPLY_MSG_ID_BASE msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
-
-#define foreach_qos_api_msg                                             \
-  _(QOS_RECORD_ENABLE_DISABLE, qos_record_enable_disable)               \
-  _(QOS_RECORD_DUMP, qos_record_dump)                                   \
-  _(QOS_STORE_ENABLE_DISABLE, qos_store_enable_disable)                 \
-  _(QOS_STORE_DUMP, qos_store_dump)                                     \
-  _(QOS_EGRESS_MAP_DELETE, qos_egress_map_delete)                       \
-  _(QOS_EGRESS_MAP_UPDATE, qos_egress_map_update)                       \
-  _(QOS_EGRESS_MAP_DUMP, qos_egress_map_dump)                           \
-  _(QOS_MARK_ENABLE_DISABLE, qos_mark_enable_disable)                   \
-  _(QOS_MARK_DUMP, qos_mark_dump)
+static u16 msg_id_base;
 
 static int
 qos_source_decode (vl_api_qos_source_t v, qos_source_t * q)
@@ -121,7 +100,7 @@ send_qos_record_details (u32 sw_if_index, qos_source_t input_source, void *c)
   ctx = c;
   mp = vl_msg_api_alloc_zero (sizeof (*mp));
 
-  mp->_vl_msg_id = ntohs (VL_API_QOS_RECORD_DETAILS);
+  mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_QOS_RECORD_DETAILS);
   mp->context = ctx->context;
   mp->record.sw_if_index = htonl (sw_if_index);
   mp->record.input_source = qos_source_encode (input_source);
@@ -188,7 +167,7 @@ send_qos_store_details (u32 sw_if_index,
   ctx = c;
   mp = vl_msg_api_alloc_zero (sizeof (*mp));
 
-  mp->_vl_msg_id = ntohs (VL_API_QOS_STORE_DETAILS);
+  mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_QOS_STORE_DETAILS);
   mp->context = ctx->context;
   mp->store.sw_if_index = htonl (sw_if_index);
   mp->store.input_source = qos_source_encode (input_source);
@@ -259,7 +238,7 @@ send_qos_egress_map_details (qos_egress_map_id_t id,
   ctx = c;
   mp = vl_msg_api_alloc_zero (sizeof (*mp));
 
-  mp->_vl_msg_id = ntohs (VL_API_QOS_EGRESS_MAP_DETAILS);
+  mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_QOS_EGRESS_MAP_DETAILS);
   mp->context = ctx->context;
   mp->map.id = htonl (id);
 
@@ -325,7 +304,7 @@ send_qos_mark_details (u32 sw_if_index,
   ctx = c;
   mp = vl_msg_api_alloc_zero (sizeof (*mp));
 
-  mp->_vl_msg_id = ntohs (VL_API_QOS_MARK_DETAILS);
+  mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_QOS_MARK_DETAILS);
   mp->context = ctx->context;
   mp->mark.sw_if_index = htonl (sw_if_index);
   mp->mark.output_source = qos_source_encode (output_source);
@@ -352,37 +331,15 @@ vl_api_qos_mark_dump_t_handler (vl_api_qos_mark_dump_t * mp)
   qos_mark_walk (send_qos_mark_details, &ctx);
 }
 
-#define vl_msg_name_crc_list
-#include <vnet/qos/qos.api.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_qos;
-#undef _
-}
+#include <vnet/qos/qos.api.c>
 
 static clib_error_t *
 qos_api_hookup (vlib_main_t * vm)
 {
-  api_main_t *am = vlibapi_get_main ();
-
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_qos_api_msg;
-#undef _
-
   /*
    * Set up the (msg_name, crc, message-id) table
    */
-  setup_message_id_table (am);
+  REPLY_MSG_ID_BASE = setup_message_id_table ();
 
   return 0;
 }

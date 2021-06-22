@@ -2018,7 +2018,6 @@ _(hw_interface_set_mtu_reply)                           \
 _(tcp_configure_src_addresses_reply)			\
 _(session_rule_add_del_reply)				\
 _(ip_container_proxy_add_del_reply)                     \
-_(qos_record_enable_disable_reply)			\
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -2163,7 +2162,6 @@ _(APP_NAMESPACE_ADD_DEL_REPLY, app_namespace_add_del_reply)		\
 _(SESSION_RULE_ADD_DEL_REPLY, session_rule_add_del_reply)		\
 _(SESSION_RULES_DETAILS, session_rules_details)				\
 _(IP_CONTAINER_PROXY_ADD_DEL_REPLY, ip_container_proxy_add_del_reply)	\
-_(QOS_RECORD_ENABLE_DISABLE_REPLY, qos_record_enable_disable_reply)		\
 
 #define foreach_standalone_reply_msg					\
 _(SW_INTERFACE_EVENT, sw_interface_event)
@@ -9307,56 +9305,6 @@ api_ip_container_proxy_add_del (vat_main_t * vam)
 }
 
 static int
-api_qos_record_enable_disable (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_qos_record_enable_disable_t *mp;
-  u32 sw_if_index, qs = 0xff;
-  u8 sw_if_index_set = 0;
-  u8 enable = 1;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "sw_if_index %d", &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "%U", unformat_qos_source, &qs))
-	;
-      else if (unformat (i, "disable"))
-	enable = 0;
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  if (sw_if_index_set == 0)
-    {
-      errmsg ("missing interface name or sw_if_index");
-      return -99;
-    }
-  if (qs == 0xff)
-    {
-      errmsg ("input location must be specified");
-      return -99;
-    }
-
-  M (QOS_RECORD_ENABLE_DISABLE, mp);
-
-  mp->record.sw_if_index = ntohl (sw_if_index);
-  mp->record.input_source = qs;
-  mp->enable = enable;
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-
-static int
 q_or_quit (vat_main_t * vam)
 {
 #if VPP_API_TEST_BUILTIN == 0
@@ -10052,7 +10000,6 @@ _(session_rule_add_del, "[add|del] proto <tcp/udp> <lcl-ip>/<plen> "	\
   "<lcl-port> <rmt-ip>/<plen> <rmt-port> action <nn>")			\
 _(session_rules_dump, "")						\
 _(ip_container_proxy_add_del, "[add|del] <address> <sw_if_index>")	\
-_(qos_record_enable_disable, "<record-source> <intfc> | sw_if_index <id> [disable]")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \
