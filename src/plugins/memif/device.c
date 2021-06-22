@@ -177,6 +177,7 @@ retry:
 		{
 		  slot++;
 		  free_slots--;
+		  d0->length = dst_off;
 		  d0->flags = MEMIF_DESC_FLAG_NEXT;
 		  d0 = &ring->desc[slot & mask];
 		  dst_off = 0;
