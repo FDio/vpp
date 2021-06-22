@@ -616,7 +616,7 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       dpo_id_t *dpo;
       esp_header_t *esp;
       u8 *payload, *next_hdr_ptr;
-      u16 payload_len, payload_len_total, n_bufs;
+      u16 payload_len, payload_len_total;
       u32 hdr_len;
 
       err = ESP_ENCRYPT_ERROR_RX_PKTS;
@@ -685,20 +685,9 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
 
       lb = b[0];
-      n_bufs = vlib_buffer_chain_linearize (vm, b[0]);
-      if (n_bufs == 0)
-	{
-	  err = ESP_ENCRYPT_ERROR_NO_BUFFERS;
-	  esp_set_next_index (b[0], node, err, n_noop, noop_nexts, drop_next);
-	  goto trace;
-	}
-
-      if (n_bufs > 1)
-	{
-	  /* find last buffer in the chain */
-	  while (lb->flags & VLIB_BUFFER_NEXT_PRESENT)
-	    lb = vlib_get_buffer (vm, lb->next_buffer);
-	}
+      /* find last buffer in the chain */
+      while (lb->flags & VLIB_BUFFER_NEXT_PRESENT)
+	lb = vlib_get_buffer (vm, lb->next_buffer);
 
       if (PREDICT_FALSE (esp_seq_advance (sa0)))
 	{

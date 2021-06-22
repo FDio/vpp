@@ -1070,15 +1070,6 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  CLIB_PREFETCH (p, CLIB_CACHE_LINE_BYTES, LOAD);
 	}
 
-      u32 n_bufs = vlib_buffer_chain_linearize (vm, b[0]);
-      if (n_bufs == 0)
-	{
-	  err = ESP_DECRYPT_ERROR_NO_BUFFERS;
-	  esp_set_next_index (b[0], node, err, n_noop, noop_nexts,
-			      ESP_DECRYPT_NEXT_DROP);
-	  goto next;
-	}
-
       if (vnet_buffer (b[0])->ipsec.sad_index != current_sa_index)
 	{
 	  if (current_sa_pkts)
@@ -1129,7 +1120,7 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       pd2->free_buffer_index = 0;
       pd2->icv_removed = 0;
 
-      if (n_bufs > 1)
+      if (pd2->lb->flags & VLIB_BUFFER_NEXT_PRESENT)
 	{
 	  pd->is_chain = 1;
 	  /* find last buffer in the chain */
