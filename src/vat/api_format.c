@@ -2425,14 +2425,6 @@ _(sw_interface_set_unnumbered_reply)                    \
 _(set_ip_flow_hash_reply)                               \
 _(sw_interface_ip6_enable_disable_reply)                \
 _(l2_patch_add_del_reply)                               \
-_(sr_mpls_policy_add_reply)                             \
-_(sr_mpls_policy_mod_reply)                             \
-_(sr_mpls_policy_del_reply)                             \
-_(sr_policy_add_reply)                                  \
-_(sr_policy_mod_reply)                                  \
-_(sr_policy_del_reply)                                  \
-_(sr_localsid_add_del_reply)                            \
-_(sr_steering_add_del_reply)                            \
 _(l2_fib_clear_table_reply)                             \
 _(l2_interface_efp_filter_reply)                        \
 _(l2_interface_vlan_tag_rewrite_reply)                  \
@@ -2559,14 +2551,6 @@ _(SET_IP_FLOW_HASH_REPLY, set_ip_flow_hash_reply)                       \
 _(SW_INTERFACE_IP6_ENABLE_DISABLE_REPLY,                                \
   sw_interface_ip6_enable_disable_reply)                                \
 _(L2_PATCH_ADD_DEL_REPLY, l2_patch_add_del_reply)                       \
-_(SR_MPLS_POLICY_ADD_REPLY, sr_mpls_policy_add_reply)                   \
-_(SR_MPLS_POLICY_MOD_REPLY, sr_mpls_policy_mod_reply)                   \
-_(SR_MPLS_POLICY_DEL_REPLY, sr_mpls_policy_del_reply)                   \
-_(SR_POLICY_ADD_REPLY, sr_policy_add_reply)                             \
-_(SR_POLICY_MOD_REPLY, sr_policy_mod_reply)                             \
-_(SR_POLICY_DEL_REPLY, sr_policy_del_reply)                             \
-_(SR_LOCALSID_ADD_DEL_REPLY, sr_localsid_add_del_reply)                 \
-_(SR_STEERING_ADD_DEL_REPLY, sr_steering_add_del_reply)                 \
 _(GET_NODE_INDEX_REPLY, get_node_index_reply)                           \
 _(ADD_NODE_NEXT_REPLY, add_node_next_reply)                             \
 _(L2_FIB_CLEAR_TABLE_REPLY, l2_fib_clear_table_reply)                   \
@@ -5678,109 +5662,6 @@ api_mpls_ip_bind_unbind (vat_main_t * vam)
 }
 
 static int
-api_sr_mpls_policy_add (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_sr_mpls_policy_add_t *mp;
-  u32 bsid = 0;
-  u32 weight = 1;
-  u8 type = 0;
-  u8 n_segments = 0;
-  u32 sid;
-  u32 *segments = NULL;
-  int ret;
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "bsid %d", &bsid))
-	;
-      else if (unformat (i, "weight %d", &weight))
-	;
-      else if (unformat (i, "spray"))
-	type = 1;
-      else if (unformat (i, "next %d", &sid))
-	{
-	  n_segments += 1;
-	  vec_add1 (segments, htonl (sid));
-	}
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  if (bsid == 0)
-    {
-      errmsg ("bsid not set");
-      return -99;
-    }
-
-  if (n_segments == 0)
-    {
-      errmsg ("no sid in segment stack");
-      return -99;
-    }
-
-  /* Construct the API message */
-  M2 (SR_MPLS_POLICY_ADD, mp, sizeof (u32) * n_segments);
-
-  mp->bsid = htonl (bsid);
-  mp->weight = htonl (weight);
-  mp->is_spray = type;
-  mp->n_segments = n_segments;
-  memcpy (mp->segments, segments, sizeof (u32) * n_segments);
-  vec_free (segments);
-
-  /* send it... */
-  S (mp);
-
-  /* Wait for a reply... */
-  W (ret);
-  return ret;
-}
-
-static int
-api_sr_mpls_policy_del (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_sr_mpls_policy_del_t *mp;
-  u32 bsid = 0;
-  int ret;
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "bsid %d", &bsid))
-	;
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  if (bsid == 0)
-    {
-      errmsg ("bsid not set");
-      return -99;
-    }
-
-  /* Construct the API message */
-  M (SR_MPLS_POLICY_DEL, mp);
-
-  mp->bsid = htonl (bsid);
-
-  /* send it... */
-  S (mp);
-
-  /* Wait for a reply... */
-  W (ret);
-  return ret;
-}
-
-static int
 api_mpls_tunnel_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
@@ -6308,59 +6189,6 @@ u32 sw_if_index;
 u32 vlan_index;
 u32 fib_table;
 u8 nh_addr[16];
-
-static int
-api_sr_localsid_add_del (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_sr_localsid_add_del_t *mp;
-
-  u8 is_del;
-  ip6_address_t localsid;
-  u8 end_psp = 0;
-  u8 behavior = ~0;
-  u32 sw_if_index;
-  u32 fib_table = ~(u32) 0;
-  ip46_address_t nh_addr;
-  clib_memset (&nh_addr, 0, sizeof (ip46_address_t));
-
-  bool nexthop_set = 0;
-
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "del"))
-	is_del = 1;
-      else if (unformat (i, "address %U", unformat_ip6_address, &localsid));
-      else if (unformat (i, "next-hop %U", unformat_ip46_address, &nh_addr))
-	nexthop_set = 1;
-      else if (unformat (i, "behavior %u", &behavior));
-      else if (unformat (i, "sw_if_index %u", &sw_if_index));
-      else if (unformat (i, "fib-table %u", &fib_table));
-      else if (unformat (i, "end.psp %u", &behavior));
-      else
-	break;
-    }
-
-  M (SR_LOCALSID_ADD_DEL, mp);
-
-  clib_memcpy (mp->localsid, &localsid, sizeof (mp->localsid));
-
-  if (nexthop_set)
-    {
-      clib_memcpy (&mp->nh_addr.un, &nh_addr, sizeof (mp->nh_addr.un));
-    }
-  mp->behavior = behavior;
-  mp->sw_if_index = ntohl (sw_if_index);
-  mp->fib_table = ntohl (fib_table);
-  mp->end_psp = end_psp;
-  mp->is_del = is_del;
-
-  S (mp);
-  W (ret);
-  return ret;
-}
 
 static int
 api_ioam_enable (vat_main_t * vam)
@@ -11185,10 +11013,6 @@ _(mpls_tunnel_add_del,                                                  \
   "[add | del <intfc | sw_if_index <id>>] via <addr | via-label <n>>\n" \
   "[<intfc> | sw_if_index <id> | next-hop-table <id>]\n"                \
   "[l2-only]  [out-label <n>]")                                         \
-_(sr_mpls_policy_add,                                                   \
-  "bsid <id> [weight <n>] [spray] next <sid> [next <sid>]")             \
-_(sr_mpls_policy_del,                                                   \
-  "bsid <id>")                                                          \
 _(sw_interface_set_unnumbered,                                          \
   "<intfc> | sw_if_index <id> unnum_if_index <id> [del]")               \
 _(create_vlan_subif, "<intfc> | sw_if_index <id> vlan <n>")             \
@@ -11206,9 +11030,6 @@ _(sw_interface_ip6_enable_disable,                                      \
 _(l2_patch_add_del,                                                     \
   "rx <intfc> | rx_sw_if_index <id> tx <intfc> | tx_sw_if_index <id>\n" \
   "enable | disable")                                                   \
-_(sr_localsid_add_del,                                                  \
-  "(del) address <addr> next_hop <addr> behavior <beh>\n"               \
-  "fib-table <num> (end.psp) sw_if_index <num>")                        \
 _(get_node_index, "node <node-name")                                    \
 _(add_node_next, "node <node-name> next <next-node-name>")              \
 _(l2_fib_clear_table, "")                                               \

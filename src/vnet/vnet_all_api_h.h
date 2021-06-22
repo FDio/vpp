@@ -43,7 +43,6 @@
 #include <vnet/ip/ip.api.h>
 #include <vnet/session/session.api.h>
 #include <vnet/mpls/mpls.api.h>
-#include <vnet/srv6/sr.api.h>
 #include <vnet/srmpls/sr_mpls.api.h>
 #include <vnet/tcp/tcp.api.h>
 #include <vnet/ip/punt.api.h>

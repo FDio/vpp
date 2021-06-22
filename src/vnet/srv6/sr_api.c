@@ -25,39 +25,14 @@
 #include <vnet/api_errno.h>
 #include <vnet/feature/feature.h>
 #include <vnet/fib/fib_table.h>
-
 #include <vnet/ip/ip_types_api.h>
 
-#include <vnet/vnet_msg_enum.h>
+#include <vnet/format_fns.h>
+#include <vnet/srv6/sr.api_enum.h>
+#include <vnet/srv6/sr.api_types.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vnet/vnet_all_api_h.h>
-#undef vl_printfun
-
+#define REPLY_MSG_ID_BASE sr_main.msg_id_base
 #include <vlibapi/api_helper_macros.h>
-
-#define foreach_vpe_api_msg                             \
-_(SR_LOCALSID_ADD_DEL, sr_localsid_add_del)             \
-_(SR_POLICY_ADD, sr_policy_add)                         \
-_(SR_POLICY_MOD, sr_policy_mod)                         \
-_(SR_POLICY_DEL, sr_policy_del)                         \
-_(SR_STEERING_ADD_DEL, sr_steering_add_del)             \
-_(SR_SET_ENCAP_SOURCE, sr_set_encap_source)             \
-_(SR_SET_ENCAP_HOP_LIMIT, sr_set_encap_hop_limit)       \
-_(SR_LOCALSIDS_DUMP, sr_localsids_dump)                 \
-_(SR_POLICIES_DUMP, sr_policies_dump)                   \
-_(SR_POLICIES_WITH_SL_INDEX_DUMP, sr_policies_with_sl_index_dump) \
-_(SR_STEERING_POL_DUMP, sr_steering_pol_dump)
 
 static void vl_api_sr_localsid_add_del_t_handler
   (vl_api_sr_localsid_add_del_t * mp)
@@ -239,7 +214,7 @@ static void send_sr_localsid_details
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_SR_LOCALSIDS_DETAILS);
+  rmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_SR_LOCALSIDS_DETAILS);
   ip6_address_encode (&t->localsid, rmp->addr);
   rmp->end_psp = t->end_psp;
   rmp->behavior = htons (t->behavior);
@@ -299,7 +274,7 @@ static void send_sr_policies_details
 		vec_len (t->segments_lists) *
 		sizeof (vl_api_srv6_sid_list_t)));
 
-  rmp->_vl_msg_id = ntohs (VL_API_SR_POLICIES_DETAILS);
+  rmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_SR_POLICIES_DETAILS);
   ip6_address_encode (&t->bsid, rmp->bsid);
   rmp->is_encap = t->is_encap;
   rmp->is_spray = t->type;
@@ -366,7 +341,8 @@ static void send_sr_policies_details_with_sl_index
 		vec_len (t->segments_lists) *
 		sizeof (vl_api_srv6_sid_list_with_sl_index_t)));
 
-  rmp->_vl_msg_id = ntohs (VL_API_SR_POLICIES_WITH_SL_INDEX_DETAILS);
+  rmp->_vl_msg_id =
+    ntohs (REPLY_MSG_ID_BASE + VL_API_SR_POLICIES_WITH_SL_INDEX_DETAILS);
   ip6_address_encode (&t->bsid, rmp->bsid);
   rmp->is_encap = t->is_encap;
   rmp->is_spray = t->type;
@@ -421,7 +397,7 @@ static void send_sr_steering_pol_details
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_SR_STEERING_POL_DETAILS);
+  rmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_SR_STEERING_POL_DETAILS);
 
   //Get the SR policy BSID
   ip6_sr_policy_t *p;
@@ -460,44 +436,14 @@ static void vl_api_sr_steering_pol_dump_t_handler
   /* *INDENT-ON* */
 }
 
-/*
- * sr_api_hookup
- * Add vpe's API message handlers to the table.
- * vlib has already mapped shared memory and
- * added the client registration handlers.
- * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
- */
-#define vl_msg_name_crc_list
-#include <vnet/vnet_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_sr;
-#undef _
-}
-
+#include <vnet/srv6/sr.api.c>
 static clib_error_t *
 sr_api_hookup (vlib_main_t * vm)
 {
-  api_main_t *am = vlibapi_get_main ();
-
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_api_msg;
-#undef _
-
   /*
    * Set up the (msg_name, crc, message-id) table
    */
-  setup_message_id_table (am);
+  REPLY_MSG_ID_BASE = setup_message_id_table ();
 
   return 0;
 }
