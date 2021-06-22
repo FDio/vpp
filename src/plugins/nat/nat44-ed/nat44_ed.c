@@ -3276,7 +3276,7 @@ static_always_inline int nat_6t_flow_icmp_translate (snat_main_t *sm,
 static_always_inline void
 nat_6t_flow_ip4_translate (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
 			   nat_6t_flow_t *f, nat_protocol_t proto,
-			   int is_icmp_inner_ip4)
+			   int is_icmp_inner_ip4, int skip_saddr_rewrite)
 {
   udp_header_t *udp = ip4_next_header (ip);
   tcp_header_t *tcp = (tcp_header_t *) udp;
@@ -3319,7 +3319,10 @@ nat_6t_flow_ip4_translate (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
     {
       if (!is_icmp_inner_ip4)
 	{ // regular case
-	  ip->src_address = f->rewrite.saddr;
+	  if (!skip_saddr_rewrite)
+	    {
+	      ip->src_address = f->rewrite.saddr;
+	    }
 	  ip->dst_address = f->rewrite.daddr;
 	}
       else
@@ -3385,7 +3388,8 @@ nat_6t_flow_icmp_translate (snat_main_t *sm, vlib_buffer_t *b,
 	    case NAT_PROTOCOL_UDP:
 	    case NAT_PROTOCOL_TCP:
 	      nat_6t_flow_ip4_translate (sm, b, inner_ip, f, inner_proto,
-					 1 /* is_icmp_inner_ip4 */);
+					 1 /* is_icmp_inner_ip4 */,
+					 0 /* skip_saddr_rewrite */);
 	      icmp_sum = ip_csum_sub_even (icmp_sum, f->l3_csum_delta);
 	      icmp->checksum = ip_csum_fold (icmp_sum);
 	      break;
@@ -3430,12 +3434,26 @@ nat_6t_flow_buf_translate (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
       vnet_buffer (b)->sw_if_index[VLIB_TX] = f->rewrite.fib_index;
     }
 
-  nat_6t_flow_ip4_translate (sm, b, ip, f, proto, 0 /* is_icmp_inner_ip4 */);
-
   if (NAT_PROTOCOL_ICMP == proto)
     {
+      if (ip->src_address.as_u32 != f->rewrite.saddr.as_u32)
+	{
+	  // packet is returned from a router, not from destination
+	  nat_6t_flow_ip4_translate (sm, b, ip, f, proto,
+				     0 /* is_icmp_inner_ip4 */,
+				     1 /* skip_saddr_rewrite */);
+	}
+      else
+	{
+	  nat_6t_flow_ip4_translate (sm, b, ip, f, proto,
+				     0 /* is_icmp_inner_ip4 */,
+				     0 /* skip_saddr_rewrite */);
+	}
       return nat_6t_flow_icmp_translate (sm, b, ip, f);
     }
+
+  nat_6t_flow_ip4_translate (sm, b, ip, f, proto, 0 /* is_icmp_inner_ip4 */,
+			     0 /* skip_saddr_rewrite */);
 
   return NAT_ED_TRNSL_ERR_SUCCESS;
 }
