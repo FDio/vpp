@@ -3276,7 +3276,7 @@ static_always_inline int nat_6t_flow_icmp_translate (snat_main_t *sm,
 static_always_inline void
 nat_6t_flow_ip4_translate (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
 			   nat_6t_flow_t *f, nat_protocol_t proto,
-			   int is_icmp_inner_ip4)
+			   int is_icmp_inner_ip4, int skip_saddr_rewrite)
 {
   udp_header_t *udp = ip4_next_header (ip);
   tcp_header_t *tcp = (tcp_header_t *) udp;
@@ -3319,7 +3319,10 @@ nat_6t_flow_ip4_translate (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
     {
       if (!is_icmp_inner_ip4)
 	{ // regular case
-	  ip->src_address = f->rewrite.saddr;
+	  if (!skip_saddr_rewrite)
+	    {
+	      ip->src_address = f->rewrite.saddr;
+	    }
 	  ip->dst_address = f->rewrite.daddr;
 	}
       else
@@ -3329,9 +3332,16 @@ nat_6t_flow_ip4_translate (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
 	}
     }
 
-  ip_csum_t ip_sum = ip->checksum;
-  ip_sum = ip_csum_sub_even (ip_sum, f->l3_csum_delta);
-  ip->checksum = ip_csum_fold (ip_sum);
+  if (skip_saddr_rewrite)
+    {
+      ip->checksum = ip4_header_checksum (ip);
+    }
+  else
+    {
+      ip_csum_t ip_sum = ip->checksum;
+      ip_sum = ip_csum_sub_even (ip_sum, f->l3_csum_delta);
+      ip->checksum = ip_csum_fold (ip_sum);
+    }
   if (0xffff == ip->checksum)
     ip->checksum = 0;
   ASSERT (ip4_header_checksum_is_valid (ip));
@@ -3378,16 +3388,53 @@ nat_6t_flow_icmp_translate (snat_main_t *sm, vlib_buffer_t *b,
 	  nat_protocol_t inner_proto =
 	    ip_proto_to_nat_proto (inner_ip->protocol);
 
-	  ip_csum_t icmp_sum = icmp->checksum;
+	  ip_csum_t old_icmp_sum = icmp->checksum;
+	  ip_csum_t old_inner_ip_sum = inner_ip->checksum;
+	  ip_csum_t old_udp_sum;
+	  ip_csum_t old_tcp_sum;
+	  ip_csum_t new_icmp_sum;
+	  udp_header_t *udp;
+	  tcp_header_t *tcp;
 
 	  switch (inner_proto)
 	    {
 	    case NAT_PROTOCOL_UDP:
-	    case NAT_PROTOCOL_TCP:
+	      udp = (udp_header_t *) (inner_ip + 1);
+	      old_udp_sum = udp->checksum;
 	      nat_6t_flow_ip4_translate (sm, b, inner_ip, f, inner_proto,
-					 1 /* is_icmp_inner_ip4 */);
-	      icmp_sum = ip_csum_sub_even (icmp_sum, f->l3_csum_delta);
-	      icmp->checksum = ip_csum_fold (icmp_sum);
+					 1 /* is_icmp_inner_ip4 */,
+					 0 /* skip_saddr_rewrite */);
+	      new_icmp_sum = ip_csum_sub_even (old_icmp_sum, f->l3_csum_delta);
+	      new_icmp_sum = ip_csum_sub_even (new_icmp_sum, f->l4_csum_delta);
+	      new_icmp_sum =
+		ip_csum_update (new_icmp_sum, old_inner_ip_sum,
+				inner_ip->checksum, ip4_header_t, checksum);
+	      new_icmp_sum =
+		ip_csum_update (new_icmp_sum, old_udp_sum, udp->checksum,
+				udp_header_t, checksum);
+	      new_icmp_sum = ip_csum_fold (new_icmp_sum);
+	      if (0xffff == new_icmp_sum)
+		new_icmp_sum = 0;
+	      icmp->checksum = new_icmp_sum;
+	      break;
+	    case NAT_PROTOCOL_TCP:
+	      tcp = (tcp_header_t *) (inner_ip + 1);
+	      old_tcp_sum = tcp->checksum;
+	      nat_6t_flow_ip4_translate (sm, b, inner_ip, f, inner_proto,
+					 1 /* is_icmp_inner_ip4 */,
+					 0 /* skip_saddr_rewrite */);
+	      new_icmp_sum = ip_csum_sub_even (old_icmp_sum, f->l3_csum_delta);
+	      new_icmp_sum = ip_csum_sub_even (new_icmp_sum, f->l4_csum_delta);
+	      new_icmp_sum =
+		ip_csum_update (new_icmp_sum, old_inner_ip_sum,
+				inner_ip->checksum, ip4_header_t, checksum);
+	      new_icmp_sum =
+		ip_csum_update (new_icmp_sum, old_tcp_sum, tcp->checksum,
+				tcp_header_t, checksum);
+	      new_icmp_sum = ip_csum_fold (new_icmp_sum);
+	      if (0xffff == new_icmp_sum)
+		new_icmp_sum = 0;
+	      icmp->checksum = new_icmp_sum;
 	      break;
 	    case NAT_PROTOCOL_ICMP:
 	      if (f->ops & NAT_FLOW_OP_ICMP_ID_REWRITE)
@@ -3417,27 +3464,61 @@ nat_6t_flow_icmp_translate (snat_main_t *sm, vlib_buffer_t *b,
 	    }
 	}
     }
+
   return NAT_ED_TRNSL_ERR_SUCCESS;
 }
 
-nat_translation_error_e
+static_always_inline nat_translation_error_e
 nat_6t_flow_buf_translate (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
 			   nat_6t_flow_t *f, nat_protocol_t proto,
-			   int is_output_feature)
+			   int is_output_feature, int is_i2o)
 {
   if (!is_output_feature && f->ops & NAT_FLOW_OP_TXFIB_REWRITE)
     {
       vnet_buffer (b)->sw_if_index[VLIB_TX] = f->rewrite.fib_index;
     }
 
-  nat_6t_flow_ip4_translate (sm, b, ip, f, proto, 0 /* is_icmp_inner_ip4 */);
-
   if (NAT_PROTOCOL_ICMP == proto)
     {
+      if (ip->src_address.as_u32 != f->rewrite.saddr.as_u32)
+	{
+	  // packet is returned from a router, not from destination
+	  // skip source address rewrite if in o2i path
+	  nat_6t_flow_ip4_translate (sm, b, ip, f, proto,
+				     0 /* is_icmp_inner_ip4 */,
+				     !is_i2o /* skip_saddr_rewrite */);
+	}
+      else
+	{
+	  nat_6t_flow_ip4_translate (sm, b, ip, f, proto,
+				     0 /* is_icmp_inner_ip4 */,
+				     0 /* skip_saddr_rewrite */);
+	}
       return nat_6t_flow_icmp_translate (sm, b, ip, f);
     }
 
+  nat_6t_flow_ip4_translate (sm, b, ip, f, proto, 0 /* is_icmp_inner_ip4 */,
+			     0 /* skip_saddr_rewrite */);
+
   return NAT_ED_TRNSL_ERR_SUCCESS;
+}
+
+nat_translation_error_e
+nat_6t_flow_buf_translate_i2o (snat_main_t *sm, vlib_buffer_t *b,
+			       ip4_header_t *ip, nat_6t_flow_t *f,
+			       nat_protocol_t proto, int is_output_feature)
+{
+  return nat_6t_flow_buf_translate (sm, b, ip, f, proto, is_output_feature,
+				    1 /* is_i2o */);
+}
+
+nat_translation_error_e
+nat_6t_flow_buf_translate_o2i (snat_main_t *sm, vlib_buffer_t *b,
+			       ip4_header_t *ip, nat_6t_flow_t *f,
+			       nat_protocol_t proto, int is_output_feature)
+{
+  return nat_6t_flow_buf_translate (sm, b, ip, f, proto, is_output_feature,
+				    0 /* is_i2o */);
 }
 
 u8 *

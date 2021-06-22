@@ -1183,7 +1183,7 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t *vm,
 	}
 
       if (NAT_ED_TRNSL_ERR_SUCCESS !=
-	  (translation_error = nat_6t_flow_buf_translate (
+	  (translation_error = nat_6t_flow_buf_translate_i2o (
 	     sm, b0, ip0, f, proto0, is_output_feature)))
 	{
 	  nat_free_session_data (sm, s0, thread_index, 0);
@@ -1331,7 +1331,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
 
 	  if (NAT_NEXT_DROP != next[0] && s0 &&
 	      NAT_ED_TRNSL_ERR_SUCCESS !=
-		(translation_error = nat_6t_flow_buf_translate (
+		(translation_error = nat_6t_flow_buf_translate_i2o (
 		   sm, b0, ip0, &s0->i2o, proto0, is_output_feature)))
 	    {
 	      goto trace0;
@@ -1349,7 +1349,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
 	    now, thread_index, proto0, &s0, is_multi_worker);
 	  if (NAT_NEXT_DROP != next[0] && s0 &&
 	      NAT_ED_TRNSL_ERR_SUCCESS !=
-		(translation_error = nat_6t_flow_buf_translate (
+		(translation_error = nat_6t_flow_buf_translate_i2o (
 		   sm, b0, ip0, &s0->i2o, proto0, is_output_feature)))
 	    {
 	      goto trace0;
@@ -1426,7 +1426,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
       b0->flags |= VNET_BUFFER_F_IS_NATED;
 
       if (NAT_ED_TRNSL_ERR_SUCCESS !=
-	  (translation_error = nat_6t_flow_buf_translate (
+	  (translation_error = nat_6t_flow_buf_translate_i2o (
 	     sm, b0, ip0, &s0->i2o, proto0, is_output_feature)))
 	{
 	  nat_free_session_data (sm, s0, thread_index, 0);
