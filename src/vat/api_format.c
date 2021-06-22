@@ -1582,42 +1582,6 @@ static void vl_api_virtio_pci_delete_reply_t_handler_json
   vam->result_ready = 1;
 }
 
-static void vl_api_mpls_tunnel_add_del_reply_t_handler
-  (vl_api_mpls_tunnel_add_del_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  i32 retval = ntohl (mp->retval);
-  if (vam->async_mode)
-    {
-      vam->async_errors += (retval < 0);
-    }
-  else
-    {
-      vam->retval = retval;
-      vam->sw_if_index = ntohl (mp->sw_if_index);
-      vam->result_ready = 1;
-    }
-  vam->regenerate_interface_table = 1;
-}
-
-static void vl_api_mpls_tunnel_add_del_reply_t_handler_json
-  (vl_api_mpls_tunnel_add_del_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t node;
-
-  vat_json_init_object (&node);
-  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
-  vat_json_object_add_uint (&node, "tunnel_sw_if_index",
-			    ntohl (mp->sw_if_index));
-
-  vat_json_print (vam->ofp, &node);
-  vat_json_free (&node);
-
-  vam->retval = ntohl (mp->retval);
-  vam->result_ready = 1;
-}
-
 static void vl_api_ip_address_details_t_handler
   (vl_api_ip_address_details_t * mp)
 {
@@ -1871,7 +1835,6 @@ _(sw_interface_add_del_address_reply)                   \
 _(sw_interface_set_rx_mode_reply)                       \
 _(sw_interface_set_rx_placement_reply)                  \
 _(sw_interface_set_table_reply)                         \
-_(sw_interface_set_mpls_enable_reply)                   \
 _(sw_interface_set_vpath_reply)                         \
 _(sw_interface_set_l2_bridge_reply)                     \
 _(bridge_domain_add_del_reply)                          \
@@ -1885,9 +1848,6 @@ _(ip_table_replace_begin_reply)                         \
 _(ip_table_flush_reply)                                 \
 _(ip_table_replace_end_reply)                           \
 _(ip_mroute_add_del_reply)                              \
-_(mpls_route_add_del_reply)                             \
-_(mpls_table_add_del_reply)                             \
-_(mpls_ip_bind_unbind_reply)                            \
 _(sw_interface_set_unnumbered_reply)                    \
 _(set_ip_flow_hash_reply)                               \
 _(sw_interface_ip6_enable_disable_reply)                \
@@ -1963,7 +1923,6 @@ _(SW_INTERFACE_SET_RX_MODE_REPLY, sw_interface_set_rx_mode_reply)       \
 _(SW_INTERFACE_SET_RX_PLACEMENT_REPLY, sw_interface_set_rx_placement_reply)	\
 _(SW_INTERFACE_RX_PLACEMENT_DETAILS, sw_interface_rx_placement_details)	\
 _(SW_INTERFACE_SET_TABLE_REPLY, sw_interface_set_table_reply) 		\
-_(SW_INTERFACE_SET_MPLS_ENABLE_REPLY, sw_interface_set_mpls_enable_reply) \
 _(SW_INTERFACE_SET_VPATH_REPLY, sw_interface_set_vpath_reply) 		\
 _(SW_INTERFACE_SET_L2_XCONNECT_REPLY,                                   \
   sw_interface_set_l2_xconnect_reply)                                   \
@@ -1987,10 +1946,6 @@ _(IP_TABLE_REPLACE_BEGIN_REPLY, ip_table_replace_begin_reply)           \
 _(IP_TABLE_FLUSH_REPLY, ip_table_flush_reply)                           \
 _(IP_TABLE_REPLACE_END_REPLY, ip_table_replace_end_reply)               \
 _(IP_MROUTE_ADD_DEL_REPLY, ip_mroute_add_del_reply)			\
-_(MPLS_TABLE_ADD_DEL_REPLY, mpls_table_add_del_reply)			\
-_(MPLS_ROUTE_ADD_DEL_REPLY, mpls_route_add_del_reply)			\
-_(MPLS_IP_BIND_UNBIND_REPLY, mpls_ip_bind_unbind_reply)			\
-_(MPLS_TUNNEL_ADD_DEL_REPLY, mpls_tunnel_add_del_reply)                 \
 _(SW_INTERFACE_SET_UNNUMBERED_REPLY,                                    \
   sw_interface_set_unnumbered_reply)                                    \
 _(CREATE_VLAN_SUBIF_REPLY, create_vlan_subif_reply)                     \
@@ -2022,9 +1977,6 @@ _(GET_NODE_GRAPH_REPLY, get_node_graph_reply)                           \
 _(SW_INTERFACE_CLEAR_STATS_REPLY, sw_interface_clear_stats_reply)      \
 _(IOAM_ENABLE_REPLY, ioam_enable_reply)                   \
 _(IOAM_DISABLE_REPLY, ioam_disable_reply)                     \
-_(MPLS_TUNNEL_DETAILS, mpls_tunnel_details)                             \
-_(MPLS_TABLE_DETAILS, mpls_table_details)                               \
-_(MPLS_ROUTE_DETAILS, mpls_route_details)                               \
 _(GET_NEXT_INDEX_REPLY, get_next_index_reply)                           \
 _(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL_REPLY,                         \
  ip_source_and_port_range_check_add_del_reply)                          \
@@ -2772,51 +2724,6 @@ api_sw_interface_add_del_address (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply, return good/bad news  */
-  W (ret);
-  return ret;
-}
-
-static int
-api_sw_interface_set_mpls_enable (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_sw_interface_set_mpls_enable_t *mp;
-  u32 sw_if_index;
-  u8 sw_if_index_set = 0;
-  u8 enable = 1;
-  int ret;
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "sw_if_index %d", &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "disable"))
-	enable = 0;
-      else if (unformat (i, "dis"))
-	enable = 0;
-      else
-	break;
-    }
-
-  if (sw_if_index_set == 0)
-    {
-      errmsg ("missing interface name or sw_if_index");
-      return -99;
-    }
-
-  /* Construct the API message */
-  M (SW_INTERFACE_SET_MPLS_ENABLE, mp);
-
-  mp->sw_if_index = ntohl (sw_if_index);
-  mp->enable = enable;
-
-  /* send it... */
-  S (mp);
-
-  /* Wait for a reply... */
   W (ret);
   return ret;
 }
@@ -4335,316 +4242,6 @@ api_ip_mroute_add_del (vat_main_t * vam)
   /* send it... */
   S (mp);
   /* Wait for a reply... */
-  W (ret);
-  return ret;
-}
-
-static int
-api_mpls_table_add_del (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_mpls_table_add_del_t *mp;
-  u32 table_id = ~0;
-  u8 is_add = 1;
-  int ret = 0;
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "table %d", &table_id))
-	;
-      else if (unformat (i, "del"))
-	is_add = 0;
-      else if (unformat (i, "add"))
-	is_add = 1;
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  if (~0 == table_id)
-    {
-      errmsg ("missing table-ID");
-      return -99;
-    }
-
-  /* Construct the API message */
-  M (MPLS_TABLE_ADD_DEL, mp);
-
-  mp->mt_table.mt_table_id = ntohl (table_id);
-  mp->mt_is_add = is_add;
-
-  /* send it... */
-  S (mp);
-
-  /* Wait for a reply... */
-  W (ret);
-
-  return ret;
-}
-
-static int
-api_mpls_route_add_del (vat_main_t * vam)
-{
-  u8 is_add = 1, path_count = 0, is_multipath = 0, is_eos = 0;
-  mpls_label_t local_label = MPLS_LABEL_INVALID;
-  unformat_input_t *i = vam->input;
-  vl_api_mpls_route_add_del_t *mp;
-  vl_api_fib_path_t paths[8];
-  int count = 1, j;
-  f64 before = 0;
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "%d", &local_label))
-	;
-      else if (unformat (i, "eos"))
-	is_eos = 1;
-      else if (unformat (i, "non-eos"))
-	is_eos = 0;
-      else if (unformat (i, "del"))
-	is_add = 0;
-      else if (unformat (i, "add"))
-	is_add = 1;
-      else if (unformat (i, "multipath"))
-	is_multipath = 1;
-      else if (unformat (i, "count %d", &count))
-	;
-      else
-	if (unformat
-	    (i, "via %U", unformat_fib_path, vam, &paths[path_count]))
-	{
-	  path_count++;
-	  if (8 == path_count)
-	    {
-	      errmsg ("max 8 paths");
-	      return -99;
-	    }
-	}
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  if (!path_count)
-    {
-      errmsg ("specify a path; via ...");
-      return -99;
-    }
-
-  if (MPLS_LABEL_INVALID == local_label)
-    {
-      errmsg ("missing label");
-      return -99;
-    }
-
-  if (count > 1)
-    {
-      /* Turn on async mode */
-      vam->async_mode = 1;
-      vam->async_errors = 0;
-      before = vat_time_now (vam);
-    }
-
-  for (j = 0; j < count; j++)
-    {
-      /* Construct the API message */
-      M2 (MPLS_ROUTE_ADD_DEL, mp, sizeof (vl_api_fib_path_t) * path_count);
-
-      mp->mr_is_add = is_add;
-      mp->mr_is_multipath = is_multipath;
-
-      mp->mr_route.mr_label = local_label;
-      mp->mr_route.mr_eos = is_eos;
-      mp->mr_route.mr_table_id = 0;
-      mp->mr_route.mr_n_paths = path_count;
-
-      clib_memcpy (&mp->mr_route.mr_paths, paths,
-		   sizeof (paths[0]) * path_count);
-
-      local_label++;
-
-      /* send it... */
-      S (mp);
-      /* If we receive SIGTERM, stop now... */
-      if (vam->do_exit)
-	break;
-    }
-
-  /* When testing multiple add/del ops, use a control-ping to sync */
-  if (count > 1)
-    {
-      vl_api_control_ping_t *mp_ping;
-      f64 after;
-      f64 timeout;
-
-      /* Shut off async mode */
-      vam->async_mode = 0;
-
-      MPING (CONTROL_PING, mp_ping);
-      S (mp_ping);
-
-      timeout = vat_time_now (vam) + 1.0;
-      while (vat_time_now (vam) < timeout)
-	if (vam->result_ready == 1)
-	  goto out;
-      vam->retval = -99;
-
-    out:
-      if (vam->retval == -99)
-	errmsg ("timeout");
-
-      if (vam->async_errors > 0)
-	{
-	  errmsg ("%d asynchronous errors", vam->async_errors);
-	  vam->retval = -98;
-	}
-      vam->async_errors = 0;
-      after = vat_time_now (vam);
-
-      /* slim chance, but we might have eaten SIGTERM on the first iteration */
-      if (j > 0)
-	count = j;
-
-      print (vam->ofp, "%d routes in %.6f secs, %.2f routes/sec",
-	     count, after - before, count / (after - before));
-    }
-  else
-    {
-      int ret;
-
-      /* Wait for a reply... */
-      W (ret);
-      return ret;
-    }
-
-  /* Return the good/bad news */
-  return (vam->retval);
-  return (0);
-}
-
-static int
-api_mpls_ip_bind_unbind (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_mpls_ip_bind_unbind_t *mp;
-  u32 ip_table_id = 0;
-  u8 is_bind = 1;
-  vl_api_prefix_t pfx;
-  u8 prefix_set = 0;
-  mpls_label_t local_label = MPLS_LABEL_INVALID;
-  int ret;
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "%U", unformat_vl_api_prefix, &pfx))
-	prefix_set = 1;
-      else if (unformat (i, "%d", &local_label))
-	;
-      else if (unformat (i, "table-id %d", &ip_table_id))
-	;
-      else if (unformat (i, "unbind"))
-	is_bind = 0;
-      else if (unformat (i, "bind"))
-	is_bind = 1;
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  if (!prefix_set)
-    {
-      errmsg ("IP prefix not set");
-      return -99;
-    }
-
-  if (MPLS_LABEL_INVALID == local_label)
-    {
-      errmsg ("missing label");
-      return -99;
-    }
-
-  /* Construct the API message */
-  M (MPLS_IP_BIND_UNBIND, mp);
-
-  mp->mb_is_bind = is_bind;
-  mp->mb_ip_table_id = ntohl (ip_table_id);
-  mp->mb_mpls_table_id = 0;
-  mp->mb_label = ntohl (local_label);
-  clib_memcpy (&mp->mb_prefix, &pfx, sizeof (pfx));
-
-  /* send it... */
-  S (mp);
-
-  /* Wait for a reply... */
-  W (ret);
-  return ret;
-  return (0);
-}
-
-static int
-api_mpls_tunnel_add_del (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_mpls_tunnel_add_del_t *mp;
-
-  vl_api_fib_path_t paths[8];
-  u32 sw_if_index = ~0;
-  u8 path_count = 0;
-  u8 l2_only = 0;
-  u8 is_add = 1;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "add"))
-	is_add = 1;
-      else
-	if (unformat
-	    (i, "del %U", api_unformat_sw_if_index, vam, &sw_if_index))
-	is_add = 0;
-      else if (unformat (i, "del sw_if_index %d", &sw_if_index))
-	is_add = 0;
-      else if (unformat (i, "l2-only"))
-	l2_only = 1;
-      else
-	if (unformat
-	    (i, "via %U", unformat_fib_path, vam, &paths[path_count]))
-	{
-	  path_count++;
-	  if (8 == path_count)
-	    {
-	      errmsg ("max 8 paths");
-	      return -99;
-	    }
-	}
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  M2 (MPLS_TUNNEL_ADD_DEL, mp, sizeof (vl_api_fib_path_t) * path_count);
-
-  mp->mt_is_add = is_add;
-  mp->mt_tunnel.mt_sw_if_index = ntohl (sw_if_index);
-  mp->mt_tunnel.mt_l2_only = l2_only;
-  mp->mt_tunnel.mt_is_multicast = 0;
-  mp->mt_tunnel.mt_n_paths = path_count;
-
-  clib_memcpy (&mp->mt_tunnel.mt_paths, &paths,
-	       sizeof (paths[0]) * path_count);
-
-  S (mp);
   W (ret);
   return ret;
 }
@@ -7044,212 +6641,6 @@ vl_api_mpls_fib_path_json_print (vat_json_node_t * node,
     }
 }
 
-static void
-vl_api_mpls_tunnel_details_t_handler (vl_api_mpls_tunnel_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  int count = ntohl (mp->mt_tunnel.mt_n_paths);
-  vl_api_fib_path_t *fp;
-  i32 i;
-
-  print (vam->ofp, "sw_if_index %d via:",
-	 ntohl (mp->mt_tunnel.mt_sw_if_index));
-  fp = mp->mt_tunnel.mt_paths;
-  for (i = 0; i < count; i++)
-    {
-      vl_api_fib_path_print (vam, fp);
-      fp++;
-    }
-
-  print (vam->ofp, "");
-}
-
-#define vl_api_mpls_tunnel_details_t_endian vl_noop_handler
-#define vl_api_mpls_tunnel_details_t_print vl_noop_handler
-
-static void
-vl_api_mpls_tunnel_details_t_handler_json (vl_api_mpls_tunnel_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t *node = NULL;
-  int count = ntohl (mp->mt_tunnel.mt_n_paths);
-  vl_api_fib_path_t *fp;
-  i32 i;
-
-  if (VAT_JSON_ARRAY != vam->json_tree.type)
-    {
-      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
-      vat_json_init_array (&vam->json_tree);
-    }
-  node = vat_json_array_add (&vam->json_tree);
-
-  vat_json_init_object (node);
-  vat_json_object_add_uint (node, "sw_if_index",
-			    ntohl (mp->mt_tunnel.mt_sw_if_index));
-
-  vat_json_object_add_uint (node, "l2_only", mp->mt_tunnel.mt_l2_only);
-
-  fp = mp->mt_tunnel.mt_paths;
-  for (i = 0; i < count; i++)
-    {
-      vl_api_mpls_fib_path_json_print (node, fp);
-      fp++;
-    }
-}
-
-static int
-api_mpls_tunnel_dump (vat_main_t * vam)
-{
-  vl_api_mpls_tunnel_dump_t *mp;
-  vl_api_control_ping_t *mp_ping;
-  int ret;
-
-  M (MPLS_TUNNEL_DUMP, mp);
-
-  S (mp);
-
-  /* Use a control ping for synchronization */
-  MPING (CONTROL_PING, mp_ping);
-  S (mp_ping);
-
-  W (ret);
-  return ret;
-}
-
-#define vl_api_mpls_table_details_t_endian vl_noop_handler
-#define vl_api_mpls_table_details_t_print vl_noop_handler
-
-
-static void
-vl_api_mpls_table_details_t_handler (vl_api_mpls_table_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-
-  print (vam->ofp, "table-id %d,", ntohl (mp->mt_table.mt_table_id));
-}
-
-static void vl_api_mpls_table_details_t_handler_json
-  (vl_api_mpls_table_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t *node = NULL;
-
-  if (VAT_JSON_ARRAY != vam->json_tree.type)
-    {
-      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
-      vat_json_init_array (&vam->json_tree);
-    }
-  node = vat_json_array_add (&vam->json_tree);
-
-  vat_json_init_object (node);
-  vat_json_object_add_uint (node, "table", ntohl (mp->mt_table.mt_table_id));
-}
-
-static int
-api_mpls_table_dump (vat_main_t * vam)
-{
-  vl_api_mpls_table_dump_t *mp;
-  vl_api_control_ping_t *mp_ping;
-  int ret;
-
-  M (MPLS_TABLE_DUMP, mp);
-  S (mp);
-
-  /* Use a control ping for synchronization */
-  MPING (CONTROL_PING, mp_ping);
-  S (mp_ping);
-
-  W (ret);
-  return ret;
-}
-
-#define vl_api_mpls_route_details_t_endian vl_noop_handler
-#define vl_api_mpls_route_details_t_print vl_noop_handler
-
-static void
-vl_api_mpls_route_details_t_handler (vl_api_mpls_route_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  int count = (int) clib_net_to_host_u32 (mp->mr_route.mr_n_paths);
-  vl_api_fib_path_t *fp;
-  int i;
-
-  print (vam->ofp,
-	 "table-id %d, label %u, ess_bit %u",
-	 ntohl (mp->mr_route.mr_table_id),
-	 ntohl (mp->mr_route.mr_label), mp->mr_route.mr_eos);
-  fp = mp->mr_route.mr_paths;
-  for (i = 0; i < count; i++)
-    {
-      vl_api_fib_path_print (vam, fp);
-      fp++;
-    }
-}
-
-static void vl_api_mpls_route_details_t_handler_json
-  (vl_api_mpls_route_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  int count = (int) clib_host_to_net_u32 (mp->mr_route.mr_n_paths);
-  vat_json_node_t *node = NULL;
-  vl_api_fib_path_t *fp;
-  int i;
-
-  if (VAT_JSON_ARRAY != vam->json_tree.type)
-    {
-      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
-      vat_json_init_array (&vam->json_tree);
-    }
-  node = vat_json_array_add (&vam->json_tree);
-
-  vat_json_init_object (node);
-  vat_json_object_add_uint (node, "table", ntohl (mp->mr_route.mr_table_id));
-  vat_json_object_add_uint (node, "s_bit", mp->mr_route.mr_eos);
-  vat_json_object_add_uint (node, "label", ntohl (mp->mr_route.mr_label));
-  vat_json_object_add_uint (node, "path_count", count);
-  fp = mp->mr_route.mr_paths;
-  for (i = 0; i < count; i++)
-    {
-      vl_api_mpls_fib_path_json_print (node, fp);
-      fp++;
-    }
-}
-
-static int
-api_mpls_route_dump (vat_main_t * vam)
-{
-  unformat_input_t *input = vam->input;
-  vl_api_mpls_route_dump_t *mp;
-  vl_api_control_ping_t *mp_ping;
-  u32 table_id;
-  int ret;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "table_id %d", &table_id))
-	;
-      else
-	break;
-    }
-  if (table_id == ~0)
-    {
-      errmsg ("missing table id");
-      return -99;
-    }
-
-  M (MPLS_ROUTE_DUMP, mp);
-
-  mp->table.mt_table_id = ntohl (table_id);
-  S (mp);
-
-  /* Use a control ping for synchronization */
-  MPING (CONTROL_PING, mp_ping);
-  S (mp_ping);
-
-  W (ret);
-  return ret;
-}
-
 #define vl_api_ip_table_details_t_endian vl_noop_handler
 #define vl_api_ip_table_details_t_print vl_noop_handler
 
@@ -8900,8 +8291,6 @@ _(sw_interface_rx_placement_dump,                                       \
   "[<intfc> | sw_if_index <id>]")                                         \
 _(sw_interface_set_table,                                               \
   "<intfc> | sw_if_index <id> vrf <table-id> [ipv6]")                   \
-_(sw_interface_set_mpls_enable,                                         \
-  "<intfc> | sw_if_index [disable | dis]")                              \
 _(sw_interface_set_vpath,                                               \
   "<intfc> | sw_if_index <id> enable | disable")                        \
 _(sw_interface_set_l2_xconnect,                                         \
@@ -8938,21 +8327,6 @@ _(ip_route_add_del,                                                     \
 _(ip_mroute_add_del,                                                    \
   "<src> <grp>/<mask> [table-id <n>]\n"                                 \
   "[<intfc> | sw_if_index <id>] [local] [del]")                         \
-_(mpls_table_add_del,                                                   \
-  "table <n> [add | del]\n")                                            \
-_(mpls_route_add_del,                                                   \
-  "<label> <eos> via <addr | next-hop-table <n> | via-label <n> |\n"    \
-  "lookup-ip4-table <n> | lookup-in-ip6-table <n> |\n"                  \
-  "l2-input-on <intfc> | l2-input-on sw_if_index <id>>\n"               \
-  "[<intfc> | sw_if_index <id>] [resolve-attempts <n>] [weight <n>]\n"  \
-  "[drop] [local] [classify <n>] [out-label <n>] [multipath]\n"         \
-  "[count <n>] [del]")                                                  \
-_(mpls_ip_bind_unbind,                                                  \
-  "<label> <addr/len>")                                                 \
-_(mpls_tunnel_add_del,                                                  \
-  "[add | del <intfc | sw_if_index <id>>] via <addr | via-label <n>>\n" \
-  "[<intfc> | sw_if_index <id> | next-hop-table <id>]\n"                \
-  "[l2-only]  [out-label <n>]")                                         \
 _(sw_interface_set_unnumbered,                                          \
   "<intfc> | sw_if_index <id> unnum_if_index <id> [del]")               \
 _(create_vlan_subif, "<intfc> | sw_if_index <id> vlan <n>")             \
@@ -8996,9 +8370,6 @@ _(get_node_graph, " ")                                                  \
 _(sw_interface_clear_stats,"<intfc> | sw_if_index <nn>")                \
 _(ioam_enable, "[trace] [pow] [ppc <encap|decap>]")                     \
 _(ioam_disable, "")                                                     \
-_(mpls_tunnel_dump, "tunnel_index <tunnel-id>")                         \
-_(mpls_table_dump, "")                                                  \
-_(mpls_route_dump, "table-id <ID>")                                     \
 _(get_next_index, "node-name <node-name> next-node-name <node-name>")   \
 _(ip_source_and_port_range_check_add_del,                               \
   "<ip-addr>/<mask> range <nn>-<nn> vrf <id>")                          \

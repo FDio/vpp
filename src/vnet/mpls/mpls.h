@@ -60,6 +60,7 @@ typedef struct
   u8 *mpls_enabled_by_sw_if_index;
 
   u32 mpls_lookup_node_index;
+  u16 msg_id_base;
 } mpls_main_t;
 
 extern mpls_main_t mpls_main;
