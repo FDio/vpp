@@ -22,30 +22,12 @@
 #include <vnet/ip/punt.h>
 #include <vnet/ip/ip_types_api.h>
 
-#include <vnet/vnet_msg_enum.h>
+#include <vnet/format_fns.h>
+#include <vnet/ip/punt.api_enum.h>
+#include <vnet/ip/punt.api_types.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vnet/vnet_all_api_h.h>
-#undef vl_printfun
-
+#define REPLY_MSG_ID_BASE punt_main.msg_id_base
 #include <vlibapi/api_helper_macros.h>
-
-#define foreach_punt_api_msg                                            \
-_(SET_PUNT, set_punt)                                                   \
-_(PUNT_SOCKET_REGISTER, punt_socket_register)                           \
-_(PUNT_SOCKET_DEREGISTER, punt_socket_deregister)                       \
-_(PUNT_SOCKET_DUMP, punt_socket_dump)                                   \
-_(PUNT_REASON_DUMP, punt_reason_dump)
 
 static int
 vl_api_punt_type_decode (vl_api_punt_type_t in, punt_type_t * out)
@@ -267,7 +249,7 @@ vl_api_punt_socket_send_details (const punt_client_t * pc, void *args)
     return (WALK_STOP);
 
   clib_memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_PUNT_SOCKET_DETAILS);
+  mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_PUNT_SOCKET_DETAILS);
   mp->context = ctx->context;
   vl_api_punt_encode (&pc->reg, &mp->punt);
   memcpy (mp->pathname, pc->caddr.sun_path, sizeof (pc->caddr.sun_path));
@@ -349,7 +331,7 @@ punt_reason_dump_walk_cb (vlib_punt_reason_t id, const u8 * name, void *args)
     return (0);
 
   clib_memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_PUNT_REASON_DETAILS);
+  mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_PUNT_REASON_DETAILS);
 
   mp->context = ctx->context;
   mp->reason.id = clib_host_to_net_u32 (id);
@@ -380,37 +362,15 @@ vl_api_punt_reason_dump_t_handler (vl_api_punt_reason_dump_t * mp)
   vec_free (ctx.name);
 }
 
-#define vl_msg_name_crc_list
-#include <vnet/ip/punt.api.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_punt;
-#undef _
-}
+#include <vnet/ip/punt.api.c>
 
 static clib_error_t *
 punt_api_hookup (vlib_main_t * vm)
 {
-  api_main_t *am = vlibapi_get_main ();
-
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_punt_api_msg;
-#undef _
-
   /*
    * Set up the (msg_name, crc, message-id) table
    */
-  setup_message_id_table (am);
+  REPLY_MSG_ID_BASE = setup_message_id_table ();
 
   return 0;
 }
