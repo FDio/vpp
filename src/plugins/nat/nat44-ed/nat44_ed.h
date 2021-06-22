@@ -1152,9 +1152,14 @@ typedef enum
 } nat_translation_error_e;
 
 nat_translation_error_e
-nat_6t_flow_buf_translate (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
-			   nat_6t_flow_t *f, nat_protocol_t proto,
-			   int is_output_feature);
+nat_6t_flow_buf_translate_i2o (snat_main_t *sm, vlib_buffer_t *b,
+			       ip4_header_t *ip, nat_6t_flow_t *f,
+			       nat_protocol_t proto, int is_output_feature);
+
+nat_translation_error_e
+nat_6t_flow_buf_translate_o2i (snat_main_t *sm, vlib_buffer_t *b,
+			       ip4_header_t *ip, nat_6t_flow_t *f,
+			       nat_protocol_t proto, int is_output_feature);
 
 void nat_6t_l3_l4_csum_calc (nat_6t_flow_t *f);
 
