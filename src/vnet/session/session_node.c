@@ -387,15 +387,20 @@ app_mq_detach_handler (void *data)
 }
 
 static void
-session_mq_unlisten_handler (void *data)
+session_mq_unlisten_rpc (session_unlisten_msg_t *mp)
 {
-  session_unlisten_msg_t *mp = (session_unlisten_msg_t *) data;
+  vlib_main_t *vm = vlib_get_main ();
   vnet_unlisten_args_t _a, *a = &_a;
   app_worker_t *app_wrk;
+  session_handle_t sh;
   application_t *app;
+  u32 context;
   int rv;
 
-  app_check_thread_and_barrier (session_mq_unlisten_handler, mp);
+  sh = mp->handle;
+  context = mp->context;
+
+  vlib_worker_thread_barrier_sync (vm);
 
   app = application_lookup (mp->client_index);
   if (!app)
@@ -403,7 +408,7 @@ session_mq_unlisten_handler (void *data)
 
   clib_memset (a, 0, sizeof (*a));
   a->app_index = app->app_index;
-  a->handle = mp->handle;
+  a->handle = sh;
   a->wrk_map_index = mp->wrk_index;
   if ((rv = vnet_unlisten (a)))
     clib_warning ("unlisten returned: %d", rv);
@@ -412,7 +417,29 @@ session_mq_unlisten_handler (void *data)
   if (!app_wrk)
     return;
 
-  mq_send_unlisten_reply (app_wrk, mp->handle, mp->context, rv);
+  vlib_worker_thread_barrier_release (vm);
+
+  mq_send_unlisten_reply (app_wrk, sh, context, rv);
+  clib_mem_free (mp);
+}
+
+static void
+session_mq_unlisten_handler (session_worker_t *wrk, session_evt_elt_t *elt)
+{
+  u32 thread_index = wrk - session_main.wrk;
+  session_unlisten_msg_t *mp, *arg;
+
+  mp = session_evt_ctrl_data (wrk, elt);
+  if (PREDICT_FALSE (!thread_index))
+    {
+      session_mq_unlisten_rpc (mp);
+      return;
+    }
+
+  arg = clib_mem_alloc (sizeof (session_unlisten_msg_t));
+  clib_memcpy_fast (arg, mp, sizeof (*arg));
+
+  session_send_rpc_evt_to_thread_force (0, session_mq_unlisten_rpc, arg);
 }
 
 static void
@@ -1468,7 +1495,7 @@ session_event_dispatch_ctrl (session_worker_t * wrk, session_evt_elt_t * elt)
       session_mq_listen_uri_handler (session_evt_ctrl_data (wrk, elt));
       break;
     case SESSION_CTRL_EVT_UNLISTEN:
-      session_mq_unlisten_handler (session_evt_ctrl_data (wrk, elt));
+      session_mq_unlisten_handler (wrk, elt);
       break;
     case SESSION_CTRL_EVT_CONNECT:
       session_mq_connect_handler (wrk, elt);
