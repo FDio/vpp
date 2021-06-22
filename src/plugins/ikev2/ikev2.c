@@ -5208,7 +5208,8 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	vec_foreach (sai, to_be_deleted)
 	{
 	  sa = pool_elt_at_index (tkm->sas, sai[0]);
-	  u8 reinitiate = (sa->is_initiator && sa->profile_index != ~0);
+	  const u32 profile_index = sa->profile_index;
+	  const int reinitiate = (sa->is_initiator && profile_index != ~0);
 	  vec_foreach (c, sa->childs)
 	  {
 	    ikev2_delete_tunnel_interface (km->vnet_main, sa, c);
@@ -5220,7 +5221,7 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
 	  if (reinitiate)
 	    {
-	      p = pool_elt_at_index (km->profiles, sa->profile_index);
+	      p = pool_elt_at_index (km->profiles, profile_index);
 	      if (p)
 		{
 		  clib_error_t *e = ikev2_initiate_sa_init (vm, p->name);
