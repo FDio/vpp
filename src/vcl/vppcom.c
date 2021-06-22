@@ -226,6 +226,7 @@ vcl_send_session_connect (vcl_worker_t * wrk, vcl_session_t * s)
   clib_memcpy_fast (&mp->lcl_ip, &s->transport.lcl_ip, sizeof (mp->lcl_ip));
   mp->port = s->transport.rmt_port;
   mp->lcl_port = s->transport.lcl_port;
+  clib_warning ("lcl port %u", clib_net_to_host_u16(s->transport.lcl_port));
   mp->proto = s->session_type;
   mp->vrf = s->vrf;
   if (s->flags & VCL_SESSION_F_CONNECTED)
@@ -248,6 +249,7 @@ vcl_send_session_unlisten (vcl_worker_t * wrk, vcl_session_t * s)
   session_unlisten_msg_t *mp;
   svm_msg_q_t *mq;
 
+  clib_warning ("unlisten %u", clib_net_to_host_u16(s->transport.lcl_port));
   mq = vcl_worker_ctrl_mq (wrk);
   app_alloc_ctrl_evt_to_vpp (mq, app_evt, SESSION_CTRL_EVT_UNLISTEN);
   mp = (session_unlisten_msg_t *) app_evt->evt->data;
@@ -562,7 +564,7 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
   /* Add it to lookup table */
   vcl_session_table_add_vpp_handle (wrk, mp->handle, session_index);
 
-  VDBG (1, "session %u [0x%llx] connected! rx_fifo %p, refcnt %d, tx_fifo %p,"
+  VDBG (0, "session %u [0x%llx] connected! rx_fifo %p, refcnt %d, tx_fifo %p,"
 	" refcnt %d", session_index, mp->handle, session->rx_fifo,
 	session->rx_fifo->refcnt, session->tx_fifo, session->tx_fifo->refcnt);
 
