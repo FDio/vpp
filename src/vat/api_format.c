@@ -1903,7 +1903,6 @@ _(want_interface_events_reply)                          \
 _(sw_interface_clear_stats_reply)                       \
 _(ioam_enable_reply)                                    \
 _(ioam_disable_reply)                                   \
-_(sw_interface_span_enable_disable_reply)               \
 _(ip_source_and_port_range_check_add_del_reply)         \
 _(ip_source_and_port_range_check_interface_add_del_reply)\
 _(delete_subif_reply)                                   \
@@ -2026,8 +2025,6 @@ _(IOAM_DISABLE_REPLY, ioam_disable_reply)                     \
 _(MPLS_TUNNEL_DETAILS, mpls_tunnel_details)                             \
 _(MPLS_TABLE_DETAILS, mpls_table_details)                               \
 _(MPLS_ROUTE_DETAILS, mpls_route_details)                               \
-_(SW_INTERFACE_SPAN_ENABLE_DISABLE_REPLY, sw_interface_span_enable_disable_reply) \
-_(SW_INTERFACE_SPAN_DETAILS, sw_interface_span_details)                 \
 _(GET_NEXT_INDEX_REPLY, get_next_index_reply)                           \
 _(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL_REPLY,                         \
  ip_source_and_port_range_check_add_del_reply)                          \
@@ -7466,168 +7463,6 @@ api_ip_route_dump (vat_main_t * vam)
   return ret;
 }
 
-static int
-api_sw_interface_span_enable_disable (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_sw_interface_span_enable_disable_t *mp;
-  u32 src_sw_if_index = ~0;
-  u32 dst_sw_if_index = ~0;
-  u8 state = 3;
-  int ret;
-  u8 is_l2 = 0;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat
-	  (i, "src %U", api_unformat_sw_if_index, vam, &src_sw_if_index))
-	;
-      else if (unformat (i, "src_sw_if_index %d", &src_sw_if_index))
-	;
-      else
-	if (unformat
-	    (i, "dst %U", api_unformat_sw_if_index, vam, &dst_sw_if_index))
-	;
-      else if (unformat (i, "dst_sw_if_index %d", &dst_sw_if_index))
-	;
-      else if (unformat (i, "disable"))
-	state = 0;
-      else if (unformat (i, "rx"))
-	state = 1;
-      else if (unformat (i, "tx"))
-	state = 2;
-      else if (unformat (i, "both"))
-	state = 3;
-      else if (unformat (i, "l2"))
-	is_l2 = 1;
-      else
-	break;
-    }
-
-  M (SW_INTERFACE_SPAN_ENABLE_DISABLE, mp);
-
-  mp->sw_if_index_from = htonl (src_sw_if_index);
-  mp->sw_if_index_to = htonl (dst_sw_if_index);
-  mp->state = state;
-  mp->is_l2 = is_l2;
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static void
-vl_api_sw_interface_span_details_t_handler (vl_api_sw_interface_span_details_t
-					    * mp)
-{
-  vat_main_t *vam = &vat_main;
-  u8 *sw_if_from_name = 0;
-  u8 *sw_if_to_name = 0;
-  u32 sw_if_index_from = ntohl (mp->sw_if_index_from);
-  u32 sw_if_index_to = ntohl (mp->sw_if_index_to);
-  char *states[] = { "none", "rx", "tx", "both" };
-  hash_pair_t *p;
-
-  /* *INDENT-OFF* */
-  hash_foreach_pair (p, vam->sw_if_index_by_interface_name,
-  ({
-    if ((u32) p->value[0] == sw_if_index_from)
-      {
-        sw_if_from_name = (u8 *)(p->key);
-        if (sw_if_to_name)
-          break;
-      }
-    if ((u32) p->value[0] == sw_if_index_to)
-      {
-        sw_if_to_name = (u8 *)(p->key);
-        if (sw_if_from_name)
-          break;
-      }
-  }));
-  /* *INDENT-ON* */
-  print (vam->ofp, "%20s => %20s (%s) %s",
-	 sw_if_from_name, sw_if_to_name, states[mp->state],
-	 mp->is_l2 ? "l2" : "device");
-}
-
-static void
-  vl_api_sw_interface_span_details_t_handler_json
-  (vl_api_sw_interface_span_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t *node = NULL;
-  u8 *sw_if_from_name = 0;
-  u8 *sw_if_to_name = 0;
-  u32 sw_if_index_from = ntohl (mp->sw_if_index_from);
-  u32 sw_if_index_to = ntohl (mp->sw_if_index_to);
-  hash_pair_t *p;
-
-  /* *INDENT-OFF* */
-  hash_foreach_pair (p, vam->sw_if_index_by_interface_name,
-  ({
-    if ((u32) p->value[0] == sw_if_index_from)
-      {
-        sw_if_from_name = (u8 *)(p->key);
-        if (sw_if_to_name)
-          break;
-      }
-    if ((u32) p->value[0] == sw_if_index_to)
-      {
-        sw_if_to_name = (u8 *)(p->key);
-        if (sw_if_from_name)
-          break;
-      }
-  }));
-  /* *INDENT-ON* */
-
-  if (VAT_JSON_ARRAY != vam->json_tree.type)
-    {
-      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
-      vat_json_init_array (&vam->json_tree);
-    }
-  node = vat_json_array_add (&vam->json_tree);
-
-  vat_json_init_object (node);
-  vat_json_object_add_uint (node, "src-if-index", sw_if_index_from);
-  vat_json_object_add_string_copy (node, "src-if-name", sw_if_from_name);
-  vat_json_object_add_uint (node, "dst-if-index", sw_if_index_to);
-  if (0 != sw_if_to_name)
-    {
-      vat_json_object_add_string_copy (node, "dst-if-name", sw_if_to_name);
-    }
-  vat_json_object_add_uint (node, "state", mp->state);
-  vat_json_object_add_uint (node, "is-l2", mp->is_l2);
-}
-
-static int
-api_sw_interface_span_dump (vat_main_t * vam)
-{
-  unformat_input_t *input = vam->input;
-  vl_api_sw_interface_span_dump_t *mp;
-  vl_api_control_ping_t *mp_ping;
-  u8 is_l2 = 0;
-  int ret;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "l2"))
-	is_l2 = 1;
-      else
-	break;
-    }
-
-  M (SW_INTERFACE_SPAN_DUMP, mp);
-  mp->is_l2 = is_l2;
-  S (mp);
-
-  /* Use a control ping for synchronization */
-  MPING (CONTROL_PING, mp_ping);
-  S (mp_ping);
-
-  W (ret);
-  return ret;
-}
-
 int
 api_ip_source_and_port_range_check_add_del (vat_main_t * vam)
 {
@@ -9164,8 +8999,6 @@ _(ioam_disable, "")                                                     \
 _(mpls_tunnel_dump, "tunnel_index <tunnel-id>")                         \
 _(mpls_table_dump, "")                                                  \
 _(mpls_route_dump, "table-id <ID>")                                     \
-_(sw_interface_span_enable_disable, "[l2] [src <intfc> | src_sw_if_index <id>] [disable | [[dst <intfc> | dst_sw_if_index <id>] [both|rx|tx]]]") \
-_(sw_interface_span_dump, "[l2]")                                           \
 _(get_next_index, "node-name <node-name> next-node-name <node-name>")   \
 _(ip_source_and_port_range_check_add_del,                               \
   "<ip-addr>/<mask> range <nn>-<nn> vrf <id>")                          \

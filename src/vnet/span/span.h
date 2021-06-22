@@ -53,6 +53,8 @@ typedef struct
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
+
+  u16 msg_id_base;
 } span_main_t;
 
 extern span_main_t span_main;
