@@ -29,51 +29,16 @@
 #include <vnet/fib/fib.h>
 #include <vnet/ipip/ipip.h>
 #include <vnet/tunnel/tunnel_types_api.h>
-
-#include <vnet/vnet_msg_enum.h>
-
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/ipsec_tun.h>
 #include <vnet/ipsec/ipsec_itf.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
+#include <vnet/format_fns.h>
+#include <vnet/ipsec/ipsec.api_enum.h>
+#include <vnet/ipsec/ipsec.api_types.h>
 
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vnet/vnet_all_api_h.h>
-#undef vl_printfun
-
+#define REPLY_MSG_ID_BASE ipsec_main.msg_id_base
 #include <vlibapi/api_helper_macros.h>
-
-#define foreach_vpe_api_msg                                                   \
-  _ (IPSEC_SPD_ADD_DEL, ipsec_spd_add_del)                                    \
-  _ (IPSEC_INTERFACE_ADD_DEL_SPD, ipsec_interface_add_del_spd)                \
-  _ (IPSEC_SPD_ENTRY_ADD_DEL, ipsec_spd_entry_add_del)                        \
-  _ (IPSEC_SAD_ENTRY_ADD_DEL, ipsec_sad_entry_add_del)                        \
-  _ (IPSEC_SAD_ENTRY_ADD_DEL_V2, ipsec_sad_entry_add_del_v2)                  \
-  _ (IPSEC_SAD_ENTRY_ADD_DEL_V3, ipsec_sad_entry_add_del_v3)                  \
-  _ (IPSEC_SA_DUMP, ipsec_sa_dump)                                            \
-  _ (IPSEC_SA_V2_DUMP, ipsec_sa_v2_dump)                                      \
-  _ (IPSEC_SA_V3_DUMP, ipsec_sa_v3_dump)                                      \
-  _ (IPSEC_SPDS_DUMP, ipsec_spds_dump)                                        \
-  _ (IPSEC_SPD_DUMP, ipsec_spd_dump)                                          \
-  _ (IPSEC_SPD_INTERFACE_DUMP, ipsec_spd_interface_dump)                      \
-  _ (IPSEC_ITF_CREATE, ipsec_itf_create)                                      \
-  _ (IPSEC_ITF_DELETE, ipsec_itf_delete)                                      \
-  _ (IPSEC_ITF_DUMP, ipsec_itf_dump)                                          \
-  _ (IPSEC_SELECT_BACKEND, ipsec_select_backend)                              \
-  _ (IPSEC_BACKEND_DUMP, ipsec_backend_dump)                                  \
-  _ (IPSEC_TUNNEL_PROTECT_UPDATE, ipsec_tunnel_protect_update)                \
-  _ (IPSEC_TUNNEL_PROTECT_DEL, ipsec_tunnel_protect_del)                      \
-  _ (IPSEC_TUNNEL_PROTECT_DUMP, ipsec_tunnel_protect_dump)                    \
-  _ (IPSEC_SET_ASYNC_MODE, ipsec_set_async_mode)
 
 static void
 vl_api_ipsec_spd_add_del_t_handler (vl_api_ipsec_spd_add_del_t * mp)
@@ -174,7 +139,8 @@ send_ipsec_tunnel_protect_details (index_t itpi, void *arg)
 
   mp = vl_msg_api_alloc (sizeof (*mp) + (sizeof (u32) * itp->itp_n_sa_in));
   clib_memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_IPSEC_TUNNEL_PROTECT_DETAILS);
+  mp->_vl_msg_id =
+    ntohs (REPLY_MSG_ID_BASE + VL_API_IPSEC_TUNNEL_PROTECT_DETAILS);
   mp->context = ctx->context;
 
   mp->tun.sw_if_index = htonl (itp->itp_sw_if_index);
@@ -505,7 +471,7 @@ send_ipsec_spds_details (ipsec_spd_t * spd, vl_api_registration_t * reg,
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_IPSEC_SPDS_DETAILS);
+  mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_IPSEC_SPDS_DETAILS);
   mp->context = context;
 
   mp->spd_id = htonl (spd->id);
@@ -557,7 +523,7 @@ send_ipsec_spd_details (ipsec_policy_t * p, vl_api_registration_t * reg,
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_IPSEC_SPD_DETAILS);
+  mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_IPSEC_SPD_DETAILS);
   mp->context = context;
 
   mp->entry.spd_id = htonl (p->id);
@@ -625,7 +591,8 @@ send_ipsec_spd_interface_details (vl_api_registration_t * reg, u32 spd_index,
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_IPSEC_SPD_INTERFACE_DETAILS);
+  mp->_vl_msg_id =
+    ntohs (REPLY_MSG_ID_BASE + VL_API_IPSEC_SPD_INTERFACE_DETAILS);
   mp->context = context;
 
   mp->spd_index = htonl (spd_index);
@@ -704,7 +671,7 @@ send_ipsec_itf_details (ipsec_itf_t *itf, void *arg)
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_IPSEC_ITF_DETAILS);
+  mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_IPSEC_ITF_DETAILS);
   mp->context = ctx->context;
 
   mp->itf.mode = tunnel_mode_encode (itf->ii_mode);
@@ -773,7 +740,7 @@ send_ipsec_sa_details (ipsec_sa_t * sa, void *arg)
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_IPSEC_SA_DETAILS);
+  mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_IPSEC_SA_DETAILS);
   mp->context = ctx->context;
 
   mp->entry.sad_id = htonl (sa->id);
@@ -856,7 +823,7 @@ send_ipsec_sa_v2_details (ipsec_sa_t * sa, void *arg)
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_IPSEC_SA_V2_DETAILS);
+  mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_IPSEC_SA_V2_DETAILS);
   mp->context = ctx->context;
 
   mp->entry.sad_id = htonl (sa->id);
@@ -943,7 +910,7 @@ send_ipsec_sa_v3_details (ipsec_sa_t *sa, void *arg)
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_IPSEC_SA_V3_DETAILS);
+  mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_IPSEC_SA_V3_DETAILS);
   mp->context = ctx->context;
 
   mp->entry.sad_id = htonl (sa->id);
@@ -1036,7 +1003,7 @@ vl_api_ipsec_backend_dump_t_handler (vl_api_ipsec_backend_dump_t * mp)
   pool_foreach (ab, im->ah_backends) {
     vl_api_ipsec_backend_details_t *mp = vl_msg_api_alloc (sizeof (*mp));
     clib_memset (mp, 0, sizeof (*mp));
-    mp->_vl_msg_id = ntohs (VL_API_IPSEC_BACKEND_DETAILS);
+    mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_IPSEC_BACKEND_DETAILS);
     mp->context = context;
     snprintf ((char *)mp->name, sizeof (mp->name), "%.*s", vec_len (ab->name),
               ab->name);
@@ -1048,7 +1015,7 @@ vl_api_ipsec_backend_dump_t_handler (vl_api_ipsec_backend_dump_t * mp)
   pool_foreach (eb, im->esp_backends) {
     vl_api_ipsec_backend_details_t *mp = vl_msg_api_alloc (sizeof (*mp));
     clib_memset (mp, 0, sizeof (*mp));
-    mp->_vl_msg_id = ntohs (VL_API_IPSEC_BACKEND_DETAILS);
+    mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_IPSEC_BACKEND_DETAILS);
     mp->context = context;
     snprintf ((char *)mp->name, sizeof (mp->name), "%.*s", vec_len (eb->name),
               eb->name);
@@ -1105,44 +1072,14 @@ vl_api_ipsec_set_async_mode_t_handler (vl_api_ipsec_set_async_mode_t * mp)
   REPLY_MACRO (VL_API_IPSEC_SET_ASYNC_MODE_REPLY);
 }
 
-/*
- * ipsec_api_hookup
- * Add vpe's API message handlers to the table.
- * vlib has already mapped shared memory and
- * added the client registration handlers.
- * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
- */
-#define vl_msg_name_crc_list
-#include <vnet/vnet_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_ipsec;
-#undef _
-}
-
+#include <vnet/ipsec/ipsec.api.c>
 static clib_error_t *
 ipsec_api_hookup (vlib_main_t * vm)
 {
-  api_main_t *am = vlibapi_get_main ();
-
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_api_msg;
-#undef _
-
   /*
    * Set up the (msg_name, crc, message-id) table
    */
-  setup_message_id_table (am);
+  REPLY_MSG_ID_BASE = setup_message_id_table ();
 
   return 0;
 }
