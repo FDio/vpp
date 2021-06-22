@@ -309,6 +309,7 @@ typedef struct
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
+  u16 msg_id_base;
 } ip6_sr_main_t;
 
 extern ip6_sr_main_t sr_main;
