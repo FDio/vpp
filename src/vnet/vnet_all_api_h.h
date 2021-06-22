@@ -40,7 +40,6 @@
 #include <vnet/session/session.api.h>
 #include <vnet/mpls/mpls.api.h>
 #include <vnet/srmpls/sr_mpls.api.h>
-#include <vnet/tcp/tcp.api.h>
 #include <vnet/syslog/syslog.api.h>
 #include <vnet/devices/virtio/virtio.api.h>
 

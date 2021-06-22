@@ -1911,7 +1911,6 @@ _(l2_interface_pbb_tag_rewrite_reply)                   \
 _(sw_interface_tag_add_del_reply)			\
 _(sw_interface_add_del_mac_address_reply)		\
 _(hw_interface_set_mtu_reply)                           \
-_(tcp_configure_src_addresses_reply)			\
 _(session_rule_add_del_reply)				\
 _(ip_container_proxy_add_del_reply)                     \
 
@@ -2043,7 +2042,6 @@ _(SW_INTERFACE_ADD_DEL_MAC_ADDRESS_REPLY, sw_interface_add_del_mac_address_reply
 _(L2_XCONNECT_DETAILS, l2_xconnect_details)                             \
 _(HW_INTERFACE_SET_MTU_REPLY, hw_interface_set_mtu_reply)               \
 _(SW_INTERFACE_GET_TABLE_REPLY, sw_interface_get_table_reply)           \
-_(TCP_CONFIGURE_SRC_ADDRESSES_REPLY, tcp_configure_src_addresses_reply)	\
 _(APP_NAMESPACE_ADD_DEL_REPLY, app_namespace_add_del_reply)		\
 _(SESSION_RULE_ADD_DEL_REPLY, session_rule_add_del_reply)		\
 _(SESSION_RULES_DETAILS, session_rules_details)				\
@@ -8124,52 +8122,6 @@ api_hw_interface_set_mtu (vat_main_t * vam)
   return ret;
 }
 
-static int
-api_tcp_configure_src_addresses (vat_main_t * vam)
-{
-  vl_api_tcp_configure_src_addresses_t *mp;
-  unformat_input_t *i = vam->input;
-  vl_api_address_t first, last;
-  u8 range_set = 0;
-  u32 vrf_id = 0;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "%U - %U",
-		    unformat_vl_api_address, &first,
-		    unformat_vl_api_address, &last))
-	{
-	  if (range_set)
-	    {
-	      errmsg ("one range per message (range already set)");
-	      return -99;
-	    }
-	  range_set = 1;
-	}
-      else if (unformat (i, "vrf %d", &vrf_id))
-	;
-      else
-	break;
-    }
-
-  if (range_set == 0)
-    {
-      errmsg ("address range not set");
-      return -99;
-    }
-
-  M (TCP_CONFIGURE_SRC_ADDRESSES, mp);
-
-  mp->vrf_id = ntohl (vrf_id);
-  clib_memcpy (&mp->first_address, &first, sizeof (first));
-  clib_memcpy (&mp->last_address, &last, sizeof (last));
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
 static void vl_api_app_namespace_add_del_reply_t_handler
   (vl_api_app_namespace_add_del_reply_t * mp)
 {
@@ -9236,7 +9188,6 @@ _(sw_interface_add_del_mac_address, "<intfc> | sw_if_index <nn> "	\
 _(l2_xconnect_dump, "")                                             	\
 _(hw_interface_set_mtu, "<intfc> | hw_if_index <nn> mtu <nn>")        \
 _(sw_interface_get_table, "<intfc> | sw_if_index <id> [ipv6]")          \
-_(tcp_configure_src_addresses, "<ip4|6>first-<ip4|6>last [vrf <id>]")	\
 _(sock_init_shm, "size <nnn>")						\
 _(app_namespace_add_del, "[add] id <ns-id> secret <nn> sw_if_index <nn>")\
 _(session_rule_add_del, "[add|del] proto <tcp/udp> <lcl-ip>/<plen> "	\

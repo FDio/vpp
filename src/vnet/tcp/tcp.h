@@ -256,6 +256,9 @@ typedef struct _tcp_main
 
   /** Protocol configuration */
   tcp_configuration_t cfg;
+
+  /** message ID base for API */
+  u16 msg_id_base;
 } tcp_main_t;
 
 extern tcp_main_t tcp_main;
