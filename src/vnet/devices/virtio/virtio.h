@@ -218,6 +218,7 @@ typedef struct
   vlib_log_class_t log_default;
 
   virtio_if_t *interfaces;
+  u16 msg_id_base;
 } virtio_main_t;
 
 extern virtio_main_t virtio_main;
