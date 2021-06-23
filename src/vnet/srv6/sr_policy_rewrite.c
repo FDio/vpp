@@ -1307,10 +1307,10 @@ sr_policy_rewrite_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    vlib_prefetch_buffer_header (p6, LOAD);
 	    vlib_prefetch_buffer_header (p7, LOAD);
 
-	    CLIB_PREFETCH (p4->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p5->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p6->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p7->data, CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (p4->data, 64, STORE);
+	    CLIB_PREFETCH (p5->data, 64, STORE);
+	    CLIB_PREFETCH (p6->data, 64, STORE);
+	    CLIB_PREFETCH (p7->data, 64, STORE);
 	  }
 
 	  to_next[0] = bi0 = from[0];
@@ -1600,10 +1600,10 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    vlib_prefetch_buffer_header (p6, LOAD);
 	    vlib_prefetch_buffer_header (p7, LOAD);
 
-	    CLIB_PREFETCH (p4->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p5->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p6->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p7->data, CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (p4->data, 64, STORE);
+	    CLIB_PREFETCH (p5->data, 64, STORE);
+	    CLIB_PREFETCH (p6->data, 64, STORE);
+	    CLIB_PREFETCH (p7->data, 64, STORE);
 	  }
 
 	  to_next[0] = bi0 = from[0];
@@ -1904,10 +1904,10 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    vlib_prefetch_buffer_header (p6, LOAD);
 	    vlib_prefetch_buffer_header (p7, LOAD);
 
-	    CLIB_PREFETCH (p4->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p5->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p6->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p7->data, CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (p4->data, 64, STORE);
+	    CLIB_PREFETCH (p5->data, 64, STORE);
+	    CLIB_PREFETCH (p6->data, 64, STORE);
+	    CLIB_PREFETCH (p7->data, 64, STORE);
 	  }
 
 	  to_next[0] = bi0 = from[0];
@@ -2300,10 +2300,10 @@ sr_policy_rewrite_insert (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    vlib_prefetch_buffer_header (p6, LOAD);
 	    vlib_prefetch_buffer_header (p7, LOAD);
 
-	    CLIB_PREFETCH (p4->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p5->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p6->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p7->data, CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (p4->data, 64, STORE);
+	    CLIB_PREFETCH (p5->data, 64, STORE);
+	    CLIB_PREFETCH (p6->data, 64, STORE);
+	    CLIB_PREFETCH (p7->data, 64, STORE);
 	  }
 
 	  to_next[0] = bi0 = from[0];
@@ -2722,10 +2722,10 @@ sr_policy_rewrite_b_insert (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    vlib_prefetch_buffer_header (p6, LOAD);
 	    vlib_prefetch_buffer_header (p7, LOAD);
 
-	    CLIB_PREFETCH (p4->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p5->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p6->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p7->data, CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (p4->data, 64, STORE);
+	    CLIB_PREFETCH (p5->data, 64, STORE);
+	    CLIB_PREFETCH (p6->data, 64, STORE);
+	    CLIB_PREFETCH (p7->data, 64, STORE);
 	  }
 
 	  to_next[0] = bi0 = from[0];
@@ -3165,10 +3165,10 @@ sr_policy_rewrite_b_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    vlib_prefetch_buffer_header (p6, LOAD);
 	    vlib_prefetch_buffer_header (p7, LOAD);
 
-	    CLIB_PREFETCH (p4->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p5->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p6->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p7->data, CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (p4->data, 64, STORE);
+	    CLIB_PREFETCH (p5->data, 64, STORE);
+	    CLIB_PREFETCH (p6->data, 64, STORE);
+	    CLIB_PREFETCH (p7->data, 64, STORE);
 	  }
 
 	  to_next[0] = bi0 = from[0];

@@ -377,8 +377,8 @@ lookup_dpo_ip4_inline (vlib_main_t * vm,
 		vlib_prefetch_buffer_header (p2, LOAD);
 		vlib_prefetch_buffer_header (p3, LOAD);
 
-		CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, STORE);
-		CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, STORE);
+		CLIB_PREFETCH (p2->data, 64, STORE);
+		CLIB_PREFETCH (p3->data, 64, STORE);
 	    }
 
 	    bi0 = from[0];
@@ -734,8 +734,8 @@ lookup_dpo_ip6_inline (vlib_main_t * vm,
 		vlib_prefetch_buffer_header (p2, LOAD);
 		vlib_prefetch_buffer_header (p3, LOAD);
 
-		CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, STORE);
-		CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, STORE);
+		CLIB_PREFETCH (p2->data, 64, STORE);
+		CLIB_PREFETCH (p3->data, 64, STORE);
 	    }
 
 	    bi0 = from[0];

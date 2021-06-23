@@ -93,8 +93,8 @@ nsim_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   while (n_tx_packets < n_burst && ep->tx_time <= now)
     {
       /* prefetch one line / 2 entries ahead */
-      if ((((uword) ep) & (CLIB_CACHE_LINE_BYTES - 1)) == 0)
-	CLIB_PREFETCH ((ep + 2), CLIB_CACHE_LINE_BYTES, LOAD);
+      if ((((uword) ep) & (64 - 1)) == 0)
+	CLIB_PREFETCH ((ep + 2), 64, LOAD);
 
       ep = wp->entries + wp->head;
       from[0] = ep->buffer_index;

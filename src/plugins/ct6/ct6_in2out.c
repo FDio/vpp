@@ -165,10 +165,10 @@ ct6_in2out_inline (vlib_main_t * vm,
 	  vlib_prefetch_buffer_header (b[5], STORE);
 	  vlib_prefetch_buffer_header (b[6], STORE);
 	  vlib_prefetch_buffer_header (b[7], STORE);
-	  CLIB_PREFETCH (b[4]->data, CLIB_CACHE_LINE_BYTES, STORE);
-	  CLIB_PREFETCH (b[5]->data, CLIB_CACHE_LINE_BYTES, STORE);
-	  CLIB_PREFETCH (b[6]->data, CLIB_CACHE_LINE_BYTES, STORE);
-	  CLIB_PREFETCH (b[7]->data, CLIB_CACHE_LINE_BYTES, STORE);
+	  CLIB_PREFETCH (b[4]->data, 64, STORE);
+	  CLIB_PREFETCH (b[5]->data, 64, STORE);
+	  CLIB_PREFETCH (b[6]->data, 64, STORE);
+	  CLIB_PREFETCH (b[7]->data, 64, STORE);
 	}
 
       /* $$$$ process 4x pkts right here */

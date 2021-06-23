@@ -468,8 +468,7 @@ static inline void BV (clib_bihash_prefetch_bucket)
   (BVT (clib_bihash) * h, u64 hash)
 {
   CLIB_PREFETCH (BV (clib_bihash_get_bucket) (h, hash),
-		 BIHASH_BUCKET_PREFETCH_CACHE_LINES * CLIB_CACHE_LINE_BYTES,
-		 LOAD);
+		 BIHASH_BUCKET_PREFETCH_CACHE_LINES * 64, LOAD);
 }
 
 static inline void BV (clib_bihash_prefetch_data)

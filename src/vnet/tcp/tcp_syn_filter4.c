@@ -135,10 +135,10 @@ VLIB_NODE_FN (syn_filter4_node) (vlib_main_t * vm,
 	    vlib_prefetch_buffer_header (p6, LOAD);
 	    vlib_prefetch_buffer_header (p7, LOAD);
 
-	    CLIB_PREFETCH (p4->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p5->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p6->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p7->data, CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (p4->data, 64, STORE);
+	    CLIB_PREFETCH (p5->data, 64, STORE);
+	    CLIB_PREFETCH (p6->data, 64, STORE);
+	    CLIB_PREFETCH (p7->data, 64, STORE);
 	  }
 
 	  /* speculatively enqueue b0 and b1 to the current next frame */

@@ -176,7 +176,7 @@ ip4_icmp_input (vlib_main_t * vm,
 	      vlib_prefetch_buffer_with_index (vm, from[2], LOAD);
 	      p0 = vlib_get_buffer (vm, from[1]);
 	      ip0 = vlib_buffer_get_current (p0);
-	      CLIB_PREFETCH (ip0, CLIB_CACHE_LINE_BYTES, LOAD);
+	      CLIB_PREFETCH (ip0, 64, LOAD);
 	    }
 
 	  bi0 = to_next[0] = from[0];

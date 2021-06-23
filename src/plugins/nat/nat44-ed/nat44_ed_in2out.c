@@ -1012,7 +1012,7 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t *vm,
 
 	  vlib_prefetch_buffer_header (p2, LOAD);
 
-	  CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (p2->data, 64, LOAD);
 	}
 
       if (is_output_feature)

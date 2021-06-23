@@ -1068,9 +1068,9 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  u8 *p;
 	  vlib_prefetch_buffer_header (b[2], LOAD);
 	  p = vlib_buffer_get_current (b[1]);
-	  CLIB_PREFETCH (p, CLIB_CACHE_LINE_BYTES, LOAD);
-	  p -= CLIB_CACHE_LINE_BYTES;
-	  CLIB_PREFETCH (p, CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (p, 64, LOAD);
+	  p -= 64;
+	  CLIB_PREFETCH (p, 64, LOAD);
 	}
 
       u32 n_bufs = vlib_buffer_chain_linearize (vm, b[0]);
@@ -1095,7 +1095,7 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  sa0 = ipsec_sa_get (current_sa_index);
 
 	  /* fetch the second cacheline ASAP */
-	  CLIB_PREFETCH (sa0->cacheline1, CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (sa0->cacheline1, 64, LOAD);
 	  cpd.icv_sz = sa0->integ_icv_size;
 	  cpd.iv_sz = sa0->crypto_iv_size;
 	  cpd.flags = sa0->flags;
@@ -1285,12 +1285,11 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  vlib_prefetch_buffer_header (b[1], LOAD);
 
 	  /* esp_footer_t */
-	  CLIB_PREFETCH (data + pd[1].current_length - pd[1].icv_sz - 2,
-			 CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (data + pd[1].current_length - pd[1].icv_sz - 2, 64,
+			 LOAD);
 
 	  /* packet headers */
-	  CLIB_PREFETCH (data - CLIB_CACHE_LINE_BYTES,
-			 CLIB_CACHE_LINE_BYTES * 2, LOAD);
+	  CLIB_PREFETCH (data - 64, 64 * 2, LOAD);
 	}
 
       /* save the sa_index as GRE_teb post_crypto changes L2 opaque */
