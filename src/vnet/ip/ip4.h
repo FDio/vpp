@@ -164,6 +164,8 @@ typedef struct ip4_main_t
 
     u8 pad[2];
   } host_config;
+
+  u16 msg_id_base;
 } ip4_main_t;
 
 #define ARP_THROTTLE_BITS	(512)
