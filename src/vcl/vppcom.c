@@ -3077,9 +3077,15 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	  s = vcl_session_get (wrk, sid);
 	  s->vep.ev.events = 0;
 	}
-      if (!(EPOLLET & session_events))
+      else if (!(EPOLLET & session_events))
 	{
-	  vec_add1 (wrk->ep_level_evts, sid);
+	  s = vcl_session_get (wrk, sid);
+	  if (!s->vep.is_lt_tracked)
+	    {
+	      validate2 (wrk, sid);
+	      vec_add1 (wrk->ep_level_evts, sid);
+	      s->vep.is_lt_tracked = 1;
+	    }
 	}
       *num_ev += 1;
     }
@@ -3206,12 +3212,31 @@ vcl_epoll_swap_lt_lists (vcl_worker_t *wrk)
 }
 
 static void
+validate (vcl_worker_t *wrk)
+{
+  u32 *sid;
+  vec_foreach (sid, wrk->ep_level_evts)
+    if (!vcl_session_get (wrk, sid[0])->vep.is_lt_tracked)
+      os_panic ();
+}
+
+static void
+validate2 (vcl_worker_t *wrk, u32 val)
+{
+  u32 *sid;
+  vec_foreach (sid, wrk->ep_level_evts)
+    if (sid[0] == val)
+      os_panic ();
+}
+
+static void
 vcl_epoll_wait_handle_lt (vcl_worker_t *wrk, struct epoll_event *events,
 			  int maxevents, u32 *n_evts)
 {
   u32 *sid, add_event = 0, *le = wrk->ep_level_evts_fl;
   vcl_session_t *s;
   u64 evt_data;
+  int rv;
 
   if (*n_evts >= maxevents)
     {
@@ -3220,21 +3245,33 @@ vcl_epoll_wait_handle_lt (vcl_worker_t *wrk, struct epoll_event *events,
       return;
     }
 
+  validate (wrk);
   vec_foreach (sid, le)
     {
       s = vcl_session_get (wrk, sid[0]);
       if (!s)
 	continue;
-      if ((s->vep.ev.events & EPOLLIN) && vcl_session_read_ready (s))
+      if (s->vep.ev.events == 0)
+	{
+	  s->vep.is_lt_tracked = 0;
+	  continue;
+	}
+      if ((s->vep.ev.events & EPOLLIN) && (rv = vcl_session_read_ready (s)))
 	{
 	  add_event = 1;
-	  events[*n_evts].events |= EPOLLIN;
+	  events[*n_evts].events |= rv > 0 ? EPOLLIN : EPOLLHUP | EPOLLRDHUP;
 	  evt_data = s->vep.ev.data.u64;
 	}
-      if ((s->vep.ev.events & EPOLLOUT) && vcl_session_write_ready (s))
+      if ((s->vep.ev.events & EPOLLOUT) && (rv = vcl_session_write_ready (s)))
 	{
 	  add_event = 1;
-	  events[*n_evts].events |= EPOLLOUT;
+	  events[*n_evts].events |= rv > 0 ? EPOLLOUT : EPOLLHUP | EPOLLRDHUP;
+	  evt_data = s->vep.ev.data.u64;
+	}
+      if (!add_event && s->session_state > VCL_STATE_READY)
+	{
+	  add_event = 1;
+	  events[*n_evts].events |= EPOLLHUP | EPOLLRDHUP;
 	  evt_data = s->vep.ev.data.u64;
 	}
       if (add_event)
@@ -3242,7 +3279,10 @@ vcl_epoll_wait_handle_lt (vcl_worker_t *wrk, struct epoll_event *events,
 	  events[*n_evts].data.u64 = evt_data;
 	  *n_evts += 1;
 	  add_event = 0;
-	  vec_add1 (wrk->ep_level_evts, sid[0]);
+	  if (EPOLLONESHOT & s->vep.ev.events)
+	    s->vep.ev.events = 0;
+	  else
+	   vec_add1 (wrk->ep_level_evts, sid[0]);
 	  if (*n_evts == maxevents)
 	    {
 	      u32 pos = (sid - le) + 1;
@@ -3250,7 +3290,12 @@ vcl_epoll_wait_handle_lt (vcl_worker_t *wrk, struct epoll_event *events,
 	      break;
 	    }
 	}
+      else
+	{
+	  s->vep.is_lt_tracked = 0;
+	}
     }
+  validate (wrk);
 
   vec_reset_length (wrk->ep_level_evts_fl);
 }
@@ -3316,6 +3361,7 @@ vppcom_epoll_wait (uint32_t vep_handle, struct epoll_event *events,
   if (PREDICT_FALSE (do_lt))
     vcl_epoll_wait_handle_lt (wrk, events, maxevents, &n_evts);
 
+  validate (wrk);
   return n_evts;
 }
 
