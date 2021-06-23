@@ -39,7 +39,6 @@
 #include <vnet/session/session.api.h>
 #include <vnet/mpls/mpls.api.h>
 #include <vnet/srmpls/sr_mpls.api.h>
-#include <vnet/devices/virtio/virtio.api.h>
 
 /*
  * fd.io coding-style-patch-verification: ON
