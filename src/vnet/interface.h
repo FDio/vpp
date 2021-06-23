@@ -44,6 +44,7 @@
 #include <vppinfra/pcap.h>
 #include <vnet/l3_types.h>
 #include <vppinfra/lock.h>
+#include <vnet/hash/hash.h>
 
 struct vnet_main_t;
 struct vnet_hw_interface_t;
@@ -226,6 +227,9 @@ typedef struct _vnet_device_class
 
   /* Transmit function candidate registration with priority */
   vlib_node_fn_registration_t *tx_fn_registrations;
+
+  /* Transmit hashing function */
+  // vnet_hash_func_t *tx_hash_function;
 
   /* Error strings indexed by error code for this node. */
   char **tx_function_error_strings;
@@ -462,6 +466,9 @@ typedef struct _vnet_hw_interface_class
      may want to be deleted. */
   void (*hw_class_change) (struct vnet_main_t * vnm, u32 hw_if_index,
 			   u32 old_class_index, u32 new_class_index);
+
+  /* called when hw interface is using transmit side packet steering */
+  void (*vnet_hash_func_t) (void **p, u32 *h, u32 n_packets);
 
   /* List of hw interface classes, built by constructors */
   struct _vnet_hw_interface_class *next_class_registration;
