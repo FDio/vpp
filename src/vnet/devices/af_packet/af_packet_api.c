@@ -36,33 +36,61 @@ static u16 msg_id_base;
 static void
 vl_api_af_packet_create_t_handler (vl_api_af_packet_create_t * mp)
 {
-  vlib_main_t *vm = vlib_get_main ();
+  af_packet_create_if_arg_t _arg, *arg = &_arg;
   vl_api_af_packet_create_reply_t *rmp;
   int rv = 0;
-  u8 *host_if_name = NULL;
-  u32 sw_if_index;
 
-  host_if_name = format (0, "%s", mp->host_if_name);
-  vec_add1 (host_if_name, 0);
+  clib_memset (arg, 0, sizeof (*arg));
 
-  rv = af_packet_create_if (vm, host_if_name,
-			    mp->use_random_hw_addr ? 0 : mp->hw_addr,
-			    &sw_if_index);
+  arg->host_if_name = format (0, "%s", mp->host_if_name);
+  vec_add1 (arg->host_if_name, 0);
 
-  vec_free (host_if_name);
+  arg->hw_addr = mp->use_random_hw_addr ? 0 : mp->hw_addr;
+  rv = af_packet_create_if (arg);
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_AF_PACKET_CREATE_REPLY,
-  ({
-    rmp->sw_if_index = clib_host_to_net_u32(sw_if_index);
-  }));
-  /* *INDENT-ON* */
+  vec_free (arg->host_if_name);
+
+  REPLY_MACRO2 (VL_API_AF_PACKET_CREATE_REPLY, ({
+		  rmp->sw_if_index = clib_host_to_net_u32 (arg->sw_if_index);
+		}));
+}
+
+static void
+vl_api_af_packet_create_v2_t_handler (vl_api_af_packet_create_v2_t *mp)
+{
+  af_packet_create_if_arg_t _arg, *arg = &_arg;
+  vl_api_af_packet_create_v2_reply_t *rmp;
+  int rv = 0;
+
+  clib_memset (arg, 0, sizeof (*arg));
+
+  arg->host_if_name = format (0, "%s", mp->host_if_name);
+  vec_add1 (arg->host_if_name, 0);
+
+  arg->rx_frame_size = clib_net_to_host_u32 (mp->rx_frame_size);
+  arg->tx_frame_size = clib_net_to_host_u32 (mp->tx_frame_size);
+  arg->rx_frames_per_block = clib_net_to_host_u32 (mp->rx_frames_per_block);
+  arg->tx_frames_per_block = clib_net_to_host_u32 (mp->tx_frames_per_block);
+  arg->hw_addr = mp->use_random_hw_addr ? 0 : mp->hw_addr;
+
+  if (mp->num_rx_queues > 1)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto out;
+    }
+
+  rv = af_packet_create_if (arg);
+
+out:
+  vec_free (arg->host_if_name);
+  REPLY_MACRO2 (VL_API_AF_PACKET_CREATE_V2_REPLY, ({
+		  rmp->sw_if_index = clib_host_to_net_u32 (arg->sw_if_index);
+		}));
 }
 
 static void
 vl_api_af_packet_delete_t_handler (vl_api_af_packet_delete_t * mp)
 {
-  vlib_main_t *vm = vlib_get_main ();
   vl_api_af_packet_delete_reply_t *rmp;
   int rv = 0;
   u8 *host_if_name = NULL;
@@ -70,7 +98,7 @@ vl_api_af_packet_delete_t_handler (vl_api_af_packet_delete_t * mp)
   host_if_name = format (0, "%s", mp->host_if_name);
   vec_add1 (host_if_name, 0);
 
-  rv = af_packet_delete_if (vm, host_if_name);
+  rv = af_packet_delete_if (host_if_name);
 
   vec_free (host_if_name);
 
@@ -81,11 +109,10 @@ static void
   vl_api_af_packet_set_l4_cksum_offload_t_handler
   (vl_api_af_packet_set_l4_cksum_offload_t * mp)
 {
-  vlib_main_t *vm = vlib_get_main ();
   vl_api_af_packet_delete_reply_t *rmp;
   int rv = 0;
 
-  rv = af_packet_set_l4_cksum_offload (vm, ntohl (mp->sw_if_index), mp->set);
+  rv = af_packet_set_l4_cksum_offload (ntohl (mp->sw_if_index), mp->set);
   REPLY_MACRO (VL_API_AF_PACKET_SET_L4_CKSUM_OFFLOAD_REPLY);
 }
 
