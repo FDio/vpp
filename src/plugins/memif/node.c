@@ -587,6 +587,7 @@ memif_device_input_zc_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (PREDICT_FALSE ((d0->flags & MEMIF_DESC_FLAG_NEXT) && n_slots))
 	{
 	  hb->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
+	  hb->total_length_not_including_first_buffer = 0;
 	next_slot:
 	  s0 = cur_slot & mask;
 	  d0 = &ring->desc[s0];
