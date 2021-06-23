@@ -1072,10 +1072,11 @@ segment_manager_format_sessions (segment_manager_t * sm, int verbose)
   if (!sm)
     {
       if (verbose)
-	vlib_cli_output (vm, "%-40s%-20s%-15s%-10s", "Connection", "App",
-			 "API Client", "SegManager");
+	vlib_cli_output (vm, "%-" SESSION_CLI_ID_LEN "s%-20s%-15s%-10s",
+			 "Connection", "App", "API Client", "SegManager");
       else
-	vlib_cli_output (vm, "%-40s%-20s", "Connection", "App");
+	vlib_cli_output (vm, "%-" SESSION_CLI_ID_LEN "s%-20s", "Connection",
+			 "App");
       return;
     }
 
@@ -1101,11 +1102,11 @@ segment_manager_format_sessions (segment_manager_t * sm, int verbose)
 	    str = format (0, "%U", format_session, session, verbose);
 
 	    if (verbose)
-	      s = format (s, "%-40v%-20v%-15u%-10u", str, app_name,
-			  app_wrk->api_client_index,
+	      s = format (s, "%-" SESSION_CLI_ID_LEN "v%-20v%-15u%-10u", str,
+			  app_name, app_wrk->api_client_index,
 			  app_wrk->connects_seg_manager);
 	    else
-	      s = format (s, "%-40v%-20v", str, app_name);
+	      s = format (s, "%-" SESSION_CLI_ID_LEN "v%-20v", str, app_name);
 
 	    vlib_cli_output (vm, "%v", s);
 	    vec_reset_length (s);
