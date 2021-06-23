@@ -387,7 +387,6 @@ VLIB_NODE_FN (af_packet_input_node) (vlib_main_t * vm,
   return n_rx_packets;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (af_packet_input_node) = {
   .name = "af-packet-input",
   .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
@@ -398,7 +397,6 @@ VLIB_REGISTER_NODE (af_packet_input_node) = {
   .n_errors = AF_PACKET_INPUT_N_ERROR,
   .error_strings = af_packet_input_error_strings,
 };
-/* *INDENT-ON* */
 
 
 /*
