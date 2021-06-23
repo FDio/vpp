@@ -74,25 +74,27 @@ format_af_packet_device (u8 * s, va_list * args)
   af_packet_main_t *apm = &af_packet_main;
   af_packet_if_t *apif = pool_elt_at_index (apm->interfaces, dev_instance);
   clib_spinlock_lock_if_init (&apif->lockp);
-  u32 block_size = apif->tx_req->tp_block_size;
-  u32 frame_size = apif->tx_req->tp_frame_size;
-  u32 frame_num = apif->tx_req->tp_frame_nr;
-  int block = 0;
-  u8 *block_start = apif->tx_ring + block * block_size;
   u32 tx_frame = apif->next_tx_frame;
   struct tpacket2_hdr *tph;
 
   s = format (s, "Linux PACKET socket interface\n");
-  s = format (s, "%Ublock:%d frame:%d\n", format_white_space, indent,
-	      block_size, frame_size);
+  s = format (s, "%UTX block size:%d nr:%d  TX frame size:%d nr:%d\n",
+	      format_white_space, indent, apif->tx_req->tp_block_size,
+	      apif->tx_req->tp_block_nr, apif->tx_req->tp_frame_size,
+	      apif->tx_req->tp_frame_nr);
+  s = format (s, "%URX block size:%d nr:%d  RX frame size:%d nr:%d\n",
+	      format_white_space, indent, apif->rx_req->tp_block_size,
+	      apif->rx_req->tp_block_nr, apif->rx_req->tp_frame_size,
+	      apif->rx_req->tp_frame_nr);
   s = format (s, "%Unext frame:%d\n", format_white_space, indent,
 	      apif->next_tx_frame);
 
   int n_send_req = 0, n_avail = 0, n_sending = 0, n_tot = 0, n_wrong = 0;
   do
     {
-      tph = (struct tpacket2_hdr *) (block_start + tx_frame * frame_size);
-      tx_frame = (tx_frame + 1) % frame_num;
+      tph = (struct tpacket2_hdr *) (apif->tx_ring +
+				     tx_frame * apif->tx_req->tp_frame_size);
+      tx_frame = (tx_frame + 1) % apif->tx_req->tp_frame_nr;
       if (tph->tp_status == 0)
 	n_avail++;
       else if (tph->tp_status & TP_STATUS_SEND_REQUEST)
@@ -371,7 +373,6 @@ error:
   return 0;			/* no error */
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (af_packet_device_class) = {
   .name = "af-packet",
   .format_device_name = format_af_packet_device_name,
@@ -385,7 +386,6 @@ VNET_DEVICE_CLASS (af_packet_device_class) = {
   .subif_add_del_function = af_packet_subif_add_del_function,
   .mac_addr_change_function = af_packet_set_mac_address_function,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON
