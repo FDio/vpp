@@ -1385,7 +1385,7 @@ format_ip4_session_lookup_kvp (u8 * s, va_list * args)
 		    key->proto, format_ip4_address, &key->src,
 		    clib_net_to_host_u16 (key->src_port), format_ip4_address,
 		    &key->dst, clib_net_to_host_u16 (key->dst_port));
-      s = format (s, "%-40v%-30v", str, app_name);
+      s = format (s, "%-" SESSION_CLI_ID_LEN "v%-30v", str, app_name);
     }
   else
     {
@@ -1424,7 +1424,8 @@ session_lookup_show_table_entries (vlib_main_t * vm, session_table_t * table,
     .is_local = is_local,
   };
   if (!is_local)
-    vlib_cli_output (vm, "%-40s%-30s", "Session", "Application");
+    vlib_cli_output (vm, "%-" SESSION_CLI_ID_LEN "s%-30s", "Session",
+		     "Application");
   else
     vlib_cli_output (vm, "%-30s%-30s", "Listener", "Application");
   switch (type)
