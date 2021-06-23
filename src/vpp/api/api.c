@@ -61,6 +61,7 @@
 #include <vpp/api/vpe_msg_enum.h>
 #include <vpp/api/types.h>
 #include <vnet/classify/classify.api_enum.h>
+#include <vnet/ip/ip.api_enum.h>
 
 #define vl_typedefs		/* define message structures */
 #include <vpp/api/vpe_all_api_h.h>
