@@ -117,6 +117,9 @@ class StatsClientTestCase(VppTestCase):
                     raise ValueError("Nodes counters are not up to date")
                 break
             except:
+                cls = self.__class__
+                
+                self.statistics = VPPStats(socketname=cls.get_stats_sock_path())
                 t, v, tb = sys.exc_info()
 
                 self.sleep(0.1)
