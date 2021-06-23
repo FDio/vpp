@@ -1478,110 +1478,6 @@ static void vl_api_bridge_flags_reply_t_handler_json
   vam->result_ready = 1;
 }
 
-static void
-vl_api_virtio_pci_create_reply_t_handler (vl_api_virtio_pci_create_reply_t *
-					  mp)
-{
-  vat_main_t *vam = &vat_main;
-  i32 retval = ntohl (mp->retval);
-  if (vam->async_mode)
-    {
-      vam->async_errors += (retval < 0);
-    }
-  else
-    {
-      vam->retval = retval;
-      vam->sw_if_index = ntohl (mp->sw_if_index);
-      vam->result_ready = 1;
-    }
-}
-
-static void vl_api_virtio_pci_create_reply_t_handler_json
-  (vl_api_virtio_pci_create_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t node;
-
-  vat_json_init_object (&node);
-  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
-  vat_json_object_add_uint (&node, "sw_if_index", ntohl (mp->sw_if_index));
-
-  vat_json_print (vam->ofp, &node);
-  vat_json_free (&node);
-
-  vam->retval = ntohl (mp->retval);
-  vam->result_ready = 1;
-
-}
-
-static void
-  vl_api_virtio_pci_create_v2_reply_t_handler
-  (vl_api_virtio_pci_create_v2_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  i32 retval = ntohl (mp->retval);
-  if (vam->async_mode)
-    {
-      vam->async_errors += (retval < 0);
-    }
-  else
-    {
-      vam->retval = retval;
-      vam->sw_if_index = ntohl (mp->sw_if_index);
-      vam->result_ready = 1;
-    }
-}
-
-static void vl_api_virtio_pci_create_v2_reply_t_handler_json
-  (vl_api_virtio_pci_create_v2_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t node;
-
-  vat_json_init_object (&node);
-  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
-  vat_json_object_add_uint (&node, "sw_if_index", ntohl (mp->sw_if_index));
-
-  vat_json_print (vam->ofp, &node);
-  vat_json_free (&node);
-
-  vam->retval = ntohl (mp->retval);
-  vam->result_ready = 1;
-}
-
-static void
-vl_api_virtio_pci_delete_reply_t_handler (vl_api_virtio_pci_delete_reply_t *
-					  mp)
-{
-  vat_main_t *vam = &vat_main;
-  i32 retval = ntohl (mp->retval);
-  if (vam->async_mode)
-    {
-      vam->async_errors += (retval < 0);
-    }
-  else
-    {
-      vam->retval = retval;
-      vam->result_ready = 1;
-    }
-}
-
-static void vl_api_virtio_pci_delete_reply_t_handler_json
-  (vl_api_virtio_pci_delete_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t node;
-
-  vat_json_init_object (&node);
-  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
-
-  vat_json_print (vam->ofp, &node);
-  vat_json_free (&node);
-
-  vam->retval = ntohl (mp->retval);
-  vam->result_ready = 1;
-}
-
 static void vl_api_mpls_tunnel_add_del_reply_t_handler
   (vl_api_mpls_tunnel_add_del_reply_t * mp)
 {
@@ -1978,10 +1874,6 @@ _(L2FIB_FLUSH_INT_REPLY, l2fib_flush_int_reply)                         \
 _(L2FIB_FLUSH_BD_REPLY, l2fib_flush_bd_reply)                           \
 _(L2_FLAGS_REPLY, l2_flags_reply)                                       \
 _(BRIDGE_FLAGS_REPLY, bridge_flags_reply)                               \
-_(VIRTIO_PCI_CREATE_REPLY, virtio_pci_create_reply)			\
-_(VIRTIO_PCI_CREATE_V2_REPLY, virtio_pci_create_v2_reply)		\
-_(VIRTIO_PCI_DELETE_REPLY, virtio_pci_delete_reply)			\
-_(SW_INTERFACE_VIRTIO_PCI_DETAILS, sw_interface_virtio_pci_details)     \
 _(IP_ROUTE_ADD_DEL_REPLY, ip_route_add_del_reply)			\
 _(IP_TABLE_ADD_DEL_REPLY, ip_table_add_del_reply)			\
 _(IP_TABLE_REPLACE_BEGIN_REPLY, ip_table_replace_begin_reply)           \
@@ -3793,116 +3685,6 @@ unformat_vlib_pci_addr (unformat_input_t * input, va_list * args)
   addr->function = x[3];
 
   return 1;
-}
-
-static int
-api_virtio_pci_create_v2 (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_virtio_pci_create_v2_t *mp;
-  u8 mac_address[6];
-  u8 random_mac = 1;
-  u32 pci_addr = 0;
-  u64 features = (u64) ~ (0ULL);
-  u32 virtio_flags = 0;
-  int ret;
-
-  clib_memset (mac_address, 0, sizeof (mac_address));
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "hw-addr %U", unformat_ethernet_address, mac_address))
-	{
-	  random_mac = 0;
-	}
-      else if (unformat (i, "pci-addr %U", unformat_vlib_pci_addr, &pci_addr))
-	;
-      else if (unformat (i, "features 0x%llx", &features))
-	;
-      else if (unformat (i, "gso-enabled"))
-	virtio_flags |= VIRTIO_API_FLAG_GSO;
-      else if (unformat (i, "csum-offload-enabled"))
-	virtio_flags |= VIRTIO_API_FLAG_CSUM_OFFLOAD;
-      else if (unformat (i, "gro-coalesce"))
-	virtio_flags |= VIRTIO_API_FLAG_GRO_COALESCE;
-      else if (unformat (i, "packed"))
-	virtio_flags |= VIRTIO_API_FLAG_PACKED;
-      else if (unformat (i, "in-order"))
-	virtio_flags |= VIRTIO_API_FLAG_IN_ORDER;
-      else if (unformat (i, "buffering"))
-	virtio_flags |= VIRTIO_API_FLAG_BUFFERING;
-      else
-	break;
-    }
-
-  if (pci_addr == 0)
-    {
-      errmsg ("pci address must be non zero. ");
-      return -99;
-    }
-
-  /* Construct the API message */
-  M (VIRTIO_PCI_CREATE_V2, mp);
-
-  mp->use_random_mac = random_mac;
-
-  mp->pci_addr.domain = htons (((vlib_pci_addr_t) pci_addr).domain);
-  mp->pci_addr.bus = ((vlib_pci_addr_t) pci_addr).bus;
-  mp->pci_addr.slot = ((vlib_pci_addr_t) pci_addr).slot;
-  mp->pci_addr.function = ((vlib_pci_addr_t) pci_addr).function;
-
-  mp->features = clib_host_to_net_u64 (features);
-  mp->virtio_flags = clib_host_to_net_u32 (virtio_flags);
-
-  if (random_mac == 0)
-    clib_memcpy (mp->mac_address, mac_address, 6);
-
-  /* send it... */
-  S (mp);
-
-  /* Wait for a reply... */
-  W (ret);
-  return ret;
-}
-
-static int
-api_virtio_pci_delete (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_virtio_pci_delete_t *mp;
-  u32 sw_if_index = ~0;
-  u8 sw_if_index_set = 0;
-  int ret;
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "sw_if_index %d", &sw_if_index))
-	sw_if_index_set = 1;
-      else
-	break;
-    }
-
-  if (sw_if_index_set == 0)
-    {
-      errmsg ("missing vpp interface name. ");
-      return -99;
-    }
-
-  /* Construct the API message */
-  M (VIRTIO_PCI_DELETE, mp);
-
-  mp->sw_if_index = htonl (sw_if_index);
-
-  /* send it... */
-  S (mp);
-
-  /* Wait for a reply... */
-  W (ret);
-  return ret;
 }
 
 static int
@@ -6368,96 +6150,6 @@ api_add_node_next (vat_main_t * vam)
   vec_free (next);
 
   S (mp);
-  W (ret);
-  return ret;
-}
-
-static void vl_api_sw_interface_virtio_pci_details_t_handler
-  (vl_api_sw_interface_virtio_pci_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-
-  typedef union
-  {
-    struct
-    {
-      u16 domain;
-      u8 bus;
-      u8 slot:5;
-      u8 function:3;
-    };
-    u32 as_u32;
-  } pci_addr_t;
-  pci_addr_t addr;
-
-  addr.domain = ntohs (mp->pci_addr.domain);
-  addr.bus = mp->pci_addr.bus;
-  addr.slot = mp->pci_addr.slot;
-  addr.function = mp->pci_addr.function;
-
-  u8 *pci_addr = format (0, "%04x:%02x:%02x.%x", addr.domain, addr.bus,
-			 addr.slot, addr.function);
-
-  print (vam->ofp,
-	 "\n%-12s %-12d %-12d %-12d %-17U 0x%-08llx",
-	 pci_addr, ntohl (mp->sw_if_index),
-	 ntohs (mp->rx_ring_sz), ntohs (mp->tx_ring_sz),
-	 format_ethernet_address, mp->mac_addr,
-	 clib_net_to_host_u64 (mp->features));
-  vec_free (pci_addr);
-}
-
-static void vl_api_sw_interface_virtio_pci_details_t_handler_json
-  (vl_api_sw_interface_virtio_pci_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t *node = NULL;
-  vlib_pci_addr_t pci_addr;
-
-  if (VAT_JSON_ARRAY != vam->json_tree.type)
-    {
-      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
-      vat_json_init_array (&vam->json_tree);
-    }
-  node = vat_json_array_add (&vam->json_tree);
-
-  pci_addr.domain = ntohs (mp->pci_addr.domain);
-  pci_addr.bus = mp->pci_addr.bus;
-  pci_addr.slot = mp->pci_addr.slot;
-  pci_addr.function = mp->pci_addr.function;
-
-  vat_json_init_object (node);
-  vat_json_object_add_uint (node, "pci-addr", pci_addr.as_u32);
-  vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
-  vat_json_object_add_uint (node, "rx_ring_sz", ntohs (mp->rx_ring_sz));
-  vat_json_object_add_uint (node, "tx_ring_sz", ntohs (mp->tx_ring_sz));
-  vat_json_object_add_uint (node, "features",
-			    clib_net_to_host_u64 (mp->features));
-  vat_json_object_add_string_copy (node, "mac_addr",
-				   format (0, "%U", format_ethernet_address,
-					   &mp->mac_addr));
-}
-
-static int
-api_sw_interface_virtio_pci_dump (vat_main_t * vam)
-{
-  vl_api_sw_interface_virtio_pci_dump_t *mp;
-  vl_api_control_ping_t *mp_ping;
-  int ret;
-
-  print (vam->ofp,
-	 "\n%-12s %-12s %-12s %-12s %-17s %-08s",
-	 "pci_addr", "sw_if_index", "rx_ring_sz", "tx_ring_sz",
-	 "mac_addr", "features");
-
-  /* Get list of tap interfaces */
-  M (SW_INTERFACE_VIRTIO_PCI_DUMP, mp);
-  S (mp);
-
-  /* Use a control ping for synchronization */
-  MPING (CONTROL_PING, mp_ping);
-  S (mp_ping);
-
   W (ret);
   return ret;
 }
@@ -9088,11 +8780,6 @@ _(l2_flags,                                                             \
   "sw_if <intfc> | sw_if_index <id> [learn] [forward] [uu-flood] [flood] [arp-term] [disable]\n") \
 _(bridge_flags,                                                         \
   "bd_id <bridge-domain-id> [learn] [forward] [uu-flood] [flood] [arp-term] [disable]\n") \
-_(virtio_pci_create_v2,                                                    \
-  "pci-addr <pci-address> [use_random_mac | hw-addr <mac-addr>] [features <hex-value>] [gso-enabled [gro-coalesce] | csum-offload-enabled] [packed] [in-order] [buffering]") \
-_(virtio_pci_delete,                                                    \
-  "<vpp-if-name> | sw_if_index <id>")                                   \
-_(sw_interface_virtio_pci_dump, "")                                     \
 _(ip_table_add_del,                                                     \
   "table <n> [ipv6] [add | del]\n")                                     \
 _(ip_route_add_del,                                                     \
