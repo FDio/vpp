@@ -509,7 +509,7 @@ vlib_buffer_pool_create (vlib_main_t * vm, char *name, u32 data_size,
   if (vec_len (bm->buffer_pools) >= 255)
     return ~0;
 
-  vec_add2_aligned (bm->buffer_pools, bp, 1, CLIB_LOG2_CACHE_LINE_BYTES);
+  vec_add2_aligned (bm->buffer_pools, bp, 1, CLIB_CACHE_LINE_BYTES);
 
   if (bm->buffer_mem_size == 0)
     {
