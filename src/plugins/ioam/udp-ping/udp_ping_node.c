@@ -668,8 +668,8 @@ udp_ping_local_node_fn (vlib_main_t * vm,
 	    vlib_prefetch_buffer_header (p3, LOAD);
 
 	    /* Prefetch 3 cache lines as we need to look deep into packet */
-	    CLIB_PREFETCH (p2->data, 3 * CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p3->data, 3 * CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (p2->data, 3 * 64, STORE);
+	    CLIB_PREFETCH (p3->data, 3 * 64, STORE);
 	  }
 
 	  pi0 = to_next[0] = from[0];

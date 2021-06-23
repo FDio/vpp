@@ -370,7 +370,7 @@ crypto_sw_scheduler_dequeue_aead (vlib_main_t * vm,
       while (n_elts--)
 	{
 	  if (n_elts > 1)
-	    CLIB_PREFETCH (fe + 1, CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (fe + 1, 64, LOAD);
 
 	  crypto_sw_scheduler_convert_aead (vm, ptd, fe, fe - f->elts, bi[0],
 					    sync_op_id, aad_len, tag_len);
@@ -438,7 +438,7 @@ crypto_sw_scheduler_dequeue_link (vlib_main_t * vm,
       while (n_elts--)
 	{
 	  if (n_elts > 1)
-	    CLIB_PREFETCH (fe + 1, CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (fe + 1, 64, LOAD);
 
 	  crypto_sw_scheduler_convert_link_crypto (vm, ptd,
 						   cm->keys + fe->key_index,

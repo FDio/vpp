@@ -232,8 +232,8 @@ vxlan_gbp_input (vlib_main_t * vm,
 	    vlib_prefetch_buffer_header (p2, LOAD);
 	    vlib_prefetch_buffer_header (p3, LOAD);
 
-	    CLIB_PREFETCH (p2->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
-	    CLIB_PREFETCH (p3->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (p2->data, 2 * 64, LOAD);
+	    CLIB_PREFETCH (p3->data, 2 * 64, LOAD);
 	  }
 
 	  u32 bi0 = to_next[0] = from[0];
@@ -626,8 +626,8 @@ ip_vxlan_gbp_bypass_inline (vlib_main_t * vm,
 	    vlib_prefetch_buffer_header (p2, LOAD);
 	    vlib_prefetch_buffer_header (p3, LOAD);
 
-	    CLIB_PREFETCH (p2->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
-	    CLIB_PREFETCH (p3->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (p2->data, 2 * 64, LOAD);
+	    CLIB_PREFETCH (p3->data, 2 * 64, LOAD);
 	  }
 
 	  bi0 = to_next[0] = from[0];

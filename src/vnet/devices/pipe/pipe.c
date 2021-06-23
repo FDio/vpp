@@ -324,8 +324,8 @@ pipe_rx (vlib_main_t * vm,
 	    p3 = vlib_get_buffer (vm, from[3]);
 	    vlib_prefetch_buffer_header (p2, STORE);
 	    vlib_prefetch_buffer_header (p3, STORE);
-	    CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, LOAD);
-	    CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (p2->data, 64, LOAD);
+	    CLIB_PREFETCH (p3->data, 64, LOAD);
 	  }
 
 	  bi0 = from[0];

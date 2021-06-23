@@ -86,10 +86,10 @@ dpdk_process_subseq_segs (vlib_main_t * vm, vlib_buffer_t * b,
 static_always_inline void
 dpdk_prefetch_mbuf_x4 (struct rte_mbuf *mb[])
 {
-  CLIB_PREFETCH (mb[0], CLIB_CACHE_LINE_BYTES, LOAD);
-  CLIB_PREFETCH (mb[1], CLIB_CACHE_LINE_BYTES, LOAD);
-  CLIB_PREFETCH (mb[2], CLIB_CACHE_LINE_BYTES, LOAD);
-  CLIB_PREFETCH (mb[3], CLIB_CACHE_LINE_BYTES, LOAD);
+  CLIB_PREFETCH (mb[0], 64, LOAD);
+  CLIB_PREFETCH (mb[1], 64, LOAD);
+  CLIB_PREFETCH (mb[2], 64, LOAD);
+  CLIB_PREFETCH (mb[3], 64, LOAD);
 }
 
 static_always_inline void
@@ -97,13 +97,13 @@ dpdk_prefetch_buffer_x4 (struct rte_mbuf *mb[])
 {
   vlib_buffer_t *b;
   b = vlib_buffer_from_rte_mbuf (mb[0]);
-  CLIB_PREFETCH (b, CLIB_CACHE_LINE_BYTES, LOAD);
+  CLIB_PREFETCH (b, 64, LOAD);
   b = vlib_buffer_from_rte_mbuf (mb[1]);
-  CLIB_PREFETCH (b, CLIB_CACHE_LINE_BYTES, LOAD);
+  CLIB_PREFETCH (b, 64, LOAD);
   b = vlib_buffer_from_rte_mbuf (mb[2]);
-  CLIB_PREFETCH (b, CLIB_CACHE_LINE_BYTES, LOAD);
+  CLIB_PREFETCH (b, 64, LOAD);
   b = vlib_buffer_from_rte_mbuf (mb[3]);
-  CLIB_PREFETCH (b, CLIB_CACHE_LINE_BYTES, LOAD);
+  CLIB_PREFETCH (b, 64, LOAD);
 }
 
 /** \brief Main DPDK input node

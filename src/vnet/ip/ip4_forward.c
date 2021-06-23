@@ -1762,8 +1762,8 @@ ip4_local_inline (vlib_main_t * vm,
 	vlib_prefetch_buffer_header (b[4], LOAD);
 	vlib_prefetch_buffer_header (b[5], LOAD);
 
-	CLIB_PREFETCH (b[4]->data, CLIB_CACHE_LINE_BYTES, LOAD);
-	CLIB_PREFETCH (b[5]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	CLIB_PREFETCH (b[4]->data, 64, LOAD);
+	CLIB_PREFETCH (b[5]->data, 64, LOAD);
       }
 
       error[0] = error[1] = IP4_ERROR_UNKNOWN_PROTOCOL;
@@ -2148,12 +2148,12 @@ ip4_rewrite_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       vnet_buffer (b[1])->ip.save_rewrite_length = rw_len1;
 
       p = vlib_buffer_get_current (b[2]);
-      CLIB_PREFETCH (p - CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES, STORE);
-      CLIB_PREFETCH (p, CLIB_CACHE_LINE_BYTES, LOAD);
+      CLIB_PREFETCH (p - 64, 64, STORE);
+      CLIB_PREFETCH (p, 64, LOAD);
 
       p = vlib_buffer_get_current (b[3]);
-      CLIB_PREFETCH (p - CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES, STORE);
-      CLIB_PREFETCH (p, CLIB_CACHE_LINE_BYTES, LOAD);
+      CLIB_PREFETCH (p - 64, 64, STORE);
+      CLIB_PREFETCH (p, 64, LOAD);
 
       /* Check MTU of outgoing interface. */
       u16 ip0_len = clib_net_to_host_u16 (ip0->length);
@@ -2314,8 +2314,7 @@ ip4_rewrite_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  adj_index2 = vnet_buffer (b[2])->ip.adj_index[VLIB_TX];
 	  adj2 = adj_get (adj_index2);
 	  p = (u8 *) adj2;
-	  CLIB_PREFETCH (p + CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES,
-			 LOAD);
+	  CLIB_PREFETCH (p + 64, 64, LOAD);
 	}
 
       adj_index0 = vnet_buffer (b[0])->ip.adj_index[VLIB_TX];

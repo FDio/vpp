@@ -1499,7 +1499,7 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (n_left_from > 1)
 	{
 	  vlib_prefetch_buffer_header (b[1], LOAD);
-	  CLIB_PREFETCH (b[1]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (b[1]->data, 2 * 64, LOAD);
 	}
 
       tc = tcp_connection_get (vnet_buffer (b[0])->tcp.connection_index,
@@ -2883,10 +2883,10 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       {
 	vlib_prefetch_buffer_header (b[2], STORE);
-	CLIB_PREFETCH (b[2]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	CLIB_PREFETCH (b[2]->data, 2 * 64, LOAD);
 
 	vlib_prefetch_buffer_header (b[3], STORE);
-	CLIB_PREFETCH (b[3]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	CLIB_PREFETCH (b[3]->data, 2 * 64, LOAD);
       }
 
       next[0] = next[1] = TCP_INPUT_NEXT_DROP;
@@ -2946,7 +2946,7 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (n_left_from > 1)
 	{
 	  vlib_prefetch_buffer_header (b[1], STORE);
-	  CLIB_PREFETCH (b[1]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (b[1]->data, 2 * 64, LOAD);
 	}
 
       next[0] = TCP_INPUT_NEXT_DROP;

@@ -1505,7 +1505,7 @@ ethernet_input_inline (vlib_main_t * vm,
 	  if (n_left_from > 1)
 	    {
 	      vlib_prefetch_buffer_header (b[1], STORE);
-	      CLIB_PREFETCH (b[1]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	      CLIB_PREFETCH (b[1]->data, 64, LOAD);
 	    }
 
 	  bi0 = from[0];

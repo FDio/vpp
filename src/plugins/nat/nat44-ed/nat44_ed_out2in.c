@@ -838,7 +838,7 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 
 	  vlib_prefetch_buffer_header (p2, LOAD);
 
-	  CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (p2->data, 64, LOAD);
 	}
 
       next[0] = vnet_buffer2 (b0)->nat.arc_next;

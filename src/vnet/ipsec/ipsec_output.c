@@ -208,7 +208,7 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  bi1 = from[1];
 	  b1 = vlib_get_buffer (vm, bi1);
-	  CLIB_PREFETCH (b1, CLIB_CACHE_LINE_BYTES * 2, STORE);
+	  CLIB_PREFETCH (b1, 64 * 2, STORE);
 	  vlib_prefetch_buffer_data (b1, LOAD);
 	}
       sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];

@@ -328,7 +328,7 @@ vnet_classify_prefetch_bucket (vnet_classify_table_t * t, u64 hash)
 
   bucket_index = hash & (t->nbuckets - 1);
 
-  CLIB_PREFETCH (&t->buckets[bucket_index], CLIB_CACHE_LINE_BYTES, LOAD);
+  CLIB_PREFETCH (&t->buckets[bucket_index], 64, LOAD);
 }
 
 static inline vnet_classify_entry_t *
@@ -389,7 +389,7 @@ vnet_classify_prefetch_entry (vnet_classify_table_t * t, u64 hash)
 
   e = vnet_classify_entry_at_index (t, e, value_index);
 
-  CLIB_PREFETCH (e, CLIB_CACHE_LINE_BYTES, LOAD);
+  CLIB_PREFETCH (e, 64, LOAD);
 }
 
 vnet_classify_entry_t *vnet_classify_find_entry (vnet_classify_table_t * t,

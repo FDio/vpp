@@ -143,8 +143,7 @@ retry:
       u32 saved_ptd_buffers_len = _vec_len (ptd->buffers);
       u16 saved_slot = slot;
 
-      CLIB_PREFETCH (&ring->desc[(slot + 8) & mask], CLIB_CACHE_LINE_BYTES,
-		     LOAD);
+      CLIB_PREFETCH (&ring->desc[(slot + 8) & mask], 64, LOAD);
 
       d0 = &ring->desc[slot & mask];
       if (PREDICT_FALSE (last_region != d0->region))
@@ -235,10 +234,10 @@ no_free_slots:
   co = ptd->copy_ops;
   while (n_copy_op >= 8)
     {
-      CLIB_PREFETCH (co[4].data, CLIB_CACHE_LINE_BYTES, LOAD);
-      CLIB_PREFETCH (co[5].data, CLIB_CACHE_LINE_BYTES, LOAD);
-      CLIB_PREFETCH (co[6].data, CLIB_CACHE_LINE_BYTES, LOAD);
-      CLIB_PREFETCH (co[7].data, CLIB_CACHE_LINE_BYTES, LOAD);
+      CLIB_PREFETCH (co[4].data, 64, LOAD);
+      CLIB_PREFETCH (co[5].data, 64, LOAD);
+      CLIB_PREFETCH (co[6].data, 64, LOAD);
+      CLIB_PREFETCH (co[7].data, 64, LOAD);
 
       b0 = vlib_get_buffer (vm, ptd->buffers[co[0].buffer_vec_index]);
       b1 = vlib_get_buffer (vm, ptd->buffers[co[1].buffer_vec_index]);
@@ -315,8 +314,7 @@ retry:
       memif_desc_t *d0;
       u32 bi0;
 
-      CLIB_PREFETCH (&ring->desc[(slot + 8) & mask], CLIB_CACHE_LINE_BYTES,
-		     STORE);
+      CLIB_PREFETCH (&ring->desc[(slot + 8) & mask], 64, STORE);
 
       if (PREDICT_TRUE (n_left >= 4))
 	vlib_prefetch_buffer_header (vlib_get_buffer (vm, buffers[3]), LOAD);

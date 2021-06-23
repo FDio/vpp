@@ -387,9 +387,9 @@ policer_classify_inline (vlib_main_t * vm,
 	p2 = vlib_get_buffer (vm, from[2]);
 
 	vlib_prefetch_buffer_header (p1, STORE);
-	CLIB_PREFETCH (p1->data, CLIB_CACHE_LINE_BYTES, STORE);
+	CLIB_PREFETCH (p1->data, 64, STORE);
 	vlib_prefetch_buffer_header (p2, STORE);
-	CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, STORE);
+	CLIB_PREFETCH (p2->data, 64, STORE);
       }
 
       bi0 = from[0];

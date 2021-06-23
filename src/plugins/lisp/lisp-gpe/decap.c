@@ -186,8 +186,8 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    vlib_prefetch_buffer_header (p2, LOAD);
 	    vlib_prefetch_buffer_header (p3, LOAD);
 
-	    CLIB_PREFETCH (p2->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
-	    CLIB_PREFETCH (p3->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (p2->data, 2 * 64, LOAD);
+	    CLIB_PREFETCH (p3->data, 2 * 64, LOAD);
 	  }
 
 	  bi0 = from[0];

@@ -144,8 +144,8 @@ cryptodev_frame_linked_algs_enqueue (vlib_main_t *vm,
 
       if (n_elts > 2)
 	{
-	  CLIB_PREFETCH (&fe[1], CLIB_CACHE_LINE_BYTES, LOAD);
-	  CLIB_PREFETCH (&fe[2], CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (&fe[1], 64, LOAD);
+	  CLIB_PREFETCH (&fe[2], 64, LOAD);
 	  vlib_prefetch_buffer_header (b[1], LOAD);
 	  vlib_prefetch_buffer_header (b[2], LOAD);
 	}
@@ -275,7 +275,7 @@ cryptodev_raw_aead_enqueue (vlib_main_t *vm, vnet_crypto_async_frame_t *frame,
 
       if (n_elts > 1)
 	{
-	  CLIB_PREFETCH (&fe[1], CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (&fe[1], 64, LOAD);
 	  vlib_prefetch_buffer_header (b[1], LOAD);
 	}
 
@@ -449,8 +449,8 @@ cryptodev_raw_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
 	      vnet_crypto_async_frame_t *f1, *f2;
 	      GET_RING_OBJ (cet->cached_frame, i + 1, f1);
 	      GET_RING_OBJ (cet->cached_frame, i + 2, f2);
-	      CLIB_PREFETCH (f1, CLIB_CACHE_LINE_BYTES, LOAD);
-	      CLIB_PREFETCH (f2, CLIB_CACHE_LINE_BYTES, LOAD);
+	      CLIB_PREFETCH (f1, 64, LOAD);
+	      CLIB_PREFETCH (f2, 64, LOAD);
 	    }
 
 	  n_left = f->state & 0x7f;
