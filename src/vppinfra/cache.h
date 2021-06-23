@@ -71,23 +71,32 @@
 #define CLIB_PREFETCH_WRITE 1
 #define CLIB_PREFETCH_STORE 1	/* alias for write */
 
-#define _CLIB_PREFETCH(n,size,type)				\
-  if ((size) > (n)*CLIB_CACHE_LINE_BYTES)			\
-    __builtin_prefetch (_addr + (n)*CLIB_CACHE_LINE_BYTES,	\
-			CLIB_PREFETCH_##type,			\
-			/* locality */ 3);
+#if defined(CLIB_N_CACHELINE_BYTES)
+#define __CACHE_LINE_BYTES CLIB_N_CACHELINE_BYTES
+#else
+#define __CACHE_LINE_BYTES CLIB_CACHE_LINE_BYTES
+#endif
 
-#define CLIB_PREFETCH(addr,size,type)		\
-do {						\
-  void * _addr = (addr);			\
-						\
-  ASSERT ((size) <= 4*CLIB_CACHE_LINE_BYTES);	\
-  _CLIB_PREFETCH (0, size, type);		\
-  _CLIB_PREFETCH (1, size, type);		\
-  _CLIB_PREFETCH (2, size, type);		\
-  _CLIB_PREFETCH (3, size, type);		\
-} while (0)
+#define _CLIB_PREFETCH(n, size, type)                                         \
+  if ((size) > (n) *__CACHE_LINE_BYTES)                                       \
+    __builtin_prefetch (_addr + (n) *__CACHE_LINE_BYTES,                      \
+			CLIB_PREFETCH_##type, /* locality */ 3);
 
+#define CLIB_PREFETCH(addr, size, type)                                       \
+  do                                                                          \
+    {                                                                         \
+      void *_addr = (addr);                                                   \
+                                                                              \
+      ASSERT ((size) <= 4 * __CACHE_LINE_BYTES);                              \
+      _CLIB_PREFETCH (0, size, type);                                         \
+      _CLIB_PREFETCH (1, size, type);                                         \
+      _CLIB_PREFETCH (2, size, type);                                         \
+      _CLIB_PREFETCH (3, size, type);                                         \
+    }                                                                         \
+  while (0)
+
+#define CLIB_PREFETCH_LINE(addr, line, type)                                  \
+  CLIB_PREFETCH (addr, line *__CACHE_LINE_BYTES, type)
 #undef _
 
 static_always_inline void
