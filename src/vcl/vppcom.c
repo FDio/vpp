@@ -3077,7 +3077,7 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	  s = vcl_session_get (wrk, sid);
 	  s->vep.ev.events = 0;
 	}
-      if (!(EPOLLET & session_events))
+      else if (!(EPOLLET & session_events))
 	{
 	  vec_add1 (wrk->ep_level_evts, sid);
 	}
@@ -3223,18 +3223,24 @@ vcl_epoll_wait_handle_lt (vcl_worker_t *wrk, struct epoll_event *events,
   vec_foreach (sid, le)
     {
       s = vcl_session_get (wrk, sid[0]);
-      if (!s)
+      if (!s || s->vep.ev.events == 0)
 	continue;
-      if ((s->vep.ev.events & EPOLLIN) && vcl_session_read_ready (s))
+      if ((s->vep.ev.events & EPOLLIN) && vcl_session_read_ready (s) > 0)
 	{
 	  add_event = 1;
 	  events[*n_evts].events |= EPOLLIN;
 	  evt_data = s->vep.ev.data.u64;
 	}
-      if ((s->vep.ev.events & EPOLLOUT) && vcl_session_write_ready (s))
+      if ((s->vep.ev.events & EPOLLOUT) && vcl_session_write_ready (s) > 0)
 	{
 	  add_event = 1;
 	  events[*n_evts].events |= EPOLLOUT;
+	  evt_data = s->vep.ev.data.u64;
+	}
+      if (s->session_state > VCL_STATE_READY)
+	{
+	  add_event = 1;
+	  events[*n_evts].events |= EPOLLHUP | EPOLLRDHUP;
 	  evt_data = s->vep.ev.data.u64;
 	}
       if (add_event)
