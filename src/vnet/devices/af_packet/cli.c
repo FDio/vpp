@@ -44,12 +44,12 @@ af_packet_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			     vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 *host_if_name = NULL;
-  u8 hwaddr[6];
-  u8 *hw_addr_ptr = 0;
-  u32 sw_if_index;
-  int r;
+  af_packet_create_if_arg_t _arg, *arg = &_arg;
   clib_error_t *error = NULL;
+  u8 hwaddr[6];
+  int r;
+
+  clib_memset (arg, 0, sizeof (*arg));
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -57,12 +57,21 @@ af_packet_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "name %s", &host_if_name))
+      if (unformat (line_input, "name %s", &arg->host_if_name))
 	;
-      else
-	if (unformat
-	    (line_input, "hw-addr %U", unformat_ethernet_address, hwaddr))
-	hw_addr_ptr = hwaddr;
+      else if (unformat (line_input, "rx-size %u", &arg->rx_frame_size))
+	;
+      else if (unformat (line_input, "tx-size %u", &arg->tx_frame_size))
+	;
+      else if (unformat (line_input, "rx-per-block %u",
+			 &arg->rx_frames_per_block))
+	;
+      else if (unformat (line_input, "tx-per-block %u",
+			 &arg->tx_frames_per_block))
+	;
+      else if (unformat (line_input, "hw-addr %U", unformat_ethernet_address,
+			 hwaddr))
+	arg->hw_addr = hwaddr;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -71,13 +80,13 @@ af_packet_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	}
     }
 
-  if (host_if_name == NULL)
+  if (arg->host_if_name == NULL)
     {
       error = clib_error_return (0, "missing host interface name");
       goto done;
     }
 
-  r = af_packet_create_if (vm, host_if_name, hw_addr_ptr, &sw_if_index);
+  r = af_packet_create_if (arg);
 
   if (r == VNET_API_ERROR_SYSCALL_ERROR_1)
     {
@@ -98,10 +107,10 @@ af_packet_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
     }
 
   vlib_cli_output (vm, "%U\n", format_vnet_sw_if_index_name, vnet_get_main (),
-		   sw_if_index);
+		   arg->sw_if_index);
 
 done:
-  vec_free (host_if_name);
+  vec_free (arg->host_if_name);
   unformat_free (line_input);
 
   return error;
@@ -129,13 +138,11 @@ done:
  * Once the host interface is created, enable the interface using:
  * @cliexcmd{set interface state host-vpp1 up}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (af_packet_create_command, static) = {
   .path = "create host-interface",
   .short_help = "create host-interface name <ifname> [hw-addr <mac-addr>]",
   .function = af_packet_create_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 af_packet_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -167,7 +174,7 @@ af_packet_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
       goto done;
     }
 
-  af_packet_delete_if (vm, host_if_name);
+  af_packet_delete_if (host_if_name);
 
 done:
   vec_free (host_if_name);
@@ -186,13 +193,11 @@ done:
  * Example of how to delete a host interface named host-vpp1:
  * @cliexcmd{delete host-interface name vpp1}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (af_packet_delete_command, static) = {
   .path = "delete host-interface",
   .short_help = "delete host-interface name <ifname>",
   .function = af_packet_delete_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 af_packet_set_l4_cksum_offload_command_fn (vlib_main_t * vm,
@@ -210,8 +215,8 @@ af_packet_set_l4_cksum_offload_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (line_input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+      if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
 	;
       else if (unformat (line_input, "on"))
 	set = 1;
@@ -225,7 +230,7 @@ af_packet_set_l4_cksum_offload_command_fn (vlib_main_t * vm,
 	}
     }
 
-  if (af_packet_set_l4_cksum_offload (vm, sw_if_index, set) < 0)
+  if (af_packet_set_l4_cksum_offload (sw_if_index, set) < 0)
     error = clib_error_return (0, "not an af_packet interface");
 
 done:
@@ -243,13 +248,11 @@ done:
  * @cliexcmd{set host-interface l4-cksum-offload host-vpp0 off}
  * @cliexcmd{set host-interface l4-cksum-offload host-vpp0 on}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (af_packet_set_l4_cksum_offload_command, static) = {
   .path = "set host-interface l4-cksum-offload",
   .short_help = "set host-interface l4-cksum-offload <host-if-name> <on|off>",
   .function = af_packet_set_l4_cksum_offload_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 af_packet_cli_init (vlib_main_t * vm)
