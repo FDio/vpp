@@ -416,10 +416,10 @@ bond_tx_inline (vlib_main_t * vm, bond_if_t * bif, vlib_buffer_t ** b,
 	  vlib_prefetch_buffer_header (pb[2], LOAD);
 	  vlib_prefetch_buffer_header (pb[3], LOAD);
 
-	  CLIB_PREFETCH (pb[0]->data, CLIB_CACHE_LINE_BYTES, LOAD);
-	  CLIB_PREFETCH (pb[1]->data, CLIB_CACHE_LINE_BYTES, LOAD);
-	  CLIB_PREFETCH (pb[2]->data, CLIB_CACHE_LINE_BYTES, LOAD);
-	  CLIB_PREFETCH (pb[3]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (pb[0]->data, 64, LOAD);
+	  CLIB_PREFETCH (pb[1]->data, 64, LOAD);
+	  CLIB_PREFETCH (pb[2]->data, 64, LOAD);
+	  CLIB_PREFETCH (pb[3]->data, 64, LOAD);
 	}
 
       if (lb_alg == BOND_LB_L2)

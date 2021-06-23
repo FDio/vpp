@@ -207,8 +207,7 @@ memif_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       dst_off = start_offset;
 
     next_slot:
-      CLIB_PREFETCH (&ring->desc[(cur_slot + 8) & mask],
-		     CLIB_CACHE_LINE_BYTES, LOAD);
+      CLIB_PREFETCH (&ring->desc[(cur_slot + 8) & mask], 64, LOAD);
       s0 = cur_slot & mask;
       d0 = &ring->desc[s0];
       n_bytes_left = d0->length;
@@ -277,10 +276,10 @@ memif_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   co = ptd->copy_ops;
   while (n_left >= 8)
     {
-      CLIB_PREFETCH (co[4].data, CLIB_CACHE_LINE_BYTES, LOAD);
-      CLIB_PREFETCH (co[5].data, CLIB_CACHE_LINE_BYTES, LOAD);
-      CLIB_PREFETCH (co[6].data, CLIB_CACHE_LINE_BYTES, LOAD);
-      CLIB_PREFETCH (co[7].data, CLIB_CACHE_LINE_BYTES, LOAD);
+      CLIB_PREFETCH (co[4].data, 64, LOAD);
+      CLIB_PREFETCH (co[5].data, 64, LOAD);
+      CLIB_PREFETCH (co[6].data, 64, LOAD);
+      CLIB_PREFETCH (co[7].data, 64, LOAD);
 
       b0 = vlib_get_buffer (vm, ptd->buffers[co[0].buffer_vec_index]);
       b1 = vlib_get_buffer (vm, ptd->buffers[co[1].buffer_vec_index]);
@@ -574,8 +573,7 @@ memif_device_input_zc_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       bi0 = mq->buffers[s0];
       ptd->buffers[n_rx_packets++] = bi0;
 
-      CLIB_PREFETCH (&ring->desc[(cur_slot + 8) & mask],
-		     CLIB_CACHE_LINE_BYTES, LOAD);
+      CLIB_PREFETCH (&ring->desc[(cur_slot + 8) & mask], 64, LOAD);
       d0 = &ring->desc[s0];
       hb = b0 = vlib_get_buffer (vm, bi0);
       b0->current_data = start_offset;

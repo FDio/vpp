@@ -124,8 +124,8 @@ VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    vlib_prefetch_buffer_header (p2, LOAD);
 	    vlib_prefetch_buffer_header (p3, LOAD);
 
-	    CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (p2->data, 64, STORE);
+	    CLIB_PREFETCH (p3->data, 64, STORE);
 	  }
 
 	  /* speculatively enqueue b0 and b1 to the current next frame */
@@ -322,8 +322,8 @@ VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    vlib_prefetch_buffer_header (p2, LOAD);
 	    vlib_prefetch_buffer_header (p3, LOAD);
 
-	    CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (p2->data, 64, STORE);
+	    CLIB_PREFETCH (p3->data, 64, STORE);
 	  }
 
 	  /* speculatively enqueue b0 and b1 to the current next frame */
@@ -507,10 +507,10 @@ VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vlib_prefetch_buffer_header (b[5], STORE);
 	  vlib_prefetch_buffer_header (b[6], STORE);
 	  vlib_prefetch_buffer_header (b[7], STORE);
-	  CLIB_PREFETCH (&b[4]->data, CLIB_CACHE_LINE_BYTES, STORE);
-	  CLIB_PREFETCH (&b[5]->data, CLIB_CACHE_LINE_BYTES, STORE);
-	  CLIB_PREFETCH (&b[6]->data, CLIB_CACHE_LINE_BYTES, STORE);
-	  CLIB_PREFETCH (&b[7]->data, CLIB_CACHE_LINE_BYTES, STORE);
+	  CLIB_PREFETCH (&b[4]->data, 64, STORE);
+	  CLIB_PREFETCH (&b[5]->data, 64, STORE);
+	  CLIB_PREFETCH (&b[6]->data, 64, STORE);
+	  CLIB_PREFETCH (&b[7]->data, 64, STORE);
 	}
 
       src_dst0 = ((u8x16 *) vlib_buffer_get_current (b[0]))[0];

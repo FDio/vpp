@@ -61,7 +61,7 @@ stage0 (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t * b)
 {
   vlib_prefetch_buffer_header (b, STORE);
   /* l2tpv3 header is a long way away, need 2 cache lines */
-  CLIB_PREFETCH (b->data, 2 * CLIB_CACHE_LINE_BYTES, STORE);
+  CLIB_PREFETCH (b->data, 2 * 64, STORE);
 }
 
 static inline void

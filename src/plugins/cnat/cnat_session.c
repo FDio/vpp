@@ -192,13 +192,13 @@ cnat_session_scan (vlib_main_t * vm, f64 start_time, int i)
 	{
 	  BVT (clib_bihash_bucket) * b =
 	    BV (clib_bihash_get_bucket) (h, i + 3);
-	  CLIB_PREFETCH (b, CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (b, 64, LOAD);
 	  b = BV (clib_bihash_get_bucket) (h, i + 1);
 	  if (!BV (clib_bihash_bucket_is_empty) (b))
 	    {
 	      BVT (clib_bihash_value) * v =
 		BV (clib_bihash_get_value) (h, b->offset);
-	      CLIB_PREFETCH (v, CLIB_CACHE_LINE_BYTES, LOAD);
+	      CLIB_PREFETCH (v, 64, LOAD);
 	    }
 	}
 

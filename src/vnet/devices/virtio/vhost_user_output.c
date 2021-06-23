@@ -601,7 +601,7 @@ retry:
 	  buffer_map_addr += cpy->len;
 	  desc_len += cpy->len;
 
-	  CLIB_PREFETCH (&rxvq->packed_desc, CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (&rxvq->packed_desc, 64, LOAD);
 
 	  /* Check if vlib buffer has more data. If not, get more or break */
 	  if (PREDICT_TRUE (!bytes_left))
@@ -922,7 +922,7 @@ retry:
 	    buffer_map_addr += cpy->len;
 	    desc_len += cpy->len;
 
-	    CLIB_PREFETCH (&rxvq->desc, CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (&rxvq->desc, 64, LOAD);
 	  }
 
 	  // Check if vlib buffer has more data. If not, get more or break.

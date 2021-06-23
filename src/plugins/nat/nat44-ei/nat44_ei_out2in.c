@@ -758,8 +758,8 @@ VLIB_NODE_FN (nat44_ei_out2in_node)
 	  vlib_prefetch_buffer_header (p2, LOAD);
 	  vlib_prefetch_buffer_header (p3, LOAD);
 
-	  CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, LOAD);
-	  CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (p2->data, 64, LOAD);
+	  CLIB_PREFETCH (p3->data, 64, LOAD);
 	}
 
       vnet_buffer (b0)->snat.flags = 0;

@@ -254,7 +254,7 @@ vlib_prefetch_combined_counter (const vlib_combined_counter_main_t * cm,
    * This CPU's index is assumed to already be in cache
    */
   cpu_counters = cm->counters[thread_index];
-  CLIB_PREFETCH (cpu_counters + index, CLIB_CACHE_LINE_BYTES, STORE);
+  CLIB_PREFETCH (cpu_counters + index, 64, STORE);
 }
 
 

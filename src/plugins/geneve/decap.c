@@ -122,8 +122,8 @@ geneve_input (vlib_main_t * vm,
 	    vlib_prefetch_buffer_header (b[2], LOAD);
 	    vlib_prefetch_buffer_header (b[3], LOAD);
 
-	    CLIB_PREFETCH (b[2]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
-	    CLIB_PREFETCH (b[3]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (b[2]->data, 2 * 64, LOAD);
+	    CLIB_PREFETCH (b[3]->data, 2 * 64, LOAD);
 	  }
 
 	  bi0 = from[0];
@@ -906,8 +906,8 @@ ip_geneve_bypass_inline (vlib_main_t * vm,
 	    vlib_prefetch_buffer_header (b[2], LOAD);
 	    vlib_prefetch_buffer_header (b[3], LOAD);
 
-	    CLIB_PREFETCH (b[2]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
-	    CLIB_PREFETCH (b[3]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (b[2]->data, 2 * 64, LOAD);
+	    CLIB_PREFETCH (b[3]->data, 2 * 64, LOAD);
 	  }
 
 	  bi0 = to_next[0] = from[0];

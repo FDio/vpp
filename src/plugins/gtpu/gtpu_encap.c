@@ -123,10 +123,10 @@ gtpu_encap_inline (vlib_main_t * vm,
 	    vlib_prefetch_buffer_header (p6, LOAD);
 	    vlib_prefetch_buffer_header (p7, LOAD);
 
-	    CLIB_PREFETCH (p4->data, 2*CLIB_CACHE_LINE_BYTES, LOAD);
-	    CLIB_PREFETCH (p5->data, 2*CLIB_CACHE_LINE_BYTES, LOAD);
-	    CLIB_PREFETCH (p6->data, 2*CLIB_CACHE_LINE_BYTES, LOAD);
-	    CLIB_PREFETCH (p7->data, 2*CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (p4->data, 2 * 64, LOAD);
+	    CLIB_PREFETCH (p5->data, 2 * 64, LOAD);
+	    CLIB_PREFETCH (p6->data, 2 * 64, LOAD);
+	    CLIB_PREFETCH (p7->data, 2 * 64, LOAD);
 	  }
 
 	  bi0 = from[0];

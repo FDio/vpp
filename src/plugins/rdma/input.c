@@ -389,10 +389,10 @@ rdma_device_input_bufs (vlib_main_t * vm, const rdma_device_t * rd,
     {
       if (PREDICT_TRUE (n_left_from >= 8))
 	{
-	  CLIB_PREFETCH (&wc[4 + 0], CLIB_CACHE_LINE_BYTES, LOAD);
-	  CLIB_PREFETCH (&wc[4 + 1], CLIB_CACHE_LINE_BYTES, LOAD);
-	  CLIB_PREFETCH (&wc[4 + 2], CLIB_CACHE_LINE_BYTES, LOAD);
-	  CLIB_PREFETCH (&wc[4 + 3], CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (&wc[4 + 0], 64, LOAD);
+	  CLIB_PREFETCH (&wc[4 + 1], 64, LOAD);
+	  CLIB_PREFETCH (&wc[4 + 2], 64, LOAD);
+	  CLIB_PREFETCH (&wc[4 + 3], 64, LOAD);
 	  vlib_prefetch_buffer_header (b[4 + 0], STORE);
 	  vlib_prefetch_buffer_header (b[4 + 1], STORE);
 	  vlib_prefetch_buffer_header (b[4 + 2], STORE);

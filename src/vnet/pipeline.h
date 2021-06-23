@@ -75,7 +75,7 @@ generic_stage0 (vlib_main_t * vm,
 		vlib_node_runtime_t * node, vlib_buffer_t * b AUX_DATA_ARG)
 {
   vlib_prefetch_buffer_header (b, STORE);
-  CLIB_PREFETCH (b->data, CLIB_CACHE_LINE_BYTES, STORE);
+  CLIB_PREFETCH (b->data, 64, STORE);
 }
 
 #if NSTAGES == 2

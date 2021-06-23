@@ -131,7 +131,7 @@ buffer_prefetch_xN (int vector_sz, vlib_buffer_t ** b)
 {
   int ii;
   for (ii = 0; ii < vector_sz; ii++)
-    CLIB_PREFETCH (b[ii], CLIB_CACHE_LINE_BYTES, STORE);
+    CLIB_PREFETCH (b[ii], 64, STORE);
 }
 
 static_always_inline void
@@ -257,7 +257,7 @@ l2_in_out_feat_arc_node_fn (vlib_main_t * vm,
   sw_if_index = sw_if_indices;
   n_left = frame->n_vectors;
 
-  CLIB_PREFETCH (next_node_indices, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+  CLIB_PREFETCH (next_node_indices, 2 * 64, LOAD);
 
   while (n_left > 3 * L2_FEAT_ARC_VEC_SIZE)
     {
