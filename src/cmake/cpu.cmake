@@ -75,10 +75,13 @@ endif()
 # CPU optimizations and multiarch support
 ##############################################################################
 macro(add_vpp_march_variant v)
+  set(options OFF)
+  set(oneValueArgs N_PREFETCHES N_CACHELINE_BYTES)
+  set(multiValueArgs FLAGS)
   cmake_parse_arguments(ARG
-    "OFF"
-    "N_PREFETCHES"
-    "FLAGS"
+    "${options}"
+    "${oneValueArgs}"
+    "${multiValueArgs}"
     ${ARGN}
   )
 
@@ -97,6 +100,9 @@ macro(add_vpp_march_variant v)
     endforeach()
     if(ARG_N_PREFETCHES)
       string(APPEND fs " -DCLIB_N_PREFETCHES=${ARG_N_PREFETCHES}")
+    endif()
+    if(ARG_N_CACHELINE_BYTES)
+        string(APPEND fs " -DCLIB_N_CACHELINE_BYTES=${ARG_N_CACHELINE_BYTES}")
     endif()
     if(flags_ok)
       string(TOUPPER ${v} uv)
@@ -154,16 +160,19 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
   add_vpp_march_variant(thunderx2t99
     FLAGS -march=armv8.1-a+crc+crypto -mtune=thunderx2t99
     N_PREFETCHES 8
+    N_CACHELINE_BYTES 64
   )
 
   add_vpp_march_variant(cortexa72
     FLAGS -march=armv8-a+crc+crypto -mtune=cortex-a72
     N_PREFETCHES 6
+    N_CACHELINE_BYTES 64
   )
 
   add_vpp_march_variant(neoversen1
     FLAGS -march=armv8.2-a+crc+crypto -mtune=neoverse-n1
     N_PREFETCHES 6
+    N_CACHELINE_BYTES 64
   )
 endif()
 
