@@ -85,6 +85,7 @@ typedef struct
 #define VEP_DEFAULT_ET_MASK  (EPOLLIN|EPOLLOUT)
 #define VEP_UNSUPPORTED_EVENTS (EPOLLONESHOT|EPOLLEXCLUSIVE)
   u32 et_mask;
+  u8 is_lt_tracked;
 } vppcom_epoll_t;
 
 /* Select uses the vcl_si_set as if a clib_bitmap. Make sure they are the
