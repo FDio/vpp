@@ -102,13 +102,13 @@
 static_always_inline void
 clib_prefetch_load (void *p)
 {
-  CLIB_PREFETCH (p, CLIB_CACHE_LINE_BYTES, LOAD);
+  CLIB_PREFETCH_LINE (p, 1, LOAD);
 }
 
 static_always_inline void
 clib_prefetch_store (void *p)
 {
-  CLIB_PREFETCH (p, CLIB_CACHE_LINE_BYTES, STORE);
+  CLIB_PREFETCH_LINE (p, 1, STORE);
 }
 
 #endif /* included_clib_cache_h */
