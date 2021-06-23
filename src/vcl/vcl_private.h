@@ -85,6 +85,8 @@ typedef struct
 #define VEP_DEFAULT_ET_MASK  (EPOLLIN|EPOLLOUT)
 #define VEP_UNSUPPORTED_EVENTS (EPOLLONESHOT|EPOLLEXCLUSIVE)
   u32 et_mask;
+  u32 lt_next;
+  u32 lt_prev;
 } vppcom_epoll_t;
 
 /* Select uses the vcl_si_set as if a clib_bitmap. Make sure they are the
@@ -253,11 +255,8 @@ typedef struct vcl_worker_
   /** Per worker buffer for receiving mq epoll events */
   struct epoll_event *mq_events;
 
-  /** Vector of session indices recently notified of epoll level events */
-  u32 *ep_level_evts;
-
-  /** Storage for level events session while new ones are processed */
-  u32 *ep_level_evts_fl;
+  /** Next session to be lt polled */
+  u32 ep_lt_current;
 
   /** Hash table for disconnect processing */
   uword *session_index_by_vpp_handles;

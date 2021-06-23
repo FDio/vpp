@@ -133,8 +133,6 @@ vcl_worker_cleanup (vcl_worker_t * wrk, u8 notify_vpp)
   hash_free (wrk->session_index_by_vpp_handles);
   vec_free (wrk->mq_events);
   vec_free (wrk->mq_msg_vector);
-  vec_free (wrk->ep_level_evts);
-  vec_free (wrk->ep_level_evts_fl);
   vec_free (wrk->unhandled_evts_vector);
   vec_free (wrk->pending_session_wrk_updates);
   clib_bitmap_free (wrk->rd_bitmap);
@@ -197,6 +195,7 @@ vcl_worker_alloc_and_init ()
 	}
     }
 
+  wrk->ep_lt_current = VCL_INVALID_SESSION_INDEX;
   wrk->session_index_by_vpp_handles = hash_create (0, sizeof (uword));
   clib_time_init (&wrk->clib_time);
   vec_validate (wrk->mq_events, 64);
