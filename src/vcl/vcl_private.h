@@ -85,6 +85,9 @@ typedef struct
 #define VEP_DEFAULT_ET_MASK  (EPOLLIN|EPOLLOUT)
 #define VEP_UNSUPPORTED_EVENTS (EPOLLONESHOT|EPOLLEXCLUSIVE)
   u32 et_mask;
+  u8 is_lt_tracked;
+  u32 lt_next;
+  u32 lt_prev;
 } vppcom_epoll_t;
 
 /* Select uses the vcl_si_set as if a clib_bitmap. Make sure they are the
@@ -253,11 +256,8 @@ typedef struct vcl_worker_
   /** Per worker buffer for receiving mq epoll events */
   struct epoll_event *mq_events;
 
-  /** Vector of session indices recently notified of epoll level events */
-  u32 *ep_level_evts;
-
-  /** Storage for level events session while new ones are processed */
-  u32 *ep_level_evts_fl;
+  /** Next session to be lt polled */
+  u32 ep_lt_current;
 
   /** Hash table for disconnect processing */
   uword *session_index_by_vpp_handles;
@@ -385,6 +385,7 @@ vcl_session_alloc (vcl_worker_t * wrk)
   memset (s, 0, sizeof (*s));
   s->session_index = s - wrk->sessions;
   s->listener_index = VCL_INVALID_SESSION_INDEX;
+  s->vep.lt_next = ~0;
   return s;
 }
 
@@ -404,6 +405,8 @@ vcl_session_get (vcl_worker_t * wrk, u32 session_index)
 {
   if (pool_is_free_index (wrk->sessions, session_index))
     return 0;
+  if (vcl_session_get (wrk, session_index)->vep.lt_next != ~0 && wrk->ep_lt_current == ~0)
+	os_panic ();
   return pool_elt_at_index (wrk->sessions, session_index);
 }
 
