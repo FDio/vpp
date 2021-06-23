@@ -47,6 +47,7 @@
 #include <vnet/feature/feature.h>
 #include <vnet/classify/pcap_classify.h>
 #include <vnet/interface_output.h>
+#include <vnet/hash/hash_func.h>
 #include <vppinfra/vector_funcs.h>
 
 typedef struct
@@ -474,10 +475,13 @@ enqueu_to_tx_node (vlib_main_t *vm, vlib_node_runtime_t *node,
     {
       vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
       u32 qids[VLIB_FRAME_SIZE];
+      vnet_hash_func tx_hash_func =
+	vnet_get_hw_interface_class (vnet_get_main (), hi->hw_class_index)
+	  ->vnet_hash_func; // set the func tx_hash_func
 
       vlib_get_buffers (vm, from, bufs, n_vectors);
       hash_func_with_mask (bufs, qids, n_vectors, r->lookup_table,
-			   vec_len (r->lookup_table) - 1);
+			   vec_len (r->lookup_table) - 1, tx_hash_func);
 
       for (u32 i = 0; i < r->n_queues; i++)
 	{

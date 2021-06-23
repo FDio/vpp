@@ -44,6 +44,7 @@
 #include <vppinfra/pcap.h>
 #include <vnet/l3_types.h>
 #include <vppinfra/lock.h>
+#include <vnet/hash/hash.h>
 
 struct vnet_main_t;
 struct vnet_hw_interface_t;
@@ -462,6 +463,9 @@ typedef struct _vnet_hw_interface_class
      may want to be deleted. */
   void (*hw_class_change) (struct vnet_main_t * vnm, u32 hw_if_index,
 			   u32 old_class_index, u32 new_class_index);
+
+  /* called when hw interface is using transmit side packet steering */
+  void (*vnet_hash_func) (void **p, u32 *h, u32 n_packets);
 
   /* List of hw interface classes, built by constructors */
   struct _vnet_hw_interface_class *next_class_registration;
