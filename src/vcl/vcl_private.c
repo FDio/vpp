@@ -317,6 +317,10 @@ vcl_session_write_ready (vcl_session_t * s)
       else
 	return VPPCOM_EBADFD;
     }
+  else if (s->session_state == VCL_STATE_UPDATED)
+    {
+      return 0;
+    }
   else
     {
       return (s->session_state == VCL_STATE_DISCONNECT) ?
