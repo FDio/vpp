@@ -291,6 +291,11 @@ static void vl_api_ipsec_sad_entry_add_del_t_handler
   int rv;
 
   id = ntohl (mp->entry.sad_id);
+  if (!mp->is_add)
+    {
+      rv = ipsec_sa_unlock_id (id);
+      goto out;
+    }
   spi = ntohl (mp->entry.spi);
 
   rv = ipsec_proto_decode (mp->entry.protocol, &proto);
@@ -316,13 +321,10 @@ static void vl_api_ipsec_sad_entry_add_del_t_handler
   ip_address_decode2 (&mp->entry.tunnel_src, &tun.t_src);
   ip_address_decode2 (&mp->entry.tunnel_dst, &tun.t_dst);
 
-  if (mp->is_add)
-    rv = ipsec_sa_add_and_lock (
-      id, spi, proto, crypto_alg, &crypto_key, integ_alg, &integ_key, flags,
-      mp->entry.salt, htons (mp->entry.udp_src_port),
-      htons (mp->entry.udp_dst_port), &tun, &sa_index);
-  else
-    rv = ipsec_sa_unlock_id (id);
+  rv = ipsec_sa_add_and_lock (id, spi, proto, crypto_alg, &crypto_key,
+			      integ_alg, &integ_key, flags, mp->entry.salt,
+			      htons (mp->entry.udp_src_port),
+			      htons (mp->entry.udp_dst_port), &tun, &sa_index);
 
 out:
   /* *INDENT-OFF* */
@@ -355,6 +357,12 @@ static void vl_api_ipsec_sad_entry_add_del_v2_t_handler
   };
 
   id = ntohl (mp->entry.sad_id);
+  if (!mp->is_add)
+    {
+      rv = ipsec_sa_unlock_id (id);
+      goto out;
+    }
+
   spi = ntohl (mp->entry.spi);
 
   rv = ipsec_proto_decode (mp->entry.protocol, &proto);
@@ -387,13 +395,10 @@ static void vl_api_ipsec_sad_entry_add_del_v2_t_handler
   ip_address_decode2 (&mp->entry.tunnel_src, &tun.t_src);
   ip_address_decode2 (&mp->entry.tunnel_dst, &tun.t_dst);
 
-  if (mp->is_add)
     rv = ipsec_sa_add_and_lock (
       id, spi, proto, crypto_alg, &crypto_key, integ_alg, &integ_key, flags,
       mp->entry.salt, htons (mp->entry.udp_src_port),
       htons (mp->entry.udp_dst_port), &tun, &sa_index);
-  else
-    rv = ipsec_sa_unlock_id (id);
 
 out:
   /* *INDENT-OFF* */
@@ -404,61 +409,100 @@ out:
   /* *INDENT-ON* */
 }
 
-static void
-vl_api_ipsec_sad_entry_add_del_v3_t_handler (
-  vl_api_ipsec_sad_entry_add_del_v3_t *mp)
+static int
+ipsec_sad_entry_add_v3 (const vl_api_ipsec_sad_entry_v3_t *entry,
+			u32 *sa_index)
 {
-  vl_api_ipsec_sad_entry_add_del_v3_reply_t *rmp;
   ipsec_key_t crypto_key, integ_key;
   ipsec_crypto_alg_t crypto_alg;
   ipsec_integ_alg_t integ_alg;
   ipsec_protocol_t proto;
   ipsec_sa_flags_t flags;
-  u32 id, spi, sa_index = ~0;
+  u32 id, spi;
   tunnel_t tun;
   int rv;
 
-  id = ntohl (mp->entry.sad_id);
-  spi = ntohl (mp->entry.spi);
+  id = ntohl (entry->sad_id);
+  spi = ntohl (entry->spi);
 
-  rv = ipsec_proto_decode (mp->entry.protocol, &proto);
-
-  if (rv)
-    goto out;
-
-  rv = ipsec_crypto_algo_decode (mp->entry.crypto_algorithm, &crypto_alg);
+  rv = ipsec_proto_decode (entry->protocol, &proto);
 
   if (rv)
-    goto out;
+    return (rv);
 
-  rv = ipsec_integ_algo_decode (mp->entry.integrity_algorithm, &integ_alg);
+  rv = ipsec_crypto_algo_decode (entry->crypto_algorithm, &crypto_alg);
 
   if (rv)
-    goto out;
+    return (rv);
 
-  flags = ipsec_sa_flags_decode (mp->entry.flags);
+  rv = ipsec_integ_algo_decode (entry->integrity_algorithm, &integ_alg);
+
+  if (rv)
+    return (rv);
+
+  flags = ipsec_sa_flags_decode (entry->flags);
 
   if (flags & IPSEC_SA_FLAG_IS_TUNNEL)
     {
-      rv = tunnel_decode (&mp->entry.tunnel, &tun);
+      rv = tunnel_decode (&entry->tunnel, &tun);
 
       if (rv)
-	goto out;
+	return (rv);
     }
 
-  ipsec_key_decode (&mp->entry.crypto_key, &crypto_key);
-  ipsec_key_decode (&mp->entry.integrity_key, &integ_key);
+  ipsec_key_decode (&entry->crypto_key, &crypto_key);
+  ipsec_key_decode (&entry->integrity_key, &integ_key);
 
-  if (mp->is_add)
-    rv = ipsec_sa_add_and_lock (
-      id, spi, proto, crypto_alg, &crypto_key, integ_alg, &integ_key, flags,
-      mp->entry.salt, htons (mp->entry.udp_src_port),
-      htons (mp->entry.udp_dst_port), &tun, &sa_index);
+  return ipsec_sa_add_and_lock (id, spi, proto, crypto_alg, &crypto_key,
+				integ_alg, &integ_key, flags, entry->salt,
+				htons (entry->udp_src_port),
+				htons (entry->udp_dst_port), &tun, sa_index);
+}
+
+static void
+vl_api_ipsec_sad_entry_add_del_v3_t_handler (
+  vl_api_ipsec_sad_entry_add_del_v3_t *mp)
+{
+  vl_api_ipsec_sad_entry_add_del_v3_reply_t *rmp;
+  u32 id, sa_index = ~0;
+  int rv;
+
+  id = ntohl (mp->entry.sad_id);
+
+  if (!mp->is_add)
+    {
+      rv = ipsec_sa_unlock_id (id);
+    }
   else
-    rv = ipsec_sa_unlock_id (id);
+    {
+      rv = ipsec_sad_entry_add_v3 (&mp->entry, &sa_index);
+    }
 
-out:
   REPLY_MACRO2 (VL_API_IPSEC_SAD_ENTRY_ADD_DEL_V3_REPLY,
+		{ rmp->stat_index = htonl (sa_index); });
+}
+
+static void
+vl_api_ipsec_sad_entry_del_t_handler (vl_api_ipsec_sad_entry_del_t *mp)
+{
+  vl_api_ipsec_sad_entry_del_reply_t *rmp;
+  int rv;
+
+  rv = ipsec_sa_unlock_id (ntohl (mp->id));
+
+  REPLY_MACRO (VL_API_IPSEC_SAD_ENTRY_DEL_REPLY);
+}
+
+static void
+vl_api_ipsec_sad_entry_add_t_handler (vl_api_ipsec_sad_entry_add_t *mp)
+{
+  vl_api_ipsec_sad_entry_add_reply_t *rmp;
+  u32 sa_index = ~0;
+  int rv;
+
+  rv = ipsec_sad_entry_add_v3 (&mp->entry, &sa_index);
+
+  REPLY_MACRO2 (VL_API_IPSEC_SAD_ENTRY_ADD_REPLY,
 		{ rmp->stat_index = htonl (sa_index); });
 }
 
