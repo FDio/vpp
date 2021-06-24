@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "30c393f1_33d5f35b",
+        "filename": "test/run.py",
+        "patchSetId": 15
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2021-06-24T21:46:36Z",
+      "side": 1,
+      "message": "There needs to be an command-line option to allow testing of the debug version as well as the release version.",
+      "range": {
+        "startLine": 164,
+        "startChar": 20,
+        "endLine": 164,
+        "endChar": 35
+      },
+      "revId": "283033b182504991aba99d3c573f8e86b4cc871e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
