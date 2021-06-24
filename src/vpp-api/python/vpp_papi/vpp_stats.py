@@ -187,12 +187,12 @@ class VPPStats():
         while True:
             try:
                 with self.lock:
+                    self.last_epoch = self.epoch
                     for i, direntry in enumerate(StatsVector(self, self.directory_vector, self.elementfmt)):
                         path_raw = direntry[2].find(b'\x00')
                         path = direntry[2][:path_raw].decode('ascii')
                         directory[path] = StatsEntry(direntry[0], direntry[1])
                         directory_by_idx[i] = path
-                    self.last_epoch = self.epoch
                     self.directory = directory
                     self.directory_by_idx = directory_by_idx
 
