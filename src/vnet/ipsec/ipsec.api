@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "5.0.1";
+option version = "5.0.2";
 
 import "vnet/ipsec/ipsec_types.api";
 import "vnet/interface_types.api";
@@ -211,6 +211,18 @@ define ipsec_sad_entry_add_del_v3
   bool is_add;
   vl_api_ipsec_sad_entry_v3_t entry;
 };
+define ipsec_sad_entry_add
+{
+  u32 client_index;
+  u32 context;
+  vl_api_ipsec_sad_entry_v3_t entry;
+};
+autoreply define ipsec_sad_entry_del
+{
+  u32 client_index;
+  u32 context;
+  u32 id;
+};
 
 define ipsec_sad_entry_add_del_reply
 {
@@ -226,6 +238,12 @@ define ipsec_sad_entry_add_del_v2_reply
   u32 stat_index;
 };
 define ipsec_sad_entry_add_del_v3_reply
+{
+  u32 context;
+  i32 retval;
+  u32 stat_index;
+};
+define ipsec_sad_entry_add_reply
 {
   u32 context;
   i32 retval;
