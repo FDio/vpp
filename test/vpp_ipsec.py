@@ -267,31 +267,13 @@ class VppIpsecSA(VppObject):
             entry['udp_src_port'] = self.udp_src
         if self.udp_dst:
             entry['udp_dst_port'] = self.udp_dst
-        r = self.test.vapi.ipsec_sad_entry_add_del_v3(is_add=1, entry=entry)
+        r = self.test.vapi.ipsec_sad_entry_add(entry=entry)
         self.stat_index = r.stat_index
         self.test.registry.register(self, self.test.logger)
         return self
 
     def remove_vpp_config(self):
-        r = self.test.vapi.ipsec_sad_entry_add_del_v3(
-            is_add=0,
-            entry={
-                'sad_id': self.id,
-                'spi': self.spi,
-                'integrity_algorithm': self.integ_alg,
-                'integrity_key': {
-                    'length': len(self.integ_key),
-                    'data': self.integ_key,
-                },
-                'crypto_algorithm': self.crypto_alg,
-                'crypto_key': {
-                    'data': self.crypto_key,
-                    'length': len(self.crypto_key),
-                },
-                'protocol': self.proto,
-                'tunnel': self.tunnel_encode(),
-                'salt': self.salt
-            })
+        self.test.vapi.ipsec_sad_entry_del(id=self.id)
 
     def object_id(self):
         return "ipsec-sa-%d" % self.id
