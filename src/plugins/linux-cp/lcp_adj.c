@@ -14,6 +14,8 @@
  */
 
 #include <vnet/adj/adj_delegate.h>
+
+#include <linux-cp/lcp_interface.h>
 #include <linux-cp/lcp_adj.h>
 
 #include <vppinfra/bihash_32_8.h>
@@ -133,8 +135,18 @@ lcp_adj_delegate_adj_created (adj_index_t ai)
   lcp_adj_kv_t kv;
   index_t lai = INDEX_INVALID;
   lcp_adj_key_t *adj_key;
+  index_t lipi;
+  lcp_itf_pair_t *lip;
 
   adj = adj_get (ai);
+
+  lipi = lcp_itf_pair_find_by_phy (adj->rewrite_header.sw_if_index);
+  if (lipi == INDEX_INVALID)
+    return;
+
+  lip = lcp_itf_pair_get (lipi);
+  if (lip->lip_host_type == LCP_ITF_HOST_TUN)
+    return;
 
   if (IP_LOOKUP_NEXT_REWRITE == adj->lookup_next_index)
     {
