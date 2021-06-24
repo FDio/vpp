@@ -68,7 +68,10 @@ enum ipsec_sad_flags
   /* IPsec tunnel mode if non-zero, else transport mode */
   IPSEC_API_SAD_FLAG_IS_TUNNEL = 0x04,
   /* IPsec tunnel mode is IPv6 if non-zero,
-   *  else IPv4 tunnel only valid if is_tunnel is non-zero */
+   *  else IPv4 tunnel only valid if is_tunnel is non-zero
+   *  DEPRECATED - the user does not need to set this it is
+   *               derived from the tunnel's address types.
+   */
   IPSEC_API_SAD_FLAG_IS_TUNNEL_V6 = 0x08,
   /* enable UDP encapsulation for NAT traversal */
   IPSEC_API_SAD_FLAG_UDP_ENCAP = 0x10,
