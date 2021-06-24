@@ -187,12 +187,12 @@ class VPPStats():
         while True:
             try:
                 with self.lock:
+                    self.last_epoch = self.epoch
                     for i, direntry in enumerate(StatsVector(self, self.directory_vector, self.elementfmt)):
                         path_raw = direntry[2].find(b'\x00')
                         path = direntry[2][:path_raw].decode('ascii')
                         directory[path] = StatsEntry(direntry[0], direntry[1])
                         directory_by_idx[i] = path
-                    self.last_epoch = self.epoch
                     self.directory = directory
                     self.directory_by_idx = directory_by_idx
 
@@ -200,7 +200,7 @@ class VPPStats():
                     self.error_vectors = []
                     for threads in StatsVector(self, self.error_vector, 'P'):
                         self.error_vectors.append(StatsVector(self, threads[0], 'Q'))
-                    return
+                return
             except IOError:
                 if not blocking:
                     raise
@@ -213,7 +213,9 @@ class VPPStats():
                 if self.last_epoch != self.epoch:
                     self.refresh(blocking)
                 with self.lock:
-                    return self.directory[item].get_counter(self)
+                    result = self.directory[item].get_counter(self)
+                # Return statment must be outside the lock block to be sure lock.release is executed 
+                return result
             except IOError:
                 if not blocking:
                     raise
@@ -267,7 +269,9 @@ class VPPStats():
                     if self.last_epoch != self.epoch:
                         self.refresh(blocking)
                     with self.lock:
-                        return sum(self.directory[name].get_counter(self))
+                        result =  sum(self.directory[name].get_counter(self))
+                    # Return statment must be outside the lock block to be sure lock.release is executed 
+                    return result
                 except IOError:
                     if not blocking:
                         raise
