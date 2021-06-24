@@ -217,8 +217,6 @@ class VppIpsecSA(VppObject):
         if (tun_src):
             self.tun_src = ip_address(text_type(tun_src))
             self.flags = self.flags | e.IPSEC_API_SAD_FLAG_IS_TUNNEL
-            if (self.tun_src.version == 6):
-                self.flags = self.flags | e.IPSEC_API_SAD_FLAG_IS_TUNNEL_V6
         if (tun_dst):
             self.tun_dst = ip_address(text_type(tun_dst))
         self.udp_src = udp_src

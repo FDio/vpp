@@ -270,6 +270,10 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
       return VNET_API_ERROR_SYSCALL_ERROR_1;
     }
 
+  if (ipsec_sa_is_set_IS_TUNNEL (sa) &&
+      AF_IP6 == ip_addr_version (&tun->t_src))
+    ipsec_sa_set_IS_TUNNEL_V6 (sa);
+
   if (ipsec_sa_is_set_IS_TUNNEL (sa) && !ipsec_sa_is_set_IS_INBOUND (sa))
     {
       sa->tunnel_flags = sa->tunnel.t_encap_decap_flags;
