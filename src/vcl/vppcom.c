@@ -3280,8 +3280,6 @@ vppcom_epoll_wait (uint32_t vep_handle, struct epoll_event *events,
       return VPPCOM_EINVAL;
     }
 
-  memset (events, 0, sizeof (*events) * maxevents);
-
   if (vec_len (wrk->unhandled_evts_vector))
     {
       for (i = 0; i < vec_len (wrk->unhandled_evts_vector); i++)
