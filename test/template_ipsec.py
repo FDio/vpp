@@ -1785,15 +1785,21 @@ class SpdFlowCacheTemplate(IPSecIPv4Fwd):
     def tearDown(self):
         super(SpdFlowCacheTemplate, self).tearDown()
 
-    def get_spd_flow_cache_entries(self):
+    def get_spd_flow_cache_entries(self, outbound):
         """ 'show ipsec spd' output:
-        ip4-outbound-spd-flow-cache-entries: 0
+        ipv4-inbound-spd-flow-cache-entries: 0
+        ipv4-outbound-spd-flow-cache-entries: 0
         """
         show_ipsec_reply = self.vapi.cli("show ipsec spd")
         # match the relevant section of 'show ipsec spd' output
-        regex_match = re.search(
-            'ip4-outbound-spd-flow-cache-entries: (.*)',
-            show_ipsec_reply, re.DOTALL)
+        if(outbound):
+            regex_match = re.search(
+                'ipv4-outbound-spd-flow-cache-entries: (.*)',
+                show_ipsec_reply, re.DOTALL)
+        else:
+            regex_match = re.search(
+                'ipv4-inbound-spd-flow-cache-entries: (.*)',
+                show_ipsec_reply, re.DOTALL)
         if regex_match is None:
             raise Exception("Unable to find spd flow cache entries \
                 in \'show ipsec spd\' CLI output - regex failed to match")
@@ -1807,7 +1813,12 @@ class SpdFlowCacheTemplate(IPSecIPv4Fwd):
         return num_entries
 
     def verify_num_outbound_flow_cache_entries(self, expected_elements):
-        self.assertEqual(self.get_spd_flow_cache_entries(), expected_elements)
+        self.assertEqual(self.get_spd_flow_cache_entries(outbound=True),
+                         expected_elements)
+
+    def verify_num_inbound_flow_cache_entries(self, expected_elements):
+        self.assertEqual(self.get_spd_flow_cache_entries(outbound=False),
+                         expected_elements)
 
     def crc32_supported(self):
         # lscpu is part of util-linux package, available on all Linux Distros

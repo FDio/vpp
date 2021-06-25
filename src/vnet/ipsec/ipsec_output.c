@@ -278,7 +278,7 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   ipsec_spd_t *spd0 = 0;
   int bogus;
   u64 nc_protect = 0, nc_bypass = 0, nc_discard = 0, nc_nomatch = 0;
-  u8 flow_cache_enabled = im->flow_cache_flag;
+  u8 flow_cache_enabled = im->output_flow_cache_flag;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
