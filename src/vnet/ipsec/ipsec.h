@@ -36,7 +36,7 @@ typedef clib_error_t *(*enable_disable_cb_t) (int is_enable);
 
 typedef struct
 {
-  u64 key[2];
+  u64 key[2]; // 16 bytes
   u64 value;
   i32 bucket_lock;
   u32 un_used;
@@ -53,6 +53,18 @@ typedef union
   };
   ipsec4_hash_kv_16_8_t kv_16_8;
 } ipsec4_spd_5tuple_t;
+
+typedef union
+{
+  struct
+  {
+    ip4_address_t ip4_src_addr;
+    ip4_address_t ip4_dest_addr;
+    ipsec_spd_policy_type_t policy_type;
+    u8 pad[4];
+  }; // 16 bytes total
+  ipsec4_hash_kv_16_8_t kv_16_8;
+} ipsec4_inbound_spd_tuple_t;
 
 typedef struct
 {
@@ -151,6 +163,7 @@ typedef struct
   uword *ipsec_if_by_sw_if_index;
 
   ipsec4_hash_kv_16_8_t *ipsec4_out_spd_hash_tbl;
+  ipsec4_hash_kv_16_8_t *ipsec4_in_spd_hash_tbl;
   clib_bihash_8_16_t tun4_protect_by_key;
   clib_bihash_24_16_t tun6_protect_by_key;
 
@@ -223,9 +236,15 @@ typedef struct
   u32 ipsec4_out_spd_hash_num_buckets;
   u32 ipsec4_out_spd_flow_cache_entries;
   u32 epoch_count;
+  u8 output_flow_cache_flag;
+
+  u32 ipsec4_in_spd_hash_num_buckets;
+  u32 ipsec4_in_spd_flow_cache_entries;
+  u32 input_epoch_count;
+  u8 input_flow_cache_flag;
+
   u8 async_mode;
   u16 msg_id_base;
-  u8 flow_cache_flag;
 } ipsec_main_t;
 
 typedef enum ipsec_format_flags_t_
