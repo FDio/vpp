@@ -298,6 +298,11 @@ vlib_pcap_dispatch_trace_configure (vlib_pcap_dispatch_trace_args_t *a)
       pm->packet_type = PCAP_PACKET_TYPE_vpp;
       pm->n_packets_to_capture = a->packets_to_capture;
       dtm->enable = 1;
+
+      foreach_vlib_main ()
+	{
+	  vlib_node_set_dispatch_wrapper (this_vlib_main, dispatch_pcap_trace);
+	}
     }
   else
     {
