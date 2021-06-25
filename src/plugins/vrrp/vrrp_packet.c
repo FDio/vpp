@@ -691,14 +691,17 @@ vrrp_vr_multicast_group_join (vrrp_vr_t * vr)
   if (!vnet_sw_interface_is_up (vnm, vr->config.sw_if_index))
     return 0;
 
+  is_ipv6 = vrrp_vr_is_ipv6 (vr);
+
+  if (is_ipv6 && ip6_link_is_enabled (vr->config.sw_if_index) == 0)
+    return 0;
+
   if (vlib_buffer_alloc (vm, &bi, n_buffers) != n_buffers)
     {
       clib_warning ("Buffer allocation failed for %U", format_vrrp_vr_key,
 		    vr);
       return -1;
     }
-
-  is_ipv6 = vrrp_vr_is_ipv6 (vr);
 
   b = vlib_get_buffer (vm, bi);
 
