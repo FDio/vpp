@@ -2980,7 +2980,7 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	  || (s->flags & VCL_SESSION_F_HAS_RX_EVT))
 	break;
       add_event = 1;
-      events[*num_ev].events |= EPOLLIN;
+      events[*num_ev].events = EPOLLIN;
       session_evt_data = s->vep.ev.data.u64;
       s->flags |= VCL_SESSION_F_HAS_RX_EVT;
       break;
@@ -2993,7 +2993,7 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       if (!(EPOLLOUT & session_events))
 	break;
       add_event = 1;
-      events[*num_ev].events |= EPOLLOUT;
+      events[*num_ev].events = EPOLLOUT;
       session_evt_data = s->vep.ev.data.u64;
       svm_fifo_reset_has_deq_ntf (vcl_session_is_ct (s) ?
 				  s->ct_tx_fifo : s->tx_fifo);
@@ -3010,7 +3010,7 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       if (!(EPOLLIN & session_events))
 	break;
       add_event = 1;
-      events[*num_ev].events |= EPOLLIN;
+      events[*num_ev].events = EPOLLIN;
       session_evt_data = s->vep.ev.data.u64;
       break;
     case SESSION_CTRL_EVT_CONNECTED:
@@ -3029,7 +3029,7 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       if (!(EPOLLOUT & session_events))
 	break;
       add_event = 1;
-      events[*num_ev].events |= EPOLLOUT;
+      events[*num_ev].events = EPOLLOUT;
       session_evt_data = s->vep.ev.data.u64;
       if (s->session_state == VCL_STATE_DETACHED)
 	events[*num_ev].events |= EPOLLHUP;
@@ -3050,7 +3050,7 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       sid = s->session_index;
       session_events = s->vep.ev.events;
       add_event = 1;
-      events[*num_ev].events |= EPOLLHUP | EPOLLRDHUP;
+      events[*num_ev].events = EPOLLHUP | EPOLLRDHUP;
       session_evt_data = s->vep.ev.data.u64;
       break;
     case SESSION_CTRL_EVT_RESET:
@@ -3064,7 +3064,7 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	break;
       session_events = s->vep.ev.events;
       add_event = 1;
-      events[*num_ev].events |= EPOLLHUP | EPOLLRDHUP;
+      events[*num_ev].events = EPOLLHUP | EPOLLRDHUP;
       session_evt_data = s->vep.ev.data.u64;
       break;
     case SESSION_CTRL_EVT_UNLISTEN_REPLY:
@@ -3306,8 +3306,6 @@ vppcom_epoll_wait (uint32_t vep_handle, struct epoll_event *events,
       VDBG (0, "ERROR: vep_idx (%u) is not a vep!", vep_handle);
       return VPPCOM_EINVAL;
     }
-
-  memset (events, 0, sizeof (*events) * maxevents);
 
   if (vec_len (wrk->unhandled_evts_vector))
     {
