@@ -34,6 +34,47 @@
       "revId": "02bf6f9ce0a28d751b872095b6fbfa030488779a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "417c80ca_39f7c19a",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_stats.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 204,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2021-06-25T12:28:19Z",
+      "side": 1,
+      "message": "\u003e You\u0027re right. It is unclear if the exception (from lock.release) is raised if we leave the block through a return statement.\n\nI wrote a test that verifies that the exception from lock.release is raised through the return statement is caught on line 206.  I\u0027m going to restore this to the previous state.",
+      "parentUuid": "d46f8755_b944964a",
+      "revId": "02bf6f9ce0a28d751b872095b6fbfa030488779a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "889f8f86_c6b3b7e0",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_stats.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 221,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2021-06-25T12:28:19Z",
+      "side": 1,
+      "message": "Looking at this again, it looks wrong because it relies on self.lock being blocking and always executing the with BLOCK.  If self.lock were ever to be changed to be non-blocking, then this would throw an error in the case of a timeout as \u0027result\u0027 would not exist.\n\nI\u0027m going to restore this to the previous state.",
+      "range": {
+        "startLine": 221,
+        "startChar": 0,
+        "endLine": 221,
+        "endChar": 1
+      },
+      "revId": "02bf6f9ce0a28d751b872095b6fbfa030488779a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
