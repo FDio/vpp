@@ -428,9 +428,13 @@ ipsec_spd_show_all (vlib_main_t * vm, ipsec_main_t * im)
     vlib_cli_output(vm, "%U", format_ipsec_spd, spdi);
   }
 
-  if (im->flow_cache_flag)
+  if (im->output_flow_cache_flag)
     {
-      vlib_cli_output (vm, "%U", format_ipsec_spd_flow_cache);
+      vlib_cli_output (vm, "%U", format_ipsec_out_spd_flow_cache);
+    }
+  if (im->input_flow_cache_flag)
+    {
+      vlib_cli_output (vm, "%U", format_ipsec_in_spd_flow_cache);
     }
   /* *INDENT-ON* */
 }

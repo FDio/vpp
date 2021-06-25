@@ -232,12 +232,23 @@ done:
 }
 
 u8 *
-format_ipsec_spd_flow_cache (u8 *s, va_list *args)
+format_ipsec_out_spd_flow_cache (u8 *s, va_list *args)
 {
   ipsec_main_t *im = &ipsec_main;
 
-  s = format (s, "\nip4-outbound-spd-flow-cache-entries: %u",
+  s = format (s, "\nipv4-outbound-spd-flow-cache-entries: %u",
 	      im->ipsec4_out_spd_flow_cache_entries);
+
+  return (s);
+}
+
+u8 *
+format_ipsec_in_spd_flow_cache (u8 *s, va_list *args)
+{
+  ipsec_main_t *im = &ipsec_main;
+
+  s = format (s, "\nipv4-inbound-spd-flow-cache-entries: %u",
+	      im->ipsec4_in_spd_flow_cache_entries);
 
   return (s);
 }
