@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c7781d92_01fdab67",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_stats.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 204,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2021-06-25T01:42:15Z",
+      "side": 1,
+      "message": "python.org/dev/peps/pep-0343/ states that the lock is guaranteed to be released when the block is left (even if via return or by an uncaught exception).",
+      "revId": "02bf6f9ce0a28d751b872095b6fbfa030488779a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
