@@ -36,6 +36,27 @@ typedef clib_error_t *(*enable_disable_cb_t) (int is_enable);
 
 typedef struct
 {
+  u64 key[2]; // 16 bytes
+  u64 value;
+  i32 bucket_lock;
+  u32 un_used;
+} ipsec4_hash_kv_16_8_t;
+
+typedef union
+{
+  struct
+  {
+    ip4_address_t ip4_src_addr;
+    ip4_address_t ip4_dest_addr;
+    ipsec_spd_policy_type_t policy_type;
+    u8 protocol;
+    u8 pad[3];
+  }; // 16 bytes total
+  ipsec4_hash_kv_16_8_t kv_16_8;
+} ipsec4_inbound_spd_tuple_t;
+
+typedef struct
+{
   u8 *name;
   /* add/del callback */
   add_del_sa_sess_cb_t add_del_sa_sess_cb;
@@ -130,6 +151,7 @@ typedef struct
   uword *ipsec_if_real_dev_by_show_dev;
   uword *ipsec_if_by_sw_if_index;
 
+  ipsec4_hash_kv_16_8_t *ipsec4_in_spd_hash_tbl;
   clib_bihash_8_16_t tun4_protect_by_key;
   clib_bihash_24_16_t tun6_protect_by_key;
 
@@ -206,6 +228,12 @@ typedef struct
   u32 esp4_dec_tun_fq_index;
   u32 esp6_dec_tun_fq_index;
 
+  /* flow cache config */
+  u32 ipsec4_in_spd_hash_num_buckets;
+  u32 ipsec4_in_spd_flow_cache_entries;
+  u32 input_epoch_count;
+  u8 input_flow_cache_flag;
+
   u8 async_mode;
   u16 msg_id_base;
 } ipsec_main_t;
@@ -245,6 +273,51 @@ get_next_output_feature_node_index (vlib_buffer_t * b,
 
   vnet_feature_next (&next, b);
   return node->next_nodes[next];
+}
+
+static_always_inline u64
+ipsec4_hash_16_8 (ipsec4_hash_kv_16_8_t *v)
+{
+#ifdef clib_crc32c_uses_intrinsics
+  return clib_crc32c ((u8 *) v->key, 16);
+#else
+  u64 tmp = v->key[0] ^ v->key[1];
+  return clib_xxhash (tmp);
+#endif
+}
+
+static_always_inline int
+ipsec4_hash_key_compare_16_8 (u64 *a, u64 *b)
+{
+#if defined(CLIB_HAVE_VEC128) && defined(CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE)
+  u64x2 v;
+  v = u64x2_load_unaligned (a) ^ u64x2_load_unaligned (b);
+  return u64x2_is_all_zero (v);
+#else
+  return ((a[0] ^ b[0]) | (a[1] ^ b[1])) == 0;
+#endif
+}
+
+/* clib_spinlock_lock is not used to save another memory indirection */
+static_always_inline void
+ipsec_spinlock_lock (i32 *lock)
+{
+  i32 free = 0;
+  while (!clib_atomic_cmp_and_swap_acq_relax_n (lock, &free, 1, 0))
+    {
+      /* atomic load limits number of compare_exchange executions */
+      while (clib_atomic_load_relax_n (lock))
+	CLIB_PAUSE ();
+      /* on failure, compare_exchange writes lock into free */
+      free = 0;
+    }
+}
+
+static_always_inline void
+ipsec_spinlock_unlock (i32 *lock)
+{
+  /* Make sure all reads/writes are complete before releasing the lock */
+  clib_atomic_release (lock);
 }
 
 u32 ipsec_register_ah_backend (vlib_main_t * vm, ipsec_main_t * im,
