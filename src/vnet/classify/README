@@ -54,8 +54,7 @@ The basic match-and-match operation looks like this:
      <etc>
     }
 
- result_mask = u32x4_zero_byte_mask (result);
- if (result_mask == 0xffff)
+ if (u32x4_is_zero (result.as_u32x4))
      return (v);
 
 Net of setup, it costs a couple of clock cycles to mask-and-match 16
