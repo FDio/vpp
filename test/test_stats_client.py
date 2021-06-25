@@ -2,8 +2,6 @@
 
 import unittest
 import psutil
-import sys
-import six
 from vpp_papi.vpp_stats import VPPStats
 
 from framework import tag_fixme_vpp_workers
@@ -110,19 +108,7 @@ class StatsClientTestCase(VppTestCase):
         # We wait for nodes symlinks to update (interfaces created/deleted).
         # ... and packets to be sent
         self.sleep(0.1)
-        for _ in range(5):
-            try:
-                vectors = self.statistics.get_counter('/nodes/pg1-tx/vectors')
-                if vectors[0] == 0:
-                    raise ValueError("Nodes counters are not up to date")
-                break
-            except:
-                t, v, tb = sys.exc_info()
-
-                self.sleep(0.1)
-                continue
-        else:
-            six.reraise(t, v, tb)
+        vectors = self.statistics.get_counter('/nodes/pg1-tx/vectors')
 
         self.assertEqual(tx[0]['bytes'] - tx_before_sending[0]['bytes'],
                          bytes_to_send)
