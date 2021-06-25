@@ -200,9 +200,7 @@ class VPPStats():
                     self.error_vectors = []
                     for threads in StatsVector(self, self.error_vector, 'P'):
                         self.error_vectors.append(StatsVector(self, threads[0], 'Q'))
-                # Return statement must be outside the lock block to be sure
-                # lock.release is executed
-                return
+                    return
             except IOError:
                 if not blocking:
                     raise
@@ -215,10 +213,7 @@ class VPPStats():
                 if self.last_epoch != self.epoch:
                     self.refresh(blocking)
                 with self.lock:
-                    result = self.directory[item].get_counter(self)
-                # Return statement must be outside the lock block to be sure
-                # lock.release is executed
-                return result
+                    return self.directory[item].get_counter(self)
             except IOError:
                 if not blocking:
                     raise
@@ -245,7 +240,7 @@ class VPPStats():
                             total += per_thread[i]
                         if total:
                             result[k] = total
-                return result
+                    return result
             except IOError:
                 if not blocking:
                     raise
@@ -272,10 +267,7 @@ class VPPStats():
                     if self.last_epoch != self.epoch:
                         self.refresh(blocking)
                     with self.lock:
-                        result =  sum(self.directory[name].get_counter(self))
-                    # Return statement must be outside the lock block to be sure
-                    # lock.release is executed
-                    return result
+                        return sum(self.directory[name].get_counter(self))
                 except IOError:
                     if not blocking:
                         raise
