@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f81f3c8f_dce271c0",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_stats.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 203,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2021-06-25T16:35:20Z",
+      "side": 1,
+      "message": "Really? I though not having to care about closing resources was the whole point of \"with\" statement.",
+      "range": {
+        "startLine": 203,
+        "startChar": 43,
+        "endLine": 203,
+        "endChar": 50
+      },
+      "revId": "c9ae8cfaccd75fbc2dc27bdebccdbd14fc0cb60c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
