@@ -458,7 +458,7 @@ vnet_classify_find_entry_inline (vnet_classify_table_t *t, const u8 *h,
 	  abort ();
 	}
 
-      if (u32x4_zero_byte_mask (result.as_u32x4) == 0xffff)
+      if (u32x4_is_zero (result.as_u32x4))
 	{
 	  if (PREDICT_TRUE (now))
 	    {

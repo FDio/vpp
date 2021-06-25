@@ -140,6 +140,12 @@ u32x4_zero_byte_mask (u32x4 x)
   return u32x4_get0 (cmp);
 }
 
+static_always_inline int
+u32x4_is_zero (u32x4 x)
+{
+  return (u32x4_zero_byte_mask (x) == 0xffff);
+}
+
 #endif /* included_vector_altivec_h */
 
 /*

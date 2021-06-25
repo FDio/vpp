@@ -714,6 +714,12 @@ u8x16_xor3 (u8x16 a, u8x16 b, u8x16 c)
   return a ^ b ^ c;
 }
 
+static_always_inline int
+u32x4_is_zero (u32x4 x)
+{
+  return (u32x4_zero_byte_mask (x) == 0xffff);
+}
+
 #endif /* included_vector_sse2_h */
 
 /*

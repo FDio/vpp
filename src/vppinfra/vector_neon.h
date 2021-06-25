@@ -68,10 +68,6 @@ t##s##x##c##_store_unaligned (t##s##x##c v, void *p)			\
 { vst1q_##i (p, v); }							\
 \
 static_always_inline int						\
-t##s##x##c##_is_all_zero (t##s##x##c x)					\
-{ return !!(vminvq_u##s (vceqq_##i (vdupq_n_##i(0), x))); }						\
-\
-static_always_inline int						\
 t##s##x##c##_is_equal (t##s##x##c a, t##s##x##c b)			\
 { return !!(vminvq_u##s (vceqq_##i (a, b))); }				\
 \
@@ -209,6 +205,56 @@ __asm__ ("eor3 %0.16b,%1.16b,%2.16b,%3.16b": "=w" (r): "0" (a), "w" (b), "w" (c)
   return r;
 #endif
   return a ^ b ^ c;
+}
+
+#undef foreach_neon_vec128i
+#undef foreach_neon_vec128u
+#undef foreach_neon_vec128f
+#define foreach_neon_vec128u                                                  \
+  _ (u, 8, 16, u8) _ (u, 16, 8, u16) _ (u, 32, 4, u32)
+
+#define _(t, s, c, i)                                                         \
+  static_always_inline int t##s##x##c##_is_all_zero (t##s##x##c x)            \
+  {                                                                           \
+    return (vaddlvq_##i (x) == 0);                                            \
+  }
+
+foreach_neon_vec128u
+
+#undef _
+
+#undef foreach_neon_vec128i
+#undef foreach_neon_vec128u
+#undef foreach_neon_vec128f
+#define foreach_neon_vec128i                                                  \
+  _ (i, 8, 16, s8) _ (i, 16, 8, s16) _ (i, 32, 4, s32)
+
+#define _(t, s, c, i)                                                         \
+  static_always_inline int t##s##x##c##_is_all_zero (t##s##x##c x)            \
+  {                                                                           \
+    return ((vminvq_##i (x) == 0) && ((vmaxvq_##i (x) == 0)));                \
+  }
+
+  foreach_neon_vec128i
+
+#undef _
+
+    static_always_inline int
+    u64x2_is_all_zero (u64x2 x)
+{
+  return ((vgetq_lane_u64 (x, 0) == 0) && (vgetq_lane_u64 (x, 1) == 0));
+}
+
+static_always_inline int
+i64x2_is_all_zero (i64x2 x)
+{
+  return ((vgetq_lane_s64 (x, 0) == 0) && (vgetq_lane_s64 (x, 1) == 0));
+}
+
+static_always_inline int
+u32x4_is_zero (u32x4 x)
+{
+  return (u32x4_is_all_zero (x));
 }
 
 #define CLIB_HAVE_VEC128_MSB_MASK
