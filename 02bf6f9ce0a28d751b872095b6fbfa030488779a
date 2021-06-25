@@ -16,6 +16,24 @@
       "revId": "02bf6f9ce0a28d751b872095b6fbfa030488779a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d46f8755_b944964a",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_stats.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 204,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2021-06-25T09:36:02Z",
+      "side": 1,
+      "message": "You\u0027re right. It is unclear if the exception (from lock.release) is raised if we leave the block through a return statement.",
+      "parentUuid": "c7781d92_01fdab67",
+      "revId": "02bf6f9ce0a28d751b872095b6fbfa030488779a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
