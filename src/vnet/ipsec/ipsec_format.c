@@ -232,6 +232,17 @@ done:
 }
 
 u8 *
+format_ipsec_in_spd_flow_cache (u8 *s, va_list *args)
+{
+  ipsec_main_t *im = &ipsec_main;
+
+  s = format (s, "\nipv4-inbound-spd-flow-cache-entries: %u",
+	      im->ipsec4_in_spd_flow_cache_entries);
+
+  return (s);
+}
+
+u8 *
 format_ipsec_key (u8 * s, va_list * args)
 {
   ipsec_key_t *key = va_arg (*args, ipsec_key_t *);
