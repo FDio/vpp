@@ -241,6 +241,7 @@ typedef struct session_main_
   /** Preallocate session config parameter */
   u32 preallocated_sessions;
 
+  u16 msg_id_base;
 } session_main_t;
 
 extern session_main_t session_main;

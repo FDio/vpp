@@ -18,6 +18,8 @@
 
 #include <hs_apps/sapi/vpp_echo_common.h>
 
+#include <vnet/session/session.api_enum.h>
+
 /*
  *
  *  Binary API Messages

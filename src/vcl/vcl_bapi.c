@@ -15,22 +15,17 @@
 
 #include <vcl/vcl_private.h>
 #include <vlibmemory/api.h>
-#include <vpp/api/vpe_msg_enum.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_typedefs
-
-/* declare message handlers for each api */
-
-#define vl_endianfun		/* define message structures */
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_endianfun
+#include <vnet/format_fns.h>
+#include <vnet/session/session.api_enum.h>
+#include <vnet/session/session.api_types.h>
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...)
+#define vl_endianfun
 #define vl_printfun
-#include <vpp/api/vpe_all_api_h.h>
+#include <vnet/session/session.api.h>
+#undef vl_endianfun
 #undef vl_printfun
 
 static u8 *

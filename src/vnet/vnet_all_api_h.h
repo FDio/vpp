@@ -34,7 +34,6 @@
 #endif
 
 #include <vnet/interface.api.h>
-#include <vnet/session/session.api.h>
 #include <vnet/srmpls/sr_mpls.api.h>
 
 /*

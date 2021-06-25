@@ -17,22 +17,18 @@
 #define __included_vpp_echo_common_h__
 
 #include <vnet/session/application_interface.h>
-#include <vpp/api/vpe_msg_enum.h>
-
-#define vl_typedefs		/* define message structures */
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_typedefs
-
-/* declare message handlers for each api */
-
-#define vl_endianfun		/* define message structures */
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_endianfun
+#include <vnet/format_fns.h>
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...)
+
+/* declare message handlers for each api */
+#define vl_typedefs		/* define message structures */
+#define vl_endianfun		/* define message structures */
 #define vl_printfun
-#include <vpp/api/vpe_all_api_h.h>
+#include <vnet/session/session.api.h>
+#undef vl_typedefs
+#undef vl_endianfun
 #undef vl_printfun
 
 #define TIMEOUT 10.0
