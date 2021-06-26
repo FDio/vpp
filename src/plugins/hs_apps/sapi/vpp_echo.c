@@ -1343,7 +1343,6 @@ main (int argc, char **argv)
   signal (SIGINT, stop_signal);
   signal (SIGQUIT, stop_signal);
   signal (SIGTERM, stop_signal);
-  echo_api_hookup (em);
 
   app_name = em->i_am_master ? "echo_server" : "echo_client";
   if (connect_to_vpp (app_name))
@@ -1355,6 +1354,8 @@ main (int argc, char **argv)
 
   echo_session_prealloc (em);
   echo_notify_event (em, ECHO_EVT_START);
+
+  echo_api_hookup (em);
 
   echo_send_attach (em);
   if (wait_for_state_change (em, STATE_ATTACHED_NO_CERT, TIMEOUT))

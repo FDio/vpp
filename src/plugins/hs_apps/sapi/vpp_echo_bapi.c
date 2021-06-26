@@ -18,6 +18,9 @@
 
 #include <hs_apps/sapi/vpp_echo_common.h>
 
+#define REPLY_MSG_ID_BASE msg_id_base
+static u16 msg_id_base;
+
 /*
  *
  *  Binary API Messages
@@ -31,7 +34,7 @@ echo_send_attach (echo_main_t * em)
   bmp = vl_msg_api_alloc (sizeof (*bmp));
   clib_memset (bmp, 0, sizeof (*bmp));
 
-  bmp->_vl_msg_id = ntohs (VL_API_APP_ATTACH);
+  bmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_APP_ATTACH);
   bmp->client_index = em->my_client_index;
   bmp->context = ntohl (0xfeedface);
   bmp->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_ACCEPT_REDIRECT;
@@ -58,7 +61,7 @@ echo_send_detach (echo_main_t * em)
   bmp = vl_msg_api_alloc (sizeof (*bmp));
   clib_memset (bmp, 0, sizeof (*bmp));
 
-  bmp->_vl_msg_id = ntohs (VL_API_APPLICATION_DETACH);
+  bmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_APPLICATION_DETACH);
   bmp->client_index = em->my_client_index;
   bmp->context = ntohl (0xfeedface);
 
@@ -75,7 +78,7 @@ echo_send_add_cert_key (echo_main_t * em)
   bmp = vl_msg_api_alloc (sizeof (*bmp) + cert_len + key_len);
   clib_memset (bmp, 0, sizeof (*bmp) + cert_len + key_len);
 
-  bmp->_vl_msg_id = ntohs (VL_API_APP_ADD_CERT_KEY_PAIR);
+  bmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_APP_ADD_CERT_KEY_PAIR);
   bmp->client_index = em->my_client_index;
   bmp->context = ntohl (0xfeedface);
   bmp->cert_len = clib_host_to_net_u16 (cert_len);
@@ -93,7 +96,7 @@ echo_send_del_cert_key (echo_main_t * em)
   bmp = vl_msg_api_alloc (sizeof (*bmp));
   clib_memset (bmp, 0, sizeof (*bmp));
 
-  bmp->_vl_msg_id = ntohs (VL_API_APP_DEL_CERT_KEY_PAIR);
+  bmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_APP_DEL_CERT_KEY_PAIR);
   bmp->client_index = em->my_client_index;
   bmp->context = ntohl (0xfeedface);
   bmp->index = clib_host_to_net_u32 (em->ckpair_index);
@@ -540,16 +543,36 @@ _(APPLICATION_DETACH_REPLY, application_detach_reply)            \
 _(APP_ADD_CERT_KEY_PAIR_REPLY, app_add_cert_key_pair_reply)      \
 _(APP_DEL_CERT_KEY_PAIR_REPLY, app_del_cert_key_pair_reply)
 
+#define vl_print(handle, ...) fformat (handle, __VA_ARGS__)
+#define vl_endianfun
+#include <vnet/session/session.api.h>
+#undef vl_endianfun
+
+#define vl_printfun
+#include <vnet/session/session.api.h>
+#undef vl_printfun
+
+#define vl_api_version(n, v) static u32 api_version = v;
+#include <vnet/session/session.api.h>
+#undef vl_api_version
+
 void
 echo_api_hookup (echo_main_t * em)
 {
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+  u8 *name = format (0, "session_%08x%c", api_version, 0);
+
+  REPLY_MSG_ID_BASE = vl_client_get_first_plugin_msg_id ((char *) name);
+
+  vec_free (name);
+
+  if (REPLY_MSG_ID_BASE == (u16) ~0)
+    return;
+
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (REPLY_MSG_ID_BASE + VL_API_##N, #n,                \
+			   vl_api_##n##_t_handler, vl_noop_handler,           \
+			   vl_api_##n##_t_endian, vl_api_##n##_t_print,       \
+			   sizeof (vl_api_##n##_t), 1);
   foreach_quic_echo_msg;
 #undef _
 }
