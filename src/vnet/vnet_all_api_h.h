@@ -33,8 +33,6 @@
 #include <vnet/format_fns.h>
 #endif
 
-#include <vnet/session/session.api.h>
-
 /*
  * fd.io coding-style-patch-verification: ON
  *
