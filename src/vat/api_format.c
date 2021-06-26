@@ -1080,7 +1080,7 @@ format_hex_bytes (u8 * s, va_list * va)
  * a single function, but that could break in subtle ways.
  */
 
-#define foreach_standard_reply_retval_handler _ (session_rule_add_del_reply)
+#define foreach_standard_reply_retval_handler
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -1129,9 +1129,6 @@ foreach_standard_reply_retval_handler;
   _ (ADD_NODE_NEXT_REPLY, add_node_next_reply)                                \
   _ (SHOW_VERSION_REPLY, show_version_reply)                                  \
   _ (SHOW_THREADS_REPLY, show_threads_reply)                                  \
-  _ (APP_NAMESPACE_ADD_DEL_REPLY, app_namespace_add_del_reply)                \
-  _ (SESSION_RULE_ADD_DEL_REPLY, session_rule_add_del_reply)                  \
-  _ (SESSION_RULES_DETAILS, session_rules_details)
 
 #define foreach_standalone_reply_msg					\
 
@@ -2660,90 +2657,6 @@ _("disable",  L2_VTR_DISABLED)  \
 _("pop",  L2_VTR_POP_2)         \
 _("push",  L2_VTR_PUSH_2)
 
-
-static void vl_api_app_namespace_add_del_reply_t_handler
-  (vl_api_app_namespace_add_del_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  i32 retval = ntohl (mp->retval);
-  if (vam->async_mode)
-    {
-      vam->async_errors += (retval < 0);
-    }
-  else
-    {
-      vam->retval = retval;
-      if (retval == 0)
-	errmsg ("app ns index %d\n", ntohl (mp->appns_index));
-      vam->result_ready = 1;
-    }
-}
-
-static void vl_api_app_namespace_add_del_reply_t_handler_json
-  (vl_api_app_namespace_add_del_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t node;
-
-  vat_json_init_object (&node);
-  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
-  vat_json_object_add_uint (&node, "appns_index", ntohl (mp->appns_index));
-
-  vat_json_print (vam->ofp, &node);
-  vat_json_free (&node);
-
-  vam->retval = ntohl (mp->retval);
-  vam->result_ready = 1;
-}
-
-static int
-api_app_namespace_add_del (vat_main_t * vam)
-{
-  vl_api_app_namespace_add_del_t *mp;
-  unformat_input_t *i = vam->input;
-  u8 *ns_id = 0, secret_set = 0, sw_if_index_set = 0;
-  u32 sw_if_index, ip4_fib_id, ip6_fib_id;
-  u64 secret;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "id %_%v%_", &ns_id))
-	;
-      else if (unformat (i, "secret %lu", &secret))
-	secret_set = 1;
-      else if (unformat (i, "sw_if_index %d", &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "ip4_fib_id %d", &ip4_fib_id))
-	;
-      else if (unformat (i, "ip6_fib_id %d", &ip6_fib_id))
-	;
-      else
-	break;
-    }
-  if (!ns_id || !secret_set || !sw_if_index_set)
-    {
-      errmsg ("namespace id, secret and sw_if_index must be set");
-      return -99;
-    }
-  if (vec_len (ns_id) > 64)
-    {
-      errmsg ("namespace id too long");
-      return -99;
-    }
-  M (APP_NAMESPACE_ADD_DEL, mp);
-
-  vl_api_vec_to_api_string (ns_id, &mp->namespace_id);
-  mp->secret = clib_host_to_net_u64 (secret);
-  mp->sw_if_index = clib_host_to_net_u32 (sw_if_index);
-  mp->ip4_fib_id = clib_host_to_net_u32 (ip4_fib_id);
-  mp->ip6_fib_id = clib_host_to_net_u32 (ip6_fib_id);
-  vec_free (ns_id);
-  S (mp);
-  W (ret);
-  return ret;
-}
-
 static int
 api_sock_init_shm (vat_main_t * vam)
 {
@@ -2801,221 +2714,6 @@ api_sock_init_shm (vat_main_t * vam)
 #else
   return -99;
 #endif
-}
-
-static void
-vl_api_session_rules_details_t_handler (vl_api_session_rules_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  fib_prefix_t lcl, rmt;
-
-  ip_prefix_decode (&mp->lcl, &lcl);
-  ip_prefix_decode (&mp->rmt, &rmt);
-
-  if (lcl.fp_proto == FIB_PROTOCOL_IP4)
-    {
-      print (vam->ofp,
-	     "appns %u tp %u scope %d %U/%d %d %U/%d %d action: %d tag: %s",
-	     clib_net_to_host_u32 (mp->appns_index), mp->transport_proto,
-	     mp->scope, format_ip4_address, &lcl.fp_addr.ip4, lcl.fp_len,
-	     clib_net_to_host_u16 (mp->lcl_port), format_ip4_address,
-	     &rmt.fp_addr.ip4, rmt.fp_len,
-	     clib_net_to_host_u16 (mp->rmt_port),
-	     clib_net_to_host_u32 (mp->action_index), mp->tag);
-    }
-  else
-    {
-      print (vam->ofp,
-	     "appns %u tp %u scope %d %U/%d %d %U/%d %d action: %d tag: %s",
-	     clib_net_to_host_u32 (mp->appns_index), mp->transport_proto,
-	     mp->scope, format_ip6_address, &lcl.fp_addr.ip6, lcl.fp_len,
-	     clib_net_to_host_u16 (mp->lcl_port), format_ip6_address,
-	     &rmt.fp_addr.ip6, rmt.fp_len,
-	     clib_net_to_host_u16 (mp->rmt_port),
-	     clib_net_to_host_u32 (mp->action_index), mp->tag);
-    }
-}
-
-static void
-vl_api_session_rules_details_t_handler_json (vl_api_session_rules_details_t *
-					     mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t *node = NULL;
-  struct in6_addr ip6;
-  struct in_addr ip4;
-
-  fib_prefix_t lcl, rmt;
-
-  ip_prefix_decode (&mp->lcl, &lcl);
-  ip_prefix_decode (&mp->rmt, &rmt);
-
-  if (VAT_JSON_ARRAY != vam->json_tree.type)
-    {
-      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
-      vat_json_init_array (&vam->json_tree);
-    }
-  node = vat_json_array_add (&vam->json_tree);
-  vat_json_init_object (node);
-
-  vat_json_object_add_uint (node, "appns_index",
-			    clib_net_to_host_u32 (mp->appns_index));
-  vat_json_object_add_uint (node, "transport_proto", mp->transport_proto);
-  vat_json_object_add_uint (node, "scope", mp->scope);
-  vat_json_object_add_uint (node, "action_index",
-			    clib_net_to_host_u32 (mp->action_index));
-  vat_json_object_add_uint (node, "lcl_port",
-			    clib_net_to_host_u16 (mp->lcl_port));
-  vat_json_object_add_uint (node, "rmt_port",
-			    clib_net_to_host_u16 (mp->rmt_port));
-  vat_json_object_add_uint (node, "lcl_plen", lcl.fp_len);
-  vat_json_object_add_uint (node, "rmt_plen", rmt.fp_len);
-  vat_json_object_add_string_copy (node, "tag", mp->tag);
-  if (lcl.fp_proto == FIB_PROTOCOL_IP4)
-    {
-      clib_memcpy (&ip4, &lcl.fp_addr.ip4, sizeof (ip4));
-      vat_json_object_add_ip4 (node, "lcl_ip", ip4);
-      clib_memcpy (&ip4, &rmt.fp_addr.ip4, sizeof (ip4));
-      vat_json_object_add_ip4 (node, "rmt_ip", ip4);
-    }
-  else
-    {
-      clib_memcpy (&ip6, &lcl.fp_addr.ip6, sizeof (ip6));
-      vat_json_object_add_ip6 (node, "lcl_ip", ip6);
-      clib_memcpy (&ip6, &rmt.fp_addr.ip6, sizeof (ip6));
-      vat_json_object_add_ip6 (node, "rmt_ip", ip6);
-    }
-}
-
-static int
-api_session_rule_add_del (vat_main_t * vam)
-{
-  vl_api_session_rule_add_del_t *mp;
-  unformat_input_t *i = vam->input;
-  u32 proto = ~0, lcl_port, rmt_port, action = 0, lcl_plen, rmt_plen;
-  u32 appns_index = 0, scope = 0;
-  ip4_address_t lcl_ip4, rmt_ip4;
-  ip6_address_t lcl_ip6, rmt_ip6;
-  u8 is_ip4 = 1, conn_set = 0;
-  u8 is_add = 1, *tag = 0;
-  int ret;
-  fib_prefix_t lcl, rmt;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "del"))
-	is_add = 0;
-      else if (unformat (i, "add"))
-	;
-      else if (unformat (i, "proto tcp"))
-	proto = 0;
-      else if (unformat (i, "proto udp"))
-	proto = 1;
-      else if (unformat (i, "appns %d", &appns_index))
-	;
-      else if (unformat (i, "scope %d", &scope))
-	;
-      else if (unformat (i, "tag %_%v%_", &tag))
-	;
-      else
-	if (unformat
-	    (i, "%U/%d %d %U/%d %d", unformat_ip4_address, &lcl_ip4,
-	     &lcl_plen, &lcl_port, unformat_ip4_address, &rmt_ip4, &rmt_plen,
-	     &rmt_port))
-	{
-	  is_ip4 = 1;
-	  conn_set = 1;
-	}
-      else
-	if (unformat
-	    (i, "%U/%d %d %U/%d %d", unformat_ip6_address, &lcl_ip6,
-	     &lcl_plen, &lcl_port, unformat_ip6_address, &rmt_ip6, &rmt_plen,
-	     &rmt_port))
-	{
-	  is_ip4 = 0;
-	  conn_set = 1;
-	}
-      else if (unformat (i, "action %d", &action))
-	;
-      else
-	break;
-    }
-  if (proto == ~0 || !conn_set || action == ~0)
-    {
-      errmsg ("transport proto, connection and action must be set");
-      return -99;
-    }
-
-  if (scope > 3)
-    {
-      errmsg ("scope should be 0-3");
-      return -99;
-    }
-
-  M (SESSION_RULE_ADD_DEL, mp);
-
-  clib_memset (&lcl, 0, sizeof (lcl));
-  clib_memset (&rmt, 0, sizeof (rmt));
-  if (is_ip4)
-    {
-      ip_set (&lcl.fp_addr, &lcl_ip4, 1);
-      ip_set (&rmt.fp_addr, &rmt_ip4, 1);
-      lcl.fp_len = lcl_plen;
-      rmt.fp_len = rmt_plen;
-    }
-  else
-    {
-      ip_set (&lcl.fp_addr, &lcl_ip6, 0);
-      ip_set (&rmt.fp_addr, &rmt_ip6, 0);
-      lcl.fp_len = lcl_plen;
-      rmt.fp_len = rmt_plen;
-    }
-
-
-  ip_prefix_encode (&lcl, &mp->lcl);
-  ip_prefix_encode (&rmt, &mp->rmt);
-  mp->lcl_port = clib_host_to_net_u16 ((u16) lcl_port);
-  mp->rmt_port = clib_host_to_net_u16 ((u16) rmt_port);
-  mp->transport_proto =
-    proto ? TRANSPORT_PROTO_API_UDP : TRANSPORT_PROTO_API_TCP;
-  mp->action_index = clib_host_to_net_u32 (action);
-  mp->appns_index = clib_host_to_net_u32 (appns_index);
-  mp->scope = scope;
-  mp->is_add = is_add;
-  if (tag)
-    {
-      clib_memcpy (mp->tag, tag, vec_len (tag));
-      vec_free (tag);
-    }
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_session_rules_dump (vat_main_t * vam)
-{
-  vl_api_session_rules_dump_t *mp;
-  vl_api_control_ping_t *mp_ping;
-  int ret;
-
-  if (!vam->json_output)
-    {
-      print (vam->ofp, "%=20s", "Session Rules");
-    }
-
-  M (SESSION_RULES_DUMP, mp);
-  /* send it... */
-  S (mp);
-
-  /* Use a control ping for synchronization */
-  MPING (CONTROL_PING, mp_ping);
-  S (mp_ping);
-
-  /* Wait for a reply... */
-  W (ret);
-  return ret;
 }
 
 static int
@@ -3530,11 +3228,6 @@ _(get_first_msg_id, "client <name>")					\
 _(get_node_graph, " ")                                                  \
 _(get_next_index, "node-name <node-name> next-node-name <node-name>")   \
 _(sock_init_shm, "size <nnn>")						\
-_(app_namespace_add_del, "[add] id <ns-id> secret <nn> sw_if_index <nn>")\
-_(session_rule_add_del, "[add|del] proto <tcp/udp> <lcl-ip>/<plen> "	\
-  "<lcl-port> <rmt-ip>/<plen> <rmt-port> action <nn>")			\
-_(session_rules_dump, "")						\
-
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \
 _(comment, "usage: comment <ignore-rest-of-line>")		\

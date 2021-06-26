@@ -15,23 +15,14 @@
 
 #include <vcl/vcl_private.h>
 #include <vlibmemory/api.h>
-#include <vpp/api/vpe_msg_enum.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_typedefs
+#include <vnet/format_fns.h>
+#include <vnet/session/session.api_enum.h>
+#include <vnet/session/session.api_types.h>
 
-/* declare message handlers for each api */
+#define REPLY_MSG_ID_BASE msg_id_base
 
-#define vl_endianfun		/* define message structures */
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...)
-#define vl_printfun
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_printfun
+static u16 msg_id_base;
 
 static u8 *
 format_api_error (u8 * s, va_list * args)
@@ -280,16 +271,38 @@ vl_api_app_del_cert_key_pair_reply_t_handler (
   _ (APP_DEL_CERT_KEY_PAIR_REPLY, app_del_cert_key_pair_reply)                \
   _ (APP_WORKER_ADD_DEL_REPLY, app_worker_add_del_reply)
 
+#define vl_print(handle, ...) fformat (handle, __VA_ARGS__)
+#define vl_endianfun	      /* define message structures */
+#include <vnet/session/session.api.h>
+#undef vl_endianfun
+
+/* instantiate all the print functions we know about */
+#define vl_printfun
+#include <vnet/session/session.api.h>
+#undef vl_printfun
+
+#define vl_api_version(n, v) static u32 api_version = v;
+#include <vnet/session/session.api.h>
+#undef vl_api_version
+
 static void
 vcl_bapi_hookup (void)
 {
-#define _(N, n)                                                	\
-    vl_msg_api_set_handlers(VL_API_##N, #n,                    	\
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+  u8 *msg_base_lookup_name = format (0, "session_%08x%c", api_version, 0);
+
+  REPLY_MSG_ID_BASE =
+    vl_client_get_first_plugin_msg_id ((char *) msg_base_lookup_name);
+
+  vec_free (msg_base_lookup_name);
+
+  if (REPLY_MSG_ID_BASE == (u16) ~0)
+    return;
+
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (REPLY_MSG_ID_BASE + VL_API_##N, #n,                \
+			   vl_api_##n##_t_handler, vl_noop_handler,           \
+			   vl_api_##n##_t_endian, vl_api_##n##_t_print,       \
+			   sizeof (vl_api_##n##_t), 1);
   foreach_sock_msg;
 #undef _
 }
@@ -305,7 +318,7 @@ vcl_bapi_send_session_enable_disable (u8 is_enable)
   bmp = vl_msg_api_alloc (sizeof (*bmp));
   memset (bmp, 0, sizeof (*bmp));
 
-  bmp->_vl_msg_id = ntohs (VL_API_SESSION_ENABLE_DISABLE);
+  bmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_SESSION_ENABLE_DISABLE);
   bmp->client_index = wrk->api_client_handle;
   bmp->context = htonl (0xfeedface);
   bmp->is_enable = is_enable;
@@ -327,7 +340,7 @@ vcl_bapi_send_attach (void)
   bmp = vl_msg_api_alloc (sizeof (*bmp));
   memset (bmp, 0, sizeof (*bmp));
 
-  bmp->_vl_msg_id = ntohs (VL_API_APP_ATTACH);
+  bmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_APP_ATTACH);
   bmp->client_index = wrk->api_client_handle;
   bmp->context = htonl (0xfeedface);
   bmp->options[APP_OPTIONS_FLAGS] =
@@ -363,7 +376,7 @@ vcl_bapi_send_detach (void)
   bmp = vl_msg_api_alloc (sizeof (*bmp));
   memset (bmp, 0, sizeof (*bmp));
 
-  bmp->_vl_msg_id = ntohs (VL_API_APPLICATION_DETACH);
+  bmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_APPLICATION_DETACH);
   bmp->client_index = wrk->api_client_handle;
   bmp->context = htonl (0xfeedface);
   vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & bmp);
@@ -378,7 +391,7 @@ vcl_bapi_send_app_worker_add_del (u8 is_add)
   mp = vl_msg_api_alloc (sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
 
-  mp->_vl_msg_id = ntohs (VL_API_APP_WORKER_ADD_DEL);
+  mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_APP_WORKER_ADD_DEL);
   mp->client_index = wrk->api_client_handle;
   mp->app_index = clib_host_to_net_u32 (vcm->app_index);
   mp->context = wrk->wrk_index;
@@ -398,7 +411,7 @@ vcl_bapi_send_child_worker_del (vcl_worker_t * child_wrk)
   mp = vl_msg_api_alloc (sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
 
-  mp->_vl_msg_id = ntohs (VL_API_APP_WORKER_ADD_DEL);
+  mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_APP_WORKER_ADD_DEL);
   mp->client_index = wrk->api_client_handle;
   mp->app_index = clib_host_to_net_u32 (vcm->app_index);
   mp->context = wrk->wrk_index;
@@ -419,7 +432,7 @@ vcl_bapi_send_app_add_cert_key_pair (vppcom_cert_key_pair_t *ckpair)
   bmp = vl_msg_api_alloc (sizeof (*bmp) + cert_len + key_len);
   clib_memset (bmp, 0, sizeof (*bmp) + cert_len + key_len);
 
-  bmp->_vl_msg_id = ntohs (VL_API_APP_ADD_CERT_KEY_PAIR);
+  bmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_APP_ADD_CERT_KEY_PAIR);
   bmp->client_index = wrk->api_client_handle;
   bmp->context = wrk->wrk_index;
   bmp->cert_len = clib_host_to_net_u16 (cert_len);
@@ -438,7 +451,7 @@ vcl_bapi_send_app_del_cert_key_pair (u32 ckpair_index)
   bmp = vl_msg_api_alloc (sizeof (*bmp));
   clib_memset (bmp, 0, sizeof (*bmp));
 
-  bmp->_vl_msg_id = ntohs (VL_API_APP_DEL_CERT_KEY_PAIR);
+  bmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_APP_DEL_CERT_KEY_PAIR);
   bmp->client_index = wrk->api_client_handle;
   bmp->context = wrk->wrk_index;
   bmp->index = clib_host_to_net_u32 (ckpair_index);

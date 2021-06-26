@@ -21,37 +21,14 @@
 #include <vnet/session/session_rules_table.h>
 #include <vnet/session/session_table.h>
 #include <vnet/session/session.h>
-
 #include <vnet/ip/ip_types_api.h>
 
-#include <vnet/vnet_msg_enum.h>
+#include <vnet/format_fns.h>
+#include <vnet/session/session.api_enum.h>
+#include <vnet/session/session.api_types.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vnet/vnet_all_api_h.h>
-#undef vl_printfun
-
+#define REPLY_MSG_ID_BASE session_main.msg_id_base
 #include <vlibapi/api_helper_macros.h>
-
-#define foreach_session_api_msg                                         \
-_(APP_ATTACH, app_attach)						\
-_(APPLICATION_DETACH, application_detach)				\
-_(SESSION_ENABLE_DISABLE, session_enable_disable)                   	\
-_(APP_NAMESPACE_ADD_DEL, app_namespace_add_del)				\
-_(SESSION_RULE_ADD_DEL, session_rule_add_del)				\
-_(SESSION_RULES_DUMP, session_rules_dump)				\
-_(APP_ADD_CERT_KEY_PAIR, app_add_cert_key_pair)				\
-_(APP_DEL_CERT_KEY_PAIR, app_del_cert_key_pair)				\
-_(APP_WORKER_ADD_DEL, app_worker_add_del)				\
 
 static transport_proto_t
 api_session_transport_proto_decode (const vl_api_transport_proto_t * api_tp)
@@ -921,7 +898,7 @@ send_session_rule_details4 (mma_rule_16_t * rule, u8 is_local,
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_SESSION_RULES_DETAILS);
+  rmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_SESSION_RULES_DETAILS);
   rmp->context = context;
 
   clib_memset (&lcl, 0, sizeof (lcl));
@@ -963,7 +940,7 @@ send_session_rule_details6 (mma_rule_40_t * rule, u8 is_local,
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_SESSION_RULES_DETAILS);
+  rmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_SESSION_RULES_DETAILS);
   rmp->context = context;
 
   clib_memset (&lcl, 0, sizeof (lcl));
@@ -1137,50 +1114,6 @@ application_reaper_cb (u32 client_index)
 }
 
 VL_MSG_API_REAPER_FUNCTION (application_reaper_cb);
-
-#define vl_msg_name_crc_list
-#include <vnet/vnet_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_session;
-#undef _
-}
-
-/*
- * session_api_hookup
- * Add uri's API message handlers to the table.
- * vlib has already mapped shared memory and
- * added the client registration handlers.
- * See .../open-repo/vlib/memclnt_vlib.c:memclnt_process()
- */
-static clib_error_t *
-session_api_hookup (vlib_main_t * vm)
-{
-  api_main_t *am = vlibapi_get_main ();
-
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_session_api_msg;
-#undef _
-
-  /*
-   * Set up the (msg_name, crc, message-id) table
-   */
-  setup_message_id_table (am);
-
-  return 0;
-}
-
-VLIB_API_INIT_FUNCTION (session_api_hookup);
 
 /*
  * Socket api functions
@@ -1712,6 +1645,33 @@ error:
   vec_free (dir);
   return rv;
 }
+
+static void
+vl_api_application_tls_cert_add_t_handler (
+  vl_api_application_tls_cert_add_t *mp)
+{
+  /* deprecated */
+}
+
+static void
+vl_api_application_tls_key_add_t_handler (vl_api_application_tls_key_add_t *mp)
+{
+  /* deprecated */
+}
+
+#include <vnet/session/session.api.c>
+static clib_error_t *
+session_api_hookup (vlib_main_t *vm)
+{
+  /*
+   * Set up the (msg_name, crc, message-id) table
+   */
+  REPLY_MSG_ID_BASE = setup_message_id_table ();
+
+  return 0;
+}
+
+VLIB_API_INIT_FUNCTION (session_api_hookup);
 
 /*
  * fd.io coding-style-patch-verification: ON
