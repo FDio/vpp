@@ -33,7 +33,6 @@
 #include <vnet/format_fns.h>
 #endif
 
-#include <vnet/interface.api.h>
 #include <vnet/ip/ip.api.h>
 #include <vnet/session/session.api.h>
 #include <vnet/srmpls/sr_mpls.api.h>
