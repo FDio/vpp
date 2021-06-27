@@ -28,30 +28,22 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/mfib/mfib_table.h>
 #include <vnet/l2/l2_vtr.h>
-#include <vnet/vnet_msg_enum.h>
 #include <vnet/fib/fib_api.h>
 #include <vnet/mfib/mfib_table.h>
-
 #include <vlibapi/api_types.h>
 
+#include <vnet/format_fns.h>
 #include <vnet/ip/ip_types_api.h>
 #include <vnet/ethernet/ethernet_types_api.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
+#include <interface.api_enum.h>
+#include <interface.api_types.h>
 
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vnet/vnet_all_api_h.h>
-#undef vl_printfun
-
+#define REPLY_MSG_ID_BASE msg_id_base
 #include <vlibapi/api_helper_macros.h>
+
+static u16 msg_id_base;
+
 vpe_api_main_t vpe_api_main;
 
 #define foreach_vpe_api_msg                                                   \
@@ -241,7 +233,7 @@ send_sw_interface_details (vpe_api_main_t * am,
 
   vl_api_sw_interface_details_t *mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_DETAILS);
+  mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_SW_INTERFACE_DETAILS);
   mp->sw_if_index = ntohl (swif->sw_if_index);
   mp->sup_sw_if_index = ntohl (swif->sup_sw_if_index);
 
@@ -620,7 +612,8 @@ send_sw_interface_get_table_reply (vl_api_registration_t * reg,
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_GET_TABLE_REPLY);
+  mp->_vl_msg_id =
+    ntohs (REPLY_MSG_ID_BASE + VL_API_SW_INTERFACE_GET_TABLE_REPLY);
   mp->context = context;
   mp->retval = htonl (retval);
   mp->vrf_id = htonl (vrf_id);
@@ -763,7 +756,7 @@ send_sw_interface_event (vpe_api_main_t * am,
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_EVENT);
+  mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_SW_INTERFACE_EVENT);
   mp->sw_if_index = ntohl (sw_if_index);
   mp->client_index = reg->client_index;
   mp->pid = reg->client_pid;
@@ -1014,7 +1007,8 @@ static void vl_api_sw_interface_get_mac_address_t_handler
   if (!reg)
     return;
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  rmp->_vl_msg_id = htons (VL_API_SW_INTERFACE_GET_MAC_ADDRESS_REPLY);
+  rmp->_vl_msg_id =
+    htons (REPLY_MSG_ID_BASE + VL_API_SW_INTERFACE_GET_MAC_ADDRESS_REPLY);
   rmp->context = mp->context;
   rmp->retval = htonl (rv);
   if (!rv && eth_if)
@@ -1070,7 +1064,8 @@ send_interface_rx_placement_details (vpe_api_main_t * am,
   mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
 
-  mp->_vl_msg_id = htons (VL_API_SW_INTERFACE_RX_PLACEMENT_DETAILS);
+  mp->_vl_msg_id =
+    htons (REPLY_MSG_ID_BASE + VL_API_SW_INTERFACE_RX_PLACEMENT_DETAILS);
   mp->sw_if_index = htonl (sw_if_index);
   mp->queue_id = htonl (queue_id);
   mp->worker_id = htonl (worker_id);
@@ -1255,7 +1250,7 @@ out:
     return;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  rmp->_vl_msg_id = htons (VL_API_CREATE_VLAN_SUBIF_REPLY);
+  rmp->_vl_msg_id = htons (REPLY_MSG_ID_BASE + VL_API_CREATE_VLAN_SUBIF_REPLY);
   rmp->context = mp->context;
   rmp->retval = htonl (rv);
   rmp->sw_if_index = htonl (sw_if_index);
@@ -1422,34 +1417,14 @@ static void
  * added the client registration handlers.
  * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
  */
-#define vl_msg_name_crc_list
-#include <vnet/interface.api.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_interface;
-#undef _
-}
 
 pub_sub_handler (interface_events, INTERFACE_EVENTS);
 
+#include <vnet/interface.api.c>
 static clib_error_t *
 interface_api_hookup (vlib_main_t * vm)
 {
   api_main_t *am = vlibapi_get_main ();
-
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_api_msg;
-#undef _
 
   /* Mark these APIs as mp safe */
   am->is_mp_safe[VL_API_SW_INTERFACE_DUMP] = 1;
@@ -1462,7 +1437,7 @@ interface_api_hookup (vlib_main_t * vm)
   /*
    * Set up the (msg_name, crc, message-id) table
    */
-  setup_message_id_table (am);
+  REPLY_MSG_ID_BASE = setup_message_id_table ();
 
   return 0;
 }

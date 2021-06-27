@@ -19,6 +19,7 @@
 #include <vlibapi/api_common.h>
 #include <vlibapi/api_types.h>
 
+#include <vnet/ethernet/ethernet_types.api_types.h>
 #define vl_typedefs		/* define message structures */
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_typedefs
