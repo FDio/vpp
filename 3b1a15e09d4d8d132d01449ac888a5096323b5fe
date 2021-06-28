@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "57ea31bb_69d35656",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2968,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-06-28T15:13:19Z",
+      "side": 1,
+      "message": "instead of this, we could just assign the even as opposed to or it in.",
+      "range": {
+        "startLine": 2968,
+        "startChar": 6,
+        "endLine": 2968,
+        "endChar": 34
+      },
+      "revId": "3b1a15e09d4d8d132d01449ac888a5096323b5fe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
