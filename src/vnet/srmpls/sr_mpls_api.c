@@ -23,25 +23,31 @@
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
 #include <vnet/feature/feature.h>
-
 #include <vnet/ip/ip_types_api.h>
 
-#include <vnet/vnet_msg_enum.h>
+#include <vnet/format_fns.h>
+#include <vnet/srmpls/sr_mpls.api_enum.h>
+#include <vnet/srmpls/sr_mpls.api_types.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
+#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 
-#define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
+#define vl_api_version(n, v) static u32 api_version = v;
+#include <vnet/srmpls/sr_mpls.api.h>
+#undef vl_api_version
+
+#define vl_endianfun
+#include <vnet/srmpls/sr_mpls.api.h>
 #undef vl_endianfun
 
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
-#include <vnet/vnet_all_api_h.h>
+#include <vnet/srmpls/sr_mpls.api.h>
 #undef vl_printfun
 
+#define vl_msg_name_crc_list
+#include <vnet/srmpls/sr_mpls.api.h>
+#undef vl_msg_name_crc_list
+
+#define REPLY_MSG_ID_BASE msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
 #define foreach_vpe_api_msg                             \
@@ -49,6 +55,7 @@ _(SR_MPLS_POLICY_DEL, sr_mpls_policy_del)                         \
 _(SR_MPLS_STEERING_ADD_DEL, sr_mpls_steering_add_del)             \
 _(SR_MPLS_POLICY_ASSIGN_ENDPOINT_COLOR, sr_mpls_policy_assign_endpoint_color)
 
+static u16 msg_id_base;
 
 static void
 vl_api_sr_mpls_policy_add_t_handler (vl_api_sr_mpls_policy_add_t * mp)
@@ -163,19 +170,11 @@ static void vl_api_sr_mpls_policy_assign_endpoint_color_t_handler
   REPLY_MACRO (VL_API_SR_MPLS_POLICY_ASSIGN_ENDPOINT_COLOR_REPLY);
 }
 
-/*
- * sr_mpls_api_hookup Add vpe's API message handlers to the table. vlib has
- * already mapped shared memory and added the client registration handlers.
- * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
- */
-#define vl_msg_name_crc_list
-#include <vnet/vnet_all_api_h.h>
-#undef vl_msg_name_crc_list
-
 static void
 setup_message_id_table (api_main_t * am)
 {
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
+#define _(id, n, crc)                                                         \
+  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + REPLY_MSG_ID_BASE);
   foreach_vl_msg_name_crc_sr_mpls;
 #undef _
 }
@@ -185,13 +184,16 @@ sr_mpls_api_hookup (vlib_main_t * vm)
 {
   api_main_t *am = vlibapi_get_main ();
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+  u8 *name = format (0, "sr_mpls_%08x%c", api_version, 0);
+  REPLY_MSG_ID_BASE =
+    vl_msg_api_get_msg_ids ((char *) name, VL_MSG_SR_MPLS_LAST);
+  vec_free (name);
+
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (REPLY_MSG_ID_BASE + VL_API_##N, #n,                \
+			   vl_api_##n##_t_handler, vl_noop_handler,           \
+			   vl_api_##n##_t_endian, vl_api_##n##_t_print,       \
+			   sizeof (vl_api_##n##_t), 1);
   foreach_vpe_api_msg;
 #undef _
 
@@ -199,22 +201,20 @@ sr_mpls_api_hookup (vlib_main_t * vm)
    * Manually register the sr policy add msg, so we trace enough bytes
    * to capture a typical segment list
    */
-  vl_msg_api_set_handlers (VL_API_SR_MPLS_POLICY_ADD,
+  vl_msg_api_set_handlers (REPLY_MSG_ID_BASE + VL_API_SR_MPLS_POLICY_ADD,
 			   "sr_mpls_policy_add",
 			   vl_api_sr_mpls_policy_add_t_handler,
-			   vl_noop_handler,
-			   vl_api_sr_mpls_policy_add_t_endian,
+			   vl_noop_handler, vl_api_sr_mpls_policy_add_t_endian,
 			   vl_api_sr_mpls_policy_add_t_print, 256, 1);
 
   /*
    * Manually register the sr policy mod msg, so we trace enough bytes
    * to capture a typical segment list
    */
-  vl_msg_api_set_handlers (VL_API_SR_MPLS_POLICY_MOD,
+  vl_msg_api_set_handlers (REPLY_MSG_ID_BASE + VL_API_SR_MPLS_POLICY_MOD,
 			   "sr_mpls_policy_mod",
 			   vl_api_sr_mpls_policy_mod_t_handler,
-			   vl_noop_handler,
-			   vl_api_sr_mpls_policy_mod_t_endian,
+			   vl_noop_handler, vl_api_sr_mpls_policy_mod_t_endian,
 			   vl_api_sr_mpls_policy_mod_t_print, 256, 1);
 
   /*
