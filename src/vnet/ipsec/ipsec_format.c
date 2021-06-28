@@ -293,9 +293,8 @@ format_ipsec_sa (u8 * s, va_list * args)
   s = format (s, "\n   salt 0x%x", clib_net_to_host_u32 (sa->salt));
   s = format (s, "\n   thread-index:%d", sa->thread_index);
   s = format (s, "\n   seq %u seq-hi %u", sa->seq, sa->seq_hi);
-  s = format (s, "\n   last-seq %u last-seq-hi %u window %U",
-	      sa->last_seq, sa->last_seq_hi,
-	      format_ipsec_replay_window, sa->replay_window);
+  s = format (s, "\n   window %U", format_ipsec_replay_window,
+	      sa->replay_window);
   s = format (s, "\n   crypto alg %U",
 	      format_ipsec_crypto_alg, sa->crypto_alg);
   if (sa->crypto_alg && (flags & IPSEC_FORMAT_INSECURE))

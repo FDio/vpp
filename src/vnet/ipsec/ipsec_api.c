@@ -826,11 +826,11 @@ send_ipsec_sa_details (ipsec_sa_t * sa, void *arg)
     }
 
   mp->seq_outbound = clib_host_to_net_u64 (((u64) sa->seq));
-  mp->last_seq_inbound = clib_host_to_net_u64 (((u64) sa->last_seq));
+  mp->last_seq_inbound = clib_host_to_net_u64 (((u64) sa->seq));
   if (ipsec_sa_is_set_USE_ESN (sa))
     {
       mp->seq_outbound |= (u64) (clib_host_to_net_u32 (sa->seq_hi));
-      mp->last_seq_inbound |= (u64) (clib_host_to_net_u32 (sa->last_seq_hi));
+      mp->last_seq_inbound |= (u64) (clib_host_to_net_u32 (sa->seq_hi));
     }
   if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa))
     mp->replay_window = clib_host_to_net_u64 (sa->replay_window);
@@ -913,11 +913,11 @@ send_ipsec_sa_v2_details (ipsec_sa_t * sa, void *arg)
   mp->entry.dscp = ip_dscp_encode (sa->tunnel.t_dscp);
 
   mp->seq_outbound = clib_host_to_net_u64 (((u64) sa->seq));
-  mp->last_seq_inbound = clib_host_to_net_u64 (((u64) sa->last_seq));
+  mp->last_seq_inbound = clib_host_to_net_u64 (((u64) sa->seq));
   if (ipsec_sa_is_set_USE_ESN (sa))
     {
       mp->seq_outbound |= (u64) (clib_host_to_net_u32 (sa->seq_hi));
-      mp->last_seq_inbound |= (u64) (clib_host_to_net_u32 (sa->last_seq_hi));
+      mp->last_seq_inbound |= (u64) (clib_host_to_net_u32 (sa->seq_hi));
     }
   if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa))
     mp->replay_window = clib_host_to_net_u64 (sa->replay_window);
@@ -993,11 +993,11 @@ send_ipsec_sa_v3_details (ipsec_sa_t *sa, void *arg)
     }
 
   mp->seq_outbound = clib_host_to_net_u64 (((u64) sa->seq));
-  mp->last_seq_inbound = clib_host_to_net_u64 (((u64) sa->last_seq));
+  mp->last_seq_inbound = clib_host_to_net_u64 (((u64) sa->seq));
   if (ipsec_sa_is_set_USE_ESN (sa))
     {
       mp->seq_outbound |= (u64) (clib_host_to_net_u32 (sa->seq_hi));
-      mp->last_seq_inbound |= (u64) (clib_host_to_net_u32 (sa->last_seq_hi));
+      mp->last_seq_inbound |= (u64) (clib_host_to_net_u32 (sa->seq_hi));
     }
   if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa))
     mp->replay_window = clib_host_to_net_u64 (sa->replay_window);
