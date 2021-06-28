@@ -98,6 +98,7 @@ typedef struct
   };
   u32 sa_index;
   u32 seq;
+  u32 seq_hi;
   u8 icv_padding_len;
   u8 icv_size;
   u8 ip_hdr_size;
@@ -221,7 +222,8 @@ ah_decrypt_inline (vlib_main_t * vm,
       pd->seq = clib_host_to_net_u32 (ah0->seq_no);
 
       /* anti-replay check */
-      if (ipsec_sa_anti_replay_check (sa0, pd->seq))
+      if (ipsec_sa_anti_replay_and_sn_advance (sa0, pd->seq, ~0, false,
+					       &pd->seq_hi))
 	{
 	  b[0]->error = node->errors[AH_DECRYPT_ERROR_REPLAY];
 	  next[0] = AH_DECRYPT_NEXT_DROP;
@@ -257,7 +259,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 	  op->user_data = b - bufs;
 	  if (ipsec_sa_is_set_USE_ESN (sa0))
 	    {
-	      u32 seq_hi = clib_host_to_net_u32 (sa0->seq_hi);
+	      u32 seq_hi = clib_host_to_net_u32 (pd->seq_hi);
 
 	      op->len += sizeof (seq_hi);
 	      clib_memcpy (op->src + b[0]->current_length, &seq_hi,
@@ -322,13 +324,14 @@ ah_decrypt_inline (vlib_main_t * vm,
       if (PREDICT_TRUE (sa0->integ_alg != IPSEC_INTEG_ALG_NONE))
 	{
 	  /* redo the anit-reply check. see esp_decrypt for details */
-	  if (ipsec_sa_anti_replay_check (sa0, pd->seq))
+	  if (ipsec_sa_anti_replay_and_sn_advance (sa0, pd->seq, pd->seq_hi,
+						   true, NULL))
 	    {
 	      b[0]->error = node->errors[AH_DECRYPT_ERROR_REPLAY];
 	      next[0] = AH_DECRYPT_NEXT_DROP;
 	      goto trace;
 	    }
-	  ipsec_sa_anti_replay_advance (sa0, pd->seq);
+	  ipsec_sa_anti_replay_advance (sa0, pd->seq, pd->seq_hi);
 	}
 
       u16 ah_hdr_len = sizeof (ah_header_t) + pd->icv_size
