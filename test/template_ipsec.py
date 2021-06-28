@@ -324,6 +324,73 @@ class IpsecTra4(object):
 
         return count
 
+    def verify_hi_seq_num(self):
+        p = self.params[socket.AF_INET]
+        esn_en = p.vpp_tra_sa.esn_en
+
+        seq_cycle_node_name = \
+            ('/err/%s/sequence number cycled (packet dropped)' %
+             self.tra4_encrypt_node_name)
+        replay_count = self.get_replay_counts(p)
+        hash_failed_count = self.get_hash_failed_counts(p)
+        seq_cycle_count = self.statistics.get_err_counter(seq_cycle_node_name)
+
+        # a few packets so we get the rx seq number above the window size and
+        # thus can simulate a wrap with an out of window packet
+        pkts = [(Ether(src=self.tra_if.remote_mac,
+                       dst=self.tra_if.local_mac) /
+                 p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
+                                           dst=self.tra_if.local_ip4) /
+                                        ICMP(),
+                                        seq_num=seq))
+                for seq in range(63, 80)]
+        recv_pkts = self.send_and_expect(self.tra_if, pkts, self.tra_if)
+
+        # these 4 packets will all choose seq-num 0 to decrpyt since none
+        # are out of window when first checked. however, once #200 has
+        # decrypted it will move the window to 200 and has #81 is out of
+        # window. this packet should be dropped.
+        pkts = [(Ether(src=self.tra_if.remote_mac,
+                       dst=self.tra_if.local_mac) /
+                 p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
+                                           dst=self.tra_if.local_ip4) /
+                                        ICMP(),
+                                        seq_num=200)),
+                (Ether(src=self.tra_if.remote_mac,
+                       dst=self.tra_if.local_mac) /
+                 p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
+                                           dst=self.tra_if.local_ip4) /
+                                        ICMP(),
+                                        seq_num=81)),
+                (Ether(src=self.tra_if.remote_mac,
+                       dst=self.tra_if.local_mac) /
+                 p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
+                                           dst=self.tra_if.local_ip4) /
+                                        ICMP(),
+                                        seq_num=201)),
+                (Ether(src=self.tra_if.remote_mac,
+                       dst=self.tra_if.local_mac) /
+                 p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
+                                           dst=self.tra_if.local_ip4) /
+                                        ICMP(),
+                                        seq_num=202))]
+
+        # if anti-replay is off then we won't drop #81
+        n_rx = 3
+        saf = VppEnum.vl_api_ipsec_sad_flags_t
+        if not (p.flags & saf.IPSEC_API_SAD_FLAG_USE_ANTI_REPLAY):
+            n_rx += 1
+        self.send_and_expect(self.tra_if, pkts, self.tra_if, n_rx=n_rx)
+
+        # this packet is one before the wrap
+        pkts = [(Ether(src=self.tra_if.remote_mac,
+                       dst=self.tra_if.local_mac) /
+                 p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
+                                           dst=self.tra_if.local_ip4) /
+                                        ICMP(),
+                                        seq_num=203))]
+        recv_pkts = self.send_and_expect(self.tra_if, pkts, self.tra_if)
+
     def verify_tra_anti_replay(self):
         p = self.params[socket.AF_INET]
         esn_en = p.vpp_tra_sa.esn_en
@@ -359,7 +426,7 @@ class IpsecTra4(object):
         recv_pkts = self.send_and_expect(self.tra_if, pkts, self.tra_if)
 
         # replayed packets are dropped
-        self.send_and_assert_no_replies(self.tra_if, pkts)
+        self.send_and_assert_no_replies(self.tra_if, pkts, timeout=0.2)
         replay_count += len(pkts)
         self.assertEqual(self.get_replay_counts(p), replay_count)
 
@@ -393,7 +460,7 @@ class IpsecTra4(object):
         recv_pkts = self.send_and_expect(self.tra_if, [pkt], self.tra_if)
 
         # replayed packets are dropped
-        self.send_and_assert_no_replies(self.tra_if, pkt * 3)
+        self.send_and_assert_no_replies(self.tra_if, pkt * 3, timeout=0.2)
         replay_count += 3
         self.assertEqual(self.get_replay_counts(p), replay_count)
 
@@ -420,7 +487,7 @@ class IpsecTra4(object):
                                    dst=self.tra_if.local_ip4) /
                                 ICMP(),
                                 seq_num=350))
-        self.send_and_assert_no_replies(self.tra_if, pkt * 17)
+        self.send_and_assert_no_replies(self.tra_if, pkt * 17, timeout=0.2)
 
         hash_failed_count += 17
         self.assertEqual(self.get_hash_failed_counts(p), hash_failed_count)
@@ -436,7 +503,7 @@ class IpsecTra4(object):
                                        dst=self.tra_if.local_ip4) /
                                     ICMP(),
                                     seq_num=350))
-            self.send_and_assert_no_replies(self.tra_if, pkt * 17)
+            self.send_and_assert_no_replies(self.tra_if, pkt * 17, timeout=0.2)
 
             undersize_count += 17
             self.assert_error_counter_equal(undersize_node_name,
@@ -462,7 +529,7 @@ class IpsecTra4(object):
                                          dst=self.tra_if.local_ip4) /
                                       ICMP(),
                                       seq_num=17))
-        self.send_and_assert_no_replies(self.tra_if, pkt * 17)
+        self.send_and_assert_no_replies(self.tra_if, pkt * 17, timeout=0.2)
 
         if esn_en:
             # an out of window error with ESN looks like a high sequence
@@ -526,6 +593,7 @@ class IpsecTra4(object):
                                           ICMP(),
                                           seq_num=0x100000005))
             rx = self.send_and_expect(self.tra_if, [pkt], self.tra_if)
+
             decrypted = p.vpp_tra_sa.decrypt(rx[0][IP])
 
             #
@@ -553,7 +621,8 @@ class IpsecTra4(object):
                                              dst=self.tra_if.local_ip4) /
                                           ICMP(),
                                           seq_num=0x200000999))
-            self.send_and_assert_no_replies(self.tra_if, [pkt], self.tra_if)
+            self.send_and_assert_no_replies(self.tra_if, [pkt], self.tra_if,
+                                            timeout=0.2)
 
             hash_failed_count += 1
             self.assertEqual(self.get_hash_failed_counts(p), hash_failed_count)
@@ -587,7 +656,7 @@ class IpsecTra4(object):
             # without ESN TX sequence numbers can't wrap and packets are
             # dropped from here on out.
             #
-            self.send_and_assert_no_replies(self.tra_if, pkts)
+            self.send_and_assert_no_replies(self.tra_if, pkts, timeout=0.2)
             seq_cycle_count += len(pkts)
             self.assert_error_counter_equal(seq_cycle_node_name,
                                             seq_cycle_count)

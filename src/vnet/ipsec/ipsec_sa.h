@@ -131,9 +131,8 @@ typedef struct
   u32 spi;
   u32 seq;
   u32 seq_hi;
-  u32 last_seq;
-  u32 last_seq_hi;
   u64 replay_window;
+  u64 ctr_iv_counter;
   dpo_id_t dpo;
 
   vnet_crypto_key_index_t crypto_key_index;
@@ -162,7 +161,6 @@ typedef struct
 
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
-  u64 ctr_iv_counter;
   union
   {
     ip4_header_t ip4_hdr;
@@ -315,21 +313,36 @@ extern uword unformat_ipsec_key (unformat_input_t * input, va_list * args);
 /*
  * Anti replay check.
  *  inputs need to be in host byte order.
+ *
+ * The function runs in two contexts. pre and post decrypt.
+ * Pre-decrypt it:
+ *  1 - determines if a packet is a replay - a simple check in the window
+ *  2 - returns the hi-seq number that should be used to decrypt.
+ * post-decrypt:
+ *  Checks whether the packet is a replay or falls out of window
+ *
+ * This funcion should be called even without anti-replay enabled to ensure
+ * the high sequence number is set.
  */
 always_inline int
-ipsec_sa_anti_replay_check (ipsec_sa_t * sa, u32 seq)
+ipsec_sa_anti_replay_check (ipsec_sa_t *sa, u32 seq, u32 hi_seq_used,
+			    bool post_decrypt, u32 *hi_seq_req)
 {
-  u32 diff, tl, th;
-
-  if ((sa->flags & IPSEC_SA_FLAG_USE_ANTI_REPLAY) == 0)
-    return 0;
+  u32 tl, th;
 
   if (!ipsec_sa_is_set_USE_ESN (sa))
     {
-      if (PREDICT_TRUE (seq > sa->last_seq))
+      if (hi_seq_req)
+	/* no ESN, therefore the hi-seq is always 0 */
+	*hi_seq_req = 0;
+
+      if (!ipsec_sa_is_set_USE_ANTI_REPLAY (sa))
 	return 0;
 
-      diff = sa->last_seq - seq;
+      if (PREDICT_TRUE (seq > sa->seq))
+	return 0;
+
+      u32 diff = sa->seq - seq;
 
       if (IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE > diff)
 	return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
@@ -339,9 +352,8 @@ ipsec_sa_anti_replay_check (ipsec_sa_t * sa, u32 seq)
       return 0;
     }
 
-  tl = sa->last_seq;
-  th = sa->last_seq_hi;
-  diff = tl - seq;
+  tl = sa->seq;
+  th = sa->seq_hi;
 
   if (PREDICT_TRUE (tl >= (IPSEC_SA_ANTI_REPLAY_WINDOW_MAX_INDEX)))
     {
@@ -358,8 +370,27 @@ ipsec_sa_anti_replay_check (ipsec_sa_t * sa, u32 seq)
 	   * the high sequence number has wrapped. if it decrypts corrently
 	   * then it's the latter.
 	   */
-	  sa->seq_hi = th + 1;
-	  return 0;
+	  if (post_decrypt)
+	    {
+	      if (hi_seq_used == sa->seq_hi)
+		/* the high sequence number used to succesfully decrypt this
+		 * packet is the same as the last-sequnence number of the SA.
+		 * that means this packet did not cause a wrap.
+		 * this packet is thus out of window and should be dropped */
+		return 1;
+	      else
+		/* The packet decrypted with a different high sequence number
+		 * to the SA, that means it is the wrap packet and should be
+		 * accepted */
+		return 0;
+	    }
+	  else
+	    {
+	      /* pre-decrypt is might be the might that casues a wrap, we
+	       * need to decrpyt to find out */
+	      *hi_seq_req = th + 1;
+	      return 0;
+	    }
 	}
       else
 	{
@@ -367,13 +398,18 @@ ipsec_sa_anti_replay_check (ipsec_sa_t * sa, u32 seq)
 	   * the recieved sequence number greater than the low
 	   * end of the window.
 	   */
-	  sa->seq_hi = th;
+	  if (hi_seq_req)
+	    *hi_seq_req = th;
 	  if (seq <= tl)
 	    /*
 	     * The recieved seq number is within bounds of the window
 	     * check if it's a duplicate
 	     */
-	    return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
+	    if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa) &&
+		sa->replay_window & (1ULL << (tl - seq)))
+	      return 1;
+	    else
+	      return 0;
 	  else
 	    /*
 	     * The received sequence number is greater than the window
@@ -404,8 +440,12 @@ ipsec_sa_anti_replay_check (ipsec_sa_t * sa, u32 seq)
 	       * the packet is within the window upper bound.
 	       * check for duplicates.
 	       */
-	      sa->seq_hi = th;
-	      return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
+	      if (hi_seq_req)
+		*hi_seq_req = th;
+	      return (ipsec_sa_is_set_USE_ANTI_REPLAY (sa) &&
+		      sa->replay_window & (1ULL << (tl - seq))) ?
+		       1 :
+		       0;
 	    }
 	  else
 	    {
@@ -418,7 +458,8 @@ ipsec_sa_anti_replay_check (ipsec_sa_t * sa, u32 seq)
 	       * wrapped the high sequence again. If it were the latter then
 	       * we've lost close to 2^32 packets.
 	       */
-	      sa->seq_hi = th;
+	      if (hi_seq_req)
+		*hi_seq_req = th;
 	      return 0;
 	    }
 	}
@@ -431,11 +472,17 @@ ipsec_sa_anti_replay_check (ipsec_sa_t * sa, u32 seq)
 	   * However, since TL is the other side of 0 to the received
 	   * packet, the SA has moved on to a higher sequence number.
 	   */
-	  sa->seq_hi = th - 1;
-	  return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
+	  if (hi_seq_req)
+	    *hi_seq_req = th - 1;
+	  return (ipsec_sa_is_set_USE_ANTI_REPLAY (sa) &&
+		  sa->replay_window & (1ULL << (tl - seq))) ?
+		   1 :
+		   0;
 	}
     }
 
+  /* unhandled case */
+  ASSERT (0);
   return 0;
 }
 
@@ -444,7 +491,7 @@ ipsec_sa_anti_replay_check (ipsec_sa_t * sa, u32 seq)
  *  inputs need to be in host byte order.
  */
 always_inline void
-ipsec_sa_anti_replay_advance (ipsec_sa_t * sa, u32 seq)
+ipsec_sa_anti_replay_advance (ipsec_sa_t *sa, u32 seq, u32 hi_seq)
 {
   u32 pos;
   if (PREDICT_TRUE (sa->flags & IPSEC_SA_FLAG_USE_ANTI_REPLAY) == 0)
@@ -452,52 +499,52 @@ ipsec_sa_anti_replay_advance (ipsec_sa_t * sa, u32 seq)
 
   if (PREDICT_TRUE (sa->flags & IPSEC_SA_FLAG_USE_ESN))
     {
-      int wrap = sa->seq_hi - sa->last_seq_hi;
+      int wrap = hi_seq - sa->seq_hi;
 
-      if (wrap == 0 && seq > sa->last_seq)
+      if (wrap == 0 && seq > sa->seq)
 	{
-	  pos = seq - sa->last_seq;
+	  pos = seq - sa->seq;
 	  if (pos < IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE)
 	    sa->replay_window = ((sa->replay_window) << pos) | 1;
 	  else
 	    sa->replay_window = 1;
-	  sa->last_seq = seq;
+	  sa->seq = seq;
 	}
       else if (wrap > 0)
 	{
-	  pos = ~seq + sa->last_seq + 1;
+	  pos = ~seq + sa->seq + 1;
 	  if (pos < IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE)
 	    sa->replay_window = ((sa->replay_window) << pos) | 1;
 	  else
 	    sa->replay_window = 1;
-	  sa->last_seq = seq;
-	  sa->last_seq_hi = sa->seq_hi;
+	  sa->seq = seq;
+	  sa->seq_hi = hi_seq;
 	}
       else if (wrap < 0)
 	{
-	  pos = ~seq + sa->last_seq + 1;
+	  pos = ~seq + sa->seq + 1;
 	  sa->replay_window |= (1ULL << pos);
 	}
       else
 	{
-	  pos = sa->last_seq - seq;
+	  pos = sa->seq - seq;
 	  sa->replay_window |= (1ULL << pos);
 	}
     }
   else
     {
-      if (seq > sa->last_seq)
+      if (seq > sa->seq)
 	{
-	  pos = seq - sa->last_seq;
+	  pos = seq - sa->seq;
 	  if (pos < IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE)
 	    sa->replay_window = ((sa->replay_window) << pos) | 1;
 	  else
 	    sa->replay_window = 1;
-	  sa->last_seq = seq;
+	  sa->seq = seq;
 	}
       else
 	{
-	  pos = sa->last_seq - seq;
+	  pos = sa->seq - seq;
 	  sa->replay_window |= (1ULL << pos);
 	}
     }

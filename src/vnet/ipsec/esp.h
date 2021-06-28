@@ -118,7 +118,8 @@ esp_seq_advance (ipsec_sa_t * sa)
 }
 
 always_inline u16
-esp_aad_fill (u8 * data, const esp_header_t * esp, const ipsec_sa_t * sa)
+esp_aad_fill (u8 *data, const esp_header_t *esp, const ipsec_sa_t *sa,
+	      u32 seq_hi)
 {
   esp_aead_t *aad;
 
@@ -128,7 +129,7 @@ esp_aad_fill (u8 * data, const esp_header_t * esp, const ipsec_sa_t * sa)
   if (ipsec_sa_is_set_USE_ESN (sa))
     {
       /* SPI, seq-hi, seq-low */
-      aad->data[1] = (u32) clib_host_to_net_u32 (sa->seq_hi);
+      aad->data[1] = (u32) clib_host_to_net_u32 (seq_hi);
       aad->data[2] = esp->seq;
       return 12;
     }
@@ -199,7 +200,7 @@ typedef struct
   i16 current_length;
   u16 hdr_sz;
   u16 is_chain;
-  u32 protect_index;
+  u32 seq_hi;
 } esp_decrypt_packet_data_t;
 
 STATIC_ASSERT_SIZEOF (esp_decrypt_packet_data_t, 3 * sizeof (u64));
