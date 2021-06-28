@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6e618f26_f78d159f",
+        "filename": "src/plugins/perfmon/perfmon.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-06-28T14:49:55Z",
+      "side": 1,
+      "message": "please remove this line",
+      "revId": "4ee343d60dc3da2d8138f82dcbf20a70410733ee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c6974007_b9ee270f",
+        "filename": "src/scripts/vnet/ipsec",
+        "patchSetId": 6
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-06-28T14:49:55Z",
+      "side": 1,
+      "message": "i donćt think change of this file belongs to this patch",
+      "revId": "4ee343d60dc3da2d8138f82dcbf20a70410733ee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0032fded_0dedcda3",
+        "filename": "src/scripts/vnet/l3fwd",
+        "patchSetId": 6
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-06-28T14:49:55Z",
+      "side": 0,
+      "message": "same",
+      "revId": "8556bbe9db183830542aeae665c83b30ebd53c9a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
