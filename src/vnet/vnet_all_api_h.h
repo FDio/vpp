@@ -35,7 +35,6 @@
 
 #include <vnet/interface.api.h>
 #include <vnet/session/session.api.h>
-#include <vnet/srmpls/sr_mpls.api.h>
 
 /*
  * fd.io coding-style-patch-verification: ON
