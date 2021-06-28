@@ -1179,16 +1179,18 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t *vm,
 	  nat_free_session_data (sm, s0, thread_index, 0);
 	  nat_ed_session_delete (sm, s0, thread_index, 1);
 	  next[0] = NAT_NEXT_DROP;
+	  b0->error = node->errors[NAT_IN2OUT_ED_ERROR_TRNSL_FAILED];
 	  goto trace0;
 	}
 
       if (NAT_ED_TRNSL_ERR_SUCCESS !=
 	  (translation_error = nat_6t_flow_buf_translate_i2o (
-	     sm, b0, ip0, f, proto0, is_output_feature)))
+	     vm, sm, b0, ip0, f, proto0, is_output_feature)))
 	{
 	  nat_free_session_data (sm, s0, thread_index, 0);
 	  nat_ed_session_delete (sm, s0, thread_index, 1);
 	  next[0] = NAT_NEXT_DROP;
+	  b0->error = node->errors[NAT_IN2OUT_ED_ERROR_TRNSL_FAILED];
 	  goto trace0;
 	}
 
@@ -1332,8 +1334,12 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
 	  if (NAT_NEXT_DROP != next[0] && s0 &&
 	      NAT_ED_TRNSL_ERR_SUCCESS !=
 		(translation_error = nat_6t_flow_buf_translate_i2o (
-		   sm, b0, ip0, &s0->i2o, proto0, is_output_feature)))
+		   vm, sm, b0, ip0, &s0->i2o, proto0, is_output_feature)))
 	    {
+	      nat_free_session_data (sm, s0, thread_index, 0);
+	      nat_ed_session_delete (sm, s0, thread_index, 1);
+	      next[0] = NAT_NEXT_DROP;
+	      b0->error = node->errors[NAT_IN2OUT_ED_ERROR_TRNSL_FAILED];
 	      goto trace0;
 	    }
 
@@ -1350,8 +1356,12 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
 	  if (NAT_NEXT_DROP != next[0] && s0 &&
 	      NAT_ED_TRNSL_ERR_SUCCESS !=
 		(translation_error = nat_6t_flow_buf_translate_i2o (
-		   sm, b0, ip0, &s0->i2o, proto0, is_output_feature)))
+		   vm, sm, b0, ip0, &s0->i2o, proto0, is_output_feature)))
 	    {
+	      nat_free_session_data (sm, s0, thread_index, 0);
+	      nat_ed_session_delete (sm, s0, thread_index, 1);
+	      next[0] = NAT_NEXT_DROP;
+	      b0->error = node->errors[NAT_IN2OUT_ED_ERROR_TRNSL_FAILED];
 	      goto trace0;
 	    }
 
@@ -1427,11 +1437,12 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
 
       if (NAT_ED_TRNSL_ERR_SUCCESS !=
 	  (translation_error = nat_6t_flow_buf_translate_i2o (
-	     sm, b0, ip0, &s0->i2o, proto0, is_output_feature)))
+	     vm, sm, b0, ip0, &s0->i2o, proto0, is_output_feature)))
 	{
 	  nat_free_session_data (sm, s0, thread_index, 0);
 	  nat_ed_session_delete (sm, s0, thread_index, 1);
-	  s0 = NULL;
+	  next[0] = NAT_NEXT_DROP;
+	  b0->error = node->errors[NAT_IN2OUT_ED_ERROR_TRNSL_FAILED];
 	  goto trace0;
 	}
 

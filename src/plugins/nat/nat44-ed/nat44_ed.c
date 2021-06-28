@@ -3268,10 +3268,9 @@ nat_6t_l3_l4_csum_calc (nat_6t_flow_t *f)
     }
 }
 
-static_always_inline int nat_6t_flow_icmp_translate (snat_main_t *sm,
-						     vlib_buffer_t *b,
-						     ip4_header_t *ip,
-						     nat_6t_flow_t *f);
+static_always_inline int
+nat_6t_flow_icmp_translate (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
+			    ip4_header_t *ip, nat_6t_flow_t *f);
 
 static_always_inline void
 nat_6t_flow_ip4_translate (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
@@ -3348,7 +3347,16 @@ nat_6t_flow_ip4_translate (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
 }
 
 static_always_inline int
-nat_6t_flow_icmp_translate (snat_main_t *sm, vlib_buffer_t *b,
+it_fits (vlib_main_t *vm, vlib_buffer_t *b, void *object, size_t size)
+{
+  int result = ((u8 *) object + size <=
+		(u8 *) vlib_buffer_get_current (b) + b->current_length) &&
+	       vlib_object_within_buffer_data (vm, b, object, size);
+  return result;
+}
+
+static_always_inline int
+nat_6t_flow_icmp_translate (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
 			    ip4_header_t *ip, nat_6t_flow_t *f)
 {
   if (IP_PROTOCOL_ICMP != ip->protocol)
@@ -3359,8 +3367,19 @@ nat_6t_flow_icmp_translate (snat_main_t *sm, vlib_buffer_t *b,
 
   if ((!vnet_buffer (b)->ip.reass.is_non_first_fragment))
     {
-      if (icmp->checksum == 0)
-	icmp->checksum = 0xffff;
+      if (!it_fits (vm, b, icmp, sizeof (*icmp)))
+	{
+	  return NAT_ED_TRNSL_ERR_PACKET_TRUNCATED;
+	}
+
+      ssize_t icmp_offset = (u8 *) icmp - (u8 *) vlib_buffer_get_current (b);
+      ip_csum_t sum =
+	ip_incremental_checksum (0, icmp, b->current_length - icmp_offset);
+      sum = (u16) ~ip_csum_fold (sum);
+      if (sum != 0)
+	{
+	  return NAT_ED_TRNSL_ERR_INVALID_CSUM;
+	}
 
       if (!icmp_type_is_error_message (icmp->type))
 	{
@@ -3382,7 +3401,7 @@ nat_6t_flow_icmp_translate (snat_main_t *sm, vlib_buffer_t *b,
 
 	  if (!ip4_header_checksum_is_valid (inner_ip))
 	    {
-	      return NAT_ED_TRNSL_ERR_TRANSLATION_FAILED;
+	      return NAT_ED_TRNSL_ERR_INNER_IP_CORRUPT;
 	    }
 
 	  nat_protocol_t inner_proto =
@@ -3400,6 +3419,10 @@ nat_6t_flow_icmp_translate (snat_main_t *sm, vlib_buffer_t *b,
 	    {
 	    case NAT_PROTOCOL_UDP:
 	      udp = (udp_header_t *) (inner_ip + 1);
+	      if (!it_fits (vm, b, udp, sizeof (*udp)))
+		{
+		  return NAT_ED_TRNSL_ERR_PACKET_TRUNCATED;
+		}
 	      old_udp_sum = udp->checksum;
 	      nat_6t_flow_ip4_translate (sm, b, inner_ip, f, inner_proto,
 					 1 /* is_icmp_inner_ip4 */,
@@ -3413,12 +3436,14 @@ nat_6t_flow_icmp_translate (snat_main_t *sm, vlib_buffer_t *b,
 		ip_csum_update (new_icmp_sum, old_udp_sum, udp->checksum,
 				udp_header_t, checksum);
 	      new_icmp_sum = ip_csum_fold (new_icmp_sum);
-	      if (0xffff == new_icmp_sum)
-		new_icmp_sum = 0;
 	      icmp->checksum = new_icmp_sum;
 	      break;
 	    case NAT_PROTOCOL_TCP:
 	      tcp = (tcp_header_t *) (inner_ip + 1);
+	      if (!it_fits (vm, b, tcp, sizeof (*tcp)))
+		{
+		  return NAT_ED_TRNSL_ERR_PACKET_TRUNCATED;
+		}
 	      old_tcp_sum = tcp->checksum;
 	      nat_6t_flow_ip4_translate (sm, b, inner_ip, f, inner_proto,
 					 1 /* is_icmp_inner_ip4 */,
@@ -3432,14 +3457,16 @@ nat_6t_flow_icmp_translate (snat_main_t *sm, vlib_buffer_t *b,
 		ip_csum_update (new_icmp_sum, old_tcp_sum, tcp->checksum,
 				tcp_header_t, checksum);
 	      new_icmp_sum = ip_csum_fold (new_icmp_sum);
-	      if (0xffff == new_icmp_sum)
-		new_icmp_sum = 0;
 	      icmp->checksum = new_icmp_sum;
 	      break;
 	    case NAT_PROTOCOL_ICMP:
 	      if (f->ops & NAT_FLOW_OP_ICMP_ID_REWRITE)
 		{
 		  icmp46_header_t *inner_icmp = ip4_next_header (inner_ip);
+		  if (!it_fits (vm, b, inner_icmp, sizeof (*inner_icmp)))
+		    {
+		      return NAT_ED_TRNSL_ERR_PACKET_TRUNCATED;
+		    }
 		  icmp_echo_header_t *inner_echo =
 		    (icmp_echo_header_t *) (inner_icmp + 1);
 		  if (f->rewrite.icmp_id != inner_echo->identifier)
@@ -3469,9 +3496,10 @@ nat_6t_flow_icmp_translate (snat_main_t *sm, vlib_buffer_t *b,
 }
 
 static_always_inline nat_translation_error_e
-nat_6t_flow_buf_translate (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
-			   nat_6t_flow_t *f, nat_protocol_t proto,
-			   int is_output_feature, int is_i2o)
+nat_6t_flow_buf_translate (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
+			   ip4_header_t *ip, nat_6t_flow_t *f,
+			   nat_protocol_t proto, int is_output_feature,
+			   int is_i2o)
 {
   if (!is_output_feature && f->ops & NAT_FLOW_OP_TXFIB_REWRITE)
     {
@@ -3494,7 +3522,7 @@ nat_6t_flow_buf_translate (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
 				     0 /* is_icmp_inner_ip4 */,
 				     0 /* skip_saddr_rewrite */);
 	}
-      return nat_6t_flow_icmp_translate (sm, b, ip, f);
+      return nat_6t_flow_icmp_translate (vm, sm, b, ip, f);
     }
 
   nat_6t_flow_ip4_translate (sm, b, ip, f, proto, 0 /* is_icmp_inner_ip4 */,
@@ -3504,20 +3532,22 @@ nat_6t_flow_buf_translate (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
 }
 
 nat_translation_error_e
-nat_6t_flow_buf_translate_i2o (snat_main_t *sm, vlib_buffer_t *b,
-			       ip4_header_t *ip, nat_6t_flow_t *f,
-			       nat_protocol_t proto, int is_output_feature)
+nat_6t_flow_buf_translate_i2o (vlib_main_t *vm, snat_main_t *sm,
+			       vlib_buffer_t *b, ip4_header_t *ip,
+			       nat_6t_flow_t *f, nat_protocol_t proto,
+			       int is_output_feature)
 {
-  return nat_6t_flow_buf_translate (sm, b, ip, f, proto, is_output_feature,
+  return nat_6t_flow_buf_translate (vm, sm, b, ip, f, proto, is_output_feature,
 				    1 /* is_i2o */);
 }
 
 nat_translation_error_e
-nat_6t_flow_buf_translate_o2i (snat_main_t *sm, vlib_buffer_t *b,
-			       ip4_header_t *ip, nat_6t_flow_t *f,
-			       nat_protocol_t proto, int is_output_feature)
+nat_6t_flow_buf_translate_o2i (vlib_main_t *vm, snat_main_t *sm,
+			       vlib_buffer_t *b, ip4_header_t *ip,
+			       nat_6t_flow_t *f, nat_protocol_t proto,
+			       int is_output_feature)
 {
-  return nat_6t_flow_buf_translate (sm, b, ip, f, proto, is_output_feature,
+  return nat_6t_flow_buf_translate (vm, sm, b, ip, f, proto, is_output_feature,
 				    0 /* is_i2o */);
 }
 
@@ -3549,6 +3579,15 @@ format_nat_ed_translation_error (u8 *s, va_list *args)
       break;
     case NAT_ED_TRNSL_ERR_FLOW_MISMATCH:
       s = format (s, "flow-mismatch");
+      break;
+    case NAT_ED_TRNSL_ERR_PACKET_TRUNCATED:
+      s = format (s, "packet-truncated");
+      break;
+    case NAT_ED_TRNSL_ERR_INNER_IP_CORRUPT:
+      s = format (s, "inner-ip-corrupted");
+      break;
+    case NAT_ED_TRNSL_ERR_INVALID_CSUM:
+      s = format (s, "invalid-checksum");
       break;
     }
   return s;

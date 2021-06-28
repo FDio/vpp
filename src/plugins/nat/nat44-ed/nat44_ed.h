@@ -125,13 +125,14 @@ typedef enum
 #undef _
 } snat_session_state_t;
 
-#define foreach_nat_in2out_ed_error                     \
-_(UNSUPPORTED_PROTOCOL, "unsupported protocol")         \
-_(OUT_OF_PORTS, "out of ports")                         \
-_(BAD_ICMP_TYPE, "unsupported ICMP type")               \
-_(MAX_SESSIONS_EXCEEDED, "maximum sessions exceeded")   \
-_(NON_SYN, "non-SYN packet try to create session")      \
-_(TCP_CLOSED, "drops due to TCP in transitory timeout")
+#define foreach_nat_in2out_ed_error                                           \
+  _ (UNSUPPORTED_PROTOCOL, "unsupported protocol")                            \
+  _ (OUT_OF_PORTS, "out of ports")                                            \
+  _ (BAD_ICMP_TYPE, "unsupported ICMP type")                                  \
+  _ (MAX_SESSIONS_EXCEEDED, "maximum sessions exceeded")                      \
+  _ (NON_SYN, "non-SYN packet try to create session")                         \
+  _ (TCP_CLOSED, "drops due to TCP in transitory timeout")                    \
+  _ (TRNSL_FAILED, "couldn't translate packet")
 
 typedef enum
 {
@@ -149,7 +150,8 @@ typedef enum
   _ (MAX_SESSIONS_EXCEEDED, "maximum sessions exceeded")                      \
   _ (NON_SYN, "non-SYN packet try to create session")                         \
   _ (TCP_CLOSED, "drops due to TCP in transitory timeout")                    \
-  _ (HASH_ADD_FAILED, "hash table add failed")
+  _ (HASH_ADD_FAILED, "hash table add failed")                                \
+  _ (TRNSL_FAILED, "couldn't translate packet")
 
 typedef enum
 {
@@ -1150,17 +1152,18 @@ typedef enum
   NAT_ED_TRNSL_ERR_SUCCESS = 0,
   NAT_ED_TRNSL_ERR_TRANSLATION_FAILED = 1,
   NAT_ED_TRNSL_ERR_FLOW_MISMATCH = 2,
+  NAT_ED_TRNSL_ERR_PACKET_TRUNCATED = 3,
+  NAT_ED_TRNSL_ERR_INNER_IP_CORRUPT = 4,
+  NAT_ED_TRNSL_ERR_INVALID_CSUM = 5,
 } nat_translation_error_e;
 
-nat_translation_error_e
-nat_6t_flow_buf_translate_i2o (snat_main_t *sm, vlib_buffer_t *b,
-			       ip4_header_t *ip, nat_6t_flow_t *f,
-			       nat_protocol_t proto, int is_output_feature);
+nat_translation_error_e nat_6t_flow_buf_translate_i2o (
+  vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
+  nat_6t_flow_t *f, nat_protocol_t proto, int is_output_feature);
 
-nat_translation_error_e
-nat_6t_flow_buf_translate_o2i (snat_main_t *sm, vlib_buffer_t *b,
-			       ip4_header_t *ip, nat_6t_flow_t *f,
-			       nat_protocol_t proto, int is_output_feature);
+nat_translation_error_e nat_6t_flow_buf_translate_o2i (
+  vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
+  nat_6t_flow_t *f, nat_protocol_t proto, int is_output_feature);
 
 void nat_6t_l3_l4_csum_calc (nat_6t_flow_t *f);
 

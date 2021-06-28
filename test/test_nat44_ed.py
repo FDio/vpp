@@ -1180,6 +1180,7 @@ class TestNAT44ED(NAT44EDTestCase):
         self.pg_start()
         capture = self.pg1.get_capture(len(pkts))
         self.verify_capture_out(capture, ignore_port=True)
+        self.logger.debug(self.vapi.cli("show trace"))
 
         # out2in
         pkts = self.create_stream_out(self.pg1)
@@ -1188,6 +1189,7 @@ class TestNAT44ED(NAT44EDTestCase):
         self.pg_start()
         capture = self.pg0.get_capture(len(pkts))
         self.verify_capture_in(capture, self.pg0)
+        self.logger.debug(self.vapi.cli("show trace"))
 
         # in2out
         pkts = self.create_stream_in(self.pg0, self.pg1, ttl=2)
@@ -1196,6 +1198,7 @@ class TestNAT44ED(NAT44EDTestCase):
         self.pg_start()
         capture = self.pg1.get_capture(len(pkts))
         self.verify_capture_out(capture, ignore_port=True)
+        self.logger.debug(self.vapi.cli("show trace"))
 
         # out2in
         pkts = self.create_stream_out(self.pg1, ttl=2)
@@ -1204,6 +1207,7 @@ class TestNAT44ED(NAT44EDTestCase):
         self.pg_start()
         capture = self.pg0.get_capture(len(pkts))
         self.verify_capture_in(capture, self.pg0)
+        self.logger.debug(self.vapi.cli("show trace"))
 
         # in2out
         pkts = self.create_stream_in(self.pg0, self.pg1, ttl=1)
