@@ -364,22 +364,27 @@ static void
   vl_api_nat44_interface_add_del_feature_t_handler
   (vl_api_nat44_interface_add_del_feature_t * mp)
 {
-  snat_main_t *sm = &snat_main;
   vl_api_nat44_interface_add_del_feature_reply_t *rmp;
-  u32 sw_if_index = ntohl (mp->sw_if_index);
-  u8 is_del;
+  snat_main_t *sm = &snat_main;
+  u32 sw_if_index;
+  u8 is_inside;
   int rv = 0;
-
-  is_del = !mp->is_add;
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  rv =
-    snat_interface_add_del (sw_if_index, mp->flags & NAT_API_IS_INSIDE,
-			    is_del);
+  is_inside = mp->flags & NAT_API_IS_INSIDE;
+  sw_if_index = ntohl (mp->sw_if_index);
+
+  if (mp->is_add)
+    {
+      rv = nat44_ed_add_interface (sw_if_index, is_inside);
+    }
+  else
+    {
+      rv = nat44_ed_del_interface (sw_if_index, is_inside);
+    }
 
   BAD_SW_IF_INDEX_LABEL;
-
   REPLY_MACRO (VL_API_NAT44_INTERFACE_ADD_DEL_FEATURE_REPLY);
 }
 
@@ -426,16 +431,23 @@ static void
   vl_api_nat44_interface_add_del_output_feature_t_handler
   (vl_api_nat44_interface_add_del_output_feature_t * mp)
 {
-  snat_main_t *sm = &snat_main;
   vl_api_nat44_interface_add_del_output_feature_reply_t *rmp;
-  u32 sw_if_index = ntohl (mp->sw_if_index);
+  snat_main_t *sm = &snat_main;
+  u32 sw_if_index;
   int rv = 0;
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  rv = snat_interface_add_del_output_feature (sw_if_index,
-					      mp->flags & NAT_API_IS_INSIDE,
-					      !mp->is_add);
+  sw_if_index = ntohl (mp->sw_if_index);
+
+  if (mp->is_add)
+    {
+      rv = nat44_ed_add_output_interface (sw_if_index);
+    }
+  else
+    {
+      rv = nat44_ed_del_output_interface (sw_if_index);
+    }
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_NAT44_INTERFACE_ADD_DEL_OUTPUT_FEATURE_REPLY);
