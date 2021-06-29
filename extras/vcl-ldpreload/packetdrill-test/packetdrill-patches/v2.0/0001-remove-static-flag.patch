@@ -1,0 +1,21 @@
+From 899dbf386e6373b4579caa165106e944e8581c13 Mon Sep 17 00:00:00 2001
+From: liuyacan <liuyacan@corp.netease.com>
+Date: Wed, 30 Jun 2021 22:51:23 +0800
+Subject: [PATCH 1/2] remove static flag
+
+Signed-off-by: liuyacan <liuyacan@corp.netease.com>
+---
+ gtests/net/packetdrill/Makefile.Linux | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/gtests/net/packetdrill/Makefile.Linux b/gtests/net/packetdrill/Makefile.Linux
+index 0c8b7ac..fc53fb5 100644
+--- a/gtests/net/packetdrill/Makefile.Linux
++++ b/gtests/net/packetdrill/Makefile.Linux
+@@ -1,2 +1,2 @@
+-packetdrill-ext-libs := -lpthread -lrt -ldl -static
++packetdrill-ext-libs := -lpthread -lrt -ldl
+ include Makefile.common
+-- 
+2.20.1
+
