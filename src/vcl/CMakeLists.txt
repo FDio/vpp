@@ -39,6 +39,14 @@ add_vpp_library(vcl_ldpreload
   vppinfra svm vlibmemoryclient rt pthread vppcom dl
 )
 
+add_vpp_library(pd
+  SOURCES
+  packetdrill.c
+
+  LINK_LIBRARIES
+  vcl_ldpreload rt dl
+)
+
 add_vpp_headers(vcl
   ldp.h
   ldp_glibc_socket.h
