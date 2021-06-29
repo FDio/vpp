@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "a5b55fad_3fbecbfc",
+        "filename": "src/vnet/ipsec/ipsec_sa.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 335,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-06-29T09:19:59Z",
+      "side": 1,
+      "message": "that\u0027s a correct assessment of the relationship between post_decrpt and NULL\u003dhi_seq_req. but that\u0027s the semantics of the function, which i have no way to enforce. i could verify that is post_decrypt\u003d\u003dflase then hi_seg_req must be non-NULL, but that\u0027s a waste. i thought it safer to check exactly the condition that would cause the crash, i.e. hi_seq_req\u003d\u003dNULL, rather than rely on the expected call semantics.",
+      "parentUuid": "6f8a0fcb_c698bce9",
+      "revId": "a4d3c9c5c2ee4d64c0e020ac7689cb6fd26d334e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "df560975_49758656",
         "filename": "src/vnet/ipsec/ipsec_sa.h",
         "patchSetId": 1
@@ -33,6 +51,24 @@
       "revId": "a4d3c9c5c2ee4d64c0e020ac7689cb6fd26d334e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3b76f50a_6117aedd",
+        "filename": "src/vnet/ipsec/ipsec_sa.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 408,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-06-29T09:19:59Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "df560975_49758656",
+      "revId": "a4d3c9c5c2ee4d64c0e020ac7689cb6fd26d334e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
