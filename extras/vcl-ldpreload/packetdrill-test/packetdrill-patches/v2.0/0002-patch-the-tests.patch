@@ -1,0 +1,436 @@
+From b2d93ed0d4e58026f4292ca8ec9a8e0c19669557 Mon Sep 17 00:00:00 2001
+From: liuyacan <liuyacan@corp.netease.com>
+Date: Fri, 2 Jul 2021 16:35:20 +0800
+Subject: [PATCH 2/2] patch the tests
+
+Signed-off-by: liuyacan <liuyacan@corp.netease.com>
+---
+ .../tests/linux/blocking/blocking-accept.pkt  |  8 +--
+ .../tests/linux/blocking/blocking-connect.pkt | 16 ++++++
+ .../tests/linux/blocking/blocking-read.pkt    | 23 ++++----
+ .../close-local-close-then-remote-fin.pkt     | 21 ++++++++
+ .../close/close-remote-fin-then-close.pkt     | 34 ++++++++++++
+ .../tests/linux/epoll/epoll_in_edge.pkt       | 53 +++++++++++++++++++
+ .../linux/listen/listen-incoming-ack.pkt      |  2 +-
+ .../listen/listen-incoming-no-tcp-flags.pkt   |  2 +-
+ .../linux/listen/listen-incoming-rst.pkt      |  2 +-
+ .../linux/listen/listen-incoming-syn-ack.pkt  |  2 +-
+ .../linux/listen/listen-incoming-syn-rst.pkt  |  2 +-
+ .../linux/shutdown/shutdown-rd-close.pkt      |  2 +-
+ .../linux/shutdown/shutdown-rd-wr-close.pkt   |  4 +-
+ .../linux/shutdown/shutdown-rdwr-close.pkt    |  2 +-
+ .../linux/shutdown/shutdown-wr-close.pkt      |  4 +-
+ .../tests/linux/ts_recent/fin_tsval.pkt       | 22 ++++++++
+ .../tests/linux/ts_recent/reset_tsval.pkt     | 22 ++++++++
+ 17 files changed, 195 insertions(+), 26 deletions(-)
+ create mode 100644 gtests/net/packetdrill/tests/linux/blocking/blocking-connect.pkt
+ create mode 100644 gtests/net/packetdrill/tests/linux/close/close-local-close-then-remote-fin.pkt
+ create mode 100644 gtests/net/packetdrill/tests/linux/close/close-remote-fin-then-close.pkt
+ create mode 100644 gtests/net/packetdrill/tests/linux/epoll/epoll_in_edge.pkt
+ create mode 100644 gtests/net/packetdrill/tests/linux/ts_recent/fin_tsval.pkt
+ create mode 100644 gtests/net/packetdrill/tests/linux/ts_recent/reset_tsval.pkt
+
+diff --git a/gtests/net/packetdrill/tests/linux/blocking/blocking-accept.pkt b/gtests/net/packetdrill/tests/linux/blocking/blocking-accept.pkt
+index 02c7cd8..e77a5cb 100644
+--- a/gtests/net/packetdrill/tests/linux/blocking/blocking-accept.pkt
++++ b/gtests/net/packetdrill/tests/linux/blocking/blocking-accept.pkt
+@@ -1,5 +1,5 @@
+ // Test for blocking accept.
+-
++--tolerance_usecs=100000
+ // Establish a connection.
+ 0.000 socket(..., SOCK_STREAM, IPPROTO_TCP) = 3
+ 0.000 setsockopt(3, SOL_SOCKET, SO_REUSEADDR, [1], 4) = 0
+@@ -8,8 +8,8 @@
+ 0.000...0.200 accept(3, ..., ...) = 4
+ 
+ 0.100 < S 0:0(0) win 32792 <mss 1000,nop,wscale 7>
+-0.100 > S. 0:0(0) ack 1 <mss 1460,nop,wscale 6>
++0.100 > S. 0:0(0) ack 1 <mss 1460,wscale 10,nop>
+ 0.200 < . 1:1(0) ack 1 win 257
+ 
+-0.300 write(4, ..., 2000) = 2000
+-0.300 > P. 1:2001(2000) ack 1
++0.300 write(4, ..., 1000) = 1000
++0.300 > P. 1:1001(1000) ack 1
+diff --git a/gtests/net/packetdrill/tests/linux/blocking/blocking-connect.pkt b/gtests/net/packetdrill/tests/linux/blocking/blocking-connect.pkt
+new file mode 100644
+index 0000000..0d2ac9b
+--- /dev/null
++++ b/gtests/net/packetdrill/tests/linux/blocking/blocking-connect.pkt
+@@ -0,0 +1,16 @@
++// Test for blocking connect.
++--tolerance_usecs=200000
++
++// Establish a connection.
++0...0.1 socket(..., SOCK_STREAM, IPPROTO_TCP) = 3
+++0.200...0.300 connect(3, ..., ...) = 0
+++0 > S 0:0(0) win 4096 <mss 1460,wscale 10,sackOK,TS val 100 ecr 0,nop>
+++.1 < S. 0:0(0) ack 1 win 5792 <mss 1460,nop,wscale 2,nop,nop,sackOK>
+++0 > . 1:1(0) ack 1
++
+++0...0.001 close(3) = 0
+++0 >  F. 1:1(0) ack 1
+++0 < . 1:1(0) ack 2 win 257
++
+++0 < F. 1:1(0) ack 2 win 257
+++0 >  . 2:2(0) ack 2
+diff --git a/gtests/net/packetdrill/tests/linux/blocking/blocking-read.pkt b/gtests/net/packetdrill/tests/linux/blocking/blocking-read.pkt
+index 1c734c1..21807af 100644
+--- a/gtests/net/packetdrill/tests/linux/blocking/blocking-read.pkt
++++ b/gtests/net/packetdrill/tests/linux/blocking/blocking-read.pkt
+@@ -1,4 +1,5 @@
+ // Test for blocking read.
++--tolerance_usecs=200000
+ 
+ // Establish a connection.
+ 0.000 socket(..., SOCK_STREAM, IPPROTO_TCP) = 3
+@@ -7,19 +8,19 @@
+ 0.000 listen(3, 1) = 0
+ 
+ 0.100 < S 0:0(0) win 32792 <mss 1000,nop,wscale 7>
+-0.100 > S. 0:0(0) ack 1 <mss 1460,nop,wscale 6>
++0.100 > S. 0:0(0) ack 1 <mss 1460,wscale 10,nop>
+ 0.200 < . 1:1(0) ack 1 win 257
+ 0.200 accept(3, ..., ...) = 4
+ 
+-0.200...0.300 read(4, ..., 2000) = 2000
+-0.300 < P. 1:2001(2000) ack 1 win 257
+-0.300 > . 1:1(0) ack 2001
++0.200...0.300 read(4, ..., 1000) = 1000
++0.300 < P. 1:1001(1000) ack 1 win 257
++0.300 > . 1:1(0) ack 1001
+ 
+-0.400...0.500 read(4, ..., 2000) = 2000
+-0.500 < P. 2001:4001(2000) ack 1 win 257
+-0.500 > . 1:1(0) ack 4001
++0.400...0.500 read(4, ..., 1000) = 1000
++0.500 < P. 1001:2001(1000) ack 1 win 257
++0.500 > . 1:1(0) ack 2001
+ 
+-0.600 < P. 4001:6001(2000) ack 1 win 257
+-0.600 > . 1:1(0) ack 6001
+-0.600...0.600 read(4, ..., 1000) = 1000
+-0.600...0.600 read(4, ..., 1000) = 1000
++0.600 < P. 2001:3001(1000) ack 1 win 257
++0.600 > . 1:1(0) ack 3001
++0.600...0.600 read(4, ..., 500) = 500
++0.600...0.600 read(4, ..., 500) = 500
+diff --git a/gtests/net/packetdrill/tests/linux/close/close-local-close-then-remote-fin.pkt b/gtests/net/packetdrill/tests/linux/close/close-local-close-then-remote-fin.pkt
+new file mode 100644
+index 0000000..02c8b03
+--- /dev/null
++++ b/gtests/net/packetdrill/tests/linux/close/close-local-close-then-remote-fin.pkt
+@@ -0,0 +1,21 @@
++// Test basic connection teardown where local process closes first:
++// the local process calls close() first, so we send a FIN, and receive an ACK.
++// Then we receive a FIN and ACK it.
++--tolerance_usecs=200000
++
++0...0.001 socket(..., SOCK_STREAM, IPPROTO_TCP) = 3
+++.01...0.011 connect(3, ..., ...) = 0
+++0 >  S 0:0(0) <...>
+++0 < S. 0:0(0) ack 1 win 32768 <mss 1000,nop,wscale 6,nop,nop,sackOK>
+++0 >  . 1:1(0) ack 1
++
+++0...0.01 write(3, ..., 1000) = 1000
+++0 >  P. 1:1001(1000) ack 1
+++0 < . 1:1(0) ack 1001 win 257
++
+++0...0.001 close(3) = 0
+++0 >  F. 1001:1001(0) ack 1
+++0 < . 1:1(0) ack 1002 win 257
++
+++0 < F. 1:1(0) ack 1002 win 257
+++0 >  . 1002:1002(0) ack 2
+diff --git a/gtests/net/packetdrill/tests/linux/close/close-remote-fin-then-close.pkt b/gtests/net/packetdrill/tests/linux/close/close-remote-fin-then-close.pkt
+new file mode 100644
+index 0000000..64faf82
+--- /dev/null
++++ b/gtests/net/packetdrill/tests/linux/close/close-remote-fin-then-close.pkt
+@@ -0,0 +1,34 @@
++// Verify behavior for the sequence: remote side sends FIN, then we close().
++// Since the remote side (client) closes first, we test our LAST_ACK code path.
++--tolerance_usecs=50000
++
++// Initialize a server socket.
++0 socket(..., SOCK_STREAM, IPPROTO_TCP) = 3
+++0 setsockopt(3, SOL_SOCKET, SO_REUSEADDR, [1], 4) = 0
+++0 bind(3, ..., ...) = 0
+++0 listen(3, 1) = 0
++
+++0 < S 0:0(0) win 32792 <mss 1000,sackOK,nop,nop,nop,wscale 7>
+++0 > S. 0:0(0) ack 1 <mss 1460,wscale 10,sackOK,nop,nop,nop>
+++0 < . 1:1(0) ack 1 win 257
++
+++0 accept(3, ..., ...) = 4
++
++// Client closes first.
+++.01 < F. 1:1(0) ack 1 win 257
+++0 > . 1:1(0) ack 2
++
++// App notices that client closed.
+++0 read(4, ..., 1000) = 0
++
++// Then we close.
+++.01 close(4) = 0
+++0 > F. 1:1(0) ack 2
++
++// Client ACKs our FIN.
+++.01 < . 2:2(0) ack 2 win 257
++
++// Verify that we send RST in response to any incoming segments
++// (because the kernel no longer has any record of this socket).
+++.01 < . 2:2(0) ack 2 win 257
+++0 > R 2:2(0)
+diff --git a/gtests/net/packetdrill/tests/linux/epoll/epoll_in_edge.pkt b/gtests/net/packetdrill/tests/linux/epoll/epoll_in_edge.pkt
+new file mode 100644
+index 0000000..e205ba3
+--- /dev/null
++++ b/gtests/net/packetdrill/tests/linux/epoll/epoll_in_edge.pkt
+@@ -0,0 +1,53 @@
++// Test the behavior of EPOLLET for EPOLLIN.
++--tolerance_usecs=200000
++
++    0 socket(..., SOCK_STREAM, IPPROTO_TCP) = 3
++   +0 setsockopt(3, SOL_SOCKET, SO_REUSEADDR, [1], 4) = 0
++   +0 bind(3, ..., ...) = 0
++   +0 listen(3, 1) = 0
++
++   +0 < S 0:0(0) win 32792 <mss 1000,sackOK,nop,nop,nop,wscale 7>
++   +0 > S. 0:0(0) ack 1 win 4096 <mss 1460,wscale 10,sackOK,nop,nop,nop>
++   +0 < . 1:1(0) ack 1 win 257
++
++   +0 accept(3, ..., ...) = 4
++
++   +0 fcntl(4, F_SETFL, O_RDWR|O_NONBLOCK) = 0
++   +0 epoll_create(1) = 5
++
++   // Add the FD as EPOLLET and clear all the events.
++   +0 epoll_ctl(5, EPOLL_CTL_ADD, 4, {events=EPOLLOUT|EPOLLIN|EPOLLET, fd=4}) = 0
++   +0 epoll_wait(5, {events=EPOLLOUT, fd=4}, 1, 0) = 1
++   +0 epoll_wait(5, {events=0, ptr=0}, 1, 0) = 0
++
++   // We have 1KB of data ready to read so we get EPOLLIN.
++   +0 < P. 1:1001(1000) ack 1 win 257
++   +0 > . 1:1(0) ack 1001
++
++   // remove EPOLLOUT for VPP
++   +0 epoll_wait(5, {events=EPOLLIN, fd=4}, 1, 0) = 1
++   // Now epoll_wait should not return any event because there is no new data.
++   +0 epoll_wait(5, {events=0, ptr=0}, 1, 0) = 0
++
++   +0 read(4, ..., 1000) = 1000
++   // We have 1KB of data ready to read so we get EPOLLIN.
++   +.5 < P. 1001:2001(1000) ack 1 win 257
++   +0 > . 1:1(0) ack 2001
++
++   // Remove EPOLLOUT for VPP
++   +.5 epoll_wait(5, {events=EPOLLIN, fd=4}, 1, 0) = 1
++   // Now epoll_wait should not return any event because there is no new data.
++   +0.5 epoll_wait(5, {events=0, ptr=0}, 1, 0) = 0
++
++   // Read some data from the socket, but do not drain it.
++   +0 read(4, ..., 500) = 500
++   // epoll_wait should still return no events because there is no new data.
++   +0.5 epoll_wait(5, {events=0, ptr=0}, 1, 0) = 0
++
++   +.5 < P. 2001:3001(1000) ack 1 win 257
++   +0 > . 1:1(0) ack 3001
++
++   // VPP won't generate EPOLLIN because there are still some data that app need to read
++   +0.5 epoll_wait(5, {events=0, ptr=0}, 1, 0) = 0
++   // Now epoll_wait should not return any event because there is no new data.
++   +0 epoll_wait(5, {events=0, ptr=0}, 1, 0) = 0
+diff --git a/gtests/net/packetdrill/tests/linux/listen/listen-incoming-ack.pkt b/gtests/net/packetdrill/tests/linux/listen/listen-incoming-ack.pkt
+index 65f3733..247b8bf 100644
+--- a/gtests/net/packetdrill/tests/linux/listen/listen-incoming-ack.pkt
++++ b/gtests/net/packetdrill/tests/linux/listen/listen-incoming-ack.pkt
+@@ -14,7 +14,7 @@
+ // a connection.
+ 
+ 0.200 < S 0:0(0) win 32792 <mss 1000,sackOK,nop,nop,nop,wscale 7>
+-0.200 > S. 0:0(0) ack 1 <mss 1460,nop,nop,sackOK,nop,wscale 6>
++0.200 > S. 0:0(0) ack 1 <mss 1460,wscale 10,sackOK,nop,nop,nop>
+ 
+ 0.300 < . 1:1(0) ack 1 win 320
+ 0.300 accept(3, ..., ...) = 4
+diff --git a/gtests/net/packetdrill/tests/linux/listen/listen-incoming-no-tcp-flags.pkt b/gtests/net/packetdrill/tests/linux/listen/listen-incoming-no-tcp-flags.pkt
+index 3ae1ff3..c6f5652 100644
+--- a/gtests/net/packetdrill/tests/linux/listen/listen-incoming-no-tcp-flags.pkt
++++ b/gtests/net/packetdrill/tests/linux/listen/listen-incoming-no-tcp-flags.pkt
+@@ -15,7 +15,7 @@
+ // a connection.
+ 
+ 0.200 < S 0:0(0) win 32792 <mss 1000,sackOK,nop,nop,nop,wscale 7>
+-0.200 > S. 0:0(0) ack 1 <mss 1460,nop,nop,sackOK,nop,wscale 6>
++0.200 > S. 0:0(0) ack 1 <mss 1460,wscale 10,sackOK,nop,nop,nop>
+ 
+ 0.300 < . 1:1(0) ack 1 win 320
+ 0.300 accept(3, ..., ...) = 4
+diff --git a/gtests/net/packetdrill/tests/linux/listen/listen-incoming-rst.pkt b/gtests/net/packetdrill/tests/linux/listen/listen-incoming-rst.pkt
+index 83d25f2..8cfc163 100644
+--- a/gtests/net/packetdrill/tests/linux/listen/listen-incoming-rst.pkt
++++ b/gtests/net/packetdrill/tests/linux/listen/listen-incoming-rst.pkt
+@@ -16,7 +16,7 @@
+ // a connection.
+ 
+ 0.200 < S 0:0(0) win 32792 <mss 1000,sackOK,nop,nop,nop,wscale 7>
+-0.200 > S. 0:0(0) ack 1 <mss 1460,nop,nop,sackOK,nop,wscale 6>
++0.200 > S. 0:0(0) ack 1 <mss 1460,wscale 10,sackOK,nop,nop,nop>
+ 
+ 0.300 < . 1:1(0) ack 1 win 320
+ 0.300 accept(3, ..., ...) = 4
+diff --git a/gtests/net/packetdrill/tests/linux/listen/listen-incoming-syn-ack.pkt b/gtests/net/packetdrill/tests/linux/listen/listen-incoming-syn-ack.pkt
+index bc2569c..c1631bf 100644
+--- a/gtests/net/packetdrill/tests/linux/listen/listen-incoming-syn-ack.pkt
++++ b/gtests/net/packetdrill/tests/linux/listen/listen-incoming-syn-ack.pkt
+@@ -14,7 +14,7 @@
+ // a connection.
+ 
+ 0.200 < S 0:0(0) win 32792 <mss 1000,sackOK,nop,nop,nop,wscale 7>
+-0.200 > S. 0:0(0) ack 1 <mss 1460,nop,nop,sackOK,nop,wscale 6>
++0.200 > S. 0:0(0) ack 1 <mss 1460,wscale 10,sackOK,nop,nop,nop>
+ 
+ 0.300 < . 1:1(0) ack 1 win 320
+ 0.300 accept(3, ..., ...) = 4
+diff --git a/gtests/net/packetdrill/tests/linux/listen/listen-incoming-syn-rst.pkt b/gtests/net/packetdrill/tests/linux/listen/listen-incoming-syn-rst.pkt
+index f3c0607..7bd8620 100644
+--- a/gtests/net/packetdrill/tests/linux/listen/listen-incoming-syn-rst.pkt
++++ b/gtests/net/packetdrill/tests/linux/listen/listen-incoming-syn-rst.pkt
+@@ -16,7 +16,7 @@
+ // a connection.
+ 
+ 0.200 < S 0:0(0) win 32792 <mss 1000,sackOK,nop,nop,nop,wscale 7>
+-0.200 > S. 0:0(0) ack 1 <mss 1460,nop,nop,sackOK,nop,wscale 6>
++0.200 > S. 0:0(0) ack 1 <mss 1460,wscale 10,sackOK,nop,nop,nop>
+ 
+ 0.300 < . 1:1(0) ack 1 win 320
+ 0.300 accept(3, ..., ...) = 4
+diff --git a/gtests/net/packetdrill/tests/linux/shutdown/shutdown-rd-close.pkt b/gtests/net/packetdrill/tests/linux/shutdown/shutdown-rd-close.pkt
+index f5fff60..dad04a3 100644
+--- a/gtests/net/packetdrill/tests/linux/shutdown/shutdown-rd-close.pkt
++++ b/gtests/net/packetdrill/tests/linux/shutdown/shutdown-rd-close.pkt
+@@ -8,7 +8,7 @@
+ +0 listen(3, 1) = 0
+ 
+ +0 < S 0:0(0) win 32792 <mss 1000,sackOK,nop,nop,nop,wscale 7>
+-+0 > S. 0:0(0) ack 1 <mss 1460,nop,nop,sackOK,nop,wscale 6>
+++0 > S. 0:0(0) ack 1 <mss 1460,wscale 10,sackOK,nop,nop,nop>
+ +0 < . 1:1(0) ack 1 win 257
+ 
+ +0 accept(3, ..., ...) = 4
+diff --git a/gtests/net/packetdrill/tests/linux/shutdown/shutdown-rd-wr-close.pkt b/gtests/net/packetdrill/tests/linux/shutdown/shutdown-rd-wr-close.pkt
+index 5b97fad..fae3fee 100644
+--- a/gtests/net/packetdrill/tests/linux/shutdown/shutdown-rd-wr-close.pkt
++++ b/gtests/net/packetdrill/tests/linux/shutdown/shutdown-rd-wr-close.pkt
+@@ -1,6 +1,6 @@
+ // Verify behavior for the sequence:
+ // shutdown(SHUT_RD), receive, send, shutdown(SHUT_WR), close().
+-
++--tolerance_usecs=100000
+ // Initialize a server socket.
+ 0 socket(..., SOCK_STREAM, IPPROTO_TCP) = 3
+ +0 setsockopt(3, SOL_SOCKET, SO_REUSEADDR, [1], 4) = 0
+@@ -8,7 +8,7 @@
+ +0 listen(3, 1) = 0
+ 
+ +0 < S 0:0(0) win 32792 <mss 1000,sackOK,nop,nop,nop,wscale 7>
+-+0 > S. 0:0(0) ack 1 <mss 1460,nop,nop,sackOK,nop,wscale 6>
+++0 > S. 0:0(0) ack 1 <mss 1460,wscale 10,sackOK,nop,nop,nop>
+ +0 < . 1:1(0) ack 1 win 257
+ 
+ +0 accept(3, ..., ...) = 4
+diff --git a/gtests/net/packetdrill/tests/linux/shutdown/shutdown-rdwr-close.pkt b/gtests/net/packetdrill/tests/linux/shutdown/shutdown-rdwr-close.pkt
+index cb55c3b..48ba384 100644
+--- a/gtests/net/packetdrill/tests/linux/shutdown/shutdown-rdwr-close.pkt
++++ b/gtests/net/packetdrill/tests/linux/shutdown/shutdown-rdwr-close.pkt
+@@ -8,7 +8,7 @@
+ +0 listen(3, 1) = 0
+ 
+ +0 < S 0:0(0) win 32792 <mss 1000,sackOK,nop,nop,nop,wscale 7>
+-+0 > S. 0:0(0) ack 1 <mss 1460,nop,nop,sackOK,nop,wscale 6>
+++0 > S. 0:0(0) ack 1 <mss 1460,wscale 10,sackOK,nop,nop,nop>
+ +0 < . 1:1(0) ack 1 win 257
+ 
+ +0 accept(3, ..., ...) = 4
+diff --git a/gtests/net/packetdrill/tests/linux/shutdown/shutdown-wr-close.pkt b/gtests/net/packetdrill/tests/linux/shutdown/shutdown-wr-close.pkt
+index c840f84..f7dedf8 100644
+--- a/gtests/net/packetdrill/tests/linux/shutdown/shutdown-wr-close.pkt
++++ b/gtests/net/packetdrill/tests/linux/shutdown/shutdown-wr-close.pkt
+@@ -1,6 +1,6 @@
+ // Verify behavior for the sequence:
+ // shutdown(SHUT_WR), close().
+-
++--tolerance_usecs=100000
+ // Initialize a server socket.
+ 0 socket(..., SOCK_STREAM, IPPROTO_TCP) = 3
+ +0 setsockopt(3, SOL_SOCKET, SO_REUSEADDR, [1], 4) = 0
+@@ -8,7 +8,7 @@
+ +0 listen(3, 1) = 0
+ 
+ +0 < S 0:0(0) win 32792 <mss 1000,sackOK,nop,nop,nop,wscale 7>
+-+0 > S. 0:0(0) ack 1 <mss 1460,nop,nop,sackOK,nop,wscale 6>
+++0 > S. 0:0(0) ack 1 <mss 1460,wscale 10,sackOK,nop,nop,nop>
+ +0 < . 1:1(0) ack 1 win 257
+ 
+ +0 accept(3, ..., ...) = 4
+diff --git a/gtests/net/packetdrill/tests/linux/ts_recent/fin_tsval.pkt b/gtests/net/packetdrill/tests/linux/ts_recent/fin_tsval.pkt
+new file mode 100644
+index 0000000..9816b9f
+--- /dev/null
++++ b/gtests/net/packetdrill/tests/linux/ts_recent/fin_tsval.pkt
+@@ -0,0 +1,22 @@
++// Test that we send FIN packet with correct TSval
++--tolerance_usecs=200000
++
++// Create a socket.
++    0 socket(..., SOCK_STREAM, IPPROTO_TCP) = 3
++   +0 setsockopt(3, SOL_SOCKET, SO_REUSEADDR, [1], 4) = 0
++
++   +0 bind(3, ..., ...) = 0
++   +0 listen(3, 1) = 0
++
++// Establish a connection.
++   +0 < S 0:0(0) win 20000 <mss 1000,sackOK,TS val 100 ecr 0>
++   +0 > S. 0:0(0) ack 1 <mss 1460,sackOK,TS val 100 ecr 100>
++  +.1 < . 1:1(0) ack 1 win 20000 <nop,nop,TS val 200 ecr 100>
++   +0 accept(3, ..., ...) = 4
++
++   +1 close(4) = 0
++// Check that FIN TSval is updated properly, one second has passed since last sent packet.
++   +0 > F. 1:1(0) ack 1 <TS val 1100 ecr 200,nop,nop>
++   +0 < . 1:1(0) ack 2 win 20000 <nop, nop, TS val 300 ecr 1100>
++   +0 < F. 1:1(0) ack 2 win 20000  <TS val 400 ecr 1100, eol, nop>
++   +0 > . 2:2(0) ack 2  <TS val 1150 ecr 400, nop,nop>
+diff --git a/gtests/net/packetdrill/tests/linux/ts_recent/reset_tsval.pkt b/gtests/net/packetdrill/tests/linux/ts_recent/reset_tsval.pkt
+new file mode 100644
+index 0000000..6c7d3b4
+--- /dev/null
++++ b/gtests/net/packetdrill/tests/linux/ts_recent/reset_tsval.pkt
+@@ -0,0 +1,22 @@
++// Test that we send RST packet with correct TSval
++--tolerance_usecs=200000
++
++// Create a socket.
++    0 socket(..., SOCK_STREAM, IPPROTO_TCP) = 3
++   +0 setsockopt(3, SOL_SOCKET, SO_REUSEADDR, [1], 4) = 0
++
++   +0 bind(3, ..., ...) = 0
++   +0 listen(3, 1) = 0
++
++// Establish a connection.
++   +0 < S 0:0(0) win 20000 <mss 1000,sackOK,TS val 100 ecr 0>
++   +0 > S. 0:0(0) ack 1 <mss 1460,sackOK,TS val 100 ecr 100>
++  +.1 < . 1:1(0) ack 1 win 20000 <nop,nop,TS val 200 ecr 100>
++   +0 accept(3, ..., ...) = 4
++
++   +0 < . 1:1001(1000) ack 1 win 20000 <nop,nop,TS val 201 ecr 100>
++   +0 > . 1:1(0) ack 1001 <TS val 200 ecr 201, nop, nop>
++
++   +1 close(4) = 0
++// Check that RST TSval is updated properly, one second has passed since last sent packet.
++   +0 > R. 1:1(0) ack 1001 <TS val 1200 ecr 201, nop, nop>
+-- 
+2.20.1
+
