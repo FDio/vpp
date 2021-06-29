@@ -954,28 +954,10 @@ clib_error_t *nat44_api_hookup (vlib_main_t * vm);
  */
 int snat_set_workers (uword * bitmap);
 
-/**
- * @brief Enable/disable NAT44 feature on the interface
- *
- * @param sw_if_index software index of the interface
- * @param is_inside   1 = inside, 0 = outside
- * @param is_del      1 = delete, 0 = add
- *
- * @return 0 on success, non-zero value otherwise
- */
-int snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del);
-
-/**
- * @brief Enable/disable NAT44 output feature on the interface (postrouting NAT)
- *
- * @param sw_if_index software index of the interface
- * @param is_inside   1 = inside, 0 = outside
- * @param is_del      1 = delete, 0 = add
- *
- * @return 0 on success, non-zero value otherwise
- */
-int snat_interface_add_del_output_feature (u32 sw_if_index, u8 is_inside,
-					   int is_del);
+int nat44_ed_add_interface (u32 sw_if_index, u8 is_inside);
+int nat44_ed_del_interface (u32 sw_if_index, u8 is_inside);
+int nat44_ed_add_output_interface (u32 sw_if_index);
+int nat44_ed_del_output_interface (u32 sw_if_index);
 
 /**
  * @brief Add/delete NAT44 pool address from specific interface
