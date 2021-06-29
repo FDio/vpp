@@ -82,7 +82,11 @@ class VppCFLOW(VppObject):
                               (self._intf, self._datapath))
 
     def disable_exporter(self):
-        self._test.vapi.cli("set ipfix exporter collector 0.0.0.0")
+        self._test.vapi.set_ipfix_exporter(
+            collector_address="0.0.0.0",
+            src_address=self._test.pg0.local_ip4,
+            path_mtu=self._mtu,
+            template_interval=self._timeout)
 
     def disable_flowprobe_feature(self):
         self._test.vapi.cli("flowprobe feature add-del %s %s disable" %
