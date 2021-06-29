@@ -1530,7 +1530,11 @@ vls_cleanup_vcl_worker (vcl_worker_t * wrk)
   /* Unshare sessions and also cleanup worker since child may have
    * called _exit () and therefore vcl may not catch the event */
   vls_unshare_vcl_worker_sessions (wrk);
-  vcl_worker_cleanup (wrk, 1 /* notify vpp */ );
+
+  /* Since child may have exited and thereforce fd of vpp_app_socket_api
+   * may have been closed, so DONOT notify VPP.
+   */
+  vcl_worker_cleanup (wrk, vcm->cfg.vpp_app_socket_api ? 0 : 1);
 
   vls_worker_free (vls_wrk);
 }
