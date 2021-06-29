@@ -2117,7 +2117,7 @@ class TestNAT44EDMW(TestNAT44ED):
     def test_static_lb_2(self):
         """ NAT44ED local service load balancing (asymmetrical rule) """
 
-    @unittest.skip('MW fix required')
+    @unittest.skip('MW fix required'Equal(sessions[:, 0].sum(), 3))
     def test_lb_affinity(self):
         """ NAT44ED local service load balancing affinity """
 
@@ -3033,11 +3033,7 @@ class TestNAT44EDMW(TestNAT44ED):
 
         self.nat_add_address(self.nat_addr)
         self.vapi.nat44_interface_add_del_output_feature(
-            sw_if_index=self.pg0.sw_if_index,
-            flags=self.config_flags.NAT_IS_INSIDE, is_add=1)
-        self.vapi.nat44_interface_add_del_output_feature(
-            sw_if_index=self.pg1.sw_if_index,
-            flags=self.config_flags.NAT_IS_OUTSIDE, is_add=1)
+            sw_if_index=self.pg1.sw_if_index, is_add=1)
 
         # First ensure that the NAT is working sans ACL
 
@@ -3582,13 +3578,8 @@ class TestNAT44EDMW(TestNAT44ED):
         new_vrf_id = 22
 
         self.nat_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
         self.vapi.nat44_interface_add_del_output_feature(
-            sw_if_index=self.pg7.sw_if_index,
-            flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_output_feature(
-            sw_if_index=self.pg8.sw_if_index,
-            is_add=1)
+            sw_if_index=self.pg8.sw_if_index, is_add=1)
 
         try:
             self.configure_ip4_interface(self.pg7, table_id=new_vrf_id)
