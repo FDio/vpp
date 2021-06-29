@@ -206,6 +206,11 @@ I:	span
 M:	N/A
 F:	src/vnet/span
 
+VNET IPFIX EXPORT
+I:	ipfix-export
+M:	N/A
+F:	src/vnet/ipfix-export
+
 Plugin - Crypto - native
 I:	crypto-native
 M:	Damjan Marion <damarion@cisco.com>
