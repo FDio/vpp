@@ -342,24 +342,13 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
   ip4_address_t outside_addr;
   u16 outside_port;
   u32 outside_fib_index;
-  u8 is_identity_nat;
+  u8 is_identity_nat = 0;
 
   u32 nat_proto = ip_proto_to_nat_proto (proto);
   snat_session_t *s = NULL;
   lb_nat_type_t lb = 0;
   ip4_address_t daddr = r_addr;
   u16 dport = r_port;
-
-  if (PREDICT_TRUE (nat_proto == NAT_PROTOCOL_TCP))
-    {
-      if (PREDICT_FALSE
-	  (!tcp_flags_is_init
-	   (vnet_buffer (b)->ip.reass.icmp_type_or_tcp_flags)))
-	{
-	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_NON_SYN];
-	  return NAT_NEXT_DROP;
-	}
-    }
 
   if (PREDICT_FALSE
       (nat44_ed_maximum_sessions_exceeded (sm, rx_fib_index, thread_index)))
@@ -402,13 +391,22 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
     }
   else
     {
+      if (PREDICT_FALSE (is_identity_nat))
+	{
+	  *sessionp = NULL;
+	  return next;
+	}
       is_sm = 1;
     }
 
-  if (PREDICT_FALSE (is_sm && is_identity_nat))
+  if (PREDICT_TRUE (nat_proto == NAT_PROTOCOL_TCP))
     {
-      *sessionp = NULL;
-      return next;
+      if (PREDICT_FALSE (!tcp_flags_is_init (
+	    vnet_buffer (b)->ip.reass.icmp_type_or_tcp_flags)))
+	{
+	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_NON_SYN];
+	  return NAT_NEXT_DROP;
+	}
     }
 
   s = nat_ed_session_alloc (sm, thread_index, now, proto);
