@@ -227,6 +227,7 @@ session_mq_handle_connects_rpc (void *arg)
       next = clib_llist_next (fwrk->event_elts, evt_list, elt);
       clib_llist_remove (fwrk->event_elts, evt_list, elt);
       session_mq_connect_one (session_evt_ctrl_data (fwrk, elt));
+      session_evt_ctrl_data_free (fwrk, elt);
       clib_llist_put (fwrk->event_elts, elt);
       elt = next;
       n_connects += 1;
