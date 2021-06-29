@@ -1,0 +1,27 @@
+// Test for blocking accept.
+--tolerance_usecs=500000
+//`../common/defaults.sh`
+
+// Establish a connection.
+    0...0.100 socket(..., SOCK_STREAM, IPPROTO_TCP) = 3
+   +0.100...0.200 setsockopt(3, SOL_SOCKET, SO_REUSEADDR, [1], 4) = 0
+   +0...0.100 bind(3, ..., ...) = 0
+   +0...0.100 listen(3, 1) = 0
+   +0...0.200 accept(3, ..., ...) = 4
+
+  +.1 < S 0:0(0) win 32792 <mss 1000,nop,wscale 7>
+  +0 > S. 0:0(0) ack 1 win 4096 <mss 1460,wscale 10,nop>
+  +.1 < . 1:1(0) ack 1 win 257
+
+  +0.1...0.11 write(4, ..., 1000) = 1000
+   +0 > P. 1:1001(1000) ack 1
+
+   +0 < . 1:1(0) ack 1001 win 257
+
+   +0...0.001 close(4) = 0
+   +0 >  F. 1001:1001(0) ack 1
+   +0 < . 1:1(0) ack 1002 win 257
+
+   +0 < F. 1:1(0) ack 1002 win 257
+   +0 >  . 1002:1002(0) ack 2
+
