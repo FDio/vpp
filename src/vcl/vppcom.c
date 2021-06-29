@@ -2715,8 +2715,8 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
 		  struct epoll_event *event)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
+  int rv = VPPCOM_OK, add_evt = 0;
   vcl_session_t *vep_session;
-  int rv = VPPCOM_OK;
   vcl_session_t *s;
   svm_fifo_t *txf;
 
@@ -2801,6 +2801,7 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
 	  e.event_type = SESSION_IO_EVT_TX;
 	  e.session_index = s->session_index;
 	  vec_add1 (wrk->unhandled_evts_vector, e);
+	  add_evt = 1;
 	}
       /* Generate EPOLLIN if rx fifo has data */
       if ((event->events & EPOLLIN) && (vcl_session_read_ready (s) > 0))
@@ -2808,6 +2809,19 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
 	  session_event_t e = { 0 };
 	  e.event_type = SESSION_IO_EVT_RX;
 	  e.session_index = s->session_index;
+	  vec_add1 (wrk->unhandled_evts_vector, e);
+	  s->flags &= ~VCL_SESSION_F_HAS_RX_EVT;
+	  add_evt = 1;
+	}
+      if (!add_evt && vcl_session_is_closing (s))
+	{
+	  session_event_t e = { 0 };
+	  if (s->session_state == VCL_STATE_VPP_CLOSING)
+	    e.event_type = SESSION_CTRL_EVT_DISCONNECTED;
+	  else
+	    e.event_type = SESSION_CTRL_EVT_RESET;
+	  e.session_index = s->session_index;
+	  e.postponed = 1;
 	  vec_add1 (wrk->unhandled_evts_vector, e);
 	}
       VDBG (1, "EPOLL_CTL_ADD: vep_sh %u, sh %u, events 0x%x, data 0x%llx!",
@@ -2853,6 +2867,7 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
 	  e.event_type = SESSION_IO_EVT_RX;
 	  e.session_index = s->session_index;
 	  vec_add1 (wrk->unhandled_evts_vector, e);
+	  s->flags &= ~VCL_SESSION_F_HAS_RX_EVT;
 	}
       s->vep.et_mask = VEP_DEFAULT_ET_MASK;
       s->vep.ev = *event;
@@ -3020,9 +3035,17 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	events[*num_ev].events |= EPOLLHUP;
       break;
     case SESSION_CTRL_EVT_DISCONNECTED:
-      disconnected_msg = (session_disconnected_msg_t *) e->data;
-      s = vcl_session_disconnected_handler (wrk, disconnected_msg);
-      if (vcl_session_is_closed (s))
+      if (!e->postponed)
+	{
+	  disconnected_msg = (session_disconnected_msg_t *) e->data;
+	  s = vcl_session_disconnected_handler (wrk, disconnected_msg);
+	}
+      else
+	{
+	  s = vcl_session_get (wrk, e->session_index);
+	}
+      if (vcl_session_is_closed (s) ||
+	  !(s->flags & VCL_SESSION_F_IS_VEP_SESSION))
 	break;
       sid = s->session_index;
       session_events = s->vep.ev.events;
@@ -3031,9 +3054,13 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       session_evt_data = s->vep.ev.data.u64;
       break;
     case SESSION_CTRL_EVT_RESET:
-      sid = vcl_session_reset_handler (wrk, (session_reset_msg_t *) e->data);
+      if (!e->postponed)
+	sid = vcl_session_reset_handler (wrk, (session_reset_msg_t *) e->data);
+      else
+	sid = e->session_index;
       s = vcl_session_get (wrk, sid);
-      if (vcl_session_is_closed (s))
+      if (vcl_session_is_closed (s) ||
+	  !(s->flags & VCL_SESSION_F_IS_VEP_SESSION))
 	break;
       session_events = s->vep.ev.events;
       add_event = 1;
