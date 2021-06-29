@@ -123,7 +123,7 @@ format_nat44_ed_out2in_trace (u8 * s, va_list * args)
 
 static int
 next_src_nat (snat_main_t *sm, ip4_header_t *ip, u16 src_port, u16 dst_port,
-	      u32 thread_index, u32 rx_fib_index)
+	      u32 rx_fib_index)
 {
   clib_bihash_kv_16_8_t kv, value;
 
@@ -198,8 +198,7 @@ icmp_out2in_ed_slow_path (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
 	}
       else
 	{
-	  if (next_src_nat (sm, ip, lookup_sport, lookup_dport, thread_index,
-			    rx_fib_index))
+	  if (next_src_nat (sm, ip, lookup_sport, lookup_dport, rx_fib_index))
 	    {
 	      next = NAT_NEXT_IN2OUT_ED_FAST_PATH;
 	    }
@@ -1270,10 +1269,9 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
 		}
 	      else
 		{
-		  if (next_src_nat
-		      (sm, ip0, vnet_buffer (b0)->ip.reass.l4_src_port,
-		       vnet_buffer (b0)->ip.reass.l4_dst_port,
-		       thread_index, rx_fib_index0))
+		  if (next_src_nat (
+			sm, ip0, vnet_buffer (b0)->ip.reass.l4_src_port,
+			vnet_buffer (b0)->ip.reass.l4_dst_port, rx_fib_index0))
 		    {
 		      next[0] = NAT_NEXT_IN2OUT_ED_FAST_PATH;
 		    }
