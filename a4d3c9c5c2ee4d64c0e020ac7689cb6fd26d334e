@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "daa4771c_88397bd8",
+        "filename": "src/vnet/ipsec/ipsec_sa.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 335,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-06-29T09:36:23Z",
+      "side": 1,
+      "message": "fair enough, maybe add something like ASSERT((post_decrypt \u003d\u003d false) \u003d\u003d (hi_seq_req !\u003d 0)) at the entry point then? At least it documents the expected behavior?",
+      "parentUuid": "a5b55fad_3fbecbfc",
+      "revId": "a4d3c9c5c2ee4d64c0e020ac7689cb6fd26d334e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "df560975_49758656",
         "filename": "src/vnet/ipsec/ipsec_sa.h",
         "patchSetId": 1
