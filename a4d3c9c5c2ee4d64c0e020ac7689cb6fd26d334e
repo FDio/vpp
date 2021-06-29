@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6f8a0fcb_c698bce9",
+        "filename": "src/vnet/ipsec/ipsec_sa.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 335,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-06-29T08:52:28Z",
+      "side": 1,
+      "message": "My understanding is that if post_decrypt, hi_seq_req should not be updated (and should be NULL), whereas if !post_decrypt (pre decrypt) hi_seq_req must be updated hence !NULL.\nIOW testing for post_decrypt is equivalent to testing for hi_seq_req.\nFor clarity I think it would be better to stick testing for post_decrypt everywhere.",
+      "revId": "a4d3c9c5c2ee4d64c0e020ac7689cb6fd26d334e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "df560975_49758656",
+        "filename": "src/vnet/ipsec/ipsec_sa.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 408,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-06-29T08:52:28Z",
+      "side": 1,
+      "message": "This check is duplicated several time, I wonder if it should be its own inline function / macro ?",
+      "revId": "a4d3c9c5c2ee4d64c0e020ac7689cb6fd26d334e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
