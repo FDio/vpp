@@ -1,0 +1,18 @@
+// Test for blocking connect.
+--tolerance_usecs=500000
+//`../common/defaults.sh`
+
+// Establish a connection.
+  0...0.1 socket(..., SOCK_STREAM, IPPROTO_TCP) = 3
+  +0.200...0.300 connect(3, ..., ...) = 0
+  +0 > S 0:0(0) win 4096 <mss 1460,wscale 10,sackOK,TS val 100 ecr 0,nop>
+  +.1 < S. 0:0(0) ack 1 win 5792 <mss 1460,nop,wscale 2,nop,nop,sackOK>
+  +0 > . 1:1(0) ack 1
+
+  +0...0.001 close(3) = 0
+  +0 >  F. 1:1(0) ack 1
+  +0 < . 1:1(0) ack 2 win 257
+
+  +0 < F. 1:1(0) ack 2 win 257
+  +0 >  . 2:2(0) ack 2
+
