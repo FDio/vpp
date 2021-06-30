@@ -39,13 +39,27 @@ ifneq ($(DPDK_MLX4_PMD),)
 DPDK_MAKE_ARGS += DPDK_MLX4_PMD=y
 endif
 
-DPDK_PLATFORM_TARGET=$(strip $($(PLATFORM)_dpdk_target))
-ifneq ($(DPDK_PLATFORM_TARGET),)
-DPDK_MAKE_ARGS += DPDK_TARGET=$(DPDK_PLATFORM_TARGET)
-endif
-
-ifneq (,$(TARGET_PLATFORM))
-DPDK_MAKE_ARGS += DPDK_AARCH64_GENERIC=n
+ifeq ($(MACHINE),aarch64)
+  # If not specified, cache line size is 128B by default, otherwise,
+  # the value will be detected per native CPU info in /proc/cpuinfo
+  ifeq (,$(TARGET_PLATFORM))
+    CPU_CACHE_LINE_SIZE = 128
+  else
+    # Most Arm CPU cache line size is 64B
+    CPU_CACHE_LINE_SIZE = 64
+    MIDR_IMPLEMENTER=$(shell awk '/implementer/ {print $$4;exit}' /proc/cpuinfo)
+    MIDR_PARTNUM=$(shell awk '/part/ {print $$4;exit}' /proc/cpuinfo)
+    # Implementer 0x43 - Cavium
+    # Part 0x0af - ThunderX2 is 64B, rest all Cavium CPUs are 128B
+    ifeq ($(MIDR_IMPLEMENTER),0x43)
+      ifeq ($(MIDR_PARTNUM),0x0af)
+        CPU_CACHE_LINE_SIZE = 64
+      else
+        CPU_CACHE_LINE_SIZE = 128
+      endif
+    endif
+  endif
+  DPDK_MAKE_ARGS += DPDK_CACHE_LINE_SIZE=$(CPU_CACHE_LINE_SIZE)
 endif
 
 DPDK_MAKE_EXTRA_ARGS = $(strip $($(PLATFORM)_dpdk_make_extra_args))

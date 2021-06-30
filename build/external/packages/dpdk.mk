@@ -12,6 +12,7 @@
 # limitations under the License.
 
 DPDK_PKTMBUF_HEADROOM        ?= 128
+DPDK_CACHE_LINE_SIZE         ?= 64
 DPDK_USE_LIBBSD              ?= n
 DPDK_DEBUG                   ?= n
 DPDK_MLX4_PMD                ?= n
@@ -178,6 +179,7 @@ define dpdk_config_cmds
 	echo "DPDK post meson configuration" && \
 	echo "Altering rte_build_config.h" && \
 	$(call dpdk_config,PKTMBUF_HEADROOM) && \
+	$(call dpdk_config,CACHE_LINE_SIZE) && \
 	$(call dpdk_config_def,USE_LIBBSD)
 endef
 
