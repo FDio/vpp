@@ -22,6 +22,52 @@
       "revId": "3853120139cb1961390aea3ead7bf870a311afe7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "83035956_24d2591e",
+        "filename": "extras/vcl-ldpreload/packetdrill-test/packetdrill_test.sh",
+        "patchSetId": 3
+      },
+      "lineNbr": 144,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-06-30T14:27:40Z",
+      "side": 1,
+      "message": "The test is ld preloaded here, so syscalls like socket should end up in vcl. In this particular case, because --so_filename is set, I assume the path goes through the wrappers set in packetdrill.c and then, because those wrappers rely on syscalls, control is handed over to ldp and vcl.",
+      "range": {
+        "startLine": 144,
+        "startChar": 2,
+        "endLine": 144,
+        "endChar": 47
+      },
+      "revId": "3853120139cb1961390aea3ead7bf870a311afe7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d3dc18c9_85ebc945",
+        "filename": "src/vcl/CMakeLists.txt",
+        "patchSetId": 3
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-06-30T14:27:40Z",
+      "side": 1,
+      "message": "I guess this could be built outside of vcl without linking it against vcl_ldpreload as the resulting libpd only interacts with syscalls, which are ld preloaded when the test is initialized. \n\nIn other words, we can continue to build libpd but as long as we initialize LD_PRELOAD there should be no need to link it against vcl_ldpreload.",
+      "range": {
+        "startLine": 42,
+        "startChar": 0,
+        "endLine": 48,
+        "endChar": 1
+      },
+      "revId": "3853120139cb1961390aea3ead7bf870a311afe7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
