@@ -45,6 +45,7 @@ from scapy.layers.inet6 import ICMPv6DestUnreach, ICMPv6EchoRequest
 from scapy.layers.inet6 import ICMPv6EchoReply
 
 from cpu_config import available_cpus, num_cpus, max_vpp_cpus
+from vpp_testutils import alt_logdir
 
 logger = logging.getLogger(__name__)
 
@@ -584,6 +585,7 @@ class VppTestCase(CPUInterface, unittest.TestCase):
         return os.path.basename(cls.tempdir)  # Only used for VAPI
 
     @classmethod
+    @alt_logdir
     def get_tempdir(cls):
         if cls.debug_attach:
             return os.getenv("VPP_IN_GDB_TMP_DIR",

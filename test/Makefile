@@ -18,6 +18,10 @@ export TEST_DOC_BR = $(TEST_DIR)/doc/build
 FAILED_DIR=/tmp/vpp-failed-unittests/
 VPP_TEST_DIRS=$(shell ls -d $(TEST_DIR) $(EXTERN_TESTS))
 
+ifndef LOG_DIR
+LOG_DIR=/tmp
+endif
+
 FORCE_NO_WIPE=0
 ifeq ($(DEBUG),gdb)
 FORCE_FOREGROUND=1
@@ -230,7 +234,7 @@ shell: test-dep
 .PHONY: reset
 reset:
 	@rm -f /dev/shm/vpp-unittest-*
-	@if [ $(FORCE_NO_WIPE) -eq "0" ] ; then rm -rf /tmp/vpp-unittest-*;  fi
+	@if [ $(FORCE_NO_WIPE) -eq "0" ] ; then rm -rf $(LOG_DIR)/vpp-unittest-*;  fi
 	@rm -f /tmp/api_post_mortem.*
 	@rm -rf $(FAILED_DIR)
 
