@@ -882,6 +882,19 @@ list(APPEND VNET_HEADERS
 list(APPEND VNET_API_FILES ipfix-export/ipfix_export.api)
 
 ##############################################################################
+# HASH
+##############################################################################
+list(APPEND VNET_SOURCES
+  hash/hash.c
+  hash/cli.c
+  hash/crc32_5tuple.c
+)
+
+list(APPEND VNET_HEADERS
+  hash/hash.h
+)
+
+##############################################################################
 # GSO
 ##############################################################################
 list(APPEND VNET_SOURCES
