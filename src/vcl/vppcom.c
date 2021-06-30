@@ -3266,7 +3266,7 @@ static void
 vcl_epoll_wait_handle_lt (vcl_worker_t *wrk, struct epoll_event *events,
 			  int maxevents, u32 *n_evts)
 {
-  u32 add_event, next;
+  u32 add_event = 0, next;
   vcl_session_t *s;
   u64 evt_data;
   int rv;
