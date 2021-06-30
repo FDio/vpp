@@ -100,7 +100,7 @@ acl_fill_5tuple_l4_and_pkt_data (acl_main_t * am, u32 sw_if_index0, vlib_buffer_
   u8 proto;
 
   u8 tmp_l4_flags = 0;
-  fa_packet_info_t tmp_pkt = { .is_ip6 = is_ip6, .mask_type_index_lsb = ~0 };
+  register fa_packet_info_t tmp_pkt = { .is_ip6 = is_ip6, .mask_type_index_lsb = ~0 };
 
   if (is_ip6)
     {
@@ -195,7 +195,7 @@ acl_fill_5tuple_l4_and_pkt_data (acl_main_t * am, u32 sw_if_index0, vlib_buffer_
 
   p5tuple_pkt->as_u64 = tmp_pkt.as_u64;
 
-  fa_session_l4_key_t tmp_l4 = { .port = { ports[0], ports[1] },
+  register fa_session_l4_key_t tmp_l4 = { .port = { ports[0], ports[1] },
                                  .proto = proto,
                                  .l4_flags = tmp_l4_flags,
                                  .lsb_of_sw_if_index = sw_if_index0 & 0xffff };
