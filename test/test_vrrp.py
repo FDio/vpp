@@ -194,8 +194,6 @@ class VppVRRPVirtualRouter(VppObject):
         vr_details = self.query_vpp_config()
         return (vr_details.runtime.master_down_int * 0.01)
 
-
-class VrrpCommonMixin:
     def vrrp_adv_packet(self, prio=None, src_ip=None):
         dst_ip = self._adv_dest_ip
         if prio is None:
@@ -218,7 +216,7 @@ class VrrpCommonMixin:
 
 
 @unittest.skipUnless(running_extended_tests, "part of extended tests")
-class TestVRRP4(VrrpCommonMixin, VppTestCase):
+class TestVRRP4(VppTestCase):
     """ IPv4 VRRP Test Case """
 
     @classmethod
@@ -291,7 +289,7 @@ class TestVRRP4(VrrpCommonMixin, VppTestCase):
         ip = rx_pkt[IP]
         vrrp = rx_pkt[VRRPv3]
 
-        pkt = self.vrrp_adv_packet(prio=prio)
+        pkt = vr.vrrp_adv_packet(prio=prio)
 
         # Source MAC is virtual MAC, destination is multicast MAC
         self.assertEqual(eth.src, vr.virtual_mac())
@@ -372,7 +370,7 @@ class TestVRRP4(VrrpCommonMixin, VppTestCase):
 
         # send higher prio advertisements, should not receive any
         src_ip = self.pg0.remote_ip4
-        pkts = [self.vrrp_adv_packet(prio=prio+10, src_ip=src_ip)]
+        pkts = [vr.vrrp_adv_packet(prio=prio+10, src_ip=src_ip)]
         while time.time() < end_time:
             self.send_and_assert_no_replies(self.pg0, pkts, timeout=intvl_s)
             self.logger.info(self.vapi.cli("show trace"))
@@ -441,7 +439,7 @@ class TestVRRP4(VrrpCommonMixin, VppTestCase):
 
         # VR should start in backup state and still should not reply to ARP
         # send a higher priority adv to make sure it does not become master
-        adv = self.vrrp_adv_packet(prio=prio+10, src_ip=self.pg0.remote_ip4)
+        adv = vr.vrrp_adv_packet(prio=prio+10, src_ip=self.pg0.remote_ip4)
         vr.start_stop(is_start=1)
         self.send_and_assert_no_replies(self.pg0, [adv, arp_req], timeout=1)
 
@@ -512,7 +510,7 @@ class TestVRRP4(VrrpCommonMixin, VppTestCase):
 
         # send lower prio advertisements until timer expires
         src_ip = self.pg0.remote_ip4
-        pkts = [self.vrrp_adv_packet(prio=prio-10, src_ip=src_ip)]
+        pkts = [vr.vrrp_adv_packet(prio=prio-10, src_ip=src_ip)]
         while time.time() + intvl_s < end_time:
             self.send_and_assert_no_replies(self.pg0, pkts, timeout=intvl_s)
             self.logger.info(self.vapi.cli("show trace"))
@@ -552,7 +550,7 @@ class TestVRRP4(VrrpCommonMixin, VppTestCase):
         vr.assert_state_equals(VRRP_VR_STATE_MASTER)
 
         # Build advertisement packet and send it
-        pkts = [self.vrrp_adv_packet(prio=255, src_ip=self.pg0.remote_ip4)]
+        pkts = [vr.vrrp_adv_packet(prio=255, src_ip=self.pg0.remote_ip4)]
         self.pg_send(self.pg0, pkts)
 
         # VR should be in backup state again
@@ -671,8 +669,8 @@ class TestVRRP4(VrrpCommonMixin, VppTestCase):
         vr.start_stop(is_start=1)
         vr.assert_state_equals(VRRP_VR_STATE_MASTER)
 
-        adv_configured = self.vrrp_adv_packet(prio=prio)
-        adv_adjusted = self.vrrp_adv_packet(prio=adjusted_prio)
+        adv_configured = vr.vrrp_adv_packet(prio=prio)
+        adv_adjusted = vr.vrrp_adv_packet(prio=adjusted_prio)
 
         # tracked intf is up ->  advertised priority == configured priority
         self.pg0.enable_capture()
@@ -751,7 +749,7 @@ class TestVRRP4(VrrpCommonMixin, VppTestCase):
 
 
 @unittest.skipUnless(running_extended_tests, "part of extended tests")
-class TestVRRP6(VrrpCommonMixin, VppTestCase):
+class TestVRRP6(VppTestCase):
     """ IPv6 VRRP Test Case """
 
     @classmethod
@@ -819,7 +817,7 @@ class TestVRRP6(VrrpCommonMixin, VppTestCase):
         self.assertTrue(rx_pkt.haslayer(VRRPv3))
 
         # generate a packet for this VR and compare it to the one received
-        pkt = self.vrrp_adv_packet(prio=prio)
+        pkt = vr.vrrp_adv_packet(prio=prio)
         self.assertTrue(rx_pkt.haslayer(Ether))
         self.assertTrue(rx_pkt.haslayer(IPv6))
         self.assertTrue(rx_pkt.haslayer(VRRPv3))
@@ -906,7 +904,7 @@ class TestVRRP6(VrrpCommonMixin, VppTestCase):
         # send higher prio advertisements, should not see VPP send any
         src_ip = self.pg0.remote_ip6_ll
         num_advs = 5
-        pkts = [self.vrrp_adv_packet(prio=prio+10, src_ip=src_ip)]
+        pkts = [vr.vrrp_adv_packet(prio=prio+10, src_ip=src_ip)]
         self.logger.info(self.vapi.cli("show vlib graph"))
         while time.time() < end_time:
             self.send_and_assert_no_replies(self.pg0, pkts, timeout=intvl_s)
@@ -980,7 +978,7 @@ class TestVRRP6(VrrpCommonMixin, VppTestCase):
 
         # VR should start in backup state and still should not reply to NDP
         # send a higher priority adv to make sure it does not become master
-        adv = self.vrrp_adv_packet(prio=prio+10, src_ip=self.pg0.remote_ip6)
+        adv = vr.vrrp_adv_packet(prio=prio+10, src_ip=self.pg0.remote_ip6)
         pkts = [adv, ndp_req]
         vr.start_stop(is_start=1)
         self.send_and_assert_no_replies(self.pg0, pkts,  timeout=intvl_s)
@@ -1050,7 +1048,7 @@ class TestVRRP6(VrrpCommonMixin, VppTestCase):
 
         # send lower prio advertisements until timer expires
         src_ip = self.pg0.remote_ip6
-        pkts = [self.vrrp_adv_packet(prio=prio-10, src_ip=src_ip)]
+        pkts = [vr.vrrp_adv_packet(prio=prio-10, src_ip=src_ip)]
         while (time.time() + intvl_s) < end_time:
             self.send_and_assert_no_replies(self.pg0, pkts, timeout=intvl_s)
             self.logger.info(self.vapi.cli("show trace"))
@@ -1090,7 +1088,7 @@ class TestVRRP6(VrrpCommonMixin, VppTestCase):
         vr.assert_state_equals(VRRP_VR_STATE_MASTER)
 
         # Build advertisement packet and send it
-        pkts = [self.vrrp_adv_packet(prio=255, src_ip=self.pg0.remote_ip6)]
+        pkts = [vr.vrrp_adv_packet(prio=255, src_ip=self.pg0.remote_ip6)]
         self.pg_send(self.pg0, pkts)
 
         # VR should be in backup state again
@@ -1208,8 +1206,8 @@ class TestVRRP6(VrrpCommonMixin, VppTestCase):
         vr.start_stop(is_start=1)
         vr.assert_state_equals(VRRP_VR_STATE_MASTER)
 
-        adv_configured = self.vrrp_adv_packet(prio=prio)
-        adv_adjusted = self.vrrp_adv_packet(prio=adjusted_prio)
+        adv_configured = vr.vrrp_adv_packet(prio=prio)
+        adv_adjusted = vr.vrrp_adv_packet(prio=adjusted_prio)
 
         # tracked intf is up ->  advertised priority == configured priority
         self.pg0.enable_capture()
