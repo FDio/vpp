@@ -361,6 +361,12 @@ I:	flow
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/vnet/flow/
 
+VNET Hash
+I:	hash
+M:	Mohsin Kazmi <sykazmi@cisco.com>
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/vnet/hash/
+
 VPP Main App
 I:	vpp
 M:	Dave Barach <vpp@barachs.net>
