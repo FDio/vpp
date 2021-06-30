@@ -12,6 +12,7 @@
 # limitations under the License.
 
 DPDK_PKTMBUF_HEADROOM        ?= 128
+DPDK_CACHE_LINE_SIZE         ?= 64
 DPDK_USE_LIBBSD              ?= n
 DPDK_DEBUG                   ?= n
 DPDK_MLX4_PMD                ?= n
@@ -116,6 +117,28 @@ ifeq ($(DPDK_FAILSAFE_PMD), n)
 	DPDK_DRIVERS_DISABLED += ,net/failsafe
 endif
 
+ifeq ($(shell uname -m),aarch64)
+  # If not specified, cache line size is 128B by default, otherwise,
+  # the value will be detected per native CPU info in /proc/cpuinfo
+  ifeq (,$(TARGET_PLATFORM))
+    DPDK_CACHE_LINE_SIZE = 128
+  else
+    # Most Arm CPU cache line size is 64B
+    DPDK_CACHE_LINE_SIZE = 64
+    MIDR_IMPLEMENTER=$(shell awk '/implementer/ {print $$4;exit}' /proc/cpuinfo)
+    MIDR_PARTNUM=$(shell awk '/part/ {print $$4;exit}' /proc/cpuinfo)
+    # Implementer 0x43 - Cavium
+    # Part 0x0af - ThunderX2 is 64B, rest all Cavium CPUs are 128B
+    ifeq ($(MIDR_IMPLEMENTER),0x43)
+      ifeq ($(MIDR_PARTNUM),0x0af)
+        DPDK_CACHE_LINE_SIZE = 64
+      else
+        DPDK_CACHE_LINE_SIZE = 128
+      endif
+    endif
+  endif
+endif
+
 # Sanitize DPDK_DRIVERS_DISABLED and DPDK_LIBS_DISABLED
 DPDK_DRIVERS_DISABLED := $(shell echo $(DPDK_DRIVERS_DISABLED) | tr -d '\\\t ')
 DPDK_LIBS_DISABLED := $(shell echo $(DPDK_LIBS_DISABLED) | tr -d '\\\t ')
@@ -178,6 +201,7 @@ define dpdk_config_cmds
 	echo "DPDK post meson configuration" && \
 	echo "Altering rte_build_config.h" && \
 	$(call dpdk_config,PKTMBUF_HEADROOM) && \
+	$(call dpdk_config,CACHE_LINE_SIZE) && \
 	$(call dpdk_config_def,USE_LIBBSD)
 endef
 

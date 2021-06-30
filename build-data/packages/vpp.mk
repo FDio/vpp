@@ -31,6 +31,14 @@ ifeq ("$(V)","1")
 vpp_cmake_args += -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
 endif
 
+# If not specified, cache line size is 128B by default, otherwise,
+# the value will be detected per native CPU info in /proc/cpuinfo
+ifeq ($(MACHINE),aarch64)
+ifeq (,$(TARGET_PLATFORM))
+vpp_cmake_args += -DVPP_LOG2_CACHE_LINE_SIZE=7
+endif
+endif
+
 ifneq ($(VPP_EXTRA_CMAKE_ARGS),)
 vpp_cmake_args += $(VPP_EXTRA_CMAKE_ARGS)
 endif
