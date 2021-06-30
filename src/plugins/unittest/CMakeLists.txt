@@ -32,6 +32,7 @@ add_vpp_plugin(unittest
   crypto/sha.c
   crypto_test.c
   fib_test.c
+  hash_test.c
   interface_test.c
   ipsec_test.c
   llist_test.c
