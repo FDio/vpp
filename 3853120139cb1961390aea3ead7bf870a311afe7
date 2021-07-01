@@ -68,6 +68,30 @@
       "revId": "3853120139cb1961390aea3ead7bf870a311afe7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9726d5c1_0a9f250b",
+        "filename": "src/vcl/CMakeLists.txt",
+        "patchSetId": 3
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 2462
+      },
+      "writtenOn": "2021-07-01T07:33:35Z",
+      "side": 1,
+      "message": "I tried this, unfortunately it does not work because LD_PRELOAD does not affect the libpd.so. That is, functions in libpd.so is glibc version",
+      "parentUuid": "d3dc18c9_85ebc945",
+      "range": {
+        "startLine": 42,
+        "startChar": 0,
+        "endLine": 48,
+        "endChar": 1
+      },
+      "revId": "3853120139cb1961390aea3ead7bf870a311afe7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
