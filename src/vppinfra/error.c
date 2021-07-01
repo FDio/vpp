@@ -115,6 +115,7 @@ _clib_error (int how_to_die,
   u8 *msg = 0;
   va_list va;
 
+  msg = format(msg, "%U:", format_timeval, 0, 0);
   if (function_name)
     {
       msg = format (msg, "%s:", function_name);
