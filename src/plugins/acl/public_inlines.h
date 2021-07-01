@@ -83,8 +83,8 @@ acl_fill_5tuple_l3_data (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
         p5tuple_pkt->l3_zero_pad[ii] = 0;
       }
       ip4_header_t *ip4 = vlib_buffer_get_current (b0) + l3_offset;
-      p5tuple_pkt->ip4_addr[0] = ip4->src_address;
-      p5tuple_pkt->ip4_addr[1] = ip4->dst_address;
+      /* Gently nudge compiler to make it a 64-bit store rather than 2x32-bit */
+      p5tuple_pkt->ip4_addrs_as_u64 = ((u64)ip4->dst_address.as_u32 << 32) | ip4->src_address.as_u32;
     }
 }
 
