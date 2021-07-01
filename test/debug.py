@@ -6,6 +6,7 @@ import sys
 
 from sanity_run_vpp import SanityTestCase
 from shutil import rmtree
+from cpu_config import available_cpus
 
 gdb_path = '/usr/bin/gdb'
 
@@ -40,6 +41,8 @@ def start_vpp_in_gdb():
         rmtree(SanityTestCase.tempdir)
     print("Creating temp dir '%s'." % SanityTestCase.tempdir)
     os.mkdir(SanityTestCase.tempdir)
+    SanityTestCase.assign_cpus(
+        available_cpus[:SanityTestCase.get_cpus_required()])
     SanityTestCase.setUpConstants()
     vpp_cmdline = SanityTestCase.vpp_cmdline
     if os.getenv("VPP_IN_GDB_CMDLINE", "y").lower() in ["1", "y", "yes"]:
