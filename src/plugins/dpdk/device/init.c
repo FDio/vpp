@@ -1018,6 +1018,12 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
       {
         continue;
       }
+    /* Mellanox MT42822 BlueField-2 integrated ConnectX-6 Dx network controller
+     */
+    else if (d->vendor_id == 0x15b3 && d->device_id == 0xa2d6)
+      {
+	continue;
+      }
     /* Broadcom NetXtreme S, and E series only */
     else if (d->vendor_id == 0x14e4 &&
 	((d->device_id >= 0x16c0 &&
