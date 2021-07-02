@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2418c4f9_60586f64",
+        "filename": "extras/vcl-ldpreload/packetdrill-test/packetdrill-patches/v2.0/0001-remove-static-flag.patch",
+        "patchSetId": 5
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-07-02T04:09:36Z",
+      "side": 1,
+      "message": "Perfect! Didn\u0027t get to reply to your messages earlier today but I see you already figured it out! :-)",
+      "range": {
+        "startLine": 16,
+        "startChar": 45,
+        "endLine": 16,
+        "endChar": 52
+      },
+      "revId": "cd3f909bd2f8e9c72ed222dba620f034dff933c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c3a479d1_8d7a1bb6",
+        "filename": "extras/vcl-ldpreload/packetdrill-test/script.sh",
+        "patchSetId": 5
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-07-02T04:09:36Z",
+      "side": 1,
+      "message": "Add copyright",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 1,
+        "endChar": 1
+      },
+      "revId": "cd3f909bd2f8e9c72ed222dba620f034dff933c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cabae7a4_1c0aed87",
+        "filename": "extras/vcl-ldpreload/packetdrill-test/vpp_adapter/Makefile",
+        "patchSetId": 5
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-07-02T04:09:36Z",
+      "side": 1,
+      "message": "Add copyright",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 1,
+        "endChar": 3
+      },
+      "revId": "cd3f909bd2f8e9c72ed222dba620f034dff933c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "40a3b88c_935163e3",
+        "filename": "extras/vcl-ldpreload/packetdrill-test/vpp_adapter/vpp_adapter.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-07-02T04:09:36Z",
+      "side": 1,
+      "message": "Add copyright",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 1,
+        "endChar": 2
+      },
+      "revId": "cd3f909bd2f8e9c72ed222dba620f034dff933c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
