@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "aaa8752e_559cbc57",
+        "filename": "src/cmake/cpu.cmake",
+        "patchSetId": 2
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-07-02T16:39:26Z",
+      "side": 1,
+      "message": "This looks like a terribly bad idea. It will result in different understanding of struct field offsets between multiarch object files and normal code for all structs which are cacheline aligned and likely causing crash.",
+      "revId": "441c25cda561976d2c2a9f1cb39b46fc27dcb972",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
