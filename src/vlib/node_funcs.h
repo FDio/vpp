@@ -1135,7 +1135,6 @@ vlib_node_runtime_update_main_loop_vector_stats (vlib_main_t * vm,
   node->main_loop_vector_stats[i0] = vi0;
   node->main_loop_vector_stats[i1] = vi1;
   node->main_loop_count_last_dispatch = vm->main_loop_count;
-  /* Return previous counter. */
   return node->main_loop_vector_stats[i1];
 }
 
@@ -1145,8 +1144,7 @@ vlib_node_vectors_per_main_loop_as_float (vlib_main_t * vm, u32 node_index)
   vlib_node_runtime_t *rt = vlib_node_get_runtime (vm, node_index);
   u32 v;
 
-  v = vlib_node_runtime_update_main_loop_vector_stats (vm, rt,	/* n_vectors */
-						       0);
+  v = vlib_node_runtime_update_main_loop_vector_stats (vm, rt, 0);
   return (f64) v / (1 << VLIB_LOG2_MAIN_LOOPS_PER_STATS_UPDATE);
 }
 
@@ -1156,8 +1154,7 @@ vlib_node_vectors_per_main_loop_as_integer (vlib_main_t * vm, u32 node_index)
   vlib_node_runtime_t *rt = vlib_node_get_runtime (vm, node_index);
   u32 v;
 
-  v = vlib_node_runtime_update_main_loop_vector_stats (vm, rt,	/* n_vectors */
-						       0);
+  v = vlib_node_runtime_update_main_loop_vector_stats (vm, rt, 0);
   return v >> VLIB_LOG2_MAIN_LOOPS_PER_STATS_UPDATE;
 }
 

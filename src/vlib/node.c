@@ -787,6 +787,20 @@ vlib_node_main_init (vlib_main_t * vm)
     }
   }
 
+  /* initialize main node_main linear regression variables */
+  nm->n_vectors_stats = vec_new (u16, VLIB_WINDOW_SIZE);
+  nm->cycles_stats = vec_new (u64, VLIB_WINDOW_SIZE);
+  memset (nm->n_vectors_stats, 0,
+	  VLIB_WINDOW_SIZE * sizeof (nm->n_vectors_stats[0]));
+  memset (nm->cycles_stats, 0,
+	  VLIB_WINDOW_SIZE * sizeof (nm->cycles_stats[0]));
+
+  nm->stats_index = nm->stats_bounded_size = 0;
+  nm->n_vectors_sum = 0;
+  nm->cycles_sum = 0;
+  nm->n_vectors_quadra_sum = 0;
+  nm->cycles_n_vectors_product_sum = 0;
+
 done:
   return error;
 }

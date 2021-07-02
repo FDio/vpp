@@ -361,6 +361,15 @@ typedef struct vlib_node_t
 
   /* Node function candidate registration with priority */
   vlib_node_fn_registration_t *node_fn_registrations;
+
+  /* per node rate estimation */
+  u64 last_dispatch;
+  u64 clock_delta;
+  u16 last_n_vectors;
+  u8 rate_index, rate_bounded_count;
+  f64 rate_sum;
+#define VLIB_RATE_WINDOW_SIZE 4
+  f64 rate[VLIB_RATE_WINDOW_SIZE];
 } vlib_node_t;
 
 #define VLIB_INVALID_NODE_INDEX ((u32) ~0)
@@ -484,8 +493,8 @@ typedef struct vlib_node_runtime_t
 					  called.  Allows some input nodes to
 					  be called more than others. */
 
-  u32 main_loop_count_last_dispatch;	/**< Saved main loop counter of last
-					  dispatch of this node. */
+  u32 main_loop_count_last_dispatch; /**< Saved main loop counter of last
+				       dispatch of this node. */
 
   u32 main_loop_vector_stats[2];
 
@@ -741,6 +750,20 @@ typedef struct
 
   /* Node Function march Variant by Suffix Hash */
   uword *node_fn_march_variant_by_suffix;
+
+/* per thread estimator */
+#define VLIB_WINDOW_SIZE 128
+
+  u8 stats_index, stats_bounded_size;
+  u16 *n_vectors_stats;
+  u64 *cycles_stats;
+  u64 n_vectors_sum;
+  u64 cycles_sum;
+  u64 n_vectors_quadra_sum;
+  u64 cycles_n_vectors_product_sum;
+  u64 alpha;
+  u64 beta;
+  u64 determinant;
 } vlib_node_main_t;
 
 typedef u16 vlib_error_t;
