@@ -643,13 +643,12 @@ vlib_node_sync_stats (vlib_main_t * vm, vlib_node_t * n)
   }
 }
 
-always_inline u32
-vlib_node_runtime_update_stats (vlib_main_t * vm,
-				vlib_node_runtime_t * node,
-				uword n_calls,
-				uword n_vectors, uword n_clocks)
+always_inline void
+vlib_node_runtime_update_stats (vlib_main_t *vm, vlib_node_runtime_t *node,
+				uword n_calls, uword n_vectors, uword n_clocks)
 {
-  u32 ca0, ca1, v0, v1, cl0, cl1, r;
+  u32 ca0, ca1, v0, v1, cl0, cl1;
+  vlib_node_t *n = vlib_get_node (vm, node->node_index);
 
   cl0 = cl1 = node->clocks_since_last_overflow;
   ca0 = ca1 = node->calls_since_last_overflow;
@@ -659,6 +658,9 @@ vlib_node_runtime_update_stats (vlib_main_t * vm,
   v1 = v0 + n_vectors;
   cl1 = cl0 + n_clocks;
 
+  /* save the number of packets received by the node */
+  n->last_n_vectors = n_vectors;
+
   node->calls_since_last_overflow = ca1;
   node->clocks_since_last_overflow = cl1;
   node->vectors_since_last_overflow = v1;
@@ -666,8 +668,6 @@ vlib_node_runtime_update_stats (vlib_main_t * vm,
   node->max_clock_n = node->max_clock > n_clocks ?
     node->max_clock_n : n_vectors;
   node->max_clock = node->max_clock > n_clocks ? node->max_clock : n_clocks;
-
-  r = vlib_node_runtime_update_main_loop_vector_stats (vm, node, n_vectors);
 
   if (PREDICT_FALSE (ca1 < ca0 || v1 < v0 || cl1 < cl0))
     {
@@ -677,8 +677,6 @@ vlib_node_runtime_update_stats (vlib_main_t * vm,
 
       vlib_node_runtime_sync_stats (vm, node, n_calls, n_vectors, n_clocks);
     }
-
-  return r;
 }
 
 always_inline void
@@ -946,13 +944,11 @@ add_trajectory_trace (vlib_buffer_t * b, u32 node_index)
 }
 
 static_always_inline u64
-dispatch_node (vlib_main_t * vm,
-	       vlib_node_runtime_t * node,
-	       vlib_node_type_t type,
-	       vlib_node_state_t dispatch_state,
-	       vlib_frame_t * frame, u64 last_time_stamp)
+dispatch_node (vlib_main_t *vm, vlib_node_runtime_t *node,
+	       vlib_node_type_t type, vlib_node_state_t dispatch_state,
+	       vlib_frame_t *frame, u16 *total_n_vectors, u64 last_time_stamp)
 {
-  uword n, v;
+  uword n;
   u64 t;
   vlib_node_main_t *nm = &vm->node_main;
   vlib_next_frame_t *nf;
@@ -969,6 +965,10 @@ dispatch_node (vlib_main_t * vm,
       ASSERT (type != VLIB_NODE_TYPE_INTERNAL);
       return last_time_stamp;
     }
+
+  if (type == VLIB_NODE_TYPE_PRE_INPUT &&
+      nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] == 0)
+    node->input_main_loops_per_call = 0;
 
   if ((type == VLIB_NODE_TYPE_PRE_INPUT || type == VLIB_NODE_TYPE_INPUT)
       && dispatch_state != VLIB_NODE_STATE_INTERRUPT)
@@ -997,6 +997,15 @@ dispatch_node (vlib_main_t * vm,
 
   vlib_node_runtime_perf_counter (vm, node, frame, 0, last_time_stamp,
 				  VLIB_NODE_RUNTIME_PERF_BEFORE);
+
+  /* update the time between two arrivals of packets for the node,
+     used for the rate estimation */
+  vlib_node_t *no = vlib_get_node (vm, node->node_index);
+  if (no->last_n_vectors)
+    {
+      no->clock_delta = last_time_stamp - no->last_dispatch;
+      no->last_dispatch = last_time_stamp;
+    }
 
   /*
    * Turn this on if you run into
@@ -1028,6 +1037,10 @@ dispatch_node (vlib_main_t * vm,
 
   t = clib_cpu_time_now ();
 
+  /* add the number of packets received */
+  if (PREDICT_FALSE (total_n_vectors != NULL))
+    *total_n_vectors += n;
+
   vlib_node_runtime_perf_counter (vm, node, frame, n, t,
 				  VLIB_NODE_RUNTIME_PERF_AFTER);
 
@@ -1036,96 +1049,153 @@ dispatch_node (vlib_main_t * vm,
   vm->main_loop_vectors_processed += n;
   vm->main_loop_nodes_processed += n > 0;
 
-  v = vlib_node_runtime_update_stats (vm, node,
-				      /* n_calls */ 1,
-				      /* n_vectors */ n,
-				      /* n_clocks */ t - last_time_stamp);
+  vlib_node_runtime_update_stats (vm, node,
+				  /* n_calls */ 1,
+				  /* n_vectors */ n,
+				  /* n_clocks */ t - last_time_stamp);
+  return t;
+}
 
-  /* When in adaptive mode and vector rate crosses threshold switch to
-     polling mode and vice versa. */
-  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_ADAPTIVE_MODE))
+static_always_inline void
+adaptive_mode_update_stats (vlib_main_t *vm, u16 n_vectors, u64 cycles)
+{
+  u8 stats_index;
+  u16 n_vectors_removed;
+  u64 cycles_removed;
+  vlib_node_main_t *nm = &vm->node_main;
+
+  if (PREDICT_FALSE (n_vectors == 0))
+    return;
+
+  /* get the oldest values in windows */
+  stats_index = nm->stats_index;
+  n_vectors_removed = nm->n_vectors_stats[stats_index];
+  cycles_removed = nm->cycles_stats[stats_index];
+
+  /* update windows */
+  nm->n_vectors_stats[stats_index] = n_vectors;
+  nm->cycles_stats[stats_index] = cycles;
+  nm->stats_index = (nm->stats_index + 1) % VLIB_WINDOW_SIZE;
+  nm->stats_bounded_size = nm->stats_bounded_size == VLIB_WINDOW_SIZE ?
+			     VLIB_WINDOW_SIZE :
+			     nm->stats_bounded_size + 1;
+
+  /* updates sums */
+  nm->n_vectors_sum += n_vectors - n_vectors_removed;
+  nm->n_vectors_quadra_sum +=
+    n_vectors * n_vectors - n_vectors_removed * n_vectors_removed;
+  nm->cycles_sum += cycles - cycles_removed;
+  nm->cycles_n_vectors_product_sum +=
+    cycles * n_vectors - cycles_removed * n_vectors_removed;
+
+  /* computes the linear regression parameters */
+  /* (alpha * n_vectors + beta) / determinant = cycles */
+  nm->determinant = nm->stats_bounded_size * nm->n_vectors_quadra_sum -
+		    nm->n_vectors_sum * nm->n_vectors_sum;
+  nm->alpha = nm->stats_bounded_size * nm->cycles_n_vectors_product_sum -
+	      nm->n_vectors_sum * nm->cycles_sum;
+  nm->beta = nm->n_vectors_quadra_sum * nm->cycles_sum -
+	     nm->n_vectors_sum * nm->cycles_n_vectors_product_sum;
+}
+
+static_always_inline void
+adaptive_mode_switching (vlib_main_t *vm, vlib_node_runtime_t *node,
+			 u16 total_n_vectors, u64 last_time_stamp)
+{
+  u64 cycles, v;
+  f64 last_rate, instant_rate;
+  vlib_node_main_t *nm = &vm->node_main;
+  vlib_node_t *n = vlib_get_node (vm, node->node_index);
+
+  /* if there is no need to update the mode */
+  if (PREDICT_FALSE (total_n_vectors == 0 ||
+		     !(node->flags & VLIB_NODE_FLAG_ADAPTIVE_MODE) ||
+		     nm->determinant == 0))
+    return;
+
+  /* estimate the number of cycles spent in the graph */
+  cycles = (nm->alpha * total_n_vectors + nm->beta) / nm->determinant;
+
+  /* update the rate estimation (a mean of the last 4 loop) */
+  last_rate = n->rate[n->rate_index];
+  instant_rate =
+    n->clock_delta == 0 ? 0 : (f64) n->last_n_vectors / (f64) n->clock_delta;
+  n->rate[n->rate_index] = instant_rate;
+  n->rate_sum += instant_rate - last_rate;
+  n->rate_index = (n->rate_index + 1) % VLIB_RATE_WINDOW_SIZE;
+  n->rate_bounded_count = n->rate_bounded_count == VLIB_RATE_WINDOW_SIZE ?
+			    VLIB_RATE_WINDOW_SIZE :
+			    n->rate_bounded_count + 1;
+
+  /* estimate the number of packets arrived while processing */
+  v = (cycles * n->rate_sum) / n->rate_bounded_count;
+
+  ELOG_TYPE_DECLARE (e) =
+  {
+    .function = (char *) __FUNCTION__,
+    .format = "%s vector length %d, switching to %s",
+    .format_args = "T4i4t4",
+    .n_enum_strings = 2,
+    .enum_strings = {
+      "interrupt", "polling",
+    },
+  };
+  struct
+  {
+    u32 node_name, vector_length, is_polling;
+  } * ed;
+
+  if ((node->state == VLIB_NODE_STATE_INTERRUPT &&
+       v >= nm->polling_threshold_vector_length) &&
+      !(node->flags & VLIB_NODE_FLAG_SWITCH_FROM_INTERRUPT_TO_POLLING_MODE))
     {
-      /* *INDENT-OFF* */
-      ELOG_TYPE_DECLARE (e) =
-        {
-          .function = (char *) __FUNCTION__,
-          .format = "%s vector length %d, switching to %s",
-          .format_args = "T4i4t4",
-          .n_enum_strings = 2,
-          .enum_strings = {
-            "interrupt", "polling",
-          },
-        };
-      /* *INDENT-ON* */
-      struct
-      {
-	u32 node_name, vector_length, is_polling;
-      } *ed;
+      vlib_node_t *n = vlib_get_node (vm, node->node_index);
+      n->state = VLIB_NODE_STATE_POLLING;
+      node->state = VLIB_NODE_STATE_POLLING;
+      node->flags &= ~VLIB_NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE;
+      node->flags |= VLIB_NODE_FLAG_SWITCH_FROM_INTERRUPT_TO_POLLING_MODE;
+      nm->input_node_counts_by_state[VLIB_NODE_STATE_INTERRUPT] -= 1;
+      nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] += 1;
 
-      if ((dispatch_state == VLIB_NODE_STATE_INTERRUPT
-	   && v >= nm->polling_threshold_vector_length) &&
-	  !(node->flags &
-	    VLIB_NODE_FLAG_SWITCH_FROM_INTERRUPT_TO_POLLING_MODE))
+      if (PREDICT_FALSE (vlib_get_first_main ()->elog_trace_graph_dispatch))
 	{
-	  vlib_node_t *n = vlib_get_node (vm, node->node_index);
-	  n->state = VLIB_NODE_STATE_POLLING;
-	  node->state = VLIB_NODE_STATE_POLLING;
-	  node->flags &=
-	    ~VLIB_NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE;
-	  node->flags |= VLIB_NODE_FLAG_SWITCH_FROM_INTERRUPT_TO_POLLING_MODE;
-	  nm->input_node_counts_by_state[VLIB_NODE_STATE_INTERRUPT] -= 1;
-	  nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] += 1;
+	  vlib_worker_thread_t *w = vlib_worker_threads + vm->thread_index;
 
+	  ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e, w->elog_track);
+	  ed->node_name = n->name_elog_string;
+	  ed->vector_length = v;
+	  ed->is_polling = 1;
+	}
+    }
+  else if (node->state == VLIB_NODE_STATE_POLLING &&
+	   v <= nm->interrupt_threshold_vector_length)
+    {
+      vlib_node_t *n = vlib_get_node (vm, node->node_index);
+      if (node->flags & VLIB_NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE)
+	{
+	  /* Switch to interrupt mode after dispatch in polling one more time.
+		This allows driver to re-enable interrupts. */
+	  n->state = VLIB_NODE_STATE_INTERRUPT;
+	  node->state = VLIB_NODE_STATE_INTERRUPT;
+	  node->flags &= ~VLIB_NODE_FLAG_SWITCH_FROM_INTERRUPT_TO_POLLING_MODE;
+	  nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] -= 1;
+	  nm->input_node_counts_by_state[VLIB_NODE_STATE_INTERRUPT] += 1;
+	}
+      else
+	{
+	  vlib_worker_thread_t *w = vlib_worker_threads + vm->thread_index;
+	  node->flags |= VLIB_NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE;
 	  if (PREDICT_FALSE (
 		vlib_get_first_main ()->elog_trace_graph_dispatch))
 	    {
-	      vlib_worker_thread_t *w = vlib_worker_threads
-		+ vm->thread_index;
-
 	      ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e,
 				    w->elog_track);
 	      ed->node_name = n->name_elog_string;
 	      ed->vector_length = v;
-	      ed->is_polling = 1;
-	    }
-	}
-      else if (dispatch_state == VLIB_NODE_STATE_POLLING
-	       && v <= nm->interrupt_threshold_vector_length)
-	{
-	  vlib_node_t *n = vlib_get_node (vm, node->node_index);
-	  if (node->flags &
-	      VLIB_NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE)
-	    {
-	      /* Switch to interrupt mode after dispatch in polling one more time.
-	         This allows driver to re-enable interrupts. */
-	      n->state = VLIB_NODE_STATE_INTERRUPT;
-	      node->state = VLIB_NODE_STATE_INTERRUPT;
-	      node->flags &=
-		~VLIB_NODE_FLAG_SWITCH_FROM_INTERRUPT_TO_POLLING_MODE;
-	      nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] -= 1;
-	      nm->input_node_counts_by_state[VLIB_NODE_STATE_INTERRUPT] += 1;
-
-	    }
-	  else
-	    {
-	      vlib_worker_thread_t *w = vlib_worker_threads
-		+ vm->thread_index;
-	      node->flags |=
-		VLIB_NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE;
-	      if (PREDICT_FALSE (
-		    vlib_get_first_main ()->elog_trace_graph_dispatch))
-		{
-		  ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e,
-					w->elog_track);
-		  ed->node_name = n->name_elog_string;
-		  ed->vector_length = v;
-		  ed->is_polling = 0;
-		}
+	      ed->is_polling = 0;
 	    }
 	}
     }
-
-  return t;
 }
 
 static u64
@@ -1180,10 +1250,9 @@ dispatch_pending_node (vlib_main_t * vm, uword pending_frame_index,
   n->flags |= (nf->flags & VLIB_FRAME_TRACE) ? VLIB_NODE_FLAG_TRACE : 0;
   nf->flags &= ~VLIB_FRAME_TRACE;
 
-  last_time_stamp = dispatch_node (vm, n,
-				   VLIB_NODE_TYPE_INTERNAL,
-				   VLIB_NODE_STATE_POLLING,
-				   f, last_time_stamp);
+  last_time_stamp =
+    dispatch_node (vm, n, VLIB_NODE_TYPE_INTERNAL, VLIB_NODE_STATE_POLLING, f,
+		   0, last_time_stamp);
   /* Internal node vector-rate accounting, for summary stats */
   vm->internal_node_vectors += f->n_vectors;
   vm->internal_node_calls++;
@@ -1513,10 +1582,13 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
   vlib_node_main_t *nm = &vm->node_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   uword i;
-  u64 cpu_time_now;
+  u64 cpu_time_now, cpu_time_process;
   f64 now;
   vlib_frame_queue_main_t *fqm;
   u32 frame_queue_check_counter = 0;
+
+  /* count the number of packets received */
+  u16 total_n_vectors;
 
   /* Initialize pending node vector. */
   if (is_main)
@@ -1539,9 +1611,9 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 
   /* Pre-allocate expired nodes. */
   if (!nm->polling_threshold_vector_length)
-    nm->polling_threshold_vector_length = 10;
+    nm->polling_threshold_vector_length = 164;
   if (!nm->interrupt_threshold_vector_length)
-    nm->interrupt_threshold_vector_length = 5;
+    nm->interrupt_threshold_vector_length = 64;
 
   vm->cpu_id = clib_get_current_cpu_id ();
   vm->numa_node = clib_get_current_numa_node ();
@@ -1607,19 +1679,18 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
       /* Process pre-input nodes. */
       cpu_time_now = clib_cpu_time_now ();
       vec_foreach (n, nm->nodes_by_type[VLIB_NODE_TYPE_PRE_INPUT])
-	cpu_time_now = dispatch_node (vm, n,
-				      VLIB_NODE_TYPE_PRE_INPUT,
+	cpu_time_now = dispatch_node (vm, n, VLIB_NODE_TYPE_PRE_INPUT,
 				      VLIB_NODE_STATE_POLLING,
-				      /* frame */ 0,
-				      cpu_time_now);
+				      /* frame */ 0, 0, cpu_time_now);
+
+      cpu_time_process = cpu_time_now;
+      total_n_vectors = 0;
 
       /* Next process input nodes. */
       vec_foreach (n, nm->nodes_by_type[VLIB_NODE_TYPE_INPUT])
-	cpu_time_now = dispatch_node (vm, n,
-				      VLIB_NODE_TYPE_INPUT,
-				      VLIB_NODE_STATE_POLLING,
-				      /* frame */ 0,
-				      cpu_time_now);
+	cpu_time_now =
+	  dispatch_node (vm, n, VLIB_NODE_TYPE_INPUT, VLIB_NODE_STATE_POLLING,
+			 /* frame */ 0, &total_n_vectors, cpu_time_now);
 
       if (PREDICT_TRUE (is_main && vm->queue_signal_pending == 0))
 	vm->queue_signal_callback (vm);
@@ -1636,11 +1707,15 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	      clib_interrupt_clear (nm->interrupts, int_num);
 	      n = vec_elt_at_index (nm->nodes_by_type[VLIB_NODE_TYPE_INPUT],
 				    int_num);
-	      cpu_time_now = dispatch_node (vm, n, VLIB_NODE_TYPE_INPUT,
-					    VLIB_NODE_STATE_INTERRUPT,
-					    /* frame */ 0, cpu_time_now);
+	      cpu_time_now = dispatch_node (
+		vm, n, VLIB_NODE_TYPE_INPUT, VLIB_NODE_STATE_INTERRUPT,
+		/* frame */ 0, &total_n_vectors, cpu_time_now);
 	    }
 	}
+
+      /* make a prediction and a switching choice for each input node */
+      vec_foreach (n, nm->nodes_by_type[VLIB_NODE_TYPE_INPUT])
+	adaptive_mode_switching (vm, n, total_n_vectors, cpu_time_now);
 
       /* Input nodes may have added work to the pending vector.
          Process pending vector until there is nothing left.
@@ -1649,6 +1724,10 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	cpu_time_now = dispatch_pending_node (vm, i, cpu_time_now);
       /* Reset pending vector for next iteration. */
       _vec_len (nm->pending_frames) = 0;
+
+      /* update linear regression */
+      cpu_time_process = cpu_time_now - cpu_time_process;
+      adaptive_mode_update_stats (vm, total_n_vectors, cpu_time_process);
 
       if (is_main)
 	{

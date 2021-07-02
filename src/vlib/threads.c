@@ -867,6 +867,20 @@ start_workers (vlib_main_t * vm)
 #endif
 	      nm_clone->node_by_error = nm->node_by_error;
 
+	      nm_clone->n_vectors_stats = vec_new (u16, VLIB_WINDOW_SIZE);
+	      nm_clone->cycles_stats = vec_new (u64, VLIB_WINDOW_SIZE);
+	      memset (nm_clone->n_vectors_stats, 0,
+		      VLIB_WINDOW_SIZE *
+			sizeof (nm_clone->n_vectors_stats[0]));
+	      memset (nm_clone->cycles_stats, 0,
+		      VLIB_WINDOW_SIZE * sizeof (nm_clone->cycles_stats[0]));
+
+	      nm_clone->stats_index = nm_clone->stats_bounded_size = 0;
+	      nm_clone->n_vectors_sum = 0;
+	      nm_clone->cycles_sum = 0;
+	      nm_clone->n_vectors_quadra_sum = 0;
+	      nm_clone->cycles_n_vectors_product_sum = 0;
+
 	      /* Packet trace buffers are guaranteed to be empty, nothing to do here */
 
 	      clib_mem_set_heap (oldheap);
