@@ -16,6 +16,24 @@
       "revId": "a2cb20044a3145a65f87f591eb256f9a07b3f894",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "604df7a8_cc5eda08",
+        "filename": "src/vnet/interface_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1826,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2021-07-02T15:09:25Z",
+      "side": 1,
+      "message": "Done. Also updated the CLI syntax to reflect that threads argument is optional.",
+      "parentUuid": "cf53d0aa_9edad44a",
+      "revId": "a2cb20044a3145a65f87f591eb256f9a07b3f894",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
