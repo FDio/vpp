@@ -867,6 +867,16 @@ start_workers (vlib_main_t * vm)
 #endif
 	      nm_clone->node_by_error = nm->node_by_error;
 
+	      {
+		vlib_cycles_estimator *ce;
+
+		vec_validate (nm_clone->estimator, 0);
+
+		ce = nm_clone->estimator;
+		vec_validate (ce->n_vectors_stats, VLIB_WINDOW_SIZE - 1);
+		vec_validate (ce->cycles_stats, VLIB_WINDOW_SIZE - 1);
+	      }
+
 	      /* Packet trace buffers are guaranteed to be empty, nothing to do here */
 
 	      clib_mem_set_heap (oldheap);
@@ -1101,6 +1111,7 @@ vlib_worker_thread_node_refork (void)
 
 	  /* keep previous node state */
 	  new_n_clone->state = old_n_clone->state;
+	  new_n_clone->flags = old_n_clone->flags;
 	}
       vec_add1 (nm_clone->nodes, new_n_clone);
       new_n_clone++;
@@ -1132,6 +1143,7 @@ vlib_worker_thread_node_refork (void)
     {
       rt = vlib_node_get_runtime (vm_clone, old_rt[j].node_index);
       rt->state = old_rt[j].state;
+      rt->flags = old_rt[j].flags;
       clib_memcpy_fast (rt->runtime_data, old_rt[j].runtime_data,
 			VLIB_NODE_RUNTIME_DATA_SIZE);
     }
@@ -1162,6 +1174,7 @@ vlib_worker_thread_node_refork (void)
     {
       rt = vlib_node_get_runtime (vm_clone, old_rt[j].node_index);
       rt->state = old_rt[j].state;
+      rt->flags = old_rt[j].flags;
       clib_memcpy_fast (rt->runtime_data, old_rt[j].runtime_data,
 			VLIB_NODE_RUNTIME_DATA_SIZE);
     }
@@ -1189,6 +1202,7 @@ vlib_worker_thread_node_refork (void)
     {
       rt = vlib_node_get_runtime (vm_clone, old_rt[j].node_index);
       rt->state = old_rt[j].state;
+      rt->flags = old_rt[j].flags;
       clib_memcpy_fast (rt->runtime_data, old_rt[j].runtime_data,
 			VLIB_NODE_RUNTIME_DATA_SIZE);
     }
