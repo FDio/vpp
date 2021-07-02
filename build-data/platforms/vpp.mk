@@ -16,9 +16,6 @@
 MACHINE=$(shell uname -m)
 
 vpp_arch = native
-ifeq ($(TARGET_PLATFORM),thunderx)
-vpp_dpdk_target = arm64-thunderx-linuxapp-gcc
-endif
 
 vpp_root_packages = vpp
 
