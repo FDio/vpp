@@ -920,12 +920,12 @@ int
 nat44_ei_plugin_disable ()
 {
   nat44_ei_main_t *nm = &nat44_ei_main;
-  nat44_ei_interface_t *i, *vec;
+  nat44_ei_interface_t *i, *pool;
   int error = 0;
 
   // first unregister all nodes from interfaces
-  vec = vec_dup (nm->interfaces);
-  vec_foreach (i, vec)
+  pool = pool_dup (nm->interfaces);
+  pool_foreach (i, pool)
     {
       if (nat44_ei_interface_is_inside (i))
 	error = nat44_ei_interface_add_del (i->sw_if_index, 1, 1);
@@ -938,11 +938,11 @@ nat44_ei_plugin_disable ()
 			    i->sw_if_index);
 	}
     }
-  vec_free (vec);
-  nm->interfaces = 0;
+  pool_free (pool);
+  pool_free (nm->interfaces);
 
-  vec = vec_dup (nm->output_feature_interfaces);
-  vec_foreach (i, vec)
+  pool = pool_dup (nm->output_feature_interfaces);
+  pool_foreach (i, pool)
     {
       if (nat44_ei_interface_is_inside (i))
 	error =
@@ -957,8 +957,8 @@ nat44_ei_plugin_disable ()
 			    i->sw_if_index);
 	}
     }
-  vec_free (vec);
-  nm->output_feature_interfaces = 0;
+  pool_free (pool);
+  pool_free (nm->output_feature_interfaces);
 
   nat_ha_disable ();
   nat44_ei_db_free ();
@@ -976,7 +976,7 @@ nat44_ei_plugin_disable ()
   nm->enabled = 0;
   clib_memset (&nm->rconfig, 0, sizeof (nm->rconfig));
 
-  return error;
+  return 0;
 }
 
 int
