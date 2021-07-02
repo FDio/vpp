@@ -1,0 +1,43 @@
+From 7f12cf029c8be96314711bd02b3ea8b2d180d8ca Mon Sep 17 00:00:00 2001
+From: Matthew Smith <mgsmith@netgate.com>
+Date: Fri, 2 Jul 2021 15:09:25 -0500
+Subject: [PATCH] net/i40e: disable source pruning on pf
+
+VRRP advertisement packets are dropped on X710 and XL710 devices
+because when a MAC address is added to a device, packets originating
+from that MAC address are dropped. We disable source pruning to work
+around that issue.
+
+Signed-off-by: Matthew Smith <mgsmith@netgate.com>
+---
+ drivers/net/i40e/i40e_ethdev.c | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/drivers/net/i40e/i40e_ethdev.c b/drivers/net/i40e/i40e_ethdev.c
+index dd61258739..f5d2a262ec 100644
+--- a/drivers/net/i40e/i40e_ethdev.c
++++ b/drivers/net/i40e/i40e_ethdev.c
+@@ -5794,6 +5794,20 @@ i40e_vsi_setup(struct i40e_pf *pf,
+ 		 * interrupt from device side only.
+ 		 */
+ 
++		/* disable source pruning */
++		memset(&ctxt, 0, sizeof(ctxt));
++		ctxt.seid = vsi->seid;
++		ctxt.pf_num = hw->pf_id;
++		ctxt.vf_num = 0;
++		ctxt.info.valid_sections |=
++			rte_cpu_to_le_16(I40E_AQ_VSI_PROP_SWITCH_VALID);
++		ctxt.info.switch_id =
++			rte_cpu_to_le_16(I40E_AQ_VSI_SW_ID_FLAG_LOCAL_LB);
++		ret = i40e_aq_update_vsi_params(hw, &ctxt, NULL);
++		if (ret != I40E_SUCCESS) {
++			PMD_DRV_LOG(ERR, "Failed to disable source pruning");
++		}
++
+ 		/* Get default VSI parameters from hardware */
+ 		memset(&ctxt, 0, sizeof(ctxt));
+ 		ctxt.seid = vsi->seid;
+-- 
+2.30.1 (Apple Git-130)
+
