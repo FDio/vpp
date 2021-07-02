@@ -155,6 +155,7 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
   add_vpp_march_variant(octeontx2
     FLAGS -march=armv8.2-a+crc+crypto+lse
     N_PREFETCHES 8
+    N_CACHELINE_BYTES 128
   )
 
   add_vpp_march_variant(thunderx2t99
