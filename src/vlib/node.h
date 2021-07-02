@@ -452,6 +452,18 @@ typedef struct
 #define VLIB_PENDING_FRAME_NO_NEXT_FRAME ((u32) ~0)
 } vlib_pending_frame_t;
 
+typedef struct
+{
+#define VLIB_RATE_WINDOW_SIZE 4
+  /* per node rate estimation */
+  f64 rate_sum;
+  f64 rate[VLIB_RATE_WINDOW_SIZE];
+  u64 last_dispatch;
+  u64 clock_delta;
+  u16 last_n_vectors;
+  u8 rate_index, rate_bounded_count;
+} vlib_rate_estimator_t;
+
 typedef struct vlib_node_runtime_t
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);	/**< cacheline mark */
@@ -459,6 +471,8 @@ typedef struct vlib_node_runtime_t
   vlib_node_function_t *function;	/**< Node function to call. */
 
   vlib_error_t *errors;			/**< Vector of errors for this node. */
+
+  vlib_rate_estimator_t *rate_estimator;
 
   u32 clocks_since_last_overflow;	/**< Number of clock cycles. */
 
@@ -665,6 +679,22 @@ typedef struct
 
 typedef struct
 {
+  /* per thread estimator */
+#define VLIB_WINDOW_SIZE 128
+  u16 *n_vectors_stats;
+  u64 *cycles_stats;
+  u64 n_vectors_sum;
+  u64 cycles_sum;
+  u64 n_vectors_quadra_sum;
+  u64 cycles_n_vectors_product_sum;
+  u64 alpha;
+  u64 beta;
+  u64 determinant;
+  u8 stats_index, stats_bounded_size;
+} vlib_cycles_estimator;
+
+typedef struct
+{
   /* Public nodes. */
   vlib_node_t **nodes;
 
@@ -741,6 +771,8 @@ typedef struct
 
   /* Node Function march Variant by Suffix Hash */
   uword *node_fn_march_variant_by_suffix;
+
+  vlib_cycles_estimator *estimator;
 } vlib_node_main_t;
 
 typedef u16 vlib_error_t;
