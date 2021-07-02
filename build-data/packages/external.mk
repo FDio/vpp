@@ -43,7 +43,7 @@ ifeq ($(MACHINE),aarch64)
   # If not specified, cache line size is 128B by default, otherwise,
   # the value will be detected per native CPU info in /proc/cpuinfo
   ifeq (,$(TARGET_PLATFORM))
-    CPU_CACHE_LINE_SIZE = 128
+    CPU_CACHE_LINE_SIZE = 64
   else
     # Most Arm CPU cache line size is 64B
     CPU_CACHE_LINE_SIZE = 64

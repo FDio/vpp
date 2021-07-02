@@ -35,7 +35,7 @@ endif
 # the value will be detected per native CPU info in /proc/cpuinfo
 ifeq ($(MACHINE),aarch64)
 ifeq (,$(TARGET_PLATFORM))
-vpp_cmake_args += -DVPP_LOG2_CACHE_LINE_SIZE=7
+vpp_cmake_args += -DVPP_LOG2_CACHE_LINE_SIZE=6
 endif
 endif
 
