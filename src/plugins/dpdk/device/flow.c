@@ -444,6 +444,14 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
     }
 
 pattern_end:
+  if ((f->actions & VNET_FLOW_ACTION_RSS) &&
+      (f->rss_types & (1ULL << VNET_FLOW_RSS_TYPES_ESP)))
+    {
+
+      vec_add2 (items, item, 1);
+      item->type = RTE_FLOW_ITEM_TYPE_ESP;
+    }
+
   vec_add2 (items, item, 1);
   item->type = RTE_FLOW_ITEM_TYPE_END;
 

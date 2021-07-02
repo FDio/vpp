@@ -127,32 +127,40 @@ typedef enum
   _( -5, NO_SUCH_INTERFACE, "no such interface")		\
   _( -6, INTERNAL, "internal error")
 
-#define foreach_flow_rss_types                    \
-  _(0, FRAG_IPV4,          "ipv4-frag")   \
-  _(1, IPV4_TCP,           "ipv4-tcp")    \
-  _(2, IPV4_UDP,           "ipv4-udp")    \
-  _(3, IPV4_SCTP,          "ipv4-sctp")   \
-  _(4, IPV4_OTHER,         "ipv4-other")  \
-  _(5, IPV4,               "ipv4")        \
-  _(6, IPV6_TCP_EX,        "ipv6-tcp-ex") \
-  _(7, IPV6_UDP_EX,        "ipv6-udp-ex") \
-  _(8, FRAG_IPV6,          "ipv6-frag")   \
-  _(9, IPV6_TCP,           "ipv6-tcp")    \
-  _(10, IPV6_UDP,          "ipv6-udp")    \
-  _(11, IPV6_SCTP,         "ipv6-sctp")   \
-  _(12, IPV6_OTHER,        "ipv6-other")  \
-  _(13, IPV6_EX,           "ipv6-ex")     \
-  _(14, IPV6,              "ipv6")        \
-  _(15, L2_PAYLOAD,        "l2-payload")  \
-  _(16, PORT,              "port")        \
-  _(17, VXLAN,             "vxlan")       \
-  _(18, GENEVE,            "geneve")      \
-  _(19, NVGRE,             "nvgre")       \
-  _(20, GTPU,              "gtpu")        \
-  _(60, L4_DST_ONLY,       "l4-dst-only") \
-  _(61, L4_SRC_ONLY,       "l4-src-only") \
-  _(62, L3_DST_ONLY,       "l3-dst-only") \
-  _(63, L3_SRC_ONLY,       "l3-src-only")
+#define foreach_flow_rss_types                                                \
+  _ (0, FRAG_IPV4, "ipv4-frag")                                               \
+  _ (1, IPV4_TCP, "ipv4-tcp")                                                 \
+  _ (2, IPV4_UDP, "ipv4-udp")                                                 \
+  _ (3, IPV4_SCTP, "ipv4-sctp")                                               \
+  _ (4, IPV4_OTHER, "ipv4-other")                                             \
+  _ (5, IPV4, "ipv4")                                                         \
+  _ (6, IPV6_TCP_EX, "ipv6-tcp-ex")                                           \
+  _ (7, IPV6_UDP_EX, "ipv6-udp-ex")                                           \
+  _ (8, FRAG_IPV6, "ipv6-frag")                                               \
+  _ (9, IPV6_TCP, "ipv6-tcp")                                                 \
+  _ (10, IPV6_UDP, "ipv6-udp")                                                \
+  _ (11, IPV6_SCTP, "ipv6-sctp")                                              \
+  _ (12, IPV6_OTHER, "ipv6-other")                                            \
+  _ (13, IPV6_EX, "ipv6-ex")                                                  \
+  _ (14, IPV6, "ipv6")                                                        \
+  _ (15, L2_PAYLOAD, "l2-payload")                                            \
+  _ (16, PORT, "port")                                                        \
+  _ (17, VXLAN, "vxlan")                                                      \
+  _ (18, GENEVE, "geneve")                                                    \
+  _ (19, NVGRE, "nvgre")                                                      \
+  _ (20, GTPU, "gtpu")                                                        \
+  _ (21, ESP, "esp")                                                          \
+  _ (60, L4_DST_ONLY, "l4-dst-only")                                          \
+  _ (61, L4_SRC_ONLY, "l4-src-only")                                          \
+  _ (62, L3_DST_ONLY, "l3-dst-only")                                          \
+  _ (63, L3_SRC_ONLY, "l3-src-only")
+
+typedef enum
+{
+#define _(v, n, s) VNET_FLOW_RSS_TYPES_##n = v,
+  foreach_flow_rss_types
+#undef _
+} vnet_flow_rss_types_t;
 
 #define foreach_rss_function           \
   _(DEFAULT, "default")                \
