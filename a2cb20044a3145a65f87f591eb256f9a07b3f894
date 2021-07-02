@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cf53d0aa_9edad44a",
+        "filename": "src/vnet/interface_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1826,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2021-07-02T08:37:12Z",
+      "side": 1,
+      "message": "Can you please update the condition with \u0026\u0026 instead of || as \"set interface tx-queue tap0 queue 1\" should be valid command. User can use the CLI for given queue-id of an interface if want to unbind it from all VPP threads.",
+      "revId": "a2cb20044a3145a65f87f591eb256f9a07b3f894",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
