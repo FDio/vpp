@@ -231,4 +231,49 @@ clib_compress_u32 (u32 *dst, u32 *src, u64 *mask, u32 n_elts)
   return clib_compress_u32_x64 (dst, src, mask[0] & pow2_mask (n_elts)) - dst0;
 }
 
+/** \brief Mask array of 32-bit elemments
+
+    @param src source array of u32 elements
+    @param mask use to mask the values of source array
+    @param n_elts number of elements in the source array
+    @return masked values are return in source array
+*/
+
+static_always_inline void
+clib_mask_u32 (u32 *src, u32 v, u32 n_elts)
+{
+  while (n_elts > 0)
+    {
+#if defined(CLIB_HAVE_VEC512)
+      if (n_elts > 16)
+	{
+	  u32x16u *sv = (u32x16u *) src;
+	  u32x16u d;
+	  d = _mm512_set1_epi32 (v);
+	  sv[0] = _mm512_and_epi32 (sv[0], d);
+	  n_elts -= 16;
+	  src += 16;
+	}
+      else
+#endif
+#if defined(CLIB_HAVE_VEC256)
+	if (n_elts > 8)
+	{
+	  u32x8u *sv = (u32x8u *) src;
+	  u32x8u d;
+	  d = _mm256_set1_epi32 (v);
+	  sv[0] = _mm256_and_si256 (sv[0], d);
+	  n_elts -= 8;
+	  src += 8;
+	}
+      else
+#endif
+	{
+	  src[0] = (src[0] & v);
+	  src++;
+	  n_elts--;
+	}
+    }
+}
+
 #endif
