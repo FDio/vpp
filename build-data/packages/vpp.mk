@@ -30,16 +30,6 @@ vpp_cmake_args += -DCMAKE_PREFIX_PATH:PATH="$(vpp_cmake_prefix_path)"
 ifeq ("$(V)","1")
 vpp_cmake_args += -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
 endif
-ifeq (,$(TARGET_PLATFORM))
-ifeq ($(MACHINE),aarch64)
-vpp_cmake_args += -DVPP_LOG2_CACHE_LINE_SIZE=7
-endif
-endif
-
-# Use devtoolset on centos 7
-ifneq ($(wildcard /opt/rh/devtoolset-9/enable),)
-vpp_cmake_args += -DCMAKE_PROGRAM_PATH:PATH="/opt/rh/devtoolset-9/root/bin"
-endif
 
 ifneq ($(VPP_EXTRA_CMAKE_ARGS),)
 vpp_cmake_args += $(VPP_EXTRA_CMAKE_ARGS)
@@ -49,7 +39,6 @@ vpp_configure_depend += external-install
 vpp_configure = \
   cd $(PACKAGE_BUILD_DIR) && \
   $(CMAKE) -G Ninja $(vpp_cmake_args) $(call find_source_fn,$(PACKAGE_SOURCE))
-#vpp_make_args = --no-print-directory
 vpp_build = $(CMAKE) --build $(PACKAGE_BUILD_DIR) -- $(MAKE_PARALLEL_FLAGS)
 vpp_install = $(CMAKE) --build $(PACKAGE_BUILD_DIR) -- install | grep -v 'Set runtime path'
 
