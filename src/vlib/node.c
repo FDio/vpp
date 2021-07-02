@@ -482,12 +482,16 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
       }
 
     if (n->type == VLIB_NODE_TYPE_INPUT)
-      nm->input_node_counts_by_state[n->state] += 1;
+      {
+	nm->input_node_counts_by_state[n->state] += 1;
+      }
 
     rt->function = n->function;
     rt->flags = n->flags;
     rt->state = n->state;
     rt->node_index = n->index;
+
+    vec_validate (rt->rate_estimator, 0);
 
     rt->n_next_nodes = r->n_next_nodes;
     rt->next_frame_index = vec_len (nm->next_frames);
@@ -785,6 +789,17 @@ vlib_node_main_init (vlib_main_t * vm)
 	    nf[i].flags |= VLIB_FRAME_NO_FREE_AFTER_DISPATCH;
 	}
     }
+  }
+
+  /* initialize main node_main linear regression variables */
+  {
+    vlib_cycles_estimator *ce;
+
+    vec_validate (nm->estimator, 0);
+
+    ce = nm->estimator;
+    vec_validate (ce->n_vectors_stats, VLIB_WINDOW_SIZE - 1);
+    vec_validate (ce->cycles_stats, VLIB_WINDOW_SIZE - 1);
   }
 
 done:
