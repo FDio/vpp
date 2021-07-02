@@ -2185,8 +2185,8 @@ nat44_plugin_disable ()
   fail_if_disabled ();
 
   // first unregister all nodes from interfaces
-  vec = vec_dup (sm->interfaces);
-  vec_foreach (i, vec)
+  vec = pool_dup (sm->interfaces);
+  pool_foreach (i, vec)
     {
       if (nat_interface_is_inside(i))
         error = snat_interface_add_del (i->sw_if_index, 1, 1);
@@ -2199,11 +2199,11 @@ nat44_plugin_disable ()
                        i->sw_if_index);
         }
     }
-  vec_free (vec);
-  sm->interfaces = 0;
+  pool_free (vec);
+  pool_free (sm->interfaces);
 
-  vec = vec_dup (sm->output_feature_interfaces);
-  vec_foreach (i, vec)
+  vec = pool_dup (sm->output_feature_interfaces);
+  pool_foreach (i, vec)
     {
       if (nat_interface_is_inside(i))
         error = snat_interface_add_del_output_feature (i->sw_if_index, 1, 1);
@@ -2216,8 +2216,8 @@ nat44_plugin_disable ()
                        i->sw_if_index);
         }
     }
-  vec_free (vec);
-  sm->output_feature_interfaces = 0;
+  pool_free (vec);
+  pool_free (sm->output_feature_interfaces);
 
   vec_free (sm->max_translations_per_fib);
 
