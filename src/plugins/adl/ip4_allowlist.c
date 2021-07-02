@@ -99,8 +99,8 @@ VLIB_NODE_FN (ip4_adl_allowlist_node)
 	    vlib_prefetch_buffer_header (p2, LOAD);
 	    vlib_prefetch_buffer_header (p3, LOAD);
 
-	    CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (p2->data, 64, STORE);
+	    CLIB_PREFETCH (p3->data, 64, STORE);
 	  }
 
 	  /* speculatively enqueue b0 and b1 to the current next frame */

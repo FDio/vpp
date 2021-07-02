@@ -288,7 +288,7 @@
       u32 i_;                                                                 \
       for (i_ = 0; i_ < sz_; i_++)                                            \
 	{                                                                     \
-	  CLIB_PREFETCH (&vec_[i_ + 1], CLIB_CACHE_LINE_BYTES, STORE);        \
+	  CLIB_PREFETCH (&vec_[i_ + 1], 64, STORE);                           \
 	  (vec_[i_].fp) (&vec_[i_], __VA_ARGS__);                             \
 	}                                                                     \
     }                                                                         \
@@ -313,7 +313,7 @@
   do                                                                          \
     {                                                                         \
       if (PREDICT_FALSE ((set_)->curr))                                       \
-	CLIB_PREFETCH ((set_)->curr, CLIB_CACHE_LINE_BYTES, STORE);           \
+	CLIB_PREFETCH ((set_)->curr, 64, STORE);                              \
     }                                                                         \
   while (0)
 

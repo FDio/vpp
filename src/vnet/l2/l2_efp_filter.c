@@ -236,9 +236,9 @@ VLIB_NODE_FN (l2_efp_filter_node)
 	    /*
 	     * $$$ TODO
 	     * CLIB_PREFETCH (vec_elt_at_index(l2output_main.configs,
-	     * sw_if_index2), CLIB_CACHE_LINE_BYTES, LOAD); CLIB_PREFETCH
-	     * (vec_elt_at_index(l2output_main.configs, sw_if_index3),
-	     * CLIB_CACHE_LINE_BYTES, LOAD);
+	     *   sw_if_index2), 64, LOAD);
+	     * CLIB_PREFETCH (vec_elt_at_index(l2output_main.configs,
+	     *   sw_if_index3), 64, LOAD);
 	     */
 	  }
 
