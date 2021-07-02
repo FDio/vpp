@@ -16,6 +16,24 @@
       "revId": "441c25cda561976d2c2a9f1cb39b46fc27dcb972",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7861678c_3a3113e7",
+        "filename": "src/cmake/cpu.cmake",
+        "patchSetId": 2
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-07-02T16:43:12Z",
+      "side": 1,
+      "message": "And if your intention is just to change prefetch command, it will be very confusing to users.",
+      "parentUuid": "aaa8752e_559cbc57",
+      "revId": "441c25cda561976d2c2a9f1cb39b46fc27dcb972",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
