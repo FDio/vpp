@@ -34,6 +34,24 @@
       "revId": "441c25cda561976d2c2a9f1cb39b46fc27dcb972",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "03ea3fd8_eb6185d2",
+        "filename": "src/cmake/cpu.cmake",
+        "patchSetId": 2
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2021-07-05T04:27:27Z",
+      "side": 1,
+      "message": "Yes, it\u0027s just for the prefetch functions, and will not be used in struct definition.",
+      "parentUuid": "7861678c_3a3113e7",
+      "revId": "441c25cda561976d2c2a9f1cb39b46fc27dcb972",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
