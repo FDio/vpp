@@ -379,18 +379,22 @@ typedef struct
     /* TCP */
     struct
     {
-      u32 connection_index;
       union
       {
-	u32 seq_number;
+	u32 connection_index;
+	u32 next_node_index;
+      };
+      u32 seq_number;
+      union
+      {
+	u32 seq_end;
 	u32 next_node_opaque;
       };
-      u32 seq_end;
       u32 ack_number;
       u16 hdr_offset;		/**< offset relative to ip hdr */
       u16 data_offset;		/**< offset relative to ip hdr */
       u16 data_len;		/**< data len */
-      u8 flags;
+      u8 flags;			/**< upper part flags lower part state */
     } tcp;
 
     /* SNAT */

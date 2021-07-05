@@ -39,6 +39,9 @@
 #define TCP_ALWAYS_ACK		1	/**< On/off delayed acks */
 #define TCP_USE_SACKS		1	/**< Disable only for testing */
 
+/** VNET buffer flags. Shared with state */
+#define TCP_BUFFER_F_NEXT_NODE 1 << 4 /**< Next node and opaque provided */
+
 /** TCP FSM state definitions as per RFC793. */
 #define foreach_tcp_fsm_state   \
   _(CLOSED, "CLOSED")           \
