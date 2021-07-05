@@ -2580,7 +2580,7 @@ tcp46_listen_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
       b = vlib_get_buffer (vm, to_next[i]);
       if (!(b->flags & VLIB_BUFFER_IS_TRACED))
 	continue;
-      if (vnet_buffer (b)->tcp.flags == TCP_STATE_LISTEN)
+      if ((vnet_buffer (b)->tcp.flags & 0xf) == TCP_STATE_LISTEN)
 	tc = tcp_listener_get (vnet_buffer (b)->tcp.connection_index);
       t = vlib_add_trace (vm, node, b, sizeof (*t));
       tcp_set_rx_trace_data (t, tc, tcp_buffer_hdr (b), b, 1);
@@ -2611,9 +2611,11 @@ tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
     {
       u32 error = TCP_ERROR_NONE;
       tcp_connection_t *lc, *child;
+      u8 flags_and_state;
 
       /* Flags initialized with connection state after lookup */
-      if (vnet_buffer (b[0])->tcp.flags == TCP_STATE_LISTEN)
+      flags_and_state = vnet_buffer (b[0])->tcp.flags;
+      if ((flags_and_state & 0xf) == TCP_STATE_LISTEN)
 	{
 	  lc = tcp_listener_get (vnet_buffer (b[0])->tcp.connection_index);
 	}
@@ -2672,6 +2674,15 @@ tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       child->cc_algo = lc->cc_algo;
       tcp_connection_init_vars (child);
       child->rto = TCP_RTO_MIN;
+
+      /*
+       * If provided with a custom next node for the connection, use it
+       */
+      if (flags_and_state & TCP_BUFFER_F_NEXT_NODE)
+	{
+	  child->next_node_index = vnet_buffer (b[0])->tcp.next_node_index;
+	  child->next_node_opaque = vnet_buffer (b[0])->tcp.next_node_opaque;
+	}
 
       /*
        * This initializes elog track, must be done before synack.
