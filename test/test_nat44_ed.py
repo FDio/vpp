@@ -3607,7 +3607,7 @@ class TestNAT44EDMW(TestNAT44ED):
             capture = self.pg8.get_capture(len(pkts))
             self.verify_capture_out(capture, ignore_port=True)
 
-            if_idx = self.pg7.sw_if_index
+            if_idx = self.pg8.sw_if_index
             cnt = self.statistics['/nat44-ed/in2out/slowpath/tcp']
             self.assertEqual(cnt[:, if_idx].sum() - tcpn[:, if_idx].sum(), 2)
             cnt = self.statistics['/nat44-ed/in2out/slowpath/udp']

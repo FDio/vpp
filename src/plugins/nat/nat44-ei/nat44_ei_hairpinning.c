@@ -428,7 +428,8 @@ VLIB_NODE_FN (nat44_ei_hairpin_src_node)
 	  vlib_buffer_t *b0;
 	  u32 next0;
 	  nat44_ei_interface_t *i;
-	  u32 sw_if_index0;
+	  u32 rx_sw_if_index0;
+	  u32 tx_sw_if_index0;
 
 	  /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -439,13 +440,14 @@ VLIB_NODE_FN (nat44_ei_hairpin_src_node)
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
-	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	  rx_sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	  tx_sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 
 	  pool_foreach (i, nm->output_feature_interfaces)
 	    {
 	      /* Only packets from NAT inside interface */
 	      if ((nat44_ei_interface_is_inside (i)) &&
-		  (sw_if_index0 == i->sw_if_index))
+		  (rx_sw_if_index0 == i->sw_if_index))
 		{
 		  if (PREDICT_FALSE ((vnet_buffer (b0)->snat.flags) &
 				     NAT44_EI_FLAG_HAIRPINNING))
@@ -470,8 +472,9 @@ VLIB_NODE_FN (nat44_ei_hairpin_src_node)
 
 	  if (next0 != NAT44_EI_HAIRPIN_SRC_NEXT_DROP)
 	    {
-	      vlib_increment_simple_counter (
-		&nm->counters.hairpinning, vm->thread_index, sw_if_index0, 1);
+	      vlib_increment_simple_counter (&nm->counters.hairpinning,
+					     vm->thread_index, tx_sw_if_index0,
+					     1);
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
