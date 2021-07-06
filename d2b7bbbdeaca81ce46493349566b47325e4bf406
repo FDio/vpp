@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "396131e7_05bb77be",
+        "filename": "build-data/packages/vpp.mk",
+        "patchSetId": 4
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2021-07-06T17:15:04Z",
+      "side": 1,
+      "message": "I have a concern with TARGET_PLATFORM argument which was present earlier and being added again.\nTARGET_PLATFORM sole purpose is to determine cache line size. We should move to a solution to determine a cache line size such that even cloud VPP binary works seamlessly on all Aarch64 targets or we create two cloud binaries for ARM\n\nAlso semantically, any junk value to TARGET_PLATFORM is valid i.e. \n\nmake build-release TARGET_PLATFORM\u003dfoo \n\nis also valid command",
+      "range": {
+        "startLine": 37,
+        "startChar": 9,
+        "endLine": 37,
+        "endChar": 24
+      },
+      "revId": "d2b7bbbdeaca81ce46493349566b47325e4bf406",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
