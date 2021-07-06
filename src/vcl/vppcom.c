@@ -1988,7 +1988,7 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
   u8 is_ct;
 
   if (PREDICT_FALSE (!buf))
-    return VPPCOM_EINVAL;
+    return VPPCOM_EFAULT;
 
   s = vcl_session_get_w_handle (wrk, session_handle);
   if (PREDICT_FALSE (!s || (s->flags & VCL_SESSION_F_IS_VEP)))
