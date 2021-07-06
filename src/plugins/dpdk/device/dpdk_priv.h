@@ -41,13 +41,14 @@ _(mem-alloc-request, m)                         \
 _(force-ranks, r)
 
 /* These args are preceded by "--" and followed by a single string */
-#define foreach_eal_double_hyphen_arg           \
-_(huge-dir)                                     \
-_(proc-type)                                    \
-_(file-prefix)                                  \
-_(vdev)                                         \
-_(log-level)                                    \
-_(iova-mode)
+#define foreach_eal_double_hyphen_arg                                         \
+  _ (huge - dir)                                                              \
+  _ (proc - type)                                                             \
+  _ (file - prefix)                                                           \
+  _ (vdev)                                                                    \
+  _ (log - level)                                                             \
+  _ (iova - mode)                                                             \
+  _ (base - virtaddr)
 
 static inline void
 dpdk_get_xstats (dpdk_device_t * xd)
