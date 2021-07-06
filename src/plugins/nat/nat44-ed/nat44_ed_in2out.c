@@ -990,7 +990,9 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t *vm,
   while (n_left_from > 0)
     {
       vlib_buffer_t *b0;
-      u32 sw_if_index0, rx_fib_index0, iph_offset0 = 0;
+      u32 rx_sw_if_index0, rx_fib_index0, iph_offset0 = 0;
+      u32 tx_sw_if_index0;
+      u32 cntr_sw_if_index0;
       nat_protocol_t proto0;
       ip4_header_t *ip0;
       snat_session_t *s0 = 0;
@@ -1025,9 +1027,11 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t *vm,
       ip0 =
 	(ip4_header_t *) ((u8 *) vlib_buffer_get_current (b0) + iph_offset0);
 
-      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-      rx_fib_index0 =
-	fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4, sw_if_index0);
+      rx_sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+      tx_sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+      cntr_sw_if_index0 = is_output_feature ? tx_sw_if_index0 : rx_sw_if_index0;
+      rx_fib_index0 = fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
+							   rx_sw_if_index0);
       lookup.fib_index = rx_fib_index0;
 
       if (PREDICT_FALSE (!is_output_feature && ip0->ttl == 1))
@@ -1196,20 +1200,20 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t *vm,
 	{
 	case NAT_PROTOCOL_TCP:
 	  vlib_increment_simple_counter (&sm->counters.fastpath.in2out.tcp,
-					 thread_index, sw_if_index0, 1);
+					 thread_index, cntr_sw_if_index0, 1);
 	  nat44_set_tcp_session_state_i2o (sm, now, s0, b0, thread_index);
 	  break;
 	case NAT_PROTOCOL_UDP:
 	  vlib_increment_simple_counter (&sm->counters.fastpath.in2out.udp,
-					 thread_index, sw_if_index0, 1);
+					 thread_index, cntr_sw_if_index0, 1);
 	  break;
 	case NAT_PROTOCOL_ICMP:
 	  vlib_increment_simple_counter (&sm->counters.fastpath.in2out.icmp,
-					 thread_index, sw_if_index0, 1);
+					 thread_index, cntr_sw_if_index0, 1);
 	  break;
 	case NAT_PROTOCOL_OTHER:
 	  vlib_increment_simple_counter (&sm->counters.fastpath.in2out.other,
-					 thread_index, sw_if_index0, 1);
+					 thread_index, cntr_sw_if_index0, 1);
 	  break;
 	}
 
@@ -1227,7 +1231,7 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t *vm,
 	{
 	  nat_in2out_ed_trace_t *t =
 	    vlib_add_trace (vm, node, b0, sizeof (*t));
-	  t->sw_if_index = sw_if_index0;
+	  t->sw_if_index = rx_sw_if_index0;
 	  t->next_index = next[0];
 	  t->is_slow_path = 0;
 	  t->translation_error = translation_error;
@@ -1250,7 +1254,7 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t *vm,
       if (next[0] == NAT_NEXT_DROP)
 	{
 	  vlib_increment_simple_counter (&sm->counters.fastpath.in2out.drops,
-					 thread_index, sw_if_index0, 1);
+					 thread_index, cntr_sw_if_index0, 1);
 	}
 
       n_left_from--;
@@ -1285,7 +1289,9 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
   while (n_left_from > 0)
     {
       vlib_buffer_t *b0;
-      u32 sw_if_index0, rx_fib_index0, iph_offset0 = 0;
+      u32 rx_sw_if_index0, rx_fib_index0, iph_offset0 = 0;
+      u32 tx_sw_if_index0;
+      u32 cntr_sw_if_index0;
       nat_protocol_t proto0;
       ip4_header_t *ip0;
       udp_header_t *udp0;
@@ -1304,9 +1310,11 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
       ip0 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b0) +
 			      iph_offset0);
 
-      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-      rx_fib_index0 =
-	fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4, sw_if_index0);
+      rx_sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+      tx_sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+      cntr_sw_if_index0 = is_output_feature ? tx_sw_if_index0 : rx_sw_if_index0;
+      rx_fib_index0 = fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
+							   rx_sw_if_index0);
 
       if (PREDICT_FALSE (!is_output_feature && ip0->ttl == 1))
 	{
@@ -1338,14 +1346,14 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
 	    }
 
 	  vlib_increment_simple_counter (&sm->counters.slowpath.in2out.other,
-					 thread_index, sw_if_index0, 1);
+					 thread_index, cntr_sw_if_index0, 1);
 	  goto trace0;
 	}
 
       if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_ICMP))
 	{
 	  next[0] = icmp_in2out_ed_slow_path (
-	    sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node, next[0],
+	    sm, b0, ip0, icmp0, rx_sw_if_index0, rx_fib_index0, node, next[0],
 	    now, thread_index, proto0, &s0, is_multi_worker);
 	  if (NAT_NEXT_DROP != next[0] && s0 &&
 	      NAT_ED_TRNSL_ERR_SUCCESS !=
@@ -1356,7 +1364,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
 	    }
 
 	  vlib_increment_simple_counter (&sm->counters.slowpath.in2out.icmp,
-					 thread_index, sw_if_index0, 1);
+					 thread_index, cntr_sw_if_index0, 1);
 	  goto trace0;
 	}
 
@@ -1386,8 +1394,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
 	      if (PREDICT_FALSE (nat44_ed_not_translate_output_feature (
 		    sm, b0, ip0, vnet_buffer (b0)->ip.reass.l4_src_port,
 		    vnet_buffer (b0)->ip.reass.l4_dst_port, thread_index,
-		    sw_if_index0, vnet_buffer (b0)->sw_if_index[VLIB_TX], now,
-		    is_multi_worker)))
+		    rx_sw_if_index0, tx_sw_if_index0, now, is_multi_worker)))
 		goto trace0;
 
 	      /*
@@ -1404,8 +1411,8 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
 	  else
 	    {
 	      if (PREDICT_FALSE (nat44_ed_not_translate (
-		    vm, sm, node, sw_if_index0, b0, ip0, proto0, rx_fib_index0,
-		    thread_index)))
+		    vm, sm, node, rx_sw_if_index0, b0, ip0, proto0,
+		    rx_fib_index0, thread_index)))
 		goto trace0;
 	    }
 
@@ -1438,13 +1445,13 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
       if (PREDICT_TRUE (proto0 == NAT_PROTOCOL_TCP))
 	{
 	  vlib_increment_simple_counter (&sm->counters.slowpath.in2out.tcp,
-					 thread_index, sw_if_index0, 1);
+					 thread_index, cntr_sw_if_index0, 1);
 	  nat44_set_tcp_session_state_i2o (sm, now, s0, b0, thread_index);
 	}
       else
 	{
 	  vlib_increment_simple_counter (&sm->counters.slowpath.in2out.udp,
-					 thread_index, sw_if_index0, 1);
+					 thread_index, cntr_sw_if_index0, 1);
 	}
 
       /* Accounting */
@@ -1460,7 +1467,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
 	{
 	  nat_in2out_ed_trace_t *t =
 	    vlib_add_trace (vm, node, b0, sizeof (*t));
-	  t->sw_if_index = sw_if_index0;
+	  t->sw_if_index = rx_sw_if_index0;
 	  t->next_index = next[0];
 	  t->is_slow_path = 1;
 	  t->translation_error = translation_error;
@@ -1483,7 +1490,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
       if (next[0] == NAT_NEXT_DROP)
 	{
 	  vlib_increment_simple_counter (&sm->counters.slowpath.in2out.drops,
-					 thread_index, sw_if_index0, 1);
+					 thread_index, cntr_sw_if_index0, 1);
 	}
 
       n_left_from--;
