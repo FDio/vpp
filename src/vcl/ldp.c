@@ -1603,7 +1603,7 @@ sendto (int fd, const void *buf, size_t n, int flags,
   ldp_init_check ();
 
   vlsh = ldp_fd_to_vlsh (fd);
-  if (vlsh != INVALID_SESSION_ID)
+  if (vlsh != VLS_INVALID_HANDLE)
     {
       size = ldp_vls_sendo (vlsh, buf, n, flags, addr, addr_len);
       if (size < 0)
@@ -1702,7 +1702,7 @@ sendmmsg (int fd, struct mmsghdr *vmessages, unsigned int vlen, int flags)
 
   ldp_init_check ();
 
-  if (sh != INVALID_SESSION_ID)
+  if (sh != VLS_INVALID_HANDLE)
     {
       clib_warning ("LDP<%d>: LDP-TBD", getpid ());
       errno = ENOSYS;
@@ -1802,7 +1802,7 @@ recvmmsg (int fd, struct mmsghdr *vmessages,
 
   ldp_init_check ();
 
-  if (sh != INVALID_SESSION_ID)
+  if (sh != VLS_INVALID_HANDLE)
     {
       clib_warning ("LDP<%d>: LDP-TBD", getpid ());
       errno = ENOSYS;
