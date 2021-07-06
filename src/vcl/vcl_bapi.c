@@ -590,8 +590,8 @@ vcl_bapi_wait_for_wrk_state_change (vcl_bapi_app_state_t app_state)
       if (wrk->bapi_app_state == STATE_APP_FAILED)
 	return VPPCOM_ECONNABORTED;
     }
-  VDBG (0, "timeout waiting for state %s (%d)",
-	vcl_bapi_app_state_str (app_state), app_state);
+  VDBG (0, "timeout waiting for state %s, current state %d",
+	vcl_bapi_app_state_str (app_state), wrk->bapi_app_state);
   vcl_evt (VCL_EVT_SESSION_TIMEOUT, vcm, bapi_app_state);
 
   return VPPCOM_ETIMEDOUT;
