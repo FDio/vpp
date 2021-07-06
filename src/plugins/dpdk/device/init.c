@@ -795,8 +795,9 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    {
 	      hi->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO |
 			  VNET_HW_INTERFACE_CAP_SUPPORTS_UDP_GSO;
-	      xd->port_conf.txmode.offloads |=
-		DEV_TX_OFFLOAD_TCP_TSO | DEV_TX_OFFLOAD_UDP_TSO;
+	      xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_TSO |
+					       DEV_TX_OFFLOAD_UDP_TSO |
+					       DEV_TX_OFFLOAD_IPV4_CKSUM;
 	    }
 	  else
 	    clib_warning ("%s: TCP/UDP checksum offload must be enabled",
