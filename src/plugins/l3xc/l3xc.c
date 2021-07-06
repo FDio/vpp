@@ -184,6 +184,7 @@ l3xc_delete (u32 sw_if_index, u8 is_ip6)
 				   0, &l3xci, sizeof (l3xci));
 
       fib_path_list_child_remove (l3xc->l3xc_pl, l3xc->l3xc_sibling);
+      dpo_reset (&l3xc->l3xc_dpo);
 
       l3xc_db_remove (l3xc->l3xc_sw_if_index, fproto);
       pool_put (l3xc_pool, l3xc);
