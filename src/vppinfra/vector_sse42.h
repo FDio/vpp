@@ -720,6 +720,24 @@ u32x4_is_zero (u32x4 x)
   return (u32x4_zero_byte_mask (x) == 0xffff);
 }
 
+static_always_inline int
+u16x8_is_within_range (u16x8 low, u16x8 hi, u16 v)
+{
+  u16x8 key = u16x8_splat (v);
+  u16x8 diff1;
+  u16x8 diff2;
+  u16x8 sum, sum_equal_diff2;
+  u16 sum_nonzero, sum_equal, winner_mask;
+  diff1 = u16x8_sub_saturate (low, key);
+  diff2 = u16x8_sub_saturate (hi, key);
+  sum = diff1 + diff2;
+  sum_equal_diff2 = (sum == diff2);
+  sum_nonzero = ~u16x8_zero_byte_mask (sum);
+  sum_equal = ~u16x8_zero_byte_mask (sum_equal_diff2);
+  winner_mask = sum_nonzero & sum_equal;
+  return (winner_mask != 0);
+}
+
 #endif /* included_vector_sse2_h */
 
 /*

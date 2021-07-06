@@ -277,6 +277,14 @@ u32x4_is_zero (u32x4 x)
   return (u32x4_is_all_zero (x));
 }
 
+static_always_inline int
+u16x8_is_within_range (u16x8 low, u16x8 hi, u16 v)
+{
+  u16x8 key = u16x8_splat (v);
+  u16x8 x = vandq_u16 (vcgeq_u16 (key, low), vcltq_u16 (key, hi));
+  return !(u16x8_is_all_zero (x));
+}
+
 #define CLIB_HAVE_VEC128_MSB_MASK
 
 #define CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE

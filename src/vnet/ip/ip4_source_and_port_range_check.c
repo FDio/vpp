@@ -99,11 +99,6 @@ static inline u32
 check_adj_port_range_x1 (const protocol_port_range_dpo_t * ppr_dpo,
 			 u16 dst_port, u32 next)
 {
-  u16x8vec_t key;
-  u16x8vec_t diff1;
-  u16x8vec_t diff2;
-  u16x8vec_t sum, sum_equal_diff2;
-  u16 sum_nonzero, sum_equal, winner_mask;
   int i;
 
   if (NULL == ppr_dpo || dst_port == 0)
@@ -125,20 +120,10 @@ check_adj_port_range_x1 (const protocol_port_range_dpo_t * ppr_dpo,
       return IP4_SOURCE_AND_PORT_RANGE_CHECK_NEXT_DROP;
     }
 
-  key.as_u16x8 = u16x8_splat (dst_port);
-
   for (i = 0; i < ppr_dpo->n_used_blocks; i++)
     {
-      diff1.as_u16x8 =
-	u16x8_sub_saturate (ppr_dpo->blocks[i].low.as_u16x8, key.as_u16x8);
-      diff2.as_u16x8 =
-	u16x8_sub_saturate (ppr_dpo->blocks[i].hi.as_u16x8, key.as_u16x8);
-      sum.as_u16x8 = diff1.as_u16x8 + diff2.as_u16x8;
-      sum_equal_diff2.as_u16x8 = (sum.as_u16x8 == diff2.as_u16x8);
-      sum_nonzero = ~u16x8_zero_byte_mask (sum.as_u16x8);
-      sum_equal = ~u16x8_zero_byte_mask (sum_equal_diff2.as_u16x8);
-      winner_mask = sum_nonzero & sum_equal;
-      if (winner_mask)
+      if (u16x8_is_within_range (ppr_dpo->blocks[i].low.as_u16x8,
+				 ppr_dpo->blocks[i].hi.as_u16x8, dst_port))
 	return next;
     }
   return IP4_SOURCE_AND_PORT_RANGE_CHECK_NEXT_DROP;
