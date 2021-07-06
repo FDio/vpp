@@ -899,110 +899,6 @@ VLIB_CLI_COMMAND (clear_tcp_stats_command, static) =
 };
 /* *INDENT-ON* */
 
-static void
-tcp_show_half_open (vlib_main_t * vm, u32 start, u32 end, u8 verbose)
-{
-  tcp_main_t *tm = &tcp_main;
-  u8 output_suppressed = 0;
-  u32 n_elts, count = 0;
-  tcp_connection_t *tc;
-  int max_index, i;
-
-  n_elts = pool_elts (tm->half_open_connections);
-  max_index = clib_max (pool_len (tm->half_open_connections), 1) - 1;
-  if (verbose && end == ~0 && n_elts > 50)
-    {
-      vlib_cli_output (vm, "Too many connections, use range <start> <end>");
-      return;
-    }
-
-  if (!verbose)
-    {
-      vlib_cli_output (vm, "%u tcp half-open connections", n_elts);
-      return;
-    }
-
-  for (i = start; i <= clib_min (end, max_index); i++)
-    {
-      if (pool_is_free_index (tm->half_open_connections, i))
-	continue;
-
-      tc = pool_elt_at_index (tm->half_open_connections, i);
-
-      count += 1;
-      if (verbose)
-	{
-	  if (count > 50 || (verbose > 1 && count > 10))
-	    {
-	      output_suppressed = 1;
-	      continue;
-	    }
-	}
-      vlib_cli_output (vm, "%U", format_tcp_connection, tc, verbose);
-    }
-  if (!output_suppressed)
-    vlib_cli_output (vm, "%u tcp half-open connections", n_elts);
-  else
-    vlib_cli_output (vm, "%u tcp half-open connections matched. Output "
-		     "suppressed. Use finer grained filter.", count);
-
-}
-
-static clib_error_t *
-show_tcp_half_open_fn (vlib_main_t * vm, unformat_input_t * input,
-		       vlib_cli_command_t * cmd)
-{
-  unformat_input_t _line_input, *line_input = &_line_input;
-  u32 start, end = ~0, verbose = 0;
-  clib_error_t *error = 0;
-
-  session_cli_return_if_not_enabled ();
-
-  if (!unformat_user (input, unformat_line_input, line_input))
-    {
-      tcp_show_half_open (vm, 0, ~0, 0);
-      return 0;
-    }
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "range %u %u", &start, &end))
-	;
-      else if (unformat (line_input, "verbose %d", &verbose))
-	;
-      else if (unformat (line_input, "verbose"))
-	verbose = 1;
-      else
-	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, input);
-	  goto done;
-	}
-    }
-
-  if (start > end)
-    {
-      error = clib_error_return (0, "invalid range start: %u end: %u", start,
-				 end);
-      goto done;
-    }
-
-  tcp_show_half_open (vm, start, end, verbose);
-
-done:
-  unformat_free (line_input);
-  return error;
-}
-
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_tcp_half_open_command, static) =
-{
-  .path = "show tcp half-open",
-  .short_help = "show tcp half-open [verbose <n>] [range <start> <end>]",
-  .function = show_tcp_half_open_fn,
-};
-/* *INDENT-ON* */
-
 uword
 unformat_tcp_cc_algo (unformat_input_t * input, va_list * va)
 {
@@ -1049,7 +945,7 @@ unformat_tcp_cc_algo_cfg (unformat_input_t * input, va_list * va)
 static clib_error_t *
 tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 {
-  u32 cwnd_multiplier, tmp_time, mtu, max_gso_size;
+  u32 cwnd_multiplier, tmp_time, mtu, max_gso_size, tmp;
   uword memory_size;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -1057,8 +953,8 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
       if (unformat (input, "preallocated-connections %d",
 		    &tcp_cfg.preallocated_connections))
 	;
-      else if (unformat (input, "preallocated-half-open-connections %d",
-			 &tcp_cfg.preallocated_half_open_connections))
+      /* Config was deprecated. Will be removed in a later release */
+      else if (unformat (input, "preallocated-half-open-connections %d", &tmp))
 	;
       else if (unformat (input, "buffer-fail-fraction %f",
 			 &tcp_cfg.buffer_fail_fraction))

@@ -1929,7 +1929,7 @@ tcp46_syn_sent_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       /* Valid SYN or SYN-ACK. Move connection from half-open pool to
        * current thread pool. */
-      new_tc = tcp_connection_alloc_w_base (thread_index, tc);
+      new_tc = tcp_connection_alloc_w_base (thread_index, &tc);
       new_tc->rcv_nxt = vnet_buffer (b[0])->tcp.seq_end;
       new_tc->irs = seq;
       new_tc->timers[TCP_TIMER_RETRANSMIT_SYN] = TCP_TIMER_HANDLE_INVALID;
