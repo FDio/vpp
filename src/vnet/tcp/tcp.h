@@ -225,7 +225,7 @@ typedef struct _tcp_main
   tcp_lookup_dispatch_t dispatch_table[TCP_N_STATES][64];
 
   /** Pool of half-open connections on which we've sent a SYN */
-  tcp_connection_t *half_open_connections;
+//  tcp_connection_t *half_open_connections;
 
   /** Seed used to generate random iss */
   tcp_iss_seed_t iss_seed;

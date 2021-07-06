@@ -181,6 +181,19 @@ tcp_session_get_listener (u32 listener_index)
   return &tc->connection;
 }
 
+static tcp_connection_t *
+tcp_half_open_connection_alloc (void)
+{
+//  tcp_main_t *tm = vnet_get_tcp_main ();
+//  tcp_connection_t *tc = 0;
+  ASSERT (vlib_get_thread_index () == 0);
+  return tcp_connection_alloc (0);
+//  pool_get (tm->half_open_connections, tc);
+//  clib_memset (tc, 0, sizeof (*tc));
+//  tc->c_c_index = tc - tm->half_open_connections;
+//  return tc;
+}
+
 /**
  * Cleanup half-open connection
  *
@@ -188,10 +201,12 @@ tcp_session_get_listener (u32 listener_index)
 static void
 tcp_half_open_connection_free (tcp_connection_t * tc)
 {
-  tcp_main_t *tm = vnet_get_tcp_main ();
-  if (CLIB_DEBUG)
-    clib_memset (tc, 0xFA, sizeof (*tc));
-  pool_put (tm->half_open_connections, tc);
+//  tcp_main_t *tm = vnet_get_tcp_main ();
+//  if (CLIB_DEBUG)
+//    clib_memset (tc, 0xFA, sizeof (*tc));
+//  pool_put (tm->half_open_connections, tc);
+  ASSERT (vlib_get_thread_index () == 0);
+  return tcp_connection_free (tc);
 }
 
 /**
@@ -217,18 +232,6 @@ tcp_half_open_connection_cleanup (tcp_connection_t * tc)
   tcp_timer_reset (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT_SYN);
   tcp_half_open_connection_free (tc);
   return 0;
-}
-
-static tcp_connection_t *
-tcp_half_open_connection_new (void)
-{
-  tcp_main_t *tm = vnet_get_tcp_main ();
-  tcp_connection_t *tc = 0;
-  ASSERT (vlib_get_thread_index () == 0);
-  pool_get (tm->half_open_connections, tc);
-  clib_memset (tc, 0, sizeof (*tc));
-  tc->c_c_index = tc - tm->half_open_connections;
-  return tc;
 }
 
 /**
@@ -816,7 +819,7 @@ tcp_session_open (transport_endpoint_cfg_t * rmt)
   /*
    * Create connection and send SYN
    */
-  tc = tcp_half_open_connection_new ();
+  tc = tcp_half_open_connection_alloc ();
   ip_copy (&tc->c_rmt_ip, &rmt->ip, rmt->is_ip4);
   ip_copy (&tc->c_lcl_ip, &lcl_addr, rmt->is_ip4);
   tc->c_rmt_port = rmt->port;
@@ -1518,9 +1521,9 @@ tcp_main_enable (vlib_main_t * vm)
   /*
    * Use a preallocated half-open connection pool?
    */
-  if (tcp_cfg.preallocated_half_open_connections)
-    pool_init_fixed (tm->half_open_connections,
-		     tcp_cfg.preallocated_half_open_connections);
+//  if (tcp_cfg.preallocated_half_open_connections)
+//    pool_init_fixed (tm->half_open_connections,
+//		     tcp_cfg.preallocated_half_open_connections);
 
   tcp_initialize_iss_seed (tm);
 
