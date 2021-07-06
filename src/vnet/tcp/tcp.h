@@ -225,7 +225,7 @@ typedef struct _tcp_main
   tcp_lookup_dispatch_t dispatch_table[TCP_N_STATES][64];
 
   /** Pool of half-open connections on which we've sent a SYN */
-  tcp_connection_t *half_open_connections;
+//  tcp_connection_t *half_open_connections;
 
   /** Seed used to generate random iss */
   tcp_iss_seed_t iss_seed;
@@ -294,7 +294,7 @@ tcp_get_worker (u32 thread_index)
 
 tcp_connection_t *tcp_connection_alloc (u8 thread_index);
 tcp_connection_t *tcp_connection_alloc_w_base (u8 thread_index,
-					       tcp_connection_t * base);
+					       tcp_connection_t ** base);
 void tcp_connection_free (tcp_connection_t * tc);
 void tcp_connection_close (tcp_connection_t * tc);
 void tcp_connection_cleanup (tcp_connection_t * tc);

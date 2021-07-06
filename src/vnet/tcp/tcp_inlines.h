@@ -66,10 +66,11 @@ tcp_listener_get (u32 tli)
 always_inline tcp_connection_t *
 tcp_half_open_connection_get (u32 conn_index)
 {
-  tcp_connection_t *tc = 0;
-  if (!pool_is_free_index (tcp_main.half_open_connections, conn_index))
-    tc = pool_elt_at_index (tcp_main.half_open_connections, conn_index);
-  return tc;
+//  tcp_connection_t *tc = 0;
+//  if (!pool_is_free_index (tcp_main.half_open_connections, conn_index))
+//    tc = pool_elt_at_index (tcp_main.half_open_connections, conn_index);
+//  return tc;
+  return tcp_connection_get (conn_index, 0);
 }
 
 /**
