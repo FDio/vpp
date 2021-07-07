@@ -110,14 +110,14 @@ typedef enum
 
 typedef u32 ikev2_non_esp_marker;
 
-static_always_inline u16
-ikev2_get_port (ikev2_sa_t * sa)
+static u16
+ikev2_get_port (ikev2_sa_t *sa)
 {
   return ikev2_natt_active (sa) ? IKEV2_PORT_NATT : IKEV2_PORT;
 }
 
-static_always_inline int
-ikev2_insert_non_esp_marker (ike_header_t * ike, int len)
+static int
+ikev2_insert_non_esp_marker (ike_header_t *ike, int len)
 {
   memmove ((u8 *) ike + sizeof (ikev2_non_esp_marker), ike, len);
   clib_memset (ike, 0, sizeof (ikev2_non_esp_marker));
@@ -638,8 +638,8 @@ ikev2_calc_child_keys (ikev2_sa_t * sa, ikev2_child_sa_t * child)
   vec_free (keymat);
 }
 
-static_always_inline u8 *
-ikev2_compute_nat_sha1 (u64 ispi, u64 rspi, ip_address_t * ia, u16 port)
+static u8 *
+ikev2_compute_nat_sha1 (u64 ispi, u64 rspi, ip_address_t *ia, u16 port)
 {
   const u32 max_buf_size =
     sizeof (ispi) + sizeof (rspi) + sizeof (ip6_address_t) + sizeof (u16);
@@ -1021,8 +1021,8 @@ ikev2_decrypt_sk_payload (ikev2_sa_t * sa, ike_header_t * ike,
   return plaintext;
 }
 
-static_always_inline int
-ikev2_is_id_equal (ikev2_id_t * i1, ikev2_id_t * i2)
+static int
+ikev2_is_id_equal (ikev2_id_t *i1, ikev2_id_t *i2)
 {
   if (i1->type != i2->type)
     return 0;
@@ -2202,7 +2202,7 @@ typedef struct
   u32 sw_if_index;
 } ikev2_del_ipsec_tunnel_args_t;
 
-static_always_inline u32
+static u32
 ikev2_flip_alternate_sa_bit (u32 id)
 {
   u32 mask = 0x800;
@@ -2796,8 +2796,8 @@ ikev2_del_sa_init (u64 ispi)
 			       sizeof (ispi));
 }
 
-static_always_inline void
-ikev2_rewrite_v6_addrs (ikev2_sa_t * sa, ip6_header_t * ih)
+static void
+ikev2_rewrite_v6_addrs (ikev2_sa_t *sa, ip6_header_t *ih)
 {
   if (sa->is_initiator)
     {
@@ -2811,8 +2811,8 @@ ikev2_rewrite_v6_addrs (ikev2_sa_t * sa, ip6_header_t * ih)
     }
 }
 
-static_always_inline void
-ikev2_rewrite_v4_addrs (ikev2_sa_t * sa, ip4_header_t * ih)
+static void
+ikev2_rewrite_v4_addrs (ikev2_sa_t *sa, ip4_header_t *ih)
 {
   if (sa->is_initiator)
     {
@@ -2826,7 +2826,7 @@ ikev2_rewrite_v4_addrs (ikev2_sa_t * sa, ip4_header_t * ih)
     }
 }
 
-static_always_inline void
+static void
 ikev2_set_ip_address (ikev2_sa_t *sa, const void *iaddr, const void *raddr,
 		      const ip_address_family_t af)
 {
@@ -2881,7 +2881,7 @@ ikev2_update_stats (vlib_main_t *vm, u32 node_index, ikev2_stats_t *s)
 			       s->n_sa_auth_req);
 }
 
-static_always_inline uword
+static uword
 ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node,
 		     vlib_frame_t *frame, u8 is_ip4, u8 natt)
 {
@@ -3721,16 +3721,16 @@ ikev2_set_local_key (vlib_main_t * vm, u8 * file)
   return 0;
 }
 
-static_always_inline vnet_api_error_t
-ikev2_register_udp_port (ikev2_profile_t * p, u16 port)
+static vnet_api_error_t
+ikev2_register_udp_port (ikev2_profile_t *p, u16 port)
 {
   ipsec_register_udp_port (port);
   p->ipsec_over_udp_port = port;
   return 0;
 }
 
-static_always_inline void
-ikev2_unregister_udp_port (ikev2_profile_t * p)
+static void
+ikev2_unregister_udp_port (ikev2_profile_t *p)
 {
   if (p->ipsec_over_udp_port == IPSEC_UDP_PORT_NONE)
     return;
@@ -3995,8 +3995,8 @@ ikev2_set_profile_id (vlib_main_t * vm, u8 * name, u8 id_type, u8 * data,
   return 0;
 }
 
-static_always_inline void
-ikev2_set_ts_type (ikev2_ts_t * ts, const ip_address_t * addr)
+static void
+ikev2_set_ts_type (ikev2_ts_t *ts, const ip_address_t *addr)
 {
   if (ip_addr_version (addr) == AF_IP4)
     ts->ts_type = TS_IPV4_ADDR_RANGE;
@@ -4004,9 +4004,9 @@ ikev2_set_ts_type (ikev2_ts_t * ts, const ip_address_t * addr)
     ts->ts_type = TS_IPV6_ADDR_RANGE;
 }
 
-static_always_inline void
-ikev2_set_ts_addrs (ikev2_ts_t * ts, const ip_address_t * start,
-		    const ip_address_t * end)
+static void
+ikev2_set_ts_addrs (ikev2_ts_t *ts, const ip_address_t *start,
+		    const ip_address_t *end)
 {
   ip_address_copy (&ts->start_addr, start);
   ip_address_copy (&ts->end_addr, end);
@@ -5137,8 +5137,8 @@ ikev2_disable_dpd (void)
   km->dpd_disabled = 1;
 }
 
-static_always_inline int
-ikev2_mngr_process_responder_sas (ikev2_sa_t * sa)
+static int
+ikev2_mngr_process_responder_sas (ikev2_sa_t *sa)
 {
   ikev2_main_t *km = &ikev2_main;
   vlib_main_t *vm = km->vlib_main;
