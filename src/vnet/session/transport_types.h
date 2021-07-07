@@ -202,11 +202,15 @@ typedef enum transport_endpt_cfg_flags_
   TRANSPORT_CFG_F_UNIDIRECTIONAL = 1 << 1,
 } transport_endpt_cfg_flags_t;
 
+/* clang-format off */
 #define foreach_transport_endpoint_cfg_fields				\
   foreach_transport_endpoint_fields					\
-  _(transport_endpoint_t, peer)						\
-  _(u16, mss)								\
-  _(u8, transport_flags)						\
+  _ (transport_endpoint_t, peer)            				\
+  _ (u32, next_node_index) 						\
+  _ (u32, next_node_opaque)						\
+  _ (u16, mss)           						\
+  _ (u8, transport_flags)						\
+/* clang-format on */
 
 typedef struct transport_endpoint_pair_
 {
