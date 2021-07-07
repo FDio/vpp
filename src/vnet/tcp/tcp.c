@@ -108,7 +108,7 @@ tcp_cc_algo_new_type (const tcp_cc_algorithm_t * vft)
 }
 
 static u32
-tcp_connection_bind (u32 session_index, transport_endpoint_t * lcl)
+tcp_connection_bind (u32 session_index, transport_endpoint_cfg_t *lcl)
 {
   tcp_main_t *tm = &tcp_main;
   tcp_connection_t *listener;
@@ -134,6 +134,8 @@ tcp_connection_bind (u32 session_index, transport_endpoint_t * lcl)
   listener->c_fib_index = lcl->fib_index;
   listener->state = TCP_STATE_LISTEN;
   listener->cc_algo = tcp_cc_algo_get (tcp_cfg.cc_algo);
+  listener->next_node_index = lcl->next_node_index;
+  listener->next_node_opaque = lcl->next_node_opaque;
 
   tcp_connection_timers_init (listener);
 
@@ -143,7 +145,7 @@ tcp_connection_bind (u32 session_index, transport_endpoint_t * lcl)
 }
 
 static u32
-tcp_session_bind (u32 session_index, transport_endpoint_t * tep)
+tcp_session_bind (u32 session_index, transport_endpoint_cfg_t *tep)
 {
   return tcp_connection_bind (session_index, tep);
 }

@@ -2672,6 +2672,8 @@ tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       child->cc_algo = lc->cc_algo;
       tcp_connection_init_vars (child);
       child->rto = TCP_RTO_MIN;
+      child->next_node_index = lc->next_node_index;
+      child->next_node_opaque = lc->next_node_opaque;
 
       /*
        * This initializes elog track, must be done before synack.

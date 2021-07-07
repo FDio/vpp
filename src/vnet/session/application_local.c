@@ -740,7 +740,7 @@ ct_connect (app_worker_t * client_wrk, session_t * ll,
 }
 
 static u32
-ct_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
+ct_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
 {
   session_endpoint_cfg_t *sep;
   ct_connection_t *ct;

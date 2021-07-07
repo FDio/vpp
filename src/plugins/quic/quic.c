@@ -1441,7 +1441,8 @@ quic_proto_on_close (u32 ctx_index, u32 thread_index)
 }
 
 static u32
-quic_start_listen (u32 quic_listen_session_index, transport_endpoint_t * tep)
+quic_start_listen (u32 quic_listen_session_index,
+		   transport_endpoint_cfg_t *tep)
 {
   vnet_listen_args_t _bargs, *args = &_bargs;
   transport_endpt_crypto_cfg_t *ccfg;

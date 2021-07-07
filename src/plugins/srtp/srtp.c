@@ -702,7 +702,7 @@ srtp_disconnect (u32 ctx_handle, u32 thread_index)
 }
 
 static u32
-srtp_start_listen (u32 app_listener_index, transport_endpoint_t *tep)
+srtp_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
 {
   vnet_listen_args_t _bargs, *args = &_bargs;
   session_handle_t udp_al_handle;

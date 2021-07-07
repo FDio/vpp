@@ -1422,12 +1422,12 @@ session_open (session_endpoint_cfg_t *rmt, session_handle_t *rsh)
 int
 session_listen (session_t * ls, session_endpoint_cfg_t * sep)
 {
-  transport_endpoint_t *tep;
+  transport_endpoint_cfg_t *tep;
   int tc_index;
   u32 s_index;
 
   /* Transport bind/listen */
-  tep = session_endpoint_to_transport (sep);
+  tep = session_endpoint_to_transport_cfg (sep);
   s_index = ls->session_index;
   tc_index = transport_start_listen (session_get_transport_proto (ls),
 				     s_index, tep);

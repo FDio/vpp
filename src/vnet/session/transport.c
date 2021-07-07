@@ -341,7 +341,7 @@ transport_reset (transport_proto_t tp, u32 conn_index, u8 thread_index)
 
 u32
 transport_start_listen (transport_proto_t tp, u32 session_index,
-			transport_endpoint_t * tep)
+			transport_endpoint_cfg_t *tep)
 {
   return tp_vfts[tp].start_listen (session_index, tep);
 }
