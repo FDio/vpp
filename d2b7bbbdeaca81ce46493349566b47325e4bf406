@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "bc208f40_b4363f40",
+        "filename": "build-data/packages/vpp.mk",
+        "patchSetId": 4
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2021-07-07T02:33:39Z",
+      "side": 1,
+      "message": "TARGET_PLATFORM was used to determine DPDK config previous, which is not available now.\nTo my understanding, it\u0027s not possible to defining a cache line size for a generic image working seamlessly on all Aarch64 CPUs.\nNot sure if we can put two cloud binaries for Arm. Will figure it out.\n\nI can easily limit native cache-line detect working with \"TARGET_PLATFORM\u003dnative\" only.",
+      "parentUuid": "396131e7_05bb77be",
+      "range": {
+        "startLine": 37,
+        "startChar": 9,
+        "endLine": 37,
+        "endChar": 24
+      },
+      "revId": "d2b7bbbdeaca81ce46493349566b47325e4bf406",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "f12098d7_733d5174",
         "filename": "build/external/packages/dpdk.mk",
         "patchSetId": 4
@@ -36,6 +60,30 @@
       "writtenOn": "2021-07-06T17:46:59Z",
       "side": 1,
       "message": "Is it required to have dependency on TARGET_PLATFORM for determining DPDK_CACHE_LINE_SIZE. \nI believe DPDK_CACHE_LINE_SIZE argument can be given in make command. If not given, Lineno 15 will set default value.\n\nIn order to enable compile time detection (via cat /proc/cpuinfo) perhaps a second variable can be introduced which is defined in this Makefile. Hence avoids dependency on TARGET_PLATFORM variable",
+      "range": {
+        "startLine": 123,
+        "startChar": 11,
+        "endLine": 123,
+        "endChar": 26
+      },
+      "revId": "d2b7bbbdeaca81ce46493349566b47325e4bf406",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "deb77f3e_bee9e31d",
+        "filename": "build/external/packages/dpdk.mk",
+        "patchSetId": 4
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2021-07-07T02:33:39Z",
+      "side": 1,
+      "message": "We need a variable to pass the cache-line for generic image, and do compile-time detection for native-built image.\n\nCould you paste some code segment for your proposal?",
+      "parentUuid": "f12098d7_733d5174",
       "range": {
         "startLine": 123,
         "startChar": 11,
