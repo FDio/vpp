@@ -480,20 +480,20 @@ rdma_device_output_tx_ibverb (vlib_main_t * vm,
  * common tx/free functions
  */
 
-static_always_inline void
-rdma_device_output_free (vlib_main_t * vm, const vlib_node_runtime_t * node,
-			 rdma_txq_t * txq, int is_mlx5dv)
+static void
+rdma_device_output_free (vlib_main_t *vm, const vlib_node_runtime_t *node,
+			 const rdma_device_t *rd, rdma_txq_t *txq)
 {
-  if (is_mlx5dv)
+  if (PREDICT_TRUE (rd->flags & RDMA_DEVICE_F_MLX5DV))
     rdma_device_output_free_mlx5 (vm, node, txq);
   else
     rdma_device_output_free_ibverb (vm, node, txq);
 }
 
-static_always_inline u32
-rdma_device_output_tx_try (vlib_main_t * vm, const vlib_node_runtime_t * node,
-			   const rdma_device_t * rd, rdma_txq_t * txq,
-			   u32 n_left_from, u32 * bi, int is_mlx5dv)
+static u32
+rdma_device_output_tx_try (vlib_main_t *vm, const vlib_node_runtime_t *node,
+			   const rdma_device_t *rd, rdma_txq_t *txq,
+			   u32 n_left_from, u32 *bi)
 {
   vlib_buffer_t *b[VLIB_FRAME_SIZE];
   const u32 mask = pow2_mask (txq->bufs_log2sz);
@@ -511,30 +511,28 @@ rdma_device_output_tx_try (vlib_main_t * vm, const vlib_node_runtime_t * node,
 
   vlib_get_buffers (vm, bi, b, n_left_from);
 
-  n_left_from = is_mlx5dv ?
-    rdma_device_output_tx_mlx5 (vm, node, rd, txq, n_left_from, bi,
-				b) : rdma_device_output_tx_ibverb (vm, node,
-								   rd, txq,
-								   n_left_from,
-								   bi, b);
+  if (PREDICT_TRUE (rd->flags & RDMA_DEVICE_F_MLX5DV))
+    n_left_from =
+      rdma_device_output_tx_mlx5 (vm, node, rd, txq, n_left_from, bi, b);
+  else
+    n_left_from =
+      rdma_device_output_tx_ibverb (vm, node, rd, txq, n_left_from, bi, b);
 
   return n_left_from;
 }
 
-static_always_inline uword
+static uword
 rdma_device_output_tx (vlib_main_t *vm, vlib_node_runtime_t *node,
 		       rdma_device_t *rd, rdma_txq_t *txq, u32 *from,
-		       u32 n_left_from, int is_mlx5dv)
+		       u32 n_left_from)
 {
   int i;
 
   for (i = 0; i < RDMA_TX_RETRIES && n_left_from > 0; i++)
     {
       u32 n_enq;
-      rdma_device_output_free (vm, node, txq, is_mlx5dv);
-      n_enq = rdma_device_output_tx_try (vm, node, rd, txq, n_left_from, from,
-					 is_mlx5dv);
-
+      rdma_device_output_free (vm, node, rd, txq);
+      n_enq = rdma_device_output_tx_try (vm, node, rd, txq, n_left_from, from);
       n_left_from -= n_enq;
       from += n_enq;
     }
@@ -560,12 +558,7 @@ VNET_DEVICE_CLASS_TX_FN (rdma_device_class) (vlib_main_t * vm,
 
   clib_spinlock_lock_if_init (&txq->lock);
 
-  if (PREDICT_TRUE (rd->flags & RDMA_DEVICE_F_MLX5DV))
-    n_left = rdma_device_output_tx (vm, node, rd, txq, from, n_buffers,
-				    1 /* is_mlx5dv */);
-  else
-    n_left = rdma_device_output_tx (vm, node, rd, txq, from, n_buffers,
-				    0 /* is_mlx5dv */);
+  n_left = rdma_device_output_tx (vm, node, rd, txq, from, n_buffers);
 
   clib_spinlock_unlock_if_init (&txq->lock);
 
