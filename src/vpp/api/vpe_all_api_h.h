@@ -20,11 +20,6 @@
 /* Include the (first) vlib-api API definition layer */
 #include <vlibmemory/vl_memory_api_h.h>
 
-/* Include the (second) vnet API definition layer */
-#define included_from_layer_3
-#include <vnet/vnet_all_api_h.h>
-#undef included_from_layer_3
-
 /* Include the current layer (third) vpp API definition layer */
 #include <vpp/api/vpe_types.api.h>
 #include <vpp/api/vpe.api.h>
