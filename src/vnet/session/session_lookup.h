@@ -92,6 +92,7 @@ transport_connection_t *session_lookup_half_open_connection (u64 handle,
 							     u8 proto,
 							     u8 is_ip4);
 u32 session_lookup_get_index_for_fib (u32 fib_proto, u32 fib_index);
+u32 session_lookup_get_or_alloc_index_for_fib (u32 fib_proto, u32 fib_index);
 
 void session_lookup_show_table_entries (vlib_main_t * vm,
 					session_table_t * table, u8 type,
