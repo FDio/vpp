@@ -240,10 +240,11 @@ app_listener_alloc_and_init (application_t * app,
       if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
 	{
 	  fib_protocol_t fib_proto;
+
 	  fib_proto = session_endpoint_fib_proto ((session_endpoint_t *) sep);
-	  table_index = session_lookup_get_index_for_fib (fib_proto,
-							  sep->fib_index);
-	  ASSERT (table_index != SESSION_TABLE_INVALID_INDEX);
+	  /* Assume namespace vetted previously so make sure table exists */
+	  table_index = session_lookup_get_or_alloc_index_for_fib (
+	    fib_proto, sep->fib_index);
 	  session_lookup_add_session_endpoint (table_index,
 					       (session_endpoint_t *) sep,
 					       lh);
