@@ -67,8 +67,6 @@ list(APPEND VNET_HEADERS
   plugin/plugin.h
   pipeline.h
   vnet.h
-  vnet_all_api_h.h
-  vnet_msg_enum.h
   util/radix.h
   util/refcount.h
   format_fns.h

@@ -17,10 +17,6 @@
 #include <vnet/ipsec/ipsec_types_api.h>
 #include <vlibapi/api_types.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
-#undef vl_typedefs
-
 int
 ipsec_proto_decode (vl_api_ipsec_proto_t in, ipsec_protocol_t * out)
 {
