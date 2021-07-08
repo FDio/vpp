@@ -214,6 +214,15 @@ session_lookup_get_index_for_fib (u32 fib_proto, u32 fib_index)
   return fib_index_to_table_index[fib_proto][fib_index];
 }
 
+u32
+session_lookup_get_or_alloc_index_for_fib (u32 fib_proto, u32 fib_index)
+{
+  session_table_t *st;
+
+  st = session_table_get_or_alloc (fib_proto, fib_index);
+  return session_table_index (st);
+}
+
 /**
  * Add transport connection to a session table
  *
