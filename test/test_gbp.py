@@ -1004,7 +1004,7 @@ class TestGBP(VppTestCase):
             self.logger.info(self.vapi.cli("sh gbp endpoint"))
 
             # ... results in a Gratuitous ARP/ND on the EPG's uplink
-            rx = ep.epg.uplink.get_capture(len(ep.ips), timeout=0.2)
+            rx = ep.epg.uplink.get_capture(len(ep.ips) + 1, timeout=0.2)
 
             for ii, ip in enumerate(ep.ips):
                 p = rx[ii]
