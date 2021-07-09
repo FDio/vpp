@@ -60,10 +60,6 @@ add_vpp_plugin(af_xdp
   API_FILES
   af_xdp.api
 
-  API_TEST_SOURCES
-  unformat.c
-  test_api.c
-
   LINK_LIBRARIES
   ${BPF_LIB}
   ${BPF_ELF_LIB}

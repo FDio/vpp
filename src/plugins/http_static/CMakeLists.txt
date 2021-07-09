@@ -20,7 +20,4 @@ add_vpp_plugin(http_static
 
   API_FILES
   http_static.api
-
-  API_TEST_SOURCES
-  http_static_test.c
 )

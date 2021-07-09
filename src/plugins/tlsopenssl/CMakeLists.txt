@@ -25,9 +25,6 @@ if(OPENSSL_FOUND AND OPENSSL_VERSION VERSION_GREATER_EQUAL "1.1.0")
     API_FILES
     tls_openssl.api
 
-    API_TEST_SOURCES
-    tls_openssl_test.c
-
     LINK_LIBRARIES
     ${OPENSSL_LIBRARIES}
   )

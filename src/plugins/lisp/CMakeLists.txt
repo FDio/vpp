@@ -62,12 +62,6 @@ add_vpp_plugin(lisp
   lisp-gpe/lisp_gpe_tenant.h
   lisp-gpe/lisp_gpe_packet.h
   lisp-gpe/lisp_gpe_error.def
-
-  API_TEST_SOURCES
-  lisp-cp/lisp_test.c
-  lisp-cp/lisp_cp_test.c
-  lisp-cp/one_test.c
-  lisp-gpe/lisp_gpe_test.c
 )
 
 add_vpp_plugin(lisp_unittest

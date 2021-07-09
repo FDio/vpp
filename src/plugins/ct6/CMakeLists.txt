@@ -25,7 +25,4 @@ add_vpp_plugin(ct6
 
   API_FILES
   ct6.api
-
-  API_TEST_SOURCES
-  ct6_test.c
 )

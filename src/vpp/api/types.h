@@ -46,5 +46,11 @@ extern u8 *format_vl_api_prefix (u8 * s, va_list * args);
 extern u8 *format_vl_api_mprefix (u8 * s, va_list * args);
 extern u8 *format_vl_api_mac_address (u8 * s, va_list * args);
 extern u8 *format_vl_api_version (u8 * s, va_list * args);
+extern u8 * format_ip6_address (u8 * s, va_list * args);
+extern u8 * format_ip4_address (u8 * s, va_list * args);
+extern uword unformat_ip6_address (unformat_input_t * input, va_list * args);
+extern u8 * format_ethernet_address (u8 * s, va_list * args);
+extern uword unformat_ethernet_address (unformat_input_t * input, va_list * args);
+extern uword unformat_ip4_address (unformat_input_t * input, va_list * args);
 
 #endif

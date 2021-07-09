@@ -27,9 +27,6 @@ add_vpp_plugin(ikev2
   ikev2_types.api
   ikev2.api
 
-  API_TEST_SOURCES
-  ikev2_test.c
-
   INSTALL_HEADERS
   ikev2.h
   ikev2_priv.h

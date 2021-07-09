@@ -22,10 +22,6 @@ add_vpp_plugin(tracedump
   API_FILES
   graph.api
   tracedump.api
-
-  API_TEST_SOURCES
-  graph_test.c
-  tracedump_test.c
 )
 
 #  API_TEST_SOURCES

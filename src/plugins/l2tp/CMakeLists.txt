@@ -32,7 +32,4 @@ add_vpp_plugin(l2tp
 
   API_FILES
   l2tp.api
-
-  API_TEST_SOURCES
-  l2tp_test.c
 )

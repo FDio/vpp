@@ -32,7 +32,4 @@ add_vpp_plugin(avf
 
   API_FILES
   avf.api
-
-  API_TEST_SOURCES
-  avf_test.c
 )

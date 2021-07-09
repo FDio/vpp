@@ -46,7 +46,4 @@ add_vpp_plugin(dhcp
   dhcp6_client_common_dp.h
   dhcp6_pd_client_dp.h
   dhcp6_ia_na_client_dp.h
-
-  API_TEST_SOURCES
-  dhcp_test.c
 )

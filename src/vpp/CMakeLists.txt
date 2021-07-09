@@ -31,7 +31,6 @@ add_custom_target(vpp_version_h
 ##############################################################################
 # vpp binary
 ##############################################################################
-option(VPP_API_TEST_BUILTIN "Use builtin VPP API test." ON)
 
 configure_file(
   ${CMAKE_SOURCE_DIR}/vpp/vnet/config.h.in
@@ -63,20 +62,8 @@ set(VPP_SOURCES
   stats/stat_segment.c
   stats/stat_segment_provider.c
   api/api.c
-  api/json_format.c
   api/types.c
 )
-
-if(VPP_API_TEST_BUILTIN)
-  list(APPEND VPP_SOURCES
-    api/api_format.c
-    api/api_main.c
-    api/plugin.c
-    api/types.c
-    ../vnet/arp/arp_test.c
-  )
-  add_definitions(-DVPP_API_TEST_BUILTIN=1)
-endif()
 
 add_vpp_executable(vpp
   ENABLE_EXPORTS

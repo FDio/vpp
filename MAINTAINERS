@@ -571,11 +571,6 @@ I:	svm
 M:	Dave Barach <vpp@barachs.net>
 F:	src/svm
 
-VPP API TEST
-I:	vat
-M:	Dave Barach <vpp@barachs.net>
-F:	src/vat/
-
 VPP Executable
 I:	vpp
 M:	Dave Barach <vpp@barachs.net>

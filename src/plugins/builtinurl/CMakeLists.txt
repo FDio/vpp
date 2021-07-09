@@ -20,7 +20,4 @@ add_vpp_plugin(builtinurl
 
   API_FILES
   builtinurl.api
-
-  API_TEST_SOURCES
-  builtinurl_test.c
 )

@@ -64,10 +64,6 @@ add_vpp_plugin(rdma
   API_FILES
   rdma.api
 
-  API_TEST_SOURCES
-  unformat.c
-  test_api.c
-
   LINK_FLAGS
   "${RDMA_LINK_FLAGS}"
 

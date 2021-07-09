@@ -15,7 +15,7 @@ macro(add_vpp_plugin name)
   cmake_parse_arguments(PLUGIN
     ""
     "LINK_FLAGS;COMPONENT;DEV_COMPONENT"
-    "SOURCES;API_FILES;MULTIARCH_SOURCES;MULTIARCH_FORCE_ON;LINK_LIBRARIES;INSTALL_HEADERS;API_TEST_SOURCES;"
+    "SOURCES;API_FILES;MULTIARCH_SOURCES;MULTIARCH_FORCE_ON;LINK_LIBRARIES;INSTALL_HEADERS;"
     ${ARGN}
   )
   set(plugin_name ${name}_plugin)
@@ -86,27 +86,6 @@ macro(add_vpp_plugin name)
 	COMPONENT vpp-dev
       )
     endforeach()
-  endif()
-  if(PLUGIN_API_TEST_SOURCES)
-    set(test_plugin_name ${name}_test_plugin)
-    add_library(${test_plugin_name} SHARED ${PLUGIN_API_TEST_SOURCES}
-		${api_includes})
-    target_compile_options(${test_plugin_name} PUBLIC ${VPP_DEFAULT_MARCH_FLAGS})
-    set_target_properties(${test_plugin_name} PROPERTIES NO_SONAME 1)
-    if(NOT VPP_EXTERNAL_PROJECT)
-      add_dependencies(${test_plugin_name} api_headers)
-    endif()
-    if(PLUGIN_API_FILES)
-      add_dependencies(${test_plugin_name} ${plugin_name}_api_headers)
-    endif()
-    set_target_properties(${test_plugin_name} PROPERTIES
-      PREFIX ""
-      LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/vpp_api_test_plugins)
-    install(
-      TARGETS ${test_plugin_name}
-      DESTINATION ${VPP_LIBRARY_DIR}/vpp_api_test_plugins
-      COMPONENT ${PLUGIN_COMPONENT}
-    )
   endif()
   if (PLUGIN_API_FILES)
     add_vpp_test_library(${name}_test_plugin ${PLUGIN_API_FILES})

@@ -25,8 +25,5 @@ add_vpp_plugin(pppoe
 
   API_FILES
   pppoe.api
-
-  API_TEST_SOURCES
-  pppoe_test.c
 )
 

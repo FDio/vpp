@@ -24,8 +24,5 @@ add_vpp_plugin(gtpu
 
   API_FILES
   gtpu.api
-
-  API_TEST_SOURCES
-  gtpu_test.c
 )
 

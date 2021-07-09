@@ -18,8 +18,5 @@ add_vpp_plugin(flowprobe
 
   API_FILES
   flowprobe.api
-
-  API_TEST_SOURCES
-  flowprobe_test.c
 )
 

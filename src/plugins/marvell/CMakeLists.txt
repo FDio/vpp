@@ -34,9 +34,6 @@ if(MUSDK_INCLUDE_DIR AND MUSDK_LIB)
     API_FILES
     pp2/pp2.api
 
-    API_TEST_SOURCES
-    pp2/pp2_test.c
-
     LINK_FLAGS
     ${MUSDK_LINK_FLAGS}
   )

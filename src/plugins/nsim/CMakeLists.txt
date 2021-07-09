@@ -23,7 +23,4 @@ add_vpp_plugin(nsim
 
   API_FILES
   nsim.api
-
-  API_TEST_SOURCES
-  nsim_test.c
 )
