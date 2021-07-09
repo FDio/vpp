@@ -1811,6 +1811,19 @@ class ARPTestCase(VppTestCase):
                                 "10.0.1.2",
                                 "10.0.1.128")
 
+        # apply a connected prefix to an interface in a different table
+        VppIpRoute(self, "10.0.1.0", 24,
+                   [VppRoutePath("0.0.0.0",
+                                 self.pg1.sw_if_index)],
+                   table_id=1).add_vpp_config()
+
+        rxs = self.send_and_expect(self.pg3, [p2], self.pg1)
+        for rx in rxs:
+            self.verify_arp_req(rx,
+                                self.pg1.local_mac,
+                                "10.0.1.2",
+                                "10.0.1.128")
+
         # cleanup
         conn3.remove_vpp_config()
         conn2.remove_vpp_config()

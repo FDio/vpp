@@ -619,6 +619,11 @@ extern uword unformat_fib_route_path(unformat_input_t * input, va_list * args);
  */
 extern u8 * format_fib_route_path(u8 *s, va_list *ap);
 
+/*
+ * Return true if the path is attached
+ */
+extern int fib_route_path_is_attached (const fib_route_path_t *rpath);
+
 /**
  * A help string to list the FIB path options
  */

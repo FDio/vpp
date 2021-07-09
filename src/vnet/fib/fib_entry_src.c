@@ -1497,51 +1497,33 @@ static inline int
 fib_route_attached_cross_table (const fib_entry_t *fib_entry,
 				const fib_route_path_t *rpath)
 {
-    /*
-     * - All zeros next-hop
-     * - a valid interface
-     * - entry's fib index not equeal to interface's index
-     */
-    if (ip46_address_is_zero(&rpath->frp_addr) &&
-	(~0 != rpath->frp_sw_if_index) &&
-        !(rpath->frp_flags & (FIB_ROUTE_PATH_DVR | FIB_ROUTE_PATH_UDP_ENCAP)) &&
-	(fib_entry->fe_fib_index != 
-	 fib_table_get_index_for_sw_if_index(fib_entry_get_proto(fib_entry),
-					     rpath->frp_sw_if_index)))
-    {
-	return (!0);
-    }
-    return (0);
-}
+    const fib_prefix_t *pfx = &fib_entry->fe_prefix;
 
-/*
- * Return true if the path is attached
- */
-static inline int
-fib_path_is_attached (const fib_route_path_t *rpath)
-{
-    /*
-     * DVR paths are not attached, since we are not playing the
-     * L3 game with these
-     */
-    if (rpath->frp_flags & FIB_ROUTE_PATH_DVR)
+    switch (pfx->fp_proto)
     {
-        return (0);
+    case FIB_PROTOCOL_MPLS:
+        /* MPLS routes are never imported/exported */
+	return (!0);
+    case FIB_PROTOCOL_IP6:
+        /* Ignore link local addresses these also can't be imported/exported */
+        if (ip6_address_is_link_local_unicast (&pfx->fp_addr.ip6))
+        {
+            return (!0);
+        }
+        break;
+    case FIB_PROTOCOL_IP4:
+        break;
     }
 
     /*
-     * - All zeros next-hop
-     * - a valid interface
+     * an attached path and entry's fib index not equal to interface's index
      */
-    if (ip46_address_is_zero(&rpath->frp_addr) &&
-	(~0 != rpath->frp_sw_if_index))
+    if (fib_route_path_is_attached(rpath) &&
+	fib_entry->fe_fib_index !=
+        fib_table_get_index_for_sw_if_index(fib_entry_get_proto(fib_entry),
+                                            rpath->frp_sw_if_index))
     {
 	return (!0);
-    }
-    else if (rpath->frp_flags & FIB_ROUTE_PATH_ATTACHED ||
-             rpath->frp_flags & FIB_ROUTE_PATH_GLEAN)
-    {
-        return (!0);
     }
     return (0);
 }
@@ -1580,7 +1562,7 @@ fib_entry_flags_update (const fib_entry_t *fib_entry,
         if ((esrc->fes_src == FIB_SOURCE_API) ||
             (esrc->fes_src == FIB_SOURCE_CLI))
         {
-            if (fib_path_is_attached(rpath))
+            if (fib_route_path_is_attached(rpath))
             {
                 esrc->fes_entry_flags |= FIB_ENTRY_FLAG_ATTACHED;
             }
