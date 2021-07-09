@@ -62,6 +62,7 @@
 #include <netinet/tcp.h>
 #include <math.h>
 #include <vppinfra/macros.h>
+#include <vppinfra/format_table.h>
 
 /** ANSI escape code. */
 #define ESC "\x1b"
@@ -244,6 +245,9 @@ typedef struct
 
   /** Macro tables for this session */
   clib_macro_main_t macro_main;
+
+  /** Session name */
+  u8 *name;
 } unix_cli_file_t;
 
 /** Resets the pager buffer and other data.
@@ -275,6 +279,7 @@ unix_cli_file_free (unix_cli_file_t * f)
 {
   vec_free (f->output_vector);
   vec_free (f->input_vector);
+  vec_free (f->name);
   unix_cli_pager_reset (f);
 }
 
@@ -2877,47 +2882,16 @@ unix_cli_file_add (unix_cli_main_t * cm, char *name, int fd)
 {
   unix_main_t *um = &unix_main;
   clib_file_main_t *fm = &file_main;
-  vlib_node_main_t *nm = &vlib_get_main ()->node_main;
   unix_cli_file_t *cf;
   clib_file_t template = { 0 };
   vlib_main_t *vm = um->vlib_main;
   vlib_node_t *n = 0;
-  u8 *file_desc = 0;
-
-  file_desc = format (0, "%s", name);
-
-  name = (char *) format (0, "unix-cli-%s", name);
 
   if (vec_len (cm->unused_cli_process_node_indices) > 0)
     {
-      uword l = vec_len (cm->unused_cli_process_node_indices);
-      int i;
-      vlib_main_t *this_vlib_main;
-      u8 *old_name = 0;
-
-      /*
-       * Nodes are bulk-copied, so node name pointers are shared.
-       * Find the cli node in all graph replicas, and give all of them
-       * the same new name.
-       * Then, throw away the old shared name-vector.
-       */
-      for (i = 0; i < vlib_get_n_threads (); i++)
-	{
-	  this_vlib_main = vlib_get_main_by_index (i);
-	  if (this_vlib_main == 0)
-	    continue;
-	  n = vlib_get_node (this_vlib_main,
-			     cm->unused_cli_process_node_indices[l - 1]);
-	  old_name = n->name;
-	  n->name = (u8 *) name;
-	}
-      ASSERT (old_name);
-      hash_unset (nm->node_by_name, old_name);
-      hash_set (nm->node_by_name, name, n->index);
-      vec_free (old_name);
+      n = vlib_get_node (vm, vec_pop (cm->unused_cli_process_node_indices));
 
       vlib_node_set_state (vm, n->index, VLIB_NODE_STATE_POLLING);
-      vec_set_len (cm->unused_cli_process_node_indices, l - 1);
     }
   else
     {
@@ -2926,19 +2900,18 @@ unix_cli_file_add (unix_cli_main_t * cm, char *name, int fd)
 	.type = VLIB_NODE_TYPE_PROCESS,
 	.process_log2_n_stack_bytes = 18,
       };
+      static u32 count = 0;
 
       vlib_worker_thread_barrier_sync (vm);
 
-      vlib_register_node (vm, &r, "%v", name);
-      vec_free (name);
+      vlib_register_node (vm, &r, "unix-cli-process-%u", count++);
 
       n = vlib_get_node (vm, r.index);
       vlib_worker_thread_node_runtime_update ();
       vlib_worker_thread_barrier_release (vm);
     }
 
-  pool_get (cm->cli_file_pool, cf);
-  clib_memset (cf, 0, sizeof (*cf));
+  pool_get_zero (cm->cli_file_pool, cf);
   clib_macro_init (&cf->macro_main);
 
   template.read_function = unix_cli_read_ready;
@@ -2946,8 +2919,9 @@ unix_cli_file_add (unix_cli_main_t * cm, char *name, int fd)
   template.error_function = unix_cli_error_detected;
   template.file_descriptor = fd;
   template.private_data = cf - cm->cli_file_pool;
-  template.description = file_desc;
+  template.description = format (0, "%s", name);
 
+  cf->name = format (0, "unix-cli-%s", name);
   cf->process_node_index = n->index;
   cf->clib_file_index = clib_file_add (fm, &template);
   cf->output_vector = 0;
@@ -3671,7 +3645,8 @@ unix_cli_show_terminal (vlib_main_t * vm,
 
   n = vlib_get_node (vm, cf->process_node_index);
 
-  vlib_cli_output (vm, "Terminal name:   %v\n", n->name);
+  vlib_cli_output (vm, "Terminal name:   %v\n", cf->name);
+  vlib_cli_output (vm, "Terminal node:   %v\n", n->name);
   vlib_cli_output (vm, "Terminal mode:   %s\n", cf->line_mode ?
 		   "line-by-line" : "char-by-char");
   vlib_cli_output (vm, "Terminal width:  %d\n", cf->width);
@@ -3736,30 +3711,33 @@ unix_cli_show_cli_sessions (vlib_main_t * vm,
 {
   unix_cli_main_t *cm = &unix_cli_main;
   clib_file_main_t *fm = &file_main;
+  table_t table = {}, *t = &table;
   unix_cli_file_t *cf;
   clib_file_t *uf;
-  vlib_node_t *n;
 
-  vlib_cli_output (vm, "%-5s %-5s %-20s %s", "PNI", "FD", "Name", "Flags");
+  table_add_header_col (t, 4, "PNI  ", "FD   ", "Name", "Flags");
 
 #define fl(x, y) ( (x) ? toupper((y)) : tolower((y)) )
-  /* *INDENT-OFF* */
-  pool_foreach (cf, cm->cli_file_pool)  {
-    uf = pool_elt_at_index (fm->file_pool, cf->clib_file_index);
-    n = vlib_get_node (vm, cf->process_node_index);
-    vlib_cli_output (vm,
-		     "%-5d %-5d %-20v %c%c%c%c%c\n",
-		     cf->process_node_index,
-		     uf->file_descriptor,
-		     n->name,
-		     fl (cf->is_interactive, 'i'),
-		     fl (cf->is_socket, 's'),
-		     fl (cf->line_mode, 'l'),
-		     fl (cf->has_epipe, 'p'),
-		     fl (cf->ansi_capable, 'a'));
-  }
-  /* *INDENT-ON* */
+  int i = 0;
+  pool_foreach (cf, cm->cli_file_pool)
+    {
+      int j = 0;
+
+      uf = pool_elt_at_index (fm->file_pool, cf->clib_file_index);
+      table_format_cell (t, i, j++, "%u", cf->process_node_index);
+      table_format_cell (t, i, j++, "%u", uf->file_descriptor);
+      table_format_cell (t, i, j++, "%v", cf->name);
+      table_format_cell (t, i++, j++, "%c%c%c%c%c",
+			 fl (cf->is_interactive, 'i'), fl (cf->is_socket, 's'),
+			 fl (cf->line_mode, 'l'), fl (cf->has_epipe, 'p'),
+			 fl (cf->ansi_capable, 'a'));
+    }
 #undef fl
+
+  t->default_body.align = TTAA_LEFT;
+  t->default_header_col.align = TTAA_LEFT;
+  vlib_cli_output (vm, "%U", format_table, t);
+  table_free (t);
 
   return 0;
 }
