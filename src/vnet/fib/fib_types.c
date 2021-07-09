@@ -260,6 +260,20 @@ fib_prefix_is_host (const fib_prefix_t *prefix)
     return (0);
 }
 
+int
+fib_prefix_is_ip (const fib_prefix_t *prefix)
+{
+    switch (prefix->fp_proto)
+    {
+    case FIB_PROTOCOL_IP4:
+    case FIB_PROTOCOL_IP6:
+        return (!0);
+    case FIB_PROTOCOL_MPLS:
+	return (0);
+    }
+    return (0);
+}
+
 void
 fib_prefix_normalize (const fib_prefix_t *p,
                       fib_prefix_t *out)
@@ -751,4 +765,37 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
     }
 
     return (1);
+}
+
+/*
+ * Return true if the path is attached
+ */
+int
+fib_route_path_is_attached (const fib_route_path_t *rpath)
+{
+    /*
+     * DVR paths are not attached, since we are not playing the
+     * L3 game with these
+     */
+    if (rpath->frp_flags & (FIB_ROUTE_PATH_DVR |
+                            FIB_ROUTE_PATH_UDP_ENCAP))
+    {
+        return (0);
+    }
+
+    /*
+     * - All zeros next-hop
+     * - a valid interface
+     */
+    if (ip46_address_is_zero(&rpath->frp_addr) &&
+	(~0 != rpath->frp_sw_if_index))
+    {
+	return (!0);
+    }
+    else if (rpath->frp_flags & FIB_ROUTE_PATH_ATTACHED ||
+             rpath->frp_flags & FIB_ROUTE_PATH_GLEAN)
+    {
+        return (!0);
+    }
+    return (0);
 }

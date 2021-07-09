@@ -264,6 +264,7 @@ extern int fib_prefix_is_cover(const fib_prefix_t *p1,
  * \brief Return true is the prefix is a host prefix
  */
 extern int fib_prefix_is_host(const fib_prefix_t *p);
+extern int fib_prefix_is_ip(const fib_prefix_t *p);
 extern u8 fib_prefix_get_host_length (fib_protocol_t proto);
 
 /**
@@ -618,6 +619,11 @@ extern uword unformat_fib_route_path(unformat_input_t * input, va_list * args);
  * Format route path flags
  */
 extern u8 * format_fib_route_path(u8 *s, va_list *ap);
+
+/*
+ * Return true if the path is attached
+ */
+extern int fib_route_path_is_attached (const fib_route_path_t *rpath);
 
 /**
  * A help string to list the FIB path options
