@@ -318,7 +318,13 @@ static_always_inline void vnet_interface_pcap_tx_trace
 	sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 
       if (vnet_is_packet_pcaped (pp, b0, sw_if_index))
-	pcap_add_buffer (&pp->pcap_main, vm, bi0, pp->max_bytes_per_pkt);
+	{
+	  if (PREDICT_TRUE ((b0->flags & VNET_BUFFER_F_PCAP_TX_TRACE) == 0))
+	    {
+	      b0->flags |= VNET_BUFFER_F_PCAP_TX_TRACE;
+	      pcap_add_buffer (&pp->pcap_main, vm, bi0, pp->max_bytes_per_pkt);
+	    }
+	}
     }
 }
 
