@@ -15,6 +15,7 @@
  *------------------------------------------------------------------
  */
 
+#include <vlibmemory/api.h>
 #include <vlib/vlib.h>
 #include <vppinfra/ring.h>
 #include <vlib/unix/unix.h>
@@ -1240,6 +1241,25 @@ avf_op_program_flow (vlib_main_t *vm, avf_device_t *ad, int is_create,
 }
 
 static void
+avf_process_signal_event_safe_i (avf_process_req_t *req)
+{
+  vlib_main_t *vm = vlib_get_main ();
+
+  ASSERT (vlib_get_thread_index () == 0);
+  vlib_process_signal_event (vm, req->calling_process_index, 0, 0);
+}
+
+static void
+avf_process_signal_event_safe (avf_process_req_t *req)
+{
+  if (vlib_get_thread_index () != 0)
+    vl_api_rpc_call_main_thread (avf_process_signal_event_safe_i, (u8 *) req,
+				 sizeof (*req));
+  else
+    avf_process_signal_event_safe_i (req);
+}
+
+static void
 avf_process_handle_request (vlib_main_t * vm, avf_process_req_t * req)
 {
   avf_device_t *ad = avf_get_device (req->dev_instance);
@@ -1257,7 +1277,7 @@ avf_process_handle_request (vlib_main_t * vm, avf_process_req_t * req)
     clib_panic ("BUG: unknown avf proceess request type");
 
   if (req->calling_process_index != avf_process_node.index)
-    vlib_process_signal_event (vm, req->calling_process_index, 0, 0);
+    avf_process_signal_event_safe_i (req);
 }
 
 static clib_error_t *
