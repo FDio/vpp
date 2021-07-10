@@ -1239,7 +1239,7 @@ avf_op_program_flow (vlib_main_t *vm, avf_device_t *ad, int is_create,
 			 rule, rule_len, program_status, status_len);
 }
 
-static void 
+static void
 avf_process_signal_event_safe_i (avf_process_req_t * req)
 {
   vlib_main_t *vm = vlib_get_main ();
@@ -1248,7 +1248,7 @@ avf_process_signal_event_safe_i (avf_process_req_t * req)
   vlib_process_signal_event (vm, req->calling_process_index, 0, 0);
 }
 
-static void 
+static void
 avf_process_signal_event_safe (avf_process_req_t * req)
 {
   if (vlib_get_thread_index () != 0)
