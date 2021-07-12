@@ -513,14 +513,13 @@ clib_mem_vm_unmap (void *base)
   uword size, sys_page_sz = 1ULL << mm->log2_page_sz;
   clib_mem_vm_map_hdr_t *hdr = base - sys_page_sz;;
 
+  map_lock ();
   if (mprotect (hdr, sys_page_sz, PROT_READ | PROT_WRITE) != 0)
-    return CLIB_MEM_ERROR;
+    goto out;
 
   size = hdr->num_pages << hdr->log2_page_sz;
   if (munmap ((void *) hdr->base_addr, size) != 0)
-    return CLIB_MEM_ERROR;
-
-  map_lock ();
+    goto out;
 
   if (hdr->next)
     {
@@ -546,6 +545,9 @@ clib_mem_vm_unmap (void *base)
     return CLIB_MEM_ERROR;
 
   return 0;
+out:
+  map_unlock ();
+  return CLIB_MEM_ERROR;
 }
 
 __clib_export void
