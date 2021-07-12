@@ -1648,6 +1648,9 @@ show_clock_command_fn (vlib_main_t * vm,
 		   verbose, format_clib_timebase_time,
 		   clib_timebase_now (tb));
 
+  if (vm->time_offset != 0.0)
+    vlib_cli_output (vm, "Time advanced for %.6f seconds", vm->time_offset);
+
   if (vlib_get_n_threads () == 1)
     return 0;
 
@@ -1678,6 +1681,38 @@ VLIB_CLI_COMMAND (f_command, static) =
   .function = show_clock_command_fn,
 };
 /* *INDENT-ON* */
+
+static clib_error_t *
+clock_advance_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			  vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  f64 advance = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return clib_error_return (0, "Please specify number of seconds");
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%f", &advance))
+	;
+      else
+	{
+	  unformat_free (line_input);
+	  return clib_error_return (0, "invalid input");
+	}
+    }
+  unformat_free (line_input);
+
+  vm->time_offset += advance;
+  return 0;
+}
+
+VLIB_CLI_COMMAND (clock_advance_command, static) = {
+  .path = "clock advance",
+  .short_help = "clock advance",
+  .function = clock_advance_command_fn,
+};
 
 vlib_thread_main_t *
 vlib_get_thread_main_not_inline (void)
