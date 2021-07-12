@@ -216,13 +216,20 @@ clib_bitmap_get_no_check (uword * ai, uword i)
   return 0 != ((ai[i0] >> i1) & 1);
 }
 
+/** Gets the ith through ith + n_bits bit values from a bitmap
+    The wanted bits cannot cross two words.
+	@param ai - pointer to bitmap
+	@param i - the first bit position to retrieve
+	@param n_bits - the number of bit positions to retrieve
+	@return the indicated range of bits
+ */
 always_inline uword
 clib_bitmap_get_multiple_no_check (uword * ai, uword i, uword n_bits)
 {
   uword i0 = i / BITS (ai[0]);
   uword i1 = i % BITS (ai[0]);
   ASSERT (i1 + n_bits <= BITS (uword));
-  return 0 != ((ai[i0] >> i1) & pow2_mask (n_bits));
+  return (ai[i0] >> i1) & pow2_mask (n_bits);
 }
 
 /** Gets the ith through ith + n_bits bit values from a bitmap
@@ -475,13 +482,6 @@ always_inline uword *clib_bitmap_andnot (uword * ai, uword * bi);
 
     @param ai - pointer to the destination bitmap
     @param bi - pointer to the source bitmap
-    @returns ai = ai & ~bi. ai is modified, bi is not modified
-*/
-always_inline uword *clib_bitmap_or (uword * ai, uword * bi);
-/** Logical operator across two bitmaps
-
-    @param ai - pointer to the destination bitmap
-    @param bi - pointer to the source bitmap
     @returns ai = ai or bi. ai is modified, bi is not modified
 */
 always_inline uword *clib_bitmap_or (uword * ai, uword * bi);
@@ -495,29 +495,29 @@ always_inline uword *clib_bitmap_or (uword * ai, uword * bi);
 always_inline uword *clib_bitmap_xor (uword * ai, uword * bi);
 
 /* ALU function definition macro for functions taking two bitmaps. */
-#define _(name, body, check_zero)				\
-always_inline uword *						\
-clib_bitmap_##name (uword * ai, uword * bi)			\
-{								\
-  uword i, a, b, bi_len, n_trailing_zeros;			\
-								\
-  n_trailing_zeros = 0;						\
-  bi_len = vec_len (bi);					\
-  if (bi_len > 0)						\
-    clib_bitmap_vec_validate (ai, bi_len - 1);			\
-  for (i = 0; i < vec_len (ai); i++)				\
-    {								\
-      a = ai[i];						\
-      b = i < bi_len ? bi[i] : 0;				\
-      do { body; } while (0);					\
-      ai[i] = a;						\
-      if (check_zero)						\
-	n_trailing_zeros = a ? 0 : (n_trailing_zeros + 1);	\
-    }								\
-  if (check_zero)						\
-    _vec_len (ai) -= n_trailing_zeros;				\
-  return ai;							\
-}
+#define _(name, body, check_zero)                                             \
+  always_inline uword *clib_bitmap_##name (uword *ai, uword *bi)              \
+  {                                                                           \
+    uword i, a, b, bi_len, n_trailing_zeros;                                  \
+                                                                              \
+    bi_len = vec_len (bi);                                                    \
+    if (bi_len > 0)                                                           \
+      clib_bitmap_vec_validate (ai, bi_len - 1);                              \
+    for (i = 0; i < vec_len (ai); i++)                                        \
+      {                                                                       \
+	a = ai[i];                                                            \
+	b = i < bi_len ? bi[i] : 0;                                           \
+	do                                                                    \
+	  {                                                                   \
+	    body;                                                             \
+	  }                                                                   \
+	while (0);                                                            \
+	ai[i] = a;                                                            \
+      }                                                                       \
+    if (check_zero)                                                           \
+      ai = _clib_bitmap_remove_trailing_zeros (ai);                           \
+    return ai;                                                                \
+  }
 
 /* ALU functions: */
 /* *INDENT-OFF* */
