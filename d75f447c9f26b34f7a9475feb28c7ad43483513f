@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "3f8cda63_86677162",
+        "filename": "src/vpp-api/python/setup.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-07-12T07:25:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "79aceab9_e31e4294",
+      "range": {
+        "startLine": 25,
+        "startChar": 5,
+        "endLine": 25,
+        "endChar": 20
+      },
+      "revId": "d75f447c9f26b34f7a9475feb28c7ad43483513f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ce533a12_b1fdbd99",
         "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
         "patchSetId": 1
@@ -45,6 +69,30 @@
       "revId": "d75f447c9f26b34f7a9475feb28c7ad43483513f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5afb2b9b_d33d6f7e",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 429,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-07-12T07:25:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ce533a12_b1fdbd99",
+      "range": {
+        "startLine": 429,
+        "startChar": 8,
+        "endLine": 429,
+        "endChar": 55
+      },
+      "revId": "d75f447c9f26b34f7a9475feb28c7ad43483513f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
