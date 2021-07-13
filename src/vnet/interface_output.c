@@ -47,7 +47,8 @@
 #include <vnet/feature/feature.h>
 #include <vnet/classify/pcap_classify.h>
 #include <vnet/interface_output.h>
-#include <vppinfra/vector_funcs.h>
+#include <vppinfra/vector/mask_compare.h>
+#include <vppinfra/vector/compress.h>
 
 typedef struct
 {

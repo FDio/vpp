@@ -4,7 +4,8 @@
 
 #include <vppinfra/clib.h>
 #include <vlib/vlib.h>
-#include <vppinfra/vector_funcs.h>
+#include <vppinfra/vector/mask_compare.h>
+#include <vppinfra/vector/compress.h>
 
 static_always_inline u32
 enqueue_one (vlib_main_t *vm, vlib_node_runtime_t *node, u64 *used_elt_bmp,
