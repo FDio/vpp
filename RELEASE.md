@@ -1,5 +1,6 @@
 # Release Notes    {#release_notes}
 
+* @subpage release_notes_21011
 * @subpage release_notes_2101
 * @subpage release_notes_2009
 * @subpage release_notes_20051
@@ -30,6 +31,14 @@
 * @subpage release_notes_1701
 * @subpage release_notes_1609
 * @subpage release_notes_1606
+
+@page release_notes_21011 Release notes for VPP 21.01.1
+
+This is bug fix release.
+
+For the full list of fixed issues please refer to:
+- fd.io [JIRA](https://jira.fd.io)
+- git [commit log](https://git.fd.io/vpp/log/?h=stable/2101)
 
 @page release_notes_2101 Release notes for VPP 21.01
 
