@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "49f587e8_0eb693ab",
+        "filename": "src/vat/api_format.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 2609,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2021-07-13T10:05:18Z",
+      "side": 0,
+      "message": "CSIT is still using this, for scale tests where adding routes one by one using PAPI takes too long.",
+      "range": {
+        "startLine": 2609,
+        "startChar": 0,
+        "endLine": 2609,
+        "endChar": 20
+      },
+      "revId": "b946b209b9c4d75af5b49b6187ecb70bd658728e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
