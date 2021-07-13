@@ -65,6 +65,7 @@ memclnt_queue_callback (vlib_main_t * vm)
 {
   int i;
   api_main_t *am = vlibapi_get_main ();
+  int have_pending_rpcs;
 
   if (PREDICT_FALSE (vec_len (vl_api_queue_cursizes) !=
 		     1 + vec_len (am->vlib_private_rps)))
@@ -103,6 +104,11 @@ memclnt_queue_callback (vlib_main_t * vm)
 	  break;
 	}
     }
+
+  clib_spinlock_lock_if_init (&vm->pending_rpc_lock);
+  have_pending_rpcs = vec_len (vm->pending_rpc_requests) > 0;
+  clib_spinlock_unlock_if_init (&vm->pending_rpc_lock);
+
   if (vec_len (vm->pending_rpc_requests))
     {
       vm->queue_signal_pending = 1;
