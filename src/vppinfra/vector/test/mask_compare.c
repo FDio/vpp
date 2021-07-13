@@ -3,8 +3,8 @@
  */
 
 #include <vppinfra/format.h>
-#include <vppinfra/vector_funcs.h>
-#include <vppinfra/test_vector_funcs.h>
+#include <vppinfra/vector/test/test.h>
+#include <vppinfra/vector/mask_compare.h>
 
 __clib_test_fn void
 clib_mask_compare_u16_wrapper (u16 v, u16 *a, u64 *mask, u32 n_elts)

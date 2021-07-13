@@ -3,7 +3,7 @@
  */
 
 #include <vppinfra/format.h>
-#include <vppinfra/test_vector_funcs.h>
+#include <vppinfra/vector/test/test.h>
 
 test_registration_t *test_registrations[CLIB_MARCH_TYPE_N_VARIANTS] = {};
 

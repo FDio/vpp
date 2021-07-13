@@ -3,8 +3,8 @@
  */
 
 #include <vppinfra/format.h>
-#include <vppinfra/vector_funcs.h>
-#include <vppinfra/test_vector_funcs.h>
+#include <vppinfra/vector/test/test.h>
+#include <vppinfra/vector/compress.h>
 
 __clib_test_fn u32
 clib_compress_u32_wrapper (u32 *dst, u32 *src, u64 *mask, u32 n_elts)
