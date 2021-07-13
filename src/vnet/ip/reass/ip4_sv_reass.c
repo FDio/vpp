@@ -239,8 +239,8 @@ ip4_sv_reass_add_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
       (vm->trace_main.trace_buffer_pool, vlib_buffer_get_trace_index (b)))
     {
       // this buffer's trace is gone
-      b->flags &= ~VLIB_BUFFER_IS_TRACED;
-      return;
+      // b->flags &= ~VLIB_BUFFER_IS_TRACED;
+      // return;
     }
   ip4_sv_reass_trace_t *t = vlib_add_trace (vm, node, b, sizeof (t[0]));
   if (reass)
