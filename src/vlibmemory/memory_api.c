@@ -103,6 +103,7 @@ memclnt_queue_callback (vlib_main_t * vm)
 	  break;
 	}
     }
+  clib_spinlock_lock_if_init (&vm->pending_rpc_lock);
   if (vec_len (vm->pending_rpc_requests))
     {
       vm->queue_signal_pending = 1;
@@ -111,6 +112,7 @@ memclnt_queue_callback (vlib_main_t * vm)
 				 /* event_type */ QUEUE_SIGNAL_EVENT,
 				 /* event_data */ 0);
     }
+  clib_spinlock_unlock_if_init (&vm->pending_rpc_lock);
 }
 
 /*
