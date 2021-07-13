@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0f346571_32e8397e",
+        "filename": "src/vlibmemory/memory_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 107,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-07-13T18:34:06Z",
+      "side": 1,
+      "message": "Let\u0027s minimize the amount of time we hold the lock. An idea would be to add a new variable (say have_pending_rpcs) and between the locks initialize it to vec_len(vm-\u003epending_rpc_requests).",
+      "range": {
+        "startLine": 107,
+        "startChar": 2,
+        "endLine": 107,
+        "endChar": 41
+      },
+      "revId": "7f4792326cb469cb00af7f7bdc77631fbd060251",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
