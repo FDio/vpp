@@ -1,0 +1,240 @@
+#!/usr/bin/perl
+
+use Data::Dumper;
+use Env;
+use File::Glob ':glob';
+
+#
+# Use this script to determine the reviewers for a given commit, like so:
+#
+# ayourtch@ayourtch-lnx:~/vpp$ ./extras/scripts/vpp-review HEAD
+# commit 7ea63c597f82412b68b5a565df10e13669b1decb
+# Author: Andrew Yourtchenko <ayourtch@gmail.com>
+# Date:   Wed Jul 14 22:44:05 2021 +0200
+#
+#     misc: experimental script to get the list of the reviewers for a commit
+#
+#     accepts zero or one argument (the commit hash), and outputs
+#     the detected components, the component maintainers,
+#     and the final suggested reviewer list
+#
+#     Change-Id: Ief671fe837c6201bb11fd05d02af881822b0bb33
+#     Type: docs
+#     Signed-off-by: Andrew Yourtchenko <ayourtch@gmail.com>
+#
+# :000000 100755 000000000 635dde59f A	extras/scripts/vpp-review
+#
+#
+# Components of files in the commit:
+#     misc: extras/scripts/vpp-review
+#
+# Component misc maintainers:
+#    vpp-dev Mailing List <vpp-dev@fd.io>
+#
+#
+# Final reviewer list:
+#    vpp-dev Mailing List <vpp-dev@fd.io>
+# ayourtch@ayourtch-lnx:~/vpp$
+#
+
+#
+# Read the maintainers file into a hash, indexed by short component name.
+#
+sub read_maintainers() {
+        open(F, "MAINTAINERS") || die("Could not open MAINTAINERS file");
+        my $short_name = "";
+        my $long_name = "";
+        my $in_component = 0;
+	my $maintainers = [];
+	my $paths = [];
+	my $exclude_paths = [];
+	my $feature_yaml = [];
+	my $comments = [];
+        my $out = {};
+        while (<F>) {
+                chomp();
+                my $aLine = $_;
+                # print ("LINE: $aLine\n");
+                if (/^([A-Z]):\s+(.*)$/) {
+                        my $aLetter = $1;
+                        my $aValue = $2;
+			# print ("LETTER: $aLetter, VALUE: $aValue\n");
+                        if ($aLetter eq "I") {
+                                $short_name = $aValue;
+                        }
+			elsif ($aLetter eq "M") {
+                                push(@{$maintainers}, $aValue);
+                        }
+                        elsif ($aLetter eq "F") {
+                                push(@{$paths}, $aValue);
+                        }
+                        elsif ($aLetter eq "E") {
+                                push(@{$exclude_paths}, $aValue);
+                        }
+                        elsif ($aLetter eq "Y") {
+                                push(@{$feature_yaml}, $aValue);
+			}
+                        elsif ($aLetter eq "C") {
+                                push(@{$comments}, $aValue);
+                        } else {
+                           print ("LETTER: $aLetter, VALUE: $aValue\n");
+			}
+                        # FIXME: deal with all the other letters here
+                } elsif (/^(\s*)$/) {
+                        if ($in_component) {
+                                $in_component = 0;
+                                if ($short_name ne "") {
+                                        my $comp = {};
+                                        $comp->{'short_name'} = $short_name;
+                                        $comp->{'name'} = $long_name;
+					$comp->{'maintainers'} = $maintainers;
+					$comp->{'paths'} = $paths;
+					$comp->{'comments'} = $comments;
+					$comp->{'exclude_paths'} = $exclude_paths;
+					$comp->{'feature_yaml'} = $feature_yaml;
+                                        $out->{$short_name} = $comp;
+                                        # print("FEATURE: $short_name => $long_name\n");
+                                        $short_name = "";
+                                        $long_name = "";
+					$maintainers = [];
+					$paths = [];
+					$exclude_paths = [];
+					$comments = [];
+					$feature_yaml = [];
+                                }
+                        }
+                        # print ("END\n");
+                } elsif (/^([^\s].*)$/) {
+                        $in_component = 1;
+                        $long_name = $1;
+                }
+        }
+
+	if ($in_component) {
+		$in_component = 0;
+		if ($short_name ne "") {
+			my $comp = {};
+			$comp->{'short_name'} = $short_name;
+		       	$comp->{'name'} = $long_name;
+			$comp->{'maintainers'} = $maintainers;
+			$comp->{'paths'} = $paths;
+			$comp->{'comments'} = $comments;
+			$comp->{'exclude_paths'} = $exclude_paths;
+			$comp->{'feature_yaml'} = $feature_yaml;
+			$out->{$short_name} = $comp;
+		}
+
+	}
+
+        return($out);
+}
+
+sub match_my_path {
+	my $p = $_[0];
+	my $apath = $_[1];
+	my $root = $_[2];
+
+	my $p1 = $p;
+	$p1 =~ s#\*#[^/]*#g;
+
+	my $pattern = "$root$p1";
+
+	if ($apath =~ /$pattern/) {
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
+sub match_path_to_list {
+	my $path_list = $_[0];
+	my $apath = $_[1];
+	my $root = $_[2];
+	foreach $p (@{$path_list}) {
+		if (match_my_path($p, $apath, $root)) {
+				return 1;
+		}
+	}
+	return 0;
+}
+
+sub match_path_to_comp_hash {
+	my $chash = $_[0];
+	my $apath = $_[1];
+	my $root = $_[2];
+	my $is_included = match_path_to_list($chash->{'paths'}, $apath, $root);
+	my $is_excluded = match_path_to_list($chash->{'exclude_paths'}, $apath, $root);
+	return ($is_included && !$is_excluded);
+}
+
+
+sub match_path {
+	my $components = $_[0];
+	my $apath = $_[1];
+	my $root = $_[2];
+	my $out = [];
+
+        foreach $aCompName (keys %{$components}) {
+		my $chash = $components->{$aCompName};
+		if (match_path_to_comp_hash($chash, $apath, $root)) {
+			push(@{$out}, $aCompName);
+		}
+	}
+	my $out1 = $out;
+
+	if (scalar @{$out} > 1) {
+		# not very efficient way to filter out "misc" but oh well.
+		$out1 = [];
+		foreach $aval (@{$out}) {
+			if ($aval ne "misc") {
+				push(@{$out1}, $aval);
+			}
+		}
+	}
+
+	return ($out1);
+}
+
+my $commit_id = $ARGV[0];
+my $commit_log = `git log --raw -n 1 $commit_id`;
+my $files = [];
+foreach my $aLine (split(/[\r\n]+/, $commit_log)) {
+	if ($aLine =~ /^:[0-7]+\s+[0-7]+\s+[0-9a-f]+\s+[0-9a-f]+\s+\S+\s+(\S+)$/) {
+		push(@{$files}, $1);
+	}
+}
+
+my $comp = read_maintainers();
+my $matched_comps = {};
+my $matched_reviewers = {};
+
+print("$commit_log\n\n");
+
+print("Components of files in the commit:\n");
+
+foreach $aFile (@{$files}) {
+	my $matches = match_path($comp, $aFile, '');
+        my $matches_str = join(" ", @{$matches});
+	print ("    $matches_str: $aFile\n");
+
+	foreach my $aComp (@{$matches}) {
+		$matched_comps->{$aComp} = 1;
+	}
+}
+
+foreach my $aKey (keys %{$matched_comps}) {
+	print("\nComponent $aKey maintainers:\n");
+	foreach my $aRV (@{$comp->{$aKey}->{'maintainers'}}) {
+		print("   $aRV\n");
+		$matched_reviewers->{$aRV} = 1;
+	}
+}
+
+print("\n\nFinal reviewer list:\n");
+
+foreach my $aRV (keys %{$matched_reviewers}) {
+	print("   $aRV\n");
+}
+# print Dumper(\$comp);
+
+
