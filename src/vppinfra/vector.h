@@ -42,11 +42,6 @@
 
 /* Vector types. */
 
-#if defined (__MMX__) || defined (__IWMMXT__) || defined (__aarch64__) \
-  || defined (__i686__)
-#define CLIB_HAVE_VEC64
-#endif
-
 #if defined (__aarch64__) && defined(__ARM_NEON) || defined (__i686__)
 #define CLIB_HAVE_VEC128
 #endif
@@ -70,17 +65,9 @@
 #define CLIB_HAVE_VEC512
 #endif
 
-/* 128 implies 64 */
-#ifdef CLIB_HAVE_VEC128
-#define CLIB_HAVE_VEC64
-#endif
-
 #define _vector_size(n) __attribute__ ((vector_size (n)))
 #define _vector_size_unaligned(n) __attribute__ ((vector_size (n),  __aligned__ (1)))
 
-#define foreach_vec64i  _(i,8,8)  _(i,16,4)  _(i,32,2)
-#define foreach_vec64u  _(u,8,8)  _(u,16,4)  _(u,32,2)
-#define foreach_vec64f  _(f,32,2)
 #define foreach_vec128i _(i,8,16) _(i,16,8)  _(i,32,4)  _(i,64,2)
 #define foreach_vec128u _(u,8,16) _(u,16,8)  _(u,32,4)  _(u,64,2)
 #define foreach_vec128f _(f,32,4) _(f,64,2)
@@ -92,17 +79,17 @@
 #define foreach_vec512f _(f,32,16) _(f,64,8)
 
 #if defined (CLIB_HAVE_VEC512)
-#define foreach_int_vec foreach_vec64i foreach_vec128i foreach_vec256i foreach_vec512i
-#define foreach_uint_vec foreach_vec64u foreach_vec128u foreach_vec256u foreach_vec512u
-#define foreach_float_vec foreach_vec64f foreach_vec128f foreach_vec256f foreach_vec512f
+#define foreach_int_vec foreach_vec128i foreach_vec256i foreach_vec512i
+#define foreach_uint_vec foreach_vec128u foreach_vec256u foreach_vec512u
+#define foreach_float_vec foreach_vec128f foreach_vec256f foreach_vec512f
 #elif defined (CLIB_HAVE_VEC256)
-#define foreach_int_vec foreach_vec64i foreach_vec128i foreach_vec256i
-#define foreach_uint_vec foreach_vec64u foreach_vec128u foreach_vec256u
-#define foreach_float_vec foreach_vec64f foreach_vec128f foreach_vec256f
+#define foreach_int_vec foreach_vec128i foreach_vec256i
+#define foreach_uint_vec foreach_vec128u foreach_vec256u
+#define foreach_float_vec foreach_vec128f foreach_vec256f
 #else
-#define foreach_int_vec foreach_vec64i foreach_vec128i
-#define foreach_uint_vec foreach_vec64u foreach_vec128u
-#define foreach_float_vec foreach_vec64f foreach_vec128f
+#define foreach_int_vec foreach_vec128i
+#define foreach_uint_vec foreach_vec128u
+#define foreach_float_vec foreach_vec128f
 #endif
 
 #define foreach_vec foreach_int_vec foreach_uint_vec foreach_float_vec
@@ -118,42 +105,10 @@ typedef union {	  \
   t##s as_##t##s[c];	  \
 } t##s##x##c##_union_t;
 
-  foreach_vec64i foreach_vec64u foreach_vec64f
   foreach_vec128i foreach_vec128u foreach_vec128f
   foreach_vec256i foreach_vec256u foreach_vec256f
   foreach_vec512i foreach_vec512u foreach_vec512f
 #undef _
-
-/* Vector word sized types. */
-#ifndef CLIB_VECTOR_WORD_BITS
-#ifdef CLIB_HAVE_VEC128
-#define CLIB_VECTOR_WORD_BITS 128
-#else
-#define CLIB_VECTOR_WORD_BITS 64
-#endif
-#endif /* CLIB_VECTOR_WORD_BITS */
-
-/* Vector word sized types. */
-#if CLIB_VECTOR_WORD_BITS == 128
-typedef i8 i8x _vector_size (16);
-typedef i16 i16x _vector_size (16);
-typedef i32 i32x _vector_size (16);
-typedef i64 i64x _vector_size (16);
-typedef u8 u8x _vector_size (16);
-typedef u16 u16x _vector_size (16);
-typedef u32 u32x _vector_size (16);
-typedef u64 u64x _vector_size (16);
-#endif
-#if CLIB_VECTOR_WORD_BITS == 64
-typedef i8 i8x _vector_size (8);
-typedef i16 i16x _vector_size (8);
-typedef i32 i32x _vector_size (8);
-typedef i64 i64x _vector_size (8);
-typedef u8 u8x _vector_size (8);
-typedef u16 u16x _vector_size (8);
-typedef u32 u32x _vector_size (8);
-typedef u64 u64x _vector_size (8);
-#endif
 
 /* universal inlines */
 #define _(t, s, c) \
