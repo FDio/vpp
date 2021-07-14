@@ -77,14 +77,6 @@ _(u16x8, u16, left, vslo)
 _(i16x8, i16, left, vslo)
 _(u16x8, u16, right, vsro) _(i16x8, i16, right, vsro)
 #undef _
-     always_inline
-       u32
-     u32x4_get0 (u32x4 x)
-{
-  u32x4_union_t y;
-  y.as_u32x4 = x;
-  return y.as_u32[3];
-}
 
 /* Interleave. */
 #define _(t,it,lh,f)						\
@@ -127,17 +119,6 @@ _signed_binop (32, 4, is_equal, vcmpequw)
 {
   u16x8 zero = { 0 };
   return u16x8_is_equal (x, zero);
-}
-
-always_inline u32
-u32x4_zero_byte_mask (u32x4 x)
-{
-  u32x4 cmp = u32x4_is_zero (x);
-  u32x4 tmp = { 0x000f, 0x00f0, 0x0f00, 0xf000, };
-  cmp &= tmp;
-  cmp |= u32x4_word_shift_right (cmp, 2);
-  cmp |= u32x4_word_shift_right (cmp, 1);
-  return u32x4_get0 (cmp);
 }
 
 #endif /* included_vector_altivec_h */
