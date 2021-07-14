@@ -42,11 +42,6 @@
 
 /* Vector types. */
 
-#if defined (__MMX__) || defined (__IWMMXT__) || defined (__aarch64__) \
-  || defined (__i686__)
-#define CLIB_HAVE_VEC64
-#endif
-
 #if defined (__aarch64__) && defined(__ARM_NEON) || defined (__i686__)
 #define CLIB_HAVE_VEC128
 #endif
@@ -68,11 +63,6 @@
 
 #if defined (__AVX512BITALG__)
 #define CLIB_HAVE_VEC512
-#endif
-
-/* 128 implies 64 */
-#ifdef CLIB_HAVE_VEC128
-#define CLIB_HAVE_VEC64
 #endif
 
 #define _vector_size(n) __attribute__ ((vector_size (n)))
@@ -123,37 +113,6 @@ typedef union {	  \
   foreach_vec256i foreach_vec256u foreach_vec256f
   foreach_vec512i foreach_vec512u foreach_vec512f
 #undef _
-
-/* Vector word sized types. */
-#ifndef CLIB_VECTOR_WORD_BITS
-#ifdef CLIB_HAVE_VEC128
-#define CLIB_VECTOR_WORD_BITS 128
-#else
-#define CLIB_VECTOR_WORD_BITS 64
-#endif
-#endif /* CLIB_VECTOR_WORD_BITS */
-
-/* Vector word sized types. */
-#if CLIB_VECTOR_WORD_BITS == 128
-typedef i8 i8x _vector_size (16);
-typedef i16 i16x _vector_size (16);
-typedef i32 i32x _vector_size (16);
-typedef i64 i64x _vector_size (16);
-typedef u8 u8x _vector_size (16);
-typedef u16 u16x _vector_size (16);
-typedef u32 u32x _vector_size (16);
-typedef u64 u64x _vector_size (16);
-#endif
-#if CLIB_VECTOR_WORD_BITS == 64
-typedef i8 i8x _vector_size (8);
-typedef i16 i16x _vector_size (8);
-typedef i32 i32x _vector_size (8);
-typedef i64 i64x _vector_size (8);
-typedef u8 u8x _vector_size (8);
-typedef u16 u16x _vector_size (8);
-typedef u32 u32x _vector_size (8);
-typedef u64 u64x _vector_size (8);
-#endif
 
 /* universal inlines */
 #define _(t, s, c) \
