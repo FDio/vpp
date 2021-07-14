@@ -14,40 +14,10 @@
 ##############################################################################
 # Cache line size detection
 ##############################################################################
-if(CMAKE_CROSSCOMPILING)
-  message(STATUS "Cross-compiling - cache line size detection disabled")
-  set(VPP_LOG2_CACHE_LINE_SIZE 6)
-elseif(DEFINED VPP_LOG2_CACHE_LINE_SIZE)
+if(DEFINED VPP_LOG2_CACHE_LINE_SIZE)
   # Cache line size assigned via cmake args
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
-  file(READ "/proc/cpuinfo" cpuinfo)
-  string(REPLACE "\n" ";" cpuinfo ${cpuinfo})
-  foreach(l ${cpuinfo})
-    string(REPLACE ":" ";" l ${l})
-    list(GET l 0 name)
-    list(GET l 1 value)
-    string(STRIP ${name} name)
-    string(STRIP ${value} value)
-    if(${name} STREQUAL "CPU implementer")
-      set(CPU_IMPLEMENTER ${value})
-    endif()
-    if(${name} STREQUAL "CPU part")
-      set(CPU_PART ${value})
-    endif()
-  endforeach()
-  # Implementer 0x43 - Cavium
-  #  Part 0x0af - ThunderX2 is 64B, rest all are 128B
-  if (${CPU_IMPLEMENTER} STREQUAL "0x43")
-    if (${CPU_PART} STREQUAL "0x0af")
-      set(VPP_LOG2_CACHE_LINE_SIZE 6)
-    else()
-      set(VPP_LOG2_CACHE_LINE_SIZE 7)
-    endif()
-  else()
-      set(VPP_LOG2_CACHE_LINE_SIZE 6)
-  endif()
-  math(EXPR VPP_CACHE_LINE_SIZE "1 << ${VPP_LOG2_CACHE_LINE_SIZE}")
-  message(STATUS "ARM AArch64 CPU implementer ${CPU_IMPLEMENTER} part ${CPU_PART} cacheline size ${VPP_CACHE_LINE_SIZE}")
+  set(VPP_LOG2_CACHE_LINE_SIZE 7)
 else()
   set(VPP_LOG2_CACHE_LINE_SIZE 6)
 endif()
@@ -77,7 +47,7 @@ endif()
 macro(add_vpp_march_variant v)
   cmake_parse_arguments(ARG
     "OFF"
-    "N_PREFETCHES"
+    "N_PREFETCHES;LOG2_CACHE_PREFETCH_BYTES"
     "FLAGS"
     ${ARGN}
   )
@@ -97,6 +67,9 @@ macro(add_vpp_march_variant v)
     endforeach()
     if(ARG_N_PREFETCHES)
       string(APPEND fs " -DCLIB_N_PREFETCHES=${ARG_N_PREFETCHES}")
+    endif()
+    if(ARG_LOG2_CACHE_PREFETCH_BYTES)
+      string(APPEND fs " -DCLIB_LOG2_CACHE_PREFETCH_BYTES=${ARG_LOG2_CACHE_PREFETCH_BYTES}")
     endif()
     if(flags_ok)
       string(TOUPPER ${v} uv)
@@ -143,12 +116,14 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
   add_vpp_march_variant(qdf24xx
     FLAGS -march=armv8-a+crc+crypto -mtune=qdf24xx
     N_PREFETCHES 8
+    LOG2_CACHE_PREFETCH_BYTES 6
     OFF
   )
 
   add_vpp_march_variant(octeontx2
     FLAGS -march=armv8.2-a+crc+crypto+lse
     N_PREFETCHES 8
+    LOG2_CACHE_PREFETCH_BYTES 6
   )
 
   add_vpp_march_variant(thunderx2t99
@@ -159,11 +134,13 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
   add_vpp_march_variant(cortexa72
     FLAGS -march=armv8-a+crc+crypto -mtune=cortex-a72
     N_PREFETCHES 6
+    LOG2_CACHE_PREFETCH_BYTES 6
   )
 
   add_vpp_march_variant(neoversen1
     FLAGS -march=armv8.2-a+crc+crypto -mtune=neoverse-n1
     N_PREFETCHES 6
+    LOG2_CACHE_PREFETCH_BYTES 6
   )
 endif()
 
