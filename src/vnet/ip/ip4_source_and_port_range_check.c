@@ -107,8 +107,8 @@ check_adj_port_range_x1 (const protocol_port_range_dpo_t * ppr_dpo,
 
 
   for (i = 0; i < ppr_dpo->n_used_blocks; i++)
-    if (!u16x8_is_all_zero ((ppr_dpo->blocks[i].low.as_u16x8 >= key) &
-			    (ppr_dpo->blocks[i].hi.as_u16x8 <= key)))
+    if (!u16x8_is_all_zero ((ppr_dpo->blocks[i].low.as_u16x8 <= key) &
+			    (ppr_dpo->blocks[i].hi.as_u16x8 >= key)))
       return next;
 
   return IP4_SOURCE_AND_PORT_RANGE_CHECK_NEXT_DROP;
