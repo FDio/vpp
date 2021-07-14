@@ -18,6 +18,8 @@
 #ifndef __aesni_h__
 #define __aesni_h__
 
+typedef unsigned char u8x8 __attribute__ ((vector_size (8)));
+
 typedef enum
 {
   AES_KEY_128 = 0,
