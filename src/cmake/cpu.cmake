@@ -11,49 +11,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+macro(set_log2_cacheline_size var n)
+  if(${n} EQUAL 128)
+    set(${var} 7)
+  elseif(${n} EQUAL 64)
+    set(${var} 6)
+  else()
+     message(FATAL_ERROR "Cacheline size ${n} not supported")
+  endif()
+endmacro()
+
 ##############################################################################
-# Cache line size detection
+# Cache line size
 ##############################################################################
-if(CMAKE_CROSSCOMPILING)
-  message(STATUS "Cross-compiling - cache line size detection disabled")
-  set(VPP_LOG2_CACHE_LINE_SIZE 6)
-elseif(DEFINED VPP_LOG2_CACHE_LINE_SIZE)
+if(DEFINED VPP_CACHE_LINE_SIZE)
   # Cache line size assigned via cmake args
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
-  file(READ "/proc/cpuinfo" cpuinfo)
-  string(REPLACE "\n" ";" cpuinfo ${cpuinfo})
-  foreach(l ${cpuinfo})
-    string(REPLACE ":" ";" l ${l})
-    list(GET l 0 name)
-    list(GET l 1 value)
-    string(STRIP ${name} name)
-    string(STRIP ${value} value)
-    if(${name} STREQUAL "CPU implementer")
-      set(CPU_IMPLEMENTER ${value})
-    endif()
-    if(${name} STREQUAL "CPU part")
-      set(CPU_PART ${value})
-    endif()
-  endforeach()
-  # Implementer 0x43 - Cavium
-  #  Part 0x0af - ThunderX2 is 64B, rest all are 128B
-  if (${CPU_IMPLEMENTER} STREQUAL "0x43")
-    if (${CPU_PART} STREQUAL "0x0af")
-      set(VPP_LOG2_CACHE_LINE_SIZE 6)
-    else()
-      set(VPP_LOG2_CACHE_LINE_SIZE 7)
-    endif()
-  else()
-      set(VPP_LOG2_CACHE_LINE_SIZE 6)
-  endif()
-  math(EXPR VPP_CACHE_LINE_SIZE "1 << ${VPP_LOG2_CACHE_LINE_SIZE}")
-  message(STATUS "ARM AArch64 CPU implementer ${CPU_IMPLEMENTER} part ${CPU_PART} cacheline size ${VPP_CACHE_LINE_SIZE}")
+  set(VPP_CACHE_LINE_SIZE 128)
 else()
-  set(VPP_LOG2_CACHE_LINE_SIZE 6)
+  set(VPP_CACHE_LINE_SIZE 64)
 endif()
 
-set(VPP_LOG2_CACHE_LINE_SIZE ${VPP_LOG2_CACHE_LINE_SIZE}
-    CACHE STRING "Target CPU cache line size (power of 2)")
+set(VPP_CACHE_LINE_SIZE ${VPP_CACHE_LINE_SIZE}
+    CACHE STRING "Target CPU cache line size")
+
+set_log2_cacheline_size(VPP_LOG2_CACHE_LINE_SIZE ${VPP_CACHE_LINE_SIZE})
 
 ##############################################################################
 # Gnu Assembler AVX-512 bug detection
@@ -77,7 +59,7 @@ endif()
 macro(add_vpp_march_variant v)
   cmake_parse_arguments(ARG
     "OFF"
-    "N_PREFETCHES"
+    "N_PREFETCHES;CACHE_PREFETCH_BYTES"
     "FLAGS"
     ${ARGN}
   )
@@ -97,6 +79,10 @@ macro(add_vpp_march_variant v)
     endforeach()
     if(ARG_N_PREFETCHES)
       string(APPEND fs " -DCLIB_N_PREFETCHES=${ARG_N_PREFETCHES}")
+    endif()
+    if(ARG_CACHE_PREFETCH_BYTES)
+      set_log2_cacheline_size(log2 ${ARG_CACHE_PREFETCH_BYTES})
+      string(APPEND fs " -DCLIB_LOG2_CACHE_PREFETCH_BYTES=${log2}")
     endif()
     if(flags_ok)
       string(TOUPPER ${v} uv)
@@ -143,6 +129,7 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
   add_vpp_march_variant(qdf24xx
     FLAGS -march=armv8-a+crc+crypto -mtune=qdf24xx
     N_PREFETCHES 8
+    CACHE_PREFETCH_BYTES 64
     OFF
   )
 
@@ -154,16 +141,19 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
   add_vpp_march_variant(thunderx2t99
     FLAGS -march=armv8.1-a+crc+crypto -mtune=thunderx2t99
     N_PREFETCHES 8
+    CACHE_PREFETCH_BYTES 64
   )
 
   add_vpp_march_variant(cortexa72
     FLAGS -march=armv8-a+crc+crypto -mtune=cortex-a72
     N_PREFETCHES 6
+    CACHE_PREFETCH_BYTES 64
   )
 
   add_vpp_march_variant(neoversen1
     FLAGS -march=armv8.2-a+crc+crypto -mtune=neoverse-n1
     N_PREFETCHES 6
+    CACHE_PREFETCH_BYTES 64
   )
 endif()
 
