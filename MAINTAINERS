@@ -234,19 +234,6 @@ M:	John Lo <lojultra2020@outlook.com>
 M:	Steven Luong <sluong@cisco.com>
 F:	src/vnet/l2/
 
-VNET Link Layer Discovery Protocol (LLDP)
-I:	lldp
-M:	Klement Sekera <ksekera@cisco.com>
-F:	src/vnet/lldp/
-
-VNET LISP
-I:	lisp
-Y:	src/vnet/lisp-cp/FEATURE.yaml
-Y:	src/vnet/lisp-gpe/FEATURE.yaml
-M:	Florin Coras <fcoras@cisco.com>
-F:	src/vnet/lisp-cp/
-F:	src/vnet/lisp-gpe/
-
 VNET GRE
 I:	gre
 M:	Neale Ranns <neale@graphiant.com>
@@ -478,6 +465,18 @@ Plugin - L3 Cross-Connect (L3XC)
 I:	l3xc
 M:	Neale Ranns <neale@graphiant.com>
 F:	src/plugins/l3xc/
+
+Plugin - LISP
+I:	lisp
+Y:	src/plugins/lisp/lisp-cp/FEATURE.yaml
+Y:	src/plugins/lisp/lisp-gpe/FEATURE.yaml
+M:	Florin Coras <fcoras@cisco.com>
+F:	src/plugins/lisp/
+
+Plugin - Link Layer Discovery Protocol (LLDP)
+I:	lldp
+M:	Klement Sekera <ksekera@cisco.com>
+F:	src/plugins/lldp/
 
 Plugin - memif device driver
 I:	memif
