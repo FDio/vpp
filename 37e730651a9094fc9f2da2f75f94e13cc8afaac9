@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "17dcf3f9_396fc880",
+        "filename": "src/vnet/ip/ip4_source_and_port_range_check.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2021-07-14T10:40:40Z",
+      "side": 1,
+      "message": "Isn\u0027t it \u003c\u003d ?",
+      "range": {
+        "startLine": 110,
+        "startChar": 61,
+        "endLine": 110,
+        "endChar": 63
+      },
+      "revId": "37e730651a9094fc9f2da2f75f94e13cc8afaac9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "310ae60b_f631e196",
+        "filename": "src/vnet/ip/ip4_source_and_port_range_check.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 111,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2021-07-14T10:40:40Z",
+      "side": 1,
+      "message": "Isn\u0027t it \u003e\u003d ?",
+      "range": {
+        "startLine": 111,
+        "startChar": 39,
+        "endLine": 111,
+        "endChar": 41
+      },
+      "revId": "37e730651a9094fc9f2da2f75f94e13cc8afaac9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
