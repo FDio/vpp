@@ -1354,7 +1354,8 @@ vlib_start_process (vlib_main_t * vm, uword process_index)
 {
   vlib_node_main_t *nm = &vm->node_main;
   vlib_process_t *p = vec_elt (nm->processes, process_index);
-  dispatch_process (vm, p, /* frame */ 0, /* cpu_time_now */ 0);
+  u64 cpu_time_now = clib_cpu_time_now ();
+  dispatch_process (vm, p, /* frame */ 0, cpu_time_now);
 }
 
 static u64
