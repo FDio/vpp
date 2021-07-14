@@ -138,6 +138,26 @@ autoreply define udp_decap_add_del
   vl_api_udp_decap_t udp_decap;
 };
 
+/**
+ * @brief dump UDP decaps
+ */
+define udp_decap_dump
+{
+  u32 client_index;
+  u32 context;
+  u16 port [default=0];
+  u8 is_ip4;
+};
+
+/**
+ * @brief UDP decap details during dump
+ */
+define udp_decap_details
+{
+  u32 context;
+  vl_api_udp_decap_t udp_decap;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")

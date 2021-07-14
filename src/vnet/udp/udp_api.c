@@ -185,6 +185,56 @@ vl_api_udp_decap_add_del_t_handler (vl_api_udp_decap_add_del_t *mp)
   REPLY_MACRO (VL_API_UDP_DECAP_ADD_DEL_REPLY);
 }
 
+static void
+send_udp_decap_details (udp_dst_port_info_t *pi, u8 is_ip4,
+			vl_api_registration_t *reg, u32 context)
+{
+  vl_api_udp_decap_details_t *mp;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_UDP_DECAP_DETAILS);
+  mp->context = context;
+
+  if (!udp_is_valid_dst_port (pi->dst_port, is_ip4))
+    return;
+
+  mp->udp_decap.is_ip4 = is_ip4;
+  mp->udp_decap.port = htons (pi->dst_port);
+
+  vl_api_send_msg (reg, (u8 *) mp);
+}
+
+static void
+vl_api_udp_decap_dump_t_handler (vl_api_udp_decap_dump_t *mp)
+{
+  vl_api_registration_t *reg;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  udp_main_t *um = vnet_get_udp_main ();
+  if (!um)
+    return;
+
+  udp_dst_port_info_t *ud;
+  if (mp->port)
+    {
+      ud = udp_get_dst_port_info (um, ntohs (mp->port), mp->is_ip4);
+      if (!ud)
+	return;
+      send_udp_decap_details (ud, mp->is_ip4, reg, mp->context);
+    }
+  else
+    {
+      vec_foreach (ud, um->dst_port_infos[mp->is_ip4])
+	{
+	  send_udp_decap_details (ud, mp->is_ip4, reg, mp->context);
+	}
+    }
+}
+
 #include <vnet/udp/udp.api.c>
 static clib_error_t *
 udp_api_hookup (vlib_main_t * vm)
