@@ -108,6 +108,24 @@
     },
     {
       "key": {
+        "uuid": "69ff5ce7_5b526a68",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 2229
+      },
+      "writtenOn": "2021-07-15T23:35:32Z",
+      "side": 1,
+      "message": "IP packets belonging to same flow can enter the system on different ports and land on different worker cores/threads. This will lead to multiple KVP entry additions on thread level hash tables and can can result in minor degradation. I agree that performance will be better over all. As a quick check, we will measure single core performance of flow cache by removing the spin locks and see how much is the improvement. We can decide based on that.",
+      "parentUuid": "386052ae_61db9e7d",
+      "revId": "0b02111e76015f647e478c6ec700b2f8d932860b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "c5cfbad8_4374d43f",
         "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
         "patchSetId": 2
@@ -155,6 +173,24 @@
       "side": 1,
       "message": "Huh, are you saying that compiler may. not use single 32-bit store instruction to store 32-bit number to memory?\nCan you prove that?",
       "parentUuid": "26bd42ef_f09cfc48",
+      "revId": "0b02111e76015f647e478c6ec700b2f8d932860b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6c0423d1_696eba60",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 181,
+      "author": {
+        "id": 2229
+      },
+      "writtenOn": "2021-07-15T23:35:32Z",
+      "side": 1,
+      "message": "On aarch64, aligned loads and stores up to 64 bits are atomic. Not sure about other architectures.",
+      "parentUuid": "25f88844_3babfa2f",
       "revId": "0b02111e76015f647e478c6ec700b2f8d932860b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
