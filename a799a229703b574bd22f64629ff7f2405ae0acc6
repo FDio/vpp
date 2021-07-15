@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "46159527_d1645a19",
+        "filename": "src/vppinfra/cache.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2021-07-15T12:57:38Z",
+      "side": 1,
+      "message": "I think this should be CLIB_CACHE_PREFETCH_BYTES. \n\nIf data structure size is 128 and CLIB_CACHE_PREFETCH_BYTES is 64B then\n\n- CLIB_PREFETCH(addr, 128, type) expanded as follows\n\n      if(128 \u003e (0)*128))\n                __buildtin_prefetch(addr +0, 64, 3)\n       if(128 \u003e (1) * 128)\n               __builtin_prefetch( addr + 64, 64, 3)\n\nSecond __builtin_prefetch() won\u0027t be emitted to code since second if check is not passing",
+      "range": {
+        "startLine": 72,
+        "startChar": 20,
+        "endLine": 72,
+        "endChar": 41
+      },
+      "revId": "a799a229703b574bd22f64629ff7f2405ae0acc6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
