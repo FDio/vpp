@@ -39,13 +39,14 @@ ifneq ($(DPDK_MLX4_PMD),)
 DPDK_MAKE_ARGS += DPDK_MLX4_PMD=y
 endif
 
-DPDK_PLATFORM_TARGET=$(strip $($(PLATFORM)_dpdk_target))
-ifneq ($(DPDK_PLATFORM_TARGET),)
-DPDK_MAKE_ARGS += DPDK_TARGET=$(DPDK_PLATFORM_TARGET)
-endif
-
-ifneq (,$(TARGET_PLATFORM))
-DPDK_MAKE_ARGS += DPDK_AARCH64_GENERIC=n
+ifeq ($(MACHINE),aarch64)
+  # Cache line size is 128B by default in Arm image,
+  # or the value can be assigned to 64 or 128 in command line.
+  ifeq (,$(filter 64 128,$(CACHE_LINESIZE)))
+    DPDK_MAKE_ARGS += DPDK_CACHE_LINE_SIZE=128
+  else
+    DPDK_MAKE_ARGS += DPDK_CACHE_LINE_SIZE=$(CACHE_LINESIZE)
+  endif
 endif
 
 DPDK_MAKE_EXTRA_ARGS = $(strip $($(PLATFORM)_dpdk_make_extra_args))

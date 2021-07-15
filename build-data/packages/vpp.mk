@@ -31,6 +31,16 @@ ifeq ("$(V)","1")
 vpp_cmake_args += -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
 endif
 
+ifeq ($(MACHINE),aarch64)
+  # Cache line size is 128B by default in Arm image,
+  # or the value can be assigned to 64 or 128 in command line.
+  ifeq (,$(filter 64 128,$(CACHE_LINESIZE)))
+    vpp_cmake_args += -DVPP_LOG2_CACHE_LINE_SIZE=7
+  else
+    vpp_cmake_args += -DVPP_LOG2_CACHE_LINE_SIZE=$(shell echo $(CACHE_LINESIZE) | awk '{print log($$1)/log(2)}')
+  endif
+endif
+
 ifneq ($(VPP_EXTRA_CMAKE_ARGS),)
 vpp_cmake_args += $(VPP_EXTRA_CMAKE_ARGS)
 endif
