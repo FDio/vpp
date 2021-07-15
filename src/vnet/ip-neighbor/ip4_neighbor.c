@@ -79,8 +79,8 @@ ip4_neighbor_advertise (vlib_main_t * vm,
 
   if (NULL == addr)
     {
-      fib_sas4_get (sw_if_index, NULL, &tmp);
-      addr = &tmp;
+      if (fib_sas4_get (sw_if_index, NULL, &tmp))
+	addr = &tmp;
     }
 
   if (addr)
