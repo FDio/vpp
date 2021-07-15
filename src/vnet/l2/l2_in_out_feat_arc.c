@@ -131,7 +131,7 @@ buffer_prefetch_xN (int vector_sz, vlib_buffer_t ** b)
 {
   int ii;
   for (ii = 0; ii < vector_sz; ii++)
-    CLIB_PREFETCH (b[ii], CLIB_CACHE_LINE_BYTES, STORE);
+    clib_prefetch_store (b[ii]);
 }
 
 static_always_inline void

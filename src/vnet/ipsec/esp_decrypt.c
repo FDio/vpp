@@ -1068,9 +1068,9 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  u8 *p;
 	  vlib_prefetch_buffer_header (b[2], LOAD);
 	  p = vlib_buffer_get_current (b[1]);
-	  CLIB_PREFETCH (p, CLIB_CACHE_LINE_BYTES, LOAD);
+	  clib_prefetch_load (p);
 	  p -= CLIB_CACHE_LINE_BYTES;
-	  CLIB_PREFETCH (p, CLIB_CACHE_LINE_BYTES, LOAD);
+	  clib_prefetch_load (p);
 	}
 
       u32 n_bufs = vlib_buffer_chain_linearize (vm, b[0]);
@@ -1095,7 +1095,7 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  sa0 = ipsec_sa_get (current_sa_index);
 
 	  /* fetch the second cacheline ASAP */
-	  CLIB_PREFETCH (sa0->cacheline1, CLIB_CACHE_LINE_BYTES, LOAD);
+	  clib_prefetch_load (sa0->cacheline1);
 	  cpd.icv_sz = sa0->integ_icv_size;
 	  cpd.iv_sz = sa0->crypto_iv_size;
 	  cpd.flags = sa0->flags;

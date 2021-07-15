@@ -183,9 +183,9 @@ VLIB_NODE_FN (l2_output_classify_node) (vlib_main_t * vm,
 	p3 = vlib_get_buffer (vm, from[3]);
 
 	vlib_prefetch_buffer_header (p2, STORE);
-	CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, STORE);
+	clib_prefetch_store (p2->data);
 	vlib_prefetch_buffer_header (p3, STORE);
-	CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, STORE);
+	clib_prefetch_store (p3->data);
       }
 
       bi0 = from[0];

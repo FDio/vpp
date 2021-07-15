@@ -273,16 +273,18 @@ do {                                                       \
  * @param vec_ the callback vector
  * @param varargs additional callback parameters
  */
-#define clib_callback_data_call_vec(vec_, ...)                     \
-do {                                                               \
-  u32 sz_ = vec_len (vec_);                                        \
-  u32 i_;                                                          \
-  for (i_ = 0; i_ < sz_; i_++)                                     \
-    {                                                              \
-      CLIB_PREFETCH (&vec_[i_+1], CLIB_CACHE_LINE_BYTES, STORE);   \
-      (vec_[i_].fp) (&vec_[i_], __VA_ARGS__);                      \
-    }                                                              \
-} while (0)
+#define clib_callback_data_call_vec(vec_, ...)                                \
+  do                                                                          \
+    {                                                                         \
+      u32 sz_ = vec_len (vec_);                                               \
+      u32 i_;                                                                 \
+      for (i_ = 0; i_ < sz_; i_++)                                            \
+	{                                                                     \
+	  clib_prefetch_store (&vec_[i_ + 1]);                                \
+	  (vec_[i_].fp) (&vec_[i_], __VA_ARGS__);                             \
+	}                                                                     \
+    }                                                                         \
+  while (0)
 
 /** @brief Call the specified callback set
  * @param set_ the callback set
@@ -297,12 +299,13 @@ do {                                                                 \
 /** @brief prefetch the callback set
  * @param set_ The callback set
  */
-#define clib_callback_data_prefetch(set_)                        \
-do {                                                             \
-  if (PREDICT_FALSE ((set_)->curr))                              \
-    CLIB_PREFETCH ((set_)->curr, CLIB_CACHE_LINE_BYTES, STORE);  \
-} while (0)
-
+#define clib_callback_data_prefetch(set_)                                     \
+  do                                                                          \
+    {                                                                         \
+      if (PREDICT_FALSE ((set_)->curr))                                       \
+	clib_prefetch_store ((set_)->curr);                                   \
+    }                                                                         \
+  while (0)
 
 #endif /* included_callback_data_h */
 

@@ -269,10 +269,10 @@ l2fwd_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	vlib_prefetch_buffer_header (b[6], LOAD);
 	vlib_prefetch_buffer_header (b[7], LOAD);
 
-	CLIB_PREFETCH (b[4]->data, CLIB_CACHE_LINE_BYTES, LOAD);
-	CLIB_PREFETCH (b[5]->data, CLIB_CACHE_LINE_BYTES, LOAD);
-	CLIB_PREFETCH (b[6]->data, CLIB_CACHE_LINE_BYTES, LOAD);
-	CLIB_PREFETCH (b[7]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	clib_prefetch_load (b[4]->data);
+	clib_prefetch_load (b[5]->data);
+	clib_prefetch_load (b[6]->data);
+	clib_prefetch_load (b[7]->data);
       }
 
       /* RX interface handles */

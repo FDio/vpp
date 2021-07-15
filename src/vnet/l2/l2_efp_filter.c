@@ -227,8 +227,8 @@ VLIB_NODE_FN (l2_efp_filter_node) (vlib_main_t * vm,
 	    vlib_prefetch_buffer_header (p4, LOAD);
 	    vlib_prefetch_buffer_header (p5, LOAD);
 
-	    CLIB_PREFETCH (p4->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p5->data, CLIB_CACHE_LINE_BYTES, STORE);
+	    clib_prefetch_store (p4->data);
+	    clib_prefetch_store (p5->data);
 
 	    /*
 	     * Prefetch the input config for the N+1 loop iteration
@@ -238,8 +238,10 @@ VLIB_NODE_FN (l2_efp_filter_node) (vlib_main_t * vm,
 	    sw_if_index3 = vnet_buffer (p3)->sw_if_index[VLIB_TX];
 	    /*
 	     * $$$ TODO
-	     * CLIB_PREFETCH (vec_elt_at_index(l2output_main.configs, sw_if_index2), CLIB_CACHE_LINE_BYTES, LOAD);
-	     * CLIB_PREFETCH (vec_elt_at_index(l2output_main.configs, sw_if_index3), CLIB_CACHE_LINE_BYTES, LOAD);
+	     * clib_prefetch_load (vec_elt_at_index(l2output_main.configs,
+	     *                     sw_if_index2));
+	     * clib_prefetch_load (vec_elt_at_index(l2output_main.configs,
+	     *                     sw_if_index3));
 	     */
 	  }
 

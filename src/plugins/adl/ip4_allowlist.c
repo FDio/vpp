@@ -98,30 +98,28 @@ VLIB_NODE_FN (ip4_adl_allowlist_node) (vlib_main_t * vm,
       	    vlib_prefetch_buffer_header (p2, LOAD);
       	    vlib_prefetch_buffer_header (p3, LOAD);
 
-      	    CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, STORE);
-      	    CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, STORE);
-      	  }
+	    clib_prefetch_store (p2->data);
+	    clib_prefetch_store (p3->data);
+	  }
 
-          /* speculatively enqueue b0 and b1 to the current next frame */
-      	  to_next[0] = bi0 = from[0];
-      	  to_next[1] = bi1 = from[1];
-      	  from += 2;
-      	  to_next += 2;
-      	  n_left_from -= 2;
-      	  n_left_to_next -= 2;
+	  /* speculatively enqueue b0 and b1 to the current next frame */
+	  to_next[0] = bi0 = from[0];
+	  to_next[1] = bi1 = from[1];
+	  from += 2;
+	  to_next += 2;
+	  n_left_from -= 2;
+	  n_left_to_next -= 2;
 
-      	  b0 = vlib_get_buffer (vm, bi0);
-          sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
+	  b0 = vlib_get_buffer (vm, bi0);
+	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
-      	  ip0 = vlib_buffer_get_current (b0);
+	  ip0 = vlib_buffer_get_current (b0);
 
-      	  ccm0 = cm->adl_config_mains + VNET_ADL_IP4;
+	  ccm0 = cm->adl_config_mains + VNET_ADL_IP4;
 
-      	  c0 = vnet_get_config_data
-              (&ccm0->config_main,
-               &adl_buffer (b0)->adl.current_config_index,
-               &next0,
-               sizeof (c0[0]));
+	  c0 = vnet_get_config_data (
+	    &ccm0->config_main, &adl_buffer (b0)->adl.current_config_index,
+	    &next0, sizeof (c0[0]));
 
 	  mtrie0 = &ip4_fib_get (c0->fib_index)->mtrie;
 
