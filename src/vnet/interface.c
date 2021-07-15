@@ -1636,6 +1636,11 @@ vnet_sw_interface_update_unnumbered (u32 unnumbered_sw_if_index,
 	[unnumbered_sw_if_index] =
 	ip6_main.
 	lookup_main.if_address_pool_index_by_sw_if_index[ip_sw_if_index];
+
+      ip4_main.fib_index_by_sw_if_index[unnumbered_sw_if_index] =
+	ip4_main.fib_index_by_sw_if_index[ip_sw_if_index];
+      ip6_main.fib_index_by_sw_if_index[unnumbered_sw_if_index] =
+	ip6_main.fib_index_by_sw_if_index[ip_sw_if_index];
     }
   else
     {
@@ -1652,6 +1657,9 @@ vnet_sw_interface_update_unnumbered (u32 unnumbered_sw_if_index,
 	    .if_address_pool_index_by_sw_if_index[unnumbered_sw_if_index] = ~0;
 	  ip6_main.lookup_main
 	    .if_address_pool_index_by_sw_if_index[unnumbered_sw_if_index] = ~0;
+
+	  ip4_main.fib_index_by_sw_if_index[unnumbered_sw_if_index] = 0;
+	  ip6_main.fib_index_by_sw_if_index[unnumbered_sw_if_index] = 0;
 	}
     }
 

@@ -301,6 +301,9 @@ gre_input (vlib_main_t * vm,
 	  vnet_buffer (b[1])->sw_if_index[VLIB_RX] = tun_sw_if_index[1];
 	}
 
+      vnet_buffer (b[0])->sw_if_index[VLIB_TX] = (u32) ~0;
+      vnet_buffer (b[1])->sw_if_index[VLIB_TX] = (u32) ~0;
+
       if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
 	gre_trace (vm, node, b[0], tun_sw_if_index[0], ip6[0], ip4[0],
 		   is_ipv6);
@@ -410,6 +413,8 @@ gre_input (vlib_main_t * vm,
 					   len[0] /* bytes */ );
 	  vnet_buffer (b[0])->sw_if_index[VLIB_RX] = tun_sw_if_index[0];
 	}
+
+      vnet_buffer (b[0])->sw_if_index[VLIB_TX] = (u32) ~0;
 
       if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
 	gre_trace (vm, node, b[0], tun_sw_if_index[0], ip6[0], ip4[0],
