@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "0d2cce10_06530913",
+        "filename": "src/vnet/ipsec/ipsec.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-07-15T21:15:11Z",
+      "side": 1,
+      "message": "Not sure I understand your motivation but definitely this doesn\u0027t belong into this patch.",
+      "parentUuid": "0cf02a41_ba976375",
+      "revId": "0b02111e76015f647e478c6ec700b2f8d932860b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "c33dceb3_2eb44ebb",
         "filename": "src/vnet/ipsec/ipsec_input.c",
         "patchSetId": 2
@@ -72,6 +90,24 @@
     },
     {
       "key": {
+        "uuid": "386052ae_61db9e7d",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-07-15T21:15:11Z",
+      "side": 1,
+      "message": "It is very unlikely that one flow will show up on more than one thread so I don\u0027t think more memory is valid concern here.\n\nEven if it is more memory it is better than locks or atomics...",
+      "parentUuid": "883dc9ea_b00ec171",
+      "revId": "0b02111e76015f647e478c6ec700b2f8d932860b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "c5cfbad8_4374d43f",
         "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
         "patchSetId": 2
@@ -101,6 +137,24 @@
       "side": 1,
       "message": "Compiler may not emit the instructions to guarantee atomicity for normal store of this shared variable between writers (CP and DP).",
       "parentUuid": "c5cfbad8_4374d43f",
+      "revId": "0b02111e76015f647e478c6ec700b2f8d932860b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "25f88844_3babfa2f",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 181,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-07-15T21:15:11Z",
+      "side": 1,
+      "message": "Huh, are you saying that compiler may. not use single 32-bit store instruction to store 32-bit number to memory?\nCan you prove that?",
+      "parentUuid": "26bd42ef_f09cfc48",
       "revId": "0b02111e76015f647e478c6ec700b2f8d932860b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
