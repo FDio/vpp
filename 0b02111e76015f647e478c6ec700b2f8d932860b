@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "0cf02a41_ba976375",
+        "filename": "src/vnet/ipsec/ipsec.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 2229
+      },
+      "writtenOn": "2021-07-15T20:09:40Z",
+      "side": 1,
+      "message": "Hi Damjan, This bihash code is not related to Flow cache and it is moved from vnet/ipsec/ipsec_tun.c. We want to consolidate all IPSec startup conf code in a common file (ipsec.c) and add Flow cache setting as part of it. We can submit this in a separate patch. Please let us know whether we can do it in a separate patch or not.",
+      "parentUuid": "ce1050da_3ab07948",
+      "revId": "0b02111e76015f647e478c6ec700b2f8d932860b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "c33dceb3_2eb44ebb",
         "filename": "src/vnet/ipsec/ipsec_input.c",
         "patchSetId": 2
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "883dc9ea_b00ec171",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 2229
+      },
+      "writtenOn": "2021-07-15T20:09:40Z",
+      "side": 1,
+      "message": "Maintaining hash table at per thread level will consume more memory.\nTo avoid locks, we thought of updating KVP pointer atomically instead of KVP itself, but it will degrade the performance due to double indirection (Hash table pointer-\u003eKVP Pointer-\u003eKVP) to fetch KVP.",
+      "parentUuid": "c33dceb3_2eb44ebb",
+      "revId": "0b02111e76015f647e478c6ec700b2f8d932860b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "c5cfbad8_4374d43f",
         "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
         "patchSetId": 2
@@ -47,6 +83,24 @@
       "writtenOn": "2021-07-15T07:55:10Z",
       "side": 1,
       "message": "how this differ to normal store i.e. im-\u003eipsec4_in_spd_flow_cache_entries \u003d 0 ?",
+      "revId": "0b02111e76015f647e478c6ec700b2f8d932860b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "26bd42ef_f09cfc48",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 181,
+      "author": {
+        "id": 2229
+      },
+      "writtenOn": "2021-07-15T20:09:40Z",
+      "side": 1,
+      "message": "Compiler may not emit the instructions to guarantee atomicity for normal store of this shared variable between writers (CP and DP).",
+      "parentUuid": "c5cfbad8_4374d43f",
       "revId": "0b02111e76015f647e478c6ec700b2f8d932860b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
