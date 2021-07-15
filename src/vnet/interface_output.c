@@ -285,9 +285,9 @@ vnet_interface_output_node_inline (vlib_main_t *vm, u32 sw_if_index,
   return n_bytes;
 }
 
-static_always_inline void vnet_interface_pcap_tx_trace
-  (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame,
-   int sw_if_index_from_buffer)
+static_always_inline void
+vnet_interface_pcap_tx_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
+			      vlib_frame_t *frame, int in_interface_ouput)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 n_left_from, *from;
@@ -297,13 +297,22 @@ static_always_inline void vnet_interface_pcap_tx_trace
   if (PREDICT_TRUE (pp->pcap_tx_enable == 0))
     return;
 
-  if (sw_if_index_from_buffer == 0)
+  if (in_interface_ouput)
+    {
+      /* interface-output is called right before interface-output-template
+       * we only want to capture packets here if there is a per-interface
+       * filter, in case it matches the sub-interface sw_if_index if there is
+       * no per-interface filter configured, let the interface-output-template
+       * node deal with it */
+      if (pp->pcap_sw_if_index == 0)
+	return;
+      sw_if_index = ~0;
+    }
+  else
     {
       vnet_interface_output_runtime_t *rt = (void *) node->runtime_data;
       sw_if_index = rt->sw_if_index;
     }
-  else
-    sw_if_index = ~0;
 
   n_left_from = frame->n_vectors;
   from = vlib_frame_vector_args (frame);
@@ -315,7 +324,7 @@ static_always_inline void vnet_interface_pcap_tx_trace
       from++;
       n_left_from--;
 
-      if (sw_if_index_from_buffer)
+      if (in_interface_ouput)
 	sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 
       if (vnet_is_packet_pcaped (pp, b0, sw_if_index))
@@ -420,8 +429,7 @@ VLIB_NODE_FN (vnet_interface_output_node)
       /* buffer stride */ 1, n_buffers, VNET_INTERFACE_OUTPUT_NEXT_DROP,
       node->node_index, VNET_INTERFACE_OUTPUT_ERROR_INTERFACE_DELETED);
 
-  vnet_interface_pcap_tx_trace (vm, node, frame,
-				0 /* sw_if_index_from_buffer */ );
+  vnet_interface_pcap_tx_trace (vm, node, frame, 0 /* in_interface_ouput */);
 
   vlib_get_buffers (vm, from, bufs, n_buffers);
 
@@ -504,8 +512,7 @@ VLIB_NODE_FN (vnet_per_buffer_interface_output_node) (vlib_main_t * vm,
   u32 n_left_to_next, *from, *to_next;
   u32 n_left_from, next_index;
 
-  vnet_interface_pcap_tx_trace (vm, node, frame,
-				1 /* sw_if_index_from_buffer */ );
+  vnet_interface_pcap_tx_trace (vm, node, frame, 1 /* in_interface_ouput */);
 
   n_left_from = frame->n_vectors;
 
