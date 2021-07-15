@@ -8,6 +8,17 @@
 test_registration_t *test_registrations[CLIB_MARCH_TYPE_N_VARIANTS] = {};
 
 int
+test_march_supported (clib_march_variant_type_t type)
+{
+#define _(s, n)                                                               \
+  if (CLIB_MARCH_VARIANT_TYPE_##s == type)                                    \
+    return clib_cpu_march_priority_##s ();
+  foreach_march_variant
+#undef _
+    return 0;
+}
+
+int
 main (int argc, char *argv[])
 {
   clib_mem_init (0, 64ULL << 20);
@@ -16,7 +27,7 @@ main (int argc, char *argv[])
     {
       test_registration_t *r = test_registrations[i];
 
-      if (r == 0)
+      if (r == 0 || test_march_supported (i) < 0)
 	continue;
 
       fformat (stdout, "\nMultiarch Variant: %U\n", format_march_variant, i);
