@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "97530ae1_c89b06a9",
+        "filename": "src/plugins/crypto_sw_scheduler/main.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 653,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-07-15T08:13:18Z",
+      "side": 1,
+      "message": "small nitpick but\n    vec_validate_aligned (ptd-\u003equeue.jobs, CRYPTO_SW_SCHEDULER_QUEUE_SIZE-1, CLIB_CACHE_LINE_BYTES)\n\nis more idiomatic and can replace lines 653-657 in my opinion.",
+      "revId": "e664ce1bda78f562ecf0b19d67375c283c9ddbd4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
