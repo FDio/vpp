@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2539011a_0c6730c6",
+        "filename": "src/vppinfra/vector/mask_array.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-07-15T14:45:51Z",
+      "side": 1,
+      "message": "return here?",
+      "revId": "28a07bdc74c78d8c58fc808b2a469269b2e7cc11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "65bba55e_112d5393",
+        "filename": "src/vppinfra/vector/mask_array.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-07-15T14:45:51Z",
+      "side": 1,
+      "message": "why do you need to decrement n_elts, it is not used anymore...",
+      "revId": "28a07bdc74c78d8c58fc808b2a469269b2e7cc11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a16adb18_3fdf33bf",
+        "filename": "src/vppinfra/vector/mask_array.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-07-15T14:45:51Z",
+      "side": 1,
+      "message": "return",
+      "revId": "28a07bdc74c78d8c58fc808b2a469269b2e7cc11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
