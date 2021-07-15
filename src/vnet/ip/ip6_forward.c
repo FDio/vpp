@@ -1780,8 +1780,8 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 	    vlib_prefetch_buffer_header (p2, LOAD);
 	    vlib_prefetch_buffer_header (p3, LOAD);
 
-	    CLIB_PREFETCH (p2->pre_data, 32, STORE);
-	    CLIB_PREFETCH (p3->pre_data, 32, STORE);
+	    clib_prefetch_store (p2->pre_data);
+	    clib_prefetch_store (p3->pre_data);
 
 	    CLIB_PREFETCH (p2->data, sizeof (ip0[0]), STORE);
 	    CLIB_PREFETCH (p3->data, sizeof (ip0[0]), STORE);

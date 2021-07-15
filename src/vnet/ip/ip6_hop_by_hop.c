@@ -620,8 +620,8 @@ VLIB_NODE_FN (ip6_pop_hop_by_hop_node) (vlib_main_t * vm,
 	    vlib_prefetch_buffer_header (p2, LOAD);
 	    vlib_prefetch_buffer_header (p3, LOAD);
 
-	    CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, STORE);
+	    clib_prefetch_store (p2->data);
+	    clib_prefetch_store (p3->data);
 	  }
 
 	  /* speculatively enqueue b0 and b1 to the current next frame */
@@ -879,10 +879,10 @@ ip6_local_hop_by_hop_inline (vlib_main_t * vm,
 	  vlib_prefetch_buffer_header (b[5], STORE);
 	  vlib_prefetch_buffer_header (b[6], STORE);
 	  vlib_prefetch_buffer_header (b[7], STORE);
-	  CLIB_PREFETCH (b[4]->data, CLIB_CACHE_LINE_BYTES, STORE);
-	  CLIB_PREFETCH (b[5]->data, CLIB_CACHE_LINE_BYTES, STORE);
-	  CLIB_PREFETCH (b[6]->data, CLIB_CACHE_LINE_BYTES, STORE);
-	  CLIB_PREFETCH (b[7]->data, CLIB_CACHE_LINE_BYTES, STORE);
+	  clib_prefetch_store (b[4]->data);
+	  clib_prefetch_store (b[5]->data);
+	  clib_prefetch_store (b[6]->data);
+	  clib_prefetch_store (b[7]->data);
 	}
 
       /*

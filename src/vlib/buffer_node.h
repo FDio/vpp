@@ -287,8 +287,8 @@ generic_buffer_node_inline (vlib_main_t * vm,
 	    vlib_prefetch_buffer_header (p2, LOAD);
 	    vlib_prefetch_buffer_header (p3, LOAD);
 
-	    CLIB_PREFETCH (p2->data, 64, LOAD);
-	    CLIB_PREFETCH (p3->data, 64, LOAD);
+	    clib_prefetch_load (p2->data);
+	    clib_prefetch_load (p3->data);
 	  }
 
 	  pi0 = to_next[0] = from[0];

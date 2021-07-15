@@ -194,8 +194,8 @@ vhost_user_tx_copy (vhost_user_intf_t * vui, vhost_copy_t * cpy,
 	      (!(dst3 = map_guest_mem (vui, cpy[3].dst, map_hint))))
 	    return 1;
 
-	  CLIB_PREFETCH ((void *) cpy[2].src, 64, LOAD);
-	  CLIB_PREFETCH ((void *) cpy[3].src, 64, LOAD);
+	  clib_prefetch_load ((void *) cpy[2].src);
+	  clib_prefetch_load ((void *) cpy[3].src);
 
 	  clib_memcpy_fast (dst0, (void *) cpy[0].src, cpy[0].len);
 	  clib_memcpy_fast (dst1, (void *) cpy[1].src, cpy[1].len);
@@ -601,7 +601,7 @@ retry:
 	  buffer_map_addr += cpy->len;
 	  desc_len += cpy->len;
 
-	  CLIB_PREFETCH (&rxvq->packed_desc, CLIB_CACHE_LINE_BYTES, LOAD);
+	  clib_prefetch_load (&rxvq->packed_desc);
 
 	  /* Check if vlib buffer has more data. If not, get more or break */
 	  if (PREDICT_TRUE (!bytes_left))
@@ -922,7 +922,7 @@ retry:
 	    buffer_map_addr += cpy->len;
 	    desc_len += cpy->len;
 
-	    CLIB_PREFETCH (&rxvq->desc, CLIB_CACHE_LINE_BYTES, LOAD);
+	    clib_prefetch_load (&rxvq->desc);
 	  }
 
 	  // Check if vlib buffer has more data. If not, get more or break.

@@ -126,8 +126,8 @@ VLIB_NODE_FN (l2_invtr_node) (vlib_main_t * vm,
 	    vlib_prefetch_buffer_header (p4, LOAD);
 	    vlib_prefetch_buffer_header (p5, LOAD);
 
-	    CLIB_PREFETCH (p4->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p5->data, CLIB_CACHE_LINE_BYTES, STORE);
+	    clib_prefetch_store (p4->data);
+	    clib_prefetch_store (p5->data);
 
 	    /*
 	     * Prefetch the input config for the N+1 loop iteration

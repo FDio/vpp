@@ -163,8 +163,8 @@ vhost_user_input_copy (vhost_user_intf_t * vui, vhost_copy_t * cpy,
 	      (!(src3 = map_guest_mem (vui, cpy[3].src, map_hint))))
 	    return 1;
 
-	  CLIB_PREFETCH (src2, 64, LOAD);
-	  CLIB_PREFETCH (src3, 64, LOAD);
+	  clib_prefetch_load (src2);
+	  clib_prefetch_load (src3);
 
 	  clib_memcpy_fast ((void *) cpy[0].dst, src0, cpy[0].len);
 	  clib_memcpy_fast ((void *) cpy[1].dst, src1, cpy[1].len);
@@ -872,10 +872,10 @@ vhost_user_input_copy_packed (vhost_user_intf_t * vui, vhost_copy_t * cpy,
       bad = (src4 == 0) + (src5 == 0) + (src6 == 0) + (src7 == 0);
       if (PREDICT_FALSE (bad))
 	goto one_by_one;
-      CLIB_PREFETCH (src4, 64, LOAD);
-      CLIB_PREFETCH (src5, 64, LOAD);
-      CLIB_PREFETCH (src6, 64, LOAD);
-      CLIB_PREFETCH (src7, 64, LOAD);
+      clib_prefetch_load (src4);
+      clib_prefetch_load (src5);
+      clib_prefetch_load (src6);
+      clib_prefetch_load (src7);
 
       while (PREDICT_TRUE (copy_len >= 8))
 	{
@@ -892,10 +892,10 @@ vhost_user_input_copy_packed (vhost_user_intf_t * vui, vhost_copy_t * cpy,
 	  if (PREDICT_FALSE (bad))
 	    break;
 
-	  CLIB_PREFETCH (src4, 64, LOAD);
-	  CLIB_PREFETCH (src5, 64, LOAD);
-	  CLIB_PREFETCH (src6, 64, LOAD);
-	  CLIB_PREFETCH (src7, 64, LOAD);
+	  clib_prefetch_load (src4);
+	  clib_prefetch_load (src5);
+	  clib_prefetch_load (src6);
+	  clib_prefetch_load (src7);
 
 	  clib_memcpy_fast ((void *) cpy[0].dst, src0, cpy[0].len);
 	  clib_memcpy_fast ((void *) cpy[1].dst, src1, cpy[1].len);

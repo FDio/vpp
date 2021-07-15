@@ -451,8 +451,8 @@ VLIB_NODE_FN (det44_in2out_node) (vlib_main_t * vm,
 	  vlib_prefetch_buffer_header (p2, LOAD);
 	  vlib_prefetch_buffer_header (p3, LOAD);
 
-	  CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, LOAD);
-	  CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	  clib_prefetch_load (p2->data);
+	  clib_prefetch_load (p3->data);
 	}
 
       next0 = DET44_IN2OUT_NEXT_LOOKUP;

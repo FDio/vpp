@@ -102,9 +102,9 @@ ip_classify_inline (vlib_main_t * vm,
 	p2 = vlib_get_buffer (vm, from[2]);
 
 	vlib_prefetch_buffer_header (p1, STORE);
-	CLIB_PREFETCH (p1->data, CLIB_CACHE_LINE_BYTES, STORE);
+	clib_prefetch_store (p1->data);
 	vlib_prefetch_buffer_header (p2, STORE);
-	CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, STORE);
+	clib_prefetch_store (p2->data);
       }
 
       bi0 = from[0];

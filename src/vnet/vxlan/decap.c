@@ -249,8 +249,8 @@ vxlan_input (vlib_main_t * vm,
 	vxlan6_find_tunnel (vxm, &last6, fi1, ip6_1, vxlan1, &stats_if1);
 
       /* Prefetch next iteration. */
-      CLIB_PREFETCH (b[2]->data, CLIB_CACHE_LINE_BYTES, LOAD);
-      CLIB_PREFETCH (b[3]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+      clib_prefetch_load (b[2]->data);
+      clib_prefetch_load (b[3]->data);
 
       u32 len0 = vlib_buffer_length_in_chain (vm, b[0]);
       u32 len1 = vlib_buffer_length_in_chain (vm, b[1]);

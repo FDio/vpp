@@ -309,14 +309,10 @@ avf_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (next + 11 < size)
 	{
 	  int stride = 8;
-	  CLIB_PREFETCH ((void *) (fd + (next + stride)),
-			 CLIB_CACHE_LINE_BYTES, LOAD);
-	  CLIB_PREFETCH ((void *) (fd + (next + stride + 1)),
-			 CLIB_CACHE_LINE_BYTES, LOAD);
-	  CLIB_PREFETCH ((void *) (fd + (next + stride + 2)),
-			 CLIB_CACHE_LINE_BYTES, LOAD);
-	  CLIB_PREFETCH ((void *) (fd + (next + stride + 3)),
-			 CLIB_CACHE_LINE_BYTES, LOAD);
+	  clib_prefetch_load ((void *) (fd + (next + stride)));
+	  clib_prefetch_load ((void *) (fd + (next + stride + 1)));
+	  clib_prefetch_load ((void *) (fd + (next + stride + 2)));
+	  clib_prefetch_load ((void *) (fd + (next + stride + 3)));
 	}
 
 #ifdef CLIB_HAVE_VEC256
@@ -375,8 +371,7 @@ avf_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       continue;
     one_by_one:
 #endif
-      CLIB_PREFETCH ((void *) (fd + ((next + 8) & mask)),
-		     CLIB_CACHE_LINE_BYTES, LOAD);
+      clib_prefetch_load ((void *) (fd + ((next + 8) & mask)));
 
       if (avf_rxd_is_not_dd (d))
 	break;

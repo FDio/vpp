@@ -220,8 +220,8 @@ ip_in_out_acl_inline (vlib_main_t * vm,
 	  vlib_prefetch_buffer_header (b[4], LOAD);
 	  vlib_prefetch_buffer_header (b[5], LOAD);
 
-	  CLIB_PREFETCH (b[4]->data, CLIB_CACHE_LINE_BYTES, LOAD);
-	  CLIB_PREFETCH (b[5]->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	  clib_prefetch_load (b[4]->data);
+	  clib_prefetch_load (b[5]->data);
 	}
 
       /* calculate hashes for b[2] & b[3] */

@@ -277,7 +277,7 @@ acl_fa_node_common_prepare_fn (vlib_main_t * vm,
 	for (ii = ACL_PLUGIN_PREFETCH_GAP * vec_sz;
 	     ii < (ACL_PLUGIN_PREFETCH_GAP + 1) * vec_sz; ii++)
 	  {
-	    CLIB_PREFETCH (b[ii], CLIB_CACHE_LINE_BYTES, LOAD);
+	    clib_prefetch_load (b[ii]);
 	    CLIB_PREFETCH (b[ii]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
 	  }
       }

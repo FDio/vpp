@@ -116,10 +116,10 @@ mpcap_inline (vlib_main_t * vm,
 	  vlib_prefetch_buffer_header (b[5], STORE);
 	  vlib_prefetch_buffer_header (b[6], STORE);
 	  vlib_prefetch_buffer_header (b[7], STORE);
-	  CLIB_PREFETCH (b[4]->data, CLIB_CACHE_LINE_BYTES, STORE);
-	  CLIB_PREFETCH (b[5]->data, CLIB_CACHE_LINE_BYTES, STORE);
-	  CLIB_PREFETCH (b[6]->data, CLIB_CACHE_LINE_BYTES, STORE);
-	  CLIB_PREFETCH (b[7]->data, CLIB_CACHE_LINE_BYTES, STORE);
+	  clib_prefetch_store (b[4]->data);
+	  clib_prefetch_store (b[5]->data);
+	  clib_prefetch_store (b[6]->data);
+	  clib_prefetch_store (b[7]->data);
 	}
 
       next[0] = 0;
