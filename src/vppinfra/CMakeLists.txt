@@ -190,6 +190,7 @@ set(VPPINFRA_HEADERS
   vector_avx512.h
   vector/mask_compare.h
   vector/compress.h
+  vector/array_mask.h
   vector.h
   vector_neon.h
   vector_sse42.h
@@ -267,6 +268,7 @@ if(VPP_BUILD_VPPINFRA_TESTS)
 set(test_files
   vector/test/compress.c
   vector/test/mask_compare.c
+  vector/test/array_mask.c
 )
 
 add_vpp_executable(test_vector_funcs
