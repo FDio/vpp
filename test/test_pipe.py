@@ -12,7 +12,7 @@ from vpp_interface import VppInterface
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 from vpp_acl import AclRule, VppAcl, VppAclInterface
 
-NUM_PKTS = 67
+NUM_PKTS = 1
 
 
 class VppPipe(VppInterface):
@@ -53,11 +53,13 @@ class VppPipe(VppInterface):
                 return True
         return False
 
-    def set_unnumbered(self, ip_sw_if_index, is_add=True):
-        res = self._test.vapi.sw_interface_set_unnumbered(ip_sw_if_index,
-                                                          self.east, is_add)
-        res = self._test.vapi.sw_interface_set_unnumbered(ip_sw_if_index,
-                                                          self.west, is_add)
+    def set_unnumbered(self, ip_sw_if_index, is_east, is_add=True):
+        if is_east:
+            res = self._test.vapi.sw_interface_set_unnumbered(
+                ip_sw_if_index, self.east, is_add)
+        else:
+            res = self._test.vapi.sw_interface_set_unnumbered(
+                ip_sw_if_index, self.west, is_add)
 
 
 class TestPipe(VppTestCase):
@@ -203,8 +205,12 @@ class TestPipe(VppTestCase):
         self.send_and_assert_no_replies(self.pg2, p_east * NUM_PKTS)
 
         # IP enable the Pipes by making them unnumbered
-        pipes[0].set_unnumbered(self.pg2.sw_if_index)
-        pipes[1].set_unnumbered(self.pg3.sw_if_index)
+        pipes[1].set_unnumbered(self.pg2.sw_if_index, True)
+        pipes[1].set_unnumbered(self.pg3.sw_if_index, False)
+
+        self.logger.info(self.vapi.cli("show interface addr"))
+        self.logger.info(self.vapi.cli("show ip fib table 1"))
+        self.logger.info(self.vapi.cli("show ip fib table 2"))
 
         self.send_and_expect(self.pg2, p_east * NUM_PKTS, self.pg3)
 
