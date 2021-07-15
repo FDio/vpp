@@ -976,8 +976,23 @@ set_unnumbered (vlib_main_t * vm,
     return clib_error_return (0, "When enabling unnumbered specify the"
 			      " IP enabled interface that it uses");
 
-  vnet_sw_interface_update_unnumbered (unnumbered_sw_if_index,
-				       inherit_from_sw_if_index, enable);
+  int rv = vnet_sw_interface_update_unnumbered (
+    unnumbered_sw_if_index, inherit_from_sw_if_index, enable);
+
+  switch (rv)
+    {
+    case 0:
+      break;
+
+    case VNET_API_ERROR_UNEXPECTED_INTF_STATE:
+      return clib_error_return (
+	0,
+	"When enabling unnumbered both interfaces must be in the same tables");
+
+    default:
+      return clib_error_return (
+	0, "vnet_sw_interface_update_unnumbered returned %d", rv);
+    }
 
   return (NULL);
 }
