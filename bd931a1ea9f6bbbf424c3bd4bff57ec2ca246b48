@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4bb6e955_1d1b065f",
+        "filename": "src/vppinfra/cache.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2021-07-15T15:14:11Z",
+      "side": 1,
+      "message": "This macro should be defined and set in cpu.cmake multi-arch code. Is that right?\nI don\u0027t see anywhere this macro got defined and set.",
+      "range": {
+        "startLine": 49,
+        "startChar": 8,
+        "endLine": 49,
+        "endChar": 38
+      },
+      "revId": "bd931a1ea9f6bbbf424c3bd4bff57ec2ca246b48",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
