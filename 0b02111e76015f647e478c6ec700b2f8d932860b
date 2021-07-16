@@ -126,6 +126,24 @@
     },
     {
       "key": {
+        "uuid": "b0ab9b35_4ef6289f",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-07-16T10:18:08Z",
+      "side": 1,
+      "message": "Yes, but as i said, unlikely. And then you have bigger problem, handoff....",
+      "parentUuid": "69ff5ce7_5b526a68",
+      "revId": "0b02111e76015f647e478c6ec700b2f8d932860b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "c5cfbad8_4374d43f",
         "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
         "patchSetId": 2
@@ -191,6 +209,24 @@
       "side": 1,
       "message": "On aarch64, aligned loads and stores up to 64 bits are atomic. Not sure about other architectures.",
       "parentUuid": "25f88844_3babfa2f",
+      "revId": "0b02111e76015f647e478c6ec700b2f8d932860b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "70a7e7ce_33c58976",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 181,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-07-16T10:18:08Z",
+      "side": 1,
+      "message": "yeah, on pretty much any last 15 years. So that line just confuses and doesn\u0027t help with readability of the code.",
+      "parentUuid": "6c0423d1_696eba60",
       "revId": "0b02111e76015f647e478c6ec700b2f8d932860b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
