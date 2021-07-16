@@ -537,10 +537,6 @@ do {									\
 	 VAR < vec_end (POOL);						\
 	 VAR = POOL + pool_get_next_index (POOL, VAR - POOL))
 
-#define pool_foreach_old(VAR,POOL,BODY)					\
-  pool_foreach(VAR,POOL)						\
-   { BODY; }
-
 /** Returns pointer to element at given index.
 
     ASSERTs that the supplied index is valid.
@@ -578,11 +574,6 @@ do {									\
     for (i = pool_get_first_index (v);		\
 	 i < vec_len (v);			\
 	 i = pool_get_next_index (v, i))	\
-
-/** Iterate pool by index. */
-#define pool_foreach_index_old(i,v,body)		\
-  pool_foreach_index (i,v)			\
-	{ body; }
 
 /**
  * @brief Remove all elements from a pool in a safe way
