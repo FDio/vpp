@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "60059100_e3196a5e",
+        "filename": "src/vnet/interface.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1643,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-07-16T14:07:41Z",
+      "side": 1,
+      "message": "what happens if the unnumbered interface is bound to a different table?\ni\u0027d say it\u0027s better to insist that the user binds the unnumbered interface to the same table as the ip interface if they want that to work.",
+      "revId": "edb473bfaa1f22f8d629f8a7b426679d7d085ea0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
