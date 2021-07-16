@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "13c30a5a_d92efb74",
+        "filename": "src/cmake/cpu.cmake",
+        "patchSetId": 9
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2021-07-16T13:30:18Z",
+      "side": 1,
+      "message": "Hi Damjan,\nThis is not the correct place. OcteonTX2 has 128-byte cache-line.",
+      "range": {
+        "startLine": 139,
+        "startChar": 4,
+        "endLine": 139,
+        "endChar": 27
+      },
+      "revId": "e84895dbd5e3864fc340743d70b46de1d96d7913",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fd1eb93d_3608953a",
+        "filename": "src/cmake/cpu.cmake",
+        "patchSetId": 9
+      },
+      "lineNbr": 145,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2021-07-16T13:30:18Z",
+      "side": 1,
+      "message": "This is the correct place of adding \"CACHE_PREFETCH_BYTES 64\", as ThunderX2 has 64-byte cache-line size.",
+      "range": {
+        "startLine": 142,
+        "startChar": 0,
+        "endLine": 145,
+        "endChar": 3
+      },
+      "revId": "e84895dbd5e3864fc340743d70b46de1d96d7913",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
