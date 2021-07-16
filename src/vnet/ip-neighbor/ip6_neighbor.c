@@ -31,20 +31,20 @@ VLIB_REGISTER_LOG_CLASS (ip6_neighbor_log, static) = {
 #define log_debug(fmt, ...)                                                   \
   vlib_log_debug (ip6_neighbor_log.class, fmt, __VA_ARGS__)
 void
-ip6_neighbor_probe_dst (u32 sw_if_index, const ip6_address_t * dst)
+ip6_neighbor_probe_dst (u32 sw_if_index, u32 thread_index,
+			const ip6_address_t *dst)
 {
   ip6_address_t src;
 
   if (fib_sas6_get (sw_if_index, dst, &src) ||
       ip6_sas_by_sw_if_index (sw_if_index, dst, &src))
-    ip6_neighbor_probe (vlib_get_main (), vnet_get_main (),
-			sw_if_index, &src, dst);
+    ip6_neighbor_probe (vlib_get_main (), vnet_get_main (), sw_if_index,
+			thread_index, &src, dst);
 }
 
 void
-ip6_neighbor_advertise (vlib_main_t * vm,
-			vnet_main_t * vnm,
-			u32 sw_if_index, const ip6_address_t * addr)
+ip6_neighbor_advertise (vlib_main_t *vm, vnet_main_t *vnm, u32 sw_if_index,
+			u32 thread_index, const ip6_address_t *addr)
 {
   vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
   ip6_main_t *i6m = &ip6_main;
@@ -105,6 +105,10 @@ ip6_neighbor_advertise (vlib_main_t * vm,
       to_next[0] = bi;
       f->n_vectors = 1;
       vlib_put_frame_to_node (vm, hi->output_node_index, f);
+
+      vlib_increment_simple_counter (
+	&ip_neighbor_counters[AF_IP6].ipnc[VLIB_TX][IP_NEIGHBOR_CTR_GRAT],
+	thread_index, sw_if_index, 1);
     }
 }
 
@@ -222,8 +226,8 @@ ip6_discover_neighbor_inline (vlib_main_t * vm,
 	      continue;
 	    }
 
-	  b0 = ip6_neighbor_probe (vm, vnm, sw_if_index0,
-				   &src, &ip0->dst_address);
+	  b0 = ip6_neighbor_probe (vm, vnm, sw_if_index0, thread_index, &src,
+				   &ip0->dst_address);
 
 	  if (PREDICT_TRUE (NULL != b0))
 	    {

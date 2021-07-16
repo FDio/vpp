@@ -90,6 +90,7 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 	  icmp6_neighbor_discovery_ethernet_link_layer_address_option_t *o0;
 	  u32 bi0, options_len0, sw_if_index0, next0, error0;
 	  u32 ip6_sadd_link_local, ip6_sadd_unspecified;
+	  ip_neighbor_counter_type_t c_type;
 	  int is_rewrite0;
 	  u32 ni0;
 
@@ -230,15 +231,23 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 	    }
 
 	  if (is_solicitation)
-	    next0 = (error0 != ICMP6_ERROR_NONE
-		     ? ICMP6_NEIGHBOR_SOLICITATION_NEXT_DROP
-		     : ICMP6_NEIGHBOR_SOLICITATION_NEXT_REPLY);
+	    {
+	      next0 = (error0 != ICMP6_ERROR_NONE ?
+			       ICMP6_NEIGHBOR_SOLICITATION_NEXT_DROP :
+			       ICMP6_NEIGHBOR_SOLICITATION_NEXT_REPLY);
+	      c_type = IP_NEIGHBOR_CTR_REQUEST;
+	    }
 	  else
 	    {
 	      next0 = 0;
 	      error0 = error0 == ICMP6_ERROR_NONE ?
 		ICMP6_ERROR_NEIGHBOR_ADVERTISEMENTS_RX : error0;
+	      c_type = IP_NEIGHBOR_CTR_REPLY;
 	    }
+
+	  vlib_increment_simple_counter (
+	    &ip_neighbor_counters[AF_IP6].ipnc[VLIB_RX][c_type],
+	    vm->thread_index, sw_if_index0, 1);
 
 	  if (is_solicitation && error0 == ICMP6_ERROR_NONE)
 	    {

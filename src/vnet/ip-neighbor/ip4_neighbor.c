@@ -55,7 +55,8 @@ VLIB_REGISTER_LOG_CLASS (ip4_neighbor_log, static) = {
   vlib_log_debug (ip4_neighbor_log.class, fmt, __VA_ARGS__)
 
 void
-ip4_neighbor_probe_dst (u32 sw_if_index, const ip4_address_t * dst)
+ip4_neighbor_probe_dst (u32 sw_if_index, u32 thread_index,
+			const ip4_address_t *dst)
 {
   ip4_address_t src;
   adj_index_t ai;
@@ -71,9 +72,8 @@ ip4_neighbor_probe_dst (u32 sw_if_index, const ip4_address_t * dst)
 }
 
 void
-ip4_neighbor_advertise (vlib_main_t * vm,
-			vnet_main_t * vnm,
-			u32 sw_if_index, const ip4_address_t * addr)
+ip4_neighbor_advertise (vlib_main_t *vm, vnet_main_t *vnm, u32 sw_if_index,
+			u32 thread_index, const ip4_address_t *addr)
 {
   vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
   ip4_main_t *i4m = &ip4_main;
@@ -126,6 +126,10 @@ ip4_neighbor_advertise (vlib_main_t * vm,
       to_next[0] = bi;
       f->n_vectors = 1;
       vlib_put_frame_to_node (vm, hi->output_node_index, f);
+
+      vlib_increment_simple_counter (
+	&ip_neighbor_counters[AF_IP4].ipnc[VLIB_TX][IP_NEIGHBOR_CTR_GRAT],
+	thread_index, sw_if_index, 1);
     }
 }
 
