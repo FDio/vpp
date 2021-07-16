@@ -162,6 +162,24 @@
     },
     {
       "key": {
+        "uuid": "81f59614_18de9732",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 2229
+      },
+      "writtenOn": "2021-07-16T19:21:19Z",
+      "side": 1,
+      "message": "Perf difference in MPPS, with and without spinlock using flow cache (not per thread) in TX2 - 1 core test:\n\n    1     10    100   1000 \n[1] 4.65  4.66  4.63  4.64\n[2] 4.75  4.72  4.75  4.72\n1: with ipsec_spinlock_lock/unlock\n2: Without ipsec_spinlock_lock/unlock\n\nPerformance degradation is 1-2%. \n\nCost of spinlock will be more when number of cores increase and that is true only when there is contention for this hash bucket level lock.\nIf the packets of same flow goes to same core most of the time, then it is safe to assume that the degradation will be only 1-2% when flow cache option is enabled.\n\nWhen we enable flow cache on high core count CPU (80) like Ampere, we have to allocate 80 times more memory to compensate for this minor degradation. Trading more memory for 1-2% degradation is not a good deal and I feel we can stick with spin lock option. Let me know.\n\nWhat is the hand off problem ? Do you see an issue in the context of stateful processing (like IPSec sequence number generation) ?",
+      "parentUuid": "b0ab9b35_4ef6289f",
+      "revId": "0b02111e76015f647e478c6ec700b2f8d932860b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "c5cfbad8_4374d43f",
         "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
         "patchSetId": 2
