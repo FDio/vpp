@@ -46,6 +46,30 @@
       "revId": "d07d0092b97b057b6a6d571ede125ce392f59b3d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "36174063_91bcffc9",
+        "filename": "src/plugins/snort/daq_vpp.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 120,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-07-16T11:36:29Z",
+      "side": 1,
+      "message": "yeah, no clib there....",
+      "parentUuid": "a32ae3df_d6a9d13a",
+      "range": {
+        "startLine": 120,
+        "startChar": 0,
+        "endLine": 120,
+        "endChar": 19
+      },
+      "revId": "d07d0092b97b057b6a6d571ede125ce392f59b3d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
