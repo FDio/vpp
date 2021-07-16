@@ -39,7 +39,9 @@ endfunction()
 ##############################################################################
 # aligned config output
 ##############################################################################
-function(pr desc val)
+function(pr desc)
+  # CMake 3.12+: list(JOIN ARGN " " val)
+  string(REPLACE ";" " " val "${ARGN}")
   if("$ENV{TERM}" STREQUAL "xterm-256color")
     string(ASCII 27 esc)
     set(reset "${esc}[m")
