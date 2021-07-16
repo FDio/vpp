@@ -500,6 +500,7 @@ arping_neighbor_advertisement (vlib_main_t *vm, arping_args_t *args)
 	    vlib_cli_output (vm, "Sending %u GARP to %U", send_count,
 			     format_ip4_address, &args->address.ip.ip4);
 	  ip4_neighbor_advertise (vm, vnm, args->sw_if_index,
+				  vlib_get_thread_index (),
 				  &args->address.ip.ip4);
 	}
       else
@@ -509,6 +510,7 @@ arping_neighbor_advertisement (vlib_main_t *vm, arping_args_t *args)
 			     send_count, format_ip6_address,
 			     &args->address.ip.ip6);
 	  ip6_neighbor_advertise (vm, vnm, args->sw_if_index,
+				  vlib_get_thread_index (),
 				  &args->address.ip.ip6);
 	}
       args->repeat--;
@@ -587,7 +589,8 @@ arping_neighbor_probe_dst (vlib_main_t *vm, arping_args_t *args)
 	  if (args->silence == 0)
 	    vlib_cli_output (vm, "Sending %u ARP Request to %U", send_count,
 			     format_ip4_address, &args->address.ip.ip4);
-	  ip4_neighbor_probe_dst (args->sw_if_index, &args->address.ip.ip4);
+	  ip4_neighbor_probe_dst (args->sw_if_index, vlib_get_thread_index (),
+				  &args->address.ip.ip4);
 	}
       else
 	{
@@ -595,7 +598,8 @@ arping_neighbor_probe_dst (vlib_main_t *vm, arping_args_t *args)
 	    vlib_cli_output (vm, "Sending %u Neighbor Solicitation  to %U",
 			     send_count, format_ip6_address,
 			     &args->address.ip.ip6);
-	  ip6_neighbor_probe_dst (args->sw_if_index, &args->address.ip.ip6);
+	  ip6_neighbor_probe_dst (args->sw_if_index, vlib_get_thread_index (),
+				  &args->address.ip.ip6);
 	}
       args->repeat--;
       if ((args->interval > 0.0) && (args->repeat > 0))
