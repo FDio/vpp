@@ -53,9 +53,8 @@ consult the [VPP wiki](https://wiki.fd.io/view/VPP) for more complete
 documentation.
 
 In particular, readers are recommended to take a look at [Pulling, Building,
-Running, Hacking, Pushing](https://wiki.fd.io/view/VPP/Pulling,_Building,_Run
-ning,_Hacking_and_Pushing_VPP_Code) which provides extensive step-by-step
-coverage of the topic.
+Running, Hacking, Pushing](https://wiki.fd.io/view/VPP/Pulling,_Building,_Running,_Hacking_and_Pushing_VPP_Code)
+which provides extensive step-by-step coverage of the topic.
 
 For the impatient, some salient information is distilled below.
 
@@ -87,8 +86,7 @@ timing or performance sensitive, consider using bare metal in addition or
 instead of the VM.
 
 For this to work you will need a working installation of Vagrant. Instructions
-for this can be found [on the Setting up Vagrant wiki page]
-(https://wiki.fd.io/view/DEV/Setting_Up_Vagrant).
+for this can be found [on the Setting up Vagrant wiki page](https://wiki.fd.io/view/DEV/Setting_Up_Vagrant).
 
 
 ## More information
