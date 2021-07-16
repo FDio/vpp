@@ -55,6 +55,24 @@
     },
     {
       "key": {
+        "uuid": "75ca12c7_7929dedb",
+        "filename": "src/vnet/ipsec/ipsec.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2021-07-16T15:39:26Z",
+      "side": 1,
+      "message": "Currently the ipsec{...} startup.conf config is found in ipsec_tun.c, as the only ipsec options are related to IPSec tunnels (which uses bihash).\nWe propose to move the ipsec{...} config options to a common file ipsec.c so we can also use the ipsec{...} segment for flow cache config (and any future ipsec config). Common ipsec config options should not be in the file ipsec_tun.c.\nI can create a separate patch for this shortly.",
+      "parentUuid": "0d2cce10_06530913",
+      "revId": "0b02111e76015f647e478c6ec700b2f8d932860b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "c33dceb3_2eb44ebb",
         "filename": "src/vnet/ipsec/ipsec_input.c",
         "patchSetId": 2
