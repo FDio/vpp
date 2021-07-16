@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3e47d2b2_5da9e0b5",
+        "filename": "src/vnet/ip6-nd/ip6_nd_mirror_proxy.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-07-16T07:54:26Z",
+      "side": 1,
+      "message": "looking at every IPv6 packet for the 1 in a million ND packet is a very inefficient way to do this.\ni\u0027d suggest instead adding DPOs to the prefixes you really care about.",
+      "revId": "fa8afbc7990e8b5151db9430e2f8c2053f8fda8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "993dcee5_0b0d0e44",
+        "filename": "src/vnet/ip6-nd/ip6_nd_mirror_proxy.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-07-16T07:54:26Z",
+      "side": 1,
+      "message": "a match against any /128 is what you want?",
+      "revId": "fa8afbc7990e8b5151db9430e2f8c2053f8fda8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0ef235f2_191ca95d",
+        "filename": "test/test_ip6_nd_mirror_proxy.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-07-16T07:54:26Z",
+      "side": 1,
+      "message": "why? it hss config_ip6().",
+      "revId": "fa8afbc7990e8b5151db9430e2f8c2053f8fda8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9675f451_5a7b2853",
+        "filename": "test/test_ip6_nd_mirror_proxy.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-07-16T07:54:26Z",
+      "side": 1,
+      "message": "this comment is wrong",
+      "revId": "fa8afbc7990e8b5151db9430e2f8c2053f8fda8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
