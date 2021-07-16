@@ -60,8 +60,8 @@ bond_disable_collecting_distributing (vlib_main_t * vm, member_if_t * mif)
 
   /* We get a new member just becoming active */
   if (switching_active)
-    vlib_process_signal_event (bm->vlib_main, bond_process_node.index,
-			       BOND_SEND_GARP_NA, bif->hw_if_index);
+    vlib_process_signal_event_mt (bm->vlib_main, bond_process_node.index,
+				  BOND_SEND_GARP_NA, bif->hw_if_index);
   clib_spinlock_unlock_if_init (&bif->lockp);
 }
 
@@ -126,8 +126,8 @@ bond_sort_members (bond_if_t * bif)
 
   vec_sort_with_function (bif->active_members, bond_member_sort);
   if (old_active != bif->active_members[0])
-    vlib_process_signal_event (bm->vlib_main, bond_process_node.index,
-			       BOND_SEND_GARP_NA, bif->hw_if_index);
+    vlib_process_signal_event_mt (bm->vlib_main, bond_process_node.index,
+				  BOND_SEND_GARP_NA, bif->hw_if_index);
 }
 
 void
@@ -159,15 +159,13 @@ bond_enable_collecting_distributing (vlib_main_t * vm, member_if_t * mif)
     vec_add1 (bif->active_members, mif->sw_if_index);
 
   mif->is_local_numa = (vm->numa_node == hw->numa_node) ? 1 : 0;
-  if (bif->mode == BOND_MODE_ACTIVE_BACKUP)
-    {
-      if (vec_len (bif->active_members) == 1)
-	/* First member becomes active? */
-	vlib_process_signal_event (bm->vlib_main, bond_process_node.index,
-				   BOND_SEND_GARP_NA, bif->hw_if_index);
-      else
-	bond_sort_members (bif);
-    }
+
+  if (vec_len (bif->active_members) == 1)
+    /* First member becomes active? */
+    vlib_process_signal_event_mt (bm->vlib_main, bond_process_node.index,
+				  BOND_SEND_GARP_NA, bif->hw_if_index);
+  else if (bif->mode == BOND_MODE_ACTIVE_BACKUP)
+    bond_sort_members (bif);
 
 done:
   clib_spinlock_unlock_if_init (&bif->lockp);
