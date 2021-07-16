@@ -771,15 +771,13 @@ gbb_endpoint_fwd_recalc (gbp_endpoint_t * ge)
 	    gbp_endpoint_add_itf (gbp_itf_get_sw_if_index (gef->gef_itf),
 				  gei);
 	    if (FIB_PROTOCOL_IP4 == pfx->fp_proto)
-	      ip4_neighbor_advertise (vlib_get_main (),
-				      vnet_get_main (),
-				      gg->gg_uplink_sw_if_index,
-				      &pfx->fp_addr.ip4);
+	      ip4_neighbor_advertise (
+		vlib_get_main (), vnet_get_main (), gg->gg_uplink_sw_if_index,
+		vlib_get_thread_index (), &pfx->fp_addr.ip4);
 	    else
-	      ip6_neighbor_advertise (vlib_get_main (),
-				      vnet_get_main (),
-				      gg->gg_uplink_sw_if_index,
-				      &pfx->fp_addr.ip6);
+	      ip6_neighbor_advertise (
+		vlib_get_main (), vnet_get_main (), gg->gg_uplink_sw_if_index,
+		vlib_get_thread_index (), &pfx->fp_addr.ip6);
 	  }
       }
   }

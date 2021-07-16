@@ -22,6 +22,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/icmp46_packet.h>
 #include <vnet/ip/ip6.h>
+#include <vnet/ip-neighbor/ip_neighbor_types.h>
 
 typedef enum
 {
@@ -88,6 +89,10 @@ icmp6_send_neighbor_advertisement (
   vnet_buffer (b)->sw_if_index[VLIB_TX] = sw_if_index0;
   vnet_buffer (b)->sw_if_index[VLIB_RX] =
     vnet_main.local_interface_sw_if_index;
+
+  vlib_increment_simple_counter (
+    &ip_neighbor_counters[AF_IP6].ipnc[VLIB_TX][IP_NEIGHBOR_CTR_REPLY],
+    vm->thread_index, sw_if_index0, 1);
 }
 
 #endif /* included_ip6_nd_inline_h */

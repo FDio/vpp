@@ -25,23 +25,22 @@
 #include <vnet/ip/icmp46_packet.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/adj/adj_internal.h>
+#include <vnet/ip-neighbor/ip_neighbor_types.h>
 
 /* Template used to generate IP6 neighbor solicitation packets. */
 extern vlib_packet_template_t ip6_neighbor_packet_template;
 
-extern void ip6_neighbor_advertise (vlib_main_t * vm,
-				    vnet_main_t * vnm,
-				    u32 sw_if_index,
-				    const ip6_address_t * addr);
+extern void ip6_neighbor_advertise (vlib_main_t *vm, vnet_main_t *vnm,
+				    u32 sw_if_index, u32 thread_index,
+				    const ip6_address_t *addr);
 
-extern void ip6_neighbor_probe_dst (u32 sw_if_index,
-				    const ip6_address_t * dst);
+extern void ip6_neighbor_probe_dst (u32 sw_if_index, u32 thread_index,
+				    const ip6_address_t *dst);
 
 always_inline vlib_buffer_t *
-ip6_neighbor_probe (vlib_main_t * vm,
-		    vnet_main_t * vnm,
-		    u32 sw_if_index,
-		    const ip6_address_t * src, const ip6_address_t * dst)
+ip6_neighbor_probe (vlib_main_t *vm, vnet_main_t *vnm, u32 sw_if_index,
+		    u32 thread_index, const ip6_address_t *src,
+		    const ip6_address_t *dst)
 {
   icmp6_neighbor_solicitation_header_t *h0;
   vnet_hw_interface_t *hw_if0;
@@ -103,6 +102,10 @@ ip6_neighbor_probe (vlib_main_t * vm,
     f->n_vectors = 1;
     vlib_put_frame_to_node (vm, adj->ia_node_index, f);
   }
+
+  vlib_increment_simple_counter (
+    &ip_neighbor_counters[AF_IP6].ipnc[VLIB_TX][IP_NEIGHBOR_CTR_REQUEST],
+    thread_index, sw_if_index, 1);
 
   return b0;
 }

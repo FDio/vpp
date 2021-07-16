@@ -83,6 +83,53 @@ format_ip_neighbor (u8 * s, va_list * va)
 		  ipn->ipn_key->ipnk_sw_if_index));
 }
 
+static void
+ip_neighbor_alloc_one_ctr (ip_neighbor_counters_t *ctr, vlib_dir_t dir,
+			   ip_neighbor_counter_type_t type, u32 sw_if_index)
+{
+  vlib_validate_simple_counter (&(ctr->ipnc[dir][type]), sw_if_index);
+  vlib_zero_simple_counter (&(ctr->ipnc[dir][type]), sw_if_index);
+}
+
+void
+ip_neighbor_alloc_ctr (ip_neighbor_counters_t *ctr, u32 sw_if_index)
+{
+  ip_neighbor_counter_type_t type;
+  vlib_dir_t dir;
+
+  FOREACH_VLIB_DIR (dir)
+  {
+    FOREACH_IP_NEIGHBOR_CTR (type)
+    {
+      ip_neighbor_alloc_one_ctr (ctr, dir, type, sw_if_index);
+    }
+  }
+}
+
+u8 *
+format_ip_neighbor_counters (u8 *s, va_list *args)
+{
+  ip_neighbor_counters_t *ctr = va_arg (*args, ip_neighbor_counters_t *);
+  u32 sw_if_index = va_arg (*args, u32);
+  vlib_dir_t dir;
+
+  FOREACH_VLIB_DIR (dir)
+  {
+    s = format (s, " %U:[", format_vlib_rx_tx, dir);
+
+#define _(a, b)                                                               \
+  s = format (s, "%s:%lld ", b,                                               \
+	      vlib_get_simple_counter (&ctr->ipnc[dir][IP_NEIGHBOR_CTR_##a],  \
+				       sw_if_index));
+    foreach_ip_neighbor_counter_type
+#undef _
+
+      s = format (s, "]");
+  }
+
+  return (s);
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
