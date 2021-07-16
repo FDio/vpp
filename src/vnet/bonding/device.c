@@ -581,8 +581,10 @@ bond_active_interface_switch_cb (vnet_main_t * vnm, u32 sw_if_index,
 {
   bond_main_t *bm = &bond_main;
 
-  ip4_neighbor_advertise (bm->vlib_main, bm->vnet_main, sw_if_index, NULL);
-  ip6_neighbor_advertise (bm->vlib_main, bm->vnet_main, sw_if_index, NULL);
+  ip4_neighbor_advertise (bm->vlib_main, bm->vnet_main, sw_if_index,
+			  vlib_get_thread_index (), NULL);
+  ip6_neighbor_advertise (bm->vlib_main, bm->vnet_main, sw_if_index,
+			  vlib_get_thread_index (), NULL);
 
   return (WALK_CONTINUE);
 }

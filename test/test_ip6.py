@@ -193,6 +193,22 @@ class TestIPv6ND(VppTestCase):
         self.assertEqual(ip.src, sip)
         self.assertEqual(ip.dst, dip)
 
+    def get_ip6_nd_rx_requests(self, itf):
+        """Get IP6 ND RX request stats for and interface"""
+        return self.statistics["/net/ip6-nd/rx/requests"][:, itf.sw_if_index].sum()
+
+    def get_ip6_nd_tx_requests(self, itf):
+        """Get IP6 ND TX request stats for and interface"""
+        return self.statistics["/net/ip6-nd/tx/requests"][:, itf.sw_if_index].sum()
+
+    def get_ip6_nd_rx_replies(self, itf):
+        """Get IP6 ND RX replies stats for and interface"""
+        return self.statistics["/net/ip6-nd/rx/replies"][:, itf.sw_if_index].sum()
+
+    def get_ip6_nd_tx_replies(self, itf):
+        """Get IP6 ND TX replies stats for and interface"""
+        return self.statistics["/net/ip6-nd/tx/replies"][:, itf.sw_if_index].sum()
+
 
 @tag_run_solo
 class TestIPv6(TestIPv6ND):
@@ -430,6 +446,9 @@ class TestIPv6(TestIPv6ND):
            - Send NS for a target address the router does not onn.
         """
 
+        n_rx_req_pg0 = self.get_ip6_nd_rx_requests(self.pg0)
+        n_tx_rep_pg0 = self.get_ip6_nd_tx_replies(self.pg0)
+
         #
         # An NS from a non link source address
         #
@@ -447,6 +466,7 @@ class TestIPv6(TestIPv6ND):
         self.send_and_assert_no_replies(
             self.pg0, pkts, "No response to NS source by address not on sub-net"
         )
+        self.assert_equal(self.get_ip6_nd_rx_requests(self.pg0), n_rx_req_pg0 + 1)
 
         #
         # An NS for sent to a solicited mcast group the router is
@@ -485,6 +505,7 @@ class TestIPv6(TestIPv6ND):
         self.send_and_assert_no_replies(
             self.pg0, pkts, "No response to NS for unknown target"
         )
+        self.assert_equal(self.get_ip6_nd_rx_requests(self.pg0), n_rx_req_pg0 + 2)
 
         #
         # A neighbor entry that has no associated FIB-entry
@@ -525,6 +546,8 @@ class TestIPv6(TestIPv6ND):
             dst_ip=self.pg0._remote_hosts[2].ip6_ll,
             tgt_ip=self.pg0.local_ip6,
         )
+        self.assert_equal(self.get_ip6_nd_rx_requests(self.pg0), n_rx_req_pg0 + 3)
+        self.assert_equal(self.get_ip6_nd_tx_replies(self.pg0), n_tx_rep_pg0 + 1)
 
         #
         # we should have learned an ND entry for the peer's link-local
@@ -573,6 +596,37 @@ class TestIPv6(TestIPv6ND):
             find_nbr(self, self.pg0.sw_if_index, self.pg0._remote_hosts[3].ip6_ll)
         )
         self.assertFalse(find_route(self, self.pg0._remote_hosts[3].ip6_ll, 128))
+
+    def test_nd_incomplete(self):
+        """IP6-ND Incomplete"""
+        self.pg1.generate_remote_hosts(3)
+
+        p0 = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IPv6(src=self.pg0.remote_ip6, dst=self.pg1.remote_hosts[1].ip6)
+            / UDP(sport=1234, dport=1234)
+            / Raw()
+        )
+
+        #
+        # a packet to an unresolved destination generates an ND request
+        #
+        n_tx_req_pg1 = self.get_ip6_nd_tx_requests(self.pg1)
+        self.send_and_expect_ns(self.pg0, self.pg1, p0, self.pg1.remote_hosts[1].ip6)
+        self.assert_equal(self.get_ip6_nd_tx_requests(self.pg1), n_tx_req_pg1 + 1)
+
+        #
+        # a reply to the request
+        #
+        self.assert_equal(self.get_ip6_nd_rx_replies(self.pg1), 0)
+        na = (
+            Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac)
+            / IPv6(dst=self.pg1.local_ip6, src=self.pg1.remote_hosts[1].ip6)
+            / ICMPv6ND_NA(tgt=self.pg1.remote_hosts[1].ip6)
+            / ICMPv6NDOptSrcLLAddr(lladdr=self.pg1.remote_hosts[1].mac)
+        )
+        self.send_and_assert_no_replies(self.pg1, [na])
+        self.assert_equal(self.get_ip6_nd_rx_replies(self.pg1), 1)
 
     def test_ns_duplicates(self):
         """ND Duplicates"""

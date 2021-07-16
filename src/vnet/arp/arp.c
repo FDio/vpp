@@ -25,6 +25,7 @@
 #include <vnet/pg/pg.h>
 
 #include <vnet/ip-neighbor/ip_neighbor.h>
+#include <vnet/ip-neighbor/ip4_neighbor.h>
 #include <vnet/ip-neighbor/ip_neighbor_dp.h>
 
 #include <vlibmemory/api.h>
@@ -565,8 +566,14 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		error0 = ETHERNET_ARP_ERROR_l3_dst_address_not_local;
 	      else if (arp0->ip4_over_ethernet[0].ip4.as_u32 ==
 		       arp0->ip4_over_ethernet[1].ip4.as_u32)
-		error0 = arp_learn (sw_if_index0,
-				    &arp0->ip4_over_ethernet[0]);
+		{
+		  vlib_increment_simple_counter (
+		    &ip_neighbor_counters[AF_IP4]
+		       .ipnc[VLIB_RX][IP_NEIGHBOR_CTR_GRAT],
+		    vm->thread_index, sw_if_index0, 1);
+		  error0 =
+		    arp_learn (sw_if_index0, &arp0->ip4_over_ethernet[0]);
+		}
 	      goto drop;
 	    case ARP_DST_FIB_CONN:
 	      /* destination is connected, continue to process */
@@ -599,6 +606,14 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      error0 = ETHERNET_ARP_ERROR_l2_address_mismatch;
 	      goto drop;
 	    }
+
+	  vlib_increment_simple_counter (
+	    &ip_neighbor_counters[AF_IP4]
+	       .ipnc[VLIB_RX][arp0->opcode == clib_host_to_net_u16 (
+						ETHERNET_ARP_OPCODE_reply) ?
+				      IP_NEIGHBOR_CTR_REPLY :
+				      IP_NEIGHBOR_CTR_REQUEST],
+	    vm->thread_index, sw_if_index0, 1);
 
 	  /* Learn or update sender's mapping only for replies to addresses
 	   * that are local to the subnet */
@@ -653,6 +668,9 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  if (!error0)
 	    error0 = arp_learn (sw_if_index0, &arp0->ip4_over_ethernet[1]);
 
+	  vlib_increment_simple_counter (
+	    &ip_neighbor_counters[AF_IP4].ipnc[VLIB_TX][IP_NEIGHBOR_CTR_REPLY],
+	    vm->thread_index, sw_if_index0, 1);
 	  n_replies_sent += 1;
 	  goto enqueue;
 
