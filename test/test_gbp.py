@@ -1039,6 +1039,15 @@ class TestGBP(VppTestCase):
                                ep.recirc.recirc, bvi_mac=0)
             lf.add_vpp_config()
 
+        self.assert_equal(self.statistics["/net/arp/tx/gratuitous"]
+                          [:, epgs[0].uplink.sw_if_index].sum(), 2)
+        self.assert_equal(self.statistics["/net/arp/tx/gratuitous"]
+                          [:, epgs[1].uplink.sw_if_index].sum(), 1)
+        self.assert_equal(self.statistics["/net/ip6-nd/tx/gratuitous"]
+                          [:, epgs[0].uplink.sw_if_index].sum(), 2)
+        self.assert_equal(self.statistics["/net/ip6-nd/tx/gratuitous"]
+                          [:, epgs[1].uplink.sw_if_index].sum(), 1)
+
         #
         # ARP packets for unknown IP are sent to the EPG uplink
         #
