@@ -120,7 +120,37 @@ extern void ip_neighbor_clone (const ip_neighbor_t * ipn,
 
 extern void ip_neighbor_free (ip_neighbor_t * ipn);
 
+/**
+ * Keep RX and TX counts per-AF
+ */
+#define foreach_ip_neighbor_counter_type                                      \
+  _ (REPLY, "reply")                                                          \
+  _ (REQUEST, "request")                                                      \
+  _ (GRAT, "gratuitous")
 
+typedef enum ip_neighbor_counter_type_t_
+{
+#define _(a, b) IP_NEIGHBOR_CTR_##a,
+  foreach_ip_neighbor_counter_type
+#undef _
+} ip_neighbor_counter_type_t;
+
+#define N_IP_NEIGHBOR_CTRS (IP_NEIGHBOR_CTR_GRAT + 1)
+
+#define FOREACH_IP_NEIGHBOR_CTR(_type)                                        \
+  for (_type = 0; _type < N_IP_NEIGHBOR_CTRS; _type++)
+
+typedef struct ip_neighbor_counters_t_
+{
+  vlib_simple_counter_main_t ipnc[VLIB_N_DIR][N_IP_NEIGHBOR_CTRS];
+} ip_neighbor_counters_t;
+
+extern u8 *format_ip_neighbor_counters (u8 *s, va_list *args);
+
+extern void ip_neighbor_alloc_ctr (ip_neighbor_counters_t *ctr,
+				   u32 sw_if_index);
+
+extern ip_neighbor_counters_t ip_neighbor_counters[N_AF];
 
 #endif /* __INCLUDE_IP_NEIGHBOR_H__ */
 
