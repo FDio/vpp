@@ -52,6 +52,7 @@
 #include <vppinfra/mem.h>
 #include <vppinfra/vec.h>
 #include <vppinfra/socket.h>
+#include <vppinfra/linux/netns.h>
 #include <vppinfra/format.h>
 #include <vppinfra/error.h>
 
@@ -111,6 +112,18 @@ socket_config (char *config,
       clib_memcpy (&su->sun_path, config,
 		   clib_min (sizeof (su->sun_path), 1 + strlen (config)));
       *addr_len = sizeof (su[0]);
+    }
+
+  /* Treat everything that starts with @ as an abstract socket. */
+  else if (config[0] == '@')
+    {
+      struct sockaddr_un *su = addr;
+      su->sun_family = PF_LOCAL;
+      clib_memcpy (&su->sun_path, config,
+		   clib_min (sizeof (su->sun_path), 1 + strlen (config)));
+
+      *addr_len = sizeof (su->sun_family) + strlen (config);
+      su->sun_path[0] = '\0';
     }
 
   /* Hostname or hostname:port or port. */
@@ -440,7 +453,8 @@ clib_socket_init (clib_socket_t * s)
 	      need_bind = 0;
 	    }
 	}
-      if (addr.sa.sa_family == PF_LOCAL)
+      if (addr.sa.sa_family == PF_LOCAL &&
+	  ((struct sockaddr_un *) &addr)->sun_path[0] != 0)
 	unlink (((struct sockaddr_un *) &addr)->sun_path);
 
       /* Make address available for multiple users. */
@@ -477,8 +491,9 @@ clib_socket_init (clib_socket_t * s)
 					  s->fd, s->config);
 	  goto done;
 	}
-      if (addr.sa.sa_family == PF_LOCAL
-	  && s->flags & CLIB_SOCKET_F_ALLOW_GROUP_WRITE)
+      if (addr.sa.sa_family == PF_LOCAL &&
+	  s->flags & CLIB_SOCKET_F_ALLOW_GROUP_WRITE &&
+	  ((struct sockaddr_un *) &addr)->sun_path[0] != 0)
 	{
 	  struct stat st = { 0 };
 	  if (stat (((struct sockaddr_un *) &addr)->sun_path, &st) < 0)
@@ -535,6 +550,38 @@ clib_socket_init (clib_socket_t * s)
 done:
   if (s->fd > 0)
     close (s->fd);
+  return error;
+}
+
+__clib_export clib_error_t *
+clib_socket_init_netns (clib_socket_t *s, u8 *namespace)
+{
+  if (namespace == NULL || namespace[0] == 0)
+    return clib_socket_init (s);
+
+  clib_error_t *error;
+  int old_netns_fd, nfd;
+
+  old_netns_fd = clib_netns_open (NULL /* self */);
+  if ((nfd = clib_netns_open (namespace)) == -1)
+    {
+      error = clib_error_return_unix (0, "clib_netns_open '%s'", namespace);
+      goto done;
+    }
+
+  if (clib_setns (nfd) == -1)
+    {
+      error = clib_error_return_unix (0, "setns '%s'", namespace);
+      goto done;
+    }
+
+  error = clib_socket_init (s);
+
+done:
+  if (clib_setns (old_netns_fd) == -1)
+    clib_warning ("Cannot set old ns");
+  close (old_netns_fd);
+
   return error;
 }
 

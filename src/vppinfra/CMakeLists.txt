@@ -204,6 +204,7 @@ if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
     elf_clib.c
     linux/mem.c
     linux/sysfs.c
+    linux/netns.c
    )
 endif()
 
