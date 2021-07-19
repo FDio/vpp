@@ -14,7 +14,6 @@
  */
 
 #define _GNU_SOURCE
-#include <sched.h>
 #include <fcntl.h>
 #include <ctype.h>
 #include <sys/socket.h>
@@ -25,6 +24,8 @@
 
 #include <vnet/plugin/plugin.h>
 #include <vnet/plugin/plugin.h>
+
+#include <vppinfra/linux/netns.h>
 
 #include <vnet/ip/ip_punt_drop.h>
 #include <vnet/fib/fib_table.h>
@@ -614,17 +615,6 @@ lcp_validate_if_name (u8 *name)
   return 1;
 }
 
-static int
-lcp_itf_get_ns_fd (char *ns_name)
-{
-  char ns_path[256] = "/proc/self/ns/net";
-
-  if (ns_name)
-    snprintf (ns_path, sizeof (ns_path) - 1, "/var/run/netns/%s", ns_name);
-
-  return open (ns_path, O_RDONLY);
-}
-
 static void
 lcp_itf_set_vif_link_state (u32 vif_index, u8 up, u8 *ns)
 {
@@ -634,13 +624,10 @@ lcp_itf_set_vif_link_state (u32 vif_index, u8 up, u8 *ns)
 
   if (ns)
     {
-      u8 *ns_path = 0;
-
-      curr_ns_fd = open ("/proc/self/ns/net", O_RDONLY);
-      ns_path = format (0, "/var/run/netns/%s%c", (char *) ns, 0);
-      vif_ns_fd = open ((char *) ns_path, O_RDONLY);
+      curr_ns_fd = clib_netns_open (NULL /* self */);
+      vif_ns_fd = clib_netns_open (ns);
       if (vif_ns_fd != -1)
-	setns (vif_ns_fd, CLONE_NEWNET);
+	clib_setns (vif_ns_fd);
     }
 
   vnet_netlink_set_link_state (vif_index, up);
@@ -650,7 +637,7 @@ lcp_itf_set_vif_link_state (u32 vif_index, u8 up, u8 *ns)
 
   if (curr_ns_fd != -1)
     {
-      setns (curr_ns_fd, CLONE_NEWNET);
+      clib_setns (curr_ns_fd);
       close (curr_ns_fd);
     }
 }
@@ -706,12 +693,12 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
 
       if (ns && ns[0] != 0)
 	{
-	  orig_ns_fd = lcp_itf_get_ns_fd (NULL);
-	  ns_fd = lcp_itf_get_ns_fd ((char *) ns);
+	  orig_ns_fd = clib_netns_open (NULL /* self */);
+	  ns_fd = clib_netns_open (ns);
 	  if (orig_ns_fd == -1 || ns_fd == -1)
 	    goto socket_close;
 
-	  setns (ns_fd, CLONE_NEWNET);
+	  clib_setns (ns_fd);
 	}
 
       vif_index = if_nametoindex ((const char *) host_if_name);
@@ -745,7 +732,7 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
     socket_close:
       if (orig_ns_fd != -1)
 	{
-	  setns (orig_ns_fd, CLONE_NEWNET);
+	  clib_setns (orig_ns_fd);
 	  close (orig_ns_fd);
 	}
       if (ns_fd != -1)

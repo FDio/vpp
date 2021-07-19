@@ -27,7 +27,6 @@
 #include <linux/sockios.h>
 #include <sys/eventfd.h>
 #include <net/if_arp.h>
-#include <sched.h>
 #include <limits.h>
 
 #include <linux/netlink.h>
@@ -36,6 +35,7 @@
 #include <vlib/vlib.h>
 #include <vlib/physmem.h>
 #include <vlib/unix/unix.h>
+#include <vppinfra/linux/netns.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
@@ -77,24 +77,6 @@ virtio_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi,
   /* nothing for now */
   //TODO On MTU change call vnet_netlink_set_if_mtu
   return 0;
-}
-
-static int
-open_netns_fd (char *netns)
-{
-  u8 *s = 0;
-  int fd;
-
-  if (strncmp (netns, "pid:", 4) == 0)
-    s = format (0, "/proc/%u/ns/net%c", atoi (netns + 4), 0);
-  else if (netns[0] == '/')
-    s = format (0, "%s%c", netns, 0);
-  else
-    s = format (0, "/var/run/netns/%s%c", netns, 0);
-
-  fd = open ((char *) s, O_RDONLY);
-  vec_free (s);
-  return fd;
 }
 
 #define TAP_MAX_INSTANCE 1024
@@ -227,15 +209,15 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 	}
       if (args->host_namespace)
 	{
-	  old_netns_fd = open ("/proc/self/ns/net", O_RDONLY);
-	  if ((nfd = open_netns_fd ((char *) args->host_namespace)) == -1)
+	  old_netns_fd = clib_netns_open (NULL /* self */);
+	  if ((nfd = clib_netns_open (args->host_namespace)) == -1)
 	    {
 	      args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
-	      args->error = clib_error_return_unix (0, "open_netns_fd '%s'",
+	      args->error = clib_error_return_unix (0, "clib_netns_open '%s'",
 						    args->host_namespace);
 	      goto error;
 	    }
-	  if (setns (nfd, CLONE_NEWNET) == -1)
+	  if (clib_setns (nfd) == -1)
 	    {
 	      args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
 	      args->error = clib_error_return_unix (0, "setns '%s'",
@@ -423,11 +405,11 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
          after we change our net namespace */
       if (args->host_namespace)
 	{
-	  old_netns_fd = open ("/proc/self/ns/net", O_RDONLY);
-	  if ((nfd = open_netns_fd ((char *) args->host_namespace)) == -1)
+	  old_netns_fd = clib_netns_open (NULL /* self */);
+	  if ((nfd = clib_netns_open (args->host_namespace)) == -1)
 	    {
 	      args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
-	      args->error = clib_error_return_unix (0, "open_netns_fd '%s'",
+	      args->error = clib_error_return_unix (0, "clib_netns_open '%s'",
 						    args->host_namespace);
 	      goto error;
 	    }
@@ -438,7 +420,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 	      args->rv = VNET_API_ERROR_NETLINK_ERROR;
 	      goto error;
 	    }
-	  if (setns (nfd, CLONE_NEWNET) == -1)
+	  if (clib_setns (nfd) == -1)
 	    {
 	      args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
 	      args->error = clib_error_return_unix (0, "setns '%s'",
@@ -567,7 +549,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   /* switch back to old net namespace */
   if (args->host_namespace)
     {
-      if (setns (old_netns_fd, CLONE_NEWNET) == -1)
+      if (clib_setns (old_netns_fd) == -1)
 	{
 	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
 	  args->error = clib_error_return_unix (0, "setns '%s'",
@@ -1065,13 +1047,13 @@ tap_set_speed (u32 hw_if_index, u32 speed)
 
   if (vif->net_ns)
     {
-      old_netns_fd = open ("/proc/self/ns/net", O_RDONLY);
-      if ((nfd = open_netns_fd ((char *) vif->net_ns)) == -1)
+      old_netns_fd = clib_netns_open (NULL /* self */);
+      if ((nfd = clib_netns_open (vif->net_ns)) == -1)
 	{
 	  clib_warning ("Cannot open netns");
 	  goto done;
 	}
-      if (setns (nfd, CLONE_NEWNET) == -1)
+      if (clib_setns (nfd) == -1)
 	{
 	  clib_warning ("Cannot set ns");
 	  goto done;
@@ -1109,7 +1091,7 @@ tap_set_speed (u32 hw_if_index, u32 speed)
 done:
   if (old_netns_fd != -1)
     {
-      if (setns (old_netns_fd, CLONE_NEWNET) == -1)
+      if (clib_setns (old_netns_fd) == -1)
 	{
 	  clib_warning ("Cannot set old ns");
 	}
