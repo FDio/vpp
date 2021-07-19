@@ -93,6 +93,8 @@ typedef struct _socket_t
    from IPPORT_USERRESERVED (5000). */
 clib_error_t *clib_socket_init (clib_socket_t * socket);
 
+clib_error_t *clib_socket_init_netns (clib_socket_t *socket, u8 *namespace);
+
 clib_error_t *clib_socket_accept (clib_socket_t * server,
 				  clib_socket_t * client);
 
