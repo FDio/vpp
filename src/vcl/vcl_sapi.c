@@ -188,7 +188,7 @@ static int
 vcl_api_add_del_worker_reply_handler (app_sapi_worker_add_del_reply_msg_t *
 				      mp, int *fds)
 {
-  int n_fds = 0, i, rv;
+  int n_fds = 0, i;
   u64 segment_handle;
   vcl_worker_t *wrk;
 
@@ -222,15 +222,7 @@ vcl_api_add_del_worker_reply_handler (app_sapi_worker_add_del_reply_msg_t *
 			    fds[n_fds++]))
       goto failed;
 
-  if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
-    {
-      u8 *segment_name = format (0, "memfd-%ld%c", segment_handle, 0);
-      rv = vcl_segment_attach (segment_handle, (char *) segment_name,
-			       SSVM_SEGMENT_MEMFD, fds[n_fds++]);
-      vec_free (segment_name);
-      if (rv != 0)
-	goto failed;
-    }
+  /* Don't re-attach vpp's mq segment */
 
   vcl_segment_attach_mq (segment_handle, mp->app_event_queue_address, 0,
 			 &wrk->app_event_queue);

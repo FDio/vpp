@@ -192,16 +192,7 @@ vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
 				fds[n_fds++]))
 	  goto failed;
 
-      if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
-	{
-	  segment_name = vl_api_from_api_to_new_c_string (&mp->segment_name);
-	  rv =
-	    vcl_segment_attach (segment_handle, segment_name,
-				SSVM_SEGMENT_MEMFD, fds[n_fds++]);
-	  vec_free (segment_name);
-	  if (rv != 0)
-	    goto failed;
-	}
+      /* Don't re-attach vpp's mq segment */
 
       vcl_segment_attach_mq (segment_handle, mp->app_event_queue_address, 0,
 			     &wrk->app_event_queue);
