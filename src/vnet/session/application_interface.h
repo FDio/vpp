@@ -223,15 +223,16 @@ typedef enum
   APP_OPTIONS_N_OPTIONS
 } app_attach_options_index_t;
 
-#define foreach_app_options_flags				\
-  _(ACCEPT_REDIRECT, "Use FIFO with redirects")			\
-  _(ADD_SEGMENT, "Add segment and signal app if needed")	\
-  _(IS_BUILTIN, "Application is builtin")			\
-  _(IS_TRANSPORT_APP, "Application is a transport proto")	\
-  _(IS_PROXY, "Application is proxying")			\
-  _(USE_GLOBAL_SCOPE, "App can use global session scope")	\
-  _(USE_LOCAL_SCOPE, "App can use local session scope")		\
-  _(EVT_MQ_USE_EVENTFD, "Use eventfds for signaling")		\
+#define foreach_app_options_flags                                             \
+  _ (ACCEPT_REDIRECT, "Use FIFO with redirects")                              \
+  _ (ADD_SEGMENT, "Add segment and signal app if needed")                     \
+  _ (IS_BUILTIN, "Application is builtin")                                    \
+  _ (IS_TRANSPORT_APP, "Application is a transport proto")                    \
+  _ (IS_PROXY, "Application is proxying")                                     \
+  _ (USE_GLOBAL_SCOPE, "App can use global session scope")                    \
+  _ (USE_LOCAL_SCOPE, "App can use local session scope")                      \
+  _ (EVT_MQ_USE_EVENTFD, "Use eventfds for signaling")                        \
+  _ (MEMFD_FOR_BUILTIN, "Use memfd for builtin app segs")
 
 typedef enum _app_options
 {

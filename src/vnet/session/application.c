@@ -769,18 +769,19 @@ application_alloc_and_init (app_init_args_t * a)
   ssvm_segment_type_t seg_type = SSVM_SEGMENT_MEMFD;
   segment_manager_props_t *props;
   application_t *app;
-  u64 *options;
+  u64 *opts;
 
   app = application_alloc ();
-  options = a->options;
+  opts = a->options;
   /*
    * Make sure we support the requested configuration
    */
-  if (options[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_IS_BUILTIN)
+  if ((opts[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_IS_BUILTIN) &&
+      !(opts[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_MEMFD_FOR_BUILTIN))
     seg_type = SSVM_SEGMENT_PRIVATE;
 
-  if ((options[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_EVT_MQ_USE_EVENTFD)
-      && seg_type != SSVM_SEGMENT_MEMFD)
+  if ((opts[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_EVT_MQ_USE_EVENTFD) &&
+      seg_type != SSVM_SEGMENT_MEMFD)
     {
       clib_warning ("mq eventfds can only be used if socket transport is "
 		    "used for binary api");
@@ -790,17 +791,17 @@ application_alloc_and_init (app_init_args_t * a)
   if (!application_verify_cfg (seg_type))
     return VNET_API_ERROR_APP_UNSUPPORTED_CFG;
 
-  if (options[APP_OPTIONS_PREALLOC_FIFO_PAIRS]
-      && options[APP_OPTIONS_PREALLOC_FIFO_HDRS])
+  if (opts[APP_OPTIONS_PREALLOC_FIFO_PAIRS] &&
+      opts[APP_OPTIONS_PREALLOC_FIFO_HDRS])
     return VNET_API_ERROR_APP_UNSUPPORTED_CFG;
 
   /* Check that the obvious things are properly set up */
   application_verify_cb_fns (a->session_cb_vft);
 
-  app->flags = options[APP_OPTIONS_FLAGS];
+  app->flags = opts[APP_OPTIONS_FLAGS];
   app->cb_fns = *a->session_cb_vft;
-  app->ns_index = options[APP_OPTIONS_NAMESPACE];
-  app->proxied_transports = options[APP_OPTIONS_PROXY_TRANSPORT];
+  app->ns_index = opts[APP_OPTIONS_NAMESPACE];
+  app->proxied_transports = opts[APP_OPTIONS_PROXY_TRANSPORT];
   app->name = vec_dup (a->name);
 
   /* If no scope enabled, default to global */
@@ -810,32 +811,32 @@ application_alloc_and_init (app_init_args_t * a)
 
   props = application_segment_manager_properties (app);
   segment_manager_props_init (props);
-  props->segment_size = options[APP_OPTIONS_SEGMENT_SIZE];
-  props->prealloc_fifos = options[APP_OPTIONS_PREALLOC_FIFO_PAIRS];
-  props->prealloc_fifo_hdrs = options[APP_OPTIONS_PREALLOC_FIFO_HDRS];
-  if (options[APP_OPTIONS_ADD_SEGMENT_SIZE])
+  props->segment_size = opts[APP_OPTIONS_SEGMENT_SIZE];
+  props->prealloc_fifos = opts[APP_OPTIONS_PREALLOC_FIFO_PAIRS];
+  props->prealloc_fifo_hdrs = opts[APP_OPTIONS_PREALLOC_FIFO_HDRS];
+  if (opts[APP_OPTIONS_ADD_SEGMENT_SIZE])
     {
-      props->add_segment_size = options[APP_OPTIONS_ADD_SEGMENT_SIZE];
+      props->add_segment_size = opts[APP_OPTIONS_ADD_SEGMENT_SIZE];
       props->add_segment = 1;
     }
-  if (options[APP_OPTIONS_RX_FIFO_SIZE])
-    props->rx_fifo_size = options[APP_OPTIONS_RX_FIFO_SIZE];
-  if (options[APP_OPTIONS_TX_FIFO_SIZE])
-    props->tx_fifo_size = options[APP_OPTIONS_TX_FIFO_SIZE];
-  if (options[APP_OPTIONS_EVT_QUEUE_SIZE])
-    props->evt_q_size = options[APP_OPTIONS_EVT_QUEUE_SIZE];
-  if (options[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_EVT_MQ_USE_EVENTFD)
+  if (opts[APP_OPTIONS_RX_FIFO_SIZE])
+    props->rx_fifo_size = opts[APP_OPTIONS_RX_FIFO_SIZE];
+  if (opts[APP_OPTIONS_TX_FIFO_SIZE])
+    props->tx_fifo_size = opts[APP_OPTIONS_TX_FIFO_SIZE];
+  if (opts[APP_OPTIONS_EVT_QUEUE_SIZE])
+    props->evt_q_size = opts[APP_OPTIONS_EVT_QUEUE_SIZE];
+  if (opts[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_EVT_MQ_USE_EVENTFD)
     props->use_mq_eventfd = 1;
-  if (options[APP_OPTIONS_TLS_ENGINE])
-    app->tls_engine = options[APP_OPTIONS_TLS_ENGINE];
-  if (options[APP_OPTIONS_MAX_FIFO_SIZE])
-    props->max_fifo_size = options[APP_OPTIONS_MAX_FIFO_SIZE];
-  if (options[APP_OPTIONS_HIGH_WATERMARK])
-    props->high_watermark = options[APP_OPTIONS_HIGH_WATERMARK];
-  if (options[APP_OPTIONS_LOW_WATERMARK])
-    props->low_watermark = options[APP_OPTIONS_LOW_WATERMARK];
-  if (options[APP_OPTIONS_PCT_FIRST_ALLOC])
-    props->pct_first_alloc = options[APP_OPTIONS_PCT_FIRST_ALLOC];
+  if (opts[APP_OPTIONS_TLS_ENGINE])
+    app->tls_engine = opts[APP_OPTIONS_TLS_ENGINE];
+  if (opts[APP_OPTIONS_MAX_FIFO_SIZE])
+    props->max_fifo_size = opts[APP_OPTIONS_MAX_FIFO_SIZE];
+  if (opts[APP_OPTIONS_HIGH_WATERMARK])
+    props->high_watermark = opts[APP_OPTIONS_HIGH_WATERMARK];
+  if (opts[APP_OPTIONS_LOW_WATERMARK])
+    props->low_watermark = opts[APP_OPTIONS_LOW_WATERMARK];
+  if (opts[APP_OPTIONS_PCT_FIRST_ALLOC])
+    props->pct_first_alloc = opts[APP_OPTIONS_PCT_FIRST_ALLOC];
   props->segment_type = seg_type;
 
   /* Add app to lookup by api_client_index table */
