@@ -761,9 +761,8 @@ format_dpdk_tx_trace (u8 * s, va_list * va)
   s = format (s, "%U tx queue %d",
 	      format_vnet_sw_interface_name, vnm, sw, t->queue_index);
 
-  s = format (s, "\n%Ubuffer 0x%x: %U",
-	      format_white_space, indent,
-	      t->buffer_index, format_vnet_buffer, &t->buffer);
+  s = format (s, "\n%Ubuffer 0x%x: %U", format_white_space, indent,
+	      t->buffer_index, format_vnet_buffer_no_chain, &t->buffer);
 
   s = format (s, "\n%U%U",
 	      format_white_space, indent,
@@ -792,9 +791,8 @@ format_dpdk_rx_trace (u8 * s, va_list * va)
   s = format (s, "%U rx queue %d",
 	      format_vnet_sw_interface_name, vnm, sw, t->queue_index);
 
-  s = format (s, "\n%Ubuffer 0x%x: %U",
-	      format_white_space, indent,
-	      t->buffer_index, format_vnet_buffer, &t->buffer);
+  s = format (s, "\n%Ubuffer 0x%x: %U", format_white_space, indent,
+	      t->buffer_index, format_vnet_buffer_no_chain, &t->buffer);
 
   s = format (s, "\n%U%U",
 	      format_white_space, indent,

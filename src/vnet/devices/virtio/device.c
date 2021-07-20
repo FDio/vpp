@@ -88,9 +88,8 @@ format_virtio_tx_trace (u8 * s, va_list * va)
   virtio_tx_trace_t *t = va_arg (*va, virtio_tx_trace_t *);
   u32 indent = format_get_indent (s);
 
-  s = format (s, "%Ubuffer 0x%x: %U\n",
-	      format_white_space, indent,
-	      t->buffer_index, format_vnet_buffer, &t->buffer);
+  s = format (s, "%Ubuffer 0x%x: %U\n", format_white_space, indent,
+	      t->buffer_index, format_vnet_buffer_no_chain, &t->buffer);
   s =
     format (s, "%U%U\n", format_white_space, indent,
 	    format_generic_header_offset, &t->gho);

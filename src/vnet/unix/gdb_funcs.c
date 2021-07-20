@@ -421,6 +421,12 @@ gdb_dump_trajectory_trace (u32 bi)
 #endif
 }
 
+void
+gdb_dump_buffer (vlib_buffer_t *b)
+{
+  fformat (stderr, "%U\n", format_vnet_buffer, b);
+}
+
 /* Cafeteria plan, maybe you don't want these functions */
 clib_error_t *
 gdb_func_init (vlib_main_t * vm)
