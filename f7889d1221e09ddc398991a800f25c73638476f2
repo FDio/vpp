@@ -16,6 +16,24 @@
       "revId": "f7889d1221e09ddc398991a800f25c73638476f2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1bada3eb_a1c55a82",
+        "filename": "src/plugins/srv6-ad-flow/ad-flow.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 240,
+      "author": {
+        "id": 2496
+      },
+      "writtenOn": "2021-07-20T03:42:59Z",
+      "side": 1,
+      "message": "ok",
+      "parentUuid": "948cabdf_4ade82d5",
+      "revId": "f7889d1221e09ddc398991a800f25c73638476f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
