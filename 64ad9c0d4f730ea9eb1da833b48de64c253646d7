@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cd4ce18b_d4029043",
+        "filename": "src/vppinfra/socket.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 581,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-07-20T11:33:01Z",
+      "side": 1,
+      "message": "please wrap linux specific code with\n\n#ifdef __linux__\n\nso it compiles on non-linux systems....",
+      "revId": "64ad9c0d4f730ea9eb1da833b48de64c253646d7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
