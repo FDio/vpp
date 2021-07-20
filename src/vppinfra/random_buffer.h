@@ -88,7 +88,7 @@ clib_random_buffer_get_data (clib_random_buffer_t * b, uword n_bytes)
   if (n_bytes <= l)
     {
       b->n_cached_bytes = l - n_bytes;
-      return &b->cached_bytes[l];
+      return &b->cached_bytes[l - n_bytes];
     }
 
   n_words = n_bytes / sizeof (uword);
@@ -106,7 +106,7 @@ clib_random_buffer_get_data (clib_random_buffer_t * b, uword n_bytes)
     {
       b->cached_word = b->buffer[i];
       b->n_cached_bytes = sizeof (uword) - n_bytes;
-      return b->cached_bytes;
+      return &b->cached_bytes[sizeof (uword) - n_bytes];
     }
   else
     return b->buffer + i;
