@@ -16,6 +16,24 @@
       "revId": "64ad9c0d4f730ea9eb1da833b48de64c253646d7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d91029a8_28de9b2e",
+        "filename": "src/vppinfra/socket.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 581,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-07-20T15:50:43Z",
+      "side": 1,
+      "message": "Right, I added a clib_setns function instead if that\u0027s ok for you",
+      "parentUuid": "cd4ce18b_d4029043",
+      "revId": "64ad9c0d4f730ea9eb1da833b48de64c253646d7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
