@@ -37,10 +37,9 @@ format_vnet_buffer_offload (u8 *s, va_list *args)
     return s;
 }
 
-u8 *
-format_vnet_buffer (u8 * s, va_list * args)
+static u8 *
+format_vnet_buffer_internal (u8 *s, vlib_buffer_t *b, int no_chain)
 {
-  vlib_buffer_t *b = va_arg (*args, vlib_buffer_t *);
   u32 indent = format_get_indent (s);
   u8 *a = 0;
 
@@ -72,7 +71,8 @@ format_vnet_buffer (u8 * s, va_list * args)
   if (b->flags & VNET_BUFFER_F_LOOP_COUNTER_VALID)
     a = format (a, "loop-counter %d ", vnet_buffer2 (b)->loop_counter);
 
-  s = format (s, "%U", format_vlib_buffer_no_chain, b);
+  s = format (s, "%U",
+	      no_chain ? format_vlib_buffer_no_chain : format_vlib_buffer, b);
   if (a)
     s = format (s, "\n%U%v", format_white_space, indent, a);
   vec_free (a);
@@ -80,6 +80,19 @@ format_vnet_buffer (u8 * s, va_list * args)
   return s;
 }
 
+u8 *
+format_vnet_buffer_no_chain (u8 *s, va_list *args)
+{
+  vlib_buffer_t *b = va_arg (*args, vlib_buffer_t *);
+  return format_vnet_buffer_internal (s, b, 1 /* no_chain */);
+}
+
+u8 *
+format_vnet_buffer (u8 *s, va_list *args)
+{
+  vlib_buffer_t *b = va_arg (*args, vlib_buffer_t *);
+  return format_vnet_buffer_internal (s, b, 0 /* no_chain */);
+}
 
 /*
  * fd.io coding-style-patch-verification: ON

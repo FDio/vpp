@@ -517,7 +517,7 @@ STATIC_ASSERT (sizeof (vnet_buffer_opaque2_t) <=
                        vnet_buffer(b)->l4_hdr_offset - \
                        vnet_buffer (b)->l3_hdr_offset)
 
-
+format_function_t format_vnet_buffer_no_chain;
 format_function_t format_vnet_buffer;
 format_function_t format_vnet_buffer_offload;
 format_function_t format_vnet_buffer_flags;
