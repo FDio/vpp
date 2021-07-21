@@ -89,6 +89,7 @@ void vnet_feature_next_u16(u16 *next0, vlib_buffer_t *b0) {
 }
 
 /* Gather output packets */
+#undef vlib_buffer_enqueue_to_next
 #define vlib_buffer_enqueue_to_next test_vlib_buffer_enqueue_to_next
 void test_vlib_buffer_enqueue_to_next(vlib_main_t *vm,
                                       vlib_node_runtime_t *node, u32 *buffers,

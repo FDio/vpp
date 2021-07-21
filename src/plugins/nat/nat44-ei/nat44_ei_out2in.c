@@ -1335,8 +1335,7 @@ VLIB_NODE_FN (nat44_ei_out2in_node)
       next++;
     }
 
-  vlib_buffer_enqueue_to_next (vm, node, from, (u16 *) nexts,
-			       frame->n_vectors);
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
 
   return frame->n_vectors;
 }
@@ -1518,8 +1517,7 @@ VLIB_NODE_FN (nat44_ei_out2in_fast_node)
       next++;
     }
 
-  vlib_buffer_enqueue_to_next (vm, node, from, (u16 *) nexts,
-			       frame->n_vectors);
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
 
   return frame->n_vectors;
 }

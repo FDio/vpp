@@ -1651,8 +1651,7 @@ nat44_ei_in2out_node_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       next++;
     }
 
-  vlib_buffer_enqueue_to_next (vm, node, from, (u16 *) nexts,
-			       frame->n_vectors);
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
   return frame->n_vectors;
 }
 

@@ -64,7 +64,7 @@ clib_mask_compare_u16_x64 (u16 v, u16 *a, u32 n_elts)
 */
 
 static_always_inline void
-clib_mask_compare_u16 (u16 v, u16 *a, u64 *mask, u32 n_elts)
+clib_mask_compare_u16_unsafe (u16 v, u16 *a, u64 *mask, u32 n_elts)
 {
   while (n_elts >= 64)
     {
@@ -78,6 +78,13 @@ clib_mask_compare_u16 (u16 v, u16 *a, u64 *mask, u32 n_elts)
 
   mask[0] = clib_mask_compare_u16_x64 (v, a, n_elts) & pow2_mask (n_elts);
 }
+
+#define clib_mask_compare_u16(v, a, mask, n_elts)                             \
+  ({                                                                          \
+    STATIC_ASSERT (sizeof (a) % (64 * sizeof (u16)) == 0,                     \
+		   "size of 'a' must be a multiple of 64 u16");               \
+    clib_mask_compare_u16_unsafe ((v), (a), (mask), (n_elts));                \
+  })
 
 static_always_inline u64
 clib_mask_compare_u32_x64 (u32 v, u32 *a, u32 n_elts)
@@ -148,7 +155,7 @@ clib_mask_compare_u32_x64 (u32 v, u32 *a, u32 n_elts)
 */
 
 static_always_inline void
-clib_mask_compare_u32 (u32 v, u32 *a, u64 *bitmap, u32 n_elts)
+clib_mask_compare_u32_unsafe (u32 v, u32 *a, u64 *bitmap, u32 n_elts)
 {
   while (n_elts >= 64)
     {
@@ -162,5 +169,12 @@ clib_mask_compare_u32 (u32 v, u32 *a, u64 *bitmap, u32 n_elts)
 
   bitmap[0] = clib_mask_compare_u32_x64 (v, a, n_elts) & pow2_mask (n_elts);
 }
+
+#define clib_mask_compare_u32(v, a, bitmap, n_elts)                           \
+  ({                                                                          \
+    STATIC_ASSERT (sizeof (a) % (64 * sizeof (u32)) == 0,                     \
+		   "size of 'a' must be a multiple of 64 u32");               \
+    clib_mask_compare_u32_unsafe ((v), (a), (bitmap), (n_elts));              \
+  })
 
 #endif

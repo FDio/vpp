@@ -114,8 +114,8 @@ crypto_dequeue_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  n_cache += cf->n_elts;
 	  if (n_cache >= VLIB_FRAME_SIZE)
 	    {
-	      vlib_buffer_enqueue_to_next (vm, node, ct->buffer_indices,
-					   ct->nexts, n_cache);
+	      vlib_buffer_enqueue_to_next_unsafe (vm, node, ct->buffer_indices,
+						  ct->nexts, n_cache);
 	      n_cache = 0;
 	    }
 
@@ -161,6 +161,10 @@ VLIB_NODE_FN (crypto_dispatch_node) (vlib_main_t * vm,
   u32 n_dispatched = 0, n_cache = 0;
   u32 index;
 
+  /* to be able to use vlib_buffer_enqueue_to_next_unsafe() */
+  vec_validate (ct->buffer_indices, 63);
+  vec_validate (ct->nexts, 63);
+
   /* *INDENT-OFF* */
   clib_bitmap_foreach (index, cm->async_active_ids)  {
     n_cache = crypto_dequeue_frame (vm, node, ct, cm->dequeue_handlers[index],
@@ -168,8 +172,8 @@ VLIB_NODE_FN (crypto_dispatch_node) (vlib_main_t * vm,
   }
   /* *INDENT-ON* */
   if (n_cache)
-    vlib_buffer_enqueue_to_next (vm, node, ct->buffer_indices, ct->nexts,
-				 n_cache);
+    vlib_buffer_enqueue_to_next_unsafe (vm, node, ct->buffer_indices,
+					ct->nexts, n_cache);
 
   return n_dispatched;
 }

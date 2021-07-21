@@ -28,9 +28,9 @@ enqueue_one (vlib_main_t *vm, vlib_node_runtime_t *node, u64 *used_elt_bmp,
   else
     to = tmp;
 
-  clib_mask_compare_u16 (next_index, nexts, match_bmp, n_buffers);
+  clib_mask_compare_u16_unsafe (next_index, nexts, match_bmp, n_buffers);
 
-  n_extracted = clib_compress_u32 (to, buffers, match_bmp, n_buffers);
+  n_extracted = clib_compress_u32_unsafe (to, buffers, match_bmp, n_buffers);
 
   for (int i = 0; i < ARRAY_LEN (match_bmp); i++)
     used_elt_bmp[i] |= match_bmp[i];
@@ -217,10 +217,11 @@ vlib_buffer_enqueue_to_thread_inline (vlib_main_t *vm,
   thread_index = thread_indices[0];
 
 more:
-  clib_mask_compare_u16 (thread_index, thread_indices, mask, n_packets);
+  clib_mask_compare_u16_unsafe (thread_index, thread_indices, mask, n_packets);
   hf = vlib_get_frame_queue_elt (fqm, thread_index, drop_on_congestion);
 
-  n_comp = clib_compress_u32 (hf ? hf->buffer_index : drop_list + n_drop,
+  n_comp =
+    clib_compress_u32_unsafe (hf ? hf->buffer_index : drop_list + n_drop,
 			      buffer_indices, mask, n_packets);
 
   if (hf)

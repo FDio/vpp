@@ -336,13 +336,25 @@ generic_buffer_node_inline (vlib_main_t * vm,
 }
 
 static_always_inline void
-vlib_buffer_enqueue_to_next (vlib_main_t * vm, vlib_node_runtime_t * node,
-			     u32 * buffers, u16 * nexts, uword count)
+vlib_buffer_enqueue_to_next_unsafe (vlib_main_t *vm, vlib_node_runtime_t *node,
+				    u32 *buffers, u16 *nexts, uword count)
 {
   vlib_buffer_enqueue_to_next_fn_t *fn;
   fn = vlib_buffer_func_main.buffer_enqueue_to_next_fn;
   (fn) (vm, node, buffers, nexts, count);
 }
+
+#define vlib_buffer_enqueue_to_next(vm, node, buffers, nexts, count)          \
+  do                                                                          \
+    {                                                                         \
+      STATIC_ASSERT (sizeof (nexts) % (64 * sizeof (u16)) == 0,               \
+		     "size of 'nexts' must be a multiple of 64 u16");         \
+      /* STATIC_ASSERT (sizeof (buffers) % (64 * sizeof(u32)) == 0, "size of  \
+       * 'buffers' must be a multiple of 64 u32"); */                         \
+      vlib_buffer_enqueue_to_next_unsafe ((vm), (node), (buffers), (nexts),   \
+					  (count));                           \
+    }                                                                         \
+  while (0)
 
 static_always_inline void
 vlib_buffer_enqueue_to_single_next (vlib_main_t * vm,
@@ -355,16 +367,30 @@ vlib_buffer_enqueue_to_single_next (vlib_main_t * vm,
 }
 
 static_always_inline u32
-vlib_buffer_enqueue_to_thread (vlib_main_t *vm, vlib_node_runtime_t *node,
-			       u32 frame_queue_index, u32 *buffer_indices,
-			       u16 *thread_indices, u32 n_packets,
-			       int drop_on_congestion)
+vlib_buffer_enqueue_to_thread_unsafe (vlib_main_t *vm,
+				      vlib_node_runtime_t *node,
+				      u32 frame_queue_index,
+				      u32 *buffer_indices, u16 *thread_indices,
+				      u32 n_packets, int drop_on_congestion)
 {
   vlib_buffer_enqueue_to_thread_fn_t *fn;
   fn = vlib_buffer_func_main.buffer_enqueue_to_thread_fn;
   return (fn) (vm, node, frame_queue_index, buffer_indices, thread_indices,
 	       n_packets, drop_on_congestion);
 }
+
+#define vlib_buffer_enqueue_to_thread(vm, node, frame_queue_index,            \
+				      buffer_indices, thread_indices,         \
+				      n_packets, drop_on_congestion)          \
+  ({                                                                          \
+    /* STATIC_ASSERT (sizeof(buffer_indices) % (64 * sizeof(u32)) == 0, "size \
+     * of 'buffer_indices must be a multiple of 64 u32"); */                  \
+    STATIC_ASSERT (sizeof (thread_indices) % (64 * sizeof (u16)) == 0,        \
+		   "size of 'thread_indices' must be a multiple of 64 u16");  \
+    vlib_buffer_enqueue_to_thread_unsafe ((vm), (node), (frame_queue_index),  \
+					  (buffer_indices), (thread_indices), \
+					  (n_packets), (drop_on_congestion)); \
+  })
 
 #endif /* included_vlib_buffer_node_h */
 

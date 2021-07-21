@@ -805,9 +805,7 @@ VLIB_NODE_FN (det44_out2in_node) (vlib_main_t * vm,
       next[0] = next0;
       next++;
     }
-  vlib_buffer_enqueue_to_next (vm, node, from, (u16 *) nexts,
-			       frame->n_vectors);
-
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
 
   vlib_node_increment_counter (vm, dm->out2in_node_index,
 			       DET44_OUT2IN_ERROR_OUT2IN_PACKETS,

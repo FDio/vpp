@@ -1651,9 +1651,12 @@ static void
 session_flush_pending_tx_buffers (session_worker_t * wrk,
 				  vlib_node_runtime_t * node)
 {
-  vlib_buffer_enqueue_to_next (wrk->vm, node, wrk->pending_tx_buffers,
-			       wrk->pending_tx_nexts,
-			       vec_len (wrk->pending_tx_nexts));
+  /* to be able to use vlib_buffer_enqueue_to_next_unsafe() */
+  vec_validate (wrk->pending_tx_buffers, 63);
+  vec_validate (wrk->pending_tx_nexts, 63);
+  vlib_buffer_enqueue_to_next_unsafe (wrk->vm, node, wrk->pending_tx_buffers,
+				      wrk->pending_tx_nexts,
+				      vec_len (wrk->pending_tx_nexts));
   vec_reset_length (wrk->pending_tx_buffers);
   vec_reset_length (wrk->pending_tx_nexts);
 }

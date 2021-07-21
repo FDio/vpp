@@ -1150,7 +1150,8 @@ more:
 
   /* compare and compress based on comparison mask */
   clib_mask_compare_u32 (swif, sw_if_indices, mask, frame->n_vectors);
-  n_comp = clib_compress_u32 (to, from, mask, frame->n_vectors);
+  STATIC_ASSERT (VLIB_FRAME_SIZE >= 64, "unsupported VLIB_FRAME_SIZE");
+  n_comp = clib_compress_u32_unsafe (to, from, mask, frame->n_vectors);
 
   if (tmp != to)
     {

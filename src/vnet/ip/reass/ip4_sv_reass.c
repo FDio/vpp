@@ -490,8 +490,7 @@ ip4_sv_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b -= 2;
 	  if (b - bufs > 0)
 	    {
-	      vlib_buffer_enqueue_to_next (vm, node, from, (u16 *) nexts,
-					   b - bufs);
+	      vlib_buffer_enqueue_to_next (vm, node, from, nexts, b - bufs);
 	    }
 	  goto slow_path;
 	}
@@ -591,8 +590,7 @@ ip4_sv_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b -= 1;
 	  if (b - bufs > 0)
 	    {
-	      vlib_buffer_enqueue_to_next (vm, node, from, (u16 *) nexts,
-					   b - bufs);
+	      vlib_buffer_enqueue_to_next (vm, node, from, nexts, b - bufs);
 	    }
 	  goto slow_path;
 	}
@@ -638,8 +636,7 @@ ip4_sv_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       next += 1;
     }
 
-  vlib_buffer_enqueue_to_next (vm, node, from, (u16 *) nexts,
-			       frame->n_vectors);
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
 
   goto done;
 

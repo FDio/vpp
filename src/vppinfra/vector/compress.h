@@ -51,7 +51,7 @@ clib_compress_u32_x64 (u32 *dst, u32 *src, u64 mask)
 */
 
 static_always_inline u32
-clib_compress_u32 (u32 *dst, u32 *src, u64 *mask, u32 n_elts)
+clib_compress_u32_unsafe (u32 *dst, u32 *src, u64 *mask, u32 n_elts)
 {
   u32 *dst0 = dst;
   while (n_elts >= 64)
@@ -74,5 +74,12 @@ clib_compress_u32 (u32 *dst, u32 *src, u64 *mask, u32 n_elts)
 
   return clib_compress_u32_x64 (dst, src, mask[0] & pow2_mask (n_elts)) - dst0;
 }
+
+#define clib_compress_u32(dst, src, mask, n_elts)                             \
+  ({                                                                          \
+    STATIC_ASSERT (sizeof (src) % (64 * sizeof (u32)) == 0,                   \
+		   "size of 'src' must be a multiple of 64 u32 elements");    \
+    clib_compress_u32_unsafe ((dst), (src), (mask), (n_elts));                \
+  })
 
 #endif
