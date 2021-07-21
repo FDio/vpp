@@ -307,6 +307,48 @@ vts_server_echo (vcl_test_session_t *conn, int rx_bytes)
 }
 
 static vcl_test_session_t *
+vts_accept_ctrl (vcl_test_server_worker_t *wrk, int listen_fd)
+{
+  vcl_test_server_main_t *vsm = &vcl_server_main;
+  const vcl_test_proto_vft_t *tp;
+  vcl_test_session_t *conn;
+  struct epoll_event ev;
+  int rv;
+
+  conn = conn_pool_alloc (wrk);
+  if (!conn)
+    {
+      vtwrn ("No free connections!");
+      return 0;
+    }
+
+  if (vsm->ctrl)
+    conn->cfg = vsm->ctrl->cfg;
+  vcl_test_session_buf_alloc (conn);
+  clock_gettime (CLOCK_REALTIME, &conn->old_stats.stop);
+
+  tp = vcl_test_main.protos[VPPCOM_PROTO_TCP];
+  if (tp->accept (listen_fd, conn))
+    return 0;
+
+  vtinf ("CTRL accepted fd = %d (0x%08x) on listener fd = %d (0x%08x)",
+	 conn->fd, conn->fd, listen_fd, listen_fd);
+
+  ev.events = EPOLLET | EPOLLIN;
+  ev.data.u64 = conn - wrk->conn_pool;
+  rv = vppcom_epoll_ctl (wrk->epfd, EPOLL_CTL_ADD, conn->fd, &ev);
+  if (rv < 0)
+    {
+      vterr ("vppcom_epoll_ctl()", rv);
+      return 0;
+    }
+
+  wrk->nfds++;
+
+  return conn;
+}
+
+static vcl_test_session_t *
 vts_accept_client (vcl_test_server_worker_t *wrk, int listen_fd)
 {
   vcl_test_server_main_t *vsm = &vcl_server_main;
@@ -654,7 +696,7 @@ vts_worker_loop (void *arg)
 		  vtwrn ("ctrl already exists");
 		  continue;
 		}
-	      vsm->ctrl = vts_accept_client (wrk, vsm->ctrl_listen_fd);
+	      vsm->ctrl = vts_accept_ctrl (wrk, vsm->ctrl_listen_fd);
 	      continue;
 	    }
 	  if (ep_evts[i].data.u32 == VCL_TEST_DATA_LISTENER)
