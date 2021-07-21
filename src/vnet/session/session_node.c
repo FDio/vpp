@@ -401,8 +401,6 @@ session_mq_unlisten_rpc (session_unlisten_msg_t *mp)
   sh = mp->handle;
   context = mp->context;
 
-  vlib_worker_thread_barrier_sync (vm);
-
   app = application_lookup (mp->client_index);
   if (!app)
     return;
@@ -411,14 +409,17 @@ session_mq_unlisten_rpc (session_unlisten_msg_t *mp)
   a->app_index = app->app_index;
   a->handle = sh;
   a->wrk_map_index = mp->wrk_index;
+
+  vlib_worker_thread_barrier_sync (vm);
+
   if ((rv = vnet_unlisten (a)))
     clib_warning ("unlisten returned: %d", rv);
+
+  vlib_worker_thread_barrier_release (vm);
 
   app_wrk = application_get_worker (app, a->wrk_map_index);
   if (!app_wrk)
     return;
-
-  vlib_worker_thread_barrier_release (vm);
 
   mq_send_unlisten_reply (app_wrk, sh, context, rv);
   clib_mem_free (mp);
