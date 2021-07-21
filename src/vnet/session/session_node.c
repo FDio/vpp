@@ -405,7 +405,7 @@ session_mq_unlisten_rpc (session_unlisten_msg_t *mp)
 
   app = application_lookup (mp->client_index);
   if (!app)
-    return;
+    goto fail;
 
   clib_memset (a, 0, sizeof (*a));
   a->app_index = app->app_index;
@@ -416,11 +416,17 @@ session_mq_unlisten_rpc (session_unlisten_msg_t *mp)
 
   app_wrk = application_get_worker (app, a->wrk_map_index);
   if (!app_wrk)
-    return;
+    goto fail;
 
   vlib_worker_thread_barrier_release (vm);
 
   mq_send_unlisten_reply (app_wrk, sh, context, rv);
+  clib_mem_free (mp);
+
+  return;
+
+fail:
+  vlib_worker_thread_barrier_release (vm);
   clib_mem_free (mp);
 }
 
