@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f3c84c17_ac46bfcf",
+        "filename": "src/tools/vppapigen/vppapigen_c.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-07-21T18:49:47Z",
+      "side": 1,
+      "message": "It\u0027s never nice if the compiler has to special case user code...",
+      "revId": "8e3693a96484b703ae15535abccd04d96431872a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "930cd316_a8c1872e",
+        "filename": "src/vppinfra/jsonconvert.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-07-21T18:49:47Z",
+      "side": 1,
+      "message": "Did you git move this?\nGerrit still shows deleted and added?\nChange _vat2_ references to something else since moved to vppinfra?\nRename to jsonformat.c to stay consistent with other format/unformat files?",
+      "revId": "8e3693a96484b703ae15535abccd04d96431872a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
