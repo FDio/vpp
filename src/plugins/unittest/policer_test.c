@@ -21,7 +21,7 @@ policer_test (vlib_main_t *vm, unformat_input_t *input,
 	      vlib_cli_command_t *cmd_arg)
 {
   int policer_index, i;
-  uint rate_kbps, burst, num_pkts;
+  unsigned int rate_kbps, burst, num_pkts;
   double total_bytes, cpu_ticks_per_pkt, time = 0;
   double cpu_speed, cpu_ticks_per_byte;
   policer_result_e result, input_colour = POLICE_CONFORM;
