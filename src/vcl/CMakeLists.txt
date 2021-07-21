@@ -35,19 +35,39 @@ add_vpp_library(vppcom
   api_headers
 )
 
-option(LDP_HAS_GNU_SOURCE "LDP configured to use _GNU_SOURCE" ON)
-if (LDP_HAS_GNU_SOURCE)
-  add_compile_definitions(HAVE_GNU_SOURCE)
-endif(LDP_HAS_GNU_SOURCE)
+# if glibc, then enable VCL LD_PRELOAD by default. otherwise, don't.
+include(CheckCSourceCompiles)
+check_c_source_compiles("
+#include <features.h>
 
-add_vpp_library(vcl_ldpreload
-  SOURCES
-  ldp_socket_wrapper.c
-  ldp.c
+int main()
+{
+#ifdef __GLIBC__
+    return 0;
+#else
+# error \"no glibc\"
+#endif
+}
+"
+    IS_GLIBC)
 
-  LINK_LIBRARIES
-  vppinfra svm vlibmemoryclient rt pthread vppcom dl
-)
+
+option(VPP_ENABLE_VCL_LD_PRELOAD "Build the LD_PRELOAD library for VCL" ${IS_GLIBC})
+if(VPP_ENABLE_VCL_LD_PRELOAD)
+  option(LDP_HAS_GNU_SOURCE "LDP configured to use _GNU_SOURCE" ON)
+  if (LDP_HAS_GNU_SOURCE)
+    add_compile_definitions(HAVE_GNU_SOURCE)
+  endif(LDP_HAS_GNU_SOURCE)
+
+  add_vpp_library(vcl_ldpreload
+    SOURCES
+    ldp_socket_wrapper.c
+    ldp.c
+
+    LINK_LIBRARIES
+    vppinfra svm vlibmemoryclient rt pthread vppcom dl
+  )
+endif()
 
 add_vpp_headers(vcl
   ldp.h
