@@ -100,6 +100,8 @@ udp_config_fn (vlib_main_t * vm, unformat_input_t * input)
     {
       if (unformat (input, "mtu %u", &tmp))
 	um->default_mtu = tmp;
+      else if (unformat (input, "icmp-unreachable-disabled"))
+	um->icmp_send_unreachable_disabled = 1;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
