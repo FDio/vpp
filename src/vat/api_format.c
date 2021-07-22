@@ -568,6 +568,51 @@ format_ethernet_address (u8 * s, va_list * args)
 }
 #endif
 
+static void
+increment_v4_address (vl_api_ip4_address_t *i)
+{
+  ip4_address_t *a = (ip4_address_t *) i;
+  u32 v;
+
+  v = ntohl (a->as_u32) + 1;
+  a->as_u32 = ntohl (v);
+}
+
+static void
+increment_v6_address (vl_api_ip6_address_t *i)
+{
+  ip6_address_t *a = (ip6_address_t *) i;
+  u64 v0, v1;
+
+  v0 = clib_net_to_host_u64 (a->as_u64[0]);
+  v1 = clib_net_to_host_u64 (a->as_u64[1]);
+
+  v1 += 1;
+  if (v1 == 0)
+    v0 += 1;
+  a->as_u64[0] = clib_net_to_host_u64 (v0);
+  a->as_u64[1] = clib_net_to_host_u64 (v1);
+}
+
+static void
+increment_address (vl_api_address_t *a)
+{
+  if (a->af == ADDRESS_IP4)
+    increment_v4_address (&a->un.ip4);
+  else if (a->af == ADDRESS_IP6)
+    increment_v6_address (&a->un.ip6);
+}
+
+static void
+set_ip4_address (vl_api_address_t *a, u32 v)
+{
+  if (a->af == ADDRESS_IP4)
+    {
+      ip4_address_t *i = (ip4_address_t *) &a->un.ip4;
+      i->as_u32 = v;
+    }
+}
+
 void
 ip_set (ip46_address_t * dst, void *src, u8 is_ip4)
 {
@@ -578,6 +623,33 @@ ip_set (ip46_address_t * dst, void *src, u8 is_ip4)
 		      sizeof (ip6_address_t));
 }
 
+static void
+vat_json_object_add_address (vat_json_node_t *node, const char *str,
+			     const vl_api_address_t *addr)
+{
+  if (ADDRESS_IP6 == addr->af)
+    {
+      struct in6_addr ip6;
+
+      clib_memcpy (&ip6, &addr->un.ip6, sizeof (ip6));
+      vat_json_object_add_ip6 (node, str, ip6);
+    }
+  else
+    {
+      struct in_addr ip4;
+
+      clib_memcpy (&ip4, &addr->un.ip4, sizeof (ip4));
+      vat_json_object_add_ip4 (node, str, ip4);
+    }
+}
+
+static void
+vat_json_object_add_prefix (vat_json_node_t *node,
+			    const vl_api_prefix_t *prefix)
+{
+  vat_json_object_add_uint (node, "len", prefix->len);
+  vat_json_object_add_address (node, "address", &prefix->address);
+}
 
 static void
 vl_api_cli_reply_t_handler (vl_api_cli_reply_t * mp)
@@ -915,6 +987,88 @@ static void vl_api_control_ping_reply_t_handler_json
   vam->result_ready = 1;
 }
 
+static void
+vl_api_ip_address_details_t_handler (vl_api_ip_address_details_t *mp)
+{
+  vat_main_t *vam = &vat_main;
+  static ip_address_details_t empty_ip_address_details = { { 0 } };
+  ip_address_details_t *address = NULL;
+  ip_details_t *current_ip_details = NULL;
+  ip_details_t *details = NULL;
+
+  details = vam->ip_details_by_sw_if_index[vam->is_ipv6];
+
+  if (!details || vam->current_sw_if_index >= vec_len (details) ||
+      !details[vam->current_sw_if_index].present)
+    {
+      errmsg ("ip address details arrived but not stored");
+      errmsg ("ip_dump should be called first");
+      return;
+    }
+
+  current_ip_details = vec_elt_at_index (details, vam->current_sw_if_index);
+
+#define addresses (current_ip_details->addr)
+
+  vec_validate_init_empty (addresses, vec_len (addresses),
+			   empty_ip_address_details);
+
+  address = vec_elt_at_index (addresses, vec_len (addresses) - 1);
+
+  clib_memcpy (&address->ip, &mp->prefix.address.un, sizeof (address->ip));
+  address->prefix_length = mp->prefix.len;
+#undef addresses
+}
+
+static void
+vl_api_ip_address_details_t_handler_json (vl_api_ip_address_details_t *mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t *node = NULL;
+
+  if (VAT_JSON_ARRAY != vam->json_tree.type)
+    {
+      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
+      vat_json_init_array (&vam->json_tree);
+    }
+  node = vat_json_array_add (&vam->json_tree);
+
+  vat_json_init_object (node);
+  vat_json_object_add_prefix (node, &mp->prefix);
+}
+
+static void
+vl_api_ip_details_t_handler (vl_api_ip_details_t *mp)
+{
+  vat_main_t *vam = &vat_main;
+  static ip_details_t empty_ip_details = { 0 };
+  ip_details_t *ip = NULL;
+  u32 sw_if_index = ~0;
+
+  sw_if_index = ntohl (mp->sw_if_index);
+
+  vec_validate_init_empty (vam->ip_details_by_sw_if_index[vam->is_ipv6],
+			   sw_if_index, empty_ip_details);
+
+  ip = vec_elt_at_index (vam->ip_details_by_sw_if_index[vam->is_ipv6],
+			 sw_if_index);
+
+  ip->present = 1;
+}
+
+static void
+vl_api_ip_details_t_handler_json (vl_api_ip_details_t *mp)
+{
+  vat_main_t *vam = &vat_main;
+
+  if (VAT_JSON_ARRAY != vam->json_tree.type)
+    {
+      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
+      vat_json_init_array (&vam->json_tree);
+    }
+  vat_json_array_add_uint (&vam->json_tree,
+			   clib_net_to_host_u32 (mp->sw_if_index));
+}
 
 static void vl_api_get_first_msg_id_reply_t_handler
   (vl_api_get_first_msg_id_reply_t * mp)
@@ -1080,7 +1234,19 @@ format_hex_bytes (u8 * s, va_list * va)
  * a single function, but that could break in subtle ways.
  */
 
-#define foreach_standard_reply_retval_handler
+#define foreach_standard_reply_retval_handler                                 \
+  _ (ip_route_add_del_reply)                                                  \
+  _ (ip_table_add_del_reply)                                                  \
+  _ (ip_table_replace_begin_reply)                                            \
+  _ (ip_table_flush_reply)                                                    \
+  _ (ip_table_replace_end_reply)                                              \
+  _ (ip_mroute_add_del_reply)                                                 \
+  _ (set_ip_flow_hash_reply)                                                  \
+  _ (ioam_enable_reply)                                                       \
+  _ (ioam_disable_reply)                                                      \
+  _ (ip_source_and_port_range_check_add_del_reply)                            \
+  _ (ip_source_and_port_range_check_interface_add_del_reply)                  \
+  _ (ip_container_proxy_add_del_reply)
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -1119,16 +1285,34 @@ foreach_standard_reply_retval_handler;
  */
 
 #define foreach_vpe_api_reply_msg                                             \
-  _ (GET_FIRST_MSG_ID_REPLY, get_first_msg_id_reply)                          \
-  _ (GET_NODE_GRAPH_REPLY, get_node_graph_reply)                              \
   _ (CONTROL_PING_REPLY, control_ping_reply)                                  \
   _ (CLI_REPLY, cli_reply)                                                    \
   _ (CLI_INBAND_REPLY, cli_inband_reply)                                      \
+  _ (IP_ROUTE_ADD_DEL_REPLY, ip_route_add_del_reply)                          \
+  _ (IP_TABLE_ADD_DEL_REPLY, ip_table_add_del_reply)                          \
+  _ (IP_TABLE_REPLACE_BEGIN_REPLY, ip_table_replace_begin_reply)              \
+  _ (IP_TABLE_FLUSH_REPLY, ip_table_flush_reply)                              \
+  _ (IP_TABLE_REPLACE_END_REPLY, ip_table_replace_end_reply)                  \
+  _ (IP_MROUTE_ADD_DEL_REPLY, ip_mroute_add_del_reply)                        \
+  _ (SET_IP_FLOW_HASH_REPLY, set_ip_flow_hash_reply)                          \
   _ (GET_NODE_INDEX_REPLY, get_node_index_reply)                              \
-  _ (GET_NEXT_INDEX_REPLY, get_next_index_reply)                              \
   _ (ADD_NODE_NEXT_REPLY, add_node_next_reply)                                \
   _ (SHOW_VERSION_REPLY, show_version_reply)                                  \
   _ (SHOW_THREADS_REPLY, show_threads_reply)                                  \
+  _ (IP_ADDRESS_DETAILS, ip_address_details)                                  \
+  _ (IP_DETAILS, ip_details)                                                  \
+  _ (GET_FIRST_MSG_ID_REPLY, get_first_msg_id_reply)                          \
+  _ (GET_NODE_GRAPH_REPLY, get_node_graph_reply)                              \
+  _ (IOAM_ENABLE_REPLY, ioam_enable_reply)                                    \
+  _ (IOAM_DISABLE_REPLY, ioam_disable_reply)                                  \
+  _ (GET_NEXT_INDEX_REPLY, get_next_index_reply)                              \
+  _ (IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL_REPLY,                            \
+     ip_source_and_port_range_check_add_del_reply)                            \
+  _ (IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL_REPLY,                  \
+     ip_source_and_port_range_check_interface_add_del_reply)                  \
+  _ (IP_TABLE_DETAILS, ip_table_details)                                      \
+  _ (IP_ROUTE_DETAILS, ip_route_details)                                      \
+  _ (IP_CONTAINER_PROXY_ADD_DEL_REPLY, ip_container_proxy_add_del_reply)
 
 #define foreach_standalone_reply_msg					\
 
@@ -1141,6 +1325,160 @@ typedef struct
 #define STR_VTR_OP_CASE(op)     \
     case L2_VTR_ ## op:         \
         return "" # op;
+
+static const char *
+str_vtr_op (u32 vtr_op)
+{
+  switch (vtr_op)
+    {
+      STR_VTR_OP_CASE (DISABLED);
+      STR_VTR_OP_CASE (PUSH_1);
+      STR_VTR_OP_CASE (PUSH_2);
+      STR_VTR_OP_CASE (POP_1);
+      STR_VTR_OP_CASE (POP_2);
+      STR_VTR_OP_CASE (TRANSLATE_1_1);
+      STR_VTR_OP_CASE (TRANSLATE_1_2);
+      STR_VTR_OP_CASE (TRANSLATE_2_1);
+      STR_VTR_OP_CASE (TRANSLATE_2_2);
+    }
+
+  return "UNKNOWN";
+}
+
+static int
+dump_sub_interface_table (vat_main_t *vam)
+{
+  const sw_interface_subif_t *sub = NULL;
+
+  if (vam->json_output)
+    {
+      clib_warning (
+	"JSON output supported only for VPE API calls and dump_stats_table");
+      return -99;
+    }
+
+  print (vam->ofp, "%-30s%-12s%-11s%-7s%-5s%-9s%-9s%-6s%-8s%-10s%-10s",
+	 "Interface", "sw_if_index", "sub id", "dot1ad", "tags", "outer id",
+	 "inner id", "exact", "default", "outer any", "inner any");
+
+  vec_foreach (sub, vam->sw_if_subif_table)
+    {
+      print (vam->ofp, "%-30s%-12d%-11d%-7s%-5d%-9d%-9d%-6d%-8d%-10d%-10d",
+	     sub->interface_name, sub->sw_if_index, sub->sub_id,
+	     sub->sub_dot1ad ? "dot1ad" : "dot1q", sub->sub_number_of_tags,
+	     sub->sub_outer_vlan_id, sub->sub_inner_vlan_id,
+	     sub->sub_exact_match, sub->sub_default,
+	     sub->sub_outer_vlan_id_any, sub->sub_inner_vlan_id_any);
+      if (sub->vtr_op != L2_VTR_DISABLED)
+	{
+	  print (vam->ofp,
+		 "  vlan-tag-rewrite - op: %-14s [ dot1q: %d "
+		 "tag1: %d tag2: %d ]",
+		 str_vtr_op (sub->vtr_op), sub->vtr_push_dot1q, sub->vtr_tag1,
+		 sub->vtr_tag2);
+	}
+    }
+
+  return 0;
+}
+
+static int
+name_sort_cmp (void *a1, void *a2)
+{
+  name_sort_t *n1 = a1;
+  name_sort_t *n2 = a2;
+
+  return strcmp ((char *) n1->name, (char *) n2->name);
+}
+
+static int
+dump_interface_table (vat_main_t *vam)
+{
+  hash_pair_t *p;
+  name_sort_t *nses = 0, *ns;
+
+  if (vam->json_output)
+    {
+      clib_warning (
+	"JSON output supported only for VPE API calls and dump_stats_table");
+      return -99;
+    }
+
+  hash_foreach_pair (p, vam->sw_if_index_by_interface_name, ({
+		       vec_add2 (nses, ns, 1);
+		       ns->name = (u8 *) (p->key);
+		       ns->value = (u32) p->value[0];
+		     }));
+
+  vec_sort_with_function (nses, name_sort_cmp);
+
+  print (vam->ofp, "%-25s%-15s", "Interface", "sw_if_index");
+  vec_foreach (ns, nses)
+    {
+      print (vam->ofp, "%-25s%-15d", ns->name, ns->value);
+    }
+  vec_free (nses);
+  return 0;
+}
+
+static int
+dump_ip_table (vat_main_t *vam, int is_ipv6)
+{
+  const ip_details_t *det = NULL;
+  const ip_address_details_t *address = NULL;
+  u32 i = ~0;
+
+  print (vam->ofp, "%-12s", "sw_if_index");
+
+  vec_foreach (det, vam->ip_details_by_sw_if_index[is_ipv6])
+    {
+      i++;
+      if (!det->present)
+	{
+	  continue;
+	}
+      print (vam->ofp, "%-12d", i);
+      print (vam->ofp, "            %-30s%-13s", "Address", "Prefix length");
+      if (!det->addr)
+	{
+	  continue;
+	}
+      vec_foreach (address, det->addr)
+	{
+	  print (vam->ofp, "            %-30U%-13d",
+		 is_ipv6 ? format_ip6_address : format_ip4_address,
+		 address->ip, address->prefix_length);
+	}
+    }
+
+  return 0;
+}
+
+static int
+dump_ipv4_table (vat_main_t *vam)
+{
+  if (vam->json_output)
+    {
+      clib_warning (
+	"JSON output supported only for VPE API calls and dump_stats_table");
+      return -99;
+    }
+
+  return dump_ip_table (vam, 0);
+}
+
+static int
+dump_ipv6_table (vat_main_t *vam)
+{
+  if (vam->json_output)
+    {
+      clib_warning (
+	"JSON output supported only for VPE API calls and dump_stats_table");
+      return -99;
+    }
+
+  return dump_ip_table (vam, 1);
+}
 
 /*
  * Pass CLI buffers directly in the CLI_INBAND API message,
@@ -1210,6 +1548,56 @@ unformat_vlib_pci_addr (unformat_input_t *input, va_list *args)
   addr->function = x[3];
 
   return 1;
+}
+
+static int
+api_ip_table_add_del (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ip_table_add_del_t *mp;
+  u32 table_id = ~0;
+  u8 is_ipv6 = 0;
+  u8 is_add = 1;
+  int ret = 0;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "ipv6"))
+	is_ipv6 = 1;
+      else if (unformat (i, "del"))
+	is_add = 0;
+      else if (unformat (i, "add"))
+	is_add = 1;
+      else if (unformat (i, "table %d", &table_id))
+	;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (~0 == table_id)
+    {
+      errmsg ("missing table-ID");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (IP_TABLE_ADD_DEL, mp);
+
+  mp->table.table_id = ntohl (table_id);
+  mp->table.is_ip6 = is_ipv6;
+  mp->is_add = is_add;
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+
+  return ret;
 }
 
 uword
@@ -1351,26 +1739,478 @@ unformat_fib_path (unformat_input_t *input, va_list *args)
   return (1);
 }
 
-#define foreach_create_subif_bit                \
-_(no_tags)                                      \
-_(one_tag)                                      \
-_(two_tags)                                     \
-_(dot1ad)                                       \
-_(exact_match)                                  \
-_(default_sub)                                  \
-_(outer_vlan_id_any)                            \
-_(inner_vlan_id_any)
+static int
+api_ip_route_add_del (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ip_route_add_del_t *mp;
+  u32 vrf_id = 0;
+  u8 is_add = 1;
+  u8 is_multipath = 0;
+  u8 prefix_set = 0;
+  u8 path_count = 0;
+  vl_api_prefix_t pfx = {};
+  vl_api_fib_path_t paths[8];
+  int count = 1;
+  int j;
+  f64 before = 0;
+  u32 random_add_del = 0;
+  u32 *random_vector = 0;
+  u32 random_seed = 0xdeaddabe;
 
-#define foreach_create_subif_flag		\
-_(0, "no_tags")					\
-_(1, "one_tag")					\
-_(2, "two_tags")				\
-_(3, "dot1ad")					\
-_(4, "exact_match")				\
-_(5, "default_sub")				\
-_(6, "outer_vlan_id_any")			\
-_(7, "inner_vlan_id_any")
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", unformat_vl_api_prefix, &pfx))
+	prefix_set = 1;
+      else if (unformat (i, "del"))
+	is_add = 0;
+      else if (unformat (i, "add"))
+	is_add = 1;
+      else if (unformat (i, "vrf %d", &vrf_id))
+	;
+      else if (unformat (i, "count %d", &count))
+	;
+      else if (unformat (i, "random"))
+	random_add_del = 1;
+      else if (unformat (i, "multipath"))
+	is_multipath = 1;
+      else if (unformat (i, "seed %d", &random_seed))
+	;
+      else if (unformat (i, "via %U", unformat_fib_path, vam,
+			 &paths[path_count]))
+	{
+	  path_count++;
+	  if (8 == path_count)
+	    {
+	      errmsg ("max 8 paths");
+	      return -99;
+	    }
+	}
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
 
+  if (!path_count)
+    {
+      errmsg ("specify a path; via ...");
+      return -99;
+    }
+  if (prefix_set == 0)
+    {
+      errmsg ("missing prefix");
+      return -99;
+    }
+
+  /* Generate a pile of unique, random routes */
+  if (random_add_del)
+    {
+      ip4_address_t *i = (ip4_address_t *) &paths[0].nh.address.ip4;
+      u32 this_random_address;
+      uword *random_hash;
+
+      random_hash = hash_create (count, sizeof (uword));
+
+      hash_set (random_hash, i->as_u32, 1);
+      for (j = 0; j <= count; j++)
+	{
+	  do
+	    {
+	      this_random_address = random_u32 (&random_seed);
+	      this_random_address = clib_host_to_net_u32 (this_random_address);
+	    }
+	  while (hash_get (random_hash, this_random_address));
+	  vec_add1 (random_vector, this_random_address);
+	  hash_set (random_hash, this_random_address, 1);
+	}
+      hash_free (random_hash);
+      set_ip4_address (&pfx.address, random_vector[0]);
+    }
+
+  if (count > 1)
+    {
+      /* Turn on async mode */
+      vam->async_mode = 1;
+      vam->async_errors = 0;
+      before = vat_time_now (vam);
+    }
+
+  for (j = 0; j < count; j++)
+    {
+      /* Construct the API message */
+      M2 (IP_ROUTE_ADD_DEL, mp, sizeof (vl_api_fib_path_t) * path_count);
+
+      mp->is_add = is_add;
+      mp->is_multipath = is_multipath;
+
+      clib_memcpy (&mp->route.prefix, &pfx, sizeof (pfx));
+      mp->route.table_id = ntohl (vrf_id);
+      mp->route.n_paths = path_count;
+
+      clib_memcpy (&mp->route.paths, &paths, sizeof (paths[0]) * path_count);
+
+      if (random_add_del)
+	set_ip4_address (&pfx.address, random_vector[j + 1]);
+      else
+	increment_address (&pfx.address);
+      /* send it... */
+      S (mp);
+      /* If we receive SIGTERM, stop now... */
+      if (vam->do_exit)
+	break;
+    }
+
+  /* When testing multiple add/del ops, use a control-ping to sync */
+  if (count > 1)
+    {
+      vl_api_control_ping_t *mp_ping;
+      f64 after;
+      f64 timeout;
+
+      /* Shut off async mode */
+      vam->async_mode = 0;
+
+      MPING (CONTROL_PING, mp_ping);
+      S (mp_ping);
+
+      timeout = vat_time_now (vam) + 1.0;
+      while (vat_time_now (vam) < timeout)
+	if (vam->result_ready == 1)
+	  goto out;
+      vam->retval = -99;
+
+    out:
+      if (vam->retval == -99)
+	errmsg ("timeout");
+
+      if (vam->async_errors > 0)
+	{
+	  errmsg ("%d asynchronous errors", vam->async_errors);
+	  vam->retval = -98;
+	}
+      vam->async_errors = 0;
+      after = vat_time_now (vam);
+
+      /* slim chance, but we might have eaten SIGTERM on the first iteration */
+      if (j > 0)
+	count = j;
+
+      print (vam->ofp, "%d routes in %.6f secs, %.2f routes/sec", count,
+	     after - before, count / (after - before));
+    }
+  else
+    {
+      int ret;
+
+      /* Wait for a reply... */
+      W (ret);
+      return ret;
+    }
+
+  /* Return the good/bad news */
+  return (vam->retval);
+}
+
+static int
+api_ip_mroute_add_del (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  u8 path_set = 0, prefix_set = 0, is_add = 1;
+  vl_api_ip_mroute_add_del_t *mp;
+  mfib_entry_flags_t eflags = 0;
+  vl_api_mfib_path_t path;
+  vl_api_mprefix_t pfx = {};
+  u32 vrf_id = 0;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", unformat_vl_api_mprefix, &pfx))
+	{
+	  prefix_set = 1;
+	  pfx.grp_address_length = htons (pfx.grp_address_length);
+	}
+      else if (unformat (i, "del"))
+	is_add = 0;
+      else if (unformat (i, "add"))
+	is_add = 1;
+      else if (unformat (i, "vrf %d", &vrf_id))
+	;
+      else if (unformat (i, "%U", unformat_mfib_itf_flags, &path.itf_flags))
+	path.itf_flags = htonl (path.itf_flags);
+      else if (unformat (i, "%U", unformat_mfib_entry_flags, &eflags))
+	;
+      else if (unformat (i, "via %U", unformat_fib_path, vam, &path.path))
+	path_set = 1;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (prefix_set == 0)
+    {
+      errmsg ("missing addresses\n");
+      return -99;
+    }
+  if (path_set == 0)
+    {
+      errmsg ("missing path\n");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (IP_MROUTE_ADD_DEL, mp);
+
+  mp->is_add = is_add;
+  mp->is_multipath = 1;
+
+  clib_memcpy (&mp->route.prefix, &pfx, sizeof (pfx));
+  mp->route.table_id = htonl (vrf_id);
+  mp->route.n_paths = 1;
+  mp->route.entry_flags = htonl (eflags);
+
+  clib_memcpy (&mp->route.paths, &path, sizeof (path));
+
+  /* send it... */
+  S (mp);
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+#define foreach_create_subif_bit                                              \
+  _ (no_tags)                                                                 \
+  _ (one_tag)                                                                 \
+  _ (two_tags)                                                                \
+  _ (dot1ad)                                                                  \
+  _ (exact_match)                                                             \
+  _ (default_sub)                                                             \
+  _ (outer_vlan_id_any)                                                       \
+  _ (inner_vlan_id_any)
+
+#define foreach_create_subif_flag                                             \
+  _ (0, "no_tags")                                                            \
+  _ (1, "one_tag")                                                            \
+  _ (2, "two_tags")                                                           \
+  _ (3, "dot1ad")                                                             \
+  _ (4, "exact_match")                                                        \
+  _ (5, "default_sub")                                                        \
+  _ (6, "outer_vlan_id_any")                                                  \
+  _ (7, "inner_vlan_id_any")
+
+static int
+api_ip_table_replace_begin (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ip_table_replace_begin_t *mp;
+  u32 table_id = 0;
+  u8 is_ipv6 = 0;
+
+  int ret;
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "table %d", &table_id))
+	;
+      else if (unformat (i, "ipv6"))
+	is_ipv6 = 1;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  M (IP_TABLE_REPLACE_BEGIN, mp);
+
+  mp->table.table_id = ntohl (table_id);
+  mp->table.is_ip6 = is_ipv6;
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_ip_table_flush (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ip_table_flush_t *mp;
+  u32 table_id = 0;
+  u8 is_ipv6 = 0;
+
+  int ret;
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "table %d", &table_id))
+	;
+      else if (unformat (i, "ipv6"))
+	is_ipv6 = 1;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  M (IP_TABLE_FLUSH, mp);
+
+  mp->table.table_id = ntohl (table_id);
+  mp->table.is_ip6 = is_ipv6;
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_ip_table_replace_end (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ip_table_replace_end_t *mp;
+  u32 table_id = 0;
+  u8 is_ipv6 = 0;
+
+  int ret;
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "table %d", &table_id))
+	;
+      else if (unformat (i, "ipv6"))
+	is_ipv6 = 1;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  M (IP_TABLE_REPLACE_END, mp);
+
+  mp->table.table_id = ntohl (table_id);
+  mp->table.is_ip6 = is_ipv6;
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_set_ip_flow_hash (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_set_ip_flow_hash_t *mp;
+  u32 vrf_id = 0;
+  u8 is_ipv6 = 0;
+  u8 vrf_id_set = 0;
+  u8 src = 0;
+  u8 dst = 0;
+  u8 sport = 0;
+  u8 dport = 0;
+  u8 proto = 0;
+  u8 reverse = 0;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "vrf %d", &vrf_id))
+	vrf_id_set = 1;
+      else if (unformat (i, "ipv6"))
+	is_ipv6 = 1;
+      else if (unformat (i, "src"))
+	src = 1;
+      else if (unformat (i, "dst"))
+	dst = 1;
+      else if (unformat (i, "sport"))
+	sport = 1;
+      else if (unformat (i, "dport"))
+	dport = 1;
+      else if (unformat (i, "proto"))
+	proto = 1;
+      else if (unformat (i, "reverse"))
+	reverse = 1;
+
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (vrf_id_set == 0)
+    {
+      errmsg ("missing vrf id");
+      return -99;
+    }
+
+  M (SET_IP_FLOW_HASH, mp);
+  mp->src = src;
+  mp->dst = dst;
+  mp->sport = sport;
+  mp->dport = dport;
+  mp->proto = proto;
+  mp->reverse = reverse;
+  mp->vrf_id = ntohl (vrf_id);
+  mp->is_ipv6 = is_ipv6;
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_ioam_enable (vat_main_t *vam)
+{
+  unformat_input_t *input = vam->input;
+  vl_api_ioam_enable_t *mp;
+  u32 id = 0;
+  int has_trace_option = 0;
+  int has_pot_option = 0;
+  int has_seqno_option = 0;
+  int has_analyse_option = 0;
+  int ret;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "trace"))
+	has_trace_option = 1;
+      else if (unformat (input, "pot"))
+	has_pot_option = 1;
+      else if (unformat (input, "seqno"))
+	has_seqno_option = 1;
+      else if (unformat (input, "analyse"))
+	has_analyse_option = 1;
+      else
+	break;
+    }
+  M (IOAM_ENABLE, mp);
+  mp->id = htons (id);
+  mp->seqno = has_seqno_option;
+  mp->analyse = has_analyse_option;
+  mp->pot_enable = has_pot_option;
+  mp->trace_enable = has_trace_option;
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_ioam_disable (vat_main_t *vam)
+{
+  vl_api_ioam_disable_t *mp;
+  int ret;
+
+  M (IOAM_DISABLE, mp);
+  S (mp);
+  W (ret);
+  return ret;
+}
 
 #define foreach_tcp_proto_field                                               \
   _ (src_port)                                                                \
@@ -2017,9 +2857,726 @@ unformat_l4_match (unformat_input_t * input, va_list * args)
 
   return 1;
 }
+#endif
+
+static int
+api_get_node_index (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_get_node_index_t *mp;
+  u8 *name = 0;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "node %s", &name))
+	;
+      else
+	break;
+    }
+  if (name == 0)
+    {
+      errmsg ("node name required");
+      return -99;
+    }
+  if (vec_len (name) >= ARRAY_LEN (mp->node_name))
+    {
+      errmsg ("node name too long, max %d", ARRAY_LEN (mp->node_name));
+      return -99;
+    }
+
+  M (GET_NODE_INDEX, mp);
+  clib_memcpy (mp->node_name, name, vec_len (name));
+  vec_free (name);
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_get_next_index (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_get_next_index_t *mp;
+  u8 *node_name = 0, *next_node_name = 0;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "node-name %s", &node_name))
+	;
+      else if (unformat (i, "next-node-name %s", &next_node_name))
+	break;
+    }
+
+  if (node_name == 0)
+    {
+      errmsg ("node name required");
+      return -99;
+    }
+  if (vec_len (node_name) >= ARRAY_LEN (mp->node_name))
+    {
+      errmsg ("node name too long, max %d", ARRAY_LEN (mp->node_name));
+      return -99;
+    }
+
+  if (next_node_name == 0)
+    {
+      errmsg ("next node name required");
+      return -99;
+    }
+  if (vec_len (next_node_name) >= ARRAY_LEN (mp->next_name))
+    {
+      errmsg ("next node name too long, max %d", ARRAY_LEN (mp->next_name));
+      return -99;
+    }
+
+  M (GET_NEXT_INDEX, mp);
+  clib_memcpy (mp->node_name, node_name, vec_len (node_name));
+  clib_memcpy (mp->next_name, next_node_name, vec_len (next_node_name));
+  vec_free (node_name);
+  vec_free (next_node_name);
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_add_node_next (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_add_node_next_t *mp;
+  u8 *name = 0;
+  u8 *next = 0;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "node %s", &name))
+	;
+      else if (unformat (i, "next %s", &next))
+	;
+      else
+	break;
+    }
+  if (name == 0)
+    {
+      errmsg ("node name required");
+      return -99;
+    }
+  if (vec_len (name) >= ARRAY_LEN (mp->node_name))
+    {
+      errmsg ("node name too long, max %d", ARRAY_LEN (mp->node_name));
+      return -99;
+    }
+  if (next == 0)
+    {
+      errmsg ("next node required");
+      return -99;
+    }
+  if (vec_len (next) >= ARRAY_LEN (mp->next_name))
+    {
+      errmsg ("next name too long, max %d", ARRAY_LEN (mp->next_name));
+      return -99;
+    }
+
+  M (ADD_NODE_NEXT, mp);
+  clib_memcpy (mp->node_name, name, vec_len (name));
+  clib_memcpy (mp->next_name, next, vec_len (next));
+  vec_free (name);
+  vec_free (next);
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+#define foreach_vtr_op                                                        \
+  _ ("disable", L2_VTR_DISABLED)                                              \
+  _ ("push-1", L2_VTR_PUSH_1)                                                 \
+  _ ("push-2", L2_VTR_PUSH_2)                                                 \
+  _ ("pop-1", L2_VTR_POP_1)                                                   \
+  _ ("pop-2", L2_VTR_POP_2)                                                   \
+  _ ("translate-1-1", L2_VTR_TRANSLATE_1_1)                                   \
+  _ ("translate-1-2", L2_VTR_TRANSLATE_1_2)                                   \
+  _ ("translate-2-1", L2_VTR_TRANSLATE_2_1)                                   \
+  _ ("translate-2-2", L2_VTR_TRANSLATE_2_2)
+
+static int
+api_show_version (vat_main_t *vam)
+{
+  vl_api_show_version_t *mp;
+  int ret;
+
+  M (SHOW_VERSION, mp);
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_ip_address_dump (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ip_address_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  u32 sw_if_index = ~0;
+  u8 sw_if_index_set = 0;
+  u8 ipv4_set = 0;
+  u8 ipv6_set = 0;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "ipv4"))
+	ipv4_set = 1;
+      else if (unformat (i, "ipv6"))
+	ipv6_set = 1;
+      else
+	break;
+    }
+
+  if (ipv4_set && ipv6_set)
+    {
+      errmsg ("ipv4 and ipv6 flags cannot be both set");
+      return -99;
+    }
+
+  if ((!ipv4_set) && (!ipv6_set))
+    {
+      errmsg ("no ipv4 nor ipv6 flag set");
+      return -99;
+    }
+
+  if (sw_if_index_set == 0)
+    {
+      errmsg ("missing interface name or sw_if_index");
+      return -99;
+    }
+
+  vam->current_sw_if_index = sw_if_index;
+  vam->is_ipv6 = ipv6_set;
+
+  M (IP_ADDRESS_DUMP, mp);
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->is_ipv6 = ipv6_set;
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  MPING (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
+  W (ret);
+  return ret;
+}
+
+static int
+api_ip_dump (vat_main_t *vam)
+{
+  vl_api_ip_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  unformat_input_t *in = vam->input;
+  int ipv4_set = 0;
+  int ipv6_set = 0;
+  int is_ipv6;
+  int i;
+  int ret;
+
+  while (unformat_check_input (in) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (in, "ipv4"))
+	ipv4_set = 1;
+      else if (unformat (in, "ipv6"))
+	ipv6_set = 1;
+      else
+	break;
+    }
+
+  if (ipv4_set && ipv6_set)
+    {
+      errmsg ("ipv4 and ipv6 flags cannot be both set");
+      return -99;
+    }
+
+  if ((!ipv4_set) && (!ipv6_set))
+    {
+      errmsg ("no ipv4 nor ipv6 flag set");
+      return -99;
+    }
+
+  is_ipv6 = ipv6_set;
+  vam->is_ipv6 = is_ipv6;
+
+  /* free old data */
+  for (i = 0; i < vec_len (vam->ip_details_by_sw_if_index[is_ipv6]); i++)
+    {
+      vec_free (vam->ip_details_by_sw_if_index[is_ipv6][i].addr);
+    }
+  vec_free (vam->ip_details_by_sw_if_index[is_ipv6]);
+
+  M (IP_DUMP, mp);
+  mp->is_ipv6 = ipv6_set;
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  MPING (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
+  W (ret);
+  return ret;
+}
+
+static int
+api_get_node_graph (vat_main_t *vam)
+{
+  vl_api_get_node_graph_t *mp;
+  int ret;
+
+  M (GET_NODE_GRAPH, mp);
+
+  /* send it... */
+  S (mp);
+  /* Wait for the reply */
+  W (ret);
+  return ret;
+}
+
+static int
+api_ip_table_dump (vat_main_t *vam)
+{
+  vl_api_ip_table_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  int ret;
+
+  M (IP_TABLE_DUMP, mp);
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  MPING (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
+  W (ret);
+  return ret;
+}
+
+static int
+api_ip_mtable_dump (vat_main_t *vam)
+{
+  vl_api_ip_mtable_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  int ret;
+
+  M (IP_MTABLE_DUMP, mp);
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  MPING (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
+  W (ret);
+  return ret;
+}
+
+static int
+api_ip_mroute_dump (vat_main_t *vam)
+{
+  unformat_input_t *input = vam->input;
+  vl_api_control_ping_t *mp_ping;
+  vl_api_ip_mroute_dump_t *mp;
+  int ret, is_ip6;
+  u32 table_id;
+
+  is_ip6 = 0;
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "table_id %d", &table_id))
+	;
+      else if (unformat (input, "ip6"))
+	is_ip6 = 1;
+      else if (unformat (input, "ip4"))
+	is_ip6 = 0;
+      else
+	break;
+    }
+  if (table_id == ~0)
+    {
+      errmsg ("missing table id");
+      return -99;
+    }
+
+  M (IP_MROUTE_DUMP, mp);
+  mp->table.table_id = table_id;
+  mp->table.is_ip6 = is_ip6;
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  MPING (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
+  W (ret);
+  return ret;
+}
+
+static int
+api_ip_route_dump (vat_main_t *vam)
+{
+  unformat_input_t *input = vam->input;
+  vl_api_ip_route_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  u32 table_id;
+  u8 is_ip6;
+  int ret;
+
+  is_ip6 = 0;
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "table_id %d", &table_id))
+	;
+      else if (unformat (input, "ip6"))
+	is_ip6 = 1;
+      else if (unformat (input, "ip4"))
+	is_ip6 = 0;
+      else
+	break;
+    }
+  if (table_id == ~0)
+    {
+      errmsg ("missing table id");
+      return -99;
+    }
+
+  M (IP_ROUTE_DUMP, mp);
+
+  mp->table.table_id = table_id;
+  mp->table.is_ip6 = is_ip6;
+
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  MPING (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
+  W (ret);
+  return ret;
+}
+
+int
+api_ip_source_and_port_range_check_add_del (vat_main_t *vam)
+{
+  unformat_input_t *input = vam->input;
+  vl_api_ip_source_and_port_range_check_add_del_t *mp;
+
+  u16 *low_ports = 0;
+  u16 *high_ports = 0;
+  u16 this_low;
+  u16 this_hi;
+  vl_api_prefix_t prefix;
+  u32 tmp, tmp2;
+  u8 prefix_set = 0;
+  u32 vrf_id = ~0;
+  u8 is_add = 1;
+  int ret;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%U", unformat_vl_api_prefix, &prefix))
+	prefix_set = 1;
+      else if (unformat (input, "vrf %d", &vrf_id))
+	;
+      else if (unformat (input, "del"))
+	is_add = 0;
+      else if (unformat (input, "port %d", &tmp))
+	{
+	  if (tmp == 0 || tmp > 65535)
+	    {
+	      errmsg ("port %d out of range", tmp);
+	      return -99;
+	    }
+	  this_low = tmp;
+	  this_hi = this_low + 1;
+	  vec_add1 (low_ports, this_low);
+	  vec_add1 (high_ports, this_hi);
+	}
+      else if (unformat (input, "range %d - %d", &tmp, &tmp2))
+	{
+	  if ((tmp > tmp2) || (tmp == 0) || (tmp2 > 65535))
+	    {
+	      errmsg ("incorrect range parameters");
+	      return -99;
+	    }
+	  this_low = tmp;
+	  /* Note: in debug CLI +1 is added to high before
+	     passing to real fn that does "the work"
+	     (ip_source_and_port_range_check_add_del).
+	     This fn is a wrapper around the binary API fn a
+	     control plane will call, which expects this increment
+	     to have occurred. Hence letting the binary API control
+	     plane fn do the increment for consistency between VAT
+	     and other control planes.
+	   */
+	  this_hi = tmp2;
+	  vec_add1 (low_ports, this_low);
+	  vec_add1 (high_ports, this_hi);
+	}
+      else
+	break;
+    }
+
+  if (prefix_set == 0)
+    {
+      errmsg ("<address>/<mask> not specified");
+      return -99;
+    }
+
+  if (vrf_id == ~0)
+    {
+      errmsg ("VRF ID required, not specified");
+      return -99;
+    }
+
+  if (vrf_id == 0)
+    {
+      errmsg ("VRF ID should not be default. Should be distinct VRF for this "
+	      "purpose.");
+      return -99;
+    }
+
+  if (vec_len (low_ports) == 0)
+    {
+      errmsg ("At least one port or port range required");
+      return -99;
+    }
+
+  M (IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL, mp);
+
+  mp->is_add = is_add;
+
+  clib_memcpy (&mp->prefix, &prefix, sizeof (prefix));
+
+  mp->number_of_ranges = vec_len (low_ports);
+
+  clib_memcpy (mp->low_ports, low_ports, vec_len (low_ports));
+  vec_free (low_ports);
+
+  clib_memcpy (mp->high_ports, high_ports, vec_len (high_ports));
+  vec_free (high_ports);
+
+  mp->vrf_id = ntohl (vrf_id);
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+int
+api_ip_source_and_port_range_check_interface_add_del (vat_main_t *vam)
+{
+  unformat_input_t *input = vam->input;
+  vl_api_ip_source_and_port_range_check_interface_add_del_t *mp;
+  u32 sw_if_index = ~0;
+  int vrf_set = 0;
+  u32 tcp_out_vrf_id = ~0, udp_out_vrf_id = ~0;
+  u32 tcp_in_vrf_id = ~0, udp_in_vrf_id = ~0;
+  u8 is_add = 1;
+  int ret;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
+	;
+      else if (unformat (input, "sw_if_index %d", &sw_if_index))
+	;
+      else if (unformat (input, "tcp-out-vrf %d", &tcp_out_vrf_id))
+	vrf_set = 1;
+      else if (unformat (input, "udp-out-vrf %d", &udp_out_vrf_id))
+	vrf_set = 1;
+      else if (unformat (input, "tcp-in-vrf %d", &tcp_in_vrf_id))
+	vrf_set = 1;
+      else if (unformat (input, "udp-in-vrf %d", &udp_in_vrf_id))
+	vrf_set = 1;
+      else if (unformat (input, "del"))
+	is_add = 0;
+      else
+	break;
+    }
+  if (sw_if_index == ~0)
+    {
+      errmsg ("Interface required but not specified");
+      return -99;
+    }
+
+  if (vrf_set == 0)
+    {
+      errmsg ("VRF ID required but not specified");
+      return -99;
+    }
+
+  if (tcp_out_vrf_id == 0 || udp_out_vrf_id == 0 || tcp_in_vrf_id == 0 ||
+      udp_in_vrf_id == 0)
+    {
+      errmsg ("VRF ID should not be default. Should be distinct VRF for this "
+	      "purpose.");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL, mp);
+
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->is_add = is_add;
+  mp->tcp_out_vrf_id = ntohl (tcp_out_vrf_id);
+  mp->udp_out_vrf_id = ntohl (udp_out_vrf_id);
+  mp->tcp_in_vrf_id = ntohl (tcp_in_vrf_id);
+  mp->udp_in_vrf_id = ntohl (udp_in_vrf_id);
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
 
 uword
-unformat_ip4_match (unformat_input_t * input, va_list * args)
+unformat_vlan_tag (unformat_input_t *input, va_list *args)
+{
+  u8 *tagp = va_arg (*args, u8 *);
+  u32 tag;
+
+  if (unformat (input, "%d", &tag))
+    {
+      tagp[0] = (tag >> 8) & 0x0F;
+      tagp[1] = tag & 0xFF;
+      return 1;
+    }
+
+  return 0;
+}
+
+uword
+unformat_l2_match (unformat_input_t *input, va_list *args)
+{
+  u8 **matchp = va_arg (*args, u8 **);
+  u8 *match = 0;
+  u8 src = 0;
+  u8 src_val[6];
+  u8 dst = 0;
+  u8 dst_val[6];
+  u8 proto = 0;
+  u16 proto_val;
+  u8 tag1 = 0;
+  u8 tag1_val[2];
+  u8 tag2 = 0;
+  u8 tag2_val[2];
+  int len = 14;
+  u8 ignore_tag1 = 0;
+  u8 ignore_tag2 = 0;
+  u8 cos1 = 0;
+  u8 cos2 = 0;
+  u32 cos1_val = 0;
+  u32 cos2_val = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "src %U", unformat_ethernet_address, &src_val))
+	src = 1;
+      else if (unformat (input, "dst %U", unformat_ethernet_address, &dst_val))
+	dst = 1;
+      else if (unformat (input, "proto %U",
+			 unformat_ethernet_type_host_byte_order, &proto_val))
+	proto = 1;
+      else if (unformat (input, "tag1 %U", unformat_vlan_tag, tag1_val))
+	tag1 = 1;
+      else if (unformat (input, "tag2 %U", unformat_vlan_tag, tag2_val))
+	tag2 = 1;
+      else if (unformat (input, "ignore-tag1"))
+	ignore_tag1 = 1;
+      else if (unformat (input, "ignore-tag2"))
+	ignore_tag2 = 1;
+      else if (unformat (input, "cos1 %d", &cos1_val))
+	cos1 = 1;
+      else if (unformat (input, "cos2 %d", &cos2_val))
+	cos2 = 1;
+      else
+	break;
+    }
+  if ((src + dst + proto + tag1 + tag2 + ignore_tag1 + ignore_tag2 + cos1 +
+       cos2) == 0)
+    return 0;
+
+  if (tag1 || ignore_tag1 || cos1)
+    len = 18;
+  if (tag2 || ignore_tag2 || cos2)
+    len = 22;
+
+  vec_validate_aligned (match, len - 1, sizeof (u32x4));
+
+  if (dst)
+    clib_memcpy (match, dst_val, 6);
+
+  if (src)
+    clib_memcpy (match + 6, src_val, 6);
+
+  if (tag2)
+    {
+      /* inner vlan tag */
+      match[19] = tag2_val[1];
+      match[18] = tag2_val[0];
+      if (cos2)
+	match[18] |= (cos2_val & 0x7) << 5;
+      if (proto)
+	{
+	  match[21] = proto_val & 0xff;
+	  match[20] = proto_val >> 8;
+	}
+      if (tag1)
+	{
+	  match[15] = tag1_val[1];
+	  match[14] = tag1_val[0];
+	}
+      if (cos1)
+	match[14] |= (cos1_val & 0x7) << 5;
+      *matchp = match;
+      return 1;
+    }
+  if (tag1)
+    {
+      match[15] = tag1_val[1];
+      match[14] = tag1_val[0];
+      if (proto)
+	{
+	  match[17] = proto_val & 0xff;
+	  match[16] = proto_val >> 8;
+	}
+      if (cos1)
+	match[14] |= (cos1_val & 0x7) << 5;
+
+      *matchp = match;
+      return 1;
+    }
+  if (cos2)
+    match[18] |= (cos2_val & 0x7) << 5;
+  if (cos1)
+    match[14] |= (cos1_val & 0x7) << 5;
+  if (proto)
+    {
+      match[13] = proto_val & 0xff;
+      match[12] = proto_val >> 8;
+    }
+
+  *matchp = match;
+  return 1;
+}
+
+uword
+unformat_ip4_match (unformat_input_t *input, va_list *args)
 {
   u8 **matchp = va_arg (*args, u8 **);
   u8 *match = 0;
@@ -2203,8 +3760,220 @@ unformat_ip6_match (unformat_input_t * input, va_list * args)
   return 1;
 }
 
+static u8 *
+format_vl_api_fib_path_type (u8 *s, va_list *args)
+{
+  vl_api_fib_path_type_t t = va_arg (*args, vl_api_fib_path_type_t);
+
+  switch (t)
+    {
+    case FIB_API_PATH_TYPE_NORMAL:
+      s = format (s, "normal");
+      break;
+    case FIB_API_PATH_TYPE_LOCAL:
+      s = format (s, "local");
+      break;
+    case FIB_API_PATH_TYPE_DROP:
+      s = format (s, "drop");
+      break;
+    case FIB_API_PATH_TYPE_UDP_ENCAP:
+      s = format (s, "udp-encap");
+      break;
+    case FIB_API_PATH_TYPE_BIER_IMP:
+      s = format (s, "bier-imp");
+      break;
+    case FIB_API_PATH_TYPE_ICMP_UNREACH:
+      s = format (s, "unreach");
+      break;
+    case FIB_API_PATH_TYPE_ICMP_PROHIBIT:
+      s = format (s, "prohibit");
+      break;
+    case FIB_API_PATH_TYPE_SOURCE_LOOKUP:
+      s = format (s, "src-lookup");
+      break;
+    case FIB_API_PATH_TYPE_DVR:
+      s = format (s, "dvr");
+      break;
+    case FIB_API_PATH_TYPE_INTERFACE_RX:
+      s = format (s, "interface-rx");
+      break;
+    case FIB_API_PATH_TYPE_CLASSIFY:
+      s = format (s, "classify");
+      break;
+    }
+
+  return (s);
+}
+
+static u8 *
+format_fib_api_path_nh_proto (u8 *s, va_list *args)
+{
+  vl_api_fib_path_nh_proto_t proto =
+    va_arg (*args, vl_api_fib_path_nh_proto_t);
+
+  switch (proto)
+    {
+    case FIB_API_PATH_NH_PROTO_IP4:
+      s = format (s, "ip4");
+      break;
+    case FIB_API_PATH_NH_PROTO_IP6:
+      s = format (s, "ip6");
+      break;
+    case FIB_API_PATH_NH_PROTO_MPLS:
+      s = format (s, "mpls");
+      break;
+    case FIB_API_PATH_NH_PROTO_BIER:
+      s = format (s, "bier");
+      break;
+    case FIB_API_PATH_NH_PROTO_ETHERNET:
+      s = format (s, "ethernet");
+      break;
+    }
+
+  return (s);
+}
+
+static u8 *
+format_vl_api_ip_address_union (u8 *s, va_list *args)
+{
+  vl_api_address_family_t af = va_arg (*args, int);
+  const vl_api_address_union_t *u = va_arg (*args, vl_api_address_union_t *);
+
+  switch (af)
+    {
+    case ADDRESS_IP4:
+      s = format (s, "%U", format_ip4_address, u->ip4);
+      break;
+    case ADDRESS_IP6:
+      s = format (s, "%U", format_ip6_address, u->ip6);
+      break;
+    }
+  return (s);
+}
+
+static void
+vl_api_fib_path_print (vat_main_t *vam, vl_api_fib_path_t *fp)
+{
+  print (vam->ofp, "  weight %d, sw_if_index %d, type %U, afi %U, next_hop %U",
+	 ntohl (fp->weight), ntohl (fp->sw_if_index),
+	 format_vl_api_fib_path_type, fp->type, format_fib_api_path_nh_proto,
+	 fp->proto, format_vl_api_ip_address_union, &fp->nh.address);
+}
+
+static void
+vl_api_mpls_fib_path_json_print (vat_json_node_t *node, vl_api_fib_path_t *fp)
+{
+  struct in_addr ip4;
+  struct in6_addr ip6;
+
+  vat_json_object_add_uint (node, "weight", ntohl (fp->weight));
+  vat_json_object_add_uint (node, "sw_if_index", ntohl (fp->sw_if_index));
+  vat_json_object_add_uint (node, "type", fp->type);
+  vat_json_object_add_uint (node, "next_hop_proto", fp->proto);
+  if (fp->proto == FIB_API_PATH_NH_PROTO_IP4)
+    {
+      clib_memcpy (&ip4, &fp->nh.address.ip4, sizeof (ip4));
+      vat_json_object_add_ip4 (node, "next_hop", ip4);
+    }
+  else if (fp->proto == FIB_API_PATH_NH_PROTO_IP6)
+    {
+      clib_memcpy (&ip6, &fp->nh.address.ip6, sizeof (ip6));
+      vat_json_object_add_ip6 (node, "next_hop", ip6);
+    }
+}
+
+#define vl_api_ip_route_details_t_endian vl_noop_handler
+#define vl_api_ip_route_details_t_print	 vl_noop_handler
+
+static void
+vl_api_ip_route_details_t_handler (vl_api_ip_route_details_t *mp)
+{
+  vat_main_t *vam = &vat_main;
+  u8 count = mp->route.n_paths;
+  vl_api_fib_path_t *fp;
+  int i;
+
+  print (vam->ofp, "table-id %d, prefix %U/%d", ntohl (mp->route.table_id),
+	 format_ip46_address, mp->route.prefix.address, mp->route.prefix.len);
+  for (i = 0; i < count; i++)
+    {
+      fp = &mp->route.paths[i];
+
+      vl_api_fib_path_print (vam, fp);
+      fp++;
+    }
+}
+
+static void
+vl_api_ip_route_details_t_handler_json (vl_api_ip_route_details_t *mp)
+{
+  vat_main_t *vam = &vat_main;
+  u8 count = mp->route.n_paths;
+  vat_json_node_t *node = NULL;
+  struct in_addr ip4;
+  struct in6_addr ip6;
+  vl_api_fib_path_t *fp;
+  int i;
+
+  if (VAT_JSON_ARRAY != vam->json_tree.type)
+    {
+      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
+      vat_json_init_array (&vam->json_tree);
+    }
+  node = vat_json_array_add (&vam->json_tree);
+
+  vat_json_init_object (node);
+  vat_json_object_add_uint (node, "table", ntohl (mp->route.table_id));
+  if (ADDRESS_IP6 == mp->route.prefix.address.af)
+    {
+      clib_memcpy (&ip6, &mp->route.prefix.address.un.ip6, sizeof (ip6));
+      vat_json_object_add_ip6 (node, "prefix", ip6);
+    }
+  else
+    {
+      clib_memcpy (&ip4, &mp->route.prefix.address.un.ip4, sizeof (ip4));
+      vat_json_object_add_ip4 (node, "prefix", ip4);
+    }
+  vat_json_object_add_uint (node, "mask_length", mp->route.prefix.len);
+  vat_json_object_add_uint (node, "path_count", count);
+  for (i = 0; i < count; i++)
+    {
+      fp = &mp->route.paths[i];
+      vl_api_mpls_fib_path_json_print (node, fp);
+    }
+}
+
+#define vl_api_ip_table_details_t_endian vl_noop_handler
+#define vl_api_ip_table_details_t_print	 vl_noop_handler
+
+static void
+vl_api_ip_table_details_t_handler (vl_api_ip_table_details_t *mp)
+{
+  vat_main_t *vam = &vat_main;
+
+  print (vam->ofp, "%s; table-id %d, prefix %U/%d", mp->table.name,
+	 ntohl (mp->table.table_id));
+}
+
+static void
+vl_api_ip_table_details_t_handler_json (vl_api_ip_table_details_t *mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t *node = NULL;
+
+  if (VAT_JSON_ARRAY != vam->json_tree.type)
+    {
+      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
+      vat_json_init_array (&vam->json_tree);
+    }
+  node = vat_json_array_add (&vam->json_tree);
+
+  vat_json_init_object (node);
+  vat_json_object_add_uint (node, "table", ntohl (mp->table.table_id));
+}
+
 uword
-unformat_l3_match (unformat_input_t * input, va_list * args)
+unformat_l3_match (unformat_input_t *input, va_list *args)
 {
   u8 **matchp = va_arg (*args, u8 **);
 
@@ -2219,158 +3988,6 @@ unformat_l3_match (unformat_input_t * input, va_list * args)
     }
   return 0;
 }
-
-uword
-unformat_vlan_tag (unformat_input_t * input, va_list * args)
-{
-  u8 *tagp = va_arg (*args, u8 *);
-  u32 tag;
-
-  if (unformat (input, "%d", &tag))
-    {
-      tagp[0] = (tag >> 8) & 0x0F;
-      tagp[1] = tag & 0xFF;
-      return 1;
-    }
-
-  return 0;
-}
-
-uword
-unformat_l2_match (unformat_input_t * input, va_list * args)
-{
-  u8 **matchp = va_arg (*args, u8 **);
-  u8 *match = 0;
-  u8 src = 0;
-  u8 src_val[6];
-  u8 dst = 0;
-  u8 dst_val[6];
-  u8 proto = 0;
-  u16 proto_val;
-  u8 tag1 = 0;
-  u8 tag1_val[2];
-  u8 tag2 = 0;
-  u8 tag2_val[2];
-  int len = 14;
-  u8 ignore_tag1 = 0;
-  u8 ignore_tag2 = 0;
-  u8 cos1 = 0;
-  u8 cos2 = 0;
-  u32 cos1_val = 0;
-  u32 cos2_val = 0;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "src %U", unformat_ethernet_address, &src_val))
-	src = 1;
-      else
-	if (unformat (input, "dst %U", unformat_ethernet_address, &dst_val))
-	dst = 1;
-      else if (unformat (input, "proto %U",
-			 unformat_ethernet_type_host_byte_order, &proto_val))
-	proto = 1;
-      else if (unformat (input, "tag1 %U", unformat_vlan_tag, tag1_val))
-	tag1 = 1;
-      else if (unformat (input, "tag2 %U", unformat_vlan_tag, tag2_val))
-	tag2 = 1;
-      else if (unformat (input, "ignore-tag1"))
-	ignore_tag1 = 1;
-      else if (unformat (input, "ignore-tag2"))
-	ignore_tag2 = 1;
-      else if (unformat (input, "cos1 %d", &cos1_val))
-	cos1 = 1;
-      else if (unformat (input, "cos2 %d", &cos2_val))
-	cos2 = 1;
-      else
-	break;
-    }
-  if ((src + dst + proto + tag1 + tag2 +
-       ignore_tag1 + ignore_tag2 + cos1 + cos2) == 0)
-    return 0;
-
-  if (tag1 || ignore_tag1 || cos1)
-    len = 18;
-  if (tag2 || ignore_tag2 || cos2)
-    len = 22;
-
-  vec_validate_aligned (match, len - 1, sizeof (u32x4));
-
-  if (dst)
-    clib_memcpy (match, dst_val, 6);
-
-  if (src)
-    clib_memcpy (match + 6, src_val, 6);
-
-  if (tag2)
-    {
-      /* inner vlan tag */
-      match[19] = tag2_val[1];
-      match[18] = tag2_val[0];
-      if (cos2)
-	match[18] |= (cos2_val & 0x7) << 5;
-      if (proto)
-	{
-	  match[21] = proto_val & 0xff;
-	  match[20] = proto_val >> 8;
-	}
-      if (tag1)
-	{
-	  match[15] = tag1_val[1];
-	  match[14] = tag1_val[0];
-	}
-      if (cos1)
-	match[14] |= (cos1_val & 0x7) << 5;
-      *matchp = match;
-      return 1;
-    }
-  if (tag1)
-    {
-      match[15] = tag1_val[1];
-      match[14] = tag1_val[0];
-      if (proto)
-	{
-	  match[17] = proto_val & 0xff;
-	  match[16] = proto_val >> 8;
-	}
-      if (cos1)
-	match[14] |= (cos1_val & 0x7) << 5;
-
-      *matchp = match;
-      return 1;
-    }
-  if (cos2)
-    match[18] |= (cos2_val & 0x7) << 5;
-  if (cos1)
-    match[14] |= (cos1_val & 0x7) << 5;
-  if (proto)
-    {
-      match[13] = proto_val & 0xff;
-      match[12] = proto_val >> 8;
-    }
-
-  *matchp = match;
-  return 1;
-}
-
-uword
-unformat_qos_source (unformat_input_t * input, va_list * args)
-{
-  int *qs = va_arg (*args, int *);
-
-  if (unformat (input, "ip"))
-    *qs = QOS_SOURCE_IP;
-  else if (unformat (input, "mpls"))
-    *qs = QOS_SOURCE_MPLS;
-  else if (unformat (input, "ext"))
-    *qs = QOS_SOURCE_EXT;
-  else if (unformat (input, "vlan"))
-    *qs = QOS_SOURCE_VLAN;
-  else
-    return 0;
-
-  return 1;
-}
-#endif
 
 uword
 api_unformat_classify_match (unformat_input_t * input, va_list * args)
@@ -2443,164 +4060,6 @@ api_unformat_classify_match (unformat_input_t * input, va_list * args)
 }
 
 static int
-api_get_node_index (vat_main_t *vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_get_node_index_t *mp;
-  u8 *name = 0;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "node %s", &name))
-	;
-      else
-	break;
-    }
-  if (name == 0)
-    {
-      errmsg ("node name required");
-      return -99;
-    }
-  if (vec_len (name) >= ARRAY_LEN (mp->node_name))
-    {
-      errmsg ("node name too long, max %d", ARRAY_LEN (mp->node_name));
-      return -99;
-    }
-
-  M (GET_NODE_INDEX, mp);
-  clib_memcpy (mp->node_name, name, vec_len (name));
-  vec_free (name);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_get_next_index (vat_main_t *vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_get_next_index_t *mp;
-  u8 *node_name = 0, *next_node_name = 0;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "node-name %s", &node_name))
-	;
-      else if (unformat (i, "next-node-name %s", &next_node_name))
-	break;
-    }
-
-  if (node_name == 0)
-    {
-      errmsg ("node name required");
-      return -99;
-    }
-  if (vec_len (node_name) >= ARRAY_LEN (mp->node_name))
-    {
-      errmsg ("node name too long, max %d", ARRAY_LEN (mp->node_name));
-      return -99;
-    }
-
-  if (next_node_name == 0)
-    {
-      errmsg ("next node name required");
-      return -99;
-    }
-  if (vec_len (next_node_name) >= ARRAY_LEN (mp->next_name))
-    {
-      errmsg ("next node name too long, max %d", ARRAY_LEN (mp->next_name));
-      return -99;
-    }
-
-  M (GET_NEXT_INDEX, mp);
-  clib_memcpy (mp->node_name, node_name, vec_len (node_name));
-  clib_memcpy (mp->next_name, next_node_name, vec_len (next_node_name));
-  vec_free (node_name);
-  vec_free (next_node_name);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_add_node_next (vat_main_t *vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_add_node_next_t *mp;
-  u8 *name = 0;
-  u8 *next = 0;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "node %s", &name))
-	;
-      else if (unformat (i, "next %s", &next))
-	;
-      else
-	break;
-    }
-  if (name == 0)
-    {
-      errmsg ("node name required");
-      return -99;
-    }
-  if (vec_len (name) >= ARRAY_LEN (mp->node_name))
-    {
-      errmsg ("node name too long, max %d", ARRAY_LEN (mp->node_name));
-      return -99;
-    }
-  if (next == 0)
-    {
-      errmsg ("next node required");
-      return -99;
-    }
-  if (vec_len (next) >= ARRAY_LEN (mp->next_name))
-    {
-      errmsg ("next name too long, max %d", ARRAY_LEN (mp->next_name));
-      return -99;
-    }
-
-  M (ADD_NODE_NEXT, mp);
-  clib_memcpy (mp->node_name, name, vec_len (name));
-  clib_memcpy (mp->next_name, next, vec_len (next));
-  vec_free (name);
-  vec_free (next);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-#define foreach_vtr_op                                                        \
-  _ ("disable", L2_VTR_DISABLED)                                              \
-  _ ("push-1", L2_VTR_PUSH_1)                                                 \
-  _ ("push-2", L2_VTR_PUSH_2)                                                 \
-  _ ("pop-1", L2_VTR_POP_1)                                                   \
-  _ ("pop-2", L2_VTR_POP_2)                                                   \
-  _ ("translate-1-1", L2_VTR_TRANSLATE_1_1)                                   \
-  _ ("translate-1-2", L2_VTR_TRANSLATE_1_2)                                   \
-  _ ("translate-2-1", L2_VTR_TRANSLATE_2_1)                                   \
-  _ ("translate-2-2", L2_VTR_TRANSLATE_2_2)
-
-static int
-api_show_version (vat_main_t *vam)
-{
-  vl_api_show_version_t *mp;
-  int ret;
-
-  M (SHOW_VERSION, mp);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
 api_get_first_msg_id (vat_main_t *vam)
 {
   vl_api_get_first_msg_id_t *mp;
@@ -2633,21 +4092,6 @@ api_get_first_msg_id (vat_main_t *vam)
   M (GET_FIRST_MSG_ID, mp);
   clib_memcpy (mp->name, name, vec_len (name));
   S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_get_node_graph (vat_main_t *vam)
-{
-  vl_api_get_node_graph_t *mp;
-  int ret;
-
-  M (GET_NODE_GRAPH, mp);
-
-  /* send it... */
-  S (mp);
-  /* Wait for the reply */
   W (ret);
   return ret;
 }
@@ -2714,6 +4158,46 @@ api_sock_init_shm (vat_main_t * vam)
 #else
   return -99;
 #endif
+}
+
+static int
+api_ip_container_proxy_add_del (vat_main_t *vam)
+{
+  vl_api_ip_container_proxy_add_del_t *mp;
+  unformat_input_t *i = vam->input;
+  u32 sw_if_index = ~0;
+  vl_api_prefix_t pfx = {};
+  u8 is_add = 1;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "del"))
+	is_add = 0;
+      else if (unformat (i, "add"))
+	;
+      if (unformat (i, "%U", unformat_vl_api_prefix, &pfx))
+	;
+      else if (unformat (i, "sw_if_index %u", &sw_if_index))
+	;
+      else
+	break;
+    }
+  if (sw_if_index == ~0 || pfx.len == 0)
+    {
+      errmsg ("address and sw_if_index must be set");
+      return -99;
+    }
+
+  M (IP_CONTAINER_PROXY_ADD_DEL, mp);
+
+  mp->sw_if_index = clib_host_to_net_u32 (sw_if_index);
+  mp->is_add = is_add;
+  clib_memcpy (&mp->pfx, &pfx, sizeof (pfx));
+
+  S (mp);
+  W (ret);
+  return ret;
 }
 
 static int
@@ -2944,12 +4428,10 @@ help (vat_main_t * vam)
 
   print (vam->ofp, "Help is available for the following:");
 
-    /* *INDENT-OFF* */
     hash_foreach_pair (p, vam->function_by_name,
     ({
       vec_add1 (cmds, (u8 *)(p->key));
     }));
-    /* *INDENT-ON* */
 
   vec_sort_with_function (cmds, cmd_cmp);
 
@@ -3022,14 +4504,12 @@ dump_macro_table (vat_main_t * vam)
   int i;
   hash_pair_t *p;
 
-    /* *INDENT-OFF* */
     hash_foreach_pair (p, vam->macro_main.the_value_table_hash,
     ({
       vec_add2 (sort_me, sm, 1);
       sm->name = (u8 *)(p->key);
       sm->value = (u8 *) (p->value[0]);
     }));
-    /* *INDENT-ON* */
 
   vec_sort_with_function (sort_me, macro_sort_cmp);
 
@@ -3040,6 +4520,34 @@ dump_macro_table (vat_main_t * vam)
 
   for (i = 0; i < vec_len (sort_me); i++)
     print (vam->ofp, "%-15s%s", sort_me[i].name, sort_me[i].value);
+  return 0;
+}
+
+static int
+dump_node_table (vat_main_t *vam)
+{
+  int i, j;
+  vlib_node_t *node, *next_node;
+
+  if (vec_len (vam->graph_nodes) == 0)
+    {
+      print (vam->ofp, "Node table empty, issue get_node_graph...");
+      return 0;
+    }
+
+  for (i = 0; i < vec_len (vam->graph_nodes[0]); i++)
+    {
+      node = vam->graph_nodes[0][i];
+      print (vam->ofp, "[%d] %s", i, node->name);
+      for (j = 0; j < vec_len (node->next_nodes); j++)
+	{
+	  if (node->next_nodes[j] != ~0)
+	    {
+	      next_node = vam->graph_nodes[0][node->next_nodes[j]];
+	      print (vam->ofp, "  [%d] %s", j, next_node->name);
+	    }
+	}
+    }
   return 0;
 }
 
@@ -3065,14 +4573,12 @@ dump_msg_api_table (vat_main_t * vam)
   hash_pair_t *hp;
   int i;
 
-  /* *INDENT-OFF* */
   hash_foreach_pair (hp, am->msg_index_by_name_and_crc,
   ({
     vec_add2 (nses, ns, 1);
     ns->name = (u8 *)(hp->key);
     ns->value = (u32) hp->value[0];
   }));
-  /* *INDENT-ON* */
 
   vec_sort_with_function (nses, value_sort_cmp);
 
@@ -3219,36 +4725,69 @@ echo (vat_main_t * vam)
 }
 
 /* List of API message constructors, CLI names map to api_xxx */
-#define foreach_vpe_api_msg                                             \
-_(get_node_index, "node <node-name")                                    \
-_(add_node_next, "node <node-name> next <next-node-name>")              \
-_(show_version, "")                                                     \
-_(show_threads, "")                                                     \
-_(get_first_msg_id, "client <name>")					\
-_(get_node_graph, " ")                                                  \
-_(get_next_index, "node-name <node-name> next-node-name <node-name>")   \
-_(sock_init_shm, "size <nnn>")						\
+#define foreach_vpe_api_msg                                                   \
+  _ (ip_table_add_del, "table <n> [ipv6] [add | del]\n")                      \
+  _ (ip_route_add_del,                                                        \
+     "<addr>/<mask> via <<addr>|<intfc>|sw_if_index <id>|via-label <n>>\n"    \
+     "[table-id <n>] [<intfc> | sw_if_index <id>] [resolve-attempts <n>]\n"   \
+     "[weight <n>] [drop] [local] [classify <n>]  [out-label <n>]\n"          \
+     "[multipath] [count <n>] [del]")                                         \
+  _ (ip_mroute_add_del, "<src> <grp>/<mask> [table-id <n>]\n"                 \
+			"[<intfc> | sw_if_index <id>] [local] [del]")         \
+  _ (ip_table_replace_begin, "table <n> [ipv6]")                              \
+  _ (ip_table_flush, "table <n> [ipv6]")                                      \
+  _ (ip_table_replace_end, "table <n> [ipv6]")                                \
+  _ (set_ip_flow_hash,                                                        \
+     "vrf <n> [src] [dst] [sport] [dport] [proto] [reverse] [ipv6]")          \
+  _ (get_node_index, "node <node-name")                                       \
+  _ (add_node_next, "node <node-name> next <next-node-name>")                 \
+  _ (show_version, "")                                                        \
+  _ (show_threads, "")                                                        \
+  _ (ip_address_dump, "(ipv4 | ipv6) (<intfc> | sw_if_index <id>)")           \
+  _ (ip_dump, "ipv4 | ipv6")                                                  \
+  _ (get_first_msg_id, "client <name>")                                       \
+  _ (get_node_graph, " ")                                                     \
+  _ (ioam_enable, "[trace] [pow] [ppc <encap|decap>]")                        \
+  _ (ioam_disable, "")                                                        \
+  _ (get_next_index, "node-name <node-name> next-node-name <node-name>")      \
+  _ (ip_source_and_port_range_check_add_del,                                  \
+     "<ip-addr>/<mask> range <nn>-<nn> vrf <id>")                             \
+  _ (ip_source_and_port_range_check_interface_add_del,                        \
+     "<intf> | sw_if_index <nn> [tcp-out-vrf <id>] [tcp-in-vrf <id>]"         \
+     "[udp-in-vrf <id>] [udp-out-vrf <id>]")                                  \
+  _ (ip_table_dump, "")                                                       \
+  _ (ip_route_dump, "table-id [ip4|ip6]")                                     \
+  _ (ip_mtable_dump, "")                                                      \
+  _ (ip_mroute_dump, "table-id [ip4|ip6]")                                    \
+  _ (sock_init_shm, "size <nnn>")                                             \
+  _ (ip_container_proxy_add_del, "[add|del] <address> <sw_if_index>")
+
 /* List of command functions, CLI names map directly to functions */
-#define foreach_cli_function                                    \
-_(comment, "usage: comment <ignore-rest-of-line>")		\
-_(dump_macro_table, "usage: dump_macro_table ")                 \
-_(dump_msg_api_table, "usage: dump_msg_api_table")		\
-_(elog_setup, "usage: elog_setup [nevents, default 128K]")      \
-_(elog_disable, "usage: elog_disable")                          \
-_(elog_enable, "usage: elog_enable")                            \
-_(elog_save, "usage: elog_save <filename>")                     \
-_(get_msg_id, "usage: get_msg_id name_and_crc")			\
-_(echo, "usage: echo <message>")				\
-_(exec, "usage: exec <vpe-debug-CLI-command>")                  \
-_(exec_inband, "usage: exec_inband <vpe-debug-CLI-command>")    \
-_(help, "usage: help")                                          \
-_(q, "usage: quit")                                             \
-_(quit, "usage: quit")                                          \
-_(search_node_table, "usage: search_node_table <name>...")	\
-_(set, "usage: set <variable-name> <value>")                    \
-_(script, "usage: script <file-name>")                          \
-_(statseg, "usage: statseg")                                    \
-_(unset, "usage: unset <variable-name>")
+#define foreach_cli_function                                                  \
+  _ (comment, "usage: comment <ignore-rest-of-line>")                         \
+  _ (dump_interface_table, "usage: dump_interface_table")                     \
+  _ (dump_sub_interface_table, "usage: dump_sub_interface_table")             \
+  _ (dump_ipv4_table, "usage: dump_ipv4_table")                               \
+  _ (dump_ipv6_table, "usage: dump_ipv6_table")                               \
+  _ (dump_macro_table, "usage: dump_macro_table ")                            \
+  _ (dump_node_table, "usage: dump_node_table")                               \
+  _ (dump_msg_api_table, "usage: dump_msg_api_table")                         \
+  _ (elog_setup, "usage: elog_setup [nevents, default 128K]")                 \
+  _ (elog_disable, "usage: elog_disable")                                     \
+  _ (elog_enable, "usage: elog_enable")                                       \
+  _ (elog_save, "usage: elog_save <filename>")                                \
+  _ (get_msg_id, "usage: get_msg_id name_and_crc")                            \
+  _ (echo, "usage: echo <message>")                                           \
+  _ (exec, "usage: exec <vpe-debug-CLI-command>")                             \
+  _ (exec_inband, "usage: exec_inband <vpe-debug-CLI-command>")               \
+  _ (help, "usage: help")                                                     \
+  _ (q, "usage: quit")                                                        \
+  _ (quit, "usage: quit")                                                     \
+  _ (search_node_table, "usage: search_node_table <name>...")                 \
+  _ (set, "usage: set <variable-name> <value>")                               \
+  _ (script, "usage: script <file-name>")                                     \
+  _ (statseg, "usage: statseg")                                               \
+  _ (unset, "usage: unset <variable-name>")
 
 #define _(N,n)                                  \
     static void vl_api_##n##_t_handler_uni      \
