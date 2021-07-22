@@ -282,6 +282,7 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
       m.server_rx_fifo = fifo_segment_fifo_offset (s->rx_fifo);
       m.server_tx_fifo = fifo_segment_fifo_offset (s->tx_fifo);
       m.segment_handle = session_segment_handle (s);
+      m.mq_index = s->thread_index;
     }
   else
     {
@@ -301,6 +302,7 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
       m.ct_rx_fifo = fifo_segment_fifo_offset (ss->tx_fifo);
       m.ct_tx_fifo = fifo_segment_fifo_offset (ss->rx_fifo);
       m.ct_segment_handle = session_segment_handle (ss);
+      m.mq_index = s->thread_index;
     }
 
   /* Setup client session index in advance, in case data arrives
@@ -361,6 +363,7 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
   app = application_get (app_wrk->app_index);
   eq_seg = application_get_rx_mqs_segment (app);
   m.vpp_evt_q = fifo_segment_msg_q_offset (eq_seg, ls->thread_index);
+  m.mq_index = ls->thread_index;
 
   if (session_transport_service_type (ls) == TRANSPORT_SERVICE_CL &&
       ls->rx_fifo)
