@@ -54,6 +54,48 @@ format_udp_rx_trace (u8 * s, va_list * args)
 }
 #endif /* CLIB_MARCH_VARIANT */
 
+always_inline void
+udp_dispatch_error (vlib_node_runtime_t *node, vlib_buffer_t *b, u32 advance,
+		    u8 is_ip4, u32 *next)
+{
+  udp_main_t *um = &udp_main;
+  u8 punt_unknown = is_ip4 ? um->punt_unknown4 : um->punt_unknown6;
+
+  if (PREDICT_FALSE (punt_unknown))
+    {
+      vlib_buffer_advance (b, -(word) advance);
+      b->error = node->errors[UDP_ERROR_PUNT];
+      *next = UDP_LOCAL_NEXT_PUNT;
+    }
+  else if (um->icmp_send_unreachable_disabled)
+    {
+      *next = UDP_LOCAL_NEXT_DROP;
+      b->error = node->errors[UDP_ERROR_NO_LISTENER];
+    }
+  else
+    {
+      /* move the pointer back so icmp-error can find the ip packet header */
+      vlib_buffer_advance (b, -(word) advance);
+
+      if (is_ip4)
+	{
+	  icmp4_error_set_vnet_buffer (
+	    b, ICMP4_destination_unreachable,
+	    ICMP4_destination_unreachable_port_unreachable, 0);
+	  b->error = node->errors[UDP_ERROR_NO_LISTENER];
+	  *next = UDP_LOCAL_NEXT_ICMP;
+	}
+      else
+	{
+	  icmp6_error_set_vnet_buffer (
+	    b, ICMP6_destination_unreachable,
+	    ICMP6_destination_unreachable_port_unreachable, 0);
+	  b->error = node->errors[UDP_ERROR_NO_LISTENER];
+	  *next = UDP_LOCAL_NEXT_ICMP;
+	}
+    }
+}
+
 always_inline uword
 udp46_local_inline (vlib_main_t * vm,
 		    vlib_node_runtime_t * node,
@@ -61,7 +103,6 @@ udp46_local_inline (vlib_main_t * vm,
 {
   udp_main_t *um = &udp_main;
   __attribute__ ((unused)) u32 n_left_from, next_index, *from, *to_next;
-  u8 punt_unknown = is_ip4 ? um->punt_unknown4 : um->punt_unknown6;
   u16 *next_by_dst_port = (is_ip4 ?
 			   um->next_by_dst_port4 : um->next_by_dst_port6);
   from = vlib_frame_vector_args (from_frame);
@@ -171,33 +212,7 @@ udp46_local_inline (vlib_main_t * vm,
 	  if (PREDICT_FALSE (i0 == SPARSE_VEC_INVALID_INDEX ||
 			     next0 == UDP_NO_NODE_SET))
 	    {
-	      // move the pointer back so icmp-error can find the
-	      // ip packet header
-	      vlib_buffer_advance (b0, -(word) advance0);
-
-	      if (PREDICT_FALSE (punt_unknown))
-		{
-		  b0->error = node->errors[UDP_ERROR_PUNT];
-		  next0 = UDP_LOCAL_NEXT_PUNT;
-		}
-	      else if (is_ip4)
-		{
-		  icmp4_error_set_vnet_buffer (b0,
-					       ICMP4_destination_unreachable,
-					       ICMP4_destination_unreachable_port_unreachable,
-					       0);
-		  b0->error = node->errors[UDP_ERROR_NO_LISTENER];
-		  next0 = UDP_LOCAL_NEXT_ICMP;
-		}
-	      else
-		{
-		  icmp6_error_set_vnet_buffer (b0,
-					       ICMP6_destination_unreachable,
-					       ICMP6_destination_unreachable_port_unreachable,
-					       0);
-		  b0->error = node->errors[UDP_ERROR_NO_LISTENER];
-		  next0 = UDP_LOCAL_NEXT_ICMP;
-		}
+	      udp_dispatch_error (node, b0, advance0, is_ip4, &next0);
 	    }
 	  else
 	    {
@@ -209,33 +224,7 @@ udp46_local_inline (vlib_main_t * vm,
 	  if (PREDICT_FALSE (i1 == SPARSE_VEC_INVALID_INDEX ||
 			     next1 == UDP_NO_NODE_SET))
 	    {
-	      // move the pointer back so icmp-error can find the
-	      // ip packet header
-	      vlib_buffer_advance (b1, -(word) advance1);
-
-	      if (PREDICT_FALSE (punt_unknown))
-		{
-		  b1->error = node->errors[UDP_ERROR_PUNT];
-		  next1 = UDP_LOCAL_NEXT_PUNT;
-		}
-	      else if (is_ip4)
-		{
-		  icmp4_error_set_vnet_buffer (b1,
-					       ICMP4_destination_unreachable,
-					       ICMP4_destination_unreachable_port_unreachable,
-					       0);
-		  b1->error = node->errors[UDP_ERROR_NO_LISTENER];
-		  next1 = UDP_LOCAL_NEXT_ICMP;
-		}
-	      else
-		{
-		  icmp6_error_set_vnet_buffer (b1,
-					       ICMP6_destination_unreachable,
-					       ICMP6_destination_unreachable_port_unreachable,
-					       0);
-		  b1->error = node->errors[UDP_ERROR_NO_LISTENER];
-		  next1 = UDP_LOCAL_NEXT_ICMP;
-		}
+	      udp_dispatch_error (node, b1, advance1, is_ip4, &next1);
 	    }
 	  else
 	    {
@@ -315,33 +304,7 @@ udp46_local_inline (vlib_main_t * vm,
 	      if (PREDICT_FALSE ((i0 == SPARSE_VEC_INVALID_INDEX) ||
 				 next0 == UDP_NO_NODE_SET))
 		{
-		  // move the pointer back so icmp-error can find the
-		  // ip packet header
-		  vlib_buffer_advance (b0, -(word) advance0);
-
-		  if (PREDICT_FALSE (punt_unknown))
-		    {
-		      b0->error = node->errors[UDP_ERROR_PUNT];
-		      next0 = UDP_LOCAL_NEXT_PUNT;
-		    }
-		  else if (is_ip4)
-		    {
-		      icmp4_error_set_vnet_buffer (b0,
-						   ICMP4_destination_unreachable,
-						   ICMP4_destination_unreachable_port_unreachable,
-						   0);
-		      b0->error = node->errors[UDP_ERROR_NO_LISTENER];
-		      next0 = UDP_LOCAL_NEXT_ICMP;
-		    }
-		  else
-		    {
-		      icmp6_error_set_vnet_buffer (b0,
-						   ICMP6_destination_unreachable,
-						   ICMP6_destination_unreachable_port_unreachable,
-						   0);
-		      b0->error = node->errors[UDP_ERROR_NO_LISTENER];
-		      next0 = UDP_LOCAL_NEXT_ICMP;
-		    }
+		  udp_dispatch_error (node, b0, advance0, is_ip4, &next0);
 		}
 	      else
 		{
