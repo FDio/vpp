@@ -119,10 +119,7 @@ static void vls_handle_pending_wrk_cleanup (void);
 static inline u32
 vls_get_worker_index (void)
 {
-  if (vls_mt_wrk_supported ())
-    return vlsl->vls_wrk_index;
-  else
-    return vcl_get_worker_index ();
+  return vlsl->vls_wrk_index;
 }
 
 static u32
@@ -710,7 +707,7 @@ vls_unshare_session (vcl_locked_session_t * vls, vcl_worker_t * wrk)
    *  Check if we can change owner or close
    */
   vls_shd->owner_wrk_index = vls_shd->workers_subscribed[0];
-  if (s->session_state != VCL_STATE_LISTEN_NO_MQ)
+  if (s->vpp_evt_q)
     vcl_send_session_worker_update (wrk, s, vls_shd->owner_wrk_index);
 
   /* XXX is this still needed? */
@@ -836,6 +833,7 @@ vls_worker_copy_on_fork (vcl_worker_t * parent_wrk)
   vcl_worker_t *wrk = vcl_worker_get_current ();
   u32 vls_index, session_index, wrk_index;
   vcl_session_handle_t sh;
+  vcl_locked_session_t *vls;
 
   /*
    * init vcl worker
@@ -857,6 +855,14 @@ vls_worker_copy_on_fork (vcl_worker_t * parent_wrk)
     }));
   /* *INDENT-ON* */
   vls_wrk->vls_pool = pool_dup (vls_parent_wrk->vls_pool);
+
+  /*
+   * Detach vls from parent vcl worker and attach them to child.
+   */
+  pool_foreach (vls, vls_wrk->vls_pool)
+    {
+      vls->worker_index = wrk->wrk_index;
+    }
 
   /* Validate vep's handle */
   vls_validate_veps (wrk);
@@ -1218,6 +1224,7 @@ vls_mp_checks (vcl_locked_session_t * vls, int is_add)
   if (vls_mt_wrk_supported ())
     return;
 
+  ASSERT (wrk->wrk_index == vls->worker_index);
   s = vcl_session_get (wrk, vls->session_index);
   switch (s->session_state)
     {
@@ -1234,7 +1241,7 @@ vls_mp_checks (vcl_locked_session_t * vls, int is_add)
 	break;
 
       /* Register worker as listener */
-      vls_listener_wrk_start_listen (vls, wrk->wrk_index);
+      vls_listener_wrk_start_listen (vls, vls->worker_index);
 
       /* If owner worker did not attempt to accept/xpoll on the session,
        * force a listen stop for it, since it may not be interested in
@@ -1691,15 +1698,16 @@ vls_app_fork_child_handler (void)
    * Allocate/initialize vls worker and share sessions
    */
   vls_worker_alloc ();
-  parent_wrk = vcl_worker_get (parent_wrk_index);
-  vls_worker_copy_on_fork (parent_wrk);
-  parent_wrk->forked_child = vcl_get_worker_index ();
 
   /* Reset number of threads and set wrk index */
   vlsl->vls_mt_n_threads = 0;
   vlsl->vls_wrk_index = vcl_get_worker_index ();
   vlsl->select_mp_check = 0;
   vls_mt_locks_init ();
+
+  parent_wrk = vcl_worker_get (parent_wrk_index);
+  vls_worker_copy_on_fork (parent_wrk);
+  parent_wrk->forked_child = vcl_get_worker_index ();
 
   VDBG (0, "forked child main worker initialized");
   vcm->forking = 0;
