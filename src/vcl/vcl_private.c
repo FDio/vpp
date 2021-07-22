@@ -409,8 +409,8 @@ vcl_segment_detach (u64 segment_handle)
 
 int
 vcl_segment_attach_session (uword segment_handle, uword rxf_offset,
-			    uword txf_offset, uword mq_offset, u8 is_ct,
-			    vcl_session_t *s)
+			    uword txf_offset, uword mq_offset, u32 mq_index,
+			    u8 is_ct, vcl_session_t *s)
 {
   u32 fs_index, eqs_index;
   svm_fifo_t *rxf, *txf;
@@ -443,8 +443,7 @@ vcl_segment_attach_session (uword segment_handle, uword rxf_offset,
   if (!is_ct && mq_offset != (uword) ~0)
     {
       fs = fifo_segment_get_segment (&vcm->segment_main, eqs_index);
-      s->vpp_evt_q =
-	fifo_segment_msg_q_attach (fs, mq_offset, rxf->shr->slice_index);
+      s->vpp_evt_q = fifo_segment_msg_q_attach (fs, mq_offset, mq_index);
     }
 
   clib_rwlock_reader_unlock (&vcm->segment_table_lock);
