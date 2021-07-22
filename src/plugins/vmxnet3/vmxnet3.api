@@ -15,7 +15,7 @@
  *------------------------------------------------------------------
  */
 
-option version = "1.2.0";
+option version = "1.2.1";
 import "vnet/interface_types.api";
 import "vnet/ethernet/ethernet_types.api";
 
@@ -37,6 +37,7 @@ import "vnet/ethernet/ethernet_types.api";
 
 define vmxnet3_create
 {
+  option deprecated;
   u32 client_index;
   u32 context;
 
@@ -58,6 +59,54 @@ define vmxnet3_create
 */
 
 define vmxnet3_create_reply
+{
+  option deprecated;
+  u32 context;
+  i32 retval;
+  vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param name - custom vmxnet3 interface name
+    @param pci_addr - pci address as unsigned 32bit integer:
+		      0-15 domain, 16-23 bus, 24-28 slot, 29-31 function
+		      ddddddddddddddddbbbbbbbbsssssfff
+    @param enable_elog - turn on elog (optional - default is off)
+    @param rxq_size - receive queue size (optional - default is 1024)
+    @param rxq_num - number of receive queues (optional - default is 1)
+    @param txq_size - transmit queue size (optional - default is 1024)
+    @param txq_num - number of transmit queues (optional - default is 1)
+    @param bind - automatically bind PCI to vfio-pci module
+		      (optional - default is 0)
+    @param enable_gso - enable gso (optional - default is 0)
+*/
+
+define vmxnet3_create_v2
+{
+  u32 client_index;
+  u32 context;
+
+  string name[64];
+  u32 pci_addr;
+  i32 enable_elog;
+  u16 rxq_size;
+  u16 rxq_num;
+  u16 txq_size;
+  u16 txq_num;
+  u8 bind;
+  bool enable_gso;
+  option vat_help = "<pci-address> [rx-queue-size <size>] [tx-queue-size <size>] [num-tx-queues <num>] [num-rx-queues <num>] [bind] [gso] [name <intf-name>]";
+};
+
+/** \brief
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+    @param sw_if_index - software index for the new vmxnet3 interface
+*/
+
+define vmxnet3_create_v2_reply
 {
   u32 context;
   i32 retval;

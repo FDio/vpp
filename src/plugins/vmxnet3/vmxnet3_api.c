@@ -63,6 +63,34 @@ vl_api_vmxnet3_create_t_handler (vl_api_vmxnet3_create_t * mp)
 }
 
 static void
+vl_api_vmxnet3_create_v2_t_handler (vl_api_vmxnet3_create_v2_t *mp)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vmxnet3_main_t *vmxm = &vmxnet3_main;
+  vl_api_vmxnet3_create_v2_reply_t *rmp;
+  vmxnet3_create_if_args_t args;
+  int rv;
+
+  clib_memset (&args, 0, sizeof (vmxnet3_create_if_args_t));
+
+  args.enable_elog = ntohl (mp->enable_elog);
+  args.addr.as_u32 = ntohl (mp->pci_addr);
+  args.rxq_size = ntohs (mp->rxq_size);
+  args.txq_size = ntohs (mp->txq_size);
+  args.txq_num = ntohs (mp->txq_num);
+  args.rxq_num = ntohs (mp->rxq_num);
+  args.bind = mp->bind;
+  args.enable_gso = mp->enable_gso;
+  args.name = mp->name;
+
+  vmxnet3_create_if (vm, &args);
+  rv = args.rv;
+
+  REPLY_MACRO2 (VL_API_VMXNET3_CREATE_V2_REPLY + vmxm->msg_id_base,
+		({ rmp->sw_if_index = ntohl (args.sw_if_index); }));
+}
+
+static void
 vl_api_vmxnet3_delete_t_handler (vl_api_vmxnet3_delete_t * mp)
 {
   vlib_main_t *vm = vlib_get_main ();

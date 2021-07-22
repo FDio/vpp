@@ -57,18 +57,23 @@ vmxnet3_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	args.txq_num = size;
       else if (unformat (line_input, "num-rx-queues %u", &size))
 	args.rxq_num = size;
+      else if (unformat (line_input, "name %s", &args.name))
+	;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  vec_free (args.name);
+	  return clib_error_return (0, "unknown input `%U'",
+				    format_unformat_error, input);
+	}
     }
   unformat_free (line_input);
-
 
   vmxnet3_create_if (vm, &args);
   if (args.error == 0)
     vlib_cli_output (vm, "%U\n", format_vnet_sw_if_index_name,
 		     vnet_get_main (), args.sw_if_index);
 
+  vec_free (args.name);
   return args.error;
 }
 
@@ -76,9 +81,9 @@ vmxnet3_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 VLIB_CLI_COMMAND (vmxnet3_create_command, static) = {
   .path = "create interface vmxnet3",
   .short_help = "create interface vmxnet3 <pci-address>"
-                " [rx-queue-size <size>] [tx-queue-size <size>]"
-                " [num-tx-queues <number>] [num-rx-queues <number>] [bind]"
-                " [gso]",
+		" [rx-queue-size <size>] [tx-queue-size <size>]"
+		" [num-tx-queues <number>] [num-rx-queues <number>] [bind]"
+		" [gso] [name <intf-name>]",
   .function = vmxnet3_create_command_fn,
 };
 /* *INDENT-ON* */

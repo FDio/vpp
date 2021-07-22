@@ -100,9 +100,84 @@ api_vmxnet3_create (vat_main_t * vam)
   return ret;
 }
 
+static int
+api_vmxnet3_create_v2 (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_vmxnet3_create_v2_t *mp;
+  vmxnet3_create_if_args_t args;
+  int ret;
+  u32 size;
+
+  clib_memset (&args, 0, sizeof (vmxnet3_create_if_args_t));
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", unformat_vlib_pci_addr, &args.addr))
+	;
+      else if (unformat (i, "elog"))
+	args.enable_elog = 1;
+      else if (unformat (i, "bind"))
+	args.bind = 1;
+      else if (unformat (i, "gso"))
+	args.enable_gso = 1;
+      else if (unformat (i, "rx-queue-size %u", &size))
+	args.rxq_size = size;
+      else if (unformat (i, "tx-queue-size %u", &size))
+	args.txq_size = size;
+      else if (unformat (i, "num-tx-queues %u", &size))
+	args.txq_num = size;
+      else if (unformat (i, "num-rx-queues %u", &size))
+	args.rxq_num = size;
+      else if (unformat (i, "name %s", &args.name))
+	;
+      else
+	{
+	  vec_free (args.name);
+	  clib_warning ("unknown input '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  M (VMXNET3_CREATE_V2, mp);
+
+  mp->pci_addr = clib_host_to_net_u32 (args.addr.as_u32);
+  mp->enable_elog = clib_host_to_net_u16 (args.enable_elog);
+  mp->rxq_size = clib_host_to_net_u16 (args.rxq_size);
+  mp->txq_size = clib_host_to_net_u16 (args.txq_size);
+  mp->txq_num = clib_host_to_net_u16 (args.txq_num);
+  mp->rxq_num = clib_host_to_net_u16 (args.rxq_num);
+  mp->bind = args.bind;
+  mp->enable_gso = args.enable_gso;
+  clib_memcpy (mp->name, args.name, 64);
+  vec_free (args.name);
+
+  S (mp);
+  W (ret);
+
+  return ret;
+}
+
 /* vmxnet3-create reply handler */
 static void
 vl_api_vmxnet3_create_reply_t_handler (vl_api_vmxnet3_create_reply_t * mp)
+{
+  vat_main_t *vam = vmxnet3_test_main.vat_main;
+  i32 retval = ntohl (mp->retval);
+
+  if (retval == 0)
+    {
+      fformat (vam->ofp, "created vmxnet3 with sw_if_index %d\n",
+	       ntohl (mp->sw_if_index));
+    }
+
+  vam->retval = retval;
+  vam->result_ready = 1;
+  vam->regenerate_interface_table = 1;
+}
+
+static void
+vl_api_vmxnet3_create_v2_reply_t_handler (vl_api_vmxnet3_create_v2_reply_t *mp)
 {
   vat_main_t *vam = vmxnet3_test_main.vat_main;
   i32 retval = ntohl (mp->retval);

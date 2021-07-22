@@ -31,6 +31,9 @@ format_vmxnet3_device_name (u8 * s, va_list * args)
   vmxnet3_device_t *vd = vec_elt_at_index (vmxm->devices, i);
   vlib_pci_addr_t *addr = vlib_pci_get_addr (vm, vd->pci_dev_handle);
 
+  if (vd->name)
+    return format (s, "%s", vd->name);
+
   s = format (s, "vmxnet3-%x/%x/%x/%x",
 	      addr->domain, addr->bus, addr->slot, addr->function);
   return s;
