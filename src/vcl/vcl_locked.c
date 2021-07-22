@@ -710,7 +710,7 @@ vls_unshare_session (vcl_locked_session_t * vls, vcl_worker_t * wrk)
    *  Check if we can change owner or close
    */
   vls_shd->owner_wrk_index = vls_shd->workers_subscribed[0];
-  if (s->session_state != VCL_STATE_LISTEN_NO_MQ)
+  if (s->vpp_evt_q)
     vcl_send_session_worker_update (wrk, s, vls_shd->owner_wrk_index);
 
   /* XXX is this still needed? */
