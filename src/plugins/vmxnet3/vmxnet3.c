@@ -716,6 +716,8 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
   vd->pci_dev_handle = h;
   vd->numa_node = vlib_pci_get_numa_node (vm, h);
   vd->num_intrs = vd->num_rx_queues + 1;	// +1 for the event interrupt
+  if (args->name && (args->name[0] != 0))
+    vd->name = format (0, "%s", args->name);
 
   vlib_pci_set_private_data (vm, h, vd->dev_instance);
 
@@ -934,9 +936,9 @@ vmxnet3_delete_if (vlib_main_t * vm, vmxnet3_device_t * vd)
   vlib_physmem_free (vm, vd->rss);
 
   clib_error_free (vd->error);
+  vec_free (vd->name);
   clib_memset (vd, 0, sizeof (*vd));
   pool_put (vmxm->devices, vd);
-
 }
 
 /*

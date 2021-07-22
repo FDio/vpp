@@ -579,6 +579,7 @@ typedef struct
   u8 mac_addr[6];
 
   clib_error_t *error;
+  u8 *name;
 
   vmxnet3_shared *driver_shared;
   void *queues;
@@ -601,6 +602,7 @@ extern vmxnet3_main_t vmxnet3_main;
 typedef struct
 {
   vlib_pci_addr_t addr;
+  u8 *name;
   u32 enable_elog;
   u16 rxq_size;
   u16 rxq_num;
