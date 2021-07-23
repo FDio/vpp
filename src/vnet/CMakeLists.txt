@@ -1521,6 +1521,7 @@ add_vpp_library (vatclient
 )
 
 add_vat_test_library(vnet
+  interface_test.c
   ip/ip_test.c
   arp/arp_test.c
   ip6-nd/ip6_nd_test.c
