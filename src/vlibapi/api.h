@@ -36,8 +36,8 @@ typedef CLIB_PACKED ( struct {
 }) vl_api_trace_file_header_t;
 /* *INDENT-ON* */
 
-int vl_msg_api_trace_save (api_main_t * am,
-			   vl_api_trace_which_t which, FILE * fp);
+int vl_msg_api_trace_save (api_main_t *am, vl_api_trace_which_t which,
+			   FILE *fp, u8 is_json);
 
 #define VLIB_API_INIT_FUNCTION(x) VLIB_DECLARE_INIT_FUNCTION(x,api_init)
 
@@ -122,6 +122,11 @@ u8 *vlib_node_serialize (vlib_main_t * vm, vlib_node_t *** node_dups,
 vlib_node_t ***vlib_node_unserialize (u8 * vector);
 
 u32 vl_msg_api_get_msg_length (void *msg_arg);
+
+typedef int (*vl_msg_traverse_trace_fn) (u8 *, void *);
+
+int vl_msg_traverse_trace (vl_api_trace_t *tp, vl_msg_traverse_trace_fn fn,
+			   void *ctx);
 
 #endif /* included_api_h */
 /*
