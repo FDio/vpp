@@ -206,11 +206,10 @@ out the set of plugins:
 
 .. code-block:: console
 
-   DBGvpp# api trace custom-dump /tmp/api_trace
-   vl_api_trace_plugin_msg_ids: abf_54307ba2 first 846 last 855
-   vl_api_trace_plugin_msg_ids: acl_0d7265b0 first 856 last 893
-   vl_api_trace_plugin_msg_ids: cdp_8f707b96 first 894 last 895
-   vl_api_trace_plugin_msg_ids: flowprobe_f2f0286c first 898 last 901
+   DBGvpp# api trace dump /tmp/api_trace
+   vl_api_trace_plugin_msg_ids: arp_cfdf7292 first 49 last 56
+   vl_api_trace_plugin_msg_ids: ip6_nd_ac628462 first 57 last 69
+   vl_api_trace_plugin_msg_ids: rd_cp_8a996e86 first 70 last 71
    <etc>
 
 Here, we see the "abf," "acl," "cdp," and "flowprobe" plugins. Use the
@@ -239,7 +238,7 @@ __________________________
 Along the same lines, it may be necessary to manufacture [simulated]
 physical interfaces so that an API trace will replay correctly. "show
 interface" on the trace origin system can help. An API trace
-"custom-dump" as shown above may make it obvious how many loopback
+dump as shown above may make it obvious how many loopback
 interfaces to create. If you see vhost interfaces being created and
 then configured, the first such configuration message in the trace
 will tell you how many physical interfaces were involved.

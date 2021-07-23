@@ -38,26 +38,6 @@
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_endianfun
 
-static inline void *
-vl_api_memclnt_create_t_print (vl_api_memclnt_create_t * a, void *handle)
-{
-  vl_print (handle, "vl_api_memclnt_create_t:\n");
-  vl_print (handle, "name: %s\n", a->name);
-  vl_print (handle, "input_queue: 0x%wx\n", a->input_queue);
-  vl_print (handle, "context: %u\n", (unsigned) a->context);
-  vl_print (handle, "ctx_quota: %ld\n", (long) a->ctx_quota);
-  return handle;
-}
-
-static inline void *
-vl_api_memclnt_delete_t_print (vl_api_memclnt_delete_t * a, void *handle)
-{
-  vl_print (handle, "vl_api_memclnt_delete_t:\n");
-  vl_print (handle, "index: %u\n", (unsigned) a->index);
-  vl_print (handle, "handle: 0x%wx\n", a->handle);
-  return handle;
-}
-
 volatile int **vl_api_queue_cursizes;
 
 static void
@@ -417,11 +397,11 @@ vl_api_memclnt_keepalive_t_handler (vl_api_memclnt_keepalive_t * mp)
  * don't trace memclnt_keepalive[_reply] msgs
  */
 
-#define foreach_vlib_api_msg                            \
-_(MEMCLNT_CREATE, memclnt_create, 1)                    \
-_(MEMCLNT_DELETE, memclnt_delete, 1)                    \
-_(MEMCLNT_KEEPALIVE, memclnt_keepalive, 0)              \
-_(MEMCLNT_KEEPALIVE_REPLY, memclnt_keepalive_reply, 0)
+#define foreach_vlib_api_msg                                                  \
+  _ (MEMCLNT_CREATE, memclnt_create, 0)                                       \
+  _ (MEMCLNT_DELETE, memclnt_delete, 0)                                       \
+  _ (MEMCLNT_KEEPALIVE, memclnt_keepalive, 0)                                 \
+  _ (MEMCLNT_KEEPALIVE_REPLY, memclnt_keepalive_reply, 0)
 
 /*
  * memory_api_init
