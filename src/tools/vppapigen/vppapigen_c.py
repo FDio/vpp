@@ -66,7 +66,10 @@ class ToJSON():
         write('#ifndef included_{}_api_tojson_h\n'.format(self.module))
         write('#define included_{}_api_tojson_h\n'.format(self.module))
         write('#include <vppinfra/cJSON.h>\n\n')
-        write('#include <vat2/jsonconvert.h>\n\n')
+        write('#include <vppinfra/jsonformat.h>\n\n')
+        if self.module == 'interface_types':
+            write('#define vl_printfun\n')
+            write('#include <vnet/interface_types.api.h>\n\n')
 
     def footer(self):
         '''Output the bottom boilerplate.'''
@@ -231,6 +234,8 @@ class ToJSON():
         write('    cJSON *o = cJSON_CreateObject();\n')
         write('    cJSON_AddStringToObject(o, "_msgname", "{}");\n'
               .format(o.name))
+        write('    cJSON_AddStringToObject(o, "_crc", "{crc:08x}");\n'
+              .format(crc=o.crc))
 
         for t in o.block:
             self._dispatch[t.type](self, t)
@@ -312,7 +317,7 @@ class FromJSON():
         write('#ifndef included_{}_api_fromjson_h\n'.format(self.module))
         write('#define included_{}_api_fromjson_h\n'.format(self.module))
         write('#include <vppinfra/cJSON.h>\n\n')
-        write('#include <vat2/jsonconvert.h>\n\n')
+        write('#include <vppinfra/jsonformat.h>\n\n')
         write('#pragma GCC diagnostic ignored "-Wunused-label"\n')
 
     def is_base_type(self, t):
@@ -928,10 +933,13 @@ def printfun(objs, stream, modulename):
 #define _uword_cast long
 #endif
 
+#include "{module}.api_tojson.h"
+#include "{module}.api_fromjson.h"
+
 '''
 
     signature = '''\
-static inline void *vl_api_{name}_t_print (vl_api_{name}_t *a, void *handle)
+static inline void *vl_api_{name}_t_print{suffix} (vl_api_{name}_t *a, void *handle)
 {{
     u8 *s = 0;
     u32 indent __attribute__((unused)) = 2;
@@ -946,7 +954,7 @@ static inline void *vl_api_{name}_t_print (vl_api_{name}_t *a, void *handle)
         if t.manual_print:
             write("/***** manual: vl_api_%s_t_print  *****/\n\n" % t.name)
             continue
-        write(signature.format(name=t.name))
+        write(signature.format(name=t.name, suffix=''))
         write('    /* Message definition: vl_api_{}_t: */\n'.format(t.name))
         write("    s = format(s, \"vl_api_%s_t:\");\n" % t.name)
         for o in t.block:
@@ -956,6 +964,16 @@ static inline void *vl_api_{name}_t_print (vl_api_{name}_t *a, void *handle)
         write('    vec_free (s);\n')
         write('    return handle;\n')
         write('}\n\n')
+
+        write(signature.format(name=t.name, suffix='_json'))
+        write('    cJSON * o = vl_api_{}_t_tojson(a);\n'.format(t.name))
+        write('    (void)s;\n');
+        write('    char *out = cJSON_Print(o);\n')
+        write('    vl_print(handle, out);\n');
+        write('    cJSON_Delete(o);\n')
+        write('    free(out);\n');
+        write('    return handle;\n')
+        write('}\n\n');
 
     write("\n#endif")
     write("\n#endif /* vl_printfun */\n")
@@ -1346,6 +1364,9 @@ def generate_c_boilerplate(services, defines, counters, file_crc,
               '   .print = vl_api_{n}_t_print,\n'
               '   .traced = 1,\n'
               '   .replay = 1,\n'
+              '   .print_json = vl_api_{n}_t_print_json,\n'
+              '   .tojson = vl_api_{n}_t_tojson,\n'
+              '   .fromjson = vl_api_{n}_t_fromjson,\n'
               '   .is_autoendian = {auto}}};\n'
               .format(n=s.caller, ID=s.caller.upper(),
                       auto=d.autoendian))
@@ -1359,6 +1380,11 @@ def generate_c_boilerplate(services, defines, counters, file_crc,
                   '  .cleanup = vl_noop_handler,\n'
                   '  .endian = vl_api_{n}_t_endian,\n'
                   '  .print = vl_api_{n}_t_print,\n'
+                  '  .traced = 1,\n'
+                  '  .replay = 1,\n'
+                  '  .print_json = vl_api_{n}_t_print_json,\n'
+                  '  .tojson = vl_api_{n}_t_tojson,\n'
+                  '  .fromjson = vl_api_{n}_t_fromjson,\n'
                   '  .is_autoendian = {auto}}};\n'
                   .format(n=s.reply, ID=s.reply.upper(),
                           auto=d.autoendian))
@@ -1455,7 +1481,10 @@ def generate_c_test_boilerplate(services, defines, file_crc, module, plugin,
               '                           vl_noop_handler,\n'
               '                           vl_api_{n}_t_endian, '
               '                           vl_api_{n}_t_print,\n'
-              '                           sizeof(vl_api_{n}_t), 1);\n'
+              '                           sizeof(vl_api_{n}_t), 1,\n'
+              '                           vl_api_{n}_t_print_json,\n'
+              '                           vl_api_{n}_t_tojson,\n'
+              '                           vl_api_{n}_t_fromjson);\n'
               .format(n=s.reply, ID=s.reply.upper()))
         write('   hash_set_mem (vam->function_by_name, "{n}", api_{n});\n'
               .format(n=s.caller))
@@ -1474,7 +1503,10 @@ def generate_c_test_boilerplate(services, defines, file_crc, module, plugin,
                   '                           vl_noop_handler,\n'
                   '                           vl_api_{n}_t_endian, '
                   '                           vl_api_{n}_t_print,\n'
-                  '                           sizeof(vl_api_{n}_t), 1);\n'
+                  '                           sizeof(vl_api_{n}_t), 1,\n'
+                  '                           vl_api_{n}_t_print_json,\n'
+                  '                           vl_api_{n}_t_tojson,\n'
+                  '                           vl_api_{n}_t_fromjson);\n'
                   .format(n=e, ID=e.upper()))
 
     write('}\n')
@@ -1717,13 +1749,16 @@ def generate_c_test2_boilerplate(services, defines, module, stream):
             continue
         c_test_api_service(s, s.stream, stream)
 
-    write('void vat2_register_function(char *, cJSON * (*)(cJSON *), cJSON * (*)(void *));\n')
+    write('void vat2_register_function(char *, cJSON * (*)(cJSON *), cJSON * (*)(void *), u32);\n')
     # write('__attribute__((constructor))')
     write('clib_error_t *\n')
     write('vat2_register_plugin (void) {\n')
     for s in services:
-        write('   vat2_register_function("{n}", api_{n}, (cJSON * (*)(void *))vl_api_{n}_t_tojson);\n'
-              .format(n=s.caller))
+        if s.reply not in define_hash:
+            continue
+        crc = define_hash[s.caller].crc
+        write('   vat2_register_function("{n}", api_{n}, (cJSON * (*)(void *))vl_api_{n}_t_tojson, 0x{crc:08x});\n'
+              .format(n=s.caller, crc=crc))
     write('   return 0;\n')
     write('}\n')
 
