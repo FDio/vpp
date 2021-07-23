@@ -329,16 +329,6 @@ vl_api_get_f64_increment_by_one_t_handler (
 		}));
 }
 
-static void
-vl_api_control_ping_t_handler (vl_api_control_ping_t *mp)
-{
-  vl_api_control_ping_reply_t *rmp;
-  int rv = 0;
-
-  REPLY_MACRO2 (VL_API_CONTROL_PING_REPLY,
-		({ rmp->vpe_pid = ntohl (getpid ()); }));
-}
-
 #include <vlibmemory/vlib.api.c>
 static clib_error_t *
 vlib_apis_hookup (vlib_main_t *vm)
@@ -351,9 +341,6 @@ vlib_apis_hookup (vlib_main_t *vm)
   msg_id_base = setup_message_id_table ();
 
   am->is_mp_safe[VL_API_GET_NODE_GRAPH] = 1;
-  am->is_mp_safe[VL_API_CONTROL_PING] = 1;
-  am->is_mp_safe[VL_API_CONTROL_PING_REPLY] = 1;
-
   return 0;
 }
 

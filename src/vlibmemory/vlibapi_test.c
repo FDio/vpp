@@ -449,31 +449,6 @@ api_get_node_graph (vat_main_t *vam)
   return ret;
 }
 
-static void
-vl_api_control_ping_reply_t_handler (vl_api_control_ping_reply_t *mp)
-{
-  vat_main_t *vam = &vat_main;
-  i32 retval = ntohl (mp->retval);
-  if (vam->async_mode)
-    {
-      vam->async_errors += (retval < 0);
-    }
-  else
-    {
-      vam->retval = retval;
-      vam->result_ready = 1;
-    }
-  if (vam->socket_client_main)
-    vam->socket_client_main->control_pings_outstanding--;
-}
-
-static int
-api_control_ping (vat_main_t *vam)
-{
-  // not yet implemented
-  return -1;
-}
-
 #define VL_API_LOCAL_SETUP_MESSAGE_ID_TABLE local_setup_message_id_table
 static void
 local_setup_message_id_table (vat_main_t *vam)

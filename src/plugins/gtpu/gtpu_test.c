@@ -91,24 +91,6 @@ static void vl_api_gtpu_add_del_tunnel_reply_t_handler
 }
 
 static uword
-api_unformat_sw_if_index (unformat_input_t * input, va_list * args)
-{
-  vat_main_t *vam = va_arg (*args, vat_main_t *);
-  u32 *result = va_arg (*args, u32 *);
-  u8 *if_name;
-  uword *p;
-
-  if (!unformat (input, "%s", &if_name))
-    return 0;
-
-  p = hash_get_mem (vam->sw_if_index_by_interface_name, if_name);
-  if (p == 0)
-    return 0;
-  *result = p[0];
-  return 1;
-}
-
-static uword
 api_unformat_hw_if_index (unformat_input_t * input, va_list * args)
 {
   return 0;

@@ -38,6 +38,8 @@
 
 #include <vlibmemory/vlib.api_enum.h>
 #include <vlibmemory/vlib.api_types.h>
+#include <vlibmemory/memclnt.api_enum.h>
+#include <vlibmemory/memclnt.api_types.h>
 
 #include <vpp/api/vpe.api_enum.h>
 #include <vpp/api/vpe.api_types.h>

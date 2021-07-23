@@ -29,6 +29,7 @@
 #include <vlib/unix/unix.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
+#include <vlibapi/api_helper_macros.h>
 
 /**
  * @file
@@ -131,9 +132,20 @@ vl_api_api_versions_t_handler (vl_api_api_versions_t *mp)
   vl_api_send_msg (reg, (u8 *) rmp);
 }
 
+static void
+vl_api_control_ping_t_handler (vl_api_control_ping_t *mp)
+{
+  vl_api_control_ping_reply_t *rmp;
+  int rv = 0;
+
+  REPLY_MACRO2 (VL_API_CONTROL_PING_REPLY,
+		({ rmp->vpe_pid = ntohl (getpid ()); }));
+}
+
 #define foreach_vlib_api_msg                                                  \
   _ (GET_FIRST_MSG_ID, get_first_msg_id)                                      \
-  _ (API_VERSIONS, api_versions)
+  _ (API_VERSIONS, api_versions)                                              \
+  _ (CONTROL_PING, control_ping)
 
 /*
  * vl_api_init
@@ -141,6 +153,7 @@ vl_api_api_versions_t_handler (vl_api_api_versions_t *mp)
 static int
 vlib_api_init (void)
 {
+  api_main_t *am = vlibapi_get_main ();
   vl_msg_api_msg_config_t cfg;
   vl_msg_api_msg_config_t *c = &cfg;
 
@@ -174,6 +187,9 @@ vlib_api_init (void)
 
   foreach_vlib_api_msg;
 #undef _
+
+  am->is_mp_safe[VL_API_CONTROL_PING] = 1;
+  am->is_mp_safe[VL_API_CONTROL_PING_REPLY] = 1;
 
   return 0;
 }
