@@ -51,3 +51,10 @@ add_vpp_library (vlibmemoryclient
   LINK_LIBRARIES vppinfra svm
 )
 add_dependencies(vlibmemoryclient vlibmemory_api_headers)
+
+##############################################################################
+# VAT2 plugins
+##############################################################################
+add_vpp_test_library(vlibmemoryclient
+  memclnt.api
+)

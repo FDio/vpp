@@ -29,7 +29,6 @@ service {
 /*
  * Create a client registration 
  */
-manual_print 
 define memclnt_create {
     u32 context;                /* opaque value to be returned in the reply */
     i32 ctx_quota;              /* requested punt context quota */
@@ -49,7 +48,6 @@ define memclnt_create_reply {
 /*
  * Delete a client registration 
  */
-manual_print
 define memclnt_delete {
     u32 index;                  /* index, used e.g. by API trace replay */
     u64 handle;               /* handle by which vlib knows this client */
@@ -137,7 +135,7 @@ define api_versions_reply {
  * at api trace replay time
  */
 
-manual_print define trace_plugin_msg_ids
+define trace_plugin_msg_ids
 {
     u32 client_index;
     u32 context;
