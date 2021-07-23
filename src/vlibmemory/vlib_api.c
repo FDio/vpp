@@ -52,6 +52,8 @@
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_printfun
 
+#include "vlibmemory/memclnt.api_tojson.h"
+
 static inline void *
 vl_api_trace_plugin_msg_ids_t_print (vl_api_trace_plugin_msg_ids_t * a,
 				     void *handle)
@@ -60,6 +62,29 @@ vl_api_trace_plugin_msg_ids_t_print (vl_api_trace_plugin_msg_ids_t * a,
 	    a->plugin_name,
 	    clib_host_to_net_u16 (a->first_msg_id),
 	    clib_host_to_net_u16 (a->last_msg_id));
+  return handle;
+}
+
+static inline cJSON *
+vl_api_trace_plugin_msg_ids_t_tojson (vl_api_trace_plugin_msg_ids_t *a)
+{
+  cJSON *o = cJSON_CreateObject ();
+  cJSON_AddStringToObject (o, "_msgname", "trace_plugin_msg_ids");
+  cJSON_AddStringToObject (o, "plugin_name", (char *) a->plugin_name);
+  cJSON_AddNumberToObject (o, "first_msg_id", a->first_msg_id);
+  cJSON_AddNumberToObject (o, "last_msg_id", a->last_msg_id);
+  return o;
+}
+
+static inline void *
+vl_api_trace_plugin_msg_ids_t_print_json (vl_api_trace_plugin_msg_ids_t *a,
+					  void *handle)
+{
+  cJSON *o = vl_api_trace_plugin_msg_ids_t_tojson (a);
+  char *out = cJSON_Print (o);
+  vl_print (handle, out);
+  cJSON_Delete (o);
+  free (out);
   return handle;
 }
 
@@ -691,23 +716,19 @@ static clib_error_t *
 rpc_api_hookup (vlib_main_t * vm)
 {
   api_main_t *am = vlibapi_get_main ();
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_noop_handler,			\
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 0 /* do not trace */);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   vl_noop_handler, vl_noop_handler,                  \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t),     \
+			   0 /* do not trace */, vl_api_##n##_t_print_json);
   foreach_rpc_api_msg;
 #undef _
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_noop_handler,			\
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1 /* do trace */);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   vl_noop_handler, vl_noop_handler,                  \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t),     \
+			   1 /* do trace */, vl_api_##n##_t_print_json);
   foreach_plugin_trace_msg;
 #undef _
 
