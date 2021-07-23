@@ -27,6 +27,7 @@
 
 #include <vppinfra/clib_error.h>
 #include <vppinfra/elog.h>
+#include <vppinfra/cJSON.h>
 #include <vlibapi/api_types.h>
 #include <svm/svm_common.h>
 #include <svm/queue.h>
@@ -128,6 +129,9 @@ typedef struct
   void *cleanup;		/**< non-default message cleanup handler */
   void *endian;			/**< message endian function  */
   void *print;			/**< message print function  */
+  void *print_json;		/**< message print function (JSON format)  */
+  void *tojson;			/**< binary to JSON convert function */
+  void *fromjson;		/**< JSON to binary convert function */
   int size;			/**< message size  */
   int traced;			/**< is this message to be traced?  */
   int replay;			/**< is this message to be replayed?  */
@@ -173,11 +177,10 @@ void vl_msg_api_trace_only (void *the_msg);
 void vl_msg_api_cleanup_handler (void *the_msg);
 void vl_msg_api_replay_handler (void *the_msg);
 void vl_msg_api_socket_handler (void *the_msg);
-void vl_msg_api_set_handlers (int msg_id, char *msg_name,
-			      void *handler,
-			      void *cleanup,
-			      void *endian,
-			      void *print, int msg_size, int traced);
+void vl_msg_api_set_handlers (int msg_id, char *msg_name, void *handler,
+			      void *cleanup, void *endian, void *print,
+			      int msg_size, int traced, void *print_json,
+			      void *tojson, void *fromjson);
 void vl_msg_api_clean_handlers (int msg_id);
 void vl_msg_api_config (vl_msg_api_msg_config_t *);
 void vl_msg_api_set_cleanup_handler (int msg_id, void *fp);
@@ -241,8 +244,20 @@ typedef struct api_main_t
   /** Message print function vector */
   void (**msg_print_handlers) (void *, void *);
 
+  /** Message print function vector in JSON */
+  void (**msg_print_json_handlers) (void *, void *);
+
+  /** Message convert function vector */
+  cJSON *(**msg_tojson_handlers) (void *);
+
+  /** Message convert function vector */
+  void *(**msg_fromjson_handlers) (cJSON *, int *);
+
   /** Message name vector */
   const char **msg_names;
+
+  /** API message ID by name hash table */
+  uword *msg_id_by_name;
 
   /** Don't automatically free message buffer vetor */
   u8 *message_bounce;

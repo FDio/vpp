@@ -246,12 +246,12 @@ api_trace_clear_capture (vat_main_t * vam)
 void
 manual_setup_message_id_table (vat_main_t * vam)
 {
-  vl_msg_api_set_handlers (VL_API_TRACE_DETAILS
-			   + tracedump_test_main.msg_id_base, "trace_details",
-			   vl_api_trace_details_t_handler, vl_noop_handler,
-			   vl_api_trace_details_t_endian,
-			   vl_api_trace_details_t_print,
-			   sizeof (vl_api_trace_details_t), 1);
+  vl_msg_api_set_handlers (
+    VL_API_TRACE_DETAILS + tracedump_test_main.msg_id_base, "trace_details",
+    vl_api_trace_details_t_handler, vl_noop_handler,
+    vl_api_trace_details_t_endian, vl_api_trace_details_t_print,
+    sizeof (vl_api_trace_details_t), 1, vl_api_trace_details_t_print_json,
+    vl_api_trace_details_t_tojson, vl_api_trace_details_t_fromjson);
 }
 
 #define VL_API_LOCAL_SETUP_MESSAGE_ID_TABLE manual_setup_message_id_table

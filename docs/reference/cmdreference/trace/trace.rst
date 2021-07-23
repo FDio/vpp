@@ -5,13 +5,14 @@
 .. note:: For a complete list of CLI Debug commands refer to the Debug CLI section of the `Source Code Documents <https://docs.fd.io/vpp/18.07/clicmd.html>`_ .
 
 
-API Trace 
+API Trace
 ===========
 
 Summary/Usage
 --------------
 
-api trace [on|off][first <*n*>][last <*n*>][status][free][post-mortem-on][dump|custom-dump|save|replay <*file*>]
+api trace [tx][on|off][first <n>][last <n>][status][free]
+	[post-mortem-on][dump|dump-file|dump-json|save|tojson|save-json|replay <file>][nitems <n>][initializers <file>]
 
 Description
 ------------

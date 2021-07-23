@@ -18,7 +18,7 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include <getopt.h>
-#include <assert.h>
+#include <string.h>
 #include <vlib/vlib.h>
 #include <vlibapi/api_types.h>
 #include <vppinfra/hash.h>
@@ -29,6 +29,33 @@
 
 #include <limits.h>
 #include "vat2.h"
+
+/*
+ * Filter these messages as they are used to manage the API connection to VPP
+ */
+char *filter_messages_strings[] = { "memclnt_create",
+				    "memclnt_delete",
+				    "sockclnt_create",
+				    "sockclnt_delete",
+				    "memclnt_rx_thread_suspend",
+				    "memclnt_read_timeout",
+				    "rx_thread_exit",
+				    "trace_plugin_msg_ids",
+				    0 };
+
+static bool
+filter_message (char *msgname)
+{
+  char **p = filter_messages_strings;
+
+  while (*p)
+    {
+      if (strcmp (*p, msgname) == 0)
+	return true;
+      p++;
+    }
+  return false;
+}
 
 uword *function_by_name;
 bool debug = false;
@@ -89,15 +116,16 @@ struct apifuncs_s
 {
   cJSON (*f) (cJSON *);
   cJSON (*tojson) (void *);
+  u32 crc;
 };
 
 struct apifuncs_s *apifuncs = 0;
 
 void
 vat2_register_function (char *name, cJSON (*f) (cJSON *),
-			cJSON (*tojson) (void *))
+			cJSON (*tojson) (void *), u32 crc)
 {
-  struct apifuncs_s funcs = { .f = f, .tojson = tojson };
+  struct apifuncs_s funcs = { .f = f, .tojson = tojson, .crc = crc };
   vec_add1 (apifuncs, funcs);
   hash_set_mem (function_by_name, name, vec_len (apifuncs) - 1);
 }
@@ -105,11 +133,27 @@ vat2_register_function (char *name, cJSON (*f) (cJSON *),
 static int
 vat2_exec_command_by_name (char *msgname, cJSON *o)
 {
+  if (filter_message (msgname))
+    return 0;
+
+  cJSON *crc_obj = cJSON_GetObjectItem (o, "_crc");
+  if (!crc_obj)
+    {
+      fprintf (stderr, "Missing '_crc' element!\n");
+      return -1;
+    }
+  char *crc_str = cJSON_GetStringValue (crc_obj);
+  u32 crc = (u32) strtol (crc_str, NULL, 16);
+
   uword *p = hash_get_mem (function_by_name, msgname);
   if (!p)
     {
-      fprintf (stderr, "No such command %s", msgname);
+      fprintf (stderr, "No such command %s\n", msgname);
       return -1;
+    }
+  if (crc != apifuncs[p[0]].crc)
+    {
+      fprintf (stderr, "API CRC does not match: %s!\n", msgname);
     }
 
   cJSON *(*fp) (cJSON *);
@@ -143,9 +187,10 @@ vat2_exec_command (cJSON *o)
     }
 
   char *name = cJSON_GetStringValue (msg_id_obj);
-  assert (name);
+
   return vat2_exec_command_by_name (name, o);
 }
+
 static void
 print_template (char *msgname)
 {
@@ -307,6 +352,12 @@ int main (int argc, char **argv)
     }
   }
 
+  if (!msgname && !filename)
+    {
+      print_help ();
+      exit (-1);
+    }
+
   /* Read message from file */
   if (filename) {
       if (argc > index)
@@ -325,6 +376,7 @@ int main (int argc, char **argv)
       fprintf(stderr, "%s: can't open file: %s\n", argv[0], filename);
       exit(-1);
     }
+
     chunksize = bufsize = 1024;
     char *buf = malloc(bufsize);
     while ((n = fread (buf + n_read, 1, chunksize, f)))
@@ -339,17 +391,17 @@ int main (int argc, char **argv)
     fclose(f);
     if (n_read) {
       o = cJSON_Parse(buf);
-      free(buf);
       if (!o) {
         fprintf(stderr, "%s: Failed parsing JSON input: %s\n", argv[0], cJSON_GetErrorPtr());
         exit(-1);
       }
     }
+    free (buf);
   }
 
-  if (!msgname && !filename)
+  if (!o)
     {
-      print_help ();
+      fprintf (stderr, "%s: Failed parsing JSON input\n", argv[0]);
       exit (-1);
     }
 

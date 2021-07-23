@@ -127,6 +127,8 @@ typedef struct cJSON_Hooks
       /* malloc/free are CDECL on Windows regardless of the default calling convention of the compiler, so ensure the hooks allow passing those functions directly. */
       void *(CJSON_CDECL *malloc_fn)(size_t sz);
       void (CJSON_CDECL *free_fn)(void *ptr);
+      void *(CJSON_CDECL *realloc_fn) (void *ptr, size_t new_size,
+				       size_t old_size);
 } cJSON_Hooks;
 
 typedef int cJSON_bool;
@@ -285,6 +287,8 @@ CJSON_PUBLIC(char*) cJSON_SetValuestring(cJSON *object, const char *valuestring)
 /* malloc/free objects using the malloc/free functions that have been set with cJSON_InitHooks */
 CJSON_PUBLIC(void *) cJSON_malloc(size_t size);
 CJSON_PUBLIC(void) cJSON_free(void *object);
+CJSON_PUBLIC (void *)
+cJSON_realloc (void *object, size_t new_size, size_t old_size);
 
 #ifdef __cplusplus
 }
