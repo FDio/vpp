@@ -62,6 +62,19 @@ do {                                                            \
     mp->client_index = vam->my_client_index;			\
 } while(0);
 
+#define PING(_tm, mp_ping)                                                    \
+  do                                                                          \
+    {                                                                         \
+      if (!(_tm)->ping_id)                                                    \
+	(_tm)->ping_id =                                                      \
+	  vl_msg_api_get_msg_index ((u8 *) (VL_API_CONTROL_PING_CRC));        \
+      mp_ping = vl_msg_api_alloc_as_if_client (sizeof (*mp_ping));            \
+      mp_ping->_vl_msg_id = htons ((_tm)->ping_id);                           \
+      mp_ping->client_index = vam->my_client_index;                           \
+      vam->result_ready = 0;                                                  \
+    }                                                                         \
+  while (0);
+
 /* S: send a message */
 #define S(mp)                                                   \
 do {                                                            \
