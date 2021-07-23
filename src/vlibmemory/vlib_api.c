@@ -52,6 +52,9 @@
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_printfun
 
+#include "vlibmemory/memclnt.api_tojson.h"
+#include "vlibmemory/memclnt.api_fromjson.h"
+
 static inline void *
 vl_api_trace_plugin_msg_ids_t_print (vl_api_trace_plugin_msg_ids_t * a,
 				     void *handle)
@@ -60,6 +63,62 @@ vl_api_trace_plugin_msg_ids_t_print (vl_api_trace_plugin_msg_ids_t * a,
 	    a->plugin_name,
 	    clib_host_to_net_u16 (a->first_msg_id),
 	    clib_host_to_net_u16 (a->last_msg_id));
+  return handle;
+}
+
+static cJSON *
+vl_api_trace_plugin_msg_ids_t_tojson (vl_api_trace_plugin_msg_ids_t *a)
+{
+  cJSON *o = cJSON_CreateObject ();
+  cJSON_AddStringToObject (o, "_msgname", "trace_plugin_msg_ids");
+  cJSON_AddStringToObject (o, "plugin_name", (char *) a->plugin_name);
+  cJSON_AddNumberToObject (o, "first_msg_id",
+			   clib_host_to_net_u16 (a->first_msg_id));
+  cJSON_AddNumberToObject (o, "last_msg_id",
+			   clib_host_to_net_u16 (a->last_msg_id));
+  return o;
+}
+
+static inline vl_api_trace_plugin_msg_ids_t *
+vl_api_trace_plugin_msg_ids_t_fromjson (cJSON *o, int *len)
+{
+  cJSON *item;
+  int l = sizeof (vl_api_trace_plugin_msg_ids_t);
+  vl_api_trace_plugin_msg_ids_t *a = malloc (l);
+
+  item = cJSON_GetObjectItem (o, "plugin_name");
+  if (!item)
+    goto error;
+  strncpy_s ((char *) a->plugin_name, sizeof (a->plugin_name),
+	     cJSON_GetStringValue (item), sizeof (a->plugin_name) - 1);
+
+  item = cJSON_GetObjectItem (o, "first_msg_id");
+  if (!item)
+    goto error;
+  vl_api_u16_fromjson (item, &a->first_msg_id);
+
+  item = cJSON_GetObjectItem (o, "last_msg_id");
+  if (!item)
+    goto error;
+  vl_api_u16_fromjson (item, &a->last_msg_id);
+
+  *len = l;
+  return a;
+
+error:
+  free (a);
+  return 0;
+}
+
+static inline void *
+vl_api_trace_plugin_msg_ids_t_print_json (vl_api_trace_plugin_msg_ids_t *a,
+					  void *handle)
+{
+  cJSON *o = vl_api_trace_plugin_msg_ids_t_tojson (a);
+  char *out = cJSON_Print (o);
+  vl_print (handle, out);
+  cJSON_Delete (o);
+  free (out);
   return handle;
 }
 
@@ -691,25 +750,25 @@ static clib_error_t *
 rpc_api_hookup (vlib_main_t * vm)
 {
   api_main_t *am = vlibapi_get_main ();
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_noop_handler,			\
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 0 /* do not trace */);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   vl_noop_handler, vl_api_##n##_t_endian,            \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t),     \
+			   0 /* do not trace */, vl_api_##n##_t_print_json,   \
+			   vl_api_##n##_t_tojson, vl_api_##n##_t_fromjson);
   foreach_rpc_api_msg;
 #undef _
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_noop_handler,			\
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1 /* do trace */);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   vl_noop_handler, vl_api_##n##_t_endian,            \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t),     \
+			   1 /* do trace */, vl_api_##n##_t_print_json,       \
+			   vl_api_##n##_t_tojson, vl_api_##n##_t_fromjson);
   foreach_plugin_trace_msg;
 #undef _
+
+  am->api_trace_cfg[VL_API_TRACE_PLUGIN_MSG_IDS].replay_enable = 0;
 
   /* No reason to halt the parade to create a trace record... */
   am->is_mp_safe[VL_API_TRACE_PLUGIN_MSG_IDS] = 1;
