@@ -76,6 +76,8 @@
 #undef vl_printfun
 #include <vlibapi/api_helper_macros.h>
 
+#include <vpp/api/vpe.api_tojson.h>
+
 #define foreach_vpe_api_msg                                             \
 _(CONTROL_PING, control_ping)                                           \
 _(CLI, cli)                                                             \
@@ -619,13 +621,12 @@ vpe_api_hookup (vlib_main_t * vm)
 {
   api_main_t *am = vlibapi_get_main ();
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   vl_noop_handler, vl_api_##n##_t_endian,            \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1,  \
+			   vl_api_##n##_t_print_json, vl_api_##n##_t_tojson,  \
+			   vl_api_##n##_t_fromjson);
   foreach_vpe_api_msg;
 #undef _
 

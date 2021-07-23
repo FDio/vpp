@@ -344,6 +344,7 @@ VLIB_CLI_COMMAND (cli_show_api_plugin_command, static) =
 typedef enum
 {
   DUMP,
+  DUMP_JSON,
   REPLAY,
   INITIALIZERS,
 } vl_api_replay_t;
@@ -391,6 +392,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 {
   vl_api_trace_file_header_t *hp;
   int i, fd;
+  u16 *msgid_vec = 0;
   struct stat statb;
   size_t file_size;
   u8 *msg;
@@ -453,12 +455,30 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
     vlib_cli_output (vm,
 		     "Note: wrapped/incomplete trace, results may vary\n");
 
+  size_t file_size_left = file_size;
+
+#define assert_size(size_left, s)                                             \
+  do                                                                          \
+    {                                                                         \
+      if ((s) >= size_left)                                                   \
+	{                                                                     \
+	  vlib_cli_output (vm, "corrupted file");                             \
+	  munmap (hp, file_size);                                             \
+	  vec_free (msgid_vec);                                               \
+	  return;                                                             \
+	}                                                                     \
+      size_left -= s;                                                         \
+    }                                                                         \
+  while (0);
+
+  assert_size (file_size_left, sizeof (hp[0]));
   msg = (u8 *) (hp + 1);
 
-  u16 *msgid_vec = 0;
   serialize_main_t _sm, *sm = &_sm;
   u32 msgtbl_size = ntohl (hp->msgtbl_size);
   u8 *name_and_crc;
+
+  assert_size (file_size_left, msgtbl_size);
 
   unserialize_open_data (sm, msg, msgtbl_size);
   unserialize_integer (sm, &nitems_msgtbl, sizeof (u32));
@@ -480,9 +500,11 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
       int size;
       u16 msg_id;
 
+      assert_size (file_size_left, sizeof (u32));
       size = clib_host_to_net_u32 (*(u32 *) msg);
       msg += sizeof (u32);
 
+      assert_size (file_size_left, size);
       msg_id = ntohs (*((u16 *) msg));
       if (msg_id < vec_len (msgid_vec))
 	msg_id = msgid_vec[msg_id];
@@ -491,6 +513,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	{
 	  vlib_cli_output (vm, "Ugh: msg id %d no trace config\n", msg_id);
 	  munmap (hp, file_size);
+	  vec_free (msgid_vec);
 	  return;
 	}
       msg += size;
@@ -536,7 +559,8 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
        * Endian swap if needed. All msg data is supposed to be in
        * network byte order.
        */
-      if (((which == DUMP) && clib_arch_is_little_endian))
+      if (((which == DUMP || which == DUMP_JSON) &&
+	   clib_arch_is_little_endian))
 	{
 	  void (*endian_fp) (void *);
 	  if (msg_id >= vec_len (am->msg_endian_handlers)
@@ -561,6 +585,23 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 
       switch (which)
 	{
+	case DUMP_JSON:
+	  if (msg_id < vec_len (am->msg_print_json_handlers) &&
+	      am->msg_print_json_handlers[msg_id])
+	    {
+	      u8 *(*print_fp) (void *, void *);
+
+	      print_fp = (void *) am->msg_print_json_handlers[msg_id];
+	      (*print_fp) (tmpbuf + sizeof (uword), vm);
+	    }
+	  else
+	    {
+	      vlib_cli_output (vm, "Skipping msg id %d: no JSON print fcn\n",
+			       msg_id);
+	      break;
+	    }
+	  break;
+
 	case DUMP:
 	  if (msg_id < vec_len (am->msg_print_handlers) &&
 	      am->msg_print_handlers[msg_id])
@@ -639,7 +680,313 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 
   munmap (hp, file_size);
   vec_free (tmpbuf);
+  vec_free (msgid_vec);
   am->replay_in_progress = 0;
+}
+
+static int
+file_exists (u8 *fname)
+{
+  FILE *fp = 0;
+  fp = fopen ((char *) fname, "r");
+  if (fp)
+    {
+      fclose (fp);
+      return 1;
+    }
+  return 0;
+}
+
+typedef struct
+{
+  vlib_main_t *vm;
+  u8 is_json;
+} vl_msg_print_args;
+
+static int
+vl_msg_print_trace (u8 *msg, void *ctx)
+{
+  vl_msg_print_args *a = ctx;
+  api_main_t *am = vlibapi_get_main ();
+  u16 msg_id = ntohs (*((u16 *) msg));
+  void (*print_fp) (void *, void *);
+  void (**handlers) (void *, void *);
+  u8 is_json = a->is_json;
+
+  if (is_json)
+    handlers = am->msg_print_json_handlers;
+  else
+    handlers = am->msg_print_handlers;
+
+  if (msg_id < vec_len (handlers) && handlers[msg_id])
+    {
+      print_fp = (void *) handlers[msg_id];
+      (*print_fp) (msg, a->vm);
+    }
+  else
+    {
+      vlib_cli_output (a->vm, "Skipping msg id %d: no print fcn\n", msg_id);
+    }
+  return 0;
+}
+
+static int
+vl_msg_api_dump_trace (vlib_main_t *vm, vl_api_trace_which_t which, u8 is_json)
+{
+  api_main_t *am = vlibapi_get_main ();
+  vl_api_trace_t *tp;
+
+  switch (which)
+    {
+    case VL_API_TRACE_TX:
+      tp = am->tx_trace;
+      break;
+    case VL_API_TRACE_RX:
+      tp = am->rx_trace;
+      break;
+    default:
+      return -1;
+    }
+
+  if (tp == 0 || tp->nitems == 0 || vec_len (tp->traces) == 0)
+    return -1;
+
+  vl_msg_print_args args;
+  clib_memset (&args, 0, sizeof (args));
+  args.is_json = is_json;
+  args.vm = vm;
+  vl_msg_traverse_trace (tp, vl_msg_print_trace, &args);
+
+  return 0;
+}
+
+static char *
+vl_msg_read_file (FILE *f)
+{
+  size_t chunksize, bufsize;
+  size_t n_read = 0, n;
+  chunksize = bufsize = 1024;
+  char *buf = malloc (bufsize);
+  while ((n = fread (buf + n_read, 1, chunksize, f)))
+    {
+      n_read += n;
+      if (n == chunksize)
+	{
+	  bufsize += chunksize;
+	  buf = realloc (buf, bufsize);
+	  if (buf == NULL)
+	    break;
+	}
+    }
+
+  if (n_read == 0)
+    {
+      free (buf);
+      return 0;
+    }
+  return buf;
+}
+
+static u16
+vl_msg_find_id_by_name_and_crc (vlib_main_t *vm, api_main_t *am, char *name)
+{
+  uword *p;
+  p = hash_get_mem (am->msg_index_by_name_and_crc, name);
+  if (!p)
+    return (u16) ~0;
+
+  return p[0];
+}
+
+static u16
+vl_msg_find_id_by_name (vlib_main_t *vm, api_main_t *am, char *name)
+{
+  uword *p;
+
+  if (!am->msg_id_by_name)
+    {
+      vlib_cli_output (vm, "message id table not yet initialized!\n");
+      return (u16) ~0;
+    }
+
+  p = hash_get_mem (am->msg_id_by_name, name);
+  if (!p)
+    return (u16) ~0;
+
+  return p[0];
+}
+
+static int
+vl_msg_exec_json_command (vlib_main_t *vm, cJSON *o)
+{
+  api_main_t *am = vlibapi_get_main ();
+  u16 msg_id;
+  void *(*fromjson) (cJSON *, int *);
+  int len = 0, rv = -1;
+  trace_cfg_t *cfgp;
+  u8 *msg = 0;
+
+  cJSON *msg_id_obj = cJSON_GetObjectItem (o, "_msgname");
+  if (!msg_id_obj)
+    {
+      vlib_cli_output (vm, "Missing '_msgname' element!\n");
+      return rv;
+    }
+  char *name = cJSON_GetStringValue (msg_id_obj);
+
+  cJSON *crc_obj = cJSON_GetObjectItem (o, "_crc");
+  if (!msg_id_obj)
+    {
+      vlib_cli_output (vm, "Missing '_crc' element!\n");
+      return rv;
+    }
+  char *crc = cJSON_GetStringValue (crc_obj);
+  u8 proc_warning = 0;
+
+  u8 *name_crc = format (0, "%s_%s%c", name, crc, 0);
+  msg_id = vl_msg_find_id_by_name_and_crc (vm, am, (char *) name_crc);
+  if (msg_id == (u16) ~0)
+    {
+      msg_id = vl_msg_find_id_by_name (vm, am, name);
+      if (msg_id == (u16) ~0)
+	{
+	  vlib_cli_output (vm, "unknown msg id %d!\n", msg_id);
+	  vec_free (name_crc);
+	  return rv;
+	}
+      proc_warning = 1;
+    }
+  vec_free (name_crc);
+
+  cfgp = am->api_trace_cfg + msg_id;
+  if (!cfgp)
+    {
+      vlib_cli_output (vm, "msg id %d no trace config\n", msg_id);
+      return rv;
+    }
+
+  if (cfgp->replay_enable)
+    {
+
+      if (proc_warning)
+	vlib_cli_output (vm, "warning: msg %d has different signature\n");
+
+      fromjson = am->msg_fromjson_handlers[msg_id];
+      if (!fromjson)
+	{
+	  vlib_cli_output (vm, "missing fromjson convert function! id %d\n",
+			   msg_id);
+	  return rv;
+	}
+
+      msg = (u8 *) fromjson (o, &len);
+      if (!msg)
+	{
+	  vlib_cli_output (vm, "failed to convert JSON (msg id %d)!\n",
+			   msg_id);
+	  return rv;
+	}
+
+      void (*endian_fp) (void *);
+      endian_fp = am->msg_endian_handlers[msg_id];
+      (*endian_fp) (msg);
+
+      void (*handler) (void *, vlib_main_t *);
+      handler = (void *) am->msg_handlers[msg_id];
+      if (!handler)
+	{
+	  vlib_cli_output (vm, "no handler for msg id %d!\n", msg_id);
+	  goto end;
+	}
+
+      if (!am->is_mp_safe[msg_id])
+	vl_msg_api_barrier_sync ();
+      (*handler) (msg, vm);
+      if (!am->is_mp_safe[msg_id])
+	vl_msg_api_barrier_release ();
+    }
+
+  rv = 0;
+end:
+  if (msg)
+    free (msg);
+  return rv;
+}
+
+static void
+vl_msg_replay_json (vlib_main_t *vm, u8 *filename)
+{
+  api_main_t *am = vlibapi_get_main ();
+  cJSON *o = 0;
+  int rv = 0;
+  FILE *f = fopen ((char *) filename, "r");
+
+  if (!f)
+    {
+      vlib_cli_output (vm, "failed to open %s!\n", filename);
+      return;
+    }
+
+  char *buf = vl_msg_read_file (f);
+  fclose (f);
+
+  o = cJSON_Parse (buf);
+  free (buf);
+  if (!o)
+    {
+      vlib_cli_output (vm, "%s: Failed parsing JSON input: %s\n", filename,
+		       cJSON_GetErrorPtr ());
+      return;
+    }
+
+  if (cJSON_IsArray (o))
+    {
+      am->replay_in_progress = 1;
+      size_t size = cJSON_GetArraySize (o);
+      for (int i = 0; i < size; i++)
+	{
+	  rv = vl_msg_exec_json_command (vm, cJSON_GetArrayItem (o, i));
+	  if (rv < 0)
+	    {
+	      am->replay_in_progress = 0;
+	      break;
+	    }
+	}
+    }
+  else
+    {
+      rv = vl_msg_exec_json_command (vm, o);
+    }
+
+  if (rv < 0)
+    vlib_cli_output (vm, "error during replaying API trace");
+
+  cJSON_Delete (o);
+}
+
+static void
+vl_msg_dump_file_json (vlib_main_t *vm, u8 *filename)
+{
+  FILE *f = fopen ((char *) filename, "r");
+  char *buf;
+
+  if (!f)
+    {
+      vlib_cli_output (vm, "failed to open %s!\n", filename);
+      return;
+    }
+
+  buf = vl_msg_read_file (f);
+  fclose (f);
+
+  if (!buf)
+    {
+      vlib_cli_output (vm, "no content in %s!\n", filename);
+      return;
+    }
+
+  vlib_cli_output (vm, buf);
+  free (buf);
 }
 
 /** api_trace_command_fn - control the binary API trace / replay feature
@@ -688,6 +1035,41 @@ api_trace_command_fn (vlib_main_t * vm,
 	  vl_msg_api_trace_onoff (am, which, 0);
 	  vlib_worker_thread_barrier_release (vm);
 	}
+      else if (unformat (line_input, "save-json %s", &filename))
+	{
+	  if (strstr ((char *) filename, "..") ||
+	      index ((char *) filename, '/'))
+	    {
+	      vlib_cli_output (vm, "illegal characters in filename '%s'",
+			       filename);
+	      goto out;
+	    }
+
+	  chroot_filename = format (0, "/tmp/%s%c", filename, 0);
+
+	  vec_free (filename);
+
+	  if (file_exists (chroot_filename))
+	    {
+	      vlib_cli_output (vm, "file exists: %s\n", chroot_filename);
+	      goto out;
+	    }
+
+	  fp = fopen ((char *) chroot_filename, "w");
+	  if (fp == NULL)
+	    {
+	      vlib_cli_output (vm, "Couldn't create %s\n", chroot_filename);
+	      goto out;
+	    }
+	  vlib_worker_thread_barrier_sync (vm);
+	  rv = vl_msg_api_trace_save (am, which, fp, 1);
+	  if (rv != 0)
+	    vlib_cli_output (vm, "failed to save api trace\n");
+	  else
+	    vlib_cli_output (vm, "API trace saved to %s\n", chroot_filename);
+	  vlib_worker_thread_barrier_release (vm);
+	  fclose (fp);
+	}
       else if (unformat (line_input, "save %s", &filename))
 	{
 	  if (strstr ((char *) filename, "..")
@@ -702,6 +1084,12 @@ api_trace_command_fn (vlib_main_t * vm,
 
 	  vec_free (filename);
 
+	  if (file_exists (chroot_filename))
+	    {
+	      vlib_cli_output (vm, "file exists: %s\n", chroot_filename);
+	      goto out;
+	    }
+
 	  fp = fopen ((char *) chroot_filename, "w");
 	  if (fp == NULL)
 	    {
@@ -709,7 +1097,7 @@ api_trace_command_fn (vlib_main_t * vm,
 	      goto out;
 	    }
 	  vlib_worker_thread_barrier_sync (vm);
-	  rv = vl_msg_api_trace_save (am, which, fp);
+	  rv = vl_msg_api_trace_save (am, which, fp, 0);
 	  vlib_worker_thread_barrier_release (vm);
 	  fclose (fp);
 	  if (rv == -1)
@@ -732,9 +1120,29 @@ api_trace_command_fn (vlib_main_t * vm,
 	    vlib_cli_output (vm, "API trace saved to %s\n", chroot_filename);
 	  goto out;
 	}
-      else if (unformat (line_input, "dump %s", &filename))
+      else if (unformat (line_input, "tojson %s", &filename))
+	{
+	  vl_msg_api_process_file (vm, filename, first, last, DUMP_JSON);
+	}
+      else if (unformat (line_input, "dump-file-json %s", &filename))
+	{
+	  vl_msg_dump_file_json (vm, filename);
+	}
+      else if (unformat (line_input, "dump-file %s", &filename))
 	{
 	  vl_msg_api_process_file (vm, filename, first, last, DUMP);
+	}
+      else if (unformat (line_input, "dump-json"))
+	{
+	  vl_msg_api_dump_trace (vm, which, 1);
+	}
+      else if (unformat (line_input, "dump"))
+	{
+	  vl_msg_api_dump_trace (vm, which, 0);
+	}
+      else if (unformat (line_input, "replay-json %s", &filename))
+	{
+	  vl_msg_replay_json (vm, filename);
 	}
       else if (unformat (line_input, "replay %s", &filename))
 	{
@@ -790,88 +1198,12 @@ out:
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (api_trace_command, static) = {
   .path = "api trace",
-  .short_help = "api trace [on|off][first <n>][last <n>][status][free]"
-		"[post-mortem-on][dump|save|replay <file>]",
+  .short_help = "api trace [tx][on|off][first <n>][last <n>][status][free]"
+		"[post-mortem-on][dump|dump-file|dump-json|save|tojson|save-"
+		"json|replay <file>|replay-json <file>][nitems <n>]"
+		"[initializers <file>]",
   .function = api_trace_command_fn,
   .is_mp_safe = 1,
-};
-/* *INDENT-ON* */
-
-static clib_error_t *
-vl_api_trace_command (vlib_main_t * vm,
-		      unformat_input_t * input, vlib_cli_command_t * cli_cmd)
-{
-  u32 nitems = 1024;
-  vl_api_trace_which_t which = VL_API_TRACE_RX;
-  api_main_t *am = vlibapi_get_main ();
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "rx nitems %u", &nitems) || unformat (input, "rx"))
-	goto configure;
-      else if (unformat (input, "tx nitems %u", &nitems)
-	       || unformat (input, "tx"))
-	{
-	  which = VL_API_TRACE_RX;
-	  goto configure;
-	}
-      else if (unformat (input, "on rx"))
-	{
-	  vl_msg_api_trace_onoff (am, VL_API_TRACE_RX, 1);
-	}
-      else if (unformat (input, "on tx"))
-	{
-	  vl_msg_api_trace_onoff (am, VL_API_TRACE_TX, 1);
-	}
-      else if (unformat (input, "on"))
-	{
-	  vl_msg_api_trace_onoff (am, VL_API_TRACE_RX, 1);
-	}
-      else if (unformat (input, "off"))
-	{
-	  vl_msg_api_trace_onoff (am, VL_API_TRACE_RX, 0);
-	  vl_msg_api_trace_onoff (am, VL_API_TRACE_TX, 0);
-	}
-      else if (unformat (input, "free"))
-	{
-	  vl_msg_api_trace_onoff (am, VL_API_TRACE_RX, 0);
-	  vl_msg_api_trace_onoff (am, VL_API_TRACE_TX, 0);
-	  vl_msg_api_trace_free (am, VL_API_TRACE_RX);
-	  vl_msg_api_trace_free (am, VL_API_TRACE_TX);
-	}
-      else if (unformat (input, "debug on"))
-	{
-	  am->msg_print_flag = 1;
-	}
-      else if (unformat (input, "debug off"))
-	{
-	  am->msg_print_flag = 0;
-	}
-      else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
-    }
-  return 0;
-
-configure:
-  if (vl_msg_api_trace_configure (am, which, nitems))
-    {
-      vlib_cli_output (vm, "warning: trace configure error (%d, %d)",
-		       which, nitems);
-    }
-
-  return 0;
-}
-
-/*?
- * Control the binary API trace mechanism
-?*/
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (trace, static) =
-{
-  .path = "set api-trace",
-  .short_help = "API trace [on][on tx][on rx][off][free][debug on][debug off]",
-  .function = vl_api_trace_command,
 };
 /* *INDENT-ON* */
 

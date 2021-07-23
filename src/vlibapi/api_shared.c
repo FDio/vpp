@@ -223,13 +223,160 @@ vl_api_serialize_message_table (api_main_t * am, u8 * vector)
   return serialize_close_vector (sm);
 }
 
+static int
+vl_msg_api_trace_write_one (api_main_t *am, u8 *msg, FILE *fp)
+{
+  u8 *tmpmem = 0;
+  int tlen, slen;
+  cJSON *(*tojson_fn) (void *);
+
+  u32 msg_length = vec_len (msg);
+  vec_validate (tmpmem, msg_length - 1);
+  clib_memcpy_fast (tmpmem, msg, msg_length);
+  u16 id = clib_net_to_host_u16 (*((u16 *) msg));
+
+  void (*endian_fp) (void *);
+  endian_fp = am->msg_endian_handlers[id];
+  (*endian_fp) (tmpmem);
+
+  if (id < vec_len (am->msg_tojson_handlers) && am->msg_tojson_handlers[id])
+    {
+      tojson_fn = am->msg_tojson_handlers[id];
+      cJSON *o = tojson_fn (tmpmem);
+      char *s = cJSON_Print (o);
+      slen = strlen (s);
+      tlen = fwrite (s, 1, slen, fp);
+      free (s);
+      cJSON_Delete (o);
+      vec_free (tmpmem);
+      if (tlen != slen)
+	{
+	  fformat (stderr, "writing to file error\n");
+	  return -11;
+	}
+    }
+  else
+    fformat (stderr, "  [no registered tojson fn]\n");
+
+  return 0;
+}
+
+#define vl_msg_fwrite(_s, _f) fwrite (_s, 1, sizeof (_s) - 1, _f)
+
+typedef struct
+{
+  FILE *fp;
+  u32 n_traces;
+  u32 i;
+} vl_msg_write_json_args_t;
+
+static int
+vl_msg_write_json_fn (u8 *msg, void *ctx)
+{
+  vl_msg_write_json_args_t *arg = ctx;
+  FILE *fp = arg->fp;
+  api_main_t *am = vlibapi_get_main ();
+  int rc = vl_msg_api_trace_write_one (am, msg, fp);
+  if (rc < 0)
+    return rc;
+
+  if (arg->i < arg->n_traces - 1)
+    vl_msg_fwrite (",\n", fp);
+  arg->i++;
+  return 0;
+}
+
+static int
+vl_msg_api_trace_write_json (api_main_t *am, vl_api_trace_t *tp, FILE *fp)
+{
+  vl_msg_write_json_args_t args;
+  clib_memset (&args, 0, sizeof (args));
+  args.fp = fp;
+  args.n_traces = vec_len (tp->traces);
+  vl_msg_fwrite ("[\n", fp);
+
+  int rv = vl_msg_traverse_trace (tp, vl_msg_write_json_fn, &args);
+  if (rv < 0)
+    return rv;
+
+  vl_msg_fwrite ("]", fp);
+  return 0;
+}
+
 int
-vl_msg_api_trace_save (api_main_t * am, vl_api_trace_which_t which, FILE * fp)
+vl_msg_traverse_trace (vl_api_trace_t *tp, vl_msg_traverse_trace_fn fn,
+		       void *ctx)
+{
+  int i;
+  u8 *msg;
+  int rv = 0;
+
+  /* No-wrap case */
+  if (tp->wrapped == 0)
+    {
+      for (i = 0; i < vec_len (tp->traces); i++)
+	{
+	  /*sa_ignore NO_NULL_CHK */
+	  msg = tp->traces[i];
+	  if (!msg)
+	    continue;
+
+	  rv = fn (msg, ctx);
+	  if (rv < 0)
+	    return rv;
+	}
+    }
+  else
+    {
+      /* Wrap case: write oldest -> end of buffer */
+      for (i = tp->curindex; i < vec_len (tp->traces); i++)
+	{
+	  msg = tp->traces[i];
+	  if (!msg)
+	    continue;
+
+	  rv = fn (msg, ctx);
+	  if (rv < 0)
+	    return rv;
+	}
+      /* write beginning of buffer -> oldest-1 */
+      for (i = 0; i < tp->curindex; i++)
+	{
+	  /*sa_ignore NO_NULL_CHK */
+	  msg = tp->traces[i];
+	  if (!msg)
+	    continue;
+
+	  rv = fn (msg, ctx);
+	  if (rv < 0)
+	    return rv;
+	}
+    }
+  return 0;
+}
+
+static int
+vl_api_msg_write_fn (u8 *msg, void *ctx)
+{
+  FILE *fp = ctx;
+  u32 msg_length = clib_host_to_net_u32 (vec_len (msg));
+  if (fwrite (&msg_length, 1, sizeof (msg_length), fp) != sizeof (msg_length))
+    {
+      return (-14);
+    }
+  if (fwrite (msg, 1, vec_len (msg), fp) != vec_len (msg))
+    {
+      return (-14);
+    }
+  return 0;
+}
+
+int
+vl_msg_api_trace_save (api_main_t *am, vl_api_trace_which_t which, FILE *fp,
+		       u8 is_json)
 {
   vl_api_trace_t *tp;
   vl_api_trace_file_header_t fh;
-  int i;
-  u8 *msg;
 
   switch (which)
     {
@@ -256,9 +403,13 @@ vl_msg_api_trace_save (api_main_t * am, vl_api_trace_which_t which, FILE * fp)
       return -2;
     }
 
+  if (is_json)
+    return vl_msg_api_trace_write_json (am, tp, fp);
+
   /* Write the file header */
   fh.wrapped = tp->wrapped;
   fh.nitems = clib_host_to_net_u32 (vec_len (tp->traces));
+
   u8 *m = vl_api_serialize_message_table (am, 0);
   fh.msgtbl_size = clib_host_to_net_u32 (vec_len (m));
 
@@ -274,92 +425,7 @@ vl_msg_api_trace_save (api_main_t * am, vl_api_trace_which_t which, FILE * fp)
     }
   vec_free (m);
 
-  /* No-wrap case */
-  if (tp->wrapped == 0)
-    {
-      /*
-       * Note: vec_len return 0 when fed a NULL pointer.
-       * Unfortunately, the static analysis tool doesn't
-       * figure it out, hence the suppressed warnings.
-       * What a great use of my time.
-       */
-      for (i = 0; i < vec_len (tp->traces); i++)
-	{
-	  u32 msg_length;
-	  /*sa_ignore NO_NULL_CHK */
-	  msg = tp->traces[i];
-	  /*
-	   * This retarded check required to pass
-	   * [sic] SA-checking.
-	   */
-	  if (!msg)
-	    continue;
-
-	  msg_length = clib_host_to_net_u32 (vec_len (msg));
-	  if (fwrite (&msg_length, 1, sizeof (msg_length), fp)
-	      != sizeof (msg_length))
-	    {
-	      return (-14);
-	    }
-	  if (fwrite (msg, 1, vec_len (msg), fp) != vec_len (msg))
-	    {
-	      return (-11);
-	    }
-	}
-    }
-  else
-    {
-      /* Wrap case: write oldest -> end of buffer */
-      for (i = tp->curindex; i < vec_len (tp->traces); i++)
-	{
-	  u32 msg_length;
-	  msg = tp->traces[i];
-	  /*
-	   * This retarded check required to pass
-	   * [sic] SA-checking
-	   */
-	  if (!msg)
-	    continue;
-
-	  msg_length = clib_host_to_net_u32 (vec_len (msg));
-	  if (fwrite (&msg_length, 1, sizeof (msg_length), fp)
-	      != sizeof (msg_length))
-	    {
-	      return (-14);
-	    }
-
-	  if (fwrite (msg, 1, vec_len (msg), fp) != vec_len (msg))
-	    {
-	      return (-12);
-	    }
-	}
-      /* write beginning of buffer -> oldest-1 */
-      for (i = 0; i < tp->curindex; i++)
-	{
-	  u32 msg_length;
-	  /*sa_ignore NO_NULL_CHK */
-	  msg = tp->traces[i];
-	  /*
-	   * This retarded check required to pass
-	   * [sic] SA-checking
-	   */
-	  if (!msg)
-	    continue;
-
-	  msg_length = clib_host_to_net_u32 (vec_len (msg));
-	  if (fwrite (&msg_length, 1, sizeof (msg_length), fp)
-	      != sizeof (msg_length))
-	    {
-	      return (-14);
-	    }
-
-	  if (fwrite (msg, 1, vec_len (msg), fp) != vec_len (msg))
-	    {
-	      return (-13);
-	    }
-	}
-    }
-  return 0;
+  return vl_msg_traverse_trace (tp, vl_api_msg_write_fn, fp);
 }
 
 int
@@ -807,16 +873,19 @@ vl_msg_api_socket_handler (void *the_msg)
 			1 /* do_it */ , 0 /* free_it */ );
 }
 
-#define foreach_msg_api_vector                  \
-_(msg_names)                                    \
-_(msg_handlers)                                 \
-_(msg_cleanup_handlers)                         \
-_(msg_endian_handlers)                          \
-_(msg_print_handlers)                           \
-_(api_trace_cfg)				\
-_(message_bounce)				\
-_(is_mp_safe)					\
-_(is_autoendian)
+#define foreach_msg_api_vector                                                \
+  _ (msg_names)                                                               \
+  _ (msg_handlers)                                                            \
+  _ (msg_cleanup_handlers)                                                    \
+  _ (msg_endian_handlers)                                                     \
+  _ (msg_print_handlers)                                                      \
+  _ (msg_print_json_handlers)                                                 \
+  _ (msg_tojson_handlers)                                                     \
+  _ (msg_fromjson_handlers)                                                   \
+  _ (api_trace_cfg)                                                           \
+  _ (message_bounce)                                                          \
+  _ (is_mp_safe)                                                              \
+  _ (is_autoendian)
 
 void
 vl_msg_api_config (vl_msg_api_msg_config_t * c)
@@ -855,6 +924,9 @@ vl_msg_api_config (vl_msg_api_msg_config_t * c)
   am->msg_cleanup_handlers[c->id] = c->cleanup;
   am->msg_endian_handlers[c->id] = c->endian;
   am->msg_print_handlers[c->id] = c->print;
+  am->msg_print_json_handlers[c->id] = c->print_json;
+  am->msg_tojson_handlers[c->id] = c->tojson;
+  am->msg_fromjson_handlers[c->id] = c->fromjson;
   am->message_bounce[c->id] = c->message_bounce;
   am->is_mp_safe[c->id] = c->is_mp_safe;
   am->is_autoendian[c->id] = c->is_autoendian;
@@ -862,6 +934,11 @@ vl_msg_api_config (vl_msg_api_msg_config_t * c)
   am->api_trace_cfg[c->id].size = c->size;
   am->api_trace_cfg[c->id].trace_enable = c->traced;
   am->api_trace_cfg[c->id].replay_enable = c->replay;
+
+  if (!am->msg_id_by_name)
+    am->msg_id_by_name = hash_create_string (0, sizeof (uword));
+
+  hash_set_mem (am->msg_id_by_name, c->name, c->id);
 }
 
 /*
@@ -870,7 +947,8 @@ vl_msg_api_config (vl_msg_api_msg_config_t * c)
  */
 void
 vl_msg_api_set_handlers (int id, char *name, void *handler, void *cleanup,
-			 void *endian, void *print, int size, int traced)
+			 void *endian, void *print, int size, int traced,
+			 void *print_json, void *tojson, void *fromjson)
 {
   vl_msg_api_msg_config_t cfg;
   vl_msg_api_msg_config_t *c = &cfg;
@@ -888,6 +966,9 @@ vl_msg_api_set_handlers (int id, char *name, void *handler, void *cleanup,
   c->message_bounce = 0;
   c->is_mp_safe = 0;
   c->is_autoendian = 0;
+  c->tojson = tojson;
+  c->fromjson = fromjson;
+  c->print_json = print_json;
   vl_msg_api_config (c);
 }
 
@@ -987,7 +1068,7 @@ vl_msg_api_post_mortem_dump (void)
       rv = write (2, "\n", 1);
       return;
     }
-  rv = vl_msg_api_trace_save (am, VL_API_TRACE_RX, fp);
+  rv = vl_msg_api_trace_save (am, VL_API_TRACE_RX, fp, 0);
   fclose (fp);
   if (rv < 0)
     {

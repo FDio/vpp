@@ -137,7 +137,7 @@ define api_versions_reply {
  * at api trace replay time
  */
 
-manual_print define trace_plugin_msg_ids
+define trace_plugin_msg_ids
 {
     u32 client_index;
     u32 context;
