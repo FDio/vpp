@@ -18,19 +18,21 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/ip_format_fns.h>
 #include <vpp/api/types.h>
-#include "jsonconvert.h"
+#include "jsonformat.h"
 
-#define _(T)                                    \
-int vl_api_ ##T## _fromjson(cJSON *o, T *d)     \
-{                                               \
-    if (!cJSON_IsNumber(o)) return -1;          \
-    memcpy(d, &o->valueint, sizeof(T));         \
-    return 0;                                   \
-}
-  foreach_vat2_fromjson
+#define _(T)                                                                  \
+  int vl_api_##T##_fromjson (cJSON *o, T *d)                                  \
+  {                                                                           \
+    if (!cJSON_IsNumber (o))                                                  \
+      return -1;                                                              \
+    d[0] = (T) cJSON_GetNumberValue (o);                                      \
+    return 0;                                                                 \
+  }
+foreach_type_fromjson
 #undef _
 
-int vl_api_bool_fromjson(cJSON *o, bool *d)
+  int
+  vl_api_bool_fromjson (cJSON *o, bool *d)
 {
     if (!cJSON_IsBool(o)) return -1;
     *d = o->valueint ? true : false;
@@ -437,13 +439,6 @@ vl_api_c_string_to_api_string (const char *buf, vl_api_string_t * str)
   return len + sizeof (u32);
 }
 
-u8 *
-format_vl_api_interface_index_t (u8 *s, va_list *args)
-{
-  u32 *a = va_arg (*args, u32 *);
-  return format (s, "%u", *a);
-}
-
 void
 vl_api_string_cJSON_AddToObject(cJSON * const object, const char * const name, vl_api_string_t *astr)
 {
@@ -490,10 +485,6 @@ unformat_vl_api_timestamp_t(unformat_input_t * input, va_list * args)
 {
     return 0;
 }
-u8 *format_vl_api_gbp_scope_t(u8 * s, va_list * args)
-{
-    return 0;
-}
 uword unformat_vl_api_gbp_scope_t(unformat_input_t * input, va_list * args)
 {
     return 0;
@@ -527,5 +518,5 @@ format_vl_api_mac_address_t (u8 * s, va_list * args)
   vec_free(s);                                              \
   return o;                                                 \
   }
-foreach_vat2_tojson
+foreach_type_tojson
 #undef _

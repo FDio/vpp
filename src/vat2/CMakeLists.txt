@@ -18,7 +18,6 @@ add_vpp_executable(vat2 ENABLE_EXPORTS
   SOURCES
   main.c
   plugin.c
-  jsonconvert.c
 
   DEPENDS api_headers
 
@@ -41,7 +40,6 @@ vpp_generate_api_c_header (test/vat2_test.api)
 add_vpp_executable(test_vat2 ENABLE_EXPORTS NO_INSTALL
   SOURCES
   test/vat2_test.c
-  jsonconvert.c
 
   DEPENDS api_headers
 
@@ -57,7 +55,6 @@ add_vpp_executable(test_vat2 ENABLE_EXPORTS NO_INSTALL
 
 if("${CMAKE_VERSION}" VERSION_GREATER_EQUAL "3.13" AND "${CMAKE_C_COMPILER_ID}" MATCHES "(Apple)?[Cc]lang")
   set(TARGET_NAME test_vat2)
-  set(COV_SOURCES ${CMAKE_SOURCE_DIR}/vat2/jsonconvert.c)
 
   message("Building with llvm Code Coverage Tools ${TARGET_NAME}")
   target_compile_options(${TARGET_NAME} PRIVATE -fprofile-instr-generate -fcoverage-mapping)
@@ -96,7 +93,6 @@ endif()
 ##############################################################################
 install(
   FILES
-  jsonconvert.h
   vat2_helpers.h
   DESTINATION include/vat2
   COMPONENT vpp-dev
