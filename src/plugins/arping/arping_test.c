@@ -52,7 +52,6 @@ api_arping (vat_main_t *vam)
   arping_args_t args = { 0 };
   int ret;
   unformat_input_t *input = vam->input;
-  vnet_main_t *vnm = vnet_get_main ();
   f64 interval = ARPING_DEFAULT_INTERVAL;
   vl_api_control_ping_t *mp_ping;
   arping_test_main_t *atm = &arping_test_main;
@@ -76,8 +75,7 @@ api_arping (vat_main_t *vam)
       return -99;
     }
 
-  if (!unformat_user (input, unformat_vnet_sw_interface, vnm,
-		      &args.sw_if_index))
+  if (!unformat_user (input, api_unformat_sw_if_index, vam, &args.sw_if_index))
     {
       errmsg ("unknown interface `%U'", format_unformat_error, input);
       return -99;

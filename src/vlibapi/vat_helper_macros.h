@@ -65,10 +65,14 @@ do {                                                            \
 #define PING(_tm, mp_ping)                                                    \
   do                                                                          \
     {                                                                         \
-      if (!(_tm)->ping_id)                                                    \
+      socket_client_main_t *scm = vam->socket_client_main;                    \
+      if (!(_tm)->ping_id || (_tm)->ping_id == ~0)                            \
 	(_tm)->ping_id =                                                      \
 	  vl_msg_api_get_msg_index ((u8 *) (VL_API_CONTROL_PING_CRC));        \
-      mp_ping = vl_msg_api_alloc_as_if_client (sizeof (*mp_ping));            \
+      if (scm && scm->socket_enable)                                          \
+	mp_ping = vl_socket_client_msg_alloc (sizeof (*mp_ping));             \
+      else                                                                    \
+	mp_ping = vl_msg_api_alloc_as_if_client (sizeof (*mp_ping));          \
       mp_ping->_vl_msg_id = htons ((_tm)->ping_id);                           \
       mp_ping->client_index = vam->my_client_index;                           \
       vam->result_ready = 0;                                                  \
