@@ -856,6 +856,55 @@ done:
 }
 
 static void
+vl_api_app_namespace_add_del_v2_t_handler (
+  vl_api_app_namespace_add_del_v2_t *mp)
+{
+  vl_api_app_namespace_add_del_v2_reply_t *rmp;
+  u8 *ns_id = 0, *netns = 0;
+  u32 appns_index = 0;
+  int rv = 0;
+
+  if (session_main_is_enabled () == 0)
+    {
+      rv = VNET_API_ERROR_FEATURE_DISABLED;
+      goto done;
+    }
+
+  mp->namespace_id[sizeof (mp->namespace_id) - 1] = 0;
+  mp->netns[sizeof (mp->netns) - 1] = 0;
+  ns_id = format (0, "%s", &mp->namespace_id);
+  netns = format (0, "%s", &mp->netns);
+
+  vnet_app_namespace_add_del_args_t args = {
+    .ns_id = ns_id,
+    .netns = netns,
+    .secret = clib_net_to_host_u64 (mp->secret),
+    .sw_if_index = clib_net_to_host_u32 (mp->sw_if_index),
+    .ip4_fib_id = clib_net_to_host_u32 (mp->ip4_fib_id),
+    .ip6_fib_id = clib_net_to_host_u32 (mp->ip6_fib_id),
+    .is_add = 1
+  };
+  rv = vnet_app_namespace_add_del (&args);
+  if (!rv)
+    {
+      appns_index = app_namespace_index_from_id (ns_id);
+      if (appns_index == APP_NAMESPACE_INVALID_INDEX)
+	{
+	  clib_warning ("app ns lookup failed");
+	  rv = VNET_API_ERROR_UNSPECIFIED;
+	}
+    }
+  vec_free (ns_id);
+  vec_free (netns);
+
+done:
+  REPLY_MACRO2 (VL_API_APP_NAMESPACE_ADD_DEL_V2_REPLY, ({
+		  if (!rv)
+		    rmp->appns_index = clib_host_to_net_u32 (appns_index);
+		}));
+}
+
+static void
 vl_api_session_rule_add_del_t_handler (vl_api_session_rule_add_del_t * mp)
 {
   vl_api_session_rule_add_del_reply_t *rmp;
@@ -1604,7 +1653,11 @@ appns_sapi_add_ns_socket (app_namespace_t * app_ns)
       goto error;
     }
 
-  app_ns->sock_name = format (0, "%v%v%c", dir, app_ns->ns_id, 0);
+  /* Use abstract sockets if a netns was provided */
+  if (app_ns->netns)
+    app_ns->sock_name = format (0, "@vpp/session/%v%c", app_ns->ns_id, 0);
+  else
+    app_ns->sock_name = format (0, "%v%v%c", dir, app_ns->ns_id, 0);
 
   /*
    * Create and initialize socket to listen on
@@ -1615,14 +1668,14 @@ appns_sapi_add_ns_socket (app_namespace_t * app_ns)
     CLIB_SOCKET_F_ALLOW_GROUP_WRITE |
     CLIB_SOCKET_F_SEQPACKET | CLIB_SOCKET_F_PASSCRED;
 
-  if ((err = clib_socket_init (cs)))
+  if ((err = clib_socket_init_netns (cs, app_ns->netns)))
     {
       clib_error_report (err);
       rv = -1;
       goto error;
     }
 
-  if (stat ((char *) app_ns->sock_name, &file_stat) == -1)
+  if (!app_ns->netns && stat ((char *) app_ns->sock_name, &file_stat) == -1)
     {
       rv = -1;
       goto error;
