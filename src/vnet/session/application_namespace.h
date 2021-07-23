@@ -51,6 +51,11 @@ typedef struct _app_namespace
   u8 *ns_id;
 
   /**
+   * Linux netns if one was provided
+   */
+  u8 *netns;
+
+  /**
    * Name of socket applications can use to attach to session layer
    */
   u8 *sock_name;
@@ -64,6 +69,7 @@ typedef struct _app_namespace
 typedef struct _vnet_app_namespace_add_del_args
 {
   u8 *ns_id;
+  u8 *netns;
   u64 secret;
   u32 sw_if_index;
   u32 ip4_fib_id;
