@@ -765,14 +765,15 @@ reply:
   vl_sock_api_send_fd_msg (cf->file_descriptor, &memfd->fd, 1);
 }
 
-#define foreach_vlib_api_msg                    	\
-  _(SOCKCLNT_CREATE, sockclnt_create, 1)             	\
-  _(SOCKCLNT_DELETE, sockclnt_delete, 1)		\
-  _(SOCK_INIT_SHM, sock_init_shm, 1)
+#define foreach_vlib_api_msg                                                  \
+  _ (SOCKCLNT_CREATE, sockclnt_create, 0)                                     \
+  _ (SOCKCLNT_DELETE, sockclnt_delete, 0)                                     \
+  _ (SOCK_INIT_SHM, sock_init_shm, 0)
 
 clib_error_t *
 vl_sock_api_init (vlib_main_t * vm)
 {
+  api_main_t *am = vlibapi_get_main ();
   clib_file_main_t *fm = &file_main;
   clib_file_t template = { 0 };
   vl_api_registration_t *rp;
@@ -784,13 +785,13 @@ vl_sock_api_init (vlib_main_t * vm)
   if (sm->socket_name == 0)
     return 0;
 
-#define _(N,n,t)						\
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), t);
+#define _(N, n, t)                                                            \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   vl_noop_handler, vl_api_##n##_t_endian,            \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), t,  \
+			   vl_api_##n##_t_print_json, vl_api_##n##_t_tojson,  \
+			   vl_api_##n##_t_fromjson);                          \
+  am->api_trace_cfg[VL_API_##N].replay_enable = 0;
   foreach_vlib_api_msg;
 #undef _
 

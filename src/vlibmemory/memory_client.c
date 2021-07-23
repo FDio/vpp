@@ -362,14 +362,14 @@ _(MEMCLNT_KEEPALIVE, memclnt_keepalive)
 void
 vl_client_install_client_message_handlers (void)
 {
-
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                            vl_api_##n##_t_handler,             \
-                            noop_handler,                       \
-                            vl_api_##n##_t_endian,              \
-                            vl_api_##n##_t_print,               \
-                            sizeof(vl_api_##n##_t), 1);
+  api_main_t *am = vlibapi_get_main ();
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   noop_handler, vl_api_##n##_t_endian,               \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 0,  \
+			   vl_api_##n##_t_print_json, vl_api_##n##_t_tojson,  \
+			   vl_api_##n##_t_fromjson);                          \
+  am->api_trace_cfg[VL_API_##N].replay_enable = 0;
   foreach_api_msg;
 #undef _
 }
