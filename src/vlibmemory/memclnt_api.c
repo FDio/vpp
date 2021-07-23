@@ -52,16 +52,6 @@
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_printfun
 
-static inline void *
-vl_api_trace_plugin_msg_ids_t_print (vl_api_trace_plugin_msg_ids_t *a,
-				     void *handle)
-{
-  vl_print (handle, "vl_api_trace_plugin_msg_ids: %s first %u last %u\n",
-	    a->plugin_name, clib_host_to_net_u16 (a->first_msg_id),
-	    clib_host_to_net_u16 (a->last_msg_id));
-  return handle;
-}
-
 /* instantiate all the endian swap functions we know about */
 #define vl_endianfun
 #include <vlibmemory/vl_memory_api_h.h>
@@ -153,6 +143,12 @@ vlib_api_init (void)
 {
   vl_msg_api_msg_config_t cfg;
   vl_msg_api_msg_config_t *c = &cfg;
+
+  cJSON_Hooks cjson_hooks = {
+    .malloc_fn = clib_mem_alloc,
+    .free_fn = clib_mem_free,
+  };
+  cJSON_InitHooks (&cjson_hooks);
 
   clib_memset (c, 0, sizeof (*c));
 
@@ -689,18 +685,24 @@ rpc_api_hookup (vlib_main_t *vm)
 {
   api_main_t *am = vlibapi_get_main ();
 #define _(N, n)                                                               \
-  vl_msg_api_set_handlers (                                                   \
-    VL_API_##N, #n, vl_api_##n##_t_handler, vl_noop_handler, vl_noop_handler, \
-    vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 0 /* do not trace */);
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   vl_noop_handler, vl_noop_handler,                  \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t),     \
+			   0 /* do not trace */, vl_api_##n##_t_print_json,   \
+			   vl_api_##n##_t_tojson, vl_api_##n##_t_fromjson);
   foreach_rpc_api_msg;
 #undef _
 
 #define _(N, n)                                                               \
-  vl_msg_api_set_handlers (                                                   \
-    VL_API_##N, #n, vl_api_##n##_t_handler, vl_noop_handler, vl_noop_handler, \
-    vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1 /* do trace */);
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   vl_noop_handler, vl_noop_handler,                  \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t),     \
+			   1 /* do trace */, vl_api_##n##_t_print_json,       \
+			   vl_api_##n##_t_tojson, vl_api_##n##_t_fromjson);
   foreach_plugin_trace_msg;
 #undef _
+
+  am->api_trace_cfg[VL_API_TRACE_PLUGIN_MSG_IDS].replay_enable = 0;
 
   /* No reason to halt the parade to create a trace record... */
   am->is_mp_safe[VL_API_TRACE_PLUGIN_MSG_IDS] = 1;

@@ -157,7 +157,7 @@ typedef struct internal_hooks
 {
     void *(CJSON_CDECL *allocate)(size_t size);
     void (CJSON_CDECL *deallocate)(void *pointer);
-    void *(CJSON_CDECL *reallocate)(void *pointer, size_t size);
+    void *(CJSON_CDECL *reallocate)(void *pointer, size_t new_size, size_t old_size);
 } internal_hooks;
 
 #if defined(_MSC_VER)
@@ -170,15 +170,19 @@ static void CJSON_CDECL internal_free(void *pointer)
 {
     free(pointer);
 }
-static void * CJSON_CDECL internal_realloc(void *pointer, size_t size)
-{
-    return realloc(pointer, size);
-}
 #else
 #define internal_malloc malloc
 #define internal_free free
-#define internal_realloc realloc
 #endif
+
+static void * CJSON_CDECL internal_realloc(void *pointer, size_t new_size,
+    size_t old_size)
+{
+    return realloc(pointer, new_size);
+}
+
+static void *
+cjson_realloc_internal (void *ptr, size_t new_size, size_t old_size);
 
 /* strlen of character literals resolved at compile time */
 #define static_strlen(string_literal) (sizeof(string_literal) - sizeof(""))
@@ -213,7 +217,7 @@ CJSON_PUBLIC(void) cJSON_InitHooks(cJSON_Hooks* hooks)
         /* Reset hooks */
         global_hooks.allocate = malloc;
         global_hooks.deallocate = free;
-        global_hooks.reallocate = realloc;
+        global_hooks.reallocate = internal_realloc;
         return;
     }
 
@@ -233,7 +237,11 @@ CJSON_PUBLIC(void) cJSON_InitHooks(cJSON_Hooks* hooks)
     global_hooks.reallocate = NULL;
     if ((global_hooks.allocate == malloc) && (global_hooks.deallocate == free))
     {
-        global_hooks.reallocate = realloc;
+        global_hooks.reallocate = internal_realloc;
+    }
+    else
+    {
+        global_hooks.reallocate = cjson_realloc_internal;
     }
 }
 
@@ -435,6 +443,27 @@ typedef struct
     internal_hooks hooks;
 } printbuffer;
 
+static void *
+cjson_realloc_internal (void *ptr, size_t new_size, size_t old_size)
+{
+    size_t copy_size;
+    if (old_size < new_size)
+      copy_size = old_size;
+    else
+      copy_size = new_size;
+
+    unsigned char *newbuffer = global_hooks.allocate(new_size);
+    if (!newbuffer)
+    {
+        global_hooks.deallocate(ptr);
+        return NULL;
+    }
+
+    memcpy (newbuffer, ptr, copy_size);
+    global_hooks.deallocate (ptr);
+    return newbuffer;
+}
+
 /* realloc printbuffer if necessary to have at least "needed" bytes more */
 static unsigned char* ensure(printbuffer * const p, size_t needed)
 {
@@ -486,34 +515,13 @@ static unsigned char* ensure(printbuffer * const p, size_t needed)
         newsize = needed * 2;
     }
 
-    if (p->hooks.reallocate != NULL)
+    newbuffer = p->hooks.reallocate (p->buffer, newsize, p->length);
+    if (newbuffer == NULL)
     {
-        /* reallocate with realloc if available */
-        newbuffer = (unsigned char*)p->hooks.reallocate(p->buffer, newsize);
-        if (newbuffer == NULL)
-        {
-            p->hooks.deallocate(p->buffer);
-            p->length = 0;
-            p->buffer = NULL;
-
-            return NULL;
-        }
-    }
-    else
-    {
-        /* otherwise reallocate manually */
-        newbuffer = (unsigned char*)p->hooks.allocate(newsize);
-        if (!newbuffer)
-        {
-            p->hooks.deallocate(p->buffer);
-            p->length = 0;
-            p->buffer = NULL;
-
-            return NULL;
-        }
-
-	memcpy (newbuffer, p->buffer, p->offset + 1);
-	p->hooks.deallocate (p->buffer);
+        p->hooks.deallocate(p->buffer);
+        p->length = 0;
+        p->buffer = NULL;
+        return NULL;
     }
     p->length = newsize;
     p->buffer = newbuffer;
@@ -1208,7 +1216,7 @@ static unsigned char *print(const cJSON * const item, cJSON_bool format, const i
     /* check if reallocate is available */
     if (hooks->reallocate != NULL)
     {
-        printed = (unsigned char*) hooks->reallocate(buffer->buffer, buffer->offset + 1);
+        printed = (unsigned char*) hooks->reallocate(buffer->buffer, buffer->offset + 1, default_buffer_size);
         if (printed == NULL) {
             goto fail;
         }
@@ -3111,4 +3119,9 @@ CJSON_PUBLIC(void *) cJSON_malloc(size_t size)
 CJSON_PUBLIC(void) cJSON_free(void *object)
 {
     global_hooks.deallocate(object);
+}
+
+CJSON_PUBLIC(void *) cJSON_realloc(void *object, size_t new_size, size_t old_size)
+{
+    return global_hooks.reallocate(object, new_size, old_size);
 }
