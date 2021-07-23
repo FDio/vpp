@@ -87,6 +87,43 @@ vat2_register_function(char *name, cJSON (*f)(cJSON *))
   hash_set_mem(function_by_name, name, f);
 }
 
+void
+vat2_exec_command (cJSON *o)
+{
+  uword *p;
+  cJSON *msg_id_obj = cJSON_GetObjectItem (o, "_msgname");
+  if (!msg_id_obj)
+    {
+      fprintf (stderr, "missing '_msgname' element!\n");
+      exit (-1);
+    }
+  p = hash_get_mem (function_by_name, cJSON_GetStringValue (msg_id_obj));
+
+  if (!p)
+    {
+      fprintf (stderr, "No such command %s\n",
+	       cJSON_GetStringValue (msg_id_obj));
+      return;
+    }
+
+  cJSON *(*fp) (cJSON *);
+  fp = (void *) p[0];
+  cJSON *r = (*fp) (o);
+
+  if (r)
+    {
+      char *output = cJSON_Print (r);
+      cJSON_Delete (r);
+      printf ("%s\n", output);
+      free (output);
+    }
+  else
+    {
+      fprintf (stderr, "Call failed\n");
+      exit (-1);
+    }
+}
+
 int main (int argc, char **argv)
 {
   /* Create a heap of 64MB */
@@ -165,7 +202,7 @@ int main (int argc, char **argv)
     }
 
     FILE *f = fopen(filename, "r");
-    size_t bufsize = 1024;
+    size_t chunksize, bufsize;
     size_t n_read = 0;
     size_t n;
 
@@ -173,12 +210,18 @@ int main (int argc, char **argv)
       fprintf(stderr, "%s: can't open file: %s\n", argv[0], filename);
       exit(-1);
     }
+
+    chunksize = bufsize = 1024;
     char *buf = malloc(bufsize);
-    while ((n = fread(buf, 1, bufsize, f))) {
-      n_read += n;
-      if (n == bufsize)
-        buf = realloc(buf, bufsize);
-    }
+    while ((n = fread (buf + n_read, 1, chunksize, f)))
+      {
+	n_read += n;
+	if (n == chunksize)
+	  {
+	    bufsize += chunksize;
+	    buf = realloc (buf, bufsize);
+	  }
+      }
     fclose(f);
     if (n_read) {
       o = cJSON_Parse(buf);
@@ -199,27 +242,25 @@ int main (int argc, char **argv)
     fprintf(stderr, "Failed connecting to VPP\n");
     exit(-1);
   }
-  if (!p) {
-    fprintf(stderr, "No such command\n");
-    exit(-1);
-  }
 
-  cJSON * (*fp) (cJSON *);
-  fp = (void *) p[0];
-  cJSON *r = (*fp) (o);
+  if (!p) {
+      if (cJSON_IsArray (o))
+	{
+	  int size = cJSON_GetArraySize (o);
+	  for (int i = 0; i < size; i++)
+	    {
+	      cJSON *item = cJSON_GetArrayItem (o, i);
+	      vat2_exec_command (item);
+	    }
+	}
+      else
+	{
+	  vat2_exec_command (o);
+	}
+  }
 
   if (o)
     cJSON_Delete(o);
-
-  if (r) {
-    char *output = cJSON_Print(r);
-    cJSON_Delete(r);
-    printf("%s\n", output);
-    free(output);
-  } else {
-    fprintf(stderr, "Call failed\n");
-    exit(-1);
-  }
 
   vac_disconnect();
   exit (0);
