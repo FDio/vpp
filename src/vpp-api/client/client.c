@@ -108,14 +108,6 @@ cleanup (void)
   clib_memset(pm, 0, sizeof(*pm));
 }
 
-/*
- * Satisfy external references when -lvlib is not available.
- */
-void vlib_cli_output (struct vlib_main_t * vm, char * fmt, ...)
-{
-  clib_warning ("vlib_cli_output called...");
-}
-
 void
 vac_free (void * msg)
 {
