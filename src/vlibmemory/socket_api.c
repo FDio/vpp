@@ -784,13 +784,12 @@ vl_sock_api_init (vlib_main_t * vm)
   if (sm->socket_name == 0)
     return 0;
 
-#define _(N,n,t)						\
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), t);
+#define _(N, n, t)                                                            \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   vl_noop_handler, vl_api_##n##_t_endian,            \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), t,  \
+			   vl_api_##n##_t_print_json, vl_api_##n##_t_tojson,  \
+			   vl_api_##n##_t_fromjson);
   foreach_vlib_api_msg;
 #undef _
 
