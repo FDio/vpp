@@ -31,8 +31,8 @@
 #include <vlibapi/api_common.h>
 #include <vlibmemory/memory_client.h>
 
-#include <vapi/vlib.api.vapi.h>
 #include <vapi/memclnt.api.vapi.h>
+#include <vapi/vlib.api.vapi.h>
 
 /* we need to use control pings for some stuff and because we're forced to put
  * the code in headers, we need a way to be able to grab the ids of these

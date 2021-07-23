@@ -21,6 +21,7 @@
 #include <assert.h>
 #include <setjmp.h>
 #include <check.h>
+#include <vapi/memclnt.api.vapi.h>
 #include <vapi/vapi.hpp>
 #include <vapi/vpe.api.vapi.hpp>
 #include <vapi/interface.api.vapi.hpp>

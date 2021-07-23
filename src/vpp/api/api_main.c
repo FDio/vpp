@@ -1,4 +1,6 @@
 #include "vat.h"
+#include <dlfcn.h>
+#include <vat/plugin.h>
 
 vat_main_t vat_main;
 
@@ -94,6 +96,30 @@ vat_plugin_hash_create (void)
 }
 
 static void
+vat_register_interface_dump (vat_main_t *vam)
+{
+  void *handle;
+  plugin_info_t *pi;
+
+  vec_foreach (pi, vat_plugin_main.plugin_info)
+    {
+      handle = dlsym (pi->handle, "api_sw_interface_dump");
+      if (handle)
+	{
+	  vam->api_sw_interface_dump = handle;
+	  break;
+	}
+    }
+
+  if (!vam->api_sw_interface_dump)
+    {
+      fformat (stderr,
+	       "sw_interface_dump not found in interface_test plugin!\n");
+      exit (1);
+    }
+}
+
+static void
 maybe_register_api_client (vat_main_t * vam)
 {
   vl_api_registration_t **regpp;
@@ -130,7 +156,8 @@ maybe_register_api_client (vat_main_t * vam)
      am->shmem_hdr->application_restarts);
 
   vam->vl_input_queue = am->shmem_hdr->vl_input_queue;
-  api_sw_interface_dump (vam);
+  vat_register_interface_dump (vam);
+  vam->api_sw_interface_dump (vam);
 }
 
 static clib_error_t *
@@ -234,7 +261,7 @@ api_command_fn (vlib_main_t * vm,
   if (vam->regenerate_interface_table)
     {
       vam->regenerate_interface_table = 0;
-      api_sw_interface_dump (vam);
+      vam->api_sw_interface_dump (vam);
     }
   unformat_free (vam->input);
   return 0;

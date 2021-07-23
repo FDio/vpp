@@ -20,7 +20,7 @@
 
 /* For control ping */
 #define vl_endianfun
-#include <vlibmemory/vlib.api.h>
+#include <vlibmemory/memclnt.api.h>
 #undef vl_endianfun
 
 static inline void

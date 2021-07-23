@@ -705,7 +705,7 @@ def gen_json_unified_header(parser, logger, j, io, name):
     print("#ifdef __cplusplus")
     print("extern \"C\" {")
     print("#endif")
-    if name == "vlib.api.vapi.h":
+    if name == "memclnt.api.vapi.h":
         print("")
         print("static inline vapi_error_e vapi_send_with_control_ping "
               "(vapi_ctx_t ctx, void * msg, u32 context);")
