@@ -57,3 +57,9 @@ add_dependencies(vlibmemoryclient vlibmemory_api_headers)
 add_vat_test_library(vlib
   vlibapi_test.c
 )
+##############################################################################
+# VAT2 plugins
+##############################################################################
+add_vpp_test_library(vlibmemoryclient
+  memclnt.api
+)

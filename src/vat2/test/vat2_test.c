@@ -196,6 +196,7 @@ struct tests tests[] = {
 	 "[\"2001:db8::23\", \"2001:db8::23\"] }" },
   { .s = "{\"_msgname\": \"test_empty\"}" },
   { .s = "{\"_msgname\": \"test_interface\", \"sw_if_index\": 100 }" },
+  { .s = "{\"_msgname\": \"test_interface\", \"sw_if_index\": 4294967295 }" },
 };
 
 int main (int argc, char **argv)
