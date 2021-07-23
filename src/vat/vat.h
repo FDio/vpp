@@ -232,6 +232,8 @@ typedef struct
 
   struct vat_registered_features_t *feature_function_registrations;
 
+  int (*api_sw_interface_dump) ();
+
   /* Convenience */
   vlib_main_t *vlib_main;
 } vat_main_t;
@@ -295,6 +297,25 @@ static void __vlib_add_config_function_##x (void)                      \
     .function = x,						       \
    }
 
+#if VPP_API_TEST_BUILTIN == 0
+static_always_inline uword
+api_unformat_sw_if_index (unformat_input_t *input, va_list *args)
+{
+  vat_main_t *vam = va_arg (*args, vat_main_t *);
+  u32 *result = va_arg (*args, u32 *);
+  u8 *if_name;
+  uword *p;
+
+  if (!unformat (input, "%s", &if_name))
+    return 0;
+
+  p = hash_get_mem (vam->sw_if_index_by_interface_name, if_name);
+  if (p == 0)
+    return 0;
+  *result = p[0];
+  return 1;
+}
+#endif /* VPP_API_TEST_BUILTIN */
 
 #endif /* __included_vat_h__ */
 

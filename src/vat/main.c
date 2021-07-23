@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include "vat.h"
+#include <dlfcn.h>
 #include "plugin.h"
 #include <signal.h>
 #include <limits.h>
@@ -181,7 +182,7 @@ do_one_file (vat_main_t * vam)
       if (vam->regenerate_interface_table)
 	{
 	  vam->regenerate_interface_table = 0;
-	  api_sw_interface_dump (vam);
+	  vam->api_sw_interface_dump (vam);
 	}
 
       /* Hack to pick up new client index after memfd_segment_create pivot */
@@ -381,6 +382,31 @@ vlib_call_init_exit_functions (vlib_main_t *vm,
 					    1 /* do_sort */, is_global);
 }
 
+static void
+vat_register_interface_dump (vat_main_t *vam)
+{
+  void *handle;
+  plugin_info_t *pi;
+
+  vec_foreach (pi, vat_plugin_main.plugin_info)
+    {
+      fformat (stderr, "iter: %p, %s\n", pi->handle, pi->name);
+      handle = dlsym (pi->handle, "api_sw_interface_dump");
+      if (handle)
+	{
+	  vam->api_sw_interface_dump = handle;
+	  break;
+	}
+    }
+
+  if (!vam->api_sw_interface_dump)
+    {
+      fformat (stderr,
+	       "sw_interface_dump not found in interface_test plugin!\n");
+      exit (1);
+    }
+}
+
 int
 main (int argc, char **argv)
 {
@@ -485,15 +511,17 @@ main (int argc, char **argv)
 
   vam->json_output = json_output;
 
-  if (!json_output)
-    api_sw_interface_dump (vam);
-
   vec_validate (vam->inbuf, 4096);
 
   load_features ();
 
   vam->current_file = (u8 *) "plugin-init";
   vat_plugin_init (vam);
+
+  vat_register_interface_dump (vam);
+
+  if (!json_output)
+    vam->api_sw_interface_dump (vam);
 
   /* Set up the init function hash table */
   vgm->init_functions_called = hash_create (0, 0);

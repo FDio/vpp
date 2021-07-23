@@ -170,23 +170,6 @@ errmsg (char *fmt, ...)
 }
 
 #if VPP_API_TEST_BUILTIN == 0
-static uword
-api_unformat_sw_if_index (unformat_input_t * input, va_list * args)
-{
-  vat_main_t *vam = va_arg (*args, vat_main_t *);
-  u32 *result = va_arg (*args, u32 *);
-  u8 *if_name;
-  uword *p;
-
-  if (!unformat (input, "%s", &if_name))
-    return 0;
-
-  p = hash_get_mem (vam->sw_if_index_by_interface_name, if_name);
-  if (p == 0)
-    return 0;
-  *result = p[0];
-  return 1;
-}
 
 /* Parse an IP4 address %d.%d.%d.%d. */
 uword
@@ -706,10 +689,23 @@ typedef struct
     case L2_VTR_ ## op:         \
         return "" # op;
 
-int
-api_sw_interface_dump (vat_main_t *vam)
+static const char *
+str_vtr_op (u32 vtr_op)
 {
-  return 0;
+  switch (vtr_op)
+    {
+      STR_VTR_OP_CASE (DISABLED);
+      STR_VTR_OP_CASE (PUSH_1);
+      STR_VTR_OP_CASE (PUSH_2);
+      STR_VTR_OP_CASE (POP_1);
+      STR_VTR_OP_CASE (POP_2);
+      STR_VTR_OP_CASE (TRANSLATE_1_1);
+      STR_VTR_OP_CASE (TRANSLATE_1_2);
+      STR_VTR_OP_CASE (TRANSLATE_2_1);
+      STR_VTR_OP_CASE (TRANSLATE_2_2);
+    }
+
+  return "UNKNOWN";
 }
 
 uword
@@ -2299,12 +2295,10 @@ help (vat_main_t * vam)
 
   print (vam->ofp, "Help is available for the following:");
 
-    /* *INDENT-OFF* */
     hash_foreach_pair (p, vam->function_by_name,
     ({
       vec_add1 (cmds, (u8 *)(p->key));
     }));
-    /* *INDENT-ON* */
 
   vec_sort_with_function (cmds, cmd_cmp);
 
@@ -2377,14 +2371,11 @@ dump_macro_table (vat_main_t * vam)
   int i;
   hash_pair_t *p;
 
-    /* *INDENT-OFF* */
-    hash_foreach_pair (p, vam->macro_main.the_value_table_hash,
-    ({
-      vec_add2 (sort_me, sm, 1);
-      sm->name = (u8 *)(p->key);
-      sm->value = (u8 *) (p->value[0]);
-    }));
-    /* *INDENT-ON* */
+  hash_foreach_pair (p, vam->macro_main.the_value_table_hash, ({
+		       vec_add2 (sort_me, sm, 1);
+		       sm->name = (u8 *) (p->key);
+		       sm->value = (u8 *) (p->value[0]);
+		     }));
 
   vec_sort_with_function (sort_me, macro_sort_cmp);
 
@@ -2420,14 +2411,12 @@ dump_msg_api_table (vat_main_t * vam)
   hash_pair_t *hp;
   int i;
 
-  /* *INDENT-OFF* */
   hash_foreach_pair (hp, am->msg_index_by_name_and_crc,
   ({
     vec_add2 (nses, ns, 1);
     ns->name = (u8 *)(hp->key);
     ns->value = (u32) hp->value[0];
   }));
-  /* *INDENT-ON* */
 
   vec_sort_with_function (nses, value_sort_cmp);
 
@@ -2580,29 +2569,107 @@ exec (vat_main_t *vam)
   return -1;
 }
 
+static int
+name_sort_cmp (void *a1, void *a2)
+{
+  name_sort_t *n1 = a1;
+  name_sort_t *n2 = a2;
+
+  return strcmp ((char *) n1->name, (char *) n2->name);
+}
+
+static int
+dump_interface_table (vat_main_t *vam)
+{
+  hash_pair_t *p;
+  name_sort_t *nses = 0, *ns;
+
+  if (vam->json_output)
+    {
+      clib_warning (
+	"JSON output supported only for VPE API calls and dump_stats_table");
+      return -99;
+    }
+
+  hash_foreach_pair (p, vam->sw_if_index_by_interface_name, ({
+		       vec_add2 (nses, ns, 1);
+		       ns->name = (u8 *) (p->key);
+		       ns->value = (u32) p->value[0];
+		     }));
+
+  vec_sort_with_function (nses, name_sort_cmp);
+
+  print (vam->ofp, "%-25s%-15s", "Interface", "sw_if_index");
+  vec_foreach (ns, nses)
+    {
+      print (vam->ofp, "%-25s%-15d", ns->name, ns->value);
+    }
+  vec_free (nses);
+  return 0;
+}
+
+static int
+dump_sub_interface_table (vat_main_t *vam)
+{
+  const sw_interface_subif_t *sub = NULL;
+
+  if (vam->json_output)
+    {
+      clib_warning (
+	"JSON output supported only for VPE API calls and dump_stats_table");
+      return -99;
+    }
+
+  print (vam->ofp, "%-30s%-12s%-11s%-7s%-5s%-9s%-9s%-6s%-8s%-10s%-10s",
+	 "Interface", "sw_if_index", "sub id", "dot1ad", "tags", "outer id",
+	 "inner id", "exact", "default", "outer any", "inner any");
+
+  vec_foreach (sub, vam->sw_if_subif_table)
+    {
+      print (vam->ofp, "%-30s%-12d%-11d%-7s%-5d%-9d%-9d%-6d%-8d%-10d%-10d",
+	     sub->interface_name, sub->sw_if_index, sub->sub_id,
+	     sub->sub_dot1ad ? "dot1ad" : "dot1q", sub->sub_number_of_tags,
+	     sub->sub_outer_vlan_id, sub->sub_inner_vlan_id,
+	     sub->sub_exact_match, sub->sub_default,
+	     sub->sub_outer_vlan_id_any, sub->sub_inner_vlan_id_any);
+      if (sub->vtr_op != L2_VTR_DISABLED)
+	{
+	  print (vam->ofp,
+		 "  vlan-tag-rewrite - op: %-14s [ dot1q: %d "
+		 "tag1: %d tag2: %d ]",
+		 str_vtr_op (sub->vtr_op), sub->vtr_push_dot1q, sub->vtr_tag1,
+		 sub->vtr_tag2);
+	}
+    }
+
+  return 0;
+}
+
 /* List of API message constructors, CLI names map to api_xxx */
 #define foreach_vpe_api_msg                                             \
 _(get_first_msg_id, "client <name>")					\
 _(sock_init_shm, "size <nnn>")						\
 /* List of command functions, CLI names map directly to functions */
-#define foreach_cli_function                                    \
-_(comment, "usage: comment <ignore-rest-of-line>")		\
-_(dump_macro_table, "usage: dump_macro_table ")                 \
-_(dump_msg_api_table, "usage: dump_msg_api_table")		\
-_(elog_setup, "usage: elog_setup [nevents, default 128K]")      \
-_(elog_disable, "usage: elog_disable")                          \
-_(elog_enable, "usage: elog_enable")                            \
-_(elog_save, "usage: elog_save <filename>")                     \
-_(get_msg_id, "usage: get_msg_id name_and_crc")			\
-_(echo, "usage: echo <message>")				\
-_(help, "usage: help")                                          \
-_(q, "usage: quit")                                             \
-_(quit, "usage: quit")                                          \
-_(search_node_table, "usage: search_node_table <name>...")	\
-_(set, "usage: set <variable-name> <value>")                    \
-_(script, "usage: script <file-name>")                          \
-_(statseg, "usage: statseg")                                    \
-_(unset, "usage: unset <variable-name>")
+#define foreach_cli_function                                                  \
+  _ (comment, "usage: comment <ignore-rest-of-line>")                         \
+  _ (dump_interface_table, "usage: dump_interface_table")                     \
+  _ (dump_sub_interface_table, "usage: dump_sub_interface_table")             \
+  _ (dump_macro_table, "usage: dump_macro_table ")                            \
+  _ (dump_msg_api_table, "usage: dump_msg_api_table")                         \
+  _ (elog_setup, "usage: elog_setup [nevents, default 128K]")                 \
+  _ (elog_disable, "usage: elog_disable")                                     \
+  _ (elog_enable, "usage: elog_enable")                                       \
+  _ (elog_save, "usage: elog_save <filename>")                                \
+  _ (get_msg_id, "usage: get_msg_id name_and_crc")                            \
+  _ (echo, "usage: echo <message>")                                           \
+  _ (help, "usage: help")                                                     \
+  _ (q, "usage: quit")                                                        \
+  _ (quit, "usage: quit")                                                     \
+  _ (search_node_table, "usage: search_node_table <name>...")                 \
+  _ (set, "usage: set <variable-name> <value>")                               \
+  _ (script, "usage: script <file-name>")                                     \
+  _ (statseg, "usage: statseg")                                               \
+  _ (unset, "usage: unset <variable-name>")
 
 #define _(N,n)                                  \
     static void vl_api_##n##_t_handler_uni      \
