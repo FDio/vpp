@@ -93,6 +93,12 @@ mq_try_lock_and_alloc_msg (svm_msg_q_t * app_mq, svm_msg_q_msg_t * msg)
 						SVM_Q_NOWAIT, msg);
       if (!rv)
 	return 0;
+      /*
+       * Break the loop if mq is full, usually this is because the
+       * app has crashed or is hanging on somewhere.
+       */
+      if (rv != -1)
+	break;
       try++;
       usleep (1);
     }
