@@ -848,7 +848,7 @@ vlib_process_signal_event_helper (vlib_node_main_t * nm,
     if (!data_vec && vec_len (nm->recycled_event_data_vectors))
       {
 	data_vec = vec_pop (nm->recycled_event_data_vectors);
-	_vec_len (data_vec) = 0;
+	vec_reset_length (data_vec);
       }
 
     l = vec_len (data_vec);
