@@ -1362,7 +1362,7 @@ vls_shutdown (vls_handle_t vlsh, int how)
     return VPPCOM_EBADFD;
 
   vls_mt_guard (vls, VLS_MT_OP_SPOOL);
-  rv = vppcom_session_shutdown (vls_to_sh (vls), how);
+  rv = vppcom_session_shutdown (vls_to_sh_tu (vls), how);
   vls_mt_unguard ();
   vls_get_and_unlock (vlsh);
 
