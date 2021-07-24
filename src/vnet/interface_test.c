@@ -26,6 +26,9 @@
 #define __plugin_msg_base interface_test_main.msg_id_base
 #include <vlibapi/vat_helper_macros.h>
 
+#include <vlibmemory/vlib.api_enum.h>
+#include <vlibmemory/vlib.api_types.h>
+
 /* Declare message IDs */
 #include <vnet/format_fns.h>
 #include <vnet/interface.api_enum.h>
@@ -1092,9 +1095,13 @@ api_want_interface_events (vat_main_t *vam)
   return ret;
 }
 
-#include <vnet/interface.api_test.c>
+static int
+api_sw_interface_set_interface_name (vat_main_t *vam)
+{
+  return -1;
+}
 
-VAT_REGISTER_FEATURE_FUNCTION (vat_interface_plugin_register);
+#include <vnet/interface.api_test.c>
 
 /*
  * fd.io coding-style-patch-verification: ON
