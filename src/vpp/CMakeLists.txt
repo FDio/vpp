@@ -78,6 +78,7 @@ if(VPP_API_TEST_BUILTIN)
     ../vnet/interface_test.c
     ../vnet/session/session_test.c
     ../vnet/l2/l2_test.c
+    ../vnet/ipsec/ipsec_test.c
   )
   add_definitions(-DVPP_API_TEST_BUILTIN=1)
 endif()
