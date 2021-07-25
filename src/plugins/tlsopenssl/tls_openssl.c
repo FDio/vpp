@@ -749,6 +749,14 @@ openssl_start_listen (tls_ctx_t * lctx)
       return -1;
     }
 
+  /* use the default OpenSSL built-in DH parameters */
+  rv = SSL_CTX_set_dh_auto (ssl_ctx, 1);
+  if (rv != 1)
+    {
+      TLS_DBG (1, "Couldn't set temp DH parameters");
+      return -1;
+    }
+
   /*
    * Set the key and cert
    */
