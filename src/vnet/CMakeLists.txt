@@ -1529,6 +1529,7 @@ add_vat_test_library(vnet
   srmpls/sr_mpls_test.c
   session/session_test.c
   l2/l2_test.c
+  ipsec/ipsec_test.c
 )
 
 ##############################################################################
