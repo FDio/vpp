@@ -324,6 +324,11 @@ snat_add_address (snat_main_t * sm, ip4_address_t * addr, u32 vrf_id,
   snat_interface_t *i;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
 
+  if (!sm->enabled)
+    {
+      return VNET_API_ERROR_UNSUPPORTED;
+    }
+
   /* Check if address already exists */
   vec_foreach (ap, twice_nat ? sm->twice_nat_addresses : sm->addresses)
     {
@@ -651,6 +656,11 @@ nat44_ed_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
   u32 fib_index = ~0;
   int rv;
 
+  if (!sm->enabled)
+    {
+      return VNET_API_ERROR_UNSUPPORTED;
+    }
+
   rv = nat44_ed_validate_sm_input (flags);
   if (rv != 0)
     {
@@ -863,6 +873,11 @@ nat44_ed_del_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
   u32 fib_index = ~0;
   int rv;
 
+  if (!sm->enabled)
+    {
+      return VNET_API_ERROR_UNSUPPORTED;
+    }
+
   rv = nat44_ed_validate_sm_input (flags);
   if (rv != 0)
     {
@@ -1028,6 +1043,11 @@ nat44_ed_add_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
 
   int i;
 
+  if (!sm->enabled)
+    {
+      return VNET_API_ERROR_UNSUPPORTED;
+    }
+
   init_nat_k (&kv, e_addr, e_port, 0, proto);
   if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
     m = 0;
@@ -1154,6 +1174,11 @@ nat44_ed_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
   snat_session_t *s;
   int i;
 
+  if (!sm->enabled)
+    {
+      return VNET_API_ERROR_UNSUPPORTED;
+    }
+
   init_nat_k (&kv, e_addr, e_port, 0, proto);
   if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
     m = 0;
@@ -1271,6 +1296,11 @@ nat44_ed_add_del_lb_static_mapping_local (ip4_address_t e_addr, u16 e_port,
   u32 *locals = 0;
   uword *bitmap = 0;
   int i;
+
+  if (!sm->enabled)
+    {
+      return VNET_API_ERROR_UNSUPPORTED;
+    }
 
   init_nat_k (&kv, e_addr, e_port, 0, proto);
   if (!clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
@@ -1406,9 +1436,15 @@ snat_del_address (snat_main_t * sm, ip4_address_t addr, u8 delete_sm,
   snat_main_per_thread_data_t *tsm;
   snat_static_mapping_t *m;
   snat_interface_t *interface;
+  snat_address_t *addresses;
   int i;
-  snat_address_t *addresses =
-    twice_nat ? sm->twice_nat_addresses : sm->addresses;
+
+  if (!sm->enabled)
+    {
+      return VNET_API_ERROR_UNSUPPORTED;
+    }
+
+  addresses = twice_nat ? sm->twice_nat_addresses : sm->addresses;
 
   /* Find SNAT address */
   for (i = 0; i < vec_len (addresses); i++)
@@ -2556,8 +2592,10 @@ nat44_ed_forwarding_enable_disable (u8 is_enable)
 
   sm->forwarding_enabled = is_enable != 0;
 
-  if (is_enable)
-    return;
+  if (!sm->enabled || is_enable)
+    {
+      return;
+    }
 
   vec_foreach (tsm, sm->per_thread_data)
     {
@@ -2614,43 +2652,6 @@ snat_free_outside_address_and_port (snat_address_t *addresses,
 	default : nat_elog_info (sm, "unknown protocol");
       return;
     }
-}
-
-int
-nat_set_outside_address_and_port (snat_address_t *addresses, u32 thread_index,
-				  ip4_address_t addr, u16 port,
-				  nat_protocol_t protocol)
-{
-  snat_main_t *sm = &snat_main;
-  snat_address_t *a = 0;
-  u32 address_index;
-  u16 port_host_byte_order = clib_net_to_host_u16 (port);
-
-  for (address_index = 0; address_index < vec_len (addresses);
-       address_index++)
-    {
-      if (addresses[address_index].addr.as_u32 != addr.as_u32)
-	continue;
-
-      a = addresses + address_index;
-      switch (protocol)
-	{
-#define _(N, j, n, s) \
-        case NAT_PROTOCOL_##N: \
-          if (a->busy_##n##_port_refcounts[port_host_byte_order]) \
-            return VNET_API_ERROR_INSTANCE_IN_USE; \
-	  ++a->busy_##n##_port_refcounts[port_host_byte_order]; \
-          a->busy_##n##_ports_per_thread[thread_index]++; \
-          a->busy_##n##_ports++; \
-          return 0;
-	  foreach_nat_protocol
-#undef _
-	    default : nat_elog_info (sm, "unknown protocol");
-	  return 1;
-	}
-    }
-
-  return VNET_API_ERROR_NO_SUCH_ENTRY;
 }
 
 int
@@ -3403,12 +3404,17 @@ snat_add_interface_address (snat_main_t * sm, u32 sw_if_index, int is_del,
   snat_static_map_resolve_t *rp;
   u32 *indices_to_delete = 0;
   int i, j;
-  u32 *auto_add_sw_if_indices =
-    twice_nat ? sm->
-    auto_add_sw_if_indices_twice_nat : sm->auto_add_sw_if_indices;
+  u32 *auto_add_sw_if_indices;
 
-  first_int_addr = ip4_interface_first_address (ip4_main, sw_if_index, 0	/* just want the address */
-    );
+  if (!sm->enabled)
+    {
+      return VNET_API_ERROR_UNSUPPORTED;
+    }
+
+  auto_add_sw_if_indices = twice_nat ? sm->auto_add_sw_if_indices_twice_nat :
+				       sm->auto_add_sw_if_indices;
+
+  first_int_addr = ip4_interface_first_address (ip4_main, sw_if_index, 0);
 
   for (i = 0; i < vec_len (auto_add_sw_if_indices); i++)
     {
@@ -3463,16 +3469,22 @@ snat_add_interface_address (snat_main_t * sm, u32 sw_if_index, int is_del,
 }
 
 int
-nat44_del_ed_session (snat_main_t * sm, ip4_address_t * addr, u16 port,
-		      ip4_address_t * eh_addr, u16 eh_port, u8 proto,
+nat44_ed_del_session (snat_main_t *sm, ip4_address_t *addr, u16 port,
+		      ip4_address_t *eh_addr, u16 eh_port, u8 proto,
 		      u32 vrf_id, int is_in)
 {
   ip4_header_t ip;
   clib_bihash_kv_16_8_t kv, value;
-  u32 fib_index = fib_table_find (FIB_PROTOCOL_IP4, vrf_id);
+  u32 fib_index;
   snat_session_t *s;
   snat_main_per_thread_data_t *tsm;
 
+  if (!sm->enabled)
+    {
+      return VNET_API_ERROR_UNSUPPORTED;
+    }
+
+  fib_index = fib_table_find (FIB_PROTOCOL_IP4, vrf_id);
   ip.dst_address.as_u32 = ip.src_address.as_u32 = addr->as_u32;
   if (sm->num_workers > 1)
     tsm = vec_elt_at_index (

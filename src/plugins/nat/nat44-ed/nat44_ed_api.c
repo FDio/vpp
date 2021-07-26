@@ -1169,7 +1169,7 @@ vl_api_nat44_del_session_t_handler (vl_api_nat44_del_session_t *mp)
 
   is_in = mp->flags & NAT_API_IS_INSIDE;
 
-  rv = nat44_del_ed_session (sm, &addr, port, &eh_addr, eh_port, mp->protocol,
+  rv = nat44_ed_del_session (sm, &addr, port, &eh_addr, eh_port, mp->protocol,
 			     vrf_id, is_in);
 
   REPLY_MACRO (VL_API_NAT44_DEL_SESSION_REPLY);
