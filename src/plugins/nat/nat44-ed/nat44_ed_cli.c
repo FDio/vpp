@@ -1493,10 +1493,9 @@ nat44_del_session_command_fn (vlib_main_t * vm,
 	}
     }
 
-    rv =
-      nat44_del_ed_session (sm, &addr, clib_host_to_net_u16 (port), &eh_addr,
-			    clib_host_to_net_u16 (eh_port),
-			    nat_proto_to_ip_proto (proto), vrf_id, is_in);
+  rv = nat44_ed_del_session (sm, &addr, clib_host_to_net_u16 (port), &eh_addr,
+			     clib_host_to_net_u16 (eh_port),
+			     nat_proto_to_ip_proto (proto), vrf_id, is_in);
 
   switch (rv)
     {
