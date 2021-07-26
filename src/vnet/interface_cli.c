@@ -2402,6 +2402,55 @@ VLIB_CLI_COMMAND (pcap_tx_trace_command, static) = {
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+set_interface_name (vlib_main_t *vm, unformat_input_t *input,
+		    vlib_cli_command_t *cmd)
+{
+  clib_error_t *error = 0;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 hw_if_index = ~0;
+  char *name = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U %s", unformat_vnet_hw_interface, vnm,
+		    &hw_if_index, &name))
+	;
+      else
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  unformat_free (line_input);
+	  vec_free (name);
+	  return error;
+	}
+    }
+
+  unformat_free (line_input);
+
+  if (hw_if_index == (u32) ~0 || name == 0)
+    {
+      vec_free (name);
+      error = clib_error_return (0, "please specify valid interface name");
+      return error;
+    }
+
+  error = vnet_rename_interface (vnm, hw_if_index, name);
+  vec_free (name);
+
+  return (error);
+}
+
+VLIB_CLI_COMMAND (cmd_set_if_name, static) = {
+  .path = "set interface name",
+  .short_help = "set interface name <interface-name> <new-interface-name>",
+  .function = set_interface_name,
+  .is_mp_safe = 1,
+};
 /*
  * fd.io coding-style-patch-verification: ON
  *
