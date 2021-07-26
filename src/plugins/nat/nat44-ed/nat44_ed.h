@@ -960,8 +960,8 @@ int snat_add_interface_address (snat_main_t * sm, u32 sw_if_index, int is_del,
  *
  * @return 0 on success, non-zero value otherwise
  */
-int nat44_del_ed_session (snat_main_t * sm, ip4_address_t * addr, u16 port,
-			  ip4_address_t * eh_addr, u16 eh_port, u8 proto,
+int nat44_ed_del_session (snat_main_t *sm, ip4_address_t *addr, u16 port,
+			  ip4_address_t *eh_addr, u16 eh_port, u8 proto,
 			  u32 vrf_id, int is_in);
 
 /**
@@ -1048,10 +1048,6 @@ int snat_static_mapping_match (
  */
 void snat_add_del_addr_to_fib (ip4_address_t * addr,
 			       u8 p_len, u32 sw_if_index, int is_add);
-
-int nat_set_outside_address_and_port (snat_address_t *addresses,
-				      u32 thread_index, ip4_address_t addr,
-				      u16 port, nat_protocol_t protocol);
 
 /*
  * Why is this here? Because we don't need to touch this layer to
