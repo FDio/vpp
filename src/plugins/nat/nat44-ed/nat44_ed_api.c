@@ -303,9 +303,13 @@ static void
   for (i = 0; i < count; i++)
     {
       if (is_add)
-	rv = snat_add_address (sm, &this_addr, vrf_id, twice_nat);
+	{
+	  rv = nat44_ed_add_address (&this_addr, vrf_id, twice_nat);
+	}
       else
-	rv = snat_del_address (sm, this_addr, 0, twice_nat);
+	{
+	  rv = nat44_ed_del_address (this_addr, 0, twice_nat);
+	}
 
       if (rv)
 	goto send_reply;
@@ -890,15 +894,15 @@ static void
     return;
 
   pool_foreach (m, sm->static_mappings)
-   {
-     if (is_sm_identity_nat (m->flags) && !is_sm_lb (m->flags))
-       {
-	 pool_foreach_index (j, m->locals)
-	   {
-	     send_nat44_identity_mapping_details (m, j, reg, mp->context);
-	   }
-       }
-  }
+    {
+      if (is_sm_identity_nat (m->flags) && !is_sm_lb (m->flags))
+	{
+	  pool_foreach_index (j, m->locals)
+	    {
+	      send_nat44_identity_mapping_details (m, j, reg, mp->context);
+	    }
+	}
+    }
 
   for (j = 0; j < vec_len (sm->to_resolve); j++)
     {
@@ -915,8 +919,8 @@ static void
   snat_main_t *sm = &snat_main;
   vl_api_nat44_add_del_interface_addr_reply_t *rmp;
   u32 sw_if_index = ntohl (mp->sw_if_index);
+  u8 twice_nat;
   int rv = 0;
-  u8 is_del;
 
   if (sm->static_mapping_only)
     {
@@ -924,12 +928,18 @@ static void
       goto send_reply;
     }
 
-  is_del = !mp->is_add;
-
   VALIDATE_SW_IF_INDEX (mp);
 
-  rv = snat_add_interface_address (sm, sw_if_index, is_del,
-				   mp->flags & NAT_API_IS_TWICE_NAT);
+  twice_nat = mp->flags & NAT_API_IS_TWICE_NAT;
+
+  if (mp->is_add)
+    {
+      rv = nat44_ed_add_interface_address (sw_if_index, twice_nat);
+    }
+  else
+    {
+      rv = nat44_ed_del_interface_address (sw_if_index, twice_nat);
+    }
 
   BAD_SW_IF_INDEX_LABEL;
 
