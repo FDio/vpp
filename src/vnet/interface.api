@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "3.2.2";
+option version = "3.2.3";
 
 import "vnet/interface_types.api";
 import "vnet/ethernet/ethernet_types.api";
@@ -456,6 +456,22 @@ autoreply define sw_interface_set_rx_placement
     u32 queue_id;
     u32 worker_id;
     bool is_main;
+};
+
+/** \brief Set custom interface name
+    Set custom interface name for the interface.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - the interface whose name will be set
+    @param name - the custom interface name to be set
+k
+*/
+autoreply define sw_interface_set_interface_name
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  string name[64];
 };
 
 /** \brief dump the rx queue placement of interface(s)
