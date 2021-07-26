@@ -753,25 +753,47 @@ openssl_start_listen (tls_ctx_t * lctx)
    * Set the key and cert
    */
   cert_bio = BIO_new (BIO_s_mem ());
+  if (!cert_bio)
+    {
+      clib_warning ("unable to allocate memory");
+      return -1;
+    }
   BIO_write (cert_bio, ckpair->cert, vec_len (ckpair->cert));
   srvcert = PEM_read_bio_X509 (cert_bio, NULL, NULL, NULL);
   if (!srvcert)
     {
       clib_warning ("unable to parse certificate");
-      return -1;
+      goto err;
     }
-  SSL_CTX_use_certificate (ssl_ctx, srvcert);
+  rv = SSL_CTX_use_certificate (ssl_ctx, srvcert);
+  if (rv != 1)
+    {
+      clib_warning ("unable to use SSL certificate");
+      goto err;
+    }
+
   BIO_free (cert_bio);
 
   cert_bio = BIO_new (BIO_s_mem ());
+  if (!cert_bio)
+    {
+      clib_warning ("unable to allocate memory");
+      return -1;
+    }
   BIO_write (cert_bio, ckpair->key, vec_len (ckpair->key));
   pkey = PEM_read_bio_PrivateKey (cert_bio, NULL, NULL, NULL);
   if (!pkey)
     {
       clib_warning ("unable to parse pkey");
-      return -1;
+      goto err;
     }
-  SSL_CTX_use_PrivateKey (ssl_ctx, pkey);
+  rv = SSL_CTX_use_PrivateKey (ssl_ctx, pkey);
+  if (rv != 1)
+    {
+      clib_warning ("unable to use SSL PrivateKey");
+      goto err;
+    }
+
   BIO_free (cert_bio);
 
   olc_index = openssl_listen_ctx_alloc ();
@@ -785,6 +807,10 @@ openssl_start_listen (tls_ctx_t * lctx)
 
   return 0;
 
+err:
+  if (cert_bio)
+    BIO_free (cert_bio);
+  return -1;
 }
 
 static int
