@@ -216,13 +216,20 @@ clib_bitmap_get_no_check (uword * ai, uword i)
   return 0 != ((ai[i0] >> i1) & 1);
 }
 
+/** Gets the ith through ith + n_bits bit values from a bitmap
+    The wanted bits cannot cross two words.
+    @param ai - pointer to the bitmap
+    @param i - the first bit position to retrieve
+    @param n_bits - the number of bit positions to retrieve
+    @returns the indicated range of bits
+*/
 always_inline uword
 clib_bitmap_get_multiple_no_check (uword * ai, uword i, uword n_bits)
 {
   uword i0 = i / BITS (ai[0]);
   uword i1 = i % BITS (ai[0]);
   ASSERT (i1 + n_bits <= BITS (uword));
-  return 0 != ((ai[i0] >> i1) & pow2_mask (n_bits));
+  return (ai[i0] >> i1) & pow2_mask (n_bits);
 }
 
 /** Gets the ith through ith + n_bits bit values from a bitmap
