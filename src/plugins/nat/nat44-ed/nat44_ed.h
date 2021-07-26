@@ -856,6 +856,30 @@ is_sm_switch_address (u32 f)
 #define nat_log_debug(...)\
   vlib_log(VLIB_LOG_LEVEL_DEBUG, snat_main.log_class, __VA_ARGS__)
 
+clib_error_t *nat44_api_hookup (vlib_main_t *vm);
+
+/**
+ * @brief Set NAT plugin workers
+ *
+ * @param bitmap NAT workers bitmap
+ *
+ * @return 0 on success, non-zero value otherwise
+ */
+int snat_set_workers (uword *bitmap);
+
+int nat44_plugin_enable (nat44_config_t c);
+int nat44_plugin_disable ();
+
+int nat44_ed_add_interface (u32 sw_if_index, u8 is_inside);
+int nat44_ed_del_interface (u32 sw_if_index, u8 is_inside);
+int nat44_ed_add_output_interface (u32 sw_if_index);
+int nat44_ed_del_output_interface (u32 sw_if_index);
+
+int nat44_ed_add_address (ip4_address_t *addr, u32 vrf_id, u8 twice_nat);
+int nat44_ed_del_address (ip4_address_t addr, u8 delete_sm, u8 twice_nat);
+int nat44_ed_add_interface_address (u32 sw_if_index, u8 twice_nat);
+int nat44_ed_del_interface_address (u32 sw_if_index, u8 twice_nat);
+
 int nat44_ed_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 				 u16 l_port, u16 e_port, nat_protocol_t proto,
 				 u32 vrf_id, u32 sw_if_index, u32 flags,
@@ -877,76 +901,6 @@ int nat44_ed_add_del_lb_static_mapping_local (ip4_address_t e_addr, u16 e_port,
 					      ip4_address_t l_addr, u16 l_port,
 					      nat_protocol_t proto, u32 vrf_id,
 					      u8 probability, u8 is_add);
-
-/**
- * @brief Enable NAT44 plugin
- *
- * @param c         nat44_config_t
- *
- * @return 0 on success, non-zero value otherwise
- */
-int nat44_plugin_enable (nat44_config_t c);
-
-/**
- * @brief Disable NAT44 plugin
- *
- * @return 0 on success, non-zero value otherwise
- */
-int nat44_plugin_disable ();
-
-/**
- * @brief Add external address to NAT44 pool
- *
- * @param sm        snat global configuration data
- * @param addr      IPv4 address
- * @param vrf_id    VRF id of tenant, ~0 means independent of VRF
- * @param twice_nat 1 if twice NAT address
- *
- * @return 0 on success, non-zero value otherwise
- */
-int snat_add_address (snat_main_t * sm, ip4_address_t * addr, u32 vrf_id,
-		      u8 twice_nat);
-
-/**
- * @brief Delete external address from NAT44 pool
- *
- * @param sm        snat global configuration data
- * @param addr      IPv4 address
- * @param delete_sm 1 if delete static mapping using address
- * @param twice_nat 1 if twice NAT address
- *
- * @return 0 on success, non-zero value otherwise
- */
-int snat_del_address (snat_main_t * sm, ip4_address_t addr, u8 delete_sm,
-		      u8 twice_nat);
-
-clib_error_t *nat44_api_hookup (vlib_main_t * vm);
-
-/**
- * @brief Set NAT plugin workers
- *
- * @param bitmap NAT workers bitmap
- *
- * @return 0 on success, non-zero value otherwise
- */
-int snat_set_workers (uword * bitmap);
-
-int nat44_ed_add_interface (u32 sw_if_index, u8 is_inside);
-int nat44_ed_del_interface (u32 sw_if_index, u8 is_inside);
-int nat44_ed_add_output_interface (u32 sw_if_index);
-int nat44_ed_del_output_interface (u32 sw_if_index);
-
-/**
- * @brief Add/delete NAT44 pool address from specific interface
- *
- * @param sw_if_index software index of the interface
- * @param is_del      1 = delete, 0 = add
- * @param twice_nat   1 = twice NAT address for external hosts
- *
- * @return 0 on success, non-zero value otherwise
- */
-int snat_add_interface_address (snat_main_t * sm, u32 sw_if_index, int is_del,
-				u8 twice_nat);
 
 /**
  * @brief Delete NAT44 endpoint-dependent session
