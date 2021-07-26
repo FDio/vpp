@@ -1016,6 +1016,39 @@ static void vl_api_sw_interface_get_mac_address_t_handler
   vl_api_send_msg (reg, (u8 *) rmp);
 }
 
+static void
+vl_api_sw_interface_set_interface_name_t_handler (
+  vl_api_sw_interface_set_interface_name_t *mp)
+{
+  vl_api_sw_interface_set_interface_name_reply_t *rmp;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
+  clib_error_t *error;
+  int rv = 0;
+
+  if (mp->name[0] == 0)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto out;
+    }
+  if (si == 0)
+    {
+      rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
+      goto out;
+    }
+
+  error = vnet_rename_interface (vnm, si->hw_if_index, (char *) mp->name);
+  if (error)
+    {
+      clib_error_free (error);
+      rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
+    }
+
+out:
+  REPLY_MACRO (VL_API_SW_INTERFACE_SET_INTERFACE_NAME_REPLY);
+}
+
 static void vl_api_sw_interface_set_rx_mode_t_handler
   (vl_api_sw_interface_set_rx_mode_t * mp)
 {
@@ -1430,6 +1463,7 @@ interface_api_hookup (vlib_main_t * vm)
   am->is_mp_safe[VL_API_SW_INTERFACE_DUMP] = 1;
   am->is_mp_safe[VL_API_SW_INTERFACE_DETAILS] = 1;
   am->is_mp_safe[VL_API_SW_INTERFACE_TAG_ADD_DEL] = 1;
+  am->is_mp_safe[VL_API_SW_INTERFACE_SET_INTERFACE_NAME] = 1;
 
   /* Do not replay VL_API_SW_INTERFACE_DUMP messages */
   am->api_trace_cfg[VL_API_SW_INTERFACE_DUMP].replay_enable = 0;
