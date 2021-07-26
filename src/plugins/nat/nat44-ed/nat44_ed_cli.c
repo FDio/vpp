@@ -419,9 +419,13 @@ add_address_command_fn (vlib_main_t * vm,
   for (i = 0; i < count; i++)
     {
       if (is_add)
-	rv = snat_add_address (sm, &this_addr, vrf_id, twice_nat);
+	{
+	  rv = nat44_ed_add_address (&this_addr, vrf_id, twice_nat);
+	}
       else
-	rv = snat_del_address (sm, this_addr, 0, twice_nat);
+	{
+	  rv = nat44_ed_del_address (this_addr, 0, twice_nat);
+	}
 
       switch (rv)
 	{
@@ -1294,15 +1298,13 @@ snat_add_interface_address_command_fn (vlib_main_t * vm,
 				       unformat_input_t * input,
 				       vlib_cli_command_t * cmd)
 {
-  snat_main_t *sm = &snat_main;
   unformat_input_t _line_input, *line_input = &_line_input;
-  u32 sw_if_index;
-  int rv;
-  int is_del = 0;
+  snat_main_t *sm = &snat_main;
   clib_error_t *error = 0;
+  int rv, is_del = 0;
   u8 twice_nat = 0;
+  u32 sw_if_index;
 
-  /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
     return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
 
@@ -1312,9 +1314,13 @@ snat_add_interface_address_command_fn (vlib_main_t * vm,
 		    sm->vnet_main, &sw_if_index))
 	;
       else if (unformat (line_input, "twice-nat"))
-	twice_nat = 1;
+	{
+	  twice_nat = 1;
+	}
       else if (unformat (line_input, "del"))
-	is_del = 1;
+	{
+	  is_del = 1;
+	}
       else
 	{
 	  error = clib_error_return (0, "unknown input '%U'",
@@ -1323,17 +1329,21 @@ snat_add_interface_address_command_fn (vlib_main_t * vm,
 	}
     }
 
-  rv = snat_add_interface_address (sm, sw_if_index, is_del, twice_nat);
-
-  switch (rv)
+  if (!is_del)
     {
-    case 0:
-      break;
-
-    default:
-      error = clib_error_return (0, "snat_add_interface_address returned %d",
-				 rv);
-      goto done;
+      rv = nat44_ed_add_interface_address (sw_if_index, twice_nat);
+      if (rv)
+	{
+	  error = clib_error_return (0, "add address returned %d", rv);
+	}
+    }
+  else
+    {
+      rv = nat44_ed_del_interface_address (sw_if_index, twice_nat);
+      if (rv)
+	{
+	  error = clib_error_return (0, "del address returned %d", rv);
+	}
     }
 
 done:
