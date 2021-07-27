@@ -727,6 +727,11 @@ M:	Nathan Skrzypczak <nathan.skrzypczak@gmail.com>
 M:	Neale Ranns <neale@graphiant.com>
 F:	src/plugins/cnat
 
+Plugin - PBL
+I:	pbl
+M:	Nathan Skrzypczak <nathan.skrzypczak@gmail.com>
+F:	src/plugins/pbl
+
 Plugin - Wireguard
 I:	wireguard
 M:	Artem Glazychev <artem.glazychev@xored.com>

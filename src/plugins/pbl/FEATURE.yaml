@@ -1,0 +1,8 @@
+---
+name: PBL (Port based Balencer)
+maintainer: Nathan Skrzypczak <nathan.skrzypczak@gmail.com>
+features:
+  - Port based balancer
+description: "Feature that enables selective punting of flows to an interface"
+state: experimental
+properties: [MULTITHREAD]
