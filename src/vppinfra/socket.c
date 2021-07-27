@@ -560,7 +560,7 @@ clib_socket_init_netns (clib_socket_t *s, u8 *namespace)
     return clib_socket_init (s);
 
   clib_error_t *error;
-  int old_netns_fd, nfd;
+  int old_netns_fd, nfd = -1;
 
   old_netns_fd = clib_netns_open (NULL /* self */);
   if ((nfd = clib_netns_open (namespace)) == -1)
@@ -580,7 +580,11 @@ clib_socket_init_netns (clib_socket_t *s, u8 *namespace)
 done:
   if (clib_setns (old_netns_fd) == -1)
     clib_warning ("Cannot set old ns");
+
   close (old_netns_fd);
+
+  if (-1 != nfd)
+    close (nfd);
 
   return error;
 }
