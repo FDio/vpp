@@ -407,14 +407,16 @@ vlib_worker_thread_bootstrap_fn (void *arg)
 {
   void *rv;
   vlib_worker_thread_t *w = arg;
+  vlib_main_t *vm = 0;
 
   w->lwp = syscall (SYS_gettid);
   w->thread_id = pthread_self ();
 
   __os_thread_index = w - vlib_worker_threads;
 
-  vlib_process_start_switch_stack (vlib_get_main_by_index (__os_thread_index),
-				   0);
+  vm = vlib_global_main.vlib_mains[__os_thread_index];
+
+  vlib_process_start_switch_stack (vm, 0);
   rv = (void *) clib_calljmp
     ((uword (*)(uword)) w->thread_function,
      (uword) arg, w->thread_stack + VLIB_THREAD_STACK_SIZE);
