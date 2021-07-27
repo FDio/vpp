@@ -682,6 +682,11 @@ I:	svs
 M:	Neale Ranns <neale@graphiant.com>
 F:	src/plugins/svs/
 
+Plugin - PBL
+I:	pbl
+M:	Nathan Skrzypczak <nathan.skrzypczak@gmail.com>
+F:	src/plugins/pbl
+
 Plugin - IPv6 Connection Tracker
 I:	ct6
 M:	Dave Barach <vpp@barachs.net>

@@ -1,0 +1,89 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright (c) 2021 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/** \file
+    This file defines the vpp control-plane API messages
+    used to control the PBL plugin
+*/
+
+option version = "0.1.0";
+import "vnet/ip/ip_types.api";
+import "vnet/fib/fib_types.api";
+import "vnet/interface_types.api";
+
+enum pbl_client_flags
+{
+  PBL_API_FLAG_EXCLUSIVE = 1,
+};
+
+typedef pbl_port_range
+{
+    u16 start;
+    u16 end;
+    vl_api_ip_proto_t iproto;
+};
+
+typedef pbl_client
+{
+  u32 id [default=0xffffffff];
+  vl_api_address_t addr;
+  vl_api_fib_path_t paths; /* we support only one now due to api limit */
+  u8 flags;
+  u32 table_id;
+  u32 n_ports;
+  vl_api_pbl_port_range_t port_ranges[n_ports];
+};
+
+define pbl_client_update
+{
+  u32 client_index;
+  u32 context;
+  vl_api_pbl_client_t client;
+};
+
+define pbl_client_update_reply
+{
+  u32 context;
+  i32 retval;
+  u32 id;
+};
+
+autoreply define pbl_client_del
+{
+  u32 client_index;
+  u32 context;
+  u32 id;
+};
+
+define pbl_client_details
+{
+  u32 context;
+  vl_api_pbl_client_t client;
+};
+
+define pbl_client_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
