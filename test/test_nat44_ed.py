@@ -949,6 +949,50 @@ class TestNAT44ED(NAT44EDTestCase):
         self.logger.info(ppp("p2 packet:", p2))
         self.logger.info(ppp("capture packet:", capture))
 
+    def test_icmp_echo_reply_trailer(self):
+        """ ICMP echo reply with ethernet trailer"""
+
+        self.nat_add_address(self.nat_addr)
+        self.nat_add_inside_interface(self.pg0)
+        self.nat_add_outside_interface(self.pg1)
+
+        # in2out
+        p1 = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+              ICMP(type=8, id=0xabcd, seq=0))
+
+        self.pg0.add_stream(p1)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        c = self.pg1.get_capture(1)[0]
+
+        self.logger.debug(self.vapi.cli("show trace"))
+
+        # out2in
+        p2 = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+              IP(src=self.pg1.remote_ip4, dst=self.nat_addr, id=0xee59) /
+              ICMP(type=0, id=c[ICMP].id, seq=0))
+
+        # force checksum calculation
+        p2 = p2.__class__(bytes(p2))
+
+        self.logger.debug(ppp("Packet before modification:", p2))
+
+        # hex representation of vss monitoring ethernet trailer
+        # this seems to be just added to end of packet without modifying
+        # IP or ICMP lengths / checksums
+        p2 = p2 / Raw("\x00\x00\x52\x54\x00\x46\xab\x04\x84\x18")
+        # change it so that IP/ICMP is unaffected
+        p2[IP].len = 28
+
+        self.logger.debug(ppp("Packet with added trailer:", p2))
+
+        self.pg1.add_stream(p2)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        self.pg0.get_capture(1)
+
     def test_users_dump(self):
         """ NAT44ED API test - nat44_user_dump """
 
