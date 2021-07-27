@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "586f09a6_7cbf42cf",
+        "filename": "src/vlib/node_funcs.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 851,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-07-27T15:46:09Z",
+      "side": 1,
+      "message": "Interesting. This looks okay but it would be good to understand why we\u0027ve added a 0 to nm-\u003erecycled_event_data_vectors. Could you provide a bit more context?",
+      "range": {
+        "startLine": 851,
+        "startChar": 1,
+        "endLine": 851,
+        "endChar": 17
+      },
+      "revId": "98292a4c23fbbb7d192bf9b47da87288d444744e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
