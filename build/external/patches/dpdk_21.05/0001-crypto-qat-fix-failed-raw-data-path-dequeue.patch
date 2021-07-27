@@ -1,0 +1,40 @@
+From 154843b968e98e7d4683f1540631ca324c337073 Mon Sep 17 00:00:00 2001
+From: Fan Zhang <roy.fan.zhang@intel.com>
+Date: Tue, 27 Jul 2021 16:27:36 +0100
+Subject: [dpdk-dev] crypto/qat: fix failed raw data path dequeue
+
+This patch fixes the raw data path dequeue burst fail problem.
+Previously the in case the queue is full and not all packets
+asked to be dequeued are processed, the dequeue burst will
+never happen.
+
+Fixes: c21574edc52a ("cryptodev: add dequeue count parameter in raw API")
+Cc: roy.fan.zhang@intel.com
+
+Signed-off-by: Fan Zhang <roy.fan.zhang@intel.com>
+---
+ drivers/crypto/qat/qat_sym_hw_dp.c | 8 --------
+ 1 file changed, 8 deletions(-)
+
+diff --git a/drivers/crypto/qat/qat_sym_hw_dp.c b/drivers/crypto/qat/qat_sym_hw_dp.c
+index 4305579b54..ac9ac05363 100644
+--- a/drivers/crypto/qat/qat_sym_hw_dp.c
++++ b/drivers/crypto/qat/qat_sym_hw_dp.c
+@@ -744,14 +744,6 @@ qat_sym_dp_dequeue_burst(void *qp_data, uint8_t *drv_ctx,
+ 		n = get_dequeue_count(resp_opaque);
+ 		if (unlikely(n == 0))
+ 			return 0;
+-		else if (n > 1) {
+-			head = (head + rx_queue->msg_size * (n - 1)) &
+-				rx_queue->modulo_mask;
+-			resp = (struct icp_qat_fw_comn_resp *)(
+-				(uint8_t *)rx_queue->base_addr + head);
+-			if (*(uint32_t *)resp == ADF_RING_EMPTY_SIG)
+-				return 0;
+-		}
+ 	} else {
+ 		if (unlikely(max_nb_to_dequeue == 0))
+ 			return 0;
+-- 
+2.25.1
+
