@@ -425,8 +425,8 @@ static void
 vcl_bapi_send_app_add_cert_key_pair (vppcom_cert_key_pair_t *ckpair)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
-  u32 cert_len = test_srv_crt_rsa_len;
-  u32 key_len = test_srv_key_rsa_len;
+  u32 cert_len = ckpair->cert_len;
+  u32 key_len = ckpair->key_len;
   vl_api_app_add_cert_key_pair_t *bmp;
 
   bmp = vl_msg_api_alloc (sizeof (*bmp) + cert_len + key_len);
@@ -437,8 +437,8 @@ vcl_bapi_send_app_add_cert_key_pair (vppcom_cert_key_pair_t *ckpair)
   bmp->context = wrk->wrk_index;
   bmp->cert_len = clib_host_to_net_u16 (cert_len);
   bmp->certkey_len = clib_host_to_net_u16 (key_len + cert_len);
-  clib_memcpy_fast (bmp->certkey, test_srv_crt_rsa, cert_len);
-  clib_memcpy_fast (bmp->certkey + cert_len, test_srv_key_rsa, key_len);
+  clib_memcpy_fast (bmp->certkey, ckpair->cert, cert_len);
+  clib_memcpy_fast (bmp->certkey + cert_len, ckpair->key, key_len);
 
   vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) &bmp);
 }
