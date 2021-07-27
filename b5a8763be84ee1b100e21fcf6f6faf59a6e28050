@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8332e6c5_8b8dbfc6",
+        "filename": "src/vcl/vcl_bapi.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 436,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-07-27T15:19:35Z",
+      "side": 1,
+      "message": "Remove all test cert/key references and only use ckpair that is provided. Assume it\u0027s not null.",
+      "range": {
+        "startLine": 432,
+        "startChar": 0,
+        "endLine": 436,
+        "endChar": 5
+      },
+      "revId": "b5a8763be84ee1b100e21fcf6f6faf59a6e28050",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
