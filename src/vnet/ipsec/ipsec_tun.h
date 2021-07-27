@@ -163,6 +163,9 @@ extern u8 *format_ipsec_tun_protect_index (u8 * s, va_list * args);
 extern void ipsec_tun_register_nodes (ip_address_family_t af);
 extern void ipsec_tun_unregister_nodes (ip_address_family_t af);
 
+extern void ipsec_tun_table_init (ip_address_family_t af, uword table_size,
+				  u32 n_buckets);
+
 /*
  * DP API
  */

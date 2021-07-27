@@ -925,7 +925,7 @@ const static teib_vft_t ipsec_tun_teib_vft = {
   .nv_deleted = ipsec_tun_teib_entry_deleted,
 };
 
-static void
+void
 ipsec_tun_table_init (ip_address_family_t af, uword table_size, u32 n_buckets)
 {
   ipsec_main_t *im;
@@ -978,56 +978,6 @@ ipsec_tunnel_protect_init (vlib_main_t *vm)
 }
 
 VLIB_INIT_FUNCTION (ipsec_tunnel_protect_init);
-
-static clib_error_t *
-ipsec_config (vlib_main_t * vm, unformat_input_t * input)
-{
-  unformat_input_t sub_input;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "ip4 %U", unformat_vlib_cli_sub_input, &sub_input))
-	{
-	  uword table_size = ~0;
-	  u32 n_buckets = ~0;
-
-	  while (unformat_check_input (&sub_input) != UNFORMAT_END_OF_INPUT)
-	    {
-	      if (unformat (&sub_input, "num-buckets %u", &n_buckets))
-		;
-	      else
-		return clib_error_return (0, "unknown input `%U'",
-					  format_unformat_error, &sub_input);
-	    }
-
-	  ipsec_tun_table_init (AF_IP4, table_size, n_buckets);
-	}
-      else if (unformat (input, "ip6 %U", unformat_vlib_cli_sub_input,
-			 &sub_input))
-	{
-	  uword table_size = ~0;
-	  u32 n_buckets = ~0;
-
-	  while (unformat_check_input (&sub_input) != UNFORMAT_END_OF_INPUT)
-	    {
-	      if (unformat (&sub_input, "num-buckets %u", &n_buckets))
-		;
-	      else
-		return clib_error_return (0, "unknown input `%U'",
-					  format_unformat_error, &sub_input);
-	    }
-
-	  ipsec_tun_table_init (AF_IP6, table_size, n_buckets);
-	}
-      else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
-    }
-
-  return 0;
-}
-
-VLIB_CONFIG_FUNCTION (ipsec_config, "ipsec");
 
 /*
  * fd.io coding-style-patch-verification: ON
