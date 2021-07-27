@@ -3694,9 +3694,8 @@ nat_6t_flow_icmp_translate (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
 	  return NAT_ED_TRNSL_ERR_PACKET_TRUNCATED;
 	}
 
-      ssize_t icmp_offset = (u8 *) icmp - (u8 *) vlib_buffer_get_current (b);
-      ip_csum_t sum =
-	ip_incremental_checksum (0, icmp, b->current_length - icmp_offset);
+      ip_csum_t sum = ip_incremental_checksum (
+	0, icmp, clib_net_to_host_u16 (ip->length) - ip4_header_bytes (ip));
       sum = (u16) ~ip_csum_fold (sum);
       if (sum != 0)
 	{
