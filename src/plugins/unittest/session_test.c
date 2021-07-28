@@ -512,7 +512,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   error = vnet_app_namespace_add_del (&ns_args);
   SESSION_TEST ((error == 0), "app ns insertion should succeed: %d", error);
 
-  app_ns = app_namespace_get_from_id (ns_id);
+  app_ns = app_namespace_get_from_id (ns_id, NULL /*netns*/);
   SESSION_TEST ((app_ns != 0), "should find ns %v status", ns_id);
   SESSION_TEST ((app_ns->ns_secret == placeholder_secret),
 		"secret should be %d", placeholder_secret);
@@ -1521,7 +1521,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   };
   error = vnet_app_namespace_add_del (&ns_args);
   SESSION_TEST ((error == 0), "app ns insertion should succeed: %d", error);
-  app_ns = app_namespace_get_from_id (ns_id);
+  app_ns = app_namespace_get_from_id (ns_id, NULL /*netns*/);
 
   attach_args.namespace_id = ns_id;
   attach_args.api_client_index = placeholder_server_api_index;

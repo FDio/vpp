@@ -1080,7 +1080,8 @@ app_validate_namespace (u8 * namespace_id, u64 secret, u32 * app_ns_index)
       return 0;
     }
 
-  *app_ns_index = app_namespace_index_from_id (namespace_id);
+  /* No netns, this is only called without sockapi */
+  *app_ns_index = app_namespace_index_from_id (namespace_id, NULL /* netns */);
   if (*app_ns_index == APP_NAMESPACE_INVALID_INDEX)
     return VNET_API_ERROR_APP_INVALID_NS;
   app_ns = app_namespace_get (*app_ns_index);
