@@ -222,10 +222,15 @@ app_namespace_get_local_table (app_namespace_t * app_ns)
   return session_table_get (app_ns->local_table_index);
 }
 
-void
-appns_sapi_enable (void)
+int
+appns_sapi_enable_disable (int is_enable)
 {
-  app_sapi_enabled = 1;
+  /* This cannot be called with active sockets */
+  if (pool_elts (app_namespace_pool))
+    return -1;
+
+  app_sapi_enabled = is_enable;
+  return 0;
 }
 
 u8
