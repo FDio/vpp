@@ -1117,36 +1117,37 @@ vl_api_ip_address_dump_t_handler (vl_api_ip_address_dump_t * mp)
 
   if (mp->is_ipv6)
     {
-      /* *INDENT-OFF* */
       /* Do not send subnet details of the IP-interface for
        * unnumbered interfaces. otherwise listening clients
        * will be confused that the subnet is applied on more
        * than one interface */
-      foreach_ip_interface_address (lm6, ia, sw_if_index, 0,
-      ({
-        fib_prefix_t pfx = {
-          .fp_addr.ip6 = *(ip6_address_t *)ip_interface_address_get_address (lm6, ia),
-          .fp_len = ia->address_length,
-          .fp_proto = FIB_PROTOCOL_IP6,
-        };
-        send_ip_address_details(am, reg, &pfx, sw_if_index, mp->context);
-      }));
-      /* *INDENT-ON* */
+      foreach_ip_interface_address (
+	lm6, ia, sw_if_index, 0, ({
+	  ip6_address_t *addr = ip_interface_address_get_address (lm6, ia);
+	  if (!addr)
+	    continue;
+	  fib_prefix_t pfx = {
+	    .fp_addr.ip6 = *addr,
+	    .fp_len = ia->address_length,
+	    .fp_proto = FIB_PROTOCOL_IP6,
+	  };
+	  send_ip_address_details (am, reg, &pfx, sw_if_index, mp->context);
+	}));
     }
   else
     {
-      /* *INDENT-OFF* */
-      foreach_ip_interface_address (lm4, ia, sw_if_index, 0,
-      ({
-        fib_prefix_t pfx = {
-          .fp_addr.ip4 = *(ip4_address_t *)ip_interface_address_get_address (lm4, ia),
-          .fp_len = ia->address_length,
-          .fp_proto = FIB_PROTOCOL_IP4,
-        };
-
-        send_ip_address_details(am, reg, &pfx, sw_if_index, mp->context);
-      }));
-      /* *INDENT-ON* */
+      foreach_ip_interface_address (
+	lm4, ia, sw_if_index, 0, ({
+	  ip4_address_t *addr = ip_interface_address_get_address (lm4, ia);
+	  if (!addr)
+	    continue;
+	  fib_prefix_t pfx = {
+	    .fp_addr.ip4 = *addr,
+	    .fp_len = ia->address_length,
+	    .fp_proto = FIB_PROTOCOL_IP4,
+	  };
+	  send_ip_address_details (am, reg, &pfx, sw_if_index, mp->context);
+	}));
     }
 
   BAD_SW_IF_INDEX_LABEL;
@@ -2148,6 +2149,8 @@ ip_api_hookup (vlib_main_t * vm)
     am, REPLY_MSG_ID_BASE + VL_API_IP_ROUTE_ADD_DEL_V2, 1);
   vl_api_set_msg_thread_safe (
     am, REPLY_MSG_ID_BASE + VL_API_IP_ROUTE_ADD_DEL_V2_REPLY, 1);
+  vl_api_set_msg_thread_safe (am, REPLY_MSG_ID_BASE + VL_API_IP_ADDRESS_DUMP,
+			      1);
 
   return 0;
 }
