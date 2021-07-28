@@ -602,6 +602,17 @@ vl_api_session_enable_disable_t_handler (vl_api_session_enable_disable_t * mp)
 }
 
 static void
+vl_api_session_sapi_enable_disable_t_handler (
+  vl_api_session_sapi_enable_disable_t *mp)
+{
+  vl_api_session_sapi_enable_disable_reply_t *rmp;
+  int rv = 0;
+
+  rv = appns_sapi_enable_disable (mp->is_enable);
+  REPLY_MACRO (VL_API_SESSION_SAPI_ENABLE_DISABLE_REPLY);
+}
+
+static void
 vl_api_app_attach_t_handler (vl_api_app_attach_t * mp)
 {
   int rv = 0, *fds = 0, n_fds = 0, n_workers, i;
