@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ddb191c0_fda5c5f8",
+        "filename": "src/vnet/devices/virtio/vhost_user.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 267,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-07-28T07:18:34Z",
+      "side": 1,
+      "message": "can we set a per thread flag on vui when a queue switch to polling mode instead? Or maybe even better disable interrupts (eg. remove the file descriptor for the queue)?\nIn order to avoid looping for each interrupt... Or is it a rare event? (eg. we might receive some interrupts while we were disabling them) - but then I guess we do not really to raise a spurious interrupt or 2?",
+      "revId": "0c05b961894d304e047b3dfde2c586bf4fdb492e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
