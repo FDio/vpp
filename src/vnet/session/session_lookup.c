@@ -1452,6 +1452,7 @@ session_rule_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 vlib_cli_command_t * cmd)
 {
   u32 proto = ~0, lcl_port, rmt_port, action = 0, lcl_plen = 0, rmt_plen = 0;
+  clib_error_t *error = 0;
   u32 appns_index, scope = 0;
   ip46_address_t lcl_ip, rmt_ip;
   u8 is_ip4 = 1, conn_set = 0;
@@ -1501,29 +1502,32 @@ session_rule_command_fn (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (input, "tag %_%v%_", &tag))
 	;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, input);
+	  goto done;
+	}
     }
 
   if (proto == ~0)
     {
       vlib_cli_output (vm, "proto must be set");
-      return 0;
+      goto done;
     }
   if (is_add && !conn_set && action == ~0)
     {
       vlib_cli_output (vm, "connection and action must be set for add");
-      return 0;
+      goto done;
     }
   if (!is_add && !tag && !conn_set)
     {
       vlib_cli_output (vm, "connection or tag must be set for delete");
-      return 0;
+      goto done;
     }
   if (vec_len (tag) > SESSION_RULE_TAG_MAX_LEN)
     {
       vlib_cli_output (vm, "tag too long (max u64)");
-      return 0;
+      goto done;
     }
 
   if (ns_id)
@@ -1532,7 +1536,7 @@ session_rule_command_fn (vlib_main_t * vm, unformat_input_t * input,
       if (!app_ns)
 	{
 	  vlib_cli_output (vm, "namespace %v does not exist", ns_id);
-	  return 0;
+	  goto done;
 	}
     }
   else
@@ -1559,10 +1563,12 @@ session_rule_command_fn (vlib_main_t * vm, unformat_input_t * input,
     .scope = scope,
   };
   if ((rv = vnet_session_rule_add_del (&args)))
-    return clib_error_return (0, "rule add del returned %u", rv);
+    error = clib_error_return (0, "rule add del returned %u", rv);
 
+done:
+  vec_free (ns_id);
   vec_free (tag);
-  return 0;
+  return error;
 }
 
 /* *INDENT-OFF* */
@@ -1610,7 +1616,7 @@ show_session_rules_command_fn (vlib_main_t * vm, unformat_input_t * input,
   app_namespace_t *app_ns;
   session_rules_table_t *srt;
   session_table_t *st;
-  u8 *ns_id = 0, fib_proto;
+  u8 *ns_id = 0, fib_proto, *netns = 0;
 
   session_cli_return_if_not_enabled ();
 
@@ -1621,6 +1627,8 @@ show_session_rules_command_fn (vlib_main_t * vm, unformat_input_t * input,
       if (unformat (input, "%U", unformat_transport_proto, &transport_proto))
 	;
       else if (unformat (input, "appns %_%v%_", &ns_id))
+	;
+      else if (unformat (input, "netns %_%v%_", &netns))
 	;
       else if (unformat (input, "scope global"))
 	scope = 1;
