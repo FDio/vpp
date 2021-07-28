@@ -47,13 +47,10 @@ typedef struct _app_namespace
 
   /**
    * Application namespace id
+   * it is \0 terminated and followed by
+   * The linux netns if one was provided
    */
   u8 *ns_id;
-
-  /**
-   * Linux netns if one was provided
-   */
-  u8 *netns;
 
   /**
    * Name of socket applications can use to attach to session layer
@@ -64,6 +61,7 @@ typedef struct _app_namespace
    * Pool of active application sockets
    */
   clib_socket_t *app_sockets;
+
 } app_namespace_t;
 
 typedef struct _vnet_app_namespace_add_del_args
@@ -79,13 +77,14 @@ typedef struct _vnet_app_namespace_add_del_args
 
 #define APP_NAMESPACE_INVALID_INDEX ((u32)~0)
 
-app_namespace_t *app_namespace_alloc (u8 * ns_id);
+app_namespace_t *app_namespace_alloc (const u8 *ns_id, const u8 *netns);
 app_namespace_t *app_namespace_get (u32 index);
-app_namespace_t *app_namespace_get_from_id (const u8 * ns_id);
+app_namespace_t *app_namespace_get_from_id (const u8 *ns_id, const u8 *netns);
 u32 app_namespace_index (app_namespace_t * app_ns);
-const u8 *app_namespace_id (app_namespace_t * app_ns);
+const u8 *app_namespace_id (const app_namespace_t *app_ns);
+const u8 *app_namespace_netns (const app_namespace_t *app_ns);
 const u8 *app_namespace_id_from_index (u32 index);
-u32 app_namespace_index_from_id (const u8 * ns_id);
+u32 app_namespace_index_from_id (const u8 *ns_id, const u8 *netns);
 void app_namespaces_init (void);
 int vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t * a);
 u32 app_namespace_get_fib_index (app_namespace_t * app_ns, u8 fib_proto);

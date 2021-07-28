@@ -843,7 +843,7 @@ vl_api_app_namespace_add_del_t_handler (vl_api_app_namespace_add_del_t * mp)
   rv = vnet_app_namespace_add_del (&args);
   if (!rv)
     {
-      appns_index = app_namespace_index_from_id (ns_id);
+      appns_index = app_namespace_index_from_id (ns_id, NULL /*netns*/);
       if (appns_index == APP_NAMESPACE_INVALID_INDEX)
 	{
 	  clib_warning ("app ns lookup failed");
@@ -893,10 +893,10 @@ vl_api_app_namespace_add_del_v2_t_handler (
   rv = vnet_app_namespace_add_del (&args);
   if (!rv)
     {
-      appns_index = app_namespace_index_from_id (ns_id);
+      appns_index = app_namespace_index_from_id (ns_id, netns);
       if (appns_index == APP_NAMESPACE_INVALID_INDEX)
 	{
-	  clib_warning ("app ns lookup failed");
+	  clib_warning ("app ns lookup failed nsif:%s netns:%s", ns_id, netns);
 	  rv = VNET_API_ERROR_UNSPECIFIED;
 	}
     }
@@ -1644,26 +1644,38 @@ appns_sapi_add_ns_socket (app_namespace_t * app_ns)
   struct stat file_stat;
   clib_error_t *err;
   clib_socket_t *cs;
-  u8 *dir = 0;
+  u8 *dir = 0, *netns, *ns_id;
   int rv = 0;
 
-  vec_add (dir, vlib_unix_get_runtime_dir (),
-	   strlen (vlib_unix_get_runtime_dir ()));
-  vec_add (dir, (u8 *) subdir, strlen (subdir));
+  /* We were already called for this socket */
+  if (app_ns->sock_name)
+    return -1;
 
-  err = vlib_unix_recursive_mkdir ((char *) dir);
-  if (err)
+  netns = (u8 *) app_namespace_netns (app_ns);
+  ns_id = (u8 *) app_namespace_id (app_ns);
+
+  if (!netns)
     {
-      clib_error_report (err);
+      vec_add (dir, vlib_unix_get_runtime_dir (),
+	       strlen (vlib_unix_get_runtime_dir ()));
+      vec_add (dir, (u8 *) subdir, strlen (subdir));
+
+      err = vlib_unix_recursive_mkdir ((char *) dir);
+      if (err)
+	{
+	  clib_error_report (err);
+	  rv = -1;
+	  goto error;
+	}
+    }
+  else if ((char) ns_id[0] != '@')
+    {
+      /* Require abstract sockets if a netns was provided */
       rv = -1;
       goto error;
     }
 
-  /* Use abstract sockets if a netns was provided */
-  if (app_ns->netns)
-    app_ns->sock_name = format (0, "@vpp/session/%v%c", app_ns->ns_id, 0);
-  else
-    app_ns->sock_name = format (0, "%v%v%c", dir, app_ns->ns_id, 0);
+  app_ns->sock_name = format (0, "%v%s", dir, app_namespace_id (app_ns));
 
   /*
    * Create and initialize socket to listen on
@@ -1674,14 +1686,14 @@ appns_sapi_add_ns_socket (app_namespace_t * app_ns)
     CLIB_SOCKET_F_ALLOW_GROUP_WRITE |
     CLIB_SOCKET_F_SEQPACKET | CLIB_SOCKET_F_PASSCRED;
 
-  if ((err = clib_socket_init_netns (cs, app_ns->netns)))
+  if ((err = clib_socket_init_netns (cs, netns)))
     {
       clib_error_report (err);
       rv = -1;
       goto error;
     }
 
-  if (!app_ns->netns && stat ((char *) app_ns->sock_name, &file_stat) == -1)
+  if (!netns && stat ((char *) app_ns->sock_name, &file_stat) == -1)
     {
       rv = -1;
       goto error;
