@@ -2069,7 +2069,7 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "segment-baseva 0x%lx", &smm->session_baseva))
 	;
       else if (unformat (input, "use-app-socket-api"))
-	appns_sapi_enable ();
+	(void) appns_sapi_enable_disable (1 /* is_enable */);
       else if (unformat (input, "poll-main"))
 	smm->poll_main = 1;
       else if (unformat (input, "use-private-rx-mqs"))
