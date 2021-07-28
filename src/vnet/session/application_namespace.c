@@ -162,9 +162,9 @@ app_namespace_get_local_table (app_namespace_t * app_ns)
 }
 
 void
-appns_sapi_enable (void)
+appns_sapi_enable_disable (int is_enable)
 {
-  app_sapi_enabled = 1;
+  app_sapi_enabled = is_enable;
 }
 
 u8

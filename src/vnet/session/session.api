@@ -203,6 +203,18 @@ autoreply define session_enable_disable {
   bool is_enable [default=true];
 };
 
+/** \brief enable/disable session layer socket api
+    @param client_index - opaque cookie to identify the sender
+                          client to vpp direction only
+    @param context - sender context, to match reply w/ request
+    @param is_enable - disable session layer if 0, enable otherwise
+*/
+autoreply define session_sapi_enable_disable {
+  u32 client_index;
+  u32 context;
+  bool is_enable [default=true];
+};
+
 /** \brief add/del application namespace
     @param client_index - opaque cookie to identify the sender
                           client to vpp direction only
