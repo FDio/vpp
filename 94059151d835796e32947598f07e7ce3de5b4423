@@ -1,0 +1,188 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b891f2b4_504d909f",
+        "filename": "src/vlib/main.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 971,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2021-07-28T07:53:01Z",
+      "side": 1,
+      "message": "add comment to find good solution",
+      "range": {
+        "startLine": 969,
+        "startChar": 2,
+        "endLine": 971,
+        "endChar": 40
+      },
+      "revId": "94059151d835796e32947598f07e7ce3de5b4423",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5c3d7fe1_081eb9e5",
+        "filename": "src/vlib/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 792,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2021-07-28T07:53:01Z",
+      "side": 1,
+      "message": "use vec_validate",
+      "range": {
+        "startLine": 791,
+        "startChar": 2,
+        "endLine": 792,
+        "endChar": 53
+      },
+      "revId": "94059151d835796e32947598f07e7ce3de5b4423",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0fb719d0_e8f6b97c",
+        "filename": "src/vlib/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 797,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2021-07-28T07:53:01Z",
+      "side": 1,
+      "message": "remove",
+      "range": {
+        "startLine": 793,
+        "startChar": 2,
+        "endLine": 797,
+        "endChar": 0
+      },
+      "revId": "94059151d835796e32947598f07e7ce3de5b4423",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "147938fe_6fff1b9e",
+        "filename": "src/vlib/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 802,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2021-07-28T07:53:01Z",
+      "side": 1,
+      "message": "no need (to be verified)",
+      "range": {
+        "startLine": 798,
+        "startChar": 2,
+        "endLine": 802,
+        "endChar": 39
+      },
+      "revId": "94059151d835796e32947598f07e7ce3de5b4423",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a31b3cd0_1295c07b",
+        "filename": "src/vlib/node.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 372,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2021-07-28T07:53:01Z",
+      "side": 1,
+      "message": "maybe in vlib_node_runtime_t?\n\nIn dedicated data structure",
+      "range": {
+        "startLine": 365,
+        "startChar": 2,
+        "endLine": 372,
+        "endChar": 34
+      },
+      "revId": "94059151d835796e32947598f07e7ce3de5b4423",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "368f31fb_5750320c",
+        "filename": "src/vlib/node.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 498,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2021-07-28T07:53:01Z",
+      "side": 1,
+      "message": "why the change?",
+      "range": {
+        "startLine": 496,
+        "startChar": 2,
+        "endLine": 498,
+        "endChar": 0
+      },
+      "revId": "94059151d835796e32947598f07e7ce3de5b4423",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "41f6dbda_0f12a9ac",
+        "filename": "src/vlib/node.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 766,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2021-07-28T07:53:01Z",
+      "side": 1,
+      "message": "Align\n\ndedicated data structure",
+      "range": {
+        "startLine": 755,
+        "startChar": 0,
+        "endLine": 766,
+        "endChar": 18
+      },
+      "revId": "94059151d835796e32947598f07e7ce3de5b4423",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7d552528_9756593b",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 882,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2021-07-28T07:53:01Z",
+      "side": 1,
+      "message": "same as nm",
+      "range": {
+        "startLine": 870,
+        "startChar": 7,
+        "endLine": 882,
+        "endChar": 50
+      },
+      "revId": "94059151d835796e32947598f07e7ce3de5b4423",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
