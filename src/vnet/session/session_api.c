@@ -1661,7 +1661,7 @@ appns_sapi_add_ns_socket (app_namespace_t * app_ns)
 
   /* Use abstract sockets if a netns was provided */
   if (app_ns->netns)
-    app_ns->sock_name = format (0, "@vpp/session/%v%c", app_ns->ns_id, 0);
+    app_ns->sock_name = format (0, "@vpp/session%c", 0);
   else
     app_ns->sock_name = format (0, "%v%v%c", dir, app_ns->ns_id, 0);
 
