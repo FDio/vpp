@@ -16,6 +16,24 @@
       "revId": "0c05b961894d304e047b3dfde2c586bf4fdb492e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fa7afa14_1731fcd4",
+        "filename": "src/vnet/devices/virtio/vhost_user.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 267,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2021-07-28T16:49:03Z",
+      "side": 1,
+      "message": "Good idea. Let me fix it.",
+      "parentUuid": "ddb191c0_fda5c5f8",
+      "revId": "0c05b961894d304e047b3dfde2c586bf4fdb492e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
