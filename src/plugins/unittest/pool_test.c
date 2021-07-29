@@ -19,29 +19,37 @@ static clib_error_t *
 test_pool_command_fn (vlib_main_t *vm, unformat_input_t *input,
 		      vlib_cli_command_t *cmd)
 {
-  int i;
+  static int sizes[] = { 3, 31, 2042, 2048 };
+
+  int i, j;
   u64 *pool;
+  uword this_size;
 
-  pool_init_fixed (pool, 2048);
-
-  i = 0;
-
-  while (pool_free_elts (pool) > 0)
+  for (j = 0; j < ARRAY_LEN (sizes); j++)
     {
-      u64 *p __attribute__ ((unused));
+      this_size = sizes[j];
 
-      pool_get (pool, p);
-      i++;
+      pool_init_fixed (pool, this_size);
+
+      i = 0;
+
+      while (pool_free_elts (pool) > 0)
+	{
+	  u64 *p __attribute__ ((unused));
+
+	  pool_get (pool, p);
+	  i++;
+	}
+
+      vlib_cli_output (vm, "allocated %d elts\n", i);
+
+      for (--i; i >= 0; i--)
+	{
+	  pool_put_index (pool, i);
+	}
+
+      ALWAYS_ASSERT (pool_free_elts (pool) == this_size);
     }
-
-  vlib_cli_output (vm, "allocated %d elts\n", i);
-
-  for (--i; i >= 0; i--)
-    {
-      pool_put_index (pool, i);
-    }
-
-  ALWAYS_ASSERT (pool_free_elts (pool) == 2048);
 
   vlib_cli_output (vm, "Test succeeded...\n");
   return 0;

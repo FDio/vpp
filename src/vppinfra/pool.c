@@ -97,7 +97,7 @@ _pool_init_fixed (void **pool_ptr, u32 elt_size, u32 max_elts)
   vh->len = max_elts;
 
   /* Build the free-index vector */
-  vh = (vec_header_t *) (v + vector_size);
+  vh = (vec_header_t *) ((u8 *) fh + vector_size);
   vh->len = max_elts;
   fi = (u32 *) (vh + 1);
 
