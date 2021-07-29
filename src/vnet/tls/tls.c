@@ -799,6 +799,7 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
 
   ccfg = &sep->ext_cfg->crypto;
   engine_type = tls_get_engine_type (ccfg->crypto_engine, app->tls_engine);
+  engine_type = CRYPTO_ENGINE_PICOTLS;
   if (engine_type == CRYPTO_ENGINE_NONE)
     {
       clib_warning ("No tls engine_type available");
