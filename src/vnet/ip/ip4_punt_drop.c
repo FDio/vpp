@@ -313,8 +313,8 @@ VLIB_CLI_COMMAND (ip4_punt_policer_command, static) =
 #ifndef CLIB_MARCH_VARIANT
 
 void
-ip4_punt_redirect_add (u32 rx_sw_if_index,
-		       u32 tx_sw_if_index, ip46_address_t * nh)
+ip4_punt_redirect_add (u32 rx_sw_if_index, u32 tx_sw_if_index, u32 table_id,
+		       ip46_address_t *nh)
 {
   /* *INDENT-OFF* */
   fib_route_path_t *rpaths = NULL, rpath = {
@@ -328,27 +328,27 @@ ip4_punt_redirect_add (u32 rx_sw_if_index,
 
   vec_add1 (rpaths, rpath);
 
-  ip4_punt_redirect_add_paths (rx_sw_if_index, rpaths);
+  ip4_punt_redirect_add_paths (rx_sw_if_index, table_id, rpaths);
 
   vec_free (rpaths);
 }
 
 void
-ip4_punt_redirect_add_paths (u32 rx_sw_if_index, fib_route_path_t * rpaths)
+ip4_punt_redirect_add_paths (u32 rx_sw_if_index, u32 table_id,
+			     fib_route_path_t *rpaths)
 {
-  ip_punt_redirect_add (FIB_PROTOCOL_IP4,
-			rx_sw_if_index,
+  ip_punt_redirect_add (FIB_PROTOCOL_IP4, rx_sw_if_index, table_id,
 			FIB_FORW_CHAIN_TYPE_UNICAST_IP4, rpaths);
 
   vnet_feature_enable_disable ("ip4-punt", "ip4-punt-redirect", 0, 1, 0, 0);
 }
 
 void
-ip4_punt_redirect_del (u32 rx_sw_if_index)
+ip4_punt_redirect_del (u32 rx_sw_if_index, u32 table_id)
 {
   vnet_feature_enable_disable ("ip4-punt", "ip4-punt-redirect", 0, 0, 0, 0);
 
-  ip_punt_redirect_del (FIB_PROTOCOL_IP4, rx_sw_if_index);
+  ip_punt_redirect_del (FIB_PROTOCOL_IP4, rx_sw_if_index, table_id);
 }
 #endif /* CLIB_MARCH_VARIANT */
 
@@ -362,6 +362,7 @@ ip4_punt_redirect_cmd (vlib_main_t * vm,
   clib_error_t *error = 0;
   u32 rx_sw_if_index = ~0;
   u32 tx_sw_if_index = ~0;
+  u32 fib_index = ~0;
   vnet_main_t *vnm;
   u8 is_add;
 
@@ -377,6 +378,8 @@ ip4_punt_redirect_cmd (vlib_main_t * vm,
 	is_add = 0;
       else if (unformat (line_input, "add"))
 	is_add = 1;
+      else if (unformat (line_input, "table %u", &fib_index))
+	;
       else if (unformat (line_input, "rx all"))
 	rx_sw_if_index = ~0;
       else if (unformat (line_input, "rx %U",
@@ -396,19 +399,13 @@ ip4_punt_redirect_cmd (vlib_main_t * vm,
 	}
     }
 
-  if (~0 == rx_sw_if_index)
-    {
-      error = unformat_parse_error (line_input);
-      goto done;
-    }
-
   if (is_add)
     {
-      ip4_punt_redirect_add (rx_sw_if_index, tx_sw_if_index, &nh);
+      ip4_punt_redirect_add (rx_sw_if_index, tx_sw_if_index, fib_index, &nh);
     }
   else
     {
-      ip4_punt_redirect_del (rx_sw_if_index);
+      ip4_punt_redirect_del (rx_sw_if_index, fib_index);
     }
 
 done:
@@ -435,7 +432,7 @@ ip4_punt_redirect_show_cmd (vlib_main_t * vm,
 			    unformat_input_t * main_input,
 			    vlib_cli_command_t * cmd)
 {
-  vlib_cli_output (vm, "%U", format_ip_punt_redirect, FIB_PROTOCOL_IP4);
+  vlib_cli_output (vm, "%U", format_ip_punt_redirect);
 
   return (NULL);
 }
