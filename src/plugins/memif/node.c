@@ -774,7 +774,7 @@ refill:
   n_alloc = vlib_buffer_alloc_to_ring_from_pool (
     vm, mq->buffers, slot, ring_size, n_slots, mq->buffer_pool_index);
   dt->region = mq->buffer_pool_index + 1;
-  offset = (u64) mif->regions[dt->region].shm + start_offset;
+  offset = (u64) mif->regions[dt->region].shm - start_offset;
 
   if (PREDICT_FALSE (n_alloc != n_slots))
     vlib_error_count (vm, node->node_index,
