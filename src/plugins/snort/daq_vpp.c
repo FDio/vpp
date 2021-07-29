@@ -628,8 +628,7 @@ vpp_daq_msg_receive (void *handle, const unsigned max_recv,
 	  msgs += n;
 	  n_recv += n;
 	}
-
-      (void) read (qp->enq_fd, &ctr, sizeof (ctr));
+      CLIB_UNUSED (ssize_t size) = read (qp->enq_fd, &ctr, sizeof (ctr));
     }
 
   *rstat = DAQ_RSTAT_OK;
