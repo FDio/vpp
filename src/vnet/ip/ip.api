@@ -577,6 +577,38 @@ define ip_punt_redirect_details
   vl_api_punt_redirect_t punt;
 };
 
+/** \brief Punt redirect type
+    @param rx_sw_if_index - specify the original RX interface of traffic
+                            that should be redirected. ~0 means any interface.
+    @param tx_sw_if_index - the TX interface to which traffic should be
+                            redirected.
+    @param table_id - the FIB table from which traffic is punted
+                      ~0 means any table
+    @param nh - the next-hop to redirect the traffic to.
+    @param is_ipv6 - 1 for IPv6 neighbor, 0 for IPv4
+*/
+typedef punt_redirect_v2
+{
+  vl_api_interface_index_t rx_sw_if_index [default=0xffffffff];
+  vl_api_interface_index_t tx_sw_if_index;
+  u32 table_id [default=0xffffffff];
+  vl_api_address_t nh;
+};
+
+/** \brief IP punt redirect
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param punt - punt definition
+    @param is_add - 1 to add neighbor, 0 to delete
+*/
+autoreply define ip_punt_redirect_v2
+{
+  u32 client_index;
+  u32 context;
+  vl_api_punt_redirect_v2_t punt;
+  bool is_add [default=true];
+};
+
 autoreply define ip_container_proxy_add_del
 {
   u32 client_index;

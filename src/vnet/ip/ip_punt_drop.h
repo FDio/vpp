@@ -19,6 +19,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/policer/policer.h>
 #include <vnet/policer/police_inlines.h>
+#include <vppinfra/bihash_16_8.h>
 
 /**
  * IP4 punt policer configuration
@@ -45,6 +46,9 @@ typedef struct ip_punt_policer_trace_t_
 
 #define foreach_ip_punt_policer_error          \
 _(DROP, "ip punt policer drop")
+
+#define IP_PUNT_DEFAULT_HASH_MEMORY  (2 << 20)
+#define IP_PUNT_DEFAULT_HASH_BUCKETS (1024)
 
 typedef enum
 {
@@ -236,10 +240,21 @@ typedef struct ip_punt_redirect_t_
 
   /**
    * per-RX interface configuration.
-   *  sw_if_index = 0 (from which packets are never received) is used to
-   *  indicate 'from-any'
+   *  sw_if_index = ~0 (from which packets are never received) is used to
+   *  indicate 'from-any'. same thing applies for table_id = ~0
    */
-  index_t *redirect_by_rx_sw_if_index[FIB_PROTOCOL_IP_MAX];
+  clib_bihash_16_8_t punt_db;
+
+  /* Number of sw_if_index configured */
+  u32 used_sw_if_indexes;
+
+  /* Number of table_id configured */
+  u32 used_table_ids;
+
+  /* bihash size */
+  u32 punt_hash_memory;
+  u32 punt_hash_buckets;
+
 } ip_punt_redirect_cfg_t;
 
 extern ip_punt_redirect_cfg_t ip_punt_redirect_cfg;
@@ -260,6 +275,9 @@ typedef enum ip_punt_redirect_next_t_
  */
 typedef struct ip4_punt_redirect_trace_t_
 {
+  fib_protocol_t fproto;
+  u32 rx_sw_if_index;
+  u32 fib_index;
   index_t rrxi;
   u32 next;
 } ip_punt_redirect_trace_t;
@@ -267,23 +285,30 @@ typedef struct ip4_punt_redirect_trace_t_
 /**
  * Add a punt redirect entry
  */
-extern void ip_punt_redirect_add (fib_protocol_t fproto,
-				  u32 rx_sw_if_index,
-				  fib_forward_chain_type_t ct,
-				  fib_route_path_t * rpaths);
+extern void ip_punt_redirect_add (fib_protocol_t fproto, u32 rx_sw_if_index,
+				  u32 table_id, fib_forward_chain_type_t ct,
+				  fib_route_path_t *rpaths);
 
-extern void ip_punt_redirect_del (fib_protocol_t fproto, u32 rx_sw_if_index);
+extern void ip_punt_redirect_del (fib_protocol_t fproto, u32 rx_sw_if_index,
+				  u32 table_id);
 extern index_t ip_punt_redirect_find (fib_protocol_t fproto,
-				      u32 rx_sw_if_index);
+				      u32 rx_sw_if_index, u32 table_id);
 extern u8 *format_ip_punt_redirect (u8 * s, va_list * args);
 
 extern u8 *format_ip_punt_redirect_trace (u8 * s, va_list * args);
 
-typedef walk_rc_t (*ip_punt_redirect_walk_cb_t) (u32 rx_sw_if_index,
-						 const ip_punt_redirect_rx_t *
-						 redirect, void *arg);
+typedef walk_rc_t (*ip_punt_redirect_walk_cb_t) (
+  u32 rx_sw_if_index, u32 table_id, const ip_punt_redirect_rx_t *redirect,
+  void *arg);
 extern void ip_punt_redirect_walk (fib_protocol_t fproto,
 				   ip_punt_redirect_walk_cb_t cb, void *ctx);
+
+typedef struct ip_punt_redirect_walk_ctx_t_
+{
+  fib_protocol_t fproto;
+  ip_punt_redirect_walk_cb_t cb;
+  void *ctx;
+} ip_punt_redirect_walk_ctx_t;
 
 static_always_inline ip_punt_redirect_rx_t *
 ip_punt_redirect_get (index_t rrxi)
@@ -299,12 +324,10 @@ ip_punt_redirect (vlib_main_t * vm,
   u32 *from, *to_next, n_left_from, n_left_to_next, next_index;
   vnet_feature_main_t *fm = &feature_main;
   vnet_feature_config_main_t *cm = &fm->feature_config_mains[arc_index];
-  index_t *redirects;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
-  redirects = ip_punt_redirect_cfg.redirect_by_rx_sw_if_index[fproto];
 
   while (n_left_from > 0)
     {
@@ -312,13 +335,14 @@ ip_punt_redirect (vlib_main_t * vm,
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
-	  u32 rx_sw_if_index0, rrxi0;
+	  u32 rx_sw_if_index0, fib_index0;
+	  clib_bihash_kv_16_8_t bkey, bvalue;
 	  ip_punt_redirect_rx_t *rrx0;
 	  vlib_buffer_t *b0;
 	  u32 next0;
 	  u32 bi0;
+	  int rv0;
 
-	  rrxi0 = INDEX_INVALID;
 	  next0 = 0;
 	  bi0 = to_next[0] = from[0];
 
@@ -333,25 +357,36 @@ ip_punt_redirect (vlib_main_t * vm,
 				&b0->current_config_index, &next0, 0);
 
 	  rx_sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	  fib_index0 = vnet_buffer (b0)->ip.fib_index;
+
+	  fib_index0 =
+	    ip_punt_redirect_cfg.used_table_ids ? fib_index0 : INDEX_INVALID;
+	  rx_sw_if_index0 = ip_punt_redirect_cfg.used_sw_if_indexes ?
+			      rx_sw_if_index0 :
+			      INDEX_INVALID;
 
 	  /*
 	   * If config exists for this particular RX interface use it,
-	   * else use the default (at RX = 0)
+	   * else use the default
 	   */
-	  if (vec_len (redirects) > rx_sw_if_index0)
-	    {
-	      rrxi0 = redirects[rx_sw_if_index0];
-	      if (INDEX_INVALID == rrxi0)
-		rrxi0 = redirects[0];
-	    }
-	  else if (vec_len (redirects) >= 1)
-	    rrxi0 = redirects[0];
+	  bkey.key[0] = fproto;
+	  bkey.key[1] = (((u64) rx_sw_if_index0) << 32) | (u64) fib_index0;
 
-	  if (PREDICT_TRUE (INDEX_INVALID != rrxi0))
+	  rv0 = clib_bihash_search_inline_2_16_8 (
+	    &ip_punt_redirect_cfg.punt_db, &bkey, &bvalue);
+	  if (rv0)
+	    {
+	      /* try default configuration */
+	      bkey.key[1] = 0;
+	      rv0 = clib_bihash_search_inline_2_16_8 (
+		&ip_punt_redirect_cfg.punt_db, &bkey, &bvalue);
+	    }
+
+	  if (PREDICT_TRUE (!rv0))
 	    {
 	      /* prevent ttl decrement on forward */
 	      b0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
-	      rrx0 = ip_punt_redirect_get (rrxi0);
+	      rrx0 = ip_punt_redirect_get (bvalue.value);
 	      vnet_buffer (b0)->ip.adj_index[VLIB_TX] = rrx0->dpo.dpoi_index;
 	      next0 = rrx0->dpo.dpoi_next_node;
 	    }
@@ -360,8 +395,11 @@ ip_punt_redirect (vlib_main_t * vm,
 	    {
 	      ip_punt_redirect_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
+	      t->rx_sw_if_index = rx_sw_if_index0;
+	      t->fib_index = fib_index0;
 	      t->next = next0;
-	      t->rrxi = rrxi0;
+	      t->fproto = fproto;
+	      t->rrxi = rv0 ? INDEX_INVALID : bvalue.value;
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,

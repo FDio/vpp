@@ -294,11 +294,13 @@ lcp_itf_pair_add (u32 host_sw_if_index, u32 phy_sw_if_index, u8 *host_name,
 
   vec_add1 (rpaths, rpath);
 
-  ip4_punt_redirect_add_paths (lip->lip_phy_sw_if_index, rpaths);
+  ip4_punt_redirect_add_paths (lip->lip_phy_sw_if_index, INDEX_INVALID,
+			       rpaths);
 
   rpaths[0].frp_proto = DPO_PROTO_IP6;
 
-  ip6_punt_redirect_add_paths (lip->lip_phy_sw_if_index, rpaths);
+  ip6_punt_redirect_add_paths (lip->lip_phy_sw_if_index, INDEX_INVALID,
+			       rpaths);
 
   vec_free (rpaths);
 
@@ -419,8 +421,8 @@ lcp_itf_pair_del (u32 phy_sw_if_index)
 
   lcp_itf_unset_adjs (lip);
 
-  ip4_punt_redirect_del (lip->lip_phy_sw_if_index);
-  ip6_punt_redirect_del (lip->lip_phy_sw_if_index);
+  ip4_punt_redirect_del (lip->lip_phy_sw_if_index, INDEX_INVALID /*table*/);
+  ip6_punt_redirect_del (lip->lip_phy_sw_if_index, INDEX_INVALID /*table*/);
 
   /* disable ARP feature node for broadcast interfaces */
   if (lip->lip_host_type != LCP_ITF_HOST_TUN)
