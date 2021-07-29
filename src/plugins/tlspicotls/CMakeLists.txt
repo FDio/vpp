@@ -14,6 +14,7 @@ vpp_find_library(PICOTLS_CORE_LIBRARY NAMES "libpicotls-core.a")
 vpp_find_library(PICOTLS_OPENSSL_LIBRARY NAMES "libpicotls-openssl.a")
 
 list (APPEND PICOTLS_LINK_LIBRARIES
+    #/scratch/fcoras/quicly/deps/picotls/libpicotls-core.a
     ${PICOTLS_CORE_LIBRARY}
     ${PICOTLS_OPENSSL_LIBRARY}
 )
