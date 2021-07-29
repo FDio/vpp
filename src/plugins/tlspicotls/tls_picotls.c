@@ -257,16 +257,16 @@ static inline int
 picotls_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
 {
   picotls_ctx_t *ptls_ctx = (picotls_ctx_t *) ctx;
-  int from_tls_len = 0, off, crypto_len, ret;
-  u32 deq_max, deq_now;
-  u32 enq_max;
+  int from_tls_len = 0, off = 0, ret;
+  uword deq_now;
+  u32 deq_max;
   ptls_buffer_t *buf = &ptls_ctx->read_buffer;
   svm_fifo_t *tls_rx_fifo, *app_rx_fifo;
   session_t *app_session;
 
   tls_rx_fifo = tls_session->rx_fifo;
 
-  if (!picotls_handshake_is_over (ctx))
+  if (PREDICT_FALSE (!ptls_handshake_is_complete (ptls_ctx->tls)))
     {
       deq_max = svm_fifo_max_dequeue_cons (tls_rx_fifo);
       if (!deq_max)
@@ -295,86 +295,84 @@ picotls_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
   app_session = session_get_from_handle (ctx->app_session_handle);
   app_rx_fifo = app_session->rx_fifo;
 
+  const int n_segs = 2, max_len = 16384;
+  int i = 0, read = 0, len;
+  svm_fifo_seg_t fs[n_segs];
+
   if (TLS_READ_IS_LEFT (ptls_ctx))
-    goto enq_buf;
+    {
+      len = TLS_READ_LEFT_LEN (ptls_ctx);
+      off = svm_fifo_enqueue (app_rx_fifo, len, TLS_READ_OFFSET (ptls_ctx));
+      if (off < len)
+        {
+          tls_add_vpp_q_builtin_rx_evt (tls_session);
+          goto done_app_enq;
+        }
+      ptls_buffer_dispose (buf);
+    }
+
+  len = svm_fifo_segments (tls_rx_fifo, 0, fs, n_segs, max_len);
+  if (len <= 0)
+    goto final_checks;
 
   ptls_buffer_init (buf, "", 0);
   ptls_ctx->read_buffer_offset = 0;
 
-  if (!TLS_RX_IS_LEFT (ptls_ctx))
+  while (read < len && i < n_segs)
     {
-      deq_max = svm_fifo_max_dequeue_cons (tls_rx_fifo);
-      if (!deq_max)
-	goto app_fifo;
-
-      deq_now = clib_min (deq_max, svm_fifo_max_read_chunk (tls_rx_fifo));
-
-      if (PREDICT_FALSE (deq_now < deq_max))
+      deq_now = fs[i].len;
+      ret = ptls_receive (ptls_ctx->tls, buf, fs[i].data, &deq_now);
+      read += (ret == 0) ? deq_now : 0;
+      if (deq_now < fs[i].len || ret != 0)
 	{
-	  off =
-	    svm_fifo_dequeue (tls_rx_fifo, deq_max, TLS_RX_LEN (ptls_ctx));
-	  from_tls_len += off;
-	  ptls_ctx->rx_len += off;
+	  if (ret == 40)
+	    assert (0);
+	  break;
 	}
+      i++;
+    }
+
+  if (read)
+    svm_fifo_dequeue_drop (tls_rx_fifo, read);
+
+  if (!TLS_READ_LEFT_LEN (ptls_ctx))
+    {
+      ptls_buffer_dispose (buf);
+      if (off)
+	goto done_app_enq;
       else
-	{
-	  ret =
-	    ptls_receive (ptls_ctx->tls, buf, svm_fifo_head (tls_rx_fifo),
-			  (size_t *) & deq_now);
-	  svm_fifo_dequeue_drop (tls_rx_fifo, deq_now);
-	  goto enq_buf;
-	}
+	goto final_checks;
     }
 
-app_fifo:
-
-  enq_max = svm_fifo_max_enqueue_prod (app_rx_fifo);
-  if (!enq_max)
-    goto final;
-
-  crypto_len = clib_min (enq_max, TLS_RX_LEFT_LEN (ptls_ctx));
-  off = 0;
-
-  do
+  len = TLS_READ_LEFT_LEN (ptls_ctx);
+  off = svm_fifo_enqueue (app_rx_fifo, len, TLS_READ_OFFSET (ptls_ctx));
+  if (off < len)
     {
-      size_t consumed = crypto_len - off;
-      ret =
-	ptls_receive (ptls_ctx->tls, buf,
-		      TLS_RX_OFFSET (ptls_ctx), &consumed);
-      off += consumed;
-      ptls_ctx->rx_offset += off;
-    }
-  while (ret == 0 && off < crypto_len);
-
-enq_buf:
-
-  off =
-    svm_fifo_enqueue (app_rx_fifo, TLS_READ_LEFT_LEN (ptls_ctx),
-		      TLS_READ_OFFSET (ptls_ctx));
-  if (off < 0)
-    {
-      tls_add_vpp_q_builtin_rx_evt (tls_session);
-      return 0;
+      if (off)
+	goto done_app_enq;
+      else
+	goto final_checks;
     }
 
   ptls_ctx->read_buffer_offset += off;
-  if (!TLS_RX_IS_LEFT (ptls_ctx))
-    {
-      ptls_ctx->rx_len = 0;
-      ptls_ctx->rx_offset = 0;
-    }
+//  assert (!TLS_RX_IS_LEFT (ptls_ctx));
+//  ptls_ctx->rx_len = 0;
+//  ptls_ctx->rx_offset = 0;
 
-final:
   ptls_buffer_dispose (buf);
+
+done_app_enq:
 
   if (app_session->session_state >= SESSION_STATE_READY)
     tls_notify_app_enqueue (ctx, app_session);
+
+final_checks:
 
   if (TLS_RX_IS_LEFT (ptls_ctx) || TLS_READ_IS_LEFT (ptls_ctx)
       || svm_fifo_max_dequeue (tls_rx_fifo))
     tls_add_vpp_q_builtin_rx_evt (tls_session);
 
-  return from_tls_len;
+  return off;
 }
 
 static inline int
@@ -478,7 +476,7 @@ picotls_ctx_write (tls_ctx_t * ctx, session_t * app_session,
     /** Allowed to execute no-copy crypto operation **/
   if (enq_now > record_overhead)
     {
-      is_nocopy = 1;
+      is_nocopy = 0;
       from_app_len = clib_min (deq_now, enq_now);
       num_records =
 	ceil ((f64) from_app_len / PTLS_MAX_PLAINTEXT_RECORD_SIZE);
@@ -488,6 +486,7 @@ picotls_ctx_write (tls_ctx_t * ctx, session_t * app_session,
     }
   else
     {
+      clib_warning ("this enq now %u enq_max %u record %u", enq_now, enq_max, record_overhead);
       from_app_len = clib_min (deq_now, enq_max);
       num_records =
 	ceil ((f64) from_app_len / PTLS_MAX_PLAINTEXT_RECORD_SIZE);
