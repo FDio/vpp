@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a3256208_7e133b01",
+        "filename": "src/vnet/tcp/tcp_inlines.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 312,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-07-30T16:09:03Z",
+      "side": 1,
+      "message": "PREDICT_TRUE",
+      "range": {
+        "startLine": 312,
+        "startChar": 6,
+        "endLine": 312,
+        "endChar": 8
+      },
+      "revId": "3a020dda16cc2194f73e9aa227fa2ff2bc872fea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
