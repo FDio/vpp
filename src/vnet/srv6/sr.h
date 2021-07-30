@@ -128,7 +128,7 @@ typedef struct
 
   char end_psp;					/**< Combined with End.PSP? */
 
-  u16 behavior;					/**< Behavior associated to this localsid */
+  u8 behavior; /**< Behavior associated to this localsid */
 
   union
   {

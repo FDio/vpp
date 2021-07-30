@@ -217,7 +217,7 @@ static void send_sr_localsid_details
   rmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_SR_LOCALSIDS_DETAILS);
   ip6_address_encode (&t->localsid, rmp->addr);
   rmp->end_psp = t->end_psp;
-  rmp->behavior = htons (t->behavior);
+  rmp->behavior = t->behavior;
   rmp->fib_table = htonl (t->fib_table);
   rmp->vlan_index = htonl (t->vlan_index);
   ip_address_encode (&t->next_hop, IP46_TYPE_ANY, &rmp->xconnect_nh_addr);
