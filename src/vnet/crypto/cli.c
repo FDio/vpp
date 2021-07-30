@@ -67,7 +67,7 @@ format_vnet_crypto_engine_candidates (u8 * s, va_list * args)
     {
       vec_foreach (e, cm->engines)
 	{
-	  if (e->enqueue_handlers[id] && e->dequeue_handlers[id])
+	  if (e->enqueue_handlers[id] && e->dequeue_handler)
 	    {
 	      s = format (s, "%U", format_vnet_crypto_engine, e - cm->engines);
 	      if (ei == e - cm->engines)
