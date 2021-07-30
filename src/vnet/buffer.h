@@ -383,7 +383,6 @@ typedef struct
     /* TCP */
     struct
     {
-      u32 connection_index;
       union
       {
 	u32 seq_number;
@@ -391,6 +390,7 @@ typedef struct
       };
       u32 seq_end;
       u32 ack_number;
+      u32 connection_index;
       u16 hdr_offset;		/**< offset relative to ip hdr */
       u16 data_offset;		/**< offset relative to ip hdr */
       u16 data_len;		/**< data len */
@@ -420,6 +420,12 @@ STATIC_ASSERT (STRUCT_SIZE_OF (vnet_buffer_opaque_t, ip.save_rewrite_length)
 				  mpls.save_rewrite_length) == 1
 	       && VNET_REWRITE_TOTAL_BYTES < UINT8_MAX,
 	       "save_rewrite_length member must be able to hold the max value of rewrite length");
+
+/* This ensures that in ip4-local when punting we can set the tcp.* vars
+ * but not tcp.connection_index thus keeping ip.fib_index */
+STATIC_ASSERT (STRUCT_SIZE_OF (vnet_buffer_opaque_t, tcp.connection_index) ==
+		 STRUCT_SIZE_OF (vnet_buffer_opaque_t, ip.fib_index),
+	       "tcp.connection_index member must match ip.fib_index");
 
 STATIC_ASSERT (STRUCT_OFFSET_OF (vnet_buffer_opaque_t, ip.save_rewrite_length)
 	       == STRUCT_OFFSET_OF (vnet_buffer_opaque_t,
