@@ -309,13 +309,15 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
       (transport_connection_t *) tcp_connection_get (vnet_buffer (b)->
 						     tcp.connection_index,
 						     thread_index);
-
-  vnet_buffer (b)->tcp.seq_number = clib_net_to_host_u32 (tcp->seq_number);
-  vnet_buffer (b)->tcp.ack_number = clib_net_to_host_u32 (tcp->ack_number);
-  vnet_buffer (b)->tcp.data_offset = n_advance_bytes;
-  vnet_buffer (b)->tcp.data_len = n_data_bytes;
-  vnet_buffer (b)->tcp.seq_end = vnet_buffer (b)->tcp.seq_number
-    + n_data_bytes;
+  if (tc)
+    {
+      vnet_buffer (b)->tcp.seq_number = clib_net_to_host_u32 (tcp->seq_number);
+      vnet_buffer (b)->tcp.ack_number = clib_net_to_host_u32 (tcp->ack_number);
+      vnet_buffer (b)->tcp.data_offset = n_advance_bytes;
+      vnet_buffer (b)->tcp.data_len = n_data_bytes;
+      vnet_buffer (b)->tcp.seq_end =
+	vnet_buffer (b)->tcp.seq_number + n_data_bytes;
+    }
 
   *error = result ? TCP_ERROR_NONE + result : *error;
 
