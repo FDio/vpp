@@ -287,9 +287,21 @@ picotls_ctx_read (tls_ctx_t *ctx, session_t *tcp_session)
     {
       picotls_do_handshake (ptls_ctx, tcp_session);
       if (picotls_handshake_is_over (ctx))
-	ret = ptls_is_server (ptls_ctx->tls) ?
-		tls_notify_app_accept (ctx) :
-		tls_notify_app_connected (ctx, SESSION_E_NONE);
+	{
+	  if (ptls_is_server (ptls_ctx->tls))
+	    {
+	      if (tls_notify_app_accept (ctx))
+		{
+		  ctx->c_s_index = SESSION_INVALID_INDEX;
+		  tls_disconnect_transport (ctx);
+		  return -1;
+		}
+	    }
+	  else
+	    {
+	      tls_notify_app_connected (ctx, SESSION_E_NONE);
+	    }
+	}
 
       if (!svm_fifo_max_dequeue (tcp_session->rx_fifo))
 	return 0;
