@@ -22,6 +22,30 @@
       "revId": "98292a4c23fbbb7d192bf9b47da87288d444744e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6a2fd67d_0d4f84e0",
+        "filename": "src/vlib/node_funcs.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 851,
+      "author": {
+        "id": 2483
+      },
+      "writtenOn": "2021-07-31T05:16:25Z",
+      "side": 1,
+      "message": "Program received signal SIGSEGV, Segmentation fault.\nvlib_process_signal_event_helper (nm\u003d0x7ffff7f87d28 \u003cvlib_global_main+360\u003e, n\u003d0x7fffb54fb450, p\u003d0x7fffb54fb5c0, t\u003d3, n_data_elts\u003d1, \n    n_data_elt_bytes\u003d8) at /centos/H3Cloud-Desktop/vpp/src/vlib/node_funcs.h:847\n847\t\t_vec_len (data_vec) \u003d 0;\nMissing separate debuginfos, use: debuginfo-install keyutils-libs-1.5.8-3.el7.x86_64 krb5-libs-1.15.1-46.el7.x86_64 libcom_err-1.42.9-17.el7.x86_64 libselinux-2.5-15.el7.x86_64 libuuid-2.23.2-65.el7_9.1.x86_64 openssl-libs-1.0.2k-21.el7_9.x86_64 pcre-8.32-17.el7.x86_64 pkcs11-helper-1.11-3.el7.x86_64 zlib-1.2.7-18.el7.x86_64\n(gdb) bt\n#0  vlib_process_signal_event_helper (nm\u003d0x7ffff7f87d28 \u003cvlib_global_main+360\u003e, n\u003d0x7fffb54fb450, p\u003d0x7fffb54fb5c0, t\u003d3, n_data_elts\u003d1, \n    n_data_elt_bytes\u003d8) at /centos/H3Cloud-Desktop/vpp/src/vlib/node_funcs.h:847\n#1  0x00007ffff711538c in vlib_process_signal_event_data (vm\u003d0x7ffff7f87bc0 \u003cvlib_global_main\u003e, node_index\u003d665, type_opaque\u003d4, \n    n_data_elts\u003d1, n_data_elt_bytes\u003d8) at /centos/H3Cloud-Desktop/vpp/src/vlib/node_funcs.h:933\n#2  0x00007ffff71153c5 in vlib_process_signal_event (vm\u003d0x7ffff7f87bc0 \u003cvlib_global_main\u003e, node_index\u003d665, type_opaque\u003d4, data\u003d1)\n    at /centos/H3Cloud-Desktop/vpp/src/vlib/node_funcs.h:1018\n#3  0x00007ffff711cd0e in link_up_down_function (vm\u003d0x7ffff7db8460 \u003cvnet_main\u003e, hw_if_index\u003d1, flags\u003d0)\n    at /centos/H3Cloud-Desktop/vpp/src/vnet/interface_api.c:837\n#4  0x00007ffff7106361 in call_elf_section_interface_callbacks (vnm\u003d0x7ffff7db8460 \u003cvnet_main\u003e, if_index\u003d1, flags\u003d0, \n    elts\u003d0x7ffff7db8510 \u003cvnet_main+176\u003e) at /centos/H3Cloud-Desktop/vpp/src/vnet/interface.c:258\n#5  0x00007ffff71065b9 in vnet_hw_interface_set_flags_helper (vnm\u003d0x7ffff7db8460 \u003cvnet_main\u003e, hw_if_index\u003d1, \n    flags\u003dVNET_HW_INTERFACE_FLAG_NONE, helper_flags\u003dVNET_INTERFACE_SET_FLAGS_HELPER_WANT_REDISTRIBUTE)\n    at /centos/H3Cloud-Desktop/vpp/src/vnet/interface.c:338\n#6  0x00007ffff7106adf in vnet_hw_interface_set_flags (vnm\u003d0x7ffff7db8460 \u003cvnet_main\u003e, hw_if_index\u003d1, flags\u003dVNET_HW_INTERFACE_FLAG_NONE)\n    at /centos/H3Cloud-Desktop/vpp/src/vnet/interface.c:513\n#7  0x00007fffb1aa1a98 in memif_disconnect (mif\u003d0x7fffb78ce8c0, err\u003d0x7fffb7ca3090)\n    at /centos/H3Cloud-Desktop/vpp/src/plugins/memif/memif.c:113\n(gdb) p/x nm\n$1 \u003d 0x7ffff7f87d28\n(gdb) p/x *nm\n$2 \u003d {nodes \u003d 0x7fffb5486990, node_by_name \u003d 0x7fffb4f2b5f0, flags \u003d 0x1, nodes_by_type \u003d {0x7fffb50abf00, 0x7fffb549df40, \n    0x7fffb54fbec0, 0x0}, pending_local_interrupts \u003d 0x7fffb60862d0, pending_remote_interrupts \u003d 0x7fffb7882590, \n  pending_remote_interrupts_notify \u003d 0x7fffb7a16640, pending_interrupt_lock \u003d 0x7fffb7a16680, polling_threshold_vector_length \u003d 0xa, \n  interrupt_threshold_vector_length \u003d 0x5, next_frames \u003d 0x7fffb79aca60, pending_frames \u003d 0x7fffb7f962e0, \n  timing_wheel \u003d 0x7fffb5151040, signal_timed_event_data_pool \u003d 0x0, data_from_advancing_timing_wheel \u003d 0x7fffb5110ee0, \n  time_next_process_ready \u003d 0x0, processes \u003d 0x7fffb4f1fb80, current_process_index \u003d 0xffffffff, \n  suspended_process_frames \u003d 0x7fffb78966a8, recycled_event_data_vectors \u003d 0x7fffb4244dd0, input_node_counts_by_state \u003d {0x1, 0xa, \n    0xc}, frame_size_hash \u003d 0x0, frame_sizes \u003d 0x7fffb50d0170, time_last_runtime_stats_clear \u003d 0x0, \n  node_registrations \u003d 0x7fffb0b47e40, node_by_error \u003d 0x7fffb545be30}\n(gdb) p/x data_vec\n$3 \u003d 0x0\n(gdb)\n\nThis is part of the gdb debug log msg. Two VPPs are connected via memif. When one of the VPPs exits, the interfaces link_state become down will triggers a null pointer and causes vpp crash.",
+      "parentUuid": "586f09a6_7cbf42cf",
+      "range": {
+        "startLine": 851,
+        "startChar": 1,
+        "endLine": 851,
+        "endChar": 17
+      },
+      "revId": "98292a4c23fbbb7d192bf9b47da87288d444744e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
