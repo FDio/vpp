@@ -163,6 +163,14 @@ extern ssize_t sendfile (int __out_fd, int __in_fd, off_t * __offset,
    __THROW.  */
 extern ssize_t recv (int __fd, void *__buf, size_t __n, int __flags);
 
+/* Read N bytes into BUF from socket FD with buffer overflow checking.
+   Returns the number read or -1 for errors.
+
+   This function is a cancellation point and therefore not marked with
+   __THROW.  */
+extern ssize_t __recv_chk (int fd, void *buf, size_t n, size_t buflen,
+			   int flags);
+
 /* Send N bytes of BUF on socket FD to peer at address ADDR (which is
    ADDR_LEN bytes long).  Returns the number sent, or -1 for errors.
 

@@ -1530,6 +1530,15 @@ recv (int fd, void *buf, size_t n, int flags)
   return size;
 }
 
+ssize_t
+__recv_chk (int fd, void *buf, size_t n, size_t buflen, int flags)
+{
+  if (n > buflen)
+    return -1;
+
+  return recv (fd, buf, n, flags);
+}
+
 static int
 ldp_vls_sendo (vls_handle_t vlsh, const void *buf, size_t n, int flags,
 	       __CONST_SOCKADDR_ARG addr, socklen_t addr_len)
