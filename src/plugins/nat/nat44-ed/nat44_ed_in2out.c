@@ -49,6 +49,7 @@ typedef struct
   u8 is_slow_path;
   u8 translation_via_i2of;
   u8 lookup_skipped;
+  u8 l4_layer_truncated;
 } nat_in2out_ed_trace_t;
 
 static u8 *
@@ -78,7 +79,11 @@ format_nat_in2out_ed_trace (u8 * s, va_list * args)
     {
       if (t->lookup_skipped)
 	{
-	  s = format (s, "\n lookup skipped - cached session index used");
+	  s = format (s, "\n  lookup skipped - cached session index used");
+	}
+      else if (t->l4_layer_truncated)
+	{
+	  s = format (s, "\n  lookup skipped - l4 layer truncated");
 	}
       else
 	{
@@ -356,9 +361,15 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
   /* First try to match static mapping by local address and port */
   int is_sm;
   if (snat_static_mapping_match (vm, sm, l_addr, l_port, rx_fib_index, proto,
-				 &sm_addr, &sm_port, &sm_fib_index, 0, 0, 0,
-				 &lb, 0, &is_identity_nat, 0))
+				 &sm_addr, &sm_port, &sm_fib_index, 0,
+				 vnet_buffer (b)->ip.reass.l4_layer_truncated,
+				 0, 0, &lb, 0, &is_identity_nat, 0))
     {
+      if (PREDICT_FALSE (vnet_buffer (b)->ip.reass.l4_layer_truncated))
+	{
+	  *sessionp = NULL;
+	  return NAT_NEXT_DROP;
+	}
       is_sm = 0;
     }
   else
@@ -529,7 +540,8 @@ nat44_ed_not_translate (vlib_main_t *vm, snat_main_t *sm,
 	     ip->protocol);
 
   /* NAT packet aimed at external address if has active sessions */
-  if (clib_bihash_search_16_8 (&sm->flow_hash, &kv, &value))
+  if (PREDICT_FALSE (vnet_buffer (b)->ip.reass.l4_layer_truncated) ||
+      clib_bihash_search_16_8 (&sm->flow_hash, &kv, &value))
     {
       /* or is static mappings */
       ip4_address_t placeholder_addr;
@@ -538,7 +550,8 @@ nat44_ed_not_translate (vlib_main_t *vm, snat_main_t *sm,
       if (!snat_static_mapping_match (
 	    vm, sm, ip->dst_address, vnet_buffer (b)->ip.reass.l4_dst_port,
 	    sm->outside_fib_index, proto, &placeholder_addr, &placeholder_port,
-	    &placeholder_fib_index, 1, 0, 0, 0, 0, 0, 0))
+	    &placeholder_fib_index, 1,
+	    vnet_buffer (b)->ip.reass.l4_layer_truncated, 0, 0, 0, 0, 0, 0))
 	return 0;
     }
   else
@@ -1010,6 +1023,12 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t *vm,
 	    goto trace0;
 	}
 
+      if (vnet_buffer (b0)->ip.reass.l4_layer_truncated)
+	{
+	  next[0] = def_slow;
+	  goto trace0;
+	}
+
       if (PREDICT_FALSE (proto0 == IP_PROTOCOL_ICMP))
 	{
 	  if (vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags !=
@@ -1207,6 +1226,8 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t *vm,
 	    {
 	      t->session_index = ~0;
 	    }
+	  t->l4_layer_truncated =
+	    vnet_buffer (b0)->ip.reass.l4_layer_truncated;
 	}
 
       if (next[0] == NAT_NEXT_DROP)
@@ -1313,6 +1334,11 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
 	  goto trace0;
 	}
 
+      if (PREDICT_FALSE (vnet_buffer (b0)->ip.reass.l4_layer_truncated))
+	{
+	  goto skip_lookup;
+	}
+
       if (PREDICT_FALSE (proto0 == IP_PROTOCOL_ICMP))
 	{
 	  next[0] = icmp_in2out_ed_slow_path (
@@ -1354,9 +1380,11 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
 	    }
 	}
 
+    skip_lookup:
       if (!s0)
 	{
-	  if (is_output_feature)
+	  if (is_output_feature &&
+	      !vnet_buffer (b0)->ip.reass.l4_layer_truncated)
 	    {
 	      if (PREDICT_FALSE (nat44_ed_not_translate_output_feature (
 		    sm, b0, ip0, vnet_buffer (b0)->ip.reass.l4_src_port,
@@ -1375,7 +1403,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
 		    ip0->dst_address.as_u32 == 0xffffffff))
 		goto trace0;
 	    }
-	  else
+	  else if (!is_output_feature)
 	    {
 	      if (PREDICT_FALSE (
 		    nat44_ed_not_translate (vm, sm, node, rx_sw_if_index0, b0,

@@ -38,11 +38,12 @@ static char *nat_out2in_ed_error_strings[] = {
 
 typedef enum
 {
-  NAT_ED_SP_REASON_NO_REASON,
-  NAT_ED_SP_REASON_LOOKUP_FAILED,
-  NAT_ED_SP_REASON_VRF_EXPIRED,
+  NAT_ED_SP_NO_REASON,
+  NAT_ED_SP_LOOKUP_FAILED,
+  NAT_ED_SP_VRF_EXPIRED,
   NAT_ED_SP_TCP_CLOSED,
   NAT_ED_SP_SESS_EXPIRED,
+  NAT_ED_SP_L4_LAYER_TRUNCATED,
 } nat_slow_path_reason_e;
 
 typedef struct
@@ -57,6 +58,7 @@ typedef struct
   u8 is_slow_path;
   u8 translation_via_i2of;
   u8 lookup_skipped;
+  u8 l4_layer_truncated;
   nat_slow_path_reason_e slow_path_reason;
 } nat44_ed_out2in_trace_t;
 
@@ -66,16 +68,18 @@ format_slow_path_reason (u8 *s, va_list *args)
   nat_slow_path_reason_e reason = va_arg (*args, nat_slow_path_reason_e);
   switch (reason)
     {
-    case NAT_ED_SP_REASON_NO_REASON:
+    case NAT_ED_SP_NO_REASON:
       return format (s, "no reason for slow path");
-    case NAT_ED_SP_REASON_LOOKUP_FAILED:
+    case NAT_ED_SP_LOOKUP_FAILED:
       return format (s, "slow path because lookup failed");
-    case NAT_ED_SP_REASON_VRF_EXPIRED:
+    case NAT_ED_SP_VRF_EXPIRED:
       return format (s, "slow path because vrf expired");
     case NAT_ED_SP_TCP_CLOSED:
       return format (s, "slow path because tcp closed");
     case NAT_ED_SP_SESS_EXPIRED:
       return format (s, "slow path because session expired");
+    case NAT_ED_SP_L4_LAYER_TRUNCATED:
+      return format (s, "slow path because l4 layer truncated");
     }
   return format (s, "invalid reason value");
 }
@@ -107,14 +111,18 @@ format_nat44_ed_out2in_trace (u8 * s, va_list * args)
     {
       if (t->lookup_skipped)
 	{
-	  s = format (s, "\n lookup skipped - cached session index used");
+	  s = format (s, "\n  lookup skipped - cached session index used");
+	}
+      else if (t->l4_layer_truncated)
+	{
+	  s = format (s, "\n  lookup skipped - l4 layer truncated");
 	}
       else
 	{
 	  s = format (s, "\n  search key %U", format_ed_session_kvp,
 		      &t->search_key);
 	}
-      s = format (s, "\n %U", format_slow_path_reason, t->slow_path_reason);
+      s = format (s, "\n  %U", format_slow_path_reason, t->slow_path_reason);
     }
 
   return s;
@@ -181,8 +189,9 @@ icmp_out2in_ed_slow_path (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
 
   if (snat_static_mapping_match (vm, sm, ip->dst_address, lookup_sport,
 				 rx_fib_index, ip->protocol, &sm_addr,
-				 &sm_port, &sm_fib_index, 1, &is_addr_only, 0,
-				 0, 0, &identity_nat, &m))
+				 &sm_port, &sm_fib_index, 1,
+				 vnet_buffer (b)->ip.reass.l4_layer_truncated,
+				 &is_addr_only, 0, 0, 0, &identity_nat, &m))
     {
       // static mapping not matched
       if (!sm->forwarding_enabled)
@@ -759,7 +768,7 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
       snat_session_t *s0 = 0;
       clib_bihash_kv_16_8_t kv0, value0;
       nat_translation_error_e translation_error = NAT_ED_TRNSL_ERR_SUCCESS;
-      nat_slow_path_reason_e slow_path_reason = NAT_ED_SP_REASON_NO_REASON;
+      nat_slow_path_reason_e slow_path_reason = NAT_ED_SP_NO_REASON;
       nat_6t_flow_t *f = 0;
       nat_6t_t lookup;
       int lookup_skipped = 0;
@@ -857,11 +866,18 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
       init_ed_k (&kv0, lookup.saddr.as_u32, lookup.sport, lookup.daddr.as_u32,
 		 lookup.dport, lookup.fib_index, lookup.proto);
 
+      if (PREDICT_FALSE (vnet_buffer (b0)->ip.reass.l4_layer_truncated))
+	{
+	  slow_path_reason = NAT_ED_SP_L4_LAYER_TRUNCATED;
+	  next[0] = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
+	  goto trace0;
+	}
+
       // lookup flow
       if (clib_bihash_search_16_8 (&sm->flow_hash, &kv0, &value0))
 	{
 	  // flow does not exist go slow path
-	  slow_path_reason = NAT_ED_SP_REASON_LOOKUP_FAILED;
+	  slow_path_reason = NAT_ED_SP_LOOKUP_FAILED;
 	  next[0] = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
 	  goto trace0;
 	}
@@ -878,7 +894,7 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 	  // session is closed, go slow path
 	  nat44_ed_free_session_data (sm, s0, thread_index, 0);
 	  nat_ed_session_delete (sm, s0, thread_index, 1);
-	  slow_path_reason = NAT_ED_SP_REASON_VRF_EXPIRED;
+	  slow_path_reason = NAT_ED_SP_VRF_EXPIRED;
 	  next[0] = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
 	  goto trace0;
 	}
@@ -1021,6 +1037,8 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 	  clib_memcpy (&t->search_key, &kv0, sizeof (t->search_key));
 	  t->lookup_skipped = lookup_skipped;
 	  t->slow_path_reason = slow_path_reason;
+	  t->l4_layer_truncated =
+	    vnet_buffer (b0)->ip.reass.l4_layer_truncated;
 
 	  if (s0)
 	    {
@@ -1136,6 +1154,12 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
 	  goto trace0;
 	}
 
+      if (PREDICT_FALSE (vnet_buffer (b0)->ip.reass.l4_layer_truncated))
+	{
+	  s0 = NULL;
+	  goto skip_lookup;
+	}
+
       if (PREDICT_FALSE (proto0 == IP_PROTOCOL_ICMP))
 	{
 	  next[0] = icmp_out2in_ed_slow_path
@@ -1179,6 +1203,7 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
 	    }
 	}
 
+    skip_lookup:
       if (!s0)
 	{
 	  /* Try to match static mapping by external address and port,
@@ -1187,8 +1212,9 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
 	  if (snat_static_mapping_match (
 		vm, sm, ip0->dst_address,
 		vnet_buffer (b0)->ip.reass.l4_dst_port, rx_fib_index0, proto0,
-		&sm_addr, &sm_port, &sm_fib_index, 1, 0, &twice_nat0, &lb_nat0,
-		&ip0->src_address, &identity_nat0, &m))
+		&sm_addr, &sm_port, &sm_fib_index, 1,
+		vnet_buffer (b0)->ip.reass.l4_layer_truncated, 0, &twice_nat0,
+		&lb_nat0, &ip0->src_address, &identity_nat0, &m))
 	    {
 	      /*
 	       * Send DHCP packets to the ipv4 stack, or we won't

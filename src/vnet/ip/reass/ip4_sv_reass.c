@@ -48,7 +48,7 @@ typedef struct
   {
     struct
     {
-      u32 xx_id;
+      u32 fib_index;
       ip4_address_t src;
       ip4_address_t dst;
       u16 frag_id;
@@ -189,6 +189,7 @@ typedef struct
   u8 ip_proto;
   u16 l4_src_port;
   u16 l4_dst_port;
+  int l4_layer_truncated;
 } ip4_sv_reass_trace_t;
 
 extern vlib_node_registration_t ip4_sv_reass_node;
@@ -225,6 +226,10 @@ format_ip4_sv_reass_trace (u8 * s, va_list * args)
       s = format (s, "[not-fragmented]");
       break;
     }
+  if (t->l4_layer_truncated)
+    {
+      s = format (s, " [l4-layer-truncated]");
+    }
   return s;
 }
 
@@ -232,7 +237,8 @@ static void
 ip4_sv_reass_add_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
 			ip4_sv_reass_t *reass, u32 bi,
 			ip4_sv_reass_trace_operation_e action, u32 ip_proto,
-			u16 l4_src_port, u16 l4_dst_port)
+			u16 l4_src_port, u16 l4_dst_port,
+			int l4_layer_truncated)
 {
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
   if (pool_is_free_index
@@ -253,6 +259,7 @@ ip4_sv_reass_add_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
   t->ip_proto = ip_proto;
   t->l4_src_port = l4_src_port;
   t->l4_dst_port = l4_dst_port;
+  t->l4_layer_truncated = l4_layer_truncated;
 #if 0
   static u8 *s = NULL;
   s = format (s, "%U", format_ip4_sv_reass_trace, NULL, NULL, t);
@@ -407,9 +414,10 @@ ip4_sv_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
       vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
       if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	{
-	  ip4_sv_reass_add_trace (vm, node, reass, bi0, REASS_FINISH,
-				  reass->ip_proto, reass->l4_src_port,
-				  reass->l4_dst_port);
+	  ip4_sv_reass_add_trace (
+	    vm, node, reass, bi0, REASS_FINISH, reass->ip_proto,
+	    reass->l4_src_port, reass->l4_dst_port,
+	    vnet_buffer (b0)->ip.reass.l4_layer_truncated);
 	}
     }
   vec_add1 (reass->cached_buffers, bi0);
@@ -417,8 +425,9 @@ ip4_sv_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
     {
       if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	{
-	  ip4_sv_reass_add_trace (vm, node, reass, bi0, REASS_FRAGMENT_CACHE,
-				  ~0, ~0, ~0);
+	  ip4_sv_reass_add_trace (
+	    vm, node, reass, bi0, REASS_FRAGMENT_CACHE, ~0, ~0, ~0,
+	    vnet_buffer (b0)->ip.reass.l4_layer_truncated);
 	}
       if (vec_len (reass->cached_buffers) > rm->max_reass_len)
 	{
@@ -426,6 +435,19 @@ ip4_sv_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
     }
   return rc;
+}
+
+always_inline int
+l4_layer_truncated (ip4_header_t *ip)
+{
+  static const int l4_layer_length[256] = {
+    [IP_PROTOCOL_TCP] = sizeof (tcp_header_t),
+    [IP_PROTOCOL_UDP] = sizeof (udp_header_t),
+    [IP_PROTOCOL_ICMP] = sizeof (icmp46_header_t),
+  };
+
+  return ((u8 *) ip + ip4_header_bytes (ip) + l4_layer_length[ip->protocol] >
+	  (u8 *) ip + clib_net_to_host_u16 (ip->length));
 }
 
 always_inline uword
@@ -482,6 +504,7 @@ ip4_sv_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				     (is_output_feature ? 1 : 0) *
 				     vnet_buffer (b1)->
 				     ip.save_rewrite_length);
+
       if (PREDICT_FALSE
 	  (ip4_get_fragment_more (ip0) || ip4_get_fragment_offset (ip0))
 	  || (ip4_get_fragment_more (ip1) || ip4_get_fragment_offset (ip1)))
@@ -506,29 +529,40 @@ ip4_sv_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       vnet_buffer (b0)->ip.reass.is_non_first_fragment = 0;
       vnet_buffer (b0)->ip.reass.ip_proto = ip0->protocol;
-      if (IP_PROTOCOL_TCP == ip0->protocol)
+      if (l4_layer_truncated (ip0))
 	{
-	  vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
-	    ((tcp_header_t *) (ip0 + 1))->flags;
-	  vnet_buffer (b0)->ip.reass.tcp_ack_number =
-	    ((tcp_header_t *) (ip0 + 1))->ack_number;
-	  vnet_buffer (b0)->ip.reass.tcp_seq_number =
-	    ((tcp_header_t *) (ip0 + 1))->seq_number;
+	  vnet_buffer (b0)->ip.reass.l4_layer_truncated = 1;
+	  vnet_buffer (b0)->ip.reass.l4_src_port = 0;
+	  vnet_buffer (b0)->ip.reass.l4_dst_port = 0;
 	}
-      else if (IP_PROTOCOL_ICMP == ip0->protocol)
+      else
 	{
-	  vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
-	    ((icmp46_header_t *) (ip0 + 1))->type;
+	  vnet_buffer (b0)->ip.reass.l4_layer_truncated = 0;
+	  if (IP_PROTOCOL_TCP == ip0->protocol)
+	    {
+	      vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
+		((tcp_header_t *) (ip0 + 1))->flags;
+	      vnet_buffer (b0)->ip.reass.tcp_ack_number =
+		((tcp_header_t *) (ip0 + 1))->ack_number;
+	      vnet_buffer (b0)->ip.reass.tcp_seq_number =
+		((tcp_header_t *) (ip0 + 1))->seq_number;
+	    }
+	  else if (IP_PROTOCOL_ICMP == ip0->protocol)
+	    {
+	      vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
+		((icmp46_header_t *) (ip0 + 1))->type;
+	    }
+	  vnet_buffer (b0)->ip.reass.l4_src_port = ip4_get_port (ip0, 1);
+	  vnet_buffer (b0)->ip.reass.l4_dst_port = ip4_get_port (ip0, 0);
 	}
-      vnet_buffer (b0)->ip.reass.l4_src_port = ip4_get_port (ip0, 1);
-      vnet_buffer (b0)->ip.reass.l4_dst_port = ip4_get_port (ip0, 0);
       if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	{
-	  ip4_sv_reass_add_trace (vm, node, NULL, from[(b - 2) - bufs],
-				  REASS_PASSTHROUGH,
-				  vnet_buffer (b0)->ip.reass.ip_proto,
-				  vnet_buffer (b0)->ip.reass.l4_src_port,
-				  vnet_buffer (b0)->ip.reass.l4_dst_port);
+	  ip4_sv_reass_add_trace (
+	    vm, node, NULL, from[(b - 2) - bufs], REASS_PASSTHROUGH,
+	    vnet_buffer (b0)->ip.reass.ip_proto,
+	    vnet_buffer (b0)->ip.reass.l4_src_port,
+	    vnet_buffer (b0)->ip.reass.l4_dst_port,
+	    vnet_buffer (b0)->ip.reass.l4_layer_truncated);
 	}
       if (is_feature)
 	{
@@ -541,29 +575,40 @@ ip4_sv_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       vnet_buffer (b1)->ip.reass.is_non_first_fragment = 0;
       vnet_buffer (b1)->ip.reass.ip_proto = ip1->protocol;
-      if (IP_PROTOCOL_TCP == ip1->protocol)
+      if (l4_layer_truncated (ip1))
 	{
-	  vnet_buffer (b1)->ip.reass.icmp_type_or_tcp_flags =
-	    ((tcp_header_t *) (ip1 + 1))->flags;
-	  vnet_buffer (b1)->ip.reass.tcp_ack_number =
-	    ((tcp_header_t *) (ip1 + 1))->ack_number;
-	  vnet_buffer (b1)->ip.reass.tcp_seq_number =
-	    ((tcp_header_t *) (ip1 + 1))->seq_number;
+	  vnet_buffer (b1)->ip.reass.l4_layer_truncated = 1;
+	  vnet_buffer (b1)->ip.reass.l4_src_port = 0;
+	  vnet_buffer (b1)->ip.reass.l4_dst_port = 0;
 	}
-      else if (IP_PROTOCOL_ICMP == ip1->protocol)
+      else
 	{
-	  vnet_buffer (b1)->ip.reass.icmp_type_or_tcp_flags =
-	    ((icmp46_header_t *) (ip1 + 1))->type;
+	  vnet_buffer (b1)->ip.reass.l4_layer_truncated = 0;
+	  if (IP_PROTOCOL_TCP == ip1->protocol)
+	    {
+	      vnet_buffer (b1)->ip.reass.icmp_type_or_tcp_flags =
+		((tcp_header_t *) (ip1 + 1))->flags;
+	      vnet_buffer (b1)->ip.reass.tcp_ack_number =
+		((tcp_header_t *) (ip1 + 1))->ack_number;
+	      vnet_buffer (b1)->ip.reass.tcp_seq_number =
+		((tcp_header_t *) (ip1 + 1))->seq_number;
+	    }
+	  else if (IP_PROTOCOL_ICMP == ip1->protocol)
+	    {
+	      vnet_buffer (b1)->ip.reass.icmp_type_or_tcp_flags =
+		((icmp46_header_t *) (ip1 + 1))->type;
+	    }
+	  vnet_buffer (b1)->ip.reass.l4_src_port = ip4_get_port (ip1, 1);
+	  vnet_buffer (b1)->ip.reass.l4_dst_port = ip4_get_port (ip1, 0);
 	}
-      vnet_buffer (b1)->ip.reass.l4_src_port = ip4_get_port (ip1, 1);
-      vnet_buffer (b1)->ip.reass.l4_dst_port = ip4_get_port (ip1, 0);
       if (PREDICT_FALSE (b1->flags & VLIB_BUFFER_IS_TRACED))
 	{
-	  ip4_sv_reass_add_trace (vm, node, NULL, from[(b - 1) - bufs],
-				  REASS_PASSTHROUGH,
-				  vnet_buffer (b1)->ip.reass.ip_proto,
-				  vnet_buffer (b1)->ip.reass.l4_src_port,
-				  vnet_buffer (b1)->ip.reass.l4_dst_port);
+	  ip4_sv_reass_add_trace (
+	    vm, node, NULL, from[(b - 1) - bufs], REASS_PASSTHROUGH,
+	    vnet_buffer (b1)->ip.reass.ip_proto,
+	    vnet_buffer (b1)->ip.reass.l4_src_port,
+	    vnet_buffer (b1)->ip.reass.l4_dst_port,
+	    vnet_buffer (b1)->ip.reass.l4_layer_truncated);
 	}
 
       n_left_from -= 2;
@@ -608,29 +653,38 @@ ip4_sv_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       vnet_buffer (b0)->ip.reass.is_non_first_fragment = 0;
       vnet_buffer (b0)->ip.reass.ip_proto = ip0->protocol;
-      if (IP_PROTOCOL_TCP == ip0->protocol)
+      if (l4_layer_truncated (ip0))
 	{
-	  vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
-	    ((tcp_header_t *) (ip0 + 1))->flags;
-	  vnet_buffer (b0)->ip.reass.tcp_ack_number =
-	    ((tcp_header_t *) (ip0 + 1))->ack_number;
-	  vnet_buffer (b0)->ip.reass.tcp_seq_number =
-	    ((tcp_header_t *) (ip0 + 1))->seq_number;
+	  vnet_buffer (b0)->ip.reass.l4_layer_truncated = 1;
 	}
-      else if (IP_PROTOCOL_ICMP == ip0->protocol)
+      else
 	{
-	  vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
-	    ((icmp46_header_t *) (ip0 + 1))->type;
+	  vnet_buffer (b0)->ip.reass.l4_layer_truncated = 0;
+	  if (IP_PROTOCOL_TCP == ip0->protocol)
+	    {
+	      vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
+		((tcp_header_t *) (ip0 + 1))->flags;
+	      vnet_buffer (b0)->ip.reass.tcp_ack_number =
+		((tcp_header_t *) (ip0 + 1))->ack_number;
+	      vnet_buffer (b0)->ip.reass.tcp_seq_number =
+		((tcp_header_t *) (ip0 + 1))->seq_number;
+	    }
+	  else if (IP_PROTOCOL_ICMP == ip0->protocol)
+	    {
+	      vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
+		((icmp46_header_t *) (ip0 + 1))->type;
+	    }
+	  vnet_buffer (b0)->ip.reass.l4_src_port = ip4_get_port (ip0, 1);
+	  vnet_buffer (b0)->ip.reass.l4_dst_port = ip4_get_port (ip0, 0);
 	}
-      vnet_buffer (b0)->ip.reass.l4_src_port = ip4_get_port (ip0, 1);
-      vnet_buffer (b0)->ip.reass.l4_dst_port = ip4_get_port (ip0, 0);
       if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	{
-	  ip4_sv_reass_add_trace (vm, node, NULL, from[(b - 1) - bufs],
-				  REASS_PASSTHROUGH,
-				  vnet_buffer (b0)->ip.reass.ip_proto,
-				  vnet_buffer (b0)->ip.reass.l4_src_port,
-				  vnet_buffer (b0)->ip.reass.l4_dst_port);
+	  ip4_sv_reass_add_trace (
+	    vm, node, NULL, from[(b - 1) - bufs], REASS_PASSTHROUGH,
+	    vnet_buffer (b0)->ip.reass.ip_proto,
+	    vnet_buffer (b0)->ip.reass.l4_src_port,
+	    vnet_buffer (b0)->ip.reass.l4_dst_port,
+	    vnet_buffer (b0)->ip.reass.l4_layer_truncated);
 	}
 
       n_left_from -= 1;
@@ -679,29 +733,42 @@ slow_path:
 		}
 	      vnet_buffer (b0)->ip.reass.is_non_first_fragment = 0;
 	      vnet_buffer (b0)->ip.reass.ip_proto = ip0->protocol;
-	      if (IP_PROTOCOL_TCP == ip0->protocol)
+	      if (l4_layer_truncated (ip0))
 		{
-		  vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
-		    ((tcp_header_t *) (ip0 + 1))->flags;
-		  vnet_buffer (b0)->ip.reass.tcp_ack_number =
-		    ((tcp_header_t *) (ip0 + 1))->ack_number;
-		  vnet_buffer (b0)->ip.reass.tcp_seq_number =
-		    ((tcp_header_t *) (ip0 + 1))->seq_number;
+		  vnet_buffer (b0)->ip.reass.l4_layer_truncated = 1;
+		  vnet_buffer (b0)->ip.reass.l4_src_port = 0;
+		  vnet_buffer (b0)->ip.reass.l4_dst_port = 0;
 		}
-	      else if (IP_PROTOCOL_ICMP == ip0->protocol)
+	      else
 		{
-		  vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
-		    ((icmp46_header_t *) (ip0 + 1))->type;
+		  vnet_buffer (b0)->ip.reass.l4_layer_truncated = 0;
+		  if (IP_PROTOCOL_TCP == ip0->protocol)
+		    {
+		      vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
+			((tcp_header_t *) (ip0 + 1))->flags;
+		      vnet_buffer (b0)->ip.reass.tcp_ack_number =
+			((tcp_header_t *) (ip0 + 1))->ack_number;
+		      vnet_buffer (b0)->ip.reass.tcp_seq_number =
+			((tcp_header_t *) (ip0 + 1))->seq_number;
+		    }
+		  else if (IP_PROTOCOL_ICMP == ip0->protocol)
+		    {
+		      vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
+			((icmp46_header_t *) (ip0 + 1))->type;
+		    }
+		  vnet_buffer (b0)->ip.reass.l4_src_port =
+		    ip4_get_port (ip0, 1);
+		  vnet_buffer (b0)->ip.reass.l4_dst_port =
+		    ip4_get_port (ip0, 0);
 		}
-	      vnet_buffer (b0)->ip.reass.l4_src_port = ip4_get_port (ip0, 1);
-	      vnet_buffer (b0)->ip.reass.l4_dst_port = ip4_get_port (ip0, 0);
 	      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 		{
 		  ip4_sv_reass_add_trace (
 		    vm, node, NULL, bi0, REASS_PASSTHROUGH,
 		    vnet_buffer (b0)->ip.reass.ip_proto,
 		    vnet_buffer (b0)->ip.reass.l4_src_port,
-		    vnet_buffer (b0)->ip.reass.l4_dst_port);
+		    vnet_buffer (b0)->ip.reass.l4_dst_port,
+		    vnet_buffer (b0)->ip.reass.l4_layer_truncated);
 		}
 	      goto packet_enqueue;
 	    }
@@ -771,7 +838,8 @@ slow_path:
 		{
 		  ip4_sv_reass_add_trace (
 		    vm, node, reass, bi0, REASS_FRAGMENT_FORWARD,
-		    reass->ip_proto, reass->l4_src_port, reass->l4_dst_port);
+		    reass->ip_proto, reass->l4_src_port, reass->l4_dst_port,
+		    vnet_buffer (b0)->ip.reass.l4_layer_truncated);
 		}
 	      goto packet_enqueue;
 	    }
@@ -843,7 +911,8 @@ slow_path:
 		  {
 		    ip4_sv_reass_add_trace (
 		      vm, node, reass, bi0, REASS_FRAGMENT_FORWARD,
-		      reass->ip_proto, reass->l4_src_port, reass->l4_dst_port);
+		      reass->ip_proto, reass->l4_src_port, reass->l4_dst_port,
+		      vnet_buffer (b0)->ip.reass.l4_layer_truncated);
 		  }
 		vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 						 to_next, n_left_to_next, bi0,
@@ -1252,9 +1321,8 @@ format_ip4_sv_reass_key (u8 * s, va_list * args)
 {
   ip4_sv_reass_key_t *key = va_arg (*args, ip4_sv_reass_key_t *);
   s =
-    format (s,
-	    "xx_id: %u, src: %U, dst: %U, frag_id: %u, proto: %u",
-	    key->xx_id, format_ip4_address, &key->src, format_ip4_address,
+    format (s, "fib_index: %u, src: %U, dst: %U, frag_id: %u, proto: %u",
+	    key->fib_index, format_ip4_address, &key->src, format_ip4_address,
 	    &key->dst, clib_net_to_host_u16 (key->frag_id), key->proto);
   return s;
 }
