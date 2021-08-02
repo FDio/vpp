@@ -4060,6 +4060,10 @@ vppcom_session_sendto (uint32_t session_handle, void *buffer,
       if (!vcl_session_is_cl (s))
 	return VPPCOM_EINVAL;
 
+      s->transport.is_ip4 = ep->is_ip4;
+      s->transport.rmt_port = ep->port;
+      vcl_ip_copy_from_ep (&s->transport.rmt_ip, ep);
+
       /* Session not connected/bound in vpp. Create it by 'connecting' it */
       if (PREDICT_FALSE (s->session_state == VCL_STATE_CLOSED))
 	{
@@ -4075,10 +4079,6 @@ vppcom_session_sendto (uint32_t session_handle, void *buffer,
 	    return rv;
 	  s = vcl_session_get (wrk, session_index);
 	}
-
-      s->transport.is_ip4 = ep->is_ip4;
-      s->transport.rmt_port = ep->port;
-      vcl_ip_copy_from_ep (&s->transport.rmt_ip, ep);
     }
 
   if (flags)
