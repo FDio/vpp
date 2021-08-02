@@ -724,10 +724,11 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
       time_out = (timeout->tv_sec == 0 && timeout->tv_nsec == 0) ?
 	(f64) 0 : (f64) timeout->tv_sec + (f64) timeout->tv_nsec / (f64) 1e9;
 
+      time_out += clib_time_now (&ldpw->clib_time);
+
       /* select as fine grained sleep */
       if (!nfds)
 	{
-	  time_out += clib_time_now (&ldpw->clib_time);
 	  while (clib_time_now (&ldpw->clib_time) < time_out)
 	    ;
 	  return 0;
