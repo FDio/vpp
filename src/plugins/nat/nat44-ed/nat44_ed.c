@@ -2627,15 +2627,18 @@ nat44_ed_forwarding_enable_disable (u8 is_enable)
 static_always_inline snat_static_mapping_t *
 nat44_ed_sm_match (snat_main_t *sm, ip4_address_t match_addr, u16 match_port,
 		   u32 match_fib_index, ip_protocol_t match_protocol,
-		   int by_external)
+		   int by_external, int addr_only)
 {
   snat_static_mapping_t *m;
   if (!by_external)
     {
-      m = nat44_ed_sm_i2o_lookup (sm, match_addr, match_port, match_fib_index,
-				  match_protocol);
-      if (m)
-	return m;
+      if (!addr_only)
+	{
+	  m = nat44_ed_sm_i2o_lookup (sm, match_addr, match_port,
+				      match_fib_index, match_protocol);
+	  if (m)
+	    return m;
+	}
 
       /* Try address only mapping */
       m = nat44_ed_sm_i2o_lookup (sm, match_addr, 0, match_fib_index, 0);
@@ -2644,10 +2647,14 @@ nat44_ed_sm_match (snat_main_t *sm, ip4_address_t match_addr, u16 match_port,
 
       if (sm->inside_fib_index != match_fib_index)
 	{
-	  m = nat44_ed_sm_i2o_lookup (sm, match_addr, match_port,
-				      sm->inside_fib_index, match_protocol);
-	  if (m)
-	    return m;
+	  if (!addr_only)
+	    {
+	      m =
+		nat44_ed_sm_i2o_lookup (sm, match_addr, match_port,
+					sm->inside_fib_index, match_protocol);
+	      if (m)
+		return m;
+	    }
 
 	  /* Try address only mapping */
 	  m = nat44_ed_sm_i2o_lookup (sm, match_addr, 0, sm->inside_fib_index,
@@ -2657,10 +2664,14 @@ nat44_ed_sm_match (snat_main_t *sm, ip4_address_t match_addr, u16 match_port,
 	}
       if (sm->outside_fib_index != match_fib_index)
 	{
-	  m = nat44_ed_sm_i2o_lookup (sm, match_addr, match_port,
-				      sm->outside_fib_index, match_protocol);
-	  if (m)
-	    return m;
+	  if (!addr_only)
+	    {
+	      m =
+		nat44_ed_sm_i2o_lookup (sm, match_addr, match_port,
+					sm->outside_fib_index, match_protocol);
+	      if (m)
+		return m;
+	    }
 
 	  /* Try address only mapping */
 	  m = nat44_ed_sm_i2o_lookup (sm, match_addr, 0, sm->outside_fib_index,
@@ -2671,10 +2682,13 @@ nat44_ed_sm_match (snat_main_t *sm, ip4_address_t match_addr, u16 match_port,
     }
   else
     {
-      m =
-	nat44_ed_sm_o2i_lookup (sm, match_addr, match_port, 0, match_protocol);
-      if (m)
-	return m;
+      if (!addr_only)
+	{
+	  m = nat44_ed_sm_o2i_lookup (sm, match_addr, match_port, 0,
+				      match_protocol);
+	  if (m)
+	    return m;
+	}
 
       /* Try address only mapping */
       m = nat44_ed_sm_o2i_lookup (sm, match_addr, 0, 0, 0);
@@ -2690,9 +2704,10 @@ snat_static_mapping_match (vlib_main_t *vm, snat_main_t *sm,
 			   u32 match_fib_index, ip_protocol_t match_protocol,
 			   ip4_address_t *mapping_addr, u16 *mapping_port,
 			   u32 *mapping_fib_index, int by_external,
-			   u8 *is_addr_only, twice_nat_type_t *twice_nat,
-			   lb_nat_type_t *lb, ip4_address_t *ext_host_addr,
-			   u8 *is_identity_nat, snat_static_mapping_t **out)
+			   int is_l4_layer_truncated, u8 *is_addr_only,
+			   twice_nat_type_t *twice_nat, lb_nat_type_t *lb,
+			   ip4_address_t *ext_host_addr, u8 *is_identity_nat,
+			   snat_static_mapping_t **out)
 {
   snat_static_mapping_t *m;
   u32 rand, lo = 0, hi, mid, *tmp = 0, i;
@@ -2700,7 +2715,7 @@ snat_static_mapping_match (vlib_main_t *vm, snat_main_t *sm,
   u8 backend_index;
 
   m = nat44_ed_sm_match (sm, match_addr, match_port, match_fib_index,
-			 match_protocol, by_external);
+			 match_protocol, by_external, is_l4_layer_truncated);
   if (!m)
     {
       return 1;
@@ -3703,13 +3718,9 @@ nat_6t_flow_icmp_translate (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
   icmp46_header_t *icmp = ip4_next_header (ip);
   icmp_echo_header_t *echo = (icmp_echo_header_t *) (icmp + 1);
 
-  if ((!vnet_buffer (b)->ip.reass.is_non_first_fragment))
+  if (!vnet_buffer (b)->ip.reass.l4_layer_truncated &&
+      !vnet_buffer (b)->ip.reass.is_non_first_fragment)
     {
-      if (!it_fits (vm, b, icmp, sizeof (*icmp)))
-	{
-	  return NAT_ED_TRNSL_ERR_PACKET_TRUNCATED;
-	}
-
       if (!icmp_type_is_error_message (icmp->type))
 	{
 	  if ((f->ops & NAT_FLOW_OP_ICMP_ID_REWRITE) &&

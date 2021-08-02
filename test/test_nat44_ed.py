@@ -990,6 +990,143 @@ class TestNAT44ED(VppTestCase):
 
         self.pg0.get_capture(1)
 
+    def test_l4_layer_truncated(self):
+        """ l4 layer truncated """
+
+        self.nat_add_address(self.nat_addr)
+        self.nat_add_inside_interface(self.pg0)
+        self.nat_add_outside_interface(self.pg1)
+
+        # in2out - correct - create a session
+        p = [Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             UDP(sport=5000, dport=8000),
+             Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             ICMP(id=5000)]
+
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.logger.debug(self.vapi.cli("show trace"))
+        c = self.pg1.get_capture(2)
+        outside_port = c[0][UDP].sport
+        translated_icmp_id = c[1][ICMP].id
+
+        # in2out - truncated - should be dropped
+        p = [Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4,
+                proto=IP_PROTOS.udp),
+             Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4,
+                proto=IP_PROTOS.icmp)]
+
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.logger.debug(self.vapi.cli("show trace"))
+        self.pg1.assert_nothing_captured()
+
+        # out2in - truncated - should be dropped
+        p = [Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=self.nat_addr,
+                proto=IP_PROTOS.udp),
+             Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=self.nat_addr,
+                proto=IP_PROTOS.icmp)
+             ]
+
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.logger.debug(self.vapi.cli("show trace"))
+        self.pg0.assert_nothing_captured()
+
+        # out2in - correct - should match session
+        p = [Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
+             UDP(sport=8000, dport=outside_port),
+             Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
+             ICMP(id=translated_icmp_id)]
+
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.logger.debug(self.vapi.cli("show trace"))
+        self.pg0.get_capture(2)
+
+    def test_l4_layer_truncated_addr_only_sm(self):
+        """ l4 layer truncated - addr only static mapping """
+
+        self.nat_add_address(self.nat_addr)
+        self.nat_add_inside_interface(self.pg0)
+        self.nat_add_outside_interface(self.pg1)
+        flags = self.config_flags.NAT_IS_ADDR_ONLY
+        self.vapi.nat44_add_del_static_mapping(
+            is_add=1, local_ip_address=self.pg0.remote_ip4,
+            external_ip_address=self.nat_addr,
+            external_sw_if_index=0xffffffff, flags=flags)
+
+        # in2out - truncated - should pass
+        p = [Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4,
+                proto=IP_PROTOS.udp),
+             Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4,
+                proto=IP_PROTOS.icmp)]
+
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.logger.debug(self.vapi.cli("show trace"))
+        self.pg1.get_capture(2)
+
+        # in2out - correct - should pass
+        p = [Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             UDP(sport=5000, dport=8000),
+             Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             ICMP(id=5000)]
+
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.logger.debug(self.vapi.cli("show trace"))
+        c = self.pg1.get_capture(2)
+        outside_port = c[0][UDP].sport
+        translated_icmp_id = c[1][ICMP].id
+
+        # out2in - truncated - should pass
+        p = [Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=self.nat_addr,
+                proto=IP_PROTOS.udp),
+             Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=self.nat_addr,
+                proto=IP_PROTOS.icmp)
+             ]
+
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.logger.debug(self.vapi.cli("show trace"))
+        self.pg0.get_capture(2)
+
+        # out2in - correct - should pass
+        p = [Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
+             UDP(sport=8000, dport=outside_port),
+             Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
+             ICMP(id=translated_icmp_id)]
+
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.logger.debug(self.vapi.cli("show trace"))
+        self.pg0.get_capture(2)
+
     def test_users_dump(self):
         """ NAT44ED API test - nat44_user_dump """
 
