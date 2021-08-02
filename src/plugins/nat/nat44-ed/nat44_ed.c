@@ -2649,12 +2649,12 @@ snat_static_mapping_match (vlib_main_t *vm, snat_main_t *sm,
 			   u32 match_fib_index, nat_protocol_t match_protocol,
 			   ip4_address_t *mapping_addr, u16 *mapping_port,
 			   u32 *mapping_fib_index, u8 by_external,
-			   u8 *is_addr_only, twice_nat_type_t *twice_nat,
-			   lb_nat_type_t *lb, ip4_address_t *ext_host_addr,
-			   u8 *is_identity_nat, snat_static_mapping_t **out)
+			   int is_l4_layer_truncated, u8 *is_addr_only,
+			   twice_nat_type_t *twice_nat, lb_nat_type_t *lb,
+			   ip4_address_t *ext_host_addr, u8 *is_identity_nat,
+			   snat_static_mapping_t **out)
 {
   clib_bihash_kv_8_8_t kv, value;
-  clib_bihash_8_8_t *mapping_hash;
   snat_static_mapping_t *m;
   u32 rand, lo = 0, hi, mid, *tmp = 0, i;
   nat44_lb_addr_port_t *local;
@@ -2662,26 +2662,31 @@ snat_static_mapping_match (vlib_main_t *vm, snat_main_t *sm,
 
   if (!by_external)
     {
-      mapping_hash = &sm->static_mapping_by_local;
       init_nat_k (&kv, match_addr, match_port, match_fib_index,
 		  match_protocol);
-      if (clib_bihash_search_8_8 (mapping_hash, &kv, &value))
+      /* skip search w/port if l4 layer truncated, do address-based only */
+      if (PREDICT_FALSE (is_l4_layer_truncated) ||
+	  clib_bihash_search_8_8 (&sm->static_mapping_by_local, &kv, &value))
 	{
 	  /* Try address only mapping */
 	  init_nat_k (&kv, match_addr, 0, match_fib_index, 0);
-	  if (clib_bihash_search_8_8 (mapping_hash, &kv, &value))
+	  if (clib_bihash_search_8_8 (&sm->static_mapping_by_local, &kv,
+				      &value))
 	    return 1;
 	}
     }
   else
     {
-      mapping_hash = &sm->static_mapping_by_external;
       init_nat_k (&kv, match_addr, match_port, 0, match_protocol);
-      if (clib_bihash_search_8_8 (mapping_hash, &kv, &value))
+      /* skip search w/port if l4 layer truncated, do address-based only */
+      if (PREDICT_FALSE (is_l4_layer_truncated) ||
+	  clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv,
+				  &value))
 	{
 	  /* Try address only mapping */
 	  init_nat_k (&kv, match_addr, 0, 0, 0);
-	  if (clib_bihash_search_8_8 (mapping_hash, &kv, &value))
+	  if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv,
+				      &value))
 	    return 1;
 	}
     }
@@ -3741,13 +3746,9 @@ nat_6t_flow_icmp_translate (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
   icmp46_header_t *icmp = ip4_next_header (ip);
   icmp_echo_header_t *echo = (icmp_echo_header_t *) (icmp + 1);
 
-  if ((!vnet_buffer (b)->ip.reass.is_non_first_fragment))
+  if (!vnet_buffer (b)->ip.reass.l4_layer_truncated &&
+      !vnet_buffer (b)->ip.reass.is_non_first_fragment)
     {
-      if (!it_fits (vm, b, icmp, sizeof (*icmp)))
-	{
-	  return NAT_ED_TRNSL_ERR_PACKET_TRUNCATED;
-	}
-
       if (!icmp_type_is_error_message (icmp->type))
 	{
 	  if ((f->ops & NAT_FLOW_OP_ICMP_ID_REWRITE) &&
