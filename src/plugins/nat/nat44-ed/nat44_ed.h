@@ -973,9 +973,9 @@ int snat_static_mapping_match (
   vlib_main_t *vm, snat_main_t *sm, ip4_address_t match_addr, u16 match_port,
   u32 match_fib_index, ip_protocol_t match_protocol,
   ip4_address_t *mapping_addr, u16 *mapping_port, u32 *mapping_fib_index,
-  int by_external, u8 *is_addr_only, twice_nat_type_t *twice_nat,
-  lb_nat_type_t *lb, ip4_address_t *ext_host_addr, u8 *is_identity_nat,
-  snat_static_mapping_t **out);
+  int by_external, int is_l4_layer_truncated, u8 *is_addr_only,
+  twice_nat_type_t *twice_nat, lb_nat_type_t *lb, ip4_address_t *ext_host_addr,
+  u8 *is_identity_nat, snat_static_mapping_t **out);
 
 /*
  * Why is this here? Because we don't need to touch this layer to
