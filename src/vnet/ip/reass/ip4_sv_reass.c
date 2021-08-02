@@ -229,10 +229,10 @@ format_ip4_sv_reass_trace (u8 * s, va_list * args)
 }
 
 static void
-ip4_sv_reass_add_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
-			ip4_sv_reass_main_t * rm, ip4_sv_reass_t * reass,
-			u32 bi, ip4_sv_reass_trace_operation_e action,
-			u32 ip_proto, u16 l4_src_port, u16 l4_dst_port)
+ip4_sv_reass_add_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
+			ip4_sv_reass_t *reass, u32 bi,
+			ip4_sv_reass_trace_operation_e action, u32 ip_proto,
+			u16 l4_src_port, u16 l4_dst_port)
 {
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
   if (pool_is_free_index
@@ -378,9 +378,9 @@ ip4_sv_reass_find_or_create (vlib_main_t * vm, ip4_sv_reass_main_t * rm,
 }
 
 always_inline ip4_sv_reass_rc_t
-ip4_sv_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
-		     ip4_sv_reass_main_t * rm, ip4_sv_reass_per_thread_t * rt,
-		     ip4_header_t * ip0, ip4_sv_reass_t * reass, u32 bi0)
+ip4_sv_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
+		     ip4_sv_reass_main_t *rm, ip4_header_t *ip0,
+		     ip4_sv_reass_t *reass, u32 bi0)
 {
   vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
   ip4_sv_reass_rc_t rc = IP4_SV_REASS_RC_OK;
@@ -407,7 +407,7 @@ ip4_sv_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
       vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
       if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	{
-	  ip4_sv_reass_add_trace (vm, node, rm, reass, bi0, REASS_FINISH,
+	  ip4_sv_reass_add_trace (vm, node, reass, bi0, REASS_FINISH,
 				  reass->ip_proto, reass->l4_src_port,
 				  reass->l4_dst_port);
 	}
@@ -417,8 +417,8 @@ ip4_sv_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
     {
       if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	{
-	  ip4_sv_reass_add_trace (vm, node, rm, reass, bi0,
-				  REASS_FRAGMENT_CACHE, ~0, ~0, ~0);
+	  ip4_sv_reass_add_trace (vm, node, reass, bi0, REASS_FRAGMENT_CACHE,
+				  ~0, ~0, ~0);
 	}
       if (vec_len (reass->cached_buffers) > rm->max_reass_len)
 	{
@@ -524,7 +524,7 @@ ip4_sv_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       vnet_buffer (b0)->ip.reass.l4_dst_port = ip4_get_port (ip0, 0);
       if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	{
-	  ip4_sv_reass_add_trace (vm, node, rm, NULL, from[(b - 2) - bufs],
+	  ip4_sv_reass_add_trace (vm, node, NULL, from[(b - 2) - bufs],
 				  REASS_PASSTHROUGH,
 				  vnet_buffer (b0)->ip.reass.ip_proto,
 				  vnet_buffer (b0)->ip.reass.l4_src_port,
@@ -559,7 +559,7 @@ ip4_sv_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       vnet_buffer (b1)->ip.reass.l4_dst_port = ip4_get_port (ip1, 0);
       if (PREDICT_FALSE (b1->flags & VLIB_BUFFER_IS_TRACED))
 	{
-	  ip4_sv_reass_add_trace (vm, node, rm, NULL, from[(b - 1) - bufs],
+	  ip4_sv_reass_add_trace (vm, node, NULL, from[(b - 1) - bufs],
 				  REASS_PASSTHROUGH,
 				  vnet_buffer (b1)->ip.reass.ip_proto,
 				  vnet_buffer (b1)->ip.reass.l4_src_port,
@@ -626,7 +626,7 @@ ip4_sv_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       vnet_buffer (b0)->ip.reass.l4_dst_port = ip4_get_port (ip0, 0);
       if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	{
-	  ip4_sv_reass_add_trace (vm, node, rm, NULL, from[(b - 1) - bufs],
+	  ip4_sv_reass_add_trace (vm, node, NULL, from[(b - 1) - bufs],
 				  REASS_PASSTHROUGH,
 				  vnet_buffer (b0)->ip.reass.ip_proto,
 				  vnet_buffer (b0)->ip.reass.l4_src_port,
@@ -697,13 +697,11 @@ slow_path:
 	      vnet_buffer (b0)->ip.reass.l4_dst_port = ip4_get_port (ip0, 0);
 	      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 		{
-		  ip4_sv_reass_add_trace (vm, node, rm, NULL, bi0,
-					  REASS_PASSTHROUGH,
-					  vnet_buffer (b0)->ip.reass.ip_proto,
-					  vnet_buffer (b0)->ip.
-					  reass.l4_src_port,
-					  vnet_buffer (b0)->ip.
-					  reass.l4_dst_port);
+		  ip4_sv_reass_add_trace (
+		    vm, node, NULL, bi0, REASS_PASSTHROUGH,
+		    vnet_buffer (b0)->ip.reass.ip_proto,
+		    vnet_buffer (b0)->ip.reass.l4_src_port,
+		    vnet_buffer (b0)->ip.reass.l4_dst_port);
 		}
 	      goto packet_enqueue;
 	    }
@@ -771,17 +769,15 @@ slow_path:
 	      vnet_buffer (b0)->ip.reass.l4_dst_port = reass->l4_dst_port;
 	      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 		{
-		  ip4_sv_reass_add_trace (vm, node, rm, reass, bi0,
-					  REASS_FRAGMENT_FORWARD,
-					  reass->ip_proto,
-					  reass->l4_src_port,
-					  reass->l4_dst_port);
+		  ip4_sv_reass_add_trace (
+		    vm, node, reass, bi0, REASS_FRAGMENT_FORWARD,
+		    reass->ip_proto, reass->l4_src_port, reass->l4_dst_port);
 		}
 	      goto packet_enqueue;
 	    }
 
 	  ip4_sv_reass_rc_t rc =
-	    ip4_sv_reass_update (vm, node, rm, rt, ip0, reass, bi0);
+	    ip4_sv_reass_update (vm, node, rm, ip0, reass, bi0);
 	  switch (rc)
 	    {
 	    case IP4_SV_REASS_RC_OK:
@@ -796,8 +792,7 @@ slow_path:
 	      break;
 	    case IP4_SV_REASS_RC_UNSUPP_IP_PROTO:
 	      vlib_node_increment_counter (vm, node->node_index,
-					   IP4_ERROR_REASS_FRAGMENT_CHAIN_TOO_LONG,
-					   1);
+					   IP4_ERROR_REASS_UNSUPP_IP_PROT, 1);
 	      ip4_sv_reass_free (vm, rm, rt, reass);
 	      goto next_packet;
 	      break;
@@ -846,11 +841,9 @@ slow_path:
 		vnet_buffer (b0)->ip.reass.l4_dst_port = reass->l4_dst_port;
 		if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 		  {
-		    ip4_sv_reass_add_trace (vm, node, rm, reass, bi0,
-					    REASS_FRAGMENT_FORWARD,
-					    reass->ip_proto,
-					    reass->l4_src_port,
-					    reass->l4_dst_port);
+		    ip4_sv_reass_add_trace (
+		      vm, node, reass, bi0, REASS_FRAGMENT_FORWARD,
+		      reass->ip_proto, reass->l4_src_port, reass->l4_dst_port);
 		  }
 		vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 						 to_next, n_left_to_next, bi0,
@@ -1170,8 +1163,9 @@ VLIB_INIT_FUNCTION (ip4_sv_reass_init_function);
 #endif /* CLIB_MARCH_VARIANT */
 
 static uword
-ip4_sv_reass_walk_expired (vlib_main_t * vm,
-			   vlib_node_runtime_t * node, vlib_frame_t * f)
+ip4_sv_reass_walk_expired (vlib_main_t *vm,
+			   CLIB_UNUSED (vlib_node_runtime_t *node),
+			   CLIB_UNUSED (vlib_frame_t *f))
 {
   ip4_sv_reass_main_t *rm = &ip4_sv_reass_main;
   uword event_type, *event_data = 0;
@@ -1186,10 +1180,11 @@ ip4_sv_reass_walk_expired (vlib_main_t * vm,
 
       switch (event_type)
 	{
-	case ~0:		/* no events => timeout */
-	  /* nothing to do here */
-	  break;
+	case ~0:
+	  /* no events => timeout */
+	  /* fallthrough */
 	case IP4_EVENT_CONFIG_CHANGED:
+	  /* nothing to do here */
 	  break;
 	default:
 	  clib_warning ("BUG: event type 0x%wx", event_type);
