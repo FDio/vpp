@@ -263,8 +263,7 @@ typedef struct quic_main_
   u32 connection_timeout;
 
   u8 vnet_crypto_enabled;
-
-  clib_rwlock_t crypto_keys_quic_rw_lock;
+  u32 *per_thread_crypto_key_indices;
 } quic_main_t;
 
 #endif /* __included_quic_h__ */

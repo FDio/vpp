@@ -2563,14 +2563,19 @@ quic_init (vlib_main_t * vm)
     qm->vnet_crypto_enabled = 1;
   if (qm->vnet_crypto_enabled == 1)
     {
+      u8 empty_key[32] = {};
       quic_register_cipher_suite (CRYPTO_ENGINE_VPP,
 				  quic_crypto_cipher_suites);
       qm->default_crypto_engine = CRYPTO_ENGINE_VPP;
+      vec_validate (qm->per_thread_crypto_key_indices, num_threads);
+      for (i = 0; i < num_threads; i++)
+	{
+	  qm->per_thread_crypto_key_indices[i] = vnet_crypto_key_add (
+	    vm, VNET_CRYPTO_ALG_AES_256_CTR, empty_key, 32);
+	}
     }
 
   qm->max_packets_per_key = DEFAULT_MAX_PACKETS_PER_KEY;
-  clib_rwlock_init (&qm->crypto_keys_quic_rw_lock);
-
   qm->default_quic_cc = QUIC_CC_RENO;
 
   vec_free (a->name);
