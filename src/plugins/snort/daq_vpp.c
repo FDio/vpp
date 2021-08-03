@@ -596,6 +596,7 @@ vpp_daq_msg_receive (void *handle, const unsigned max_recv,
     {
       uint64_t ctr;
       VPPQueuePair *qp = vc->qpairs + vc->epoll_events[i].data.u32;
+      ssize_t unused __attribute__ ((unused));
 
       if ((n = vpp_daq_msg_receive_one (vc, qp, msgs, max_recv - n_recv)))
 	{
@@ -603,7 +604,7 @@ vpp_daq_msg_receive (void *handle, const unsigned max_recv,
 	  n_recv += n;
 	}
 
-      (void) read (qp->enq_fd, &ctr, sizeof (ctr));
+      unused = read (qp->enq_fd, &ctr, sizeof (ctr));
     }
 
   *rstat = DAQ_RSTAT_OK;
