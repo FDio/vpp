@@ -313,6 +313,7 @@ ethernet_mac_change (vnet_hw_interface_t * hi,
 /* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (ethernet_hw_interface_class) = {
   .name = "Ethernet",
+  .default_tx_hash_type = VNET_HASH_FN_TYPE_ETHERNET,
   .format_address = format_ethernet_address,
   .format_header = format_ethernet_header_with_length,
   .unformat_hw_address = unformat_ethernet_address,

@@ -58,13 +58,11 @@ tap_main_t tap_main;
       goto error; \
     }
 
-  /* *INDENT-OFF* */
-VNET_HW_INTERFACE_CLASS (tun_device_hw_interface_class, static) =
-{
+VNET_HW_INTERFACE_CLASS (tun_device_hw_interface_class, static) = {
   .name = "tun-device",
   .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
+  .default_tx_hash_type = VNET_HASH_FN_TYPE_IP,
 };
-  /* *INDENT-ON* */
 
 #define TUN_MAX_PACKET_BYTES	 65355
 #define TUN_MIN_PACKET_BYTES	 64
