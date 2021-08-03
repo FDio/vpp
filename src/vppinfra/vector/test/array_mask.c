@@ -76,13 +76,15 @@ static array_mask_test_t tests[] = {
 		  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
 		  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
 		  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 } },
+  /* mask values 0x1, output array of 1, 0, 1, 0,.. */
+  { .mask = 1, .expected = { 1, 0, 1, 0, 1, 0, 1, 0, 1, 0 } },
 };
 
 static clib_error_t *
 test_clib_array_mask_u32 (clib_error_t *err)
 {
   u32 i, j;
-  for (i = 0; i < ARRAY_LEN (tests); i++)
+  for (i = 0; i < ARRAY_LEN (tests) - 1; i++)
     {
       u32 src[256];
       for (j = 0; j < ARRAY_LEN (src); j++)
@@ -99,6 +101,20 @@ test_clib_array_mask_u32 (clib_error_t *err)
 				      i, j, src[j], t->expected[j]);
 	}
     }
+
+  u32 src[10] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+  array_mask_test_t *t = tests + i;
+
+  clib_array_mask_u32_wrapper (src, t->mask, ARRAY_LEN (src));
+  for (j = 0; j < ARRAY_LEN (src); j++)
+    {
+      if (src[j] != t->expected[j])
+	return clib_error_return (err,
+				  "testcase %u failed at "
+				  "(src[%u] = 0x%x, expected 0x%x)",
+				  i, j, src[j], t->expected[j]);
+    }
+
   return err;
 }
 
