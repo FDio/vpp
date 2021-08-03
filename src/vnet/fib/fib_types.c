@@ -785,3 +785,55 @@ fib_route_path_is_attached (const fib_route_path_t *rpath)
     }
     return (0);
 }
+
+static void
+fib_prefix_ip4_addr_increment (fib_prefix_t *pfx)
+{
+    /* Calculate the addend based on the host length of address */
+    u32 incr = 1ULL << (32 - pfx->fp_len);
+    ip4_address_t dst = (pfx->fp_addr).ip4;
+    dst.as_u32 = clib_host_to_net_u32 (incr + clib_net_to_host_u32 (dst.as_u32));
+    pfx->fp_addr.ip4.as_u32 = dst.as_u32;
+}
+
+static void
+fib_prefix_ip6_addr_increment (fib_prefix_t *pfx)
+{
+    /*
+     * Calculate the addend based on the host length of address
+     * and which part(lower 64 bits or higher 64 bits) it lies
+     * in
+     */
+    u32 host_len = 128 - pfx->fp_len;
+    u64 incr = 1ULL << ((host_len > 64) ? (host_len - 64) : host_len);
+    i32 bucket = (host_len < 64 ? 1 : 0);
+    ip6_address_t dst = (pfx->fp_addr).ip6;
+    u64 tmp = incr + clib_net_to_host_u64 (dst.as_u64[bucket]);
+    /* Handle overflow */
+    if (bucket && (tmp < incr))
+    {
+        dst.as_u64[1] = clib_host_to_net_u64 (tmp);
+        dst.as_u64[0] = clib_host_to_net_u64 (1ULL + clib_net_to_host_u64 (dst.as_u64[0]));
+    }
+    else
+        dst.as_u64[bucket] = clib_host_to_net_u64 (tmp);
+
+    pfx->fp_addr.ip6.as_u128 = dst.as_u128;
+}
+
+/*
+ * Increase IPv4/IPv6 address according to the prefix length
+ */
+void fib_prefix_increment (fib_prefix_t *pfx)
+{
+    switch (pfx->fp_proto)
+    {
+    case FIB_PROTOCOL_IP4:
+        fib_prefix_ip4_addr_increment (pfx);
+        break;
+    case FIB_PROTOCOL_IP6:
+        fib_prefix_ip6_addr_increment (pfx);
+    case FIB_PROTOCOL_MPLS:
+        break;
+    }
+}
