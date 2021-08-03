@@ -286,6 +286,11 @@ extern dpo_proto_t fib_proto_to_dpo(fib_protocol_t fib_proto);
 extern fib_protocol_t dpo_proto_to_fib(dpo_proto_t dpo_proto);
 
 /**
+ * \brief Increase IPv4/IPv6 address according to the prefix length
+ */
+extern void fib_prefix_ip46_addr_increment (fib_prefix_t *pfx);
+
+/**
  * Convert from BIER next-hop proto to FIB proto
  */
 extern fib_protocol_t bier_hdr_proto_to_fib(bier_hdr_proto_id_t bproto);
