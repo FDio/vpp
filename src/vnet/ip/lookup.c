@@ -304,13 +304,15 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 	}
       else if (0 < vec_len (rpaths))
 	{
-	  u32 k, n, incr;
+	  u32 k, n, host_len;
+	  u64 incr;
 	  ip46_address_t dst = prefixs[i].fp_addr;
 	  f64 t[2];
 	  n = count;
 	  t[0] = vlib_time_now (vm);
-	  incr = 1 << ((FIB_PROTOCOL_IP4 == prefixs[0].fp_proto ? 32 : 128) -
-		       prefixs[i].fp_len);
+	  host_len = (FIB_PROTOCOL_IP4 == prefixs[0].fp_proto ? 32 : 128) -
+		     prefixs[i].fp_len;
+	  incr = 1ULL << ((host_len > 64) ? (host_len - 64) : host_len);
 
 	  for (k = 0; k < n; k++)
 	    {
@@ -338,11 +340,19 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 		}
 	      else
 		{
-		  int bucket = (incr < 64 ? 0 : 1);
-		  dst.ip6.as_u64[bucket] =
-		    clib_host_to_net_u64 (incr +
-					  clib_net_to_host_u64 (dst.ip6.as_u64
-								[bucket]));
+		  u64 result;
+		  int bucket = (host_len < 64 ? 1 : 0);
+		  result =
+		    incr + clib_net_to_host_u64 (dst.ip6.as_u64[bucket]);
+		  /* Handle overflow */
+		  if (bucket && (result < incr))
+		    {
+		      dst.ip6.as_u64[1] = clib_host_to_net_u64 (result);
+		      dst.ip6.as_u64[0] = clib_host_to_net_u64 (
+			1ULL + clib_net_to_host_u64 (dst.ip6.as_u64[0]));
+		    }
+		  else
+		    dst.ip6.as_u64[bucket] = clib_host_to_net_u64 (result);
 		}
 	    }
 
