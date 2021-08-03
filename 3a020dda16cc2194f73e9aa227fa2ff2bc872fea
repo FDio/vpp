@@ -22,6 +22,30 @@
       "revId": "3a020dda16cc2194f73e9aa227fa2ff2bc872fea",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "239ef6d0_19e50782",
+        "filename": "src/vnet/tcp/tcp_inlines.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 312,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-08-03T12:16:30Z",
+      "side": 1,
+      "message": "Right, fixed",
+      "parentUuid": "a3256208_7e133b01",
+      "range": {
+        "startLine": 312,
+        "startChar": 6,
+        "endLine": 312,
+        "endChar": 8
+      },
+      "revId": "3a020dda16cc2194f73e9aa227fa2ff2bc872fea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
