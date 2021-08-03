@@ -304,20 +304,17 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 	}
       else if (0 < vec_len (rpaths))
 	{
-	  u32 k, n, incr;
-	  ip46_address_t dst = prefixs[i].fp_addr;
+	  u32 k, n;
 	  f64 t[2];
 	  n = count;
 	  t[0] = vlib_time_now (vm);
-	  incr = 1 << ((FIB_PROTOCOL_IP4 == prefixs[0].fp_proto ? 32 : 128) -
-		       prefixs[i].fp_len);
 
 	  for (k = 0; k < n; k++)
 	    {
 	      fib_prefix_t rpfx = {
 		.fp_len = prefixs[i].fp_len,
 		.fp_proto = prefixs[i].fp_proto,
-		.fp_addr = dst,
+		.fp_addr = prefixs[i].fp_addr,
 	      };
 
 	      if (is_del)
@@ -329,21 +326,7 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 					   FIB_SOURCE_CLI,
 					   FIB_ENTRY_FLAG_NONE, rpaths);
 
-	      if (FIB_PROTOCOL_IP4 == prefixs[0].fp_proto)
-		{
-		  dst.ip4.as_u32 =
-		    clib_host_to_net_u32 (incr +
-					  clib_net_to_host_u32 (dst.
-								ip4.as_u32));
-		}
-	      else
-		{
-		  int bucket = (incr < 64 ? 0 : 1);
-		  dst.ip6.as_u64[bucket] =
-		    clib_host_to_net_u64 (incr +
-					  clib_net_to_host_u64 (dst.ip6.as_u64
-								[bucket]));
-		}
+	      fib_prefix_increment (&prefixs[i]);
 	    }
 
 	  t[1] = vlib_time_now (vm);
