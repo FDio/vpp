@@ -37,11 +37,12 @@ clib_array_mask_u32 (u32 *src, u32 mask, u32 n_elts)
   for (i = 0; i + 8 <= n_elts; i += 8)
     *((u32x8u *) (src + i)) &= mask8;
   n_elts -= i;
+  src += i;
 #if defined(CLIB_HAVE_VEC256_MASK_LOAD_STORE)
   if (n_elts)
     {
       u8 m = pow2_mask (n_elts);
-      u32x8_mask_store (u32x8_mask_load_zero (src + i, m) & mask8, src + i, m);
+      u32x8_mask_store (u32x8_mask_load_zero (src, m) & mask8, src, m);
     }
   return;
 #endif
@@ -51,6 +52,7 @@ clib_array_mask_u32 (u32 *src, u32 mask, u32 n_elts)
   for (i = 0; i + 4 <= n_elts; i += 4)
     *((u32x4u *) (src + i)) &= mask4;
   n_elts -= i;
+  src += i;
   switch (n_elts)
     {
     case 3:
