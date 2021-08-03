@@ -245,6 +245,7 @@ VNET_HW_INTERFACE_CLASS (pg_tun_hw_interface_class) = {
   .build_rewrite = NULL,
   //.update_adjacency = gre_update_adj,
   .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
+  .default_tx_hash_type = VNET_HASH_FN_TYPE_IP,
 };
 
 u32
