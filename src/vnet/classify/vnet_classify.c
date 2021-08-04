@@ -2314,7 +2314,7 @@ unformat_l4_match (unformat_input_t * input, va_list * args)
       else if (unformat (input, "dst_port %d", &dst_port))
 	;
       else
-	return 0;
+	break;
     }
 
   h.src_port = clib_host_to_net_u16 (src_port);
