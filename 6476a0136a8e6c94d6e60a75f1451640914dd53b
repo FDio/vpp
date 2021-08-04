@@ -1,0 +1,165 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1688d8d1_c895b815",
+        "filename": "src/vnet/session/application_namespace.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-08-04T17:51:16Z",
+      "side": 1,
+      "message": "if (netns) \n  app_ns-\u003enetns \u003d vec_dup (netns);",
+      "range": {
+        "startLine": 67,
+        "startChar": 2,
+        "endLine": 67,
+        "endChar": 8
+      },
+      "revId": "6476a0136a8e6c94d6e60a75f1451640914dd53b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a79fc7b1_9a449cc6",
+        "filename": "src/vnet/session/application_namespace.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-08-04T17:51:16Z",
+      "side": 1,
+      "message": "if (app_ns-\u003enetns)\n  key \u003d ...",
+      "range": {
+        "startLine": 70,
+        "startChar": 6,
+        "endLine": 70,
+        "endChar": 19
+      },
+      "revId": "6476a0136a8e6c94d6e60a75f1451640914dd53b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "239539a2_4c34db96",
+        "filename": "src/vnet/session/application_namespace.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 148,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-08-04T17:51:16Z",
+      "side": 1,
+      "message": "if (netns)",
+      "range": {
+        "startLine": 148,
+        "startChar": 5,
+        "endLine": 148,
+        "endChar": 20
+      },
+      "revId": "6476a0136a8e6c94d6e60a75f1451640914dd53b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1e5f6c8c_8c837c08",
+        "filename": "src/vnet/session/application_namespace.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 434,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-08-04T17:51:16Z",
+      "side": 1,
+      "message": "optional",
+      "range": {
+        "startLine": 434,
+        "startChar": 41,
+        "endLine": 434,
+        "endChar": 51
+      },
+      "revId": "6476a0136a8e6c94d6e60a75f1451640914dd53b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9cb3b889_f3cb6d97",
+        "filename": "src/vnet/session/application_namespace.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-08-04T17:51:16Z",
+      "side": 1,
+      "message": "This feels a bit wrong since we already have both. I wonder if we should just store them concatenated in ns_id, although that will probably complicate everything else.",
+      "range": {
+        "startLine": 61,
+        "startChar": 0,
+        "endLine": 61,
+        "endChar": 18
+      },
+      "revId": "6476a0136a8e6c94d6e60a75f1451640914dd53b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "dac35087_7dde9559",
+        "filename": "src/vnet/session/application_namespace.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-08-04T17:51:16Z",
+      "side": 1,
+      "message": "const for all u8 if possible",
+      "range": {
+        "startLine": 88,
+        "startChar": 38,
+        "endLine": 88,
+        "endChar": 41
+      },
+      "revId": "6476a0136a8e6c94d6e60a75f1451640914dd53b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "de9d42a8_f19f8793",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1664,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-08-04T17:51:16Z",
+      "side": 1,
+      "message": "I\u0027ll sound like a broken old man: reverse the order. It\u0027s much easier to read \"if char 0 is @\" vs \"if @ is char 0\", i.e., one has to get through the whole line before one knows what is inspected. Probably that\u0027s just me but that\u0027s the typical syntax throughout the host stack",
+      "range": {
+        "startLine": 1664,
+        "startChar": 11,
+        "endLine": 1664,
+        "endChar": 41
+      },
+      "revId": "6476a0136a8e6c94d6e60a75f1451640914dd53b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
