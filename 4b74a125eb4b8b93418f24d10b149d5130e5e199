@@ -46,6 +46,30 @@
       "revId": "4b74a125eb4b8b93418f24d10b149d5130e5e199",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "565aca0a_d66eb9ab",
+        "filename": "src/vnet/tcp/tcp_inlines.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 312,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-08-04T11:29:29Z",
+      "side": 1,
+      "message": "Right, but this makes the compiler complain...\nSo that\u0027d be either PREDICT_TRUE (!!tc) or PREDICT_FALSE (!tc)",
+      "parentUuid": "07066e89_0f0c04a0",
+      "range": {
+        "startLine": 312,
+        "startChar": 20,
+        "endLine": 312,
+        "endChar": 30
+      },
+      "revId": "4b74a125eb4b8b93418f24d10b149d5130e5e199",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
