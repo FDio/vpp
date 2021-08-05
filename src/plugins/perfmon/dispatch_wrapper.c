@@ -52,7 +52,7 @@ perfmon_read_pmcs (u64 *counters, int *pmc_index, u8 n_counters)
 static_always_inline int
 perfmon_calc_mmap_offset (perfmon_thread_runtime_t *tr, u8 i)
 {
-  return (int) (tr->mmap_pages[i]->index + tr->mmap_pages[i]->offset);
+  return (int) (tr->mmap_pages[i]->index - 1);
 }
 
 static_always_inline int
