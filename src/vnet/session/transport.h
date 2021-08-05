@@ -127,12 +127,10 @@ typedef struct _transport_proto_vft
 
 extern transport_proto_vft_t *tp_vfts;
 
-#define transport_proto_foreach(VAR, BODY)			\
-do {								\
-    for (VAR = 0; VAR < vec_len (tp_vfts); VAR++)		\
-      if (tp_vfts[VAR].push_header != 0)			\
-	do { BODY; } while (0);					\
-} while (0)
+#define transport_proto_foreach(VAR, VAR_ALLOW_BM)                            \
+  for (VAR = 0; VAR < vec_len (tp_vfts); VAR++)                               \
+    if (tp_vfts[VAR].push_header != 0)                                        \
+      if (VAR_ALLOW_BM & (1 << VAR))
 
 int transport_connect (transport_proto_t tp, transport_endpoint_cfg_t * tep);
 void transport_half_close (transport_proto_t tp, u32 conn_index,

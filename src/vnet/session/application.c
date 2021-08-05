@@ -947,6 +947,48 @@ application_detach_process (application_t * app, u32 api_client_index)
   vec_free (wrks);
 }
 
+void
+application_namespace_cleanup (app_namespace_t *app_ns)
+{
+  u32 *app_indices = 0, *app_index;
+  application_t *app;
+  u32 ns_index;
+
+  ns_index = app_namespace_index (app_ns);
+  pool_foreach (app, app_main.app_pool)
+    if (app->ns_index == ns_index)
+      vec_add1 (app_indices, app->ns_index);
+
+  vec_foreach (app_index, app_indices)
+    {
+      u32 *wrk_indices = 0, *wrk_index;
+      app_worker_map_t *wrk_map;
+      app_worker_t *app_wrk;
+
+      app = application_get (*app_index);
+
+      if (application_is_proxy (app))
+	application_remove_proxy (app);
+      app->flags &= ~APP_OPTIONS_FLAGS_IS_PROXY;
+
+      pool_foreach (wrk_map, app->worker_maps)
+	{
+	  app_wrk = app_worker_get (wrk_map->wrk_index);
+	  vec_add1 (wrk_indices, app_wrk->wrk_index);
+	}
+
+      vec_foreach (wrk_index, wrk_indices)
+	{
+	  app_wrk = app_worker_get (wrk_index[0]);
+	  app_worker_free (app_wrk);
+	}
+      vec_free (wrk_indices);
+      pool_free (app->worker_maps);
+      application_free (app);
+    }
+  vec_free (app_indices);
+}
+
 app_worker_t *
 application_get_worker (application_t * app, u32 wrk_map_index)
 {
@@ -1611,12 +1653,8 @@ application_setup_proxy (application_t * app)
 
   ASSERT (application_is_proxy (app));
 
-  /* *INDENT-OFF* */
-  transport_proto_foreach (tp, ({
-    if (transports & (1 << tp))
-      application_start_stop_proxy (app, tp, 1);
-  }));
-  /* *INDENT-ON* */
+  transport_proto_foreach (tp, transports)
+    application_start_stop_proxy (app, tp, 1);
 }
 
 void
@@ -1627,12 +1665,8 @@ application_remove_proxy (application_t * app)
 
   ASSERT (application_is_proxy (app));
 
-  /* *INDENT-OFF* */
-  transport_proto_foreach (tp, ({
-    if (transports & (1 << tp))
-      application_start_stop_proxy (app, tp, 0);
-  }));
-  /* *INDENT-ON* */
+  transport_proto_foreach (tp, transports)
+    application_start_stop_proxy (app, tp, 0);
 }
 
 segment_manager_props_t *

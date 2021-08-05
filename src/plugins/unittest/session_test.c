@@ -420,6 +420,10 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
   detach_args.app_index = client_index;
   vnet_application_detach (&detach_args);
 
+  ns_args.is_add = 0;
+  error = vnet_app_namespace_add_del (&ns_args);
+  SESSION_TEST ((error == 0), "app ns delete should succeed: %d", error);
+
   /* Allow the disconnects to finish before removing the routes. */
   vlib_process_suspend (vm, 10e-3);
 
@@ -765,6 +769,10 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
 		"zero listener should exist in local table");
   detach_args.app_index = server_index;
   vnet_application_detach (&detach_args);
+
+  ns_args.is_add = 0;
+  error = vnet_app_namespace_add_del (&ns_args);
+  SESSION_TEST ((error == 0), "app ns delete should succeed: %d", error);
 
   /*
    * Cleanup
@@ -1600,6 +1608,10 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
 
   detach_args.app_index = server_index2;
   vnet_application_detach (&detach_args);
+
+  ns_args.is_add = 0;
+  error = vnet_app_namespace_add_del (&ns_args);
+  SESSION_TEST ((error == 0), "app ns delete should succeed: %d", error);
 
   vec_free (ns_id);
   vec_free (attach_args.name);

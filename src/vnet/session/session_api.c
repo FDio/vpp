@@ -930,7 +930,7 @@ vl_api_app_namespace_add_del_v3_t_handler (
   mp->netns[sizeof (mp->netns) - 1] = 0;
   ns_id = format (0, "%s", &mp->namespace_id);
   netns = format (0, "%s", &mp->netns);
-  sock_name = format (0, "%s", &mp->sock_name);
+  sock_name = vl_api_from_api_to_new_vec (mp, &mp->sock_name);
   vnet_app_namespace_add_del_args_t args = {
     .ns_id = ns_id,
     .netns = netns,
@@ -1762,6 +1762,23 @@ error:
   return err;
 }
 
+void
+appns_sapi_del_ns_socket (app_namespace_t *app_ns)
+{
+  app_ns_api_handle_t *handle;
+  clib_socket_t *cs;
+
+  pool_foreach (cs, app_ns->app_sockets)
+    {
+      handle = (app_ns_api_handle_t *) &cs->private_data;
+      clib_file_del_by_index (&file_main, handle->aah_file_index);
+
+      clib_socket_close (cs);
+      clib_socket_free (cs);
+    }
+  pool_free (app_ns->app_sockets);
+}
+
 int
 appns_sapi_add_ns_socket (app_namespace_t * app_ns)
 {
@@ -1799,7 +1816,7 @@ appns_sapi_add_ns_socket (app_namespace_t * app_ns)
    * Create and initialize socket to listen on
    */
   cs = appns_sapi_alloc_socket (app_ns);
-  cs->config = (char *) app_ns->sock_name;
+  cs->config = (char *) vec_dup (app_ns->sock_name);
   cs->flags = CLIB_SOCKET_F_IS_SERVER |
     CLIB_SOCKET_F_ALLOW_GROUP_WRITE |
     CLIB_SOCKET_F_SEQPACKET | CLIB_SOCKET_F_PASSCRED;
