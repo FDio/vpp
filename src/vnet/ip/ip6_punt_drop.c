@@ -351,7 +351,7 @@ ip6_punt_redirect_cmd (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   fib_route_path_t *rpaths = NULL, rpath;
-  dpo_proto_t payload_proto;
+  dpo_proto_t payload_proto = DPO_PROTO_IP6;
   clib_error_t *error = 0;
   u32 rx_sw_if_index = ~0;
   vnet_main_t *vnm;
@@ -370,7 +370,7 @@ ip6_punt_redirect_cmd (vlib_main_t * vm,
       else if (unformat (line_input, "add"))
 	is_add = 1;
       else if (unformat (line_input, "rx all"))
-	rx_sw_if_index = ~0;
+	rx_sw_if_index = 0;
       else if (unformat (line_input, "rx %U",
 			 unformat_vnet_sw_interface, vnm, &rx_sw_if_index))
 	;
@@ -401,6 +401,7 @@ ip6_punt_redirect_cmd (vlib_main_t * vm,
     }
 
 done:
+  vec_free (rpaths);
   unformat_free (line_input);
   return (error);
 }
