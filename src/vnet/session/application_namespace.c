@@ -55,6 +55,15 @@ app_namespace_index (app_namespace_t * app_ns)
   return (app_ns - app_namespace_pool);
 }
 
+void
+app_namespace_free (app_namespace_t *app_ns)
+{
+  hash_unset_mem (app_namespace_lookup_table, app_ns->ns_id);
+  vec_free (app_ns->ns_id);
+
+  pool_put (app_namespace_pool, app_ns);
+}
+
 app_namespace_t *
 app_namespace_alloc (const u8 *ns_id)
 {
@@ -77,6 +86,7 @@ vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t * a)
 {
   app_namespace_t *app_ns;
   session_table_t *st;
+  u32 ns_index;
   int rv;
 
   if (a->is_add)
@@ -109,10 +119,28 @@ vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t * a)
 	  st->is_local = 1;
 	  st->appns_index = app_namespace_index (app_ns);
 	  app_ns->local_table_index = session_table_index (st);
+	  if (a->netns)
+	    {
+	      app_ns->netns = vec_dup (a->netns);
+	      vec_terminate_c_string (app_ns->netns);
+	    }
+	  if (a->sock_name)
+	    {
+	      app_ns->sock_name = vec_dup (a->sock_name);
+	      vec_terminate_c_string (app_ns->sock_name);
+	    }
+
+	  /* Add socket for namespace,
+	   * only at creation time */
+	  if (app_sapi_enabled)
+	    {
+	      rv = appns_sapi_add_ns_socket (app_ns);
+	      if (rv)
+		return rv;
+	    }
 	}
+
       app_ns->ns_secret = a->secret;
-      app_ns->netns = a->netns ? vec_dup (a->netns) : 0;
-      app_ns->sock_name = a->sock_name ? vec_dup (a->sock_name) : 0;
       app_ns->sw_if_index = a->sw_if_index;
       app_ns->ip4_fib_index =
 	fib_table_find (FIB_PROTOCOL_IP4, a->ip4_fib_id);
@@ -120,18 +148,33 @@ vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t * a)
 	fib_table_find (FIB_PROTOCOL_IP6, a->ip6_fib_id);
       session_lookup_set_tables_appns (app_ns);
 
-      /* Add socket for namespace */
-      if (app_sapi_enabled)
-	{
-	  rv = appns_sapi_add_ns_socket (app_ns);
-	  if (rv)
-	    return rv;
-	}
     }
   else
     {
-      return VNET_API_ERROR_UNIMPLEMENTED;
+      ns_index = app_namespace_index_from_id (a->ns_id);
+      if (ns_index == APP_NAMESPACE_INVALID_INDEX)
+	return VNET_API_ERROR_INVALID_VALUE;
+
+      app_ns = app_namespace_get (ns_index);
+      if (!app_ns)
+	return VNET_API_ERROR_INVALID_VALUE;
+
+      application_namespace_cleanup (app_ns);
+
+      if (app_sapi_enabled)
+	appns_sapi_del_ns_socket (app_ns);
+
+      st = session_table_get (app_ns->local_table_index);
+
+      session_table_free (st, FIB_PROTOCOL_MAX);
+      if (app_ns->netns)
+	vec_free (app_ns->netns);
+      if (app_ns->sock_name)
+	vec_free (app_ns->sock_name);
+
+      app_namespace_free (app_ns);
     }
+
   return 0;
 }
 
@@ -241,6 +284,8 @@ app_ns_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (line_input, "add"))
 	is_add = 1;
+      else if (unformat (line_input, "del"))
+	is_add = 0;
       else if (unformat (line_input, "id %_%v%_", &ns_id))
 	;
       else if (unformat (line_input, "secret %lu", &secret))
@@ -264,30 +309,32 @@ app_ns_fn (vlib_main_t * vm, unformat_input_t * input,
 	}
     }
 
-  if (!ns_id || !secret_set || !sw_if_index_set)
+  if (!ns_id)
     {
-      vlib_cli_output (vm, "namespace-id, secret and interface must be "
-			   "provided");
+      vlib_cli_output (vm, "namespace-id must be provided");
       goto done;
     }
 
-  if (is_add)
+  if (is_add && (!secret_set || !sw_if_index_set))
     {
-      /* clang-format off */
-      vnet_app_namespace_add_del_args_t args = {
-	.ns_id = ns_id,
-	.netns = netns,
-	.sock_name = sock_name,
-	.secret = secret,
-	.sw_if_index = sw_if_index,
-	.ip4_fib_id = fib_id,
-	.is_add = 1
-      };
-      /* clang-format on */
-
-      if ((rv = vnet_app_namespace_add_del (&args)))
-	error = clib_error_return (0, "app namespace add del returned %d", rv);
+      vlib_cli_output (vm, "secret and interface must be provided");
+      goto done;
     }
+
+  /* clang-format off */
+  vnet_app_namespace_add_del_args_t args = {
+    .ns_id = ns_id,
+    .netns = netns,
+    .secret = secret,
+    .sw_if_index = sw_if_index,
+    .sock_name = sock_name,
+    .ip4_fib_id = fib_id,
+    .is_add = is_add,
+  };
+  /* clang-format on */
+
+  if ((rv = vnet_app_namespace_add_del (&args)))
+    error = clib_error_return (0, "app namespace add del returned %d", rv);
 
 done:
 
@@ -302,8 +349,8 @@ done:
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (app_ns_command, static) = {
   .path = "app ns",
-  .short_help = "app ns [add] id <namespace-id> secret <secret> "
-		"if <intfc> [netns <ns>]",
+  .short_help = "app ns [add|del] id <namespace-id> secret <secret> "
+		"sw_if_index <sw_if_index> if <interface> [netns <ns>]",
   .function = app_ns_fn,
 };
 /* *INDENT-ON* */
