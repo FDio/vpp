@@ -16,9 +16,7 @@
 #define TLS_READ_IS_LEFT(x) ((x)->read_buffer.off != 0 && (x)->read_buffer.off != (x)->read_buffer_offset)
 #define TLS_READ_LEFT_LEN(x) ((x)->read_buffer.off - (x)->read_buffer_offset)
 
-#define TLS_WRITE_OFFSET(x) ((x)->write_buffer.base + (x)->write_buffer_offset)
-#define TLS_WRITE_IS_LEFT(x) ((x)->write_buffer.off != 0 && (x)->write_buffer.off != (x)->write_buffer_offset)
-
+#define TLSP_MIN_ENQ_SPACE (1 << 16)
 
 typedef struct tls_ctx_picotls_
 {
@@ -29,10 +27,7 @@ typedef struct tls_ctx_picotls_
   int rx_offset;
   int rx_len;
   ptls_buffer_t read_buffer;
-  ptls_buffer_t write_buffer;
-  uint8_t *write_content;
   int read_buffer_offset;
-  int write_buffer_offset;
 } picotls_ctx_t;
 
 typedef struct tls_listen_ctx_picotls_
@@ -44,8 +39,9 @@ typedef struct tls_listen_ctx_picotls_
 typedef struct picotls_main_
 {
   picotls_ctx_t ***ctx_pool;
-  u8 **rx_bufs;
   picotls_listen_ctx_t *lctx_pool;
+  u8 **tx_bufs;
+  u8 **rx_bufs;
   ptls_context_t *client_ptls_ctx;
   clib_rwlock_t crypto_keys_rw_lock;
 } picotls_main_t;
