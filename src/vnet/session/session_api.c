@@ -888,10 +888,10 @@ vl_api_app_namespace_add_del_v2_t_handler (
     .sw_if_index = clib_net_to_host_u32 (mp->sw_if_index),
     .ip4_fib_id = clib_net_to_host_u32 (mp->ip4_fib_id),
     .ip6_fib_id = clib_net_to_host_u32 (mp->ip6_fib_id),
-    .is_add = 1
+    .is_add = mp->is_add,
   };
   rv = vnet_app_namespace_add_del (&args);
-  if (!rv)
+  if (!rv && mp->is_add)
     {
       appns_index = app_namespace_index_from_id (ns_id, netns);
       if (appns_index == APP_NAMESPACE_INVALID_INDEX)
@@ -1633,6 +1633,25 @@ sapi_sock_accept_ready (clib_file_t * scf)
 error:
   appns_sapi_free_socket (app_ns, ccs);
   return err;
+}
+
+void
+appns_sapi_del_ns_socket (app_namespace_t *app_ns)
+{
+  app_ns_api_handle_t *handle;
+  clib_socket_t *cs;
+
+  pool_foreach (cs, app_ns->app_sockets)
+    {
+      handle = (app_ns_api_handle_t *) &cs->private_data;
+      clib_file_del_by_index (&file_main, handle->aah_file_index);
+
+      clib_socket_close (cs);
+      clib_socket_free (cs);
+    }
+  pool_free (app_ns->app_sockets);
+
+  vec_free (app_ns->sock_name);
 }
 
 int
