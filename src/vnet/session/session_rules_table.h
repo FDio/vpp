@@ -116,6 +116,7 @@ int session_rules_table_add_del (session_rules_table_t * srt,
 u8 *session_rules_table_rule_tag (session_rules_table_t * srt, u32 ri,
 				  u8 is_ip4);
 void session_rules_table_init (session_rules_table_t * srt);
+void session_rules_table_free (session_rules_table_t *srt);
 #endif /* SRC_VNET_SESSION_SESSION_RULES_TABLE_H_ */
 /*
  * fd.io coding-style-patch-verification: ON
