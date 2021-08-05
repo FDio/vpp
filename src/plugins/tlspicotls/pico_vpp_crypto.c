@@ -141,6 +141,7 @@ ptls_vpp_crypto_aead_decrypt (ptls_aead_context_t *_ctx, void *_output,
   ctx->op.tag_len = tag_size;
   ctx->op.tag = ctx->op.src + ctx->op.len;
 
+//  clib_warning ("decrypt %u", inlen);
   vnet_crypto_process_ops (vm, &(ctx->op), 1);
   assert (ctx->op.status == VNET_CRYPTO_OP_STATUS_COMPLETED);
 
@@ -188,6 +189,7 @@ ptls_vpp_crypto_aead_encrypt_final (ptls_aead_context_t * _ctx, void *_output)
   ctx->op.tag = _output;
   ctx->op.tag_len = ctx->super.algo->tag_size;
 
+//  clib_warning ("encrypt chunk %u len %u", ctx->chunk_index, ctx->chunks[ctx->chunk_index].len);
   vnet_crypto_process_chained_ops (vm, &(ctx->op), ctx->chunks, 1);
   assert (ctx->op.status == VNET_CRYPTO_OP_STATUS_COMPLETED);
 
