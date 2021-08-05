@@ -278,8 +278,10 @@ u32 application_local_session_table (application_t * app);
 const u8 *application_name_from_index (u32 app_or_wrk);
 u8 application_has_local_scope (application_t * app);
 u8 application_has_global_scope (application_t * app);
-void application_setup_proxy (application_t * app);
-void application_remove_proxy (application_t * app);
+void application_setup_remove_proxy (application_t *app, u8 is_setup);
+void app_worker_setup_remove_proxy (application_t *app, app_worker_t *app_wrk,
+				    u8 is_setup);
+void application_namespace_cleanup (app_namespace_t *app_ns);
 
 segment_manager_props_t *application_get_segment_manager_properties (u32
 								     app_index);
