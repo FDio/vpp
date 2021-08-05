@@ -903,6 +903,32 @@ application_free (application_t * app)
   pool_put (app_main.app_pool, app);
 }
 
+void
+vnet_application_free_by_ns_index (index_t ns_index)
+{
+  u32 *app_indexes = 0, *app_index;
+  app_worker_map_t *wrk_map;
+  app_worker_t *app_wrk;
+  application_t *app;
+
+  pool_foreach (app, app_main.app_pool)
+    if (app->ns_index == ns_index)
+      vec_add1 (app_indexes, app->ns_index);
+
+  vec_foreach (app_index, app_indexes)
+    {
+      app = application_get (*app_index);
+      pool_foreach (wrk_map, app->worker_maps)
+	{
+	  app_wrk = app_worker_get (wrk_map->wrk_index);
+	  application_api_table_del (app_wrk->api_client_index);
+	}
+
+      application_free (app);
+    }
+  vec_free (app_indexes);
+}
+
 static void
 application_detach_process (application_t * app, u32 api_client_index)
 {

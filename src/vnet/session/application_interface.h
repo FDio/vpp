@@ -276,6 +276,7 @@ int vnet_connect_uri (vnet_connect_args_t * a);
 
 int vnet_application_attach (vnet_app_attach_args_t * a);
 int vnet_application_detach (vnet_app_detach_args_t * a);
+void vnet_application_free_by_ns_index (index_t ns_index);
 int vnet_listen (vnet_listen_args_t * a);
 int vnet_connect (vnet_connect_args_t * a);
 int vnet_unlisten (vnet_unlisten_args_t * a);
