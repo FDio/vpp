@@ -160,6 +160,7 @@ appns_sapi_handle_sock_index (u32 sapi_sock_handle)
 }
 
 int appns_sapi_add_ns_socket (app_namespace_t * app_ns);
+void appns_sapi_del_ns_socket (app_namespace_t *app_ns);
 u8 appns_sapi_enabled (void);
 void appns_sapi_enable (void);
 

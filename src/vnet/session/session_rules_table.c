@@ -514,6 +514,13 @@ session_rules_table_add_del (session_rules_table_t * srt,
 }
 
 void
+session_rules_table_free (session_rules_table_t *srt)
+{
+  mma_rules_table_free_16 (&srt->session_rules_tables_16);
+  mma_rules_table_free_40 (&srt->session_rules_tables_40);
+}
+
+void
 session_rules_table_init (session_rules_table_t * srt)
 {
   mma_rules_table_16_t *srt4;

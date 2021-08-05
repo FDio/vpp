@@ -60,6 +60,31 @@ session_table_get (u32 table_index)
   _(v6,halfopen,buckets,20000)                  \
   _(v6,halfopen,memory,(64<<20))
 
+void
+session_table_free (session_table_t *slt, u8 fib_proto)
+{
+  u8 all = fib_proto > FIB_PROTOCOL_IP6 ? 1 : 0;
+  int i;
+
+  for (i = 0; i < TRANSPORT_N_PROTOS; i++)
+    session_rules_table_free (&slt->session_rules[i]);
+
+  vec_free (slt->session_rules);
+
+  if (fib_proto == FIB_PROTOCOL_IP4 || all)
+    {
+      clib_bihash_free_16_8 (&slt->v4_session_hash);
+      clib_bihash_free_16_8 (&slt->v4_half_open_hash);
+    }
+  if (fib_proto == FIB_PROTOCOL_IP6 || all)
+    {
+      clib_bihash_free_48_8 (&slt->v6_session_hash);
+      clib_bihash_free_48_8 (&slt->v6_half_open_hash);
+    }
+
+  pool_put (lookup_tables, slt);
+}
+
 /**
  * Initialize session table hash tables
  *

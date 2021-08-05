@@ -866,7 +866,7 @@ application_free (application_t * app)
   APP_DBG ("Delete app name %v index: %d", app->name, app->app_index);
 
   if (application_is_proxy (app))
-    application_remove_proxy (app);
+    application_setup_remove_proxy (app, 0 /* is_setup */);
 
   /*
    * Free workers
@@ -875,6 +875,7 @@ application_free (application_t * app)
   /* *INDENT-OFF* */
   pool_flush (wrk_map, app->worker_maps, ({
     app_wrk = app_worker_get (wrk_map->wrk_index);
+    application_api_table_del (app_wrk->api_client_index);
     app_worker_free (app_wrk);
   }));
   /* *INDENT-ON* */
@@ -911,22 +912,22 @@ application_detach_process (application_t * app, u32 api_client_index)
   u32 *wrks = 0, *wrk_index;
   app_worker_t *app_wrk;
 
-  if (api_client_index == ~0)
+  APP_DBG ("Detaching for app %v index %u api client index %u", app->name,
+	   app->app_index, api_client_index);
+
+  pool_foreach (wrk_map, app->worker_maps)
+    {
+      app_wrk = app_worker_get (wrk_map->wrk_index);
+      if (app_wrk->api_client_index == api_client_index ||
+	  api_client_index == (u32) ~0)
+	vec_add1 (wrks, app_wrk->wrk_index);
+    }
+
+  if (api_client_index == (u32) ~0 && vec_len (wrks) == 0)
     {
       application_free (app);
       return;
     }
-
-  APP_DBG ("Detaching for app %v index %u api client index %u", app->name,
-	   app->app_index, api_client_index);
-
-  /* *INDENT-OFF* */
-  pool_foreach (wrk_map, app->worker_maps)  {
-    app_wrk = app_worker_get (wrk_map->wrk_index);
-    if (app_wrk->api_client_index == api_client_index)
-      vec_add1 (wrks, app_wrk->wrk_index);
-  }
-  /* *INDENT-ON* */
 
   if (!vec_len (wrks))
     {
@@ -945,6 +946,26 @@ application_detach_process (application_t * app, u32 api_client_index)
     vnet_app_worker_add_del (args);
   }
   vec_free (wrks);
+}
+
+void
+application_namespace_cleanup (app_namespace_t *app_ns)
+{
+  u32 *app_indices = 0, *app_index;
+  application_t *app;
+  u32 ns_index;
+
+  ns_index = app_namespace_index (app_ns);
+  pool_foreach (app, app_main.app_pool)
+    if (app->ns_index == ns_index)
+      vec_add1 (app_indices, app->ns_index);
+
+  vec_foreach (app_index, app_indices)
+    {
+      app = application_get (*app_index);
+      application_detach_process (app, ~0);
+    }
+  vec_free (app_indices);
 }
 
 app_worker_t *
@@ -1049,6 +1070,8 @@ vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a)
       segment_manager_segment_reader_unlock (sm);
       a->evt_q = app_wrk->event_queue;
       a->wrk_map_index = app_wrk->wrk_map_index;
+      if (application_is_proxy (app))
+	app_worker_setup_remove_proxy (app, app_wrk, 1 /* is_setup */);
     }
   else
     {
@@ -1060,6 +1083,8 @@ vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a)
       if (!app_wrk)
 	return VNET_API_ERROR_INVALID_VALUE;
 
+      if (application_is_proxy (app))
+	app_worker_setup_remove_proxy (app, app_wrk, 0 /* is_setup */);
       application_api_table_del (app_wrk->api_client_index);
       if (appns_sapi_enabled ())
 	sapi_socket_close_w_handle (app_wrk->api_client_index);
@@ -1165,7 +1190,8 @@ vnet_application_attach (vnet_app_attach_args_t * a)
 
   if (application_is_proxy (app))
     {
-      application_setup_proxy (app);
+      application_setup_remove_proxy (app, 1 /* is_setup */);
+      app_worker_setup_remove_proxy (app, app_wrk, 1 /* is_setup */);
       /* The segment manager pool is reallocated because a new listener
        * is added. Re-grab segment manager to avoid dangling reference */
       sm = segment_manager_get (app_wrk->connects_seg_manager);
@@ -1496,20 +1522,23 @@ application_has_global_scope (application_t * app)
 }
 
 static clib_error_t *
-application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
-					u8 transport_proto, u8 is_start)
+app_worker_start_stop_proxy_fib_proto (application_t *app,
+				       app_worker_t *app_wrk, u8 fib_proto,
+				       u8 transport_proto, u8 is_start)
 {
   app_namespace_t *app_ns = app_namespace_get (app->ns_index);
   u8 is_ip4 = (fib_proto == FIB_PROTOCOL_IP4);
   session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   transport_connection_t *tc;
-  app_worker_t *app_wrk;
   app_listener_t *al;
   session_t *s;
   u32 flags;
 
-  /* TODO decide if we want proxy to be enabled for all workers */
-  app_wrk = application_get_default_worker (app);
+  /* TODO decide if we want proxy to be enabled for all workers
+   * For now return if worker is not default (index 0) */
+  if (app_wrk->wrk_map_index != 0)
+    return 0;
+
   if (is_start)
     {
       s = app_worker_first_listener (app_wrk, fib_proto, transport_proto);
@@ -1588,51 +1617,37 @@ application_start_stop_proxy_local_scope (application_t * app,
 }
 
 void
-application_start_stop_proxy (application_t * app,
-			      transport_proto_t transport_proto, u8 is_start)
-{
-  if (application_has_local_scope (app))
-    application_start_stop_proxy_local_scope (app, transport_proto, is_start);
-
-  if (application_has_global_scope (app))
-    {
-      application_start_stop_proxy_fib_proto (app, FIB_PROTOCOL_IP4,
-					      transport_proto, is_start);
-      application_start_stop_proxy_fib_proto (app, FIB_PROTOCOL_IP6,
-					      transport_proto, is_start);
-    }
-}
-
-void
-application_setup_proxy (application_t * app)
+app_worker_setup_remove_proxy (application_t *app, app_worker_t *app_wrk,
+			       u8 is_setup)
 {
   u16 transports = app->proxied_transports;
   transport_proto_t tp;
 
   ASSERT (application_is_proxy (app));
+  if (!application_has_global_scope (app))
+    return;
 
-  /* *INDENT-OFF* */
-  transport_proto_foreach (tp, ({
-    if (transports & (1 << tp))
-      application_start_stop_proxy (app, tp, 1);
-  }));
-  /* *INDENT-ON* */
+  transport_proto_foreach (tp, transports)
+  {
+    app_worker_start_stop_proxy_fib_proto (app, app_wrk, FIB_PROTOCOL_IP4, tp,
+					   is_setup);
+    app_worker_start_stop_proxy_fib_proto (app, app_wrk, FIB_PROTOCOL_IP6, tp,
+					   is_setup);
+  }
 }
 
 void
-application_remove_proxy (application_t * app)
+application_setup_remove_proxy (application_t *app, u8 is_setup)
 {
   u16 transports = app->proxied_transports;
   transport_proto_t tp;
 
   ASSERT (application_is_proxy (app));
+  if (!application_has_local_scope (app))
+    return;
 
-  /* *INDENT-OFF* */
-  transport_proto_foreach (tp, ({
-    if (transports & (1 << tp))
-      application_start_stop_proxy (app, tp, 0);
-  }));
-  /* *INDENT-ON* */
+  transport_proto_foreach (tp, transports)
+    application_start_stop_proxy_local_scope (app, tp, is_setup);
 }
 
 segment_manager_props_t *
