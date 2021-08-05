@@ -67,6 +67,7 @@ session_table_t *session_table_alloc (void);
 session_table_t *session_table_get (u32 table_index);
 u32 session_table_index (session_table_t * slt);
 void session_table_init (session_table_t * slt, u8 fib_proto);
+void session_table_free (session_table_t *slt, u8 fib_proto);
 
 /* Internal, try not to use it! */
 session_table_t *_get_session_tables ();
