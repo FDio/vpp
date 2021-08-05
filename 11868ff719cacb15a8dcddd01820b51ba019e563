@@ -1,0 +1,142 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "073b7efb_9f7567e4",
+        "filename": "src/plugins/unittest/session_test.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 425,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-08-05T19:43:07Z",
+      "side": 1,
+      "message": "Thanks for adding these! ;-)",
+      "range": {
+        "startLine": 423,
+        "startChar": 1,
+        "endLine": 425,
+        "endChar": 7
+      },
+      "revId": "11868ff719cacb15a8dcddd01820b51ba019e563",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6a91f4b9_4f17178a",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 907,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-08-05T19:43:07Z",
+      "side": 1,
+      "message": "Let\u0027s call it application_namespace_cleanup() and pass the namespace instead of the index.",
+      "range": {
+        "startLine": 907,
+        "startChar": 0,
+        "endLine": 907,
+        "endChar": 33
+      },
+      "revId": "11868ff719cacb15a8dcddd01820b51ba019e563",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "654cefc2_0a2d9636",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 909,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-08-05T19:43:07Z",
+      "side": 1,
+      "message": "indices",
+      "range": {
+        "startLine": 909,
+        "startChar": 7,
+        "endLine": 909,
+        "endChar": 18
+      },
+      "revId": "11868ff719cacb15a8dcddd01820b51ba019e563",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7cd71ce2_e9f882c4",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 928,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-08-05T19:43:07Z",
+      "side": 1,
+      "message": "I think we should call application_detach_process as we want all workers cleaned up and all sessions closed. The thing we\u0027re missing at this point is a notification towards the app that it\u0027s being cleaned up. That is, we have detach messages from app to vpp but not viceversa. So we should probably enqueue a detach ctrl messages also but we could do that in a separate patch as well.",
+      "range": {
+        "startLine": 918,
+        "startChar": 0,
+        "endLine": 928,
+        "endChar": 5
+      },
+      "revId": "11868ff719cacb15a8dcddd01820b51ba019e563",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2bc39a06_64eef379",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 279,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-08-05T19:43:07Z",
+      "side": 1,
+      "message": "Let\u0027s move it out of the application interface, i.e., applications should not call this directly. Probably the best place is application.h",
+      "range": {
+        "startLine": 279,
+        "startChar": 0,
+        "endLine": 279,
+        "endChar": 58
+      },
+      "revId": "11868ff719cacb15a8dcddd01820b51ba019e563",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a4be08e0_6c24f72c",
+        "filename": "src/vnet/session/application_namespace.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 95,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-08-05T19:43:07Z",
+      "side": 1,
+      "message": "Although this is a good idea, let\u0027s not have session layer depend on dpo.h. We should probably consider moving index_t to vppinfra and start using it a bit more consistently.",
+      "range": {
+        "startLine": 95,
+        "startChar": 2,
+        "endLine": 95,
+        "endChar": 9
+      },
+      "revId": "11868ff719cacb15a8dcddd01820b51ba019e563",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
