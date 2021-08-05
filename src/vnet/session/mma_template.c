@@ -65,6 +65,11 @@ RT (mma_rule_free) (RTT (mma_rules_table) * srt, RTT (mma_rule) * rule)
   return rule;
 }
 
+void RT (mma_rules_table_free) (RTT (mma_rules_table) * srt)
+{
+  pool_free (srt->rules);
+}
+
 RTT (mma_rule) *
 RT (mma_rules_table_get_rule) (RTT (mma_rules_table) * srt, u32 srt_index)
 {

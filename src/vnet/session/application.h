@@ -280,6 +280,7 @@ u8 application_has_local_scope (application_t * app);
 u8 application_has_global_scope (application_t * app);
 void application_setup_proxy (application_t * app);
 void application_remove_proxy (application_t * app);
+void application_namespace_cleanup (app_namespace_t *app_ns);
 
 segment_manager_props_t *application_get_segment_manager_properties (u32
 								     app_index);

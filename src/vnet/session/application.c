@@ -875,6 +875,7 @@ application_free (application_t * app)
   /* *INDENT-OFF* */
   pool_flush (wrk_map, app->worker_maps, ({
     app_wrk = app_worker_get (wrk_map->wrk_index);
+    application_api_table_del (app_wrk->api_client_index);
     app_worker_free (app_wrk);
   }));
   /* *INDENT-ON* */
@@ -911,22 +912,22 @@ application_detach_process (application_t * app, u32 api_client_index)
   u32 *wrks = 0, *wrk_index;
   app_worker_t *app_wrk;
 
-  if (api_client_index == ~0)
+  APP_DBG ("Detaching for app %v index %u api client index %u", app->name,
+	   app->app_index, api_client_index);
+
+  pool_foreach (wrk_map, app->worker_maps)
+    {
+      app_wrk = app_worker_get (wrk_map->wrk_index);
+      if (app_wrk->api_client_index == api_client_index ||
+	  api_client_index == (u32) ~0)
+	vec_add1 (wrks, app_wrk->wrk_index);
+    }
+
+  if (api_client_index == (u32) ~0 && vec_len (wrks) == 0)
     {
       application_free (app);
       return;
     }
-
-  APP_DBG ("Detaching for app %v index %u api client index %u", app->name,
-	   app->app_index, api_client_index);
-
-  /* *INDENT-OFF* */
-  pool_foreach (wrk_map, app->worker_maps)  {
-    app_wrk = app_worker_get (wrk_map->wrk_index);
-    if (app_wrk->api_client_index == api_client_index)
-      vec_add1 (wrks, app_wrk->wrk_index);
-  }
-  /* *INDENT-ON* */
 
   if (!vec_len (wrks))
     {
@@ -945,6 +946,26 @@ application_detach_process (application_t * app, u32 api_client_index)
     vnet_app_worker_add_del (args);
   }
   vec_free (wrks);
+}
+
+void
+application_namespace_cleanup (app_namespace_t *app_ns)
+{
+  u32 *app_indices = 0, *app_index;
+  application_t *app;
+  u32 ns_index;
+
+  ns_index = app_namespace_index_from_id (app_ns->ns_id, app_ns->netns);
+  pool_foreach (app, app_main.app_pool)
+    if (app->ns_index == ns_index)
+      vec_add1 (app_indices, app->ns_index);
+
+  vec_foreach (app_index, app_indices)
+    {
+      app = application_get (*app_index);
+      application_detach_process (app, ~0);
+    }
+  vec_free (app_indices);
 }
 
 app_worker_t *
