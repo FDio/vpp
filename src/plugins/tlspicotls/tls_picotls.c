@@ -269,19 +269,180 @@ picotls_do_handshake (picotls_ctx_t *ptls_ctx, session_t *tcp_session)
   return write;
 }
 
+static int
+ptls_tcp_to_app_write (picotls_ctx_t *ptls_ctx, svm_fifo_t *app_rx_fifo,
+                       svm_fifo_t *tcp_rx_fifo)
+{
+  ptls_buffer_t *buf = &ptls_ctx->read_buffer;
+  int  ret, i = 0, read = 0, wrote = 0, tcp_len, n_fs_app;
+  const int n_segs = 4, max_len = 1 << 16;
+  svm_fifo_seg_t tcp_fs[n_segs], app_fs[16];
+  uword deq_now;
+  u32 ai = 0, thread_index, min_buf_len, space, app_len;
+  u8 is_nocopy;
+  picotls_main_t *pm = &picotls_main;
+
+//  if (TLS_READ_IS_LEFT (ptls_ctx))
+//    goto do_enq;
+
+  thread_index = ptls_ctx->ctx.c_thread_index;
+
+  n_fs_app =
+    svm_fifo_provision_chunks2 (app_rx_fifo, app_fs, n_segs, max_len, &app_len);
+  if (n_fs_app <= 0)
+    return 0;
+
+  tcp_len = svm_fifo_segments (tcp_rx_fifo, 0, tcp_fs, n_segs, app_len);
+  if (tcp_len <= 0)
+    return 0;
+
+  while (wrote < app_len && read < tcp_len)
+    {
+      deq_now = clib_min (tcp_fs[i].len, tcp_len - read);
+      space = app_len - wrote;
+      if (space <= 16 << 10)
+	break;
+      if (deq_now > space)
+	{
+	  deq_now = space - (16 << 10);
+	}
+      min_buf_len = deq_now + (16 << 10);
+      is_nocopy = app_fs[ai].len < min_buf_len ? 0 : 1;
+      if (is_nocopy)
+	{
+	  ptls_buffer_init (buf, app_fs[ai].data, app_fs[ai].len);
+//	  deq_now = clib_min (deq_now, 16 << 10);
+	  ret = ptls_receive (ptls_ctx->tls, buf, tcp_fs[i].data, &deq_now);
+	  ASSERT (ret == 0 || ret == PTLS_ERROR_IN_PROGRESS);
+
+	  wrote += buf->off;
+	  if (buf->off == app_fs[ai].len)
+	    {
+	      ai++;
+	    }
+	  else
+	    {
+	      app_fs[ai].len -= buf->off;
+	      app_fs[ai].data += buf->off;
+	    }
+	}
+      else
+	{
+//	  u32 buf_len = deq_now + (16 << 10);
+	  vec_validate (pm->rx_bufs[thread_index], min_buf_len);
+	  ptls_buffer_init (buf, pm->rx_bufs[thread_index], min_buf_len);
+//	  deq_now = clib_min (tcp_fs[i].len, 16 << 10);
+//	  deq_now = tcp_fs[i].len;
+	  ret = ptls_receive (ptls_ctx->tls, buf, tcp_fs[i].data, &deq_now);
+	  ASSERT (ret == 0 || ret == PTLS_ERROR_IN_PROGRESS);
+	  if (ret == PTLS_ERROR_IN_PROGRESS)
+	    clib_warning ("deq_now %u len %u", deq_now, tcp_fs[i].len);
+
+	  wrote += buf->off;
+	  u32 to_copy = buf->off;
+	  if (to_copy > space)
+	    os_panic ();
+
+	  while (to_copy)
+	    {
+	      if (app_fs[ai].len <= to_copy)
+		{
+		  clib_memcpy_fast (app_fs[ai].data,
+				    buf->base + (buf->off - to_copy),
+				    app_fs[ai].len);
+		  to_copy -= app_fs[ai].len;
+		  ai += 1;
+		}
+	      else
+		{
+		  clib_memcpy_fast (app_fs[ai].data,
+				    buf->base + (buf->off - to_copy), to_copy);
+		  app_fs[ai].len -= to_copy;
+		  app_fs[ai].data += to_copy;
+		  to_copy = 0;
+		}
+	    }
+	}
+
+//      clib_warning ("read %u tcp len %u", deq_now, tcp_fs[i].len);
+      if (deq_now > tcp_fs[i].len)
+	os_panic ();
+      read += deq_now;
+      if (deq_now < tcp_fs[i].len)
+	{
+	  tcp_fs[i].data += deq_now;
+	  tcp_fs[i].len -= deq_now;
+	}
+      else
+	i++;
+    }
+
+  if (read)
+    svm_fifo_dequeue_drop (tcp_rx_fifo, read);
+
+  if (wrote)
+    svm_fifo_enqueue_nocopy (app_rx_fifo, wrote);
+
+  return wrote;
+
+
+
+//  ptls_buffer_init (buf, "", 0);
+//  ptls_ctx->read_buffer_offset = 0;
+//
+//  while (read < len && i < n_segs)
+//    {
+//      deq_now = tcp_fs[i].len;
+//      ret = ptls_receive (ptls_ctx->tls, buf, tcp_fs[i].data, &deq_now);
+//      ASSERT (ret == 0 || ret == PTLS_ERROR_IN_PROGRESS);
+//      read += deq_now;
+//      if (deq_now < tcp_fs[i].len)
+//	{
+//	  tcp_fs[i].data += deq_now;
+//	  tcp_fs[i].len -= deq_now;
+//	}
+//      else
+//	i++;
+//    }
+//
+//  if (read)
+//    svm_fifo_dequeue_drop (tcp_rx_fifo, read);
+//
+//  if (!TLS_READ_LEFT_LEN (ptls_ctx))
+//    {
+//      ptls_buffer_dispose (buf);
+//      goto done;
+//    }
+//
+//do_enq:
+//
+//  len = TLS_READ_LEFT_LEN (ptls_ctx);
+//  off = svm_fifo_enqueue (app_rx_fifo, len, TLS_READ_OFFSET (ptls_ctx));
+//  if (off != len)
+//    {
+//      if (off < 0)
+//	{
+//	  off = 0;
+//	  goto done;
+//	}
+//      ptls_ctx->read_buffer_offset += off;
+//    }
+//  else
+//    {
+//      ptls_buffer_dispose (buf);
+//    }
+//
+//done:
+//  return off;
+}
+
 static inline int
 picotls_ctx_read (tls_ctx_t *ctx, session_t *tcp_session)
 {
   picotls_ctx_t *ptls_ctx = (picotls_ctx_t *) ctx;
-  ptls_buffer_t *buf = &ptls_ctx->read_buffer;
-  int off = 0, ret, i = 0, read = 0, len;
-  const int n_segs = 4, max_len = 32768;
-  svm_fifo_t *tcp_rx_fifo, *app_rx_fifo;
-  picotls_main_t *pm = &picotls_main;
-  svm_fifo_seg_t fs[n_segs];
+  svm_fifo_t *tcp_rx_fifo;
   session_t *app_session;
-  u32 thread_index;
-  uword deq_now;
+  int off;
 
   if (PREDICT_FALSE (!ptls_handshake_is_complete (ptls_ctx->tls)))
     {
@@ -309,69 +470,13 @@ picotls_ctx_read (tls_ctx_t *ctx, session_t *tcp_session)
 
   tcp_rx_fifo = tcp_session->rx_fifo;
   app_session = session_get_from_handle (ctx->app_session_handle);
-  app_rx_fifo = app_session->rx_fifo;
+  off = ptls_tcp_to_app_write (ptls_ctx, app_session->rx_fifo, tcp_rx_fifo);
 
-  if (TLS_READ_IS_LEFT (ptls_ctx))
-    goto do_enq;
-
-  len = svm_fifo_segments (tcp_rx_fifo, 0, fs, n_segs, max_len);
-  if (len <= 0)
-    goto final_checks;
-
-  thread_index = ptls_ctx->ctx.c_thread_index;
-  vec_validate (pm->rx_bufs[thread_index], 2 * max_len);
-  ptls_buffer_init (buf, pm->rx_bufs[thread_index], 2 * max_len);
-  ptls_ctx->read_buffer_offset = 0;
-
-  while (read < len && i < n_segs)
-    {
-      deq_now = fs[i].len;
-      ret = ptls_receive (ptls_ctx->tls, buf, fs[i].data, &deq_now);
-      ASSERT (ret == 0 || ret == PTLS_ERROR_IN_PROGRESS);
-      read += deq_now;
-      if (deq_now < fs[i].len)
-	{
-	  fs[i].data += deq_now;
-	  fs[i].len -= deq_now;
-	}
-      else
-	i++;
-    }
-
-  if (read)
-    svm_fifo_dequeue_drop (tcp_rx_fifo, read);
-
-  if (!TLS_READ_LEFT_LEN (ptls_ctx))
-    {
-      ptls_buffer_dispose (buf);
-      goto final_checks;
-    }
-
-do_enq:
-
-  len = TLS_READ_LEFT_LEN (ptls_ctx);
-  off = svm_fifo_enqueue (app_rx_fifo, len, TLS_READ_OFFSET (ptls_ctx));
-  if (off != len)
-    {
-      if (off < 0)
-	{
-	  off = 0;
-	  goto final_checks;
-	}
-      ptls_ctx->read_buffer_offset += off;
-    }
-  else
-    {
-      buf->off = 0;
-      ptls_ctx->read_buffer_offset = 0;
-    }
-
-  if (app_session->session_state >= SESSION_STATE_READY)
+  if (off && app_session->session_state >= SESSION_STATE_READY)
     tls_notify_app_enqueue (ctx, app_session);
 
-final_checks:
-
-  if (TLS_READ_IS_LEFT (ptls_ctx) || svm_fifo_max_dequeue (tcp_rx_fifo))
+//  if (TLS_READ_IS_LEFT (ptls_ctx) || svm_fifo_max_dequeue (tcp_rx_fifo))
+  if (svm_fifo_max_dequeue (tcp_rx_fifo))
     tls_add_vpp_q_builtin_rx_evt (tcp_session);
 
   return off;
