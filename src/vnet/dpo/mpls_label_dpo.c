@@ -439,8 +439,14 @@ mpls_label_imposition_inline (vlib_main_t * vm,
             if (DPO_PROTO_MPLS != dproto)
             {
                 /*
-                 * These are the non-MPLS payload imposition cases
+                 * These are the non-MPLS payload imposition cases.
+                 * Save the l3 offset
                  */
+                vnet_buffer (b0)->l3_hdr_offset = b0->current_data;
+                vnet_buffer (b1)->l3_hdr_offset = b1->current_data;
+                vnet_buffer (b2)->l3_hdr_offset = b2->current_data;
+                vnet_buffer (b3)->l3_hdr_offset = b3->current_data;
+
                 if (DPO_PROTO_IP4 == dproto)
                 {
                     ip4_header_t * ip0 = vlib_buffer_get_current(b0);
@@ -785,6 +791,8 @@ mpls_label_imposition_inline (vlib_main_t * vm,
 
             if (DPO_PROTO_MPLS != dproto)
             {
+                vnet_buffer (b0)->l3_hdr_offset = b0->current_data;
+
                 if (DPO_PROTO_IP4 == dproto)
                 {
                     /*
