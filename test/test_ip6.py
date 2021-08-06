@@ -736,8 +736,22 @@ class TestIPv6(TestIPv6ND):
                                 dst_ip=ll)
 
         #
+        # Source an RS from a link local address
+        # Ensure suppress also applies to solicited RS
+        #
+        self.pg0.ip6_ra_config(send_unicast=1, suppress=1)
+        ll = mk_ll_addr(self.pg0.remote_mac)
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IPv6(dst=self.pg0.local_ip6, src=ll) /
+             ICMPv6ND_RS())
+        pkts = [p]
+        self.send_and_assert_no_replies(self.pg0, pkts,
+                                        "Suppressed RS from link-local")
+
+        #
         # Send the RS multicast
         #
+        self.pg0.ip6_ra_config(no=1, suppress=1)  # Reset suppress flag to zero
         self.pg0.ip6_ra_config(send_unicast=1)
         dmac = in6_getnsmac(inet_pton(AF_INET6, "ff02::2"))
         ll = mk_ll_addr(self.pg0.remote_mac)
@@ -757,7 +771,7 @@ class TestIPv6(TestIPv6ND):
         # If we happen to pick up the periodic RA at this point then so be it,
         # it's not an error.
         #
-        self.pg0.ip6_ra_config(send_unicast=1, suppress=1)
+        self.pg0.ip6_ra_config(send_unicast=1, suppress=0)
         p = (Ether(dst=dmac, src=self.pg0.remote_mac) /
              IPv6(dst="ff02::2", src="::") /
              ICMPv6ND_RS())
