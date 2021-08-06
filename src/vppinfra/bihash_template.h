@@ -170,6 +170,7 @@ BVS (clib_bihash)
 
   u64 alloc_arena;		/* Base of the allocation arena */
   volatile u8 instantiated;
+  u8 dont_add_to_all_bihash_list;
 
   /**
     * A custom format function to print the Key and Value of bihash_key instead of default hexdump

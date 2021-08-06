@@ -201,6 +201,7 @@ void BV (clib_bihash_init2) (BVT (clib_bihash_init2_args) * a)
   h->log2_nbuckets = max_log2 (a->nbuckets);
   h->memory_size = BIHASH_USE_HEAP ? 0 : a->memory_size;
   h->instantiated = 0;
+  h->dont_add_to_all_bihash_list = a->dont_add_to_all_bihash_list;
   h->fmt_fn = BV (format_bihash);
   h->kvp_fmt_fn = a->kvp_fmt_fn;
 
@@ -435,6 +436,11 @@ void BV (clib_bihash_free) (BVT (clib_bihash) * h)
     clib_mem_vm_free ((void *) (uword) (alloc_arena (h)),
 		      alloc_arena_size (h));
 never_initialized:
+  if (h->dont_add_to_all_bihash_list)
+    {
+      clib_memset_u8 (h, 0, sizeof (*h));
+      return;
+    }
   clib_memset_u8 (h, 0, sizeof (*h));
   for (i = 0; i < vec_len (clib_all_bihashes); i++)
     {
