@@ -264,6 +264,8 @@ int svm_fifo_fill_chunk_list (svm_fifo_t * f);
  */
 int svm_fifo_provision_chunks (svm_fifo_t *f, svm_fifo_seg_t *fs, u32 n_segs,
 			       u32 len);
+int svm_fifo_provision_chunks2 (svm_fifo_t *f, svm_fifo_seg_t *fs, u32 n_segs,
+				u32 len, u32 *actual_len);
 /**
  * Initialize rbtrees used for ooo lookups
  *
