@@ -44,6 +44,7 @@ typedef struct tls_listen_ctx_picotls_
 typedef struct picotls_main_
 {
   picotls_ctx_t ***ctx_pool;
+  u8 **rx_bufs;
   picotls_listen_ctx_t *lctx_pool;
   ptls_context_t *client_ptls_ctx;
   clib_rwlock_t crypto_keys_rw_lock;
