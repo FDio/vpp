@@ -129,7 +129,7 @@ ip4_create_fib_with_table_id (u32 table_id,
 
     fib_table_lock(fib_table->ft_index, FIB_PROTOCOL_IP4, src);
 
-    ip4_mtrie_init(&v4_fib->mtrie);
+    ip4_mtrie_16_init(&v4_fib->mtrie);
 
     /*
      * add the special entries into the new FIB
@@ -195,7 +195,7 @@ ip4_fib_table_destroy (u32 fib_index)
     }
 
     vec_free(fib_table->ft_src_route_counts);
-    ip4_mtrie_free(&v4_fib->mtrie);
+    ip4_mtrie_16_free(&v4_fib->mtrie);
 
     pool_put(ip4_main.v4_fibs, v4_fib);
     pool_put(ip4_main.fibs, fib_table);
@@ -377,7 +377,7 @@ ip4_fib_table_fwding_dpo_update (ip4_fib_t *fib,
 				 u32 len,
 				 const dpo_id_t *dpo)
 {
-    ip4_fib_mtrie_route_add(&fib->mtrie, addr, len, dpo->dpoi_index);
+    ip4_mtrie_16_route_add(&fib->mtrie, addr, len, dpo->dpoi_index);
 }
 
 void
@@ -398,7 +398,7 @@ ip4_fib_table_fwding_dpo_remove (ip4_fib_t *fib,
     cover_prefix = fib_entry_get_prefix(cover_index);
     cover_dpo = fib_entry_contribute_ip_forwarding(cover_index);
 
-    ip4_fib_mtrie_route_del(&fib->mtrie,
+    ip4_mtrie_16_route_del(&fib->mtrie,
                             addr, len, dpo->dpoi_index,
                             cover_prefix->fp_len,
                             cover_dpo->dpoi_index);
@@ -632,7 +632,7 @@ ip4_show_fib (vlib_main_t * vm,
             uword mtrie_size, hash_size;
 
 
-            mtrie_size = ip4_fib_mtrie_memory_usage(&fib->mtrie);
+            mtrie_size = ip4_mtrie_16_memory_usage(&fib->mtrie);
             hash_size = 0;
 
 	    for (i = 0; i < ARRAY_LEN (fib->fib_entry_by_dst_address); i++)
@@ -679,7 +679,7 @@ ip4_show_fib (vlib_main_t * vm,
 	/* Show summary? */
 	if (mtrie)
         {
-	    vlib_cli_output (vm, "%U", format_ip4_fib_mtrie, &fib->mtrie, verbose);
+	    vlib_cli_output (vm, "%U", format_ip4_mtrie_16, &fib->mtrie, verbose);
             continue;
         }
 	if (! verbose)

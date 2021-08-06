@@ -45,7 +45,7 @@ typedef struct ip4_fib_t_
    * Mtrie for fast lookups. Hash is used to maintain overlapping prefixes.
    * First member so it's in the first cacheline.
    */
-  ip4_fib_mtrie_t mtrie;
+  ip4_mtrie_16_t mtrie;
 
   /* Hash table for each prefix length mapping. */
   uword *fib_entry_by_dst_address[33];
@@ -160,16 +160,16 @@ always_inline index_t
 ip4_fib_forwarding_lookup (u32 fib_index,
                            const ip4_address_t * addr)
 {
-    ip4_fib_mtrie_leaf_t leaf;
-    ip4_fib_mtrie_t * mtrie;
+    ip4_mtrie_leaf_t leaf;
+    ip4_mtrie_16_t * mtrie;
 
     mtrie = &ip4_fib_get(fib_index)->mtrie;
 
-    leaf = ip4_fib_mtrie_lookup_step_one (mtrie, addr);
-    leaf = ip4_fib_mtrie_lookup_step (mtrie, leaf, addr, 2);
-    leaf = ip4_fib_mtrie_lookup_step (mtrie, leaf, addr, 3);
+    leaf = ip4_mtrie_16_lookup_step_one (mtrie, addr);
+    leaf = ip4_mtrie_16_lookup_step (mtrie, leaf, addr, 2);
+    leaf = ip4_mtrie_16_lookup_step (mtrie, leaf, addr, 3);
 
-    return (ip4_fib_mtrie_leaf_get_adj_index(leaf));
+    return (ip4_mtrie_leaf_get_adj_index(leaf));
 }
 
 static_always_inline void
@@ -180,21 +180,21 @@ ip4_fib_forwarding_lookup_x2 (u32 fib_index0,
                               index_t *lb0,
                               index_t *lb1)
 {
-    ip4_fib_mtrie_leaf_t leaf[2];
-    ip4_fib_mtrie_t * mtrie[2];
+    ip4_mtrie_leaf_t leaf[2];
+    ip4_mtrie_16_t * mtrie[2];
 
     mtrie[0] = &ip4_fib_get(fib_index0)->mtrie;
     mtrie[1] = &ip4_fib_get(fib_index1)->mtrie;
 
-    leaf[0] = ip4_fib_mtrie_lookup_step_one (mtrie[0], addr0);
-    leaf[1] = ip4_fib_mtrie_lookup_step_one (mtrie[1], addr1);
-    leaf[0] = ip4_fib_mtrie_lookup_step (mtrie[0], leaf[0], addr0, 2);
-    leaf[1] = ip4_fib_mtrie_lookup_step (mtrie[1], leaf[1], addr1, 2);
-    leaf[0] = ip4_fib_mtrie_lookup_step (mtrie[0], leaf[0], addr0, 3);
-    leaf[1] = ip4_fib_mtrie_lookup_step (mtrie[1], leaf[1], addr1, 3);
+    leaf[0] = ip4_mtrie_16_lookup_step_one (mtrie[0], addr0);
+    leaf[1] = ip4_mtrie_16_lookup_step_one (mtrie[1], addr1);
+    leaf[0] = ip4_mtrie_16_lookup_step (mtrie[0], leaf[0], addr0, 2);
+    leaf[1] = ip4_mtrie_16_lookup_step (mtrie[1], leaf[1], addr1, 2);
+    leaf[0] = ip4_mtrie_16_lookup_step (mtrie[0], leaf[0], addr0, 3);
+    leaf[1] = ip4_mtrie_16_lookup_step (mtrie[1], leaf[1], addr1, 3);
 
-    *lb0 = ip4_fib_mtrie_leaf_get_adj_index(leaf[0]);
-    *lb1 = ip4_fib_mtrie_leaf_get_adj_index(leaf[1]);
+    *lb0 = ip4_mtrie_leaf_get_adj_index(leaf[0]);
+    *lb1 = ip4_mtrie_leaf_get_adj_index(leaf[1]);
 }
 
 static_always_inline void
@@ -211,33 +211,33 @@ ip4_fib_forwarding_lookup_x4 (u32 fib_index0,
                               index_t *lb2,
                               index_t *lb3)
 {
-    ip4_fib_mtrie_leaf_t leaf[4];
-    ip4_fib_mtrie_t * mtrie[4];
+    ip4_mtrie_leaf_t leaf[4];
+    ip4_mtrie_16_t * mtrie[4];
 
     mtrie[0] = &ip4_fib_get(fib_index0)->mtrie;
     mtrie[1] = &ip4_fib_get(fib_index1)->mtrie;
     mtrie[2] = &ip4_fib_get(fib_index2)->mtrie;
     mtrie[3] = &ip4_fib_get(fib_index3)->mtrie;
 
-    leaf[0] = ip4_fib_mtrie_lookup_step_one (mtrie[0], addr0);
-    leaf[1] = ip4_fib_mtrie_lookup_step_one (mtrie[1], addr1);
-    leaf[2] = ip4_fib_mtrie_lookup_step_one (mtrie[2], addr2);
-    leaf[3] = ip4_fib_mtrie_lookup_step_one (mtrie[3], addr3);
+    leaf[0] = ip4_mtrie_16_lookup_step_one (mtrie[0], addr0);
+    leaf[1] = ip4_mtrie_16_lookup_step_one (mtrie[1], addr1);
+    leaf[2] = ip4_mtrie_16_lookup_step_one (mtrie[2], addr2);
+    leaf[3] = ip4_mtrie_16_lookup_step_one (mtrie[3], addr3);
 
-    leaf[0] = ip4_fib_mtrie_lookup_step (mtrie[0], leaf[0], addr0, 2);
-    leaf[1] = ip4_fib_mtrie_lookup_step (mtrie[1], leaf[1], addr1, 2);
-    leaf[2] = ip4_fib_mtrie_lookup_step (mtrie[2], leaf[2], addr2, 2);
-    leaf[3] = ip4_fib_mtrie_lookup_step (mtrie[3], leaf[3], addr3, 2);
+    leaf[0] = ip4_mtrie_16_lookup_step (mtrie[0], leaf[0], addr0, 2);
+    leaf[1] = ip4_mtrie_16_lookup_step (mtrie[1], leaf[1], addr1, 2);
+    leaf[2] = ip4_mtrie_16_lookup_step (mtrie[2], leaf[2], addr2, 2);
+    leaf[3] = ip4_mtrie_16_lookup_step (mtrie[3], leaf[3], addr3, 2);
 
-    leaf[0] = ip4_fib_mtrie_lookup_step (mtrie[0], leaf[0], addr0, 3);
-    leaf[1] = ip4_fib_mtrie_lookup_step (mtrie[1], leaf[1], addr1, 3);
-    leaf[2] = ip4_fib_mtrie_lookup_step (mtrie[2], leaf[2], addr2, 3);
-    leaf[3] = ip4_fib_mtrie_lookup_step (mtrie[3], leaf[3], addr3, 3);
+    leaf[0] = ip4_mtrie_16_lookup_step (mtrie[0], leaf[0], addr0, 3);
+    leaf[1] = ip4_mtrie_16_lookup_step (mtrie[1], leaf[1], addr1, 3);
+    leaf[2] = ip4_mtrie_16_lookup_step (mtrie[2], leaf[2], addr2, 3);
+    leaf[3] = ip4_mtrie_16_lookup_step (mtrie[3], leaf[3], addr3, 3);
 
-    *lb0 = ip4_fib_mtrie_leaf_get_adj_index(leaf[0]);
-    *lb1 = ip4_fib_mtrie_leaf_get_adj_index(leaf[1]);
-    *lb2 = ip4_fib_mtrie_leaf_get_adj_index(leaf[2]);
-    *lb3 = ip4_fib_mtrie_leaf_get_adj_index(leaf[3]);
+    *lb0 = ip4_mtrie_leaf_get_adj_index(leaf[0]);
+    *lb1 = ip4_mtrie_leaf_get_adj_index(leaf[1]);
+    *lb2 = ip4_mtrie_leaf_get_adj_index(leaf[2]);
+    *lb3 = ip4_mtrie_leaf_get_adj_index(leaf[3]);
 }
 
 #endif
