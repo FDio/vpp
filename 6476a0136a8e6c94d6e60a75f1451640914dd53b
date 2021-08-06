@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "9e0728c7_71964519",
+        "filename": "src/vnet/session/application_namespace.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-08-06T14:06:14Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "1688d8d1_c895b815",
+      "range": {
+        "startLine": 67,
+        "startChar": 2,
+        "endLine": 67,
+        "endChar": 8
+      },
+      "revId": "6476a0136a8e6c94d6e60a75f1451640914dd53b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a79fc7b1_9a449cc6",
         "filename": "src/vnet/session/application_namespace.c",
         "patchSetId": 2
@@ -45,6 +69,30 @@
       "revId": "6476a0136a8e6c94d6e60a75f1451640914dd53b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "36e165ee_e0c9524b",
+        "filename": "src/vnet/session/application_namespace.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-08-06T14:06:14Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "a79fc7b1_9a449cc6",
+      "range": {
+        "startLine": 70,
+        "startChar": 6,
+        "endLine": 70,
+        "endChar": 19
+      },
+      "revId": "6476a0136a8e6c94d6e60a75f1451640914dd53b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "ffecc189_57c10b3a",
+        "filename": "src/vnet/session/application_namespace.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 148,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-08-06T14:06:14Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "239539a2_4c34db96",
+      "range": {
+        "startLine": 148,
+        "startChar": 5,
+        "endLine": 148,
+        "endChar": 20
+      },
+      "revId": "6476a0136a8e6c94d6e60a75f1451640914dd53b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1e5f6c8c_8c837c08",
         "filename": "src/vnet/session/application_namespace.c",
         "patchSetId": 2
@@ -91,6 +163,30 @@
       "revId": "6476a0136a8e6c94d6e60a75f1451640914dd53b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "edcf5661_1197ad1e",
+        "filename": "src/vnet/session/application_namespace.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 434,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-08-06T14:06:14Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "1e5f6c8c_8c837c08",
+      "range": {
+        "startLine": 434,
+        "startChar": 41,
+        "endLine": 434,
+        "endChar": 51
+      },
+      "revId": "6476a0136a8e6c94d6e60a75f1451640914dd53b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -117,6 +213,30 @@
     },
     {
       "key": {
+        "uuid": "dd2e428d_4608d7cd",
+        "filename": "src/vnet/session/application_namespace.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-08-06T14:06:14Z",
+      "side": 1,
+      "message": "Right, struggled quite a lot with this before realizing `hash_mem` kept a pointer to whatever you add to it. \nI changed it to use only app_ns-\u003ens_id with its content being \"\u003cns_id\u003e\\0\u003cnetns\u003e\\0\"",
+      "parentUuid": "9cb3b889_f3cb6d97",
+      "range": {
+        "startLine": 61,
+        "startChar": 0,
+        "endLine": 61,
+        "endChar": 18
+      },
+      "revId": "6476a0136a8e6c94d6e60a75f1451640914dd53b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "dac35087_7dde9559",
         "filename": "src/vnet/session/application_namespace.h",
         "patchSetId": 2
@@ -140,6 +260,30 @@
     },
     {
       "key": {
+        "uuid": "925629b8_c0e1de7d",
+        "filename": "src/vnet/session/application_namespace.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-08-06T14:06:14Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "dac35087_7dde9559",
+      "range": {
+        "startLine": 88,
+        "startChar": 38,
+        "endLine": 88,
+        "endChar": 41
+      },
+      "revId": "6476a0136a8e6c94d6e60a75f1451640914dd53b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "de9d42a8_f19f8793",
         "filename": "src/vnet/session/session_api.c",
         "patchSetId": 2
@@ -151,6 +295,30 @@
       "writtenOn": "2021-08-04T17:51:16Z",
       "side": 1,
       "message": "I\u0027ll sound like a broken old man: reverse the order. It\u0027s much easier to read \"if char 0 is @\" vs \"if @ is char 0\", i.e., one has to get through the whole line before one knows what is inspected. Probably that\u0027s just me but that\u0027s the typical syntax throughout the host stack",
+      "range": {
+        "startLine": 1664,
+        "startChar": 11,
+        "endLine": 1664,
+        "endChar": 41
+      },
+      "revId": "6476a0136a8e6c94d6e60a75f1451640914dd53b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "80a13fc1_1b74364d",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1664,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-08-06T14:06:14Z",
+      "side": 1,
+      "message": "😄 Right, completely agreed. I started putting things in the other order following some other VPP styling, I assume preventing the fat-typing of \u0027\u003d\u0027 instead of \u0027\u003d\u003d\u0027. But I agree, let\u0027s focus on readability !",
+      "parentUuid": "de9d42a8_f19f8793",
       "range": {
         "startLine": 1664,
         "startChar": 11,
