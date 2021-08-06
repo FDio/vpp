@@ -278,8 +278,10 @@ picotls_ctx_read (tls_ctx_t *ctx, session_t *tcp_session)
   int off = 0, ret, i = 0, read = 0, len;
   const int n_segs = 4, max_len = 32768;
   svm_fifo_t *tcp_rx_fifo, *app_rx_fifo;
+  picotls_main_t *pm = &picotls_main;
   svm_fifo_seg_t fs[n_segs];
   session_t *app_session;
+  u32 thread_index;
   uword deq_now;
 
   if (PREDICT_FALSE (!ptls_handshake_is_complete (ptls_ctx->tls)))
@@ -317,7 +319,9 @@ picotls_ctx_read (tls_ctx_t *ctx, session_t *tcp_session)
   if (len <= 0)
     goto final_checks;
 
-  ptls_buffer_init (buf, "", 0);
+  thread_index = ptls_ctx->ctx.c_thread_index;
+  vec_validate (pm->rx_bufs[thread_index], 2 * max_len);
+  ptls_buffer_init (buf, pm->rx_bufs[thread_index], 2 * max_len);
   ptls_ctx->read_buffer_offset = 0;
 
   while (read < len && i < n_segs)
@@ -359,7 +363,8 @@ do_enq:
     }
   else
     {
-      ptls_buffer_dispose (buf);
+      buf->off = 0;
+      ptls_ctx->read_buffer_offset = 0;
     }
 
   if (app_session->session_state >= SESSION_STATE_READY)
@@ -623,7 +628,7 @@ tls_picotls_init (vlib_main_t * vm)
   num_threads = 1 + vtm->n_threads;
 
   vec_validate (pm->ctx_pool, num_threads - 1);
-
+  vec_validate (pm->rx_bufs, num_threads - 1);
   clib_rwlock_init (&picotls_main.crypto_keys_rw_lock);
 
   tls_register_engine (&picotls_engine, CRYPTO_ENGINE_PICOTLS);
