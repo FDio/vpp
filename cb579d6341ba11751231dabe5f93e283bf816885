@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f06b2cc8_6a490448",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 925,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-08-06T16:19:40Z",
+      "side": 1,
+      "message": "On second thought, let\u0027s leave this as is, more lower.",
+      "range": {
+        "startLine": 915,
+        "startChar": 0,
+        "endLine": 925,
+        "endChar": 0
+      },
+      "revId": "cb579d6341ba11751231dabe5f93e283bf816885",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "077e6a48_7ed975f3",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 966,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-08-06T16:19:40Z",
+      "side": 1,
+      "message": "Here we\u0027d like to iterate over all workers, send out a message since we\u0027re actively as opposed to passively removing them and finally free them. The message as previously discussed can be done at a later time if for your usecase the apps are already closed. If not, we\u0027ll probably end up blocking the apps.\n\nNow, because we want to avoid all the nonsense with the proxy, do\n\n```\n  if (application_is_proxy (app))\n    application_remove_proxy (app);\n  app-\u003eflags \u0026\u003d ~APP_OPTIONS_FLAGS_IS_PROXY;\n```\n\nbefore freeing the workers and you should be able to remove all the other changes. Since this is a forced cleanup, it should be okay. Maybe add a comment explaining that \"we\u0027re doing it because default worker still needs to be available\".",
+      "range": {
+        "startLine": 966,
+        "startChar": 0,
+        "endLine": 966,
+        "endChar": 43
+      },
+      "revId": "cb579d6341ba11751231dabe5f93e283bf816885",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}

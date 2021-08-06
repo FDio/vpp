@@ -190,6 +190,30 @@
     },
     {
       "key": {
+        "uuid": "adb606d9_ae143916",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 928,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-08-06T16:19:40Z",
+      "side": 1,
+      "message": "Well that api_client_index is a relic due to our reliance on binary api. It will eventually go away so let\u0027s solve it differently. Going to comment on the new code",
+      "parentUuid": "f45b4b35_cf6b4e71",
+      "range": {
+        "startLine": 918,
+        "startChar": 0,
+        "endLine": 928,
+        "endChar": 5
+      },
+      "revId": "11868ff719cacb15a8dcddd01820b51ba019e563",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "2bc39a06_64eef379",
         "filename": "src/vnet/session/application_interface.h",
         "patchSetId": 2
