@@ -288,6 +288,7 @@ static inline crypto_engine_type_t
 tls_get_engine_type (crypto_engine_type_t requested,
 		     crypto_engine_type_t preferred)
 {
+//  return CRYPTO_ENGINE_PICOTLS;
   if (requested != CRYPTO_ENGINE_NONE)
     {
       if (tls_vfts[requested].ctx_alloc)
