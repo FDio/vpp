@@ -48,6 +48,7 @@ picotls_ctx_free (tls_ctx_t * ctx)
 {
   picotls_ctx_t *ptls_ctx = (picotls_ctx_t *) ctx;
   vec_free (ptls_ctx->rx_content);
+  ptls_free (ptls_ctx->tls);
   vec_free (ptls_ctx->write_content);
   pool_put_index (picotls_main.ctx_pool[ctx->c_thread_index],
 		  ptls_ctx->ptls_ctx_idx);
@@ -200,8 +201,6 @@ picotls_transport_close (tls_ctx_t * ctx)
       picotls_handle_handshake_failure (ctx);
       return 0;
     }
-  picotls_ctx_t *ptls_ctx = (picotls_ctx_t *) ctx;
-  ptls_free (ptls_ctx->tls);
   session_transport_closing_notify (&ctx->connection);
   return 0;
 }
