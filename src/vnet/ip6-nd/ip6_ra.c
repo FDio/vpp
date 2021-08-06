@@ -270,6 +270,9 @@ typedef enum
   ICMP6_ROUTER_SOLICITATION_N_NEXT,
 } icmp6_router_solicitation_or_advertisement_next_t;
 
+/*
+ * Note: Both periodic RAs and solicited RS come through here.
+ */
 static_always_inline uword
 icmp6_router_solicitation (vlib_main_t * vm,
 			   vlib_node_runtime_t * node, vlib_frame_t * frame)
@@ -413,7 +416,9 @@ icmp6_router_solicitation (vlib_main_t * vm,
 		  error0 = ((!radv_info) ?
 			    ICMP6_ERROR_ROUTER_SOLICITATION_RADV_NOT_CONFIG :
 			    error0);
-
+		  error0 = radv_info->send_radv == 0 ?
+			     ICMP6_ERROR_ROUTER_SOLICITATION_RADV_NOT_CONFIG :
+			     error0;
 		  if (error0 == ICMP6_ERROR_NONE)
 		    {
 		      f64 now = vlib_time_now (vm);
