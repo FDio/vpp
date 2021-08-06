@@ -166,8 +166,8 @@ ip4_fib_forwarding_lookup (u32 fib_index,
     mtrie = &ip4_fib_get(fib_index)->mtrie;
 
     leaf = ip4_mtrie_16_lookup_step_one (mtrie, addr);
-    leaf = ip4_mtrie_16_lookup_step (mtrie, leaf, addr, 2);
-    leaf = ip4_mtrie_16_lookup_step (mtrie, leaf, addr, 3);
+    leaf = ip4_mtrie_16_lookup_step (leaf, addr, 2);
+    leaf = ip4_mtrie_16_lookup_step (leaf, addr, 3);
 
     return (ip4_mtrie_leaf_get_adj_index(leaf));
 }
@@ -188,10 +188,10 @@ ip4_fib_forwarding_lookup_x2 (u32 fib_index0,
 
     leaf[0] = ip4_mtrie_16_lookup_step_one (mtrie[0], addr0);
     leaf[1] = ip4_mtrie_16_lookup_step_one (mtrie[1], addr1);
-    leaf[0] = ip4_mtrie_16_lookup_step (mtrie[0], leaf[0], addr0, 2);
-    leaf[1] = ip4_mtrie_16_lookup_step (mtrie[1], leaf[1], addr1, 2);
-    leaf[0] = ip4_mtrie_16_lookup_step (mtrie[0], leaf[0], addr0, 3);
-    leaf[1] = ip4_mtrie_16_lookup_step (mtrie[1], leaf[1], addr1, 3);
+    leaf[0] = ip4_mtrie_16_lookup_step (leaf[0], addr0, 2);
+    leaf[1] = ip4_mtrie_16_lookup_step (leaf[1], addr1, 2);
+    leaf[0] = ip4_mtrie_16_lookup_step (leaf[0], addr0, 3);
+    leaf[1] = ip4_mtrie_16_lookup_step (leaf[1], addr1, 3);
 
     *lb0 = ip4_mtrie_leaf_get_adj_index(leaf[0]);
     *lb1 = ip4_mtrie_leaf_get_adj_index(leaf[1]);
@@ -224,15 +224,15 @@ ip4_fib_forwarding_lookup_x4 (u32 fib_index0,
     leaf[2] = ip4_mtrie_16_lookup_step_one (mtrie[2], addr2);
     leaf[3] = ip4_mtrie_16_lookup_step_one (mtrie[3], addr3);
 
-    leaf[0] = ip4_mtrie_16_lookup_step (mtrie[0], leaf[0], addr0, 2);
-    leaf[1] = ip4_mtrie_16_lookup_step (mtrie[1], leaf[1], addr1, 2);
-    leaf[2] = ip4_mtrie_16_lookup_step (mtrie[2], leaf[2], addr2, 2);
-    leaf[3] = ip4_mtrie_16_lookup_step (mtrie[3], leaf[3], addr3, 2);
+    leaf[0] = ip4_mtrie_16_lookup_step (leaf[0], addr0, 2);
+    leaf[1] = ip4_mtrie_16_lookup_step (leaf[1], addr1, 2);
+    leaf[2] = ip4_mtrie_16_lookup_step (leaf[2], addr2, 2);
+    leaf[3] = ip4_mtrie_16_lookup_step (leaf[3], addr3, 2);
 
-    leaf[0] = ip4_mtrie_16_lookup_step (mtrie[0], leaf[0], addr0, 3);
-    leaf[1] = ip4_mtrie_16_lookup_step (mtrie[1], leaf[1], addr1, 3);
-    leaf[2] = ip4_mtrie_16_lookup_step (mtrie[2], leaf[2], addr2, 3);
-    leaf[3] = ip4_mtrie_16_lookup_step (mtrie[3], leaf[3], addr3, 3);
+    leaf[0] = ip4_mtrie_16_lookup_step (leaf[0], addr0, 3);
+    leaf[1] = ip4_mtrie_16_lookup_step (leaf[1], addr1, 3);
+    leaf[2] = ip4_mtrie_16_lookup_step (leaf[2], addr2, 3);
+    leaf[3] = ip4_mtrie_16_lookup_step (leaf[3], addr3, 3);
 
     *lb0 = ip4_mtrie_leaf_get_adj_index(leaf[0]);
     *lb1 = ip4_mtrie_leaf_get_adj_index(leaf[1]);

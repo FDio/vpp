@@ -122,7 +122,7 @@ STATIC_ASSERT (0 == sizeof (ip4_mtrie_8_ply_t) % CLIB_CACHE_LINE_BYTES,
 	       "IP4 Mtrie ply cache line");
 
 /**
- * @brief The mutiway-TRIE.
+ * @brief The mutiway-TRIE with a 16-8-8 stride.
  * There is no data associated with the mtrie apart from the top PLY
  */
 typedef struct
@@ -136,14 +136,26 @@ typedef struct
 } ip4_mtrie_16_t;
 
 /**
+ * @brief The mutiway-TRIE with a 8-8-8-8 stride.
+ * There is no data associated with the mtrie apart from the top PLY
+ */
+typedef struct
+{
+  /* pool index of the root ply */
+  u32 root_ply;
+} ip4_mtrie_8_t;
+
+/**
  * @brief Initialise an mtrie
  */
 void ip4_mtrie_16_init (ip4_mtrie_16_t *m);
+void ip4_mtrie_8_init (ip4_mtrie_8_t *m);
 
 /**
- * @brief Free an mtrie, It must be emty when free'd
+ * @brief Free an mtrie, It must be empty when free'd
  */
 void ip4_mtrie_16_free (ip4_mtrie_16_t *m);
+void ip4_mtrie_8_free (ip4_mtrie_8_t *m);
 
 /**
  * @brief Add a route/entry to the mtrie
@@ -151,6 +163,9 @@ void ip4_mtrie_16_free (ip4_mtrie_16_t *m);
 void ip4_mtrie_16_route_add (ip4_mtrie_16_t *m,
 			     const ip4_address_t *dst_address,
 			     u32 dst_address_length, u32 adj_index);
+void ip4_mtrie_8_route_add (ip4_mtrie_8_t *m, const ip4_address_t *dst_address,
+			    u32 dst_address_length, u32 adj_index);
+
 /**
  * @brief remove a route/entry to the mtrie
  */
@@ -158,16 +173,21 @@ void ip4_mtrie_16_route_del (ip4_mtrie_16_t *m,
 			     const ip4_address_t *dst_address,
 			     u32 dst_address_length, u32 adj_index,
 			     u32 cover_address_length, u32 cover_adj_index);
+void ip4_mtrie_8_route_del (ip4_mtrie_8_t *m, const ip4_address_t *dst_address,
+			    u32 dst_address_length, u32 adj_index,
+			    u32 cover_address_length, u32 cover_adj_index);
 
 /**
  * @brief return the memory used by the table
  */
 uword ip4_mtrie_16_memory_usage (ip4_mtrie_16_t *m);
+uword ip4_mtrie_8_memory_usage (ip4_mtrie_8_t *m);
 
 /**
  * @brief Format/display the contents of the mtrie
  */
 format_function_t format_ip4_mtrie_16;
+format_function_t format_ip4_mtrie_8;
 
 /**
  * @brief A global pool of 8bit stride plys
@@ -197,8 +217,7 @@ ip4_mtrie_leaf_get_adj_index (ip4_mtrie_leaf_t n)
  * @brief Lookup step.  Processes 1 byte of 4 byte ip4 address.
  */
 always_inline ip4_mtrie_leaf_t
-ip4_mtrie_16_lookup_step (const ip4_mtrie_16_t *m,
-			  ip4_mtrie_leaf_t current_leaf,
+ip4_mtrie_16_lookup_step (ip4_mtrie_leaf_t current_leaf,
 			  const ip4_address_t *dst_address,
 			  u32 dst_address_byte_index)
 {
@@ -225,6 +244,37 @@ ip4_mtrie_16_lookup_step_one (const ip4_mtrie_16_t *m,
   ip4_mtrie_leaf_t next_leaf;
 
   next_leaf = m->root_ply.leaves[dst_address->as_u16[0]];
+
+  return next_leaf;
+}
+
+always_inline ip4_mtrie_leaf_t
+ip4_mtrie_8_lookup_step (ip4_mtrie_leaf_t current_leaf,
+			 const ip4_address_t *dst_address,
+			 u32 dst_address_byte_index)
+{
+  ip4_mtrie_8_ply_t *ply;
+
+  uword current_is_terminal = ip4_mtrie_leaf_is_terminal (current_leaf);
+
+  if (!current_is_terminal)
+    {
+      ply = ip4_ply_pool + (current_leaf >> 1);
+      return (ply->leaves[dst_address->as_u8[dst_address_byte_index]]);
+    }
+
+  return current_leaf;
+}
+
+always_inline ip4_mtrie_leaf_t
+ip4_mtrie_8_lookup_step_one (const ip4_mtrie_8_t *m,
+			     const ip4_address_t *dst_address)
+{
+  ip4_mtrie_leaf_t next_leaf;
+  ip4_mtrie_8_ply_t *ply;
+
+  ply = pool_elt_at_index (ip4_ply_pool, m->root_ply);
+  next_leaf = ply->leaves[dst_address->as_u8[0]];
 
   return next_leaf;
 }
