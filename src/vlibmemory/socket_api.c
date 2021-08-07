@@ -543,7 +543,7 @@ vl_api_sockclnt_delete_t_handler (vl_api_sockclnt_delete_t * mp)
     {
       rp->response = htonl (1);
       vl_api_send_msg (regp, (u8 *) rp);
-
+      if(regp->is_being_removed) return;
       vl_api_registration_del_file (regp);
       vl_socket_free_registration_index (reg_index);
     }

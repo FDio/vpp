@@ -189,8 +189,8 @@ class VppTransport:
         # Send header
         header = self.header.pack(0, len(buf), 0)
         try:
-            self.socket.sendall(header)
-            self.socket.sendall(buf)
+            self.socket.sendall(header+buf)
+            #self.socket.sendall(buf)
         except socket.error as err:
             raise VppTransportSocketIOError(1, 'Sendall error: {err!r}'.format(
                 err=err))
