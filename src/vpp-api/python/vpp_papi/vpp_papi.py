@@ -513,6 +513,8 @@ class VPPApiClient:
                 self.id_msgdef[i] = msg
                 self.id_names[i] = name
 
+                msg.set_msgid(i)
+
                 # Create function for client side messages.
                 if name in self.services:
                     f = self.make_function(msg, i, self.services[name], do_async)
@@ -555,6 +557,7 @@ class VPPApiClient:
         rx_qlen - the length of the VPP message receive queue between
         client and server.
         """
+        self.do_async = do_async
         msg_handler = self.transport.get_callback(do_async)
         return self.connect_internal(name, msg_handler, chroot_prefix, rx_qlen,
                                      do_async)
@@ -600,6 +603,8 @@ class VPPApiClient:
             raise VPPIOError(2, 'RPC reply message received in event handler')
 
     def has_context(self, msg):
+        if self.do_async:
+            return False
         if len(msg) < 10:
             return False
 
@@ -643,6 +648,7 @@ class VPPApiClient:
 
         In async mode, all messages are returned to the callback.
         """
+
         r = self.decode_incoming_msg(msg)
         if r is None:
             return
@@ -809,7 +815,7 @@ class VPPApiClient:
         b = msg.pack(kwargs)
 
         self.transport.write(b)
-        return context
+        return context, b
 
     def read_blocking(self, no_type_conversion=False, timeout=None):
         """Get next received message from transport within timeout, decoded.

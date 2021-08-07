@@ -279,8 +279,8 @@ class VLAList(Packer):
             return b""
         if len(lst) != kwargs[self.length_field]:
             raise VPPSerializerValueError(
-                'Variable length error, got: {} expected: {}'
-                .format(len(lst), kwargs[self.length_field]))
+                '{}: Variable length error, got: {} expected: {}'
+                .format(self.name, len(lst), kwargs[self.length_field]))
 
         # u8 array
         if self.packer.size == 1:
@@ -656,4 +656,8 @@ class VPPType(Packer):
 
 
 class VPPMessage(VPPType):
-    pass
+    def set_msgid(self, msgid):
+        self.msgid = msgid
+
+    def get_msgid(self):
+        return self.msgid
