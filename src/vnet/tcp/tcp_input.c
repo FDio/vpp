@@ -2586,6 +2586,61 @@ tcp46_listen_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
     }
 }
 
+/*
+ *      SYN received in TIME-WAIT state.
+ *
+ *      RFC 1122:
+ *      "When a connection is [...] on TIME-WAIT state [...]
+ *      [a TCP] MAY accept a new SYN from the remote TCP to
+ *      reopen the connection directly, if it:
+ *
+ *      (1)  assigns its initial sequence number for the new
+ *      connection to be larger than the largest sequence
+ *      number it used on the previous connection incarnation,
+ *      and
+ *
+ *      (2)  returns to TIME-WAIT state if the SYN turns out
+ *      to be an old duplicate".
+ *
+ *      The function returns true if the syn can be accepted during
+ *      connection time-wait (port reuse). In this case the function
+ *      also calculates what the iss should be for the new connection.
+ */
+always_inline int
+syn_during_timewait (tcp_connection_t *tc, vlib_buffer_t *b, u32 *iss)
+{
+  int paws_reject = tcp_segment_check_paws (tc);
+  u32 tw_iss;
+
+  *iss = 0;
+  /* Check that the SYN arrived out of window. We accept it */
+  if (!paws_reject &&
+      (seq_geq (vnet_buffer (b)->tcp.seq_number, tc->rcv_nxt) ||
+       (tcp_opts_tstamp (&tc->rcv_opts) &&
+	timestamp_lt (tc->tsval_recent, tc->rcv_opts.tsval))))
+    {
+      /* Set the iss of the new connection to be the largest sequence number
+       * the old peer would have accepted and add some random number
+       */
+      tw_iss = tc->snd_nxt + tcp_available_snd_wnd (tc) +
+	       (uword) (tcp_time_now_us (tc->c_thread_index) * 1e6) % 65535;
+      if (tw_iss == 0)
+	tw_iss++;
+      *iss = tw_iss;
+
+      return 1;
+    }
+  else
+    {
+      TCP_DBG (
+	"ERROR not accepting SYN in timewait,paws_reject=%d, seq_num =%ld, "
+	"rcv_nxt=%ld, tstamp_present=%d, tsval_recent = %d, tsval = %d\n",
+	paws_reject, vnet_buffer (b)->tcp.seq_number, tc->rcv_nxt,
+	tcp_opts_tstamp (&tc->rcv_opts), tc->tsval_recent, tc->rcv_opts.tsval);
+      return 0;
+    }
+}
+
 /**
  * LISTEN state processing as per RFC 793 p. 65
  */
@@ -2596,6 +2651,7 @@ tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   u32 n_left_from, *from, n_syns = 0;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u32 thread_index = vm->thread_index;
+  u32 tw_iss = 0;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -2616,7 +2672,7 @@ tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	{
 	  lc = tcp_listener_get (vnet_buffer (b[0])->tcp.connection_index);
 	}
-      else
+      else /* We are in TimeWait state*/
 	{
 	  tcp_connection_t *tc;
 	  tc = tcp_connection_get (vnet_buffer (b[0])->tcp.connection_index,
@@ -2626,6 +2682,14 @@ tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      error = TCP_ERROR_CREATE_EXISTS;
 	      goto done;
 	    }
+
+	  if (PREDICT_FALSE (!syn_during_timewait (tc, b[0], &tw_iss)))
+	    {
+	      /* This SYN can't be accepted */
+	      error = TCP_ERROR_CREATE_EXISTS;
+	      goto done;
+	    }
+
 	  lc = tcp_lookup_listener (b[0], tc->c_fib_index, is_ip4);
 	  /* clean up the old session */
 	  tcp_connection_del (tc);
@@ -2669,6 +2733,12 @@ tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       child->state = TCP_STATE_SYN_RCVD;
       child->c_fib_index = lc->c_fib_index;
       child->cc_algo = lc->cc_algo;
+
+      /* In the regular case, the tw_iss will be zero, but
+       * in the special case of syn arriving in time_wait state, the value
+       * will be set according to rfc 1122
+       */
+      child->iss = tw_iss;
       tcp_connection_init_vars (child);
       child->rto = TCP_RTO_MIN;
 
@@ -2843,8 +2913,12 @@ tcp_input_dispatch_buffer (tcp_main_t * tm, tcp_connection_t * tc,
   error = tm->dispatch_table[tc->state][flags].error;
   tc->segs_in += 1;
 
-  /* Track connection state when packet was received. It helps
-   * @ref tcp46_listen_inline detect port reuse */
+  /* Track connection state when packet was received. It is required
+   * for @ref tcp46_listen_inline to detect whether we reached
+   * the node as a result of a SYN packet received while in time-wait
+   * state. In this case the connection_index in vnet buffer will point
+   * to the existing tcp connection and not the listener
+   */
   vnet_buffer (b)->tcp.flags = tc->state;
 
   if (PREDICT_FALSE (error != TCP_ERROR_NONE))
