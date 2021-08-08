@@ -702,7 +702,13 @@ tcp_init_snd_vars (tcp_connection_t * tc)
   tcp_update_time_now (tcp_get_worker (vlib_get_thread_index ()));
 
   tcp_init_rcv_mss (tc);
-  tc->iss = tcp_generate_random_iss (tc);
+  /*
+   * In special case of early-kill of timewait socket, the iss will already
+   * be initialized to ensure it is greater than the last incarnation of the
+   * connection. see syn_during_timewait() for more details.
+   */
+  if (!tc->iss)
+    tc->iss = tcp_generate_random_iss (tc);
   tc->snd_una = tc->iss;
   tc->snd_nxt = tc->iss + 1;
   tc->srtt = 0.1 * THZ;		/* 100 ms */
