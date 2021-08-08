@@ -390,7 +390,11 @@ typedef struct
 	u32 next_node_opaque;
       };
       u32 seq_end;
-      u32 ack_number;
+      union
+      {
+	u32 ack_number;
+	u32 tw_iss; /**< timewait initial sequence number */
+      };
       u16 hdr_offset;		/**< offset relative to ip hdr */
       u16 data_offset;		/**< offset relative to ip hdr */
       u16 data_len;		/**< data len */

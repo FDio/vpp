@@ -66,6 +66,21 @@ typedef enum _tcp_listen_next
     TCP_LISTEN_N_NEXT,
 } tcp_listen_next_t;
 
+typedef enum _tcp_listen_tw_next
+{
+  TCP_LISTEN_TW_NEXT_DROP,
+  TCP_LISTEN_TW_NEXT_LISTEN,
+  TCP_LISTEN_TW_N_NEXT,
+} tcp_listen_tw_next_t;
+
+#define foreach_tcp4_listen_tw_next                                           \
+  _ (DROP, "ip4-drop")                                                        \
+  _ (LISTEN, "tcp4-listen")
+
+#define foreach_tcp6_listen_tw_next                                           \
+  _ (DROP, "ip6-drop")                                                        \
+  _ (LISTEN, "tcp6-listen")
+
 /* Generic, state independent indices */
 typedef enum _tcp_state_next
 {
@@ -2586,6 +2601,54 @@ tcp46_listen_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
     }
 }
 
+/*
+ *      SYN received in TIME-WAIT state.
+ *
+ *      RFC 1122:
+ *      "When a connection is [...] on TIME-WAIT state [...]
+ *      [a TCP] MAY accept a new SYN from the remote TCP to
+ *      reopen the connection directly, if it:
+ *
+ *      (1)  assigns its initial sequence number for the new
+ *      connection to be larger than the largest sequence
+ *      number it used on the previous connection incarnation,
+ *      and
+ *
+ *      (2)  returns to TIME-WAIT state if the SYN turns out
+ *      to be an old duplicate".
+ */
+always_inline int
+syn_during_timewait (tcp_connection_t *tc, vlib_buffer_t *b)
+{
+  int paws_reject = tcp_segment_check_paws (tc);
+  u32 tw_iss;
+
+  /* Check that the SYN arrived out of window. We accept it */
+  if (!paws_reject &&
+      (seq_geq (vnet_buffer (b)->tcp.seq_number, tc->rcv_nxt) ||
+       (tcp_opts_tstamp (&tc->rcv_opts) &&
+	timestamp_lt (tc->tsval_recent, tc->rcv_opts.tsval))))
+    {
+      tw_iss = tc->snd_nxt + 65535 + 2;
+      if (tw_iss == 0)
+	tw_iss++;
+      vnet_buffer (b)->tcp.tw_iss = tw_iss;
+
+      tcp_connection_del (tc);
+
+      return 0;
+    }
+  else
+    {
+      clib_warning (
+	"ERROR not accepting SYN in timewait,paws_reject=%d, seq_num =%ld, "
+	"rcv_nxt=%ld, tstamp_present=%d, tsval_recent = %d, tsval = %d\n",
+	paws_reject, vnet_buffer (b)->tcp.seq_number, tc->rcv_nxt,
+	tcp_opts_tstamp (&tc->rcv_opts), tc->tsval_recent, tc->rcv_opts.tsval);
+      return -1;
+    }
+}
+
 /**
  * LISTEN state processing as per RFC 793 p. 65
  */
@@ -2612,29 +2675,11 @@ tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       tcp_connection_t *lc, *child;
 
       /* Flags initialized with connection state after lookup */
-      if (vnet_buffer (b[0])->tcp.flags == TCP_STATE_LISTEN)
+      lc = tcp_listener_get (vnet_buffer (b[0])->tcp.connection_index);
+      if (PREDICT_FALSE (lc == 0))
 	{
-	  lc = tcp_listener_get (vnet_buffer (b[0])->tcp.connection_index);
-	}
-      else
-	{
-	  tcp_connection_t *tc;
-	  tc = tcp_connection_get (vnet_buffer (b[0])->tcp.connection_index,
-				   thread_index);
-	  if (tc->state != TCP_STATE_TIME_WAIT)
-	    {
-	      error = TCP_ERROR_CREATE_EXISTS;
-	      goto done;
-	    }
-	  lc = tcp_lookup_listener (b[0], tc->c_fib_index, is_ip4);
-	  /* clean up the old session */
-	  tcp_connection_del (tc);
-	  /* listener was cleaned up */
-	  if (!lc)
-	    {
-	      error = TCP_ERROR_NO_LISTENER;
-	      goto done;
-	    }
+	  error = TCP_ERROR_NO_LISTENER;
+	  goto done;
 	}
 
       /* Make sure connection wasn't just created */
@@ -2669,6 +2714,12 @@ tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       child->state = TCP_STATE_SYN_RCVD;
       child->c_fib_index = lc->c_fib_index;
       child->cc_algo = lc->cc_algo;
+
+      /* In the regular case, the ack_number in vnet_buffer will be zero, but
+       * in the special case of syn arriving in time_wait state, the value
+       * will be set according to rfc 1122
+       */
+      child->iss = vnet_buffer (b[0])->tcp.tw_iss;
       tcp_connection_init_vars (child);
       child->rto = TCP_RTO_MIN;
 
@@ -2717,6 +2768,94 @@ VLIB_NODE_FN (tcp6_listen_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
   return tcp46_listen_inline (vm, node, from_frame, 0 /* is_ip4 */ );
 }
 
+always_inline uword
+tcp46_listen_tw_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+			vlib_frame_t *from_frame, int is_ip4)
+{
+  u32 n_left_from, *from;
+  u32 thread_index = vm->thread_index;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  u16 nexts[VLIB_FRAME_SIZE], *next;
+  tcp_connection_t *lc;
+
+  from = vlib_frame_vector_args (from_frame);
+  n_left_from = from_frame->n_vectors;
+  vlib_get_buffers (vm, from, bufs, n_left_from);
+
+  b = bufs;
+  next = nexts;
+
+  while (n_left_from > 0)
+    {
+      tcp_connection_t *tc;
+
+      tc = tcp_connection_get (vnet_buffer (b[0])->tcp.connection_index,
+			       thread_index);
+      if (PREDICT_FALSE (!tc))
+	{
+	  next[0] = TCP_LISTEN_TW_NEXT_DROP;
+	  b[0]->error = TCP_ERROR_INVALID_CONNECTION;
+	  goto next_buf;
+	}
+
+      if (PREDICT_TRUE (tc->state == TCP_STATE_TIME_WAIT))
+	{
+	  /* Set up the correct listener connection index for the listen node
+	   * The connections c_fib_index is inherited from the
+	   * listener at time of create and therefore is the correct
+	   * index to use for looking up the listener */
+	  lc = tcp_lookup_listener (b[0], tc->c_fib_index, is_ip4);
+	  if (PREDICT_FALSE (!lc))
+	    {
+	      next[0] = TCP_LISTEN_TW_NEXT_DROP;
+	      b[0]->error = TCP_ERROR_NO_LISTENER;
+	      goto next_buf;
+	    }
+
+	  if (PREDICT_TRUE (!syn_during_timewait (tc, b[0])))
+	    {
+	      vnet_buffer (b[0])->tcp.connection_index = lc->c_c_index;
+	      next[0] = TCP_LISTEN_TW_NEXT_LISTEN;
+	    }
+	  else
+	    {
+	      /* If the SYN can't be accepted, it means the connection exists
+	       * and can't be terminated.
+	       */
+	      next[0] = TCP_LISTEN_TW_NEXT_DROP;
+	      b[0]->error = TCP_ERROR_CREATE_EXISTS;
+	    }
+	}
+      else
+	{
+	  clib_warning ("ERROR: Unexpectedly reached timewait listen node "
+			"without TIMEWAIT\n");
+	  next[0] = TCP_LISTEN_TW_NEXT_DROP;
+	  b[0]->error = TCP_ERROR_CREATE_EXISTS;
+	}
+
+    next_buf:
+      b++;
+      next++;
+      n_left_from -= 1;
+    }
+
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, from_frame->n_vectors);
+  return from_frame->n_vectors;
+}
+
+VLIB_NODE_FN (tcp4_listen_tw_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
+{
+  return tcp46_listen_tw_inline (vm, node, from_frame, 1 /* is _ip4 */);
+}
+
+VLIB_NODE_FN (tcp6_listen_tw_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
+{
+  return tcp46_listen_tw_inline (vm, node, from_frame, 0 /* is_ip4 */);
+}
+
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp4_listen_node) =
 {
@@ -2755,10 +2894,45 @@ VLIB_REGISTER_NODE (tcp6_listen_node) =
 };
 /* *INDENT-ON* */
 
+VLIB_REGISTER_NODE (tcp4_listen_tw_node) =
+{
+  .name = "tcp4-listen-tw",
+  /* Takes a vector of packets. */
+  .vector_size = sizeof (u32),
+  .n_errors = TCP_N_ERROR,
+  .error_counters = tcp_input_error_counters,
+  .n_next_nodes = TCP_LISTEN_TW_N_NEXT,
+  .next_nodes =
+  {
+#define _(s, n) [TCP_LISTEN_TW_NEXT_##s] = n,
+    foreach_tcp4_listen_tw_next
+#undef _
+  },
+  .format_trace = format_tcp_rx_trace_short,
+};
+
+VLIB_REGISTER_NODE (tcp6_listen_tw_node) =
+{
+  .name = "tcp6-listen-tw",
+  /* Takes a vector of packets. */
+  .vector_size = sizeof (u32),
+  .n_errors = TCP_N_ERROR,
+  .error_counters = tcp_input_error_counters,
+  .n_next_nodes = TCP_LISTEN_TW_N_NEXT,
+  .next_nodes =
+  {
+#define _(s, n) [TCP_LISTEN_TW_NEXT_##s] = n,
+    foreach_tcp6_listen_tw_next
+#undef _
+  },
+  .format_trace = format_tcp_rx_trace_short,
+};
+
 typedef enum _tcp_input_next
 {
   TCP_INPUT_NEXT_DROP,
   TCP_INPUT_NEXT_LISTEN,
+  TCP_INPUT_NEXT_LISTEN_TW,
   TCP_INPUT_NEXT_RCV_PROCESS,
   TCP_INPUT_NEXT_SYN_SENT,
   TCP_INPUT_NEXT_ESTABLISHED,
@@ -2767,22 +2941,24 @@ typedef enum _tcp_input_next
   TCP_INPUT_N_NEXT
 } tcp_input_next_t;
 
-#define foreach_tcp4_input_next                 \
-  _ (DROP, "ip4-drop")                          \
-  _ (LISTEN, "tcp4-listen")                     \
-  _ (RCV_PROCESS, "tcp4-rcv-process")           \
-  _ (SYN_SENT, "tcp4-syn-sent")                 \
-  _ (ESTABLISHED, "tcp4-established")		\
-  _ (RESET, "tcp4-reset")			\
+#define foreach_tcp4_input_next                                               \
+  _ (DROP, "ip4-drop")                                                        \
+  _ (LISTEN, "tcp4-listen")                                                   \
+  _ (LISTEN_TW, "tcp4-listen-tw")                                             \
+  _ (RCV_PROCESS, "tcp4-rcv-process")                                         \
+  _ (SYN_SENT, "tcp4-syn-sent")                                               \
+  _ (ESTABLISHED, "tcp4-established")                                         \
+  _ (RESET, "tcp4-reset")                                                     \
   _ (PUNT, "ip4-punt")
 
-#define foreach_tcp6_input_next                 \
-  _ (DROP, "ip6-drop")                          \
-  _ (LISTEN, "tcp6-listen")                     \
-  _ (RCV_PROCESS, "tcp6-rcv-process")           \
-  _ (SYN_SENT, "tcp6-syn-sent")                 \
-  _ (ESTABLISHED, "tcp6-established")		\
-  _ (RESET, "tcp6-reset")			\
+#define foreach_tcp6_input_next                                               \
+  _ (DROP, "ip6-drop")                                                        \
+  _ (LISTEN, "tcp6-listen")                                                   \
+  _ (LISTEN_TW, "tcp6-listen-tw")                                             \
+  _ (RCV_PROCESS, "tcp6-rcv-process")                                         \
+  _ (SYN_SENT, "tcp6-syn-sent")                                               \
+  _ (ESTABLISHED, "tcp6-established")                                         \
+  _ (RESET, "tcp6-reset")                                                     \
   _ (PUNT, "ip6-punt")
 
 #define filter_flags (TCP_FLAG_SYN|TCP_FLAG_ACK|TCP_FLAG_RST|TCP_FLAG_FIN)
@@ -2842,10 +3018,6 @@ tcp_input_dispatch_buffer (tcp_main_t * tm, tcp_connection_t * tc,
   *next = tm->dispatch_table[tc->state][flags].next;
   error = tm->dispatch_table[tc->state][flags].error;
   tc->segs_in += 1;
-
-  /* Track connection state when packet was received. It helps
-   * @ref tcp46_listen_inline detect port reuse */
-  vnet_buffer (b)->tcp.flags = tc->state;
 
   if (PREDICT_FALSE (error != TCP_ERROR_NONE))
     {
@@ -3303,7 +3475,7 @@ do {                                                       	\
     TCP_ERROR_NONE);
   _(LAST_ACK, TCP_FLAG_SYN | TCP_FLAG_RST | TCP_FLAG_ACK,
     TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
-  _(TIME_WAIT, TCP_FLAG_SYN, TCP_INPUT_NEXT_LISTEN, TCP_ERROR_NONE);
+  _ (TIME_WAIT, TCP_FLAG_SYN, TCP_INPUT_NEXT_LISTEN_TW, TCP_ERROR_NONE);
   _(TIME_WAIT, TCP_FLAG_FIN, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
   _(TIME_WAIT, TCP_FLAG_FIN | TCP_FLAG_ACK, TCP_INPUT_NEXT_RCV_PROCESS,
     TCP_ERROR_NONE);
