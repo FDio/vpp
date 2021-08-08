@@ -736,12 +736,32 @@ ip46_set_src_address (u32 sw_if_index, vlib_buffer_t * b0, int is_ip6)
       ip6_header_t *ip6 = vlib_buffer_get_current (b0);
 
       res = fib_sas6_get (sw_if_index, &ip6->dst_address, &ip6->src_address);
+      if (!res)
+	{
+	  ip6_address_t *tmp6;
+	  tmp6 = ip_interface_get_first_ip (sw_if_index, false);
+	  if (ip6)
+	    {
+	      ip6_address_copy (&ip6->src_address, tmp6);
+	      res = true;
+	    }
+	}
     }
   else
     {
       ip4_header_t *ip4 = vlib_buffer_get_current (b0);
 
       res = fib_sas4_get (sw_if_index, &ip4->dst_address, &ip4->src_address);
+      if (!res)
+	{
+	  ip6_address_t *tmp4;
+	  tmp4 = ip_interface_get_first_ip (sw_if_index, true);
+	  if (ip4)
+	    {
+	      ip4->src_address.as_u32 = tmp4->as_u32;
+	      res = true;
+	    }
+	}
     }
   return res;
 }
