@@ -33,6 +33,23 @@
       "revId": "ff668bc28f055c738cc0819e66b72df311ff4a3a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "46c245f5_99e27866",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 35
+      },
+      "lineNbr": 491,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-08-09T16:34:30Z",
+      "side": 1,
+      "message": "I am a bit dubious on why msb_mask is working for us.\nHow can we depend on the msb being set when _any_ bit in a given u32 is set?",
+      "revId": "ff668bc28f055c738cc0819e66b72df311ff4a3a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
