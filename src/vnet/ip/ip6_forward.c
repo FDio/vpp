@@ -1471,7 +1471,10 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      receive_dpo_t *rd;
 	      rd = receive_dpo_get (vnet_buffer (b[0])->ip.adj_index[VLIB_TX]);
-	      vnet_buffer (b[0])->ip.rx_sw_if_index = rd->rd_sw_if_index;
+	      /* we keep the original sw_if_index[VLIB_RX] for punt */
+	      vnet_buffer (b[0])->ip.rx_sw_if_index =
+		vnet_buffer (b[0])->sw_if_index[VLIB_RX];
+	      vnet_buffer (b[0])->sw_if_index[VLIB_RX] = rd->rd_sw_if_index;
 	    }
 	  else
 	    vnet_buffer (b[0])->ip.rx_sw_if_index = 0;
@@ -1479,7 +1482,10 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      receive_dpo_t *rd;
 	      rd = receive_dpo_get (vnet_buffer (b[1])->ip.adj_index[VLIB_TX]);
-	      vnet_buffer (b[1])->ip.rx_sw_if_index = rd->rd_sw_if_index;
+	      /* we keep the original sw_if_index[VLIB_RX] for punt */
+	      vnet_buffer (b[1])->ip.rx_sw_if_index =
+		vnet_buffer (b[1])->sw_if_index[VLIB_RX];
+	      vnet_buffer (b[1])->sw_if_index[VLIB_RX] = rd->rd_sw_if_index;
 	    }
 	  else
 	    vnet_buffer (b[1])->ip.rx_sw_if_index = 0;
@@ -1614,7 +1620,10 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      receive_dpo_t *rd;
 	      rd = receive_dpo_get (vnet_buffer (b[0])->ip.adj_index[VLIB_TX]);
-	      vnet_buffer (b[0])->ip.rx_sw_if_index = rd->rd_sw_if_index;
+	      /* we keep the original sw_if_index[VLIB_RX] for punt */
+	      vnet_buffer (b[0])->ip.rx_sw_if_index =
+		vnet_buffer (b[0])->sw_if_index[VLIB_RX];
+	      vnet_buffer (b[0])->sw_if_index[VLIB_RX] = rd->rd_sw_if_index;
 	    }
 	  else
 	    vnet_buffer (b[0])->ip.rx_sw_if_index = 0;

@@ -1528,11 +1528,13 @@ ip4_local_check_src (vlib_buffer_t * b, ip4_header_t * ip0,
     {
       receive_dpo_t *rd;
       rd = receive_dpo_get (vnet_buffer (b)->ip.adj_index[VLIB_TX]);
-      vnet_buffer (b)->ip.rx_sw_if_index = rd->rd_sw_if_index;
+      /* we keep the original sw_if_index[VLIB_RX] for punt */
+      vnet_buffer (b)->ip.rx_sw_if_index =
+	vnet_buffer (b)->sw_if_index[VLIB_RX];
+      vnet_buffer (b)->sw_if_index[VLIB_RX] = rd->rd_sw_if_index;
     }
   else
     vnet_buffer (b)->ip.rx_sw_if_index = 0;
-
   /*
    * vnet_buffer()->ip.adj_index[VLIB_RX] will be set to the index of the
    *  adjacency for the destination address (the local interface address).
@@ -1612,7 +1614,10 @@ ip4_local_check_src_x2 (vlib_buffer_t ** b, ip4_header_t ** ip,
     {
       receive_dpo_t *rd;
       rd = receive_dpo_get (vnet_buffer (b[0])->ip.adj_index[VLIB_TX]);
-      vnet_buffer (b[0])->ip.rx_sw_if_index = rd->rd_sw_if_index;
+      /* we keep the original sw_if_index[VLIB_RX] for punt */
+      vnet_buffer (b[0])->ip.rx_sw_if_index =
+	vnet_buffer (b[0])->sw_if_index[VLIB_RX];
+      vnet_buffer (b[0])->sw_if_index[VLIB_RX] = rd->rd_sw_if_index;
     }
   else
     vnet_buffer (b[0])->ip.rx_sw_if_index = 0;
@@ -1621,7 +1626,10 @@ ip4_local_check_src_x2 (vlib_buffer_t ** b, ip4_header_t ** ip,
     {
       receive_dpo_t *rd;
       rd = receive_dpo_get (vnet_buffer (b[1])->ip.adj_index[VLIB_TX]);
-      vnet_buffer (b[1])->ip.rx_sw_if_index = rd->rd_sw_if_index;
+      /* we keep the original sw_if_index[VLIB_RX] for punt */
+      vnet_buffer (b[1])->ip.rx_sw_if_index =
+	vnet_buffer (b[1])->sw_if_index[VLIB_RX];
+      vnet_buffer (b[1])->sw_if_index[VLIB_RX] = rd->rd_sw_if_index;
     }
   else
     vnet_buffer (b[1])->ip.rx_sw_if_index = 0;
