@@ -137,16 +137,14 @@ format_snat_session (u8 * s, va_list * args)
 		  sess->nat_proto, clib_net_to_host_u16 (sess->out2in.port),
 		  sess->out2in.fib_index);
     }
-  if (is_ed_session (sess) || is_fwd_bypass_session (sess))
+  if (nat44_ed_is_twice_nat_session (sess))
     {
-      if (is_twice_nat_session (sess))
-	{
-	  s = format (s, "       external host o2i %U:%d i2o %U:%d\n",
-		      format_ip4_address, &sess->ext_host_addr,
-		      clib_net_to_host_u16 (sess->ext_host_port),
-		      format_ip4_address, &sess->ext_host_nat_addr,
-		      clib_net_to_host_u16 (sess->ext_host_nat_port));
-	}
+      s = format (s, "       external host o2i %U:%d i2o %U:%d\n",
+		  format_ip4_address, &sess->ext_host_addr,
+		  clib_net_to_host_u16 (sess->ext_host_port),
+		  format_ip4_address, &sess->ext_host_nat_addr,
+		  clib_net_to_host_u16 (sess->ext_host_nat_port));
+    }
       else
 	{
 	  if (sess->ext_host_addr.as_u32)
@@ -156,20 +154,19 @@ format_snat_session (u8 * s, va_list * args)
 	}
       s = format (s, "       i2o flow: %U\n", format_nat_6t_flow, &sess->i2o);
       s = format (s, "       o2i flow: %U\n", format_nat_6t_flow, &sess->o2i);
-    }
   s = format (s, "       index %llu\n", sess - tsm->sessions);
   s = format (s, "       last heard %.2f\n", sess->last_heard);
   s = format (s, "       total pkts %d, total bytes %lld\n",
 	      sess->total_pkts, sess->total_bytes);
-  if (snat_is_session_static (sess))
+  if (nat44_ed_is_session_static (sess))
     s = format (s, "       static translation\n");
   else
     s = format (s, "       dynamic translation\n");
-  if (is_fwd_bypass_session (sess))
+  if (na44_ed_is_fwd_bypass_session (sess))
     s = format (s, "       forwarding-bypass\n");
-  if (is_lb_session (sess))
+  if (nat44_ed_is_lb_session (sess))
     s = format (s, "       load-balancing\n");
-  if (is_twice_nat_session (sess))
+  if (nat44_ed_is_twice_nat_session (sess))
     s = format (s, "       twice-nat\n");
   return s;
 }

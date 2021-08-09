@@ -432,7 +432,6 @@ create_session_for_static_mapping_ed (
     s->flags |= SNAT_SESSION_FLAG_LOAD_BALANCING;
   if (lb_nat == AFFINITY_LB_NAT)
     s->flags |= SNAT_SESSION_FLAG_AFFINITY;
-  s->flags |= SNAT_SESSION_FLAG_ENDPOINT_DEPENDENT;
   s->out2in.addr = o2i_addr;
   s->out2in.port = o2i_port;
   s->out2in.fib_index = o2i_fib_index;
@@ -593,7 +592,7 @@ create_session_for_static_mapping_ed (
 			 s->in2out.port, &s->ext_host_nat_addr,
 			 s->ext_host_nat_port, &s->out2in.addr, s->out2in.port,
 			 &s->ext_host_addr, s->ext_host_port, s->nat_proto,
-			 is_twice_nat_session (s));
+			 nat44_ed_is_twice_nat_session (s));
 
   per_vrf_sessions_register_session (s, thread_index);
 
@@ -754,7 +753,6 @@ nat44_ed_out2in_slowpath_unknown_proto (snat_main_t *sm, vlib_buffer_t *b,
   s->ext_host_addr.as_u32 = ip->src_address.as_u32;
   s->flags |= SNAT_SESSION_FLAG_UNKNOWN_PROTO;
   s->flags |= SNAT_SESSION_FLAG_STATIC_MAPPING;
-  s->flags |= SNAT_SESSION_FLAG_ENDPOINT_DEPENDENT;
   s->out2in.addr.as_u32 = ip->dst_address.as_u32;
   s->out2in.fib_index = rx_fib_index;
   s->in2out.addr.as_u32 = m->local_addr.as_u32;

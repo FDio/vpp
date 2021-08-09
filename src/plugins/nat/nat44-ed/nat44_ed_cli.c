@@ -808,21 +808,22 @@ nat44_show_interfaces_command_fn (vlib_main_t * vm, unformat_input_t * input,
   vlib_cli_output (vm, "NAT44 interfaces:");
   pool_foreach (i, sm->interfaces)
    {
-    vlib_cli_output (vm, " %U %s", format_vnet_sw_if_index_name, vnm,
-                     i->sw_if_index,
-                     (nat_interface_is_inside(i) &&
-                      nat_interface_is_outside(i)) ? "in out" :
-                     (nat_interface_is_inside(i) ? "in" : "out"));
+     vlib_cli_output (vm, " %U %s", format_vnet_sw_if_index_name, vnm,
+		      i->sw_if_index,
+		      (nat44_ed_is_interface_inside (i) &&
+		       nat44_ed_is_interface_outside (i)) ?
+			"in out" :
+			(nat44_ed_is_interface_inside (i) ? "in" : "out"));
   }
 
   pool_foreach (i, sm->output_feature_interfaces)
    {
-    vlib_cli_output (vm, " %U output-feature %s",
-                     format_vnet_sw_if_index_name, vnm,
-                     i->sw_if_index,
-                     (nat_interface_is_inside(i) &&
-                      nat_interface_is_outside(i)) ? "in out" :
-                     (nat_interface_is_inside(i) ? "in" : "out"));
+     vlib_cli_output (vm, " %U output-feature %s",
+		      format_vnet_sw_if_index_name, vnm, i->sw_if_index,
+		      (nat44_ed_is_interface_inside (i) &&
+		       nat44_ed_is_interface_outside (i)) ?
+			"in out" :
+			(nat44_ed_is_interface_inside (i) ? "in" : "out"));
   }
 
   return 0;
