@@ -1528,10 +1528,11 @@ ip4_local_check_src (vlib_buffer_t * b, ip4_header_t * ip0,
     {
       receive_dpo_t *rd;
       rd = receive_dpo_get (vnet_buffer (b)->ip.adj_index[VLIB_TX]);
-      vnet_buffer (b)->ip.rx_sw_if_index = rd->rd_sw_if_index;
+      /* we keep the sw_if_index[RX] stored in [TX] for punt */
+      vnet_buffer (b)->ip.rx_sw_if_index =
+	vnet_buffer (b)->sw_if_index[VLIB_RX];
+      vnet_buffer (b)->sw_if_index[VLIB_RX] = rd->rd_sw_if_index;
     }
-  else
-    vnet_buffer (b)->ip.rx_sw_if_index = ~0;
 
   /*
    * vnet_buffer()->ip.adj_index[VLIB_RX] will be set to the index of the
@@ -1612,19 +1613,21 @@ ip4_local_check_src_x2 (vlib_buffer_t ** b, ip4_header_t ** ip,
     {
       receive_dpo_t *rd;
       rd = receive_dpo_get (vnet_buffer (b[0])->ip.adj_index[VLIB_TX]);
-      vnet_buffer (b[0])->ip.rx_sw_if_index = rd->rd_sw_if_index;
+      /* we keep the sw_if_index[RX] stored in [TX] for punt */
+      vnet_buffer (b[0])->ip.rx_sw_if_index =
+	vnet_buffer (b[0])->sw_if_index[VLIB_RX];
+      vnet_buffer (b[0])->sw_if_index[VLIB_RX] = rd->rd_sw_if_index;
     }
-  else
-    vnet_buffer (b[0])->ip.rx_sw_if_index = ~0;
 
   if (vnet_buffer (b[1])->ip.rx_dpoi_type == DPO_RECEIVE)
     {
       receive_dpo_t *rd;
       rd = receive_dpo_get (vnet_buffer (b[1])->ip.adj_index[VLIB_TX]);
-      vnet_buffer (b[1])->ip.rx_sw_if_index = rd->rd_sw_if_index;
+      /* we keep the sw_if_index[RX] stored in [TX] for punt */
+      vnet_buffer (b[1])->ip.rx_sw_if_index =
+	vnet_buffer (b[1])->sw_if_index[VLIB_RX];
+      vnet_buffer (b[1])->sw_if_index[VLIB_RX] = rd->rd_sw_if_index;
     }
-  else
-    vnet_buffer (b[1])->ip.rx_sw_if_index = ~0;
 
   /*
    * vnet_buffer()->ip.adj_index[VLIB_RX] will be set to the index of the
@@ -1721,6 +1724,27 @@ ip4_local_classify (vlib_buffer_t * b, ip4_header_t * ip, u16 * next)
   return IP_LOCAL_PACKET_TYPE_L4;
 }
 
+static inline void
+ip4_local_switch_rx_interface (vlib_buffer_t *b)
+{
+  receive_dpo_t *rd;
+  const dpo_id_t *dpo0;
+  load_balance_t *lb0;
+
+  lb0 = load_balance_get (vnet_buffer (b)->ip.adj_index[VLIB_TX]);
+
+  dpo0 = load_balance_get_bucket_i (lb0, 0);
+
+  if (dpo0->dpoi_type == DPO_RECEIVE)
+    {
+      rd = receive_dpo_get (dpo0->dpoi_index);
+      /* we keep the sw_if_index[RX] stored in [TX] for punt */
+      vnet_buffer (b)->sw_if_index[VLIB_TX] =
+	vnet_buffer (b)->sw_if_index[VLIB_RX];
+      vnet_buffer (b)->sw_if_index[VLIB_RX] = rd->rd_sw_if_index;
+    }
+}
+
 static inline uword
 ip4_local_inline (vlib_main_t * vm,
 		  vlib_node_runtime_t * node,
@@ -1805,6 +1829,9 @@ ip4_local_inline (vlib_main_t * vm,
 	    }
 	}
 
+      ip4_local_switch_rx_interface (b[0]);
+      ip4_local_switch_rx_interface (b[1]);
+
     skip_checks:
 
       ip4_local_set_next_and_error (error_node, b[0], &next[0], error[0],
@@ -1830,6 +1857,8 @@ ip4_local_inline (vlib_main_t * vm,
 
       ip4_local_check_l4_csum (vm, b[0], ip[0], &error[0]);
       ip4_local_check_src (b[0], ip[0], &last_check, &error[0]);
+
+      ip4_local_switch_rx_interface (b[0]);
 
     skip_check:
 
