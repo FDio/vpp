@@ -52,6 +52,7 @@
 #include <vnet/mfib/ip4_mfib.h>
 #include <vnet/dpo/load_balance.h>
 #include <vnet/dpo/load_balance_map.h>
+#include <vnet/dpo/receive_dpo.h>
 #include <vnet/dpo/classify_dpo.h>
 #include <vnet/mfib/mfib_table.h>	/* for mFIB table and entry creation */
 #include <vnet/adj/adj_dp.h>
@@ -1692,6 +1693,16 @@ ip4_local_classify (vlib_buffer_t * b, ip4_header_t * ip, u16 * next)
   return IP_LOCAL_PACKET_TYPE_L4;
 }
 
+static inline void
+ip4_local_switch_rx_interface (vlib_buffer_t *b)
+{
+  receive_dpo_t *rd;
+
+  rd = receive_dpo_get (vnet_buffer (b)->ip.adj_index[VLIB_TX]);
+  vnet_buffer (b)->sw_if_index[VLIB_RX] = rd->rd_sw_if_index;
+  vnet_buffer (b)->sw_if_index[VLIB_TX] = ~0;
+}
+
 static inline uword
 ip4_local_inline (vlib_main_t * vm,
 		  vlib_node_runtime_t * node,
@@ -1749,6 +1760,9 @@ ip4_local_inline (vlib_main_t * vm,
       vnet_buffer (b[0])->l3_hdr_offset = b[0]->current_data;
       vnet_buffer (b[1])->l3_hdr_offset = b[1]->current_data;
 
+      ip4_local_switch_rx_interface (b[0]);
+      ip4_local_switch_rx_interface (b[1]);
+
       pt[0] = ip4_local_classify (b[0], ip[0], &next[0]);
       pt[1] = ip4_local_classify (b[1], ip[1], &next[1]);
 
@@ -1794,6 +1808,7 @@ ip4_local_inline (vlib_main_t * vm,
 
       ip[0] = vlib_buffer_get_current (b[0]);
       vnet_buffer (b[0])->l3_hdr_offset = b[0]->current_data;
+      ip4_local_switch_rx_interface (b[0]);
       pt[0] = ip4_local_classify (b[0], ip[0], &next[0]);
 
       if (head_of_feature_arc == 0 || pt[0])
