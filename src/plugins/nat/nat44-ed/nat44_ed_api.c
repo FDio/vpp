@@ -404,9 +404,9 @@ send_nat44_interface_details (snat_interface_t * i,
   rmp->_vl_msg_id = ntohs (VL_API_NAT44_INTERFACE_DETAILS + sm->msg_id_base);
   rmp->sw_if_index = ntohl (i->sw_if_index);
 
-  if (nat_interface_is_inside (i))
+  if (nat44_ed_is_interface_inside (i))
     rmp->flags |= NAT_API_IS_INSIDE;
-  if (nat_interface_is_outside (i))
+  if (nat44_ed_is_interface_outside (i))
     rmp->flags |= NAT_API_IS_OUTSIDE;
 
   rmp->context = context;
@@ -472,7 +472,7 @@ send_nat44_interface_output_feature_details (snat_interface_t * i,
   rmp->sw_if_index = ntohl (i->sw_if_index);
   rmp->context = context;
 
-  if (nat_interface_is_inside (i))
+  if (nat44_ed_is_interface_inside (i))
     rmp->flags |= NAT_API_IS_INSIDE;
 
   vl_api_send_msg (reg, (u8 *) rmp);
@@ -1525,7 +1525,7 @@ nat_ed_user_create_helper (user_create_helper_t *uch, snat_session_t *s)
     {
       u = pool_elt_at_index (uch->users, value.value);
     }
-  if (snat_is_session_static (s))
+  if (nat44_ed_is_session_static (s))
     {
       ++u->nstaticsessions;
     }
@@ -1608,14 +1608,13 @@ send_nat44_user_session_details (snat_session_t * s,
   clib_memcpy (rmp->outside_ip_address, (&s->out2in.addr), 4);
   clib_memcpy (rmp->inside_ip_address, (&s->in2out.addr), 4);
 
-  if (snat_is_session_static (s))
+  if (nat44_ed_is_session_static (s))
     rmp->flags |= NAT_API_IS_STATIC;
 
-  if (is_twice_nat_session (s))
+  if (nat44_ed_is_twice_nat_session (s))
     rmp->flags |= NAT_API_IS_TWICE_NAT;
 
-  if (is_ed_session (s) || is_fwd_bypass_session (s))
-    rmp->flags |= NAT_API_IS_EXT_HOST_VALID;
+  rmp->flags |= NAT_API_IS_EXT_HOST_VALID;
 
   rmp->last_heard = clib_host_to_net_u64 ((u64) s->last_heard);
   rmp->total_bytes = clib_host_to_net_u64 (s->total_bytes);
@@ -1633,16 +1632,13 @@ send_nat44_user_session_details (snat_session_t * s,
       rmp->inside_port = s->in2out.port;
       rmp->protocol = ntohs (nat_proto_to_ip_proto (s->nat_proto));
     }
-  if (is_ed_session (s) || is_fwd_bypass_session (s))
-    {
       clib_memcpy (rmp->ext_host_address, &s->ext_host_addr, 4);
       rmp->ext_host_port = s->ext_host_port;
-      if (is_twice_nat_session (s))
+      if (nat44_ed_is_twice_nat_session (s))
 	{
 	  clib_memcpy (rmp->ext_host_nat_address, &s->ext_host_nat_addr, 4);
 	  rmp->ext_host_nat_port = s->ext_host_nat_port;
 	}
-    }
 
   vl_api_send_msg (reg, (u8 *) rmp);
 }

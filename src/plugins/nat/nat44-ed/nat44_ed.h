@@ -543,6 +543,13 @@ typedef struct snat_main_s
 
   /* Vector of outside addresses */
   snat_address_t *addresses;
+  /* Vector of twice NAT addresses for external hosts */
+  snat_address_t *twice_nat_addresses;
+
+  /* sw_if_indices whose intfc addresses should be auto-added */
+  u32 *auto_add_sw_if_indices;
+  u32 *auto_add_sw_if_indices_twice_nat;
+
   /* Address and port allocation function */
   nat_alloc_out_addr_and_port_function_t *alloc_addr_and_port;
   /* Address and port allocation type */
@@ -560,13 +567,6 @@ typedef struct snat_main_s
 
   /* vector of outside fibs */
   nat_outside_fib_t *outside_fibs;
-
-  /* Vector of twice NAT addresses for external hosts */
-  snat_address_t *twice_nat_addresses;
-
-  /* sw_if_indices whose intfc addresses should be auto-added */
-  u32 *auto_add_sw_if_indices;
-  u32 *auto_add_sw_if_indices_twice_nat;
 
   /* vector of interface address static mappings to resolve. */
   snat_static_map_resolve_t *to_resolve;
@@ -722,73 +722,107 @@ unformat_function_t unformat_nat_protocol;
 
 /** \brief Check if SNAT session is created from static mapping.
     @param s SNAT session
-    @return 1 if SNAT session is created from static mapping otherwise 0
+    @return true if SNAT session is created from static mapping otherwise 0
 */
-#define snat_is_session_static(s) (s->flags & SNAT_SESSION_FLAG_STATIC_MAPPING)
+always_inline bool
+nat44_ed_is_session_static (snat_session_t *s)
+{
+  return s->flags & SNAT_SESSION_FLAG_STATIC_MAPPING;
+}
 
 /** \brief Check if SNAT session for unknown protocol.
     @param s SNAT session
-    @return 1 if SNAT session for unknown protocol otherwise 0
+    @return true if SNAT session for unknown protocol otherwise 0
 */
-#define snat_is_unk_proto_session(s) (s->flags & SNAT_SESSION_FLAG_UNKNOWN_PROTO)
+always_inline bool
+snat_is_unk_proto_session (snat_session_t *s)
+{
+  return s->flags & SNAT_SESSION_FLAG_UNKNOWN_PROTO;
+}
 
 /** \brief Check if NAT session is twice NAT.
     @param s NAT session
-    @return 1 if NAT session is twice NAT
+    @return true if NAT session is twice NAT
 */
-#define is_twice_nat_session(s) (s->flags & SNAT_SESSION_FLAG_TWICE_NAT)
+always_inline bool
+nat44_ed_is_twice_nat_session (snat_session_t *s)
+{
+  return s->flags & SNAT_SESSION_FLAG_TWICE_NAT;
+}
 
 /** \brief Check if NAT session is load-balancing.
     @param s NAT session
-    @return 1 if NAT session is load-balancing
+    @return true if NAT session is load-balancing
 */
-#define is_lb_session(s) (s->flags & SNAT_SESSION_FLAG_LOAD_BALANCING)
+always_inline bool
+nat44_ed_is_lb_session (snat_session_t *s)
+{
+  return s->flags & SNAT_SESSION_FLAG_LOAD_BALANCING;
+}
 
 /** \brief Check if NAT session is forwarding bypass.
     @param s NAT session
-    @return 1 if NAT session is load-balancing
+    @return true if NAT session is load-balancing
 */
-#define is_fwd_bypass_session(s) (s->flags & SNAT_SESSION_FLAG_FWD_BYPASS)
-
-/** \brief Check if NAT session is endpoint dependent.
-    @param s NAT session
-    @return 1 if NAT session is endpoint dependent
-*/
-#define is_ed_session(s) (s->flags & SNAT_SESSION_FLAG_ENDPOINT_DEPENDENT)
+always_inline bool
+na44_ed_is_fwd_bypass_session (snat_session_t *s)
+{
+  return s->flags & SNAT_SESSION_FLAG_FWD_BYPASS;
+}
 
 /** \brief Check if NAT session has affinity record.
     @param s NAT session
-    @return 1 if NAT session has affinity record
+    @return true if NAT session has affinity record
 */
-#define is_affinity_sessions(s) (s->flags & SNAT_SESSION_FLAG_AFFINITY)
+always_inline bool
+nat44_ed_is_affinity_session (snat_session_t *s)
+{
+  return s->flags & SNAT_SESSION_FLAG_AFFINITY;
+}
 
 /** \brief Check if exact pool address should be used.
     @param s SNAT session
-    @return 1 if exact pool address or 0
+    @return true if exact pool address
 */
-#define is_exact_address_session(s) (s->flags & SNAT_SESSION_FLAG_EXACT_ADDRESS)
+always_inline bool
+nat44_ed_is_exact_address_session (snat_session_t *s)
+{
+  return s->flags & SNAT_SESSION_FLAG_EXACT_ADDRESS;
+}
 
 /** \brief Check if NAT interface is inside.
     @param i NAT interface
-    @return 1 if inside interface
+    @return true if inside interface
 */
-#define nat_interface_is_inside(i) (i->flags & NAT_INTERFACE_FLAG_IS_INSIDE)
+always_inline bool
+nat44_ed_is_interface_inside (snat_interface_t *i)
+{
+  return i->flags & NAT_INTERFACE_FLAG_IS_INSIDE;
+}
 
 /** \brief Check if NAT interface is outside.
     @param i NAT interface
-    @return 1 if outside interface
+    @return true if outside interface
 */
-#define nat_interface_is_outside(i) (i->flags & NAT_INTERFACE_FLAG_IS_OUTSIDE)
+always_inline bool
+nat44_ed_is_interface_outside (snat_interface_t *i)
+{
+  return i->flags & NAT_INTERFACE_FLAG_IS_OUTSIDE;
+}
 
 /** \brief Check if NAT44 endpoint-dependent TCP session is closed.
     @param s NAT session
-    @return 1 if session is closed
+    @return true if session is closed
 */
-#define nat44_is_ses_closed(s) (s->state == 0xf)
+always_inline bool
+nat44_is_ses_closed (snat_session_t *s)
+{
+  return s->state == 0xf;
+}
 
 /** \brief Check if client initiating TCP connection (received SYN from client)
     @param t TCP header
-    @return 1 if client initiating TCP connection
+    @return true if client initiating TCP connection
 */
 always_inline bool
 tcp_flags_is_init (u8 f)
@@ -980,21 +1014,6 @@ int snat_static_mapping_match (
   u8 by_external, u8 *is_addr_only, twice_nat_type_t *twice_nat,
   lb_nat_type_t *lb, ip4_address_t *ext_host_addr, u8 *is_identity_nat,
   snat_static_mapping_t **out);
-
-/**
- * @brief Add/del NAT address to FIB.
- *
- * Add the external NAT address to the FIB as receive entries. This ensures
- * that VPP will reply to ARP for this address and we don't need to enable
- * proxy ARP on the outside interface.
- *
- * @param addr        IPv4 address
- * @param plen        address prefix length
- * @param sw_if_index software index of the outside interface
- * @param is_add      0 = delete, 1 = add.
- */
-void snat_add_del_addr_to_fib (ip4_address_t * addr,
-			       u8 p_len, u32 sw_if_index, int is_add);
 
 /*
  * Why is this here? Because we don't need to touch this layer to
