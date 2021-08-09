@@ -1224,6 +1224,56 @@ api_sw_interface_ip6_enable_disable (vat_main_t *vam)
 }
 
 static int
+api_sw_interface_ip_enable_disable (vat_main_t *vam)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_ip_enable_disable_t *mp;
+  vl_api_address_family_t af = ADDRESS_IP4;
+  u32 sw_if_index;
+  u8 sw_if_index_set = 0;
+  u8 enable = 0;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "enable"))
+	enable = 1;
+      else if (unformat (i, "disable"))
+	enable = 0;
+      else if (unformat (i, "v4"))
+	af = ADDRESS_IP4;
+      else if (unformat (i, "v6"))
+	af = ADDRESS_IP6;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (sw_if_index_set == 0)
+    {
+      errmsg ("missing interface name or sw_if_index");
+      return -99;
+    }
+
+  M (SW_INTERFACE_IP_ENABLE_DISABLE, mp);
+
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->enable = enable;
+  mp->af = af;
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
 api_set_ip_flow_hash_v2 (vat_main_t *vat)
 {
   return -1;

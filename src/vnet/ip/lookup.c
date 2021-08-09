@@ -49,6 +49,7 @@
 #include <vnet/dpo/punt_dpo.h>
 #include <vnet/dpo/receive_dpo.h>
 #include <vnet/dpo/ip_null_dpo.h>
+#include <vnet/ip/ip6_link.h>
 
 /**
  * @file
@@ -654,6 +655,66 @@ VLIB_CLI_COMMAND (set_interface_ip6_table_command, static) =
   .short_help = "set interface ip6 table <interface> <table-id>"
 };
 /* *INDENT-ON* */
+
+static clib_error_t *
+set_interface_ip_state_cmd (vlib_main_t *vm, unformat_input_t *input,
+			    vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_main_t *vnm = vnet_get_main ();
+  clib_error_t *error = 0;
+  ip_address_family_t af;
+  u32 sw_if_index;
+  int rv, enable = 1;
+
+  sw_if_index = ~0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
+	;
+      else if (unformat (line_input, "%U", unformat_ip_address_family, &af))
+	;
+      else if (unformat (line_input, "enable"))
+	enable = 1;
+      else if (unformat (line_input, "disable"))
+	enable = 0;
+      else
+	{
+	  error = unformat_parse_error (line_input);
+	  goto done;
+	}
+    }
+
+  switch (af)
+    {
+    case AF_IP4:
+      ip4_sw_interface_enable_disable (sw_if_index, enable);
+      break;
+    case AF_IP6:
+      rv = enable == 1 ? ip6_link_enable (sw_if_index, NULL) :
+			 ip6_link_disable (sw_if_index);
+      if (rv)
+	error =
+	  clib_error_return (0, "ip6 link enable/disable errored with %d", rv);
+    }
+
+done:
+
+  return error;
+}
+
+VLIB_CLI_COMMAND (set_interface_ip_state_command, static) = {
+  .path = "set interface ip state",
+  .function = set_interface_ip_state_cmd,
+  .short_help =
+    "set interface ip state [enable|disable] [interface] [[ip4|ip6]]"
+};
 
 clib_error_t *
 vnet_ip_mroute_cmd (vlib_main_t * vm,
