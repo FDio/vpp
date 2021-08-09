@@ -156,7 +156,7 @@ snat_not_translate_fast (snat_main_t *sm, vlib_node_runtime_t *node,
       pool_foreach (i, sm->interfaces)
 	{
 	  /* NAT packet aimed at outside interface */
-	  if ((nat_interface_is_outside (i)) &&
+	  if ((nat44_ed_is_interface_outside (i)) &&
 	      (sw_if_index == i->sw_if_index))
 	    return 0;
 	}
@@ -496,7 +496,6 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
 
   if (lb)
     s->flags |= SNAT_SESSION_FLAG_LOAD_BALANCING;
-  s->flags |= SNAT_SESSION_FLAG_ENDPOINT_DEPENDENT;
   s->ext_host_addr = r_addr;
   s->ext_host_port = r_port;
 
@@ -632,7 +631,7 @@ nat_not_translate_output_feature_fwd (snat_main_t * sm, ip4_header_t * ip,
 	pool_elt_at_index (tsm->sessions,
 			   ed_value_get_session_index (&value));
 
-      if (is_fwd_bypass_session (s))
+      if (na44_ed_is_fwd_bypass_session (s))
 	{
 	  if (ip->protocol == IP_PROTOCOL_TCP)
 	    {
@@ -716,14 +715,15 @@ nat44_ed_not_translate_output_feature (snat_main_t *sm, vlib_buffer_t *b,
 			   ed_value_get_session_index (&value));
 
     skip_dst_nat_lookup:
-      if (is_fwd_bypass_session (s))
+      if (na44_ed_is_fwd_bypass_session (s))
 	return 0;
 
       /* hairpinning */
       pool_foreach (i, sm->output_feature_interfaces)
        {
-        if ((nat_interface_is_inside (i)) && (rx_sw_if_index == i->sw_if_index))
-           return 0;
+	 if ((nat44_ed_is_interface_inside (i)) &&
+	     (rx_sw_if_index == i->sw_if_index))
+	   return 0;
       }
       return 1;
     }
@@ -929,7 +929,6 @@ nat44_ed_in2out_slowpath_unknown_proto (snat_main_t *sm, vlib_buffer_t *b,
 
   s->ext_host_addr.as_u32 = ip->dst_address.as_u32;
   s->flags |= SNAT_SESSION_FLAG_UNKNOWN_PROTO;
-  s->flags |= SNAT_SESSION_FLAG_ENDPOINT_DEPENDENT;
   s->out2in.addr.as_u32 = new_src_addr.as_u32;
   s->out2in.fib_index = outside_fib_index;
   s->in2out.addr.as_u32 = ip->src_address.as_u32;
