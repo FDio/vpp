@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7605f1f2_94ed0e96",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 35
+      },
+      "lineNbr": 469,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-08-09T15:38:10Z",
+      "side": 1,
+      "message": "this would be neater, done as vnet_classify_hash_packet_inline?\ndata \u003d u64x8_load_unaligned(h + t-\u003eskip_n_vectors);",
+      "revId": "ff668bc28f055c738cc0819e66b72df311ff4a3a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "93e4c4ca_a8dfafb4",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 35
+      },
+      "lineNbr": 486,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-08-09T15:38:10Z",
+      "side": 1,
+      "message": "Could we remove this with u16x32_is_all_zero, see sse version?",
+      "revId": "ff668bc28f055c738cc0819e66b72df311ff4a3a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
