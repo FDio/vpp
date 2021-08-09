@@ -331,7 +331,11 @@ ip_punt_redirect (vlib_main_t * vm,
 	  vnet_get_config_data (&cm->config_main,
 				&b0->current_config_index, &next0, 0);
 
-	  rx_sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	  /* This is switched in ip4_local_switch_rx_interface
+	   * and we want to maintain filtering by the original
+	   * interface was received on before punting
+	   * behavior is debatable */
+	  rx_sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 
 	  /*
 	   * If config exists for this particular RX interface use it,
