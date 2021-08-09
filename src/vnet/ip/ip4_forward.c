@@ -52,6 +52,7 @@
 #include <vnet/mfib/ip4_mfib.h>
 #include <vnet/dpo/load_balance.h>
 #include <vnet/dpo/load_balance_map.h>
+#include <vnet/dpo/receive_dpo.h>
 #include <vnet/dpo/classify_dpo.h>
 #include <vnet/mfib/mfib_table.h>	/* for mFIB table and entry creation */
 #include <vnet/adj/adj_dp.h>
@@ -1497,9 +1498,14 @@ ip4_local_set_next_and_error (vlib_node_runtime_t * error_node,
       next_index = *next;
       if (PREDICT_TRUE (error == (u8) IP4_ERROR_UNKNOWN_PROTOCOL))
 	{
-	  vnet_feature_arc_start (arc_index,
-				  vnet_buffer (b)->sw_if_index[VLIB_RX],
-				  &next_index, b);
+	  receive_dpo_t *rd;
+
+	  rd = receive_dpo_get (vnet_buffer (b)->ip.adj_index[VLIB_TX]);
+	  vnet_buffer (b)->sw_if_index[VLIB_RX] = rd->rd_sw_if_index;
+	  vnet_buffer (b)->sw_if_index[VLIB_TX] = ~0;
+
+	  vnet_feature_arc_start (arc_index, rd->rd_sw_if_index, &next_index,
+				  b);
 	  *next = next_index;
 	}
     }
