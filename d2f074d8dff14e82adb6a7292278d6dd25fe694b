@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3f40feb8_8b7c40de",
+        "filename": "src/vnet/ip/ip_punt_drop.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 360,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-08-09T12:46:40Z",
+      "side": 1,
+      "message": "when is this FIB index any different to the FIB-index that rw_sw_if_index0 is bound to?\n\nSo when is this feature needed :)",
+      "revId": "d2f074d8dff14e82adb6a7292278d6dd25fe694b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
