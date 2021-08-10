@@ -1517,8 +1517,6 @@ static inline void
 ip4_local_check_src (vlib_buffer_t * b, ip4_header_t * ip0,
 		     ip4_local_last_check_t * last_check, u8 * error0)
 {
-  ip4_fib_mtrie_leaf_t leaf0;
-  ip4_fib_mtrie_t *mtrie0;
   const dpo_id_t *dpo0;
   load_balance_t *lb0;
   u32 lbi0;
@@ -1536,11 +1534,8 @@ ip4_local_check_src (vlib_buffer_t * b, ip4_header_t * ip0,
   if (PREDICT_TRUE (last_check->src.as_u32 != ip0->src_address.as_u32) ||
       last_check->first)
     {
-      mtrie0 = &ip4_fib_get (vnet_buffer (b)->ip.fib_index)->mtrie;
-      leaf0 = ip4_fib_mtrie_lookup_step_one (mtrie0, &ip0->src_address);
-      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 2);
-      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 3);
-      lbi0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
+      lbi0 = ip4_fib_forwarding_lookup (vnet_buffer (b)->ip.fib_index,
+					&ip0->src_address);
 
       vnet_buffer (b)->ip.adj_index[VLIB_RX] =
 	vnet_buffer (b)->ip.adj_index[VLIB_TX];
@@ -1586,8 +1581,6 @@ static inline void
 ip4_local_check_src_x2 (vlib_buffer_t ** b, ip4_header_t ** ip,
 			ip4_local_last_check_t * last_check, u8 * error)
 {
-  ip4_fib_mtrie_leaf_t leaf[2];
-  ip4_fib_mtrie_t *mtrie[2];
   const dpo_id_t *dpo[2];
   load_balance_t *lb[2];
   u32 not_last_hit;
@@ -1615,24 +1608,9 @@ ip4_local_check_src_x2 (vlib_buffer_t ** b, ip4_header_t ** ip,
    */
   if (PREDICT_TRUE (not_last_hit))
     {
-      mtrie[0] = &ip4_fib_get (vnet_buffer (b[0])->ip.fib_index)->mtrie;
-      mtrie[1] = &ip4_fib_get (vnet_buffer (b[1])->ip.fib_index)->mtrie;
-
-      leaf[0] = ip4_fib_mtrie_lookup_step_one (mtrie[0], &ip[0]->src_address);
-      leaf[1] = ip4_fib_mtrie_lookup_step_one (mtrie[1], &ip[1]->src_address);
-
-      leaf[0] = ip4_fib_mtrie_lookup_step (mtrie[0], leaf[0],
-					   &ip[0]->src_address, 2);
-      leaf[1] = ip4_fib_mtrie_lookup_step (mtrie[1], leaf[1],
-					   &ip[1]->src_address, 2);
-
-      leaf[0] = ip4_fib_mtrie_lookup_step (mtrie[0], leaf[0],
-					   &ip[0]->src_address, 3);
-      leaf[1] = ip4_fib_mtrie_lookup_step (mtrie[1], leaf[1],
-					   &ip[1]->src_address, 3);
-
-      lbi[0] = ip4_fib_mtrie_leaf_get_adj_index (leaf[0]);
-      lbi[1] = ip4_fib_mtrie_leaf_get_adj_index (leaf[1]);
+      ip4_fib_forwarding_lookup_x2 (
+	vnet_buffer (b[0])->ip.fib_index, vnet_buffer (b[1])->ip.fib_index,
+	&ip[0]->src_address, &ip[1]->src_address, &lbi[0], &lbi[1]);
 
       vnet_buffer (b[0])->ip.adj_index[VLIB_RX] =
 	vnet_buffer (b[0])->ip.adj_index[VLIB_TX];

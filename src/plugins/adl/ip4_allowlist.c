@@ -82,21 +82,19 @@ VLIB_NODE_FN (ip4_adl_allowlist_node) (vlib_main_t * vm,
           ip4_header_t * ip0, * ip1;
           adl_config_main_t * ccm0, * ccm1;
           adl_config_data_t * c0, * c1;
-      	  ip4_fib_mtrie_t * mtrie0, * mtrie1;
-      	  ip4_fib_mtrie_leaf_t leaf0, leaf1;
-          u32 lb_index0, lb_index1;
-          const load_balance_t * lb0, *lb1;
-          const dpo_id_t *dpo0, *dpo1;
+	  u32 lb_index0, lb_index1;
+	  const load_balance_t *lb0, *lb1;
+	  const dpo_id_t *dpo0, *dpo1;
 
-      	  /* Prefetch next iteration. */
-      	  {
-      	    vlib_buffer_t * p2, * p3;
+	  /* Prefetch next iteration. */
+	  {
+	    vlib_buffer_t *p2, *p3;
 
-      	    p2 = vlib_get_buffer (vm, from[2]);
-      	    p3 = vlib_get_buffer (vm, from[3]);
+	    p2 = vlib_get_buffer (vm, from[2]);
+	    p3 = vlib_get_buffer (vm, from[3]);
 
-      	    vlib_prefetch_buffer_header (p2, LOAD);
-      	    vlib_prefetch_buffer_header (p3, LOAD);
+	    vlib_prefetch_buffer_header (p2, LOAD);
+	    vlib_prefetch_buffer_header (p3, LOAD);
 
 	    clib_prefetch_store (p2->data);
 	    clib_prefetch_store (p3->data);
@@ -121,17 +119,8 @@ VLIB_NODE_FN (ip4_adl_allowlist_node) (vlib_main_t * vm,
 	    &ccm0->config_main, &adl_buffer (b0)->adl.current_config_index,
 	    &next0, sizeof (c0[0]));
 
-	  mtrie0 = &ip4_fib_get (c0->fib_index)->mtrie;
-
-          leaf0 = ip4_fib_mtrie_lookup_step_one (mtrie0, &ip0->src_address);
-
-      	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0,
-                                             &ip0->src_address, 2);
-
-      	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0,
-                                             &ip0->src_address, 3);
-
-      	  lb_index0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
+	  lb_index0 =
+	    ip4_fib_forwarding_lookup (c0->fib_index, &ip0->src_address);
 
 	  ASSERT (lb_index0
                   == ip4_fib_table_lookup_lb (ip4_fib_get(c0->fib_index),
@@ -158,17 +147,10 @@ VLIB_NODE_FN (ip4_adl_allowlist_node) (vlib_main_t * vm,
                &adl_buffer (b1)->adl.current_config_index,
                &next1,
                sizeof (c1[0]));
-	  mtrie1 = &ip4_fib_get (c1->fib_index)->mtrie;
 
-          leaf1 = ip4_fib_mtrie_lookup_step_one (mtrie1, &ip1->src_address);
+	  lb_index1 =
+	    ip4_fib_forwarding_lookup (c1->fib_index, &ip1->src_address);
 
-      	  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1,
-                                             &ip1->src_address, 2);
-
-      	  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1,
-                                             &ip1->src_address, 3);
-
-      	  lb_index1 = ip4_fib_mtrie_leaf_get_adj_index (leaf1);
 	  ASSERT (lb_index1
                   == ip4_fib_table_lookup_lb (ip4_fib_get(c1->fib_index),
 	  				       &ip1->src_address));
@@ -226,13 +208,11 @@ VLIB_NODE_FN (ip4_adl_allowlist_node) (vlib_main_t * vm,
           ip4_header_t * ip0;
           adl_config_main_t *ccm0;
           adl_config_data_t *c0;
-	  ip4_fib_mtrie_t * mtrie0;
-	  ip4_fib_mtrie_leaf_t leaf0;
-          u32 lb_index0;
-          const load_balance_t * lb0;
-          const dpo_id_t *dpo0;
+	  u32 lb_index0;
+	  const load_balance_t *lb0;
+	  const dpo_id_t *dpo0;
 
-          /* speculatively enqueue b0 to the current next frame */
+	  /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
 	  to_next[0] = bi0;
 	  from += 1;
@@ -253,21 +233,12 @@ VLIB_NODE_FN (ip4_adl_allowlist_node) (vlib_main_t * vm,
                &next0,
                sizeof (c0[0]));
 
-	  mtrie0 = &ip4_fib_get (c0->fib_index)->mtrie;
+	  lb_index0 =
+	    ip4_fib_forwarding_lookup (c0->fib_index, &ip0->src_address);
 
-          leaf0 = ip4_fib_mtrie_lookup_step_one (mtrie0, &ip0->src_address);
-
-	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0,
-                                             &ip0->src_address, 2);
-
-	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0,
-                                             &ip0->src_address, 3);
-
-	  lb_index0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
-
-	  ASSERT (lb_index0
-                  == ip4_fib_table_lookup_lb (ip4_fib_get(c0->fib_index),
-					      &ip0->src_address));
+	  ASSERT (lb_index0 ==
+		  ip4_fib_table_lookup_lb (ip4_fib_get (c0->fib_index),
+					   &ip0->src_address));
 
 	  lb0 = load_balance_get (lb_index0);
           dpo0 = load_balance_get_bucket_i(lb0, 0);
