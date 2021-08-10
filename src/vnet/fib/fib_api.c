@@ -69,7 +69,7 @@ fib_api_next_hop_decode (const vl_api_fib_path_t *in,
     *out = to_ip46 (FIB_API_PATH_NH_PROTO_IP6 == in->proto, (void *)&in->nh.address);
 }
 
-static vl_api_fib_path_nh_proto_t
+vl_api_fib_path_nh_proto_t
 fib_api_path_dpo_proto_to_nh (dpo_proto_t dproto)
 {
     switch (dproto)
@@ -108,7 +108,7 @@ fib_api_next_hop_encode (const fib_route_path_t *rpath,
                 sizeof (rpath->frp_addr.ip6));
 }
 
-static int
+int
 fib_api_path_nh_proto_to_dpo (vl_api_fib_path_nh_proto_t pp,
                               dpo_proto_t *dproto)
 {
