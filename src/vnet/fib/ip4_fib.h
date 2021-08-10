@@ -197,5 +197,47 @@ ip4_fib_forwarding_lookup_x2 (u32 fib_index0,
     *lb1 = ip4_fib_mtrie_leaf_get_adj_index(leaf[1]);
 }
 
-#endif
+static_always_inline void
+ip4_fib_forwarding_lookup_x4 (u32 fib_index0,
+                              u32 fib_index1,
+                              u32 fib_index2,
+                              u32 fib_index3,
+                              const ip4_address_t * addr0,
+                              const ip4_address_t * addr1,
+                              const ip4_address_t * addr2,
+                              const ip4_address_t * addr3,
+                              index_t *lb0,
+                              index_t *lb1,
+                              index_t *lb2,
+                              index_t *lb3)
+{
+    ip4_fib_mtrie_leaf_t leaf[4];
+    ip4_fib_mtrie_t * mtrie[4];
 
+    mtrie[0] = &ip4_fib_get(fib_index0)->mtrie;
+    mtrie[1] = &ip4_fib_get(fib_index1)->mtrie;
+    mtrie[2] = &ip4_fib_get(fib_index2)->mtrie;
+    mtrie[3] = &ip4_fib_get(fib_index3)->mtrie;
+
+    leaf[0] = ip4_fib_mtrie_lookup_step_one (mtrie[0], addr0);
+    leaf[1] = ip4_fib_mtrie_lookup_step_one (mtrie[1], addr1);
+    leaf[2] = ip4_fib_mtrie_lookup_step_one (mtrie[2], addr2);
+    leaf[3] = ip4_fib_mtrie_lookup_step_one (mtrie[3], addr3);
+
+    leaf[0] = ip4_fib_mtrie_lookup_step (mtrie[0], leaf[0], addr0, 2);
+    leaf[1] = ip4_fib_mtrie_lookup_step (mtrie[1], leaf[1], addr1, 2);
+    leaf[2] = ip4_fib_mtrie_lookup_step (mtrie[2], leaf[2], addr2, 2);
+    leaf[3] = ip4_fib_mtrie_lookup_step (mtrie[3], leaf[3], addr3, 2);
+
+    leaf[0] = ip4_fib_mtrie_lookup_step (mtrie[0], leaf[0], addr0, 3);
+    leaf[1] = ip4_fib_mtrie_lookup_step (mtrie[1], leaf[1], addr1, 3);
+    leaf[2] = ip4_fib_mtrie_lookup_step (mtrie[2], leaf[2], addr2, 3);
+    leaf[3] = ip4_fib_mtrie_lookup_step (mtrie[3], leaf[3], addr3, 3);
+
+    *lb0 = ip4_fib_mtrie_leaf_get_adj_index(leaf[0]);
+    *lb1 = ip4_fib_mtrie_leaf_get_adj_index(leaf[1]);
+    *lb2 = ip4_fib_mtrie_leaf_get_adj_index(leaf[2]);
+    *lb3 = ip4_fib_mtrie_leaf_get_adj_index(leaf[3]);
+}
+
+#endif
