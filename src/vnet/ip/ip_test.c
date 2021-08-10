@@ -658,6 +658,12 @@ api_ip_punt_redirect (vat_main_t *vat)
 }
 
 static int
+api_ip_punt_redirect_v2 (vat_main_t *vat)
+{
+  return -1;
+}
+
+static int
 api_ip_punt_redirect_dump (vat_main_t *vat)
 {
   return -1;

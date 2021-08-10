@@ -443,46 +443,71 @@ vl_api_ip_punt_police_t_handler (vl_api_ip_punt_police_t * mp,
 }
 
 static void
-vl_api_ip_punt_redirect_t_handler (vl_api_ip_punt_redirect_t * mp,
-				   vlib_main_t * vm)
+ip_punt_redirect_t_handler_common (u8 is_add, u32 rx_sw_if_index,
+				   const fib_route_path_t *rpath)
+{
+  fib_route_path_t *rpaths = NULL;
+  if (is_add)
+    {
+      vec_add1 (rpaths, *rpath);
+      if (rpath->frp_proto == DPO_PROTO_IP6)
+	ip6_punt_redirect_add_paths (rx_sw_if_index, rpaths);
+      else if (rpath->frp_proto == DPO_PROTO_IP4)
+	ip4_punt_redirect_add_paths (rx_sw_if_index, rpaths);
+      vec_free (rpaths);
+    }
+  else
+    {
+      if (rpath->frp_proto == DPO_PROTO_IP6)
+	ip6_punt_redirect_del (rx_sw_if_index);
+      else if (rpath->frp_proto == DPO_PROTO_IP4)
+	ip4_punt_redirect_del (rx_sw_if_index);
+    }
+}
+
+static void
+vl_api_ip_punt_redirect_t_handler (vl_api_ip_punt_redirect_t *mp,
+				   vlib_main_t *vm)
 {
   vl_api_ip_punt_redirect_reply_t *rmp;
-  int rv = 0;
+  fib_route_path_t rpath = {
+    .frp_weight = 1,
+    .frp_fib_index = ~0,
+  };
   ip46_type_t ipv;
-  ip46_address_t nh;
+  u32 rx_sw_if_index;
+  int rv = 0;
 
   if (!vnet_sw_if_index_is_api_valid (ntohl (mp->punt.tx_sw_if_index)))
     goto bad_sw_if_index;
 
-  ipv = ip_address_decode (&mp->punt.nh, &nh);
-  if (mp->is_add)
-    {
-      if (ipv == IP46_TYPE_IP6)
-	{
-	  ip6_punt_redirect_add (ntohl (mp->punt.rx_sw_if_index),
-				 ntohl (mp->punt.tx_sw_if_index), &nh);
-	}
-      else if (ipv == IP46_TYPE_IP4)
-	{
-	  ip4_punt_redirect_add (ntohl (mp->punt.rx_sw_if_index),
-				 ntohl (mp->punt.tx_sw_if_index), &nh);
-	}
-    }
-  else
-    {
-      if (ipv == IP46_TYPE_IP6)
-	{
-	  ip6_punt_redirect_del (ntohl (mp->punt.rx_sw_if_index));
-	}
-      else if (ipv == IP46_TYPE_IP4)
-	{
-	  ip4_punt_redirect_del (ntohl (mp->punt.rx_sw_if_index));
-	}
-    }
+  ipv = ip_address_decode (&mp->punt.nh, &rpath.frp_addr);
+  rpath.frp_proto = ipv == IP46_TYPE_IP6 ? DPO_PROTO_IP6 : DPO_PROTO_IP4;
+  rpath.frp_sw_if_index = ntohl (mp->punt.tx_sw_if_index);
+  rx_sw_if_index = ntohl (mp->punt.rx_sw_if_index);
+
+  ip_punt_redirect_t_handler_common (mp->is_add, rx_sw_if_index, &rpath);
 
   BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_IP_PUNT_REDIRECT_REPLY);
+}
+
+static void
+vl_api_ip_punt_redirect_v2_t_handler (vl_api_ip_punt_redirect_v2_t *mp,
+				      vlib_main_t *vm)
+{
+  vl_api_ip_punt_redirect_v2_reply_t *rmp;
+  fib_route_path_t rpath = { 0 };
+  u32 rx_sw_if_index;
+  int rv = 0;
+
+  fib_api_path_decode (&mp->punt.path, &rpath);
+  rx_sw_if_index = ntohl (mp->punt.rx_sw_if_index);
+
+  ip_punt_redirect_t_handler_common (mp->is_add, rx_sw_if_index, &rpath);
+
+  REPLY_MACRO (VL_API_IP_PUNT_REDIRECT_V2_REPLY);
 }
 
 static clib_error_t *
