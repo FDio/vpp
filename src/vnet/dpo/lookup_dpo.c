@@ -268,50 +268,6 @@ lookup_dpo_unlock (dpo_id_t *dpo)
     }
 }
 
-always_inline void
-ip4_src_fib_lookup_one (u32 src_fib_index0,
-                        const ip4_address_t * addr0,
-                        u32 * src_adj_index0)
-{
-    ip4_fib_mtrie_leaf_t leaf0;
-    ip4_fib_mtrie_t * mtrie0;
-
-    mtrie0 = &ip4_fib_get (src_fib_index0)->mtrie;
-
-    leaf0 = ip4_fib_mtrie_lookup_step_one (mtrie0, addr0);
-    leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 2);
-    leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 3);
-
-    src_adj_index0[0] = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
-}
-
-always_inline void
-ip4_src_fib_lookup_two (u32 src_fib_index0,
-                        u32 src_fib_index1,
-                        const ip4_address_t * addr0,
-                        const ip4_address_t * addr1,
-                        u32 * src_adj_index0,
-                        u32 * src_adj_index1)
-{
-    ip4_fib_mtrie_leaf_t leaf0, leaf1;
-    ip4_fib_mtrie_t * mtrie0, * mtrie1;
-
-    mtrie0 = &ip4_fib_get (src_fib_index0)->mtrie;
-    mtrie1 = &ip4_fib_get (src_fib_index1)->mtrie;
-
-    leaf0 = ip4_fib_mtrie_lookup_step_one (mtrie0, addr0);
-    leaf1 = ip4_fib_mtrie_lookup_step_one (mtrie1, addr1);
-
-    leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 2);
-    leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, addr1, 2);
-
-    leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 3);
-    leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, addr1, 3);
-
-    src_adj_index0[0] = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
-    src_adj_index1[0] = ip4_fib_mtrie_leaf_get_adj_index (leaf1);
-}
-
 /**
  * @brief Lookup trace  data
  */
@@ -435,9 +391,8 @@ lookup_dpo_ip4_inline (vlib_main_t * vm,
 	    }
 
 	    /* do lookup */
-	    ip4_src_fib_lookup_two (fib_index0, fib_index1,
-                                    input_addr0, input_addr1,
-                                    &lbi0, &lbi1);
+	    ip4_fib_forwarding_lookup_x2 (fib_index0, fib_index1, input_addr0,
+					  input_addr1, &lbi0, &lbi1);
 	    lb0 = load_balance_get(lbi0);
 	    lb1 = load_balance_get(lbi1);
 
@@ -573,7 +528,7 @@ lookup_dpo_ip4_inline (vlib_main_t * vm,
 	    }
 
 	    /* do lookup */
-	    ip4_src_fib_lookup_one (fib_index0, input_addr, &lbi0);
+	    lbi0 = ip4_fib_forwarding_lookup (fib_index0, input_addr);
 	    lb0 = load_balance_get(lbi0);
 
             vnet_buffer(b0)->sw_if_index[VLIB_TX] = fib_index0;
