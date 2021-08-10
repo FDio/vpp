@@ -242,7 +242,7 @@ extern vnet_classify_main_t vnet_classify_main;
 u8 *format_classify_table (u8 * s, va_list * args);
 u8 *format_vnet_classify_table (u8 *s, va_list *args);
 
-u64 vnet_classify_hash_packet (vnet_classify_table_t * t, u8 * h);
+u64 vnet_classify_hash_packet (const vnet_classify_table_t *t, const u8 *h);
 
 static_always_inline vnet_classify_table_t *
 vnet_classify_table_get (u32 table_index)
@@ -253,7 +253,7 @@ vnet_classify_table_get (u32 table_index)
 }
 
 static inline u64
-vnet_classify_hash_packet_inline (vnet_classify_table_t *t, const u8 *h)
+vnet_classify_hash_packet_inline (const vnet_classify_table_t *t, const u8 *h)
 {
   u64 xor_sum;
   ASSERT (t);
@@ -420,8 +420,9 @@ vnet_classify_prefetch_entry (vnet_classify_table_t * t, u64 hash)
   clib_prefetch_load (e);
 }
 
-vnet_classify_entry_t *vnet_classify_find_entry (vnet_classify_table_t * t,
-						 u8 * h, u64 hash, f64 now);
+vnet_classify_entry_t *vnet_classify_find_entry (vnet_classify_table_t *t,
+						 const u8 *h, u64 hash,
+						 f64 now);
 
 static_always_inline int
 vnet_classify_entry_is_equal (vnet_classify_entry_t *v, const u8 *d, u8 *m,
