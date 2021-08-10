@@ -53,8 +53,6 @@ foreach(f copyright vpp.preinst vpp.postrm vpp.postinst vpp.service)
   )
 endforeach()
 
-file(WRITE ${VPP_BINARY_DIR}/debian/compat "10\n")
-
 add_custom_target(pkg-deb
   COMMENT "Building .deb packages..."
   WORKING_DIRECTORY ${VPP_BINARY_DIR}
