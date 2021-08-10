@@ -2854,6 +2854,28 @@ nat44_ed_get_in2out_worker_index (vlib_buffer_t *b, ip4_header_t *ip,
 	    }
 	}
 
+      if (PREDICT_FALSE (ip->protocol == IP_PROTOCOL_ICMP))
+	{
+	  ip4_address_t lookup_saddr, lookup_daddr;
+	  u16 lookup_sport, lookup_dport;
+	  u8 lookup_protocol;
+
+	  if (!nat_get_icmp_session_lookup_values (
+		b, ip, &lookup_saddr, &lookup_sport, &lookup_daddr,
+		&lookup_dport, &lookup_protocol))
+	    {
+	      init_ed_k (&kv16, lookup_saddr, lookup_sport, lookup_daddr,
+			 lookup_dport, rx_fib_index, lookup_protocol);
+	      if (!clib_bihash_search_16_8 (&sm->flow_hash, &kv16, &value16))
+		{
+		  next_worker_index = ed_value_get_thread_index (&value16);
+		  vnet_buffer2 (b)->nat.cached_session_index =
+		    ed_value_get_session_index (&value16);
+		  goto out;
+		}
+	    }
+	}
+
       init_ed_k (&kv16, ip->src_address, vnet_buffer (b)->ip.reass.l4_src_port,
 		 ip->dst_address, vnet_buffer (b)->ip.reass.l4_dst_port,
 		 fib_index, ip->protocol);
