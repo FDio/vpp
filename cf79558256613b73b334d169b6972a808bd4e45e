@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fd0a8f4f_456e1de7",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 40
+      },
+      "lineNbr": 459,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-08-10T13:55:59Z",
+      "side": 1,
+      "message": "should only load it, if we need it.\nSuggest to move inside the if statement at 478.",
+      "revId": "cf79558256613b73b334d169b6972a808bd4e45e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ec090791_1eb29829",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 40
+      },
+      "lineNbr": 461,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-08-10T13:55:59Z",
+      "side": 1,
+      "message": "This if statement is pointless, right?\nIf we assume that t-\u003eskip_n_vectors is 0, the effect on h and kmask.x32 would be zero, right.\nSo you don\u0027t really need the if?",
+      "revId": "cf79558256613b73b334d169b6972a808bd4e45e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c1e2d954_685c6273",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 40
+      },
+      "lineNbr": 482,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-08-10T13:55:59Z",
+      "side": 1,
+      "message": "Can\u0027t check result128, if we haven\u0027t assigned to it.\nCheap way to do this is to \n\ndata512 |\u003d data128\n\nAnd move inside the if statement at 478.\n\nSee here for an example.\nhttps://godbolt.org/z/EoG8rxd3h",
+      "revId": "cf79558256613b73b334d169b6972a808bd4e45e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
