@@ -1,0 +1,9 @@
+---
+name: IP session redirect
+maintainer: Benoît Ganne <bganne@cisco.com>
+features:
+  - use the classifier ACL infrastructure to redirect sessions via arbitrary
+    fib paths
+description: "IP session redirect plugin"
+state: experimental
+properties: [CLI, STATS, MULTITHREAD, API]
