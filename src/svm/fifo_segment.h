@@ -69,10 +69,13 @@ typedef struct
 {
   ssvm_private_t ssvm;		/**< ssvm segment data */
   fifo_segment_header_t *h;	/**< fifo segment data */
-  uword max_byte_index;
-  u8 n_slices;			/**< number of fifo segment slices */
   fifo_slice_private_t *slices; /**< private slice information */
   svm_msg_q_t *mqs;		/**< private vec of attached mqs */
+  uword max_byte_index;		/**< max byte index for segment */
+  u8 n_slices;			/**< number of fifo segment slices */
+  u8 flags;			/**< private fifo segment flags */
+  u8 high_watermark;		/**< memory pressure watermark high */
+  u8 low_watermark;		/**< memory pressure watermark low */
 } fifo_segment_t;
 
 typedef struct
@@ -91,7 +94,7 @@ typedef struct
   u32 *new_segment_indices;		/**< return vec of new seg indices */
 } fifo_segment_create_args_t;
 
-#define fifo_segment_flags(_fs) _fs->h->flags
+#define fifo_segment_flags(_fs) _fs->flags
 
 int fifo_segment_init (fifo_segment_t * fs);
 int fifo_segment_create (fifo_segment_main_t * sm,
@@ -263,21 +266,6 @@ void fsh_collect_chunks (fifo_segment_header_t * fsh, u32 slice_index,
 			 svm_fifo_chunk_t * c);
 
 /**
- * Fifo segment has reached mem limit
- *
- * @param fsh           fifo segment header
- * @return              1 (if reached) or 0 (otherwise)
- */
-u8 fsh_has_reached_mem_limit (fifo_segment_header_t * fsh);
-
-/**
- * Fifo segment reset mem limit flag
- *
- * @param fs            fifo segment
- */
-void fsh_reset_mem_limit (fifo_segment_header_t * fsh);
-
-/**
  * Fifo segment reset mem limit flag
  *
  * @param fs            fifo segment
@@ -349,8 +337,6 @@ uword fifo_segment_chunk_offset (fifo_segment_t *fs, svm_fifo_chunk_t *c);
 u32 fifo_segment_num_free_chunks (fifo_segment_t * fs, u32 size);
 
 u8 fifo_segment_get_mem_usage (fifo_segment_t * fs);
-fifo_segment_mem_status_t fifo_segment_determine_status
-  (fifo_segment_header_t * fsh, u8 usage);
 fifo_segment_mem_status_t fifo_segment_get_mem_status (fifo_segment_t * fs);
 
 void fifo_segment_main_init (fifo_segment_main_t * sm, u64 baseva,
