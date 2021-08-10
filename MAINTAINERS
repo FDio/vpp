@@ -752,6 +752,11 @@ I:	geneve
 M:	community vpp-dev@lists.fd.io
 F:	src/plugins/geneve/
 
+Plugin - IP session redirect
+I:	ip_session_redirect
+M:	Benoît Ganne <bganne@cisco.com>
+F:	src/plugins/ip_session_redirect/
+
 Plugin - linux-cp
 I:	linux-cp
 M:	Neale Ranns <neale@graphiant.com>
