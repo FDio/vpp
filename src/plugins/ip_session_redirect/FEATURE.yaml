@@ -1,0 +1,9 @@
+---
+name: IP session redirect
+maintainer: Benoît Ganne <bganne@cisco.com>
+features:
+  - use the classifer and ip-inacl to redirect sessions via arbitrary fib paths
+  - use this mecanic to selectively redirect punt packets
+description: "IP session redirect plugin"
+state: experimental
+properties: [CLI, STATS, MULTITHREAD, API]
