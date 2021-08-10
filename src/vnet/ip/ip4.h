@@ -111,9 +111,6 @@ typedef struct ip4_main_t
   /** Vector of FIBs. */
   struct fib_table_t_ *fibs;
 
-  /** Vector of MTries. */
-  struct ip4_fib_t_ *v4_fibs;
-
   /** Vector of MFIBs. */
   struct mfib_table_t_ *mfibs;
 

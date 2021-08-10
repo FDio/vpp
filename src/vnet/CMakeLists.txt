@@ -1164,7 +1164,10 @@ list(APPEND VNET_HEADERS
 
 list(APPEND VNET_SOURCES
   fib/fib.c
+  fib/ip4_fib_hash.c
   fib/ip4_fib.c
+  fib/ip4_fib_16.c
+  fib/ip4_fib_8.c
   fib/ip6_fib.c
   fib/mpls_fib.c
   fib/fib_table.c

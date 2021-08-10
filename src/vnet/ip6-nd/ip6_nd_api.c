@@ -83,7 +83,7 @@ static void
 vl_api_ip6nd_proxy_dump_t_handler (vl_api_ip6nd_proxy_dump_t * mp)
 {
   ip6_main_t *im6 = &ip6_main;
-  fib_table_t *fib_table;
+  u32 fib_index;
   api_ip6nd_proxy_fib_table_walk_ctx_t ctx = {
     .indices = NULL,
   };
@@ -96,13 +96,11 @@ vl_api_ip6nd_proxy_dump_t_handler (vl_api_ip6nd_proxy_dump_t * mp)
     return;
 
   /* *INDENT-OFF* */
-  pool_foreach (fib_table, im6->fibs)
-   {
-    fib_table_walk(fib_table->ft_index,
-                   FIB_PROTOCOL_IP6,
-                   api_ip6nd_proxy_fib_table_walk,
-                   &ctx);
-  }
+  pool_foreach_index (fib_index, im6->fibs)
+    {
+      fib_table_walk (fib_index, FIB_PROTOCOL_IP6,
+		      api_ip6nd_proxy_fib_table_walk, &ctx);
+    }
   /* *INDENT-ON* */
 
   vec_sort_with_function (ctx.indices, fib_entry_cmp_for_sort);
