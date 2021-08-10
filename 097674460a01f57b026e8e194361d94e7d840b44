@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ab994d2f_a0c4a941",
+        "filename": "src/vnet/ip/ip.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 356,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-08-10T08:37:38Z",
+      "side": 1,
+      "message": "The weak host model is a different property to IP forwarding.\nVPP source address selection doesn\u0027t handle the weak host model (yet).\nSo what does enabling IP on an interface without an address mean?",
+      "revId": "097674460a01f57b026e8e194361d94e7d840b44",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
