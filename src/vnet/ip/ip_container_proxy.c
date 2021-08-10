@@ -132,27 +132,23 @@ ip_container_proxy_fib_table_walk (fib_node_index_t fei, void *arg)
 void
 ip_container_proxy_walk (ip_container_proxy_cb_t cb, void *ctx)
 {
-  fib_table_t *fib_table;
   ip_container_proxy_walk_ctx_t wctx = {
     .cb = cb,
     .ctx = ctx,
   };
+  u32 fib_index;
 
   /* *INDENT-OFF* */
-  pool_foreach (fib_table, ip4_main.fibs)
-   {
-    fib_table_walk(fib_table->ft_index,
-                   FIB_PROTOCOL_IP4,
-                   ip_container_proxy_fib_table_walk,
-                   &wctx);
-  }
-  pool_foreach (fib_table, ip6_main.fibs)
-   {
-    fib_table_walk(fib_table->ft_index,
-                   FIB_PROTOCOL_IP6,
-                   ip_container_proxy_fib_table_walk,
-                   &wctx);
-  }
+  pool_foreach_index (fib_index, ip4_main.fibs)
+    {
+      fib_table_walk (fib_index, FIB_PROTOCOL_IP4,
+		      ip_container_proxy_fib_table_walk, &wctx);
+    }
+  pool_foreach_index (fib_index, ip6_main.fibs)
+    {
+      fib_table_walk (fib_index, FIB_PROTOCOL_IP6,
+		      ip_container_proxy_fib_table_walk, &wctx);
+    }
   /* *INDENT-ON* */
 }
 

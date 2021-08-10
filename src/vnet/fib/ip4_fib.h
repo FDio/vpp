@@ -34,77 +34,28 @@
 #include <vnet/ip/ip.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
-#include <vnet/ip/ip4_mtrie.h>
-
-typedef struct ip4_fib_t_
-{
-  /** Required for pool_get_aligned */
-  CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
-
-  /**
-   * Mtrie for fast lookups. Hash is used to maintain overlapping prefixes.
-   * First member so it's in the first cacheline.
-   */
-  ip4_mtrie_16_t mtrie;
-
-  /* Hash table for each prefix length mapping. */
-  uword *fib_entry_by_dst_address[33];
-
-  /* Table ID (hash key) for this FIB. */
-  u32 table_id;
-
-  /* Index into FIB vector. */
-  u32 index;
-} ip4_fib_t;
-
-extern fib_node_index_t ip4_fib_table_lookup(const ip4_fib_t *fib,
-					     const ip4_address_t *addr,
-					     u32 len);
-extern fib_node_index_t ip4_fib_table_lookup_exact_match(const ip4_fib_t *fib,
-							 const ip4_address_t *addr,
-							 u32 len);
-
-extern void ip4_fib_table_entry_remove(ip4_fib_t *fib,
-				       const ip4_address_t *addr,
-				       u32 len);
-
-extern void ip4_fib_table_entry_insert(ip4_fib_t *fib,
-				       const ip4_address_t *addr,
-				       u32 len,
-				       fib_node_index_t fib_entry_index);
-extern void ip4_fib_table_destroy(u32 fib_index);
-
-extern void ip4_fib_table_fwding_dpo_update(ip4_fib_t *fib,
-					    const ip4_address_t *addr,
-					    u32 len,
-					    const dpo_id_t *dpo);
-
-extern void ip4_fib_table_fwding_dpo_remove(ip4_fib_t *fib,
-					    const ip4_address_t *addr,
-					    u32 len,
-					    const dpo_id_t *dpo,
-                                            fib_node_index_t cover_index);
-extern u32 ip4_fib_table_lookup_lb (ip4_fib_t *fib,
-				    const ip4_address_t * dst);
+#include <vnet/fib/ip4_fib_8.h>
+#include <vnet/fib/ip4_fib_16.h>
 
 /**
- * @brief Walk all entries in a FIB table
- * N.B: This is NOT safe to deletes. If you need to delete walk the whole
- * table and store elements in a vector, then delete the elements
+ * the FIB module uses the 16-8-8 stride trie
  */
-extern void ip4_fib_table_walk(ip4_fib_t *fib,
-                               fib_table_walk_fn_t fn,
-                               void *ctx);
+typedef ip4_fib_16_t ip4_fib_t;
 
-/**
- * @brief Walk all entries in a sub-tree of the FIB table
- * N.B: This is NOT safe to deletes. If you need to delete walk the whole
- * table and store elements in a vector, then delete the elements
- */
-extern void ip4_fib_table_sub_tree_walk(ip4_fib_t *fib,
-                                        const fib_prefix_t *root,
-                                        fib_table_walk_fn_t fn,
-                                        void *ctx);
+#define ip4_fibs ip4_fib_16s
+#define ip4_fib_table_lookup ip4_fib_16_table_lookup
+#define ip4_fib_table_lookup_exact_match ip4_fib_16_table_lookup_exact_match
+#define ip4_fib_table_entry_remove ip4_fib_16_table_entry_remove
+#define ip4_fib_table_entry_insert ip4_fib_16_table_entry_insert
+#define ip4_fib_table_fwding_dpo_update ip4_fib_16_table_fwding_dpo_update
+#define ip4_fib_table_fwding_dpo_remove ip4_fib_16_table_fwding_dpo_remove
+#define ip4_fib_table_lookup_lb ip4_fib_16_table_lookup_lb
+#define ip4_fib_table_walk ip4_fib_16_table_walk
+#define ip4_fib_table_sub_tree_walk ip4_fib_16_table_sub_tree_walk
+#define ip4_fib_table_init ip4_fib_16_table_init
+#define ip4_fib_table_free ip4_fib_16_table_free
+#define ip4_mtrie_memory_usage ip4_mtrie_16_memory_usage
+#define format_ip4_mtrie format_ip4_mtrie_16
 
 /**
  * @brief Get the FIB at the given index
@@ -112,7 +63,7 @@ extern void ip4_fib_table_sub_tree_walk(ip4_fib_t *fib,
 static inline ip4_fib_t *
 ip4_fib_get (u32 index)
 {
-    return (pool_elt_at_index(ip4_main.v4_fibs, index));
+    return (pool_elt_at_index(ip4_fibs, index));
 }
 
 always_inline u32
@@ -138,6 +89,7 @@ ip4_fib_lookup (ip4_main_t * im, u32 sw_if_index, ip4_address_t * dst)
 extern u32 ip4_fib_table_find_or_create_and_lock(u32 table_id,
                                                  fib_source_t src);
 extern u32 ip4_fib_table_create_and_lock(fib_source_t src);
+extern void ip4_fib_table_destroy(u32 fib_index);
 
 extern u8 *format_ip4_fib_table_memory(u8 * s, va_list * args);
 
