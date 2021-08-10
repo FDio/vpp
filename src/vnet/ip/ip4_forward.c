@@ -660,6 +660,19 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
        clib_error_create ("local0 interface doesn't support IP addressing");
     }
 
+  /* subinterfaces without exact-match set doesn't support IP addressing */
+  if (vnet_sw_interface_is_sub (vnm, sw_if_index))
+    {
+      vnet_sw_interface_t *si;
+      si = vnet_get_sw_interface_or_null (vnm, sw_if_index);
+      if (si && si->type == VNET_SW_INTERFACE_TYPE_SUB &&
+	  si->sub.eth.flags.exact_match == 0)
+	{
+	  return clib_error_create (
+	    "sub-interface without exact-match doesn't support IP addressing");
+	}
+    }
+
   vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
   ip4_addr_fib_init (&ip4_af, address,
 		     vec_elt (im->fib_index_by_sw_if_index, sw_if_index));
