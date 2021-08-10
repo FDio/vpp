@@ -29,6 +29,8 @@ struct _vl_api_fib_prefix;
 /**
  * Encode and decode functions from the API types to internal types
  */
+extern vl_api_fib_path_nh_proto_t fib_api_path_dpo_proto_to_nh (dpo_proto_t dproto);
+extern int fib_api_path_nh_proto_to_dpo (vl_api_fib_path_nh_proto_t pp, dpo_proto_t *dproto);
 extern void fib_api_path_encode(const fib_route_path_t * api_rpath,
                                 vl_api_fib_path_t *out);
 extern int fib_api_path_decode(vl_api_fib_path_t *in,
