@@ -653,12 +653,9 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
   u32 if_address_index;
   ip4_address_fib_t ip4_af, *addr_fib = 0;
 
-  /* local0 interface doesn't support IP addressing  */
-  if (sw_if_index == 0)
-    {
-      return
-       clib_error_create ("local0 interface doesn't support IP addressing");
-    }
+  error = vnet_sw_interface_supports_addressing (vnm, sw_if_index);
+  if (error)
+    return error;
 
   vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
   ip4_addr_fib_init (&ip4_af, address,

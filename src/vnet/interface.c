@@ -1335,6 +1335,29 @@ vnet_sw_interface_is_nbma (vnet_main_t * vnm, u32 sw_if_index)
 }
 
 clib_error_t *
+vnet_sw_interface_supports_addressing (vnet_main_t *vnm, u32 sw_if_index)
+{
+  if (sw_if_index == 0)
+    {
+      return clib_error_create (
+	"local0 interface doesn't support IP addressing");
+    }
+
+  if (vnet_sw_interface_is_sub (vnm, sw_if_index))
+    {
+      vnet_sw_interface_t *si;
+      si = vnet_get_sw_interface_or_null (vnm, sw_if_index);
+      if (si && si->type == VNET_SW_INTERFACE_TYPE_SUB &&
+	  si->sub.eth.flags.exact_match == 0)
+	{
+	  return clib_error_create (
+	    "sub-interface without exact-match doesn't support IP addressing");
+	}
+    }
+  return NULL;
+}
+
+clib_error_t *
 vnet_interface_init (vlib_main_t * vm)
 {
   vnet_main_t *vnm = vnet_get_main ();
