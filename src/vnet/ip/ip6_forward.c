@@ -315,6 +315,18 @@ ip6_add_del_interface_address (vlib_main_t * vm,
 	clib_error_create ("local0 interface doesn't support IP addressing");
     }
 
+  /* subinterfaces without exact-match set doesn't support IP addressing */
+  if (vnet_sw_interface_is_sub (vnm, sw_if_index))
+    {
+      vnet_sw_interface_t *si;
+      si = vnet_get_sw_interface_or_null (vnm, sw_if_index);
+      if (si && si->sub.eth.flags.exact_match == 0)
+	{
+	  return clib_error_create (
+	    "sub-interface without exact-match doesn't support IP addressing");
+	}
+    }
+
   if (ip6_address_is_link_local_unicast (address))
     {
       if (address_length != 128)
