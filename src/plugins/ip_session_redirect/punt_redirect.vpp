@@ -1,0 +1,48 @@
+create packet-generator interface pg0
+set int ip addr pg0 10.10.10.1/24
+
+create packet-generator interface pg1
+set int ip addr pg1 10.10.0.1/24
+set ip neighbor pg1 10.10.0.10 4.5.6
+
+set punt ipv4 udp all
+
+classify table miss-next drop mask l3 ip4 src l4 udp src_port buckets 100000
+set interface input acl intfc local0 ip4-punt-table 0
+ip session redirect punt table 0 match l3 ip4 src 10.10.10.10 l4 src_port 1234 via 10.10.0.10 pg1
+
+set int st pg0 up
+set int st pg1 up
+
+comment { punt because of no udp listener for 53667, redirected }
+packet-generator new {
+  name ok
+  limit 1
+  node ethernet-input
+  source pg0
+  size 100-100
+  data {
+    IP4: 5.6.7 -> 2.3.4
+    UDP: 10.10.10.10 -> 10.10.10.1
+    UDP: 1234 -> 53667
+      incrementing 1
+  }
+}
+
+comment { punt because of no udp listener for 53668, dropped }
+packet-generator new {
+  name nok
+  limit 1
+  node ethernet-input
+  source pg0
+  size 100-100
+  data {
+    IP4: 5.6.7 -> 2.3.4
+    UDP: 10.10.10.10 -> 10.10.10.1
+    UDP: 1235 -> 53668
+      incrementing 1
+  }
+}
+
+trace add pg-input 10
+pa en
