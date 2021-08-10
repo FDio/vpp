@@ -1,0 +1,72 @@
+/*
+ * Copyright (c) 2021 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option version = "0.1.0";
+import "vnet/interface_types.api";
+import "vnet/fib/fib_types.api";
+
+/** \brief Add or update a session redirection
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param table_index - classifier table index
+    @param match_len - classifier session match length in bytes (max is 80-bytes)
+    @param match - classifier session match
+    @param is_punt - true = punted traffic, false = forwarded traffic
+    @param n_paths - number of paths
+    @param paths - the paths of the redirect
+*/
+
+autoreply define ip_session_redirect_add
+{
+  u32 client_index;
+  u32 context;
+
+  u32 table_index;
+  u8 match_len;
+  u8 match[80];
+  bool is_punt;
+  u8 n_paths;
+  vl_api_fib_path_t paths[n_paths];
+
+  option vat_help = "table <index> match <match> via <path>";
+  option status="in_progress";
+};
+
+/** \brief Delete a session redirection
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param table_index - classifier table index
+    @param match_len - classifier session match length in bytes (max is 80-bytes)
+    @param match - classifier session match
+*/
+
+autoreply define ip_session_redirect_del
+{
+  u32 client_index;
+  u32 context;
+
+  u32 table_index;
+  u8 match_len;
+  u8 match[match_len];
+
+  option vat_help = "table <index> match <match>";
+  option status="in_progress";
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
