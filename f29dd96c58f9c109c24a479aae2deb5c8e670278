@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "61e3f51d_fbe29b5b",
+        "filename": "src/vnet/session/application_namespace.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-08-10T21:20:58Z",
+      "side": 1,
+      "message": "Let\u0027s keep everything anchored in ns_id, i.e., request unique appns ids but allow same abstract socket in different netns.",
+      "range": {
+        "startLine": 58,
+        "startChar": 21,
+        "endLine": 58,
+        "endChar": 36
+      },
+      "revId": "f29dd96c58f9c109c24a479aae2deb5c8e670278",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e891a83d_2495628f",
+        "filename": "src/vnet/session/application_namespace.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 255,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-08-10T21:20:58Z",
+      "side": 1,
+      "message": "Let\u0027s add in addition to this the option to specify a custom socket name (if netns is not configured socket is just a file name in the fixed appns socket dir)",
+      "range": {
+        "startLine": 255,
+        "startChar": 6,
+        "endLine": 255,
+        "endChar": 61
+      },
+      "revId": "f29dd96c58f9c109c24a479aae2deb5c8e670278",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "28119f26_364c8f1f",
+        "filename": "src/vnet/session/application_namespace.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-08-10T21:20:58Z",
+      "side": 1,
+      "message": "I know I requested this at one point, but in line with allowing custom sock_names, let\u0027s keep netns separate",
+      "range": {
+        "startLine": 50,
+        "startChar": 0,
+        "endLine": 54,
+        "endChar": 0
+      },
+      "revId": "f29dd96c58f9c109c24a479aae2deb5c8e670278",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d4be44f0_ca0a1309",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1657,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-08-10T21:20:58Z",
+      "side": 1,
+      "message": "Let\u0027s add one more condition and change logic to:\n1) if sock_name was provided, use it but but if netns make sure it starts with \u0027@\u0027\n2) else if no netns, sock_name \u003d ns_id and apply 1)\n3) else custom abstract sock name (e.g., the one we used before)",
+      "range": {
+        "startLine": 1657,
+        "startChar": 2,
+        "endLine": 1657,
+        "endChar": 13
+      },
+      "revId": "f29dd96c58f9c109c24a479aae2deb5c8e670278",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
