@@ -158,11 +158,11 @@ segment_manager_add_segment_inline (segment_manager_t *sm, uword segment_size,
   /*
    * Set watermarks in segment
    */
-  fs->h->high_watermark = sm->high_watermark;
-  fs->h->low_watermark = sm->low_watermark;
+  fs->high_watermark = sm->high_watermark;
+  fs->low_watermark = sm->low_watermark;
+  fs->flags = flags;
+  fs->flags &= ~FIFO_SEGMENT_F_MEM_LIMIT;
   fs->h->pct_first_alloc = props->pct_first_alloc;
-  fs->h->flags = flags;
-  fs->h->flags &= ~FIFO_SEGMENT_F_MEM_LIMIT;
 
   if (notify_app)
     {
