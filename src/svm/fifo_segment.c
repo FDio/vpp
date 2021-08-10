@@ -105,13 +105,14 @@ fsh_n_active_fifos (fifo_segment_header_t * fsh)
 }
 
 static inline uword
-fsh_virtual_mem (fifo_segment_header_t * fsh)
+fs_virtual_mem (fifo_segment_t *fs)
 {
+  fifo_segment_header_t *fsh = fs->h;
   fifo_segment_slice_t *fss;
   uword total_vm = 0;
   int i;
 
-  for (i = 0; i < fsh->n_slices; i++)
+  for (i = 0; i < fs->n_slices; i++)
     {
       fss = fsh_slice_get (fsh, i);
       total_vm += clib_atomic_load_relax_n (&fss->virtual_mem);
@@ -1376,16 +1377,16 @@ fifo_segment_size (fifo_segment_t * fs)
   return fs->h->max_byte_index - fs->h->n_reserved_bytes;
 }
 
-u8
-fsh_has_reached_mem_limit (fifo_segment_header_t * fsh)
+static u8
+fs_has_reached_mem_limit (fifo_segment_t *fs)
 {
-  return (fsh->flags & FIFO_SEGMENT_F_MEM_LIMIT) ? 1 : 0;
+  return (fs->flags & FIFO_SEGMENT_F_MEM_LIMIT) ? 1 : 0;
 }
 
-void
-fsh_reset_mem_limit (fifo_segment_header_t * fsh)
+static void
+fs_reset_mem_limit (fifo_segment_t *fs)
 {
-  fsh->flags &= ~FIFO_SEGMENT_F_MEM_LIMIT;
+  fs->flags &= ~FIFO_SEGMENT_F_MEM_LIMIT;
 }
 
 void *
@@ -1460,26 +1461,26 @@ fifo_segment_get_mem_usage (fifo_segment_t * fs)
 }
 
 fifo_segment_mem_status_t
-fifo_segment_determine_status (fifo_segment_header_t * fsh, u8 usage)
+fifo_segment_determine_status (fifo_segment_t *fs, u8 usage)
 {
-  if (!fsh->high_watermark || !fsh->low_watermark)
+  if (!fs->high_watermark || !fs->low_watermark)
     return MEMORY_PRESSURE_NO_PRESSURE;
 
   /* once the no-memory is detected, the status continues
    * until memory usage gets below the high watermark
    */
-  if (fsh_has_reached_mem_limit (fsh))
+  if (fs_has_reached_mem_limit (fs))
     {
-      if (usage >= fsh->high_watermark)
+      if (usage >= fs->high_watermark)
 	return MEMORY_PRESSURE_NO_MEMORY;
       else
-	fsh_reset_mem_limit (fsh);
+	fs_reset_mem_limit (fs);
     }
 
-  if (usage >= fsh->high_watermark)
+  if (usage >= fs->high_watermark)
     return MEMORY_PRESSURE_HIGH_PRESSURE;
 
-  else if (usage >= fsh->low_watermark)
+  else if (usage >= fs->low_watermark)
     return MEMORY_PRESSURE_LOW_PRESSURE;
 
   return MEMORY_PRESSURE_NO_PRESSURE;
@@ -1488,10 +1489,9 @@ fifo_segment_determine_status (fifo_segment_header_t * fsh, u8 usage)
 fifo_segment_mem_status_t
 fifo_segment_get_mem_status (fifo_segment_t * fs)
 {
-  fifo_segment_header_t *fsh = fs->h;
   u8 usage = fifo_segment_get_mem_usage (fs);
 
-  return fifo_segment_determine_status (fsh, usage);
+  return fifo_segment_determine_status (fs, usage);
 }
 
 u8 *
@@ -1598,7 +1598,7 @@ format_fifo_segment (u8 * s, va_list * args)
   in_use = fifo_segment_size (fs) - est_free_seg_bytes - tracked_cached_bytes;
   usage = (100.0 * in_use) / allocated;
   mem_st = fifo_segment_get_mem_status (fs);
-  virt = fsh_virtual_mem (fsh);
+  virt = fs_virtual_mem (fs);
   reserved = fsh->n_reserved_bytes;
 
   s = format (s, "\n%Useg free bytes: %U (%lu) estimated: %U (%lu) reserved:"
