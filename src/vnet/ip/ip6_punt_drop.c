@@ -306,27 +306,8 @@ VNET_FEATURE_INIT (ip6_punt_redirect_node, static) = {
 #ifndef CLIB_MARCH_VARIANT
 
 void
-ip6_punt_redirect_add (u32 rx_sw_if_index,
-		       u32 tx_sw_if_index, ip46_address_t * nh)
-{
-  /* *INDENT-OFF* */
-  fib_route_path_t *rpaths = NULL, rpath = {
-    .frp_proto = DPO_PROTO_IP6,
-    .frp_addr = *nh,
-    .frp_sw_if_index = tx_sw_if_index,
-    .frp_weight = 1,
-    .frp_fib_index = ~0,
-  };
-  /* *INDENT-ON* */
-  vec_add1 (rpaths, rpath);
-
-  ip6_punt_redirect_add_paths (rx_sw_if_index, rpaths);
-
-  vec_free (rpaths);
-}
-
-void
-ip6_punt_redirect_add_paths (u32 rx_sw_if_index, fib_route_path_t * rpaths)
+ip6_punt_redirect_add_paths (u32 rx_sw_if_index,
+			     const fib_route_path_t *rpaths)
 {
   ip_punt_redirect_add (FIB_PROTOCOL_IP6,
 			rx_sw_if_index,

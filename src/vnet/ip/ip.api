@@ -557,6 +557,7 @@ typedef punt_redirect
 */
 autoreply define ip_punt_redirect
 {
+  option deprecated;
   u32 client_index;
   u32 context;
   vl_api_punt_redirect_t punt;
@@ -575,6 +576,48 @@ define ip_punt_redirect_details
 {
   u32 context;
   vl_api_punt_redirect_t punt;
+};
+
+/** \brief Punt redirect type
+    @param rx_sw_if_index - specify the original RX interface of traffic
+                            that should be redirected. ~0 means any interface.
+    @param af - Address family (ip4 or ip6)
+    @param paths - the TX paths to which traffic should be redirected.
+*/
+typedef punt_redirect_v2
+{
+  vl_api_interface_index_t rx_sw_if_index [default=0xffffffff];
+  vl_api_address_family_t af;
+  u32 n_paths;
+  vl_api_fib_path_t paths[n_paths];
+};
+
+/** \brief Add IP punt redirect rule
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param punt - punt definition
+    @param is_add - 1 to add punt_redirect rule, 0 to delete
+*/
+autoreply define add_del_ip_punt_redirect_v2
+{
+  u32 client_index;
+  u32 context;
+  bool is_add [default=true];
+  vl_api_punt_redirect_v2_t punt;
+};
+
+define ip_punt_redirect_v2_dump
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_address_family_t af;
+};
+
+define ip_punt_redirect_v2_details
+{
+  u32 context;
+  vl_api_punt_redirect_v2_t punt;
 };
 
 autoreply define ip_container_proxy_add_del
