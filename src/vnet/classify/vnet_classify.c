@@ -648,14 +648,14 @@ typedef CLIB_PACKED(struct {
 /* *INDENT-ON* */
 
 u64
-vnet_classify_hash_packet (vnet_classify_table_t * t, u8 * h)
+vnet_classify_hash_packet (const vnet_classify_table_t *t, const u8 *h)
 {
   return vnet_classify_hash_packet_inline (t, h);
 }
 
 vnet_classify_entry_t *
-vnet_classify_find_entry (vnet_classify_table_t * t,
-			  u8 * h, u64 hash, f64 now)
+vnet_classify_find_entry (vnet_classify_table_t *t, const u8 *h, u64 hash,
+			  f64 now)
 {
   return vnet_classify_find_entry_inline (t, h, hash, now);
 }
