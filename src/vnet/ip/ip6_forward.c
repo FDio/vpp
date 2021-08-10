@@ -308,12 +308,9 @@ ip6_add_del_interface_address (vlib_main_t * vm,
   ip6_address_fib_t ip6_af, *addr_fib = 0;
   const ip6_address_t *ll_addr;
 
-  /* local0 interface doesn't support IP addressing */
-  if (sw_if_index == 0)
-    {
-      return
-	clib_error_create ("local0 interface doesn't support IP addressing");
-    }
+  error = vnet_sw_interface_supports_addressing (vnm, sw_if_index);
+  if (error)
+    return error;
 
   if (ip6_address_is_link_local_unicast (address))
     {
