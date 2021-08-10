@@ -267,10 +267,9 @@ typedef struct ip4_punt_redirect_trace_t_
 /**
  * Add a punt redirect entry
  */
-extern void ip_punt_redirect_add (fib_protocol_t fproto,
-				  u32 rx_sw_if_index,
+extern void ip_punt_redirect_add (fib_protocol_t fproto, u32 rx_sw_if_index,
 				  fib_forward_chain_type_t ct,
-				  fib_route_path_t * rpaths);
+				  const fib_route_path_t *rpaths);
 
 extern void ip_punt_redirect_del (fib_protocol_t fproto, u32 rx_sw_if_index);
 extern index_t ip_punt_redirect_find (fib_protocol_t fproto,

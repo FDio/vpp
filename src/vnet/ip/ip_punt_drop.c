@@ -69,9 +69,9 @@ ip_punt_redirect_find (fib_protocol_t fproto, u32 rx_sw_if_index)
 }
 
 void
-ip_punt_redirect_add (fib_protocol_t fproto,
-		      u32 rx_sw_if_index,
-		      fib_forward_chain_type_t ct, fib_route_path_t * rpaths)
+ip_punt_redirect_add (fib_protocol_t fproto, u32 rx_sw_if_index,
+		      fib_forward_chain_type_t ct,
+		      const fib_route_path_t *rpaths)
 {
   ip_punt_redirect_rx_t *ipr;
   index_t ipri;
