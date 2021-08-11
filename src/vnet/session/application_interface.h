@@ -817,6 +817,8 @@ typedef enum app_sapi_msg_type
   APP_SAPI_MSG_TYPE_ADD_DEL_WORKER,
   APP_SAPI_MSG_TYPE_ADD_DEL_WORKER_REPLY,
   APP_SAPI_MSG_TYPE_SEND_FDS,
+  APP_SAPI_MSG_TYPE_ADD_DEL_CERT_KEY,
+  APP_SAPI_MSG_TYPE_ADD_DEL_CERT_KEY_REPLY,
 } __clib_packed app_sapi_msg_type_e;
 
 typedef struct app_sapi_attach_msg_
@@ -861,6 +863,22 @@ typedef struct app_sapi_worker_add_del_reply_msg_
   u8 is_add;
 } __clib_packed app_sapi_worker_add_del_reply_msg_t;
 
+typedef struct app_sapi_cert_key_add_del_msg_
+{
+  u32 context;
+  u32 index;
+  u16 cert_len;
+  u16 certkey_len;
+  u8 is_add;
+} __clib_packed app_sapi_cert_key_add_del_msg_t;
+
+typedef struct app_sapi_cert_key_add_del_reply_msg_
+{
+  u32 context;
+  i32 retval;
+  u32 index;
+} __clib_packed app_sapi_cert_key_add_del_reply_msg_t;
+
 typedef struct app_sapi_msg_
 {
   app_sapi_msg_type_e type;
@@ -870,6 +888,8 @@ typedef struct app_sapi_msg_
     app_sapi_attach_reply_msg_t attach_reply;
     app_sapi_worker_add_del_msg_t worker_add_del;
     app_sapi_worker_add_del_reply_msg_t worker_add_del_reply;
+    app_sapi_cert_key_add_del_msg_t cert_key_add_del;
+    app_sapi_cert_key_add_del_reply_msg_t cert_key_add_del_reply;
   };
 } __clib_packed app_sapi_msg_t;
 

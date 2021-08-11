@@ -753,6 +753,8 @@ int vcl_sapi_app_worker_add (void);
 void vcl_sapi_app_worker_del (vcl_worker_t * wrk);
 void vcl_sapi_detach (vcl_worker_t * wrk);
 int vcl_sapi_recv_fds (vcl_worker_t * wrk, int *fds, int n_fds);
+int vcl_sapi_add_cert_key_pair (vppcom_cert_key_pair_t *ckpair);
+int vcl_sapi_del_cert_key_pair (u32 ckpair_index);
 
 #endif /* SRC_VCL_VCL_PRIVATE_H_ */
 
