@@ -356,6 +356,115 @@ vcl_sapi_recv_fds (vcl_worker_t * wrk, int *fds, int n_fds)
   return 0;
 }
 
+int
+vcl_sapi_add_cert_key_pair (vppcom_cert_key_pair_t *ckpair)
+{
+  u32 cert_len = ckpair->cert_len, key_len = ckpair->key_len, certkey_len;
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  app_sapi_msg_t _msg = { 0 }, *msg = &_msg;
+  app_sapi_cert_key_add_del_msg_t *mp;
+  app_sapi_msg_t _rmp, *rmp = &_rmp;
+  clib_error_t *err;
+  clib_socket_t *cs;
+  u8 *certkey = 0;
+  int rv = -1;
+
+  msg->type = APP_SAPI_MSG_TYPE_ADD_DEL_CERT_KEY;
+  mp = &msg->cert_key_add_del;
+  mp->context = wrk->wrk_index;
+  mp->cert_len = cert_len;
+  mp->certkey_len = cert_len + key_len;
+  mp->is_add = 1;
+
+  certkey_len = cert_len + key_len;
+  vec_validate (certkey, certkey_len - 1);
+  clib_memcpy_fast (certkey, ckpair->cert, cert_len);
+  clib_memcpy_fast (certkey + cert_len, ckpair->key, key_len);
+
+  cs = &wrk->app_api_sock;
+  err = clib_socket_sendmsg (cs, msg, sizeof (*msg), 0, 0);
+  if (err)
+    {
+      clib_error_report (err);
+      goto done;
+    }
+
+  err = clib_socket_sendmsg (cs, certkey, certkey_len, 0, 0);
+  if (err)
+    {
+      clib_error_report (err);
+      goto done;
+    }
+
+  /*
+   * Wait for reply and process it
+   */
+  err = clib_socket_recvmsg (cs, rmp, sizeof (*rmp), 0, 0);
+  if (err)
+    {
+      clib_error_report (err);
+      goto done;
+    }
+
+  if (rmp->type != APP_SAPI_MSG_TYPE_ADD_DEL_CERT_KEY_REPLY)
+    {
+      clib_warning ("unexpected reply type %u", rmp->type);
+      goto done;
+    }
+
+  if (!rmp->cert_key_add_del_reply.retval)
+    rv = rmp->cert_key_add_del_reply.index;
+
+done:
+
+  return rv;
+}
+
+int
+vcl_sapi_del_cert_key_pair (u32 ckpair_index)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  app_sapi_msg_t _msg = { 0 }, *msg = &_msg;
+  app_sapi_cert_key_add_del_msg_t *mp;
+  app_sapi_msg_t _rmp, *rmp = &_rmp;
+  clib_error_t *err;
+  clib_socket_t *cs;
+
+  msg->type = APP_SAPI_MSG_TYPE_ADD_DEL_CERT_KEY;
+  mp = &msg->cert_key_add_del;
+  mp->context = wrk->wrk_index;
+  mp->index = ckpair_index;
+
+  cs = &wrk->app_api_sock;
+  err = clib_socket_sendmsg (cs, &msg, sizeof (msg), 0, 0);
+  if (err)
+    {
+      clib_error_report (err);
+      return -1;
+    }
+
+  /*
+   * Wait for reply and process it
+   */
+  err = clib_socket_recvmsg (cs, rmp, sizeof (*rmp), 0, 0);
+  if (err)
+    {
+      clib_error_report (err);
+      return -1;
+    }
+
+  if (rmp->type != APP_SAPI_MSG_TYPE_ADD_DEL_CERT_KEY_REPLY)
+    {
+      clib_warning ("unexpected reply type %u", rmp->type);
+      return -1;
+    }
+
+  if (rmp->cert_key_add_del_reply.retval)
+    return -1;
+
+  return 0;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

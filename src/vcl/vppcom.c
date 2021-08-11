@@ -4388,22 +4388,18 @@ int
 vppcom_add_cert_key_pair (vppcom_cert_key_pair_t *ckpair)
 {
   if (vcm->cfg.vpp_app_socket_api)
-    {
-      clib_warning ("not supported");
-      return VPPCOM_EINVAL;
-    }
-  return vcl_bapi_add_cert_key_pair (ckpair);
+    return vcl_sapi_add_cert_key_pair (ckpair);
+  else
+    return vcl_bapi_add_cert_key_pair (ckpair);
 }
 
 int
 vppcom_del_cert_key_pair (uint32_t ckpair_index)
 {
   if (vcm->cfg.vpp_app_socket_api)
-    {
-      clib_warning ("not supported");
-      return VPPCOM_EINVAL;
-    }
-  return vcl_bapi_del_cert_key_pair (ckpair_index);
+    return vcl_sapi_del_cert_key_pair (ckpair_index);
+  else
+    return vcl_bapi_del_cert_key_pair (ckpair_index);
 }
 
 /*

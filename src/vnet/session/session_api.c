@@ -1489,6 +1489,83 @@ done:
 }
 
 static void
+sapi_add_del_cert_key_handler (app_namespace_t *app_ns, clib_socket_t *cs,
+			       app_sapi_cert_key_add_del_msg_t *mp)
+{
+  vnet_app_add_cert_key_pair_args_t _a, *a = &_a;
+  app_sapi_cert_key_add_del_reply_msg_t *rmp;
+  app_sapi_msg_t msg = { 0 };
+  int rv = 0;
+
+  if (mp->is_add)
+    {
+      const u32 max_certkey_len = 2e4, max_cert_len = 1e4, max_key_len = 1e4;
+      clib_error_t *err;
+      u8 *certkey = 0;
+      u32 key_len;
+
+      if (mp->certkey_len > max_certkey_len)
+	{
+	  rv = SESSION_E_INVALID;
+	  goto send_reply;
+	}
+
+      vec_validate (certkey, mp->certkey_len - 1);
+      err = clib_socket_recvmsg (cs, certkey, mp->certkey_len, 0, 0);
+      if (err)
+	{
+	  clib_error_report (err);
+	  clib_error_free (err);
+	  rv = SESSION_E_INVALID;
+	  goto send_reply;
+	}
+
+      if (mp->cert_len > max_cert_len)
+	{
+	  rv = SESSION_E_INVALID;
+	  goto send_reply;
+	}
+
+      if (mp->certkey_len < mp->cert_len)
+	{
+	  rv = SESSION_E_INVALID;
+	  goto send_reply;
+	}
+
+      key_len = mp->certkey_len - mp->cert_len;
+      if (key_len > max_key_len)
+	{
+	  rv = SESSION_E_INVALID;
+	  goto send_reply;
+	}
+
+      clib_memset (a, 0, sizeof (*a));
+      a->cert = certkey;
+      a->key = certkey + mp->cert_len;
+      a->cert_len = mp->cert_len;
+      a->key_len = key_len;
+      rv = vnet_app_add_cert_key_pair (a);
+
+      vec_free (certkey);
+    }
+  else
+    {
+      rv = vnet_app_del_cert_key_pair (mp->index);
+    }
+
+send_reply:
+
+  msg.type = APP_SAPI_MSG_TYPE_ADD_DEL_CERT_KEY_REPLY;
+  rmp = &msg.cert_key_add_del_reply;
+  rmp->retval = rv;
+  rmp->context = mp->context;
+  if (!rv && mp->is_add)
+    rmp->index = a->index;
+
+  clib_socket_sendmsg (cs, &msg, sizeof (msg), 0, 0);
+}
+
+static void
 sapi_socket_detach (app_namespace_t * app_ns, clib_socket_t * cs)
 {
   app_ns_api_handle_t *handle;
@@ -1547,6 +1624,9 @@ sapi_sock_read_ready (clib_file_t * cf)
       break;
     case APP_SAPI_MSG_TYPE_ADD_DEL_WORKER:
       sapi_add_del_worker_handler (app_ns, cs, &msg.worker_add_del);
+      break;
+    case APP_SAPI_MSG_TYPE_ADD_DEL_CERT_KEY:
+      sapi_add_del_cert_key_handler (app_ns, cs, &msg.cert_key_add_del);
       break;
     default:
       clib_warning ("app wrk %u unknown message type: %u",
