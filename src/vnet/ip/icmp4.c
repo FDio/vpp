@@ -40,6 +40,7 @@
 #include <vlib/vlib.h>
 #include <vnet/ip/ip.h>
 #include <vnet/pg/pg.h>
+#include <vnet/ip/ip_sas.h>
 
 static char *icmp_error_strings[] = {
 #define _(f,s) s,
@@ -254,8 +255,6 @@ ip4_icmp_error (vlib_main_t * vm,
   u32 *from, *to_next;
   uword n_left_from, n_left_to_next;
   ip4_icmp_error_next_t next_index;
-  ip4_main_t *im = &ip4_main;
-  ip_lookup_main_t *lm = &im->lookup_main;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -286,7 +285,7 @@ ip4_icmp_error (vlib_main_t * vm,
 	  vlib_buffer_t *p0, *org_p0;
 	  ip4_header_t *ip0, *out_ip0;
 	  icmp46_header_t *icmp0;
-	  u32 sw_if_index0, if_add_index0;
+	  u32 sw_if_index0;
 	  ip_csum_t sum;
 
 	  org_p0 = vlib_get_buffer (vm, org_pi0);
@@ -323,25 +322,14 @@ ip4_icmp_error (vlib_main_t * vm,
 	  out_ip0->ttl = 0xff;
 	  out_ip0->protocol = IP_PROTOCOL_ICMP;
 	  out_ip0->dst_address = ip0->src_address;
-	  if_add_index0 = ~0;
-	  if (PREDICT_TRUE (vec_len (lm->if_address_pool_index_by_sw_if_index)
-			    > sw_if_index0))
-	    if_add_index0 =
-	      lm->if_address_pool_index_by_sw_if_index[sw_if_index0];
-	  if (PREDICT_TRUE (if_add_index0 != ~0))
-	    {
-	      ip_interface_address_t *if_add =
-		pool_elt_at_index (lm->if_address_pool, if_add_index0);
-	      ip4_address_t *if_ip =
-		ip_interface_address_get_address (lm, if_add);
-	      out_ip0->src_address = *if_ip;
-	    }
-	  else
-	    {
-	      /* interface has no IP4 address - should not happen */
+	  /* Prefer a source address from "offending interface" */
+	  if (!ip4_sas_by_sw_if_index (sw_if_index0, &out_ip0->dst_address,
+				       &out_ip0->src_address))
+	    { /* interface has no IP6 address - should not happen */
 	      next0 = IP4_ICMP_ERROR_NEXT_DROP;
 	      error0 = ICMP4_ERROR_DROP;
 	    }
+
 	  out_ip0->checksum = ip4_header_checksum (out_ip0);
 
 	  /* Fill icmp header fields */
