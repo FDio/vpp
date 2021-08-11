@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7eea0fe9_75f47c37",
+        "filename": "src/vnet/ip/ip_interface.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-08-11T12:40:59Z",
+      "side": 1,
+      "message": "is this just formatting?",
+      "revId": "b16194953aeaacdbf3fcddb89cd5199ab4c2a087",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3b1a53da_73503f24",
+        "filename": "src/vnet/ip/ip_sas.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-08-11T12:40:59Z",
+      "side": 1,
+      "message": "return common_set_bits(a1-\u003eas_u32 ^ a2-\u003eas_u32);",
+      "revId": "b16194953aeaacdbf3fcddb89cd5199ab4c2a087",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1889a101_feb6bfdd",
+        "filename": "src/vnet/ip/ip_sas.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 120,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-08-11T12:40:59Z",
+      "side": 1,
+      "message": "no clib_warning in the data-path please.",
+      "revId": "b16194953aeaacdbf3fcddb89cd5199ab4c2a087",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "49f4e80c_c4cae3e9",
+        "filename": "src/vnet/ip/ip_sas.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 135,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-08-11T12:40:59Z",
+      "side": 1,
+      "message": "unused?",
+      "revId": "b16194953aeaacdbf3fcddb89cd5199ab4c2a087",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bb2e6b47_abc13a0d",
+        "filename": "src/vnet/ip/ip_sas.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-08-11T12:40:59Z",
+      "side": 1,
+      "message": "the addresses are const.",
+      "revId": "b16194953aeaacdbf3fcddb89cd5199ab4c2a087",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
