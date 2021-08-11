@@ -19,8 +19,9 @@
 #include <vlib/unix/unix.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/fib/ip4_fib.h>
-#include <vnet/fib/fib_sas.h>
+#include <vnet/ip/ip_sas.h>
 #include <vnet/ip/ip6_link.h>
+#include <vnet/ip/ip6_ll_table.h>
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>
 
@@ -682,13 +683,16 @@ ip46_get_resolving_interface (u32 fib_index, ip46_address_t * pa46,
 }
 
 static u32
-ip46_fib_table_get_index_for_sw_if_index (u32 sw_if_index, int is_ip6)
+ip46_fib_table_get_index_for_sw_if_index (u32 sw_if_index, int is_ip6,
+					  ip46_address_t *pa46)
 {
-  u32 fib_table_index = is_ip6 ?
-    ip6_fib_table_get_index_for_sw_if_index (sw_if_index) :
-    ip4_fib_table_get_index_for_sw_if_index (sw_if_index);
-  return fib_table_index;
-
+  if (is_ip6)
+    {
+      if (ip6_address_is_link_local_unicast (&pa46->ip6))
+	return ip6_ll_fib_get (sw_if_index);
+      return ip6_fib_table_get_index_for_sw_if_index (sw_if_index);
+    }
+  return ip4_fib_table_get_index_for_sw_if_index (sw_if_index);
 }
 
 
@@ -735,13 +739,15 @@ ip46_set_src_address (u32 sw_if_index, vlib_buffer_t * b0, int is_ip6)
     {
       ip6_header_t *ip6 = vlib_buffer_get_current (b0);
 
-      res = fib_sas6_get (sw_if_index, &ip6->dst_address, &ip6->src_address);
+      res = ip6_sas_by_sw_if_index (sw_if_index, &ip6->dst_address,
+				    &ip6->src_address);
     }
   else
     {
       ip4_header_t *ip4 = vlib_buffer_get_current (b0);
 
-      res = fib_sas4_get (sw_if_index, &ip4->dst_address, &ip4->src_address);
+      res = ip4_sas_by_sw_if_index (sw_if_index, &ip4->dst_address,
+				    &ip4->src_address);
     }
   return res;
 }
@@ -870,12 +876,10 @@ at_most_a_frame (u32 count)
 }
 
 static int
-ip46_enqueue_packet (vlib_main_t * vm, vlib_buffer_t * b0, u32 burst,
-		     int is_ip6)
+ip46_enqueue_packet (vlib_main_t *vm, vlib_buffer_t *b0, u32 burst,
+		     u32 lookup_node_index)
 {
   vlib_frame_t *f = 0;
-  u32 lookup_node_index =
-    is_ip6 ? ip6_lookup_node.index : ip4_lookup_node.index;
   int n_sent = 0;
 
   u16 n_to_send;
@@ -978,7 +982,7 @@ send_ip46_ping (vlib_main_t * vm,
     }
   else
     fib_index =
-      ip46_fib_table_get_index_for_sw_if_index (sw_if_index, is_ip6);
+      ip46_fib_table_get_index_for_sw_if_index (sw_if_index, is_ip6, pa46);
 
   if (~0 == fib_index)
     ERROR_OUT (SEND_PING_NO_TABLE);
@@ -986,7 +990,6 @@ send_ip46_ping (vlib_main_t * vm,
     ERROR_OUT (SEND_PING_NO_INTERFACE);
 
   vnet_buffer (b0)->sw_if_index[VLIB_RX] = sw_if_index;
-  vnet_buffer (b0)->sw_if_index[VLIB_TX] = fib_index;
 
   int l4_header_offset = ip46_fill_l3_header (pa46, b0, is_ip6);
 
@@ -1002,7 +1005,23 @@ send_ip46_ping (vlib_main_t * vm,
 
   ip46_fix_len_and_csum (vm, l4_header_offset, data_len, b0, is_ip6);
 
-  int n_sent = ip46_enqueue_packet (vm, b0, burst, is_ip6);
+  u32 node_index = ip6_lookup_node.index;
+  if (is_ip6)
+    {
+      if (pa46->ip6.as_u32[0] == clib_host_to_net_u32 (0xff020000))
+	{
+	  node_index = ip6_rewrite_mcast_node.index;
+	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = sw_if_index;
+	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = sw_if_index;
+	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] =
+	    ip6_link_get_mcast_adj (sw_if_index);
+	}
+    }
+  else
+    {
+      node_index = ip4_lookup_node.index;
+    }
+  int n_sent = ip46_enqueue_packet (vm, b0, burst, node_index);
   if (n_sent < burst)
     err = SEND_PING_NO_BUFFERS;
 
