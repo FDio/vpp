@@ -159,7 +159,7 @@ ip_interface_has_address (u32 sw_if_index, ip46_address_t * ip, u8 is_ip4)
       ip_lookup_main_t *lm6 = &ip6_main.lookup_main;
       ip6_address_t *ip6;
       /* *INDENT-OFF* */
-      foreach_ip_interface_address (lm6, ia, sw_if_index, 1 /* unnumbered */ ,
+      foreach_ip_interface_address (lm6, ia, sw_if_index, 1,
       ({
         ip6 = ip_interface_address_get_address (lm6, ia);
         if (ip6_address_compare (ip6, &ip->ip6) == 0)
