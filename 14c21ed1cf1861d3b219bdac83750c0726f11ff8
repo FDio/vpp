@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b81c717c_34d2c648",
+        "filename": "src/vnet/ip/ip_sas.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 170,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-08-11T13:51:41Z",
+      "side": 1,
+      "message": "once the prefix is formed this v4 and v6 version is the same.",
+      "revId": "14c21ed1cf1861d3b219bdac83750c0726f11ff8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "23196786_b9ca335b",
+        "filename": "src/vnet/ip/ip_sas.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-08-11T13:51:41Z",
+      "side": 1,
+      "message": "the dst address should be const, otherwise callers need to copy their input, since this API does not guarantee not to change it.",
+      "revId": "14c21ed1cf1861d3b219bdac83750c0726f11ff8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
