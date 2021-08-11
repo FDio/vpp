@@ -16,9 +16,8 @@
 #include <vnet/vnet.h>
 #include <vnet/udp/udp_local.h>
 #include <vnet/plugin/plugin.h>
-#include <vnet/fib/fib_table.h>
 #include <dns/dns.h>
-
+#include <vnet/ip/ip_sas.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <vpp/app/version.h>
@@ -225,66 +224,16 @@ vnet_dns_send_dns4_request (vlib_main_t * vm, dns_main_t * dm,
   u32 bi;
   vlib_buffer_t *b;
   ip4_header_t *ip;
-  fib_prefix_t prefix;
-  fib_node_index_t fei;
-  u32 sw_if_index, fib_index;
   udp_header_t *udp;
-  ip4_main_t *im4 = &ip4_main;
-  ip_lookup_main_t *lm4 = &im4->lookup_main;
-  ip_interface_address_t *ia = 0;
-  ip4_address_t *src_address;
+  ip4_address_t src_address;
   u8 *dns_request;
   vlib_frame_t *f;
   u32 *to_next;
 
   ASSERT (ep->dns_request);
 
-  /* Find a FIB path to the server */
-  clib_memcpy (&prefix.fp_addr.ip4, server, sizeof (*server));
-  prefix.fp_proto = FIB_PROTOCOL_IP4;
-  prefix.fp_len = 32;
-
-  fib_index = fib_table_find (prefix.fp_proto, 0 /* default VRF for now */ );
-  if (fib_index == (u32) ~ 0)
-    {
-      if (0)
-	clib_warning ("no fib table");
-      return;
-    }
-
-  fei = fib_table_lookup (fib_index, &prefix);
-
-  /* Couldn't find route to destination. Bail out. */
-  if (fei == FIB_NODE_INDEX_INVALID)
-    {
-      if (0)
-	clib_warning ("no route to DNS server");
-      return;
-    }
-
-  sw_if_index = fib_entry_get_resolving_interface (fei);
-
-  if (sw_if_index == ~0)
-    {
-      if (0)
-	clib_warning
-	  ("route to %U exists, fei %d, get_resolving_interface returned"
-	   " ~0", format_ip4_address, &prefix.fp_addr, fei);
-      return;
-    }
-
-  /* *INDENT-OFF* */
-  foreach_ip_interface_address(lm4, ia, sw_if_index, 1 /* honor unnumbered */,
-  ({
-    src_address = ip_interface_address_get_address (lm4, ia);
-    goto found_src_address;
-  }));
-  /* *INDENT-ON* */
-
-  clib_warning ("FIB BUG");
-  return;
-
-found_src_address:
+  if (!ip4_sas (0 /* default VRF for now */, ~0, server, &src_address))
+    return;
 
   /* Go get a buffer */
   if (vlib_buffer_alloc (vm, &bi, 1) != 1)
@@ -311,7 +260,7 @@ found_src_address:
   ip->length = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b));
   ip->ttl = 255;
   ip->protocol = IP_PROTOCOL_UDP;
-  ip->src_address.as_u32 = src_address->as_u32;
+  ip->src_address.as_u32 = src_address.as_u32;
   ip->dst_address.as_u32 = server->as_u32;
   ip->checksum = ip4_header_checksum (ip);
 
@@ -343,14 +292,8 @@ vnet_dns_send_dns6_request (vlib_main_t * vm, dns_main_t * dm,
   u32 bi;
   vlib_buffer_t *b;
   ip6_header_t *ip;
-  fib_prefix_t prefix;
-  fib_node_index_t fei;
-  u32 sw_if_index, fib_index;
   udp_header_t *udp;
-  ip6_main_t *im6 = &ip6_main;
-  ip_lookup_main_t *lm6 = &im6->lookup_main;
-  ip_interface_address_t *ia = 0;
-  ip6_address_t *src_address;
+  ip6_address_t src_address;
   u8 *dns_request;
   vlib_frame_t *f;
   u32 *to_next;
@@ -358,41 +301,8 @@ vnet_dns_send_dns6_request (vlib_main_t * vm, dns_main_t * dm,
 
   ASSERT (ep->dns_request);
 
-  /* Find a FIB path to the server */
-  clib_memcpy (&prefix.fp_addr, server, sizeof (*server));
-  prefix.fp_proto = FIB_PROTOCOL_IP6;
-  prefix.fp_len = 32;
-
-  fib_index = fib_table_find (prefix.fp_proto, 0 /* default VRF for now */ );
-  if (fib_index == (u32) ~ 0)
-    {
-      if (0)
-	clib_warning ("no fib table");
-      return;
-    }
-
-  fei = fib_table_lookup (fib_index, &prefix);
-
-  /* Couldn't find route to destination. Bail out. */
-  if (fei == FIB_NODE_INDEX_INVALID)
-    {
-      clib_warning ("no route to DNS server");
-    }
-
-  sw_if_index = fib_entry_get_resolving_interface (fei);
-
-  /* *INDENT-OFF* */
-  foreach_ip_interface_address(lm6, ia, sw_if_index, 1 /* honor unnumbered */,
-  ({
-    src_address = ip_interface_address_get_address (lm6, ia);
-    goto found_src_address;
-  }));
-  /* *INDENT-ON* */
-
-  clib_warning ("FIB BUG");
-  return;
-
-found_src_address:
+  if (!ip6_sas (0 /* default VRF for now */, ~0, server, &src_address))
+    return;
 
   /* Go get a buffer */
   if (vlib_buffer_alloc (vm, &bi, 1) != 1)
@@ -421,7 +331,7 @@ found_src_address:
 			  - sizeof (ip6_header_t));
   ip->hop_limit = 255;
   ip->protocol = IP_PROTOCOL_UDP;
-  clib_memcpy (&ip->src_address, src_address, sizeof (ip6_address_t));
+  ip6_address_copy (&ip->src_address, &src_address);
   clib_memcpy (&ip->dst_address, server, sizeof (ip6_address_t));
 
   /* UDP header */
@@ -2749,13 +2659,7 @@ vnet_send_dns4_reply (vlib_main_t * vm, dns_main_t * dm,
 		      vlib_buffer_t * b0)
 {
   u32 bi = 0;
-  fib_prefix_t prefix;
-  fib_node_index_t fei;
-  u32 sw_if_index, fib_index;
-  ip4_main_t *im4 = &ip4_main;
-  ip_lookup_main_t *lm4 = &im4->lookup_main;
-  ip_interface_address_t *ia = 0;
-  ip4_address_t *src_address;
+  ip4_address_t src_address;
   ip4_header_t *ip;
   udp_header_t *udp;
   dns_header_t *dh;
@@ -2839,50 +2743,9 @@ vnet_send_dns4_reply (vlib_main_t * vm, dns_main_t * dm,
   vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;	/* "local0" */
   vnet_buffer (b0)->sw_if_index[VLIB_TX] = 0;	/* default VRF for now */
 
-  /* Find a FIB path to the peer we're trying to answer */
-  clib_memcpy (&prefix.fp_addr.ip4, pr->dst_address, sizeof (ip4_address_t));
-  prefix.fp_proto = FIB_PROTOCOL_IP4;
-  prefix.fp_len = 32;
-
-  fib_index = fib_table_find (prefix.fp_proto, 0 /* default VRF for now */ );
-  if (fib_index == (u32) ~ 0)
-    {
-      clib_warning ("no fib table");
-      return;
-    }
-
-  fei = fib_table_lookup (fib_index, &prefix);
-
-  /* Couldn't find route to destination. Bail out. */
-  if (fei == FIB_NODE_INDEX_INVALID)
-    {
-      clib_warning ("no route to DNS server");
-      return;
-    }
-
-  sw_if_index = fib_entry_get_resolving_interface (fei);
-
-  if (sw_if_index == ~0)
-    {
-      clib_warning (
-	"route to %U exists, fei %d, get_resolving_interface returned"
-	" ~0",
-	format_ip4_address, &prefix.fp_addr, fei);
-      return;
-    }
-
-  /* *INDENT-OFF* */
-  foreach_ip_interface_address(lm4, ia, sw_if_index, 1 /* honor unnumbered */,
-  ({
-    src_address = ip_interface_address_get_address (lm4, ia);
-    goto found_src_address;
-  }));
-  /* *INDENT-ON* */
-
-  clib_warning ("FIB BUG");
-  return;
-
-found_src_address:
+  if (!ip4_sas (0 /* default VRF for now */, ~0,
+		(const ip4_address_t *) &pr->dst_address, &src_address))
+    return;
 
   ip = vlib_buffer_get_current (b0);
   udp = (udp_header_t *) (ip + 1);
@@ -2975,7 +2838,7 @@ found_src_address:
   ip->length = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
   ip->ttl = 255;
   ip->protocol = IP_PROTOCOL_UDP;
-  ip->src_address.as_u32 = src_address->as_u32;
+  ip->src_address.as_u32 = src_address.as_u32;
   clib_memcpy (ip->dst_address.as_u8, pr->dst_address,
 	       sizeof (ip4_address_t));
   ip->checksum = ip4_header_checksum (ip);

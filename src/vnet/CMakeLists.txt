@@ -73,6 +73,7 @@ list(APPEND VNET_HEADERS
   util/refcount.h
   format_fns.h
   ip/ip_format_fns.h
+  ip/ip_sas.h
   ethernet/ethernet_format_fns.h
 )
 
@@ -413,6 +414,7 @@ list(APPEND VNET_SOURCES
   ip/punt.c
   ip/punt_node.c
   ip/vtep.c
+  ip/ip_sas.c
 )
 
 list(APPEND VNET_MULTIARCH_SOURCES
