@@ -21,6 +21,7 @@
 
 #include <linux-cp/lcp_interface.h>
 #include <netlink/route/link/vlan.h>
+#include <linux/if_ether.h>
 
 #include <vnet/plugin/plugin.h>
 #include <vnet/plugin/plugin.h>
@@ -43,7 +44,7 @@ static vlib_log_class_t lcp_itf_pair_logger;
 /**
  * Pool of LIP objects
  */
-lcp_itf_pair_t *lcp_itf_pair_pool;
+lcp_itf_pair_t *lcp_itf_pair_pool = NULL;
 
 u32
 lcp_itf_num_pairs (void)
@@ -77,6 +78,8 @@ lcp_itf_pair_register_vft (lcp_itf_pair_vft_t *lcp_itf_vft)
 
 #define LCP_ITF_PAIR_INFO(...)                                                \
   vlib_log_notice (lcp_itf_pair_logger, __VA_ARGS__);
+
+#define LCP_ITF_PAIR_ERR(...) vlib_log_err (lcp_itf_pair_logger, __VA_ARGS__);
 
 u8 *
 format_lcp_itf_pair (u8 *s, va_list *args)
@@ -152,6 +155,9 @@ lcp_itf_pair_show (u32 phy_sw_if_index)
 lcp_itf_pair_t *
 lcp_itf_pair_get (u32 index)
 {
+  if (!lcp_itf_pair_pool)
+    return NULL;
+
   return pool_elt_at_index (lcp_itf_pair_pool, index);
 }
 
@@ -175,6 +181,13 @@ lcp_itf_pair_add_sub (u32 vif, u8 *host_if_name, u32 sub_sw_if_index,
   lcp_itf_pair_t *lip;
 
   lip = lcp_itf_pair_get (lcp_itf_pair_find_by_phy (phy_sw_if_index));
+  if (!lip)
+    {
+      LCP_ITF_PAIR_DBG ("lcp_itf_pair_add_sub: can't find LCP of parent %U",
+			format_vnet_sw_if_index_name, vnet_get_main (),
+			phy_sw_if_index);
+      return VNET_API_ERROR_INVALID_SW_IF_INDEX;
+    }
 
   return lcp_itf_pair_add (lip->lip_host_sw_if_index, sub_sw_if_index,
 			   host_if_name, vif, lip->lip_host_type, ns);
@@ -237,7 +250,7 @@ lcp_itf_pair_add (u32 host_sw_if_index, u32 phy_sw_if_index, u8 *host_name,
 
   lipi = lcp_itf_pair_find_by_phy (phy_sw_if_index);
 
-  LCP_ITF_PAIR_INFO ("add: host:%U phy:%U, host_if:%v vif:%d ns:%v",
+  LCP_ITF_PAIR_INFO ("add: host:%U phy:%U, host_if:%v vif:%d ns:%s",
 		     format_vnet_sw_if_index_name, vnet_get_main (),
 		     host_sw_if_index, format_vnet_sw_if_index_name,
 		     vnet_get_main (), phy_sw_if_index, host_name, host_index,
@@ -265,6 +278,15 @@ lcp_itf_pair_add (u32 host_sw_if_index, u32 phy_sw_if_index, u8 *host_name,
   lip->lip_host_type = host_type;
   lip->lip_vif_index = host_index;
   lip->lip_namespace = vec_dup (ns);
+  LCP_ITF_PAIR_DBG ("add: netns %s lip-netns(vec) %s", ns, lip->lip_namespace);
+  if (!lip->lip_namespace)
+    {
+
+      if (ns && ns[0] != 0)
+	lip->lip_namespace = (u8 *) strdup ((const char *) ns);
+      LCP_ITF_PAIR_DBG ("add: netns %s lip-netns(str) %s", ns,
+			lip->lip_namespace);
+    }
 
   if (lip->lip_host_sw_if_index == ~0)
     return 0;
@@ -336,7 +358,7 @@ lcp_itf_pair_add (u32 host_sw_if_index, u32 phy_sw_if_index, u8 *host_name,
 }
 
 static clib_error_t *
-lcp_netlink_add_link_vlan (int parent, u32 vlan, const char *name)
+lcp_netlink_add_link_vlan (int parent, u32 vlan, u16 proto, const char *name)
 {
   struct rtnl_link *link;
   struct nl_sock *sk;
@@ -344,17 +366,25 @@ lcp_netlink_add_link_vlan (int parent, u32 vlan, const char *name)
 
   sk = nl_socket_alloc ();
   if ((err = nl_connect (sk, NETLINK_ROUTE)) < 0)
-    return clib_error_return (NULL, "Unable to connect socket: %d", err);
+    {
+      LCP_ITF_PAIR_ERR ("netlink_add_link_vlan: connect error: %s",
+			nl_geterror (err));
+      return clib_error_return (NULL, "Unable to connect socket: %d", err);
+    }
 
   link = rtnl_link_vlan_alloc ();
 
   rtnl_link_set_link (link, parent);
   rtnl_link_set_name (link, name);
-
   rtnl_link_vlan_set_id (link, vlan);
+  rtnl_link_vlan_set_protocol (link, htons (proto));
 
   if ((err = rtnl_link_add (sk, link, NLM_F_CREATE)) < 0)
-    return clib_error_return (NULL, "Unable to add link %s: %d", name, err);
+    {
+      LCP_ITF_PAIR_ERR ("netlink_add_link_vlan: link add error: %s",
+			nl_geterror (err));
+      return clib_error_return (NULL, "Unable to add link %s: %d", name, err);
+    }
 
   rtnl_link_put (link);
   nl_close (sk);
@@ -531,7 +561,7 @@ lcp_itf_pair_config (vlib_main_t *vm, unformat_input_t *input)
 	  if (vec_len (ns) > LCP_NS_LEN)
 	    {
 	      return clib_error_return (0,
-					"linux-cp IF namespace must"
+					"linux-cp namespace must"
 					" be less than %d characters",
 					LCP_NS_LEN);
 	    }
@@ -616,21 +646,24 @@ lcp_validate_if_name (u8 *name)
 }
 
 static void
-lcp_itf_set_vif_link_state (u32 vif_index, u8 up, u8 *ns)
+lcp_itf_set_link_state (const lcp_itf_pair_t *lip, u8 state)
 {
   int curr_ns_fd, vif_ns_fd;
 
+  if (!lip)
+    return;
+
   curr_ns_fd = vif_ns_fd = -1;
 
-  if (ns)
+  if (lip->lip_namespace)
     {
       curr_ns_fd = clib_netns_open (NULL /* self */);
-      vif_ns_fd = clib_netns_open (ns);
+      vif_ns_fd = clib_netns_open (lip->lip_namespace);
       if (vif_ns_fd != -1)
 	clib_setns (vif_ns_fd);
     }
 
-  vnet_netlink_set_link_state (vif_index, up);
+  vnet_netlink_set_link_state (lip->lip_vif_index, state);
 
   if (vif_ns_fd != -1)
     close (vif_ns_fd);
@@ -640,6 +673,63 @@ lcp_itf_set_vif_link_state (u32 vif_index, u8 up, u8 *ns)
       clib_setns (curr_ns_fd);
       close (curr_ns_fd);
     }
+
+  return;
+}
+
+typedef struct
+{
+  u32 vlan;
+  bool dot1ad;
+
+  u32 matched_sw_if_index;
+} lcp_itf_match_t;
+
+static walk_rc_t
+lcp_itf_pair_find_walk (vnet_main_t *vnm, u32 sw_if_index, void *arg)
+{
+  lcp_itf_match_t *match = arg;
+  const vnet_sw_interface_t *sw;
+
+  sw = vnet_get_sw_interface (vnm, sw_if_index);
+  if (sw && (sw->sub.eth.inner_vlan_id == 0) &&
+      (sw->sub.eth.outer_vlan_id == match->vlan) &&
+      (sw->sub.eth.flags.dot1ad == match->dot1ad))
+    {
+      LCP_ITF_PAIR_DBG ("find_walk: found match outer %d dot1ad %d "
+			"inner-dot1q %d: interface %U",
+			sw->sub.eth.outer_vlan_id, sw->sub.eth.flags.dot1ad,
+			sw->sub.eth.inner_vlan_id,
+			format_vnet_sw_if_index_name, vnet_get_main (),
+			sw->sw_if_index);
+      match->matched_sw_if_index = sw->sw_if_index;
+      return WALK_STOP;
+    }
+
+  return WALK_CONTINUE;
+}
+
+/* Return the index of the sub-int on the phy that has the given vlan and
+ * proto,
+ */
+static index_t
+lcp_itf_pair_find_by_outer_vlan (u32 sup_if_index, u16 vlan, bool dot1ad)
+{
+  lcp_itf_match_t match;
+  const vnet_hw_interface_t *hw;
+
+  match.vlan = vlan;
+  match.dot1ad = dot1ad;
+  match.matched_sw_if_index = INDEX_INVALID;
+  hw = vnet_get_sup_hw_interface (vnet_get_main (), sup_if_index);
+
+  vnet_hw_interface_walk_sw (vnet_get_main (), hw->hw_if_index,
+			     lcp_itf_pair_find_walk, &match);
+
+  if (match.matched_sw_if_index >= vec_len (lip_db_by_phy))
+    return INDEX_INVALID;
+
+  return lip_db_by_phy[match.matched_sw_if_index];
 }
 
 int
@@ -652,21 +742,33 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
   u32 vif_index = 0, host_sw_if_index;
   const vnet_sw_interface_t *sw;
   const vnet_hw_interface_t *hw;
+  const lcp_itf_pair_t *lip;
 
   if (!vnet_sw_if_index_is_api_valid (phy_sw_if_index))
-    return VNET_API_ERROR_INVALID_SW_IF_INDEX;
+    {
+      LCP_ITF_PAIR_ERR ("pair_create: invalid phy index %u", phy_sw_if_index);
+      return VNET_API_ERROR_INVALID_SW_IF_INDEX;
+    }
 
   if (!lcp_validate_if_name (host_if_name))
-    return VNET_API_ERROR_INVALID_ARGUMENT;
+    {
+      LCP_ITF_PAIR_ERR ("pair_create: invalid host-if-name '%s'",
+			host_if_name);
+      return VNET_API_ERROR_INVALID_ARGUMENT;
+    }
 
   vnm = vnet_get_main ();
   sw = vnet_get_sw_interface (vnm, phy_sw_if_index);
   hw = vnet_get_sup_hw_interface (vnm, phy_sw_if_index);
+  if (!sw || !hw)
+    {
+      LCP_ITF_PAIR_ERR ("pair_create: invalid interface");
+      return VNET_API_ERROR_INVALID_SW_IF_INDEX;
+    }
 
   /*
    * Use interface-specific netns if supplied.
-   * Otherwise, use default netns if defined.
-   * Otherwise ignore a netns and use the OS default.
+   * Otherwise, use netns if defined, otherwise use the OS default.
    */
   if (ns == 0 || ns[0] == 0)
     ns = lcp_get_default_ns ();
@@ -674,16 +776,94 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
   /* sub interfaces do not need a tap created */
   if (vnet_sw_interface_is_sub (vnm, phy_sw_if_index))
     {
-      const lcp_itf_pair_t *lip;
+      const lcp_itf_pair_t *llip;
+      index_t parent_if_index, linux_parent_if_index;
       int orig_ns_fd, ns_fd;
       clib_error_t *err;
-      u16 vlan;
+      u16 outer_vlan, inner_vlan;
+      u16 outer_proto, inner_proto;
+      u16 vlan, proto;
+
+      // TODO(pim) replace with vnet_sw_interface_supports_addressing()
+      if (sw->type == VNET_SW_INTERFACE_TYPE_SUB &&
+	  sw->sub.eth.flags.exact_match == 0)
+	{
+	  LCP_ITF_PAIR_ERR ("pair_create: can't create LCP for a "
+			    "sub-interface without exact-match set");
+	  return VNET_API_ERROR_INVALID_ARGUMENT;
+	}
+
+      outer_vlan = sw->sub.eth.outer_vlan_id;
+      inner_vlan = sw->sub.eth.inner_vlan_id;
+      outer_proto = inner_proto = ETH_P_8021Q;
+      if (1 == sw->sub.eth.flags.dot1ad)
+	outer_proto = ETH_P_8021AD;
 
       /*
-       * Find the parent tap by finding the pair from the parent phy
+       * Find the parent tap:
+       * - if this is an outer VLAN, find the pair from the parent phy
+       * - if this is an inner VLAN, find the pair from the outer sub-int,
+       * which must exist.
        */
-      lip = lcp_itf_pair_get (lcp_itf_pair_find_by_phy (sw->sup_sw_if_index));
-      vlan = sw->sub.eth.outer_vlan_id;
+      if (inner_vlan)
+	{
+	  LCP_ITF_PAIR_INFO (
+	    "pair_create: trying to create dot1%s %d inner-dot1q %d on %U",
+	    sw->sub.eth.flags.dot1ad ? "ad" : "q", outer_vlan, inner_vlan,
+	    format_vnet_sw_if_index_name, vnet_get_main (), hw->sw_if_index);
+	  vlan = inner_vlan;
+	  proto = inner_proto;
+	  parent_if_index = lcp_itf_pair_find_by_phy (sw->sup_sw_if_index);
+	  linux_parent_if_index = lcp_itf_pair_find_by_outer_vlan (
+	    hw->sw_if_index, sw->sub.eth.outer_vlan_id,
+	    sw->sub.eth.flags.dot1ad);
+	  if (INDEX_INVALID == linux_parent_if_index)
+	    {
+	      LCP_ITF_PAIR_ERR (
+		"pair_create: can't find LCP for outer vlan %d proto %s on %U",
+		outer_vlan, outer_proto == ETH_P_8021AD ? "dot1ad" : "dot1q",
+		format_vnet_sw_if_index_name, vnet_get_main (),
+		hw->sw_if_index);
+	      return VNET_API_ERROR_INVALID_SW_IF_INDEX;
+	    }
+	}
+      else
+	{
+	  LCP_ITF_PAIR_INFO ("pair_create: trying to create dot1%s %d on %U",
+			     sw->sub.eth.flags.dot1ad ? "ad" : "q", outer_vlan,
+			     format_vnet_sw_if_index_name, vnet_get_main (),
+			     hw->sw_if_index);
+	  vlan = outer_vlan;
+	  proto = outer_proto;
+	  parent_if_index = lcp_itf_pair_find_by_phy (sw->sup_sw_if_index);
+	  linux_parent_if_index = parent_if_index;
+	}
+
+      if (INDEX_INVALID == parent_if_index)
+	{
+	  LCP_ITF_PAIR_ERR ("pair_create: can't find LCP for %U",
+			    format_vnet_sw_if_index_name, vnet_get_main (),
+			    sw->sup_sw_if_index);
+	  return VNET_API_ERROR_INVALID_SW_IF_INDEX;
+	}
+      lip = lcp_itf_pair_get (parent_if_index);
+      if (!lip)
+	{
+	  LCP_ITF_PAIR_ERR ("pair_create: can't create LCP for a "
+			    "sub-interface without an LCP on the parent");
+	  return VNET_API_ERROR_INVALID_ARGUMENT;
+	}
+      llip = lcp_itf_pair_get (linux_parent_if_index);
+      if (!llip)
+	{
+	  LCP_ITF_PAIR_ERR ("pair_create: can't create LCP for a "
+			    "sub-interface without a valid Linux parent");
+	  return VNET_API_ERROR_INVALID_ARGUMENT;
+	}
+
+      LCP_ITF_PAIR_DBG ("pair_create: parent %U", format_lcp_itf_pair, lip);
+      LCP_ITF_PAIR_DBG ("pair_create: linux parent %U", format_lcp_itf_pair,
+			llip);
 
       /*
        * see if the requested host interface has already been created
@@ -708,11 +888,16 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
 	  /*
 	   * no existing host interface, create it now
 	   */
-	  err = lcp_netlink_add_link_vlan (lip->lip_vif_index, vlan,
+	  err = lcp_netlink_add_link_vlan (llip->lip_vif_index, vlan, proto,
 					   (const char *) host_if_name);
-
-	  if (!err && -1 != ns_fd)
-	    err = vnet_netlink_set_link_netns (vif_index, ns_fd, NULL);
+	  if (err != 0)
+	    {
+	      LCP_ITF_PAIR_ERR ("pair_create: cannot create link "
+				"outer(proto:0x%04x,vlan:%u).inner(proto:0x%"
+				"04x,vlan:%u) name:'%s'",
+				outer_proto, outer_vlan, inner_proto,
+				inner_vlan, host_if_name);
+	    }
 
 	  if (!err)
 	    vif_index = if_nametoindex ((char *) host_if_name);
@@ -721,13 +906,14 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
       /*
        * create a sub-interface on the tap
        */
-      if (!err && vnet_create_sub_interface (lip->lip_host_sw_if_index,
-					     sw->sub.id, sw->sub.eth.raw_flags,
-					     sw->sub.eth.inner_vlan_id, vlan,
-					     &host_sw_if_index))
-	LCP_ITF_PAIR_INFO ("failed create vlan: %d on %U", vlan,
-			   format_vnet_sw_if_index_name, vnet_get_main (),
-			   lip->lip_host_sw_if_index);
+      if (!err &&
+	  vnet_create_sub_interface (lip->lip_host_sw_if_index, sw->sub.id,
+				     sw->sub.eth.raw_flags, inner_vlan,
+				     outer_vlan, &host_sw_if_index))
+	LCP_ITF_PAIR_ERR (
+	  "pair_create: failed to create tap subint: %d.%d on %U", outer_vlan,
+	  inner_vlan, format_vnet_sw_if_index_name, vnet_get_main (),
+	  lip->lip_host_sw_if_index);
 
     socket_close:
       if (orig_ns_fd != -1)
@@ -776,23 +962,32 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
 
       if (args.rv < 0)
 	{
+	  LCP_ITF_PAIR_ERR ("pair_create: could not create tap, retval:%d",
+			    args.rv);
 	  return args.rv;
 	}
+
+      /*
+       * The TAP interface does copy forward the host MTU based on the VPP
+       * interface's L3 MTU, but it should also ensure that the VPP tap
+       * interface has an MTU that is greater-or-equal to those. Considering
+       * users can set the interfaces at runtime (set interface mtu packet ...)
+       * ensure that the tap MTU is large enough, taking the VPP interface L3
+       * if it's set, and otherwise a sensible default.
+       */
+      if (sw->mtu[VNET_MTU_L3])
+	vnet_sw_interface_set_mtu (vnm, args.sw_if_index,
+				   sw->mtu[VNET_MTU_L3]);
+      else
+	vnet_sw_interface_set_mtu (vnm, args.sw_if_index,
+				   ETHERNET_MAX_PACKET_BYTES);
 
       /*
        * get the hw and ethernet of the tap
        */
       hw = vnet_get_sup_hw_interface (vnm, args.sw_if_index);
-
-      /*
-       * Set the interface down on the host side.
-       * This controls whether the host can RX/TX.
-       */
       virtio_main_t *mm = &virtio_main;
       virtio_if_t *vif = pool_elt_at_index (mm->interfaces, hw->dev_instance);
-
-      lcp_itf_set_vif_link_state (vif->ifindex, 0 /* down */,
-				  args.host_namespace);
 
       /*
        * Leave the TAP permanently up on the VPP side.
@@ -819,14 +1014,24 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
       return -1;
     }
 
-  vnet_sw_interface_admin_up (vnm, host_sw_if_index);
-  lcp_itf_pair_add (host_sw_if_index, phy_sw_if_index, host_if_name, vif_index,
-		    host_if_type, ns);
-
   LCP_ITF_PAIR_INFO ("pair create: {%U, %U, %s}", format_vnet_sw_if_index_name,
 		     vnet_get_main (), phy_sw_if_index,
 		     format_vnet_sw_if_index_name, vnet_get_main (),
 		     host_sw_if_index, host_if_name);
+  lcp_itf_pair_add (host_sw_if_index, phy_sw_if_index, host_if_name, vif_index,
+		    host_if_type, ns);
+
+  /*
+   * Copy the link state from VPP into the host side.
+   * The TAP is shared by many interfaces, always keep it up.
+   * This controls whether the host can RX/TX.
+   */
+
+  lip = lcp_itf_pair_get (lcp_itf_pair_find_by_vif (vif_index));
+  LCP_ITF_PAIR_INFO ("pair create: %U sw-flags %u hw-flags %u",
+		     format_lcp_itf_pair, lip, sw->flags, hw->flags);
+  vnet_sw_interface_admin_up (vnm, host_sw_if_index);
+  lcp_itf_set_link_state (lip, sw->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP);
 
   if (host_sw_if_indexp)
     *host_sw_if_indexp = host_sw_if_index;
