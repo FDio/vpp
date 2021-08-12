@@ -41,22 +41,6 @@ api_encode_host_type (lip_host_type_t type)
   return LCP_API_ITF_HOST_TAP;
 }
 
-void
-lcp_set_auto_intf (u8 is_auto)
-{
-  lcp_main_t *lcpm = &lcp_main;
-
-  lcpm->auto_intf = (is_auto != 0);
-}
-
-int
-lcp_auto_intf (void)
-{
-  lcp_main_t *lcpm = &lcp_main;
-
-  return lcpm->auto_intf;
-}
-
 static int
 vl_api_lcp_itf_pair_add (u32 phy_sw_if_index, lip_host_type_t lip_host_type,
 			 u8 *mp_host_if_name, size_t sizeof_host_if_name,
