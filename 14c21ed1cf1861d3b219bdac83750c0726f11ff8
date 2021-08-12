@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "3102f441_511934a0",
+        "filename": "src/vnet/ip/ip_sas.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 170,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-08-12T09:48:34Z",
+      "side": 1,
+      "message": "Apart from the call to the ip4_sas_by_sw_index.\nAnd they are unlikely to stay the same IPv6 SAS and IPv4 SAS are fundamentally different.",
+      "parentUuid": "b81c717c_34d2c648",
+      "revId": "14c21ed1cf1861d3b219bdac83750c0726f11ff8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "23196786_b9ca335b",
         "filename": "src/vnet/ip/ip_sas.h",
         "patchSetId": 3
@@ -33,6 +51,24 @@
       "revId": "14c21ed1cf1861d3b219bdac83750c0726f11ff8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e7cdc543_561488b0",
+        "filename": "src/vnet/ip/ip_sas.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-08-12T09:48:34Z",
+      "side": 1,
+      "message": "I don\u0027t find const a useful language construct.",
+      "parentUuid": "23196786_b9ca335b",
+      "revId": "14c21ed1cf1861d3b219bdac83750c0726f11ff8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
