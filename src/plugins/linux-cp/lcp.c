@@ -28,8 +28,9 @@ lcp_get_default_ns (void)
 {
   lcp_main_t *lcpm = &lcp_main;
 
-  if (lcpm->default_namespace[0] == 0)
-    return 0;
+  if (!lcpm->default_namespace || lcpm->default_namespace[0] == 0)
+    return NULL;
+
   return lcpm->default_namespace;
 }
 
@@ -59,16 +60,15 @@ lcp_set_default_ns (u8 *ns)
 
   if (!p || *p == 0)
     {
-      clib_memset (lcpm->default_namespace, 0,
-		   sizeof (lcpm->default_namespace));
+      lcpm->default_namespace = NULL;
       if (lcpm->default_ns_fd > 0)
 	close (lcpm->default_ns_fd);
       lcpm->default_ns_fd = 0;
       return 0;
     }
 
-  clib_strncpy ((char *) lcpm->default_namespace, p, LCP_NS_LEN - 1);
-
+  vec_validate_init_c_string (lcpm->default_namespace, p,
+			      clib_strnlen (p, LCP_NS_LEN));
   s = format (0, "/var/run/netns/%s%c", (char *) lcpm->default_namespace, 0);
   lcpm->default_ns_fd = open ((char *) s, O_RDONLY);
   vec_free (s);
