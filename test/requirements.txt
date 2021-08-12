@@ -1,4 +1,4 @@
-pip-tools==5.1.2                        # BSD   Keep this in sync with Makefile's PIP_TOOLS_VERSION
+pip-tools==6.2.0                        # BSD   Keep this in sync with Makefile's PIP_TOOLS_VERSION
 
 cryptography!=2.0                       # BSD/Apache-2.0
 deprecation>=2.0.6                      # Apache-2.0
@@ -13,6 +13,8 @@ six                                     # MIT
 syslog_rfc5424_parser>=0.3.1            # ISC
 objgraph                                # MIT
 pympler                                 # Apache-2.0
-sphinx<3.0.0                            # BSD,  sphinx 3.0.0 crashes with a traceback
+sphinx                                  # BSD
+sphinxcontrib-spelling                  # BSD
 sphinx-rtd-theme                        # MIT
 noiseprotocol                           # MIT
+recommonmark                            # MIT

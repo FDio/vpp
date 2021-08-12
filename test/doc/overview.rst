@@ -175,8 +175,8 @@ e.g. for the IPv4 address assigned to the VPP interface:
 * local_ip4n - Local IPv4 address - raw, suitable as API parameter.
 
 These addresses need to be configured in VPP to be usable using e.g.
-`config_ip4` API. Please see the documentation to `VppInterface` for more
-details.
+`VppInterface.config_ip4` API. Please see the documentation to
+`VppInterface` for more details.
 
 By default, there is one remote address of each kind created for L3:
 remote_ip4 and remote_ip6. If the test needs more addresses, because it's
@@ -195,9 +195,9 @@ using packet-generator interfaces, represented by the `VppPGInterface` class.
 Packets are written into a temporary .pcap file, which is then read by the VPP
 and the packets are injected into the VPP world.
 
-To add a list of packets to an interface, call the `add_stream` method on that
-interface. Once everything is prepared, call `pg_start` method to start
-the packet generator on the VPP side.
+To add a list of packets to an interface, call the `VppPGInterface.add_stream`
+method on that interface. Once everything is prepared, call `pg_start` method to
+start the packet generator on the VPP side.
 
 VPP -> test framework
 ~~~~~~~~~~~~~~~~~~~~~
@@ -208,36 +208,41 @@ which is then read and analyzed by the |vtf|.
 
 The following APIs are available to the test case for reading pcap files.
 
-* `get_capture`: this API is suitable for bulk & batch style of test, where
-  a list of packets is prepared & sent, then the received packets are read
-  and verified. The API needs the number of packets which are expected to
-  be captured (ignoring filtered packets - see below) to know when the pcap
-  file is completely written by the VPP. If using packet infos for verifying
-  packets, then the counts of the packet infos can be automatically used
-  by `get_capture` to get the proper count (in this case the default value
-  None can be supplied as expected_count or ommitted altogether).
-* `wait_for_packet`: this API is suitable for interactive style of test,
-  e.g. when doing session management, three-way handsakes, etc. This API waits
-  for and returns a single packet, keeping the capture file in place
-  and remembering context. Repeated invocations return following packets
-  (or raise Exception if timeout is reached) from the same capture file
-  (= packets arriving on the same interface).
+* `VppPGInterface.get_capture`: this API is suitable for bulk & batch
+  style of test, where a list of packets is prepared & sent, then the
+  received packets are read and verified. The API needs the number of
+  packets which are expected to be captured (ignoring filtered
+  packets - see below) to know when the pcap file is completely
+  written by the VPP. If using packet infos for verifying packets,
+  then the counts of the packet infos can be automatically used by
+  `VppPGInterface.get_capture` to get the proper count (in this case
+  the default value None can be supplied as expected_count or ommitted
+  altogether).
+* `VppPGInterface.wait_for_packet`: this API is suitable for
+  interactive style of test, e.g. when doing session management,
+  three-way handshakes, etc. This API waits for and returns a single
+  packet, keeping the capture file in place and remembering
+  context. Repeated invocations return following packets (or raise
+  Exception if timeout is reached) from the same capture file (=
+  packets arriving on the same interface).
 
-*NOTE*: it is not recommended to mix these APIs unless you understand how they
-work internally. None of these APIs rotate the pcap capture file, so calling
-e.g. `get_capture` after `wait_for_packet` will return already read packets.
-It is safe to switch from one API to another after calling `enable_capture`
-as that API rotates the capture file.
+*NOTE*: it is not recommended to mix these APIs unless you understand
+how they work internally. None of these APIs rotate the pcap capture
+file, so calling e.g. `VppPGInterface.get_capture` after
+`VppPGInterface.wait_for_packet` will return already read packets.  It
+is safe to switch from one API to another after calling
+`VppPGInterface.enable_capture` as that API rotates the capture file.
 
 Automatic filtering of packets:
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Both APIs (`get_capture` and `wait_for_packet`) by default filter the packet
-capture, removing known uninteresting packets from it - these are IPv6 Router
-Advertisments and IPv6 Router Alerts. These packets are unsolicitated
-and from the point of |vtf| are random. If a test wants to receive these
-packets, it should specify either None or a custom filtering function
-as the value to the 'filter_out_fn' argument.
+Both APIs (`VppPGInterface.get_capture` and
+`VppPGInterface.wait_for_packet`) by default filter the packet
+capture, removing known uninteresting packets from it - these are IPv6
+Router Advertisments and IPv6 Router Alerts. These packets are
+unsolicitated and from the point of |vtf| are random. If a test wants
+to receive these packets, it should specify either None or a custom
+filtering function as the value to the 'filter_out_fn' argument.
 
 Common API flow for sending/receiving packets:
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
