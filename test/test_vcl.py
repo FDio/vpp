@@ -49,10 +49,13 @@ class VCLAppWorker(Worker):
 
 class VCLTestCase(VppTestCase):
     """ VCL Test Class """
-    extra_vpp_punt_config = ["session", "{", "poll-main", "}"]
+    session_startup = ["poll-main"]
 
     @classmethod
     def setUpClass(cls):
+        if cls.session_startup:
+            conf = "session {" + " ".join(cls.session_startup) + "}"
+            cls.extra_vpp_punt_config = [conf]
         super(VCLTestCase, cls).setUpClass()
 
     @classmethod
@@ -74,11 +77,36 @@ class VCLTestCase(VppTestCase):
         self.echo_phrase = "Hello, world! Jenny is a friend of mine."
         self.pre_test_sleep = 0.3
         self.post_test_sleep = 0.2
+        self.sapi_client_sock = ""
+        self.sapi_server_sock = ""
 
         if os.path.isfile("/tmp/ldp_server_af_unix_socket"):
             os.remove("/tmp/ldp_server_af_unix_socket")
 
         super(VCLTestCase, self).setUp()
+
+    def update_vcl_app_env(self, ns_id, ns_secret, attach_sock):
+        if not ns_id:
+            if 'VCL_APP_NAMESPACE_ID' in self.vcl_env:
+                del self.vcl_env['VCL_APP_NAMESPACE_ID']
+        else:
+            self.vcl_env['VCL_APP_NAMESPACE_ID'] = ns_id
+
+        if not ns_secret:
+            if 'VCL_APP_NAMESPACE_SECRET' in self.vcl_env:
+                del self.vcl_env['VCL_APP_NAMESPACE_SECRET']
+        else:
+            self.vcl_env['VCL_APP_NAMESPACE_SECRET'] = ns_secret
+
+        if not attach_sock:
+            self.vcl_env['VCL_VPP_API_SOCKET'] = self.get_api_sock_path()
+            if 'VCL_VPP_SAPI_SOCKET' in self.vcl_env:
+                del self.vcl_env['VCL_VPP_SAPI_SOCKET']
+        else:
+            sapi_sock = "%s/app_ns_sockets/%s" % (self.tempdir, attach_sock)
+            self.vcl_env['VCL_VPP_SAPI_SOCKET'] = sapi_sock
+            if 'VCL_VPP_API_SOCKET' in self.vcl_env:
+                del self.vcl_env['VCL_VPP_API_SOCKET']
 
     def cut_thru_setup(self):
         self.vapi.session_enable_disable(is_enable=1)
@@ -87,14 +115,17 @@ class VCLTestCase(VppTestCase):
         self.vapi.session_enable_disable(is_enable=0)
 
     def cut_thru_test(self, server_app, server_args, client_app, client_args):
-        self.env = {'VCL_VPP_API_SOCKET': self.get_api_sock_path(),
-                    'VCL_APP_SCOPE_LOCAL': "true"}
+        self.vcl_env = {'VCL_APP_SCOPE_LOCAL': "true"}
+
+        self.update_vcl_app_env("", "", self.sapi_server_sock)
         worker_server = VCLAppWorker(self.build_dir, server_app, server_args,
-                                     self.logger, self.env, "server")
+                                     self.logger, self.vcl_env, "server")
         worker_server.start()
         self.sleep(self.pre_test_sleep)
+
+        self.update_vcl_app_env("", "", self.sapi_client_sock)
         worker_client = VCLAppWorker(self.build_dir, client_app, client_args,
-                                     self.logger, self.env, "client")
+                                     self.logger, self.vcl_env, "client")
         worker_client.start()
         worker_client.join(self.timeout)
         try:
@@ -192,20 +223,17 @@ class VCLTestCase(VppTestCase):
     @unittest.skipUnless(_have_iperf3, "'%s' not found, Skipping.")
     def thru_host_stack_test(self, server_app, server_args,
                              client_app, client_args):
-        self.env = {'VCL_VPP_API_SOCKET': self.get_api_sock_path(),
-                    'VCL_APP_SCOPE_GLOBAL': "true",
-                    'VCL_APP_NAMESPACE_ID': "1",
-                    'VCL_APP_NAMESPACE_SECRET': "1234"}
+        self.vcl_env = {'VCL_APP_SCOPE_GLOBAL': "true"}
 
+        self.update_vcl_app_env("1", "1234", self.sapi_server_sock)
         worker_server = VCLAppWorker(self.build_dir, server_app, server_args,
-                                     self.logger, self.env, "server")
+                                     self.logger, self.vcl_env, "server")
         worker_server.start()
         self.sleep(self.pre_test_sleep)
 
-        self.env.update({'VCL_APP_NAMESPACE_ID': "2",
-                         'VCL_APP_NAMESPACE_SECRET': "5678"})
+        self.update_vcl_app_env("2", "5678", self.sapi_client_sock)
         worker_client = VCLAppWorker(self.build_dir, client_app, client_args,
-                                     self.logger, self.env, "client")
+                                     self.logger, self.vcl_env, "client")
         worker_client.start()
         worker_client.join(self.timeout)
 
@@ -249,6 +277,7 @@ class LDPCutThruTestCase(VCLTestCase):
 
     @classmethod
     def setUpClass(cls):
+        cls.session_startup = ["poll-main", "use-app-socket-api"]
         super(LDPCutThruTestCase, cls).setUpClass()
 
     @classmethod
@@ -274,6 +303,8 @@ class LDPCutThruTestCase(VCLTestCase):
                                               "-I", "2",
                                               self.server_addr,
                                               self.server_port]
+        self.sapi_client_sock = "default"
+        self.sapi_server_sock = "default"
 
     def tearDown(self):
         super(LDPCutThruTestCase, self).tearDown()
@@ -416,6 +447,7 @@ class VCLThruHostStackTLS(VCLTestCase):
 
     @classmethod
     def setUpClass(cls):
+        cls.session_startup = ["poll-main", "use-app-socket-api"]
         super(VCLThruHostStackTLS, cls).setUpClass()
 
     @classmethod
@@ -431,6 +463,8 @@ class VCLThruHostStackTLS(VCLTestCase):
         self.client_uni_dir_tls_test_args = ["-N", "1000", "-U", "-X", "-L",
                                              self.loop0.local_ip4,
                                              self.server_port]
+        self.sapi_server_sock = "1"
+        self.sapi_client_sock = "2"
 
     def test_vcl_thru_host_stack_tls_uni_dir(self):
         """ run VCL thru host stack uni-directional TLS test """
