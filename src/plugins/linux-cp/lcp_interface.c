@@ -778,6 +778,19 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
 	{
 	  return args.rv;
 	}
+      /*
+       * The TAP interface does copy forward the host MTU based on the VPP
+       * interface's L3 MTU, but it should also ensure that the VPP tap
+       * interface has an MTU that is greater-or-equal to those. Considering
+       * users can set the interfaces at runtime (set interface mtu packet ...)
+       * ensure that the tap MTU is large enough.
+       */
+      if (sw->mtu[VNET_MTU_L3])
+	vnet_sw_interface_set_mtu (vnm, args.sw_if_index,
+				   sw->mtu[VNET_MTU_L3]);
+      else
+	vnet_sw_interface_set_mtu (vnm, args.sw_if_index,
+				   ETHERNET_MAX_PACKET_BYTES);
 
       /*
        * get the hw and ethernet of the tap
@@ -785,13 +798,14 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
       hw = vnet_get_sup_hw_interface (vnm, args.sw_if_index);
 
       /*
-       * Set the interface down on the host side.
+       * Copy the link state from VPP inon the host side.
        * This controls whether the host can RX/TX.
        */
       virtio_main_t *mm = &virtio_main;
       virtio_if_t *vif = pool_elt_at_index (mm->interfaces, hw->dev_instance);
 
-      lcp_itf_set_vif_link_state (vif->ifindex, 0 /* down */,
+      lcp_itf_set_vif_link_state (vif->ifindex,
+				  sw->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP,
 				  args.host_namespace);
 
       /*
