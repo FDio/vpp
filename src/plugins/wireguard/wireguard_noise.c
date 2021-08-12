@@ -518,6 +518,7 @@ chacha20poly1305_calc (vlib_main_t * vm,
     {
       op->tag = src + src_len - NOISE_AUTHTAG_LEN;
       src_len -= NOISE_AUTHTAG_LEN;
+      op->flags |= VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
     }
   else
     op->tag = tag_;
