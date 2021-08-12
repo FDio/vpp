@@ -153,7 +153,7 @@ class TestL2fib(VppTestCase):
         interfaces. Create host IPv4 address for every host MAC address.
 
         :param int n_hosts_per_if: Number of per interface hosts to
-        create MAC/IPv4 addresses for.
+            create MAC/IPv4 addresses for.
         """
 
         hosts = dict()

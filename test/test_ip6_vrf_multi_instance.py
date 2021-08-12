@@ -3,9 +3,9 @@
 
 **NOTES:**
     - higher number of pg-ip6 interfaces causes problems => only 15 pg-ip6 \
-    interfaces in 5 VRFs are tested
+      interfaces in 5 VRFs are tested
     - jumbo packets in configuration with 15 pg-ip6 interfaces leads to \
-    problems too
+      problems too
 
 **config 1**
     - add 15 pg-ip6 interfaces
@@ -18,8 +18,8 @@
 
 **verify 1**
     - check VRF data by parsing output of ip_route_dump API command
-    - all packets received correctly in case of pg-ip6 interfaces in the same
-    VRF
+    - all packets received correctly in case of pg-ip6 interfaces in the
+      same VRF
     - no packet received in case of pg-ip6 interfaces not in VRF
     - no packet received in case of pg-ip6 interfaces in different VRFs
 
@@ -31,8 +31,8 @@
 
 **verify 2**
     - check VRF data by parsing output of ip_route_dump API command
-    - all packets received correctly in case of pg-ip6 interfaces in the same
-    VRF
+    - all packets received correctly in case of pg-ip6 interfaces in the
+      same VRF
     - no packet received in case of pg-ip6 interfaces not in VRF
     - no packet received in case of pg-ip6 interfaces in different VRFs
 
@@ -44,8 +44,8 @@
 
 **verify 3**
     - check VRF data by parsing output of ip_route_dump API command
-    - all packets received correctly in case of pg-ip6 interfaces in the same
-    VRF
+    - all packets received correctly in case of pg-ip6 interfaces in the
+      same VRF
     - no packet received in case of pg-ip6 interfaces not in VRF
     - no packet received in case of pg-ip6 interfaces in different VRFs
 
@@ -57,8 +57,8 @@
 
 **verify 4**
     - check VRF data by parsing output of ip_route_dump API command
-    - all packets received correctly in case of pg-ip6 interfaces in the same
-    VRF
+    - all packets received correctly in case of pg-ip6 interfaces in the
+      same VRF
     - no packet received in case of pg-ip6 interfaces not in VRF
     - no packet received in case of pg-ip6 interfaces in different VRFs
 """
@@ -410,9 +410,10 @@ class TestIP6VrfMultiInst(VppTestCase):
     def run_crosswise_vrf_test(self):
         """
         Create packet streams for every pg-ip6 interface in VRF towards all
-        pg-ip6 interfaces in other VRFs, send all prepared packet streams and \
+        pg-ip6 interfaces in other VRFs, send all prepared packet streams and
         verify that:
-             - no packet received on all configured pg-ip6 interfaces
+
+        - no packet received on all configured pg-ip6 interfaces
 
         :raise RuntimeError: If any packet is captured on any pg-ip6 interface.
         """

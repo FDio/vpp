@@ -167,21 +167,21 @@ def config_tra_params(p, encryption_type):
 
 class TemplateIpsec(VppTestCase):
     """
-    TRANSPORT MODE:
+    TRANSPORT MODE::
 
-     ------   encrypt   ---
-    |tra_if| <-------> |VPP|
-     ------   decrypt   ---
+         ------   encrypt   ---
+        |tra_if| <-------> |VPP|
+         ------   decrypt   ---
 
-    TUNNEL MODE:
+    TUNNEL MODE::
 
-     ------   encrypt   ---   plain   ---
-    |tun_if| <-------  |VPP| <------ |pg1|
-     ------             ---           ---
+         ------   encrypt   ---   plain   ---
+        |tun_if| <-------  |VPP| <------ |pg1|
+         ------             ---           ---
 
-     ------   decrypt   ---   plain   ---
-    |tun_if| ------->  |VPP| ------> |pg1|
-     ------             ---           ---
+         ------   decrypt   ---   plain   ---
+        |tun_if| ------->  |VPP| ------> |pg1|
+         ------             ---           ---
     """
     tun_spd_id = 1
     tra_spd_id = 2
