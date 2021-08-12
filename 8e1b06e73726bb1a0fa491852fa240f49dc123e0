@@ -16,6 +16,24 @@
       "revId": "8e1b06e73726bb1a0fa491852fa240f49dc123e0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6cad6594_2b4fb045",
+        "filename": "src/plugins/dns/dns.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 2747,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-08-12T13:45:48Z",
+      "side": 1,
+      "message": "Either the constness will have to be spread across the caller in multiple places.\nOr the argument has to be copied just to avoid the cast.\nIn my view it does not make sense to do const in a small portion of the system.\nIt\u0027s an either or deal.",
+      "parentUuid": "8cbe564a_7f50784d",
+      "revId": "8e1b06e73726bb1a0fa491852fa240f49dc123e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
