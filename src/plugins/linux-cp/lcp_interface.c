@@ -78,6 +78,9 @@ lcp_itf_pair_register_vft (lcp_itf_pair_vft_t *lcp_itf_vft)
 #define LCP_ITF_PAIR_INFO(...)                                                \
   vlib_log_notice (lcp_itf_pair_logger, __VA_ARGS__);
 
+#define LCP_ITF_PAIR_ERR(...)                                                \
+  vlib_log_err (lcp_itf_pair_logger, __VA_ARGS__);
+
 u8 *
 format_lcp_itf_pair (u8 *s, va_list *args)
 {
@@ -679,6 +682,11 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
       clib_error_t *err;
       u16 vlan;
 
+      if (sw->type == VNET_SW_INTERFACE_TYPE_SUB && sw->sub.eth.flags.exact_match == 0) {
+        LCP_ITF_PAIR_ERR ("pair_create: can't create LCP for a sub-interface without exact-match set");
+        return VNET_API_ERROR_INVALID_ARGUMENT;
+      }
+
       /*
        * Find the parent tap by finding the pair from the parent phy
        */
@@ -725,7 +733,7 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
 					     sw->sub.id, sw->sub.eth.raw_flags,
 					     sw->sub.eth.inner_vlan_id, vlan,
 					     &host_sw_if_index))
-	LCP_ITF_PAIR_INFO ("failed create vlan: %d on %U", vlan,
+	LCP_ITF_PAIR_ERR ("pair_create: failed to create vlan: %d on %U", vlan,
 			   format_vnet_sw_if_index_name, vnet_get_main (),
 			   lip->lip_host_sw_if_index);
 
@@ -778,6 +786,19 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
 	{
 	  return args.rv;
 	}
+      /*
+       * The TAP interface does copy forward the host MTU based on the VPP
+       * interface's L3 MTU, but it should also ensure that the VPP tap
+       * interface has an MTU that is greater-or-equal to those. Considering
+       * users can set the interfaces at runtime (set interface mtu packet ...)
+       * ensure that the tap MTU is large enough.
+       */
+      if (sw->mtu[VNET_MTU_L3])
+	vnet_sw_interface_set_mtu (vnm, args.sw_if_index,
+				   sw->mtu[VNET_MTU_L3]);
+      else
+	vnet_sw_interface_set_mtu (vnm, args.sw_if_index,
+				   ETHERNET_MAX_PACKET_BYTES);
 
       /*
        * get the hw and ethernet of the tap
@@ -785,13 +806,14 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
       hw = vnet_get_sup_hw_interface (vnm, args.sw_if_index);
 
       /*
-       * Set the interface down on the host side.
+       * Copy the link state from VPP inon the host side.
        * This controls whether the host can RX/TX.
        */
       virtio_main_t *mm = &virtio_main;
       virtio_if_t *vif = pool_elt_at_index (mm->interfaces, hw->dev_instance);
 
-      lcp_itf_set_vif_link_state (vif->ifindex, 0 /* down */,
+      lcp_itf_set_vif_link_state (vif->ifindex,
+				  sw->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP,
 				  args.host_namespace);
 
       /*
@@ -812,7 +834,7 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
 
   if (!vif_index)
     {
-      LCP_ITF_PAIR_INFO ("failed pair add (no vif index): {%U, %U, %s}",
+      LCP_ITF_PAIR_ERR ("pair_create: failed (no vif index): {%U, %U, %s}",
 			 format_vnet_sw_if_index_name, vnet_get_main (),
 			 phy_sw_if_index, format_vnet_sw_if_index_name,
 			 vnet_get_main (), host_sw_if_index, host_if_name);
@@ -823,7 +845,7 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
   lcp_itf_pair_add (host_sw_if_index, phy_sw_if_index, host_if_name, vif_index,
 		    host_if_type, ns);
 
-  LCP_ITF_PAIR_INFO ("pair create: {%U, %U, %s}", format_vnet_sw_if_index_name,
+  LCP_ITF_PAIR_INFO ("pair_create: {%U, %U, %s}", format_vnet_sw_if_index_name,
 		     vnet_get_main (), phy_sw_if_index,
 		     format_vnet_sw_if_index_name, vnet_get_main (),
 		     host_sw_if_index, host_if_name);
