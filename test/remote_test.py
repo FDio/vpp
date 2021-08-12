@@ -69,23 +69,33 @@ class RemoteClass(Process):
     """
     This class can wrap around and adapt the interface of another class,
     and then delegate its execution to a newly forked child process.
+
     Usage:
-        # Create a remotely executed instance of MyClass
-        object = RemoteClass(MyClass, arg1='foo', arg2='bar')
-        object.start_remote()
-        # Access the object normally as if it was an instance of your class.
-        object.my_attribute = 20
-        print object.my_attribute
-        print object.my_method(object.my_attribute)
-        object.my_attribute.nested_attribute = 'test'
-        # If you need the value of a remote attribute, use .get_remote_value
-        method. This method is automatically called when needed in the context
-        of a remotely executed class. E.g.:
-        if (object.my_attribute.get_remote_value() > 20):
-            object.my_attribute2 = object.my_attribute
-        # Destroy the instance
-        object.quit_remote()
-        object.terminate()
+
+        #. Create a remotely executed instance of MyClass. ::
+
+            object = RemoteClass(MyClass, arg1='foo', arg2='bar')
+            object.start_remote()
+
+        #. Access the object normally as if it was an instance of your
+           class. ::
+
+            object.my_attribute = 20
+            print object.my_attribute
+            print object.my_method(object.my_attribute)
+            object.my_attribute.nested_attribute = 'test'
+
+        #. If you need the value of a remote attribute, use .get_remote_value
+           method. This method is automatically called when needed in the
+           context of a remotely executed class. E.g. ::
+
+            if (object.my_attribute.get_remote_value() > 20):
+                object.my_attribute2 = object.my_attribute
+
+        #. Destroy the instance. ::
+
+            object.quit_remote()
+            object.terminate()
     """
 
     GET = 0       # Get attribute remotely
@@ -354,32 +364,32 @@ class RemoteClass(Process):
 class RemoteVppTestCase(VppTestCase):
     """ Re-use VppTestCase to create remote VPP segment
 
-        In your test case:
+        In your test case::
 
-        @classmethod
-        def setUpClass(cls):
-            # fork new process before client connects to VPP
-            cls.remote_test = RemoteClass(RemoteVppTestCase)
+            @classmethod
+            def setUpClass(cls):
+                # fork new process before client connects to VPP
+                cls.remote_test = RemoteClass(RemoteVppTestCase)
 
-            # start remote process
-            cls.remote_test.start_remote()
+                # start remote process
+                cls.remote_test.start_remote()
 
-            # set up your test case
-            super(MyTestCase, cls).setUpClass()
+                # set up your test case
+                super(MyTestCase, cls).setUpClass()
 
-            # set up remote test
-            cls.remote_test.setUpClass(cls.tempdir)
+                # set up remote test
+                cls.remote_test.setUpClass(cls.tempdir)
 
-        @classmethod
-        def tearDownClass(cls):
-            # tear down remote test
-            cls.remote_test.tearDownClass()
+            @classmethod
+            def tearDownClass(cls):
+                # tear down remote test
+                cls.remote_test.tearDownClass()
 
-            # stop remote process
-            cls.remote_test.quit_remote()
+                # stop remote process
+                cls.remote_test.quit_remote()
 
-            # tear down your test case
-            super(MyTestCase, cls).tearDownClass()
+                # tear down your test case
+                super(MyTestCase, cls).tearDownClass()
     """
 
     def __init__(self):

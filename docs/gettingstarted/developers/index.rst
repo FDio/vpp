@@ -44,4 +44,5 @@ The Developers section covers the following areas:
    quic_plugin
    cross_compile_macos.rst
    cnat
+   ipsec
    VPPAPI.md

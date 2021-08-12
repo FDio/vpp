@@ -149,21 +149,25 @@ class VppPapiProvider(object):
         return self
 
     def assert_negative_api_retval(self):
-        """ Expect API failure - used with with, e.g.:
-            with self.vapi.assert_negative_api_retval():
-                self.vapi.<api call expected to fail>
+        """ Expect API failure - used with with, e.g.::
+
+                with self.vapi.assert_negative_api_retval():
+                    self.vapi.<api call expected to fail>
+
+            ..
         """
         self._expect_stack.append(self._expect_api_retval)
         self._expect_api_retval = self._negative
         return self
 
     def assert_zero_api_retval(self):
-        """ Expect API success - used with with, e.g.:
-            with self.vapi.assert_negative_api_retval():
-                self.vapi.<api call expected to succeed>
+        """ Expect API success - used with with, e.g.::
 
-            note: this is useful only inside another with block
-                  as success is the default expected value
+                with self.vapi.assert_negative_api_retval():
+                    self.vapi.<api call expected to succeed>
+
+            :note: this is useful only inside another with block
+                 as success is the default expected value
         """
         self._expect_stack.append(self._expect_api_retval)
         self._expect_api_retval = self._zero
@@ -843,7 +847,7 @@ class VppPapiProvider(object):
 
         :param spd_id - SPD ID to be created in the vpp . mandatory
         :param is_add - create (1) or delete(0) SPD (Default 1 - add) .
-              optional
+        optional
         :returns: reply from the API
         """
         return self.api(
@@ -894,11 +898,12 @@ class VppPapiProvider(object):
                                 is_ip_any=0):
         """ IPSEC policy SPD add/del   -
                     Wrapper to configure ipsec SPD policy entries in VPP
+
         :param spd_id: SPD ID for the policy
         :param local_address_start: local-ip-range start address
-        :param local_address_stop : local-ip-range stop address
+        :param local_address_stop: local-ip-range stop address
         :param remote_address_start: remote-ip-range start address
-        :param remote_address_stop : remote-ip-range stop address
+        :param remote_address_stop: remote-ip-range stop address
         :param local_port_start: (Default value = 0)
         :param local_port_stop: (Default value = 65535)
         :param remote_port_start: (Default value = 0)
@@ -906,10 +911,10 @@ class VppPapiProvider(object):
         :param protocol: Any(0), AH(51) & ESP(50) protocol (Default value = 0)
         :param sa_id: Security Association ID for mapping it to SPD
         :param policy: bypass(0), discard(1), resolve(2) or protect(3) action
-               (Default value = 0)
+            (Default value = 0)
         :param priority: value for the spd action (Default value = 100)
         :param is_outbound: flag for inbound(0) or outbound(1)
-               (Default value = 1)
+            (Default value = 1)
         :param is_add: (Default value = 1)
         """
         return self.api(
@@ -1038,7 +1043,7 @@ class VppPapiProvider(object):
     def igmp_listen(self, filter, sw_if_index, saddrs, gaddr):
         """ Listen for new (S,G) on specified interface
 
-        :param enable: add/del
+        :param enable: add/delas
         :param sw_if_index: interface sw index
         :param saddr: source ip4 addr
         :param gaddr: group ip4 addr

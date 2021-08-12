@@ -18,17 +18,18 @@ from vpp_papi import VppEnum
 
 class IPSecNATTestCase(TemplateIpsec):
     """ IPSec/NAT
-    TUNNEL MODE:
 
+    TUNNEL MODE::
 
-     public network  |   private network
-     ---   encrypt  ---   plain   ---
-    |pg0| <------- |VPP| <------ |pg1|
-     ---            ---           ---
+         public network  |   private network
+         ---   encrypt  ---   plain   ---
+        |pg0| <------- |VPP| <------ |pg1|
+         ---            ---           ---
 
-     ---   decrypt  ---   plain   ---
-    |pg0| -------> |VPP| ------> |pg1|
-     ---            ---           ---
+         ---   decrypt  ---   plain   ---
+        |pg0| -------> |VPP| ------> |pg1|
+         ---            ---           ---
+
     """
 
     tcp_port_in = 6303

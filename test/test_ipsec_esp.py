@@ -259,30 +259,35 @@ class TemplateIpsecEsp(ConfigIpsecESP):
     Basic test for ipsec esp sanity - tunnel and transport modes.
 
     Below 4 cases are covered as part of this test
-    1) ipsec esp v4 transport basic test  - IPv4 Transport mode
+
+    #. ipsec esp v4 transport basic test  - IPv4 Transport mode
         scenario using HMAC-SHA1-96 integrity algo
-    2) ipsec esp v4 transport burst test
-        Above test for 257 pkts
-    3) ipsec esp 4o4 tunnel basic test    - IPv4 Tunnel mode
-        scenario using HMAC-SHA1-96 integrity algo
-    4) ipsec esp 4o4 tunnel burst test
+
+    #. ipsec esp v4 transport burst test
         Above test for 257 pkts
 
-    TRANSPORT MODE:
+    #. ipsec esp 4o4 tunnel basic test    - IPv4 Tunnel mode
+        scenario using HMAC-SHA1-96 integrity algo
 
-     ---   encrypt   ---
-    |pg2| <-------> |VPP|
-     ---   decrypt   ---
+    #. ipsec esp 4o4 tunnel burst test
+        Above test for 257 pkts
 
-    TUNNEL MODE:
+    TRANSPORT MODE::
 
-     ---   encrypt   ---   plain   ---
-    |pg0| <-------  |VPP| <------ |pg1|
-     ---             ---           ---
+         ---   encrypt   ---
+        |pg2| <-------> |VPP|
+         ---   decrypt   ---
 
-     ---   decrypt   ---   plain   ---
-    |pg0| ------->  |VPP| ------> |pg1|
-     ---             ---           ---
+    TUNNEL MODE::
+
+         ---   encrypt   ---   plain   ---
+        |pg0| <-------  |VPP| <------ |pg1|
+         ---             ---           ---
+
+         ---   decrypt   ---   plain   ---
+        |pg0| ------->  |VPP| ------> |pg1|
+         ---             ---           ---
+
     """
 
     @classmethod

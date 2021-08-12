@@ -24,21 +24,22 @@ class ConfigIpsecAH(TemplateIpsec):
     """
     Basic test for IPSEC using AH transport and Tunnel mode
 
-    TRANSPORT MODE:
+    TRANSPORT MODE::
 
-     ---   encrypt   ---
-    |pg2| <-------> |VPP|
-     ---   decrypt   ---
+         ---   encrypt   ---
+        |pg2| <-------> |VPP|
+         ---   decrypt   ---
 
-    TUNNEL MODE:
+    TUNNEL MODE::
 
-     ---   encrypt   ---   plain   ---
-    |pg0| <-------  |VPP| <------ |pg1|
-     ---             ---           ---
+         ---   encrypt   ---   plain   ---
+        |pg0| <-------  |VPP| <------ |pg1|
+         ---             ---           ---
 
-     ---   decrypt   ---   plain   ---
-    |pg0| ------->  |VPP| ------> |pg1|
-     ---             ---           ---
+         ---   decrypt   ---   plain   ---
+        |pg0| ------->  |VPP| ------> |pg1|
+         ---             ---           ---
+
     """
     encryption_type = AH
     net_objs = []
@@ -270,21 +271,22 @@ class TemplateIpsecAh(ConfigIpsecAH):
     """
     Basic test for IPSEC using AH transport and Tunnel mode
 
-    TRANSPORT MODE:
+    TRANSPORT MODE::
 
-     ---   encrypt   ---
-    |pg2| <-------> |VPP|
-     ---   decrypt   ---
+         ---   encrypt   ---
+        |pg2| <-------> |VPP|
+         ---   decrypt   ---
 
-    TUNNEL MODE:
+    TUNNEL MODE::
 
-     ---   encrypt   ---   plain   ---
-    |pg0| <-------  |VPP| <------ |pg1|
-     ---             ---           ---
+         ---   encrypt   ---   plain   ---
+        |pg0| <-------  |VPP| <------ |pg1|
+         ---             ---           ---
 
-     ---   decrypt   ---   plain   ---
-    |pg0| ------->  |VPP| ------> |pg1|
-     ---             ---           ---
+         ---   decrypt   ---   plain   ---
+        |pg0| ------->  |VPP| ------> |pg1|
+         ---             ---           ---
+
     """
     @classmethod
     def setUpClass(cls):

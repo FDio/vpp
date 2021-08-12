@@ -19,8 +19,8 @@
 # -- Project information -----------------------------------------------------
 
 project = u'The Vector Packet Processor'
-copyright = u'2018-2020, Linux Foundation'
-author = u'John DeNisco'
+copyright = u'2018-2021, Linux Foundation'
+author = u'FD.io VPP Community'
 
 # The short X.Y version
 version = u'master'
@@ -109,7 +109,7 @@ html_static_path = ['_static']
 
 
 def setup(app):
-    app.add_stylesheet('css/rules.css')
+    app.add_css_file('css/rules.css')
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
