@@ -185,8 +185,8 @@ lcp_adj_show_cmd (vlib_main_t *vm, unformat_input_t *input,
   if (unformat (input, "verbose"))
     verbose = 1;
 
-  vlib_cli_output (vm, "Linux-CP Adjs:\n%U", BV (format_bihash), &lcp_adj_tbl,
-		   verbose);
+  vlib_cli_output (vm, "linux-cp adjacencies:\n%U", BV (format_bihash),
+		   &lcp_adj_tbl, verbose);
 
   return 0;
 }
@@ -210,7 +210,7 @@ lcp_adj_init (vlib_main_t *vm)
 {
   adj_type = adj_delegate_register_new_type (&lcp_adj_vft);
 
-  BV (clib_bihash_init) (&lcp_adj_tbl, "linux-cp ADJ table", 1024, 1 << 24);
+  BV (clib_bihash_init) (&lcp_adj_tbl, "linux-cp adjacencies", 1024, 1 << 24);
   BV (clib_bihash_set_kvp_format_fn) (&lcp_adj_tbl, format_lcp_adj_kvp);
 
   return (NULL);
