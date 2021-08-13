@@ -187,12 +187,6 @@ adj_glean_update_rewrite_walk (adj_index_t ai,
 }
 
 void
-adj_glean_update_rewrite_itf (u32 sw_if_index)
-{
-    adj_glean_walk (sw_if_index, adj_glean_update_rewrite_walk, NULL);
-}
-
-void
 adj_glean_walk (u32 sw_if_index,
                 adj_walk_cb_t cb,
                 void *data)
@@ -425,6 +419,16 @@ adj_glean_interface_delete (vnet_main_t * vnm,
 
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION(adj_glean_interface_delete);
 
+/**
+ * Callback function invoked when an interface's MAC Address changes
+ */
+static void
+adj_glean_ethernet_change_mac (ethernet_main_t * em,
+                             u32 sw_if_index, uword opaque)
+{
+    adj_glean_walk (sw_if_index, adj_glean_update_rewrite_walk, NULL);
+}
+
 u8*
 format_adj_glean (u8* s, va_list *ap)
 {
@@ -509,4 +513,10 @@ void
 adj_glean_module_init (void)
 {
     dpo_register(DPO_ADJACENCY_GLEAN, &adj_glean_dpo_vft, glean_nodes);
+
+    ethernet_address_change_ctx_t ctx = {
+        .function = adj_glean_ethernet_change_mac,
+        .function_opaque = 0,
+    };
+    vec_add1 (ethernet_main.address_change_callbacks, ctx);
 }

@@ -692,13 +692,18 @@ ip_neighbor_update (vnet_main_t * vnm, adj_index_t ai)
 	  ip_neighbor_probe (adj);
 	}
       break;
+    case IP_LOOKUP_NEXT_REWRITE:
+      /* Update of an existing rewrite adjacency happens e.g. when the
+       * interface's MAC address changes */
+      if (NULL != ipn)
+	ip_neighbor_mk_complete (ai, ipn);
+      break;
     case IP_LOOKUP_NEXT_GLEAN:
     case IP_LOOKUP_NEXT_BCAST:
     case IP_LOOKUP_NEXT_MCAST:
     case IP_LOOKUP_NEXT_DROP:
     case IP_LOOKUP_NEXT_PUNT:
     case IP_LOOKUP_NEXT_LOCAL:
-    case IP_LOOKUP_NEXT_REWRITE:
     case IP_LOOKUP_NEXT_MCAST_MIDCHAIN:
     case IP_LOOKUP_NEXT_MIDCHAIN:
     case IP_LOOKUP_NEXT_ICMP_ERROR:
@@ -1140,31 +1145,6 @@ ip6_neighbor_proxy_del (u32 sw_if_index, const ip6_address_t * addr)
       return (ip_nbr_vfts[AF_IP6].inv_proxy6_del (sw_if_index, addr));
     }
   return -1;
-}
-
-static void
-ip_neighbor_ethernet_change_mac (ethernet_main_t * em,
-				 u32 sw_if_index, uword opaque)
-{
-  ip_neighbor_t *ipn;
-
-  IP_NEIGHBOR_DBG ("mac-change: %U",
-		   format_vnet_sw_if_index_name, vnet_get_main (),
-		   sw_if_index);
-
-  /* *INDENT-OFF* */
-  pool_foreach (ipn, ip_neighbor_pool)
-   {
-    if (ipn->ipn_key->ipnk_sw_if_index == sw_if_index)
-      adj_nbr_walk_nh (ipn->ipn_key->ipnk_sw_if_index,
-                       ip_address_family_to_fib_proto(ip_neighbor_get_af(ipn)),
-                       &ip_addr_46(&ipn->ipn_key->ipnk_ip),
-                       ip_neighbor_mk_complete_walk,
-                       ipn);
-  }
-  /* *INDENT-ON* */
-
-  adj_glean_update_rewrite_itf (sw_if_index);
 }
 
 void
@@ -1806,14 +1786,6 @@ ip_neighbor_init (vlib_main_t * vm)
     };
     vec_add1 (ip6_main.table_bind_callbacks, cb);
   }
-  {
-    ethernet_address_change_ctx_t ctx = {
-      .function = ip_neighbor_ethernet_change_mac,
-      .function_opaque = 0,
-    };
-    vec_add1 (ethernet_main.address_change_callbacks, ctx);
-  }
-
   ipn_logger = vlib_log_register_class ("ip", "neighbor");
 
   ip_address_family_t af;

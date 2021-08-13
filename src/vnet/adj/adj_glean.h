@@ -67,7 +67,6 @@ extern adj_index_t adj_glean_get(fib_protocol_t proto,
  * glean behaviour on an adjacency liked to a connected prefix.
  */
 extern void adj_glean_update_rewrite(adj_index_t adj_index);
-extern void adj_glean_update_rewrite_itf(u32 sw_if_index);
 
 /**
  * Return the source address from the glean

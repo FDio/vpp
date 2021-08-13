@@ -910,11 +910,38 @@ adj_nbr_interface_add_del (vnet_main_t * vnm,
     }
 
     return (NULL);
-   
 }
 
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION(adj_nbr_interface_add_del);
 
+
+static adj_walk_rc_t
+adj_nbr_ethernet_mac_change_one (adj_index_t ai,
+                                 void *arg)
+{
+    vnet_update_adjacency_for_sw_interface(vnet_get_main(),
+                                           adj_get_sw_if_index(ai),
+                                           ai);
+
+    return (ADJ_WALK_RC_CONTINUE);
+}
+
+/**
+ * Callback function invoked when an interface's MAC Address changes
+ */
+static void
+adj_nbr_ethernet_change_mac (ethernet_main_t * em,
+                             u32 sw_if_index, uword opaque)
+{
+    fib_protocol_t proto;
+
+    FOR_EACH_FIB_IP_PROTOCOL(proto)
+    {
+	adj_nbr_walk(sw_if_index, proto,
+		     adj_nbr_ethernet_mac_change_one,
+		     NULL);
+    }
+}
 
 static adj_walk_rc_t
 adj_nbr_show_one (adj_index_t ai,
@@ -1156,4 +1183,10 @@ adj_nbr_module_init (void)
     dpo_register(DPO_ADJACENCY_INCOMPLETE,
                  &adj_nbr_incompl_dpo_vft,
                  nbr_incomplete_nodes);
+
+    ethernet_address_change_ctx_t ctx = {
+        .function = adj_nbr_ethernet_change_mac,
+        .function_opaque = 0,
+    };
+    vec_add1 (ethernet_main.address_change_callbacks, ctx);
 }

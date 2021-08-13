@@ -216,6 +216,7 @@ ethernet_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
 	  adj_glean_update_rewrite (ai);
 	  break;
 	case IP_LOOKUP_NEXT_ARP:
+	case IP_LOOKUP_NEXT_REWRITE:
 	  ip_neighbor_update (vnm, ai);
 	  break;
 	case IP_LOOKUP_NEXT_BCAST:
@@ -257,7 +258,6 @@ ethernet_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
 	case IP_LOOKUP_NEXT_DROP:
 	case IP_LOOKUP_NEXT_PUNT:
 	case IP_LOOKUP_NEXT_LOCAL:
-	case IP_LOOKUP_NEXT_REWRITE:
 	case IP_LOOKUP_NEXT_MCAST_MIDCHAIN:
 	case IP_LOOKUP_NEXT_MIDCHAIN:
 	case IP_LOOKUP_NEXT_ICMP_ERROR:

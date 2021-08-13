@@ -1372,7 +1372,7 @@ class ARPTestCase(VppTestCase):
 
     def test_arp_incomplete(self):
         """ ARP Incomplete"""
-        self.pg1.generate_remote_hosts(3)
+        self.pg1.generate_remote_hosts(4)
 
         p0 = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
               IP(src=self.pg0.remote_ip4,
@@ -1382,6 +1382,11 @@ class ARPTestCase(VppTestCase):
         p1 = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
               IP(src=self.pg0.remote_ip4,
                  dst=self.pg1.remote_hosts[2].ip4) /
+              UDP(sport=1234, dport=1234) /
+              Raw())
+        p2 = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+              IP(src=self.pg0.remote_ip4,
+                 dst="1.1.1.1") /
               UDP(sport=1234, dport=1234) /
               Raw())
 
@@ -1405,6 +1410,18 @@ class ARPTestCase(VppTestCase):
         static_arp.add_vpp_config()
 
         #
+        # add a route through remote host 3 hence we get an incomplete
+        #
+        VppIpRoute(self, "1.1.1.1", 32,
+                   [VppRoutePath(self.pg1.remote_hosts[3].ip4,
+                                 self.pg1.sw_if_index)]).add_vpp_config()
+        rx = self.send_and_expect(self.pg0, [p2], self.pg1)
+        self.verify_arp_req(rx[0],
+                            self.pg1.local_mac,
+                            self.pg1.local_ip4,
+                            self.pg1._remote_hosts[3].ip4)
+
+        #
         # change the interface's MAC
         #
         self.vapi.sw_interface_set_mac_address(self.pg1.sw_if_index,
@@ -1418,6 +1435,11 @@ class ARPTestCase(VppTestCase):
                             "00:00:00:33:33:33",
                             self.pg1.local_ip4,
                             self.pg1._remote_hosts[2].ip4)
+        rx = self.send_and_expect(self.pg0, [p2], self.pg1)
+        self.verify_arp_req(rx[0],
+                            "00:00:00:33:33:33",
+                            self.pg1.local_ip4,
+                            self.pg1._remote_hosts[3].ip4)
 
         #
         # packets to the resolved host also have the new source mac
