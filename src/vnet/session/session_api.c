@@ -1385,7 +1385,7 @@ done:
   vec_free (fds);
 }
 
-static void
+void
 sapi_socket_close_w_handle (u32 api_handle)
 {
   app_namespace_t *app_ns = app_namespace_get (api_handle >> 16);
@@ -1443,10 +1443,7 @@ sapi_add_del_worker_handler (app_namespace_t * app_ns,
     }
 
   if (!mp->is_add)
-    {
-      sapi_socket_close_w_handle (sapi_handle);
-      goto done;
-    }
+    goto done;
 
   /* Send fifo segment fd if needed */
   if (ssvm_type (args.segment) == SSVM_SEGMENT_MEMFD)
@@ -1573,7 +1570,6 @@ sapi_socket_detach (app_namespace_t * app_ns, clib_socket_t * cs)
   u32 api_client_handle;
 
   api_client_handle = appns_sapi_socket_handle (app_ns, cs);
-  sapi_socket_close_w_handle (api_client_handle);
 
   /* Cleanup everything because app worker closed socket or crashed */
   handle = (app_ns_api_handle_t *) & cs->private_data;
