@@ -19,7 +19,7 @@
     used to control the ACL plugin
 */
 
-option version = "2.0.0";
+option version = "2.0.1";
 
 import "plugins/acl/acl_types.api";
 import "vnet/interface_types.api";
@@ -496,4 +496,44 @@ autoreply define acl_stats_intf_counters_enable
   u32 context;
   bool enable;
   option vat_help = "[disable]";
+};
+
+/** \brief Enable hash-based ACL lookups (default) or disable them (use linear search)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable - whether to enable or disable the usage of hash lookup algorithm
+*/
+
+autoreply define acl_plugin_use_hash_lookup_set
+{
+  option status="in_progress";
+  u32 client_index;
+  u32 context;
+  bool enable;
+};
+
+/** \brief Get if the hash-based ACL lookups are enabled (default) or not (use linear search)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+
+
+define acl_plugin_use_hash_lookup_get
+{
+  option status="in_progress";
+  u32 client_index;
+  u32 context;
+};
+
+
+/** \brief Reply with the previous state of the hash lookup
+    @param context - returned sender context, to match reply w/ request
+    @param prev_enable - previous state of the hash lookup use
+*/
+
+define acl_plugin_use_hash_lookup_get_reply
+{
+  option status="in_progress";
+  u32 context;
+  bool enable;
 };

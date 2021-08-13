@@ -99,6 +99,15 @@ static void vl_api_acl_plugin_get_version_reply_t_handler
         vam->result_ready = 1;
     }
 
+    static void
+    vl_api_acl_plugin_use_hash_lookup_get_reply_t_handler (
+      vl_api_acl_plugin_use_hash_lookup_get_reply_t *mp)
+    {
+      vat_main_t *vam = acl_test_main.vat_main;
+      clib_warning ("ACL hash lookups enabled: %d", mp->enable);
+      vam->result_ready = 1;
+    }
+
 static void vl_api_acl_interface_list_details_t_handler
     (vl_api_acl_interface_list_details_t * mp)
     {
@@ -551,6 +560,63 @@ static int api_acl_stats_intf_counters_enable (vat_main_t * vam)
     return ret;
 }
 
+static int
+api_acl_plugin_use_hash_lookup_set (vat_main_t *vam)
+{
+  acl_test_main_t *sm = &acl_test_main;
+  unformat_input_t *i = vam->input;
+  vl_api_acl_plugin_use_hash_lookup_set_t *mp;
+  u32 msg_size = sizeof (*mp);
+  int ret;
+
+  vam->result_ready = 0;
+  mp = vl_msg_api_alloc_as_if_client (msg_size);
+  memset (mp, 0, msg_size);
+  mp->_vl_msg_id =
+    ntohs (VL_API_ACL_PLUGIN_USE_HASH_LOOKUP_SET + sm->msg_id_base);
+  mp->client_index = vam->my_client_index;
+  mp->enable = 1;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "disable"))
+	mp->enable = 0;
+      else if (unformat (i, "enable"))
+	mp->enable = 1;
+      else
+	break;
+    }
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static int
+api_acl_plugin_use_hash_lookup_get (vat_main_t *vam)
+{
+  acl_test_main_t *sm = &acl_test_main;
+  vl_api_acl_plugin_use_hash_lookup_set_t *mp;
+  u32 msg_size = sizeof (*mp);
+  int ret;
+
+  vam->result_ready = 0;
+  mp = vl_msg_api_alloc_as_if_client (msg_size);
+  memset (mp, 0, msg_size);
+  mp->_vl_msg_id =
+    ntohs (VL_API_ACL_PLUGIN_USE_HASH_LOOKUP_GET + sm->msg_id_base);
+  mp->client_index = vam->my_client_index;
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
 
 /*
  * Read the series of ACL entries from file in the following format:
