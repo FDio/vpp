@@ -16,6 +16,24 @@
       "revId": "6508af4765d8c3387a83768a39e351be272f3556",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "abd1658d_f590350c",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 664,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2021-08-13T19:40:46Z",
+      "side": 1,
+      "message": "Sure - I chose vnet_sw_interface_supports_addressing() to align with the other queryable functions in interface_funcs.h.\n\nPTAL.",
+      "parentUuid": "74e55bf0_94dac9bd",
+      "revId": "6508af4765d8c3387a83768a39e351be272f3556",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
