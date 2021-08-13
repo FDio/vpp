@@ -390,10 +390,13 @@ tcp_connection_close (tcp_connection_t * tc)
 	  tcp_worker_stats_inc (wrk, rst_unread, 1);
 	  break;
 	}
-      if (!transport_max_tx_dequeue (&tc->connection))
-	tcp_send_fin (tc);
-      else
+
+      if (transport_max_tx_dequeue (&tc->connection) >
+	  (tc->snd_nxt - tc->snd_una))
+	/* If there's data that has never been sent, make FIN pending */
 	tc->flags |= TCP_CONN_FINPNDG;
+      else
+	tcp_send_fin (tc);
       tcp_connection_set_state (tc, TCP_STATE_FIN_WAIT_1);
       /* Set a timer in case the peer stops responding. Otherwise the
        * connection will be stuck here forever. */
@@ -402,7 +405,11 @@ tcp_connection_close (tcp_connection_t * tc)
 		     tcp_cfg.finwait1_time);
       break;
     case TCP_STATE_CLOSE_WAIT:
-      if (!transport_max_tx_dequeue (&tc->connection))
+      if (transport_max_tx_dequeue (&tc->connection) >
+	  (tc->snd_nxt - tc->snd_una))
+	/* If there's data that has never been sent, make FIN pending */
+	tc->flags |= TCP_CONN_FINPNDG;
+      else
 	{
 	  tcp_send_fin (tc);
 	  tcp_connection_timers_reset (tc);
@@ -410,8 +417,6 @@ tcp_connection_close (tcp_connection_t * tc)
 	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
 			    tcp_cfg.lastack_time);
 	}
-      else
-	tc->flags |= TCP_CONN_FINPNDG;
       break;
     case TCP_STATE_FIN_WAIT_1:
       tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
@@ -437,10 +442,13 @@ tcp_session_half_close (u32 conn_index, u32 thread_index)
   /* If the connection is not in ESTABLISHED state, ignore it */
   if (tc->state != TCP_STATE_ESTABLISHED)
     return;
-  if (!transport_max_tx_dequeue (&tc->connection))
-    tcp_send_fin (tc);
-  else
+
+  if (transport_max_tx_dequeue (&tc->connection) > (tc->snd_nxt - tc->snd_una))
+    /* If there's data that has never been sent, make FIN pending */
     tc->flags |= TCP_CONN_FINPNDG;
+  else
+    tcp_send_fin (tc);
+
   tcp_connection_set_state (tc, TCP_STATE_FIN_WAIT_1);
   /* Set a timer in case the peer stops responding. Otherwise the
    * connection will be stuck here forever. */
