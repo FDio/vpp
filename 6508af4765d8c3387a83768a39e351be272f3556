@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "74e55bf0_94dac9bd",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 664,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-08-13T18:18:43Z",
+      "side": 1,
+      "message": "could you put this logic into a common ip_interface_supports_addressing() (no some such name) please.",
+      "revId": "6508af4765d8c3387a83768a39e351be272f3556",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
