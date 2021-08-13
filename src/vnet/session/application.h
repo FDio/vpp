@@ -364,6 +364,7 @@ int mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
 				  session_t * s, session_error_t err);
 void mq_send_unlisten_reply (app_worker_t * app_wrk, session_handle_t sh,
 			     u32 context, int rv);
+void sapi_socket_close_w_handle (u32 api_handle);
 
 crypto_engine_type_t app_crypto_engine_type_add (void);
 u8 app_crypto_engine_n_types (void);
