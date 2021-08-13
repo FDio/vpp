@@ -1061,6 +1061,8 @@ vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a)
 	return VNET_API_ERROR_INVALID_VALUE;
 
       application_api_table_del (app_wrk->api_client_index);
+      if (appns_sapi_enabled ())
+	sapi_socket_close_w_handle (app_wrk->api_client_index);
       app_worker_free (app_wrk);
       app_worker_map_free (app, wrk_map);
       if (application_n_workers (app) == 0)
