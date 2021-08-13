@@ -497,3 +497,30 @@ autoreply define acl_stats_intf_counters_enable
   bool enable;
   option vat_help = "[disable]";
 };
+
+/** \brief Enable hash-based ACL lookups (default) or disable them (use linear search)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable - whether to enable or disable the usage of hash lookup algorithm
+*/
+
+define acl_plugin_use_hash_lookup_set
+{
+  option status="in_progress";
+  u32 client_index;
+  u32 context;
+  bool enable;
+};
+
+
+/** \brief Reply with the previous state of the hash lookup
+    @param context - returned sender context, to match reply w/ request
+    @param prev_enable - previous state of the hash lookup use
+*/
+
+define acl_plugin_use_hash_lookup_set_reply
+{
+  option status="in_progress";
+  u32 context;
+  bool prev_enable;
+};
