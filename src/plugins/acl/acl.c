@@ -2451,6 +2451,45 @@ static void
 }
 
 static void
+vl_api_acl_plugin_use_hash_lookup_set_t_handler (
+  vl_api_acl_plugin_use_hash_lookup_set_t *mp)
+{
+  acl_main_t *am = &acl_main;
+  vl_api_acl_plugin_use_hash_lookup_set_reply_t *rmp;
+  vl_api_registration_t *reg;
+  int rv = 0;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  am->use_hash_acl_matching = mp->enable;
+  REPLY_MACRO (VL_API_ACL_PLUGIN_USE_HASH_LOOKUP_SET_REPLY);
+}
+
+static void
+vl_api_acl_plugin_use_hash_lookup_get_t_handler (
+  vl_api_acl_plugin_use_hash_lookup_get_t *mp)
+{
+  acl_main_t *am = &acl_main;
+  vl_api_acl_plugin_use_hash_lookup_get_reply_t *rmp;
+  int msg_size = sizeof (*rmp);
+  vl_api_registration_t *reg;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  rmp = vl_msg_api_alloc (msg_size);
+  clib_memset (rmp, 0, msg_size);
+  rmp->_vl_msg_id =
+    ntohs (VL_API_ACL_PLUGIN_USE_HASH_LOOKUP_GET_REPLY + am->msg_id_base);
+  rmp->context = mp->context;
+  rmp->enable = am->use_hash_acl_matching;
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+static void
 acl_set_timeout_sec (int timeout_type, u32 value)
 {
   acl_main_t *am = &acl_main;
@@ -3432,6 +3471,8 @@ acl_show_aclplugin_tables_fn (vlib_main_t * vm,
     }
   vlib_cli_output (vm, "Stats counters enabled for interface ACLs: %d",
 		   acl_main.interface_acl_counters_enabled);
+  vlib_cli_output (vm, "Use hash-based lookup for ACLs: %d",
+		   acl_main.use_hash_acl_matching);
   if (show_mask_type)
     acl_plugin_show_tables_mask_type ();
   if (show_acl_hash_info)
