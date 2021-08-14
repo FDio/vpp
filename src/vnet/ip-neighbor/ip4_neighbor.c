@@ -41,6 +41,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/util/throttle.h>
 #include <vnet/fib/fib_sas.h>
+#include <vnet/ip/ip_sas.h>
 
 /** ARP throttling */
 static throttle_t arp_throttle;
@@ -62,7 +63,9 @@ ip4_neighbor_probe_dst (u32 sw_if_index, const ip4_address_t * dst)
   /* any glean will do, it's just for the rewrite */
   ai = adj_glean_get (FIB_PROTOCOL_IP4, sw_if_index, NULL);
 
-  if (ADJ_INDEX_INVALID != ai && fib_sas4_get (sw_if_index, dst, &src))
+  if (ADJ_INDEX_INVALID != ai &&
+      (fib_sas4_get (sw_if_index, dst, &src) ||
+       ip4_sas_by_sw_if_index (sw_if_index, dst, &src)))
     ip4_neighbor_probe (vlib_get_main (),
 			vnet_get_main (), adj_get (ai), &src, dst);
 }
@@ -79,7 +82,8 @@ ip4_neighbor_advertise (vlib_main_t * vm,
 
   if (NULL == addr)
     {
-      if (fib_sas4_get (sw_if_index, NULL, &tmp))
+      if (fib_sas4_get (sw_if_index, NULL, &tmp) ||
+	  ip4_sas_by_sw_if_index (sw_if_index, NULL, &tmp))
 	addr = &tmp;
     }
 
@@ -185,7 +189,8 @@ ip4_arp_inline (vlib_main_t * vm,
 	      /* resolve the incomplete adj */
 	      resolve0 = adj0->sub_type.nbr.next_hop.ip4;
 	      /* Src IP address in ARP header. */
-	      if (!fib_sas4_get (sw_if_index0, &resolve0, &src0))
+	      if (!fib_sas4_get (sw_if_index0, &resolve0, &src0) &&
+		  !ip4_sas_by_sw_if_index (sw_if_index0, &resolve0, &src0))
 		{
 		  /* No source address available */
 		  p0->error = node->errors[IP4_ARP_ERROR_NO_SOURCE_ADDRESS];
