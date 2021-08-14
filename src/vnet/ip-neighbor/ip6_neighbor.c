@@ -18,6 +18,7 @@
 #include <vnet/ip-neighbor/ip6_neighbor.h>
 #include <vnet/util/throttle.h>
 #include <vnet/fib/fib_sas.h>
+#include <vnet/ip/ip_sas.h>
 
 /** ND throttling */
 static throttle_t nd_throttle;
@@ -34,7 +35,8 @@ ip6_neighbor_probe_dst (u32 sw_if_index, const ip6_address_t * dst)
 {
   ip6_address_t src;
 
-  if (fib_sas6_get (sw_if_index, dst, &src))
+  if (fib_sas6_get (sw_if_index, dst, &src) ||
+      ip6_sas_by_sw_if_index (sw_if_index, dst, &src))
     ip6_neighbor_probe (vlib_get_main (), vnet_get_main (),
 			sw_if_index, &src, dst);
 }
@@ -212,7 +214,8 @@ ip6_discover_neighbor_inline (vlib_main_t * vm,
 	   * Choose source address based on destination lookup
 	   * adjacency.
 	   */
-	  if (!fib_sas6_get (sw_if_index0, &ip0->dst_address, &src))
+	  if (!fib_sas6_get (sw_if_index0, &ip0->dst_address, &src) &&
+	      !ip6_sas_by_sw_if_index (sw_if_index0, &ip0->dst_address, &src))
 	    {
 	      /* There is no address on the interface */
 	      p0->error = node->errors[IP6_NBR_ERROR_NO_SOURCE_ADDRESS];
