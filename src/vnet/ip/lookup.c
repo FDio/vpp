@@ -440,6 +440,71 @@ vnet_ip6_table_cmd (vlib_main_t * vm,
   return (vnet_ip_table_cmd (vm, main_input, cmd, FIB_PROTOCOL_IP6));
 }
 
+clib_error_t *
+vnet_show_ip_table_cmd (vlib_main_t *vm, unformat_input_t *main_input,
+			vlib_cli_command_t *cmd, fib_protocol_t fproto)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  fib_table_t *fib, *fibs;
+  clib_error_t *error = NULL;
+  u32 table_id = ~0, fib_index;
+  /* Get a line of input. */
+  if (unformat_user (main_input, unformat_line_input, line_input))
+    {
+      while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+	{
+	  if (unformat (line_input, "%d", &table_id))
+	    ;
+	  else
+	    {
+	      error = unformat_parse_error (line_input);
+	      goto done;
+	    }
+	}
+      unformat_free (line_input);
+    }
+
+  fibs = (fproto == FIB_PROTOCOL_IP4) ? ip4_main.fibs : ip6_main.fibs;
+
+  if (table_id != (u32) ~0)
+    {
+      fib_index = fib_table_find (fproto, table_id);
+      if (fib_index == (u32) ~0)
+	{
+	  error = clib_error_return (0, "Couldn't find table with table_id %u",
+				     table_id);
+	  goto done;
+	}
+
+      fib = fib_table_get (fib_index, fproto);
+      vlib_cli_output (vm, "[%3u] table_id:%3u %v", fib->ft_index,
+		       fib->ft_table_id, fib->ft_desc);
+    }
+  else
+    {
+      pool_foreach (fib, fibs)
+	vlib_cli_output (vm, "[%3u] table_id:%3u %v", fib->ft_index,
+			 fib->ft_table_id, fib->ft_desc);
+    }
+
+done:
+  return error;
+}
+
+clib_error_t *
+vnet_show_ip4_table_cmd (vlib_main_t *vm, unformat_input_t *main_input,
+			 vlib_cli_command_t *cmd)
+{
+  return (vnet_show_ip_table_cmd (vm, main_input, cmd, FIB_PROTOCOL_IP4));
+}
+
+clib_error_t *
+vnet_show_ip6_table_cmd (vlib_main_t *vm, unformat_input_t *main_input,
+			 vlib_cli_command_t *cmd)
+{
+  return (vnet_show_ip_table_cmd (vm, main_input, cmd, FIB_PROTOCOL_IP6));
+}
+
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vlib_cli_ip_command, static) = {
   .path = "ip",
@@ -530,6 +595,18 @@ VLIB_CLI_COMMAND (ip6_table_command, static) = {
   .path = "ip6 table",
   .short_help = "ip6 table [add|del] <table-id>",
   .function = vnet_ip6_table_cmd,
+};
+
+VLIB_CLI_COMMAND (show_ip4_table_command, static) = {
+  .path = "show ip table",
+  .short_help = "show ip table <table-id>",
+  .function = vnet_show_ip4_table_cmd,
+};
+
+VLIB_CLI_COMMAND (show_ip6_table_command, static) = {
+  .path = "show ip6 table",
+  .short_help = "show ip6 table <table-id>",
+  .function = vnet_show_ip6_table_cmd,
 };
 
 static clib_error_t *
