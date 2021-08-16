@@ -1018,7 +1018,15 @@ session_tx_not_ready (session_t * s, u8 peek_data)
       /* Can retransmit for closed sessions but can't send new data if
        * session is not ready or closed */
       else if (s->session_state < SESSION_STATE_READY)
-	return 1;
+	{
+	  /* Allow accepting session to send custom packets.
+	   * For instance, tcp want to send acks in established, but
+	   * the app has not called accept() yet */
+	  if (s->session_state == SESSION_STATE_ACCEPTING &&
+	      (s->flags & SESSION_F_CUSTOM_TX))
+	    return 0;
+	  return 1;
+	}
       else if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSED)
 	{
 	  /* Allow closed transports to still send custom packets.
