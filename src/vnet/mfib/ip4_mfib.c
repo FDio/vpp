@@ -142,7 +142,6 @@ ip4_mfib_interface_enable_disable (u32 sw_if_index, int is_enable)
     u32 mfib_index;
     int ii;
 
-    vec_validate (ip4_main.mfib_index_by_sw_if_index, sw_if_index);
     mfib_index = ip4_mfib_table_get_index_for_sw_if_index(sw_if_index);
 
     for (ii = 0; ii < ARRAY_LEN(ip4_specials); ii++)

@@ -367,8 +367,6 @@ vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t * a,
 {
   gre_main_t *gm = &gre_main;
   vnet_main_t *vnm = gm->vnet_main;
-  ip4_main_t *im4 = &ip4_main;
-  ip6_main_t *im6 = &ip6_main;
   gre_tunnel_t *t;
   vnet_hw_interface_t *hi;
   u32 hw_if_index, sw_if_index;
@@ -451,13 +449,11 @@ vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t * a,
 
   if (!is_ipv6)
     {
-      vec_validate (im4->fib_index_by_sw_if_index, sw_if_index);
       hi->min_packet_bytes =
 	64 + sizeof (gre_header_t) + sizeof (ip4_header_t);
     }
   else
     {
-      vec_validate (im6->fib_index_by_sw_if_index, sw_if_index);
       hi->min_packet_bytes =
 	64 + sizeof (gre_header_t) + sizeof (ip6_header_t);
     }

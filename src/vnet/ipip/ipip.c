@@ -726,8 +726,6 @@ ipip_add_tunnel (ipip_transport_t transport,
 {
   ipip_main_t *gm = &ipip_main;
   vnet_main_t *vnm = gm->vnet_main;
-  ip4_main_t *im4 = &ip4_main;
-  ip6_main_t *im6 = &ip6_main;
   ipip_tunnel_t *t;
   vnet_hw_interface_t *hi;
   u32 hw_if_index, sw_if_index;
@@ -788,12 +786,10 @@ ipip_add_tunnel (ipip_transport_t transport,
 
   if (t->transport == IPIP_TRANSPORT_IP4)
     {
-      vec_validate (im4->fib_index_by_sw_if_index, sw_if_index);
       hi->min_packet_bytes = 64 + sizeof (ip4_header_t);
     }
   else
     {
-      vec_validate (im6->fib_index_by_sw_if_index, sw_if_index);
       hi->min_packet_bytes = 64 + sizeof (ip6_header_t);
     }
 

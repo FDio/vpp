@@ -657,7 +657,6 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
   if (error)
     return error;
 
-  vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
   ip4_addr_fib_init (&ip4_af, address,
 		     vec_elt (im->fib_index_by_sw_if_index, sw_if_index));
   vec_add1 (addr_fib, ip4_af);
@@ -885,9 +884,6 @@ ip4_sw_interface_admin_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
   ip4_address_t *a;
   u32 is_admin_up, fib_index;
 
-  /* Fill in lookup tables with default table (0). */
-  vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
-
   vec_validate_init_empty (im->
 			   lookup_main.if_address_pool_index_by_sw_if_index,
 			   sw_if_index, ~0);
@@ -1064,11 +1060,16 @@ ip4_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 {
   ip4_main_t *im = &ip4_main;
 
-  /* Fill in lookup tables with default table (0). */
-  vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
-  vec_validate (im->mfib_index_by_sw_if_index, sw_if_index);
+  vec_validate_init_empty (im->fib_index_by_sw_if_index, sw_if_index, ~0);
+  vec_validate_init_empty (im->mfib_index_by_sw_if_index, sw_if_index, ~0);
 
-  if (!is_add)
+  if (is_add)
+    {
+      /* Fill in lookup tables with default table (0). */
+      im->fib_index_by_sw_if_index[sw_if_index] = 0;
+      im->mfib_index_by_sw_if_index[sw_if_index] = 0;
+    }
+  else
     {
       ip4_main_t *im4 = &ip4_main;
       ip_lookup_main_t *lm4 = &im4->lookup_main;
