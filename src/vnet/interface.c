@@ -1637,16 +1637,6 @@ static int
 vnet_sw_interface_check_table_same (u32 unnumbered_sw_if_index,
 				    u32 ip_sw_if_index)
 {
-  vec_validate (ip4_main.fib_index_by_sw_if_index, unnumbered_sw_if_index);
-  vec_validate (ip4_main.mfib_index_by_sw_if_index, unnumbered_sw_if_index);
-  vec_validate (ip6_main.fib_index_by_sw_if_index, unnumbered_sw_if_index);
-  vec_validate (ip6_main.mfib_index_by_sw_if_index, unnumbered_sw_if_index);
-
-  vec_validate (ip4_main.fib_index_by_sw_if_index, ip_sw_if_index);
-  vec_validate (ip4_main.mfib_index_by_sw_if_index, ip_sw_if_index);
-  vec_validate (ip6_main.fib_index_by_sw_if_index, ip_sw_if_index);
-  vec_validate (ip6_main.mfib_index_by_sw_if_index, ip_sw_if_index);
-
   if (ip4_main.fib_index_by_sw_if_index[unnumbered_sw_if_index] !=
       ip4_main.fib_index_by_sw_if_index[ip_sw_if_index])
     return VNET_API_ERROR_UNEXPECTED_INTF_STATE;
