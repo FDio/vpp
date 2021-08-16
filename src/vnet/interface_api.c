@@ -518,9 +518,6 @@ ip_table_bind (fib_protocol_t fproto,
       }));
       /* *INDENT-ON* */
 
-      vec_validate (ip6_main.fib_index_by_sw_if_index, sw_if_index);
-      vec_validate (ip6_main.mfib_index_by_sw_if_index, sw_if_index);
-
       /*
        * tell those that are interested that the binding is changing.
        */
@@ -565,9 +562,6 @@ ip_table_bind (fib_protocol_t fproto,
         return (VNET_API_ERROR_ADDRESS_FOUND_FOR_INTERFACE);
       }));
       /* *INDENT-ON* */
-
-      vec_validate (ip4_main.fib_index_by_sw_if_index, sw_if_index);
-      vec_validate (ip4_main.mfib_index_by_sw_if_index, sw_if_index);
 
       /*
        * tell those that are interested that the binding is changing.

@@ -561,9 +561,22 @@ vnet_if_update_lookup_tables (vnet_main_t *vnm, u32 sw_if_index)
   vnet_interface_main_t *im = &vnm->interface_main;
   vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
 
+  vec_validate_init_empty (ip4_main.fib_index_by_sw_if_index, sw_if_index, ~0);
+  vec_validate_init_empty (ip4_main.mfib_index_by_sw_if_index, sw_if_index,
+			   ~0);
+  vec_validate_init_empty (ip6_main.fib_index_by_sw_if_index, sw_if_index, ~0);
+  vec_validate_init_empty (ip6_main.mfib_index_by_sw_if_index, sw_if_index,
+			   ~0);
+
   vec_validate_init_empty (im->hw_if_index_by_sw_if_index, sw_if_index, ~0);
   vec_validate_init_empty (im->if_out_arc_end_next_index_by_sw_if_index,
 			   sw_if_index, ~0);
+
+  /* Fill in lookup tables with default table (0). */
+  ip4_main.fib_index_by_sw_if_index[sw_if_index] = 0;
+  ip4_main.mfib_index_by_sw_if_index[sw_if_index] = 0;
+  ip6_main.fib_index_by_sw_if_index[sw_if_index] = 0;
+  ip6_main.mfib_index_by_sw_if_index[sw_if_index] = 0;
 
   im->hw_if_index_by_sw_if_index[sw_if_index] = hi->hw_if_index;
   im->if_out_arc_end_next_index_by_sw_if_index[sw_if_index] =
@@ -1637,16 +1650,6 @@ static int
 vnet_sw_interface_check_table_same (u32 unnumbered_sw_if_index,
 				    u32 ip_sw_if_index)
 {
-  vec_validate (ip4_main.fib_index_by_sw_if_index, unnumbered_sw_if_index);
-  vec_validate (ip4_main.mfib_index_by_sw_if_index, unnumbered_sw_if_index);
-  vec_validate (ip6_main.fib_index_by_sw_if_index, unnumbered_sw_if_index);
-  vec_validate (ip6_main.mfib_index_by_sw_if_index, unnumbered_sw_if_index);
-
-  vec_validate (ip4_main.fib_index_by_sw_if_index, ip_sw_if_index);
-  vec_validate (ip4_main.mfib_index_by_sw_if_index, ip_sw_if_index);
-  vec_validate (ip6_main.fib_index_by_sw_if_index, ip_sw_if_index);
-  vec_validate (ip6_main.mfib_index_by_sw_if_index, ip_sw_if_index);
-
   if (ip4_main.fib_index_by_sw_if_index[unnumbered_sw_if_index] !=
       ip4_main.fib_index_by_sw_if_index[ip_sw_if_index])
     return VNET_API_ERROR_UNEXPECTED_INTF_STATE;
