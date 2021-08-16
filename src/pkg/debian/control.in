@@ -3,7 +3,6 @@ Section: net
 Priority: extra
 Maintainer: fd.io VPP Packaging Team <vpp-dev@fd.io>
 Build-Depends: debhelper-compat (= 10),
-               dh-systemd,
 	       dh-python,
 	       @VPP_DEB_BUILD_DEPENDS@
 Standards-Version: 3.9.4
