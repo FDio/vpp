@@ -134,8 +134,6 @@ bier_test_mk_intf (u32 ninterfaces)
 
         tm->hw[i] = vnet_get_hw_interface(vnet_get_main(),
                                           tm->hw_if_indicies[i]);
-        vec_validate (ip4_main.fib_index_by_sw_if_index, tm->hw[i]->sw_if_index);
-        vec_validate (ip6_main.fib_index_by_sw_if_index, tm->hw[i]->sw_if_index);
         ip4_main.fib_index_by_sw_if_index[tm->hw[i]->sw_if_index] = 0;
         ip6_main.fib_index_by_sw_if_index[tm->hw[i]->sw_if_index] = 0;
         error = vnet_sw_interface_set_flags(vnet_get_main(),

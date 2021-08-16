@@ -507,13 +507,11 @@ lisp_gpe_iface_set_table (u32 sw_if_index, u32 table_id)
 
   fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, table_id,
 						 FIB_SOURCE_LISP);
-  vec_validate (ip4_main.fib_index_by_sw_if_index, sw_if_index);
   ip4_main.fib_index_by_sw_if_index[sw_if_index] = fib_index;
   ip4_sw_interface_enable_disable (sw_if_index, 1);
 
   fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, table_id,
 						 FIB_SOURCE_LISP);
-  vec_validate (ip6_main.fib_index_by_sw_if_index, sw_if_index);
   ip6_main.fib_index_by_sw_if_index[sw_if_index] = fib_index;
   ip6_sw_interface_enable_disable (sw_if_index, 1);
 }

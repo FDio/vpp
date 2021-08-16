@@ -351,9 +351,6 @@ ip6_add_del_interface_address (vlib_main_t * vm,
       return (NULL);
     }
 
-  vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
-  vec_validate (im->mfib_index_by_sw_if_index, sw_if_index);
-
   ip6_addr_fib_init (&ip6_af, address,
 		     vec_elt (im->fib_index_by_sw_if_index, sw_if_index));
   vec_add1 (addr_fib, ip6_af);
@@ -528,9 +525,6 @@ ip6_sw_interface_admin_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
   ip6_address_t *a;
   u32 is_admin_up, fib_index;
 
-  /* Fill in lookup tables with default table (0). */
-  vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
-
   vec_validate_init_empty (im->
 			   lookup_main.if_address_pool_index_by_sw_if_index,
 			   sw_if_index, ~0);
@@ -692,10 +686,16 @@ ip6_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 {
   ip6_main_t *im = &ip6_main;
 
-  vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
-  vec_validate (im->mfib_index_by_sw_if_index, sw_if_index);
+  vec_validate_init_empty (im->fib_index_by_sw_if_index, sw_if_index, ~0);
+  vec_validate_init_empty (im->mfib_index_by_sw_if_index, sw_if_index, ~0);
 
-  if (!is_add)
+  if (is_add)
+    {
+      /* Fill in lookup tables with default table (0). */
+      im->fib_index_by_sw_if_index[sw_if_index] = 0;
+      im->mfib_index_by_sw_if_index[sw_if_index] = 0;
+    }
+  else
     {
       /* Ensure that IPv6 is disabled */
       ip6_main_t *im6 = &ip6_main;

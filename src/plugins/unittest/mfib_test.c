@@ -139,17 +139,9 @@ mfib_test_mk_intf (u32 ninterfaces)
                                             VNET_HW_INTERFACE_FLAG_LINK_UP);
         tm->hw[i] = vnet_get_hw_interface(vnet_get_main(),
                                           tm->hw_if_indicies[i]);
-        vec_validate (ip4_main.fib_index_by_sw_if_index,
-                      tm->hw[i]->sw_if_index);
-        vec_validate (ip6_main.fib_index_by_sw_if_index,
-                      tm->hw[i]->sw_if_index);
         ip4_main.fib_index_by_sw_if_index[tm->hw[i]->sw_if_index] = 0;
         ip6_main.fib_index_by_sw_if_index[tm->hw[i]->sw_if_index] = 0;
 
-        vec_validate (ip4_main.mfib_index_by_sw_if_index,
-                      tm->hw[i]->sw_if_index);
-        vec_validate (ip6_main.mfib_index_by_sw_if_index,
-                      tm->hw[i]->sw_if_index);
         ip4_main.mfib_index_by_sw_if_index[tm->hw[i]->sw_if_index] = 0;
         ip6_main.mfib_index_by_sw_if_index[tm->hw[i]->sw_if_index] = 0;
 
