@@ -80,8 +80,7 @@ typedef struct
   u32 export_process_node_index;
 } ioam_export_main_t;
 
-
-#define DEFAULT_EXPORT_SIZE (3 * CLIB_CACHE_LINE_BYTES)
+#define DEFAULT_EXPORT_SIZE (3 * 64)
 /*
  *  Number of records in a buffer
  * ~(MTU (1500) - [ip hdr(40) + UDP(8) + ipfix (24)]) / DEFAULT_EXPORT_SIZE
@@ -467,162 +466,161 @@ ioam_export_process_common (ioam_export_main_t * em, vlib_main_t * vm,
   return 0;			/* not so much */
 }
 
-#define ioam_export_node_common(EM, VM, N, F, HTYPE, L, V, NEXT, FIXUP_FUNC)   \
-do {                                                                           \
-  u32 n_left_from, *from, *to_next;                                            \
-  export_next_t next_index;                                                    \
-  u32 pkts_recorded = 0;                                                       \
-  ioam_export_buffer_t *my_buf = 0;                                            \
-  vlib_buffer_t *eb0 = 0;                                                      \
-  u32 ebi0 = 0;                                                                \
-  from = vlib_frame_vector_args (F);                                           \
-  n_left_from = (F)->n_vectors;                                                \
-  next_index = (N)->cached_next_index;                                         \
-  clib_spinlock_lock (&(EM)->lockp[(VM)->thread_index]);	               \
-  my_buf = ioam_export_get_my_buffer (EM, (VM)->thread_index);                 \
-  my_buf->touched_at = vlib_time_now (VM);                                     \
-  while (n_left_from > 0)                                                      \
-    {                                                                          \
-      u32 n_left_to_next;                                                      \
-      vlib_get_next_frame (VM, N, next_index, to_next, n_left_to_next);        \
-      while (n_left_from >= 4 && n_left_to_next >= 2)                          \
-	{                                                                      \
-	  u32 next0 = NEXT;                                                    \
-	  u32 next1 = NEXT;                                                    \
-	  u32 bi0, bi1;                                                        \
-	  HTYPE *ip0, *ip1;                                                    \
-	  vlib_buffer_t *p0, *p1;                                              \
-	  u32 ip_len0, ip_len1;                                                \
-	  {                                                                    \
-	    vlib_buffer_t *p2, *p3;                                            \
-	    p2 = vlib_get_buffer (VM, from[2]);                                \
-	    p3 = vlib_get_buffer (VM, from[3]);                                \
-	    vlib_prefetch_buffer_header (p2, LOAD);                            \
-	    vlib_prefetch_buffer_header (p3, LOAD);                            \
-	    CLIB_PREFETCH (p2->data, 3 * CLIB_CACHE_LINE_BYTES, LOAD);         \
-	    CLIB_PREFETCH (p3->data, 3 * CLIB_CACHE_LINE_BYTES, LOAD);         \
-	  }                                                                    \
-	  to_next[0] = bi0 = from[0];                                          \
-	  to_next[1] = bi1 = from[1];                                          \
-	  from += 2;                                                           \
-	  to_next += 2;                                                        \
-	  n_left_from -= 2;                                                    \
-	  n_left_to_next -= 2;                                                 \
-	  p0 = vlib_get_buffer (VM, bi0);                                      \
-	  p1 = vlib_get_buffer (VM, bi1);                                      \
-	  ip0 = vlib_buffer_get_current (p0);                                  \
-	  ip1 = vlib_buffer_get_current (p1);                                  \
-	  ip_len0 =                                                            \
-	    clib_net_to_host_u16 (ip0->L) + sizeof (HTYPE);                    \
-	  ip_len1 =                                                            \
-	    clib_net_to_host_u16 (ip1->L) + sizeof (HTYPE);                    \
-	  ebi0 = my_buf->buffer_index;                                         \
-	  eb0 = vlib_get_buffer (VM, ebi0);                                    \
-	  if (PREDICT_FALSE (eb0 == 0))                                        \
-	    goto NO_BUFFER1;                                                   \
-	  ip_len0 =                                                            \
-	    ip_len0 > DEFAULT_EXPORT_SIZE ? DEFAULT_EXPORT_SIZE : ip_len0;     \
-	  ip_len1 =                                                            \
-	    ip_len1 > DEFAULT_EXPORT_SIZE ? DEFAULT_EXPORT_SIZE : ip_len1;     \
-	  copy3cachelines (eb0->data + eb0->current_length, ip0, ip_len0);     \
-	  FIXUP_FUNC(eb0, p0);                                                 \
-	  eb0->current_length += DEFAULT_EXPORT_SIZE;                          \
-	  my_buf->records_in_this_buffer++;                                    \
-	  if (my_buf->records_in_this_buffer >= DEFAULT_EXPORT_RECORDS)        \
-	    {                                                                  \
-	      ioam_export_send_buffer (EM, VM, my_buf);                        \
-	      ioam_export_init_buffer (EM, VM, my_buf);                        \
-	    }                                                                  \
-	  ebi0 = my_buf->buffer_index;                                         \
-	  eb0 = vlib_get_buffer (VM, ebi0);                                    \
-	  if (PREDICT_FALSE (eb0 == 0))                                        \
-	    goto NO_BUFFER1;                                                   \
-	  copy3cachelines (eb0->data + eb0->current_length, ip1, ip_len1);     \
-	  FIXUP_FUNC(eb0, p1);                                                 \
-	  eb0->current_length += DEFAULT_EXPORT_SIZE;                          \
-	  my_buf->records_in_this_buffer++;                                    \
-	  if (my_buf->records_in_this_buffer >= DEFAULT_EXPORT_RECORDS)        \
-	    {                                                                  \
-	      ioam_export_send_buffer (EM, VM, my_buf);                        \
-	      ioam_export_init_buffer (EM, VM, my_buf);                        \
-	    }                                                                  \
-	  pkts_recorded += 2;                                                  \
-	  if (PREDICT_FALSE (((node)->flags & VLIB_NODE_FLAG_TRACE)))          \
-	    {                                                                  \
-	      if (p0->flags & VLIB_BUFFER_IS_TRACED)                           \
-		{                                                              \
-		  export_trace_t *t =                                          \
-		    vlib_add_trace (VM, node, p0, sizeof (*t));                \
-		  t->flow_label =                                              \
-		    clib_net_to_host_u32 (ip0->V);                             \
-		  t->next_index = next0;                                       \
-		}                                                              \
-	      if (p1->flags & VLIB_BUFFER_IS_TRACED)                           \
-		{                                                              \
-		  export_trace_t *t =                                          \
-		    vlib_add_trace (VM, N, p1, sizeof (*t));                   \
-		  t->flow_label =                                              \
-		    clib_net_to_host_u32 (ip1->V);                             \
-		  t->next_index = next1;                                       \
-		}                                                              \
-	    }                                                                  \
-	NO_BUFFER1:                                                            \
-	  vlib_validate_buffer_enqueue_x2 (VM, N, next_index,                  \
-					   to_next, n_left_to_next,            \
-					   bi0, bi1, next0, next1);            \
-	}                                                                      \
-      while (n_left_from > 0 && n_left_to_next > 0)                            \
-	{                                                                      \
-	  u32 bi0;                                                             \
-	  vlib_buffer_t *p0;                                                   \
-	  u32 next0 = NEXT;                                                    \
-	  HTYPE *ip0;                                                          \
-	  u32 ip_len0;                                                         \
-	  bi0 = from[0];                                                       \
-	  to_next[0] = bi0;                                                    \
-	  from += 1;                                                           \
-	  to_next += 1;                                                        \
-	  n_left_from -= 1;                                                    \
-	  n_left_to_next -= 1;                                                 \
-	  p0 = vlib_get_buffer (VM, bi0);                                      \
-	  ip0 = vlib_buffer_get_current (p0);                                  \
-	  ip_len0 =                                                            \
-	    clib_net_to_host_u16 (ip0->L) + sizeof (HTYPE);                    \
-	  ebi0 = my_buf->buffer_index;                                         \
-	  eb0 = vlib_get_buffer (VM, ebi0);                                    \
-	  if (PREDICT_FALSE (eb0 == 0))                                        \
-	    goto NO_BUFFER;                                                    \
-	  ip_len0 =                                                            \
-	    ip_len0 > DEFAULT_EXPORT_SIZE ? DEFAULT_EXPORT_SIZE : ip_len0;     \
-	  copy3cachelines (eb0->data + eb0->current_length, ip0, ip_len0);     \
-	  FIXUP_FUNC(eb0, p0);                                                 \
-	  eb0->current_length += DEFAULT_EXPORT_SIZE;                          \
-	  my_buf->records_in_this_buffer++;                                    \
-	  if (my_buf->records_in_this_buffer >= DEFAULT_EXPORT_RECORDS)        \
-	    {                                                                  \
-	      ioam_export_send_buffer (EM, VM, my_buf);                        \
-	      ioam_export_init_buffer (EM, VM, my_buf);                        \
-	    }                                                                  \
-	  if (PREDICT_FALSE (((N)->flags & VLIB_NODE_FLAG_TRACE)               \
-			     && (p0->flags & VLIB_BUFFER_IS_TRACED)))          \
-	    {                                                                  \
-	      export_trace_t *t = vlib_add_trace (VM, (N), p0, sizeof (*t));   \
-	      t->flow_label =                                                  \
-		clib_net_to_host_u32 (ip0->V);                                 \
-	      t->next_index = next0;                                           \
-	    }                                                                  \
-	  pkts_recorded += 1;                                                  \
-	NO_BUFFER:                                                             \
-	  vlib_validate_buffer_enqueue_x1 (VM, N, next_index,                  \
-					   to_next, n_left_to_next,            \
-					   bi0, next0);                        \
-	}                                                                      \
-      vlib_put_next_frame (VM, N, next_index, n_left_to_next);                 \
-    }                                                                          \
-  vlib_node_increment_counter (VM, export_node.index,                          \
-			       EXPORT_ERROR_RECORDED, pkts_recorded);          \
-  clib_spinlock_unlock (&(EM)->lockp[(VM)->thread_index]);                     \
-} while(0)
+#define ioam_export_node_common(EM, VM, N, F, HTYPE, L, V, NEXT, FIXUP_FUNC)  \
+  do                                                                          \
+    {                                                                         \
+      u32 n_left_from, *from, *to_next;                                       \
+      export_next_t next_index;                                               \
+      u32 pkts_recorded = 0;                                                  \
+      ioam_export_buffer_t *my_buf = 0;                                       \
+      vlib_buffer_t *eb0 = 0;                                                 \
+      u32 ebi0 = 0;                                                           \
+      from = vlib_frame_vector_args (F);                                      \
+      n_left_from = (F)->n_vectors;                                           \
+      next_index = (N)->cached_next_index;                                    \
+      clib_spinlock_lock (&(EM)->lockp[(VM)->thread_index]);                  \
+      my_buf = ioam_export_get_my_buffer (EM, (VM)->thread_index);            \
+      my_buf->touched_at = vlib_time_now (VM);                                \
+      while (n_left_from > 0)                                                 \
+	{                                                                     \
+	  u32 n_left_to_next;                                                 \
+	  vlib_get_next_frame (VM, N, next_index, to_next, n_left_to_next);   \
+	  while (n_left_from >= 4 && n_left_to_next >= 2)                     \
+	    {                                                                 \
+	      u32 next0 = NEXT;                                               \
+	      u32 next1 = NEXT;                                               \
+	      u32 bi0, bi1;                                                   \
+	      HTYPE *ip0, *ip1;                                               \
+	      vlib_buffer_t *p0, *p1;                                         \
+	      u32 ip_len0, ip_len1;                                           \
+	      {                                                               \
+		vlib_buffer_t *p2, *p3;                                       \
+		p2 = vlib_get_buffer (VM, from[2]);                           \
+		p3 = vlib_get_buffer (VM, from[3]);                           \
+		vlib_prefetch_buffer_header (p2, LOAD);                       \
+		vlib_prefetch_buffer_header (p3, LOAD);                       \
+		CLIB_PREFETCH (p2->data, DEFAULT_EXPORT_SIZE, LOAD);          \
+		CLIB_PREFETCH (p3->data, DEFAULT_EXPORT_SIZE, LOAD);          \
+	      }                                                               \
+	      to_next[0] = bi0 = from[0];                                     \
+	      to_next[1] = bi1 = from[1];                                     \
+	      from += 2;                                                      \
+	      to_next += 2;                                                   \
+	      n_left_from -= 2;                                               \
+	      n_left_to_next -= 2;                                            \
+	      p0 = vlib_get_buffer (VM, bi0);                                 \
+	      p1 = vlib_get_buffer (VM, bi1);                                 \
+	      ip0 = vlib_buffer_get_current (p0);                             \
+	      ip1 = vlib_buffer_get_current (p1);                             \
+	      ip_len0 = clib_net_to_host_u16 (ip0->L) + sizeof (HTYPE);       \
+	      ip_len1 = clib_net_to_host_u16 (ip1->L) + sizeof (HTYPE);       \
+	      ebi0 = my_buf->buffer_index;                                    \
+	      eb0 = vlib_get_buffer (VM, ebi0);                               \
+	      if (PREDICT_FALSE (eb0 == 0))                                   \
+		goto NO_BUFFER1;                                              \
+	      ip_len0 = ip_len0 > DEFAULT_EXPORT_SIZE ? DEFAULT_EXPORT_SIZE : \
+							ip_len0;              \
+	      ip_len1 = ip_len1 > DEFAULT_EXPORT_SIZE ? DEFAULT_EXPORT_SIZE : \
+							ip_len1;              \
+	      copy3cachelines (eb0->data + eb0->current_length, ip0,          \
+			       ip_len0);                                      \
+	      FIXUP_FUNC (eb0, p0);                                           \
+	      eb0->current_length += DEFAULT_EXPORT_SIZE;                     \
+	      my_buf->records_in_this_buffer++;                               \
+	      if (my_buf->records_in_this_buffer >= DEFAULT_EXPORT_RECORDS)   \
+		{                                                             \
+		  ioam_export_send_buffer (EM, VM, my_buf);                   \
+		  ioam_export_init_buffer (EM, VM, my_buf);                   \
+		}                                                             \
+	      ebi0 = my_buf->buffer_index;                                    \
+	      eb0 = vlib_get_buffer (VM, ebi0);                               \
+	      if (PREDICT_FALSE (eb0 == 0))                                   \
+		goto NO_BUFFER1;                                              \
+	      copy3cachelines (eb0->data + eb0->current_length, ip1,          \
+			       ip_len1);                                      \
+	      FIXUP_FUNC (eb0, p1);                                           \
+	      eb0->current_length += DEFAULT_EXPORT_SIZE;                     \
+	      my_buf->records_in_this_buffer++;                               \
+	      if (my_buf->records_in_this_buffer >= DEFAULT_EXPORT_RECORDS)   \
+		{                                                             \
+		  ioam_export_send_buffer (EM, VM, my_buf);                   \
+		  ioam_export_init_buffer (EM, VM, my_buf);                   \
+		}                                                             \
+	      pkts_recorded += 2;                                             \
+	      if (PREDICT_FALSE (((node)->flags & VLIB_NODE_FLAG_TRACE)))     \
+		{                                                             \
+		  if (p0->flags & VLIB_BUFFER_IS_TRACED)                      \
+		    {                                                         \
+		      export_trace_t *t =                                     \
+			vlib_add_trace (VM, node, p0, sizeof (*t));           \
+		      t->flow_label = clib_net_to_host_u32 (ip0->V);          \
+		      t->next_index = next0;                                  \
+		    }                                                         \
+		  if (p1->flags & VLIB_BUFFER_IS_TRACED)                      \
+		    {                                                         \
+		      export_trace_t *t =                                     \
+			vlib_add_trace (VM, N, p1, sizeof (*t));              \
+		      t->flow_label = clib_net_to_host_u32 (ip1->V);          \
+		      t->next_index = next1;                                  \
+		    }                                                         \
+		}                                                             \
+	    NO_BUFFER1:                                                       \
+	      vlib_validate_buffer_enqueue_x2 (VM, N, next_index, to_next,    \
+					       n_left_to_next, bi0, bi1,      \
+					       next0, next1);                 \
+	    }                                                                 \
+	  while (n_left_from > 0 && n_left_to_next > 0)                       \
+	    {                                                                 \
+	      u32 bi0;                                                        \
+	      vlib_buffer_t *p0;                                              \
+	      u32 next0 = NEXT;                                               \
+	      HTYPE *ip0;                                                     \
+	      u32 ip_len0;                                                    \
+	      bi0 = from[0];                                                  \
+	      to_next[0] = bi0;                                               \
+	      from += 1;                                                      \
+	      to_next += 1;                                                   \
+	      n_left_from -= 1;                                               \
+	      n_left_to_next -= 1;                                            \
+	      p0 = vlib_get_buffer (VM, bi0);                                 \
+	      ip0 = vlib_buffer_get_current (p0);                             \
+	      ip_len0 = clib_net_to_host_u16 (ip0->L) + sizeof (HTYPE);       \
+	      ebi0 = my_buf->buffer_index;                                    \
+	      eb0 = vlib_get_buffer (VM, ebi0);                               \
+	      if (PREDICT_FALSE (eb0 == 0))                                   \
+		goto NO_BUFFER;                                               \
+	      ip_len0 = ip_len0 > DEFAULT_EXPORT_SIZE ? DEFAULT_EXPORT_SIZE : \
+							ip_len0;              \
+	      copy3cachelines (eb0->data + eb0->current_length, ip0,          \
+			       ip_len0);                                      \
+	      FIXUP_FUNC (eb0, p0);                                           \
+	      eb0->current_length += DEFAULT_EXPORT_SIZE;                     \
+	      my_buf->records_in_this_buffer++;                               \
+	      if (my_buf->records_in_this_buffer >= DEFAULT_EXPORT_RECORDS)   \
+		{                                                             \
+		  ioam_export_send_buffer (EM, VM, my_buf);                   \
+		  ioam_export_init_buffer (EM, VM, my_buf);                   \
+		}                                                             \
+	      if (PREDICT_FALSE (((N)->flags & VLIB_NODE_FLAG_TRACE) &&       \
+				 (p0->flags & VLIB_BUFFER_IS_TRACED)))        \
+		{                                                             \
+		  export_trace_t *t =                                         \
+		    vlib_add_trace (VM, (N), p0, sizeof (*t));                \
+		  t->flow_label = clib_net_to_host_u32 (ip0->V);              \
+		  t->next_index = next0;                                      \
+		}                                                             \
+	      pkts_recorded += 1;                                             \
+	    NO_BUFFER:                                                        \
+	      vlib_validate_buffer_enqueue_x1 (VM, N, next_index, to_next,    \
+					       n_left_to_next, bi0, next0);   \
+	    }                                                                 \
+	  vlib_put_next_frame (VM, N, next_index, n_left_to_next);            \
+	}                                                                     \
+      vlib_node_increment_counter (VM, export_node.index,                     \
+				   EXPORT_ERROR_RECORDED, pkts_recorded);     \
+      clib_spinlock_unlock (&(EM)->lockp[(VM)->thread_index]);                \
+    }                                                                         \
+  while (0)
 
 #endif /* __included_ioam_export_h__ */
 
