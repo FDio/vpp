@@ -22,6 +22,8 @@
 #include <vnet/ip/ip6_hop_by_hop.h>
 #include <ioam/encap/ip6_ioam_trace.h>
 #include <ioam/encap/ip6_ioam_e2e.h>
+#include <vnet/ethernet/ethernet.h>
+#include <ioam/export-common/ioam_export.h>
 #include <ioam/udp-ping/udp_ping_packet.h>
 #include <ioam/udp-ping/udp_ping.h>
 #include <ioam/udp-ping/udp_ping_util.h>
@@ -668,8 +670,8 @@ udp_ping_local_node_fn (vlib_main_t * vm,
 	    vlib_prefetch_buffer_header (p3, LOAD);
 
 	    /* Prefetch 3 cache lines as we need to look deep into packet */
-	    CLIB_PREFETCH (p2->data, 3 * CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p3->data, 3 * CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (p2->data, DEFAULT_EXPORT_SIZE, STORE);
+	    CLIB_PREFETCH (p3->data, DEFAULT_EXPORT_SIZE, STORE);
 	  }
 
 	  pi0 = to_next[0] = from[0];
