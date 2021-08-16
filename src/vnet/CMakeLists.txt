@@ -75,6 +75,7 @@ list(APPEND VNET_HEADERS
   ip/ip_format_fns.h
   ip/ip_sas.h
   ethernet/ethernet_format_fns.h
+  ethernet/ethernet_types_api.h
 )
 
 list(APPEND VNET_API_FILES
