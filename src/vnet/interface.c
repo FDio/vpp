@@ -1633,7 +1633,7 @@ vnet_hw_interface_change_mac_address (vnet_main_t * vnm, u32 hw_if_index,
     (vnm, hw_if_index, mac_address);
 }
 
-static int
+int
 vnet_sw_interface_check_table_same (u32 unnumbered_sw_if_index,
 				    u32 ip_sw_if_index)
 {
@@ -1674,17 +1674,12 @@ vnet_sw_interface_update_unnumbered (u32 unnumbered_sw_if_index,
   vnet_main_t *vnm = vnet_get_main ();
   vnet_sw_interface_t *si;
   u32 was_unnum;
-  int rv = 0;
 
   si = vnet_get_sw_interface (vnm, unnumbered_sw_if_index);
   was_unnum = (si->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED);
 
   if (enable)
     {
-      rv = vnet_sw_interface_check_table_same (unnumbered_sw_if_index,
-					       ip_sw_if_index);
-      if (rv != 0)
-	return rv;
       si->flags |= VNET_SW_INTERFACE_FLAG_UNNUMBERED;
       si->unnumbered_sw_if_index = ip_sw_if_index;
 
