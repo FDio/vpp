@@ -1717,12 +1717,12 @@ def generate_c_test2_boilerplate(services, defines, module, stream):
             continue
         c_test_api_service(s, s.stream, stream)
 
-    write('void vat2_register_function(char *, cJSON * (*)(cJSON *));\n')
+    write('void vat2_register_function(char *, cJSON * (*)(cJSON *), cJSON * (*)(void *));\n')
     # write('__attribute__((constructor))')
     write('clib_error_t *\n')
     write('vat2_register_plugin (void) {\n')
     for s in services:
-        write('   vat2_register_function("{n}", api_{n});\n'
+        write('   vat2_register_function("{n}", api_{n}, (cJSON * (*)(void *))vl_api_{n}_t_tojson);\n'
               .format(n=s.caller))
     write('   return 0;\n')
     write('}\n')

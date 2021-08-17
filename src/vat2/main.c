@@ -14,10 +14,14 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdbool.h>
 #include <ctype.h>
+#include <getopt.h>
+#include <assert.h>
 #include <vlib/vlib.h>
 #include <vlibapi/api_types.h>
+#include <vppinfra/hash.h>
 #include <vppinfra/cJSON.h>
 
 /* VPP API client includes */
@@ -81,47 +85,104 @@ register_function (void)
   return rv;
 }
 
-void
-vat2_register_function(char *name, cJSON (*f)(cJSON *))
+struct apifuncs_s
 {
-  hash_set_mem(function_by_name, name, f);
+  cJSON (*f) (cJSON *);
+  cJSON (*tojson) (void *);
+};
+
+struct apifuncs_s *apifuncs = 0;
+
+void
+vat2_register_function (char *name, cJSON (*f) (cJSON *),
+			cJSON (*tojson) (void *))
+{
+  struct apifuncs_s funcs = { .f = f, .tojson = tojson };
+  vec_add1 (apifuncs, funcs);
+  hash_set_mem (function_by_name, name, vec_len (apifuncs) - 1);
+}
+
+static void
+dump_apis (void)
+{
+  char *name;
+  u32 *i;
+  hash_foreach_mem (name, i, function_by_name, ({ printf ("%s\n", name); }));
+}
+
+static void
+print_help (void)
+{
+  char *help_string =
+    "Usage: vat2 [OPTION] <message-name> <JSON object>\n"
+    "Send API message to VPP and print reply\n"
+    "\n"
+    "-d, --debug       Print additional information\n"
+    "-p, --prefix      Specify shared memory prefix to connect to a given VPP "
+    "instance\n"
+    "-f, --file        File containing a JSON object with the arguments for "
+    "the message to send\n"
+    "--dump-apis       List all APIs available from connected VPP instance\n"
+    "-t, --template    Print a template JSON object for given API message\n"
+    "\n";
+  printf ("%s", help_string);
 }
 
 int main (int argc, char **argv)
 {
   /* Create a heap of 64MB */
   clib_mem_init (0, 64 << 20);
-  char *filename = 0;
+  char *filename = 0, *prefix = 0;
   int index;
   int c;
   opterr = 0;
   cJSON *o = 0;
   uword *p = 0;
+  int option_index = 0;
+  bool dump_api = false;
+  bool template = false;
 
-  while ((c = getopt (argc, argv, "df:")) != -1) {
-    switch (c) {
-      case 'd':
-        debug = true;
-        break;
-      case 'f':
-        filename = optarg;
-        break;
-      case '?':
-        if (optopt == 'f')
-          fprintf (stderr, "Option -%c requires an argument.\n", optopt);
-        else if (isprint (optopt))
-          fprintf (stderr, "Unknown option `-%c'.\n", optopt);
-        else
-          fprintf (stderr,
-                   "Unknown option character `\\x%x'.\n",
-                   optopt);
-        return 1;
-      default:
-        abort ();
+  static int debug_flag;
+  static struct option long_options[] = {
+    { "debug", no_argument, &debug_flag, 1 },
+    { "prefix", optional_argument, 0, 'p' },
+    { "file", required_argument, 0, 'f' },
+    { "dump-apis", no_argument, 0, 0 },
+    { "template", no_argument, 0, 't' },
+    { 0, 0, 0, 0 }
+  };
+
+  while ((c = getopt_long (argc, argv, "hdp:f:", long_options,
+			   &option_index)) != -1)
+    {
+      switch (c)
+	{
+	case 0:
+	  if (option_index == 3)
+	    dump_api = true;
+	  break;
+	case 'd':
+	  debug = true;
+	  break;
+	case 't':
+	  template = true;
+	  break;
+	case 'p':
+	  prefix = optarg;
+	  break;
+	case 'f':
+	  filename = optarg;
+	  break;
+	case '?':
+	  print_help ();
+	  return 1;
+	default:
+	  abort ();
+	}
     }
-  }
-
-  DBG("debug = %d, filename = %s\n", debug, filename);
+  debug = debug_flag == 1 ? true : false;
+  DBG ("debug = %d, filename = %s shared memory prefix: %s\n", debug, filename,
+       prefix);
 
   for (index = optind; index < argc; index++)
     DBG ("Non-option argument %s\n", argv[index]);
@@ -149,6 +210,22 @@ int main (int argc, char **argv)
       exit(-1);
     }
   }
+
+  if (template)
+    {
+      cJSON *(*fp) (void *);
+      fp = (void *) apifuncs[p[0]].tojson;
+      assert (fp);
+      void *scratch = malloc (2048);
+      memset (scratch, 0, 2048);
+      cJSON *t = fp (scratch);
+      free (scratch);
+      char *output = cJSON_Print (t);
+      cJSON_Delete (t);
+      printf ("%s\n", output);
+      free (output);
+      exit (0);
+    }
 
   if (argc == (index + 2)) {
     o = cJSON_Parse(argv[index+1]);
@@ -189,23 +266,24 @@ int main (int argc, char **argv)
       }
     }
   }
+  if (vac_connect ("vat2", prefix, 0, 1024))
+    {
+      fprintf (stderr, "Failed connecting to VPP\n");
+      exit (-1);
+    }
 
-  if (!o) {
-    fprintf(stderr, "%s: Failed parsing JSON input\n", argv[0]);
-    exit(-1);
-  }
-
-  if (vac_connect("vat2", 0, 0, 1024)) {
-    fprintf(stderr, "Failed connecting to VPP\n");
-    exit(-1);
-  }
+  if (dump_api)
+    {
+      dump_apis ();
+      goto exit;
+    }
   if (!p) {
     fprintf(stderr, "No such command\n");
-    exit(-1);
+    goto exit;
   }
 
   cJSON * (*fp) (cJSON *);
-  fp = (void *) p[0];
+  fp = (void *) apifuncs[p[0]].f;
   cJSON *r = (*fp) (o);
 
   if (o)
@@ -218,9 +296,10 @@ int main (int argc, char **argv)
     free(output);
   } else {
     fprintf(stderr, "Call failed\n");
-    exit(-1);
+    goto exit;
   }
 
+exit:
   vac_disconnect();
   exit (0);
 
