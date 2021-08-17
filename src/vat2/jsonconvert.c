@@ -501,24 +501,15 @@ uword unformat_vl_api_gbp_scope_t(unformat_input_t * input, va_list * args)
 
 cJSON *
 vl_api_ip4_address_with_prefix_t_tojson (vl_api_ip4_prefix_t *a) {
-  u8 *s = format(0, "%U", format_vl_api_ip4_address_t, a);
-  cJSON *o = cJSON_CreateString((char *)s);
-  vec_free(s);
-  return o;
+  return vl_api_ip4_prefix_t_tojson (a);
 }
 cJSON *
 vl_api_ip6_address_with_prefix_t_tojson (vl_api_ip6_prefix_t *a) {
-  u8 *s = format(0, "%U", format_vl_api_ip6_address_t, a);
-  cJSON *o = cJSON_CreateString((char *)s);
-  vec_free(s);
-  return o;
+  return vl_api_ip6_prefix_t_tojson (a);
 }
 cJSON *
 vl_api_address_with_prefix_t_tojson (vl_api_prefix_t *a) {
-  u8 *s = format(0, "%U", format_vl_api_address_t, a);
-  cJSON *o = cJSON_CreateString((char *)s);
-  vec_free(s);
-  return o;
+  return vl_api_prefix_t_tojson (a);
 }
 u8 *
 format_vl_api_mac_address_t (u8 * s, va_list * args)
