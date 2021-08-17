@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0f3395b6_dd807ebb",
+        "filename": "src/plugins/linux-cp/lcp_nl.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 288,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2021-08-17T17:14:52Z",
+      "side": 1,
+      "message": "I think that when this occurs, we are at risk of losing netlink messages along the way (similar with the ENOBUFS error below); and if it does, I think we have no choice but to request NLM_F_DUMP and walk the netlink messages + the fib to reconcile it.\n\nI am confident that otherwise, the FIB and linux view will not be in sync.",
+      "revId": "99ce0c21d96bf4a71038ea18a800557dde4b4545",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "430954c3_475b6dae",
+        "filename": "src/plugins/linux-cp/lcp_nl.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 356,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2021-08-17T17:14:52Z",
+      "side": 1,
+      "message": "This is a risky call - draining messaged after adding a pair, will as well lose netlink messages that have nothing to do with the NEWLINK messages and so on; for example if a routing protocol added a NEWROUTE in the stream of netlink messages, we would lose it as collateral damage.\n\nI think we have to consume messages and selectively throw away those that represent existing state in VPP, such as the NEWLINK message referring to a LIP that we just made.",
+      "revId": "99ce0c21d96bf4a71038ea18a800557dde4b4545",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
