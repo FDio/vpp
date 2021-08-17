@@ -91,6 +91,15 @@ format_perfmon_bundle (u8 *s, va_list *args)
   return s;
 }
 
+static int
+bundle_name_sort_cmp (void *a1, void *a2)
+{
+  perfmon_bundle_t **n1 = a1;
+  perfmon_bundle_t **n2 = a2;
+
+  return clib_strcmp ((char *) (*n1)->name, (char *) (*n2)->name);
+}
+
 static clib_error_t *
 show_perfmon_bundle_command_fn (vlib_main_t *vm, unformat_input_t *input,
 				vlib_cli_command_t *cmd)
@@ -126,6 +135,8 @@ show_perfmon_bundle_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   if (verbose == 0)
     vlib_cli_output (vm, "%U\n", format_perfmon_bundle, 0, 0);
+
+  vec_sort_with_function (vb, bundle_name_sort_cmp);
 
   for (int i = 0; i < vec_len (vb); i++)
     if (!vb[i]->cpu_supports || vb[i]->cpu_supports ())
