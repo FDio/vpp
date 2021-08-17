@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "41556b0b_e7f97832",
+        "filename": "src/plugins/linux-cp/lcp_nl.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 288,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2021-08-17T18:23:43Z",
+      "side": 1,
+      "message": "Yes, that\u0027s true. You lose some amount of messages when there\u0027s a socket overflow and the proper way to deal with it is to request a synchronous dump from the kernel. Netgate has a task on our roadmap to add support for a synchronous dump when the socket overflows. It is supposed to be done in November.\n\nThe current code is geared towards trying to recover from a socket overflow in some fashion while minimizing the amount of messages lost. Prior to this patchset, the behavior in the event of a socket overflow was that epoll_pwait() would see an EPOLLERR on the netlink socket and the socket would be closed and no further netlink messaages would be processed ever.\n\nAs you noted, there is still work to be done, but I think the current code is an improvement over the former behavior.",
+      "parentUuid": "0f3395b6_dd807ebb",
+      "revId": "99ce0c21d96bf4a71038ea18a800557dde4b4545",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "430954c3_475b6dae",
         "filename": "src/plugins/linux-cp/lcp_nl.c",
         "patchSetId": 15
@@ -30,6 +48,24 @@
       "writtenOn": "2021-08-17T17:14:52Z",
       "side": 1,
       "message": "This is a risky call - draining messaged after adding a pair, will as well lose netlink messages that have nothing to do with the NEWLINK messages and so on; for example if a routing protocol added a NEWROUTE in the stream of netlink messages, we would lose it as collateral damage.\n\nI think we have to consume messages and selectively throw away those that represent existing state in VPP, such as the NEWLINK message referring to a LIP that we just made.",
+      "revId": "99ce0c21d96bf4a71038ea18a800557dde4b4545",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "76a81c9f_be4ecd80",
+        "filename": "src/plugins/linux-cp/lcp_nl.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 356,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2021-08-17T18:23:43Z",
+      "side": 1,
+      "message": "I don\u0027t see how a RTM_NEWROUTE message would be lost.\n\nlcp_nl_drain_messages() does not indiscriminately drop messages. It only reads all of the messages which are ready on the netlink socket and queues them with a timestamp indicating when they were read.\n\nLater, when messages are being processed, lcp_router_lip_ts_check() is called while processing some message types (RTM_NEWLINK, RTM_DELLINK) and if the message timestamp is earlier than the timestamp from when the interface pair was added to the pool, that RTM_NEWLINK or RTM_DELLINK is ignored.\n\nThe timestamp doesn\u0027t come into play for RTM_NEWROUTE or other message types.\n\nCan you provide more details on the use case where unrelated messages would be lost?",
+      "parentUuid": "430954c3_475b6dae",
       "revId": "99ce0c21d96bf4a71038ea18a800557dde4b4545",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
