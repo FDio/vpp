@@ -91,6 +91,15 @@ format_perfmon_bundle (u8 *s, va_list *args)
   return s;
 }
 
+static int
+bundle_name_sort_cmp (void *a1, void *a2)
+{
+  perfmon_bundle_t **n1 = a1;
+  perfmon_bundle_t **n2 = a2;
+
+  return clib_strcmp ((char *) (*n1)->name, (char *) (*n2)->name);
+}
+
 static clib_error_t *
 show_perfmon_bundle_command_fn (vlib_main_t *vm, unformat_input_t *input,
 				vlib_cli_command_t *cmd)
@@ -126,6 +135,8 @@ show_perfmon_bundle_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   if (verbose == 0)
     vlib_cli_output (vm, "%U\n", format_perfmon_bundle, 0, 0);
+
+  vec_sort_with_function (vb, bundle_name_sort_cmp);
 
   for (int i = 0; i < vec_len (vb); i++)
     if (!vb[i]->cpu_supports || vb[i]->cpu_supports ())
@@ -359,21 +370,6 @@ VLIB_CLI_COMMAND (show_perfmon_stats_command, static) = {
 };
 
 static clib_error_t *
-perfmon_reset_command_fn (vlib_main_t *vm, unformat_input_t *input,
-			  vlib_cli_command_t *cmd)
-{
-  perfmon_reset (vm);
-  return 0;
-}
-
-VLIB_CLI_COMMAND (perfmon_reset_command, static) = {
-  .path = "perfmon reset",
-  .short_help = "perfmon reset",
-  .function = perfmon_reset_command_fn,
-  .is_mp_safe = 1,
-};
-
-static clib_error_t *
 perfmon_start_command_fn (vlib_main_t *vm, unformat_input_t *input,
 			  vlib_cli_command_t *cmd)
 {
@@ -389,7 +385,7 @@ perfmon_start_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "bundle %U", unformat_perfmon_bundle_name, &b))
+      if (unformat (line_input, "%U", unformat_perfmon_bundle_name, &b))
 	;
       else
 	return clib_error_return (0, "unknown input '%U'",
@@ -405,7 +401,7 @@ perfmon_start_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
 VLIB_CLI_COMMAND (perfmon_start_command, static) = {
   .path = "perfmon start",
-  .short_help = "perfmon start bundle [<bundle-name>]",
+  .short_help = "perfmon start [<bundle-name>]",
   .function = perfmon_start_command_fn,
   .is_mp_safe = 1,
 };
