@@ -14,7 +14,7 @@
 ##############################################################################
 # vat2
 ##############################################################################
-add_vpp_executable(vat2 ENABLE_EXPORTS NO_INSTALL
+add_vpp_executable(vat2 ENABLE_EXPORTS
   SOURCES
   main.c
   plugin.c
