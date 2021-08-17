@@ -42,7 +42,7 @@ class ARPTestCase(VppTestCase):
         super(ARPTestCase, self).setUp()
 
         # create 3 pg interfaces
-        self.create_pg_interfaces(range(4))
+        self.create_pg_interfaces(range(5))
 
         # pg0 configured with ip4 and 6 addresses used for input
         # pg1 configured with ip4 and 6 addresses used for output
@@ -1827,6 +1827,24 @@ class ARPTestCase(VppTestCase):
         # cleanup
         conn3.remove_vpp_config()
         conn2.remove_vpp_config()
+
+    def test_arp_32(self):
+        """ Test ARP on links with a /32 prefix """
+        VppIpInterfaceAddress(self, self.pg4, "1.1.1.1", 32).add_vpp_config()
+
+        VppIpRoute(self, "1.1.1.2", 32,
+                   [VppRoutePath("1.1.1.2",
+                                 self.pg4.sw_if_index)]).add_vpp_config()
+        p = (Ether(dst="ff:ff:ff:ff:ff:ff",
+                   src=self.pg4.remote_mac) /
+             ARP(op="who-has",
+                 hwdst=self.pg4.local_mac,
+                 hwsrc=self.pg4.remote_mac,
+                 pdst="1.1.1.1",
+                 psrc="1.1.1.2"))
+
+        rx = self.send_and_assert_no_replies(self.pg0, [p], self.pg0)
+        self.logger.error(self.vapi.cli("sh trace"))
 
 
 @tag_fixme_vpp_workers
