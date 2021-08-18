@@ -1,0 +1,16 @@
+---
+name: Network Policy
+maintainer: Nathan Skrzypczak <nathan.skrzypczak@gmail.com>
+features:
+  - Interface-level policy configuration for RX and TX traffic
+  - Rule and IP set-based packet filtering for IPv4 and IPv6
+
+description: "This plugin provides a programmable network policy engine in VPP.
+              It allows creation of policies composed of rules and IP sets,
+              which can be applied to interfaces for controlling packet forwarding,
+              filtering by IP addresses, ports, and protocols. It supports both
+              inbound and outbound traffic with default behaviors and can integrate
+              into VPP's packet processing using ACL..."
+
+state: development
+properties: [CLI, API]
