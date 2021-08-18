@@ -769,6 +769,13 @@ M:	Nathan Skrzypczak <nathan.skrzypczak@gmail.com>
 M:	Neale Ranns <neale@graphiant.com>
 F:	src/plugins/cnat
 
+Plugin - NPol
+I:	npol
+M:	Aloys Augustin <aloaugus@cisco.com>
+M:	Nathan Skrzypczak <nathan.skrzypczak@gmail.com>
+M:	Hedi Bouattour <hedibouattour2010@gmail.com>
+F:	src/plugins/npol/
+
 Plugin - Wireguard
 I:	wireguard
 M:	Artem Glazychev <artem.glazychev@xored.com>
