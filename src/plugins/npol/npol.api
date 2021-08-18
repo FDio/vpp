@@ -1,0 +1,245 @@
+/*
+ * Copyright (c) 2020 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/** \file
+    This file defines the vpp control-plane API messages
+    used to configure Network policies
+*/
+
+option version = "0.1.0";
+import "vnet/ip/ip_types.api";
+import "vnet/fib/fib_types.api";
+
+/** \brief Get the plugin version
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+
+define npol_get_version
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply to get the plugin version
+    @param context - returned sender context, to match reply w/ request
+    @param major - Incremented every time a known breaking behavior change is introduced
+    @param minor - Incremented with small changes, may be used to avoid buggy versions
+*/
+
+define npol_get_version_reply
+{
+  u32 context;
+  u32 major;
+  u32 minor;
+};
+
+enum npol_ipset_type : u8 {
+  NPOL_IP = 0,           /* Each member is an IP address */
+  NPOL_IP_AND_PORT = 1,  /* Each member is "<IP>,(tcp|udp):port" (3-tuple) */
+  NPOL_NET = 2,          /* Each member is a CIDR */
+};
+
+typedef npol_three_tuple {
+  vl_api_address_t address;
+  u8 l4_proto;
+  u16 port;
+};
+
+union npol_ipset_member_val {
+  vl_api_address_t address;
+  vl_api_prefix_t prefix;
+  vl_api_npol_three_tuple_t tuple;
+};
+
+typedef npol_ipset_member {
+  vl_api_npol_ipset_member_val_t val;
+};
+
+define npol_ipset_create
+{
+  u32 client_index;
+  u32 context;
+  vl_api_npol_ipset_type_t type;
+};
+
+define npol_ipset_create_reply
+{
+  u32 context;
+  i32 retval;
+  u32 set_id;
+};
+
+
+autoreply define npol_ipset_add_del_members
+{
+  u32 client_index;
+  u32 context;
+  u32 set_id;
+  bool is_add;
+  u32 len;
+  vl_api_npol_ipset_member_t members[len];
+};
+
+autoreply define npol_ipset_delete
+{
+  u32 client_index;
+  u32 context;
+  u32 set_id;
+};
+
+enum npol_rule_action : u8 {
+  NPOL_ALLOW = 0,  // Accept packet
+  NPOL_DENY,       // Drop / reject packet
+  NPOL_LOG,        // Ignored for now
+  NPOL_PASS,       // Skip following rules, resume evaluation at the policy
+                   // with the id configured in npol_configure_policies
+};
+
+enum npol_entry_type : u8 {
+  NPOL_CIDR = 0,     // simple prefix
+  NPOL_PORT_RANGE,
+  NPOL_PORT_IP_SET,  // Points to an ip + proto + port set
+  NPOL_IP_SET,       // Points to an ip only set
+};
+
+enum npol_policy_default : u8 {
+  NPOL_DEFAULT_ALLOW = 0,     // allow per default
+  NPOL_DEFAULT_DENY, // deny per default
+  NPOL_DEFAULT_PASS,  // pass to profiles per default
+};
+
+typedef npol_port_range {
+  u16 start;
+  u16 end;    // Inclusive, for a single port start==end
+};
+
+typedef npol_entry_set_id {
+  u32 set_id;
+};
+
+union npol_entry_data {
+  vl_api_prefix_t cidr;
+  vl_api_npol_port_range_t port_range;
+  vl_api_npol_entry_set_id_t set_id;
+};
+
+// A rule contains several such entries, each belong to a category
+// categories are: [not_]{src,dst}_{cidr,port_range,port_ip_set,ip_set}
+// (defined byt the 3 first fields in the rule_entry)
+// A rule matches a packet iff:
+// - for every "not" category, the source / destination do not match any entry
+// - for every positive match category, the source / destination matches at
+// least one entry in each category EXCEPT for port ranges and port+ip sets,
+// where the packet only needs to match one entry in either category
+
+typedef npol_rule_entry {
+  bool is_src;
+  bool is_not;
+  vl_api_npol_entry_type_t type;
+  vl_api_npol_entry_data_t data;
+};
+
+enum npol_rule_filter_type : u8 {
+  NPOL_RULE_FILTER_NONE_TYPE = 0,
+  NPOL_RULE_FILTER_ICMP_TYPE,
+  NPOL_RULE_FILTER_ICMP_CODE,
+  NPOL_RULE_FILTER_L4_PROTO,
+};
+
+typedef npol_rule_filter {
+  u32 value;
+  vl_api_npol_rule_filter_type_t type;
+  u8 should_match;
+};
+
+typedef npol_rule {
+  vl_api_npol_rule_action_t action;
+  vl_api_npol_rule_filter_t filters[3];
+  u32 num_entries;
+  vl_api_npol_rule_entry_t matches[num_entries]; // List of other criteria
+};
+
+define npol_rule_create {
+  u32 client_index;
+  u32 context;
+  vl_api_npol_rule_t rule;
+};
+
+autoreply define npol_rule_update {
+  u32 client_index;
+  u32 context;
+  u32 rule_id;
+  vl_api_npol_rule_t rule;
+};
+
+define npol_rule_create_reply {
+  u32 context;
+  i32 retval;
+  u32 rule_id;
+};
+
+autoreply define npol_rule_delete {
+  u32 client_index;
+  u32 context;
+  u32 rule_id;
+};
+
+typedef npol_policy_item {
+  bool is_inbound; // 0 for outbound, 1 for is_inbound
+  u32 rule_id;
+};
+
+define npol_policy_create {
+  u32 client_index;
+  u32 context;
+  u32 num_items;
+  vl_api_npol_policy_item_t rules[num_items];
+};
+
+define npol_policy_create_reply {
+  u32 context;
+  i32 retval;
+  u32 policy_id;
+};
+
+autoreply define npol_policy_update {
+  u32 client_index;
+  u32 context;
+  u32 policy_id;
+  u32 num_items;
+  vl_api_npol_policy_item_t rules[num_items];
+};
+
+autoreply define npol_policy_delete {
+  u32 client_index;
+  u32 context;
+  u32 policy_id;
+};
+
+autoreply define npol_configure_policies {
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u32 num_rx_policies;
+  u32 num_tx_policies;
+  u32 total_ids;
+  u8 invert_rx_tx;
+  vl_api_npol_policy_default_t policy_default_rx;
+  vl_api_npol_policy_default_t policy_default_tx;
+  vl_api_npol_policy_default_t profile_default_rx;
+  vl_api_npol_policy_default_t profile_default_tx;
+  u32 policy_ids[total_ids]; // rx_policies, then tx_policies, then profiles
+};
