@@ -31,7 +31,7 @@ add_custom_target(vpp_version_h
 ##############################################################################
 # vpp binary
 ##############################################################################
-option(VPP_API_TEST_BUILTIN "Use builtin VPP API test." ON)
+option(VPP_API_TEST_BUILTIN "Use builtin VPP API test." OFF)
 
 configure_file(
   ${CMAKE_SOURCE_DIR}/vpp/vnet/config.h.in
