@@ -726,6 +726,11 @@ M:	Nathan Skrzypczak <nathan.skrzypczak@gmail.com>
 M:	Neale Ranns <neale@graphiant.com>
 F:	src/plugins/cnat
 
+Plugin - Calico policies
+I:	capo
+M:	Aloys Augustin <aloaugus@cisco.com>
+F:	src/plugins/capo/
+
 Plugin - Wireguard
 I:	wireguard
 M:	Artem Glazychev <artem.glazychev@xored.com>
