@@ -537,6 +537,8 @@ ipN
 ipsec
 IPsec
 ipsecmb
+ipset
+ipsets
 iptables
 ipv
 iPv
@@ -777,6 +779,7 @@ nodaemon
 noevaluate
 nonaddress
 nosyslog
+npol
 npt
 npt66
 ns
