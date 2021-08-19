@@ -23,7 +23,7 @@ $ cd vpp
 Install the virtual environment
 ----------------------------------------------
 
-$ python -m pip install --user virtualenv 
+$ python -m pip install --user virtualenv
 $ python -m virtualenv env
 $ source env/bin/activate
 $ pip install -r docs/etc/requirements.txt

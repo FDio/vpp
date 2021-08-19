@@ -941,7 +941,6 @@ done:
   return error;
 }
 
-
 /*?
  * This command is used to change the admin state (up/down) of an interface.
  *
@@ -951,9 +950,11 @@ done:
  * '<em>punt</em>' flag (interface is still down).
  *
  * @cliexpar
- * Example of how to configure the admin state of an interface to '<em>up</em?':
+ * Example of how to configure the admin state of an interface to
+ '<em>up</em>':
  * @cliexcmd{set interface state GigabitEthernet2/0/0 up}
- * Example of how to configure the admin state of an interface to '<em>down</em?':
+ * Example of how to configure the admin state of an interface to
+ '<em>down</em>':
  * @cliexcmd{set interface state GigabitEthernet2/0/0 down}
  ?*/
 /* *INDENT-OFF* */
@@ -2392,7 +2393,7 @@ pcap_trace_command_fn (vlib_main_t * vm,
  * @cliexend
  * Example of how to start a tx packet capture:
  * @cliexstart{pcap trace tx max 35 intfc GigabitEthernet0/8/0 file
-vppTest.pcap}
+ * vppTest.pcap}
  * @cliexend
  * Example of how to display the status of a tx packet capture in progress:
  * @cliexstart{pcap trace status}

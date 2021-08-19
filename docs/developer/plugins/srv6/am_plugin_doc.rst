@@ -1,0 +1,1 @@
+../../../../src/plugins/srv6-am/am_plugin_doc.rst

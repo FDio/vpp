@@ -2078,16 +2078,19 @@ vlib_enable_disable_pkt_trace_filter (int enable)
  *
  * Configure a simple classify filter, and configure pcap rx trace to use it:
  *
- * <b><em>classify filter rx mask l3 ip4 src match l3 ip4 src 192.168.1.11"</em></b><br>
+ * <b><em>classify filter rx mask l3 ip4 src match l3 ip4 src
+ 192.168.1.11"</em></b><br>
  * <b><em>pcap rx trace on max 100 filter</em></b>
  *
  * Configure another fairly simple filter
  *
- * <b><em>classify filter mask l3 ip4 src dst match l3 ip4 src 192.168.1.10 dst 192.168.2.10"</em></b>
+ * <b><em>classify filter mask l3 ip4 src dst match l3 ip4 src 192.168.1.10 dst
+ 192.168.2.10"</em></b>
  *
  *
  * Configure a filter for use with the vpp packet tracer:
- * <b><em>classify filter trace mask l3 ip4 src dst match l3 ip4 src 192.168.1.10 dst 192.168.2.10"</em></b>
+ * <b><em>classify filter trace mask l3 ip4 src dst match l3 ip4 src
+ 192.168.1.10 dst 192.168.2.10"</em></b>
  * <b><em>trace add dpdk-input 100 filter</em></b>
  *
  * Clear classifier filters
@@ -2095,7 +2098,7 @@ vlib_enable_disable_pkt_trace_filter (int enable)
  * <b><em>classify filter [trace | rx | tx  | <intfc>] del</em></b>
  *
  * To display the top-level classifier tables for each use case:
- * <b><em>show classify filter</em/></b>
+ * <b><em>show classify filter</em></b>
  *
  * To inspect the classifier tables, use
  *

@@ -129,7 +129,7 @@ Create some startup files
 
 We will create some startup files for the use of this tutorial. Typically you will
 modify the startup.conf file found in /etc/vpp/startup.conf. For more information
-on this file refer to :ref:`startup`.
+on this file refer to :ref:`configuration`.
 
 When running multiple VPP instances, each instance needs to have
 specified a 'name' or 'prefix'. In the example below, the 'name' or 'prefix'
