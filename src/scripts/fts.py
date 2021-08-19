@@ -55,6 +55,7 @@ schema = {
     },
 }
 
+DEFAULT_REPO_LINK = "https://github.com/FDio/vpp/blob/master/"
 
 def filelist_from_git_status():
     filelist = []
@@ -167,7 +168,7 @@ class MarkDown():
 
 def output_toc(toc, stream):
     write = stream.write
-    write('## VPP Feature list:\n')
+    write('# VPP Supported Features\n')
 
     for t in toc:
         ref = t.lower().replace(' ', '-')
@@ -189,13 +190,12 @@ def featurelistsort(k):
     }
     return orderedfields[k[0]]
 
-def output_markdown(features, fields, notfields):
+def output_markdown(features, fields, notfields, repository_url):
     stream = StringIO()
     m = MarkDown(stream)
     m.print('markdown_header', 'Feature Details:')
     for path, featuredef in sorted(features.items(), key=featuresort):
-        codeurl = 'https://git.fd.io/vpp/tree/src/' + \
-                  '/'.join(os.path.normpath(path).split('/')[1:-1])
+        codeurl = "%s%s" % (repository_url, '/'.join(os.path.normpath(path).split('/')[1:-1]))
         featuredef['code'] = codeurl
         for k, v in sorted(featuredef.items(), key=featurelistsort):
             if notfields:
@@ -215,6 +215,9 @@ def main():
     parser = argparse.ArgumentParser(description='VPP Feature List.')
     parser.add_argument('--validate', dest='validate', action='store_true',
                         help='validate the FEATURE.yaml file')
+    parser.add_argument("--repolink", metavar="repolink", default=DEFAULT_REPO_LINK,
+                help="Link to public repository [%s]" %
+                     DEFAULT_REPO_LINK)
     parser.add_argument('--git-status', dest='git_status', action='store_true',
                         help='Get filelist from git status')
     parser.add_argument('--all', dest='all', action='store_true',
@@ -261,7 +264,7 @@ def main():
 
     if args.markdown:
         stream = StringIO()
-        tocstream, stream = output_markdown(features, fields, notfields)
+        tocstream, stream = output_markdown(features, fields, notfields, args.repolink)
         print(tocstream.getvalue())
         print(stream.getvalue())
         stream.close()

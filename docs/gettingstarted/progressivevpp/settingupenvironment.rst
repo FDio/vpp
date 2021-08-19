@@ -11,8 +11,7 @@ All of these exercises are designed to be performed on an Ubuntu 16.04 (Xenial) 
 Install Virtual Box and Vagrant
 -------------------------------
 
-You will need to install Virtual Box and Vagrant. If you have not installed Virtual Box or Vagrant please
-refer to :ref:`installingVboxVagrant` to install Virtual Box and Vagrant.
+You will need to install Virtual Box and Vagrant.
 
 Create a Vagrant Directory
 ---------------------------
@@ -30,17 +29,17 @@ Create a file called **Vagrantfile** with the following contents:
 
     # -*- mode: ruby -*-
     # vi: set ft=ruby :
-    
+
     Vagrant.configure(2) do |config|
-    
+
       config.vm.box = "bento/ubuntu-18.04"
       config.vm.box_check_update = false
-    
+
       vmcpu=(ENV['VPP_VAGRANT_VMCPU'] || 2)
       vmram=(ENV['VPP_VAGRANT_VMRAM'] || 4096)
-    
+
       config.ssh.forward_agent = true
-    
+
       config.vm.provider "virtualbox" do |vb|
           vb.customize ["modifyvm", :id, "--ioapic", "on"]
           vb.memory = "#{vmram}"
@@ -129,7 +128,7 @@ Create some startup files
 
 We will create some startup files for the use of this tutorial. Typically you will
 modify the startup.conf file found in /etc/vpp/startup.conf. For more information
-on this file refer to :ref:`startup`.
+on this file refer to :ref:`configuration_reference`.
 
 When running multiple VPP instances, each instance needs to have
 specified a 'name' or 'prefix'. In the example below, the 'name' or 'prefix'
