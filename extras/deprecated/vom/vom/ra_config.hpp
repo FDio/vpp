@@ -85,7 +85,7 @@ private:
 
   /**
    * Use the source address of the router-solicitation message if
-   * availiable.
+   * available.
    */
   uint8_t m_send_unicast;
 

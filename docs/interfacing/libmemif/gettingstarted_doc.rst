@@ -1,0 +1,1 @@
+../../../extras/libmemif/docs/gettingstarted_doc.rst

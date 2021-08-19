@@ -9,7 +9,7 @@ Overview
 ________
 
 This plugin covers specific NAT use-cases that come mostly
-from the container networking world. On the contraty of the
+from the container networking world. On the contrary of the
 NAT concepts used for e.g. a home gateway, there is no notion
 of 'outside' and 'inside'. We handle Virtual (or Real) IPs and
 translations of the packets destined to them
@@ -33,9 +33,9 @@ that will store the packet rewrite to do and the one to undo
 until the flow is reset or a timeout is reached
 
 A ``session`` is a fully resolved 9-tuple of ``src_ip, src_port, dest_ip, dest_port, proto``
-to match incoming packets, and their new attributes ``new_src_ip, new_src_port, new_dest_ip, new_dest_port``. It allows for ``backend`` stickyness and a fast-path for established connections.
+to match incoming packets, and their new attributes ``new_src_ip, new_src_port, new_dest_ip, new_dest_port``. It allows for ``backend`` stickiness and a fast-path for established connections.
 
-These ``sessions`` expire after 30s for regular ``sessions`` and 1h for estabished
+These ``sessions`` expire after 30s for regular ``sessions`` and 1h for established
 TCP connections. These can be changed in vpp's configuration file
 
 .. code-block:: console
@@ -64,7 +64,7 @@ assigned to an interface
 
 
 If ``30.0.0.2`` is the address of an interface, we can use the following
-to do the same translation, and additionnaly change the source.
+to do the same translation, and additionally change the source.
 address with ``1.2.3.4``
 
 .. code-block:: console
@@ -82,10 +82,10 @@ To show existing translations and sessions you can use
 SourceNATing outgoing traffic
 -----------------------------
 
-A independant part of the plugin allows changing the source address
+A independent part of the plugin allows changing the source address
 of outgoing traffic on a per-interface basis.
 
-In the following example, all traffic comming from ``tap0`` and NOT
+In the following example, all traffic coming from ``tap0`` and NOT
 going to ``20.0.0.0/24`` will be source NAT-ed with ``30.0.0.1``.
 On the way back the translation will be undone.
 
@@ -133,7 +133,7 @@ and call a NAT node back that will perform the translation.
 Known limitations
 _________________
 
-This plugin is still under developpment, it lacks the following features :
+This plugin is still under development, it lacks the following features :
 * Load balancing doesn't support parametric probabilities
 * VRFs aren't supported. All rules apply to fib table 0 only
 * Programmatic session handling (deletion, lifetime updates) aren't supported

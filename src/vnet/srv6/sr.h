@@ -101,7 +101,7 @@ typedef struct
 
   u8 type;					/**< Type (default is 0) */
   /* SR Policy specific DPO                                       */
-  /* IF Type = DEFAULT Then Load Balancer DPO among SID lists     */
+  /* IF Type = DEFAULT Then Load-Balancer DPO among SID lists     */
   /* IF Type = SPRAY then Spray DPO with all SID lists            */
   dpo_id_t bsid_dpo;			/**< SR Policy specific DPO - BSID */
   dpo_id_t ip4_dpo;			/**< SR Policy specific DPO - IPv6 */

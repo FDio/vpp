@@ -3462,7 +3462,7 @@ done:
 
 /*?
  * Executes a sequence of CLI commands which are read from a file. If
- * a command is unrecognised or otherwise invalid then the usual CLI
+ * a command is unrecognized or otherwise invalid then the usual CLI
  * feedback will be generated, however execution of subsequent commands
  * from the file will continue.
  *

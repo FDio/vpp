@@ -995,7 +995,7 @@ set_ip4_geneve_bypass (vlib_main_t * vm,
 /*?
  * This command adds the 'ip4-geneve-bypass' graph node for a given interface.
  * By adding the IPv4 geneve-bypass graph node to an interface, the node checks
- *  for and validate input geneve packet and bypass ip4-lookup, ip4-local,
+ * for and validate input geneve packet and bypass ip4-lookup, ip4-local,
  * ip4-udp-lookup nodes to speedup geneve packet forwarding. This node will
  * cause extra overhead to for non-geneve packets which is kept at a minimum.
  *
@@ -1014,13 +1014,13 @@ set_ip4_geneve_bypass (vlib_main_t * vm,
  *
  * Example of graph node after ip4-geneve-bypass is enabled:
  * @cliexstart{show vlib graph ip4-geneve-bypass}
- *            Name                      Next                    Previous
- * ip4-geneve-bypass                error-drop [0]               ip4-input
- *                                geneve4-input [1]        ip4-input-no-checksum
- *                                 ip4-lookup [2]
+ *            Name           Next                    Previous
+ * ip4-geneve-bypass     error-drop [0]              ip4-input
+ *                     geneve4-input [1]        ip4-input-no-checksum
+ *                      ip4-lookup [2]
  * @cliexend
  *
- * Example of how to display the feature enabed on an interface:
+ * Example of how to display the feature enabled on an interface:
  * @cliexstart{show ip interface features GigabitEthernet2/0/0}
  * IP feature paths configured on GigabitEthernet2/0/0...
  * ...
@@ -1052,7 +1052,7 @@ set_ip6_geneve_bypass (vlib_main_t * vm,
 /*?
  * This command adds the 'ip6-geneve-bypass' graph node for a given interface.
  * By adding the IPv6 geneve-bypass graph node to an interface, the node checks
- *  for and validate input geneve packet and bypass ip6-lookup, ip6-local,
+ * for and validate input geneve packet and bypass ip6-lookup, ip6-local,
  * ip6-udp-lookup nodes to speedup geneve packet forwarding. This node will
  * cause extra overhead to for non-geneve packets which is kept at a minimum.
  *
@@ -1071,13 +1071,13 @@ set_ip6_geneve_bypass (vlib_main_t * vm,
  *
  * Example of graph node after ip6-geneve-bypass is enabled:
  * @cliexstart{show vlib graph ip6-geneve-bypass}
- *            Name                      Next                    Previous
- * ip6-geneve-bypass                error-drop [0]               ip6-input
- *                                geneve6-input [1]        ip4-input-no-checksum
- *                                 ip6-lookup [2]
+ *      Name                      Next                    Previous
+ * ip6-geneve-bypass          error-drop [0]             ip6-input
+ *                          geneve6-input [1]       ip4-input-no-checksum
+ *                           ip6-lookup [2]
  * @cliexend
  *
- * Example of how to display the feature enabed on an interface:
+ * Example of how to display the feature enabled on an interface:
  * @cliexstart{show ip interface features GigabitEthernet2/0/0}
  * IP feature paths configured on GigabitEthernet2/0/0...
  * ...

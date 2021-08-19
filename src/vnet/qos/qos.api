@@ -57,7 +57,7 @@ typedef qos_store
 /**
  * Enable/Disable QoS storing
  * The QoS bits from the packet at the specified input layer are copied
- * into the packet. Storeing should be used in conjunction with marking
+ * into the packet. Storing should be used in conjunction with marking
  * @param enable - enable=1 or disable the feature
  * @param store - Store configuration
  */

@@ -3,8 +3,7 @@
 Creating the Virtual Machine
 ----------------------------
 
-We will now create the virtual machine. We use the "virsh create command". For the complete file we
-use refer to :ref:`xmlexample`.
+We will now create the virtual machine. We use the "virsh create command".
 
 It is important to note that in the XML file we specify the socket path that is used to connect to
 FD.io VPP.
