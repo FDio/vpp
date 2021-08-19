@@ -82,10 +82,7 @@ GTAGS
 /build-root/docs
 /build-root/.doxygen-bootstrap.ok
 /build-root/.doxygen-siphon.dep
-/docs/_build
-/docs/dynamic_includes
-/sphinx_venv
-!/docs/Makefile
+/docs/venv
 
 # language servers
 compile_commands.json

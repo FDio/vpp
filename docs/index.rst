@@ -26,18 +26,105 @@ and multiple kinds of packet tracing. Development debug images
 include complete symbol tables, and extensive consistency checking.
 
 Some VPP Use-cases include vSwitches, vRouters, Gateways, Firewalls
-and Load Balancers, to name a few.
+and Load-Balancers, to name a few.
 
 For more details click on the links below or press next.
 
 .. toctree::
+   :caption: About VPP
+   :maxdepth: 1
+
+   aboutvpp/scalar-vs-vector-packet-processing
+   aboutvpp/extensible
+   aboutvpp/networkstack
+   aboutvpp/hoststack
+   aboutvpp/developer
+   aboutvpp/supported
+   aboutvpp/performance
+   aboutvpp/releasenotes/index
+   aboutvpp/featurelist
+
+.. toctree::
+   :caption: Use Cases
+   :maxdepth: 1
+
+   usecases/containers/index
+   usecases/simpleperf/index
+   usecases/vppcloud/index
+   usecases/vhost/index
+   usecases/vmxnet3
+   usecases/home_gateway
+   usecases/acls
+   usecases/networksim
+   usecases/webapp
+   usecases/container_test
+   usecases/trafficgen
+   usecases/ikev2/index
+   usecases/contiv/index
+
+
+.. toctree::
+   :caption: Getting started
    :maxdepth: 2
 
-   whatisvpp/index.rst
-   gettingstarted/index
-   links/index
-   usecases/index
-   troubleshooting/index
-   reference/index
-   relatedprojects/index
-   about.rst
+   gettingstarted/installing/index
+   gettingstarted/running/index
+   gettingstarted/progressivevpp/index
+   gettingstarted/troubleshooting/index
+
+.. toctree::
+    :caption: Developer Documentation
+    :maxdepth: 2
+
+    developer/build-run-debug/index
+    developer/corearchitecture/index
+    developer/corefeatures/index
+    developer/plugindoc/index
+    developer/plugins/index
+    developer/devicedrivers/index
+    developer/tests/overview
+    developer/extras/index
+
+.. toctree::
+    :caption: Interfacing with VPP
+    :maxdepth: 2
+
+    interfacing/binapi/index
+    interfacing/go/index
+    interfacing/rust/index
+    interfacing/libmemif/index
+
+
+
+.. toctree::
+    :caption: Contributing
+    :maxdepth: 2
+
+    contributing/gitreview
+    contributing/writingdocs
+    contributing/reportingissues/index
+
+
+.. toctree::
+    :caption: Debug CLI
+    :maxdepth: 2
+
+    cli-reference/gettingstarted/index
+    cli-reference/interface/index
+    cli-reference/index
+
+
+.. toctree::
+    :caption: Configuration file
+    :maxdepth: 2
+
+    configuration/config_getting_started
+    configuration/reference
+
+
+About this documentation
+
+::
+
+    VPP Version : __VPP_VERSION__
+    Built on    : __BUILT_ON__
