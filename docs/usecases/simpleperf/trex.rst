@@ -65,7 +65,7 @@ information on the configuration file, please refer to the `TRex Manual <http://
            default_gw: 10.10.2.1
          - ip: 10.10.1.2
            default_gw: 10.10.1.1
-   
+
 Stop the previous VPP session and start it again in order to add a route for new
 IP addresses 16.0.0.0/8 and 48.0.0.0/8, according to Figure 2. Those IP addresses
 are needed because TRex generates packets that use these addresses. Refer to the
@@ -81,13 +81,13 @@ these traffic templates.
     __/ __/ _ \  (_)__    | | / / _ \/ _ \
     _/ _// // / / / _ \   | |/ / ___/ ___/
     /_/ /____(_)_/\___/   |___/_/  /_/
-   
+
    vpp# sho int
                  Name               Idx       State          Counter          Count
    FortyGigabitEthernet82/0/0        1        down
    FortyGigabitEthernet82/0/1        2        down
    local0                            0        down
-   
+
    vpp#
    vpp# set interface ip address FortyGigabitEthernet82/0/0 10.10.1.1/24
    vpp# set interface ip address FortyGigabitEthernet82/0/1 10.10.2.1/24
@@ -109,7 +109,7 @@ configuration file "cap2/dns.yaml".
     Total-tx-bytes       : 166886 bytes
     Total-tx-sw-bytes    : 166716 bytes
     Total-rx-bytes       : 166886 byte
-   
+
     Total-tx-pkt         : 2528 pkts
     Total-rx-pkt         : 2528 pkts
     Total-sw-tx-pkt      : 2526 pkts

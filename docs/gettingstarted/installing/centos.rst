@@ -139,7 +139,7 @@ RPMs, so they will be installed as well.
 
 There are additional packages that are optional. These packages can be
 combined with the command above and installed all at once, or installed as
-needed: 
+needed:
 
 .. code-block:: console
 
