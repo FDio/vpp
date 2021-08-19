@@ -46,7 +46,7 @@ The rest of them deploy on all nodes within the k8s cluster (including the maste
 The following section briefly describes the individual Contiv components, which are displayed
 as orange boxes on the picture below:
 
-![Contiv/VPP Architecture](../../_images/contiv-arch.png) 
+![Contiv/VPP Architecture](../../../_images/contiv-arch.png) 
 
 
 ### Contiv KSR

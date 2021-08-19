@@ -1,8 +1,8 @@
-.. _gstarteddevel:
+.. _reference:
 
-###############
-For Developers
-###############
+=======================
+Developer Documentation
+=======================
 
 The Developers section covers the following areas:
 
@@ -16,33 +16,10 @@ The Developers section covers the following areas:
 * Describes the different types of API support and how to integrate a plugin
 
 .. toctree::
-   :maxdepth: 2
+    :maxdepth: 2
 
-   building
-   running_vpp
-   testing_vpp
-   gdb_examples
-   add_plugin
-   add_plugin_goapi
-   gitreview
-   softwarearchitecture
-   infrastructure
-   vlib
-   plugins
-   vnet
-   featurearcs
-   metadata
-   multiarch/index.rst
-   bihash
-   vpp_api_module
-   binary_api_support
-   buildsystem/index.rst
-   eventviewer
-   fib20/index.rst
-   buildwireshark
-   punt
-   quic_plugin
-   cross_compile_macos.rst
-   cnat
-   ipsec
-   VPPAPI.md
+    build-run-debug/index
+    corecomponents/index
+    corefeatures/index
+    plugins/index
+

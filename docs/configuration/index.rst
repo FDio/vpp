@@ -1,8 +1,8 @@
-.. _startup:
+.. _configuration:
 
-==========================================
-VPP Configuration - CLI and 'startup.conf'
-==========================================
+============================
+Configuration file reference
+============================
 
 After a successful installation, VPP installs a startup config file named
 *startup.conf* in the */etc/vpp/* directory. This file can be tailored to
@@ -44,7 +44,7 @@ like this:
     (gdb) run unix interactive
 
 
-Startup Configuration File (startup.conf)
+Configuration File (startup.conf)
 -----------------------------------------
 
 The more typical way to specify the startup configuration to VPP is with the

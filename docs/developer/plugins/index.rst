@@ -1,5 +1,6 @@
 .. _dplugins:
 
+=======
 Plugins
 =======
 
@@ -11,3 +12,13 @@ Once loaded, the plug-in DLL mechanism uses dlsym to find and verify a
 vlib\_plugin\_registration data structure in the newly-loaded plug-in.
 
 For more on plugins please refer to :ref:`add_plugin`.
+
+
+.. toctree::
+   :maxdepth: 1
+
+   add_plugin
+   add_plugin_goapi
+   quic
+   cnat
+   lcp

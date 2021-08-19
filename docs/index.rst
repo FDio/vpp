@@ -31,13 +31,13 @@ and Load Balancers, to name a few.
 For more details click on the links below or press next.
 
 .. toctree::
-   :maxdepth: 2
+    :maxdepth: 2
 
-   whatisvpp/index.rst
-   gettingstarted/index
-   links/index
-   usecases/index
-   troubleshooting/index
-   reference/index
-   relatedprojects/index
-   about.rst
+    aboutvpp/index
+    gettingstarted/index
+    configuration/index
+    cli-reference/index
+    developer/index
+    contributing/index
+
+    about.rst

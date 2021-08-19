@@ -1,8 +1,8 @@
 .. _cmdreference:
 
-
-Useful Debug CLI
-==================
+=============
+CLI Reference
+=============
 
 This is a reference guide for the vpp debug commands that are referenced within these documents. This is **NOT** a complete list. For a complete list refer to the Debug CLI section of the
 `Source Code Documents <https://docs.fd.io/vpp/18.07/clicmd.html>`_.
@@ -48,7 +48,7 @@ Commands can also be executed from the vppctl shell.
     local0                            0        down
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
 
    interface/index.rst
    ip/index.rst

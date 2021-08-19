@@ -34,6 +34,4 @@ This section describes a little about the FD.io network stack and describes some
 
 * Out of the box production quality, with thanks to `CSIT <https://wiki.fd.io/view/CSIT#Start_Here>`_. 
 
-For more information, please see :ref:`featuresbyrelease` for the complete list.
-
 For more on the TCP Host Stack press next.

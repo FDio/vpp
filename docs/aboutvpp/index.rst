@@ -1,8 +1,8 @@
 .. _whatisvpp:
 
-=================================
-The Vector Packet Processor (VPP)
-=================================
+=========
+About VPP
+=========
 
 This section describes some of the core concepts and features of FD.io VPP.
 
@@ -24,7 +24,7 @@ For more information on any of these features click on the links below or
 press next.
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
    scalar-vs-vector-packet-processing.rst
    extensible.rst
@@ -33,5 +33,6 @@ press next.
    developer.rst
    supported.rst
    performance.rst
+   usecases/index
 
 Press next for more about Scalar/Vector Packet processing.

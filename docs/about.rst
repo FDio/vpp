@@ -4,6 +4,6 @@
 About
 =====
 
-**VPP Version:** 21.06-rc0~304-ga73e7568c
+**VPP Version:** 21.10-rc0~261-ga8bb44124
 
-**Built on:** Fri Feb 19 23:40:45 GMT 2021
+**Built on:** Fri Aug 20 07:36:00 GMT 2021
