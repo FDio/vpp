@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "d2bec8c6_82f9ed9d",
+        "filename": "src/vnet/ip6-nd/ip6_nd_mirror_proxy.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2021-08-19T18:15:59Z",
+      "side": 1,
+      "message": "You are right if we consider data plane traffic. By default, feature node is disabled. It will be only enabled for specific setup/environment by user on ad-hoc basis when host interface will be unnumbered with uplink. And control plane traffic will pass from it.",
+      "parentUuid": "3e47d2b2_5da9e0b5",
+      "revId": "fa8afbc7990e8b5151db9430e2f8c2053f8fda8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "993dcee5_0b0d0e44",
         "filename": "src/vnet/ip6-nd/ip6_nd_mirror_proxy.c",
         "patchSetId": 6
@@ -30,6 +48,24 @@
       "writtenOn": "2021-07-16T07:54:26Z",
       "side": 1,
       "message": "a match against any /128 is what you want?",
+      "revId": "fa8afbc7990e8b5151db9430e2f8c2053f8fda8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6ad5532f_df3a1dab",
+        "filename": "src/vnet/ip6-nd/ip6_nd_mirror_proxy.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2021-08-19T18:15:59Z",
+      "side": 1,
+      "message": "Yes, as the address is resolved on the uplink, while host interface (unnumbered to uplink) acts as proxy confirms if address exists in the FIB. Otherwise, VPP starts neighbor discovery.",
+      "parentUuid": "993dcee5_0b0d0e44",
       "revId": "fa8afbc7990e8b5151db9430e2f8c2053f8fda8a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "e2681781_3be01824",
+        "filename": "test/test_ip6_nd_mirror_proxy.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2021-08-19T18:15:59Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0ef235f2_191ca95d",
+      "revId": "fa8afbc7990e8b5151db9430e2f8c2053f8fda8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9675f451_5a7b2853",
         "filename": "test/test_ip6_nd_mirror_proxy.py",
         "patchSetId": 6
@@ -67,6 +121,24 @@
       "revId": "fa8afbc7990e8b5151db9430e2f8c2053f8fda8a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3406b5aa_4db7fdca",
+        "filename": "test/test_ip6_nd_mirror_proxy.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2021-08-19T18:15:59Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9675f451_5a7b2853",
+      "revId": "fa8afbc7990e8b5151db9430e2f8c2053f8fda8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
