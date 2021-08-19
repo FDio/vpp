@@ -14,8 +14,6 @@ will discuss basic operations, and the state of a running FD.io VPP on a system.
 
     This is **not** intended to be a 'How to Run in a Production Environment' set of instructions.
 
-For more information on using VPP with Virtual Box/Vagrant, please refer to :ref:`vppvagrant`
-
 .. toctree::
 
    settingupenvironment.rst

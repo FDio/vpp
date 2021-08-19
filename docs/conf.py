@@ -16,6 +16,8 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
+import subprocess
+
 # -- Project information -----------------------------------------------------
 
 project = u'The Vector Packet Processor'
@@ -23,9 +25,9 @@ copyright = u'2018-2021, Linux Foundation'
 author = u'FD.io VPP Community'
 
 # The short X.Y version
-version = u'master'
+version = subprocess.run(["git", "describe"], stdout=subprocess.PIPE, text=True).stdout
 # The full version, including alpha/beta/rc tags
-release = u'20.01'
+release = subprocess.run(["git", "describe", "--long"], stdout=subprocess.PIPE, text=True).stdout
 
 
 # -- General configuration ---------------------------------------------------
@@ -44,6 +46,10 @@ extensions = [
     'sphinxcontrib.spelling']
 
 spelling_word_list_filename = 'spelling_wordlist.txt'
+
+# do not spell check those files
+spelling_exclude_patterns = ['aboutvpp/releasenotes/*']
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
@@ -68,7 +74,7 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path .
-exclude_patterns = [u'_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ['Thumbs.db', '.DS_Store', '_scripts', 'venv', '_generated']
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'default'

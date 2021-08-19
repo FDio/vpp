@@ -1,0 +1,1384 @@
+Release notes for VPP 20.01
+===========================
+
+More than 1039 commits since the 19.08 release.
+
+Features
+--------
+
+-  API trace tool
+
+   -  Add text output (a2ac36c91)
+
+-  Binary API Compiler for Python
+
+   -  Raise ValueError when fieldname is python keyword (ff47fb645)
+
+-  Binary API Libraries
+
+   -  Add API support for marvell PP2 plugin (859b59133)
+   -  Add bapi thread handle to api main structure. (8229580e8)
+   -  Multiple connections per process (39d69112f)
+   -  Multiple socket connections per single process (59cea1a9d)
+
+-  Build System
+
+   -  Add build types helpstring to cmake project (952a7b8b7)
+   -  Add env variable to pass extra cmake args (297365403)
+   -  Add yaml file linting to make checkstyle (6b0dd5502)
+   -  Export vapi generation in vpp-dev (dc20371f8)
+   -  Fix 3rd party CI systems. (86a9441c2)
+   -  Pass ‘no-pci’ to autgenerated config (be7ef3b5c)
+
+-  Crypto ipsecmb Plugin
+
+   -  Bump to intel-ipsec-mb version 0.53 (d35fefe8b)
+   -  Improve gcm performance using dedicated API. (76a36e83e)
+
+-  Infrastructure Library
+
+   -  Bihash walk cb typedef and continue/stop controls (f50bac1bb)
+   -  Create unformat function for data size parsing (579b16506)
+   -  Implement CLIB_PAUSE () for aarch64 platforms (18512b002)
+
+-  libmemif
+
+   -  Introduce ‘memif_per_thread\_’ namespace (17f2a7bbf)
+
+-  Link Bonding
+
+   -  Add/del secondary mac address callback (e83aa456b)
+   -  Add /if/lacp/bond-sw-if-index/slave-sw-if-index/partner-state
+      (aa7257863)
+   -  Add weight support for active-backup mode (a1876b84e)
+   -  Fix interface deletion (cc3aac056)
+
+-  Miscellaneous
+
+   -  Add address sanitizer heap instrumentation (9fb6d40eb)
+   -  Add CentOS 8 package support (c025329bb)
+   -  Add gdb helpers for vlib buffers (2b65f9ca0)
+   -  Add lcov scripts, README.md (8d74caa0a)
+   -  Add “maxframe” and “rate” to packet-generator cli. (87d7bac5c)
+   -  Add “show run summary” (ac78f8a90)
+   -  Add vnet classify filter set support (f5667c305)
+   -  Classifier-based packet trace filter (9137e5400)
+   -  Improve pcap drop trace output (9382ad9b3)
+   -  Update gitignore for /test/ext/.d (8161d73d7)
+
+-  Physical Memory Allocator
+
+   -  Always lock pages (801c7016a)
+
+-  Plugins
+
+   -  AVF Device driver
+   -  Improve timeout handling (1a7bb281f)
+   -  Print queue id in packet trace (c33eddebe)
+   -  Buffer Metadata Modification Tracker
+   -  Buffer metadata change tracker plugin (d7b306657)
+   -  builtinurl
+   -  New plugin (43765e2b4)
+   -  DHCP
+   -  Ipv6 prefix delegation improvements (d318a996b)
+   -  Move to plugin (02bfd641b)
+   -  DPDK
+   -  Add devargs support (f2bde7ac5)
+   -  Add function to add/del extra MAC addrs (153727743)
+   -  Add TSO support in dpdk plugin. (de5ed58fd)
+   -  Apply dual loop unrolling in DPDK TX (fe2523d1a)
+   -  Bump DPDK version to 19.08 (b6103105f)
+   -  Enable bnxt PMD (c3731ac89)
+   -  Ipsec tunnel support for ip6-in-ip4 (5025d40a1)
+   -  QAT devices update, add c4xxx and xeon d15xx (4d843b994)
+   -  Group Based Policy (GBP)
+   -  Add extended SFC unit tests (a3c8ca10e)
+   -  Host Stack Applications
+   -  Add ckpair & crypto engine in vpp_echo (7c40a3837)
+   -  Add option for multiple ips (f98e59b86)
+   -  Add periodic timing (ff6cdcca2)
+   -  Improve for mq-intensive (b2fce36c8)
+   -  Less verbose logging for many sessions (08f26641f)
+   -  Make APP_OPTIONS_PREALLOC_FIFO_PAIRS configurable (7028a0157)
+   -  http_static
+   -  Add dynamic GET / POST method hooks (5554c56a6)
+   -  Add “http static cache clear” CLI (e0fd9ed11)
+   -  Add .json content (71a5da0c8)
+   -  Internet Key Exchange (IKEv2) Protocol
+   -  Add support for GCM cipher (de2dd6c35)
+   -  IPv6 Segment Routing Mobile
+   -  (57584d99d)
+   -  Load Balancer
+   -  Add APIs for set interface nat4 and nat6 (33538a150)
+   -  NAT
+   -  Handoff traffic matching for dynamic NAT (22bb417e9)
+   -  Ping
+   -  Move the echo responder into the ping plugin (f6c8f5090)
+   -  QUIC protocol
+   -  Add aggregated quicly stats (deaf97f45)
+   -  Add cli command for stats (922f0b211)
+   -  Add conn-timeout config option (2f566c23f)
+   -  Add more detailed statistics (1802fcc5f)
+   -  Add support for ckpair & crypto engine (dcbbf2833)
+   -  Add support for unidirectional streams (c00f480ba)
+   -  Add Tx, Rx and packet drop counters (ff1f6faaa)
+   -  Create custom event logger (dd4d8ac29)
+   -  Implement crypto contexts (d1b9e7068)
+   -  Make quic fifo size configurable via cli (00078b991)
+   -  Update quicly to v0.0.5 (72c159e64)
+   -  Update quicly to v0.0.6-vpp (3afac8f81)
+   -  Update quicly to v0.0.7-vpp (69885b72a)
+   -  Update quicly to v0.0.8-vpp (ecb9d18c5)
+   -  Update quicly to v0.0.9-vpp (84def7cb7)
+   -  RDMA (ibverb) driver
+   -  Add rdma API (812afe712)
+   -  Add support for input feature arcs (74eba446b)
+   -  Add support for MAC changes (0dcafcc50)
+   -  API: prepare support for direct verb (d8c1ef925)
+   -  Time-based MAC filter
+   -  Add a “top” command to watch device stats (2c41a61d5)
+   -  Add the “mactime.json” builtin URL (ef3c11ca9)
+   -  vmxnet3 device driver
+   -  Per interface gso support (2985e0af6)
+
+-  Python binding for the VPP API
+
+   -  Add a per-call \_timeout option (e2ccdf031)
+   -  Add call stats (fd574087e)
+   -  Add repr to packer types for troubleshooting (14b0b4791)
+   -  Add wrapper to validate crc manifest (c046d709e)
+   -  Enhance MACAddress() equality (6af62565e)
+   -  Introduce read_blocking (0938547ea)
+   -  Let async calls return context (2f6e0c600)
+   -  Support default for type alias decaying to basetype (418ebb711)
+
+-  Sphinx Documents
+
+   -  Add spellcheck to ‘make docs’ sphinx docs (340c15c6e)
+
+-  Statistics Segment
+
+   -  Add /if/<n>/<n>/state for lacp interface state (0f09a828a)
+
+-  SVM Library
+
+   -  Improve fifo segment verbose cli (f8461bfb4)
+
+-  Test Infrastructure
+
+   -  Add cli_return_response to vpp_papi_provider (5932ce17e)
+   -  Add test run time. (0c6293230)
+   -  Support setting random seed (45a95dd78)
+   -  Support worker threads (4ecbf105a)
+   -  Test tls case (419d31f81)
+
+-  Vector Library
+
+   -  Add flag to explicitelly mark nodes which can init per-node packet
+      trace (7ca5aaac1)
+   -  Add max-size configuration parameter for pmalloc (842506f3c)
+   -  Add ‘wait’ cli command (bfd7d294d)
+   -  Enhance the “show cli” debug CLI command (a1f5a956e)
+
+-  VNET
+
+   -  Classify
+
+      -  Per-interface rx/tx pcap capture filters (d28437cdf)
+      -  Use vector code even when data is not aligned (830493392)
+      -  Vpp packet tracer support (87d24db65)
+
+   -  Ethernet
+
+      -  All dmac checks include secondary addrs (42bde459b)
+      -  Dmac filter checks secondary mac addrs (d459bf344)
+
+   -  FIB
+
+      -  Adjacency creation notifications for dlegates (77cfc0171)
+      -  Decouple source from priority and behaviour (3bab8f9c5)
+      -  Table Replace (9db6ada77)
+
+   -  FLOW
+
+      -  Add ‘drop’ and ‘redirect-to-queue’ actions support (e8c9f4f1c)
+      -  Add ethernet flow (4ff8d615c)
+      -  Add GTP support (bf85a98fb)
+
+   -  GRE
+
+      -  Multi-point interfaces (5f8f61733)
+
+   -  GSO
+
+      -  Add protocol header parser (72e7312af)
+
+   -  Interface Common
+
+      -  Callback to manage extra MAC addresses (e0792fdff)
+      -  Dump the interface device type (de312c2d5)
+
+   -  IPIP
+
+      -  Tunnel flags controlling copying data to/from payload/encap
+         (9534696b4)
+
+   -  IPSec
+
+      -  Add ‘detail’ option to ‘sh ipsec sa’ (670027a50)
+      -  Add insecure option for format of SA (01d61e788)
+      -  Bind an SA to a worker (f62a8c013)
+      -  Remove dedicated IPSec tunnels (12989b538)
+      -  Support 4o6 and 6o4 for tunnel protect (b325983a4)
+
+   -  IPv4 LPM
+
+      -  Add shallow virtual reassembly functionality (de34c35fc)
+      -  Add tracing for ipv6 frag headers (0eb75d0e9)
+      -  Allow addrs from the same prefix on intf (6c92f5bab)
+      -  Apply dual loop unrolling in ip4_input (86b1871ba)
+      -  Apply dual loop unrolling in ip4_rewrite (840f64b4b)
+
+   -  IPv4 LPM
+
+      -  Protocol Independent IP Neighbors (cbe25aab3)
+      -  Punt rather than drop unkown IPv6 ICMP packets (1afe95272)
+      -  Reassembly: trace ip headers over worker handoffs (8563cb389)
+
+   -  Segment Routing (IPv6 and MPLS)
+
+      -  Add “set sr encaps hop-limit” command (eeb5fb3a5)
+
+   -  Session Layer
+
+      -  Add certificate store (79f89537c)
+      -  Add crypto context (de6caf481)
+      -  Add explicit reset api (dfb3b8771)
+      -  Add mq debug cli (cfdb10918)
+      -  Add session enable option in config file (1292d19c7)
+      -  Builtin app rx notifications regardless of state (5c29029ef)
+      -  Ckpair store & crypto engine as mq params (45ec9f49b)
+      -  Improve cli (5bb23ecd0)
+      -  Increasing the Header lengthe size (93e060aee)
+      -  Limit pacer bucket size (7c8f828ba)
+      -  More show cli output (91f90d082)
+      -  Reschedule asap when snd space constrained (dd97a48d9)
+      -  Support registration of custom crypto engines (79ba25d40)
+      -  Support for segments larger than 4GB (ef4f3e7fe)
+      -  Add opaque data to show cli (d9035a409)
+      -  Infra for transports to send buffers (2a7ea2ee9)
+      -  Support pacer idle timeouts (11e9e3510)
+
+   -  TAP Drivers
+
+      -  Add check for vhost-net backend (39807d02c)
+      -  Multiqueue support (7c6102b1a)
+
+   -  TCP
+
+      -  Add FEATURE.yaml (93e053ebe)
+      -  Add no csum offload config option (f4ce6ba22)
+      -  Add option for always on event logging (a436a4222)
+      -  Allow cc algos to set pacing rate (d206724e7)
+      -  Compute snd time for rate sample (7436b4367)
+      -  Custom checksum calculations for Ipv4/Ipv6 (02833ff32)
+      -  Enable gso in tcp hoststack (1146ff4bc)
+      -  Enable TCP timewait port use (b092b77cf)
+      -  Extend protocol configuration (9094b5c31)
+      -  Force zero window on full rx fifo (182d21983)
+      -  Handle sack reneging (558e3e095)
+      -  Improve lost rxt heuristic (b3dce89a7)
+      -  Improve pacing after idle send periods (c31dc31f8)
+      -  Retry lost retransmits (be237bf02)
+      -  Send rwnd update only if wnd is large enough (017dc4524)
+      -  Set cc_algo on connection alloc (12f6936cd)
+      -  Track lost rxt segments in byte tracker (46ec6e018)
+      -  Track zero rwnd errors (a495a3ea1)
+      -  Use rate sample rtt in recovery if possible (1dbda64b4)
+      -  Use sacks for timer based recovery (36ebcfffb)
+      -  Validate connections in output (78dae0088)
+      -  Validate the IP address while checking TCP connection
+         (cf4c2102d)
+
+   -  TLS and TLS engine plugins
+
+      -  Add C API for TLS openssl to set engine (be4d1aa2c)
+      -  Improve connection formating (0d74dd1f8)
+      -  Picotls engine basic enabling for TLS (f83194c2f)
+
+-  VPP Comms Library
+
+   -  Add api to set lcl ip (ef7cbf6ad)
+   -  Add config option for preferred tls engine (d747c3c36)
+   -  Allow non-blocking connects (57c88938f)
+
+-  VPP Object Model
+
+   -  Get interface type from vpp device type (3f4be92ce)
+
+Known issues
+------------
+
+For the full list of issues please refer to fd.io
+`JIRA <https://jira.fd.io>`__.
+
+Issues fixed
+------------
+
+For the full list of fixed issues please refer to:
+
+- fd.io `JIRA <https://jira.fd.io>`__
+- git `commit log <https://git.fd.io/vpp/log/?h=stable/2001>`__
+
+API changes
+-----------
+
+Description of results:
+
+-  *Definition changed*: indicates that the API file was modified
+   between releases.
+-  *Only in image*: indicates the API is new for this release.
+-  *Only in file*: indicates the API has been removed in this release.
+
+================================================ ==================
+Message Name                                     Result
+================================================ ==================
+abf_itf_attach_add_del                           definition changed
+abf_itf_attach_details                           definition changed
+abf_policy_add_del                               definition changed
+abf_policy_details                               definition changed
+af_packet_create                                 definition changed
+af_packet_create_reply                           definition changed
+af_packet_delete                                 definition changed
+af_packet_details                                definition changed
+af_packet_set_l4_cksum_offload                   definition changed
+api_versions_reply                               definition changed
+app_add_cert_key_pair                            only in image
+app_add_cert_key_pair_reply                      only in image
+app_attach                                       only in image
+app_attach_reply                                 only in image
+app_del_cert_key_pair                            only in image
+app_del_cert_key_pair_reply                      only in image
+avf_create_reply                                 definition changed
+avf_delete                                       definition changed
+bd_ip_mac_add_del                                definition changed
+bd_ip_mac_details                                definition changed
+bfd_udp_add                                      definition changed
+bfd_udp_auth_activate                            definition changed
+bfd_udp_auth_deactivate                          definition changed
+bfd_udp_del                                      definition changed
+bfd_udp_get_echo_source_reply                    definition changed
+bfd_udp_mod                                      definition changed
+bfd_udp_session_details                          definition changed
+bfd_udp_session_set_flags                        definition changed
+bfd_udp_set_echo_source                          definition changed
+bier_disp_entry_add_del                          definition changed
+bier_disp_entry_details                          definition changed
+bier_disp_table_add_del                          definition changed
+bier_route_add_del                               definition changed
+bier_table_add_del                               definition changed
+bond_create                                      definition changed
+bond_create_reply                                definition changed
+bond_delete                                      definition changed
+bond_detach_slave                                definition changed
+bond_enslave                                     definition changed
+builtinurl_enable                                only in image
+builtinurl_enable_reply                          only in image
+bvi_create                                       definition changed
+cdp_enable_disable                               definition changed
+classify_add_del_session                         definition changed
+classify_add_del_table                           definition changed
+classify_set_interface_ip_table                  definition changed
+classify_set_interface_l2_tables                 definition changed
+classify_table_by_interface                      definition changed
+classify_table_by_interface_reply                definition changed
+cli_inband                                       definition changed
+cli_inband_reply                                 definition changed
+collect_detailed_interface_stats                 definition changed
+connect_sock                                     definition changed
+cop_interface_enable_disable                     definition changed
+cop_whitelist_enable_disable                     definition changed
+create_loopback                                  definition changed
+create_loopback_instance                         definition changed
+create_loopback_instance_reply                   definition changed
+create_loopback_reply                            definition changed
+create_subif                                     definition changed
+create_subif_reply                               definition changed
+create_vhost_user_if                             definition changed
+create_vhost_user_if_reply                       definition changed
+create_vlan_subif                                definition changed
+create_vlan_subif_reply                          definition changed
+ct6_enable_disable                               definition changed
+delete_loopback                                  definition changed
+delete_subif                                     definition changed
+delete_vhost_user_if                             definition changed
+dhcp6_client_enable_disable                      definition changed
+dhcp6_clients_enable_disable                     definition changed
+dhcp6_pd_client_enable_disable                   definition changed
+dhcp6_pd_reply_event                             definition changed
+dhcp6_pd_send_client_message                     definition changed
+dhcp6_reply_event                                definition changed
+dhcp6_send_client_message                        definition changed
+dhcp_client_config                               definition changed
+dhcp_client_details                              definition changed
+dhcp_compl_event                                 definition changed
+dhcp_plugin_control_ping                         only in image
+dhcp_plugin_control_ping_reply                   only in image
+dhcp_plugin_get_version                          only in image
+dhcp_plugin_get_version_reply                    only in image
+dhcp_proxy_config                                definition changed
+dhcp_proxy_details                               definition changed
+dhcp_proxy_dump                                  definition changed
+dhcp_proxy_set_vss                               definition changed
+dslite_add_del_pool_addr_range                   definition changed
+dslite_address_details                           definition changed
+dslite_get_aftr_addr_reply                       definition changed
+dslite_get_b4_addr_reply                         definition changed
+dslite_set_aftr_addr                             definition changed
+dslite_set_b4_addr                               definition changed
+feature_enable_disable                           definition changed
+feature_gso_enable_disable                       only in image
+feature_gso_enable_disable_reply                 only in image
+flow_classify_details                            definition changed
+flow_classify_dump                               definition changed
+flow_classify_set_interface                      definition changed
+flowprobe_params                                 definition changed
+flowprobe_tx_interface_add_del                   definition changed
+gbp_bridge_domain_add                            definition changed
+gbp_bridge_domain_details                        definition changed
+gbp_contract_add_del                             definition changed
+gbp_contract_details                             definition changed
+gbp_endpoint_add                                 definition changed
+gbp_endpoint_details                             definition changed
+gbp_endpoint_group_add                           definition changed
+gbp_endpoint_group_details                       definition changed
+gbp_ext_itf_add_del                              definition changed
+gbp_ext_itf_details                              definition changed
+gbp_recirc_add_del                               definition changed
+gbp_recirc_details                               definition changed
+gbp_route_domain_add                             definition changed
+gbp_route_domain_details                         definition changed
+gbp_subnet_add_del                               definition changed
+gbp_subnet_details                               definition changed
+gbp_vxlan_tunnel_add                             definition changed
+gbp_vxlan_tunnel_add_reply                       definition changed
+gbp_vxlan_tunnel_details                         definition changed
+geneve_add_del_tunnel                            definition changed
+geneve_add_del_tunnel_reply                      definition changed
+geneve_tunnel_details                            definition changed
+geneve_tunnel_dump                               definition changed
+get_first_msg_id                                 definition changed
+gre_tunnel_add_del                               definition changed
+gre_tunnel_add_del_reply                         definition changed
+gre_tunnel_details                               definition changed
+gre_tunnel_dump                                  definition changed
+gtpu_add_del_tunnel                              definition changed
+gtpu_add_del_tunnel_reply                        definition changed
+gtpu_tunnel_details                              definition changed
+gtpu_tunnel_dump                                 definition changed
+http_static_enable                               definition changed
+hw_interface_set_mtu                             definition changed
+igmp_clear_interface                             definition changed
+igmp_details                                     definition changed
+igmp_dump                                        definition changed
+igmp_enable_disable                              definition changed
+igmp_event                                       definition changed
+igmp_group_prefix_details                        definition changed
+igmp_group_prefix_set                            definition changed
+igmp_listen                                      definition changed
+igmp_proxy_device_add_del                        definition changed
+igmp_proxy_device_add_del_interface              definition changed
+ikev2_initiate_sa_init                           definition changed
+ikev2_profile_add_del                            definition changed
+ikev2_profile_set_auth                           definition changed
+ikev2_profile_set_id                             definition changed
+ikev2_profile_set_ts                             definition changed
+ikev2_set_esp_transforms                         definition changed
+ikev2_set_ike_transforms                         definition changed
+ikev2_set_responder                              definition changed
+ikev2_set_sa_lifetime                            definition changed
+input_acl_set_interface                          definition changed
+interface_name_renumber                          definition changed
+ioam_cache_ip6_enable_disable                    definition changed
+ioam_enable                                      definition changed
+ioam_export_ip6_enable_disable                   definition changed
+ip4_arp_event                                    only in file
+ip6_add_del_address_using_prefix                 definition changed
+ip6_nd_address_autoconfig                        definition changed
+ip6_nd_event                                     only in file
+ip6_ra_event                                     definition changed
+ip6nd_proxy_add_del                              definition changed
+ip6nd_proxy_details                              definition changed
+ip6nd_send_router_solicitation                   definition changed
+ip_address_details                               definition changed
+ip_address_dump                                  definition changed
+ip_container_proxy_add_del                       definition changed
+ip_container_proxy_details                       definition changed
+ip_details                                       definition changed
+ip_dump                                          definition changed
+ip_mroute_add_del                                definition changed
+ip_mroute_details                                definition changed
+ip_mroute_dump                                   definition changed
+ip_mtable_details                                definition changed
+ip_neighbor_add_del                              definition changed
+ip_neighbor_config                               only in image
+ip_neighbor_config_reply                         only in image
+ip_neighbor_details                              definition changed
+ip_neighbor_dump                                 definition changed
+ip_neighbor_event                                only in image
+ip_probe_neighbor                                only in file
+ip_probe_neighbor_reply                          only in file
+ip_punt_police                                   definition changed
+ip_punt_redirect                                 definition changed
+ip_punt_redirect_details                         definition changed
+ip_punt_redirect_dump                            definition changed
+ip_reassembly_enable_disable                     definition changed
+ip_reassembly_get                                definition changed
+ip_reassembly_get_reply                          definition changed
+ip_reassembly_set                                definition changed
+ip_route_add_del                                 definition changed
+ip_route_details                                 definition changed
+ip_route_dump                                    definition changed
+ip_scan_neighbor_enable_disable                  only in file
+ip_scan_neighbor_enable_disable_reply            only in file
+ip_source_and_port_range_check_add_del           definition changed
+ip_source_and_port_range_check_interface_add_del definition changed
+ip_source_check_interface_add_del                definition changed
+ip_table_add_del                                 definition changed
+ip_table_details                                 definition changed
+ip_table_flush                                   only in image
+ip_table_flush_reply                             only in image
+ip_table_replace_begin                           only in image
+ip_table_replace_begin_reply                     only in image
+ip_table_replace_end                             only in image
+ip_table_replace_end_reply                       only in image
+ip_unnumbered_details                            definition changed
+ip_unnumbered_dump                               definition changed
+ipfix_classify_table_add_del                     definition changed
+ipfix_classify_table_details                     definition changed
+ipfix_exporter_details                           definition changed
+ipip_6rd_add_tunnel                              definition changed
+ipip_6rd_add_tunnel_reply                        definition changed
+ipip_6rd_del_tunnel                              definition changed
+ipip_add_tunnel                                  definition changed
+ipip_add_tunnel_reply                            definition changed
+ipip_del_tunnel                                  definition changed
+ipip_tunnel_details                              definition changed
+ipip_tunnel_dump                                 definition changed
+ipsec_spd_details                                definition changed
+ipsec_spd_entry_add_del                          definition changed
+ipsec_tunnel_if_add_del                          definition changed
+ipsec_tunnel_protect_del                         definition changed
+ipsec_tunnel_protect_details                     definition changed
+ipsec_tunnel_protect_dump                        definition changed
+ipsec_tunnel_protect_update                      definition changed
+l2_arp_term_event                                only in image
+l2_emulation                                     definition changed
+l2tpv3_create_tunnel                             definition changed
+l2tpv3_create_tunnel_reply                       definition changed
+l2tpv3_interface_enable_disable                  definition changed
+l2tpv3_set_lookup_key                            definition changed
+l2tpv3_set_tunnel_cookies                        definition changed
+l3xc_del                                         definition changed
+l3xc_details                                     definition changed
+l3xc_dump                                        definition changed
+l3xc_update                                      definition changed
+lb_add_del_as                                    definition changed
+lb_add_del_intf_nat4                             only in image
+lb_add_del_intf_nat4_reply                       only in image
+lb_add_del_intf_nat6                             only in image
+lb_add_del_intf_nat6_reply                       only in image
+lb_add_del_vip                                   definition changed
+lb_as_details                                    definition changed
+lb_as_dump                                       definition changed
+lb_conf                                          definition changed
+lb_flush_vip                                     definition changed
+lb_vip_details                                   definition changed
+lb_vip_dump                                      definition changed
+log_details                                      definition changed
+log_dump                                         definition changed
+mactime_add_del_range                            definition changed
+mactime_details                                  only in image
+mactime_dump                                     only in image
+mactime_dump_reply                               only in image
+mactime_enable_disable                           definition changed
+map_add_del_rule                                 definition changed
+map_add_domain                                   definition changed
+map_domain_details                               definition changed
+map_if_enable_disable                            definition changed
+map_param_add_del_pre_resolve                    definition changed
+map_param_get_reply                              definition changed
+map_param_set_icmp                               definition changed
+map_param_set_reassembly                         only in file
+map_param_set_reassembly_reply                   only in file
+map_param_set_traffic_class                      definition changed
+map_rule_details                                 definition changed
+mdata_enable_disable                             only in image
+mdata_enable_disable_reply                       only in image
+memclnt_create                                   definition changed
+memclnt_delete                                   definition changed
+memif_create                                     definition changed
+memif_create_reply                               definition changed
+memif_delete                                     definition changed
+memif_details                                    definition changed
+memif_socket_filename_add_del                    definition changed
+memif_socket_filename_details                    definition changed
+mfib_signal_details                              definition changed
+modify_vhost_user_if                             definition changed
+mpls_ip_bind_unbind                              definition changed
+mpls_route_add_del                               definition changed
+mpls_route_details                               definition changed
+mpls_route_dump                                  definition changed
+mpls_table_add_del                               definition changed
+mpls_table_details                               definition changed
+mpls_tunnel_add_del                              definition changed
+mpls_tunnel_add_del_reply                        definition changed
+mpls_tunnel_details                              definition changed
+mpls_tunnel_dump                                 definition changed
+nat44_add_del_address_range                      definition changed
+nat44_add_del_identity_mapping                   definition changed
+nat44_add_del_interface_addr                     definition changed
+nat44_add_del_lb_static_mapping                  definition changed
+nat44_add_del_static_mapping                     definition changed
+nat44_address_details                            definition changed
+nat44_del_session                                definition changed
+nat44_identity_mapping_details                   definition changed
+nat44_interface_add_del_feature                  definition changed
+nat44_interface_add_del_output_feature           definition changed
+nat44_interface_addr_details                     definition changed
+nat44_interface_details                          definition changed
+nat44_interface_output_feature_details           definition changed
+nat44_lb_static_mapping_add_del_local            definition changed
+nat44_lb_static_mapping_details                  definition changed
+nat44_static_mapping_details                     definition changed
+nat44_user_details                               definition changed
+nat44_user_session_details                       definition changed
+nat44_user_session_dump                          definition changed
+nat64_add_del_interface_addr                     definition changed
+nat64_add_del_interface                          definition changed
+nat64_add_del_pool_addr_range                    definition changed
+nat64_add_del_prefix                             definition changed
+nat64_add_del_static_bib                         definition changed
+nat64_bib_details                                definition changed
+nat64_interface_details                          definition changed
+nat64_pool_addr_details                          definition changed
+nat64_prefix_details                             definition changed
+nat64_st_details                                 definition changed
+nat66_add_del_interface                          definition changed
+nat66_add_del_static_mapping                     definition changed
+nat66_interface_details                          definition changed
+nat66_static_mapping_details                     definition changed
+nat_det_add_del_map                              definition changed
+nat_det_close_session_in                         definition changed
+nat_det_close_session_out                        definition changed
+nat_det_forward                                  definition changed
+nat_det_forward_reply                            definition changed
+nat_det_map_details                              definition changed
+nat_det_reverse                                  definition changed
+nat_det_reverse_reply                            definition changed
+nat_det_session_details                          definition changed
+nat_det_session_dump                             definition changed
+nat_get_reass                                    only in file
+nat_get_reass_reply                              only in file
+nat_ha_get_failover_reply                        definition changed
+nat_ha_get_listener_reply                        definition changed
+nat_ha_set_failover                              definition changed
+nat_ha_set_listener                              definition changed
+nat_reass_details                                only in file
+nat_reass_dump                                   only in file
+nat_set_reass                                    only in file
+nat_set_reass_reply                              only in file
+nat_worker_details                               definition changed
+nhrp_details                                     only in image
+nhrp_dump                                        only in image
+nhrp_entry_add_del                               only in image
+nhrp_entry_add_del_reply                         only in image
+nsh_add_del_entry                                definition changed
+nsh_add_del_map                                  definition changed
+nsh_map_details                                  definition changed
+nsim_cross_connect_enable_disable                definition changed
+nsim_output_feature_enable_disable               definition changed
+output_acl_set_interface                         definition changed
+p2p_ethernet_add                                 definition changed
+p2p_ethernet_add_reply                           definition changed
+p2p_ethernet_del                                 definition changed
+pipe_create                                      definition changed
+pipe_create_reply                                definition changed
+pipe_delete                                      definition changed
+pipe_details                                     definition changed
+policer_classify_details                         definition changed
+policer_classify_dump                            definition changed
+policer_classify_set_interface                   definition changed
+pot_profile_activate                             definition changed
+pot_profile_add                                  definition changed
+pot_profile_del                                  definition changed
+pppoe_add_del_session                            definition changed
+pppoe_add_del_session_reply                      definition changed
+pppoe_session_details                            definition changed
+pppoe_session_dump                               definition changed
+proxy_arp_add_del                                definition changed
+proxy_arp_details                                definition changed
+proxy_arp_intfc_enable_disable                   definition changed
+punt_reason_details                              definition changed
+punt_reason_dump                                 definition changed
+punt_socket_details                              definition changed
+punt_socket_register                             definition changed
+punt_socket_register_reply                       definition changed
+qos_mark_dump                                    definition changed
+qos_mark_enable_disable                          definition changed
+qos_record_details                               definition changed
+qos_record_enable_disable                        definition changed
+qos_store_details                                definition changed
+qos_store_enable_disable                         definition changed
+rdma_create                                      only in image
+rdma_create_reply                                only in image
+rdma_delete                                      only in image
+rdma_delete_reply                                only in image
+reset_fib                                        only in file
+reset_fib_reply                                  only in file
+set_arp_neighbor_limit                           only in file
+set_arp_neighbor_limit_reply                     only in file
+set_ip_flow_hash                                 definition changed
+set_ipfix_exporter                               definition changed
+set_punt                                         definition changed
+show_version_reply                               definition changed
+show_vpe_system_time_reply                       definition changed
+sockclnt_create                                  definition changed
+sockclnt_create_reply                            definition changed
+sr_set_encap_hop_limit                           only in image
+sr_set_encap_hop_limit_reply                     only in image
+stn_add_del_rule                                 definition changed
+stn_rules_details                                definition changed
+svs_details                                      definition changed
+svs_enable_disable                               definition changed
+svs_route_add_del                                definition changed
+svs_table_add_del                                definition changed
+sw_if_l2tpv3_tunnel_details                      definition changed
+sw_interface_add_del_address                     definition changed
+sw_interface_add_del_mac_address                 only in image
+sw_interface_add_del_mac_address_reply           only in image
+sw_interface_bond_details                        definition changed
+sw_interface_clear_stats                         definition changed
+sw_interface_details                             definition changed
+sw_interface_dump                                definition changed
+sw_interface_event                               definition changed
+sw_interface_get_mac_address                     definition changed
+sw_interface_get_mac_address_reply               definition changed
+sw_interface_get_table                           definition changed
+sw_interface_ip6_enable_disable                  definition changed
+sw_interface_ip6_set_link_local_address          definition changed
+sw_interface_ip6nd_ra_config                     definition changed
+sw_interface_ip6nd_ra_prefix                     definition changed
+sw_interface_lacp_details                        definition changed
+sw_interface_rx_placement_details                definition changed
+sw_interface_rx_placement_dump                   definition changed
+sw_interface_set_bond_weight                     only in image
+sw_interface_set_bond_weight_reply               only in image
+sw_interface_set_flags                           definition changed
+sw_interface_set_geneve_bypass                   definition changed
+sw_interface_set_gtpu_bypass                     definition changed
+sw_interface_set_ip_directed_broadcast           definition changed
+sw_interface_set_mac_address                     definition changed
+sw_interface_set_mpls_enable                     definition changed
+sw_interface_set_mtu                             definition changed
+sw_interface_set_rx_mode                         definition changed
+sw_interface_set_rx_placement                    definition changed
+sw_interface_set_table                           definition changed
+sw_interface_set_unnumbered                      definition changed
+sw_interface_set_vxlan_gbp_bypass                definition changed
+sw_interface_slave_details                       definition changed
+sw_interface_slave_dump                          definition changed
+sw_interface_tag_add_del                         definition changed
+sw_interface_tap_v2_details                      definition changed
+sw_interface_tap_v2_dump                         definition changed
+sw_interface_vhost_user_details                  definition changed
+sw_interface_vhost_user_dump                     definition changed
+sw_interface_virtio_pci_details                  definition changed
+syslog_get_sender_reply                          definition changed
+syslog_set_sender                                definition changed
+tap_create_v2                                    definition changed
+tap_create_v2_reply                              definition changed
+tap_delete_v2                                    definition changed
+tcp_configure_src_addresses                      definition changed
+tls_openssl_set_engine                           only in image
+tls_openssl_set_engine_reply                     only in image
+trace_plugin_msg_ids                             definition changed
+udp_encap_add                                    definition changed
+udp_encap_details                                definition changed
+udp_ping_add_del                                 definition changed
+udp_ping_export                                  definition changed
+virtio_pci_create                                definition changed
+virtio_pci_create_reply                          definition changed
+virtio_pci_delete                                definition changed
+vmxnet3_create                                   definition changed
+vmxnet3_create_reply                             definition changed
+vmxnet3_delete                                   definition changed
+vmxnet3_details                                  definition changed
+vxlan_gbp_tunnel_add_del                         definition changed
+vxlan_gbp_tunnel_add_del_reply                   definition changed
+vxlan_gbp_tunnel_details                         definition changed
+vxlan_gbp_tunnel_dump                            definition changed
+vxlan_gpe_ioam_enable                            definition changed
+vxlan_gpe_ioam_export_enable_disable             definition changed
+vxlan_gpe_ioam_transit_disable                   definition changed
+vxlan_gpe_ioam_transit_enable                    definition changed
+vxlan_gpe_ioam_vni_disable                       definition changed
+vxlan_gpe_ioam_vni_enable                        definition changed
+want_bfd_events                                  definition changed
+want_dhcp6_pd_reply_events                       definition changed
+want_ip4_arp_events                              only in file
+want_ip4_arp_events_reply                        only in file
+want_ip6_nd_events                               only in file
+want_ip6_nd_events_reply                         only in file
+want_ip6_ra_events                               definition changed
+want_ip_neighbor_events                          only in image
+want_ip_neighbor_events_reply                    only in image
+want_l2_arp_term_events                          only in image
+want_l2_arp_term_events_reply                    only in image
+want_l2_macs_events                              definition changed
+================================================ ==================
+
+Found 493 api message signature differences
+
+Patches that changed API definitions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+``src/vlibmemory/memclnt.api``
+
+* `8e388390d <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=8e388390d>`_ vlib: use explicit types in api
+* `daa4bff16 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=daa4bff16>`_ api: memclnt api use string type.
+* `7adaa226e <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=7adaa226e>`_ api: revert use string type for strings in memclnt.api
+* `2959d42fe <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=2959d42fe>`_ api: use string type for strings in memclnt.api
+* `e71748291 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e71748291>`_ vppapigen: remove support for legacy typedefs
+
+``src/examples/sample-plugin/sample/sample.api``
+
+* `33a58171e <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=33a58171e>`_ api: autogenerate api trace print/endian
+* `78d91cf9a <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=78d91cf9a>`_ sample-plugin: refactor .api to use explicit types
+
+``src/vnet/interface.api``
+
+* `418ebb711 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=418ebb711>`_ papi: support default for type alias decaying to basetype
+* `9485d99bd <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9485d99bd>`_ interface: Allow VLAN tag-rewrite on non-sub-interfaces too.
+* `c12eae73f <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=c12eae73f>`_ interface: shmemioerror while getting name_filter arg
+* `de312c2d5 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=de312c2d5>`_ interface: dump the interface device type
+* `e0792fdff <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e0792fdff>`_ interface: callback to manage extra MAC addresses
+* `75761b933 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=75761b933>`_ api: split vl_api_prefix into two
+* `e5ff5a36d <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e5ff5a36d>`_ api: enforce vla is last and fixed string type
+* `053204ab0 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=053204ab0>`_ api: Cleanup APIs interface.api
+* `0ad4a439d <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=0ad4a439d>`_ Fix vpp crash bug while deleting dhcp client
+* `9a29f795a <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9a29f795a>`_ vpp_papi_provider.py: update defautmapping.
+* `b8591ac91 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=b8591ac91>`_ API sw_interface_dump: Dump all if index is zero
+* `4a7240636 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=4a7240636>`_ Make sw_interface_dump more compatible with 2.2.0
+* `6407ba56a <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=6407ba56a>`_ api: Add to interface crud - read by sw_if_index.
+
+``src/vnet/interface_types.api``
+
+* `053204ab0 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=053204ab0>`_ api: Cleanup APIs interface.api
+
+``src/vnet/session/session.api``
+
+* `c4c4cf506 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=c4c4cf506>`_ session: move add/del segment msg to mq
+* `79f89537c <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=79f89537c>`_ session: Add certificate store
+* `e5ff5a36d <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e5ff5a36d>`_ api: enforce vla is last and fixed string type
+* `458089bba <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=458089bba>`_ session: move ctrl messages from bapi to mq
+* `8ac1d6d05 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=8ac1d6d05>`_ session: Use parent_handle instead of transport_opts
+* `ba65ca496 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=ba65ca496>`_ Add transport_opts to connect_sock bapi
+
+``src/vnet/classify/classify.api``
+
+* `692bfc85f <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=692bfc85f>`_ classify: API cleanup
+
+``src/vnet/l2tp/l2tp.api``
+
+* `3ae526271 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=3ae526271>`_ l2: l2tp API cleanup
+
+``src/vnet/gre/gre.api``
+
+* `5f8f61733 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=5f8f61733>`_ gre: Multi-point interfaces
+* `814f15948 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=814f15948>`_ gre: update gre.api with explicit types
+* `d0aed2eb3 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=d0aed2eb3>`_ GRE: set gre_tunnel_type init value to zero in API
+* `5a8844bdb <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=5a8844bdb>`_ GRE: API update
+
+``src/vnet/fib/fib_types.api``
+
+* `1dbcf30b7 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=1dbcf30b7>`_ fib: Support the POP of a Psuedo Wire Control Word
+* `097fa66b9 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=097fa66b9>`_ fib: fib api updates
+
+``src/vnet/lisp-cp/one.api``
+
+* `e71748291 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e71748291>`_ vppapigen: remove support for legacy typedefs
+
+``src/vnet/lisp-cp/lisp.api``
+
+* `e71748291 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e71748291>`_ vppapigen: remove support for legacy typedefs
+
+``src/vnet/feature/feature.api``
+
+* `bf6c5c158 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=bf6c5c158>`_ feature: API cleanup
+
+``src/vnet/nhrp/nhrp.api``
+
+* `5f8f61733 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=5f8f61733>`_ gre: Multi-point interfaces
+
+``src/vnet/qos/qos.api``
+
+* `4b76c58be <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=4b76c58be>`_ qos: api clenup
+* `83832e7ce <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=83832e7ce>`_ qos: Store function
+* `5281a9029 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=5281a9029>`_ qos: QoS dump APIs
+
+``src/vnet/ipsec/ipsec.api``
+
+* `dbf68c9aa <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=dbf68c9aa>`_ ipsec: Changes to make ipsec encoder/decoders reusable by the plugins
+* `12989b538 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=12989b538>`_ ipsec: remove dedicated IPSec tunnels
+* `c87b66c86 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=c87b66c86>`_ ipsec: ipsec-tun protect
+* `f2922422d <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=f2922422d>`_ ipsec: remove the set_key API
+* `80f6fd53f <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=80f6fd53f>`_ IPSEC: Pass the algorithm salt (used in GCM) over the API
+
+``src/vnet/ipsec/ipsec_types.api``
+
+* `dbf68c9aa <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=dbf68c9aa>`_ ipsec: Changes to make ipsec encoder/decoders reusable by the plugins
+
+``src/vnet/lisp-gpe/lisp_gpe.api``
+
+* `e71748291 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e71748291>`_ vppapigen: remove support for legacy typedefs
+
+``src/vnet/pci/pci_types.api``
+
+* `2c504f89c <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=2c504f89c>`_ devices: virtio API cleanup
+
+``src/vnet/bonding/bond.api``
+
+* `3d1ef873d <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=3d1ef873d>`_ bonding: API cleanup
+* `a1876b84e <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=a1876b84e>`_ bonding: add weight support for active-backup mode
+* `751e3f382 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=751e3f382>`_ bonding: add support for numa-only in lacp mode
+
+``src/vnet/tcp/tcp.api``
+
+* `956819afa <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=956819afa>`_ tcp: api clenup
+
+``src/vnet/cop/cop.api``
+
+* `aa4438a31 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=aa4438a31>`_ cop: API cleanup
+
+``src/vnet/ip-neighbor/ip_neighbor.api``
+
+* `cbe25aab3 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=cbe25aab3>`_ ip: Protocol Independent IP Neighbors
+
+``src/vnet/ethernet/p2p_ethernet.api``
+
+* `8edca1361 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=8edca1361>`_ p2p ethernet: update p2p_ethernet.api with explicit types.
+
+``src/vnet/ethernet/ethernet_types.api``
+
+* `33a58171e <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=33a58171e>`_ api: autogenerate api trace print/endian
+
+``src/vnet/vxlan-gbp/vxlan_gbp.api``
+
+* `fb27096ee <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=fb27096ee>`_ vxlan-gbp: api cleanup
+
+``src/vnet/arp/arp.api``
+
+* `cbe25aab3 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=cbe25aab3>`_ ip: Protocol Independent IP Neighbors
+
+``src/vnet/ipip/ipip.api``
+
+* `9534696b4 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9534696b4>`_ ipip: Tunnel flags controlling copying data to/from payload/encap
+* `288e09362 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=288e09362>`_ ipip: refactor ipip.api with explicit types
+* `cbd0824d6 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=cbd0824d6>`_ IPIP tunnel: use address types on API
+
+``src/vnet/ipip/ipip_types.api``
+
+* `9534696b4 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9534696b4>`_ ipip: Tunnel flags controlling copying data to/from payload/encap
+
+``src/vnet/bfd/bfd.api``
+
+* `4682feb1f <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=4682feb1f>`_ bfd: API cleanup
+
+``src/vnet/l2/l2.api``
+
+* `cbe25aab3 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=cbe25aab3>`_ ip: Protocol Independent IP Neighbors
+* `e71748291 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e71748291>`_ vppapigen: remove support for legacy typedefs
+* `bc764c8bc <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=bc764c8bc>`_ l2: BD ARP termination entry API update
+* `54bc5e40c <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=54bc5e40c>`_ Update API description
+* `5e6f7348c <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=5e6f7348c>`_ l2: Add support for arp unicast forwarding
+
+``src/vnet/ip6-nd/ip6_nd.api``
+
+* `cbe25aab3 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=cbe25aab3>`_ ip: Protocol Independent IP Neighbors
+
+``src/vnet/ip6-nd/rd_cp.api``
+
+* `cbe25aab3 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=cbe25aab3>`_ ip: Protocol Independent IP Neighbors
+
+``src/vnet/udp/udp.api``
+
+* `10dc2eabd <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=10dc2eabd>`_ udp: fix copyright typo
+
+``src/vnet/mpls/mpls.api``
+
+* `3eb8f207b <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=3eb8f207b>`_ mpls: api cleanup
+* `75761b933 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=75761b933>`_ api: split vl_api_prefix into two
+* `e71748291 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e71748291>`_ vppapigen: remove support for legacy typedefs
+* `097fa66b9 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=097fa66b9>`_ fib: fib api updates
+
+``src/vnet/mfib/mfib_types.api``
+
+* `e71748291 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e71748291>`_ vppapigen: remove support for legacy typedefs
+* `097fa66b9 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=097fa66b9>`_ fib: fib api updates
+
+``src/vnet/ip/ip_types.api``
+
+* `75761b933 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=75761b933>`_ api: split vl_api_prefix into two
+* `33a58171e <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=33a58171e>`_ api: autogenerate api trace print/endian
+* `515eed425 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=515eed425>`_ api: add prefix matcher typedef
+* `038e1dfbd <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=038e1dfbd>`_ dhcp ip: DSCP settings for transmitted DHCP packets
+* `53c501512 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=53c501512>`_ api: add DSCP definitions to ip_types.api
+* `ab05508e1 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=ab05508e1>`_ api: refactor format_vl_api_prefix_t return keys
+* `b538dd868 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=b538dd868>`_ Punt: specify packets by IP protocol Type
+* `50f0ac0f0 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=50f0ac0f0>`_ Punt: socket register for exception dispatched/punted packets based on reason
+
+``src/vnet/ip/punt.api``
+
+* `f158944cc <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=f158944cc>`_ ip: trivial typos in docs
+* `f72ad93d6 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=f72ad93d6>`_ ip: punt API cleanup
+* `e5ff5a36d <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e5ff5a36d>`_ api: enforce vla is last and fixed string type
+* `719beb709 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=719beb709>`_ ip ipsec: Remove IPSec SPI-0 punt reason
+* `b538dd868 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=b538dd868>`_ Punt: specify packets by IP protocol Type
+* `50f0ac0f0 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=50f0ac0f0>`_ Punt: socket register for exception dispatched/punted packets based on reason
+
+``src/vnet/ip/ip.api``
+
+* `58989a37d <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=58989a37d>`_ ip: API cleanup
+* `cbe25aab3 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=cbe25aab3>`_ ip: Protocol Independent IP Neighbors
+* `668605fc8 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=668605fc8>`_ ip: use explicit types in api
+* `9db6ada77 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9db6ada77>`_ fib: Table Replace
+* `de34c35fc <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=de34c35fc>`_ ip: add shallow virtual reassembly functionality
+* `75761b933 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=75761b933>`_ api: split vl_api_prefix into two
+* `e71748291 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e71748291>`_ vppapigen: remove support for legacy typedefs
+* `097fa66b9 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=097fa66b9>`_ fib: fib api updates
+* `3a343d42d <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=3a343d42d>`_ reassembly: prevent long chain attack
+
+``src/vnet/pg/pg.api``
+
+* `22e9cfd76 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=22e9cfd76>`_ pg: add GSO support
+
+``src/vnet/bier/bier.api``
+
+* `f1f5a8a1a <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=f1f5a8a1a>`_ bier: API cleanup
+* `e71748291 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e71748291>`_ vppapigen: remove support for legacy typedefs
+* `097fa66b9 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=097fa66b9>`_ fib: fib api updates
+* `e6eefb6e3 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e6eefb6e3>`_ Trivial Typo's in bier comments/docs.
+
+``src/vnet/ipfix-export/ipfix_export.api``
+
+* `2f71a8889 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=2f71a8889>`_ ip: ipfix-export API update
+* `21b83e96d <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=21b83e96d>`_ api: implement ipfix_flush
+
+``src/vnet/gso/gso.api``
+
+* `29467b534 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=29467b534>`_ gso: Add gso feature arc
+
+``src/vnet/devices/af_packet/af_packet.api``
+
+* `97c998c28 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=97c998c28>`_ docs: devices-- add FEATURES.yaml
+* `3b2db9002 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=3b2db9002>`_ devices: af_packet API cleanup
+
+``src/vnet/devices/virtio/vhost_user.api``
+
+* `5d4c99f27 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=5d4c99f27>`_ devices: vhost API cleanup
+* `4208a4ce8 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=4208a4ce8>`_ devices interface tests: vhosst GSO support
+
+``src/vnet/devices/virtio/virtio_types.api``
+
+* `5d4c99f27 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=5d4c99f27>`_ devices: vhost API cleanup
+
+``src/vnet/devices/virtio/virtio.api``
+
+* `6d4af8918 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=6d4af8918>`_ virtio: split gso and checksum offload functionality
+* `2c504f89c <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=2c504f89c>`_ devices: virtio API cleanup
+* `97c998c28 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=97c998c28>`_ docs: devices-- add FEATURES.yaml
+* `bbd6b746e <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=bbd6b746e>`_ virtio: Add gso support for native virtio driver
+* `43b512cac <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=43b512cac>`_ virtio: remove configurable queue size support
+
+``src/vnet/devices/pipe/pipe.api``
+
+* `97c998c28 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=97c998c28>`_ docs: devices-- add FEATURES.yaml
+* `df40cb5b5 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=df40cb5b5>`_ devices: pipe API cleanup
+
+``src/vnet/devices/tap/tapv2.api``
+
+* `ba0061feb <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=ba0061feb>`_ tap: split gso and checksum offload functionality
+* `5de4fb707 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=5de4fb707>`_ devices: tap API cleanup
+* `44d06916b <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=44d06916b>`_ tap: Move client registration check to top
+* `97c998c28 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=97c998c28>`_ docs: devices-- add FEATURES.yaml
+* `97d54ed43 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=97d54ed43>`_ tap: add support to configure tap interface host MTU size
+
+``src/vnet/srv6/sr.api``
+
+* `eeb5fb3a5 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=eeb5fb3a5>`_ sr: add "set sr encaps hop-limit" command
+* `e71748291 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e71748291>`_ vppapigen: remove support for legacy typedefs
+
+``src/vnet/geneve/geneve.api``
+
+* `2d3282e17 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=2d3282e17>`_ geneve: API cleanup
+
+``src/plugins/marvell/pp2/pp2.api``
+
+* `4a65b910a <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=4a65b910a>`_ marvell: use explicit types in api
+* `859b59133 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=859b59133>`_ api: Add API support for marvell PP2 plugin
+
+``src/plugins/svs/svs.api``
+
+* `5e913f374 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=5e913f374>`_ svs: use explicit types in api
+
+``src/plugins/acl/acl_types.api``
+
+* `e71748291 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e71748291>`_ vppapigen: remove support for legacy typedefs
+* `bb2e5221a <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=bb2e5221a>`_ api acl: breakout acl_types.api for reuse by others
+
+``src/plugins/acl/acl.api``
+
+* `b5076cbe1 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=b5076cbe1>`_ acl: add missing square brackets to vat_help option in acl api
+* `709dad304 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=709dad304>`_ acl: remove api boilerplate
+* `bb2e5221a <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=bb2e5221a>`_ api acl: breakout acl_types.api for reuse by others
+* `f995c7122 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=f995c7122>`_ acl: implement counters
+
+``src/plugins/memif/memif.api``
+
+* `3ae9f5a90 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=3ae9f5a90>`_ memif: remove api boilerplate
+* `546f955b3 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=546f955b3>`_ memif: API cleanup
+
+``src/plugins/cdp/cdp.api``
+
+* `07e557a73 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=07e557a73>`_ cdp: use explicit types in api
+
+``src/plugins/dhcp/dhcp6_ia_na_client_cp.api``
+
+* `02bfd641b <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=02bfd641b>`_ dhcp: Move to plugin
+
+``src/plugins/dhcp/dhcp6_pd_client_cp.api``
+
+* `d5262831a <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=d5262831a>`_ dhcp: dhcp6_pd_client_cp API cleanup
+* `02bfd641b <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=02bfd641b>`_ dhcp: Move to plugin
+
+``src/plugins/dhcp/dhcp.api``
+
+* `6bcc6a455 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=6bcc6a455>`_ dhcp: fix crash on unicast renewal send
+* `02bfd641b <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=02bfd641b>`_ dhcp: Move to plugin
+
+``src/plugins/avf/avf.api``
+
+* `a0bf06d74 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=a0bf06d74>`_ avf: explicit types in api
+* `74af6f081 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=74af6f081>`_ avf: remote api boilerplate
+
+``src/plugins/dpdk/api/dpdk.api``
+
+* `6d75c20a6 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=6d75c20a6>`_ dpdk: use explicit types in api
+* `025166dc7 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=025166dc7>`_ dpdk: remove api boilerplate
+
+``src/plugins/builtinurl/builtinurl.api``
+
+* `43765e2b4 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=43765e2b4>`_ builtinurl: initial working attempt
+
+``src/plugins/mactime/mactime.api``
+
+* `7b22df06f <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=7b22df06f>`_ mactime: update api to use explicit types
+* `2c41a61d5 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=2c41a61d5>`_ mactime: add a "top" command to watch device stats
+* `7071952df <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=7071952df>`_ mactime: remove api boilerplate
+* `e71748291 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e71748291>`_ vppapigen: remove support for legacy typedefs
+* `7681b1c46 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=7681b1c46>`_ mactime: add per-mac allow-with-quota feature
+* `0c6ac791d <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=0c6ac791d>`_ mactime: upstream new features
+
+``src/plugins/ikev2/ikev2.api``
+
+* `6aaee8c7c <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=6aaee8c7c>`_ ikev2: use explicit api types
+* `fc7b77db7 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=fc7b77db7>`_ ikev2: remove api boilerplate
+
+``src/plugins/http_static/http_static.api``
+
+* `e5ff5a36d <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e5ff5a36d>`_ api: enforce vla is last and fixed string type
+* `68b24e2c9 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=68b24e2c9>`_ plugins: http_static. Migrate to use api string type.
+* `22bc2c46e <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=22bc2c46e>`_ Static http server
+
+``src/plugins/gbp/gbp.api``
+
+* `38277e407 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=38277e407>`_ gbp: use explicit types in api
+* `e71748291 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e71748291>`_ vppapigen: remove support for legacy typedefs
+* `3918bdbcb <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=3918bdbcb>`_ gbp: update gbp-ext-itf API
+* `3c0d84c98 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=3c0d84c98>`_ gbp: add anonymous l3-out subnets
+* `cfc7a107e <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=cfc7a107e>`_ gbp: add anonymous l3-out external interfaces
+* `160c923f9 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=160c923f9>`_ gbp: VRF scoped contracts
+
+``src/plugins/l2e/l2e.api``
+
+* `b2e463a10 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=b2e463a10>`_ l2e: use explicit api types
+
+``src/plugins/gtpu/gtpu.api``
+
+* `55636cb62 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=55636cb62>`_ gtpu: use explicit types in api
+* `49228efce <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=49228efce>`_ gtpu: remove api boilerplate
+
+``src/plugins/igmp/igmp.api``
+
+* `4a7fc4cf1 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=4a7fc4cf1>`_ igmp: use explicit types in api
+* `e71748291 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e71748291>`_ vppapigen: remove support for legacy typedefs
+* `4ff09ae34 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=4ff09ae34>`_ API: Python and Unix domain socket improvement
+
+``src/plugins/ioam/lib-vxlan-gpe/ioam_vxlan_gpe.api``
+
+* `0fa66d618 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=0fa66d618>`_ ioam: use explicit api types
+
+``src/plugins/ioam/udp-ping/udp_ping.api``
+
+* `0fa66d618 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=0fa66d618>`_ ioam: use explicit api types
+
+``src/plugins/ioam/export/ioam_export.api``
+
+* `0fa66d618 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=0fa66d618>`_ ioam: use explicit api types
+
+``src/plugins/ioam/ip6/ioam_cache.api``
+
+* `0fa66d618 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=0fa66d618>`_ ioam: use explicit api types
+
+``src/plugins/ioam/lib-pot/pot.api``
+
+* `0fa66d618 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=0fa66d618>`_ ioam: use explicit api types
+
+``src/plugins/ioam/export-vxlan-gpe/vxlan_gpe_ioam_export.api``
+
+* `0fa66d618 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=0fa66d618>`_ ioam: use explicit api types
+
+``src/plugins/stn/stn.api``
+
+* `7929f9f5c <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=7929f9f5c>`_ stn: use explicit types in api
+
+``src/plugins/map/map.api``
+
+* `be31c2a25 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=be31c2a25>`_ map: use explicit types in api
+* `7b2e9fb1a <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=7b2e9fb1a>`_ map: use ip6-full-reassembly instead of own code
+* `640edcd90 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=640edcd90>`_ map: use SVR for MAP-T
+* `e5ff5a36d <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e5ff5a36d>`_ api: enforce vla is last and fixed string type
+* `ff47fb645 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=ff47fb645>`_ vppapigen map: raise ValueError when fieldname is python keyword
+* `4d376f67a <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=4d376f67a>`_ map: Use vl_api_string macros.
+
+``src/plugins/oddbuf/oddbuf.api``
+
+* `7ff64fb97 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=7ff64fb97>`_ oddbuf: remove api boilerplate
+* `a287a30dd <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=a287a30dd>`_ misc: fix coverity warning in the oddbuf plugin
+* `c4abafd83 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=c4abafd83>`_ ip: fix udp/tcp checksum corner cases
+
+``src/plugins/l3xc/l3xc.api``
+
+* `60f5108a9 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=60f5108a9>`_ l3xc: use explicit types in api
+* `e71748291 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e71748291>`_ vppapigen: remove support for legacy typedefs
+* `59fa121f8 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=59fa121f8>`_ L3 cross connect
+
+``src/plugins/pppoe/pppoe.api``
+
+* `04338e85a <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=04338e85a>`_ pppoe: use explicit types in api
+* `25fe57821 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=25fe57821>`_ pppoe: remove api boilerplate
+
+``src/plugins/mdata/mdata.api``
+
+* `d7b306657 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=d7b306657>`_ mdata: buffer metadata change tracker plugin
+
+``src/plugins/lb/lb.api``
+
+* `ae0724034 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=ae0724034>`_ lb: remove api boilerplate
+* `33538a150 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=33538a150>`_ lb: add APIs for set interface nat4 and nat6
+* `75761b933 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=75761b933>`_ api: split vl_api_prefix into two
+* `3efcd0d7c <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=3efcd0d7c>`_ lb: vip and as dump/detail api's
+* `a0cb32cb9 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=a0cb32cb9>`_ lb: update api.c to use scaffolding from latest skel
+
+``src/plugins/lb/lb_types.api``
+
+* `75761b933 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=75761b933>`_ api: split vl_api_prefix into two
+* `e71748291 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e71748291>`_ vppapigen: remove support for legacy typedefs
+* `3efcd0d7c <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=3efcd0d7c>`_ lb: vip and as dump/detail api's
+
+``src/plugins/nsim/nsim.api``
+
+* `e06e7c672 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e06e7c672>`_ nsim: use explicit api types
+* `2e7a43ca4 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=2e7a43ca4>`_ nsim: remove api boilerplate
+* `7c91007e1 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=7c91007e1>`_ Make the loss / delay sim available as an output feature
+
+``src/plugins/vmxnet3/vmxnet3.api``
+
+* `277f03f06 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=277f03f06>`_ vmxnet3: use explicit types in api
+* `10bbfce02 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=10bbfce02>`_ vmxnet3: remove api boilerplate
+* `2985e0af6 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=2985e0af6>`_ vmxnet3: per interface gso support
+* `e71748291 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e71748291>`_ vppapigen: remove support for legacy typedefs
+
+``src/plugins/tlsopenssl/tls_openssl.api``
+
+* `1e582206a <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=1e582206a>`_ tls: remove api boilerplate
+* `dd0cc9ec3 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=dd0cc9ec3>`_ tls: some rework based on TLS openssl C API
+* `be4d1aa2c <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=be4d1aa2c>`_ tls: Add C API for TLS openssl to set engine
+
+``src/plugins/abf/abf.api``
+
+* `bdde58534 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=bdde58534>`_ abf: use explicit types in api
+* `e71748291 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e71748291>`_ vppapigen: remove support for legacy typedefs
+* `097fa66b9 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=097fa66b9>`_ fib: fib api updates
+
+``src/plugins/nat/nat.api``
+
+* `f126e746f <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=f126e746f>`_ nat: use SVR
+* `e5ff5a36d <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e5ff5a36d>`_ api: enforce vla is last and fixed string type
+* `e71748291 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e71748291>`_ vppapigen: remove support for legacy typedefs
+* `e6e09a4ac <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e6e09a4ac>`_ nat: elog rewrite for multi-worker support
+* `c1f93067e <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=c1f93067e>`_ Add default value for API Nat flags
+* `dd1e3e780 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=dd1e3e780>`_ NAT: VPP-1531 api cleanup & update
+* `89fec713f <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=89fec713f>`_ Revert "NAT: VPP-1531 api cleanup & update"
+* `bed1421b9 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=bed1421b9>`_ NAT: VPP-1531 api cleanup & update
+
+``src/plugins/rdma/rdma.api``
+
+* `d8c1ef925 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=d8c1ef925>`_ rdma: api: prepare support for direct verb
+* `b644eb54f <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=b644eb54f>`_ rdma: add explicit types in api
+* `812afe712 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=812afe712>`_ rdma: add rdma API
+
+``src/plugins/sctp/sctp.api``
+
+* `3ffe6cadf <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=3ffe6cadf>`_ sctp: move to plugins, disabled by default
+
+``src/plugins/ct6/ct6.api``
+
+* `d4efce2e0 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=d4efce2e0>`_ ct6: use explicit type in api
+* `ee98904e0 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=ee98904e0>`_ ct6: remove api boilerplate
+
+``src/plugins/nsh/nsh.api``
+
+* `d3f0a4869 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=d3f0a4869>`_ nsh: use explicit api types
+
+``src/plugins/flowprobe/flowprobe.api``
+
+* `3013e6988 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=3013e6988>`_ flowprobe: use explicit types in api
+* `2a1ca787b <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=2a1ca787b>`_ api: split api generated files
+
+``src/plugins/lacp/lacp.api``
+
+* `ebef4a9e5 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=ebef4a9e5>`_ lacp: use explit api types
+
+``src/plugins/dns/dns.api``
+
+* `b922f16ba <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=b922f16ba>`_ dns: remove api boilerplate
+* `34af0ccf5 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=34af0ccf5>`_ dns: make the dns name resolver a plugin
+
+``src/vpp/api/vpe.api``
+
+* `e5ff5a36d <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e5ff5a36d>`_ api: enforce vla is last and fixed string type
+* `e71748291 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e71748291>`_ vppapigen: remove support for legacy typedefs
+* `a47a5f20a <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=a47a5f20a>`_ api papi: add alias for timestamp(datetime)/timedelta
+* `888640a39 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=888640a39>`_ map gbp papi: match endianess of f64
+* `03f1af23b <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=03f1af23b>`_ api: Implement log_dump/log_details
+* `c87b66c86 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=c87b66c86>`_ ipsec: ipsec-tun protect
+* `9ac113815 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9ac113815>`_ API: Add support for limits to language.
+
+``src/vpp/api/vpe_types.api``
+
+* `e71748291 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e71748291>`_ vppapigen: remove support for legacy typedefs
+* `a47a5f20a <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=a47a5f20a>`_ api papi: add alias for timestamp(datetime)/timedelta
+* `3cf9e67f5 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=3cf9e67f5>`_ api: add vl_api_version_t type

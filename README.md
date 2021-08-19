@@ -19,32 +19,32 @@ For more information on VPP and its features please visit the
 ## Changes
 
 Details of the changes leading up to this version of VPP can be found under
-@ref release_notes.
+doc/releasenotes.
 
 
 ## Directory layout
 
 | Directory name         | Description                                 |
 | ---------------------- | ------------------------------------------- |
-|      build-data        | Build metadata                              |
-|      build-root        | Build output directory                      |
-|      doxygen           | Documentation generator configuration       |
-|      dpdk              | DPDK patches and build infrastructure       |
-| @ref extras/libmemif   | Client library for memif                    |
-| @ref src/examples      | VPP example code                            |
-| @ref src/plugins       | VPP bundled plugins directory               |
-| @ref src/svm           | Shared virtual memory allocation library    |
-|      src/tests         | Standalone tests (not part of test harness) |
-|      src/vat           | VPP API test program                        |
-| @ref src/vlib          | VPP application library                     |
-| @ref src/vlibapi       | VPP API library                             |
-| @ref src/vlibmemory    | VPP Memory management                       |
-| @ref src/vnet          | VPP networking                              |
-| @ref src/vpp           | VPP application                             |
-| @ref src/vpp-api       | VPP application API bindings                |
-| @ref src/vppinfra      | VPP core library                            |
-| @ref src/vpp/api       | Not-yet-relocated API bindings              |
-|      test              | Unit tests and Python test harness          |
+| build-data             | Build metadata                              |
+| build-root             | Build output directory                      |
+| docs                   | Sphinx Documentation                        |
+| dpdk                   | DPDK patches and build infrastructure       |
+| extras/libmemif        | Client library for memif                    |
+| src/examples           | VPP example code                            |
+| src/plugins            | VPP bundled plugins directory               |
+| src/svm                | Shared virtual memory allocation library    |
+| src/tests              | Standalone tests (not part of test harness) |
+| src/vat                | VPP API test program                        |
+| src/vlib               | VPP application library                     |
+| src/vlibapi            | VPP API library                             |
+| src/vlibmemory         | VPP Memory management                       |
+| src/vnet               | VPP networking                              |
+| src/vpp                | VPP application                             |
+| src/vpp-api            | VPP application API bindings                |
+| src/vppinfra           | VPP core library                            |
+| src/vpp/api            | Not-yet-relocated API bindings              |
+| test                   | Unit tests and Python test harness          |
 
 ## Getting started
 
@@ -99,8 +99,3 @@ end-user-oriented information. Also see @subpage dev_doc for developer notes.
 Visit the [VPP wiki](https://wiki.fd.io/view/VPP) for details on more
 advanced building strategies and other development notes.
 
-
-## Test Framework
-
-There is PyDoc generated documentation available for the VPP test framework.
-See @ref test_framework_doc for details.
