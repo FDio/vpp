@@ -22,38 +22,38 @@ at 82:00.0 and 82:00.1. Use the device’s slots to bind them to the driver uio_
 .. code-block:: console
 
    csp2s22c03$ ./install-vpp-native/dpdk/sbin/dpdk-devbind -s
-   
+
    Network devices using DPDK-compatible driver
    ============================================
    <none>
-   
+
    Network devices using kernel driver
    ===================================
    0000:03:00.0 'Ethernet Controller 10-Gigabit X540-AT2' if=enp3s0f0 drv=ixgbe unused=vfio-pci,uio_pci_generic *Active*
    0000:03:00.1 'Ethernet Controller 10-Gigabit X540-AT2' if=enp3s0f1 drv=ixgbe unused=vfio-pci,uio_pci_generic *Active*
-   0000:82:00.0 'Ethernet Controller XL710 for 40GbE QSFP+' if=ens802f0d1,ens802f0 drv=i40e unused=uio_pci_generic                       
-   0000:82:00.1 'Ethernet Controller XL710 for 40GbE QSFP+' if=ens802f1d1,ens802f1 drv=i40e unused=uio_pci_generic                        
-   
+   0000:82:00.0 'Ethernet Controller XL710 for 40GbE QSFP+' if=ens802f0d1,ens802f0 drv=i40e unused=uio_pci_generic
+   0000:82:00.1 'Ethernet Controller XL710 for 40GbE QSFP+' if=ens802f1d1,ens802f1 drv=i40e unused=uio_pci_generic
+
    Other network devices
    =====================
    <none>
-   
+
    csp2s22c03$ sudo modprobe uio_pci_generic
    csp2s22c03$ sudo ./install-vpp-native/dpdk/sbin/dpdk-devbind --bind uio_pci_generic 82:00.0
    csp2s22c03$ sudo ./install-vpp-native/dpdk/sbin/dpdk-devbind --bind uio_pci_generic 82:00.1
 
    csp2s22c03$ sudo ./install-vpp-native/dpdk/sbin/dpdk-devbind -s
-   
+
    Network devices using DPDK-compatible driver
    ============================================
    0000:82:00.0 'Ethernet Controller XL710 for 40GbE QSFP+' drv=uio_pci_generic unused=i40e,vfio-pci
    0000:82:00.1 'Ethernet Controller XL710 for 40GbE QSFP+' drv=uio_pci_generic unused=i40e,vfio-pci
-   
+
    Network devices using kernel driver
    ===================================
    0000:03:00.0 'Ethernet Controller 10-Gigabit X540-AT2' if=enp3s0f0 drv=ixgbe unused=vfio-pci,uio_pci_generic *Active*
    0000:03:00.1 'Ethernet Controller 10-Gigabit X540-AT2' if=enp3s0f1 drv=ixgbe unused=vfio-pci,uio_pci_generic *Active*
-   
+
 Start the VPP service, and verify that VPP is running:
 
 .. code-block:: console
@@ -63,7 +63,7 @@ Start the VPP service, and verify that VPP is running:
    root     105655      1 98 17:34 ?        00:00:02 /usr/bin/vpp -c /etc/vpp/startup.conf
    :w
             105675 105512  0 17:34 pts/4    00:00:00 grep --color=auto vpp
-   
+
 To access the VPP CLI, issue the command sudo vppctl . From the VPP interface, list
 all interfaces that are bound to DPDK using the command show interface:
 
@@ -109,7 +109,7 @@ between *net2s22c05* and *csp2s22c04* increases to 20.3 Gbits per second.
    [ ID] Interval           Transfer     Bandwidth       Retr
    [  4]   0.00-10.00  sec  23.7 GBytes  20.3 Gbits/sec  13434             sender
    [  4]   0.00-10.00  sec  23.7 GBytes  20.3 Gbits/sec                  receiver
-   
+
    iperf Done.
 
 The **show run** command displays the graph runtime statistics. Observe that the
