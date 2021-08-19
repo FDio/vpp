@@ -353,6 +353,7 @@ fi
 %files
 %defattr(-,bin,bin)
 %{_unitdir}/vpp.service
+/usr/bin/vat2
 /usr/bin/vpp*
 /usr/bin/svm*
 %config(noreplace) /etc/sysctl.d/80-vpp.conf
