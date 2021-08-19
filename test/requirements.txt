@@ -18,3 +18,5 @@ sphinxcontrib-spelling                  # BSD
 sphinx-rtd-theme                        # MIT
 noiseprotocol                           # MIT
 recommonmark                            # MIT
+pyyaml                                  # MIT
+jsonschema                              # MIT
