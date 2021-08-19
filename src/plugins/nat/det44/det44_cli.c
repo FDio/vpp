@@ -512,7 +512,7 @@ VLIB_CLI_COMMAND (det44_map_command, static) = {
 
 /*?
  * @cliexpar
- * @cliexpstart{show det44 mappings}
+ * @cliexstart{show det44 mappings}
  * Show DET44 mappings
  * vpp# show det44 mappings
  * DET44 mappings:

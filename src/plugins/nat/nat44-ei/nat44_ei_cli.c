@@ -312,7 +312,7 @@ done:
 }
 
 static clib_error_t *
-nat_show_workers_commnad_fn (vlib_main_t *vm, unformat_input_t *input,
+nat_show_workers_command_fn (vlib_main_t *vm, unformat_input_t *input,
 			     vlib_cli_command_t *cmd)
 {
   nat44_ei_main_t *nm = &nat44_ei_main;
@@ -1557,7 +1557,7 @@ VLIB_CLI_COMMAND (set_workers_command, static) = {
 VLIB_CLI_COMMAND (nat_show_workers_command, static) = {
   .path = "show nat44 ei workers",
   .short_help = "show nat44 ei workers",
-  .function = nat_show_workers_commnad_fn,
+  .function = nat_show_workers_command_fn,
 };
 
 /*?

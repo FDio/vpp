@@ -879,17 +879,20 @@ done:
  * to span multiple servers. This is done by building an L2 overlay on
  * top of an L3 network underlay using GTPU tunnels.
  *
- * GTPU can also be used to transport IP packetes as its PDU type to
+ * GTPU can also be used to transport IP packets as its PDU type to
  * allow IP forwarding over underlay network, e.g. between RAN and UPF
- * for mobility deplyments.
+ * for mobility deployments.
  *
  * @cliexpar
  * Example of how to create a GTPU Tunnel:
- * @cliexcmd{create gtpu tunnel src 10.0.3.1 dst 10.0.3.3 teid 13 tteid 55 encap-vrf-id 7}
+ * @cliexcmd{create gtpu tunnel src 10.0.3.1 dst 10.0.3.3 teid 13 tteid 55
+ * encap-vrf-id 7}
  * Example of how to delete a GTPU Tunnel:
- * @cliexcmd{create gtpu tunnel src 10.0.3.1 dst 10.0.3.3 teid 13 encap-vrf-id 7 del}
+ * @cliexcmd{create gtpu tunnel src 10.0.3.1 dst 10.0.3.3 teid 13 encap-vrf-id
+ * 7 del}
  * Example of how to update tx TEID of a GTPU Tunnel:
- * @cliexcmd{create gtpu tunnel src 10.0.3.1 dst 10.0.3.3 encap-vrf-id 7 upd-tteid 55}
+ * @cliexcmd{create gtpu tunnel src 10.0.3.1 dst 10.0.3.3 encap-vrf-id 7
+ * upd-tteid 55}
  ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_gtpu_tunnel_command, static) = {
@@ -1004,7 +1007,7 @@ set_ip4_gtpu_bypass (vlib_main_t * vm,
 /*?
  * This command adds the 'ip4-gtpu-bypass' graph node for a given interface.
  * By adding the IPv4 gtpu-bypass graph node to an interface, the node checks
- *  for and validate input gtpu packet and bypass ip4-lookup, ip4-local,
+ * for and validate input gtpu packet and bypass ip4-lookup, ip4-local,
  * ip4-udp-lookup nodes to speedup gtpu packet forwarding. This node will
  * cause extra overhead to for non-gtpu packets which is kept at a minimum.
  *
@@ -1061,7 +1064,7 @@ set_ip6_gtpu_bypass (vlib_main_t * vm,
 /*?
  * This command adds the 'ip6-gtpu-bypass' graph node for a given interface.
  * By adding the IPv6 gtpu-bypass graph node to an interface, the node checks
- *  for and validate input gtpu packet and bypass ip6-lookup, ip6-local,
+ * for and validate input gtpu packet and bypass ip6-lookup, ip6-local,
  * ip6-udp-lookup nodes to speedup gtpu packet forwarding. This node will
  * cause extra overhead to for non-gtpu packets which is kept at a minimum.
  *

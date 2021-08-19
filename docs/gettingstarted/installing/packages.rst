@@ -35,7 +35,7 @@ vpp-plugins
 
 Vector Packet Processing plugin modules.
 
-.. include:: ../../dynamic_includes/plugin_list.inc
+.. include:: ../../_generated/includes/plugin_list.inc
 
 vpp-dbg
 -------

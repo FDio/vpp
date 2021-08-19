@@ -1312,7 +1312,7 @@ fib_path_list_child_add (fib_node_index_t path_list_index,
          * threshold. then walk children to update.
          * We don't undo this action. The rational being that the number
          * of entries using this prefix is large enough such that it is a
-         * non-trival amount of effort to converge them. If we get into the
+         * non-trivial amount of effort to converge them. If we get into the
          * situation where we are adding and removing entries such that we
          * flip-flop over the threshold, then this non-trivial work is added
          * to each of those routes adds/deletes - not a situation we want.

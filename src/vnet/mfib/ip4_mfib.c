@@ -595,7 +595,7 @@ ip4_show_mfib (vlib_main_t * vm,
  * the route entries for each table.
  *
  * @note This command will run for a long time when the FIB tables are
- * comprised of millions of entries. For those senarios, consider displaying
+ * comprised of millions of entries. For those scenarios, consider displaying
  * a single table or summary mode.
  *
  * @cliexpar
@@ -613,8 +613,8 @@ ip4_show_mfib (vlib_main_t * vm,
  *  test-eth0: Accept,
  * multicast-ip4-chain
  * [@2]: dpo-replicate: [index:1 buckets:2 to:[0:0]]
- *   [0] [@1]: ipv4-mcast: test-eth1: IP4: d0:d1:d2:d3:d4:01 -> 01:00:05:00:00:00
- *   [1] [@1]: ipv4-mcast: test-eth2: IP4: d0:d1:d2:d3:d4:02 -> 01:00:05:00:00:00
+ *   [0] [@1]: ipv4-mcast: test-eth1: IP4: d0:d1:d2:d3:d4:01 -> 01:00:..:00
+ *   [1] [@1]: ipv4-mcast: test-eth2: IP4: d0:d1:d2:d3:d4:02 -> 01:00:..:00
  *
  * @cliexend
  * Example of how to display a summary of all IPv4 FIB tables:
