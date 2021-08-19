@@ -11,7 +11,7 @@ Destroy the VMs with "virsh destroy"
      Id    Name                           State
     ----------------------------------------------------
      65    iperf-server3                  running
-    
+
     cto@tf-ucs-3:~$ virsh destroy iperf-server3
     Domain iperf-server3 destroyed
 

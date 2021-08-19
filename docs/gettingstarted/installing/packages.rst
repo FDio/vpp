@@ -35,7 +35,7 @@ vpp-plugins
 
 Vector Packet Processing plugin modules.
 
-.. include:: ../../dynamic_includes/plugin_list.inc
+.. include:: ../../_generated/includes/plugin_list.inc
 
 vpp-dbg
 -------
@@ -48,7 +48,7 @@ vpp-dev
 Vector Packet Processing development support. This package contains
 development support files for the VPP libraries.
 
-vpp-api-python 
+vpp-api-python
 --------------
 
 Python binding for the VPP Binary API.

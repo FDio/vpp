@@ -67,7 +67,7 @@ Install the mandatory packages by running the following commands:
   sudo apt-get update
   sudo apt-get install vpp vpp-plugin-core vpp-plugin-dpdk
 
-  
+
 Install the Optional Packages
 ==============================
 

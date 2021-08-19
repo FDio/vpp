@@ -50,10 +50,10 @@ Setup host route
 
    $ sudo ip route add 10.10.2.0/24 via 10.10.1.2
    $ ip route
-   default via 10.0.2.2 dev enp0s3 
-   10.0.2.0/24 dev enp0s3  proto kernel  scope link  src 10.0.2.15 
-   10.10.1.0/24 dev vpp1host  proto kernel  scope link  src 10.10.1.1 
-   10.10.2.0/24 via 10.10.1.2 dev vpp1host 
+   default via 10.0.2.2 dev enp0s3
+   10.0.2.0/24 dev enp0s3  proto kernel  scope link  src 10.0.2.15
+   10.10.1.0/24 dev vpp1host  proto kernel  scope link  src 10.10.1.1
+   10.10.2.0/24 via 10.10.1.2 dev vpp1host
 
 Setup return route on vpp2
 ---------------------------

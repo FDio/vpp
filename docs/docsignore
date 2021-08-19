@@ -1,0 +1,8 @@
+# This is a list of ignored documentation files
+# in VPP. Not linking these files in ./docs won't
+# trigger an error in ./extra/scripts/check_documentation.sh
+extras/deprecated/dpdk-hqos/qos_doc.md
+extras/deprecated/dpdk-ipsec/dpdk_crypto_ipsec_doc.md
+src/vpp-api/lua/README.md
+src/vpp-api/lua/examples/cli/README.md
+src/vpp-api/lua/examples/lute/README.md

@@ -41,7 +41,7 @@ Initial State
 
 The initial state here is presumed to be the final state from the previous sections
 of the tutorial.
- 
+
 Create veth interfaces on host
 -------------------------------
 
@@ -104,7 +104,7 @@ command:
      __/ __/ _ \  (_)__    | | / / _ \/ _ \
      _/ _// // / / / _ \   | |/ / ___/ ___/
      /_/ /____(_)_/\___/   |___/_/  /_/
-    
+
     vpp#
 
 Create a host interface attached to **vpp1out**.
