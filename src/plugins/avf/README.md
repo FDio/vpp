@@ -1,6 +1,7 @@
-# Intel AVF device plugin for VPP    {#avf_plugin_doc}
+Intel AVF device driver
+=======================
 
-##Overview
+## Overview
 This plugins provides native device support for intel Adaptive Virtual
 Function (AVF). AVF is driver specification for current and future
 Intel Virtual Function devices. AVF defines communication channel between
@@ -8,7 +9,7 @@ Physical Functions (PF) and VF.
 In essence, today this driver can be used only with 
 Intel XL710 / X710 / XXV710 adapters.
 
-##Prerequisites
+## Prerequisites
  * Driver requires newer i40e PF linux driver to be installed on the system,
 which supports virtualchnl interface. This code is tested with i40e driver
 version 2.4.6.
@@ -17,7 +18,7 @@ version 2.4.6.
 uio_pci_generic driver, so vfio-pci needs to be used. On systems without IOMMU
 vfio driver can still be used with recent kernels which support no-iommu mode.
 
-##Known issues
+## Known issues
 This driver is still in experimental phase, however it shows very good 
 performance numbers.
 

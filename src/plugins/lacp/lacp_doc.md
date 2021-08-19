@@ -1,6 +1,7 @@
-# VPP Link Aggregation Control Protocol (LACP) implementation    {#lacp_plugin_doc}
+LACP Protocol
+=============
 
-This document is to describe the usage of VPP LACP implementation.
+This document is to describe the usage of VPP Link Aggregation Control Protocol (LACP) implementation.
 
 ## LACP
 

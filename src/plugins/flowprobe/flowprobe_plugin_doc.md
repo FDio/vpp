@@ -1,4 +1,4 @@
-IPFIX flow record plugin    {#flowprobe_plugin_doc}
+IPFIX flow record plugin
 ========================
 
 ## Introduction

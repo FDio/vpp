@@ -1,10 +1,11 @@
-# Marvell device plugin for VPP    {#marvell_plugin_doc}
+Marvell device plugin
+=====================
 
-##Overview
+## Overview
 This plugins provides native device support for Marvell PP2 network device, by use of Marvell Usermode SDK ([MUSDK][1]).
 Code is developed and tested on [MACCHIATObin][2] board.
 
-##Prerequisites
+## Prerequisites
 Plugins depends on installed MUSDK and Marvell provided linux [kernel][3] with MUSDK provided kernel patches (see `patches/linux` in musdk repo and relevant documentation.
 Kernel version used: **4.14.22 armada-18.09.3**
 MUSDK version used: **armada-18.09.3**
@@ -12,7 +13,7 @@ Following kernel modules from MUSDK must be loaded for plugin to work:
 * `musdk_cma.ko`
 * `mv_pp_uio.ko`
 
-##Musdk 18.09.3 compilation steps
+## Musdk 18.09.3 compilation steps
 
 ```
 ./bootstrap

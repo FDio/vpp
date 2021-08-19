@@ -1,4 +1,7 @@
-# Stateful NAT64: Network Address and Protocol Translation from IPv6 Clients to IPv4 Servers {#nat64_doc}
+Stateful NAT64
+==============
+
+This document describes stateful NAT64 Network Address and Protocol Translation
 
 ## Introduction
 

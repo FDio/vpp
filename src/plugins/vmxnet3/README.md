@@ -1,4 +1,5 @@
-# VMWARE vmxnet3 device driver plugin {#vmxnet3_doc}
+VMWARE vmxnet3 device driver
+============================
 
 ##Overview
 This plugin provides native PCI driver support for VMWare vmxnet3.

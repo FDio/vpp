@@ -1,4 +1,5 @@
-# DHCPv6 prefix delegation    {#dhcp6_pd_doc}
+DHCPv6 prefix delegation
+========================
 
 DHCPv6 prefix delegation client implementation is split between Control Plane and Data Plane.  
 Data Plane can also be used alone by external application (external Control Plane) using Data Plane Binary API.  

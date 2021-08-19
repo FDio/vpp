@@ -1,4 +1,7 @@
-# SRv6 endpoint to SR-unaware appliance via masquerading (End.AM) {#srv6_am_plugin_doc}
+SRv6 masquerading
+=================
+
+## SRv6 endpoint to SR-unaware appliance via masquerading (End.AM)
 
 The masquerading proxy is an SR endpoint behavior for processing SRv6 traffic on
 behalf of an SR-unaware SF. This proxy thus receives SR traffic that is formed
@@ -48,7 +51,7 @@ active segment as the Destination Address of the IPv6 packet.
 For more information, please see
 [draft-xuclad-spring-sr-service-chaining](https://datatracker.ietf.org/doc/draft-xuclad-spring-sr-service-chaining/).
 
-## CLI configuration
+### CLI configuration
 
 The following command instantiates a new End.AM segment that sends masqueraded
 traffic on interface `IFACE-OUT` towards an appliance at address `S-ADDR` and
@@ -68,9 +71,9 @@ appliance at address `A1::`, and receiving it back on interface
 sr localsid address 1::A1 behavior end.am nh A1:: oif GigabitEthernet0/8/0 iif GigabitEthernet0/9/0
 ```
 
-## Pseudocode
+### Pseudocode
 
-### Masquerading
+#### Masquerading
 
 Upon receiving a packet destined for S, where S is an IPv6 masquerading proxy
 segment, a node N processes it as follows.
@@ -83,7 +86,7 @@ ELSE
     Drop the packet
 ```
 
-### De-masquerading
+#### De-masquerading
 
 Upon receiving a non-link-local IPv6 packet on IFACE-IN, a node N processes it
 as follows.

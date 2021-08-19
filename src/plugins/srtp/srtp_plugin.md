@@ -1,5 +1,7 @@
-# SRTP (Secure Real-time Transport Protocol) {#srtp_doc}
+SRTP Protocol
+=============
 
+This document describe the VPP SRTP (Secure Real-time Transport Protocol) implementation
 libsrtp2 based SRTP transport protocol implementation.
 
 ## Maturity level

@@ -1,4 +1,7 @@
-# SRv6 endpoint to SR-unaware appliance via per-flow dynamic proxy {#srv6_ad_flow_plugin_doc}
+SRv6 per-flow dynamic proxy
+===========================
+
+This document describes SRv6 endpoint to SR-unaware appliance via per-flow dynamic proxy
 
 ## Overview
 

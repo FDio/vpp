@@ -1,4 +1,5 @@
-# Load Balancer plugin for VPP    {#lb_plugin_doc}
+Load Balancer plugin
+====================
 
 ## Version
 

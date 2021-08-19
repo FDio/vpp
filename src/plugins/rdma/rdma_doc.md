@@ -1,4 +1,5 @@
-# RDMA (ibverb) Ethernet driver {#rdma_doc}
+RDMA (ibverb) device driver
+===========================
 
 This driver relies on Linux rdma-core (libibverb) userspace poll-mode driver
 to rx/tx Ethernet packets. Despite using the RDMA APIs, this is **not** about

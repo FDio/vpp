@@ -1,6 +1,7 @@
-# VPP Link Layer Discovery Protocol (LLDP) implementation    {#lldp_doc}
+LLDP Protocol
+=============
 
-This is a memo intended to contain documentation of the VPP LLDP implementation
+This is a memo intended to contain documentation of the VPP LLDP (Link Layer Discovery Protocol) implementation
 Everything that is not directly obvious should come here.
 
 

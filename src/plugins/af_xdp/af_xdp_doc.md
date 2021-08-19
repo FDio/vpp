@@ -1,4 +1,5 @@
-# AF_XDP Ethernet driver {#af_xdp_doc}
+AF_XDP device driver
+====================
 
 This driver relies on Linux AF_XDP socket to rx/tx Ethernet packets.
 

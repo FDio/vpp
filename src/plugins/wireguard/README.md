@@ -1,4 +1,5 @@
-# Wireguard vpp-plugin  {#wireguard_plugin_doc}
+Wireguard
+=========
 
 ## Overview
 This plugin is an implementation of [wireguard protocol](https://www.wireguard.com/) for VPP. It allows one to create secure VPN tunnels.

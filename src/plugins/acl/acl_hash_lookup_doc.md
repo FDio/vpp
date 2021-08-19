@@ -1,5 +1,5 @@
-ACL plugin constant-time lookup design    {#acl_hash_lookup}
-======================================
+ACL plugin constant-time lookup
+===============================
 
 The initial implementation of ACL plugin performs a trivial for() cycle,
 going through the assigned ACLs on a per-packet basis. This is not very

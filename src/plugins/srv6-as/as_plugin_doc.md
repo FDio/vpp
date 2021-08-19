@@ -1,6 +1,9 @@
-# SRv6 endpoint to SR-unaware appliance via static proxy (End.AS) {#srv6_as_plugin_doc}
+SRv6 static proxy
+=================
 
-## Overview
+The document describes SRv6 endpoint to SR-unaware appliance via static proxy (End.AS)
+
+### Overview
 
 The static proxy is an SR endpoint behavior for processing SR-MPLS or SRv6
 encapsulated traffic on behalf of an SR-unaware SF. This proxy thus receives SR
@@ -65,7 +68,7 @@ direction.
 For more information, please see
 [draft-xuclad-spring-sr-service-chaining](https://datatracker.ietf.org/doc/draft-xuclad-spring-sr-service-chaining/).
 
-## CLI configuration
+### CLI configuration
 
 The following command instantiates a new End.AS segment that sends the inner
 packets on interface `IFACE-OUT` towards an appliance at address `S-ADDR` and
@@ -85,9 +88,9 @@ appliance at address `A1::`, and receiving it back on interface
 sr localsid address 1::A1 behavior end.ad nh A1:: oif GigabitEthernet0/8/0 iif GigabitEthernet0/9/0 src 1:: next 2::20 next 3::30 next 4::40
 ```
 
-## Pseudocode
+### Pseudocode
 
-### Static proxy for inner type IPv4
+#### Static proxy for inner type IPv4
 
 Upon receiving an IPv6 packet destined for S, where S is an IPv6 static proxy
 segment for IPv4 traffic, a node N does:
@@ -119,7 +122,7 @@ Lookup outer DA in appropriate table and proceed accordingly
 **Ref2:** CACHE.SRH represents the SRH defined in CACHE, if any, for the static SR
 proxy segment associated with IFACE-IN.
 
-### Static proxy for inner type IPv6
+#### Static proxy for inner type IPv6
 
 Upon receiving an IPv6 packet destined for S, where S is an IPv6 static proxy
 segment for IPv6 traffic, a node N does:

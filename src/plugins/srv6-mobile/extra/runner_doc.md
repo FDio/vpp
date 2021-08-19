@@ -1,4 +1,7 @@
-# What's `runner.py` doing? {#srv6_mobile_runner_doc}
+SRv6 Mobile Runner
+==================
+
+What's `runner.py` doing?
 
 ## Common configurations
 

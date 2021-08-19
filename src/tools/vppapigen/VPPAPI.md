@@ -1,4 +1,5 @@
-# VPP API Language    {#api_lang_doc}
+VPP API Language
+================
 
 The VPP binary API is a message passing API.
 The VPP API language is used to define a RPC interface between VPP and its

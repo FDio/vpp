@@ -1,7 +1,7 @@
-SRv6 Mobile User Plane Plugins {#srv6_mobile_plugin_doc}
-========================
+SRv6 Mobile User Plane
+======================
 
-# Introduction
+## Introduction
 
 This plugin module can provide the stateless mobile user plane protocols translation between GTP-U and SRv6. The plugin also provides FIB table lookup for an IPv4/IPv6 packet encapsulated in GTP-U. These plugin functions take advantage of SRv6 network programmability.
 
@@ -29,17 +29,17 @@ In addition to the above functions, the plugin supports following functions:
 Noted that the prefix of function names follow naming convention of SRv6 network programming. "T" means transit function, "End" means end function, "M" means Mobility specific function. The suffix "D" and "E" mean that "decapsulation" and "encapsulation" respectively.
 
 
-# Implementation
+## Implementation
 
 All SRv6 mobile functions are implemented as VPP plugin modules. The plugin modules leverage the sr_policy and sr_localsid mechanisms.
 
-# Configurations
+## Configurations
 
-## GTP-U to SRv6
+### GTP-U to SRv6
 
 The GTP-U tunnel and flow identifiers of a receiving packet are mapped to a Segment Identifier(SID) of sending SRv6 packets.
 
-### IPv4 infrastructure case
+#### IPv4 infrastructure case
 
 In case that **IPv4** networks are the infrastructure of GTP-U, T.M.GTP4.D function translates the receiving GTP-U packets to SRv6 packets.
 
@@ -75,7 +75,7 @@ If you have a SID(s) list of SR policy which the configured gtp4.d function to b
 sr policy add bsid D1:: next A1:: next B1:: next C1::
 ```
 
-### IPv6 infrastructure case
+#### IPv6 infrastructure case
 
 In case that GTP-U is deployed over **IPv6** infrastructure, you don't need to configure T.M.GTP4.D function and associated SR steering policy.  Instead of that, you just need to configure a localsid of End.M.GTP6.D segment.
 
@@ -108,7 +108,7 @@ sr localsid prefix 2001:db8::/64 behavior end.m.gtp6.d.di D4::/64
 ```
 
 
-## SRv6 to GTP-U
+### SRv6 to GTP-U
 
 The SRv6 Mobile functions on SRv6 to GTP-U direction are End.M.GTP4.E and End.M.GTP6.D.
 
@@ -145,7 +145,7 @@ For example, the below command configures the SID prefix 2001:db8::/64 with `end
 sr localsid prefix 2001:db8::/64 behavior end.m.gtp6.e
 ```
 
-## FIB Table Lookup for Inner IPv4/IPv6 packet
+### FIB Table Lookup for Inner IPv4/IPv6 packet
 
 SRv6 Mobile functions of `t.m.gtp4.dt*` and `end.m.gtp6.dt*` support decapsulating outer IP/UDP/GTP-U headers and forwarding inner IP packet based on specific fib table.
 

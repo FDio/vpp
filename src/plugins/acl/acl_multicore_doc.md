@@ -1,4 +1,4 @@
-Multicore support for ACL plugin    {#acl_multicore}
+Multicore support for ACL plugin
 ================================
 
 This captures some considerations and design decisions that I have made,
@@ -12,7 +12,7 @@ one can not optimize the single-thread performance without
 having a functioning code for multi-thread.
 
 stateless ACLs
-==============
+--------------
 
 The stateless trivially parallelizes, and the only potential for the
 race between the different threads is during the reconfiguration,
@@ -25,7 +25,7 @@ vector will happen and potentially a change in count.
 
 acl_match_5tuple() has the following code:
 
-```{.c}
+```c
   a = am->acls + acl_index;
   for (i = 0; i < a->count; i++)
     {
@@ -69,7 +69,7 @@ not adding any code at all.
 So, I opt for "do-nothing" here for the moment.
 
 reflexive ACLs: single-thread
-=============================
+-----------------------------
 
 Before we talk multi-thread, is worth revisiting the
 design of the reflexive ACLs in the plugin, and
@@ -252,7 +252,7 @@ interval - which at a steady state should stabilize similar to what the TCP rate
 does.
 
 reflexive ACLs: multi-thread
-=============================
+----------------------------
 
 The single-threaded implementation in 1704 used a separate "cleaner" process
 to deal with the timing out of the connections.

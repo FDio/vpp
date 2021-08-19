@@ -1,6 +1,9 @@
-# SRv6 endpoint to SR-unaware appliance via dynamic proxy (End.AD) {#srv6_ad_plugin_doc}
+SRv6 dynamic proxy
+==================
 
-## Overview
+## SRv6 endpoint to SR-unaware appliance via dynamic proxy (End.AD)
+
+### Overview
 
 The dynamic proxy is an improvement over the static proxy (@ref srv6_as_plugin_doc)
 that dynamically learns the SR information before removing it from the incoming
@@ -27,7 +30,7 @@ SF may thus drop, modify or generate new packets without affecting the proxy.
 For more information, please see
 [draft-xuclad-spring-sr-service-chaining](https://datatracker.ietf.org/doc/draft-xuclad-spring-sr-service-chaining/).
 
-## CLI configuration
+### CLI configuration
 
 The following command instantiates a new End.AD segment that sends the inner
 packets on interface `IFACE-OUT` towards an appliance at address `S-ADDR` and
@@ -47,7 +50,7 @@ appliance at address `A1::`, and receiving it back on interface
 sr localsid address 1::A1 behavior end.ad nh A1:: oif GigabitEthernet0/8/0 iif GigabitEthernet0/9/0
 ```
 
-## Pseudocode
+### Pseudocode
 
 The dynamic proxy SRv6 pseudocode is obtained by inserting the following
 instructions between lines 1 and 2 of the static proxy SRv6 pseudocode.

@@ -1,4 +1,5 @@
-# VPP MAP and Lw4o6 implementation    {#map_doc}
+MAP and Lw4o6
+=============
 
 This is a memo intended to contain documentation of the VPP MAP and Lw4o6 implementations.
 Everything that is not directly obvious should come here.

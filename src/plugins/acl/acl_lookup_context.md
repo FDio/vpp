@@ -1,5 +1,5 @@
-Lookup contexts aka "ACL as a service" {#acl_lookup_context}
-======================================
+ACL Lookup contexts
+===================
 
 The initial implementation of the ACL plugin had tightly tied the policy (L3-L4) ACLs
 to ingress/egress processing on an interface.
@@ -14,8 +14,8 @@ by other portions of the code by utilizing the exports.h header file,
 which provides the necessary interface.
 
 
-Why "lookup contexts" and not "match me an ACL#" ?
-================================================
+Why "lookup contexts" and not "match me an ACL" ?
+--------------------------------------------------
 
 The first reason is the logical grouping of multiple ACLs.
 
@@ -40,7 +40,7 @@ improvements in the algorithms, delivered at once to all the users
 of the API.
 
 What is a "lookup context" ?
-============================
+----------------------------
 
 An ACL lookup context is an entity that groups the set of ACL#s
 together for the purposes of a first-match lookup, and may store
@@ -48,7 +48,7 @@ additional internal information needed to optimize the lookups
 for that particular vector of ACLs.
 
 Using ACL contexts in your code
-===============================
+-------------------------------
 
 In order to use the ACL lookup contexts, you need to include
 plugins/acl/exports.h into your code. This header includes
@@ -111,7 +111,7 @@ This way the multiple includes and inlines will "just work" as one would expect.
 
 
 Debug CLIs
-==========
+----------
 
 To see the state of the ACL lookup contexts, you can issue "show acl-plugin lookup user" to see
 all of the users which registered for the usage of the ACL plugin lookup contexts,

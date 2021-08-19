@@ -1,4 +1,5 @@
-# Buffer metadata change tracker {#mdata_doc}
+Buffer metadata change tracker
+==============================
 
 ## Introduction
 
