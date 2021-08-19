@@ -9,7 +9,7 @@ description: "This plugin is intended to complement the VPP's plugin_nat for
               Cloud use-cases. It allows for source/destination address/port
               translation based on multiple criterias. It is intended to be modular
               enough so that one could write a use-case optimised translation function
-              without having to deal with actually re-writing packets or maintining
+              without having to deal with actually re-writing packets or maintaining
               sessions.
               This plugin supports multithreading. Workers share a unique bihash where
               sessions are stored."

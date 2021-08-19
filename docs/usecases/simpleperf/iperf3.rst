@@ -60,7 +60,7 @@ Configure the system *csp2s22c03* to have 10.10.1.1 and 10.10.2.1 on the two 40-
    csp2s22c03$ sudo ip link set dev ens802f0 up
    csp2s22c03$ sudo ip addr add 10.10.2.1/24 dev ens802f1
    csp2s22c03$ sudo ip link set dev ens802f1 up
-    
+
 List the route table:
 
 .. code-block:: console
@@ -123,7 +123,7 @@ route for IP packet 10.10.2.0/24:
              TX packets:1179 errors:0 dropped:0 overruns:0 carrier:0
              collisions:0 txqueuelen:1000
              RX bytes:262230 (262.2 KB)  TX bytes:139975 (139.9 KB)
-   
+
    ens802    Link encap:Ethernet  HWaddr 68:05:ca:2e:76:e0
              inet addr:10.10.1.2  Bcast:0.0.0.0  Mask:255.255.255.0
              inet6 addr: fe80::6a05:caff:fe2e:76e0/64 Scope:Link
@@ -132,7 +132,7 @@ route for IP packet 10.10.2.0/24:
              TX packets:40 errors:0 dropped:0 overruns:0 carrier:0
              collisions:0 txqueuelen:1000
              RX bytes:0 (0.0 B)  TX bytes:5480 (5.4 KB)
-   
+
    lo        Link encap:Local Loopback
              inet addr:127.0.0.1  Mask:255.0.0.0
              inet6 addr: ::1/128 Scope:Host
@@ -233,5 +233,5 @@ we start the **iperf3** client to connect to the server:
    [ ID] Interval           Transfer     Bandwidth       Retr
    [  4]   0.00-10.00  sec  9.45 GBytes  8.12 Gbits/sec  16474             sender
    [  4]   0.00-10.00  sec  9.44 GBytes  8.11 Gbits/sec                  receiver
-   
+
    iperf Done.
