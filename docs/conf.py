@@ -44,6 +44,10 @@ extensions = [
     'sphinxcontrib.spelling']
 
 spelling_word_list_filename = 'spelling_wordlist.txt'
+
+# do not spell check those files
+spelling_exclude_patterns = ['aboutvpp/releasenotes/*']
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
@@ -68,7 +72,7 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path .
-exclude_patterns = [u'_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ['Thumbs.db', '.DS_Store', '_scripts', 'venv', '_generated']
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'default'
