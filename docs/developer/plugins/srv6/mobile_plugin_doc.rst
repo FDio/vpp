@@ -1,0 +1,1 @@
+../../../../src/plugins/srv6-mobile/mobile_plugin_doc.rst

@@ -64,7 +64,7 @@ Run a second FD.io VPP instance named: vpp2.
      __/ __/ _ \  (_)__    | | / / _ \/ _ \
      _/ _// // / / / _ \   | |/ / ___/ ___/
      /_/ /____(_)_/\___/   |___/_/  /_/
-    
+
     vpp# show version
     vpp v18.07-release built by root on c469eba2a593 at Mon Jul 30 23:27:03 UTC 2018
     vpp# quit
@@ -121,7 +121,7 @@ Ping 10.10.2.2 from vpp1
 
 .. code-block:: console
 
-    $ ping 10.10.2.2 
+    $ ping 10.10.2.2
 
 Ping 10.10.2.1 from vpp2
 

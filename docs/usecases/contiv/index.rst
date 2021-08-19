@@ -1,8 +1,8 @@
 .. _contiv:
 
-##########
-Contiv/VPP 
-##########
+=====================================
+VPP in kubernetes (Contiv/Deprecated)
+=====================================
 
 This section provides the following information about the Contiv function:
 

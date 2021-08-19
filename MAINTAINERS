@@ -33,11 +33,6 @@ I:	bonding
 M:	Steven Luong <sluong@cisco.com>
 F:	src/vnet/bonding/
 
-Doxygen
-I:	doxygen
-M:	Chris Luke <chrisy@flirble.org>
-F:	doxygen/
-
 Sphinx Documents
 I:	docs
 M:	John DeNisco <jdenisco@cisco.com>

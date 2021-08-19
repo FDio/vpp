@@ -1,0 +1,387 @@
+Release notes for VPP 19.04
+===========================
+
+More than 700 commits since the 19.01 release.
+
+Features
+--------
+
+Infrastructure
+~~~~~~~~~~~~~~
+
+-  DPDK 19.02 integration
+-  Buffer manager rework and improvements
+-  Python3 migration (work in progress)
+
+   -  vppapigen
+   -  Python API wrappers
+   -  Docs generation
+   -  vpp_config
+   -  “make test” python3 readiness and refactoring
+
+-  Add “make test-gcov” target to main Makefile
+-  Refactor multiarch code
+-  vfctl script: bind VF to vfio-pci after VF is created
+-  cmake cross-compilation support
+-  CLI control of graph dispatch elogs
+-  AppImage packaging (disabled by default)
+-  Complete upstreaming of wireshark dissector
+-  Remove JVPP which is now an FD.io project
+-  Punt infra: manage dispatch of exception packets
+
+VNET & Plugins
+~~~~~~~~~~~~~~
+
+-  BVI Interface
+-  Deprecate TAP cli
+-  Experimental TAP interface TCP segmentation offload
+-  Vmxnet3 driver plugin
+-  LACP passive mode
+-  ACL plugin refactoring
+-  RDMA (ibverb) driver plugin - MLX5 with multiqueue
+-  IPSEC
+
+   -  Intel IPSEC-MB engine plugin
+   -  Tunnel fragmentation
+   -  CLI improvements
+   -  Performance improvements
+   -  API modernisation and improvements
+   -  New Tests and test refactoring
+
+-  Crypto
+
+   -  Introduce crypto infra
+   -  crypto_ia32 plugin
+   -  Add support for AEAD and AES-GCM
+   -  Implement rfc4231 test cases
+   -  Implement crypto tests per RFC2202
+
+-  Perfmon improvements
+
+   -  Python to C parser for intel CPUs
+   -  2-way parallel stat collection
+   -  Collect data on selected thread(s)
+
+Host stack
+~~~~~~~~~~
+
+-  Improve ldp/vls/vcl support for multi-process and multi-threaded
+   applications
+-  Major refactor/cleanup of session layer
+-  Refactor cut-through sessions to use a custom transport
+-  Baseline QUIC transport support
+
+Known issues
+------------
+
+For the full list of issues please refer to fd.io
+`JIRA <https://jira.fd.io>`__.
+
+Issues fixed
+------------
+
+For the full list of fixed issues please refer to:
+
+- fd.io `JIRA <https://jira.fd.io>`__
+- git `commit log <https://git.fd.io/vpp/log/?h=stable/1904>`__
+
+API changes
+-----------
+
+Description of results:
+
+-  *Definition changed*: indicates that the API file was modified
+   between releases.
+-  *Only in image*: indicates the API is new for this release.
+-  *Only in file*: indicates the API has been removed in this release.
+
+=============================================== ==================
+Message Name                                    Result
+=============================================== ==================
+accept_session                                  only in file
+accept_session_reply                            only in file
+bind_sock_reply                                 definition changed
+bind_uri_reply                                  definition changed
+bvi_create                                      only in image
+bvi_create_reply                                only in image
+bvi_delete                                      only in image
+bvi_delete_reply                                only in image
+connect_session                                 only in file
+connect_session_reply                           only in file
+ct6_enable                                      only in image
+ct6_enable_disable                              only in image
+gbp_contract_add_del_reply                      definition changed
+gbp_endpoint_group_del                          definition changed
+gbp_endpoint_learn_set_inactive_threshold       only in file
+gbp_endpoint_learn_set_inactive_threshold_reply only in file
+ikev2_plugin_get_version                        only in image
+ikev2_plugin_get_version_reply                  only in image
+ip4_arp_event                                   definition changed
+ip6_nd_event                                    definition changed
+ip6_ra_event                                    definition changed
+ip6nd_proxy_add_del                             definition changed
+ip6nd_proxy_details                             definition changed
+ip_container_proxy_add_del                      definition changed
+ip_neighbor_add_del                             definition changed
+ip_neighbor_details                             definition changed
+ip_probe_neighbor                               definition changed
+ip_source_and_port_range_check_add_del          definition changed
+ipsec_backend_details                           definition changed
+ipsec_gre_add_del_tunnel                        only in file
+ipsec_gre_add_del_tunnel_reply                  only in file
+ipsec_gre_tunnel_add_del                        only in image
+ipsec_gre_tunnel_add_del_reply                  only in image
+ipsec_gre_tunnel_details                        definition changed
+ipsec_sa_details                                definition changed
+ipsec_sa_set_key                                definition changed
+ipsec_sad_add_del_entry                         only in file
+ipsec_sad_add_del_entry_reply                   only in file
+ipsec_sad_entry_add_del                         only in image
+ipsec_sad_entry_add_del_reply                   only in image
+ipsec_select_backend                            definition changed
+ipsec_spd_add_del_entry                         only in file
+ipsec_spd_add_del_entry_reply                   only in file
+ipsec_spd_details                               definition changed
+ipsec_spd_entry_add_del                         only in image
+ipsec_spd_entry_add_del_reply                   only in image
+ipsec_tunnel_if_add_del                         definition changed
+lb_conf                                         definition changed
+map_add_domain                                  definition changed
+map_domain_details                              definition changed
+nat_ha_flush                                    only in image
+nat_ha_flush_reply                              only in image
+nat_ha_get_failover                             only in image
+nat_ha_get_failover_reply                       only in image
+nat_ha_get_listener                             only in image
+nat_ha_get_listener_reply                       only in image
+nat_ha_resync                                   only in image
+nat_ha_resync_completed_event                   only in image
+nat_ha_resync_reply                             only in image
+nat_ha_set_failover                             only in image
+nat_ha_set_failover_reply                       only in image
+nat_ha_set_listener                             only in image
+nat_ha_set_listener_reply                       only in image
+reset_session                                   only in file
+reset_session_reply                             only in file
+sw_interface_ip6nd_ra_prefix                    definition changed
+sw_interface_set_dpdk_hqos_pipe                 only in file
+sw_interface_set_dpdk_hqos_pipe_reply           only in file
+sw_interface_set_dpdk_hqos_subport              only in file
+sw_interface_set_dpdk_hqos_subport_reply        only in file
+sw_interface_set_dpdk_hqos_tctbl                only in file
+sw_interface_set_dpdk_hqos_tctbl_reply          only in file
+sw_interface_tap_details                        only in file
+sw_interface_tap_dump                           only in file
+sw_interface_virtio_pci_details                 only in image
+sw_interface_virtio_pci_dump                    only in image
+tap_connect                                     only in file
+tap_connect_reply                               only in file
+tap_delete                                      only in file
+tap_delete_reply                                only in file
+tap_modify                                      only in file
+tap_modify_reply                                only in file
+virtio_pci_create                               only in image
+virtio_pci_create_reply                         only in image
+virtio_pci_delete                               only in image
+virtio_pci_delete_reply                         only in image
+vmxnet3_create                                  definition changed
+vmxnet3_details                                 definition changed
+want_ip4_arp_events                             definition changed
+want_ip6_nd_events                              definition changed
+=============================================== ==================
+
+Found 90 api message signature differences
+
+Patches that changed API definitions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``src/vlibmemory/memclnt.api``
+
+* `eaec2a6d9 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=eaec2a6d9>`_ bapi: add options to have vpp cleanup client registration
+
+``src/vpp/api/vpe.api``
+
+* `1aaf0e343 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=1aaf0e343>`_ deprecate tapcli
+* `f49ba0e81 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=f49ba0e81>`_ stats: Deprecate old stats framework
+* `413f4a5b2 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=413f4a5b2>`_ API: Use string type instead of u8.
+
+``src/vnet/interface.api``
+
+* `3b0d7e42f <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=3b0d7e42f>`_ Revert "API: Cleanup APIs interface.api"
+* `e63325e3c <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e63325e3c>`_ API: Cleanup APIs interface.api
+* `bb2c7b580 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=bb2c7b580>`_ Update documentation for src/vnet/interface.api sw_interface_dump
+* `f49ba0e81 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=f49ba0e81>`_ stats: Deprecate old stats framework
+* `53fffa1db <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=53fffa1db>`_ API: Add support for type aliases
+* `5100aa9cb <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=5100aa9cb>`_ vnet: store hw interface speed in kbps instead of using flags
+
+``src/vnet/interface_types.api``
+
+* `3b0d7e42f <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=3b0d7e42f>`_ Revert "API: Cleanup APIs interface.api"
+* `e63325e3c <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e63325e3c>`_ API: Cleanup APIs interface.api
+* `53fffa1db <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=53fffa1db>`_ API: Add support for type aliases
+
+``src/vnet/bonding/bond.api``
+
+* `ad9d52831 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=ad9d52831>`_ bonding: support custom interface IDs
+
+``src/vnet/ipip/ipip.api``
+
+* `53fffa1db <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=53fffa1db>`_ API: Add support for type aliases
+
+``src/vnet/ipsec-gre/ipsec_gre.api``
+
+* `e524d45ef <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e524d45ef>`_ IPSEC-GRE: fixes and API update to common types.
+
+``src/vnet/syslog/syslog.api``
+
+* `b4515b4be <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=b4515b4be>`_ Add RFC5424 syslog protocol support (VPP-1139)
+
+``src/vnet/devices/tap/tapv2.api``
+
+* `754f24b35 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=754f24b35>`_ tapv2: add "tap_flags" field to the TAPv2 interface API
+
+``src/vnet/devices/virtio/virtio.api``
+
+* `d6c15af33 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=d6c15af33>`_ virtio: Native virtio driver
+
+``src/vnet/fib/fib_types.api``
+
+* `775f73c6b <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=775f73c6b>`_ FIB: encode the label stack in the FIB path during table dump
+
+``src/vnet/ip/ip_types.api``
+
+* `8c8acc027 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=8c8acc027>`_ API: Change ip4_address and ip6_address to use type alias.
+* `ffba3c377 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=ffba3c377>`_ MAP: Use explicit address/prefix types in API
+
+``src/vnet/ip/ip.api``
+
+* `48ae19e90 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=48ae19e90>`_ API: Add python2.7 support for enum flags via aenum
+* `37029305c <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=37029305c>`_ Use IP and MAC API types for neighbors
+* `7c03ed47d <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=7c03ed47d>`_ VOM: mroutes
+* `3460b014a <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=3460b014a>`_ api: ip_source_check_interface_add_del api is added.
+* `609e1210c <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=609e1210c>`_ VPP-1507: Added binary api to dump configured ip_punt_redirect
+* `2af0e3a74 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=2af0e3a74>`_ flow-hash: Add symmetric flag for flow hashing
+* `47527b24a <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=47527b24a>`_ IP-punt: add documentation to the API and fix IP address init
+* `5bb1ecae8 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=5bb1ecae8>`_ IPv6: Make link-local configurable per-interface (VPP-1446)
+* `75b9f45a1 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=75b9f45a1>`_ ip: add container proxy dump API (VPP-1364)
+
+``src/vnet/ip/punt.api``
+
+* `e88865d7b <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e88865d7b>`_ VPP-1506: dump local punts and registered punt sockets
+
+``src/vnet/vxlan-gbp/vxlan_gbp.api``
+
+* `4dd4cf4f9 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=4dd4cf4f9>`_ GBP: fixes for l3-out routing
+* `93cc3ee3b <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=93cc3ee3b>`_ GBP Endpoint Learning
+
+``src/vnet/ethernet/ethernet_types.api``
+
+* `8006c6aa4 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=8006c6aa4>`_ PAPI: Add MACAddress object wrapper for vl_api_mac_address_t
+
+``src/vnet/ipsec/ipsec.api``
+
+* `1e3aa5e21 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=1e3aa5e21>`_ ipsec: USE_EXTENDED_SEQ_NUM -> USE_ESN
+* `1ba5bc8d8 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=1ba5bc8d8>`_ ipsec: add ipv6 support for ipsec tunnel interface
+* `5d704aea5 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=5d704aea5>`_ updates now that flags are supported on the API
+* `53f526b68 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=53f526b68>`_ TEST: IPSEC NAT-T with UDP header
+* `7c44d78ef <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=7c44d78ef>`_ IKEv2 to plugin
+* `eba31eceb <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=eba31eceb>`_ IPSEC: move SA counters into the stats segment
+* `8d7c50200 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=8d7c50200>`_ IPSEC: no second lookup after tunnel encap
+* `a09c1ff5b <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=a09c1ff5b>`_ IPSEC: SPD counters in the stats sgement
+* `17dcec0b9 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=17dcec0b9>`_ IPSEC: API modernisation
+* `4c422f9a3 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=4c422f9a3>`_ Add IPSec interface FIB index for TX packet
+* `b4a7a7dcf <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=b4a7a7dcf>`_ Add UDP encap flag
+* `b4d305344 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=b4d305344>`_ ipsec: infra for selecting backends
+* `871bca9aa <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=871bca9aa>`_ VPP-1450: binary api call for dumping SPD to interface registration
+
+``src/vnet/tcp/tcp.api``
+
+* `c5df8c71c <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=c5df8c71c>`_ host stack: update stale copyright
+
+``src/vnet/l2/l2.api``
+
+* `192b13f96 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=192b13f96>`_ BVI Interface
+* `5daf0c55c <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=5daf0c55c>`_ add default NONE flag for bd_flags
+* `e26c81fc8 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=e26c81fc8>`_ L2 BD API to flush all IP-MAC entries in the specified BD
+* `8006c6aa4 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=8006c6aa4>`_ PAPI: Add MACAddress object wrapper for vl_api_mac_address_t
+* `93cc3ee3b <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=93cc3ee3b>`_ GBP Endpoint Learning
+* `4d5b917b1 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=4d5b917b1>`_ BD ARP entry use common API types
+
+``src/vnet/session/session.api``
+
+* `6442401c2 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=6442401c2>`_ session: remove deprecated binary apis
+* `d85de68ec <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=d85de68ec>`_ vcl: wait for segments with segment handle
+* `fa76a76bf <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=fa76a76bf>`_ session: segment handle in accept/connect notifications
+* `c1f5a4336 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=c1f5a4336>`_ session: cleanup use of api_client_index
+* `c0d532d17 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=c0d532d17>`_ session: mark apis for deprecation
+
+``src/vnet/udp/udp.api``
+
+* `c5df8c71c <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=c5df8c71c>`_ host stack: update stale copyright
+
+``src/plugins/cdp/cdp.api``
+
+* `76ef6094c <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=76ef6094c>`_ tests: cdp plugin. Replace cdp enable cli command with API call.
+
+``src/plugins/nat/nat.api``
+
+* `8feeaff56 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=8feeaff56>`_ Typos. A bunch of typos I've been collecting.
+* `34931eb47 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=34931eb47>`_ NAT44: active-passive HA (VPP-1571)
+* `b686508c4 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=b686508c4>`_ NAT44: nat44_add_del_lb_static_mapping enhancements (VPP-1514)
+
+``src/plugins/map/map.api``
+
+* `4dc5c7b90 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=4dc5c7b90>`_ MAP: Add optional user-supplied 'tag' field in MAPs.
+* `fc7344f9b <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=fc7344f9b>`_ MAP: Convert from DPO to input feature.
+* `f34597fc8 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=f34597fc8>`_ MAP: Add API support for MAP input feature.
+* `5a2e278a0 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=5a2e278a0>`_ MAP: Add API support for setting parameters.
+* `a173a7a07 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=a173a7a07>`_ MAP: Use bool type in map.api instead of u8.
+* `ffba3c377 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=ffba3c377>`_ MAP: Use explicit address/prefix types in API
+
+``src/plugins/gbp/gbp.api``
+
+* `1aa35576e <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=1aa35576e>`_ GBP: Counters per-contract
+* `8ea109e40 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=8ea109e40>`_ gbp: Add bd flags
+* `7bd343509 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=7bd343509>`_ GBP: custom-dump functions
+* `fa0ac2c56 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=fa0ac2c56>`_ GBP: contracts API fixed length of allowed ethertypes
+* `5d704aea5 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=5d704aea5>`_ updates now that flags are supported on the API
+* `4ba67723d <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=4ba67723d>`_ GBP: use sclass in the DP for policy
+* `8da9fc659 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=8da9fc659>`_ GBP: learn from ARP and L2 packets
+* `32f6d8e0c <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=32f6d8e0c>`_ GBP: per-group EP retention policy
+* `879d11c25 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=879d11c25>`_ GBP: Sclass to src-epg conversions
+* `1c17e2eca <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=1c17e2eca>`_ GBP: add allowed ethertypes to contracts
+* `b6a479539 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=b6a479539>`_ GBP: l3-out subnets
+* `33b81da54 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=33b81da54>`_ vom: Add support for redirect contracts in gbp
+* `13a08cc09 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=13a08cc09>`_ GBP: redirect contracts
+* `c29c0af40 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=c29c0af40>`_ GBP: Endpoints with VLAN tags and birdges that don't learn
+* `93cc3ee3b <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=93cc3ee3b>`_ GBP Endpoint Learning
+
+``src/plugins/acl/acl.api``
+
+* `bb5d22daf <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=bb5d22daf>`_ New api in order to get max entries of connection table is added.
+
+``src/plugins/vmxnet3/vmxnet3.api``
+
+* `ee8ba6877 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=ee8ba6877>`_ vmxnet3: auto bind support
+* `854559d15 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=854559d15>`_ vmxnet3: RSS support
+* `773291163 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=773291163>`_ vmxnet3: multiple TX queues support
+
+``src/plugins/nsim/nsim.api``
+
+* `10c5ff143 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=10c5ff143>`_ nsim: add packet loss simulation, docs
+
+``src/plugins/igmp/igmp.api``
+
+* `97748cae2 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=97748cae2>`_ IGMP: proxy device
+
+``src/plugins/lb/lb.api``
+
+* `f7f13347b <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=f7f13347b>`_ tests: update test_lb.py to use api call lb_conf.
+
+``src/plugins/ct6/ct6.api``
+
+* `a55df1081 <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=a55df1081>`_ ipv6 connection tracking plugin
+
+``src/plugins/ikev2/ikev2.api``
+
+* `7c44d78ef <https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=7c44d78ef>`_ IKEv2 to plugin

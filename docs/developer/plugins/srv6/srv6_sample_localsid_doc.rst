@@ -1,0 +1,1 @@
+../../../../src/examples/srv6-sample-localsid/srv6_sample_localsid_doc.rst

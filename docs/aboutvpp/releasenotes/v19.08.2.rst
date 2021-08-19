@@ -1,0 +1,187 @@
+Release notes for VPP 19.08.2
+=============================
+
+The 19.08.2 is an LTS release. It contains numerous fixes, as well as
+new features and API additions.
+
+Features
+--------
+
+-  API trace tool
+
+   -  Add text output (c395ff143)
+
+-  Binary API Libraries
+
+   -  Add API support for PP2 plugin to stable/1908 (1c3c9f039)
+
+-  Build System
+
+   -  Pass ‘no-pci’ to autgenerated config (c0552134e)
+   -  Add env variable to pass extra cmake args (116e05f57)
+
+-  Infrastructure Library
+
+   -  Implement CLIB_PAUSE () for aarch64 platforms (a3c45242b)
+   -  Create unformat function for data size parsing (cb19100c1)
+
+-  Link Bonding
+
+   -  Fix interface deletion (1517d5e72)
+   -  Add GSO support (a06f68556)
+
+-  Physical Memory Allocator
+
+   -  Always lock pages (5b2eea6e0)
+
+-  Plugins
+
+   -  AVF Device driver
+
+      -  Print queue id in packet trace (9e028d047)
+
+   -  DPDK
+
+      -  Ipsec tunnel support for ip6-in-ip4 (2dde5a478)
+      -  QAT devices update, add c4xxx and xeon d15xx (f5d6c80ac)
+      -  Add TSO support in DPDK plugin. (5564db853)
+
+   -  Group Based Policy (GBP)
+
+      -  Add extended SFC unit tests (30f7e4198)
+
+   -  Host Stack Applications
+
+      -  Make APP_OPTIONS_PREALLOC_FIFO_PAIRS configurable (47c6f36be)
+
+   -  Internet Key Exchange (IKEv2) Protocol
+
+      -  Add support for GCM cipher (2fa9f679c)
+
+   -  QUIC protocol
+
+      -  Add cli command for stats (88af6c3f4)
+      -  Add Tx, Rx and packet drop counters (3a61a40dd)
+      -  Create custom event logger (2f9ec5001)
+      -  Make quic fifo size configurable via cli (7fc3d97b8)
+
+   -  RDMA (ibverb) driver
+
+      -  Add support for input feature arcs (cbae1e1c5)
+      -  Add support for MAC changes (ffdfe308b)
+
+   -  Http_static
+
+      -  Add dynamic GET / POST method hooks (faf5195e3)
+
+-  Python binding for the VPP API
+
+   -  Let async calls return context (e6b29a9df)
+   -  Introduce read_blocking (1c45b85df)
+
+-  SVM Library
+
+   -  Improve fifo segment verbose cli (d2bff0786)
+
+-  Statistics Segment
+
+   -  Add /if/<n>/<n>/state for lacp interface state (d5e8ed7be)
+
+-  Test Infrastructure
+
+   -  Support worker threads (51699e62c)
+   -  Support setting random seed (fc000f0e1)
+   -  Add cli_return_response to vpp_papi_provider (64d744350)
+   -  Test tls case (87e1bcdd7)
+
+-  VNET
+
+   -  Classifier
+
+      -  Use vector code even when data is not aligned (bebbd7f62)
+      -  VPP packet tracer support (7c5a3536c)
+
+   -  IPSec
+
+      -  Add ‘detail’ option to ‘sh ipsec sa’ (56417fa94)
+      -  Add insecure option for format of SA (591aa64e8)
+      -  Support 4o6 and 6o4 for tunnel protect (2e6d73934)
+
+   -  IPv4 and IPv6 LPM
+
+      -  Allow addrs from the same prefix on intf (da900b25c)
+      -  Punt rather than drop unkown IPv6 ICMP packets (fd2f6f89e)
+
+   -  Session Layer
+
+      -  Add explicit reset api (a267cba29)
+      -  Improve cli (2ff21af39)
+      -  Add session enable option in config file (b1ef5567b)
+      -  Limit pacer bucket size (079895d95)
+      -  Builtin app rx notifications regardless of state (8e4afc86d)
+      -  Infra for transports to send buffers (57997c874)
+      -  Reschedule asap when snd space constrained (89ab1762d)
+
+   -  TCP
+
+      -  Allow cc algos to set pacing rate (82df1eb90)
+      -  Set cc_algo on connection alloc (7fe501a4b)
+      -  Add option for always on event logging (e73bd8503)
+      -  Track zero rwnd errors (a2c063712)
+      -  Validate connections in output (ea584d137)
+      -  Force zero window on full rx fifo (fbe948c81)
+      -  Send rwnd update only if wnd is large enough (0ad8477ba)
+      -  Enable gso in tcp hoststack (6f3621d77)
+      -  Handle SACK reneging (9dba3dbf0)
+      -  Use rate sample RTT in recovery if possible (6702641f5)
+      -  Compute snd time for rate sample (69460ae11)
+      -  Use sacks for timer based recovery (d4aa3d9f8)
+      -  Custom checksum calculations for Ipv4/Ipv6 (3642782a2)
+      -  Retry lost retransmits (7b135c639)
+      -  Improve pacing after idle send periods (abdc7dfb5)
+      -  Track lost rxt segments in byte tracker (6de46b40d)
+      -  Validate the IP address while checking TCP connection
+         (6c1ce53b4)
+      -  Improve lost rxt heuristic (04b4204d9)
+
+-  VPP Comms Library
+
+   -  Allow non-blocking connects (4767cf24f)
+   -  Add api to set lcl ip (2c55610e2)
+
+-  Vector Library
+
+   -  Add flag to explicitelly mark nodes which can init per-node packet
+      trace (29dc11bde)
+   -  Enhance the “show cli” debug CLI command (b5a0108ac)
+
+-  Libmemif
+
+   -  Introduce ‘memif_per_thread\_’ namespace (2736fc7fc)
+
+API changes
+-----------
+
+Description of results:
+
+-  *Definition changed*: indicates that the API file was modified
+   between releases.
+-  *Only in image*: indicates the API is new for this release.
+-  *Only in file*: indicates the API has been removed in this release.
+
+================ =============
+Message Name     Result
+================ =============
+app_attach       only in image
+app_attach_reply only in image
+================ =============
+
+Found 2 api message signature differences
+
+Fixed issues
+------------
+
+For the full list of fixed issues please refer to:
+
+- fd.io `JIRA <https://jira.fd.io>`__
+- git `commit log <https://git.fd.io/vpp/log/?h=stable/1908>`__
