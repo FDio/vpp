@@ -35,6 +35,7 @@ endif()
 
 set(VPP_RUNTIME_DIR "bin" CACHE STRING "Relative runtime directory path")
 set(VPP_LIBRARY_DIR "lib" CACHE STRING "Relative library directory path")
+set(VPP_BINARY_DIR ${CMAKE_BINARY_DIR}/CMakeFiles)
 
 include(${CMAKE_CURRENT_LIST_DIR}/cpu.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/api.cmake)
