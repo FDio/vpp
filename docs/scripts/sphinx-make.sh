@@ -26,6 +26,7 @@ then
     $PYTHON_INTERP -m pip install -r $WS_ROOT/test/requirements-3.txt
 else
     [ -n "$(declare -f deactivate)" ] && deactivate
+    make -C $DOCS_DIR/siphon siphon
     source $VENV_DIR/bin/activate;
     VERSION=`source $WS_ROOT/src/scripts/version`
     TM=`TZ=GMT date`

@@ -83,6 +83,7 @@ GTAGS
 /build-root/.doxygen-bootstrap.ok
 /build-root/.doxygen-siphon.dep
 /docs/_build
+/docs/_siphon
 /docs/dynamic_includes
 /sphinx_venv
 !/docs/Makefile

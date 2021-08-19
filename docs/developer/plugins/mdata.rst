@@ -1,0 +1,1 @@
+../../../src/plugins/mdata/mdata_doc.rst

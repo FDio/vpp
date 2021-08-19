@@ -203,15 +203,15 @@ mdata_enable_disable_command_fn (vlib_main_t * vm,
 /*?
  * This command enables or disables buffer metadata change tracking
  *
- *@cliexpar
+ * @cliexpar
  * To enable buffer metadata change tracking:
- *@cliexstart{buffer metadata tracking on}
+ * @cliexstart{buffer metadata tracking on}
  * Tracking enabled
- *@cliexend
+ * @cliexend
  *
- *@cliexstart{buffer metadata tracking off}
+ * @cliexstart{buffer metadata tracking off}
  * Tracking disabled
- *@cliexend
+ * @cliexend
 ?*/
 
 /* *INDENT-OFF* */
@@ -472,13 +472,13 @@ show_metadata_command_fn (vlib_main_t * vm,
 
 /*?
  * This command displays buffer metadata change information
- *@cliexpar
+ * @cliexpar
  * How to display buffer metadata change information
- *@cliexstart{show buffer metadata}
+ * @cliexstart{show buffer metadata}
  * ethernet-input: current_data current_length flags error
  * vnet_buffer_t: l2_hdr_offset l3_hdr_offset
  * vnet_buffer2_t: no changes
- *@cliexend
+ * @cliexend
 ?*/
 
 /* *INDENT-OFF* */
