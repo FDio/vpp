@@ -3,8 +3,7 @@
 Creating the Virtual Machine
 ----------------------------
 
-We will now create the virtual machine. We use the "virsh create command". For the complete file we
-use refer to :ref:`xmlexample`.
+We will now create the virtual machine. We use the "virsh create command".
 
 It is important to note that in the XML file we specify the socket path that is used to connect to
 FD.io VPP.
@@ -85,26 +84,26 @@ and in the example.
       protocol features (0x3)
        VHOST_USER_PROTOCOL_F_MQ (0)
        VHOST_USER_PROTOCOL_F_LOG_SHMFD (1)
-    
+
      socket filename /tmp/vm00.sock type client errno "Success"
-    
+
      rx placement:
        thread 1 on vring 1, polling
      tx placement: spin-lock
        thread 0 on vring 0
        thread 1 on vring 0
-    
+
      Memory regions (total 2)
      region fd    guest_phys_addr    memory_size        userspace_addr     mmap_offset        mmap_addr
      ====== ===== ================== ================== ================== ================== ===============    ===
       0     31    0x0000000000000000 0x00000000000a0000 0x00007f1db9c00000 0x0000000000000000 0x00007f7db0400    000
       1     32    0x00000000000c0000 0x000000000ff40000 0x00007f1db9cc0000 0x00000000000c0000 0x00007f7d94ec0    000
-    
+
      Virtqueue 0 (TX)
       qsz 1024 last_avail_idx 0 last_used_idx 0
       avail.flags 0 avail.idx 256 used.flags 1 used.idx 0
       kickfd 33 callfd 34 errfd -1
-    
+
      Virtqueue 1 (RX)
       qsz 1024 last_avail_idx 8 last_used_idx 8
       avail.flags 0 avail.idx 8 used.flags 1 used.idx 8
