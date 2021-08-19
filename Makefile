@@ -209,9 +209,9 @@ help:
 	@echo " checkstyle-test-diff - check test framework coding style (only changed files)"
 	@echo " checkstyle-api       - check api for incompatible changes"
 	@echo " fixstyle             - fix coding style"
-	@echo " doxygen              - (re)generate documentation"
-	@echo " bootstrap-doxygen    - setup Doxygen dependencies"
-	@echo " wipe-doxygen         - wipe all generated documentation"
+	@echo " doxygen              - DEPRECATED - use 'make docs'"
+	@echo " bootstrap-doxygen    - DEPRECATED"
+	@echo " wipe-doxygen         - DEPRECATED"
 	@echo " checkfeaturelist     - check FEATURE.yaml according to schema"
 	@echo " featurelist          - dump feature list in markdown"
 	@echo " json-api-files       - (re)-generate json api files"
@@ -451,11 +451,13 @@ test-dep:
 
 .PHONY: test-doc
 test-doc:
-	@make -C test doc
+	@echo "make test-doc is DEPRECATED: use 'make doc'"
+	sleep 300
 
 .PHONY: test-wipe-doc
 test-wipe-doc:
-	@make -C test wipe-doc
+	@echo "make test-wipe-doc is DEPRECATED"
+	sleep 300
 
 .PHONY: test-cov
 test-cov:
@@ -667,42 +669,28 @@ checkfeaturelist: centos-pyyaml
 # Build the documentation
 #
 
-# Doxygen configuration and our utility scripts
-export DOXY_DIR ?= $(WS_ROOT)/doxygen
-
-define make-doxy
-	@OS_ID="$(OS_ID)" make -C $(DOXY_DIR) $@
-endef
-
 .PHONY: bootstrap-doxygen
 bootstrap-doxygen:
-	$(call make-doxy)
+	@echo "make bootstrap-doxygen is DEPRECATED"
+	sleep 300
 
 .PHONY: doxygen
-doxygen: bootstrap-doxygen
-	$(call make-doxy)
+doxygen: docs
+	@echo "make doxygen is DEPRECATED: use 'make docs'"
+	sleep 300
 
 .PHONY: wipe-doxygen
 wipe-doxygen:
-	$(call make-doxy)
+	@echo "make wipe-doxygen is DEPRECATED"
+	sleep 300
 
-# Sphinx Documents
-export DOCS_DIR = $(WS_ROOT)/docs
-export VENV_DIR = $(WS_ROOT)/sphinx_venv
-export SPHINX_SCRIPTS_DIR = $(WS_ROOT)/docs/scripts
-
-.PHONY: docs-venv
-docs-venv:
-	@($(SPHINX_SCRIPTS_DIR)/sphinx-make.sh venv)
+.PHONY: docs-%
+docs-%:
+	@make -C $(WS_ROOT)/docs $*
 
 .PHONY: docs
-docs: $(DOCS_DIR)
-	@($(SPHINX_SCRIPTS_DIR)/sphinx-make.sh html)
-
-.PHONY: docs-clean
-docs-clean:
-	@rm -rf $(DOCS_DIR)/_build
-	@rm -rf $(VENV_DIR)
+docs:
+	@make -C $(WS_ROOT)/docs docs
 
 .PHONY: pkg-verify
 pkg-verify: install-dep $(BR)/.deps.ok install-ext-deps

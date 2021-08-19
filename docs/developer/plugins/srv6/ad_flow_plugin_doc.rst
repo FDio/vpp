@@ -1,0 +1,1 @@
+../../../../src/plugins/srv6-ad-flow/ad_flow_plugin_doc.rst

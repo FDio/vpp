@@ -50,7 +50,7 @@ We should now be able to execute the VPP shell and show the version.
     __/ __/ _ \  (_)__    | | / / _ \/ _ \
     _/ _// // / / / _ \   | |/ / ___/ ___/
     /_/ /____(_)_/\___/   |___/_/  /_/
-   
+
    vpp# show version
    vpp v18.07-release built by root on c469eba2a593 at Mon Jul 30 23:27:03 UTC 2018
    vpp#

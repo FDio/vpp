@@ -2,7 +2,7 @@
 
 .. toctree::
 
-Using the trace command 
+Using the trace command
 ========================
 
 Skills to be Learned
@@ -21,26 +21,26 @@ Basic Trace Commands
 
 Show trace buffer [max COUNT].
 
-.. code-block:: console 
+.. code-block:: console
 
   vpp# show trace
 
 Clear trace buffer and free memory.
 
-.. code-block:: console 
+.. code-block:: console
 
   vpp# clear trace
 
 filter trace output - include NODE COUNT | exclude NODE COUNT | none.
 
-.. code-block:: console 
+.. code-block:: console
 
   vpp# trace filter <include NODE COUNT | exclude NODE COUNT | none>
 
 Add Trace
 ----------
 
-.. code-block:: console 
+.. code-block:: console
 
   vpp# trace add af-packet-input 10
 
@@ -69,7 +69,7 @@ The following list of nodes are supported under trace add:
 Ping from Host to VPP
 ----------------------
 
-.. code-block:: console 
+.. code-block:: console
 
   vpp# q
   $ ping -c 1 10.10.1.2
@@ -80,10 +80,10 @@ Ping from Host to VPP
   1 packets transmitted, 1 received, 0% packet loss, time 0ms
   rtt min/avg/max/mdev = 0.283/0.283/0.283/0.000 ms
 
-Examine Trace of ping from host to VPP 
+Examine Trace of ping from host to VPP
 ----------------------------------------
 
-.. code-block:: console 
+.. code-block:: console
 
   $ sudo vppctl -s /run/vpp/cli-vpp1.sock
   vpp# show trace
@@ -144,14 +144,14 @@ Examine Trace of ping from host to VPP
 Clear trace buffer
 -------------------
 
-.. code-block:: console 
+.. code-block:: console
 
   vpp# clear trace
 
-Ping from VPP to Host 
+Ping from VPP to Host
 -----------------------
 
-.. code-block:: console 
+.. code-block:: console
 
   vpp# ping 10.10.1.1
   64 bytes from 10.10.1.1: icmp_seq=1 ttl=64 time=.0789 ms
@@ -167,7 +167,7 @@ Examine Trace of ping from VPP to host
 
 The output will demonstrate FD.io VPP's trace of ping for all packets.
 
-.. code-block:: console 
+.. code-block:: console
 
   vpp# show trace
   ------------------- Start of thread 0 vpp_main -------------------
@@ -465,16 +465,16 @@ After examining the trace, clear it again using vpp# clear trace.
 Examine ARP table (neighbors)
 -----------------------------
 
-.. code-block:: console 
+.. code-block:: console
 
   vpp# show ip neighbors
   Time           IP4       Flags      Ethernet              Interface
-  1101.5636    10.10.1.1      D    e2:0f:1e:59:ec:f7 host-vpp1out        
+  1101.5636    10.10.1.1      D    e2:0f:1e:59:ec:f7 host-vpp1out
 
 Examine routing tables
 -----------------------
 
-.. code-block:: console 
+.. code-block:: console
 
   vpp# show ip fib
     ipv4-VRF:0, fib_index:0, flow hash:[src dst sport dport proto ] locks:[src:plugin-hi:2, src:adjacency:1, src:default-route:1, ]

@@ -1,0 +1,1 @@
+../../../src/plugins/linux-cp/lcp.rst

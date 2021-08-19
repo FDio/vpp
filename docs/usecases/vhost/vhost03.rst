@@ -17,7 +17,7 @@ Use the "set interface l2 bridge" command.
     vpp# show bridge 100 det
       BD-ID   Index   BSN  Age(min)  Learning  U-Forwrd  UU-Flood  Flooding  ARP-Term  BVI-Intf
        100      1      0     off        on        on        on        on       off       N/A
-    
+
                Interface           If-idx ISN  SHG  BVI  TxFlood        VLAN-Tag-Rewrite
          VirtualEthernet0/0/0        3     1    0    -      *                 none
        TenGigabitEthernet86/0/0      1     1    0    -      *                 none
@@ -85,4 +85,4 @@ system as **tx packets**. The reverse is true on the way in.
                                                          tx packets                    16
                                                          tx bytes                    1476
     local0                            0        down
-    vpp# 
+    vpp#

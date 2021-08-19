@@ -80,8 +80,8 @@ bridge domain number not in use:
 .. code-block:: console
 
    vpp# show bridge-domain
-    ID   Index   Learning   U-Forwrd   UU-Flood   Flooding   ARP-Term     BVI-Intf   
-    0      0        off        off        off        off        off        local0    
+    ID   Index   Learning   U-Forwrd   UU-Flood   Flooding   ARP-Term     BVI-Intf
+    0      0        off        off        off        off        off        local0
 
 In the example above, there is bridge domain ID '0' already. Even though
 sometimes we might get feedback as below:
@@ -175,15 +175,15 @@ Examine l2 fib
 .. code-block:: console
 
     vpp# show l2fib verbose
-    Mac Address     BD Idx           Interface           Index  static  filter  bvi   Mac Age (min) 
-    de:ad:00:00:00:00    1            host-vpp1vpp2           2       0       0     0      disabled    
-    c2:f6:88:31:7b:8e    1            host-vpp1out            1       0       0     0      disabled    
+    Mac Address     BD Idx           Interface           Index  static  filter  bvi   Mac Age (min)
+    de:ad:00:00:00:00    1            host-vpp1vpp2           2       0       0     0      disabled
+    c2:f6:88:31:7b:8e    1            host-vpp1out            1       0       0     0      disabled
     2 l2fib entries
 
 .. code-block:: console
 
     vpp# show l2fib verbose
-    Mac Address     BD Idx           Interface           Index  static  filter  bvi   Mac Age (min) 
-    de:ad:00:00:00:00    1                loop0               2       1       0     1      disabled    
-    c2:f6:88:31:7b:8e    1            host-vpp2vpp1           1       0       0     0      disabled    
+    Mac Address     BD Idx           Interface           Index  static  filter  bvi   Mac Age (min)
+    de:ad:00:00:00:00    1                loop0               2       1       0     1      disabled
+    c2:f6:88:31:7b:8e    1            host-vpp2vpp1           1       0       0     0      disabled
     2 l2fib entries

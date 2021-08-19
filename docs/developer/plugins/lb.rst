@@ -1,0 +1,1 @@
+../../../src/plugins/lb/lb_plugin_doc.rst

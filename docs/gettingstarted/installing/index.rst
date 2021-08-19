@@ -27,14 +27,6 @@ The following are instructions on how to install VPP on Ubuntu.
 
    ubuntu
 
-Installing on Centos
--------------------------------
-
-The following are instructions on how to install VPP on Centos.
-
-.. toctree::
-
-   centos
 
 Package Descriptions
 ----------------------------------

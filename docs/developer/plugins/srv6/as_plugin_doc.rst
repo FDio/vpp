@@ -1,0 +1,1 @@
+../../../../src/plugins/srv6-as/as_plugin_doc.rst

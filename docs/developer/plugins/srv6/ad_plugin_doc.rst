@@ -1,0 +1,1 @@
+../../../../src/plugins/srv6-ad/ad_plugin_doc.rst

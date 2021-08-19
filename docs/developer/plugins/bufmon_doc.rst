@@ -1,0 +1,1 @@
+../../../src/plugins/bufmon/bufmon_doc.rst
