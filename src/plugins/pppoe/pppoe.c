@@ -721,7 +721,7 @@ show_pppoe_fib_command_fn (vlib_main_t * vm,
 }
 
 /*?
- * This command dispays the MAC Address entries of the PPPoE FIB table.
+ * This command displays the MAC Address entries of the PPPoE FIB table.
  * Output can be filtered to just get the number of MAC Addresses or display
  * each MAC Address.
  *
@@ -729,9 +729,9 @@ show_pppoe_fib_command_fn (vlib_main_t * vm,
  * Example of how to display the number of MAC Address entries in the PPPoE
  * FIB table:
  * @cliexstart{show pppoe fib}
- *     Mac Address      session_id      Interface           sw_if_index  session_index
- *  52:54:00:53:18:33     1          GigabitEthernet0/8/0        2          0
- *  52:54:00:53:18:55     2          GigabitEthernet0/8/1        3          1
+ *    Mac Address    session_id    Interface         sw_if_index session_index
+ * 52:54:00:53:18:33   1        GigabitEthernet0/8/0      2          0
+ * 52:54:00:53:18:55   2        GigabitEthernet0/8/1      3          1
  * @cliexend
 ?*/
 /* *INDENT-OFF* */

@@ -26,18 +26,26 @@ and multiple kinds of packet tracing. Development debug images
 include complete symbol tables, and extensive consistency checking.
 
 Some VPP Use-cases include vSwitches, vRouters, Gateways, Firewalls
-and Load Balancers, to name a few.
+and Load-Balancers, to name a few.
 
 For more details click on the links below or press next.
 
 .. toctree::
-   :maxdepth: 2
+    :maxdepth: 2
 
-   whatisvpp/index.rst
-   gettingstarted/index
-   links/index
-   usecases/index
-   troubleshooting/index
-   reference/index
-   relatedprojects/index
-   about.rst
+    aboutvpp/index
+    usecases/index
+    gettingstarted/index
+    developer/index
+    interfacing/index
+    contributing/index
+    cli-reference/index
+    configuration/index
+    versions
+
+About this documentation
+
+::
+
+    VPP Version : __VPP_VERSION__
+    Built on    : __BUILT_ON__

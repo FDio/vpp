@@ -196,12 +196,12 @@ done:
  *
  * Example of graph node after range checking is enabled:
  * @cliexstart{show vlib graph ip4-rx-urpf-loose}
- *            Name                      Next                    Previous
- * ip4-rx-urpf-loose                ip4-drop [0]           ip4-input-no-checksum
- *                           ip4-source-and-port-range-         ip4-input
+ *       Name                    Next                  Previous
+ * ip4-rx-urpf-loose          ip4-drop [0]        ip4-input-no-checksum
+ *                    ip4-source-and-port-range-       ip4-input
  * @cliexend
  *
- * Example of how to display the feature enabed on an interface:
+ * Example of how to display the feature enabled on an interface:
  * @cliexstart{show ip interface features GigabitEthernet2/0/0}
  * IP feature paths configured on GigabitEthernet2/0/0...
  *

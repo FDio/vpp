@@ -749,7 +749,8 @@ set_ip_source_and_port_range_check_fn (vlib_main_t * vm,
  * @cliexend
  *
  * Example of how to enable range checking on TX:
- * @cliexcmd{set interface ip source-and-port-range-check GigabitEthernet2/0/0 udp-in-vrf 7}
+ * @cliexcmd{set interface ip source-and-port-range-check GigabitEthernet2/0/0
+ * udp-in-vrf 7}
  *
  * Example of graph node after range checking is enabled:
  * @cliexstart{show vlib graph ip4-source-and-port-range-check-tx}
@@ -758,7 +759,7 @@ set_ip_source_and_port_range_check_fn (vlib_main_t * vm,
  *                              interface-output [1]
  * @cliexend
  *
- * Example of how to display the features enabed on an interface:
+ * Example of how to display the features enabled on an interface:
  * @cliexstart{show ip interface features GigabitEthernet2/0/0}
  * IP feature paths configured on GigabitEthernet2/0/0...
  *
@@ -1367,7 +1368,7 @@ show_source_and_port_range_check_fn (vlib_main_t * vm,
  * @cliexstart{show ip source-and-port-range-check vrf 7 172.16.2.0}
  * 172.16.2.0: 23 - 101
  * @cliexend
- * Example of how to test to determine of a given Pv4 address and port
+ * Example of how to test to determine of a given iPv4 address and port
  * are being validated:
  * @cliexstart{show ip source-and-port-range-check vrf 7 172.16.2.2 port 23}
  * 172.16.2.2 port 23 PASS

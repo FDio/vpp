@@ -22,7 +22,7 @@
  * The load-balancer receives traffic destined to VIP (Virtual IP)
  * addresses from one or multiple(ECMP) routers.
  * The load-balancer tunnels the traffic toward many application servers
- * ensuring session stickyness (i.e. that a single sessions is tunneled
+ * ensuring session stickiness (i.e. that a single sessions is tunneled
  * towards a single application server).
  *
  */

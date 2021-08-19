@@ -1,0 +1,61 @@
+.. _libmemif_examples_doc:
+
+Examples
+========
+
+After build, root folder will contain scripts linking binary examples
+with library (same name as example apps). These scripts can be executed
+to run example apps without installing the library. Example apps
+binaries can be found in *libs* folder. To run binaries directly, make
+sure that libmemif library is installed.
+
+Run in container
+----------------
+
+``ligato/libmemif-sample-service`` image contains built and installed
+libmemf. To run different examples, override docker CMD to start
+container in bash:
+
+::
+
+   # docker run -it --entrypoint=/bin/bash -i --rm --name icmp-responder --hostname icmp-responder --privileged -v "/run/vpp/:/run/vpp/" ligato/libmemif-sample-service
+
+Current WORKDIR is set to root repository directory. Example apps can be
+run from this directory (a script linking binary with library), or
+browse to ``./.libs`` folder and execute binary directly.
+
++-----------------------------------+-----------------------------------+
+| Example app                       | Description                       |
++===================================+===================================+
+| @ref                              | Simplest implementation. Event    |
+| extras                            | polling is handled by libmemif.   |
+| /libmemif/examples/icmp_responder | Single memif connection in slave  |
+|                                   | mode is created (id 0). Use Ctrl  |
+|                                   | + C to exit app. Memif receive    |
+|                                   | mode: interrupt.                  |
++-----------------------------------+-----------------------------------+
+| @ref                              | Supports multiple connections and |
+| extras/libme                      | master mode. User can             |
+| mif/examples/icmp_responder-epoll | create/delete connections, set ip |
+| (run in container by default)     | addresses, print connection       |
+|                                   | information. @ref                 |
+|                                   | libmemif_example_setup_doc        |
+|                                   | contains instructions on basic    |
+|                                   | connection use cases setups.      |
+|                                   | Memif receive mode: interrupt.    |
+|                                   | App provides functionality to     |
+|                                   | disable interrupts for specified  |
+|                                   | queue/s for testing purposes.     |
+|                                   | Polling mode is not implemented   |
+|                                   | in this example.                  |
++-----------------------------------+-----------------------------------+
+| @ref                              | Multi-thread example, very        |
+| extras/lib                        | similar to icmpr-epoll. Packets   |
+| memif/examples/icmp_responder-mt) | are handled in threads assigned   |
+|                                   | to specific queues. Slave mode    |
+|                                   | only. Memif receive mode: polling |
+|                                   | (memif_rx_poll function),         |
+|                                   | interrupt (memif_rx_interrupt     |
+|                                   | function). Receive modes differ   |
+|                                   | per queue.                        |
++-----------------------------------+-----------------------------------+

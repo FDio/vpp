@@ -9,16 +9,16 @@ extensive list, but should give a sampling of the many features contained in FD.
 
 .. toctree::
 
-   containers
-   simpleperf/index.rst
-   vhost/index.rst
+   containers/index
+   simpleperf/index
+   vppcloud/index
+   vhost/index
    vmxnet3
+   home_gateway
    acls
-   vppcloud
-   hgw
-   contiv/index.rst
    networksim
    webapp
    container_test
    trafficgen
-   ikev2
+   ikev2/index
+   contiv/index

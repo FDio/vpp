@@ -691,23 +691,13 @@ doxygen: bootstrap-doxygen
 wipe-doxygen:
 	$(call make-doxy)
 
-# Sphinx Documents
-export DOCS_DIR = $(WS_ROOT)/docs
-export VENV_DIR = $(WS_ROOT)/sphinx_venv
-export SPHINX_SCRIPTS_DIR = $(WS_ROOT)/docs/scripts
-
-.PHONY: docs-venv
-docs-venv:
-	@($(SPHINX_SCRIPTS_DIR)/sphinx-make.sh venv)
+.PHONY: docs-%
+docs-%:
+	@make -C $(WS_ROOT)/docs $*
 
 .PHONY: docs
-docs: $(DOCS_DIR)
-	@($(SPHINX_SCRIPTS_DIR)/sphinx-make.sh html)
-
-.PHONY: docs-clean
-docs-clean:
-	@rm -rf $(DOCS_DIR)/_build
-	@rm -rf $(VENV_DIR)
+docs:
+	@make -C $(WS_ROOT)/docs docs
 
 .PHONY: pkg-verify
 pkg-verify: install-dep $(BR)/.deps.ok install-ext-deps

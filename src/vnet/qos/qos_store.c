@@ -55,7 +55,7 @@ qos_store_feature_config (u32 sw_if_index,
     case QOS_SOURCE_MPLS:
     case QOS_SOURCE_VLAN:
     case QOS_SOURCE_EXT:
-      /* not a valid option for storeing */
+      /* not a valid option for storing */
       break;
     }
 }
@@ -127,7 +127,7 @@ qos_store_walk (qos_store_walk_cb_t fn, void *c)
 }
 
 /*
- * Disable storeing feature for all protocols when the interface
+ * Disable storing feature for all protocols when the interface
  * is deleted
  */
 static clib_error_t *
@@ -203,7 +203,7 @@ qos_store_cli (vlib_main_t * vm,
 }
 
 /*?
- * Enable QoS bit storeing on an interface using the packet's input DSCP bits
+ * Enable QoS bit storing on an interface using the packet's input DSCP bits
  * Which input QoS bits to use are either; IP, MPLS or VLAN. If more than
  * one protocol is chosen (which is foolish) the higher layers override the
  * lower.

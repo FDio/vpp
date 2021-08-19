@@ -1312,7 +1312,7 @@ VLIB_CLI_COMMAND(map_pre_resolve_command, static) = {
 
 /*?
  * Enable or disable the MAP-E inbound security check
- * Specifiy if the inbound security check should be done on fragments
+ * Specify if the inbound security check should be done on fragments
  *
  * @cliexpar
  * @cliexstart{map params security-check}
@@ -1333,9 +1333,8 @@ VLIB_CLI_COMMAND(map_security_check_command, static) = {
   .function = map_security_check_command_fn,
 };
 
-
 /*?
- * Specifiy the IPv4 source address used for relayed ICMP error messages
+ * Specify the IPv4 source address used for relayed ICMP error messages
  *
  * @cliexpar
  * @cliexstart{map params icmp source-address}
