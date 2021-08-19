@@ -128,7 +128,7 @@ mpls_interface_enable_disable (vlib_main_t * vm,
 }
 
 /*?
- * This command enables an interface to accpet MPLS packets
+ * This command enables an interface to accept MPLS packets
  *
  * @cliexpar
  * @cliexstart{set interface mpls}

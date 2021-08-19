@@ -67,7 +67,7 @@ typedef struct
 
   u8 type;			/**< Type (default is 0) */
   /* SR Policy specific DPO                                       */
-  /* IF Type = DEFAULT Then Load Balancer DPO among SID lists     */
+  /* IF Type = DEFAULT Then Load-Balancer DPO among SID lists     */
   /* IF Type = SPRAY then Spray DPO with all SID lists            */
 
   ip46_address_t endpoint;		/**< Optional NH for SR TE */

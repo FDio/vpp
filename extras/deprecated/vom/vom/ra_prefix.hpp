@@ -111,7 +111,7 @@ private:
   uint32_t m_val_lifetime;
 
   /**
-   * '<pref-lifetime>' is the prefered-lifetime and is the length of
+   * '<pref-lifetime>' is the preferred-lifetime and is the length of
    * time in seconds during what addresses generated from the prefix
    * remain preferred.
    *

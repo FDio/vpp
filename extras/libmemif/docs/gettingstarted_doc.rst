@@ -1,0 +1,326 @@
+.. _libmemif_gettingstarted_doc:
+
+Getting started
+===============
+
+Concept (Connecting to VPP)
+---------------------------
+
+For detailed information on api calls and structures please refer to
+@ref libmemif.h.
+
+1. Initialize memif
+
+   -  Declare callback function handling file descriptor event polling.
+
+   .. code:: c
+
+      int
+      control_fd_update (int fd, uint8_t events)
+      {
+      ...
+      }
+
+   -  Call memif initialization function. memif_init
+
+   .. code:: c
+
+      err = memif_init (control_fd_update, APP_NAME, NULL, NULL);
+
+..
+
+   If event occurs on any file descriptor returned by this callback,
+   call memif_control_fd_handler function. Since version 2.0, last two
+   optional arguments are used to specify custom memory allocation.
+
+.. code:: c
+
+   memif_err = memif_control_fd_handler (evt.data.fd, events);
+
+..
+
+   If callback function parameter for memif_init function is set to
+   NULL, libmemif will handle file descriptor event polling. Api call
+   memif_poll_event will call epoll_pwait with user defined timeout to
+   poll event on file descriptors opened by libmemif.
+
+.. code:: c
+
+   /* main loop */
+       while (1)
+       {
+           if (memif_poll_event (-1) < 0)
+           {
+               DBG ("poll_event error!");
+           }
+       }
+
+..
+
+   Memif initialization function will initialize internal structures and
+   create timer file descriptor, which will be used for sending periodic
+   connection requests. Timer is disarmed if no memif interface is
+   created.
+
+2. Creating interface
+
+   -  Declare memif connection handle.
+
+   .. code:: c
+
+      memif_conn_handle_t c;
+
+   ..
+
+      example app uses struct that contains connection handle, rx/tx
+      buffers and other connection specific information.
+
+   -  Specify connection arguments.
+
+   .. code:: c
+
+      memif_conn_args_t args;
+      memset (&args, 0, sizeof (args));
+      args.is_master = is_master;
+      args.log2_ring_size = 10;
+      args.buffer_size = 2048;
+      args.num_s2m_rings = 2;
+      args.num_m2s_rings = 2;
+      strncpy ((char *) args.interface_name, IF_NAME, strlen (IF_NAME));
+      args.mode = 0;
+      args.interface_id = 0;
+
+   -  Declare callback functions called on
+      connected/disconnected/interrupted status changed. \```C int
+      on_connect (memif_conn_handle_t conn, void \*private_ctx) { … }
+
+int on_disconnect (memif_conn_handle_t conn, void \*private_ctx) { INFO
+(“memif connected!”); return 0; }
+
+::
+
+      - Call memif interface create function. memif\_create
+   ```C
+   err = memif_create (&c->conn,
+           &args, on_connect, on_disconnect, on_interrupt, &ctx[index]);
+
+..
+
+   If connection is in slave mode, arms timer file descriptor. If on
+   interrupt callback is set to NULL, user will not be notified about
+   interrupt. Use memif_get_queue_efd call to get interrupt file
+   descriptor for specific queue.
+
+.. code:: c
+
+   int fd = -1;
+   err = memif_get_queue_efd (c->conn, data->qid, &fd);
+
+3. Connection establishment
+
+   -  User application will poll events on all file descriptors returned
+      in memif_control_fd_update_t callback.
+   -  On event call memif_control_fd_handler.
+   -  Everything else regarding connection establishment will be done
+      internally.
+   -  Once connection has been established, a callback will inform the
+      user about connection status change.
+
+4. Interrupt packet receive
+
+   -  If event is polled on interrupt file descriptor, libmemif will
+      call memif_interrupt_t callback specified for every connection
+      instance.
+
+   .. code:: c
+
+      int
+      on_interrupt (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
+      {
+      ...
+      }
+
+5. Memif buffers
+
+   -  Packet data are stored in memif_buffer_t. Pointer *data* points to
+      shared memory buffer, and unsigned integer \*_len\* contains
+      buffer length.
+   -  flags: MEMIF_BUFFER_FLAG_NEXT states that the buffer is not large
+      enough to contain whole packet, so next buffer contains the rest
+      of the packet. (chained buffers)
+
+   .. code:: c
+
+      typedef struct
+      {
+       uint16_t desc_index;
+       uint32_t len;
+       uint8_t flags;
+       void *data;
+      } memif_buffer_t;
+
+6. Packet receive
+
+   -  Api call memif_rx_burst will set all required fields in memif
+      buffers provided by user application, dequeue received buffers and
+      consume interrupt event on receive queue. The event is not
+      consumed, if memif_rx_burst fails.
+
+   .. code:: c
+
+      err = memif_rx_burst (c->conn, qid, c->bufs, MAX_MEMIF_BUFS, &rx);
+
+   -  User application can then process packets.
+   -  Api call memif_refill_queue will enqueue rx buffers.
+
+   .. code:: c
+
+      err = memif_refill_queue (c->conn, qid, rx);
+
+7. Packet transmit
+
+   -  Api call memif_buffer_alloc will find free tx buffers and set all
+      required fields in memif buffers provided by user application.
+
+   .. code:: c
+
+      err = memif_buffer_alloc (c->conn, qid, c->tx_bufs, n, &r);
+
+   -  User application can populate shared memory buffers with packets.
+   -  Api call memif_tx_burst will enqueue tx buffers
+
+   .. code:: c
+
+      err = memif_tx_burst (c->conn, qid, c->tx_bufs, c->tx_buf_num, &r);
+
+8. Helper functions
+
+   -  Memif version
+
+   .. code:: c
+
+      uint16_t memif_ver = memif_get_version ();
+
+   -  Memif details
+
+      -  Api call memif_get_details will return details about
+         connection.
+
+      .. code:: c
+
+         err = memif_get_details (c->conn, &md, buf, buflen);
+
+   -  Memif error messages
+
+      -  Every api call returns error code (integer value) mapped to
+         error string.
+      -  Call memif_strerror will return error message assigned to
+         specific error code.
+
+      .. code:: c
+
+         if (err != MEMIF_ERR_SUCCESS)
+          INFO ("memif_get_details: %s", memif_strerror (err));
+
+      -  Not all syscall errors are translated to memif error codes. If
+         error code 1 (MEMIF_ERR_SYSCALL) is returned then libmemif
+         needs to be compiled with -DMEMIF_DBG flag to print error
+         message. Use *make -B* to rebuild libmemif in debug mode.
+
+Example app (libmemif fd event polling):
+----------------------------------------
+
+-  @ref extras/libmemif/examples/icmp_responder
+
+..
+
+   Optional argument: transmit queue id.
+
+::
+
+   icmpr 1
+
+..
+
+   Set transmit queue id to 1. Default is 0. Application will create
+   memif interface in slave mode and try to connect to VPP. Exit using
+   Ctrl+C. Application will handle SIGINT signal, free allocated memory
+   and exit with EXIT_SUCCESS.
+
+Example app:
+------------
+
+ICMP Responder custom fd event polling.
+
+-  @ref extras/libmemif/examples/icmp_responder-epoll
+
+Example app (multi-thread queue polling)
+----------------------------------------
+
+ICMP Responder multi-thread. - @ref
+extras/libmemif/examples/icmp_responder-mt
+
+   Simple example of libmemif multi-thread usage. Connection
+   establishment is handled by main thread. There are two rx/tx queues
+   in this example. One in polling mode and second in interrupt mode.
+
+VPP config:
+
+::
+
+   # create interface memif id 0 master
+   # set int state memif0 up
+   # set int ip address memif0 192.168.1.1/24
+   # ping 192.168.1.2
+
+For multiple rings (queues) support run VPP with worker threads: example
+startup.conf:
+
+::
+
+   unix {
+     interactive
+     nodaemon
+     full-coredump
+   }
+
+   cpu {
+     workers 2
+   }
+
+VPP config:
+
+::
+
+   # create interface memif id 0 master
+   # set int state memif0 up
+   # set int ip address memif0 192.168.1.1/24
+   # ping 192.168.1.2
+
+..
+
+   Master mode queue number is limited by worker threads. Slave mode
+   interface needs to specify number of queues.
+
+::
+
+   # create memif id 0 slave rx-queues 2 tx-queues 2
+
+..
+
+   Example applications use VPP default socket file for memif:
+   /run/vpp/memif.sock For master mode, socket directory must exist
+   prior to memif_create call.
+
+Unit tests
+----------
+
+Unit tests use `Check <https://libcheck.github.io/check/index.html>`__
+framework. This framework must be installed in order to build
+*unit_test* binary. Ubuntu/Debian:
+
+::
+
+   sudo apt-get install check
+
+`More platforms <https://libcheck.github.io/check/web/install.html>`__

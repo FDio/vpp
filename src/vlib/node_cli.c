@@ -310,7 +310,7 @@ show_node_graphviz (vlib_main_t * vm,
 /*?
  * Dump dot files data to draw a graph of all the nodes.
  * If the argument 'filter' is provided, only the active nodes (since the last
- * "clear run" comand) are selected and they are scaled and colored according
+ * "clear run" command) are selected and they are scaled and colored according
  * to their utilization. You can choose to filter nodes that are called,
  * nodes that receive vectors or both (default).
  * The 'file' option allows to save data in a temp file.

@@ -1073,7 +1073,7 @@ set_ip4_vxlan_bypass (vlib_main_t * vm,
 /*?
  * This command adds the 'ip4-vxlan-bypass' graph node for a given interface.
  * By adding the IPv4 vxlan-bypass graph node to an interface, the node checks
- *  for and validate input vxlan packet and bypass ip4-lookup, ip4-local,
+ * for and validate input vxlan packet and bypass ip4-lookup, ip4-local,
  * ip4-udp-lookup nodes to speedup vxlan packet forwarding. This node will
  * cause extra overhead to for non-vxlan packets which is kept at a minimum.
  *
@@ -1130,7 +1130,7 @@ set_ip6_vxlan_bypass (vlib_main_t * vm,
 /*?
  * This command adds the 'ip6-vxlan-bypass' graph node for a given interface.
  * By adding the IPv6 vxlan-bypass graph node to an interface, the node checks
- *  for and validate input vxlan packet and bypass ip6-lookup, ip6-local,
+ * for and validate input vxlan packet and bypass ip6-lookup, ip6-local,
  * ip6-udp-lookup nodes to speedup vxlan packet forwarding. This node will
  * cause extra overhead to for non-vxlan packets which is kept at a minimum.
  *

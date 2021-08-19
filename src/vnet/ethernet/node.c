@@ -1897,7 +1897,7 @@ ethernet_sw_interface_get_config (vnet_main_t * vnm,
 	    }
 	  else
 	    {
-	      // a specific outer + specifc innner vlan id, a common case
+	      // a specific outer + specific innner vlan id, a common case
 
 	      // get the qinq table
 	      if (vlan_table->vlans[si->sub.eth.outer_vlan_id].qinqs == 0)
