@@ -15,7 +15,7 @@ generated using the traffic configuration file "avl/sfr_delay_10_1g.yaml":
     Total-tx-bytes       : 251062132504 bytes
     Total-tx-sw-bytes    : 21426636 bytes
     Total-rx-bytes       : 251040139922 byte
-   
+
     Total-tx-pkt         : 430598064 pkts
     Total-rx-pkt         : 430554755 pkts
     Total-sw-tx-pkt      : 324646 pkts

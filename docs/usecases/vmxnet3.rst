@@ -124,10 +124,10 @@ Bind the driver with the following commands:
     Network devices using DPDK-compatible driver
     ============================================
     <none>
-    
+
     Network devices using kernel driver
     ===================================
-    0000:03:00.0 'VMXNET3 Ethernet Controller' if=ens160 drv=vmxnet3 unused=vfio-pci,uio_pci_generic 
+    0000:03:00.0 'VMXNET3 Ethernet Controller' if=ens160 drv=vmxnet3 unused=vfio-pci,uio_pci_generic
     0000:0b:00.0 'VMXNET3 Ethernet Controller' drv=vfio-pci unused=vmxnet3,uio_pci_generic
     0000:13:00.0 'VMXNET3 Ethernet Controller' drv=vfio-pci unused=vmxnet3,uio_pci_generic
     .....
