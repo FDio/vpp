@@ -2580,7 +2580,7 @@ class TestNAT44EDMW(TestNAT44ED):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         self.pg1.get_capture(len(pkts))
-        self.sleep(1.5, "wait for timeouts")
+        self.virtual_sleep(1.5, "wait for timeouts")
 
         pkts = []
         for i in range(0, self.max_sessions - 1):
@@ -2615,7 +2615,7 @@ class TestNAT44EDMW(TestNAT44ED):
         self.pg_start()
         self.pg1.get_capture(1)
 
-        self.sleep(6)
+        self.virtual_sleep(6)
 
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
@@ -3271,7 +3271,7 @@ class TestNAT44EDMW(TestNAT44ED):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        self.sleep(new_transitory, "wait for transitory timeout")
+        self.virtual_sleep(new_transitory, "wait for transitory timeout")
         self.pg0.assert_nothing_captured(0)
 
         # session should still exist
@@ -3390,7 +3390,7 @@ class TestNAT44EDMW(TestNAT44ED):
             '/err/nat44-ed-in2out/drops due to TCP in transitory timeout')
         self.assertEqual(stats - in2out_drops, 1)
 
-        self.sleep(3)
+        self.virtual_sleep(3)
         # extra ACK packet in -> out - this will cause session to be wiped
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
@@ -3492,7 +3492,7 @@ class TestNAT44EDMW(TestNAT44ED):
             '/err/nat44-ed-in2out/drops due to TCP in transitory timeout')
         self.assertEqual(stats - in2out_drops, 1)
 
-        self.sleep(3)
+        self.virtual_sleep(3)
         # extra ACK packet in -> out - this will cause session to be wiped
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
@@ -3602,7 +3602,7 @@ class TestNAT44EDMW(TestNAT44ED):
             '/err/nat44-ed-in2out/drops due to TCP in transitory timeout')
         self.assertEqual(stats - in2out_drops, 1)
 
-        self.sleep(3)
+        self.virtual_sleep(3)
         # extra ACK packet in -> out - this will cause session to be wiped
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /

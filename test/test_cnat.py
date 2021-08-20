@@ -354,16 +354,9 @@ class TestCNatTranslation(VppTestCase):
         # all disapper
         #
         self.vapi.cli("test cnat scanner on")
-
-        n_tries = 0
+        self.virtual_sleep (2)
         sessions = self.vapi.cnat_session_dump()
-        while (len(sessions) and n_tries < 100):
-            n_tries += 1
-            sessions = self.vapi.cnat_session_dump()
-            self.sleep(2)
-            self.logger.info(self.vapi.cli("show cnat session verbose"))
-
-        self.assertTrue(n_tries < 100)
+        self.assertEqual(len(sessions), 0)
         self.vapi.cli("test cnat scanner off")
 
         #

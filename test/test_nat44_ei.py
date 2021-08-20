@@ -6,7 +6,6 @@ import socket
 import struct
 import unittest
 from io import BytesIO
-from time import sleep
 
 import scapy.compat
 from framework import VppTestCase, VppTestRunner
@@ -2342,7 +2341,6 @@ class TestNAT44EI(MethodHolder):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         self.pg1.assert_nothing_captured()
-        sleep(1)
         self.vapi.ipfix_flush()
         capture = self.pg3.get_capture(7)
         ipfix = IPFIXDecoder()
@@ -2404,7 +2402,6 @@ class TestNAT44EI(MethodHolder):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         self.pg1.assert_nothing_captured()
-        sleep(1)
         self.vapi.ipfix_flush()
         capture = self.pg3.get_capture(7)
         ipfix = IPFIXDecoder()
@@ -3465,7 +3462,7 @@ class TestNAT44EI(MethodHolder):
 
         # do not send ACK, active retry send HA event again
         self.pg_enable_capture(self.pg_interfaces)
-        sleep(12)
+        self.virtual_sleep(12)
         stats = self.statistics['/nat44-ei/ha/retry-count']
         self.assertEqual(stats[:, 0].sum(), 3)
         stats = self.statistics['/nat44-ei/ha/missed-count']

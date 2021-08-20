@@ -6,7 +6,6 @@ import socket
 import struct
 import unittest
 from io import BytesIO
-from time import sleep
 
 import scapy.compat
 from framework import tag_fixme_vpp_workers
@@ -934,7 +933,6 @@ class TestNAT64(VppTestCase):
 
         self.assertEqual(ses_num_end - ses_num_start, 3)
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_session_timeout(self):
         """ NAT64 session timeout """
         self.icmp_id_in = 1234
@@ -959,7 +957,7 @@ class TestNAT64(VppTestCase):
 
         ses_num_before_timeout = self.nat64_get_ses_num()
 
-        sleep(15)
+        self.virtual_sleep(15)
 
         # ICMP and TCP session after timeout
         ses_num_after_timeout = self.nat64_get_ses_num()
@@ -1700,7 +1698,6 @@ class TestNAT64(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         self.pg1.assert_nothing_captured()
-        sleep(1)
         self.vapi.ipfix_flush()
         capture = self.pg3.get_capture(7)
         ipfix = IPFIXDecoder()
@@ -1728,7 +1725,6 @@ class TestNAT64(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         self.pg1.assert_nothing_captured()
-        sleep(1)
         self.vapi.ipfix_flush()
         capture = self.pg3.get_capture(1)
         # verify events in data set

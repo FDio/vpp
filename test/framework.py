@@ -467,7 +467,8 @@ class VppTestCase(CPUInterface, unittest.TestCase):
             "plugins", "{", "plugin", "dpdk_plugin.so", "{", "disable", "}",
             "plugin", "rdma_plugin.so", "{", "disable", "}",
             "plugin", "lisp_unittest_plugin.so", "{", "enable", "}",
-            "plugin", "unittest_plugin.so", "{", "enable", "}"
+            "plugin", "unittest_plugin.so", "{", "enable", "}",
+            "plugin", "virtual-time_plugin.so", "{", "enable", "}"
         ] + cls.extra_vpp_plugin_config + ["}", ])
 
         if cls.extra_vpp_punt_config is not None:
@@ -1287,6 +1288,10 @@ class VppTestCase(CPUInterface, unittest.TestCase):
         cls.logger.debug(
             "Finished sleep (%s) - slept %es (wanted %es)",
             remark, after - before, timeout)
+
+    def virtual_sleep(self, timeout, remark=None):
+        self.logger.debug("Moving VPP time by %s (%s)", timeout, remark)
+        self.vapi.cli("set vlib time adjust %s" % timeout)
 
     def pg_send(self, intf, pkts, worker=None, trace=True):
         intf.add_stream(pkts, worker=worker)

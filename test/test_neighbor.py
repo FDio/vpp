@@ -1999,16 +1999,6 @@ class NeighborAgeTestCase(VppTestCase):
             i.unconfig_ip6()
             i.admin_down()
 
-    def wait_for_no_nbr(self, intf, address,
-                        n_tries=50, s_time=1):
-        while (n_tries):
-            if not find_nbr(self, intf, address):
-                return True
-            n_tries = n_tries - 1
-            self.sleep(s_time)
-
-        return False
-
     def verify_arp_req(self, rx, smac, sip, dip):
         ether = rx[Ether]
         self.assertEqual(ether.dst, "ff:ff:ff:ff:ff:ff")
@@ -2099,10 +2089,13 @@ class NeighborAgeTestCase(VppTestCase):
 
         self.vapi.cli("sh ip4 neighbor-sorted")
 
+        # age out neighbors
+        self.virtual_sleep(3)
+
         #
         # expect probes from all these ARP entries as they age
         # 3 probes for each neighbor 3*200 = 600
-        rxs = self.pg0.get_capture(600, timeout=8)
+        rxs = self.pg0.get_capture(600, timeout=2)
 
         for ii in range(3):
             for jj in range(200):
@@ -2113,9 +2106,7 @@ class NeighborAgeTestCase(VppTestCase):
         # 3 probes sent then 1 more second to see if a reply comes, before
         # they age out
         #
-        for jj in range(1, 201):
-            self.wait_for_no_nbr(self.pg0.sw_if_index,
-                                 self.pg0.remote_hosts[jj].ip4)
+        self.virtual_sleep(1)
 
         self.assertFalse(self.vapi.ip_neighbor_dump(sw_if_index=0xffffffff,
                                                     af=vaf.ADDRESS_IP4))
@@ -2142,7 +2133,7 @@ class NeighborAgeTestCase(VppTestCase):
             self.assertEqual(e.neighbor.mac_address,
                              self.pg0.remote_hosts[ii].mac)
 
-        self.sleep(10)
+        self.virtual_sleep(10)
         self.assertFalse(self.vapi.ip_neighbor_dump(sw_if_index=0xffffffff,
                                                     af=vaf.ADDRESS_IP4))
 
@@ -2190,7 +2181,7 @@ class NeighborAgeTestCase(VppTestCase):
                                      max_age=0,
                                      recycle=False)
 
-        self.sleep(10)
+        self.virtual_sleep(10)
         self.assertTrue(find_nbr(self,
                                  self.pg0.sw_if_index,
                                  self.pg0.remote_hosts[0].ip4))

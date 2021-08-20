@@ -90,6 +90,7 @@ add_vpp_library(vlib
   punt_node.c
   threads.c
   threads_cli.c
+  time.c
   trace.c
   unix/cli.c
   unix/input.c
