@@ -130,6 +130,7 @@ add_vpp_library(vlib
   physmem.h
   punt.h
   threads.h
+  time.h
   trace_funcs.h
   trace.h
   unix/mc_socket.h

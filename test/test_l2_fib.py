@@ -486,7 +486,7 @@ class TestL2fib(VppTestCase):
         self.vapi.want_l2_macs_events()
         self.learn_hosts(bd1, hosts)
 
-        self.sleep(1)
+        self.virtual_sleep(1)
         self.logger.info(self.vapi.ppcli("show l2fib"))
         evs = self.vapi.collect_events()
         action = VppEnum.vl_api_mac_event_action_t.MAC_EVENT_ACTION_API_ADD
@@ -509,7 +509,7 @@ class TestL2fib(VppTestCase):
         self.sleep(1)
         self.learn_hosts(bd1, hosts)
 
-        self.sleep(1)
+        self.virtual_sleep(1)
         self.logger.info(self.vapi.ppcli("show l2fib"))
         evs = self.vapi.collect_events()
         action = VppEnum.vl_api_mac_event_action_t.MAC_EVENT_ACTION_API_ADD
@@ -560,7 +560,7 @@ class TestL2fib(VppTestCase):
         self.sleep(1)
         self.learn_hosts(bd1, hosts)
 
-        self.sleep(1)
+        self.virtual_sleep(1)
         self.logger.info(self.vapi.ppcli("show l2fib"))
         evs = self.vapi.collect_events()
         self.vapi.want_l2_macs_events2(enable_disable=0)
@@ -576,7 +576,6 @@ class TestL2fib(VppTestCase):
         for e in evs:
             self.assertLess(len(e), ev_macs * 10)
         self.assertEqual(len(learned_macs ^ macs), 0)
-
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
