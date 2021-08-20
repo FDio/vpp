@@ -467,7 +467,8 @@ class VppTestCase(CPUInterface, unittest.TestCase):
             "plugins", "{", "plugin", "dpdk_plugin.so", "{", "disable", "}",
             "plugin", "rdma_plugin.so", "{", "disable", "}",
             "plugin", "lisp_unittest_plugin.so", "{", "enable", "}",
-            "plugin", "unittest_plugin.so", "{", "enable", "}"
+            "plugin", "unittest_plugin.so", "{", "enable", "}",
+            "plugin", "virtual-time_plugin.so", "{", "enable", "}"
         ] + cls.extra_vpp_plugin_config + ["}", ])
 
         if cls.extra_vpp_punt_config is not None:

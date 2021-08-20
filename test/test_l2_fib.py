@@ -577,6 +577,44 @@ class TestL2fib(VppTestCase):
             self.assertLess(len(e), ev_macs * 10)
         self.assertEqual(len(learned_macs ^ macs), 0)
 
+    def test_l2_learn_timeout(self):
+        """ L2 FIB - check for mac aging
+        """
+        self.flush_all()
+
+        # 10 host per interface = 30 hosts total
+        hosts = self.create_hosts(10, subnet=35)
+
+        bd1 = 1
+        # set mac aging to 1min for bd1
+        self.vapi.bridge_domain_set_mac_age(bd_id=bd1, mac_age=1)
+        self.learn_hosts(bd1, hosts)
+        # 30 host learnt
+        lfs = self.vapi.l2_fib_table_dump(bd1)
+        self.assertEqual(len(lfs), 30)
+
+        bd2 = 2
+        # set mac aging to 2min for bd2
+        self.vapi.bridge_domain_set_mac_age(bd_id=bd2, mac_age=2)
+        self.learn_hosts(bd2, hosts)
+        # 30 host learnt
+        lfs = self.vapi.l2_fib_table_dump(bd2)
+        self.assertEqual(len(lfs), 30)
+
+        # advance time by 1min
+        self.vapi.cli("set vlib time adjust 61")
+        # bd1 should have timeout all its hosts
+        lfs = self.vapi.l2_fib_table_dump(bd1)
+        self.assertEqual(len(lfs), 0)
+        # bd2 still has its hosts
+        lfs = self.vapi.l2_fib_table_dump(bd2)
+        self.assertEqual(len(lfs), 30)
+
+        # advance time by 1min again
+        self.vapi.cli("set vlib time adjust 61")
+        # bd2 should have timeout all its hosts
+        lfs = self.vapi.l2_fib_table_dump(bd2)
+        self.assertEqual(len(lfs), 0)
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
