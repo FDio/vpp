@@ -158,8 +158,6 @@ fib_test_mk_intf (u32 ninterfaces)
                                             VNET_HW_INTERFACE_FLAG_LINK_UP);
         tm->hw[i] = vnet_get_hw_interface(vnet_get_main(),
                                           tm->hw_if_indicies[i]);
-        ip4_main.fib_index_by_sw_if_index[tm->hw[i]->sw_if_index] = 0;
-        ip6_main.fib_index_by_sw_if_index[tm->hw[i]->sw_if_index] = 0;
 
         error = vnet_sw_interface_set_flags(vnet_get_main(),
                                             tm->hw[i]->sw_if_index,
@@ -822,9 +820,7 @@ fib_test_v4 (void)
                                                   FIB_SOURCE_API);
 
     for (ii = 0; ii < 4; ii++)
-    {
-        ip4_main.fib_index_by_sw_if_index[tm->hw[ii]->sw_if_index] = fib_index;
-    }
+      fib_table_bind (FIB_PROTOCOL_IP4, tm->hw[ii]->sw_if_index, fib_index);
 
     fib_prefix_t pfx_0_0_0_0_s_0 = {
         .fp_len = 0,
@@ -4393,6 +4389,9 @@ fib_test_v4 (void)
                                              FIB_SOURCE_INTERFACE)),
              "NO INterface Source'd prefixes");
 
+    for (ii = 0; ii < 4; ii++)
+      fib_table_bind (FIB_PROTOCOL_IP4, tm->hw[ii]->sw_if_index, 0);
+
     fib_table_unlock(fib_index, FIB_PROTOCOL_IP4, FIB_SOURCE_API);
 
     FIB_TEST((0  == fib_path_list_db_size()), "path list DB population:%d",
@@ -4451,9 +4450,7 @@ fib_test_v6 (void)
                                                   FIB_SOURCE_API);
 
     for (ii = 0; ii < 4; ii++)
-    {
-        ip6_main.fib_index_by_sw_if_index[tm->hw[ii]->sw_if_index] = fib_index;
-    }
+      fib_table_bind (FIB_PROTOCOL_IP6, tm->hw[ii]->sw_if_index, fib_index);
 
     fib_prefix_t pfx_0_0 = {
         .fp_len = 0,
@@ -5272,6 +5269,10 @@ fib_test_v6 (void)
     /*
      * now remove the VRF
      */
+
+    for (ii = 0; ii < 4; ii++)
+      fib_table_bind (FIB_PROTOCOL_IP6, tm->hw[ii]->sw_if_index, 0);
+
     fib_table_unlock(fib_index, FIB_PROTOCOL_IP6, FIB_SOURCE_API);
 
     FIB_TEST((0 == fib_path_list_db_size()),   "path list DB population:%d",
@@ -5337,7 +5338,7 @@ fib_test_ae (void)
         },
     };
 
-    im->fib_index_by_sw_if_index[tm->hw[0]->sw_if_index] = fib_index;
+    fib_table_bind (FIB_PROTOCOL_IP4, tm->hw[0]->sw_if_index, fib_index);
 
     dpo_drop = drop_dpo_get(DPO_PROTO_IP4);
 
@@ -5922,7 +5923,7 @@ fib_test_pref (void)
     };
 
     for (i = 0; i <= 2; i++)
-        im->fib_index_by_sw_if_index[tm->hw[i]->sw_if_index] = 0;
+      fib_table_bind (FIB_PROTOCOL_IP4, tm->hw[i]->sw_if_index, 0);
 
     /*
      * 2 high, 2 medium and 2 low preference non-recursive paths
@@ -6396,7 +6397,7 @@ fib_test_label (void)
     FIB_TEST((0 == adj_nbr_db_size()), "ADJ DB size is %d",
              adj_nbr_db_size());
 
-    im->fib_index_by_sw_if_index[tm->hw[0]->sw_if_index] = fib_index;
+    fib_table_bind (FIB_PROTOCOL_IP4, tm->hw[0]->sw_if_index, fib_index);
 
     fib_table_entry_update_one_path(fib_index, &local0_pfx,
                                     FIB_SOURCE_INTERFACE,
@@ -6441,7 +6442,7 @@ fib_test_label (void)
         },
     };
 
-    im->fib_index_by_sw_if_index[tm->hw[1]->sw_if_index] = fib_index;
+    fib_table_bind (FIB_PROTOCOL_IP4, tm->hw[1]->sw_if_index, fib_index);
 
     fib_table_entry_update_one_path(fib_index, &local1_pfx,
                                     FIB_SOURCE_INTERFACE,
@@ -9166,10 +9167,10 @@ fib_test_inherit (void)
     res = 0;
 
     for (i = 0; i <= 2; i++)
-    {
-        im4->fib_index_by_sw_if_index[tm->hw[i]->sw_if_index] = 0;
-        im6->fib_index_by_sw_if_index[tm->hw[i]->sw_if_index] = 0;
-    }
+      {
+	fib_table_bind (FIB_PROTOCOL_IP4, tm->hw[i]->sw_if_index, 0);
+	fib_table_bind (FIB_PROTOCOL_IP6, tm->hw[i]->sw_if_index, 0);
+      }
     n_feis = fib_entry_pool_size();
 
     const ip46_address_t nh_10_10_10_1 = {

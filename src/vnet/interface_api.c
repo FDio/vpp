@@ -470,6 +470,107 @@ vl_api_sw_interface_set_table_t_handler (vl_api_sw_interface_set_table_t * mp)
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_TABLE_REPLY);
 }
 
+void
+fib_table_bind (fib_protocol_t fproto, u32 sw_if_index, u32 fib_index)
+{
+  u32 table_id;
+
+  table_id = fib_table_get_table_id (fib_index, fproto);
+  ASSERT (table_id != ~0);
+
+  if (FIB_PROTOCOL_IP6 == fproto)
+    {
+      /*
+       * tell those that are interested that the binding is changing.
+       */
+      ip6_table_bind_callback_t *cb;
+      vec_foreach (cb, ip6_main.table_bind_callbacks)
+	cb->function (&ip6_main, cb->function_opaque,
+		      sw_if_index,
+		      fib_index,
+		      ip6_main.fib_index_by_sw_if_index[sw_if_index]);
+
+      /* unlock currently assigned tables */
+      if (0 != ip6_main.fib_index_by_sw_if_index[sw_if_index])
+	fib_table_unlock (ip6_main.fib_index_by_sw_if_index[sw_if_index],
+			  FIB_PROTOCOL_IP6, FIB_SOURCE_INTERFACE);
+
+      if (0 != table_id)
+	{
+	  /* we need to lock the table now it's inuse */
+	  fib_table_lock (fib_index, FIB_PROTOCOL_IP6, FIB_SOURCE_INTERFACE);
+	}
+
+      ip6_main.fib_index_by_sw_if_index[sw_if_index] = fib_index;
+    }
+  else
+    {
+      /*
+       * tell those that are interested that the binding is changing.
+       */
+      ip4_table_bind_callback_t *cb;
+      vec_foreach (cb, ip4_main.table_bind_callbacks)
+	cb->function (&ip4_main, cb->function_opaque,
+		      sw_if_index,
+		      fib_index,
+		      ip4_main.fib_index_by_sw_if_index[sw_if_index]);
+
+      /* unlock currently assigned tables */
+      if (0 != ip4_main.fib_index_by_sw_if_index[sw_if_index])
+	fib_table_unlock (ip4_main.fib_index_by_sw_if_index[sw_if_index],
+			  FIB_PROTOCOL_IP4, FIB_SOURCE_INTERFACE);
+
+      if (0 != table_id)
+	{
+	  /* we need to lock the table now it's inuse */
+	  fib_index = fib_table_find_or_create_and_lock (
+	    FIB_PROTOCOL_IP4, table_id, FIB_SOURCE_INTERFACE);
+	}
+
+      ip4_main.fib_index_by_sw_if_index[sw_if_index] = fib_index;
+    }
+}
+
+void
+mfib_table_bind (fib_protocol_t fproto, u32 sw_if_index, u32 mfib_index)
+{
+  u32 table_id;
+
+  table_id = mfib_table_get_table_id (mfib_index, fproto);
+  ASSERT (table_id != ~0);
+
+  if (FIB_PROTOCOL_IP6 == fproto)
+    {
+      if (0 != ip6_main.mfib_index_by_sw_if_index[sw_if_index])
+	mfib_table_unlock (ip6_main.mfib_index_by_sw_if_index[sw_if_index],
+			   FIB_PROTOCOL_IP6, MFIB_SOURCE_INTERFACE);
+
+      if (0 != table_id)
+	{
+	  /* we need to lock the table now it's inuse */
+	  mfib_table_lock (mfib_index, FIB_PROTOCOL_IP6,
+			   MFIB_SOURCE_INTERFACE);
+	}
+
+      ip6_main.mfib_index_by_sw_if_index[sw_if_index] = mfib_index;
+    }
+  else
+    {
+      if (0 != ip4_main.mfib_index_by_sw_if_index[sw_if_index])
+	mfib_table_unlock (ip4_main.mfib_index_by_sw_if_index[sw_if_index],
+			   FIB_PROTOCOL_IP4, MFIB_SOURCE_INTERFACE);
+
+      if (0 != table_id)
+	{
+	  /* we need to lock the table now it's inuse */
+	  mfib_index = mfib_table_find_or_create_and_lock (
+	    FIB_PROTOCOL_IP4, table_id, MFIB_SOURCE_INTERFACE);
+	}
+
+      ip4_main.mfib_index_by_sw_if_index[sw_if_index] = mfib_index;
+    }
+}
+
 int
 ip_table_bind (fib_protocol_t fproto, u32 sw_if_index, u32 table_id)
 {
@@ -487,100 +588,24 @@ ip_table_bind (fib_protocol_t fproto, u32 sw_if_index, u32 table_id)
       return (VNET_API_ERROR_NO_SUCH_FIB);
     }
 
-  if (FIB_PROTOCOL_IP6 == fproto)
-    {
-      /*
-       * If the interface already has in IP address, then a change int
-       * VRF is not allowed. The IP address applied must first be removed.
-       * We do not do that automatically here, since VPP has no knowledge
-       * of whether those subnets are valid in the destination VRF.
-       */
-      /* *INDENT-OFF* */
-      foreach_ip_interface_address (&ip6_main.lookup_main,
-				    ia, sw_if_index,
-				    1 /* honor unnumbered */ ,
-      ({
-        return (VNET_API_ERROR_ADDRESS_FOUND_FOR_INTERFACE);
-      }));
-      /* *INDENT-ON* */
+  /*
+   * If the interface already has in IP address, then a change int
+   * VRF is not allowed. The IP address applied must first be removed.
+   * We do not do that automatically here, since VPP has no knowledge
+   * of whether those subnets are valid in the destination VRF.
+   */
+  /* clang-format off */
+  foreach_ip_interface_address (FIB_PROTOCOL_IP6 == fproto ?
+				&ip6_main.lookup_main : &ip4_main.lookup_main,
+				ia, sw_if_index,
+				1 /* honor unnumbered */ ,
+  ({
+    return (VNET_API_ERROR_ADDRESS_FOUND_FOR_INTERFACE);
+  }));
+  /* clang-format on */
 
-      /*
-       * tell those that are interested that the binding is changing.
-       */
-      ip6_table_bind_callback_t *cb;
-      vec_foreach (cb, ip6_main.table_bind_callbacks)
-	cb->function (&ip6_main, cb->function_opaque,
-		      sw_if_index,
-		      fib_index,
-		      ip6_main.fib_index_by_sw_if_index[sw_if_index]);
-
-      /* unlock currently assigned tables */
-      if (0 != ip6_main.fib_index_by_sw_if_index[sw_if_index])
-	fib_table_unlock (ip6_main.fib_index_by_sw_if_index[sw_if_index],
-			  FIB_PROTOCOL_IP6, FIB_SOURCE_INTERFACE);
-      if (0 != ip6_main.mfib_index_by_sw_if_index[sw_if_index])
-	mfib_table_unlock (ip6_main.mfib_index_by_sw_if_index[sw_if_index],
-			   FIB_PROTOCOL_IP6, MFIB_SOURCE_INTERFACE);
-
-      if (0 != table_id)
-	{
-	  /* we need to lock the table now it's inuse */
-	  fib_table_lock (fib_index, FIB_PROTOCOL_IP6, FIB_SOURCE_INTERFACE);
-	  mfib_table_lock (mfib_index, FIB_PROTOCOL_IP6,
-			   MFIB_SOURCE_INTERFACE);
-	}
-
-      ip6_main.fib_index_by_sw_if_index[sw_if_index] = fib_index;
-      ip6_main.mfib_index_by_sw_if_index[sw_if_index] = mfib_index;
-    }
-  else
-    {
-      /*
-       * If the interface already has in IP address, then a change int
-       * VRF is not allowed. The IP address applied must first be removed.
-       * We do not do that automatically here, since VPP has no knowledge
-       * of whether those subnets are valid in the destination VRF.
-       */
-      /* *INDENT-OFF* */
-      foreach_ip_interface_address (&ip4_main.lookup_main,
-				    ia, sw_if_index,
-				    1 /* honor unnumbered */ ,
-      ({
-        return (VNET_API_ERROR_ADDRESS_FOUND_FOR_INTERFACE);
-      }));
-      /* *INDENT-ON* */
-
-      /*
-       * tell those that are interested that the binding is changing.
-       */
-      ip4_table_bind_callback_t *cb;
-      vec_foreach (cb, ip4_main.table_bind_callbacks)
-	cb->function (&ip4_main, cb->function_opaque,
-		      sw_if_index,
-		      fib_index,
-		      ip4_main.fib_index_by_sw_if_index[sw_if_index]);
-
-      /* unlock currently assigned tables */
-      if (0 != ip4_main.fib_index_by_sw_if_index[sw_if_index])
-	fib_table_unlock (ip4_main.fib_index_by_sw_if_index[sw_if_index],
-			  FIB_PROTOCOL_IP4, FIB_SOURCE_INTERFACE);
-      if (0 != ip4_main.mfib_index_by_sw_if_index[sw_if_index])
-	mfib_table_unlock (ip4_main.mfib_index_by_sw_if_index[sw_if_index],
-			   FIB_PROTOCOL_IP4, MFIB_SOURCE_INTERFACE);
-
-      if (0 != table_id)
-	{
-	  /* we need to lock the table now it's inuse */
-	  fib_index = fib_table_find_or_create_and_lock (
-	    FIB_PROTOCOL_IP4, table_id, FIB_SOURCE_INTERFACE);
-
-	  mfib_index = mfib_table_find_or_create_and_lock (
-	    FIB_PROTOCOL_IP4, table_id, MFIB_SOURCE_INTERFACE);
-	}
-
-      ip4_main.fib_index_by_sw_if_index[sw_if_index] = fib_index;
-      ip4_main.mfib_index_by_sw_if_index[sw_if_index] = mfib_index;
-    }
+  fib_table_bind (fproto, sw_if_index, fib_index);
+  mfib_table_bind (fproto, sw_if_index, mfib_index);
 
   return (0);
 }

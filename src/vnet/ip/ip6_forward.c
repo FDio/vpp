@@ -707,6 +707,11 @@ ip6_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
       ip6_address_t *address;
       vlib_main_t *vm = vlib_get_main ();
 
+      if (0 != im6->fib_index_by_sw_if_index[sw_if_index])
+	fib_table_bind (FIB_PROTOCOL_IP6, sw_if_index, 0);
+      if (0 != im6->mfib_index_by_sw_if_index[sw_if_index])
+	mfib_table_bind (FIB_PROTOCOL_IP6, sw_if_index, 0);
+
       vnet_sw_interface_update_unnumbered (sw_if_index, ~0, 0);
       /* *INDENT-OFF* */
       foreach_ip_interface_address (lm6, ia, sw_if_index, 0,
@@ -716,6 +721,10 @@ ip6_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
       }));
       /* *INDENT-ON* */
       ip6_mfib_interface_enable_disable (sw_if_index, 0);
+
+      /* Erase the lookup tables just in case */
+      im6->fib_index_by_sw_if_index[sw_if_index] = ~0;
+      im6->mfib_index_by_sw_if_index[sw_if_index] = ~0;
     }
 
   vnet_feature_enable_disable ("ip6-unicast", "ip6-not-enabled", sw_if_index,
