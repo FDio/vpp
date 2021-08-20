@@ -256,6 +256,7 @@ class TestIP6VrfMultiInst(VppTestCase):
         for j in range(self.pg_ifs_per_vrf):
             pg_if = self.pg_if_sets[if_set_id][j]
             pg_if.unconfig_ip6()
+            pg_if.set_table_ip6(0)
             if pg_if in self.pg_in_vrf:
                 self.pg_in_vrf.remove(pg_if)
             if pg_if not in self.pg_not_in_vrf:
@@ -263,6 +264,12 @@ class TestIP6VrfMultiInst(VppTestCase):
         self.logger.info("IPv6 VRF ID %d reset finished" % vrf_id)
         self.logger.debug(self.vapi.ppcli("show ip6 fib"))
         self.logger.debug(self.vapi.ppcli("show ip6 neighbors"))
+
+    def delete_vrf(self, vrf_id):
+        if vrf_id in self.vrf_list:
+            self.vrf_list.remove(vrf_id)
+        if vrf_id in self.vrf_reset_list:
+            self.vrf_reset_list.remove(vrf_id)
         self.vapi.ip_table_add_del(is_add=0,
                                    table={'table_id': vrf_id, 'is_ip6': 1})
 
@@ -551,8 +558,6 @@ class TestIP6VrfMultiInst(VppTestCase):
         self.run_verify_test()
         self.run_crosswise_vrf_test()
 
-    @unittest.skip('VPP crashes after running this test. \
-    There seems to be an issue with the way fib locks are managed')
     def test_ip6_vrf_05(self):
         """ IP6 VRF  Multi-instance test 5 - auto allocate vrf id
         """
@@ -591,6 +596,12 @@ class TestIP6VrfMultiInst(VppTestCase):
         self.assertEqual(
             vrf_list_length, 0,
             "List of configured VRFs is not empty: %s != 0" % vrf_list_length)
+
+        # Cleanup our extra created VRFs
+        for vrf in auto_vrf_id:
+            self.delete_vrf(vrf)
+        self.delete_vrf(5)
+        self.delete_vrf(10)
 
     def test_ip6_vrf_06(self):
         """ IP6 VRF  Multi-instance test 6 - recreate 4 VRFs
