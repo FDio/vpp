@@ -57,7 +57,7 @@ class TestIPv4Reassembly(VppTestCase):
         self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
                                     max_reassembly_length=1000,
                                     expire_walk_interval_ms=10)
-        self.sleep(.25)
+        self.virtual_sleep(.25)
         self.vapi.ip_reassembly_set(timeout_ms=1000000, max_reassemblies=1000,
                                     max_reassembly_length=1000,
                                     expire_walk_interval_ms=10000)
@@ -480,7 +480,7 @@ Ethernet-Payload.IPv4-Packet.IPv4-Header.Fragment-Offset; Test-case: 5737'''
         self.src_if.add_stream(fragments)
         self.pg_start()
 
-        self.sleep(.25, "wait before sending rest of fragments")
+        self.virtual_sleep(.25, "wait before sending rest of fragments")
 
         self.src_if.add_stream(fragments2)
         self.pg_start()
@@ -539,7 +539,7 @@ class TestIPv4SVReassembly(VppTestCase):
             max_reassembly_length=1000,
             type=VppEnum.vl_api_ip_reass_type_t.IP_REASS_TYPE_SHALLOW_VIRTUAL,
             expire_walk_interval_ms=10)
-        self.sleep(.25)
+        self.virtual_sleep(.25)
         self.vapi.ip_reassembly_set(
             timeout_ms=1000000, max_reassemblies=1000,
             max_reassembly_length=1000,
@@ -672,7 +672,7 @@ class TestIPv4SVReassembly(VppTestCase):
             self.assertEqual(sent[Raw].payload, recvd[Raw].payload)
 
         # wait for cleanup
-        self.sleep(.25, "wait before sending rest of fragments")
+        self.virtual_sleep(.25, "wait before sending rest of fragments")
 
         # send rest of fragments - shouldn't be forwarded
         self.pg_enable_capture()
@@ -825,7 +825,7 @@ class TestIPv4MWReassembly(VppTestCase):
         self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
                                     max_reassembly_length=1000,
                                     expire_walk_interval_ms=10)
-        self.sleep(.25)
+        self.virtual_sleep(.25)
         self.vapi.ip_reassembly_set(timeout_ms=1000000, max_reassemblies=1000,
                                     max_reassembly_length=1000,
                                     expire_walk_interval_ms=10000)
@@ -997,7 +997,7 @@ class TestIPv6Reassembly(VppTestCase):
         self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
                                     max_reassembly_length=1000,
                                     expire_walk_interval_ms=10, is_ip6=1)
-        self.sleep(.25)
+        self.virtual_sleep(.25)
         self.vapi.ip_reassembly_set(timeout_ms=1000000, max_reassemblies=1000,
                                     max_reassembly_length=1000,
                                     expire_walk_interval_ms=10000, is_ip6=1)
@@ -1337,7 +1337,7 @@ class TestIPv6Reassembly(VppTestCase):
         self.src_if.add_stream(fragments)
         self.pg_start()
 
-        self.sleep(.25, "wait before sending rest of fragments")
+        self.virtual_sleep(.25, "wait before sending rest of fragments")
 
         self.src_if.add_stream(fragments2)
         self.pg_start()
@@ -1473,7 +1473,7 @@ class TestIPv6MWReassembly(VppTestCase):
         self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
                                     max_reassembly_length=1000,
                                     expire_walk_interval_ms=10, is_ip6=1)
-        self.sleep(.25)
+        self.virtual_sleep(.25)
         self.vapi.ip_reassembly_set(timeout_ms=1000000, max_reassemblies=1000,
                                     max_reassembly_length=1000,
                                     expire_walk_interval_ms=1000, is_ip6=1)
@@ -1638,7 +1638,7 @@ class TestIPv6SVReassembly(VppTestCase):
             max_reassembly_length=1000,
             type=VppEnum.vl_api_ip_reass_type_t.IP_REASS_TYPE_SHALLOW_VIRTUAL,
             expire_walk_interval_ms=10, is_ip6=1)
-        self.sleep(.25)
+        self.virtual_sleep(.25)
         self.vapi.ip_reassembly_set(
             timeout_ms=1000000, max_reassemblies=1000,
             max_reassembly_length=1000,
@@ -1769,7 +1769,7 @@ class TestIPv6SVReassembly(VppTestCase):
             self.assertEqual(sent[Raw].payload, recvd[Raw].payload)
 
         # wait for cleanup
-        self.sleep(.25, "wait before sending rest of fragments")
+        self.virtual_sleep(.25, "wait before sending rest of fragments")
 
         # send rest of fragments - shouldn't be forwarded
         self.pg_enable_capture()
@@ -1845,7 +1845,7 @@ class TestIPv4ReassemblyLocalNode(VppTestCase):
         self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
                                     max_reassembly_length=1000,
                                     expire_walk_interval_ms=10)
-        self.sleep(.25)
+        self.virtual_sleep(.25)
         self.vapi.ip_reassembly_set(timeout_ms=1000000, max_reassemblies=1000,
                                     max_reassembly_length=1000,
                                     expire_walk_interval_ms=10000)
@@ -1981,7 +1981,7 @@ class TestFIFReassembly(VppTestCase):
         self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
                                     max_reassembly_length=1000,
                                     expire_walk_interval_ms=10, is_ip6=1)
-        self.sleep(.25)
+        self.virtual_sleep(.25)
         self.vapi.ip_reassembly_set(timeout_ms=1000000, max_reassemblies=1000,
                                     max_reassembly_length=1000,
                                     expire_walk_interval_ms=10000)

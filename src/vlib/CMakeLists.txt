@@ -90,6 +90,7 @@ add_vpp_library(vlib
   punt_node.c
   threads.c
   threads_cli.c
+  time.c
   trace.c
   unix/cli.c
   unix/input.c
@@ -130,6 +131,7 @@ add_vpp_library(vlib
   physmem.h
   punt.h
   threads.h
+  time.h
   trace_funcs.h
   trace.h
   unix/mc_socket.h
