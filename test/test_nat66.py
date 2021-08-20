@@ -6,7 +6,6 @@ import socket
 import struct
 import unittest
 from io import BytesIO
-from time import sleep
 
 import scapy.compat
 from framework import VppTestCase, VppTestRunner, running_extended_tests

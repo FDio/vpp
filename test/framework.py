@@ -1284,6 +1284,10 @@ class VppTestCase(CPUInterface, unittest.TestCase):
             "Finished sleep (%s) - slept %es (wanted %es)",
             remark, after - before, timeout)
 
+    def virtual_sleep(self, timeout, remark=None):
+        self.logger.debug("Moving VPP time by %s (%s)", timeout, remark)
+        self.vapi.cli("set clock adjust %s" % timeout)
+
     def pg_send(self, intf, pkts, worker=None, trace=True):
         intf.add_stream(pkts, worker=worker)
         self.pg_enable_capture(self.pg_interfaces)

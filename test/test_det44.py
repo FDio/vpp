@@ -4,7 +4,6 @@ import socket
 import struct
 import unittest
 import scapy.compat
-from time import sleep
 from framework import VppTestCase, running_extended_tests
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
 from scapy.layers.inet import IP, TCP, UDP, ICMP
@@ -577,7 +576,6 @@ class TestDET44(VppTestCase):
             self.logger.error("TCP session termination failed")
             raise
 
-    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_session_timeout(self):
         """ Deterministic NAT session timeouts """
         self.vapi.det44_add_del_map(is_add=1, in_addr=self.pg0.remote_ip4,
@@ -599,7 +597,7 @@ class TestDET44(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         self.pg1.get_capture(len(pkts))
-        sleep(15)
+        self.virtual_sleep(15)
 
         dms = self.vapi.det44_map_dump()
         self.assertEqual(0, dms[0].ses_num)
@@ -663,7 +661,6 @@ class TestDET44(VppTestCase):
 
         # verify IPFIX logging
         self.vapi.ipfix_flush()
-        sleep(1)
         capture = self.pg2.get_capture(2)
         ipfix = IPFIXDecoder()
         # first load template
