@@ -973,7 +973,7 @@ session_tx_fill_buffer (vlib_main_t * vm, session_tx_context_t * ctx,
 	  n_bytes_read = svm_fifo_peek (f, offset, deq_now, data0);
 	  ASSERT (n_bytes_read > 0);
 
-	  if (ctx->s->session_state == SESSION_STATE_LISTENING)
+	  if (transport_connection_is_cless (ctx->tc))
 	    {
 	      ip_copy (&ctx->tc->rmt_ip, &hdr->rmt_ip, ctx->tc->is_ip4);
 	      ctx->tc->rmt_port = hdr->rmt_port;
