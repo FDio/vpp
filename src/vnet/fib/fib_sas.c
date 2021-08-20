@@ -102,7 +102,12 @@ fib_sas6_get (u32 sw_if_index,
      */
     if (ip6_address_is_link_local_unicast (dst))
     {
-        ip6_address_copy (src, ip6_get_link_local_address (sw_if_index));
+        const ip6_address_t *ll = ip6_get_link_local_address (sw_if_index);
+        if (NULL == ll)
+        {
+            return (false);
+        }
+        ip6_address_copy (src, ll);
         return (true);
     }
 
