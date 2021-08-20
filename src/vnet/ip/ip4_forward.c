@@ -1090,6 +1090,15 @@ ip4_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
       }));
       /* *INDENT-ON* */
       ip4_mfib_interface_enable_disable (sw_if_index, 0);
+
+      if (0 != im4->fib_index_by_sw_if_index[sw_if_index])
+	fib_table_bind (FIB_PROTOCOL_IP4, sw_if_index, 0);
+      if (0 != im4->mfib_index_by_sw_if_index[sw_if_index])
+	mfib_table_bind (FIB_PROTOCOL_IP4, sw_if_index, 0);
+
+      /* Erase the lookup tables just in case */
+      im4->fib_index_by_sw_if_index[sw_if_index] = ~0;
+      im4->mfib_index_by_sw_if_index[sw_if_index] = ~0;
     }
 
   vnet_feature_enable_disable ("ip4-unicast", "ip4-not-enabled", sw_if_index,
