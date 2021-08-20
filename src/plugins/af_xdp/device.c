@@ -187,17 +187,18 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
   socklen_t optlen;
   const int is_rx = qid < ad->rxq_num;
   const int is_tx = qid < ad->txq_num;
+  const int q_num = clib_max (ad->rxq_num, ad->txq_num);
 
-  vec_validate_aligned (ad->umem, qid, CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (ad->umem, q_num, CLIB_CACHE_LINE_BYTES);
   umem = vec_elt_at_index (ad->umem, qid);
 
-  vec_validate_aligned (ad->xsk, qid, CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (ad->xsk, q_num, CLIB_CACHE_LINE_BYTES);
   xsk = vec_elt_at_index (ad->xsk, qid);
 
-  vec_validate_aligned (ad->rxqs, qid, CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (ad->rxqs, q_num, CLIB_CACHE_LINE_BYTES);
   rxq = vec_elt_at_index (ad->rxqs, qid);
 
-  vec_validate_aligned (ad->txqs, qid, CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (ad->txqs, q_num, CLIB_CACHE_LINE_BYTES);
   txq = vec_elt_at_index (ad->txqs, qid);
 
   /*
