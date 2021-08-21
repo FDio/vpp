@@ -2687,6 +2687,17 @@ unix_cli_kill (unix_cli_main_t * cm, uword cli_file_index)
   if (pool_is_free_index (cm->cli_file_pool, cli_file_index))
     return;
 
+  vec_foreach_index (i, cm->new_sessions)
+    {
+      unix_cli_new_session_t *ns = vec_elt_at_index (cm->new_sessions, i);
+
+      if (ns->cf_index == cli_file_index)
+	{
+	  vec_del1 (cm->new_sessions, i);
+	  break;
+	}
+    }
+
   cf = pool_elt_at_index (cm->cli_file_pool, cli_file_index);
   uf = pool_elt_at_index (fm->file_pool, cf->clib_file_index);
 
