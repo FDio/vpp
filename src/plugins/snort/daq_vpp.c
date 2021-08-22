@@ -543,6 +543,7 @@ vpp_daq_msg_receive_one (VPP_Context_t *vc, VPPQueuePair *qp,
       dd->pkthdr.pktlen = d->length;
       dd->pkthdr.address_space_id = d->address_space_id;
       dd->msg.data = vc->bpools[d->buffer_pool].base + d->offset;
+      dd->msg.data_len = d->length;
       next = next + 1;
 
       msgs[0] = &dd->msg;
