@@ -37,6 +37,7 @@
 #include <vnet/devices/devices.h>
 #include <vnet/feature/feature.h>
 #include <vnet/interface/rx_queue_funcs.h>
+#include <vnet/interface/tx_queue_funcs.h>
 
 #include <vnet/devices/virtio/vhost_user.h>
 #include <vnet/devices/virtio/vhost_user_inline.h>
@@ -116,40 +117,45 @@ unmap_all_mem_regions (vhost_user_intf_t * vui)
 }
 
 static_always_inline void
-vhost_user_tx_thread_placement (vhost_user_intf_t * vui)
+vhost_user_tx_thread_placement (vhost_user_intf_t *vui, u32 qid)
 {
-  //Let's try to assign one queue to each thread
-  u32 qid;
-  u32 thread_index = 0;
+  vnet_main_t *vnm = vnet_get_main ();
+  vhost_user_vring_t *rxvq = &vui->vrings[qid];
+  u32 q = qid >> 1, rxvq_count;
 
-  vui->use_tx_spinlock = 0;
-  while (1)
+  ASSERT ((qid & 1) == 0);
+  if (!rxvq->started || !rxvq->enabled)
+    return;
+
+  rxvq_count = (qid >> 1) + 1;
+  if (rxvq->queue_index == ~0)
     {
-      for (qid = 0; qid < vui->num_qid / 2; qid++)
-	{
-	  vhost_user_vring_t *rxvq = &vui->vrings[VHOST_VRING_IDX_RX (qid)];
-	  if (!rxvq->started || !rxvq->enabled)
-	    continue;
-
-	  vui->per_cpu_tx_qid[thread_index] = qid;
-	  thread_index++;
-	  if (thread_index == vlib_get_thread_main ()->n_vlib_mains)
-	    return;
-	}
-      //We need to loop, meaning the spinlock has to be used
-      vui->use_tx_spinlock = 1;
-      if (thread_index == 0)
-	{
-	  //Could not find a single valid one
-	  for (thread_index = 0;
-	       thread_index < vlib_get_thread_main ()->n_vlib_mains;
-	       thread_index++)
-	    {
-	      vui->per_cpu_tx_qid[thread_index] = 0;
-	    }
-	  return;
-	}
+      rxvq->queue_index =
+	vnet_hw_if_register_tx_queue (vnm, vui->hw_if_index, q);
+      rxvq->qid = q;
     }
+
+  FOR_ALL_VHOST_RXQ (q, vui)
+  {
+    vhost_user_vring_t *rxvq = &vui->vrings[q];
+    u32 qi = rxvq->queue_index;
+
+    if (rxvq->queue_index == ~0)
+      break;
+    for (u32 i = 0; i < vlib_get_n_threads (); i++)
+      vnet_hw_if_tx_queue_unassign_thread (vnm, qi, i);
+  }
+
+  for (u32 i = 0; i < vlib_get_n_threads (); i++)
+    {
+      vhost_user_vring_t *rxvq =
+	&vui->vrings[VHOST_VRING_IDX_RX (i % rxvq_count)];
+      u32 qi = rxvq->queue_index;
+
+      vnet_hw_if_tx_queue_assign_thread (vnm, qi, i);
+    }
+
+  vnet_hw_if_update_runtime_data (vnm, vui->hw_if_index);
 }
 
 /**
@@ -243,7 +249,7 @@ vhost_user_thread_placement (vhost_user_intf_t * vui, u32 qid)
 	vhost_user_rx_thread_placement (vui, qid);
     }
   else
-    vhost_user_tx_thread_placement (vui);
+    vhost_user_tx_thread_placement (vui, qid);
 }
 
 static clib_error_t *
@@ -1657,10 +1663,6 @@ vhost_user_vui_init (vnet_main_t * vnm, vhost_user_intf_t * vui,
 
   if (sw_if_index)
     *sw_if_index = vui->sw_if_index;
-
-  vec_validate (vui->per_cpu_tx_qid,
-		vlib_get_thread_main ()->n_vlib_mains - 1);
-  vhost_user_tx_thread_placement (vui);
 }
 
 int
@@ -2130,7 +2132,6 @@ show_vhost_user_command_fn (vlib_main_t * vm,
   u32 hw_if_index, *hw_if_indices = 0;
   vnet_hw_interface_t *hi;
   u16 qid;
-  u32 ci;
   int i, j, q;
   int show_descr = 0;
   int show_verbose = 0;
@@ -2263,13 +2264,20 @@ show_vhost_user_command_fn (vlib_main_t * vm,
 			 txvq->mode);
       }
 
-      vlib_cli_output (vm, " tx placement: %s\n",
-		       vui->use_tx_spinlock ? "spin-lock" : "lock-free");
+      vlib_cli_output (vm, " tx placement\n");
 
-      vec_foreach_index (ci, vui->per_cpu_tx_qid)
+      FOR_ALL_VHOST_RXQ (qid, vui)
       {
-	vlib_cli_output (vm, "   thread %d on vring %d\n", ci,
-			 VHOST_VRING_IDX_RX (vui->per_cpu_tx_qid[ci]));
+	vhost_user_vring_t *rxvq = &vui->vrings[qid];
+	vnet_hw_if_tx_queue_t *txq;
+
+	if (rxvq->queue_index == ~0)
+	  continue;
+	txq = vnet_hw_if_get_tx_queue (vnm, rxvq->queue_index);
+	if (txq->threads)
+	  vlib_cli_output (vm, "   threads %U on vring %u: %s\n",
+			   format_bitmap_list, txq->threads, qid,
+			   txq->shared_queue ? "spin-lock" : "lock-free");
       }
 
       vlib_cli_output (vm, "\n");
@@ -2302,9 +2310,8 @@ show_vhost_user_command_fn (vlib_main_t * vm,
 	vlib_cli_output (vm, "\n Virtqueue %d (%s%s)\n", q,
 			 (q & 1) ? "RX" : "TX",
 			 vui->vrings[q].enabled ? "" : " disabled");
-	if (q & 1)
-	  vlib_cli_output (vm, "  global RX queue index %u\n",
-			   vui->vrings[q].queue_index);
+	vlib_cli_output (vm, "  global %s queue index %u\n",
+			 (q & 1) ? "RX" : "TX", vui->vrings[q].queue_index);
 
 	vlib_cli_output (
 	  vm,

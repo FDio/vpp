@@ -118,24 +118,6 @@ vhost_user_name_renumber (vnet_hw_interface_t * hi, u32 new_dev_instance)
   return 0;
 }
 
-/**
- * @brief Spin until the vring is successfully locked
- */
-static_always_inline void
-vhost_user_vring_lock (vhost_user_intf_t * vui, u32 qid)
-{
-  clib_spinlock_lock_if_init (&vui->vrings[qid].vring_lock);
-}
-
-/**
- * @brief Unlock the vring lock
- */
-static_always_inline void
-vhost_user_vring_unlock (vhost_user_intf_t * vui, u32 qid)
-{
-  clib_spinlock_unlock_if_init (&vui->vrings[qid].vring_lock);
-}
-
 static_always_inline void
 vhost_user_tx_trace (vhost_trace_t * t,
 		     vhost_user_intf_t * vui, u16 qid,
@@ -377,17 +359,14 @@ vhost_user_tx_trace_packed (vhost_trace_t * t, vhost_user_intf_t * vui,
 }
 
 static_always_inline uword
-vhost_user_device_class_packed (vlib_main_t * vm, vlib_node_runtime_t * node,
-				vlib_frame_t * frame)
+vhost_user_device_class_packed (vlib_main_t *vm, vlib_node_runtime_t *node,
+				vlib_frame_t *frame, vhost_user_intf_t *vui,
+				vhost_user_vring_t *rxvq)
 {
   u32 *buffers = vlib_frame_vector_args (frame);
   u32 n_left = frame->n_vectors;
   vhost_user_main_t *vum = &vhost_user_main;
-  vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
-  vhost_user_intf_t *vui =
-    pool_elt_at_index (vum->vhost_user_interfaces, rd->dev_instance);
-  u32 qid;
-  vhost_user_vring_t *rxvq;
+  u32 qid = rxvq->qid;
   u8 error;
   u32 thread_index = vm->thread_index;
   vhost_cpu_t *cpu = &vum->cpus[thread_index];
@@ -400,10 +379,6 @@ vhost_user_device_class_packed (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 desc_head, desc_index, desc_len;
   u16 n_descs_processed;
   u8 indirect, chained;
-
-  qid = VHOST_VRING_IDX_RX (*vec_elt_at_index (vui->per_cpu_tx_qid,
-					       thread_index));
-  rxvq = &vui->vrings[qid];
 
 retry:
   error = VHOST_USER_TX_FUNC_ERROR_NONE;
@@ -682,7 +657,7 @@ done:
       goto retry;
     }
 
-  vhost_user_vring_unlock (vui, qid);
+  clib_spinlock_unlock (&rxvq->vring_lock);
 
   if (PREDICT_FALSE (n_left && error != VHOST_USER_TX_FUNC_ERROR_NONE))
     {
@@ -706,7 +681,7 @@ VNET_DEVICE_CLASS_TX_FN (vhost_user_device_class) (vlib_main_t * vm,
   vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
   vhost_user_intf_t *vui =
     pool_elt_at_index (vum->vhost_user_interfaces, rd->dev_instance);
-  u32 qid = ~0;
+  u32 qid;
   vhost_user_vring_t *rxvq;
   u8 error;
   u32 thread_index = vm->thread_index;
@@ -716,6 +691,7 @@ VNET_DEVICE_CLASS_TX_FN (vhost_user_device_class) (vlib_main_t * vm,
   u16 copy_len;
   u16 tx_headers_len;
   u32 or_flags;
+  vnet_hw_if_tx_frame_t *tf = vlib_frame_scalar_args (frame);
 
   if (PREDICT_FALSE (!vui->admin_up))
     {
@@ -729,20 +705,20 @@ VNET_DEVICE_CLASS_TX_FN (vhost_user_device_class) (vlib_main_t * vm,
       goto done3;
     }
 
-  qid = VHOST_VRING_IDX_RX (*vec_elt_at_index (vui->per_cpu_tx_qid,
-					       thread_index));
+  qid = VHOST_VRING_IDX_RX (tf->queue_id);
   rxvq = &vui->vrings[qid];
+  ASSERT (tf->queue_id == rxvq->qid);
+
   if (PREDICT_FALSE (rxvq->avail == 0))
     {
       error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
       goto done3;
     }
-
-  if (PREDICT_FALSE (vui->use_tx_spinlock))
-    vhost_user_vring_lock (vui, qid);
+  if (tf->shared_queue)
+    clib_spinlock_lock (&rxvq->vring_lock);
 
   if (vhost_user_is_packed_ring_supported (vui))
-    return (vhost_user_device_class_packed (vm, node, frame));
+    return (vhost_user_device_class_packed (vm, node, frame, vui, rxvq));
 
 retry:
   error = VHOST_USER_TX_FUNC_ERROR_NONE;
@@ -1020,7 +996,7 @@ done:
 	vhost_user_send_call (vm, vui, rxvq);
     }
 
-  vhost_user_vring_unlock (vui, qid);
+  clib_spinlock_unlock (&rxvq->vring_lock);
 
 done3:
   if (PREDICT_FALSE (n_left && error != VHOST_USER_TX_FUNC_ERROR_NONE))
