@@ -80,7 +80,12 @@ ip6_sas_by_sw_if_index (u32 sw_if_index, const ip6_address_t *dst,
   if (ip6_address_is_link_local_unicast (dst) ||
       dst->as_u32[0] == clib_host_to_net_u32 (0xff020000))
     {
-      ip6_address_copy (src, ip6_get_link_local_address (sw_if_index));
+      const ip6_address_t *ll = ip6_get_link_local_address (sw_if_index);
+      if (NULL == ll)
+	{
+	  return false;
+	}
+      ip6_address_copy (src, ll);
       return true;
     }
 
