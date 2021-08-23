@@ -101,9 +101,6 @@ af_xdp_delete_if (vlib_main_t * vm, af_xdp_device_t * ad)
       ethernet_delete_interface (vnm, ad->hw_if_index);
     }
 
-  for (i = 0; i < ad->rxq_num; i++)
-    clib_file_del_by_index (&file_main, vec_elt (ad->rxqs, i).file_index);
-
   for (i = 0; i < ad->txq_num; i++)
     clib_spinlock_free (&vec_elt (ad->txqs, i).lock);
 
@@ -112,6 +109,9 @@ af_xdp_delete_if (vlib_main_t * vm, af_xdp_device_t * ad)
 
   vec_foreach (umem, ad->umem)
     xsk_umem__delete (*umem);
+
+  for (i = 0; i < ad->rxq_num; i++)
+    clib_file_del_by_index (&file_main, vec_elt (ad->rxqs, i).file_index);
 
   if (ad->bpf_obj)
     {
