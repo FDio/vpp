@@ -30,8 +30,8 @@
  * The max number for q pair is naturally 128.
  */
 #define VHOST_VRING_MAX_MQ_PAIR_SZ      128
-#define VHOST_VRING_IDX_RX(qid)         (2*qid)
-#define VHOST_VRING_IDX_TX(qid)         (2*qid + 1)
+#define VHOST_VRING_IDX_RX(qid)		(2 * (qid))
+#define VHOST_VRING_IDX_TX(qid)		(2 * (qid) + 1)
 
 #define VHOST_USER_VRING_NOFD_MASK      0x100
 
@@ -278,10 +278,6 @@ typedef struct
 
   void *log_base_addr;
   u64 log_size;
-
-  /* Whether to use spinlock or per_cpu_tx_qid assignment */
-  u8 use_tx_spinlock;
-  u16 *per_cpu_tx_qid;
 
   u8 enable_gso;
 
