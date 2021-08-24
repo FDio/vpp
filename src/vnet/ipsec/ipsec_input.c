@@ -25,12 +25,13 @@
 #include <vnet/ipsec/ah.h>
 #include <vnet/ipsec/ipsec_io.h>
 
-#define foreach_ipsec_input_error               	\
-_(RX_PKTS, "IPSec pkts received")			\
-_(RX_POLICY_MATCH, "IPSec policy match")		\
-_(RX_POLICY_NO_MATCH, "IPSec policy not matched")	\
-_(RX_POLICY_BYPASS, "IPSec policy bypass")		\
-_(RX_POLICY_DISCARD, "IPSec policy discard")
+#define foreach_ipsec_input_error                                             \
+  _ (RX_PKTS, "IPSec pkts received")                                          \
+  _ (RX_POLICY_MATCH, "IPSec policy match")                                   \
+  _ (RX_POLICY_NO_MATCH, "IPSec policy not matched")                          \
+  _ (RX_POLICY_BYPASS, "IPSec policy bypass")                                 \
+  _ (RX_POLICY_DISCARD, "IPSec policy discard")                               \
+  _ (RX_FRAG, "IPSec fragmented packet")
 
 typedef enum
 {
@@ -204,6 +205,7 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
   ipsec_main_t *im = &ipsec_main;
   u64 ipsec_unprocessed = 0, ipsec_matched = 0;
   u64 ipsec_dropped = 0, ipsec_bypassed = 0;
+  u64 ipsec_frag = 0;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
   vlib_buffer_t **b = bufs;
   u16 nexts[VLIB_FRAME_SIZE], *next;
@@ -239,6 +241,13 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
       spd0 = pool_elt_at_index (im->spds, c0->spd_index);
 
       ip0 = vlib_buffer_get_current (b[0]);
+
+      if (ip4_is_fragment (ip0))
+	{
+	  ipsec_frag += 1;
+	  next[0] = IPSEC_INPUT_NEXT_DROP;
+	  goto next_pkt;
+	}
 
       if (PREDICT_TRUE
 	  (ip0->protocol == IP_PROTOCOL_IPSEC_ESP
@@ -446,6 +455,7 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	{
 	  ipsec_unprocessed += 1;
 	}
+    next_pkt:
       n_left_from -= 1;
       b += 1;
       next += 1;
@@ -471,6 +481,9 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
   vlib_node_increment_counter (vm, ipsec4_input_node.index,
 			       IPSEC_INPUT_ERROR_RX_POLICY_BYPASS,
 			       ipsec_bypassed);
+
+  vlib_node_increment_counter (vm, ipsec4_input_node.index,
+			       IPSEC_INPUT_ERROR_RX_FRAG, ipsec_frag);
 
   return frame->n_vectors;
 }
