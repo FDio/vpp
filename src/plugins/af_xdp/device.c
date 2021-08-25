@@ -17,7 +17,10 @@
 
 #include <stdio.h>
 #include <net/if.h>
+#include <sys/ioctl.h>
+#include <linux/ethtool.h>
 #include <linux/if_link.h>
+#include <linux/sockios.h>
 #include <bpf/libbpf.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
@@ -188,16 +191,9 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
   const int is_rx = qid < ad->rxq_num;
   const int is_tx = qid < ad->txq_num;
 
-  vec_validate_aligned (ad->umem, qid, CLIB_CACHE_LINE_BYTES);
   umem = vec_elt_at_index (ad->umem, qid);
-
-  vec_validate_aligned (ad->xsk, qid, CLIB_CACHE_LINE_BYTES);
   xsk = vec_elt_at_index (ad->xsk, qid);
-
-  vec_validate_aligned (ad->rxqs, qid, CLIB_CACHE_LINE_BYTES);
   rxq = vec_elt_at_index (ad->rxqs, qid);
-
-  vec_validate_aligned (ad->txqs, qid, CLIB_CACHE_LINE_BYTES);
   txq = vec_elt_at_index (ad->txqs, qid);
 
   /*
@@ -321,6 +317,31 @@ af_xdp_get_numa (const char *ifname)
   return numa;
 }
 
+static void
+af_xdp_get_q_count (const char *ifname, int *rxq_num, int *txq_num)
+{
+  struct ethtool_channels ec = { .cmd = ETHTOOL_GCHANNELS };
+  struct ifreq ifr = { .ifr_data = (void *) &ec };
+  int fd, err;
+
+  *rxq_num = *txq_num = 1;
+
+  fd = socket (AF_INET, SOCK_DGRAM, 0);
+  if (fd < 0)
+    return;
+
+  snprintf (ifr.ifr_name, sizeof (ifr.ifr_name), "%s", ifname);
+  err = ioctl (fd, SIOCETHTOOL, &ifr);
+
+  close (fd);
+
+  if (err)
+    return;
+
+  *rxq_num = clib_max (ec.combined_count, ec.rx_count);
+  *txq_num = clib_max (ec.combined_count, ec.tx_count);
+}
+
 static clib_error_t *
 af_xdp_device_rxq_read_ready (clib_file_t * f)
 {
@@ -375,8 +396,7 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 
   args->rxq_size = args->rxq_size ? args->rxq_size : 2 * VLIB_FRAME_SIZE;
   args->txq_size = args->txq_size ? args->txq_size : 2 * VLIB_FRAME_SIZE;
-  rxq_num = args->rxq_num ? args->rxq_num : 1;
-  txq_num = tm->n_vlib_mains;
+  args->rxq_num = args->rxq_num ? args->rxq_num : 1;
 
   if (!args->linux_ifname)
     {
@@ -397,6 +417,17 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
       goto err0;
     }
 
+  af_xdp_get_q_count (args->linux_ifname, &rxq_num, &txq_num);
+  if (args->rxq_num > rxq_num && AF_XDP_NUM_RX_QUEUES_ALL != args->rxq_num)
+    {
+      args->rv = VNET_API_ERROR_INVALID_VALUE;
+      args->error = clib_error_create ("too many rxq requested (%d > %d)",
+				       args->rxq_num, rxq_num);
+      goto err0;
+    }
+  rxq_num = clib_min (rxq_num, args->rxq_num);
+  txq_num = clib_min (txq_num, tm->n_vlib_mains);
+
   pool_get_zero (am->devices, ad);
 
   if (tm->n_vlib_mains > 1 &&
@@ -412,6 +443,12 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
   q_num = clib_max (rxq_num, txq_num);
   ad->rxq_num = rxq_num;
   ad->txq_num = txq_num;
+
+  vec_validate_aligned (ad->umem, q_num - 1, CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (ad->xsk, q_num - 1, CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (ad->rxqs, q_num - 1, CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (ad->txqs, q_num - 1, CLIB_CACHE_LINE_BYTES);
+
   for (i = 0; i < q_num; i++)
     {
       if (af_xdp_create_queue (vm, args, ad, i))
@@ -433,7 +470,7 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 	  ad->rxq_num = clib_min (i, rxq_num);
 	  ad->txq_num = clib_min (i, txq_num);
 
-	  if (i < rxq_num && AF_XDP_NUM_RX_QUEUES_ALL != rxq_num)
+	  if (i < rxq_num && AF_XDP_NUM_RX_QUEUES_ALL != args->rxq_num)
 	    {
 	      ad->rxq_num = ad->txq_num = 0;
 	      goto err1; /* failed creating requested rxq: fatal error, bailing
