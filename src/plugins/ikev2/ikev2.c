@@ -4264,13 +4264,19 @@ ikev2_resolve_responder_hostname (vlib_main_t *vm, ikev2_responder_t *r)
   dns_cache_entry_t *ep = 0;
   dns_pending_request_t _t0, *t0 = &_t0;
   dns_resolve_name_t _rn, *rn = &_rn;
+  u8 *name;
   int rv;
 
   if (!km->dns_resolve_name)
     return clib_error_return (0, "cannot load symbols from dns plugin");
 
   t0->request_type = DNS_API_PENDING_NAME_TO_IP;
-  rv = km->dns_resolve_name (r->hostname, &ep, t0, rn);
+  /* VPP main curse: IKEv2 uses only non-NULL terminated vectors internally
+   * whereas DNS resolver expects a NULL-terminated C-string */
+  name = vec_dup (r->hostname);
+  vec_terminate_c_string (name);
+  rv = km->dns_resolve_name (name, &ep, t0, rn);
+  vec_free (name);
   if (rv < 0)
     return clib_error_return (0, "dns lookup failure");
 
