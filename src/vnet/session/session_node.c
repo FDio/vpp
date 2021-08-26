@@ -1580,7 +1580,7 @@ session_event_dispatch_io (session_worker_t * wrk, vlib_node_runtime_t * node,
       s = session_event_get_session (wrk, e);
       if (PREDICT_FALSE (!s))
 	break;
-      CLIB_PREFETCH (s->tx_fifo, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+      CLIB_PREFETCH (s->tx_fifo, sizeof (*(s->tx_fifo)), LOAD);
       wrk->ctx.s = s;
       /* Spray packets in per session type frames, since they go to
        * different nodes */
