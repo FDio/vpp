@@ -671,10 +671,14 @@ VLIB_NODE_FN (lcp_arp_phy_node)
 		  c0 = vlib_buffer_copy (vm, b0);
 		  vlib_buffer_advance (b0, len0);
 
-		  /* Send to the host */
-		  vnet_buffer (c0)->sw_if_index[VLIB_TX] =
-		    lip0->lip_host_sw_if_index;
-		  reply_copies[n_copies++] = vlib_get_buffer_index (vm, c0);
+		  if (c0)
+		    {
+		      /* Send to the host */
+		      vnet_buffer (c0)->sw_if_index[VLIB_TX] =
+			lip0->lip_host_sw_if_index;
+		      reply_copies[n_copies++] =
+			vlib_get_buffer_index (vm, c0);
+		    }
 		}
 	    }
 	  if (arp1->opcode == clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_reply))
@@ -699,10 +703,14 @@ VLIB_NODE_FN (lcp_arp_phy_node)
 		  c1 = vlib_buffer_copy (vm, b1);
 		  vlib_buffer_advance (b1, len1);
 
-		  /* Send to the host */
-		  vnet_buffer (c1)->sw_if_index[VLIB_TX] =
-		    lip1->lip_host_sw_if_index;
-		  reply_copies[n_copies++] = vlib_get_buffer_index (vm, c1);
+		  if (c1)
+		    {
+		      /* Send to the host */
+		      vnet_buffer (c1)->sw_if_index[VLIB_TX] =
+			lip1->lip_host_sw_if_index;
+		      reply_copies[n_copies++] =
+			vlib_get_buffer_index (vm, c1);
+		    }
 		}
 	    }
 
@@ -771,10 +779,14 @@ VLIB_NODE_FN (lcp_arp_phy_node)
 		  c0 = vlib_buffer_copy (vm, b0);
 		  vlib_buffer_advance (b0, len0);
 
-		  /* Send to the host */
-		  vnet_buffer (c0)->sw_if_index[VLIB_TX] =
-		    lip0->lip_host_sw_if_index;
-		  reply_copies[n_copies++] = vlib_get_buffer_index (vm, c0);
+		  if (c0)
+		    {
+		      /* Send to the host */
+		      vnet_buffer (c0)->sw_if_index[VLIB_TX] =
+			lip0->lip_host_sw_if_index;
+		      reply_copies[n_copies++] =
+			vlib_get_buffer_index (vm, c0);
+		    }
 		}
 	    }
 
