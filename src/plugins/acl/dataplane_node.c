@@ -176,7 +176,7 @@ prefetch_session_entry (acl_main_t * am, fa_full_session_id_t f_sess_id)
 {
   fa_session_t *sess = get_session_ptr_no_check (am, f_sess_id.thread_index,
 						 f_sess_id.session_index);
-  CLIB_PREFETCH (sess, 2 * CLIB_CACHE_LINE_BYTES, STORE);
+  CLIB_PREFETCH (sess, sizeof (*sess), STORE);
 }
 
 always_inline u8
