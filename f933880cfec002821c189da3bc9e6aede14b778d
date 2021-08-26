@@ -16,6 +16,24 @@
       "revId": "f933880cfec002821c189da3bc9e6aede14b778d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b6868f2f_2b4b797c",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 447,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-08-26T08:35:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "471247c5_05b67481",
+      "revId": "f933880cfec002821c189da3bc9e6aede14b778d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
