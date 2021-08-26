@@ -703,14 +703,26 @@ match_input_with_format (unformat_input_t * input, const char *f)
   while (1)
     {
       cf = *f;
-      if (cf == 0 || cf == '%' || cf == ' ')
+      if (cf == '%' || cf == ' ')
 	break;
-      f++;
 
       ci = unformat_get_input (input);
 
-      if (cf != ci)
+      if (cf == 0)
+	{
+	  if (ci == ' ' || ci == 0)
+	    {
+	      break;
+	    }
+	  else
+	    {
+	      return 0;
+	    }
+	}
+      else if (cf != ci)
 	return 0;
+
+      f++;
     }
   return f;
 }
