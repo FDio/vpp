@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "471247c5_05b67481",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 447,
+      "author": {
+        "id": 2414
+      },
+      "writtenOn": "2021-08-26T03:19:49Z",
+      "side": 1,
+      "message": "q_num - 1 may enough.",
+      "revId": "f933880cfec002821c189da3bc9e6aede14b778d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
