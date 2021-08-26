@@ -169,8 +169,8 @@ cryptodev_frame_linked_algs_enqueue (vlib_main_t *vm,
 
       if (n_elts > 2)
 	{
-	  CLIB_PREFETCH (cop[1], CLIB_CACHE_LINE_BYTES * 3, STORE);
-	  CLIB_PREFETCH (cop[2], CLIB_CACHE_LINE_BYTES * 3, STORE);
+	  CLIB_PREFETCH (cop[1], sizeof (*cop[1]), STORE);
+	  CLIB_PREFETCH (cop[2], sizeof (*cop[2]), STORE);
 	  clib_prefetch_load (&fe[1]);
 	  clib_prefetch_load (&fe[2]);
 	}
@@ -286,8 +286,8 @@ cryptodev_frame_aead_enqueue (vlib_main_t *vm,
 
       if (n_elts > 2)
 	{
-	  CLIB_PREFETCH (cop[1], CLIB_CACHE_LINE_BYTES * 3, STORE);
-	  CLIB_PREFETCH (cop[2], CLIB_CACHE_LINE_BYTES * 3, STORE);
+	  CLIB_PREFETCH (cop[1], sizeof (*cop[1]), STORE);
+	  CLIB_PREFETCH (cop[2], sizeof (*cop[2]), STORE);
 	  clib_prefetch_load (&fe[1]);
 	  clib_prefetch_load (&fe[2]);
 	}
