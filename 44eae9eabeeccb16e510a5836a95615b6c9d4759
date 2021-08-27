@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a284dda_5760be0b",
+        "filename": "src/plugins/perfmon/intel/bundle/inst_and_clock.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-08-27T12:59:09Z",
+      "side": 1,
+      "message": "Here I would prefer to know total number of calls not calls/sec....",
+      "revId": "44eae9eabeeccb16e510a5836a95615b6c9d4759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a2dd976a_627c6785",
+        "filename": "src/plugins/perfmon/linux.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-08-27T12:59:09Z",
+      "side": 1,
+      "message": "Why is this renamed?",
+      "revId": "44eae9eabeeccb16e510a5836a95615b6c9d4759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bee3184c_2f70acd6",
+        "filename": "src/plugins/perfmon/perfmon.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-08-27T12:59:09Z",
+      "side": 1,
+      "message": "Is this really needed? I don\u0027t see any stats function or data structure referenced in this file.",
+      "revId": "44eae9eabeeccb16e510a5836a95615b6c9d4759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
