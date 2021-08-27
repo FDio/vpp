@@ -14,4 +14,7 @@
 add_vpp_plugin(bufmon
   SOURCES
   bufmon.c
+
+  COMPONENT
+  vpp-plugin-devtools
 )

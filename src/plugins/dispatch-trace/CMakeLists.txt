@@ -14,4 +14,7 @@
 add_vpp_plugin(dispatch_trace
   SOURCES
   main.c
+
+  COMPONENT
+  vpp-plugin-devtools
 )
