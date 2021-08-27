@@ -26,7 +26,7 @@ add_vpp_plugin(tracedump
   API_TEST_SOURCES
   graph_test.c
   tracedump_test.c
-)
 
-#  API_TEST_SOURCES
-#  tracedump_test.c
+  COMPONENT
+  vpp-plugin-devtools
+)
