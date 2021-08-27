@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "65757e1a_c325a230",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-08-27T09:33:00Z",
+      "side": 1,
+      "message": "remove or uncomment :)",
+      "revId": "55aee01647583e27e477d4f964b74db7807df87f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
