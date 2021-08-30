@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "c09b6a06_1ac517d0",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 281,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2021-08-30T19:11:28Z",
+      "side": 1,
+      "message": "Found it - when calling \u0027lcp create ... netns foo\u0027 it\u0027s passed as a vector and works. If calling without netns, then lcp_main.default_namespace is taken, which is a buffer, not a vector.\n\nAddressed in patchset 15.",
+      "parentUuid": "742ced3b_01e0573d",
+      "revId": "f7cef77dcd63c3768520b88d0161704ca2f6589c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a8888deb_40a2ff73",
         "filename": "src/plugins/linux-cp/lcp_interface.c",
         "patchSetId": 13
