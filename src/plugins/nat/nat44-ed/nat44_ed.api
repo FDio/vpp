@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "5.3.0";
+option version = "5.4.0";
 import "vnet/ip/ip_types.api";
 import "vnet/interface_types.api";
 import "plugins/nat/lib/nat_types.api";
@@ -1038,6 +1038,62 @@ define nat44_user_session_details {
   u16 ext_host_port;
   vl_api_ip4_address_t ext_host_nat_address;
   u16 ext_host_nat_port;
+};
+
+/** \brief NAT44 user's sessions
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param ip_address - IPv4 address of the user to dump
+    @param vrf_id - VRF_ID
+*/
+define nat44_user_session_v2_dump {
+  option in_progress;
+  u32 client_index;
+  u32 context;
+  vl_api_ip4_address_t ip_address;
+  u32 vrf_id;
+};
+
+/** \brief NAT44 user's sessions response
+    @param context - sender context, to match reply w/ request
+    @param outside_ip_address - outside IPv4 address
+    @param outside_port - outside port
+    @param inside_ip_address - inside IPv4 address
+    @param inside_port - inside port
+    @param protocol - protocol
+    @param flags - flag NAT_IS_STATIC if session is static,
+                   flag NAT_IS_TWICE_NAT if session is twice-nat,
+                   flag NAT_IS_EXT_HOST_VALID if external host address
+                   and port are valid
+    @param last_heard - last heard timer
+    @param total_bytes - count of bytes sent through session
+    @param total_pkts - count of pakets sent through session
+    @param ext_host_address - external host IPv4 address
+    @param ext_host_port - external host port
+    @param ext_host_nat_address - post-NAT external host IPv4 address (valid
+                                  only if twice-nat session)
+    @param ext_host_nat_port - post-NAT external host port (valid only if
+                               twice-nat session)
+    @param is_timed_out - true, if session is active, and false, if session is
+                          timed out
+*/
+define nat44_user_session_v2_details {
+  option in_progress;
+  u32 context;
+  vl_api_ip4_address_t outside_ip_address;
+  u16 outside_port;
+  vl_api_ip4_address_t inside_ip_address;
+  u16 inside_port;
+  u16 protocol;
+  vl_api_nat_config_flags_t flags;
+  u64 last_heard;
+  u64 total_bytes;
+  u32 total_pkts;
+  vl_api_ip4_address_t ext_host_address;
+  u16 ext_host_port;
+  vl_api_ip4_address_t ext_host_nat_address;
+  u16 ext_host_nat_port;
+  bool is_timed_out;
 };
 
 /** \brief NAT44 load-balancing address and port pair
