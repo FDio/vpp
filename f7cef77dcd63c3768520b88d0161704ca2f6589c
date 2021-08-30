@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "742ced3b_01e0573d",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 281,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2021-08-30T17:45:40Z",
+      "side": 1,
+      "message": "I could use a little help on this one -- Take this snippet:\n\n  lip-\u003elip_namespace \u003d vec_dup(ns);\n  LCP_ITF_PAIR_DBG (\"add: netns %s lip-netns(vec) %s\", ns, lip-\u003elip_namespace);\n  if (!lip-\u003elip_namespace) {\n\n  if (ns \u0026\u0026 ns[0] !\u003d 0)\n    lip-\u003elip_namespace \u003d (u8 *) strdup ((const char *) ns);\n  LCP_ITF_PAIR_DBG (\"add: netns %s lip-netns(str) %s\", ns, lip-\u003elip_namespace);\n  }\n\nThat yields the following debug log:\nlinux-cp/itf         [notice]: add: netns dataplane lip-netns(vec) (nil)\nlinux-cp/itf         [notice]: add: netns dataplane lip-netns(str) dataplane\n\nSo for some reason I forget now, I stumbled across this discrepancy and chose the cheap way out. I want to do it correctly, though :)",
+      "parentUuid": "bf1d7aab_fca27c27",
+      "revId": "f7cef77dcd63c3768520b88d0161704ca2f6589c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a8888deb_40a2ff73",
         "filename": "src/plugins/linux-cp/lcp_interface.c",
         "patchSetId": 13
@@ -33,6 +51,24 @@
       "revId": "f7cef77dcd63c3768520b88d0161704ca2f6589c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7070789f_73ca3ffe",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 374,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2021-08-30T17:45:40Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a8888deb_40a2ff73",
+      "revId": "f7cef77dcd63c3768520b88d0161704ca2f6589c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "171e34c3_47692cc5",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 382,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2021-08-30T17:45:40Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "32a7e7f1_a017e4ce",
+      "revId": "f7cef77dcd63c3768520b88d0161704ca2f6589c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "74e80831_4afaee1b",
         "filename": "src/plugins/linux-cp/lcp_interface.c",
         "patchSetId": 13
@@ -67,6 +121,24 @@
       "revId": "f7cef77dcd63c3768520b88d0161704ca2f6589c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7c2e2485_fc77896f",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 707,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2021-08-30T17:45:40Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "74e80831_4afaee1b",
+      "revId": "f7cef77dcd63c3768520b88d0161704ca2f6589c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -87,6 +159,24 @@
     },
     {
       "key": {
+        "uuid": "3fff855e_fbb28076",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 732,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2021-08-30T17:45:40Z",
+      "side": 1,
+      "message": "\u003e Is it necessary to switch to the tap\u0027s namespace here and to switch back at the end of the function? No system calls are made while the process is attached to the tap\u0027s namespace.\n\nGood catch - it\u0027s not necessary at all. Removed and cleaned up this function.",
+      "parentUuid": "43fef9d2_e019582d",
+      "revId": "f7cef77dcd63c3768520b88d0161704ca2f6589c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "aae0e079_c589b4c9",
         "filename": "src/plugins/linux-cp/lcp_interface.c",
         "patchSetId": 13
@@ -104,6 +194,24 @@
     },
     {
       "key": {
+        "uuid": "a4fcfe41_93fe8609",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 741,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2021-08-30T17:45:40Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "aae0e079_c589b4c9",
+      "revId": "f7cef77dcd63c3768520b88d0161704ca2f6589c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ec704f0e_f5c48d6b",
         "filename": "src/plugins/linux-cp/lcp_interface.c",
         "patchSetId": 13
@@ -118,6 +226,24 @@
       "revId": "f7cef77dcd63c3768520b88d0161704ca2f6589c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ec4402ce_5ea670ca",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 747,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2021-08-30T17:45:40Z",
+      "side": 1,
+      "message": "\u003e vnet_sw_interface_walk() iterates all of the sw interfaces on the system. You should instead use vnet_hw_interface_walk_sw() and only walk the sw interfaces on the parent interface.\n\nCool - I didn\u0027t know that vnet_hw_interface_walk_sw() existed. Refactored to use it, saving lots of cycles in case there are many interfaces on the system, thanks!",
+      "parentUuid": "ec704f0e_f5c48d6b",
+      "revId": "f7cef77dcd63c3768520b88d0161704ca2f6589c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
