@@ -967,9 +967,7 @@ assign_cert_key_pair (vls_handle_t vlsh)
     return -1;
 
   ckp_len = sizeof (ldp->ckpair_index);
-  return vppcom_session_attr (vlsh_to_session_index (vlsh),
-			      VPPCOM_ATTR_SET_CKPAIR, &ldp->ckpair_index,
-			      &ckp_len);
+  return vls_attr (vlsh, VPPCOM_ATTR_SET_CKPAIR, &ldp->ckpair_index, &ckp_len);
 }
 
 int
