@@ -729,10 +729,25 @@ define nat44_interface_details {
     @param sw_if_index - software index of the interface
 */
 autoreply define nat44_interface_add_del_output_feature {
+  option deprecated;
   u32 client_index;
   u32 context;
   bool is_add;
   vl_api_nat_config_flags_t flags;
+  vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief Enable/disbale NAT44 as an interface output feature (postrouting
+           in2out translation) v2
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - true if add, false if delete
+    @param sw_if_index - software index of the interface
+*/
+autoreply define nat44_ed_interface_add_del_output_feature {
+  u32 client_index;
+  u32 context;
+  bool is_add;
   vl_api_interface_index_t sw_if_index;
 };
 
@@ -741,6 +756,7 @@ autoreply define nat44_interface_add_del_output_feature {
     @param context - sender context, to match reply w/ request
 */
 define nat44_interface_output_feature_dump {
+  option deprecated;
   u32 client_index;
   u32 context;
 };
@@ -752,6 +768,30 @@ define nat44_interface_output_feature_dump {
     @param sw_if_index - software index of the interface
 */
 define nat44_interface_output_feature_details {
+  option deprecated;
+  u32 context;
+  vl_api_nat_config_flags_t flags;
+  vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief Dump interfaces with NAT44 output feature v2
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat44_ed_interface_output_feature_dump {
+  option in_progress;
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief NAT44 interface with output feature details response v2
+    @param context - sender context, to match reply w/ request
+    @param flags - flag NAT_IS_INSIDE if interface is inside else
+                   interface is outside
+    @param sw_if_index - software index of the interface
+*/
+define nat44_ed_interface_output_feature_details {
+  option in_progress;
   u32 context;
   vl_api_nat_config_flags_t flags;
   vl_api_interface_index_t sw_if_index;

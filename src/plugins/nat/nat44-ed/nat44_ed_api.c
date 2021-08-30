@@ -426,9 +426,50 @@ vl_api_nat44_interface_dump_t_handler (vl_api_nat44_interface_dump_t * mp)
     return;
 
   pool_foreach (i, sm->interfaces)
-   {
-    send_nat44_interface_details(i, reg, mp->context);
-  }
+    {
+      send_nat44_interface_details (i, reg, mp->context);
+    }
+}
+
+static_always_inline int
+add_del_dummy_output_interface (u32 sw_if_index, u8 is_inside, u8 is_add)
+{
+  snat_main_t *sm = &snat_main;
+  snat_interface_t *i;
+  int rv = 1;
+
+  pool_foreach (i, sm->output_feature_dummy_interfaces)
+    {
+      if (i->sw_if_index == sw_if_index)
+	{
+	  if (!is_add)
+	    {
+	      pool_put (sm->output_feature_dummy_interfaces, i);
+	      rv = 0;
+	    }
+	  goto done;
+	}
+    }
+
+  if (is_add)
+    {
+      pool_get (sm->output_feature_dummy_interfaces, i);
+      i->sw_if_index = sw_if_index;
+
+      if (is_inside)
+	{
+	  i->flags |= NAT_INTERFACE_FLAG_IS_INSIDE;
+	}
+      else
+	{
+	  i->flags |= NAT_INTERFACE_FLAG_IS_OUTSIDE;
+	}
+
+      rv = 0;
+    }
+
+done:
+  return rv;
 }
 
 static void
@@ -436,6 +477,39 @@ static void
   (vl_api_nat44_interface_add_del_output_feature_t * mp)
 {
   vl_api_nat44_interface_add_del_output_feature_reply_t *rmp;
+  snat_main_t *sm = &snat_main;
+  u32 sw_if_index;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  sw_if_index = ntohl (mp->sw_if_index);
+
+  // register all interfaces in the dummy structure
+  rv = add_del_dummy_output_interface (
+    sw_if_index, mp->flags & NAT_API_IS_INSIDE, mp->is_add);
+
+  if (!(mp->flags & NAT_API_IS_INSIDE))
+    {
+      if (mp->is_add)
+	{
+	  rv = nat44_ed_add_output_interface (sw_if_index);
+	}
+      else
+	{
+	  rv = nat44_ed_del_output_interface (sw_if_index);
+	}
+    }
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_NAT44_INTERFACE_ADD_DEL_OUTPUT_FEATURE_REPLY);
+}
+
+static void
+vl_api_nat44_ed_interface_add_del_output_feature_t_handler (
+  vl_api_nat44_ed_interface_add_del_output_feature_t *mp)
+{
+  vl_api_nat44_ed_interface_add_del_output_feature_reply_t *rmp;
   snat_main_t *sm = &snat_main;
   u32 sw_if_index;
   int rv = 0;
@@ -454,7 +528,7 @@ static void
     }
 
   BAD_SW_IF_INDEX_LABEL;
-  REPLY_MACRO (VL_API_NAT44_INTERFACE_ADD_DEL_OUTPUT_FEATURE_REPLY);
+  REPLY_MACRO (VL_API_NAT44_ED_INTERFACE_ADD_DEL_OUTPUT_FEATURE_REPLY);
 }
 
 static void
@@ -473,7 +547,9 @@ send_nat44_interface_output_feature_details (snat_interface_t * i,
   rmp->context = context;
 
   if (nat44_ed_is_interface_inside (i))
-    rmp->flags |= NAT_API_IS_INSIDE;
+    {
+      rmp->flags |= NAT_API_IS_INSIDE;
+    }
 
   vl_api_send_msg (reg, (u8 *) rmp);
 }
@@ -490,10 +566,56 @@ static void
   if (!reg)
     return;
 
+  pool_foreach (i, sm->output_feature_dummy_interfaces)
+    {
+      send_nat44_interface_output_feature_details (i, reg, mp->context);
+    }
+}
+
+static void
+send_nat44_ed_interface_output_feature_details (snat_interface_t *i,
+						vl_api_registration_t *reg,
+						u32 context)
+{
+  vl_api_nat44_interface_output_feature_details_t *rmp;
+  snat_main_t *sm = &snat_main;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  clib_memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id =
+    ntohs (VL_API_NAT44_INTERFACE_OUTPUT_FEATURE_DETAILS + sm->msg_id_base);
+  rmp->sw_if_index = ntohl (i->sw_if_index);
+  rmp->context = context;
+
+  if (nat44_ed_is_interface_inside (i))
+    {
+      rmp->flags |= NAT_API_IS_INSIDE;
+    }
+
+  if (nat44_ed_is_interface_outside (i))
+    {
+      rmp->flags |= NAT_API_IS_OUTSIDE;
+    }
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+static void
+vl_api_nat44_ed_interface_output_feature_dump_t_handler (
+  vl_api_nat44_ed_interface_output_feature_dump_t *mp)
+{
+  vl_api_registration_t *reg;
+  snat_main_t *sm = &snat_main;
+  snat_interface_t *i;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
   pool_foreach (i, sm->output_feature_interfaces)
-   {
-     send_nat44_interface_output_feature_details (i, reg, mp->context);
-  }
+    {
+      send_nat44_ed_interface_output_feature_details (i, reg, mp->context);
+    }
 }
 
 static void
