@@ -444,6 +444,35 @@ static void
 
   sw_if_index = ntohl (mp->sw_if_index);
 
+  if (!(mp->flags & NAT_API_IS_INSIDE))
+    {
+      if (mp->is_add)
+	{
+	  rv = nat44_ed_add_output_interface (sw_if_index);
+	}
+      else
+	{
+	  rv = nat44_ed_del_output_interface (sw_if_index);
+	}
+    }
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_NAT44_INTERFACE_ADD_DEL_OUTPUT_FEATURE_REPLY);
+}
+
+static void
+vl_api_nat44_ed_interface_add_del_output_feature_t_handler (
+  vl_api_nat44_ed_interface_add_del_output_feature_t *mp)
+{
+  vl_api_nat44_ed_interface_add_del_output_feature_reply_t *rmp;
+  snat_main_t *sm = &snat_main;
+  u32 sw_if_index;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  sw_if_index = ntohl (mp->sw_if_index);
+
   if (mp->is_add)
     {
       rv = nat44_ed_add_output_interface (sw_if_index);
@@ -454,7 +483,7 @@ static void
     }
 
   BAD_SW_IF_INDEX_LABEL;
-  REPLY_MACRO (VL_API_NAT44_INTERFACE_ADD_DEL_OUTPUT_FEATURE_REPLY);
+  REPLY_MACRO (VL_API_NAT44_ED_INTERFACE_ADD_DEL_OUTPUT_FEATURE_REPLY);
 }
 
 static void
