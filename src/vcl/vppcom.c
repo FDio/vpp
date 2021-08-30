@@ -2886,18 +2886,16 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
 	  goto done;
 	}
 
-      /* Generate EPOLLOUT if session write ready nd event was not on */
-      if ((event->events & EPOLLOUT) && !(s->vep.ev.events & EPOLLOUT) &&
-	  (vcl_session_write_ready (s) > 0))
+      /* Generate EPOLLOUT if session write ready */
+      if ((event->events & EPOLLOUT) && (vcl_session_write_ready (s) > 0))
 	{
 	  session_event_t e = { 0 };
 	  e.event_type = SESSION_IO_EVT_TX;
 	  e.session_index = s->session_index;
 	  vec_add1 (wrk->unhandled_evts_vector, e);
 	}
-      /* Generate EPOLLIN if session read ready and event was not on */
-      if ((event->events & EPOLLIN) && !(s->vep.ev.events & EPOLLIN) &&
-	  (vcl_session_read_ready (s) > 0))
+      /* Generate EPOLLIN if session read ready */
+      if ((event->events & EPOLLIN) && (vcl_session_read_ready (s) > 0))
 	{
 	  session_event_t e = { 0 };
 	  e.event_type = SESSION_IO_EVT_RX;
