@@ -1,0 +1,123 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bf1d7aab_fca27c27",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 281,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2021-08-30T15:40:07Z",
+      "side": 1,
+      "message": "What\u0027s the reason for changing this? There seem to be other places in the code that expect lip_namespace to be a vector rather than a C string.",
+      "revId": "f7cef77dcd63c3768520b88d0161704ca2f6589c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a8888deb_40a2ff73",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 374,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2021-08-30T15:40:07Z",
+      "side": 1,
+      "message": "rtnl_link_vlan_set_id() always returns 0, unless the earlier call to rtnl_link_vlan_alloc() failed, in which case VPP would crash when rtnl_link_vlan_set_id() dereferences the pointer. So the body in the if {..} block here will never be executed.",
+      "revId": "f7cef77dcd63c3768520b88d0161704ca2f6589c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "32a7e7f1_a017e4ce",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 382,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2021-08-30T15:40:07Z",
+      "side": 1,
+      "message": "Same issue as above. The body in the if {..} block will never be executed.",
+      "revId": "f7cef77dcd63c3768520b88d0161704ca2f6589c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "74e80831_4afaee1b",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 707,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2021-08-30T15:40:07Z",
+      "side": 1,
+      "message": "If you\u0027re going to print a debug message indicating that you found a match, it seems like a good idea to include the index or name of the interface that matched. You were searching for an interface and basically all of the search criteria (parent, VLAN tags/proto) get printed, but nothing is printed about the matching interface that was found.",
+      "revId": "f7cef77dcd63c3768520b88d0161704ca2f6589c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "43fef9d2_e019582d",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 732,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2021-08-30T15:40:07Z",
+      "side": 1,
+      "message": "Is it necessary to switch to the tap\u0027s namespace here and to switch back at the end of the function? No system calls are made while the process is attached to the tap\u0027s namespace.",
+      "revId": "f7cef77dcd63c3768520b88d0161704ca2f6589c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "aae0e079_c589b4c9",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 741,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2021-08-30T15:40:07Z",
+      "side": 1,
+      "message": "The clib_memset() is unnecessary here since every member of the struct is explicitly initialized immediately afterwards.",
+      "revId": "f7cef77dcd63c3768520b88d0161704ca2f6589c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ec704f0e_f5c48d6b",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 747,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2021-08-30T15:40:07Z",
+      "side": 1,
+      "message": "vnet_sw_interface_walk() iterates all of the sw interfaces on the system. You should instead use vnet_hw_interface_walk_sw() and only walk the sw interfaces on the parent interface.",
+      "revId": "f7cef77dcd63c3768520b88d0161704ca2f6589c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
