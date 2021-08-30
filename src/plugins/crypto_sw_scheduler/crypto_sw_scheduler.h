@@ -37,10 +37,14 @@ typedef struct
   u32 last_serve_lcore_id;
   vnet_crypto_op_t *crypto_ops;
   vnet_crypto_op_t *integ_ops;
+  u32 self_crypto_enabled;
+  u64 n_enqd;
+  u64 n_deqd;
+  u64 *n_proc;
   vnet_crypto_op_t *chained_crypto_ops;
   vnet_crypto_op_t *chained_integ_ops;
   vnet_crypto_op_chunk_t *chunks;
-  u8 self_crypto_enabled;
+
 } crypto_sw_scheduler_per_thread_data_t;
 
 typedef struct

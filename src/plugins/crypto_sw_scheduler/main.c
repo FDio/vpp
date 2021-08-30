@@ -92,6 +92,7 @@ crypto_sw_scheduler_frame_enqueue (vlib_main_t * vm,
 
   ptd->queue.jobs[head & CRYPTO_SW_SCHEDULER_QUEUE_MASK] = frame;
   head += 1;
+  ptd->n_enqd += frame->n_elts;
   CLIB_MEMORY_STORE_BARRIER ();
   ptd->queue.head = head;
   return 0;
@@ -493,6 +494,7 @@ crypto_sw_scheduler_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
 	crypto_sw_scheduler_process_link (
 	  vm, cm, ptd, f, crypto_op, auth_op_or_aad_len, digest_len, is_enc);
 
+      ptd->n_proc[f->enqueue_thread_index] += f->n_elts;
       *enqueue_thread_idx = f->enqueue_thread_index;
       *nb_elts_processed = f->n_elts;
     }
@@ -506,6 +508,7 @@ crypto_sw_scheduler_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
       ptd->queue.tail++;
       f = ptd->queue.jobs[tail];
       ptd->queue.jobs[tail] = 0;
+      ptd->n_deqd += f->n_elts;
 
       return f;
     }
@@ -579,6 +582,30 @@ VLIB_CLI_COMMAND (cmd_set_sw_scheduler_worker_crypto, static) = {
 };
 /* *INDENT-ON* */
 
+static u8 *
+format_sw_sched_n_proc (u8 *s, va_list *args)
+{
+  crypto_sw_scheduler_per_thread_data_t *ptd =
+    va_arg (*args, crypto_sw_scheduler_per_thread_data_t *);
+  u64 *cnt = 0;
+
+  if (!ptd->self_crypto_enabled)
+    return s;
+
+  vec_foreach (cnt, ptd->n_proc)
+    {
+      if (*cnt == 0)
+	continue;
+
+      if (cnt == ptd->n_proc)
+	s = format (s, "%s: %lu, ", "master", *cnt);
+      else
+	s = format (s, "%u: %lu, ", cnt - ptd->n_proc - 1, *cnt);
+    }
+
+  return s;
+}
+
 static clib_error_t *
 sw_scheduler_show_workers (vlib_main_t * vm, unformat_input_t * input,
 			   vlib_cli_command_t * cmd)
@@ -586,13 +613,17 @@ sw_scheduler_show_workers (vlib_main_t * vm, unformat_input_t * input,
   crypto_sw_scheduler_main_t *cm = &crypto_sw_scheduler_main;
   u32 i;
 
-  vlib_cli_output (vm, "%-7s%-20s%-8s", "ID", "Name", "Crypto");
+  vlib_cli_output (vm, "%-7s%-20s%-8s%-10s%-10s%-10s", "ID", "Name", "Crypto",
+		   "Enqd", "Deqd", "Proc");
   for (i = 1; i < vlib_thread_main.n_vlib_mains; i++)
     {
-      vlib_cli_output (vm, "%-7d%-20s%-8s", vlib_get_worker_index (i),
+      crypto_sw_scheduler_per_thread_data_t *ptd = cm->per_thread_data + i;
+
+      vlib_cli_output (vm, "%-7d%-20s%-8s%-10d%-10d%U",
+		       vlib_get_worker_index (i),
 		       (vlib_worker_threads + i)->name,
-		       cm->
-		       per_thread_data[i].self_crypto_enabled ? "on" : "off");
+		       ptd->self_crypto_enabled ? "on" : "off", ptd->n_enqd,
+		       ptd->n_deqd, format_sw_sched_n_proc, ptd);
     }
 
   return 0;
@@ -640,6 +671,7 @@ crypto_sw_scheduler_init (vlib_main_t * vm)
     ptd->self_crypto_enabled = 1;
     ptd->queue.head = 0;
     ptd->queue.tail = 0;
+    vec_validate (ptd->n_proc, vlib_num_workers ());
 
     vec_validate_aligned (ptd->queue.jobs, CRYPTO_SW_SCHEDULER_QUEUE_SIZE - 1,
 			  CLIB_CACHE_LINE_BYTES);
