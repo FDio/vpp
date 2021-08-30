@@ -540,6 +540,8 @@ typedef struct snat_main_s
   /* Interface pool */
   snat_interface_t *interfaces;
   snat_interface_t *output_feature_interfaces;
+  // broken api backward compatibility
+  snat_interface_t *output_feature_dummy_interfaces;
 
   /* Vector of outside addresses */
   snat_address_t *addresses;

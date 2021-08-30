@@ -729,6 +729,7 @@ define nat44_interface_details {
     @param sw_if_index - software index of the interface
 */
 autoreply define nat44_interface_add_del_output_feature {
+  option deprecated;
   u32 client_index;
   u32 context;
   bool is_add;
@@ -741,6 +742,7 @@ autoreply define nat44_interface_add_del_output_feature {
     @param context - sender context, to match reply w/ request
 */
 define nat44_interface_output_feature_dump {
+  option deprecated;
   u32 client_index;
   u32 context;
 };
@@ -752,8 +754,48 @@ define nat44_interface_output_feature_dump {
     @param sw_if_index - software index of the interface
 */
 define nat44_interface_output_feature_details {
+  option deprecated;
   u32 context;
   vl_api_nat_config_flags_t flags;
+  vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief add/del NAT output interface (postrouting
+           in2out translation)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - true if add, false if delete
+    @param sw_if_index - software index of the interface
+*/
+autoendian autoreply define nat44_ed_add_del_output_interface {
+  u32 client_index;
+  u32 context;
+  bool is_add;
+  vl_api_interface_index_t sw_if_index;
+};
+
+service {
+  rpc nat44_ed_output_interface_get returns nat44_ed_output_interface_get_reply
+    stream nat44_ed_output_interface_details;
+};
+
+define nat44_ed_output_interface_get
+{
+  u32 client_index;
+  u32 context;
+  u32 cursor;
+};
+
+define nat44_ed_output_interface_get_reply
+{
+  u32 context;
+  i32 retval;
+  u32 cursor;
+};
+
+define nat44_ed_output_interface_details
+{
+  u32 context;
   vl_api_interface_index_t sw_if_index;
 };
 
