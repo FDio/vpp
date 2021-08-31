@@ -151,21 +151,36 @@ print_template (char *msgname)
 {
   uword *p = hash_get_mem (function_by_name, msgname);
   if (!p)
-    {
-      fprintf (stderr, "no such message: %s", msgname);
-    }
+    goto error;
+
   cJSON *(*fp) (void *);
   fp = (void *) apifuncs[p[0]].tojson;
-  assert (fp);
+  if (!fp)
+    goto error;
+
   void *scratch = malloc (2048);
+  if (!scratch)
+    goto error;
+
   memset (scratch, 0, 2048);
   cJSON *t = fp (scratch);
+  if (!t)
+    goto error;
   free (scratch);
   char *output = cJSON_Print (t);
+  if (!output)
+    goto error;
+
   cJSON_Delete (t);
   printf ("%s\n", output);
   free (output);
+
+  return;
+
+error:
+  fprintf (stderr, "error printing template for: %s\n", msgname);
 }
+
 static void
 dump_apis (void)
 {
