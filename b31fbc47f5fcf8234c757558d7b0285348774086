@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "664025c3_fe37624c",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 976,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-08-31T19:33:53Z",
+      "side": 0,
+      "message": "transport_connection_is_cless (ctx-\u003etc)",
+      "range": {
+        "startLine": 976,
+        "startChar": 7,
+        "endLine": 976,
+        "endChar": 55
+      },
+      "revId": "b31fbc47f5fcf8234c757558d7b0285348774086",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
