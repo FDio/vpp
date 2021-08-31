@@ -280,6 +280,9 @@ class VPPStats():
         if not isinstance(patterns, list):
             patterns = [patterns]
         regex = [re.compile(i) for i in patterns]
+        if self.last_epoch != self.epoch:
+            self.refresh(blocking)
+
         return [k for k, v in self.directory.items()
                 if any(re.match(pattern, k) for pattern in regex)]
 
