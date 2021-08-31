@@ -3016,8 +3016,9 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	break;
       vcl_fifo_rx_evt_valid_or_break (s);
       session_events = s->vep.ev.events;
-      if (!(EPOLLIN & s->vep.ev.events)
-	  || (s->flags & VCL_SESSION_F_HAS_RX_EVT))
+      if (!(EPOLLIN & s->vep.ev.events) ||
+	  (s->flags & VCL_SESSION_F_HAS_RX_EVT) ||
+	  (s->vep.lt_next != VCL_INVALID_SESSION_INDEX))
 	break;
       add_event = 1;
       events[*num_ev].events = EPOLLIN;
