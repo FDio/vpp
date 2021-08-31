@@ -108,7 +108,7 @@ handoffdemo_inline (vlib_main_t * vm,
 
       /* Enqueue buffers to threads */
       n_enq =
-	vlib_buffer_enqueue_to_thread (vm, hmp->frame_queue_index,
+	vlib_buffer_enqueue_to_thread (vm, node, hmp->frame_queue_index,
 				       from, thread_indices, frame->n_vectors,
 				       1 /* drop on congestion */ );
       if (n_enq < frame->n_vectors)
