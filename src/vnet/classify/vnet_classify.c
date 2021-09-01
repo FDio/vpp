@@ -2213,7 +2213,7 @@ format_vnet_classify_table (u8 *s, va_list *args)
 
   if (index == ~0)
     {
-      s = format (s, "%10s%10s%10s%10s", "TableIdx", "Sessions", "NextTbl",
+      s = format (s, "\n%10s%10s%10s%10s", "TableIdx", "Sessions", "NextTbl",
 		  "NextNode", verbose ? "Details" : "");
       return s;
     }
@@ -2274,11 +2274,13 @@ show_classify_tables_command_fn (vlib_main_t * vm,
 
   if (vec_len (indices))
     {
-      vlib_cli_output (vm, "%U", format_vnet_classify_table, cm, verbose,
-		       ~0 /* hdr */ );
       for (i = 0; i < vec_len (indices); i++)
-	vlib_cli_output (vm, "%U", format_vnet_classify_table, cm,
-			 verbose, indices[i]);
+	{
+	  vlib_cli_output (vm, "%U", format_vnet_classify_table, cm, verbose,
+			   ~0 /* hdr */);
+	  vlib_cli_output (vm, "%U", format_vnet_classify_table, cm, verbose,
+			   indices[i]);
+	}
     }
   else
     vlib_cli_output (vm, "No classifier tables configured");
