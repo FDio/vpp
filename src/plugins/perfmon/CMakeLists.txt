@@ -11,27 +11,49 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
+if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*|aarch64.*")
   return()
+endif()
+
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
+  list(APPEND ARCH_PMU_SOURCES
+    intel/dispatch_wrapper.c
+    intel/core.c
+    intel/uncore.c
+    intel/bundle/membw_bound.c
+    intel/bundle/inst_and_clock.c
+    intel/bundle/load_blocks.c
+    intel/bundle/mem_bw.c
+    intel/bundle/cache_hit_miss.c
+    intel/bundle/branch_mispred.c
+    intel/bundle/power_license.c
+    intel/bundle/topdown_metrics.c
+    intel/bundle/topdown_tremont.c
+  )
+endif()
+
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64.*")
+  list(APPEND ARCH_PMU_SOURCES
+    arm/dispatch_wrapper.c
+    arm/events.c
+    arm/bundle.c
+    arm/bundle/inst_clock.c
+    arm/bundle/cache_data.c
+    arm/bundle/cache_inst.c
+    arm/bundle/cache_data_tlb.c
+    arm/bundle/cache_inst_tlb.c
+    arm/bundle/mem_access.c
+    arm/bundle/branch_pred.c
+    arm/bundle/stall.c
+  )
 endif()
 
 add_vpp_plugin(perfmon
   SOURCES
   cli.c
-  dispatch_wrapper.c
   linux.c
   perfmon.c
-  intel/core.c
-  intel/uncore.c
-  intel/bundle/membw_bound.c
-  intel/bundle/inst_and_clock.c
-  intel/bundle/load_blocks.c
-  intel/bundle/mem_bw.c
-  intel/bundle/cache_hit_miss.c
-  intel/bundle/branch_mispred.c
-  intel/bundle/power_license.c
-  intel/bundle/topdown_metrics.c
-  intel/bundle/topdown_tremont.c
+  ${ARCH_PMU_SOURCES}
 
   COMPONENT
   vpp-plugin-devtools

@@ -23,7 +23,11 @@
 #include <vppinfra/cpu.h>
 #include <vlib/vlib.h>
 
+#if defined(__x86_64__)
 #define PERF_MAX_EVENTS 12 /* 4 fixed and 8 programable on ICX */
+#elif defined(__aarch64__)
+#define PERF_MAX_EVENTS 7 /* 6 events + 1 CPU cycle counter */
+#endif
 
 typedef enum
 {
@@ -60,6 +64,8 @@ typedef struct
 {
   u32 type_from_instance : 1;
   u32 exclude_kernel : 1;
+  u32 config1 : 2;
+  u32 implemented : 1;
   union
   {
     u32 type;
@@ -85,12 +91,16 @@ typedef struct
 } perfmon_instance_type_t;
 
 struct perfmon_source;
+
+#if defined(__x86_64__)
 vlib_node_function_t perfmon_dispatch_wrapper_mmap;
 vlib_node_function_t perfmon_dispatch_wrapper_metrics;
-
 #define foreach_permon_offset_type                                            \
   _ (PERFMON_OFFSET_TYPE_MMAP, perfmon_dispatch_wrapper_mmap)                 \
   _ (PERFMON_OFFSET_TYPE_METRICS, perfmon_dispatch_wrapper_metrics)
+#elif defined(__aarch64__)
+vlib_node_function_t perfmon_dispatch_wrapper;
+#endif
 
 typedef clib_error_t *(perfmon_source_init_fn_t) (vlib_main_t *vm,
 						  struct perfmon_source *);
@@ -134,6 +144,10 @@ typedef struct perfmon_bundle
   perfmon_offset_type_t offset_type;
   u32 events[PERF_MAX_EVENTS];
   u32 n_events;
+  u32 n_columns;
+
+  uword *event_disabled;
+  uword *column_disabled;
 
   u32 metrics[PERF_MAX_EVENTS];
   u32 n_metrics;

@@ -43,6 +43,7 @@ static perfmon_event_t intel_uncore_events[] = {
     .description = desc,                                                      \
     .type_from_instance = 1,                                                  \
     .instance_type = INTEL_UNCORE_UNIT_##unit,                                \
+    .implemented = 1,                                                         \
   },
 
   foreach_intel_uncore_event
