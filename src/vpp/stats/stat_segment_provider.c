@@ -117,7 +117,7 @@ vlib_stats_register_mem_heap (clib_mem_heap_t *heap)
   vec_free (s_free);
 
   stat_segment_poll_add (mem_vector_index, stat_provider_mem_usage_update_fn,
-			 heap_index, 10, true);
+			 heap_index, 10);
 }
 
 static void
@@ -180,7 +180,7 @@ stat_provider_register_vector_rate (u32 num_workers)
   if (i == ~0)
     ASSERT (0);
   vec_free (s);
-  stat_segment_poll_add (i, stat_provider_vector_rate_update_fn, ~0, 10, true);
+  stat_segment_poll_add (i, stat_provider_vector_rate_update_fn, ~0, 10);
 
   s = format (0, "/sys/vector_rate_per_worker%c", 0);
   i = stat_segment_new_entry (s, STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE);
@@ -188,7 +188,7 @@ stat_provider_register_vector_rate (u32 num_workers)
     ASSERT (0);
   vec_free (s);
   stat_segment_poll_add (i, stat_provider_vector_rate_per_thread_update_fn, ~0,
-			 10, true);
+			 10);
 
   stat_segment_main_t *sm = &stat_segment_main;
   vlib_stat_segment_lock ();
