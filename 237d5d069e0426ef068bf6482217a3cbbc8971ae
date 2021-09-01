@@ -1,0 +1,135 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fbf599ea_9283d0ff",
+        "filename": "src/plugins/perfmon/arm/bundle/branch_pred.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-09-01T15:52:57Z",
+      "side": 1,
+      "message": "perhaps instead of all the verbosity of checking b-\u003eevent_enabled every time, we could just sure that calls to disabled events never make it as far as format_xyz?",
+      "range": {
+        "startLine": 22,
+        "startChar": 0,
+        "endLine": 22,
+        "endChar": 22
+      },
+      "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8232c0ce_1407e630",
+        "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-09-01T15:52:57Z",
+      "side": 1,
+      "message": "this is very close to how the intel perfmon_dispatch_wrapper_mmap works right, \nwith small differences to how the mmap is ready. \nwe should try to make as much of the code common as possible?",
+      "range": {
+        "startLine": 103,
+        "startChar": 0,
+        "endLine": 103,
+        "endChar": 25
+      },
+      "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4d2e8231_4a165eef",
+        "filename": "src/plugins/perfmon/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 331,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-09-01T15:52:57Z",
+      "side": 1,
+      "message": "please use /* */",
+      "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f4808a70_a892b75f",
+        "filename": "src/plugins/perfmon/perfmon.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-09-01T15:52:57Z",
+      "side": 1,
+      "message": "do we need a warning? better to just silently fail?",
+      "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b6e4fae8_d9ca4d4c",
+        "filename": "src/plugins/perfmon/perfmon.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-09-01T15:52:57Z",
+      "side": 1,
+      "message": "I suspect we are going to need a mechanism for making this cpu specific.",
+      "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "051209db_094a0717",
+        "filename": "src/plugins/perfmon/perfmon.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-09-01T15:52:57Z",
+      "side": 1,
+      "message": "would this be more robust as bitmask?",
+      "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f2eeaf93_5ed4af91",
+        "filename": "src/plugins/perfmon/perfmon.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-09-01T15:52:57Z",
+      "side": 1,
+      "message": "avoid formatting changes",
+      "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
