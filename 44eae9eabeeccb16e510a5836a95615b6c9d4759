@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "686a1337_c4ce4964",
+        "filename": "src/plugins/perfmon/intel/bundle/inst_and_clock.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-09-01T14:33:53Z",
+      "side": 1,
+      "message": "sure",
+      "parentUuid": "7a284dda_5760be0b",
+      "revId": "44eae9eabeeccb16e510a5836a95615b6c9d4759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a2dd976a_627c6785",
         "filename": "src/plugins/perfmon/linux.c",
         "patchSetId": 10
@@ -30,6 +48,24 @@
       "writtenOn": "2021-08-27T12:59:09Z",
       "side": 1,
       "message": "Why is this renamed?",
+      "revId": "44eae9eabeeccb16e510a5836a95615b6c9d4759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6865bca6_eb9cbbeb",
+        "filename": "src/plugins/perfmon/linux.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-09-01T14:33:53Z",
+      "side": 1,
+      "message": "So before we had \"perfmon_node_stats_t\" and \"perfmon_reading_t\".\nIndirectly because of this we had seperate thread \u0026 node bundles.\n\nSo I unified the structure into perfmon_stats_t.\nSo the same structure could be used by both the thread (papi) and node (rdpmc) infrastructure. \n\nThis means the very majority of bundles, can now be used in either mode.",
+      "parentUuid": "a2dd976a_627c6785",
       "revId": "44eae9eabeeccb16e510a5836a95615b6c9d4759",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "42c44b9a_8353f135",
+        "filename": "src/plugins/perfmon/perfmon.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-09-01T14:33:53Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "ec550014_7fc6757a",
+      "revId": "44eae9eabeeccb16e510a5836a95615b6c9d4759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bee3184c_2f70acd6",
         "filename": "src/plugins/perfmon/perfmon.c",
         "patchSetId": 10
@@ -67,6 +121,24 @@
       "revId": "44eae9eabeeccb16e510a5836a95615b6c9d4759",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "dfc8bd9e_9fed5fba",
+        "filename": "src/plugins/perfmon/perfmon.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-09-01T14:33:53Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "bee3184c_2f70acd6",
+      "revId": "44eae9eabeeccb16e510a5836a95615b6c9d4759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -87,6 +159,24 @@
     },
     {
       "key": {
+        "uuid": "e76f6027_283d0ea5",
+        "filename": "src/plugins/perfmon/perfmon.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 303,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-09-01T14:33:53Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "b26d9671_522a60cb",
+      "revId": "44eae9eabeeccb16e510a5836a95615b6c9d4759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "102eb0a4_9528b387",
         "filename": "src/plugins/perfmon/perfmon.c",
         "patchSetId": 10
@@ -104,6 +194,24 @@
     },
     {
       "key": {
+        "uuid": "7198c37c_093e7c57",
+        "filename": "src/plugins/perfmon/perfmon.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 328,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-09-01T14:33:53Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "102eb0a4_9528b387",
+      "revId": "44eae9eabeeccb16e510a5836a95615b6c9d4759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a3f03370_fa144a02",
         "filename": "src/plugins/perfmon/perfmon.c",
         "patchSetId": 10
@@ -118,6 +226,24 @@
       "revId": "44eae9eabeeccb16e510a5836a95615b6c9d4759",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0d2ff93c_369e93cb",
+        "filename": "src/plugins/perfmon/perfmon.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 351,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-09-01T14:33:53Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "a3f03370_fa144a02",
+      "revId": "44eae9eabeeccb16e510a5836a95615b6c9d4759",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
