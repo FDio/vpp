@@ -164,6 +164,8 @@ _ (sve,        22)
 u32 clib_get_current_cpu_id ();
 u32 clib_get_current_numa_node ();
 
+typedef int (*clib_cpu_supports_func_t) ();
+
 #if defined(__x86_64__)
 #include "cpuid.h"
 
@@ -178,8 +180,6 @@ clib_get_cpuid (const u32 lev, u32 * eax, u32 * ebx, u32 * ecx, u32 * edx)
     __cpuid (lev, *eax, *ebx, *ecx, *edx);
   return 1;
 }
-
-typedef int (*clib_cpu_supports_func_t) ();
 
 #define _(flag, func, reg, bit) \
 static inline int							\

@@ -141,15 +141,24 @@ perfmon_set (vlib_main_t *vm, perfmon_bundle_t *b)
 
       vec_validate (pm->group_fds, i);
       pm->group_fds[i] = -1;
+      u8 n_events_opened = 0;
 
       for (int j = 0; j < b->n_events; j++)
 	{
 	  int fd;
 	  perfmon_event_t *e = s->events + b->events[j];
+	  if (!e->implemented)
+	    {
+	      log_warn ("perf event %s is not implemented on this CPU",
+			e->name);
+	      b->event_enabled[j] = 0;
+	      continue;
+	    }
 	  struct perf_event_attr pe = {
 	    .size = sizeof (struct perf_event_attr),
 	    .type = e->type_from_instance ? in->type : e->type,
 	    .config = e->config,
+	    .config1 = e->config1,
 	    .exclude_kernel = e->exclude_kernel,
 	    .read_format =
 	      (PERF_FORMAT_GROUP | PERF_FORMAT_TOTAL_TIME_ENABLED |
@@ -178,26 +187,35 @@ perfmon_set (vlib_main_t *vm, perfmon_bundle_t *b)
 	    {
 	      perfmon_thread_runtime_t *tr;
 	      tr = vec_elt_at_index (pm->thread_runtimes, i);
-	      tr->mmap_pages[j] =
+	      tr->mmap_pages[n_events_opened] =
 		mmap (0, page_size, PROT_READ, MAP_SHARED, fd, 0);
 
-	      if (tr->mmap_pages[j] == MAP_FAILED)
+	      if (tr->mmap_pages[n_events_opened] == MAP_FAILED)
 		{
 		  err = clib_error_return_unix (0, "mmap");
 		  goto error;
 		}
 	    }
+	  b->event_enabled[j] = 1;
+	  n_events_opened++;
 	}
+      b->n_events_implemented = n_events_opened;
 
-      if (is_node)
+      if (is_node && n_events_opened)
 	{
 	  perfmon_thread_runtime_t *rt;
 	  rt = vec_elt_at_index (pm->thread_runtimes, i);
 	  rt->bundle = b;
-	  rt->n_events = b->n_events;
+	  rt->n_events = n_events_opened;
 	  rt->n_nodes = n_nodes;
 	  vec_validate_aligned (rt->node_stats, n_nodes - 1,
 				CLIB_CACHE_LINE_BYTES);
+	}
+      else if (!n_events_opened)
+	{
+	  err = clib_error_create (
+	    "no events in this bundle are supported by the CPU");
+	  goto error;
 	}
     }
 
@@ -238,10 +256,10 @@ perfmon_start (vlib_main_t *vm, perfmon_bundle_t *b)
     }
   if (b->type == PERFMON_BUNDLE_TYPE_NODE)
     {
+#if defined(__x86_64__)
 
       vlib_node_function_t *funcs[PERFMON_OFFSET_TYPE_MAX];
 #define _(type, pfunc) funcs[type] = pfunc;
-
       foreach_permon_offset_type
 #undef _
 
@@ -250,8 +268,15 @@ perfmon_start (vlib_main_t *vm, perfmon_bundle_t *b)
       for (int i = 0; i < vlib_get_n_threads (); i++)
 	vlib_node_set_dispatch_wrapper (vlib_get_main_by_index (i),
 					funcs[b->offset_type]);
-    }
 
+#elif defined(__aarch64__)
+
+      for (int i = 0; i < vlib_get_n_threads (); i++)
+	vlib_node_set_dispatch_wrapper (vlib_get_main_by_index (i),
+					perfmon_dispatch_wrapper);
+
+#endif
+    }
   pm->sample_time = vlib_time_now (vm);
   pm->is_running = 1;
 
@@ -311,7 +336,7 @@ perfmon_init (vlib_main_t *vm)
 	}
 
       hash_set_mem (pm->source_by_name, s->name, s);
-      log_debug ("source '%s' regisrtered", s->name);
+      log_debug ("source '%s' registered", s->name);
       s = s->next;
     }
 
@@ -342,7 +367,7 @@ perfmon_init (vlib_main_t *vm)
 	}
 
       hash_set_mem (pm->bundle_by_name, b->name, b);
-      log_debug ("bundle '%s' regisrtered", b->name);
+      log_debug ("bundle '%s' registered", b->name);
 
       b = b->next;
     }

@@ -23,7 +23,11 @@
 #include <vppinfra/cpu.h>
 #include <vlib/vlib.h>
 
-#define PERF_MAX_EVENTS 7 /* 3 fixed and 4 programmable */
+/*
+  Intel: 3 fixed and 4 programmable
+  Arm: 6 events + 1 CPU cycle counter
+*/
+#define PERF_MAX_EVENTS 7
 
 typedef enum
 {
@@ -44,6 +48,8 @@ typedef struct
 {
   u32 type_from_instance : 1;
   u32 exclude_kernel : 1;
+  u32 config1 : 2;
+  u32 implemented : 1;
   union
   {
     u32 type;
@@ -69,12 +75,16 @@ typedef struct
 } perfmon_instance_type_t;
 
 struct perfmon_source;
+
+#if defined(__x86_64__)
 vlib_node_function_t perfmon_dispatch_wrapper_mmap;
 vlib_node_function_t perfmon_dispatch_wrapper_metrics;
-
 #define foreach_permon_offset_type                                            \
   _ (PERFMON_OFFSET_TYPE_MMAP, perfmon_dispatch_wrapper_mmap)                 \
   _ (PERFMON_OFFSET_TYPE_METRICS, perfmon_dispatch_wrapper_metrics)
+#elif defined(__aarch64__)
+vlib_node_function_t perfmon_dispatch_wrapper;
+#endif
 
 typedef clib_error_t *(perfmon_source_init_fn_t) (vlib_main_t *vm,
 						  struct perfmon_source *);
@@ -106,11 +116,14 @@ typedef struct perfmon_bundle
   u32 events[PERF_MAX_EVENTS];
   u32 metrics[PERF_MAX_EVENTS];
   u32 n_events;
+  u32 n_events_implemented;
+  u8 event_enabled[PERF_MAX_EVENTS];
 
   perfmon_bundle_init_fn_t *init_fn;
 
   char **column_headers;
   format_function_t *format_fn;
+
   clib_cpu_supports_func_t cpu_supports;
 
   /* do not set manually */

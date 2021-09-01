@@ -1,0 +1,176 @@
+/*
+ * Copyright (c) 2021 Arm and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <vnet/vnet.h>
+#include <vppinfra/linux/sysfs.h>
+#include <perfmon/perfmon.h>
+#include <perfmon/arm/events.h>
+#include <linux/perf_event.h>
+#include <dirent.h>
+
+VLIB_REGISTER_LOG_CLASS (if_default_log, static) = {
+  .class_name = "perfmon",
+};
+
+#define log_debug(fmt, ...)                                                   \
+  vlib_log_debug (if_default_log.class, fmt, __VA_ARGS__)
+#define log_warn(fmt, ...)                                                    \
+  vlib_log_warn (if_default_log.class, fmt, __VA_ARGS__)
+#define log_err(fmt, ...) vlib_log_err (if_default_log.class, fmt, __VA_ARGS__)
+
+// config1 = 3: request userspace access to PMU counters
+static perfmon_event_t events[] = {
+#define _(event, n, desc)                                                     \
+  [ARMV8_PMUV3_##n] = {                                                       \
+    .type = PERF_TYPE_RAW,                                                    \
+    .config = event,                                                          \
+    .config1 = 3,                                                             \
+    .name = #n,                                                               \
+    .description = desc,                                                      \
+    .exclude_kernel = 1,                                                      \
+  },
+  foreach_perf_arm_event
+#undef _
+};
+
+u8 *
+format_arm_config (u8 *s, va_list *args)
+{
+  u64 config = va_arg (*args, u64);
+
+  s = format (s, "event=0x%02x", config & 0xff);
+
+  return s;
+}
+
+static clib_error_t *
+arm_init (vlib_main_t *vm, perfmon_source_t *src)
+{
+  clib_error_t *err;
+
+  // check /proc/sys/kernel/perf_user_access flag to check if userspace
+  // access to perf counters is enabled (disabled by default)
+  // - if this file doesn't exist, we are on an unsupported kernel ver
+  // - if the file exists and is 0, user access needs to be granted
+  // with 'sudo sysctl kernel/perf_user_access=1'
+  u8 *path = NULL;
+  u8 *tmpstr = NULL;
+  unformat_input_t input;
+  u8 perf_user_access_enabled;
+
+  const char *perf_user_access_path = "/proc/sys/kernel/perf_user_access";
+  path = format (path, "%s", perf_user_access_path, 0);
+  if (clib_sysfs_read ((char *) path, "%s", &tmpstr))
+    {
+      err =
+	clib_error_return_unix (0,
+				"kernel version is unsupported, user access "
+				"to perf counters is not possible\n%s",
+				path);
+      return err;
+    }
+  unformat_init_vector (&input, tmpstr);
+  if (!unformat (&input, "%d", &perf_user_access_enabled))
+    {
+      err =
+	clib_error_create ("error parsing \'%s\' in file %s", tmpstr, path);
+      log_err ("%U", format_clib_error, err);
+    }
+  if (perf_user_access_enabled)
+    log_debug ("user access to perf counters is enabled in %s", path);
+  else
+    {
+      err =
+	clib_error_create ("user access to perf counters is not enabled: run"
+			   " \'sudo sysctl kernel/perf_user_access=1\'");
+      return err;
+    }
+
+  // perfmon/arm/events.h has up to 0xFF/256 possible PMUv3 event codes
+  // supported - create a bitmap to store whether each event is
+  // implemented or not
+  uword *bitmap = NULL;
+  clib_bitmap_alloc (bitmap, 256);
+
+  struct dirent *dp;
+  const char *event_path =
+    "/sys/bus/event_source/devices/armv8_pmuv3_0/events";
+  DIR *event_dir = opendir (event_path);
+
+  if (event_dir == NULL)
+    {
+      err =
+	clib_error_return_unix (0, "error listing directory: %s", event_path);
+      log_err ("%U", format_clib_error, err);
+      return err;
+    }
+
+  while ((dp = readdir (event_dir)) != NULL)
+    {
+      if (dp->d_name[0] != '.')
+	{
+	  u8 *s = NULL;
+	  u8 *tmpstr = NULL;
+	  unformat_input_t input;
+	  u32 config;
+
+	  s = format (s, "%s/%s%c", event_path, dp->d_name, 0);
+	  err = clib_sysfs_read ((char *) s, "%s", &tmpstr);
+	  if (err)
+	    {
+	      log_err ("%U", format_clib_error, err);
+	      continue;
+	    }
+	  unformat_init_vector (&input, tmpstr);
+	  if (unformat (&input, "event=0x%x", &config))
+	    {
+	      // it's possible to have have event codes up to 0xFFFF
+	      // perfmon supports < 0xFF
+	      if (config < 0xFF)
+		{
+		  clib_bitmap_set (bitmap, config, 1);
+		}
+	      log_debug ("found supported event in sysfs: %s \'%s\' 0x%x",
+			 dp->d_name, tmpstr, config);
+	    }
+	  else
+	    {
+	      err = clib_error_create ("error parsing event: %s %s",
+				       dp->d_name, tmpstr);
+	      log_err ("%U", format_clib_error, err);
+	      continue;
+	    }
+	}
+    }
+  closedir (event_dir);
+
+  for (int i = 0; i < ARRAY_LEN (events); i++)
+    {
+      if (clib_bitmap_get (bitmap, events[i].config))
+	events[i].implemented = 1;
+    }
+  clib_bitmap_free (bitmap);
+
+  return 0;
+}
+
+PERFMON_REGISTER_SOURCE (arm) = {
+  .name = "arm",
+  .description = "Arm PMU events",
+  .events = events,
+  .n_events = ARRAY_LEN (events),
+  .init_fn = arm_init,
+  .format_config = format_arm_config,
+};

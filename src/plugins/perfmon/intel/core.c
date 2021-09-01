@@ -25,6 +25,7 @@ static perfmon_event_t events[] = {
 				      event, umask, edge, any, inv, cmask),   \
 				    .name = #n "." #suffix,                   \
 				    .description = desc,                      \
+				    .implemented = 1,                         \
 				    .exclude_kernel = 1 },
 
   foreach_perf_intel_core_event

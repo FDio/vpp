@@ -39,7 +39,12 @@ typedef enum
 
 static perfmon_event_t events[] = {
 #define _(n, s)                                                               \
-  [n] = { .type = PERF_TYPE_SOFTWARE, .config = PERF_COUNT_SW_##n, .name = s },
+  [n] = {                                                                     \
+    .type = PERF_TYPE_SOFTWARE,                                               \
+    .config = PERF_COUNT_SW_##n,                                              \
+    .name = s,                                                                \
+    .implemented = 1,                                                         \
+  },
   foreach_perf_sw_counter
 #undef _
 };
