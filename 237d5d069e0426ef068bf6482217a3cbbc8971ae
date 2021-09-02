@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "c0bde515_6f6224f2",
+        "filename": "src/plugins/perfmon/arm/bundle/branch_pred.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-09-02T16:06:58Z",
+      "side": 1,
+      "message": "Isn\u0027t it just a matter of maintaining a bitmap of what fields are enabled in each bundle, and then checking the bit before dispatching to format_xyz?",
+      "parentUuid": "0514ec74_b4a26e22",
+      "range": {
+        "startLine": 22,
+        "startChar": 0,
+        "endLine": 22,
+        "endChar": 22
+      },
+      "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "8232c0ce_1407e630",
         "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
         "patchSetId": 1
@@ -84,6 +108,30 @@
       "side": 1,
       "message": "You\u0027re right, this function is basically identical to Intel\u0027s perfmon_dispatch_wrapper_mmap() so maybe we can extract this to a common file and keep x86/Arm specific stuff in separate files? \n\nSince the patch changing how x86 reads (https://gerrit.fd.io/r/c/vpp/+/33380), x86 and Arm and definitely more aligned but there still a lot of arch specific stuff. I think separate files over lots of \"#if defined(__\u003caarch\u003e__) blocks is preferred if possible.",
       "parentUuid": "8232c0ce_1407e630",
+      "range": {
+        "startLine": 103,
+        "startChar": 0,
+        "endLine": 103,
+        "endChar": 25
+      },
+      "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "25711cc1_55dd85fc",
+        "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-09-02T16:06:58Z",
+      "side": 1,
+      "message": "I don\u0027t see that we would lots of #ifdef\u0027s though, we should be able to keep it to just one.",
+      "parentUuid": "25d8477a_8d666ebf",
       "range": {
         "startLine": 103,
         "startChar": 0,
@@ -230,6 +278,24 @@
       "side": 1,
       "message": "Can you give an example how this would work?\n\nWe are checking if n_events \u003d\u003d n_events_implemented in cli.c to figure out if we need to fix formatting/alignment or not.\n\nI considered event_enabled[PERF_MAX_EVENTS] as a bitmap but that seems overkill.",
       "parentUuid": "051209db_094a0717",
+      "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9c8a61da_40efe13d",
+        "filename": "src/plugins/perfmon/perfmon.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-09-02T16:06:58Z",
+      "side": 1,
+      "message": "n_events_implemented seems to be a counter right, \nSo if n_events_implemented !\u003d n_events, you know that some events are disabled.\nI was just pointing out ... it would be more obvious to indicate which events are enabled and disabled with a bitmaps.\n\nSo that ....\n\nIf there where a total of 4 events and if event[1] was disable.\nThere would be a bit mask of 0xC (i.e. 1101) - easy to check, easy to understand. \n\nThe alternative would be to just remove disabled events from events[]",
+      "parentUuid": "b1348df1_710ea066",
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
