@@ -1524,6 +1524,7 @@ add_vat_test_library(vnet
   ip/ip_test.c
   arp/arp_test.c
   ip6-nd/ip6_nd_test.c
+  srmpls/sr_mpls_test.c
 )
 
 ##############################################################################
