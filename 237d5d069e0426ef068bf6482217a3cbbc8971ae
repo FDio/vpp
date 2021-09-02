@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "0514ec74_b4a26e22",
+        "filename": "src/plugins/perfmon/arm/bundle/branch_pred.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2021-09-02T08:04:36Z",
+      "side": 1,
+      "message": "I\u0027m not sure how to make this work since the column headers are fixed, and dynamically generating this kind of formatting info becomes difficult. It is verbose, but I haven\u0027t been able to think of a better way to do it.",
+      "parentUuid": "fbf599ea_9283d0ff",
+      "range": {
+        "startLine": 22,
+        "startChar": 0,
+        "endLine": 22,
+        "endChar": 22
+      },
+      "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "8232c0ce_1407e630",
         "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2021-09-01T15:52:57Z",
       "side": 1,
       "message": "this is very close to how the intel perfmon_dispatch_wrapper_mmap works right, \nwith small differences to how the mmap is ready. \nwe should try to make as much of the code common as possible?",
+      "range": {
+        "startLine": 103,
+        "startChar": 0,
+        "endLine": 103,
+        "endChar": 25
+      },
+      "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "25d8477a_8d666ebf",
+        "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2021-09-02T08:04:36Z",
+      "side": 1,
+      "message": "You\u0027re right, this function is basically identical to Intel\u0027s perfmon_dispatch_wrapper_mmap() so maybe we can extract this to a common file and keep x86/Arm specific stuff in separate files? \n\nSince the patch changing how x86 reads (https://gerrit.fd.io/r/c/vpp/+/33380), x86 and Arm and definitely more aligned but there still a lot of arch specific stuff. I think separate files over lots of \"#if defined(__\u003caarch\u003e__) blocks is preferred if possible.",
+      "parentUuid": "8232c0ce_1407e630",
       "range": {
         "startLine": 103,
         "startChar": 0,
@@ -65,6 +113,24 @@
     },
     {
       "key": {
+        "uuid": "ccceb3ae_2d238c27",
+        "filename": "src/plugins/perfmon/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 331,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2021-09-02T08:04:36Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "4d2e8231_4a165eef",
+      "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f4808a70_a892b75f",
         "filename": "src/plugins/perfmon/perfmon.c",
         "patchSetId": 1
@@ -76,6 +142,24 @@
       "writtenOn": "2021-09-01T15:52:57Z",
       "side": 1,
       "message": "do we need a warning? better to just silently fail?",
+      "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fc60c764_5ad7255e",
+        "filename": "src/plugins/perfmon/perfmon.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2021-09-02T08:04:36Z",
+      "side": 1,
+      "message": "I think we could silently fail instead. I was originally thinking from a user perspective it might help explain why certain events in the output show up as \u0027-\u0027. Maybe that\u0027s implicit.",
+      "parentUuid": "f4808a70_a892b75f",
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -99,6 +183,24 @@
     },
     {
       "key": {
+        "uuid": "de4f9a41_e294aebc",
+        "filename": "src/plugins/perfmon/perfmon.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2021-09-02T08:04:36Z",
+      "side": 1,
+      "message": "Probably. I think in theory it\u0027s possible some Arm CPUs may have less than this, but I need to do some digging. In practice 6 event + 1 cycle seems common.",
+      "parentUuid": "b6e4fae8_d9ca4d4c",
+      "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "051209db_094a0717",
         "filename": "src/plugins/perfmon/perfmon.h",
         "patchSetId": 1
@@ -110,6 +212,24 @@
       "writtenOn": "2021-09-01T15:52:57Z",
       "side": 1,
       "message": "would this be more robust as bitmask?",
+      "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b1348df1_710ea066",
+        "filename": "src/plugins/perfmon/perfmon.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2021-09-02T08:04:36Z",
+      "side": 1,
+      "message": "Can you give an example how this would work?\n\nWe are checking if n_events \u003d\u003d n_events_implemented in cli.c to figure out if we need to fix formatting/alignment or not.\n\nI considered event_enabled[PERF_MAX_EVENTS] as a bitmap but that seems overkill.",
+      "parentUuid": "051209db_094a0717",
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -130,6 +250,24 @@
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c6e49bfc_1b652bab",
+        "filename": "src/plugins/perfmon/perfmon.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2021-09-02T08:04:36Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "f2eeaf93_5ed4af91",
+      "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
