@@ -114,7 +114,7 @@ avf_irq_n_set_state (avf_device_t * ad, u8 line, avf_irq_state_t state)
     {
       /* minimal ITR interval, use ITR1 */
       dyn_ctln |= (1 << 3);	/* [4:3] ITR Index */
-      dyn_ctln |= ((32 / 2) << 5);	/* [16:5] ITR Interval in 2us steps */
+      dyn_ctln |= (2 << 5);	/* [16:5] ITR Interval in 2us steps */
       dyn_ctln |= (1 << 30);	/* [30] Writeback on ITR */
     }
   else
