@@ -75,6 +75,8 @@ if(VPP_API_TEST_BUILTIN)
     api/types.c
     ../vnet/arp/arp_test.c
     ../vnet/ip/ip_test.c
+    ../vnet/srv6/sr_test.c
+    ../vnet/srmpls/sr_mpls_test.c
   )
   add_definitions(-DVPP_API_TEST_BUILTIN=1)
 endif()
