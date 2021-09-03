@@ -73,7 +73,7 @@ restores the segment list ``<S1, S2, S3>`` with a source address `SRC-ADDR` on
 the packets coming back on interface `IFACE-IN`.
 
 ```
-sr localsid address SID behavior end.ad nh S-ADDR oif IFACE-OUT iif IFACE-IN src SRC-ADDR next S1 next S2 next S3
+sr localsid address SID behavior end.as nh S-ADDR oif IFACE-OUT iif IFACE-IN src SRC-ADDR next S1 next S2 next S3
 ```
 
 For example, the below command configures the SID `1::A1` with an End.AS
@@ -82,7 +82,7 @@ appliance at address `A1::`, and receiving it back on interface
 `GigabitEthernet0/9/0`.
 
 ```
-sr localsid address 1::A1 behavior end.ad nh A1:: oif GigabitEthernet0/8/0 iif GigabitEthernet0/9/0 src 1:: next 2::20 next 3::30 next 4::40
+sr localsid address 1::A1 behavior end.as nh A1:: oif GigabitEthernet0/8/0 iif GigabitEthernet0/9/0 src 1:: next 2::20 next 3::30 next 4::40
 ```
 
 ## Pseudocode
