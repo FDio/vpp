@@ -192,6 +192,15 @@ create_packet_v2_sock (int host_if_index, tpacket_req_t * rx_req,
       goto error;
     }
 
+  if (setsockopt (*fd, SOL_PACKET, PACKET_QDISC_BYPASS, &opt, sizeof (opt)) <
+      0)
+    {
+      vlib_log_debug (apm->log_class,
+		      "Failed to set qdisc bypass error "
+		      "handling option: %s (errno %d)",
+		      strerror (errno), errno);
+    }
+
   if (setsockopt (*fd, SOL_PACKET, PACKET_RX_RING, rx_req, req_sz) < 0)
     {
       vlib_log_debug (apm->log_class,
