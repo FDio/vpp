@@ -524,6 +524,17 @@ api_ip_table_flush (vat_main_t *vam)
   return ret;
 }
 
+static int
+api_ip_table_allocate (vat_main_t *vam)
+{
+  return -1;
+}
+
+static void
+vl_api_ip_table_allocate_reply_t_handler (vl_api_ip_table_allocate_reply_t *mp)
+{
+}
+
 static void
 vl_api_ip_route_add_del_v2_reply_t_handler (
   vl_api_ip_route_add_del_v2_reply_t *mp)

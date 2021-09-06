@@ -20,7 +20,7 @@
     called through a shared memory interface.
 */
 
-option version = "3.1.0";
+option version = "3.2.0";
 
 import "vnet/interface_types.api";
 import "vnet/fib/fib_types.api";
@@ -54,6 +54,29 @@ autoreply define ip_table_add_del
   u32 client_index;
   u32 context;
   bool is_add [default=true];
+  vl_api_ip_table_t table;
+};
+
+/** \brief Allocate an unused table
+           A table can be added multiple times.
+  @param client_index - opaque cookie to identify the sender
+  @param context - sender context, to match reply w/ request
+  @param table - if table.table_id == ~0, vpp allocates an unused table_id and proceeds as in ip_table_add_del
+                 if table.table_id != ~0, vpp uses the table.table_id and proceeds as in ip_table_add_del
+*/
+define ip_table_allocate
+{
+  u32 client_index;
+  u32 context;
+
+  vl_api_ip_table_t table;
+};
+
+define ip_table_allocate_reply
+{
+  u32 context;
+  i32 retval;
+
   vl_api_ip_table_t table;
 };
 

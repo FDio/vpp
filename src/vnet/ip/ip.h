@@ -270,6 +270,8 @@ void ip_table_delete (fib_protocol_t fproto, u32 table_id, u8 is_api);
 int ip_table_bind (fib_protocol_t fproto, u32 sw_if_index,
 		   u32 table_id, u8 is_api);
 
+u32 ip_table_get_unused_id (fib_protocol_t fproto);
+
 u8 ip_is_zero (ip46_address_t * ip46_address, u8 is_ip4);
 u8 ip_is_local_host (ip46_address_t * ip46_address, u8 is_ip4);
 u8 ip4_is_local_host (ip4_address_t * ip4_address);
