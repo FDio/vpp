@@ -601,6 +601,48 @@ ip_table_delete (fib_protocol_t fproto, u32 table_id, u8 is_api)
     }
 }
 
+static int
+ip_table_cmp_id (void *a1, void *a2)
+{
+  u32 *i1 = (u32 *) a1, *i2 = (u32 *) a2;
+
+  if (*i1 < *i2)
+    return -1;
+  else if (*i1 > *i2)
+    return 1;
+  else
+    return 0;
+}
+
+u32
+ip_table_get_unused_id (fib_protocol_t fproto)
+{
+  int i;
+  u32 t_id, fib_id, unused_id;
+  u32 *sorted_ids = 0;
+
+  /* sort all existing table IDs */
+  uword *hash = fproto == FIB_PROTOCOL_IP6 ? ip6_main.fib_index_by_table_id :
+					     ip4_main.fib_index_by_table_id;
+  hash_foreach (t_id, fib_id, hash, ({ vec_add1 (sorted_ids, t_id); }));
+  vec_sort_with_function (sorted_ids, ip_table_cmp_id);
+
+  /* by default the new identifier is the next number (if no values ​​are
+   * missing) */
+  unused_id = vec_len (sorted_ids);
+
+  /* look for gaps in the sorted vec */
+  for (i = 1; i < vec_len (sorted_ids); i++)
+    {
+      if (sorted_ids[i] - sorted_ids[i - 1] > 1)
+	{
+	  unused_id = sorted_ids[i - 1] + 1;
+	  break;
+	}
+    }
+  return unused_id;
+}
+
 void
 vl_api_ip_table_add_del_t_handler (vl_api_ip_table_add_del_t * mp)
 {
@@ -620,6 +662,26 @@ vl_api_ip_table_add_del_t_handler (vl_api_ip_table_add_del_t * mp)
     }
 
   REPLY_MACRO (VL_API_IP_TABLE_ADD_DEL_REPLY);
+}
+
+void
+vl_api_ip_table_allocate_t_handler (vl_api_ip_table_allocate_t *mp)
+{
+  vl_api_ip_table_allocate_reply_t *rmp;
+  fib_protocol_t fproto =
+    (mp->table.is_ip6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4);
+  u32 table_id = ntohl (mp->table.table_id);
+  int rv = 0;
+
+  if (~0 == table_id)
+    table_id = ip_table_get_unused_id (fproto);
+
+  ip_table_create (fproto, table_id, 1, mp->table.name);
+
+  REPLY_MACRO2 (VL_API_IP_TABLE_ALLOCATE_REPLY, {
+    clib_memcpy_fast (&rmp->table, &mp->table, sizeof (mp->table));
+    rmp->table.table_id = htonl (table_id);
+  })
 }
 
 static int
