@@ -73,6 +73,30 @@
     },
     {
       "key": {
+        "uuid": "a52462b3_fd8dbafd",
+        "filename": "src/plugins/perfmon/arm/bundle/branch_pred.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2021-09-06T14:20:27Z",
+      "side": 1,
+      "message": "Ah right - yep, I understand. I think we can make the check in table.c:table_format_cell(), which calls the bundle-\u003eformat_fn. This would clean up this code a lot.",
+      "parentUuid": "c0bde515_6f6224f2",
+      "range": {
+        "startLine": 22,
+        "startChar": 0,
+        "endLine": 22,
+        "endChar": 22
+      },
+      "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "8232c0ce_1407e630",
         "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
         "patchSetId": 1
@@ -132,6 +156,30 @@
       "side": 1,
       "message": "I don\u0027t see that we would lots of #ifdef\u0027s though, we should be able to keep it to just one.",
       "parentUuid": "25d8477a_8d666ebf",
+      "range": {
+        "startLine": 103,
+        "startChar": 0,
+        "endLine": 103,
+        "endChar": 25
+      },
+      "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9ba46b26_b381f019",
+        "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2021-09-06T14:20:27Z",
+      "side": 1,
+      "message": "It\u0027s possible, but then we would still have a mix of Arm/Intel functions in a single file? I think it would be cleaner to keep the Arm/Intel specific code separate in the /arm + /intel directories.",
+      "parentUuid": "25711cc1_55dd85fc",
       "range": {
         "startLine": 103,
         "startChar": 0,
@@ -296,6 +344,24 @@
       "side": 1,
       "message": "n_events_implemented seems to be a counter right, \nSo if n_events_implemented !\u003d n_events, you know that some events are disabled.\nI was just pointing out ... it would be more obvious to indicate which events are enabled and disabled with a bitmaps.\n\nSo that ....\n\nIf there where a total of 4 events and if event[1] was disable.\nThere would be a bit mask of 0xC (i.e. 1101) - easy to check, easy to understand. \n\nThe alternative would be to just remove disabled events from events[]",
       "parentUuid": "b1348df1_710ea066",
+      "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bc38b683_24bf8d51",
+        "filename": "src/plugins/perfmon/perfmon.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2021-09-06T14:20:27Z",
+      "side": 1,
+      "message": "That is how event_enabled[PERF_MAX_EVENTS] is operating, albeit with (slightly) more memory. You\u0027re right a bitmask to go on top of events[PERF_MAX_EVENTS] would probably nicer overall.\n\nShould be easy to do with clib_bitmap_alloc(), clib_bitmap_set/get(). I\u0027ll add it to the list of improvements.\n\nI think if we can remove the if !b-\u003eevent_enabled[x] checks in all bundles as per your previous comment, then that will overall clean things up nicely.\n\nI haven\u0027t fully checked, but I suspect removing disabled items from events[] would mess up the alignment since column headers are not dynamic. There would be a fair bit of extra work to dynamically display column headers since we\u0027d need to check which events are used under each header somehow.",
+      "parentUuid": "9c8a61da_40efe13d",
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
