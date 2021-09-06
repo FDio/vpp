@@ -97,7 +97,7 @@ class TestIp4VrfMultiInst(VppTestCase):
 
         # Test variables
         cls.hosts_per_pg = 5
-        cls.nr_of_vrfs = 5
+        cls.nr_of_vrfs = 6
         cls.pg_ifs_per_vrf = 3
 
         try:
@@ -169,6 +169,19 @@ class TestIp4VrfMultiInst(VppTestCase):
         self.logger.info(self.vapi.ppcli("show ip fib"))
         self.logger.info(self.vapi.ppcli("show ip4 neighbors"))
 
+    def __assing_intrefaces(self, vrf_id):
+        for i in range(self.pg_ifs_per_vrf):
+            pg_if = self.pg_if_by_vrf_id[vrf_id][i]
+            pg_if.set_table_ip4(vrf_id)
+            self.logger.info("pg-interface %s added to IPv4 VRF ID %d"
+                             % (pg_if.name, vrf_id))
+            if pg_if not in self.pg_in_vrf:
+                self.pg_in_vrf.append(pg_if)
+            if pg_if in self.pg_not_in_vrf:
+                self.pg_not_in_vrf.remove(pg_if)
+            pg_if.config_ip4()
+            pg_if.configure_ipv4_neighbors()
+
     def create_vrf_and_assign_interfaces(self, count, start=1):
         """
         Create required number of FIB tables / VRFs, put 3 pg-ip4 interfaces
@@ -181,26 +194,36 @@ class TestIp4VrfMultiInst(VppTestCase):
 
         for i in range(count):
             vrf_id = i + start
-            pg_if = self.pg_if_by_vrf_id[vrf_id][0]
             self.vapi.ip_table_add_del(is_add=1, table={'table_id': vrf_id})
             self.logger.info("IPv4 VRF ID %d created" % vrf_id)
             if vrf_id not in self.vrf_list:
                 self.vrf_list.append(vrf_id)
             if vrf_id in self.vrf_reset_list:
                 self.vrf_reset_list.remove(vrf_id)
-            for j in range(self.pg_ifs_per_vrf):
-                pg_if = self.pg_if_by_vrf_id[vrf_id][j]
-                pg_if.set_table_ip4(vrf_id)
-                self.logger.info("pg-interface %s added to IPv4 VRF ID %d"
-                                 % (pg_if.name, vrf_id))
-                if pg_if not in self.pg_in_vrf:
-                    self.pg_in_vrf.append(pg_if)
-                if pg_if in self.pg_not_in_vrf:
-                    self.pg_not_in_vrf.remove(pg_if)
-                pg_if.config_ip4()
-                pg_if.configure_ipv4_neighbors()
+            self.__assing_intrefaces(vrf_id)
         self.logger.debug(self.vapi.ppcli("show ip fib"))
         self.logger.debug(self.vapi.ppcli("show ip4 neighbors"))
+
+    def create_vrf_by_id_and_assign_interfaces(self, vrf_id=0xffffffff):
+        """
+        Create a FIB table / VRF by vrf_id, put 3 pg-ip4 interfaces
+        to FIB table / VRF.
+
+        :param int vrf_id: Required table ID / VRF ID. \
+        (Default value = 0xffffffff, ID will be selected automatically)
+        """
+        ret = self.vapi.ip_table_allocate(table={'table_id': vrf_id})
+        vrf_id = ret.table.table_id
+        self.logger.info("IPv4 VRF ID %d created" % vrf_id)
+        if vrf_id not in self.vrf_list:
+            self.vrf_list.append(vrf_id)
+        if vrf_id in self.vrf_reset_list:
+            self.vrf_reset_list.remove(vrf_id)
+        self.__assing_intrefaces(vrf_id)
+        self.logger.debug(self.vapi.ppcli("show ip fib"))
+        self.logger.debug(self.vapi.ppcli("show ip4 neighbors"))
+
+        return vrf_id
 
     def reset_vrf_and_remove_from_vrf_list(self, vrf_id):
         """
@@ -499,6 +522,38 @@ class TestIp4VrfMultiInst(VppTestCase):
         self.run_verify_test()
         self.run_crosswise_vrf_test()
 
+    def test_ip4_vrf_05(self):
+        """ IP4 VRF  Multi-instance test 5 - create 2 VRFs by VRF_ID
+        """
+        # Config 5
+        # Create 2 VRFs
+        # Set vrf_id manually
+        self.create_vrf_by_id_and_assign_interfaces(1)
+        # Set vrf_id automatically
+        auto_vrf_id = self.create_vrf_by_id_and_assign_interfaces()
+
+        # Verify 5
+        for vrf_id in self.vrf_list:
+            self.assert_equal(self.verify_vrf(vrf_id),
+                              VRFState.configured, VRFState)
+
+        # Test 5
+        self.run_verify_test()
+        self.run_crosswise_vrf_test()
+
+        # Config 5.1
+        # Reset VRFs
+        self.reset_vrf_and_remove_from_vrf_list(1)
+        self.reset_vrf_and_remove_from_vrf_list(auto_vrf_id)
+
+        # Verify 5.1
+        for vrf_id in self.vrf_reset_list:
+            self.assert_equal(self.verify_vrf(vrf_id),
+                              VRFState.reset, VRFState)
+        vrf_list_length = len(self.vrf_list)
+        self.assertEqual(
+            vrf_list_length, 0,
+            "List of configured VRFs is not empty: %s != 0" % vrf_list_length)
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
