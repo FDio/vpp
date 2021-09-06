@@ -97,6 +97,30 @@
     },
     {
       "key": {
+        "uuid": "4fba95f3_de4a7588",
+        "filename": "src/plugins/perfmon/arm/bundle/branch_pred.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-09-06T15:01:46Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "a52462b3_fd8dbafd",
+      "range": {
+        "startLine": 22,
+        "startChar": 0,
+        "endLine": 22,
+        "endChar": 22
+      },
+      "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "8232c0ce_1407e630",
         "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
         "patchSetId": 1
@@ -180,6 +204,30 @@
       "side": 1,
       "message": "It\u0027s possible, but then we would still have a mix of Arm/Intel functions in a single file? I think it would be cleaner to keep the Arm/Intel specific code separate in the /arm + /intel directories.",
       "parentUuid": "25711cc1_55dd85fc",
+      "range": {
+        "startLine": 103,
+        "startChar": 0,
+        "endLine": 103,
+        "endChar": 25
+      },
+      "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ec3d4a58_7bdeea2b",
+        "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-09-06T15:01:46Z",
+      "side": 1,
+      "message": "I think that is solvable with machine specific includes and a single define\n\n#ifdef X86_IS_THE_BEST\n#include \"intel/dispatch_wrapper.h\"\n#endif \n\nintel/dispatch_wrapper.h would then define your machine specific variant of read_pmc_from_mma.\n\nThe Linux UAPI does this ...",
+      "parentUuid": "9ba46b26_b381f019",
       "range": {
         "startLine": 103,
         "startChar": 0,
@@ -365,6 +413,24 @@
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "baf1c824_29a8060a",
+        "filename": "src/plugins/perfmon/perfmon.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-09-06T15:01:46Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "bc38b683_24bf8d51",
+      "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
