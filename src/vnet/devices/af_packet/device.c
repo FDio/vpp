@@ -149,17 +149,12 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
       u32 bi = buffers[0];
       buffers++;
 
-    nextframe:
       tph = (struct tpacket2_hdr *) (block_start + tx_frame * frame_size);
       if (PREDICT_FALSE (tph->tp_status &
 			 (TP_STATUS_SEND_REQUEST | TP_STATUS_SENDING)))
 	{
-	  tx_frame = (tx_frame + 1) % frame_num;
 	  frame_not_ready++;
-	  /* check if we've exhausted the ring */
-	  if (PREDICT_FALSE (frame_not_ready + n_sent == frame_num))
-	    break;
-	  goto nextframe;
+	  goto next;
 	}
 
       do
@@ -180,6 +175,7 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
 
       tx_frame = (tx_frame + 1) % frame_num;
 
+    next:
       /* check if we've exhausted the ring */
       if (PREDICT_FALSE (frame_not_ready + n_sent == frame_num))
 	break;
@@ -187,22 +183,24 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
 
   CLIB_MEMORY_BARRIER ();
 
-  apif->next_tx_frame = tx_frame;
-
   if (PREDICT_TRUE (n_sent))
-    if (PREDICT_FALSE (sendto (apif->fd, NULL, 0, MSG_DONTWAIT, NULL, 0) ==
-		       -1))
-      {
-	/* Uh-oh, drop & move on, but count whether it was fatal or not.
-	 * Note that we have no reliable way to properly determine the
-	 * disposition of the packets we just enqueued for delivery.
-	 */
-	vlib_error_count (vm, node->node_index,
-			  unix_error_is_fatal (errno) ?
-			    AF_PACKET_TX_ERROR_TXRING_FATAL :
-			    AF_PACKET_TX_ERROR_TXRING_EAGAIN,
-			  n_sent);
-      }
+    {
+      apif->next_tx_frame = tx_frame;
+
+      if (PREDICT_FALSE (sendto (apif->fd, NULL, 0, MSG_DONTWAIT, NULL, 0) ==
+			 -1))
+	{
+	  /* Uh-oh, drop & move on, but count whether it was fatal or not.
+	   * Note that we have no reliable way to properly determine the
+	   * disposition of the packets we just enqueued for delivery.
+	   */
+	  vlib_error_count (vm, node->node_index,
+			    unix_error_is_fatal (errno) ?
+			      AF_PACKET_TX_ERROR_TXRING_FATAL :
+			      AF_PACKET_TX_ERROR_TXRING_EAGAIN,
+			    n_sent);
+	}
+    }
 
   clib_spinlock_unlock_if_init (&apif->lockp);
 
