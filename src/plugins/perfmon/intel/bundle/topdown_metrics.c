@@ -27,29 +27,42 @@
 
 typedef enum
 {
-  TOPDOWN_E_METRIC_RETIRING = 0,
-  TOPDOWN_E_METRIC_BAD_SPEC,
-  TOPDOWN_E_METRIC_FE_BOUND,
-  TOPDOWN_E_METRIC_BE_BOUND,
-} topdown_lvl1_counters_t;
+  TOPDOWN_E_RETIRING = 0,
+  TOPDOWN_E_BAD_SPEC,
+  TOPDOWN_E_FE_BOUND,
+  TOPDOWN_E_BE_BOUND,
+} topdown_lvl1_t;
 
 enum
 {
-  TOPDOWN_SLOTS = 0,
-  TOPDOWN_METRICS,
-} topdown_lvl1_metrics_t;
+  TOPDOWN_E_RDPMC_SLOTS = 0,
+  TOPDOWN_E_RDPMC_METRICS,
+};
 
-static_always_inline f32
-topdown_lvl1_parse_row (perfmon_node_stats_t *ns, topdown_lvl1_counters_t e)
+typedef f64 (topdown_lvl1_parse_fn_t) (void *, topdown_lvl1_t);
+
+/* Parse thread level states from perfmon_reading */
+static_always_inline f64
+topdown_lvl1_perf_reading (void *ps, topdown_lvl1_t e)
 {
+  perfmon_reading_t *ss = (perfmon_reading_t *) ps;
+
+  /* slots are at value[0], everthing else follows at +1 */
+  return ((f64) ss->value[e + 1] / ss->value[0]) * 100;
+}
+
+static_always_inline f64
+topdown_lvl1_rdpmc_metric (void *ps, topdown_lvl1_t e)
+{
+  perfmon_node_stats_t *ss = (perfmon_node_stats_t *) ps;
   f64 slots_t0 =
-    ns->t[0].value[TOPDOWN_SLOTS] *
-    ((f64) GET_METRIC (ns->t[0].value[TOPDOWN_METRICS], e) / 0xff);
+    ss->t[0].value[TOPDOWN_E_RDPMC_SLOTS] *
+    ((f64) GET_METRIC (ss->t[0].value[TOPDOWN_E_RDPMC_METRICS], e) / 0xff);
   f64 slots_t1 =
-    ns->t[1].value[TOPDOWN_SLOTS] *
-    ((f64) GET_METRIC (ns->t[1].value[TOPDOWN_METRICS], e) / 0xff);
-  u64 slots_delta =
-    ns->t[1].value[TOPDOWN_SLOTS] - ns->t[0].value[TOPDOWN_SLOTS];
+    ss->t[1].value[TOPDOWN_E_RDPMC_SLOTS] *
+    ((f64) GET_METRIC (ss->t[1].value[TOPDOWN_E_RDPMC_METRICS], e) / 0xff);
+  u64 slots_delta = ss->t[1].value[TOPDOWN_E_RDPMC_SLOTS] -
+		    ss->t[0].value[TOPDOWN_E_RDPMC_SLOTS];
 
   slots_t1 = slots_t1 - slots_t0;
 
@@ -59,53 +72,60 @@ topdown_lvl1_parse_row (perfmon_node_stats_t *ns, topdown_lvl1_counters_t e)
 static u8 *
 format_topdown_lvl1 (u8 *s, va_list *args)
 {
-  perfmon_node_stats_t *st = va_arg (*args, perfmon_node_stats_t *);
-  u64 row = va_arg (*args, int);
+  void *ps = va_arg (*args, void *);
+  u64 idx = va_arg (*args, int);
+  perfmon_bundle_type_t type = va_arg (*args, perfmon_bundle_type_t);
+  f64 sv = 0;
 
-  switch (row)
+  topdown_lvl1_parse_fn_t *parse_fn,
+    *parse_fns[PERFMON_BUNDLE_TYPE_MAX] = { 0, topdown_lvl1_rdpmc_metric,
+					    topdown_lvl1_perf_reading, 0 };
+  parse_fn = parse_fns[type];
+  ASSERT (parse_fn);
+
+  switch (idx)
     {
     case 0:
-      s = format (s, "%f",
-		  topdown_lvl1_parse_row (st, TOPDOWN_E_METRIC_BAD_SPEC) +
-		    topdown_lvl1_parse_row (st, TOPDOWN_E_METRIC_RETIRING));
+      sv =
+	parse_fn (ps, TOPDOWN_E_BAD_SPEC) + parse_fn (ps, TOPDOWN_E_RETIRING);
       break;
     case 1:
-      s = format (s, "%f",
-		  topdown_lvl1_parse_row (st, TOPDOWN_E_METRIC_BE_BOUND) +
-		    topdown_lvl1_parse_row (st, TOPDOWN_E_METRIC_FE_BOUND));
+      sv =
+	parse_fn (ps, TOPDOWN_E_BE_BOUND) + parse_fn (ps, TOPDOWN_E_FE_BOUND);
       break;
-    case 2:
-      s = format (s, "%f",
-		  topdown_lvl1_parse_row (st, TOPDOWN_E_METRIC_RETIRING));
-      break;
-    case 3:
-      s = format (s, "%f",
-		  topdown_lvl1_parse_row (st, TOPDOWN_E_METRIC_BAD_SPEC));
-      break;
-    case 4:
-      s = format (s, "%f",
-		  topdown_lvl1_parse_row (st, TOPDOWN_E_METRIC_FE_BOUND));
-      break;
-    case 5:
-      s = format (s, "%f",
-		  topdown_lvl1_parse_row (st, TOPDOWN_E_METRIC_BE_BOUND));
+    default:
+      sv = parse_fn (ps, (topdown_lvl1_t) idx - 2);
       break;
     }
+
+  s = format (s, "%f", sv);
+
   return s;
 }
 
-PERFMON_REGISTER_BUNDLE (topdown_lvl1) = {
+static perfmon_cpu_supports_t topdown_lvl1_cpu_supports[] = {
+  /* Intel SNR supports papi/thread only */
+  { clib_cpu_supports_movdiri, PERFMON_BUNDLE_TYPE_THREAD },
+  /* Intel ICX supports papi/thread or rdpmc/node */
+  { clib_cpu_supports_avx512_bitalg, PERFMON_BUNDLE_TYPE_NODE }
+};
+
+PERFMON_REGISTER_BUNDLE (topdown_lvl1_metric) = {
   .name = "topdown-level1",
   .description = "Top-down Microarchitecture Analysis Level 1",
   .source = "intel-core",
-  .type = PERFMON_BUNDLE_TYPE_NODE,
   .offset_type = PERFMON_OFFSET_TYPE_METRICS,
   .events[0] = INTEL_CORE_E_TOPDOWN_SLOTS,
-  .events[1] = INTEL_CORE_E_TOPDOWN_L1_METRICS,
+  .events[1] = INTEL_CORE_E_TOPDOWN_L1_RETIRING_METRIC,
+  .events[2] = INTEL_CORE_E_TOPDOWN_L1_BAD_SPEC_METRIC,
+  .events[3] = INTEL_CORE_E_TOPDOWN_L1_FE_BOUND_METRIC,
+  .events[4] = INTEL_CORE_E_TOPDOWN_L1_BE_BOUND_METRIC,
+  .n_events = 5,
   .metrics[0] = RDPMC_FIXED_SLOTS | FIXED_COUNTER_SLOTS,
   .metrics[1] = RDPMC_L1_METRICS | METRIC_COUNTER_TOPDOWN_L1,
-  .n_events = 2,
-  .cpu_supports = clib_cpu_supports_avx512_bitalg,
+  .n_metrics = 2,
+  .cpu_supports = topdown_lvl1_cpu_supports,
+  .n_cpu_supports = ARRAY_LEN (topdown_lvl1_cpu_supports),
   .format_fn = format_topdown_lvl1,
   .column_headers = PERFMON_STRINGS ("% NS", "% ST", "% NS.RT", "% NS.BS",
 				     "% ST.FE", "% ST.BE"),
