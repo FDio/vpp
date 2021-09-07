@@ -128,7 +128,8 @@ show_perfmon_bundle_command_fn (vlib_main_t *vm, unformat_input_t *input,
     vlib_cli_output (vm, "%U\n", format_perfmon_bundle, 0, 0);
 
   for (int i = 0; i < vec_len (vb); i++)
-    if (!vb[i]->cpu_supports || vb[i]->cpu_supports ())
+    /* bundle type will be unknown if no cpu_supports matched */
+    if (vb[i]->type != PERFMON_BUNDLE_TYPE_UNKNOWN)
       vlib_cli_output (vm, "%U\n", format_perfmon_bundle, vb[i], verbose);
 
   vec_free (vb);
@@ -312,7 +313,7 @@ show_perfmon_stats_command_fn (vlib_main_t *vm, unformat_input_t *input,
     {
       in = vec_elt_at_index (it->instances, i);
       r = vec_elt_at_index (readings, i);
-      table_format_cell (t, col, -1, "%s", in->name);
+      table_format_cell (t, col, -1, "%s", in->name, b->type);
       if (b->type == PERFMON_BUNDLE_TYPE_NODE)
 	{
 	  perfmon_thread_runtime_t *tr;
@@ -322,19 +323,20 @@ show_perfmon_stats_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	      {
 		perfmon_node_stats_t ns;
 		table_format_cell (t, ++col, -1, "%U", format_vlib_node_name,
-				   vm, j);
+				   vm, j, b->type);
 		table_set_cell_align (t, col, -1, TTAA_RIGHT);
 		table_set_cell_fg_color (t, col, -1, TTAC_CYAN);
 		clib_memcpy_fast (&ns, tr->node_stats + j, sizeof (ns));
 
 		for (int j = 0; j < n_row; j++)
-		  table_format_cell (t, col, j, "%U", b->format_fn, &ns, j);
+		  table_format_cell (t, col, j, "%U", b->format_fn, &ns, j,
+				     b->type);
 	      }
 	}
       else
 	{
 	  for (int j = 0; j < n_row; j++)
-	    table_format_cell (t, i, j, "%U", b->format_fn, r, j);
+	    table_format_cell (t, i, j, "%U", b->format_fn, r, j, b->type);
 	}
       col++;
     }
