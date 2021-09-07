@@ -169,8 +169,8 @@ define dpdk_config_cmds
 	mkdir -p ../dpdk-meson-venv && \
 	python3 -m venv ../dpdk-meson-venv && \
 	source ../dpdk-meson-venv/bin/activate && \
-	(if ! ls $(PIP_DOWNLOAD_DIR)meson* ; then pip3 download -d $(PIP_DOWNLOAD_DIR) -f $(DL_CACHE_DIR) meson==0.54 setuptools wheel pyelftools; fi) && \
-	pip3 install --no-index --find-links=$(PIP_DOWNLOAD_DIR) meson==0.54 pyelftools && \
+	(if ! ls $(PIP_DOWNLOAD_DIR)meson* ; then pip3 download -d $(PIP_DOWNLOAD_DIR) -f $(DL_CACHE_DIR) meson==0.55 setuptools wheel pyelftools; fi) && \
+	pip3 install --no-index --find-links=$(PIP_DOWNLOAD_DIR) meson==0.55 pyelftools && \
 	PKG_CONFIG_PATH=$(dpdk_install_dir)/lib/pkgconfig meson setup $(dpdk_src_dir) \
 		$(dpdk_build_dir) \
 		$(DPDK_MESON_ARGS) \
@@ -182,10 +182,14 @@ define dpdk_config_cmds
 	$(call dpdk_config_def,USE_LIBBSD)
 endef
 
+ifeq ("$(DPDK_VERBOSE)","1")
+DPDK_VERBOSE_BUILD = --verbose
+endif
+
 define dpdk_build_cmds
 	cd $(dpdk_build_dir) && \
 	source ../dpdk-meson-venv/bin/activate && \
-	meson compile -C . | tee $(dpdk_build_log) && \
+	meson compile $(DPDK_VERBOSE_BUILD) -C . | tee $(dpdk_build_log) && \
 	deactivate
 endef
 
