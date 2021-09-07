@@ -31,6 +31,7 @@ typedef enum
   PERFMON_BUNDLE_TYPE_NODE,
   PERFMON_BUNDLE_TYPE_THREAD,
   PERFMON_BUNDLE_TYPE_SYSTEM,
+  PERFMON_BUNDLE_TYPE_MAX,
 } perfmon_bundle_type_t;
 
 typedef enum
@@ -95,6 +96,12 @@ struct perfmon_bundle;
 typedef clib_error_t *(perfmon_bundle_init_fn_t) (vlib_main_t *vm,
 						  struct perfmon_bundle *);
 
+typedef struct
+{
+  clib_cpu_supports_func_t cpu_supports;
+  uword bundle_type;
+} perfmon_cpu_supports_t;
+
 typedef struct perfmon_bundle
 {
   char *name;
@@ -104,14 +111,18 @@ typedef struct perfmon_bundle
   perfmon_bundle_type_t type;
   perfmon_offset_type_t offset_type;
   u32 events[PERF_MAX_EVENTS];
-  u32 metrics[PERF_MAX_EVENTS];
   u32 n_events;
+
+  u32 metrics[PERF_MAX_EVENTS];
+  u32 n_metrics;
+
+  perfmon_cpu_supports_t *cpu_supports;
+  u32 n_cpu_supports;
 
   perfmon_bundle_init_fn_t *init_fn;
 
   char **column_headers;
   format_function_t *format_fn;
-  clib_cpu_supports_func_t cpu_supports;
 
   /* do not set manually */
   perfmon_source_t *src;
@@ -168,6 +179,24 @@ typedef struct
 
 extern perfmon_main_t perfmon_main;
 
+always_inline uword
+perfmon_cpu_supported_bundle_type (perfmon_bundle_t *b)
+{
+  perfmon_cpu_supports_t *supports = b->cpu_supports;
+  uword type = 0;
+
+  /* if nothing specific for this bundle, go with the default */
+  if (!supports)
+    return b->type;
+
+  /* the last specified type, will always win */
+  for (int i = 0; i < b->n_cpu_supports; ++i)
+    if (supports[i].cpu_supports ())
+      type = supports[i].bundle_type;
+
+  return type;
+}
+
 #define PERFMON_REGISTER_SOURCE(x)                                            \
   perfmon_source_t __perfmon_source_##x;                                      \
   static void __clib_constructor __perfmon_source_registration_##x (void)     \
@@ -184,6 +213,8 @@ extern perfmon_main_t perfmon_main;
   {                                                                           \
     perfmon_main_t *pm = &perfmon_main;                                       \
     __perfmon_bundle_##x.next = pm->bundles;                                  \
+    __perfmon_bundle_##x.type =                                               \
+      perfmon_cpu_supported_bundle_type (&__perfmon_bundle_##x);              \
     pm->bundles = &__perfmon_bundle_##x;                                      \
   }                                                                           \
   perfmon_bundle_t __perfmon_bundle_##x
