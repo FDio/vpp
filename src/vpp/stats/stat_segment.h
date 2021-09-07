@@ -68,7 +68,6 @@ typedef struct {
   u32 directory_index;
   stat_segment_update_fn fn;
   u32 caller_index;
-  u8 enabled;
 } stat_segment_gauges_pool_t;
 
 typedef struct
@@ -109,10 +108,8 @@ stat_segment_register_state_counter(u8 *name, u32 *index);
 clib_error_t *
 stat_segment_deregister_state_counter(u32 index);
 void stat_segment_set_state_counter (u32 index, u64 value);
-uword stat_segment_poll_add (u32 vector_index,
-			     stat_segment_update_fn update_fn,
-			     u32 caller_index, u32 interval, u8 enabled);
-void stat_segment_poll_state (uword index, u8 enabled);
+void stat_segment_poll_add (u32 vector_index, stat_segment_update_fn update_fn,
+			    u32 caller_index, u32 interval);
 
 counter_t **stat_validate_counter_vector3 (counter_t **counters, u32 max1,
 					   u32 max2);
