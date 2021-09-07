@@ -53,6 +53,10 @@ ifneq ($(DPDK_MAKE_EXTRA_ARGS),)
 DPDK_MAKE_ARGS += DPDK_MAKE_EXTRA_ARGS="$(DPDK_MAKE_EXTRA_ARGS)"
 endif
 
+ifeq ("$(V)","1")
+DPDK_MAKE_ARGS += DPDK_VERBOSE=1
+endif
+
 external_configure = echo
 
 external_build = echo
