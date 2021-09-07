@@ -780,10 +780,9 @@ do_stat_segment_updates (vlib_main_t *vm, stat_segment_main_t *sm)
   /* *INDENT-OFF* */
   stat_segment_gauges_pool_t *g;
   pool_foreach (g, sm->gauges)
-    {
-      if (g->enabled)
-	g->fn (&sm->directory_vector[g->directory_index], g->caller_index);
-    }
+   {
+    g->fn(&sm->directory_vector[g->directory_index], g->caller_index);
+  }
   /* *INDENT-ON* */
 
   /* Heartbeat, so clients detect we're still here */
@@ -881,9 +880,9 @@ stat_segment_collector_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
  * Add a data provider (via callback) for a given stats entry.
  * TODO: Add support for per-provider interval.
  */
-uword
+void
 stat_segment_poll_add (u32 vector_index, stat_segment_update_fn update_fn,
-		       u32 caller_index, u32 interval, u8 enabled)
+		       u32 caller_index, u32 interval)
 {
   stat_segment_main_t *sm = &stat_segment_main;
   stat_segment_gauges_pool_t *gauge;
@@ -892,23 +891,8 @@ stat_segment_poll_add (u32 vector_index, stat_segment_update_fn update_fn,
   gauge->fn = update_fn;
   gauge->caller_index = caller_index;
   gauge->directory_index = vector_index;
-  gauge->enabled = enabled;
 
-  return pool_elts (sm->gauges) - 1;
-}
-
-/*
- * Enable (or disable) a callback for a stats entry
- */
-void
-stat_segment_poll_state (uword index, u8 enabled)
-{
-  stat_segment_main_t *sm = &stat_segment_main;
-  stat_segment_gauges_pool_t *gauge = pool_elt_at_index (sm->gauges, index);
-
-  ASSERT (gauge);
-
-  gauge->enabled = enabled;
+  return;
 }
 
 /*
@@ -916,14 +900,20 @@ stat_segment_poll_state (uword index, u8 enabled)
  * Deprecated, replace with stat_segment_new_entry + stat_segment_pool_add
  */
 clib_error_t *
-stat_segment_register_gauge (u8 *name, stat_segment_update_fn update_fn,
+stat_segment_register_gauge (u8 * name, stat_segment_update_fn update_fn,
 			     u32 caller_index)
 {
+  stat_segment_main_t *sm = &stat_segment_main;
+  stat_segment_gauges_pool_t *gauge;
+
   u32 vector_index = stat_segment_new_entry (name, STAT_DIR_TYPE_SCALAR_INDEX);
   if (vector_index == ~0) /* Already registered */
     return clib_error_return (0, "%v is already registered", name);
 
-  stat_segment_poll_add (vector_index, update_fn, caller_index, -1, true);
+  pool_get (sm->gauges, gauge);
+  gauge->fn = update_fn;
+  gauge->caller_index = caller_index;
+  gauge->directory_index = vector_index;
 
   return NULL;
 }
