@@ -63,7 +63,7 @@ stat_provider_mem_usage_update_fn (stat_segment_directory_entry_t *e,
   cb[STAT_MEM_RELEASABLE] = usage.bytes_overhead;
 }
 
-counter_t **
+static counter_t **
 stat_validate_counter_vector3 (counter_t **counters, u32 max1, u32 max2)
 {
   stat_segment_main_t *sm = &stat_segment_main;
