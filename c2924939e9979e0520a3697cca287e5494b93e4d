@@ -46,6 +46,30 @@
       "revId": "c2924939e9979e0520a3697cca287e5494b93e4d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3e942008_a1faec46",
+        "filename": "build/external/packages/dpdk.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 185,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2021-09-08T15:40:23Z",
+      "side": 1,
+      "message": "I think the right way to solve the issue and keep the build system layering consistent would be to:\n- implement the change in dpdk.mk with DPDK_VERBOSE (and not V)\n- add something like this in build-data/packages/external.mk:\nifeq (\"$(V)\",\"1\")\nDPDK_MAKE_ARGS +\u003d DPDK_VERBOSE\u003d1\nendif\n\nNote that this is exactly the same as in build-data/packages/vpp.mk",
+      "parentUuid": "87bf300c_0400b683",
+      "range": {
+        "startLine": 185,
+        "startChar": 7,
+        "endLine": 185,
+        "endChar": 11
+      },
+      "revId": "c2924939e9979e0520a3697cca287e5494b93e4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
