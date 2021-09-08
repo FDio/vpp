@@ -57,6 +57,32 @@ autoreply define ip_table_add_del
   vl_api_ip_table_t table;
 };
 
+/** \brief Add / del table request
+           A table can be added multiple times, but need be deleted only once.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param table - if table.table_id == ~0, vpp allocates an unused table_id and proceeds as in vpp_table_add_del
+                   if table.table_id != ~0, vpp uses the table.table_id and proceeds as in vpp_table_add_del
+*/
+define ip_table_add_del_v2
+{
+  u32 client_index;
+  u32 context;
+  bool is_add [default=true];
+  vl_api_ip_table_t table;
+};
+
+/**
+  @param table - table information for the table allocated}}
+*/
+
+define ip_table_add_del_v2_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_ip_table_t table;
+};
+
 /** \brief Dump IP all fib tables
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request

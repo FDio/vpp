@@ -52,6 +52,9 @@ typedef struct
   /** A hash table to lookup the mpls_fib by table ID */
   uword *fib_index_by_table_id;
 
+  /** A bitmap of used fib table_id */
+  clib_bitmap_t *used_fib_table_ids;
+
   /* Feature arc indices */
   u8 input_feature_arc_index;
   u8 output_feature_arc_index;

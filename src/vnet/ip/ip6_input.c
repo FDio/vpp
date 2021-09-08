@@ -276,6 +276,9 @@ ip6_init (vlib_main_t * vm)
       ASSERT (NULL == info->format_header);
       info->format_header = format_ip6_frag_hdr;
     }
+
+  clib_bitmap_alloc (ip6_main.used_fib_table_ids, 8);
+
   return /* no error */ 0;
 }
 

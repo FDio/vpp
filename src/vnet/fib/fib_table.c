@@ -1123,6 +1123,22 @@ fib_table_find (fib_protocol_t proto,
     return (~0);
 }
 
+u32
+fib_table_find_free_table_id (fib_protocol_t proto)
+{
+    switch (proto)
+    {
+    case FIB_PROTOCOL_IP4:
+	return ip4_fib_table_find_free_table_id ();
+    case FIB_PROTOCOL_IP6:
+	return ip6_fib_table_find_free_table_id ();
+    case FIB_PROTOCOL_MPLS:
+	return mpls_fib_table_find_free_table_id ();
+    default:
+        return (~0);
+    }
+}
+
 static u32
 fib_table_find_or_create_and_lock_i (fib_protocol_t proto,
                                      u32 table_id,
@@ -1144,7 +1160,7 @@ fib_table_find_or_create_and_lock_i (fib_protocol_t proto,
 	fi = mpls_fib_table_find_or_create_and_lock(table_id, src);
         break;
     default:
-        return (~0);        
+        return (~0);
     }
 
     fib_table = fib_table_get(fi, proto);

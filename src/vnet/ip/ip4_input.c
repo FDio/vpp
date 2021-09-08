@@ -447,6 +447,8 @@ ip4_init (vlib_main_t * vm)
   /* Default TTL for packets we generate. */
   ip4_main.host_config.ttl = 64;
 
+  clib_bitmap_alloc (ip4_main.used_fib_table_ids, 8);
+
   return error;
 }
 

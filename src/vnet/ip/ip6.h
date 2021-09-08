@@ -136,6 +136,9 @@ typedef struct ip6_main_t
      ID space is not necessarily dense; index space is dense. */
   uword *fib_index_by_table_id;
 
+  /** A bitmap of used fib table_id */
+  clib_bitmap_t *used_fib_table_ids;
+
   /** Hash table mapping table id to multicast fib index.
      ID space is not necessarily dense; index space is dense. */
   uword *mfib_index_by_table_id;

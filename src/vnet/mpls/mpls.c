@@ -451,6 +451,8 @@ mpls_init (vlib_main_t * vm)
   if ((error = vlib_call_init_function (vm, ip_main_init)))
     return error;
 
+  clib_bitmap_alloc (mpls_main.used_fib_table_ids, 8);
+
   return vlib_call_init_function (vm, mpls_input_init);
 }
 

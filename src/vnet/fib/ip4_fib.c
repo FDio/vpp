@@ -168,6 +168,9 @@ ip4_create_fib_with_table_id (u32 table_id,
 
     hash_set (ip4_main.fib_index_by_table_id, table_id, fib_table->ft_index);
 
+    if (table_id != (u32)~0)
+      clib_bitmap_set (ip4_main.used_fib_table_ids, table_id, 1);
+
     fib_table->ft_table_id =
 	v4_fib->hash.table_id =
 	    table_id;
@@ -214,6 +217,9 @@ ip4_fib_table_destroy (u32 fib_index)
     if (~0 != fib_table->ft_table_id)
     {
 	hash_unset (ip4_main.fib_index_by_table_id, fib_table->ft_table_id);
+	if (fib_table->ft_table_id != (u32)~0)
+	  clib_bitmap_set (ip4_main.used_fib_table_ids,
+			  fib_table->ft_table_id, 0);
     }
 
     vec_free(fib_table->ft_src_route_counts);
@@ -223,6 +229,11 @@ ip4_fib_table_destroy (u32 fib_index)
     pool_put(ip4_main.fibs, fib_table);
 }
 
+u32
+ip4_fib_table_find_free_table_id ()
+{
+  return clib_bitmap_next_clear (ip4_main.used_fib_table_ids, 1);
+}
 
 u32
 ip4_fib_table_find_or_create_and_lock (u32 table_id,

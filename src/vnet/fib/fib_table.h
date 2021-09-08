@@ -757,6 +757,21 @@ extern u32 fib_table_find_or_create_and_lock(fib_protocol_t proto,
 
 /**
  * @brief
+ * Gets the a free table_id index, in case the user specified (~0)
+ * and asks for auto allocation
+ *
+ * @param proto
+ *  The protocol of the FIB (and thus the entries therein)
+ *
+ * @return
+ *  The Table-ID
+ *
+ */
+extern u32 fib_table_find_free_table_id(fib_protocol_t proto);
+
+
+/**
+ * @brief
  *  Get the index of the FIB for a Table-ID. This DOES create the
  * FIB if it does not exist.
  *
