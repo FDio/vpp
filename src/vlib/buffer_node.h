@@ -335,6 +335,17 @@ generic_buffer_node_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
+/* Minimum size for the 'buffers' and 'nexts' arrays to be used when calling
+ * vlib_buffer_enqueue_to_next().
+ * Because of optimizations, vlib_buffer_enqueue_to_next() will access
+ * past 'count' elements in the 'buffers' and 'nexts' arrays, IOW it
+ * will overflow.
+ * Those overflow elements are ignored in the final result so they do not
+ * need to be properly initialized, however if the array is allocated right
+ * before the end of a page and the next page is not mapped, accessing the
+ * overflow elements will trigger a segfault. */
+#define VLIB_BUFFER_ENQUEUE_MIN_SIZE(n) round_pow2 ((n), 64)
+
 static_always_inline void
 vlib_buffer_enqueue_to_next (vlib_main_t * vm, vlib_node_runtime_t * node,
 			     u32 * buffers, u16 * nexts, uword count)
@@ -342,6 +353,20 @@ vlib_buffer_enqueue_to_next (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_buffer_enqueue_to_next_fn_t *fn;
   fn = vlib_buffer_func_main.buffer_enqueue_to_next_fn;
   (fn) (vm, node, buffers, nexts, count);
+}
+
+static_always_inline void
+vlib_buffer_enqueue_to_next_vec (vlib_main_t *vm, vlib_node_runtime_t *node,
+				 u32 **buffers, u16 **nexts, uword count)
+{
+  const u32 bl = vec_len (*buffers), nl = vec_len (*nexts);
+  const u32 c = VLIB_BUFFER_ENQUEUE_MIN_SIZE (count);
+  ASSERT (bl >= count && nl >= count);
+  vec_validate (*buffers, c);
+  vec_validate (*nexts, c);
+  vlib_buffer_enqueue_to_next (vm, node, *buffers, *nexts, count);
+  vec_set_len (*buffers, bl);
+  vec_set_len (*nexts, nl);
 }
 
 static_always_inline void
