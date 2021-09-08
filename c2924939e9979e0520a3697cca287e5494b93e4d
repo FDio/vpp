@@ -70,6 +70,30 @@
       "revId": "c2924939e9979e0520a3697cca287e5494b93e4d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9f8f6c12_4f8215a6",
+        "filename": "build/external/packages/dpdk.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 185,
+      "author": {
+        "id": 2539
+      },
+      "writtenOn": "2021-09-08T16:15:48Z",
+      "side": 1,
+      "message": "ah, yes, good idea. I\u0027ve made that change.",
+      "parentUuid": "87bf300c_0400b683",
+      "range": {
+        "startLine": 185,
+        "startChar": 7,
+        "endLine": 185,
+        "endChar": 11
+      },
+      "revId": "c2924939e9979e0520a3697cca287e5494b93e4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
