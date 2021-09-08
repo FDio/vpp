@@ -195,13 +195,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 
   if (args->tap_flags & TAP_FLAG_ATTACH)
     {
-      if (args->host_if_name != NULL)
-	{
-	  host_if_name = (char *) args->host_if_name;
-	  clib_memcpy (ifr.ifr_name, host_if_name,
-		       clib_min (IFNAMSIZ, vec_len (host_if_name)));
-	}
-      else
+      if (args->host_if_name == NULL)
 	{
 	  args->rv = VNET_API_ERROR_NO_MATCHING_INTERFACE;
 	  err = clib_error_return (0, "host_if_name is not provided");
@@ -225,6 +219,13 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 	      goto error;
 	    }
 	}
+    }
+
+  if (args->host_if_name != NULL)
+    {
+      host_if_name = (char *) args->host_if_name;
+      clib_memcpy (ifr.ifr_name, host_if_name,
+             clib_min (IFNAMSIZ, vec_len (host_if_name)));
     }
 
   if ((tfd = open ("/dev/net/tun", O_RDWR | O_NONBLOCK)) < 0)
@@ -432,16 +433,6 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 	      args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
 	      args->error = clib_error_return_unix (0, "if_nametoindex '%s'",
 						    host_if_name);
-	      goto error;
-	    }
-	}
-      else if (host_if_name)
-	{
-	  args->error =
-	    vnet_netlink_set_link_name (vif->ifindex, host_if_name);
-	  if (args->error)
-	    {
-	      args->rv = VNET_API_ERROR_NETLINK_ERROR;
 	      goto error;
 	    }
 	}
