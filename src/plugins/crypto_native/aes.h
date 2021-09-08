@@ -119,7 +119,7 @@ aes_load_partial (u8x16u * p, int n_bytes)
   __m128i zero = { };
   return (u8x16) _mm_mask_loadu_epi8 (zero, (1 << n_bytes) - 1, p);
 #else
-  return aes_byte_mask (CLIB_MEM_OVERFLOW_LOAD (*, p), n_bytes);
+  return aes_byte_mask (CLIB_MEM_OVERFLOW_LOAD (p), n_bytes);
 #endif
 }
 

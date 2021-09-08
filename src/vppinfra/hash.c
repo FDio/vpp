@@ -153,10 +153,12 @@ hash_memory64 (void *p, word n_bytes, u64 state)
       if (n % sizeof (u64))
 	{
 	  if (PREDICT_TRUE (page_boundary_crossing == 0))
-	    c +=
-	      zap64 (CLIB_MEM_OVERFLOW
-		     (clib_mem_unaligned (q + 2, u64), q + 2, sizeof (u64)),
-		     n % sizeof (u64)) << 8;
+	    {
+	      CLIB_MEM_OVERFLOW_PUSH (q + 2, sizeof (u64));
+	      c += zap64 (clib_mem_unaligned (q + 2, u64), n % sizeof (u64))
+		   << 8;
+	      CLIB_MEM_OVERFLOW_POP ();
+	    }
 	  else
 	    {
 	      clib_memcpy_fast (tmp.as_u8, q + 2, n % sizeof (u64));
@@ -170,10 +172,11 @@ hash_memory64 (void *p, word n_bytes, u64 state)
       if (n % sizeof (u64))
 	{
 	  if (PREDICT_TRUE (page_boundary_crossing == 0))
-	    b +=
-	      zap64 (CLIB_MEM_OVERFLOW
-		     (clib_mem_unaligned (q + 1, u64), q + 1, sizeof (u64)),
-		     n % sizeof (u64));
+	    {
+	      CLIB_MEM_OVERFLOW_PUSH (q + 1, sizeof (u64));
+	      b += zap64 (clib_mem_unaligned (q + 1, u64), n % sizeof (u64));
+	      CLIB_MEM_OVERFLOW_POP ();
+	    }
 	  else
 	    {
 	      clib_memcpy_fast (tmp.as_u8, q + 1, n % sizeof (u64));
@@ -186,10 +189,11 @@ hash_memory64 (void *p, word n_bytes, u64 state)
       if (n % sizeof (u64))
 	{
 	  if (PREDICT_TRUE (page_boundary_crossing == 0))
-	    a +=
-	      zap64 (CLIB_MEM_OVERFLOW
-		     (clib_mem_unaligned (q + 0, u64), q + 0, sizeof (u64)),
-		     n % sizeof (u64));
+	    {
+	      CLIB_MEM_OVERFLOW_PUSH (q + 0, sizeof (u64));
+	      a += zap64 (clib_mem_unaligned (q + 0, u64), n % sizeof (u64));
+	      CLIB_MEM_OVERFLOW_POP ();
+	    }
 	  else
 	    {
 	      clib_memcpy_fast (tmp.as_u8, q, n % sizeof (u64));
