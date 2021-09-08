@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d6cc251a_211804e4",
+        "filename": "build/external/packages/dpdk.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 185,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2021-09-08T13:27:15Z",
+      "side": 1,
+      "message": "Inconsistent, we want environment variables passed to the DPDK build system to start with DPDK_\nSuggestion: replace \"$(V)\" with \"$(DPDK_VERBOSE)\" (or alike, but starting with DPDK_)\nReplace DPDK_VERBOSE_BUILD with DPDK_VERBOSITY_ARGS",
+      "range": {
+        "startLine": 185,
+        "startChar": 7,
+        "endLine": 185,
+        "endChar": 11
+      },
+      "revId": "c2924939e9979e0520a3697cca287e5494b93e4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
