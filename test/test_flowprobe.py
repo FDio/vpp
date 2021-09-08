@@ -96,19 +96,10 @@ class VppCFLOW(VppObject):
 
     def verify_templates(self, decoder=None, timeout=1, count=3):
         templates = []
-        p = self._test.wait_for_cflow_packet(self._test.collector, 2, timeout)
-        self._test.assertTrue(p.haslayer(IPFIX))
-        if decoder is not None and p.haslayer(Template):
-            templates.append(p[Template].templateID)
-            decoder.add_template(p.getlayer(Template))
-        if count > 1:
-            p = self._test.wait_for_cflow_packet(self._test.collector, 2)
-            self._test.assertTrue(p.haslayer(IPFIX))
-            if decoder is not None and p.haslayer(Template):
-                templates.append(p[Template].templateID)
-                decoder.add_template(p.getlayer(Template))
-        if count > 2:
-            p = self._test.wait_for_cflow_packet(self._test.collector, 2)
+        self.assertIn(count, (1, 2, 3))
+        while count > 0:
+            p = self._test.wait_for_cflow_packet(self._test.collector, 2,
+                                                 timeout)
             self._test.assertTrue(p.haslayer(IPFIX))
             if decoder is not None and p.haslayer(Template):
                 templates.append(p[Template].templateID)
@@ -287,7 +278,7 @@ class MethodHolder(VppTestCase):
                             value = int(capture[0][UDP].dport)
                         self.assertEqual(int(binascii.hexlify(
                             record[field]), 16),
-                                         value)
+                            value)
 
     def verify_cflow_data_notimer(self, decoder, capture, cflows):
         idx = 0
@@ -306,42 +297,18 @@ class MethodHolder(VppTestCase):
                     binascii.hexlify(rec[2]), 16))
         self.assertEqual(len(capture), idx)
 
-    def wait_for_cflow_packet(self, collector_intf, set_id=2, timeout=1,
-                              expected=True):
+    def wait_for_cflow_packet(self, collector_intf, set_id=2, timeout=1):
         """ wait for CFLOW packet and verify its correctness
 
         :param timeout: how long to wait
 
-        :returns: tuple (packet, time spent waiting for packet)
         """
         self.logger.info("IPFIX: Waiting for CFLOW packet")
-        deadline = time.time() + timeout
-        counter = 0
         # self.logger.debug(self.vapi.ppcli("show flow table"))
-        while True:
-            counter += 1
-            # sanity check
-            self.assert_in_range(counter, 0, 100, "number of packets ignored")
-            time_left = deadline - time.time()
-            try:
-                if time_left < 0 and expected:
-                    # self.logger.debug(self.vapi.ppcli("show flow table"))
-                    raise CaptureTimeoutError(
-                          "Packet did not arrive within timeout")
-                p = collector_intf.wait_for_packet(timeout=time_left)
-            except CaptureTimeoutError:
-                if expected:
-                    # self.logger.debug(self.vapi.ppcli("show flow table"))
-                    raise CaptureTimeoutError(
-                          "Packet did not arrive within timeout")
-                else:
-                    return
-            if not expected:
-                raise CaptureTimeoutError("Packet arrived even not expected")
-            self.assertEqual(p[Set].setID, set_id)
-            # self.logger.debug(self.vapi.ppcli("show flow table"))
-            self.logger.debug(ppp("IPFIX: Got packet:", p))
-            break
+        p = collector_intf.wait_for_packet(timeout=timeout)
+        self.assertEqual(p[Set].setID, set_id)
+        # self.logger.debug(self.vapi.ppcli("show flow table"))
+        self.logger.debug(ppp("IPFIX: Got packet:", p))
         return p
 
 
@@ -901,9 +868,8 @@ class DisableIPFIX(MethodHolder):
 
         # make sure no one packet arrived in 1 minute
         self.vapi.ipfix_flush()
-        self.wait_for_cflow_packet(self.collector, templates[1],
-                                   expected=False)
-        self.collector.get_capture(0)
+        self.sleep(1, "wait before verifying no packets sent")
+        self.collector.assert_nothing_captured()
 
         ipfix.remove_vpp_config()
         self.logger.info("FFP_TEST_FINISH_0001")
@@ -952,9 +918,8 @@ class ReenableIPFIX(MethodHolder):
 
         # make sure no one packet arrived in active timer span
         self.vapi.ipfix_flush()
-        self.wait_for_cflow_packet(self.collector, templates[1],
-                                   expected=False)
-        self.collector.get_capture(0)
+        self.sleep(1, "wait before verifying no packets sent")
+        self.collector.assert_nothing_captured()
         self.pg2.get_capture(5)
 
         # enable IPFIX
@@ -1018,9 +983,8 @@ class DisableFP(MethodHolder):
 
         # make sure no one packet arrived in active timer span
         self.vapi.ipfix_flush()
-        self.wait_for_cflow_packet(self.collector, templates[1],
-                                   expected=False)
-        self.collector.get_capture(0)
+        self.sleep(1, "wait before verifying no packets sent")
+        self.collector.assert_nothing_captured()
 
         ipfix.remove_vpp_config()
         self.logger.info("FFP_TEST_FINISH_0001")
@@ -1069,9 +1033,8 @@ class ReenableFP(MethodHolder):
 
         # make sure no one packet arrived in active timer span
         self.vapi.ipfix_flush()
-        self.wait_for_cflow_packet(self.collector, templates[1], 5,
-                                   expected=False)
-        self.collector.get_capture(0)
+        self.sleep(5, "wait before verifying no packets sent")
+        self.collector.assert_nothing_captured()
 
         # enable FPP feature
         ipfix.enable_flowprobe_feature()
