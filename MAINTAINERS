@@ -412,6 +412,7 @@ F:	src/plugins/dispatch-trace
 Plugin - DPDK
 I:	dpdk
 M:	Damjan Marion <damarion@cisco.com>
+M:	Mohammed Hawari <mohammed@hawari.fr>
 F:	src/plugins/dpdk/
 
 Plugin - DPDK Crypto
