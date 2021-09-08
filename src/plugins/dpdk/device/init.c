@@ -495,6 +495,8 @@ dpdk_lib_init (dpdk_main_t * dm)
 		  xd->flags |= DPDK_DEVICE_FLAG_TX_OFFLOAD |
 			       DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
 		}
+	      xd->port_type = port_type_from_speed_capa (&dev_info);
+	      break;
 	    case VNET_DPDK_PMD_CXGBE:
 	    case VNET_DPDK_PMD_MLX4:
 	    case VNET_DPDK_PMD_QEDE:
