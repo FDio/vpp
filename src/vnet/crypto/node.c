@@ -114,8 +114,8 @@ crypto_dequeue_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  n_cache += cf->n_elts;
 	  if (n_cache >= VLIB_FRAME_SIZE)
 	    {
-	      vlib_buffer_enqueue_to_next (vm, node, ct->buffer_indices,
-					   ct->nexts, n_cache);
+	      vlib_buffer_enqueue_to_next_vec (vm, node, &ct->buffer_indices,
+					       &ct->nexts, n_cache);
 	      n_cache = 0;
 	    }
 
@@ -168,8 +168,8 @@ VLIB_NODE_FN (crypto_dispatch_node) (vlib_main_t * vm,
   }
   /* *INDENT-ON* */
   if (n_cache)
-    vlib_buffer_enqueue_to_next (vm, node, ct->buffer_indices, ct->nexts,
-				 n_cache);
+    vlib_buffer_enqueue_to_next_vec (vm, node, &ct->buffer_indices, &ct->nexts,
+				     n_cache);
 
   return n_dispatched;
 }
