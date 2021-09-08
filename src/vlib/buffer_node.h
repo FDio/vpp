@@ -335,6 +335,21 @@ generic_buffer_node_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
+/* Minimum size for the 'buffers' and 'nexts' arrays to be used when calling
+ * vlib_buffer_enqueue_to_next().
+ * Because of optimizations, vlib_buffer_enqueue_to_next() will access
+ * past 'count' elements in the 'buffers' and 'nexts' arrays, IOW it
+ * will overflow.
+ * Those overflow elements are ignored in the final result so they do not
+ * need to be properly initialized, however if the array is allocated right
+ * before the end of a page and the next page is not mapped, accessing the
+ * overflow elements will trigger a segfault. */
+static_always_inline u16
+VLIB_BUFFER_ENQUEUE_MIN_SIZE (u16 n)
+{
+  return round_pow2 (n, 64);
+}
+
 static_always_inline void
 vlib_buffer_enqueue_to_next (vlib_main_t * vm, vlib_node_runtime_t * node,
 			     u32 * buffers, u16 * nexts, uword count)

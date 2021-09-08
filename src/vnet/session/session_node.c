@@ -1660,9 +1660,13 @@ static void
 session_flush_pending_tx_buffers (session_worker_t * wrk,
 				  vlib_node_runtime_t * node)
 {
+  const u32 n = vec_len (wrk->pending_tx_nexts);
+  const u32 nr = VLIB_BUFFER_ENQUEUE_MIN_SIZE (n);
+  ASSERT (vec_len (wrk->pending_tx_buffers) == n);
+  vec_validate (wrk->pending_tx_buffers, nr);
+  vec_validate (wrk->pending_tx_nexts, nr);
   vlib_buffer_enqueue_to_next (wrk->vm, node, wrk->pending_tx_buffers,
-			       wrk->pending_tx_nexts,
-			       vec_len (wrk->pending_tx_nexts));
+			       wrk->pending_tx_nexts, n);
   vec_reset_length (wrk->pending_tx_buffers);
   vec_reset_length (wrk->pending_tx_nexts);
 }

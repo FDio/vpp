@@ -87,8 +87,9 @@ crypto_dequeue_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
     {
       if (cf)
 	{
-	  vec_validate (ct->buffer_indices, n_cache + cf->n_elts);
-	  vec_validate (ct->nexts, n_cache + cf->n_elts);
+	  const u32 nr = VLIB_BUFFER_ENQUEUE_MIN_SIZE (n_cache + cf->n_elts);
+	  vec_validate (ct->buffer_indices, nr);
+	  vec_validate (ct->nexts, nr);
 	  clib_memcpy_fast (ct->buffer_indices + n_cache, cf->buffer_indices,
 			    sizeof (u32) * cf->n_elts);
 	  if (cf->state == VNET_CRYPTO_FRAME_STATE_SUCCESS)
