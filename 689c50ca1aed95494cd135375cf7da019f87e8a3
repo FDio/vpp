@@ -34,6 +34,29 @@
       "revId": "689c50ca1aed95494cd135375cf7da019f87e8a3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "143f8104_4f5789f9",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1667,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-09-08T15:37:47Z",
+      "side": 1,
+      "message": "To avoid surprises each time the function is used, and duplicated code, why don\u0027t we do this in vlib_buffer_enqueue_to_next? And related to that, if arguments are not always vectors, we won\u0027t be able to avoid seg faults, will we?",
+      "range": {
+        "startLine": 1663,
+        "startChar": 1,
+        "endLine": 1667,
+        "endChar": 43
+      },
+      "revId": "689c50ca1aed95494cd135375cf7da019f87e8a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
