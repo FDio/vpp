@@ -22,6 +22,30 @@
       "revId": "c2924939e9979e0520a3697cca287e5494b93e4d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "87bf300c_0400b683",
+        "filename": "build/external/packages/dpdk.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 185,
+      "author": {
+        "id": 2539
+      },
+      "writtenOn": "2021-09-08T14:09:40Z",
+      "side": 1,
+      "message": "Sure, happy to make those changes.\nThat means to get a fully verbose build will now be `make build-release V\u003d1 DPDK_VERBOSE\u003d1`",
+      "parentUuid": "d6cc251a_211804e4",
+      "range": {
+        "startLine": 185,
+        "startChar": 7,
+        "endLine": 185,
+        "endChar": 11
+      },
+      "revId": "c2924939e9979e0520a3697cca287e5494b93e4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
