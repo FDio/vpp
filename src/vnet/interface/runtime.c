@@ -178,7 +178,7 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
 	      if (vec_len (rt->rxq_vector_poll) != vec_len (a[i]))
 		something_changed_on_rx = 1;
 	      else if (memcmp (a[i], rt->rxq_vector_poll,
-			       vec_len (a[i]) * sizeof (*a)))
+			       vec_len (a[i]) * sizeof (**a)))
 		something_changed_on_rx = 1;
 	    }
 	}
