@@ -57,6 +57,30 @@
       "revId": "689c50ca1aed95494cd135375cf7da019f87e8a3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8a086ed0_07d546bb",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1667,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-09-08T16:02:27Z",
+      "side": 1,
+      "message": "Not really: the most common situation is the typical VPP node doignsomething like this:\n  u32 buffers[VLIB_FRAME_SIZE];\n  u16 nexts[VLIB_FRAMSE_SIZE];\n  ...\n  vlib_buffer_enqueue_to_next (vm, buffers, next, n);\nThis does not exhibits the issue because VLIB_FRAME_SIZE is a multiple of 64, so we won\u0027t access elements past the arrays.\nThe issue happens when the size of the arrays are not a multiple of 64 elements: in that case, we will load the last elements + overflow for up to 64 (because vectorized functions loading elements in bulk).\n\nAnd this also prevents to do that transparently in vlib_buffer_enqueue_to_next() because most of the time, we used arrays declared on the stack so we can reallocate them.\n\nMaybe a middle-ground could be to provide a specific function for vectors, but then what if someone wants to use it with a non-vector dynamically allocated array? Plus there was only 2 occurences in the codebase (fixed here) so far.\n\nBut I agree, this is inherently fragile. I tried to come up with a way to bail out at compile time but failed. I think the only bullet-proof way would be for clib_mask_compare_u16() and clib_mask_compare_u32() to not rely on the overflow optimization but Damjan was not fond of that.\nFortunately, ASan should detect that and we might be able to turn it on in CI some day :)",
+      "parentUuid": "143f8104_4f5789f9",
+      "range": {
+        "startLine": 1663,
+        "startChar": 1,
+        "endLine": 1667,
+        "endChar": 43
+      },
+      "revId": "689c50ca1aed95494cd135375cf7da019f87e8a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
