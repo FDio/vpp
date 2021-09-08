@@ -16,6 +16,24 @@
       "revId": "689c50ca1aed95494cd135375cf7da019f87e8a3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4014d3d4_12e0af76",
+        "filename": "src/vlib/buffer_node.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 348,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-09-08T14:48:11Z",
+      "side": 1,
+      "message": "No reason apart from my habit to use small static inline masquerading as macros.\nI can make it a macro or make it lower case, as you prefer.",
+      "parentUuid": "bbadd277_96131c7f",
+      "revId": "689c50ca1aed95494cd135375cf7da019f87e8a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
