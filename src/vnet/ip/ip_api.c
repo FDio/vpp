@@ -73,6 +73,15 @@ static void
   REPLY_MACRO (VL_API_SW_INTERFACE_IP6_ENABLE_DISABLE_REPLY);
 }
 
+void
+fib_table_encode (const fib_table_t *table, vl_api_ip_table_t *out)
+{
+  out->is_ip6 = (table->ft_proto == FIB_PROTOCOL_IP6);
+  out->table_id = htonl (table->ft_table_id);
+  memcpy (out->name, table->ft_desc,
+	  clib_min (vec_len (table->ft_desc), sizeof (out->name)));
+}
+
 static void
 send_ip_table_details (vpe_api_main_t * am,
 		       vl_api_registration_t * reg,
@@ -87,10 +96,7 @@ send_ip_table_details (vpe_api_main_t * am,
   mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_IP_TABLE_DETAILS);
   mp->context = context;
 
-  mp->table.is_ip6 = (table->ft_proto == FIB_PROTOCOL_IP6);
-  mp->table.table_id = htonl (table->ft_table_id);
-  memcpy (mp->table.name, table->ft_desc,
-	  clib_min (vec_len (table->ft_desc), sizeof (mp->table.name)));
+  fib_table_encode (table, &mp->table);
 
   vl_api_send_msg (reg, (u8 *) mp);
 }
@@ -612,7 +618,7 @@ vl_api_ip_table_add_del_t_handler (vl_api_ip_table_add_del_t * mp)
 
   if (mp->is_add)
     {
-      ip_table_create (fproto, table_id, 1, mp->table.name);
+      ip_table_create (fproto, &table_id, 1, mp->table.name);
     }
   else
     {
@@ -620,6 +626,36 @@ vl_api_ip_table_add_del_t_handler (vl_api_ip_table_add_del_t * mp)
     }
 
   REPLY_MACRO (VL_API_IP_TABLE_ADD_DEL_REPLY);
+}
+
+void
+vl_api_ip_table_add_del_v2_t_handler (vl_api_ip_table_add_del_v2_t *mp)
+{
+  vl_api_ip_table_add_del_v2_reply_t *rmp;
+  fib_protocol_t fproto =
+    (mp->table.is_ip6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4);
+  u32 table_id = ntohl (mp->table.table_id);
+  int rv = 0;
+
+  if (mp->is_add)
+    {
+      ip_table_create (fproto, &table_id, 1, mp->table.name);
+    }
+  else
+    {
+      ip_table_delete (fproto, table_id, 1);
+    }
+
+  REPLY_MACRO2 (VL_API_IP_TABLE_ADD_DEL_V2_REPLY, ({
+		  if (mp->is_add)
+		    {
+		      fib_table_t *table;
+		      u32 fib_index;
+		      fib_index = fib_table_find (fproto, table_id);
+		      table = fib_table_get (fib_index, fproto);
+		      fib_table_encode (table, &rmp->table);
+		    }
+		}))
 }
 
 static int
@@ -872,8 +908,8 @@ vl_api_ip_route_lookup_v2_t_handler (vl_api_ip_route_lookup_v2_t *mp)
 }
 
 void
-ip_table_create (fib_protocol_t fproto,
-		 u32 table_id, u8 is_api, const u8 * name)
+ip_table_create (fib_protocol_t fproto, u32 *table_id, u8 is_api,
+		 const u8 *name)
 {
   u32 fib_index, mfib_index;
   vnet_main_t *vnm = vnet_get_main ();
@@ -882,7 +918,7 @@ ip_table_create (fib_protocol_t fproto,
    * ignore action on the default table - this is always present
    * and cannot be added nor deleted from the API
    */
-  if (0 != table_id)
+  if (0 != *table_id)
     {
       /*
        * The API holds only one lock on the table.
@@ -892,26 +928,27 @@ ip_table_create (fib_protocol_t fproto,
        * same, since internal VPP systesm (like LISP and SR) create
        * their own unicast tables.
        */
-      fib_index = fib_table_find (fproto, table_id);
-      mfib_index = mfib_table_find (fproto, table_id);
+      if (*table_id == (u32) ~0)
+	*table_id = fib_table_find_free_table_id (fproto);
+
+      fib_index = fib_table_find (fproto, *table_id);
+      mfib_index = mfib_table_find (fproto, *table_id);
 
       if (~0 == fib_index)
 	{
-	  fib_table_find_or_create_and_lock_w_name (fproto, table_id,
-						    (is_api ?
-						     FIB_SOURCE_API :
-						     FIB_SOURCE_CLI), name);
+	  fib_table_find_or_create_and_lock_w_name (
+	    fproto, *table_id, (is_api ? FIB_SOURCE_API : FIB_SOURCE_CLI),
+	    name);
 	}
       if (~0 == mfib_index)
 	{
-	  mfib_table_find_or_create_and_lock_w_name (fproto, table_id,
-						     (is_api ?
-						      MFIB_SOURCE_API :
-						      MFIB_SOURCE_CLI), name);
+	  mfib_table_find_or_create_and_lock_w_name (
+	    fproto, *table_id, (is_api ? MFIB_SOURCE_API : MFIB_SOURCE_CLI),
+	    name);
 	}
 
       if ((~0 == fib_index) || (~0 == mfib_index))
-	call_elf_section_ip_table_callbacks (vnm, table_id, 1 /* is_add */ ,
+	call_elf_section_ip_table_callbacks (vnm, *table_id, 1 /* is_add */,
 					     vnm->ip_table_add_del_functions);
     }
 }

@@ -124,7 +124,6 @@ ip4_mfib_table_destroy (ip4_mfib_t *mfib)
     ASSERT(0 == mfib_table->mft_total_route_counts);
     ASSERT(~0 != mfib_table->mft_table_id);
 
-    hash_unset (ip4_main.mfib_index_by_table_id, mfib_table->mft_table_id);
     pool_put(ip4_main.mfibs, mfib_table);
 }
 

@@ -399,12 +399,7 @@ vnet_ip_table_cmd (vlib_main_t * vm,
 	}
     }
 
-  if (~0 == table_id)
-    {
-      error = clib_error_return (0, "No table id");
-      goto done;
-    }
-  else if (0 == table_id)
+  if (0 == table_id)
     {
       error = clib_error_return (0, "Can't change the default table");
       goto done;
@@ -413,13 +408,15 @@ vnet_ip_table_cmd (vlib_main_t * vm,
     {
       if (is_add)
 	{
-	  ip_table_create (fproto, table_id, 0, name);
+	  ip_table_create (fproto, &table_id, 0, name);
 	}
       else
 	{
 	  ip_table_delete (fproto, table_id, 0);
 	}
     }
+
+  clib_warning ("table %u created", table_id);
 
 done:
   unformat_free (line_input);

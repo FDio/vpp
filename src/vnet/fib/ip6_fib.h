@@ -203,6 +203,7 @@ ip6_src_lookup_for_packet (ip6_main_t * im,
  */
 extern u32 ip6_fib_table_find_or_create_and_lock(u32 table_id,
                                                  fib_source_t src);
+extern u32 ip6_fib_table_find_free_table_id ();
 extern u32 ip6_fib_table_create_and_lock(fib_source_t src,
                                          fib_table_flags_t flags,
                                          u8* desc);

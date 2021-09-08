@@ -104,10 +104,11 @@ mpls_fib_create_with_table_id (u32 table_id,
     fib_table->ft_index = (fib_table - mpls_main.fibs);
 
     hash_set (mpls_main.fib_index_by_table_id, table_id, fib_table->ft_index);
+    clib_bitmap_set (mpls_main.used_fib_table_ids, table_id, 1);
 
     fib_table->ft_table_id = table_id;
     fib_table->ft_flow_hash_config = MPLS_FLOW_HASH_DEFAULT;
-    
+
     fib_table_lock(fib_table->ft_index, FIB_PROTOCOL_MPLS, src);
 
     if (INDEX_INVALID == mpls_fib_drop_dpo_index)
@@ -221,6 +222,12 @@ mpls_fib_create_with_table_id (u32 table_id,
 }
 
 u32
+mpls_fib_table_find_free_table_id ()
+{
+  return clib_bitmap_next_clear (mpls_main.used_fib_table_ids, 1);
+}
+
+u32
 mpls_fib_table_find_or_create_and_lock (u32 table_id,
                                         fib_source_t src)
 {
@@ -272,6 +279,8 @@ mpls_fib_table_destroy (u32 fib_index)
     {
 	hash_unset(mpls_main.fib_index_by_table_id,
 		   fib_table->ft_table_id);
+	clib_bitmap_set (mpls_main.used_fib_table_ids,
+			 fib_table->ft_table_id, 0);
     }
     hash_free(mf->mf_entries);
 

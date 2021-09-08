@@ -112,6 +112,7 @@ ip4_fib_lookup (ip4_main_t * im, u32 sw_if_index, ip4_address_t * dst)
  */
 extern u32 ip4_fib_table_find_or_create_and_lock(u32 table_id,
                                                  fib_source_t src);
+extern u32 ip4_fib_table_find_free_table_id ();
 extern u32 ip4_fib_table_create_and_lock(fib_source_t src);
 extern void ip4_fib_table_destroy(u32 fib_index);
 

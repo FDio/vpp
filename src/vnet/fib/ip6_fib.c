@@ -77,13 +77,14 @@ create_fib_with_table_id (u32 table_id,
 
     ASSERT((fib_table - ip6_main.fibs) ==
            (v6_fib - ip6_main.v6_fibs));
-    
+
     fib_table->ft_proto = FIB_PROTOCOL_IP6;
     fib_table->ft_index =
 	    v6_fib->index =
                 (fib_table - ip6_main.fibs);
 
     hash_set(ip6_main.fib_index_by_table_id, table_id, fib_table->ft_index);
+    clib_bitmap_set (ip6_main.used_fib_table_ids, table_id, 1);
 
     fib_table->ft_table_id =
 	v6_fib->table_id =
@@ -96,6 +97,12 @@ create_fib_with_table_id (u32 table_id,
     fib_table_lock(fib_table->ft_index, FIB_PROTOCOL_IP6, src);
 
     return (fib_table->ft_index);
+}
+
+u32
+ip6_fib_table_find_free_table_id ()
+{
+  return clib_bitmap_next_clear (ip6_main.used_fib_table_ids, 1);
 }
 
 u32
@@ -173,6 +180,8 @@ ip6_fib_table_destroy (u32 fib_index)
     if (~0 != fib_table->ft_table_id)
     {
 	hash_unset (ip6_main.fib_index_by_table_id, fib_table->ft_table_id);
+	clib_bitmap_set (ip6_main.used_fib_table_ids,
+			   fib_table->ft_table_id, 0);
     }
     vec_free(fib_table->ft_src_route_counts);
     pool_put_index(ip6_main.v6_fibs, fib_table->ft_index);
