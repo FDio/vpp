@@ -562,7 +562,8 @@ vpp_daq_msg_receive (void *handle, const unsigned max_recv,
 {
   VPP_Context_t *vc = (VPP_Context_t *) handle;
   uint32_t n_qpairs_left = vc->num_qpairs;
-  uint32_t n, n_events, n_recv = 0;
+  uint32_t n, n_recv = 0;
+  int32_t n_events;
 
   /* If the receive has been interrupted, break out of loop and return. */
   if (vc->interrupted)
@@ -606,9 +607,14 @@ vpp_daq_msg_receive (void *handle, const unsigned max_recv,
 
   n_events = epoll_wait (vc->epoll_fd, vc->epoll_events, vc->num_qpairs, 1000);
 
-  if (n_events < 1)
+  if (n_events == 0)
     {
-      *rstat = n_events == -1 ? DAQ_RSTAT_ERROR : DAQ_RSTAT_TIMEOUT;
+      *rstat = DAQ_RSTAT_TIMEOUT;
+      return 0;
+    }
+  if (n_events < 0)
+    {
+      *rstat = errno == EINTR ? DAQ_RSTAT_TIMEOUT : DAQ_RSTAT_ERROR;
       return 0;
     }
 
