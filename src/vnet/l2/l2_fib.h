@@ -251,14 +251,14 @@ l2fib_make_key (const u8 * mac_address, u16 bd_index)
    * Create the in-register key as F:E:D:C:B:A:H:L
    * In memory the key is L:H:A:B:C:D:E:F
    */
-  temp = CLIB_MEM_OVERFLOW_LOAD (*, (u64 *) mac_address) << 16;
+  temp = CLIB_MEM_OVERFLOW_LOAD ((u64 *) mac_address) << 16;
   temp = (temp & ~0xffff) | (u64) (bd_index);
 #else
   /*
    * Create the in-register key as H:L:A:B:C:D:E:F
    * In memory the key is H:L:A:B:C:D:E:F
    */
-  temp = CLIB_MEM_OVERFLOW_LOAD (*, (u64 *) mac_address) >> 16;
+  temp = CLIB_MEM_OVERFLOW_LOAD ((u64 *) mac_address) >> 16;
   temp = temp | (((u64) bd_index) << 48);
 #endif
 
