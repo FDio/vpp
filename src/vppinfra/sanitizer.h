@@ -76,27 +76,32 @@ sanitizer_unpoison_pop__ (const u64 *restrict shadow, const void *ptr,
     }
 }
 
-#define CLIB_MEM_OVERFLOW(f, src, n)                                          \
-  ({                                                                          \
-    typeof (f) clib_mem_overflow_ret__;                                       \
-    const void *clib_mem_overflow_src__ = (src);                              \
-    size_t clib_mem_overflow_n__ = (n);                                       \
-    u64 clib_mem_overflow_shadow__[CLIB_MEM_OVERFLOW_MAX];                    \
-    sanitizer_unpoison_push__ (clib_mem_overflow_shadow__,                    \
-			       clib_mem_overflow_src__,                       \
-			       clib_mem_overflow_n__);                        \
-    clib_mem_overflow_ret__ = f;                                              \
-    sanitizer_unpoison_pop__ (clib_mem_overflow_shadow__,                     \
-			      clib_mem_overflow_src__,                        \
-			      clib_mem_overflow_n__);                         \
-    clib_mem_overflow_ret__;                                                  \
-  })
+#define CLIB_MEM_OVERFLOW_PUSH(src, n)                                        \
+  do                                                                          \
+    {                                                                         \
+      const void *clib_mem_overflow_src__ = (src);                            \
+      size_t clib_mem_overflow_n__ = (n);                                     \
+      u64 clib_mem_overflow_shadow__;                                         \
+      sanitizer_unpoison_push__ (&clib_mem_overflow_shadow__,                 \
+				 clib_mem_overflow_src__,                     \
+				 clib_mem_overflow_n__)
 
-#define CLIB_MEM_OVERFLOW_LOAD(f, src) \
-  ({ \
-   typeof(src) clib_mem_overflow_load_src__ = (src); \
-   CLIB_MEM_OVERFLOW(f(clib_mem_overflow_load_src__), clib_mem_overflow_load_src__, sizeof(typeof(f(clib_mem_overflow_load_src__)))); \
-   })
+#define CLIB_MEM_OVERFLOW_POP()                                               \
+  sanitizer_unpoison_pop__ (&clib_mem_overflow_shadow__,                      \
+			    clib_mem_overflow_src__, clib_mem_overflow_n__);  \
+  }                                                                           \
+  while (0)
+
+#define CLIB_MEM_OVERFLOW_LOAD(src)                                           \
+  ({                                                                          \
+    typeof (*(src)) *clib_mem_overflow_load_src__ = (src),                    \
+		    clib_mem_overflow_load_ret__;                             \
+    CLIB_MEM_OVERFLOW_PUSH (clib_mem_overflow_load_src__,                     \
+			    sizeof (*clib_mem_overflow_load_src__));          \
+    clib_mem_overflow_load_ret__ = *clib_mem_overflow_load_src__;             \
+    CLIB_MEM_OVERFLOW_POP ();                                                 \
+    clib_mem_overflow_load_ret__;                                             \
+  })
 
 static_always_inline void
 CLIB_MEM_POISON_LEN (void *src, size_t oldlen, size_t newlen)
@@ -112,8 +117,9 @@ CLIB_MEM_POISON_LEN (void *src, size_t oldlen, size_t newlen)
 #define CLIB_NOSANITIZE_ADDR
 #define CLIB_MEM_POISON(a, s)                   (void)(a)
 #define CLIB_MEM_UNPOISON(a, s)                 (void)(a)
-#define CLIB_MEM_OVERFLOW(a, b, c)              a
-#define CLIB_MEM_OVERFLOW_LOAD(f, src)          f(src)
+#define CLIB_MEM_OVERFLOW_PUSH(a, b)		(void) (a)
+#define CLIB_MEM_OVERFLOW_POP()
+#define CLIB_MEM_OVERFLOW_LOAD(src) (*(src))
 #define CLIB_MEM_POISON_LEN(a, b, c)
 
 #endif /* CLIB_SANITIZE_ADDR */
