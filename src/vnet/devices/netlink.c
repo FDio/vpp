@@ -273,7 +273,6 @@ vnet_netlink_get_link_mtu (int ifindex, u32 *mtu)
 	    *mtu = clib_net_to_host_u32 (msg_mtu);
 	  else
 	    *mtu = msg_mtu;
-	  clib_warning ("mtu: %d", *mtu);
 	  goto done;
 	}
       offset = NLA_ALIGN (attr->nla_len);
@@ -406,6 +405,50 @@ vnet_netlink_add_ip6_route (void *dst, u8 dst_len, void *gw)
   err = vnet_netlink_msg_send (&m, NULL);
   if (err)
     err = clib_error_return (0, "add ip6 route %U", format_clib_error, err);
+  return err;
+}
+
+clib_error_t *
+vnet_netlink_del_ip4_addr (int ifindex, void *addr, int pfx_len)
+{
+  vnet_netlink_msg_t m;
+  struct ifaddrmsg ifa = { 0 };
+  clib_error_t *err = 0;
+
+  ifa.ifa_family = AF_INET;
+  ifa.ifa_prefixlen = pfx_len;
+  ifa.ifa_index = ifindex;
+
+  vnet_netlink_msg_init (&m, RTM_DELADDR, NLM_F_REQUEST, &ifa,
+			 sizeof (struct ifaddrmsg));
+
+  vnet_netlink_msg_add_rtattr (&m, IFA_LOCAL, addr, 4);
+  vnet_netlink_msg_add_rtattr (&m, IFA_ADDRESS, addr, 4);
+  err = vnet_netlink_msg_send (&m, NULL);
+  if (err)
+    err = clib_error_return (0, "del ip4 addr %U", format_clib_error, err);
+  return err;
+}
+
+clib_error_t *
+vnet_netlink_del_ip6_addr (int ifindex, void *addr, int pfx_len)
+{
+  vnet_netlink_msg_t m;
+  struct ifaddrmsg ifa = { 0 };
+  clib_error_t *err = 0;
+
+  ifa.ifa_family = AF_INET6;
+  ifa.ifa_prefixlen = pfx_len;
+  ifa.ifa_index = ifindex;
+
+  vnet_netlink_msg_init (&m, RTM_DELADDR, NLM_F_REQUEST, &ifa,
+			 sizeof (struct ifaddrmsg));
+
+  vnet_netlink_msg_add_rtattr (&m, IFA_LOCAL, addr, 16);
+  vnet_netlink_msg_add_rtattr (&m, IFA_ADDRESS, addr, 16);
+  err = vnet_netlink_msg_send (&m, NULL);
+  if (err)
+    err = clib_error_return (0, "del ip6 addr %U", format_clib_error, err);
   return err;
 }
 
