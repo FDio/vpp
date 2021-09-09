@@ -20,6 +20,7 @@
 #include <net/if.h>
 
 #include <plugins/linux-cp/lcp.h>
+#include <plugins/linux-cp/lcp_interface.h>
 
 lcp_main_t lcp_main;
 
@@ -74,6 +75,42 @@ lcp_set_default_ns (u8 *ns)
   vec_free (s);
 
   return 0;
+}
+
+void
+lcp_set_sync (u8 is_auto)
+{
+  lcp_main_t *lcpm = &lcp_main;
+
+  lcpm->lcp_sync = (is_auto != 0);
+
+  // If we set to 'on', do a one-off sync of LCP interfaces
+  if (is_auto)
+    lcp_itf_pair_sync_state_all ();
+}
+
+int
+lcp_sync (void)
+{
+  lcp_main_t *lcpm = &lcp_main;
+
+  return lcpm->lcp_sync;
+}
+
+void
+lcp_set_auto_subint (u8 is_auto)
+{
+  lcp_main_t *lcpm = &lcp_main;
+
+  lcpm->lcp_auto_subint = (is_auto != 0);
+}
+
+int
+lcp_auto_subint (void)
+{
+  lcp_main_t *lcpm = &lcp_main;
+
+  return lcpm->lcp_auto_subint;
 }
 
 /*

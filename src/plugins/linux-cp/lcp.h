@@ -24,8 +24,9 @@ typedef struct lcp_main_s
   u16 msg_id_base;		    /* API message ID base */
   u8 *default_namespace;	    /* default namespace if set */
   int default_ns_fd;
-  /* Set when Unit testing */
-  u8 test_mode;
+  u8 lcp_auto_subint; /* Automatically create/delete LCP sub-interfaces */
+  u8 lcp_sync;	      /* Automatically sync VPP changes to LCP */
+  u8 test_mode;	      /* Set when Unit testing */
 } lcp_main_t;
 
 extern lcp_main_t lcp_main;

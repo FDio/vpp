@@ -21,6 +21,22 @@
 
 #include <plugins/linux-cp/lcp.h>
 
+extern vlib_log_class_t lcp_itf_pair_logger;
+
+#define LCP_ITF_PAIR_DBG(...)                                                 \
+  vlib_log_debug (lcp_itf_pair_logger, __VA_ARGS__);
+
+#define LCP_ITF_PAIR_INFO(...)                                                \
+  vlib_log_info (lcp_itf_pair_logger, __VA_ARGS__);
+
+#define LCP_ITF_PAIR_NOTICE(...)                                              \
+  vlib_log_notice (lcp_itf_pair_logger, __VA_ARGS__);
+
+#define LCP_ITF_PAIR_WARN(...)                                                \
+  vlib_log_warn (lcp_itf_pair_logger, __VA_ARGS__);
+
+#define LCP_ITF_PAIR_ERR(...) vlib_log_err (lcp_itf_pair_logger, __VA_ARGS__);
+
 #define foreach_lcp_itf_pair_flag _ (STALE, 0, "stale")
 
 typedef enum lip_flag_t_
@@ -88,8 +104,6 @@ extern index_t lcp_itf_pair_find_by_vif (u32 vif_index);
 extern int lcp_itf_pair_add (u32 host_sw_if_index, u32 phy_sw_if_index,
 			     u8 *host_name, u32 host_index,
 			     lip_host_type_t host_type, u8 *ns);
-extern int lcp_itf_pair_add_sub (u32 vif, u8 *host_name, u32 sub_sw_if_index,
-				 u32 phy_sw_if_index, u8 *ns);
 extern int lcp_itf_pair_del (u32 phy_sw_if_index);
 
 /**
@@ -144,12 +158,6 @@ lcp_itf_pair_find_by_host (u32 host_sw_if_index)
   return (lip_db_by_host[host_sw_if_index]);
 }
 
-/**
- * manage interface auto creation
- */
-void lcp_set_auto_intf (u8 is_auto);
-int lcp_auto_intf (void);
-
 typedef void (*lcp_itf_pair_add_cb_t) (lcp_itf_pair_t *);
 typedef void (*lcp_itf_pair_del_cb_t) (lcp_itf_pair_t *);
 
@@ -160,6 +168,36 @@ typedef struct lcp_itf_pair_vft
 } lcp_itf_pair_vft_t;
 
 void lcp_itf_pair_register_vft (lcp_itf_pair_vft_t *lcp_itf_vft);
+
+/**
+ * sub-interface auto creation/deletion for LCP
+ */
+void lcp_set_auto_subint (u8 is_auto);
+int lcp_auto_subint (void);
+
+/**
+ * sync state changes from VPP into LCP
+ */
+void lcp_set_sync (u8 is_auto);
+int lcp_sync (void);
+
+/* Set TAP and Linux host link state */
+void lcp_itf_set_link_state (const lcp_itf_pair_t *lip, u8 state);
+
+/* Set any VPP L3 addresses on Linux host device */
+void lcp_itf_set_interface_addr (const lcp_itf_pair_t *lip);
+
+/* Sync all state from VPP to a specific Linux device, all sub-interfaces
+ * of a hardware interface, or all interfaces in the system.
+ *
+ * Note: in some circumstances, this syncer will (have to) make changes to
+ * the VPP interface, for example if its MTU is greater than its parent.
+ * See the function for rationale.
+ */
+void lcp_itf_pair_sync_state (lcp_itf_pair_t *lip);
+void lcp_itf_pair_sync_state_hw (vnet_hw_interface_t *hi);
+void lcp_itf_pair_sync_state_all ();
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
