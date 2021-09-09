@@ -22,6 +22,30 @@
       "revId": "7081106b76385d298d3bb4be7caa59ce50e168a9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "51e0ed2e_7bf321e0",
+        "filename": "src/vnet/tcp/tcp_inlines.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 359,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-09-09T21:51:11Z",
+      "side": 1,
+      "message": "Actually, this won\u0027t work at all, i.e., most often than not vnet_buffer (b)-\u003esw_if_index[VLIB_TX] will end up being ~0. Since it\u0027s ip4-rewrite\u0027s job to update the value for outgoing packets, ip4-forward does not set it. So we\u0027ll probably need something like https://gerrit.fd.io/r/c/vpp/+/33432/, but the implications might not be trivial.",
+      "parentUuid": "9c2d0276_d87cce97",
+      "range": {
+        "startLine": 359,
+        "startChar": 49,
+        "endLine": 359,
+        "endChar": 56
+      },
+      "revId": "7081106b76385d298d3bb4be7caa59ce50e168a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
