@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9c2d0276_d87cce97",
+        "filename": "src/vnet/tcp/tcp_inlines.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 359,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-09-09T17:03:33Z",
+      "side": 1,
+      "message": "This is supposed to be the interface on which the packet was received. Are you trying to compensate for internal interface switching that does not update the rx interface?",
+      "range": {
+        "startLine": 359,
+        "startChar": 49,
+        "endLine": 359,
+        "endChar": 56
+      },
+      "revId": "7081106b76385d298d3bb4be7caa59ce50e168a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
