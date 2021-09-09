@@ -610,18 +610,25 @@ avf_op_config_rss_lut (vlib_main_t * vm, avf_device_t * ad)
 clib_error_t *
 avf_op_config_rss_key (vlib_main_t * vm, avf_device_t * ad)
 {
+  /* from DPDK i40e... */
+  static uint32_t rss_key_default[] = { 0x6b793944, 0x23504cb5, 0x5bea75b6,
+					0x309f4f12, 0x3dc0a2b8, 0x024ddcdf,
+					0x339b8ca0, 0x4c4af64a, 0x34fac605,
+					0x55d85839, 0x3a58997d, 0x2ec938e1,
+					0x66031581 };
   int msg_len = sizeof (virtchnl_rss_key_t) + ad->rss_key_size - 1;
-  int i;
   u8 msg[msg_len];
   virtchnl_rss_key_t *rk;
+
+  if (sizeof (rss_key_default) != ad->rss_key_size)
+    return clib_error_create ("unsupported RSS key size (expected %d, got %d)",
+			      sizeof (rss_key_default), ad->rss_key_size);
 
   clib_memset (msg, 0, msg_len);
   rk = (virtchnl_rss_key_t *) msg;
   rk->vsi_id = ad->vsi_id;
   rk->key_len = ad->rss_key_size;
-  u32 seed = random_default_seed ();
-  for (i = 0; i < ad->rss_key_size; i++)
-    rk->key[i] = (u8) random_u32 (&seed);
+  memcpy_s (rk->key, rk->key_len, rss_key_default, sizeof (rss_key_default));
 
   avf_log_debug (ad, "config_rss_key: vsi_id %u rss_key_size %u key 0x%U",
 		 rk->vsi_id, rk->key_len, format_hex_bytes_no_wrap, rk->key,
