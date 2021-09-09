@@ -800,7 +800,7 @@ class VppTestCase(CPUInterface, unittest.TestCase):
 
         try:
             if not self.vpp_dead:
-                self.logger.debug(self.vapi.cli("show trace max 1000"))
+                self.logger.debug(self.vapi.cli("show trace max 100"))
                 self.logger.info(self.vapi.ppcli("show interface"))
                 self.logger.info(self.vapi.ppcli("show hardware"))
                 self.logger.info(self.statistics.set_errors_str())
@@ -819,9 +819,8 @@ class VppTestCase(CPUInterface, unittest.TestCase):
             self.logger.info("Moving %s to %s\n" % (tmp_api_trace,
                                                     vpp_api_trace_log))
             os.rename(tmp_api_trace, vpp_api_trace_log)
-        except VppTransportSocketIOError:
-            self.logger.debug("VppTransportSocketIOError: Vpp dead. "
-                              "Cannot log show commands.")
+        except (VppTransportSocketIOError, vpp_papi.vpp_papi.VPPIOError) as e:
+            self.logger.debug("%s: Vpp dead. Cannot log show commands." % e)
             self.vpp_dead = True
         else:
             self.registry.unregister_all(self.logger)
