@@ -273,7 +273,6 @@ vnet_netlink_get_link_mtu (int ifindex, u32 *mtu)
 	    *mtu = clib_net_to_host_u32 (msg_mtu);
 	  else
 	    *mtu = msg_mtu;
-	  clib_warning ("mtu: %d", *mtu);
 	  goto done;
 	}
       offset = NLA_ALIGN (attr->nla_len);

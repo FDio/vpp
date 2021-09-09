@@ -39,7 +39,7 @@
 #include <vlibapi/api_helper_macros.h>
 #include <vnet/ipsec/ipsec_punt.h>
 
-static vlib_log_class_t lcp_itf_pair_logger;
+vlib_log_class_t lcp_itf_pair_logger;
 
 /**
  * Pool of LIP objects
@@ -72,14 +72,6 @@ lcp_itf_pair_register_vft (lcp_itf_pair_vft_t *lcp_itf_vft)
 {
   vec_add1 (lcp_itf_vfts, *lcp_itf_vft);
 }
-
-#define LCP_ITF_PAIR_DBG(...)                                                 \
-  vlib_log_notice (lcp_itf_pair_logger, __VA_ARGS__);
-
-#define LCP_ITF_PAIR_INFO(...)                                                \
-  vlib_log_notice (lcp_itf_pair_logger, __VA_ARGS__);
-
-#define LCP_ITF_PAIR_ERR(...) vlib_log_err (lcp_itf_pair_logger, __VA_ARGS__);
 
 u8 *
 format_lcp_itf_pair (u8 *s, va_list *args)
@@ -139,6 +131,9 @@ lcp_itf_pair_show (u32 phy_sw_if_index)
   ns = lcp_get_default_ns ();
   vlib_cli_output (vm, "lcp default netns '%s'\n",
 		   ns ? (char *) ns : "<unset>");
+  vlib_cli_output (vm, "lcp lcp-auto-subint %s\n",
+		   lcp_lcp_auto_subint () ? "on" : "off");
+  vlib_cli_output (vm, "lcp lcp-sync %s\n", lcp_lcp_sync () ? "on" : "off");
 
   if (phy_sw_if_index == ~0)
     {
@@ -157,6 +152,8 @@ lcp_itf_pair_get (u32 index)
 {
   if (!lcp_itf_pair_pool)
     return NULL;
+  if (index == INDEX_INVALID)
+    return NULL;
 
   return pool_elt_at_index (lcp_itf_pair_pool, index);
 }
@@ -172,25 +169,6 @@ lcp_itf_pair_find_by_vif (u32 vif_index)
     return p[0];
 
   return INDEX_INVALID;
-}
-
-int
-lcp_itf_pair_add_sub (u32 vif, u8 *host_if_name, u32 sub_sw_if_index,
-		      u32 phy_sw_if_index, u8 *ns)
-{
-  lcp_itf_pair_t *lip;
-
-  lip = lcp_itf_pair_get (lcp_itf_pair_find_by_phy (phy_sw_if_index));
-  if (!lip)
-    {
-      LCP_ITF_PAIR_DBG ("lcp_itf_pair_add_sub: can't find LCP of parent %U",
-			format_vnet_sw_if_index_name, vnet_get_main (),
-			phy_sw_if_index);
-      return VNET_API_ERROR_INVALID_SW_IF_INDEX;
-    }
-
-  return lcp_itf_pair_add (lip->lip_host_sw_if_index, sub_sw_if_index,
-			   host_if_name, vif, lip->lip_host_type, ns);
 }
 
 const char *lcp_itf_l3_feat_names[N_LCP_ITF_HOST][N_AF] = {
@@ -248,7 +226,16 @@ lcp_itf_pair_add (u32 host_sw_if_index, u32 phy_sw_if_index, u8 *host_name,
   index_t lipi;
   lcp_itf_pair_t *lip;
 
+  if (host_sw_if_index == ~0)
+    {
+      LCP_ITF_PAIR_ERR ("pair_add: Cannot add LIP - invalid host");
+      return VNET_API_ERROR_INVALID_SW_IF_INDEX;
+    }
+
   lipi = lcp_itf_pair_find_by_phy (phy_sw_if_index);
+
+  if (lipi != INDEX_INVALID)
+    return VNET_API_ERROR_VALUE_EXIST;
 
   LCP_ITF_PAIR_INFO ("add: host:%U phy:%U, host_if:%v vif:%d ns:%s",
 		     format_vnet_sw_if_index_name, vnet_get_main (),
@@ -278,9 +265,6 @@ lcp_itf_pair_add (u32 host_sw_if_index, u32 phy_sw_if_index, u8 *host_name,
   lip->lip_host_type = host_type;
   lip->lip_vif_index = host_index;
   lip->lip_namespace = vec_dup (ns);
-
-  if (lip->lip_host_sw_if_index == ~0)
-    return 0;
 
   /*
    * First use of this host interface.
@@ -421,10 +405,11 @@ lcp_itf_pair_del (u32 phy_sw_if_index)
 
   lip = lcp_itf_pair_get (lipi);
 
-  LCP_ITF_PAIR_INFO ("pair delete: {%U, %U, %v}", format_vnet_sw_if_index_name,
-		     vnet_get_main (), lip->lip_phy_sw_if_index,
-		     format_vnet_sw_if_index_name, vnet_get_main (),
-		     lip->lip_host_sw_if_index, lip->lip_host_name);
+  LCP_ITF_PAIR_NOTICE (
+    "pair_del: host:%U phy:%U host_if:%s vif:%d ns:%s",
+    format_vnet_sw_if_index_name, vnet_get_main (), lip->lip_host_sw_if_index,
+    format_vnet_sw_if_index_name, vnet_get_main (), lip->lip_phy_sw_if_index,
+    lip->lip_host_name, lip->lip_vif_index, lip->lip_namespace);
 
   /* invoke registered callbacks for pair deletion */
   vec_foreach (vft, lcp_itf_vfts)
@@ -475,24 +460,45 @@ lcp_itf_pair_delete_by_index (index_t lipi)
 {
   u32 host_sw_if_index;
   lcp_itf_pair_t *lip;
-  u8 *host_name;
+  u8 *host_name, *ns;
 
   lip = lcp_itf_pair_get (lipi);
 
   host_name = vec_dup (lip->lip_host_name);
   host_sw_if_index = lip->lip_host_sw_if_index;
+  ns = vec_dup (lip->lip_namespace);
 
   lcp_itf_pair_del (lip->lip_phy_sw_if_index);
 
   if (vnet_sw_interface_is_sub (vnet_get_main (), host_sw_if_index))
     {
+      int curr_ns_fd = -1;
+      int vif_ns_fd = -1;
+      if (ns)
+	{
+	  curr_ns_fd = clib_netns_open (NULL /* self */);
+	  vif_ns_fd = clib_netns_open ((u8 *) ns);
+	  if (vif_ns_fd != -1)
+	    clib_setns (vif_ns_fd);
+	}
+
       lcp_netlink_del_link ((const char *) host_name);
+      if (vif_ns_fd != -1)
+	close (vif_ns_fd);
+
+      if (curr_ns_fd != -1)
+	{
+	  clib_setns (curr_ns_fd);
+	  close (curr_ns_fd);
+	}
+
       vnet_delete_sub_interface (host_sw_if_index);
     }
   else
     tap_delete_if (vlib_get_main (), host_sw_if_index);
 
   vec_free (host_name);
+  vec_free (ns);
 }
 
 int
@@ -522,58 +528,16 @@ lcp_itf_pair_walk (lcp_itf_pair_walk_cb_t cb, void *ctx)
     };
 }
 
-typedef struct lcp_itf_pair_names_t_
-{
-  u8 *lipn_host_name;
-  u8 *lipn_phy_name;
-  u8 *lipn_namespace;
-  u32 lipn_phy_sw_if_index;
-} lcp_itf_pair_names_t;
-
-static lcp_itf_pair_names_t *lipn_names;
-
 static clib_error_t *
 lcp_itf_pair_config (vlib_main_t *vm, unformat_input_t *input)
 {
-  u8 *host, *phy;
-  u8 *ns;
   u8 *default_ns;
 
-  host = phy = ns = default_ns = NULL;
+  default_ns = NULL;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      vec_reset_length (host);
-
-      if (unformat (input, "pair %s %s %s", &phy, &host, &ns))
-	{
-	  lcp_itf_pair_names_t *lipn;
-
-	  if (vec_len (ns) > LCP_NS_LEN)
-	    {
-	      return clib_error_return (0,
-					"linux-cp namespace must"
-					" be less than %d characters",
-					LCP_NS_LEN);
-	    }
-
-	  vec_add2 (lipn_names, lipn, 1);
-
-	  lipn->lipn_host_name = vec_dup (host);
-	  lipn->lipn_phy_name = vec_dup (phy);
-	  lipn->lipn_namespace = vec_dup (ns);
-	}
-      else if (unformat (input, "pair %v %v", &phy, &host))
-	{
-	  lcp_itf_pair_names_t *lipn;
-
-	  vec_add2 (lipn_names, lipn, 1);
-
-	  lipn->lipn_host_name = vec_dup (host);
-	  lipn->lipn_phy_name = vec_dup (phy);
-	  lipn->lipn_namespace = 0;
-	}
-      else if (unformat (input, "default netns %v", &default_ns))
+      if (unformat (input, "default netns %v", &default_ns))
 	{
 	  vec_add1 (default_ns, 0);
 	  if (lcp_set_default_ns (default_ns) < 0)
@@ -584,14 +548,14 @@ lcp_itf_pair_config (vlib_main_t *vm, unformat_input_t *input)
 					LCP_NS_LEN);
 	    }
 	}
-      else if (unformat (input, "interface-auto-create"))
-	lcp_set_auto_intf (1 /* is_auto */);
+      else if (unformat (input, "lcp-auto-subint"))
+	lcp_set_lcp_auto_subint (1 /* is_auto */);
+      else if (unformat (input, "lcp-sync"))
+	lcp_set_lcp_sync (1 /* is_auto */);
       else
 	return clib_error_return (0, "interfaces not found");
     }
 
-  vec_free (host);
-  vec_free (phy);
   vec_free (default_ns);
 
   return NULL;
@@ -636,9 +600,11 @@ lcp_validate_if_name (u8 *name)
   return 1;
 }
 
-static void
+void
 lcp_itf_set_link_state (const lcp_itf_pair_t *lip, u8 state)
 {
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_sw_interface_t *si;
   int curr_ns_fd, vif_ns_fd;
 
   if (!lip)
@@ -654,7 +620,24 @@ lcp_itf_set_link_state (const lcp_itf_pair_t *lip, u8 state)
 	clib_setns (vif_ns_fd);
     }
 
+  /* Set the same link state on all three (TAP, sw, netlink)
+   */
+  if (state)
+    {
+      vnet_sw_interface_admin_up (vnm, lip->lip_host_sw_if_index);
+      vnet_sw_interface_admin_up (vnm, lip->lip_phy_sw_if_index);
+    }
+  else
+    {
+      vnet_sw_interface_admin_down (vnm, lip->lip_phy_sw_if_index);
+      vnet_sw_interface_admin_down (vnm, lip->lip_host_sw_if_index);
+    }
   vnet_netlink_set_link_state (lip->lip_vif_index, state);
+
+  /* Set carrier (oper link) on the TAP
+   */
+  si = vnet_get_sw_interface_or_null (vnm, lip->lip_host_sw_if_index);
+  tap_set_carrier (si->hw_if_index, state);
 
   if (vif_ns_fd != -1)
     close (vif_ns_fd);
@@ -666,6 +649,58 @@ lcp_itf_set_link_state (const lcp_itf_pair_t *lip, u8 state)
     }
 
   return;
+}
+
+void
+lcp_itf_set_interface_addr (const lcp_itf_pair_t *lip)
+{
+  ip4_main_t *im4 = &ip4_main;
+  ip6_main_t *im6 = &ip6_main;
+  ip_lookup_main_t *lm4 = &im4->lookup_main;
+  ip_lookup_main_t *lm6 = &im6->lookup_main;
+  ip_interface_address_t *ia = 0;
+  int vif_ns_fd = -1;
+  int curr_ns_fd = -1;
+
+  if (!lip)
+    return;
+
+  if (lip->lip_namespace)
+    {
+      curr_ns_fd = clib_netns_open (NULL /* self */);
+      vif_ns_fd = clib_netns_open (lip->lip_namespace);
+      if (vif_ns_fd != -1)
+	clib_setns (vif_ns_fd);
+    }
+
+  /* Sync any IP4 addressing info into LCP */
+  foreach_ip_interface_address (
+    lm4, ia, lip->lip_phy_sw_if_index, 1 /* honor unnumbered */, ({
+      ip4_address_t *r4 = ip_interface_address_get_address (lm4, ia);
+      LCP_ITF_PAIR_NOTICE ("set_interface_addr: %U add ip4 %U/%d",
+			   format_lcp_itf_pair, lip, format_ip4_address, r4,
+			   ia->address_length);
+      vnet_netlink_add_ip4_addr (lip->lip_vif_index, r4, ia->address_length);
+    }));
+
+  /* Sync any IP6 addressing info into LCP */
+  foreach_ip_interface_address (
+    lm6, ia, lip->lip_phy_sw_if_index, 1 /* honor unnumbered */, ({
+      ip6_address_t *r6 = ip_interface_address_get_address (lm6, ia);
+      LCP_ITF_PAIR_NOTICE ("set_interface_addr: %U add ip6 %U/%d",
+			   format_lcp_itf_pair, lip, format_ip6_address, r6,
+			   ia->address_length);
+      vnet_netlink_add_ip6_addr (lip->lip_vif_index, r6, ia->address_length);
+    }));
+
+  if (vif_ns_fd != -1)
+    close (vif_ns_fd);
+
+  if (curr_ns_fd != -1)
+    {
+      clib_setns (curr_ns_fd);
+      close (curr_ns_fd);
+    }
 }
 
 typedef struct
@@ -1089,110 +1124,14 @@ lcp_itf_pair_replace_end (void)
   return (0);
 }
 
-static uword
-lcp_itf_pair_process (vlib_main_t *vm, vlib_node_runtime_t *rt,
-		      vlib_frame_t *f)
-{
-  uword *event_data = 0;
-  uword *lipn_index;
-
-  while (1)
-    {
-      vlib_process_wait_for_event (vm);
-
-      vlib_process_get_events (vm, &event_data);
-
-      vec_foreach (lipn_index, event_data)
-	{
-	  lcp_itf_pair_names_t *lipn;
-
-	  lipn = &lipn_names[*lipn_index];
-	  lcp_itf_pair_create (lipn->lipn_phy_sw_if_index,
-			       lipn->lipn_host_name, LCP_ITF_HOST_TAP,
-			       lipn->lipn_namespace, NULL);
-	}
-
-      vec_reset_length (event_data);
-    }
-
-  return 0;
-}
-
-VLIB_REGISTER_NODE (lcp_itf_pair_process_node, static) = {
-  .function = lcp_itf_pair_process,
-  .name = "linux-cp-itf-process",
-  .type = VLIB_NODE_TYPE_PROCESS,
-};
-
-static clib_error_t *
-lcp_itf_phy_add (vnet_main_t *vnm, u32 sw_if_index, u32 is_create)
-{
-  lcp_itf_pair_names_t *lipn;
-  vlib_main_t *vm = vlib_get_main ();
-  vnet_hw_interface_t *hw;
-
-  if (!is_create || vnet_sw_interface_is_sub (vnm, sw_if_index))
-    return NULL;
-
-  hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
-
-  vec_foreach (lipn, lipn_names)
-    {
-      if (!vec_cmp (hw->name, lipn->lipn_phy_name))
-	{
-	  lipn->lipn_phy_sw_if_index = sw_if_index;
-
-	  vlib_process_signal_event (vm, lcp_itf_pair_process_node.index, 0,
-				     lipn - lipn_names);
-	  break;
-	}
-    }
-
-  return NULL;
-}
-
-VNET_SW_INTERFACE_ADD_DEL_FUNCTION (lcp_itf_phy_add);
-
-static clib_error_t *
-lcp_itf_pair_link_up_down (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
-{
-  vnet_hw_interface_t *hi;
-  vnet_sw_interface_t *si;
-  index_t lipi;
-  lcp_itf_pair_t *lip;
-
-  hi = vnet_get_hw_interface_or_null (vnm, hw_if_index);
-  if (!hi)
-    return 0;
-
-  lipi = lcp_itf_pair_find_by_phy (hi->sw_if_index);
-  if (lipi == INDEX_INVALID)
-    return 0;
-
-  lip = lcp_itf_pair_get (lipi);
-  si = vnet_get_sw_interface_or_null (vnm, lip->lip_host_sw_if_index);
-  if (!si)
-    return 0;
-
-  if (!lcp_main.test_mode)
-    {
-      tap_set_carrier (si->hw_if_index,
-		       (flags & VNET_HW_INTERFACE_FLAG_LINK_UP));
-
-      if (flags & VNET_HW_INTERFACE_FLAG_LINK_UP)
-	{
-	  tap_set_speed (si->hw_if_index, hi->link_speed / 1000);
-	}
-    }
-
-  return 0;
-}
-
-VNET_HW_INTERFACE_LINK_UP_DOWN_FUNCTION (lcp_itf_pair_link_up_down);
-
 static clib_error_t *
 lcp_itf_pair_init (vlib_main_t *vm)
 {
+  ip4_main_t *im4 = &ip4_main;
+  ip6_main_t *im6 = &ip6_main;
+  ip4_add_del_interface_address_callback_t cb4;
+  ip6_add_del_interface_address_callback_t cb6;
+
   vlib_punt_hdl_t punt_hdl = vlib_punt_client_register ("linux-cp");
 
   /* punt IKE */
@@ -1204,6 +1143,14 @@ lcp_itf_pair_init (vlib_main_t *vm)
   udp_punt_unknown (vm, 1, 1);
   tcp_punt_unknown (vm, 0, 1);
   tcp_punt_unknown (vm, 1, 1);
+
+  cb4.function = lcp_itf_ip4_add_del_interface_addr;
+  cb4.function_opaque = 0;
+  vec_add1 (im4->add_del_interface_address_callbacks, cb4);
+
+  cb6.function = lcp_itf_ip6_add_del_interface_addr;
+  cb6.function_opaque = 0;
+  vec_add1 (im6->add_del_interface_address_callbacks, cb6);
 
   lcp_itf_pair_logger = vlib_log_register_class ("linux-cp", "itf");
 
