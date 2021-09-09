@@ -427,7 +427,9 @@ lookup_dpo_ip4_inline (vlib_main_t * vm,
 	    next0 = dpo0->dpoi_next_node;
 	    next1 = dpo1->dpoi_next_node;
 	    vnet_buffer(b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+	    vnet_buffer (b0)->ip.rx_dpoi_type = dpo0->dpoi_type;
 	    vnet_buffer(b1)->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
+	    vnet_buffer (b1)->ip.rx_dpoi_type = dpo1->dpoi_type;
 
 	    vlib_increment_combined_counter
 		(cm, thread_index, lbi0, 1,
@@ -549,6 +551,7 @@ lookup_dpo_ip4_inline (vlib_main_t * vm,
 
 	    next0 = dpo0->dpoi_next_node;
 	    vnet_buffer(b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+	    vnet_buffer (b0)->ip.rx_dpoi_type = dpo0->dpoi_type;
 
 	    vlib_increment_combined_counter
 		(cm, thread_index, lbi0, 1,
