@@ -169,6 +169,8 @@ ip6_lookup_inline (vlib_main_t * vm,
 	    }
 	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
 	  vnet_buffer (p1)->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
+	  vnet_buffer (p0)->ip.rx_dpoi_type = dpo0->dpoi_type;
+	  vnet_buffer (p1)->ip.rx_dpoi_type = dpo1->dpoi_type;
 
 	  vlib_increment_combined_counter
 	    (cm, thread_index, lbi0, 1, vlib_buffer_length_in_chain (vm, p0));
@@ -274,6 +276,7 @@ ip6_lookup_inline (vlib_main_t * vm,
 		(ip_lookup_next_t) IP6_LOOKUP_NEXT_HOP_BY_HOP : next0;
 	    }
 	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+	  vnet_buffer (p0)->ip.rx_dpoi_type = dpo0->dpoi_type;
 
 	  vlib_increment_combined_counter
 	    (cm, thread_index, lbi0, 1, vlib_buffer_length_in_chain (vm, p0));
