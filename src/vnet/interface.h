@@ -44,6 +44,7 @@
 #include <vppinfra/pcap.h>
 #include <vnet/l3_types.h>
 #include <vppinfra/lock.h>
+#include <vnet/hash/hash.h>
 
 struct vnet_main_t;
 struct vnet_hw_interface_t;
@@ -410,6 +411,9 @@ typedef struct _vnet_hw_interface_class
   /* Flags */
   vnet_hw_interface_class_flags_t flags;
 
+  /* default tx hash type for interfaces of this hw class */
+  vnet_hash_fn_type_t default_tx_hash_fn_type;
+
   /* Function to call when hardware interface is added/deleted. */
   vnet_interface_function_t *interface_add_del_function;
 
@@ -629,8 +633,9 @@ typedef struct
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  vnet_hw_if_tx_frame_t frame;
-  u32 n_threads;
+  vnet_hw_if_tx_frame_t *frame;
+  u32 *lookup_table;
+  u32 n_queues;
 } vnet_hw_if_output_node_runtime_t;
 
 /* Hardware-interface.  This corresponds to a physical wire
@@ -683,6 +688,9 @@ typedef struct vnet_hw_interface_t
   /* Next index in interface-output node for this interface
      used by node function vnet_per_buffer_interface_output() */
   u32 output_node_next_index;
+
+  /* called when hw interface is using transmit side packet steering */
+  vnet_hash_func tx_hash_func;
 
   /* Maximum transmit rate for this interface in bits/sec. */
   f64 max_rate_bits_per_sec;
