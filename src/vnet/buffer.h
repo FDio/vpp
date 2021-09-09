@@ -190,8 +190,15 @@ typedef struct
 	  /* Rewrite length */
 	  u8 save_rewrite_length;
 
-	  /* MFIB RPF ID */
-	  u32 rpf_id;
+	  union
+	  {
+	    /* adj_index[VLIB_RX] dpo type
+	     * this is set by ip[46]-lookup */
+	    u32 rx_sw_if_index;
+
+	    /* MFIB RPF ID */
+	    u32 rpf_id;
+	  };
 	};
 
 	/* ICMP */

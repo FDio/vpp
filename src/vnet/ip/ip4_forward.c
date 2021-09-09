@@ -52,6 +52,7 @@
 #include <vnet/mfib/ip4_mfib.h>
 #include <vnet/dpo/load_balance.h>
 #include <vnet/dpo/load_balance_map.h>
+#include <vnet/dpo/receive_dpo.h>
 #include <vnet/dpo/classify_dpo.h>
 #include <vnet/mfib/mfib_table.h>	/* for mFIB table and entry creation */
 #include <vnet/adj/adj_dp.h>
@@ -1387,10 +1388,9 @@ ip4_tcp_udp_validate_checksum (vlib_main_t * vm, vlib_buffer_t * p0)
 #endif
 
 /* *INDENT-OFF* */
-VNET_FEATURE_ARC_INIT (ip4_local) =
-{
-  .arc_name  = "ip4-local",
-  .start_nodes = VNET_FEATURES ("ip4-local"),
+VNET_FEATURE_ARC_INIT (ip4_local) = {
+  .arc_name = "ip4-local",
+  .start_nodes = VNET_FEATURES ("ip4-local", "ip4-receive-local"),
   .last_in_arc = "ip4-local-end-of-arc",
 };
 /* *INDENT-ON* */
@@ -1515,8 +1515,9 @@ typedef struct
 } ip4_local_last_check_t;
 
 static inline void
-ip4_local_check_src (vlib_buffer_t * b, ip4_header_t * ip0,
-		     ip4_local_last_check_t * last_check, u8 * error0)
+ip4_local_check_src (vlib_buffer_t *b, ip4_header_t *ip0,
+		     ip4_local_last_check_t *last_check, u8 *error0,
+		     int is_receive_dpo)
 {
   const dpo_id_t *dpo0;
   load_balance_t *lb0;
@@ -1525,6 +1526,15 @@ ip4_local_check_src (vlib_buffer_t * b, ip4_header_t * ip0,
   vnet_buffer (b)->ip.fib_index =
     vnet_buffer (b)->sw_if_index[VLIB_TX] != ~0 ?
     vnet_buffer (b)->sw_if_index[VLIB_TX] : vnet_buffer (b)->ip.fib_index;
+
+  if (is_receive_dpo)
+    {
+      receive_dpo_t *rd;
+      rd = receive_dpo_get (vnet_buffer (b)->ip.adj_index[VLIB_TX]);
+      vnet_buffer (b)->ip.rx_sw_if_index = rd->rd_sw_if_index;
+    }
+  else
+    vnet_buffer (b)->ip.rx_sw_if_index = 0;
 
   /*
    * vnet_buffer()->ip.adj_index[VLIB_RX] will be set to the index of the
@@ -1579,8 +1589,9 @@ ip4_local_check_src (vlib_buffer_t * b, ip4_header_t * ip0,
 }
 
 static inline void
-ip4_local_check_src_x2 (vlib_buffer_t ** b, ip4_header_t ** ip,
-			ip4_local_last_check_t * last_check, u8 * error)
+ip4_local_check_src_x2 (vlib_buffer_t **b, ip4_header_t **ip,
+			ip4_local_last_check_t *last_check, u8 *error,
+			int is_receive_dpo)
 {
   const dpo_id_t *dpo[2];
   load_balance_t *lb[2];
@@ -1600,6 +1611,24 @@ ip4_local_check_src_x2 (vlib_buffer_t ** b, ip4_header_t ** ip,
     vnet_buffer (b[1])->sw_if_index[VLIB_TX] != ~0 ?
     vnet_buffer (b[1])->sw_if_index[VLIB_TX] :
     vnet_buffer (b[1])->ip.fib_index;
+
+  if (is_receive_dpo)
+    {
+      receive_dpo_t *rd;
+      rd = receive_dpo_get (vnet_buffer (b[0])->ip.adj_index[VLIB_TX]);
+      vnet_buffer (b[0])->ip.rx_sw_if_index = rd->rd_sw_if_index;
+    }
+  else
+    vnet_buffer (b[0])->ip.rx_sw_if_index = 0;
+
+  if (is_receive_dpo)
+    {
+      receive_dpo_t *rd;
+      rd = receive_dpo_get (vnet_buffer (b[1])->ip.adj_index[VLIB_TX]);
+      vnet_buffer (b[1])->ip.rx_sw_if_index = rd->rd_sw_if_index;
+    }
+  else
+    vnet_buffer (b[1])->ip.rx_sw_if_index = 0;
 
   /*
    * vnet_buffer()->ip.adj_index[VLIB_RX] will be set to the index of the
@@ -1697,9 +1726,9 @@ ip4_local_classify (vlib_buffer_t * b, ip4_header_t * ip, u16 * next)
 }
 
 static inline uword
-ip4_local_inline (vlib_main_t * vm,
-		  vlib_node_runtime_t * node,
-		  vlib_frame_t * frame, int head_of_feature_arc)
+ip4_local_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		  vlib_frame_t *frame, int head_of_feature_arc,
+		  int is_receive_dpo)
 {
   u32 *from, n_left_from;
   vlib_node_runtime_t *error_node =
@@ -1764,19 +1793,21 @@ ip4_local_inline (vlib_main_t * vm,
       if (PREDICT_TRUE (not_batch == 0))
 	{
 	  ip4_local_check_l4_csum_x2 (vm, b, ip, error);
-	  ip4_local_check_src_x2 (b, ip, &last_check, error);
+	  ip4_local_check_src_x2 (b, ip, &last_check, error, is_receive_dpo);
 	}
       else
 	{
 	  if (!pt[0])
 	    {
 	      ip4_local_check_l4_csum (vm, b[0], ip[0], &error[0]);
-	      ip4_local_check_src (b[0], ip[0], &last_check, &error[0]);
+	      ip4_local_check_src (b[0], ip[0], &last_check, &error[0],
+				   is_receive_dpo);
 	    }
 	  if (!pt[1])
 	    {
 	      ip4_local_check_l4_csum (vm, b[1], ip[1], &error[1]);
-	      ip4_local_check_src (b[1], ip[1], &last_check, &error[1]);
+	      ip4_local_check_src (b[1], ip[1], &last_check, &error[1],
+				   is_receive_dpo);
 	    }
 	}
 
@@ -1804,7 +1835,8 @@ ip4_local_inline (vlib_main_t * vm,
 	goto skip_check;
 
       ip4_local_check_l4_csum (vm, b[0], ip[0], &error[0]);
-      ip4_local_check_src (b[0], ip[0], &last_check, &error[0]);
+      ip4_local_check_src (b[0], ip[0], &last_check, &error[0],
+			   is_receive_dpo);
 
     skip_check:
 
@@ -1823,10 +1855,10 @@ ip4_local_inline (vlib_main_t * vm,
 VLIB_NODE_FN (ip4_local_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 			       vlib_frame_t * frame)
 {
-  return ip4_local_inline (vm, node, frame, 1 /* head of feature arc */ );
+  return ip4_local_inline (vm, node, frame, 1 /* head of feature arc */,
+			   0 /* is_receive_dpo */);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_local_node) =
 {
   .name = "ip4-local",
@@ -1844,17 +1876,29 @@ VLIB_REGISTER_NODE (ip4_local_node) =
     [IP_LOCAL_NEXT_REASSEMBLY] = "ip4-full-reassembly",
   },
 };
-/* *INDENT-ON* */
 
+VLIB_NODE_FN (ip4_receive_local_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return ip4_local_inline (vm, node, frame, 1 /* head of feature arc */,
+			   1 /* is_receive_dpo */);
+}
+
+VLIB_REGISTER_NODE (ip4_receive_local_node) = {
+  .name = "ip4-receive-local",
+  .vector_size = sizeof (u32),
+  .format_trace = format_ip4_forward_next_trace,
+  .sibling_of = "ip4-local"
+};
 
 VLIB_NODE_FN (ip4_local_end_of_arc_node) (vlib_main_t * vm,
 					  vlib_node_runtime_t * node,
 					  vlib_frame_t * frame)
 {
-  return ip4_local_inline (vm, node, frame, 0 /* head of feature arc */ );
+  return ip4_local_inline (vm, node, frame, 0 /* head of feature arc */,
+			   0 /* is_receive_dpo */);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_local_end_of_arc_node) = {
   .name = "ip4-local-end-of-arc",
   .vector_size = sizeof (u32),
@@ -1868,7 +1912,6 @@ VNET_FEATURE_INIT (ip4_local_end_of_arc, static) = {
   .node_name = "ip4-local-end-of-arc",
   .runs_before = 0, /* not before any other features */
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 void

@@ -156,15 +156,13 @@ const static dpo_vft_t receive_vft = {
  * this means that these graph nodes are ones from which a receive is the
  * parent object in the DPO-graph.
  */
-const static char* const receive_ip4_nodes[] =
-{
-    "ip4-local",
-    NULL,
+const static char *const receive_ip4_nodes[] = {
+  "ip4-receive-local",
+  NULL,
 };
-const static char* const receive_ip6_nodes[] =
-{
-    "ip6-local",
-    NULL,
+const static char *const receive_ip6_nodes[] = {
+  "ip6-receive-local",
+  NULL,
 };
 
 const static char* const * const receive_nodes[DPO_PROTO_NUM] =
