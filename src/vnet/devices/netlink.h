@@ -26,8 +26,10 @@ clib_error_t *vnet_netlink_get_link_mtu (int ifindex, u32 *mtu);
 clib_error_t *vnet_netlink_set_link_mtu (int ifindex, int mtu);
 clib_error_t *vnet_netlink_add_ip4_addr (int ifindex, void *addr,
 					 int pfx_len);
+clib_error_t *vnet_netlink_del_ip4_addr (int ifindex, void *addr, int pfx_len);
 clib_error_t *vnet_netlink_add_ip6_addr (int ifindex, void *addr,
 					 int pfx_len);
+clib_error_t *vnet_netlink_del_ip6_addr (int ifindex, void *addr, int pfx_len);
 clib_error_t *vnet_netlink_add_ip4_route (void *dst, u8 dst_len, void *gw);
 clib_error_t *vnet_netlink_add_ip6_route (void *dst, u8 dst_len, void *gw);
 
