@@ -190,8 +190,17 @@ typedef struct
 	  /* Rewrite length */
 	  u8 save_rewrite_length;
 
-	  /* MFIB RPF ID */
-	  u32 rpf_id;
+	  union
+	  {
+	    /* sw_if_index of the local interface the buffer was received on
+	     * - if hitting a DPO_RECEIVE - it is set in ip[46]-receive.
+	     * This is ~0 if the dpo is not a receive dpo, or if the
+	     * interface is not specified (e.g. route add via local) */
+	    u32 rx_sw_if_index;
+
+	    /* MFIB RPF ID */
+	    u32 rpf_id;
+	  };
 	};
 
 	/* ICMP */
