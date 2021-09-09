@@ -139,6 +139,7 @@ lcp_itf_pair_show (u32 phy_sw_if_index)
   ns = lcp_get_default_ns ();
   vlib_cli_output (vm, "lcp default netns '%s'\n",
 		   ns ? (char *) ns : "<unset>");
+  vlib_cli_output (vm, "lcp lcp-sync %s\n", lcp_lcp_sync () ? "on" : "off");
 
   if (phy_sw_if_index == ~0)
     {
@@ -584,8 +585,8 @@ lcp_itf_pair_config (vlib_main_t *vm, unformat_input_t *input)
 					LCP_NS_LEN);
 	    }
 	}
-      else if (unformat (input, "interface-auto-create"))
-	lcp_set_auto_intf (1 /* is_auto */);
+      else if (unformat (input, "lcp-sync"))
+	lcp_set_lcp_sync (1 /* is_auto */);
       else
 	return clib_error_return (0, "interfaces not found");
     }

@@ -144,12 +144,6 @@ lcp_itf_pair_find_by_host (u32 host_sw_if_index)
   return (lip_db_by_host[host_sw_if_index]);
 }
 
-/**
- * manage interface auto creation
- */
-void lcp_set_auto_intf (u8 is_auto);
-int lcp_auto_intf (void);
-
 typedef void (*lcp_itf_pair_add_cb_t) (lcp_itf_pair_t *);
 typedef void (*lcp_itf_pair_del_cb_t) (lcp_itf_pair_t *);
 
@@ -160,6 +154,13 @@ typedef struct lcp_itf_pair_vft
 } lcp_itf_pair_vft_t;
 
 void lcp_itf_pair_register_vft (lcp_itf_pair_vft_t *lcp_itf_vft);
+
+/**
+ * sync state changes from VPP into LCP
+ */
+void lcp_set_lcp_sync (u8 is_auto);
+int lcp_lcp_sync (void);
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

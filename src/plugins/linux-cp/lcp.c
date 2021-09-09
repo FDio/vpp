@@ -76,6 +76,22 @@ lcp_set_default_ns (u8 *ns)
   return 0;
 }
 
+void
+lcp_set_lcp_sync (u8 is_auto)
+{
+  lcp_main_t *lcpm = &lcp_main;
+
+  lcpm->lcp_sync = (is_auto != 0);
+}
+
+int
+lcp_lcp_sync (void)
+{
+  lcp_main_t *lcpm = &lcp_main;
+
+  return lcpm->lcp_sync;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
