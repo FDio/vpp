@@ -356,7 +356,7 @@ tcp_init_w_buffer (tcp_connection_t * tc, vlib_buffer_t * b, u8 is_ip4)
   tc->irs = vnet_buffer (b)->tcp.seq_number;
   tc->rcv_nxt = vnet_buffer (b)->tcp.seq_number + 1;
   tc->rcv_las = tc->rcv_nxt;
-  tc->sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
+  tc->sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_TX];
   tc->snd_wl1 = vnet_buffer (b)->tcp.seq_number;
   tc->snd_wl2 = vnet_buffer (b)->tcp.ack_number;
 
