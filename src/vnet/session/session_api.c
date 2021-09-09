@@ -1720,26 +1720,21 @@ appns_sapi_add_ns_socket (app_namespace_t * app_ns)
   struct stat file_stat;
   clib_error_t *err;
   clib_socket_t *cs;
-  u8 *dir = 0;
-  int rv = 0;
+  char dir[4096];
 
-  vec_add (dir, vlib_unix_get_runtime_dir (),
-	   strlen (vlib_unix_get_runtime_dir ()));
-  vec_add (dir, (u8 *) subdir, strlen (subdir));
-
+  snprintf (dir, sizeof (dir), "%s%s", vlib_unix_get_runtime_dir (), subdir);
   err = vlib_unix_recursive_mkdir ((char *) dir);
   if (err)
     {
       clib_error_report (err);
-      rv = -1;
-      goto error;
+      return -1;
     }
 
   /* Use abstract sockets if a netns was provided */
   if (app_ns->netns)
     app_ns->sock_name = format (0, "@vpp/session/%v%c", app_ns->ns_id, 0);
   else
-    app_ns->sock_name = format (0, "%v%v%c", dir, app_ns->ns_id, 0);
+    app_ns->sock_name = format (0, "%s%v%c", dir, app_ns->ns_id, 0);
 
   /*
    * Create and initialize socket to listen on
@@ -1753,15 +1748,11 @@ appns_sapi_add_ns_socket (app_namespace_t * app_ns)
   if ((err = clib_socket_init_netns (cs, app_ns->netns)))
     {
       clib_error_report (err);
-      rv = -1;
-      goto error;
+      return -1;
     }
 
   if (!app_ns->netns && stat ((char *) app_ns->sock_name, &file_stat) == -1)
-    {
-      rv = -1;
-      goto error;
-    }
+    return -1;
 
   /*
    * Start polling it
@@ -1779,9 +1770,7 @@ appns_sapi_add_ns_socket (app_namespace_t * app_ns)
   handle->aah_file_index = clib_file_add (&file_main, &cf);
   handle->aah_app_wrk_index = APP_INVALID_INDEX;
 
-error:
-  vec_free (dir);
-  return rv;
+  return 0;
 }
 
 static void
