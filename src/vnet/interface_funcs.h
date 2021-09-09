@@ -505,6 +505,7 @@ typedef enum
 {
   VNET_INTERFACE_OUTPUT_ERROR_INTERFACE_DOWN,
   VNET_INTERFACE_OUTPUT_ERROR_INTERFACE_DELETED,
+  VNET_INTERFACE_OUTPUT_ERROR_NO_TX_QUEUE,
 } vnet_interface_output_error_t;
 
 /* Format for interface output traces. */

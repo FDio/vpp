@@ -189,34 +189,64 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
   vec_validate_aligned (new_out_runtimes, n_threads - 1,
 			CLIB_CACHE_LINE_BYTES);
 
-  if (vec_len (hi->output_node_thread_runtimes) != vec_len (new_out_runtimes))
-    something_changed_on_tx = 1;
+  if (vec_len (hi->tx_queue_indices) > 0)
+    for (u32 i = 0; i < vec_len (new_out_runtimes); i++)
+      {
+	vnet_hw_if_output_node_runtime_t *rt;
+	rt = vec_elt_at_index (new_out_runtimes, i);
+	u32 n_queues = 0, total_queues = vec_len (hi->tx_queue_indices);
+	rt->frame = 0;
+	rt->lookup_table = 0;
 
-  for (int i = 0; i < vec_len (hi->tx_queue_indices); i++)
-    {
-      u32 thread_index;
-      u32 queue_index = hi->tx_queue_indices[i];
-      vnet_hw_if_tx_queue_t *txq = vnet_hw_if_get_tx_queue (vnm, queue_index);
-      uword n_threads = clib_bitmap_count_set_bits (txq->threads);
+	for (u32 j = 0; j < total_queues; j++)
+	  {
+	    u32 queue_index = hi->tx_queue_indices[j];
+	    vnet_hw_if_tx_frame_t frame;
+	    vnet_hw_if_tx_queue_t *txq =
+	      vnet_hw_if_get_tx_queue (vnm, queue_index);
+	    if (!clib_bitmap_get (txq->threads, i))
+	      continue;
 
-      clib_bitmap_foreach (thread_index, txq->threads)
-	{
-	  vnet_hw_if_output_node_runtime_t *rt;
-	  rt = vec_elt_at_index (new_out_runtimes, thread_index);
-	  if ((rt->frame.queue_id != txq->queue_id) ||
-	      (rt->n_threads != n_threads))
-	    {
-	      log_debug ("tx queue data changed for interface %v, thread %u "
-			 "(queue_id %u -> %u, n_threads %u -> %u)",
-			 hi->name, thread_index, rt->frame.queue_id,
-			 txq->queue_id, rt->n_threads, n_threads);
-	      something_changed_on_tx = 1;
-	      rt->frame.queue_id = txq->queue_id;
-	      rt->frame.shared_queue = txq->shared_queue;
-	      rt->n_threads = n_threads;
-	    }
-	}
-    }
+	    log_debug ("tx queue data changed for interface %v, thread %u "
+		       "(queue_id %u)",
+		       hi->name, i, txq->queue_id);
+	    something_changed_on_tx = 1;
+
+	    frame.queue_id = txq->queue_id;
+	    frame.shared_queue = txq->shared_queue;
+	    vec_add1 (rt->frame, frame);
+	    n_queues++;
+	  }
+
+	if (rt->n_queues != n_queues)
+	  {
+	    something_changed_on_tx = 1;
+	    rt->n_queues = n_queues;
+	  }
+	/*
+	 * It is only used in case of multiple txq.
+	 * Output node may use the lookup table if
+	 * someone changes the tx-queue pinning on
+	 * the fly from 2-txqs -> 1-txq on given
+	 * thread for given interface.
+	 */
+	if (rt->n_queues > 0)
+	  {
+	    if (!is_pow2 (n_queues))
+	      n_queues = max_pow2 (n_queues);
+
+	    vec_validate_aligned (rt->lookup_table, n_queues - 1,
+				  CLIB_CACHE_LINE_BYTES);
+
+	    for (u32 k = 0; k < vec_len (rt->lookup_table); k++)
+	      {
+		rt->lookup_table[k] = rt->frame[k % rt->n_queues].queue_id;
+		log_debug ("tx queue lookup table changed for interface %v, "
+			   "(lookup table [%u]=%u)",
+			   hi->name, k, rt->lookup_table[k]);
+	      }
+	  }
+      }
 
   if (something_changed_on_rx || something_changed_on_tx)
     {
@@ -303,6 +333,11 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
     {
       vec_free (d[i]);
       vec_free (a[i]);
+      if (new_out_runtimes)
+	{
+	  vec_free (new_out_runtimes[i].frame);
+	  vec_free (new_out_runtimes[i].lookup_table);
+	}
     }
 
   vec_free (d);

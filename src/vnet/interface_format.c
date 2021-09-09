@@ -212,6 +212,10 @@ format_vnet_hw_interface (u8 * s, va_list * args)
   if (vec_len (hi->tx_queue_indices))
     {
       s = format (s, "\n%UTX Queues:", format_white_space, indent + 2);
+      s = format (s, "\n%Utx-hash: %U", format_white_space, indent + 4,
+		  format_vnet_hash,
+		  vnet_hash_function_from_func (
+		    hi->tx_hash_func, hw_class->default_tx_hash_fn_type));
       s = format (s, "\n%U%-6s%-7s%-15s", format_white_space, indent + 4,
 		  "queue", "shared", "thread(s)");
       for (int i = 0; i < vec_len (hi->tx_queue_indices); i++)
