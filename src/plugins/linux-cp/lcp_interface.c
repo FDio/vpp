@@ -400,7 +400,7 @@ lcp_itf_pair_del (u32 phy_sw_if_index)
 
   lip = lcp_itf_pair_get (lipi);
 
-  LCP_ITF_PAIR_INFO ("pair delete: {%U, %U, %s}", format_vnet_sw_if_index_name,
+  LCP_ITF_PAIR_INFO ("pair delete: {%U, %U, %v}", format_vnet_sw_if_index_name,
 		     vnet_get_main (), lip->lip_phy_sw_if_index,
 		     format_vnet_sw_if_index_name, vnet_get_main (),
 		     lip->lip_host_sw_if_index, lip->lip_host_name);
