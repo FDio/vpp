@@ -1933,7 +1933,6 @@ tcp46_syn_sent_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       new_tc->rcv_nxt = vnet_buffer (b[0])->tcp.seq_end;
       new_tc->irs = seq;
       new_tc->timers[TCP_TIMER_RETRANSMIT_SYN] = TCP_TIMER_HANDLE_INVALID;
-      new_tc->sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
 
       if (tcp_opts_tstamp (&new_tc->rcv_opts))
 	{

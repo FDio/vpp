@@ -208,8 +208,9 @@ format_tcp_vars (u8 * s, va_list * args)
 	      tc->mrtt_us * 1e3, tc->rttvar / 1000.0);
   s = format (s, " rtt_ts %.4f rtt_seq %u\n", tc->rtt_ts,
 	      tc->rtt_seq - tc->iss);
-  s = format (s, " next_node %u opaque 0x%x fib_index %u\n",
-	      tc->next_node_index, tc->next_node_opaque, tc->c_fib_index);
+  s = format (s, " next_node %u opaque 0x%x fib_index %u sw_if_index %d\n",
+	      tc->next_node_index, tc->next_node_opaque, tc->c_fib_index,
+	      tc->sw_if_index);
   s = format (s, " cong:   %U", format_tcp_congestion, tc);
 
   if (tc->state >= TCP_STATE_ESTABLISHED)
