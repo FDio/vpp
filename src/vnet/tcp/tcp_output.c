@@ -2136,7 +2136,7 @@ tcp_output_handle_packet (tcp_connection_t * tc0, vlib_buffer_t * b0,
     }
 
   vnet_buffer (b0)->sw_if_index[VLIB_TX] = tc0->c_fib_index;
-  vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
+  vnet_buffer (b0)->sw_if_index[VLIB_RX] = tc0->sw_if_index;
 
   if (!is_ip4)
     {
