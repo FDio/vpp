@@ -48,6 +48,7 @@
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/mfib/ip6_mfib.h>
 #include <vnet/dpo/load_balance_map.h>
+#include <vnet/dpo/receive_dpo.h>
 #include <vnet/dpo/classify_dpo.h>
 #include <vnet/classify/vnet_classify.h>
 #include <vnet/pg/pg.h>
@@ -1469,6 +1470,22 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    vnet_buffer (b[1])->sw_if_index[VLIB_TX] != ~0 ?
 	    vnet_buffer (b[1])->sw_if_index[VLIB_TX] :
 	    vnet_buffer (b[1])->ip.fib_index;
+	  if (vnet_buffer (b[0])->ip.rx_dpoi_type == DPO_RECEIVE)
+	    {
+	      receive_dpo_t *rd;
+	      rd = receive_dpo_get (vnet_buffer (b[0])->ip.adj_index[VLIB_TX]);
+	      vnet_buffer (b[0])->ip.rx_sw_if_index = rd->rd_sw_if_index;
+	    }
+	  else
+	    vnet_buffer (b[0])->ip.rx_sw_if_index = 0;
+	  if (vnet_buffer (b[1])->ip.rx_dpoi_type == DPO_RECEIVE)
+	    {
+	      receive_dpo_t *rd;
+	      rd = receive_dpo_get (vnet_buffer (b[1])->ip.adj_index[VLIB_TX]);
+	      vnet_buffer (b[1])->ip.rx_sw_if_index = rd->rd_sw_if_index;
+	    }
+	  else
+	    vnet_buffer (b[1])->ip.rx_sw_if_index = 0;
 	}			/* head_of_feature_arc */
 
       next[0] = lm->local_next_by_ip_protocol[ip[0]->protocol];
@@ -1596,6 +1613,14 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    vnet_buffer (b[0])->sw_if_index[VLIB_TX] != ~0 ?
 	    vnet_buffer (b[0])->sw_if_index[VLIB_TX] :
 	    vnet_buffer (b[0])->ip.fib_index;
+	  if (vnet_buffer (b[0])->ip.rx_dpoi_type == DPO_RECEIVE)
+	    {
+	      receive_dpo_t *rd;
+	      rd = receive_dpo_get (vnet_buffer (b[0])->ip.adj_index[VLIB_TX]);
+	      vnet_buffer (b[0])->ip.rx_sw_if_index = rd->rd_sw_if_index;
+	    }
+	  else
+	    vnet_buffer (b[0])->ip.rx_sw_if_index = 0;
 	}			/* head_of_feature_arc */
 
       next[0] = lm->local_next_by_ip_protocol[ip->protocol];

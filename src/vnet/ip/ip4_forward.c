@@ -52,6 +52,7 @@
 #include <vnet/mfib/ip4_mfib.h>
 #include <vnet/dpo/load_balance.h>
 #include <vnet/dpo/load_balance_map.h>
+#include <vnet/dpo/receive_dpo.h>
 #include <vnet/dpo/classify_dpo.h>
 #include <vnet/mfib/mfib_table.h>	/* for mFIB table and entry creation */
 #include <vnet/adj/adj_dp.h>
@@ -1526,6 +1527,15 @@ ip4_local_check_src (vlib_buffer_t * b, ip4_header_t * ip0,
     vnet_buffer (b)->sw_if_index[VLIB_TX] != ~0 ?
     vnet_buffer (b)->sw_if_index[VLIB_TX] : vnet_buffer (b)->ip.fib_index;
 
+  if (vnet_buffer (b)->ip.rx_dpoi_type == DPO_RECEIVE)
+    {
+      receive_dpo_t *rd;
+      rd = receive_dpo_get (vnet_buffer (b)->ip.adj_index[VLIB_TX]);
+      vnet_buffer (b)->ip.rx_sw_if_index = rd->rd_sw_if_index;
+    }
+  else
+    vnet_buffer (b)->ip.rx_sw_if_index = 0;
+
   /*
    * vnet_buffer()->ip.adj_index[VLIB_RX] will be set to the index of the
    *  adjacency for the destination address (the local interface address).
@@ -1600,6 +1610,24 @@ ip4_local_check_src_x2 (vlib_buffer_t ** b, ip4_header_t ** ip,
     vnet_buffer (b[1])->sw_if_index[VLIB_TX] != ~0 ?
     vnet_buffer (b[1])->sw_if_index[VLIB_TX] :
     vnet_buffer (b[1])->ip.fib_index;
+
+  if (vnet_buffer (b[0])->ip.rx_dpoi_type == DPO_RECEIVE)
+    {
+      receive_dpo_t *rd;
+      rd = receive_dpo_get (vnet_buffer (b[0])->ip.adj_index[VLIB_TX]);
+      vnet_buffer (b[0])->ip.rx_sw_if_index = rd->rd_sw_if_index;
+    }
+  else
+    vnet_buffer (b[0])->ip.rx_sw_if_index = 0;
+
+  if (vnet_buffer (b[1])->ip.rx_dpoi_type == DPO_RECEIVE)
+    {
+      receive_dpo_t *rd;
+      rd = receive_dpo_get (vnet_buffer (b[1])->ip.adj_index[VLIB_TX]);
+      vnet_buffer (b[1])->ip.rx_sw_if_index = rd->rd_sw_if_index;
+    }
+  else
+    vnet_buffer (b[1])->ip.rx_sw_if_index = 0;
 
   /*
    * vnet_buffer()->ip.adj_index[VLIB_RX] will be set to the index of the

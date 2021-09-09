@@ -190,8 +190,20 @@ typedef struct
 	  /* Rewrite length */
 	  u8 save_rewrite_length;
 
-	  /* MFIB RPF ID */
-	  u32 rpf_id;
+	  union
+	  {
+	    /* adj_index[VLIB_RX] dpo type
+	     * this is set by ip[46]-lookup */
+	    u8 rx_dpoi_type;
+	    /* Local sw_if_index reached
+	     * set by ip[46]-local from adj_index and
+	     * rx_dpoi_type. Used on local arc to recall
+	     * receiving interface */
+	    u32 rx_sw_if_index;
+
+	    /* MFIB RPF ID */
+	    u32 rpf_id;
+	  };
 	};
 
 	/* ICMP */
