@@ -549,14 +549,14 @@ transport_get_interface_ip (u32 sw_if_index, u8 is_ip4, ip46_address_t * addr)
 }
 
 static session_error_t
-transport_find_local_ip_for_remote (u32 sw_if_index,
-				    transport_endpoint_t * rmt,
-				    ip46_address_t * lcl_addr)
+transport_find_local_ip_for_remote (u32 *sw_if_index,
+				    transport_endpoint_t *rmt,
+				    ip46_address_t *lcl_addr)
 {
   fib_node_index_t fei;
   fib_prefix_t prefix;
 
-  if (sw_if_index == ENDPOINT_INVALID_INDEX)
+  if (*sw_if_index == ENDPOINT_INVALID_INDEX)
     {
       /* Find a FIB path to the destination */
       clib_memcpy_fast (&prefix.fp_addr, &rmt->ip, sizeof (rmt->ip));
@@ -570,13 +570,13 @@ transport_find_local_ip_for_remote (u32 sw_if_index,
       if (fei == FIB_NODE_INDEX_INVALID)
 	return SESSION_E_NOROUTE;
 
-      sw_if_index = fib_entry_get_resolving_interface (fei);
-      if (sw_if_index == ENDPOINT_INVALID_INDEX)
+      *sw_if_index = fib_entry_get_resolving_interface (fei);
+      if (*sw_if_index == ENDPOINT_INVALID_INDEX)
 	return SESSION_E_NOINTF;
     }
 
   clib_memset (lcl_addr, 0, sizeof (*lcl_addr));
-  return transport_get_interface_ip (sw_if_index, rmt->is_ip4, lcl_addr);
+  return transport_get_interface_ip (*sw_if_index, rmt->is_ip4, lcl_addr);
 }
 
 int
@@ -593,7 +593,7 @@ transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt_cfg,
    */
   if (ip_is_zero (&rmt_cfg->peer.ip, rmt_cfg->peer.is_ip4))
     {
-      error = transport_find_local_ip_for_remote (rmt_cfg->peer.sw_if_index,
+      error = transport_find_local_ip_for_remote (&rmt_cfg->peer.sw_if_index,
 						  rmt, lcl_addr);
       if (error)
 	return error;
