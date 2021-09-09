@@ -237,6 +237,13 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
   tcp_header_t *tcp;
   u8 result = 0;
 
+  /* Set the sw_if_index[VLIB_RX] to the interface we received
+   * the connection on (the local interface) */
+  vnet_buffer (b)->sw_if_index[VLIB_RX] =
+    vnet_buffer (b)->ip.rx_sw_if_index != ~0 ?
+      vnet_buffer (b)->ip.rx_sw_if_index :
+      0;
+
   if (is_ip4)
     {
       ip4_header_t *ip4 = vlib_buffer_get_current (b);
