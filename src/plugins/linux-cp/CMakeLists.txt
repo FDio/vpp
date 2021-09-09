@@ -27,6 +27,7 @@ include_directories(${LIBMNL_INCLUDE_DIR})
 add_vpp_library(lcp
   SOURCES
   lcp_interface.c
+  lcp_interface_sync.c
   lcp_adj.c
   lcp.c
 
