@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ace54c7d_f9316373",
+        "filename": "build/external/packages/dpdk.mk",
+        "patchSetId": 4
+      },
+      "lineNbr": 185,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2021-09-09T08:00:59Z",
+      "side": 1,
+      "message": "Replace with $(DPDK_VERBOSE) and we are good to go",
+      "range": {
+        "startLine": 185,
+        "startChar": 7,
+        "endLine": 185,
+        "endChar": 11
+      },
+      "revId": "35efb12cd8432c0219c5957ffdfb9dc70c89b186",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
