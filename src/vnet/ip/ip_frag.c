@@ -502,7 +502,7 @@ ip6_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
   return IP_FRAG_ERROR_NONE;
 }
 
-static char *ip4_frag_error_strings[] = {
+char *ip4_frag_error_strings[] = {
 #define _(sym,string) string,
   foreach_ip_frag_error
 #undef _

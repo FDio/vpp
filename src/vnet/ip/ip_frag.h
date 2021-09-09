@@ -76,6 +76,8 @@ typedef enum
     IP_FRAG_N_ERROR,
 } ip_frag_error_t;
 
+extern char *ip4_frag_error_strings[];
+
 void ip_frag_set_vnet_buffer (vlib_buffer_t * b, u16 mtu,
 			      u8 next_index, u8 flags);
 

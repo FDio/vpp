@@ -176,7 +176,8 @@ VLIB_REGISTER_NODE (ip4_ip_pmtu_dpo_node) = {
   .name = "ip4-pmtu-dpo",
   .vector_size = sizeof (u32),
   .format_trace = format_ip_pmtu_trace,
-  .n_errors = 0,
+  .n_errors = IP_FRAG_N_ERROR,
+  .error_strings = ip4_frag_error_strings,
   .n_next_nodes = IP_PMTU_N_NEXT,
   .next_nodes =
   {
@@ -187,7 +188,8 @@ VLIB_REGISTER_NODE (ip6_ip_pmtu_dpo_node) = {
   .name = "ip6-pmtu-dpo",
   .vector_size = sizeof (u32),
   .format_trace = format_ip_pmtu_trace,
-  .n_errors = 0,
+  .n_errors = IP_FRAG_N_ERROR,
+  .error_strings = ip4_frag_error_strings,
   .n_next_nodes = IP_PMTU_N_NEXT,
   .next_nodes =
   {
