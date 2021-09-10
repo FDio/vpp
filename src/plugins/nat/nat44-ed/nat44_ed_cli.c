@@ -1386,22 +1386,61 @@ nat44_show_sessions_command_fn (vlib_main_t * vm, unformat_input_t * input,
   clib_error_t *error = 0;
   snat_main_per_thread_data_t *tsm;
   snat_main_t *sm = &snat_main;
-
-  int i = 0;
+  ip4_address_t i2o_sa, i2o_da, o2i_sa, o2i_da;
+  u8 filter_i2o_sa = 0, filter_i2o_da = 0;
+  u8 filter_o2i_sa = 0, filter_o2i_da = 0;
+  u16 i2o_sp, i2o_dp, o2i_sp, o2i_dp;
+  u8 filter_i2o_sp = 0, filter_i2o_dp = 0;
+  u8 filter_o2i_sp = 0, filter_o2i_dp = 0;
+  nat_protocol_t proto;
+  u8 filter_proto = 0;
+  u8 had_input = 1, filtering = 0;
+  int i = 0, showed_sessions;
 
   if (!unformat_user (input, unformat_line_input, line_input))
-    goto print;
+    {
+      had_input = 0;
+      goto print;
+    }
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      error = clib_error_return (0, "unknown input '%U'",
-				 format_unformat_error, line_input);
-      break;
+      if (unformat (line_input, "filter i2o saddr %U", unformat_ip4_address,
+		    &i2o_sa))
+	filter_i2o_sa = filtering = 1;
+      else if (unformat (line_input, "filter i2o daddr %U",
+			 unformat_ip4_address, &i2o_da))
+	filter_i2o_da = filtering = 1;
+      else if (unformat (line_input, "filter o2i saddr %U",
+			 unformat_ip4_address, &o2i_sa))
+	filter_o2i_sa = filtering = 1;
+      else if (unformat (line_input, "filter o2i daddr %U",
+			 unformat_ip4_address, &o2i_da))
+	filter_o2i_da = filtering = 1;
+      else if (unformat (line_input, "filter i2o sport %u", &i2o_sp))
+	filter_i2o_sp = filtering = 1;
+      else if (unformat (line_input, "filter i2o dport %u", &i2o_dp))
+	filter_i2o_dp = filtering = 1;
+      else if (unformat (line_input, "filter o2i sport %u", &o2i_sp))
+	filter_o2i_sp = filtering = 1;
+      else if (unformat (line_input, "filter o2i dport %u", &o2i_dp))
+	filter_o2i_dp = filtering = 1;
+      else if (unformat (line_input, "filter i2o proto %U",
+			 unformat_nat_protocol, &proto))
+	filter_proto = filtering = 1;
+      else if (unformat (line_input, "filter o2i proto %U",
+			 unformat_nat_protocol, &proto))
+	filter_proto = filtering = 1;
+      else
+	{
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
-  unformat_free (line_input);
 
 print:
-    vlib_cli_output (vm, "NAT44 ED sessions:");
+  vlib_cli_output (vm, "NAT44 ED sessions:");
 
   vec_foreach_index (i, sm->per_thread_data)
     {
@@ -1411,12 +1450,52 @@ print:
                        i, vlib_worker_threads[i].name,
                        pool_elts (tsm->sessions));
 
-          snat_session_t *s;
-          pool_foreach (s, tsm->sessions)
-           {
-            vlib_cli_output (vm, "  %U\n", format_snat_session, tsm, s);
-          }
+      showed_sessions = 0;
+      snat_session_t *s;
+      pool_foreach (s, tsm->sessions)
+	{
+	  if (filtering)
+	    {
+	      if (filter_i2o_sa && i2o_sa.as_u32 != s->i2o.match.saddr.as_u32)
+		continue;
+	      if (filter_i2o_da && i2o_da.as_u32 != s->i2o.match.daddr.as_u32)
+		continue;
+	      if (filter_o2i_sa && o2i_sa.as_u32 != s->o2i.match.saddr.as_u32)
+		continue;
+	      if (filter_o2i_da && o2i_da.as_u32 != s->o2i.match.daddr.as_u32)
+		continue;
+	      if (filter_i2o_sp &&
+		  i2o_sp != clib_net_to_host_u16 (s->i2o.match.sport))
+		continue;
+	      if (filter_i2o_dp &&
+		  i2o_dp != clib_net_to_host_u16 (s->i2o.match.dport))
+		continue;
+	      if (filter_o2i_sp &&
+		  o2i_sp != clib_net_to_host_u16 (s->o2i.match.sport))
+		continue;
+	      if (filter_o2i_dp &&
+		  o2i_dp != clib_net_to_host_u16 (s->o2i.match.dport))
+		continue;
+	      if (filter_proto && proto != s->nat_proto)
+		continue;
+	      showed_sessions++;
+	    }
+	  vlib_cli_output (vm, "  %U\n", format_snat_session, tsm, s);
+	}
+      if (filtering)
+	{
+	  vlib_cli_output (vm,
+			   "Showed: %d, Filtered: %d of total %d "
+			   "sessions of thread %d\n\n",
+			   showed_sessions,
+			   pool_elts (tsm->sessions) - showed_sessions,
+			   pool_elts (tsm->sessions), i);
+	}
     }
+
+done:
+  if (had_input)
+    unformat_free (line_input);
   return error;
 }
 
@@ -2059,7 +2138,9 @@ VLIB_CLI_COMMAND (nat44_show_interface_address_command, static) = {
 ?*/
 VLIB_CLI_COMMAND (nat44_show_sessions_command, static) = {
   .path = "show nat44 sessions",
-  .short_help = "show nat44 sessions",
+  .short_help = "show nat44 sessions [filter {i2o | o2i} {saddr <ip4-addr> "
+		"| sport <n> | daddr <ip4-addr> | dport <n> | proto <proto>} "
+		"[filter .. [..]]]",
   .function = nat44_show_sessions_command_fn,
 };
 
