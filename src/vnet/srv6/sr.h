@@ -46,6 +46,7 @@
 #define SR_BEHAVIOR_END_UN_PERF 10
 #define SR_BEHAVIOR_END_UN 11
 #define SR_BEHAVIOR_LAST 12	/* Must always be the last one */
+#define SR_BEHAVIOR_OPAQUE	65535
 
 #define SR_STEER_L2 2
 #define SR_STEER_IPV4 4
@@ -351,11 +352,11 @@ extern int sr_policy_mod (ip6_address_t * bsid, u32 index, u32 fib_table,
 			  u32 sl_index, u32 weight);
 extern int sr_policy_del (ip6_address_t * bsid, u32 index);
 
-extern int
-sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
-		 u16 localsid_prefix_len, char end_psp, u8 behavior,
-		 u32 sw_if_index, u32 vlan_index, u32 fib_table,
-		 ip46_address_t * nh_addr, int usid_len, void *ls_plugin_mem);
+extern int sr_cli_localsid (char is_del, ip6_address_t *localsid_addr,
+			    u16 localsid_prefix_len, char end_psp,
+			    u16 behavior, u32 sw_if_index, u32 vlan_index,
+			    u32 fib_table, ip46_address_t *nh_addr,
+			    int usid_len, void *ls_plugin_mem);
 
 extern int
 sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,

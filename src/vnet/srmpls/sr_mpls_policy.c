@@ -149,8 +149,8 @@ create_sl (mpls_sr_policy_t * sr_policy, mpls_label_t * sl, u32 weight)
  * @return 0 if correct, else error
  */
 int
-sr_mpls_policy_add (mpls_label_t bsid, mpls_label_t * segments,
-		    u8 behavior, u32 weight)
+sr_mpls_policy_add (mpls_label_t bsid, mpls_label_t *segments, u16 behavior,
+		    u32 weight)
 {
   mpls_sr_main_t *sm = &sr_mpls_main;
   mpls_sr_policy_t *sr_policy = 0;

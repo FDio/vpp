@@ -41,11 +41,11 @@ static void vl_api_sr_localsid_add_del_t_handler
   int rv = 0;
   ip46_address_t prefix;
   ip6_address_t localsid;
-/*
- * int sr_cli_localsid (char is_del, ip6_address_t *localsid_addr,
- *  char end_psp, u8 behavior, u32 sw_if_index, u32 vlan_index, u32 fib_table,
- *  ip46_address_t *nh_addr, void *ls_plugin_mem)
- */
+  /*
+   * int sr_cli_localsid (char is_del, ip6_address_t *localsid_addr,
+   *  char end_psp, u16 behavior, u32 sw_if_index, u32 vlan_index, u32
+   * fib_table, ip46_address_t *nh_addr, void *ls_plugin_mem)
+   */
   if (mp->behavior == SR_BEHAVIOR_X ||
       mp->behavior == SR_BEHAVIOR_DX6 ||
       mp->behavior == SR_BEHAVIOR_DX4 || mp->behavior == SR_BEHAVIOR_DX2)
@@ -54,13 +54,10 @@ static void vl_api_sr_localsid_add_del_t_handler
   ip6_address_decode (mp->localsid, &localsid);
   ip_address_decode (&mp->nh_addr, &prefix);
 
-  rv = sr_cli_localsid (mp->is_del,
-			&localsid, 128,
-			mp->end_psp,
-			mp->behavior,
-			ntohl (mp->sw_if_index),
-			ntohl (mp->vlan_index),
-			ntohl (mp->fib_table), &prefix, 0, NULL);
+  rv = sr_cli_localsid (mp->is_del, &localsid, 128, mp->end_psp,
+			ntohs (mp->behavior), ntohl (mp->sw_if_index),
+			ntohl (mp->vlan_index), ntohl (mp->fib_table), &prefix,
+			0, NULL);
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_SR_LOCALSID_ADD_DEL_REPLY);
@@ -82,11 +79,11 @@ vl_api_sr_policy_add_t_handler (vl_api_sr_policy_add_t * mp)
 
   ip6_address_decode (mp->bsid_addr, &bsid_addr);
 
-/*
- * sr_policy_add (ip6_address_t *bsid, ip6_address_t *segments,
- *                u32 weight, u8 behavior, u32 fib_table, u8 is_encap,
- *                u16 behavior, void *plugin_mem)
- */
+  /*
+   * sr_policy_add (ip6_address_t *bsid, ip6_address_t *segments,
+   *                u32 weight, u16 behavior, u32 fib_table, u8 is_encap,
+   *                u16 behavior, void *plugin_mem)
+   */
   int rv = 0;
   rv = sr_policy_add (&bsid_addr,
 		      segments,

@@ -74,10 +74,10 @@ sr_localsid_key_create (sr_localsid_key_t * key, ip6_address_t * addr,
  * @return 0 on success, error otherwise.
  */
 int
-sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
-		 u16 localsid_prefix_len, char end_psp, u8 behavior,
+sr_cli_localsid (char is_del, ip6_address_t *localsid_addr,
+		 u16 localsid_prefix_len, char end_psp, u16 behavior,
 		 u32 sw_if_index, u32 vlan_index, u32 fib_table,
-		 ip46_address_t * nh_addr, int usid_len, void *ls_plugin_mem)
+		 ip46_address_t *nh_addr, int usid_len, void *ls_plugin_mem)
 {
   ip6_sr_main_t *sm = &sr_main;
   uword *p;

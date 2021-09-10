@@ -24,7 +24,7 @@ enum sr_policy_op : u8
 
 };
 
-enum sr_behavior : u8
+enum sr_behavior : u16
 {
   SR_BEHAVIOR_API_END = 1,
   SR_BEHAVIOR_API_X = 2,
@@ -35,7 +35,10 @@ enum sr_behavior : u8
   SR_BEHAVIOR_API_DX4 = 7,
   SR_BEHAVIOR_API_DT6 = 8,
   SR_BEHAVIOR_API_DT4 = 9,
-  SR_BEHAVIOR_API_LAST = 10,	/* Must always be the last one */
+  SR_BEHAVIOR_API_END_UN_PERF = 10,
+  SR_BEHAVIOR_API_END_UN = 11,
+  SR_BEHAVIOR_API_LAST = 12,	/* Must always be the last one */
+  SR_BEHAVIOR_API_OPAQUE = 65535,
 };
 
 enum sr_steer : u8

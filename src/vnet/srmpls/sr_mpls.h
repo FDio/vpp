@@ -135,9 +135,8 @@ typedef struct
 
 extern mpls_sr_main_t sr_mpls_main;
 
-extern int
-sr_mpls_policy_add (mpls_label_t bsid, mpls_label_t * segments,
-		    u8 behavior, u32 weight);
+extern int sr_mpls_policy_add (mpls_label_t bsid, mpls_label_t *segments,
+			       u16 behavior, u32 weight);
 
 extern int
 sr_mpls_policy_mod (mpls_label_t bsid, u8 operation,
