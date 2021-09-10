@@ -1252,6 +1252,8 @@ nat44_ei_show_sessions_command_fn (vlib_main_t *vm, unformat_input_t *input,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
+  ip4_address_t saddr;
+  u8 filter_saddr = 0;
 
   nat44_ei_main_per_thread_data_t *tnm;
   nat44_ei_main_t *nm = &nat44_ei_main;
@@ -1266,6 +1268,9 @@ nat44_ei_show_sessions_command_fn (vlib_main_t *vm, unformat_input_t *input,
     {
       if (unformat (line_input, "detail"))
 	detail = 1;
+      else if (unformat (line_input, "filter saddr %U", unformat_ip4_address,
+			 &saddr))
+	filter_saddr = 1;
       else
 	{
 	  error = clib_error_return (0, "unknown input '%U'",
@@ -1288,6 +1293,8 @@ print:
       nat44_ei_user_t *u;
       pool_foreach (u, tnm->users)
 	{
+	  if (filter_saddr && saddr.as_u32 != u->addr.as_u32)
+	    continue;
 	  vlib_cli_output (vm, "  %U", format_nat44_ei_user, tnm, u, detail);
 	}
     }
@@ -1930,7 +1937,7 @@ VLIB_CLI_COMMAND (nat44_ei_show_interface_address_command, static) = {
 ?*/
 VLIB_CLI_COMMAND (nat44_ei_show_sessions_command, static) = {
   .path = "show nat44 ei sessions",
-  .short_help = "show nat44 ei sessions [detail]",
+  .short_help = "show nat44 ei sessions [detail] [filter saddr <ip>]",
   .function = nat44_ei_show_sessions_command_fn,
 };
 
