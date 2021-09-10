@@ -2196,7 +2196,7 @@ vppcom_session_free_segments (uint32_t session_handle, uint32_t n_bytes)
   is_ct = vcl_session_is_ct (s);
   svm_fifo_dequeue_drop (is_ct ? s->ct_rx_fifo : s->rx_fifo, n_bytes);
 
-  ASSERT (s->rx_bytes_pending < n_bytes);
+  ASSERT (s->rx_bytes_pending >= n_bytes);
   s->rx_bytes_pending -= n_bytes;
 }
 
