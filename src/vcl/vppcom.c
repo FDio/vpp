@@ -3048,7 +3048,8 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	break;
       session_events = s->vep.ev.events;
       sid = s->session_index;
-      if (!(EPOLLIN & session_events))
+      if (!(EPOLLIN & session_events) ||
+	  (s->vep.lt_next != VCL_INVALID_SESSION_INDEX))
 	break;
       add_event = 1;
       events[*num_ev].events = EPOLLIN;
@@ -3364,6 +3365,10 @@ vppcom_epoll_wait (uint32_t vep_handle, struct epoll_event *events,
 	}
       vec_reset_length (wrk->unhandled_evts_vector);
     }
+
+  if (PREDICT_FALSE (wrk->ep_lt_current != VCL_INVALID_SESSION_INDEX))
+    vcl_epoll_wait_handle_lt (wrk, events, maxevents, &n_evts);
+
   /* Request to only drain unhandled */
   if ((int) wait_for_time == -2)
     return n_evts;
@@ -3375,9 +3380,6 @@ vppcom_epoll_wait (uint32_t vep_handle, struct epoll_event *events,
   else
     n_evts = vppcom_epoll_wait_condvar (wrk, events, maxevents, n_evts,
 					wait_for_time);
-
-  if (PREDICT_FALSE (wrk->ep_lt_current != VCL_INVALID_SESSION_INDEX))
-    vcl_epoll_wait_handle_lt (wrk, events, maxevents, &n_evts);
 
   return n_evts;
 }
