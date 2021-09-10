@@ -2079,7 +2079,7 @@ done:
   if (error)
     clib_error_report (error);
 
-  return 0;
+  return vm->main_loop_exit_status;
 }
 
 vlib_main_t *
@@ -2092,6 +2092,13 @@ elog_main_t *
 vlib_get_elog_main_not_inline ()
 {
   return &vlib_global_main.elog_main;
+}
+
+void
+vlib_exit_with_status (vlib_main_t *vm, int status)
+{
+  vm->main_loop_exit_status = status;
+  __atomic_store_n (&vm->main_loop_exit_now, 1, __ATOMIC_RELEASE);
 }
 
 /*
