@@ -143,6 +143,8 @@ typedef struct vlib_main_t
   u32 main_loop_exit_set;
   /* Set e.g. in the SIGTERM signal handler, checked in a safe place... */
   volatile u32 main_loop_exit_now;
+  /* Exit status that will be returned by the process upon exit. */
+  volatile int main_loop_exit_status;
   clib_longjmp_t main_loop_exit;
 #define VLIB_MAIN_LOOP_EXIT_NONE 0
 #define VLIB_MAIN_LOOP_EXIT_PANIC 1
@@ -389,6 +391,8 @@ vlib_panic (vlib_main_t * vm)
   vlib_panic_with_error (vm, 0);
 }
 
+/* Asynchronously requests exit with the given status. */
+void vlib_exit_with_status (vlib_main_t * vm, int status);
 
 always_inline f64
 vlib_internal_node_vector_rate (vlib_main_t * vm)
