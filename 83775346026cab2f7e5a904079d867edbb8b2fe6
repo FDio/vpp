@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ae192dd2_3228db90",
+        "filename": "src/vnet/interface_format.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 215,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-09-13T13:36:37Z",
+      "side": 1,
+      "message": "please be consistent with existing code, line above says \"TX Queues:\", so this line should be \"TX Hash:\", not \"tx-hash:\".",
+      "revId": "83775346026cab2f7e5a904079d867edbb8b2fe6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
