@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "739f72e4_ae7e0222",
+        "filename": "src/vnet/session/application_namespace.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 314,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-09-13T21:53:28Z",
+      "side": 1,
+      "message": "This is part of the header. Are you trying to do a format verbose? That\u0027s also fine but let\u0027s not break \"show app ns\"",
+      "range": {
+        "startLine": 314,
+        "startChar": 0,
+        "endLine": 314,
+        "endChar": 77
+      },
+      "revId": "844e3574e733c4e79b7d9cf2de9c83e8440efbdb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "74b88087_198a3c54",
+        "filename": "src/vnet/session/application_namespace.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 422,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-09-13T21:53:28Z",
+      "side": 1,
+      "message": "debug code?",
+      "range": {
+        "startLine": 422,
+        "startChar": 6,
+        "endLine": 422,
+        "endChar": 63
+      },
+      "revId": "844e3574e733c4e79b7d9cf2de9c83e8440efbdb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
