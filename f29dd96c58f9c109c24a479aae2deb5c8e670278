@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "2b8851ff_1df749ab",
+        "filename": "src/vnet/session/application_namespace.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-09-13T16:35:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "61e3f51d_fbe29b5b",
+      "range": {
+        "startLine": 58,
+        "startChar": 21,
+        "endLine": 58,
+        "endChar": 36
+      },
+      "revId": "f29dd96c58f9c109c24a479aae2deb5c8e670278",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e891a83d_2495628f",
         "filename": "src/vnet/session/application_namespace.c",
         "patchSetId": 3
@@ -45,6 +69,30 @@
       "revId": "f29dd96c58f9c109c24a479aae2deb5c8e670278",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c0702330_6ee2d41d",
+        "filename": "src/vnet/session/application_namespace.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 255,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-09-13T16:35:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e891a83d_2495628f",
+      "range": {
+        "startLine": 255,
+        "startChar": 6,
+        "endLine": 255,
+        "endChar": 61
+      },
+      "revId": "f29dd96c58f9c109c24a479aae2deb5c8e670278",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "cb09f641_a6927ec1",
+        "filename": "src/vnet/session/application_namespace.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-09-13T16:35:13Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "28119f26_364c8f1f",
+      "range": {
+        "startLine": 50,
+        "startChar": 0,
+        "endLine": 54,
+        "endChar": 0
+      },
+      "revId": "f29dd96c58f9c109c24a479aae2deb5c8e670278",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d4be44f0_ca0a1309",
         "filename": "src/vnet/session/session_api.c",
         "patchSetId": 3
@@ -91,6 +163,30 @@
       "revId": "f29dd96c58f9c109c24a479aae2deb5c8e670278",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5010b73a_ed9a70ad",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1657,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-09-13T16:35:13Z",
+      "side": 1,
+      "message": "Works, for now I didn\u0027t do any sanitizing of the socket name in the case where no netns is passed. Might maybe be worth doing some checks. \nBut that should come with \u0027vpp permissions\u0027 aka where VPP should be allowed to write and where not...",
+      "parentUuid": "d4be44f0_ca0a1309",
+      "range": {
+        "startLine": 1657,
+        "startChar": 2,
+        "endLine": 1657,
+        "endChar": 13
+      },
+      "revId": "f29dd96c58f9c109c24a479aae2deb5c8e670278",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
