@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "caefe745_914306e5",
+        "filename": "src/vlib/main.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2101,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-09-13T13:19:01Z",
+      "side": 1,
+      "message": "__atomic_store_n (\u0026vm-\u003emain_loop_exit_now, 1, __ATOMIC_RELEASE);\n\nMight be better choice here...",
+      "revId": "a6de9f0a44ad7a57f36de25340dc4fe84f408943",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
