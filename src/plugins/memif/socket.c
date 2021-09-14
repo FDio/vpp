@@ -648,7 +648,8 @@ memif_master_conn_fd_error (clib_file_t * uf)
 
   memif_log_warn (0, "Error on unknown file descriptor %d",
 		  uf->file_descriptor);
-  memif_file_del (uf);
+  if (uf->file_descriptor != ~0)
+    memif_file_del (uf);
   return 0;
 }
 
