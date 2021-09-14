@@ -202,6 +202,12 @@ typedef struct session_
   /** Index of application that owns the listener. Set only if a listener */
   u32 app_index;
 
+  /** If used_in_io_evt not 0, and session freed, invalid will be used */
+  u8 invalid;
+
+  /** IO event reference. */
+  u32 used_in_io_evt;
+
   union
   {
     /** Parent listener session index if the result of an accept */

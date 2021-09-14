@@ -150,6 +150,8 @@ session_add_self_custom_tx_evt (transport_connection_t * tc, u8 has_prio)
 	  elt->evt.event_type = SESSION_IO_EVT_TX;
 	  tc->flags &= ~TRANSPORT_CONNECTION_F_DESCHED;
 
+	  s->used_in_io_evt++;
+
 	  if (PREDICT_FALSE (wrk->state == SESSION_WRK_INTERRUPT))
 	    vlib_node_set_interrupt_pending (wrk->vm,
 					     session_queue_node.index);
@@ -162,12 +164,15 @@ sesssion_reschedule_tx (transport_connection_t * tc)
 {
   session_worker_t *wrk = session_main_get_worker (tc->thread_index);
   session_evt_elt_t *elt;
+  session_t *s = session_get (tc->s_index, tc->thread_index);
 
   ASSERT (tc->thread_index == vlib_get_thread_index ());
 
   elt = session_evt_alloc_new (wrk);
   elt->evt.session_index = tc->s_index;
   elt->evt.event_type = SESSION_IO_EVT_TX;
+
+  s->used_in_io_evt++;
 
   if (PREDICT_FALSE (wrk->state == SESSION_WRK_INTERRUPT))
     vlib_node_set_interrupt_pending (wrk->vm, session_queue_node.index);
@@ -226,6 +231,13 @@ session_alloc (u32 thread_index)
 void
 session_free (session_t * s)
 {
+  s->invalid = 1;
+
+  if (s->used_in_io_evt != 0)
+    {
+      return;
+    }
+
   if (CLIB_DEBUG)
     {
       u8 thread_index = s->thread_index;
@@ -235,6 +247,20 @@ session_free (session_t * s)
     }
   SESSION_EVT (SESSION_EVT_FREE, s);
   pool_put (session_main.wrk[s->thread_index].sessions, s);
+}
+
+void
+session_release (session_t *s)
+{
+  ASSERT (s->used_in_io_evt > 0);
+
+  s->used_in_io_evt--;
+  if (s->used_in_io_evt != 0 || s->invalid != 1)
+    {
+      return;
+    }
+
+  session_free (s);
 }
 
 u8
@@ -251,6 +277,11 @@ session_is_valid (u32 si, u8 thread_index)
   if (s->session_state == SESSION_STATE_TRANSPORT_DELETED
       || s->session_state <= SESSION_STATE_LISTENING)
     return 1;
+
+  if (s->invalid)
+    {
+      return 0;
+    }
 
   if (s->session_state == SESSION_STATE_CONNECTING &&
       (s->flags & SESSION_F_HALF_OPEN))
