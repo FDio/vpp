@@ -329,6 +329,7 @@ int session_wrk_handle_mq (session_worker_t *wrk, svm_msg_q_t *mq);
 
 session_t *session_alloc (u32 thread_index);
 void session_free (session_t * s);
+void session_release (session_t *s);
 void session_free_w_fifos (session_t * s);
 void session_cleanup_half_open (session_handle_t ho_handle);
 u8 session_is_valid (u32 si, u8 thread_index);
@@ -343,14 +344,21 @@ session_get (u32 si, u32 thread_index)
 always_inline session_t *
 session_get_if_valid (u64 si, u32 thread_index)
 {
+  session_t *s;
   if (thread_index >= vec_len (session_main.wrk))
     return 0;
 
   if (pool_is_free_index (session_main.wrk[thread_index].sessions, si))
     return 0;
 
+  s = pool_elt_at_index (session_main.wrk[thread_index].sessions, si);
+  if (s->invalid)
+    {
+      return 0;
+    }
+
   ASSERT (session_is_valid (si, thread_index));
-  return pool_elt_at_index (session_main.wrk[thread_index].sessions, si);
+  return s;
 }
 
 always_inline session_t *
