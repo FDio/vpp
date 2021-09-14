@@ -254,7 +254,11 @@ vlib_node_set_interrupt_pending (vlib_main_t *vm, u32 node_index)
   ASSERT (n->type == VLIB_NODE_TYPE_INPUT);
 
   if (vm != vlib_get_main ())
-    clib_interrupt_set_atomic (nm->interrupts, n->runtime_index);
+    {
+      clib_interrupt_set_atomic (nm->interrupts, n->runtime_index);
+      if (nm->iwi_cb)
+	nm->iwi_cb (nm, nm->iwi_cb_user_data);
+    }
   else
     clib_interrupt_set (nm->interrupts, n->runtime_index);
 

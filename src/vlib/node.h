@@ -663,7 +663,9 @@ typedef struct
   char *desc;
 } vlib_node_fn_variant_t;
 
-typedef struct
+struct vlib_node_main_t_;
+typedef void (*vlib_node_main_iwi_cb_t) (struct vlib_node_main_t_ *, uword);
+typedef struct vlib_node_main_t_
 {
   /* Public nodes. */
   vlib_node_t **nodes;
@@ -741,6 +743,10 @@ typedef struct
 
   /* Node Function march Variant by Suffix Hash */
   uword *node_fn_march_variant_by_suffix;
+
+  /* Callback for inter worker interrupts */
+  vlib_node_main_iwi_cb_t iwi_cb;
+  uword iwi_cb_user_data;
 } vlib_node_main_t;
 
 typedef u16 vlib_error_t;

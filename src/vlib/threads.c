@@ -15,6 +15,7 @@
 #define _GNU_SOURCE
 
 #include <signal.h>
+#include <sys/eventfd.h>
 #include <math.h>
 #include <vppinfra/format.h>
 #include <vppinfra/time_range.h>
@@ -735,7 +736,6 @@ start_workers (vlib_main_t * vm)
 	      nm_clone->frame_size_hash = hash_create (0, sizeof (uword));
 #endif
 	      nm_clone->node_by_error = nm->node_by_error;
-
 	      /* Packet trace buffers are guaranteed to be empty, nothing to do here */
 
 	      clib_mem_set_heap (oldheap);
