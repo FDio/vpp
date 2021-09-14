@@ -41,6 +41,7 @@
 #include <vlib/unix/unix.h>
 #include <signal.h>
 #include <unistd.h>
+#include <sys/eventfd.h>
 #include <vppinfra/tw_timer_1t_3w_1024sl_ov.h>
 
 /* FIXME autoconf */
@@ -56,6 +57,7 @@ typedef struct
   int epoll_fd;
   struct epoll_event *epoll_events;
   int n_epoll_fds;
+  int iwi_event_fd;
 
   /* Statistics. */
   u64 epoll_files_ready;
@@ -375,6 +377,51 @@ VLIB_REGISTER_NODE (linux_epoll_input_node,static) = {
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+linux_epoll_input_iwi_read_ready (clib_file_t *uf)
+{
+  int i;
+  CLIB_UNUSED (int rv) = read (uf->file_descriptor, &i, sizeof (i));
+  return 0;
+}
+
+static void
+linux_epoll_input_iwi_cb (vlib_node_main_t *nm, uword user_data)
+{
+  linux_epoll_main_t *em = vec_elt_at_index (linux_epoll_mains, user_data);
+  int x = 1;
+  CLIB_UNUSED (int res) = write (em->iwi_event_fd, &x, sizeof (x));
+}
+
+static clib_spinlock_t fm_lock;
+
+clib_error_t *
+linux_epoll_input_iwi_eventfd_init (vlib_main_t *vm)
+{
+  linux_epoll_main_t *em;
+  clib_file_main_t *fm = &file_main;
+  clib_file_t t = { 0 };
+  int efd;
+  uword thread_index;
+  uword file_index;
+
+  thread_index = vlib_get_thread_index ();
+  em = vec_elt_at_index (linux_epoll_mains, thread_index);
+  efd = eventfd (0, EFD_NONBLOCK);
+  if (efd == -1)
+    return clib_error_return_unix (0, "eventfd");
+  em->iwi_event_fd = efd;
+  t.file_descriptor = efd;
+  t.description = format (0, "IWI for vlib_main %d", thread_index);
+  t.read_function = linux_epoll_input_iwi_read_ready;
+  clib_spinlock_lock (&fm_lock);
+  file_index = clib_file_add (fm, &t);
+  clib_file_set_polling_thread (fm, file_index, thread_index);
+  vlib_set_iwi_callback (vm, linux_epoll_input_iwi_cb, thread_index);
+  clib_spinlock_unlock (&fm_lock);
+  return 0;
+}
+
 clib_error_t *
 linux_epoll_input_init (vlib_main_t * vm)
 {
@@ -402,11 +449,13 @@ linux_epoll_input_init (vlib_main_t * vm)
   }
 
   fm->file_update = linux_epoll_file_update;
-
-  return 0;
+  clib_spinlock_init (&fm_lock);
+  return linux_epoll_input_iwi_eventfd_init (vm);
 }
 
 VLIB_INIT_FUNCTION (linux_epoll_input_init);
+
+VLIB_WORKER_INIT_FUNCTION (linux_epoll_input_iwi_eventfd_init);
 
 #endif /* HAVE_LINUX_EPOLL */
 
