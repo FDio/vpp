@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "0e3858e6_2bc63648",
+        "filename": "src/vnet/session/application_namespace.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 148,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-09-14T14:49:57Z",
+      "side": 1,
+      "message": "I missed this the first time, if we enforce null termination here and in the callers we\u0027ll end up with failed lookups. Can we just make sure the callers build a proper null terminated vector, i.e., whenever we get an ns_id, make sure it\u0027s valid as soon as we build it and then stop adding zeroes down the call path. We can maybe assert that vec_c_string_is_terminated",
+      "range": {
+        "startLine": 148,
+        "startChar": 2,
+        "endLine": 148,
+        "endChar": 37
+      },
+      "revId": "844e3574e733c4e79b7d9cf2de9c83e8440efbdb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "739f72e4_ae7e0222",
         "filename": "src/vnet/session/application_namespace.c",
         "patchSetId": 4
@@ -49,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "7d6f4f17_cbc0bbb3",
+        "filename": "src/vnet/session/application_namespace.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 314,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-09-14T14:49:57Z",
+      "side": 1,
+      "message": "I missed the change lower. This should be fine, I guess. We can decide later if we want something different",
+      "parentUuid": "199cb8e3_834d2315",
+      "range": {
+        "startLine": 314,
+        "startChar": 0,
+        "endLine": 314,
+        "endChar": 77
+      },
+      "revId": "844e3574e733c4e79b7d9cf2de9c83e8440efbdb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "74b88087_198a3c54",
         "filename": "src/vnet/session/application_namespace.c",
         "patchSetId": 4
@@ -93,6 +140,30 @@
       "revId": "844e3574e733c4e79b7d9cf2de9c83e8440efbdb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bc111cec_766dc3fd",
+        "filename": "src/vnet/session/application_namespace.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 422,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-09-14T14:49:57Z",
+      "side": 1,
+      "message": "I guess this cli is confusing. It shows the local table (not the global table) entries, i.e., it\u0027s a way to inspect lookup entries that are not shown when doing \"show session verbose\". I can change that later :-)",
+      "parentUuid": "beba0663_77b79f6e",
+      "range": {
+        "startLine": 422,
+        "startChar": 6,
+        "endLine": 422,
+        "endChar": 63
+      },
+      "revId": "844e3574e733c4e79b7d9cf2de9c83e8440efbdb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
