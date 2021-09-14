@@ -486,6 +486,9 @@ void vlib_add_del_post_mortem_callback (void *cb, int is_add);
 vlib_main_t *vlib_get_main_not_inline (void);
 elog_main_t *vlib_get_elog_main_not_inline ();
 
+void vlib_set_iwi_callback (vlib_main_t *vm, vlib_node_main_iwi_cb_t cb,
+			    uword data);
+
 #endif /* included_vlib_main_h */
 
 /*
