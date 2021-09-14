@@ -2101,6 +2101,14 @@ vlib_exit_with_status (vlib_main_t *vm, int status)
   __atomic_store_n (&vm->main_loop_exit_now, 1, __ATOMIC_RELEASE);
 }
 
+void
+vlib_set_iwi_callback (vlib_main_t *vm, vlib_node_main_iwi_cb_t cb, uword data)
+{
+  vlib_node_main_t *nm = &vm->node_main;
+  nm->iwi_cb = cb;
+  nm->iwi_cb_user_data = data;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
