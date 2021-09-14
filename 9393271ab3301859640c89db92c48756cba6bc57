@@ -16,6 +16,24 @@
       "revId": "9393271ab3301859640c89db92c48756cba6bc57",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "174595eb_bab80ed0",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1084,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-09-14T09:39:33Z",
+      "side": 1,
+      "message": "We *could* set fib_index_by_sw_if_index[idx] to 0, but we don\u0027t really care as we are deleting the interface. \nThis would make the logic a bit more complex as other calls rely on that information (e.g. ip4_mfib_interface_enable_disable). So we would have to ensure ip_table_bind(0) is always called last.\nAlso this would trigger the table_bind_callbacks on interface delete \nwhich might not be what we want here.",
+      "parentUuid": "a869a5cb_72aadb2f",
+      "revId": "9393271ab3301859640c89db92c48756cba6bc57",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
