@@ -1189,7 +1189,10 @@ session_tx_maybe_reschedule (session_worker_t * wrk,
   svm_fifo_unset_event (s->tx_fifo);
   if (svm_fifo_max_dequeue_cons (s->tx_fifo) > ctx->sp.tx_offset)
     if (svm_fifo_set_event (s->tx_fifo))
-      session_evt_add_head_old (wrk, elt);
+      {
+	ctx->s->used_in_io_evt++;
+	session_evt_add_head_old (wrk, elt);
+      }
 }
 
 always_inline int
@@ -1210,7 +1213,10 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
   if (PREDICT_FALSE ((rv = session_tx_not_ready (ctx->s, peek_data))))
     {
       if (rv < 2)
-	session_evt_add_old (wrk, elt);
+	{
+	  ctx->s->used_in_io_evt++;
+	  session_evt_add_old (wrk, elt);
+	}
       return SESSION_TX_NO_DATA;
     }
 
@@ -1241,6 +1247,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
       max_burst -= n_custom_tx;
       if (!max_burst || (ctx->s->flags & SESSION_F_CUSTOM_TX))
 	{
+	  ctx->s->used_in_io_evt++;
 	  session_evt_add_old (wrk, elt);
 	  return SESSION_TX_OK;
 	}
@@ -1257,11 +1264,17 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
       /* Request to postpone the session, e.g., zero-wnd and transport
        * is not currently probing */
       else if (ctx->sp.flags & TRANSPORT_SND_F_POSTPONE)
-	session_evt_add_old (wrk, elt);
+	{
+	  ctx->s->used_in_io_evt++;
+	  session_evt_add_old (wrk, elt);
+	}
       /* This flow queue is "empty" so it should be re-evaluated before
        * the ones that have data to send. */
       else
-	session_evt_add_head_old (wrk, elt);
+	{
+	  ctx->s->used_in_io_evt++;
+	  session_evt_add_head_old (wrk, elt);
+	}
 
       return SESSION_TX_NO_DATA;
     }
@@ -1271,6 +1284,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
       u32 snd_space = transport_connection_tx_pacer_burst (ctx->tc);
       if (snd_space < TRANSPORT_PACER_MIN_BURST)
 	{
+	  ctx->s->used_in_io_evt++;
 	  session_evt_add_head_old (wrk, elt);
 	  return SESSION_TX_NO_DATA;
 	}
@@ -1296,6 +1310,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
     {
       if (n_bufs)
 	vlib_buffer_free (vm, ctx->tx_buffers, n_bufs);
+      ctx->s->used_in_io_evt++;
       session_evt_add_head_old (wrk, elt);
       vlib_node_increment_counter (wrk->vm, node->node_index,
 				   SESSION_QUEUE_ERROR_NO_BUFFER, 1);
@@ -1382,7 +1397,10 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
   /* If we couldn't dequeue all bytes reschedule as old flow. Otherwise,
    * check if application enqueued more data and reschedule accordingly */
   if (ctx->max_len_to_snd < ctx->max_dequeue)
-    session_evt_add_old (wrk, elt);
+    {
+      ctx->s->used_in_io_evt++;
+      session_evt_add_old (wrk, elt);
+    }
   else
     session_tx_maybe_reschedule (wrk, ctx, elt);
 
@@ -1436,6 +1454,7 @@ session_tx_fifo_dequeue_internal (session_worker_t * wrk,
 
   if (s->flags & SESSION_F_CUSTOM_TX)
     {
+      s->used_in_io_evt++;
       session_evt_add_old (wrk, elt);
     }
   else if (!(sp->flags & TRANSPORT_SND_F_DESCHED))
@@ -1443,7 +1462,10 @@ session_tx_fifo_dequeue_internal (session_worker_t * wrk,
       svm_fifo_unset_event (s->tx_fifo);
       if (svm_fifo_max_dequeue_cons (s->tx_fifo))
 	if (svm_fifo_set_event (s->tx_fifo))
-	  session_evt_add_head_old (wrk, elt);
+	  {
+	    s->used_in_io_evt++;
+	    session_evt_add_head_old (wrk, elt);
+	  }
     }
 
   if (sp->max_burst_size &&
@@ -1456,11 +1478,15 @@ session_tx_fifo_dequeue_internal (session_worker_t * wrk,
 always_inline session_t *
 session_event_get_session (session_worker_t * wrk, session_event_t * e)
 {
+  session_t *s;
   if (PREDICT_FALSE (pool_is_free_index (wrk->sessions, e->session_index)))
     return 0;
 
-  ASSERT (session_is_valid (e->session_index, wrk->vm->thread_index));
-  return pool_elt_at_index (wrk->sessions, e->session_index);
+  s = pool_elt_at_index (wrk->sessions, e->session_index);
+
+  ASSERT (session_is_valid (e->session_index, wrk->vm->thread_index) ||
+	  (s->invalid && s->used_in_io_evt > 0));
+  return s;
 }
 
 always_inline void
@@ -1580,32 +1606,62 @@ session_event_dispatch_io (session_worker_t * wrk, vlib_node_runtime_t * node,
       s = session_event_get_session (wrk, e);
       if (PREDICT_FALSE (!s))
 	break;
+      if (PREDICT_FALSE (s->invalid))
+	{
+	  session_release (s);
+	  break;
+	}
       CLIB_PREFETCH (s->tx_fifo, sizeof (*(s->tx_fifo)), LOAD);
       wrk->ctx.s = s;
+      ASSERT (s->used_in_io_evt > 0);
       /* Spray packets in per session type frames, since they go to
        * different nodes */
       (smm->session_tx_fns[s->session_type]) (wrk, node, elt, n_tx_packets);
+      session_release (s);
       break;
     case SESSION_IO_EVT_RX:
       s = session_event_get_session (wrk, e);
-      if (!s)
+      if (PREDICT_FALSE (!s))
 	break;
+      if (PREDICT_FALSE (s->invalid))
+	{
+	  session_release (s);
+	  break;
+	}
+      ASSERT (s->used_in_io_evt > 0);
       transport_app_rx_evt (session_get_transport_proto (s),
 			    s->connection_index, s->thread_index);
+      session_release (s);
       break;
     case SESSION_IO_EVT_BUILTIN_RX:
       s = session_event_get_session (wrk, e);
-      if (PREDICT_FALSE (!s || s->session_state >= SESSION_STATE_CLOSING))
+      if (PREDICT_FALSE (!s))
 	break;
+      if (PREDICT_FALSE (s->invalid))
+	{
+	  session_release (s);
+	  break;
+	}
+      if (PREDICT_FALSE (s->session_state >= SESSION_STATE_CLOSING))
+	break;
+      ASSERT (s->used_in_io_evt > 0);
       svm_fifo_unset_event (s->rx_fifo);
       app_wrk = app_worker_get (s->app_wrk_index);
       app_worker_builtin_rx (app_wrk, s);
+      session_release (s);
       break;
     case SESSION_IO_EVT_BUILTIN_TX:
-      s = session_get_from_handle_if_valid (e->session_handle);
+      s = session_event_get_session (wrk, e);
+      if (PREDICT_FALSE (!s))
+	break;
+      if (PREDICT_FALSE (s->invalid))
+	{
+	  session_release (s);
+	  break;
+	}
       wrk->ctx.s = s;
-      if (PREDICT_TRUE (s != 0))
-	session_tx_fifo_dequeue_internal (wrk, node, elt, n_tx_packets);
+      session_tx_fifo_dequeue_internal (wrk, node, elt, n_tx_packets);
+      session_release (s);
       break;
     default:
       clib_warning ("unhandled event type %d", e->event_type);
@@ -1632,6 +1688,7 @@ always_inline void
 session_evt_add_to_list (session_worker_t * wrk, session_event_t * evt)
 {
   session_evt_elt_t *elt;
+  session_t *s;
 
   if (evt->event_type >= SESSION_CTRL_EVT_RPC)
     {
@@ -1651,6 +1708,13 @@ session_evt_add_to_list (session_worker_t * wrk, session_event_t * evt)
     }
   else
     {
+      s = session_event_get_session (wrk, evt);
+      if (!s)
+	{
+	  return;
+	}
+
+      s->used_in_io_evt++;
       elt = session_evt_alloc_new (wrk);
       clib_memcpy_fast (&elt->evt, evt, sizeof (elt->evt));
     }
