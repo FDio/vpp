@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "199cb8e3_834d2315",
+        "filename": "src/vnet/session/application_namespace.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 314,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-09-14T08:54:20Z",
+      "side": 1,
+      "message": "Right, I thought a verbose format would be better as an exposed format function.\nI moved the `show app ns` format to the foreach loop as it was really dependent\non the header above.\nBut if you think otherwise fine to change it again 😊",
+      "parentUuid": "739f72e4_ae7e0222",
+      "range": {
+        "startLine": 314,
+        "startChar": 0,
+        "endLine": 314,
+        "endChar": 77
+      },
+      "revId": "844e3574e733c4e79b7d9cf2de9c83e8440efbdb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "74b88087_198a3c54",
         "filename": "src/vnet/session/application_namespace.c",
         "patchSetId": 4
@@ -36,6 +60,30 @@
       "writtenOn": "2021-09-13T21:53:28Z",
       "side": 1,
       "message": "debug code?",
+      "range": {
+        "startLine": 422,
+        "startChar": 6,
+        "endLine": 422,
+        "endChar": 63
+      },
+      "revId": "844e3574e733c4e79b7d9cf2de9c83e8440efbdb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "beba0663_77b79f6e",
+        "filename": "src/vnet/session/application_namespace.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 422,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-09-14T08:54:20Z",
+      "side": 1,
+      "message": "I thought when you do `show app ns id \u003csomeid\u003e` it would be nice to have displayed, \nthe details of the app_ns on top of the lookup table entries\nBut again it\u0027s minor formatting changes 😊",
+      "parentUuid": "74b88087_198a3c54",
       "range": {
         "startLine": 422,
         "startChar": 6,
