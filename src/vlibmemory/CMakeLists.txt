@@ -18,8 +18,9 @@ add_vpp_library (vlibmemory
   memory_client.c
   socket_client.c
   socket_api.c
-  vlib_api.c
+  memclnt_api.c
   vlib_api_cli.c
+  vlib_api.c
   ../vlibapi/api_shared.c
   ../vlibapi/node_serialize.c
 
@@ -35,6 +36,7 @@ add_vpp_library (vlibmemory
 
   API_FILES
   memclnt.api
+  vlib.api
 
   LINK_LIBRARIES vppinfra svm vlib
 )
@@ -51,3 +53,7 @@ add_vpp_library (vlibmemoryclient
   LINK_LIBRARIES vppinfra svm
 )
 add_dependencies(vlibmemoryclient vlibmemory_api_headers)
+
+add_vat_test_library(vlib
+  vlibapi_test.c
+)
