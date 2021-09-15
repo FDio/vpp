@@ -272,11 +272,14 @@ do {								\
 
 /* "trust, but verify" */
 
-static inline uword
-vnet_sw_if_index_is_api_valid (u32 sw_if_index)
-{
-  return vnet_sw_interface_is_api_valid (vnet_get_main (), sw_if_index);
-}
+//static inline uword
+//vnet_sw_if_index_is_api_valid (u32 sw_if_index)
+//{
+//  return vnet_sw_interface_is_api_valid (vnet_get_main (), sw_if_index);
+//}
+
+#define vnet_sw_if_index_is_api_valid(sw_if_index)		\
+  vnet_sw_interface_is_api_valid (vnet_get_main (), sw_if_index)
 
 #define VALIDATE_SW_IF_INDEX(mp)				\
  do { u32 __sw_if_index = ntohl((mp)->sw_if_index);		\
@@ -423,7 +426,7 @@ typedef struct
 
   /* convenience */
   vlib_main_t *vlib_main;
-  vnet_main_t *vnet_main;
+  struct vnet_main_t *vnet_main;
 } vpe_api_main_t;
 
 extern vpe_api_main_t vpe_api_main;
