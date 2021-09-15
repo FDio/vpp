@@ -58,12 +58,15 @@
 
 #define vl_typedefs		/* define message structures */
 #include <vpp/api/vpe_all_api_h.h>
+#include <vlibmemory/vlib.api.h>
+#include <vlibmemory/vlib.api_enum.h>
 #undef vl_typedefs
 
 /* declare message handlers for each api */
 
 #define vl_endianfun		/* define message structures */
 #include <vpp/api/vpe_all_api_h.h>
+#include <vlibmemory/vlib.api.h>
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
@@ -74,6 +77,7 @@
 #endif
 #define vl_printfun
 #include <vpp/api/vpe_all_api_h.h>
+#include <vlibmemory/vlib.api.h>
 #undef vl_printfun
 
 #define __plugin_msg_base 0
