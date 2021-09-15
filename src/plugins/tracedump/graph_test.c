@@ -27,7 +27,7 @@
 #include <vnet/format_fns.h>
 #include <tracedump/graph.api_enum.h>
 #include <tracedump/graph.api_types.h>
-#include <vpp/api/vpe.api_types.h>
+#include <vlibmemory/vlib.api_types.h>
 
 typedef struct
 {

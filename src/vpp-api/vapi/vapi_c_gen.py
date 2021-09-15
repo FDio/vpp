@@ -705,12 +705,12 @@ def gen_json_unified_header(parser, logger, j, io, name):
     print("#ifdef __cplusplus")
     print("extern \"C\" {")
     print("#endif")
-    if name == "vpe.api.vapi.h":
+    if name == "vlib.api.vapi.h":
         print("")
         print("static inline vapi_error_e vapi_send_with_control_ping "
               "(vapi_ctx_t ctx, void * msg, u32 context);")
     else:
-        print("#include <vapi/vpe.api.vapi.h>")
+        print("#include <vapi/vlib.api.vapi.h>")
     print("")
     for m in parser.messages_by_json[j].values():
         print("extern vapi_msg_id_t %s;" % m.get_msg_id_name())
@@ -737,7 +737,7 @@ def gen_json_unified_header(parser, logger, j, io, name):
 
     print("")
 
-    if name == "vpe.api.vapi.h":
+    if name == "vlib.api.vapi.h":
         print("%s" % vapi_send_with_control_ping)
         print("")
 

@@ -77,7 +77,6 @@
 #include <vlibapi/api_helper_macros.h>
 
 #define foreach_vpe_api_msg                                                   \
-  _ (CONTROL_PING, control_ping)                                              \
   _ (SHOW_VERSION, show_version)                                              \
   _ (SHOW_VPE_SYSTEM_TIME, show_vpe_system_time)                              \
   _ (LOG_DUMP, log_dump)
@@ -114,20 +113,6 @@ memclnt_delete_callback (u32 client_index)
 }
 
 VL_MSG_API_REAPER_FUNCTION (memclnt_delete_callback);
-
-static void
-vl_api_control_ping_t_handler (vl_api_control_ping_t * mp)
-{
-  vl_api_control_ping_reply_t *rmp;
-  int rv = 0;
-
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_CONTROL_PING_REPLY,
-  ({
-    rmp->vpe_pid = ntohl (getpid());
-  }));
-  /* *INDENT-ON* */
-}
 
 static void
 vl_api_show_version_t_handler (vl_api_show_version_t * mp)
@@ -293,8 +278,6 @@ vpe_api_hookup (vlib_main_t * vm)
   /*
    * Thread-safe API messages
    */
-  am->is_mp_safe[VL_API_CONTROL_PING] = 1;
-  am->is_mp_safe[VL_API_CONTROL_PING_REPLY] = 1;
   am->is_mp_safe[VL_API_IP_ROUTE_ADD_DEL] = 1;
 
   /*

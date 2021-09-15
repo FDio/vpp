@@ -33,8 +33,7 @@
 #include <vnet/format_fns.h>
 #include <memif/memif.api_enum.h>
 #include <memif/memif.api_types.h>
-#include <vpp/api/vpe.api_types.h>
-//#include <vnet/ethernet/ethernet_types.api_types.h>
+#include <vlibmemory/vlib.api_types.h>
 
 typedef struct
 {

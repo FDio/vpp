@@ -26,12 +26,12 @@
 
 #define __plugin_msg_base arping_test_main.msg_id_base
 #include <vlibapi/vat_helper_macros.h>
+#include <vlibmemory/vlib.api_types.h>
 
 /* declare message IDs */
 #include <vnet/format_fns.h>
 #include <arping/arping.api_enum.h>
 #include <arping/arping.api_types.h>
-#include <vpp/api/vpe.api_types.h>
 #include <vnet/ip/ip_types_api.h>
 
 typedef struct
