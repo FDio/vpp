@@ -318,6 +318,12 @@ api_sw_interface_ip6nd_ra_config (vat_main_t * vam)
   W (ret);
   return ret;
 }
+static int
+api_ip6nd_proxy_enable_disable (vat_main_t *vam)
+{
+  // not yet implemented
+  return -1;
+}
 
 #include <ip6-nd/ip6_nd.api_test.c>
 

@@ -32,7 +32,6 @@ add_vpp_executable(vpp_api_test ENABLE_EXPORTS
   ip_types_api.c
   ip_types.c
   protocols.def
-  ../vnet/arp/arp_test.c
 
   DEPENDS api_headers
 
