@@ -31,6 +31,7 @@
 #include <vlibapi/api_common.h>
 #include <vlibmemory/memory_client.h>
 
+#include <vapi/vpe.api.vapi.h>
 #include <vapi/memclnt.api.vapi.h>
 
 /* we need to use control pings for some stuff and because we're forced to put
