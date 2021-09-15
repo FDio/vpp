@@ -18,11 +18,13 @@
  */
 
 /* Include the (first) vlib-api API definition layer */
-#include <vlibmemory/vl_memory_api_h.h>
+//#include <vlibmemory/vl_memory_api_h.h>
 
 /* Include the current layer (third) vpp API definition layer */
 #include <vpp/api/vpe_types.api.h>
 #include <vpp/api/vpe.api.h>
+
+#include <vlibmemory/memclnt.api.h>
 
 /*
  * fd.io coding-style-patch-verification: ON

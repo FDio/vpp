@@ -20,7 +20,7 @@ uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
 #include <vrrp/vrrp.api_enum.h>
 #include <vrrp/vrrp.api_types.h>
 #include <vpp/api/vpe.api_types.h>
-
+#include <vlibmemory/memclnt.api_types.h>
 
 typedef struct
 {

@@ -27,6 +27,7 @@
 #include <geneve/geneve.api_enum.h>
 #include <geneve/geneve.api_types.h>
 #include <vpp/api/vpe.api_types.h>
+#include <vlibmemory/memclnt.api_types.h>
 
 typedef struct
 {

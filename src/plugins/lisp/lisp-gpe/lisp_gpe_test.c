@@ -27,6 +27,7 @@
 #include <lisp/lisp-gpe/lisp_gpe.api_enum.h>
 #include <lisp/lisp-gpe/lisp_gpe.api_types.h>
 #include <vpp/api/vpe.api_types.h>
+#include <vlibmemory/memclnt.api_types.h>
 
 typedef struct
 {

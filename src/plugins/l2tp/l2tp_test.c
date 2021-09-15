@@ -27,6 +27,7 @@
 #include <l2tp/l2tp.api_enum.h>
 #include <l2tp/l2tp.api_types.h>
 #include <vpp/api/vpe.api_types.h>
+#include <vlibmemory/memclnt.api_types.h>
 
 typedef struct
 {

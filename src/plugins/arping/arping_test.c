@@ -32,6 +32,7 @@
 #include <arping/arping.api_enum.h>
 #include <arping/arping.api_types.h>
 #include <vpp/api/vpe.api_types.h>
+#include <vlibmemory/memclnt.api_types.h>
 #include <vnet/ip/ip_types_api.h>
 
 typedef struct
