@@ -209,3 +209,237 @@ autoreply define memclnt_keepalive
   u32 client_index;
   u32 context;
 };
+
+/** \brief Process a vpe parser cli string request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param cmd_in_shmem - pointer to cli command string
+*/
+define cli
+{
+  u32 client_index;
+  u32 context;
+  u64 cmd_in_shmem;
+};
+define cli_inband
+{
+  u32 client_index;
+  u32 context;
+  string cmd[];
+};
+
+/** \brief vpe parser cli string response
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for request
+    @param reply_in_shmem - Reply string from cli processing if any
+*/
+define cli_reply
+{
+  u32 context;
+  i32 retval;
+  u64 reply_in_shmem;
+};
+define cli_inband_reply
+{
+  u32 context;
+  i32 retval;
+  string reply[];
+};
+
+/** \brief Get node index using name request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param node_name[] - name of the node
+*/
+define get_node_index
+{
+  u32 client_index;
+  u32 context;
+  string node_name[64];
+};
+
+/** \brief Get node index using name request
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param node_index - index of the desired node if found, else ~0
+*/
+define get_node_index_reply
+{
+  u32 context;
+  i32 retval;
+  u32 node_index;
+};
+
+/** \brief Set the next node for a given node request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param node_name[] - node to add the next node to
+    @param next_name[] - node to add as the next node
+*/
+define add_node_next
+{
+  u32 client_index;
+  u32 context;
+  string node_name[64];
+  string next_name[64];
+};
+
+/** \brief IP Set the next node for a given node response
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the add next node request
+    @param next_index - the index of the next node if success, else ~0
+*/
+define add_node_next_reply
+{
+  u32 context;
+  i32 retval;
+  u32 next_index;
+};
+
+/** \brief show_threads display the information about vpp
+    threads running on system along with their process id,
+    cpu id, physical core and cpu socket.
+*/
+define show_threads
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief thread data
+    @param id - thread index
+    @param name - thread name i.e. vpp_main or vpp_wk_0
+    @param type - thread type i.e. workers or stats
+    @param pid - thread Process Id
+    @param cpu_id - thread pinned to cpu.
+    "CPUs or Logical cores are the number of physical cores times
+    the number of threads that can run on each core through
+    the use of hyperthreading." (from unix.stackexchange.com)
+    @param core - thread pinned to actual physical core.
+    @param cpu_socket - thread is running on which cpu socket.
+*/
+typedef thread_data
+{
+  u32 id;
+  string name[64];
+  string type[64];
+  u32 pid;
+  u32 cpu_id;
+  u32 core;
+  u32 cpu_socket;
+};
+
+/** \brief show_threads_reply
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+    @param count - number of threads in thread_data array
+    @param thread_data - array of thread data
+*/
+define show_threads_reply
+{
+  u32 context;
+  i32 retval;
+  u32 count;
+  vl_api_thread_data_t thread_data[count];
+};
+
+define get_node_graph
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief get_node_graph_reply
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+    @param reply_in_shmem - result from vlib_node_serialize, in shared
+    memory. Process with vlib_node_unserialize, remember to switch
+    heaps and free the result.
+*/
+
+define get_node_graph_reply
+{
+  u32 context;
+  i32 retval;
+  u64 reply_in_shmem;
+};
+
+/** \brief Query relative index via node names
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param node_name - name of node to find relative index from
+    @param next_name - next node from node_name to find relative index of
+*/
+define get_next_index
+{
+  u32 client_index;
+  u32 context;
+  string node_name[64];
+  string next_name[64];
+};
+
+/** \brief Reply for get next node index
+    @param context - sender context which was passed in the request
+    @param retval - return value
+    @param next_index - index of the next_node
+*/
+define get_next_index_reply
+{
+  u32 context;
+  i32 retval;
+  u32 next_index;
+};
+
+/** \brief f64 types are not standardized across the wire. Sense wire format in each direction by sending the f64 value 1.0.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param f64_one - The constant of 1.0.  If you send a different value, expect an rv=VNET_API_ERROR_API_ENDIAN_FAILED.
+*/
+define get_f64_endian_value
+{
+  u32 client_index;
+  u32 context;
+  f64 f64_one [default=1.0];
+};
+
+/** \brief get_f64_endian_value reply message
+    @param context - sender context which was passed in the request
+    @param retval - return value - VNET_API_ERROR_API_ENDIAN_FAILED if f64_one != 1.0
+    @param f64_one_result - The value of 'f64 1.0'
+*/
+define get_f64_endian_value_reply
+{
+  u32 context;
+  u32 retval;
+  f64 f64_one_result;
+};
+
+/** \brief Verify f64 wire format by sending a value and receiving the value + 1.0
+    @param client_index - opaque cookie to identify the sender.
+    @param context - sender context, to match reply w/ request.
+    @param f64_value - The value you want to test.  Default: 1.0.
+*/
+define get_f64_increment_by_one
+{
+  u32 client_index;
+  u32 context;
+  f64 f64_value [default=1.0];
+};
+
+/** \brief get_f64_increment_by_one reply
+    @param client_index - opaque cookie to identify the sender.
+    @param context - sender context, to match reply w/ request.
+    @param f64_value - The input f64_value incremented by 1.0.
+*/
+define get_f64_increment_by_one_reply
+{
+  u32 context;
+  u32 retval;
+  f64 f64_value;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
