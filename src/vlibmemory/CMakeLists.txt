@@ -35,6 +35,7 @@ add_vpp_library (vlibmemory
 
   API_FILES
   memclnt.api
+  vlib.api
 
   LINK_LIBRARIES vppinfra svm vlib
 )
