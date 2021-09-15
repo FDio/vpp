@@ -58,7 +58,7 @@ add_vpp_executable(vpp_json_test ENABLE_EXPORTS NO_INSTALL
 ##############################################################################
 install(
   FILES vat.h json_format.h
-  DESTINATION include/vat
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vat
   COMPONENT vpp-dev
 )
 

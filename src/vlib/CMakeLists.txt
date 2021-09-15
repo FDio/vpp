@@ -41,7 +41,7 @@ configure_file(
 )
 install(
   FILES ${CMAKE_CURRENT_BINARY_DIR}/config.h
-  DESTINATION include/vlib
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vlib
   COMPONENT vpp-dev
 )
 

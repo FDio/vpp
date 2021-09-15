@@ -51,7 +51,7 @@ foreach(file ${VPP_API_FILES})
     FILES ${CMAKE_CURRENT_BINARY_DIR}/${file}.h
     ${CMAKE_CURRENT_BINARY_DIR}/${file}_enum.h
     ${CMAKE_CURRENT_BINARY_DIR}/${file}_types.h
-    DESTINATION include/vpp/${dir}
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vpp/${dir}
     COMPONENT vpp-dev
   )
 endforeach()
@@ -133,8 +133,8 @@ add_vpp_library(vppmem_preload
   LINK_LIBRARIES vppinfra
 )
 
-install(FILES conf/startup.conf DESTINATION etc/vpp COMPONENT vpp)
-install(FILES conf/80-vpp.conf DESTINATION etc/sysctl.d COMPONENT vpp)
+install(FILES conf/startup.conf DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/vpp COMPONENT vpp)
+install(FILES conf/80-vpp.conf DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/sysctl.d COMPONENT vpp)
 
 ##############################################################################
 # VAT2 plugins
