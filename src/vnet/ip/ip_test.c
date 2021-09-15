@@ -30,6 +30,7 @@
 #include <vnet/format_fns.h>
 #include <vnet/ip/ip.api_enum.h>
 #include <vnet/ip/ip.api_types.h>
+#include <vlibmemory/vlib.api_types.h>
 
 #define vl_endianfun /* define message structures */
 #include <vnet/ip/ip.api.h>

@@ -32,7 +32,7 @@
 #include <vnet/format_fns.h>
 #include <ikev2/ikev2.api_enum.h>
 #include <ikev2/ikev2.api_types.h>
-#include <vpp/api/vpe.api_types.h>
+#include <vlibmemory/vlib.api_types.h>
 
 #define vl_endianfun		/* define message structures */
 #include <plugins/ikev2/ikev2.api.h>

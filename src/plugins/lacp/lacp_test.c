@@ -31,7 +31,7 @@
 #include <vnet/format_fns.h>
 #include <lacp/lacp.api_enum.h>
 #include <lacp/lacp.api_types.h>
-#include <vpp/api/vpe.api_types.h>
+#include <vlibmemory/vlib.api_types.h>
 
 typedef struct
 {

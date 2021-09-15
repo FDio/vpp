@@ -34,7 +34,7 @@
 /* declare message IDs */
 #include <vmxnet3/vmxnet3.api_enum.h>
 #include <vmxnet3/vmxnet3.api_types.h>
-#include <vpp/api/vpe.api_types.h>
+#include <vlibmemory/vlib.api_types.h>
 
 typedef struct
 {

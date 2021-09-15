@@ -23,9 +23,9 @@
 #include <vlibapi/vat_helper_macros.h>
 
 /* Declare message IDs */
-#include <vpp/api/vpe.api_types.h>
 #include <stn/stn.api_enum.h>
 #include <stn/stn.api_types.h>
+#include <vlibmemory/vlib.api_types.h>
 
 typedef struct
 {

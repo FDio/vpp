@@ -31,6 +31,7 @@
 #include <vlibapi/api_common.h>
 #include <vlibmemory/memory_client.h>
 
+#include <vapi/vlib.api.vapi.h>
 #include <vapi/memclnt.api.vapi.h>
 
 /* we need to use control pings for some stuff and because we're forced to put
@@ -40,7 +41,7 @@ vapi_msg_id_t vapi_msg_id_control_ping = 0;
 vapi_msg_id_t vapi_msg_id_control_ping_reply = 0;
 
 DEFINE_VAPI_MSG_IDS_MEMCLNT_API_JSON;
-DEFINE_VAPI_MSG_IDS_VPE_API_JSON;
+DEFINE_VAPI_MSG_IDS_VLIB_API_JSON;
 
 struct
 {
