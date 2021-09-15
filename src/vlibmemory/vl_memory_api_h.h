@@ -22,6 +22,7 @@
  * keyboard in the middle of the night!
  */
 #include <vlibmemory/memclnt.api.h>
+#include <vlibmemory/vlib.api.h>
 
 /*
  * fd.io coding-style-patch-verification: ON
