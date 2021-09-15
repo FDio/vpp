@@ -43,7 +43,7 @@ uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
 /* Declare message IDs */
 #include <vnet/arp/arp.api_enum.h>
 #include <vnet/arp/arp.api_types.h>
-#include <vpp/api/vpe.api_types.h>
+#include <vlibmemory/vlib.api_types.h>
 
 static int
 api_proxy_arp_dump (vat_main_t * vam)
