@@ -620,49 +620,6 @@ static void vl_api_show_version_reply_t_handler_json
 #define vl_api_bridge_domain_details_t_endian vl_noop_handler
 #define vl_api_bridge_domain_details_t_print vl_noop_handler
 
-static void vl_api_control_ping_reply_t_handler
-  (vl_api_control_ping_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  i32 retval = ntohl (mp->retval);
-  if (vam->async_mode)
-    {
-      vam->async_errors += (retval < 0);
-    }
-  else
-    {
-      vam->retval = retval;
-      vam->result_ready = 1;
-    }
-  if (vam->socket_client_main)
-    vam->socket_client_main->control_pings_outstanding--;
-}
-
-static void vl_api_control_ping_reply_t_handler_json
-  (vl_api_control_ping_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  i32 retval = ntohl (mp->retval);
-
-  if (VAT_JSON_NONE != vam->json_tree.type)
-    {
-      vat_json_print (vam->ofp, &vam->json_tree);
-      vat_json_free (&vam->json_tree);
-      vam->json_tree.type = VAT_JSON_NONE;
-    }
-  else
-    {
-      /* just print [] */
-      vat_json_init_array (&vam->json_tree);
-      vat_json_print (vam->ofp, &vam->json_tree);
-      vam->json_tree.type = VAT_JSON_NONE;
-    }
-
-  vam->retval = retval;
-  vam->result_ready = 1;
-}
-
-
 static void vl_api_get_first_msg_id_reply_t_handler
   (vl_api_get_first_msg_id_reply_t * mp)
 {
@@ -778,7 +735,6 @@ foreach_standard_reply_retval_handler;
 
 #define foreach_vpe_api_reply_msg                                             \
   _ (GET_FIRST_MSG_ID_REPLY, get_first_msg_id_reply)                          \
-  _ (CONTROL_PING_REPLY, control_ping_reply)                                  \
   _ (SHOW_VERSION_REPLY, show_version_reply)                                  \
 
 #define foreach_standalone_reply_msg					\

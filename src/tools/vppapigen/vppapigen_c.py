@@ -1682,8 +1682,8 @@ def generate_c_test2_boilerplate(services, defines, module, stream):
 
 #define vl_typedefs             /* define message structures */
 #include <vlibmemory/vl_memory_api_h.h>
-#include <vpp/api/vpe_types.api.h>
-#include <vpp/api/vpe.api.h>
+#include <vlibmemory/vlib.api_types.h>
+#include <vlibmemory/vlib.api.h>
 #undef vl_typedefs
 
 #include "{module}.api_enum.h"
