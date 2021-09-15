@@ -56,16 +56,16 @@
  * vlib_load_new_plugins().
  */
 
-/* *INDENT-OFF* */
-typedef CLIB_PACKED(struct {
-  u8 default_disabled;
+typedef struct
+{
+  u8 default_disabled : 1;
+  u8 deep_bind : 1;
   const char version[32];
   const char version_required[32];
   const char overrides[256];
   const char *early_init;
   const char *description;
-}) vlib_plugin_registration_t;
-/* *INDENT-ON* */
+} __clib_packed vlib_plugin_registration_t;
 
 /*
  * Plugins may also use this registration format, which is

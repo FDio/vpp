@@ -304,7 +304,8 @@ process_reg:
     }
   vec_free (version_required);
 
-  handle = dlopen ((char *) pi->filename, RTLD_LAZY);
+  handle = dlopen ((char *) pi->filename,
+		   RTLD_LAZY | (reg->deep_bind ? RTLD_DEEPBIND : 0));
 
   if (handle == 0)
     {
