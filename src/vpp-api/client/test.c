@@ -37,6 +37,9 @@
 #include "vppapiclient.h"
 #include "stat_client.h"
 
+#include <vlibmemory/vlib.api_enum.h>
+#include <vlibmemory/vlib.api_types.h>
+
 #define vl_typedefs             /* define message structures */
 #include <vpp/api/vpe_all_api_h.h> 
 #undef vl_typedefs

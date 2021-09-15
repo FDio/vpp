@@ -16,9 +16,11 @@
 #ifndef included_vat2_helpers_h
 #define included_vat2_helpers_h
 
+#include <vlibmemory/vlib.api_types.h>
+
 /* For control ping */
 #define vl_endianfun
-#include <vpp/api/vpe.api.h>
+#include <vlibmemory/vlib.api.h>
 #undef vl_endianfun
 
 static inline void
