@@ -30,6 +30,9 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 
+#include <vnet/api_errno.h>
+#include <vlibapi/api_helper_macros.h>
+
 /**
  * @file
  * @brief Binary API messaging via shared memory
@@ -634,6 +637,10 @@ vl_api_force_rpc_call_main_thread (void *fp, u8 * data, u32 data_length)
 				      1);
 }
 
+#define foreach_rpc_api_msg                                                   \
+  _ (RPC_CALL, rpc_call)                                                      \
+  _ (RPC_CALL_REPLY, rpc_call_reply)
+
 static void
 vl_api_trace_plugin_msg_ids_t_handler (vl_api_trace_plugin_msg_ids_t * mp)
 {
@@ -668,10 +675,6 @@ vl_api_trace_plugin_msg_ids_t_handler (vl_api_trace_plugin_msg_ids_t * mp)
 		    rp->last_msg_id);
     }
 }
-
-#define foreach_rpc_api_msg                     \
-_(RPC_CALL,rpc_call)                            \
-_(RPC_CALL_REPLY,rpc_call_reply)
 
 #define foreach_plugin_trace_msg		\
 _(TRACE_PLUGIN_MSG_IDS,trace_plugin_msg_ids)
