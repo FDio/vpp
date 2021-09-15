@@ -34,7 +34,7 @@ install(
     vapi.hpp
     vapi_internal.h
   DESTINATION
-    include/vapi
+    ${CMAKE_INSTALL_INCLUDEDIR}/vapi
   COMPONENT
     vpp-dev
 )

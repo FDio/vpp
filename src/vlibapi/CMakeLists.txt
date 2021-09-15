@@ -20,7 +20,7 @@ install(
   api_types.h
 
   DESTINATION
-  include/vlibapi
+  ${CMAKE_INSTALL_INCLUDEDIR}/vlibapi
 
   COMPONENT vpp-dev
 )

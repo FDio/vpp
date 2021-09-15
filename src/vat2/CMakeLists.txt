@@ -98,6 +98,6 @@ install(
   FILES
   jsonconvert.h
   vat2_helpers.h
-  DESTINATION include/vat2
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vat2
   COMPONENT vpp-dev
 )
