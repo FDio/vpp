@@ -1520,6 +1520,12 @@ add_vpp_library (vatclient
   DEPENDS api_headers
 )
 
+add_vat_test_library(vnet
+  ip/ip_test.c
+  arp/arp_test.c
+  ip6-nd/ip6_nd_test.c
+)
+
 ##############################################################################
 # VAT2 plugins
 ##############################################################################

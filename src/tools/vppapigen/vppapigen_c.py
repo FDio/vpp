@@ -1478,11 +1478,7 @@ def generate_c_test_boilerplate(services, defines, file_crc, module, plugin,
                   .format(n=e, ID=e.upper()))
 
     write('}\n')
-    if plugin:
-        write('clib_error_t * vat_plugin_register (vat_main_t *vam)\n')
-    else:
-        write('clib_error_t * vat_{}_plugin_register (vat_main_t *vam)\n'
-              .format(module))
+    write('clib_error_t * vat_plugin_register (vat_main_t *vam)\n')
     write('{\n')
     write('   {n}_test_main_t * mainp = &{n}_test_main;\n'.format(n=module))
     write('   mainp->vat_main = vam;\n')
