@@ -510,6 +510,8 @@ class VPPApiClient:
             n = name + '_' + msg.crc[2:]
             i = self.transport.get_msg_index(n)
             if i > 0:
+                if i < 10 or i > 20000:
+                    print("adding msg {} {}".format(i, n))
                 self.id_msgdef[i] = msg
                 self.id_names[i] = name
 
