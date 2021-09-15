@@ -158,8 +158,6 @@ api_proxy_arp_intfc_enable_disable (vat_main_t * vam)
 
 #include <vnet/arp/arp.api_test.c>
 
-VAT_REGISTER_FEATURE_FUNCTION (vat_arp_plugin_register);
-
 /*
  * fd.io coding-style-patch-verification: ON
  *

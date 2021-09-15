@@ -1547,8 +1547,6 @@ vl_api_ip_details_t_handler (vl_api_ip_details_t *mp)
 
 #include <vnet/ip/ip.api_test.c>
 
-VAT_REGISTER_FEATURE_FUNCTION (vat_ip_plugin_register);
-
 /*
  * fd.io coding-style-patch-verification: ON
  *
