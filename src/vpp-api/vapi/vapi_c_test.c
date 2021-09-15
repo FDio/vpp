@@ -28,6 +28,7 @@
 #include <vapi/interface.api.vapi.h>
 #include <vapi/l2.api.vapi.h>
 #include <fake.api.vapi.h>
+#include <vlibmemory/memclnt.api_types.h>
 
 #include <vppinfra/vec.h>
 #include <vppinfra/mem.h>

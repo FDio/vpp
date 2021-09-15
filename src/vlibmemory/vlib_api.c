@@ -638,6 +638,16 @@ vl_api_force_rpc_call_main_thread (void *fp, u8 * data, u32 data_length)
 }
 
 static void
+vl_api_control_ping_t_handler (vl_api_control_ping_t *mp)
+{
+  vl_api_control_ping_reply_t *rmp;
+  int rv = 0;
+
+  REPLY_MACRO2 (VL_API_CONTROL_PING_REPLY,
+		({ rmp->vpe_pid = ntohl (getpid ()); }));
+}
+
+static void
 shmem_cli_output (uword arg, u8 *buffer, uword buffer_bytes)
 {
   u8 **shmem_vecp = (u8 **) arg;
@@ -943,6 +953,7 @@ vl_api_get_f64_increment_by_one_t_handler (
 #define foreach_rpc_api_msg                                                   \
   _ (RPC_CALL, rpc_call)                                                      \
   _ (RPC_CALL_REPLY, rpc_call_reply)                                          \
+  _ (CONTROL_PING, control_ping)                                              \
   _ (CLI, cli)                                                                \
   _ (CLI_INBAND, cli_inband)                                                  \
   _ (GET_NODE_INDEX, get_node_index)                                          \
