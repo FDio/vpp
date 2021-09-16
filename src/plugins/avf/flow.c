@@ -436,7 +436,7 @@ done:
 
 int
 avf_flow_ops_fn (vnet_main_t *vm, vnet_flow_dev_op_t op, u32 dev_instance,
-		 u32 flow_index, uword *private_data)
+		 u32 flow_index, uword *private_data, u16 generic)
 {
   vnet_flow_t *flow = vnet_get_flow (flow_index);
   avf_device_t *ad = avf_get_device (dev_instance);

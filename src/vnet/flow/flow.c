@@ -122,7 +122,7 @@ vnet_flow_enable (vnet_main_t * vnm, u32 flow_index, u32 hw_if_index)
 
   rv = dev_class->flow_ops_function (vnm, VNET_FLOW_DEV_OP_ADD_FLOW,
 				     hi->dev_instance, flow_index,
-				     &private_data);
+				     &private_data, f->generic);
 
   if (rv)
     return rv;
@@ -153,8 +153,9 @@ vnet_flow_disable (vnet_main_t * vnm, u32 flow_index, u32 hw_if_index)
   hi = vnet_get_hw_interface (vnm, hw_if_index);
   dev_class = vnet_get_device_class (vnm, hi->dev_class_index);
 
-  rv = dev_class->flow_ops_function (vnm, VNET_FLOW_DEV_OP_DEL_FLOW,
-				     hi->dev_instance, flow_index, p);
+  rv =
+    dev_class->flow_ops_function (vnm, VNET_FLOW_DEV_OP_DEL_FLOW,
+				  hi->dev_instance, flow_index, p, f->generic);
 
   if (rv)
     return rv;

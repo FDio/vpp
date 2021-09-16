@@ -131,6 +131,93 @@ dpdk_flow_convert_rss_func (vnet_rss_function_t func)
 }
 
 static int
+dpdk_generic_flow_add (dpdk_device_t *xd, vnet_flow_t *f,
+		       dpdk_flow_entry_t *fe)
+{
+  struct rte_flow_item items[2] = { 0 };
+  struct rte_flow_action *action, *actions = 0;
+  struct rte_flow_action_mark mark = { 0 };
+  struct rte_flow_action_rss rss = { 0 };
+  struct rte_flow_action_queue queue = { 0 };
+  struct rte_flow_item_raw raw_spec;
+  struct rte_flow_item_raw raw_mask;
+  bool fate = false;
+  int rv = 0;
+
+  raw_spec.pattern = f->spec;
+  raw_mask.pattern = f->mask;
+
+  items[0].type = RTE_FLOW_ITEM_TYPE_RAW;
+  items[0].spec = &raw_spec;
+  items[0].mask = &raw_mask;
+  items[1].type = RTE_FLOW_ITEM_TYPE_END;
+
+  /* Actions */
+  /* Only one 'fate' can be assigned */
+  if (f->actions & VNET_FLOW_ACTION_REDIRECT_TO_QUEUE)
+    {
+      vec_add2 (actions, action, 1);
+      queue.index = f->redirect_queue;
+      action->type = RTE_FLOW_ACTION_TYPE_QUEUE;
+      action->conf = &queue;
+      fate = true;
+    }
+
+  if (f->actions & VNET_FLOW_ACTION_RSS)
+    {
+      vec_add2 (actions, action, 1);
+      action->type = RTE_FLOW_ACTION_TYPE_RSS;
+      rss.func = (enum rte_eth_hash_function) f->rss_fun;
+      action->conf = &rss;
+      if (fate == true)
+	{
+	  rv = VNET_FLOW_ERROR_INTERNAL;
+	  return rv;
+	}
+      else
+	fate = true;
+    }
+
+  if (f->actions & VNET_FLOW_ACTION_DROP)
+    {
+      vec_add2 (actions, action, 1);
+      action->type = RTE_FLOW_ACTION_TYPE_DROP;
+      if (fate == true)
+	{
+	  rv = VNET_FLOW_ERROR_INTERNAL;
+	  return rv;
+	}
+      else
+	fate = true;
+    }
+
+  if (fate == false)
+    {
+      vec_add2 (actions, action, 1);
+      action->type = RTE_FLOW_ACTION_TYPE_PASSTHRU;
+    }
+
+  if (f->actions & VNET_FLOW_ACTION_MARK)
+    {
+      vec_add2 (actions, action, 1);
+      mark.id = fe->mark;
+      action->type = RTE_FLOW_ACTION_TYPE_MARK;
+      action->conf = &mark;
+    }
+
+  vec_add2 (actions, action, 1);
+  action->type = RTE_FLOW_ACTION_TYPE_END;
+
+  fe->handle = rte_flow_create (xd->device_index, &ingress, items, actions,
+				&xd->last_flow_error);
+
+  if (!fe->handle)
+    rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
+
+  return rv;
+}
+
+static int
 dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
 {
   struct rte_flow_item_eth eth[2] = { };
@@ -552,8 +639,8 @@ done:
 }
 
 int
-dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
-		  u32 flow_index, uword * private_data)
+dpdk_flow_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op, u32 dev_instance,
+		  u32 flow_index, uword *private_data, u16 generic)
 {
   dpdk_main_t *dm = &dpdk_main;
   vnet_flow_t *flow = vnet_get_flow (flow_index);
@@ -639,25 +726,33 @@ dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
       dpdk_device_setup (xd);
     }
 
-  switch (flow->type)
+  if (generic)
     {
-    case VNET_FLOW_TYPE_ETHERNET:
-    case VNET_FLOW_TYPE_IP4:
-    case VNET_FLOW_TYPE_IP6:
-    case VNET_FLOW_TYPE_IP4_N_TUPLE:
-    case VNET_FLOW_TYPE_IP6_N_TUPLE:
-    case VNET_FLOW_TYPE_IP4_VXLAN:
-    case VNET_FLOW_TYPE_IP4_GTPC:
-    case VNET_FLOW_TYPE_IP4_GTPU:
-    case VNET_FLOW_TYPE_IP4_L2TPV3OIP:
-    case VNET_FLOW_TYPE_IP4_IPSEC_ESP:
-    case VNET_FLOW_TYPE_IP4_IPSEC_AH:
-      if ((rv = dpdk_flow_add (xd, flow, fe)))
+      if ((rv = dpdk_generic_flow_add (xd, flow, fe)))
 	goto done;
-      break;
-    default:
-      rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
-      goto done;
+    }
+  else
+    {
+      switch (flow->type)
+	{
+	case VNET_FLOW_TYPE_ETHERNET:
+	case VNET_FLOW_TYPE_IP4:
+	case VNET_FLOW_TYPE_IP6:
+	case VNET_FLOW_TYPE_IP4_N_TUPLE:
+	case VNET_FLOW_TYPE_IP6_N_TUPLE:
+	case VNET_FLOW_TYPE_IP4_VXLAN:
+	case VNET_FLOW_TYPE_IP4_GTPC:
+	case VNET_FLOW_TYPE_IP4_GTPU:
+	case VNET_FLOW_TYPE_IP4_L2TPV3OIP:
+	case VNET_FLOW_TYPE_IP4_IPSEC_ESP:
+	case VNET_FLOW_TYPE_IP4_IPSEC_AH:
+	  if ((rv = dpdk_flow_add (xd, flow, fe)))
+	    goto done;
+	  break;
+	default:
+	  rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
+	  goto done;
+	}
     }
 
   *private_data = fe - xd->flow_entries;
