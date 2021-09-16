@@ -16,7 +16,8 @@ features:
       - FLOW_TYPE_IP4_VXLAN,
       - FLOW_TYPE_IP6_VXLAN,
       - FLOW_TYPE_IP4_GTPC,
-      - FLOW_TYPE_IP4_GTPU
+      - FLOW_TYPE_IP4_GTPU,
+      - FLOW_TYPE_GENERIC
   - The below flow actions can be specified for the flows:
       - FLOW_ACTION_COUNT,
       - FLOW_ACTION_MARK,

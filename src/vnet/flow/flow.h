@@ -42,7 +42,9 @@
   _(IP4_VXLAN, ip4_vxlan, "ipv4-vxlan") \
   _(IP6_VXLAN, ip6_vxlan, "ipv6-vxlan") \
   _(IP4_GTPC, ip4_gtpc, "ipv4-gtpc") \
-  _(IP4_GTPU, ip4_gtpu, "ipv4-gtpu")
+  _(IP4_GTPU, ip4_gtpu, "ipv4-gtpu") \
+  /* generic flow */ \
+  _(GENERIC, generic, "generic")
 
 #define foreach_flow_entry_ethernet \
   _fe(ethernet_header_t, eth_hdr)
@@ -102,6 +104,8 @@
 #define foreach_flow_entry_ip4_gtpu \
   foreach_flow_entry_ip4_n_tuple \
   _fe(u32, teid)
+
+#define foreach_flow_entry_generic _fe (generic_pattern_t, pattern)
 
 #define foreach_flow_action \
   _(0, COUNT, "count") \
@@ -188,6 +192,12 @@ typedef struct
   /* other values are meanless */
   u8 mask;
 } ip_prot_and_mask_t;
+
+typedef struct
+{
+  u8 spec[1024];
+  u8 mask[1024];
+} generic_pattern_t;
 
 typedef enum
 {

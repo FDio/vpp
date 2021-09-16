@@ -142,6 +142,7 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
   struct rte_flow_item_l2tpv3oip l2tp[2] = { };
   struct rte_flow_item_esp esp[2] = { };
   struct rte_flow_item_ah ah[2] = { };
+  struct rte_flow_item_raw generic[2] = { };
   struct rte_flow_action_mark mark = { 0 };
   struct rte_flow_action_queue queue = { 0 };
   struct rte_flow_action_rss rss = { 0 };
@@ -164,6 +165,20 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
   u16 src_port = 0, dst_port = 0, src_port_mask = 0, dst_port_mask = 0;
   u8 protocol = IP_PROTOCOL_RESERVED;
   int rv = 0;
+
+  /* Handle generic flow first */
+  if (f->type == VNET_FLOW_TYPE_GENERIC)
+    {
+      generic[0].pattern = f->generic.pattern.spec;
+      generic[1].pattern = f->generic.pattern.mask;
+
+      vec_add2 (items, item, 1);
+      item->type = RTE_FLOW_ITEM_TYPE_RAW;
+      item->spec = generic;
+      item->mask = generic + 1;
+
+      goto pattern_end;
+    }
 
   enum
   {
@@ -653,6 +668,7 @@ dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
     case VNET_FLOW_TYPE_IP4_L2TPV3OIP:
     case VNET_FLOW_TYPE_IP4_IPSEC_ESP:
     case VNET_FLOW_TYPE_IP4_IPSEC_AH:
+    case VNET_FLOW_TYPE_GENERIC:
       if ((rv = dpdk_flow_add (xd, flow, fe)))
 	goto done;
       break;
