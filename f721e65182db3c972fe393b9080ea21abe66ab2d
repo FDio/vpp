@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4a86d1f5_9fd8f555",
+        "filename": "src/vnet/session/session_lookup.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1632,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-09-16T03:24:53Z",
+      "side": 1,
+      "message": "This is again on me: apparently this was some change that eventually didn\u0027t materialize. Could you clean it up?",
+      "range": {
+        "startLine": 1631,
+        "startChar": 3,
+        "endLine": 1632,
+        "endChar": 2
+      },
+      "revId": "f721e65182db3c972fe393b9080ea21abe66ab2d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
