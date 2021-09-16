@@ -22,6 +22,30 @@
       "revId": "f721e65182db3c972fe393b9080ea21abe66ab2d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "17d383f3_9ea6bfa6",
+        "filename": "src/vnet/session/session_lookup.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1632,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-09-16T07:36:10Z",
+      "side": 1,
+      "message": "Oh right, sorry about that. Should be fixed now 😊\nThanks for checking again",
+      "parentUuid": "4a86d1f5_9fd8f555",
+      "range": {
+        "startLine": 1631,
+        "startChar": 3,
+        "endLine": 1632,
+        "endChar": 2
+      },
+      "revId": "f721e65182db3c972fe393b9080ea21abe66ab2d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
