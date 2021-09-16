@@ -1322,6 +1322,7 @@ fib_table_lock_dec (fib_table_t *fib_table,
 {
     vec_validate(fib_table->ft_locks, source);
 
+    ASSERT(fib_table->ft_locks[source] > 0);
     fib_table->ft_locks[source]--;
     fib_table->ft_total_locks--;
 }
@@ -1350,7 +1351,7 @@ fib_table_unlock (u32 fib_index,
     if (0 == fib_table->ft_total_locks)
     {
         /*
-         * no more locak from any source - kill it
+         * no more lock from any source - kill it
          */
 	fib_table_destroy(fib_table);
     }
