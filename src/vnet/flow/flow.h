@@ -24,26 +24,28 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ethernet/packet.h>
 
-#define foreach_flow_type \
-  /* l2 flow*/ \
-  _(ETHERNET, ethernet, "ethernet") \
-  /* l3 IP flow */ \
-  _(IP4, ip4, "ipv4") \
-  _(IP6, ip6, "ipv6") \
-  /* IP tunnel flow */ \
-  _(IP4_L2TPV3OIP, ip4_l2tpv3oip, "ipv4-l2tpv3oip") \
-  _(IP4_IPSEC_ESP, ip4_ipsec_esp, "ipv4-ipsec-esp") \
-  _(IP4_IPSEC_AH, ip4_ipsec_ah, "ipv4-ipsec-ah") \
-  /* l4 flow*/ \
-  _(IP4_N_TUPLE, ip4_n_tuple, "ipv4-n-tuple") \
-  _(IP6_N_TUPLE, ip6_n_tuple, "ipv6-n-tuple") \
-  _(IP4_N_TUPLE_TAGGED, ip4_n_tuple_tagged, "ipv4-n-tuple-tagged") \
-  _(IP6_N_TUPLE_TAGGED, ip6_n_tuple_tagged, "ipv6-n-tuple-tagged") \
-  /* L4 tunnel flow*/ \
-  _(IP4_VXLAN, ip4_vxlan, "ipv4-vxlan") \
-  _(IP6_VXLAN, ip6_vxlan, "ipv6-vxlan") \
-  _(IP4_GTPC, ip4_gtpc, "ipv4-gtpc") \
-  _(IP4_GTPU, ip4_gtpu, "ipv4-gtpu")
+#define foreach_flow_type                                                     \
+  /* l2 flow*/                                                                \
+  _ (ETHERNET, ethernet, "ethernet")                                          \
+  /* l3 IP flow */                                                            \
+  _ (IP4, ip4, "ipv4")                                                        \
+  _ (IP6, ip6, "ipv6")                                                        \
+  /* IP tunnel flow */                                                        \
+  _ (IP4_L2TPV3OIP, ip4_l2tpv3oip, "ipv4-l2tpv3oip")                          \
+  _ (IP4_IPSEC_ESP, ip4_ipsec_esp, "ipv4-ipsec-esp")                          \
+  _ (IP4_IPSEC_AH, ip4_ipsec_ah, "ipv4-ipsec-ah")                             \
+  /* l4 flow*/                                                                \
+  _ (IP4_N_TUPLE, ip4_n_tuple, "ipv4-n-tuple")                                \
+  _ (IP6_N_TUPLE, ip6_n_tuple, "ipv6-n-tuple")                                \
+  _ (IP4_N_TUPLE_TAGGED, ip4_n_tuple_tagged, "ipv4-n-tuple-tagged")           \
+  _ (IP6_N_TUPLE_TAGGED, ip6_n_tuple_tagged, "ipv6-n-tuple-tagged")           \
+  /* L4 tunnel flow*/                                                         \
+  _ (IP4_VXLAN, ip4_vxlan, "ipv4-vxlan")                                      \
+  _ (IP6_VXLAN, ip6_vxlan, "ipv6-vxlan")                                      \
+  _ (IP4_GTPC, ip4_gtpc, "ipv4-gtpc")                                         \
+  _ (IP4_GTPU, ip4_gtpu, "ipv4-gtpu")                                         \
+  /* generic flow */                                                          \
+  _ (GENERIC, generic, "generic")
 
 #define foreach_flow_entry_ethernet \
   _fe(ethernet_header_t, eth_hdr)
@@ -103,6 +105,8 @@
 #define foreach_flow_entry_ip4_gtpu \
   foreach_flow_entry_ip4_n_tuple \
   _fe(u32, teid)
+
+#define foreach_flow_entry_generic _fe (generic_pattern_t, pattern)
 
 #define foreach_flow_action \
   _(0, COUNT, "count") \
@@ -189,6 +193,12 @@ typedef struct
   /* other values are meanless */
   u8 mask;
 } ip_prot_and_mask_t;
+
+typedef struct
+{
+  u8 spec[1024];
+  u8 mask[1024];
+} generic_pattern_t;
 
 typedef enum
 {
