@@ -225,6 +225,11 @@ typedef struct
   /* flow type */
   vnet_flow_type_t type;
 
+  /* generic flow flag and raw pattern spec and mask */
+  u16 generic;
+  u8 *spec;
+  u8 *mask;
+
   /* flow index */
   u32 index;
 

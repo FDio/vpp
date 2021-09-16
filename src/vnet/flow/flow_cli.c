@@ -369,8 +369,11 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
   bool vni_set = false;
   bool l2tpv3oip_set = false;
   bool ipsec_esp_set = false, ipsec_ah_set = false;
+  bool generic_set = false;
   u8 *rss_type[3] = { };
   u8 *type_str = NULL;
+  u8 *spec = NULL;
+  u8 *mask = NULL;
 
   clib_memset (&flow, 0, sizeof (vnet_flow_t));
   flow.index = ~0;
@@ -389,6 +392,10 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 	action = FLOW_ENABLE;
       else if (unformat (line_input, "disable"))
 	action = FLOW_DISABLE;
+      else if (unformat (line_input, "spec %s", &spec))
+	;
+      else if (unformat (line_input, "mask %s", &mask))
+	;
       else if (unformat (line_input, "eth-type %U",
 			 unformat_ethernet_type_host_byte_order, &eth_type))
 	flow_class = FLOW_ETHERNET_CLASS;
@@ -514,6 +521,14 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 				  format_unformat_error, line_input);
     }
 
+  if (spec && mask)
+    {
+      flow.spec = spec;
+      flow.mask = mask;
+      flow.generic = 1;
+      generic_set = true;
+    }
+
   unformat_free (line_input);
 
   if (hw_if_index == ~0 && (action == FLOW_ENABLE || action == FLOW_DISABLE))
@@ -573,6 +588,8 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 	  break;
 
 	default:
+	  if (generic_set)
+	    break;
 	  return clib_error_return (0,
 				    "Please specify a supported flow type");
 	}

@@ -103,10 +103,10 @@ typedef enum
 } vnet_flow_dev_op_t;
 
 /* Interface flow operations callback. */
-typedef int (vnet_flow_dev_ops_function_t) (struct vnet_main_t * vnm,
+typedef int (vnet_flow_dev_ops_function_t) (struct vnet_main_t *vnm,
 					    vnet_flow_dev_op_t op,
 					    u32 hw_if_index, u32 index,
-					    uword * private_data);
+					    uword *private_data, u16 generic);
 
 typedef enum vnet_interface_function_priority_t_
 {
