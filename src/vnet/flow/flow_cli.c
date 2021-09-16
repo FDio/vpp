@@ -371,6 +371,8 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
   bool ipsec_esp_set = false, ipsec_ah_set = false;
   u8 *rss_type[3] = { };
   u8 *type_str = NULL;
+  u8 *spec = NULL;
+  u8 *mask = NULL;
 
   clib_memset (&flow, 0, sizeof (vnet_flow_t));
   flow.index = ~0;
@@ -389,6 +391,10 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 	action = FLOW_ENABLE;
       else if (unformat (line_input, "disable"))
 	action = FLOW_DISABLE;
+      else if (unformat (line_input, "spec %s", &spec))
+	;
+      else if (unformat (line_input, "mask %s", &mask))
+	;
       else if (unformat (line_input, "eth-type %U",
 			 unformat_ethernet_type_host_byte_order, &eth_type))
 	flow_class = FLOW_ETHERNET_CLASS;
@@ -573,6 +579,11 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 	  break;
 
 	default:
+	  if (spec && mask)
+	    {
+	      type = VNET_FLOW_TYPE_GENERIC;
+	      break;
+	    }
 	  return clib_error_return (0,
 				    "Please specify a supported flow type");
 	}
@@ -659,6 +670,13 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 	    default:
 	      break;
 	    }
+	}
+      if (type == VNET_FLOW_TYPE_GENERIC)
+	{
+	  clib_memcpy (flow.generic.pattern.spec, spec,
+		       sizeof (flow.generic.pattern.spec));
+	  clib_memcpy (flow.generic.pattern.mask, mask,
+		       sizeof (flow.generic.pattern.mask));
 	}
 
       flow.type = type;

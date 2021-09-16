@@ -34,6 +34,7 @@ enum flow_type
   FLOW_TYPE_IP6_VXLAN,
   FLOW_TYPE_IP4_GTPC,
   FLOW_TYPE_IP4_GTPU,
+  FLOW_TYPE_GENERIC,
 };
 
 enum flow_action
@@ -44,6 +45,12 @@ enum flow_action
   FLOW_ACTION_REDIRECT_TO_NODE = 8,
   FLOW_ACTION_REDIRECT_TO_QUEUE = 16,
   FLOW_ACTION_DROP = 64,
+};
+
+typedef generic_pattern
+{
+  u8 spec[1024];
+  u8 mask[1024];
 };
 
 typedef ip_port_and_mask
@@ -193,6 +200,12 @@ typedef flow_ip4_gtpu
   u32 teid;
 };
 
+typedef flow_generic
+{
+  i32 foo;
+  vl_api_generic_pattern_t pattern;
+};
+
 union flow
 {
   vl_api_flow_ethernet_t ethernet;
@@ -209,6 +222,7 @@ union flow
   vl_api_flow_ip6_vxlan_t ip6_vxlan;
   vl_api_flow_ip4_gtpc_t ip4_gtpc;
   vl_api_flow_ip4_gtpu_t ip4_gtpu;
+  vl_api_flow_generic_t generic;
 };
 
 /* main flow struct */
