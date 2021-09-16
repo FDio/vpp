@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dfb0873b_5404c5f9",
+        "filename": "src/vnet/gso/gro_func.h",
+        "patchSetId": 15
+      },
+      "lineNbr": 216,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-09-16T12:23:19Z",
+      "side": 1,
+      "message": "I hate to be that guy, but can we fixed it then?\nIt shouldn\u0027t too complicated, something like\n  if (ip6_locate_header (b0, ip6_0, IP_PROTOCOL_TCP, \u0026offset) !\u003d IP_PROTOCOL_TCP)\n    goto error;\n  ...",
+      "revId": "6b870ac806d7738803f34bb9f19da6279efea0f8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
