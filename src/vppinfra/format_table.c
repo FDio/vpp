@@ -22,7 +22,7 @@
 */
 
 #include <vppinfra/format.h>
-#include "table.h"
+#include <vppinfra/format_table.h>
 
 static table_text_attr_t default_title = {
   .flags = TTAF_FG_COLOR_SET | TTAF_BOLD,

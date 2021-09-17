@@ -57,6 +57,7 @@ set(VPPINFRA_SRCS
   error.c
   fifo.c
   format.c
+  format_table.c
   graph.c
   hash.c
   heap.c
@@ -134,6 +135,7 @@ set(VPPINFRA_HEADERS
   fifo.h
   file.h
   format.h
+  format_table.h
   graph.h
   hash.h
   heap.h

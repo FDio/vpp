@@ -15,7 +15,7 @@
 
 #include <vnet/vnet.h>
 #include <perfmon/perfmon.h>
-#include <perfmon/table.h>
+#include <vppinfra/format_table.h>
 
 uword
 unformat_perfmon_bundle_name (unformat_input_t *input, va_list *args)
