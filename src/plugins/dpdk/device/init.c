@@ -570,6 +570,13 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
 	      xd->port_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_SCATTER;
 	      xd->port_conf.intr_conf.rxq = 1;
+	      if (dm->conf->no_tx_checksum_offload == 0)
+		{
+		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_IPV4_CKSUM;
+		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
+		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
+		  xd->flags |= DPDK_DEVICE_FLAG_TX_OFFLOAD;
+		}
 	      break;
 
 	    case VNET_DPDK_PMD_DPAA2:
