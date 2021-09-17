@@ -21,7 +21,6 @@ add_vpp_plugin(perfmon
   dispatch_wrapper.c
   linux.c
   perfmon.c
-  table.c
   intel/core.c
   intel/uncore.c
   intel/bundle/membw_bound.c

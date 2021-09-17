@@ -21,8 +21,8 @@
   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#ifndef __table_h__
-#define __table_h__
+#ifndef __format_table_h__
+#define __format_table_h__
 
 typedef enum
 {
@@ -81,18 +81,19 @@ typedef struct
   int n_footer_cols;
 } table_t;
 
-format_function_t format_table;
+__clib_export format_function_t format_table;
 
-void table_format_title (table_t *t, char *fmt, ...);
-void table_format_cell (table_t *t, int c, int r, char *fmt, ...);
-void table_set_cell_align (table_t *t, int c, int r,
-			   table_text_attr_align_t a);
-void table_set_cell_fg_color (table_t *t, int c, int r,
-			      table_text_attr_color_t v);
-void table_set_cell_bg_color (table_t *t, int c, int r,
-			      table_text_attr_color_t v);
-void table_free (table_t *t);
-void table_add_header_col (table_t *t, int n_strings, ...);
-void table_add_header_row (table_t *t, int n_strings, ...);
+__clib_export void table_format_title (table_t *t, char *fmt, ...);
+__clib_export void table_format_cell (table_t *t, int c, int r, char *fmt,
+				      ...);
+__clib_export void table_set_cell_align (table_t *t, int c, int r,
+					 table_text_attr_align_t a);
+__clib_export void table_set_cell_fg_color (table_t *t, int c, int r,
+					    table_text_attr_color_t v);
+__clib_export void table_set_cell_bg_color (table_t *t, int c, int r,
+					    table_text_attr_color_t v);
+__clib_export void table_free (table_t *t);
+__clib_export void table_add_header_col (table_t *t, int n_strings, ...);
+__clib_export void table_add_header_row (table_t *t, int n_strings, ...);
 
 #endif
