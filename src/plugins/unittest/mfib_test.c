@@ -1193,9 +1193,7 @@ mfib_test_i (fib_protocol_t PROTO,
      * MPLS enable an interface so we get the MPLS table created
      */
     mpls_table_create(MPLS_FIB_DEFAULT_TABLE_ID, FIB_SOURCE_API, NULL);
-    mpls_sw_interface_enable_disable(&mpls_main,
-                                     tm->hw[0]->sw_if_index,
-                                     1, 0);
+    mpls_sw_interface_enable_disable (&mpls_main, tm->hw[0]->sw_if_index, 1);
 
     lfei = fib_table_entry_update_one_path(0, // default MPLS Table
                                            &pfx_3500,
@@ -1291,9 +1289,7 @@ mfib_test_i (fib_protocol_t PROTO,
     /*
      * MPLS disable the interface
      */
-    mpls_sw_interface_enable_disable(&mpls_main,
-                                     tm->hw[0]->sw_if_index,
-                                     0, 0);
+    mpls_sw_interface_enable_disable (&mpls_main, tm->hw[0]->sw_if_index, 0);
     mpls_table_delete(MPLS_FIB_DEFAULT_TABLE_ID, FIB_SOURCE_API);
 
     /*

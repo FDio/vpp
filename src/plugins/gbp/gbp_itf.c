@@ -232,8 +232,7 @@ gbp_itf_l3_add_and_lock_i (u32 sw_if_index, index_t gri, gbp_itf_free_fn_t ff)
       ip6_sw_interface_enable_disable (gi->gi_sw_if_index, 1);
 
       FOR_EACH_FIB_IP_PROTOCOL (fproto)
-	ip_table_bind (fproto, gi->gi_sw_if_index,
-		       grd->grd_table_id[fproto], 1);
+      ip_table_bind (fproto, gi->gi_sw_if_index, grd->grd_table_id[fproto]);
 
       hash_set (gbp_itf_db, gi->gi_sw_if_index, gi - gbp_itf_pool);
     }
@@ -312,7 +311,7 @@ gbp_itf_unlock (gbp_itf_hdl_t * gh)
 
 	  gbp_itf_l3_set_input_feature (*gh, GBP_ITF_L3_FEAT_NONE);
 	  FOR_EACH_FIB_IP_PROTOCOL (fproto)
-	    ip_table_bind (fproto, gi->gi_sw_if_index, 0, 0);
+	  ip_table_bind (fproto, gi->gi_sw_if_index, 0);
 
 	  ip4_sw_interface_enable_disable (gi->gi_sw_if_index, 0);
 	  ip6_sw_interface_enable_disable (gi->gi_sw_if_index, 0);

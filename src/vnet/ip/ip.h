@@ -267,8 +267,7 @@ void ip_table_create (fib_protocol_t fproto, u32 table_id, u8 is_api,
 
 void ip_table_delete (fib_protocol_t fproto, u32 table_id, u8 is_api);
 
-int ip_table_bind (fib_protocol_t fproto, u32 sw_if_index,
-		   u32 table_id, u8 is_api);
+int ip_table_bind (fib_protocol_t fproto, u32 sw_if_index, u32 table_id);
 
 u32 ip_table_get_unused_id (fib_protocol_t fproto);
 

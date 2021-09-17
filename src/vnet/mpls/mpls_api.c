@@ -210,8 +210,6 @@ vl_api_mpls_route_add_del_t_handler (vl_api_mpls_route_add_del_t * mp)
 void
 mpls_table_create (u32 table_id, u8 is_api, const u8 * name)
 {
-  u32 fib_index;
-
   /*
    * The MPLS defult table must also be explicitly created via the API.
    * So in contrast to IP, it gets no special treatment here.
@@ -222,16 +220,11 @@ mpls_table_create (u32 table_id, u8 is_api, const u8 * name)
    * i.e. it can be added many times via the API but needs to be
    * deleted only once.
    */
-  fib_index = fib_table_find (FIB_PROTOCOL_MPLS, table_id);
-
-  if (~0 == fib_index)
-    {
       fib_table_find_or_create_and_lock_w_name (FIB_PROTOCOL_MPLS,
 						table_id,
 						(is_api ?
 						 FIB_SOURCE_API :
 						 FIB_SOURCE_CLI), name);
-    }
 }
 
 static void
@@ -295,9 +288,8 @@ static void
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  rv = mpls_sw_interface_enable_disable (&mpls_main,
-					 ntohl (mp->sw_if_index),
-					 mp->enable, 1);
+  rv = mpls_sw_interface_enable_disable (&mpls_main, ntohl (mp->sw_if_index),
+					 mp->enable);
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_MPLS_ENABLE_REPLY);

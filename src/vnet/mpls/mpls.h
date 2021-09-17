@@ -85,9 +85,8 @@ unformat_function_t unformat_mpls_unicast_label;
 unformat_function_t unformat_mpls_header;
 unformat_function_t unformat_pg_mpls_header;
 
-int mpls_sw_interface_enable_disable (mpls_main_t * mm,
-				      u32 sw_if_index,
-				      u8 is_enable, u8 is_api);
+int mpls_sw_interface_enable_disable (mpls_main_t *mm, u32 sw_if_index,
+				      u8 is_enable);
 
 u8 mpls_sw_interface_is_enabled (u32 sw_if_index);
 

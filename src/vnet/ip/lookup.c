@@ -643,7 +643,7 @@ ip_table_bind_cmd (vlib_main_t * vm,
       goto done;
     }
 
-  rv = ip_table_bind (fproto, sw_if_index, table_id, 0);
+  rv = ip_table_bind (fproto, sw_if_index, table_id);
 
   if (VNET_API_ERROR_ADDRESS_FOUND_FOR_INTERFACE == rv)
     {
