@@ -267,8 +267,7 @@ void ip_table_create (fib_protocol_t fproto, u32 table_id, u8 is_api,
 
 void ip_table_delete (fib_protocol_t fproto, u32 table_id, u8 is_api);
 
-int ip_table_bind (fib_protocol_t fproto, u32 sw_if_index,
-		   u32 table_id, u8 is_api);
+int ip_table_bind (fib_protocol_t fproto, u32 sw_if_index, u32 table_id);
 
 u8 ip_is_zero (ip46_address_t * ip46_address, u8 is_ip4);
 u8 ip_is_local_host (ip46_address_t * ip46_address, u8 is_ip4);
