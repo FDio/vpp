@@ -259,8 +259,7 @@ dpdk_buffer_tx_offload (dpdk_device_t * xd, vlib_buffer_t * b,
     }
   else
     {
-      mb->l2_len =
-	vnet_buffer (b)->l3_hdr_offset - vnet_buffer (b)->l2_hdr_offset;
+      mb->l2_len = vnet_buffer (b)->l3_hdr_offset - b->current_data;
       mb->l3_len =
 	vnet_buffer (b)->l4_hdr_offset - vnet_buffer (b)->l3_hdr_offset;
       mb->outer_l2_len = 0;
