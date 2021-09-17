@@ -3068,7 +3068,7 @@ nat44_ed_add_del_static_mapping_addr_only_cb (
   for (i = 0; i < vec_len (sm->to_resolve); i++)
     {
       rp = sm->to_resolve + i;
-      if (rp->addr_only && rp->sw_if_index == sw_if_index)
+      if (is_sm_addr_only (rp->flags) && rp->sw_if_index == sw_if_index)
 	{
 	  match = 1;
 	  break;
@@ -3079,8 +3079,8 @@ nat44_ed_add_del_static_mapping_addr_only_cb (
       return;
     }
 
-  m = nat44_ed_sm_o2i_lookup (sm, *address, rp->addr_only ? 0 : rp->e_port, 0,
-			      rp->proto);
+  m = nat44_ed_sm_o2i_lookup (
+    sm, *address, is_sm_addr_only (rp->flags) ? 0 : rp->e_port, 0, rp->proto);
 
   if (is_delete)
     {
@@ -3171,7 +3171,7 @@ nat44_ed_add_del_interface_address_cb (ip4_main_t *im, uword opaque,
       for (i = 0; i < vec_len (sm->to_resolve); i++)
 	{
 	  rp = sm->to_resolve + i;
-	  if (rp->addr_only)
+	  if (is_sm_addr_only (rp->flags))
 	    {
 	      continue;
 	    }

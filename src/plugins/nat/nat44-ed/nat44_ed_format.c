@@ -191,7 +191,7 @@ format_snat_static_map_to_resolve (u8 * s, va_list * args)
   snat_static_map_resolve_t *m = va_arg (*args, snat_static_map_resolve_t *);
   vnet_main_t *vnm = vnet_get_main ();
 
-  if (m->addr_only)
+  if (is_sm_addr_only (m->flags))
     s = format (s, "local %U external %U vrf %d",
 		format_ip4_address, &m->l_addr,
 		format_vnet_sw_if_index_name, vnm, m->sw_if_index, m->vrf_id);

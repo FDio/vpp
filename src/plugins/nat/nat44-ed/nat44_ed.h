@@ -455,11 +455,6 @@ typedef struct
   u32 vrf_id;
   ip_protocol_t proto;
   u32 flags;
-  int addr_only;
-  int twice_nat;
-  int out2in_only;
-  int identity_nat;
-  int exact;
   u8 *tag;
 } snat_static_map_resolve_t;
 
