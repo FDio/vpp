@@ -126,17 +126,25 @@ format_table (u8 *s, va_list *args)
   for (int i = 0; i < vec_len (t->row_sizes); i++)
     table_width += t->row_sizes[i];
 
-  s = format_text_cell (t, s, &title_cell, &default_title, table_width);
-  s = format (s, "\n");
+  if (t->title)
+    {
+      table_text_attr_t *title_default;
+      title_default =
+	t->default_title.as_u32 ? &t->default_title : &default_title;
+      s = format_text_cell (t, s, &title_cell, title_default, table_width);
+      s = format (s, "\n");
+    }
 
   for (int c = 0; c < vec_len (t->cells); c++)
     {
       table_text_attr_t *col_default;
 
       if (c < t->n_header_cols)
-	col_default = &default_header_col;
+	col_default = t->default_header_col.as_u32 ? &t->default_header_col :
+						     &default_header_col;
       else
-	col_default = &default_body;
+	col_default =
+	  t->default_body.as_u32 ? &t->default_body : &default_body;
 
       for (int r = 0; r < vec_len (t->cells[c]); r++)
 	{
@@ -144,11 +152,14 @@ format_table (u8 *s, va_list *args)
 	  if (r)
 	    s = format (s, " ");
 	  if (r < t->n_header_rows && c >= t->n_header_cols)
-	    row_default = &default_header_row;
+	    row_default = t->default_header_row.as_u32 ?
+			    &t->default_header_row :
+			    &default_header_row;
 	  s = format_text_cell (t, s, &t->cells[c][r], row_default,
 				t->row_sizes[r]);
 	}
-      s = format (s, "\n");
+      if (c + 1 < vec_len (t->cells))
+	s = format (s, "\n");
     }
 
   return s;
