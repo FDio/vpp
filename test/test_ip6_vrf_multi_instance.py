@@ -592,6 +592,33 @@ class TestIP6VrfMultiInst(VppTestCase):
             vrf_list_length, 0,
             "List of configured VRFs is not empty: %s != 0" % vrf_list_length)
 
+    def test_ip6_vrf_06(self):
+        """ IP6 VRF  Multi-instance test 6 - recreate 4 VRFs
+        """
+        # Reconfigure all the VRFs
+        self.create_vrf_and_assign_interfaces(4)
+        # Verify
+        for vrf_id in self.vrf_list:
+            self.assert_equal(self.verify_vrf(vrf_id),
+                              VRFState.configured, VRFState)
+        # Test
+        self.run_verify_test()
+        self.run_crosswise_vrf_test()
+        # Cleanup
+        for i in range(len(self.vrf_list)):
+            self.reset_vrf_and_remove_from_vrf_list(self.vrf_list[0])
+        # Verify
+        for vrf_id in self.vrf_reset_list:
+            self.assert_equal(self.verify_vrf(vrf_id),
+                              VRFState.reset, VRFState)
+        vrf_list_length = len(self.vrf_list)
+        self.assertEqual(
+            vrf_list_length, 0,
+            "List of configured VRFs is not empty: %s != 0" % vrf_list_length)
+        # Test
+        self.run_verify_test()
+        self.run_crosswise_vrf_test()
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

@@ -8564,7 +8564,7 @@ lfib_test (void)
     mpls_table_create(MPLS_FIB_DEFAULT_TABLE_ID, FIB_SOURCE_API, NULL);
     mpls_sw_interface_enable_disable(&mpls_main,
                                      tm->hw[0]->sw_if_index,
-                                     1, 1);
+                                     1);
 
     ip46_address_t nh_10_10_10_1 = {
         .ip4.as_u32 = clib_host_to_net_u32(0x0a0a0a01),
@@ -9135,7 +9135,7 @@ lfib_test (void)
      */
     mpls_sw_interface_enable_disable(&mpls_main,
                                      tm->hw[0]->sw_if_index,
-                                     0, 1);
+                                     0);
     mpls_table_delete(MPLS_FIB_DEFAULT_TABLE_ID, FIB_SOURCE_API);
 
     FIB_TEST(0 == pool_elts(mpls_disp_dpo_pool),

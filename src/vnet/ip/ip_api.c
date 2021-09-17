@@ -944,20 +944,14 @@ ip_table_create (fib_protocol_t fproto,
       fib_index = fib_table_find (fproto, table_id);
       mfib_index = mfib_table_find (fproto, table_id);
 
-      if (~0 == fib_index)
-	{
-	  fib_table_find_or_create_and_lock_w_name (fproto, table_id,
-						    (is_api ?
-						     FIB_SOURCE_API :
-						     FIB_SOURCE_CLI), name);
-	}
-      if (~0 == mfib_index)
-	{
-	  mfib_table_find_or_create_and_lock_w_name (fproto, table_id,
-						     (is_api ?
-						      MFIB_SOURCE_API :
-						      MFIB_SOURCE_CLI), name);
-	}
+      /*
+       * Always try to re-lock in case the fib was deleted by an API call
+       * but was not yet freed because some other locks were held
+       */
+      fib_table_find_or_create_and_lock_w_name (
+	fproto, table_id, (is_api ? FIB_SOURCE_API : FIB_SOURCE_CLI), name);
+      mfib_table_find_or_create_and_lock_w_name (
+	fproto, table_id, (is_api ? MFIB_SOURCE_API : MFIB_SOURCE_CLI), name);
 
       if ((~0 == fib_index) || (~0 == mfib_index))
 	call_elf_section_ip_table_callbacks (vnm, table_id, 1 /* is_add */ ,
