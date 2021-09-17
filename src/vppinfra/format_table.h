@@ -58,10 +58,17 @@ typedef enum
 
 typedef struct
 {
-  table_text_attr_flags_t flags : 16;
-  table_text_attr_color_t fg_color : 4;
-  table_text_attr_color_t bg_color : 4;
-  table_text_attr_align_t align : 4;
+  union
+  {
+    struct
+    {
+      table_text_attr_flags_t flags : 16;
+      table_text_attr_color_t fg_color : 4;
+      table_text_attr_color_t bg_color : 4;
+      table_text_attr_align_t align : 4;
+    };
+    u32 as_u32;
+  };
 } table_text_attr_t;
 
 typedef struct
@@ -79,6 +86,10 @@ typedef struct
   int n_header_cols;
   int n_header_rows;
   int n_footer_cols;
+  table_text_attr_t default_title;
+  table_text_attr_t default_body;
+  table_text_attr_t default_header_col;
+  table_text_attr_t default_header_row;
 } table_t;
 
 __clib_export format_function_t format_table;
