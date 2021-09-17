@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4b8b1459_214ca873",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 49
+      },
+      "lineNbr": 266,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-09-17T20:39:03Z",
+      "side": 1,
+      "message": "__clib_aligned",
+      "revId": "42ca90d0b49126d12466d61f3439dca1b9899313",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c647f4df_e82ac248",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 49
+      },
+      "lineNbr": 270,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-09-17T20:39:03Z",
+      "side": 1,
+      "message": "calculate once and store in t, instead of calculating mask each time...",
+      "revId": "42ca90d0b49126d12466d61f3439dca1b9899313",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fdf22afc_1219c668",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 49
+      },
+      "lineNbr": 470,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-09-17T20:39:03Z",
+      "side": 1,
+      "message": "__clib_aligned",
+      "revId": "42ca90d0b49126d12466d61f3439dca1b9899313",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
