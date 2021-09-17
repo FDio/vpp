@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "614edf5a_2d3c513e",
+        "filename": "src/vnet/gso/gro_func.h",
+        "patchSetId": 16
+      },
+      "lineNbr": 221,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-09-17T14:22:54Z",
+      "side": 1,
+      "message": "what happens if\n  clib_net_to_host_u16 (ip6_0-\u003epayload_length) + sizeof (ip6_header_t) \u003c tcp_h_offset + gho0-\u003el4_hdr_sz\n\nFor example, if the packet comes with a truncated TCP header, I bet you would find the TCP header but tcp_payload_len0 will wrap around and become stupidly big.\nOr did we validate the packet already (eg. the tcp checksum is known to be good because of rx csum offload or because we checked it already).\n\nDropping bad packets is fine but crashing on killer packets is bad.\n\nThe same question happens for IPv4 above too I guess.",
+      "revId": "a863203ad4038719b4a12e63a5b2b85d3a59e5bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
