@@ -461,9 +461,9 @@ vl_api_sw_interface_set_table_t_handler (vl_api_sw_interface_set_table_t * mp)
   VALIDATE_SW_IF_INDEX (mp);
 
   if (mp->is_ipv6)
-    rv = ip_table_bind (FIB_PROTOCOL_IP6, sw_if_index, table_id, 1);
+    rv = ip_table_bind (FIB_PROTOCOL_IP6, sw_if_index, table_id);
   else
-    rv = ip_table_bind (FIB_PROTOCOL_IP4, sw_if_index, table_id, 1);
+    rv = ip_table_bind (FIB_PROTOCOL_IP4, sw_if_index, table_id);
 
   BAD_SW_IF_INDEX_LABEL;
 
@@ -471,24 +471,10 @@ vl_api_sw_interface_set_table_t_handler (vl_api_sw_interface_set_table_t * mp)
 }
 
 int
-ip_table_bind (fib_protocol_t fproto,
-	       u32 sw_if_index, u32 table_id, u8 is_api)
+ip_table_bind (fib_protocol_t fproto, u32 sw_if_index, u32 table_id)
 {
   CLIB_UNUSED (ip_interface_address_t * ia);
   u32 fib_index, mfib_index;
-  fib_source_t src;
-  mfib_source_t msrc;
-
-  if (is_api)
-    {
-      src = FIB_SOURCE_API;
-      msrc = MFIB_SOURCE_API;
-    }
-  else
-    {
-      src = FIB_SOURCE_CLI;
-      msrc = MFIB_SOURCE_CLI;
-    }
 
   /*
    * This if table does not exist = error is what we want in the end.
@@ -531,16 +517,17 @@ ip_table_bind (fib_protocol_t fproto,
       /* unlock currently assigned tables */
       if (0 != ip6_main.fib_index_by_sw_if_index[sw_if_index])
 	fib_table_unlock (ip6_main.fib_index_by_sw_if_index[sw_if_index],
-			  FIB_PROTOCOL_IP6, src);
+			  FIB_PROTOCOL_IP6, FIB_SOURCE_INTERFACE);
       if (0 != ip6_main.mfib_index_by_sw_if_index[sw_if_index])
 	mfib_table_unlock (ip6_main.mfib_index_by_sw_if_index[sw_if_index],
-			   FIB_PROTOCOL_IP6, msrc);
+			   FIB_PROTOCOL_IP6, MFIB_SOURCE_INTERFACE);
 
       if (0 != table_id)
 	{
 	  /* we need to lock the table now it's inuse */
-	  fib_table_lock (fib_index, FIB_PROTOCOL_IP6, src);
-	  mfib_table_lock (mfib_index, FIB_PROTOCOL_IP6, msrc);
+	  fib_table_lock (fib_index, FIB_PROTOCOL_IP6, FIB_SOURCE_INTERFACE);
+	  mfib_table_lock (mfib_index, FIB_PROTOCOL_IP6,
+			   MFIB_SOURCE_INTERFACE);
 	}
 
       ip6_main.fib_index_by_sw_if_index[sw_if_index] = fib_index;
@@ -576,19 +563,19 @@ ip_table_bind (fib_protocol_t fproto,
       /* unlock currently assigned tables */
       if (0 != ip4_main.fib_index_by_sw_if_index[sw_if_index])
 	fib_table_unlock (ip4_main.fib_index_by_sw_if_index[sw_if_index],
-			  FIB_PROTOCOL_IP4, src);
+			  FIB_PROTOCOL_IP4, FIB_SOURCE_INTERFACE);
       if (0 != ip4_main.mfib_index_by_sw_if_index[sw_if_index])
 	mfib_table_unlock (ip4_main.mfib_index_by_sw_if_index[sw_if_index],
-			   FIB_PROTOCOL_IP4, msrc);
+			   FIB_PROTOCOL_IP4, MFIB_SOURCE_INTERFACE);
 
       if (0 != table_id)
 	{
 	  /* we need to lock the table now it's inuse */
-	  fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
-							 table_id, src);
+	  fib_index = fib_table_find_or_create_and_lock (
+	    FIB_PROTOCOL_IP4, table_id, FIB_SOURCE_INTERFACE);
 
-	  mfib_index = mfib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
-							   table_id, msrc);
+	  mfib_index = mfib_table_find_or_create_and_lock (
+	    FIB_PROTOCOL_IP4, table_id, MFIB_SOURCE_INTERFACE);
 	}
 
       ip4_main.fib_index_by_sw_if_index[sw_if_index] = fib_index;
