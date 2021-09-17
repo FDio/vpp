@@ -840,10 +840,12 @@ send_nat44_static_map_resolve_details (snat_static_map_resolve_t * m,
   rmp->vrf_id = htonl (m->vrf_id);
   rmp->context = context;
 
-  if (m->twice_nat)
-    rmp->flags |= NAT_API_IS_TWICE_NAT;
+  if (is_sm_twice_nat (m->flags))
+    {
+      rmp->flags |= NAT_API_IS_TWICE_NAT;
+    }
 
-  if (m->addr_only)
+  if (is_sm_addr_only (m->flags))
     {
       rmp->flags |= NAT_API_IS_ADDR_ONLY;
     }
@@ -853,6 +855,7 @@ send_nat44_static_map_resolve_details (snat_static_map_resolve_t * m,
       rmp->external_port = m->e_port;
       rmp->local_port = m->l_port;
     }
+
   if (m->tag)
     strncpy ((char *) rmp->tag, (char *) m->tag, vec_len (m->tag));
 
