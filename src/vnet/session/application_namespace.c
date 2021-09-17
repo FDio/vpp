@@ -19,6 +19,7 @@
 #include <vnet/session/session.h>
 #include <vnet/fib/fib_table.h>
 #include <vppinfra/file.h>
+#include <vppinfra/format_table.h>
 #include <vlib/unix/unix.h>
 
 /**
@@ -373,6 +374,7 @@ show_app_ns_fn (vlib_main_t * vm, unformat_input_t * main_input,
   app_namespace_t *app_ns;
   vnet_main_t *vnm = vnet_get_main ();
   session_table_t *st;
+  table_t table = {}, *t = &table;
 
   session_cli_return_if_not_enabled ();
 
@@ -428,17 +430,27 @@ show_app_ns_fn (vlib_main_t * vm, unformat_input_t * main_input,
     }
 
 do_ns_list:
-  vlib_cli_output (vm, "%-10s%-10s%-12s%-15s%-20s%-40s", "Index", "Secret",
-		   "Interface", "Id", "Netns", "Socket");
+  table_add_header_col (t, 6, "Index", "Secret", "Interface", "Id", "Netns",
+			"Socket");
+  int i = 0;
+  pool_foreach (app_ns, app_namespace_pool)
+    {
+      int j = 0;
+      table_format_cell (t, i, j++, "%u", app_namespace_index (app_ns));
+      table_format_cell (t, i, j++, "%lu", app_ns->ns_secret);
+      table_format_cell (t, i, j++, "%U", format_vnet_sw_if_index_name, vnm,
+			 app_ns->sw_if_index);
+      table_format_cell (t, i, j++, "%s", app_ns->ns_id);
+      table_format_cell (t, i, j++, "%s", app_ns->netns);
+      table_format_cell (t, i++, j++, "%s", app_ns->sock_name);
+    }
 
-  /* *INDENT-OFF* */
-  pool_foreach (app_ns, app_namespace_pool)  {
-      vlib_cli_output (vm, "%-10u%-10lu%-12U%-15s%-20s%-40v",
-		       app_namespace_index (app_ns), app_ns->ns_secret,
-		       format_vnet_sw_if_index_name, vnm, app_ns->sw_if_index,
-		       app_ns->ns_id, app_ns->netns, app_ns->sock_name);
-  }
-  /* *INDENT-ON* */
+  t->default_body.align = TTAA_LEFT;
+  t->default_header_col.align = TTAA_LEFT;
+  t->default_header_col.fg_color = TTAC_YELLOW;
+  t->default_header_col.flags = TTAF_FG_COLOR_SET;
+  vlib_cli_output (vm, "%U", format_table, t);
+  table_free (t);
 
 done:
   if (had_input)
