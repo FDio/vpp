@@ -21,6 +21,11 @@ include_directories(${OPENSSL_INCLUDE_DIR})
 list(APPEND WG_BLAKE_SOURCES
   blake/blake2s.h
   blake/blake2s.c
+  blake/blake3_avx512.c
+  blake/blake3.c
+  blake/blake3_dispatch.c
+  blake/blake3.h
+  blake/blake3_portable.c
 )
 
 add_vpp_plugin(wireguard
