@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f8ee34ee_5eb29536",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 987,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-09-17T20:54:09Z",
+      "side": 1,
+      "message": "I might be misremembering something but with the changes above (remove proxy upfront), I was hoping we could just call application_detach_process, i.e., proxy test no longer an issue.",
+      "range": {
+        "startLine": 974,
+        "startChar": 0,
+        "endLine": 987,
+        "endChar": 29
+      },
+      "revId": "d4171518a8ee2274a5b8c2309a61a05605288f5b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "79788d86_bad609a4",
+        "filename": "src/vnet/session/application_namespace.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-09-17T20:54:09Z",
+      "side": 1,
+      "message": "Hm, maybe refuse overwrites? Could you check and see what fails? :-)",
+      "range": {
+        "startLine": 122,
+        "startChar": 0,
+        "endLine": 129,
+        "endChar": 2
+      },
+      "revId": "d4171518a8ee2274a5b8c2309a61a05605288f5b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
