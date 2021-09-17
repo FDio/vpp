@@ -112,6 +112,15 @@ retry:
 		   res[i].scalar_value);
 	  break;
 
+	case STAT_DIR_TYPE_NAME_VECTOR:
+	  fformat (stream, "# TYPE %s_info gauge\n",
+		   prom_string (res[i].name));
+	  for (k = 0; k < vec_len (res[i].name_vector); k++)
+	    if (res[i].name_vector[k])
+	      fformat (stream, "%s_info{index=\"%d\",name=\"%s\"} 1\n",
+		       prom_string (res[i].name), k, res[i].name_vector[k]);
+	  break;
+
 	case STAT_DIR_TYPE_EMPTY:
 	  break;
 
