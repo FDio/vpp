@@ -160,23 +160,25 @@ typedef enum mfib_itf_flags_t_
  */
 typedef enum mfib_source_t_
 {
-    MFIB_SOURCE_SPECIAL,
-    MFIB_SOURCE_6RD,
-    MFIB_SOURCE_API,
-    MFIB_SOURCE_CLI,
-    MFIB_SOURCE_VXLAN,
-    MFIB_SOURCE_DHCP,
-    MFIB_SOURCE_SRv6,
-    MFIB_SOURCE_GTPU,
-    MFIB_SOURCE_VXLAN_GPE,
-    MFIB_SOURCE_GENEVE,
-    MFIB_SOURCE_IGMP,
-    MFIB_SOURCE_VXLAN_GBP,
-    MFIB_SOURCE_PLUGIN_LOW,
-    MFIB_SOURCE_RR,
-    MFIB_SOURCE_DEFAULT_ROUTE,
+  MFIB_SOURCE_SPECIAL,
+  MFIB_SOURCE_6RD,
+  MFIB_SOURCE_API,
+  MFIB_SOURCE_CLI,
+  MFIB_SOURCE_VXLAN,
+  MFIB_SOURCE_DHCP,
+  MFIB_SOURCE_SRv6,
+  MFIB_SOURCE_GTPU,
+  MFIB_SOURCE_VXLAN_GPE,
+  MFIB_SOURCE_GENEVE,
+  MFIB_SOURCE_IGMP,
+  MFIB_SOURCE_VXLAN_GBP,
+  MFIB_SOURCE_PLUGIN_LOW,
+  MFIB_SOURCE_RR,
+  MFIB_SOURCE_INTERFACE, /* used exclusively for mfib locks */
+  MFIB_SOURCE_DEFAULT_ROUTE,
 } mfib_source_t;
 
+/* clang-format off */
 #define MFIB_SOURCE_NAMES {                        \
     [MFIB_SOURCE_SPECIAL] = "Special",             \
     [MFIB_SOURCE_6RD] = "6RD",                     \
@@ -192,8 +194,10 @@ typedef enum mfib_source_t_
     [MFIB_SOURCE_VXLAN_GBP] = "VXLAN-GBP",         \
     [MFIB_SOURCE_PLUGIN_LOW] = "plugin-low",       \
     [MFIB_SOURCE_RR] = "Recursive-resolution",     \
+    [MFIB_SOURCE_INTERFACE] = "Interface",         \
     [MFIB_SOURCE_DEFAULT_ROUTE] = "Default Route", \
 }
+/* clang-format on */
 
 #define FOREACH_MFIB_SOURCE(_ms)                \
     for (_ms = MFIB_SOURCE_SPECIAL;             \
