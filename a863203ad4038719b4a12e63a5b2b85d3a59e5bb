@@ -16,6 +16,24 @@
       "revId": "a863203ad4038719b4a12e63a5b2b85d3a59e5bb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b7711dab_ead5fbb2",
+        "filename": "src/vnet/gso/gro_func.h",
+        "patchSetId": 16
+      },
+      "lineNbr": 221,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2021-09-17T15:35:40Z",
+      "side": 1,
+      "message": "All concerns are addressed in patch set 17!",
+      "parentUuid": "614edf5a_2d3c513e",
+      "revId": "a863203ad4038719b4a12e63a5b2b85d3a59e5bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
