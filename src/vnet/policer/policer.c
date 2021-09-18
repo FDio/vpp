@@ -60,11 +60,20 @@ policer_add_del (vlib_main_t *vm, u8 *name, qos_pol_cfg_params_st *cfg,
   u32 pi;
   int rv;
 
-  p = hash_get_mem (pm->policer_config_by_name, name);
+  p = hash_get_mem (pm->policer_index_by_name, name);
 
   if (is_add == 0)
     {
+      /* free policer */
+      if (p == 0)
+	{
+	  vec_free (name);
+	  return clib_error_return (0, "No such policer");
+	}
+      pi = p[0];
+
       /* free policer config and template */
+      p = hash_get (pm->policer_config_by_policer_index, pi);
       if (p == 0)
 	{
 	  vec_free (name);
@@ -72,17 +81,10 @@ policer_add_del (vlib_main_t *vm, u8 *name, qos_pol_cfg_params_st *cfg,
 	}
       pool_put_index (pm->configs, p[0]);
       pool_put_index (pm->policer_templates, p[0]);
-      hash_unset_mem (pm->policer_config_by_name, name);
+      hash_unset (pm->policer_config_by_policer_index, pi);
 
-      /* free policer */
-      p = hash_get_mem (pm->policer_index_by_name, name);
-      if (p == 0)
-	{
-	  vec_free (name);
-	  return clib_error_return (0, "No such policer");
-	}
-      pool_put_index (pm->policers, p[0]);
-      hash_unset_mem (pm->policer_index_by_name, name);
+      pool_put_index (pm->policers, pi);
+      hash_unset_mem_free (&pm->policer_index_by_name, name);
 
       vec_free (name);
       return 0;
@@ -111,13 +113,15 @@ policer_add_del (vlib_main_t *vm, u8 *name, qos_pol_cfg_params_st *cfg,
       clib_memcpy (cp, cfg, sizeof (*cp));
       clib_memcpy (pp, &test_policer, sizeof (*pp));
 
-      hash_set_mem (pm->policer_config_by_name, name, cp - pm->configs);
       pool_get_aligned (pm->policers, policer, CLIB_CACHE_LINE_BYTES);
       policer[0] = pp[0];
       pi = policer - pm->policers;
-      hash_set_mem (pm->policer_index_by_name, name, pi);
+      hash_header (pm->policer_index_by_name)->user = vec_len (name);
+      hash_set_mem_alloc (&pm->policer_index_by_name, name, pi);
+      vec_free (name);
       *policer_index = pi;
       policer->thread_index = ~0;
+      hash_set (pm->policer_config_by_policer_index, pi, cp - pm->configs);
 
       for (i = 0; i < NUM_POLICE_RESULTS; i++)
 	{
@@ -714,34 +718,38 @@ show_policer_command_fn (vlib_main_t * vm,
 			 unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   vnet_policer_main_t *pm = &vnet_policer_main;
-  hash_pair_t *p;
+  hash_pair_t *hp;
   u32 pool_index;
   u8 *match_name = 0;
   u8 *name;
-  uword *pi;
+  u32 pi;
+  uword *p;
   qos_pol_cfg_params_st *config;
   policer_t *templ;
 
   (void) unformat (input, "name %s", &match_name);
 
   /* *INDENT-OFF* */
-  hash_foreach_pair (p, pm->policer_config_by_name,
-  ({
-    name = (u8 *) p->key;
-    if (match_name == 0 || !strcmp((char *) name, (char *) match_name))
-      {
-	pi = hash_get_mem (pm->policer_index_by_name, name);
-
-	pool_index = p->value[0];
-	config = pool_elt_at_index (pm->configs, pool_index);
-	templ = pool_elt_at_index (pm->policer_templates, pool_index);
-	vlib_cli_output (vm, "Name \"%s\" %U ", name, format_policer_config,
-			 config);
-	vlib_cli_output (vm, "Template %U", format_policer_instance, templ,
-			 pi[0]);
-	vlib_cli_output (vm, "-----------");
-      }
-  }));
+  hash_foreach_pair (
+    hp, pm->policer_index_by_name, ({
+      name = (u8 *) hp->key;
+      if (match_name == 0 || !strcmp ((char *) name, (char *) match_name))
+	{
+	  pi = hp->value[0];
+	  p = hash_get (pm->policer_config_by_policer_index, pi);
+	  if (p)
+	    {
+	      pool_index = p[0];
+	      config = pool_elt_at_index (pm->configs, pool_index);
+	      templ = pool_elt_at_index (pm->policer_templates, pool_index);
+	      vlib_cli_output (vm, "Name \"%s\" %U ", name,
+			       format_policer_config, config);
+	      vlib_cli_output (vm, "Template %U", format_policer_instance,
+			       templ, pi);
+	      vlib_cli_output (vm, "-----------");
+	    }
+	}
+    }));
   /* *INDENT-ON* */
   return 0;
 }
@@ -786,7 +794,7 @@ policer_init (vlib_main_t * vm)
   pm->log_class = vlib_log_register_class ("policer", 0);
   pm->fq_index = vlib_frame_queue_main_init (policer_input_node.index, 0);
 
-  pm->policer_config_by_name = hash_create_string (0, sizeof (uword));
+  pm->policer_config_by_policer_index = hash_create (0, sizeof (uword));
   pm->policer_index_by_name = hash_create_string (0, sizeof (uword));
 
   vnet_classify_register_unformat_policer_next_index_fn

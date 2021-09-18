@@ -32,8 +32,8 @@ typedef struct
   qos_pol_cfg_params_st *configs;
   policer_t *policer_templates;
 
-  /* Config by name hash */
-  uword *policer_config_by_name;
+  /* Config by policer_index hash */
+  uword *policer_config_by_policer_index;
 
   /* Policer by name hash */
   uword *policer_index_by_name;
