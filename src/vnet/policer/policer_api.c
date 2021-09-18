@@ -67,7 +67,10 @@ vl_api_policer_add_del_t_handler (vl_api_policer_add_del_t * mp)
   error = policer_add_del (vm, name, &cfg, &policer_index, mp->is_add);
 
   if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
+    {
+      rv = VNET_API_ERROR_UNSPECIFIED;
+      clib_error_free (error);
+    }
 
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_POLICER_ADD_DEL_REPLY,
@@ -192,26 +195,35 @@ vl_api_policer_dump_t_handler (vl_api_policer_dump_t * mp)
 
   if (mp->match_name_valid)
     {
-      p = hash_get_mem (pm->policer_config_by_name, match_name);
+      p = hash_get_mem (pm->policer_index_by_name, match_name);
       if (p)
 	{
-	  pool_index = p[0];
-	  config = pool_elt_at_index (pm->configs, pool_index);
-	  templ = pool_elt_at_index (pm->policer_templates, pool_index);
-	  send_policer_details (match_name, config, templ, reg, mp->context);
+	  p = hash_get (pm->policer_config_by_policer_index, p[0]);
+	  if (p)
+	    {
+	      pool_index = p[0];
+	      config = pool_elt_at_index (pm->configs, pool_index);
+	      templ = pool_elt_at_index (pm->policer_templates, pool_index);
+	      send_policer_details (match_name, config, templ, reg,
+				    mp->context);
+	    }
 	}
     }
   else
     {
       /* *INDENT-OFF* */
-      hash_foreach_pair (hp, pm->policer_config_by_name,
-      ({
-        name = (u8 *) hp->key;
-        pool_index = hp->value[0];
-        config = pool_elt_at_index (pm->configs, pool_index);
-        templ = pool_elt_at_index (pm->policer_templates, pool_index);
-        send_policer_details(name, config, templ, reg, mp->context);
-      }));
+      hash_foreach_pair (
+	hp, pm->policer_index_by_name, ({
+	  name = (u8 *) hp->key;
+	  p = hash_get (pm->policer_config_by_policer_index, hp->value[0]);
+	  if (p)
+	    {
+	      pool_index = p[0];
+	      config = pool_elt_at_index (pm->configs, pool_index);
+	      templ = pool_elt_at_index (pm->policer_templates, pool_index);
+	      send_policer_details (name, config, templ, reg, mp->context);
+	    }
+	}));
       /* *INDENT-ON* */
     }
 }
