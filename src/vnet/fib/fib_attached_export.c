@@ -106,8 +106,7 @@ fib_entry_ae_add_or_lock (fib_node_index_t connected)
     {
         fed = fib_entry_delegate_find_or_add(entry,
                                              FIB_ENTRY_DELEGATE_ATTACHED_EXPORT);
-	pool_get(fib_ae_export_pool, export);
-	clib_memset(export, 0, sizeof(*export));
+	pool_get_zero(fib_ae_export_pool, export);
 
 	fed->fd_index = (export - fib_ae_export_pool);
 	export->faee_ei = connected;
@@ -249,13 +248,14 @@ fib_attached_export_import (fib_entry_t *fib_entry,
      */
     fei = fib_entry_get_index(fib_entry);
 
-    pool_get(fib_ae_import_pool, import);
+    pool_get_zero(fib_ae_import_pool, import);
 
     import->faei_import_fib = fib_entry->fe_fib_index;
     import->faei_export_fib = export_fib;
     import->faei_prefix = fib_entry->fe_prefix;
     import->faei_import_entry = fib_entry_get_index(fib_entry);
     import->faei_export_sibling = ~0;
+    import->faei_exporter = FIB_NODE_INDEX_INVALID;
 
     /*
      * do an exact match in the export table
@@ -273,7 +273,6 @@ fib_attached_export_import (fib_entry_t *fib_entry,
 	import->faei_export_entry =
 	    fib_table_lookup(import->faei_export_fib,
 			     &import->faei_prefix);
-	import->faei_exporter = FIB_NODE_INDEX_INVALID;
     }
     else
     {

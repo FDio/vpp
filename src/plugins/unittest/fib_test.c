@@ -5310,7 +5310,7 @@ fib_test_ae (void)
 {
     const dpo_id_t *dpo, *dpo_drop;
     const u32 fib_index = 0;
-    fib_node_index_t fei;
+    fib_node_index_t dfrt, fei;
     test_main_t *tm;
     ip4_main_t *im;
     int res;
@@ -5410,6 +5410,44 @@ fib_test_ae (void)
     import_fib_index1 = fib_table_find_or_create_and_lock(FIB_PROTOCOL_IP4,
                                                           11,
                                                           FIB_SOURCE_CLI);
+    /*
+     * Add default route in the import FIB
+     */
+    fib_prefix_t pfx_0_0_0_0_s_0 = {
+        .fp_len = 0,
+        .fp_proto = FIB_PROTOCOL_IP4,
+        .fp_addr = {
+            .ip4 = {
+                {0}
+            },
+        },
+    };
+
+    dfrt = fib_table_lookup(import_fib_index1, &pfx_0_0_0_0_s_0);
+    FIB_TEST((FIB_NODE_INDEX_INVALID != dfrt), "default route present");
+
+    fib_table_entry_path_add(import_fib_index1,
+                             &pfx_0_0_0_0_s_0,
+                             FIB_SOURCE_API,
+                             FIB_ENTRY_FLAG_NONE,
+                             DPO_PROTO_IP4,
+                             NULL,
+                             tm->hw[0]->sw_if_index,
+                             ~0, // invalid fib index
+                             1,
+                             NULL,
+                             FIB_ROUTE_PATH_FLAG_NONE);
+    fei = fib_table_lookup(fib_index, &pfx_0_0_0_0_s_0);
+    FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "default route present");
+    FIB_TEST((fei != dfrt), "default route added");
+
+    /*
+     * delete default route and check for the presence in the import table
+     */
+    fib_table_entry_delete(import_fib_index1, &pfx_0_0_0_0_s_0, FIB_SOURCE_API);
+    fei = fib_table_lookup(import_fib_index1, &pfx_0_0_0_0_s_0);
+    FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "default route present");
+    FIB_TEST((fei == dfrt), "default route removed");
 
     /*
      * Add an attached route in the import FIB
