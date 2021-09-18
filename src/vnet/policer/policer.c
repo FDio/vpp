@@ -75,14 +75,18 @@ policer_add_del (vlib_main_t *vm, u8 *name, qos_pol_cfg_params_st *cfg,
       hash_unset_mem (pm->policer_config_by_name, name);
 
       /* free policer */
-      p = hash_get_mem (pm->policer_index_by_name, name);
-      if (p == 0)
+      hash_pair_t *hp = hash_get_pair_mem (pm->policer_index_by_name, name);
+      if (hp == NULL)
 	{
 	  vec_free (name);
 	  return clib_error_return (0, "No such policer");
 	}
+      p = hp->value;
       pool_put_index (pm->policers, p[0]);
+      void *prev_key = uword_to_pointer (hp->key, void *);
       hash_unset_mem (pm->policer_index_by_name, name);
+      /* free previous "name" */
+      vec_free (prev_key);
 
       vec_free (name);
       return 0;
