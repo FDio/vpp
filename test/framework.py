@@ -438,7 +438,7 @@ class VppTestCase(CPUInterface, unittest.TestCase):
 
         default_variant = os.getenv("VARIANT")
         if default_variant is not None:
-            default_variant = "defaults { %s 100 }" % default_variant
+            default_variant = "default { variant %s }" % default_variant
         else:
             default_variant = ""
 
