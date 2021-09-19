@@ -94,6 +94,7 @@ if(SUBUNIT_INCLUDE_DIR AND SUBUNIT_LIB)
     vapi_c_test.c
     DEPENDS fake_api_vapi_h
     LINK_LIBRARIES ${libs}
+    NO_INSTALL
   )
 
   enable_language(CXX)
@@ -102,6 +103,7 @@ if(SUBUNIT_INCLUDE_DIR AND SUBUNIT_LIB)
     vapi_cpp_test.cpp
     DEPENDS fake_api_vapi_hpp
     LINK_LIBRARIES ${libs}
+    NO_INSTALL
   )
 
 else()
