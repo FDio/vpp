@@ -1523,7 +1523,7 @@ api_{n} (cJSON *o)
   if (!o) return 0;
   mp = vl_api_{n}_t_fromjson(o, &len);
   if (!mp) {{
-    fprintf(stderr, "Failed converting JSON to API\\n");
+    fprintf(stderr, "Failed converting JSON to API for rr {n}\\n");
     return 0;
   }}
 
@@ -1557,7 +1557,7 @@ api_{n} (cJSON *o)
   if (!o) return 0;
   vl_api_{n}_t *mp = vl_api_{n}_t_fromjson(o, &len);
   if (!mp) {{
-      fprintf(stderr, "Failed converting JSON to API\\n");
+      fprintf(stderr, "Failed converting JSON to API for dd {n}\\n");
       return 0;
   }}
   mp->_vl_msg_id = msg_id;
@@ -1612,7 +1612,7 @@ api_{n} (cJSON *o)
   if (!o) return 0;
   vl_api_{n}_t *mp = vl_api_{n}_t_fromjson(o, &len);
   if (!mp) {{
-    fprintf(stderr, "Failed converting JSON to API\\n");
+    fprintf(stderr, "Failed converting JSON to API for dr {n}\\n");
     return 0;
   }}
   mp->_vl_msg_id = msg_id;
