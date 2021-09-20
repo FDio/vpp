@@ -16,6 +16,24 @@
       "revId": "be48a16eea3f54ce4da0020aa897bfba95ef44b4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "46fa578c_1716bc08",
+        "filename": "src/vpp-api/python/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 2539
+      },
+      "writtenOn": "2021-09-20T11:35:39Z",
+      "side": 1,
+      "message": "I added that just to make understanding what was happening here.\nI had missed the the cmake 3.10 requirement.\nI\u0027ll remove COMMAND_ECHO. Though as long as you\u0027re happy I\u0027ll also remove OUTPUT_QUIET as it\u0027s useful to see what the call to setup.py is actually doing.",
+      "parentUuid": "38c3f334_b68e6646",
+      "revId": "be48a16eea3f54ce4da0020aa897bfba95ef44b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
