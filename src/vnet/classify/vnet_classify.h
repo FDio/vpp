@@ -250,60 +250,56 @@ vnet_classify_table_get (u32 table_index)
 static inline u64
 vnet_classify_hash_packet_inline (vnet_classify_table_t *t, const u8 *h)
 {
-  u32x4 *mask;
-
-  union
-  {
-    u32x4 as_u32x4;
-    u64 as_u64[2];
-  } xor_sum __attribute__ ((aligned (sizeof (u32x4))));
-
+  u64 xor_sum;
   ASSERT (t);
-  mask = t->mask;
-#ifdef CLIB_HAVE_VEC128
-  u32x4u *data = (u32x4u *) h;
-  xor_sum.as_u32x4 = data[0 + t->skip_n_vectors] & mask[0];
+  h += t->skip_n_vectors * 16;
+
+#if defined(CLIB_HAVE_VEC128)
+  u64x2 *mask = (u64x2 *) t->mask;
+  u64x2u *data = (u64x2u *) h;
+  u64x2 xor_sum_x2;
+
+  xor_sum_x2 = data[0] & mask[0];
+
   switch (t->match_n_vectors)
     {
     case 5:
-      xor_sum.as_u32x4 ^= data[4 + t->skip_n_vectors] & mask[4];
+      xor_sum_x2 ^= data[4] & mask[4];
       /* FALLTHROUGH */
     case 4:
-      xor_sum.as_u32x4 ^= data[3 + t->skip_n_vectors] & mask[3];
+      xor_sum_x2 ^= data[3] & mask[3];
       /* FALLTHROUGH */
     case 3:
-      xor_sum.as_u32x4 ^= data[2 + t->skip_n_vectors] & mask[2];
+      xor_sum_x2 ^= data[2] & mask[2];
       /* FALLTHROUGH */
     case 2:
-      xor_sum.as_u32x4 ^= data[1 + t->skip_n_vectors] & mask[1];
+      xor_sum_x2 ^= data[1] & mask[1];
       /* FALLTHROUGH */
     case 1:
       break;
     default:
       abort ();
     }
+  xor_sum = xor_sum_x2[0] ^ xor_sum_x2[1];
 #else
-  u32 skip_u64 = t->skip_n_vectors * 2;
-  u64 *data64 = (u64 *) h;
-  xor_sum.as_u64[0] = data64[0 + skip_u64] & ((u64 *) mask)[0];
-  xor_sum.as_u64[1] = data64[1 + skip_u64] & ((u64 *) mask)[1];
+  u64 *data = (u64 *) h;
+  u64 *mask = (u64 *) t->mask;
+
+  xor_sum = (data[0] & mask[0]) ^ (data[1] & mask[1]);
+
   switch (t->match_n_vectors)
     {
     case 5:
-      xor_sum.as_u64[0] ^= data64[8 + skip_u64] & ((u64 *) mask)[8];
-      xor_sum.as_u64[1] ^= data64[9 + skip_u64] & ((u64 *) mask)[9];
+      xor_sum ^= (data[8] & mask[8]) ^ (data[9] & mask[9]);
       /* FALLTHROUGH */
     case 4:
-      xor_sum.as_u64[0] ^= data64[6 + skip_u64] & ((u64 *) mask)[6];
-      xor_sum.as_u64[1] ^= data64[7 + skip_u64] & ((u64 *) mask)[7];
+      xor_sum ^= (data[6] & mask[6]) ^ (data[7] & mask[7]);
       /* FALLTHROUGH */
     case 3:
-      xor_sum.as_u64[0] ^= data64[4 + skip_u64] & ((u64 *) mask)[4];
-      xor_sum.as_u64[1] ^= data64[5 + skip_u64] & ((u64 *) mask)[5];
+      xor_sum ^= (data[4] & mask[4]) ^ (data[5] & mask[5]);
       /* FALLTHROUGH */
     case 2:
-      xor_sum.as_u64[0] ^= data64[2 + skip_u64] & ((u64 *) mask)[2];
-      xor_sum.as_u64[1] ^= data64[3 + skip_u64] & ((u64 *) mask)[3];
+      xor_sum ^= (data[2] & mask[2]) ^ (data[3] & mask[3]);
       /* FALLTHROUGH */
     case 1:
       break;
