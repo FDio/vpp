@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f87f0526_a2e81457",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 781,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-09-20T08:18:12Z",
+      "side": 1,
+      "message": "Suggest you use the new get approach to dump/details.\nAlso use autoendian.",
+      "revId": "531506db0917df9cd2182d9ffd8bda4314737a96",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
