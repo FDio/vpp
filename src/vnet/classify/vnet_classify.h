@@ -408,9 +408,7 @@ vnet_classify_find_entry_inline (vnet_classify_table_t *t, const u8 *h,
     u64 as_u64[2];
   } result __attribute__ ((aligned (sizeof (u32x4))));
   vnet_classify_bucket_t *b;
-  u32 value_index;
-  u32 bucket_index;
-  u32 limit;
+  u32 bucket_index, limit, pages;
   int i;
 
   bucket_index = hash & (t->nbuckets - 1);
@@ -420,18 +418,19 @@ vnet_classify_find_entry_inline (vnet_classify_table_t *t, const u8 *h,
   if (b->offset == 0)
     return 0;
 
-  hash >>= t->log2_nbuckets;
-
+  pages = 1 << b->log2_pages;
   v = vnet_classify_get_entry (t, b->offset);
-  value_index = hash & ((1 << b->log2_pages) - 1);
   limit = t->entries_per_page;
   if (PREDICT_FALSE (b->linear_search))
     {
-      value_index = 0;
-      limit *= (1 << b->log2_pages);
+      limit *= pages;
+      v = vnet_classify_entry_at_index (t, v, 0);
     }
-
-  v = vnet_classify_entry_at_index (t, v, value_index);
+  else
+    {
+      hash >>= t->log2_nbuckets;
+      v = vnet_classify_entry_at_index (t, v, hash & (pages - 1));
+    }
 
 #ifdef CLIB_HAVE_VEC128
   const u32x4u *data = (const u32x4u *) h;
