@@ -1,5 +1,6 @@
 # Release Notes    {#release_notes}
 
+* @subpage release_notes_2202
 * @subpage release_notes_2110
 * @subpage release_notes_2106
 * @subpage release_notes_2101
@@ -32,6 +33,10 @@
 * @subpage release_notes_1701
 * @subpage release_notes_1609
 * @subpage release_notes_1606
+
+@page release_notes_2202 Release notes for VPP 22.02
+
+TBD
 
 @page release_notes_2110 Release notes for VPP 21.10
 
