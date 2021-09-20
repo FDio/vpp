@@ -147,9 +147,6 @@ typedef struct
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  /* Mask to apply after skipping N vectors */
-  u32x4 *mask;
-
   /* hash Buckets */
   vnet_classify_bucket_t *buckets;
 
@@ -195,6 +192,10 @@ typedef struct
 
   /* Writer (only) lock for this table */
   clib_spinlock_t writer_lock;
+
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
+  /* Mask to apply after skipping N vectors */
+  u32x4 mask[8];
 
 } vnet_classify_table_t;
 
