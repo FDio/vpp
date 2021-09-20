@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "2903c526_7c6741ca",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 987,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-09-20T15:24:39Z",
+      "side": 1,
+      "message": "You\u0027re right. We can simply call application_free (application_detach_process with ~0 as client_index would directly do applciation_free)",
+      "parentUuid": "f8ee34ee_5eb29536",
+      "range": {
+        "startLine": 974,
+        "startChar": 0,
+        "endLine": 987,
+        "endChar": 29
+      },
+      "revId": "d4171518a8ee2274a5b8c2309a61a05605288f5b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "79788d86_bad609a4",
         "filename": "src/vnet/session/application_namespace.c",
         "patchSetId": 7
@@ -45,6 +69,30 @@
       "revId": "d4171518a8ee2274a5b8c2309a61a05605288f5b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "de5bdfe3_f34d9a7d",
+        "filename": "src/vnet/session/application_namespace.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-09-20T15:24:39Z",
+      "side": 1,
+      "message": "Right, this fails to pass the test, as we expect to be able to\nupdate some of the app_ns properties (like sw_if_index).\nJust moved the socket code so that it only happens at create (not at update)",
+      "parentUuid": "79788d86_bad609a4",
+      "range": {
+        "startLine": 122,
+        "startChar": 0,
+        "endLine": 129,
+        "endChar": 2
+      },
+      "revId": "d4171518a8ee2274a5b8c2309a61a05605288f5b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
