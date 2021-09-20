@@ -139,7 +139,7 @@ vnet_classify_new_table (vnet_classify_main_t *cm, const u8 *mask,
 
   pool_get_aligned_zero (cm->tables, t, CLIB_CACHE_LINE_BYTES);
 
-  vec_validate_aligned (t->mask, match_n_vectors - 1, sizeof (u32x4));
+  clib_memset_u32 (t->mask, 0, 4 * ARRAY_LEN (t->mask));
   clib_memcpy_fast (t->mask, mask, match_n_vectors * sizeof (u32x4));
 
   t->next_table_index = ~0;
@@ -175,7 +175,6 @@ vnet_classify_delete_table_index (vnet_classify_main_t * cm,
     /* Recursively delete the entire chain */
     vnet_classify_delete_table_index (cm, t->next_table_index, del_chain);
 
-  vec_free (t->mask);
   vec_free (t->buckets);
   clib_mem_destroy_heap (t->mheap);
   pool_put (cm->tables, t);
@@ -1649,13 +1648,13 @@ filter_table_mask_compare (void *a1, void *a2)
   m1 = (u8 *) (t1->mask);
   m2 = (u8 *) (t2->mask);
 
-  for (i = 0; i < vec_len (t1->mask) * sizeof (u32x4); i++)
+  for (i = 0; i < t1->match_n_vectors * sizeof (u32x4); i++)
     {
       n1 += count_set_bits (m1[0]);
       m1++;
     }
 
-  for (i = 0; i < vec_len (t2->mask) * sizeof (u32x4); i++)
+  for (i = 0; i < t2->match_n_vectors * sizeof (u32x4); i++)
     {
       n2 += count_set_bits (m2[0]);
       m2++;
@@ -1815,11 +1814,11 @@ classify_lookup_chain (u32 table_index, u8 * mask, u32 n_skip, u32 n_match)
 	continue;
 
       /* Masks aren't congruent, can't use this table. */
-      if (vec_len (t->mask) * sizeof (u32x4) != vec_len (mask))
+      if (t->match_n_vectors * sizeof (u32x4) != vec_len (mask))
 	continue;
 
       /* Masks aren't bit-for-bit identical, can't use this table. */
-      if (memcmp (t->mask, mask, vec_len (mask)))
+      if (memcmp (t->mask, mask, t->match_n_vectors * sizeof (u32x4)))
 	continue;
 
       /* Winner... */
