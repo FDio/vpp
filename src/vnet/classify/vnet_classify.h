@@ -147,9 +147,6 @@ typedef struct
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  /* Mask to apply after skipping N vectors */
-  u32x4 *mask;
-
   /* hash Buckets */
   vnet_classify_bucket_t *buckets;
 
@@ -195,6 +192,10 @@ typedef struct
 
   /* Writer (only) lock for this table */
   clib_spinlock_t writer_lock;
+
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
+  /* Mask to apply after skipping N vectors */
+  u32x4 mask[8];
 
 } vnet_classify_table_t;
 
@@ -249,61 +250,86 @@ vnet_classify_table_get (u32 table_index)
 static inline u64
 vnet_classify_hash_packet_inline (vnet_classify_table_t *t, const u8 *h)
 {
-  u32x4 *mask;
-
-  union
-  {
-    u32x4 as_u32x4;
-    u64 as_u64[2];
-  } xor_sum __attribute__ ((aligned (sizeof (u32x4))));
-
+  u64 xor_sum;
   ASSERT (t);
-  mask = t->mask;
-#ifdef CLIB_HAVE_VEC128
-  u32x4u *data = (u32x4u *) h;
-  xor_sum.as_u32x4 = data[0 + t->skip_n_vectors] & mask[0];
-  switch (t->match_n_vectors)
+  h += t->skip_n_vectors * 16;
+
+#if defined(CLIB_HAVE_VEC512)
+  u64x8 *mask = (u64x8 *) t->mask;
+  u64x8u *data = (u64x8u *) h;
+  u64x8 xor_sum_x8;
+
+  xor_sum_x8 = data[0] & mask[0];
+  if (PREDICT_FALSE (t->match_n_vectors > 4))
+    xor_sum_x8 ^= data[1] & mask[1];
+
+  xor_sum_x8 ^= u64x8_align_right (xor_sum_x8, xor_sum_x8, 4);
+  xor_sum_x8 ^= u64x8_align_right (xor_sum_x8, xor_sum_x8, 2);
+  xor_sum = xor_sum_x8[0] ^ xor_sum_x8[1];
+
+#elif defined(CLIB_HAVE_VEC256)
+  u64x4 *mask = (u64x4 *) t->mask;
+  u64x4u *data = (u64x4u *) h;
+  u64x4 xor_sum_x4;
+
+  xor_sum_x4 = data[0] & mask[0];
+
+  switch (round_pow2 (t->match_n_vectors, 2))
     {
-    case 5:
-      xor_sum.as_u32x4 ^= data[4 + t->skip_n_vectors] & mask[4];
-      /* FALLTHROUGH */
     case 4:
-      xor_sum.as_u32x4 ^= data[3 + t->skip_n_vectors] & mask[3];
-      /* FALLTHROUGH */
+      xor_sum_x4 ^= data[3] & mask[3];
     case 3:
-      xor_sum.as_u32x4 ^= data[2 + t->skip_n_vectors] & mask[2];
-      /* FALLTHROUGH */
+      xor_sum_x4 ^= data[2] & mask[2];
     case 2:
-      xor_sum.as_u32x4 ^= data[1 + t->skip_n_vectors] & mask[1];
-      /* FALLTHROUGH */
+      xor_sum_x4 ^= data[1] & mask[1];
     case 1:
       break;
     default:
       abort ();
     }
-#else
-  u32 skip_u64 = t->skip_n_vectors * 2;
-  u64 *data64 = (u64 *) h;
-  xor_sum.as_u64[0] = data64[0 + skip_u64] & ((u64 *) mask)[0];
-  xor_sum.as_u64[1] = data64[1 + skip_u64] & ((u64 *) mask)[1];
+
+  xor_sum_x4 ^= u64x4_align_right (xor_sum_x4, xor_sum_x4, 2);
+  xor_sum = xor_sum_x4[0] ^ xor_sum_x4[1];
+
+#elif defined(CxLIB_HAVE_VEC128)
+  u64x2 *mask = (u64x2 *) t->mask;
+  u64x2u *data = (u64x2u *) h;
+  u64x2 xor_sum_x2;
+
+  xor_sum_x2 = data[0] & mask[0];
+
   switch (t->match_n_vectors)
     {
     case 5:
-      xor_sum.as_u64[0] ^= data64[8 + skip_u64] & ((u64 *) mask)[8];
-      xor_sum.as_u64[1] ^= data64[9 + skip_u64] & ((u64 *) mask)[9];
-      /* FALLTHROUGH */
+      xor_sum_x2 ^= data[4] & mask[4];
     case 4:
-      xor_sum.as_u64[0] ^= data64[6 + skip_u64] & ((u64 *) mask)[6];
-      xor_sum.as_u64[1] ^= data64[7 + skip_u64] & ((u64 *) mask)[7];
-      /* FALLTHROUGH */
+      xor_sum_x2 ^= data[3] & mask[3];
     case 3:
-      xor_sum.as_u64[0] ^= data64[4 + skip_u64] & ((u64 *) mask)[4];
-      xor_sum.as_u64[1] ^= data64[5 + skip_u64] & ((u64 *) mask)[5];
-      /* FALLTHROUGH */
+      xor_sum_x2 ^= data[2] & mask[2];
     case 2:
-      xor_sum.as_u64[0] ^= data64[2 + skip_u64] & ((u64 *) mask)[2];
-      xor_sum.as_u64[1] ^= data64[3 + skip_u64] & ((u64 *) mask)[3];
-      /* FALLTHROUGH */
+      xor_sum_x2 ^= data[1] & mask[1];
+    case 1:
+      break;
+    default:
+      abort ();
+    }
+  xor_sum = xor_sum_x2[0] ^ xor_sum_x2[1];
+#else
+  u64 *data = (u64 *) h;
+  u64 *mask = (u64 *) t->mask;
+
+  xor_sum = (data[0] & mask[0]) ^ (data[1] & mask[1]);
+
+  switch (t->match_n_vectors)
+    {
+    case 5:
+      xor_sum ^= (data[8] & mask[8]) ^ (data[9] & mask[9]);
+    case 4:
+      xor_sum ^= (data[6] & mask[6]) ^ (data[7] & mask[7]);
+    case 3:
+      xor_sum ^= (data[4] & mask[4]) ^ (data[5] & mask[5]);
+    case 2:
+      xor_sum ^= (data[2] & mask[2]) ^ (data[3] & mask[3]);
     case 1:
       break;
 
@@ -315,7 +341,7 @@ vnet_classify_hash_packet_inline (vnet_classify_table_t *t, const u8 *h)
 #ifdef clib_crc32c_uses_intrinsics
   return clib_crc32c ((u8 *) & xor_sum, sizeof (xor_sum));
 #else
-  return clib_xxhash (xor_sum.as_u64[0] ^ xor_sum.as_u64[1]);
+  return clib_xxhash (xor_sum);
 #endif
 }
 
@@ -400,12 +426,6 @@ vnet_classify_find_entry_inline (vnet_classify_table_t *t, const u8 *h,
 				 u64 hash, f64 now)
 {
   vnet_classify_entry_t *v;
-  u32x4 *mask, *key;
-  union
-  {
-    u32x4 as_u32x4;
-    u64 as_u64[2];
-  } result __attribute__ ((aligned (sizeof (u32x4))));
   vnet_classify_bucket_t *b;
   u32 value_index;
   u32 bucket_index;
@@ -414,7 +434,6 @@ vnet_classify_find_entry_inline (vnet_classify_table_t *t, const u8 *h,
 
   bucket_index = hash & (t->nbuckets - 1);
   b = &t->buckets[bucket_index];
-  mask = t->mask;
 
   if (b->offset == 0)
     return 0;
@@ -432,33 +451,34 @@ vnet_classify_find_entry_inline (vnet_classify_table_t *t, const u8 *h,
 
   v = vnet_classify_entry_at_index (t, v, value_index);
 
+  h += t->skip_n_vectors * 16;
+
 #ifdef CLIB_HAVE_VEC128
-  const u32x4u *data = (const u32x4u *) h;
+  u64x2u *data = (u64x2u *) h;
+  u64x2 *key, *mask = (u64x2 *) t->mask;
+  u64x2 r;
+
   for (i = 0; i < limit; i++)
     {
-      key = v->key;
-      result.as_u32x4 = (data[0 + t->skip_n_vectors] & mask[0]) ^ key[0];
+      key = (u64x2 *) v->key;
+      r = (data[0] & mask[0]) ^ key[0];
       switch (t->match_n_vectors)
 	{
 	case 5:
-	  result.as_u32x4 |= (data[4 + t->skip_n_vectors] & mask[4]) ^ key[4];
-	  /* FALLTHROUGH */
+	  r |= (data[4] & mask[4]) ^ key[4];
 	case 4:
-	  result.as_u32x4 |= (data[3 + t->skip_n_vectors] & mask[3]) ^ key[3];
-	  /* FALLTHROUGH */
+	  r |= (data[3] & mask[3]) ^ key[3];
 	case 3:
-	  result.as_u32x4 |= (data[2 + t->skip_n_vectors] & mask[2]) ^ key[2];
-	  /* FALLTHROUGH */
+	  r |= (data[2] & mask[2]) ^ key[2];
 	case 2:
-	  result.as_u32x4 |= (data[1 + t->skip_n_vectors] & mask[1]) ^ key[1];
-	  /* FALLTHROUGH */
+	  r |= (data[1] & mask[1]) ^ key[1];
 	case 1:
 	  break;
 	default:
 	  abort ();
 	}
 
-      if (u32x4_is_all_zero (result.as_u32x4))
+      if (u64x2_is_all_zero (r))
 	{
 	  if (PREDICT_TRUE (now))
 	    {
@@ -470,49 +490,32 @@ vnet_classify_find_entry_inline (vnet_classify_table_t *t, const u8 *h,
       v = vnet_classify_entry_at_index (t, v, 1);
     }
 #else
-  u32 skip_u64 = t->skip_n_vectors * 2;
-  const u64 *data64 = (const u64 *) h;
+  u64 *data = (u64 *) h;
+  u64 *key, *mask = (u64 *) t->mask;
+  u64 r;
+
   for (i = 0; i < limit; i++)
     {
-      key = v->key;
+      key = (u64 *) v->key;
 
-      result.as_u64[0] =
-	(data64[0 + skip_u64] & ((u64 *) mask)[0]) ^ ((u64 *) key)[0];
-      result.as_u64[1] =
-	(data64[1 + skip_u64] & ((u64 *) mask)[1]) ^ ((u64 *) key)[1];
+      r = ((data[0] & mask[0]) ^ key[0]) | ((data[1] & mask[1]) ^ key[1]);
       switch (t->match_n_vectors)
 	{
 	case 5:
-	  result.as_u64[0] |=
-	    (data64[8 + skip_u64] & ((u64 *) mask)[8]) ^ ((u64 *) key)[8];
-	  result.as_u64[1] |=
-	    (data64[9 + skip_u64] & ((u64 *) mask)[9]) ^ ((u64 *) key)[9];
-	  /* FALLTHROUGH */
+	  r |= ((data[8] & mask[8]) ^ key[8]) | ((data[9] & mask[9]) ^ key[9]);
 	case 4:
-	  result.as_u64[0] |=
-	    (data64[6 + skip_u64] & ((u64 *) mask)[6]) ^ ((u64 *) key)[6];
-	  result.as_u64[1] |=
-	    (data64[7 + skip_u64] & ((u64 *) mask)[7]) ^ ((u64 *) key)[7];
-	  /* FALLTHROUGH */
+	  r |= ((data[6] & mask[6]) ^ key[6]) | ((data[7] & mask[7]) ^ key[7]);
 	case 3:
-	  result.as_u64[0] |=
-	    (data64[4 + skip_u64] & ((u64 *) mask)[4]) ^ ((u64 *) key)[4];
-	  result.as_u64[1] |=
-	    (data64[5 + skip_u64] & ((u64 *) mask)[5]) ^ ((u64 *) key)[5];
-	  /* FALLTHROUGH */
+	  r |= ((data[4] & mask[4]) ^ key[4]) | ((data[5] & mask[5]) ^ key[5]);
 	case 2:
-	  result.as_u64[0] |=
-	    (data64[2 + skip_u64] & ((u64 *) mask)[2]) ^ ((u64 *) key)[2];
-	  result.as_u64[1] |=
-	    (data64[3 + skip_u64] & ((u64 *) mask)[3]) ^ ((u64 *) key)[3];
-	  /* FALLTHROUGH */
+	  r |= ((data[2] & mask[2]) ^ key[2]) | ((data[3] & mask[3]) ^ key[3]);
 	case 1:
 	  break;
 	default:
 	  abort ();
 	}
 
-      if (result.as_u64[0] == 0 && result.as_u64[1] == 0)
+      if (r == 0)
 	{
 	  if (PREDICT_TRUE (now))
 	    {
