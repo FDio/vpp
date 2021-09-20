@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "38c3f334_b68e6646",
+        "filename": "src/vpp-api/python/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-09-20T11:25:52Z",
+      "side": 1,
+      "message": "Why COMMAND_ECHO?\n\nIt is introduced in cmake 3.15 and we need to support back to 3.10..",
+      "revId": "be48a16eea3f54ce4da0020aa897bfba95ef44b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
