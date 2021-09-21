@@ -107,7 +107,16 @@ typedef struct flow_report
   vnet_flow_data_callback_t *flow_data_callback;
 } flow_report_t;
 
-typedef struct flow_report_main
+/*
+ * The maximum number of ipfix exporters we can have at once
+ */
+#define IPFIX_EXPORTERS_MAX 5
+
+/*
+ * We support multiple exporters. Each one has its own configured
+ * destination, and its own set of reports and streams.
+ */
+typedef struct ipfix_exporter
 {
   flow_report_t *reports;
   flow_report_stream_t *streams;
@@ -126,6 +135,16 @@ typedef struct flow_report_main
 
   /* UDP checksum calculation enable flag */
   u8 udp_checksum;
+} ipfix_exporter_t;
+
+typedef struct flow_report_main
+{
+  /*
+   * A pool of the exporters. Entry 0 is always there for backwards
+   * compatability reasons. Entries 1 and above have to be created by
+   * the users.
+   */
+  ipfix_exporter_t *exporters;
 
   /* time scale transform. Joy. */
   u32 unix_time_0;

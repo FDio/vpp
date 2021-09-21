@@ -56,8 +56,9 @@ udp_ping_send_flows (flow_report_main_t * frm, flow_report_t * fr,
   ip46_udp_ping_flow *ip46_flow;
   u16 src_port, dst_port;
   u16 data_len;
+  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
 
-  stream = &frm->streams[fr->stream_index];
+  stream = &exp->streams[fr->stream_index];
   data_len = vec_len (udp_ping_main.ip46_flow);
 
   for (i = 0; i < data_len; i++)
@@ -120,7 +121,7 @@ udp_ping_send_flows (flow_report_main_t * frm, flow_report_t * fr,
 	      records_this_buffer++;
 
 	      /* Flush data if packet len is about to reach path mtu */
-	      if (next_offset > (frm->path_mtu - UDP_PING_EXPORT_RECORD_SIZE))
+	      if (next_offset > (exp->path_mtu - UDP_PING_EXPORT_RECORD_SIZE))
 		{
 		  b0->current_length = next_offset;
 		  b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;

@@ -163,8 +163,9 @@ nat_template_rewrite (flow_report_main_t * frm,
   u32 field_count = 0;
   flow_report_stream_t *stream;
   u32 stream_index;
+  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
 
-  stream = &frm->streams[fr->stream_index];
+  stream = &exp->streams[fr->stream_index];
 
   stream_index = clib_atomic_fetch_or(&silm->stream_index, 0);
   clib_atomic_cmp_and_swap (&silm->stream_index,
@@ -497,16 +498,17 @@ nat_ipfix_header_create (flow_report_main_t * frm,
   ip4_header_t *ip;
   udp_header_t *udp;
   vlib_main_t *vm = vlib_get_main ();
-  
+  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
+
   stream_index = clib_atomic_fetch_or(&silm->stream_index, 0);
-  stream = &frm->streams[stream_index];
+  stream = &exp->streams[stream_index];
 
   b0->current_data = 0;
   b0->current_length = sizeof (*ip) + sizeof (*udp) + sizeof (*h) +
     sizeof (*s);
   b0->flags |= (VLIB_BUFFER_TOTAL_LENGTH_VALID | VNET_BUFFER_F_FLOW_REPORT);
   vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
-  vnet_buffer (b0)->sw_if_index[VLIB_TX] = frm->fib_index;
+  vnet_buffer (b0)->sw_if_index[VLIB_TX] = exp->fib_index;
   tp = vlib_buffer_get_current (b0);
   ip = (ip4_header_t *) & tp->ip4;
   udp = (udp_header_t *) (ip + 1);
@@ -517,10 +519,10 @@ nat_ipfix_header_create (flow_report_main_t * frm,
   ip->ttl = 254;
   ip->protocol = IP_PROTOCOL_UDP;
   ip->flags_and_fragment_offset = 0;
-  ip->src_address.as_u32 = frm->src_address.as_u32;
-  ip->dst_address.as_u32 = frm->ipfix_collector.as_u32;
+  ip->src_address.as_u32 = exp->src_address.as_u32;
+  ip->dst_address.as_u32 = exp->ipfix_collector.as_u32;
   udp->src_port = clib_host_to_net_u16 (stream->src_port);
-  udp->dst_port = clib_host_to_net_u16 (frm->collector_port);
+  udp->dst_port = clib_host_to_net_u16 (exp->collector_port);
   udp->checksum = 0;
 
   h->export_time = clib_host_to_net_u32 ((u32)
@@ -545,6 +547,7 @@ nat_ipfix_send (flow_report_main_t *frm, vlib_frame_t *f, vlib_buffer_t *b0,
   ip4_header_t *ip;
   udp_header_t *udp;
   vlib_main_t *vm = vlib_get_main ();
+  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
 
   tp = vlib_buffer_get_current (b0);
   ip = (ip4_header_t *) & tp->ip4;
@@ -563,7 +566,7 @@ nat_ipfix_send (flow_report_main_t *frm, vlib_frame_t *f, vlib_buffer_t *b0,
   ip->checksum = ip4_header_checksum (ip);
   udp->length = clib_host_to_net_u16 (b0->current_length - sizeof (*ip));
 
-  if (frm->udp_checksum)
+  if (exp->udp_checksum)
     {
       udp->checksum = ip4_tcp_udp_compute_checksum (vm, b0, ip);
       if (udp->checksum == 0)
@@ -591,6 +594,7 @@ nat_ipfix_logging_nat44_ses (u32 thread_index, u8 nat_event, u32 src_ip,
   u64 now;
   u16 template_id;
   u32 vrf_id;
+  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
 
   now = (u64) ((vlib_time_now (vm) - silm->vlib_time_0) * 1e3);
   now += silm->milisecond_time_0;
@@ -663,8 +667,8 @@ nat_ipfix_logging_nat44_ses (u32 thread_index, u8 nat_event, u32 src_ip,
       b0->current_length += NAT44_SESSION_CREATE_LEN;
     }
 
-  if (PREDICT_FALSE
-      (do_flush || (offset + NAT44_SESSION_CREATE_LEN) > frm->path_mtu))
+  if (PREDICT_FALSE (do_flush ||
+		     (offset + NAT44_SESSION_CREATE_LEN) > exp->path_mtu))
     {
       template_id = clib_atomic_fetch_or (
         &silm->nat44_session_template_id,
@@ -691,6 +695,7 @@ nat_ipfix_logging_addr_exhausted (u32 thread_index, u32 pool_id, int do_flush)
   u64 now;
   u8 nat_event = NAT_ADDRESSES_EXHAUTED;
   u16 template_id;
+  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
 
   now = (u64) ((vlib_time_now (vm) - silm->vlib_time_0) * 1e3);
   now += silm->milisecond_time_0;
@@ -746,8 +751,8 @@ nat_ipfix_logging_addr_exhausted (u32 thread_index, u32 pool_id, int do_flush)
       b0->current_length += NAT_ADDRESSES_EXHAUTED_LEN;
     }
 
-  if (PREDICT_FALSE
-      (do_flush || (offset + NAT_ADDRESSES_EXHAUTED_LEN) > frm->path_mtu))
+  if (PREDICT_FALSE (do_flush ||
+		     (offset + NAT_ADDRESSES_EXHAUTED_LEN) > exp->path_mtu))
     {
       template_id = clib_atomic_fetch_or (
           &silm->addr_exhausted_template_id,
@@ -776,6 +781,7 @@ nat_ipfix_logging_max_entries_per_usr (u32 thread_index,
   u8 nat_event = QUOTA_EXCEEDED;
   u32 quota_event = clib_host_to_net_u32 (MAX_ENTRIES_PER_USER);
   u16 template_id;
+  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
 
   now = (u64) ((vlib_time_now (vm) - silm->vlib_time_0) * 1e3);
   now += silm->milisecond_time_0;
@@ -838,8 +844,8 @@ nat_ipfix_logging_max_entries_per_usr (u32 thread_index,
       b0->current_length += MAX_ENTRIES_PER_USER_LEN;
     }
 
-  if (PREDICT_FALSE
-      (do_flush || (offset + MAX_ENTRIES_PER_USER_LEN) > frm->path_mtu))
+  if (PREDICT_FALSE (do_flush ||
+		     (offset + MAX_ENTRIES_PER_USER_LEN) > exp->path_mtu))
     {
       template_id = clib_atomic_fetch_or (
           &silm->max_entries_per_user_template_id,
@@ -867,6 +873,7 @@ nat_ipfix_logging_max_ses (u32 thread_index, u32 limit, int do_flush)
   u8 nat_event = QUOTA_EXCEEDED;
   u32 quota_event = clib_host_to_net_u32 (MAX_SESSION_ENTRIES);
   u16 template_id;
+  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
 
   now = (u64) ((vlib_time_now (vm) - silm->vlib_time_0) * 1e3);
   now += silm->milisecond_time_0;
@@ -926,8 +933,7 @@ nat_ipfix_logging_max_ses (u32 thread_index, u32 limit, int do_flush)
       b0->current_length += MAX_SESSIONS_LEN;
     }
 
-  if (PREDICT_FALSE
-      (do_flush || (offset + MAX_SESSIONS_LEN) > frm->path_mtu))
+  if (PREDICT_FALSE (do_flush || (offset + MAX_SESSIONS_LEN) > exp->path_mtu))
     {
       template_id = clib_atomic_fetch_or (
         &silm->max_sessions_template_id,
@@ -955,6 +961,7 @@ nat_ipfix_logging_max_bib (u32 thread_index, u32 limit, int do_flush)
   u8 nat_event = QUOTA_EXCEEDED;
   u32 quota_event = clib_host_to_net_u32 (MAX_BIB_ENTRIES);
   u16 template_id;
+  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
 
   now = (u64) ((vlib_time_now (vm) - silm->vlib_time_0) * 1e3);
   now += silm->milisecond_time_0;
@@ -1014,8 +1021,7 @@ nat_ipfix_logging_max_bib (u32 thread_index, u32 limit, int do_flush)
       b0->current_length += MAX_BIBS_LEN;
     }
 
-  if (PREDICT_FALSE
-      (do_flush || (offset + MAX_BIBS_LEN) > frm->path_mtu))
+  if (PREDICT_FALSE (do_flush || (offset + MAX_BIBS_LEN) > exp->path_mtu))
     {
       template_id = clib_atomic_fetch_or (
         &silm->max_bibs_template_id,
@@ -1044,6 +1050,7 @@ nat_ipfix_logging_nat64_bibe (u32 thread_index, u8 nat_event,
   vlib_main_t *vm = vlib_get_main ();
   u64 now;
   u16 template_id;
+  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
 
   now = (u64) ((vlib_time_now (vm) - silm->vlib_time_0) * 1e3);
   now += silm->milisecond_time_0;
@@ -1115,8 +1122,7 @@ nat_ipfix_logging_nat64_bibe (u32 thread_index, u8 nat_event,
       b0->current_length += NAT64_BIB_LEN;
     }
 
-  if (PREDICT_FALSE
-      (do_flush || (offset + NAT64_BIB_LEN) > frm->path_mtu))
+  if (PREDICT_FALSE (do_flush || (offset + NAT64_BIB_LEN) > exp->path_mtu))
     {
       template_id = clib_atomic_fetch_or (
         &silm->nat64_bib_template_id,
@@ -1147,6 +1153,7 @@ nat_ipfix_logging_nat64_ses (u32 thread_index, u8 nat_event,
   vlib_main_t *vm = vlib_get_main ();
   u64 now;
   u16 template_id;
+  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
 
   now = (u64) ((vlib_time_now (vm) - silm->vlib_time_0) * 1e3);
   now += silm->milisecond_time_0;
@@ -1230,8 +1237,7 @@ nat_ipfix_logging_nat64_ses (u32 thread_index, u8 nat_event,
       b0->current_length += NAT64_SES_LEN;
     }
 
-  if (PREDICT_FALSE
-      (do_flush || (offset + NAT64_SES_LEN) > frm->path_mtu))
+  if (PREDICT_FALSE (do_flush || (offset + NAT64_SES_LEN) > exp->path_mtu))
     {
       template_id = clib_atomic_fetch_or (
         &silm->nat64_ses_template_id,
@@ -1477,8 +1483,9 @@ data_callback (flow_report_main_t * frm, flow_report_t * fr,
                vlib_frame_t * f, u32 * to_next, u32 node_index)
 {
   nat_ipfix_logging_main_t *silm = &nat_ipfix_logging_main;
+  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
 
-  if (PREDICT_FALSE (++silm->call_counter >= vec_len (frm->reports)))
+  if (PREDICT_FALSE (++silm->call_counter >= vec_len (exp->reports)))
     {
       nat_ipfix_flush_from_main();
       silm->call_counter = 0;

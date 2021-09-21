@@ -60,8 +60,9 @@ ipfix_classify_template_rewrite (flow_report_main_t * frm,
   u8 transport_protocol;
   u8 *virt_mask;
   u8 *real_mask;
+  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
 
-  stream = &frm->streams[fr->stream_index];
+  stream = &exp->streams[fr->stream_index];
 
   ipfix_classify_table_t *table = &fcm->tables[flow_table_index];
 
@@ -190,8 +191,9 @@ ipfix_classify_send_flows (flow_report_main_t * frm,
   u8 ip_version;
   u8 transport_protocol;
   u8 *virt_key;
+  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
 
-  stream = &frm->streams[fr->stream_index];
+  stream = &exp->streams[fr->stream_index];
 
   ipfix_classify_table_t *table = &fcm->tables[flow_table_index];
 
@@ -233,7 +235,7 @@ ipfix_classify_send_flows (flow_report_main_t * frm,
 		  b0->current_length = copy_len;
 		  b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 		  vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
-		  vnet_buffer (b0)->sw_if_index[VLIB_TX] = frm->fib_index;
+		  vnet_buffer (b0)->sw_if_index[VLIB_TX] = exp->fib_index;
 
 		  tp = vlib_buffer_get_current (b0);
 		  ip = (ip4_header_t *) & tp->ip4;
@@ -285,7 +287,7 @@ ipfix_classify_send_flows (flow_report_main_t * frm,
 	      u32 next_record_size = next_offset - record_offset;
 	      record_offset = next_offset;
 
-	      if (next_offset + next_record_size > frm->path_mtu)
+	      if (next_offset + next_record_size > exp->path_mtu)
 		{
 		  s->set_id_length = ipfix_set_id_length (fr->template_id,
 							  next_offset -
@@ -314,7 +316,7 @@ ipfix_classify_send_flows (flow_report_main_t * frm,
 		  udp->length =
 		    clib_host_to_net_u16 (b0->current_length - sizeof (*ip));
 
-		  if (frm->udp_checksum)
+		  if (exp->udp_checksum)
 		    {
 		      /* RFC 7011 section 10.3.2. */
 		      udp->checksum =
@@ -370,7 +372,7 @@ flush:
       ip->length = new_l0;
       udp->length = clib_host_to_net_u16 (b0->current_length - sizeof (*ip));
 
-      if (frm->udp_checksum)
+      if (exp->udp_checksum)
 	{
 	  /* RFC 7011 section 10.3.2. */
 	  udp->checksum = ip4_tcp_udp_compute_checksum (vm, b0, ip);
