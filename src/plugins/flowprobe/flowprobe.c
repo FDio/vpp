@@ -223,8 +223,9 @@ flowprobe_template_rewrite_inline (flow_report_main_t * frm,
   flowprobe_main_t *fm = &flowprobe_main;
   flowprobe_record_t flags = fr->opaque.as_uword;
   bool collect_ip4 = false, collect_ip6 = false;
+  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
 
-  stream = &frm->streams[fr->stream_index];
+  stream = &exp->streams[fr->stream_index];
 
   if (flags & FLOW_RECORD_L3)
     {

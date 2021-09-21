@@ -38,8 +38,9 @@ ioam_template_rewrite (flow_report_main_t * frm, flow_report_t * fr,
   u32 field_count = 0;
   u32 field_index = 0;
   flow_report_stream_t *stream;
+  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
 
-  stream = &frm->streams[fr->stream_index];
+  stream = &exp->streams[fr->stream_index];
 
   /* Determine field count */
 #define _(field,mask,item,length)                                   \
@@ -285,8 +286,9 @@ ioam_send_flows (flow_report_main_t * frm, flow_report_t * fr,
   flow_report_stream_t *stream;
   ioam_analyser_data_t *aggregated_data;
   u16 data_len;
+  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
 
-  stream = &frm->streams[fr->stream_index];
+  stream = &exp->streams[fr->stream_index];
 
   clib_memset (&temp, 0, sizeof (ip6_address_t));
 
@@ -339,7 +341,7 @@ ioam_send_flows (flow_report_main_t * frm, flow_report_t * fr,
 	records_this_buffer++;
 
 	/* Flush data if packet len is about to reach path mtu */
-	if (next_offset > (frm->path_mtu - 250))
+	if (next_offset > (exp->path_mtu - 250))
 	  flush = 1;
       }
 
@@ -366,7 +368,7 @@ ioam_send_flows (flow_report_main_t * frm, flow_report_t * fr,
 	udp->length =
 	  clib_host_to_net_u16 (b0->current_length - sizeof (*ip));
 
-	if (frm->udp_checksum)
+	if (exp->udp_checksum)
 	  {
 	    /* RFC 7011 section 10.3.2. */
 	    udp->checksum = ip4_tcp_udp_compute_checksum (vm, b0, ip);
