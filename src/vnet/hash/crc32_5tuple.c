@@ -80,7 +80,7 @@ vnet_crc32c_5tuple_ip_func (void **p, u32 *hash, u32 n_packets)
 
   while (n_left_from >= 8)
     {
-      crc32c_5tuple_key_t key[4];
+      crc32c_5tuple_key_t key[4] = {};
 
       clib_prefetch_load (p[4]);
       clib_prefetch_load (p[5]);
@@ -104,7 +104,7 @@ vnet_crc32c_5tuple_ip_func (void **p, u32 *hash, u32 n_packets)
 
   while (n_left_from > 0)
     {
-      crc32c_5tuple_key_t key;
+      crc32c_5tuple_key_t key = {};
 
       compute_ip_key (p[0], &key);
 
@@ -158,7 +158,7 @@ vnet_crc32c_5tuple_ethernet_func (void **p, u32 *hash, u32 n_packets)
 
   while (n_left_from >= 8)
     {
-      crc32c_5tuple_key_t key[4];
+      crc32c_5tuple_key_t key[4] = {};
 
       clib_prefetch_load (p[4]);
       clib_prefetch_load (p[5]);
@@ -182,7 +182,7 @@ vnet_crc32c_5tuple_ethernet_func (void **p, u32 *hash, u32 n_packets)
 
   while (n_left_from > 0)
     {
-      crc32c_5tuple_key_t key;
+      crc32c_5tuple_key_t key = {};
 
       compute_ethernet_key (p[0], &key);
 
