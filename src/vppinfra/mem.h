@@ -130,8 +130,11 @@ typedef struct
   /* log2 system page size */
   clib_mem_page_sz_t log2_page_sz;
 
-  /* log2 system default hugepage size */
+  /* log2 default hugepage size */
   clib_mem_page_sz_t log2_default_hugepage_sz;
+
+  /* log2 system default hugepage size */
+  clib_mem_page_sz_t log2_sys_default_hugepage_sz;
 
   /* bitmap of available numa nodes */
   u32 numa_node_bitmap;
@@ -470,15 +473,26 @@ clib_mem_get_page_size (void)
   return 1ULL << clib_mem_main.log2_page_sz;
 }
 
+static_always_inline void
+clib_mem_set_log2_default_hugepage_size (clib_mem_page_sz_t log2_page_sz)
+{
+  clib_mem_main.log2_default_hugepage_sz = log2_page_sz;
+}
+
 static_always_inline clib_mem_page_sz_t
 clib_mem_get_log2_default_hugepage_size ()
 {
   return clib_mem_main.log2_default_hugepage_sz;
 }
 
+static_always_inline uword
+clib_mem_get_default_hugepage_size (void)
+{
+  return 1ULL << clib_mem_main.log2_default_hugepage_sz;
+}
+
 int clib_mem_vm_create_fd (clib_mem_page_sz_t log2_page_size, char *fmt, ...);
 uword clib_mem_get_fd_page_size (int fd);
-uword clib_mem_get_default_hugepage_size (void);
 clib_mem_page_sz_t clib_mem_get_fd_log2_page_size (int fd);
 uword clib_mem_vm_reserve (uword start, uword size,
 			   clib_mem_page_sz_t log2_page_sz);
