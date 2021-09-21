@@ -759,6 +759,7 @@ clear_ipsec_counters_command_fn (vlib_main_t * vm,
 {
   vlib_clear_combined_counters (&ipsec_spd_policy_counters);
   vlib_clear_combined_counters (&ipsec_sa_counters);
+  vlib_clear_simple_counters (&ipsec_sa_lost_counters);
 
   return (NULL);
 }

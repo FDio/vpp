@@ -28,6 +28,10 @@ vlib_combined_counter_main_t ipsec_sa_counters = {
   .name = "SA",
   .stat_segment_name = "/net/ipsec/sa",
 };
+vlib_simple_counter_main_t ipsec_sa_lost_counters = {
+  .name = "SA-lost",
+  .stat_segment_name = "/net/ipsec/sa/lost",
+};
 
 ipsec_sa_t *ipsec_sa_pool;
 
@@ -193,6 +197,8 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 
   vlib_validate_combined_counter (&ipsec_sa_counters, sa_index);
   vlib_zero_combined_counter (&ipsec_sa_counters, sa_index);
+  vlib_validate_simple_counter (&ipsec_sa_lost_counters, sa_index);
+  vlib_zero_simple_counter (&ipsec_sa_lost_counters, sa_index);
 
   tunnel_copy (tun, &sa->tunnel);
   sa->id = id;
@@ -422,6 +428,7 @@ void
 ipsec_sa_clear (index_t sai)
 {
   vlib_zero_combined_counter (&ipsec_sa_counters, sai);
+  vlib_zero_simple_counter (&ipsec_sa_lost_counters, sai);
 }
 
 void

@@ -792,6 +792,87 @@ class IpsecTra4(object):
         p.scapy_tra_sa.seq_num = 351
         p.vpp_tra_sa.seq_num = 351
 
+    def verify_tra_lost(self):
+        p = self.params[socket.AF_INET]
+        esn_en = p.vpp_tra_sa.esn_en
+
+        #
+        # send packets with seq numbers 1->34
+        # this means the window size is still in Case B (see RFC4303
+        # Appendix A)
+        #
+        # for reasons i haven't investigated Scapy won't create a packet with
+        # seq_num=0
+        #
+        pkts = [(Ether(src=self.tra_if.remote_mac,
+                       dst=self.tra_if.local_mac) /
+                 p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
+                                           dst=self.tra_if.local_ip4) /
+                                        ICMP(),
+                                        seq_num=seq))
+                for seq in range(1, 3)]
+        self.send_and_expect(self.tra_if, pkts, self.tra_if)
+
+        self.assertEqual(p.tra_sa_out.get_lost(), 0)
+
+        # skip a sequence number
+        pkts = [(Ether(src=self.tra_if.remote_mac,
+                       dst=self.tra_if.local_mac) /
+                 p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
+                                           dst=self.tra_if.local_ip4) /
+                                        ICMP(),
+                                        seq_num=seq))
+                for seq in range(4, 6)]
+        self.send_and_expect(self.tra_if, pkts, self.tra_if)
+
+        self.assertEqual(p.tra_sa_out.get_lost(), 0)
+
+        # the lost packet are counted untill we get up past the first
+        # sizeof(replay_window) packets
+        pkts = [(Ether(src=self.tra_if.remote_mac,
+                       dst=self.tra_if.local_mac) /
+                 p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
+                                           dst=self.tra_if.local_ip4) /
+                                        ICMP(),
+                                        seq_num=seq))
+                for seq in range(6, 100)]
+        self.send_and_expect(self.tra_if, pkts, self.tra_if)
+
+        self.assertEqual(p.tra_sa_out.get_lost(), 1)
+
+        # lost of holes in the sequence
+        pkts = [(Ether(src=self.tra_if.remote_mac,
+                       dst=self.tra_if.local_mac) /
+                 p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
+                                           dst=self.tra_if.local_ip4) /
+                                        ICMP(),
+                                        seq_num=seq))
+                for seq in range(100, 200, 2)]
+        self.send_and_expect(self.tra_if, pkts, self.tra_if, n_rx=50)
+
+        pkts = [(Ether(src=self.tra_if.remote_mac,
+                       dst=self.tra_if.local_mac) /
+                 p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
+                                           dst=self.tra_if.local_ip4) /
+                                        ICMP(),
+                                        seq_num=seq))
+                for seq in range(200, 300)]
+        self.send_and_expect(self.tra_if, pkts, self.tra_if)
+
+        self.assertEqual(p.tra_sa_out.get_lost(), 51)
+
+        # a big hole in the seq number space
+        pkts = [(Ether(src=self.tra_if.remote_mac,
+                       dst=self.tra_if.local_mac) /
+                 p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
+                                           dst=self.tra_if.local_ip4) /
+                                        ICMP(),
+                                        seq_num=seq))
+                for seq in range(400, 500)]
+        self.send_and_expect(self.tra_if, pkts, self.tra_if)
+
+        self.assertEqual(p.tra_sa_out.get_lost(), 151)
+
     def verify_tra_basic4(self, count=1, payload_size=54):
         """ ipsec v4 transport basic test """
         self.vapi.cli("clear errors")
@@ -826,6 +907,8 @@ class IpsecTra4(object):
         self.assertEqual(pkts, count,
                          "incorrect SA out counts: expected %d != %d" %
                          (count, pkts))
+        self.assertEqual(p.tra_sa_out.get_lost(), 0)
+        self.assertEqual(p.tra_sa_in.get_lost(), 0)
 
         self.assert_packet_counter_equal(self.tra4_encrypt_node_name, count)
         self.assert_packet_counter_equal(self.tra4_decrypt_node_name[0], count)
@@ -836,6 +919,10 @@ class IpsecTra4Tests(IpsecTra4):
     def test_tra_anti_replay(self):
         """ ipsec v4 transport anti-replay test """
         self.verify_tra_anti_replay()
+
+    def test_tra_lost(self):
+        """ ipsec v4 transport lost packet test """
+        self.verify_tra_lost()
 
     def test_tra_basic(self, count=1):
         """ ipsec v4 transport basic test """
