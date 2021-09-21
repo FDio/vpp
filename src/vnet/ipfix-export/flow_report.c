@@ -289,44 +289,44 @@ flow_report_process (vlib_main_t * vm,
       wait_time = def_wait_time;
 
       vec_foreach (fr, frm->reports)
-      {
-	f64 next_template;
-	now = vlib_time_now (vm);
+	{
+	  f64 next_template;
+	  now = vlib_time_now (vm);
 
-	/* Need to send a template packet? */
-	send_template =
-	  now > (fr->last_template_sent + frm->template_interval);
-	send_template += fr->last_template_sent == 0;
-	template_bi = ~0;
-	rv = 0;
+	  /* Need to send a template packet? */
+	  send_template =
+	    now > (fr->last_template_sent + frm->template_interval);
+	  send_template += fr->last_template_sent == 0;
+	  template_bi = ~0;
+	  rv = 0;
 
-	if (send_template)
-	  rv = send_template_packet (frm, fr, &template_bi);
+	  if (send_template)
+	    rv = send_template_packet (frm, fr, &template_bi);
 
-	if (rv < 0)
-	  continue;
+	  if (rv < 0)
+	    continue;
 
-	/* decide if template should be sent sooner than current wait time */
-	next_template =
-	  (fr->last_template_sent + frm->template_interval) - now;
-	wait_time = clib_min (wait_time, next_template);
+	  /* decide if template should be sent sooner than current wait time */
+	  next_template =
+	    (fr->last_template_sent + frm->template_interval) - now;
+	  wait_time = clib_min (wait_time, next_template);
 
-	nf = vlib_get_frame_to_node (vm, ip4_lookup_node_index);
-	nf->n_vectors = 0;
-	to_next = vlib_frame_vector_args (nf);
+	  nf = vlib_get_frame_to_node (vm, ip4_lookup_node_index);
+	  nf->n_vectors = 0;
+	  to_next = vlib_frame_vector_args (nf);
 
-	if (template_bi != ~0)
-	  {
-	    to_next[0] = template_bi;
-	    to_next++;
-	    nf->n_vectors++;
-	  }
+	  if (template_bi != ~0)
+	    {
+	      to_next[0] = template_bi;
+	      to_next++;
+	      nf->n_vectors++;
+	    }
 
-	nf = fr->flow_data_callback (frm, fr,
-				     nf, to_next, ip4_lookup_node_index);
-	if (nf)
-	  vlib_put_frame_to_node (vm, ip4_lookup_node_index, nf);
-      }
+	  nf = fr->flow_data_callback (frm, fr, nf, to_next,
+				       ip4_lookup_node_index);
+	  if (nf)
+	    vlib_put_frame_to_node (vm, ip4_lookup_node_index, nf);
+	}
     }
 
   return 0;			/* not so much */
@@ -452,10 +452,10 @@ vnet_flow_reports_reset (flow_report_main_t * frm)
       frm->streams[i].sequence_number = 0;
 
   vec_foreach (fr, frm->reports)
-  {
-    fr->update_rewrite = 1;
-    fr->last_template_sent = 0;
-  }
+    {
+      fr->update_rewrite = 1;
+      fr->last_template_sent = 0;
+    }
 }
 
 void
@@ -467,10 +467,10 @@ vnet_stream_reset (flow_report_main_t * frm, u32 stream_index)
 
   vec_foreach (fr, frm->reports)
     if (frm->reports->stream_index == stream_index)
-    {
-      fr->update_rewrite = 1;
-      fr->last_template_sent = 0;
-    }
+      {
+	fr->update_rewrite = 1;
+	fr->last_template_sent = 0;
+      }
 }
 
 int
