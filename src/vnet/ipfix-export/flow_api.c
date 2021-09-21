@@ -41,6 +41,7 @@ vl_api_set_ipfix_exporter_t_handler (vl_api_set_ipfix_exporter_t * mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   flow_report_main_t *frm = &flow_report_main;
+  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
   vl_api_registration_t *reg;
   vl_api_set_ipfix_exporter_reply_t *rmp;
   ip4_address_t collector, src;
@@ -113,18 +114,18 @@ vl_api_set_ipfix_exporter_t_handler (vl_api_set_ipfix_exporter_t * mp)
     }
 
   /* Reset report streams if we are reconfiguring IP addresses */
-  if (frm->ipfix_collector.as_u32 != collector.as_u32 ||
-      frm->src_address.as_u32 != src.as_u32 ||
-      frm->collector_port != collector_port)
+  if (exp->ipfix_collector.as_u32 != collector.as_u32 ||
+      exp->src_address.as_u32 != src.as_u32 ||
+      exp->collector_port != collector_port)
     vnet_flow_reports_reset (frm);
 
-  frm->ipfix_collector.as_u32 = collector.as_u32;
-  frm->collector_port = collector_port;
-  frm->src_address.as_u32 = src.as_u32;
-  frm->fib_index = fib_index;
-  frm->path_mtu = path_mtu;
-  frm->template_interval = template_interval;
-  frm->udp_checksum = udp_checksum;
+  exp->ipfix_collector.as_u32 = collector.as_u32;
+  exp->collector_port = collector_port;
+  exp->src_address.as_u32 = src.as_u32;
+  exp->fib_index = fib_index;
+  exp->path_mtu = path_mtu;
+  exp->template_interval = template_interval;
+  exp->udp_checksum = udp_checksum;
 
   /* Turn on the flow reporting process */
   vlib_process_signal_event (vm, flow_report_process_node.index, 1, 0);
@@ -137,6 +138,7 @@ static void
 vl_api_ipfix_exporter_dump_t_handler (vl_api_ipfix_exporter_dump_t * mp)
 {
   flow_report_main_t *frm = &flow_report_main;
+  ipfix_exporter_t *exp = pool_elt_at_index (flow_report_main.exporters, 0);
   vl_api_registration_t *reg;
   vl_api_ipfix_exporter_details_t *rmp;
   ip4_main_t *im = &ip4_main;
@@ -154,22 +156,22 @@ vl_api_ipfix_exporter_dump_t_handler (vl_api_ipfix_exporter_dump_t * mp)
     ntohs ((REPLY_MSG_ID_BASE) + VL_API_IPFIX_EXPORTER_DETAILS);
   rmp->context = mp->context;
 
-  memcpy (&collector.ip4, &frm->ipfix_collector, sizeof (ip4_address_t));
+  memcpy (&collector.ip4, &exp->ipfix_collector, sizeof (ip4_address_t));
   ip_address_encode (&collector, IP46_TYPE_IP4, &rmp->collector_address);
 
-  rmp->collector_port = htons (frm->collector_port);
+  rmp->collector_port = htons (exp->collector_port);
 
-  memcpy (&src.ip4, &frm->src_address, sizeof (ip4_address_t));
+  memcpy (&src.ip4, &exp->src_address, sizeof (ip4_address_t));
   ip_address_encode (&src, IP46_TYPE_IP4, &rmp->src_address);
 
-  if (frm->fib_index == ~0)
+  if (exp->fib_index == ~0)
     vrf_id = ~0;
   else
-    vrf_id = im->fibs[frm->fib_index].ft_table_id;
+    vrf_id = im->fibs[exp->fib_index].ft_table_id;
   rmp->vrf_id = htonl (vrf_id);
-  rmp->path_mtu = htonl (frm->path_mtu);
-  rmp->template_interval = htonl (frm->template_interval);
-  rmp->udp_checksum = (frm->udp_checksum != 0);
+  rmp->path_mtu = htonl (exp->path_mtu);
+  rmp->template_interval = htonl (exp->template_interval);
+  rmp->udp_checksum = (exp->udp_checksum != 0);
 
   vl_api_send_msg (reg, (u8 *) rmp);
 }

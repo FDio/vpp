@@ -533,6 +533,7 @@ flowprobe_export_send (vlib_main_t * vm, vlib_buffer_t * b0,
 {
   flowprobe_main_t *fm = &flowprobe_main;
   flow_report_main_t *frm = &flow_report_main;
+  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
   vlib_frame_t *f;
   ip4_ipfix_template_packet_t *tp;
   ipfix_set_header_t *s;
@@ -550,19 +551,19 @@ flowprobe_export_send (vlib_main_t * vm, vlib_buffer_t * b0,
       flowprobe_get_headersize ())
     return;
 
-  u32 i, index = vec_len (frm->streams);
+  u32 i, index = vec_len (exp->streams);
   for (i = 0; i < index; i++)
-    if (frm->streams[i].domain_id == 1)
+    if (exp->streams[i].domain_id == 1)
       {
 	index = i;
 	break;
       }
-  if (i == vec_len (frm->streams))
+  if (i == vec_len (exp->streams))
     {
-      vec_validate (frm->streams, index);
-      frm->streams[index].domain_id = 1;
+      vec_validate (exp->streams, index);
+      exp->streams[index].domain_id = 1;
     }
-  stream = &frm->streams[index];
+  stream = &exp->streams[index];
 
   tp = vlib_buffer_get_current (b0);
   ip = (ip4_header_t *) & tp->ip4;
@@ -574,10 +575,10 @@ flowprobe_export_send (vlib_main_t * vm, vlib_buffer_t * b0,
   ip->ttl = 254;
   ip->protocol = IP_PROTOCOL_UDP;
   ip->flags_and_fragment_offset = 0;
-  ip->src_address.as_u32 = frm->src_address.as_u32;
-  ip->dst_address.as_u32 = frm->ipfix_collector.as_u32;
+  ip->src_address.as_u32 = exp->src_address.as_u32;
+  ip->dst_address.as_u32 = exp->ipfix_collector.as_u32;
   udp->src_port = clib_host_to_net_u16 (stream->src_port);
-  udp->dst_port = clib_host_to_net_u16 (frm->collector_port);
+  udp->dst_port = clib_host_to_net_u16 (exp->collector_port);
   udp->checksum = 0;
 
   /* FIXUP: message header export_time */
@@ -603,7 +604,7 @@ flowprobe_export_send (vlib_main_t * vm, vlib_buffer_t * b0,
   ip->checksum = ip4_header_checksum (ip);
   udp->length = clib_host_to_net_u16 (b0->current_length - sizeof (*ip));
 
-  if (frm->udp_checksum)
+  if (exp->udp_checksum)
     {
       /* RFC 7011 section 10.3.2. */
       udp->checksum = ip4_tcp_udp_compute_checksum (vm, b0, ip);
@@ -642,7 +643,7 @@ static vlib_buffer_t *
 flowprobe_get_buffer (vlib_main_t * vm, flowprobe_variant_t which)
 {
   flowprobe_main_t *fm = &flowprobe_main;
-  flow_report_main_t *frm = &flow_report_main;
+  ipfix_exporter_t *exp = pool_elt_at_index (flow_report_main.exporters, 0);
   vlib_buffer_t *b0;
   u32 bi0;
   u32 my_cpu_number = vm->thread_index;
@@ -669,7 +670,7 @@ flowprobe_get_buffer (vlib_main_t * vm, flowprobe_variant_t which)
       b0->flags |=
 	(VLIB_BUFFER_TOTAL_LENGTH_VALID | VNET_BUFFER_F_FLOW_REPORT);
       vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
-      vnet_buffer (b0)->sw_if_index[VLIB_TX] = frm->fib_index;
+      vnet_buffer (b0)->sw_if_index[VLIB_TX] = exp->fib_index;
       fm->context[which].next_record_offset_per_worker[my_cpu_number] =
 	b0->current_length;
     }
@@ -682,7 +683,7 @@ flowprobe_export_entry (vlib_main_t * vm, flowprobe_entry_t * e)
 {
   u32 my_cpu_number = vm->thread_index;
   flowprobe_main_t *fm = &flowprobe_main;
-  flow_report_main_t *frm = &flow_report_main;
+  ipfix_exporter_t *exp = pool_elt_at_index (flow_report_main.exporters, 0);
   vlib_buffer_t *b0;
   bool collect_ip4 = false, collect_ip6 = false;
   flowprobe_variant_t which = e->key.which;
@@ -724,7 +725,7 @@ flowprobe_export_entry (vlib_main_t * vm, flowprobe_entry_t * e)
 
   fm->context[which].next_record_offset_per_worker[my_cpu_number] = offset;
   /* Time to flush the buffer? */
-  if (offset + fm->template_size[flags] > frm->path_mtu)
+  if (offset + fm->template_size[flags] > exp->path_mtu)
     flowprobe_export_send (vm, b0, which);
 }
 
@@ -935,14 +936,14 @@ flowprobe_walker_process (vlib_main_t * vm,
 			  vlib_node_runtime_t * rt, vlib_frame_t * f)
 {
   flowprobe_main_t *fm = &flowprobe_main;
-  flow_report_main_t *frm = &flow_report_main;
   flowprobe_entry_t *e;
+  ipfix_exporter_t *exp = pool_elt_at_index (flow_report_main.exporters, 0);
 
   /*
    * $$$$ Remove this check from here and track FRM status and disable
    * this process if required.
    */
-  if (frm->ipfix_collector.as_u32 == 0 || frm->src_address.as_u32 == 0)
+  if (exp->ipfix_collector.as_u32 == 0 || exp->src_address.as_u32 == 0)
     {
       fm->disabled = true;
       return 0;
