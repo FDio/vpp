@@ -261,6 +261,7 @@ foreach_ipsec_sa_flags
  * SA packet & bytes counters
  */
 extern vlib_combined_counter_main_t ipsec_sa_counters;
+extern vlib_simple_counter_main_t ipsec_sa_lost_counters;
 
 extern void ipsec_mk_key (ipsec_key_t * key, const u8 * data, u8 len);
 
@@ -522,6 +523,48 @@ ipsec_sa_anti_replay_and_sn_advance (const ipsec_sa_t *sa, u32 seq,
   return 0;
 }
 
+always_inline u32
+ipsec_sa_anti_replay_window_shift (ipsec_sa_t *sa, u32 inc)
+{
+  u32 n_lost = 0;
+
+  if (inc < IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE)
+    {
+      if (sa->seq > IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE)
+	{
+	  /*
+	   * count how many holes there are in the portion
+	   * of the window that we will right shift of the end
+	   * as a result of this increments
+	   */
+	  u64 mask = (((u64) 1 << inc) - 1) << (BITS (u64) - inc);
+	  u64 old = sa->replay_window & mask;
+	  /* the number of packets we saw in this section of the window */
+	  u64 seen = count_set_bits (old);
+
+	  /*
+	   * the number we missed is the size of the window section
+	   * minus the number we saw.
+	   */
+	  n_lost = inc - seen;
+	}
+      sa->replay_window = ((sa->replay_window) << inc) | 1;
+    }
+  else
+    {
+      /* holes in the replay window are lost packets */
+      n_lost = BITS (u64) - count_set_bits (sa->replay_window);
+
+      /* any sequence numbers that now fall outside the window
+       * are forever lost */
+      n_lost += inc - IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE;
+
+      sa->replay_window = 1;
+    }
+
+  return (n_lost);
+}
+
 /*
  * Anti replay window advance
  *  inputs need to be in host byte order.
@@ -531,9 +574,11 @@ ipsec_sa_anti_replay_and_sn_advance (const ipsec_sa_t *sa, u32 seq,
  * However, updating the window is trivial, so we do it anyway to save
  * the branch cost.
  */
-always_inline void
-ipsec_sa_anti_replay_advance (ipsec_sa_t *sa, u32 seq, u32 hi_seq)
+always_inline u64
+ipsec_sa_anti_replay_advance (ipsec_sa_t *sa, u32 thread_index, u32 seq,
+			      u32 hi_seq)
 {
+  u64 n_lost = 0;
   u32 pos;
 
   if (ipsec_sa_is_set_USE_ESN (sa))
@@ -543,19 +588,13 @@ ipsec_sa_anti_replay_advance (ipsec_sa_t *sa, u32 seq, u32 hi_seq)
       if (wrap == 0 && seq > sa->seq)
 	{
 	  pos = seq - sa->seq;
-	  if (pos < IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE)
-	    sa->replay_window = ((sa->replay_window) << pos) | 1;
-	  else
-	    sa->replay_window = 1;
+	  n_lost = ipsec_sa_anti_replay_window_shift (sa, pos);
 	  sa->seq = seq;
 	}
       else if (wrap > 0)
 	{
 	  pos = ~seq + sa->seq + 1;
-	  if (pos < IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE)
-	    sa->replay_window = ((sa->replay_window) << pos) | 1;
-	  else
-	    sa->replay_window = 1;
+	  n_lost = ipsec_sa_anti_replay_window_shift (sa, pos);
 	  sa->seq = seq;
 	  sa->seq_hi = hi_seq;
 	}
@@ -575,10 +614,7 @@ ipsec_sa_anti_replay_advance (ipsec_sa_t *sa, u32 seq, u32 hi_seq)
       if (seq > sa->seq)
 	{
 	  pos = seq - sa->seq;
-	  if (pos < IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE)
-	    sa->replay_window = ((sa->replay_window) << pos) | 1;
-	  else
-	    sa->replay_window = 1;
+	  n_lost = ipsec_sa_anti_replay_window_shift (sa, pos);
 	  sa->seq = seq;
 	}
       else
@@ -587,6 +623,8 @@ ipsec_sa_anti_replay_advance (ipsec_sa_t *sa, u32 seq, u32 hi_seq)
 	  sa->replay_window |= (1ULL << pos);
 	}
     }
+
+  return n_lost;
 }
 
 

@@ -315,6 +315,7 @@ ah_decrypt_inline (vlib_main_t * vm,
     {
       ip4_header_t *oh4;
       ip6_header_t *oh6;
+      u64 n_lost = 0;
 
       if (next[0] < AH_DECRYPT_N_NEXT)
 	goto trace;
@@ -323,7 +324,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 
       if (PREDICT_TRUE (sa0->integ_alg != IPSEC_INTEG_ALG_NONE))
 	{
-	  /* redo the anit-reply check. see esp_decrypt for details */
+	  /* redo the anti-reply check. see esp_decrypt for details */
 	  if (ipsec_sa_anti_replay_and_sn_advance (sa0, pd->seq, pd->seq_hi,
 						   true, NULL))
 	    {
@@ -331,7 +332,10 @@ ah_decrypt_inline (vlib_main_t * vm,
 	      next[0] = AH_DECRYPT_NEXT_DROP;
 	      goto trace;
 	    }
-	  ipsec_sa_anti_replay_advance (sa0, pd->seq, pd->seq_hi);
+	  n_lost = ipsec_sa_anti_replay_advance (sa0, thread_index, pd->seq,
+						 pd->seq_hi);
+	  vlib_prefetch_simple_counter (&ipsec_sa_lost_counters, thread_index,
+					pd->sa_index);
 	}
 
       u16 ah_hdr_len = sizeof (ah_header_t) + pd->icv_size
@@ -397,6 +401,10 @@ ah_decrypt_inline (vlib_main_t * vm,
 	      oh4->checksum = ip4_header_checksum (oh4);
 	    }
 	}
+
+      if (PREDICT_FALSE (n_lost))
+	vlib_increment_simple_counter (&ipsec_sa_lost_counters, thread_index,
+				       pd->sa_index, n_lost);
 
       vnet_buffer (b[0])->sw_if_index[VLIB_TX] = (u32) ~ 0;
     trace:

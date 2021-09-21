@@ -64,6 +64,20 @@ typedef struct
 /** The number of counters (not the number of per-thread counters) */
 u32 vlib_simple_counter_n_counters (const vlib_simple_counter_main_t * cm);
 
+/** Pre-fetch a per-thread simple counter for the given object index */
+always_inline void
+vlib_prefetch_simple_counter (const vlib_simple_counter_main_t *cm,
+			      u32 thread_index, u32 index)
+{
+  counter_t *my_counters;
+
+  /*
+   * This CPU's index is assumed to already be in cache
+   */
+  my_counters = cm->counters[thread_index];
+  clib_prefetch_store (my_counters + index);
+}
+
 /** Increment a simple counter
     @param cm - (vlib_simple_counter_main_t *) simple counter main pointer
     @param thread_index - (u32) the current cpu index
