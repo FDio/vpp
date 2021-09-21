@@ -331,7 +331,8 @@ ah_decrypt_inline (vlib_main_t * vm,
 	      next[0] = AH_DECRYPT_NEXT_DROP;
 	      goto trace;
 	    }
-	  ipsec_sa_anti_replay_advance (sa0, pd->seq, pd->seq_hi);
+	  ipsec_sa_anti_replay_advance (sa0, thread_index, pd->seq,
+					pd->seq_hi);
 	}
 
       u16 ah_hdr_len = sizeof (ah_header_t) + pd->icv_size

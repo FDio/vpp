@@ -748,10 +748,11 @@ out:
 }
 
 static_always_inline void
-esp_decrypt_post_crypto (vlib_main_t * vm, vlib_node_runtime_t * node,
-			 esp_decrypt_packet_data_t * pd,
-			 esp_decrypt_packet_data2_t * pd2, vlib_buffer_t * b,
-			 u16 * next, int is_ip6, int is_tun, int is_async)
+esp_decrypt_post_crypto (vlib_main_t *vm, const vlib_node_runtime_t *node,
+			 const esp_decrypt_packet_data_t *pd,
+			 const esp_decrypt_packet_data2_t *pd2,
+			 vlib_buffer_t *b, u16 *next, int is_ip6, int is_tun,
+			 int is_async)
 {
   ipsec_sa_t *sa0 = ipsec_sa_get (pd->sa_index);
   vlib_buffer_t *lb = b;
@@ -790,7 +791,11 @@ esp_decrypt_post_crypto (vlib_main_t * vm, vlib_node_runtime_t * node,
       return;
     }
 
-  ipsec_sa_anti_replay_advance (sa0, pd->seq, pd->seq_hi);
+  u64 n_lost =
+    ipsec_sa_anti_replay_advance (sa0, vm->thread_index, pd->seq, pd->seq_hi);
+
+  vlib_prefetch_simple_counter (&ipsec_sa_lost_counters, vm->thread_index,
+				pd->sa_index);
 
   if (pd->is_chain)
     {
@@ -1011,6 +1016,10 @@ esp_decrypt_post_crypto (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	}
     }
+
+  if (PREDICT_FALSE (n_lost))
+    vlib_increment_simple_counter (&ipsec_sa_lost_counters, vm->thread_index,
+				   pd->sa_index, n_lost);
 }
 
 always_inline uword

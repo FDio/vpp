@@ -974,6 +974,9 @@ class RunTestIpsecEspAll(ConfigIpsecESP,
         self.unconfig_network()
         self.config_network(self.params.values())
         self.verify_hi_seq_num()
+        self.unconfig_network()
+        self.config_network(self.params.values())
+        self.verify_tra_lost()
 
         #
         # swap the handlers while SAs are up
