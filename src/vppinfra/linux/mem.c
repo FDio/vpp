@@ -75,40 +75,6 @@ map_unlock ()
   clib_atomic_release (&clib_mem_main.map_lock);
 }
 
-__clib_export uword
-clib_mem_get_default_hugepage_size (void)
-{
-  unformat_input_t input;
-  static u32 size = 0;
-  int fd;
-
-  if (size)
-    goto done;
-
-  /*
-   * If the kernel doesn't support hugepages, /proc/meminfo won't
-   * say anything about it. Use the regular page size as a default.
-   */
-  size = clib_mem_get_page_size () / 1024;
-
-  if ((fd = open ("/proc/meminfo", 0)) == -1)
-    return 0;
-
-  unformat_init_clib_file (&input, fd);
-
-  while (unformat_check_input (&input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (&input, "Hugepagesize:%_%u kB", &size))
-	;
-      else
-	unformat_skip_line (&input);
-    }
-  unformat_free (&input);
-  close (fd);
-done:
-  return 1024ULL * size;
-}
-
 static clib_mem_page_sz_t
 legacy_get_log2_default_hugepage_size (void)
 {
@@ -155,6 +121,8 @@ clib_mem_main_init ()
     }
   else				/* likely kernel older than 4.14 */
     mm->log2_default_hugepage_sz = legacy_get_log2_default_hugepage_size ();
+
+  mm->log2_sys_default_hugepage_sz = mm->log2_default_hugepage_sz;
 
   /* numa nodes */
   va = mmap (0, page_size, PROT_READ | PROT_WRITE, MAP_PRIVATE |
@@ -270,7 +238,7 @@ clib_mem_vm_create_fd (clib_mem_page_sz_t log2_page_size, char *fmt, ...)
 
   if (log2_page_size == mm->log2_page_sz)
     log2_page_size = CLIB_MEM_PAGE_SZ_DEFAULT;
-  else if (log2_page_size == mm->log2_default_hugepage_sz)
+  else if (log2_page_size == mm->log2_sys_default_hugepage_sz)
     log2_page_size = CLIB_MEM_PAGE_SZ_DEFAULT_HUGE;
 
   switch (log2_page_size)

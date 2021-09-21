@@ -111,6 +111,7 @@ main (int argc, char *argv[])
   u8 *sizep;
   u32 size;
   clib_mem_page_sz_t main_heap_log2_page_sz = CLIB_MEM_PAGE_SZ_DEFAULT;
+  clib_mem_page_sz_t default_log2_hugepage_sz = CLIB_MEM_PAGE_SZ_UNKNOWN;
   unformat_input_t input, sub_input;
   u8 *s = 0, *v = 0;
   int main_core = 1;
@@ -291,6 +292,10 @@ defaulted:
 				 unformat_log2_page_size,
 				 &main_heap_log2_page_sz))
 		;
+	      else if (unformat (&sub_input, "default-hugepage-size %U",
+				 unformat_log2_page_size,
+				 &default_log2_hugepage_sz))
+		;
 	      else
 		{
 		  fformat (stderr, "unknown 'memory' config input '%U'\n",
@@ -328,6 +333,9 @@ defaulted:
     {
       /* Figure out which numa runs the main thread */
       __os_numa_index = clib_get_current_numa_node ();
+
+      if (default_log2_hugepage_sz != CLIB_MEM_PAGE_SZ_UNKNOWN)
+	clib_mem_set_log2_default_hugepage_size (default_log2_hugepage_sz);
 
       /* and use the main heap as that numa's numa heap */
       clib_mem_set_per_numa_heap (main_heap);
