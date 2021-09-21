@@ -1,0 +1,191 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3e1b3c9e_9a49cbca",
+        "filename": "src/plugins/linux-cp/lcp.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2021-09-21T16:47:55Z",
+      "side": 1,
+      "message": "The names of the functions added here (lcp_set_lcp_sync, lcp_lcp_sync, lcp_set_lcp_auto_subint, lcp_lcp_auto_subint) all contain a redundant \"lcp\". The second lcp in each of them can be omitted.",
+      "revId": "1820232cfb6477b59019f1a3b3fa3ea79bb77f5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0683eb0f_7a5f647c",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 627,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2021-09-21T16:47:55Z",
+      "side": 1,
+      "message": "The VPP side of the tap (lip-\u003elip_host_sw_if_index) was intended to always stay up. The tap is a pipe between VPP and the host system. When we want to bring it up/down, we don\u0027t need to apply the change to both sides of it.",
+      "revId": "1820232cfb6477b59019f1a3b3fa3ea79bb77f5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3bec9589_24c00be7",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 640,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2021-09-21T16:47:55Z",
+      "side": 1,
+      "message": "Setting the carrier state based on the intended admin state is incorrect. The carrier state should reflect the link state of the physical interface. If someone pulls the cable from a hardware interface, the carrier/link state will change to down while the admin state remains up.\n\nSome applications (route protocol daemons) and the linux kernel treat a link state change differently than an admin state change. If admin state of an interface is set to down, the kernel will remove any routes that resolve through that interface. If the carrier state goes down, the kernel will not route packets through the interface, but will not remove routes which resolve through it.",
+      "revId": "1820232cfb6477b59019f1a3b3fa3ea79bb77f5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c9ab7601_b2781b99",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1146,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2021-09-21T16:47:55Z",
+      "side": 1,
+      "message": "The callback functions that are registered here are defined in lcp_interface_sync.c. Nothing else needs to call them, so we do not need to expose them externally just so they can be registered here. They can be declared as static functions and an init function can be added in lcp_interface_sync.c to register them as ip4/ip6 address callbacks.",
+      "revId": "1820232cfb6477b59019f1a3b3fa3ea79bb77f5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e5018b73_d32ae8d6",
+        "filename": "src/plugins/linux-cp/lcp_interface.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2021-09-21T16:47:55Z",
+      "side": 1,
+      "message": "Why do udp.h and tcp.h need to be included? The code changed or added by this patch does not seem to reference anything related to udp or tcp that is defined in those header files.\n\nWhen I remove those includes and try to build with the patch applied, there are compile errors about unknown types ip4_main_t and ip6_main_t. If those types need to be included, they can probably be included via vnet/ip/ip.h.\n\nThe need to include a header for ip4_main_t and ip6_main_t might be able to go away entirely. Those types are only used in the prototypes for lcp_itf_ip4_add_del_interface_addr() and lcp_itf_ip6_add_del_interface_addr(). Those functions don\u0027t really need to be exposed externally in lcp_interface.h. They are declared in lcp_interface.h and exposed externally so that the functions can be registered by lcp_itf_pair_init() in lcp_interface.c. You could add a separate init function in lcp_interface_sync.c which registers those callbacks and avoid the need for their prototypes to be declared in lcp_interface.h.",
+      "revId": "1820232cfb6477b59019f1a3b3fa3ea79bb77f5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4679ef1c_76b5e49c",
+        "filename": "src/plugins/linux-cp/lcp_interface_sync.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2021-09-21T16:47:55Z",
+      "side": 1,
+      "message": "Most of the includes seem unnecessary. You likely don\u0027t need:\nsys/socket.h\nlinux/if.h\nlinux/netlink.h\nlinux/rtnetlink.h\nvnet/udp/udp.h\nvnet/tcp/tcp.h\nvnet/devices/tap/tap.h\nvlibapi/api.h\nvlibmemory/api.h\nvpp/app/version.h\nvnet/format_fns.h",
+      "revId": "1820232cfb6477b59019f1a3b3fa3ea79bb77f5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5c3ac629_4e54cc94",
+        "filename": "src/plugins/linux-cp/lcp_interface_sync.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2021-09-21T16:47:55Z",
+      "side": 1,
+      "message": "You know that (sup_sw-\u003eflags \u0026 VNET_SW_INTERFACE_FLAG_ADMIN_UP) is 0 here. You can just set state \u003d 0",
+      "revId": "1820232cfb6477b59019f1a3b3fa3ea79bb77f5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "003a7e0a_19f621da",
+        "filename": "src/plugins/linux-cp/lcp_interface_sync.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 157,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2021-09-21T16:47:55Z",
+      "side": 1,
+      "message": "You don\u0027t need to retrieve the sw interface. The only thing it is used for is sw-\u003esw_if-index is referenced in the call to lcp_itf_pair_find_by_phy() below. sw_if_index is already passed in as an argument to the function.",
+      "revId": "1820232cfb6477b59019f1a3b3fa3ea79bb77f5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a8673432_42643331",
+        "filename": "src/plugins/linux-cp/lcp_interface_sync.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 389,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2021-09-21T16:47:55Z",
+      "side": 1,
+      "message": "This is the check of the flag that determines whether this feature is enabled. It should be the first thing in the function before any other work is done. If someone doesn\u0027t want the feature enabled, it\u0027s not worth checking if the interface is a subinterface or writing a debug message.",
+      "revId": "1820232cfb6477b59019f1a3b3fa3ea79bb77f5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8ae27bdb_6c639576",
+        "filename": "src/plugins/linux-cp/lcp_interface_sync.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 398,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2021-09-21T16:47:55Z",
+      "side": 1,
+      "message": "This is logging a bunch of the same information that is logged on line 384. You only need one of the two debug messages.",
+      "revId": "1820232cfb6477b59019f1a3b3fa3ea79bb77f5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "dfa8933c_d337fd14",
+        "filename": "src/plugins/linux-cp/lcp_interface_sync.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 431,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2021-09-21T16:47:55Z",
+      "side": 1,
+      "message": "lcp_itf_pair_delete() already checks whether there is a pair for the index which is passed in. It\u0027s unnecessary to do it here.",
+      "revId": "1820232cfb6477b59019f1a3b3fa3ea79bb77f5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}

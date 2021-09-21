@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "41cf14f6_d52f3b68",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1157,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2021-09-21T16:47:55Z",
+      "side": 0,
+      "message": "This should be left as it is and not moved behind the \"auto sync\" flag.\n\nCarrier state and link speed are data that comes from the hardware being managed by VPP. These are \"read only\" and should not be grouped together behind the \"auto sync\" flag with syncing of configurable items such as MTU, admin state or IP addresses. \n\nEven if it is argued that they should be treated the same, they are currently handled in a  callback that is invoked on a change in link state. The patch does not add any such callback. Data that is currently being propagated from VPP to the host tap will be lost.",
+      "revId": "cebb47733923f9c66d5fe794c040f7baf6271a47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
