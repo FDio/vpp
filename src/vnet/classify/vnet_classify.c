@@ -148,6 +148,7 @@ vnet_classify_new_table (vnet_classify_main_t *cm, const u8 *mask,
   t->match_n_vectors = match_n_vectors;
   t->skip_n_vectors = skip_n_vectors;
   t->entries_per_page = 2;
+  t->load_mask = pow2_mask (match_n_vectors * 2);
 
   t->mheap = clib_mem_create_heap (0, memory_size, 1 /* locked */ ,
 				   "classify");

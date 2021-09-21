@@ -192,6 +192,9 @@ u8x32_shuffle (u8x32 v, u8x32 m)
 #define u8x32_align_right(a, b, imm) \
   (u8x32) _mm256_alignr_epi8 ((__m256i) a, (__m256i) b, imm)
 
+#define u64x4_align_right(a, b, imm)                                          \
+  (u64x4) _mm256_alignr_epi64 ((__m256i) a, (__m256i) b, imm)
+
 static_always_inline u32
 u32x8_sum_elts (u32x8 sum8)
 {
