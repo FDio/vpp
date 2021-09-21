@@ -228,7 +228,7 @@ vnet_hw_if_set_rx_queue_thread_index (vnet_main_t *vnm, u32 queue_index,
 	     hi->name, rxq->queue_id, thread_index);
 }
 
-void
+vnet_hw_if_rxq_poll_vector_t *
 vnet_hw_if_generate_rxq_int_poll_vector (vlib_main_t *vm,
 					 vlib_node_runtime_t *node)
 {
@@ -252,6 +252,7 @@ vnet_hw_if_generate_rxq_int_poll_vector (vlib_main_t *vm,
       pv->dev_instance = rxq->dev_instance;
       pv->queue_id = rxq->queue_id;
     }
+  return rt->rxq_vector_int;
 }
 
 /*
