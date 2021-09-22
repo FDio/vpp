@@ -101,7 +101,7 @@ send_template_packet (flow_report_main_t * frm,
   if (fr->update_rewrite)
     {
       fr->rewrite = fr->rewrite_callback (
-	frm, fr, &exp->ipfix_collector, &exp->src_address, exp->collector_port,
+	exp, fr, &exp->ipfix_collector, &exp->src_address, exp->collector_port,
 	fr->report_elements, fr->n_report_elements, fr->stream_indexp);
       fr->update_rewrite = 0;
     }
@@ -155,13 +155,12 @@ send_template_packet (flow_report_main_t * frm,
 }
 
 u8 *
-vnet_flow_rewrite_generic_callback (flow_report_main_t * frm,
-				    flow_report_t * fr,
-				    ip4_address_t * collector_address,
-				    ip4_address_t * src_address,
+vnet_flow_rewrite_generic_callback (ipfix_exporter_t *exp, flow_report_t *fr,
+				    ip4_address_t *collector_address,
+				    ip4_address_t *src_address,
 				    u16 collector_port,
-				    ipfix_report_element_t * report_elts,
-				    u32 n_elts, u32 * stream_indexp)
+				    ipfix_report_element_t *report_elts,
+				    u32 n_elts, u32 *stream_indexp)
 {
   ip4_header_t *ip;
   udp_header_t *udp;
@@ -175,7 +174,6 @@ vnet_flow_rewrite_generic_callback (flow_report_main_t * frm,
   flow_report_stream_t *stream;
   int i;
   ipfix_report_element_t *ep;
-  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
 
   ASSERT (stream_indexp);
   ASSERT (n_elts);
@@ -316,7 +314,7 @@ flow_report_process (vlib_main_t * vm,
 	      nf->n_vectors++;
 	    }
 
-	  nf = fr->flow_data_callback (frm, fr, nf, to_next,
+	  nf = fr->flow_data_callback (frm, exp, fr, nf, to_next,
 				       ip4_lookup_node_index);
 	  if (nf)
 	    vlib_put_frame_to_node (vm, ip4_lookup_node_index, nf);
@@ -335,16 +333,14 @@ VLIB_REGISTER_NODE (flow_report_process_node) = {
 /* *INDENT-ON* */
 
 int
-vnet_flow_report_add_del (flow_report_main_t * frm,
-			  vnet_flow_report_add_del_args_t * a,
-			  u16 * template_id)
+vnet_flow_report_add_del (ipfix_exporter_t *exp,
+			  vnet_flow_report_add_del_args_t *a, u16 *template_id)
 {
   int i;
   int found_index = ~0;
   flow_report_t *fr;
   flow_report_stream_t *stream;
   u32 si;
-  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
 
   si = find_stream (exp, a->domain_id, a->src_port);
   if (si == -2)
@@ -437,11 +433,10 @@ flow_report_add_del_error_to_clib_error (int error)
 }
 
 void
-vnet_flow_reports_reset (flow_report_main_t * frm)
+vnet_flow_reports_reset (ipfix_exporter_t *exp)
 {
   flow_report_t *fr;
   u32 i;
-  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
 
   for (i = 0; i < vec_len (exp->streams); i++)
     if (stream_index_valid (exp, i))
@@ -455,10 +450,9 @@ vnet_flow_reports_reset (flow_report_main_t * frm)
 }
 
 void
-vnet_stream_reset (flow_report_main_t * frm, u32 stream_index)
+vnet_stream_reset (ipfix_exporter_t *exp, u32 stream_index)
 {
   flow_report_t *fr;
-  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
 
   exp->streams[stream_index].sequence_number = 0;
 
@@ -471,11 +465,9 @@ vnet_stream_reset (flow_report_main_t * frm, u32 stream_index)
 }
 
 int
-vnet_stream_change (flow_report_main_t * frm,
-		    u32 old_domain_id, u16 old_src_port,
+vnet_stream_change (ipfix_exporter_t *exp, u32 old_domain_id, u16 old_src_port,
 		    u32 new_domain_id, u16 new_src_port)
 {
-  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
   i32 stream_index = find_stream (exp, old_domain_id, old_src_port);
 
   if (stream_index < 0)
@@ -484,7 +476,7 @@ vnet_stream_change (flow_report_main_t * frm,
   stream->domain_id = new_domain_id;
   stream->src_port = new_src_port;
   if (old_domain_id != new_domain_id || old_src_port != new_src_port)
-    vnet_stream_reset (frm, stream_index);
+    vnet_stream_reset (exp, stream_index);
   return 0;
 }
 
@@ -546,7 +538,7 @@ set_ipfix_exporter_command_fn (vlib_main_t * vm,
   if (exp->ipfix_collector.as_u32 != collector.as_u32 ||
       exp->src_address.as_u32 != src.as_u32 ||
       exp->collector_port != collector_port)
-    vnet_flow_reports_reset (frm);
+    vnet_flow_reports_reset (exp);
 
   exp->ipfix_collector.as_u32 = collector.as_u32;
   exp->collector_port = collector_port;

@@ -47,25 +47,23 @@ typedef struct
 
 struct flow_report_main;
 struct flow_report;
+struct ipfix_exporter;
 
-typedef vlib_frame_t *(vnet_flow_data_callback_t) (struct flow_report_main *,
-						   struct flow_report *,
-						   vlib_frame_t *, u32 *,
-						   u32);
+typedef vlib_frame_t *(vnet_flow_data_callback_t) (
+  struct flow_report_main *frm, struct ipfix_exporter *exp,
+  struct flow_report *, vlib_frame_t *, u32 *, u32);
 
-typedef u8 *(vnet_flow_rewrite_callback_t) (struct flow_report_main *,
+typedef u8 *(vnet_flow_rewrite_callback_t) (struct ipfix_exporter *exp,
 					    struct flow_report *,
-					    ip4_address_t *,
-					    ip4_address_t *, u16,
-					    ipfix_report_element_t * elts,
-					    u32 n_elts, u32 * stream_index);
+					    ip4_address_t *, ip4_address_t *,
+					    u16, ipfix_report_element_t *elts,
+					    u32 n_elts, u32 *stream_index);
 
-u8 *vnet_flow_rewrite_generic_callback (struct flow_report_main *,
-					struct flow_report *,
-					ip4_address_t *,
+u8 *vnet_flow_rewrite_generic_callback (struct ipfix_exporter *exp,
+					struct flow_report *, ip4_address_t *,
 					ip4_address_t *, u16,
-					ipfix_report_element_t * elts,
-					u32 n_elts, u32 * stream_index);
+					ipfix_report_element_t *elts,
+					u32 n_elts, u32 *stream_index);
 
 typedef union
 {
@@ -174,19 +172,18 @@ typedef struct
   u32 *stream_indexp;
 } vnet_flow_report_add_del_args_t;
 
-int vnet_flow_report_add_del (flow_report_main_t * frm,
-			      vnet_flow_report_add_del_args_t * a,
-			      u16 * template_id);
+int vnet_flow_report_add_del (ipfix_exporter_t *exp,
+			      vnet_flow_report_add_del_args_t *a,
+			      u16 *template_id);
 
 clib_error_t *flow_report_add_del_error_to_clib_error (int error);
 
-void vnet_flow_reports_reset (flow_report_main_t * frm);
+void vnet_flow_reports_reset (ipfix_exporter_t *exp);
 
-void vnet_stream_reset (flow_report_main_t * frm, u32 stream_index);
+void vnet_stream_reset (ipfix_exporter_t *exp, u32 stream_index);
 
-int vnet_stream_change (flow_report_main_t * frm,
-			u32 old_domain_id, u16 old_src_port,
-			u32 new_domain_id, u16 new_src_port);
+int vnet_stream_change (ipfix_exporter_t *exp, u32 old_domain_id,
+			u16 old_src_port, u32 new_domain_id, u16 new_src_port);
 
 #endif /* __included_vnet_flow_report_h__ */
 

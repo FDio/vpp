@@ -117,7 +117,7 @@ vl_api_set_ipfix_exporter_t_handler (vl_api_set_ipfix_exporter_t * mp)
   if (exp->ipfix_collector.as_u32 != collector.as_u32 ||
       exp->src_address.as_u32 != src.as_u32 ||
       exp->collector_port != collector_port)
-    vnet_flow_reports_reset (frm);
+    vnet_flow_reports_reset (exp);
 
   exp->ipfix_collector.as_u32 = collector.as_u32;
   exp->collector_port = collector_port;
@@ -183,6 +183,7 @@ static void
   vl_api_set_ipfix_classify_stream_reply_t *rmp;
   flow_report_classify_main_t *fcm = &flow_report_classify_main;
   flow_report_main_t *frm = &flow_report_main;
+  ipfix_exporter_t *exp = &frm->exporters[0];
   u32 domain_id = 0;
   u32 src_port = UDP_DST_PORT_ipfix;
   int rv = 0;
@@ -193,7 +194,7 @@ static void
   if (fcm->src_port != 0 &&
       (fcm->domain_id != domain_id || fcm->src_port != (u16) src_port))
     {
-      int rv = vnet_stream_change (frm, fcm->domain_id, fcm->src_port,
+      int rv = vnet_stream_change (exp, fcm->domain_id, fcm->src_port,
 				   domain_id, (u16) src_port);
       ASSERT (rv == 0);
     }
@@ -234,6 +235,7 @@ static void
   vl_api_registration_t *reg;
   flow_report_classify_main_t *fcm = &flow_report_classify_main;
   flow_report_main_t *frm = &flow_report_main;
+  ipfix_exporter_t *exp = &frm->exporters[0];
   vnet_flow_report_add_del_args_t args;
   ipfix_classify_table_t *table;
   int is_add;
@@ -299,7 +301,7 @@ static void
   args.domain_id = fcm->domain_id;
   args.src_port = fcm->src_port;
 
-  rv = vnet_flow_report_add_del (frm, &args, NULL);
+  rv = vnet_flow_report_add_del (exp, &args, NULL);
 
   /* If deleting, or add failed */
   if (is_add == 0 || (rv && is_add))

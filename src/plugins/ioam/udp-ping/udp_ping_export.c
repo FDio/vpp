@@ -23,20 +23,20 @@
 #define UDP_PING_EXPORT_RECORD_SIZE 400
 
 static u8 *
-udp_ping_template_rewrite (flow_report_main_t * frm, flow_report_t * fr,
-			   ip4_address_t * collector_address,
-			   ip4_address_t * src_address, u16 collector_port,
-			   ipfix_report_element_t * elts,
-			   u32 n_elts, u32 * stream_index)
+udp_ping_template_rewrite (ipfix_exporter_t *exp, flow_report_t *fr,
+			   ip4_address_t *collector_address,
+			   ip4_address_t *src_address, u16 collector_port,
+			   ipfix_report_element_t *elts, u32 n_elts,
+			   u32 *stream_index)
 {
-  return ioam_template_rewrite (frm, fr, collector_address,
-				src_address, collector_port, elts, n_elts,
-				stream_index);
+  return ioam_template_rewrite (exp, fr, collector_address, src_address,
+				collector_port, elts, n_elts, stream_index);
 }
 
 static vlib_frame_t *
-udp_ping_send_flows (flow_report_main_t * frm, flow_report_t * fr,
-		     vlib_frame_t * f, u32 * to_next, u32 node_index)
+udp_ping_send_flows (flow_report_main_t *frm, ipfix_exporter_t *exp,
+		     flow_report_t *fr, vlib_frame_t *f, u32 *to_next,
+		     u32 node_index)
 {
   vlib_buffer_t *b0 = NULL;
   u32 next_offset = 0;
@@ -50,13 +50,12 @@ udp_ping_send_flows (flow_report_main_t * frm, flow_report_t * fr,
   u32 records_this_buffer;
   u16 new_l0, old_l0;
   ip_csum_t sum0;
-  vlib_main_t *vm = frm->vlib_main;
+  vlib_main_t *vm = vlib_get_main ();
   flow_report_stream_t *stream;
   udp_ping_flow_data *stats;
   ip46_udp_ping_flow *ip46_flow;
   u16 src_port, dst_port;
   u16 data_len;
-  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
 
   stream = &exp->streams[fr->stream_index];
   data_len = vec_len (udp_ping_main.ip46_flow);
@@ -231,7 +230,7 @@ udp_ping_flow_create (u8 del)
   vnet_flow_report_add_del_args_t args;
   int rv;
   u32 domain_id = 0;
-  flow_report_main_t *frm = &flow_report_main;
+  ipfix_exporter_t *exp = &flow_report_main.exporters[0];
   u16 template_id;
 
   clib_memset (&args, 0, sizeof (args));
@@ -241,7 +240,7 @@ udp_ping_flow_create (u8 del)
   args.domain_id = domain_id;
   args.src_port = UDP_DST_PORT_ipfix;
 
-  rv = vnet_flow_report_add_del (frm, &args, &template_id);
+  rv = vnet_flow_report_add_del (exp, &args, &template_id);
 
   switch (rv)
     {
