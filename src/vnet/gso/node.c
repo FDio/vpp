@@ -106,6 +106,8 @@ tso_segment_ipip_tunnel_fixup (vlib_main_t * vm,
 	    clib_host_to_net_u16 (b0->current_length -
 				  gho->outer_l3_hdr_offset);
 	  ip4->checksum = ip4_header_checksum (ip4);
+	  vnet_buffer_offload_flags_clear (
+	    b0, VNET_BUFFER_OFFLOAD_F_OUTER_IP_CKSUM);
 	}
       else if (gho->gho_flags & GHO_F_OUTER_IP6)
 	{
@@ -113,7 +115,6 @@ tso_segment_ipip_tunnel_fixup (vlib_main_t * vm,
 	    clib_host_to_net_u16 (b0->current_length -
 				  gho->outer_l4_hdr_offset);
 	}
-
       n_tx_bytes += gho->outer_hdr_sz;
       i++;
     }
