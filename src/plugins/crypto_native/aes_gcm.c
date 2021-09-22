@@ -978,7 +978,7 @@ aes_gcm_dec (u8x16 T, aes_gcm_key_data_t * kd, aes_gcm_counter_t * ctr,
 			  n_left - 64, f);
   return aes4_gcm_calc (T, kd, d4, ctr, inv, outv, rounds, 1, n_left, f);
 #else
-  u8x16 d[4];
+  u8x16 d[4] = {};
   while (n_left >= 128)
     {
       T = aes_gcm_calc_double (T, kd, d, ctr, inv, outv, rounds, f);
