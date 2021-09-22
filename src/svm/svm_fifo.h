@@ -640,63 +640,6 @@ u32 svm_fifo_max_read_chunk (svm_fifo_t * f);
 u32 svm_fifo_max_write_chunk (svm_fifo_t * f);
 
 /**
- * Fifo head chunk getter
- *
- * @param f	fifo
- * @return	head chunk pointer
- */
-static inline svm_fifo_chunk_t *
-svm_fifo_head_chunk (svm_fifo_t * f)
-{
-  return f_head_cptr (f);
-}
-
-/**
- * Fifo head pointer getter
- *
- * @param f	fifo
- * @return	head pointer
- */
-static inline u8 *
-svm_fifo_head (svm_fifo_t * f)
-{
-  svm_fifo_chunk_t *head_chunk;
-  if (!f->shr->head_chunk)
-    return 0;
-  /* load-relaxed: consumer owned index */
-  head_chunk = f_head_cptr (f);
-  return (head_chunk->data + (f->shr->head - head_chunk->start_byte));
-}
-
-/**
- * Fifo tail chunk getter
- *
- * @param f	fifo
- * @return	tail chunk pointer
- */
-static inline svm_fifo_chunk_t *
-svm_fifo_tail_chunk (svm_fifo_t * f)
-{
-  return f_tail_cptr (f);
-}
-
-/**
- * Fifo tail pointer getter
- *
- * @param f	fifo
- * @return	tail pointer
- */
-static inline u8 *
-svm_fifo_tail (svm_fifo_t * f)
-{
-  svm_fifo_chunk_t *tail_chunk;
-
-  /* load-relaxed: producer owned index */
-  tail_chunk = f_tail_cptr (f);
-  return (tail_chunk->data + (f->shr->tail - tail_chunk->start_byte));
-}
-
-/**
  * Fifo number of subscribers getter
  *
  * @param f	fifo

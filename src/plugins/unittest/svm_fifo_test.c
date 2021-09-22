@@ -195,7 +195,7 @@ fifo_prepare (fifo_segment_t * fs, u32 fifo_size)
   f = fifo_segment_alloc_fifo (fs, fifo_size, FIFO_SEGMENT_RX_FIFO);
 
   /* Paint 1st fifo chunk with -1's */
-  c = svm_fifo_head_chunk (f);
+  c = f_head_cptr (f);
   clib_memset (c->data, 0xFF, c->length);
 
   svm_fifo_init_ooo_lookup (f, 1 /* deq ooo */ );
@@ -1958,7 +1958,7 @@ sfifo_test_fifo_indirect (vlib_main_t * vm, unformat_input_t * input)
   svm_fifo_enqueue_nocopy (f, 4096);
   SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
-  c = svm_fifo_tail_chunk (f);
+  c = f_tail_cptr (f);
   SFIFO_TEST (c == f_end_cptr (f), "tail is end chunk");
 
   /* Initialize head chunk */
@@ -1972,7 +1972,7 @@ sfifo_test_fifo_indirect (vlib_main_t * vm, unformat_input_t * input)
   rv = svm_fifo_dequeue (f, 4096, data_buf);
   SFIFO_TEST (rv == 4096, "dequeue should work");
 
-  c = svm_fifo_head_chunk (f);
+  c = f_head_cptr (f);
   SFIFO_TEST (c == f_end_cptr (f), "head chunk should be last");
 
   rv = svm_fifo_max_read_chunk (f);
