@@ -22,21 +22,17 @@
 flow_report_main_t flow_report_main;
 
 static_always_inline u8
-stream_index_valid (u32 index)
+stream_index_valid (ipfix_exporter_t *exp, u32 index)
 {
-  ipfix_exporter_t *exp = pool_elt_at_index (flow_report_main.exporters, 0);
-
   return index < vec_len (exp->streams) && exp->streams[index].domain_id != ~0;
 }
 
 static_always_inline flow_report_stream_t *
-add_stream (void)
+add_stream (ipfix_exporter_t *exp)
 {
-  ipfix_exporter_t *exp = pool_elt_at_index (flow_report_main.exporters, 0);
-
   u32 i;
   for (i = 0; i < vec_len (exp->streams); i++)
-    if (!stream_index_valid (i))
+    if (!stream_index_valid (exp, i))
       return &exp->streams[i];
   u32 index = vec_len (exp->streams);
   vec_validate (exp->streams, index);
@@ -44,23 +40,20 @@ add_stream (void)
 }
 
 static_always_inline void
-delete_stream (u32 index)
+delete_stream (ipfix_exporter_t *exp, u32 index)
 {
-  ipfix_exporter_t *exp = pool_elt_at_index (flow_report_main.exporters, 0);
-
   ASSERT (index < vec_len (exp->streams));
   ASSERT (exp->streams[index].domain_id != ~0);
   exp->streams[index].domain_id = ~0;
 }
 
 static i32
-find_stream (u32 domain_id, u16 src_port)
+find_stream (ipfix_exporter_t *exp, u32 domain_id, u16 src_port)
 {
-  ipfix_exporter_t *exp = pool_elt_at_index (flow_report_main.exporters, 0);
   flow_report_stream_t *stream;
   u32 i;
   for (i = 0; i < vec_len (exp->streams); i++)
-    if (stream_index_valid (i))
+    if (stream_index_valid (exp, i))
       {
 	stream = &exp->streams[i];
 	if (domain_id == stream->domain_id)
@@ -353,7 +346,7 @@ vnet_flow_report_add_del (flow_report_main_t * frm,
   u32 si;
   ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
 
-  si = find_stream (a->domain_id, a->src_port);
+  si = find_stream (exp, a->domain_id, a->src_port);
   if (si == -2)
     return VNET_API_ERROR_INVALID_VALUE;
   if (si == -1 && a->is_add == 0)
@@ -381,7 +374,7 @@ vnet_flow_report_add_del (flow_report_main_t * frm,
 	  stream = &exp->streams[si];
 	  stream->n_reports--;
 	  if (stream->n_reports == 0)
-	    delete_stream (si);
+	    delete_stream (exp, si);
 	  return 0;
 	}
       return VNET_API_ERROR_NO_SUCH_ENTRY;
@@ -392,7 +385,7 @@ vnet_flow_report_add_del (flow_report_main_t * frm,
 
   if (si == -1)
     {
-      stream = add_stream ();
+      stream = add_stream (exp);
       stream->domain_id = a->domain_id;
       stream->src_port = a->src_port;
       stream->sequence_number = 0;
@@ -451,7 +444,7 @@ vnet_flow_reports_reset (flow_report_main_t * frm)
   ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
 
   for (i = 0; i < vec_len (exp->streams); i++)
-    if (stream_index_valid (i))
+    if (stream_index_valid (exp, i))
       exp->streams[i].sequence_number = 0;
 
   vec_foreach (fr, exp->reports)
@@ -483,8 +476,8 @@ vnet_stream_change (flow_report_main_t * frm,
 		    u32 new_domain_id, u16 new_src_port)
 {
   ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
+  i32 stream_index = find_stream (exp, old_domain_id, old_src_port);
 
-  i32 stream_index = find_stream (old_domain_id, old_src_port);
   if (stream_index < 0)
     return 1;
   flow_report_stream_t *stream = &exp->streams[stream_index];
