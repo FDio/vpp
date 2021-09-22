@@ -295,7 +295,8 @@ virtio_set_net_hdr_size (virtio_if_t * vif)
 }
 
 inline void
-virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
+virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,
+	     virtio_if_type_t type)
 {
   u32 i, j, hw_if_index;
   virtio_if_t *vif;
@@ -407,8 +408,8 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 	}
       vlib_cli_output (vm, "  Number of RX Virtqueue  %u", vif->num_rxqs);
       vlib_cli_output (vm, "  Number of TX Virtqueue  %u", vif->num_txqs);
-      if (vif->cxq_vring != NULL
-	  && vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_VQ))
+      if (type == VIRTIO_IF_TYPE_PCI && vif->cxq_vring != NULL &&
+	  vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_VQ))
 	vlib_cli_output (vm, "  Number of CTRL Virtqueue 1");
       vec_foreach_index (i, vif->rxq_vrings)
       {
@@ -542,8 +543,8 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 	      }
 	  }
       }
-      if (vif->cxq_vring != NULL
-	  && vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_VQ))
+      if (type == VIRTIO_IF_TYPE_PCI && vif->cxq_vring != NULL &&
+	  vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_VQ))
 	{
 	  vring = vif->cxq_vring;
 	  vlib_cli_output (vm, "  Virtqueue (CTRL) %d", vring->queue_id);
