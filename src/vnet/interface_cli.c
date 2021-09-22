@@ -319,6 +319,21 @@ show_sw_interfaces (vlib_main_t * vm,
 	    show_vtr = 1;
 	  else if (unformat (linput, "verbose"))
 	    verbose = 1;
+	  else if (unformat (linput, "%d", &sw_if_index))
+	    {
+	      if (!pool_is_free_index (im->sw_interfaces, sw_if_index))
+		{
+		  si = pool_elt_at_index (im->sw_interfaces, sw_if_index);
+		  vec_add1 (sorted_sis, si[0]);
+		}
+	      else
+		{
+		  vec_free (sorted_sis);
+		  error = clib_error_return (0, "unknown interface index `%d'",
+					     sw_if_index);
+		  goto done;
+		}
+	    }
 	  else
 	    {
 	      vec_free (sorted_sis);
