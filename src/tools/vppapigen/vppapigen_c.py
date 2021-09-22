@@ -311,6 +311,8 @@ class FromJSON():
         write = self.stream.write
         write('#ifndef included_{}_api_fromjson_h\n'.format(self.module))
         write('#define included_{}_api_fromjson_h\n'.format(self.module))
+        write('#include <stdio.h>\n\n')
+        write('#include <stdlib.h>\n\n')
         write('#include <vppinfra/cJSON.h>\n\n')
         write('#include <vat2/jsonconvert.h>\n\n')
         write('#pragma GCC diagnostic ignored "-Wunused-label"\n')
@@ -514,7 +516,12 @@ class FromJSON():
                 continue
             write('\n    item = cJSON_GetObjectItem(o, "{}");\n'
                   .format(t.fieldname))
-            write('    if (!item) goto error;\n')
+            write('    if (!item) {\n')
+            write('        fprintf (stderr, "Field ' + t.fieldname + ' not found in typedef ' + o.name + '\\n");\n')
+            write('        fprintf (stderr, "Field ' + t.fieldname + ' not found in %s\\n", cJSON_Print (o));\n')
+            write('        goto error;\n')
+            write('    }\n')
+            write('    fprintf (stderr, "(Field ' + t.fieldname + ' found in typedef ' + o.name + ')\\n");\n')
             self._dispatch[t.type](self, t)
 
         write('\n    return 0;\n')
@@ -563,7 +570,11 @@ class FromJSON():
                 continue
             write('    item = cJSON_GetObjectItem(o, "{}");\n'
                   .format(t.fieldname))
-            write('    if (!item) goto error;\n')
+            write('    if (!item) {\n')
+            write('        fprintf (stderr, "Field ' + t.fieldname + ' not found in %s\\n", cJSON_Print (o));\n')
+            write('        goto error;\n')
+            write('    }\n')
+            write('    fprintf (stderr, "(Field ' + t.fieldname + ' found in define ' + o.name + ')\\n");\n')
             error += 1
             self._dispatch[t.type](self, t, toplevel=True)
             write('\n')
@@ -1523,7 +1534,7 @@ api_{n} (cJSON *o)
   if (!o) return 0;
   mp = vl_api_{n}_t_fromjson(o, &len);
   if (!mp) {{
-    fprintf(stderr, "Failed converting JSON to API\\n");
+    fprintf(stderr, "Failed converting JSON to API for rr {n}\\n");
     return 0;
   }}
 
@@ -1557,7 +1568,7 @@ api_{n} (cJSON *o)
   if (!o) return 0;
   vl_api_{n}_t *mp = vl_api_{n}_t_fromjson(o, &len);
   if (!mp) {{
-      fprintf(stderr, "Failed converting JSON to API\\n");
+      fprintf(stderr, "Failed converting JSON to API for dd {n}\\n");
       return 0;
   }}
   mp->_vl_msg_id = msg_id;
@@ -1612,7 +1623,7 @@ api_{n} (cJSON *o)
   if (!o) return 0;
   vl_api_{n}_t *mp = vl_api_{n}_t_fromjson(o, &len);
   if (!mp) {{
-    fprintf(stderr, "Failed converting JSON to API\\n");
+    fprintf(stderr, "Failed converting JSON to API for dr {n}\\n");
     return 0;
   }}
   mp->_vl_msg_id = msg_id;
