@@ -18,6 +18,7 @@
 #include <vnet/vnet.h>
 #include <vnet/api_errno.h>
 #include <vnet/ip/ip.h>
+#include <vnet/interface_output.h>
 
 #include <vnet/crypto/crypto.h>
 
@@ -149,11 +150,9 @@ esp_update_ip4_hdr (ip4_header_t * ip4, u16 len, int is_transport, int is_udp)
   if (is_transport)
     {
       u8 prot = is_udp ? IP_PROTOCOL_UDP : IP_PROTOCOL_IPSEC_ESP;
-
-      sum = ip_csum_update (ip4->checksum, ip4->protocol,
-			    prot, ip4_header_t, protocol);
+      sum = ip_csum_update (ip4->checksum, ip4->protocol, prot, ip4_header_t,
+			    protocol);
       ip4->protocol = prot;
-
       sum = ip_csum_update (sum, old_len, len, ip4_header_t, length);
     }
   else
@@ -650,6 +649,10 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  CLIB_PREFETCH (vlib_buffer_get_tail (b[1]),
 			 CLIB_CACHE_LINE_BYTES, LOAD);
 	}
+
+      vnet_calc_checksums_inline (vm, b[0], b[0]->flags & VNET_BUFFER_F_IS_IP4,
+				  b[0]->flags & VNET_BUFFER_F_IS_IP6);
+      vnet_calc_outer_checksums_inline (vm, b[0]);
 
       if (is_tun)
 	{
