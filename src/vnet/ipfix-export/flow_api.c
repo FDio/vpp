@@ -36,14 +36,16 @@
 #define REPLY_MSG_ID_BASE frm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
-static void
-vl_api_set_ipfix_exporter_t_handler (vl_api_set_ipfix_exporter_t * mp)
+static int
+vl_api_set_ipfix_exporter_t_internal (
+  u32 client_index, vl_api_address_t *mp_collector_address,
+  u16 mp_collector_port, vl_api_address_t *mp_src_address, u32 mp_vrf_id,
+  u32 mp_path_mtu, u32 mp_template_interval, bool mp_udp_checksum)
 {
   vlib_main_t *vm = vlib_get_main ();
   flow_report_main_t *frm = &flow_report_main;
   ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
   vl_api_registration_t *reg;
-  vl_api_set_ipfix_exporter_reply_t *rmp;
   ip4_address_t collector, src;
   u16 collector_port = UDP_DST_PORT_ipfix;
   u32 path_mtu;
@@ -51,25 +53,23 @@ vl_api_set_ipfix_exporter_t_handler (vl_api_set_ipfix_exporter_t * mp)
   u8 udp_checksum;
   u32 fib_id;
   u32 fib_index = ~0;
-  int rv = 0;
 
-  reg = vl_api_client_index_to_registration (mp->client_index);
+  reg = vl_api_client_index_to_registration (client_index);
   if (!reg)
-    return;
+    return VNET_API_ERROR_UNIMPLEMENTED;
 
-  if (mp->src_address.af == ADDRESS_IP6
-      || mp->collector_address.af == ADDRESS_IP6)
+  if (mp_src_address->af == ADDRESS_IP6 ||
+      mp_collector_address->af == ADDRESS_IP6)
     {
-      rv = VNET_API_ERROR_UNIMPLEMENTED;
-      goto out;
+      return VNET_API_ERROR_UNIMPLEMENTED;
     }
 
-  ip4_address_decode (mp->collector_address.un.ip4, &collector);
-  collector_port = ntohs (mp->collector_port);
+  ip4_address_decode (mp_collector_address->un.ip4, &collector);
+  collector_port = ntohs (mp_collector_port);
   if (collector_port == (u16) ~ 0)
     collector_port = UDP_DST_PORT_ipfix;
-  ip4_address_decode (mp->src_address.un.ip4, &src);
-  fib_id = ntohl (mp->vrf_id);
+  ip4_address_decode (mp_src_address->un.ip4, &src);
+  fib_id = ntohl (mp_vrf_id);
 
   ip4_main_t *im = &ip4_main;
   if (fib_id == ~0)
@@ -80,38 +80,26 @@ vl_api_set_ipfix_exporter_t_handler (vl_api_set_ipfix_exporter_t * mp)
     {
       uword *p = hash_get (im->fib_index_by_table_id, fib_id);
       if (!p)
-	{
-	  rv = VNET_API_ERROR_NO_SUCH_FIB;
-	  goto out;
-	}
+	return VNET_API_ERROR_NO_SUCH_FIB;
       fib_index = p[0];
     }
 
-  path_mtu = ntohl (mp->path_mtu);
+  path_mtu = ntohl (mp_path_mtu);
   if (path_mtu == ~0)
     path_mtu = 512;		// RFC 7011 section 10.3.3.
-  template_interval = ntohl (mp->template_interval);
+  template_interval = ntohl (mp_template_interval);
   if (template_interval == ~0)
     template_interval = 20;
-  udp_checksum = mp->udp_checksum;
+  udp_checksum = mp_udp_checksum;
 
   if (collector.as_u32 != 0 && src.as_u32 == 0)
-    {
-      rv = VNET_API_ERROR_INVALID_VALUE;
-      goto out;
-    }
+    return VNET_API_ERROR_INVALID_VALUE;
 
   if (path_mtu > 1450 /* vpp does not support fragmentation */ )
-    {
-      rv = VNET_API_ERROR_INVALID_VALUE;
-      goto out;
-    }
+    return VNET_API_ERROR_INVALID_VALUE;
 
   if (path_mtu < 68)
-    {
-      rv = VNET_API_ERROR_INVALID_VALUE;
-      goto out;
-    }
+    return VNET_API_ERROR_INVALID_VALUE;
 
   /* Reset report streams if we are reconfiguring IP addresses */
   if (exp->ipfix_collector.as_u32 != collector.as_u32 ||
@@ -130,7 +118,19 @@ vl_api_set_ipfix_exporter_t_handler (vl_api_set_ipfix_exporter_t * mp)
   /* Turn on the flow reporting process */
   vlib_process_signal_event (vm, flow_report_process_node.index, 1, 0);
 
-out:
+  return 0;
+}
+
+static void
+vl_api_set_ipfix_exporter_t_handler (vl_api_set_ipfix_exporter_t *mp)
+{
+  vl_api_set_ipfix_exporter_reply_t *rmp;
+  flow_report_main_t *frm = &flow_report_main;
+  int rv = vl_api_set_ipfix_exporter_t_internal (
+    mp->client_index, &mp->collector_address, mp->collector_port,
+    &mp->src_address, mp->vrf_id, mp->path_mtu, mp->template_interval,
+    mp->udp_checksum);
+
   REPLY_MACRO (VL_API_SET_IPFIX_EXPORTER_REPLY);
 }
 
