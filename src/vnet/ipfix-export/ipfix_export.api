@@ -73,6 +73,46 @@ define ipfix_exporter_details
   bool udp_checksum;
 };
 
+
+/** Configure IPFIX exporter within the exporting process.
+    The exporting process can contain multiple independent exporters,
+    each of which have their own state.  The collector_address is the key
+    field that identifies a unique exporter. The already existing API
+    'set_ipfix_exporter' is used to modify a single exporter (which will
+    always have stat index 0).  If more than one exporter is required then
+    they can be created and deleted using this API.
+
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_create - True for create, False for delete
+    @param collector_address - address of IPFIX collector
+    @param collector_port - port of IPFIX collector
+    @param src_address - address of IPFIX exporter
+    @param vrf_id - VRF / fib table ID
+    @param path_mtu - Path MTU between exporter and collector
+    @param template_interval - number of seconds after which to resend template
+    @param udp_checksum - UDP checksum calculation enable flag
+*/
+
+define ipfix_exporter_create_delete {
+  u32 client_index;
+  u32 context;
+  bool is_create;
+  vl_api_address_t collector_address;
+  u16 collector_port;
+  vl_api_address_t src_address;
+  u32 vrf_id;
+  u32 path_mtu;
+  u32 template_interval;
+  bool udp_checksum;
+};
+
+define ipfix_exporter_create_delete_reply {
+  u32 context;
+  i32 retval;
+  u32 stat_index;
+};
+
 /** \brief IPFIX classify stream configure request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
