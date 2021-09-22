@@ -347,9 +347,6 @@ wg_peer_remove (index_t peeri)
   wgi = wg_if_get (wg_if_find_by_sw_if_index (peer->wg_sw_if_index));
   wg_if_peer_remove (wgi, peeri);
 
-  vnet_feature_enable_disable ("ip4-output", "wg-output-tun",
-			       peer->wg_sw_if_index, 0, 0, 0);
-
   noise_remote_clear (wmp->vlib_main, &peer->remote);
   wg_peer_clear (wmp->vlib_main, peer);
   pool_put (wg_peer_pool, peer);
