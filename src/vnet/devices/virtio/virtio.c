@@ -295,7 +295,8 @@ virtio_set_net_hdr_size (virtio_if_t * vif)
 }
 
 inline void
-virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
+virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,
+	     virtio_if_type_t type)
 {
   u32 i, j, hw_if_index;
   virtio_if_t *vif;
