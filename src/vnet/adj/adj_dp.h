@@ -35,23 +35,10 @@ adj_midchain_ipip44_fixup (vlib_main_t * vm,
   ip4 = vlib_buffer_get_current (b);
   ip4->length = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b));
 
-  if (PREDICT_TRUE(TUNNEL_ENCAP_DECAP_FLAG_NONE == flags))
-  {
-      ip_csum_t sum;
-      u16 old,new;
-
-      old = 0;
-      new = ip4->length;
-
-      sum = ip4->checksum;
-      sum = ip_csum_update (sum, old, new, ip4_header_t, length);
-      ip4->checksum = ip_csum_fold (sum);
-  }
-  else
-  {
+  if (PREDICT_FALSE(TUNNEL_ENCAP_DECAP_FLAG_NONE != flags))
       tunnel_encap_fixup_4o4 (flags, ip4 + 1, ip4);
-      ip4->checksum = ip4_header_checksum (ip4);
-  }
+  vnet_buffer2 (b)->outer_l3_hdr_offset = (u8 *) ip4 - b->data;
+  vnet_buffer_offload_flags_set (b,VNET_BUFFER_OFFLOAD_F_TNL_IPIP | VNET_BUFFER_OFFLOAD_F_OUTER_IP_CKSUM);
 }
 
 static_always_inline void
