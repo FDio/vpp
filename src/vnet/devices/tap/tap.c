@@ -201,23 +201,26 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 	  err = clib_error_return (0, "host_if_name is not provided");
 	  goto error;
 	}
-      if (args->host_namespace)
+    }
+
+  /* if namespace is specified, all further netlink messages should be executed
+   * after we change our net namespace */
+  if (args->host_namespace)
+    {
+      old_netns_fd = clib_netns_open (NULL /* self */);
+      if ((nfd = clib_netns_open (args->host_namespace)) == -1)
 	{
-	  old_netns_fd = clib_netns_open (NULL /* self */);
-	  if ((nfd = clib_netns_open (args->host_namespace)) == -1)
-	    {
-	      args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
-	      args->error = clib_error_return_unix (0, "clib_netns_open '%s'",
-						    args->host_namespace);
-	      goto error;
-	    }
-	  if (clib_setns (nfd) == -1)
-	    {
-	      args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
-	      args->error = clib_error_return_unix (0, "setns '%s'",
-						    args->host_namespace);
-	      goto error;
-	    }
+	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
+	  args->error = clib_error_return_unix (0, "clib_netns_open '%s'",
+						args->host_namespace);
+	  goto error;
+	}
+      if (clib_setns (nfd) == -1)
+	{
+	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
+	  args->error =
+	    clib_error_return_unix (0, "setns '%s'", args->host_namespace);
+	  goto error;
 	}
     }
 
@@ -399,44 +402,6 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   vif->features |= VIRTIO_FEATURE (VIRTIO_RING_F_INDIRECT_DESC);
 
   virtio_set_net_hdr_size (vif);
-
-  if (!(args->tap_flags & TAP_FLAG_ATTACH))
-    {
-      /* if namespace is specified, all further netlink messages should be executed
-         after we change our net namespace */
-      if (args->host_namespace)
-	{
-	  old_netns_fd = clib_netns_open (NULL /* self */);
-	  if ((nfd = clib_netns_open (args->host_namespace)) == -1)
-	    {
-	      args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
-	      args->error = clib_error_return_unix (0, "clib_netns_open '%s'",
-						    args->host_namespace);
-	      goto error;
-	    }
-	  args->error = vnet_netlink_set_link_netns (vif->ifindex, nfd,
-						     host_if_name);
-	  if (args->error)
-	    {
-	      args->rv = VNET_API_ERROR_NETLINK_ERROR;
-	      goto error;
-	    }
-	  if (clib_setns (nfd) == -1)
-	    {
-	      args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
-	      args->error = clib_error_return_unix (0, "setns '%s'",
-						    args->host_namespace);
-	      goto error;
-	    }
-	  if ((vif->ifindex = if_nametoindex (host_if_name)) == 0)
-	    {
-	      args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
-	      args->error = clib_error_return_unix (0, "if_nametoindex '%s'",
-						    host_if_name);
-	      goto error;
-	    }
-	}
-    }
 
   if (vif->type == VIRTIO_IF_TYPE_TAP)
     {
@@ -757,7 +722,11 @@ done:
   if (vhost_mem)
     clib_mem_free (vhost_mem);
   if (old_netns_fd != -1)
-    close (old_netns_fd);
+    {
+      /* in case we errored with a switched netns */
+      clib_setns (old_netns_fd);
+      close (old_netns_fd);
+    }
   if (nfd != -1)
     close (nfd);
 }
