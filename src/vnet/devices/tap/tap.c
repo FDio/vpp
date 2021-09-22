@@ -740,7 +740,6 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
    * TUNSETCARRIER ioctl(). See tap_set_carrier().
    */
   vif->host_carrier_up = 1;
-  vif->cxq_vring = NULL;
 
   goto done;
 
