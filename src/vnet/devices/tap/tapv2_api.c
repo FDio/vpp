@@ -32,10 +32,8 @@
 #include <vnet/devices/tap/tapv2.api_enum.h>
 #include <vnet/devices/tap/tapv2.api_types.h>
 
-#define REPLY_MSG_ID_BASE msg_id_base
+#define REPLY_MSG_ID_BASE tap_main.msg_id_base
 #include <vlibapi/api_helper_macros.h>
-
-static u16 msg_id_base;
 
 static void
 vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
