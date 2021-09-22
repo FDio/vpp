@@ -202,10 +202,9 @@ flowprobe_template_l4_fields (ipfix_field_specifier_t * f)
  * @returns u8 * vector containing the indicated IPFIX template packet
  */
 static inline u8 *
-flowprobe_template_rewrite_inline (flow_report_main_t * frm,
-				   flow_report_t * fr,
-				   ip4_address_t * collector_address,
-				   ip4_address_t * src_address,
+flowprobe_template_rewrite_inline (ipfix_exporter_t *exp, flow_report_t *fr,
+				   ip4_address_t *collector_address,
+				   ip4_address_t *src_address,
 				   u16 collector_port,
 				   flowprobe_variant_t which)
 {
@@ -223,7 +222,6 @@ flowprobe_template_rewrite_inline (flow_report_main_t * frm,
   flowprobe_main_t *fm = &flowprobe_main;
   flowprobe_record_t flags = fr->opaque.as_uword;
   bool collect_ip4 = false, collect_ip6 = false;
-  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
 
   stream = &exp->streams[fr->stream_index];
 
@@ -310,73 +308,62 @@ flowprobe_template_rewrite_inline (flow_report_main_t * frm,
 }
 
 static u8 *
-flowprobe_template_rewrite_ip6 (flow_report_main_t * frm,
-				flow_report_t * fr,
-				ip4_address_t * collector_address,
-				ip4_address_t * src_address,
-				u16 collector_port,
-				ipfix_report_element_t * elts,
-				u32 n_elts, u32 * stream_index)
+flowprobe_template_rewrite_ip6 (ipfix_exporter_t *exp, flow_report_t *fr,
+				ip4_address_t *collector_address,
+				ip4_address_t *src_address, u16 collector_port,
+				ipfix_report_element_t *elts, u32 n_elts,
+				u32 *stream_index)
 {
-  return flowprobe_template_rewrite_inline
-    (frm, fr, collector_address, src_address, collector_port,
-     FLOW_VARIANT_IP6);
+  return flowprobe_template_rewrite_inline (
+    exp, fr, collector_address, src_address, collector_port, FLOW_VARIANT_IP6);
 }
 
 static u8 *
-flowprobe_template_rewrite_ip4 (flow_report_main_t * frm,
-				flow_report_t * fr,
-				ip4_address_t * collector_address,
-				ip4_address_t * src_address,
-				u16 collector_port,
-				ipfix_report_element_t * elts,
-				u32 n_elts, u32 * stream_index)
+flowprobe_template_rewrite_ip4 (ipfix_exporter_t *exp, flow_report_t *fr,
+				ip4_address_t *collector_address,
+				ip4_address_t *src_address, u16 collector_port,
+				ipfix_report_element_t *elts, u32 n_elts,
+				u32 *stream_index)
 {
-  return flowprobe_template_rewrite_inline
-    (frm, fr, collector_address, src_address, collector_port,
-     FLOW_VARIANT_IP4);
+  return flowprobe_template_rewrite_inline (
+    exp, fr, collector_address, src_address, collector_port, FLOW_VARIANT_IP4);
 }
 
 static u8 *
-flowprobe_template_rewrite_l2 (flow_report_main_t * frm,
-			       flow_report_t * fr,
-			       ip4_address_t * collector_address,
-			       ip4_address_t * src_address,
-			       u16 collector_port,
-			       ipfix_report_element_t * elts,
-			       u32 n_elts, u32 * stream_index)
+flowprobe_template_rewrite_l2 (ipfix_exporter_t *exp, flow_report_t *fr,
+			       ip4_address_t *collector_address,
+			       ip4_address_t *src_address, u16 collector_port,
+			       ipfix_report_element_t *elts, u32 n_elts,
+			       u32 *stream_index)
 {
-  return flowprobe_template_rewrite_inline
-    (frm, fr, collector_address, src_address, collector_port,
-     FLOW_VARIANT_L2);
+  return flowprobe_template_rewrite_inline (
+    exp, fr, collector_address, src_address, collector_port, FLOW_VARIANT_L2);
 }
 
 static u8 *
-flowprobe_template_rewrite_l2_ip4 (flow_report_main_t * frm,
-				   flow_report_t * fr,
-				   ip4_address_t * collector_address,
-				   ip4_address_t * src_address,
+flowprobe_template_rewrite_l2_ip4 (ipfix_exporter_t *exp, flow_report_t *fr,
+				   ip4_address_t *collector_address,
+				   ip4_address_t *src_address,
 				   u16 collector_port,
-				   ipfix_report_element_t * elts,
-				   u32 n_elts, u32 * stream_index)
+				   ipfix_report_element_t *elts, u32 n_elts,
+				   u32 *stream_index)
 {
-  return flowprobe_template_rewrite_inline
-    (frm, fr, collector_address, src_address, collector_port,
-     FLOW_VARIANT_L2_IP4);
+  return flowprobe_template_rewrite_inline (exp, fr, collector_address,
+					    src_address, collector_port,
+					    FLOW_VARIANT_L2_IP4);
 }
 
 static u8 *
-flowprobe_template_rewrite_l2_ip6 (flow_report_main_t * frm,
-				   flow_report_t * fr,
-				   ip4_address_t * collector_address,
-				   ip4_address_t * src_address,
+flowprobe_template_rewrite_l2_ip6 (ipfix_exporter_t *exp, flow_report_t *fr,
+				   ip4_address_t *collector_address,
+				   ip4_address_t *src_address,
 				   u16 collector_port,
-				   ipfix_report_element_t * elts,
-				   u32 n_elts, u32 * stream_index)
+				   ipfix_report_element_t *elts, u32 n_elts,
+				   u32 *stream_index)
 {
-  return flowprobe_template_rewrite_inline
-    (frm, fr, collector_address, src_address, collector_port,
-     FLOW_VARIANT_L2_IP6);
+  return flowprobe_template_rewrite_inline (exp, fr, collector_address,
+					    src_address, collector_port,
+					    FLOW_VARIANT_L2_IP6);
 }
 
 /**
@@ -390,27 +377,27 @@ flowprobe_template_rewrite_l2_ip6 (flow_report_main_t * frm,
  * will be sent.
  */
 vlib_frame_t *
-flowprobe_data_callback_ip4 (flow_report_main_t * frm,
-			     flow_report_t * fr,
-			     vlib_frame_t * f, u32 * to_next, u32 node_index)
+flowprobe_data_callback_ip4 (flow_report_main_t *frm, ipfix_exporter_t *exp,
+			     flow_report_t *fr, vlib_frame_t *f, u32 *to_next,
+			     u32 node_index)
 {
   flowprobe_flush_callback_ip4 ();
   return f;
 }
 
 vlib_frame_t *
-flowprobe_data_callback_ip6 (flow_report_main_t * frm,
-			     flow_report_t * fr,
-			     vlib_frame_t * f, u32 * to_next, u32 node_index)
+flowprobe_data_callback_ip6 (flow_report_main_t *frm, ipfix_exporter_t *exp,
+			     flow_report_t *fr, vlib_frame_t *f, u32 *to_next,
+			     u32 node_index)
 {
   flowprobe_flush_callback_ip6 ();
   return f;
 }
 
 vlib_frame_t *
-flowprobe_data_callback_l2 (flow_report_main_t * frm,
-			    flow_report_t * fr,
-			    vlib_frame_t * f, u32 * to_next, u32 node_index)
+flowprobe_data_callback_l2 (flow_report_main_t *frm, ipfix_exporter_t *exp,
+			    flow_report_t *fr, vlib_frame_t *f, u32 *to_next,
+			    u32 node_index)
 {
   flowprobe_flush_callback_l2 ();
   return f;
@@ -423,7 +410,7 @@ flowprobe_template_add_del (u32 domain_id, u16 src_port,
 			    vnet_flow_rewrite_callback_t * rewrite_callback,
 			    bool is_add, u16 * template_id)
 {
-  flow_report_main_t *frm = &flow_report_main;
+  ipfix_exporter_t *exp = &flow_report_main.exporters[0];
   vnet_flow_report_add_del_args_t a = {
     .rewrite_callback = rewrite_callback,
     .flow_data_callback = flow_data_callback,
@@ -432,7 +419,7 @@ flowprobe_template_add_del (u32 domain_id, u16 src_port,
     .src_port = src_port,
     .opaque.as_uword = flags,
   };
-  return vnet_flow_report_add_del (frm, &a, template_id);
+  return vnet_flow_report_add_del (exp, &a, template_id);
 }
 
 static void

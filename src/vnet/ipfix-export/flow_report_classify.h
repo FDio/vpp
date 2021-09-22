@@ -112,18 +112,17 @@ ipfix_classify_delete_table (u32 index)
   fcm->tables[index].classify_table_index = ~0;
 }
 
-u8 *ipfix_classify_template_rewrite (flow_report_main_t * frm,
-				     flow_report_t * fr,
-				     ip4_address_t * collector_address,
-				     ip4_address_t * src_address,
+u8 *ipfix_classify_template_rewrite (ipfix_exporter_t *exp, flow_report_t *fr,
+				     ip4_address_t *collector_address,
+				     ip4_address_t *src_address,
 				     u16 collector_port,
-				     ipfix_report_element_t * elts,
-				     u32 n_elts, u32 * stream_index);
+				     ipfix_report_element_t *elts, u32 n_elts,
+				     u32 *stream_index);
 
-vlib_frame_t *ipfix_classify_send_flows (flow_report_main_t * frm,
-					 flow_report_t * fr,
-					 vlib_frame_t * f,
-					 u32 * to_next, u32 node_index);
+vlib_frame_t *ipfix_classify_send_flows (flow_report_main_t *frm,
+					 ipfix_exporter_t *exp,
+					 flow_report_t *fr, vlib_frame_t *f,
+					 u32 *to_next, u32 node_index);
 
 #endif /* __included_flow_report_classify_h__ */
 

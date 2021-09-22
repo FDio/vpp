@@ -143,12 +143,10 @@ do {                                                      \
  * @returns template packet
  */
 static inline u8 *
-nat_template_rewrite (flow_report_main_t * frm,
-		       flow_report_t * fr,
-		       ip4_address_t * collector_address,
-		       ip4_address_t * src_address,
-		       u16 collector_port,
-		       nat_event_t event, quota_exceed_event_t quota_event)
+nat_template_rewrite (ipfix_exporter_t *exp, flow_report_t *fr,
+		      ip4_address_t *collector_address,
+		      ip4_address_t *src_address, u16 collector_port,
+		      nat_event_t event, quota_exceed_event_t quota_event)
 {
   nat_ipfix_logging_main_t *silm = &nat_ipfix_logging_main;
   ip4_header_t *ip;
@@ -163,7 +161,6 @@ nat_template_rewrite (flow_report_main_t * frm,
   u32 field_count = 0;
   flow_report_stream_t *stream;
   u32 stream_index;
-  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
 
   stream = &exp->streams[fr->stream_index];
 
@@ -391,97 +388,86 @@ nat_template_rewrite (flow_report_main_t * frm,
 }
 
 u8 *
-nat_template_rewrite_addr_exhausted (flow_report_main_t * frm,
-				      flow_report_t * fr,
-				      ip4_address_t * collector_address,
-				      ip4_address_t * src_address,
-				      u16 collector_port,
-                                      ipfix_report_element_t *elts,
-                                      u32 n_elts, u32 *stream_index)
-{
-  return nat_template_rewrite (frm, fr, collector_address, src_address,
-				collector_port, NAT_ADDRESSES_EXHAUTED, 0);
-}
-
-u8 *
-nat_template_rewrite_nat44_session (flow_report_main_t * frm,
-				     flow_report_t * fr,
-				     ip4_address_t * collector_address,
-				     ip4_address_t * src_address,
+nat_template_rewrite_addr_exhausted (ipfix_exporter_t *exp, flow_report_t *fr,
+				     ip4_address_t *collector_address,
+				     ip4_address_t *src_address,
 				     u16 collector_port,
-                                     ipfix_report_element_t *elts,
-                                     u32 n_elts, u32 *stream_index)
+				     ipfix_report_element_t *elts, u32 n_elts,
+				     u32 *stream_index)
 {
-  return nat_template_rewrite (frm, fr, collector_address, src_address,
-				collector_port, NAT44_SESSION_CREATE, 0);
+  return nat_template_rewrite (exp, fr, collector_address, src_address,
+			       collector_port, NAT_ADDRESSES_EXHAUTED, 0);
 }
 
 u8 *
-nat_template_rewrite_max_entries_per_usr (flow_report_main_t * frm,
-					   flow_report_t * fr,
-					   ip4_address_t * collector_address,
-					   ip4_address_t * src_address,
-					   u16 collector_port,
-                                           ipfix_report_element_t *elts,
-                                           u32 n_elts, u32 *stream_index)
+nat_template_rewrite_nat44_session (ipfix_exporter_t *exp, flow_report_t *fr,
+				    ip4_address_t *collector_address,
+				    ip4_address_t *src_address,
+				    u16 collector_port,
+				    ipfix_report_element_t *elts, u32 n_elts,
+				    u32 *stream_index)
 {
-  return nat_template_rewrite (frm, fr, collector_address, src_address,
-				collector_port, QUOTA_EXCEEDED,
-				MAX_ENTRIES_PER_USER);
+  return nat_template_rewrite (exp, fr, collector_address, src_address,
+			       collector_port, NAT44_SESSION_CREATE, 0);
 }
 
 u8 *
-nat_template_rewrite_max_sessions (flow_report_main_t * frm,
-				   flow_report_t * fr,
-				   ip4_address_t * collector_address,
-				   ip4_address_t * src_address,
+nat_template_rewrite_max_entries_per_usr (
+  ipfix_exporter_t *exp, flow_report_t *fr, ip4_address_t *collector_address,
+  ip4_address_t *src_address, u16 collector_port, ipfix_report_element_t *elts,
+  u32 n_elts, u32 *stream_index)
+{
+  return nat_template_rewrite (exp, fr, collector_address, src_address,
+			       collector_port, QUOTA_EXCEEDED,
+			       MAX_ENTRIES_PER_USER);
+}
+
+u8 *
+nat_template_rewrite_max_sessions (ipfix_exporter_t *exp, flow_report_t *fr,
+				   ip4_address_t *collector_address,
+				   ip4_address_t *src_address,
 				   u16 collector_port,
-                                   ipfix_report_element_t *elts,
-                                   u32 n_elts, u32 *stream_index)
+				   ipfix_report_element_t *elts, u32 n_elts,
+				   u32 *stream_index)
 {
-  return nat_template_rewrite (frm, fr, collector_address, src_address,
-				collector_port, QUOTA_EXCEEDED,
-				MAX_SESSION_ENTRIES);
+  return nat_template_rewrite (exp, fr, collector_address, src_address,
+			       collector_port, QUOTA_EXCEEDED,
+			       MAX_SESSION_ENTRIES);
 }
 
 u8 *
-nat_template_rewrite_max_bibs (flow_report_main_t * frm,
-			       flow_report_t * fr,
-			       ip4_address_t * collector_address,
-			       ip4_address_t * src_address,
-			       u16 collector_port,
-                               ipfix_report_element_t *elts,
-                               u32 n_elts, u32 *stream_index)
+nat_template_rewrite_max_bibs (ipfix_exporter_t *exp, flow_report_t *fr,
+			       ip4_address_t *collector_address,
+			       ip4_address_t *src_address, u16 collector_port,
+			       ipfix_report_element_t *elts, u32 n_elts,
+			       u32 *stream_index)
 {
-  return nat_template_rewrite (frm, fr, collector_address, src_address,
-				collector_port, QUOTA_EXCEEDED,
-				MAX_BIB_ENTRIES);
+  return nat_template_rewrite (exp, fr, collector_address, src_address,
+			       collector_port, QUOTA_EXCEEDED,
+			       MAX_BIB_ENTRIES);
 }
 
 u8 *
-nat_template_rewrite_nat64_bib (flow_report_main_t * frm,
-			        flow_report_t * fr,
-			        ip4_address_t * collector_address,
-			        ip4_address_t * src_address,
-			        u16 collector_port,
-                                ipfix_report_element_t *elts,
-                                u32 n_elts, u32 *stream_index)
+nat_template_rewrite_nat64_bib (ipfix_exporter_t *exp, flow_report_t *fr,
+				ip4_address_t *collector_address,
+				ip4_address_t *src_address, u16 collector_port,
+				ipfix_report_element_t *elts, u32 n_elts,
+				u32 *stream_index)
 {
-  return nat_template_rewrite (frm, fr, collector_address, src_address,
-				collector_port, NAT64_BIB_CREATE, 0);
+  return nat_template_rewrite (exp, fr, collector_address, src_address,
+			       collector_port, NAT64_BIB_CREATE, 0);
 }
 
 u8 *
-nat_template_rewrite_nat64_session (flow_report_main_t * frm,
-			            flow_report_t * fr,
-			            ip4_address_t * collector_address,
-			            ip4_address_t * src_address,
-			            u16 collector_port,
-                                    ipfix_report_element_t *elts,
-                                    u32 n_elts, u32 *stream_index)
+nat_template_rewrite_nat64_session (ipfix_exporter_t *exp, flow_report_t *fr,
+				    ip4_address_t *collector_address,
+				    ip4_address_t *src_address,
+				    u16 collector_port,
+				    ipfix_report_element_t *elts, u32 n_elts,
+				    u32 *stream_index)
 {
-  return nat_template_rewrite (frm, fr, collector_address, src_address,
-				collector_port, NAT64_SESSION_CREATE, 0);
+  return nat_template_rewrite (exp, fr, collector_address, src_address,
+			       collector_port, NAT64_SESSION_CREATE, 0);
 }
 
 static inline void
@@ -1479,11 +1465,11 @@ nat_ipfix_logging_nat64_session (u32 thread_index,
 }
 
 vlib_frame_t *
-data_callback (flow_report_main_t * frm, flow_report_t * fr,
-               vlib_frame_t * f, u32 * to_next, u32 node_index)
+data_callback (flow_report_main_t *frm, ipfix_exporter_t *exp,
+	       flow_report_t *fr, vlib_frame_t *f, u32 *to_next,
+	       u32 node_index)
 {
   nat_ipfix_logging_main_t *silm = &nat_ipfix_logging_main;
-  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
 
   if (PREDICT_FALSE (++silm->call_counter >= vec_len (exp->reports)))
     {
@@ -1507,7 +1493,7 @@ int
 nat_ipfix_logging_enable_disable (int enable, u32 domain_id, u16 src_port)
 {
   nat_ipfix_logging_main_t *silm = &nat_ipfix_logging_main;
-  flow_report_main_t *frm = &flow_report_main;
+  ipfix_exporter_t *exp = &flow_report_main.exporters[0];
   vnet_flow_report_add_del_args_t a;
   int rv;
   u8 e = enable ? 1 : 0;
@@ -1522,7 +1508,7 @@ nat_ipfix_logging_enable_disable (int enable, u32 domain_id, u16 src_port)
   a.flow_data_callback = data_callback;
 
   a.rewrite_callback = nat_template_rewrite_nat44_session;
-  rv = vnet_flow_report_add_del (frm, &a, NULL);
+  rv = vnet_flow_report_add_del (exp, &a, NULL);
   if (rv)
     {
       //nat_elog_warn_X1 ("vnet_flow_report_add_del returned %d", "i4", rv);
@@ -1530,7 +1516,7 @@ nat_ipfix_logging_enable_disable (int enable, u32 domain_id, u16 src_port)
     }
 
   a.rewrite_callback = nat_template_rewrite_addr_exhausted;
-  rv = vnet_flow_report_add_del (frm, &a, NULL);
+  rv = vnet_flow_report_add_del (exp, &a, NULL);
   if (rv)
     {
       //nat_elog_warn_X1 ("vnet_flow_report_add_del returned %d", "i4", rv);
@@ -1538,7 +1524,7 @@ nat_ipfix_logging_enable_disable (int enable, u32 domain_id, u16 src_port)
     }
 
   a.rewrite_callback = nat_template_rewrite_max_sessions;
-  rv = vnet_flow_report_add_del (frm, &a, NULL);
+  rv = vnet_flow_report_add_del (exp, &a, NULL);
   if (rv)
     {
       //nat_elog_warn_X1 ("vnet_flow_report_add_del returned %d", "i4", rv);
@@ -1546,7 +1532,7 @@ nat_ipfix_logging_enable_disable (int enable, u32 domain_id, u16 src_port)
     }
 
   a.rewrite_callback = nat_template_rewrite_max_bibs;
-  rv = vnet_flow_report_add_del (frm, &a, NULL);
+  rv = vnet_flow_report_add_del (exp, &a, NULL);
   if (rv)
     {
       //nat_elog_warn_X1 ("vnet_flow_report_add_del returned %d", "i4", rv);
@@ -1554,7 +1540,7 @@ nat_ipfix_logging_enable_disable (int enable, u32 domain_id, u16 src_port)
     }
 
   a.rewrite_callback = nat_template_rewrite_nat64_bib;
-  rv = vnet_flow_report_add_del (frm, &a, NULL);
+  rv = vnet_flow_report_add_del (exp, &a, NULL);
   if (rv)
     {
       //nat_elog_warn_X1 ("vnet_flow_report_add_del returned %d", "i4", rv);
@@ -1562,7 +1548,7 @@ nat_ipfix_logging_enable_disable (int enable, u32 domain_id, u16 src_port)
     }
 
   a.rewrite_callback = nat_template_rewrite_nat64_session;
-  rv = vnet_flow_report_add_del (frm, &a, NULL);
+  rv = vnet_flow_report_add_del (exp, &a, NULL);
   if (rv)
     {
       //nat_elog_warn_X1 ("vnet_flow_report_add_del returned %d", "i4", rv);
@@ -1572,7 +1558,7 @@ nat_ipfix_logging_enable_disable (int enable, u32 domain_id, u16 src_port)
   // if endpoint dependent per user max entries is also required
   /*
   a.rewrite_callback = nat_template_rewrite_max_entries_per_usr;
-  rv = vnet_flow_report_add_del (frm, &a, NULL);
+  rv = vnet_flow_report_add_del (exp, &a, NULL);
   if (rv)
     {
       //nat_elog_warn_X1 ("vnet_flow_report_add_del returned %d", "i4", rv);
