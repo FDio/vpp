@@ -71,8 +71,8 @@ find_stream (ipfix_exporter_t *exp, u32 domain_id, u16 src_port)
 }
 
 int
-send_template_packet (flow_report_main_t * frm,
-		      flow_report_t * fr, u32 * buffer_indexp)
+send_template_packet (flow_report_main_t *frm, ipfix_exporter_t *exp,
+		      flow_report_t *fr, u32 *buffer_indexp)
 {
   u32 bi0;
   vlib_buffer_t *b0;
@@ -82,7 +82,6 @@ send_template_packet (flow_report_main_t * frm,
   udp_header_t *udp;
   vlib_main_t *vm = frm->vlib_main;
   flow_report_stream_t *stream;
-  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
 
   ASSERT (buffer_indexp);
 
@@ -275,49 +274,55 @@ flow_report_process (vlib_main_t * vm,
       vlib_process_wait_for_event_or_clock (vm, wait_time);
       event_type = vlib_process_get_events (vm, &event_data);
       vec_reset_length (event_data);
-      ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
-
-      /* 5s delay by default, possibly reduced by template intervals */
-      wait_time = def_wait_time;
-
-      vec_foreach (fr, exp->reports)
+      ipfix_exporter_t *exp;
+      pool_foreach (exp, frm->exporters)
 	{
-	  f64 next_template;
-	  now = vlib_time_now (vm);
 
-	  /* Need to send a template packet? */
-	  send_template =
-	    now > (fr->last_template_sent + exp->template_interval);
-	  send_template += fr->last_template_sent == 0;
-	  template_bi = ~0;
-	  rv = 0;
+	  /* 5s delay by default, possibly reduced by template intervals */
+	  wait_time = def_wait_time;
 
-	  if (send_template)
-	    rv = send_template_packet (frm, fr, &template_bi);
-
-	  if (rv < 0)
-	    continue;
-
-	  /* decide if template should be sent sooner than current wait time */
-	  next_template =
-	    (fr->last_template_sent + exp->template_interval) - now;
-	  wait_time = clib_min (wait_time, next_template);
-
-	  nf = vlib_get_frame_to_node (vm, ip4_lookup_node_index);
-	  nf->n_vectors = 0;
-	  to_next = vlib_frame_vector_args (nf);
-
-	  if (template_bi != ~0)
+	  vec_foreach (fr, exp->reports)
 	    {
-	      to_next[0] = template_bi;
-	      to_next++;
-	      nf->n_vectors++;
-	    }
+	      f64 next_template;
+	      now = vlib_time_now (vm);
 
-	  nf = fr->flow_data_callback (frm, exp, fr, nf, to_next,
-				       ip4_lookup_node_index);
-	  if (nf)
-	    vlib_put_frame_to_node (vm, ip4_lookup_node_index, nf);
+	      /* Need to send a template packet? */
+	      send_template =
+		now > (fr->last_template_sent + exp->template_interval);
+	      send_template += fr->last_template_sent == 0;
+	      template_bi = ~0;
+	      rv = 0;
+
+	      if (send_template)
+		rv = send_template_packet (frm, exp, fr, &template_bi);
+
+	      if (rv < 0)
+		continue;
+
+	      /*
+	       * decide if template should be sent sooner than current wait
+	       * time
+	       */
+	      next_template =
+		(fr->last_template_sent + exp->template_interval) - now;
+	      wait_time = clib_min (wait_time, next_template);
+
+	      nf = vlib_get_frame_to_node (vm, ip4_lookup_node_index);
+	      nf->n_vectors = 0;
+	      to_next = vlib_frame_vector_args (nf);
+
+	      if (template_bi != ~0)
+		{
+		  to_next[0] = template_bi;
+		  to_next++;
+		  nf->n_vectors++;
+		}
+
+	      nf = fr->flow_data_callback (frm, exp, fr, nf, to_next,
+					   ip4_lookup_node_index);
+	      if (nf)
+		vlib_put_frame_to_node (vm, ip4_lookup_node_index, nf);
+	    }
 	}
     }
 
