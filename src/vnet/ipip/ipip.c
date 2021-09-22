@@ -148,7 +148,14 @@ ipip64_fixup (vlib_main_t * vm, const ip_adjacency_t * adj, vlib_buffer_t * b,
   ip4->length = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b));
   tunnel_encap_fixup_6o4 (flags, ((ip6_header_t *) (ip4 + 1)), ip4);
 
-  ip4->checksum = ip4_header_checksum (ip4);
+  if (PREDICT_FALSE (b->flags & VNET_BUFFER_F_GSO))
+    {
+      vnet_buffer2 (b)->outer_l3_hdr_offset = (u8 *) ip4 - b->data;
+      vnet_buffer_offload_flags_set (b, VNET_BUFFER_OFFLOAD_F_OUTER_IP_CKSUM |
+					  VNET_BUFFER_OFFLOAD_F_TNL_IPIP);
+    }
+  else
+    ip4->checksum = ip4_header_checksum (ip4);
 }
 
 static void
@@ -164,7 +171,14 @@ ipip44_fixup (vlib_main_t * vm, const ip_adjacency_t * adj, vlib_buffer_t * b,
   ip4->length = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b));
   tunnel_encap_fixup_4o4 (flags, ip4 + 1, ip4);
 
-  ip4->checksum = ip4_header_checksum (ip4);
+  if (PREDICT_FALSE (b->flags & VNET_BUFFER_F_GSO))
+    {
+      vnet_buffer2 (b)->outer_l3_hdr_offset = (u8 *) ip4 - b->data;
+      vnet_buffer_offload_flags_set (b, VNET_BUFFER_OFFLOAD_F_OUTER_IP_CKSUM |
+					  VNET_BUFFER_OFFLOAD_F_TNL_IPIP);
+    }
+  else
+    ip4->checksum = ip4_header_checksum (ip4);
 }
 
 static void
@@ -185,6 +199,12 @@ ipip46_fixup (vlib_main_t * vm, const ip_adjacency_t * adj, vlib_buffer_t * b,
     clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b) -
 			  sizeof (*ip6));
   tunnel_encap_fixup_4o6 (flags, b, ((ip4_header_t *) (ip6 + 1)), ip6);
+
+  if (PREDICT_FALSE (b->flags & VNET_BUFFER_F_GSO))
+    {
+      vnet_buffer2 (b)->outer_l3_hdr_offset = (u8 *) ip6 - b->data;
+      vnet_buffer_offload_flags_set (b, VNET_BUFFER_OFFLOAD_F_TNL_IPIP);
+    }
 }
 
 static void
@@ -205,6 +225,12 @@ ipip66_fixup (vlib_main_t * vm,
     clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b) -
 			  sizeof (*ip6));
   tunnel_encap_fixup_6o6 (flags, ip6 + 1, ip6);
+
+  if (PREDICT_FALSE (b->flags & VNET_BUFFER_F_GSO))
+    {
+      vnet_buffer2 (b)->outer_l3_hdr_offset = (u8 *) ip6 - b->data;
+      vnet_buffer_offload_flags_set (b, VNET_BUFFER_OFFLOAD_F_TNL_IPIP);
+    }
 }
 
 static void
@@ -226,6 +252,12 @@ ipipm6_fixup (vlib_main_t *vm, const ip_adjacency_t *adj, vlib_buffer_t *b,
     clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b) - sizeof (*ip6));
   tunnel_encap_fixup_mplso6 (flags, b, (mpls_unicast_header_t *) (ip6 + 1),
 			     ip6);
+
+  if (PREDICT_FALSE (b->flags & VNET_BUFFER_F_GSO))
+    {
+      vnet_buffer2 (b)->outer_l3_hdr_offset = (u8 *) ip6 - b->data;
+      vnet_buffer_offload_flags_set (b, VNET_BUFFER_OFFLOAD_F_TNL_IPIP);
+    }
 }
 
 static void
@@ -245,7 +277,15 @@ ipipm4_fixup (vlib_main_t *vm, const ip_adjacency_t *adj, vlib_buffer_t *b,
   ip4->length =
     clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b) - sizeof (*ip4));
   tunnel_encap_fixup_mplso4 (flags, (mpls_unicast_header_t *) (ip4 + 1), ip4);
-  ip4->checksum = ip4_header_checksum (ip4);
+
+  if (PREDICT_FALSE (b->flags & VNET_BUFFER_F_GSO))
+    {
+      vnet_buffer2 (b)->outer_l3_hdr_offset = (u8 *) ip4 - b->data;
+      vnet_buffer_offload_flags_set (b, VNET_BUFFER_OFFLOAD_F_OUTER_IP_CKSUM |
+					  VNET_BUFFER_OFFLOAD_F_TNL_IPIP);
+    }
+  else
+    ip4->checksum = ip4_header_checksum (ip4);
 }
 
 static void
