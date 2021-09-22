@@ -849,12 +849,20 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      hi->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO;
 	      xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_TSO;
 
-	      if (dm->conf->enable_outer_checksum_offload &&
-		  (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_VXLAN_TNL_TSO))
+	      if (dm->conf->enable_outer_checksum_offload)
 		{
-		  xd->port_conf.txmode.offloads |=
-		    DEV_TX_OFFLOAD_VXLAN_TNL_TSO;
-		  hi->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_VXLAN_TNL_GSO;
+		  if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_VXLAN_TNL_TSO)
+		    {
+		      xd->port_conf.txmode.offloads |=
+			DEV_TX_OFFLOAD_VXLAN_TNL_TSO;
+		      hi->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_VXLAN_TNL_GSO;
+		    }
+		  if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_IPIP_TNL_TSO)
+		    {
+		      xd->port_conf.txmode.offloads |=
+			DEV_TX_OFFLOAD_IPIP_TNL_TSO;
+		      hi->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_IPIP_TNL_GSO;
+		    }
 		}
 	    }
 	  else
