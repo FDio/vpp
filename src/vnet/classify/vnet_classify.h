@@ -162,6 +162,7 @@ typedef struct
   u32 entries_per_page;
   u32 skip_n_vectors;
   u32 match_n_vectors;
+  u16 load_mask;
 
   /* Index of next table to try */
   u32 next_table_index;
@@ -254,7 +255,33 @@ vnet_classify_hash_packet_inline (vnet_classify_table_t *t, const u8 *h)
   ASSERT (t);
   h += t->skip_n_vectors * 16;
 
-#if defined(CLIB_HAVE_VEC128)
+#if defined(CLIB_HAVE_VEC512) && defined(CLIB_HAVE_VEC512_MASK_LOAD_STORE)
+  u64x8 xor_sum_x8, *mask = (u64x8 *) t->mask;
+  u16 load_mask = t->load_mask;
+  u64x8u *data = (u64x8u *) h;
+
+  xor_sum_x8 = u64x8_mask_load_zero (data, load_mask) & mask[0];
+
+  if (PREDICT_FALSE (load_mask >> 8))
+    xor_sum_x8 ^= u64x8_mask_load_zero (data + 1, load_mask >> 8) & mask[1];
+
+  xor_sum_x8 ^= u64x8_align_right (xor_sum_x8, xor_sum_x8, 4);
+  xor_sum_x8 ^= u64x8_align_right (xor_sum_x8, xor_sum_x8, 2);
+  xor_sum = xor_sum_x8[0] ^ xor_sum_x8[1];
+#elif defined(CLIB_HAVE_VEC256) && defined(CLIB_HAVE_VEC256_MASK_LOAD_STORE)
+  u64x4 xor_sum_x4, *mask = (u64x4 *) t->mask;
+  u16 load_mask = t->load_mask;
+  u64x4u *data = (u64x4u *) h;
+
+  xor_sum_x4 = u64x4_mask_load_zero (data, load_mask) & mask[0];
+  xor_sum_x4 ^= u64x4_mask_load_zero (data + 1, load_mask >> 4) & mask[1];
+
+  if (PREDICT_FALSE (load_mask >> 8))
+    xor_sum_x4 ^= u64x4_mask_load_zero (data + 2, load_mask >> 8) & mask[2];
+
+  xor_sum_x4 ^= u64x4_align_right (xor_sum_x4, xor_sum_x4, 2);
+  xor_sum = xor_sum_x4[0] ^ xor_sum_x4[1];
+#elif defined(CLIB_HAVE_VEC128)
   u64x2 *mask = (u64x2 *) t->mask;
   u64x2u *data = (u64x2u *) h;
   u64x2 xor_sum_x2;
