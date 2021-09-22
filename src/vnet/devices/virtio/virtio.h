@@ -235,8 +235,8 @@ clib_error_t *virtio_vring_free_tx (vlib_main_t * vm, virtio_if_t * vif,
 void virtio_vring_set_rx_queues (vlib_main_t *vm, virtio_if_t *vif);
 extern void virtio_free_buffers (vlib_main_t * vm, virtio_vring_t * vring);
 extern void virtio_set_net_hdr_size (virtio_if_t * vif);
-extern void virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr,
-			 u32 type);
+extern void virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,
+			 virtio_if_type_t type);
 extern void virtio_set_packet_coalesce (virtio_if_t * vif);
 clib_error_t *virtio_set_packet_buffering (virtio_if_t * vif, u16 size);
 extern void virtio_pci_legacy_notify_queue (vlib_main_t * vm,
