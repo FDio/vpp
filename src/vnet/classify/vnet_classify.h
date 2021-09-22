@@ -421,9 +421,45 @@ vnet_classify_entry_t *vnet_classify_find_entry (vnet_classify_table_t * t,
 
 static_always_inline int
 vnet_classify_entry_is_equal (vnet_classify_entry_t *v, const u8 *d, u8 *m,
-			      u32 match_n_vectors)
+			      u32 match_n_vectors, u16 load_mask)
 {
-#ifdef CLIB_HAVE_VEC128
+#if defined(CLIB_HAVE_VEC512) && defined(CLIB_HAVE_VEC512_MASK_LOAD_STORE)
+  u64x8 r, *mask = (u64x8 *) m;
+  u64x8u *data = (u64x8u *) d;
+  u64x4 *key = (u64x4 *) v->key;
+
+  r = (u64x8_mask_load_zero (data, load_mask) & mask[0]) ^
+      u64x8_mask_load_zero (key, load_mask);
+  load_mask >>= 8;
+
+  if (PREDICT_FALSE (load_mask))
+    r |= (u64x8_mask_load_zero (data + 1, load_mask) & mask[1]) ^
+	 u64x8_mask_load_zero (key + 1, load_mask);
+
+  if (u64x8_is_all_zero (r))
+    return 1;
+
+#elif defined(CLIB_HAVE_VEC256) && defined(CLIB_HAVE_VEC256_MASK_LOAD_STORE)
+  u64x4 r, *mask = (u64x4 *) m;
+  u64x4u *data = (u64x4u *) d;
+  u64x4 *key = (u64x4 *) v->key;
+
+  r = (u64x4_mask_load_zero (data, load_mask) & mask[0]) ^
+      u64x4_mask_load_zero (key, load_mask);
+  load_mask >>= 4;
+
+  r |= (u64x4_mask_load_zero (data + 1, load_mask) & mask[1]) ^
+       u64x4_mask_load_zero (key + 1, load_mask);
+  load_mask >>= 4;
+
+  if (PREDICT_FALSE (load_mask))
+    r |= (u64x4_mask_load_zero (data + 2, load_mask) & mask[2]) ^
+	 u64x4_mask_load_zero (key + 2, load_mask);
+
+  if (u64x4_is_all_zero (r))
+    return 1;
+
+#elif defined(CLIB_HAVE_VEC128)
   u64x2u *data = (u64x2 *) d;
   u64x2 *key = (u64x2 *) v->key;
   u64x2 *mask = (u64x2 *) m;
@@ -494,6 +530,7 @@ vnet_classify_find_entry_inline (vnet_classify_table_t *t, const u8 *h,
   vnet_classify_entry_t *v;
   vnet_classify_bucket_t *b;
   u32 bucket_index, limit, pages, match_n_vectors = t->match_n_vectors;
+  u16 load_mask = t->load_mask;
   u8 *mask = (u8 *) t->mask;
   int i;
 
@@ -521,7 +558,8 @@ vnet_classify_find_entry_inline (vnet_classify_table_t *t, const u8 *h,
 
   for (i = 0; i < limit; i++)
     {
-      if (vnet_classify_entry_is_equal (v, h, mask, match_n_vectors))
+      if (vnet_classify_entry_is_equal (v, h, mask, match_n_vectors,
+					load_mask))
 	{
 	  if (PREDICT_TRUE (now))
 	    {
