@@ -426,7 +426,7 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
       goto err0;
     }
   rxq_num = clib_min (rxq_num, args->rxq_num);
-  txq_num = clib_min (txq_num, tm->n_vlib_mains);
+  txq_num = clib_max (txq_num, tm->n_vlib_mains);
 
   pool_get_zero (am->devices, ad);
 
