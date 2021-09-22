@@ -242,7 +242,7 @@ VNET_DEVICE_CLASS_TX_FN (af_xdp_device_class) (vlib_main_t * vm,
 
   if (PREDICT_FALSE (n != n_tx))
     {
-      vlib_buffer_free (vm, from + n, n_tx - n);
+      vlib_buffer_free (vm, from, n_tx - n);
       vlib_error_count (vm, node->node_index,
 			AF_XDP_TX_ERROR_NO_FREE_SLOTS, n_tx - n);
     }
