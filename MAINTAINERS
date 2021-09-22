@@ -188,6 +188,7 @@ VNET IPSec
 I:	ipsec
 M:	Neale Ranns <neale@graphiant.com>
 M:	Radu Nicolau <radu.nicolau@intel.com>
+M:	Fan Zhang <roy.fan.zhang@intel.com>
 F:	src/vnet/ipsec/
 
 VNET Crypto Infra
@@ -219,7 +220,13 @@ F:	src/plugins/crypto_openssl/
 Plugin - Crypto - ipsecmb
 I:	crypto-ipsecmb
 M:	Neale Ranns <neale@graphiant.com>
+M:      Fan Zhang <roy.fan.zhang@intel.com>
 F:	src/plugins/crypto_ipsecmb/
+
+Plugin - Crypto - sw_scheduler
+I:	crypto-sw-scheduler
+M:	Fan Zhang <roy.fan.zhang@intel.com>
+F:	src/plugs/crypto_sw_scheduler/
 
 VNET L2
 I:	l2
@@ -422,10 +429,11 @@ M:	Mohammed Hawari <mohammed@hawari.fr>
 F:	src/plugins/dpdk/
 
 Plugin - DPDK Crypto
-I:	dpdk-ipsec
+I:	dpdk-cryptodev
 M:	Sergio Gonzalez Monroy <sergio.gonzalez.monroy@outlook.com>
 M:	Radu Nicolau <radu.nicolau@intel.com>
-F:	src/plugins/dpdk/ipsec/
+M:	Fan Zhang <roy.fan.zhang@intel.com>
+F:	src/plugins/dpdk/cryptodev/
 
 Plugin - flowprobe
 I:	flowprobe
@@ -737,6 +745,7 @@ F:	src/plugins/cnat
 Plugin - Wireguard
 I:	wireguard
 M:	Artem Glazychev <artem.glazychev@xored.com>
+M:	Fan Zhang <roy.fan.zhang@intel.com>
 F:	src/plugins/wireguard
 
 VPP Config Tooling
