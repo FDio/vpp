@@ -20,6 +20,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ethernet/packet.h>
 #include <vnet/ip/ip_packet.h>
+#include <vnet/ip/ip_types.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/udp/udp_packet.h>
@@ -184,6 +185,11 @@ void vnet_stream_reset (ipfix_exporter_t *exp, u32 stream_index);
 
 int vnet_stream_change (ipfix_exporter_t *exp, u32 old_domain_id,
 			u16 old_src_port, u32 new_domain_id, u16 new_src_port);
+
+/*
+ * Search all the exporters for one that has a matching destination address.
+ */
+ipfix_exporter_t *vnet_ipfix_exporter_lookup (ip4_address_t *ipfix_collector);
 
 #endif /* __included_vnet_flow_report_h__ */
 
