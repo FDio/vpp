@@ -135,6 +135,7 @@ typedef struct
   u16 num_txqs;
   virtio_vring_t *rxq_vrings;
   virtio_vring_t *txq_vrings;
+  virtio_vring_t *cxq_vring;
   int gso_enabled;
   int csum_offload_enabled;
   union
@@ -192,7 +193,6 @@ typedef struct
     struct			/* native virtio */
     {
       void *bar;
-      virtio_vring_t *cxq_vring;
       pci_addr_t pci_addr;
       u32 bar_id;
       u32 notify_off_multiplier;
