@@ -142,8 +142,6 @@ extern flow_report_main_t flow_report_main;
 
 extern vlib_node_registration_t flow_report_process_node;
 
-int vnet_flow_report_enable_disable (u32 sw_if_index, u32 table_index,
-				     int enable_disable);
 typedef struct
 {
   vnet_flow_data_callback_t *flow_data_callback;
