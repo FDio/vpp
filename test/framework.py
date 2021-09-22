@@ -23,6 +23,7 @@ from traceback import format_exception
 from logging import FileHandler, DEBUG, Formatter
 from enum import Enum
 from abc import ABC, abstractmethod
+from struct import pack, unpack
 
 import scapy.compat
 from scapy.packet import Raw
@@ -1042,8 +1043,10 @@ class VppTestCase(CPUInterface, unittest.TestCase):
 
         :returns: string containing serialized data from packet info
         """
-        return "%d %d %d %d %d" % (info.index, info.src, info.dst,
-                                   info.ip, info.proto)
+
+        # retrieve payload, currently 18 bytes (4 x ints + 1 short)
+        return pack('iiiih', info.index, info.src,
+                    info.dst, info.ip, info.proto)
 
     @staticmethod
     def payload_to_info(payload, payload_field='load'):
@@ -1058,13 +1061,18 @@ class VppTestCase(CPUInterface, unittest.TestCase):
         :returns: _PacketInfo object containing de-serialized data from payload
 
         """
-        numbers = getattr(payload, payload_field).split()
+
+        # retrieve payload, currently 18 bytes (4 x ints + 1 short)
+        payload_b = getattr(payload, payload_field)[:18]
+
         info = _PacketInfo()
-        info.index = int(numbers[0])
-        info.src = int(numbers[1])
-        info.dst = int(numbers[2])
-        info.ip = int(numbers[3])
-        info.proto = int(numbers[4])
+        info.index, info.src, info.dst, info.ip, info.proto \
+            = unpack('iiiih', payload_b)
+
+        # some SRv6 TCs depend on get an exception if bad values are detected
+        if info.index > 0x4000:
+            raise ValueError('Index value is invalid')
+
         return info
 
     def get_next_packet_info(self, info):
