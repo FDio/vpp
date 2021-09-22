@@ -477,17 +477,18 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 			    out */
 	    }
 
-	  if (i < txq_num)
-	    {
-	      /* we created less txq than threads not an error but initialize lock for shared txq */
-	      for (i = 0; i < ad->txq_num; i++)
-		clib_spinlock_init (&vec_elt (ad->txqs, i).lock);
-	    }
 
 	  args->rv = 0;
 	  clib_error_free (args->error);
 	  break;
 	}
+    }
+
+  if (ad->txq_num < tm->n_vlib_mains)
+    {
+      /* initialize lock for shared txq */
+      for (i = 0; i < ad->txq_num; i++)
+	clib_spinlock_init (&vec_elt (ad->txqs, i).lock);
     }
 
   ad->dev_instance = ad - am->devices;
