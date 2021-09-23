@@ -150,7 +150,8 @@ vl_api_ipfix_exporter_dump_t_handler (vl_api_ipfix_exporter_dump_t * mp)
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_IPFIX_EXPORTER_DETAILS);
+  rmp->_vl_msg_id =
+    ntohs ((REPLY_MSG_ID_BASE) + VL_API_IPFIX_EXPORTER_DETAILS);
   rmp->context = mp->context;
 
   memcpy (&collector.ip4, &frm->ipfix_collector, sizeof (ip4_address_t));
