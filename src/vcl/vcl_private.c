@@ -167,16 +167,19 @@ vcl_worker_alloc_and_init ()
   if (vcl_get_worker_index () != ~0)
     return 0;
 
+  /* Grab lock before selecting mem thread index */
+  clib_spinlock_lock (&vcm->workers_lock);
+
   /* Use separate heap map entry for worker */
   clib_mem_set_thread_index ();
 
   if (pool_elts (vcm->workers) == vcm->cfg.max_workers)
     {
       VDBG (0, "max-workers %u limit reached", vcm->cfg.max_workers);
-      return 0;
+      wrk = 0;
+      goto done;
     }
 
-  clib_spinlock_lock (&vcm->workers_lock);
   wrk = vcl_worker_alloc ();
   vcl_set_worker_index (wrk->wrk_index);
   wrk->thread_id = pthread_self ();
@@ -203,9 +206,9 @@ vcl_worker_alloc_and_init ()
   vec_reset_length (wrk->mq_msg_vector);
   vec_validate (wrk->unhandled_evts_vector, 128);
   vec_reset_length (wrk->unhandled_evts_vector);
-  clib_spinlock_unlock (&vcm->workers_lock);
 
 done:
+  clib_spinlock_unlock (&vcm->workers_lock);
   return wrk;
 }
 
