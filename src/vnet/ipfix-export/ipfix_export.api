@@ -73,7 +73,6 @@ define ipfix_exporter_details
   bool udp_checksum;
 };
 
-
 /** Configure IPFIX exporter within the exporting process.
     The exporting process can contain multiple independent exporters,
     each of which have their own state.  The collector_address is the key
@@ -111,6 +110,41 @@ define ipfix_exporter_create_delete_reply {
   u32 context;
   i32 retval;
   u32 stat_index;
+};
+
+service {
+  rpc ipfix_all_exporter_get returns ipfix_all_exporter_get_reply
+    stream ipfix_all_exporter_details;
+};
+
+define ipfix_all_exporter_get
+{
+  u32 client_index;
+  u32 context;
+  u32 cursor;
+};
+
+define ipfix_all_exporter_get_reply
+{
+  u32 context;
+  i32 retval;
+  u32 cursor;
+};
+
+/** \brief Ipfix meter details in response to the get_meters command
+    @param context - sender context, to match reply w/ request
+    @param name The name of the ipfix meter
+*/
+define ipfix_all_exporter_details
+{
+  u32 context;
+  vl_api_address_t collector_address;
+  u16 collector_port;
+  vl_api_address_t src_address;
+  u32 vrf_id;
+  u32 path_mtu;
+  u32 template_interval;
+  bool udp_checksum;
 };
 
 /** \brief IPFIX classify stream configure request

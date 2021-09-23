@@ -250,6 +250,57 @@ vl_api_ipfix_exporter_dump_t_handler (vl_api_ipfix_exporter_dump_t * mp)
 }
 
 static void
+ipfix_all_fill_details (vl_api_ipfix_all_exporter_details_t *rmp,
+			ipfix_exporter_t *exp)
+{
+  ip4_main_t *im = &ip4_main;
+  ip46_address_t collector = { .as_u64[0] = 0, .as_u64[1] = 0 };
+  ip46_address_t src = { .as_u64[0] = 0, .as_u64[1] = 0 };
+  u32 vrf_id;
+
+  memcpy (&collector.ip4, &exp->ipfix_collector, sizeof (ip4_address_t));
+  ip_address_encode (&collector, IP46_TYPE_IP4, &rmp->collector_address);
+
+  rmp->collector_port = htons (exp->collector_port);
+
+  memcpy (&src.ip4, &exp->src_address, sizeof (ip4_address_t));
+  ip_address_encode (&src, IP46_TYPE_IP4, &rmp->src_address);
+
+  if (exp->fib_index == ~0)
+    vrf_id = ~0;
+  else
+    vrf_id = im->fibs[exp->fib_index].ft_table_id;
+  rmp->vrf_id = htonl (vrf_id);
+  rmp->path_mtu = htonl (exp->path_mtu);
+  rmp->template_interval = htonl (exp->template_interval);
+  rmp->udp_checksum = (exp->udp_checksum != 0);
+}
+
+static void
+ipfix_all_exporter_details (flow_report_main_t *frm, u32 index,
+			    vl_api_registration_t *rp, u32 context)
+{
+  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, index);
+
+  vl_api_ipfix_all_exporter_details_t *rmp;
+
+  REPLY_MACRO_DETAILS4 (VL_API_IPFIX_ALL_EXPORTER_DETAILS, rp, context,
+			({ ipfix_all_fill_details (rmp, exp); }));
+}
+
+static void
+vl_api_ipfix_all_exporter_get_t_handler (vl_api_ipfix_all_exporter_get_t *mp)
+{
+  flow_report_main_t *frm = &flow_report_main;
+  vl_api_ipfix_all_exporter_get_reply_t *rmp;
+  int rv = 0;
+
+  REPLY_AND_DETAILS_MACRO (
+    VL_API_IPFIX_ALL_EXPORTER_GET_REPLY, frm->exporters,
+    ({ ipfix_all_exporter_details (frm, cursor, rp, mp->context); }));
+}
+
+static void
   vl_api_set_ipfix_classify_stream_t_handler
   (vl_api_set_ipfix_classify_stream_t * mp)
 {
