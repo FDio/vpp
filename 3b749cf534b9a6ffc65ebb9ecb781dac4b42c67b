@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bfe7a30e_a38a339e",
+        "filename": "src/vlibmemory/socket_api.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 500,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-09-23T02:19:24Z",
+      "side": 1,
+      "message": "Do we actually hit this?",
+      "range": {
+        "startLine": 498,
+        "startChar": 0,
+        "endLine": 500,
+        "endChar": 5
+      },
+      "revId": "3b749cf534b9a6ffc65ebb9ecb781dac4b42c67b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9c5a2e87_c416a0a9",
+        "filename": "src/vlibmemory/vlib_api_cli.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 791,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-09-23T02:19:24Z",
+      "side": 1,
+      "message": "What types of sizes do we expect for api traces?",
+      "range": {
+        "startLine": 791,
+        "startChar": 3,
+        "endLine": 791,
+        "endChar": 32
+      },
+      "revId": "3b749cf534b9a6ffc65ebb9ecb781dac4b42c67b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
