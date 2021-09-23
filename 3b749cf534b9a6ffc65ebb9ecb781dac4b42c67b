@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "fb14adac_e2a0f3be",
+        "filename": "src/vlibmemory/socket_api.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 500,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2021-09-23T09:39:15Z",
+      "side": 1,
+      "message": "Yes, it is. The assert condition is basically exposed to the outside. Generally API handlers should be transport agnostic, unfortunately sockclnt and memclnt APIs are \"meta\" messages which handlers need access transport specific data and the undelying infra does not handle such cases.",
+      "parentUuid": "bfe7a30e_a38a339e",
+      "range": {
+        "startLine": 498,
+        "startChar": 0,
+        "endLine": 500,
+        "endChar": 5
+      },
+      "revId": "3b749cf534b9a6ffc65ebb9ecb781dac4b42c67b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "9c5a2e87_c416a0a9",
         "filename": "src/vlibmemory/vlib_api_cli.c",
         "patchSetId": 18
