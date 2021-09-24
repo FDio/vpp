@@ -69,6 +69,30 @@
       "revId": "3b749cf534b9a6ffc65ebb9ecb781dac4b42c67b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c0361c5a_878e5a86",
+        "filename": "src/vlibmemory/vlib_api_cli.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 791,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2021-09-24T08:44:05Z",
+      "side": 1,
+      "message": "replaced by vec_add",
+      "parentUuid": "9c5a2e87_c416a0a9",
+      "range": {
+        "startLine": 791,
+        "startChar": 3,
+        "endLine": 791,
+        "endChar": 32
+      },
+      "revId": "3b749cf534b9a6ffc65ebb9ecb781dac4b42c67b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
