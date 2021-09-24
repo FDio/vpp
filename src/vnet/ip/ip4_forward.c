@@ -655,7 +655,10 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
 
   error = vnet_sw_interface_supports_addressing (vnm, sw_if_index);
   if (error)
-    return error;
+    {
+      vnm->api_errno = VNET_API_ERROR_UNSUPPORTED;
+      return error;
+    }
 
   ip4_addr_fib_init (&ip4_af, address,
 		     vec_elt (im->fib_index_by_sw_if_index, sw_if_index));

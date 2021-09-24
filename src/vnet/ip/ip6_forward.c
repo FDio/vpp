@@ -310,7 +310,10 @@ ip6_add_del_interface_address (vlib_main_t * vm,
 
   error = vnet_sw_interface_supports_addressing (vnm, sw_if_index);
   if (error)
-    return error;
+    {
+      vnm->api_errno = VNET_API_ERROR_UNSUPPORTED;
+      return error;
+    }
 
   if (ip6_address_is_link_local_unicast (address))
     {
