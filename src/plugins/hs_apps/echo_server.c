@@ -468,18 +468,8 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u8 server_uri_set = 0, *appns_id = 0;
   u64 tmp, appns_flags = 0, appns_secret = 0;
   char *default_uri = "tcp://0.0.0.0/1234";
-  int rv, is_stop = 0, barrier_acq_needed = 0;
+  int rv, is_stop = 0;
   clib_error_t *error = 0;
-
-  /* The request came over the binary api and the inband cli handler
-   * is not mp_safe. Drop the barrier to make sure the workers are not
-   * blocked.
-   */
-  if (vlib_num_workers () && vlib_thread_is_main_w_barrier ())
-    {
-      barrier_acq_needed = 1;
-      vlib_worker_thread_barrier_release (vm);
-    }
 
   esm->no_echo = 0;
   esm->fifo_size = 64 << 10;
@@ -583,9 +573,6 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
 cleanup:
   vec_free (appns_id);
-
-  if (barrier_acq_needed)
-    vlib_worker_thread_barrier_sync (vm);
 
   return error;
 }
