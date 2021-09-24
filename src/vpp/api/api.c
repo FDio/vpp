@@ -395,6 +395,230 @@ get_unformat_vnet_sw_interface (void)
 }
 
 /*
+ * VPP binary client built into VPP.
+ * The "binary-api-json <name> <JSON object>"
+ * takes a API name and a JSON object as argument and returns one or more JSON
+ * objects.
+ */
+u32 client_index = ~0;
+svm_queue_t *vl_input_queue;
+static void
+maybe_register_api_client (void)
+{
+  vl_api_registration_t **regpp;
+  vl_api_registration_t *regp;
+  void *oldheap;
+  api_main_t *am = vlibapi_get_main ();
+
+  if (client_index != ~0)
+    return;
+
+  pool_get (am->vl_clients, regpp);
+
+  oldheap = vl_msg_push_heap ();
+
+  *regpp = clib_mem_alloc (sizeof (vl_api_registration_t));
+
+  regp = *regpp;
+  clib_memset (regp, 0, sizeof (*regp));
+  regp->registration_type = REGISTRATION_TYPE_SHMEM;
+  regp->vl_api_registration_pool_index = regpp - am->vl_clients;
+  regp->vlib_rp = am->vlib_rp;
+  regp->shmem_hdr = am->shmem_hdr;
+  regp->nokeepalive = 1;
+
+  /* Loopback connection */
+  /* TODO: This will fail if VPP writes more than queue depth messages in a
+   * single API call */
+  vl_input_queue = svm_queue_alloc_and_init (1024, sizeof (uword), getpid ());
+
+  regp->vl_input_queue = vl_input_queue;
+
+  regp->name = format (0, "%s", "vpp-internal");
+  vec_add1 (regp->name, 0);
+
+  vl_msg_pop_heap (oldheap);
+
+  client_index = vl_msg_api_handle_from_index_and_epoch (
+    regp->vl_api_registration_pool_index, am->shmem_hdr->application_restarts);
+}
+
+typedef VL_API_PACKED (struct _vl_api_header {
+  u16 _vl_msg_id;
+  u32 client_index;
+}) vl_api_header_t;
+
+static clib_error_t *
+print_template (vlib_main_t *vm, u16 id)
+{
+  api_main_t *am = vlibapi_get_main ();
+  cJSON *(*fp) (void *);
+  fp = (void *) am->msg_tojson_handlers[id];
+  if (!fp)
+    goto error;
+
+  void *scratch = clib_mem_alloc (2048);
+  if (!scratch)
+    goto error;
+
+  clib_memset (scratch, 0, 2048);
+  cJSON *t = fp (scratch);
+  if (!t)
+    goto error;
+  clib_mem_free (scratch);
+  char *output = cJSON_Print (t);
+  if (!output)
+    goto error;
+
+  cJSON_Delete (t);
+  vlib_cli_output (vm, "%s\n", output);
+  cJSON_free (output);
+
+  return 0;
+
+error:
+  return clib_error_return (0, "error printing template for\n");
+}
+
+static clib_error_t *
+api_command_json_fn (vlib_main_t *vm, unformat_input_t *input,
+		     vlib_cli_command_t *cmd)
+{
+  uword c;
+  u8 *cmdp, *argsp, *this_cmd;
+  uword *p;
+  u8 *inbuf = 0;
+  maybe_register_api_client ();
+
+  while (((c = unformat_get_input (input)) != '\n') &&
+	 (c != UNFORMAT_END_OF_INPUT))
+    vec_add1 (inbuf, c);
+
+  /* Null-terminate the command */
+  vec_add1 (inbuf, 0);
+
+  /* In case no args given */
+  vec_add1 (inbuf, 0);
+
+  /* Split input into cmd + args */
+  this_cmd = cmdp = inbuf;
+
+  /* Skip leading whitespace */
+  while (cmdp < (this_cmd + vec_len (this_cmd)))
+    {
+      if (*cmdp == ' ' || *cmdp == '\t' || *cmdp == '\n')
+	{
+	  cmdp++;
+	}
+      else
+	break;
+    }
+
+  argsp = cmdp;
+
+  /* Advance past the command */
+  while (argsp < (this_cmd + vec_len (this_cmd)))
+    {
+      if (*argsp != ' ' && *argsp != '\t' && *argsp != '\n' && *argsp != 0)
+	{
+	  argsp++;
+	}
+      else
+	break;
+    }
+  /* NULL terminate the command */
+  *argsp++ = 0;
+
+  /* No arguments? Ensure that argsp points to a proper (empty) string */
+  if (argsp == (this_cmd + vec_len (this_cmd) - 1))
+    argsp[0] = 0;
+  else
+    while (argsp < (this_cmd + vec_len (this_cmd)))
+      {
+	if (*argsp == ' ' || *argsp == '\t' || *argsp == '\n')
+	  {
+	    argsp++;
+	  }
+	else
+	  break;
+      }
+
+  /* Blank input line? */
+  if (*cmdp == 0)
+    return 0;
+
+  api_main_t *am = vlibapi_get_main ();
+  p = hash_get_mem (am->msg_id_by_name, cmdp);
+  if (p == 0)
+    {
+      return clib_error_return (0, "'%s': function not found\n", cmdp);
+    }
+  u16 id = p[0];
+
+  /* Print help string */
+  if (argsp[0] == '?')
+    {
+      print_template (vm, id);
+      return 0;
+    }
+
+  cJSON *o = cJSON_Parse ((const char *) argsp);
+  if (o == 0)
+    {
+      return clib_error_return (0, "'%s': does not parse as JSON\n", argsp);
+    }
+
+  vl_api_header_t *(*fromjsonfp) (cJSON *, int *len);
+  fromjsonfp = (void *) am->msg_fromjson_handlers[id];
+
+  int len = 0;
+
+  vl_api_header_t *mp = fromjsonfp (o, &len);
+  if (mp == 0)
+    {
+      return clib_error_return (
+	0, "'%s': JSON to binary API conversion failed\n", cmdp);
+    }
+  mp->client_index = client_index;
+
+  if (!am->is_autoendian[id])
+    (*am->msg_endian_handlers[id]) (mp);
+  (*am->msg_handlers[id]) (mp);
+  clib_mem_free (mp);
+
+  void *msg;
+  cJSON *(*tojsonfp) (void *);
+  while (!svm_queue_sub (vl_input_queue, (u8 *) &msg, SVM_Q_NOWAIT, 0))
+    {
+      VL_MSG_API_UNPOISON ((void *) msg);
+      u16 id = ntohs (*((u16 *) msg));
+      tojsonfp = (void *) am->msg_tojson_handlers[id];
+      if (tojsonfp == 0)
+	goto done;
+      (*am->msg_endian_handlers[id]) (msg);
+      cJSON *o = tojsonfp (msg);
+      if (o == 0)
+	goto done;
+      char *output = cJSON_Print (o);
+      cJSON_Delete (o);
+      vlib_cli_output (vm, "%s\n", output);
+      cJSON_free (output);
+    done:
+      vl_msg_api_free (msg);
+    }
+
+  vec_free (inbuf);
+  return 0;
+}
+
+VLIB_CLI_COMMAND (api_command_json, static) = {
+  .path = "binary-api-json",
+  .short_help = "binary-api-json [help] <name> [<args>]",
+  .function = api_command_json_fn,
+  .is_mp_safe = 1,
+};
+
+/*
  * fd.io coding-style-patch-verification: ON
  *
  * Local Variables:
