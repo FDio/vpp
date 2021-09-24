@@ -75,8 +75,9 @@ class TestAdl(VppTestCase):
                 "ip6 table 1\n",
                 "ip route add 2001:db01::1/128 via drop\n",
                 "ip route add table 1 2001:db01::2/128 via local\n",
-                "bin adl_interface_enable_disable loop0\n",
-                "bin adl_allowlist_enable_disable loop0 fib-id 1 ip4 ip6\n",
+                "binary-api adl_interface_enable_disable loop0\n",
+                "binary-api adl_allowlist_enable_disable "
+                "loop0 fib-id 1 ip4 ip6\n",
                 "pa en\n"]
 
         for cmd in cmds:

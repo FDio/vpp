@@ -578,8 +578,9 @@ vl_mem_api_dead_client_scan (api_main_t * am, vl_shmem_hdr_t * shm, f64 now)
 
   /* *INDENT-OFF* */
   pool_foreach (regpp, am->vl_clients)  {
-      vl_mem_send_client_keepalive_w_reg (am, now, regpp, &dead_indices,
-                                          &confused_indices);
+      if ((*regpp)->nokeepalive == 0)
+	vl_mem_send_client_keepalive_w_reg (am, now, regpp, &dead_indices,
+					    &confused_indices);
   }
   /* *INDENT-ON* */
 

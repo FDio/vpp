@@ -39,34 +39,35 @@ class TestMactime(VppTestCase):
                 "mactime enable-disable loop0",
                 "mactime enable-disable loop0 disable",
                 "mactime enable-disable sw_if_index 9999",
-                "bin mactime_enable_disable loop0",
-                "bin mactime_enable_disable loop0 disable",
-                "bin mactime_enable_disable sw_if_index 1",
+                "binary-api mactime_enable_disable loop0",
+                "binary-api mactime_enable_disable loop0 disable",
+                "binary-api mactime_enable_disable sw_if_index 1",
                 "set interface state loop0 up",
                 "clear mactime",
                 "set ip neighbor loop0 192.168.1.1 00:d0:2d:5e:86:85",
-                "bin mactime_add_del_range name sallow "
+                "binary-api mactime_add_del_range name sallow "
                 "mac 00:d0:2d:5e:86:85 allow-static del",
-                "bin mactime_add_del_range name sallow "
+                "binary-api mactime_add_del_range name sallow "
                 "mac 00:d0:2d:5e:86:85 allow-static",
-                "bin mactime_add_del_range name sallow "
+                "binary-api mactime_add_del_range name sallow "
                 "mac 00:d0:2d:5e:86:85 allow-static del",
-                "bin mactime_add_del_range name sallow "
+                "binary-api mactime_add_del_range name sallow "
                 "mac 00:d0:2d:5e:86:85 allow-static",
-                "bin mactime_add_del_range name sblock "
+                "binary-api mactime_add_del_range name sblock "
                 "mac 01:00:5e:7f:ff:fa drop-static",
-                "bin mactime_add_del_range name ddrop "
+                "binary-api mactime_add_del_range name ddrop "
                 "mac c8:bc:c8:5a:ba:f3 drop-range Sun - Sat "
                 "00:00 - 23:59",
-                "bin mactime_add_del_range name dallow "
+                "binary-api mactime_add_del_range name dallow "
                 "mac c8:bc:c8:5a:ba:f4 allow-range Sun - Sat "
                 "00:00 - 23:59",
-                "bin mactime_add_del_range name multi "
+                "binary-api mactime_add_del_range name multi "
                 "mac c8:bc:c8:f0:f0:f0 allow-range Sun - Mon "
                 "00:00 - 23:59 Tue - Sat 00:00 - 23:59",
-                "bin mactime_add_del_range bogus",
-                "bin mactime_add_del_range mac 01:00:5e:7f:f0:f0 allow-static",
-                "bin mactime_add_del_range "
+                "binary-api mactime_add_del_range bogus",
+                "binary-api mactime_add_del_range mac 01:00:5e:7f:f0:f0 "
+                "allow-static",
+                "binary-api mactime_add_del_range "
                 "name tooloooooooooooooooooooooooooooooooooooooooooooooooo"
                 "nnnnnnnnnnnnnnnnnnnnnnnnnnnng mac 00:00:de:ad:be:ef "
                 "allow-static",
