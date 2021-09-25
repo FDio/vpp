@@ -1056,6 +1056,7 @@ vlib_worker_thread_node_refork (void)
 
   vec_free (old_rt);
 
+  vec_free (nm_clone->processes);
   nm_clone->processes = vec_dup_aligned (nm->processes,
 					 CLIB_CACHE_LINE_BYTES);
   nm_clone->node_by_error = nm->node_by_error;
