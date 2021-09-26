@@ -608,7 +608,7 @@ u32
 ip_table_get_unused_id (fib_protocol_t fproto)
 {
   int i, j;
-  u32 seed = random_default_seed ();
+  static u32 seed = 0;
   /* limit to 1M tries */
   for (j = 0; j < 1 << 10; j++)
     {
