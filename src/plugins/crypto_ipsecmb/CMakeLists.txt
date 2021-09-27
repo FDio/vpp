@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+include (CheckFunctionExists)
+
 if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
   return()
 endif()
@@ -32,6 +34,14 @@ if(IPSECMB_INCLUDE_DIR AND IPSECMB_LIB)
 		LINK_FLAGS
 		${IPSECMB_LINK_FLAGS}
 		)
+
+	check_function_exists(ipsecmb_ops_chacha_poly HAVE_IPSECMB_CHACHA)
+
+	if (HAVE_IPSECMB_CHACHA)
+		add_definitions(-DHAVE_IPSECMB_CHACHA)
+	else()
+		message(STATUS "Intel IPSecMB CHACHA support not found. Disabled")
+	endif()
 
 	target_compile_options(crypto_ipsecmb_plugin PRIVATE "-march=silvermont" "-maes")
 	message(STATUS "Intel IPSecMB found: ${IPSECMB_INCLUDE_DIR}")
