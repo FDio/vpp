@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "14547f22_100793cf",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 429,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-09-27T12:16:09Z",
+      "side": 1,
+      "message": "I do not think this is correct: we want to create at most #threads (main + workers) TX queues (because vpp uses at most 1 TX queue per thread at the moment), so we really want the min between what is supported (txq_num) and the #threads.",
+      "revId": "614e1cbc8807118ea83d4721e6d7765e5f43791f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "abe37e1f_9b471330",
+        "filename": "src/plugins/af_xdp/output.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 245,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-09-27T12:16:09Z",
+      "side": 1,
+      "message": "good catch, thx! Could you submit it as a separate change of its own? It would be easier to backport.\nPlus while you\u0027re at it, I think it would be less confusing to keep this line unchanged but update line 234 and 236 keeping \u0027from\u0027 unchanged. Eg. removing line 236 and changing line 234 to\n  n_enq \u003d af_xdp_device_output_tx_try (vm, node, ad, txq, n_tx - n, from + n);",
+      "revId": "614e1cbc8807118ea83d4721e6d7765e5f43791f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
