@@ -2596,6 +2596,18 @@ class TestIpsecItf4(TemplateIpsec,
         p = self.ipv4_params
 
         self.config_network(p)
+        r_all = [AclRule(True,
+                         src_prefix="::/0",
+                         dst_prefix="::/0",
+                         proto=0),
+                 AclRule(True,
+                         src_prefix="0.0.0.0/0",
+                         dst_prefix="0.0.0.0/0",
+                         proto=0)]
+        a = VppAcl(self, r_all).add_vpp_config()
+
+        VppAclInterface(self, self.pg0.sw_if_index, [a]).add_vpp_config()
+        VppAclInterface(self, p.tun_if.sw_if_index, [a]).add_vpp_config()
         self.config_sa_tun(p,
                            self.pg0.local_ip4,
                            self.pg0.remote_ip4)
@@ -2886,7 +2898,7 @@ class TestIpsecItf6(TemplateIpsec,
     def tearDown(self):
         super(TestIpsecItf6, self).tearDown()
 
-    def test_tun_44(self):
+    def test_tun_66(self):
         """IPSEC interface IPv6"""
 
         tf = VppEnum.vl_api_tunnel_encap_decap_flags_t
@@ -2898,6 +2910,19 @@ class TestIpsecItf6(TemplateIpsec,
         p.tun_flags = tf.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_HOP_LIMIT
 
         self.config_network(p)
+
+        r_all = [AclRule(True,
+                         src_prefix="::/0",
+                         dst_prefix="::/0",
+                         proto=0),
+                 AclRule(True,
+                         src_prefix="0.0.0.0/0",
+                         dst_prefix="0.0.0.0/0",
+                         proto=0)]
+        a = VppAcl(self, r_all).add_vpp_config()
+
+        VppAclInterface(self, self.pg0.sw_if_index, [a]).add_vpp_config()
+        VppAclInterface(self, p.tun_if.sw_if_index, [a]).add_vpp_config()
         self.config_sa_tun(p,
                            self.pg0.local_ip6,
                            self.pg0.remote_ip6)
@@ -2915,12 +2940,18 @@ class TestIpsecItf6(TemplateIpsec,
         self.assertEqual(p.tun_if.get_rx_stats(), 3*n_pkts)
         self.assertEqual(p.tun_if.get_tx_stats(), 2*n_pkts)
 
+        self.unconfig_protect(p)
+        self.config_protect(p)
+        self.verify_tun_66(p, count=n_pkts)
+        self.assertEqual(p.tun_if.get_rx_stats(), 4*n_pkts)
+        self.assertEqual(p.tun_if.get_tx_stats(), 3*n_pkts)
+
         # it's a v4 packet when its encrypted
         self.tun6_encrypt_node_name = "esp4-encrypt-tun"
 
         self.verify_tun_46(p, count=n_pkts)
-        self.assertEqual(p.tun_if.get_rx_stats(), 4*n_pkts)
-        self.assertEqual(p.tun_if.get_tx_stats(), 3*n_pkts)
+        self.assertEqual(p.tun_if.get_rx_stats(), 5*n_pkts)
+        self.assertEqual(p.tun_if.get_tx_stats(), 4*n_pkts)
 
         self.tun6_encrypt_node_name = "esp6-encrypt-tun"
 
@@ -2952,9 +2983,46 @@ class TestIpsecItf6(TemplateIpsec,
         self.assertEqual(p.tun_if.get_rx_stats(), n_pkts)
         self.assertEqual(p.tun_if.get_tx_stats(), n_pkts)
 
-        # teardown
-        self.unconfig_protect(np)
+        # 3 phase rekey
+        #  1) add two input SAs [old, new]
+        #  2) swap output SA to [new]
+        #  3) use only [new] input SA
+        np3 = copy.copy(np)
+        np3.crypt_key = b'Z' + p.crypt_key[1:]
+        np3.scapy_tun_spi += 100
+        np3.scapy_tun_sa_id += 1
+        np3.vpp_tun_spi += 100
+        np3.vpp_tun_sa_id += 1
+        np3.tun_if.local_spi = p.vpp_tun_spi
+        np3.tun_if.remote_spi = p.scapy_tun_spi
+
+        self.config_sa_tun(np3,
+                           self.pg0.local_ip6,
+                           self.pg0.remote_ip6)
+
+        # step 1;
+        p.tun_protect.update_vpp_config(np.tun_sa_out,
+                                        [np.tun_sa_in, np3.tun_sa_in])
+        self.verify_tun_66(np, np, count=127)
+        self.verify_tun_66(np3, np, count=127)
+
+        # step 2;
+        p.tun_protect.update_vpp_config(np3.tun_sa_out,
+                                        [np.tun_sa_in, np3.tun_sa_in])
+        self.verify_tun_66(np, np3, count=127)
+        self.verify_tun_66(np3, np3, count=127)
+
+        # step 1;
+        p.tun_protect.update_vpp_config(np3.tun_sa_out,
+                                        [np3.tun_sa_in])
+        self.verify_tun_66(np3, np3, count=127)
+        self.verify_drop_tun_66(np, count=127)
+
         self.unconfig_sa(np)
+
+        # teardown
+        self.unconfig_protect(np3)
+        self.unconfig_sa(np3)
         self.unconfig_network(p)
 
     def test_tun_66_police(self):
