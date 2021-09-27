@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f8956681_212467fe",
+        "filename": "src/vnet/fib/fib_attached_export.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 252,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-09-27T07:15:02Z",
+      "side": 1,
+      "message": "pool_get_zero is preferred over pool_get + memset.",
+      "revId": "a2f2a64d2e248f62e4cd87402046b396a40e1638",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
