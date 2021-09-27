@@ -457,6 +457,14 @@ vl_mem_api_init (const char *region_name)
   foreach_vlib_api_msg;
 #undef _
 
+#define vl_msg_name_crc_list
+#include <vlibmemory/memclnt.api.h>
+#undef vl_msg_name_crc_list
+
+#define _(id, n, crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
+  foreach_vl_msg_name_crc_memclnt;
+#undef _
+
   /*
    * special-case freeing of memclnt_delete messages, so we can
    * simply munmap pairwise / private API segments...

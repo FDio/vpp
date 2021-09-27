@@ -30,7 +30,8 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 
-#include <vpp/api/vpe_msg_enum.h>
+#include <vlibmemory/memclnt.api_enum.h>
+#include <vlibmemory/memclnt.api_types.h>
 
 #include "vppapiclient.h"
 
@@ -47,14 +48,6 @@ bool rx_thread_done;
  *  vac_write() -> suspends RX thread
  *  vac_read() -> resumes RX thread
  */
-
-#define vl_typedefs             /* define message structures */
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_typedefs
-
-#define vl_endianfun             /* define message structures */
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_endianfun
 
 typedef struct {
   u8 connected_to_vlib;
@@ -497,10 +490,11 @@ vac_read (char **p, int *l, u16 timeout)
 /*
  * XXX: Makes the assumption that client_index is the first member
  */
-typedef VL_API_PACKED(struct _vl_api_header {
+typedef struct _vl_api_header
+{
   u16 _vl_msg_id;
   u32 client_index;
-}) vl_api_header_t;
+} __attribute__ ((packed)) vl_api_header_t;
 
 static u32
 vac_client_index (void)

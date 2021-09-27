@@ -25,7 +25,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vpp/app/version.h>
 #include <vpp/vnet/config.h>
-#include <vpp/api/vpe_msg_enum.h>
+#include <vlibmemory/memclnt.api_enum.h> /* To get the last static message id */
 #include <limits.h>
 
 /*
@@ -323,7 +323,7 @@ defaulted:
   pthread_setaffinity_np (pthread_self (), sizeof (cpu_set_t), &cpuset);
 
   /* Set up the plugin message ID allocator right now... */
-  vl_msg_api_set_first_available_msg_id (VL_MSG_FIRST_AVAILABLE);
+  vl_msg_api_set_first_available_msg_id (VL_MSG_MEMCLNT_LAST + 1);
 
   /* destroy temporary heap and create main one */
   clib_mem_destroy ();

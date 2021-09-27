@@ -58,28 +58,14 @@
 
 #include <vnet/ip/format.h>
 
-#include <vpp/api/vpe_msg_enum.h>
 #include <vpp/api/types.h>
-#include <vnet/classify/classify.api_enum.h>
-#include <vnet/ip/ip.api_enum.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_typedefs
-#define vl_endianfun		/* define message structures */
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_endianfun
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_printfun
+#include <vpp/api/vpe.api_enum.h>
+#include <vpp/api/vpe.api_types.h>
+
+static u16 msg_id_base;
+#define REPLY_MSG_ID_BASE msg_id_base
 #include <vlibapi/api_helper_macros.h>
-
-#define foreach_vpe_api_msg                                                   \
-  _ (SHOW_VERSION, show_version)                                              \
-  _ (SHOW_VPE_SYSTEM_TIME, show_vpe_system_time)                              \
-  _ (LOG_DUMP, log_dump)
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -165,7 +151,7 @@ show_log_details (vl_api_registration_t * reg, u32 context,
 
   rmp = vl_msg_api_alloc (msg_size);
   clib_memset (rmp, 0, msg_size);
-  rmp->_vl_msg_id = ntohs (VL_API_LOG_DETAILS);
+  rmp->_vl_msg_id = ntohs (VL_API_LOG_DETAILS + msg_id_base);
 
   rmp->context = context;
   rmp->timestamp = clib_host_to_net_f64 (timestamp);
@@ -244,8 +230,6 @@ static void vl_api_##nn##_t_handler (                                   \
     vl_msg_api_free (mp);                                               \
 }
 
-static void setup_message_id_table (api_main_t * am);
-
 /*
  * vpe_api_hookup
  * Add vpe's API message handlers to the table.
@@ -253,37 +237,14 @@ static void setup_message_id_table (api_main_t * am);
  * added the client registration handlers.
  * See .../open-repo/vlib/memclnt_vlib.c:memclnt_process()
  */
+#include <vpp/api/vpe.api.c>
 static clib_error_t *
 vpe_api_hookup (vlib_main_t * vm)
 {
-  api_main_t *am = vlibapi_get_main ();
-
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_api_msg;
-#undef _
-
-  /*
-   * Trace space for classifier mask+match
-   */
-  am->api_trace_cfg[VL_API_CLASSIFY_ADD_DEL_TABLE].size += 5 * sizeof (u32x4);
-  am->api_trace_cfg[VL_API_CLASSIFY_ADD_DEL_SESSION].size +=
-    5 * sizeof (u32x4);
-
-  /*
-   * Thread-safe API messages
-   */
-  am->is_mp_safe[VL_API_IP_ROUTE_ADD_DEL] = 1;
-
   /*
    * Set up the (msg_name, crc, message-id) table
    */
-  setup_message_id_table (am);
+  msg_id_base = setup_message_id_table ();
 
   return 0;
 }
@@ -432,25 +393,6 @@ get_unformat_vnet_sw_interface (void)
 {
   return (void *) &unformat_vnet_sw_interface;
 }
-
-#define vl_msg_name_crc_list
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_memclnt;
-  foreach_vl_msg_name_crc_vpe;
-#undef _
-
-#define vl_api_version_tuple(n,mj, mi, p) \
-  vl_msg_api_add_version (am, #n, mj, mi, p);
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_api_version_tuple
-}
-
 
 /*
  * fd.io coding-style-patch-verification: ON

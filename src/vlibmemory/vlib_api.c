@@ -22,7 +22,7 @@
 #include <vlibmemory/vlib.api_enum.h>
 #include <vlibmemory/vlib.api_types.h>
 
-u16 msg_id_base;
+static u16 msg_id_base;
 #define REPLY_MSG_ID_BASE msg_id_base
 #include <vlibapi/api_helper_macros.h>
 

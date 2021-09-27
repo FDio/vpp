@@ -32,7 +32,6 @@
 #include <vlib/unix/unix.h>
 #include <vlibapi/api.h>
 #include <vppinfra/time.h>
-#include <vpp/api/vpe_msg_enum.h>
 #include <signal.h>
 #include "vppapiclient.h"
 #include "stat_client.h"
@@ -40,9 +39,8 @@
 #include <vlibmemory/vlib.api_enum.h>
 #include <vlibmemory/vlib.api_types.h>
 
-#define vl_typedefs             /* define message structures */
-#include <vpp/api/vpe_all_api_h.h> 
-#undef vl_typedefs
+#include <vpp/api/vpe.api_enum.h>
+#include <vpp/api/vpe.api_types.h>
 
 volatile int sigterm_received = 0;
 volatile u32 result_ready;
