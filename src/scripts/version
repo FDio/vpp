@@ -20,7 +20,7 @@ cd "$path"
 if [ -f .version ]; then
     vstring=$(cat .version)
 else
-    vstring=$(git describe --long)
+    vstring=$(git describe --long --match "v*")
     if [ $? != 0 ]; then
       exit 1
     fi
