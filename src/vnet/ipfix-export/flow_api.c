@@ -160,6 +160,11 @@ vl_api_set_ipfix_exporter_t_internal (
   if (path_mtu < 68)
     return VNET_API_ERROR_INVALID_VALUE;
 
+  /* Calculate how much header data we need. */
+  exp->all_headers_size = sizeof (ip4_header_t) + sizeof (udp_header_t) +
+			  sizeof (ipfix_message_header_t) +
+			  sizeof (ipfix_set_header_t);
+
   /* Reset report streams if we are reconfiguring IP addresses */
   if (exp->ipfix_collector.as_u32 != collector.as_u32 ||
       exp->src_address.as_u32 != src.as_u32 ||
