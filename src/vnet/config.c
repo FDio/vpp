@@ -119,6 +119,12 @@ find_config_with_features (vlib_main_t * vm,
       vec_add1 (config_string, next_index);
     }
 
+  /* Add the end node index to the config string so that it is part of
+   * the key used to detect string sharing. If this is not included then
+   * a modification of the end node would affect all the user of a shared
+   * string. */
+  vec_add1 (config_string, end_node_index);
+
   /* See if config string is unique. */
   p = hash_get_mem (cm->config_string_hash, config_string);
   if (p)
