@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "40a16d75_ebe0a960",
+        "filename": "src/vnet/policer/policer.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-09-27T07:27:55Z",
+      "side": 1,
+      "message": "could i suggest having only one hash that uses the name as the key, probably policer_index_by_name. then the policer config db key becomes the policer\u0027s index.\nyou can then use the hash_set_mem_alloc/free functions to copy the \u0027name\u0027 variable as the key, and so always free the input variable.",
+      "revId": "0ee0f1c368bc89694ba29a8f0bf7ecadc6880880",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
