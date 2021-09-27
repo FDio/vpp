@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a68273c6_8805ecb9",
+        "filename": "extras/libmemif/src/main.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 864,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-09-27T09:08:06Z",
+      "side": 1,
+      "message": "it would be good to update the comment to explain why we check for \u0027@\u0027 (abstract sockets etc)",
+      "revId": "2f320dfc53470d1eab580aed141eeaf5d89d553d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a839c415_309b726f",
+        "filename": "extras/libmemif/src/main.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 865,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-09-27T09:08:06Z",
+      "side": 1,
+      "message": "instead of checking for \u0027@\u0027 everywhere, maybe it would be clearer to set a variable eg.\n  int is_abstract \u003d (\u0027@\u0027 \u003d\u003d ms-\u003efilename[0]);",
+      "revId": "2f320dfc53470d1eab580aed141eeaf5d89d553d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3c4242ac_05459b9b",
+        "filename": "extras/libmemif/src/main.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1241,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-09-27T09:08:06Z",
+      "side": 1,
+      "message": "same comment as above: please add a comment and maybe use a more explicit variable?",
+      "revId": "2f320dfc53470d1eab580aed141eeaf5d89d553d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
