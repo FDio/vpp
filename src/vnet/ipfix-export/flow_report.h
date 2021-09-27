@@ -72,6 +72,16 @@ typedef union
   uword as_uword;
 } opaque_t;
 
+/*
+ * A stream represents an IPFIX session to a destination. We can have
+ * multiple streams to the same destination, but each one has its own
+ * domain and source port. A stream has a sequence number for that
+ * session. A stream may contain multiple templates (i.e multiple for
+ * reports) and each stream also has its own template space.
+ *
+ * A stream has per thread state so that data packets can be built
+ * and send on multiple threads at the same time.
+ */
 typedef struct
 {
   u32 domain_id;
@@ -81,11 +91,37 @@ typedef struct
   u16 next_template_no;
 } flow_report_stream_t;
 
+/*
+ * For each flow_report we want to be able to build buffers/frames per thread.
+ */
+typedef struct
+{
+  vlib_buffer_t *buffer;
+  vlib_frame_t *frame;
+  u16 next_data_offset;
+  /*
+   * We need this per stream as the IPFIX sequence number is the count of
+   * data record sent, not the count of packets with data records sent.
+   * See RFC 7011, Sec 3.1
+   */
+  u8 n_data_records;
+} flow_report_per_thread_t;
+
+/*
+ * A flow report represents a group of fields that are to be exported.
+ * Each flow_report has an associated template that is generated when
+ * the flow_report is added. Each flow_report is associated with a
+ * stream, and multiple flow_reports can use the same stream. When
+ * adding a flow_report the keys for the stream are the domain_id
+ * and the source_port.
+ */
 typedef struct flow_report
 {
   /* ipfix rewrite, set by callback */
   u8 *rewrite;
   u16 template_id;
+  int data_record_size;
+  flow_report_per_thread_t *per_thread_data;
   u32 stream_index;
   f64 last_template_sent;
   int update_rewrite;
@@ -134,6 +170,13 @@ typedef struct ipfix_exporter
 
   /* UDP checksum calculation enable flag */
   u8 udp_checksum;
+
+  /*
+   * The amount of data needed for all the headers, prior to the first
+   * flowset (template or data or ...) This is mostly dependent on the
+   * L3 and L4 protocols in use.
+   */
+  u32 all_headers_size;
 } ipfix_exporter_t;
 
 typedef struct flow_report_main
@@ -171,6 +214,11 @@ typedef struct
   u32 domain_id;
   u16 src_port;
   u32 *stream_indexp;
+  /*
+   * When adding a flow report, the index of the flow report is stored
+   * here on success.
+   */
+  u32 flow_report_index;
 } vnet_flow_report_add_del_args_t;
 
 int vnet_flow_report_add_del (ipfix_exporter_t *exp,
@@ -190,6 +238,27 @@ int vnet_stream_change (ipfix_exporter_t *exp, u32 old_domain_id,
  * Search all the exporters for one that has a matching destination address.
  */
 ipfix_exporter_t *vnet_ipfix_exporter_lookup (ip4_address_t *ipfix_collector);
+
+/*
+ * Get the currently in use buffer for the given stream on the given core.
+ * If there is no current buffer then allocate a new one and return that.
+ * This is the buffer that data records should be written into. The offset
+ * currently in use is stored in the per-thread data for the stream and
+ * should be updated as new records are written in.
+ */
+vlib_buffer_t *vnet_ipfix_exp_get_buffer (vlib_main_t *vm,
+					  ipfix_exporter_t *exp,
+					  flow_report_t *fr, u32 thread_index);
+
+/*
+ * Send the provided buffer. At this stage the buffer should be populated
+ * with data records, with the offset in use stored in the stream per thread
+ * data. This func will fix up all the headers and then send the buffer.
+ */
+void vnet_ipfix_exp_send_buffer (vlib_main_t *vm, ipfix_exporter_t *exp,
+				 flow_report_t *fr,
+				 flow_report_stream_t *stream,
+				 u32 thread_index, vlib_buffer_t *b0);
 
 #endif /* __included_vnet_flow_report_h__ */
 
