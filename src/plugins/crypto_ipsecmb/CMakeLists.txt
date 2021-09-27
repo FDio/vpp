@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+option(VPP_BUILD_IPSECMB_PLUGIN "Build ipsec-mb plugin" ON)
+if(NOT VPP_BUILD_IPSECMB_PLUGIN)
+	return()
+endif()
+
 if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
   return()
 endif()
