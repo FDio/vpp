@@ -426,6 +426,7 @@ ipsecmb_ops_gcm_cipher_dec_##a (vlib_main_t * vm, vnet_crypto_op_t * ops[],  \
 foreach_ipsecmb_gcm_cipher_op;
 #undef _
 
+#ifdef HAVE_IPSECMB_CHACHA_POLY
 always_inline void
 ipsecmb_retire_aead_job (JOB_AES_HMAC *job, u32 *n_fail)
 {
@@ -662,6 +663,7 @@ ipsec_mb_ops_chacha_poly_dec_chained (vlib_main_t *vm, vnet_crypto_op_t *ops[],
   return ipsecmb_ops_chacha_poly_chained (vm, ops, chunks, n_ops,
 					  IMB_DIR_DECRYPT);
 }
+#endif
 
 clib_error_t *
 crypto_ipsecmb_iv_init (ipsecmb_main_t * imbm)
@@ -850,6 +852,7 @@ crypto_ipsecmb_init (vlib_main_t * vm)
   foreach_ipsecmb_gcm_cipher_op;
 #undef _
 
+#ifdef HAVE_IPSECMB_CHACHA_POLY
   vnet_crypto_register_ops_handler (vm, eidx,
 				    VNET_CRYPTO_OP_CHACHA20_POLY1305_ENC,
 				    ipsecmb_ops_chacha_poly_enc);
@@ -864,6 +867,7 @@ crypto_ipsecmb_init (vlib_main_t * vm)
     ipsec_mb_ops_chacha_poly_dec_chained);
   ad = imbm->alg_data + VNET_CRYPTO_ALG_CHACHA20_POLY1305;
   ad->data_size = 0;
+#endif
 
   vnet_crypto_register_key_handler (vm, eidx, crypto_ipsecmb_key_handler);
   return (NULL);
