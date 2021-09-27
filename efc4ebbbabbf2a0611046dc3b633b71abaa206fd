@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2ce08bb6_50a33964",
+        "filename": "src/vpp/api/api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 249,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-09-27T15:32:07Z",
+      "side": 1,
+      "message": "Probably you\u0027d want to remove these :-)",
+      "range": {
+        "startLine": 247,
+        "startChar": 0,
+        "endLine": 249,
+        "endChar": 25
+      },
+      "revId": "efc4ebbbabbf2a0611046dc3b633b71abaa206fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2e166cdb_47c5c192",
+        "filename": "src/vpp/api/api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-09-27T15:32:07Z",
+      "side": 1,
+      "message": "Move to ip api?",
+      "range": {
+        "startLine": 254,
+        "startChar": 2,
+        "endLine": 254,
+        "endChar": 5
+      },
+      "revId": "efc4ebbbabbf2a0611046dc3b633b71abaa206fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
