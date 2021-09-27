@@ -85,8 +85,6 @@ add_vpp_executable(vpp
 )
 
 add_vpp_headers(vpp
-  api/vpe_msg_enum.h
-  api/vpe_all_api_h.h
   stats/stat_segment.h
   stats/stat_segment_shared.h
 )
@@ -139,6 +137,10 @@ install(FILES conf/80-vpp.conf DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/sysctl.d 
 ##############################################################################
 add_vpp_test_library(vpp
   ${VPP_API_FILES}
+)
+
+add_vat_test_library(vpp
+  api/api_test.c
 )
 
 ##############################################################################
