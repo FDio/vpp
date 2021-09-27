@@ -1441,6 +1441,7 @@ class Ikev2Params(object):
                           id_type=self.p.local_id['id_type'],
                           i_natt=i_natt, r_natt=r_natt,
                           priv_key=client_priv, auth_method=auth_method,
+                          nonce=params.get('nonce'),
                           auth_data=auth_data, udp_encap=udp_encap,
                           local_ts=self.p.remote_ts, remote_ts=self.p.local_ts)
         if is_init:
@@ -1955,7 +1956,8 @@ class Test_IKE_AES_CBC_128_SHA256_128_MODP2048_ESP_AES_CBC_192_SHA_384_192\
             'ike-integ': 'SHA2-256-128',
             'esp-crypto': ('AES-CBC', 24),
             'esp-integ': 'SHA2-384-192',
-            'ike-dh': '2048MODPgr'})
+            'ike-dh': '2048MODPgr',
+            'nonce': os.urandom(256)})
 
 
 @tag_fixme_vpp_workers

@@ -405,8 +405,8 @@ ikev2_generate_sa_init_data (ikev2_sa_t * sa)
       RAND_bytes ((u8 *) & sa->rspi, 8);
 
       /* generate nonce */
-      sa->r_nonce = vec_new (u8, IKEV2_NONCE_SIZE);
-      RAND_bytes ((u8 *) sa->r_nonce, IKEV2_NONCE_SIZE);
+      sa->r_nonce = vec_new (u8, vec_len (sa->i_nonce));
+      RAND_bytes ((u8 *) sa->r_nonce, vec_len (sa->i_nonce));
     }
 
   /* generate dh keys */
@@ -671,13 +671,17 @@ ikev2_parse_ke_payload (const void *p, u32 rlen, ikev2_sa_t * sa,
 }
 
 static int
-ikev2_parse_nonce_payload (const void *p, u32 rlen, u8 * nonce)
+ikev2_parse_nonce_payload (const void *p, u32 rlen, const u8 **nonce)
 {
   const ike_payload_header_t *ikep = p;
   u16 plen = clib_net_to_host_u16 (ikep->length);
   ASSERT (plen >= sizeof (*ikep) && plen <= rlen);
-  clib_memcpy_fast (nonce, ikep->payload, plen - sizeof (*ikep));
-  return 1;
+  int len = plen - sizeof (*ikep);
+  ASSERT (len >= 16 && len <= 256);
+  if (PREDICT_FALSE (len < 16 || len > 256))
+    return 0;
+  *nonce = ikep->payload;
+  return len;
 }
 
 static int
@@ -696,7 +700,6 @@ static int
 ikev2_process_sa_init_req (vlib_main_t *vm, ikev2_sa_t *sa, ike_header_t *ike,
 			   udp_header_t *udp, u32 len, u32 sw_if_index)
 {
-  u8 nonce[IKEV2_NONCE_SIZE];
   int p = 0;
   u8 payload = ike->nextpayload;
   ike_payload_header_t *ikep;
@@ -739,9 +742,13 @@ ikev2_process_sa_init_req (vlib_main_t *vm, ikev2_sa_t *sa, ike_header_t *ike,
 	}
       else if (payload == IKEV2_PAYLOAD_NONCE)
 	{
+	  const u8 *nonce;
+	  int nonce_len;
 	  vec_reset_length (sa->i_nonce);
-	  if (ikev2_parse_nonce_payload (ikep, current_length, nonce))
-	    vec_add (sa->i_nonce, nonce, plen - sizeof (*ikep));
+	  if ((nonce_len = ikev2_parse_nonce_payload (ikep, current_length,
+						      &nonce)) <= 0)
+	    return 0;
+	  vec_add (sa->i_nonce, nonce, nonce_len);
 	}
       else if (payload == IKEV2_PAYLOAD_NOTIFY)
 	{
@@ -805,7 +812,6 @@ ikev2_process_sa_init_resp (vlib_main_t * vm,
 			    ikev2_sa_t * sa, ike_header_t * ike,
 			    udp_header_t * udp, u32 len)
 {
-  u8 nonce[IKEV2_NONCE_SIZE];
   int p = 0;
   u8 payload = ike->nextpayload;
   ike_payload_header_t *ikep;
@@ -853,9 +859,13 @@ ikev2_process_sa_init_resp (vlib_main_t * vm,
 	}
       else if (payload == IKEV2_PAYLOAD_NONCE)
 	{
+	  const u8 *nonce;
+	  int nonce_len;
 	  vec_reset_length (sa->r_nonce);
-	  if (ikev2_parse_nonce_payload (ikep, current_length, nonce))
-	    vec_add (sa->r_nonce, nonce, plen - sizeof (*ikep));
+	  if ((nonce_len = ikev2_parse_nonce_payload (ikep, current_length,
+						      &nonce)) <= 0)
+	    return;
+	  vec_add (sa->r_nonce, nonce, nonce_len);
 	}
       else if (payload == IKEV2_PAYLOAD_NOTIFY)
 	{
@@ -1340,7 +1350,6 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm,
   u8 payload = ike->nextpayload;
   u8 *plaintext = 0;
   u8 rekeying = 0;
-  u8 nonce[IKEV2_NONCE_SIZE];
   ikev2_rekey_t *rekey;
   ike_payload_header_t *ikep;
   ikev2_notify_t *n = 0;
@@ -1350,6 +1359,8 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm,
   ikev2_child_sa_t *child_sa;
   u32 dlen = 0, src;
   u16 plen;
+  const u8 *nonce = 0;
+  int nonce_len = 0;
 
   if (sa->is_initiator)
     src = ip_addr_v4 (&sa->raddr).as_u32;
@@ -1397,7 +1408,9 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm,
 	}
       else if (payload == IKEV2_PAYLOAD_NONCE)
 	{
-	  ikev2_parse_nonce_payload (ikep, current_length, nonce);
+	  nonce_len = ikev2_parse_nonce_payload (ikep, current_length, &nonce);
+	  if (nonce_len <= 0)
+	    goto cleanup_and_exit;
 	}
       else if (payload == IKEV2_PAYLOAD_TSI)
 	{
@@ -1421,7 +1434,7 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm,
       p += plen;
     }
 
-  if (!proposal || proposal->protocol_id != IKEV2_PROTOCOL_ESP)
+  if (!proposal || proposal->protocol_id != IKEV2_PROTOCOL_ESP || !nonce)
     goto cleanup_and_exit;
 
   if (sa->is_initiator)
@@ -1438,7 +1451,7 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm,
       rekey->tsr = tsr;
       /* update Nr */
       vec_reset_length (sa->r_nonce);
-      vec_add (sa->r_nonce, nonce, IKEV2_NONCE_SIZE);
+      vec_add (sa->r_nonce, nonce, nonce_len);
       child_sa = ikev2_sa_get_child (sa, rekey->ispi, IKEV2_PROTOCOL_ESP, 1);
       if (child_sa)
 	{
@@ -1464,10 +1477,10 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm,
 	    ikev2_select_proposal (proposal, IKEV2_PROTOCOL_ESP);
 	  /* update Ni */
 	  vec_reset_length (sa->i_nonce);
-	  vec_add (sa->i_nonce, nonce, IKEV2_NONCE_SIZE);
+	  vec_add (sa->i_nonce, nonce, nonce_len);
 	  /* generate new Nr */
-	  vec_validate (sa->r_nonce, IKEV2_NONCE_SIZE - 1);
-	  RAND_bytes ((u8 *) sa->r_nonce, IKEV2_NONCE_SIZE);
+	  vec_validate (sa->r_nonce, nonce_len - 1);
+	  RAND_bytes ((u8 *) sa->r_nonce, nonce_len);
 	}
       else
 	{
@@ -1478,10 +1491,10 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm,
 	    ikev2_select_proposal (proposal, IKEV2_PROTOCOL_ESP);
 	  /* update Ni */
 	  vec_reset_length (sa->i_nonce);
-	  vec_add (sa->i_nonce, nonce, IKEV2_NONCE_SIZE);
+	  vec_add (sa->i_nonce, nonce, nonce_len);
 	  /* generate new Nr */
-	  vec_validate (sa->r_nonce, IKEV2_NONCE_SIZE - 1);
-	  RAND_bytes ((u8 *) sa->r_nonce, IKEV2_NONCE_SIZE);
+	  vec_validate (sa->r_nonce, nonce_len - 1);
+	  RAND_bytes ((u8 *) sa->r_nonce, nonce_len);
 	}
       rekey->tsi = tsi;
       rekey->tsr = tsr;
