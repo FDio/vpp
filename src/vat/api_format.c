@@ -29,7 +29,6 @@
 #include <vnet/l2/l2_input.h>
 #include <vnet/udp/udp_local.h>
 
-#include <vpp/api/vpe_msg_enum.h>
 #include <vnet/l2/l2_classify.h>
 #include <vnet/l2/l2_vtr.h>
 #include <vnet/classify/in_out_acl.h>
@@ -56,14 +55,11 @@
 #include <inttypes.h>
 #include <sys/stat.h>
 
-#define vl_typedefs		/* define message structures */
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_typedefs
-
-/* declare message handlers for each api */
+#include <vlibmemory/memclnt.api_enum.h>
+#include <vlibmemory/memclnt.api_types.h>
 
 #define vl_endianfun		/* define message structures */
-#include <vpp/api/vpe_all_api_h.h>
+#include <vlibmemory/memclnt.api.h>
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
@@ -73,7 +69,7 @@
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #endif
 #define vl_printfun
-#include <vpp/api/vpe_all_api_h.h>
+#include <vlibmemory/memclnt.api.h>
 #undef vl_printfun
 
 #define __plugin_msg_base 0
@@ -579,44 +575,6 @@ ip_set (ip46_address_t * dst, void *src, u8 is_ip4)
 }
 
 
-static void vl_api_show_version_reply_t_handler
-  (vl_api_show_version_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  i32 retval = ntohl (mp->retval);
-
-  if (retval >= 0)
-    {
-      errmsg ("        program: %s", mp->program);
-      errmsg ("        version: %s", mp->version);
-      errmsg ("     build date: %s", mp->build_date);
-      errmsg ("build directory: %s", mp->build_directory);
-    }
-  vam->retval = retval;
-  vam->result_ready = 1;
-}
-
-static void vl_api_show_version_reply_t_handler_json
-  (vl_api_show_version_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t node;
-
-  vat_json_init_object (&node);
-  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
-  vat_json_object_add_string_copy (&node, "program", mp->program);
-  vat_json_object_add_string_copy (&node, "version", mp->version);
-  vat_json_object_add_string_copy (&node, "build_date", mp->build_date);
-  vat_json_object_add_string_copy (&node, "build_directory",
-				   mp->build_directory);
-
-  vat_json_print (vam->ofp, &node);
-  vat_json_free (&node);
-
-  vam->retval = ntohl (mp->retval);
-  vam->result_ready = 1;
-}
-
 #define vl_api_bridge_domain_details_t_endian vl_noop_handler
 #define vl_api_bridge_domain_details_t_print vl_noop_handler
 
@@ -735,7 +693,6 @@ foreach_standard_reply_retval_handler;
 
 #define foreach_vpe_api_reply_msg                                             \
   _ (GET_FIRST_MSG_ID_REPLY, get_first_msg_id_reply)                          \
-  _ (SHOW_VERSION_REPLY, show_version_reply)                                  \
 
 #define foreach_standalone_reply_msg					\
 
@@ -2014,19 +1971,6 @@ api_unformat_classify_match (unformat_input_t * input, va_list * args)
   _ ("translate-2-2", L2_VTR_TRANSLATE_2_2)
 
 static int
-api_show_version (vat_main_t *vam)
-{
-  vl_api_show_version_t *mp;
-  int ret;
-
-  M (SHOW_VERSION, mp);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
 api_get_first_msg_id (vat_main_t *vam)
 {
   vl_api_get_first_msg_id_t *mp;
@@ -2638,7 +2582,6 @@ exec (vat_main_t *vam)
 
 /* List of API message constructors, CLI names map to api_xxx */
 #define foreach_vpe_api_msg                                             \
-_(show_version, "")                                                     \
 _(get_first_msg_id, "client <name>")					\
 _(sock_init_shm, "size <nnn>")						\
 /* List of command functions, CLI names map directly to functions */
@@ -2681,13 +2624,10 @@ foreach_standalone_reply_msg;
 void
 vat_api_hookup (vat_main_t * vam)
 {
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler_uni,          \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (VL_API_##N + 1, #n, vl_api_##n##_t_handler_uni,    \
+			   vl_noop_handler, vl_api_##n##_t_endian,            \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1);
   foreach_vpe_api_reply_msg;
 #if VPP_API_TEST_BUILTIN == 0
   foreach_standalone_reply_msg;
@@ -2695,7 +2635,7 @@ vat_api_hookup (vat_main_t * vam)
 #undef _
 
 #if (VPP_API_TEST_BUILTIN==0)
-  vl_msg_api_set_first_available_msg_id (VL_MSG_FIRST_AVAILABLE);
+  vl_msg_api_set_first_available_msg_id (VL_MSG_MEMCLNT_LAST + 1);
 
   vam->sw_if_index_by_interface_name = hash_create_string (0, sizeof (uword));
 
