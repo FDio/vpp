@@ -16,6 +16,24 @@
       "revId": "7c5caf4804e34fd46963b72287ae44f9bc71b652",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "08a8a8f9_4f355f4e",
+        "filename": "src/vnet/ip/lookup.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 343,
+      "author": {
+        "id": 1964
+      },
+      "writtenOn": "2021-09-27T09:51:01Z",
+      "side": 1,
+      "message": "That\u0027s a good suggestion, Neale. But it seems to me that ip4/ip6_address_increment only add ip4/6 address by one while incr variable here can be way larger than one because it matches with the mask value of ip4/6 addresses.\nIf we want to use ip4/ip6_address_increment here, we probably need to modify these APIs and add one more parameter to match the mask. Or should we just keep it here? what\u0027s your thought?",
+      "parentUuid": "689a7152_64294a02",
+      "revId": "7c5caf4804e34fd46963b72287ae44f9bc71b652",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
