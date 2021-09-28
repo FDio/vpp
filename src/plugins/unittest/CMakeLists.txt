@@ -55,7 +55,11 @@ add_vpp_plugin(unittest
   util_test.c
   vlib_test.c
   counter_test.c
+  unittest_api.c
 
   COMPONENT
   vpp-plugin-devtools
+
+  API_FILES
+  unittest.api
 )
