@@ -231,9 +231,9 @@ VNET_DEVICE_CLASS_TX_FN (af_xdp_device_class) (vlib_main_t * vm,
     {
       u32 n_enq;
       af_xdp_device_output_free (vm, node, txq);
-      n_enq = af_xdp_device_output_tx_try (vm, node, ad, txq, n_tx - n, from);
+      n_enq =
+	af_xdp_device_output_tx_try (vm, node, ad, txq, n_tx - n, from + n);
       n += n_enq;
-      from += n_enq;
     }
 
   af_xdp_device_output_tx_db (vm, node, ad, txq, n);
