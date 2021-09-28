@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "77086931_48d08643",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 429,
+      "author": {
+        "id": 2414
+      },
+      "writtenOn": "2021-09-28T09:42:45Z",
+      "side": 1,
+      "message": "Thanks for the reply. I forget the txq_num \u003e #theads situation. In my situation txq_num is less than #theads, the txq lock will not init, it will crash sometimes.",
+      "parentUuid": "14547f22_100793cf",
+      "revId": "614e1cbc8807118ea83d4721e6d7765e5f43791f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "abe37e1f_9b471330",
         "filename": "src/plugins/af_xdp/output.c",
         "patchSetId": 3
