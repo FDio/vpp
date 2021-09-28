@@ -55,8 +55,19 @@ index_t
 fib_urpf_list_alloc_and_lock (void)
 {
     fib_urpf_list_t *urpf;
+    u8 need_barrier_sync = 0;
+    vlib_main_t *vm = vlib_get_main();
+    ASSERT (vm->thread_index == 0);
+
+    pool_get_will_expand (fib_urpf_list_pool, need_barrier_sync );
+    if (need_barrier_sync)
+        vlib_worker_thread_barrier_sync (vm);
 
     pool_get(fib_urpf_list_pool, urpf);
+
+    if (need_barrier_sync)
+        vlib_worker_thread_barrier_release (vm);
+
     clib_memset(urpf, 0, sizeof(*urpf));
 
     urpf->furpf_locks++;

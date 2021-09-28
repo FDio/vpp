@@ -599,8 +599,19 @@ fib_entry_alloc (u32 fib_index,
 {
     fib_entry_t *fib_entry;
     fib_prefix_t *fep;
+    u8 need_barrier_sync = 0;
+    vlib_main_t *vm = vlib_get_main();
+    ASSERT (vm->thread_index == 0);
+
+    pool_get_will_expand (fib_entry_pool, need_barrier_sync );
+    if (need_barrier_sync)
+        vlib_worker_thread_barrier_sync (vm);
 
     pool_get(fib_entry_pool, fib_entry);
+
+    if (need_barrier_sync)
+        vlib_worker_thread_barrier_release (vm);
+
     clib_memset(fib_entry, 0, sizeof(*fib_entry));
 
     fib_node_init(&fib_entry->fe_node,
