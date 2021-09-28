@@ -1032,7 +1032,7 @@ ikev2_decrypt_sk_payload (ikev2_sa_t * sa, ike_header_t * ike,
 }
 
 static int
-ikev2_is_id_equal (ikev2_id_t *i1, ikev2_id_t *i2)
+ikev2_is_id_equal (const ikev2_id_t *i1, const ikev2_id_t *i2)
 {
   if (i1->type != i2->type)
     return 0;
@@ -1554,6 +1554,25 @@ ikev2_sa_generate_authmsg (ikev2_sa_t * sa, int is_responder)
 }
 
 static int
+ikev2_match_profile (const ikev2_profile_t *p, const ikev2_id_t *id_loc,
+		     const ikev2_id_t *id_rem, int is_initiator)
+{
+  /* on the initiator, IDi is always present and must match
+   * however on the responder, IDr (which is our local id) is optional */
+  if ((is_initiator || id_loc->type != 0) &&
+      !ikev2_is_id_equal (&p->loc_id, id_loc))
+    return 0;
+
+  /* on the initiator, we might not have configured a specific remote id
+   * however on the responder, the remote id should always be configured */
+  if ((!is_initiator || p->rem_id.type != 0) &&
+      !ikev2_is_id_equal (&p->rem_id, id_rem))
+    return 0;
+
+  return 1;
+}
+
+static int
 ikev2_ts_cmp (ikev2_ts_t * ts1, ikev2_ts_t * ts2)
 {
   if (ts1->ts_type == ts2->ts_type && ts1->protocol_id == ts2->protocol_id &&
@@ -1591,9 +1610,7 @@ ikev2_sa_match_ts (ikev2_sa_t * sa)
         id_loc = &sa->r_id;
       }
 
-    /* check id */
-    if (!ikev2_is_id_equal (&p->rem_id, id_rem)
-          || !ikev2_is_id_equal (&p->loc_id, id_loc))
+    if (!ikev2_match_profile (p, id_loc, id_rem, sa->is_initiator))
       continue;
 
     sa->profile_index = p - km->profiles;
@@ -1661,9 +1678,7 @@ ikev2_select_profile (ikev2_main_t *km, ikev2_sa_t *sa,
 
   pool_foreach (p, km->profiles)
     {
-      /* check id */
-      if (!ikev2_is_id_equal (&p->rem_id, id_rem) ||
-	  !ikev2_is_id_equal (&p->loc_id, id_loc))
+      if (!ikev2_match_profile (p, id_loc, id_rem, sa->is_initiator))
 	continue;
 
       if (sa_auth->method == IKEV2_AUTH_METHOD_SHARED_KEY_MIC)
@@ -2427,7 +2442,10 @@ ikev2_generate_message (vlib_buffer_t *b, ikev2_sa_t *sa, ike_header_t *ike,
       else if (sa->state == IKEV2_STATE_SA_INIT)
 	{
 	  ikev2_payload_add_id (chain, &sa->i_id, IKEV2_PAYLOAD_IDI);
-	  ikev2_payload_add_id (chain, &sa->r_id, IKEV2_PAYLOAD_IDR);
+	  /* IDr is optional when sending INIT from the initiator */
+	  ASSERT (sa->r_id.type != 0 || sa->is_initiator);
+	  if (sa->r_id.type != 0)
+	    ikev2_payload_add_id (chain, &sa->r_id, IKEV2_PAYLOAD_IDR);
 	  ikev2_payload_add_auth (chain, &sa->i_auth);
 	  ikev2_payload_add_sa (chain, sa->childs[0].i_proposals);
 	  ikev2_payload_add_ts (chain, sa->childs[0].tsi, IKEV2_PAYLOAD_TSI);
