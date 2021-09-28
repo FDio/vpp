@@ -451,7 +451,6 @@ uword unformat_ikev2_transform_dh_type (unformat_input_t * input,
 					va_list * args);
 uword unformat_ikev2_transform_esn_type (unformat_input_t * input,
 					 va_list * args);
-void ikev2_cli_reference (void);
 
 clib_error_t *ikev2_set_liveness_params (u32 period, u32 max_retries);
 
