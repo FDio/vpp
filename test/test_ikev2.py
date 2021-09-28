@@ -802,9 +802,9 @@ class IkePeer(VppTestCase):
         self.assertEqual(sa.i_id.type, self.sa.id_type)
         self.assertEqual(sa.r_id.type, self.sa.id_type)
         self.assertEqual(sa.i_id.data_len, len(self.sa.i_id))
-        self.assertEqual(sa.r_id.data_len, len(self.sa.r_id))
+        self.assertEqual(sa.r_id.data_len, len(self.idr))
         self.assertEqual(bytes(sa.i_id.data, 'ascii'), self.sa.i_id)
-        self.assertEqual(bytes(sa.r_id.data, 'ascii'), self.sa.r_id)
+        self.assertEqual(bytes(sa.r_id.data, 'ascii'), self.idr)
 
         r = self.vapi.ikev2_child_sa_dump(sa_index=sa.sa_index)
         self.assertEqual(len(r), 1)
@@ -1003,9 +1003,12 @@ class TemplateInitiator(IkePeer):
         self.sa.msg_id += 1
         plain = self.sa.hmac_and_decrypt(ih)
         idi = ikev2.IKEv2_payload_IDi(plain)
-        idr = ikev2.IKEv2_payload_IDr(idi.payload)
         self.assertEqual(idi.load, self.sa.i_id)
-        self.assertEqual(idr.load, self.sa.r_id)
+        if self.no_idr_auth:
+            self.assertEqual(idi.next_payload, 39)  # AUTH
+        else:
+            idr = ikev2.IKEv2_payload_IDr(idi.payload)
+            self.assertEqual(idr.load, self.sa.r_id)
         prop = idi[ikev2.IKEv2_payload_Proposal]
         c = self.sa.child_sas[0]
         c.ispi = prop.SPI
@@ -1264,10 +1267,15 @@ class TemplateResponder(IkePeer):
                      proto='ESP', SPI=c.ispi))
         else:
             first_payload = 'IDi'
-            ids = (ikev2.IKEv2_payload_IDi(next_payload='IDr',
-                   IDtype=self.sa.id_type, load=self.sa.i_id) /
-                   ikev2.IKEv2_payload_IDr(next_payload='AUTH',
-                   IDtype=self.sa.id_type, load=self.sa.r_id))
+            if self.no_idr_auth:
+                ids = ikev2.IKEv2_payload_IDi(next_payload='AUTH',
+                                              IDtype=self.sa.id_type,
+                                              load=self.sa.i_id)
+            else:
+                ids = (ikev2.IKEv2_payload_IDi(next_payload='IDr',
+                       IDtype=self.sa.id_type, load=self.sa.i_id) /
+                       ikev2.IKEv2_payload_IDr(next_payload='AUTH',
+                       IDtype=self.sa.id_type, load=self.sa.r_id))
             plain = ids / plain
         return plain, first_payload
 
@@ -1394,15 +1402,23 @@ class Ikev2Params(object):
 
         is_init = True if 'is_initiator' not in params else\
             params['is_initiator']
+        self.no_idr_auth = params.get('no_idr_in_auth', False)
 
         idr = {'id_type': 'fqdn', 'data': b'vpp.home'}
         idi = {'id_type': 'fqdn', 'data': b'roadwarrior.example.com'}
+        r_id = self.idr = idr['data']
+        i_id = self.idi = idi['data']
         if is_init:
+            # scapy is initiator, VPP is responder
             self.p.add_local_id(**idr)
             self.p.add_remote_id(**idi)
+            if self.no_idr_auth:
+                r_id = None
         else:
+            # VPP is initiator, scapy is responder
             self.p.add_local_id(**idi)
-            self.p.add_remote_id(**idr)
+            if not self.no_idr_auth:
+                self.p.add_remote_id(**idr)
 
         loc_ts = {'start_addr': '10.10.10.0', 'end_addr': '10.10.10.255'} if\
             'loc_ts' not in params else params['loc_ts']
@@ -1436,7 +1452,7 @@ class Ikev2Params(object):
                                                self.pg0.remote_ip4)
             self.vapi.cli(cmd)
 
-        self.sa = IKEv2SA(self, i_id=idi['data'], r_id=idr['data'],
+        self.sa = IKEv2SA(self, i_id=i_id, r_id=r_id,
                           is_initiator=is_init,
                           id_type=self.p.local_id['id_type'],
                           i_natt=i_natt, r_natt=r_natt,
@@ -1444,6 +1460,7 @@ class Ikev2Params(object):
                           nonce=params.get('nonce'),
                           auth_data=auth_data, udp_encap=udp_encap,
                           local_ts=self.p.remote_ts, remote_ts=self.p.local_ts)
+
         if is_init:
             ike_crypto = ('AES-CBC', 32) if 'ike-crypto' not in params else\
                 params['ike-crypto']
@@ -1818,7 +1835,8 @@ class TestInitiatorDelSAFromResponder(TemplateInitiator, Ikev2Params):
                 'crypto_alg': 12,  # "aes-cbc"
                 'crypto_key_size': 256,
                 # "hmac-sha2-256-128"
-                'integ_alg': 12}})
+                'integ_alg': 12},
+            'no_idr_in_auth': True})
 
 
 @tag_fixme_vpp_workers
@@ -1957,7 +1975,8 @@ class Test_IKE_AES_CBC_128_SHA256_128_MODP2048_ESP_AES_CBC_192_SHA_384_192\
             'esp-crypto': ('AES-CBC', 24),
             'esp-integ': 'SHA2-384-192',
             'ike-dh': '2048MODPgr',
-            'nonce': os.urandom(256)})
+            'nonce': os.urandom(256),
+            'no_idr_in_auth': True})
 
 
 @tag_fixme_vpp_workers
