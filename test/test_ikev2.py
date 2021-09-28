@@ -802,9 +802,9 @@ class IkePeer(VppTestCase):
         self.assertEqual(sa.i_id.type, self.sa.id_type)
         self.assertEqual(sa.r_id.type, self.sa.id_type)
         self.assertEqual(sa.i_id.data_len, len(self.sa.i_id))
-        self.assertEqual(sa.r_id.data_len, len(self.sa.r_id))
+        self.assertEqual(sa.r_id.data_len, len(self.idr))
         self.assertEqual(bytes(sa.i_id.data, 'ascii'), self.sa.i_id)
-        self.assertEqual(bytes(sa.r_id.data, 'ascii'), self.sa.r_id)
+        self.assertEqual(bytes(sa.r_id.data, 'ascii'), self.idr)
 
         r = self.vapi.ikev2_child_sa_dump(sa_index=sa.sa_index)
         self.assertEqual(len(r), 1)
@@ -1264,10 +1264,15 @@ class TemplateResponder(IkePeer):
                      proto='ESP', SPI=c.ispi))
         else:
             first_payload = 'IDi'
-            ids = (ikev2.IKEv2_payload_IDi(next_payload='IDr',
-                   IDtype=self.sa.id_type, load=self.sa.i_id) /
-                   ikev2.IKEv2_payload_IDr(next_payload='AUTH',
-                   IDtype=self.sa.id_type, load=self.sa.r_id))
+            if self.sa.r_id:
+                ids = (ikev2.IKEv2_payload_IDi(next_payload='IDr',
+                       IDtype=self.sa.id_type, load=self.sa.i_id) /
+                       ikev2.IKEv2_payload_IDr(next_payload='AUTH',
+                       IDtype=self.sa.id_type, load=self.sa.r_id))
+            else:
+                ids = ikev2.IKEv2_payload_IDi(next_payload='AUTH',
+                                              IDtype=self.sa.id_type,
+                                              load=self.sa.i_id)
             plain = ids / plain
         return plain, first_payload
 
@@ -1394,9 +1399,11 @@ class Ikev2Params(object):
 
         is_init = True if 'is_initiator' not in params else\
             params['is_initiator']
+        no_idr_auth = params.get('no_idr_in_auth', False)
 
         idr = {'id_type': 'fqdn', 'data': b'vpp.home'}
         idi = {'id_type': 'fqdn', 'data': b'roadwarrior.example.com'}
+        self.idr = idr['data']
         if is_init:
             self.p.add_local_id(**idr)
             self.p.add_remote_id(**idi)
@@ -1436,7 +1443,8 @@ class Ikev2Params(object):
                                                self.pg0.remote_ip4)
             self.vapi.cli(cmd)
 
-        self.sa = IKEv2SA(self, i_id=idi['data'], r_id=idr['data'],
+        r_id = None if no_idr_auth else self.idr
+        self.sa = IKEv2SA(self, i_id=idi['data'], r_id=r_id,
                           is_initiator=is_init,
                           id_type=self.p.local_id['id_type'],
                           i_natt=i_natt, r_natt=r_natt,
@@ -1957,7 +1965,8 @@ class Test_IKE_AES_CBC_128_SHA256_128_MODP2048_ESP_AES_CBC_192_SHA_384_192\
             'esp-crypto': ('AES-CBC', 24),
             'esp-integ': 'SHA2-384-192',
             'ike-dh': '2048MODPgr',
-            'nonce': os.urandom(256)})
+            'nonce': os.urandom(256),
+            'no_idr_in_auth': True})
 
 
 @tag_fixme_vpp_workers

@@ -1040,7 +1040,8 @@ ikev2_is_id_equal (ikev2_id_t *i1, ikev2_id_t *i2)
   if (vec_len (i1->data) != vec_len (i2->data))
     return 0;
 
-  if (clib_memcmp (i1->data, i2->data, vec_len (i1->data)))
+  if (vec_len (i1->data) > 0 &&
+      clib_memcmp (i1->data, i2->data, vec_len (i1->data)))
     return 0;
 
   return 1;
@@ -1661,9 +1662,12 @@ ikev2_select_profile (ikev2_main_t *km, ikev2_sa_t *sa,
 
   pool_foreach (p, km->profiles)
     {
-      /* check id */
+      /* check id
+       * if we are responder, IDr (ie our local id) is optional and we can
+       * select any matching profile */
       if (!ikev2_is_id_equal (&p->rem_id, id_rem) ||
-	  !ikev2_is_id_equal (&p->loc_id, id_loc))
+	  ((sa->is_initiator || id_loc->type != 0) &&
+	   !ikev2_is_id_equal (&p->loc_id, id_loc)))
 	continue;
 
       if (sa_auth->method == IKEV2_AUTH_METHOD_SHARED_KEY_MIC)
