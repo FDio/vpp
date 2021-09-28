@@ -77,6 +77,10 @@ macro(add_vpp_library lib)
     add_dependencies(${lo} api_headers)
   endif()
 
+  if(VPP_EXTERNAL_PROJECT AND ARG_API_FILES)
+    add_dependencies(${lo} ${lib}_api_headers)
+  endif()
+
   if(ARG_DEPENDS)
     add_dependencies(${lo} ${ARG_DEPENDS})
   endif()
