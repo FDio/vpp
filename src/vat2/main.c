@@ -125,7 +125,7 @@ vat2_exec_command_by_name (char *msgname, cJSON *o)
     }
   else
     {
-      fprintf (stderr, "Call failed: %s\n", msgname);
+      fprintf (stderr, "Call failed: %s input %s\n", msgname, cJSON_Print (o));
       return -1;
     }
   return 0;
