@@ -3926,11 +3926,50 @@ ikev2_profile_free (ikev2_profile_t * p)
   vec_free (p->rem_id.data);
 }
 
+static void
+ikev2_bind (vlib_main_t *vm, ikev2_main_t *km)
+{
+  if (0 == km->bind_refcount)
+    {
+      udp_register_dst_port (vm, IKEV2_PORT, ikev2_node_ip4.index, 1);
+      udp_register_dst_port (vm, IKEV2_PORT, ikev2_node_ip6.index, 0);
+      udp_register_dst_port (vm, IKEV2_PORT_NATT, ikev2_node_ip4.index, 1);
+      udp_register_dst_port (vm, IKEV2_PORT_NATT, ikev2_node_ip6.index, 0);
+
+      vlib_punt_register (km->punt_hdl,
+			  ipsec_punt_reason[IPSEC_PUNT_IP4_SPI_UDP_0],
+			  "ikev2-ip4-natt");
+    }
+
+  km->bind_refcount++;
+}
+
+static void
+ikev2_unbind (vlib_main_t *vm, ikev2_main_t *km)
+{
+  km->bind_refcount--;
+  if (0 == km->bind_refcount)
+    {
+      vlib_punt_unregister (km->punt_hdl,
+			    ipsec_punt_reason[IPSEC_PUNT_IP4_SPI_UDP_0],
+			    "ikev2-ip4-natt");
+
+      udp_unregister_dst_port (vm, IKEV2_PORT_NATT, 0);
+      udp_unregister_dst_port (vm, IKEV2_PORT_NATT, 1);
+      udp_unregister_dst_port (vm, IKEV2_PORT, 0);
+      udp_unregister_dst_port (vm, IKEV2_PORT, 1);
+    }
+}
+
+static void ikev2_lazy_init (ikev2_main_t *km);
+
 clib_error_t *
 ikev2_add_del_profile (vlib_main_t * vm, u8 * name, int is_add)
 {
   ikev2_main_t *km = &ikev2_main;
   ikev2_profile_t *p;
+
+  ikev2_lazy_init (km);
 
   if (is_add)
     {
@@ -3945,12 +3984,16 @@ ikev2_add_del_profile (vlib_main_t * vm, u8 * name, int is_add)
       p->tun_itf = ~0;
       uword index = p - km->profiles;
       mhash_set_mem (&km->profile_index_by_name, name, &index, 0);
+
+      ikev2_bind (vm, km);
     }
   else
     {
       p = ikev2_profile_index_by_name (name);
       if (!p)
 	return clib_error_return (0, "policy %v does not exists", name);
+
+      ikev2_unbind (vm, km);
 
       ikev2_unregister_udp_port (p);
       ikev2_cleanup_profile_sessions (km, p);
@@ -4798,65 +4841,24 @@ clib_error_t *
 ikev2_init (vlib_main_t * vm)
 {
   ikev2_main_t *km = &ikev2_main;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-  int thread_id;
 
   clib_memset (km, 0, sizeof (ikev2_main_t));
+
+  km->log_level = IKEV2_LOG_ERROR;
+  km->log_class = vlib_log_register_class ("ikev2", 0);
+
   km->vnet_main = vnet_get_main ();
   km->vlib_main = vm;
 
   km->liveness_period = IKEV2_LIVENESS_PERIOD_CHECK;
   km->liveness_max_retries = IKEV2_LIVENESS_RETRIES;
-  ikev2_crypto_init (km);
 
-  mhash_init_vec_string (&km->profile_index_by_name, sizeof (uword));
-
-  vec_validate_aligned (km->per_thread_data, tm->n_vlib_mains - 1,
-			CLIB_CACHE_LINE_BYTES);
-  for (thread_id = 0; thread_id < tm->n_vlib_mains; thread_id++)
-    {
-      ikev2_main_per_thread_data_t *ptd =
-	vec_elt_at_index (km->per_thread_data, thread_id);
-
-      ptd->sa_by_rspi = hash_create (0, sizeof (uword));
-
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-      ptd->evp_ctx = EVP_CIPHER_CTX_new ();
-      ptd->hmac_ctx = HMAC_CTX_new ();
-#else
-      EVP_CIPHER_CTX_init (&ptd->_evp_ctx);
-      ptd->evp_ctx = &ptd->_evp_ctx;
-      HMAC_CTX_init (&(ptd->_hmac_ctx));
-      ptd->hmac_ctx = &ptd->_hmac_ctx;
-#endif
-    }
-
-  km->sa_by_ispi = hash_create (0, sizeof (uword));
-  km->sw_if_indices = hash_create (0, 0);
-
-  udp_register_dst_port (vm, IKEV2_PORT, ikev2_node_ip4.index, 1);
-  udp_register_dst_port (vm, IKEV2_PORT, ikev2_node_ip6.index, 0);
-  udp_register_dst_port (vm, IKEV2_PORT_NATT, ikev2_node_ip4.index, 1);
-  udp_register_dst_port (vm, IKEV2_PORT_NATT, ikev2_node_ip6.index, 0);
-
-  vlib_punt_hdl_t punt_hdl = vlib_punt_client_register ("ikev2-ip4-natt");
-  vlib_punt_register (punt_hdl, ipsec_punt_reason[IPSEC_PUNT_IP4_SPI_UDP_0],
-		      "ikev2-ip4-natt");
-  ikev2_cli_reference ();
-
-  km->dns_resolve_name =
-    vlib_get_plugin_symbol ("dns_plugin.so", "dns_resolve_name");
-  if (!km->dns_resolve_name)
-    ikev2_log_error ("cannot load symbols from dns plugin");
-
-  km->log_level = IKEV2_LOG_ERROR;
-  km->log_class = vlib_log_register_class ("ikev2", 0);
   return 0;
 }
 
 /* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (ikev2_init) = {
-  .runs_after = VLIB_INITS ("ipsec_init", "ipsec_punt_init", "dns_init"),
+  .runs_after = VLIB_INITS ("ipsec_init", "ipsec_punt_init"),
 };
 /* *INDENT-ON* */
 
@@ -5223,6 +5225,9 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
   ikev2_child_sa_t *c;
   u32 *sai;
 
+  /* lazy init will wake it up */
+  vlib_process_wait_for_event (vm);
+
   while (1)
     {
       vlib_process_wait_for_event_or_clock (vm, 2);
@@ -5311,6 +5316,56 @@ VLIB_REGISTER_NODE (ikev2_mngr_process_node, static) = {
     .name =
     "ikev2-manager-process",
 };
+
+static void
+ikev2_lazy_init (ikev2_main_t *km)
+{
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  int thread_id;
+
+  if (km->lazy_init_done)
+    return;
+
+  ikev2_crypto_init (km);
+
+  mhash_init_vec_string (&km->profile_index_by_name, sizeof (uword));
+
+  vec_validate_aligned (km->per_thread_data, tm->n_vlib_mains - 1,
+			CLIB_CACHE_LINE_BYTES);
+  for (thread_id = 0; thread_id < tm->n_vlib_mains; thread_id++)
+    {
+      ikev2_main_per_thread_data_t *ptd =
+	vec_elt_at_index (km->per_thread_data, thread_id);
+
+      ptd->sa_by_rspi = hash_create (0, sizeof (uword));
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      ptd->evp_ctx = EVP_CIPHER_CTX_new ();
+      ptd->hmac_ctx = HMAC_CTX_new ();
+#else
+      EVP_CIPHER_CTX_init (&ptd->_evp_ctx);
+      ptd->evp_ctx = &ptd->_evp_ctx;
+      HMAC_CTX_init (&(ptd->_hmac_ctx));
+      ptd->hmac_ctx = &ptd->_hmac_ctx;
+#endif
+    }
+
+  km->sa_by_ispi = hash_create (0, sizeof (uword));
+  km->sw_if_indices = hash_create (0, 0);
+
+  km->punt_hdl = vlib_punt_client_register ("ikev2");
+
+  km->dns_resolve_name =
+    vlib_get_plugin_symbol ("dns_plugin.so", "dns_resolve_name");
+  if (!km->dns_resolve_name)
+    ikev2_log_error ("cannot load symbols from dns plugin");
+
+  /* wake up ikev2 process */
+  vlib_process_signal_event (vlib_get_first_main (),
+			     ikev2_mngr_process_node.index, 0, 0);
+
+  km->lazy_init_done = 1;
+}
 
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
