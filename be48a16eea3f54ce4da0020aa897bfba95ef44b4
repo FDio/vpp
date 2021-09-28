@@ -70,6 +70,24 @@
       "revId": "be48a16eea3f54ce4da0020aa897bfba95ef44b4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "63b53299_3c4e5730",
+        "filename": "src/vpp-api/python/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 2539
+      },
+      "writtenOn": "2021-09-28T09:29:01Z",
+      "side": 1,
+      "message": "To facilitate the merge of this change I\u0027ve returned the OUTPUT_QUIET.",
+      "parentUuid": "aff5e3f8_f7178e27",
+      "revId": "be48a16eea3f54ce4da0020aa897bfba95ef44b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
