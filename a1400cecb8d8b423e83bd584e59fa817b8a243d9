@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5fec6390_33c94795",
+        "filename": "src/vpp/api/api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 281,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2021-09-28T07:41:05Z",
+      "side": 0,
+      "message": "does this get deleted?",
+      "range": {
+        "startLine": 281,
+        "startChar": 2,
+        "endLine": 281,
+        "endChar": 46
+      },
+      "revId": "a1400cecb8d8b423e83bd584e59fa817b8a243d9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
