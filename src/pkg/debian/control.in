@@ -58,6 +58,14 @@ Description: Vector Packet Processing--runtime core plugins
  This package contains VPP core plugins
  .
 
+Package: vpp-plugin-devtools
+Architecture: any
+Depends: vpp (= ${source:Version}),
+         ${shlibs:Depends}
+Description: Vector Packet Processing--runtime developer tool plugins
+ This package contains VPP developer tool plugins
+ .
+
 Package: vpp-plugin-dpdk
 Architecture: any
 Depends: vpp (= ${source:Version}),
