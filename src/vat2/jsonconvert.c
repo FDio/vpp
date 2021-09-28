@@ -266,12 +266,19 @@ vl_api_ip4_address_t_fromjson (void **mp, int *len, cJSON *o,
 			       vl_api_ip4_address_t *a)
 {
     unformat_input_t input;
+    fprintf (stderr, "Processing ip4_address.\n");
     char *p = cJSON_GetStringValue(o);
-    if (!p)
+    if (!p) {
+      fprintf (stderr, "Got null not string'.\n");
       return -1;
+    }
+    fprintf (stderr, "Got string '%s'.\n", p);
     unformat_init_string (&input, p, strlen(p));
-    if (!unformat (&input, "%U", unformat_ip4_address, a))
+    if (!unformat (&input, "%U", unformat_ip4_address, a)) {
+      fprintf (stderr, "Processing ip4_address failed.\n");
       return -1;
+    }
+    fprintf (stderr, "Processed ip4_address.\n");
     return 0;
 }
 
