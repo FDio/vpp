@@ -94,7 +94,11 @@ clib_memswap (void *_a, void *_b, uword bytes)
 __clib_export void
 clib_c11_violation (const char *s)
 {
-  _clib_error (CLIB_ERROR_WARNING, (char *) __FUNCTION__, 0, (char *) s);
+  int how_to_die = CLIB_ERROR_WARNING;
+#if CLIB_DEBUG >= 1
+  how_to_die |= CLIB_ERROR_ABORT;
+#endif
+  _clib_error (how_to_die, (char *) __FUNCTION__, 0, (char *) s);
 }
 
 /**
