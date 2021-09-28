@@ -805,11 +805,6 @@ VLIB_CLI_COMMAND (ikev2_initiate_command, static) = {
 };
 /* *INDENT-ON* */
 
-void
-ikev2_cli_reference (void)
-{
-}
-
 static clib_error_t *
 ikev2_set_log_level_command_fn (vlib_main_t * vm,
 				unformat_input_t * input,

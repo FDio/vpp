@@ -531,6 +531,16 @@ typedef struct
 
   /* pointer to name resolver function in dns plugin */
   int (*dns_resolve_name) ();
+
+  /* flag indicating whether lazy init is done or not */
+  int lazy_init_done;
+
+  /* refcount for IKEv2 udp ports and IPsec NATT punt registration */
+  int bind_refcount;
+
+  /* punt handle for IPsec NATT IPSEC_PUNT_IP4_SPI_UDP_0 reason */
+  vlib_punt_hdl_t punt_hdl;
+
 } ikev2_main_t;
 
 extern ikev2_main_t ikev2_main;
