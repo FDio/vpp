@@ -162,8 +162,8 @@ done:
 }
 
 static clib_error_t *
-nat_show_workers_commnad_fn (vlib_main_t * vm, unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
+nat_show_workers_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			     vlib_cli_command_t *cmd)
 {
   snat_main_t *sm = &snat_main;
   u32 *worker;
@@ -1780,7 +1780,7 @@ VLIB_CLI_COMMAND (set_workers_command, static) = {
 VLIB_CLI_COMMAND (nat_show_workers_command, static) = {
   .path = "show nat workers",
   .short_help = "show nat workers",
-  .function = nat_show_workers_commnad_fn,
+  .function = nat_show_workers_command_fn,
 };
 
 /*?

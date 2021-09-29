@@ -412,7 +412,7 @@ typedef enum
 
 typedef struct
 {
-  /* prefered pool address */
+  /* preferred pool address */
   ip4_address_t pool_addr;
   /* local IP address */
   ip4_address_t local_addr;
