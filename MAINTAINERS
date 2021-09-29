@@ -792,6 +792,7 @@ F:	src/vat2/
 VNET Ipfix Export
 I:	ipfix-export
 M:	Ole Troan <ot@cisco.com>
+M:	Paul Atkins <patkins@graphiant.com>
 F:	src/vnet/ipfix-export/
 
 THE REST
