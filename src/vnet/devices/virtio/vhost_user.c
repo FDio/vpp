@@ -2343,23 +2343,25 @@ done:
  *
  * There are several parameters associated with a vHost interface:
  *
- * - <b>socket <socket-filename></b> - Name of the linux socket used by hypervisor
- * and VPP to manage the vHost interface. If in '<em>server</em>' mode, VPP will
- * create the socket if it does not already exist. If in '<em>client</em>' mode,
- * hypervisor will create the socket if it does not already exist. The VPP code
- * is indifferent to the file location. However, if SELinux is enabled, then the
- * socket needs to be created in '<em>/var/run/vpp/</em>'.
+ * - <b>socket <socket-filename></b> - Name of the linux socket used by
+ * hypervisor and VPP to manage the vHost interface. If in <em>server</em>
+ * mode, VPP will create the socket if it does not already exist. If in
+ * <em>client</em> mode, hypervisor will create the socket if it does not
+ * already exist. The VPP code is indifferent to the file location. However,
+ * if SELinux is enabled, then the socket needs to be created in
+ * <em>/var/run/vpp/</em>.
  *
- * - <b>server</b> - Optional flag to indicate that VPP should be the server for
- * the linux socket. If not provided, VPP will be the client. In '<em>server</em>'
- *  mode, the VM can be reset without tearing down the vHost Interface. In
- * '<em>client</em>' mode, VPP can be reset without bringing down the VM and
- * tearing down the vHost Interface.
+ * - <b>server</b> - Optional flag to indicate that VPP should be the server
+ * for the linux socket. If not provided, VPP will be the client. In
+ * <em>server</em> mode, the VM can be reset without tearing down the vHost
+ * Interface. In <em>client</em> mode, VPP can be reset without bringing down
+ * the VM and tearing down the vHost Interface.
  *
- * - <b>feature-mask <hex></b> - Optional virtio/vhost feature set negotiated at
- * startup. <b>This is intended for degugging only.</b> It is recommended that this
- * parameter not be used except by experienced users. By default, all supported
- * features will be advertised. Otherwise, provide the set of features desired.
+ * - <b>feature-mask <hex></b> - Optional virtio/vhost feature set negotiated
+ * at startup. <b>This is intended for degugging only.</b> It is recommended
+ * that this parameter not be used except by experienced users. By default,
+ * all supported features will be advertised. Otherwise, provide the set of
+ * features desired.
  *   - 0x000008000 (15) - VIRTIO_NET_F_MRG_RXBUF
  *   - 0x000020000 (17) - VIRTIO_NET_F_CTRL_VQ
  *   - 0x000200000 (21) - VIRTIO_NET_F_GUEST_ANNOUNCE
@@ -2373,18 +2375,21 @@ done:
  * - <b>hwaddr <mac-addr></b> - Optional ethernet address, can be in either
  * X:X:X:X:X:X unix or X.X.X cisco format.
  *
- * - <b>renumber <dev_instance></b> - Optional parameter which allows the instance
- * in the name to be specified. If instance already exists, name will be used
- * anyway and multiple instances will have the same name. Use with caution.
+ * - <b>renumber <dev_instance></b> - Optional parameter which allows the
+ * instance in the name to be specified. If instance already exists, name
+ * will be used anyway and multiple instances will have the same name. Use
+ * with caution.
  *
  * @cliexpar
- * Example of how to create a vhost interface with VPP as the client and all features enabled:
+ * Example of how to create a vhost interface with VPP as the client and all
+ * features enabled:
  * @cliexstart{create vhost-user socket /var/run/vpp/vhost1.sock}
  * VirtualEthernet0/0/0
  * @cliexend
- * Example of how to create a vhost interface with VPP as the server and with just
- * multiple queues enabled:
- * @cliexstart{create vhost-user socket /var/run/vpp/vhost2.sock server feature-mask 0x40400000}
+ * Example of how to create a vhost interface with VPP as the server and with
+ * just multiple queues enabled:
+ * @cliexstart{create vhost-user socket /var/run/vpp/vhost2.sock server
+ * feature-mask 0x40400000}
  * VirtualEthernet0/0/1
  * @cliexend
  * Once the vHost interface is created, enable the interface using:
@@ -2422,9 +2427,9 @@ VLIB_CLI_COMMAND (vhost_user_delete_command, static) = {
 
 /*?
  * Display the attributes of a single vHost User interface (provide interface
- * name), multiple vHost User interfaces (provide a list of interface names seperated
- * by spaces) or all Vhost User interfaces (omit an interface name to display all
- * vHost interfaces).
+ * name), multiple vHost User interfaces (provide a list of interface names
+ * separated by spaces) or all Vhost User interfaces (omit an interface name
+ * to display all vHost interfaces).
  *
  * @cliexpar
  * @parblock
@@ -2458,10 +2463,10 @@ VLIB_CLI_COMMAND (vhost_user_delete_command, static) = {
  *    thread 2 on vring 0
  *
  * Memory regions (total 2)
- * region fd    guest_phys_addr    memory_size        userspace_addr     mmap_offset        mmap_addr
- * ====== ===== ================== ================== ================== ================== ==================
- *   0     60    0x0000000000000000 0x00000000000a0000 0x00002aaaaac00000 0x0000000000000000 0x00002aab2b400000
- *   1     61    0x00000000000c0000 0x000000003ff40000 0x00002aaaaacc0000 0x00000000000c0000 0x00002aababcc0000
+ * region fd guest_phys_addr memory_size userspace_addr mmap_offset mmap_addr
+ * ====== == =============== =========== ============== =========== ==========
+ *   0    60  0x00000000     0x000a0000  0xaac00000     0x00000000  0x2b400000
+ *   1    61  0x000c0000     0x3ff40000  0xaacc0000     0x000c0000  0xabcc0000
  *
  *  Virtqueue 0 (TX)
  *   qsz 256 last_avail_idx 0 last_used_idx 0
@@ -2505,8 +2510,9 @@ VLIB_CLI_COMMAND (vhost_user_delete_command, static) = {
  *
  * @cliexend
  *
- * The optional '<em>descriptors</em>' parameter will display the same output as
- * the previous example but will include the descriptor table for each queue.
+ * The optional '<em>descriptors</em>' parameter will display the same output
+ * as the previous example but will include the descriptor table for each
+ * queue.
  * The output is truncated below:
  * @cliexstart{show vhost-user VirtualEthernet0/0/0 descriptors}
  * Virtio vhost-user interfaces

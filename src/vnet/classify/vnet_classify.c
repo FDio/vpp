@@ -2043,7 +2043,7 @@ vlib_enable_disable_pkt_trace_filter (int enable)
  * It's reasonably likely that folks will configure a single
  * table with one or two matches. As a result, we configure
  * 8 hash buckets and 128K of match rule space. One can override
- * the defaults by specifiying "buckets <nnn>" and "memory-size <xxx>"
+ * the defaults by specifying "buckets <nnn>" and "memory-size <xxx>"
  * as desired.
  *
  * To build up complex filter chains, repeatedly issue the
@@ -2079,16 +2079,18 @@ vlib_enable_disable_pkt_trace_filter (int enable)
  *
  * Configure a simple classify filter, and configure pcap rx trace to use it:
  *
- * <b><em>classify filter rx mask l3 ip4 src match l3 ip4 src 192.168.1.11"</em></b><br>
+ * @cliexcmd{classify filter rx mask l3 ip4 src match l3 ip4 src 192.168.1.11}
  * <b><em>pcap rx trace on max 100 filter</em></b>
  *
  * Configure another fairly simple filter
  *
- * <b><em>classify filter mask l3 ip4 src dst match l3 ip4 src 192.168.1.10 dst 192.168.2.10"</em></b>
+ * @cliexcmd{classify filter mask l3 ip4 src dst match l3 ip4 src 192.168.1.10
+ * dst 192.168.2.10}
  *
  *
  * Configure a filter for use with the vpp packet tracer:
- * <b><em>classify filter trace mask l3 ip4 src dst match l3 ip4 src 192.168.1.10 dst 192.168.2.10"</em></b>
+ * @cliexcmd{classify filter trace mask l3 ip4 src dst match l3 ip4 src
+ * 192.168.1.10 dst 192.168.2.10}
  * <b><em>trace add dpdk-input 100 filter</em></b>
  *
  * Clear classifier filters
@@ -2096,7 +2098,7 @@ vlib_enable_disable_pkt_trace_filter (int enable)
  * <b><em>classify filter [trace | rx | tx  | <intfc>] del</em></b>
  *
  * To display the top-level classifier tables for each use case:
- * <b><em>show classify filter</em/></b>
+ * <b><em>show classify filter</em></b>
  *
  * To inspect the classifier tables, use
  *

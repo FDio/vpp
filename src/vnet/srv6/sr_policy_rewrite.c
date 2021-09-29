@@ -33,7 +33,7 @@
  * Traffic input usually is IPv6 packets. However it is possible to have
  * IPv4 packets or L2 frames. (that are encapsulated into IPv6 with SRH)
  *
- * This file provides the appropiates VPP graph nodes to do any of these
+ * This file provides the appropriate VPP graph nodes to do any of these
  * methods.
  *
  */
@@ -434,7 +434,7 @@ create_sl (ip6_sr_policy_t * sr_policy, ip6_address_t * sl, u32 weight,
 }
 
 /**
- * @brief Updates the Load Balancer after an SR Policy change
+ * @brief Updates the Load-Balancer after an SR Policy change
  *
  * @param sr_policy is the modified SR Policy
  */
