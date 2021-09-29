@@ -133,17 +133,16 @@ vat2_register_function (char *name, cJSON (*f) (cJSON *),
 static int
 vat2_exec_command_by_name (char *msgname, cJSON *o)
 {
+  u32 crc = 0;
   if (filter_message (msgname))
     return 0;
 
   cJSON *crc_obj = cJSON_GetObjectItem (o, "_crc");
-  if (!crc_obj)
+  if (crc_obj)
     {
-      fprintf (stderr, "Missing '_crc' element!\n");
-      return -1;
+      char *crc_str = cJSON_GetStringValue (crc_obj);
+      crc = (u32) strtol (crc_str, NULL, 16);
     }
-  char *crc_str = cJSON_GetStringValue (crc_obj);
-  u32 crc = (u32) strtol (crc_str, NULL, 16);
 
   uword *p = hash_get_mem (function_by_name, msgname);
   if (!p)
@@ -151,7 +150,7 @@ vat2_exec_command_by_name (char *msgname, cJSON *o)
       fprintf (stderr, "No such command %s\n", msgname);
       return -1;
     }
-  if (crc != apifuncs[p[0]].crc)
+  if (crc && crc != apifuncs[p[0]].crc)
     {
       fprintf (stderr, "API CRC does not match: %s!\n", msgname);
     }
