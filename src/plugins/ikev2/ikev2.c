@@ -2385,7 +2385,6 @@ ikev2_generate_message (vlib_buffer_t *b, ikev2_sa_t *sa, ike_header_t *ike,
       if (sa->state == IKEV2_STATE_AUTHENTICATED)
 	{
 	  ikev2_payload_add_id (chain, &sa->r_id, IKEV2_PAYLOAD_IDR);
-	  ikev2_payload_add_id (chain, &sa->i_id, IKEV2_PAYLOAD_IDI);
 	  ikev2_payload_add_auth (chain, &sa->r_auth);
 	  ikev2_payload_add_sa (chain, sa->childs[0].r_proposals);
 	  ikev2_payload_add_ts (chain, sa->childs[0].tsi, IKEV2_PAYLOAD_TSI);
