@@ -104,6 +104,40 @@
       "revId": "300b61c9e2d7c5b1c211d210f8311e9ee5a2772e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "93ae1131_6c947565",
+        "filename": "src/vnet/ipsec/ipsec_sa.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 577,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2021-09-29T14:36:30Z",
+      "side": 1,
+      "message": "Why is thread_index added as an input parameter? It does not appear to be used.",
+      "revId": "300b61c9e2d7c5b1c211d210f8311e9ee5a2772e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7b695efd_27bf35c3",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 830,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2021-09-29T14:36:30Z",
+      "side": 1,
+      "message": "Should this say the lost packets are NOT counted until after the first sizeof(replay_window)?",
+      "revId": "300b61c9e2d7c5b1c211d210f8311e9ee5a2772e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
