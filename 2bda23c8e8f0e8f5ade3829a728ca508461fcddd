@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4b48c17d_ea902462",
+        "filename": "src/plugins/ikev2/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-09-29T13:53:56Z",
+      "side": 1,
+      "message": "can we display a warning and return() instead, as we do elsewhere? See https://git.fd.io/vpp/tree/src/plugins/af_xdp/CMakeLists.txt#n15 for example",
+      "revId": "2bda23c8e8f0e8f5ade3829a728ca508461fcddd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
