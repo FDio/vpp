@@ -261,8 +261,8 @@ show_mfib_itf_command (vlib_main_t * vm,
 }
 
 /*?
- * This commnad displays an MFIB interface, or all interfaces, indexed by their unique
- * numerical indentifier.
+ * This command displays an MFIB interface, or all interfaces, indexed by their
+ * unique numerical identifier.
  ?*/
 VLIB_CLI_COMMAND (show_mfib_itf, static) = {
   .path = "show mfib interface",

@@ -481,7 +481,7 @@ ip4_show_fib (vlib_main_t * vm,
  * entries for each table.
  *
  * @note This command will run for a long time when the FIB tables are
- * comprised of millions of entries. For those senarios, consider displaying
+ * comprised of millions of entries. For those scenarios, consider displaying
  * a single table or summary mode.
  *
  * @cliexpar

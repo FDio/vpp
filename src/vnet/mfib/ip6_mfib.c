@@ -730,12 +730,13 @@ ip6_show_mfib (vlib_main_t * vm,
     return 0;
 }
 
-/*
+/* clang-format off */
+/*?
  * This command displays the IPv6 MulticasrFIB Tables (VRF Tables) and
  * the route entries for each table.
  *
  * @note This command will run for a long time when the FIB tables are
- * comprised of millions of entries. For those senarios, consider displaying
+ * comprised of millions of entries. For those scenarios, consider displaying
  * a single table or summary mode.
  *
  * @cliexpar
@@ -771,14 +772,13 @@ ip6_show_mfib (vlib_main_t * vm,
  *                   24               2
  *                   32               4
  * @cliexend
- */
-/* *INDENT-OFF* */
+ ?*/
+/* clang-format on */
 VLIB_CLI_COMMAND (ip6_show_fib_command, static) = {
     .path = "show ip6 mfib",
     .short_help = "show ip mfib [summary] [table <table-id>] [index <fib-id>] [<grp-addr>[/<mask>]] [<grp-addr>] [<src-addr> <grp-addr>]",
     .function = ip6_show_mfib,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 ip6_mfib_init (vlib_main_t * vm)
