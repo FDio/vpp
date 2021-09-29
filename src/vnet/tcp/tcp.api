@@ -42,3 +42,249 @@ autoreply define tcp_configure_src_addresses {
     vl_api_address_t first_address;
     vl_api_address_t last_address;
  };
+
+counters tcp {
+  none {
+    severity info;
+    type counter64;
+    units "packets";
+    description "no error";
+  };
+  wrong_thread {
+    severity error;
+    type counter64;
+    units "packets";
+    description "Wrong worker thread";
+  };
+  filtered {
+    severity info;
+    type counter64;
+    units "packets";
+    description "Packets filtered";
+  };
+  length {
+    severity error;
+    type counter64;
+    units "packets";
+    description "inconsistent ip/tcp lengths";
+  };
+  no_listener {
+    severity error;
+    type counter64;
+    units "packets";
+    description "no listener for dst port";
+  };
+  lookup_drops {
+    severity error;
+    type counter64;
+    units "packets";
+    description "lookup drops";
+  };
+  dispatch {
+    severity error;
+    type counter64;
+    units "packets";
+    description "Dispatch error";
+  };
+  enqueued {
+    severity info;
+    type counter64;
+    units "packets";
+    description "Packets pushed into rx fifo";
+  };
+  enqueued_ooo {
+    severity info;
+    type counter64;
+    units "packets";
+    description "OOO packets pushed into rx fifo";
+  };
+  fifo_full {
+    severity error;
+    type counter64;
+    units "packets";
+    description "Packets dropped for lack of rx fifo space";
+  };
+  partially_enqueued {
+    severity info;
+    type counter64;
+    units "packets";
+    description "Packets partially pushed into rx fifo";
+  };
+  segment_old {
+    severity info;
+    type counter64;
+    units "packets";
+    description "Old segment";
+  };
+  segment_invalid {
+    severity error;
+    type counter64;
+    units "packets";
+    description "Invalid segments";
+  };
+  syns_rcvd {
+    severity info;
+    type counter64;
+    units "packets";
+    description "SYNs received";
+  };
+  spurious_syn {
+    severity error;
+    type counter64;
+    units "packets";
+    description "Spurious SYNs received";
+  };
+  syn_acks_rcvd {
+    severity info;
+    type counter64;
+    units "packets";
+    description "SYN-ACKs received";
+  };
+  spurious_syn_ack {
+    severity error;
+    type counter64;
+    units "packets";
+    description "Spurious SYN-ACKs received";
+  };
+  msg_queue_full {
+    severity error;
+    type counter64;
+    units "packets";
+    description "Events not sent for lack of msg queue space";
+  };
+  create_session_fail {
+    severity error;
+    type counter64;
+    units "packets";
+    description "Sessions couldn't be allocated";
+  };
+  ack_ok {
+    severity info;
+    type counter64;
+    units "packets";
+    description "Pure ACKs received";
+  };
+  ack_invalid {
+    severity error;
+    type counter64;
+    units "packets";
+    description "Invalid ACK";
+  };
+  ack_dup {
+    severity error;
+    type counter64;
+    units "packets";
+    description "Duplicate ACK";
+  };
+  ack_old {
+    severity error;
+    type counter64;
+    units "packets";
+    description "Old ACK";
+  };
+  ack_future {
+    severity info;
+    type counter64;
+    units "packets";
+    description "Future ACK";
+  };
+  pkts_sent {
+    severity info;
+    type counter64;
+    units "packets";
+    description "Packets sent";
+  };
+  rst_sent {
+    severity info;
+    type counter64;
+    units "packets";
+    description "Resets sent";
+  };
+  rst_rcvd {
+    severity info;
+    type counter64;
+    units "packets";
+    description "Resets received";
+  };
+  invalid_connection {
+    severity error;
+    type counter64;
+    units "packets";
+    description "Invalid connection";
+  };
+  connection_closed {
+    severity info;
+    type counter64;
+    units "packets";
+    description "Connection closed";
+  };
+  create_exists {
+    severity error;
+    type counter64;
+    units "packets";
+    description "Connection already exists";
+  };
+  punt {
+    severity info;
+    type counter64;
+    units "packets";
+    description "Packets punted";
+  };
+  options {
+    severity error;
+    type counter64;
+    units "packets";
+    description "Could not parse options";
+  };
+  paws {
+    severity error;
+    type counter64;
+    units "packets";
+    description "PAWS check failed";
+  };
+  rcv_wnd {
+    severity error;
+    type counter64;
+    units "packets";
+    description "Segment not in receive window";
+  };
+  fin_rcvd {
+    severity info;
+    type counter64;
+    units "packets";
+    description "FINs received";
+  };
+  link_local_rw {
+    severity error;
+    type counter64;
+    units "packets";
+    description "No rewrite for link local connection";
+  };
+  zero_rwnd {
+    severity error;
+    type counter64;
+    units "packets";
+    description "Zero receive window";
+  };
+};
+
+counters syn_filter {
+  throttled {
+    severity error;
+    type counter64;
+    units "packets";
+    description "TCP SYN packet throttle drops";
+  };
+  ok {
+    severity info;
+    type counter64;
+    units "packets";
+    description "TCP SYN packets passed";
+  };
+};
+
+paths {
+  "/err/tcp4" "tcp";
+  "/err/tcp6" "tcp";
+  "/err/syn-filter-4" "syn_filter";
+};

@@ -306,11 +306,11 @@ show_errors (vlib_main_t * vm,
 
 	      if (verbose)
 		vlib_cli_output (vm, "%10lu%=35v%=35s%=10s%=6d", c, n->name,
-				 em->counters_heap[i].name,
+				 em->counters_heap[i].desc,
 				 sev2str (em->counters_heap[i].severity), i);
 	      else
 		vlib_cli_output (vm, "%10lu%=35v%=35s%=10s", c, n->name,
-				 em->counters_heap[i].name,
+				 em->counters_heap[i].desc,
 				 sev2str (em->counters_heap[i].severity));
 	    }
 	}
@@ -330,7 +330,7 @@ show_errors (vlib_main_t * vm,
 	    {
 	      if (verbose)
 		vlib_cli_output (vm, "%10lu%=40v%=20s%=10d", sums[i], n->name,
-				 em->counters_heap[i].name, i);
+				 em->counters_heap[i].desc, i);
 	    }
 	}
     }

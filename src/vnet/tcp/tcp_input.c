@@ -21,12 +21,6 @@
 #include <vnet/session/session.h>
 #include <math.h>
 
-static char *tcp_error_strings[] = {
-#define tcp_error(n,s) s,
-#include <vnet/tcp/tcp_error.def>
-#undef tcp_error
-};
-
 /* All TCP nodes have the same outgoing arcs */
 #define foreach_tcp_state_next                  \
   _ (DROP4, "ip4-drop")                         \
@@ -1575,7 +1569,7 @@ VLIB_REGISTER_NODE (tcp4_established_node) =
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
   .n_errors = TCP_N_ERROR,
-  .error_strings = tcp_error_strings,
+  .error_counters = tcp_error_counters,
   .n_next_nodes = TCP_ESTABLISHED_N_NEXT,
   .next_nodes =
   {
@@ -1594,7 +1588,7 @@ VLIB_REGISTER_NODE (tcp6_established_node) =
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
   .n_errors = TCP_N_ERROR,
-  .error_strings = tcp_error_strings,
+  .error_counters = tcp_error_counters,
   .n_next_nodes = TCP_ESTABLISHED_N_NEXT,
   .next_nodes =
   {
@@ -2069,7 +2063,7 @@ VLIB_REGISTER_NODE (tcp4_syn_sent_node) =
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
   .n_errors = TCP_N_ERROR,
-  .error_strings = tcp_error_strings,
+  .error_counters = tcp_error_counters,
   .n_next_nodes = TCP_SYN_SENT_N_NEXT,
   .next_nodes =
   {
@@ -2088,7 +2082,7 @@ VLIB_REGISTER_NODE (tcp6_syn_sent_node) =
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
   .n_errors = TCP_N_ERROR,
-  .error_strings = tcp_error_strings,
+  .error_counters = tcp_error_counters,
   .n_next_nodes = TCP_SYN_SENT_N_NEXT,
   .next_nodes =
   {
@@ -2534,7 +2528,7 @@ VLIB_REGISTER_NODE (tcp4_rcv_process_node) =
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
   .n_errors = TCP_N_ERROR,
-  .error_strings = tcp_error_strings,
+  .error_counters = tcp_error_counters,
   .n_next_nodes = TCP_RCV_PROCESS_N_NEXT,
   .next_nodes =
   {
@@ -2553,7 +2547,7 @@ VLIB_REGISTER_NODE (tcp6_rcv_process_node) =
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
   .n_errors = TCP_N_ERROR,
-  .error_strings = tcp_error_strings,
+  .error_counters = tcp_error_counters,
   .n_next_nodes = TCP_RCV_PROCESS_N_NEXT,
   .next_nodes =
   {
@@ -2724,7 +2718,7 @@ VLIB_REGISTER_NODE (tcp4_listen_node) =
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
   .n_errors = TCP_N_ERROR,
-  .error_strings = tcp_error_strings,
+  .error_counters = tcp_error_counters,
   .n_next_nodes = TCP_LISTEN_N_NEXT,
   .next_nodes =
   {
@@ -2743,7 +2737,7 @@ VLIB_REGISTER_NODE (tcp6_listen_node) =
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
   .n_errors = TCP_N_ERROR,
-  .error_strings = tcp_error_strings,
+  .error_counters = tcp_error_counters,
   .n_next_nodes = TCP_LISTEN_N_NEXT,
   .next_nodes =
   {
@@ -2998,7 +2992,7 @@ VLIB_REGISTER_NODE (tcp4_input_nolookup_node) =
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
   .n_errors = TCP_N_ERROR,
-  .error_strings = tcp_error_strings,
+  .error_counters = tcp_error_counters,
   .n_next_nodes = TCP_INPUT_N_NEXT,
   .next_nodes =
   {
@@ -3018,7 +3012,7 @@ VLIB_REGISTER_NODE (tcp6_input_nolookup_node) =
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
   .n_errors = TCP_N_ERROR,
-  .error_strings = tcp_error_strings,
+  .error_counters = tcp_error_counters,
   .n_next_nodes = TCP_INPUT_N_NEXT,
   .next_nodes =
   {
@@ -3052,7 +3046,7 @@ VLIB_REGISTER_NODE (tcp4_input_node) =
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
   .n_errors = TCP_N_ERROR,
-  .error_strings = tcp_error_strings,
+  .error_counters = tcp_error_counters,
   .n_next_nodes = TCP_INPUT_N_NEXT,
   .next_nodes =
   {
@@ -3072,7 +3066,7 @@ VLIB_REGISTER_NODE (tcp6_input_node) =
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
   .n_errors = TCP_N_ERROR,
-  .error_strings = tcp_error_strings,
+  .error_counters = tcp_error_counters,
   .n_next_nodes = TCP_INPUT_N_NEXT,
   .next_nodes =
   {
