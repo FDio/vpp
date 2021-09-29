@@ -36,6 +36,24 @@
     },
     {
       "key": {
+        "uuid": "aa773c2b_7e4d345b",
+        "filename": "src/vnet/ipsec/ah_decrypt.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 405,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-09-29T14:07:47Z",
+      "side": 1,
+      "message": "forever the optimist me :).\nIsn\u0027t it the case that for a PREDICT to be beneficial it has to be correct more than 50% of the time. that would translate into a loss rate on the SA of at least 50%, i.e. every time i saw a packet i also detect that some were lost. 50% loss rates i\u0027d say were the uncommon case.\ni\u0027ve no objection to removing the PREDICT if we think it is confusing or contentious. i understand that on modern HW they don\u0027t make much difference anyway.",
+      "parentUuid": "8c9aafa7_e252ad0e",
+      "revId": "300b61c9e2d7c5b1c211d210f8311e9ee5a2772e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "024df0d5_7c4c09e8",
         "filename": "src/vnet/ipsec/esp_decrypt.c",
         "patchSetId": 2
