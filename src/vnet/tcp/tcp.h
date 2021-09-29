@@ -25,20 +25,13 @@
 #include <vnet/tcp/tcp_sack.h>
 #include <vnet/tcp/tcp_bt.h>
 #include <vnet/tcp/tcp_cc.h>
+#include <vnet/tcp/tcp.api_enum.h>
 
 typedef void (timer_expiration_handler) (tcp_connection_t * tc);
 
 extern timer_expiration_handler tcp_timer_retransmit_handler;
 extern timer_expiration_handler tcp_timer_persist_handler;
 extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
-
-typedef enum _tcp_error
-{
-#define tcp_error(n,s) TCP_ERROR_##n,
-#include <vnet/tcp/tcp_error.def>
-#undef tcp_error
-  TCP_N_ERROR,
-} tcp_error_t;
 
 typedef struct _tcp_lookup_dispatch
 {

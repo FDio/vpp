@@ -646,7 +646,6 @@ list(APPEND VNET_HEADERS
   tcp/tcp_sack.h
   tcp/tcp_types.h
   tcp/tcp.h
-  tcp/tcp_error.def
 )
 
 list(APPEND VNET_API_FILES tcp/tcp.api)

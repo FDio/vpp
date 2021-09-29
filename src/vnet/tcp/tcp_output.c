@@ -40,12 +40,6 @@ typedef enum _tcp_output_next
   _ (IP_REWRITE, "ip6-rewrite")			\
   _ (IP_ARP, "ip6-discover-neighbor")
 
-static char *tcp_error_strings[] = {
-#define tcp_error(n,s) s,
-#include <vnet/tcp/tcp_error.def>
-#undef tcp_error
-};
-
 typedef struct
 {
   tcp_header_t tcp_header;
@@ -2288,7 +2282,7 @@ VLIB_REGISTER_NODE (tcp4_output_node) =
   .vector_size = sizeof (u32),
   .n_errors = TCP_N_ERROR,
   .protocol_hint = VLIB_NODE_PROTO_HINT_TCP,
-  .error_strings = tcp_error_strings,
+  .error_counters = tcp_error_counters,
   .n_next_nodes = TCP_OUTPUT_N_NEXT,
   .next_nodes = {
 #define _(s,n) [TCP_OUTPUT_NEXT_##s] = n,
@@ -2308,7 +2302,7 @@ VLIB_REGISTER_NODE (tcp6_output_node) =
   .vector_size = sizeof (u32),
   .n_errors = TCP_N_ERROR,
   .protocol_hint = VLIB_NODE_PROTO_HINT_TCP,
-  .error_strings = tcp_error_strings,
+  .error_counters = tcp_error_counters,
   .n_next_nodes = TCP_OUTPUT_N_NEXT,
   .next_nodes = {
 #define _(s,n) [TCP_OUTPUT_NEXT_##s] = n,
@@ -2412,7 +2406,7 @@ VLIB_REGISTER_NODE (tcp4_reset_node) = {
   .name = "tcp4-reset",
   .vector_size = sizeof (u32),
   .n_errors = TCP_N_ERROR,
-  .error_strings = tcp_error_strings,
+  .error_counters = tcp_error_counters,
   .n_next_nodes = TCP_RESET_N_NEXT,
   .next_nodes = {
 #define _(s,n) [TCP_RESET_NEXT_##s] = n,
@@ -2428,7 +2422,7 @@ VLIB_REGISTER_NODE (tcp6_reset_node) = {
   .name = "tcp6-reset",
   .vector_size = sizeof (u32),
   .n_errors = TCP_N_ERROR,
-  .error_strings = tcp_error_strings,
+  .error_counters = tcp_error_counters,
   .n_next_nodes = TCP_RESET_N_NEXT,
   .next_nodes = {
 #define _(s,n) [TCP_RESET_NEXT_##s] = n,
