@@ -509,6 +509,17 @@ vac_write (char *p, int l)
 
   memcpy(mp, p, l);
   mp->client_index = vac_client_index();
+
+  int iii;
+  char *mp2;
+  mp2 = (char *) mp;
+  fprintf(stderr, "Request in binary after endian: ");
+  for (iii = 0; iii < l; iii++)
+  {
+    fprintf(stderr, "%02x", mp2[iii]);
+  }
+  fprintf(stderr, "\\n");
+
   q = am->shmem_hdr->vl_input_queue;
   rv = svm_queue_add(q, (u8 *)&mp, 0);
   if (rv != 0) {

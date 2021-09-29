@@ -194,6 +194,7 @@ class VppTransport:
         except socket.error as err:
             raise VppTransportSocketIOError(1, 'Sendall error: {err!r}'.format(
                 err=err))
+        logger.info(f"Sent: {bytes(header).hex()}{bytes(buf).hex()}")
 
     def _read_fixed(self, size):
         """Repeat receive until fixed size is read. Return empty on error."""

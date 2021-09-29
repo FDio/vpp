@@ -316,6 +316,8 @@ class FromJSON():
         write = self.stream.write
         write('#ifndef included_{}_api_fromjson_h\n'.format(self.module))
         write('#define included_{}_api_fromjson_h\n'.format(self.module))
+        write('#include <stdio.h>\n\n')
+        write('#include <stdlib.h>\n\n')
         write('#include <vppinfra/cJSON.h>\n\n')
         write('#include <vppinfra/jsonformat.h>\n\n')
         write('#pragma GCC diagnostic ignored "-Wunused-label"\n')
@@ -358,7 +360,9 @@ class FromJSON():
     def print_field(self, o, toplevel=False):
         '''Called for every field in a typedef or define.'''
         write = self.stream.write
+        write('    fprintf (stderr, "Processing field ' + o.fieldname + '\\n");\n')
         if o.fieldname in self.noprint_fields:
+            write('    fprintf (stderr, "Skipping, noprint.\\n");\n')
             return
         is_bt = self.is_base_type(o.fieldtype)
         t = 'vl_api_{}'.format(o.fieldtype) if is_bt else o.fieldtype
@@ -367,12 +371,15 @@ class FromJSON():
         msgsize = "&l" if toplevel else "len"
 
         if is_bt:
+            write('    fprintf (stderr, "It is a base field.\\n");\n')
             write('    vl_api_{t}_fromjson(item, &a->{n});\n'
                   .format(t=o.fieldtype, n=o.fieldname))
         else:
+            write('    fprintf (stderr, "It is a non-base field.\\n");\n')
             write('    if ({t}_fromjson({msgvar}, '
                   '{msgsize}, item, &a->{n}) < 0) goto error;\n'
                   .format(t=t, n=o.fieldname, msgvar=msgvar, msgsize=msgsize))
+        write('    fprintf (stderr, "Field processed.\\n");\n')
 
     _dispatch['Field'] = print_field
 
@@ -380,6 +387,7 @@ class FromJSON():
         '''Convert JSON array to VPP API array'''
         write = self.stream.write
 
+        write('   fprintf (stderr, "Processing array ' + o.fieldname + '\\n");\n')
         forloop = '''\
     {{
         int i;
@@ -475,9 +483,11 @@ class FromJSON():
               '(void **mp, int *len, cJSON *o, vl_api_{n}_t *a) {{\n'
               .format(n=o.name))
         write('    char *p = cJSON_GetStringValue(o);\n')
+        write('    fprintf (stderr, "Processing enum ' + o.name + '\\n");\n')
         for b in o.block:
             write('    if (strcmp(p, "{}") == 0) {{*a = {}; return 0;}}\n'
                   .format(b[0], b[1]))
+        write('    fprintf (stderr, "Enum not recognized.\\n");\n')
         write('    *a = 0;\n')
         write('    return -1;\n')
         write('}\n')
@@ -490,6 +500,7 @@ class FromJSON():
         write('static inline int vl_api_{n}_t_fromjson '
               '(void **mp, int *len, cJSON *o, vl_api_{n}_t *a) {{\n'
               .format(n=o.name))
+        write('   fprintf (stderr, "Processing enumflag ' + o.name + '\\n");\n')
         write('   int i;\n')
         write('   *a = 0;\n')
         write('   for (i = 0; i < cJSON_GetArraySize(o); i++) {\n')
@@ -500,6 +511,7 @@ class FromJSON():
             write('       if (strcmp(p, "{}") == 0) *a |= {};\n'
                   .format(b[0], b[1]))
         write('    }\n')
+        write('   fprintf (stderr, "Enumflag processed.\\n");\n')
         write('   return 0;\n')
         write('}\n')
 
@@ -514,13 +526,22 @@ class FromJSON():
               .format(name=o.name))
         write('    cJSON *item __attribute__ ((unused));\n')
         write('    u8 *s __attribute__ ((unused));\n')
+        write('    fprintf (stderr, "Processing typedef ' + o.name + '\\n");\n')
         for t in o.block:
+            write('    fprintf (stderr, "Processing field ' + t.fieldname + '\\n");\n')
             if t.type == 'Field' and t.is_lengthfield:
+                write('    fprintf (stderr, "Length field skipped\\n");\n')
                 continue
             write('\n    item = cJSON_GetObjectItem(o, "{}");\n'
                   .format(t.fieldname))
-            write('    if (!item) goto error;\n')
+            write('    if (!item) {\n')
+            write('        fprintf (stderr, "Field ' + t.fieldname + ' not found in typedef ' + o.name + '\\n");\n')
+            write('        fprintf (stderr, "Field ' + t.fieldname + ' not found in %s\\n", cJSON_Print (o));\n')
+            write('        goto error;\n')
+            write('    }\n')
+            write('    fprintf (stderr, "Field ' + t.fieldname + ' found in typedef ' + o.name + '\\n");\n')
             self._dispatch[t.type](self, t)
+            write('    fprintf (stderr, "Field ' + t.fieldname + ' dispatched.\\n");\n')
 
         write('\n    return 0;\n')
         write('\n  error:\n')
@@ -536,13 +557,20 @@ class FromJSON():
               .format(name=o.name))
         write('    cJSON *item __attribute__ ((unused));\n')
         write('    u8 *s __attribute__ ((unused));\n')
+        write('    fprintf (stderr, "Processing union ' + o.name + '.\\n");\n')
         for t in o.block:
+            write('    fprintf (stderr, "Trying as field ' + t.fieldname + '.\\n");\n')
             if t.type == 'Field' and t.is_lengthfield:
+                write('    fprintf (stderr, "Length field skipped.\\n");\n')
                 continue
             write('    item = cJSON_GetObjectItem(o, "{}");\n'
                   .format(t.fieldname))
             write('    if (item) {\n')
+            write('        fprintf (stderr, "Union field is matching.\\n");\n')
             self._dispatch[t.type](self, t)
+            write('        fprintf (stderr, "Union field dispatched.\\n");\n')
+            write('    } else {\n')
+            write('        fprintf (stderr, "Union field not matching.\\n");\n')
             write('    };\n')
         write('\n    return 0;\n')
         write('\n  error:\n')
@@ -560,17 +588,26 @@ class FromJSON():
         write('    int l = sizeof(vl_api_{}_t);\n'.format(o.name))
         write('    vl_api_{}_t *a = cJSON_malloc(l);\n'.format(o.name))
         write('\n')
+        write('    fprintf (stderr, "Processing define ' + o.name + '\\n");\n')
 
         for t in o.block:
+            write('    fprintf (stderr, "Processing field ' + t.fieldname + '\\n");\n')
             if t.fieldname in self.noprint_fields:
+                write('    fprintf (stderr, "Noprint field skipped\\n");\n')
                 continue
             if t.type == 'Field' and t.is_lengthfield:
+                write('    fprintf (stderr, "Length field skipped\\n");\n')
                 continue
             write('    item = cJSON_GetObjectItem(o, "{}");\n'
                   .format(t.fieldname))
-            write('    if (!item) goto error;\n')
+            write('    if (!item) {\n')
+            write('        fprintf (stderr, "Field ' + t.fieldname + ' not found in %s\\n", cJSON_Print (o));\n')
+            write('        goto error;\n')
+            write('    }\n')
+            write('    fprintf (stderr, "Field ' + t.fieldname + ' found in define ' + o.name + '\\n");\n')
             error += 1
             self._dispatch[t.type](self, t, toplevel=True)
+            write('    fprintf (stderr, "Field ' + t.fieldname + ' dispatched.\\n");\n')
             write('\n')
 
         write('    *len = l;\n')
@@ -1548,12 +1585,15 @@ api_{n} (cJSON *o)
 {{
   vl_api_{n}_t *mp;
   int len;
+
   if (!o) return 0;
   mp = vl_api_{n}_t_fromjson(o, &len);
   if (!mp) {{
-    fprintf(stderr, "Failed converting JSON to API\\n");
+    fprintf(stderr, "Failed converting JSON to API for rr {n}\\n");
     return 0;
   }}
+  cJSON *o2 = vl_api_{n}_t_tojson(mp);
+  fprintf(stderr, "Request converted back: %s\\n", cJSON_Print(o2));
 
   mp->_vl_msg_id = vac_get_msg_index(VL_API_{N}_CRC);
   vl_api_{n}_t_endian(mp);
@@ -1585,7 +1625,7 @@ api_{n} (cJSON *o)
   if (!o) return 0;
   vl_api_{n}_t *mp = vl_api_{n}_t_fromjson(o, &len);
   if (!mp) {{
-      fprintf(stderr, "Failed converting JSON to API\\n");
+      fprintf(stderr, "Failed converting JSON to API for dd {n}\\n");
       return 0;
   }}
   mp->_vl_msg_id = msg_id;
@@ -1640,7 +1680,7 @@ api_{n} (cJSON *o)
   if (!o) return 0;
   vl_api_{n}_t *mp = vl_api_{n}_t_fromjson(o, &len);
   if (!mp) {{
-    fprintf(stderr, "Failed converting JSON to API\\n");
+    fprintf(stderr, "Failed converting JSON to API for dr {n}\\n");
     return 0;
   }}
   mp->_vl_msg_id = msg_id;
