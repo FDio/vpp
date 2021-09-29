@@ -141,10 +141,8 @@ clear_crypto_stats_fn (vlib_main_t * vm, unformat_input_t * input,
  *
  * @cliexpar
  * Example of how to clear the DPDK Crypto device statistics:
- * @cliexsart{clear dpdk crypto devices statistics}
+ * @cliexstart{clear dpdk crypto devices statistics}
  * vpp# clear dpdk crypto devices statistics
- * @cliexend
- * Example of clearing the DPDK Crypto device statistic data:
  * @cliexend
 ?*/
 /* *INDENT-OFF* */
@@ -176,12 +174,13 @@ show_dpdk_crypto_fn (vlib_main_t * vm, unformat_input_t * input,
  *
  * @cliexpar
  * Example of how to display the DPDK Crypto device information:
- * @cliexsart{show dpdk crypto devices}
+ * @cliexstart{show dpdk crypto devices}
  * vpp# show dpdk crypto devices
  *  aesni_mb0		  crypto_aesni_mb     up
  *  numa_node 0, max_queues 4
  *  SYMMETRIC_CRYPTO, SYM_OPERATION_CHAINING, CPU_AVX2, CPU_AESNI
- *  Cipher: aes-cbc-128, aes-cbc-192, aes-cbc-256, aes-ctr-128, aes-ctr-192, aes-ctr-256, aes-gcm-128, aes-gcm-192, aes-gcm-256
+ *  Cipher: aes-cbc-128, aes-cbc-192, aes-cbc-256, aes-ctr-128, aes-ctr-192,
+ *          aes-ctr-256, aes-gcm-128, aes-gcm-192, aes-gcm-256
  *  Auth: md5-96, sha1-96, sha-256-128, sha-384-192, sha-512-256
  *  enqueue 2	      dequeue 2 	 enqueue_err 0		dequeue_err 0
  *  free_resources 3 :
