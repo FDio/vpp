@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7560f725_76ac7c12",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 419,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2021-09-29T10:46:59Z",
+      "side": 1,
+      "message": "Please remove above block of code!",
+      "revId": "567e0c7f7a49f3d85e5e6035de41d6a97b85ad1b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
