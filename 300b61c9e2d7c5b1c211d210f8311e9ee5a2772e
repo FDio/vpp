@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a896120_a3ca2f7a",
+        "filename": "src/vlib/counter.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-09-29T07:54:14Z",
+      "side": 1,
+      "message": "I know this is mirroring what vlib_prefetch_combined_counter() does but I think it is actually wrong: the operatiopn \u0027+\u003d\u0027 is read-modify-write so what we really want is clib_prefetch_load().\nLet me check that with a friend...",
+      "revId": "300b61c9e2d7c5b1c211d210f8311e9ee5a2772e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8c9aafa7_e252ad0e",
+        "filename": "src/vnet/ipsec/ah_decrypt.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 405,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-09-29T07:54:14Z",
+      "side": 1,
+      "message": "Is that true? I\u0027d expect packet loss to be \"common\" especially for ipsec when used over the internet?",
+      "revId": "300b61c9e2d7c5b1c211d210f8311e9ee5a2772e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "024df0d5_7c4c09e8",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1020,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-09-29T07:54:14Z",
+      "side": 1,
+      "message": "same question, is it that uncommon?",
+      "revId": "300b61c9e2d7c5b1c211d210f8311e9ee5a2772e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
