@@ -2,8 +2,8 @@
 
 .. toctree::
 
-IP Security
-===========
+IPSec (IP Security)
+===================
 
 This is not a description on how IPSec works. Please read:
 

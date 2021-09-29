@@ -2175,7 +2175,6 @@ format_ip6_ra (u8 * s, va_list * args)
   return (s);
 }
 
-
 /*?
  * This command is used to configure the neighbor discovery
  * parameters on a given interface. Use the '<em>show ip6 interface</em>'
@@ -2183,9 +2182,16 @@ format_ip6_ra (u8 * s, va_list * args)
  * on a given interface. This command has three formats:
  *
  *
- * <b>Format 1 - Router Advertisement Options:</b> (Only one can be entered in a single command)
+ * <b>Format 1 - Router Advertisement Options:</b> (Only one can be entered in
+ * a single command)
  *
- * '<em><b>ip6 nd <interface> [no] [ra-managed-config-flag] | [ra-other-config-flag] | [ra-suppress] | [ra-suppress-link-layer] | [ra-send-unicast] | [ra-lifetime <lifetime>] | [ra-initial <cnt> <interval>] | [ra-interval <max-interval> [<min-interval>]] | [ra-cease]</b></em>'
+ * @clistart
+ * ip6 nd <interface> [no] [ra-managed-config-flag] |
+ *   [ra-other-config-flag] | [ra-suppress] | [ra-suppress-link-layer] |
+ *   [ra-send-unicast] | [ra-lifetime <lifetime>] |
+ *   [ra-initial <cnt> <interval>] |
+ *   [ra-interval <max-interval> [<min-interval>]] | [ra-cease]
+ * @cliend
  *
  * Where:
  *
@@ -2211,7 +2217,7 @@ format_ip6_ra (u8 * s, va_list * args)
  * and the '<em>no</em>' option returns it to this default state.
  *
  * <em>[no] ra-send-unicast</em> - Use the source address of the
- * router-solicitation message if availiable. The default is to use
+ * router-solicitation message if available. The default is to use
  * multicast address of all nodes, and the '<em>no</em>' option returns
  * it to this default state.
  *
@@ -2242,52 +2248,60 @@ format_ip6_ra (u8 * s, va_list * args)
  *
  * <b>Format 2 - Prefix Options:</b>
  *
- * '<em><b>ip6 nd <interface> [no] prefix <ip6-address>/<width> [<valid-lifetime> <pref-lifetime> | infinite] [no-advertise] [off-link] [no-autoconfig] [no-onlink]</b></em>'
+ * @clistart
+ * ip6 nd <interface> [no] prefix <ip6-address>/<width>
+ *   [<valid-lifetime> <pref-lifetime> | infinite] [no-advertise] [off-link]
+ *   [no-autoconfig] [no-onlink]
+ * @cliend
  *
  * Where:
  *
  * <em>no</em> - All additional flags are ignored and the prefix is deleted.
  *
- * <em><valid-lifetime> <pref-lifetime></em> - '<em><valid-lifetime></em>' is the
- * length of time in seconds during what the prefix is valid for the purpose of
- * on-link determination. Range is 7203 to 2592000 seconds and default is 2592000
- * seconds (30 days). '<em><pref-lifetime></em>' is the prefered-lifetime and is the
- * length of time in seconds during what addresses generated from the prefix remain
- * preferred. Range is 0 to 604800 seconds and default is 604800 seconds (7 days).
+ * <em><valid-lifetime> <pref-lifetime></em> - '<em><valid-lifetime></em>' is
+ * the length of time in seconds during what the prefix is valid for the
+ * purpose of on-link determination. Range is 7203 to 2592000 seconds and
+ * default is 2592000 seconds (30 days). '<em><pref-lifetime></em>' is the
+ * preferred-lifetime and is the length of time in seconds during what
+ * addresses generated from the prefix remain preferred. Range is 0 to 604800
+ * seconds and default is 604800 seconds (7 days).
  *
- * <em>infinite</em> - Both '<em><valid-lifetime></em>' and '<em><<pref-lifetime></em>'
- * are inifinte, no timeout.
+ * <em>infinite</em> - Both '<em><valid-lifetime></em>' and
+ * '<em><pref-lifetime></em>' are infinite, no timeout.
  *
  * <em>no-advertise</em> - Do not send full router address in prefix
  * advertisement. Default is to advertise (i.e. - This flag is off by default).
  *
- * <em>off-link</em> - Prefix is off-link, clear L-bit in packet. Default is on-link
- * (i.e. - This flag is off and L-bit in packet is set by default and this prefix can
- * be used for on-link determination). '<em>no-onlink</em>' also controls the L-bit.
+ * <em>off-link</em> - Prefix is off-link, clear L-bit in packet. Default is
+ * on-link (i.e. - This flag is off and L-bit in packet is set by default
+ * and this prefix can be used for on-link determination). '<em>no-onlink</em>'
+ * also controls the L-bit.
  *
- * <em>no-autoconfig</em> - Do not use prefix for autoconfiguration, clear A-bit in packet.
- * Default is autoconfig (i.e. - This flag is off and A-bit in packet is set by default.
+ * <em>no-autoconfig</em> - Do not use prefix for autoconfiguration, clear
+ * A-bit in packet. Default is autoconfig (i.e. - This flag is off and A-bit
+ * in packet is set by default.
  *
- * <em>no-onlink</em> - Do not use prefix for onlink determination, clear L-bit in packet.
- * Default is on-link (i.e. - This flag is off and L-bit in packet is set by default and
- * this prefix can be used for on-link determination). '<em>off-link</em>' also controls
- * the L-bit.
+ * <em>no-onlink</em> - Do not use prefix for onlink determination, clear L-bit
+ * in packet. Default is on-link (i.e. - This flag is off and L-bit in packet
+ * is set by default and this prefix can be used for on-link determination).
+ * '<em>off-link</em>' also controls the L-bit.
  *
  *
  * <b>Format 3: - Default of Prefix:</b>
  *
- * '<em><b>ip6 nd <interface> [no] prefix <ip6-address>/<width> default</b></em>'
+ * @cliexcmd{ip6 nd <interface> [no] prefix <ip6-address>/<width> default}
  *
- * When a new prefix is added (or existing one is being overwritten) <em>default</em>
- * uses default values for the prefix. If <em>no</em> is used, the <em>default</em>
- * is ignored and the prefix is deleted.
+ * When a new prefix is added (or existing one is being overwritten)
+ * <em>default</em> uses default values for the prefix. If <em>no</em> is
+ * used, the <em>default</em> is ignored and the prefix is deleted.
  *
  *
  * @cliexpar
  * Example of how set a router advertisement option:
  * @cliexcmd{ip6 nd GigabitEthernet2/0/0 ra-interval 100 20}
  * Example of how to add a prefix:
- * @cliexcmd{ip6 nd GigabitEthernet2/0/0 prefix fe80::fe:28ff:fe9c:75b3/64 infinite no-advertise}
+ * @cliexcmd{ip6 nd GigabitEthernet2/0/0 prefix fe80::fe:28ff:fe9c:75b3/64
+ * infinite no-advertise}
  * Example of how to delete a prefix:
  * @cliexcmd{ip6 nd GigabitEthernet2/0/0 no prefix fe80::fe:28ff:fe9c:75b3/64}
 ?*/
