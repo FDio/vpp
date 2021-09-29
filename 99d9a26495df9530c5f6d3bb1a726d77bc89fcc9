@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "ba88572b_4f867a2b",
+        "filename": "extras/libmemif/src/main.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 724,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-09-29T12:28:57Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "bd99cf1b_d63eb08d",
+      "revId": "99d9a26495df9530c5f6d3bb1a726d77bc89fcc9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6025ab67_9e1bb83a",
         "filename": "extras/libmemif/src/main.c",
         "patchSetId": 5
@@ -30,6 +48,24 @@
       "writtenOn": "2021-09-29T08:03:05Z",
       "side": 1,
       "message": "looks like it can be simplified,? Eg.\n  sunlen \u003d memif_min (strlen (un.sun_path), sizeof(un))\n\nNot sure I get the logic here though... Is it correct? It looks fishy to me.",
+      "revId": "99d9a26495df9530c5f6d3bb1a726d77bc89fcc9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "38346478_8925e66a",
+        "filename": "extras/libmemif/src/main.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 784,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-09-29T12:28:57Z",
+      "side": 1,
+      "message": "This comes from previous DPDK review comments,\nthe logic goes as follow - as we have:\nun {\n sa_family_t sun_family;\n char sun_path[108];\n};\nwe have to pass to connect()/bind() sunlen \u003d sizeof(sun_family) + strlen(abstractname)\nSo this could be written\n* (1) min(strlen (un.sun_path), sizeof (un.sun_path)) + sizeof(un.sun_family)\n* (2) min(strlen (un.sun_path) + sizeof(un.sun_family), sizeof (un))\n* (3) maybe add a comment/a macro like MEMIF_SUN_PATH_OFFSET \u003d sizeof(un)-sizeof(un.sun_path)\n\nThe comment the DPDK reviewer had was it was better to remove the dependency in \"we have only sun_family before sun_path\"",
+      "parentUuid": "6025ab67_9e1bb83a",
       "revId": "99d9a26495df9530c5f6d3bb1a726d77bc89fcc9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
