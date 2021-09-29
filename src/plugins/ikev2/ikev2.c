@@ -662,7 +662,10 @@ ikev2_parse_ke_payload (const void *p, u32 rlen, ikev2_sa_t * sa,
   u16 plen = clib_net_to_host_u16 (ke->length);
   ASSERT (plen >= sizeof (*ke) && plen <= rlen);
   if (sizeof (*ke) > rlen)
-    return 0;
+    {
+      ikev2_elog_error ("KE: packet too small");
+      return 0;
+    }
 
   sa->dh_group = clib_net_to_host_u16 (ke->dh_group);
   vec_reset_length (ke_data[0]);
@@ -679,7 +682,10 @@ ikev2_parse_nonce_payload (const void *p, u32 rlen, const u8 **nonce)
   int len = plen - sizeof (*ikep);
   ASSERT (len >= 16 && len <= 256);
   if (PREDICT_FALSE (len < 16 || len > 256))
-    return 0;
+    {
+      ikev2_elog_error ("NONCE: bad size");
+      return 0;
+    }
   *nonce = ikep->payload;
   return len;
 }
@@ -689,10 +695,16 @@ ikev2_check_payload_length (const ike_payload_header_t * ikep, int rlen,
 			    u16 * plen)
 {
   if (sizeof (*ikep) > rlen)
-    return 0;
+    {
+      ikev2_elog_error ("payload: packet too small");
+      return 0;
+    }
   *plen = clib_net_to_host_u16 (ikep->length);
   if (*plen < sizeof (*ikep) || *plen > rlen)
-    return 0;
+    {
+      ikev2_elog_error ("payload: bad size");
+      return 0;
+    }
   return 1;
 }
 
@@ -719,7 +731,10 @@ ikev2_process_sa_init_req (vlib_main_t *vm, ikev2_sa_t *sa, ike_header_t *ike,
   vec_add (sa->last_sa_init_req_packet_data, ike, len);
 
   if (len < sizeof (*ike))
-    return 0;
+    {
+      ikev2_elog_error ("IKE_INIT request too small");
+      return 0;
+    }
 
   len -= sizeof (*ike);
   while (p < len && payload != IKEV2_PAYLOAD_NONE)
@@ -830,7 +845,10 @@ ikev2_process_sa_init_resp (vlib_main_t * vm,
   vec_add (sa->last_sa_init_res_packet_data, ike, len);
 
   if (sizeof (*ike) > len)
-    return;
+    {
+      ikev2_elog_error ("IKE_INIT response too small");
+      return;
+    }
 
   len -= sizeof (*ike);
   while (p < len && payload != IKEV2_PAYLOAD_NONE)
