@@ -816,7 +816,7 @@ mfib_test_i (fib_protocol_t PROTO,
     /* MFIB_TEST_NS(!mfib_test_entry_no_itf(mfei, tm->hw[3]->sw_if_index)); */
 
     /*
-     * remove the last path and the accpeting only interface,
+     * remove the last path and the accepting only interface,
      * the entry still has flags so it remains
      */
     vec_reset_length(two_paths);
