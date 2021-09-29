@@ -33,7 +33,7 @@ lacp_state_struct lacp_state_array[] = {
 
     The interior node is neither pipelined nor dual-looped, because
     it would be very unusual to see more than one LACP packet in
-    a given input frame. So, it's a very simple / straighforward
+    a given input frame. So, it's a very simple / straightforward
     example.
 */
 
