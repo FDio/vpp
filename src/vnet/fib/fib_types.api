@@ -102,7 +102,7 @@ enum fib_path_type
 		       not given)
     @param weight - The weight, for UCMP
     @param preference - The preference of the path. lowest preference
-                        is prefered
+                        is preferred
     @param rpf-id - For paths that pop to multicast, this the the
                     RPF ID the packet will be given (0 and ~0 => unset)
     @param type - the path type

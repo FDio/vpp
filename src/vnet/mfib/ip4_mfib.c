@@ -590,12 +590,13 @@ ip4_show_mfib (vlib_main_t * vm,
     return 0;
 }
 
+/* clang-format off */
 /*?
  * This command displays the IPv4 MulticasrFIB Tables (VRF Tables) and
  * the route entries for each table.
  *
  * @note This command will run for a long time when the FIB tables are
- * comprised of millions of entries. For those senarios, consider displaying
+ * comprised of millions of entries. For those scenarios, consider displaying
  * a single table or summary mode.
  *
  * @cliexpar
@@ -632,10 +633,9 @@ ip4_show_mfib (vlib_main_t * vm,
  *                   32               4
  * @cliexend
  ?*/
-/* *INDENT-OFF* */
+/* clang-format on */
 VLIB_CLI_COMMAND (ip4_show_mfib_command, static) = {
     .path = "show ip mfib",
     .short_help = "show ip mfib [summary] [table <table-id>] [index <fib-id>] [<grp-addr>[/<mask>]] [<grp-addr>] [<src-addr> <grp-addr>]",
     .function = ip4_show_mfib,
 };
-/* *INDENT-ON* */

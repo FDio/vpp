@@ -54,7 +54,7 @@ typedef struct mpls_fib_t_
 
   /**
    * The load-balance indices keyed by 21 bit label+eos bit.
-   * A flat array for maximum lookup performace.
+   * A flat array for maximum lookup performance.
    */
   index_t mf_lbs[MPLS_FIB_DB_SIZE];
 } mpls_fib_t;
