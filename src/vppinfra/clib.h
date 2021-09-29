@@ -127,7 +127,7 @@
 
 /*
  * Compiler barrier
- *   prevent compiler to reorder memory access accross this boundary
+ *   prevent compiler to reorder memory access across this boundary
  *   prevent compiler to cache values in register (force reload)
  * Not to be confused with CPU memory barrier below
  */
