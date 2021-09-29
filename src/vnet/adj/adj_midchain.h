@@ -99,7 +99,7 @@ extern void adj_nbr_midchain_stack(adj_index_t adj_index,
  *  The FIB entry to stack on
  *
  * @param fct
- *  The chain type to use from the fib entry fowarding
+ *  The chain type to use from the fib entry forwarding
  */
 extern void adj_nbr_midchain_stack_on_fib_entry(adj_index_t adj_index,
                                                 fib_node_index_t fei,

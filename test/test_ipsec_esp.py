@@ -948,7 +948,7 @@ class RunTestIpsecEspAll(ConfigIpsecESP,
             1970,  # results in 2 chained buffers entering decrypt node
                    # but leaving as simple buffer due to ICV removal (tra4)
             2004,  # footer+ICV will be added to 2nd buffer (tun4)
-            4010,  # ICV ends up splitted accross 2 buffers in esp_decrypt
+            4010,  # ICV ends up splitted across 2 buffers in esp_decrypt
                    # for transport4; transport6 takes normal path
             4020,  # same as above but tra4 and tra6 are switched
         ]
@@ -974,9 +974,6 @@ class RunTestIpsecEspAll(ConfigIpsecESP,
         self.unconfig_network()
         self.config_network(self.params.values())
         self.verify_hi_seq_num()
-        self.unconfig_network()
-        self.config_network(self.params.values())
-        self.verify_tra_lost()
 
         #
         # swap the handlers while SAs are up
