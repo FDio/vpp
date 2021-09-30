@@ -5,6 +5,7 @@ import unittest
 import os
 import subprocess
 import signal
+import glob
 from framework import VppTestCase, VppTestRunner, running_extended_tests, \
     Worker
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath, FibPathProto
@@ -26,20 +27,33 @@ _have_iperf3 = have_app(iperf3)
 class VCLAppWorker(Worker):
     """ VCL Test Application Worker """
 
+    libdirs = ['lib', 'lib64']
+    libname = "libvcl_ldpreload.so"
+
     def __init__(self, build_dir, appname, executable_args, logger, env=None,
                  role=None, *args, **kwargs):
         self.role = role
         if env is None:
             env = {}
-        vcl_lib_dir = "%s/vpp/lib" % build_dir
+
+        for libdir in self.libdirs:
+            vcl_lib_glob = "{}/vpp/{}/**/{}".format(build_dir, libdir,
+                                                    self.libname)
+            vcl_lib = glob.glob(vcl_lib_glob, recursive=True)
+
+            if len(vcl_lib) > 0:
+                break
+
+        if len(vcl_lib) < 1:
+            raise ValueException('{} is not found'.format(self.libname))
+        vcl_lib = vcl_lib[0]
+
         if "iperf" in appname:
             app = appname
-            env.update({'LD_PRELOAD':
-                        "%s/libvcl_ldpreload.so" % vcl_lib_dir})
+            env.update({'LD_PRELOAD': vcl_lib})
         elif "sock" in appname:
             app = "%s/vpp/bin/%s" % (build_dir, appname)
-            env.update({'LD_PRELOAD':
-                        "%s/libvcl_ldpreload.so" % vcl_lib_dir})
+            env.update({'LD_PRELOAD': vcl_lib})
         else:
             app = "%s/vpp/bin/%s" % (build_dir, appname)
         self.args = [app] + executable_args

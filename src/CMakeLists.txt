@@ -33,6 +33,11 @@ if(CMAKE_VERSION VERSION_LESS 3.12)
   endmacro()
 endif()
 
+# Allow users/systems to override is desired (eg external package builds, etc)
+if(NOT DEFINED CMAKE_INSTALL_LIBDIR)
+  set(CMAKE_INSTALL_LIBDIR lib/${CMAKE_SYSTEM_PROCESSOR}-linux-gnu)
+endif()
+
 include(CheckCCompilerFlag)
 include(CheckIPOSupported)
 include(GNUInstallDirs)
@@ -61,7 +66,6 @@ if(CMAKE_CROSSCOMPILING)
     /usr/lib/${CMAKE_HOST_SYSTEM_PROCESSOR}-linux-gnu/lib/
   )
 endif()
-set(CMAKE_C_COMPILER_TARGET ${CMAKE_SYSTEM_PROCESSOR}-linux-gnu)
 
 ##############################################################################
 # build config
