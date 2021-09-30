@@ -16,6 +16,24 @@
       "revId": "0ee0f1c368bc89694ba29a8f0bf7ecadc6880880",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0e2e77f4_83d2646d",
+        "filename": "src/vnet/policer/policer.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 2493
+      },
+      "writtenOn": "2021-09-30T05:59:08Z",
+      "side": 1,
+      "message": "I think hash_set_mem_alloc may not suitable for hash that uses string as key, since the allocation inside the hash_set_mem_alloc is always allocating a fixed size of bytes, while the policer name (string) is not fixed in length.\n\nthe idea of the changes I did is actually similar to the function hash_unset_mem_free.\nhowever the hash.h didn\u0027t provide something like \"hash_unset_mem_free_vec\" thus I free the vec in that way.\n\nanother approach I can think of is to store the string address into the policer (making use of the pad64), but this way will change the data structure of policer_read_response_type_st",
+      "parentUuid": "40a16d75_ebe0a960",
+      "revId": "0ee0f1c368bc89694ba29a8f0bf7ecadc6880880",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
