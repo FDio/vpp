@@ -54,6 +54,11 @@ OS_ID        = $(shell grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"
 OS_VERSION_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
 endif
 
+# Detect processor
+MACHINE_ID := $(shell uname -m)
+PLATFORM_TRIPLET := $(MACHINE_ID)-linux-gnu
+
+
 ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
 PKG=deb
 else ifeq ($(filter rhel centos fedora,$(OS_ID)),$(OS_ID))
@@ -384,7 +389,7 @@ export RND_SEED ?= $(shell python3 -c 'import time; print(time.time())')
 
 define test
 	$(if $(filter-out $(3),retest),make -C $(BR) PLATFORM=$(1) TAG=$(2) vpp-install,)
-	$(eval libs:=lib lib64)
+	$(eval libs:=lib lib64 lib/$(PLATFORM_TRIPLET))
 	make -C test \
 	  VPP_BUILD_DIR=$(BR)/build-$(2)-native \
 	  VPP_BIN=$(BR)/install-$(2)-native/vpp/bin/vpp \
