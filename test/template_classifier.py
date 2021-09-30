@@ -116,11 +116,10 @@ class TestClassifier(VppTestCase):
             if self.acl_active_table.endswith('out'):
                 self.output_acl_set_interface(
                     self.pg0, self.acl_tbl_idx.get(self.acl_active_table), 0)
-                self.acl_active_table = ''
             elif self.acl_active_table != '':
                 self.input_acl_set_interface(
                     self.pg0, self.acl_tbl_idx.get(self.acl_active_table), 0)
-                self.acl_active_table = ''
+            self.acl_active_table = ''
 
             for intf in self.interfaces:
                 if self.af == AF_INET:

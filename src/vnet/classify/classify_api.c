@@ -896,6 +896,22 @@ static void vl_api_input_acl_set_interface_t_handler
   REPLY_MACRO (VL_API_INPUT_ACL_SET_INTERFACE_REPLY);
 }
 
+static void
+vl_api_punt_acl_add_del_t_handler (vl_api_punt_acl_add_del_t *mp)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vl_api_punt_acl_add_del_reply_t *rmp;
+  int rv;
+
+  rv = vnet_set_in_out_acl_intfc (
+    vm, 0 /* sw_if_index */, ~0 /* ip4_table_index */,
+    ~0 /* ip6_table_index */, ~0 /* l2_table_index */,
+    ntohl (mp->ip4_table_index), ntohl (mp->ip6_table_index), mp->is_add,
+    0 /* is_output */);
+
+  REPLY_MACRO (VL_API_PUNT_ACL_ADD_DEL_REPLY);
+}
+
 static void vl_api_output_acl_set_interface_t_handler
   (vl_api_output_acl_set_interface_t * mp)
 {

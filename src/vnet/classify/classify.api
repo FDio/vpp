@@ -420,6 +420,22 @@ autoreply define input_acl_set_interface
   bool is_add;
 };
 
+/** \brief Add/del punt ACL
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param ip4_table_index - ip4 punt classify table index (~0 for skip)
+    @param ip6_table_index - ip6 punt classify table index (~0 for skip)
+    @param is_add - add punt ACL if non-zero, else delete
+*/
+autoreply define punt_acl_add_del
+{
+  u32 client_index;
+  u32 context;
+  u32 ip4_table_index [default=0xffffffff];
+  u32 ip6_table_index [default=0xffffffff];
+  bool is_add [default=true];
+};
+
 /** \brief Set/unset output ACL interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request

@@ -31,6 +31,8 @@ typedef enum
   IN_OUT_ACL_TABLE_IP4,
   IN_OUT_ACL_TABLE_IP6,
   IN_OUT_ACL_TABLE_L2,
+  IN_OUT_ACL_TABLE_IP4_PUNT,
+  IN_OUT_ACL_TABLE_IP6_PUNT,
   IN_OUT_ACL_N_TABLES,
 } in_out_acl_table_id_t;
 
@@ -59,14 +61,14 @@ typedef struct
 
 extern in_out_acl_main_t in_out_acl_main;
 
-int vnet_set_in_out_acl_intfc (vlib_main_t * vm, u32 sw_if_index,
-			       u32 ip4_table_index,
-			       u32 ip6_table_index,
-			       u32 l2_table_index, u32 is_add, u32 is_output);
+int vnet_set_in_out_acl_intfc (vlib_main_t *vm, u32 sw_if_index,
+			       u32 ip4_table_index, u32 ip6_table_index,
+			       u32 l2_table_index, u32 ip4_punt_table_index,
+			       u32 ip6_punt_table_index, u32 is_add,
+			       u32 is_output);
 
-int vnet_set_input_acl_intfc (vlib_main_t * vm, u32 sw_if_index,
-			      u32 ip4_table_index,
-			      u32 ip6_table_index,
+int vnet_set_input_acl_intfc (vlib_main_t *vm, u32 sw_if_index,
+			      u32 ip4_table_index, u32 ip6_table_index,
 			      u32 l2_table_index, u32 is_add);
 
 int vnet_set_output_acl_intfc (vlib_main_t * vm, u32 sw_if_index,
