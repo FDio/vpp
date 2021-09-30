@@ -34,7 +34,7 @@ format_intel_membw_bound (u8 *s, va_list *args)
 }
 
 static perfmon_cpu_supports_t membw_bound_cpu_supports[] = {
-  { clib_cpu_supports_avx512_bitalg, PERFMON_BUNDLE_TYPE_NODE },
+  { clib_cpu_supports_avx512_bitalg, PERFMON_BUNDLE_TYPE_NODE_FLAG },
 };
 
 PERFMON_REGISTER_BUNDLE (intel_core_membw_bound) = {
