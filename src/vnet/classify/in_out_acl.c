@@ -21,63 +21,75 @@
 in_out_acl_main_t in_out_acl_main;
 
 static int
-vnet_in_out_acl_ip_feature_enable (vlib_main_t * vnm,
-				   in_out_acl_main_t * am,
-				   u32 sw_if_index,
-				   in_out_acl_table_id_t tid,
-				   int feature_enable, int is_output)
+vnet_in_out_acl_feature_enable (in_out_acl_main_t *am, u32 sw_if_index,
+				in_out_acl_table_id_t tid, int feature_enable,
+				int is_output)
 {
+  const char *arc_name, *feature_name;
+  vnet_feature_config_main_t *fcm;
+  u8 arc;
+  int rv;
 
-  if (tid == IN_OUT_ACL_TABLE_L2)
+  switch (tid)
     {
+    case IN_OUT_ACL_N_TABLES:
+      return VNET_API_ERROR_NO_SUCH_TABLE;
+    case IN_OUT_ACL_TABLE_L2:
       if (is_output)
 	l2output_intf_bitmap_enable (sw_if_index, L2OUTPUT_FEAT_ACL,
 				     feature_enable);
       else
 	l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_ACL,
 				    feature_enable);
+      return 0;
+    case IN_OUT_ACL_TABLE_IP4:
+      arc_name = is_output ? "ip4-output" : "ip4-unicast";
+      feature_name = is_output ? "ip4-outacl" : "ip4-inacl";
+      break;
+    case IN_OUT_ACL_TABLE_IP6:
+      arc_name = is_output ? "ip6-output" : "ip6-unicast";
+      feature_name = is_output ? "ip6-outacl" : "ip6-inacl";
+      break;
+    case IN_OUT_ACL_TABLE_IP4_PUNT:
+      if (sw_if_index != 0)
+	return VNET_API_ERROR_INVALID_INTERFACE;
+      arc_name = "ip4-punt";
+      feature_name = "ip4-punt-acl";
+      break;
+    case IN_OUT_ACL_TABLE_IP6_PUNT:
+      if (sw_if_index != 0)
+	return VNET_API_ERROR_INVALID_INTERFACE;
+      arc_name = "ip6-punt";
+      feature_name = "ip6-punt-acl";
+      break;
     }
-  else
-    {				/* IP[46] */
-      vnet_feature_config_main_t *fcm;
-      u8 arc;
 
-      if (tid == IN_OUT_ACL_TABLE_IP4)
-	{
-	  char *arc_name = is_output ? "ip4-output" : "ip4-unicast";
-	  vnet_feature_enable_disable (arc_name,
-				       is_output ? "ip4-outacl" : "ip4-inacl",
-				       sw_if_index, feature_enable, 0, 0);
-	  arc = vnet_get_feature_arc_index (arc_name);
-	}
-      else
-	{
-	  char *arc_name = is_output ? "ip6-output" : "ip6-unicast";
-	  vnet_feature_enable_disable (arc_name,
-				       is_output ? "ip6-outacl" : "ip6-inacl",
-				       sw_if_index, feature_enable, 0, 0);
-	  arc = vnet_get_feature_arc_index (arc_name);
-	}
+  rv = vnet_feature_enable_disable (arc_name, feature_name, sw_if_index,
+				    feature_enable, 0, 0);
+  if (rv)
+    return rv;
 
-      fcm = vnet_get_feature_arc_config_main (arc);
-      am->vnet_config_main[is_output][tid] = &fcm->config_main;
-    }
+  arc = vnet_get_feature_arc_index (arc_name);
+  fcm = vnet_get_feature_arc_config_main (arc);
+  am->vnet_config_main[is_output][tid] = &fcm->config_main;
 
   return 0;
 }
 
 int
-vnet_set_in_out_acl_intfc (vlib_main_t * vm, u32 sw_if_index,
-			   u32 ip4_table_index,
-			   u32 ip6_table_index, u32 l2_table_index,
-			   u32 is_add, u32 is_output)
+vnet_set_in_out_acl_intfc (vlib_main_t *vm, u32 sw_if_index,
+			   u32 ip4_table_index, u32 ip6_table_index,
+			   u32 l2_table_index, u32 ip4_punt_table_index,
+			   u32 ip6_punt_table_index, u32 is_add, u32 is_output)
 {
   in_out_acl_main_t *am = &in_out_acl_main;
   vnet_classify_main_t *vcm = am->vnet_classify_main;
-  u32 acl[IN_OUT_ACL_N_TABLES] = { ip4_table_index, ip6_table_index,
-    l2_table_index
+  u32 acl[IN_OUT_ACL_N_TABLES] = {
+    ip4_table_index,	  ip6_table_index,	l2_table_index,
+    ip4_punt_table_index, ip6_punt_table_index,
   };
   u32 ti;
+  int rv;
 
   /* Assume that we've validated sw_if_index in the API layer */
 
@@ -111,8 +123,10 @@ vnet_set_in_out_acl_intfc (vlib_main_t * vm, u32 sw_if_index,
 	  != ~0)
 	return 0;
 
-      vnet_in_out_acl_ip_feature_enable (vm, am, sw_if_index, ti, is_add,
-					 is_output);
+      rv = vnet_in_out_acl_feature_enable (am, sw_if_index, ti, is_add,
+					   is_output);
+      if (rv)
+	return rv;
 
       if (is_add)
 	am->classify_table_index_by_sw_if_index[is_output][ti][sw_if_index] =
@@ -130,9 +144,10 @@ vnet_set_input_acl_intfc (vlib_main_t * vm, u32 sw_if_index,
 			  u32 ip4_table_index,
 			  u32 ip6_table_index, u32 l2_table_index, u32 is_add)
 {
-  return vnet_set_in_out_acl_intfc (vm, sw_if_index, ip4_table_index,
-				    ip6_table_index, l2_table_index, is_add,
-				    IN_OUT_ACL_INPUT_TABLE_GROUP);
+  return vnet_set_in_out_acl_intfc (
+    vm, sw_if_index, ip4_table_index, ip6_table_index, l2_table_index,
+    ~0 /* ip4_punt_table_index */, ~0 /* ip6_punt_table_index */, is_add,
+    IN_OUT_ACL_INPUT_TABLE_GROUP);
 }
 
 int
@@ -141,9 +156,10 @@ vnet_set_output_acl_intfc (vlib_main_t * vm, u32 sw_if_index,
 			   u32 ip6_table_index, u32 l2_table_index,
 			   u32 is_add)
 {
-  return vnet_set_in_out_acl_intfc (vm, sw_if_index, ip4_table_index,
-				    ip6_table_index, l2_table_index, is_add,
-				    IN_OUT_ACL_OUTPUT_TABLE_GROUP);
+  return vnet_set_in_out_acl_intfc (
+    vm, sw_if_index, ip4_table_index, ip6_table_index, l2_table_index,
+    ~0 /* ip4_punt_table_index */, ~0 /* ip6_punt_table_index */, is_add,
+    IN_OUT_ACL_OUTPUT_TABLE_GROUP);
 }
 
 static clib_error_t *
@@ -155,6 +171,8 @@ set_in_out_acl_command_fn (vlib_main_t * vm,
   u32 sw_if_index = ~0;
   u32 ip4_table_index = ~0;
   u32 ip6_table_index = ~0;
+  u32 ip4_punt_table_index = ~0;
+  u32 ip6_punt_table_index = ~0;
   u32 l2_table_index = ~0;
   u32 is_add = 1;
   u32 idx_cnt = 0;
@@ -168,6 +186,10 @@ set_in_out_acl_command_fn (vlib_main_t * vm,
       else if (unformat (input, "ip4-table %d", &ip4_table_index))
 	idx_cnt++;
       else if (unformat (input, "ip6-table %d", &ip6_table_index))
+	idx_cnt++;
+      else if (unformat (input, "ip4-punt-table %d", &ip4_punt_table_index))
+	idx_cnt++;
+      else if (unformat (input, "ip6-punt-table %d", &ip6_punt_table_index))
 	idx_cnt++;
       else if (unformat (input, "l2-table %d", &l2_table_index))
 	idx_cnt++;
@@ -186,9 +208,9 @@ set_in_out_acl_command_fn (vlib_main_t * vm,
   if (idx_cnt > 1)
     return clib_error_return (0, "Only one table index per API is allowed.");
 
-  rv = vnet_set_in_out_acl_intfc (vm, sw_if_index, ip4_table_index,
-				  ip6_table_index, l2_table_index, is_add,
-				  is_output);
+  rv = vnet_set_in_out_acl_intfc (
+    vm, sw_if_index, ip4_table_index, ip6_table_index, l2_table_index,
+    ip4_punt_table_index, ip6_punt_table_index, is_add, is_output);
 
   switch (rv)
     {
@@ -200,6 +222,9 @@ set_in_out_acl_command_fn (vlib_main_t * vm,
 
     case VNET_API_ERROR_NO_SUCH_ENTRY:
       return clib_error_return (0, "No such classifier table");
+
+    default:
+      return clib_error_return (0, "Error: %d", rv);
     }
   return 0;
 }
@@ -232,11 +257,12 @@ set_output_acl_command_fn (vlib_main_t * vm,
  */
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_input_acl_command, static) = {
-    .path = "set interface input acl",
-    .short_help =
+  .path = "set interface input acl",
+  .short_help =
     "set interface input acl intfc <int> [ip4-table <index>]\n"
-    "  [ip6-table <index>] [l2-table <index>] [del]",
-    .function = set_input_acl_command_fn,
+    "  [ip6-table <index>] [l2-table <index>] [ip4-punt-table <index>]\n"
+    "  [ip6-punt-table <index> [del]",
+  .function = set_input_acl_command_fn,
 };
 VLIB_CLI_COMMAND (set_output_acl_command, static) = {
     .path = "set interface output acl",
