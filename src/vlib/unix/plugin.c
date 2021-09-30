@@ -594,7 +594,12 @@ vlib_plugin_early_init (vlib_main_t * vm)
 					0x7FFFFFFF /* aka no rate limit */ );
 
   if (pm->plugin_path == 0)
-    pm->plugin_path = format (0, "%s%c", vlib_plugin_path, 0);
+    pm->plugin_path = format (0, "%s", vlib_plugin_path);
+
+  if (pm->plugin_path_add)
+    pm->plugin_path = format (pm->plugin_path, ":%s", pm->plugin_path_add);
+
+  pm->plugin_path = format (pm->plugin_path, "%c", 0);
 
   PLUGIN_LOG_DBG ("plugin path %s", pm->plugin_path);
 
@@ -756,6 +761,8 @@ done:
       u8 *s = 0;
       if (unformat (input, "path %s", &s))
 	pm->plugin_path = s;
+      else if (unformat (input, "add-path %s", &s))
+	pm->plugin_path_add = s;
       else if (unformat (input, "name-filter %s", &s))
 	pm->plugin_name_filter = s;
       else if (unformat (input, "vat-path %s", &s))
