@@ -123,6 +123,7 @@ typedef struct
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  clib_spinlock_t lockp;
   /* ring data */
   memif_ring_t *ring;
   memif_log2_ring_size_t log2_ring_size;
@@ -163,7 +164,6 @@ typedef enum
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  clib_spinlock_t lockp;
   u32 flags;
   memif_interface_id_t id;
   u32 hw_if_index;

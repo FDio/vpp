@@ -376,22 +376,19 @@ VNET_DEVICE_CLASS_TX_FN (memif_device_class) (vlib_main_t * vm,
   memif_main_t *nm = &memif_main;
   vnet_interface_output_runtime_t *rund = (void *) node->runtime_data;
   memif_if_t *mif = pool_elt_at_index (nm->interfaces, rund->dev_instance);
+  vnet_hw_if_tx_frame_t *tf = vlib_frame_scalar_args (frame);
   memif_queue_t *mq;
+  u32 qid = tf->queue_id;
   u32 *from, thread_index = vm->thread_index;
   memif_per_thread_data_t *ptd = vec_elt_at_index (memif_main.per_thread_data,
 						   thread_index);
-  u8 tx_queues = vec_len (mif->tx_queues);
   uword n_left;
 
-  if (tx_queues < vlib_get_n_threads ())
-    {
-      ASSERT (tx_queues > 0);
-      mq = vec_elt_at_index (mif->tx_queues, thread_index % tx_queues);
-    }
-  else
-    mq = vec_elt_at_index (mif->tx_queues, thread_index);
+  ASSERT (vec_len (mif->tx_queues) > qid);
+  mq = vec_elt_at_index (mif->tx_queues, qid);
 
-  clib_spinlock_lock_if_init (&mif->lockp);
+  if (tf->shared_queue)
+    clib_spinlock_lock (&mq->lockp);
 
   from = vlib_frame_vector_args (frame);
   n_left = frame->n_vectors;
@@ -405,7 +402,8 @@ VNET_DEVICE_CLASS_TX_FN (memif_device_class) (vlib_main_t * vm,
     n_left = memif_interface_tx_inline (vm, node, from, mif, MEMIF_RING_M2S,
 					mq, ptd, n_left);
 
-  clib_spinlock_unlock_if_init (&mif->lockp);
+  if (tf->shared_queue)
+    clib_spinlock_unlock (&mq->lockp);
 
   if (n_left)
     vlib_error_count (vm, node->node_index, MEMIF_TX_ERROR_NO_FREE_SLOTS,
