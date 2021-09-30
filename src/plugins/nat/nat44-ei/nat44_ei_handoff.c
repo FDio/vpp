@@ -83,8 +83,6 @@ nat44_ei_worker_handoff_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   vlib_get_buffers (vm, from, b, n_left_from);
 
-  // TODO: move to nm
-  // TODO: remove callbacks and use inlines that should be moved here
   if (is_in2out)
     {
       fq_index = is_output ? nm->fq_in2out_output_index : nm->fq_in2out_index;
