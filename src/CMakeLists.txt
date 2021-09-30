@@ -33,6 +33,10 @@ if(CMAKE_VERSION VERSION_LESS 3.12)
   endmacro()
 endif()
 
+if(NOT DEFINED CMAKE_INSTALL_LIBDIR AND EXISTS "/etc/debian_version")
+  set(CMAKE_INSTALL_LIBDIR "lib/${CMAKE_LIBRARY_ARCHITECTURE}")
+endif()
+
 include(CheckCCompilerFlag)
 include(CheckIPOSupported)
 include(GNUInstallDirs)
@@ -152,7 +156,7 @@ endif()
 ##############################################################################
 option(VPP_SET_RPATH "Set rpath for resulting binaries and libraries." ON)
 if(VPP_SET_RPATH)
-  set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
+  set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${VPP_LIBRARY_DIR}")
 endif()
 set(CMAKE_INSTALL_MESSAGE NEVER)
 

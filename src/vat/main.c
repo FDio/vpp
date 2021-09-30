@@ -313,8 +313,7 @@ vat_find_plugin_path ()
     return;
   *p = 0;
 
-  s = format (0, "%s/lib/" CLIB_TARGET_TRIPLET "/vpp_api_test_plugins:"
-	      "%s/lib/vpp_api_test_plugins", path, path);
+  s = format (0, "%s/" CLIB_LIB_DIR "/vpp_api_test_plugins", path, path);
   vec_add1 (s, 0);
   vat_plugin_path = (char *) s;
 }
