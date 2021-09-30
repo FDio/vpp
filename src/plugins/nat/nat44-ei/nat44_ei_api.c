@@ -469,9 +469,9 @@ vl_api_nat44_ei_add_del_address_range_t_handler (
   for (i = 0; i < count; i++)
     {
       if (is_add)
-	rv = nat44_ei_add_address (nm, &this_addr, vrf_id);
+	rv = nat44_ei_add_address (&this_addr, vrf_id);
       else
-	rv = nat44_ei_del_address (nm, this_addr, 0);
+	rv = nat44_ei_del_address (this_addr, 0);
 
       if (rv)
 	goto send_reply;
@@ -540,7 +540,7 @@ vl_api_nat44_ei_interface_add_del_feature_t_handler (
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  rv = nat44_ei_interface_add_del (sw_if_index, mp->flags & NAT44_EI_IF_INSIDE,
+  rv = nat44_ei_add_del_interface (sw_if_index, mp->flags & NAT44_EI_IF_INSIDE,
 				   is_del);
 
   BAD_SW_IF_INDEX_LABEL;
@@ -599,7 +599,7 @@ vl_api_nat44_ei_interface_add_del_output_feature_t_handler (
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  rv = nat44_ei_interface_add_del_output_feature (
+  rv = nat44_ei_add_del_output_interface (
     sw_if_index, mp->flags & NAT44_EI_IF_INSIDE, !mp->is_add);
 
   BAD_SW_IF_INDEX_LABEL;
@@ -649,39 +649,58 @@ static void
 vl_api_nat44_ei_add_del_static_mapping_t_handler (
   vl_api_nat44_ei_add_del_static_mapping_t *mp)
 {
-  nat44_ei_main_t *nm = &nat44_ei_main;
   vl_api_nat44_ei_add_del_static_mapping_reply_t *rmp;
-  ip4_address_t local_addr, external_addr;
-  u16 local_port = 0, external_port = 0;
-  u32 vrf_id, external_sw_if_index;
+
+  nat44_ei_main_t *nm = &nat44_ei_main;
   int rv = 0;
-  nat_protocol_t proto;
+
+  ip4_address_t l_addr, e_addr, pool_addr = { 0 };
+  u32 sw_if_index, flags = 0, vrf_id;
+  u16 l_port = 0, e_port = 0;
+  nat_protocol_t proto = 0;
   u8 *tag = 0;
 
-  memcpy (&local_addr.as_u8, mp->local_ip_address, 4);
-  memcpy (&external_addr.as_u8, mp->external_ip_address, 4);
+  memcpy (&l_addr.as_u8, mp->local_ip_address, 4);
 
-  if (!(mp->flags & NAT44_EI_ADDR_ONLY_MAPPING))
+  if (mp->flags & NAT44_EI_ADDR_ONLY_MAPPING)
     {
-      local_port = mp->local_port;
-      external_port = mp->external_port;
+      flags |= NAT44_EI_SM_FLAG_ADDR_ONLY;
+    }
+  else
+    {
+      l_port = mp->local_port;
+      e_port = mp->external_port;
+      proto = ip_proto_to_nat_proto (mp->protocol);
+    }
+
+  sw_if_index = clib_net_to_host_u32 (mp->external_sw_if_index);
+  if (sw_if_index != ~0)
+    {
+      e_addr.as_u32 = 0;
+    }
+  else
+    {
+      memcpy (&e_addr.as_u8, mp->external_ip_address, 4);
     }
 
   vrf_id = clib_net_to_host_u32 (mp->vrf_id);
-  external_sw_if_index = clib_net_to_host_u32 (mp->external_sw_if_index);
-  proto = ip_proto_to_nat_proto (mp->protocol);
 
-  mp->tag[sizeof (mp->tag) - 1] = 0;
-  tag = format (0, "%s", mp->tag);
-  vec_terminate_c_string (tag);
+  if (mp->is_add)
+    {
+      mp->tag[sizeof (mp->tag) - 1] = 0;
+      tag = format (0, "%s", mp->tag);
+      vec_terminate_c_string (tag);
 
-  rv = nat44_ei_add_del_static_mapping (
-    local_addr, external_addr, local_port, external_port, proto,
-    external_sw_if_index, vrf_id, mp->flags & NAT44_EI_ADDR_ONLY_MAPPING, 0,
-    tag, mp->is_add);
-
-  vec_free (tag);
-
+      rv = nat44_ei_add_static_mapping (l_addr, e_addr, l_port, e_port, proto,
+					vrf_id, sw_if_index, flags, pool_addr,
+					tag);
+      vec_free (tag);
+    }
+  else
+    {
+      rv = nat44_ei_del_static_mapping (l_addr, e_addr, l_port, e_port, proto,
+					vrf_id, sw_if_index, flags);
+    }
   REPLY_MACRO (VL_API_NAT44_EI_ADD_DEL_STATIC_MAPPING_REPLY);
 }
 
@@ -704,7 +723,7 @@ send_nat44_ei_static_mapping_details (nat44_ei_static_mapping_t *m,
   rmp->vrf_id = htonl (m->vrf_id);
   rmp->context = context;
 
-  if (nat44_ei_is_addr_only_static_mapping (m))
+  if (is_sm_addr_only (m->flags))
     {
       rmp->flags |= NAT44_EI_ADDR_ONLY_MAPPING;
     }
@@ -770,14 +789,14 @@ vl_api_nat44_ei_static_mapping_dump_t_handler (
 
   pool_foreach (m, nm->static_mappings)
     {
-      if (!nat44_ei_is_identity_static_mapping (m))
+      if (!is_sm_identity_nat (m->flags))
 	send_nat44_ei_static_mapping_details (m, reg, mp->context);
     }
 
   for (j = 0; j < vec_len (nm->to_resolve); j++)
     {
       rp = nm->to_resolve + j;
-      if (!rp->identity_nat)
+      if (!is_sm_identity_nat (rp->flags))
 	send_nat44_ei_static_map_resolve_details (rp, reg, mp->context);
     }
 }
@@ -786,35 +805,56 @@ static void
 vl_api_nat44_ei_add_del_identity_mapping_t_handler (
   vl_api_nat44_ei_add_del_identity_mapping_t *mp)
 {
-  nat44_ei_main_t *nm = &nat44_ei_main;
   vl_api_nat44_ei_add_del_identity_mapping_reply_t *rmp;
-  ip4_address_t addr;
-  u16 port = 0;
-  u32 vrf_id, sw_if_index;
+
+  nat44_ei_main_t *nm = &nat44_ei_main;
   int rv = 0;
-  nat_protocol_t proto = NAT_PROTOCOL_OTHER;
+
+  ip4_address_t addr, pool_addr = { 0 };
+  u32 sw_if_index, flags, vrf_id;
+  nat_protocol_t proto = 0;
+  u16 port = 0;
   u8 *tag = 0;
 
-  if (!(mp->flags & NAT44_EI_ADDR_ONLY_MAPPING))
+  flags = NAT44_EI_SM_FLAG_IDENTITY_NAT;
+
+  if (mp->flags & NAT44_EI_ADDR_ONLY_MAPPING)
+    {
+      flags |= NAT44_EI_SM_FLAG_ADDR_ONLY;
+    }
+  else
     {
       port = mp->port;
       proto = ip_proto_to_nat_proto (mp->protocol);
     }
-  vrf_id = clib_net_to_host_u32 (mp->vrf_id);
+
   sw_if_index = clib_net_to_host_u32 (mp->sw_if_index);
   if (sw_if_index != ~0)
-    addr.as_u32 = 0;
+    {
+      addr.as_u32 = 0;
+    }
   else
-    memcpy (&addr.as_u8, mp->ip_address, 4);
-  mp->tag[sizeof (mp->tag) - 1] = 0;
-  tag = format (0, "%s", mp->tag);
-  vec_terminate_c_string (tag);
+    {
+      memcpy (&addr.as_u8, mp->ip_address, 4);
+    }
 
-  rv = nat44_ei_add_del_static_mapping (
-    addr, addr, port, port, proto, sw_if_index, vrf_id,
-    mp->flags & NAT44_EI_ADDR_ONLY_MAPPING, 1, tag, mp->is_add);
+  vrf_id = clib_net_to_host_u32 (mp->vrf_id);
 
-  vec_free (tag);
+  if (mp->is_add)
+    {
+      mp->tag[sizeof (mp->tag) - 1] = 0;
+      tag = format (0, "%s", mp->tag);
+      vec_terminate_c_string (tag);
+
+      rv = nat44_ei_add_static_mapping (addr, addr, port, port, proto, vrf_id,
+					sw_if_index, flags, pool_addr, tag);
+      vec_free (tag);
+    }
+  else
+    {
+      rv = nat44_ei_del_static_mapping (addr, addr, port, port, proto, vrf_id,
+					sw_if_index, flags);
+    }
 
   REPLY_MACRO (VL_API_NAT44_EI_ADD_DEL_IDENTITY_MAPPING_REPLY);
 }
@@ -833,7 +873,7 @@ send_nat44_ei_identity_mapping_details (nat44_ei_static_mapping_t *m,
   rmp->_vl_msg_id =
     ntohs (VL_API_NAT44_EI_IDENTITY_MAPPING_DETAILS + nm->msg_id_base);
 
-  if (nat44_ei_is_addr_only_static_mapping (m))
+  if (is_sm_addr_only (m->flags))
     rmp->flags |= NAT44_EI_ADDR_ONLY_MAPPING;
 
   clib_memcpy (rmp->ip_address, &(m->local_addr), 4);
@@ -890,7 +930,7 @@ vl_api_nat44_ei_identity_mapping_dump_t_handler (
 
   pool_foreach (m, nm->static_mappings)
     {
-      if (nat44_ei_is_identity_static_mapping (m))
+      if (is_sm_identity_nat (m->flags))
 	{
 	  pool_foreach_index (j, m->locals)
 	    {
@@ -902,7 +942,7 @@ vl_api_nat44_ei_identity_mapping_dump_t_handler (
   for (j = 0; j < vec_len (nm->to_resolve); j++)
     {
       rp = nm->to_resolve + j;
-      if (rp->identity_nat)
+      if (is_sm_identity_nat (rp->flags))
 	send_nat44_ei_identity_map_resolve_details (rp, reg, mp->context);
     }
 }
@@ -915,13 +955,17 @@ vl_api_nat44_ei_add_del_interface_addr_t_handler (
   vl_api_nat44_ei_add_del_interface_addr_reply_t *rmp;
   u32 sw_if_index = ntohl (mp->sw_if_index);
   int rv = 0;
-  u8 is_del;
-
-  is_del = !mp->is_add;
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  rv = nat44_ei_add_interface_address (nm, sw_if_index, is_del);
+  if (mp->is_add)
+    {
+      rv = nat44_ei_add_interface_address (sw_if_index);
+    }
+  else
+    {
+      rv = nat44_ei_del_interface_address (sw_if_index);
+    }
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_NAT44_EI_ADD_DEL_INTERFACE_ADDR_REPLY);

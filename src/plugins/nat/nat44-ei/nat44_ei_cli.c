@@ -112,9 +112,9 @@ format_nat44_ei_static_mapping (u8 *s, va_list *args)
   nat44_ei_static_mapping_t *m = va_arg (*args, nat44_ei_static_mapping_t *);
   nat44_ei_lb_addr_port_t *local;
 
-  if (nat44_ei_is_identity_static_mapping (m))
+  if (is_sm_identity_nat (m->flags))
     {
-      if (nat44_ei_is_addr_only_static_mapping (m))
+      if (is_sm_addr_only (m->flags))
 	s = format (s, "identity mapping %U", format_ip4_address,
 		    &m->local_addr);
       else
@@ -130,7 +130,7 @@ format_nat44_ei_static_mapping (u8 *s, va_list *args)
       return s;
     }
 
-  if (nat44_ei_is_addr_only_static_mapping (m))
+  if (is_sm_addr_only (m->flags))
     {
       s = format (s, "local %U external %U vrf %d", format_ip4_address,
 		  &m->local_addr, format_ip4_address, &m->external_addr,
@@ -790,9 +790,9 @@ add_address_command_fn (vlib_main_t *vm, unformat_input_t *input,
   for (i = 0; i < count; i++)
     {
       if (is_add)
-	rv = nat44_ei_add_address (nm, &this_addr, vrf_id);
+	rv = nat44_ei_add_address (&this_addr, vrf_id);
       else
-	rv = nat44_ei_del_address (nm, this_addr, 0);
+	rv = nat44_ei_del_address (this_addr, 0);
 
       switch (rv)
 	{
@@ -894,8 +894,7 @@ nat44_ei_feature_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  sw_if_index = inside_sw_if_indices[i];
 	  if (is_output_feature)
 	    {
-	      if (nat44_ei_interface_add_del_output_feature (sw_if_index, 1,
-							     is_del))
+	      if (nat44_ei_add_del_output_interface (sw_if_index, 1, is_del))
 		{
 		  error = clib_error_return (
 		    0, "%s %U failed", is_del ? "del" : "add",
@@ -905,7 +904,7 @@ nat44_ei_feature_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	    }
 	  else
 	    {
-	      if (nat44_ei_interface_add_del (sw_if_index, 1, is_del))
+	      if (nat44_ei_add_del_interface (sw_if_index, 1, is_del))
 		{
 		  error = clib_error_return (
 		    0, "%s %U failed", is_del ? "del" : "add",
@@ -923,8 +922,7 @@ nat44_ei_feature_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  sw_if_index = outside_sw_if_indices[i];
 	  if (is_output_feature)
 	    {
-	      if (nat44_ei_interface_add_del_output_feature (sw_if_index, 0,
-							     is_del))
+	      if (nat44_ei_add_del_output_interface (sw_if_index, 0, is_del))
 		{
 		  error = clib_error_return (
 		    0, "%s %U failed", is_del ? "del" : "add",
@@ -934,7 +932,7 @@ nat44_ei_feature_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	    }
 	  else
 	    {
-	      if (nat44_ei_interface_add_del (sw_if_index, 0, is_del))
+	      if (nat44_ei_add_del_interface (sw_if_index, 0, is_del))
 		{
 		  error = clib_error_return (
 		    0, "%s %U failed", is_del ? "del" : "add",
@@ -990,14 +988,16 @@ add_static_mapping_command_fn (vlib_main_t *vm, unformat_input_t *input,
 			       vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  clib_error_t *error = 0;
-  ip4_address_t l_addr, e_addr;
-  u32 l_port = 0, e_port = 0, vrf_id = ~0;
-  int is_add = 1, addr_only = 1, rv;
-  u32 sw_if_index = ~0;
   vnet_main_t *vnm = vnet_get_main ();
+  clib_error_t *error = 0;
+  int rv;
+
   nat_protocol_t proto = NAT_PROTOCOL_OTHER;
-  u8 proto_set = 0;
+  ip4_address_t l_addr, e_addr, pool_addr = { 0 };
+  u32 l_port = 0, e_port = 0, vrf_id = ~0;
+  u8 l_port_set = 0, e_port_set = 0;
+  u32 sw_if_index = ~0, flags = 0;
+  int is_add = 1;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return clib_error_return (0, NAT44_EI_EXPECTED_ARGUMENT);
@@ -1006,29 +1006,37 @@ add_static_mapping_command_fn (vlib_main_t *vm, unformat_input_t *input,
     {
       if (unformat (line_input, "local %U %u", unformat_ip4_address, &l_addr,
 		    &l_port))
-	addr_only = 0;
+	{
+	  l_port_set = 1;
+	}
       else if (unformat (line_input, "local %U", unformat_ip4_address,
 			 &l_addr))
 	;
       else if (unformat (line_input, "external %U %u", unformat_ip4_address,
 			 &e_addr, &e_port))
-	addr_only = 0;
+	{
+	  e_port_set = 1;
+	}
       else if (unformat (line_input, "external %U", unformat_ip4_address,
 			 &e_addr))
 	;
       else if (unformat (line_input, "external %U %u",
 			 unformat_vnet_sw_interface, vnm, &sw_if_index,
 			 &e_port))
-	addr_only = 0;
+	{
+	  e_port_set = 1;
+	}
       else if (unformat (line_input, "external %U", unformat_vnet_sw_interface,
 			 vnm, &sw_if_index))
 	;
       else if (unformat (line_input, "vrf %u", &vrf_id))
 	;
       else if (unformat (line_input, "%U", unformat_nat_protocol, &proto))
-	proto_set = 1;
+	;
       else if (unformat (line_input, "del"))
-	is_add = 0;
+        {
+	  is_add = 0;
+        }
       else
 	{
 	  error = clib_error_return (0, "unknown input: '%U'",
@@ -1037,25 +1045,35 @@ add_static_mapping_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	}
     }
 
-  if (addr_only)
+  if (l_port_set != e_port_set)
     {
-      if (proto_set)
-	{
-	  error = clib_error_return (
-	    0, "address only mapping doesn't support protocol");
-	  goto done;
-	}
-    }
-  else if (!proto_set)
-    {
-      error = clib_error_return (0, "protocol is required");
+      error = clib_error_return (0, "Either both ports are set or none.");
       goto done;
     }
 
-  rv = nat44_ei_add_del_static_mapping (
-    l_addr, e_addr, clib_host_to_net_u16 (l_port),
-    clib_host_to_net_u16 (e_port), proto, sw_if_index, vrf_id, addr_only, 0, 0,
-    is_add);
+  if (!l_port_set)
+    {
+      flags |= NAT44_EI_SM_FLAG_ADDR_ONLY;
+    }
+  else
+    {
+      l_port = clib_host_to_net_u16 (l_port);
+      e_port = clib_host_to_net_u16 (e_port);
+    }
+
+  if (is_add)
+    {
+      rv =
+	nat44_ei_add_static_mapping (l_addr, e_addr, l_port, e_port, proto,
+				     vrf_id, sw_if_index, flags, pool_addr, 0);
+    }
+  else
+    {
+      rv = nat44_ei_del_static_mapping (l_addr, e_addr, l_port, e_port, proto,
+					vrf_id, sw_if_index, flags);
+    }
+
+  // TODO: fix returns
 
   switch (rv)
     {
@@ -1091,17 +1109,15 @@ add_identity_mapping_command_fn (vlib_main_t *vm, unformat_input_t *input,
 				 vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  clib_error_t *error = 0;
-  u32 port = 0, vrf_id = ~0;
-  ip4_address_t addr;
-  int is_add = 1;
-  int addr_only = 1;
-  u32 sw_if_index = ~0;
   vnet_main_t *vnm = vnet_get_main ();
-  int rv;
-  nat_protocol_t proto;
+  clib_error_t *error = 0;
 
-  addr.as_u32 = 0;
+  int rv, is_add = 1, port_set = 0;
+  u32 sw_if_index = ~0, port, flags, vrf_id = ~0;
+  nat_protocol_t proto;
+  ip4_address_t addr;
+
+  flags = NAT44_EI_SM_FLAG_IDENTITY_NAT;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return clib_error_return (0, NAT44_EI_EXPECTED_ARGUMENT);
@@ -1117,9 +1133,13 @@ add_identity_mapping_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	;
       else if (unformat (line_input, "%U %u", unformat_nat_protocol, &proto,
 			 &port))
-	addr_only = 0;
+	{
+	  port_set = 1;
+	}
       else if (unformat (line_input, "del"))
-	is_add = 0;
+	{
+	  is_add = 0;
+	}
       else
 	{
 	  error = clib_error_return (0, "unknown input: '%U'",
@@ -1128,9 +1148,28 @@ add_identity_mapping_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	}
     }
 
-  rv = nat44_ei_add_del_static_mapping (
-    addr, addr, clib_host_to_net_u16 (port), clib_host_to_net_u16 (port),
-    proto, sw_if_index, vrf_id, addr_only, 1, 0, is_add);
+  if (!port_set)
+    {
+      flags |= NAT44_EI_SM_FLAG_ADDR_ONLY;
+    }
+  else
+    {
+      port = clib_host_to_net_u16 (port);
+    }
+
+  if (is_add)
+    {
+
+      rv = nat44_ei_add_static_mapping (addr, addr, port, port, proto, vrf_id,
+					sw_if_index, flags, addr, 0);
+    }
+  else
+    {
+      rv = nat44_ei_del_static_mapping (addr, addr, port, port, proto, vrf_id,
+					sw_if_index, flags);
+    }
+
+  // TODO: fix returns
 
   switch (rv)
     {
@@ -1184,12 +1223,11 @@ nat44_ei_add_interface_address_command_fn (vlib_main_t *vm,
 					   unformat_input_t *input,
 					   vlib_cli_command_t *cmd)
 {
-  nat44_ei_main_t *nm = &nat44_ei_main;
   unformat_input_t _line_input, *line_input = &_line_input;
-  u32 sw_if_index;
-  int rv;
-  int is_del = 0;
+  nat44_ei_main_t *nm = &nat44_ei_main;
   clib_error_t *error = 0;
+  int rv, is_del = 0;
+  u32 sw_if_index;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return clib_error_return (0, NAT44_EI_EXPECTED_ARGUMENT);
@@ -1200,7 +1238,9 @@ nat44_ei_add_interface_address_command_fn (vlib_main_t *vm,
 		    nm->vnet_main, &sw_if_index))
 	;
       else if (unformat (line_input, "del"))
-	is_del = 1;
+        {
+	  is_del = 1;
+        }
       else
 	{
 	  error = clib_error_return (0, "unknown input '%U'",
@@ -1209,17 +1249,21 @@ nat44_ei_add_interface_address_command_fn (vlib_main_t *vm,
 	}
     }
 
-  rv = nat44_ei_add_interface_address (nm, sw_if_index, is_del);
-
-  switch (rv)
+  if (!is_del)
     {
-    case 0:
-      break;
-
-    default:
-      error = clib_error_return (
-	0, "nat44_ei_add_interface_address returned %d", rv);
-      goto done;
+      rv = nat44_ei_add_interface_address (sw_if_index);
+      if (rv)
+        {
+          error = clib_error_return (0, "add address returned %d", rv);
+        }
+    }
+  else
+    {
+      rv = nat44_ei_del_interface_address (sw_if_index);
+      if (rv)
+        {
+          error = clib_error_return (0, "del address returned %d", rv);
+        }
     }
 
 done:
