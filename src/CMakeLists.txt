@@ -33,6 +33,10 @@ if(CMAKE_VERSION VERSION_LESS 3.12)
   endmacro()
 endif()
 
+if(NOT DEFINED CMAKE_INSTALL_LIBDIR)
+  set(CUSTOM_LIB_DIR 1)
+endif()
+
 include(CheckCCompilerFlag)
 include(CheckIPOSupported)
 include(GNUInstallDirs)
@@ -69,7 +73,11 @@ set(CMAKE_C_COMPILER_TARGET ${CMAKE_SYSTEM_PROCESSOR}-linux-gnu)
 check_c_compiler_flag("-Wno-address-of-packed-member"
 		      compiler_flag_no_address_of_packed_member)
 set(VPP_RUNTIME_DIR ${CMAKE_INSTALL_BINDIR} CACHE STRING "Relative runtime directory path")
-set(VPP_LIBRARY_DIR ${CMAKE_INSTALL_LIBDIR} CACHE STRING "Relative library directory path")
+if(CUSTOM_LIB_DIR)
+  set(VPP_LIBRARY_DIR ${CMAKE_INSTALL_LIBDIR}/${CMAKE_C_COMPILER_TARGET} CACHE STRING "Relative library directory path")
+else()
+  set(VPP_LIBRARY_DIR ${CMAKE_INSTALL_LIBDIR} CACHE STRING "Relative library directory path")
+endif()
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${VPP_RUNTIME_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${VPP_LIBRARY_DIR})
@@ -152,7 +160,7 @@ endif()
 ##############################################################################
 option(VPP_SET_RPATH "Set rpath for resulting binaries and libraries." ON)
 if(VPP_SET_RPATH)
-  set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
+  set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${VPP_LIBRARY_DIR}")
 endif()
 set(CMAKE_INSTALL_MESSAGE NEVER)
 
