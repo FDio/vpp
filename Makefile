@@ -388,10 +388,8 @@ define test
 	make -C test \
 	  VPP_BUILD_DIR=$(BR)/build-$(2)-native \
 	  VPP_BIN=$(BR)/install-$(2)-native/vpp/bin/vpp \
-	  VPP_PLUGIN_PATH=$(call libexpand,$(libs),$(2),vpp_plugins) \
-	  VPP_TEST_PLUGIN_PATH=$(call libexpand,$(libs),$(2),vpp_api_test_plugins) \
 	  VPP_INSTALL_PATH=$(BR)/install-$(2)-native/ \
-	  LD_LIBRARY_PATH=$(call libexpand,$(libs),$(2),) \
+	  VCL_LDPRELOAD_SO=$(wildcard $(BR)/install-$(2)-native/vpp/lib*/*/libvcl_ldpreload.so) \
 	  EXTENDED_TESTS=$(EXTENDED_TESTS) \
 	  PYTHON=$(PYTHON) \
 	  OS_ID=$(OS_ID) \
