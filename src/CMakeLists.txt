@@ -69,7 +69,7 @@ set(CMAKE_C_COMPILER_TARGET ${CMAKE_SYSTEM_PROCESSOR}-linux-gnu)
 check_c_compiler_flag("-Wno-address-of-packed-member"
 		      compiler_flag_no_address_of_packed_member)
 set(VPP_RUNTIME_DIR ${CMAKE_INSTALL_BINDIR} CACHE STRING "Relative runtime directory path")
-set(VPP_LIBRARY_DIR ${CMAKE_INSTALL_LIBDIR} CACHE STRING "Relative library directory path")
+set(VPP_LIBRARY_DIR ${CMAKE_INSTALL_LIBDIR}/${CMAKE_C_COMPILER_TARGET} CACHE STRING "Relative library directory path")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${VPP_RUNTIME_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${VPP_LIBRARY_DIR})
