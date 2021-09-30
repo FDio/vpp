@@ -22,13 +22,7 @@
 
 /* EventCode, UMask, EdgeDetect, AnyThread, Invert, CounterMask
  * counter_unit, name, suffix, description */
-#define foreach_perf_intel_core_event                                         \
-  _ (0x00, 0x02, 0, 0, 0, 0x00, CPU_CLK_UNHALTED, THREAD,                     \
-     "Core cycles when the thread is not in halt state")                      \
-  _ (0x00, 0x03, 0, 0, 0, 0x00, CPU_CLK_UNHALTED, REF_TSC,                    \
-     "Reference cycles when the core is not in halt state.")                  \
-  _ (0x00, 0x04, 0, 0, 0, 0x00, TOPDOWN, SLOTS,                               \
-     "TMA slots available for an unhalted logical processor.")                \
+#define foreach_perf_intel_peusdo_event                                       \
   _ (0x00, 0x80, 0, 0, 0, 0x00, TOPDOWN, L1_RETIRING_METRIC,                  \
      "TMA retiring slots for an unhalted logical processor.")                 \
   _ (0x00, 0x81, 0, 0, 0, 0x00, TOPDOWN, L1_BAD_SPEC_METRIC,                  \
@@ -36,7 +30,17 @@
   _ (0x00, 0x82, 0, 0, 0, 0x00, TOPDOWN, L1_FE_BOUND_METRIC,                  \
      "TMA fe bound slots for an unhalted logical processor.")                 \
   _ (0x00, 0x83, 0, 0, 0, 0x00, TOPDOWN, L1_BE_BOUND_METRIC,                  \
-     "TMA be bound slots for an unhalted logical processor.")                 \
+     "TMA be bound slots for an unhalted logical processor.")
+
+/* EventCode, UMask, EdgeDetect, AnyThread, Invert, CounterMask
+ * counter_unit, name, suffix, description */
+#define foreach_perf_intel_core_event                                         \
+  _ (0x00, 0x02, 0, 0, 0, 0x00, CPU_CLK_UNHALTED, THREAD,                     \
+     "Core cycles when the thread is not in halt state")                      \
+  _ (0x00, 0x03, 0, 0, 0, 0x00, CPU_CLK_UNHALTED, REF_TSC,                    \
+     "Reference cycles when the core is not in halt state.")                  \
+  _ (0x00, 0x04, 0, 0, 0, 0x00, TOPDOWN, SLOTS,                               \
+     "TMA slots available for an unhalted logical processor.")                \
   _ (0x03, 0x02, 0, 0, 0, 0x00, LD_BLOCKS, STORE_FORWARD,                     \
      "Loads blocked due to overlapping with a preceding store that cannot be" \
      " forwarded.")                                                           \
@@ -192,7 +196,7 @@ typedef enum
 {
 #define _(event, umask, edge, any, inv, cmask, name, suffix, desc)            \
   INTEL_CORE_E_##name##_##suffix,
-  foreach_perf_intel_core_event
+  foreach_perf_intel_core_event foreach_perf_intel_peusdo_event
 #undef _
     INTEL_CORE_N_EVENTS,
 } perf_intel_core_event_t;
