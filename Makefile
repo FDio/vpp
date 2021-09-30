@@ -377,8 +377,6 @@ wipe-release: test-wipe $(BR)/.deps.ok
 .PHONY: rebuild-release
 rebuild-release: wipe-release build-release
 
-libexpand = $(subst $(subst ,, ),:,$(foreach lib,$(1),$(BR)/install-$(2)-native/vpp/$(lib)/$(3)))
-
 export TEST_DIR ?= $(WS_ROOT)/test
 export RND_SEED ?= $(shell python3 -c 'import time; print(time.time())')
 
@@ -388,10 +386,7 @@ define test
 	make -C test \
 	  VPP_BUILD_DIR=$(BR)/build-$(2)-native \
 	  VPP_BIN=$(BR)/install-$(2)-native/vpp/bin/vpp \
-	  VPP_PLUGIN_PATH=$(call libexpand,$(libs),$(2),vpp_plugins) \
-	  VPP_TEST_PLUGIN_PATH=$(call libexpand,$(libs),$(2),vpp_api_test_plugins) \
 	  VPP_INSTALL_PATH=$(BR)/install-$(2)-native/ \
-	  LD_LIBRARY_PATH=$(call libexpand,$(libs),$(2),) \
 	  EXTENDED_TESTS=$(EXTENDED_TESTS) \
 	  PYTHON=$(PYTHON) \
 	  OS_ID=$(OS_ID) \

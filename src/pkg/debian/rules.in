@@ -23,8 +23,6 @@ build3vers := $(shell py3versions -sv)
 override_dh_strip:
 	dh_strip --dbg-package=vpp-dbg
 
-DEB_HOST_MULTIARCH = $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
-
 override_dh_install:
 	@for c in @VPP_COMPONENTS@; do \
 	  @CMAKE_COMMAND@ \
@@ -33,11 +31,6 @@ override_dh_install:
 	    -D CMAKE_INSTALL_PREFIX=@VPP_BINARY_DIR@/debian/$$c \
 	    -P @CMAKE_BINARY_DIR@/cmake_install.cmake 2>&1 \
 	    | grep -v 'Set runtime path of' ; \
-	  if [ -d debian/$$c/lib ] ; then \
-	    mv debian/$$c/lib debian/$$c/$(DEB_HOST_MULTIARCH) ; \
-	    mkdir -p debian/$$c/usr/lib ; \
-	    mv debian/$$c/$(DEB_HOST_MULTIARCH) debian/$$c/usr/lib ; \
-	  fi ; \
 	  for d in bin include share ; do \
 	    if [ -d debian/$$c/$$d ] ; then \
 	      mkdir -p debian/$$c/usr ; \
