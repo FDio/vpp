@@ -344,7 +344,10 @@ proxy_rx_callback (session_t * s)
       max_dequeue = svm_fifo_max_dequeue_cons (s->rx_fifo);
 
       if (PREDICT_FALSE (max_dequeue == 0))
-	return 0;
+	{
+	  clib_spinlock_unlock_if_init (&pm->sessions_lock);
+	  return 0;
+	}
 
       max_dequeue = clib_min (pm->rcv_buffer_size, max_dequeue);
       actual_transfer = svm_fifo_peek (rx_fifo, 0 /* relative_offset */ ,
@@ -411,7 +414,7 @@ proxy_tx_callback (session_t * proxy_s)
   ASSERT (ps != 0);
 
   if (ps->vpp_active_open_handle == SESSION_INVALID_HANDLE)
-    return 0;
+    goto unlock;
 
   /* Force ack on active open side to update rcv wnd. Make sure it's done on
    * the right thread */
@@ -419,6 +422,7 @@ proxy_tx_callback (session_t * proxy_s)
   session_send_rpc_evt_to_thread (ps->server_rx_fifo->master_thread_index,
 				  proxy_force_ack, arg);
 
+unlock:
   clib_spinlock_unlock_if_init (&pm->sessions_lock);
 
   return 0;
@@ -586,14 +590,14 @@ active_open_tx_callback (session_t * ao_s)
   handle = session_handle (ao_s);
   p = hash_get (pm->proxy_session_by_active_open_handle, handle);
   if (!p)
-    return 0;
+    goto unlock;
 
   if (pool_is_free_index (pm->sessions, p[0]))
-    return 0;
+    goto unlock;
 
   ps = pool_elt_at_index (pm->sessions, p[0]);
   if (ps->vpp_server_handle == ~0)
-    return 0;
+    goto unlock;
 
   proxy_s = session_get_from_handle (ps->vpp_server_handle);
 
@@ -601,6 +605,7 @@ active_open_tx_callback (session_t * ao_s)
   tc = session_get_transport (proxy_s);
   tcp_send_ack ((tcp_connection_t *) tc);
 
+unlock:
   clib_spinlock_unlock_if_init (&pm->sessions_lock);
 
   return 0;
