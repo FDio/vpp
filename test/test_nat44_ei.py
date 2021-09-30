@@ -2831,13 +2831,6 @@ class TestNAT44EI(MethodHolder):
     def test_output_feature(self):
         """ NAT44EI output feature (in2out postrouting) """
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT44_EI_IF_INSIDE
-        self.vapi.nat44_ei_interface_add_del_output_feature(
-            is_add=1, flags=flags,
-            sw_if_index=self.pg0.sw_if_index)
-        self.vapi.nat44_ei_interface_add_del_output_feature(
-            is_add=1, flags=flags,
-            sw_if_index=self.pg1.sw_if_index)
         self.vapi.nat44_ei_interface_add_del_output_feature(
             is_add=1,
             sw_if_index=self.pg3.sw_if_index)
@@ -2884,13 +2877,6 @@ class TestNAT44EI(MethodHolder):
 
         self.nat44_add_address(nat_ip_vrf10, vrf_id=10)
         self.nat44_add_address(nat_ip_vrf20, vrf_id=20)
-        flags = self.config_flags.NAT44_EI_IF_INSIDE
-        self.vapi.nat44_ei_interface_add_del_output_feature(
-            is_add=1, flags=flags,
-            sw_if_index=self.pg4.sw_if_index)
-        self.vapi.nat44_ei_interface_add_del_output_feature(
-            is_add=1, flags=flags,
-            sw_if_index=self.pg6.sw_if_index)
         self.vapi.nat44_ei_interface_add_del_output_feature(
             is_add=1,
             sw_if_index=self.pg3.sw_if_index)
@@ -2937,9 +2923,8 @@ class TestNAT44EI(MethodHolder):
         server_out_port = 8765
 
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT44_EI_IF_INSIDE
         self.vapi.nat44_ei_interface_add_del_output_feature(
-            is_add=1, flags=flags,
+            is_add=1,
             sw_if_index=self.pg0.sw_if_index)
         self.vapi.nat44_ei_interface_add_del_output_feature(
             is_add=1,
