@@ -36,6 +36,7 @@
 #include <vnet/plugin/plugin.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/interface/rx_queue_funcs.h>
+#include <vnet/interface/tx_queue_funcs.h>
 #include <vpp/app/version.h>
 #include <memif/memif.h>
 #include <memif/private.h>
@@ -158,6 +159,7 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
       {
         memif_disconnect_free_zc_queue_buffer(mq, 0);
       }
+      clib_spinlock_free (&mq->lockp);
     }
     mq->ring = 0;
   }
@@ -265,6 +267,7 @@ memif_connect (memif_if_t * mif)
   template.write_function = memif_int_fd_write_ready;
 
   /* *INDENT-OFF* */
+  u32 n_threads = vlib_get_n_threads ();
   vec_foreach_index (i, mif->tx_queues)
     {
       memif_queue_t *mq = vec_elt_at_index (mif->tx_queues, i);
@@ -275,6 +278,10 @@ memif_connect (memif_if_t * mif)
 	  err = clib_error_return (0, "wrong cookie on tx ring %u", i);
 	  goto error;
 	}
+      mq->queue_index =
+	vnet_hw_if_register_tx_queue (vnm, mif->hw_if_index, i);
+      vnet_hw_if_tx_queue_assign_thread (vnm, mq->queue_index, i % n_threads);
+      clib_spinlock_init (&mq->lockp);
     }
 
   vec_foreach_index (i, mif->rx_queues)
@@ -470,6 +477,7 @@ memif_init_regions_and_queues (memif_if_t * mif)
 	  err = clib_error_return_unix (0, "eventfd[tx queue %u]", i);
 	  goto error;
 	}
+
       mq->int_clib_file_index = ~0;
       mq->ring = memif_get_ring (mif, MEMIF_RING_S2M, i);
       mq->log2_ring_size = mif->cfg.log2_ring_size;
@@ -797,7 +805,6 @@ memif_delete_if (vlib_main_t * vm, memif_if_t * mif)
     }
 
   /* free interface data structures */
-  clib_spinlock_free (&mif->lockp);
   mhash_unset (&msf->dev_instance_by_id, &mif->id, 0);
 
   /* remove socket file */
@@ -951,9 +958,6 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
   mif->mode = args->mode;
   if (args->secret)
     mif->secret = vec_dup (args->secret);
-
-  if (tm->n_vlib_mains > 1)
-    clib_spinlock_init (&mif->lockp);
 
   if (mif->mode == MEMIF_INTERFACE_MODE_ETHERNET)
     {
