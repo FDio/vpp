@@ -62,8 +62,8 @@ typedef enum
 #define NAT44_EI_SESSION_FLAG_UNKNOWN_PROTO  (1 << 1)
 
 /* Static mapping flags */
-#define NAT44_EI_STATIC_MAPPING_FLAG_ADDR_ONLY	  (1 << 0)
-#define NAT44_EI_STATIC_MAPPING_FLAG_IDENTITY_NAT (1 << 1)
+#define NAT44_EI_SM_FLAG_ADDR_ONLY    (1 << 0)
+#define NAT44_EI_SM_FLAG_IDENTITY_NAT (1 << 1)
 
 typedef struct
 {
@@ -339,6 +339,8 @@ typedef struct nat44_ei_main_s
   /* Interface pool */
   nat44_ei_interface_t *interfaces;
   nat44_ei_interface_t *output_feature_interfaces;
+  // broken api backward compatibility
+  nat44_ei_interface_t *output_feature_dummy_interfaces;
 
   /* Is translation memory size calculated or user defined */
   u8 translation_memory_size_set;
@@ -483,8 +485,15 @@ typedef struct nat44_ei_main_s
 extern nat44_ei_main_t nat44_ei_main;
 
 int nat44_ei_plugin_enable (nat44_ei_config_t c);
-
 int nat44_ei_plugin_disable ();
+
+int nat44_ei_add_del_interface (u32 sw_if_index, u8 is_inside, int is_del);
+int nat44_ei_add_del_output_interface (u32 sw_if_index, int is_del);
+
+int nat44_ei_add_address (ip4_address_t *addr, u32 vrf_id);
+int nat44_ei_del_address (ip4_address_t addr, u8 delete_sm);
+int nat44_ei_add_interface_address (u32 sw_if_index);
+int nat44_ei_del_interface_address (u32 sw_if_index);
 
 /**
  * @brief Delete specific NAT44 EI user and his sessions
@@ -532,29 +541,14 @@ void nat44_ei_set_alloc_mape (u16 psid, u16 psid_offset, u16 psid_length);
  */
 void nat44_ei_set_alloc_range (u16 start_port, u16 end_port);
 
-/**
- * @brief Add/delete NAT44-EI static mapping
- *
- * @param l_addr       local IPv4 address
- * @param e_addr       external IPv4 address
- * @param l_port       local port number
- * @param e_port       external port number
- * @param proto        L4 protocol
- * @param sw_if_index  use interface address as external IPv4 address
- * @param vrf_id       local VRF ID
- * @param addr_only    1 = 1:1NAT, 0 = 1:1NAPT
- * @param identity_nat identity NAT
- * @param tag opaque   string tag
- * @param is_add       1 = add, 0 = delete
- *
- * @return 0 on success, non-zero value otherwise
+int nat44_ei_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
+				 u16 l_port, u16 e_port, nat_protocol_t proto,
+				 u32 vrf_id, u32 sw_if_index, u32 flags,
+				 ip4_address_t pool_addr, u8 *tag);
 
- */
-int nat44_ei_add_del_static_mapping (ip4_address_t l_addr,
-				     ip4_address_t e_addr, u16 l_port,
-				     u16 e_port, nat_protocol_t proto,
-				     u32 sw_if_index, u32 vrf_id, u8 addr_only,
-				     u8 identity_nat, u8 *tag, u8 is_add);
+int nat44_ei_del_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
+				 u16 l_port, u16 e_port, nat_protocol_t proto,
+				 u32 vrf_id, u32 sw_if_index, u32 flags);
 
 /**
  * @brief Delete NAT44-EI session
@@ -619,9 +613,6 @@ int nat44_ei_set_outside_address_and_port (nat44_ei_address_t *addresses,
 					   ip4_address_t addr, u16 port,
 					   nat_protocol_t protocol);
 
-int nat44_ei_del_address (nat44_ei_main_t *nm, ip4_address_t addr,
-			  u8 delete_sm);
-
 void nat44_ei_free_session_data (nat44_ei_main_t *nm, nat44_ei_session_t *s,
 				 u32 thread_index, u8 is_ha);
 
@@ -629,19 +620,8 @@ int nat44_ei_set_workers (uword *bitmap);
 
 void nat44_ei_add_del_address_dpo (ip4_address_t addr, u8 is_add);
 
-int nat44_ei_add_address (nat44_ei_main_t *nm, ip4_address_t *addr,
-			  u32 vrf_id);
-
 void nat44_ei_delete_session (nat44_ei_main_t *nm, nat44_ei_session_t *ses,
 			      u32 thread_index);
-
-int nat44_ei_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del);
-
-int nat44_ei_interface_add_del_output_feature (u32 sw_if_index, u8 is_inside,
-					       int is_del);
-
-int nat44_ei_add_interface_address (nat44_ei_main_t *nm, u32 sw_if_index,
-				    int is_del);
 
 /* Call back functions for clib_bihash_add_or_overwrite_stale */
 int nat44_i2o_is_idle_session_cb (clib_bihash_kv_8_8_t *kv, void *arg);
@@ -664,20 +644,41 @@ u32 nat44_ei_icmp_hairpinning (nat44_ei_main_t *nm, vlib_buffer_t *b0,
 
 int nat44_ei_set_frame_queue_nelts (u32 frame_queue_nelts);
 
-#define nat44_ei_is_session_static(sp)                                        \
-  (sp->flags & NAT44_EI_SESSION_FLAG_STATIC_MAPPING)
-#define nat44_ei_is_unk_proto_session(sp)                                     \
-  (sp->flags & NAT44_EI_SESSION_FLAG_UNKNOWN_PROTO)
+always_inline bool
+nat44_ei_is_session_static (nat44_ei_session_t *s)
+{
+  return (s->flags & NAT44_EI_SESSION_FLAG_STATIC_MAPPING);
+}
 
-#define nat44_ei_interface_is_inside(ip)                                      \
-  (ip->flags & NAT44_EI_INTERFACE_FLAG_IS_INSIDE)
-#define nat44_ei_interface_is_outside(ip)                                     \
-  (ip->flags & NAT44_EI_INTERFACE_FLAG_IS_OUTSIDE)
+always_inline bool
+nat44_ei_is_unk_proto_session (nat44_ei_session_t *s)
+{
+  return (s->flags & NAT44_EI_SESSION_FLAG_UNKNOWN_PROTO);
+}
 
-#define nat44_ei_is_addr_only_static_mapping(mp)                              \
-  (mp->flags & NAT44_EI_STATIC_MAPPING_FLAG_ADDR_ONLY)
-#define nat44_ei_is_identity_static_mapping(mp)                               \
-  (mp->flags & NAT44_EI_STATIC_MAPPING_FLAG_IDENTITY_NAT)
+always_inline bool
+nat44_ei_interface_is_inside (nat44_ei_interface_t *i)
+{
+  return (i->flags & NAT44_EI_INTERFACE_FLAG_IS_INSIDE);
+}
+
+always_inline bool
+nat44_ei_interface_is_outside (nat44_ei_interface_t *i)
+{
+  return (i->flags & NAT44_EI_INTERFACE_FLAG_IS_OUTSIDE);
+}
+
+always_inline bool
+is_sm_addr_only (u32 f)
+{
+  return (f & NAT44_EI_SM_FLAG_ADDR_ONLY);
+}
+
+always_inline bool
+is_sm_identity_nat (u32 f)
+{
+  return (f & NAT44_EI_SM_FLAG_IDENTITY_NAT);
+}
 
 /* logging */
 #define nat44_ei_log_err(...)                                                 \
