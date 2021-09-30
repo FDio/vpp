@@ -32,7 +32,22 @@ typedef enum
   PERFMON_BUNDLE_TYPE_THREAD,
   PERFMON_BUNDLE_TYPE_SYSTEM,
   PERFMON_BUNDLE_TYPE_MAX,
+  PERFMON_BUNDLE_TYPE_NODE_OR_THREAD,
 } perfmon_bundle_type_t;
+
+#define foreach_perfmon_bundle_type                                           \
+  _ (PERFMON_BUNDLE_TYPE_UNKNOWN, "not supported")                            \
+  _ (PERFMON_BUNDLE_TYPE_NODE, "node")                                        \
+  _ (PERFMON_BUNDLE_TYPE_THREAD, "thread")                                    \
+  _ (PERFMON_BUNDLE_TYPE_SYSTEM, "system")
+
+typedef enum
+{
+#define _(e, str) e##_FLAG = 1 << e,
+  foreach_perfmon_bundle_type
+#undef _
+
+} perfmon_bundle_type_flag_t;
 
 typedef enum
 {
@@ -108,7 +123,14 @@ typedef struct perfmon_bundle
   char *description;
   char *source;
   char *footer;
-  perfmon_bundle_type_t type;
+
+  union
+  {
+    perfmon_bundle_type_flag_t type_flags;
+    perfmon_bundle_type_t type;
+  };
+  perfmon_bundle_type_t active_type;
+
   perfmon_offset_type_t offset_type;
   u32 events[PERF_MAX_EVENTS];
   u32 n_events;
@@ -179,23 +201,40 @@ typedef struct
 
 extern perfmon_main_t perfmon_main;
 
+#define PERFMON_BUNDLE_TYPE_TO_FLAGS(type)                                    \
+  ({                                                                          \
+    uword rtype = 0;                                                          \
+    if (type == PERFMON_BUNDLE_TYPE_NODE_OR_THREAD)                           \
+      rtype =                                                                 \
+	1 << PERFMON_BUNDLE_TYPE_THREAD | 1 << PERFMON_BUNDLE_TYPE_NODE;      \
+    else                                                                      \
+      rtype = 1 << type;                                                      \
+    rtype;                                                                    \
+  })
+
 always_inline uword
-perfmon_cpu_supported_bundle_type (perfmon_bundle_t *b)
+perfmon_cpu_update_bundle_type (perfmon_bundle_t *b)
 {
   perfmon_cpu_supports_t *supports = b->cpu_supports;
   uword type = 0;
 
-  /* if nothing specific for this bundle, go with the default */
-  if (!supports)
-    return b->type;
+  /* either supports or b->type should be set, but not both */
+  ASSERT (!!supports ^ !!b->type);
 
-  /* the last specified type, will always win */
-  for (int i = 0; i < b->n_cpu_supports; ++i)
-    if (supports[i].cpu_supports ())
-      type = supports[i].bundle_type;
+  /* if nothing specific for this bundle, go with the defaults */
+  if (!supports)
+    type = PERFMON_BUNDLE_TYPE_TO_FLAGS (b->type);
+  else
+    {
+      /* more than one type may be supported by a given bundle */
+      for (int i = 0; i < b->n_cpu_supports; ++i)
+	if (supports[i].cpu_supports ())
+	  type |= PERFMON_BUNDLE_TYPE_TO_FLAGS (supports[i].bundle_type);
+    }
 
   return type;
 }
+#undef PERFMON_BUNDLE_TYPE_TO_FLAGS
 
 #define PERFMON_REGISTER_SOURCE(x)                                            \
   perfmon_source_t __perfmon_source_##x;                                      \
@@ -213,8 +252,8 @@ perfmon_cpu_supported_bundle_type (perfmon_bundle_t *b)
   {                                                                           \
     perfmon_main_t *pm = &perfmon_main;                                       \
     __perfmon_bundle_##x.next = pm->bundles;                                  \
-    __perfmon_bundle_##x.type =                                               \
-      perfmon_cpu_supported_bundle_type (&__perfmon_bundle_##x);              \
+    __perfmon_bundle_##x.type_flags =                                         \
+      perfmon_cpu_update_bundle_type (&__perfmon_bundle_##x);                 \
     pm->bundles = &__perfmon_bundle_##x;                                      \
   }                                                                           \
   perfmon_bundle_t __perfmon_bundle_##x
