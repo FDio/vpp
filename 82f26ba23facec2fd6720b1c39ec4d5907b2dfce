@@ -16,6 +16,24 @@
       "revId": "82f26ba23facec2fd6720b1c39ec4d5907b2dfce",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b9fab026_0aa666ed",
+        "filename": "src/plugins/wireguard/wireguard_peer.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 178,
+      "author": {
+        "id": 2280
+      },
+      "writtenOn": "2021-09-30T09:47:41Z",
+      "side": 1,
+      "message": "You are right. \nDone, adjs are now stored in vec",
+      "parentUuid": "0ab8667b_c8eebda8",
+      "revId": "82f26ba23facec2fd6720b1c39ec4d5907b2dfce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
