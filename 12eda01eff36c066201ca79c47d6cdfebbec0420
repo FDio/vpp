@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "72bd5cbd_250f0cab",
+        "filename": "src/vat/main.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 318,
+      "author": {
+        "id": 2539
+      },
+      "writtenOn": "2021-09-30T18:18:47Z",
+      "side": 1,
+      "message": "I think this need only use CLIB_LIB_DIR as that would include the triplet already.\n\nFrom: https://cmake.org/cmake/help/v3.10/module/GNUInstallDirs.html\nLIBDIR: object code libraries (lib or lib64 or lib/\u003cmultiarch-tuple\u003e on Debian)\n\nAnd looking at local debian package build I see cmake invoked with: -DCMAKE_INSTALL_LIBDIR\u003dlib/x86_64-linux-gnu\n\ndh_auto_configure -- -DVPP_SET_RPATH\u003dOFF -DVPP_USE_SYSTEM_DPDK\u003dON -DVPP_BUILD_IPSECMB_PLUGIN\u003dOFF\ncd obj-x86_64-linux-gnu \u0026\u0026 cmake -DCMAKE_INSTALL_PREFIX\u003d/usr -DCMAKE_BUILD_TYPE\u003dNone -DCMAKE_INSTALL_SYSCONFDIR\u003d/etc -DCMAKE_INSTALL_LOCALSTATEDIR\u003d/var -DCMAKE_EXPORT_NO_PACKAGE_REGISTRY\u003dON -DCMAKE_FIND_PACKAGE_NO_PACKAGE_REGISTRY\u003dON -DCMAKE_INSTALL_RUNSTATEDIR\u003d/run -GNinja -DCMAKE_VERBOSE_MAKEFILE\u003dON -DCMAKE_INSTALL_LIBDIR\u003dlib/x86_64-linux-gnu -DVPP_SET_RPATH\u003dOFF -DVPP_USE_SYSTEM_DPDK\u003dON -DVPP_BUILD_IPSECMB_PLUGIN\u003dOFF ../src",
+      "revId": "12eda01eff36c066201ca79c47d6cdfebbec0420",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
