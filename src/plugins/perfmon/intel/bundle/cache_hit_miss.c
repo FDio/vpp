@@ -59,8 +59,7 @@ PERFMON_REGISTER_BUNDLE (intel_core_cache_miss_hit) = {
   .name = "cache-hierarchy",
   .description = "cache hits and misses",
   .source = "intel-core",
-  .type = PERFMON_BUNDLE_TYPE_NODE,
-
+  .type_flags = PERFMON_BUNDLE_TYPE_NODE_FLAG,
   .events[0] = INTEL_CORE_E_MEM_LOAD_RETIRED_L1_HIT,
   .events[1] = INTEL_CORE_E_MEM_LOAD_RETIRED_L1_MISS,
   .events[2] = INTEL_CORE_E_MEM_LOAD_RETIRED_L2_MISS,

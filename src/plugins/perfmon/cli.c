@@ -38,6 +38,40 @@ unformat_perfmon_bundle_name (unformat_input_t *input, va_list *args)
 }
 
 uword
+unformat_perfmon_active_type (unformat_input_t *input, va_list *args)
+{
+  perfmon_bundle_t *b = va_arg (*args, perfmon_bundle_t *);
+  perfmon_bundle_type_t *bundle_type = va_arg (*args, perfmon_bundle_type_t *);
+  char *str = 0;
+
+  char *_str_types[PERFMON_BUNDLE_TYPE_MAX];
+
+#define _(type, pstr) _str_types[type] = (char *) pstr;
+
+  foreach_perfmon_bundle_type
+#undef _
+
+    if (!b) return 0;
+
+  if (unformat (input, "%s", &str) == 0)
+    return 0;
+
+  for (int i = PERFMON_BUNDLE_TYPE_NODE; i < PERFMON_BUNDLE_TYPE_MAX; i++)
+    {
+      /* match the name and confirm it is available on this cpu */
+      if (strncmp (str, _str_types[i], strlen (_str_types[i])) == 0 &&
+	  (b->type_flags & 1 << i))
+	{
+	  *bundle_type = i;
+	  break;
+	}
+    }
+
+  vec_free (str);
+  return bundle_type ? 1 : 0;
+}
+
+uword
 unformat_perfmon_source_name (unformat_input_t *input, va_list *args)
 {
   perfmon_main_t *pm = &perfmon_main;
@@ -63,15 +97,17 @@ format_perfmon_bundle (u8 *s, va_list *args)
   perfmon_bundle_t *b = va_arg (*args, perfmon_bundle_t *);
   int verbose = va_arg (*args, int);
 
-  const char *bundle_type[] = {
-    [PERFMON_BUNDLE_TYPE_NODE] = "node",
-    [PERFMON_BUNDLE_TYPE_THREAD] = "thread",
-    [PERFMON_BUNDLE_TYPE_SYSTEM] = "system",
-  };
+  int vl = 0;
 
-  if (b == 0)
-    return format (s, "%-20s%-10s%-20s%s", "Name", "Type", "Source",
-		   "Description");
+  u8 *_bundle_type = 0;
+  const char *bundle_type[PERFMON_BUNDLE_TYPE_MAX];
+#define _(type, pstr) bundle_type[type] = (const char *) pstr;
+
+  foreach_perfmon_bundle_type
+#undef _
+
+    if (b == 0) return format (s, "%-20s%-20s%-20s%s", "Name", "Type(s)",
+			       "Source", "Description");
 
   if (verbose)
     {
@@ -85,8 +121,23 @@ format_perfmon_bundle (u8 *s, va_list *args)
 	}
     }
   else
-    s = format (s, "%-20s%-10s%-20s%s", b->name, bundle_type[b->type],
-		b->src->name, b->description);
+    {
+      s = format (s, "%-20s", b->name);
+      for (int i = PERFMON_BUNDLE_TYPE_NODE; i < PERFMON_BUNDLE_TYPE_MAX; i++)
+	{
+	  /* check the type is available on this uarch*/
+	  if (b->type_flags & 1 << i)
+	    _bundle_type = format (_bundle_type, "%s,", bundle_type[i]);
+	}
+      /* remove any stray commas */
+      if ((vl = vec_len (_bundle_type)))
+	_bundle_type[vl - 1] = 0;
+
+      s =
+	format (s, "%-20s%-20s%s", _bundle_type, b->src->name, b->description);
+    }
+
+  vec_free (_bundle_type);
 
   return s;
 }
@@ -140,7 +191,7 @@ show_perfmon_bundle_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   for (int i = 0; i < vec_len (vb); i++)
     /* bundle type will be unknown if no cpu_supports matched */
-    if (vb[i]->type != PERFMON_BUNDLE_TYPE_UNKNOWN)
+    if (vb[i]->type_flags)
       vlib_cli_output (vm, "%U\n", format_perfmon_bundle, vb[i], verbose);
 
   vec_free (vb);
@@ -295,7 +346,8 @@ show_perfmon_stats_command_fn (vlib_main_t *vm, unformat_input_t *input,
   vec_validate (readings, n_instances - 1);
 
   /*Only perform read() for THREAD or SYSTEM bundles*/
-  for (int i = 0; i < n_instances && b->type != PERFMON_BUNDLE_TYPE_NODE; i++)
+  for (int i = 0;
+       i < n_instances && b->active_type != PERFMON_BUNDLE_TYPE_NODE; i++)
     {
       in = vec_elt_at_index (it->instances, i);
       r = vec_elt_at_index (readings, i);
@@ -324,8 +376,8 @@ show_perfmon_stats_command_fn (vlib_main_t *vm, unformat_input_t *input,
     {
       in = vec_elt_at_index (it->instances, i);
       r = vec_elt_at_index (readings, i);
-      table_format_cell (t, col, -1, "%s", in->name, b->type);
-      if (b->type == PERFMON_BUNDLE_TYPE_NODE)
+      table_format_cell (t, col, -1, "%s", in->name, b->active_type);
+      if (b->active_type == PERFMON_BUNDLE_TYPE_NODE)
 	{
 	  perfmon_thread_runtime_t *tr;
 	  tr = vec_elt_at_index (pm->thread_runtimes, i);
@@ -334,20 +386,21 @@ show_perfmon_stats_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	      {
 		perfmon_node_stats_t ns;
 		table_format_cell (t, ++col, -1, "%U", format_vlib_node_name,
-				   vm, j, b->type);
+				   vm, j, b->active_type);
 		table_set_cell_align (t, col, -1, TTAA_RIGHT);
 		table_set_cell_fg_color (t, col, -1, TTAC_CYAN);
 		clib_memcpy_fast (&ns, tr->node_stats + j, sizeof (ns));
 
 		for (int j = 0; j < n_row; j++)
 		  table_format_cell (t, col, j, "%U", b->format_fn, &ns, j,
-				     b->type);
+				     b->active_type);
 	      }
 	}
       else
 	{
 	  for (int j = 0; j < n_row; j++)
-	    table_format_cell (t, i, j, "%U", b->format_fn, r, j, b->type);
+	    table_format_cell (t, i, j, "%U", b->format_fn, r, j,
+			       b->active_type);
 	}
       col++;
     }
@@ -393,6 +446,7 @@ perfmon_start_command_fn (vlib_main_t *vm, unformat_input_t *input,
   perfmon_main_t *pm = &perfmon_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   perfmon_bundle_t *b = 0;
+  perfmon_bundle_type_t bundle_type = PERFMON_BUNDLE_TYPE_UNKNOWN;
 
   if (pm->is_running)
     return clib_error_return (0, "please stop first");
@@ -404,6 +458,9 @@ perfmon_start_command_fn (vlib_main_t *vm, unformat_input_t *input,
     {
       if (unformat (line_input, "bundle %U", unformat_perfmon_bundle_name, &b))
 	;
+      else if (unformat (line_input, "type %U", unformat_perfmon_active_type,
+			 b, &bundle_type))
+	;
       else
 	return clib_error_return (0, "unknown input '%U'",
 				  format_unformat_error, line_input);
@@ -413,12 +470,30 @@ perfmon_start_command_fn (vlib_main_t *vm, unformat_input_t *input,
   if (b == 0)
     return clib_error_return (0, "please specify bundle name");
 
+  /* if there is more than one valid mode */
+  if (count_set_bits (b->type_flags) > 1)
+    {
+      /* what did the user indicate */
+      if (!bundle_type)
+	return clib_error_return (0, "please specify a valid mode");
+    }
+  else /* otherwise just use the default  */
+    {
+      if (bundle_type && !(b->type_flags & bundle_type))
+	return clib_error_return (0, "please specify a valid mode");
+
+      bundle_type =
+	(perfmon_bundle_type_t) count_trailing_zeros (b->type_flags);
+    }
+
+  b->active_type = bundle_type;
+
   return perfmon_start (vm, b);
 }
 
 VLIB_CLI_COMMAND (perfmon_start_command, static) = {
   .path = "perfmon start",
-  .short_help = "perfmon start bundle [<bundle-name>]",
+  .short_help = "perfmon start bundle [<bundle-name>] type [<node|thread>]",
   .function = perfmon_start_command_fn,
   .is_mp_safe = 1,
 };
