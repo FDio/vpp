@@ -85,8 +85,10 @@ vat2_find_plugin_path ()
     return;
   *p = 0;
 
-  s = format (0, "%s/lib/" CLIB_TARGET_TRIPLET "/vat2_plugins:"
-              "%s/lib/vat2_plugins", path, path);
+  s = format (0,
+	      "%s/" CLIB_LIB_DIR "/" CLIB_TARGET_TRIPLET "/vat2_plugins:"
+	      "%s/lib/vat2_plugins",
+	      path, path);
   vec_add1 (s, 0);
   vat2_plugin_path = (char *) s;
 }
