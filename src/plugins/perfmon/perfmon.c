@@ -97,7 +97,7 @@ perfmon_set (vlib_main_t *vm, perfmon_bundle_t *b)
   s = b->src;
   ASSERT (b->n_events);
 
-  if (b->type == PERFMON_BUNDLE_TYPE_NODE)
+  if (b->active_type == PERFMON_BUNDLE_TYPE_NODE)
     is_node = 1;
 
   if (s->instances_by_type == 0)
@@ -236,7 +236,7 @@ perfmon_start (vlib_main_t *vm, perfmon_bundle_t *b)
 	  return clib_error_return_unix (0, "ioctl(PERF_EVENT_IOC_ENABLE)");
 	}
     }
-  if (b->type == PERFMON_BUNDLE_TYPE_NODE)
+  if (b->active_type == PERFMON_BUNDLE_TYPE_NODE)
     {
 
       vlib_node_function_t *funcs[PERFMON_OFFSET_TYPE_MAX];
@@ -267,7 +267,7 @@ perfmon_stop (vlib_main_t *vm)
   if (pm->is_running != 1)
     return clib_error_return (0, "not running");
 
-  if (pm->active_bundle->type == PERFMON_BUNDLE_TYPE_NODE)
+  if (pm->active_bundle->active_type == PERFMON_BUNDLE_TYPE_NODE)
     {
       for (int i = 0; i < vlib_get_n_threads (); i++)
 	vlib_node_set_dispatch_wrapper (vlib_get_main_by_index (i), 0);

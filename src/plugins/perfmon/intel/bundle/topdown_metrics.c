@@ -104,10 +104,8 @@ format_topdown_lvl1 (u8 *s, va_list *args)
 }
 
 static perfmon_cpu_supports_t topdown_lvl1_cpu_supports[] = {
-  /* Intel SNR supports papi/thread only */
-  { clib_cpu_supports_movdiri, PERFMON_BUNDLE_TYPE_THREAD },
   /* Intel ICX supports papi/thread or rdpmc/node */
-  { clib_cpu_supports_avx512_bitalg, PERFMON_BUNDLE_TYPE_NODE }
+  { clib_cpu_supports_avx512_bitalg, PERFMON_BUNDLE_TYPE_NODE_OR_THREAD }
 };
 
 PERFMON_REGISTER_BUNDLE (topdown_lvl1_metric) = {
