@@ -415,18 +415,6 @@ class VppTestCase(CPUInterface, unittest.TestCase):
         c = os.getenv("CACHE_OUTPUT", "1")
         cls.cache_vpp_output = False if c.lower() in ("n", "no", "0") else True
         cls.vpp_bin = os.getenv('VPP_BIN', "vpp")
-        cls.plugin_path = os.getenv('VPP_PLUGIN_PATH')
-        cls.test_plugin_path = os.getenv('VPP_TEST_PLUGIN_PATH')
-        cls.extern_plugin_path = os.getenv('EXTERN_PLUGINS')
-        plugin_path = None
-        if cls.plugin_path is not None:
-            if cls.extern_plugin_path is not None:
-                plugin_path = "%s:%s" % (
-                    cls.plugin_path, cls.extern_plugin_path)
-            else:
-                plugin_path = cls.plugin_path
-        elif cls.extern_plugin_path is not None:
-            plugin_path = cls.extern_plugin_path
         debug_cli = ""
         if cls.step or cls.debug_gdb or cls.debug_gdbserver:
             debug_cli = "cli-listen localhost:5002"
@@ -473,10 +461,6 @@ class VppTestCase(CPUInterface, unittest.TestCase):
 
         if cls.extra_vpp_punt_config is not None:
             cls.vpp_cmdline.extend(cls.extra_vpp_punt_config)
-        if plugin_path is not None:
-            cls.vpp_cmdline.extend(["plugin_path", plugin_path])
-        if cls.test_plugin_path is not None:
-            cls.vpp_cmdline.extend(["test_plugin_path", cls.test_plugin_path])
 
         if not cls.debug_attach:
             cls.logger.info("vpp_cmdline args: %s" % cls.vpp_cmdline)
