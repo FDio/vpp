@@ -123,6 +123,7 @@ typedef struct
 
   /* paths and name filters */
   u8 *plugin_path;
+  u8 *plugin_path_add;
   u8 *plugin_name_filter;
   u8 *vat_plugin_path;
   u8 *vat_plugin_name_filter;
