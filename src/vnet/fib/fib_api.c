@@ -65,10 +65,8 @@ static void
 fib_api_next_hop_decode (const vl_api_fib_path_t *in,
                          ip46_address_t *out)
 {
-    if (in->proto == FIB_API_PATH_NH_PROTO_IP4)
-        clib_memcpy (&out->ip4, &in->nh.address.ip4, sizeof (out->ip4));
-    else if (in->proto == FIB_API_PATH_NH_PROTO_IP6)
-        clib_memcpy (&out->ip6, &in->nh.address.ip6, sizeof (out->ip6));
+    ASSERT (FIB_API_PATH_NH_PROTO_IP4 == in->proto || FIB_API_PATH_NH_PROTO_IP6 == in->proto);
+    *out = to_ip46 (FIB_API_PATH_NH_PROTO_IP6 == in->proto, (void *)&in->nh.address);
 }
 
 static vl_api_fib_path_nh_proto_t
