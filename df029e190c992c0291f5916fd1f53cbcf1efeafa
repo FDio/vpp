@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "38924246_b9133b50",
+        "filename": "src/vnet/dpo/receive_dpo.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 160,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-10-01T18:17:33Z",
+      "side": 1,
+      "message": "just \u0027ip4-receive\u0027 maybe?",
+      "revId": "df029e190c992c0291f5916fd1f53cbcf1efeafa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
