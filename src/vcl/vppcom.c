@@ -1368,8 +1368,8 @@ vppcom_app_create (const char *app_name)
   vcm->main_cpu = pthread_self ();
   vcm->main_pid = getpid ();
   vcm->app_name = format (0, "%s", app_name);
-  fifo_segment_main_init (&vcm->segment_main, vcl_cfg->segment_baseva,
-			  20 /* timeout in secs */ );
+  fifo_segment_main_init (&vcm->segment_main, (uword) ~0,
+			  20 /* timeout in secs */);
   pool_alloc (vcm->workers, vcl_cfg->max_workers);
   clib_spinlock_init (&vcm->workers_lock);
   clib_rwlock_init (&vcm->segment_table_lock);
@@ -1644,9 +1644,6 @@ vppcom_session_listen (uint32_t listen_sh, uint32_t q_len)
   listen_session = vcl_session_get_w_handle (wrk, listen_sh);
   if (!listen_session || (listen_session->flags & VCL_SESSION_F_IS_VEP))
     return VPPCOM_EBADFD;
-
-  if (q_len == 0 || q_len == ~0)
-    q_len = vcm->cfg.listen_queue_size;
 
   listen_vpp_handle = listen_session->vpp_handle;
   if (listen_session->session_state == VCL_STATE_LISTEN)

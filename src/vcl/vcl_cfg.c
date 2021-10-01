@@ -34,18 +34,14 @@ vppcom_cfg_init (vppcom_cfg_t * vcl_cfg)
 
   vcl_cfg->heapsize = (256ULL << 20);
   vcl_cfg->max_workers = 16;
-  vcl_cfg->segment_baseva = HIGH_SEGMENT_BASEVA;
   vcl_cfg->segment_size = (256 << 20);
   vcl_cfg->add_segment_size = (128 << 20);
   vcl_cfg->preallocated_fifo_pairs = 8;
   vcl_cfg->rx_fifo_size = (1 << 20);
   vcl_cfg->tx_fifo_size = (1 << 20);
   vcl_cfg->event_queue_size = 2048;
-  vcl_cfg->listen_queue_size = CLIB_CACHE_LINE_BYTES / sizeof (u32);
   vcl_cfg->app_timeout = 10 * 60.0;
   vcl_cfg->session_timeout = 10 * 60.0;
-  vcl_cfg->accept_timeout = 60.0;
-  vcl_cfg->event_ring_size = (128 << 10);
   vcl_cfg->event_log_path = "/dev/shm";
 }
 
@@ -305,12 +301,6 @@ vppcom_cfg_read_file (char *conf_fname)
 	      vl_set_memory_gid (gid);
 	      VCFG_DBG (0, "VCL<%d>: configured gid %d", getpid (), gid);
 	    }
-	  else if (unformat (line_input, "segment-baseva 0x%lx",
-			     &vcl_cfg->segment_baseva))
-	    {
-	      VCFG_DBG (0, "VCL<%d>: configured segment_baseva 0x%lx",
-			getpid (), (unsigned long) vcl_cfg->segment_baseva);
-	    }
 	  else if (unformat (line_input, "segment-size 0x%lx",
 			     &vcl_cfg->segment_size))
 	    {
@@ -388,20 +378,6 @@ vppcom_cfg_read_file (char *conf_fname)
 			getpid (), vcl_cfg->event_queue_size,
 			vcl_cfg->event_queue_size);
 	    }
-	  else if (unformat (line_input, "listen-queue-size 0x%x",
-			     &vcl_cfg->listen_queue_size))
-	    {
-	      VCFG_DBG (0, "VCL<%d>: configured listen_queue_size 0x%x (%u)",
-			getpid (), vcl_cfg->listen_queue_size,
-			vcl_cfg->listen_queue_size);
-	    }
-	  else if (unformat (line_input, "listen-queue-size %u",
-			     &vcl_cfg->listen_queue_size))
-	    {
-	      VCFG_DBG (0, "VCL<%d>: configured listen_queue_size %u (0x%x)",
-			getpid (), vcl_cfg->listen_queue_size,
-			vcl_cfg->listen_queue_size);
-	    }
 	  else if (unformat (line_input, "app-timeout %f",
 			     &vcl_cfg->app_timeout))
 	    {
@@ -413,12 +389,6 @@ vppcom_cfg_read_file (char *conf_fname)
 	    {
 	      VCFG_DBG (0, "VCL<%d>: configured session_timeout %f",
 			getpid (), vcl_cfg->session_timeout);
-	    }
-	  else if (unformat (line_input, "accept-timeout %f",
-			     &vcl_cfg->accept_timeout))
-	    {
-	      VCFG_DBG (0, "VCL<%d>: configured accept_timeout %f",
-			getpid (), vcl_cfg->accept_timeout);
 	    }
 	  else if (unformat (line_input, "app-proxy-transport-tcp"))
 	    {
