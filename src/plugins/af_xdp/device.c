@@ -460,6 +460,8 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 	   * requested 'max'
 	   * we might create less tx queues than workers but this is ok
 	   */
+	  af_xdp_log (VLIB_LOG_LEVEL_DEBUG, ad,
+		      "create interface failed to create queue qid=%d", i);
 
 	  /* fixup vectors length */
 	  vec_set_len (ad->umem, i);
@@ -470,7 +472,8 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 	  ad->rxq_num = clib_min (i, rxq_num);
 	  ad->txq_num = clib_min (i, txq_num);
 
-	  if (i < rxq_num && AF_XDP_NUM_RX_QUEUES_ALL != args->rxq_num)
+	  if (i == 0 ||
+	      i < rxq_num && AF_XDP_NUM_RX_QUEUES_ALL != args->rxq_num)
 	    {
 	      ad->rxq_num = ad->txq_num = 0;
 	      goto err1; /* failed creating requested rxq: fatal error, bailing
