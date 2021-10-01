@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f935ee35_9fc27946",
+        "filename": "src/vnet/fib/fib_table.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1343,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-10-01T07:28:54Z",
+      "side": 1,
+      "message": "i agree with the approach you are taking. IIUC then there is nothing special about the API and CLI sources, they can both have many locks. if that\u0027s true, then we shouldn\u0027t need these special case set/clear functiona?",
+      "revId": "ae8b3abe308ce97d8afa0fba79a1d22a4747a0df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4fa18874_1c9b22cb",
+        "filename": "src/vnet/mpls/mpls_api.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 220,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-10-01T07:28:54Z",
+      "side": 1,
+      "message": "this comment doesn\u0027t isn\u0027t true anymore, right?",
+      "revId": "ae8b3abe308ce97d8afa0fba79a1d22a4747a0df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
