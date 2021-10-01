@@ -106,6 +106,7 @@ tap_free (vlib_main_t * vm, virtio_if_t * vif)
 error:
   vec_foreach_index (i, vif->tap_fds) close (vif->tap_fds[i]);
 
+  vec_free (vif->tap_fds);
   vec_free (vif->vhost_fds);
   vec_free (vif->rxq_vrings);
   vec_free (vif->txq_vrings);
