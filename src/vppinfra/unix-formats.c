@@ -445,9 +445,6 @@ u8 * format_ucontext_pc (u8 * s, va_list * args)
   reg_no = REG_EIP;
 #elif defined (__x86_64__)
   reg_no = REG_RIP;
-#else
-  reg_no = 0;
-  regs = 0;
 #endif
 
   if (! regs)
