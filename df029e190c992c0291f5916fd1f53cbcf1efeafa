@@ -16,6 +16,40 @@
       "revId": "df029e190c992c0291f5916fd1f53cbcf1efeafa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "926dd11e_0306ac03",
+        "filename": "src/vnet/ip/ip6_forward.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1480,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-10-03T16:14:43Z",
+      "side": 1,
+      "message": "this case, and the case when rd-\u003erd_sf_if_index is unset, is the case when there is no interface directly associated with the packet\u0027s destination IP address, is that a special case that should be handled ...",
+      "revId": "df029e190c992c0291f5916fd1f53cbcf1efeafa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b9cf3b3b_46aebf50",
+        "filename": "src/vnet/tcp/tcp_inlines.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 242,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-10-03T16:14:43Z",
+      "side": 1,
+      "message": "... here.",
+      "revId": "df029e190c992c0291f5916fd1f53cbcf1efeafa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
