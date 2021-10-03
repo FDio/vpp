@@ -437,6 +437,8 @@ u8 * format_ucontext_pc (u8 * s, va_list * args)
   regs = &uc->uc_mcontext.uc_regs->gp_regs[0];
 #elif defined (i386) || defined (__x86_64__)
   regs = (void *) &uc->uc_mcontext.gregs[0];
+#elif defined(__aarch64__)
+  regs = &uc->uc_mcontext.pc;
 #endif
 
 #if defined (powerpc) || defined (powerpc64)
