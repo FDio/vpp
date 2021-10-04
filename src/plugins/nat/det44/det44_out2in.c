@@ -173,6 +173,9 @@ icmp_match_out2in_det (vlib_node_runtime_t * node,
 	}
       det44_log_info ("unknown dst address:  %U",
 		      format_ip4_address, &ip0->dst_address);
+      b0->error = node->errors[DET44_OUT2IN_ERROR_NO_TRANSLATION];
+      next0 = DET44_OUT2IN_NEXT_DROP;
+
       goto out;
     }
 
