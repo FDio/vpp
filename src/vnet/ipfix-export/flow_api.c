@@ -37,14 +37,14 @@
 #include <vlibapi/api_helper_macros.h>
 
 ipfix_exporter_t *
-vnet_ipfix_exporter_lookup (ip4_address_t *ipfix_collector)
+vnet_ipfix_exporter_lookup (const ip_address_t *ipfix_collector)
 {
   flow_report_main_t *frm = &flow_report_main;
   ipfix_exporter_t *exp;
 
   pool_foreach (exp, frm->exporters)
     {
-      if (exp->ipfix_collector.as_u32 == ipfix_collector->as_u32)
+      if (ip_address_cmp (&exp->ipfix_collector, ipfix_collector) == 0)
 	return exp;
     }
 
@@ -70,29 +70,34 @@ vl_api_set_ipfix_exporter_t_internal (
   flow_report_main_t *frm = &flow_report_main;
   ipfix_exporter_t *exp;
   vl_api_registration_t *reg;
-  ip4_address_t collector, src;
+  ip_address_t collector, src;
   u16 collector_port = UDP_DST_PORT_ipfix;
   u32 path_mtu;
   u32 template_interval;
   u8 udp_checksum;
   u32 fib_id;
   u32 fib_index = ~0;
+  u32 ip_header_size;
 
   reg = vl_api_client_index_to_registration (client_index);
   if (!reg)
     return VNET_API_ERROR_UNIMPLEMENTED;
 
-  /* Collector address is the key for the exporter lookup */
-  ip4_address_decode (mp_collector_address->un.ip4, &collector);
-
   if (use_index_0)
-    /*
-     * In this case we update the existing exporter. There is no delete
-     * for exp[0]
-     */
-    exp = &frm->exporters[0];
+    {
+      /*
+       * In this case we update the existing exporter. There is no delete
+       * for exp[0]
+       */
+      exp = &frm->exporters[0];
+
+      /* Collector address must be IPv4 for exp[0] */
+      collector.version = AF_IP4;
+      ip4_address_decode (mp_collector_address->un.ip4, &collector.ip.ip4);
+    }
   else
     {
+      ip_address_decode2 (mp_collector_address, &collector);
       if (is_create)
 	{
 	  exp = vnet_ipfix_exporter_lookup (&collector);
@@ -118,16 +123,10 @@ vl_api_set_ipfix_exporter_t_internal (
 	}
     }
 
-  if (mp_src_address->af == ADDRESS_IP6 ||
-      mp_collector_address->af == ADDRESS_IP6)
-    {
-      return VNET_API_ERROR_UNIMPLEMENTED;
-    }
-
   collector_port = ntohs (mp_collector_port);
   if (collector_port == (u16) ~ 0)
     collector_port = UDP_DST_PORT_ipfix;
-  ip4_address_decode (mp_src_address->un.ip4, &src);
+  ip_address_decode2 (mp_src_address, &src);
   fib_id = ntohl (mp_vrf_id);
 
   ip4_main_t *im = &ip4_main;
@@ -151,7 +150,13 @@ vl_api_set_ipfix_exporter_t_internal (
     template_interval = 20;
   udp_checksum = mp_udp_checksum;
 
-  if (collector.as_u32 != 0 && src.as_u32 == 0)
+  /*
+   * If the collector address is set then the src must be too.
+   * Collector address can be set to 0 to disable exporter
+   */
+  if (!ip_address_is_zero (&collector) && ip_address_is_zero (&src))
+    return VNET_API_ERROR_INVALID_VALUE;
+  if (collector.version != src.version)
     return VNET_API_ERROR_INVALID_VALUE;
 
   if (path_mtu > 1450 /* vpp does not support fragmentation */ )
@@ -161,19 +166,23 @@ vl_api_set_ipfix_exporter_t_internal (
     return VNET_API_ERROR_INVALID_VALUE;
 
   /* Calculate how much header data we need. */
-  exp->all_headers_size = sizeof (ip4_header_t) + sizeof (udp_header_t) +
+  if (collector.version == AF_IP4)
+    ip_header_size = sizeof (ip4_header_t);
+  else
+    ip_header_size = sizeof (ip6_header_t);
+  exp->all_headers_size = ip_header_size + sizeof (udp_header_t) +
 			  sizeof (ipfix_message_header_t) +
 			  sizeof (ipfix_set_header_t);
 
   /* Reset report streams if we are reconfiguring IP addresses */
-  if (exp->ipfix_collector.as_u32 != collector.as_u32 ||
-      exp->src_address.as_u32 != src.as_u32 ||
+  if (ip_address_cmp (&exp->ipfix_collector, &collector) ||
+      ip_address_cmp (&exp->src_address, &src) ||
       exp->collector_port != collector_port)
     vnet_flow_reports_reset (exp);
 
-  exp->ipfix_collector.as_u32 = collector.as_u32;
+  exp->ipfix_collector = collector;
   exp->collector_port = collector_port;
-  exp->src_address.as_u32 = src.as_u32;
+  exp->src_address = src;
   exp->fib_index = fib_index;
   exp->path_mtu = path_mtu;
   exp->template_interval = template_interval;
@@ -220,8 +229,6 @@ vl_api_ipfix_exporter_dump_t_handler (vl_api_ipfix_exporter_dump_t * mp)
   vl_api_registration_t *reg;
   vl_api_ipfix_exporter_details_t *rmp;
   ip4_main_t *im = &ip4_main;
-  ip46_address_t collector = {.as_u64[0] = 0,.as_u64[1] = 0 };
-  ip46_address_t src = {.as_u64[0] = 0,.as_u64[1] = 0 };
   u32 vrf_id;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
@@ -234,13 +241,9 @@ vl_api_ipfix_exporter_dump_t_handler (vl_api_ipfix_exporter_dump_t * mp)
     ntohs ((REPLY_MSG_ID_BASE) + VL_API_IPFIX_EXPORTER_DETAILS);
   rmp->context = mp->context;
 
-  memcpy (&collector.ip4, &exp->ipfix_collector, sizeof (ip4_address_t));
-  ip_address_encode (&collector, IP46_TYPE_IP4, &rmp->collector_address);
-
+  ip_address_encode2 (&exp->ipfix_collector, &rmp->collector_address);
   rmp->collector_port = htons (exp->collector_port);
-
-  memcpy (&src.ip4, &exp->src_address, sizeof (ip4_address_t));
-  ip_address_encode (&src, IP46_TYPE_IP4, &rmp->src_address);
+  ip_address_encode2 (&exp->src_address, &rmp->src_address);
 
   if (exp->fib_index == ~0)
     vrf_id = ~0;
@@ -259,17 +262,11 @@ ipfix_all_fill_details (vl_api_ipfix_all_exporter_details_t *rmp,
 			ipfix_exporter_t *exp)
 {
   ip4_main_t *im = &ip4_main;
-  ip46_address_t collector = { .as_u64[0] = 0, .as_u64[1] = 0 };
-  ip46_address_t src = { .as_u64[0] = 0, .as_u64[1] = 0 };
   u32 vrf_id;
 
-  memcpy (&collector.ip4, &exp->ipfix_collector, sizeof (ip4_address_t));
-  ip_address_encode (&collector, IP46_TYPE_IP4, &rmp->collector_address);
-
+  ip_address_encode2 (&exp->ipfix_collector, &rmp->collector_address);
   rmp->collector_port = htons (exp->collector_port);
-
-  memcpy (&src.ip4, &exp->src_address, sizeof (ip4_address_t));
-  ip_address_encode (&src, IP46_TYPE_IP4, &rmp->src_address);
+  ip_address_encode2 (&exp->src_address, &rmp->src_address);
 
   if (exp->fib_index == ~0)
     vrf_id = ~0;
