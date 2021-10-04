@@ -197,22 +197,16 @@ clib_memcpy_fast_sse3 (void *dst, const void *src, size_t n)
   size_t dstofss;
   size_t srcofs;
 
-	/**
-	 * Copy less than 16 bytes
-	 */
+  /**
+   * Copy less than 16 bytes
+   */
   if (n < 16)
     {
-      if (n & 0x01)
+      if (n & 0x08)
 	{
-	  *(u8 *) dstu = *(const u8 *) srcu;
-	  srcu = (uword) ((const u8 *) srcu + 1);
-	  dstu = (uword) ((u8 *) dstu + 1);
-	}
-      if (n & 0x02)
-	{
-	  *(u16 *) dstu = *(const u16 *) srcu;
-	  srcu = (uword) ((const u16 *) srcu + 1);
-	  dstu = (uword) ((u16 *) dstu + 1);
+	  *(u64 *) dstu = *(const u64 *) srcu;
+	  srcu = (uword) ((const u64 *) srcu + 1);
+	  dstu = (uword) ((u64 *) dstu + 1);
 	}
       if (n & 0x04)
 	{
@@ -220,9 +214,17 @@ clib_memcpy_fast_sse3 (void *dst, const void *src, size_t n)
 	  srcu = (uword) ((const u32 *) srcu + 1);
 	  dstu = (uword) ((u32 *) dstu + 1);
 	}
-      if (n & 0x08)
+      if (n & 0x02)
 	{
-	  *(u64 *) dstu = *(const u64 *) srcu;
+	  *(u16 *) dstu = *(const u16 *) srcu;
+	  srcu = (uword) ((const u16 *) srcu + 1);
+	  dstu = (uword) ((u16 *) dstu + 1);
+	}
+      if (n & 0x01)
+	{
+	  *(u8 *) dstu = *(const u8 *) srcu;
+	  srcu = (uword) ((const u8 *) srcu + 1);
+	  dstu = (uword) ((u8 *) dstu + 1);
 	}
       return ret;
     }
