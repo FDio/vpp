@@ -46,6 +46,14 @@ typedef struct
   ipfix_template_packet_t ipfix;
 } ip4_ipfix_template_packet_t;
 
+/* Used to build the rewrite */
+typedef struct
+{
+  ip6_header_t ip6;
+  udp_header_t udp;
+  ipfix_template_packet_t ipfix;
+} ip6_ipfix_template_packet_t;
+
 struct flow_report_main;
 struct flow_report;
 struct ipfix_exporter;
@@ -155,9 +163,9 @@ typedef struct ipfix_exporter
   flow_report_stream_t *streams;
 
   /* ipfix collector ip address, port, our ip address, fib index */
-  ip4_address_t ipfix_collector;
+  ip_address_t ipfix_collector;
   u16 collector_port;
-  ip4_address_t src_address;
+  ip_address_t src_address;
   u32 fib_index;
 
   /* Path MTU */
@@ -235,7 +243,8 @@ int vnet_stream_change (ipfix_exporter_t *exp, u32 old_domain_id,
 /*
  * Search all the exporters for one that has a matching destination address.
  */
-ipfix_exporter_t *vnet_ipfix_exporter_lookup (ip4_address_t *ipfix_collector);
+ipfix_exporter_t *
+vnet_ipfix_exporter_lookup (const ip_address_t *ipfix_collector);
 
 /*
  * Get the currently in use buffer for the given stream on the given core.

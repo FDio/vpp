@@ -88,7 +88,8 @@ send_template_packet (flow_report_main_t *frm, ipfix_exporter_t *exp,
 
   if (fr->update_rewrite || fr->rewrite == 0)
     {
-      if (exp->ipfix_collector.as_u32 == 0 || exp->src_address.as_u32 == 0)
+      if (ip_address_is_zero (&exp->ipfix_collector) ||
+	  ip_address_is_zero (&exp->src_address))
 	{
 	  vlib_node_set_state (frm->vlib_main, flow_report_process_node.index,
 			       VLIB_NODE_STATE_DISABLED);
@@ -198,8 +199,8 @@ vnet_flow_rewrite_generic_callback (ipfix_exporter_t *exp, flow_report_t *fr,
   ip4->ip_version_and_header_length = 0x45;
   ip4->ttl = 254;
   ip4->protocol = IP_PROTOCOL_UDP;
-  ip4->src_address.as_u32 = exp->src_address.as_u32;
-  ip4->dst_address.as_u32 = exp->ipfix_collector.as_u32;
+  ip4->src_address.as_u32 = exp->src_address.ip.ip4.as_u32;
+  ip4->dst_address.as_u32 = exp->ipfix_collector.ip.ip4.as_u32;
   udp->src_port = clib_host_to_net_u16 (stream->src_port);
   udp->dst_port = clib_host_to_net_u16 (collector_port);
   udp->length = clib_host_to_net_u16 (vec_len (rewrite) - sizeof (*ip4));
@@ -295,8 +296,8 @@ vnet_ipfix_exp_send_buffer (vlib_main_t *vm, ipfix_exporter_t *exp,
   ip4->ttl = 254;
   ip4->protocol = IP_PROTOCOL_UDP;
   ip4->flags_and_fragment_offset = 0;
-  ip4->src_address.as_u32 = exp->src_address.as_u32;
-  ip4->dst_address.as_u32 = exp->ipfix_collector.as_u32;
+  ip4->src_address.as_u32 = exp->src_address.ip.ip4.as_u32;
+  ip4->dst_address.as_u32 = exp->ipfix_collector.ip.ip4.as_u32;
   udp->src_port = clib_host_to_net_u16 (stream->src_port);
   udp->dst_port = clib_host_to_net_u16 (exp->collector_port);
   udp->checksum = 0;
@@ -644,26 +645,26 @@ set_ipfix_exporter_command_fn (vlib_main_t * vm,
 			       vlib_cli_command_t * cmd)
 {
   flow_report_main_t *frm = &flow_report_main;
-  ip4_address_t collector, src;
+  ip_address_t collector = IP_ADDRESS_V4_ALL_0S, src = IP_ADDRESS_V4_ALL_0S;
   u16 collector_port = UDP_DST_PORT_ipfix;
   u32 fib_id;
   u32 fib_index = ~0;
 
-  collector.as_u32 = 0;
-  src.as_u32 = 0;
   u32 path_mtu = 512;		// RFC 7011 section 10.3.3.
   u32 template_interval = 20;
   u8 udp_checksum = 0;
   ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
+  u32 ip_header_size;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "collector %U", unformat_ip4_address, &collector))
+      if (unformat (input, "collector %U", unformat_ip4_address,
+		    &collector.ip.ip4))
 	;
       else if (unformat (input, "port %U", unformat_udp_port,
 			 &collector_port))
 	;
-      else if (unformat (input, "src %U", unformat_ip4_address, &src))
+      else if (unformat (input, "src %U", unformat_ip4_address, &src.ip.ip4))
 	;
       else if (unformat (input, "fib-id %u", &fib_id))
 	{
@@ -683,8 +684,15 @@ set_ipfix_exporter_command_fn (vlib_main_t * vm,
 	break;
     }
 
-  if (collector.as_u32 != 0 && src.as_u32 == 0)
+  /*
+   * If the collector address is set then the src must be too.
+   * Collector address can be set to 0 to disable exporter
+   */
+  if (!ip_address_is_zero (&collector) && ip_address_is_zero (&src))
     return clib_error_return (0, "src address required");
+  if (collector.version != src.version)
+    return clib_error_return (
+      0, "src address and dest address must use same IP version");
 
   if (path_mtu > 1450 /* vpp does not support fragmentation */ )
     return clib_error_return (0, "too big path-mtu value, maximum is 1450");
@@ -693,25 +701,29 @@ set_ipfix_exporter_command_fn (vlib_main_t * vm,
     return clib_error_return (0, "too small path-mtu value, minimum is 68");
 
   /* Calculate how much header data we need. */
-  exp->all_headers_size = sizeof (ip4_header_t) + sizeof (udp_header_t) +
+  if (collector.version == AF_IP4)
+    ip_header_size = sizeof (ip4_header_t);
+  else
+    ip_header_size = sizeof (ip6_header_t);
+  exp->all_headers_size = ip_header_size + sizeof (udp_header_t) +
 			  sizeof (ipfix_message_header_t) +
 			  sizeof (ipfix_set_header_t);
 
   /* Reset report streams if we are reconfiguring IP addresses */
-  if (exp->ipfix_collector.as_u32 != collector.as_u32 ||
-      exp->src_address.as_u32 != src.as_u32 ||
+  if (ip_address_cmp (&exp->ipfix_collector, &collector) ||
+      ip_address_cmp (&exp->src_address, &src) ||
       exp->collector_port != collector_port)
     vnet_flow_reports_reset (exp);
 
-  exp->ipfix_collector.as_u32 = collector.as_u32;
+  exp->ipfix_collector = collector;
   exp->collector_port = collector_port;
-  exp->src_address.as_u32 = src.as_u32;
+  exp->src_address = src;
   exp->fib_index = fib_index;
   exp->path_mtu = path_mtu;
   exp->template_interval = template_interval;
   exp->udp_checksum = udp_checksum;
 
-  if (collector.as_u32)
+  if (collector.ip.ip4.as_u32)
     vlib_cli_output (vm,
 		     "Collector %U, src address %U, "
 		     "fib index %d, path MTU %u, "
