@@ -30,8 +30,6 @@ flow_report_classify_main_t flow_report_classify_main;
 
 u8 *
 ipfix_classify_template_rewrite (ipfix_exporter_t *exp, flow_report_t *fr,
-				 ip4_address_t *collector_address,
-				 ip4_address_t *src_address,
 				 u16 collector_port,
 				 ipfix_report_element_t *elts, u32 n_elts,
 				 u32 *stream_index)
@@ -108,8 +106,8 @@ ipfix_classify_template_rewrite (ipfix_exporter_t *exp, flow_report_t *fr,
   ip->ip_version_and_header_length = 0x45;
   ip->ttl = 254;
   ip->protocol = IP_PROTOCOL_UDP;
-  ip->src_address.as_u32 = src_address->as_u32;
-  ip->dst_address.as_u32 = collector_address->as_u32;
+  ip->src_address.as_u32 = exp->src_address.as_u32;
+  ip->dst_address.as_u32 = exp->ipfix_collector.as_u32;
   udp->src_port = clib_host_to_net_u16 (stream->src_port);
   udp->dst_port = clib_host_to_net_u16 (collector_port);
   udp->length = clib_host_to_net_u16 (vec_len (rewrite) - sizeof (*ip));
