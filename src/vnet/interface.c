@@ -1113,6 +1113,7 @@ vnet_delete_hw_interface (vnet_main_t * vnm, u32 hw_if_index)
   hash_unset_mem (im->hw_interface_by_name, hw->name);
   vec_free (hw->name);
   vec_free (hw->hw_address);
+  vec_free (hw->output_node_thread_runtimes);
   pool_put (im->hw_interfaces, hw);
 }
 
