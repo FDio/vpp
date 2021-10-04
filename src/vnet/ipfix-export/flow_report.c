@@ -77,9 +77,9 @@ send_template_packet (flow_report_main_t *frm, ipfix_exporter_t *exp,
 {
   u32 bi0;
   vlib_buffer_t *b0;
-  ip4_ipfix_template_packet_t *tp;
+  ip4_ipfix_template_packet_t *tp4;
   ipfix_message_header_t *h;
-  ip4_header_t *ip;
+  ip4_header_t *ip4;
   udp_header_t *udp;
   vlib_main_t *vm = frm->vlib_main;
   flow_report_stream_t *stream;
@@ -120,9 +120,9 @@ send_template_packet (flow_report_main_t *frm, ipfix_exporter_t *exp,
   vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
   vnet_buffer (b0)->sw_if_index[VLIB_TX] = exp->fib_index;
 
-  tp = vlib_buffer_get_current (b0);
-  ip = (ip4_header_t *) & tp->ip4;
-  udp = (udp_header_t *) (ip + 1);
+  tp4 = vlib_buffer_get_current (b0);
+  ip4 = (ip4_header_t *) &tp4->ip4;
+  udp = (udp_header_t *) (ip4 + 1);
   h = (ipfix_message_header_t *) (udp + 1);
 
   /* FIXUP: message header export_time */
@@ -137,12 +137,12 @@ send_template_packet (flow_report_main_t *frm, ipfix_exporter_t *exp,
   h->sequence_number = clib_host_to_net_u32 (stream->sequence_number);
 
   /* FIXUP: udp length */
-  udp->length = clib_host_to_net_u16 (b0->current_length - sizeof (*ip));
+  udp->length = clib_host_to_net_u16 (b0->current_length - sizeof (*ip4));
 
   if (exp->udp_checksum)
     {
       /* RFC 7011 section 10.3.2. */
-      udp->checksum = ip4_tcp_udp_compute_checksum (vm, b0, ip);
+      udp->checksum = ip4_tcp_udp_compute_checksum (vm, b0, ip4);
       if (udp->checksum == 0)
 	udp->checksum = 0xffff;
     }
@@ -160,7 +160,7 @@ vnet_flow_rewrite_generic_callback (ipfix_exporter_t *exp, flow_report_t *fr,
 				    ipfix_report_element_t *report_elts,
 				    u32 n_elts, u32 *stream_indexp)
 {
-  ip4_header_t *ip;
+  ip4_header_t *ip4;
   udp_header_t *udp;
   ipfix_message_header_t *h;
   ipfix_set_header_t *s;
@@ -168,7 +168,7 @@ vnet_flow_rewrite_generic_callback (ipfix_exporter_t *exp, flow_report_t *fr,
   ipfix_field_specifier_t *f;
   ipfix_field_specifier_t *first_field;
   u8 *rewrite = 0;
-  ip4_ipfix_template_packet_t *tp;
+  ip4_ipfix_template_packet_t *tp4;
   flow_report_stream_t *stream;
   int i;
   ipfix_report_element_t *ep;
@@ -187,22 +187,22 @@ vnet_flow_rewrite_generic_callback (ipfix_exporter_t *exp, flow_report_t *fr,
 			CLIB_CACHE_LINE_BYTES);
 
   /* create the packet rewrite string */
-  tp = (ip4_ipfix_template_packet_t *) rewrite;
-  ip = (ip4_header_t *) & tp->ip4;
-  udp = (udp_header_t *) (ip + 1);
+  tp4 = (ip4_ipfix_template_packet_t *) rewrite;
+  ip4 = (ip4_header_t *) &tp4->ip4;
+  udp = (udp_header_t *) (ip4 + 1);
   h = (ipfix_message_header_t *) (udp + 1);
   s = (ipfix_set_header_t *) (h + 1);
   t = (ipfix_template_header_t *) (s + 1);
   first_field = f = (ipfix_field_specifier_t *) (t + 1);
 
-  ip->ip_version_and_header_length = 0x45;
-  ip->ttl = 254;
-  ip->protocol = IP_PROTOCOL_UDP;
-  ip->src_address.as_u32 = exp->src_address.as_u32;
-  ip->dst_address.as_u32 = exp->ipfix_collector.as_u32;
+  ip4->ip_version_and_header_length = 0x45;
+  ip4->ttl = 254;
+  ip4->protocol = IP_PROTOCOL_UDP;
+  ip4->src_address.as_u32 = exp->src_address.as_u32;
+  ip4->dst_address.as_u32 = exp->ipfix_collector.as_u32;
   udp->src_port = clib_host_to_net_u16 (stream->src_port);
   udp->dst_port = clib_host_to_net_u16 (collector_port);
-  udp->length = clib_host_to_net_u16 (vec_len (rewrite) - sizeof (*ip));
+  udp->length = clib_host_to_net_u16 (vec_len (rewrite) - sizeof (*ip4));
 
   /* FIXUP LATER: message header export_time */
   h->domain_id = clib_host_to_net_u32 (stream->domain_id);
@@ -217,8 +217,8 @@ vnet_flow_rewrite_generic_callback (ipfix_exporter_t *exp, flow_report_t *fr,
     }
 
   /* Back to the template packet... */
-  ip = (ip4_header_t *) & tp->ip4;
-  udp = (udp_header_t *) (ip + 1);
+  ip4 = (ip4_header_t *) &tp4->ip4;
+  udp = (udp_header_t *) (ip4 + 1);
 
   ASSERT (f - first_field);
   /* Field count in this template */
@@ -231,8 +231,8 @@ vnet_flow_rewrite_generic_callback (ipfix_exporter_t *exp, flow_report_t *fr,
   /* message length in octets */
   h->version_length = version_length ((u8 *) f - (u8 *) h);
 
-  ip->length = clib_host_to_net_u16 ((u8 *) f - (u8 *) ip);
-  ip->checksum = ip4_header_checksum (ip);
+  ip4->length = clib_host_to_net_u16 ((u8 *) f - (u8 *) ip4);
+  ip4->checksum = ip4_header_checksum (ip4);
 
   return rewrite;
 }
@@ -274,10 +274,10 @@ vnet_ipfix_exp_send_buffer (vlib_main_t *vm, ipfix_exporter_t *exp,
 {
   flow_report_main_t *frm = &flow_report_main;
   vlib_frame_t *f;
-  ip4_ipfix_template_packet_t *tp;
+  ip4_ipfix_template_packet_t *tp4;
   ipfix_set_header_t *s;
   ipfix_message_header_t *h;
-  ip4_header_t *ip;
+  ip4_header_t *ip4;
   udp_header_t *udp;
 
   /* nothing to send */
@@ -285,18 +285,18 @@ vnet_ipfix_exp_send_buffer (vlib_main_t *vm, ipfix_exporter_t *exp,
       exp->all_headers_size)
     return;
 
-  tp = vlib_buffer_get_current (b0);
-  ip = (ip4_header_t *) &tp->ip4;
-  udp = (udp_header_t *) (ip + 1);
+  tp4 = vlib_buffer_get_current (b0);
+  ip4 = (ip4_header_t *) &tp4->ip4;
+  udp = (udp_header_t *) (ip4 + 1);
   h = (ipfix_message_header_t *) (udp + 1);
   s = (ipfix_set_header_t *) (h + 1);
 
-  ip->ip_version_and_header_length = 0x45;
-  ip->ttl = 254;
-  ip->protocol = IP_PROTOCOL_UDP;
-  ip->flags_and_fragment_offset = 0;
-  ip->src_address.as_u32 = exp->src_address.as_u32;
-  ip->dst_address.as_u32 = exp->ipfix_collector.as_u32;
+  ip4->ip_version_and_header_length = 0x45;
+  ip4->ttl = 254;
+  ip4->protocol = IP_PROTOCOL_UDP;
+  ip4->flags_and_fragment_offset = 0;
+  ip4->src_address.as_u32 = exp->src_address.as_u32;
+  ip4->dst_address.as_u32 = exp->ipfix_collector.as_u32;
   udp->src_port = clib_host_to_net_u16 (stream->src_port);
   udp->dst_port = clib_host_to_net_u16 (exp->collector_port);
   udp->checksum = 0;
@@ -325,24 +325,24 @@ vnet_ipfix_exp_send_buffer (vlib_main_t *vm, ipfix_exporter_t *exp,
    */
   s->set_id_length = ipfix_set_id_length (
     fr->template_id,
-    b0->current_length - (sizeof (*ip) + sizeof (*udp) + sizeof (*h)));
+    b0->current_length - (sizeof (*ip4) + sizeof (*udp) + sizeof (*h)));
   h->version_length =
-    version_length (b0->current_length - (sizeof (*ip) + sizeof (*udp)));
+    version_length (b0->current_length - (sizeof (*ip4) + sizeof (*udp)));
 
-  ip->length = clib_host_to_net_u16 (b0->current_length);
+  ip4->length = clib_host_to_net_u16 (b0->current_length);
 
-  ip->checksum = ip4_header_checksum (ip);
-  udp->length = clib_host_to_net_u16 (b0->current_length - sizeof (*ip));
+  ip4->checksum = ip4_header_checksum (ip4);
+  udp->length = clib_host_to_net_u16 (b0->current_length - sizeof (*ip4));
 
   if (exp->udp_checksum)
     {
       /* RFC 7011 section 10.3.2. */
-      udp->checksum = ip4_tcp_udp_compute_checksum (vm, b0, ip);
+      udp->checksum = ip4_tcp_udp_compute_checksum (vm, b0, ip4);
       if (udp->checksum == 0)
 	udp->checksum = 0xffff;
     }
 
-  ASSERT (ip4_header_checksum_is_valid (ip));
+  ASSERT (ip4_header_checksum_is_valid (ip4));
 
   /* Find or allocate a frame */
   f = fr->per_thread_data[thread_index].frame;
