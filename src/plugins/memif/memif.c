@@ -145,8 +145,6 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
 	  mq->ring = 0;
 	}
     }
-  vnet_hw_if_unregister_all_rx_queues (vnm, mif->hw_if_index);
-  vnet_hw_if_update_runtime_data (vnm, mif->hw_if_index);
 
   /* *INDENT-OFF* */
   vec_foreach_index (i, mif->tx_queues)
