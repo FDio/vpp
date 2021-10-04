@@ -572,11 +572,6 @@ virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,
 			       vring->avail->flags, vring->avail->idx,
 			       vring->used->flags, vring->used->idx);
 	    }
-	  if (type & (VIRTIO_IF_TYPE_TAP | VIRTIO_IF_TYPE_TUN))
-	    {
-	      vlib_cli_output (vm, "    kickfd %d, callfd %d", vring->kick_fd,
-			       vring->call_fd);
-	    }
 	  if (show_descr)
 	    {
 	      vlib_cli_output (vm, "\n  descriptor table:\n");
@@ -607,7 +602,6 @@ virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,
 		}
 	    }
 	}
-
     }
 
 }
