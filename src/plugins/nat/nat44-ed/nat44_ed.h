@@ -359,7 +359,10 @@ typedef CLIB_PACKED(struct
 typedef struct
 {
   ip4_address_t addr;
+  ip4_address_t net;
+  u32 sw_if_index;
   u32 fib_index;
+  u32 addr_len;
 } snat_address_t;
 
 typedef struct
