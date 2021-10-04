@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "aa3383db_d52082ea",
+        "filename": "src/vlib/error.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 309,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-10-04T02:35:59Z",
+      "side": 1,
+      "message": "Ole, you okay with this?",
+      "range": {
+        "startLine": 309,
+        "startChar": 5,
+        "endLine": 309,
+        "endChar": 31
+      },
+      "revId": "2459a27d5347b83c298f4c7dcab7b3248f68af45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
