@@ -575,8 +575,8 @@ flowprobe_export_send (vlib_main_t * vm, vlib_buffer_t * b0,
   ip->ttl = 254;
   ip->protocol = IP_PROTOCOL_UDP;
   ip->flags_and_fragment_offset = 0;
-  ip->src_address.as_u32 = exp->src_address.as_u32;
-  ip->dst_address.as_u32 = exp->ipfix_collector.as_u32;
+  ip->src_address.as_u32 = exp->src_address.ip.ip4.as_u32;
+  ip->dst_address.as_u32 = exp->ipfix_collector.ip.ip4.as_u32;
   udp->src_port = clib_host_to_net_u16 (stream->src_port);
   udp->dst_port = clib_host_to_net_u16 (exp->collector_port);
   udp->checksum = 0;
@@ -943,7 +943,8 @@ flowprobe_walker_process (vlib_main_t * vm,
    * $$$$ Remove this check from here and track FRM status and disable
    * this process if required.
    */
-  if (exp->ipfix_collector.as_u32 == 0 || exp->src_address.as_u32 == 0)
+  if (ip_address_is_zero (&exp->ipfix_collector) ||
+      ip_address_is_zero (&exp->src_address))
     {
       fm->disabled = true;
       return 0;
