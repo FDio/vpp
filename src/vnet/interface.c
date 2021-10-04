@@ -462,9 +462,6 @@ vnet_sw_interface_set_flags_helper (vnet_main_t * vnm, u32 sw_if_index,
 	      goto done;
 	    }
 
-	  /* save the si admin up flag */
-	  old_flags = si->flags;
-
 	  /* update si admin up flag in advance if we are going admin down */
 	  if (!(flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP))
 	    si->flags &= ~VNET_SW_INTERFACE_FLAG_ADMIN_UP;
