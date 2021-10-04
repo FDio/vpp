@@ -369,6 +369,8 @@ punt_l4_add_del (vlib_main_t * vm,
 		 ip_address_family_t af,
 		 ip_protocol_t protocol, u16 port, bool is_add)
 {
+  int is_ip4 = af == AF_IP4;
+
   /* For now we only support TCP and UDP punt */
   if (protocol != IP_PROTOCOL_UDP && protocol != IP_PROTOCOL_TCP)
     return clib_error_return (0,
@@ -378,19 +380,22 @@ punt_l4_add_del (vlib_main_t * vm,
   if (port == (u16) ~ 0)
     {
       if (protocol == IP_PROTOCOL_UDP)
-	udp_punt_unknown (vm, af == AF_IP4, is_add);
+	udp_punt_unknown (vm, is_ip4, is_add);
       else if (protocol == IP_PROTOCOL_TCP)
-	tcp_punt_unknown (vm, af == AF_IP4, is_add);
+	tcp_punt_unknown (vm, is_ip4, is_add);
 
       return 0;
     }
 
   else if (is_add)
     {
+      const vlib_node_registration_t *punt_node =
+	is_ip4 ? &udp4_punt_node : &udp6_punt_node;
+
       if (protocol == IP_PROTOCOL_TCP)
 	return clib_error_return (0, "punt TCP ports is not supported yet");
 
-      udp_register_dst_port (vm, port, udp4_punt_node.index, af == AF_IP4);
+      udp_register_dst_port (vm, port, punt_node->index, is_ip4);
 
       return 0;
     }
@@ -399,7 +404,7 @@ punt_l4_add_del (vlib_main_t * vm,
       if (protocol == IP_PROTOCOL_TCP)
 	return clib_error_return (0, "punt TCP ports is not supported yet");
 
-      udp_unregister_dst_port (vm, port, af == AF_IP4);
+      udp_unregister_dst_port (vm, port, is_ip4);
 
       return 0;
     }
