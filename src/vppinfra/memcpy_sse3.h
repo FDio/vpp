@@ -50,11 +50,36 @@
 
 #include <stdint.h>
 #include <x86intrin.h>
+#include <vppinfra/types.h>
 #include <vppinfra/warnings.h>
 
 /* *INDENT-OFF* */
 WARN_OFF (stringop-overflow)
 /* *INDENT-ON* */
+
+/**
+ * Just a mov, but it's defined unlike unaligned pointer cast assignment
+ */
+static inline void
+clib_mov2 (u8 *__restrict__ dst, const u8 *__restrict__ src)
+{
+  u16 tmp = clib_mem_unaligned (src, u16);
+  clib_mem_unaligned (dst, u16) = tmp;
+}
+
+static inline void
+clib_mov4 (u8 *__restrict__ dst, const u8 *__restrict__ src)
+{
+  u32 tmp = clib_mem_unaligned (src, u32);
+  clib_mem_unaligned (dst, u32) = tmp;
+}
+
+static inline void
+clib_mov8 (u8 *__restrict__ dst, const u8 *__restrict__ src)
+{
+  u64 tmp = clib_mem_unaligned (src, u64);
+  clib_mem_unaligned (dst, u64) = tmp;
+}
 
 static inline void
 clib_mov16 (u8 * dst, const u8 * src)
@@ -191,38 +216,36 @@ static inline void *
 clib_memcpy_fast_sse3 (void *dst, const void *src, size_t n)
 {
   __m128i xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7, xmm8;
-  uword dstu = (uword) dst;
-  uword srcu = (uword) src;
   void *ret = dst;
   size_t dstofss;
   size_t srcofs;
 
-	/**
-	 * Copy less than 16 bytes
-	 */
+  /**
+   * Copy less than 16 bytes
+   */
   if (n < 16)
     {
-      if (n & 0x01)
+      if (n & 0x08)
 	{
-	  *(u8 *) dstu = *(const u8 *) srcu;
-	  srcu = (uword) ((const u8 *) srcu + 1);
-	  dstu = (uword) ((u8 *) dstu + 1);
-	}
-      if (n & 0x02)
-	{
-	  *(u16 *) dstu = *(const u16 *) srcu;
-	  srcu = (uword) ((const u16 *) srcu + 1);
-	  dstu = (uword) ((u16 *) dstu + 1);
+	  clib_mov8 (dst, src);
+	  src += sizeof (u64);
+	  dst += sizeof (u64);
 	}
       if (n & 0x04)
 	{
-	  *(u32 *) dstu = *(const u32 *) srcu;
-	  srcu = (uword) ((const u32 *) srcu + 1);
-	  dstu = (uword) ((u32 *) dstu + 1);
+	  clib_mov4 (dst, src);
+	  src += sizeof (u32);
+	  dst += sizeof (u32);
 	}
-      if (n & 0x08)
+      if (n & 0x02)
 	{
-	  *(u64 *) dstu = *(const u64 *) srcu;
+	  clib_mov2 (dst, src);
+	  src += sizeof (u16);
+	  dst += sizeof (u16);
+	}
+      if (n & 0x01)
+	{
+	  *(u8 *) dst = *(u8 *) src;
 	}
       return ret;
     }
