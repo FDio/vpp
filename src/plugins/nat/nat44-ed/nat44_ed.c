@@ -309,6 +309,112 @@ is_snat_address_used_in_static_mapping (snat_main_t *sm, ip4_address_t addr)
   return 0;
 }
 
+static ip_interface_address_t *
+nat44_ed_get_ip_interface_address (u32 sw_if_index, ip4_address_t addr)
+{
+  snat_main_t *sm = &snat_main;
+
+  ip_lookup_main_t *lm = &sm->ip4_main->lookup_main;
+  ip_interface_address_t *ia;
+  ip4_address_t *ip4a;
+
+  foreach_ip_interface_address (
+    lm, ia, sw_if_index, 1, ({
+      ip4a = ip_interface_address_get_address (lm, ia);
+      nat_log_debug ("sw_if_idx: %u addr: %U ? %U", sw_if_index,
+		     format_ip4_address, ip4a, format_ip4_address, &addr);
+      if (ip4a->as_u32 == addr.as_u32)
+	{
+	  return ia;
+	}
+    }));
+  return NULL;
+}
+
+static int
+nat44_ed_resolve_nat_addr_len (snat_address_t *ap,
+			       snat_interface_t *interfaces)
+{
+  ip_interface_address_t *ia;
+  snat_interface_t *i;
+  u32 fib_index;
+
+  pool_foreach (i, interfaces)
+    {
+      if (!nat44_ed_is_interface_outside (i))
+	{
+	  continue;
+	}
+
+      fib_index = ip4_fib_table_get_index_for_sw_if_index (i->sw_if_index);
+      if (fib_index != ap->fib_index)
+	{
+	  continue;
+	}
+
+      if ((ia = nat44_ed_get_ip_interface_address (i->sw_if_index, ap->addr)))
+	{
+	  ap->addr_len = ia->address_length;
+	  ap->sw_if_index = i->sw_if_index;
+	  ap->net.as_u32 = (ap->addr.as_u32 >> (32 - ap->addr_len))
+			   << (32 - ap->addr_len);
+
+	  nat_log_debug ("pool addr %U binds to -> sw_if_idx: %u net: %U/%u",
+			 format_ip4_address, &ap->addr, ap->sw_if_index,
+			 format_ip4_address, &ap->net, ap->addr_len);
+	  return 0;
+	}
+    }
+  return 1;
+}
+
+static void
+nat44_ed_update_outside_if_addresses (snat_address_t *ap)
+{
+  snat_main_t *sm = &snat_main;
+
+  if (!nat44_ed_resolve_nat_addr_len (ap, sm->interfaces))
+    {
+      return;
+    }
+
+  if (!nat44_ed_resolve_nat_addr_len (ap, sm->output_feature_interfaces))
+    {
+      return;
+    }
+}
+
+static void
+nat44_ed_bind_if_addr_to_nat_addr (u32 sw_if_index)
+{
+  snat_main_t *sm = &snat_main;
+  ip_interface_address_t *ia;
+  snat_address_t *ap;
+
+  u32 fib_index = ip4_fib_table_get_index_for_sw_if_index (sw_if_index);
+
+  vec_foreach (ap, sm->addresses)
+    {
+      if (fib_index != ap->fib_index)
+	{
+	  continue;
+	}
+
+      if ((ia = nat44_ed_get_ip_interface_address (sw_if_index, ap->addr)))
+	{
+	  ap->addr_len = ia->address_length;
+	  ap->sw_if_index = sw_if_index;
+	  ap->net.as_u32 = (ap->addr.as_u32 >> (32 - ap->addr_len))
+			   << (32 - ap->addr_len);
+
+	  nat_log_debug ("pool addr %U binds to -> sw_if_idx: %u net: %U/%u",
+			 format_ip4_address, &ap->addr, ap->sw_if_index,
+			 format_ip4_address, &ap->net, ap->addr_len);
+	  return;
+	}
+    }
+}
+
 static void
 nat44_ed_add_del_addr_to_fib (ip4_address_t *addr, u8 p_len, u32 sw_if_index,
 			      int is_add)
@@ -424,6 +530,7 @@ nat44_ed_add_address (ip4_address_t *addr, u32 vrf_id, u8 twice_nat)
       vec_add2 (sm->addresses, ap, 1);
     }
 
+  ap->addr_len = ~0;
   ap->fib_index = ~0;
   ap->addr = *addr;
 
@@ -433,12 +540,13 @@ nat44_ed_add_address (ip4_address_t *addr, u32 vrf_id, u8 twice_nat)
 	FIB_PROTOCOL_IP4, vrf_id, sm->fib_src_low);
     }
 
-    if (!twice_nat)
-  {
-    // if we don't have enabled interface we don't add address
-    // to fib
-    nat44_ed_add_del_addr_to_fib_foreach_out_if (addr, 1);
-  }
+  if (!twice_nat)
+    {
+      // if we don't have enabled interface we don't add address
+      // to fib
+      nat44_ed_add_del_addr_to_fib_foreach_out_if (addr, 1);
+      nat44_ed_update_outside_if_addresses (ap);
+    }
   return 0;
 }
 
@@ -1641,6 +1749,8 @@ nat44_ed_add_interface (u32 sw_if_index, u8 is_inside)
 
       nat44_ed_add_del_addr_to_fib_foreach_addr (sw_if_index, 1);
       nat44_ed_add_del_addr_to_fib_foreach_addr_only_sm (sw_if_index, 1);
+
+      nat44_ed_bind_if_addr_to_nat_addr (sw_if_index);
     }
   else
     {
@@ -1849,6 +1959,8 @@ nat44_ed_add_output_interface (u32 sw_if_index)
 
   nat44_ed_add_del_addr_to_fib_foreach_addr (sw_if_index, 1);
   nat44_ed_add_del_addr_to_fib_foreach_addr_only_sm (sw_if_index, 1);
+
+  nat44_ed_bind_if_addr_to_nat_addr (sw_if_index);
 
   return 0;
 }
@@ -3244,7 +3356,7 @@ nat44_ed_add_del_interface_address_cb (ip4_main_t *im, uword opaque,
 {
   snat_main_t *sm = &snat_main;
   snat_static_map_resolve_t *rp;
-  snat_address_t *addresses = sm->addresses;
+  snat_address_t *ap, *addresses = sm->addresses;
   u8 twice_nat = 0;
   int rv, i;
 
@@ -3259,6 +3371,33 @@ nat44_ed_add_del_interface_address_cb (ip4_main_t *im, uword opaque,
       if (!is_sw_if_index_reg_for_auto_resolve (
 	    sm->auto_add_sw_if_indices_twice_nat, sw_if_index))
 	{
+	  // interface resolve
+	  u32 fib_index =
+	    ip4_fib_table_get_index_for_sw_if_index (sw_if_index);
+	  vec_foreach (ap, sm->addresses)
+	    {
+	      if ((fib_index == ap->fib_index) &&
+		  (address->as_u32 == ap->addr.as_u32))
+		{
+		  if (!is_delete)
+		    {
+		      ap->addr_len = address_length;
+		      ap->sw_if_index = sw_if_index;
+		      ap->net.as_u32 = (ap->addr.as_u32 >> (32 - ap->addr_len))
+				       << (32 - ap->addr_len);
+
+		      nat_log_debug (
+			"pool addr %U binds to -> sw_if_idx: %u net: %U/%u",
+			format_ip4_address, &ap->addr, ap->sw_if_index,
+			format_ip4_address, &ap->net, ap->addr_len);
+		    }
+		  else
+		    {
+		      ap->addr_len = ~0;
+		    }
+		  break;
+		}
+	    }
 	  return;
 	}
       else
