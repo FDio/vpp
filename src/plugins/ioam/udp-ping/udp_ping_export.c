@@ -24,13 +24,11 @@
 
 static u8 *
 udp_ping_template_rewrite (ipfix_exporter_t *exp, flow_report_t *fr,
-			   ip4_address_t *collector_address,
-			   ip4_address_t *src_address, u16 collector_port,
-			   ipfix_report_element_t *elts, u32 n_elts,
-			   u32 *stream_index)
+			   u16 collector_port, ipfix_report_element_t *elts,
+			   u32 n_elts, u32 *stream_index)
 {
-  return ioam_template_rewrite (exp, fr, collector_address, src_address,
-				collector_port, elts, n_elts, stream_index);
+  return ioam_template_rewrite (exp, fr, collector_port, elts, n_elts,
+				stream_index);
 }
 
 static vlib_frame_t *

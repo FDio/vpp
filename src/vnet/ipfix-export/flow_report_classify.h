@@ -113,8 +113,6 @@ ipfix_classify_delete_table (u32 index)
 }
 
 u8 *ipfix_classify_template_rewrite (ipfix_exporter_t *exp, flow_report_t *fr,
-				     ip4_address_t *collector_address,
-				     ip4_address_t *src_address,
 				     u16 collector_port,
 				     ipfix_report_element_t *elts, u32 n_elts,
 				     u32 *stream_index);

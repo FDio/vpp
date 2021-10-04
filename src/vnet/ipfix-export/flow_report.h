@@ -56,13 +56,11 @@ typedef vlib_frame_t *(vnet_flow_data_callback_t) (
 
 typedef u8 *(vnet_flow_rewrite_callback_t) (struct ipfix_exporter *exp,
 					    struct flow_report *,
-					    ip4_address_t *, ip4_address_t *,
 					    u16, ipfix_report_element_t *elts,
 					    u32 n_elts, u32 *stream_index);
 
 u8 *vnet_flow_rewrite_generic_callback (struct ipfix_exporter *exp,
-					struct flow_report *, ip4_address_t *,
-					ip4_address_t *, u16,
+					struct flow_report *, u16,
 					ipfix_report_element_t *elts,
 					u32 n_elts, u32 *stream_index);
 
