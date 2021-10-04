@@ -50,7 +50,9 @@
 
 #include <stdint.h>
 #include <x86intrin.h>
+#include <vppinfra/clib.h>
 #include <vppinfra/warnings.h>
+#include <vppinfra/vector_avx512.h>
 
 /* *INDENT-OFF* */
 WARN_OFF (stringop-overflow)
@@ -146,37 +148,19 @@ clib_mov512blocks (u8 * dst, const u8 * src, size_t n)
 static inline void *
 clib_memcpy_fast_avx512 (void *dst, const void *src, size_t n)
 {
-  uword dstu = (uword) dst;
-  uword srcu = (uword) src;
   void *ret = dst;
   size_t dstofss;
   size_t bits;
 
-	/**
-         * Copy less than 16 bytes
-         */
+  /**
+   * Copy less than 16 bytes
+   */
   if (n < 16)
     {
-      if (n & 0x01)
-	{
-	  *(u8 *) dstu = *(const u8 *) srcu;
-	  srcu = (uword) ((const u8 *) srcu + 1);
-	  dstu = (uword) ((u8 *) dstu + 1);
-	}
-      if (n & 0x02)
-	{
-	  *(u16 *) dstu = *(const u16 *) srcu;
-	  srcu = (uword) ((const u16 *) srcu + 1);
-	  dstu = (uword) ((u16 *) dstu + 1);
-	}
-      if (n & 0x04)
-	{
-	  *(u32 *) dstu = *(const u32 *) srcu;
-	  srcu = (uword) ((const u32 *) srcu + 1);
-	  dstu = (uword) ((u32 *) dstu + 1);
-	}
-      if (n & 0x08)
-	*(u64 *) dstu = *(const u64 *) srcu;
+      u8x16 buf;
+      u16 mask = pow2_mask (n);
+      buf = u8x16_mask_load (u8x16_splat (0), (void *) src, mask);
+      u8x16_mask_store (buf, dst, mask);
       return ret;
     }
 
