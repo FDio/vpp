@@ -56,6 +56,39 @@
 WARN_OFF (stringop-overflow)
 /* *INDENT-ON* */
 
+/**
+ * Just a mov, but it's defined unlike unaligned pointer cast assignment
+ */
+static inline void
+clib_mov2 (u8 *dst, const u8 *src)
+{
+  asm("movzwl (%0), %%eax\n\t"
+      "movw %%ax, (%1)"
+      :
+      : "r"(src), "r"(dst)
+      : "%ax");
+}
+
+static inline void
+clib_mov4 (u8 *dst, const u8 *src)
+{
+  asm("movl (%0), %%eax\n\t"
+      "movl %%eax, (%1)"
+      :
+      : "r"(src), "r"(dst)
+      : "%eax");
+}
+
+static inline void
+clib_mov8 (u8 *dst, const u8 *src)
+{
+  asm("movq (%0), %%rax\n\t"
+      "movq %%rax, (%1)"
+      :
+      : "r"(src), "r"(dst)
+      : "%rax");
+}
+
 static inline void
 clib_mov16 (u8 * dst, const u8 * src)
 {
@@ -116,8 +149,6 @@ clib_mov128blocks (u8 * dst, const u8 * src, size_t n)
 static inline void *
 clib_memcpy_fast_avx2 (void *dst, const void *src, size_t n)
 {
-  uword dstu = (uword) dst;
-  uword srcu = (uword) src;
   void *ret = dst;
   size_t dstofss;
   size_t bits;
@@ -127,27 +158,27 @@ clib_memcpy_fast_avx2 (void *dst, const void *src, size_t n)
    */
   if (n < 16)
     {
-      if (n & 0x01)
+      if (n & 0x08)
 	{
-	  *(u8 *) dstu = *(const u8 *) srcu;
-	  srcu = (uword) ((const u8 *) srcu + 1);
-	  dstu = (uword) ((u8 *) dstu + 1);
-	}
-      if (n & 0x02)
-	{
-	  *(u16 *) dstu = *(const u16 *) srcu;
-	  srcu = (uword) ((const u16 *) srcu + 1);
-	  dstu = (uword) ((u16 *) dstu + 1);
+	  clib_mov8 (dst, src);
+	  src += sizeof (u64);
+	  dst += sizeof (u64);
 	}
       if (n & 0x04)
 	{
-	  *(u32 *) dstu = *(const u32 *) srcu;
-	  srcu = (uword) ((const u32 *) srcu + 1);
-	  dstu = (uword) ((u32 *) dstu + 1);
+	  clib_mov4 (dst, src);
+	  src += sizeof (u32);
+	  dst += sizeof (u32);
 	}
-      if (n & 0x08)
+      if (n & 0x02)
 	{
-	  *(u64 *) dstu = *(const u64 *) srcu;
+	  clib_mov2 (dst, src);
+	  src += sizeof (u16);
+	  dst += sizeof (u16);
+	}
+      if (n & 0x01)
+	{
+	  *(u8 *) dst = *(u8 *) src;
 	}
       return ret;
     }
