@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "232e50dc_0c348ea4",
+        "filename": "src/vnet/classify/in_out_acl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-10-04T18:13:24Z",
+      "side": 1,
+      "message": "would ip_feature_enable_disable help here?",
+      "revId": "645354a4512de8b898a754a215085e0831500152",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
