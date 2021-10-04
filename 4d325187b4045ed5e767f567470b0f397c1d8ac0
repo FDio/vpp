@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cd5828a5_fa8513e6",
+        "filename": "src/vppinfra/memcpy_avx512.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-10-04T18:43:20Z",
+      "side": 1,
+      "message": "What about using vmovdqu8 with mask instead?",
+      "revId": "4d325187b4045ed5e767f567470b0f397c1d8ac0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
