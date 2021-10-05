@@ -96,6 +96,9 @@ add_vpp_library(vlib
   unix/main.c
   unix/plugin.c
   unix/util.c
+  process/privileges.c
+  process/capabilities.c
+  process/cli.c
   vmbus/vmbus.c
   ${VMBUS_SOURCE}
 
