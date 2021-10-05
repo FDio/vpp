@@ -96,6 +96,10 @@ add_vpp_library(vlib
   unix/main.c
   unix/plugin.c
   unix/util.c
+  process/privileges.c
+  process/capabilities.c
+  process/cli.c
+  process/process_api.c
   vmbus/vmbus.c
   ${VMBUS_SOURCE}
 
@@ -140,6 +144,7 @@ add_vpp_library(vlib
 
   API_FILES
   pci/pci_types.api
+  process/process.api
 
   LINK_LIBRARIES vppinfra svm ${VMBUS_LIBS} ${CMAKE_DL_LIBS}
 
