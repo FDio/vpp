@@ -78,8 +78,11 @@ send_template_packet (flow_report_main_t *frm, ipfix_exporter_t *exp,
   u32 bi0;
   vlib_buffer_t *b0;
   ip4_ipfix_template_packet_t *tp4;
+  ip6_ipfix_template_packet_t *tp6;
   ipfix_message_header_t *h;
   ip4_header_t *ip4;
+  ip6_header_t *ip6;
+  void *ip;
   udp_header_t *udp;
   vlib_main_t *vm = frm->vlib_main;
   flow_report_stream_t *stream;
@@ -121,9 +124,20 @@ send_template_packet (flow_report_main_t *frm, ipfix_exporter_t *exp,
   vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
   vnet_buffer (b0)->sw_if_index[VLIB_TX] = exp->fib_index;
 
-  tp4 = vlib_buffer_get_current (b0);
-  ip4 = (ip4_header_t *) &tp4->ip4;
-  udp = (udp_header_t *) (ip4 + 1);
+  if (ip_addr_version (&exp->ipfix_collector) == AF_IP4)
+    {
+      tp4 = vlib_buffer_get_current (b0);
+      ip4 = (ip4_header_t *) &tp4->ip4;
+      ip = ip4;
+      udp = (udp_header_t *) (ip4 + 1);
+    }
+  else
+    {
+      tp6 = vlib_buffer_get_current (b0);
+      ip6 = (ip6_header_t *) &tp6->ip6;
+      ip = ip6;
+      udp = (udp_header_t *) (ip6 + 1);
+    }
   h = (ipfix_message_header_t *) (udp + 1);
 
   /* FIXUP: message header export_time */
@@ -138,12 +152,24 @@ send_template_packet (flow_report_main_t *frm, ipfix_exporter_t *exp,
   h->sequence_number = clib_host_to_net_u32 (stream->sequence_number);
 
   /* FIXUP: udp length */
-  udp->length = clib_host_to_net_u16 (b0->current_length - sizeof (*ip4));
+  if (ip_addr_version (&exp->ipfix_collector) == AF_IP4)
+    udp->length = clib_host_to_net_u16 (b0->current_length - sizeof (*ip4));
+  else
+    udp->length = clib_host_to_net_u16 (b0->current_length - sizeof (*ip6));
 
-  if (exp->udp_checksum)
+  if (exp->udp_checksum || ip_addr_version (&exp->ipfix_collector) == AF_IP6)
     {
       /* RFC 7011 section 10.3.2. */
-      udp->checksum = ip4_tcp_udp_compute_checksum (vm, b0, ip4);
+
+      if (ip_addr_version (&exp->ipfix_collector) == AF_IP4)
+	udp->checksum = ip4_tcp_udp_compute_checksum (vm, b0, ip);
+      else
+	{
+	  int bogus = 0;
+	  udp->checksum =
+	    ip6_tcp_udp_icmp_compute_checksum (vm, b0, ip, &bogus);
+	}
+
       if (udp->checksum == 0)
 	udp->checksum = 0xffff;
     }
@@ -155,6 +181,49 @@ send_template_packet (flow_report_main_t *frm, ipfix_exporter_t *exp,
   return 0;
 }
 
+u32 always_inline
+ipfix_write_headers (ipfix_exporter_t *exp, void *data, void **ip,
+		     udp_header_t **udp, u32 len)
+{
+  if (ip_addr_version (&exp->ipfix_collector) == AF_IP4)
+    {
+      ip4_ipfix_template_packet_t *tp4;
+      ip4_header_t *ip4;
+
+      tp4 = (ip4_ipfix_template_packet_t *) data;
+      ip4 = (ip4_header_t *) &tp4->ip4;
+      ip4->ip_version_and_header_length = 0x45;
+      ip4->ttl = 254;
+      ip4->protocol = IP_PROTOCOL_UDP;
+      ip4->flags_and_fragment_offset = 0;
+      ip4->src_address.as_u32 = exp->src_address.ip.ip4.as_u32;
+      ip4->dst_address.as_u32 = exp->ipfix_collector.ip.ip4.as_u32;
+      *ip = ip4;
+      *udp = (udp_header_t *) (ip4 + 1);
+
+      (*udp)->length = clib_host_to_net_u16 (len - sizeof (*ip4));
+      return sizeof (*ip4);
+    }
+  else
+    {
+      ip6_ipfix_template_packet_t *tp6;
+      ip6_header_t *ip6;
+
+      tp6 = (ip6_ipfix_template_packet_t *) data;
+      ip6 = (ip6_header_t *) &tp6->ip6;
+      ip6->ip_version_traffic_class_and_flow_label =
+	clib_host_to_net_u32 (6 << 28);
+      ip6->hop_limit = 254;
+      ip6->protocol = IP_PROTOCOL_UDP;
+      ip6->src_address = exp->src_address.ip.ip6;
+      ip6->dst_address = exp->ipfix_collector.ip.ip6;
+      *ip = ip6;
+      *udp = (udp_header_t *) (ip6 + 1);
+      (*udp)->length = clib_host_to_net_u16 (len - sizeof (*ip6));
+      return sizeof (*ip6);
+    }
+}
+
 u8 *
 vnet_flow_rewrite_generic_callback (ipfix_exporter_t *exp, flow_report_t *fr,
 				    u16 collector_port,
@@ -162,6 +231,8 @@ vnet_flow_rewrite_generic_callback (ipfix_exporter_t *exp, flow_report_t *fr,
 				    u32 n_elts, u32 *stream_indexp)
 {
   ip4_header_t *ip4;
+  ip6_header_t *ip6;
+  void *ip;
   udp_header_t *udp;
   ipfix_message_header_t *h;
   ipfix_set_header_t *s;
@@ -169,10 +240,10 @@ vnet_flow_rewrite_generic_callback (ipfix_exporter_t *exp, flow_report_t *fr,
   ipfix_field_specifier_t *f;
   ipfix_field_specifier_t *first_field;
   u8 *rewrite = 0;
-  ip4_ipfix_template_packet_t *tp4;
   flow_report_stream_t *stream;
   int i;
   ipfix_report_element_t *ep;
+  u32 size;
 
   ASSERT (stream_indexp);
   ASSERT (n_elts);
@@ -181,29 +252,24 @@ vnet_flow_rewrite_generic_callback (ipfix_exporter_t *exp, flow_report_t *fr,
   stream = &exp->streams[fr->stream_index];
   *stream_indexp = fr->stream_index;
 
+  if (ip_addr_version (&exp->ipfix_collector) == AF_IP4)
+    size = sizeof (ip4_ipfix_template_packet_t);
+  else
+    size = sizeof (ip6_ipfix_template_packet_t);
   /* allocate rewrite space */
   vec_validate_aligned (rewrite,
-			sizeof (ip4_ipfix_template_packet_t)
-			+ n_elts * sizeof (ipfix_field_specifier_t) - 1,
+			size + n_elts * sizeof (ipfix_field_specifier_t) - 1,
 			CLIB_CACHE_LINE_BYTES);
 
   /* create the packet rewrite string */
-  tp4 = (ip4_ipfix_template_packet_t *) rewrite;
-  ip4 = (ip4_header_t *) &tp4->ip4;
-  udp = (udp_header_t *) (ip4 + 1);
+  ipfix_write_headers (exp, rewrite, &ip, &udp, vec_len (rewrite));
+
   h = (ipfix_message_header_t *) (udp + 1);
   s = (ipfix_set_header_t *) (h + 1);
   t = (ipfix_template_header_t *) (s + 1);
   first_field = f = (ipfix_field_specifier_t *) (t + 1);
-
-  ip4->ip_version_and_header_length = 0x45;
-  ip4->ttl = 254;
-  ip4->protocol = IP_PROTOCOL_UDP;
-  ip4->src_address.as_u32 = exp->src_address.ip.ip4.as_u32;
-  ip4->dst_address.as_u32 = exp->ipfix_collector.ip.ip4.as_u32;
   udp->src_port = clib_host_to_net_u16 (stream->src_port);
   udp->dst_port = clib_host_to_net_u16 (collector_port);
-  udp->length = clib_host_to_net_u16 (vec_len (rewrite) - sizeof (*ip4));
 
   /* FIXUP LATER: message header export_time */
   h->domain_id = clib_host_to_net_u32 (stream->domain_id);
@@ -217,10 +283,6 @@ vnet_flow_rewrite_generic_callback (ipfix_exporter_t *exp, flow_report_t *fr,
       ep++;
     }
 
-  /* Back to the template packet... */
-  ip4 = (ip4_header_t *) &tp4->ip4;
-  udp = (udp_header_t *) (ip4 + 1);
-
   ASSERT (f - first_field);
   /* Field count in this template */
   t->id_count = ipfix_id_count (fr->template_id, f - first_field);
@@ -232,8 +294,18 @@ vnet_flow_rewrite_generic_callback (ipfix_exporter_t *exp, flow_report_t *fr,
   /* message length in octets */
   h->version_length = version_length ((u8 *) f - (u8 *) h);
 
-  ip4->length = clib_host_to_net_u16 ((u8 *) f - (u8 *) ip4);
-  ip4->checksum = ip4_header_checksum (ip4);
+  if (ip_addr_version (&exp->ipfix_collector) == AF_IP4)
+    {
+      ip4 = (ip4_header_t *) ip;
+      ip4->length = clib_host_to_net_u16 ((u8 *) f - (u8 *) ip4);
+      ip4->checksum = ip4_header_checksum (ip4);
+    }
+  else
+    {
+      ip6 = (ip6_header_t *) ip;
+      /* IPv6 payload length does not include the IPv6 header */
+      ip6->payload_length = clib_host_to_net_u16 ((u8 *) f - (u8 *) udp);
+    }
 
   return rewrite;
 }
@@ -275,29 +347,25 @@ vnet_ipfix_exp_send_buffer (vlib_main_t *vm, ipfix_exporter_t *exp,
 {
   flow_report_main_t *frm = &flow_report_main;
   vlib_frame_t *f;
-  ip4_ipfix_template_packet_t *tp4;
   ipfix_set_header_t *s;
   ipfix_message_header_t *h;
   ip4_header_t *ip4;
+  ip6_header_t *ip6;
+  void *ip;
   udp_header_t *udp;
+  int ip_len;
 
   /* nothing to send */
   if (fr->per_thread_data[thread_index].next_data_offset <=
       exp->all_headers_size)
     return;
 
-  tp4 = vlib_buffer_get_current (b0);
-  ip4 = (ip4_header_t *) &tp4->ip4;
-  udp = (udp_header_t *) (ip4 + 1);
+  ip_len = ipfix_write_headers (exp, (void *) vlib_buffer_get_current (b0),
+				&ip, &udp, b0->current_length);
+
   h = (ipfix_message_header_t *) (udp + 1);
   s = (ipfix_set_header_t *) (h + 1);
 
-  ip4->ip_version_and_header_length = 0x45;
-  ip4->ttl = 254;
-  ip4->protocol = IP_PROTOCOL_UDP;
-  ip4->flags_and_fragment_offset = 0;
-  ip4->src_address.as_u32 = exp->src_address.ip.ip4.as_u32;
-  ip4->dst_address.as_u32 = exp->ipfix_collector.ip.ip4.as_u32;
   udp->src_port = clib_host_to_net_u16 (stream->src_port);
   udp->dst_port = clib_host_to_net_u16 (exp->collector_port);
   udp->checksum = 0;
@@ -326,31 +394,51 @@ vnet_ipfix_exp_send_buffer (vlib_main_t *vm, ipfix_exporter_t *exp,
    */
   s->set_id_length = ipfix_set_id_length (
     fr->template_id,
-    b0->current_length - (sizeof (*ip4) + sizeof (*udp) + sizeof (*h)));
+    b0->current_length - (ip_len + sizeof (*udp) + sizeof (*h)));
   h->version_length =
-    version_length (b0->current_length - (sizeof (*ip4) + sizeof (*udp)));
+    version_length (b0->current_length - (ip_len + sizeof (*udp)));
 
-  ip4->length = clib_host_to_net_u16 (b0->current_length);
+  if (ip_addr_version (&exp->ipfix_collector) == AF_IP4)
+    {
+      ip4 = (ip4_header_t *) ip;
+      ip4->length = clib_host_to_net_u16 (b0->current_length);
+      ip4->checksum = ip4_header_checksum (ip4);
+      udp->length = clib_host_to_net_u16 (b0->current_length - sizeof (*ip4));
+      ASSERT (ip4_header_checksum_is_valid (ip4));
+    }
+  else
+    {
+      ip6 = (ip6_header_t *) ip;
+      /* Ipv6 payload length does not include the IPv6 header */
+      ip6->payload_length =
+	clib_host_to_net_u16 (b0->current_length - sizeof (*ip6));
+      udp->length = clib_host_to_net_u16 (b0->current_length - sizeof (*ip6));
+    }
 
-  ip4->checksum = ip4_header_checksum (ip4);
-  udp->length = clib_host_to_net_u16 (b0->current_length - sizeof (*ip4));
-
-  if (exp->udp_checksum)
+  if (exp->udp_checksum || ip_addr_version (&exp->ipfix_collector) == AF_IP6)
     {
       /* RFC 7011 section 10.3.2. */
-      udp->checksum = ip4_tcp_udp_compute_checksum (vm, b0, ip4);
+      if (ip_addr_version (&exp->ipfix_collector) == AF_IP4)
+	udp->checksum = ip4_tcp_udp_compute_checksum (vm, b0, ip4);
+      else
+	{
+	  int bogus = 0;
+	  udp->checksum =
+	    ip6_tcp_udp_icmp_compute_checksum (vm, b0, ip6, &bogus);
+	}
       if (udp->checksum == 0)
 	udp->checksum = 0xffff;
     }
-
-  ASSERT (ip4_header_checksum_is_valid (ip4));
 
   /* Find or allocate a frame */
   f = fr->per_thread_data[thread_index].frame;
   if (PREDICT_FALSE (f == 0))
     {
       u32 *to_next;
-      f = vlib_get_frame_to_node (vm, ip4_lookup_node.index);
+      if (ip_addr_version (&exp->ipfix_collector) == AF_IP4)
+	f = vlib_get_frame_to_node (vm, ip4_lookup_node.index);
+      else
+	f = vlib_get_frame_to_node (vm, ip6_lookup_node.index);
       fr->per_thread_data[thread_index].frame = f;
       u32 bi0 = vlib_get_buffer_index (vm, b0);
 
@@ -360,11 +448,38 @@ vnet_ipfix_exp_send_buffer (vlib_main_t *vm, ipfix_exporter_t *exp,
       f->n_vectors = 1;
     }
 
-  vlib_put_frame_to_node (vm, ip4_lookup_node.index, f);
+  if (ip_addr_version (&exp->ipfix_collector) == AF_IP4)
+    vlib_put_frame_to_node (vm, ip4_lookup_node.index, f);
+  else
+    vlib_put_frame_to_node (vm, ip6_lookup_node.index, f);
 
   fr->per_thread_data[thread_index].frame = NULL;
   fr->per_thread_data[thread_index].buffer = NULL;
   fr->per_thread_data[thread_index].next_data_offset = 0;
+}
+
+static void
+flow_report_process_send (vlib_main_t *vm, flow_report_main_t *frm,
+			  ipfix_exporter_t *exp, flow_report_t *fr,
+			  u32 next_node, u32 template_bi)
+{
+  vlib_frame_t *nf = 0;
+  u32 *to_next;
+
+  nf = vlib_get_frame_to_node (vm, next_node);
+  nf->n_vectors = 0;
+  to_next = vlib_frame_vector_args (nf);
+
+  if (template_bi != ~0)
+    {
+      to_next[0] = template_bi;
+      to_next++;
+      nf->n_vectors++;
+    }
+
+  nf = fr->flow_data_callback (frm, exp, fr, nf, to_next, next_node);
+  if (nf)
+    vlib_put_frame_to_node (vm, next_node, nf);
 }
 
 static uword
@@ -375,9 +490,9 @@ flow_report_process (vlib_main_t * vm,
   flow_report_t *fr;
   u32 ip4_lookup_node_index;
   vlib_node_t *ip4_lookup_node;
-  vlib_frame_t *nf = 0;
+  u32 ip6_lookup_node_index;
+  vlib_node_t *ip6_lookup_node;
   u32 template_bi;
-  u32 *to_next;
   int send_template;
   f64 now, wait_time;
   f64 def_wait_time = 5.0;
@@ -395,6 +510,10 @@ flow_report_process (vlib_main_t * vm,
   /* Enqueue pkts to ip4-lookup */
   ip4_lookup_node = vlib_get_node_by_name (vm, (u8 *) "ip4-lookup");
   ip4_lookup_node_index = ip4_lookup_node->index;
+
+  /* Enqueue pkts to ip6-lookup */
+  ip6_lookup_node = vlib_get_node_by_name (vm, (u8 *) "ip6-lookup");
+  ip6_lookup_node_index = ip6_lookup_node->index;
 
   wait_time = def_wait_time;
 
@@ -436,21 +555,16 @@ flow_report_process (vlib_main_t * vm,
 		(fr->last_template_sent + exp->template_interval) - now;
 	      wait_time = clib_min (wait_time, next_template);
 
-	      nf = vlib_get_frame_to_node (vm, ip4_lookup_node_index);
-	      nf->n_vectors = 0;
-	      to_next = vlib_frame_vector_args (nf);
-
-	      if (template_bi != ~0)
+	      if (ip_addr_version (&exp->ipfix_collector) == AF_IP4)
 		{
-		  to_next[0] = template_bi;
-		  to_next++;
-		  nf->n_vectors++;
+		  flow_report_process_send (
+		    vm, frm, exp, fr, ip4_lookup_node_index, template_bi);
 		}
-
-	      nf = fr->flow_data_callback (frm, exp, fr, nf, to_next,
-					   ip4_lookup_node_index);
-	      if (nf)
-		vlib_put_frame_to_node (vm, ip4_lookup_node_index, nf);
+	      else
+		{
+		  flow_report_process_send (
+		    vm, frm, exp, fr, ip6_lookup_node_index, template_bi);
+		}
 	    }
 	}
     }
