@@ -16,6 +16,24 @@
       "revId": "645354a4512de8b898a754a215085e0831500152",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d096d37b_95133679",
+        "filename": "src/vnet/classify/in_out_acl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-10-05T13:02:03Z",
+      "side": 1,
+      "message": "Not really, the switch/case would be more-or-less the same as I would still need to select the address family and the feature_name based on the table id instead of arc_name and feature_name.",
+      "parentUuid": "232e50dc_0c348ea4",
+      "revId": "645354a4512de8b898a754a215085e0831500152",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
