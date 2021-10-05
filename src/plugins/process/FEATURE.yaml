@@ -1,0 +1,12 @@
+---
+name: Vlib Process Privileges and Capailities
+maintainer: Mohsin Kazmi <sykazmi@cisco.com>
+features:
+  - show process privileges
+  - drop process privileges
+  - show process capabilities
+  - set process capabilities
+
+description: "An implementation of accessing and modifying vlib process privileges and capabilities."
+state: experimental
+properties: [CLI]

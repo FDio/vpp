@@ -1,0 +1,48 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright (c) 2021 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option version = "1.0.0";
+
+/** \brief Set VPP's process uid and gid to the provided values
+  @param client_index - opaque cookie to identify the sender
+  @param context - sender context, to match reply w/ request
+  @param uid - user id to allocate to the process
+  @param gid - group id to allocate to the process
+  @param do_chrrot - tells if we need to chroot the process.
+    If so, specify a directory in chroot_dir.
+  @param chroot_dir - directory to chroot in
+*/
+autoreply define set_process_privileges
+{
+  u32 client_index;
+  u32 context;
+  u32 uid;
+  u32 gid;
+  bool do_chroot;
+  string chroot_dir[];
+};
+
+/** \brief Set VPP's process capabilities
+  @param client_index - opaque cookie to identify the sender
+  @param context - sender context, to match reply w/ request
+  @param capabilities - user id to allocate to the process
+*/
+autoreply define set_process_capabilities
+{
+  u32 client_index;
+  u32 context;
+  u64 capabilities;
+};
