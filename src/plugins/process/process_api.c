@@ -1,0 +1,85 @@
+/*
+ *------------------------------------------------------------------
+ * process_api.c - vlib process api
+ *
+ * Copyright (c) 2021 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *------------------------------------------------------------------
+ */
+#include <vlibapi/api.h>
+#include <vlibmemory/api.h>
+#include <plugins/process/process.h>
+
+/* define message IDs */
+#include <plugins/process/process.api_enum.h>
+#include <plugins/process/process.api_types.h>
+
+#define vl_endianfun /* define message structures */
+#include <plugins/process/process.api.h>
+#undef vl_endianfun
+
+/**
+ * Base message ID fot the process APIs
+ */
+#define REPLY_MSG_ID_BASE process_main.msg_id_base
+
+#include <vlibapi/api_helper_macros.h>
+
+static void
+vl_api_set_process_privileges_t_handler (vl_api_set_process_privileges_t *mp)
+{
+  vl_api_set_process_privileges_reply_t *rmp;
+  u32 uid;
+  u32 gid;
+  int rv;
+  u8 *chroot_dir = 0;
+
+  uid = ntohl (mp->uid);
+  gid = ntohl (mp->gid);
+  if (mp->do_chroot)
+    {
+      chroot_dir = vl_api_from_api_to_new_vec (mp, &mp->chroot_dir);
+      vec_add1 (chroot_dir, 0); /* Ensure it's a C string for strcasecmp() */
+    }
+  rv = process_drop_privileges (uid, gid, (char *) chroot_dir);
+  REPLY_MACRO (VL_API_SET_PROCESS_PRIVILEGES_REPLY);
+  vec_free (chroot_dir);
+}
+
+static void
+vl_api_set_process_capabilities_t_handler (
+  vl_api_set_process_capabilities_t *mp)
+{
+  vl_api_set_process_capabilities_reply_t *rmp;
+  vlib_main_t *vm = vlib_get_main ();
+  u64 capabilities;
+  int rv;
+
+  capabilities = clib_net_to_host_u64 (mp->capabilities);
+  rv = process_set_capabilities (vm, capabilities, 1 /* change_permitted */);
+  REPLY_MACRO (VL_API_SET_PROCESS_CAPABILITIES_REPLY);
+}
+
+#include <plugins/process/process.api.c>
+static clib_error_t *
+process_api_hookup (vlib_main_t *vm)
+{
+  /*
+   * Set up the (msg_name, crc, message-id) table
+   */
+  REPLY_MSG_ID_BASE = setup_message_id_table ();
+
+  return 0;
+}
+
+VLIB_API_INIT_FUNCTION (process_api_hookup);

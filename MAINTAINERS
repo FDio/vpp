@@ -785,6 +785,13 @@ I:	bufmon
 M:	Benoît Ganne <bganne@cisco.com>
 F:	src/plugins/bufmon/
 
+Plugin - Process
+I:	process
+M:	Arthur de Kerhor <arthurdekerhor@gmail.com>
+M:	Benoît Ganne <bganne@cisco.com>
+M:	Mohsin Kazmi <sykazmi@cisco.com>
+F:	src/plugins/process
+
 cJSON
 I:	cjson
 M:	Ole Troan <ot@cisco.com>
