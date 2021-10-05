@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "575aaa30_4481bba5",
+        "filename": "src/plugins/wireguard/wireguard_output_tun.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 172,
+      "author": {
+        "id": 2280
+      },
+      "writtenOn": "2021-10-05T06:33:26Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "129b9c00_0e87753d",
+      "revId": "c209e16e0930ade8be3d3f44d75cdecc10335b5b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a716e01c_77e05def",
         "filename": "src/plugins/wireguard/wireguard_peer.c",
         "patchSetId": 1
@@ -30,6 +48,24 @@
       "writtenOn": "2021-04-28T06:51:31Z",
       "side": 1,
       "message": "It\u0027s useful to set the flow label for the purpose of getting good ECMP in the network.\n(It is also typical of tunnels to support copying of the traffic class / TOS field)\nHere is some code I used in the past:\n  u8 tc \u003d mm-\u003etc_copy ? ip4-\u003etos : mm-\u003etc;\n  u32 vtcfl \u003d 0x6 \u003c\u003c 28;\n  vtcfl |\u003d tc \u003c\u003c 20;\n  vtcfl |\u003d vnet_buffer (p)-\u003eip.flow_hash \u0026 0x000fffff;\n\n  return (clib_host_to_net_u32 (vtcfl));",
+      "revId": "c209e16e0930ade8be3d3f44d75cdecc10335b5b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "60afc1da_264d22f6",
+        "filename": "src/plugins/wireguard/wireguard_peer.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 151,
+      "author": {
+        "id": 2280
+      },
+      "writtenOn": "2021-10-05T06:33:26Z",
+      "side": 1,
+      "message": "Could you please tell in more detail on what step should we do this? Do we need to use fixup function in adj_nbr_midchain_update_rewrite?",
+      "parentUuid": "a716e01c_77e05def",
       "revId": "c209e16e0930ade8be3d3f44d75cdecc10335b5b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -50,6 +86,24 @@
       "revId": "c209e16e0930ade8be3d3f44d75cdecc10335b5b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "27c62ab5_613a6c36",
+        "filename": "src/plugins/wireguard/wireguard_peer.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 2280
+      },
+      "writtenOn": "2021-10-05T06:33:26Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fe0060a7_fc68b856",
+      "revId": "c209e16e0930ade8be3d3f44d75cdecc10335b5b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
