@@ -2160,63 +2160,6 @@ class TestNAT44EDMW(TestNAT44ED):
     vpp_worker_count = 4
     max_sessions = 5000
 
-    @unittest.skip('MW fix required')
-    def test_users_dump(self):
-        """ NAT44ED API test - nat44_user_dump """
-
-    @unittest.skip('MW fix required')
-    def test_frag_out_of_order_do_not_translate(self):
-        """ NAT44ED don't translate fragments arriving out of order """
-
-    @unittest.skip('MW fix required')
-    def test_forwarding(self):
-        """ NAT44ED forwarding test """
-
-    @unittest.skip('MW fix required')
-    def test_twice_nat(self):
-        """ NAT44ED Twice NAT """
-
-    @unittest.skip('MW fix required')
-    def test_twice_nat_lb(self):
-        """ NAT44ED Twice NAT local service load balancing """
-
-    @unittest.skip('MW fix required')
-    def test_output_feature(self):
-        """ NAT44ED interface output feature (in2out postrouting) """
-
-    @unittest.skip('MW fix required')
-    def test_static_with_port_out2(self):
-        """ NAT44ED 1:1 NAPT asymmetrical rule """
-
-    @unittest.skip('MW fix required')
-    def test_output_feature_and_service2(self):
-        """ NAT44ED interface output feature and service host direct access """
-
-    @unittest.skip('MW fix required')
-    def test_static_lb(self):
-        """ NAT44ED local service load balancing """
-
-    @unittest.skip('MW fix required')
-    def test_static_lb_2(self):
-        """ NAT44ED local service load balancing (asymmetrical rule) """
-
-    @unittest.skip('MW fix required')
-    def test_lb_affinity(self):
-        """ NAT44ED local service load balancing affinity """
-
-    @unittest.skip('MW fix required')
-    def test_multiple_vrf(self):
-        """ NAT44ED Multiple VRF setup """
-
-    @unittest.skip('MW fix required')
-    def test_self_twice_nat_positive(self):
-        """ NAT44ED Self Twice NAT (positive test) """
-
-    @unittest.skip('MW fix required')
-    def test_self_twice_nat_lb_positive(self):
-        """ NAT44ED Self Twice NAT local service load balancing (positive test)
-        """
-
     def test_dynamic(self):
         """ NAT44ED dynamic translation test """
         pkt_count = 1500
