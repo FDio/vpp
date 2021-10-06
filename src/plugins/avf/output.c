@@ -19,6 +19,7 @@
 #include <vlib/unix/unix.h>
 #include <vlib/pci/pci.h>
 #include <vppinfra/ring.h>
+#include <vppinfra/vector/ip_csum.h>
 
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/ip4_packet.h>
@@ -110,7 +111,7 @@ avf_tx_prepare_cksum (vlib_buffer_t * b, u8 is_tso)
 	    is_tso ? 0 :
 	    clib_host_to_net_u16 (clib_net_to_host_u16 (ip4->length) -
 				  (l4_hdr_offset - l3_hdr_offset));
-	  sum = ~ip_csum (&psh, sizeof (psh));
+	  sum = ~clib_ip_csum ((u8 *) &psh, sizeof (psh));
 	}
       else
 	{
@@ -119,7 +120,7 @@ avf_tx_prepare_cksum (vlib_buffer_t * b, u8 is_tso)
 	  psh.dst = ip6->dst_address;
 	  psh.proto = clib_host_to_net_u32 ((u32) ip6->protocol);
 	  psh.l4len = is_tso ? 0 : ip6->payload_length;
-	  sum = ~ip_csum (&psh, sizeof (psh));
+	  sum = ~clib_ip_csum ((u8 *) &psh, sizeof (psh));
 	}
 
   /* ip_csum does a byte swap for some reason... */
