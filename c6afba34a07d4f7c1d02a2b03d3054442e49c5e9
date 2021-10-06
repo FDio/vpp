@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "04266bb3_0fdb1c12",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-10-06T15:52:10Z",
+      "side": 1,
+      "message": "You\u0027re missing a \u0027Type: fix\u0027 field in the commit message",
+      "revId": "c6afba34a07d4f7c1d02a2b03d3054442e49c5e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6c7c932e_0410607b",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 463,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-10-06T15:52:10Z",
+      "side": 1,
+      "message": "I do not think we should log an error here, as we can fail to create eg. a txq\nA debug log level should be enough.",
+      "revId": "c6afba34a07d4f7c1d02a2b03d3054442e49c5e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
