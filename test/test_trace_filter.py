@@ -211,7 +211,7 @@ class TestTracefilter(VppTestCase):
         """ Drop Packet Capture Filter Test """
         self.cli(
             "pcap trace drop max 1000 "
-            "error {ip4-udp-lookup}.{No listener for dst port} "
+            "error {ip4-udp-lookup}.{no_listener} "
             "file vpp_test_trace_filter_test_pcap_drop.pcap")
         # the packet we are trying to match
         p = list()

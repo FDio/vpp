@@ -36,6 +36,12 @@ typedef struct
   u8 bound;
 } udp_local_rx_trace_t;
 
+static vlib_error_desc_t udp_error_counters[] = {
+#define udp_error(f, n, s, d) { #n, d, VL_COUNTER_SEVERITY_##s },
+#include "udp_error.def"
+#undef udp_error
+};
+
 #define UDP_NO_NODE_SET ((u16) ~0)
 
 #ifndef CLIB_MARCH_VARIANT
@@ -342,12 +348,6 @@ udp46_local_inline (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-static char *udp_error_strings[] = {
-#define udp_error(n,s) s,
-#include "udp_error.def"
-#undef udp_error
-};
-
 VLIB_NODE_FN (udp4_local_node) (vlib_main_t * vm,
 				vlib_node_runtime_t * node,
 				vlib_frame_t * from_frame)
@@ -369,7 +369,7 @@ VLIB_REGISTER_NODE (udp4_local_node) = {
   .vector_size = sizeof (u32),
 
   .n_errors = UDP_N_ERROR,
-  .error_strings = udp_error_strings,
+  .error_counters = udp_error_counters,
 
   .n_next_nodes = UDP_LOCAL_N_NEXT,
   .next_nodes = {
@@ -391,7 +391,7 @@ VLIB_REGISTER_NODE (udp6_local_node) = {
   .vector_size = sizeof (u32),
 
   .n_errors = UDP_N_ERROR,
-  .error_strings = udp_error_strings,
+  .error_counters = udp_error_counters,
 
   .n_next_nodes = UDP_LOCAL_N_NEXT,
   .next_nodes = {

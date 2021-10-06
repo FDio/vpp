@@ -15,13 +15,13 @@
  * limitations under the License.
  */
 
-udp_error (NONE, "No error")
-udp_error (NO_LISTENER, "No listener for dst port")
-udp_error (LENGTH_ERROR, "Packets with length errors")
-udp_error (PUNT, "No listener punt")
-udp_error (ENQUEUED, "Packets enqueued")
-udp_error (FIFO_FULL, "Fifo full")
-udp_error (NOT_READY, "Connection not ready")
-udp_error (ACCEPT, "Accepted session")
-udp_error (CREATE_SESSION, "Failed to create session")
-udp_error (MQ_FULL, "Application msg queue full")
+udp_error (NONE, none, INFO, "No error")
+udp_error (NO_LISTENER, no_listener, ERROR, "No listener for dst port")
+udp_error (LENGTH_ERROR, length_error, ERROR, "Packets with length errors")
+udp_error (PUNT, punt, ERROR, "No listener punt")
+udp_error (ENQUEUED, enqueued, INFO, "Packets enqueued")
+udp_error (FIFO_FULL, fifo_full, ERROR, "Fifo full")
+udp_error (NOT_READY, not_ready, ERROR, "Connection not ready")
+udp_error (ACCEPT, accept, INFO, "Accepted session")
+udp_error (CREATE_SESSION, create_session, ERROR, "Failed to create session")
+udp_error (MQ_FULL, mq_full, ERROR, "Application msg queue full")
