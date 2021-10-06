@@ -42,6 +42,7 @@
 
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vppinfra/vector/ip_csum.h>
 
 typedef enum
 {
@@ -63,15 +64,16 @@ check_ver_opt_csum (ip4_header_t * ip, u8 * error, int verify_checksum)
       if ((ip->ip_version_and_header_length & 0xf) != 5)
 	{
 	  *error = IP4_ERROR_OPTIONS;
-	  if (verify_checksum && ip_csum (ip, ip4_header_bytes (ip)) != 0)
+	  if (verify_checksum &&
+	      clib_ip_csum ((u8 *) ip, ip4_header_bytes (ip)) != 0)
 	    *error = IP4_ERROR_BAD_CHECKSUM;
 	}
       else
 	*error = IP4_ERROR_VERSION;
     }
-  else
-    if (PREDICT_FALSE (verify_checksum &&
-		       ip_csum (ip, sizeof (ip4_header_t)) != 0))
+  else if (PREDICT_FALSE (verify_checksum &&
+			  clib_ip_csum ((u8 *) ip, sizeof (ip4_header_t)) !=
+			    0))
     *error = IP4_ERROR_BAD_CHECKSUM;
 }
 
