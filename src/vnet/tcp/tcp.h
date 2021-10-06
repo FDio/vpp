@@ -34,7 +34,7 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
 
 typedef enum _tcp_error
 {
-#define tcp_error(n,s) TCP_ERROR_##n,
+#define tcp_error(f, n, s, d) TCP_ERROR_##f,
 #include <vnet/tcp/tcp_error.def>
 #undef tcp_error
   TCP_N_ERROR,
