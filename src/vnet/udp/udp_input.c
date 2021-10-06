@@ -26,8 +26,8 @@
 #include <vnet/udp/udp_packet.h>
 #include <vnet/session/session.h>
 
-static char *udp_error_strings[] = {
-#define udp_error(n,s) s,
+static vlib_error_desc_t udp_error_counters[] = {
+#define udp_error(f, n, s, d) { #n, d, VL_COUNTER_SEVERITY_##s },
 #include "udp_error.def"
 #undef udp_error
 };
@@ -350,8 +350,8 @@ VLIB_REGISTER_NODE (udp4_input_node) =
   .vector_size = sizeof (u32),
   .format_trace = format_udp_input_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN (udp_error_strings),
-  .error_strings = udp_error_strings,
+  .n_errors = UDP_N_ERROR,
+  .error_counters = udp_error_counters,
   .n_next_nodes = UDP_INPUT_N_NEXT,
   .next_nodes = {
 #define _(s, n) [UDP_INPUT_NEXT_##s] = n,
@@ -376,8 +376,8 @@ VLIB_REGISTER_NODE (udp6_input_node) =
   .vector_size = sizeof (u32),
   .format_trace = format_udp_input_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN (udp_error_strings),
-  .error_strings = udp_error_strings,
+  .n_errors = UDP_N_ERROR,
+  .error_counters = udp_error_counters,
   .n_next_nodes = UDP_INPUT_N_NEXT,
   .next_nodes = {
 #define _(s, n) [UDP_INPUT_NEXT_##s] = n,

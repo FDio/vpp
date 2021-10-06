@@ -27,7 +27,7 @@
 
 typedef enum
 {
-#define udp_error(n,s) UDP_ERROR_##n,
+#define udp_error(f, n, s, d) UDP_ERROR_##f,
 #include <vnet/udp/udp_error.def>
 #undef udp_error
   UDP_N_ERROR,
