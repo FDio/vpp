@@ -3589,16 +3589,15 @@ VLIB_CLI_COMMAND (aclplugin_set_interface_command, static) = {
  *  an ACL is composed of more than one Access control element (ACE). Multiple
  *  ACEs can be specified with this command using a comma separated list.
  *
- * Each ACE describes a tuple of src+dst IP prefix, ip protocol, src+dst port ranges.
- * (the ACL plugin also support ICMP types/codes instead of UDP/TCP ports, but
- *  this CLI does not).
+ * Each ACE describes a tuple of src+dst IP prefix, ip protocol, src+dst port
+ * ranges. (the ACL plugin also support ICMP types/codes instead of UDP/TCP
+ * ports, but this CLI does not).
  *
- * An ACL can optionally be assigned a 'tag' - which is an identifier understood
- * by the client. VPP does not examine it in any way.
+ * An ACL can optionally be assigned a 'tag' - which is an identifier
+ * understood by the client. VPP does not examine it in any way.
  *
- * @cliexpar
- * <b><em> set acl-plugin acl <permit|deny> src <PREFIX> dst <PREFIX> proto <TCP|UDP> sport <X-Y> dport <X-Y> [tag FOO] </b></em>
- * @cliexend
+ * @cliexcmd{set acl-plugin acl <permit|deny> src <PREFIX> dst <PREFIX> proto
+ * <TCP|UDP> sport <X-Y> dport <X-Y> [tag FOO]}
  ?*/
 VLIB_CLI_COMMAND (aclplugin_set_acl_command, static) = {
     .path = "set acl-plugin acl",
