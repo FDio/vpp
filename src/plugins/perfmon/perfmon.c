@@ -288,6 +288,21 @@ perfmon_stop (vlib_main_t *vm)
   return 0;
 }
 
+static_always_inline u8
+is_bundle_supported (perfmon_bundle_t *b)
+{
+  perfmon_cpu_supports_t *supports = b->cpu_supports;
+
+  if (!b->cpu_supports)
+    return 1;
+
+  for (int i = 0; i < b->n_cpu_supports; ++i)
+    if (supports[i].cpu_supports ())
+      return 1;
+
+  return 0;
+}
+
 static clib_error_t *
 perfmon_init (vlib_main_t *vm)
 {
@@ -320,6 +335,14 @@ perfmon_init (vlib_main_t *vm)
     {
       clib_error_t *err;
       uword *p;
+
+      if (!is_bundle_supported (b))
+	{
+	  log_warn ("skipping bundle '%s' - not supported", b->name);
+	  b = b->next;
+	  continue;
+	}
+
       if (hash_get_mem (pm->bundle_by_name, b->name) != 0)
 	clib_panic ("duplicate bundle name '%s'", b->name);
 
