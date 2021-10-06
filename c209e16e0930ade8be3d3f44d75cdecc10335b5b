@@ -108,6 +108,24 @@
     },
     {
       "key": {
+        "uuid": "7513ae8e_c4d910fe",
+        "filename": "src/plugins/wireguard/wireguard_peer.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 151,
+      "author": {
+        "id": 2280
+      },
+      "writtenOn": "2021-10-06T13:31:01Z",
+      "side": 1,
+      "message": "Thanks guys.\n\nI have added fixup functions, but not sure if this is enough.\nAnd I did it manually without using tunnel_encap_fixup_Xo6 functions...",
+      "parentUuid": "0dcc2b2d_c30d61ff",
+      "revId": "c209e16e0930ade8be3d3f44d75cdecc10335b5b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "fe0060a7_fc68b856",
         "filename": "src/plugins/wireguard/wireguard_peer.c",
         "patchSetId": 1
