@@ -193,6 +193,40 @@ noise_remote_decrypt (vlib_main_t * vm, noise_remote_t *,
 		      uint64_t nonce,
 		      uint8_t * src, size_t srclen, uint8_t * dst);
 
+enum noise_state_crypt
+noise_sync_remote_encrypt (vlib_main_t *vm, vnet_crypto_op_t **crypto_ops,
+			   noise_remote_t *r, uint32_t *r_idx, uint64_t *nonce,
+			   uint8_t *src, size_t srclen, uint8_t *dst, u32 bi,
+			   u8 *iv, f64 time);
+
+enum noise_state_crypt
+noise_sync_remote_decrypt (vlib_main_t *vm, vnet_crypto_op_t **crypto_ops,
+			   noise_remote_t *, uint32_t r_idx, uint64_t nonce,
+			   uint8_t *src, size_t srclen, uint8_t *dst, u32 bi,
+			   u8 *iv, f64 time);
+
+static_always_inline noise_keypair_t *
+wg_get_active_keypair (noise_remote_t *r, uint32_t r_idx)
+{
+  if (r->r_current != NULL && r->r_current->kp_local_index == r_idx)
+    {
+      return r->r_current;
+    }
+  else if (r->r_previous != NULL && r->r_previous->kp_local_index == r_idx)
+    {
+      return r->r_previous;
+    }
+  else if (r->r_next != NULL && r->r_next->kp_local_index == r_idx)
+    {
+      return r->r_next;
+    }
+  else
+    {
+      return NULL;
+    }
+}
+
+bool noise_counter_recv (noise_counter_t *ctr, uint64_t recv);
 
 #endif /* __included_wg_noise_h__ */
 

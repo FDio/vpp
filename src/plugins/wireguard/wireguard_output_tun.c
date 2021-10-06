@@ -80,34 +80,71 @@ format_wg_output_tun_trace (u8 * s, va_list * args)
   return s;
 }
 
+static_always_inline void
+wg_process_ops (vlib_main_t *vm, vlib_node_runtime_t *node,
+		vnet_crypto_op_t *ops, vlib_buffer_t *b[], u16 *nexts,
+		u16 drop_next)
+{
+  u32 n_fail, n_ops = vec_len (ops);
+  vnet_crypto_op_t *op = ops;
+
+  if (n_ops == 0)
+    return;
+
+  n_fail = n_ops - vnet_crypto_process_ops (vm, op, n_ops);
+
+  while (n_fail)
+    {
+      ASSERT (op - ops < n_ops);
+
+      if (op->status != VNET_CRYPTO_OP_STATUS_COMPLETED)
+	{
+	  u32 bi = op->user_data;
+	  b[bi]->error = node->errors[WG_OUTPUT_ERROR_KEYPAIR];
+	  nexts[bi] = drop_next;
+	  n_fail--;
+	}
+      op++;
+    }
+}
+
 VLIB_NODE_FN (wg_output_tun_node) (vlib_main_t * vm,
 				   vlib_node_runtime_t * node,
 				   vlib_frame_t * frame)
 {
-  u32 n_left_from;
-  u32 *from;
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
-  u16 nexts[VLIB_FRAME_SIZE], *next;
+  wg_main_t *wmp = &wg_main;
+  wg_per_thread_data_t *ptd =
+    vec_elt_at_index (wmp->per_thread_data, vm->thread_index);
+  u32 *from = vlib_frame_vector_args (frame);
+  u32 n_left_from = frame->n_vectors;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   u32 thread_index = vm->thread_index;
-
-  from = vlib_frame_vector_args (frame);
-  n_left_from = frame->n_vectors;
-  b = bufs;
-  next = nexts;
+  u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
+  vnet_crypto_op_t **crypto_ops = &ptd->crypto_ops;
+  vlib_buffer_t *sync_bufs[VLIB_FRAME_SIZE];
+  u16 sync_nexts[VLIB_FRAME_SIZE], *sync_next = sync_nexts, n_sync = 0;
+  u16 drop_next = WG_OUTPUT_NEXT_ERROR;
 
   vlib_get_buffers (vm, from, bufs, n_left_from);
 
+  vec_reset_length (ptd->crypto_ops);
+
   wg_peer_t *peer = NULL;
+  index_t last_peeri = ~0;
+  index_t last_time_peeri = ~0;
+
+  f64 time = clib_time_now (&vm->clib_time) + vm->time_offset;
 
   while (n_left_from > 0)
     {
-
       if (n_left_from > 2)
 	{
 	  u8 *p;
 	  vlib_prefetch_buffer_header (b[2], LOAD);
 	  p = vlib_buffer_get_current (b[1]);
 	  CLIB_PREFETCH (p, CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (vlib_buffer_get_tail (b[1]), CLIB_CACHE_LINE_BYTES,
+			 LOAD);
 	}
 
       ip4_udp_wg_header_t *hdr = vlib_buffer_get_current (b[0]);
@@ -115,12 +152,17 @@ VLIB_NODE_FN (wg_output_tun_node) (vlib_main_t * vm,
 	(vlib_buffer_get_current (b[0]) + sizeof (ip4_udp_wg_header_t));
       u16 plain_data_len =
 	clib_net_to_host_u16 (((ip4_header_t *) plain_data)->length);
+      u8 *iv_data = (vlib_buffer_get_current (b[0]) - 12);
       index_t peeri;
 
       next[0] = WG_OUTPUT_NEXT_ERROR;
       peeri =
 	wg_peer_get_by_adj_index (vnet_buffer (b[0])->ip.adj_index[VLIB_TX]);
-      peer = wg_peer_get (peeri);
+
+      if (PREDICT_FALSE (last_peeri != peeri))
+	{
+	  peer = wg_peer_get (peeri);
+	}
 
       if (!peer || peer->is_dead)
 	{
@@ -163,20 +205,12 @@ VLIB_NODE_FN (wg_output_tun_node) (vlib_main_t * vm,
 	  goto out;
 	}
 
-      enum noise_state_crypt state;
-      state = noise_remote_encrypt (vm, &peer->remote, &hdr->wg.receiver_index,
-				    &hdr->wg.counter, plain_data,
-				    plain_data_len, plain_data);
-
-      if (PREDICT_FALSE (state == SC_KEEP_KEY_FRESH))
+      if (PREDICT_FALSE (last_time_peeri != peeri))
 	{
-	  wg_send_handshake_from_mt (peeri, false);
-	}
-      else if (PREDICT_FALSE (state == SC_FAILED))
-	{
-	  //TODO: Maybe wrong
-	  wg_send_handshake_from_mt (peeri, false);
-	  goto out;
+	  wg_timers_any_authenticated_packet_sent_opt (peer, time);
+	  wg_timers_data_sent_opt (peer, time);
+	  wg_timers_any_authenticated_packet_traversal (peer);
+	  last_time_peeri = peeri;
 	}
 
       /* Here we are sure that can send packet to next node */
@@ -187,12 +221,26 @@ VLIB_NODE_FN (wg_output_tun_node) (vlib_main_t * vm,
 					      sizeof (udp_header_t));
       b[0]->current_length = (encrypted_packet_len +
 			      sizeof (ip4_header_t) + sizeof (udp_header_t));
+
       ip4_header_set_len_w_chksum
 	(&hdr->ip4, clib_host_to_net_u16 (b[0]->current_length));
 
-      wg_timers_any_authenticated_packet_sent (peer);
-      wg_timers_data_sent (peer);
-      wg_timers_any_authenticated_packet_traversal (peer);
+      enum noise_state_crypt state;
+      state = noise_sync_remote_encrypt (
+	vm, crypto_ops, &peer->remote, &hdr->wg.receiver_index,
+	&hdr->wg.counter, plain_data, plain_data_len, plain_data, n_sync,
+	iv_data, time);
+
+      if (PREDICT_FALSE (state == SC_KEEP_KEY_FRESH))
+	{
+	  wg_send_handshake_from_mt (peeri, false);
+	}
+      else if (PREDICT_FALSE (state == SC_FAILED))
+	{
+	  // TODO: Maybe wrong
+	  wg_send_handshake_from_mt (peeri, false);
+	  goto out;
+	}
 
     out:
       if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
@@ -204,12 +252,18 @@ VLIB_NODE_FN (wg_output_tun_node) (vlib_main_t * vm,
 	  t->peer = peeri;
 	}
     next:
+      sync_bufs[n_sync] = b[0];
+      sync_next += 1;
+      n_sync += 1;
       n_left_from -= 1;
       next += 1;
       b += 1;
     }
 
-  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
+  /* wg-process-ops */
+  wg_process_ops (vm, node, ptd->crypto_ops, sync_bufs, nexts, drop_next);
+
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, n_sync);
   return frame->n_vectors;
 }
 

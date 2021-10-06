@@ -15,6 +15,7 @@
 #ifndef __included_wg_h__
 #define __included_wg_h__
 
+#include <vnet/crypto/crypto.h>
 #include <wireguard/wireguard_index_table.h>
 #include <wireguard/wireguard_messages.h>
 #include <wireguard/wireguard_timer.h>
@@ -26,6 +27,8 @@ extern vlib_node_registration_t wg_output_tun_node;
 
 typedef struct wg_per_thread_data_t_
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  vnet_crypto_op_t *crypto_ops;
   u8 data[WG_DEFAULT_DATA_SIZE];
 } wg_per_thread_data_t;
 typedef struct
