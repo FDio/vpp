@@ -16,6 +16,24 @@
       "revId": "4d325187b4045ed5e767f567470b0f397c1d8ac0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "76411508_c5fb3d30",
+        "filename": "src/vppinfra/memcpy_avx512.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 2558
+      },
+      "writtenOn": "2021-10-06T14:44:20Z",
+      "side": 1,
+      "message": "That sounds good, I\u0027ve done so.\nAlso I\u0027ve replaced type casts with movs as casting unaligned pointer to u32 or u64 is still UB and may be abused by compilers.",
+      "parentUuid": "cd5828a5_fa8513e6",
+      "revId": "4d325187b4045ed5e767f567470b0f397c1d8ac0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
