@@ -795,21 +795,21 @@ format_session_queue_trace (u8 * s, va_list * args)
   return s;
 }
 
-#define foreach_session_queue_error		\
-_(TX, "Packets transmitted")                  	\
-_(TIMER, "Timer events")			\
-_(NO_BUFFER, "Out of buffers")
+#define foreach_session_queue_error                                           \
+  _ (TX, tx, INFO, "Packets transmitted")                                     \
+  _ (TIMER, timer, INFO, "Timer events")                                      \
+  _ (NO_BUFFER, no_buffer, ERROR, "Out of buffers")
 
 typedef enum
 {
-#define _(sym,str) SESSION_QUEUE_ERROR_##sym,
+#define _(f, n, s, d) SESSION_QUEUE_ERROR_##f,
   foreach_session_queue_error
 #undef _
     SESSION_QUEUE_N_ERROR,
 } session_queue_error_t;
 
-static char *session_queue_error_strings[] = {
-#define _(sym,string) string,
+static vlib_error_desc_t session_error_counters[] = {
+#define _(f, n, s, d) { #n, d, VL_COUNTER_SEVERITY_##s },
   foreach_session_queue_error
 #undef _
 };
@@ -1832,15 +1832,14 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (session_queue_node) =
-{
+VLIB_REGISTER_NODE (session_queue_node) = {
   .function = session_queue_node_fn,
   .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
   .name = "session-queue",
   .format_trace = format_session_queue_trace,
   .type = VLIB_NODE_TYPE_INPUT,
-  .n_errors = ARRAY_LEN (session_queue_error_strings),
-  .error_strings = session_queue_error_strings,
+  .n_errors = SESSION_QUEUE_N_ERROR,
+  .error_counters = session_error_counters,
   .state = VLIB_NODE_STATE_DISABLED,
 };
 /* *INDENT-ON* */
