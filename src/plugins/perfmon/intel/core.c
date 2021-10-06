@@ -28,6 +28,8 @@ static perfmon_event_t events[] = {
 				    .exclude_kernel = 1 },
 
   foreach_perf_intel_core_event foreach_perf_intel_peusdo_event
+    foreach_perf_intel_tremont_event
+
 #undef _
 };
 
