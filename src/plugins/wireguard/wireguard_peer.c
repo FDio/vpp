@@ -97,7 +97,8 @@ wg_peer_build_rewrite (const wg_peer_t * peer)
   ip4_udp_header_t *hdr;
   u8 *rewrite = NULL;
 
-  vec_validate (rewrite, sizeof (*hdr) - 1);
+  /* reserve space for ip4, udp and wireguard headers */
+  vec_validate (rewrite, sizeof (ip4_udp_wg_header_t) - 1);
   hdr = (ip4_udp_header_t *) rewrite;
 
   hdr->ip4.ip_version_and_header_length = 0x45;

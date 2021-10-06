@@ -48,7 +48,9 @@ wg_buffer_prepend_rewrite (vlib_buffer_t * b0, const wg_peer_t * peer)
   vlib_buffer_advance (b0, -sizeof (*hdr));
 
   hdr = vlib_buffer_get_current (b0);
-  clib_memcpy (hdr, peer->rewrite, vec_len (peer->rewrite));
+
+  /* copy only ip4 and udp header; wireguard header not needed */
+  clib_memcpy (hdr, peer->rewrite, sizeof (ip4_udp_header_t));
 
   hdr->udp.length =
     clib_host_to_net_u16 (b0->current_length - sizeof (ip4_header_t));

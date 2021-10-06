@@ -31,7 +31,14 @@ typedef struct ip4_udp_header_t_
   udp_header_t udp;
 } __clib_packed ip4_udp_header_t;
 
-u8 *format_ip4_udp_header (u8 * s, va_list * va);
+typedef struct ip4_udp_wg_header_t_
+{
+  ip4_header_t ip4;
+  udp_header_t udp;
+  message_data_t wg;
+} __clib_packed ip4_udp_wg_header_t;
+
+u8 *format_ip4_udp_header (u8 *s, va_list *va);
 
 typedef struct wg_peer_endpoint_t_
 {
@@ -41,6 +48,8 @@ typedef struct wg_peer_endpoint_t_
 
 typedef struct wg_peer
 {
+  /** Required for pool_get_aligned */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   noise_remote_t remote;
   cookie_maker_t cookie_maker;
 

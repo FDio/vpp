@@ -51,8 +51,8 @@ typedef enum
 
 typedef struct
 {
-  ip4_udp_header_t hdr;
   index_t peer;
+  ip4_udp_wg_header_t hdr;
 } wg_output_tun_trace_t;
 
 u8 *
@@ -97,14 +97,22 @@ VLIB_NODE_FN (wg_output_tun_node) (vlib_main_t * vm,
 
   vlib_get_buffers (vm, from, bufs, n_left_from);
 
-  wg_main_t *wmp = &wg_main;
   wg_peer_t *peer = NULL;
 
   while (n_left_from > 0)
     {
-      ip4_udp_header_t *hdr = vlib_buffer_get_current (b[0]);
-      u8 *plain_data = (vlib_buffer_get_current (b[0]) +
-			sizeof (ip4_udp_header_t));
+
+      if (n_left_from > 2)
+	{
+	  u8 *p;
+	  vlib_prefetch_buffer_header (b[2], LOAD);
+	  p = vlib_buffer_get_current (b[1]);
+	  CLIB_PREFETCH (p, CLIB_CACHE_LINE_BYTES, LOAD);
+	}
+
+      ip4_udp_wg_header_t *hdr = vlib_buffer_get_current (b[0]);
+      u8 *plain_data =
+	(vlib_buffer_get_current (b[0]) + sizeof (ip4_udp_wg_header_t));
       u16 plain_data_len =
 	clib_net_to_host_u16 (((ip4_header_t *) plain_data)->length);
       index_t peeri;
@@ -155,17 +163,10 @@ VLIB_NODE_FN (wg_output_tun_node) (vlib_main_t * vm,
 	  goto out;
 	}
 
-      message_data_t *encrypted_packet =
-	(message_data_t *) wmp->per_thread_data[thread_index].data;
-
       enum noise_state_crypt state;
-      state =
-	noise_remote_encrypt (vm,
-			      &peer->remote,
-			      &encrypted_packet->receiver_index,
-			      &encrypted_packet->counter, plain_data,
-			      plain_data_len,
-			      encrypted_packet->encrypted_data);
+      state = noise_remote_encrypt (vm, &peer->remote, &hdr->wg.receiver_index,
+				    &hdr->wg.counter, plain_data,
+				    plain_data_len, plain_data);
 
       if (PREDICT_FALSE (state == SC_KEEP_KEY_FRESH))
 	{
@@ -180,9 +181,7 @@ VLIB_NODE_FN (wg_output_tun_node) (vlib_main_t * vm,
 
       /* Here we are sure that can send packet to next node */
       next[0] = WG_OUTPUT_NEXT_INTERFACE_OUTPUT;
-      encrypted_packet->header.type = MESSAGE_DATA;
-
-      clib_memcpy (plain_data, (u8 *) encrypted_packet, encrypted_packet_len);
+      hdr->wg.header.type = MESSAGE_DATA;
 
       hdr->udp.length = clib_host_to_net_u16 (encrypted_packet_len +
 					      sizeof (udp_header_t));
