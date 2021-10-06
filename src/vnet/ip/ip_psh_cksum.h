@@ -7,6 +7,7 @@
 #define included_ip_psh_cksum_h
 
 #include <vnet/ip/ip.h>
+#include <vppinfra/vector/ip_csum.h>
 
 typedef struct _ip4_psh
 {
@@ -37,7 +38,8 @@ ip4_pseudo_header_cksum (ip4_header_t *ip4)
   psh.proto = ip4->protocol;
   psh.l4len = clib_host_to_net_u16 (clib_net_to_host_u16 (ip4->length) -
 				    sizeof (ip4_header_t));
-  return ~clib_net_to_host_u16 (ip_csum (&psh, sizeof (ip4_psh_t)));
+  return ~clib_net_to_host_u16 (
+    clib_ip_csum ((u8 *) &psh, sizeof (ip4_psh_t)));
 }
 
 static_always_inline u16
@@ -48,7 +50,8 @@ ip6_pseudo_header_cksum (ip6_header_t *ip6)
   psh.dst = ip6->dst_address;
   psh.l4len = ip6->payload_length;
   psh.proto = clib_host_to_net_u32 ((u32) ip6->protocol);
-  return ~clib_net_to_host_u16 (ip_csum (&psh, sizeof (ip6_psh_t)));
+  return ~clib_net_to_host_u16 (
+    clib_ip_csum ((u8 *) &psh, sizeof (ip6_psh_t)));
 }
 
 #endif /* included_ip_psh_cksum_h */
