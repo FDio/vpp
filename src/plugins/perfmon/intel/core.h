@@ -34,6 +34,18 @@
 
 /* EventCode, UMask, EdgeDetect, AnyThread, Invert, CounterMask
  * counter_unit, name, suffix, description */
+#define foreach_perf_intel_tremont_event                                      \
+  _ (0xc2, 0x00, 0, 0, 0, 0x00, TOPDOWN, L1_RETIRING_TREMONT,                 \
+     "TMA retiring slots for an unhalted logical processor.")                 \
+  _ (0x71, 0x00, 0, 0, 0, 0x00, TOPDOWN, L1_FE_BOUND_TREMONT,                 \
+     "TMA fe bound slots for an unhalted logical processor.")                 \
+  _ (0x73, 0x06, 0, 0, 0, 0x00, TOPDOWN, L1_BAD_SPEC_TREMONT,                 \
+     "TMA bad spec slots or an unhalted logical processor.")                  \
+  _ (0x74, 0x00, 0, 0, 0, 0x00, TOPDOWN, L1_BE_BOUND_TREMONT,                 \
+     "TMA be bound slots for an unhalted logical processor.")
+
+/* EventCode, UMask, EdgeDetect, AnyThread, Invert, CounterMask
+ * counter_unit, name, suffix, description */
 #define foreach_perf_intel_core_event                                         \
   _ (0x00, 0x02, 0, 0, 0, 0x00, CPU_CLK_UNHALTED, THREAD,                     \
      "Core cycles when the thread is not in halt state")                      \
@@ -197,8 +209,9 @@ typedef enum
 #define _(event, umask, edge, any, inv, cmask, name, suffix, desc)            \
   INTEL_CORE_E_##name##_##suffix,
   foreach_perf_intel_core_event foreach_perf_intel_peusdo_event
+    foreach_perf_intel_tremont_event
 #undef _
-    INTEL_CORE_N_EVENTS,
+      INTEL_CORE_N_EVENTS,
 } perf_intel_core_event_t;
 
 #endif
