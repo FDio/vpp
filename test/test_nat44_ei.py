@@ -1581,6 +1581,14 @@ class TestNAT44EI(MethodHolder):
         identity_mappings = self.vapi.nat44_ei_identity_mapping_dump()
         self.assertEqual(len(identity_mappings), 2)
 
+        # now delete the mappings so that we don't leave a stale fib lock
+        self.vapi.nat44_ei_add_del_identity_mapping(
+            ip_address=self.pg0.remote_ip4, sw_if_index=0xFFFFFFFF,
+            flags=flags, is_add=0)
+        self.vapi.nat44_ei_add_del_identity_mapping(
+            ip_address=self.pg0.remote_ip4, sw_if_index=0xFFFFFFFF,
+            flags=flags, vrf_id=1, is_add=0)
+
     def test_multiple_inside_interfaces(self):
         """ NAT44EI multiple non-overlapping address space inside interfaces
         """
