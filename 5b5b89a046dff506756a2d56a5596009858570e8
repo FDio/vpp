@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a044b559_c39b1b19",
+        "filename": "src/vnet/ip/ip_sas.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-10-07T07:25:15Z",
+      "side": 1,
+      "message": "i agree this is how one would fix this case. but you might want to investigate why ipv6 packets are being sent out of an interface that does not have an ipv6 ll address, and by extension on global address either.",
+      "revId": "5b5b89a046dff506756a2d56a5596009858570e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
