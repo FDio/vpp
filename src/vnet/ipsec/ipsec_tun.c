@@ -569,6 +569,9 @@ ipsec_tun_protect_update (u32 sw_if_index,
   ipsec_main_t *im;
   int rv;
 
+  if (NULL == nh)
+    nh = &IP_ADDR_ALL_0;
+
   ITP_DBG2 ("update: %U/%U",
 	    format_vnet_sw_if_index_name, vnet_get_main (), sw_if_index,
 	    format_ip_address, nh);
@@ -581,8 +584,6 @@ ipsec_tun_protect_update (u32 sw_if_index,
 
   rv = 0;
   im = &ipsec_main;
-  if (NULL == nh)
-    nh = &IP_ADDR_ALL_0;
   itpi = ipsec_tun_protect_find (sw_if_index, nh);
 
   vec_foreach_index (ii, sas_in)
