@@ -259,7 +259,7 @@ vl_api_wireguard_peers_dump_t_handler (vl_api_wireguard_peers_dump_t * mp)
   if (mp->peer_index == ~0)
     wg_peer_walk (wg_api_send_peers_details, &ctx);
   else
-    wg_api_send_peers_details (mp->peer_index, &ctx);
+    wg_api_send_peers_details (ntohl (mp->peer_index), &ctx);
 }
 
 static vpe_client_registration_t *
