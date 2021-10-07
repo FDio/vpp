@@ -27,7 +27,7 @@ static perfmon_event_t events[] = {
 				    .description = desc,                      \
 				    .exclude_kernel = 1 },
 
-  foreach_perf_intel_core_event
+  foreach_perf_intel_core_event foreach_perf_intel_peusdo_event
 #undef _
 };
 
