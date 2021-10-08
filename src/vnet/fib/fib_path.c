@@ -1161,6 +1161,11 @@ FIXME comment
 	    fib_path_unresolve(path);
 	    path->fp_oper_flags |= FIB_PATH_OPER_FLAG_DROP;
 	}
+	if (FIB_NODE_BW_REASON_FLAG_INTERFACE_BIND & ctx->fnbw_reason)
+	{
+            /* bind walks should appear here and pass silently up to
+             * to the fib_entry */
+	}
 	break;
     case FIB_PATH_TYPE_UDP_ENCAP:
     {

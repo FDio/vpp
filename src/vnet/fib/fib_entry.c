@@ -293,58 +293,6 @@ fib_entry_get_flags (fib_node_index_t fib_entry_index)
     return (fib_entry_get_flags_i(fib_entry_get(fib_entry_index)));
 }
 
-/*
- * fib_entry_back_walk_notify
- *
- * A back walk has reach this entry.
- */
-static fib_node_back_walk_rc_t
-fib_entry_back_walk_notify (fib_node_t *node,
-			    fib_node_back_walk_ctx_t *ctx)
-{
-    fib_entry_t *fib_entry;
-
-    fib_entry = fib_entry_from_fib_node(node);
-
-    if (FIB_NODE_BW_REASON_FLAG_EVALUATE & ctx->fnbw_reason        ||
-        FIB_NODE_BW_REASON_FLAG_ADJ_UPDATE & ctx->fnbw_reason      ||
-        FIB_NODE_BW_REASON_FLAG_ADJ_DOWN & ctx->fnbw_reason        ||
-	FIB_NODE_BW_REASON_FLAG_INTERFACE_UP & ctx->fnbw_reason    ||
-	FIB_NODE_BW_REASON_FLAG_INTERFACE_DOWN & ctx->fnbw_reason  ||
-	FIB_NODE_BW_REASON_FLAG_INTERFACE_DELETE & ctx->fnbw_reason)
-    {
-	fib_entry_src_action_reactivate(fib_entry,
-                                        fib_entry_get_best_source(
-                                            fib_entry_get_index(fib_entry)));
-    }
-
-    /*
-     * all other walk types can be reclassifed to a re-evaluate to
-     * all recursive dependents.
-     * By reclassifying we ensure that should any of these walk types meet
-     * they can be merged.
-     */
-    ctx->fnbw_reason = FIB_NODE_BW_REASON_FLAG_EVALUATE;
-
-    /*
-     * ... and nothing is forced sync from now on.
-     */
-    ctx->fnbw_flags &= ~FIB_NODE_BW_FLAG_FORCE_SYNC;
-
-    FIB_ENTRY_DBG(fib_entry, "bw:%U",
-                  format_fib_node_bw_reason, ctx->fnbw_reason);
-
-    /*
-     * propagate the backwalk further if we haven't already reached the
-     * maximum depth.
-     */
-    fib_walk_sync(FIB_NODE_TYPE_ENTRY,
-		  fib_entry_get_index(fib_entry),
-		  ctx);
-
-    return (FIB_NODE_BACK_WALK_CONTINUE);
-}
-
 static void
 fib_entry_show_memory (void)
 {
@@ -372,16 +320,6 @@ fib_entry_show_memory (void)
 			  n_exts, n_exts,
 			  sizeof(fib_path_ext_t));
 }
-
-/*
- * The FIB path-list's graph node virtual function table
- */
-static const fib_node_vft_t fib_entry_vft = {
-    .fnv_get = fib_entry_get_node,
-    .fnv_last_lock = fib_entry_last_lock_gone,
-    .fnv_back_walk = fib_entry_back_walk_notify,
-    .fnv_mem_show = fib_entry_show_memory,
-};
 
 /**
  * @brief Contribute the set of Adjacencies that this entry forwards with
@@ -645,7 +583,8 @@ fib_entry_alloc (u32 fib_index,
 
 static fib_entry_t*
 fib_entry_post_flag_update_actions (fib_entry_t *fib_entry,
-				    fib_entry_flag_t old_flags)
+				    fib_entry_flag_t old_flags,
+                                    u32 new_fib_index)
 {
     fib_node_index_t fei;
 
@@ -670,12 +609,14 @@ fib_entry_post_flag_update_actions (fib_entry_t *fib_entry,
 	 * there is an assumption here that the entry resolves via only
 	 * one interface and that it is the cross VRF interface.
 	 */
-	u32 sw_if_index = fib_path_list_get_resolving_interface(fib_entry->fe_parent);
-
-	fib_attached_export_import(fib_entry,
-				   fib_table_get_index_for_sw_if_index(
-				       fib_entry_get_proto(fib_entry),
-                                       sw_if_index));
+        if (~0 == new_fib_index)
+        {
+            u32 sw_if_index = fib_path_list_get_resolving_interface(fib_entry->fe_parent);
+            new_fib_index = fib_table_get_index_for_sw_if_index(
+                fib_entry_get_proto(fib_entry),
+                sw_if_index);
+        }
+        fib_attached_export_import(fib_entry, new_fib_index);
     }
     else if (was_import && !is_import)
     {
@@ -683,6 +624,14 @@ fib_entry_post_flag_update_actions (fib_entry_t *fib_entry,
 	 * transition from exported to not exported
 	 */
 	fib_attached_export_purge(fib_entry);
+    }
+    else if (was_import && is_import && ~0 != new_fib_index)
+    {
+        /*
+         * transition from export from one table to another
+         */
+        fib_attached_export_purge(fib_entry);
+        fib_attached_export_import(fib_entry, new_fib_index);
     }
     /*
      * else
@@ -717,8 +666,7 @@ fib_entry_post_install_actions (fib_entry_t *fib_entry,
 				fib_source_t source,
 				fib_entry_flag_t old_flags)
 {
-    fib_entry = fib_entry_post_flag_update_actions(fib_entry,
-                                                   old_flags);
+    fib_entry = fib_entry_post_flag_update_actions(fib_entry, old_flags, ~0);
     fib_entry = fib_entry_src_action_installed(fib_entry, source);
 
     return (fib_entry);
@@ -990,7 +938,7 @@ fib_entry_source_removed (fib_entry_t *fib_entry,
         /*
          * no more sources left. this entry is toast.
          */
-        fib_entry = fib_entry_post_flag_update_actions(fib_entry, old_flags);
+        fib_entry = fib_entry_post_flag_update_actions(fib_entry, old_flags, ~0);
         fib_entry_src_action_uninstall(fib_entry);
 
         return (FIB_ENTRY_SRC_FLAG_NONE);
@@ -1164,7 +1112,7 @@ fib_entry_special_remove (fib_node_index_t fib_entry_index,
                 /*
                  * no more sources left. this entry is toast.
                  */
-                fib_entry = fib_entry_post_flag_update_actions(fib_entry, bflags);
+                fib_entry = fib_entry_post_flag_update_actions(fib_entry, bflags, ~0);
                 fib_entry_src_action_uninstall(fib_entry);
                 return (FIB_ENTRY_SRC_FLAG_NONE);
             }
@@ -1480,6 +1428,126 @@ fib_entry_recursive_loop_detect (fib_node_index_t entry_index,
 
     return (is_looped);
 }
+
+/*
+ * fib_entry_attached_cross_table
+ *
+ * Return true if the route is attached via an interface that
+ * is not in the same table as the route
+ */
+static int
+fib_entry_attached_cross_table (const fib_entry_t *fib_entry,
+                                u32 fib_index)
+{
+    const fib_prefix_t *pfx = &fib_entry->fe_prefix;
+
+    switch (pfx->fp_proto)
+    {
+    case FIB_PROTOCOL_MPLS:
+        /* MPLS routes are never imported/exported */
+	return (0);
+    case FIB_PROTOCOL_IP6:
+        /* Ignore link local addresses these also can't be imported/exported */
+        if (ip6_address_is_link_local_unicast (&pfx->fp_addr.ip6))
+        {
+            return (0);
+        }
+        break;
+    case FIB_PROTOCOL_IP4:
+        break;
+    }
+
+    return (fib_entry->fe_fib_index != fib_index);
+}
+
+/*
+ * fib_entry_back_walk_notify
+ *
+ * A back walk has reach this entry.
+ */
+static fib_node_back_walk_rc_t
+fib_entry_back_walk_notify (fib_node_t *node,
+			    fib_node_back_walk_ctx_t *ctx)
+{
+    fib_source_t best_source;
+    fib_entry_t *fib_entry;
+    fib_entry_src_t *bsrc;
+
+    fib_entry = fib_entry_from_fib_node(node);
+    bsrc = fib_entry_get_best_src_i(fib_entry);
+    best_source = fib_entry_src_get_source(bsrc);
+
+    if (FIB_NODE_BW_REASON_FLAG_INTERFACE_BIND & ctx->fnbw_reason)
+    {
+        fib_entry_flag_t bflags;
+
+        bflags = fib_entry_src_get_flags(bsrc);
+
+	fib_entry_src_action_reactivate(fib_entry, best_source);
+
+        /* re-evaluate whether the prefix is cross table */
+        if (fib_entry_attached_cross_table(
+                fib_entry, ctx->interface_bind.fnbw_to_fib_index) &&
+            !(bsrc->fes_entry_flags & FIB_ENTRY_FLAG_NO_ATTACHED_EXPORT))
+        {
+            bsrc->fes_entry_flags |= FIB_ENTRY_FLAG_IMPORT;
+        }
+        else
+        {
+            bsrc->fes_entry_flags &= ~FIB_ENTRY_FLAG_IMPORT;
+        }
+
+        fib_entry = fib_entry_post_flag_update_actions(
+            fib_entry, bflags,
+            ctx->interface_bind.fnbw_to_fib_index);
+    }
+    else if (FIB_NODE_BW_REASON_FLAG_EVALUATE & ctx->fnbw_reason        ||
+             FIB_NODE_BW_REASON_FLAG_ADJ_UPDATE & ctx->fnbw_reason      ||
+             FIB_NODE_BW_REASON_FLAG_ADJ_DOWN & ctx->fnbw_reason        ||
+             FIB_NODE_BW_REASON_FLAG_INTERFACE_UP & ctx->fnbw_reason    ||
+             FIB_NODE_BW_REASON_FLAG_INTERFACE_DOWN & ctx->fnbw_reason  ||
+             FIB_NODE_BW_REASON_FLAG_INTERFACE_BIND & ctx->fnbw_reason  ||
+             FIB_NODE_BW_REASON_FLAG_INTERFACE_DELETE & ctx->fnbw_reason)
+    {
+	fib_entry_src_action_reactivate(fib_entry, best_source);
+    }
+
+    /*
+     * all other walk types can be reclassifed to a re-evaluate to
+     * all recursive dependents.
+     * By reclassifying we ensure that should any of these walk types meet
+     * they can be merged.
+     */
+    ctx->fnbw_reason = FIB_NODE_BW_REASON_FLAG_EVALUATE;
+
+    /*
+     * ... and nothing is forced sync from now on.
+     */
+    ctx->fnbw_flags &= ~FIB_NODE_BW_FLAG_FORCE_SYNC;
+
+    FIB_ENTRY_DBG(fib_entry, "bw:%U",
+                  format_fib_node_bw_reason, ctx->fnbw_reason);
+
+    /*
+     * propagate the backwalk further if we haven't already reached the
+     * maximum depth.
+     */
+    fib_walk_sync(FIB_NODE_TYPE_ENTRY,
+		  fib_entry_get_index(fib_entry),
+		  ctx);
+
+    return (FIB_NODE_BACK_WALK_CONTINUE);
+}
+
+/*
+ * The FIB path-list's graph node virtual function table
+ */
+static const fib_node_vft_t fib_entry_vft = {
+    .fnv_get = fib_entry_get_node,
+    .fnv_last_lock = fib_entry_last_lock_gone,
+    .fnv_back_walk = fib_entry_back_walk_notify,
+    .fnv_mem_show = fib_entry_show_memory,
+};
 
 u32
 fib_entry_get_resolving_interface (fib_node_index_t entry_index)

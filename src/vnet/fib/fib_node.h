@@ -110,6 +110,10 @@ typedef enum fib_node_back_walk_reason_t_ {
      */
     FIB_NODE_BW_REASON_INTERFACE_DOWN,
     /**
+     * A resolving interface has been bound to another table
+     */
+    FIB_NODE_BW_REASON_INTERFACE_BIND,
+    /**
      * A resolving interface has been deleted.
      */
     FIB_NODE_BW_REASON_INTERFACE_DELETE,
@@ -138,6 +142,7 @@ typedef enum fib_node_back_walk_reason_t_ {
     [FIB_NODE_BW_REASON_INTERFACE_UP] = "if-up",            \
     [FIB_NODE_BW_REASON_INTERFACE_DOWN] = "if-down",        \
     [FIB_NODE_BW_REASON_INTERFACE_DELETE] = "if-delete",    \
+    [FIB_NODE_BW_REASON_INTERFACE_BIND] = "if-bind",        \
     [FIB_NODE_BW_REASON_ADJ_UPDATE] = "adj-update",         \
     [FIB_NODE_BW_REASON_ADJ_MTU] = "adj-mtu",               \
     [FIB_NODE_BW_REASON_ADJ_DOWN] = "adj-down",             \
@@ -157,14 +162,15 @@ typedef enum fib_node_bw_reason_flag_t_ {
     FIB_NODE_BW_REASON_FLAG_EVALUATE = (1 << FIB_NODE_BW_REASON_EVALUATE),
     FIB_NODE_BW_REASON_FLAG_INTERFACE_UP = (1 << FIB_NODE_BW_REASON_INTERFACE_UP),
     FIB_NODE_BW_REASON_FLAG_INTERFACE_DOWN = (1 << FIB_NODE_BW_REASON_INTERFACE_DOWN),
+    FIB_NODE_BW_REASON_FLAG_INTERFACE_BIND = (1 << FIB_NODE_BW_REASON_INTERFACE_BIND),
     FIB_NODE_BW_REASON_FLAG_INTERFACE_DELETE = (1 << FIB_NODE_BW_REASON_INTERFACE_DELETE),
     FIB_NODE_BW_REASON_FLAG_ADJ_UPDATE = (1 << FIB_NODE_BW_REASON_ADJ_UPDATE),
     FIB_NODE_BW_REASON_FLAG_ADJ_MTU = (1 << FIB_NODE_BW_REASON_ADJ_MTU),
     FIB_NODE_BW_REASON_FLAG_ADJ_DOWN = (1 << FIB_NODE_BW_REASON_ADJ_DOWN),
 } __attribute__ ((packed)) fib_node_bw_reason_flag_t;
 
-STATIC_ASSERT(sizeof(fib_node_bw_reason_flag_t) < 2,
-	      "BW Reason enum < 2 byte. Consequences for cover_upd_res_t");
+STATIC_ASSERT(sizeof(fib_node_bw_reason_flag_t) < 3,
+	      "BW Reason enum < 2 byte. Consequences for fib_entry_src_cover_res_t");
 
 extern u8 *format_fib_node_bw_reason(u8 *s, va_list *args);
 
@@ -229,6 +235,17 @@ typedef struct fib_node_back_walk_ctx_t_ {
      * in the graph.
      */
     u32 fnbw_depth;
+
+    /**
+     * Additional data associated with the reason the walk is occuring
+     */
+    union
+    {
+        struct {
+            u32 fnbw_from_fib_index;
+            u32 fnbw_to_fib_index;
+        } interface_bind;
+    };
 } fib_node_back_walk_ctx_t;
 
 /**
