@@ -103,7 +103,8 @@ wg_peer_build_rewrite (const wg_peer_t *peer, u8 is_ip4)
     {
       ip4_udp_header_t *hdr;
 
-      vec_validate (rewrite, sizeof (*hdr) - 1);
+      /* reserve space for ip4, udp and wireguard headers */
+      vec_validate (rewrite, sizeof (ip4_udp_wg_header_t) - 1);
       hdr = (ip4_udp_header_t *) rewrite;
 
       hdr->ip4.ip_version_and_header_length = 0x45;
@@ -121,7 +122,8 @@ wg_peer_build_rewrite (const wg_peer_t *peer, u8 is_ip4)
     {
       ip6_udp_header_t *hdr;
 
-      vec_validate (rewrite, sizeof (*hdr) - 1);
+      /* reserve space for ip6, udp and wireguard headers */
+      vec_validate (rewrite, sizeof (ip6_udp_wg_header_t) - 1);
       hdr = (ip6_udp_header_t *) rewrite;
 
       hdr->ip6.ip_version_traffic_class_and_flow_label = 0x60;
