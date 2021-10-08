@@ -931,6 +931,8 @@ openssl_app_close (tls_ctx_t * ctx)
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
   session_t *app_session;
 
+  SSL_shutdown (oc->ssl);
+
   /* Wait for all data to be written to tcp */
   app_session = session_get_from_handle (ctx->app_session_handle);
   if (BIO_ctrl_pending (oc->rbio) <= 0
