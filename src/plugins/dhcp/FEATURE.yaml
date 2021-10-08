@@ -6,6 +6,6 @@ features:
   - DHCPv6 prefix delegation
   - DHCP Proxy / Option 82
 
-description: "An implemenation of the Dynamic Host Configuration Protocol (DHCP) client"
+description: "An implementation of the Dynamic Host Configuration Protocol (DHCP) client"
 state: production
 properties: [API, CLI, MULTITHREAD]
