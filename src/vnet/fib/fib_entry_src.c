@@ -1493,7 +1493,7 @@ fib_entry_src_action_remove (fib_entry_t *fib_entry,
  * Return true the the route is attached via an interface that
  * is not in the same table as the route
  */
-static inline int
+static int
 fib_route_attached_cross_table (const fib_entry_t *fib_entry,
 				const fib_route_path_t *rpath)
 {
