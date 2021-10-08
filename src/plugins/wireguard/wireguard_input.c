@@ -366,15 +366,9 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      goto out;
 	    }
 
-	  u8 *decr_data = wmp->per_thread_data[thread_index].data;
-
-	  enum noise_state_crypt state_cr = noise_remote_decrypt (vm,
-								  &peer->remote,
-								  data->receiver_index,
-								  data->counter,
-								  data->encrypted_data,
-								  encr_len,
-								  decr_data);
+	  enum noise_state_crypt state_cr = noise_remote_decrypt (
+	    vm, &peer->remote, data->receiver_index, data->counter,
+	    data->encrypted_data, encr_len, data->encrypted_data);
 
 	  if (PREDICT_FALSE (state_cr == SC_CONN_RESET))
 	    {
@@ -392,7 +386,7 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      goto out;
 	    }
 
-	  clib_memcpy (vlib_buffer_get_current (b[0]), decr_data, decr_len);
+	  vlib_buffer_advance (b[0], sizeof (message_data_t));
 	  b[0]->current_length = decr_len;
 	  vnet_buffer_offload_flags_clear (b[0],
 					   VNET_BUFFER_OFFLOAD_F_UDP_CKSUM);

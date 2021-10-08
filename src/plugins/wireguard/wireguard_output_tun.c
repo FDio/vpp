@@ -100,8 +100,9 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 {
   u32 n_left_from;
   u32 *from;
-  ip4_udp_header_t *hdr4_out = NULL;
-  ip6_udp_header_t *hdr6_out = NULL;
+  ip4_udp_wg_header_t *hdr4_out = NULL;
+  ip6_udp_wg_header_t *hdr6_out = NULL;
+  message_data_t *message_data_wg = NULL;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 nexts[VLIB_FRAME_SIZE], *next;
   u32 thread_index = vm->thread_index;
@@ -113,7 +114,6 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   vlib_get_buffers (vm, from, bufs, n_left_from);
 
-  wg_main_t *wmp = &wg_main;
   wg_peer_t *peer = NULL;
 
   while (n_left_from > 0)
@@ -123,6 +123,14 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       u8 is_ip4_out = 1;
       u8 *plain_data;
       u16 plain_data_len;
+
+      if (n_left_from > 2)
+	{
+	  u8 *p;
+	  vlib_prefetch_buffer_header (b[2], LOAD);
+	  p = vlib_buffer_get_current (b[1]);
+	  CLIB_PREFETCH (p, CLIB_CACHE_LINE_BYTES, LOAD);
+	}
 
       next[0] = WG_OUTPUT_NEXT_ERROR;
       peeri =
@@ -160,10 +168,12 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (is_ip4_out)
 	{
 	  hdr4_out = vlib_buffer_get_current (b[0]);
+	  message_data_wg = &hdr4_out->wg;
 	}
       else
 	{
 	  hdr6_out = vlib_buffer_get_current (b[0]);
+	  message_data_wg = &hdr6_out->wg;
 	}
 
       iph_offset = vnet_buffer (b[0])->ip.save_rewrite_length;
@@ -184,14 +194,11 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  goto out;
 	}
 
-      message_data_t *encrypted_packet =
-	(message_data_t *) wmp->per_thread_data[thread_index].data;
-
       enum noise_state_crypt state;
+
       state = noise_remote_encrypt (
-	vm, &peer->remote, &encrypted_packet->receiver_index,
-	&encrypted_packet->counter, plain_data, plain_data_len,
-	encrypted_packet->encrypted_data);
+	vm, &peer->remote, &message_data_wg->receiver_index,
+	&message_data_wg->counter, plain_data, plain_data_len, plain_data);
 
       if (PREDICT_FALSE (state == SC_KEEP_KEY_FRESH))
 	{
@@ -207,12 +214,10 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       /* Here we are sure that can send packet to next node */
       next[0] = WG_OUTPUT_NEXT_INTERFACE_OUTPUT;
-      encrypted_packet->header.type = MESSAGE_DATA;
-
-      clib_memcpy (plain_data, (u8 *) encrypted_packet, encrypted_packet_len);
 
       if (is_ip4_out)
 	{
+	  hdr4_out->wg.header.type = MESSAGE_DATA;
 	  hdr4_out->udp.length = clib_host_to_net_u16 (encrypted_packet_len +
 						       sizeof (udp_header_t));
 	  b[0]->current_length =
@@ -222,6 +227,7 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
       else
 	{
+	  hdr6_out->wg.header.type = MESSAGE_DATA;
 	  hdr6_out->udp.length = clib_host_to_net_u16 (encrypted_packet_len +
 						       sizeof (udp_header_t));
 	  b[0]->current_length =
@@ -244,9 +250,9 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  t->peer = peeri;
 	  t->is_ip4 = is_ip4_out;
 	  if (hdr4_out)
-	    clib_memcpy (t->header, hdr4_out, sizeof (*hdr4_out));
+	    clib_memcpy (t->header, hdr4_out, sizeof (ip4_udp_header_t));
 	  else if (hdr6_out)
-	    clib_memcpy (t->header, hdr6_out, sizeof (*hdr6_out));
+	    clib_memcpy (t->header, hdr6_out, sizeof (ip6_udp_header_t));
 	}
 
     next:

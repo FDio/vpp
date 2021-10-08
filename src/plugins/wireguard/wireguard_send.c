@@ -50,7 +50,9 @@ wg_buffer_prepend_rewrite (vlib_buffer_t *b0, const wg_peer_t *peer, u8 is_ip4)
       vlib_buffer_advance (b0, -sizeof (*hdr4));
 
       hdr4 = vlib_buffer_get_current (b0);
-      clib_memcpy (hdr4, peer->rewrite, vec_len (peer->rewrite));
+
+      /* copy only ip4 and udp header; wireguard header not needed */
+      clib_memcpy (hdr4, peer->rewrite, sizeof (ip4_udp_header_t));
 
       hdr4->udp.length =
 	clib_host_to_net_u16 (b0->current_length - sizeof (ip4_header_t));
@@ -64,7 +66,9 @@ wg_buffer_prepend_rewrite (vlib_buffer_t *b0, const wg_peer_t *peer, u8 is_ip4)
       vlib_buffer_advance (b0, -sizeof (*hdr6));
 
       hdr6 = vlib_buffer_get_current (b0);
-      clib_memcpy (hdr6, peer->rewrite, vec_len (peer->rewrite));
+
+      /* copy only ip6 and udp header; wireguard header not needed */
+      clib_memcpy (hdr6, peer->rewrite, sizeof (ip6_udp_header_t));
 
       hdr6->udp.length =
 	clib_host_to_net_u16 (b0->current_length - sizeof (ip6_header_t));
