@@ -222,6 +222,10 @@ vnet_feature_enable_disable (const char *arc_name, const char *node_name,
 u32
 vnet_feature_modify_end_node (u8 arc_index, u32 sw_if_index, u32 node_index);
 
+u32 vnet_feature_get_end_node (u8 arc_index, u32 sw_if_index);
+
+u32 vnet_feature_reset_end_node (u8 arc_index, u32 sw_if_index);
+
 static_always_inline u32
 vnet_get_feature_count (u8 arc, u32 sw_if_index)
 {

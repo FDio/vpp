@@ -293,9 +293,10 @@ vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
   fm->sw_if_index_has_features[arc_index] =
     clib_bitmap_set (fm->sw_if_index_has_features[arc_index], sw_if_index,
 		     (feature_count > 0));
+  fm->feature_count_by_sw_if_index[arc_index][sw_if_index] = feature_count;
+
   vnet_feature_reg_invoke (sw_if_index, arc_index, (feature_count > 0));
 
-  fm->feature_count_by_sw_if_index[arc_index][sw_if_index] = feature_count;
   return 0;
 }
 
@@ -375,6 +376,52 @@ vnet_feature_is_enabled (const char *arc_name, const char *feature_node_name,
   return 0;
 }
 
+u32
+vnet_feature_get_end_node (u8 arc_index, u32 sw_if_index)
+{
+  vnet_feature_main_t *fm = &feature_main;
+  vnet_feature_config_main_t *cm;
+  u32 ci;
+
+  if (arc_index == (u8) ~0)
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  cm = &fm->feature_config_mains[arc_index];
+  vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
+  ci = cm->config_index_by_sw_if_index[sw_if_index];
+
+  return (vnet_config_get_end_node (vlib_get_main (), &cm->config_main, ci));
+}
+
+u32
+vnet_feature_reset_end_node (u8 arc_index, u32 sw_if_index)
+{
+  vnet_feature_main_t *fm = &feature_main;
+  vnet_feature_config_main_t *cm;
+  u32 ci;
+
+  cm = &fm->feature_config_mains[arc_index];
+  vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
+  ci = cm->config_index_by_sw_if_index[sw_if_index];
+
+  ci = vnet_config_reset_end_node (vlib_get_main (), &cm->config_main, ci);
+
+  if (ci != ~0)
+    cm->config_index_by_sw_if_index[sw_if_index] = ci;
+
+  i16 feature_count;
+
+  if (NULL == fm->feature_count_by_sw_if_index ||
+      vec_len (fm->feature_count_by_sw_if_index) <= arc_index ||
+      vec_len (fm->feature_count_by_sw_if_index[arc_index]) <= sw_if_index)
+    feature_count = 0;
+  else
+    feature_count = fm->feature_count_by_sw_if_index[arc_index][sw_if_index];
+
+  vnet_feature_reg_invoke (sw_if_index, arc_index, (feature_count > 0));
+
+  return ci;
+}
 
 u32
 vnet_feature_modify_end_node (u8 arc_index,
@@ -399,6 +446,17 @@ vnet_feature_modify_end_node (u8 arc_index,
 
   if (ci != ~0)
     cm->config_index_by_sw_if_index[sw_if_index] = ci;
+
+  i16 feature_count;
+
+  if (NULL == fm->feature_count_by_sw_if_index ||
+      vec_len (fm->feature_count_by_sw_if_index) <= arc_index ||
+      vec_len (fm->feature_count_by_sw_if_index[arc_index]) <= sw_if_index)
+    feature_count = 0;
+  else
+    feature_count = fm->feature_count_by_sw_if_index[arc_index][sw_if_index];
+
+  vnet_feature_reg_invoke (sw_if_index, arc_index, (feature_count > 0));
 
   return ci;
 }

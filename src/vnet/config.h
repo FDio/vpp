@@ -169,6 +169,12 @@ u32 vnet_config_modify_end_node (vlib_main_t * vm,
 				 u32 config_string_heap_index,
 				 u32 end_node_index);
 
+u32 vnet_config_reset_end_node (vlib_main_t *vm, vnet_config_main_t *cm,
+				u32 config_string_heap_index);
+
+u32 vnet_config_get_end_node (vlib_main_t *vm, vnet_config_main_t *cm,
+			      u32 config_string_heap_index);
+
 u8 *vnet_config_format_features (vlib_main_t * vm,
 				 vnet_config_main_t * cm,
 				 u32 config_index, u8 * s);

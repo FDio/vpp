@@ -504,9 +504,15 @@ vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t * a,
     {
       t->l2_adj_index = adj_nbr_add_or_lock
 	(t->tunnel_dst.fp_proto, VNET_LINK_ETHERNET, &zero_addr, sw_if_index);
+      vnet_set_interface_l3_output_node (gm->vlib_main, sw_if_index,
+					 (u8 *) "tunnel-output-no-count");
       gre_update_adj (vnm, t->sw_if_index, t->l2_adj_index);
     }
-
+  else
+    {
+      vnet_set_interface_l3_output_node (gm->vlib_main, sw_if_index,
+					 (u8 *) "tunnel-output");
+    }
   if (sw_if_indexp)
     *sw_if_indexp = sw_if_index;
 
@@ -562,6 +568,7 @@ vnet_gre_tunnel_delete (vnet_gre_tunnel_add_del_args_t * a,
       clib_mem_free (t->gre_sn);
     }
 
+  vnet_reset_interface_l3_output_node (gm->vlib_main, sw_if_index);
   hash_unset (gm->instance_used, t->user_instance);
   gre_tunnel_db_remove (t, &key);
   pool_put (gm->tunnels, t);
