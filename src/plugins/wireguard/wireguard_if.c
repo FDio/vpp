@@ -315,6 +315,8 @@ wg_if_create (u32 user_instance,
 
   ip_address_copy (&wg_if->src_ip, src_ip);
   wg_if->sw_if_index = *sw_if_indexp = hi->sw_if_index;
+  vnet_set_interface_l3_output_node (vnm->vlib_main, hi->sw_if_index,
+				     (u8 *) "tunnel-output");
 
   return 0;
 }
@@ -359,6 +361,7 @@ wg_if_delete (u32 sw_if_index)
       udp_unregister_dst_port (vlib_get_main (), wg_if->port, 0);
     }
 
+  vnet_reset_interface_l3_output_node (vnm->vlib_main, sw_if_index);
   vnet_delete_hw_interface (vnm, hw->hw_if_index);
   pool_put_index (noise_local_pool, wg_if->local_idx);
   pool_put (wg_if_pool, wg_if);

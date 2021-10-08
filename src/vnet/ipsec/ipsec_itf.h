@@ -109,6 +109,7 @@ extern void ipsec_itf_adj_unstack (adj_index_t ai);
 extern u8 *format_ipsec_itf (u8 * s, va_list * a);
 
 extern ipsec_itf_t *ipsec_itf_get (index_t ii);
+extern u32 ipsec_itf_count (void);
 
 typedef walk_rc_t (*ipsec_itf_walk_cb_t) (ipsec_itf_t *itf, void *ctx);
 extern void ipsec_itf_walk (ipsec_itf_walk_cb_t cd, void *ctx);

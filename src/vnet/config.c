@@ -119,6 +119,12 @@ find_config_with_features (vlib_main_t * vm,
       vec_add1 (config_string, next_index);
     }
 
+  /* Add the end node index to the config string so that it is part of
+   * the key used to detect string sharing. If this is not included then
+   * a modification of the end node would affect all the user of a shared
+   * string. */
+  vec_add1 (config_string, end_node_index);
+
   /* See if config string is unique. */
   p = hash_get_mem (cm->config_string_hash, config_string);
   if (p)
@@ -250,6 +256,15 @@ vnet_config_del (vnet_config_main_t * cm, u32 config_id)
 }
 
 u32
+vnet_config_reset_end_node (vlib_main_t *vm, vnet_config_main_t *cm, u32 ci)
+{
+  cm->end_node_indices_by_user_index[ci] = cm->default_end_node_index;
+
+  return (
+    vnet_config_modify_end_node (vm, cm, ci, cm->default_end_node_index));
+}
+
+u32
 vnet_config_modify_end_node (vlib_main_t * vm,
 			     vnet_config_main_t * cm,
 			     u32 config_string_heap_index, u32 end_node_index)
@@ -301,6 +316,18 @@ vnet_config_modify_end_node (vlib_main_t * vm,
   cm->config_pool_index_by_user_index[new->config_string_heap_index + 1]
     = new - cm->config_pool;
   return new->config_string_heap_index + 1;
+}
+
+u32
+vnet_config_get_end_node (vlib_main_t *vm, vnet_config_main_t *cm,
+			  u32 config_string_heap_index)
+{
+  if (config_string_heap_index >= vec_len (cm->end_node_indices_by_user_index))
+    return cm->default_end_node_index;
+  if (~0 == cm->end_node_indices_by_user_index[config_string_heap_index])
+    return cm->default_end_node_index;
+
+  return (cm->end_node_indices_by_user_index[config_string_heap_index]);
 }
 
 u32

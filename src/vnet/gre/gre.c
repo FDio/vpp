@@ -420,9 +420,6 @@ gre_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
   if (!(t->flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_INNER_HASH))
     af |= ADJ_FLAG_MIDCHAIN_IP_STACK;
 
-  if (VNET_LINK_ETHERNET == adj_get_link_type (ai))
-    af |= ADJ_FLAG_MIDCHAIN_NO_COUNT;
-
   adj_nbr_midchain_update_rewrite
     (ai, gre_get_fixup (t->tunnel_dst.fp_proto,
 			adj_get_link_type (ai)),

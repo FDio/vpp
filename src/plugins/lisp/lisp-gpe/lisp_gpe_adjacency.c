@@ -317,8 +317,6 @@ lisp_gpe_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
   lgt = lisp_gpe_tunnel_get (ladj->tunnel_index);
   linkt = adj_get_link_type (ai);
   af = ADJ_FLAG_MIDCHAIN_IP_STACK;
-  if (VNET_LINK_ETHERNET == linkt)
-    af |= ADJ_FLAG_MIDCHAIN_NO_COUNT;
 
   adj_nbr_midchain_update_rewrite
     (ai, lisp_gpe_fixup, NULL, af,

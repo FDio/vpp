@@ -105,6 +105,46 @@ adj_nbr_remove (adj_index_t ai,
     }
 }
 
+typedef struct adj_nbr_get_n_adjs_walk_ctx_t_
+{
+    vnet_link_t linkt;
+    u32 count;
+} adj_nbr_get_n_adjs_walk_ctx_t;
+
+static adj_walk_rc_t
+adj_nbr_get_n_adjs_walk (adj_index_t ai,
+                         void *data)
+{
+    adj_nbr_get_n_adjs_walk_ctx_t *ctx = data;
+    const ip_adjacency_t *adj;
+
+    adj = adj_get(ai);
+
+    if (ctx->linkt == adj->ia_link)
+        ctx->count++;
+
+    return (ADJ_WALK_RC_CONTINUE);
+}
+
+u32
+adj_nbr_get_n_adjs (vnet_link_t link_type, u32 sw_if_index)
+{
+    adj_nbr_get_n_adjs_walk_ctx_t ctx = {
+        .linkt = link_type,
+    };
+    fib_protocol_t fproto;
+
+    FOR_EACH_FIB_IP_PROTOCOL(fproto)
+    {
+        adj_nbr_walk (sw_if_index,
+                      fproto,
+                      adj_nbr_get_n_adjs_walk,
+                      &ctx);
+    }
+
+    return (ctx.count);
+}
+
 adj_index_t
 adj_nbr_find (fib_protocol_t nh_proto,
 	      vnet_link_t link_type,

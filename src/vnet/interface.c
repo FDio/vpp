@@ -804,6 +804,36 @@ setup_output_node (vlib_main_t * vm,
   n->unformat_buffer = hw_class->unformat_header;
 }
 
+void
+vnet_reset_interface_l3_output_node (vlib_main_t *vm, u32 sw_if_index)
+{
+  vnet_set_interface_l3_output_node (vm, sw_if_index,
+				     (u8 *) "interface-output");
+}
+
+void
+vnet_set_interface_l3_output_node (vlib_main_t *vm, u32 sw_if_index,
+				   u8 *output_node)
+{
+  vlib_node_t *l3_node;
+
+  l3_node = vlib_get_node_by_name (vm, output_node);
+
+  static char *arcs[] = {
+    "ip4-output",
+    "ip6-output",
+    "mpls-output",
+    "ethernet-output",
+  };
+  u8 a;
+
+  for (a = 0; a < ARRAY_LEN (arcs); a++)
+    {
+      u8 arc = vnet_get_feature_arc_index (arcs[a]);
+      vnet_feature_modify_end_node (arc, sw_if_index, l3_node->index);
+    }
+}
+
 /* Register an interface instance. */
 u32
 vnet_register_interface (vnet_main_t * vnm,
@@ -1106,7 +1136,6 @@ vnet_delete_hw_interface (vnet_main_t * vnm, u32 hw_if_index)
       dn->tx_node_index = hw->tx_node_index;
       dn->output_node_index = hw->output_node_index;
     }
-
   hash_unset_mem (im->hw_interface_by_name, hw->name);
   vec_free (hw->name);
   vec_free (hw->hw_address);

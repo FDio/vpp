@@ -75,52 +75,37 @@ adj_get_midchain_node (vnet_link_t link)
 }
 
 static u8
-adj_midchain_get_feature_arc_index_for_link_type (const ip_adjacency_t *adj)
+adj_midchain_get_feature_arc_index (const ip_adjacency_t *adj)
 {
-    u8 arc = (u8) ~0;
     switch (adj->ia_link)
     {
     case VNET_LINK_IP4:
-	{
-	    arc = ip4_main.lookup_main.output_feature_arc_index;
-	    break;
-	}
+        return ip4_main.lookup_main.output_feature_arc_index;
     case VNET_LINK_IP6:
-	{
-	    arc = ip6_main.lookup_main.output_feature_arc_index;
-	    break;
-	}
+        return ip6_main.lookup_main.output_feature_arc_index;
     case VNET_LINK_MPLS:
-	{
-	    arc = mpls_main.output_feature_arc_index;
-	    break;
-	}
+        return mpls_main.output_feature_arc_index;
     case VNET_LINK_ETHERNET:
-	{
-	    arc = ethernet_main.output_feature_arc_index;
-	    break;
-	}
+        return ethernet_main.output_feature_arc_index;
     case VNET_LINK_NSH:
-        {
-          arc = nsh_main_placeholder.output_feature_arc_index;
-          break;
-        }
     case VNET_LINK_ARP:
-	ASSERT(0);
 	break;
     }
-
-    ASSERT (arc != (u8) ~0);
-
-    return (arc);
+    ASSERT (0);
+    return (0);
 }
 
 static u32
 adj_nbr_midchain_get_tx_node (ip_adjacency_t *adj)
 {
-    return ((adj->ia_flags & ADJ_FLAG_MIDCHAIN_NO_COUNT) ?
-            adj_midchain_tx_no_count_node.index :
-            adj_midchain_tx_node.index);
+    return (adj_midchain_tx.index);
+}
+
+static u32
+adj_nbr_midchain_get_next_node (ip_adjacency_t *adj)
+{
+    return (vnet_feature_get_end_node(adj_midchain_get_feature_arc_index(adj),
+                                      adj->rewrite_header.sw_if_index));
 }
 
 /**
@@ -131,17 +116,7 @@ adj_nbr_midchain_get_tx_node (ip_adjacency_t *adj)
 void
 adj_midchain_teardown (ip_adjacency_t *adj)
 {
-    vlib_main_t *vm = vlib_get_main();
-
     dpo_reset(&adj->sub_type.midchain.next_dpo);
-
-    vlib_worker_thread_barrier_sync(vm);
-    adj->ia_cfg_index = vnet_feature_modify_end_node(
-        adj_midchain_get_feature_arc_index_for_link_type (adj),
-        adj->rewrite_header.sw_if_index,
-        vlib_get_node_by_name (vlib_get_main(),
-                               (u8*) "interface-output")->index);
-    vlib_worker_thread_barrier_release(vm);
 }
 
 /**
@@ -155,9 +130,7 @@ adj_midchain_setup (adj_index_t adj_index,
                     const void *data,
                     adj_flags_t flags)
 {
-    vlib_main_t *vm = vlib_get_main();
     ip_adjacency_t *adj;
-    u32 tx_node;
 
     ASSERT(ADJ_INDEX_INVALID != adj_index);
 
@@ -181,15 +154,6 @@ adj_midchain_setup (adj_index_t adj_index,
         adj->rewrite_header.flags &= ~VNET_REWRITE_FIXUP_FLOW_HASH;
     }
 
-    tx_node = adj_nbr_midchain_get_tx_node(adj);
-
-    vlib_worker_thread_barrier_sync(vm);
-    adj->ia_cfg_index = vnet_feature_modify_end_node(
-        adj_midchain_get_feature_arc_index_for_link_type (adj),
-        adj->rewrite_header.sw_if_index,
-        tx_node);
-    vlib_worker_thread_barrier_release(vm);
-
     /*
      * stack the midchain on the drop so it's ready to forward in the adj-midchain-tx.
      * The graph arc used/created here is from the midchain-tx node to the
@@ -197,7 +161,7 @@ adj_midchain_setup (adj_index_t adj_index,
      * node are any output features, then the midchain-tx.  from there we
      * need to get to the stacked child's node.
      */
-    dpo_stack_from_node(tx_node,
+    dpo_stack_from_node(adj_nbr_midchain_get_tx_node(adj),
                         &adj->sub_type.midchain.next_dpo,
                         drop_dpo_get(vnet_link_to_dpo_proto(adj->ia_link)));
 }
@@ -238,7 +202,7 @@ adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
     adj_nbr_update_rewrite_internal(adj,
 				    IP_LOOKUP_NEXT_MIDCHAIN,
 				    adj_get_midchain_node(adj->ia_link),
-				    adj_nbr_midchain_get_tx_node(adj),
+				    adj_nbr_midchain_get_next_node(adj),
 				    rewrite);
 }
 
@@ -260,11 +224,6 @@ adj_nbr_midchain_update_next_node (adj_index_t adj_index,
                                                         adj->ia_node_index,
                                                         next_node);
 
-    adj->ia_cfg_index = vnet_feature_modify_end_node(
-        adj_midchain_get_feature_arc_index_for_link_type (adj),
-        adj->rewrite_header.sw_if_index,
-        next_node);
-
     vlib_worker_thread_barrier_release(vm);
 }
 
@@ -284,12 +243,7 @@ adj_nbr_midchain_reset_next_node (adj_index_t adj_index)
     adj->rewrite_header.next_index =
         vlib_node_add_next(vlib_get_main(),
                            adj->ia_node_index,
-                           adj_nbr_midchain_get_tx_node(adj));
-
-    adj->ia_cfg_index = vnet_feature_modify_end_node(
-        adj_midchain_get_feature_arc_index_for_link_type (adj),
-        adj->rewrite_header.sw_if_index,
-        adj_nbr_midchain_get_tx_node(adj));
+                           adj_nbr_midchain_get_next_node(adj));
 
     vlib_worker_thread_barrier_release(vm);
 }

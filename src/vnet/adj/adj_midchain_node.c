@@ -202,16 +202,20 @@ format_adj_midchain_tx_trace (u8 * s, va_list * args)
     return (s);
 }
 
-static uword
-adj_midchain_tx (vlib_main_t * vm,
-		 vlib_node_runtime_t * node,
-		 vlib_frame_t * frame)
+VLIB_NODE_FN (adj_midchain_tx) (vlib_main_t * vm,
+                                vlib_node_runtime_t * node,
+                                vlib_frame_t * frame)
+{
+    return (adj_midchain_tx_inline(vm, node, frame, 1));
+}
+VLIB_NODE_FN (tunnel_output) (vlib_main_t * vm,
+                              vlib_node_runtime_t * node,
+                              vlib_frame_t * frame)
 {
     return (adj_midchain_tx_inline(vm, node, frame, 1));
 }
 
-VLIB_REGISTER_NODE (adj_midchain_tx_node) = {
-    .function = adj_midchain_tx,
+VLIB_REGISTER_NODE (adj_midchain_tx) = {
     .name = "adj-midchain-tx",
     .vector_size = sizeof (u32),
 
@@ -222,20 +226,23 @@ VLIB_REGISTER_NODE (adj_midchain_tx_node) = {
 	[0] = "error-drop",
     },
 };
+VLIB_REGISTER_NODE (tunnel_output) = {
+    .name = "tunnel-output",
+    .vector_size = sizeof (u32),
+    .format_trace = format_adj_midchain_tx_trace,
+    .sibling_of = "adj-midchain-tx",
+};
 
-static uword
-adj_midchain_tx_no_count (vlib_main_t * vm,
-			  vlib_node_runtime_t * node,
-			  vlib_frame_t * frame)
+VLIB_NODE_FN (tunnel_output_no_count) (vlib_main_t * vm,
+                                       vlib_node_runtime_t * node,
+                                       vlib_frame_t * frame)
 {
     return (adj_midchain_tx_inline(vm, node, frame, 0));
 }
 
-VLIB_REGISTER_NODE (adj_midchain_tx_no_count_node) = {
-    .function = adj_midchain_tx_no_count,
-    .name = "adj-midchain-tx-no-count",
+VLIB_REGISTER_NODE (tunnel_output_no_count) = {
+    .name = "tunnel-output-no-count",
     .vector_size = sizeof (u32),
-
     .format_trace = format_adj_midchain_tx_trace,
     .sibling_of = "adj-midchain-tx",
 };
