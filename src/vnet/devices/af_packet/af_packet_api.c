@@ -71,6 +71,7 @@ vl_api_af_packet_create_v2_t_handler (vl_api_af_packet_create_v2_t *mp)
   arg->tx_frame_size = clib_net_to_host_u32 (mp->tx_frame_size);
   arg->rx_frames_per_block = clib_net_to_host_u32 (mp->rx_frames_per_block);
   arg->tx_frames_per_block = clib_net_to_host_u32 (mp->tx_frames_per_block);
+
   arg->hw_addr = mp->use_random_hw_addr ? 0 : mp->hw_addr;
 
   if (mp->num_rx_queues > 1)
