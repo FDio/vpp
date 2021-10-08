@@ -2733,5 +2733,140 @@ class TestIPv4PathMTU(VppTestCase):
             self.send_and_expect(self.pg0, [p_1k], self.pg1, n_rx=2)
 
 
+class TestIPv4ItfRebind(VppTestCase):
+    """ IPv4 Interface Bind w/ attached routes """
+
+    def setUp(self):
+        super(TestIPv4ItfRebind, self).setUp()
+
+        self.create_pg_interfaces(range(3))
+
+    def tearDown(self):
+        super(TestIPv4ItfRebind, self).tearDown()
+
+    def test_rebind(self):
+        """ Import to no import """
+
+        TABLE_ID = 1
+        tbl = VppIpTable(self, TABLE_ID).add_vpp_config()
+        self.pg1.set_table_ip4(TABLE_ID)
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+
+        # add an attached route via an pg0
+        # in a different table. this prefix should import
+        rt = VppIpRoute(self, self.pg0.local_ip4, 24,
+                        [VppRoutePath("0.0.0.0",
+                                      self.pg0.sw_if_index)],
+                        table_id=TABLE_ID).add_vpp_config()
+
+        p = (Ether(dst=self.pg1.local_mac,
+                   src=self.pg1.remote_mac) /
+             IP(src=self.pg1.remote_ip4,
+                dst=self.pg0.remote_ip4) /
+             UDP(sport=1234, dport=5678) /
+             Raw(b'0xa' * 640))
+
+        rx = self.send_and_expect(self.pg1, [p], self.pg0)
+        self.assertFalse(rx[0].haslayer(ARP))
+
+        # then bind pg0 to a new table
+        # so the prefix no longer imports
+        self.pg0.unconfig_ip4()
+        self.pg0.set_table_ip4(TABLE_ID)
+        self.pg0.config_ip4()
+        self.pg0.resolve_arp()
+
+        rx = self.send_and_expect(self.pg1, [p], self.pg0)
+        self.assertFalse(rx[0].haslayer(ARP))
+
+        # revert back to imported
+        self.pg0.unconfig_ip4()
+        self.pg0.set_table_ip4(0)
+        self.pg0.config_ip4()
+        self.pg0.resolve_arp()
+
+        rx = self.send_and_expect(self.pg1, [p], self.pg0)
+        self.assertFalse(rx[0].haslayer(ARP))
+
+        # cleanup
+        for i in self.pg_interfaces:
+            i.unconfig_ip4()
+            i.set_table_ip4(0)
+            i.admin_down()
+
+        rt.remove_vpp_config()
+        tbl.remove_vpp_config()
+
+    def test_delete(self):
+        """ Swap import tables """
+
+        TABLE_ID1 = 1
+        tbl1_4 = VppIpTable(self, TABLE_ID1).add_vpp_config()
+        tbl1_6 = VppIpTable(self, TABLE_ID1, True).add_vpp_config()
+        TABLE_ID2 = 2
+        tbl2_4 = VppIpTable(self, TABLE_ID2).add_vpp_config()
+        tbl2_6 = VppIpTable(self, TABLE_ID2, True).add_vpp_config()
+
+        # table mappings
+        self.pg1.set_table_ip4(TABLE_ID1)
+        self.pg1.set_table_ip6(TABLE_ID1)
+        self.pg2.set_table_ip4(TABLE_ID2)
+        self.pg2.set_table_ip6(TABLE_ID2)
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+
+        # add an attached route in the default table via pg0
+        # this should import to table 1
+        rt4 = VppIpRoute(self, self.pg1.local_ip4, 24,
+                         [VppRoutePath("0.0.0.0",
+                                       self.pg1.sw_if_index)]).add_vpp_config()
+        rt6 = VppIpRoute(self, self.pg1.local_ip6, 64,
+                         [VppRoutePath("0.0.0.0",
+                                       self.pg1.sw_if_index)]).add_vpp_config()
+
+        p1 = (Ether(dst=self.pg0.local_mac,
+                    src=self.pg0.remote_mac) /
+              IP(src=self.pg1.remote_ip4,
+                 dst=self.pg1.remote_ip4) /
+              UDP(sport=1234, dport=5678) /
+              Raw(b'0xa' * 640))
+
+        # inject into table 0
+        rx = self.send_and_expect(self.pg0, [p1], self.pg1)
+        self.assertFalse(rx[0].haslayer(ARP))
+
+        # swap the attached interface to table 2
+        self.pg1.unconfig_ip4()
+        self.pg1.unconfig_ip6()
+        self.pg1.set_table_ip4(TABLE_ID2)
+        self.pg1.set_table_ip6(TABLE_ID2)
+        self.pg1.config_ip4()
+        self.pg1.config_ip6()
+        self.pg1.resolve_arp()
+
+        # delete table 1
+        tbl1_4.flush()
+        tbl1_6.flush()
+        tbl1_4.remove_vpp_config()
+        tbl1_6.remove_vpp_config()
+
+        rx = self.send_and_expect(self.pg0, [p1], self.pg1)
+        self.assertFalse(rx[0].haslayer(ARP))
+
+        for i in self.pg_interfaces:
+            i.unconfig_ip4()
+            i.unconfig_ip6()
+            i.set_table_ip4(0)
+            i.set_table_ip6(0)
+            i.admin_down()
+
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
