@@ -231,6 +231,10 @@ u32 vnet_register_interface (vnet_main_t * vnm,
 void vnet_set_interface_output_node (vnet_main_t * vnm,
 				     u32 hw_if_index, u32 node_index);
 
+void vnet_set_interface_l3_output_node (vlib_main_t *vm, u32 sw_if_index,
+					u8 *output_node);
+void vnet_reset_interface_l3_output_node (vlib_main_t *vm, u32 sw_if_index);
+
 /* Creates a software interface given template. */
 clib_error_t *vnet_create_sw_interface (vnet_main_t * vnm,
 					vnet_sw_interface_t * template,

@@ -50,7 +50,9 @@ typedef enum
   _ (SEQ_CYCLED, "sequence number cycled (packet dropped)")                   \
   _ (CRYPTO_ENGINE_ERROR, "crypto engine error (packet dropped)")             \
   _ (CRYPTO_QUEUE_FULL, "crypto queue full (packet dropped)")                 \
-  _ (NO_BUFFERS, "no buffers (packet dropped)")
+  _ (NO_BUFFERS, "no buffers (packet dropped)")                               \
+  _ (NO_PROTECTION, "no protecting SA (packet dropped)")                      \
+  _ (NO_ENCRYPTION, "no Encrypting SA (packet dropped)")
 
 typedef enum
 {
@@ -640,6 +642,14 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  vnet_buffer (b[0])->ipsec.sad_index =
 	    sa_index0 = ipsec_tun_protect_get_sa_out
 	    (vnet_buffer (b[0])->ip.adj_index[VLIB_TX]);
+
+	  if (PREDICT_FALSE (INDEX_INVALID == sa_index0))
+	    {
+	      err = ESP_ENCRYPT_ERROR_NO_PROTECTION;
+	      esp_set_next_index (b[0], node, err, n_noop, noop_nexts,
+				  drop_next);
+	      goto trace;
+	    }
 	}
       else
 	sa_index0 = vnet_buffer (b[0])->ipsec.sad_index;
@@ -655,6 +665,15 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  sa0 = ipsec_sa_get (sa_index0);
 
+	  if (PREDICT_FALSE ((sa0->crypto_alg == IPSEC_CRYPTO_ALG_NONE &&
+			      sa0->integ_alg == IPSEC_INTEG_ALG_NONE) &&
+			     !ipsec_sa_is_set_NO_ALGO_NO_DROP (sa0)))
+	    {
+	      err = ESP_ENCRYPT_ERROR_NO_ENCRYPTION;
+	      esp_set_next_index (b[0], node, err, n_noop, noop_nexts,
+				  drop_next);
+	      goto trace;
+	    }
 	  /* fetch the second cacheline ASAP */
 	  clib_prefetch_load (sa0->cacheline1);
 
@@ -970,13 +989,19 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	{
 	  esp_encrypt_trace_t *tr = vlib_add_trace (vm, node, b[0],
 						    sizeof (*tr));
-	  tr->sa_index = sa_index0;
-	  tr->spi = sa0->spi;
-	  tr->seq = sa0->seq;
-	  tr->sa_seq_hi = sa0->seq_hi;
-	  tr->udp_encap = ipsec_sa_is_set_UDP_ENCAP (sa0);
-	  tr->crypto_alg = sa0->crypto_alg;
-	  tr->integ_alg = sa0->integ_alg;
+	  if (INDEX_INVALID == sa_index0)
+	    clib_memset_u8 (tr, 0xff, sizeof (*tr));
+	  else
+	    {
+	      tr->sa_index = sa_index0;
+	      tr->spi = sa0->spi;
+	      tr->spi = sa0->spi;
+	      tr->seq = sa0->seq;
+	      tr->sa_seq_hi = sa0->seq_hi;
+	      tr->udp_encap = ipsec_sa_is_set_UDP_ENCAP (sa0);
+	      tr->crypto_alg = sa0->crypto_alg;
+	      tr->integ_alg = sa0->integ_alg;
+	    }
 	}
 
       /* next */
@@ -1002,9 +1027,10 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       b += 1;
     }
 
-  vlib_increment_combined_counter (&ipsec_sa_counters, thread_index,
-				   current_sa_index, current_sa_packets,
-				   current_sa_bytes);
+  if (INDEX_INVALID != current_sa_index)
+    vlib_increment_combined_counter (&ipsec_sa_counters, thread_index,
+				     current_sa_index, current_sa_packets,
+				     current_sa_bytes);
   if (n_sync)
     {
       esp_process_ops (vm, node, ptd->crypto_ops, sync_bufs, sync_nexts,
@@ -1367,120 +1393,6 @@ VLIB_REGISTER_NODE (esp_mpls_encrypt_tun_post_node) = {
   .n_errors = ARRAY_LEN (esp_encrypt_error_strings),
   .error_strings = esp_encrypt_error_strings,
 };
-
-typedef struct
-{
-  u32 sa_index;
-} esp_no_crypto_trace_t;
-
-static u8 *
-format_esp_no_crypto_trace (u8 * s, va_list * args)
-{
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  esp_no_crypto_trace_t *t = va_arg (*args, esp_no_crypto_trace_t *);
-
-  s = format (s, "esp-no-crypto: sa-index %u", t->sa_index);
-
-  return s;
-}
-
-enum
-{
-  ESP_NO_CRYPTO_NEXT_DROP,
-  ESP_NO_CRYPTO_N_NEXT,
-};
-
-enum
-{
-  ESP_NO_CRYPTO_ERROR_RX_PKTS,
-};
-
-static char *esp_no_crypto_error_strings[] = {
-  "Outbound ESP packets received",
-};
-
-always_inline uword
-esp_no_crypto_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-		      vlib_frame_t * frame)
-{
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
-  u32 *from = vlib_frame_vector_args (frame);
-  u32 n_left = frame->n_vectors;
-
-  vlib_get_buffers (vm, from, b, n_left);
-
-  while (n_left > 0)
-    {
-      u32 sa_index0;
-
-      /* packets are always going to be dropped, but get the sa_index */
-      sa_index0 = ipsec_tun_protect_get_sa_out
-	(vnet_buffer (b[0])->ip.adj_index[VLIB_TX]);
-
-      if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
-	{
-	  esp_no_crypto_trace_t *tr = vlib_add_trace (vm, node, b[0],
-						      sizeof (*tr));
-	  tr->sa_index = sa_index0;
-	}
-
-      n_left -= 1;
-      b += 1;
-    }
-
-  vlib_node_increment_counter (vm, node->node_index,
-			       ESP_NO_CRYPTO_ERROR_RX_PKTS, frame->n_vectors);
-
-  vlib_buffer_enqueue_to_single_next (vm, node, from,
-				      ESP_NO_CRYPTO_NEXT_DROP,
-				      frame->n_vectors);
-
-  return frame->n_vectors;
-}
-
-VLIB_NODE_FN (esp4_no_crypto_tun_node) (vlib_main_t * vm,
-					vlib_node_runtime_t * node,
-					vlib_frame_t * from_frame)
-{
-  return esp_no_crypto_inline (vm, node, from_frame);
-}
-
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (esp4_no_crypto_tun_node) =
-{
-  .name = "esp4-no-crypto",
-  .vector_size = sizeof (u32),
-  .format_trace = format_esp_no_crypto_trace,
-  .n_errors = ARRAY_LEN(esp_no_crypto_error_strings),
-  .error_strings = esp_no_crypto_error_strings,
-  .n_next_nodes = ESP_NO_CRYPTO_N_NEXT,
-  .next_nodes = {
-    [ESP_NO_CRYPTO_NEXT_DROP] = "ip4-drop",
-  },
-};
-
-VLIB_NODE_FN (esp6_no_crypto_tun_node) (vlib_main_t * vm,
-					vlib_node_runtime_t * node,
-					vlib_frame_t * from_frame)
-{
-  return esp_no_crypto_inline (vm, node, from_frame);
-}
-
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (esp6_no_crypto_tun_node) =
-{
-  .name = "esp6-no-crypto",
-  .vector_size = sizeof (u32),
-  .format_trace = format_esp_no_crypto_trace,
-  .n_errors = ARRAY_LEN(esp_no_crypto_error_strings),
-  .error_strings = esp_no_crypto_error_strings,
-  .n_next_nodes = ESP_NO_CRYPTO_N_NEXT,
-  .next_nodes = {
-    [ESP_NO_CRYPTO_NEXT_DROP] = "ip6-drop",
-  },
-};
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 

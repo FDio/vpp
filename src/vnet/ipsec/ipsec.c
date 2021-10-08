@@ -25,6 +25,7 @@
 #include <vnet/ipsec/esp.h>
 #include <vnet/ipsec/ah.h>
 #include <vnet/ipsec/ipsec_tun.h>
+#include <vnet/ipsec/ipsec_itf.h>
 
 /* Flow cache is sized for 1 million flows with a load factor of .25.
  */
@@ -254,6 +255,9 @@ ipsec_rsc_in_use (ipsec_main_t * im)
   if (pool_elts (ipsec_sa_pool) > 0)
     return clib_error_return (0, "%d SA entries configured",
 			      pool_elts (ipsec_sa_pool));
+  if (ipsec_itf_count () > 0)
+    return clib_error_return (0, "%d IPSec interface configured",
+			      ipsec_itf_count ());
 
   return (NULL);
 }

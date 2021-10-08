@@ -181,14 +181,6 @@ typedef struct
   u32 ah6_encrypt_next_index;
   u32 ah6_decrypt_next_index;
 
-  /* tun nodes to drop packets when no crypto alg set on outbound SA */
-  u32 esp4_no_crypto_tun_node_index;
-  u32 esp6_no_crypto_tun_node_index;
-
-  /* tun nodes for encrypt on L2 interfaces */
-  u32 esp4_encrypt_l2_tun_node_index;
-  u32 esp6_encrypt_l2_tun_node_index;
-
   /* pool of ah backends */
   ipsec_ah_backend_t *ah_backends;
   /* pool of esp backends */
