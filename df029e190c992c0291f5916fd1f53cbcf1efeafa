@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "eac45e59_748ef958",
+        "filename": "src/vnet/dpo/receive_dpo.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 160,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-10-08T14:03:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "38924246_b9133b50",
+      "revId": "df029e190c992c0291f5916fd1f53cbcf1efeafa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "926dd11e_0306ac03",
         "filename": "src/vnet/ip/ip6_forward.c",
         "patchSetId": 6
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "caddb9a3_4a857996",
+        "filename": "src/vnet/ip/ip6_forward.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1480,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-10-08T14:03:14Z",
+      "side": 1,
+      "message": "Right, I\u0027ll default to ~0 for both cases (rd-\u003erd_sf_if_index is unset \u0026 not a receive dpo)\nand handle the special value in tcp",
+      "parentUuid": "926dd11e_0306ac03",
+      "revId": "df029e190c992c0291f5916fd1f53cbcf1efeafa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b9cf3b3b_46aebf50",
         "filename": "src/vnet/tcp/tcp_inlines.h",
         "patchSetId": 6
@@ -50,6 +86,24 @@
       "revId": "df029e190c992c0291f5916fd1f53cbcf1efeafa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d2c55c13_bff1284c",
+        "filename": "src/vnet/tcp/tcp_inlines.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 242,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-10-08T14:03:14Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "b9cf3b3b_46aebf50",
+      "revId": "df029e190c992c0291f5916fd1f53cbcf1efeafa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
