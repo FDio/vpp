@@ -165,14 +165,6 @@ typedef enum adj_attr_t_
     ADJ_ATTR_SYNC_WALK_ACTIVE = 0,
 
     /**
-     * Packets TX through the midchain do not increment the interface
-     * counters. This should be used when the adj is associated with an L2
-     * interface and that L2 interface is in a bridge domain. In that case
-     * the packet will have traversed the interface's TX node, and hence have
-     * been counted, before it traverses ths midchain
-     */
-    ADJ_ATTR_MIDCHAIN_NO_COUNT,
-    /**
      * When stacking midchains on a fib-entry extract the choice from the
      * load-balance returned based on an IP hash of the adj's rewrite
      */
@@ -195,7 +187,6 @@ typedef enum adj_attr_t_
 
 #define ADJ_ATTR_NAMES {                                        \
     [ADJ_ATTR_SYNC_WALK_ACTIVE] = "walk-active",                \
-    [ADJ_ATTR_MIDCHAIN_NO_COUNT] = "midchain-no-count",         \
     [ADJ_ATTR_MIDCHAIN_IP_STACK] = "midchain-ip-stack",         \
     [ADJ_ATTR_MIDCHAIN_LOOPED] = "midchain-looped",             \
     [ADJ_ATTR_MIDCHAIN_FIXUP_IP4O4_HDR] = "midchain-ip4o4-hdr-fixup",   \
@@ -214,7 +205,6 @@ typedef enum adj_flags_t_
 {
     ADJ_FLAG_NONE = 0,
     ADJ_FLAG_SYNC_WALK_ACTIVE = (1 << ADJ_ATTR_SYNC_WALK_ACTIVE),
-    ADJ_FLAG_MIDCHAIN_NO_COUNT = (1 << ADJ_ATTR_MIDCHAIN_NO_COUNT),
     ADJ_FLAG_MIDCHAIN_IP_STACK = (1 << ADJ_ATTR_MIDCHAIN_IP_STACK),
     ADJ_FLAG_MIDCHAIN_LOOPED = (1 << ADJ_ATTR_MIDCHAIN_LOOPED),
     ADJ_FLAG_MIDCHAIN_FIXUP_IP4O4_HDR = (1 << ADJ_ATTR_MIDCHAIN_FIXUP_IP4O4_HDR),
