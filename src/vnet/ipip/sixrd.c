@@ -325,6 +325,8 @@ sixrd_add_tunnel (ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
   t->user_instance = t_idx;
 
   vnet_sw_interface_set_mtu (vnet_get_main (), t->sw_if_index, 1480);
+  vnet_set_interface_l3_output_node (gm->vlib_main, hi->sw_if_index,
+				     (u8 *) "tunnel-output");
 
   ipip_tunnel_db_add (t, &key);
 
@@ -403,6 +405,7 @@ sixrd_del_tunnel (u32 sw_if_index)
 
   vnet_sw_interface_set_flags (vnet_get_main (), t->sw_if_index,
 			       0 /* down */ );
+  vnet_reset_interface_l3_output_node (gm->vlib_main, t->sw_if_index);
   ip6_sw_interface_enable_disable (t->sw_if_index, false);
   gm->tunnel_index_by_sw_if_index[t->sw_if_index] = ~0;
 

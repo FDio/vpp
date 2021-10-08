@@ -22,6 +22,7 @@
 #include <vnet/adj/adj_delegate.h>
 #include <vnet/adj/adj_midchain.h>
 #include <vnet/teib/teib.h>
+#include <vnet/mpls/mpls.h>
 
 /* instantiate the bihash functions */
 #include <vppinfra/bihash_8_16.h>
@@ -137,11 +138,13 @@ ipsec_tun_protect_from_const_base (const adj_delegate_t * ad)
 
 static u32
 ipsec_tun_protect_get_adj_next (vnet_link_t linkt,
-				const ipsec_tun_protect_t * itp)
+				const ipsec_tun_protect_t *itp)
 {
   ipsec_main_t *im;
-  ipsec_sa_t *sa;
   u32 next;
+
+  im = &ipsec_main;
+  next = 0;
 
   if (!(itp->itp_flags & IPSEC_PROTECT_ITF))
     {
@@ -151,39 +154,45 @@ ipsec_tun_protect_get_adj_next (vnet_link_t linkt,
 	linkt = VNET_LINK_IP6;
     }
 
-  sa = ipsec_sa_get (itp->itp_out_sa);
-  im = &ipsec_main;
-  next = 0;
-
-  if ((sa->crypto_alg == IPSEC_CRYPTO_ALG_NONE &&
-       sa->integ_alg == IPSEC_INTEG_ALG_NONE) &&
-      !(itp->itp_flags & IPSEC_PROTECT_ITF))
-    next = (VNET_LINK_IP4 == linkt ? im->esp4_no_crypto_tun_node_index :
-				     im->esp6_no_crypto_tun_node_index);
-  else if (itp->itp_flags & IPSEC_PROTECT_L2)
-    next = (VNET_LINK_IP4 == linkt ? im->esp4_encrypt_l2_tun_node_index :
-				     im->esp6_encrypt_l2_tun_node_index);
-  else
+  switch (linkt)
     {
-      switch (linkt)
-	{
-	case VNET_LINK_IP4:
-	  next = im->esp4_encrypt_tun_node_index;
-	  break;
-	case VNET_LINK_IP6:
-	  next = im->esp6_encrypt_tun_node_index;
-	  break;
-	case VNET_LINK_MPLS:
-	  next = im->esp_mpls_encrypt_tun_node_index;
-	  break;
-	case VNET_LINK_ARP:
-	case VNET_LINK_NSH:
-	case VNET_LINK_ETHERNET:
-	  ASSERT (0);
-	  break;
-	}
+    case VNET_LINK_IP4:
+      next = im->esp4_encrypt_tun_node_index;
+      break;
+    case VNET_LINK_IP6:
+      next = im->esp6_encrypt_tun_node_index;
+      break;
+    case VNET_LINK_MPLS:
+      next = im->esp_mpls_encrypt_tun_node_index;
+      break;
+    case VNET_LINK_ARP:
+    case VNET_LINK_NSH:
+    case VNET_LINK_ETHERNET:
+      ASSERT (0);
+      break;
     }
+
   return (next);
+}
+
+static void
+ipsec_tun_reset_tx_nodes (u32 sw_if_index)
+{
+  vnet_reset_interface_l3_output_node (vlib_get_main (), sw_if_index);
+}
+
+static void
+ipsec_tun_setup_tx_nodes (u32 sw_if_index, const ipsec_tun_protect_t *itp)
+{
+  vnet_feature_modify_end_node (
+    ip4_main.lookup_main.output_feature_arc_index, sw_if_index,
+    ipsec_tun_protect_get_adj_next (VNET_LINK_IP4, itp));
+  vnet_feature_modify_end_node (
+    ip6_main.lookup_main.output_feature_arc_index, sw_if_index,
+    ipsec_tun_protect_get_adj_next (VNET_LINK_IP6, itp));
+  vnet_feature_modify_end_node (
+    mpls_main.output_feature_arc_index, sw_if_index,
+    ipsec_tun_protect_get_adj_next (VNET_LINK_MPLS, itp));
 }
 
 static void
@@ -200,8 +209,8 @@ ipsec_tun_protect_add_adj (adj_index_t ai, const ipsec_tun_protect_t * itp)
   else
     {
       ipsec_tun_protect_sa_by_adj_index[ai] = itp->itp_out_sa;
-      adj_nbr_midchain_update_next_node
-	(ai, ipsec_tun_protect_get_adj_next (adj_get_link_type (ai), itp));
+      adj_nbr_midchain_update_next_node (
+	ai, ipsec_tun_protect_get_adj_next (adj_get_link_type (ai), itp));
     }
 }
 
@@ -329,7 +338,7 @@ ipsec_tun_protect_tx_db_add (ipsec_tun_protect_t * itp)
     {
       if (INDEX_INVALID == idi->id_itp)
 	{
-	  // ipsec_tun_protect_feature_set (itp, 1);
+	  ipsec_tun_setup_tx_nodes (itp->itp_sw_if_index, itp);
 	}
       idi->id_itp = itp - ipsec_tun_protect_pool;
 
@@ -347,7 +356,7 @@ ipsec_tun_protect_tx_db_add (ipsec_tun_protect_t * itp)
 	   * enable the encrypt feature for egress if this is the first addition
 	   * on this interface
 	   */
-	  // ipsec_tun_protect_feature_set (itp, 1);
+	  ipsec_tun_setup_tx_nodes (itp->itp_sw_if_index, itp);
 	}
 
       hash_set_mem (idi->id_hash, itp->itp_key, itp - ipsec_tun_protect_pool);
@@ -435,7 +444,7 @@ ipsec_tun_protect_tx_db_remove (ipsec_tun_protect_t * itp)
 
   if (vnet_sw_interface_is_p2p (vnet_get_main (), itp->itp_sw_if_index))
     {
-      // ipsec_tun_protect_feature_set (itp, 0);
+      ipsec_tun_reset_tx_nodes (itp->itp_sw_if_index);
       idi->id_itp = INDEX_INVALID;
 
       FOR_EACH_FIB_IP_PROTOCOL (nh_proto)
@@ -451,7 +460,7 @@ ipsec_tun_protect_tx_db_remove (ipsec_tun_protect_t * itp)
 
       if (0 == hash_elts (idi->id_hash))
 	{
-	  // ipsec_tun_protect_feature_set (itp, 0);
+	  ipsec_tun_reset_tx_nodes (itp->itp_sw_if_index);
 	  hash_free (idi->id_hash);
 	  idi->id_hash = NULL;
 	}
@@ -502,6 +511,9 @@ ipsec_tun_protect_config (ipsec_main_t * im,
 
   ipsec_sa_lock (itp->itp_out_sa);
 
+  if (itp->itp_flags & IPSEC_PROTECT_ITF)
+    ipsec_sa_set_NO_ALGO_NO_DROP (ipsec_sa_get (itp->itp_out_sa));
+
   /* *INDENT-OFF* */
   FOR_EACH_IPSEC_PROTECT_INPUT_SAI(itp, sai,
   ({
@@ -534,6 +546,7 @@ ipsec_tun_protect_unconfig (ipsec_main_t * im, ipsec_tun_protect_t * itp)
   ipsec_tun_protect_rx_db_remove (im, itp);
   ipsec_tun_protect_tx_db_remove (itp);
 
+  ipsec_sa_unset_NO_ALGO_NO_DROP (ipsec_sa_get (itp->itp_out_sa));
   ipsec_sa_unlock(itp->itp_out_sa);
 
   FOR_EACH_IPSEC_PROTECT_INPUT_SAI(itp, sai,
@@ -802,19 +815,27 @@ ipsec_tun_feature_update (u32 sw_if_index, u8 arc_index, u8 is_enable,
 			  ipsec_main.esp4_decrypt_tun_node_index :
 			  ipsec_main.esp6_decrypt_tun_node_index;
 
-      vnet_feature_modify_end_node (
-	feature_main.device_input_feature_arc_index, sw_if_index, decrypt_tun);
-      itp->itp_flags |= IPSEC_PROTECT_FEAT;
+      if (!(itp->itp_flags & IPSEC_PROTECT_FEAT))
+	{
+	  itp->itp_flags |= IPSEC_PROTECT_FEAT;
+	  vnet_feature_modify_end_node (
+	    feature_main.device_input_feature_arc_index, sw_if_index,
+	    decrypt_tun);
+	}
     }
   else
     {
-      u32 eth_in =
-	vlib_get_node_by_name (vlib_get_main (), (u8 *) "ethernet-input")
-	  ->index;
+      if (itp->itp_flags & IPSEC_PROTECT_FEAT)
+	{
+	  itp->itp_flags &= ~IPSEC_PROTECT_FEAT;
 
-      vnet_feature_modify_end_node (
-	feature_main.device_input_feature_arc_index, sw_if_index, eth_in);
-      itp->itp_flags &= ~IPSEC_PROTECT_FEAT;
+	  u32 eth_in =
+	    vlib_get_node_by_name (vlib_get_main (), (u8 *) "ethernet-input")
+	      ->index;
+
+	  vnet_feature_modify_end_node (
+	    feature_main.device_input_feature_arc_index, sw_if_index, eth_in);
+	}
     }
 
   /* Propagate flag change into lookup entries */
@@ -847,6 +868,9 @@ ipsec_tun_protect_adj_delegate_adj_created (adj_index_t ai)
 
   if (!adj_is_midchain (ai))
     return;
+
+  vec_validate_init_empty (ipsec_tun_protect_sa_by_adj_index, ai,
+			   INDEX_INVALID);
 
   adj = adj_get (ai);
 
@@ -955,16 +979,6 @@ ipsec_tunnel_protect_init (vlib_main_t *vm)
 			 "IPSec IPv4 tunnels",
 			 IPSEC_TUN_DEFAULT_HASH_NUM_BUCKETS,
 			 IPSEC_TUN_DEFAULT_HASH_MEMORY_SIZE);
-
-  /* set up feature nodes to drop outbound packets with no crypto alg set */
-  im->esp4_no_crypto_tun_node_index =
-    vlib_get_node_by_name (vm, (u8 *) "esp4-no-crypto")->index;
-  im->esp6_no_crypto_tun_node_index =
-    vlib_get_node_by_name (vm, (u8 *) "esp6-no-crypto")->index;
-  im->esp6_encrypt_l2_tun_node_index =
-    vlib_get_node_by_name (vm, (u8 *) "esp6-encrypt-tun")->index;
-  im->esp4_encrypt_l2_tun_node_index =
-    vlib_get_node_by_name (vm, (u8 *) "esp4-encrypt-tun")->index;
 
   ipsec_tun_adj_delegate_type =
     adj_delegate_register_new_type (&ipsec_tun_adj_delegate_vft);

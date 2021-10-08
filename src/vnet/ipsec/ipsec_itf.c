@@ -36,6 +36,12 @@ ipsec_itf_get (index_t ii)
   return (pool_elt_at_index (ipsec_itf_pool, ii));
 }
 
+u32
+ipsec_itf_count (void)
+{
+  return (pool_elts (ipsec_itf_pool));
+}
+
 static ipsec_itf_t *
 ipsec_itf_find_by_sw_if_index (u32 sw_if_index)
 {
@@ -335,6 +341,8 @@ ipsec_itf_delete (u32 sw_if_index)
 
   if (ipsec_itf_instance_free (hw->dev_instance) < 0)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
+
+  vnet_reset_interface_l3_output_node (vnm->vlib_main, sw_if_index);
 
   vnet_delete_hw_interface (vnm, hw->hw_if_index);
   pool_put (ipsec_itf_pool, ipsec_itf);

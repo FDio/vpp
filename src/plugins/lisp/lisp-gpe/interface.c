@@ -88,9 +88,8 @@ format_lisp_gpe_tx_trace (u8 * s, va_list * args)
  *
  * @return number of vectors in frame.
  */
-static uword
-lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
-		       vlib_frame_t * from_frame)
+VLIB_NODE_FN (lisp_tunnel_output)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   u32 n_left_from, next_index, *from, *to_next;
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
@@ -122,6 +121,7 @@ lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
+	  b0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 
 	  /* Fixup the checksum and len fields in the LISP tunnel encap
 	   * that was applied at the midchain node */
@@ -151,6 +151,13 @@ lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
   return from_frame->n_vectors;
 }
 
+VLIB_REGISTER_NODE (lisp_tunnel_output) = {
+  .name = "lisp-tunnel-output",
+  .vector_size = sizeof (u32),
+  .format_trace = format_lisp_gpe_tx_trace,
+  .sibling_of = "tunnel-output",
+};
+
 static u8 *
 format_lisp_gpe_name (u8 * s, va_list * args)
 {
@@ -162,8 +169,6 @@ format_lisp_gpe_name (u8 * s, va_list * args)
 VNET_DEVICE_CLASS (lisp_gpe_device_class) = {
   .name = "LISP_GPE",
   .format_device_name = format_lisp_gpe_name,
-  .format_tx_trace = format_lisp_gpe_tx_trace,
-  .tx_function = lisp_gpe_interface_tx,
 };
 /* *INDENT-ON* */
 

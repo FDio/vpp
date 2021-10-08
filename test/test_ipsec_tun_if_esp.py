@@ -2668,6 +2668,7 @@ class TestIpsecItf4(TemplateIpsec,
                            self.pg0.remote_ip4)
         self.config_protect(p)
 
+        self.logger.error(self.vapi.cli("sh ipsec sa"))
         self.verify_tun_44(p, count=n_pkts)
 
         # teardown
@@ -3077,6 +3078,15 @@ class TestIpsecMIfEsp4(TemplateIpsec, IpsecTun4):
         self.pg0.generate_remote_hosts(N_NHS)
         self.pg0.configure_ipv4_neighbors()
 
+        r_all = AclRule(True,
+                        src_prefix="0.0.0.0/0",
+                        dst_prefix="0.0.0.0/0",
+                        proto=0)
+        a = VppAcl(self, [r_all]).add_vpp_config()
+
+        VppAclInterface(self, self.pg0.sw_if_index, [a]).add_vpp_config()
+        VppAclInterface(self, p.tun_if.sw_if_index, [a]).add_vpp_config()
+
         # setup some SAs for several next-hops on the interface
         self.multi_params = []
 
@@ -3128,9 +3138,10 @@ class TestIpsecMIfEsp4(TemplateIpsec, IpsecTun4):
                               self.pg0.remote_hosts[ii].ip4)
             self.multi_params.append(p)
 
-            VppIpRoute(self, p.remote_tun_if_host, 32,
-                       [VppRoutePath(p.tun_if.remote_hosts[ii].ip4,
-                                     p.tun_if.sw_if_index)]).add_vpp_config()
+            p.via_tun_route = VppIpRoute(
+                self, p.remote_tun_if_host, 32,
+                [VppRoutePath(p.tun_if.remote_hosts[ii].ip4,
+                              p.tun_if.sw_if_index)]).add_vpp_config()
 
             p.tun_dst = self.pg0.remote_hosts[ii].ip4
 
@@ -3142,6 +3153,21 @@ class TestIpsecMIfEsp4(TemplateIpsec, IpsecTun4):
     def test_tun_44(self):
         """P2MP IPSEC 44"""
         N_PKTS = 63
+        for p in self.multi_params:
+            self.verify_tun_44(p, count=N_PKTS)
+
+        # remove one tunnel protect, the rest should still work
+        self.multi_params[0].tun_protect.remove_vpp_config()
+        self.verify_tun_dropped_44(self.multi_params[0], count=N_PKTS)
+        self.multi_params[0].via_tun_route.remove_vpp_config()
+        self.verify_tun_dropped_44(self.multi_params[0], count=N_PKTS)
+
+        for p in self.multi_params[1:]:
+            self.verify_tun_44(p, count=N_PKTS)
+
+        self.multi_params[0].tun_protect.add_vpp_config()
+        self.multi_params[0].via_tun_route.add_vpp_config()
+
         for p in self.multi_params:
             self.verify_tun_44(p, count=N_PKTS)
 

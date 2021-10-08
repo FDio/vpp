@@ -638,6 +638,7 @@ vnet_mpls_tunnel_del (u32 sw_if_index)
                                    mt->mt_sibling_index);
     dpo_reset(&mt->mt_l2_lb);
 
+    vnet_reset_interface_l3_output_node (vlib_get_main (), mt->mt_sw_if_index);
     vnet_delete_hw_interface (vnet_get_main(), mt->mt_hw_if_index);
 
     pool_put(mpls_tunnel_pool, mt);
@@ -685,6 +686,9 @@ vnet_mpls_tunnel_create (u8 l2_only,
     if (mt->mt_flags & MPLS_TUNNEL_FLAG_L2)
         vnet_set_interface_output_node (vnm, mt->mt_hw_if_index,
                                         mpls_tunnel_tx.index);
+    else
+      vnet_set_interface_l3_output_node (vnm->vlib_main, hi->sw_if_index,
+					 (u8 *) "tunnel-output");
 
     /* Standard default MPLS tunnel MTU. */
     vnet_sw_interface_set_mtu (vnm, hi->sw_if_index, 9000);
