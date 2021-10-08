@@ -18,8 +18,13 @@
  */
 
 #include <vppinfra/lock.h>
-
 #include <vlib/log.h>
+
+typedef enum
+{
+  AF_PACKET_IF_MODE_L2 = 1,
+  AF_PACKET_IF_MODE_L3 = 2
+} af_packet_if_mode_t;
 
 typedef struct
 {
@@ -49,6 +54,7 @@ typedef struct
   u8 is_admin_up;
   u32 queue_index;
   u32 host_mtu;
+  af_packet_if_mode_t mode;
 } af_packet_if_t;
 
 typedef struct
@@ -77,6 +83,7 @@ typedef struct
   u32 tx_frame_size;
   u32 rx_frames_per_block;
   u32 tx_frames_per_block;
+  af_packet_if_mode_t mode;
 
   /* return */
   u32 sw_if_index;

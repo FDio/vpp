@@ -339,6 +339,13 @@ static clib_error_t *af_packet_set_mac_address_function
   int rv, fd = socket (AF_UNIX, SOCK_DGRAM, 0);
   struct ifreq ifr;
 
+  if (apif->mode == AF_PACKET_IF_MODE_L3)
+    {
+      vlib_log_warn (apm->log_class, "af_packet_%s interface is in L3 mode",
+		     apif->host_if_name);
+      return 0;
+    }
+
   if (0 > fd)
     {
       vlib_log_warn (apm->log_class, "af_packet_%s could not open socket",

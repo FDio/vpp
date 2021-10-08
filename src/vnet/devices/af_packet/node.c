@@ -194,7 +194,7 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   af_packet_main_t *apm = &af_packet_main;
   struct tpacket2_hdr *tph;
-  u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
+  u32 next_index;
   u32 block = 0;
   u32 rx_frame;
   u32 n_free_bufs;
@@ -209,6 +209,21 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 thread_index = vm->thread_index;
   u32 n_buffer_bytes = vlib_buffer_get_default_data_size (vm);
   u32 min_bufs = apif->rx_req->tp_frame_size / n_buffer_bytes;
+  vlib_buffer_t bt;
+
+  if (apif->mode == AF_PACKET_IF_MODE_L3)
+    {
+      next_index = VNET_DEVICE_INPUT_NEXT_IP4_INPUT;
+    }
+  else
+    {
+      next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
+      if (PREDICT_FALSE (apif->per_interface_next_index != ~0))
+	next_index = apif->per_interface_next_index;
+
+      /* redirect if feature path enabled */
+      vnet_feature_start_device_input_x1 (apif->sw_if_index, &next_index, &bt);
+    }
 
   n_free_bufs = vec_len (apm->rx_buffers[thread_index]);
   if (PREDICT_FALSE (n_free_bufs < VLIB_FRAME_SIZE))
@@ -317,14 +332,30 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
-	      next0 = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
-
-	      if (PREDICT_FALSE (apif->per_interface_next_index != ~0))
-		next0 = apif->per_interface_next_index;
-
-	      /* redirect if feature path enabled */
-	      vnet_feature_start_device_input_x1 (apif->sw_if_index, &next0,
-						  first_b0);
+	      if (PREDICT_FALSE (apif->mode == AF_PACKET_IF_MODE_L3))
+		{
+		  switch (first_b0->data[0] & 0xf0)
+		    {
+		    case 0x40:
+		      next0 = VNET_DEVICE_INPUT_NEXT_IP4_INPUT;
+		      break;
+		    case 0x60:
+		      next0 = VNET_DEVICE_INPUT_NEXT_IP6_INPUT;
+		      break;
+		    default:
+		      next0 = VNET_DEVICE_INPUT_NEXT_DROP;
+		      break;
+		    }
+		  if (PREDICT_FALSE (apif->per_interface_next_index != ~0))
+		    next0 = apif->per_interface_next_index;
+		}
+	      else
+		{
+		  /* copy feature arc data from template */
+		  first_b0->current_config_index = bt.current_config_index;
+		  vnet_buffer (first_b0)->feature_arc_index =
+		    vnet_buffer (&bt)->feature_arc_index;
+		}
 	    }
 
 	  /* trace */

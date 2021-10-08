@@ -38,6 +38,11 @@
 
 af_packet_main_t af_packet_main;
 
+VNET_HW_INTERFACE_CLASS (af_packet_l3_device_hw_interface_class, static) = {
+  .name = "af-packet-l3-device",
+  .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
+};
+
 #define AF_PACKET_DEFAULT_TX_FRAMES_PER_BLOCK 1024
 #define AF_PACKET_DEFAULT_TX_FRAME_SIZE	      (2048 * 5)
 #define AF_PACKET_TX_BLOCK_NR		1
@@ -367,6 +372,7 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
   apif->per_interface_next_index = ~0;
   apif->next_tx_frame = 0;
   apif->next_rx_frame = 0;
+  apif->mode = arg->mode;
 
   ret = af_packet_read_mtu (apif);
   if (ret != 0)
@@ -375,36 +381,44 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
   if (tm->n_vlib_mains > 1)
     clib_spinlock_init (&apif->lockp);
 
-  /*use configured or generate random MAC address */
-  if (arg->hw_addr)
-    clib_memcpy (hw_addr, arg->hw_addr, 6);
+  if (apif->mode == AF_PACKET_IF_MODE_L2)
+    {
+      /*use configured or generate random MAC address */
+      if (arg->hw_addr)
+	clib_memcpy (hw_addr, arg->hw_addr, 6);
+      else
+	{
+	  f64 now = vlib_time_now (vm);
+	  u32 rnd;
+	  rnd = (u32) (now * 1e6);
+	  rnd = random_u32 (&rnd);
+
+	  clib_memcpy (hw_addr + 2, &rnd, sizeof (rnd));
+	  hw_addr[0] = 2;
+	  hw_addr[1] = 0xfe;
+	}
+
+      error = ethernet_register_interface (
+	vnm, af_packet_device_class.index, if_index, hw_addr,
+	&apif->hw_if_index, af_packet_eth_flag_change);
+
+      if (error)
+	{
+	  clib_memset (apif, 0, sizeof (*apif));
+	  pool_put (apm->interfaces, apif);
+	  vlib_log_err (apm->log_class, "Unable to register interface: %U",
+			format_clib_error, error);
+	  clib_error_free (error);
+	  ret = VNET_API_ERROR_SYSCALL_ERROR_1;
+	  goto error;
+	}
+    }
   else
     {
-      f64 now = vlib_time_now (vm);
-      u32 rnd;
-      rnd = (u32) (now * 1e6);
-      rnd = random_u32 (&rnd);
-
-      clib_memcpy (hw_addr + 2, &rnd, sizeof (rnd));
-      hw_addr[0] = 2;
-      hw_addr[1] = 0xfe;
+      apif->hw_if_index = vnet_register_interface (
+	vnm, af_packet_device_class.index, if_index,
+	af_packet_l3_device_hw_interface_class.index, if_index);
     }
-
-  error = ethernet_register_interface (vnm, af_packet_device_class.index,
-				       if_index, hw_addr, &apif->hw_if_index,
-				       af_packet_eth_flag_change);
-
-  if (error)
-    {
-      clib_memset (apif, 0, sizeof (*apif));
-      pool_put (apm->interfaces, apif);
-      vlib_log_err (apm->log_class, "Unable to register interface: %U",
-		    format_clib_error, error);
-      clib_error_free (error);
-      ret = VNET_API_ERROR_SYSCALL_ERROR_1;
-      goto error;
-    }
-
   sw = vnet_get_hw_sw_interface (vnm, apif->hw_if_index);
   hw = vnet_get_hw_interface (vnm, apif->hw_if_index);
   apif->sw_if_index = sw->sw_if_index;
@@ -504,7 +518,10 @@ af_packet_delete_if (u8 *host_if_name)
 
   mhash_unset (&apm->if_index_by_host_if_name, host_if_name, &if_index);
 
-  ethernet_delete_interface (vnm, apif->hw_if_index);
+  if (apif->mode == AF_PACKET_IF_MODE_L2)
+    ethernet_delete_interface (vnm, apif->hw_if_index);
+  else
+    vnet_delete_hw_interface (vnm, apif->hw_if_index);
 
   pool_put (apm->interfaces, apif);
 

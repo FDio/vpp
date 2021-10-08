@@ -51,6 +51,9 @@ af_packet_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   clib_memset (arg, 0, sizeof (*arg));
 
+  // Default mode
+  arg->mode = AF_PACKET_IF_MODE_L2;
+
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -69,6 +72,8 @@ af_packet_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (line_input, "tx-per-block %u",
 			 &arg->tx_frames_per_block))
 	;
+      else if (unformat (line_input, "mode l3"))
+	arg->mode = AF_PACKET_IF_MODE_L3;
       else if (unformat (line_input, "hw-addr %U", unformat_ethernet_address,
 			 hwaddr))
 	arg->hw_addr = hwaddr;
@@ -140,7 +145,8 @@ done:
 ?*/
 VLIB_CLI_COMMAND (af_packet_create_command, static) = {
   .path = "create host-interface",
-  .short_help = "create host-interface name <ifname> [hw-addr <mac-addr>]",
+  .short_help =
+    "create host-interface name <ifname> [hw-addr <mac-addr>] [mode l3]",
   .function = af_packet_create_command_fn,
 };
 
