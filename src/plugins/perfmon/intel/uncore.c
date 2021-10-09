@@ -147,7 +147,7 @@ intel_uncore_init (vlib_main_t *vm, perfmon_source_t *src)
   u32 i, j;
   u8 *s = 0;
 
-  if ((err = clib_sysfs_read ("/sys/devices/system/node/has_cpu", "%U",
+  if ((err = clib_sysfs_read ("/sys/devices/system/node/online", "%U",
 			      unformat_bitmap_list, &node_bitmap)))
     {
       clib_error_free (err);
