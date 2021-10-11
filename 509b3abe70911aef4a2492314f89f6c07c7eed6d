@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f3d7d7b0_b707bd8e",
+        "filename": "src/plugins/unittest/fib_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 235,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-10-11T14:19:47Z",
+      "side": 1,
+      "message": "could you add a test for the COLLAPSE flag please?",
+      "revId": "509b3abe70911aef4a2492314f89f6c07c7eed6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1b673ef6_bddf1a14",
+        "filename": "src/vnet/adj/adj_midchain.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 360,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-10-11T14:19:47Z",
+      "side": 1,
+      "message": "same here, should be user configurable.",
+      "revId": "509b3abe70911aef4a2492314f89f6c07c7eed6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f343d4af_63ee6249",
+        "filename": "src/vnet/tunnel/tunnel.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 226,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-10-11T14:19:47Z",
+      "side": 1,
+      "message": "i think this should be a user decision.\nit\u0027s a forwarding performance versus convergence time decision.",
+      "revId": "509b3abe70911aef4a2492314f89f6c07c7eed6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
