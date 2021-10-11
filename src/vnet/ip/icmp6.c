@@ -351,6 +351,9 @@ ip6_icmp_echo_request (vlib_main_t * vm,
 				vnet_buffer (p1)->sw_if_index[VLIB_RX]);
 	  vnet_buffer (p1)->sw_if_index[VLIB_TX] = fib_index1;
 
+	  p0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
+	  p1->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
+
 	  /* verify speculative enqueues, maybe switch current next frame */
 	  /* if next0==next1==next_index then nothing special needs to be done */
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
@@ -404,6 +407,7 @@ ip6_icmp_echo_request (vlib_main_t * vm,
 				vnet_buffer (p0)->sw_if_index[VLIB_RX]);
 	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = fib_index0;
 
+	  p0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	  /* Verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
