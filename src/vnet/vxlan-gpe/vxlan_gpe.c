@@ -187,7 +187,8 @@ vxlan_gpe_tunnel_restack_dpo (vxlan_gpe_tunnel_t * t)
   fib_forward_chain_type_t forw_type = ip46_address_is_ip4 (&t->remote) ?
     FIB_FORW_CHAIN_TYPE_UNICAST_IP4 : FIB_FORW_CHAIN_TYPE_UNICAST_IP6;
 
-  fib_entry_contribute_forwarding (t->fib_entry_index, forw_type, &dpo);
+  fib_entry_contribute_forwarding (t->fib_entry_index, forw_type,
+				   FIB_ENTRY_FWD_FLAG_COLLAPSE, &dpo);
   dpo_stack_from_node (encap_index, &t->next_dpo, &dpo);
   dpo_reset (&dpo);
 }

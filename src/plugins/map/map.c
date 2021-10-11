@@ -338,7 +338,8 @@ map_stack (map_main_pre_resolved_t * pr)
 {
   const dpo_id_t *dpo;
 
-  dpo = fib_entry_contribute_ip_forwarding (pr->fei);
+  dpo =
+    fib_entry_contribute_ip_forwarding (pr->fei, FIB_ENTRY_FWD_FLAG_COLLAPSE);
 
   dpo_copy (&pr->dpo, dpo);
 }

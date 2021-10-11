@@ -111,7 +111,7 @@ ip4_fib_8_table_fwding_dpo_remove (ip4_fib_8_t *fib,
      * for the entry being removed
      */
     cover_prefix = fib_entry_get_prefix(cover_index);
-    cover_dpo = fib_entry_contribute_ip_forwarding(cover_index);
+    cover_dpo = fib_entry_contribute_ip_forwarding(cover_index, FIB_ENTRY_FWD_FLAG_NONE);
 
     ip4_mtrie_8_route_del(&fib->mtrie,
                             addr, len, dpo->dpoi_index,

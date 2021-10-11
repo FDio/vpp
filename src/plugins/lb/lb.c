@@ -1312,11 +1312,11 @@ lb_as_stack (lb_as_t *as)
   else if (lb_vip_is_nat6_port(vip))
     dpo_type = lbm->dpo_nat6_port_type;
 
-  dpo_stack(dpo_type,
-            lb_vip_is_ip4(vip->type)?DPO_PROTO_IP4:DPO_PROTO_IP6,
-            &as->dpo,
-            fib_entry_contribute_ip_forwarding(
-                as->next_hop_fib_entry_index));
+  dpo_stack (dpo_type,
+	     lb_vip_is_ip4 (vip->type) ? DPO_PROTO_IP4 : DPO_PROTO_IP6,
+	     &as->dpo,
+	     fib_entry_contribute_ip_forwarding (as->next_hop_fib_entry_index,
+						 FIB_ENTRY_FWD_FLAG_COLLAPSE));
 }
 
 static fib_node_back_walk_rc_t

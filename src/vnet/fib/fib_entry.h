@@ -408,12 +408,24 @@ extern void fib_entry_recalculate_forwarding(
     fib_node_index_t fib_entry_index);
 extern void fib_entry_contribute_urpf(fib_node_index_t path_index,
 				      index_t urpf);
+
+/**
+ * Flags to control how the fib entry returns forwarding information
+ */
+typedef enum fib_entry_fwd_flags_t_
+{
+    FIB_ENTRY_FWD_FLAG_NONE = 0,
+    FIB_ENTRY_FWD_FLAG_COLLAPSE = (1 << 0),
+} fib_entry_fwd_flags_t;
+
 extern void fib_entry_contribute_forwarding(
     fib_node_index_t fib_entry_index,
     fib_forward_chain_type_t type,
+    fib_entry_fwd_flags_t flags,
     dpo_id_t *dpo);
 extern const dpo_id_t * fib_entry_contribute_ip_forwarding(
-    fib_node_index_t fib_entry_index);
+    fib_node_index_t fib_entry_index, fib_entry_fwd_flags_t flags);
+
 extern adj_index_t fib_entry_get_adj_for_source(
     fib_node_index_t fib_entry_index,
     fib_source_t source);

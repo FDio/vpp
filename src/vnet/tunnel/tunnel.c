@@ -222,7 +222,8 @@ tunnel_contribute_forwarding (const tunnel_t *t, dpo_id_t *dpo)
   fct = fib_forw_chain_type_from_fib_proto (
     ip_address_family_to_fib_proto (ip_addr_version (&t->t_src)));
 
-  fib_entry_contribute_forwarding (t->t_fib_entry_index, fct, dpo);
+  fib_entry_contribute_forwarding (t->t_fib_entry_index, fct,
+				   FIB_ENTRY_FWD_FLAG_COLLAPSE, dpo);
 }
 
 void

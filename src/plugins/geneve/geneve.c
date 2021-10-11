@@ -149,19 +149,9 @@ geneve_tunnel_restack_dpo (geneve_tunnel_t * t)
   fib_forward_chain_type_t forw_type = ip46_address_is_ip4 (&t->remote) ?
     FIB_FORW_CHAIN_TYPE_UNICAST_IP4 : FIB_FORW_CHAIN_TYPE_UNICAST_IP6;
 
-  fib_entry_contribute_forwarding (t->fib_entry_index, forw_type, &dpo);
+  fib_entry_contribute_forwarding (t->fib_entry_index, forw_type,
+				   FIB_ENTRY_FWD_FLAG_COLLAPSE, &dpo);
 
-  /* geneve uses the flow hash as the udp source port
-   * hence the packet's hash is unknown at this time.
-   * However, we can still skip single bucket load balance dpo's */
-  while (DPO_LOAD_BALANCE == dpo.dpoi_type)
-    {
-      load_balance_t *lb = load_balance_get (dpo.dpoi_index);
-      if (lb->lb_n_buckets > 1)
-	break;
-
-      dpo_copy (&dpo, load_balance_get_bucket_i (lb, 0));
-    }
   dpo_stack_from_node (encap_index, &t->next_dpo, &dpo);
   dpo_reset (&dpo);
 }

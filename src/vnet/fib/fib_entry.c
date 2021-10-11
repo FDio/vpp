@@ -436,6 +436,7 @@ fib_entry_chain_type_mcast_to_ucast (fib_forward_chain_type_t fct)
 void
 fib_entry_contribute_forwarding (fib_node_index_t fib_entry_index,
 				 fib_forward_chain_type_t fct,
+				 fib_entry_fwd_flags_t flags,
 				 dpo_id_t *dpo)
 {
     fib_entry_delegate_t *fed;
@@ -494,6 +495,15 @@ fib_entry_contribute_forwarding (fib_node_index_t fib_entry_index,
     {
         dpo_copy(dpo, drop_dpo_get(fib_forw_chain_type_to_dpo_proto(fct)));
     }
+    /*
+     * If there's only one bucket in the load-balance then we can
+     * squash it out.
+     */
+    else if ((flags & FIB_ENTRY_FWD_FLAG_COLLAPSE) &&
+             1 == load_balance_n_buckets(dpo->dpoi_index))
+    {
+        dpo_copy(dpo, load_balance_get_bucket(dpo->dpoi_index, 0));
+    }
 
     /*
      * don't allow the special index indicating replicate.vs.load-balance
@@ -503,7 +513,8 @@ fib_entry_contribute_forwarding (fib_node_index_t fib_entry_index,
 }
 
 const dpo_id_t *
-fib_entry_contribute_ip_forwarding (fib_node_index_t fib_entry_index)
+fib_entry_contribute_ip_forwarding (fib_node_index_t fib_entry_index,
+                                    fib_entry_fwd_flags_t flags)
 {
     fib_forward_chain_type_t fct;
     fib_entry_t *fib_entry;
@@ -516,6 +527,12 @@ fib_entry_contribute_ip_forwarding (fib_node_index_t fib_entry_index)
 
     if (dpo_id_is_valid(&fib_entry->fe_lb))
     {
+        if ((flags & FIB_ENTRY_FWD_FLAG_COLLAPSE) &&
+            1 == load_balance_n_buckets(fib_entry->fe_lb.dpoi_index))
+        {
+            return load_balance_get_bucket(fib_entry->fe_lb.dpoi_index, 0);
+        }
+
         return (&fib_entry->fe_lb);
     }
 
@@ -527,17 +544,13 @@ fib_entry_get_adj (fib_node_index_t fib_entry_index)
 {
     const dpo_id_t *dpo;
 
-    dpo = fib_entry_contribute_ip_forwarding(fib_entry_index);
+    dpo = fib_entry_contribute_ip_forwarding(fib_entry_index, FIB_ENTRY_FWD_FLAG_COLLAPSE);
 
-    if (dpo_id_is_valid(dpo))
+    if (dpo_is_adj(dpo))
     {
-        dpo = load_balance_get_bucket(dpo->dpoi_index, 0);
-
-        if (dpo_is_adj(dpo))
-        {
-            return (dpo->dpoi_index);
-        }
+        return (dpo->dpoi_index);
     }
+
     return (ADJ_INDEX_INVALID);
 }
 

@@ -105,9 +105,9 @@ cnat_tracker_track (index_t cti, cnat_ep_trk_t * trk)
 				 cnat_translation_fib_node_type,
 				 cti, &trk->ct_sibling);
 
-  fib_entry_contribute_forwarding (trk->ct_fei,
-				   fib_forw_chain_type_from_fib_proto
-				   (pfx.fp_proto), &trk->ct_dpo);
+  fib_entry_contribute_forwarding (
+    trk->ct_fei, fib_forw_chain_type_from_fib_proto (pfx.fp_proto),
+    FIB_ENTRY_FWD_FLAG_NONE, &trk->ct_dpo);
 }
 
 u8 *

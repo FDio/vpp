@@ -80,7 +80,6 @@ ip_container_proxy_is_set (fib_prefix_t * pfx, u32 sw_if_index)
   fib_node_index_t fei;
   const dpo_id_t *dpo;
   l3_proxy_dpo_t *l3p;
-  load_balance_t *lb0;
 
   fib_index = fib_table_get_table_id_for_sw_if_index (pfx->fp_proto,
 						      sw_if_index);
@@ -91,9 +90,7 @@ ip_container_proxy_is_set (fib_prefix_t * pfx, u32 sw_if_index)
   if (fei == FIB_NODE_INDEX_INVALID)
     return 0;
 
-  dpo = fib_entry_contribute_ip_forwarding (fei);
-  lb0 = load_balance_get (dpo->dpoi_index);
-  dpo = load_balance_get_bucket_i (lb0, 0);
+  dpo = fib_entry_contribute_ip_forwarding (fei, FIB_ENTRY_FWD_FLAG_COLLAPSE);
   if (dpo->dpoi_type != DPO_L3_PROXY)
     return 0;
 
@@ -113,15 +110,13 @@ ip_container_proxy_fib_table_walk (fib_node_index_t fei, void *arg)
   ip_container_proxy_walk_ctx_t *ctx = arg;
   const fib_prefix_t *pfx;
   const dpo_id_t *dpo;
-  load_balance_t *lb;
   l3_proxy_dpo_t *l3p;
 
   pfx = fib_entry_get_prefix (fei);
   if (fib_entry_is_sourced (fei, FIB_SOURCE_PROXY))
     {
-      dpo = fib_entry_contribute_ip_forwarding (fei);
-      lb = load_balance_get (dpo->dpoi_index);
-      dpo = load_balance_get_bucket_i (lb, 0);
+      dpo =
+	fib_entry_contribute_ip_forwarding (fei, FIB_ENTRY_FWD_FLAG_COLLAPSE);
       l3p = l3_proxy_dpo_get (dpo->dpoi_index);
       ctx->cb (pfx, l3p->l3p_sw_if_index, ctx->ctx);
     }

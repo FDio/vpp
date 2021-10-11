@@ -349,9 +349,9 @@ bier_test_mpls_spf (void)
     index_t bfmi_1_1_1_1;
 
     fei = fib_table_lookup_exact_match(0, &pfx_1_1_1_1_s_32);
-    fib_entry_contribute_forwarding(fei,
-                                    FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
-                                    &neos_dpo_1_1_1_1);
+    fib_entry_contribute_forwarding (fei, FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
+				     FIB_ENTRY_FWD_FLAG_NONE,
+				     &neos_dpo_1_1_1_1);
 
     bfmi_1_1_1_1 = bier_fmask_db_find(bti, &path_1_1_1_1);
     bfm_1_1_1_1 = bier_fmask_get(bfmi_1_1_1_1);
@@ -414,9 +414,9 @@ bier_test_mpls_spf (void)
                                           1,
                                           out_lbl_99,
                                           FIB_ROUTE_PATH_FLAG_NONE);
-    fib_entry_contribute_forwarding(fei,
-                                    FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
-                                    &neos_dpo_1_1_1_1);
+    fib_entry_contribute_forwarding (fei, FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
+				     FIB_ENTRY_FWD_FLAG_NONE,
+				     &neos_dpo_1_1_1_1);
     BIER_TEST(!fib_test_validate_lb(&neos_dpo_1_1_1_1, 1,
                                     &bucket_neos_99_via_10_10_10_1),
               "1.1.1.1/32 n-eos LB 1 buckets via: 99 + 10.10.10.1");
@@ -471,9 +471,9 @@ bier_test_mpls_spf (void)
                                    out_lbl_100,
                                    FIB_ROUTE_PATH_FLAG_NONE);
 
-    fib_entry_contribute_forwarding(fei,
-                                    FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
-                                    &neos_dpo_1_1_1_1);
+    fib_entry_contribute_forwarding (fei, FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
+				     FIB_ENTRY_FWD_FLAG_NONE,
+				     &neos_dpo_1_1_1_1);
     BIER_TEST(!fib_test_validate_lb(&neos_dpo_1_1_1_1, 2,
                                     &bucket_neos_99_via_10_10_10_1,
                                     &bucket_neos_100_via_10_10_10_2),
@@ -554,9 +554,9 @@ bier_test_mpls_spf (void)
     index_t bfmi_1_1_1_2;
 
     fei = fib_table_lookup_exact_match(0, &pfx_1_1_1_2_s_32);
-    fib_entry_contribute_forwarding(fei,
-                                    FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
-                                    &neos_dpo_1_1_1_2);
+    fib_entry_contribute_forwarding (fei, FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
+				     FIB_ENTRY_FWD_FLAG_NONE,
+				     &neos_dpo_1_1_1_2);
 
     bfmi_1_1_1_2 = bier_fmask_db_find(bti, &path_1_1_1_2);
     bfm_1_1_1_2 = bier_fmask_get(bfmi_1_1_1_2);

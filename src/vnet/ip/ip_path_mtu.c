@@ -509,7 +509,8 @@ ip_pmtu_alloc (u32 fib_index, const fib_prefix_t *pfx,
     {
       ipt->ipt_flags |= IP_PMTU_FLAG_REMOTE;
 
-      lb_dpo = fib_entry_contribute_ip_forwarding (ipt->ipt_fib_entry);
+      lb_dpo = fib_entry_contribute_ip_forwarding (ipt->ipt_fib_entry,
+						   FIB_ENTRY_FWD_FLAG_NONE);
 
       ipt->ipt_oper_pmtu = clib_min (dpo_get_mtu (lb_dpo), ipt->ipt_cfg_pmtu);
 
@@ -574,7 +575,8 @@ ip_pmtu_stack (ip_pmtu_t *ipt)
       fib_table_entry_special_remove (fib_index, pfx, ip_pmtu_source);
 
       ipt->ipt_flags |= IP_PMTU_FLAG_REMOTE;
-      lb_dpo = fib_entry_contribute_ip_forwarding (ipt->ipt_fib_entry);
+      lb_dpo = fib_entry_contribute_ip_forwarding (ipt->ipt_fib_entry,
+						   FIB_ENTRY_FWD_FLAG_NONE);
       dpo_mtu = dpo_get_mtu (lb_dpo);
 
       ipt->ipt_oper_pmtu = clib_min (dpo_mtu, ipt->ipt_cfg_pmtu);

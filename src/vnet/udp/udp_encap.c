@@ -47,9 +47,9 @@ static void
 udp_encap_restack (udp_encap_t * ue)
 {
   dpo_stack (udp_encap_dpo_types[ue->ue_ip_proto],
-	     fib_proto_to_dpo (ue->ue_ip_proto),
-	     &ue->ue_dpo,
-	     fib_entry_contribute_ip_forwarding (ue->ue_fib_entry_index));
+	     fib_proto_to_dpo (ue->ue_ip_proto), &ue->ue_dpo,
+	     fib_entry_contribute_ip_forwarding (ue->ue_fib_entry_index,
+						 FIB_ENTRY_FWD_FLAG_COLLAPSE));
 }
 
 index_t

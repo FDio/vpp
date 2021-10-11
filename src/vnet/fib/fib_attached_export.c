@@ -179,7 +179,7 @@ fib_entry_import_add (fib_ae_import_t *import,
     {
         const dpo_id_t *dpo;
 
-        dpo = fib_entry_contribute_ip_forwarding(entry_index);
+        dpo = fib_entry_contribute_ip_forwarding(entry_index, FIB_ENTRY_FWD_FLAG_COLLAPSE);
 
         if (dpo_id_is_valid(dpo) && !dpo_is_drop(dpo))
         {
@@ -188,7 +188,7 @@ fib_entry_import_add (fib_ae_import_t *import,
                                             FIB_SOURCE_AE,
                                             (fib_entry_get_flags(entry_index) |
                                              FIB_ENTRY_FLAG_EXCLUSIVE),
-                                            load_balance_get_bucket(dpo->dpoi_index, 0));
+                                            dpo);
 
             fib_entry_lock(entry_index);
             vec_add1(import->faei_importeds, entry_index);

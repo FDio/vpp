@@ -58,7 +58,7 @@ ip4_fib_hash_table_lookup_lb (const ip4_fib_hash_t *fib,
     {
 	const dpo_id_t *dpo;
 
-	dpo = fib_entry_contribute_ip_forwarding(fei);
+	dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
 
 	return (dpo->dpoi_index);
     }

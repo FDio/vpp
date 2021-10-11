@@ -153,27 +153,10 @@ vxlan_tunnel_restack_dpo (vxlan_tunnel_t * t)
   fib_forward_chain_type_t forw_type = is_ip4 ?
     FIB_FORW_CHAIN_TYPE_UNICAST_IP4 : FIB_FORW_CHAIN_TYPE_UNICAST_IP6;
 
-  fib_entry_contribute_forwarding (t->fib_entry_index, forw_type, &dpo);
-
-  /* vxlan uses the payload hash as the udp source port
-   * hence the packet's hash is unknown
-   * skip single bucket load balance dpo's */
-  while (DPO_LOAD_BALANCE == dpo.dpoi_type)
-    {
-      const load_balance_t *lb;
-      const dpo_id_t *choice;
-
-      lb = load_balance_get (dpo.dpoi_index);
-      if (lb->lb_n_buckets > 1)
-	break;
-
-      choice = load_balance_get_bucket_i (lb, 0);
-
-      if (DPO_RECEIVE == choice->dpoi_type)
-	dpo_copy (&dpo, drop_dpo_get (choice->dpoi_proto));
-      else
-	dpo_copy (&dpo, choice);
-    }
+  fib_entry_contribute_forwarding (t->fib_entry_index, forw_type,
+				   FIB_ENTRY_FWD_FLAG_COLLAPSE, &dpo);
+  if (DPO_RECEIVE == dpo.dpoi_type)
+    dpo_copy (&dpo, drop_dpo_get (dpo.dpoi_proto));
 
   u32 encap_index = is_ip4 ?
     vxlan4_encap_node.index : vxlan6_encap_node.index;

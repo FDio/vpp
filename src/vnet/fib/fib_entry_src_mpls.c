@@ -147,6 +147,7 @@ fib_entry_src_mpls_set_data (fib_entry_src_t *src,
                                             (eos ?
                                              FIB_FORW_CHAIN_TYPE_MPLS_EOS :
                                              FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS),
+                                            FIB_ENTRY_FWD_FLAG_NONE,
                                             &dpo);
             src->u.mpls.fesm_lfes[eos] =
                 fib_table_entry_special_dpo_add(fib_index,

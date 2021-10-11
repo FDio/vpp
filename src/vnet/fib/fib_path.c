@@ -750,6 +750,7 @@ fib_path_recursive_adj_update (fib_path_t *path,
      */
     fib_entry_contribute_forwarding(path->fp_via_fib,
 				    fct,
+				    FIB_ENTRY_FWD_FLAG_NONE,
 				    &via_dpo);
 
 

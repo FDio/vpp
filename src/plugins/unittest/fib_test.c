@@ -181,9 +181,11 @@ fib_test_mk_intf (u32 ninterfaces)
 #define FIB_TEST_REC_FORW(_rec_prefix, _via_prefix, _bucket)		\
     {                                                                   \
         const dpo_id_t *_rec_dpo = fib_entry_contribute_ip_forwarding(  \
-            fib_table_lookup_exact_match(fib_index, (_rec_prefix)));    \
+            fib_table_lookup_exact_match(fib_index, (_rec_prefix)),     \
+                                         FIB_ENTRY_FWD_FLAG_NONE);      \
         const dpo_id_t *_via_dpo = fib_entry_contribute_ip_forwarding(  \
-            fib_table_lookup(fib_index, (_via_prefix)));                \
+            fib_table_lookup(fib_index, (_via_prefix)),                 \
+                             FIB_ENTRY_FWD_FLAG_NONE);                  \
         FIB_TEST(!dpo_cmp(_via_dpo,                                     \
                           load_balance_get_bucket(_rec_dpo->dpoi_index,	\
                                                   _bucket)),		\
@@ -195,7 +197,8 @@ fib_test_mk_intf (u32 ninterfaces)
 #define FIB_TEST_LB_BUCKET_VIA_ADJ(_prefix, _bucket, _ai)               \
     {                                                                   \
      const dpo_id_t *_dpo = fib_entry_contribute_ip_forwarding(         \
-                                                               fib_table_lookup_exact_match(fib_index, (_prefix))); \
+         fib_table_lookup_exact_match(fib_index, (_prefix)),            \
+                                      FIB_ENTRY_FWD_FLAG_NONE);         \
      const dpo_id_t *_dpo1 =                                            \
          load_balance_get_bucket(_dpo->dpoi_index, _bucket);            \
      FIB_TEST(DPO_ADJACENCY == _dpo1->dpoi_type, "type is %U",          \
@@ -229,7 +232,7 @@ fib_test_urpf_is_equal (fib_node_index_t fei,
     va_start(ap, num);
 
     res = 0;
-    fib_entry_contribute_forwarding(fei, fct, &dpo);
+    fib_entry_contribute_forwarding(fei, fct, FIB_ENTRY_FWD_FLAG_NONE, &dpo);
     ui = load_balance_get_urpf(dpo.dpoi_index);
 
     urpf = fib_urpf_list_get(ui);
@@ -716,7 +719,7 @@ fib_test_validate_entry (fib_node_index_t fei,
     res = 0;
     pfx = fib_entry_get_prefix(fei);
     fib_index = fib_entry_get_fib_index(fei);
-    fib_entry_contribute_forwarding(fei, fct, &dpo);
+    fib_entry_contribute_forwarding(fei, fct, FIB_ENTRY_FWD_FLAG_NONE, &dpo);
 
     if (DPO_REPLICATE == dpo.dpoi_type)
     {
@@ -850,34 +853,34 @@ fib_test_v4 (void)
 
     dfrt = fib_table_lookup(fib_index, &pfx_0_0_0_0_s_0);
     FIB_TEST((FIB_NODE_INDEX_INVALID != dfrt), "default route present");
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(dfrt)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(dfrt, FIB_ENTRY_FWD_FLAG_NONE)),
              "Default route is DROP");
 
     pfx.fp_len = 32;
     fei = fib_table_lookup(fib_index, &pfx);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "all zeros route present");
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "all 0s route is DROP");
 
     pfx.fp_addr.ip4.as_u32 = clib_host_to_net_u32(0xffffffff);
     pfx.fp_len = 32;
     fei = fib_table_lookup(fib_index, &pfx);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "all ones route present");
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "all 1s route is DROP");
 
     pfx.fp_addr.ip4.as_u32 = clib_host_to_net_u32(0xe0000000);
     pfx.fp_len = 8;
     fei = fib_table_lookup(fib_index, &pfx);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "all-mcast route present");
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "all-mcast route is DROP");
 
     pfx.fp_addr.ip4.as_u32 = clib_host_to_net_u32(0xf0000000);
     pfx.fp_len = 8;
     fei = fib_table_lookup(fib_index, &pfx);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "class-e route present");
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "class-e route is DROP");
 
     /*
@@ -957,7 +960,7 @@ fib_test_v4 (void)
 
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "local interface route present");
 
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(!fib_test_urpf_is_equal(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, 0),
              "RPF list for local length 0");
     dpo = load_balance_get_bucket(dpo->dpoi_index, 0);
@@ -1058,7 +1061,7 @@ fib_test_v4 (void)
     fei = fib_table_lookup(fib_index, &pfx);
 
     FIB_TEST((fei == dfrt), "default route same index");
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "Default route is DROP");
 
     /*
@@ -1122,7 +1125,7 @@ fib_test_v4 (void)
                                           NULL,
                                           FIB_ROUTE_PATH_FLAG_NONE);
 
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     dpo1 = load_balance_get_bucket(dpo->dpoi_index, 0);
     FIB_TEST(DPO_ADJACENCY_INCOMPLETE == dpo1->dpoi_type,
              "11.11.11.11/32 via incomplete adj");
@@ -1149,7 +1152,7 @@ fib_test_v4 (void)
     ai = fib_entry_get_adj(fei);
     FIB_TEST((ai_01 == ai), "ADJ-FIB resolves via adj");
 
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     dpo1 = load_balance_get_bucket(dpo->dpoi_index, 0);
     FIB_TEST(DPO_ADJACENCY == dpo1->dpoi_type,
              "11.11.11.11/32 via complete adj");
@@ -1334,7 +1337,7 @@ fib_test_v4 (void)
                              NULL,
                              FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup(fib_index, &pfx_1_1_2_0_s_24);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(!fib_test_urpf_is_equal(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
                                     1, tm->hw[0]->sw_if_index),
              "RPF list for 1.1.2.0/24 contains both adjs");
@@ -1372,7 +1375,7 @@ fib_test_v4 (void)
                                 1,
                                 FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup(fib_index, &pfx_1_1_2_0_s_24);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(!fib_test_urpf_is_equal(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
                                     1, tm->hw[0]->sw_if_index),
              "RPF list for 1.1.2.0/24 contains one adj");
@@ -1489,7 +1492,7 @@ fib_test_v4 (void)
                                 FIB_SOURCE_SPECIAL,
                                 FIB_ENTRY_FLAG_LOCAL);
     fei = fib_table_lookup_exact_match(fib_index, &ex_pfx);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     dpo = load_balance_get_bucket(dpo->dpoi_index, 0);
     FIB_TEST((DPO_RECEIVE == dpo->dpoi_type),
              "local interface adj is local");
@@ -1520,7 +1523,7 @@ fib_test_v4 (void)
                                     FIB_ENTRY_FLAG_EXCLUSIVE,
                                     &ex_dpo);
     fei = fib_table_lookup_exact_match(fib_index, &ex_pfx);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(!dpo_cmp(&ex_dpo, load_balance_get_bucket(dpo->dpoi_index, 0)),
              "exclusive remote uses lookup DPO");
 
@@ -1535,7 +1538,7 @@ fib_test_v4 (void)
                                        FIB_SOURCE_SPECIAL,
                                        FIB_ENTRY_FLAG_EXCLUSIVE,
                                        &ex_dpo);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(!dpo_cmp(&ex_dpo, load_balance_get_bucket(dpo->dpoi_index, 0)),
              "exclusive remote uses now uses NULL DPO");
 
@@ -1580,7 +1583,7 @@ fib_test_v4 (void)
                                    NULL,
                                    FIB_ROUTE_PATH_FLAG_NONE);
 
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "Recursive via unresolved is drop");
 
     /*
@@ -1588,7 +1591,7 @@ fib_test_v4 (void)
      * the default route, which is itself a DROP
      */
     fei = fib_table_lookup(fib_index, &pfx_1_1_1_2_s_32);
-    dpo1 = fib_entry_contribute_ip_forwarding(fei);
+    dpo1 = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(load_balance_is_drop(dpo1), "1.1.1.2/32 is drop");
     FIB_TEST(!fib_test_urpf_is_equal(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, 0),
              "RPF list for 1.1.1.2/32 contains 0 adjs");
@@ -1639,7 +1642,7 @@ fib_test_v4 (void)
                                    FIB_ROUTE_PATH_FLAG_NONE);
 
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "1.2.3.4/32 presnet");
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     lb = load_balance_get(dpo->dpoi_index);
     FIB_TEST((lb->lb_n_buckets == 4),
              "1.2.3.4/32 LB has %d bucket",
@@ -1691,7 +1694,7 @@ fib_test_v4 (void)
                                    FIB_ROUTE_PATH_FLAG_NONE);
 
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "1.2.3.5/32 presnet");
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     lb = load_balance_get(dpo->dpoi_index);
     FIB_TEST((lb->lb_n_buckets == 16),
              "1.2.3.5/32 LB has %d bucket",
@@ -2143,7 +2146,8 @@ fib_test_v4 (void)
     dpo_id_t dpo_44 = DPO_INVALID;
     index_t urpfi;
 
-    fib_entry_contribute_forwarding(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, &dpo_44);
+    fib_entry_contribute_forwarding(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                    FIB_ENTRY_FWD_FLAG_NONE, &dpo_44);
     urpfi = load_balance_get_urpf(dpo_44.dpoi_index);
 
     FIB_TEST(fib_urpf_check(urpfi, tm->hw[0]->sw_if_index),
@@ -2200,7 +2204,7 @@ fib_test_v4 (void)
                                    NULL,
                                    FIB_ROUTE_PATH_FLAG_NONE);
 
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "Recursive via unresolved is drop");
 
     fei = fib_table_lookup_exact_match(fib_index, &pfx_1_1_1_200_s_32);
@@ -2244,15 +2248,15 @@ fib_test_v4 (void)
                              NULL,
                              FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup(fib_index, &pfx_1_1_1_0_s_24);
-    dpo1 = fib_entry_contribute_ip_forwarding(fei);
+    dpo1 = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     ai = fib_entry_get_adj(fei);
     FIB_TEST((ai_01 == ai), "1.1.1.0/24 resolves via 10.10.10.1");
     fei = fib_table_lookup(fib_index, &pfx_1_1_1_2_s_32);
-    dpo1 = fib_entry_contribute_ip_forwarding(fei);
+    dpo1 = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     ai = fib_entry_get_adj(fei);
     FIB_TEST((ai_01 == ai), "1.1.1.2/32 resolves via 10.10.10.1");
     fei = fib_table_lookup(fib_index, &pfx_1_1_1_200_s_32);
-    dpo1 = fib_entry_contribute_ip_forwarding(fei);
+    dpo1 = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     ai = fib_entry_get_adj(fei);
     FIB_TEST((ai_01 == ai), "1.1.1.200/24 resolves via 10.10.10.1");
 
@@ -2302,7 +2306,7 @@ fib_test_v4 (void)
                              NULL,
                              FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup(fib_index, &pfx_1_1_1_0_s_28);
-    dpo2 = fib_entry_contribute_ip_forwarding(fei);
+    dpo2 = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     ai = fib_entry_get_adj(fei);
     FIB_TEST((ai_02 == ai), "1.1.1.0/24 resolves via 10.10.10.2");
 
@@ -2371,17 +2375,17 @@ fib_test_v4 (void)
              "1.1.1.0/24 removed");
 
     fei = fib_table_lookup(fib_index, &pfx_1_1_1_2_s_32);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "1.1.1.2/32 route is DROP");
     fei = fib_table_lookup_exact_match(fib_index, &pfx_1_1_1_200_s_32);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "1.1.1.200/32 route is DROP");
 
     fei = fib_table_lookup_exact_match(fib_index, &bgp_201_pfx);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "201 is drop");
     fei = fib_table_lookup_exact_match(fib_index, &bgp_200_pfx);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "200 is drop");
 
     /*
@@ -2408,12 +2412,12 @@ fib_test_v4 (void)
                                    1,
                                    NULL,
                                    FIB_ROUTE_PATH_FLAG_NONE);
-    dpo1 = fib_entry_contribute_ip_forwarding(fei);
+    dpo1 = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     ai = fib_entry_get_adj(fei);
     FIB_TEST((ai = ai_01), "1.1.1.2/32 resolves via 10.10.10.1");
 
     fei = fib_table_lookup_exact_match(fib_index, &bgp_201_pfx);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "201 is drop");
     FIB_TEST_REC_FORW(&bgp_200_pfx, &pfx_1_1_1_2_s_32, 0);
 
@@ -2551,12 +2555,12 @@ fib_test_v4 (void)
                              FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup_exact_match(fib_index, &bgp_102);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "100.100.100.102/32 presnet");
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
 
     fei  = fib_table_lookup_exact_match(fib_index, &pfx_1_1_1_1_s_32);
-    dpo1 = fib_entry_contribute_ip_forwarding(fei);
+    dpo1 = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     fei  = fib_table_lookup_exact_match(fib_index, &pfx_1_1_1_2_s_32);
-    dpo2 = fib_entry_contribute_ip_forwarding(fei);
+    dpo2 = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
 
     lb = load_balance_get(dpo->dpoi_index);
     FIB_TEST((lb->lb_n_buckets == 2), "Recursive LB has %d bucket", lb->lb_n_buckets);
@@ -2650,10 +2654,10 @@ fib_test_v4 (void)
              fib_entry_pool_size());
 
     fei = fib_table_lookup_exact_match(fib_index, &bgp_200_pfx);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
 
     fei  = fib_table_lookup_exact_match(fib_index, &pfx_10_10_10_1_s_32);
-    dpo1 = fib_entry_contribute_ip_forwarding(fei);
+    dpo1 = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
 
     FIB_TEST(!dpo_cmp(dpo1, load_balance_get_bucket(dpo->dpoi_index, 0)),
              "200.200.200.200/32 is recursive via adj for 10.10.10.1");
@@ -2703,9 +2707,9 @@ fib_test_v4 (void)
                                 tm->hw[0]->sw_if_index);
 
     fei  = fib_table_lookup_exact_match(fib_index, &bgp_201_pfx);
-    dpo  = fib_entry_contribute_ip_forwarding(fei);
+    dpo  = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     fei  = fib_table_lookup_exact_match(fib_index, &pfx_10_10_10_3);
-    dpo1 = fib_entry_contribute_ip_forwarding(fei);
+    dpo1 = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
 
     ai = fib_entry_get_adj(fei);
     FIB_TEST((ai == ai_03), "adj for 10.10.10.3/32 is via adj for 10.10.10.3");
@@ -2835,13 +2839,13 @@ fib_test_v4 (void)
      * All the entries have only looped paths, so they are all drop
      */
     fei = fib_table_lookup(fib_index, &pfx_5_5_5_7_s_32);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "LB for 5.5.5.7/32 is via adj for DROP");
     fei = fib_table_lookup(fib_index, &pfx_5_5_5_5_s_32);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "LB for 5.5.5.5/32 is via adj for DROP");
     fei = fib_table_lookup(fib_index, &pfx_5_5_5_6_s_32);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "LB for 5.5.5.6/32 is via adj for DROP");
 
     /*
@@ -2862,7 +2866,7 @@ fib_test_v4 (void)
                              FIB_ROUTE_PATH_FLAG_NONE);
 
     fei = fib_table_lookup(fib_index, &pfx_5_5_5_6_s_32);
-    dpo1 = fib_entry_contribute_ip_forwarding(fei);
+    dpo1 = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
 
     lb = load_balance_get(dpo1->dpoi_index);
     FIB_TEST((lb->lb_n_buckets == 1), "5.5.5.6 LB has %d bucket", lb->lb_n_buckets);
@@ -2873,10 +2877,10 @@ fib_test_v4 (void)
              "5.5.5.6 bucket 0 resolves via 10.10.10.2");
 
     fei = fib_table_lookup(fib_index, &pfx_5_5_5_7_s_32);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "LB for 5.5.5.7/32 is via adj for DROP");
     fei = fib_table_lookup(fib_index, &pfx_5_5_5_5_s_32);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "LB for 5.5.5.5/32 is via adj for DROP");
 
     /*
@@ -2894,13 +2898,13 @@ fib_test_v4 (void)
                                 FIB_ROUTE_PATH_FLAG_NONE);
 
     fei = fib_table_lookup(fib_index, &pfx_5_5_5_7_s_32);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "LB for 5.5.5.7/32 is via adj for DROP");
     fei = fib_table_lookup(fib_index, &pfx_5_5_5_5_s_32);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "LB for 5.5.5.5/32 is via adj for DROP");
     fei = fib_table_lookup(fib_index, &pfx_5_5_5_6_s_32);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "LB for 5.5.5.6/32 is via adj for DROP");
 
     /*
@@ -2920,7 +2924,7 @@ fib_test_v4 (void)
                                     FIB_ROUTE_PATH_FLAG_NONE);
 
     fei = fib_table_lookup(fib_index, &pfx_5_5_5_5_s_32);
-    dpo1 = fib_entry_contribute_ip_forwarding(fei);
+    dpo1 = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     lb = load_balance_get(dpo1->dpoi_index);
     FIB_TEST((lb->lb_n_buckets == 1), "5.5.5.5 LB has %d bucket", lb->lb_n_buckets);
 
@@ -2930,7 +2934,7 @@ fib_test_v4 (void)
              "5.5.5.5 bucket 0 resolves via 10.10.10.2");
 
     fei = fib_table_lookup_exact_match(fib_index, &pfx_5_5_5_7_s_32);
-    dpo2 = fib_entry_contribute_ip_forwarding(fei);
+    dpo2 = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
 
     lb = load_balance_get(dpo2->dpoi_index);
     FIB_TEST((lb->lb_n_buckets == 1), "Recursive LB has %d bucket", lb->lb_n_buckets);
@@ -2938,7 +2942,7 @@ fib_test_v4 (void)
              "5.5.5.5.7 via 5.5.5.5");
 
     fei = fib_table_lookup_exact_match(fib_index, &pfx_5_5_5_6_s_32);
-    dpo1 = fib_entry_contribute_ip_forwarding(fei);
+    dpo1 = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
 
     lb = load_balance_get(dpo1->dpoi_index);
     FIB_TEST((lb->lb_n_buckets == 1), "Recursive LB has %d bucket", lb->lb_n_buckets);
@@ -2962,13 +2966,13 @@ fib_test_v4 (void)
                                     FIB_ROUTE_PATH_FLAG_NONE);
 
     fei = fib_table_lookup(fib_index, &pfx_5_5_5_7_s_32);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "LB for 5.5.5.7/32 is via adj for DROP");
     fei = fib_table_lookup(fib_index, &pfx_5_5_5_5_s_32);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "LB for 5.5.5.5/32 is via adj for DROP");
     fei = fib_table_lookup(fib_index, &pfx_5_5_5_6_s_32);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "LB for 5.5.5.6/32 is via adj for DROP");
 
     /*
@@ -3036,7 +3040,7 @@ fib_test_v4 (void)
                              NULL,
                              FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup(fib_index, &pfx_5_5_5_6_s_32);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "1-level 5.5.5.6/32 loop is via adj for DROP");
 
     fib_table_entry_path_remove(fib_index,
@@ -3083,7 +3087,7 @@ fib_test_v4 (void)
                                    1,
                                    NULL,
                                    FIB_ROUTE_PATH_FLAG_NONE);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(load_balance_is_drop(dpo),
              "23.23.23.0/24 via covered is DROP");
     fib_table_entry_delete_index(fei, FIB_SOURCE_API);
@@ -3113,14 +3117,14 @@ fib_test_v4 (void)
                                    1,
                                    NULL,
                                    FIB_ROUTE_PATH_FLAG_NONE);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(load_balance_is_drop(dpo),
              "0.0.0.0.0/0 via is DROP");
     FIB_TEST((fib_entry_get_resolving_interface(fei) == ~0),
              "no resolving interface for looped 0.0.0.0/0");
 
     fei = fib_table_lookup_exact_match(fib_index, &pfx_23_23_23_23_s_32);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(load_balance_is_drop(dpo),
              "23.23.23.23/32 via is DROP");
     FIB_TEST((fib_entry_get_resolving_interface(fei) == ~0),
@@ -3145,10 +3149,10 @@ fib_test_v4 (void)
                              FIB_ROUTE_PATH_RESOLVE_VIA_HOST);
 
     fei = fib_table_lookup_exact_match(fib_index, &pfx_1_1_1_1_s_32);
-    dpo2 = fib_entry_contribute_ip_forwarding(fei);
+    dpo2 = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
 
     fei = fib_table_lookup_exact_match(fib_index, &bgp_200_pfx);
-    dpo1 = fib_entry_contribute_ip_forwarding(fei);
+    dpo1 = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
 
     FIB_TEST(!dpo_cmp(dpo2, load_balance_get_bucket(dpo1->dpoi_index, 0)),
              "adj for 200.200.200.200/32 is recursive via adj for 1.1.1.1");
@@ -3283,14 +3287,14 @@ fib_test_v4 (void)
     }
 
     fei = fib_table_lookup_exact_match(fib_index, &bgp_200_pfx);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
 
     fei = fib_table_lookup_exact_match(fib_index, &pfx_1_1_1_1_s_32);
-    dpo2 = fib_entry_contribute_ip_forwarding(fei);
+    dpo2 = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(!dpo_cmp(dpo2, load_balance_get_bucket(dpo->dpoi_index, 0)),
              "adj for 200.200.200.200/32 is recursive via adj for 1.1.1.1");
     fei = fib_table_lookup_exact_match(fib_index, &pfx_1_1_1_3_s_32);
-    dpo1 = fib_entry_contribute_ip_forwarding(fei);
+    dpo1 = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(!dpo_cmp(dpo1, load_balance_get_bucket(dpo->dpoi_index, 1)),
              "adj for 200.200.200.200/32 is recursive via adj for 1.1.1.3");
 
@@ -3334,7 +3338,7 @@ fib_test_v4 (void)
     vlib_process_suspend(vlib_get_main(), 1e-5);
 
     fei = fib_table_lookup_exact_match(fib_index, &bgp_200_pfx);
-    FIB_TEST(!dpo_cmp(dpo, fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(!dpo_cmp(dpo, fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "post PIC 200.200.200.200/32 was inplace modified");
 
     FIB_TEST(!dpo_cmp(dpo1, load_balance_get_bucket_i(lb, 0)),
@@ -3381,7 +3385,7 @@ fib_test_v4 (void)
              "via adj for 1.1.1.3");
 
     fei = fib_table_lookup_exact_match(fib_index, &bgp_200_pfx);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(lb == load_balance_get(dpo->dpoi_index),
              "post PIC 200.200.200.200/32 was inplace modified");
 
@@ -3415,7 +3419,7 @@ fib_test_v4 (void)
     }
 
     fei = fib_table_lookup_exact_match(fib_index, &bgp_200_pfx);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(lb == load_balance_get(dpo->dpoi_index),
              "200.200.200.200/32 was inplace modified for 3rd path");
     FIB_TEST(16 == lb->lb_n_buckets,
@@ -3449,7 +3453,7 @@ fib_test_v4 (void)
     vlib_process_suspend(vlib_get_main(), 1e-5);
 
     fei = fib_table_lookup_exact_match(fib_index, &bgp_200_pfx);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(lb == load_balance_get(dpo->dpoi_index),
              "200.200.200.200/32 was inplace modified for 3rd path");
     FIB_TEST(2 == lb->lb_n_buckets,
@@ -3643,7 +3647,7 @@ fib_test_v4 (void)
 
     fei = fib_table_lookup_exact_match(fib_index, &pfx_4_4_4_4_s_32);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "4.4.4.4/32 present");
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
 
     lb = load_balance_get(dpo->dpoi_index);
     FIB_TEST((lb->lb_n_buckets == 4), "4.4.4.4/32 lb over %d paths", lb->lb_n_buckets);
@@ -3684,7 +3688,7 @@ fib_test_v4 (void)
     fei = fib_table_lookup_exact_match(fib_index, &pfx_4_4_4_4_s_32);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "4.4.4.4/32 present");
 
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     dpo = load_balance_get_bucket(dpo->dpoi_index, 0);
     lookup_dpo_t *lkd = lookup_dpo_get(dpo->dpoi_index);
 
@@ -3723,7 +3727,7 @@ fib_test_v4 (void)
     fei = fib_table_lookup_exact_match(fib_index, &pfx_4_4_4_4_s_32);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "4.4.4.4/32 present");
 
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     dpo = load_balance_get_bucket(dpo->dpoi_index, 0);
     lkd = lookup_dpo_get(dpo->dpoi_index);
 
@@ -3964,7 +3968,7 @@ fib_test_v4 (void)
                                       &pfx_4_1_1_1_s_32,
                                       FIB_SOURCE_URPF_EXEMPT,
                                       FIB_ENTRY_FLAG_DROP);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(load_balance_is_drop(dpo),
              "uRPF exempt 4.1.1.1/32 DROP");
     FIB_TEST(!fib_test_urpf_is_equal(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, 1, 0),
@@ -4000,7 +4004,7 @@ fib_test_v4 (void)
                              FIB_ROUTE_PATH_FLAG_NONE);
 
     fei = fib_table_lookup_exact_match(fib_index, &pfx_12_10_10_2_s_32);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(dpo_is_drop(dpo),
              "no connected cover adj-fib fails refinement: %U",
              format_dpo_id, dpo, 0);
@@ -4035,7 +4039,7 @@ fib_test_v4 (void)
                              FIB_ROUTE_PATH_FLAG_NONE);
 
     fei = fib_table_lookup_exact_match(fib_index, &pfx_10_10_10_127_s_32);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(dpo_is_drop(dpo),
              "wrong interface adj-fib fails refinement");
 
@@ -4110,7 +4114,7 @@ fib_test_v4 (void)
                                 fib_index,
                                 1,
                                 FIB_ROUTE_PATH_FLAG_NONE);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(dpo_is_drop(dpo),
              "wrong interface adj-fib fails refinement");
 
@@ -4182,7 +4186,7 @@ fib_test_v4 (void)
                        IP_FLOW_HASH_DST_ADDR);
 
     fei = fib_table_lookup_exact_match(fib_index, &pfx_10_10_10_1_s_32);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     lb = load_balance_get(dpo->dpoi_index);
     FIB_TEST((lb->lb_hash_config == old_hash_config),
              "Table and LB hash config match: %U",
@@ -4259,7 +4263,7 @@ fib_test_v4 (void)
     /*
      * the default route is a drop, since it's looped
      */
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(dfrt)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(dfrt, FIB_ENTRY_FWD_FLAG_NONE)),
              "Default route is DROP");
 
     /*
@@ -4467,10 +4471,10 @@ fib_test_v6 (void)
 
     dfrt = fib_table_lookup(fib_index, &pfx_0_0);
     FIB_TEST((FIB_NODE_INDEX_INVALID != dfrt), "default route present");
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(dfrt)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(dfrt, FIB_ENTRY_FWD_FLAG_NONE)),
              "Default route is DROP");
 
-    dpo = fib_entry_contribute_ip_forwarding(dfrt);
+    dpo = fib_entry_contribute_ip_forwarding(dfrt, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST((dpo->dpoi_index == ip6_fib_table_fwding_lookup(
                   1,
                   &pfx_0_0.fp_addr.ip6)),
@@ -4534,7 +4538,7 @@ fib_test_v6 (void)
     adj = adj_get(ai);
     FIB_TEST((IP_LOOKUP_NEXT_GLEAN == adj->lookup_next_index),
              "attached interface adj is glean");
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST((dpo->dpoi_index == ip6_fib_table_fwding_lookup(
                   1,
                   &local_pfx.fp_addr.ip6)),
@@ -4556,7 +4560,7 @@ fib_test_v6 (void)
 
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "local interface route present");
 
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     dpo = load_balance_get_bucket(dpo->dpoi_index, 0);
     FIB_TEST((DPO_RECEIVE == dpo->dpoi_type),
              "local interface adj is local");
@@ -4566,7 +4570,7 @@ fib_test_v6 (void)
                                     &rd->rd_addr)),
              "local interface adj is receive ok");
 
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST((dpo->dpoi_index == ip6_fib_table_fwding_lookup(
                   1,
                   &local_pfx.fp_addr.ip6)),
@@ -4645,7 +4649,7 @@ fib_test_v6 (void)
     fei = fib_table_lookup(fib_index, &pfx_0_0);
 
     FIB_TEST((fei == dfrt), "default route same index");
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(dfrt)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(dfrt, FIB_ENTRY_FWD_FLAG_NONE)),
              "Default route is DROP");
 
     /*
@@ -4933,29 +4937,29 @@ fib_test_v6 (void)
     FIB_TEST((NULL == error), "Interface shutdown OK");
 
     fei = fib_table_lookup_exact_match(fib_index, &pfx_2001_b_s_64);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(!dpo_cmp(dpo_drop, load_balance_get_bucket(dpo->dpoi_index, 0)),
              "2001::b/64 resolves via drop");
 
     fei = fib_table_lookup_exact_match(fib_index, &pfx_2001_a_s_64);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(!dpo_cmp(dpo_drop, load_balance_get_bucket(dpo->dpoi_index, 0)),
              "2001::a/64 resolves via drop");
     fei = fib_table_lookup_exact_match(fib_index, &pfx_2001_1_3_s_128);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(!dpo_cmp(dpo_drop, load_balance_get_bucket(dpo->dpoi_index, 0)),
              "2001:0:0:1::3/64 resolves via drop");
     fei = fib_table_lookup_exact_match(fib_index, &pfx_2001_1_2_s_128);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(!dpo_cmp(dpo_drop, load_balance_get_bucket(dpo->dpoi_index, 0)),
              "2001:0:0:1::2/64 resolves via drop");
     fei = fib_table_lookup_exact_match(fib_index, &local_pfx);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(dpo_cmp(dpo_drop, load_balance_get_bucket(dpo->dpoi_index, 0)),
              "2001:0:0:1::1/128 not drop");
     local_pfx.fp_len = 64;
     fei = fib_table_lookup_exact_match(fib_index, &local_pfx);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(!dpo_cmp(dpo_drop, load_balance_get_bucket(dpo->dpoi_index, 0)),
              "2001:0:0:1/64 resolves via drop");
 
@@ -5004,7 +5008,7 @@ fib_test_v6 (void)
                                     FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup_exact_match(fib_index, &connected_pfx);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "attached interface route present");
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     dpo = load_balance_get_bucket(dpo->dpoi_index, 0);
     FIB_TEST(!dpo_cmp(dpo, dpo_drop),
              "2001:0:0:2/64 not resolves via drop");
@@ -5024,7 +5028,7 @@ fib_test_v6 (void)
     fei = fib_table_lookup(fib_index, &connected_pfx);
 
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "local interface route present");
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     dpo = load_balance_get_bucket(dpo->dpoi_index, 0);
     FIB_TEST((DPO_RECEIVE == dpo->dpoi_type),
              "local interface adj is local");
@@ -5080,29 +5084,29 @@ fib_test_v6 (void)
     FIB_TEST((NULL == error), "Interface shutdown OK");
 
     fei = fib_table_lookup_exact_match(fib_index, &pfx_2001_b_s_64);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(!dpo_cmp(dpo_drop, load_balance_get_bucket(dpo->dpoi_index, 0)),
              "2001::b/64 resolves via drop");
     fei = fib_table_lookup_exact_match(fib_index, &pfx_2001_a_s_64);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(!dpo_cmp(dpo_drop, load_balance_get_bucket(dpo->dpoi_index, 0)),
              "2001::a/64 resolves via drop");
     fei = fib_table_lookup_exact_match(fib_index, &pfx_2001_1_3_s_128);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(!dpo_cmp(dpo_drop, load_balance_get_bucket(dpo->dpoi_index, 0)),
              "2001:0:0:1::3/128 resolves via drop");
     fei = fib_table_lookup_exact_match(fib_index, &pfx_2001_1_2_s_128);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(!dpo_cmp(dpo_drop, load_balance_get_bucket(dpo->dpoi_index, 0)),
              "2001:0:0:1::2/128 resolves via drop");
     local_pfx.fp_len = 128;
     fei = fib_table_lookup_exact_match(fib_index, &local_pfx);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(dpo_cmp(dpo_drop, load_balance_get_bucket(dpo->dpoi_index, 0)),
              "2001:0:0:1::1/128 not drop");
     local_pfx.fp_len = 64;
     fei = fib_table_lookup_exact_match(fib_index, &local_pfx);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(!dpo_cmp(dpo_drop, load_balance_get_bucket(dpo->dpoi_index, 0)),
              "2001:0:0:1/64 resolves via drop");
 
@@ -5140,23 +5144,23 @@ fib_test_v6 (void)
     vnet_delete_hw_interface(vnet_get_main(), tm->hw_if_indicies[0]);
 
     fei = fib_table_lookup_exact_match(fib_index, &pfx_2001_b_s_64);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "2001::b/64 resolves via drop");
     fei = fib_table_lookup_exact_match(fib_index, &pfx_2001_a_s_64);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "2001::b/64 resolves via drop");
     fei = fib_table_lookup_exact_match(fib_index, &pfx_2001_1_3_s_128);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "2001:0:0:1::3/64 resolves via drop");
     fei = fib_table_lookup_exact_match(fib_index, &pfx_2001_1_2_s_128);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "2001:0:0:1::2/64 resolves via drop");
     fei = fib_table_lookup_exact_match(fib_index, &local_pfx);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "2001:0:0:1::1/128 is drop");
     local_pfx.fp_len = 64;
     fei = fib_table_lookup_exact_match(fib_index, &local_pfx);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "2001:0:0:1/64 resolves via drop");
 
     /*
@@ -5180,23 +5184,23 @@ fib_test_v6 (void)
                                         /* flag change */ 0);
 
     fei = fib_table_lookup_exact_match(fib_index, &pfx_2001_b_s_64);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "2001::b/64 resolves via drop");
     fei = fib_table_lookup_exact_match(fib_index, &pfx_2001_a_s_64);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "2001::b/64 resolves via drop");
     fei = fib_table_lookup_exact_match(fib_index, &pfx_2001_1_3_s_128);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "2001:0:0:1::3/64 resolves via drop");
     fei = fib_table_lookup_exact_match(fib_index, &pfx_2001_1_2_s_128);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "2001:0:0:1::2/64 resolves via drop");
     fei = fib_table_lookup_exact_match(fib_index, &local_pfx);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "2001:0:0:1::1/128 is drop");
     local_pfx.fp_len = 64;
     fei = fib_table_lookup_exact_match(fib_index, &local_pfx);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "2001:0:0:1/64 resolves via drop");
 
     /*
@@ -5705,7 +5709,7 @@ fib_test_ae (void)
                                           1,
                                           NULL,
                                           FIB_ROUTE_PATH_FLAG_NONE);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
 
     /*
      * remove the route in the export fib. expect the adj-fibs to be removed
@@ -5761,7 +5765,7 @@ fib_test_ae (void)
                                           1,
                                           NULL,
                                           FIB_ROUTE_PATH_FLAG_NONE);
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
 
     fei = fib_table_lookup_exact_match(fib_index, &pfx_10_10_10_1_s_32);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "non-attached in export: ADJ-fib1 in export");
@@ -5800,7 +5804,7 @@ fib_test_ae (void)
 
     fei = fib_table_lookup_exact_match(fib_index, &pfx_10_10_10_1_s_32);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "ADJ-fib1 reinstalled in export");
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(dpo_cmp(dpo_drop, load_balance_get_bucket(dpo->dpoi_index, 0)),
              "Adj-fib1 is not drop in export");
     fei = fib_table_lookup_exact_match(fib_index, &pfx_10_10_10_2_s_32);
@@ -5810,7 +5814,7 @@ fib_test_ae (void)
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "local reinstalled in export");
     fei = fib_table_lookup_exact_match(import_fib_index1, &pfx_10_10_10_1_s_32);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "attached in export: ADJ-fib1 imported");
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(dpo_cmp(dpo_drop, load_balance_get_bucket(dpo->dpoi_index, 0)),
              "Adj-fib1 is not drop in export: %U %U",
              format_dpo_id, dpo, 0,
@@ -5841,7 +5845,7 @@ fib_test_ae (void)
 
     fei = fib_table_lookup_exact_match(fib_index, &pfx_10_10_10_1_s_32);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "ADJ-fib1 reinstalled in export");
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(dpo_cmp(dpo_drop, load_balance_get_bucket(dpo->dpoi_index, 0)),
              "Adj-fib1 is not drop in export");
     fei = fib_table_lookup_exact_match(fib_index, &pfx_10_10_10_2_s_32);
@@ -5851,7 +5855,7 @@ fib_test_ae (void)
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "local reinstalled in export");
     fei = fib_table_lookup_exact_match(import_fib_index1, &pfx_10_10_10_1_s_32);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "attached in export: ADJ-fib1 imported");
-    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE);
     FIB_TEST(dpo_cmp(dpo_drop, load_balance_get_bucket(dpo->dpoi_index, 0)),
              "Adj-fib1 is not drop in export");
     fei = fib_table_lookup_exact_match(import_fib_index1, &pfx_10_10_10_2_s_32);
@@ -6138,6 +6142,7 @@ fib_test_pref (void)
     dpo_id_t ip_1_1_1_1 = DPO_INVALID;
     fib_entry_contribute_forwarding(fei,
                                     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                    FIB_ENTRY_FWD_FLAG_NONE,
                                     &ip_1_1_1_1);
 
     /*
@@ -6169,6 +6174,7 @@ fib_test_pref (void)
     dpo_id_t ip_1_1_1_2 = DPO_INVALID;
     fib_entry_contribute_forwarding(fei,
                                     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                    FIB_ENTRY_FWD_FLAG_NONE,
                                     &ip_1_1_1_2);
     fei = fib_table_entry_path_add2(0,
                                     &pfx_1_1_1_3_s_32,
@@ -6178,6 +6184,7 @@ fib_test_pref (void)
     dpo_id_t ip_1_1_1_3 = DPO_INVALID;
     fib_entry_contribute_forwarding(fei,
                                     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                    FIB_ENTRY_FWD_FLAG_NONE,
                                     &ip_1_1_1_3);
 
     fib_test_lb_bucket_t ip_o_1_1_1_1 = {
@@ -6717,6 +6724,7 @@ fib_test_label (void)
     dpo_id_t non_eos_1_1_1_1 = DPO_INVALID;
     fib_entry_contribute_forwarding(fei,
                                     FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
+                                    FIB_ENTRY_FWD_FLAG_NONE,
                                     &non_eos_1_1_1_1);
 
     /*
@@ -6781,7 +6789,8 @@ fib_test_label (void)
     dpo_id_t dpo_44 = DPO_INVALID;
     index_t urpfi;
 
-    fib_entry_contribute_forwarding(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, &dpo_44);
+    fib_entry_contribute_forwarding(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                    FIB_ENTRY_FWD_FLAG_NONE, &dpo_44);
     urpfi = load_balance_get_urpf(dpo_44.dpoi_index);
 
     FIB_TEST(fib_urpf_check(urpfi, tm->hw[0]->sw_if_index),
@@ -6794,7 +6803,8 @@ fib_test_label (void)
              "uRPF check for 2.2.2.2/32 on 99 not-OK",
              99);
 
-    fib_entry_contribute_forwarding(fei, FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS, &dpo_44);
+    fib_entry_contribute_forwarding(fei, FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
+                                    FIB_ENTRY_FWD_FLAG_NONE, &dpo_44);
     FIB_TEST(urpfi == load_balance_get_urpf(dpo_44.dpoi_index),
              "Shared uRPF on IP and non-EOS chain");
 
@@ -6847,6 +6857,7 @@ fib_test_label (void)
     dpo_id_t current = DPO_INVALID;
     fib_entry_contribute_forwarding(fei,
                                     FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
+                                    FIB_ENTRY_FWD_FLAG_NONE,
                                     &current);
 
     FIB_TEST(!dpo_cmp(&non_eos_1_1_1_1,
@@ -7182,10 +7193,12 @@ fib_test_label (void)
     fib_entry_contribute_forwarding(fib_table_lookup(fib_index,
                                                      &pfx_1_1_1_1_s_32),
                                     FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
+                                    FIB_ENTRY_FWD_FLAG_NONE,
                                     &non_eos_1_1_1_1);
     fib_entry_contribute_forwarding(fib_table_lookup(fib_index,
                                                      &pfx_1_1_1_2_s_32),
                                     FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
+                                    FIB_ENTRY_FWD_FLAG_NONE,
                                     &non_eos_1_1_1_2);
 
     fib_test_lb_bucket_t l1601_eos_o_1_1_1_2 = {
@@ -7321,6 +7334,7 @@ fib_test_label (void)
     fib_entry_contribute_forwarding(fib_table_lookup(fib_index,
                                                      &pfx_1_1_1_1_s_32),
                                     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                    FIB_ENTRY_FWD_FLAG_NONE,
                                     &ip_1_1_1_1);
 
     fib_test_lb_bucket_t ip_o_1_1_1_1 = {
@@ -8274,10 +8288,12 @@ fib_test_bfd (void)
 
     dpo_10_10_10_1 =
         fib_entry_contribute_ip_forwarding(
-            fib_table_lookup_exact_match(0, &pfx_10_10_10_1_s_32));
+            fib_table_lookup_exact_match(0, &pfx_10_10_10_1_s_32),
+            FIB_ENTRY_FWD_FLAG_NONE);
     dpo_10_10_10_2 =
         fib_entry_contribute_ip_forwarding(
-            fib_table_lookup_exact_match(0, &pfx_10_10_10_2_s_32));
+            fib_table_lookup_exact_match(0, &pfx_10_10_10_2_s_32),
+            FIB_ENTRY_FWD_FLAG_NONE);
 
     fib_test_lb_bucket_t lb_o_10_10_10_1 = {
         .type = FT_LB_O_LB,
@@ -8306,7 +8322,7 @@ fib_test_bfd (void)
                                    1,
                                    NULL,
                                    FIB_ROUTE_PATH_FLAG_NONE);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "%U resolves via drop",
              format_fib_prefix, &pfx_200_0_0_0_s_24);
 
@@ -8463,7 +8479,7 @@ fib_test_bfd (void)
                                    1,
                                    NULL,
                                    FIB_ROUTE_PATH_FLAG_NONE);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "%U resolves via drop",
              format_fib_prefix, &pfx_5_5_5_5_s_32);
 
@@ -8590,6 +8606,7 @@ lfib_test (void)
              format_mpls_eos_bit, MPLS_EOS);
     fib_entry_contribute_forwarding(lfe,
                                     FIB_FORW_CHAIN_TYPE_MPLS_EOS,
+                                    FIB_ENTRY_FWD_FLAG_NONE,
                                     &dpo);
     dpo1 = load_balance_get_bucket(dpo.dpoi_index, 0);
     lkd = lookup_dpo_get(dpo1->dpoi_index);
@@ -8643,6 +8660,7 @@ lfib_test (void)
 
     fib_entry_contribute_forwarding(lfe,
                                     FIB_FORW_CHAIN_TYPE_MPLS_EOS,
+                                    FIB_ENTRY_FWD_FLAG_NONE,
                                     &dpo);
     dpo1 = load_balance_get_bucket(dpo.dpoi_index, 0);
     mdd = mpls_disp_dpo_get(dpo1->dpoi_index);
@@ -8706,6 +8724,7 @@ lfib_test (void)
 
     fib_entry_contribute_forwarding(lfe,
         			    FIB_FORW_CHAIN_TYPE_MPLS_EOS,
+                                    FIB_ENTRY_FWD_FLAG_NONE,
         			    &dpo);
     dpo1 = load_balance_get_bucket(dpo.dpoi_index, 0);
     mdd = mpls_disp_dpo_get(dpo1->dpoi_index);
@@ -8765,6 +8784,7 @@ lfib_test (void)
 
     fib_entry_contribute_forwarding(lfe,
                                     FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
+                                    FIB_ENTRY_FWD_FLAG_NONE,
                                     &dpo);
     dpo1 = load_balance_get_bucket(dpo.dpoi_index, 0);
     lkd = lookup_dpo_get(dpo1->dpoi_index);
@@ -8899,9 +8919,11 @@ lfib_test (void)
 
     fib_entry_contribute_forwarding(fib_table_lookup(fib_index, &pfx_1200),
                                     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                    FIB_ENTRY_FWD_FLAG_NONE,
                                     &ip_1200);
     fib_entry_contribute_forwarding(fib_table_lookup(fib_index, &pfx_1200),
                                     FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
+                                    FIB_ENTRY_FWD_FLAG_NONE,
                                     &neos_1200);
 
     fib_test_lb_bucket_t ip_o_1200 = {
@@ -8964,6 +8986,7 @@ lfib_test (void)
 
     fib_entry_contribute_forwarding(fib_table_lookup(fib_index, &pfx_1200),
                                     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                    FIB_ENTRY_FWD_FLAG_NONE,
                                     &ip_1200);
     ip_o_1200.lb.lb = ip_1200.dpoi_index;
 
@@ -9299,7 +9322,7 @@ fib_test_inherit (void)
              "%U via 10.10.10.1",
              format_fib_prefix, &pfx_10_10_10_22_s_32);
     fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_255_s_32);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "%U resolves via drop",
              format_fib_prefix, &pfx_10_10_10_255_s_32);
 
@@ -9309,7 +9332,7 @@ fib_test_inherit (void)
     fib_table_entry_delete(0, &pfx_10_10_10_16_s_28, FIB_SOURCE_API);
 
     fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_21_s_32);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "%U resolves via drop",
              format_fib_prefix, &pfx_10_10_10_21_s_32);
 
@@ -9497,19 +9520,19 @@ fib_test_inherit (void)
              format_fib_prefix, &pfx_10_10_10_0_s_24);
 
     fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_21_s_32);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "%U resolves via drop",
              format_fib_prefix, &pfx_10_10_10_21_s_32);
     fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_22_s_32);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "%U resolves via drop",
              format_fib_prefix, &pfx_10_10_10_22_s_32);
     fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_255_s_32);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "%U resolves via drop",
              format_fib_prefix, &pfx_10_10_10_255_s_32);
     fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_16_s_28);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "%U resolves via drop",
              format_fib_prefix, &pfx_10_10_10_16_s_28);
 
@@ -10389,7 +10412,7 @@ fib_test_inherit (void)
              "%U via 3000::1",
              format_fib_prefix, &pfx_2001_1_1_s_128);
     fei = fib_table_lookup_exact_match(0, &pfx_2001_0_1_s_128);
-    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei, FIB_ENTRY_FWD_FLAG_NONE)),
              "%U resolves via drop",
              format_fib_prefix, &pfx_2001_0_1_s_128);
 

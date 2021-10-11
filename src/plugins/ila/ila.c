@@ -616,11 +616,9 @@ ila_entry_stack (ila_entry_t *ie)
     /*
      * restack on the next-hop's FIB entry
      */
-    dpo_stack(ila_dpo_type,
-	      DPO_PROTO_IP6,
-	      &ie->ila_dpo,
-	      fib_entry_contribute_ip_forwarding(
-		  ie->next_hop_fib_entry_index));
+    dpo_stack (ila_dpo_type, DPO_PROTO_IP6, &ie->ila_dpo,
+	       fib_entry_contribute_ip_forwarding (
+		 ie->next_hop_fib_entry_index, FIB_ENTRY_FWD_FLAG_COLLAPSE));
 }
 
 int

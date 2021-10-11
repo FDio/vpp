@@ -357,7 +357,7 @@ adj_nbr_midchain_stack_on_fib_entry (adj_index_t ai,
     }
     else
     {
-        fib_entry_contribute_forwarding (fei, fct, &tmp);
+        fib_entry_contribute_forwarding (fei, fct, FIB_ENTRY_FWD_FLAG_COLLAPSE, &tmp);
 
         if (DPO_LOAD_BALANCE == tmp.dpoi_type)
         {

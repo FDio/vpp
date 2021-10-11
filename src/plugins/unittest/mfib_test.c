@@ -1227,9 +1227,8 @@ mfib_test_i (fib_protocol_t PROTO,
     };
     dpo_id_t mldp_dpo = DPO_INVALID;
 
-    fib_entry_contribute_forwarding(lfei,
-                                    FIB_FORW_CHAIN_TYPE_MPLS_EOS,
-                                    &mldp_dpo);
+    fib_entry_contribute_forwarding (lfei, FIB_FORW_CHAIN_TYPE_MPLS_EOS,
+				     FIB_ENTRY_FWD_FLAG_NONE, &mldp_dpo);
 
     mfei = mfib_table_entry_path_update(fib_index,
                                         pfx_s_g,
