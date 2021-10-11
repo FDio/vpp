@@ -161,6 +161,9 @@ vlib_api_init (void)
       c->cleanup = vl_noop_handler;                                           \
       c->endian = vl_api_##n##_t_endian;                                      \
       c->print = vl_api_##n##_t_print;                                        \
+      c->print_json = vl_api_##n##_t_print_json;                              \
+      c->tojson = vl_api_##n##_t_tojson;                                      \
+      c->fromjson = vl_api_##n##_t_fromjson;                                  \
       c->size = sizeof (vl_api_##n##_t);                                      \
       c->traced = 1;	     /* trace, so these msgs print */                 \
       c->replay = 0;	     /* don't replay client create/delete msgs */     \
