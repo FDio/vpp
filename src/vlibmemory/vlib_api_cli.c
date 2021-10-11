@@ -785,6 +785,10 @@ vl_msg_read_file (FILE *f)
   while ((n = fread (buf, 1, bufsize, f)))
     vec_add (v, buf, n);
 
+  /* most callers expect a NULL-terminated C-string */
+  if (v)
+    vec_add1 (v, 0);
+
   return v;
 }
 
