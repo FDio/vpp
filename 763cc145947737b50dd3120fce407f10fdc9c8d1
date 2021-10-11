@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8f0ac6a4_0490a16f",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1086,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-10-11T12:09:32Z",
+      "side": 1,
+      "message": "i think these statements should move to to the end of the block as they may delete the table.",
+      "revId": "763cc145947737b50dd3120fce407f10fdc9c8d1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
