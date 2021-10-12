@@ -278,9 +278,20 @@ uword hash_bytes (void *v);
 always_inline void
 hash_set_mem_alloc (uword ** h, const void *key, uword v)
 {
+  int objsize = __builtin_object_size (key, 0);
   size_t ksz = hash_header (*h)->user;
-  void *copy = clib_mem_alloc (ksz);
-  clib_memcpy_fast (copy, key, ksz);
+  void *copy;
+  if (objsize > 0)
+    {
+      ASSERT (objsize == ksz);
+      copy = clib_mem_alloc (objsize);
+      clib_memcpy_fast (copy, key, objsize);
+    }
+  else
+    {
+      copy = clib_mem_alloc (ksz);
+      clib_memcpy_fast (copy, key, ksz);
+    }
   hash_set_mem (*h, copy, v);
 }
 

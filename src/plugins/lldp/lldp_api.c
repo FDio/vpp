@@ -81,7 +81,7 @@ vl_api_sw_interface_set_lldp_t_handler (vl_api_sw_interface_set_lldp_t * mp)
   if (ip4.as_u32 != 0)
     {
       vec_validate (mgmt_ip4, sizeof (ip4_address_t) - 1);
-      clib_memcpy (mgmt_ip4, &ip4, vec_len (mgmt_ip4));
+      clib_memcpy (mgmt_ip4, &ip4, sizeof (ip4));
     }
 
   ip6_address_decode (mp->mgmt_ip6, &ip6);
@@ -89,7 +89,7 @@ vl_api_sw_interface_set_lldp_t_handler (vl_api_sw_interface_set_lldp_t * mp)
   if (!ip6_address_is_zero (&ip6))
     {
       vec_validate (mgmt_ip6, sizeof (ip6_address_t) - 1);
-      clib_memcpy (mgmt_ip6, &ip6, vec_len (mgmt_ip6));
+      clib_memcpy (mgmt_ip6, &ip6, sizeof (ip6));
     }
 
   if (memcmp (mp->mgmt_oid, no_data, strlen ((char *) mp->mgmt_oid)) != 0)
