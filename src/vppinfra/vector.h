@@ -65,8 +65,9 @@
 #define CLIB_HAVE_VEC512
 #endif
 
-#define _vector_size(n) __attribute__ ((vector_size (n)))
-#define _vector_size_unaligned(n) __attribute__ ((vector_size (n),  __aligned__ (1)))
+#define _vector_size(n) __attribute__ ((vector_size (n), __may_alias__))
+#define _vector_size_unaligned(n)                                             \
+  __attribute__ ((vector_size (n), __aligned__ (1), __may_alias__))
 
 #define foreach_vec64i  _(i,8,8)  _(i,16,4)  _(i,32,2)
 #define foreach_vec64u  _(u,8,8)  _(u,16,4)  _(u,32,2)
