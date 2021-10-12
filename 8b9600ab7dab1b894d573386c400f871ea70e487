@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d8286ee0_a310d8fa",
+        "filename": "src/plugins/nat/nat44-ei/nat44_ei.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 365,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2021-10-12T09:36:15Z",
+      "side": 1,
+      "message": "why is address only sm not considered as using address?",
+      "revId": "8b9600ab7dab1b894d573386c400f871ea70e487",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "54ff9564_9340ad94",
+        "filename": "src/plugins/nat/nat44-ei/nat44_ei.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 658,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2021-10-12T09:36:15Z",
+      "side": 1,
+      "message": "this is super weird and confusing\n\nimagine loading a core in debugger - without source code you\u0027re completely lost",
+      "revId": "8b9600ab7dab1b894d573386c400f871ea70e487",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "93a94481_12c57c3b",
+        "filename": "src/plugins/nat/nat44-ei/nat44_ei_cli.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1076,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2021-10-12T09:36:15Z",
+      "side": 1,
+      "message": "what does this comment mean? I don\u0027t understand what \"fix returns\" means",
+      "revId": "8b9600ab7dab1b894d573386c400f871ea70e487",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e4c80c34_1ceb3c7e",
+        "filename": "src/plugins/nat/nat44-ei/nat44_ei_cli.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1172,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2021-10-12T09:36:15Z",
+      "side": 1,
+      "message": "same here",
+      "revId": "8b9600ab7dab1b894d573386c400f871ea70e487",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
