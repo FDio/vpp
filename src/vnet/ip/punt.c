@@ -165,7 +165,8 @@ punt_socket_register_l4 (vlib_main_t * vm,
       punt_client_l4_db_add (af, port, c - pm->punt_client_pool);
     }
 
-  memcpy (c->caddr.sun_path, client_pathname, sizeof (c->caddr.sun_path));
+  snprintf (c->caddr.sun_path, sizeof (c->caddr.sun_path), "%s",
+	    client_pathname);
   c->caddr.sun_family = AF_UNIX;
   c->reg.type = PUNT_TYPE_L4;
   c->reg.punt.l4.port = port;
@@ -197,7 +198,8 @@ punt_socket_register_ip_proto (vlib_main_t * vm,
       punt_client_ip_proto_db_add (af, proto, c - pm->punt_client_pool);
     }
 
-  memcpy (c->caddr.sun_path, client_pathname, sizeof (c->caddr.sun_path));
+  snprintf (c->caddr.sun_path, sizeof (c->caddr.sun_path), "%s",
+	    client_pathname);
   c->caddr.sun_family = AF_UNIX;
   c->reg.type = PUNT_TYPE_IP_PROTO;
   c->reg.punt.ip_proto.protocol = proto;
@@ -227,7 +229,8 @@ punt_socket_register_exception (vlib_main_t * vm,
       punt_client_exception_db_add (reason, pc - pm->punt_client_pool);
     }
 
-  memcpy (pc->caddr.sun_path, client_pathname, sizeof (pc->caddr.sun_path));
+  snprintf (pc->caddr.sun_path, sizeof (pc->caddr.sun_path), "%s",
+	    client_pathname);
   pc->caddr.sun_family = AF_UNIX;
   pc->reg.type = PUNT_TYPE_EXCEPTION;
   pc->reg.punt.exception.reason = reason;
