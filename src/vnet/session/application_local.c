@@ -640,7 +640,7 @@ ct_accept_rpc_wrk_handler (void *accept_args)
   sct->c_rmt_port = 0;
   sct->c_lcl_port = ll_ct->lcl_port;
   sct->c_is_ip4 = cct->c_is_ip4;
-  clib_memcpy (&sct->c_lcl_ip, &ll_ct->lcl_ip, sizeof (ll_ct->lcl_ip));
+  clib_memcpy (&sct->c_lcl_ip, &cct->c_rmt_ip, sizeof (cct->c_lcl_ip));
   sct->client_wrk = cct->client_wrk;
   sct->c_proto = TRANSPORT_PROTO_NONE;
   sct->client_opaque = cct->client_opaque;
