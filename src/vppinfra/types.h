@@ -165,12 +165,12 @@ typedef f64 fword;
        __attribute__ ((aligned (align), packed));	\
     } *) (addr))->_data)
 
-typedef u16 u16u __attribute__ ((aligned (1)));
-typedef u32 u32u __attribute__ ((aligned (1)));
-typedef u64 u64u __attribute__ ((aligned (1)));
-typedef i16 i16u __attribute__ ((aligned (1)));
-typedef i32 i32u __attribute__ ((aligned (1)));
-typedef i64 i64u __attribute__ ((aligned (1)));
+typedef u16 u16u __attribute__ ((aligned (1), __may_alias__));
+typedef u32 u32u __attribute__ ((aligned (1), __may_alias__));
+typedef u64 u64u __attribute__ ((aligned (1), __may_alias__));
+typedef i16 i16u __attribute__ ((aligned (1), __may_alias__));
+typedef i32 i32u __attribute__ ((aligned (1), __may_alias__));
+typedef i64 i64u __attribute__ ((aligned (1), __may_alias__));
 
 #endif /* included_clib_types_h */
 
