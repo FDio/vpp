@@ -150,9 +150,7 @@ set(VPPINFRA_HEADERS
   maplog.h
   math.h
   memcpy.h
-  memcpy_avx2.h
-  memcpy_avx512.h
-  memcpy_sse3.h
+  memcpy_x86_64.h
   mem.h
   mhash.h
   mpcap.h
@@ -274,6 +272,7 @@ if(VPP_BUILD_VPPINFRA_TESTS)
 set(test_files
   vector/test/compress.c
   vector/test/mask_compare.c
+  vector/test/memcpy_x86_64.c
   vector/test/array_mask.c
 )
 
