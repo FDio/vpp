@@ -150,9 +150,7 @@ set(VPPINFRA_HEADERS
   maplog.h
   math.h
   memcpy.h
-  memcpy_avx2.h
-  memcpy_avx512.h
-  memcpy_sse3.h
+  memcpy_x86_64.h
   mem.h
   mhash.h
   mpcap.h
@@ -278,6 +276,7 @@ set(test_files
   vector/test/count_equal.c
   vector/test/index_to_ptr.c
   vector/test/mask_compare.c
+  vector/test/memcpy_x86_64.c
 )
 
 add_vpp_executable(test_vector_funcs
