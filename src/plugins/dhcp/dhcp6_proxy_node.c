@@ -583,7 +583,7 @@ dhcpv6_proxy_to_client_input (vlib_main_t * vm,
       udp_header_t *u0, *u1 = 0;
       dhcpv6_relay_hdr_t *h0;
       ip6_header_t *ip1 = 0, *ip0;
-      ip6_address_t _ia0, *ia0 = &_ia0;
+      ip6_address_t *ia0 = 0;
       ip6_address_t client_address;
       ethernet_interface_t *ei0;
       ethernet_header_t *mac0;
