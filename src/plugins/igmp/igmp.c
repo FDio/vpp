@@ -408,18 +408,19 @@ igmp_enable_disable (u32 sw_if_index, u8 enable, igmp_mode_t mode)
 	  {
 	    /* first config in this FIB */
 	    mfib_table_lock (mfib_index, FIB_PROTOCOL_IP4, MFIB_SOURCE_IGMP);
-	    mfib_table_entry_path_update (mfib_index,
-					  &mpfx_general_query,
-					  MFIB_SOURCE_IGMP, &for_us_path);
-	    mfib_table_entry_path_update (mfib_index,
-					  &mpfx_report,
-					  MFIB_SOURCE_IGMP, &for_us_path);
+	    mfib_table_entry_path_update (mfib_index, &mpfx_general_query,
+					  MFIB_SOURCE_IGMP,
+					  MFIB_ENTRY_FLAG_NONE, &for_us_path);
+	    mfib_table_entry_path_update (mfib_index, &mpfx_report,
+					  MFIB_SOURCE_IGMP,
+					  MFIB_ENTRY_FLAG_NONE, &for_us_path);
 	  }
-	mfib_table_entry_path_update (mfib_index,
-				      &mpfx_general_query,
-				      MFIB_SOURCE_IGMP, &via_itf_path);
+	mfib_table_entry_path_update (mfib_index, &mpfx_general_query,
+				      MFIB_SOURCE_IGMP, MFIB_ENTRY_FLAG_NONE,
+				      &via_itf_path);
 	mfib_table_entry_path_update (mfib_index, &mpfx_report,
-				      MFIB_SOURCE_IGMP, &via_itf_path);
+				      MFIB_SOURCE_IGMP, MFIB_ENTRY_FLAG_NONE,
+				      &via_itf_path);
       }
     }
   else if (config && !enable)

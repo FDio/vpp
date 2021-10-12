@@ -183,6 +183,7 @@ ip6_create_mfib_with_table_id (u32 table_id,
         mfib_table_entry_path_update(mfib_table->mft_index,
                                      &pfx,
                                      MFIB_SOURCE_SPECIAL,
+                                     MFIB_ENTRY_FLAG_NONE,
                                      &path_for_us);
     }));
 
@@ -255,6 +256,7 @@ ip6_mfib_interface_enable_disable (u32 sw_if_index, int is_enable)
             mfib_table_entry_path_update(mfib_index,
                                          &pfx,
                                          MFIB_SOURCE_SPECIAL,
+                                         MFIB_ENTRY_FLAG_NONE,
                                          &path);
         });
     }

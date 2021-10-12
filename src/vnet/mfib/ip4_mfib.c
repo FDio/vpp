@@ -92,6 +92,7 @@ ip4_create_mfib_with_table_id (u32 table_id,
         mfib_table_entry_path_update(mfib_table->mft_index,
                                      &ip4_specials[ii],
                                      MFIB_SOURCE_SPECIAL,
+                                     MFIB_ENTRY_FLAG_NONE,
                                      &path);
     }
 
@@ -151,6 +152,7 @@ ip4_mfib_interface_enable_disable (u32 sw_if_index, int is_enable)
             mfib_table_entry_path_update(mfib_index,
                                          &ip4_specials[ii],
                                          MFIB_SOURCE_SPECIAL,
+                                         MFIB_ENTRY_FLAG_NONE,
                                          &path);
         }
         else

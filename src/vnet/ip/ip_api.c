@@ -979,9 +979,8 @@ mroute_add_del_handler (u8 is_add,
     {
       if (is_add)
 	{
-	  mfib_entry_index =
-	    mfib_table_entry_paths_update (fib_index, prefix,
-					   MFIB_SOURCE_API, rpaths);
+	  mfib_entry_index = mfib_table_entry_paths_update (
+	    fib_index, prefix, MFIB_SOURCE_API, entry_flags, rpaths);
 	}
       else
 	{
