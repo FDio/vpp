@@ -72,6 +72,9 @@ void clib_memswap (void *_a, void *_b, uword bytes);
  * so don't let it anywhere near them.
  */
 #ifndef __COVERITY__
+#ifdef __x86_64__
+#include <vppinfra/memcpy_x86_64.h>
+#endif
 #if __AVX512BITALG__
 #include <vppinfra/memcpy_avx512.h>
 #define clib_memcpy_fast_arch(a, b, c) clib_memcpy_fast_avx512 (a, b, c)
@@ -94,6 +97,13 @@ clib_memcpy_fast (void *restrict dst, const void *restrict src, size_t n)
   ASSERT (dst && src &&
 	  "memcpy(src, dst, n) with src == NULL or dst == NULL is undefined "
 	  "behaviour");
+#ifdef __x86_64__
+  if (COMPILE_TIME_CONST (n) && n < 128)
+    {
+      clib_memcpy_const_le128 ((u8 *) dst, (u8 *) src, n);
+      return dst;
+    }
+#endif
   return clib_memcpy_fast_arch (dst, src, n);
 }
 
