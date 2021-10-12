@@ -207,14 +207,12 @@ extern fib_node_index_t mfib_table_entry_update(u32 fib_index,
  * @return
  *  the index of the fib_entry_t that is created (or existed already).
  */
-extern fib_node_index_t mfib_table_entry_path_update(u32 fib_index,
-                                                     const mfib_prefix_t *prefix,
-                                                     mfib_source_t source,
-                                                     const fib_route_path_t *rpath);
-extern fib_node_index_t mfib_table_entry_paths_update(u32 fib_index,
-                                                      const mfib_prefix_t *prefix,
-                                                      mfib_source_t source,
-                                                      const fib_route_path_t *rpath);
+extern fib_node_index_t mfib_table_entry_path_update (
+  u32 fib_index, const mfib_prefix_t *prefix, mfib_source_t source,
+  mfib_entry_flags_t entry_flags, const fib_route_path_t *rpath);
+extern fib_node_index_t mfib_table_entry_paths_update (
+  u32 fib_index, const mfib_prefix_t *prefix, mfib_source_t source,
+  mfib_entry_flags_t entry_flags, const fib_route_path_t *rpath);
 
 /**
  * @brief

@@ -927,9 +927,9 @@ dhcp6_proxy_set_server (ip46_address_t * addr,
       if (dhcp_proxy_server_add (FIB_PROTOCOL_IP6, addr, src_addr,
 				 rx_fib_index, server_table_id))
 	{
-	  mfib_table_entry_path_update (rx_fib_index,
-					&all_dhcp_servers,
-					MFIB_SOURCE_DHCP, &path_for_us);
+	  mfib_table_entry_path_update (rx_fib_index, &all_dhcp_servers,
+					MFIB_SOURCE_DHCP, MFIB_ENTRY_FLAG_NONE,
+					&path_for_us);
 	  /*
 	   * Each interface that is enabled in this table, needs to be added
 	   * as an accepting interface, but this is not easily doable in VPP.

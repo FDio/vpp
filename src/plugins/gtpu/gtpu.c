@@ -524,15 +524,16 @@ int vnet_gtpu_add_mod_del_tunnel
 	       *  - the forwarding interface is for-us
 	       *  - the accepting interface is that from the API
 	       */
-	      mfib_table_entry_path_update (t->encap_fib_index,
-					    &mpfx, MFIB_SOURCE_GTPU, &path);
+	      mfib_table_entry_path_update (t->encap_fib_index, &mpfx,
+					    MFIB_SOURCE_GTPU,
+					    MFIB_ENTRY_FLAG_NONE, &path);
 
 	      path.frp_sw_if_index = a->mcast_sw_if_index;
 	      path.frp_flags = FIB_ROUTE_PATH_FLAG_NONE;
 	      path.frp_mitf_flags = MFIB_ITF_FLAG_ACCEPT;
-	      mfei = mfib_table_entry_path_update (t->encap_fib_index,
-						   &mpfx,
-						   MFIB_SOURCE_GTPU, &path);
+	      mfei = mfib_table_entry_path_update (
+		t->encap_fib_index, &mpfx, MFIB_SOURCE_GTPU,
+		MFIB_ENTRY_FLAG_NONE, &path);
 
 	      /*
 	       * Create the mcast adjacency to send traffic to the group

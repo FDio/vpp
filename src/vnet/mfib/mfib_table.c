@@ -289,10 +289,10 @@ mfib_table_entry_update (u32 fib_index,
 }
 
 static fib_node_index_t
-mfib_table_entry_paths_update_i (u32 fib_index,
-                                 const mfib_prefix_t *prefix,
-                                 mfib_source_t source,
-                                 const fib_route_path_t *rpaths)
+mfib_table_entry_paths_update_i (u32 fib_index, const mfib_prefix_t *prefix,
+				 mfib_source_t source,
+				 mfib_entry_flags_t entry_flags,
+				 const fib_route_path_t *rpaths)
 {
     fib_node_index_t mfib_entry_index;
     mfib_table_t *mfib_table;
@@ -302,16 +302,13 @@ mfib_table_entry_paths_update_i (u32 fib_index,
 
     if (FIB_NODE_INDEX_INVALID == mfib_entry_index)
     {
-        mfib_entry_index = mfib_entry_create(fib_index,
-                                             source,
-                                             prefix,
-                                             MFIB_RPF_ID_NONE,
-                                             MFIB_ENTRY_FLAG_NONE,
-                                             INDEX_INVALID);
+      mfib_entry_index =
+	mfib_entry_create (fib_index, source, prefix, MFIB_RPF_ID_NONE,
+			   entry_flags, INDEX_INVALID);
 
-        mfib_entry_path_update(mfib_entry_index, source, rpaths);
+      mfib_entry_path_update (mfib_entry_index, source, rpaths);
 
-        mfib_table_entry_insert(mfib_table, prefix, mfib_entry_index);
+      mfib_table_entry_insert (mfib_table, prefix, mfib_entry_index);
     }
     else
     {
@@ -320,33 +317,32 @@ mfib_table_entry_paths_update_i (u32 fib_index,
     return (mfib_entry_index);
 }
 
-
 fib_node_index_t
-mfib_table_entry_path_update (u32 fib_index,
-                              const mfib_prefix_t *prefix,
-                              mfib_source_t source,
-                              const fib_route_path_t *rpath)
+mfib_table_entry_path_update (u32 fib_index, const mfib_prefix_t *prefix,
+			      mfib_source_t source,
+			      mfib_entry_flags_t entry_flags,
+			      const fib_route_path_t *rpath)
 {
     fib_node_index_t mfib_entry_index;
     fib_route_path_t *rpaths = NULL;
 
     vec_add1(rpaths, *rpath);
 
-    mfib_entry_index = mfib_table_entry_paths_update_i(fib_index, prefix,
-                                                       source, rpaths);
+    mfib_entry_index = mfib_table_entry_paths_update_i (
+      fib_index, prefix, source, entry_flags, rpaths);
 
     vec_free(rpaths);
     return (mfib_entry_index);
 }
 
 fib_node_index_t
-mfib_table_entry_paths_update (u32 fib_index,
-                              const mfib_prefix_t *prefix,
-                              mfib_source_t source,
-                              const fib_route_path_t *rpaths)
+mfib_table_entry_paths_update (u32 fib_index, const mfib_prefix_t *prefix,
+			       mfib_source_t source,
+			       mfib_entry_flags_t entry_flags,
+			       const fib_route_path_t *rpaths)
 {
-    return (mfib_table_entry_paths_update_i(fib_index, prefix,
-                                            source, rpaths));
+  return (mfib_table_entry_paths_update_i (fib_index, prefix, source,
+					   entry_flags, rpaths));
 }
 
 static void

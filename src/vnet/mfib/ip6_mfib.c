@@ -178,12 +178,10 @@ ip6_create_mfib_with_table_id (u32 table_id,
     /*
      * Add each of the specials
      */
-    FOR_EACH_IP6_SPECIAL(&pfx,
-    ({
-        mfib_table_entry_path_update(mfib_table->mft_index,
-                                     &pfx,
-                                     MFIB_SOURCE_SPECIAL,
-                                     &path_for_us);
+    FOR_EACH_IP6_SPECIAL (&pfx, ({
+      mfib_table_entry_path_update (mfib_table->mft_index, &pfx,
+				    MFIB_SOURCE_SPECIAL, MFIB_ENTRY_FLAG_NONE,
+				    &path_for_us);
     }));
 
     return (mfib_table->mft_index);
@@ -250,13 +248,10 @@ ip6_mfib_interface_enable_disable (u32 sw_if_index, int is_enable)
 
     if (is_enable)
     {
-        FOR_EACH_IP6_SPECIAL(&pfx,
-        {
-            mfib_table_entry_path_update(mfib_index,
-                                         &pfx,
-                                         MFIB_SOURCE_SPECIAL,
-                                         &path);
-        });
+      FOR_EACH_IP6_SPECIAL (&pfx, {
+	mfib_table_entry_path_update (mfib_index, &pfx, MFIB_SOURCE_SPECIAL,
+				      MFIB_ENTRY_FLAG_NONE, &path);
+      });
     }
     else
     {

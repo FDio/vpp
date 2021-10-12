@@ -88,12 +88,11 @@ ip4_create_mfib_with_table_id (u32 table_id,
     int ii;
 
     for (ii = 0; ii < ARRAY_LEN(ip4_specials); ii++)
-    {
-        mfib_table_entry_path_update(mfib_table->mft_index,
-                                     &ip4_specials[ii],
-                                     MFIB_SOURCE_SPECIAL,
-                                     &path);
-    }
+      {
+	mfib_table_entry_path_update (mfib_table->mft_index, &ip4_specials[ii],
+				      MFIB_SOURCE_SPECIAL,
+				      MFIB_ENTRY_FLAG_NONE, &path);
+      }
 
     return (mfib_table->mft_index);
 }
@@ -147,19 +146,16 @@ ip4_mfib_interface_enable_disable (u32 sw_if_index, int is_enable)
     for (ii = 0; ii < ARRAY_LEN(ip4_specials); ii++)
     {
         if (is_enable)
-        {
-            mfib_table_entry_path_update(mfib_index,
-                                         &ip4_specials[ii],
-                                         MFIB_SOURCE_SPECIAL,
-                                         &path);
-        }
-        else
-        {
-            mfib_table_entry_path_remove(mfib_index,
-                                         &ip4_specials[ii],
-                                         MFIB_SOURCE_SPECIAL,
-                                         &path);
-        }
+	  {
+	    mfib_table_entry_path_update (mfib_index, &ip4_specials[ii],
+					  MFIB_SOURCE_SPECIAL,
+					  MFIB_ENTRY_FLAG_NONE, &path);
+	  }
+	else
+	  {
+	    mfib_table_entry_path_remove (mfib_index, &ip4_specials[ii],
+					  MFIB_SOURCE_SPECIAL, &path);
+	  }
     }
 }
 
