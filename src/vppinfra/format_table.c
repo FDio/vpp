@@ -52,9 +52,6 @@ format_text_cell (table_t *t, u8 *s, table_cell_t *c, table_text_attr_t *def,
 {
   table_text_attr_t _a = {}, *a = &_a;
 
-  if (a == 0)
-    return format (s, t->no_ansi ? "" : "\x1b[0m");
-
   clib_memcpy (a, def, sizeof (table_text_attr_t));
 
   if (t->no_ansi == 0)
