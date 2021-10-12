@@ -3342,7 +3342,7 @@ nat44_ed_add_del_interface_address_cb (ip4_main_t *im, uword opaque,
 	    {
 	      rv = nat44_ed_add_static_mapping (
 		rp->l_addr, address[0], rp->l_port, rp->e_port, rp->proto,
-		rp->vrf_id, ~0, rp->flags, rp->pool_addr, rp->tag);
+		rp->vrf_id, sw_if_index, rp->flags, rp->pool_addr, rp->tag);
 	      if (rv)
 		{
 		  nat_elog_notice_X1 (sm, "add_static_mapping returned %d",
