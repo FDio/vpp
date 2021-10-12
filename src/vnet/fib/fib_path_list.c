@@ -629,6 +629,28 @@ fib_path_list_get_resolving_interface (fib_node_index_t path_list_index)
     return (sw_if_index);
 }
 
+u32
+fib_path_list_get_resolving_fib(fib_node_index_t path_list_index)
+{
+    fib_node_index_t *path_index;
+    fib_path_list_t *path_list;
+    u32 fib_index;
+
+    path_list = fib_path_list_get(path_list_index);
+
+    fib_index = ~0;
+    vec_foreach (path_index, path_list->fpl_paths)
+    {
+	fib_index = fib_path_get_resolving_index(*path_index);
+	if (~0 != fib_index)
+	{
+	    return (fib_index);
+	}
+    }
+
+    return (fib_index);
+}
+
 dpo_proto_t
 fib_path_list_get_proto (fib_node_index_t path_list_index)
 {

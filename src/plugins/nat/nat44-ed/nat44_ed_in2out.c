@@ -24,6 +24,7 @@
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/udp/udp_local.h>
 #include <vppinfra/error.h>
+#include <vnet/ip/format.h>
 
 #include <nat/lib/nat_syslog.h>
 #include <nat/lib/nat_inlines.h>
@@ -237,6 +238,9 @@ nat_ed_alloc_addr_and_port (snat_main_t *sm, u32 rx_fib_index, u32 nat_proto,
       for (i = s_addr_offset; i < vec_len (sm->addresses); ++i)
 	{
 	  a = sm->addresses + i;
+	  vlib_log_err (sm->logger, "ALLOC fib of %U (%d): %d (need %d)",
+			format_ip4_address, &a->addr, i, a->fib_index,
+			rx_fib_index);
 	  if (a->fib_index == rx_fib_index)
 	    {
 	      return nat_ed_alloc_addr_and_port_with_snat_address (
@@ -252,6 +256,9 @@ nat_ed_alloc_addr_and_port (snat_main_t *sm, u32 rx_fib_index, u32 nat_proto,
       for (i = 0; i < s_addr_offset; ++i)
 	{
 	  a = sm->addresses + i;
+	  vlib_log_err (sm->logger, "ALLOC fib of %U (%d): %d (need %d)",
+			format_ip4_address, &a->addr, i, a->fib_index,
+			rx_fib_index);
 	  if (a->fib_index == rx_fib_index)
 	    {
 	      return nat_ed_alloc_addr_and_port_with_snat_address (
@@ -295,8 +302,18 @@ nat_outside_fib_index_lookup (snat_main_t * sm, ip4_address_t addr)
         {
           if (fib_entry_get_resolving_interface (fei) != ~0)
             {
-              return outside_fib->fib_index;
-            }
+	      fib_entry_t *fe = fib_entry_get (fei);
+	      // vlib_log_err(sm->logger, "FIB NAT %U", format_fib_entry,
+	      // ip4_fib_table_lookup(fib_table_get(outside_fib->fib_index,
+	      // FIB_PROTOCOL_IP4), &addr, 32), FIB_ENTRY_FORMAT_DETAIL2 );
+	      u32 resolving_index = fib_entry_get_resolving_fib (fei);
+	      fib_entry_t *fefib = fib_entry_get (resolving_index);
+	      vlib_log_err (
+		sm->logger,
+		"fib entry index: %d, fib index: %d, resolving fib: %d", fei,
+		fe->fe_fib_index, fefib->fe_fib_index);
+	      return fefib->fe_fib_index;
+	    }
         }
     }
   return ~0;
@@ -374,6 +391,7 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
       break;
     default:
       outside_fib_index = nat_outside_fib_index_lookup (sm, r_addr);
+      vlib_log_err (sm->logger, "outside fib index: %d", outside_fib_index);
       break;
     }
 
@@ -443,7 +461,7 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
       nat_6t_flow_txfib_rewrite_set (&s->o2i, rx_fib_index);
 
       if (nat_ed_alloc_addr_and_port (
-	    sm, rx_fib_index, nat_proto, thread_index, l_addr,
+	    sm, outside_fib_index, nat_proto, thread_index, l_addr,
 	    sm->port_per_thread, tsm->snat_thread_index, s, &outside_addr,
 	    &outside_port))
 	{
@@ -452,6 +470,8 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
 	  nat_ed_session_delete (sm, s, thread_index, 1);
 	  return NAT_NEXT_DROP;
 	}
+      vlib_log_err (sm->logger, "outside address: %U", format_ip4_address,
+		    &outside_addr);
       s->out2in.addr = outside_addr;
       s->out2in.port = outside_port;
     }

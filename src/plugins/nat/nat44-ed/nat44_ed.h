@@ -676,6 +676,7 @@ typedef struct snat_main_s
   u8 enabled;
 
   vnet_main_t *vnet_main;
+  vlib_log_class_t logger;
 
 } snat_main_t;
 

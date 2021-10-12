@@ -2261,6 +2261,10 @@ static clib_error_t *
 nat_init (vlib_main_t * vm)
 {
   snat_main_t *sm = &snat_main;
+  // sm->logger = vlib_log_register_class_rate_limit("snat", "run", 0x7FFFFFFF
+  // /* aka no rate limit */ );
+  sm->logger = vlib_log_register_class ("snat", "datapath");
+
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vlib_thread_registration_t *tr;
   ip4_add_del_interface_address_callback_t cbi = { 0 };
@@ -3327,8 +3331,9 @@ nat44_ed_add_del_interface_address_cb (ip4_main_t *im, uword opaque,
 	      return;
 	    }
 	}
-
-      (void) nat44_ed_add_address (address, ~0, twice_nat);
+      u32 table_id =
+	fib_table_get_table_id_for_sw_if_index (FIB_PROTOCOL_IP4, sw_if_index);
+      (void) nat44_ed_add_address (address, table_id, twice_nat);
 
       // scan static mapping switch address resolution record vector
       for (i = 0; i < vec_len (sm->to_resolve); i++)
@@ -3342,7 +3347,7 @@ nat44_ed_add_del_interface_address_cb (ip4_main_t *im, uword opaque,
 	    {
 	      rv = nat44_ed_add_static_mapping (
 		rp->l_addr, address[0], rp->l_port, rp->e_port, rp->proto,
-		rp->vrf_id, ~0, rp->flags, rp->pool_addr, rp->tag);
+		rp->vrf_id, table_id, rp->flags, rp->pool_addr, rp->tag);
 	      if (rv)
 		{
 		  nat_elog_notice_X1 (sm, "add_static_mapping returned %d",
@@ -3388,10 +3393,12 @@ nat44_ed_add_interface_address (u32 sw_if_index, u8 twice_nat)
     }
 
   // if the address is already bound - or static - add it now
+  u32 table_id =
+    fib_table_get_table_id_for_sw_if_index (FIB_PROTOCOL_IP4, sw_if_index);
   first_int_addr = ip4_interface_first_address (ip4_main, sw_if_index, 0);
   if (first_int_addr)
     {
-      (void) nat44_ed_add_address (first_int_addr, ~0, twice_nat);
+      (void) nat44_ed_add_address (first_int_addr, table_id, twice_nat);
     }
 
   return 0;
