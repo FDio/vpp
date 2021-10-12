@@ -40,6 +40,7 @@
 #ifndef included_ip_ip6_error_h
 #define included_ip_ip6_error_h
 
+// clang-format off
 #define foreach_ip6_error                                               \
   /* Must be first. */                                                  \
   _ (NONE, "valid ip6 packets")                                         \
@@ -76,6 +77,9 @@
   _ (OUTACL_TABLE_MISS, "output ACL table-miss drops")                  \
   _ (OUTACL_SESSION_DENY, "output ACL session deny drops")              \
                                                                         \
+  /* Errors from mfib-forward */                                        \
+  _ (RPF_FAILURE, "Multicast RPF check failed")                         \
+                                                                        \
   /* Errors signalled by ip6-reassembly */                              \
   _ (REASS_MISSING_UPPER, "missing-upper layer drops")                  \
   _ (REASS_DUPLICATE_FRAGMENT, "duplicate fragments")                   \
@@ -86,6 +90,8 @@
   _ (REASS_TIMEOUT, "fragments dropped due to reassembly timeout")      \
   _ (REASS_INTERNAL_ERROR, "drops due to internal reassembly error")    \
   _ (REASS_UNSUPP_IP_PROTO, "unsupported ip protocol")
+
+// clang-format on
 
 typedef enum
 {
