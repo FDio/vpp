@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6f0ad4cb_64db049d",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_in2out.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 309,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-10-12T12:33:24Z",
+      "side": 1,
+      "message": "resolving_index could be INVALID",
+      "revId": "fd19a81bb2ab94da8fa6f5e03efa767c4758c27c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
