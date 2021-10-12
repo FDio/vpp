@@ -16,6 +16,24 @@
       "revId": "d9e9870dd941bfb826530815e3196ced0b544b5d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b03203fa_86831382",
+        "filename": "src/vppinfra/format_table.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-10-12T19:58:29Z",
+      "side": 0,
+      "message": "ow, fixed",
+      "parentUuid": "c7e50634_093b9e6b",
+      "revId": "d9e9870dd941bfb826530815e3196ced0b544b5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
