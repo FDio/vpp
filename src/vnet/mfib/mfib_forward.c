@@ -443,33 +443,33 @@ mfib_forward_rpf (vlib_main_t * vm,
             else
             {
                 next0 = MFIB_FORWARD_RPF_NEXT_DROP;
-                error0 = IP4_ERROR_RPF_FAILURE;
-            }
+		error0 =
+		  (is_v4 ? IP4_ERROR_RPF_FAILURE : IP6_ERROR_RPF_FAILURE);
+	    }
 
-            b0->error = error0 ? error_node->errors[error0] : 0;
+	    b0->error = error0 ? error_node->errors[error0] : 0;
 
-            if (b0->flags & VLIB_BUFFER_IS_TRACED)
-            {
-                mfib_forward_rpf_trace_t *t0;
+	    if (b0->flags & VLIB_BUFFER_IS_TRACED)
+	      {
+		mfib_forward_rpf_trace_t *t0;
 
-                t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
-                t0->entry_index = mfei0;
-                t0->itf_flags = iflags0;
-                if (NULL == mfi0)
-                {
-                    t0->sw_if_index = ~0;
-                }
-                else
-                {
-                    t0->sw_if_index = mfi0->mfi_sw_if_index;
-                }
-            }
-            vlib_validate_buffer_enqueue_x1 (vm, node, next,
-                                             to_next, n_left_to_next,
-                                             pi0, next0);
-        }
+		t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
+		t0->entry_index = mfei0;
+		t0->itf_flags = iflags0;
+		if (NULL == mfi0)
+		  {
+		    t0->sw_if_index = ~0;
+		  }
+		else
+		  {
+		    t0->sw_if_index = mfi0->mfi_sw_if_index;
+		  }
+	      }
+	    vlib_validate_buffer_enqueue_x1 (vm, node, next, to_next,
+					     n_left_to_next, pi0, next0);
+	}
 
-        vlib_put_next_frame(vm, node, next, n_left_to_next);
+	vlib_put_next_frame (vm, node, next, n_left_to_next);
     }
 
     return frame->n_vectors;
