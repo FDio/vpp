@@ -179,7 +179,7 @@ socket_config (char *config,
 		error = clib_error_return (0, "unknown host `%s'", config);
 	      else
 		clib_memcpy (&sa->sin_addr.s_addr, host->h_addr_list[0],
-			     host->h_length);
+			     4);
 	    }
 
 	  else
