@@ -47,6 +47,7 @@
 #include <vppinfra/clib.h>	/* for CLIB_LINUX_KERNEL */
 #include <vppinfra/vector.h>
 #include <vppinfra/error_bootstrap.h>
+#include <vppinfra/memcpy_x86_64.h>
 
 #ifdef CLIB_LINUX_KERNEL
 #include <linux/string.h>
@@ -67,26 +68,6 @@
 /* Exchanges source and destination. */
 void clib_memswap (void *_a, void *_b, uword bytes);
 
-/*
- * the vector unit memcpy variants confuse coverity
- * so don't let it anywhere near them.
- */
-#ifndef __COVERITY__
-#if __AVX512BITALG__
-#include <vppinfra/memcpy_avx512.h>
-#define clib_memcpy_fast_arch(a, b, c) clib_memcpy_fast_avx512 (a, b, c)
-#elif __AVX2__
-#include <vppinfra/memcpy_avx2.h>
-#define clib_memcpy_fast_arch(a, b, c) clib_memcpy_fast_avx2 (a, b, c)
-#elif __SSSE3__
-#include <vppinfra/memcpy_sse3.h>
-#define clib_memcpy_fast_arch(a, b, c) clib_memcpy_fast_sse3 (a, b, c)
-#endif /* __AVX512BITALG__ */
-#endif /* __COVERITY__ */
-
-#ifndef clib_memcpy_fast_arch
-#define clib_memcpy_fast_arch(a, b, c) memcpy (a, b, c)
-#endif /* clib_memcpy_fast_arch */
 
 static_always_inline void *
 clib_memcpy_fast (void *restrict dst, const void *restrict src, size_t n)
@@ -94,10 +75,15 @@ clib_memcpy_fast (void *restrict dst, const void *restrict src, size_t n)
   ASSERT (dst && src &&
 	  "memcpy(src, dst, n) with src == NULL or dst == NULL is undefined "
 	  "behaviour");
-  return clib_memcpy_fast_arch (dst, src, n);
+#if defined(__COVERITY__)
+  return memcpy (dst, src, n);
+#elif defined(__x86_64__)
+  clib_memcpy_x86_64 (dst, src, n);
+  return dst;
+#else
+  return memcpy (dst, src, n);
+#endif
 }
-
-#undef clib_memcpy_fast_arch
 
 #include <vppinfra/memcpy.h>
 
