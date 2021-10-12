@@ -292,6 +292,7 @@ static fib_node_index_t
 mfib_table_entry_paths_update_i (u32 fib_index,
                                  const mfib_prefix_t *prefix,
                                  mfib_source_t source,
+                                 mfib_entry_flags_t entry_flags,
                                  const fib_route_path_t *rpaths)
 {
     fib_node_index_t mfib_entry_index;
@@ -306,7 +307,7 @@ mfib_table_entry_paths_update_i (u32 fib_index,
                                              source,
                                              prefix,
                                              MFIB_RPF_ID_NONE,
-                                             MFIB_ENTRY_FLAG_NONE,
+                                             entry_flags,
                                              INDEX_INVALID);
 
         mfib_entry_path_update(mfib_entry_index, source, rpaths);
@@ -325,6 +326,7 @@ fib_node_index_t
 mfib_table_entry_path_update (u32 fib_index,
                               const mfib_prefix_t *prefix,
                               mfib_source_t source,
+                              mfib_entry_flags_t entry_flags,
                               const fib_route_path_t *rpath)
 {
     fib_node_index_t mfib_entry_index;
@@ -333,7 +335,8 @@ mfib_table_entry_path_update (u32 fib_index,
     vec_add1(rpaths, *rpath);
 
     mfib_entry_index = mfib_table_entry_paths_update_i(fib_index, prefix,
-                                                       source, rpaths);
+                                                       source, entry_flags,
+                                                       rpaths);
 
     vec_free(rpaths);
     return (mfib_entry_index);
@@ -343,10 +346,11 @@ fib_node_index_t
 mfib_table_entry_paths_update (u32 fib_index,
                               const mfib_prefix_t *prefix,
                               mfib_source_t source,
+                              mfib_entry_flags_t entry_flags,
                               const fib_route_path_t *rpaths)
 {
     return (mfib_table_entry_paths_update_i(fib_index, prefix,
-                                            source, rpaths));
+                                            source, entry_flags, rpaths));
 }
 
 static void

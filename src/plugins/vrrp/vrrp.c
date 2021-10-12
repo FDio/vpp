@@ -435,10 +435,10 @@ vrrp_intf_enable_disable_mcast (u8 enable, u32 sw_if_index, u8 is_ipv6)
       /* If this is the first VR configured, add the local mcast routes */
       if (n_vrs == 1)
 	mfib_table_entry_path_update (fib_index, vrrp_prefix, MFIB_SOURCE_API,
-				      &for_us);
+				      MFIB_ENTRY_FLAG_NONE, &for_us);
 
       mfib_table_entry_path_update (fib_index, vrrp_prefix, MFIB_SOURCE_API,
-				    &via_itf);
+				    MFIB_ENTRY_FLAG_NONE, &via_itf);
       intf->mcast_adj_index[! !is_ipv6] =
 	adj_mcast_add_or_lock (proto, link_type, sw_if_index);
     }

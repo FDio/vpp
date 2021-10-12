@@ -571,17 +571,16 @@ int vnet_vxlan_gbp_tunnel_add_del
 	       *  - the forwarding interface is for-us
 	       *  - the accepting interface is that from the API
 	       */
-	      mfib_table_entry_path_update (t->encap_fib_index,
-					    &mpfx,
-					    MFIB_SOURCE_VXLAN_GBP, &path);
+	      mfib_table_entry_path_update (t->encap_fib_index, &mpfx,
+					    MFIB_SOURCE_VXLAN_GBP,
+					    MFIB_ENTRY_FLAG_NONE, &path);
 
 	      path.frp_sw_if_index = a->mcast_sw_if_index;
 	      path.frp_flags = FIB_ROUTE_PATH_FLAG_NONE;
 	      path.frp_mitf_flags = MFIB_ITF_FLAG_ACCEPT;
-	      mfei = mfib_table_entry_path_update (t->encap_fib_index,
-						   &mpfx,
-						   MFIB_SOURCE_VXLAN_GBP,
-						   &path);
+	      mfei = mfib_table_entry_path_update (
+		t->encap_fib_index, &mpfx, MFIB_SOURCE_VXLAN_GBP,
+		MFIB_ENTRY_FLAG_NONE, &path);
 
 	      /*
 	       * Create the mcast adjacency to send traffic to the group

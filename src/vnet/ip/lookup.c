@@ -899,8 +899,8 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
 		mfib_table_entry_path_remove (fib_index,
 					      &pfx, MFIB_SOURCE_CLI, rpaths);
 	      else
-		mfib_table_entry_path_update (fib_index,
-					      &pfx, MFIB_SOURCE_CLI, rpaths);
+		mfib_table_entry_path_update (fib_index, &pfx, MFIB_SOURCE_CLI,
+					      MFIB_ENTRY_FLAG_NONE, rpaths);
 	    }
 
 	  if (FIB_PROTOCOL_IP4 == pfx.fp_proto)
