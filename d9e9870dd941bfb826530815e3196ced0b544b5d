@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c7e50634_093b9e6b",
+        "filename": "src/vppinfra/format_table.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-10-12T16:53:25Z",
+      "side": 0,
+      "message": "I think a should be c.",
+      "revId": "d9e9870dd941bfb826530815e3196ced0b544b5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
