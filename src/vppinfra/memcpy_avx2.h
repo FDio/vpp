@@ -135,19 +135,19 @@ clib_memcpy_fast_avx2 (void *dst, const void *src, size_t n)
 	}
       if (n & 0x02)
 	{
-	  *(u16 *) dstu = *(const u16 *) srcu;
-	  srcu = (uword) ((const u16 *) srcu + 1);
-	  dstu = (uword) ((u16 *) dstu + 1);
+	  *(u16u *) dstu = *(const u16u *) srcu;
+	  srcu = (uword) ((const u16u *) srcu + 1);
+	  dstu = (uword) ((u16u *) dstu + 1);
 	}
       if (n & 0x04)
 	{
-	  *(u32 *) dstu = *(const u32 *) srcu;
-	  srcu = (uword) ((const u32 *) srcu + 1);
-	  dstu = (uword) ((u32 *) dstu + 1);
+	  *(u32u *) dstu = *(const u32u *) srcu;
+	  srcu = (uword) ((const u32u *) srcu + 1);
+	  dstu = (uword) ((u32u *) dstu + 1);
 	}
       if (n & 0x08)
 	{
-	  *(u64 *) dstu = *(const u64 *) srcu;
+	  *(u64u *) dstu = *(const u64u *) srcu;
 	}
       return ret;
     }
