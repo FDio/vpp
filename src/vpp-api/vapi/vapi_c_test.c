@@ -910,6 +910,7 @@ START_TEST (test_api_strings)
   /* Assert nul terminator NOT present */
   ck_assert_int_eq (vec_len (vstr), strlen (str));
   vec_free (vstr);
+  free (dump);
 }
 
 END_TEST;
