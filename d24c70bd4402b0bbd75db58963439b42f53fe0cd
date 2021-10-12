@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bf4f2d4b_274ebe9e",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_api.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 843,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2021-10-12T09:54:50Z",
+      "side": 1,
+      "message": "why not also remove the flags from snat_static_mapping_resolve_t ?\nthat would make obvious all these places where they are still used\nI tried with is_twice_nat and this is the only place so with this patch snat_static_mapping_resolve_t.is_twice_nat is there but unused. Maybe the same holds true for the other flags as well?\n\n   int addr_only;                                                                                                                                      \n   int out2in_only;                                                                                                                                    \n   int identity_nat;                                                                                                                                   \n   int exact;",
+      "revId": "d24c70bd4402b0bbd75db58963439b42f53fe0cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
