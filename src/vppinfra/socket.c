@@ -563,6 +563,9 @@ clib_socket_init_netns (clib_socket_t *s, u8 *namespace)
   int old_netns_fd, nfd = -1;
 
   old_netns_fd = clib_netns_open (NULL /* self */);
+  if (old_netns_fd < 0)
+    return clib_error_return_unix (0, "get current netns failed");
+
   if ((nfd = clib_netns_open (namespace)) == -1)
     {
       error = clib_error_return_unix (0, "clib_netns_open '%s'", namespace);
