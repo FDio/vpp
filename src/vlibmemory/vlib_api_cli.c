@@ -836,7 +836,7 @@ vl_msg_exec_json_command (vlib_main_t *vm, cJSON *o)
   char *name = cJSON_GetStringValue (msg_id_obj);
 
   cJSON *crc_obj = cJSON_GetObjectItem (o, "_crc");
-  if (!msg_id_obj)
+  if (!crc_obj)
     {
       vlib_cli_output (vm, "Missing '_crc' element!\n");
       return rv;
@@ -860,7 +860,7 @@ vl_msg_exec_json_command (vlib_main_t *vm, cJSON *o)
   vec_free (name_crc);
 
   cfgp = am->api_trace_cfg + msg_id;
-  if (!cfgp)
+  if (!am->api_trace_cfg)
     {
       vlib_cli_output (vm, "msg id %d no trace config\n", msg_id);
       return rv;
