@@ -227,7 +227,8 @@ punt_socket_register_exception (vlib_main_t * vm,
       punt_client_exception_db_add (reason, pc - pm->punt_client_pool);
     }
 
-  memcpy (pc->caddr.sun_path, client_pathname, sizeof (pc->caddr.sun_path));
+  snprintf (pc->caddr.sun_path, sizeof (pc->caddr.sun_path), "%s",
+	    client_pathname);
   pc->caddr.sun_family = AF_UNIX;
   pc->reg.type = PUNT_TYPE_EXCEPTION;
   pc->reg.punt.exception.reason = reason;
