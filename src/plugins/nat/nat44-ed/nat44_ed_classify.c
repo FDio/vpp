@@ -98,6 +98,7 @@ nat44_handoff_classify_node_fn_inline (vlib_main_t * vm,
 	  u32 next0 = NAT_NEXT_IN2OUT_CLASSIFY;
 	  ip4_header_t *ip0;
 	  snat_address_t *ap;
+	  clib_bihash_kv_8_8_t kv0, value0;
 
 	  /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -121,19 +122,23 @@ nat44_handoff_classify_node_fn_inline (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE (pool_elts (sm->static_mappings)))
 	    {
+	      init_nat_k (&kv0, ip0->dst_address, 0, 0, 0);
 	      /* try to classify the fragment based on IP header alone */
-	      m = nat44_ed_sm_o2i_lookup (sm, ip0->dst_address, 0, 0, 0);
-	      if (m)
+	      if (!clib_bihash_search_8_8 (&sm->static_mapping_by_external,
+					   &kv0, &value0))
 		{
+		  m = pool_elt_at_index (sm->static_mappings, value0.value);
 		  if (m->local_addr.as_u32 != m->external_addr.as_u32)
 		    next0 = NAT_NEXT_OUT2IN_CLASSIFY;
 		  goto enqueue0;
 		}
-	      m = nat44_ed_sm_o2i_lookup (
-		sm, ip0->dst_address, vnet_buffer (b0)->ip.reass.l4_dst_port,
-		0, ip0->protocol);
-	      if (m)
+	      init_nat_k (&kv0, ip0->dst_address,
+			  vnet_buffer (b0)->ip.reass.l4_dst_port, 0,
+			  ip_proto_to_nat_proto (ip0->protocol));
+	      if (!clib_bihash_search_8_8
+		  (&sm->static_mapping_by_external, &kv0, &value0))
 		{
+		  m = pool_elt_at_index (sm->static_mappings, value0.value);
 		  if (m->local_addr.as_u32 != m->external_addr.as_u32)
 		    next0 = NAT_NEXT_OUT2IN_CLASSIFY;
 		}
@@ -197,6 +202,7 @@ nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
 	  u32 sw_if_index0, rx_fib_index0;
 	  ip4_header_t *ip0;
 	  snat_address_t *ap;
+	  clib_bihash_kv_8_8_t kv0, value0;
 	  clib_bihash_kv_16_8_t ed_kv0, ed_value0;
 
 	  /* speculatively enqueue b0 to the current next frame */
@@ -221,11 +227,11 @@ nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
 	      rx_fib_index0 =
 		fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
 						     sw_if_index0);
-	      init_ed_k (&ed_kv0, ip0->src_address.as_u32,
+	      init_ed_k (&ed_kv0, ip0->src_address,
 			 vnet_buffer (b0)->ip.reass.l4_src_port,
-			 ip0->dst_address.as_u32,
-			 vnet_buffer (b0)->ip.reass.l4_dst_port, rx_fib_index0,
-			 ip0->protocol);
+			 ip0->dst_address,
+			 vnet_buffer (b0)->ip.reass.l4_dst_port,
+			 rx_fib_index0, ip0->protocol);
 	      /* process whole packet */
 	      if (!clib_bihash_search_16_8 (&sm->flow_hash, &ed_kv0,
 					    &ed_value0))
@@ -266,19 +272,23 @@ nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE (pool_elts (sm->static_mappings)))
 	    {
+	      init_nat_k (&kv0, ip0->dst_address, 0, 0, 0);
 	      /* try to classify the fragment based on IP header alone */
-	      m = nat44_ed_sm_o2i_lookup (sm, ip0->dst_address, 0, 0, 0);
-	      if (m)
+	      if (!clib_bihash_search_8_8 (&sm->static_mapping_by_external,
+					   &kv0, &value0))
 		{
+		  m = pool_elt_at_index (sm->static_mappings, value0.value);
 		  if (m->local_addr.as_u32 != m->external_addr.as_u32)
 		    next0 = NAT_NEXT_OUT2IN_ED_FAST_PATH;
 		  goto enqueue0;
 		}
-	      m = nat44_ed_sm_o2i_lookup (
-		sm, ip0->dst_address, vnet_buffer (b0)->ip.reass.l4_dst_port,
-		0, ip0->protocol);
-	      if (m)
+	      init_nat_k (&kv0, ip0->dst_address,
+			  vnet_buffer (b0)->ip.reass.l4_dst_port, 0,
+			  ip_proto_to_nat_proto (ip0->protocol));
+	      if (!clib_bihash_search_8_8
+		  (&sm->static_mapping_by_external, &kv0, &value0))
 		{
+		  m = pool_elt_at_index (sm->static_mappings, value0.value);
 		  if (m->local_addr.as_u32 != m->external_addr.as_u32)
 		    next0 = NAT_NEXT_OUT2IN_ED_FAST_PATH;
 		}
