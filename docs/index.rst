@@ -90,6 +90,8 @@ For more details click on the links below or press next.
     :maxdepth: 2
 
     interfacing/binapi/index
+    interfacing/c/index
+    interfacing/cpp/index
     interfacing/go/index
     interfacing/rust/index
     interfacing/libmemif/index
