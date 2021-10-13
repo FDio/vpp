@@ -1026,7 +1026,8 @@ unformat_init_command_line (unformat_input_t * input, char *argv[])
 }
 
 __clib_export void
-unformat_init_string (unformat_input_t * input, char *string, int string_len)
+unformat_init_string (unformat_input_t *input, const char *string,
+		      int string_len)
 {
   unformat_init (input, 0, 0);
   if (string_len > 0)
