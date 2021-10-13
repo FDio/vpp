@@ -242,8 +242,8 @@ uword va_unformat (unformat_input_t * i, const char *fmt, va_list * args);
 void unformat_init_command_line (unformat_input_t * input, char *argv[]);
 
 /* Setup for unformat of given string. */
-void unformat_init_string (unformat_input_t * input,
-			   char *string, int string_len);
+void unformat_init_string (unformat_input_t *input, const char *string,
+			   int string_len);
 
 always_inline void
 unformat_init_cstring (unformat_input_t * input, char *string)

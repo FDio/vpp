@@ -287,14 +287,15 @@ dpdk_lib_init (dpdk_main_t * dm)
       if (vmbus_dev)
 	{
 	  unformat_input_t input_vmbus;
-
-	  unformat_init_vector (&input_vmbus, (u8 *) dev_info.device->name);
+	  unformat_init_string (&input_vmbus, dev_info.device->name,
+				strlen (dev_info.device->name));
 	  if (unformat (&input_vmbus, "%U", unformat_vlib_vmbus_addr,
 			&vmbus_addr))
 	    {
 	      p = mhash_get (&dm->conf->device_config_index_by_vmbus_addr,
 			     &vmbus_addr);
 	    }
+	  unformat_free (&input_vmbus);
 	}
 
       if (p)
