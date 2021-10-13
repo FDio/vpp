@@ -146,7 +146,6 @@ START_TEST (test_loopbacks_1)
   { // new context
     bool seen[num_ifs] = {0};
     Sw_interface_dump d (con);
-    d.get_request ().get_payload ();
     auto rv = d.execute ();
     ck_assert_int_eq (VAPI_OK, rv);
     WAIT_FOR_RESPONSE (d, rv);
@@ -186,7 +185,6 @@ START_TEST (test_loopbacks_1)
 
   { // new context
     Sw_interface_dump d (con);
-    d.get_request ().get_payload ();
     auto rv = d.execute ();
     ck_assert_int_eq (VAPI_OK, rv);
     WAIT_FOR_RESPONSE (d, rv);
@@ -207,7 +205,7 @@ END_TEST;
 
 struct Create_loopback_cb
 {
-  Create_loopback_cb () : called{0}, sw_if_index{0} {};
+  Create_loopback_cb () : called{ 0 }, sw_if_index{ 0 }, seen{ false } {};
   int called;
   u32 sw_if_index;
   bool seen;
@@ -222,7 +220,7 @@ struct Create_loopback_cb
 
 struct Delete_loopback_cb
 {
-  Delete_loopback_cb () : called{0}, sw_if_index{0} {};
+  Delete_loopback_cb () : called{ 0 }, sw_if_index{ 0 }, seen{ false } {};
   int called;
   u32 sw_if_index;
   bool seen;
@@ -302,7 +300,6 @@ START_TEST (test_loopbacks_2)
 
   Sw_interface_dump_cb<num_ifs> swdcb (ccbs);
   Sw_interface_dump d (con, std::ref (swdcb));
-  d.get_request ().get_payload ();
   auto rv = d.execute ();
   ck_assert_int_eq (VAPI_OK, rv);
   WAIT_FOR_RESPONSE (d, rv);
@@ -329,7 +326,6 @@ START_TEST (test_loopbacks_2)
 
   { // new context
     Sw_interface_dump d (con);
-    d.get_request ().get_payload ();
     auto rv = d.execute ();
     ck_assert_int_eq (VAPI_OK, rv);
     WAIT_FOR_RESPONSE (d, rv);
