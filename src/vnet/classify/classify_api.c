@@ -912,6 +912,27 @@ vl_api_punt_acl_add_del_t_handler (vl_api_punt_acl_add_del_t *mp)
   REPLY_MACRO (VL_API_PUNT_ACL_ADD_DEL_REPLY);
 }
 
+static void
+vl_api_punt_acl_get_t_handler (vl_api_punt_acl_get_t *mp)
+{
+  vl_api_punt_acl_get_reply_t *rmp;
+  int rv = 0;
+
+  const in_out_acl_main_t *am = &in_out_acl_main;
+
+  u32 *const *tables =
+    am->classify_table_index_by_sw_if_index[IN_OUT_ACL_INPUT_TABLE_GROUP];
+  const u32 *ip4_table = tables[IN_OUT_ACL_TABLE_IP4_PUNT];
+  const u32 *ip6_table = tables[IN_OUT_ACL_TABLE_IP6_PUNT];
+  const u32 ip4_table_index = vec_len (ip4_table) ? ip4_table[0] : ~0;
+  const u32 ip6_table_index = vec_len (ip6_table) ? ip6_table[0] : ~0;
+
+  REPLY_MACRO2 (VL_API_PUNT_ACL_GET_REPLY, ({
+		  rmp->ip4_table_index = ntohl (ip4_table_index);
+		  rmp->ip6_table_index = ntohl (ip6_table_index);
+		}));
+}
+
 static void vl_api_output_acl_set_interface_t_handler
   (vl_api_output_acl_set_interface_t * mp)
 {
