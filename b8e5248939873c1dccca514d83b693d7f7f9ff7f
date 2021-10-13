@@ -16,6 +16,24 @@
       "revId": "b8e5248939873c1dccca514d83b693d7f7f9ff7f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "29966a25_14cdf561",
+        "filename": "src/vnet/policer/policer.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 2493
+      },
+      "writtenOn": "2021-10-13T11:31:00Z",
+      "side": 1,
+      "message": "setting the \u0027user\u0027 is for specifying the memory to be allocated in \u0027hash_set_mem_alloc\u0027 (clib_mem_alloc).\nif not setting the \u0027user\u0027, then value of \u0027user\u0027 will be 0 (thus clib_mem_alloc (0))",
+      "parentUuid": "ce3c14c7_2e1956c5",
+      "revId": "b8e5248939873c1dccca514d83b693d7f7f9ff7f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
