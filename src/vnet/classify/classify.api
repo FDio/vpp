@@ -436,6 +436,30 @@ autoreply define punt_acl_add_del
   bool is_add [default=true];
 };
 
+/** \brief Get classify table ids configured for punt ACL
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define punt_acl_get
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply for punt_acl_get
+    @param context - sender context which was passed in the request
+    @param retval - return value (0 for success)
+    @param ip4_table_index - ip4 punt classify table index (~0 for none)
+    @param ip6_table_index - ip6 punt classify table index (~0 for none)
+*/
+define punt_acl_get_reply
+{
+  u32 context;
+  i32 retval;
+  u32 ip4_table_index;
+  u32 ip6_table_index;
+};
+
 /** \brief Set/unset output ACL interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request

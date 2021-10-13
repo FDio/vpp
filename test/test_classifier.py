@@ -915,9 +915,19 @@ class TestClassifierPunt(TestClassifier):
                                 proto=socket.IPPROTO_UDP, src_port=sport))
         self.send_and_expect_only(self.pg0, pkts, self.pg1)
 
+        # test dump api: ip4 is set, ip6 is not
+        r = self.vapi.punt_acl_get()
+        self.assertEqual(r.ip4_table_index, table_index)
+        self.assertEqual(r.ip6_table_index, 0xffffffff)
+
         # cleanup
         self.acl_active_table = ''
         self.vapi.punt_acl_add_del(ip4_table_index=table_index, is_add=0)
+
+        # test dump api: nothing set
+        r = self.vapi.punt_acl_get()
+        self.assertEqual(r.ip4_table_index, 0xffffffff)
+        self.assertEqual(r.ip6_table_index, 0xffffffff)
 
 
 if __name__ == '__main__':
