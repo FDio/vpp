@@ -284,9 +284,9 @@ vlib_vmbus_bind_to_uio (vlib_vmbus_addr_t * addr)
 
   if (ifr.ifr_flags & IFF_UP)
     {
-      error = clib_error_return (0,
-				 "Skipping VMBUS device %U as host interface %s is up",
-				 format_vlib_vmbus_addr, addr, e->d_name);
+      error = clib_error_return (
+	0, "Skipping VMBUS device %U as host interface %s is up",
+	format_vlib_vmbus_addr, addr, ifname);
       close (fd);
       goto done;
     }
