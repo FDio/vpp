@@ -139,6 +139,15 @@ includes-render:
 template-index:
 	@sed -ie "s/__VPP_VERSION__/${VPP_VERSION}/g" ${DOCS_DIR}/index.rst
 	@sed -ie "s/__BUILT_ON__/${BUILT_ON}/g" ${DOCS_DIR}/index.rst
+	@( \
+	  for f in $$(grep -l -R __REPOSITORY_URL__ ${DOCS_DIR} | grep -e '\.rst$$' -e '\.md$$' ) ;\
+	  do \
+	    if [ ! -z $${f} ]; then \
+		echo "TEMPLATING $${f}" ;\
+		sed -ie "s@__REPOSITORY_URL__@${REPOSITORY_URL}@g" $${f} ;\
+	    fi ;\
+	  done ; \
+	)
 
 .NOTPARALLEL: $(SIPHON_FILES)
 $(SIPHON_FILES): $(SCRIPTS_DIR)/siphon-generate \
