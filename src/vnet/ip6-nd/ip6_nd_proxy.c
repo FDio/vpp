@@ -107,6 +107,10 @@ set_ip6_nd_proxy_cmd (vlib_main_t * vm,
 	    return (unformat_parse_error (input));
 	}
     }
+  else
+    {
+      return error;
+    }
 
   ip6_nd_proxy_add_del (sw_if_index, &addr, is_del);
 
