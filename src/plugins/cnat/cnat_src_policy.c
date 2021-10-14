@@ -59,8 +59,8 @@ cnat_vip_default_source_policy (vlib_main_t * vm,
       u16 sport;
       sport = udp0->src_port;
       /* Allocate a port only if asked and if we actually sNATed */
-      if ((ct->flags & CNAT_TRANSLATION_FLAG_ALLOCATE_PORT)
-	  && (*rsession_flags & CNAT_SESSION_FLAG_HAS_SNAT))
+      if ((ct->flags & CNAT_TR_FLAG_ALLOCATE_PORT) &&
+	  (*rsession_flags & CNAT_SESSION_FLAG_HAS_SNAT))
 	{
 	  sport = 0;		/* force allocation */
 	  session->value.flags |= CNAT_SESSION_FLAG_ALLOC_PORT;
