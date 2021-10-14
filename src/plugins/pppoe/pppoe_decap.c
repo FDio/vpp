@@ -133,8 +133,10 @@ VLIB_NODE_FN (pppoe_input_node) (vlib_main_t * vm,
 			  pppoe0 = (pppoe_header_t*)(vlan0+1);
 			  if( type0 != ETHERNET_TYPE_PPPOE_DISCOVERY && type0 != ETHERNET_TYPE_PPPOE_SESSION ) {
 				error0 = PPPOE_ERROR_BAD_VER_TYPE;
-	      		next0 = PPPOE_INPUT_NEXT_DROP;
-	      		goto trace0;
+				result0.fields.session_index =
+				  ~0; // avoid tracing random data
+				next0 = PPPOE_INPUT_NEXT_DROP;
+				goto trace0;
 			  }
 		  } else {
 			  pppoe0 = (pppoe_header_t*)(h0+1);
@@ -228,8 +230,10 @@ VLIB_NODE_FN (pppoe_input_node) (vlib_main_t * vm,
 			  pppoe1 = (pppoe_header_t*)(vlan1+1);
 			  if( type1 != ETHERNET_TYPE_PPPOE_DISCOVERY && type1 != ETHERNET_TYPE_PPPOE_SESSION ) {
 				error1 = PPPOE_ERROR_BAD_VER_TYPE;
-	      		next1 = PPPOE_INPUT_NEXT_DROP;
-	      		goto trace1;
+				result1.fields.session_index =
+				  ~0; // avoid tracing random data
+				next1 = PPPOE_INPUT_NEXT_DROP;
+				goto trace1;
 			  }
 		  } else {
 			  pppoe1 = (pppoe_header_t*)(h1+1);
@@ -354,8 +358,10 @@ VLIB_NODE_FN (pppoe_input_node) (vlib_main_t * vm,
 			  pppoe0 = (pppoe_header_t*)(vlan0+1);
 			  if( type0 != ETHERNET_TYPE_PPPOE_DISCOVERY && type0 != ETHERNET_TYPE_PPPOE_SESSION ) {
 				error0 = PPPOE_ERROR_BAD_VER_TYPE;
-	      		next0 = PPPOE_INPUT_NEXT_DROP;
-	      		goto trace00;
+				result0.fields.session_index =
+				  ~0; // avoid tracing random data
+				next0 = PPPOE_INPUT_NEXT_DROP;
+				goto trace00;
 			  }
 		  } else {
 			  pppoe0 = (pppoe_header_t*)(h0+1);
