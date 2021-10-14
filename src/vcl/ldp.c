@@ -267,15 +267,6 @@ ldp_init (void)
 		LDP_ENV_SID_BIT "!  sid bit value %d (0x%x)", sb,
 		ldp->vlsh_bit_val, ldp->vlsh_bit_val);
 	}
-
-      /* Make sure there are enough bits in the fd set for vcl sessions */
-      if (ldp->vlsh_bit_val > FD_SETSIZE / 2)
-	{
-	  LDBG (0, "ERROR: LDP vlsh bit value %d > FD_SETSIZE/2 %d!",
-		ldp->vlsh_bit_val, FD_SETSIZE / 2);
-	  ldp->init = 0;
-	  return -1;
-	}
     }
   env_var_str = getenv (LDP_ENV_TLS_TRANS);
   if (env_var_str)
@@ -747,6 +738,15 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
       rv = libc_pselect (nfds, readfds, writefds, exceptfds,
 			 timeout, sigmask);
       goto done;
+    }
+
+  /* Make sure there are enough bits in the fd set for vcl sessions */
+  if (ldp->vlsh_bit_val > FD_SETSIZE / 2)
+    {
+      LDBG (0, "ERROR: LDP vlsh bit value %d > FD_SETSIZE/2 %d!",
+	    ldp->vlsh_bit_val, FD_SETSIZE / 2);
+      errno = EINVAL;
+      return -1;
     }
 
   si_bits = libc_bits = 0;
