@@ -271,10 +271,11 @@ ldp_init (void)
       /* Make sure there are enough bits in the fd set for vcl sessions */
       if (ldp->vlsh_bit_val > FD_SETSIZE / 2)
 	{
-	  LDBG (0, "ERROR: LDP vlsh bit value %d > FD_SETSIZE/2 %d!",
+	  /* Only valid for select/pselect, so just WARNING and not exit */
+	  LDBG (0,
+		"WARNING: LDP vlsh bit value %d > FD_SETSIZE/2 %d, "
+		"select/pselect not supported now!",
 		ldp->vlsh_bit_val, FD_SETSIZE / 2);
-	  ldp->init = 0;
-	  return -1;
 	}
     }
   env_var_str = getenv (LDP_ENV_TLS_TRANS);
