@@ -134,19 +134,19 @@ This plugin is built to be extensible. For now two NAT types are defined, ``cnat
 * Session lookup : ``rv`` will be set to ``0`` if a session was found
 * Translation primitives ``cnat_translation_ip4`` based on sessions
 * A session creation primitive ``cnat_session_create``
+* A reverse session creation primitive ``cnat_rsession_create``
 
-Creating a session will also create a reverse session (for matching return traffic),
-and call a NAT node back that will perform the translation.
+Creating a session will also create reverse session matching return traffic unless told otherwise by setting ``CNAT_TR_FLAG_NO_RETURN_SESSION`` on the translation. This will call the NAT nodes on the return flow and perform the inverse translation.
 
 Known limitations
 _________________
 
 This plugin is still under development, it lacks the following features :
 * Load balancing doesn't support parametric probabilities
-* VRFs aren't supported. All rules apply to fib table 0 only
+* VRFs are not supported, all rules apply regardless of the FIB table.
 * Programmatic session handling (deletion, lifetime updates) aren't supported
-* ICMP is not yet supported
-* Traffic matching is only done based on ``(proto, dst_addr, dst_port)`` source matching isn't supported
+* translations (i.e. rewriting the destination address) only match on the three
+tuple ``(proto, dst_addr, dst_port)`` other matches are not supported
 * Statistics & session tracking are still rudimentary.
 
 

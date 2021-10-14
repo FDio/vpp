@@ -60,12 +60,14 @@ typedef struct cnat_ep_trk_t_
 typedef enum cnat_translation_flag_t_
 {
   /* Do allocate a source port */
-  CNAT_TRANSLATION_FLAG_ALLOCATE_PORT = (1 << 0),
+  CNAT_TR_FLAG_ALLOCATE_PORT = (1 << 0),
   /* Has this translation been satcked ?
    * this allow not being called twice when
    * with more then FIB_PATH_LIST_POPULAR backends  */
-  CNAT_TRANSLATION_STACKED = (1 << 1),
-} cnat_translation_flag_t;
+  CNAT_TR_FLAG_STACKED = (1 << 1),
+  /* Do not create a return session */
+  CNAT_TR_FLAG_NO_RETURN_SESSION = (1 << 2),
+} __clib_packed cnat_translation_flag_t;
 
 typedef enum
 {
@@ -76,11 +78,11 @@ typedef enum
   CNAT_ADDR_N_RESOLUTIONS,
 } cnat_addr_resol_type_t;
 
-typedef enum __attribute__ ((__packed__))
+typedef enum
 {
   CNAT_LB_DEFAULT,
   CNAT_LB_MAGLEV,
-} cnat_lb_type_t;
+} __clib_packed cnat_lb_type_t;
 
 /**
  * Entry used to account for a translation's backend
@@ -160,7 +162,7 @@ typedef struct cnat_translation_t_
   /**
    * Translation flags
    */
-  u8 flags;
+  cnat_translation_flag_t flags;
 
   /**
    * Type of load balancing
