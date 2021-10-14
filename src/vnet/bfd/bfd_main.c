@@ -1847,6 +1847,8 @@ bfd_consume_pkt (vlib_main_t * vm, bfd_main_t * bm, const bfd_pkt_t * pkt,
 	  bfd_set_poll_state (bs, BFD_POLL_NOT_NEEDED);
 	  if (BFD_STATE_up == bs->local_state)
 	    {
+	      bfd_set_effective_desired_min_tx (
+		bm, bs, now, bs->config_desired_min_tx_nsec);
 	      bfd_set_effective_required_min_rx (bm, bs,
 						 clib_max (bs->echo *
 							   bm->min_required_min_rx_while_echo_nsec,
