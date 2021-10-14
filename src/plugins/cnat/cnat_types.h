@@ -51,7 +51,7 @@
 #define CNAT_FIB_SOURCE_PRIORITY  0x02
 
 /* Initial refcnt for timestamps (2 : session & rsession) */
-#define CNAT_TIMESTAMP_INIT_REFCNT 2
+#define CNAT_TIMESTAMP_INIT_REFCNT 1
 
 #define MIN_SRC_PORT ((u16) 0xC000)
 
