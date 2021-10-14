@@ -758,20 +758,28 @@ cnat_load_balance (const cnat_translation_t *ct, ip_address_family_t af,
  * rsession_location is the location the (return) session will be
  * matched at
  */
+
 static_always_inline void
-cnat_session_create (cnat_session_t *session, cnat_node_ctx_t *ctx,
-		     cnat_session_location_t rsession_location,
-		     u8 rsession_flags)
+cnat_session_create (cnat_session_t *session, cnat_node_ctx_t *ctx)
+{
+  cnat_bihash_kv_t *bkey = (cnat_bihash_kv_t *) session;
+
+  session->value.cs_ts_index = cnat_timestamp_new (ctx->now);
+  cnat_bihash_add_del (&cnat_session_db, bkey, 1);
+}
+
+static_always_inline void
+cnat_rsession_create (cnat_session_t *session, cnat_node_ctx_t *ctx,
+		      cnat_session_location_t rsession_location,
+		      cnat_session_flag_t rsession_flags)
 {
   cnat_client_t *cc;
   cnat_bihash_kv_t rkey;
   cnat_session_t *rsession = (cnat_session_t *) & rkey;
-  cnat_bihash_kv_t *bkey = (cnat_bihash_kv_t *) session;
   cnat_bihash_kv_t rvalue;
   int rv;
 
-  session->value.cs_ts_index = cnat_timestamp_new (ctx->now);
-  cnat_bihash_add_del (&cnat_session_db, bkey, 1);
+  cnat_timestamp_inc_refcnt (session->value.cs_ts_index);
 
   if (!(rsession_flags & CNAT_SESSION_FLAG_NO_CLIENT))
     {
