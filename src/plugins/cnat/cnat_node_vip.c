@@ -168,7 +168,9 @@ cnat_vip_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
 
       /* refcnt session in current client */
       cnat_client_cnt_session (cc);
-      cnat_session_create (session, ctx, CNAT_LOCATION_FIB, rsession_flags);
+      cnat_session_create (session, ctx);
+      if (!(ct->flags & CNAT_TR_FLAG_NO_RETURN_SESSION))
+	cnat_rsession_create (session, ctx, CNAT_LOCATION_FIB, rsession_flags);
       trace_flags |= CNAT_TRACE_SESSION_CREATED;
 
       next0 = ct->ct_lb.dpoi_next_node;
