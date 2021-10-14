@@ -134,6 +134,7 @@ This plugin is built to be extensible. For now two NAT types are defined, ``cnat
 * Session lookup : ``rv`` will be set to ``0`` if a session was found
 * Translation primitives ``cnat_translation_ip4`` based on sessions
 * A session creation primitive ``cnat_session_create``
+* A reverse session creation primitive ``cnat_rsession_create``
 
 Creating a session will also create a reverse session (for matching return traffic),
 and call a NAT node back that will perform the translation.

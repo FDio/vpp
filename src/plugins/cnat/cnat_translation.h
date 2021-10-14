@@ -57,14 +57,16 @@ typedef struct cnat_ep_trk_t_
   u8 ct_flags; /* cnat_trk_flag_t */
 } cnat_ep_trk_t;
 
-typedef enum cnat_translation_flag_t_
+typedef enum __attribute__ ((__packed__)) cnat_translation_flag_t_
 {
   /* Do allocate a source port */
-  CNAT_TRANSLATION_FLAG_ALLOCATE_PORT = (1 << 0),
+  CNAT_TR_FLAG_ALLOCATE_PORT = (1 << 0),
   /* Has this translation been satcked ?
    * this allow not being called twice when
    * with more then FIB_PATH_LIST_POPULAR backends  */
-  CNAT_TRANSLATION_STACKED = (1 << 1),
+  CNAT_TR_FLAG_STACKED = (1 << 1),
+  /* Do not create a return session */
+  CNAT_TR_FLAG_NO_RETURN_SESSION = (1 << 2),
 } cnat_translation_flag_t;
 
 typedef enum
@@ -160,7 +162,7 @@ typedef struct cnat_translation_t_
   /**
    * Translation flags
    */
-  u8 flags;
+  cnat_translation_flag_t flags;
 
   /**
    * Type of load balancing

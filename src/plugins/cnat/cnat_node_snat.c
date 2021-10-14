@@ -129,8 +129,9 @@ cnat_snat_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 	CNAT_SESSION_FLAG_NO_CLIENT | CNAT_SESSION_FLAG_ALLOC_PORT;
       trace_flags |= CNAT_TRACE_SESSION_CREATED;
 
-      cnat_session_create (session, ctx, CNAT_LOCATION_FIB,
-			   CNAT_SESSION_FLAG_HAS_SNAT);
+      cnat_session_create (session, ctx);
+      cnat_rsession_create (session, ctx, CNAT_LOCATION_FIB,
+			    CNAT_SESSION_FLAG_HAS_SNAT);
     }
 
   if (AF_IP4 == ctx->af)

@@ -27,6 +27,7 @@ import "vnet/interface_types.api";
 enum cnat_translation_flags:u8
 {
   CNAT_TRANSLATION_ALLOC_PORT = 1,
+  CNAT_TRANSLATION_NO_RETURN_SESSION = 4,
 };
 
 enum cnat_endpoint_tuple_flags:u8
