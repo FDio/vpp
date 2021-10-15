@@ -30,7 +30,15 @@
   _ (0x00, 0x82, 0, 0, 0, 0x00, TOPDOWN, L1_FE_BOUND_METRIC,                  \
      "TMA fe bound slots for an unhalted logical processor.")                 \
   _ (0x00, 0x83, 0, 0, 0, 0x00, TOPDOWN, L1_BE_BOUND_METRIC,                  \
-     "TMA be bound slots for an unhalted logical processor.")
+     "TMA be bound slots for an unhalted logical processor.")                 \
+  _ (0x00, 0x84, 0, 0, 0, 0x00, TOPDOWN, L2_HEAVYOPS_METRIC,                  \
+     "TMA heavy operations for an unhalted logical processor.")               \
+  _ (0x00, 0x85, 0, 0, 0, 0x00, TOPDOWN, L2_BMISPRED_METRIC,                  \
+     "TMA branch misprediction slots or an unhalted logical processor.")      \
+  _ (0x00, 0x86, 0, 0, 0, 0x00, TOPDOWN, L2_FETCHLAT_METRIC,                  \
+     "TMA fetch latency slots for an unhalted logical processor.")            \
+  _ (0x00, 0x87, 0, 0, 0, 0x00, TOPDOWN, L2_MEMBOUND_METRIC,                  \
+     "TMA mem bound slots for an unhalted logical processor.")
 
 /* EventCode, UMask, EdgeDetect, AnyThread, Invert, CounterMask
  * counter_unit, name, suffix, description */
