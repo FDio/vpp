@@ -70,6 +70,7 @@ typedef cnat_translation
   u8 is_real_ip;
   u8 flags;
   vl_api_cnat_lb_type_t lb_type;
+  u32 table_id;
   u32 n_paths;
   vl_api_cnat_endpoint_tuple_t paths[n_paths];
 };

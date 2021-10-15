@@ -95,7 +95,7 @@ vl_api_cnat_translation_update_t_handler (vl_api_cnat_translation_update_t
   u32 id = ~0;
   u8 flags;
   int rv = 0;
-  u32 pi, n_paths;
+  u32 pi, n_paths, table_id;
   cnat_lb_type_t lb_type;
 
   rv = ip_proto_decode (mp->translation.ip_proto, &ip_proto);
@@ -122,8 +122,10 @@ vl_api_cnat_translation_update_t_handler (vl_api_cnat_translation_update_t
   if (!mp->translation.is_real_ip)
     flags |= CNAT_FLAG_EXCLUSIVE;
 
+  table_id = clib_net_to_host_u32 (mp->translation.table_id);
   lb_type = (cnat_lb_type_t) mp->translation.lb_type;
-  id = cnat_translation_update (&vip, ip_proto, paths, flags, lb_type);
+  id =
+    cnat_translation_update (&vip, ip_proto, paths, flags, lb_type, table_id);
 
   vec_free (paths);
 

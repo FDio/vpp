@@ -146,7 +146,7 @@ cnat_input_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
       cnat_session_create (session, ctx);
       if (!(ct->flags & CNAT_TR_FLAG_NO_RETURN_SESSION))
 	cnat_rsession_create (session, ctx, CNAT_LOCATION_OUTPUT,
-			      rsession_flags);
+			      rsession_flags, 0 /* fib_index */);
       trace_flags |= CNAT_TRACE_SESSION_CREATED;
     }
 
@@ -325,7 +325,7 @@ cnat_output_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
       trace_flags |= CNAT_TRACE_SESSION_CREATED;
       cnat_session_create (session, ctx);
       cnat_rsession_create (session, ctx, CNAT_LOCATION_INPUT,
-			    CNAT_SESSION_FLAG_NO_CLIENT);
+			    CNAT_SESSION_FLAG_NO_CLIENT, 0 /* fib_index */);
     }
 
   if (AF_IP4 == ctx->af)

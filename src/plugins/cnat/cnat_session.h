@@ -52,6 +52,11 @@ typedef struct cnat_session_t_
     u16 cs_port[VLIB_N_DIR];
 
     /**
+     * The FIB the entry lives in
+     */
+    u16 cs_fib_index;
+
+    /**
      * The IP protocol TCP or UDP only supported
      */
     ip_protocol_t cs_proto;
@@ -59,14 +64,14 @@ typedef struct cnat_session_t_
     /**
      * The address family describing the IP addresses
      */
-    u8 cs_af;
+    u8 cs_af : 1;
 
     /**
      * input / output / fib session
      */
-    u8 cs_loc;
+    u8 cs_loc : 2;
 
-    u8 __cs_pad;
+    u8 __cs_pad : 5;
   } key;
   /**
    * this value sits in the same memory location a 'value' in the bihash kvp
@@ -135,7 +140,7 @@ typedef enum cnat_session_location_t_
 {
   CNAT_LOCATION_INPUT = 0,
   CNAT_LOCATION_OUTPUT = 1,
-  CNAT_LOCATION_FIB = 0xff,
+  CNAT_LOCATION_FIB = 2,
 } cnat_session_location_t;
 
 extern u8 *format_cnat_session (u8 * s, va_list * args);

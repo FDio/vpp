@@ -86,7 +86,7 @@ cnat_tracker_release (cnat_ep_trk_t * trk)
 }
 
 static void
-cnat_tracker_track (index_t cti, cnat_ep_trk_t * trk)
+cnat_tracker_track (index_t cti, cnat_ep_trk_t *trk, u32 fib_index)
 {
   fib_prefix_t pfx;
   /* We only track fully resolved endpoints */
@@ -100,10 +100,8 @@ cnat_tracker_track (index_t cti, cnat_ep_trk_t * trk)
     }
 
   ip_address_to_fib_prefix (&trk->ct_ep[VLIB_TX].ce_ip, &pfx);
-  trk->ct_fei = fib_entry_track (CNAT_FIB_TABLE,
-				 &pfx,
-				 cnat_translation_fib_node_type,
-				 cti, &trk->ct_sibling);
+  trk->ct_fei = fib_entry_track (
+    fib_index, &pfx, cnat_translation_fib_node_type, cti, &trk->ct_sibling);
 
   fib_entry_contribute_forwarding (trk->ct_fei,
 				   fib_forw_chain_type_from_fib_proto
@@ -365,13 +363,20 @@ cnat_translation_delete (u32 id)
 u32
 cnat_translation_update (cnat_endpoint_t *vip, ip_protocol_t proto,
 			 cnat_endpoint_tuple_t *paths, u8 flags,
-			 cnat_lb_type_t lb_type)
+			 cnat_lb_type_t lb_type, u32 table_id)
 {
   cnat_endpoint_tuple_t *path;
   const cnat_client_t *cc;
   cnat_translation_t *ct;
   cnat_ep_trk_t *trk;
   index_t cci;
+  u32 fib_index;
+  fib_protocol_t fproto;
+
+  fproto = (fib_protocol_t) vip->ce_ip.version;
+  fib_index = fib_table_find (fproto, table_id);
+  if (fib_index == (u32) ~0)
+    return ~0;
 
   cnat_lazy_init ();
   if (cnat_resolve_ep (vip))
@@ -383,7 +388,7 @@ cnat_translation_update (cnat_endpoint_t *vip, ip_protocol_t proto,
   else
     {
       /* do we know of this ep's vip */
-      cci = cnat_client_add (&vip->ce_ip, flags);
+      cci = cnat_client_add (&vip->ce_ip, flags, fib_index);
       cc = cnat_client_get (cci);
 
       ct = cnat_find_translation (cc->parent_cci, vip->ce_port, proto);
@@ -398,6 +403,7 @@ cnat_translation_update (cnat_endpoint_t *vip, ip_protocol_t proto,
       ct->ct_cci = cci;
       ct->index = ct - cnat_translation_pool;
       ct->lb_type = lb_type;
+      ct->fib_index = fib_index;
 
       cnat_add_translation_to_db (cci, vip, proto, ct->index);
       cnat_client_translation_added (cci);
@@ -439,7 +445,7 @@ cnat_translation_update (cnat_endpoint_t *vip, ip_protocol_t proto,
 		 sizeof (trk->ct_ep[VLIB_RX]));
     trk->ct_flags = path->ep_flags;
 
-    cnat_tracker_track (ct->index, trk);
+    cnat_tracker_track (ct->index, trk, ct->fib_index);
   }
 
   cnat_translation_stack (ct);
@@ -638,6 +644,7 @@ cnat_translation_cli_add_del (vlib_main_t * vm,
 			      vlib_cli_command_t * cmd)
 {
   u32 del_index = INDEX_INVALID;
+  u32 table_id = 0;
   ip_protocol_t proto = IP_PROTOCOL_TCP;
   cnat_endpoint_t vip;
   u8 flags = CNAT_FLAG_EXCLUSIVE;
@@ -663,6 +670,8 @@ cnat_translation_cli_add_del (vlib_main_t * vm,
 	flags = CNAT_FLAG_EXCLUSIVE;
       else if (unformat (line_input, "real %U", unformat_cnat_ep, &vip))
 	flags = 0;
+      else if (unformat (line_input, "table %d", &table_id))
+	;
       else if (unformat (line_input, "to %U", unformat_cnat_ep_tuple, &tmp))
 	{
 	  vec_add2 (paths, path, 1);
@@ -679,7 +688,7 @@ cnat_translation_cli_add_del (vlib_main_t * vm,
     }
 
   if (INDEX_INVALID == del_index)
-    cnat_translation_update (&vip, proto, paths, flags, lb_type);
+    cnat_translation_update (&vip, proto, paths, flags, lb_type, table_id);
   else
     cnat_translation_delete (del_index);
 
@@ -719,7 +728,7 @@ cnat_if_addr_add_del_translation_cb (addr_resolution_t * ar,
 
   if (!is_del)
     {
-      ct->ct_cci = cnat_client_add (address, ct->flags);
+      ct->ct_cci = cnat_client_add (address, ct->flags, ct->fib_index);
       cnat_client_translation_added (ct->ct_cci);
       ip_address_copy (&ct->ct_vip.ce_ip, address);
       ct->ct_vip.ce_flags |= CNAT_EP_FLAG_RESOLVED;
@@ -765,7 +774,7 @@ cnat_if_addr_add_del_backend_cb (addr_resolution_t * ar,
     }
 
   ct->flags &= ~CNAT_TR_FLAG_STACKED;
-  cnat_tracker_track (ar->cti, trk);
+  cnat_tracker_track (ar->cti, trk, ct->fib_index);
 
   cnat_translation_stack (ct);
   ct->flags |= CNAT_TR_FLAG_STACKED;

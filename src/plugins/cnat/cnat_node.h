@@ -688,6 +688,7 @@ cnat_session_make_key (vlib_buffer_t *b, ip_address_family_t af,
   udp_header_t *udp;
   cnat_session_t *session = (cnat_session_t *) bkey;
   u32 iph_offset = 0;
+  session->key.cs_fib_index = 0;
   session->key.cs_af = af;
 
   session->key.cs_loc = cs_loc;
@@ -695,6 +696,11 @@ cnat_session_make_key (vlib_buffer_t *b, ip_address_family_t af,
   if (cs_loc == CNAT_LOCATION_OUTPUT)
     /* rewind buffer */
     iph_offset = vnet_buffer (b)->ip.save_rewrite_length;
+  else if (cs_loc == CNAT_LOCATION_FIB)
+    {
+      ASSERT (session->key.cs_fib_index < (u16) ~0);
+      session->key.cs_fib_index = vnet_buffer (b)->ip.fib_index;
+    }
 
   if (AF_IP4 == af)
     {
@@ -850,7 +856,7 @@ cnat_session_create (cnat_session_t *session, cnat_node_ctx_t *ctx)
 static_always_inline void
 cnat_rsession_create (cnat_session_t *session, cnat_node_ctx_t *ctx,
 		      cnat_session_location_t rsession_location,
-		      cnat_session_flag_t rsession_flags)
+		      cnat_session_flag_t rsession_flags, u32 fib_index)
 {
   cnat_client_t *cc;
   cnat_bihash_kv_t rkey;
@@ -867,31 +873,34 @@ cnat_rsession_create (cnat_session_t *session, cnat_node_ctx_t *ctx,
 
       if (NULL == cc)
 	{
-	  ip_address_t addr;
+	  cnat_client_learn_args_t cl_args;
 	  uword *p;
 	  u32 refcnt;
 
-	  addr.version = ctx->af;
-	  ip46_address_copy (&addr.ip, &session->value.cs_ip[VLIB_RX]);
+	  cl_args.addr.version = ctx->af;
+	  cl_args.fib_index = fib_index;
+	  ip46_address_copy (&cl_args.addr.ip, &session->value.cs_ip[VLIB_RX]);
 
 	  /* Throttle */
 	  clib_spinlock_lock (&cnat_client_db.throttle_lock);
 
-	  p = hash_get_mem (cnat_client_db.throttle_mem, &addr);
+	  p = hash_get_mem (cnat_client_db.throttle_mem, &cl_args.addr);
 	  if (p)
 	    {
 	      refcnt = p[0] + 1;
-	      hash_set_mem (cnat_client_db.throttle_mem, &addr, refcnt);
+	      hash_set_mem (cnat_client_db.throttle_mem, &cl_args.addr,
+			    refcnt);
 	    }
 	  else
-	    hash_set_mem_alloc (&cnat_client_db.throttle_mem, &addr, 0);
+	    hash_set_mem_alloc (&cnat_client_db.throttle_mem, &cl_args.addr,
+				0);
 
 	  clib_spinlock_unlock (&cnat_client_db.throttle_lock);
 
 	  /* fire client create to the main thread */
 	  if (!p)
-	    vl_api_rpc_call_main_thread (cnat_client_learn, (u8 *) &addr,
-					 sizeof (addr));
+	    vl_api_rpc_call_main_thread (cnat_client_learn, (u8 *) &cl_args,
+					 sizeof (cl_args));
 	}
       else
 	{
@@ -909,6 +918,8 @@ cnat_rsession_create (cnat_session_t *session, cnat_node_ctx_t *ctx,
   rsession->key.cs_loc = rsession_location;
   rsession->key.__cs_pad = 0;
   rsession->key.cs_af = ctx->af;
+  ASSERT (fib_index < (u16) ~0);
+  rsession->key.cs_fib_index = fib_index;
   rsession->key.cs_port[VLIB_RX] = session->value.cs_port[VLIB_TX];
   rsession->key.cs_port[VLIB_TX] = session->value.cs_port[VLIB_RX];
 

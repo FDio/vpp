@@ -74,10 +74,22 @@ typedef struct cnat_client_t_
   index_t parent_cci;
 
   /**
+   * The client's VRF
+   * only valid for CNAT_LOCATION_FIB
+   */
+  u32 fib_index;
+
+  /**
    * Client flags
    */
   u8 flags;
 } cnat_client_t;
+
+typedef struct cnat_client_learn_args_t_
+{
+  ip_address_t addr;
+  u32 fib_index;
+} cnat_client_learn_args_t;
 
 extern u8 *format_cnat_client (u8 * s, va_list * args);
 extern void cnat_client_free_by_ip (ip46_address_t * addr, u8 af);
@@ -106,9 +118,10 @@ extern void cnat_client_translation_added (index_t cci);
  * Called in the main thread by RPC from the workers to learn a
  * new client
  */
-extern void cnat_client_learn (const ip_address_t *addr);
+extern void cnat_client_learn (const cnat_client_learn_args_t *args);
 
-extern index_t cnat_client_add (const ip_address_t * ip, u8 flags);
+extern index_t cnat_client_add (const ip_address_t *ip, u8 flags,
+				u32 fib_index);
 
 /**
  * Check all the clients were purged by translation & session purge

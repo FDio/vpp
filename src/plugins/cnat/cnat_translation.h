@@ -149,6 +149,12 @@ typedef struct cnat_translation_t_
   ip_protocol_t ct_proto;
 
   /**
+   * The VRF to match traffic & create sessions
+   * only valid for CNAT_LOCATION_FIB
+   */
+  u32 fib_index;
+
+  /**
    * The client object this translation belongs on
    * INDEX_INVALID if vip is unresolved
    */
@@ -191,7 +197,7 @@ extern u8 *format_cnat_translation (u8 * s, va_list * args);
 extern u32 cnat_translation_update (cnat_endpoint_t *vip,
 				    ip_protocol_t ip_proto,
 				    cnat_endpoint_tuple_t *backends, u8 flags,
-				    cnat_lb_type_t lb_type);
+				    cnat_lb_type_t lb_type, u32 table_id);
 
 /**
  * Delete a translation

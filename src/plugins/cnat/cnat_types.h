@@ -23,9 +23,6 @@
 #include <vnet/ip/ip.h>
 #include <vnet/util/throttle.h>
 
-/* only in the default table for v4 and v6 */
-#define CNAT_FIB_TABLE 0
-
 /* default lifetime of NAT sessions (seconds) */
 #define CNAT_DEFAULT_SESSION_MAX_AGE 30
 /* lifetime of TCP conn NAT sessions after SYNACK (seconds) */
