@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba0dc353_ddf0be21",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 745,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-10-15T06:27:13Z",
+      "side": 1,
+      "message": "I suspect the apps will just crash before reaching this when trying to initialize the fd_set because the fds returned by vpp will be out of bounds (and the apps don\u0027t check). So we\u0027ll have to do with the warning ...",
+      "range": {
+        "startLine": 744,
+        "startChar": 0,
+        "endLine": 745,
+        "endChar": 5
+      },
+      "revId": "d51796b87fb4b8239956762fad5584279921ba00",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "be03498e_c8913b2f",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 278,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-10-15T06:27:13Z",
+      "side": 0,
+      "message": "Let\u0027s convert this into a warning, to give some context to the select errors or possible crashes.",
+      "range": {
+        "startLine": 271,
+        "startChar": 0,
+        "endLine": 278,
+        "endChar": 2
+      },
+      "revId": "bd23b405fbe99034d75a46b060567e5adf62c04e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
