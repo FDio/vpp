@@ -14,16 +14,17 @@
  */
 
 #include <vnet/vnet.h>
+#include <vppinfra/math.h>
 #include <perfmon/perfmon.h>
 #include <perfmon/intel/core.h>
 
 #define GET_METRIC(m, i)  (((m) >> (i * 8)) & 0xff)
 #define GET_RATIO(m, i)	  (((m) >> (i * 32)) & 0xffffffff)
-#define RDPMC_FIXED_SLOTS (1 << 30) /* fixed slots */
-#define RDPMC_L1_METRICS  (1 << 29) /* l1 metric counters */
+#define RDPMC_SLOTS	  (1 << 30) /* fixed slots */
+#define RDPMC_METRICS	  (1 << 29) /* l1 & l2 metric counters */
 
 #define FIXED_COUNTER_SLOTS	  3
-#define METRIC_COUNTER_TOPDOWN_L1 0
+#define METRIC_COUNTER_TOPDOWN_L1_L2 0
 
 typedef enum
 {
@@ -31,7 +32,16 @@ typedef enum
   TOPDOWN_E_BAD_SPEC,
   TOPDOWN_E_FE_BOUND,
   TOPDOWN_E_BE_BOUND,
-} topdown_lvl1_t;
+  TOPDOWN_E_HEAVYOPS,
+  TOPDOWN_E_LIGHTOPS,
+  TOPDOWN_E_BMISPRED,
+  TOPDOWN_E_MCHCLEAR,
+  TOPDOWN_E_FETCHLAT,
+  TOPDOWN_E_FETCH_BW,
+  TOPDOWN_E_MEMBOUND,
+  TOPDOWN_E_CORBOUND,
+  TOPDOWN_E_MAX,
+} topdown_e_t;
 
 enum
 {
@@ -39,11 +49,11 @@ enum
   TOPDOWN_E_RDPMC_METRICS,
 };
 
-typedef f64 (topdown_lvl1_parse_fn_t) (void *, topdown_lvl1_t);
+typedef f64 (topdown_lvl1_parse_fn_t) (void *, topdown_e_t);
 
 /* Parse thread level states from perfmon_reading */
 static_always_inline f64
-topdown_lvl1_perf_reading (void *ps, topdown_lvl1_t e)
+topdown_lvl1_perf_reading (void *ps, topdown_e_t e)
 {
   perfmon_reading_t *ss = (perfmon_reading_t *) ps;
 
@@ -52,7 +62,7 @@ topdown_lvl1_perf_reading (void *ps, topdown_lvl1_t e)
 }
 
 static_always_inline f64
-topdown_lvl1_rdpmc_metric (void *ps, topdown_lvl1_t e)
+topdown_lvl1_rdpmc_metric (void *ps, topdown_e_t e)
 {
   perfmon_node_stats_t *ss = (perfmon_node_stats_t *) ps;
   f64 slots_t0 =
@@ -94,7 +104,7 @@ format_topdown_lvl1 (u8 *s, va_list *args)
 	parse_fn (ps, TOPDOWN_E_BE_BOUND) + parse_fn (ps, TOPDOWN_E_FE_BOUND);
       break;
     default:
-      sv = parse_fn (ps, (topdown_lvl1_t) idx - 2);
+      sv = parse_fn (ps, (topdown_e_t) idx - 2);
       break;
     }
 
@@ -119,8 +129,8 @@ PERFMON_REGISTER_BUNDLE (topdown_lvl1_metric) = {
   .events[3] = INTEL_CORE_E_TOPDOWN_L1_FE_BOUND_METRIC,
   .events[4] = INTEL_CORE_E_TOPDOWN_L1_BE_BOUND_METRIC,
   .n_events = 5,
-  .metrics[0] = RDPMC_FIXED_SLOTS | FIXED_COUNTER_SLOTS,
-  .metrics[1] = RDPMC_L1_METRICS | METRIC_COUNTER_TOPDOWN_L1,
+  .metrics[0] = RDPMC_SLOTS | FIXED_COUNTER_SLOTS,
+  .metrics[1] = RDPMC_METRICS | METRIC_COUNTER_TOPDOWN_L1_L2,
   .n_metrics = 2,
   .cpu_supports = topdown_lvl1_cpu_supports,
   .n_cpu_supports = ARRAY_LEN (topdown_lvl1_cpu_supports),
@@ -130,4 +140,142 @@ PERFMON_REGISTER_BUNDLE (topdown_lvl1_metric) = {
   .footer = "Not Stalled (NS),STalled (ST),\n"
 	    " Retiring (RT), Bad Speculation (BS),\n"
 	    " FrontEnd bound (FE), BackEnd bound (BE)",
+};
+
+/* Convert the TopDown enum to the perf reading index */
+#define TO_LVL2_PERF_IDX(e)                                                   \
+  ({                                                                          \
+    u8 to_idx[TOPDOWN_E_MAX] = { 0, 0, 0, 0, 5, 5, 6, 6, 7, 7, 8, 8 };        \
+    to_idx[e];                                                                \
+  })
+
+/* Parse thread level stats from perfmon_reading */
+static_always_inline f64
+topdown_lvl2_perf_reading (void *ps, topdown_e_t e)
+{
+  perfmon_reading_t *ss = (perfmon_reading_t *) ps;
+  u64 value = ss->value[TO_LVL2_PERF_IDX (e)];
+
+  /* If it is an L1 metric, call L1 format */
+  if (TOPDOWN_E_BE_BOUND >= e)
+    {
+      return topdown_lvl1_perf_reading (ps, e);
+    }
+
+  /* all the odd metrics, are inferred from even and L1 metrics */
+  if (e & 0x1)
+    {
+      topdown_e_t e1 = TO_LVL2_PERF_IDX (e) - 4;
+      value = ss->value[e1] - value;
+    }
+
+  return (f64) value / ss->value[0] * 100;
+}
+
+/* Convert the TopDown enum to the rdpmc metric byte position */
+#define TO_LVL2_METRIC_BYTE(e)                                                \
+  ({                                                                          \
+    u8 to_metric[TOPDOWN_E_MAX] = { 0, 0, 0, 0, 4, 4, 5, 5, 6, 6, 7, 7 };     \
+    to_metric[e];                                                             \
+  })
+
+/* Convert the TopDown L2 enum to the reference TopDown L1 enum */
+#define TO_LVL1_REF(e)                                                        \
+  ({                                                                          \
+    u8 to_lvl1[TOPDOWN_E_MAX] = { -1,                                         \
+				  -1,                                         \
+				  -1,                                         \
+				  -1,                                         \
+				  TOPDOWN_E_RETIRING,                         \
+				  TOPDOWN_E_RETIRING,                         \
+				  TOPDOWN_E_BAD_SPEC,                         \
+				  TOPDOWN_E_BAD_SPEC,                         \
+				  TOPDOWN_E_FE_BOUND,                         \
+				  TOPDOWN_E_FE_BOUND,                         \
+				  TOPDOWN_E_BE_BOUND,                         \
+				  TOPDOWN_E_BE_BOUND };                       \
+    to_lvl1[e];                                                               \
+  })
+
+static_always_inline f64
+topdown_lvl2_rdpmc_metric (void *ps, topdown_e_t e)
+{
+  f64 r, l1_value = 0;
+
+  /* If it is an L1 metric, call L1 format */
+  if (TOPDOWN_E_BE_BOUND >= e)
+    {
+      return topdown_lvl1_rdpmc_metric (ps, e);
+    }
+
+  /* all the odd metrics, are inferred from even and L1 metrics */
+  if (e & 0x1)
+    {
+      /* get the L1 reference metric */
+      l1_value = topdown_lvl1_rdpmc_metric (ps, TO_LVL1_REF (e));
+    }
+
+  /* calculate the l2 metric */
+  r =
+    fabs (l1_value - topdown_lvl1_rdpmc_metric (ps, TO_LVL2_METRIC_BYTE (e)));
+  return r;
+}
+
+static u8 *
+format_topdown_lvl2 (u8 *s, va_list *args)
+{
+  void *ps = va_arg (*args, void *);
+  u64 idx = va_arg (*args, int);
+  perfmon_bundle_type_t type = va_arg (*args, perfmon_bundle_type_t);
+  f64 sv = 0;
+
+  topdown_lvl1_parse_fn_t *parse_fn,
+    *parse_fns[PERFMON_BUNDLE_TYPE_MAX] = { 0, topdown_lvl2_rdpmc_metric,
+					    topdown_lvl2_perf_reading, 0 };
+
+  parse_fn = parse_fns[type];
+  ASSERT (parse_fn);
+
+  sv = parse_fn (ps, (topdown_e_t) idx);
+  s = format (s, "%f", sv);
+
+  return s;
+}
+
+static perfmon_cpu_supports_t topdown_lvl2_cpu_supports[] = {
+  /* Intel SPR supports papi/thread or rdpmc/node */
+  { clib_cpu_supports_avx512_fp16, PERFMON_BUNDLE_TYPE_NODE_OR_THREAD }
+};
+
+PERFMON_REGISTER_BUNDLE (topdown_lvl2_metric) = {
+  .name = "topdown-level2",
+  .description = "Top-down Microarchitecture Analysis Level 2",
+  .source = "intel-core",
+  .offset_type = PERFMON_OFFSET_TYPE_METRICS,
+  .events[0] = INTEL_CORE_E_TOPDOWN_SLOTS,
+  .events[1] = INTEL_CORE_E_TOPDOWN_L1_RETIRING_METRIC,
+  .events[2] = INTEL_CORE_E_TOPDOWN_L1_BAD_SPEC_METRIC,
+  .events[3] = INTEL_CORE_E_TOPDOWN_L1_FE_BOUND_METRIC,
+  .events[4] = INTEL_CORE_E_TOPDOWN_L1_BE_BOUND_METRIC,
+  .events[5] = INTEL_CORE_E_TOPDOWN_L2_HEAVYOPS_METRIC,
+  .events[6] = INTEL_CORE_E_TOPDOWN_L2_BMISPRED_METRIC,
+  .events[7] = INTEL_CORE_E_TOPDOWN_L2_FETCHLAT_METRIC,
+  .events[8] = INTEL_CORE_E_TOPDOWN_L2_MEMBOUND_METRIC,
+  .n_events = 9,
+  .metrics[0] = RDPMC_SLOTS | FIXED_COUNTER_SLOTS,
+  .metrics[1] = RDPMC_METRICS | METRIC_COUNTER_TOPDOWN_L1_L2,
+  .n_metrics = 2,
+  .cpu_supports = topdown_lvl2_cpu_supports,
+  .n_cpu_supports = ARRAY_LEN (topdown_lvl2_cpu_supports),
+  .format_fn = format_topdown_lvl2,
+  .column_headers = PERFMON_STRINGS ("% RT", "% BS", "% FE", "% BE", "% RT.HO",
+				     "% RT.LO", "% BS.BM", "% BS.MC",
+				     "% FE.FL", "% FE.FB", "% BE.MB",
+				     "% BE.CB"),
+  .footer = "Retiring (RT), Bad Speculation (BS),\n"
+	    " FrontEnd bound (1FE), BackEnd bound (BE),\n"
+	    " Light Operations (LO), Heavy Operations (HO),\n"
+	    " Branch Misprediction (BM), Machine Clears (MC),\n"
+	    " Fetch Latency (FL), Fetch Bandwidth (FB),\n"
+	    " Memory Bound (MB), Core Bound (CB)",
 };

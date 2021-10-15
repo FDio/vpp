@@ -134,6 +134,7 @@ _CLIB_MARCH_FN_REGISTRATION(fn)
   _ (avx512_vpopcntdq, 7, ecx, 14)                                            \
   _ (movdiri, 7, ecx, 27)                                                     \
   _ (movdir64b, 7, ecx, 28)                                                   \
+  _ (avx512_fp16, 7, edx, 23)                                                 \
   _ (invariant_tsc, 0x80000007, edx, 8)
 
 #define foreach_aarch64_flags \
