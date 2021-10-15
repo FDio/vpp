@@ -65,6 +65,16 @@ perfmon_mmap_read_pmcs (u64 *counters,
   switch (n_counters)
     {
     default:
+    case 12:
+      counters[11] = perfmon_mmap_read_pmc1 (mmap_pages[11]);
+    case 11:
+      counters[10] = perfmon_mmap_read_pmc1 (mmap_pages[10]);
+    case 10:
+      counters[9] = perfmon_mmap_read_pmc1 (mmap_pages[9]);
+    case 9:
+      counters[8] = perfmon_mmap_read_pmc1 (mmap_pages[8]);
+    case 8:
+      counters[7] = perfmon_mmap_read_pmc1 (mmap_pages[7]);
     case 7:
       counters[6] = perfmon_mmap_read_pmc1 (mmap_pages[6]);
     case 6:
@@ -123,6 +133,16 @@ perfmon_metric_read_pmcs (u64 *counters, int *pmc_index, u8 n_counters)
   switch (n_counters)
     {
     default:
+    case 12:
+      counters[11] = _rdpmc (pmc_index[11]);
+    case 11:
+      counters[10] = _rdpmc (pmc_index[10]);
+    case 10:
+      counters[9] = _rdpmc (pmc_index[9]);
+    case 9:
+      counters[8] = _rdpmc (pmc_index[8]);
+    case 8:
+      counters[7] = _rdpmc (pmc_index[7]);
     case 7:
       counters[6] = _rdpmc (pmc_index[6]);
     case 6:
@@ -168,6 +188,16 @@ perfmon_dispatch_wrapper_metrics (vlib_main_t *vm, vlib_node_runtime_t *node,
   switch (n_events)
     {
     default:
+    case 12:
+      pmc_index[11] = perfmon_metric_index (rt->bundle, 11);
+    case 11:
+      pmc_index[10] = perfmon_metric_index (rt->bundle, 10);
+    case 10:
+      pmc_index[9] = perfmon_metric_index (rt->bundle, 9);
+    case 9:
+      pmc_index[8] = perfmon_metric_index (rt->bundle, 8);
+    case 8:
+      pmc_index[7] = perfmon_metric_index (rt->bundle, 7);
     case 7:
       pmc_index[6] = perfmon_metric_index (rt->bundle, 6);
     case 6:
