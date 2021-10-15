@@ -378,23 +378,22 @@ format_memif_descriptor (u8 * s, va_list * args)
   if (ring)
     {
       s = format (s, "%Udescriptor table:\n", format_white_space, indent);
-      s =
-	format (s,
-		"%Uid    flags   len         address       offset    user address\n",
-		format_white_space, indent);
-      s =
-	format (s,
-		"%U===== ===== ======== ================== ====== ==================\n",
-		format_white_space, indent);
+      s = format (s,
+		  "%Uid    flags region len         address         offset    "
+		  "    user address\n",
+		  format_white_space, indent);
+      s = format (s,
+		  "%U===== ===== ====== ======== ================== "
+		  "========== ==================\n",
+		  format_white_space, indent);
       for (slot = 0; slot < ring_size; slot++)
 	{
-	  s = format (s, "%U%-5d %-5d %-7d  0x%016lx %-6d 0x%016lx\n",
-		      format_white_space, indent, slot,
-		      ring->desc[slot].flags,
-		      ring->desc[slot].length,
+	  s = format (s, "%U%-5d %-5d %-6d %-7d  0x%016lx %-10d 0x%016lx\n",
+		      format_white_space, indent, slot, ring->desc[slot].flags,
+		      ring->desc[slot].region, ring->desc[slot].length,
 		      mif->regions[ring->desc[slot].region].shm,
-		      ring->desc[slot].offset, memif_get_buffer (mif, ring,
-								 slot));
+		      ring->desc[slot].offset,
+		      memif_get_buffer (mif, ring, slot));
 	}
       s = format (s, "\n");
     }
