@@ -232,8 +232,6 @@ typedef struct api_main_t
 {
   /** Message handler vector  */
   void (**msg_handlers) (void *);
-  /** Plaform-dependent (aka hardware) message handler vector */
-  int (**pd_msg_handlers) (void *, int);
 
   /** non-default message cleanup handler vector */
   void (**msg_cleanup_handlers) (void *);

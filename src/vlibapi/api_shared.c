@@ -1082,41 +1082,6 @@ vl_msg_api_post_mortem_dump (void)
 /* Layered message handling support */
 
 void
-vl_msg_api_register_pd_handler (void *fp, u16 msg_id_host_byte_order)
-{
-  api_main_t *am = vlibapi_get_main ();
-
-  /* Mild idiot proofing */
-  if (msg_id_host_byte_order > 10000)
-    clib_warning ("msg_id_host_byte_order endian issue? %d arg vs %d",
-		  msg_id_host_byte_order,
-		  clib_net_to_host_u16 (msg_id_host_byte_order));
-  vec_validate (am->pd_msg_handlers, msg_id_host_byte_order);
-  am->pd_msg_handlers[msg_id_host_byte_order] = fp;
-}
-
-int
-vl_msg_api_pd_handler (void *mp, int rv)
-{
-  api_main_t *am = vlibapi_get_main ();
-  int (*fp) (void *, int);
-  u16 msg_id;
-
-  if (clib_arch_is_little_endian)
-    msg_id = clib_net_to_host_u16 (*((u16 *) mp));
-  else
-    msg_id = *((u16 *) mp);
-
-  if (msg_id >= vec_len (am->pd_msg_handlers)
-      || am->pd_msg_handlers[msg_id] == 0)
-    return rv;
-
-  fp = am->pd_msg_handlers[msg_id];
-  rv = (*fp) (mp, rv);
-  return rv;
-}
-
-void
 vl_msg_api_set_first_available_msg_id (u16 first_avail)
 {
   api_main_t *am = vlibapi_get_main ();

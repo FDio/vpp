@@ -112,7 +112,6 @@ send_ipip_tunnel_details (ipip_tunnel_t * t, vl_api_ipip_tunnel_dump_t * mp)
   vl_api_ipip_tunnel_details_t *rmp;
   bool is_ipv6 = t->transport == IPIP_TRANSPORT_IP6 ? true : false;
   fib_table_t *ft;
-  int rv = 0;
 
   ft = fib_table_get (t->fib_index, (is_ipv6 ? FIB_PROTOCOL_IP6 :
 				     FIB_PROTOCOL_IP4));
