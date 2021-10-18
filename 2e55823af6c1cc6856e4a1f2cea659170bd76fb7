@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "16325995_c46c0a84",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2630,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-10-18T16:33:26Z",
+      "side": 0,
+      "message": "Any particular reason for not calling syn_during_timewait here and pass tw_iss as a stack local lower? That way we can avoid adding a new node.",
+      "range": {
+        "startLine": 2630,
+        "startChar": 3,
+        "endLine": 2630,
+        "endChar": 5
+      },
+      "revId": "2e55823af6c1cc6856e4a1f2cea659170bd76fb7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
