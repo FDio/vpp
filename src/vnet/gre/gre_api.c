@@ -130,7 +130,6 @@ static void send_gre_tunnel_details
   (gre_tunnel_t * t, vl_api_gre_tunnel_dump_t * mp)
 {
   vl_api_gre_tunnel_details_t *rmp;
-  int rv = 0;
 
   /* *INDENT-OFF* */
   REPLY_MACRO_DETAILS2(VL_API_GRE_TUNNEL_DETAILS,
