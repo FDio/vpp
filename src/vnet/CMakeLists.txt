@@ -1223,6 +1223,9 @@ list(APPEND VNET_HEADERS
   fib/fib.h
   fib/fib_api.h
   fib/ip4_fib.h
+  fib/ip4_fib_8.h
+  fib/ip4_fib_16.h
+  fib/ip4_fib_hash.h
   fib/ip6_fib.h
   fib/fib_types.h
   fib/fib_table.h
