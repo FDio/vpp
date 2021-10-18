@@ -38,6 +38,12 @@ configure_file(
   ${CMAKE_CURRENT_BINARY_DIR}/vnet/config.h
 )
 
+install(
+  FILES ${CMAKE_CURRENT_BINARY_DIR}/vnet/config.h
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vpp/vnet
+  COMPONENT vpp-dev
+)
+
 set(VPP_API_FILES
   api/vpe_types.api
   api/vpe.api
