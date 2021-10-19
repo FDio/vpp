@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "6ae41708_dfc8038a",
+        "filename": "src/plugins/nat/nat44-ei/nat44_ei.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 365,
+      "author": {
+        "id": 1541
+      },
+      "writtenOn": "2021-10-19T10:07:33Z",
+      "side": 1,
+      "message": "The only introduced change is the refactor of is_sm_addr_only and is_sm_identity_nat. Logic untouched. Address only static mapping (feature) doesn\u0027t reserver port from any pool address. Because there is no pool address port used this check skips address only static mapping records.",
+      "parentUuid": "d8286ee0_a310d8fa",
+      "revId": "8b9600ab7dab1b894d573386c400f871ea70e487",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "54ff9564_9340ad94",
         "filename": "src/plugins/nat/nat44-ei/nat44_ei.c",
         "patchSetId": 6
@@ -50,6 +68,24 @@
       "revId": "8b9600ab7dab1b894d573386c400f871ea70e487",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0a3b94e4_2d0e8c98",
+        "filename": "src/plugins/nat/nat44-ei/nat44_ei_cli.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1076,
+      "author": {
+        "id": 1541
+      },
+      "writtenOn": "2021-10-19T10:07:33Z",
+      "side": 1,
+      "message": "This were just reminders from NAT44-ED code passed here. I have removed them. CLI requires refactor.",
+      "parentUuid": "93a94481_12c57c3b",
+      "revId": "8b9600ab7dab1b894d573386c400f871ea70e487",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
