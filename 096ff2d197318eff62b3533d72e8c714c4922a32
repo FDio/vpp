@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "cced6179_48393283",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2632,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-10-19T19:35:28Z",
+      "side": 1,
+      "message": "Since the connection is in timewait, tc-\u003esnd_nxt should be the largest sequence number used, i.e., we never move it backwards. But if we really want to make sure, tc-\u003esnd_nxt + tcp_available_snd_wnd (tc) + reasonable_rand_number should be okay, I guess. Am I missing something about 65535?",
+      "parentUuid": "782af167_517cab5b",
+      "range": {
+        "startLine": 2632,
+        "startChar": 28,
+        "endLine": 2632,
+        "endChar": 38
+      },
+      "revId": "096ff2d197318eff62b3533d72e8c714c4922a32",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "4c2933d1_494ed7c7",
         "filename": "src/vnet/tcp/tcp_input.c",
         "patchSetId": 2
@@ -131,6 +155,30 @@
       "side": 1,
       "message": "ok, will take a look.",
       "parentUuid": "b44e385e_91437994",
+      "range": {
+        "startLine": 2643,
+        "startChar": 6,
+        "endLine": 2643,
+        "endChar": 18
+      },
+      "revId": "096ff2d197318eff62b3533d72e8c714c4922a32",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fd2b848c_a2a4a58f",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2643,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-10-19T19:35:28Z",
+      "side": 1,
+      "message": "Thanks! Feel free to reach out if something\u0027s not clear.",
+      "parentUuid": "24b00df7_74b7dc43",
       "range": {
         "startLine": 2643,
         "startChar": 6,
