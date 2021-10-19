@@ -17,6 +17,9 @@
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/ip4_fib.h>
 
+/* ip4 lookup table config parameters */
+uword ip4_fib_table_size;
+
 /*
  * A table of prefixes to be added to tables and the sources for them
  */
@@ -189,7 +192,7 @@ void
 ip4_fib_table_destroy (u32 fib_index)
 {
     fib_table_t *fib_table = pool_elt_at_index(ip4_main.fibs, fib_index);
-    ip4_fib_t *v4_fib = pool_elt_at_index(ip4_fibs, fib_table->ft_index);
+    ip4_fib_t *v4_fib = ip4_fib_get(fib_table->ft_index);
     u32 *n_locks;
 
     /*
@@ -379,7 +382,7 @@ ip4_show_fib (vlib_main_t * vm,
     pool_foreach_index (fib_index, im4->fibs)
      {
 	fib_table_t *fib_table = pool_elt_at_index(im4->fibs, fib_index);
-	ip4_fib_t *fib = pool_elt_at_index(ip4_fibs, fib_table->ft_index);
+        ip4_fib_t *fib = ip4_fib_get(fib_table->ft_index);
         fib_source_t source;
         u8 *s = NULL;
 
@@ -628,3 +631,45 @@ VLIB_CLI_COMMAND (ip4_show_fib_command, static) = {
     .function = ip4_show_fib,
 };
 /* *INDENT-ON* */
+
+static clib_error_t *
+ip4_config(vlib_main_t *vm, unformat_input_t *input)
+{
+  uword heapsize = 0;
+
+  while (unformat_check_input(input) != UNFORMAT_END_OF_INPUT) {
+    if (unformat(input, "heap-size %U",
+		 unformat_memory_size, &heapsize))
+      ;
+    else
+      return clib_error_return(0, "unknown input '%U'",
+			       format_unformat_error, input);
+  }
+
+  ip4_fib_table_size = heapsize;
+
+  return 0;
+}
+
+VLIB_EARLY_CONFIG_FUNCTION(ip4_config, "ip4");
+
+static clib_error_t *
+ip4_fib_init(vlib_main_t *vm)
+{
+  u32 elts;
+
+  /*
+   * Rough number of fib entries excluding free
+   * indices and headers.
+   */
+  elts = ip4_fib_table_size / sizeof(ip4_fibs[0]);
+  if (elts > 0)
+    pool_init_fixed(ip4_fibs, elts);
+
+  return 0;
+}
+
+VLIB_INIT_FUNCTION(ip4_fib_init) =
+{
+  .runs_before = VLIB_INITS("ip4_lookup_init"),
+};
