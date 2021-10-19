@@ -22,6 +22,30 @@
       "revId": "2e55823af6c1cc6856e4a1f2cea659170bd76fb7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3046cfff_a3511cae",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2630,
+      "author": {
+        "id": 2576
+      },
+      "writtenOn": "2021-10-19T11:53:39Z",
+      "side": 0,
+      "message": "The motivation for adding an additional node is to split between the regular/common case (non-timewait) to timewait node, and avoid special handling\nfor timewait in the common flow and in addition, add to code clarity. However, after reading your review we perhaps should have split this into two patches:\n1. RFC compliance Fix, 2. Refactoring. Would you like me to resubmit #1 and then decide separately on the refactoring advantage if at all ?",
+      "parentUuid": "16325995_c46c0a84",
+      "range": {
+        "startLine": 2630,
+        "startChar": 3,
+        "endLine": 2630,
+        "endChar": 5
+      },
+      "revId": "2e55823af6c1cc6856e4a1f2cea659170bd76fb7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
