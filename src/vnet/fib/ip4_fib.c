@@ -17,6 +17,9 @@
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/ip4_fib.h>
 
+/* ip4 lookup table config parameters */
+uword ip4_fib_table_size;
+
 /*
  * A table of prefixes to be added to tables and the sources for them
  */
@@ -631,19 +634,44 @@ static clib_error_t *
 ip_config (vlib_main_t * vm, unformat_input_t * input)
 {
     char *default_name = 0;
+    uword heapsize = 0;
 
     while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
 	if (unformat (input, "default-table-name %s", &default_name))
+	    ;
+	else if (unformat (input, "heap-size %U",
+		 unformat_memory_size, &heapsize))
 	    ;
 	else
 	    return clib_error_return (0, "unknown input '%U'",
 				      format_unformat_error, input);
     }
 
+    ip4_fib_table_size = heapsize;
     fib_table_default_names[FIB_PROTOCOL_IP4] = default_name;
 
     return 0;
 }
 
 VLIB_EARLY_CONFIG_FUNCTION (ip_config, "ip");
+
+static clib_error_t *
+ip4_fib_init (vlib_main_t *vm)
+{
+    u32 elts;
+    /*
+     * Rough number of fib entries excluding free
+     * indices and headers.
+     */
+    elts = ip4_fib_table_size / sizeof(ip4_fibs[0]);
+    if (elts > 0)
+	pool_init_fixed (ip4_fibs, elts);
+
+    return 0;
+}
+
+VLIB_INIT_FUNCTION (ip4_fib_init) =
+{
+    .runs_before = VLIB_INITS ("ip4_lookup_init"),
+};
