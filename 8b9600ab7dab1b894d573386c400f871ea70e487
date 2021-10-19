@@ -54,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "2d149cba_edd2fb4d",
+        "filename": "src/plugins/nat/nat44-ei/nat44_ei.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 658,
+      "author": {
+        "id": 1541
+      },
+      "writtenOn": "2021-10-19T10:08:57Z",
+      "side": 1,
+      "message": "Yes. removed.",
+      "parentUuid": "54ff9564_9340ad94",
+      "revId": "8b9600ab7dab1b894d573386c400f871ea70e487",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "93a94481_12c57c3b",
         "filename": "src/plugins/nat/nat44-ei/nat44_ei_cli.c",
         "patchSetId": 6
