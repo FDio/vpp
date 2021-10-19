@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "d68c4dd5_02ce8a3f",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2632,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-10-19T15:10:02Z",
+      "side": 1,
+      "message": "Can we randomize this? Maybe something like \n`(uword)(tcp_time_now_us (tc-\u003ec_thread_index) * 1e6) % 65535`.",
+      "range": {
+        "startLine": 2632,
+        "startChar": 28,
+        "endLine": 2632,
+        "endChar": 38
+      },
+      "revId": "096ff2d197318eff62b3533d72e8c714c4922a32",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "4c2933d1_494ed7c7",
         "filename": "src/vnet/tcp/tcp_input.c",
         "patchSetId": 2
@@ -42,6 +65,29 @@
         "startChar": 13,
         "endLine": 2639,
         "endChar": 14
+      },
+      "revId": "096ff2d197318eff62b3533d72e8c714c4922a32",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b44e385e_91437994",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2643,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-10-19T15:10:02Z",
+      "side": 1,
+      "message": "TCP_DBG(), as it can otherwise be exploited. If we really want to keep track of this, we could add it to the worker stats (see tcp_wrk_stats_t).",
+      "range": {
+        "startLine": 2643,
+        "startChar": 6,
+        "endLine": 2643,
+        "endChar": 18
       },
       "revId": "096ff2d197318eff62b3533d72e8c714c4922a32",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
