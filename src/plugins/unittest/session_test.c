@@ -1942,7 +1942,7 @@ session_test_mq_basic (vlib_main_t * vm, unformat_input_t * input)
 
   smq = svm_msg_q_alloc (cfg);
   svm_msg_q_attach (mq, smq);
-  SESSION_TEST (mq != 0, "svm_msg_q_alloc");
+  SESSION_TEST (smq != 0, "svm_msg_q_alloc");
   SESSION_TEST (vec_len (mq->rings) == 2, "ring allocation");
   rings_ptr = (u8 *) mq->rings[0].shr->data;
   vec_foreach (ring, mq->rings)
