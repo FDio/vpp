@@ -419,6 +419,18 @@ lcp_router_link_add (struct rtnl_link *rl, void *ctx)
 		     rtnl_link_get_name (rl));
 }
 
+static void
+lcp_router_link_sync_begin (void)
+{
+  LCP_ROUTER_INFO ("Begin synchronization of interface configurations");
+}
+
+static void
+lcp_router_link_sync_end (void)
+{
+  LCP_ROUTER_INFO ("End synchronization of interface configurations");
+}
+
 static fib_protocol_t
 lcp_router_proto_k2f (uint32_t k)
 {
@@ -507,6 +519,22 @@ static void
 lcp_router_link_addr_add (struct rtnl_addr *la)
 {
   lcp_router_link_addr_add_del (la, 0);
+}
+
+static void
+lcp_router_link_addr_sync_begin (void)
+{
+  ip_interface_address_mark ();
+
+  LCP_ROUTER_INFO ("Begin synchronization of interface addresses");
+}
+
+static void
+lcp_router_link_addr_sync_end (void)
+{
+  ip_interface_address_sweep ();
+
+  LCP_ROUTER_INFO ("End synchronization of interface addresses");
 }
 
 static void
@@ -607,6 +635,24 @@ lcp_router_neigh_add (struct rtnl_neigh *rn)
   else
     LCP_ROUTER_INFO ("ignore neighbour add on: %d",
 		     rtnl_neigh_get_ifindex (rn));
+}
+
+static void
+lcp_router_neigh_sync_begin (void)
+{
+  ip_neighbor_mark (AF_IP4);
+  ip_neighbor_mark (AF_IP6);
+
+  LCP_ROUTER_INFO ("Begin synchronization of neighbors");
+}
+
+static void
+lcp_router_neigh_sync_end (void)
+{
+  ip_neighbor_sweep (AF_IP4);
+  ip_neighbor_sweep (AF_IP6);
+
+  LCP_ROUTER_INFO ("End synchronization of neighbors");
 }
 
 static lcp_router_table_t *
@@ -1011,15 +1057,64 @@ lcp_router_route_add (struct rtnl_route *rr)
     }
 }
 
+static void
+lcp_router_route_sync_begin (void)
+{
+  lcp_router_table_t *nlt;
+
+  pool_foreach (nlt, lcp_router_table_pool)
+    {
+      fib_table_mark (nlt->nlt_fib_index, nlt->nlt_proto, lcp_rt_fib_src);
+      fib_table_mark (nlt->nlt_fib_index, nlt->nlt_proto,
+		      lcp_rt_fib_src_dynamic);
+
+      LCP_ROUTER_INFO ("Begin synchronization of %U routes in table %u",
+		       format_fib_protocol, nlt->nlt_proto,
+		       nlt->nlt_fib_index);
+    }
+}
+
+static void
+lcp_router_route_sync_end (void)
+{
+  lcp_router_table_t *nlt;
+
+  pool_foreach (nlt, lcp_router_table_pool)
+    {
+      fib_table_sweep (nlt->nlt_fib_index, nlt->nlt_proto, lcp_rt_fib_src);
+      fib_table_sweep (nlt->nlt_fib_index, nlt->nlt_proto,
+		       lcp_rt_fib_src_dynamic);
+
+      LCP_ROUTER_INFO ("End synchronization of %U routes in table %u",
+		       format_fib_protocol, nlt->nlt_proto,
+		       nlt->nlt_fib_index);
+    }
+}
+
 const nl_vft_t lcp_router_vft = {
   .nvl_rt_link_add = { .is_mp_safe = 0, .cb = lcp_router_link_add },
   .nvl_rt_link_del = { .is_mp_safe = 0, .cb = lcp_router_link_del },
+  .nvl_rt_link_sync_begin = { .is_mp_safe = 0,
+			      .cb = lcp_router_link_sync_begin },
+  .nvl_rt_link_sync_end = { .is_mp_safe = 0, .cb = lcp_router_link_sync_end },
   .nvl_rt_addr_add = { .is_mp_safe = 0, .cb = lcp_router_link_addr_add },
   .nvl_rt_addr_del = { .is_mp_safe = 0, .cb = lcp_router_link_addr_del },
+  .nvl_rt_addr_sync_begin = { .is_mp_safe = 0,
+			      .cb = lcp_router_link_addr_sync_begin },
+  .nvl_rt_addr_sync_end = { .is_mp_safe = 0,
+			    .cb = lcp_router_link_addr_sync_end },
   .nvl_rt_neigh_add = { .is_mp_safe = 0, .cb = lcp_router_neigh_add },
   .nvl_rt_neigh_del = { .is_mp_safe = 0, .cb = lcp_router_neigh_del },
+  .nvl_rt_neigh_sync_begin = { .is_mp_safe = 0,
+			       .cb = lcp_router_neigh_sync_begin },
+  .nvl_rt_neigh_sync_end = { .is_mp_safe = 0,
+			     .cb = lcp_router_neigh_sync_end },
   .nvl_rt_route_add = { .is_mp_safe = 1, .cb = lcp_router_route_add },
   .nvl_rt_route_del = { .is_mp_safe = 1, .cb = lcp_router_route_del },
+  .nvl_rt_route_sync_begin = { .is_mp_safe = 0,
+			       .cb = lcp_router_route_sync_begin },
+  .nvl_rt_route_sync_end = { .is_mp_safe = 0,
+			     .cb = lcp_router_route_sync_end },
 };
 
 static clib_error_t *
