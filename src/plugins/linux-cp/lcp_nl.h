@@ -21,9 +21,13 @@
 #include <netlink/route/addr.h>
 
 typedef void (*nl_rt_link_cb_t) (struct rtnl_link *rl, void *ctx);
+typedef void (*nl_rt_link_sync_cb_t) (void);
 typedef void (*nl_rt_addr_cb_t) (struct rtnl_addr *ra);
+typedef void (*nl_rt_addr_sync_cb_t) (void);
 typedef void (*nl_rt_neigh_cb_t) (struct rtnl_neigh *rr);
+typedef void (*nl_rt_neigh_sync_cb_t) (void);
 typedef void (*nl_rt_route_cb_t) (struct rtnl_route *rn);
+typedef void (*nl_rt_route_sync_cb_t) (void);
 
 #define NL_RT_COMMON uword is_mp_safe
 
@@ -34,12 +38,26 @@ typedef struct nl_rt_link_t_
   nl_rt_link_cb_t cb;
 } nl_rt_link_t;
 
+typedef struct nl_rt_link_sync_t_
+{
+  NL_RT_COMMON;
+
+  nl_rt_link_sync_cb_t cb;
+} nl_rt_link_sync_t;
+
 typedef struct nl_rt_addr_t_
 {
   NL_RT_COMMON;
 
   nl_rt_addr_cb_t cb;
 } nl_rt_addr_t;
+
+typedef struct nl_rt_addr_sync_t_
+{
+  NL_RT_COMMON;
+
+  nl_rt_addr_sync_cb_t cb;
+} nl_rt_addr_sync_t;
 
 typedef struct nl_rt_neigh_t_
 {
@@ -48,6 +66,13 @@ typedef struct nl_rt_neigh_t_
   nl_rt_neigh_cb_t cb;
 } nl_rt_neigh_t;
 
+typedef struct nl_rt_neigh_sync_t_
+{
+  NL_RT_COMMON;
+
+  nl_rt_neigh_sync_cb_t cb;
+} nl_rt_neigh_sync_t;
+
 typedef struct nl_rt_route_t_
 {
   NL_RT_COMMON;
@@ -55,18 +80,33 @@ typedef struct nl_rt_route_t_
   nl_rt_route_cb_t cb;
 } nl_rt_route_t;
 
+typedef struct nl_rt_route_sync_t_
+{
+  NL_RT_COMMON;
+
+  nl_rt_route_sync_cb_t cb;
+} nl_rt_route_sync_t;
+
 #undef NL_RT_COMMON
 
 typedef struct nl_vft_t_
 {
   nl_rt_link_t nvl_rt_link_add;
   nl_rt_link_t nvl_rt_link_del;
+  nl_rt_link_sync_t nvl_rt_link_sync_begin;
+  nl_rt_link_sync_t nvl_rt_link_sync_end;
   nl_rt_addr_t nvl_rt_addr_add;
   nl_rt_addr_t nvl_rt_addr_del;
+  nl_rt_addr_sync_t nvl_rt_addr_sync_begin;
+  nl_rt_addr_sync_t nvl_rt_addr_sync_end;
   nl_rt_neigh_t nvl_rt_neigh_add;
   nl_rt_neigh_t nvl_rt_neigh_del;
+  nl_rt_neigh_sync_t nvl_rt_neigh_sync_begin;
+  nl_rt_neigh_sync_t nvl_rt_neigh_sync_end;
   nl_rt_route_t nvl_rt_route_add;
   nl_rt_route_t nvl_rt_route_del;
+  nl_rt_route_sync_t nvl_rt_route_sync_begin;
+  nl_rt_route_sync_t nvl_rt_route_sync_end;
 } nl_vft_t;
 
 extern void nl_register_vft (const nl_vft_t *nv);
