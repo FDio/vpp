@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2e726596_018a703f",
+        "filename": "src/vnet/devices/af_packet/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 346,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-10-20T14:13:27Z",
+      "side": 1,
+      "message": "I think it would be better to return an error instead, eg.\n  return clib_error_return_unix (0, \"MAC update failed\")",
+      "revId": "9b905883dbcfd91564759b01f736ccb7a9f7ed45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "180ec99c_decb354a",
+        "filename": "src/vnet/devices/af_packet/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 214,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-10-20T14:13:27Z",
+      "side": 1,
+      "message": "I think this could be rewritten like this to avoid a branch in the hot path (see below):\n  if (apif-\u003emode \u003d\u003d AF_PACKET_IF_MODE_L3)\n    {\n      next_index \u003d VNET_DEVICE_INPUT_NEXT_DROP;\n      next_index4 \u003d VNET_DEVICE_INPUT_NEXT_IP4_INPUT;\n      next_index6 \u003d VNET_DEVICE_INPUT_NEXT_IP6_INPUT;\n    }\n  else\n    {\n      next_index \u003d VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;\n      /* redirect if feature path enabled */\n      vnet_feature_start_device_input_x1 (apif-\u003esw_if_index, \u0026next_index, \u0026bt);\n    }\n\n    if (PREDICT_FALSE (apif-\u003eper_interface_next_index !\u003d ~0))\n      next_index \u003d next_index4 \u003d next_index6 \u003d apif-\u003eper_interface_next_index;",
+      "revId": "9b905883dbcfd91564759b01f736ccb7a9f7ed45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1d0ecfcb_cc70a91e",
+        "filename": "src/vnet/devices/af_packet/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 337,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-10-20T14:13:27Z",
+      "side": 1,
+      "message": "With the above change, this could become:\n  switch (first_b0-\u003edata[0] \u0026 0xf0)\n    {\n      case 0x40:\n        next0 \u003d next_index4;\n        break;\n      case 0x60:\n        next0 \u003d next_index6;\n        break;\n      default:\n        next0 \u003d next_index;\n        break;\n    }",
+      "revId": "9b905883dbcfd91564759b01f736ccb7a9f7ed45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
