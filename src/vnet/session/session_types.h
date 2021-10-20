@@ -454,6 +454,7 @@ STATIC_ASSERT (sizeof (session_dgram_hdr_t) == (SESSION_CONN_ID_LEN + 8),
 #define foreach_session_error                                                 \
   _ (NONE, "no error")                                                        \
   _ (UNKNOWN, "generic/unknown error")                                        \
+  _ (SESSION_DISABLED, "session disabled")                                    \
   _ (REFUSED, "refused")                                                      \
   _ (TIMEDOUT, "timedout")                                                    \
   _ (ALLOC, "obj/memory allocation error")                                    \

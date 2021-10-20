@@ -1300,6 +1300,11 @@ vnet_listen (vnet_listen_args_t * a)
 
   ASSERT (vlib_thread_is_main_w_barrier ());
 
+  if (!session_main_is_enabled ())
+    {
+      return SESSION_E_SESSION_DISABLED;
+    }
+
   app = application_get_if_valid (a->app_index);
   if (!app)
     return SESSION_E_NOAPP;
@@ -1351,6 +1356,11 @@ vnet_connect (vnet_connect_args_t * a)
   application_t *client;
 
   ASSERT (vlib_thread_is_main_w_barrier ());
+
+  if (!session_main_is_enabled ())
+    {
+      return SESSION_E_SESSION_DISABLED;
+    }
 
   if (session_endpoint_is_zero (&a->sep))
     return SESSION_E_INVALID_RMT_IP;
