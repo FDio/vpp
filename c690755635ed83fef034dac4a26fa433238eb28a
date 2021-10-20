@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "22c83891_f21d119f",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1306,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-10-20T20:25:44Z",
+      "side": 1,
+      "message": "Applications need to attach before calling listen/connect. Moreover, external applications cannot call listen/connect before attaching. \n\nSo this should not be an issue except for builtin applications that forget to attach first. Is that what you\u0027re trying to protect against?",
+      "range": {
+        "startLine": 1302,
+        "startChar": 0,
+        "endLine": 1306,
+        "endChar": 5
+      },
+      "revId": "c690755635ed83fef034dac4a26fa433238eb28a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
