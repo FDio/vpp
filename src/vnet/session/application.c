@@ -1150,6 +1150,11 @@ vnet_application_attach (vnet_app_attach_args_t * a)
   u64 secret;
   int rv;
 
+  if (!session_main_is_enabled ())
+    {
+      return VNET_API_ERROR_SESSION_DISABLED;
+    }
+
   if (a->api_client_index != APP_INVALID_INDEX)
     app = application_lookup (a->api_client_index);
   else if (a->name)
