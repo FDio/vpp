@@ -73,6 +73,30 @@
     },
     {
       "key": {
+        "uuid": "40335926_8b986093",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2632,
+      "author": {
+        "id": 2576
+      },
+      "writtenOn": "2021-10-20T08:03:35Z",
+      "side": 1,
+      "message": "I think your proposal for snd_nxt + available_snd_wnd is more accurate. I took the 65535 from linux kernel code, I assumed that snd_nxt + 64K is the maximum sequence number the peer-connection will be willing to accept. However, the available_snd_wnd is more accurate. Will modify accordingly. Thanks!",
+      "parentUuid": "cced6179_48393283",
+      "range": {
+        "startLine": 2632,
+        "startChar": 28,
+        "endLine": 2632,
+        "endChar": 38
+      },
+      "revId": "096ff2d197318eff62b3533d72e8c714c4922a32",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "4c2933d1_494ed7c7",
         "filename": "src/vnet/tcp/tcp_input.c",
         "patchSetId": 2
