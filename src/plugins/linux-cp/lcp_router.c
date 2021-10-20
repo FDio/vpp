@@ -133,6 +133,9 @@ lcp_router_intf_h2p (u32 host)
 static int
 lcp_router_lip_ts_check (nl_msg_info_t *msg_info, lcp_itf_pair_t *lip)
 {
+  if (!msg_info)
+    return 0;
+
   if (msg_info->ts > lip->lip_create_ts)
     return 0;
 
