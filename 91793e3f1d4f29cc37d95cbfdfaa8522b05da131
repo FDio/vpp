@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e5e3f789_395aacf8",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1615,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-10-21T15:13:19Z",
+      "side": 1,
+      "message": "IMO it\u0027s a bit cleaner if you don\u0027t check the is_receive_dpo value twice.",
+      "revId": "91793e3f1d4f29cc37d95cbfdfaa8522b05da131",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6582ff90_0254d58b",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1617,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-10-21T15:13:19Z",
+      "side": 1,
+      "message": "const",
+      "revId": "91793e3f1d4f29cc37d95cbfdfaa8522b05da131",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
