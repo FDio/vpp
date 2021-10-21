@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "54989293_96677dea",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1142,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-10-21T01:56:54Z",
+      "side": 1,
+      "message": "Callers of this api must make sure the session layer is enabled (directly or indirectly), see for instance vl_api_app_attach_t_handler and session_api_attach_handler. Same holds for builtin apps. To avoid surprise crashes later if apps are not careful with that, I guess we could assert here that session_main_is_enabled, to catch issues early on with debug images.\n\nAlso, note that we\u0027re slowly moving away from api errors to session layer errors. Eventually, we\u0027ll remove the binary api attach api and only use the socket one.",
+      "range": {
+        "startLine": 1142,
+        "startChar": 0,
+        "endLine": 1142,
+        "endChar": 23
+      },
+      "revId": "bc5556176a613b6002c77cb12a704af5e3caa036",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
