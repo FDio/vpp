@@ -557,19 +557,17 @@ vl_api_nat44_ed_add_del_output_interface_t_handler (
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  sw_if_index = ntohl (mp->sw_if_index);
-
   if (mp->is_add)
     {
-      rv = nat44_ed_add_output_interface (sw_if_index);
+      rv = nat44_ed_add_output_interface (mp->sw_if_index);
     }
   else
     {
-      rv = nat44_ed_del_output_interface (sw_if_index);
+      rv = nat44_ed_del_output_interface (mp->sw_if_index);
     }
 
   BAD_SW_IF_INDEX_LABEL;
-  REPLY_MACRO (VL_API_NAT44_ED_ADD_DEL_OUTPUT_INTERFACE_REPLY);
+  REPLY_MACRO_END (VL_API_NAT44_ED_ADD_DEL_OUTPUT_INTERFACE_REPLY);
 }
 
 #define vl_endianfun
