@@ -790,7 +790,7 @@ vl_api_nat44_ei_add_del_static_mapping_t_handler (
   sw_if_index = clib_net_to_host_u32 (mp->external_sw_if_index);
   if (sw_if_index != ~0)
     {
-      e_addr.as_u32 = 0;
+      flags |= NAT44_EI_SM_FLAG_SWITCH_ADDRESS;
     }
   else
     {
@@ -945,7 +945,7 @@ vl_api_nat44_ei_add_del_identity_mapping_t_handler (
   sw_if_index = clib_net_to_host_u32 (mp->sw_if_index);
   if (sw_if_index != ~0)
     {
-      addr.as_u32 = 0;
+      flags |= NAT44_EI_SM_FLAG_SWITCH_ADDRESS;
     }
   else
     {

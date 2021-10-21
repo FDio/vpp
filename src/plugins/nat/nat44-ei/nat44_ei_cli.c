@@ -1061,6 +1061,11 @@ add_static_mapping_command_fn (vlib_main_t *vm, unformat_input_t *input,
       e_port = clib_host_to_net_u16 (e_port);
     }
 
+  if (sw_if_index != ~0)
+    {
+      flags |= NAT44_EI_SM_FLAG_SWITCH_ADDRESS;
+    }
+
   if (is_add)
     {
       rv =
@@ -1153,6 +1158,11 @@ add_identity_mapping_command_fn (vlib_main_t *vm, unformat_input_t *input,
   else
     {
       port = clib_host_to_net_u16 (port);
+    }
+
+  if (sw_if_index != ~0)
+    {
+      flags |= NAT44_EI_SM_FLAG_SWITCH_ADDRESS;
     }
 
   if (is_add)
