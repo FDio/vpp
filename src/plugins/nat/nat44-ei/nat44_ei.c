@@ -200,6 +200,8 @@ typedef struct
 void nat44_ei_add_del_addr_to_fib (ip4_address_t *addr, u8 p_len,
 				   u32 sw_if_index, int is_add);
 
+static void nat44_ei_worker_db_free (nat44_ei_main_per_thread_data_t *tnm);
+
 static u8 *
 format_nat44_ei_classify_trace (u8 *s, va_list *args)
 {
@@ -218,8 +220,6 @@ format_nat44_ei_classify_trace (u8 *s, va_list *args)
 
   return s;
 }
-
-static void nat44_ei_db_free ();
 
 static void nat44_ei_db_init (u32 translations, u32 translation_buckets,
 			      u32 user_buckets);
@@ -566,20 +566,6 @@ nat44_ei_plugin_enable (nat44_ei_config_t c)
   nm->enabled = 1;
 
   return 0;
-}
-
-void
-nat44_ei_addresses_free (nat44_ei_address_t **addresses)
-{
-  nat44_ei_address_t *ap;
-  vec_foreach (ap, *addresses)
-    {
-#define _(N, i, n, s) vec_free (ap->busy_##n##_ports_per_thread);
-      foreach_nat_protocol
-#undef _
-    }
-  vec_free (*addresses);
-  *addresses = 0;
 }
 
 static_always_inline nat44_ei_outside_fib_t *
@@ -1105,13 +1091,38 @@ nat44_ei_add_del_output_interface (u32 sw_if_index, int is_del)
 }
 
 int
-nat44_ei_plugin_disable ()
+nat44_ei_del_addresses ()
+{
+  nat44_ei_main_t *nm = &nat44_ei_main;
+  nat44_ei_address_t *a, *vec;
+  int error = 0;
+
+  // prevent adding interfaces
+  vec_free (nm->auto_add_sw_if_indices);
+  nm->auto_add_sw_if_indices = 0;
+
+  vec = vec_dup (nm->addresses);
+  vec_foreach (a, vec)
+    {
+      error = nat44_ei_del_address (a->addr, 0);
+
+      if (error)
+	{
+	  nat44_ei_log_err ("error occurred while removing adderess");
+	}
+    }
+  vec_free (vec);
+  vec_free (nm->addresses);
+  return error;
+}
+
+int
+nat44_ei_del_interfaces ()
 {
   nat44_ei_main_t *nm = &nat44_ei_main;
   nat44_ei_interface_t *i, *pool;
   int error = 0;
 
-  // first unregister all nodes from interfaces
   pool = pool_dup (nm->interfaces);
   pool_foreach (i, pool)
     {
@@ -1126,12 +1137,20 @@ nat44_ei_plugin_disable ()
 
       if (error)
 	{
-	  nat44_ei_log_err ("error occurred while removing interface %u",
-			    i->sw_if_index);
+	  nat44_ei_log_err ("error occurred while removing interface");
 	}
     }
   pool_free (pool);
   pool_free (nm->interfaces);
+  return error;
+}
+
+int
+nat44_ei_del_output_interfaces ()
+{
+  nat44_ei_main_t *nm = &nat44_ei_main;
+  nat44_ei_interface_t *i, *pool;
+  int error = 0;
 
   pool = pool_dup (nm->output_feature_interfaces);
   pool_foreach (i, pool)
@@ -1139,30 +1158,75 @@ nat44_ei_plugin_disable ()
       error = nat44_ei_del_output_interface (i->sw_if_index);
       if (error)
 	{
-	  nat44_ei_log_err ("error occurred while removing interface %u",
-			    i->sw_if_index);
+	  nat44_ei_log_err ("error occurred while removing mapping");
 	}
     }
   pool_free (pool);
   pool_free (nm->output_feature_interfaces);
+  return error;
+}
+
+int
+nat44_ei_del_static_mappings ()
+{
+  nat44_ei_main_t *nm = &nat44_ei_main;
+  nat44_ei_static_mapping_t *m, *pool;
+  int error = 0;
+
+  // prevent adding static mappings
+  vec_free (nm->to_resolve);
+  nm->to_resolve = 0;
+
+  pool = pool_dup (nm->static_mappings);
+  pool_foreach (m, pool)
+    {
+      error = nat44_ei_del_static_mapping (m->local_addr, m->external_addr,
+					   m->local_port, m->external_port,
+					   m->proto, ~0, m->vrf_id, m->flags);
+      if (error)
+	{
+	  nat44_ei_log_err ("error occurred while removing mapping");
+	}
+    }
+  pool_free (pool);
+  pool_free (nm->static_mappings);
+
+  clib_bihash_free_8_8 (&nm->static_mapping_by_local);
+  clib_bihash_free_8_8 (&nm->static_mapping_by_external);
+
+  return error;
+}
+
+int
+nat44_ei_plugin_disable ()
+{
+  nat44_ei_main_t *nm = &nat44_ei_main;
+  nat44_ei_main_per_thread_data_t *tnm;
+  int error = 0;
 
   nat_ha_disable ();
-  nat44_ei_db_free ();
-
-  nat44_ei_addresses_free (&nm->addresses);
-
-  vec_free (nm->to_resolve);
-  vec_free (nm->auto_add_sw_if_indices);
-
-  nm->to_resolve = 0;
-  nm->auto_add_sw_if_indices = 0;
-
-  nm->forwarding_enabled = 0;
-
-  nm->enabled = 0;
   clib_memset (&nm->rconfig, 0, sizeof (nm->rconfig));
 
-  return 0;
+  error = nat44_ei_del_interfaces ();
+  error = nat44_ei_del_output_interfaces ();
+  error = nat44_ei_del_addresses ();
+  error = nat44_ei_del_static_mappings ();
+
+  if (nm->pat)
+    {
+      clib_bihash_free_8_8 (&nm->in2out);
+      clib_bihash_free_8_8 (&nm->out2in);
+
+      vec_foreach (tnm, nm->per_thread_data)
+	{
+	  nat44_ei_worker_db_free (tnm);
+	}
+    }
+
+  nm->forwarding_enabled = 0;
+  nm->enabled = 0;
+
+  return error;
 }
 
 int
@@ -2733,27 +2797,6 @@ nat44_ei_worker_db_init (nat44_ei_main_per_thread_data_t *tnm,
   pool_get (tnm->lru_pool, head);
   tnm->unk_proto_lru_head_index = head - tnm->lru_pool;
   clib_dlist_init (tnm->lru_pool, tnm->unk_proto_lru_head_index);
-}
-
-static void
-nat44_ei_db_free ()
-{
-  nat44_ei_main_t *nm = &nat44_ei_main;
-  nat44_ei_main_per_thread_data_t *tnm;
-
-  pool_free (nm->static_mappings);
-  clib_bihash_free_8_8 (&nm->static_mapping_by_local);
-  clib_bihash_free_8_8 (&nm->static_mapping_by_external);
-
-  if (nm->pat)
-    {
-      clib_bihash_free_8_8 (&nm->in2out);
-      clib_bihash_free_8_8 (&nm->out2in);
-      vec_foreach (tnm, nm->per_thread_data)
-	{
-	  nat44_ei_worker_db_free (tnm);
-	}
-    }
 }
 
 static void
