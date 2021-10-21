@@ -170,14 +170,12 @@ gso_segment_buffer_test (vlib_main_t *vm, u32 bi,
 {
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
   generic_header_offset_t gho = { 0 };
-  u32 n_bytes_b = vlib_buffer_length_in_chain (vm, b);
   u32 n_tx_bytes = 0;
 
   if (PREDICT_TRUE (b->flags & VNET_BUFFER_F_GSO))
     {
       vnet_generic_header_offset_parser (b, &gho, is_l2, !is_ip6, is_ip6);
-      n_tx_bytes =
-	gso_segment_buffer (vm, ptd, bi, b, &gho, n_bytes_b, is_l2, is_ip6);
+      n_tx_bytes = gso_segment_buffer_inline (vm, ptd, b, &gho, is_l2, is_ip6);
     }
 
   return n_tx_bytes;
