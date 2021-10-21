@@ -22,6 +22,30 @@
       "revId": "c690755635ed83fef034dac4a26fa433238eb28a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "072e2927_b221cb19",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1306,
+      "author": {
+        "id": 1737
+      },
+      "writtenOn": "2021-10-21T00:44:19Z",
+      "side": 1,
+      "message": "If session manager is disabled (default disabled), the app can successfully attatch vpp, when listen/connect, will get the following crash due to app_namespaces_init() not called by session enable, it\u0027s not easy for new comer to find the real reason.\nProgram received signal SIGABRT, Aborted.\n0x00007ffff2ead387 in __GI_raise (sig\u003dsig@entry\u003d6) at ../nptl/sysdeps/unix/sysv/linux/raise.c:55\n55        return INLINE_SYSCALL (tgkill, 3, pid, selftid, sig);\nMissing separate debuginfos, use: debuginfo-install libgcc-4.8.5-44.el7.x86_64 libstdc++-4.8.5-44.el7.x86_64 libuuid-2.23.2-65.el7_9.1.x86_64 mbedtls-2.7.17-1.el7.x86_64 pkcs11-helper-1.11-3.el7.x86_64\n(gdb) bt\n#0  0x00007ffff2ead387 in __GI_raise (sig\u003dsig@entry\u003d6) at ../nptl/sysdeps/unix/sysv/linux/raise.c:55\n#1  0x00007ffff2eaea78 in __GI_abort () at abort.c:90\n#2  0x000000000040b24d in os_panic () at /home/dev/code/net-base/.vpp-21.10-rc0/src/vpp/vnet/main.c:407\n#3  0x00007ffff35d5b9f in debugger () at /home/dev/code/net-base/.vpp-21.10-rc0/src/vppinfra/error.c:84\n#4  0x00007ffff35d6275 in _clib_error (how_to_die\u003d2, function_name\u003d0x0, line_number\u003d0, fmt\u003d0x7ffff6b6cae0 \"%s:%d (%s) assertion `%s\u0027 fails\") at /home/dev/code/net-base/.vpp-21.10-rc0/src/vppinfra/error.c:143\n#5  0x00007ffff5b3258d in app_namespace_get (index\u003d0) at /home/dev/code/net-base/.vpp-21.10-rc0/src/vnet/session/application_namespace.c:39\n#6  0x00007ffff5ada58d in session_endpoint_update_for_app (sep\u003d0x7ffb8f45b260, app\u003d0x7fffb9b93988, is_connect\u003d0 \u0027\\000\u0027) at /home/dev/code/net-base/.vpp-21.10-rc0/src/vnet/session/application.c:1236\n#7  0x00007ffff5adab02 in vnet_listen (a\u003d0x7ffb8f45b260) at /home/dev/code/net-base/.vpp-21.10-rc0/src/vnet/session/application.c:1288\n#8  0x00007fffa4053f99 in vpn_listen (sep\u003d0x7ffb8f45b550) at /home/dev/code/net-base/vpn/vpn_main.c:162\n#9  0x00007fffa4031c87 in vpn_server_create_command_fn (vm\u003d0x7fffaeeff680, input\u003d0x7ffb8f45be40, cmd\u003d0x7fffb644fb48) at /home/dev/code/net-base/vpn/server.c:228\n#10 0x00007ffff3e9b0f9 in vlib_cli_dispatch_sub_commands (vm\u003d0x7fffaeeff680, cm\u003d0x7ffff4147660 \u003cvlib_global_main+32\u003e, input\u003d0x7ffb8f45be40, parent_command_index\u003d43) at /home/dev/code/net-base/.vpp-21.10-rc0/src/vlib/cli.c:591\n#11 0x00007ffff3e9ab57 in vlib_cli_dispatch_sub_commands (vm\u003d0x7fffaeeff680, cm\u003d0x7ffff4147660 \u003cvlib_global_main+32\u003e, input\u003d0x7ffb8f45be40, parent_command_index\u003d27) at /home/dev/code/net-base/.vpp-21.10-rc0/src/vlib/cli.c:548\n#12 0x00007ffff3e9ab57 in vlib_cli_dispatch_sub_commands (vm\u003d0x7fffaeeff680, cm\u003d0x7ffff4147660 \u003cvlib_global_main+32\u003e, input\u003d0x7ffb8f45be40, parent_command_index\u003d0) at /home/dev/code/net-base/.vpp-21.10-rc0/src/vlib/cli.c:548\n#13 0x00007ffff3e9bc50 in vlib_cli_input (vm\u003d0x7fffaeeff680, input\u003d0x7ffb8f45be40, function\u003d0x0, function_arg\u003d0) at /home/dev/code/net-base/.vpp-21.10-rc0/src/vlib/cli.c:694\n#14 0x00007ffff4043b64 in startup_config_process (vm\u003d0x7fffaeeff680, rt\u003d0x7fffb05ddc80, f\u003d0x0) at /home/dev/code/net-base/.vpp-21.10-rc0/src/vlib/unix/main.c:366\n#15 0x00007ffff3f4905e in vlib_process_bootstrap (_a\u003d140735939074656) at /home/dev/code/net-base/.vpp-21.10-rc0/src/vlib/main.c:1284\n#16 0x00007ffff361d8a0 in clib_calljmp () at /home/dev/code/net-base/.vpp-21.10-rc0/src/vppinfra/longjmp.S:123\n#17 0x00007fffa3a7da10 in ?? ()\n#18 0x00007ffff3f49314 in vlib_process_startup (vm\u003d0x7fffaeeff680, p\u003d0x7fffb05ddc80, f\u003d0x7ffff3f3d912 \u003cvlib_process_start_switch_stack+360\u003e) at /home/dev/code/net-base/.vpp-21.10-rc0/src/vlib/main.c:1309\n#19 0x00007fffb05ddc80 in ?? ()\n#20 0x00007fffb55f9ea8 in ?? ()\n#21 0x00007fffb55f9b18 in ?? ()\n#22 0x0000000000000036 in ?? ()\n#23 0x00007fffb55f9ea8 in ?? ()\n#24 0x00007fffb05ddc80 in ?? ()\n#25 0x00007fffb05ddb20 in ?? ()\n#26 0x0000000000000000 in ?? ()\n(gdb) fr 5\n#5  0x00007ffff5b3258d in app_namespace_get (index\u003d0) at /home/dev/code/net-base/.vpp-21.10-rc0/src/vnet/session/application_namespace.c:39\n39        return pool_elt_at_index (app_namespace_pool, index);\n(gdb) p app_namespace_pool\n$1 \u003d (app_namespace_t *) 0x0\n(gdb)",
+      "parentUuid": "22c83891_f21d119f",
+      "range": {
+        "startLine": 1302,
+        "startChar": 0,
+        "endLine": 1306,
+        "endChar": 5
+      },
+      "revId": "c690755635ed83fef034dac4a26fa433238eb28a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
