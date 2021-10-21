@@ -1069,13 +1069,23 @@ class TestMPLS(VppTestCase):
     def test_mpls_tunnel_many(self):
         """ MPLS Multiple Tunnels """
 
-        for ii in range(10):
+        for ii in range(100):
             mpls_tun = VppMPLSTunnelInterface(
                 self,
                 [VppRoutePath(self.pg0.remote_ip4,
                               self.pg0.sw_if_index,
                               labels=[VppMplsLabel(44, ttl=32),
                                       VppMplsLabel(46, MplsLspMode.UNIFORM)])])
+            mpls_tun.add_vpp_config()
+            mpls_tun.admin_up()
+        for ii in range(100):
+            mpls_tun = VppMPLSTunnelInterface(
+                self,
+                [VppRoutePath(self.pg0.remote_ip4,
+                              self.pg0.sw_if_index,
+                              labels=[VppMplsLabel(44, ttl=32),
+                                      VppMplsLabel(46, MplsLspMode.UNIFORM)])],
+                is_l2=1)
             mpls_tun.add_vpp_config()
             mpls_tun.admin_up()
 
