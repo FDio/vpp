@@ -247,8 +247,8 @@ udp_push_header (transport_connection_t * tc, vlib_buffer_t * b)
   vlib_buffer_push_udp (b, uc->c_lcl_port, uc->c_rmt_port, 1);
   if (tc->is_ip4)
     vlib_buffer_push_ip4_custom (vm, b, &uc->c_lcl_ip4, &uc->c_rmt_ip4,
-				 IP_PROTOCOL_UDP, 1 /* csum offload */ ,
-				 0 /* is_df */ );
+				 IP_PROTOCOL_UDP, 1 /* csum offload */,
+				 0 /* is_df */, uc->c_dscp);
   else
     vlib_buffer_push_ip6 (vm, b, &uc->c_lcl_ip6, &uc->c_rmt_ip6,
 			  IP_PROTOCOL_UDP);
@@ -385,6 +385,7 @@ conn_alloc:
   uc->c_is_ip4 = rmt->is_ip4;
   uc->c_proto = TRANSPORT_PROTO_UDP;
   uc->c_fib_index = rmt->fib_index;
+  uc->c_dscp = rmt->dscp;
   uc->mss = rmt->mss ? rmt->mss : udp_default_mtu (um, uc->c_is_ip4);
   uc->flags |= UDP_CONN_F_OWNS_PORT;
   if (rmt->transport_flags & TRANSPORT_CFG_F_CONNECTED)

@@ -98,9 +98,9 @@ ip4_compute_flow_hash (const ip4_header_t * ip,
 }
 
 always_inline void *
-vlib_buffer_push_ip4_custom (vlib_main_t * vm, vlib_buffer_t * b,
-			     ip4_address_t * src, ip4_address_t * dst,
-			     int proto, u8 csum_offload, u8 is_df)
+vlib_buffer_push_ip4_custom (vlib_main_t *vm, vlib_buffer_t *b,
+			     ip4_address_t *src, ip4_address_t *dst, int proto,
+			     u8 csum_offload, u8 is_df, u8 dscp)
 {
   ip4_header_t *ih;
 
@@ -108,7 +108,7 @@ vlib_buffer_push_ip4_custom (vlib_main_t * vm, vlib_buffer_t * b,
   ih = vlib_buffer_push_uninit (b, sizeof (ip4_header_t));
 
   ih->ip_version_and_header_length = 0x45;
-  ih->tos = 0;
+  ip4_header_set_dscp (ih, dscp);
   ih->length = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b));
 
   /* No fragments */
@@ -152,7 +152,7 @@ vlib_buffer_push_ip4 (vlib_main_t * vm, vlib_buffer_t * b,
 		      u8 csum_offload)
 {
   return vlib_buffer_push_ip4_custom (vm, b, src, dst, proto, csum_offload,
-				      1 /* is_df */ );
+				      1 /* is_df */, 0);
 }
 
 #endif /* included_ip_ip4_inlines_h */
