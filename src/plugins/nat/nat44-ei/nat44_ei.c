@@ -200,6 +200,16 @@ typedef struct
 void nat44_ei_add_del_addr_to_fib (ip4_address_t *addr, u8 p_len,
 				   u32 sw_if_index, int is_add);
 
+static void nat44_ei_worker_db_free (nat44_ei_main_per_thread_data_t *tnm);
+static int nat44_ei_add_internal_static_mapping (
+  ip4_address_t l_addr, ip4_address_t e_addr, u16 l_port, u16 e_port,
+  nat_protocol_t proto, u32 vrf_id, u32 sw_if_index, u32 flags,
+  ip4_address_t pool_addr, u8 *tag);
+
+static int nat44_ei_del_internal_static_mapping (
+  ip4_address_t l_addr, ip4_address_t e_addr, u16 l_port, u16 e_port,
+  nat_protocol_t proto, u32 vrf_id, u32 sw_if_index, u32 flags);
+
 static u8 *
 format_nat44_ei_classify_trace (u8 *s, va_list *args)
 {
@@ -218,8 +228,6 @@ format_nat44_ei_classify_trace (u8 *s, va_list *args)
 
   return s;
 }
-
-static void nat44_ei_db_free ();
 
 static void nat44_ei_db_init (u32 translations, u32 translation_buckets,
 			      u32 user_buckets);
@@ -566,20 +574,6 @@ nat44_ei_plugin_enable (nat44_ei_config_t c)
   nm->enabled = 1;
 
   return 0;
-}
-
-void
-nat44_ei_addresses_free (nat44_ei_address_t **addresses)
-{
-  nat44_ei_address_t *ap;
-  vec_foreach (ap, *addresses)
-    {
-#define _(N, i, n, s) vec_free (ap->busy_##n##_ports_per_thread);
-      foreach_nat_protocol
-#undef _
-    }
-  vec_free (*addresses);
-  *addresses = 0;
 }
 
 static_always_inline nat44_ei_outside_fib_t *
@@ -1105,13 +1099,38 @@ nat44_ei_add_del_output_interface (u32 sw_if_index, int is_del)
 }
 
 int
-nat44_ei_plugin_disable ()
+nat44_ei_del_addresses ()
+{
+  nat44_ei_main_t *nm = &nat44_ei_main;
+  nat44_ei_address_t *a, *vec;
+  int error = 0;
+
+  vec = vec_dup (nm->addresses);
+  vec_foreach (a, vec)
+    {
+      error = nat44_ei_del_address (a->addr, 0);
+
+      if (error)
+	{
+	  nat44_ei_log_err ("error occurred while removing adderess");
+	}
+    }
+  vec_free (vec);
+  vec_free (nm->addresses);
+  nm->addresses = 0;
+
+  vec_free (nm->auto_add_sw_if_indices);
+  nm->auto_add_sw_if_indices = 0;
+  return error;
+}
+
+int
+nat44_ei_del_interfaces ()
 {
   nat44_ei_main_t *nm = &nat44_ei_main;
   nat44_ei_interface_t *i, *pool;
   int error = 0;
 
-  // first unregister all nodes from interfaces
   pool = pool_dup (nm->interfaces);
   pool_foreach (i, pool)
     {
@@ -1126,12 +1145,21 @@ nat44_ei_plugin_disable ()
 
       if (error)
 	{
-	  nat44_ei_log_err ("error occurred while removing interface %u",
-			    i->sw_if_index);
+	  nat44_ei_log_err ("error occurred while removing interface");
 	}
     }
   pool_free (pool);
   pool_free (nm->interfaces);
+  nm->interfaces = 0;
+  return error;
+}
+
+int
+nat44_ei_del_output_interfaces ()
+{
+  nat44_ei_main_t *nm = &nat44_ei_main;
+  nat44_ei_interface_t *i, *pool;
+  int error = 0;
 
   pool = pool_dup (nm->output_feature_interfaces);
   pool_foreach (i, pool)
@@ -1139,30 +1167,88 @@ nat44_ei_plugin_disable ()
       error = nat44_ei_del_output_interface (i->sw_if_index);
       if (error)
 	{
-	  nat44_ei_log_err ("error occurred while removing interface %u",
-			    i->sw_if_index);
+	  nat44_ei_log_err ("error occurred while removing output interface");
 	}
     }
   pool_free (pool);
   pool_free (nm->output_feature_interfaces);
+  nm->output_feature_interfaces = 0;
+  return error;
+}
 
-  nat_ha_disable ();
-  nat44_ei_db_free ();
+int
+nat44_ei_del_static_mappings ()
+{
+  nat44_ei_main_t *nm = &nat44_ei_main;
+  nat44_ei_static_mapping_t *m, *pool;
+  int error = 0;
 
-  nat44_ei_addresses_free (&nm->addresses);
+  pool = pool_dup (nm->static_mappings);
+  pool_foreach (m, pool)
+    {
+      error = nat44_ei_del_internal_static_mapping (
+	m->local_addr, m->external_addr, m->local_port, m->external_port,
+	m->proto, m->vrf_id, ~0, m->flags);
+      if (error)
+	{
+	  nat44_ei_log_err ("error occurred while removing mapping");
+	}
+    }
+  pool_free (pool);
+  pool_free (nm->static_mappings);
+  nm->static_mappings = 0;
 
   vec_free (nm->to_resolve);
-  vec_free (nm->auto_add_sw_if_indices);
-
   nm->to_resolve = 0;
-  nm->auto_add_sw_if_indices = 0;
 
-  nm->forwarding_enabled = 0;
+  clib_bihash_free_8_8 (&nm->static_mapping_by_local);
+  clib_bihash_free_8_8 (&nm->static_mapping_by_external);
 
-  nm->enabled = 0;
+  return error;
+}
+
+int
+nat44_ei_plugin_disable ()
+{
+  nat44_ei_main_t *nm = &nat44_ei_main;
+  nat44_ei_main_per_thread_data_t *tnm;
+  int rc, error = 0;
+
+  nat_ha_disable ();
+
+  rc = nat44_ei_del_static_mappings ();
+  if (rc)
+    error = 1;
+
+  rc = nat44_ei_del_addresses ();
+  if (rc)
+    error = 1;
+
+  rc = nat44_ei_del_interfaces ();
+  if (rc)
+    error = 1;
+
+  rc = nat44_ei_del_output_interfaces ();
+  if (rc)
+    error = 1;
+
+  if (nm->pat)
+    {
+      clib_bihash_free_8_8 (&nm->in2out);
+      clib_bihash_free_8_8 (&nm->out2in);
+
+      vec_foreach (tnm, nm->per_thread_data)
+	{
+	  nat44_ei_worker_db_free (tnm);
+	}
+    }
+
   clib_memset (&nm->rconfig, 0, sizeof (nm->rconfig));
 
-  return 0;
+  nm->forwarding_enabled = 0;
+  nm->enabled = 0;
+
+  return error;
 }
 
 int
@@ -2250,6 +2336,74 @@ nat44_ei_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 			     u16 l_port, u16 e_port, nat_protocol_t proto,
 			     u32 vrf_id, u32 sw_if_index, u32 flags,
 			     ip4_address_t pool_addr, u8 *tag)
+
+{
+  nat44_ei_main_t *nm = &nat44_ei_main;
+
+  if (is_sm_switch_address (flags))
+    {
+      if (!nat44_ei_get_resolve_record (l_addr, l_port, e_port, proto, vrf_id,
+					sw_if_index, flags, 0))
+	{
+	  return VNET_API_ERROR_VALUE_EXIST;
+	}
+
+      nat44_ei_add_resolve_record (l_addr, l_port, e_port, proto, vrf_id,
+				   sw_if_index, flags, pool_addr, tag);
+
+      ip4_address_t *first_int_addr =
+	ip4_interface_first_address (nm->ip4_main, sw_if_index, 0);
+      if (!first_int_addr)
+	{
+	  // dhcp resolution required
+	  return 0;
+	}
+
+      e_addr.as_u32 = first_int_addr->as_u32;
+    }
+
+  return nat44_ei_add_internal_static_mapping (l_addr, e_addr, l_port, e_port,
+					       proto, vrf_id, sw_if_index,
+					       flags, pool_addr, tag);
+}
+
+int
+nat44_ei_del_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
+			     u16 l_port, u16 e_port, nat_protocol_t proto,
+			     u32 vrf_id, u32 sw_if_index, u32 flags)
+{
+  nat44_ei_main_t *nm = &nat44_ei_main;
+
+  if (is_sm_switch_address (flags))
+    {
+
+      if (nat44_ei_del_resolve_record (l_addr, l_port, e_port, proto, vrf_id,
+				       sw_if_index, flags))
+	{
+	  return VNET_API_ERROR_NO_SUCH_ENTRY;
+	}
+
+      ip4_address_t *first_int_addr =
+	ip4_interface_first_address (nm->ip4_main, sw_if_index, 0);
+      if (!first_int_addr)
+	{
+	  // dhcp resolution required
+	  return 0;
+	}
+
+      e_addr.as_u32 = first_int_addr->as_u32;
+    }
+
+  return nat44_ei_del_internal_static_mapping (
+    l_addr, e_addr, l_port, e_port, proto, vrf_id, sw_if_index, flags);
+}
+
+static int
+nat44_ei_add_internal_static_mapping (ip4_address_t l_addr,
+				      ip4_address_t e_addr, u16 l_port,
+				      u16 e_port, nat_protocol_t proto,
+				      u32 vrf_id, u32 sw_if_index, u32 flags,
+				      ip4_address_t pool_addr, u8 *tag)
 {
   nat44_ei_main_t *nm = &nat44_ei_main;
   clib_bihash_kv_8_8_t kv, value;
@@ -2263,32 +2417,6 @@ nat44_ei_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
   if (is_sm_addr_only (flags))
     {
       e_port = l_port = proto = 0;
-    }
-
-  if (sw_if_index != ~0)
-    {
-      // this mapping is interface bound
-      ip4_address_t *first_int_addr;
-
-      // check if this record isn't registered for resolve
-      if (!nat44_ei_get_resolve_record (l_addr, l_port, e_port, proto, vrf_id,
-					sw_if_index, flags, 0))
-	{
-	  return VNET_API_ERROR_VALUE_EXIST;
-	}
-      // register record for resolve
-      nat44_ei_add_resolve_record (l_addr, l_port, e_port, proto, vrf_id,
-				   sw_if_index, flags, pool_addr, tag);
-
-      first_int_addr =
-	ip4_interface_first_address (nm->ip4_main, sw_if_index, 0);
-      if (!first_int_addr)
-	{
-	  // dhcp resolution required
-	  return 0;
-	}
-
-      e_addr.as_u32 = first_int_addr->as_u32;
     }
 
   if (is_sm_identity_nat (flags))
@@ -2358,7 +2486,7 @@ nat44_ei_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
       if (nat44_ei_reserve_port (e_addr, e_port, proto))
 	{
 	  // remove resolve record
-	  if ((sw_if_index != ~0) && !is_sm_identity_nat (flags))
+	  if ((is_sm_switch_address (flags)) && !is_sm_identity_nat (flags))
 	    {
 	      nat44_ei_del_resolve_record (l_addr, l_port, e_port, proto,
 					   vrf_id, sw_if_index, flags);
@@ -2427,10 +2555,11 @@ nat44_ei_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
   return 0;
 }
 
-int
-nat44_ei_del_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
-			     u16 l_port, u16 e_port, nat_protocol_t proto,
-			     u32 vrf_id, u32 sw_if_index, u32 flags)
+static int
+nat44_ei_del_internal_static_mapping (ip4_address_t l_addr,
+				      ip4_address_t e_addr, u16 l_port,
+				      u16 e_port, nat_protocol_t proto,
+				      u32 vrf_id, u32 sw_if_index, u32 flags)
 {
   nat44_ei_main_per_thread_data_t *tnm;
   nat44_ei_main_t *nm = &nat44_ei_main;
@@ -2447,29 +2576,6 @@ nat44_ei_del_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
       e_port = l_port = proto = 0;
     }
 
-  if (sw_if_index != ~0)
-    {
-      // this mapping is interface bound
-      ip4_address_t *first_int_addr;
-
-      // delete record registered for resolve
-      if (nat44_ei_del_resolve_record (l_addr, l_port, e_port, proto, vrf_id,
-				       sw_if_index, flags))
-	{
-	  return VNET_API_ERROR_NO_SUCH_ENTRY;
-	}
-
-      first_int_addr =
-	ip4_interface_first_address (nm->ip4_main, sw_if_index, 0);
-      if (!first_int_addr)
-	{
-	  // dhcp resolution required
-	  return 0;
-	}
-
-      e_addr.as_u32 = first_int_addr->as_u32;
-    }
-
   if (is_sm_identity_nat (flags))
     {
       l_port = e_port;
@@ -2481,7 +2587,7 @@ nat44_ei_del_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 
   if (clib_bihash_search_8_8 (&nm->static_mapping_by_external, &kv, &value))
     {
-      if (sw_if_index != ~0)
+      if (is_sm_switch_address (flags))
 	{
 	  return 0;
 	}
@@ -2736,27 +2842,6 @@ nat44_ei_worker_db_init (nat44_ei_main_per_thread_data_t *tnm,
 }
 
 static void
-nat44_ei_db_free ()
-{
-  nat44_ei_main_t *nm = &nat44_ei_main;
-  nat44_ei_main_per_thread_data_t *tnm;
-
-  pool_free (nm->static_mappings);
-  clib_bihash_free_8_8 (&nm->static_mapping_by_local);
-  clib_bihash_free_8_8 (&nm->static_mapping_by_external);
-
-  if (nm->pat)
-    {
-      clib_bihash_free_8_8 (&nm->in2out);
-      clib_bihash_free_8_8 (&nm->out2in);
-      vec_foreach (tnm, nm->per_thread_data)
-	{
-	  nat44_ei_worker_db_free (tnm);
-	}
-    }
-}
-
-static void
 nat44_ei_db_init (u32 translations, u32 translation_buckets, u32 user_buckets)
 {
   nat44_ei_main_t *nm = &nat44_ei_main;
@@ -2967,9 +3052,9 @@ nat44_ei_del_address (ip4_address_t addr, u8 delete_sm)
       pool_foreach (m, nm->static_mappings)
 	{
 	  if (m->external_addr.as_u32 == addr.as_u32)
-	    nat44_ei_del_static_mapping (m->local_addr, m->external_addr,
-					 m->local_port, m->external_port,
-					 m->proto, m->vrf_id, ~0, m->flags);
+	    nat44_ei_del_internal_static_mapping (
+	      m->local_addr, m->external_addr, m->local_port, m->external_port,
+	      m->proto, m->vrf_id, ~0, m->flags);
 	}
     }
   else
@@ -2980,11 +3065,6 @@ nat44_ei_del_address (ip4_address_t addr, u8 delete_sm)
 	  nat44_ei_log_err ("address used in static mapping");
 	  return VNET_API_ERROR_UNSPECIFIED;
 	}
-    }
-
-  if (a->fib_index != ~0)
-    {
-      fib_table_unlock (a->fib_index, FIB_PROTOCOL_IP4, nm->fib_src_low);
     }
 
   /* Delete sessions using address */
@@ -3010,14 +3090,18 @@ nat44_ei_del_address (ip4_address_t addr, u8 delete_sm)
 	}
     }
 
+  nat44_ei_add_del_addr_to_fib_foreach_out_if (&addr, 0);
+
+  if (a->fib_index != ~0)
+    {
+      fib_table_unlock (a->fib_index, FIB_PROTOCOL_IP4, nm->fib_src_low);
+    }
+
 #define _(N, i, n, s) vec_free (a->busy_##n##_ports_per_thread);
   foreach_nat_protocol
 #undef _
 
     vec_del1 (nm->addresses, j);
-
-  nat44_ei_add_del_addr_to_fib_foreach_out_if (&addr, 0);
-
   return 0;
 }
 
@@ -3164,13 +3248,13 @@ nat44_ei_ip4_add_del_interface_address_cb (ip4_main_t *im, uword opaque,
 	  /* On this interface? */
 	  if (rp->sw_if_index == sw_if_index)
 	    {
-	      rv = nat44_ei_add_static_mapping (
+	      rv = nat44_ei_add_internal_static_mapping (
 		rp->l_addr, address[0], rp->l_port, rp->e_port, rp->proto,
 		rp->vrf_id, ~0, rp->flags, rp->pool_addr, rp->tag);
 	      if (rv)
 		{
-		  nat_elog_notice_X1 (nm, "add_static_mapping returned %d",
-				      "i4", rv);
+		  nat_elog_notice_X1 (
+		    nm, "add_internal_static_mapping returned %d", "i4", rv);
 		}
 	    }
 	}
@@ -3236,9 +3320,9 @@ nat44_ei_ip4_add_del_addr_only_sm_cb (ip4_main_t *im, uword opaque,
     {
       if (!m)
 	return;
-      rv = nat44_ei_del_static_mapping (rp->l_addr, address[0], rp->l_port,
-					rp->e_port, rp->proto, rp->vrf_id, ~0,
-					rp->flags);
+      rv = nat44_ei_del_internal_static_mapping (
+	rp->l_addr, address[0], rp->l_port, rp->e_port, rp->proto, rp->vrf_id,
+	~0, rp->flags);
       if (rv)
 	{
 	  nat_elog_notice_X1 (nm, "nat44_ei_del_static_mapping returned %d",
@@ -3249,9 +3333,10 @@ nat44_ei_ip4_add_del_addr_only_sm_cb (ip4_main_t *im, uword opaque,
     {
       if (m)
 	return;
-      rv = nat44_ei_add_static_mapping (rp->l_addr, address[0], rp->l_port,
-					rp->e_port, rp->proto, rp->vrf_id, ~0,
-					rp->flags, rp->pool_addr, rp->tag);
+      rv = nat44_ei_add_internal_static_mapping (
+	rp->l_addr, address[0], rp->l_port, rp->e_port, rp->proto, rp->vrf_id,
+	~0, rp->flags, rp->pool_addr, rp->tag);
+
       if (rv)
 	{
 	  nat_elog_notice_X1 (nm, "nat44_ei_add_static_mapping returned %d",
