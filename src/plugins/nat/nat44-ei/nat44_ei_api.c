@@ -790,7 +790,7 @@ vl_api_nat44_ei_add_del_static_mapping_t_handler (
   sw_if_index = clib_net_to_host_u32 (mp->external_sw_if_index);
   if (sw_if_index != ~0)
     {
-      e_addr.as_u32 = 0;
+      flags |= NAT44_EI_SM_FLAG_SWITCH_ADDRESS;
     }
   else
     {
@@ -805,16 +805,18 @@ vl_api_nat44_ei_add_del_static_mapping_t_handler (
       tag = format (0, "%s", mp->tag);
       vec_terminate_c_string (tag);
 
-      rv = nat44_ei_add_static_mapping (l_addr, e_addr, l_port, e_port, proto,
-					vrf_id, sw_if_index, flags, pool_addr,
-					tag);
+      rv = nat44_ei_add_del_static_mapping (l_addr, e_addr, l_port, e_port,
+					    proto, vrf_id, sw_if_index, flags,
+					    pool_addr, tag, 1);
       vec_free (tag);
     }
   else
     {
-      rv = nat44_ei_del_static_mapping (l_addr, e_addr, l_port, e_port, proto,
-					vrf_id, sw_if_index, flags);
+      rv = nat44_ei_add_del_static_mapping (l_addr, e_addr, l_port, e_port,
+					    proto, vrf_id, sw_if_index, flags,
+					    pool_addr, 0, 0);
     }
+
   REPLY_MACRO (VL_API_NAT44_EI_ADD_DEL_STATIC_MAPPING_REPLY);
 }
 
@@ -945,7 +947,7 @@ vl_api_nat44_ei_add_del_identity_mapping_t_handler (
   sw_if_index = clib_net_to_host_u32 (mp->sw_if_index);
   if (sw_if_index != ~0)
     {
-      addr.as_u32 = 0;
+      flags |= NAT44_EI_SM_FLAG_SWITCH_ADDRESS;
     }
   else
     {
@@ -960,14 +962,16 @@ vl_api_nat44_ei_add_del_identity_mapping_t_handler (
       tag = format (0, "%s", mp->tag);
       vec_terminate_c_string (tag);
 
-      rv = nat44_ei_add_static_mapping (addr, addr, port, port, proto, vrf_id,
-					sw_if_index, flags, pool_addr, tag);
+      rv = nat44_ei_add_del_static_mapping (addr, addr, port, port, proto,
+					    vrf_id, sw_if_index, flags,
+					    pool_addr, tag, 1);
       vec_free (tag);
     }
   else
     {
-      rv = nat44_ei_del_static_mapping (addr, addr, port, port, proto, vrf_id,
-					sw_if_index, flags);
+      rv =
+	nat44_ei_add_del_static_mapping (addr, addr, port, port, proto, vrf_id,
+					 sw_if_index, flags, pool_addr, 0, 0);
     }
 
   REPLY_MACRO (VL_API_NAT44_EI_ADD_DEL_IDENTITY_MAPPING_REPLY);

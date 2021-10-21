@@ -63,8 +63,9 @@ typedef enum
 #define NAT44_EI_SESSION_FLAG_UNKNOWN_PROTO  (1 << 1)
 
 /* Static mapping flags */
-#define NAT44_EI_SM_FLAG_ADDR_ONLY    (1 << 0)
-#define NAT44_EI_SM_FLAG_IDENTITY_NAT (1 << 1)
+#define NAT44_EI_SM_FLAG_ADDR_ONLY	(1 << 0)
+#define NAT44_EI_SM_FLAG_IDENTITY_NAT	(1 << 1)
+#define NAT44_EI_SM_FLAG_SWITCH_ADDRESS (1 << 2)
 
 typedef struct
 {
@@ -538,6 +539,13 @@ void nat44_ei_set_alloc_mape (u16 psid, u16 psid_offset, u16 psid_length);
  */
 void nat44_ei_set_alloc_range (u16 start_port, u16 end_port);
 
+int nat44_ei_add_del_static_mapping (ip4_address_t l_addr,
+				     ip4_address_t e_addr, u16 l_port,
+				     u16 e_port, nat_protocol_t proto,
+				     u32 vrf_id, u32 sw_if_index, u32 flags,
+				     ip4_address_t pool_addr, u8 *tag,
+				     u8 is_add);
+
 int nat44_ei_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 				 u16 l_port, u16 e_port, nat_protocol_t proto,
 				 u32 vrf_id, u32 sw_if_index, u32 flags,
@@ -675,6 +683,12 @@ always_inline bool
 is_sm_identity_nat (u32 f)
 {
   return (f & NAT44_EI_SM_FLAG_IDENTITY_NAT);
+}
+
+always_inline bool
+is_sm_switch_address (u32 f)
+{
+  return (f & NAT44_EI_SM_FLAG_SWITCH_ADDRESS);
 }
 
 /* logging */

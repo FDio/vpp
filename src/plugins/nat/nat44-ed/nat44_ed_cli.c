@@ -921,17 +921,9 @@ add_static_mapping_command_fn (vlib_main_t * vm,
 
   // TODO: specific pool_addr for both pool & twice nat pool ?
 
-  if (is_add)
-    {
-      rv =
-	nat44_ed_add_static_mapping (l_addr, e_addr, l_port, e_port, proto,
-				     vrf_id, sw_if_index, flags, pool_addr, 0);
-    }
-  else
-    {
-      rv = nat44_ed_del_static_mapping (l_addr, e_addr, l_port, e_port, proto,
-					vrf_id, sw_if_index, flags);
-    }
+  rv = nat44_ed_add_del_static_mapping (l_addr, e_addr, l_port, e_port, proto,
+					vrf_id, sw_if_index, flags, pool_addr,
+					0, is_add);
 
   // TODO: fix returns
 

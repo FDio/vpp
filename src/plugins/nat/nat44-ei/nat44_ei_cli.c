@@ -1061,18 +1061,9 @@ add_static_mapping_command_fn (vlib_main_t *vm, unformat_input_t *input,
       e_port = clib_host_to_net_u16 (e_port);
     }
 
-  if (is_add)
-    {
-      rv =
-	nat44_ei_add_static_mapping (l_addr, e_addr, l_port, e_port, proto,
-				     vrf_id, sw_if_index, flags, pool_addr, 0);
-    }
-  else
-    {
-      rv = nat44_ei_del_static_mapping (l_addr, e_addr, l_port, e_port, proto,
-					vrf_id, sw_if_index, flags);
-    }
-
+  rv = nat44_ei_add_del_static_mapping (l_addr, e_addr, l_port, e_port, proto,
+					vrf_id, sw_if_index, flags, pool_addr,
+					0, is_add);
   switch (rv)
     {
     case VNET_API_ERROR_INVALID_VALUE:
@@ -1155,17 +1146,8 @@ add_identity_mapping_command_fn (vlib_main_t *vm, unformat_input_t *input,
       port = clib_host_to_net_u16 (port);
     }
 
-  if (is_add)
-    {
-
-      rv = nat44_ei_add_static_mapping (addr, addr, port, port, proto, vrf_id,
-					sw_if_index, flags, addr, 0);
-    }
-  else
-    {
-      rv = nat44_ei_del_static_mapping (addr, addr, port, port, proto, vrf_id,
-					sw_if_index, flags);
-    }
+  rv = nat44_ei_add_del_static_mapping (addr, addr, port, port, proto, vrf_id,
+					sw_if_index, flags, addr, 0, is_add);
 
   switch (rv)
     {

@@ -877,6 +877,13 @@ int nat44_ed_del_address (ip4_address_t addr, u8 delete_sm, u8 twice_nat);
 int nat44_ed_add_interface_address (u32 sw_if_index, u8 twice_nat);
 int nat44_ed_del_interface_address (u32 sw_if_index, u8 twice_nat);
 
+int nat44_ed_add_del_static_mapping (ip4_address_t l_addr,
+				     ip4_address_t e_addr, u16 l_port,
+				     u16 e_port, ip_protocol_t proto,
+				     u32 vrf_id, u32 sw_if_index, u32 flags,
+				     ip4_address_t pool_addr, u8 *tag,
+				     u8 is_add);
+
 int nat44_ed_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 				 u16 l_port, u16 e_port, ip_protocol_t proto,
 				 u32 vrf_id, u32 sw_if_index, u32 flags,

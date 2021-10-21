@@ -677,15 +677,16 @@ static void
       tag = format (0, "%s", mp->tag);
       vec_terminate_c_string (tag);
 
-      rv = nat44_ed_add_static_mapping (l_addr, e_addr, l_port, e_port, proto,
-					vrf_id, sw_if_index, flags, pool_addr,
-					tag);
+      rv = nat44_ed_add_del_static_mapping (l_addr, e_addr, l_port, e_port,
+					    proto, vrf_id, sw_if_index, flags,
+					    pool_addr, tag, 1);
       vec_free (tag);
     }
   else
     {
-      rv = nat44_ed_del_static_mapping (l_addr, e_addr, l_port, e_port, proto,
-					vrf_id, sw_if_index, flags);
+      rv = nat44_ed_add_del_static_mapping (l_addr, e_addr, l_port, e_port,
+					    proto, vrf_id, sw_if_index, flags,
+					    pool_addr, 0, 0);
     }
   REPLY_MACRO (VL_API_NAT44_ADD_DEL_STATIC_MAPPING_REPLY);
 }
@@ -739,7 +740,7 @@ static void
     }
 
   sw_if_index = clib_net_to_host_u32 (mp->external_sw_if_index);
-  if (sw_if_index)
+  if (sw_if_index != ~0)
     {
       flags |= NAT_SM_FLAG_SWITCH_ADDRESS;
     }
@@ -757,15 +758,17 @@ static void
       tag = format (0, "%s", mp->tag);
       vec_terminate_c_string (tag);
 
-      rv = nat44_ed_add_static_mapping (l_addr, e_addr, l_port, e_port, proto,
-					vrf_id, sw_if_index, flags, pool_addr,
-					tag);
+      rv = nat44_ed_add_del_static_mapping (l_addr, e_addr, l_port, e_port,
+					    proto, vrf_id, sw_if_index, flags,
+					    pool_addr, tag, 1);
+
       vec_free (tag);
     }
   else
     {
-      rv = nat44_ed_del_static_mapping (l_addr, e_addr, l_port, e_port, proto,
-					vrf_id, sw_if_index, flags);
+      rv = nat44_ed_add_del_static_mapping (l_addr, e_addr, l_port, e_port,
+					    proto, vrf_id, sw_if_index, flags,
+					    pool_addr, 0, 0);
     }
   REPLY_MACRO (VL_API_NAT44_ADD_DEL_STATIC_MAPPING_V2_REPLY);
 }
@@ -935,14 +938,16 @@ static void
       tag = format (0, "%s", mp->tag);
       vec_terminate_c_string (tag);
 
-      rv = nat44_ed_add_static_mapping (addr, addr, port, port, proto, vrf_id,
-					sw_if_index, flags, pool_addr, tag);
+      rv = nat44_ed_add_del_static_mapping (addr, addr, port, port, proto,
+					    vrf_id, sw_if_index, flags,
+					    pool_addr, tag, 1);
       vec_free (tag);
     }
   else
     {
-      rv = nat44_ed_del_static_mapping (addr, addr, port, port, proto, vrf_id,
-					sw_if_index, flags);
+      rv =
+	nat44_ed_add_del_static_mapping (addr, addr, port, port, proto, vrf_id,
+					 sw_if_index, flags, pool_addr, 0, 0);
     }
   REPLY_MACRO (VL_API_NAT44_ADD_DEL_IDENTITY_MAPPING_REPLY);
 }
