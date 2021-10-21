@@ -484,9 +484,10 @@ extern nat44_ei_main_t nat44_ei_main;
 int nat44_ei_plugin_enable (nat44_ei_config_t c);
 int nat44_ei_plugin_disable ();
 
-int nat44_ei_add_del_interface (u32 sw_if_index, u8 is_inside, int is_del);
-int nat44_ei_add_del_output_interface (u32 sw_if_index, int is_del);
-
+int nat44_ei_add_interface (u32 sw_if_index, u8 is_inside);
+int nat44_ei_del_interface (u32 sw_if_index, u8 is_inside);
+int nat44_ei_add_output_interface (u32 sw_if_index);
+int nat44_ei_del_output_interface (u32 sw_if_index);
 int nat44_ei_add_address (ip4_address_t *addr, u32 vrf_id);
 int nat44_ei_del_address (ip4_address_t addr, u8 delete_sm);
 int nat44_ei_add_interface_address (u32 sw_if_index);
