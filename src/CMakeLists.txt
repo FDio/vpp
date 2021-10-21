@@ -107,6 +107,7 @@ elseif (${CMAKE_BUILD_TYPE_LC} MATCHES "coverity")
 elseif (${CMAKE_BUILD_TYPE_LC} MATCHES "gcov")
   add_compile_options(-O0 -fprofile-arcs -ftest-coverage)
   add_compile_definitions(CLIB_DEBUG CLIB_GCOV)
+  link_libraries(gcov)
 endif()
 
 set(BUILD_TYPES release debug coverity gcov)

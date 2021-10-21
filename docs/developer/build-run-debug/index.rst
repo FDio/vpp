@@ -12,3 +12,4 @@ Build, Run & Debug
    testing_vpp
    gdb_examples
    cross_compile_macos
+   code_coverage

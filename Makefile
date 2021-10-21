@@ -381,7 +381,7 @@ export TEST_DIR ?= $(WS_ROOT)/test
 export RND_SEED ?= $(shell python3 -c 'import time; print(time.time())')
 
 define test
-	$(if $(filter-out $(3),retest),make -C $(BR) PLATFORM=$(1) TAG=$(2) vpp-install,)
+	$(if $(filter-out $(3),retest),make -C $(BR) PLATFORM=$(1) TAG=$(2) CC=$(CC) vpp-install,)
 	$(eval libs:=lib lib64)
 	make -C test \
 	  VPP_BUILD_DIR=$(BR)/build-$(2)-native \
@@ -402,10 +402,6 @@ test:
 .PHONY: test-debug
 test-debug:
 	$(call test,vpp,vpp_debug,test)
-
-.PHONY: test-gcov
-test-gcov:
-	$(call test,vpp,vpp_gcov,test)
 
 .PHONY: test-all
 test-all:
@@ -464,8 +460,28 @@ test-cov:
 	$(eval EXTENDED_TESTS=yes)
 	$(call test,vpp,vpp_gcov,cov)
 
+.PHONY: test-cov-prep
+test-cov-prep:
+	$(eval EXTENDED_TESTS=yes)
+	$(call test,vpp,vpp_gcov,cov-prep)
+
+.PHONY: test-cov-build
+test-cov-build:
+	$(call test,vpp,vpp_gcov,test)
+
+# depreacted
+.PHONY: test-gcov
+test-gcov:
+	$(call test,vpp,vpp_gcov,test)
+
+.PHONY: test-cov-post
+test-cov-post:
+	$(eval EXTENDED_TESTS=yes)
+	$(call test,vpp,vpp_gcov,cov-post)
+
 .PHONY: test-wipe-cov
 test-wipe-cov:
+	$(call make,$(PLATFORM)_gcov,$(addsuffix -wipe,$(TARGETS)))
 	@make -C test wipe-cov
 
 .PHONY: test-wipe-all

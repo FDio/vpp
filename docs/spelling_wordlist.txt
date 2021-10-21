@@ -52,6 +52,7 @@ memcpy
 mmap
 Warshall
 XXhash
+cov
 headend
 Fortville
 openbsd
