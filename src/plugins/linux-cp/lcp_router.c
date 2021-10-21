@@ -557,6 +557,14 @@ lcp_router_neigh_del (struct rtnl_neigh *rn)
 
       lcp_router_mk_addr (rtnl_neigh_get_dst (rn), &nh);
 
+      if (ip46_address_is_multicast (&ip_addr_46 (&nh)))
+	{
+	  LCP_ROUTER_DBG ("ignore neighbor del: %U %U", format_ip_address, &nh,
+			  format_vnet_sw_if_index_name, vnet_get_main (),
+			  sw_if_index);
+	  return;
+	}
+
       rv = ip_neighbor_del (&nh, sw_if_index);
 
       if (rv)
@@ -597,6 +605,15 @@ lcp_router_neigh_add (struct rtnl_neigh *rn)
       int state;
 
       lcp_router_mk_addr (rtnl_neigh_get_dst (rn), &nh);
+
+      if (ip46_address_is_multicast (&ip_addr_46 (&nh)))
+	{
+	  LCP_ROUTER_DBG ("ignore neighbor add: %U %U", format_ip_address, &nh,
+			  format_vnet_sw_if_index_name, vnet_get_main (),
+			  sw_if_index);
+	  return;
+	}
+
       ll = rtnl_neigh_get_lladdr (rn);
       state = rtnl_neigh_get_state (rn);
 
