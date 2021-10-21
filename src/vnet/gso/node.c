@@ -92,9 +92,6 @@ tso_segment_ipip_tunnel_fixup (vlib_main_t * vm,
   while (i < n_tx_bufs)
     {
       vlib_buffer_t *b0 = vlib_get_buffer (vm, ptd->split_buffers[i]);
-      vnet_get_outer_header (b0, gho);
-      clib_memcpy_fast (vlib_buffer_get_current (b0),
-			vlib_buffer_get_current (sb0), gho->outer_hdr_sz);
 
       ip4_header_t *ip4 =
 	(ip4_header_t *) (vlib_buffer_get_current (b0) +
@@ -184,9 +181,6 @@ tso_segment_vxlan_tunnel_fixup (vlib_main_t * vm,
   while (i < n_tx_bufs)
     {
       vlib_buffer_t *b0 = vlib_get_buffer (vm, ptd->split_buffers[i]);
-      vnet_get_outer_header (b0, gho);
-      clib_memcpy_fast (vlib_buffer_get_current (b0),
-			vlib_buffer_get_current (sb0), gho->outer_hdr_sz);
 
       tso_segment_vxlan_tunnel_headers_fixup (vm, b0, gho);
       n_tx_bytes += gho->outer_hdr_sz;
@@ -686,7 +680,6 @@ vnet_gso_node_inline (vlib_main_t * vm,
 		  n_left_to_next += 1;
 		  /* undo the counting. */
 		  generic_header_offset_t gho = { 0 };
-		  u32 n_bytes_b0 = vlib_buffer_length_in_chain (vm, b[0]);
 		  u32 n_tx_bytes = 0;
 		  u32 inner_is_ip6 = is_ip6;
 
@@ -707,15 +700,11 @@ vnet_gso_node_inline (vlib_main_t * vm,
 			  continue;
 			}
 
-		      vnet_get_inner_header (b[0], &gho);
-
-		      n_bytes_b0 -= gho.outer_hdr_sz;
 		      inner_is_ip6 = (gho.gho_flags & GHO_F_IP6) != 0;
 		    }
 
-		  n_tx_bytes =
-		    tso_segment_buffer (vm, ptd, bi0, b[0], &gho, n_bytes_b0,
-					is_l2, inner_is_ip6);
+		  n_tx_bytes = gso_segment_buffer_inline (vm, ptd, b[0], &gho,
+							  is_l2, inner_is_ip6);
 
 		  if (PREDICT_FALSE (n_tx_bytes == 0))
 		    {
@@ -729,7 +718,6 @@ vnet_gso_node_inline (vlib_main_t * vm,
 
 		  if (PREDICT_FALSE (gho.gho_flags & GHO_F_VXLAN_TUNNEL))
 		    {
-		      vnet_get_outer_header (b[0], &gho);
 		      n_tx_bytes +=
 			tso_segment_vxlan_tunnel_fixup (vm, ptd, b[0], &gho);
 		    }
@@ -738,7 +726,6 @@ vnet_gso_node_inline (vlib_main_t * vm,
 			(gho.gho_flags & (GHO_F_IPIP_TUNNEL |
 					  GHO_F_IPIP6_TUNNEL)))
 		    {
-		      vnet_get_outer_header (b[0], &gho);
 		      n_tx_bytes +=
 			tso_segment_ipip_tunnel_fixup (vm, ptd, b[0], &gho);
 		    }
