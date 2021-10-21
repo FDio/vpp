@@ -610,7 +610,7 @@ nat44_ei_get_interface (nat44_ei_interface_t *interfaces, u32 sw_if_index)
   return 0;
 }
 
-static_always_inline int
+int
 nat44_ei_add_interface (u32 sw_if_index, u8 is_inside)
 {
   const char *feature_name, *del_feature_name;
@@ -753,7 +753,7 @@ nat44_ei_add_interface (u32 sw_if_index, u8 is_inside)
   return 0;
 }
 
-static_always_inline int
+int
 nat44_ei_del_interface (u32 sw_if_index, u8 is_inside)
 {
   const char *feature_name, *del_feature_name;
@@ -884,19 +884,6 @@ nat44_ei_del_interface (u32 sw_if_index, u8 is_inside)
 }
 
 int
-nat44_ei_add_del_interface (u32 sw_if_index, u8 is_inside, int is_del)
-{
-  if (is_del)
-    {
-      return nat44_ei_del_interface (sw_if_index, is_inside);
-    }
-  else
-    {
-      return nat44_ei_add_interface (sw_if_index, is_inside);
-    }
-}
-
-static_always_inline int
 nat44_ei_add_output_interface (u32 sw_if_index)
 {
   nat44_ei_main_t *nm = &nat44_ei_main;
@@ -1000,7 +987,7 @@ nat44_ei_add_output_interface (u32 sw_if_index)
   return 0;
 }
 
-static_always_inline int
+int
 nat44_ei_del_output_interface (u32 sw_if_index)
 {
   nat44_ei_main_t *nm = &nat44_ei_main;
@@ -1089,19 +1076,6 @@ nat44_ei_del_output_interface (u32 sw_if_index)
   nat44_ei_add_del_addr_to_fib_foreach_addr_only_sm (sw_if_index, 1);
 
   return 0;
-}
-
-int
-nat44_ei_add_del_output_interface (u32 sw_if_index, int is_del)
-{
-  if (is_del)
-    {
-      return nat44_ei_del_output_interface (sw_if_index);
-    }
-  else
-    {
-      return nat44_ei_add_output_interface (sw_if_index);
-    }
 }
 
 int

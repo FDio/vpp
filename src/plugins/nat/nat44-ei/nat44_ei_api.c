@@ -533,18 +533,22 @@ vl_api_nat44_ei_interface_add_del_feature_t_handler (
   nat44_ei_main_t *nm = &nat44_ei_main;
   vl_api_nat44_ei_interface_add_del_feature_reply_t *rmp;
   u32 sw_if_index = ntohl (mp->sw_if_index);
-  u8 is_del;
   int rv = 0;
-
-  is_del = !mp->is_add;
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  rv = nat44_ei_add_del_interface (sw_if_index, mp->flags & NAT44_EI_IF_INSIDE,
-				   is_del);
+  if (mp->is_add)
+    {
+      rv =
+	nat44_ei_add_interface (sw_if_index, mp->flags & NAT44_EI_IF_INSIDE);
+    }
+  else
+    {
+      rv =
+	nat44_ei_del_interface (sw_if_index, mp->flags & NAT44_EI_IF_INSIDE);
+    }
 
   BAD_SW_IF_INDEX_LABEL;
-
   REPLY_MACRO (VL_API_NAT44_EI_INTERFACE_ADD_DEL_FEATURE_REPLY);
 }
 
@@ -648,7 +652,14 @@ vl_api_nat44_ei_interface_add_del_output_feature_t_handler (
 
   if (!(mp->flags & NAT44_EI_IF_INSIDE))
     {
-      rv = nat44_ei_add_del_output_interface (sw_if_index, !mp->is_add);
+      if (mp->is_add)
+	{
+	  rv = nat44_ei_add_output_interface (sw_if_index);
+	}
+      else
+	{
+	  rv = nat44_ei_del_output_interface (sw_if_index);
+	}
     }
 
   BAD_SW_IF_INDEX_LABEL;
@@ -702,17 +713,25 @@ vl_api_nat44_ei_add_del_output_interface_t_handler (
 {
   vl_api_nat44_ei_add_del_output_interface_reply_t *rmp;
   nat44_ei_main_t *nm = &nat44_ei_main;
-  u32 sw_if_index;
   int rv = 0;
 
-  VALIDATE_SW_IF_INDEX (mp);
+  if (!vnet_sw_if_index_is_api_valid (mp->sw_if_index))
+    {
+      rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
+      goto bad_sw_if_index;
+    }
 
-  sw_if_index = ntohl (mp->sw_if_index);
+  if (mp->is_add)
+    {
+      rv = nat44_ei_add_output_interface (mp->sw_if_index);
+    }
+  else
+    {
+      rv = nat44_ei_del_output_interface (mp->sw_if_index);
+    }
 
-  rv = nat44_ei_add_del_output_interface (sw_if_index, !mp->is_add);
-
-  BAD_SW_IF_INDEX_LABEL;
-  REPLY_MACRO (VL_API_NAT44_EI_ADD_DEL_OUTPUT_INTERFACE_REPLY);
+bad_sw_if_index:
+  REPLY_MACRO_END (VL_API_NAT44_EI_ADD_DEL_OUTPUT_INTERFACE_REPLY);
 }
 
 #define vl_endianfun

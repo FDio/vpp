@@ -859,8 +859,7 @@ nat44_ei_feature_command_fn (vlib_main_t *vm, unformat_input_t *input,
   u32 *inside_sw_if_indices = 0;
   u32 *outside_sw_if_indices = 0;
   u8 is_output_feature = 0;
-  int is_del = 0;
-  int i;
+  int i, rv, is_del = 0;
 
   sw_if_index = ~0;
 
@@ -894,7 +893,15 @@ nat44_ei_feature_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  sw_if_index = inside_sw_if_indices[i];
 	  if (is_output_feature)
 	    {
-	      if (nat44_ei_add_del_output_interface (sw_if_index, is_del))
+	      if (is_del)
+		{
+		  rv = nat44_ei_del_output_interface (sw_if_index);
+		}
+	      else
+		{
+		  rv = nat44_ei_add_output_interface (sw_if_index);
+		}
+	      if (rv)
 		{
 		  error = clib_error_return (
 		    0, "%s %U failed", is_del ? "del" : "add",
@@ -904,7 +911,15 @@ nat44_ei_feature_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	    }
 	  else
 	    {
-	      if (nat44_ei_add_del_interface (sw_if_index, 1, is_del))
+	      if (is_del)
+		{
+		  rv = nat44_ei_del_interface (sw_if_index, 1);
+		}
+	      else
+		{
+		  rv = nat44_ei_add_interface (sw_if_index, 1);
+		}
+	      if (rv)
 		{
 		  error = clib_error_return (
 		    0, "%s %U failed", is_del ? "del" : "add",
@@ -922,7 +937,15 @@ nat44_ei_feature_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  sw_if_index = outside_sw_if_indices[i];
 	  if (is_output_feature)
 	    {
-	      if (nat44_ei_add_del_output_interface (sw_if_index, is_del))
+	      if (is_del)
+		{
+		  rv = nat44_ei_del_output_interface (sw_if_index);
+		}
+	      else
+		{
+		  rv = nat44_ei_add_output_interface (sw_if_index);
+		}
+	      if (rv)
 		{
 		  error = clib_error_return (
 		    0, "%s %U failed", is_del ? "del" : "add",
@@ -932,7 +955,15 @@ nat44_ei_feature_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	    }
 	  else
 	    {
-	      if (nat44_ei_add_del_interface (sw_if_index, 0, is_del))
+	      if (is_del)
+		{
+		  rv = nat44_ei_del_interface (sw_if_index, 0);
+		}
+	      else
+		{
+		  rv = nat44_ei_add_interface (sw_if_index, 0);
+		}
+	      if (rv)
 		{
 		  error = clib_error_return (
 		    0, "%s %U failed", is_del ? "del" : "add",

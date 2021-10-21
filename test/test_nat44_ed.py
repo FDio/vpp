@@ -2742,7 +2742,7 @@ class TestNAT44EDMW(TestNAT44ED):
 
         self.nat_add_inside_interface(self.pg0)
         self.nat_add_outside_interface(self.pg0)
-        self.vapi.nat44_interface_add_del_output_feature(
+        self.vapi.nat44_ed_add_del_output_interface(
             sw_if_index=self.pg1.sw_if_index, is_add=1)
 
         # from client to service
@@ -2820,7 +2820,7 @@ class TestNAT44EDMW(TestNAT44ED):
 
         self.nat_add_inside_interface(self.pg0)
         self.nat_add_outside_interface(self.pg0)
-        self.vapi.nat44_interface_add_del_output_feature(
+        self.vapi.nat44_ed_add_del_output_interface(
             sw_if_index=self.pg1.sw_if_index, is_add=1)
 
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
@@ -3055,7 +3055,7 @@ class TestNAT44EDMW(TestNAT44ED):
         """ NAT44ED output feature works with stateful ACL """
 
         self.nat_add_address(self.nat_addr)
-        self.vapi.nat44_interface_add_del_output_feature(
+        self.vapi.nat44_ed_add_del_output_interface(
             sw_if_index=self.pg1.sw_if_index, is_add=1)
 
         # First ensure that the NAT is working sans ACL
@@ -3133,7 +3133,7 @@ class TestNAT44EDMW(TestNAT44ED):
         self.vapi.nat44_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_output_feature(
+        self.vapi.nat44_ed_add_del_output_interface(
             is_add=1,
             sw_if_index=self.pg1.sw_if_index)
 

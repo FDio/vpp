@@ -552,24 +552,25 @@ vl_api_nat44_ed_add_del_output_interface_t_handler (
 {
   vl_api_nat44_ed_add_del_output_interface_reply_t *rmp;
   snat_main_t *sm = &snat_main;
-  u32 sw_if_index;
   int rv = 0;
 
-  VALIDATE_SW_IF_INDEX (mp);
-
-  sw_if_index = ntohl (mp->sw_if_index);
+  if (!vnet_sw_if_index_is_api_valid (mp->sw_if_index))
+    {
+      rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
+      goto bad_sw_if_index;
+    }
 
   if (mp->is_add)
     {
-      rv = nat44_ed_add_output_interface (sw_if_index);
+      rv = nat44_ed_add_output_interface (mp->sw_if_index);
     }
   else
     {
-      rv = nat44_ed_del_output_interface (sw_if_index);
+      rv = nat44_ed_del_output_interface (mp->sw_if_index);
     }
 
-  BAD_SW_IF_INDEX_LABEL;
-  REPLY_MACRO (VL_API_NAT44_ED_ADD_DEL_OUTPUT_INTERFACE_REPLY);
+bad_sw_if_index:
+  REPLY_MACRO_END (VL_API_NAT44_ED_ADD_DEL_OUTPUT_INTERFACE_REPLY);
 }
 
 #define vl_endianfun
