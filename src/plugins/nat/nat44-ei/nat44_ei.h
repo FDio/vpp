@@ -63,8 +63,9 @@ typedef enum
 #define NAT44_EI_SESSION_FLAG_UNKNOWN_PROTO  (1 << 1)
 
 /* Static mapping flags */
-#define NAT44_EI_SM_FLAG_ADDR_ONLY    (1 << 0)
-#define NAT44_EI_SM_FLAG_IDENTITY_NAT (1 << 1)
+#define NAT44_EI_SM_FLAG_ADDR_ONLY	(1 << 0)
+#define NAT44_EI_SM_FLAG_IDENTITY_NAT	(1 << 1)
+#define NAT44_EI_SM_FLAG_SWITCH_ADDRESS (1 << 2)
 
 typedef struct
 {
@@ -676,6 +677,12 @@ always_inline bool
 is_sm_identity_nat (u32 f)
 {
   return (f & NAT44_EI_SM_FLAG_IDENTITY_NAT);
+}
+
+always_inline bool
+is_sm_switch_address (u32 f)
+{
+  return (f & NAT44_EI_SM_FLAG_SWITCH_ADDRESS);
 }
 
 /* logging */
