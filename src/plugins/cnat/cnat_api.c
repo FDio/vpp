@@ -209,13 +209,13 @@ vl_api_cnat_translation_dump_t_handler (vl_api_cnat_translation_dump_t * mp)
   cnat_translation_walk (cnat_translation_send_details, &ctx);
 }
 
-static void
-ip_address2_from_46 (const ip46_address_t * nh,
-		     ip_address_family_t af, ip_address_t * ip)
-{
-  ip_addr_46 (ip) = *nh;
-  ip_addr_version (ip) = af;
-}
+// static void
+// ip_address2_from_46 (const ip46_address_t * nh,
+// 		     ip_address_family_t af, ip_address_t * ip)
+// {
+//   ip_addr_46 (ip) = *nh;
+//   ip_addr_version (ip) = af;
+// }
 
 static walk_rc_t
 cnat_session_send_details (const cnat_session_t * session, void *args)
@@ -234,23 +234,26 @@ cnat_session_send_details (const cnat_session_t * session, void *args)
 
   ep.ce_sw_if_index = INDEX_INVALID;
   ep.ce_flags = CNAT_EP_FLAG_RESOLVED;
-  ip_address2_from_46 (&session->value.cs_ip[VLIB_TX], session->key.cs_af,
-		       &ep.ce_ip);
-  ep.ce_port = clib_host_to_net_u16 (session->value.cs_port[VLIB_TX]);
+  // ip_address2_from_46 (&session->value.cs_5tuple.ip[VLIB_TX],
+  // session->key.cs_af,
+  //        &ep.ce_ip);
+  // ep.ce_port = clib_host_to_net_u16 (session->value.cs_port[VLIB_TX]);
   cnat_endpoint_encode (&ep, &mp->session.new);
 
-  ip_address2_from_46 (&session->key.cs_ip[VLIB_RX], session->key.cs_af,
-		       &ep.ce_ip);
-  ep.ce_port = clib_host_to_net_u16 (session->key.cs_port[VLIB_RX]);
+  // ip_address2_from_46 (&session->key.cs_5tuple.ip[VLIB_RX],
+  // session->key.cs_af,
+  //        &ep.ce_ip);
+  // ep.ce_port = clib_host_to_net_u16 (session->key.cs_port[VLIB_RX]);
   cnat_endpoint_encode (&ep, &mp->session.src);
 
-  ip_address2_from_46 (&session->key.cs_ip[VLIB_TX], session->key.cs_af,
-		       &ep.ce_ip);
-  ep.ce_port = clib_host_to_net_u16 (session->key.cs_port[VLIB_TX]);
+  // ip_address2_from_46 (&session->key.cs_5tuple.ip[VLIB_TX],
+  // session->key.cs_af,
+  //        &ep.ce_ip);
+  // ep.ce_port = clib_host_to_net_u16 (session->key.cs_port[VLIB_TX]);
   cnat_endpoint_encode (&ep, &mp->session.dst);
 
-  mp->session.ip_proto = ip_proto_encode (session->key.cs_proto);
-  mp->session.location = session->key.cs_loc;
+  mp->session.ip_proto = ip_proto_encode (session->key.cs_5tuple.iproto);
+  // mp->session.location = session->key.cs_loc;
 
   vl_api_send_msg (ctx->rp, (u8 *) mp);
 

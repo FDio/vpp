@@ -28,18 +28,25 @@
 #include <vnet/ip/ip4_inlines.h>
 #include <vnet/ip/ip6_inlines.h>
 
-typedef uword (*cnat_node_sub_t) (vlib_main_t * vm,
-				  vlib_node_runtime_t * node,
-				  vlib_buffer_t * b,
-				  cnat_node_ctx_t * ctx, int rv,
-				  cnat_session_t * session);
+typedef void (*cnat_node_sub_t) (vlib_main_t *vm, vlib_node_runtime_t *node,
+				 vlib_buffer_t *b, u16 *next,
+				 ip_address_family_t af, f64 now, u8 do_trace);
+
+typedef enum cnat_node_vip_next_t_
+{
+  CNAT_NODE_VIP_NEXT_DROP,
+  CNAT_NODE_VIP_NEXT_LOOKUP,
+  CNAT_NODE_VIP_N_NEXT,
+} cnat_node_vip_next_t;
 
 typedef struct cnat_trace_element_t_
 {
-  cnat_session_t session;
+  cnat_timestamp_rewrite_t rw;
   cnat_translation_t tr;
   u32 sw_if_index[VLIB_N_RX_TX];
   u32 snat_policy_result;
+  u32 generic_flow_id;
+  u32 flow_state;
   u8 flags;
 } cnat_trace_element_t;
 
@@ -48,27 +55,37 @@ typedef enum cnat_trace_element_flag_t_
   CNAT_TRACE_SESSION_FOUND = (1 << 0),
   CNAT_TRACE_SESSION_CREATED = (1 << 1),
   CNAT_TRACE_TRANSLATION_FOUND = (1 << 2),
-  CNAT_TRACE_NO_NAT = (1 << 3),
+  CNAT_TRACE_REWRITE_FOUND = (1 << 3)
 } cnat_trace_element_flag_t;
 
 static_always_inline void
 cnat_add_trace (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
-		cnat_session_t *session, const cnat_translation_t *ct,
-		u8 flags)
+		const cnat_timestamp_rewrite_t *rw,
+		const cnat_translation_t *ct)
 {
   cnat_trace_element_t *t;
-  if (NULL != ct)
-    flags |= CNAT_TRACE_TRANSLATION_FOUND;
+  if (!(b->flags & VLIB_BUFFER_IS_TRACED))
+    return;
 
   t = vlib_add_trace (vm, node, b, sizeof (*t));
   t->sw_if_index[VLIB_RX] = vnet_buffer (b)->sw_if_index[VLIB_RX];
   t->sw_if_index[VLIB_TX] = vnet_buffer (b)->sw_if_index[VLIB_TX];
 
-  if (flags & (CNAT_TRACE_SESSION_FOUND | CNAT_TRACE_SESSION_CREATED))
-    clib_memcpy (&t->session, session, sizeof (t->session));
-  if (flags & CNAT_TRACE_TRANSLATION_FOUND)
-    clib_memcpy (&t->tr, ct, sizeof (cnat_translation_t));
-  t->flags = flags;
+  t->generic_flow_id = vnet_buffer (b)->session.generic_flow_id;
+  t->flow_state = vnet_buffer (b)->session.state;
+
+  t->flags = 0;
+  if (ct)
+    {
+      clib_memcpy (&t->tr, ct, sizeof (cnat_translation_t));
+      t->flags |= CNAT_TRACE_TRANSLATION_FOUND;
+    }
+
+  if (rw)
+    {
+      clib_memcpy (&t->rw, rw, sizeof (cnat_timestamp_rewrite_t));
+      t->flags |= CNAT_TRACE_REWRITE_FOUND;
+    }
 }
 
 static u8 *
@@ -80,23 +97,24 @@ format_cnat_trace (u8 *s, va_list *args)
   u32 indent = format_get_indent (s);
   vnet_main_t *vnm = vnet_get_main ();
 
-  if (t->flags & CNAT_TRACE_SESSION_CREATED)
-    s = format (s, "created session");
-  else if (t->flags & CNAT_TRACE_SESSION_FOUND)
-    s = format (s, "found session");
+  if (t->flow_state == CNAT_LOOKUP_IS_ERR)
+    s = format (s, "session lookup error");
+  else if (t->flow_state == CNAT_LOOKUP_IS_RETURN)
+    s = format (s, "return session");
+  else if (t->flow_state == CNAT_LOOKUP_IS_NEW)
+    s = format (s, "new session");
+  else if (t->flow_state == CNAT_LOOKUP_IS_OK)
+    s = format (s, "session found");
   else
-    s = format (s, "session not found");
-
-  if (t->flags & (CNAT_TRACE_NO_NAT))
-    s = format (s, " [policy:skip]");
+    s = format (s, "weird flow_state %d", t->flow_state);
 
   s = format (s, "\n%Uin:%U out:%U ", format_white_space, indent,
 	      format_vnet_sw_if_index_name, vnm, t->sw_if_index[VLIB_RX],
 	      format_vnet_sw_if_index_name, vnm, t->sw_if_index[VLIB_TX]);
 
-  if (t->flags & (CNAT_TRACE_SESSION_CREATED | CNAT_TRACE_SESSION_FOUND))
-    s = format (s, "\n%U%U", format_white_space, indent, format_cnat_session,
-		&t->session, 1);
+  if (t->flags & CNAT_TRACE_REWRITE_FOUND)
+    s = format (s, "\n%U%U", format_white_space, indent, format_cnat_rewrite,
+		&t->rw, 1);
 
   if (t->flags & CNAT_TRACE_TRANSLATION_FOUND)
     s = format (s, "\n%Utranslation: %U", format_white_space, indent,
@@ -223,17 +241,17 @@ cnat_ip4_translate_l3 (ip4_header_t *ip4, ip4_address_t new_addr[VLIB_N_DIR],
 }
 
 static_always_inline void
-cnat_tcp_update_session_lifetime (tcp_header_t * tcp, u32 index)
+cnat_tcp_update_session_lifetime (tcp_header_t *tcp, u16 *lifetime)
 {
   cnat_main_t *cm = &cnat_main;
   if (PREDICT_FALSE (tcp_fin (tcp)))
-    cnat_timestamp_set_lifetime (index, CNAT_DEFAULT_TCP_RST_TIMEOUT);
+    *lifetime = CNAT_DEFAULT_TCP_RST_TIMEOUT;
 
   if (PREDICT_FALSE (tcp_rst (tcp)))
-    cnat_timestamp_set_lifetime (index, CNAT_DEFAULT_TCP_RST_TIMEOUT);
+    *lifetime = CNAT_DEFAULT_TCP_RST_TIMEOUT;
 
   if (PREDICT_FALSE (tcp_syn (tcp) && tcp_ack (tcp)))
-    cnat_timestamp_set_lifetime (index, cm->tcp_max_age);
+    *lifetime = cm->tcp_max_age;
 }
 
 static_always_inline void
@@ -260,8 +278,7 @@ cnat_translation_icmp4_echo (ip4_header_t *ip4, icmp46_header_t *icmp,
 static_always_inline void
 cnat_translation_icmp4_error (ip4_header_t *outer_ip4, icmp46_header_t *icmp,
 			      ip4_address_t outer_new_addr[VLIB_N_DIR],
-			      u16 outer_new_port[VLIB_N_DIR], u8 snat_outer_ip,
-			      u32 oflags)
+			      u16 outer_new_port[VLIB_N_DIR], u32 oflags)
 {
   ip4_address_t new_addr[VLIB_N_DIR];
   ip4_address_t old_addr[VLIB_N_DIR];
@@ -287,8 +304,8 @@ cnat_translation_icmp4_error (ip4_header_t *outer_ip4, icmp46_header_t *icmp,
   sum = icmp->checksum;
   old_ip_sum = ip4->checksum;
 
-  /* translate outer ip. */
-  if (!snat_outer_ip)
+  /* translate outer ip only if src_addr was translated */
+  if (outer_ip4->src_address.as_u32 != ip4->dst_address.as_u32)
     outer_new_addr[VLIB_RX] = outer_ip4->src_address;
   cnat_ip4_translate_l3 (outer_ip4, outer_new_addr, oflags);
 
@@ -340,17 +357,17 @@ cnat_translation_icmp4_error (ip4_header_t *outer_ip4, icmp46_header_t *icmp,
 }
 
 static_always_inline void
-cnat_translation_ip4 (const cnat_session_t *session, ip4_header_t *ip4,
-		      udp_header_t *udp, u32 oflags)
+cnat_translation_ip4 (const cnat_5tuple_t *tuple, ip4_header_t *ip4,
+		      udp_header_t *udp, u16 *lifetime, u32 oflags)
 {
   tcp_header_t *tcp = (tcp_header_t *) udp;
   ip4_address_t new_addr[VLIB_N_DIR];
   u16 new_port[VLIB_N_DIR];
 
-  new_addr[VLIB_TX] = session->value.cs_ip[VLIB_TX].ip4;
-  new_addr[VLIB_RX] = session->value.cs_ip[VLIB_RX].ip4;
-  new_port[VLIB_TX] = session->value.cs_port[VLIB_TX];
-  new_port[VLIB_RX] = session->value.cs_port[VLIB_RX];
+  new_addr[VLIB_TX] = tuple->ip[VLIB_TX].ip4;
+  new_addr[VLIB_RX] = tuple->ip[VLIB_RX].ip4;
+  new_port[VLIB_TX] = tuple->port[VLIB_TX];
+  new_port[VLIB_RX] = tuple->port[VLIB_RX];
 
   if (ip4->protocol == IP_PROTOCOL_TCP)
     {
@@ -358,7 +375,7 @@ cnat_translation_ip4 (const cnat_session_t *session, ip4_header_t *ip4,
       cnat_ip4_translate_l4 (ip4, udp, &sum, new_addr, new_port, oflags);
       tcp->checksum = ip_csum_fold (sum);
       cnat_ip4_translate_l3 (ip4, new_addr, oflags);
-      cnat_tcp_update_session_lifetime (tcp, session->value.cs_ts_index);
+      cnat_tcp_update_session_lifetime (tcp, lifetime);
     }
   else if (ip4->protocol == IP_PROTOCOL_UDP)
     {
@@ -371,14 +388,7 @@ cnat_translation_ip4 (const cnat_session_t *session, ip4_header_t *ip4,
     {
       icmp46_header_t *icmp = (icmp46_header_t *) udp;
       if (icmp_type_is_error_message (icmp->type))
-	{
-	  /* SNAT only if src_addr was translated */
-	  u8 snat_outer_ip =
-	    (ip4->src_address.as_u32 ==
-	     session->key.cs_ip[VLIB_RX].ip4.as_u32);
-	  cnat_translation_icmp4_error (ip4, icmp, new_addr, new_port,
-					snat_outer_ip, oflags);
-	}
+	cnat_translation_icmp4_error (ip4, icmp, new_addr, new_port, oflags);
       else if (icmp_type_is_echo (icmp->type))
 	cnat_translation_icmp4_echo (ip4, icmp, new_addr, new_port, oflags);
     }
@@ -463,11 +473,9 @@ cnat_translation_icmp6_echo (ip6_header_t * ip6, icmp46_header_t * icmp,
 }
 
 static_always_inline void
-cnat_translation_icmp6_error (ip6_header_t * outer_ip6,
-			      icmp46_header_t * icmp,
+cnat_translation_icmp6_error (ip6_header_t *outer_ip6, icmp46_header_t *icmp,
 			      ip6_address_t outer_new_addr[VLIB_N_DIR],
-			      u16 outer_new_port[VLIB_N_DIR],
-			      u8 snat_outer_ip)
+			      u16 outer_new_port[VLIB_N_DIR])
 {
   ip6_address_t new_addr[VLIB_N_DIR];
   ip6_address_t old_addr[VLIB_N_DIR];
@@ -498,7 +506,9 @@ cnat_translation_icmp6_error (ip6_header_t * outer_ip6,
   /* Translate outer ip */
   ip6_address_copy (&outer_old_addr[VLIB_TX], &outer_ip6->dst_address);
   ip6_address_copy (&outer_old_addr[VLIB_RX], &outer_ip6->src_address);
-  if (!snat_outer_ip)
+
+  /* translate only if src_addr was translated */
+  if (!cmp_ip6_address (&outer_ip6->src_address, &ip6->dst_address))
     ip6_address_copy (&outer_new_addr[VLIB_RX], &outer_ip6->src_address);
   cnat_ip6_translate_l3 (outer_ip6, outer_new_addr);
 
@@ -558,17 +568,17 @@ cnat_translation_icmp6_error (ip6_header_t * outer_ip6,
 }
 
 static_always_inline void
-cnat_translation_ip6 (const cnat_session_t *session, ip6_header_t *ip6,
-		      udp_header_t *udp, u32 oflags)
+cnat_translation_ip6 (const cnat_5tuple_t *tuple, ip6_header_t *ip6,
+		      udp_header_t *udp, u16 *lifetime, u32 oflags)
 {
   tcp_header_t *tcp = (tcp_header_t *) udp;
   ip6_address_t new_addr[VLIB_N_DIR];
   u16 new_port[VLIB_N_DIR];
 
-  ip6_address_copy (&new_addr[VLIB_TX], &session->value.cs_ip[VLIB_TX].ip6);
-  ip6_address_copy (&new_addr[VLIB_RX], &session->value.cs_ip[VLIB_RX].ip6);
-  new_port[VLIB_TX] = session->value.cs_port[VLIB_TX];
-  new_port[VLIB_RX] = session->value.cs_port[VLIB_RX];
+  ip6_address_copy (&new_addr[VLIB_TX], &tuple->ip[VLIB_TX].ip6);
+  ip6_address_copy (&new_addr[VLIB_RX], &tuple->ip[VLIB_RX].ip6);
+  new_port[VLIB_TX] = tuple->port[VLIB_TX];
+  new_port[VLIB_RX] = tuple->port[VLIB_RX];
 
   if (ip6->protocol == IP_PROTOCOL_TCP)
     {
@@ -576,7 +586,7 @@ cnat_translation_ip6 (const cnat_session_t *session, ip6_header_t *ip6,
       cnat_ip6_translate_l4 (ip6, udp, &sum, new_addr, new_port, oflags);
       tcp->checksum = ip_csum_fold (sum);
       cnat_ip6_translate_l3 (ip6, new_addr);
-      cnat_tcp_update_session_lifetime (tcp, session->value.cs_ts_index);
+      cnat_tcp_update_session_lifetime (tcp, lifetime);
     }
   else if (ip6->protocol == IP_PROTOCOL_UDP)
     {
@@ -589,34 +599,18 @@ cnat_translation_ip6 (const cnat_session_t *session, ip6_header_t *ip6,
     {
       icmp46_header_t *icmp = (icmp46_header_t *) udp;
       if (icmp6_type_is_error_message (icmp->type))
-	{
-	  /* SNAT only if src_addr was translated */
-	  u8 snat_outer_ip = cmp_ip6_address (&ip6->src_address,
-					      &session->key.
-					      cs_ip[VLIB_RX].ip6);
-	  cnat_translation_icmp6_error (ip6, icmp, new_addr, new_port,
-					snat_outer_ip);
-	}
+	cnat_translation_icmp6_error (ip6, icmp, new_addr, new_port);
       else if (icmp6_type_is_echo (icmp->type))
 	cnat_translation_icmp6_echo (ip6, icmp, new_addr, new_port);
     }
 }
 
 static_always_inline void
-cnat_session_make_key (vlib_buffer_t *b, ip_address_family_t af,
-		       cnat_session_location_t cs_loc, cnat_bihash_kv_t *bkey)
+cnat_make_buffer_5tuple (vlib_buffer_t *b, ip_address_family_t af,
+			 cnat_5tuple_t *tup, u32 iph_offset, u8 swap)
 {
   udp_header_t *udp;
-  cnat_session_t *session = (cnat_session_t *) bkey;
-  u32 iph_offset = 0;
-  session->key.cs_af = af;
-
-  session->key.cs_loc = cs_loc;
-  session->key.__cs_pad = 0;
-  if (cs_loc == CNAT_LOCATION_OUTPUT)
-    /* rewind buffer */
-    iph_offset = vnet_buffer (b)->ip.save_rewrite_length;
-
+  clib_memset (tup, 0, sizeof (*tup));
   if (AF_IP4 == af)
     {
       ip4_header_t *ip4;
@@ -630,42 +624,36 @@ cnat_session_make_key (vlib_buffer_t *b, ip_address_family_t af,
 	      ip4 = (ip4_header_t *) (icmp + 2);	/* Use inner packet */
 	      udp = (udp_header_t *) (ip4 + 1);
 	      /* Swap dst & src for search as ICMP payload is reversed */
-	      ip46_address_set_ip4 (&session->key.cs_ip[VLIB_RX],
+	      ip46_address_set_ip4 (&tup->ip[VLIB_RX ^ swap],
 				    &ip4->dst_address);
-	      ip46_address_set_ip4 (&session->key.cs_ip[VLIB_TX],
+	      ip46_address_set_ip4 (&tup->ip[VLIB_TX ^ swap],
 				    &ip4->src_address);
-	      session->key.cs_proto = ip4->protocol;
-	      session->key.cs_port[VLIB_TX] = udp->src_port;
-	      session->key.cs_port[VLIB_RX] = udp->dst_port;
+	      tup->iproto = ip4->protocol;
+	      tup->port[VLIB_TX ^ swap] = udp->src_port;
+	      tup->port[VLIB_RX ^ swap] = udp->dst_port;
 	    }
 	  else if (icmp_type_is_echo (icmp->type))
 	    {
 	      cnat_echo_header_t *echo = (cnat_echo_header_t *) (icmp + 1);
-	      ip46_address_set_ip4 (&session->key.cs_ip[VLIB_TX],
+	      ip46_address_set_ip4 (&tup->ip[VLIB_TX ^ swap],
 				    &ip4->dst_address);
-	      ip46_address_set_ip4 (&session->key.cs_ip[VLIB_RX],
+	      ip46_address_set_ip4 (&tup->ip[VLIB_RX ^ swap],
 				    &ip4->src_address);
-	      session->key.cs_proto = ip4->protocol;
-	      session->key.cs_port[VLIB_TX] = echo->identifier;
-	      session->key.cs_port[VLIB_RX] = echo->identifier;
+	      tup->iproto = ip4->protocol;
+	      tup->port[VLIB_TX ^ swap] = echo->identifier;
+	      tup->port[VLIB_RX ^ swap] = echo->identifier;
 	    }
-	  else
-	    goto error;
 	}
       else if (ip4->protocol == IP_PROTOCOL_UDP ||
 	       ip4->protocol == IP_PROTOCOL_TCP)
 	{
 	  udp = (udp_header_t *) (ip4 + 1);
-	  ip46_address_set_ip4 (&session->key.cs_ip[VLIB_TX],
-				&ip4->dst_address);
-	  ip46_address_set_ip4 (&session->key.cs_ip[VLIB_RX],
-				&ip4->src_address);
-	  session->key.cs_proto = ip4->protocol;
-	  session->key.cs_port[VLIB_RX] = udp->src_port;
-	  session->key.cs_port[VLIB_TX] = udp->dst_port;
+	  ip46_address_set_ip4 (&tup->ip[VLIB_TX ^ swap], &ip4->dst_address);
+	  ip46_address_set_ip4 (&tup->ip[VLIB_RX ^ swap], &ip4->src_address);
+	  tup->iproto = ip4->protocol;
+	  tup->port[VLIB_RX ^ swap] = udp->src_port;
+	  tup->port[VLIB_TX ^ swap] = udp->dst_port;
 	}
-      else
-	goto error;
     }
   else
     {
@@ -679,49 +667,48 @@ cnat_session_make_key (vlib_buffer_t *b, ip_address_family_t af,
 	      ip6 = (ip6_header_t *) (icmp + 2);	/* Use inner packet */
 	      udp = (udp_header_t *) (ip6 + 1);
 	      /* Swap dst & src for search as ICMP payload is reversed */
-	      ip46_address_set_ip6 (&session->key.cs_ip[VLIB_RX],
+	      ip46_address_set_ip6 (&tup->ip[VLIB_RX ^ swap],
 				    &ip6->dst_address);
-	      ip46_address_set_ip6 (&session->key.cs_ip[VLIB_TX],
+	      ip46_address_set_ip6 (&tup->ip[VLIB_TX ^ swap],
 				    &ip6->src_address);
-	      session->key.cs_proto = ip6->protocol;
-	      session->key.cs_port[VLIB_TX] = udp->src_port;
-	      session->key.cs_port[VLIB_RX] = udp->dst_port;
+	      tup->iproto = ip6->protocol;
+	      tup->port[VLIB_TX ^ swap] = udp->src_port;
+	      tup->port[VLIB_RX ^ swap] = udp->dst_port;
 	    }
 	  else if (icmp6_type_is_echo (icmp->type))
 	    {
 	      cnat_echo_header_t *echo = (cnat_echo_header_t *) (icmp + 1);
-	      ip46_address_set_ip6 (&session->key.cs_ip[VLIB_TX],
+	      ip46_address_set_ip6 (&tup->ip[VLIB_TX ^ swap],
 				    &ip6->dst_address);
-	      ip46_address_set_ip6 (&session->key.cs_ip[VLIB_RX],
+	      ip46_address_set_ip6 (&tup->ip[VLIB_RX ^ swap],
 				    &ip6->src_address);
-	      session->key.cs_proto = ip6->protocol;
-	      session->key.cs_port[VLIB_TX] = echo->identifier;
-	      session->key.cs_port[VLIB_RX] = echo->identifier;
+	      tup->iproto = ip6->protocol;
+	      tup->port[VLIB_TX ^ swap] = echo->identifier;
+	      tup->port[VLIB_RX ^ swap] = echo->identifier;
 	    }
-	  else
-	    goto error;
 	}
       else if (ip6->protocol == IP_PROTOCOL_UDP ||
 	       ip6->protocol == IP_PROTOCOL_TCP)
 	{
 	  udp = (udp_header_t *) (ip6 + 1);
-	  ip46_address_set_ip6 (&session->key.cs_ip[VLIB_TX],
-				&ip6->dst_address);
-	  ip46_address_set_ip6 (&session->key.cs_ip[VLIB_RX],
-				&ip6->src_address);
-	  session->key.cs_port[VLIB_RX] = udp->src_port;
-	  session->key.cs_port[VLIB_TX] = udp->dst_port;
-	  session->key.cs_proto = ip6->protocol;
+	  ip46_address_set_ip6 (&tup->ip[VLIB_TX ^ swap], &ip6->dst_address);
+	  ip46_address_set_ip6 (&tup->ip[VLIB_RX ^ swap], &ip6->src_address);
+	  tup->port[VLIB_RX ^ swap] = udp->src_port;
+	  tup->port[VLIB_TX ^ swap] = udp->dst_port;
+	  tup->iproto = ip6->protocol;
 	}
-      else
-	goto error;
     }
-  return;
+}
 
-error:
-  /* Ensure we dont find anything */
-  session->key.cs_proto = 0;
-  return;
+static_always_inline void
+cnat_session_make_key (vlib_buffer_t *b, ip_address_family_t af,
+		       cnat_bihash_kv_t *bkey, u32 iph_offset, u8 swap)
+{
+  cnat_session_t *session = (cnat_session_t *) bkey;
+  session->key.cs_af = af;
+  session->key.__cs_pad = 0;
+
+  cnat_make_buffer_5tuple (b, af, &session->key.cs_5tuple, iph_offset, swap);
 }
 
 static_always_inline cnat_ep_trk_t *
@@ -760,80 +747,72 @@ cnat_load_balance (const cnat_translation_t *ct, ip_address_family_t af,
  */
 
 static_always_inline void
-cnat_session_create (cnat_session_t *session, cnat_node_ctx_t *ctx)
+cnat_rsession_create_client (cnat_timestamp_rewrite_t *rw,
+			     ip_address_family_t af)
 {
-  cnat_bihash_kv_t *bkey = (cnat_bihash_kv_t *) session;
+  cnat_client_t *cc;
 
-  session->value.cs_ts_index = cnat_timestamp_new (ctx->now);
-  cnat_bihash_add_del (&cnat_session_db, bkey, 1);
+  /* is this the first time we've seen this source address */
+  cc = (AF_IP4 == af ? cnat_client_ip4_find (&rw->tuple.ip[VLIB_RX].ip4) :
+		       cnat_client_ip6_find (&rw->tuple.ip[VLIB_RX].ip6));
+
+  if (cc)
+    {
+      /* Refcount reverse session */
+      cnat_client_cnt_session (cc);
+      return;
+    }
+
+  /* New client */
+
+  cnat_client_learn_args_t cl_args;
+  uword *p;
+  u32 refcnt;
+
+  cl_args.addr.version = af;
+  ip46_address_copy (&cl_args.addr.ip, &rw->tuple.ip[VLIB_RX]);
+
+  /* Throttle */
+  clib_spinlock_lock (&cnat_client_db.throttle_lock);
+
+  p = hash_get_mem (cnat_client_db.throttle_mem, &cl_args.addr);
+  if (p)
+    {
+      refcnt = p[0] + 1;
+      hash_set_mem (cnat_client_db.throttle_mem, &cl_args.addr, refcnt);
+    }
+  else
+    hash_set_mem_alloc (&cnat_client_db.throttle_mem, &cl_args.addr, 0);
+
+  clib_spinlock_unlock (&cnat_client_db.throttle_lock);
+
+  /* fire client create to the main thread */
+  if (!p)
+    vl_api_rpc_call_main_thread (cnat_client_learn, (u8 *) &cl_args,
+				 sizeof (cl_args));
 }
 
 static_always_inline void
-cnat_rsession_create (cnat_session_t *session, cnat_node_ctx_t *ctx,
-		      cnat_session_location_t rsession_location,
-		      cnat_session_flag_t rsession_flags)
+cnat_rsession_create (cnat_timestamp_rewrite_t *rw, ip_address_family_t af,
+		      cnat_session_flag_t rsession_flags, ip_protocol_t iproto,
+		      u32 flow_id)
 {
-  cnat_client_t *cc;
   cnat_bihash_kv_t rkey;
-  cnat_session_t *rsession = (cnat_session_t *) & rkey;
+  cnat_session_t *rsession = (cnat_session_t *) &rkey;
   cnat_bihash_kv_t rvalue;
   int rv;
 
-  cnat_timestamp_inc_refcnt (session->value.cs_ts_index);
-
-  if (!(rsession_flags & CNAT_SESSION_FLAG_NO_CLIENT))
-    {
-      /* is this the first time we've seen this source address */
-      cc = (AF_IP4 == ctx->af ?
-	      cnat_client_ip4_find (&session->value.cs_ip[VLIB_RX].ip4) :
-	      cnat_client_ip6_find (&session->value.cs_ip[VLIB_RX].ip6));
-
-      if (NULL == cc)
-	{
-	  ip_address_t addr;
-	  uword *p;
-	  u32 refcnt;
-
-	  addr.version = ctx->af;
-	  ip46_address_copy (&addr.ip, &session->value.cs_ip[VLIB_RX]);
-
-	  /* Throttle */
-	  clib_spinlock_lock (&cnat_client_db.throttle_lock);
-
-	  p = hash_get_mem (cnat_client_db.throttle_mem, &addr);
-	  if (p)
-	    {
-	      refcnt = p[0] + 1;
-	      hash_set_mem (cnat_client_db.throttle_mem, &addr, refcnt);
-	    }
-	  else
-	    hash_set_mem_alloc (&cnat_client_db.throttle_mem, &addr, 0);
-
-	  clib_spinlock_unlock (&cnat_client_db.throttle_lock);
-
-	  /* fire client create to the main thread */
-	  if (!p)
-	    vl_api_rpc_call_main_thread (cnat_client_learn, (u8 *) &addr,
-					 sizeof (addr));
-	}
-      else
-	{
-	  /* Refcount reverse session */
-	  cnat_client_cnt_session (cc);
-	}
-    }
-
   /* create the reverse flow key */
-  ip46_address_copy (&rsession->key.cs_ip[VLIB_RX],
-		     &session->value.cs_ip[VLIB_TX]);
-  ip46_address_copy (&rsession->key.cs_ip[VLIB_TX],
-		     &session->value.cs_ip[VLIB_RX]);
-  rsession->key.cs_proto = session->key.cs_proto;
-  rsession->key.cs_loc = rsession_location;
+  ip46_address_copy (&rsession->key.cs_5tuple.ip[VLIB_RX],
+		     &rw->tuple.ip[VLIB_TX]);
+  ip46_address_copy (&rsession->key.cs_5tuple.ip[VLIB_TX],
+		     &rw->tuple.ip[VLIB_RX]);
+  rsession->key.cs_5tuple.iproto = iproto;
   rsession->key.__cs_pad = 0;
-  rsession->key.cs_af = ctx->af;
-  rsession->key.cs_port[VLIB_RX] = session->value.cs_port[VLIB_TX];
-  rsession->key.cs_port[VLIB_TX] = session->value.cs_port[VLIB_RX];
+  rsession->key.cs_af = af;
+
+  rsession->key.cs_5tuple.port[VLIB_RX] = rw->tuple.port[VLIB_TX];
+  rsession->key.cs_5tuple.port[VLIB_TX] = rw->tuple.port[VLIB_RX];
 
   /* First search for existing reverse session */
   rv = cnat_bihash_search_i2 (&cnat_session_db, &rkey, &rvalue);
@@ -844,108 +823,169 @@ cnat_rsession_create (cnat_session_t *session, cnat_node_ctx_t *ctx,
       cnat_session_t *found_rsession = (cnat_session_t *) & rvalue;
       cnat_session_free (found_rsession);
     }
-  /* add the reverse flow */
-  ip46_address_copy (&rsession->value.cs_ip[VLIB_RX],
-		     &session->key.cs_ip[VLIB_TX]);
-  ip46_address_copy (&rsession->value.cs_ip[VLIB_TX],
-		     &session->key.cs_ip[VLIB_RX]);
-  rsession->value.cs_ts_index = session->value.cs_ts_index;
-  rsession->value.cs_lbi = INDEX_INVALID;
-  rsession->value.flags = rsession_flags | CNAT_SESSION_IS_RETURN;
-  rsession->value.cs_port[VLIB_TX] = session->key.cs_port[VLIB_RX];
-  rsession->value.cs_port[VLIB_RX] = session->key.cs_port[VLIB_TX];
+
+  rsession->value.cs_session_index = flow_id;
+  rsession->value.cs_flags = rsession_flags | CNAT_SESSION_IS_RETURN;
 
   cnat_bihash_add_del (&cnat_session_db, &rkey, 1);
 }
 
-always_inline uword
-cnat_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
-		  vlib_frame_t *frame, cnat_node_sub_t cnat_sub,
-		  ip_address_family_t af, cnat_session_location_t cs_loc,
-		  u8 do_trace)
+static_always_inline void
+cnat_set_rw_next_node (vlib_buffer_t *b, const cnat_timestamp_rewrite_t *rw,
+		       u16 *next0)
 {
-  u32 n_left, *from, thread_index;
+  if (rw)
+    {
+      *next0 =
+	rw->cts_dpoi_next_node == (u32) ~0 ? *next0 : rw->cts_dpoi_next_node;
+      vnet_buffer (b)->ip.adj_index[VLIB_TX] =
+	rw->cts_lbi == (u32) ~0 ? vnet_buffer (b)->ip.adj_index[VLIB_TX] :
+				  rw->cts_lbi;
+    }
+}
+
+static_always_inline void
+cnat_translation (vlib_buffer_t *b, ip_address_family_t af,
+		  const cnat_timestamp_rewrite_t *rw, u16 *lifetime,
+		  u32 iph_offset)
+{
+  ip4_header_t *ip4 = NULL;
+  ip6_header_t *ip6 = NULL;
+  udp_header_t *udp0;
+
+  if (PREDICT_FALSE (!rw))
+    return;
+
+  if (AF_IP4 == af)
+    {
+      ip4 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b) + iph_offset);
+      udp0 = (udp_header_t *) (ip4 + 1);
+      cnat_translation_ip4 (&rw->tuple, ip4, udp0, lifetime,
+			    vnet_buffer (b)->oflags);
+    }
+  else
+    {
+      ip6 = (ip6_header_t *) ((u8 *) vlib_buffer_get_current (b) + iph_offset);
+      udp0 = (udp_header_t *) (ip6 + 1);
+      cnat_translation_ip6 (&rw->tuple, ip6, udp0, lifetime,
+			    vnet_buffer (b)->oflags);
+    }
+}
+
+always_inline uword
+cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		    vlib_frame_t *frame, ip_address_family_t af, u8 do_trace,
+		    cnat_node_sub_t cnat_sub, u8 is_feature)
+{
+  u32 n_left, *from;
+  f64 now = vlib_time_now (vm);
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
   vlib_buffer_t **b = bufs;
   u16 nexts[VLIB_FRAME_SIZE], *next;
-  f64 now;
 
-  thread_index = vm->thread_index;
   from = vlib_frame_vector_args (frame);
   n_left = frame->n_vectors;
   next = nexts;
   vlib_get_buffers (vm, from, bufs, n_left);
-  now = vlib_time_now (vm);
-  cnat_session_t *session[4];
   cnat_bihash_kv_t bkey[4], bvalue[4];
   u64 hash[4];
   int rv[4];
 
-  cnat_node_ctx_t ctx = { now, thread_index, af, do_trace };
-
-  if (n_left >= 8)
+  /* Kickstart our state */
+  if (n_left >= 4)
     {
-      /* Kickstart our state */
-      cnat_session_make_key (b[3], af, cs_loc, &bkey[3]);
-      cnat_session_make_key (b[2], af, cs_loc, &bkey[2]);
-      cnat_session_make_key (b[1], af, cs_loc, &bkey[1]);
-      cnat_session_make_key (b[0], af, cs_loc, &bkey[0]);
+      cnat_session_make_key (b[3], af, &bkey[3], 0, 0);
+      cnat_session_make_key (b[2], af, &bkey[2], 0, 0);
+      cnat_session_make_key (b[1], af, &bkey[1], 0, 0);
+      cnat_session_make_key (b[0], af, &bkey[0], 0, 0);
 
       hash[3] = cnat_bihash_hash (&bkey[3]);
       hash[2] = cnat_bihash_hash (&bkey[2]);
       hash[1] = cnat_bihash_hash (&bkey[1]);
       hash[0] = cnat_bihash_hash (&bkey[0]);
+
+      if (is_feature)
+	{
+	  vnet_feature_next_u16 (&next[3], b[3]);
+	  vnet_feature_next_u16 (&next[2], b[2]);
+	  vnet_feature_next_u16 (&next[1], b[1]);
+	  vnet_feature_next_u16 (&next[0], b[0]);
+	}
     }
 
-  while (n_left >= 8)
+  if (n_left >= 8 && is_feature)
     {
-      if (n_left >= 12)
-	{
-	  vlib_prefetch_buffer_header (b[11], LOAD);
-	  vlib_prefetch_buffer_header (b[10], LOAD);
-	  vlib_prefetch_buffer_header (b[9], LOAD);
-	  vlib_prefetch_buffer_header (b[8], LOAD);
-	}
+      vnet_feature_next_u16 (&next[7], b[7]);
+      vnet_feature_next_u16 (&next[6], b[6]);
+      vnet_feature_next_u16 (&next[5], b[5]);
+      vnet_feature_next_u16 (&next[4], b[4]);
+    }
+
+  while (n_left >= 4)
+    {
 
       rv[3] = cnat_bihash_search_i2_hash (&cnat_session_db, hash[3], &bkey[3],
 					  &bvalue[3]);
-      session[3] = (cnat_session_t *) (rv[3] ? &bkey[3] : &bvalue[3]);
-      next[3] = cnat_sub (vm, node, b[3], &ctx, rv[3], session[3]);
-
+      cnat_lookup_create_or_return (b[3], rv[3], &bkey[3], &bvalue[3], now);
       rv[2] = cnat_bihash_search_i2_hash (&cnat_session_db, hash[2], &bkey[2],
 					  &bvalue[2]);
-      session[2] = (cnat_session_t *) (rv[2] ? &bkey[2] : &bvalue[2]);
-      next[2] = cnat_sub (vm, node, b[2], &ctx, rv[2], session[2]);
-
+      cnat_lookup_create_or_return (b[2], rv[2], &bkey[2], &bvalue[2], now);
       rv[1] = cnat_bihash_search_i2_hash (&cnat_session_db, hash[1], &bkey[1],
 					  &bvalue[1]);
-      session[1] = (cnat_session_t *) (rv[1] ? &bkey[1] : &bvalue[1]);
-      next[1] = cnat_sub (vm, node, b[1], &ctx, rv[1], session[1]);
-
+      cnat_lookup_create_or_return (b[1], rv[1], &bkey[1], &bvalue[1], now);
       rv[0] = cnat_bihash_search_i2_hash (&cnat_session_db, hash[0], &bkey[0],
 					  &bvalue[0]);
-      session[0] = (cnat_session_t *) (rv[0] ? &bkey[0] : &bvalue[0]);
-      next[0] = cnat_sub (vm, node, b[0], &ctx, rv[0], session[0]);
+      cnat_lookup_create_or_return (b[0], rv[0], &bkey[0], &bvalue[0], now);
 
-      cnat_session_make_key (b[7], af, cs_loc, &bkey[3]);
-      cnat_session_make_key (b[6], af, cs_loc, &bkey[2]);
-      cnat_session_make_key (b[5], af, cs_loc, &bkey[1]);
-      cnat_session_make_key (b[4], af, cs_loc, &bkey[0]);
+      if (cnat_sub != NULL)
+	{
+	  cnat_sub (vm, node, b[3], &next[3], af, now, do_trace);
+	  cnat_sub (vm, node, b[2], &next[2], af, now, do_trace);
+	  cnat_sub (vm, node, b[1], &next[1], af, now, do_trace);
+	  cnat_sub (vm, node, b[0], &next[0], af, now, do_trace);
+	}
 
-      hash[3] = cnat_bihash_hash (&bkey[3]);
-      hash[2] = cnat_bihash_hash (&bkey[2]);
-      hash[1] = cnat_bihash_hash (&bkey[1]);
-      hash[0] = cnat_bihash_hash (&bkey[0]);
+      if (n_left >= 8)
+	{
+	  cnat_session_make_key (b[7], af, &bkey[3], 0, 0);
+	  cnat_session_make_key (b[6], af, &bkey[2], 0, 0);
+	  cnat_session_make_key (b[5], af, &bkey[1], 0, 0);
+	  cnat_session_make_key (b[4], af, &bkey[0], 0, 0);
 
-      cnat_bihash_prefetch_bucket (&cnat_session_db, hash[3]);
-      cnat_bihash_prefetch_bucket (&cnat_session_db, hash[2]);
-      cnat_bihash_prefetch_bucket (&cnat_session_db, hash[1]);
-      cnat_bihash_prefetch_bucket (&cnat_session_db, hash[0]);
+	  hash[3] = cnat_bihash_hash (&bkey[3]);
+	  hash[2] = cnat_bihash_hash (&bkey[2]);
+	  hash[1] = cnat_bihash_hash (&bkey[1]);
+	  hash[0] = cnat_bihash_hash (&bkey[0]);
 
-      cnat_bihash_prefetch_data (&cnat_session_db, hash[3]);
-      cnat_bihash_prefetch_data (&cnat_session_db, hash[2]);
-      cnat_bihash_prefetch_data (&cnat_session_db, hash[1]);
-      cnat_bihash_prefetch_data (&cnat_session_db, hash[0]);
+	  cnat_bihash_prefetch_bucket (&cnat_session_db, hash[3]);
+	  cnat_bihash_prefetch_bucket (&cnat_session_db, hash[2]);
+	  cnat_bihash_prefetch_bucket (&cnat_session_db, hash[1]);
+	  cnat_bihash_prefetch_bucket (&cnat_session_db, hash[0]);
+	}
+
+      if (n_left >= 12)
+	{
+	  if (is_feature)
+	    {
+	      vnet_feature_next_u16 (&next[11], b[11]);
+	      vnet_feature_next_u16 (&next[10], b[10]);
+	      vnet_feature_next_u16 (&next[9], b[9]);
+	      vnet_feature_next_u16 (&next[8], b[8]);
+	    }
+
+	  vlib_prefetch_buffer_data (b[11], LOAD);
+	  vlib_prefetch_buffer_data (b[10], LOAD);
+	  vlib_prefetch_buffer_data (b[9], LOAD);
+	  vlib_prefetch_buffer_data (b[8], LOAD);
+	}
+
+      if (n_left >= 16)
+	{
+	  vlib_prefetch_buffer_header (b[15], LOAD);
+	  vlib_prefetch_buffer_header (b[14], LOAD);
+	  vlib_prefetch_buffer_header (b[13], LOAD);
+	  vlib_prefetch_buffer_header (b[12], LOAD);
+	}
 
       b += 4;
       next += 4;
@@ -954,11 +994,15 @@ cnat_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   while (n_left > 0)
     {
-      cnat_session_make_key (b[0], af, cs_loc, &bkey[0]);
-      rv[0] = cnat_bihash_search_i2 (&cnat_session_db, &bkey[0], &bvalue[0]);
+      if (is_feature)
+	vnet_feature_next_u16 (&next[0], b[0]);
 
-      session[0] = (cnat_session_t *) (rv[0] ? &bkey[0] : &bvalue[0]);
-      next[0] = cnat_sub (vm, node, b[0], &ctx, rv[0], session[0]);
+      cnat_session_make_key (b[0], af, &bkey[0], 0, 0);
+      rv[0] = cnat_bihash_search_i2 (&cnat_session_db, &bkey[0], &bvalue[0]);
+      cnat_lookup_create_or_return (b[0], rv[0], &bkey[0], &bvalue[0], now);
+
+      if (cnat_sub != NULL)
+	cnat_sub (vm, node, b[0], &next[0], af, now, do_trace);
 
       b++;
       next++;

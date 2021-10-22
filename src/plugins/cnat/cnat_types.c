@@ -24,6 +24,30 @@ char *cnat_error_strings[] = {
 #undef cnat_error
 };
 
+u8 *
+format_cnat_5tuple (u8 *s, va_list *args)
+{
+  cnat_5tuple_t *tuple = va_arg (*args, cnat_5tuple_t *);
+
+  s = format (s, "%U [%U;%d -> %U;%d]", format_ip_protocol, tuple->iproto,
+	      format_ip46_address, &tuple->ip[VLIB_RX], IP46_TYPE_ANY,
+	      tuple->port[VLIB_RX], format_ip46_address, &tuple->ip[VLIB_TX],
+	      IP46_TYPE_ANY, tuple->port[VLIB_TX]);
+
+  return (s);
+}
+
+u8 *
+format_cnat_rewrite (u8 *s, va_list *args)
+{
+  cnat_timestamp_rewrite_t *rw = va_arg (*args, cnat_timestamp_rewrite_t *);
+
+  s = format (s, "%U node:%u lbi:%u fl:%u", format_cnat_5tuple, &rw->tuple,
+	      rw->cts_dpoi_next_node, rw->cts_lbi, rw->cts_flags);
+
+  return (s);
+}
+
 u8
 cnat_resolve_addr (u32 sw_if_index, ip_address_family_t af,
 		   ip_address_t * addr)

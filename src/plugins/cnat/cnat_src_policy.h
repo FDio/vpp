@@ -46,10 +46,8 @@ typedef struct cnat_src_port_allocator_
 } cnat_src_port_allocator_t;
 
 /* function to use to compute source (IP, port) for a new session to a vip */
-typedef cnat_source_policy_errors_t (*cnat_vip_source_policy_t)
-  (vlib_main_t * vm, vlib_buffer_t * b, cnat_session_t * session,
-   u32 * rsession_flags, const cnat_translation_t * ct,
-   cnat_node_ctx_t * ctx);
+typedef cnat_source_policy_errors_t (*cnat_vip_source_policy_t) (
+  ip_protocol_t iproto, u16 *sport);
 
 typedef struct cnat_src_policy_main_
 {

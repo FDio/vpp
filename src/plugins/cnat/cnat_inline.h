@@ -17,7 +17,9 @@
 #ifndef __CNAT_INLINE_H__
 #define __CNAT_INLINE_H__
 
+#include <cnat/cnat_session.h>
 #include <cnat/cnat_types.h>
+#include <cnat/cnat_bihash.h>
 
 always_inline int
 cnat_ts_is_free_index (u32 index)
@@ -64,7 +66,7 @@ cnat_timestamp_alloc ()
     pool_init_fixed (
       cnat_timestamps.ts_pools[cnat_timestamps.next_empty_pool_idx++],
       pool_sz);
-  pool_get (cnat_timestamps.ts_pools[pidx], ts);
+  pool_get_zero (cnat_timestamps.ts_pools[pidx], ts);
   if (pool_elts (cnat_timestamps.ts_pools[pidx]) == pool_sz)
     clib_bitmap_set (cnat_timestamps.ts_free, pidx, 0);
   clib_spinlock_unlock (&cnat_timestamps.ts_lock);
@@ -91,29 +93,17 @@ cnat_timestamp_new (f64 t)
   cnat_timestamp_t *ts = cnat_timestamp_get (index);
   ts->last_seen = t;
   ts->lifetime = cnat_main.session_max_age;
-  ts->refcnt = CNAT_TIMESTAMP_INIT_REFCNT;
+  /* One session as it is created on lookup */
+  ts->ts_session_refcnt = 1;
   return index;
 }
 
-always_inline void
-cnat_timestamp_inc_refcnt (u32 index)
-{
-  cnat_timestamp_t *ts = cnat_timestamp_get (index);
-  clib_atomic_add_fetch (&ts->refcnt, 1);
-}
-
-always_inline void
+always_inline cnat_timestamp_t *
 cnat_timestamp_update (u32 index, f64 t)
 {
   cnat_timestamp_t *ts = cnat_timestamp_get (index);
   ts->last_seen = t;
-}
-
-always_inline void
-cnat_timestamp_set_lifetime (u32 index, u16 lifetime)
-{
-  cnat_timestamp_t *ts = cnat_timestamp_get (index);
-  ts->lifetime = lifetime;
+  return ts;
 }
 
 always_inline f64
@@ -128,13 +118,56 @@ cnat_timestamp_exp (u32 index)
 }
 
 always_inline void
+cnat_timestamp_rewrite_free (cnat_timestamp_rewrite_t *rw)
+{
+  if (rw->cts_flags & CNAT_SESSION_FLAG_ALLOC_PORT)
+    cnat_free_port_cb (rw->tuple.port[VLIB_RX], rw->tuple.iproto);
+}
+
+always_inline void
 cnat_timestamp_free (u32 index)
 {
-  cnat_timestamp_t *ts = cnat_timestamp_get_if_valid (index);
-  if (NULL == ts)
-    return;
-  if (0 == clib_atomic_sub_fetch (&ts->refcnt, 1))
-    cnat_timestamp_destroy (index);
+  cnat_timestamp_t *ts = cnat_timestamp_get (index);
+  ASSERT (ts);
+  if (0 == clib_atomic_sub_fetch (&ts->ts_session_refcnt, 1))
+    {
+      for (int i = 0; i < CNAT_N_LOCATIONS * VLIB_N_DIR; i++)
+	if (ts->ts_rw_bm & (1 << i))
+	  cnat_timestamp_rewrite_free (&ts->cts_rewrites[i]);
+
+      cnat_timestamp_destroy (index);
+    }
+}
+
+static_always_inline void
+cnat_lookup_create_or_return (vlib_buffer_t *b, int rv, cnat_bihash_kv_t *bkey,
+			      cnat_bihash_kv_t *bvalue, f64 now)
+{
+  vnet_buffer (b)->session.flags = 0;
+  cnat_session_t *session = (cnat_session_t *) bvalue;
+  if (rv)
+    {
+      cnat_session_t *ksession = (cnat_session_t *) bkey;
+      bkey->value = cnat_timestamp_new (now);
+      cnat_bihash_add_del (&cnat_session_db, bkey, 1 /* add */);
+      vnet_buffer (b)->session.generic_flow_id =
+	ksession->value.cs_session_index;
+      vnet_buffer (b)->session.state = CNAT_LOOKUP_IS_NEW;
+    }
+  else if (session->key.cs_5tuple.iproto != 0)
+    {
+      vnet_buffer (b)->session.generic_flow_id =
+	session->value.cs_session_index;
+      vnet_buffer (b)->session.state =
+	session->value.cs_flags & CNAT_SESSION_IS_RETURN ?
+	  CNAT_LOOKUP_IS_RETURN :
+	  CNAT_LOOKUP_IS_OK;
+    }
+  else
+    {
+      vnet_buffer (b)->session.generic_flow_id = 0;
+      vnet_buffer (b)->session.state = CNAT_LOOKUP_IS_ERR;
+    }
 }
 
 /*

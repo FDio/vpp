@@ -52,9 +52,6 @@
  * from fib_source.h */
 #define CNAT_FIB_SOURCE_PRIORITY  0x02
 
-/* Initial refcnt for timestamps (2 : session & rsession) */
-#define CNAT_TIMESTAMP_INIT_REFCNT 1
-
 #define MIN_SRC_PORT ((u16) 0xC000)
 
 typedef enum cnat_trk_flag_t_
@@ -147,14 +144,73 @@ typedef struct cnat_main_
   u32 maglev_len;
 } cnat_main_t;
 
+typedef struct __attribute__ ((__packed__)) cnat_5tuple_t_
+{
+  ip46_address_t ip[VLIB_N_DIR];
+
+  u16 port[VLIB_N_DIR];
+
+  ip_protocol_t iproto;
+
+} cnat_5tuple_t;
+
+typedef struct cnat_timestamp_rewrite_t_
+{
+  /**
+   * The 5tuple to rewrite to
+   */
+  cnat_5tuple_t tuple;
+
+  /**
+   * The load balance object to use to forward
+   */
+  index_t cts_lbi;
+
+  /**
+   * Persist translation->ct_lb.dpoi_next_node
+   */
+  u32 cts_dpoi_next_node;
+
+  u8 cts_flags;
+} cnat_timestamp_rewrite_t;
+
+typedef enum cnat_session_location_t_
+{
+  CNAT_LOCATION_INPUT,
+  CNAT_LOCATION_OUTPUT,
+  CNAT_LOCATION_FIB,
+  CNAT_N_LOCATIONS,
+} cnat_session_location_t;
+
+typedef enum cnat_timestamp_direction_t_
+{
+  CNAT_IS_FWD = 0,
+  CNAT_IS_RETURN = CNAT_N_LOCATIONS,
+} cnat_timestamp_direction_t;
+
+typedef enum cnat_lookup_state_t_
+{
+  CNAT_LOOKUP_IS_OK = 0,
+  CNAT_LOOKUP_IS_NEW = 1,
+  CNAT_LOOKUP_IS_ERR = 2,
+  CNAT_LOOKUP_IS_RETURN = 3,
+} cnat_lookup_state_t;
+
 typedef struct cnat_timestamp_t_
 {
   /* Last time said session was seen */
   f64 last_seen;
+
   /* expire after N seconds */
   u16 lifetime;
-  /* Users refcount, initially 3 (session, rsession, dpo) */
-  u16 refcnt;
+
+  /* Session refcount, can be 2 (session, rsession) */
+  u16 ts_session_refcnt;
+
+  clib_bitmap_t ts_rw_bm;
+
+  cnat_timestamp_rewrite_t cts_rewrites[VLIB_N_DIR * CNAT_N_LOCATIONS];
+
 } cnat_timestamp_t;
 
 /* Create the first pool with 1 << CNAT_TS_BASE_SIZE elts */
@@ -174,16 +230,10 @@ typedef struct cnat_timestamp_mpool_t_
   clib_spinlock_t ts_lock;
 } cnat_timestamp_mpool_t;
 
-typedef struct cnat_node_ctx_
-{
-  f64 now;
-  u32 thread_index;
-  ip_address_family_t af;
-  u8 do_trace;
-} cnat_node_ctx_t;
-
 cnat_main_t *cnat_get_main ();
 extern u8 *format_cnat_endpoint (u8 * s, va_list * args);
+extern u8 *format_cnat_rewrite (u8 *s, va_list *args);
+extern u8 *format_cnat_5tuple (u8 *s, va_list *args);
 extern uword unformat_cnat_ep_tuple (unformat_input_t * input,
 				     va_list * args);
 extern uword unformat_cnat_ep (unformat_input_t * input, va_list * args);
