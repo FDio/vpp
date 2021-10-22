@@ -76,20 +76,25 @@ cnat_client_destroy (cnat_client_t * cc)
 {
   ASSERT (!cnat_client_is_clone (cc));
 
-  ASSERT (fib_entry_is_sourced (cc->cc_fei, cnat_fib_source));
-  fib_table_entry_delete_index (cc->cc_fei, cnat_fib_source);
+  if (cc->flags & CNAT_TR_FLAG_NO_CLIENT)
+    cnat_client_db_remove (cc);
+  else
+    {
+      ASSERT (fib_entry_is_sourced (cc->cc_fei, cnat_fib_source));
+      fib_table_entry_delete_index (cc->cc_fei, cnat_fib_source);
 
-  cnat_client_db_remove (cc);
-  dpo_reset (&cc->cc_parent);
+      cnat_client_db_remove (cc);
+      dpo_reset (&cc->cc_parent);
+    }
   pool_put (cnat_client_pool, cc);
 }
 
 void
-cnat_client_free_by_ip (ip46_address_t * ip, u8 af)
+cnat_client_free_by_ip (ip4_address_t *ip4, ip6_address_t *ip6, u8 af)
 {
   cnat_client_t *cc;
-  cc = (AF_IP4 == af ?
-	cnat_client_ip4_find (&ip->ip4) : cnat_client_ip6_find (&ip->ip6));
+  cc =
+    (AF_IP4 == af ? cnat_client_ip4_find (ip4) : cnat_client_ip6_find (ip6));
   ASSERT (NULL != cc);
 
   if (0 == cnat_client_uncnt_session (cc) && 0 == cc->tr_refcnt)
@@ -179,6 +184,9 @@ cnat_client_add (const ip_address_t * ip, u8 flags)
 
   ip_address_copy (&cc->cc_ip, ip);
   cnat_client_db_add (cc);
+
+  if (flags & CNAT_TR_FLAG_NO_CLIENT)
+    return (cci);
 
   ip_address_to_fib_prefix (&cc->cc_ip, &pfx);
 
