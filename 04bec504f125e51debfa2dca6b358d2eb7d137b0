@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "a5235da6_3b5cfd86",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-10-22T00:20:29Z",
+      "side": 1,
+      "message": "Is there anything in the new function that\u0027s not already implied by rfc1122, i.e., time wait processing + new iss? I\u0027m okay with acknowledging the kernel\u0027s implementation but just wanted to confirm the code is only standards/rfc compliant.",
+      "parentUuid": "0980fbe7_70460912",
+      "range": {
+        "startLine": 10,
+        "startChar": 54,
+        "endLine": 13,
+        "endChar": 0
+      },
+      "revId": "04bec504f125e51debfa2dca6b358d2eb7d137b0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "1b26e428_8abefcd8",
         "filename": "src/vnet/tcp/tcp_input.c",
         "patchSetId": 3
