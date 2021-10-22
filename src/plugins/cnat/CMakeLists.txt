@@ -18,6 +18,7 @@ add_vpp_plugin(cnat
   cnat_node_snat.c
   cnat_node_vip.c
   cnat_node_feature.c
+  cnat_node_lookup.c
   cnat_scanner.c
   cnat_session.c
   cnat_translation.c
