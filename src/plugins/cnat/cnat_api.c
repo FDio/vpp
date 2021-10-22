@@ -24,6 +24,27 @@
 #include <cnat/cnat.api_enum.h>
 #include <cnat/cnat.api_types.h>
 
+STATIC_ASSERT ((int) CNAT_TRANSLATION_ALLOC_PORT == (int) CNAT_TR_FLAG_ALLOCATE_PORT,
+	       "cnat api enum mismatch");
+STATIC_ASSERT ((int) CNAT_TRANSLATION_NO_RETURN_SESSION == (int) CNAT_TR_FLAG_NO_RETURN_SESSION,
+	       "cnat api enum mismatch");
+
+STATIC_ASSERT ((int) CNAT_EPT_NO_NAT == (int) CNAT_TRK_FLAG_NO_NAT, "cnat api enum mismatch");
+
+STATIC_ASSERT ((int) CNAT_LB_TYPE_DEFAULT == (int) CNAT_LB_DEFAULT, "cnat api enum mismatch");
+STATIC_ASSERT ((int) CNAT_LB_TYPE_MAGLEV == (int) CNAT_LB_MAGLEV, "cnat api enum mismatch");
+
+STATIC_ASSERT ((int) CNAT_POLICY_INCLUDE_V4 == (int) CNAT_SNAT_IF_MAP_INCLUDE_V4,
+	       "cnat api enum mismatch");
+STATIC_ASSERT ((int) CNAT_POLICY_INCLUDE_V6 == (int) CNAT_SNAT_IF_MAP_INCLUDE_V6,
+	       "cnat api enum mismatch");
+STATIC_ASSERT ((int) CNAT_POLICY_POD == (int) CNAT_SNAT_IF_MAP_INCLUDE_POD,
+	       "cnat api enum mismatch");
+
+STATIC_ASSERT ((int) CNAT_POLICY_NONE == (int) CNAT_SNAT_POLICY_NONE, "cnat api enum mismatch");
+STATIC_ASSERT ((int) CNAT_POLICY_IF_PFX == (int) CNAT_SNAT_POLICY_IF_PFX, "cnat api enum mismatch");
+STATIC_ASSERT ((int) CNAT_POLICY_K8S == (int) CNAT_SNAT_POLICY_K8S, "cnat api enum mismatch");
+
 /**
  * Base message ID fot the plugin
  */
@@ -72,6 +93,30 @@ cnat_endpoint_encode (const cnat_endpoint_t * in,
     ip_address_encode2 (&in->ce_ip, &out->addr);
   else
     clib_memset (&out->addr, 0, sizeof (out->addr));
+}
+
+static void
+cnat_5tuple_encode (const cnat_5tuple_t *in, vl_api_cnat_5tuple_t *out)
+{
+  out->port[VLIB_RX] = clib_net_to_host_u16 (in->port[VLIB_RX]);
+  out->port[VLIB_TX] = clib_net_to_host_u16 (in->port[VLIB_TX]);
+
+  if (in->af == AF_IP4)
+    {
+      ip4_address_encode (&in->ip4[VLIB_RX], out->addr[VLIB_RX].un.ip4);
+      out->addr[VLIB_RX].af = ADDRESS_IP4;
+      ip4_address_encode (&in->ip4[VLIB_TX], out->addr[VLIB_TX].un.ip4);
+      out->addr[VLIB_TX].af = ADDRESS_IP4;
+    }
+  else
+    {
+      ip6_address_encode (&in->ip6[VLIB_RX], out->addr[VLIB_RX].un.ip6);
+      out->addr[VLIB_RX].af = ADDRESS_IP6;
+      ip6_address_encode (&in->ip6[VLIB_TX], out->addr[VLIB_TX].un.ip6);
+      out->addr[VLIB_TX].af = ADDRESS_IP6;
+    }
+
+  out->ip_proto = ip_proto_encode (in->iproto);
 }
 
 static void
@@ -203,20 +248,11 @@ vl_api_cnat_translation_dump_t_handler (vl_api_cnat_translation_dump_t * mp)
   cnat_translation_walk (cnat_translation_send_details, &ctx);
 }
 
-static void
-ip_address2_from_46 (const ip46_address_t * nh,
-		     ip_address_family_t af, ip_address_t * ip)
-{
-  ip_addr_46 (ip) = *nh;
-  ip_addr_version (ip) = af;
-}
-
 static walk_rc_t
 cnat_session_send_details (const cnat_session_t * session, void *args)
 {
   vl_api_cnat_session_details_t *mp;
   cnat_dump_walk_ctx_t *ctx;
-  cnat_endpoint_t ep;
 
   ctx = args;
 
@@ -226,25 +262,9 @@ cnat_session_send_details (const cnat_session_t * session, void *args)
   /* fill in the message */
   mp->context = ctx->context;
 
-  ep.ce_sw_if_index = INDEX_INVALID;
-  ep.ce_flags = CNAT_EP_FLAG_RESOLVED;
-  ip_address2_from_46 (&session->value.cs_ip[VLIB_TX], session->key.cs_af,
-		       &ep.ce_ip);
-  ep.ce_port = clib_host_to_net_u16 (session->value.cs_port[VLIB_TX]);
-  cnat_endpoint_encode (&ep, &mp->session.new);
-
-  ip_address2_from_46 (&session->key.cs_ip[VLIB_RX], session->key.cs_af,
-		       &ep.ce_ip);
-  ep.ce_port = clib_host_to_net_u16 (session->key.cs_port[VLIB_RX]);
-  cnat_endpoint_encode (&ep, &mp->session.src);
-
-  ip_address2_from_46 (&session->key.cs_ip[VLIB_TX], session->key.cs_af,
-		       &ep.ce_ip);
-  ep.ce_port = clib_host_to_net_u16 (session->key.cs_port[VLIB_TX]);
-  cnat_endpoint_encode (&ep, &mp->session.dst);
-
-  mp->session.ip_proto = ip_proto_encode (session->key.cs_proto);
-  mp->session.location = session->key.cs_loc;
+  cnat_5tuple_encode (&session->key.cs_5tuple, &mp->session.tuple);
+  mp->session.ts_index = clib_host_to_net_u32 (session->value.cs_session_index);
+  mp->session.flags = clib_host_to_net_u32 (session->value.cs_flags);
 
   vl_api_send_msg (ctx->rp, (u8 *) mp);
 

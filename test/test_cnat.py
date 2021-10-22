@@ -747,7 +747,7 @@ class TestCNatSourceNAT(CnatCommonTestCase):
         self._enable_disable_snat(is_enable=True)
 
     def tearDown(self):
-        self._enable_disable_snat(is_enable=True)
+        self._enable_disable_snat(is_enable=False)
 
         self.vapi.cnat_session_purge()
         for i in self.pg_interfaces:
