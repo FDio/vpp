@@ -34,7 +34,7 @@ enum cnat_endpoint_tuple_flags:u8
 {
   /* Dont translate said endpoint tuple but
    * still forward */
-  CNAT_EPT_NO_NAT = 1,
+  CNAT_EPT_NO_NAT = 2,
 };
 
 
@@ -60,6 +60,13 @@ typedef cnat_endpoint_tuple
   vl_api_cnat_endpoint_t dst_ep;
   vl_api_cnat_endpoint_t src_ep;
   u8 flags;
+};
+
+typedef cnat_5tuple
+{
+  vl_api_address_t addr[2];
+  u16 port[2];
+  vl_api_ip_proto_t ip_proto;
 };
 
 typedef cnat_translation
@@ -115,12 +122,9 @@ autoreply define cnat_session_purge
 
 typedef cnat_session
 {
-  vl_api_cnat_endpoint_t src;
-  vl_api_cnat_endpoint_t dst;
-  vl_api_cnat_endpoint_t new;
-  vl_api_ip_proto_t ip_proto;
-  u8 location;
-  f64 timestamp;
+  vl_api_cnat_5tuple_t tuple;
+  u32 ts_index;
+  u32 flags;
 };
 
 define cnat_session_details
