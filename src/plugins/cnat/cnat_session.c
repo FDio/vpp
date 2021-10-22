@@ -89,26 +89,47 @@ format_cnat_session_location (u8 *s, va_list *args)
 }
 
 u8 *
+format_cnat_session_flags (u8 *s, va_list *args)
+{
+  u32 flags = va_arg (*args, u32);
+  if (flags & CNAT_SESSION_FLAG_HAS_CLIENT)
+    s = format (s, "client,");
+  if (flags & CNAT_SESSION_IS_RETURN)
+    s = format (s, "return");
+  return (s);
+}
+
+u8 *
+format_cnat_timestamp (u8 *s, va_list *args)
+{
+  cnat_timestamp_t *ts = va_arg (*args, cnat_timestamp_t *);
+  u32 indent = va_arg (*args, u32);
+
+  s = format (s, "%U[ts %u] last_seen:%f lifetime:%u ref:%u",
+	      format_white_space, indent, ts->index, ts->last_seen,
+	      ts->lifetime, ts->ts_session_refcnt);
+  for (int i = 0; i < CNAT_N_LOCATIONS * VLIB_N_DIR; i++)
+    if (ts->ts_rw_bm & (1 << i))
+      s = format (s, "\n%U[%U] %U", format_white_space, indent + 2,
+		  format_cnat_rewrite_type, i, format_cnat_rewrite,
+		  &ts->cts_rewrites[i]);
+
+  return (s);
+}
+
+u8 *
 format_cnat_session (u8 * s, va_list * args)
 {
   cnat_session_t *sess = va_arg (*args, cnat_session_t *);
   CLIB_UNUSED (int verbose) = va_arg (*args, int);
-  f64 ts = 0;
+  u32 indent = format_get_indent (s);
+  cnat_timestamp_t *ts = NULL;
 
-  if (!cnat_ts_is_free_index (sess->value.cs_ts_index))
-    ts = cnat_timestamp_exp (sess->value.cs_ts_index);
-
-  s = format (
-    s, "session:[%U;%d -> %U;%d, %U] => %U;%d -> %U;%d %U lb:%d age:%f",
-    format_ip46_address, &sess->key.cs_ip[VLIB_RX], IP46_TYPE_ANY,
-    clib_host_to_net_u16 (sess->key.cs_port[VLIB_RX]), format_ip46_address,
-    &sess->key.cs_ip[VLIB_TX], IP46_TYPE_ANY,
-    clib_host_to_net_u16 (sess->key.cs_port[VLIB_TX]), format_ip_protocol,
-    sess->key.cs_proto, format_ip46_address, &sess->value.cs_ip[VLIB_RX],
-    IP46_TYPE_ANY, clib_host_to_net_u16 (sess->value.cs_port[VLIB_RX]),
-    format_ip46_address, &sess->value.cs_ip[VLIB_TX], IP46_TYPE_ANY,
-    clib_host_to_net_u16 (sess->value.cs_port[VLIB_TX]),
-    format_cnat_session_location, sess->key.cs_loc, sess->value.cs_lbi, ts);
+  ts = cnat_timestamp_get (sess->value.cs_session_index);
+  s = format (s, "%U => [%U]\n%U%U", format_cnat_5tuple, &sess->key.cs_5tuple,
+	      format_cnat_session_flags, sess->value.cs_flags,
+	      format_white_space, indent + 2, format_cnat_timestamp, ts,
+	      indent + 2);
 
   return (s);
 }
@@ -141,17 +162,37 @@ VLIB_CLI_COMMAND (cnat_session_show_cmd_node, static) = {
   .is_mp_safe = 1,
 };
 
+/* This is call when adding a session that already exists
+ * we need to cleanup refcounts to keep things consistant */
+void
+cnat_session_free_stale_cb (cnat_bihash_kv_t *kv, void *opaque)
+{
+  cnat_session_t *session = (cnat_session_t *) kv;
+
+  if (session->value.cs_flags & CNAT_SESSION_FLAG_HAS_CLIENT)
+    {
+      cnat_client_free_by_ip (&session->key.cs_5tuple.ip4[VLIB_TX],
+			      &session->key.cs_5tuple.ip6[VLIB_TX],
+			      session->key.cs_5tuple.af);
+    }
+
+  cnat_timestamp_free (session->value.cs_session_index);
+}
+
 void
 cnat_session_free (cnat_session_t * session)
 {
   cnat_bihash_kv_t *bkey = (cnat_bihash_kv_t *) session;
   /* age it */
-  if (session->value.flags & CNAT_SESSION_FLAG_ALLOC_PORT)
-    cnat_free_port_cb (session->value.cs_port[VLIB_RX],
-		       session->key.cs_proto);
-  if (!(session->value.flags & CNAT_SESSION_FLAG_NO_CLIENT))
-    cnat_client_free_by_ip (&session->key.cs_ip[VLIB_TX], session->key.cs_af);
-  cnat_timestamp_free (session->value.cs_ts_index);
+
+  if (session->value.cs_flags & CNAT_SESSION_FLAG_HAS_CLIENT)
+    {
+      cnat_client_free_by_ip (&session->key.cs_5tuple.ip4[VLIB_TX],
+			      &session->key.cs_5tuple.ip6[VLIB_TX],
+			      session->key.cs_5tuple.af);
+    }
+
+  cnat_timestamp_free (session->value.cs_session_index);
 
   cnat_bihash_add_del (&cnat_session_db, bkey, 0 /* is_add */);
 }
@@ -177,21 +218,22 @@ void
 cnat_reverse_session_free (cnat_session_t *session)
 {
   cnat_bihash_kv_t bkey, bvalue;
-  cnat_session_t *rsession = (cnat_session_t *) &bkey;
+  // cnat_session_t *rsession = (cnat_session_t *) &bkey;
   int rv;
 
-  ip46_address_copy (&rsession->key.cs_ip[VLIB_RX],
-		     &session->value.cs_ip[VLIB_TX]);
-  ip46_address_copy (&rsession->key.cs_ip[VLIB_TX],
-		     &session->value.cs_ip[VLIB_RX]);
-  rsession->key.cs_proto = session->key.cs_proto;
-  rsession->key.cs_loc = session->key.cs_loc == CNAT_LOCATION_OUTPUT ?
-			   CNAT_LOCATION_INPUT :
-			   CNAT_LOCATION_OUTPUT;
-  rsession->key.__cs_pad = 0;
-  rsession->key.cs_af = session->key.cs_af;
-  rsession->key.cs_port[VLIB_RX] = session->value.cs_port[VLIB_TX];
-  rsession->key.cs_port[VLIB_TX] = session->value.cs_port[VLIB_RX];
+  // FIXME
+  // ip46_address_copy (&rsession->key.cs_ip[VLIB_RX],
+  // 		     &session->value.cs_ip[VLIB_TX]);
+  // ip46_address_copy (&rsession->key.cs_ip[VLIB_TX],
+  // 		     &session->value.cs_ip[VLIB_RX]);
+  // rsession->key.cs_proto = session->key.cs_proto;
+  // rsession->key.cs_loc = session->key.cs_loc == CNAT_LOCATION_OUTPUT ?
+  // 			   CNAT_LOCATION_INPUT :
+  // 			   CNAT_LOCATION_OUTPUT;
+  // rsession->key.__cs_pad = 0;
+  // rsession->key.cs_af = session->key.cs_af;
+  // rsession->key.cs_port[VLIB_RX] = session->value.cs_port[VLIB_TX];
+  // rsession->key.cs_port[VLIB_TX] = session->value.cs_port[VLIB_RX];
 
   rv = cnat_bihash_search_i2 (&cnat_session_db, &bkey, &bvalue);
   if (!rv)
@@ -239,13 +281,13 @@ cnat_session_scan (vlib_main_t * vm, f64 start_time, int i)
 	{
 	  for (k = 0; k < BIHASH_KVP_PER_PAGE; k++)
 	    {
-	      if (v->kvp[k].key[0] == ~0ULL && v->kvp[k].value[0] == ~0ULL)
+	      if (v->kvp[k].key[0] == ~0ULL && v->kvp[k].value == ~0ULL)
 		continue;
 
 	      cnat_session_t *session = (cnat_session_t *) & v->kvp[k];
 
 	      if (start_time >
-		  cnat_timestamp_exp (session->value.cs_ts_index))
+		  cnat_timestamp_exp (session->value.cs_session_index))
 		{
 		  /* age it */
 		  cnat_reverse_session_free (session);
@@ -285,6 +327,8 @@ cnat_session_init (vlib_main_t * vm)
   clib_bitmap_set_region (cnat_timestamps.ts_free, 0, 1,
 			  1 << CNAT_TS_MPOOL_BITS);
   clib_spinlock_init (&cnat_timestamps.ts_lock);
+  /* timestamp 0 is default */
+  cnat_timestamp_alloc ();
 
   return (NULL);
 }
@@ -316,9 +360,8 @@ cnat_timestamp_show (vlib_main_t * vm,
       if (!verbose)
 	continue;
       pool_foreach (ts, cnat_timestamps.ts_pools[i])
-	vlib_cli_output (vm, "[%d] last_seen:%f lifetime:%u ref:%u",
-			 ts - cnat_timestamps.ts_pools[i], ts->last_seen,
-			 ts->lifetime, ts->refcnt);
+	vlib_cli_output (vm, "[%d] %U", ts - cnat_timestamps.ts_pools[i],
+			 format_cnat_timestamp, ts, 0);
     }
   vlib_cli_output (vm, "Total timestamps %d", ts_cnt);
   return (NULL);
