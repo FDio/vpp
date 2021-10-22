@@ -17,11 +17,12 @@
 #define __CNAT_SNAT_H__
 
 #include <cnat/cnat_types.h>
-#include <cnat/cnat_session.h>
 
 /* function to use to decide whether to snat connections in the output
  * feature. Returns 1 if we should source NAT */
-typedef int (*cnat_snat_policy_t) (vlib_buffer_t *b, cnat_session_t *session);
+typedef int (*cnat_snat_policy_t) (vlib_buffer_t *b, ip_address_family_t af,
+				   ip4_header_t *ip4, ip6_header_t *ip6,
+				   ip_protocol_t iproto, udp_header_t *udp0);
 
 typedef struct cnat_snat_pfx_table_meta_t_
 {
