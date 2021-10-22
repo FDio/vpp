@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2c139115_e2aacf7d",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 460,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2021-10-22T16:12:43Z",
+      "side": 1,
+      "message": "It is probably a good idea to add a compiler \u0026 version check here since coverage testing doesn\u0027t work with clang and requires gcc \u003e\u003d 9.3.0\n\nBTW, the vpp-gcc-verify-\u003cstream\u003e-ubuntu2004-x86_64 CI jobs [0] were added specifically to ensure gcc compilation works for gcov testing.  We should probably rename those jobs to vpp-cov-verify-\u003cstream\u003e-ubuntu2004-x86_64 and add the coverage targets to the gcc_build.sh script [1] to explicitly verify the \u0027make cov*\u0027 targets.\n\n[0] https://github.com/FDio/ci-management/blob/master/jjb/vpp/vpp.yaml#L186\n[1] https://github.com/FDio/ci-management/blob/master/jjb/scripts/vpp/gcc-build.sh#L33",
+      "range": {
+        "startLine": 460,
+        "startChar": 0,
+        "endLine": 460,
+        "endChar": 2
+      },
+      "revId": "d04e9935eb8e2410fadfdf5b6ff49e57b1e66edd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fca20a62_0a58cda5",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 472,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2021-10-22T16:12:43Z",
+      "side": 1,
+      "message": "typo -\u003e deprecated",
+      "range": {
+        "startLine": 472,
+        "startChar": 2,
+        "endLine": 472,
+        "endChar": 12
+      },
+      "revId": "d04e9935eb8e2410fadfdf5b6ff49e57b1e66edd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f998a927_ec8c56d7",
+        "filename": "docs/developer/build-run-debug/code_coverage.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2021-10-22T16:12:43Z",
+      "side": 1,
+      "message": "Please add these to the DEB_DEPENDS in Makefile so we can verify coverage in the CI (which does a \u0027make install-deps\u0027 in vpp-verify-gcc-* jobs) [0]\n\n[0] https://github.com/FDio/ci-management/blob/master/jjb/scripts/vpp/gcc-build.sh#L34",
+      "range": {
+        "startLine": 13,
+        "startChar": 27,
+        "endLine": 13,
+        "endChar": 43
+      },
+      "revId": "d04e9935eb8e2410fadfdf5b6ff49e57b1e66edd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
