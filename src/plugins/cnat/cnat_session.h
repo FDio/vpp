@@ -32,92 +32,54 @@ typedef struct cnat_session_t_
   struct
   {
     /**
-     * IP 4/6 address in the rx/tx direction
+     * IP 4/6 address, ports in the rx/tx direction & iproto
      */
-    ip46_address_t cs_ip[VLIB_N_DIR];
+    cnat_5tuple_t cs_5tuple;
 
-    /**
-     * ports in rx/tx
-     */
-    u16 cs_port[VLIB_N_DIR];
-
-    /**
-     * The IP protocol TCP or UDP only supported
-     */
-    ip_protocol_t cs_proto;
-
-    /**
-     * The address family describing the IP addresses
-     */
-    u8 cs_af;
-
-    /**
-     * input / output / fib session
-     */
-    u8 cs_loc;
-
-    u8 __cs_pad;
+    u16 __cs_pad;
   } key;
   /**
    * this value sits in the same memory location a 'value' in the bihash kvp
    */
   struct
   {
-    /**
-     * The IP address to translate to.
-     */
-    ip46_address_t cs_ip[VLIB_N_DIR];
 
-    /**
-     * the port to translate to.
-     */
-    u16 cs_port[VLIB_N_DIR];
+    u32 cs_session_index;
+    u32 cs_flags;
 
-    /**
-     * The load balance object to use to forward
-     */
-    index_t cs_lbi;
-
-    /**
-     * Persist translation->ct_lb.dpoi_next_node
-     */
-    u32 dpoi_next_node;
-
-    /**
-     * Timestamp index this session was last used
-     */
-    u32 cs_ts_index;
-
-    /**
-     * session flags
-     */
-    u32 flags;
-
-    u32 __pad;
   } value;
 } cnat_session_t;
+
+typedef enum cnat_ts_rewrite_flag_t_
+{
+  /**
+   * This session source port was allocated, we should think about
+   * freeing it on cleanup
+   */
+  CNAT_TS_RW_FLAG_HAS_ALLOCATED_PORT = (1 << 1),
+
+  /* Do not actually translate the packet but still forward it
+   * Used for Maglev, with an encap */
+  CNAT_TS_RW_FLAG_NO_NAT = (1 << 3),
+
+  /* if set cnat_cksum_diff_t->l3 contains the L3 cksum delta
+   * that needs to be applied for the translation */
+  CNAT_TS_RW_FLAG_CACHE_TS_L3 = (1 << 4),
+
+  /* if set cnat_cksum_diff_t->l4 contains the L4 cksum delta
+   * that needs to be applied for the translation */
+  CNAT_TS_RW_FLAG_CACHE_TS_L4 = (1 << 5),
+
+} cnat_ts_rewrite_flag_t;
 
 typedef enum cnat_session_flag_t_
 {
   /**
-   * Indicates a return path session that was source NATed
-   * on the way in.
+   * This session has a client, free it on delete
    */
-  CNAT_SESSION_FLAG_HAS_SNAT = (1 << 0),
-  /**
-   * This session source port was allocated, free it on cleanup
-   */
-  CNAT_SESSION_FLAG_ALLOC_PORT = (1 << 1),
-  /**
-   * This session doesn't have a client, do not attempt to free it
-   */
-  CNAT_SESSION_FLAG_NO_CLIENT = (1 << 2),
+  CNAT_SESSION_FLAG_HAS_CLIENT = (1 << 0),
 
-  /* Do not actually translate the packet but still forward it
-   * Used for Maglev, with an encap */
-  CNAT_SESSION_FLAG_NO_NAT = (1 << 3),
-
-  /* Debug flag marking return sessions */
+  /* This is a return session */
   CNAT_SESSION_IS_RETURN = (1 << 4),
 
   /** On conflicts when adding the return session, try to sNAT the
@@ -126,14 +88,16 @@ typedef enum cnat_session_flag_t_
 
 } cnat_session_flag_t;
 
-typedef enum cnat_session_location_t_
+/* flags for vnet_buffer(b)->session.flags */
+typedef enum cnat_buffer_session_flag_t_
 {
-  CNAT_LOCATION_INPUT = 0,
-  CNAT_LOCATION_OUTPUT = 1,
-  CNAT_LOCATION_FIB = 0xff,
-} cnat_session_location_t;
+  /* do not create a return session in output */
+  CNAT_BUFFER_SESSION_FLAG_NO_RETURN = (1 << 1),
+} cnat_buffer_session_flag_t;
 
+extern u8 *format_cnat_timestamp (u8 *s, va_list *args);
 extern u8 *format_cnat_session (u8 * s, va_list * args);
+extern u8 *format_cnat_session_flags (u8 *s, va_list *args);
 
 /**
  * Ensure the session object correctly overlays the bihash key/value pair
@@ -177,6 +141,11 @@ extern int cnat_session_purge (void);
  * Free a session & update refcounts
  */
 extern void cnat_session_free (cnat_session_t * session);
+
+/**
+ * Hash callback for session overwrite
+ */
+extern void cnat_session_free_stale_cb (cnat_bihash_kv_t *kv, void *opaque);
 
 /**
  * Port cleanup callback
