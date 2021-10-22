@@ -124,6 +124,7 @@ typedef struct ipsec_dump_walk_ctx_t_
 {
   vl_api_registration_t *reg;
   u32 context;
+  u32 sw_if_index;
 } ipsec_dump_walk_ctx_t;
 
 static walk_rc_t
@@ -713,6 +714,9 @@ send_ipsec_itf_details (ipsec_itf_t *itf, void *arg)
   ipsec_dump_walk_ctx_t *ctx = arg;
   vl_api_ipsec_itf_details_t *mp;
 
+  if (~0 != ctx->sw_if_index && ctx->sw_if_index != itf->ii_sw_if_index)
+    return (WALK_CONTINUE);
+
   mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_IPSEC_ITF_DETAILS);
@@ -738,6 +742,7 @@ vl_api_ipsec_itf_dump_t_handler (vl_api_ipsec_itf_dump_t * mp)
   ipsec_dump_walk_ctx_t ctx = {
     .reg = reg,
     .context = mp->context,
+    .sw_if_index = ntohl (mp->sw_if_index),
   };
 
   ipsec_itf_walk (send_ipsec_itf_details, &ctx);
