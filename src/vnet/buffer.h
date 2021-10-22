@@ -498,7 +498,15 @@ typedef struct
     } reass;
   } ip;
 
-  u32 unused[5];
+  /* cnat session */
+  struct
+  {
+    u32 generic_flow_id; /* unique identifier for the flow */
+    u8 state;		 /* new flow / return / etc... */
+    u8 flags;		 /* session flags to set */
+  } session;
+
+  u32 unused[3];
 } vnet_buffer_opaque2_t;
 
 #define vnet_buffer2(b) ((vnet_buffer_opaque2_t *) (b)->opaque2)

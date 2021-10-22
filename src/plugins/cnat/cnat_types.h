@@ -42,11 +42,6 @@
  * from fib_source.h */
 #define CNAT_FIB_SOURCE_PRIORITY  0x02
 
-/* Initial number of timestamps for a session
- * this will be incremented when adding the reverse
- * session in cnat_rsession_create */
-#define CNAT_TIMESTAMP_INIT_REFCNT 1
-
 #define MIN_SRC_PORT ((u16) 0xC000)
 
 typedef struct
@@ -62,11 +57,11 @@ typedef struct
 
 typedef enum cnat_trk_flag_t_
 {
-  /* Endpoint is active (static or dhcp resolved) */
-  CNAT_TRK_ACTIVE = (1 << 0),
   /* Don't translate this endpoint, but still
    * forward. Used by maglev for DSR */
   CNAT_TRK_FLAG_NO_NAT = (1 << 1),
+  /* Endpoint is active (static or dhcp resolved) */
+  CNAT_TRK_ACTIVE = (1 << 2),
   /* */
   CNAT_TRK_FLAG_TEST_DISABLED = (1 << 7),
 } cnat_trk_flag_t;
@@ -152,14 +147,111 @@ typedef struct cnat_main_
   u32 maglev_len;
 } cnat_main_t;
 
+typedef struct __attribute__ ((__packed__)) cnat_5tuple_t_
+{
+  union
+  {
+    struct
+    {
+      u32 __pad[6];
+      ip4_address_t ip4[VLIB_N_DIR];
+    };
+    ip6_address_t ip6[VLIB_N_DIR];
+  };
+
+  u16 port[VLIB_N_DIR];
+
+  ip_protocol_t iproto;
+
+  u8 af;
+} cnat_5tuple_t;
+
+static_always_inline void
+cnat_5tuple_copy (cnat_5tuple_t *dst, cnat_5tuple_t *src, u8 swap)
+{
+  dst->af = src->af;
+  if (src->af == AF_IP4)
+    {
+      dst->ip4[VLIB_RX].as_u32 = src->ip4[VLIB_RX ^ swap].as_u32;
+      dst->ip4[VLIB_TX].as_u32 = src->ip4[VLIB_TX ^ swap].as_u32;
+    }
+  else
+    {
+      ip6_address_copy (&dst->ip6[VLIB_RX], &src->ip6[VLIB_RX ^ swap]);
+      ip6_address_copy (&dst->ip6[VLIB_TX], &src->ip6[VLIB_TX ^ swap]);
+    }
+  dst->port[VLIB_RX] = src->port[VLIB_RX ^ swap];
+  dst->port[VLIB_TX] = src->port[VLIB_TX ^ swap];
+  dst->iproto = src->iproto;
+}
+
+typedef struct cnat_cksum_diff_t_
+{
+  u16 l3;
+  u16 l4;
+} cnat_cksum_diff_t;
+
+typedef struct cnat_timestamp_rewrite_t_
+{
+  /**
+   * The 5tuple to rewrite to
+   */
+  cnat_5tuple_t tuple;
+
+  /**
+   * The load balance object to use to forward
+   */
+  index_t cts_lbi;
+
+  /**
+   * Persist translation->ct_lb.dpoi_next_node
+   */
+  u32 cts_dpoi_next_node;
+
+  cnat_cksum_diff_t cksum;
+
+  u8 cts_flags;
+} cnat_timestamp_rewrite_t;
+
+typedef enum cnat_session_location_t_
+{
+  CNAT_LOCATION_INPUT,
+  CNAT_LOCATION_OUTPUT,
+  CNAT_LOCATION_FIB,
+  CNAT_N_LOCATIONS,
+} cnat_session_location_t;
+
+typedef enum cnat_timestamp_direction_t_
+{
+  CNAT_IS_FWD = 0,
+  CNAT_IS_RETURN = CNAT_N_LOCATIONS,
+} cnat_timestamp_direction_t;
+
+typedef enum cnat_lookup_state_t_
+{
+  CNAT_LOOKUP_IS_OK = 0,
+  CNAT_LOOKUP_IS_NEW = 1,
+  CNAT_LOOKUP_IS_ERR = 2,
+  CNAT_LOOKUP_IS_RETURN = 3,
+} cnat_lookup_state_t;
+
 typedef struct cnat_timestamp_t_
 {
   /* Last time said session was seen */
   f64 last_seen;
+
   /* expire after N seconds */
   u16 lifetime;
-  /* Users refcount, initially 3 (session, rsession, dpo) */
-  u16 refcnt;
+
+  /* Session refcount, can be 2 (session, rsession) */
+  u16 ts_session_refcnt;
+
+  u32 index;
+
+  clib_bitmap_t ts_rw_bm;
+
+  cnat_timestamp_rewrite_t cts_rewrites[VLIB_N_DIR * CNAT_N_LOCATIONS];
+
 } cnat_timestamp_t;
 
 /* Create the first pool with 1 << CNAT_TS_BASE_SIZE elts */
@@ -179,16 +271,11 @@ typedef struct cnat_timestamp_mpool_t_
   clib_spinlock_t ts_lock;
 } cnat_timestamp_mpool_t;
 
-typedef struct cnat_node_ctx_
-{
-  f64 now;
-  clib_thread_index_t thread_index;
-  ip_address_family_t af;
-  u8 do_trace;
-} cnat_node_ctx_t;
-
 cnat_main_t *cnat_get_main ();
 extern u8 *format_cnat_endpoint (u8 * s, va_list * args);
+extern u8 *format_cnat_rewrite (u8 *s, va_list *args);
+extern u8 *format_cnat_rewrite_type (u8 *s, va_list *args);
+extern u8 *format_cnat_5tuple (u8 *s, va_list *args);
 extern uword unformat_cnat_ep_tuple (unformat_input_t * input,
 				     va_list * args);
 extern uword unformat_cnat_ep (unformat_input_t * input, va_list * args);
