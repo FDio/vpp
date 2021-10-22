@@ -80,8 +80,14 @@ typedef struct cnat_client_t_
   u8 flags;
 } cnat_client_t;
 
+typedef struct cnat_client_learn_args_t_
+{
+  ip_address_t addr;
+} cnat_client_learn_args_t;
+
 extern u8 *format_cnat_client (u8 * s, va_list * args);
-extern void cnat_client_free_by_ip (ip46_address_t * addr, u8 af);
+extern void cnat_client_free_by_ip (ip4_address_t *ip4, ip6_address_t *ip6,
+				    u8 af);
 
 extern cnat_client_t *cnat_client_pool;
 extern dpo_type_t cnat_client_dpo;
@@ -113,16 +119,6 @@ extern index_t cnat_client_add (const ip_address_t * ip, u8 flags);
  * Check all the clients were purged by translation & session purge
  */
 extern int cnat_client_purge (void);
-
-/**
- * CNat Client (dpo) flags
- */
-typedef enum
-{
-  /* IP already present in the FIB, need to interpose dpo */
-  CNAT_FLAG_EXCLUSIVE = (1 << 1),
-} cnat_entry_flag_t;
-
 
 extern void cnat_client_throttle_pool_process ();
 
