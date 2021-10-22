@@ -1112,7 +1112,7 @@ add_identity_mapping_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   int rv, is_add = 1, port_set = 0;
   u32 sw_if_index = ~0, port, flags, vrf_id = ~0;
-  nat_protocol_t proto;
+  nat_protocol_t proto = NAT_PROTOCOL_OTHER;
   ip4_address_t addr;
 
   flags = NAT44_EI_SM_FLAG_IDENTITY_NAT;
