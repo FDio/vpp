@@ -132,6 +132,14 @@ intel_uncore_init (vlib_main_t *vm, perfmon_source_t *src)
 	  goto done;
 	}
 
+      if (!cpumask)
+	{
+	  clib_error_free (err);
+	  err = clib_error_return (
+	    0, "while discovering numa topology: cpumask unexpectedly NULL");
+	  goto done;
+	}
+
       clib_bitmap_foreach (j, cpumask)
 	{
 	  vec_validate_init_empty (numa_by_cpu_id, j, -1);
