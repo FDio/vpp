@@ -252,6 +252,8 @@ vppcom_cfg_read_file (char *conf_fname)
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
+      /* skip empty newlines as they confuse unformat_line_input */
+      unformat_skip_white_space (input);
       (void) unformat_user (input, unformat_line_input, line_input);
       unformat_skip_white_space (line_input);
 
