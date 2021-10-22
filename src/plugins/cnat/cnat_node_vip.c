@@ -8,36 +8,28 @@
 #include <cnat/cnat_inline.h>
 #include <cnat/cnat_src_policy.h>
 
-typedef enum cnat_translation_next_t_
-{
-  CNAT_TRANSLATION_NEXT_DROP,
-  CNAT_TRANSLATION_NEXT_LOOKUP,
-  CNAT_TRANSLATION_N_NEXT,
-} cnat_translation_next_t;
-
 vlib_node_registration_t cnat_vip_ip4_node;
 vlib_node_registration_t cnat_vip_ip6_node;
 
-/* CNat sub for NAT behind a fib entry (VIP or interposed real IP) */
-static uword
-cnat_vip_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
-		  cnat_node_ctx_t *ctx, int session_not_found,
-		  cnat_session_t *session)
+static_always_inline cnat_timestamp_rewrite_t *
+cnat_vip_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_address_family_t af,
+				  cnat_timestamp_t *ts, cnat_client_t *cc)
 {
   vlib_combined_counter_main_t *cntm = &cnat_translation_counters;
   cnat_src_policy_main_t *cspm = &cnat_src_policy_main;
+  cnat_timestamp_rewrite_t *rw = NULL;
   const cnat_translation_t *ct = NULL;
   ip4_header_t *ip4 = NULL;
-  ip_protocol_t iproto;
   ip6_header_t *ip6 = NULL;
+  ip_protocol_t iproto;
   udp_header_t *udp0;
-  cnat_client_t *cc;
-  u16 next0;
+  cnat_ep_trk_t *trk0;
+  u32 dpoi_index = -1;
+  u8 do_snat = 0;
   index_t cti;
-  u8 trace_flags = 0;
   int rv;
 
-  if (AF_IP4 == ctx->af)
+  if (AF_IP4 == af)
     {
       ip4 = vlib_buffer_get_current (b);
       iproto = ip4->protocol;
@@ -50,142 +42,130 @@ cnat_vip_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
       udp0 = (udp_header_t *) (ip6 + 1);
     }
 
-  cc = cnat_client_get (vnet_buffer (b)->ip.adj_index[VLIB_TX]);
+  ct = cnat_find_translation (cc->parent_cci, clib_host_to_net_u16 (udp0->dst_port), iproto);
+  if (!ct)
+    return (NULL);
 
-  /* Wrong session key */
-  if (session->key.cs_proto == 0)
+  cti = ct - cnat_translation_pool;
+  vlib_increment_combined_counter (cntm, vm->thread_index, cti, 1,
+				   vlib_buffer_length_in_chain (vm, b));
+
+  /* add the rewrite object */
+  rw = &ts->cts_rewrites[CNAT_LOCATION_FIB];
+  ts->ts_rw_bm |= 1 << CNAT_LOCATION_FIB;
+
+  trk0 = cnat_load_balance (ct, af, ip4, ip6, &dpoi_index);
+  if (PREDICT_FALSE (!trk0))
     {
-      /* Dont translate & follow the fib programming */
-      next0 = cc->cc_parent.dpoi_next_node;
-      vnet_buffer (b)->ip.adj_index[VLIB_TX] = cc->cc_parent.dpoi_index;
-      goto trace;
+      /* Load balance is empty or not resolved, drop  */
+      rw->cts_dpoi_next_node = CNAT_NODE_VIP_NEXT_DROP;
+      return (rw);
     }
 
-  if (!session_not_found)
-    {
-      /* session table hit */
-      cnat_timestamp_update (session->value.cs_ts_index, ctx->now);
+  cnat_make_buffer_5tuple (b, af, &rw->tuple, 0 /* iph_offset */, 0 /* swap */);
 
-      if (INDEX_INVALID != session->value.cs_lbi)
-	{
-	  /* Translate & follow the translation given LB */
-	  next0 = session->value.dpoi_next_node;
-	  vnet_buffer (b)->ip.adj_index[VLIB_TX] = session->value.cs_lbi;
-	}
-      else if (session->value.flags & CNAT_SESSION_FLAG_HAS_SNAT)
-	{
-	  /* The return needs DNAT, so we need an additionnal
-	   * lookup after translation */
-	  next0 = CNAT_TRANSLATION_NEXT_LOOKUP;
-	}
-      else
-	{
-	  /* Translate & follow the fib programming */
-	  next0 = cc->cc_parent.dpoi_next_node;
-	  vnet_buffer (b)->ip.adj_index[VLIB_TX] = cc->cc_parent.dpoi_index;
-	}
-    }
+  if (af == AF_IP4)
+    rw->tuple.ip4[VLIB_TX].as_u32 = trk0->ct_ep[VLIB_TX].ce_ip.ip.ip4.as_u32;
   else
+    ip6_address_copy (&rw->tuple.ip6[VLIB_TX], &trk0->ct_ep[VLIB_TX].ce_ip.ip.ip6);
+  rw->tuple.port[VLIB_TX] = trk0->ct_ep[VLIB_TX].ce_port ?
+			      clib_host_to_net_u16 (trk0->ct_ep[VLIB_TX].ce_port) :
+			      rw->tuple.port[VLIB_TX];
+  rw->tuple.port[VLIB_RX] = trk0->ct_ep[VLIB_RX].ce_port ?
+			      clib_host_to_net_u16 (trk0->ct_ep[VLIB_RX].ce_port) :
+			      rw->tuple.port[VLIB_RX];
+
+  if (!ip_address_is_zero (&trk0->ct_ep[VLIB_RX].ce_ip))
     {
-      ct =
-	cnat_find_translation (cc->parent_cci,
-			       clib_host_to_net_u16 (udp0->dst_port), iproto);
-      if (NULL == ct)
-	{
-	  /* Dont translate & Follow the fib programming */
-	  vnet_buffer (b)->ip.adj_index[VLIB_TX] = cc->cc_parent.dpoi_index;
-	  next0 = cc->cc_parent.dpoi_next_node;
-	  goto trace;
-	}
-
-      /* New flow, create the sessions */
-      cnat_ep_trk_t *trk0;
-      u32 rsession_flags = 0;
-      u32 dpoi_index = -1;
-
-      trk0 = cnat_load_balance (ct, ctx->af, ip4, ip6, &dpoi_index);
-      if (PREDICT_FALSE (NULL == trk0))
-	{
-	  /* Dont translate & Follow the fib programming */
-	  vnet_buffer (b)->ip.adj_index[VLIB_TX] = cc->cc_parent.dpoi_index;
-	  next0 = cc->cc_parent.dpoi_next_node;
-	  goto trace;
-	}
-
-      /* add the session */
-      ip46_address_copy (&session->value.cs_ip[VLIB_TX],
-			 &trk0->ct_ep[VLIB_TX].ce_ip.ip);
-      if (ip_address_is_zero (&trk0->ct_ep[VLIB_RX].ce_ip))
-	{
-	  if (AF_IP4 == ctx->af)
-	    ip46_address_set_ip4 (&session->value.cs_ip[VLIB_RX],
-				  &ip4->src_address);
-	  else
-	    ip46_address_set_ip6 (&session->value.cs_ip[VLIB_RX],
-				  &ip6->src_address);
-	}
+      /* We source NAT with the translation */
+      do_snat = 1;
+      if (af == AF_IP4)
+	rw->tuple.ip4[VLIB_RX].as_u32 = trk0->ct_ep[VLIB_RX].ce_ip.ip.ip4.as_u32;
       else
+	ip6_address_copy (&rw->tuple.ip6[VLIB_RX], &trk0->ct_ep[VLIB_RX].ce_ip.ip.ip6);
+      if (ct->flags & CNAT_TR_FLAG_ALLOCATE_PORT)
 	{
-	  /* We source NAT with the translation */
-	  rsession_flags |= CNAT_SESSION_FLAG_HAS_SNAT;
-	  ip46_address_copy (&session->value.cs_ip[VLIB_RX],
-			     &trk0->ct_ep[VLIB_RX].ce_ip.ip);
-	}
-      session->value.cs_port[VLIB_TX] =
-	clib_host_to_net_u16 (trk0->ct_ep[VLIB_TX].ce_port);
-      session->value.cs_port[VLIB_RX] =
-	clib_host_to_net_u16 (trk0->ct_ep[VLIB_RX].ce_port);
-
-      session->value.dpoi_next_node = ct->ct_lb.dpoi_next_node;
-      session->value.cs_lbi = dpoi_index;
-      session->value.flags = 0;
-
-      rv = cspm->vip_policy (vm, b, session, &rsession_flags, ct, ctx);
-      if (CNAT_SOURCE_ERROR_USE_DEFAULT == rv)
-	rv = cspm->default_policy (vm, b, session, &rsession_flags, ct, ctx);
-      if (rv)
-	{
-	  if (CNAT_SOURCE_ERROR_EXHAUSTED_PORTS == rv)
+	  rv = cspm->vip_policy (iproto, &rw->tuple.port[VLIB_RX]);
+	  if (CNAT_SOURCE_ERROR_USE_DEFAULT == rv)
+	    rv = cspm->default_policy (iproto, &rw->tuple.port[VLIB_RX]);
+	  if (rv)
 	    {
-	      vlib_node_registration_t *node =
-		(AF_IP4 == ctx->af) ? &cnat_vip_ip4_node : &cnat_vip_ip6_node;
-	      vlib_node_increment_counter (vm, node->index,
-					   CNAT_ERROR_EXHAUSTED_PORTS, 1);
+	      if (CNAT_SOURCE_ERROR_EXHAUSTED_PORTS == rv)
+		{
+		  vlib_node_registration_t *node =
+		    (AF_IP4 == af) ? &cnat_vip_ip4_node : &cnat_vip_ip6_node;
+		  vlib_node_increment_counter (vm, node->index, CNAT_ERROR_EXHAUSTED_PORTS, 1);
+		}
+	      /* If we encounter an error, store the drop decision
+	       * in the rewrite object, as default action is fwd */
+	      rw->cts_dpoi_next_node = CNAT_NODE_VIP_NEXT_DROP;
+	      return (rw);
 	    }
-	  next0 = CNAT_TRANSLATION_NEXT_DROP;
-	  goto trace;
 	}
-
-      /* refcnt session in current client */
-      cnat_client_cnt_session (cc);
-      cnat_session_create (session, ctx);
-      if (!(ct->flags & CNAT_TR_FLAG_NO_RETURN_SESSION))
-	cnat_rsession_create (session, ctx, CNAT_LOCATION_FIB, rsession_flags);
-      trace_flags |= CNAT_TRACE_SESSION_CREATED;
-
-      next0 = ct->ct_lb.dpoi_next_node;
-      vnet_buffer (b)->ip.adj_index[VLIB_TX] = session->value.cs_lbi;
+      rw->cts_flags |= CNAT_TS_RW_FLAG_HAS_ALLOCATED_PORT;
     }
 
-  if (AF_IP4 == ctx->af)
-    cnat_translation_ip4 (session, ip4, udp0, vnet_buffer (b)->oflags);
-  else
-    cnat_translation_ip6 (session, ip6, udp0, vnet_buffer (b)->oflags);
+  rw->cts_dpoi_next_node = ct->ct_lb.dpoi_next_node;
+  rw->cts_lbi = dpoi_index;
 
-  if (NULL != ct)
+  /* refcnt session in current client */
+  cnat_client_cnt_session (cc);
+  if (!(ct->flags & CNAT_TR_FLAG_NO_RETURN_SESSION))
     {
-      cti = ct - cnat_translation_pool;
-      vlib_increment_combined_counter (cntm, ctx->thread_index, cti, 1,
-				       vlib_buffer_length_in_chain (vm, b));
+      cnat_timestamp_rewrite_t *rrw = NULL;
+
+      rrw = &ts->cts_rewrites[CNAT_LOCATION_FIB + CNAT_IS_RETURN];
+      ts->ts_rw_bm |= 1 << (CNAT_LOCATION_FIB + CNAT_IS_RETURN);
+
+      /* The return needs DNAT, so we need an additionnal
+       * lookup after translation */
+      rrw->cts_dpoi_next_node = do_snat ? CNAT_NODE_VIP_NEXT_LOOKUP : ~0;
+      rrw->cts_lbi = (u32) ~0;
+
+      cnat_make_buffer_5tuple (b, af, &rrw->tuple, 0 /* iph_offset */, 1 /* swap */);
+
+      clib_atomic_add_fetch (&ts->ts_session_refcnt, 1);
+
+      cnat_rsession_create (rw, vnet_buffer2 (b)->session.generic_flow_id);
     }
 
-trace:
-  if (PREDICT_FALSE (ctx->do_trace))
+  return rw;
+}
+
+/* CNat sub for NAT behind a fib entry (VIP or interposed real IP) */
+static void
+cnat_vip_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b, u16 *next0,
+		  ip_address_family_t af, f64 now, u8 do_trace)
+{
+  cnat_timestamp_rewrite_t *rw = NULL;
+  cnat_timestamp_t *ts;
+  cnat_client_t *cc;
+
+  cc = cnat_client_get (vnet_buffer (b)->ip.adj_index[VLIB_TX]);
+  /* By default dont translate & Follow the fib programming */
+  vnet_buffer (b)->ip.adj_index[VLIB_TX] = cc->cc_parent.dpoi_index;
+  *next0 = cc->cc_parent.dpoi_next_node;
+
+  ts = cnat_timestamp_update (vnet_buffer2 (b)->session.generic_flow_id, now);
+  if (vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_OK)
     {
-      trace_flags |= session_not_found ? 0 : CNAT_TRACE_SESSION_FOUND;
-      cnat_add_trace (vm, node, b, session, ct, trace_flags);
+      /* Translate & follow the translation given LB */
+      rw = (ts->ts_rw_bm & (1 << CNAT_LOCATION_FIB)) ? &ts->cts_rewrites[CNAT_LOCATION_FIB] : NULL;
     }
-  return next0;
+  else if (vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_RETURN)
+    {
+      rw = (ts->ts_rw_bm & (1 << (CNAT_IS_RETURN + CNAT_LOCATION_FIB))) ?
+	     &ts->cts_rewrites[CNAT_IS_RETURN + CNAT_LOCATION_FIB] :
+	     NULL;
+    }
+  else if (vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_NEW)
+    rw = cnat_vip_feature_new_flow_inline (vm, b, af, ts, cc);
+
+  cnat_translation (b, af, rw, &ts->lifetime, 0 /* iph_offset */);
+  cnat_set_rw_next_node (b, rw, next0);
+
+  if (PREDICT_FALSE (do_trace))
+    cnat_add_trace (vm, node, b, ts, rw);
 }
 
 VLIB_NODE_FN (cnat_vip_ip4_node) (vlib_main_t * vm,
@@ -193,10 +173,10 @@ VLIB_NODE_FN (cnat_vip_ip4_node) (vlib_main_t * vm,
 				  vlib_frame_t * frame)
 {
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
-    return cnat_node_inline (vm, node, frame, cnat_vip_node_fn, AF_IP4,
-			     CNAT_LOCATION_FIB, 1 /* do_trace */);
-  return cnat_node_inline (vm, node, frame, cnat_vip_node_fn, AF_IP4,
-			   CNAT_LOCATION_FIB, 0 /* do_trace */);
+    return cnat_lookup_inline (vm, node, frame, AF_IP4, 1 /* do_trace */, cnat_vip_node_fn,
+			       0 /* is_feature */);
+  return cnat_lookup_inline (vm, node, frame, AF_IP4, 0 /* do_trace */, cnat_vip_node_fn,
+			     0 /* is_feature */);
 }
 
 VLIB_NODE_FN (cnat_vip_ip6_node) (vlib_main_t * vm,
@@ -204,10 +184,10 @@ VLIB_NODE_FN (cnat_vip_ip6_node) (vlib_main_t * vm,
 				  vlib_frame_t * frame)
 {
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
-    return cnat_node_inline (vm, node, frame, cnat_vip_node_fn, AF_IP6,
-			     CNAT_LOCATION_FIB, 1 /* do_trace */);
-  return cnat_node_inline (vm, node, frame, cnat_vip_node_fn, AF_IP6,
-			   CNAT_LOCATION_FIB, 0 /* do_trace */);
+    return cnat_lookup_inline (vm, node, frame, AF_IP6, 1 /* do_trace */, cnat_vip_node_fn,
+			       0 /* is_feature */);
+  return cnat_lookup_inline (vm, node, frame, AF_IP6, 0 /* do_trace */, cnat_vip_node_fn,
+			     0 /* is_feature */);
 }
 
 VLIB_REGISTER_NODE (cnat_vip_ip4_node) =
@@ -217,13 +197,14 @@ VLIB_REGISTER_NODE (cnat_vip_ip4_node) =
   .format_trace = format_cnat_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .n_errors = 0,
-  .n_next_nodes = CNAT_TRANSLATION_N_NEXT,
+  .n_next_nodes = CNAT_NODE_VIP_N_NEXT,
   .next_nodes =
   {
-    [CNAT_TRANSLATION_NEXT_DROP] = "ip4-drop",
-    [CNAT_TRANSLATION_NEXT_LOOKUP] = "ip4-lookup",
+    [CNAT_NODE_VIP_NEXT_DROP] = "ip4-drop",
+    [CNAT_NODE_VIP_NEXT_LOOKUP] = "ip4-lookup",
   },
 };
+
 VLIB_REGISTER_NODE (cnat_vip_ip6_node) =
 {
   .name = "ip6-cnat-tx",
@@ -231,10 +212,10 @@ VLIB_REGISTER_NODE (cnat_vip_ip6_node) =
   .format_trace = format_cnat_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .n_errors = 0,
-  .n_next_nodes = CNAT_TRANSLATION_N_NEXT,
+  .n_next_nodes = CNAT_NODE_VIP_N_NEXT,
   .next_nodes =
   {
-    [CNAT_TRANSLATION_NEXT_DROP] = "ip6-drop",
-    [CNAT_TRANSLATION_NEXT_LOOKUP] = "ip6-lookup",
+    [CNAT_NODE_VIP_NEXT_DROP] = "ip6-drop",
+    [CNAT_NODE_VIP_NEXT_LOOKUP] = "ip6-lookup",
   },
 };
