@@ -510,6 +510,13 @@ typedef struct
       u64 pad[1];
       u64 pg_replay_timestamp;
     };
+    /* Session */
+    struct
+    {
+      u32 generic_flow_id; /* unique identifier for the flow */
+      u8 state;		   /* new flow / return / etc... */
+      u8 flags;		   /* session flags to set */
+    } session;
     u32 unused[8];
   };
 } vnet_buffer_opaque2_t;
