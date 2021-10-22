@@ -24,6 +24,8 @@
 
 #include <vnet/ip/ip_types_api.h>
 
+#include <vnet/fib/fib_table.h>
+
 #include <vpp/app/version.h>
 
 #include <vlibapi/api.h>
@@ -33,6 +35,37 @@
 #include <vnet/format_fns.h>
 #include <cnat/cnat.api_enum.h>
 #include <cnat/cnat.api_types.h>
+
+STATIC_ASSERT ((int) CNAT_TRANSLATION_ALLOC_PORT ==
+		 (int) CNAT_TR_FLAG_ALLOCATE_PORT,
+	       "cnat api enum mismatch");
+STATIC_ASSERT ((int) CNAT_TRANSLATION_NO_RETURN_SESSION ==
+		 (int) CNAT_TR_FLAG_NO_RETURN_SESSION,
+	       "cnat api enum mismatch");
+
+STATIC_ASSERT ((int) CNAT_EPT_NO_NAT == (int) CNAT_TRK_FLAG_NO_NAT,
+	       "cnat api enum mismatch");
+
+STATIC_ASSERT ((int) CNAT_LB_TYPE_DEFAULT == (int) CNAT_LB_DEFAULT,
+	       "cnat api enum mismatch");
+STATIC_ASSERT ((int) CNAT_LB_TYPE_MAGLEV == (int) CNAT_LB_MAGLEV,
+	       "cnat api enum mismatch");
+
+STATIC_ASSERT ((int) CNAT_POLICY_INCLUDE_V4 ==
+		 (int) CNAT_SNAT_IF_MAP_INCLUDE_V4,
+	       "cnat api enum mismatch");
+STATIC_ASSERT ((int) CNAT_POLICY_INCLUDE_V6 ==
+		 (int) CNAT_SNAT_IF_MAP_INCLUDE_V6,
+	       "cnat api enum mismatch");
+STATIC_ASSERT ((int) CNAT_POLICY_POD == (int) CNAT_SNAT_IF_MAP_INCLUDE_POD,
+	       "cnat api enum mismatch");
+
+STATIC_ASSERT ((int) CNAT_POLICY_NONE == (int) CNAT_SNAT_POLICY_NONE,
+	       "cnat api enum mismatch");
+STATIC_ASSERT ((int) CNAT_POLICY_IF_PFX == (int) CNAT_SNAT_POLICY_IF_PFX,
+	       "cnat api enum mismatch");
+STATIC_ASSERT ((int) CNAT_POLICY_K8S == (int) CNAT_SNAT_POLICY_K8S,
+	       "cnat api enum mismatch");
 
 /**
  * Base message ID fot the plugin
@@ -85,6 +118,16 @@ cnat_endpoint_encode (const cnat_endpoint_t * in,
 }
 
 static void
+cnat_5tuple_encode (const cnat_5tuple_t *in, vl_api_cnat_5tuple_t *out)
+{
+  out->port[VLIB_RX] = clib_net_to_host_u16 (in->port[VLIB_RX]);
+  out->port[VLIB_TX] = clib_net_to_host_u16 (in->port[VLIB_TX]);
+  ip_address_encode (&in->ip[VLIB_RX], IP46_TYPE_ANY, &out->addr[VLIB_RX]);
+  ip_address_encode (&in->ip[VLIB_TX], IP46_TYPE_ANY, &out->addr[VLIB_TX]);
+  out->ip_proto = ip_proto_encode (in->iproto);
+}
+
+static void
 vl_api_cnat_translation_update_t_handler (vl_api_cnat_translation_update_t
 					  * mp)
 {
@@ -121,7 +164,7 @@ vl_api_cnat_translation_update_t_handler (vl_api_cnat_translation_update_t
 
   flags = mp->translation.flags;
   if (!mp->translation.is_real_ip)
-    flags |= CNAT_FLAG_EXCLUSIVE;
+    flags |= CNAT_TR_FLAG_EXCLUSIVE;
 
   lb_type = (cnat_lb_type_t) mp->translation.lb_type;
   flow_hash_config = (flow_hash_config_t) clib_net_to_host_u32 (
@@ -144,7 +187,7 @@ vl_api_cnat_translation_del_t_handler (vl_api_cnat_translation_del_t * mp)
   vl_api_cnat_translation_del_reply_t *rmp;
   int rv;
 
-  rv = cnat_translation_delete (ntohl (mp->id));
+  rv = cnat_translation_delete (ntohl (mp->id), CNAT_FIB_TABLE);
 
   REPLY_MACRO (VL_API_CNAT_TRANSLATION_DEL_REPLY);
 }
@@ -213,20 +256,11 @@ vl_api_cnat_translation_dump_t_handler (vl_api_cnat_translation_dump_t * mp)
   cnat_translation_walk (cnat_translation_send_details, &ctx);
 }
 
-static void
-ip_address2_from_46 (const ip46_address_t * nh,
-		     ip_address_family_t af, ip_address_t * ip)
-{
-  ip_addr_46 (ip) = *nh;
-  ip_addr_version (ip) = af;
-}
-
 static walk_rc_t
 cnat_session_send_details (const cnat_session_t * session, void *args)
 {
   vl_api_cnat_session_details_t *mp;
   cnat_dump_walk_ctx_t *ctx;
-  cnat_endpoint_t ep;
 
   ctx = args;
 
@@ -236,25 +270,10 @@ cnat_session_send_details (const cnat_session_t * session, void *args)
   /* fill in the message */
   mp->context = ctx->context;
 
-  ep.ce_sw_if_index = INDEX_INVALID;
-  ep.ce_flags = CNAT_EP_FLAG_RESOLVED;
-  ip_address2_from_46 (&session->value.cs_ip[VLIB_TX], session->key.cs_af,
-		       &ep.ce_ip);
-  ep.ce_port = clib_host_to_net_u16 (session->value.cs_port[VLIB_TX]);
-  cnat_endpoint_encode (&ep, &mp->session.new);
-
-  ip_address2_from_46 (&session->key.cs_ip[VLIB_RX], session->key.cs_af,
-		       &ep.ce_ip);
-  ep.ce_port = clib_host_to_net_u16 (session->key.cs_port[VLIB_RX]);
-  cnat_endpoint_encode (&ep, &mp->session.src);
-
-  ip_address2_from_46 (&session->key.cs_ip[VLIB_TX], session->key.cs_af,
-		       &ep.ce_ip);
-  ep.ce_port = clib_host_to_net_u16 (session->key.cs_port[VLIB_TX]);
-  cnat_endpoint_encode (&ep, &mp->session.dst);
-
-  mp->session.ip_proto = ip_proto_encode (session->key.cs_proto);
-  mp->session.location = session->key.cs_loc;
+  cnat_5tuple_encode (&session->key.cs_5tuple, &mp->session.tuple);
+  mp->session.ts_index =
+    clib_host_to_net_u32 (session->value.cs_session_index);
+  mp->session.flags = clib_host_to_net_u32 (session->value.cs_flags);
 
   vl_api_send_msg (ctx->rp, (u8 *) mp);
 
@@ -296,31 +315,76 @@ vl_api_cnat_get_snat_addresses_t_handler (vl_api_cnat_get_snat_addresses_t
 					  * mp)
 {
   vl_api_cnat_get_snat_addresses_reply_t *rmp;
-  cnat_snat_policy_main_t *cpm = &cnat_snat_policy_main;
-  int rv = 0;
+  cnat_snat_policy_entry_t *cpe = cnat_snat_policy_entry_get_default ();
+  int rv = cpe ? 0 : VNET_API_ERROR_FEATURE_DISABLED;
 
+  /* clang-format off */
   REPLY_MACRO2 (
     VL_API_CNAT_GET_SNAT_ADDRESSES_REPLY, ({
-      ip6_address_encode (&ip_addr_v6 (&cpm->snat_ip6.ce_ip), rmp->snat_ip6);
-      ip4_address_encode (&ip_addr_v4 (&cpm->snat_ip4.ce_ip), rmp->snat_ip4);
-      rmp->sw_if_index = clib_host_to_net_u32 (cpm->snat_ip6.ce_sw_if_index);
+      if (cpe)
+        {
+	  ip6_address_encode (&ip_addr_v6 (&cpe->snat_ip6.ce_ip), rmp->snat_ip6);
+	  ip4_address_encode (&ip_addr_v4 (&cpe->snat_ip4.ce_ip), rmp->snat_ip4);
+	  rmp->sw_if_index = clib_host_to_net_u32 (cpe->snat_ip6.ce_sw_if_index);
+	}
     }));
+  /* clang-format on */
 }
 
 static void
-vl_api_cnat_set_snat_addresses_t_handler (vl_api_cnat_set_snat_addresses_t
-					  * mp)
+vl_api_cnat_snat_addresses_dump_t_handler (
+  vl_api_cnat_snat_addresses_dump_t *mp)
+{
+  cnat_snat_policy_main_t *cpm = &cnat_snat_policy_main;
+  cnat_snat_policy_entry_t *cpe = 0;
+  vl_api_registration_t *reg;
+
+  u16 msg_id;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  msg_id = ntohs (VL_API_CNAT_SNAT_ADDRESSES_DETAILS + cnat_base_msg_id);
+
+  pool_foreach (cpe, cpm->snat_policies_pool)
+    {
+    vl_api_cnat_snat_addresses_details_t *rmp;
+    rmp = vl_msg_api_alloc (sizeof (*rmp));
+    if (!rmp)
+	break;
+
+    rmp->_vl_msg_id = msg_id;
+    rmp->context = mp->context;
+    rmp->fwd_table_id4 = clib_host_to_net_u32 (
+      fib_table_get_table_id (cpe->fwd_fib_index4, FIB_PROTOCOL_IP4));
+    rmp->fwd_table_id6 = clib_host_to_net_u32 (
+      fib_table_get_table_id (cpe->fwd_fib_index6, FIB_PROTOCOL_IP6));
+    rmp->ret_table_id4 = clib_host_to_net_u32 (
+      fib_table_get_table_id (cpe->ret_fib_index4, FIB_PROTOCOL_IP4));
+    rmp->ret_table_id6 = clib_host_to_net_u32 (
+      fib_table_get_table_id (cpe->ret_fib_index6, FIB_PROTOCOL_IP6));
+    ip6_address_encode (&ip_addr_v6 (&cpe->snat_ip6.ce_ip), rmp->snat_ip6);
+    ip4_address_encode (&ip_addr_v4 (&cpe->snat_ip4.ce_ip), rmp->snat_ip4);
+    rmp->sw_if_index = clib_host_to_net_u32 (cpe->snat_ip6.ce_sw_if_index);
+    vl_api_send_msg (reg, (u8 *) rmp);
+    }
+}
+
+static void
+vl_api_cnat_set_snat_addresses_t_handler (vl_api_cnat_set_snat_addresses_t *mp)
 {
   vl_api_cnat_set_snat_addresses_reply_t *rmp;
   u32 sw_if_index = clib_net_to_host_u32 (mp->sw_if_index);
   ip4_address_t ip4;
   ip6_address_t ip6;
-  int rv = 0;
+  int rv;
 
   ip4_address_decode (mp->snat_ip4, &ip4);
   ip6_address_decode (mp->snat_ip6, &ip6);
 
-  cnat_set_snat (&ip4, &ip6, sw_if_index);
+  rv = cnat_set_snat (CNAT_FIB_TABLE, CNAT_FIB_TABLE, &ip4, 32, &ip6, 128,
+		      sw_if_index, CNAT_SNAT_POLICY_FLAG_NONE);
 
   REPLY_MACRO (VL_API_CNAT_SET_SNAT_ADDRESSES_REPLY);
 }
