@@ -414,6 +414,17 @@ typedef struct
       u32 required_thread_index;
     } snat;
 
+    /* Session */
+    struct
+    {
+      /* do not overlay w/ ip.adj_index[0,1] nor flow hash */
+      u32 pad[4];
+      u16 _pad;
+      u8 state;		   /* new flow / return / etc... */
+      u8 flags;		   /* session flags to set */
+      u32 generic_flow_id; /* unique identifier for the flow */
+    } session;
+
     u32 unused[6];
   };
 } vnet_buffer_opaque_t;
@@ -510,6 +521,12 @@ typedef struct
       u64 pad[1];
       u64 pg_replay_timestamp;
     };
+    struct
+    {
+      u32 generic_flow_id; /* unique identifier for the flow */
+      u8 state;		   /* new flow / return / etc... */
+      u8 flags;		   /* session flags to set */
+    } session;
     u32 unused[8];
   };
 } vnet_buffer_opaque2_t;
