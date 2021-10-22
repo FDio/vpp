@@ -625,10 +625,12 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 	ethernet_mac_address_generate (args->mac_addr.bytes);
 
       clib_memcpy (vif->mac_addr, args->mac_addr.bytes, 6);
-      vif->host_bridge = format (0, "%s%c", args->host_bridge, 0);
+      if (args->host_bridge)
+	vif->host_bridge = format (0, "%s%c", args->host_bridge, 0);
     }
   vif->host_if_name = format (0, "%s%c", host_if_name, 0);
-  vif->net_ns = format (0, "%s%c", args->host_namespace, 0);
+  if (args->host_namespace)
+    vif->net_ns = format (0, "%s%c", args->host_namespace, 0);
   vif->host_mtu_size = args->host_mtu_size;
   vif->tap_flags = args->tap_flags;
   clib_memcpy (vif->host_mac_addr, args->host_mac_addr.bytes, 6);
