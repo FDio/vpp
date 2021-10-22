@@ -35,7 +35,7 @@ enum cnat_endpoint_tuple_flags:u8
 {
   /* Dont translate said endpoint tuple but
    * still forward */
-  CNAT_EPT_NO_NAT = 1,
+  CNAT_EPT_NO_NAT = 2,
 };
 
 
@@ -61,6 +61,13 @@ typedef cnat_endpoint_tuple
   vl_api_cnat_endpoint_t dst_ep;
   vl_api_cnat_endpoint_t src_ep;
   u8 flags;
+};
+
+typedef cnat_5tuple
+{
+  vl_api_address_t addr[2];
+  u16 port[2];
+  vl_api_ip_proto_t ip_proto;
 };
 
 typedef cnat_translation
@@ -117,12 +124,9 @@ autoreply define cnat_session_purge
 
 typedef cnat_session
 {
-  vl_api_cnat_endpoint_t src;
-  vl_api_cnat_endpoint_t dst;
-  vl_api_cnat_endpoint_t new;
-  vl_api_ip_proto_t ip_proto;
-  u8 location;
-  f64 timestamp;
+  vl_api_cnat_5tuple_t tuple;
+  u32 ts_index;
+  u32 flags;
 };
 
 define cnat_session_details
@@ -157,6 +161,25 @@ define cnat_get_snat_addresses_reply
   u32 context;
   i32 retval;
   u32 id;
+  vl_api_ip4_address_t snat_ip4;
+  vl_api_ip6_address_t snat_ip6;
+  vl_api_interface_index_t sw_if_index;
+};
+
+define cnat_snat_addresses_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+define cnat_snat_addresses_details
+{
+  u32 context;
+  i32 retval;
+  u32 fwd_table_id4;
+  u32 fwd_table_id6;
+  u32 ret_table_id4;
+  u32 ret_table_id6;
   vl_api_ip4_address_t snat_ip4;
   vl_api_ip6_address_t snat_ip6;
   vl_api_interface_index_t sw_if_index;
