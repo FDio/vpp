@@ -717,15 +717,8 @@ lcp_nl_drain_messages (void)
   int err;
   nl_main_t *nm = &nl_main;
 
-  /* Read until there's an error. Unless the error is ENOBUFS, which means
-   * the kernel couldn't send a message due to socket buffer overflow.
-   * Continue reading when that happens.
-   *
-   * libnl translates both ENOBUFS and ENOMEM to NLE_NOMEM. So we need to
-   * check return status and errno to make sure we should keep going.
-   */
-  while ((err = nl_recvmsgs_default (nm->sk_route)) > -1 ||
-	 (err == -NLE_NOMEM && errno == ENOBUFS))
+  /* Read until there's an error */
+  while ((err = nl_recvmsgs_default (nm->sk_route)) > -1)
     ;
 
   /* If there was an error other then EAGAIN, signal process node */
