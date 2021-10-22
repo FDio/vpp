@@ -260,35 +260,39 @@ cnat_snat_policy_interface_enabled (u32 sw_if_index, ip_address_family_t af)
 }
 
 int
-cnat_snat_policy_none (vlib_buffer_t *b, cnat_session_t *session)
+cnat_snat_policy_none (vlib_buffer_t *b, ip_address_family_t af, ip4_header_t *ip4,
+		       ip6_header_t *ip6, ip_protocol_t iproto, udp_header_t *udp0)
 {
   /* srcNAT everything by default */
   return 1;
 }
 
 int
-cnat_snat_policy_if_pfx (vlib_buffer_t *b, cnat_session_t *session)
+cnat_snat_policy_if_pfx (vlib_buffer_t *b, ip_address_family_t af, ip4_header_t *ip4,
+			 ip6_header_t *ip6, ip_protocol_t iproto, udp_header_t *udp0)
 {
-  ip46_address_t *dst_addr = &session->key.cs_ip[VLIB_TX];
+  ip46_address_t dst_addr = { 0 };
   u32 in_if = vnet_buffer (b)->sw_if_index[VLIB_RX];
-  ip_address_family_t af = session->key.cs_af;
+
+  if (af == AF_IP4)
+    ip46_address_set_ip4 (&dst_addr, &ip4->dst_address);
+  else
+    ip46_address_set_ip6 (&dst_addr, &ip6->dst_address);
 
   /* source nat for outgoing connections */
   if (cnat_snat_policy_interface_enabled (in_if, af))
-    if (cnat_search_snat_prefix (dst_addr, af))
+    if (cnat_search_snat_prefix (&dst_addr, af))
       /* Destination is not in the prefixes that don't require snat */
       return 1;
   return 0;
 }
 
 int
-cnat_snat_policy_k8s (vlib_buffer_t *b, cnat_session_t *session)
+cnat_snat_policy_k8s (vlib_buffer_t *b, ip_address_family_t af, ip4_header_t *ip4,
+		      ip6_header_t *ip6, ip_protocol_t iproto, udp_header_t *udp0)
 {
   cnat_snat_policy_main_t *cpm = &cnat_snat_policy_main;
-  ip_address_family_t af = session->key.cs_af;
-
-  ip46_address_t *src_addr = &session->key.cs_ip[VLIB_RX];
-  ip46_address_t *dst_addr = &session->key.cs_ip[VLIB_TX];
+  ip46_address_t dst_addr = { 0 }, src_addr = { 0 };
   u32 in_if = vnet_buffer (b)->sw_if_index[VLIB_RX];
   u32 out_if = vnet_buffer (b)->sw_if_index[VLIB_TX];
 
@@ -300,9 +304,20 @@ cnat_snat_policy_k8s (vlib_buffer_t *b, cnat_session_t *session)
       return 0;
     }
 
+  if (af == AF_IP4)
+    {
+      ip46_address_set_ip4 (&src_addr, &ip4->src_address);
+      ip46_address_set_ip4 (&dst_addr, &ip4->dst_address);
+    }
+  else
+    {
+      ip46_address_set_ip6 (&src_addr, &ip6->src_address);
+      ip46_address_set_ip6 (&dst_addr, &ip6->dst_address);
+    }
+
   /* source nat for outgoing connections */
   if (cnat_snat_policy_interface_enabled (in_if, af))
-    if (cnat_search_snat_prefix (dst_addr, af))
+    if (cnat_search_snat_prefix (&dst_addr, af))
       /* Destination is not in the prefixes that don't require snat */
       return 1;
 
@@ -313,19 +328,15 @@ cnat_snat_policy_k8s (vlib_buffer_t *b, cnat_session_t *session)
       !clib_bitmap_get (cpm->interface_maps[CNAT_SNAT_IF_MAP_INCLUDE_POD],
 			out_if))
     {
-      if (AF_IP6 == af &&
-	  ip6_address_is_equal (&src_addr->ip6,
-				&ip_addr_v6 (&cpm->snat_ip6.ce_ip)))
+      if (AF_IP6 == af && ip6_address_is_equal (&src_addr.ip6, &ip_addr_v6 (&cpm->snat_ip6.ce_ip)))
 	return 0;
-      if (AF_IP4 == af &&
-	  ip4_address_is_equal (&src_addr->ip4,
-				&ip_addr_v4 (&cpm->snat_ip4.ce_ip)))
+      if (AF_IP4 == af && ip4_address_is_equal (&src_addr.ip4, &ip_addr_v4 (&cpm->snat_ip4.ce_ip)))
 	return 0;
       return 1;
     }
 
   /* handle the case where a container is connecting to itself via a service */
-  if (ip46_address_is_equal (src_addr, dst_addr))
+  if (ip46_address_is_equal (&src_addr, &dst_addr))
     return 1;
 
   return 0;

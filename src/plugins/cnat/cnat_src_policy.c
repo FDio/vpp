@@ -18,49 +18,16 @@ cnat_register_vip_src_policy (cnat_vip_source_policy_t fp)
 }
 
 cnat_source_policy_errors_t
-cnat_vip_default_source_policy (vlib_main_t * vm,
-				vlib_buffer_t * b,
-				cnat_session_t * session,
-				u32 * rsession_flags,
-				const cnat_translation_t * ct,
-				cnat_node_ctx_t * ctx)
+cnat_vip_default_source_policy (ip_protocol_t iproto, u16 *sport)
 {
-  ip_protocol_t iproto;
-  udp_header_t *udp0;
-  ip4_header_t *ip4;
-  ip6_header_t *ip6;
-
-  if (AF_IP4 == ctx->af)
-    {
-      ip4 = vlib_buffer_get_current (b);
-      iproto = ip4->protocol;
-      udp0 = (udp_header_t *) (ip4 + 1);
-    }
-  else
-    {
-      ip6 = vlib_buffer_get_current (b);
-      iproto = ip6->protocol;
-      udp0 = (udp_header_t *) (ip6 + 1);
-    }
-
   int rv = 0;
-  if (!session->value.cs_port[VLIB_RX])
-    {
-      u16 sport;
-      sport = udp0->src_port;
-      /* Allocate a port only if asked and if we actually sNATed */
-      if ((ct->flags & CNAT_TR_FLAG_ALLOCATE_PORT) &&
-	  (*rsession_flags & CNAT_SESSION_FLAG_HAS_SNAT))
-	{
-	  sport = 0;		/* force allocation */
-	  session->value.flags |= CNAT_SESSION_FLAG_ALLOC_PORT;
-	  rv = cnat_allocate_port (&sport, iproto);
-	  if (rv)
-	    return CNAT_SOURCE_ERROR_EXHAUSTED_PORTS;
-	}
-
-      session->value.cs_port[VLIB_RX] = sport;
-    }
+  {
+    /* Allocate a port only if asked and if we actually sNATed */
+    *sport = 0; /* force allocation */
+    rv = cnat_allocate_port (sport, iproto);
+    if (rv)
+      return CNAT_SOURCE_ERROR_EXHAUSTED_PORTS;
+  }
   return 0;
 }
 
