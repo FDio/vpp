@@ -67,6 +67,11 @@ typedef enum __attribute__ ((__packed__)) cnat_translation_flag_t_
   CNAT_TR_FLAG_STACKED = (1 << 1),
   /* Do not create a return session */
   CNAT_TR_FLAG_NO_RETURN_SESSION = (1 << 2),
+  /* Do not create a client */
+  CNAT_TR_FLAG_NO_CLIENT = (1 << 3),
+
+  /* IP already present in the FIB, need to interpose dpo */
+  CNAT_FLAG_EXCLUSIVE = (1 << 4),
 } cnat_translation_flag_t;
 
 typedef enum
