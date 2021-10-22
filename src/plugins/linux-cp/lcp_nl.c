@@ -701,13 +701,6 @@ nl_route_cb (struct nl_msg *msg, void *arg)
   msg_info->msg = msg;
   nlmsg_get (msg);
 
-  /* notify process node if netlink notification processing is active */
-  if (nm->nl_status == NL_STATUS_NOTIF_PROC)
-    {
-      vlib_process_signal_event (vlib_get_main (), nl_route_process_node.index,
-				 NL_EVENT_READ, 0);
-    }
-
   return 0;
 }
 
@@ -725,6 +718,15 @@ lcp_nl_drain_messages (void)
   if (err != -NLE_AGAIN)
     vlib_process_signal_event (vlib_get_main (), nl_route_process_node.index,
 			       NL_EVENT_ERR, 0);
+  else
+    {
+      /* If netlink notification processing is active, signal process node
+       * there were notifications read
+       */
+      if (nm->nl_status == NL_STATUS_NOTIF_PROC)
+	vlib_process_signal_event (
+	  vlib_get_main (), nl_route_process_node.index, NL_EVENT_READ, 0);
+    }
 
   return err;
 }
