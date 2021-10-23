@@ -73,6 +73,30 @@
     },
     {
       "key": {
+        "uuid": "bcf29eab_c90115fb",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 2576
+      },
+      "writtenOn": "2021-10-23T07:23:50Z",
+      "side": 1,
+      "message": "OK, see what you\u0027re asking now and you\u0027re right. The code is standard/rfc compliant. I can remove the kernel acknowledging if it is confusing.",
+      "parentUuid": "a5235da6_3b5cfd86",
+      "range": {
+        "startLine": 10,
+        "startChar": 54,
+        "endLine": 13,
+        "endChar": 0
+      },
+      "revId": "04bec504f125e51debfa2dca6b358d2eb7d137b0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "1b26e428_8abefcd8",
         "filename": "src/vnet/tcp/tcp_input.c",
         "patchSetId": 3
