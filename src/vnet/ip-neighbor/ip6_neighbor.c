@@ -214,7 +214,7 @@ ip6_discover_neighbor_inline (vlib_main_t * vm,
 	   * Choose source address based on destination lookup
 	   * adjacency.
 	   */
-	  if (!fib_sas6_get (sw_if_index0, &ip0->dst_address, &src) &&
+	  if (!fib_sas6_get (sw_if_index0, &ip0->dst_address, &src) ||
 	      !ip6_sas_by_sw_if_index (sw_if_index0, &ip0->dst_address, &src))
 	    {
 	      /* There is no address on the interface */
