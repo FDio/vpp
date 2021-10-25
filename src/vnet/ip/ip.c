@@ -18,6 +18,20 @@
 
 u32 ip_flow_hash_router_id;
 
+ethernet_type_t
+ip_address_family_to_ether_type (ip_address_family_t af)
+{
+  switch (af)
+    {
+    case AF_IP4:
+      return (ETHERNET_TYPE_IP4);
+    case AF_IP6:
+      return (ETHERNET_TYPE_IP6);
+    }
+  ASSERT (0);
+  return (ETHERNET_TYPE_IP4);
+}
+
 u8
 ip_is_zero (ip46_address_t * ip46_address, u8 is_ip4)
 {

@@ -287,6 +287,8 @@ void ip_feature_enable_disable (ip_address_family_t af,
 				void *feature_config,
 				u32 n_feature_config_bytes);
 
+ethernet_type_t ip_address_family_to_ether_type (ip_address_family_t af);
+
 always_inline u32 vlib_buffer_get_ip4_fib_index (vlib_buffer_t * b);
 always_inline u32 vlib_buffer_get_ip6_fib_index (vlib_buffer_t * b);
 always_inline u32

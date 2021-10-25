@@ -344,23 +344,24 @@ ip_prefix_copy (void *dst, void *src)
 }
 
 int
-ip_prefix_cmp (ip_prefix_t * p1, ip_prefix_t * p2)
+ip_prefix_cmp (const ip_prefix_t *ipp1, const ip_prefix_t *ipp2)
 {
+  ip_prefix_t p1 = *ipp1, p2 = *ipp2;
   int cmp = 0;
 
-  ip_prefix_normalize (p1);
-  ip_prefix_normalize (p2);
+  ip_prefix_normalize (&p1);
+  ip_prefix_normalize (&p2);
 
-  cmp = ip_address_cmp (&ip_prefix_addr (p1), &ip_prefix_addr (p2));
+  cmp = ip_address_cmp (&ip_prefix_addr (&p1), &ip_prefix_addr (&p2));
   if (cmp == 0)
     {
-      if (ip_prefix_len (p1) < ip_prefix_len (p2))
+      if (ip_prefix_len (&p1) < ip_prefix_len (&p2))
 	{
 	  cmp = 1;
 	}
       else
 	{
-	  if (ip_prefix_len (p1) > ip_prefix_len (p2))
+	  if (ip_prefix_len (&p1) > ip_prefix_len (&p2))
 	    cmp = 2;
 	}
     }
