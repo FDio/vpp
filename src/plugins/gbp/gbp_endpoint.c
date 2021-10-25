@@ -332,6 +332,8 @@ static void
 gbp_endpoint_loc_destroy (gbp_endpoint_loc_t * gel)
 {
   gbp_endpoint_group_unlock (gel->gel_epg);
+  /* remove interface from the port db */
+  gbp_endpoint_add_itf (gbp_itf_get_sw_if_index (gel->gel_itf), ~0);
   gbp_itf_unlock (&gel->gel_itf);
 }
 
