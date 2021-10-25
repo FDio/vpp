@@ -126,11 +126,13 @@ typedef struct ip_prefix
 #define ip_prefix_v4(_a) ip_addr_v4(&ip_prefix_addr(_a))
 #define ip_prefix_v6(_a) ip_addr_v6(&ip_prefix_addr(_a))
 
-extern int ip_prefix_cmp (ip_prefix_t * p1, ip_prefix_t * p2);
+extern int ip_prefix_cmp (const ip_prefix_t *p1, const ip_prefix_t *p2);
 extern void ip_prefix_normalize (ip_prefix_t * a);
 
 extern void ip_address_to_fib_prefix (const ip_address_t * addr,
 				      fib_prefix_t * prefix);
+extern void ip_address_to_prefix (const ip_address_t *addr,
+				  ip_prefix_t *prefix);
 extern void ip_prefix_to_fib_prefix (const ip_prefix_t * ipp,
 				     fib_prefix_t * fibp);
 extern u8 *format_ip_prefix (u8 * s, va_list * args);
