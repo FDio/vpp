@@ -663,7 +663,7 @@ ip_in_out_acl_inline_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  t->sw_if_index =
 	    ~0 == way ? 0 : vnet_buffer (b[0])->sw_if_index[way];
 	  t->next_index = next0;
-	  t->table_index = t0 ? t0 - tables : ~0;
+	  t->table_index = t0 - tables;
 	  t->offset = (e0 && t0) ? vnet_classify_get_offset (t0, e0) : ~0;
 	}
 
