@@ -294,22 +294,17 @@ fib_api_path_decode (vl_api_fib_path_t *in,
 
             if (!(out->frp_flags & FIB_ROUTE_PATH_BIER_IMP))
             {
-                fib_api_next_hop_decode(in, &out->frp_addr);
+                index_t bdti;
 
-                if (ip46_address_is_zero(&out->frp_addr))
+                bdti = bier_disp_table_find(ntohl(in->table_id));
+
+                if (INDEX_INVALID != bdti)
                 {
-                    index_t bdti;
-
-                    bdti = bier_disp_table_find(ntohl(in->table_id));
-
-                    if (INDEX_INVALID != bdti)
-                    {
-                        out->frp_fib_index = bdti;
-                    }
-                    else
-                    {
-                        return (VNET_API_ERROR_NO_SUCH_FIB);
-                    }
+                    out->frp_fib_index = bdti;
+                }
+                else
+                {
+                    return (VNET_API_ERROR_NO_SUCH_FIB);
                 }
             }
             break;
