@@ -46,6 +46,7 @@ vl_api_af_packet_create_t_handler (vl_api_af_packet_create_t * mp)
   vec_add1 (arg->host_if_name, 0);
 
   arg->hw_addr = mp->use_random_hw_addr ? 0 : mp->hw_addr;
+  arg->mode = AF_PACKET_IF_MODE_ETHERNET;
   rv = af_packet_create_if (arg);
 
   vec_free (arg->host_if_name);
@@ -72,6 +73,7 @@ vl_api_af_packet_create_v2_t_handler (vl_api_af_packet_create_v2_t *mp)
   arg->rx_frames_per_block = clib_net_to_host_u32 (mp->rx_frames_per_block);
   arg->tx_frames_per_block = clib_net_to_host_u32 (mp->tx_frames_per_block);
   arg->hw_addr = mp->use_random_hw_addr ? 0 : mp->hw_addr;
+  arg->mode = AF_PACKET_IF_MODE_ETHERNET;
 
   if (mp->num_rx_queues > 1)
     {
