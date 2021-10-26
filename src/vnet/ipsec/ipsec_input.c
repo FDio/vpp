@@ -331,6 +331,11 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	      p0 = 0;
 	      pi0 = ~0;
 	    };
+
+	  /* Drop by default if no match on PROTECT, BYPASS or DISCARD */
+	  ipsec_unprocessed += 1;
+	  next[0] = IPSEC_INPUT_NEXT_DROP;
+
 	trace0:
 	  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE) &&
 	      PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
@@ -427,6 +432,11 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	      p0 = 0;
 	      pi0 = ~0;
 	    };
+
+	  /* Drop by default if no match on PROTECT, BYPASS or DISCARD */
+	  ipsec_unprocessed += 1;
+	  next[0] = IPSEC_INPUT_NEXT_DROP;
+
 	trace1:
 	  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE) &&
 	      PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
@@ -581,6 +591,8 @@ VLIB_NODE_FN (ipsec6_input_node) (vlib_main_t * vm,
 	      else
 		{
 		  pi0 = ~0;
+		  ipsec_unprocessed += 1;
+		  next0 = IPSEC_INPUT_NEXT_DROP;
 		}
 	    }
 	  else if (ip0->protocol == IP_PROTOCOL_IPSEC_AH)
@@ -608,6 +620,8 @@ VLIB_NODE_FN (ipsec6_input_node) (vlib_main_t * vm,
 	      else
 		{
 		  pi0 = ~0;
+		  ipsec_unprocessed += 1;
+		  next0 = IPSEC_INPUT_NEXT_DROP;
 		}
 	    }
 	  else

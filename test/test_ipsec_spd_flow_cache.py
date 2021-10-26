@@ -306,6 +306,13 @@ class IPSec4SpdTestCaseMultiple(SpdFlowCacheOutbound):
             1, self.pg2, self.pg0, socket.IPPROTO_UDP,
             is_out=1, priority=10, policy_type="discard")
 
+        # interfaces bound to an SPD, will by default drop inbound
+        # traffic with no matching policies. add catch-all inbound
+        # bypass rule to SPD:
+        self.spd_add_rem_policy(  # inbound, all interfaces
+            1, None, None, socket.IPPROTO_UDP, is_out=0, priority=10,
+            policy_type="bypass", all_ips=True)
+
         # check flow cache is empty (0 active elements) before sending traffic
         self.verify_num_outbound_flow_cache_entries(0)
 
@@ -389,6 +396,13 @@ class IPSec4SpdTestCaseOverwriteStale(SpdFlowCacheOutbound):
         policy_2 = self.spd_add_rem_policy(  # outbound
             1, self.pg2, self.pg0, socket.IPPROTO_UDP,
             is_out=1, priority=10, policy_type="discard")
+
+        # interfaces bound to an SPD, will by default drop inbound
+        # traffic with no matching policies. add catch-all inbound
+        # bypass rule to SPD:
+        self.spd_add_rem_policy(  # inbound, all interfaces
+            1, None, None, socket.IPPROTO_UDP, is_out=0, priority=10,
+            policy_type="bypass", all_ips=True)
 
         # check flow cache is empty (0 active elements) before sending traffic
         self.verify_num_outbound_flow_cache_entries(0)
@@ -526,6 +540,13 @@ class IPSec4SpdTestCaseCollision(SpdFlowCacheOutbound):
         policy_1 = self.spd_add_rem_policy(  # outbound, priority 10
             1, self.pg2, self.pg0, socket.IPPROTO_UDP,
             is_out=1, priority=10, policy_type="bypass")
+
+        # interfaces bound to an SPD, will by default drop inbound
+        # traffic with no matching policies. add catch-all inbound
+        # bypass rule to SPD:
+        self.spd_add_rem_policy(  # inbound, all interfaces
+            1, None, None, socket.IPPROTO_UDP, is_out=0, priority=10,
+            policy_type="bypass", all_ips=True)
 
         # check flow cache is empty (0 active elements) before sending traffic
         self.verify_num_outbound_flow_cache_entries(0)
