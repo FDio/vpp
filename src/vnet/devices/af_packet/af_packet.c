@@ -381,7 +381,7 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
   if (tm->n_vlib_mains > 1)
     clib_spinlock_init (&apif->lockp);
 
-  if (apif->mode == AF_PACKET_IF_MODE_ETHERNET)
+  if (apif->mode != AF_PACKET_IF_MODE_IP)
     {
       /*use configured or generate random MAC address */
       if (arg->hw_addr)
@@ -518,7 +518,7 @@ af_packet_delete_if (u8 *host_if_name)
 
   mhash_unset (&apm->if_index_by_host_if_name, host_if_name, &if_index);
 
-  if (apif->mode == AF_PACKET_IF_MODE_ETHERNET)
+  if (apif->mode != AF_PACKET_IF_MODE_IP)
     ethernet_delete_interface (vnm, apif->hw_if_index);
   else
     vnet_delete_hw_interface (vnm, apif->hw_if_index);
