@@ -365,10 +365,22 @@ vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_alg_t alg, u8 * data,
   vnet_crypto_engine_t *engine;
   vnet_crypto_key_t *key;
 
+  u8 need_barrier_sync = 0;
+
   if (!vnet_crypto_key_len_check (alg, length))
     return ~0;
 
+  pool_get_aligned_will_expand (cm->keys, need_barrier_sync,
+				CLIB_CACHE_LINE_BYTES);
+  /* If the cm->keys will expand, stop the parade. */
+  if (need_barrier_sync)
+    vlib_worker_thread_barrier_sync (vm);
+
   pool_get_zero (cm->keys, key);
+
+  if (need_barrier_sync)
+    vlib_worker_thread_barrier_release (vm);
+
   index = key - cm->keys;
   key->type = VNET_CRYPTO_KEY_TYPE_DATA;
   key->alg = alg;
