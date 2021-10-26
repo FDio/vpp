@@ -70,7 +70,7 @@ perfmon_reset (vlib_main_t *vm)
       vec_free (tr->node_stats);
       for (int j = 0; j < PERF_MAX_EVENTS; j++)
 	if (tr->mmap_pages[j])
-	  munmap (tr->mmap_pages, page_size);
+	  munmap (tr->mmap_pages[j], page_size);
     }
   vec_free (pm->thread_runtimes);
 
