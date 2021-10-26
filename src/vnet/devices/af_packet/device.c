@@ -336,7 +336,7 @@ static clib_error_t *af_packet_set_mac_address_function
   af_packet_main_t *apm = &af_packet_main;
   af_packet_if_t *apif =
     pool_elt_at_index (apm->interfaces, hi->dev_instance);
-  int rv, fd = socket (AF_UNIX, SOCK_DGRAM, 0);
+  int rv, fd;
   struct ifreq ifr;
 
   if (apif->mode == AF_PACKET_IF_MODE_IP)
@@ -347,6 +347,7 @@ static clib_error_t *af_packet_set_mac_address_function
 				" MAC update failed, interface is in IP mode");
     }
 
+  fd = socket (AF_UNIX, SOCK_DGRAM, 0);
   if (0 > fd)
     {
       vlib_log_warn (apm->log_class, "af_packet_%s could not open socket",
