@@ -22,8 +22,8 @@
 
 typedef enum
 {
-  AF_PACKET_IF_MODE_ETHERNET = 1,
-  AF_PACKET_IF_MODE_IP = 2
+  AF_PACKET_IF_MODE_ETHERNET = 0,
+  AF_PACKET_IF_MODE_IP = 1
 } af_packet_if_mode_t;
 
 typedef struct
