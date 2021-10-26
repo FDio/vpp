@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e44fb2dc_888ed86a",
+        "filename": "extras/libmemif/src/libmemif.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 774,
+      "author": {
+        "id": 2585
+      },
+      "writtenOn": "2021-10-26T22:20:50Z",
+      "side": 1,
+      "message": "As per offline discussion, added newline was created by the linter tool(s) in use. I believe this is due to a rule for ISO/IEC 9899:1999 5.1.1.2(2).",
+      "revId": "7f9756a1d2bdc0e7201e5fc078c72019a4529235",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
