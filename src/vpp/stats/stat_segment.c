@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fnmatch.h>
 #include <vppinfra/mem.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
@@ -554,14 +555,31 @@ show_stat_segment_command_fn (vlib_main_t * vm,
 			      unformat_input_t * input,
 			      vlib_cli_command_t * cmd)
 {
+  unformat_input_t _line_input = {}, *line_input = &_line_input;
   stat_segment_main_t *sm = &stat_segment_main;
   stat_segment_directory_entry_t *show_data;
+  clib_error_t *error = 0;
   int i;
 
   int verbose = 0;
+  u8 *match = 0;
 
-  if (unformat (input, "verbose"))
-    verbose = 1;
+  if (unformat_user (input, unformat_line_input, line_input))
+    {
+      while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+	{
+	  if (unformat (line_input, "verbose"))
+	    verbose = 1;
+	  else if (unformat (line_input, "match %s", &match))
+	    ;
+	  else
+	    {
+	      error = clib_error_return (0, "parse error: '%U'",
+					 format_unformat_error, line_input);
+	      goto done;
+	    }
+	}
+    }
 
   /* Lock even as reader, as this command doesn't handle epoch changes */
   vlib_stat_segment_lock ();
@@ -579,8 +597,11 @@ show_stat_segment_command_fn (vlib_main_t * vm,
       if (ep->type == STAT_DIR_TYPE_EMPTY)
 	continue;
 
-      vlib_cli_output (vm, "%-100U", format_stat_dir_entry,
-		       vec_elt_at_index (show_data, i));
+      if (match &&
+	  fnmatch ((void *) match, (void *) ep->name, 0) == FNM_NOMATCH)
+	continue;
+
+      vlib_cli_output (vm, "%-100U", format_stat_dir_entry, ep);
     }
 
   if (verbose)
@@ -590,14 +611,16 @@ show_stat_segment_command_fn (vlib_main_t * vm,
 		       0 /* verbose */ );
     }
 
-  return 0;
+done:
+  vec_free (match);
+  unformat_free (line_input);
+  return error;
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_stat_segment_command, static) =
-{
+VLIB_CLI_COMMAND (show_stat_segment_command, static) = {
   .path = "show statistics segment",
-  .short_help = "show statistics segment [verbose]",
+  .short_help = "show statistics segment [verbose] [match <glob>]",
   .function = show_stat_segment_command_fn,
 };
 /* *INDENT-ON* */
