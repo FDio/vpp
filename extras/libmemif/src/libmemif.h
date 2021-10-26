@@ -477,12 +477,12 @@ typedef struct
 
     \return ((MEMIF_VERSION_MAJOR << 8) | MEMIF_VERSION_MINOR)
 */
-uint16_t memif_get_version ();
+uint16_t memif_get_version (void);
 
 /** \brief Get memif version as string
     \return major.minor
 */
-const char *memif_get_version_str ();
+const char *memif_get_version_str (void);
 
 /** \brief Memif get queue event file descriptor
     @param conn - memif connection handle
