@@ -112,7 +112,7 @@ fib_sas6_get (u32 sw_if_index,
     /*
      * if the dst is v6 and link local, use the source link local
      */
-    if (ip6_address_is_link_local_unicast (dst))
+    if (dst && ip6_address_is_link_local_unicast (dst))
     {
         const ip6_address_t *ll = ip6_get_link_local_address (sw_if_index);
         if (NULL == ll)
