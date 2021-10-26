@@ -740,8 +740,6 @@ sr_policy_del (ip6_address_t * bsid, u32 index)
   else
     {
       sr_policy = pool_elt_at_index (sm->sr_policies, index);
-      if (!sr_policy)
-	return -1;
     }
 
   /* Remove BindingSID FIB entry */
@@ -850,8 +848,6 @@ sr_policy_mod (ip6_address_t * bsid, u32 index, u32 fib_table,
   else
     {
       sr_policy = pool_elt_at_index (sm->sr_policies, index);
-      if (!sr_policy)
-	return -1;
     }
 
   if (operation == 1)		/* Add SR List to an existing SR policy */

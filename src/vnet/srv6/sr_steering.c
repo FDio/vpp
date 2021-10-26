@@ -184,9 +184,6 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
 	  else
 	    sr_policy = pool_elt_at_index (sm->sr_policies, sr_policy_index);
 
-	  if (!sr_policy)
-	    return -2;
-
 	  steer_pl->sr_policy = sr_policy - sm->sr_policies;
 
 	  /* Remove old FIB/hw redirection and create a new one */
