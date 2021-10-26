@@ -413,12 +413,9 @@ icmp6_router_solicitation (vlib_main_t * vm,
 
 		  radv_info = ip6_ra_get_itf (sw_if_index0);
 
-		  error0 = ((!radv_info) ?
-			    ICMP6_ERROR_ROUTER_SOLICITATION_RADV_NOT_CONFIG :
-			    error0);
-		  error0 = radv_info->send_radv == 0 ?
-			     ICMP6_ERROR_ROUTER_SOLICITATION_RADV_NOT_CONFIG :
-			     error0;
+		  error0 = ((!radv_info || 0 == radv_info->send_radv) ?
+			      ICMP6_ERROR_ROUTER_SOLICITATION_RADV_NOT_CONFIG :
+			      error0);
 		  if (error0 == ICMP6_ERROR_NONE)
 		    {
 		      f64 now = vlib_time_now (vm);
