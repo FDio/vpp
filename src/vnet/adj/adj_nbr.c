@@ -532,7 +532,7 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
 
 	fib_walk_sync(FIB_NODE_TYPE_ADJ, walk_ai, &bw_ctx);
 	/*
-	 * fib_walk_sync may allocate a new adjacency and potentially cuase a
+	 * fib_walk_sync may allocate a new adjacency and potentially cause a
 	 * realloc for adj_pool. When that happens, adj pointer is no longer
 	 * valid here. We refresh the adj pointer accordingly.
 	 */
@@ -793,9 +793,15 @@ adj_nbr_interface_state_change_one (adj_index_t ai,
     adj_lock (ai);
 
     adj = adj_get(ai);
-
     adj->ia_flags |= ADJ_FLAG_SYNC_WALK_ACTIVE;
     fib_walk_sync(FIB_NODE_TYPE_ADJ, ai, &bw_ctx);
+
+    /*
+     * fib_walk_sync may allocate a new adjacency and potentially cause a
+     * realloc for adj_pool. When that happens, adj pointer is no longer
+     * valid here. We refresh the adj pointer accordingly.
+     */
+    adj = adj_get(ai);
     adj->ia_flags &= ~ADJ_FLAG_SYNC_WALK_ACTIVE;
 
     adj_unlock (ai);
@@ -903,9 +909,15 @@ adj_nbr_interface_delete_one (adj_index_t ai,
     adj_lock(ai);
 
     adj = adj_get(ai);
-
     adj->ia_flags |= ADJ_FLAG_SYNC_WALK_ACTIVE;
     fib_walk_sync(FIB_NODE_TYPE_ADJ, ai, &bw_ctx);
+
+    /*
+     * fib_walk_sync may allocate a new adjacency and potentially cause a
+     * realloc for adj_pool. When that happens, adj pointer is no longer
+     * valid here. We refresh the adj pointer accordingly.
+     */
+    adj = adj_get(ai);
     adj->ia_flags &= ~ADJ_FLAG_SYNC_WALK_ACTIVE;
 
     adj_unlock(ai);
