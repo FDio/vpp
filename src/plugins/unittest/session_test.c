@@ -290,11 +290,11 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
   /*
    * Create the loopbacks
    */
-  intf_addr[0].as_u32 = clib_host_to_net_u32 (0x01010101),
-    session_create_lookpback (0, &sw_if_index[0], &intf_addr[0]);
+  intf_addr[0].as_u32 = clib_host_to_net_u32 (0x01010101);
+  session_create_lookpback (0, &sw_if_index[0], &intf_addr[0]);
 
-  intf_addr[1].as_u32 = clib_host_to_net_u32 (0x02020202),
-    session_create_lookpback (1, &sw_if_index[1], &intf_addr[1]);
+  intf_addr[1].as_u32 = clib_host_to_net_u32 (0x02020202);
+  session_create_lookpback (1, &sw_if_index[1], &intf_addr[1]);
 
   session_add_del_route_via_lookup_in_table (0, 1, &intf_addr[1], 32,
 					     1 /* is_add */ );
