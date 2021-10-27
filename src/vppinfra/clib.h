@@ -124,6 +124,13 @@
 #define PREDICT_FALSE(x) __builtin_expect((x),0)
 #define PREDICT_TRUE(x) __builtin_expect((x),1)
 #define COMPILE_TIME_CONST(x) __builtin_constant_p (x)
+#define CLIB_ASSUME(x)                                                        \
+  do                                                                          \
+    {                                                                         \
+      if (!(x))                                                               \
+	__builtin_unreachable ();                                             \
+    }                                                                         \
+  while (0)
 
 /*
  * Compiler barrier
