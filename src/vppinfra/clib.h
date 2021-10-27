@@ -251,6 +251,9 @@ min_log2_u64 (u64 x)
 always_inline uword
 pow2_mask (uword x)
 {
+#ifdef __BMI2__
+  return _bzhi_u64 (-1ULL, x);
+#endif
   return ((uword) 1 << x) - (uword) 1;
 }
 
