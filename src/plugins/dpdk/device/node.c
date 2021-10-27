@@ -23,7 +23,6 @@
 #include <dpdk/device/dpdk.h>
 #include <vnet/classify/vnet_classify.h>
 #include <vnet/mpls/packet.h>
-#include <vnet/handoff.h>
 #include <vnet/devices/devices.h>
 #include <vnet/interface/rx_queue_funcs.h>
 #include <vnet/feature/feature.h>

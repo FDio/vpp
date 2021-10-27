@@ -56,7 +56,6 @@ list(APPEND VNET_HEADERS
   devices/netlink.h
   flow/flow.h
   global_funcs.h
-  handoff.h
   interface/rx_queue_funcs.h
   interface/tx_queue_funcs.h
   interface.h
@@ -889,6 +888,7 @@ list(APPEND VNET_SOURCES
   hash/hash.c
   hash/cli.c
   hash/crc32_5tuple.c
+  hash/crc32_handoff_eth.c
 )
 
 list(APPEND VNET_HEADERS

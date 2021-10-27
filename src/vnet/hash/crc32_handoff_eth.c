@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2021 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -13,14 +13,13 @@
  * limitations under the License.
  */
 
-#ifndef included_vnet_handoff_h
-#define included_vnet_handoff_h
-
 #include <vlib/vlib.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/hash/hash.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/mpls/packet.h>
+#include <vppinfra/crc32.h>
 
 static inline u64
 ipv4_get_key (ip4_header_t * ip)
@@ -235,7 +234,103 @@ eth_get_key (ethernet_header_t * h0)
   return hash_key;
 }
 
-#endif /* included_vnet_handoff_h */
+void
+handoff_eth_crc32c_func (void **p, u32 *hash, u32 n_packets)
+{
+  u32 n_left_from = n_packets;
+
+  while (n_left_from >= 8)
+    {
+      u64 key[4] = {};
+
+      clib_prefetch_load (p[4]);
+      clib_prefetch_load (p[5]);
+      clib_prefetch_load (p[6]);
+      clib_prefetch_load (p[7]);
+
+      key[0] = eth_get_key ((ethernet_header_t *) p[0]);
+      key[1] = eth_get_key ((ethernet_header_t *) p[1]);
+      key[2] = eth_get_key ((ethernet_header_t *) p[2]);
+      key[3] = eth_get_key ((ethernet_header_t *) p[3]);
+
+      hash[0] = clib_crc32c ((u8 *) &key[0], sizeof (key[0]));
+      hash[1] = clib_crc32c ((u8 *) &key[1], sizeof (key[1]));
+      hash[2] = clib_crc32c ((u8 *) &key[2], sizeof (key[2]));
+      hash[3] = clib_crc32c ((u8 *) &key[3], sizeof (key[3]));
+
+      hash += 4;
+      n_left_from -= 4;
+      p += 4;
+    }
+
+  while (n_left_from > 0)
+    {
+      u64 key;
+
+      key = eth_get_key ((ethernet_header_t *) p[0]);
+      hash[0] = clib_crc32c ((u8 *) &key, sizeof (key));
+
+      hash += 1;
+      n_left_from -= 1;
+      p += 1;
+    }
+}
+
+VNET_REGISTER_HASH_FUNCTION (handoff_eth_crc32c, static) = {
+  .name = "handoff-eth-crc32c",
+  .description = "Ethernet/IPv4/IPv6/MPLS headers",
+  .priority = 2,
+  .function[VNET_HASH_FN_TYPE_ETHERNET] = handoff_eth_crc32c_func,
+};
+
+void
+handoff_eth_sym_crc32c_func (void **p, u32 *hash, u32 n_packets)
+{
+  u32 n_left_from = n_packets;
+
+  while (n_left_from >= 8)
+    {
+      u64 key[4] = {};
+
+      clib_prefetch_load (p[4]);
+      clib_prefetch_load (p[5]);
+      clib_prefetch_load (p[6]);
+      clib_prefetch_load (p[7]);
+
+      key[0] = eth_get_sym_key ((ethernet_header_t *) p[0]);
+      key[1] = eth_get_sym_key ((ethernet_header_t *) p[1]);
+      key[2] = eth_get_sym_key ((ethernet_header_t *) p[2]);
+      key[3] = eth_get_sym_key ((ethernet_header_t *) p[3]);
+
+      hash[0] = clib_crc32c ((u8 *) &key[0], sizeof (key[0]));
+      hash[1] = clib_crc32c ((u8 *) &key[1], sizeof (key[1]));
+      hash[2] = clib_crc32c ((u8 *) &key[2], sizeof (key[2]));
+      hash[3] = clib_crc32c ((u8 *) &key[3], sizeof (key[3]));
+
+      hash += 4;
+      n_left_from -= 4;
+      p += 4;
+    }
+
+  while (n_left_from > 0)
+    {
+      u64 key;
+
+      key = eth_get_sym_key ((ethernet_header_t *) p[0]);
+      hash[0] = clib_crc32c ((u8 *) &key, sizeof (key));
+
+      hash += 1;
+      n_left_from -= 1;
+      p += 1;
+    }
+}
+
+VNET_REGISTER_HASH_FUNCTION (handoff_eth_sym_crc32c, static) = {
+  .name = "handoff-eth-sym-crc32c",
+  .description = "Ethernet/IPv4/IPv6/MPLS headers Symmetric",
+  .priority = 1,
+  .function[VNET_HASH_FN_TYPE_ETHERNET] = handoff_eth_sym_crc32c_func,
+};
 
 /*
  * fd.io coding-style-patch-verification: ON
