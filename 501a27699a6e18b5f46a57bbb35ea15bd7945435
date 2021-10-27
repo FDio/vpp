@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ad1cb1e5_1c53c63f",
+        "filename": "src/vnet/devices/af_packet/af_packet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2021-10-27T13:40:28Z",
+      "side": 1,
+      "message": "Please don\u0027t change them! \nenum value AF_PACKET_IF_MODE_ETHERNET 0 doesn\u0027t make any sense.\nSecondly, passing if (AF_PACKET_IF_MODE_ETHERNET) will fail.",
+      "revId": "501a27699a6e18b5f46a57bbb35ea15bd7945435",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
