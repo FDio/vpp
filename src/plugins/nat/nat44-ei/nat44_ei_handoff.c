@@ -15,7 +15,6 @@
 
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
-#include <vnet/handoff.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vppinfra/error.h>
 
