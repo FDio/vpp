@@ -66,18 +66,22 @@ extern void _clib_error (int code,
 			 char *function_name,
 			 uword line_number, char *format, ...);
 
-#define ASSERT(truth)					\
-do {							\
-  if (CLIB_ASSERT_ENABLE && ! (truth))			\
-    {							\
-      _clib_error (CLIB_ERROR_ABORT, 0, 0,		\
-		   "%s:%d (%s) assertion `%s' fails",	\
-		   __FILE__,				\
-		   (uword) __LINE__,			\
-		   clib_error_function,			\
-		   # truth);				\
-    }							\
-} while (0)
+#define ASSERT(truth)                                                         \
+  do                                                                          \
+    {                                                                         \
+      if (CLIB_ASSERT_ENABLE)                                                 \
+	{                                                                     \
+	  if (!(truth))                                                       \
+	    {                                                                 \
+	      _clib_error (CLIB_ERROR_ABORT, 0, 0,                            \
+			   "%s:%d (%s) assertion `%s' fails", __FILE__,       \
+			   (uword) __LINE__, clib_error_function, #truth);    \
+	    }                                                                 \
+	}                                                                     \
+      else                                                                    \
+	CLIB_ASSUME (truth);                                                  \
+    }                                                                         \
+  while (0)
 
 /*
  * This version always generates code, and has a Coverity-specific
