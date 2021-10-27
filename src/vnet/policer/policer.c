@@ -737,8 +737,16 @@ show_policer_command_fn (vlib_main_t * vm,
 	templ = pool_elt_at_index (pm->policer_templates, pool_index);
 	vlib_cli_output (vm, "Name \"%s\" %U ", name, format_policer_config,
 			 config);
-	vlib_cli_output (vm, "Template %U", format_policer_instance, templ,
-			 pi[0]);
+	if (pi)
+	  {
+	    vlib_cli_output (vm, "Template %U", format_policer_instance, templ,
+			     pi[0]);
+	  }
+	else
+	  {
+	    vlib_cli_output (
+	      vm, "Cannot print template - policer index hash lookup failed");
+	  }
 	vlib_cli_output (vm, "-----------");
       }
   }));
