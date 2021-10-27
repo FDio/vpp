@@ -837,7 +837,8 @@ tcp_session_open (transport_endpoint_cfg_t * rmt)
   /* The other connection vars will be initialized after SYN ACK */
   tcp_connection_timers_init (tc);
   tc->mss = rmt->mss;
-  tc->sw_if_index = rmt->peer.sw_if_index;
+  if (rmt->peer.sw_if_index != ENDPOINT_INVALID_INDEX)
+    tc->sw_if_index = rmt->peer.sw_if_index;
   tc->next_node_index = rmt->next_node_index;
   tc->next_node_opaque = rmt->next_node_opaque;
 
