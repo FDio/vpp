@@ -608,17 +608,20 @@ ioam_cache_ts_table_destroy (vlib_main_t * vm)
   int i;
 
   /* free pool and hash table */
-  for (i = 0; i < no_of_threads; i++)
+  if (cm->ioam_ts_pool)
     {
-      pool_foreach (entry, cm->ioam_ts_pool[i])
-      {
-	ioam_cache_ts_entry_free (i, entry, cm->error_node_index);
-      }
-      pool_free (cm->ioam_ts_pool[i]);
-      cm->ioam_ts_pool = 0;
-      tw_timer_wheel_free_16t_2w_512sl (&cm->timer_wheels[i]);
+      for (i = 0; i < no_of_threads; i++)
+	{
+	  pool_foreach (entry, cm->ioam_ts_pool[i])
+	    {
+	      ioam_cache_ts_entry_free (i, entry, cm->error_node_index);
+	    }
+	  pool_free (cm->ioam_ts_pool[i]);
+	  cm->ioam_ts_pool[i] = 0;
+	  tw_timer_wheel_free_16t_2w_512sl (&cm->timer_wheels[i]);
+	}
+      vec_free (cm->ioam_ts_pool);
     }
-  vec_free (cm->ioam_ts_pool);
   return (0);
 }
 
