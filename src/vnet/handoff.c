@@ -17,6 +17,8 @@
 #include <vnet/vnet.h>
 #include <vnet/hash/hash.h>
 #include <vppinfra/crc32.h>
+#include <vppinfra/vector/mask_compare.h>
+#include <vppinfra/vector/compress.h>
 #include <vlib/threads.h>
 #include <vnet/handoff.h>
 #include <vnet/feature/feature.h>
@@ -215,54 +217,148 @@ VLIB_NODE_FN (worker_handoff_node) (vlib_main_t * vm,
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u32 n_enq, n_left_from, *from;
   u16 thread_indices[VLIB_FRAME_SIZE], *ti;
+  void *datas[VLIB_FRAME_SIZE], **data;
+  u32 sw_ifs[VLIB_FRAME_SIZE], *sw_if;
+  u64 mask[VLIB_FRAME_SIZE / 64];
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   vlib_get_buffers (vm, from, bufs, n_left_from);
 
   b = bufs;
-  ti = thread_indices;
+  sw_if = sw_ifs;
 
-  while (n_left_from > 0)
+  while (n_left_from >= 8)
     {
-      per_inteface_handoff_data_t *ihd0;
-      u32 sw_if_index0, hash, index0;
-      void *data;
+      vlib_prefetch_buffer_header (b[4], LOAD);
+      vlib_prefetch_buffer_header (b[5], LOAD);
+      vlib_prefetch_buffer_header (b[6], LOAD);
+      vlib_prefetch_buffer_header (b[7], LOAD);
 
-      sw_if_index0 = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
-      ihd0 = vec_elt_at_index (hm->if_data, sw_if_index0);
+      sw_if[0] = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
+      sw_if[1] = vnet_buffer (b[1])->sw_if_index[VLIB_RX];
+      sw_if[2] = vnet_buffer (b[2])->sw_if_index[VLIB_RX];
+      sw_if[3] = vnet_buffer (b[3])->sw_if_index[VLIB_RX];
 
-      /* Compute ingress LB hash */
-      data = vlib_buffer_get_current (b[0]);
-      ihd0->hash_fn (&data, &hash, 1);
+      b += 4;
+      sw_if += 4;
+      n_left_from -= 4;
+    }
 
-      /* if input node did not specify next index, then packet
-         should go to ethernet-input */
+  while (n_left_from)
+    {
+      if (n_left_from > 1)
+	vlib_prefetch_buffer_header (b[1], LOAD);
 
-      if (PREDICT_TRUE (is_pow2 (vec_len (ihd0->workers))))
-	index0 = hash & (vec_len (ihd0->workers) - 1);
+      sw_if[0] = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
+
+      b += 1;
+      sw_if += 1;
+      n_left_from -= 1;
+    }
+
+  u32 sw_if_index = sw_ifs[0], n_comp, wi, n_dropped = 0, off = 0;
+  u32 n_vectors = frame->n_vectors;
+  per_inteface_handoff_data_t *ihd;
+  u32 out_bufs[VLIB_FRAME_SIZE];
+  u32 hashes[VLIB_FRAME_SIZE], *hash;
+  u64 used_elts[VLIB_FRAME_SIZE / 64] = {};
+
+more:
+
+  clib_mask_compare_u32 (sw_if_index, sw_ifs, mask, frame->n_vectors);
+  n_comp = clib_compress_u32 (out_bufs, from, mask, frame->n_vectors);
+
+  ihd = vec_elt_at_index (hm->if_data, sw_if_index);
+  vlib_get_buffers (vm, out_bufs, bufs, n_comp);
+
+  n_left_from = n_comp;
+  data = datas;
+  b = bufs;
+
+  while (n_left_from >= 8)
+    {
+      vlib_prefetch_buffer_header (b[4], LOAD);
+      vlib_prefetch_buffer_header (b[5], LOAD);
+      vlib_prefetch_buffer_header (b[6], LOAD);
+      vlib_prefetch_buffer_header (b[7], LOAD);;
+
+      data[0] = vlib_buffer_get_current (b[0]);
+      data[1] = vlib_buffer_get_current (b[1]);
+      data[2] = vlib_buffer_get_current (b[2]);
+      data[3] = vlib_buffer_get_current (b[3]);
+
+      b += 4;
+      data += 4;
+      n_left_from -= 4;
+    }
+  while (n_left_from)
+    {
+      if (n_left_from > 1)
+	vlib_prefetch_buffer_header (b[1], LOAD);
+
+      data[0] = vlib_buffer_get_current (b[0]);
+
+      b += 1;
+      data += 1;
+      n_left_from -= 1;
+    }
+
+  ihd->hash_fn (datas, hashes, n_comp);
+
+  n_left_from = n_comp;
+  ti = thread_indices;
+  hash = hashes;
+
+  while (n_left_from)
+    {
+      if (PREDICT_TRUE (is_pow2 (vec_len (ihd->workers))))
+	wi = hash[0] & (vec_len (ihd->workers) - 1);
       else
-	index0 = hash % vec_len (ihd0->workers);
+	wi = hash[0] % vec_len (ihd->workers);
 
-      ti[0] = hm->first_worker_index + ihd0->workers[index0];
+      ti[0] = hm->first_worker_index + ihd->workers[wi];
 
       /* next */
-      n_left_from -= 1;
       ti += 1;
       b += 1;
+      hash += 1;
+      n_left_from -= 1;
     }
 
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
     worker_handoff_trace_frame (vm, node, bufs, thread_indices,
-				frame->n_vectors);
+				n_comp);
 
-  n_enq = vlib_buffer_enqueue_to_thread (vm, node, hm->frame_queue_index, from,
-					 thread_indices, frame->n_vectors, 1);
+  n_enq = vlib_buffer_enqueue_to_thread (vm, node, hm->frame_queue_index, out_bufs,
+	                                 thread_indices, n_comp, 1);
+  if (n_enq < n_comp)
+    n_dropped += n_comp - n_enq;
 
-  if (n_enq < frame->n_vectors)
+  n_vectors -= n_comp;
+  if (n_vectors)
+    {
+      for (int i = 0; i < ARRAY_LEN (used_elts); i++)
+	used_elts[i] |= mask[i];
+
+      while (PREDICT_FALSE (used_elts[off] == ~0))
+	{
+	  off++;
+	  ASSERT (off < ARRAY_LEN (used_elts));
+	}
+
+      sw_if_index = sw_ifs[off * 64 + count_trailing_zeros (~used_elts[off])];
+      clib_warning("frame %u n_vecs %u handled %u selected %u",
+	           frame->n_vectors, n_vectors, n_comp, sw_if_index);
+      goto more;
+    }
+
+
+  if (n_dropped)
     vlib_node_increment_counter (vm, node->node_index,
-				 WORKER_HANDOFF_ERROR_CONGESTION_DROP,
-				 frame->n_vectors - n_enq);
+	                         WORKER_HANDOFF_ERROR_CONGESTION_DROP,
+	                         n_dropped);
+
   return frame->n_vectors;
 }
 
