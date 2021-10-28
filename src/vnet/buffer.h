@@ -417,7 +417,9 @@ typedef struct
   };
 } vnet_buffer_opaque_t;
 
-#define VNET_REWRITE_TOTAL_BYTES (VLIB_BUFFER_PRE_DATA_SIZE)
+#define VNET_REWRITE_TOTAL_BYTES 128
+STATIC_ASSERT (VNET_REWRITE_TOTAL_BYTES <= VLIB_BUFFER_PRE_DATA_SIZE,
+	       "VNET_REWRITE_TOTAL_BYTES too big");
 
 STATIC_ASSERT (STRUCT_SIZE_OF (vnet_buffer_opaque_t, ip.save_rewrite_length)
 	       == STRUCT_SIZE_OF (vnet_buffer_opaque_t,
