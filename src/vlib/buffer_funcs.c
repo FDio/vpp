@@ -433,5 +433,7 @@ vlib_buffer_funcs_init (vlib_main_t *vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (vlib_buffer_funcs_init);
+VLIB_MAIN_LOOP_ENTER_FUNCTION (vlib_buffer_funcs_init) = {
+  .runs_after = VLIB_INITS ("start_workers"),
+};
 #endif

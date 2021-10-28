@@ -120,14 +120,14 @@ VLIB_NODE_FN (ip4_load_balance_node) (vlib_main_t * vm,
   vlib_combined_counter_main_t *cm = &load_balance_main.lbm_via_counters;
   u32 n_left, *from;
   u32 thread_index = vm->thread_index;
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
+  vlib_buffer_t **b;
   u16 nexts[VLIB_FRAME_SIZE], *next;
 
   from = vlib_frame_vector_args (frame);
   n_left = frame->n_vectors;
   next = nexts;
 
-  vlib_get_buffers (vm, from, bufs, n_left);
+  b = vlib_frame_calc_buffer_ptrs (vm, frame);
 
   while (n_left >= 4)
     {
@@ -1730,7 +1730,7 @@ ip4_local_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   vlib_node_runtime_t *error_node =
     vlib_node_get_runtime (vm, ip4_local_node.index);
   u16 nexts[VLIB_FRAME_SIZE], *next;
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  vlib_buffer_t **b;
   ip4_header_t *ip[2];
   u8 error[2], pt[2];
 
@@ -1753,8 +1753,7 @@ ip4_local_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     ip4_forward_next_trace (vm, node, frame, VLIB_TX);
 
-  vlib_get_buffers (vm, from, bufs, n_left_from);
-  b = bufs;
+  b = vlib_frame_calc_buffer_ptrs (vm, frame);
   next = nexts;
 
   while (n_left_from >= 6)
@@ -2097,7 +2096,7 @@ ip4_rewrite_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 {
   ip_lookup_main_t *lm = &ip4_main.lookup_main;
   u32 *from = vlib_frame_vector_args (frame);
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  vlib_buffer_t **b;
   u16 nexts[VLIB_FRAME_SIZE], *next;
   u32 n_left_from;
   vlib_node_runtime_t *error_node =
@@ -2106,19 +2105,13 @@ ip4_rewrite_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   n_left_from = frame->n_vectors;
   u32 thread_index = vm->thread_index;
 
-  vlib_get_buffers (vm, from, bufs, n_left_from);
   clib_memset_u16 (nexts, IP4_REWRITE_NEXT_DROP, n_left_from);
 
-#if (CLIB_N_PREFETCHES >= 8)
-  if (n_left_from >= 6)
-    {
-      int i;
-      for (i = 2; i < 6; i++)
-	vlib_prefetch_buffer_header (bufs[i], LOAD);
-    }
-
+  b = vlib_frame_calc_buffer_ptrs (vm, frame);
   next = nexts;
-  b = bufs;
+
+#if (CLIB_N_PREFETCHES >= 8)
+
   while (n_left_from >= 8)
     {
       const ip_adjacency_t *adj0, *adj1;
@@ -2310,8 +2303,6 @@ ip4_rewrite_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       n_left_from -= 2;
     }
 #elif (CLIB_N_PREFETCHES >= 4)
-  next = nexts;
-  b = bufs;
   while (n_left_from >= 1)
     {
       ip_adjacency_t *adj0;

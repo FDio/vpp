@@ -166,6 +166,9 @@ typedef struct vlib_main_t
   /* buffer main structure. */
   vlib_buffer_main_t *buffer_main;
 
+  /* buffer per-thread data */
+  vlib_buffer_per_thread_data_t buffer_per_thread_data;
+
   /* physical memory main structure. */
   vlib_physmem_main_t physmem_main;
 

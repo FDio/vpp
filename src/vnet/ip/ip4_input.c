@@ -130,7 +130,7 @@ ip4_input_inline (vlib_main_t * vm,
   vlib_node_runtime_t *error_node =
     vlib_node_get_runtime (vm, ip4_input_node.index);
   vlib_simple_counter_main_t *cm;
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  vlib_buffer_t **bufs, **b;
   ip4_header_t *ip[4];
   u16 nexts[VLIB_FRAME_SIZE], *next;
   u32 sw_if_index[4];
@@ -149,7 +149,7 @@ ip4_input_inline (vlib_main_t * vm,
   cm = vec_elt_at_index (vnm->interface_main.sw_if_counters,
 			 VNET_INTERFACE_COUNTER_IP4);
 
-  vlib_get_buffers (vm, from, bufs, n_left_from);
+  bufs = vlib_frame_calc_buffer_ptrs (vm, frame);
   b = bufs;
   next = nexts;
 #if (CLIB_N_PREFETCHES >= 8)

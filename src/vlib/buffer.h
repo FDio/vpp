@@ -478,6 +478,14 @@ typedef u32 (vlib_buffer_alloc_free_callback_t) (struct vlib_main_t *vm,
 
 typedef struct
 {
+
+  /* temporary storage for frame buffer pointers */
+  vlib_buffer_t ***buffer_pointers;
+
+} vlib_buffer_per_thread_data_t;
+
+typedef struct
+{
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   /* Virtual memory address and size of buffer memory, used for calculating
      buffer index */

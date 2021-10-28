@@ -652,20 +652,25 @@ vlib_buffer_worker_init (vlib_main_t * vm)
   vlib_buffer_main_t *bm = vm->buffer_main;
   vlib_buffer_pool_t *bp;
 
-  /* *INDENT-OFF* */
   vec_foreach (bp, bm->buffer_pools)
     {
       clib_spinlock_lock (&bp->lock);
       vec_validate_aligned (bp->threads, vlib_get_n_threads () - 1,
 			    CLIB_CACHE_LINE_BYTES);
+      vec_validate_aligned (vm->buffer_per_thread_data.buffer_pointers,
+			    vlib_get_n_threads () - 1, CLIB_CACHE_LINE_BYTES);
+      for (int i = 0; i < vlib_get_n_threads (); i++)
+	vec_validate_aligned (vm->buffer_per_thread_data.buffer_pointers[i],
+			      VLIB_FRAME_SIZE - 1, CLIB_CACHE_LINE_BYTES);
       clib_spinlock_unlock (&bp->lock);
     }
-  /* *INDENT-ON* */
 
   return 0;
 }
 
-VLIB_WORKER_INIT_FUNCTION (vlib_buffer_worker_init);
+VLIB_MAIN_LOOP_ENTER_FUNCTION (vlib_buffer_worker_init) = {
+  .runs_after = VLIB_INITS ("start_workers"),
+};
 
 static clib_error_t *
 vlib_buffer_main_init_numa_alloc (struct vlib_main_t *vm, u32 numa_node,
