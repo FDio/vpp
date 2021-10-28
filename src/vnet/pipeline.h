@@ -121,6 +121,8 @@ dispatch_pipeline (vlib_main_t * vm,
 }
 #endif
 
+static __thread vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
+
 #if NSTAGES == 3
 static STAGE_INLINE uword
 dispatch_pipeline (vlib_main_t * vm,
@@ -129,7 +131,6 @@ dispatch_pipeline (vlib_main_t * vm,
   u32 *from;
   u32 n_left_from;
   int pi;
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
   u16 nexts[VLIB_FRAME_SIZE];
   AUX_DATA_DECL;
 
