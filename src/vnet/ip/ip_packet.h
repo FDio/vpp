@@ -301,6 +301,20 @@ always_inline u16
 ip_csum_fold (ip_csum_t c)
 {
   /* Reduce to 16 bits. */
+#ifdef __x86_64__
+  u64 tmp;
+  asm volatile(
+    /* using ADC is much faster than mov, shift, add sequence
+     * compiler produces */
+    "mov	%k[sum], %k[tmp]		\n\t"
+    "shr	$32, %[sum]			\n\t"
+    "add	%k[tmp], %k[sum]		\n\t"
+    "mov	$16, %k[tmp]			\n\t"
+    "shrx	%k[tmp], %k[sum], %k[tmp]	\n\t"
+    "adc	%w[tmp], %w[sum]		\n\t"
+    "adc	$0, %w[sum]			\n\t"
+    : [ sum ] "+&r"(c), [ tmp ] "=&r"(tmp));
+#else
 #if uword_bits == 64
   c = (c & (ip_csum_t) 0xffffffff) + (c >> (ip_csum_t) 32);
   c = (c & 0xffff) + (c >> 16);
@@ -308,7 +322,7 @@ ip_csum_fold (ip_csum_t c)
 
   c = (c & 0xffff) + (c >> 16);
   c = (c & 0xffff) + (c >> 16);
-
+#endif
   return c;
 }
 
