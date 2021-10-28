@@ -391,6 +391,14 @@ vlib_buffer_enqueue_to_thread (vlib_main_t *vm, vlib_node_runtime_t *node,
 	       n_packets, drop_on_congestion);
 }
 
+static_always_inline vlib_buffer_t **
+vlib_get_frame_buffers (vlib_main_t *vm, vlib_frame_t *f)
+{
+  vlib_get_frame_buffers_fn_t *fn;
+  fn = vlib_buffer_func_main.get_frame_buffers_fn;
+  return (fn) (vm, f);
+}
+
 #endif /* included_vlib_buffer_node_h */
 
 /*
