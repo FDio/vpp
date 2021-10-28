@@ -391,6 +391,36 @@ vlib_buffer_enqueue_to_thread (vlib_main_t *vm, vlib_node_runtime_t *node,
 	       n_packets, drop_on_congestion);
 }
 
+static_always_inline vlib_buffer_t **
+vlib_frame_calc_buffer_ptrs (vlib_main_t *vm, vlib_frame_t *f)
+{
+  vlib_buffer_funcs_per_thread_data_t *ptd =
+    vec_elt_at_index (vlib_buffer_func_main.ptd, vm->thread_index);
+  vlib_buffer_t **bufs = ptd->bufs;
+  u32 n = round_pow2 (f->n_vectors, 8);
+  u32 *bi = vlib_frame_vector_args (f);
+
+  CLIB_ASSUME (n <= VLIB_FRAME_SIZE);
+
+  while (n >= 64)
+    {
+      vlib_get_buffers (vm, bi, bufs, 64);
+      bufs += 64;
+      bi += 64;
+      n -= 64;
+    }
+
+  while (n)
+    {
+      vlib_get_buffers (vm, bi, bufs, 8);
+      bufs += 8;
+      bi += 8;
+      n -= 8;
+    }
+
+  return ptd->bufs;
+}
+
 #endif /* included_vlib_buffer_node_h */
 
 /*

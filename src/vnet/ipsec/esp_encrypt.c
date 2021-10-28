@@ -1056,14 +1056,6 @@ esp_encrypt_post_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   vlib_get_buffers (vm, from, b, n_left);
 
-  if (n_left >= 4)
-    {
-      vlib_prefetch_buffer_header (b[0], LOAD);
-      vlib_prefetch_buffer_header (b[1], LOAD);
-      vlib_prefetch_buffer_header (b[2], LOAD);
-      vlib_prefetch_buffer_header (b[3], LOAD);
-    }
-
   while (n_left > 8)
     {
       vlib_prefetch_buffer_header (b[4], LOAD);

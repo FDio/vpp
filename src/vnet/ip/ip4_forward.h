@@ -60,14 +60,13 @@ ip4_lookup_inline (vlib_main_t * vm,
   vlib_combined_counter_main_t *cm = &load_balance_main.lbm_to_counters;
   u32 n_left, *from;
   u32 thread_index = vm->thread_index;
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
-  vlib_buffer_t **b = bufs;
+  vlib_buffer_t **b;
   u16 nexts[VLIB_FRAME_SIZE], *next;
 
   from = vlib_frame_vector_args (frame);
   n_left = frame->n_vectors;
   next = nexts;
-  vlib_get_buffers (vm, from, bufs, n_left);
+  b = vlib_frame_calc_buffer_ptrs (vm, frame);
 
 #if (CLIB_N_PREFETCHES >= 8)
   while (n_left >= 4)
