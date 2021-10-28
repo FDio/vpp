@@ -195,6 +195,7 @@ set(VPPINFRA_HEADERS
   vector/array_mask.h
   vector/compress.h
   vector/count_equal.h
+  vector/index_to_ptr.h
   vector/mask_compare.h
   vector.h
   vector_neon.h
@@ -272,9 +273,10 @@ if(VPP_BUILD_VPPINFRA_TESTS)
   endforeach()
 
 set(test_files
-  vector/test/compress.c
-  vector/test/mask_compare.c
   vector/test/array_mask.c
+  vector/test/compress.c
+  vector/test/index_to_ptr.c
+  vector/test/mask_compare.c
 )
 
 add_vpp_executable(test_vector_funcs
