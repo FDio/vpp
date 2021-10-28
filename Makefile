@@ -79,18 +79,18 @@ LIBFFI=libffi6 # works on all but 20.04 and debian-testing
 ifeq ($(OS_VERSION_ID),18.04)
 	DEB_DEPENDS += python-dev python-all python-pip python-virtualenv
 	DEB_DEPENDS += libssl-dev
-	DEB_DEPENDS += clang-9 clang-format-10
+	DEB_DEPENDS += clang-9 clang-format-11
 else ifeq ($(OS_VERSION_ID),20.04)
 	DEB_DEPENDS += python3-virtualenv
 	DEB_DEPENDS += libssl-dev
 	DEB_DEPENDS += libelf-dev # for libbpf (af_xdp)
-	DEB_DEPENDS += clang-format-10
+	DEB_DEPENDS += clang-format-11
 	LIBFFI=libffi7
 else ifeq ($(OS_VERSION_ID),20.10)
         DEB_DEPENDS += python3-virtualenv
         DEB_DEPENDS += libssl-dev
         DEB_DEPENDS += libelf-dev # for libbpf (af_xdp)
-        DEB_DEPENDS += clang-format-10
+        DEB_DEPENDS += clang-format-11
         LIBFFI=libffi8ubuntu1
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-10)
 	DEB_DEPENDS += python3-virtualenv virtualenv
