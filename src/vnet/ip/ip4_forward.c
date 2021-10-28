@@ -2097,7 +2097,7 @@ ip4_rewrite_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 {
   ip_lookup_main_t *lm = &ip4_main.lookup_main;
   u32 *from = vlib_frame_vector_args (frame);
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE] = {}, **b;
   u16 nexts[VLIB_FRAME_SIZE], *next;
   u32 n_left_from;
   vlib_node_runtime_t *error_node =

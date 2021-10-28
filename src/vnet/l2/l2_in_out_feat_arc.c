@@ -239,7 +239,7 @@ l2_in_out_feat_arc_node_fn (vlib_main_t * vm,
   u32 n_left, *from;
   u16 nexts[VLIB_FRAME_SIZE], *next;
   u16 ethertypes[VLIB_FRAME_SIZE], *ethertype;
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE] = {}, **b;
   u32 sw_if_indices[VLIB_FRAME_SIZE], *sw_if_index;
   l2_in_out_feat_arc_main_t *fam = &l2_in_out_feat_arc_main;
 

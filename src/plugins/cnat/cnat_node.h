@@ -936,7 +936,7 @@ cnat_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		  u8 do_trace)
 {
   u32 n_left, *from, thread_index;
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE] = {};
   vlib_buffer_t **b = bufs;
   u16 nexts[VLIB_FRAME_SIZE], *next;
   f64 now;

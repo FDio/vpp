@@ -1049,7 +1049,7 @@ always_inline uword
 esp_encrypt_post_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			 vlib_frame_t * frame)
 {
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE] = {}, **b = bufs;
   u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
   u32 *from = vlib_frame_vector_args (frame);
   u32 n_left = frame->n_vectors;
