@@ -415,6 +415,38 @@ CLIB_MULTIARCH_FN (vlib_frame_queue_dequeue_fn)
 
 CLIB_MARCH_FN_REGISTRATION (vlib_frame_queue_dequeue_fn);
 
+vlib_buffer_t **__clib_section (".vlib_get_frame_buffers_fn")
+CLIB_MULTIARCH_FN (vlib_get_frame_buffers_fn)
+(vlib_main_t *vm, vlib_frame_t *f)
+{
+  vlib_buffer_t **bufs = vlib_buffer_func_main.ptd[vm->thread_index].bufs;
+  u32 n = round_pow2 (f->n_vectors, 8);
+  u32 *bi = vlib_frame_vector_args (f);
+
+  if (n > VLIB_FRAME_SIZE)
+    __builtin_unreachable ();
+
+  while (n >= 64)
+    {
+      vlib_get_buffers (vm, bi, bufs, 64);
+      bufs += 64;
+      bi += 64;
+      n -= 64;
+    }
+
+  while (n)
+    {
+      vlib_get_buffers (vm, bi, bufs, 8);
+      bufs += 8;
+      bi += 8;
+      n -= 8;
+    }
+
+  return bufs;
+}
+
+CLIB_MARCH_FN_REGISTRATION (vlib_get_frame_buffers_fn);
+
 #ifndef CLIB_MARCH_VARIANT
 vlib_buffer_func_main_t vlib_buffer_func_main;
 
@@ -430,6 +462,8 @@ vlib_buffer_funcs_init (vlib_main_t *vm)
     CLIB_MARCH_FN_POINTER (vlib_buffer_enqueue_to_thread_fn);
   bfm->frame_queue_dequeue_fn =
     CLIB_MARCH_FN_POINTER (vlib_frame_queue_dequeue_fn);
+  bfm->get_frame_buffers_fn =
+    CLIB_MARCH_FN_POINTER (vlib_get_frame_buffers_fn);
   return 0;
 }
 

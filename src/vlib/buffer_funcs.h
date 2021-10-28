@@ -42,6 +42,7 @@
 
 #include <vppinfra/hash.h>
 #include <vppinfra/fifo.h>
+#include <vppinfra/vector/index_to_ptr.h>
 #include <vlib/buffer.h>
 #include <vlib/physmem_funcs.h>
 #include <vlib/main.h>
@@ -67,12 +68,23 @@ typedef u32 (vlib_buffer_enqueue_to_thread_fn_t) (
 typedef u32 (vlib_frame_queue_dequeue_fn_t) (vlib_main_t *vm,
 					     vlib_frame_queue_main_t *fqm);
 
+typedef vlib_buffer_t **(vlib_get_frame_buffers_fn_t) (vlib_main_t *vm,
+						       vlib_frame_t *f);
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
+} vlib_buffer_funcs_per_thread_data_t;
+
 typedef struct
 {
   vlib_buffer_enqueue_to_next_fn_t *buffer_enqueue_to_next_fn;
   vlib_buffer_enqueue_to_single_next_fn_t *buffer_enqueue_to_single_next_fn;
   vlib_buffer_enqueue_to_thread_fn_t *buffer_enqueue_to_thread_fn;
   vlib_frame_queue_dequeue_fn_t *frame_queue_dequeue_fn;
+  vlib_get_frame_buffers_fn_t *get_frame_buffers_fn;
+  vlib_buffer_funcs_per_thread_data_t *ptd;
 } vlib_buffer_func_main_t;
 
 extern vlib_buffer_func_main_t vlib_buffer_func_main;
@@ -201,102 +213,13 @@ vlib_buffer_pool_get_default_for_numa (vlib_main_t * vm, u32 numa_node)
     @param offset - (i32) offset applied to each pointer
 */
 static_always_inline void
-vlib_get_buffers_with_offset (vlib_main_t * vm, u32 * bi, void **b, int count,
+vlib_get_buffers_with_offset (vlib_main_t *vm, u32 *bi, void **b, u32 count,
 			      i32 offset)
 {
   uword buffer_mem_start = vm->buffer_main->buffer_mem_start;
-#ifdef CLIB_HAVE_VEC512
-  u64x8 of8 = u64x8_splat (buffer_mem_start + offset);
-  u64x4 off = u64x8_extract_lo (of8);
-  /* if count is not const, compiler will not unroll while loop
-     se we maintain two-in-parallel variant */
-  while (count >= 32)
-    {
-      u64x8 b0 = u64x8_from_u32x8 (u32x8_load_unaligned (bi));
-      u64x8 b1 = u64x8_from_u32x8 (u32x8_load_unaligned (bi + 8));
-      u64x8 b2 = u64x8_from_u32x8 (u32x8_load_unaligned (bi + 16));
-      u64x8 b3 = u64x8_from_u32x8 (u32x8_load_unaligned (bi + 24));
-      /* shift and add to get vlib_buffer_t pointer */
-      u64x8_store_unaligned ((b0 << CLIB_LOG2_CACHE_LINE_BYTES) + of8, b);
-      u64x8_store_unaligned ((b1 << CLIB_LOG2_CACHE_LINE_BYTES) + of8, b + 8);
-      u64x8_store_unaligned ((b2 << CLIB_LOG2_CACHE_LINE_BYTES) + of8, b + 16);
-      u64x8_store_unaligned ((b3 << CLIB_LOG2_CACHE_LINE_BYTES) + of8, b + 24);
-      b += 32;
-      bi += 32;
-      count -= 32;
-    }
-  while (count >= 8)
-    {
-      u64x8 b0 = u64x8_from_u32x8 (u32x8_load_unaligned (bi));
-      /* shift and add to get vlib_buffer_t pointer */
-      u64x8_store_unaligned ((b0 << CLIB_LOG2_CACHE_LINE_BYTES) + of8, b);
-      b += 8;
-      bi += 8;
-      count -= 8;
-    }
-#elif defined CLIB_HAVE_VEC256
-  u64x4 off = u64x4_splat (buffer_mem_start + offset);
-  /* if count is not const, compiler will not unroll while loop
-     se we maintain two-in-parallel variant */
-  while (count >= 32)
-    {
-      u64x4 b0 = u64x4_from_u32x4 (u32x4_load_unaligned (bi));
-      u64x4 b1 = u64x4_from_u32x4 (u32x4_load_unaligned (bi + 4));
-      u64x4 b2 = u64x4_from_u32x4 (u32x4_load_unaligned (bi + 8));
-      u64x4 b3 = u64x4_from_u32x4 (u32x4_load_unaligned (bi + 12));
-      u64x4 b4 = u64x4_from_u32x4 (u32x4_load_unaligned (bi + 16));
-      u64x4 b5 = u64x4_from_u32x4 (u32x4_load_unaligned (bi + 20));
-      u64x4 b6 = u64x4_from_u32x4 (u32x4_load_unaligned (bi + 24));
-      u64x4 b7 = u64x4_from_u32x4 (u32x4_load_unaligned (bi + 28));
-      /* shift and add to get vlib_buffer_t pointer */
-      u64x4_store_unaligned ((b0 << CLIB_LOG2_CACHE_LINE_BYTES) + off, b);
-      u64x4_store_unaligned ((b1 << CLIB_LOG2_CACHE_LINE_BYTES) + off, b + 4);
-      u64x4_store_unaligned ((b2 << CLIB_LOG2_CACHE_LINE_BYTES) + off, b + 8);
-      u64x4_store_unaligned ((b3 << CLIB_LOG2_CACHE_LINE_BYTES) + off, b + 12);
-      u64x4_store_unaligned ((b4 << CLIB_LOG2_CACHE_LINE_BYTES) + off, b + 16);
-      u64x4_store_unaligned ((b5 << CLIB_LOG2_CACHE_LINE_BYTES) + off, b + 20);
-      u64x4_store_unaligned ((b6 << CLIB_LOG2_CACHE_LINE_BYTES) + off, b + 24);
-      u64x4_store_unaligned ((b7 << CLIB_LOG2_CACHE_LINE_BYTES) + off, b + 28);
-      b += 32;
-      bi += 32;
-      count -= 32;
-    }
-#endif
-  while (count >= 4)
-    {
-#ifdef CLIB_HAVE_VEC256
-      u64x4 b0 = u64x4_from_u32x4 (u32x4_load_unaligned (bi));
-      /* shift and add to get vlib_buffer_t pointer */
-      u64x4_store_unaligned ((b0 << CLIB_LOG2_CACHE_LINE_BYTES) + off, b);
-#elif defined (CLIB_HAVE_VEC128)
-      u64x2 off = u64x2_splat (buffer_mem_start + offset);
-      u32x4 bi4 = u32x4_load_unaligned (bi);
-      u64x2 b0 = u64x2_from_u32x4 ((u32x4) bi4);
-#if defined (__aarch64__)
-      u64x2 b1 = u64x2_from_u32x4_high ((u32x4) bi4);
-#else
-      bi4 = u32x4_shuffle (bi4, 2, 3, 0, 1);
-      u64x2 b1 = u64x2_from_u32x4 ((u32x4) bi4);
-#endif
-      u64x2_store_unaligned ((b0 << CLIB_LOG2_CACHE_LINE_BYTES) + off, b);
-      u64x2_store_unaligned ((b1 << CLIB_LOG2_CACHE_LINE_BYTES) + off, b + 2);
-#else
-      b[0] = vlib_buffer_ptr_from_index (buffer_mem_start, bi[0], offset);
-      b[1] = vlib_buffer_ptr_from_index (buffer_mem_start, bi[1], offset);
-      b[2] = vlib_buffer_ptr_from_index (buffer_mem_start, bi[2], offset);
-      b[3] = vlib_buffer_ptr_from_index (buffer_mem_start, bi[3], offset);
-#endif
-      b += 4;
-      bi += 4;
-      count -= 4;
-    }
-  while (count)
-    {
-      b[0] = vlib_buffer_ptr_from_index (buffer_mem_start, bi[0], offset);
-      b += 1;
-      bi += 1;
-      count -= 1;
-    }
+
+  clib_index_to_ptr_u32 (bi, (void *) (buffer_mem_start + offset),
+			 CLIB_LOG2_CACHE_LINE_BYTES, b, count);
 }
 
 /** \brief Translate array of buffer indices into buffer pointers
@@ -308,7 +231,7 @@ vlib_get_buffers_with_offset (vlib_main_t * vm, u32 * bi, void **b, int count,
 */
 
 static_always_inline void
-vlib_get_buffers (vlib_main_t * vm, u32 * bi, vlib_buffer_t ** b, int count)
+vlib_get_buffers (vlib_main_t *vm, u32 *bi, vlib_buffer_t **b, u32 count)
 {
   vlib_get_buffers_with_offset (vm, bi, (void **) b, count, 0);
 }
