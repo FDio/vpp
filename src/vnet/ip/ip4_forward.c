@@ -2097,7 +2097,8 @@ ip4_rewrite_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 {
   ip_lookup_main_t *lm = &ip4_main.lookup_main;
   u32 *from = vlib_frame_vector_args (frame);
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  vlib_buffer_t **bufs = vlib_get_frame_buffers (vm, frame);
+  vlib_buffer_t **b;
   u16 nexts[VLIB_FRAME_SIZE], *next;
   u32 n_left_from;
   vlib_node_runtime_t *error_node =
@@ -2106,16 +2107,9 @@ ip4_rewrite_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   n_left_from = frame->n_vectors;
   u32 thread_index = vm->thread_index;
 
-  vlib_get_buffers (vm, from, bufs, n_left_from);
   clib_memset_u16 (nexts, IP4_REWRITE_NEXT_DROP, n_left_from);
 
 #if (CLIB_N_PREFETCHES >= 8)
-  if (n_left_from >= 6)
-    {
-      int i;
-      for (i = 2; i < 6; i++)
-	vlib_prefetch_buffer_header (bufs[i], LOAD);
-    }
 
   next = nexts;
   b = bufs;

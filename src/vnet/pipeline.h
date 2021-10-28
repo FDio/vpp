@@ -87,13 +87,13 @@ dispatch_pipeline (vlib_main_t * vm,
   u32 *from;
   u32 n_left_from;
   int pi;
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
+  vlib_buffer_t **bufs;
   u16 nexts[VLIB_FRAME_SIZE];
   AUX_DATA_DECL;
 
   n_left_from = frame->n_vectors;
   from = vlib_frame_vector_args (frame);
-  vlib_get_buffers (vm, from, bufs, n_left_from);
+  bufs = vlib_get_frame_buffers (vm, frame);
 
   for (pi = 0; pi < NSTAGES - 1; pi++)
     {
@@ -129,13 +129,13 @@ dispatch_pipeline (vlib_main_t * vm,
   u32 *from;
   u32 n_left_from;
   int pi;
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
+  vlib_buffer_t **bufs;
   u16 nexts[VLIB_FRAME_SIZE];
   AUX_DATA_DECL;
 
   n_left_from = frame->n_vectors;
   from = vlib_frame_vector_args (frame);
-  vlib_get_buffers (vm, from, bufs, n_left_from);
+  bufs = vlib_get_frame_buffers (vm, frame);
 
   for (pi = 0; pi < NSTAGES - 1; pi++)
     {
