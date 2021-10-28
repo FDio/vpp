@@ -758,14 +758,14 @@ VLIB_NODE_FN (ip6_load_balance_node) (vlib_main_t * vm,
   u32 n_left, *from;
   u32 thread_index = vm->thread_index;
   ip6_main_t *im = &ip6_main;
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
+  vlib_buffer_t **b;
   u16 nexts[VLIB_FRAME_SIZE], *next;
 
   from = vlib_frame_vector_args (frame);
   n_left = frame->n_vectors;
   next = nexts;
 
-  vlib_get_buffers (vm, from, bufs, n_left);
+  b = vlib_frame_calc_buffer_ptrs (vm, frame);
 
   while (n_left >= 4)
     {
@@ -1289,7 +1289,7 @@ ip6_local_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   vlib_node_runtime_t *error_node =
     vlib_node_get_runtime (vm, ip6_input_node.index);
   u8 arc_index = vnet_feat_arc_ip6_local.feature_arc_index;
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  vlib_buffer_t **b;
   u16 nexts[VLIB_FRAME_SIZE], *next;
 
   from = vlib_frame_vector_args (frame);
@@ -1298,8 +1298,7 @@ ip6_local_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     ip6_forward_next_trace (vm, node, frame, VLIB_TX);
 
-  vlib_get_buffers (vm, from, bufs, n_left_from);
-  b = bufs;
+  b = vlib_frame_calc_buffer_ptrs (vm, frame);
   next = nexts;
 
   while (n_left_from > 2)

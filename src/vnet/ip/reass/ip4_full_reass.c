@@ -1757,14 +1757,14 @@ ip4_full_reass_handoff_node_inline (vlib_main_t * vm,
 {
   ip4_full_reass_main_t *rm = &ip4_full_reass_main;
 
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  vlib_buffer_t **bufs, **b;
   u32 n_enq, n_left_from, *from;
   u16 thread_indices[VLIB_FRAME_SIZE], *ti;
   u32 fq_index;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
-  vlib_get_buffers (vm, from, bufs, n_left_from);
+  bufs = vlib_frame_calc_buffer_ptrs (vm, frame);
 
   b = bufs;
   ti = thread_indices;

@@ -416,7 +416,7 @@ VLIB_NODE_FN (vnet_interface_output_node)
   vnet_hw_interface_t *hi;
   vnet_sw_interface_t *si;
   vnet_interface_output_runtime_t *rt = (void *) node->runtime_data;
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
+  vlib_buffer_t **bufs;
   u32 n_bytes, n_buffers = frame->n_vectors;
   u32 config_index = ~0;
   u32 sw_if_index = rt->sw_if_index;
@@ -440,7 +440,7 @@ VLIB_NODE_FN (vnet_interface_output_node)
 
   vnet_interface_pcap_tx_trace (vm, node, frame, 0 /* in_interface_ouput */);
 
-  vlib_get_buffers (vm, from, bufs, n_buffers);
+  bufs = vlib_frame_calc_buffer_ptrs (vm, frame);
 
   si = vnet_get_sw_interface (vnm, sw_if_index);
   hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
@@ -775,7 +775,7 @@ interface_drop_punt (vlib_main_t * vm,
 		     vnet_error_disposition_t disposition)
 {
   u32 *from, n_left, thread_index, *sw_if_index;
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  vlib_buffer_t **b, **bufs;
   u32 sw_if_indices[VLIB_FRAME_SIZE];
   vlib_simple_counter_main_t *cm;
   u16 nexts[VLIB_FRAME_SIZE];
@@ -786,10 +786,9 @@ interface_drop_punt (vlib_main_t * vm,
   thread_index = vm->thread_index;
   from = vlib_frame_vector_args (frame);
   n_left = frame->n_vectors;
-  b = bufs;
   sw_if_index = sw_if_indices;
 
-  vlib_get_buffers (vm, from, bufs, n_left);
+  bufs = b = vlib_frame_calc_buffer_ptrs (vm, frame);
 
   /* "trace add error-drop NNN?" */
   if (PREDICT_FALSE ((n_trace = vlib_get_trace_count (vm, node))))
@@ -1088,7 +1087,7 @@ VLIB_NODE_FN (vnet_interface_output_arc_end_node)
   vnet_hw_if_output_node_runtime_t *r = 0;
   vnet_hw_interface_t *hi;
   vnet_hw_if_tx_frame_t *tf;
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
+  vlib_buffer_t **b, **bufs;
   u32 sw_if_indices[VLIB_FRAME_SIZE], *sw_if_index = sw_if_indices;
   u64 used_elts[VLIB_FRAME_SIZE / 64] = {};
   u64 mask[VLIB_FRAME_SIZE / 64] = {};
@@ -1098,7 +1097,7 @@ VLIB_NODE_FN (vnet_interface_output_arc_end_node)
 
   from = vlib_frame_vector_args (frame);
   n_left = frame->n_vectors;
-  vlib_get_buffers (vm, from, bufs, n_left);
+  b = bufs = vlib_frame_calc_buffer_ptrs (vm, frame);
 
   while (n_left >= 8)
     {

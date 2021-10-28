@@ -430,8 +430,12 @@ vlib_buffer_funcs_init (vlib_main_t *vm)
     CLIB_MARCH_FN_POINTER (vlib_buffer_enqueue_to_thread_fn);
   bfm->frame_queue_dequeue_fn =
     CLIB_MARCH_FN_POINTER (vlib_frame_queue_dequeue_fn);
+  vec_validate_aligned (bfm->ptd, vlib_get_n_threads () - 1,
+			CLIB_CACHE_LINE_BYTES);
   return 0;
 }
 
-VLIB_INIT_FUNCTION (vlib_buffer_funcs_init);
+VLIB_MAIN_LOOP_ENTER_FUNCTION (vlib_buffer_funcs_init) = {
+  .runs_after = VLIB_INITS ("start_workers"),
+};
 #endif
