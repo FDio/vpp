@@ -179,7 +179,10 @@ class VppTransport:
             return 0
 
     def msg_table_max_index(self):
-        return len(self.message_table)
+        try:
+            return max(self.message_table.values())
+        except ValueError:
+            return 0
 
     def write(self, buf):
         """Send a binary-packed message to VPP."""
