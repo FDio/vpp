@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f1a0efee_03446e6e",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 880,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2021-10-29T13:34:08Z",
+      "side": 1,
+      "message": "this is confusing. all of these functions are available in header and one needs to dive into code to see what is the real difference between\n\nadd_del(is_add\u003d\u003cappropriate value\u003e) and _add/_del themselves.\n\nI see that add_del has a common part and then calls either _add or _del.\n\nSo I would propose one of two solutions - I myself would prefer #1:\n\n1.) extract the common part of add_del and call it say nat44_ed_handle_resolve_records and make _add and _del functions call this common code at beginning of each function\n\n-or-\n\n2.) rename _add/_del to _add_internal/_del_internal and make them static, only used by add_del and not advertised in header(s)\n\nI\u0027m not a huge fan of various is_ switches in functions calls hence my preference for #1",
+      "revId": "5d997f116d9e6af80ca2fe654e95a72287b1fcbc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
