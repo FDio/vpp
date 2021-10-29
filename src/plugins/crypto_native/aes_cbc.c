@@ -149,7 +149,7 @@ aes_cbc_dec_permute (u8x64 a, u8x64 b)
 }
 
 static_always_inline void
-vaes_cbc_dec (u8x64 * k, u8x64u * src, u8x64u * dst, u8x16 * iv, int count,
+vaes_cbc_dec (u8x64 *k, u8x64u *src, u8x64u *dst, u8x16u *iv, int count,
 	      aes_key_size_t rounds)
 {
   u8x64 f, r[4], c[4] = { };
