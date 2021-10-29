@@ -121,6 +121,30 @@
     },
     {
       "key": {
+        "uuid": "f1ec1490_c0c6e614",
+        "filename": "src/plugins/perfmon/arm/bundle/branch_pred.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2021-10-29T15:18:25Z",
+      "side": 1,
+      "message": "I\u0027ve reworked this a fair bit now, I think it\u0027s an improvement. Since we have to disable some columns where they include unsupported events, we still need to specify in each bundle which events are used by each column. Overall though it\u0027s far less verbose. \n\nAlso, checking what events in a bundle are supported is now done on VPP/perfmon startup/init, so we can avoid registering/adding bundles where none of the events are supported.",
+      "parentUuid": "4fba95f3_de4a7588",
+      "range": {
+        "startLine": 22,
+        "startChar": 0,
+        "endLine": 22,
+        "endChar": 22
+      },
+      "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "8232c0ce_1407e630",
         "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
         "patchSetId": 1
@@ -334,6 +358,24 @@
     },
     {
       "key": {
+        "uuid": "c6ff4466_76375048",
+        "filename": "src/plugins/perfmon/perfmon.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2021-10-29T15:18:25Z",
+      "side": 1,
+      "message": "We now silently fail (at least only print to debug log) if a bundle is partially supported. Only if a bundle is entirely unsupported (i.e. no events in it are implemented) is a message displayed on VPP/perfmon startup.",
+      "parentUuid": "fc60c764_5ad7255e",
+      "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b6e4fae8_d9ca4d4c",
         "filename": "src/plugins/perfmon/perfmon.h",
         "patchSetId": 1
@@ -452,6 +494,24 @@
       "side": 1,
       "message": "Ack",
       "parentUuid": "bc38b683_24bf8d51",
+      "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "08c30231_5cca6bf2",
+        "filename": "src/plugins/perfmon/perfmon.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2021-10-29T15:18:25Z",
+      "side": 1,
+      "message": "Fixed.",
+      "parentUuid": "baf1c824_29a8060a",
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
