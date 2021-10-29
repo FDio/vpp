@@ -14,6 +14,7 @@
 cmake_minimum_required(VERSION 3.10)
 
 set(CMAKE_C_COMPILER_NAMES
+  clang-13
   clang-12
   clang-11
   clang-10

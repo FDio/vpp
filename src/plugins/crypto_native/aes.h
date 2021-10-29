@@ -178,7 +178,7 @@ aes128_key_assist (u8x16 * rk, u8x16 r)
 }
 
 static_always_inline void
-aes128_key_expand (u8x16 * rk, u8x16 const *k)
+aes128_key_expand (u8x16 * rk, u8x16u const *k)
 {
   rk[0] = k[0];
   aes128_key_assist (rk + 1, aes_keygen_assist (rk[0], 0x01));
