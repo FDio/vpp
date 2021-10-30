@@ -72,7 +72,7 @@ DEB_DEPENDS += cmake ninja-build uuid-dev python3-jsonschema python3-yaml
 DEB_DEPENDS += python3-venv  # ensurepip
 DEB_DEPENDS += python3-dev   # needed for python3 -m pip install psutil
 DEB_DEPENDS += libnl-3-dev libnl-route-3-dev
-# python3.6 on 16.04 requires python36-dev
+DEB_DEPENDS += enchant  # for docs
 
 LIBFFI=libffi6 # works on all but 20.04 and debian-testing
 
@@ -116,6 +116,7 @@ RPM_DEPENDS += ccache
 RPM_DEPENDS += xmlto
 RPM_DEPENDS += elfutils-libelf-devel
 RPM_DEPENDS += libnl3-devel
+RPM_DEPENDS += enchant # for docs
 
 ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += dnf-utils

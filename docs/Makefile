@@ -21,9 +21,6 @@ PIP_TOOLS_VERSION ?= $(shell grep 'PIP_TOOLS_VERSION=' ${WS_ROOT}/test/Makefile 
 
 PYTHON ?= "python3"
 
-DOC_DEB_DEPENDS = enchant
-DOC_RPM_DEPENDS = enchant
-
 # You can set these variables from the command line.
 SPHINXOPTS        = --keep-going -n -W
 SPHINXBUILD       = sphinx-build
@@ -94,7 +91,7 @@ docs: clean venv ${BUILDDIR_SRC}
 
 .PHONY: clean
 clean:
-	@rm -rf $(BUILDDIR)
+	@rm -rf $(BUILDDIR) ${VENV_DIR}
 	@make -C ${SCRIPTS_DIR} clean
 
 .PHONY: build
