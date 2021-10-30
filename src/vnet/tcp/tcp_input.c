@@ -21,6 +21,9 @@
 #include <vnet/session/session.h>
 #include <math.h>
 
+#include <vppinfra/vector/mask_compare.h>
+#include <vppinfra/vector/compress.h>
+
 static vlib_error_desc_t tcp_input_error_counters[] = {
 #define tcp_error(f, n, s, d) { #n, d, VL_COUNTER_SEVERITY_##s },
 #include <vnet/tcp/tcp_error.def>
@@ -1518,7 +1521,37 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_get_buffers (vm, from, bufs, n_left_from);
   b = bufs;
 
+  u32 conn_indices[VLIB_FRAME_SIZE], *conn_index, ci, n_comp, n_vectors;
+  vlib_buffer_t *conn_bufs[VLIB_FRAME_SIZE];
+  u64 mask[VLIB_FRAME_SIZE / 64];
   tcp_connection_t *tc = 0;
+  u64 used_elts[VLIB_FRAME_SIZE / 64] = {};
+  u32 off = 0;
+
+  conn_index = conn_indices;
+
+  while (n_left_from > 0)
+    {
+      if (n_left_from > 1)
+	vlib_prefetch_buffer_header (b[1], LOAD);
+
+      conn_index[0] = vnet_buffer (b[0])->tcp.connection_index;
+
+      b += 1;
+      conn_index += 1;
+      n_left_from -= 1;
+    }
+
+  ci = conn_indices[0];
+  n_vectors = frame->n_vectors;
+
+more:
+
+  clib_mask_compare_u32 (ci, conn_indices, mask, frame->n_vectors);
+  n_comp = clib_compress_u64 ((u64 *)conn_bufs, (u64 *)bufs, mask, frame->n_vectors);
+  n_left_from = n_comp;
+
+  b = conn_bufs;
 
   while (n_left_from > 0)
     {
@@ -1530,9 +1563,6 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vlib_prefetch_buffer_header (b[1], LOAD);
 	  CLIB_PREFETCH (b[1]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
 	}
-
-      if (tc && tc->bufs && tc->c_c_index != vnet_buffer (b[0])->tcp.connection_index)
-	tcp_flush_bufs (tc);
 
       tc = tcp_connection_get (vnet_buffer (b[0])->tcp.connection_index,
 			       thread_index);
@@ -1577,6 +1607,22 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   if (tc->bufs)
     tcp_flush_bufs (tc);
+
+  n_vectors -= n_comp;
+  if (n_vectors)
+    {
+      for (int i = 0; i < ARRAY_LEN (used_elts); i++)
+	used_elts[i] |= mask[i];
+
+      while (PREDICT_FALSE (used_elts[off] == ~0))
+	{
+	  off++;
+	  ASSERT (off < ARRAY_LEN (used_elts));
+	}
+
+      ci = conn_indices[off * 64 + count_trailing_zeros (~used_elts[off])];
+      goto more;
+    }
 
   errors = session_main_flush_enqueue_events (TRANSPORT_PROTO_TCP,
 					      thread_index);
