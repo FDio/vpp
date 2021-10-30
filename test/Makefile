@@ -80,9 +80,9 @@ PYTHON_INTERP=$(PYTHON)
 endif
 
 PYTHON_VERSION=$(shell $(PYTHON_INTERP) -c 'import sys; print(sys.version_info.major)')
-PIP_VERSION=21.2.4
+PIP_VERSION=21.3.1
 # Keep in sync with requirements.txt
-PIP_TOOLS_VERSION=6.2.0
+PIP_TOOLS_VERSION=6.4.0
 PYTHON_DEPENDS=requirements-$(PYTHON_VERSION).txt
 SCAPY_SOURCE=$(shell find $(VENV_PATH)/lib/python* -name site-packages)
 BUILD_COV_DIR=$(TEST_BR)/coverage
