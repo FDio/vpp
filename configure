@@ -8,8 +8,11 @@ set -o pipefail -o errtrace -o nounset -o errexit
 build_dir=.
 install_dir=/usr/local
 build_type=release
-prefix_path=/opt/vpp/external/$(uname -m)/
 src_dir="$(dirname "$(readlink -f "$0")")"
+host_arch=$(uname -m)
+arch=${host_arch}
+wipe=no
+args=()
 
 help()
 {
@@ -20,6 +23,7 @@ USAGE: ${0} [options]
 
 OPTIONS:
   --help, -h              This help
+  --arch, -a              Cross-compile for specified target architecture (aarch64, riscv64, i386, ...)
   --build-dir, -b         Build directory
   --install-dir, -i       Install directory
   --build-type, -t        Build type (release, debug, ...)
@@ -36,6 +40,15 @@ while (( "$#" )); do
     -b|--build-dir)
       if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
         build_dir=$2
+        shift 2
+      else
+        echo "Error: Argument for $1 is missing" >&2
+        exit 1
+      fi
+      ;;
+    -a|--arch)
+      if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+	arch=$2
         shift 2
       else
         echo "Error: Argument for $1 is missing" >&2
@@ -61,8 +74,8 @@ while (( "$#" )); do
       fi
       ;;
     -w|--wipe)
-      git clean -fdx --exclude=startup.\*
-      exit 1
+      wipe=yes
+      shift 1
       ;;
     -*|--*=) # unsupported flags
       echo "Error: Unsupported flag $1" >&2
@@ -75,16 +88,29 @@ while (( "$#" )); do
   esac
 done
 
-cmake \
-  -G Ninja \
-  -S ${src_dir}/src \
-  -B ${build_dir} \
-  -DCMAKE_PREFIX_PATH=${prefix_path} \
-  -DCMAKE_INSTALL_PREFIX=${install_dir} \
-  -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=ON \
-  -DCMAKE_BUILD_TYPE:STRING=${build_type}
+if [ "${arch}" != "${host_arch}" ] ; then
+  args+=("-DCMAKE_SYSTEM_NAME=Linux")
+  args+=("-DCMAKE_SYSTEM_PROCESSOR=${arch}")
+  args+=("-DCMAKE_C_COMPILER=clang")
+  args+=("-DCMAKE_C_COMPILER_TARGET=${arch}-linux-gnu")
+  args+=("-DCMAKE_ASM_COMPILER_TARGET=${arch}-linux-gnu")
+  args+=("-DCMAKE_FIND_ROOT_PATH=/usr/${arch}-linux-gnu")
+  args+=("-DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER")
+  args+=("-DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=BOTH")
+  args+=("-DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=BOTH")
+  args+=("-DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ONLY")
+fi
 
-  cat << __EOF__
+args+=("-DCMAKE_PREFIX_PATH=/opt/vpp/external/${arch}")
+args+=("-DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=ON")
+args+=("-DCMAKE_INSTALL_PREFIX=${install_dir}")
+args+=("-DCMAKE_BUILD_TYPE:STRING=${build_type}")
+
+[ "${wipe}" == "yes" ] && git clean -fdx --exclude=startup.\*
+
+cmake ${args[@]} -G Ninja -S ${src_dir}/src -B ${build_dir}
+
+cat << __EOF__
 
   Useful build commands:
 
