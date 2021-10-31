@@ -99,7 +99,9 @@ static inline u32
 check_adj_port_range_x1 (const protocol_port_range_dpo_t * ppr_dpo,
 			 u16 dst_port, u32 next)
 {
+#ifdef CLIB_HAVE_VEC128
   u16x8 key = u16x8_splat (dst_port);
+#endif
   int i;
 
   if (NULL == ppr_dpo || dst_port == 0)
@@ -107,9 +109,20 @@ check_adj_port_range_x1 (const protocol_port_range_dpo_t * ppr_dpo,
 
 
   for (i = 0; i < ppr_dpo->n_used_blocks; i++)
+#ifdef CLIB_HAVE_VEC128
     if (!u16x8_is_all_zero ((ppr_dpo->blocks[i].low.as_u16x8 <= key) &
 			    (ppr_dpo->blocks[i].hi.as_u16x8 >= key)))
       return next;
+#else
+    {
+      for (int j = 0; j < 8; j++)
+	{
+	  if ((ppr_dpo->blocks[i].low.as_u16[j] <= dst_port) &&
+	      (ppr_dpo->blocks[i].hi.as_u16[j] >= dst_port))
+	    return next;
+	}
+    };
+#endif
 
   return IP4_SOURCE_AND_PORT_RANGE_CHECK_NEXT_DROP;
 }
