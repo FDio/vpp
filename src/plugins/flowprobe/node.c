@@ -17,6 +17,7 @@
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 #include <vppinfra/crc32.h>
+#include <vppinfra/xxhash.h>
 #include <vppinfra/error.h>
 #include <flowprobe/flowprobe.h>
 #include <vnet/ip/ip6_packet.h>
