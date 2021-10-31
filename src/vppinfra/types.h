@@ -73,7 +73,9 @@ typedef unsigned int u32;
 typedef unsigned long long u64;
 #endif /* CLIB_AVOID_CLASH_WITH_LINUX_TYPES */
 
-#elif defined(alpha) || (defined(_mips) && __mips == 64) || defined(__x86_64__) || defined (__powerpc64__) || defined (__aarch64__)
+#elif defined(alpha) || (defined(_mips) && __mips == 64) ||                   \
+  defined(__x86_64__) || defined(__powerpc64__) || defined(__aarch64__) ||    \
+  (defined(__riscv) && __riscv_xlen == 64)
 typedef signed int i32;
 typedef signed long i64;
 

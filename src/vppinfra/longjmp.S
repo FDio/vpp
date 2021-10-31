@@ -816,6 +816,95 @@ cdecl(clib_calljmp):
         mov     sp, x3
 	ret
 	.size	cdecl(clib_calljmp), .-cdecl(clib_calljmp)
+#elif defined(__riscv)
+#define foreach_0_to_11 _(0) _(1) _(2) _(3) _(4) _(5) _(6) _(7) _(8) _(9) _(10) _(11)
+	.global cdecl(clib_setjmp)
+	.align 1
+	.type cdecl(clib_setjmp), @function
+cdecl(clib_setjmp):
+	sd      ra, 0*8(a0)
+	sd      sp, 1*8(a0)
+#define _(x)  sd	s##x, (x + 2)*8(a0);
+	foreach_0_to_11
+#undef _
+#define _(x)  fsd	fs##x, (x + 14)*8(a0);
+	foreach_0_to_11
+#undef _
+	mv      a0,a1
+	ret
+	.size   cdecl(clib_setjmp), .-cdecl(clib_setjmp)
+
+	.global cdecl(clib_longjmp)
+	.align 1
+	.type cdecl(clib_longjmp), @function
+cdecl(clib_longjmp):
+	ld      ra, 0*8(a0)
+	ld      sp, 1*8(a0)
+#define _(x)  ld	s##x, (x + 2)*8(a0);
+	foreach_0_to_11
+#undef _
+#define _(x)  fld	fs##x, (x + 14)*8(a0);
+	foreach_0_to_11
+#undef _
+	mv      a0,a1
+	ret
+	.size   cdecl(clib_longjmp), .-cdecl(clib_longjmp)
+
+	.global cdecl(clib_calljmp)
+	.align 1
+	.type cdecl(clib_calljmp), @function
+cdecl(clib_calljmp):
+	andi	a2,a2, -16	/* Make sure stack is 16-byte aligned. */
+	addi	a2, a2, -16	/* allocate space on the new stack */
+	sd	ra, 8(a2)	/* store return address */
+	sd	sp, 0(a2)	/* store existing stack pointer */
+	mv	sp, a2		/* change stack */
+	mv	a2, a0		/* functon pointer to a2 */
+	mv	a0, a1		/* 2nd argument becomes 1st one  */
+	jalr	a2		/* function call */
+	ld	ra, 8(sp)	/* restore old return address */
+	ld	sp, 0(sp)	/* restore old stack pointer */
+	ret
+
+	/* Get function. */
+  	mv	a5,a0
+
+	mv	a0,a1
+
+	/* Away we go. */
+	jr	a5
+
+#if 0
+	/* Get return address. */
+	pop %rax
+
+	/* Switch to new stack. */
+	xchgq %rsp, %rdx
+
+	/* Save return address on new stack. */
+	push %rax
+
+	/* Save old stack pointer on new stack. */
+	push %rdx
+
+	/* Get function. */
+	movq %rdi, %rdx
+
+	/* Move argument into place. */
+	movq %rsi, %rdi
+
+	/* Away we go. */
+	callq *%rdx
+
+	/* Switch back to old stack. */
+	movq 8(%rsp), %rdx
+	movq 0(%rsp), %rcx
+	xchgq %rcx, %rsp
+
+	/* Return to caller. */
+	jmpq *%rdx
+#endif
+	.size   cdecl(clib_calljmp), .-cdecl(clib_calljmp)
 #else
 #error "unknown machine"
 #endif
