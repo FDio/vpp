@@ -196,7 +196,11 @@ typedef struct
 
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
   /* Mask to apply after skipping N vectors */
-  u32x4 mask[8];
+  union
+  {
+    u32x4 mask[8];
+    u32 mask_u32[32];
+  };
 
 } vnet_classify_table_t;
 
@@ -339,7 +343,7 @@ vnet_classify_hash_packet_inline (vnet_classify_table_t *t, const u8 *h)
 #ifdef clib_crc32c_uses_intrinsics
   return clib_crc32c ((u8 *) & xor_sum, sizeof (xor_sum));
 #else
-  return clib_xxhash (xor_sum.as_u64[0] ^ xor_sum.as_u64[1]);
+  return clib_xxhash (xor_sum);
 #endif
 }
 
