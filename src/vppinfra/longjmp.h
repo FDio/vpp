@@ -95,6 +95,9 @@
 #define CLIB_ARCH_LONGJMP_REGS (22)
 #elif defined(_mips) && __mips == 64
 #define CLIB_ARCH_LONGJMP_REGS (12)
+#elif defined(__riscv)
+/* ra, sp, s0-s11, fs0-fs11 */
+#define CLIB_ARCH_LONGJMP_REGS (26)
 #else
 #error "unknown machine"
 #endif

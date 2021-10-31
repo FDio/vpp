@@ -192,6 +192,15 @@ clib_cpu_time_now (void)
   return result;
 }
 
+#elif defined(__riscv)
+
+always_inline u64
+clib_cpu_time_now (void)
+{
+  u64 result;
+  asm volatile("rdcycle %0\n" : "=r"(result));
+  return result;
+}
 #else
 #error "don't know how to read CPU time stamp"
 
