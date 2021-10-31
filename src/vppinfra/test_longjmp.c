@@ -82,27 +82,25 @@ test_longjmp_main (unformat_input_t * input)
 static uword
 f3 (uword arg)
 {
-  uword i, j, array[10];
-
-  for (i = 0; i < ARRAY_LEN (array); i++)
-    array[i] = arg + i;
-
-  j = 0;
-  for (i = 0; i < ARRAY_LEN (array); i++)
-    j ^= array[i];
-
-  return j;
+  return (uword) __builtin_frame_address (0);
 }
 
 static void
 test_calljmp (unformat_input_t * input)
 {
-  static u8 stack[32 * 1024] __attribute__ ((aligned (16)));
-  uword v;
+  u8 stack[4096] __attribute__ ((aligned (16))) = {};
+  uword start, end, v;
+
+  start = pointer_to_uword (stack);
+  end = start + ARRAY_LEN (stack);
+
+  v = f3 (0);
+  if (!(v < start || v > end))
+    clib_panic ("something went wrong in the calljmp test");
 
   v = clib_calljmp (f3, 0, stack + sizeof (stack));
-  ASSERT (v == f3 (0));
-  if_verbose ("calljump ok");
+  if_verbose ("calljump %s",
+	      v >= start && v < (end - sizeof (uword)) ? "ok" : "fail");
 }
 
 #ifdef CLIB_UNIX
