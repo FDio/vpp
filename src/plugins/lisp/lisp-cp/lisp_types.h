@@ -253,7 +253,7 @@ foreach_gid_address_type_fcns
 always_inline u64
 mac_to_u64 (u8 * m)
 {
-  return (*((u64 *) m) & 0xffffffffffff);
+  return (*(u32 *) m) | ((u64) (*(u16 *) (m + 4)) << 32);
 }
 
 typedef struct
