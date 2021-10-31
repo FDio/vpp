@@ -12,6 +12,8 @@
 #include <vnet/hash/hash.h>
 #include <vppinfra/crc32.h>
 
+#ifdef clib_crc32c_uses_intrinsics
+
 typedef union
 {
   struct
@@ -201,3 +203,5 @@ VNET_REGISTER_HASH_FUNCTION (crc32c_5tuple, static) = {
   .function[VNET_HASH_FN_TYPE_ETHERNET] = vnet_crc32c_5tuple_ethernet_func,
   .function[VNET_HASH_FN_TYPE_IP] = vnet_crc32c_5tuple_ip_func,
 };
+
+#endif
