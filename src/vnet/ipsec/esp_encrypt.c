@@ -204,7 +204,7 @@ ext_hdr_is_pre_esp (u8 nexthdr)
 #else
   return ((nexthdr ^ IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS) |
 	  (nexthdr ^ IP_PROTOCOL_IPV6_ROUTE) |
-	  (nexthdr ^ IP_PROTOCOL_IPV6_FRAGMENTATION) != 0);
+	  ((nexthdr ^ IP_PROTOCOL_IPV6_FRAGMENTATION) != 0));
 #endif
 }
 
