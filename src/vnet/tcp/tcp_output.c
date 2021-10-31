@@ -576,7 +576,7 @@ tcp_make_reset_in_place (vlib_main_t * vm, vlib_buffer_t * b, u8 is_ip4)
   ip4_header_t *ih4;
   ip6_header_t *ih6;
   tcp_header_t *th;
-  ip4_address_t src_ip4, dst_ip4;
+  ip4_address_t src_ip4 = {}, dst_ip4 = {};
   ip6_address_t src_ip6, dst_ip6;
   u16 src_port, dst_port;
   u32 tmp, len, seq, ack;
