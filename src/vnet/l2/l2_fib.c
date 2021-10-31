@@ -606,7 +606,7 @@ static clib_error_t *
 l2fib_test_command_fn (vlib_main_t * vm,
 		       unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  u8 mac[6], save_mac[6];
+  u8 mac[8], save_mac[6];
   u32 bd_index = 0;
   u32 sw_if_index = 8;
   u32 is_add = 0;

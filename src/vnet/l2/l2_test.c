@@ -188,7 +188,7 @@ api_l2fib_add_del (vat_main_t *vam)
   unformat_input_t *i = vam->input;
   vl_api_l2fib_add_del_t *mp;
   f64 timeout;
-  u8 mac[6] = { 0 };
+  u8 mac[8] = { 0 };
   u8 mac_set = 0;
   u32 bd_id;
   u8 bd_id_set = 0;
