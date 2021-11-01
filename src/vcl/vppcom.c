@@ -3088,9 +3088,30 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	break;
       sid = s->session_index;
       session_events = s->vep.ev.events;
-      add_event = 1;
-      events[*num_ev].events = EPOLLHUP | EPOLLRDHUP;
-      session_evt_data = s->vep.ev.data.u64;
+      if (EPOLLIN & session_events)
+	{
+	  events[*num_ev].events |= EPOLLIN;
+	  add_event = 1;
+	}
+      if (EPOLLOUT & session_events)
+	{
+	  events[*num_ev].events |= EPOLLOUT;
+	  add_event = 1;
+	}
+      if (EPOLLRDHUP & session_events)
+	{
+	  events[*num_ev].events |= EPOLLRDHUP;
+	  add_event = 1;
+	}
+      if (s->flags & VCL_SESSION_F_WR_SHUTDOWN)
+	{
+	  events[*num_ev].events |= EPOLLHUP;
+	  add_event = 1;
+	}
+
+      if (add_event)
+	session_evt_data = s->vep.ev.data.u64;
+
       break;
     case SESSION_CTRL_EVT_RESET:
       if (!e->postponed)
