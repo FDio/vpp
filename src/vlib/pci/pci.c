@@ -143,6 +143,19 @@ format_vlib_pci_addr (u8 * s, va_list * va)
 }
 
 u8 *
+format_vlib_pci_link_port (u8 *s, va_list *va)
+{
+  vlib_pci_device_info_t *d = va_arg (*va, vlib_pci_device_info_t *);
+  pcie_config_regs_t *r =
+    pci_config_find_capability (&d->config0, PCI_CAP_ID_PCIE);
+
+  if (!r)
+    return format (s, "unknown");
+
+  return format (s, "P%d", r->link_status >> 24);
+}
+
+u8 *
 format_vlib_pci_link_speed (u8 * s, va_list * va)
 {
   vlib_pci_device_info_t *d = va_arg (*va, vlib_pci_device_info_t *);

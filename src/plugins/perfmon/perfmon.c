@@ -157,7 +157,7 @@ perfmon_set (vlib_main_t *vm, perfmon_bundle_t *b)
 	    .disabled = 1,
 	  };
 
-	  log_debug ("perf_event_open pe.type=%u pe.config=0x%x pid=%d "
+	  log_debug ("perf_event_open pe.type=%x pe.config=0x%llx pid=%d "
 		     "cpu=%d group_fd=%d",
 		     pe.type, pe.config, in->pid, in->cpu, pm->group_fds[i]);
 	  fd = syscall (__NR_perf_event_open, &pe, in->pid, in->cpu,
