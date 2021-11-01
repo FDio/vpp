@@ -32,6 +32,7 @@ add_vpp_plugin(perfmon
   intel/bundle/power_license.c
   intel/bundle/topdown_metrics.c
   intel/bundle/topdown_tremont.c
+  intel/bundle/iio_bw.c
 
   COMPONENT
   vpp-plugin-devtools

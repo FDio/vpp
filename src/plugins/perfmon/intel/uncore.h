@@ -18,7 +18,8 @@
 
 #define foreach_intel_uncore_unit_type                                        \
   _ (IMC, "imc", "integrated Memory Controller (iMC)", "iMC%u/%u")            \
-  _ (UPI, "upi", "Ultra Path Interconnect (UPI)", "UPI%u/%u")
+  _ (UPI, "upi", "Ultra Path Interconnect (UPI)", "UPI%u/%u")                 \
+  _ (IIO, "iio", "Internal IO (IIO)", "IIO%u/%u")
 
 typedef enum
 {
@@ -28,25 +29,63 @@ typedef enum
     INTEL_UNCORE_N_UNITS,
 } intel_uncore_unit_type_t;
 
+typedef struct
+{
+  intel_uncore_unit_type_t unit_type;
+  char **unit_names;
+} intel_uncore_unit_type_names_t;
+
 #define PERF_INTEL_CODE(event, umask, edge, any, inv, cmask)                  \
   ((event) | (umask) << 8 | (edge) << 18 | (any) << 21 | (inv) << 23 |        \
    (cmask) << 24)
 
-/* Type, EventCode, UMask, name, suffix, description */
+/* Type, EventCode, UMask, en, ch_mask, fc_mask, name, suffix, description */
 #define foreach_intel_uncore_event                                            \
-  _ (IMC, 0x04, 0x03, UNC_M_CAS_COUNT, RD,                                    \
+  _ (IMC, 0x04, 0x03, 0, 0, 0, UNC_M_CAS_COUNT, RD,                           \
      "All DRAM Read CAS Commands issued (including underfills)")              \
-  _ (IMC, 0x04, 0x0c, UNC_M_CAS_COUNT, WR,                                    \
+  _ (IMC, 0x04, 0x0c, 0, 0, 0, UNC_M_CAS_COUNT, WR,                           \
      "All DRAM Write CAS commands issued")                                    \
-  _ (IMC, 0x04, 0x0f, UNC_M_CAS_COUNT, ALL, "All DRAM CAS commands issued")
+  _ (IMC, 0x04, 0x0f, 0, 0, 0, UNC_M_CAS_COUNT, ALL,                          \
+     "All DRAM CAS commands issued")                                          \
+  _ (IIO, 0x83, 0x01, 0, 0x1, 0x7, UNC_IIO_DATA_REQ_OF_CPU_PART0, WR,         \
+     "Four byte data request of the CPU : Card writing to DRAM")              \
+  _ (IIO, 0x83, 0x01, 0, 0x2, 0x7, UNC_IIO_DATA_REQ_OF_CPU_PART1, WR,         \
+     "Four byte data request of the CPU : Card writing to DRAM")              \
+  _ (IIO, 0x83, 0x01, 0, 0x4, 0x7, UNC_IIO_DATA_REQ_OF_CPU_PART2, WR,         \
+     "Four byte data request of the CPU : Card writing to DRAM")              \
+  _ (IIO, 0x83, 0x01, 0, 0x8, 0x7, UNC_IIO_DATA_REQ_OF_CPU_PART3, WR,         \
+     "Four byte data request of the CPU : Card writing to DRAM")              \
+  _ (IIO, 0x83, 0x04, 0, 0x1, 0x7, UNC_IIO_DATA_REQ_OF_CPU_PART0, RD,         \
+     "Four byte data request of the CPU : Card reading from DRAM")            \
+  _ (IIO, 0x83, 0x04, 0, 0x2, 0x7, UNC_IIO_DATA_REQ_OF_CPU_PART1, RD,         \
+     "Four byte data request of the CPU : Card reading from DRAM")            \
+  _ (IIO, 0x83, 0x04, 0, 0x4, 0x7, UNC_IIO_DATA_REQ_OF_CPU_PART2, RD,         \
+     "Four byte data request of the CPU : Card reading from DRAM")            \
+  _ (IIO, 0x83, 0x04, 0, 0x8, 0x7, UNC_IIO_DATA_REQ_OF_CPU_PART3, RD,         \
+     "Four byte data request of the CPU : Card reading from DRAM")            \
+  _ (IIO, 0xC0, 0x01, 0, 0x1, 0x7, UNC_IIO_DATA_REQ_BY_CPU_PART0, WR,         \
+     "Data requested by the CPU : Core writing to Card's MMIO space")         \
+  _ (IIO, 0xC0, 0x01, 0, 0x2, 0x7, UNC_IIO_DATA_REQ_BY_CPU_PART1, WR,         \
+     "Data requested by the CPU : Core writing to Card's MMIO space")         \
+  _ (IIO, 0xC0, 0x01, 0, 0x4, 0x7, UNC_IIO_DATA_REQ_BY_CPU_PART2, WR,         \
+     "Data requested by the CPU : Core writing to Card's MMIO space")         \
+  _ (IIO, 0xC0, 0x01, 0, 0x8, 0x7, UNC_IIO_DATA_REQ_BY_CPU_PART3, WR,         \
+     "Data requested by the CPU : Core writing to Card's MMIO space")         \
+  _ (IIO, 0x83, 0x80, 0, 0x1, 0x7, UNC_IIO_DATA_REQ_BY_CPU_PART0, RD,         \
+     "Data requested by the CPU : Core reading from Card's MMIO space")       \
+  _ (IIO, 0x83, 0x80, 0, 0x2, 0x7, UNC_IIO_DATA_REQ_BY_CPU_PART1, RD,         \
+     "Data requested by the CPU : Core reading from Card's MMIO space")       \
+  _ (IIO, 0x83, 0x80, 0, 0x4, 0x7, UNC_IIO_DATA_REQ_BY_CPU_PART2, RD,         \
+     "Data requested by the CPU : Core reading from Card's MMIO space")       \
+  _ (IIO, 0x83, 0x80, 0, 0x8, 0x7, UNC_IIO_DATA_REQ_BY_CPU_PART3, RD,         \
+     "Data requested by the CPU : Core reading from Card's MMIO space")
 
-typedef enum
-{
-#define _(unit, event, umask, name, suffix, desc)                             \
+  typedef enum {
+#define _(unit, event, umask, en, ch_mask, fc_mask, name, suffix, desc)      \
   INTEL_UNCORE_E_##unit##_##name##_##suffix,
-  foreach_intel_uncore_event
+    foreach_intel_uncore_event
 #undef _
-    INTEL_UNCORE_N_EVENTS,
-} perfmon_intel_uncore_event_index_t;
+      INTEL_UNCORE_N_EVENTS,
+  } perfmon_intel_uncore_event_index_t;
 
 #endif
