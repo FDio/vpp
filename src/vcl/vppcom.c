@@ -3089,8 +3089,22 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       sid = s->session_index;
       session_events = s->vep.ev.events;
       add_event = 1;
-      events[*num_ev].events = EPOLLHUP | EPOLLRDHUP;
+      if (EPOLLRDHUP & session_events)
+	{
+	  /* If app can distinguish between RDHUP and HUP,
+	   * we make finer control */
+	  events[*num_ev].events = EPOLLRDHUP;
+	  if (s->flags & VCL_SESSION_F_WR_SHUTDOWN)
+	    {
+	      events[*num_ev].events |= EPOLLHUP;
+	    }
+	}
+      else
+	{
+	  events[*num_ev].events = EPOLLHUP;
+	}
       session_evt_data = s->vep.ev.data.u64;
+
       break;
     case SESSION_CTRL_EVT_RESET:
       if (!e->postponed)
