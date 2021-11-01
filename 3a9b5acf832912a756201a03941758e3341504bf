@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "48e5da86_83015794",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 3108,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-11-01T04:32:34Z",
+      "side": 1,
+      "message": "epoll_wait always waits for EPOLLHUP and this is a disconnect. Moreover, io events should be delivered before the disconnect, so what exactly is the problem with this? Also is the problem edge triggered or level triggered related?",
+      "range": {
+        "startLine": 3106,
+        "startChar": 0,
+        "endLine": 3108,
+        "endChar": 2
+      },
+      "revId": "3a9b5acf832912a756201a03941758e3341504bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
