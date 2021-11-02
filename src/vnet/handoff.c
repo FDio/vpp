@@ -229,7 +229,7 @@ interface_handoff_enable_disable (vlib_main_t *vm, u32 sw_if_index,
 	    return VNET_API_ERROR_UNIMPLEMENTED;
 
 	  d->hash_fn = vnet_hash_function_from_name (
-	    "handoff_eth_sym_crc32c", VNET_HASH_FN_TYPE_ETHERNET);
+	    "handoff-eth-sym", VNET_HASH_FN_TYPE_ETHERNET);
 	}
       else
 	{
@@ -238,7 +238,7 @@ interface_handoff_enable_disable (vlib_main_t *vm, u32 sw_if_index,
 	      vnet_hash_default_function (VNET_HASH_FN_TYPE_ETHERNET);
 	  else
 	    d->hash_fn = vnet_hash_function_from_name (
-	      "handoff_eth_crc32c", VNET_HASH_FN_TYPE_ETHERNET);
+	      "handoff-eth", VNET_HASH_FN_TYPE_ETHERNET);
 	}
     }
 
