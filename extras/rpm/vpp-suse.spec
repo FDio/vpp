@@ -18,7 +18,7 @@
 
 %define _vpp_build_dir       %{buildroot}/../../BUILD/vpp-%{version}/build-root
 %define _vpp_install_dir     %{_vpp_build_dir}/install-vpp-native/
-%define _vpp_plugins_lib_dir %{_vpp_install_dir}/vpp/lib
+%define _vpp_plugins_lib_dir %{_vpp_install_dir}/vpp/lib64
 
 %define lname libvpp0
 
@@ -146,7 +146,7 @@ export VPP_BUILD_HOST=SUSE
 
 make -C build-root V=1 CC=gcc-7 CXX=g++-7 PLATFORM=vpp TAG=vpp install-packages
 
-cd %{_vpp_build_dir}/../src/vpp-api/python && %{py2_build}
+cd %{_vpp_build_dir}/../src/vpp-api/python && %{py3_build}
 
 %pre
 # Add the vpp group
@@ -177,6 +177,7 @@ mkdir -p -m755 %{buildroot}%{_sysconfdir}/vpp
 mkdir -p -m755 %{buildroot}%{_sysconfdir}/sysctl.d
 install -p -m 644 %{_vpp_build_dir}/../extras/rpm/vpp.service %{buildroot}%{_unitdir}
 install -p -m 644 %{_vpp_build_dir}/../src/vpp/conf/startup.conf %{buildroot}%{_sysconfdir}/vpp/startup.conf
+sed -i -e "s|^\(\s*\)api-trace {|plugin_path /usr/lib64/vpp_plugins\n\napi-trace {|" %{buildroot}%{_sysconfdir}/vpp/startup.conf
 install -p -m 644 %{_vpp_build_dir}/../src/vpp/conf/80-vpp.conf %{buildroot}%{_sysconfdir}/sysctl.d
 #
 # libraries
@@ -211,19 +212,12 @@ do
 done
 
 # Python bindings
-cd %{_vpp_build_dir}/../src/vpp-api/python && %{py2_install}
-
-mkdir -p -m755 %{buildroot}%{python_sitelib}/vpp_papi
-for file in $(find %{_vpp_install_dir}/*/lib/python2.7/site-packages/ -type f -print | grep -v pyc | grep -v pyo)
-do
-	install -p -m755 $file %{buildroot}%{python_sitelib}/vpp_papi/
-done
-chmod -x %{buildroot}%{python_sitelib}/vpp_papi/*.txt
+cd %{_vpp_build_dir}/../src/vpp-api/python && %{py3_install}
 
 #
 # devel
 #
-for dir in %{_vpp_install_dir}/{vom,vpp}/include/
+for dir in %{_vpp_install_dir}/vpp/include/
 do
 	for subdir in $(cd ${dir} && find . -type d -print)
 	do
@@ -289,6 +283,7 @@ export NO_BRP_CHECK_RPATH=true
 %{_unitdir}/vpp.service
 %{_bindir}/vpp*
 %{_bindir}/svm*
+%{_bindir}/vat2*
 %dir %{_sysconfdir}/vpp
 %config %{_sysconfdir}/sysctl.d/80-vpp.conf
 %config %{_sysconfdir}/vpp/startup.conf
@@ -303,12 +298,16 @@ export NO_BRP_CHECK_RPATH=true
 %{_datadir}/doc/vpp/examples/lua
 
 %files api-python
-%dir %{python_sitelib}/vpp_papi*
-%{python_sitelib}/vpp_papi*
+%dir %{python3_sitelib}/vpp_*
+%{python3_sitelib}/vpp_*
 
 %files devel
 %dir %{_datadir}/doc/vpp
 %dir %{_datadir}/doc/vpp/examples
+/usr/bin/vppapigen
+/usr/bin/vapi_c_gen.py
+/usr/bin/vapi_cpp_gen.py
+/usr/bin/vapi_json_parser.py
 %{_libdir}/*.so
 %{_includedir}/*
 %{_datadir}/doc/vpp/examples/sample-plugin
