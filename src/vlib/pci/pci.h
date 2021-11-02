@@ -96,9 +96,11 @@ typedef struct vlib_pci_device_info
 
 typedef u32 vlib_pci_dev_handle_t;
 
-vlib_pci_device_info_t *vlib_pci_get_device_info (vlib_main_t * vm,
-						  vlib_pci_addr_t * addr,
-						  clib_error_t ** error);
+vlib_pci_device_info_t *vlib_pci_get_device_info (vlib_main_t *vm,
+						  vlib_pci_addr_t *addr,
+						  clib_error_t **error);
+clib_error_t *vlib_pci_get_device_root_bus (vlib_pci_addr_t *addr,
+					    vlib_pci_addr_t *root_bus);
 vlib_pci_addr_t *vlib_pci_get_all_dev_addrs ();
 vlib_pci_addr_t *vlib_pci_get_addr (vlib_main_t * vm,
 				    vlib_pci_dev_handle_t h);
