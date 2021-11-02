@@ -503,8 +503,12 @@ START_TEST (test_loopbacks_1)
   for (i = 0; i < num_ifs; ++i)
     {
       vapi_msg_create_loopback *cl = vapi_alloc_create_loopback (ctx);
-      memcpy (cl->payload.mac_address, mac_addresses[i],
-	      sizeof (cl->payload.mac_address));
+      cl->payload.mac_address[0] = mac_addresses[i][0];
+      cl->payload.mac_address[1] = mac_addresses[i][1];
+      cl->payload.mac_address[2] = mac_addresses[i][2];
+      cl->payload.mac_address[3] = mac_addresses[i][3];
+      cl->payload.mac_address[4] = mac_addresses[i][4];
+      cl->payload.mac_address[5] = mac_addresses[i][5];
       vapi_error_e rv =
 	vapi_create_loopback (ctx, cl, loopback_create_cb, &clcs[i]);
       ck_assert_int_eq (VAPI_OK, rv);
@@ -656,8 +660,12 @@ START_TEST (test_loopbacks_2)
   for (i = 0; i < num_ifs; ++i)
     {
       vapi_msg_create_loopback *cl = vapi_alloc_create_loopback (ctx);
-      memcpy (cl->payload.mac_address, mac_addresses[i],
-	      sizeof (cl->payload.mac_address));
+      cl->payload.mac_address[0] = mac_addresses[i][0];
+      cl->payload.mac_address[1] = mac_addresses[i][1];
+      cl->payload.mac_address[2] = mac_addresses[i][2];
+      cl->payload.mac_address[3] = mac_addresses[i][3];
+      cl->payload.mac_address[4] = mac_addresses[i][4];
+      cl->payload.mac_address[5] = mac_addresses[i][5];
       while (VAPI_EAGAIN ==
 	     (rv =
 	      vapi_create_loopback (ctx, cl, loopback_create_cb, &clcs[i])))
