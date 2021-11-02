@@ -20,6 +20,17 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/mpls/packet.h>
 #include <vppinfra/crc32.h>
+#include <vppinfra/xxhash.h>
+
+always_inline u32
+ho_hash (u64 key)
+{
+#ifdef clib_crc32c_uses_intrinsics
+  return clib_crc32c ((u8 *) &key, sizeof (key));
+#else
+  return clib_xxhash (key);
+#endif
+}
 
 static inline u64
 ipv4_get_key (ip4_header_t * ip)
@@ -253,10 +264,10 @@ handoff_eth_crc32c_func (void **p, u32 *hash, u32 n_packets)
       key[2] = eth_get_key ((ethernet_header_t *) p[2]);
       key[3] = eth_get_key ((ethernet_header_t *) p[3]);
 
-      hash[0] = clib_crc32c ((u8 *) &key[0], sizeof (key[0]));
-      hash[1] = clib_crc32c ((u8 *) &key[1], sizeof (key[1]));
-      hash[2] = clib_crc32c ((u8 *) &key[2], sizeof (key[2]));
-      hash[3] = clib_crc32c ((u8 *) &key[3], sizeof (key[3]));
+      hash[0] = ho_hash (key[0]);
+      hash[1] = ho_hash (key[1]);
+      hash[2] = ho_hash (key[2]);
+      hash[3] = ho_hash (key[3]);
 
       hash += 4;
       n_left_from -= 4;
@@ -268,7 +279,7 @@ handoff_eth_crc32c_func (void **p, u32 *hash, u32 n_packets)
       u64 key;
 
       key = eth_get_key ((ethernet_header_t *) p[0]);
-      hash[0] = clib_crc32c ((u8 *) &key, sizeof (key));
+      hash[0] = ho_hash (key);
 
       hash += 1;
       n_left_from -= 1;
@@ -277,7 +288,7 @@ handoff_eth_crc32c_func (void **p, u32 *hash, u32 n_packets)
 }
 
 VNET_REGISTER_HASH_FUNCTION (handoff_eth_crc32c, static) = {
-  .name = "handoff-eth-crc32c",
+  .name = "handoff-eth",
   .description = "Ethernet/IPv4/IPv6/MPLS headers",
   .priority = 2,
   .function[VNET_HASH_FN_TYPE_ETHERNET] = handoff_eth_crc32c_func,
@@ -302,10 +313,10 @@ handoff_eth_sym_crc32c_func (void **p, u32 *hash, u32 n_packets)
       key[2] = eth_get_sym_key ((ethernet_header_t *) p[2]);
       key[3] = eth_get_sym_key ((ethernet_header_t *) p[3]);
 
-      hash[0] = clib_crc32c ((u8 *) &key[0], sizeof (key[0]));
-      hash[1] = clib_crc32c ((u8 *) &key[1], sizeof (key[1]));
-      hash[2] = clib_crc32c ((u8 *) &key[2], sizeof (key[2]));
-      hash[3] = clib_crc32c ((u8 *) &key[3], sizeof (key[3]));
+      hash[0] = ho_hash (key[0]);
+      hash[1] = ho_hash (key[1]);
+      hash[2] = ho_hash (key[2]);
+      hash[3] = ho_hash (key[3]);
 
       hash += 4;
       n_left_from -= 4;
@@ -317,7 +328,7 @@ handoff_eth_sym_crc32c_func (void **p, u32 *hash, u32 n_packets)
       u64 key;
 
       key = eth_get_sym_key ((ethernet_header_t *) p[0]);
-      hash[0] = clib_crc32c ((u8 *) &key, sizeof (key));
+      hash[0] = ho_hash (key);
 
       hash += 1;
       n_left_from -= 1;
@@ -326,7 +337,7 @@ handoff_eth_sym_crc32c_func (void **p, u32 *hash, u32 n_packets)
 }
 
 VNET_REGISTER_HASH_FUNCTION (handoff_eth_sym_crc32c, static) = {
-  .name = "handoff-eth-sym-crc32c",
+  .name = "handoff-eth-sym",
   .description = "Ethernet/IPv4/IPv6/MPLS headers Symmetric",
   .priority = 1,
   .function[VNET_HASH_FN_TYPE_ETHERNET] = handoff_eth_sym_crc32c_func,
