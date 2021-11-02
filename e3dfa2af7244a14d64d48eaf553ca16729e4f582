@@ -120,6 +120,30 @@
     },
     {
       "key": {
+        "uuid": "69c693b4_cca1ab98",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3110,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-11-02T14:20:14Z",
+      "side": 1,
+      "message": "So that means Envoy didn\u0027t ask for RDHUP or didn\u0027t half-close. Would the issue be fixed if we returned just HUP on the else branch?",
+      "parentUuid": "64b54846_ea602367",
+      "range": {
+        "startLine": 3101,
+        "startChar": 0,
+        "endLine": 3110,
+        "endChar": 2
+      },
+      "revId": "e3dfa2af7244a14d64d48eaf553ca16729e4f582",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a4d09df0_b2dfcf3f",
         "filename": "src/vcl/vppcom.c",
         "patchSetId": 2
