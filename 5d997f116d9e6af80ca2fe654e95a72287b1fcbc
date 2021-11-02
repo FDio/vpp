@@ -16,6 +16,24 @@
       "revId": "5d997f116d9e6af80ca2fe654e95a72287b1fcbc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9725e524_11bdac1c",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 880,
+      "author": {
+        "id": 1541
+      },
+      "writtenOn": "2021-11-02T17:24:45Z",
+      "side": 1,
+      "message": "_add/_del are internaly used by resolve logic - when interface receives ip address (dhcp/user configuration) the _add is called the same applies when address is removed. there also multiple internal cases where the resolve record logic isn\u0027t required. i will use your suggestion from 1 but add internal static _add/_del.",
+      "parentUuid": "f1a0efee_03446e6e",
+      "revId": "5d997f116d9e6af80ca2fe654e95a72287b1fcbc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
