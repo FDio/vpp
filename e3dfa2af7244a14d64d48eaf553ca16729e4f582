@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e2c9de31_66e54de3",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3100,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-11-02T05:37:23Z",
+      "side": 1,
+      "message": "Can we try without these? These should\u0027ve been delivered as a separate event(s). Because close worked before libevent change, I\u0027m hoping it will also work after we change RDHUP",
+      "range": {
+        "startLine": 3091,
+        "startChar": 0,
+        "endLine": 3100,
+        "endChar": 2
+      },
+      "revId": "e3dfa2af7244a14d64d48eaf553ca16729e4f582",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "57b8f560_ea64502a",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3110,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-11-02T05:37:23Z",
+      "side": 1,
+      "message": "Let\u0027s make this: \n\n```\nif ((EPOLLRDHUP \u0026 session_events) \u0026\u0026 (s-\u003eflags \u0026 VCL_SESSION_F_WR_SHUTDOWN))\n  {\n    events[*num_ev].events |\u003d EPOLLRDHUP;\n    add_event \u003d 1;\n  }\nelse\n  {\n    add_event \u003d 1;\n    events[*num_ev].events \u003d EPOLLHUP | EPOLLRDHUP;\n  }\n```\n\nThat is, we extend existing code to be smart about EPOLLRDHUP after app (our app) half-closed.",
+      "range": {
+        "startLine": 3101,
+        "startChar": 0,
+        "endLine": 3110,
+        "endChar": 2
+      },
+      "revId": "e3dfa2af7244a14d64d48eaf553ca16729e4f582",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a4d09df0_b2dfcf3f",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3112,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-11-02T05:37:23Z",
+      "side": 1,
+      "message": "No need, we do the check lower.",
+      "range": {
+        "startLine": 3112,
+        "startChar": 0,
+        "endLine": 3112,
+        "endChar": 20
+      },
+      "revId": "e3dfa2af7244a14d64d48eaf553ca16729e4f582",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
