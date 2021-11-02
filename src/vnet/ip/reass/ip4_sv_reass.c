@@ -778,24 +778,24 @@ slow_path:
 
 	  ip4_sv_reass_rc_t rc =
 	    ip4_sv_reass_update (vm, node, rm, ip0, reass, bi0);
+	  u32 counter = ~0;
 	  switch (rc)
 	    {
 	    case IP4_SV_REASS_RC_OK:
 	      /* nothing to do here */
 	      break;
 	    case IP4_SV_REASS_RC_TOO_MANY_FRAGMENTS:
-	      vlib_node_increment_counter (vm, node->node_index,
-					   IP4_ERROR_REASS_FRAGMENT_CHAIN_TOO_LONG,
-					   1);
-	      ip4_sv_reass_free (vm, rm, rt, reass);
-	      goto next_packet;
+	      counter = IP4_ERROR_REASS_FRAGMENT_CHAIN_TOO_LONG;
 	      break;
 	    case IP4_SV_REASS_RC_UNSUPP_IP_PROTO:
-	      vlib_node_increment_counter (vm, node->node_index,
-					   IP4_ERROR_REASS_UNSUPP_IP_PROT, 1);
+	      counter = IP4_ERROR_REASS_UNSUPP_IP_PROT;
+	      break;
+	    }
+	  if (~0 != counter)
+	    {
+	      vlib_node_increment_counter (vm, node->node_index, counter, 1);
 	      ip4_sv_reass_free (vm, rm, rt, reass);
 	      goto next_packet;
-	      break;
 	    }
 	  if (reass->is_complete)
 	    {

@@ -1144,6 +1144,7 @@ ip6_full_reassembly_inline (vlib_main_t * vm,
 	  else if (reass)
 	    {
 	      u32 handoff_thread_idx;
+	      u32 counter = ~0;
 	      switch (ip6_full_reass_update
 		      (vm, node, rm, rt, reass, &bi0, &next0, &error0,
 		       frag_hdr, is_custom_app, &handoff_thread_idx))
@@ -1158,28 +1159,22 @@ ip6_full_reassembly_inline (vlib_main_t * vm,
 		    handoff_thread_idx;
 		  break;
 		case IP6_FULL_REASS_RC_TOO_MANY_FRAGMENTS:
-		  vlib_node_increment_counter (vm, node->node_index,
-					       IP6_ERROR_REASS_FRAGMENT_CHAIN_TOO_LONG,
-					       1);
-		  ip6_full_reass_drop_all (vm, node, reass);
-		  ip6_full_reass_free (rm, rt, reass);
-		  goto next_packet;
+		  counter = IP6_ERROR_REASS_FRAGMENT_CHAIN_TOO_LONG;
 		  break;
 		case IP6_FULL_REASS_RC_NO_BUF:
-		  vlib_node_increment_counter (vm, node->node_index,
-					       IP6_ERROR_REASS_NO_BUF, 1);
-		  ip6_full_reass_drop_all (vm, node, reass);
-		  ip6_full_reass_free (rm, rt, reass);
-		  goto next_packet;
+		  counter = IP6_ERROR_REASS_NO_BUF;
 		  break;
 		case IP6_FULL_REASS_RC_INTERNAL_ERROR:
-		  vlib_node_increment_counter (vm, node->node_index,
-					       IP6_ERROR_REASS_INTERNAL_ERROR,
+		  counter = IP6_ERROR_REASS_INTERNAL_ERROR;
+		  break;
+		}
+	      if (~0 != counter)
+		{
+		  vlib_node_increment_counter (vm, node->node_index, counter,
 					       1);
 		  ip6_full_reass_drop_all (vm, node, reass);
 		  ip6_full_reass_free (rm, rt, reass);
 		  goto next_packet;
-		  break;
 		}
 	    }
 	  else

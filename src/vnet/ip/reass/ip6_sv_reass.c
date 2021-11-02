@@ -645,31 +645,27 @@ ip6_sv_reassembly_inline (vlib_main_t * vm,
 	      goto packet_enqueue;
 	    }
 
+	  u32 counter = ~0;
 	  switch (ip6_sv_reass_update (vm, node, rm, reass, bi0, frag_hdr))
 	    {
 	    case IP6_SV_REASS_RC_OK:
 	      /* nothing to do here */
 	      break;
 	    case IP6_SV_REASS_RC_TOO_MANY_FRAGMENTS:
-	      vlib_node_increment_counter (vm, node->node_index,
-					   IP6_ERROR_REASS_FRAGMENT_CHAIN_TOO_LONG,
-					   1);
-	      ip6_sv_reass_free (vm, rm, rt, reass);
-	      goto next_packet;
+	      counter = IP6_ERROR_REASS_FRAGMENT_CHAIN_TOO_LONG;
 	      break;
 	    case IP6_SV_REASS_RC_UNSUPP_IP_PROTO:
-	      vlib_node_increment_counter (vm, node->node_index,
-					   IP6_ERROR_REASS_UNSUPP_IP_PROTO,
-					   1);
-	      ip6_sv_reass_free (vm, rm, rt, reass);
-	      goto next_packet;
+	      counter = IP6_ERROR_REASS_UNSUPP_IP_PROTO;
 	      break;
 	    case IP6_SV_REASS_RC_INTERNAL_ERROR:
-	      vlib_node_increment_counter (vm, node->node_index,
-					   IP6_ERROR_REASS_INTERNAL_ERROR, 1);
+	      counter = IP6_ERROR_REASS_INTERNAL_ERROR;
+	      break;
+	    }
+	  if (~0 != counter)
+	    {
+	      vlib_node_increment_counter (vm, node->node_index, counter, 1);
 	      ip6_sv_reass_free (vm, rm, rt, reass);
 	      goto next_packet;
-	      break;
 	    }
 
 	  if (reass->is_complete)
