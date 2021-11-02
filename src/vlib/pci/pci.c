@@ -61,6 +61,12 @@ vlib_pci_get_device_info (vlib_main_t * vm, vlib_pci_addr_t * addr,
   return 0;
 }
 
+clib_error_t *__attribute__ ((weak))
+vlib_pci_get_device_root_bus (vlib_pci_addr_t *addr, vlib_pci_addr_t *root_bus)
+{
+  return 0;
+}
+
 vlib_pci_addr_t * __attribute__ ((weak)) vlib_pci_get_all_dev_addrs ()
 {
   return 0;
