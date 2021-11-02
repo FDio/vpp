@@ -245,12 +245,14 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
     case MESSAGE_HANDSHAKE_RESPONSE:
       {
 	message_handshake_response_t *resp = current_b_data;
+	index_t peeri = INDEX_INVALID;
 	u32 *entry =
 	  wg_index_table_lookup (&wmp->index_table, resp->receiver_index);
 
 	if (PREDICT_TRUE (entry != NULL))
 	  {
-	    peer = wg_peer_get (*entry);
+	    peeri = *entry;
+	    peer = wg_peer_get (peeri);
 	    if (wg_peer_is_dead (peer))
 	      return WG_INPUT_ERROR_PEER;
 	  }
@@ -282,7 +284,7 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
 	      }
 	    else
 	      {
-		wg_peer_update_flags (*entry, WG_PEER_ESTABLISHED, true);
+		wg_peer_update_flags (peeri, WG_PEER_ESTABLISHED, true);
 	      }
 	  }
 	break;
