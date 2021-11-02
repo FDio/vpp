@@ -56,7 +56,7 @@ endif
 
 ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
 PKG=deb
-else ifeq ($(filter rhel centos fedora,$(OS_ID)),$(OS_ID))
+else ifeq ($(filter rhel centos fedora opensuse-leap,$(OS_ID)),$(OS_ID))
 PKG=rpm
 endif
 
@@ -153,6 +153,34 @@ RPM_DEPENDS_DEBUG  = glibc-debuginfo e2fsprogs-debuginfo
 RPM_DEPENDS_DEBUG += krb5-debuginfo openssl-debuginfo
 RPM_DEPENDS_DEBUG += zlib-debuginfo nss-softokn-debuginfo
 RPM_DEPENDS_DEBUG += yum-plugin-auto-update-debug-info
+# lowercase- replace spaces with dashes.
+SUSE_NAME= $(shell grep '^NAME=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g' | sed -e 's/ /-/' | awk '{print tolower($$0)}')
+SUSE_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g' | cut -d' ' -f2)
+RPM_SUSE_BUILDTOOLS_DEPS = autoconf automake ccache check-devel chrpath
+RPM_SUSE_BUILDTOOLS_DEPS += clang cmake indent libtool make ninja python3-ply
+
+RPM_SUSE_DEVEL_DEPS = glibc-devel-static libnuma-devel libelf-devel
+RPM_SUSE_DEVEL_DEPS += libopenssl-devel openssl-devel mbedtls-devel libuuid-devel
+
+RPM_SUSE_PYTHON_DEPS = python-devel python3-devel python-pip python3-pip
+RPM_SUSE_PYTHON_DEPS += python-rpm-macros python3-rpm-macros
+
+RPM_SUSE_PLATFORM_DEPS = distribution-release shadow rpm-build
+
+ifeq ($(OS_ID),opensuse-leap)
+ifeq ($(SUSE_ID),15.3)
+	RPM_SUSE_DEVEL_DEPS += curl libstdc++-devel bison gcc-c++ zlib-devel xmlto
+	RPM_SUSE_DEVEL_DEPS += libboost_headers-devel libboost_thread-devel lsb-release
+	RPM_SUSE_DEVEL_DEPS += asciidoc git
+	RPM_SUSE_PYTHON_DEPS += python3 python2-ply
+endif
+ifeq ($(SUSE_ID),15.0)
+	RPM_SUSE_DEVEL_DEPS += libboost_headers-devel libboost_thread-devel gcc git curl
+	RPM_SUSE_PYTHON_DEPS += python3-ply python2-virtualenv
+endif
+endif
+
+RPM_SUSE_DEPENDS += $(RPM_SUSE_BUILDTOOLS_DEPS) $(RPM_SUSE_DEVEL_DEPS) $(RPM_SUSE_PYTHON_DEPS) $(RPM_SUSE_PLATFORM_DEPS)
 
 ifneq ($(wildcard $(STARTUP_DIR)/startup.conf),)
         STARTUP_CONF ?= $(STARTUP_DIR)/startup.conf
@@ -307,8 +335,11 @@ else ifeq ($(OS_ID),fedora)
 	@sudo -E dnf install $(CONFIRM) $(RPM_DEPENDS)
 	@sudo -E debuginfo-install $(CONFIRM) glibc openssl-libs mbedtls-devel zlib
 endif
+else ifeq ($(filter opensuse-leap,$(OS_ID)),$(OS_ID))
+	@sudo -E zypper refresh
+	@sudo -E zypper install  -y $(RPM_SUSE_DEPENDS)
 else
-	$(error "This option currently works only on Ubuntu, Debian, RHEL, or CentOS systems")
+	$(error "This option currently works only on Ubuntu, Debian, RHEL, CentOS or openSUSE-leap systems")
 endif
 	git config commit.template .git_commit_template.txt
 
