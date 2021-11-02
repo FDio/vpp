@@ -386,7 +386,7 @@ snort_instance_create (vlib_main_t *vm, char *name, u8 log2_queue_sz,
 
   for (i = 0; i < vlib_get_n_threads (); i++)
     vlib_node_set_state (vlib_get_main_by_index (i), snort_deq_node.index,
-			 VLIB_NODE_STATE_INTERRUPT);
+			 sm->input_mode);
 
 done:
   if (err)
@@ -490,6 +490,7 @@ static clib_error_t *
 snort_init (vlib_main_t *vm)
 {
   snort_main_t *sm = &snort_main;
+  sm->input_mode = VLIB_NODE_STATE_INTERRUPT;
   sm->instance_by_name = hash_create_string (0, sizeof (uword));
   vlib_buffer_pool_t *bp;
 
