@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e63b7482_c65a639e",
+        "filename": "src/vnet/ip/ip_types.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 294,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-11-02T22:37:51Z",
+      "side": 1,
+      "message": "clib_memcpy",
+      "revId": "c4c704eb190c83894ef194c34a5c282e82e54aa7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
