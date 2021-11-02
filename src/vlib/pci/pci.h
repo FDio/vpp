@@ -325,6 +325,7 @@ int vlib_pci_supports_virtual_addr_dma (vlib_main_t * vm,
 unformat_function_t unformat_vlib_pci_addr;
 format_function_t format_vlib_pci_addr;
 format_function_t format_vlib_pci_link_speed;
+format_function_t format_vlib_pci_link_port;
 format_function_t format_vlib_pci_vpd;
 
 #endif /* included_vlib_pci_h */
