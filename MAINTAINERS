@@ -795,6 +795,11 @@ M:	Ole Troan <ot@cisco.com>
 M:	Paul Atkins <patkins@graphiant.com>
 F:	src/vnet/ipfix-export/
 
+RPM packaging on openSUSE
+I:	rpm-packaging
+M:	Laszlo Kiraly <laszlo.kiraly@est.tech>
+F:	src/extras/rpm/opensuse
+
 THE REST
 I:	misc
 M:	vpp-dev Mailing List <vpp-dev@fd.io>

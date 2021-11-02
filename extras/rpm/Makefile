@@ -26,6 +26,13 @@ PC=%
 
 all: RPM
 
+# SUSE osleap15
+ifeq ($(filter opensuse-leap,$(OS_ID)),$(OS_ID))
+SRC_SPEC_DIR="opensuse"
+else
+SRC_SPEC_DIR="."
+endif
+
 SPEC_FILE='vpp.spec'
 
 spec:
@@ -33,7 +40,7 @@ spec:
 	mkdir -p $(RPMBUILD)/RPMS $(RPMBUILD)/SRPMS $(RPMBUILD)/BUILD \
              $(RPMBUILD)/SOURCES $(RPMBUILD)/SPECS
 	cp $(TARBALL) $(RPMBUILD)/SOURCES/vpp-$(VERSION)-$(RELEASE).tar.xz
-	cp $(SPEC_FILE) $(RPMBUILD)/SPECS
+	cp $(SRC_SPEC_DIR)/$(SPEC_FILE) $(RPMBUILD)/SPECS
 
 srpm: spec
 	rpmbuild -bs \
