@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "76c44032_b5c3846e",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3100,
+      "author": {
+        "id": 2462
+      },
+      "writtenOn": "2021-11-02T07:06:55Z",
+      "side": 1,
+      "message": "Ok, these two cases are not critical",
+      "parentUuid": "e2c9de31_66e54de3",
+      "range": {
+        "startLine": 3091,
+        "startChar": 0,
+        "endLine": 3100,
+        "endChar": 2
+      },
+      "revId": "e3dfa2af7244a14d64d48eaf553ca16729e4f582",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "57b8f560_ea64502a",
         "filename": "src/vcl/vppcom.c",
         "patchSetId": 2
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "64b54846_ea602367",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3110,
+      "author": {
+        "id": 2462
+      },
+      "writtenOn": "2021-11-02T07:06:55Z",
+      "side": 1,
+      "message": "I\u0027m afraid not. \nThe above code means RDHUP may gernerated even though we didn\u0027t add it to epoll ctl. Is this reasonable? In addition, this did not solve the problem I am currently experiencing. When both HUP and RDHUP are generated, new libevent do nothing...",
+      "parentUuid": "57b8f560_ea64502a",
+      "range": {
+        "startLine": 3101,
+        "startChar": 0,
+        "endLine": 3110,
+        "endChar": 2
+      },
+      "revId": "e3dfa2af7244a14d64d48eaf553ca16729e4f582",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a4d09df0_b2dfcf3f",
         "filename": "src/vcl/vppcom.c",
         "patchSetId": 2
@@ -59,6 +107,30 @@
       "writtenOn": "2021-11-02T05:37:23Z",
       "side": 1,
       "message": "No need, we do the check lower.",
+      "range": {
+        "startLine": 3112,
+        "startChar": 0,
+        "endLine": 3112,
+        "endChar": 20
+      },
+      "revId": "e3dfa2af7244a14d64d48eaf553ca16729e4f582",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c411a53f_902328d9",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3112,
+      "author": {
+        "id": 2462
+      },
+      "writtenOn": "2021-11-02T07:06:55Z",
+      "side": 1,
+      "message": "ok",
+      "parentUuid": "a4d09df0_b2dfcf3f",
       "range": {
         "startLine": 3112,
         "startChar": 0,
