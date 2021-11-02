@@ -888,7 +888,7 @@ list(APPEND VNET_SOURCES
   hash/hash.c
   hash/cli.c
   hash/crc32_5tuple.c
-  hash/crc32_handoff_eth.c
+  hash/handoff_eth.c
 )
 
 list(APPEND VNET_HEADERS
