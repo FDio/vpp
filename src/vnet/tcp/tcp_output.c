@@ -332,25 +332,6 @@ tcp_update_burst_snd_vars (tcp_connection_t * tc)
     }
 }
 
-#endif /* CLIB_MARCH_VARIANT */
-
-static void *
-tcp_reuse_buffer (vlib_main_t * vm, vlib_buffer_t * b)
-{
-  if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
-    vlib_buffer_free_one (vm, b->next_buffer);
-  /* Zero all flags but free list index and trace flag */
-  b->flags &= VLIB_BUFFER_NEXT_PRESENT - 1;
-  b->current_data = 0;
-  b->current_length = 0;
-  b->total_length_not_including_first_buffer = 0;
-  vnet_buffer (b)->tcp.flags = 0;
-  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
-  /* Leave enough space for headers */
-  return vlib_buffer_make_headroom (b, TRANSPORT_MAX_HDRS_LEN);
-}
-
-#ifndef CLIB_MARCH_VARIANT
 static void *
 tcp_init_buffer (vlib_main_t * vm, vlib_buffer_t * b)
 {
@@ -362,7 +343,6 @@ tcp_init_buffer (vlib_main_t * vm, vlib_buffer_t * b)
   /* Leave enough space for headers */
   return vlib_buffer_make_headroom (b, TRANSPORT_MAX_HDRS_LEN);
 }
-
 
 /* Compute TCP checksum in software when offloading is disabled for a connection */
 u16
@@ -568,24 +548,24 @@ tcp_enqueue_to_output (tcp_worker_ctx_t * wrk, vlib_buffer_t * b, u32 bi,
 				 wrk->tco_next_node[!is_ip4]);
 }
 
-#endif /* CLIB_MARCH_VARIANT */
-
-static int
-tcp_make_reset_in_place (vlib_main_t * vm, vlib_buffer_t * b, u8 is_ip4)
+int
+tcp_buffer_make_reset (vlib_main_t *vm, vlib_buffer_t *b, u8 is_ip4)
 {
-  ip4_header_t *ih4;
-  ip6_header_t *ih6;
-  tcp_header_t *th;
   ip4_address_t src_ip4 = {}, dst_ip4 = {};
   ip6_address_t src_ip6, dst_ip6;
   u16 src_port, dst_port;
   u32 tmp, len, seq, ack;
+  ip4_header_t *ih4;
+  ip6_header_t *ih6;
+  tcp_header_t *th;
   u8 flags;
 
-  /* Find IP and TCP headers */
+  /*
+   * Find IP and TCP headers and glean information from them. Assumes
+   * buffer was parsed by something like @ref tcp_input_lookup_buffer
+   */
   th = tcp_buffer_hdr (b);
 
-  /* Save src and dst ip */
   if (is_ip4)
     {
       ih4 = vlib_buffer_get_current (b);
@@ -625,7 +605,23 @@ tcp_make_reset_in_place (vlib_main_t * vm, vlib_buffer_t * b, u8 is_ip4)
       seq = 0;
     }
 
-  tcp_reuse_buffer (vm, b);
+  /*
+   * Clear and reuse current buffer for reset
+   */
+  if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+    vlib_buffer_free_one (vm, b->next_buffer);
+
+  /* Zero all flags but free list index and trace flag */
+  b->flags &= VLIB_BUFFER_NEXT_PRESENT - 1;
+  b->current_data = 0;
+  b->current_length = 0;
+  b->total_length_not_including_first_buffer = 0;
+  vnet_buffer (b)->tcp.flags = 0;
+  vlib_buffer_make_headroom (b, TRANSPORT_MAX_HDRS_LEN);
+
+  /*
+   * Add TCP and IP headers
+   */
   th = vlib_buffer_push_tcp_net_order (b, dst_port, src_port, seq, ack,
 				       sizeof (tcp_header_t), flags, 0);
 
@@ -646,7 +642,6 @@ tcp_make_reset_in_place (vlib_main_t * vm, vlib_buffer_t * b, u8 is_ip4)
   return 0;
 }
 
-#ifndef CLIB_MARCH_VARIANT
 /**
  *  Send reset without reusing existing buffer
  *
@@ -2368,7 +2363,7 @@ tcp46_send_reset_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
-	  tcp_make_reset_in_place (vm, b0, is_ip4);
+	  tcp_buffer_make_reset (vm, b0, is_ip4);
 
 	  /* Prepare to send to IP lookup */
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ~0;
