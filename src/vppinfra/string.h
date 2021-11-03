@@ -926,14 +926,6 @@ strncmp_s_inline (const char *s1, rsize_t s1max, const char *s2, rsize_t n,
   return EOK;
 }
 
-/*
- * This macro is provided for smooth migration from strcpy. It is not perfect
- * because we don't know the size of the destination buffer to pass to strcpy_s.
- * We improvise dmax with CLIB_STRING_MACRO_MAX.
- * Applications are encouraged to move to the C11 strcpy_s API.
- */
-#define clib_strcpy(d,s) strcpy_s_inline(d,CLIB_STRING_MACRO_MAX,s)
-
 errno_t strcpy_s (char *__restrict__ dest, rsize_t dmax,
 		  const char *__restrict__ src);
 
@@ -1060,16 +1052,6 @@ strncpy_s_inline (char *__restrict__ dest, rsize_t dmax,
   return status;
 }
 
-/*
- * This macro is to provide smooth migration from strcat to strcat_s.
- * Because there is no dmax in strcat, we improvise it with
- * CLIB_STRING_MACRO_MAX. Please note there may be a chance to overwrite dest
- * with too many bytes from src.
- * Applications are encouraged to use C11 API to provide the actual dmax
- * for proper checking and protection.
- */
-#define clib_strcat(d,s) strcat_s_inline(d,CLIB_STRING_MACRO_MAX,s)
-
 errno_t strcat_s (char *__restrict__ dest, rsize_t dmax,
 		  const char *__restrict__ src);
 
@@ -1120,16 +1102,6 @@ strcat_s_inline (char *__restrict__ dest, rsize_t dmax,
   dest[dest_size + n] = '\0';
   return EOK;
 }
-
-/*
- * This macro is to provide smooth migration from strncat to strncat_s.
- * The unsafe strncat does not have s1max. We improvise it with
- * CLIB_STRING_MACRO_MAX. Please note there may be a chance to overwrite
- * dest with too many bytes from src.
- * Applications are encouraged to move to C11 strncat_s which requires dmax
- * from the caller and provides checking to safeguard the memory corruption.
- */
-#define clib_strncat(d,s,n) strncat_s_inline(d,CLIB_STRING_MACRO_MAX,s,n)
 
 errno_t strncat_s (char *__restrict__ dest, rsize_t dmax,
 		   const char *__restrict__ src, rsize_t n);
@@ -1349,23 +1321,6 @@ strtok_s_inline (char *__restrict__ s1, rsize_t * __restrict__ s1max,
   *s1max = dlen;
   return (ptoken);
 }
-
-/*
- * This macro is to provide smooth mapping from strstr to strstr_s.
- * strstr_s requires s1max and s2max which the unsafe API does not have. So
- * we have to improvise them with CLIB_STRING_MACRO_MAX which may cause us
- * to access memory beyond it is intended if s1 or s2 is unterminated.
- * For the record, strstr crashes if s1 or s2 is unterminated. But this macro
- * does not.
- * Applications are encouraged to use the cool C11 strstr_s API to avoid
- * this problem.
- */
-#define clib_strstr(s1,s2) \
-  ({ char * __substring = 0; \
-    strstr_s_inline (s1, CLIB_STRING_MACRO_MAX, s2, CLIB_STRING_MACRO_MAX, \
-		     &__substring);		 \
-    __substring;				 \
-  })
 
 errno_t strstr_s (char *s1, rsize_t s1max, const char *s2, rsize_t s2max,
 		  char **substring);
