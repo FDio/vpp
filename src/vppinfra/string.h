@@ -1395,7 +1395,7 @@ strstr_s_inline (char *s1, rsize_t s1max, const char *s2, rsize_t s2max,
 	clib_c11_violation ("substring NULL");
       if (s1 && s1max && (s1[clib_strnlen (s1, s1max)] != '\0'))
 	clib_c11_violation ("s1 unterminated");
-      if (s2 && s2max && (s2[clib_strnlen (s2, s1max)] != '\0'))
+      if (s2 && s2max && (s2[clib_strnlen (s2, s2max)] != '\0'))
 	clib_c11_violation ("s2 unterminated");
       return EINVAL;
     }
