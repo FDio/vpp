@@ -303,6 +303,46 @@ class TestMemif(VppTestCase):
 
         route.remove_vpp_config()
 
+    def test_memif_admin_up_down_up(self):
+        """ Memif admin up/down/up """
+        memif = VppMemif(
+            self,
+            VppEnum.vl_api_memif_role_t.MEMIF_ROLE_API_SLAVE,
+            VppEnum.vl_api_memif_mode_t.MEMIF_MODE_API_ETHERNET,
+            ring_size=1024,
+            buffer_size=2048,
+            secret="abc")
+
+        remote_socket = VppSocketFilename(self.remote_test, 1,
+                                          "%s/memif.sock" % self.tempdir)
+        remote_socket.add_vpp_config()
+
+        remote_memif = VppMemif(
+            self.remote_test,
+            VppEnum.vl_api_memif_role_t.MEMIF_ROLE_API_MASTER,
+            VppEnum.vl_api_memif_mode_t.MEMIF_MODE_API_ETHERNET,
+            socket_id=1,
+            ring_size=1024,
+            buffer_size=2048,
+            secret="abc")
+
+        memif.add_vpp_config()
+        remote_memif.add_vpp_config()
+
+        memif.admin_up()
+        remote_memif.admin_up()
+        memif.admin_down()
+        remote_memif.admin_down()
+        memif.admin_up()
+        remote_memif.admin_up()
+
+        self._connect_test_one_interface(memif)
+        self._connect_test_one_interface(remote_memif)
+
+        memif.remove_vpp_config()
+        remote_memif.remove_vpp_config()
+        remote_socket.remove_vpp_config()
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
