@@ -50,7 +50,7 @@ typedef struct
     {
       ip6_address_t src;
       ip6_address_t dst;
-      u32 xx_id;
+      u32 fib_index;
       u32 frag_id;
       u8 unused[7];
       u8 proto;
@@ -1057,9 +1057,10 @@ static u8 *
 format_ip6_sv_reass_key (u8 * s, va_list * args)
 {
   ip6_sv_reass_key_t *key = va_arg (*args, ip6_sv_reass_key_t *);
-  s = format (s, "xx_id: %u, src: %U, dst: %U, frag_id: %u, proto: %u",
-	      key->xx_id, format_ip6_address, &key->src, format_ip6_address,
-	      &key->dst, clib_net_to_host_u16 (key->frag_id), key->proto);
+  s =
+    format (s, "fib_index: %u, src: %U, dst: %U, frag_id: %u, proto: %u",
+	    key->fib_index, format_ip6_address, &key->src, format_ip6_address,
+	    &key->dst, clib_net_to_host_u16 (key->frag_id), key->proto);
   return s;
 }
 
