@@ -168,6 +168,30 @@
     },
     {
       "key": {
+        "uuid": "f18d77ef_342d8e42",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3110,
+      "author": {
+        "id": 2462
+      },
+      "writtenOn": "2021-11-03T03:17:48Z",
+      "side": 1,
+      "message": "More precisely, Envoy sometimes ask for RDHUP and do half-close, but sometimes it doesn’t.",
+      "parentUuid": "1657494b_67e367fa",
+      "range": {
+        "startLine": 3101,
+        "startChar": 0,
+        "endLine": 3110,
+        "endChar": 2
+      },
+      "revId": "e3dfa2af7244a14d64d48eaf553ca16729e4f582",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a4d09df0_b2dfcf3f",
         "filename": "src/vcl/vppcom.c",
         "patchSetId": 2
