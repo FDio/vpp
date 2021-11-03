@@ -303,6 +303,5 @@ class TestMemif(VppTestCase):
 
         route.remove_vpp_config()
 
-
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
