@@ -576,12 +576,13 @@ test_strcpy_s (vlib_main_t * vm, unformat_input_t * input)
 static int
 test_clib_strcpy (vlib_main_t * vm, unformat_input_t * input)
 {
+  vlib_cli_output (vm, "Test clib_strcpy...");
+
+#if __GNUC__ < 11
   char src[] = "The journey of a one thousand miles begins with one step.";
   char dst[100];
   int indicator;
   errno_t err;
-
-  vlib_cli_output (vm, "Test clib_strcpy...");
 
   err = clib_strcpy (dst, src);
   if (err != EOK)
@@ -622,6 +623,10 @@ test_clib_strcpy (vlib_main_t * vm, unformat_input_t * input)
   err = clib_strcpy (dst, dst + 1);
   if (err == EOK)
     return -1;
+
+#else
+  vlib_cli_output (vm, "Not supported by this version of compiler");
+#endif
 
   /* OK, seems to work */
   return 0;
@@ -906,12 +911,13 @@ test_strcat_s (vlib_main_t * vm, unformat_input_t * input)
 static int
 test_clib_strcat (vlib_main_t * vm, unformat_input_t * input)
 {
+  vlib_cli_output (vm, "Test clib_strcat...");
+
+#if __GNUC__ < 11
   char src[100], dst[100], old_dst[100];
   size_t s1size = sizeof (dst);	// including null
   errno_t err;
   int indicator;
-
-  vlib_cli_output (vm, "Test clib_strcat...");
 
   strcpy_s (dst, sizeof (dst), "Tough time never last ");
   strcpy_s (src, sizeof (src), "but tough people do");
@@ -962,6 +968,10 @@ test_clib_strcat (vlib_main_t * vm, unformat_input_t * input)
   err = clib_strcat (dst, dst);
   if (err != EINVAL)
     return -1;
+#endif
+
+#else
+  vlib_cli_output (vm, "Not supported by this version of compiler");
 #endif
 
   /* OK, seems to work */
@@ -1098,14 +1108,15 @@ test_strncat_s (vlib_main_t * vm, unformat_input_t * input)
 static int
 test_clib_strncat (vlib_main_t * vm, unformat_input_t * input)
 {
+  vlib_cli_output (vm, "Test clib_strncat...");
+
+#if __GNUC__ < 11
   char src[100], dst[100], old_dst[100];
   size_t s1size = sizeof (dst);	// including null
   errno_t err;
   char s1[] = "Two things are infinite: ";
   char s2[] = "the universe and human stupidity; ";
   int indicator;
-
-  vlib_cli_output (vm, "Test clib_strncat...");
 
   /* n == strlen src */
   strcpy_s (dst, sizeof (dst), s1);
@@ -1181,6 +1192,7 @@ test_clib_strncat (vlib_main_t * vm, unformat_input_t * input)
     return -1;
   if (indicator != 0)
     return -1;
+
   /* verify it against strncat */
 #if __GNUC__ < 8
   /* GCC 8 debian flunks this one at compile time */
@@ -1209,6 +1221,10 @@ test_clib_strncat (vlib_main_t * vm, unformat_input_t * input)
   err = clib_strncat (dst, dst, clib_strnlen (dst, sizeof (dst)));
   if (err != EINVAL)
     return -1;
+#endif
+
+#else
+  vlib_cli_output (vm, "Not supported by this version of compiler");
 #endif
 
   /* OK, seems to work */
@@ -1543,12 +1559,13 @@ test_strstr_s (vlib_main_t * vm, unformat_input_t * input)
 static int
 test_clib_strstr (vlib_main_t * vm, unformat_input_t * input)
 {
+  vlib_cli_output (vm, "Test clib_strstr...");
+
+#if __GNUC__ < 11
   char *sub, *s;
   char s1[64];
   size_t s1len = sizeof (s1) - 1;	// excluding null
   int indicator;
-
-  vlib_cli_output (vm, "Test clib_strstr...");
 
   /* substring not present */
   strcpy_s (s1, s1len, "success is not final, failure is not fatal.");
@@ -1601,6 +1618,10 @@ test_clib_strstr (vlib_main_t * vm, unformat_input_t * input)
    * Can't verify it against strstr for this test. Unterminated string causes
    * strstr to crash. Go figure!
    */
+
+#else
+  vlib_cli_output (vm, "Not supported by this version of compiler");
+#endif
 
   /* OK, seems to work */
   return 0;
