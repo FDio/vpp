@@ -348,7 +348,7 @@ vlib_pci_get_device_info (vlib_main_t * vm, vlib_pci_addr_t * addr,
 	    break;
 
 	  len = (tag[2] << 8) | tag[1];
-	  vec_alloc (data, len);
+	  vec_validate (data, len - 1);
 
 	  if (read (fd, data, len) != len)
 	    {
