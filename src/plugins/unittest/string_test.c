@@ -574,60 +574,6 @@ test_strcpy_s (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-test_clib_strcpy (vlib_main_t * vm, unformat_input_t * input)
-{
-  char src[] = "The journey of a one thousand miles begins with one step.";
-  char dst[100];
-  int indicator;
-  errno_t err;
-
-  vlib_cli_output (vm, "Test clib_strcpy...");
-
-  err = clib_strcpy (dst, src);
-  if (err != EOK)
-    return -1;
-
-  /* This better not fail but check anyhow */
-  if (strcmp_s (dst, clib_strnlen (dst, sizeof (dst)), src, &indicator) !=
-      EOK)
-    return -1;
-  if (indicator != 0)
-    return -1;
-
-  /* verify it against strcpy */
-  strcpy (dst, src);		//NOSONAR
-
-  /* This better not fail but check anyhow */
-  if (strcmp_s (dst, clib_strnlen (dst, sizeof (dst)), src, &indicator) !=
-      EOK)
-    return -1;
-  if (indicator != 0)
-    return -1;
-
-  /* Negative tests */
-
-  err = clib_strcpy (0, 0);
-  if (err == EOK)
-    return -1;
-
-  /* overlap fail */
-#if __GNUC__ < 8
-  /* GCC 8 flunks this one at compile time... */
-  err = clib_strcpy (dst, dst);
-  if (err == EOK)
-    return -1;
-#endif
-
-  /* overlap fail */
-  err = clib_strcpy (dst, dst + 1);
-  if (err == EOK)
-    return -1;
-
-  /* OK, seems to work */
-  return 0;
-}
-
-static int
 test_strncpy_s (vlib_main_t * vm, unformat_input_t * input)
 {
   char src[] = "Those who dare to fail miserably can achieve greatly.";
@@ -904,71 +850,6 @@ test_strcat_s (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-test_clib_strcat (vlib_main_t * vm, unformat_input_t * input)
-{
-  char src[100], dst[100], old_dst[100];
-  size_t s1size = sizeof (dst);	// including null
-  errno_t err;
-  int indicator;
-
-  vlib_cli_output (vm, "Test clib_strcat...");
-
-  strcpy_s (dst, sizeof (dst), "Tough time never last ");
-  strcpy_s (src, sizeof (src), "but tough people do");
-  err = clib_strcat (dst, src);
-  if (err != EOK)
-    return -1;
-  if (strcmp_s (dst, s1size - 1,
-		"Tough time never last but tough people do",
-		&indicator) != EOK)
-    return -1;
-  if (indicator != 0)
-    return -1;
-  /* verify it against strcat */
-  strcpy_s (dst, sizeof (dst), "Tough time never last ");
-  strcpy_s (src, sizeof (src), "but tough people do");
-  strcat (dst, src);
-  if (strcmp_s (dst, s1size - 1,
-		"Tough time never last but tough people do",
-		&indicator) != EOK)
-    return -1;
-  if (indicator != 0)
-    return -1;
-
-  /* empty string concatenation */
-  clib_strncpy (old_dst, dst, clib_strnlen (dst, sizeof (dst)));
-  err = clib_strcat (dst, "");
-  if (err != EOK)
-    return -1;
-  /* verify dst is untouched */
-  if (strcmp_s (dst, s1size - 1, old_dst, &indicator) != EOK)
-    return -1;
-  if (indicator != 0)
-    return -1;
-
-  /* negative stuff */
-  err = clib_strcat (0, 0);
-  if (err != EINVAL)
-    return -1;
-
-  /* overlap fail */
-  err = clib_strcat (dst, dst + 1);
-  if (err != EINVAL)
-    return -1;
-
-  /* overlap fail */
-#if __GNUC__ < 8
-  /* GCC 8 flunks this one at compile time... */
-  err = clib_strcat (dst, dst);
-  if (err != EINVAL)
-    return -1;
-#endif
-
-  /* OK, seems to work */
-  return 0;
-}
-
-static int
 test_strncat_s (vlib_main_t * vm, unformat_input_t * input)
 {
   char src[100], dst[100], old_dst[100];
@@ -1087,126 +968,6 @@ test_strncat_s (vlib_main_t * vm, unformat_input_t * input)
 #if __GNUC__ < 8
   /* GCC 8 flunks this one at compile time... */
   err = strncat_s (dst, s1size, dst, clib_strnlen (dst, sizeof (dst)));
-  if (err != EINVAL)
-    return -1;
-#endif
-
-  /* OK, seems to work */
-  return 0;
-}
-
-static int
-test_clib_strncat (vlib_main_t * vm, unformat_input_t * input)
-{
-  char src[100], dst[100], old_dst[100];
-  size_t s1size = sizeof (dst);	// including null
-  errno_t err;
-  char s1[] = "Two things are infinite: ";
-  char s2[] = "the universe and human stupidity; ";
-  int indicator;
-
-  vlib_cli_output (vm, "Test clib_strncat...");
-
-  /* n == strlen src */
-  strcpy_s (dst, sizeof (dst), s1);
-  strcpy_s (src, sizeof (src), s2);
-  err = clib_strncat (dst, src, clib_strnlen (src, sizeof (src)));
-  if (err != EOK)
-    return -1;
-  if (strcmp_s (dst, s1size - 1,
-		"Two things are infinite: the universe and human stupidity; ",
-		&indicator) != EOK)
-    return -1;
-  if (indicator != 0)
-    return -1;
-  /* verify it against strncat */
-  strcpy_s (dst, sizeof (dst), s1);
-  strncat (dst, src, clib_strnlen (src, sizeof (src)));
-  if (strcmp_s (dst, s1size - 1,
-		"Two things are infinite: the universe and human stupidity; ",
-		&indicator) != EOK)
-    return -1;
-  if (indicator != 0)
-    return -1;
-
-  /* n > strlen src */
-  strcpy_s (dst, sizeof (dst), s1);
-  err = clib_strncat (dst, src, clib_strnlen (src, sizeof (src)) + 10);
-  if (err != EOK)
-    return -1;
-  if (strcmp_s (dst, s1size - 1,
-		"Two things are infinite: the universe and human stupidity; ",
-		&indicator) != EOK)
-    return -1;
-  if (indicator != 0)
-    return -1;
-  /* verify it against strncat */
-  strcpy_s (dst, sizeof (dst), s1);
-  strncat (dst, src, clib_strnlen (src, sizeof (src)));
-  if (strcmp_s (dst, s1size - 1,
-		"Two things are infinite: the universe and human stupidity; ",
-		&indicator) != EOK)
-    return -1;
-  if (indicator != 0)
-    return -1;
-
-  /* zero length strncat */
-  clib_strncpy (old_dst, dst, clib_strnlen (dst, sizeof (dst)));
-  err = clib_strncat (dst, src, 0);
-  if (err != EOK)
-    return -1;
-  /* verify dst is untouched */
-  if (strcmp_s (dst, s1size - 1, old_dst, &indicator) != EOK)
-    return -1;
-  if (indicator != 0)
-    return -1;
-
-  /* empty string, wrong n concatenation */
-  err = clib_strncat (dst, "", 10);
-  if (err != EOK)
-    return -1;
-  /* verify dst is untouched */
-  if (strcmp_s (dst, s1size - 1, old_dst, &indicator) != EOK)
-    return -1;
-  if (indicator != 0)
-    return -1;
-
-  /* limited concatenation, string > n, copy up to n */
-  strcpy_s (dst, sizeof (dst), s1);
-  err = clib_strncat (dst, s2, 13);
-  if (err != EOK)
-    return -1;
-  if (strcmp_s (dst, s1size - 1, "Two things are infinite: the universe ",
-		&indicator) != EOK)
-    return -1;
-  if (indicator != 0)
-    return -1;
-  /* verify it against strncat */
-#if __GNUC__ < 8
-  /* GCC 8 debian flunks this one at compile time */
-  strcpy_s (dst, sizeof (dst), s1);
-  strncat (dst, s2, 13);
-  if (strcmp_s (dst, s1size - 1, "Two things are infinite: the universe ",
-		&indicator) != EOK)
-    return -1;
-  if (indicator != 0)
-    return -1;
-#endif
-
-  /* negative stuff */
-  err = clib_strncat (0, 0, 1);
-  if (err != EINVAL)
-    return -1;
-
-  /* overlap fail */
-  err = clib_strncat (dst, dst + 1, s1size - 1);
-  if (err != EINVAL)
-    return -1;
-
-  /* overlap fail */
-#if __GNUC__ < 8
-  /* GCC 8 flunks this one at compile time... */
-  err = clib_strncat (dst, dst, clib_strnlen (dst, sizeof (dst)));
   if (err != EINVAL)
     return -1;
 #endif
@@ -1541,72 +1302,6 @@ test_strstr_s (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-test_clib_strstr (vlib_main_t * vm, unformat_input_t * input)
-{
-  char *sub, *s;
-  char s1[64];
-  size_t s1len = sizeof (s1) - 1;	// excluding null
-  int indicator;
-
-  vlib_cli_output (vm, "Test clib_strstr...");
-
-  /* substring not present */
-  strcpy_s (s1, s1len, "success is not final, failure is not fatal.");
-  sub = clib_strstr (s1, "failures");
-  if (sub != 0)
-    return -1;
-  /* verify it against strstr */
-  sub = strstr (s1, "failures");
-  if (sub != 0)
-    return -1;
-
-  /* substring present */
-  sub = clib_strstr (s1, "failure");
-  if (sub == 0)
-    return -1;
-  if (strcmp_s (sub, strlen (sub), "failure is not fatal.", &indicator) !=
-      EOK)
-    return -1;
-  if (indicator != 0)
-    return -1;
-  /* verify it against strstr */
-  sub = strstr (s1, "failure");
-  if (sub == 0)
-    return -1;
-  if (strcmp_s (sub, strlen (sub), "failure is not fatal.", &indicator) !=
-      EOK)
-    return -1;
-  if (indicator != 0)
-    return -1;
-
-  /* negative stuff */
-
-  /* Null pointers test */
-  s = 0;
-  sub = clib_strstr (s, s);
-  if (sub != 0)
-    return -1;
-  /*
-   * Can't verify it against strstr for this test. Null pointers cause strstr
-   * to crash. Go figure!
-   */
-
-  /* unterminated s1 and s2 */
-  memset_s (s1, ARRAY_LEN (s1), 0xfe, ARRAY_LEN (s1));
-  CLIB_MEM_UNPOISON (s1, CLIB_STRING_MACRO_MAX);
-  sub = clib_strstr (s1, s1);
-  if (sub == 0)
-    return -1;
-  /*
-   * Can't verify it against strstr for this test. Unterminated string causes
-   * strstr to crash. Go figure!
-   */
-
-  /* OK, seems to work */
-  return 0;
-}
-
-static int
 test_clib_count_equal (vlib_main_t * vm, unformat_input_t * input)
 {
   u64 s64[15];
@@ -1698,33 +1393,28 @@ test_clib_count_equal (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
-
-#define foreach_string_test                               \
-  _ (0, MEMCPY_S, "memcpy_s", memcpy_s)                   \
-  _ (1, CLIB_MEMCPY, "clib_memcpy", clib_memcpy)          \
-  _ (2, MEMSET_S , "memset_s", memset_s)                  \
-  _ (3, CLIB_MEMSET , "clib_memset", clib_memset)         \
-  _ (4, MEMCMP_S, "memcmp_s", memcmp_s)			  \
-  _ (5, CLIB_MEMCMP, "clib_memcmp", clib_memcmp)          \
-  _ (6, STRCMP_S, "strcmp_s", strcmp_s)			  \
-  _ (7, CLIB_STRCMP, "clib_strcmp", clib_strcmp)	  \
-  _ (8, STRNCMP_S, "strncmp_s", strncmp_s)		  \
-  _ (9, CLIB_STRNCMP, "clib_strncmp", clib_strncmp)	  \
-  _ (10, STRCPY_S, "strcpy_s", strcpy_s)		  \
-  _ (11, CLIB_STRCPY, "clib_strcpy", clib_strcpy)	  \
-  _ (12, STRNCPY_S, "strncpy_s", strncpy_s)		  \
-  _ (13, CLIB_STRNCPY, "clib_strncpy", clib_strncpy)	  \
-  _ (14, STRCAT_S, "strcat_s", strcat_s)		  \
-  _ (15, CLIB_STRCAT, "clib_strcat", clib_strcat)	  \
-  _ (16, STRNCAT_S, "strncat_s", strncat_s)		  \
-  _ (17, CLIB_STRNCAT, "clib_strncat", clib_strncat)	  \
-  _ (18, STRTOK_S, "strtok_s", strtok_s)		  \
-  _ (19, CLIB_STRTOK, "clib_strtok", clib_strtok)	  \
-  _ (20, STRNLEN_S, "strnlen_s", strnlen_s)		  \
-  _ (21, CLIB_STRNLEN, "clib_strnlen", clib_strnlen)	  \
-  _ (22, STRSTR_S, "strstr_s", strstr_s)		  \
-  _ (23, CLIB_STRSTR, "clib_strstr", clib_strstr)         \
-  _ (24, CLIB_COUNT_EQUAL, "clib_count_equal", clib_count_equal)
+#define foreach_string_test                                                   \
+  _ (0, MEMCPY_S, "memcpy_s", memcpy_s)                                       \
+  _ (1, CLIB_MEMCPY, "clib_memcpy", clib_memcpy)                              \
+  _ (2, MEMSET_S, "memset_s", memset_s)                                       \
+  _ (3, CLIB_MEMSET, "clib_memset", clib_memset)                              \
+  _ (4, MEMCMP_S, "memcmp_s", memcmp_s)                                       \
+  _ (5, CLIB_MEMCMP, "clib_memcmp", clib_memcmp)                              \
+  _ (6, STRCMP_S, "strcmp_s", strcmp_s)                                       \
+  _ (7, CLIB_STRCMP, "clib_strcmp", clib_strcmp)                              \
+  _ (8, STRNCMP_S, "strncmp_s", strncmp_s)                                    \
+  _ (9, CLIB_STRNCMP, "clib_strncmp", clib_strncmp)                           \
+  _ (10, STRCPY_S, "strcpy_s", strcpy_s)                                      \
+  _ (11, STRNCPY_S, "strncpy_s", strncpy_s)                                   \
+  _ (12, CLIB_STRNCPY, "clib_strncpy", clib_strncpy)                          \
+  _ (13, STRCAT_S, "strcat_s", strcat_s)                                      \
+  _ (14, STRNCAT_S, "strncat_s", strncat_s)                                   \
+  _ (15, STRTOK_S, "strtok_s", strtok_s)                                      \
+  _ (16, CLIB_STRTOK, "clib_strtok", clib_strtok)                             \
+  _ (17, STRNLEN_S, "strnlen_s", strnlen_s)                                   \
+  _ (18, CLIB_STRNLEN, "clib_strnlen", clib_strnlen)                          \
+  _ (19, STRSTR_S, "strstr_s", strstr_s)                                      \
+  _ (20, CLIB_COUNT_EQUAL, "clib_count_equal", clib_count_equal)
 
 typedef enum
 {
@@ -1807,15 +1497,15 @@ string_test_command_fn (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (string_test_command, static) =
-{
+VLIB_CLI_COMMAND (string_test_command, static) = {
   .path = "test string",
-  .short_help = "test string [memcpy_s | clib_memcpy | memset_s | "
-  "clib_memset | memcmp_s | clib_memcmp | strcmp_s | clib_strcmp | "
-  "strncmp_s | clib_strncmp | strcpy_s | clib_strcpy | strncpy_s | "
-  "clib_strncpy | strcat_s | clib_strcat | strncat_s | clib_strncat | "
-  "strtok_s |  clib_strtok | strnlen_s | clib_strnlen | strstr_s | "
-  "clib_strstr | clib_count_equal ]",
+  .short_help =
+    "test string [memcpy_s | clib_memcpy | memset_s | "
+    "clib_memset | memcmp_s | clib_memcmp | strcmp_s | clib_strcmp | "
+    "strncmp_s | clib_strncmp | strcpy_s | strncpy_s | "
+    "clib_strncpy | strcat_s | strncat_s | "
+    "strtok_s |  clib_strtok | strnlen_s | clib_strnlen | strstr_s | "
+    "clib_count_equal ]",
   .function = string_test_command_fn,
 };
 /* *INDENT-ON* */
