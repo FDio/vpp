@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cad96ba5_64778234",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 3095,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-11-03T14:50:03Z",
+      "side": 1,
+      "message": "Thanks for the comment!",
+      "range": {
+        "startLine": 3094,
+        "startChar": 0,
+        "endLine": 3095,
+        "endChar": 30
+      },
+      "revId": "733770cb5749f10ad95f35047a2f344c135c5245",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
