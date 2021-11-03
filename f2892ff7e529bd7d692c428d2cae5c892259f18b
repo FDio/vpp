@@ -22,6 +22,30 @@
       "revId": "f2892ff7e529bd7d692c428d2cae5c892259f18b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3fe30eb2_402d09df",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1901,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2021-11-03T06:22:51Z",
+      "side": 1,
+      "message": "Yes, another worker thread just grabbed the lock and waiting for the rpc response. Maybe we need wait infinitely to adaptor a very busy rpc responsor?",
+      "parentUuid": "34b2dd9a_530289a3",
+      "range": {
+        "startLine": 1900,
+        "startChar": 0,
+        "endLine": 1901,
+        "endChar": 27
+      },
+      "revId": "f2892ff7e529bd7d692c428d2cae5c892259f18b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
