@@ -1086,7 +1086,14 @@ memif_interface_admin_up_down (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
   static clib_error_t *error = 0;
 
   if (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
-    mif->flags |= MEMIF_IF_FLAG_ADMIN_UP;
+    {
+      if (mif->flags & MEMIF_IF_FLAG_CONNECTED)
+	{
+	  vnet_hw_interface_set_flags (vnm, mif->hw_if_index,
+				       VNET_HW_INTERFACE_FLAG_LINK_UP);
+	}
+      mif->flags |= MEMIF_IF_FLAG_ADMIN_UP;
+    }
   else
     mif->flags &= ~MEMIF_IF_FLAG_ADMIN_UP;
 
