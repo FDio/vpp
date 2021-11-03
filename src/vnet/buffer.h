@@ -244,7 +244,8 @@ typedef struct
 		u8 save_rewrite_length;
 		u8 ip_proto;	/* protocol in ip header */
 		u8 icmp_type_or_tcp_flags;
-		u8 is_non_first_fragment;
+		u8 is_non_first_fragment : 1;
+		u8 l4_layer_truncated : 7;
 		u32 tcp_seq_number;
 	      };
 	      /* full reassembly output variables */
