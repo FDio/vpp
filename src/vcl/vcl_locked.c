@@ -1881,7 +1881,7 @@ vls_send_clone_and_share_rpc (vcl_worker_t *wrk, u32 origin_vls_index,
   vls_clone_and_share_msg_t *msg;
   vls_rpc_msg_t *rpc;
   int ret;
-  f64 timeout = clib_time_now (&wrk->clib_time) + VLS_WORKER_RPC_TIMEOUT;
+  f64 timeout;
 
   rpc = (vls_rpc_msg_t *) & data;
   rpc->type = VLS_RPC_CLONE_AND_SHARE;
@@ -1904,6 +1904,7 @@ vls_send_clone_and_share_rpc (vcl_worker_t *wrk, u32 origin_vls_index,
   VDBG (1, "send session clone to wrk (session): %u (%u) -> %u (%u), ret=%d",
 	dst_wrk_index, msg->session_index, msg->origin_vcl_wrk,
 	msg->origin_session_index, ret);
+  timeout = clib_time_now (&wrk->clib_time) + VLS_WORKER_RPC_TIMEOUT;
   while (!ret && wrk->rpc_done == VLS_RPC_STATE_INIT &&
 	 clib_time_now (&wrk->clib_time) < timeout)
     ;
