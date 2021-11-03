@@ -184,8 +184,7 @@ static void BV (clib_bihash_instantiate) (BVT (clib_bihash) * h)
 			 sizeof (BVT (clib_bihash_kv))));
 	}
     }
-  CLIB_MEMORY_STORE_BARRIER ();
-  h->instantiated = 1;
+  __atomic_store_n (&h->instantiated, 1, __ATOMIC_RELEASE);
 }
 
 void BV (clib_bihash_init2) (BVT (clib_bihash_init2_args) * a)
@@ -571,8 +570,7 @@ BV (make_working_copy) (BVT (clib_bihash) * h, BVT (clib_bihash_bucket) * b)
   clib_memcpy_fast (working_copy, v, sizeof (*v) * (1 << b->log2_pages));
   working_bucket.as_u64 = b->as_u64;
   working_bucket.offset = BV (clib_bihash_get_offset) (h, working_copy);
-  CLIB_MEMORY_STORE_BARRIER ();
-  b->as_u64 = working_bucket.as_u64;
+  __atomic_store_n ((u64 *) b, working_bucket.as_u64, __ATOMIC_RELEASE);
   h->working_copies[thread_index] = working_copy;
 }
 
@@ -684,12 +682,10 @@ static_always_inline int BV (clib_bihash_add_del_inline_with_hash)
   int mark_bucket_linear;
   int resplit_once;
 
-  /* *INDENT-OFF* */
   static const BVT (clib_bihash_bucket) mask = {
     .linear_search = 1,
     .log2_pages = -1
   };
-  /* *INDENT-ON* */
 
 #if BIHASH_LAZY_INSTANTIATE
   /*
@@ -720,7 +716,7 @@ static_always_inline int BV (clib_bihash_add_del_inline_with_hash)
     {
       if (is_add == 0)
 	{
-	  BV (clib_bihash_unlock_bucket) (b);
+	  BV (clib_bihash_unlock_bucket) (b, 0 /* bucket_changed */);
 	  return (-1);
 	}
 
@@ -732,9 +728,10 @@ static_always_inline int BV (clib_bihash_add_del_inline_with_hash)
       tmp_b.as_u64 = 0;		/* clears bucket lock */
       tmp_b.offset = BV (clib_bihash_get_offset) (h, v);
       tmp_b.refcnt = 1;
-      CLIB_MEMORY_STORE_BARRIER ();
 
-      b->as_u64 = tmp_b.as_u64;	/* unlocks the bucket */
+      /* unlocks the bucket */
+      __atomic_store_n ((u64 *) b, tmp_b.as_u64, __ATOMIC_RELEASE);
+
       BV (clib_bihash_increment_stat) (h, BIHASH_STAT_alloc_add, 1);
 
       return (0);
@@ -755,13 +752,6 @@ static_always_inline int BV (clib_bihash_add_del_inline_with_hash)
   if (is_add)
     {
       /*
-       * Because reader threads are looking at live data,
-       * we have to be extra careful. Readers do NOT hold the
-       * bucket lock. We need to be SLOWER than a search, past the
-       * point where readers CHECK the bucket lock.
-       */
-
-      /*
        * For obvious (in hindsight) reasons, see if we're supposed to
        * replace an existing key, then look for an empty slot.
        */
@@ -772,13 +762,13 @@ static_always_inline int BV (clib_bihash_add_del_inline_with_hash)
 	      /* Add but do not overwrite? */
 	      if (is_add == 2)
 		{
-		  BV (clib_bihash_unlock_bucket) (b);
+		  BV (clib_bihash_unlock_bucket) (b, 0 /* bucket_changed */);
 		  return (-2);
 		}
 
 	      clib_memcpy_fast (&(v->kvp[i].value),
 				&add_v->value, sizeof (add_v->value));
-	      BV (clib_bihash_unlock_bucket) (b);
+	      BV (clib_bihash_unlock_bucket) (b, 1 /* bucket_changed */);
 	      BV (clib_bihash_increment_stat) (h, BIHASH_STAT_replace, 1);
 	      return (0);
 	    }
@@ -796,12 +786,11 @@ static_always_inline int BV (clib_bihash_add_del_inline_with_hash)
 	       */
 	      clib_memcpy_fast (&(v->kvp[i].value),
 				&add_v->value, sizeof (add_v->value));
-	      CLIB_MEMORY_STORE_BARRIER ();	/* Make sure the value has settled */
 	      clib_memcpy_fast (&(v->kvp[i]), &add_v->key,
 				sizeof (add_v->key));
 	      b->refcnt++;
 	      ASSERT (b->refcnt > 0);
-	      BV (clib_bihash_unlock_bucket) (b);
+	      BV (clib_bihash_unlock_bucket) (b, 1 /* bucket_changed */);
 	      BV (clib_bihash_increment_stat) (h, BIHASH_STAT_add, 1);
 	      return (0);
 	    }
@@ -814,8 +803,7 @@ static_always_inline int BV (clib_bihash_add_del_inline_with_hash)
 	      if (is_stale_cb (&(v->kvp[i]), arg))
 		{
 		  clib_memcpy_fast (&(v->kvp[i]), add_v, sizeof (*add_v));
-		  CLIB_MEMORY_STORE_BARRIER ();
-		  BV (clib_bihash_unlock_bucket) (b);
+		  BV (clib_bihash_unlock_bucket) (b, 1 /* bucket_changed */);
 		  BV (clib_bihash_increment_stat) (h, BIHASH_STAT_replace, 1);
 		  return (0);
 		}
@@ -847,14 +835,13 @@ static_always_inline int BV (clib_bihash_add_del_inline_with_hash)
 		      /* Clean up the bucket-level kvp array */
 		      clib_memset_u8 ((b + 1), 0xff, BIHASH_KVP_PER_PAGE *
 				      sizeof (BVT (clib_bihash_kv)));
-		      CLIB_MEMORY_STORE_BARRIER ();
-		      BV (clib_bihash_unlock_bucket) (b);
+		      BV (clib_bihash_unlock_bucket)
+		      (b, 1 /* bucket_changed */);
 		      BV (clib_bihash_increment_stat) (h, BIHASH_STAT_del, 1);
 		      goto free_backing_store;
 		    }
 
-		  CLIB_MEMORY_STORE_BARRIER ();
-		  BV (clib_bihash_unlock_bucket) (b);
+		  BV (clib_bihash_unlock_bucket) (b, 1 /* bucket_changed */);
 		  BV (clib_bihash_increment_stat) (h, BIHASH_STAT_del, 1);
 		  return (0);
 		}
@@ -880,7 +867,7 @@ static_always_inline int BV (clib_bihash_add_del_inline_with_hash)
 	    }
 	}
       /* Not found... */
-      BV (clib_bihash_unlock_bucket) (b);
+      BV (clib_bihash_unlock_bucket) (b, 0 /* bucket_changed */);
       return (-3);
     }
 
@@ -966,8 +953,7 @@ expand_ok:
     tmp_b.refcnt = h->saved_bucket.refcnt + 1;
   ASSERT (tmp_b.refcnt > 0);
   tmp_b.lock = 0;
-  CLIB_MEMORY_STORE_BARRIER ();
-  b->as_u64 = tmp_b.as_u64;
+  __atomic_store_n ((u64 *) b, tmp_b.as_u64, __ATOMIC_RELEASE);
 
 #if BIHASH_KVP_AT_BUCKET_LEVEL
   if (h->saved_bucket.log2_pages > 0)

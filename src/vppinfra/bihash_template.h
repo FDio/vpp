@@ -89,6 +89,7 @@ typedef struct
     {
       u64 offset:BIHASH_BUCKET_OFFSET_BITS;
       u64 lock:1;
+      u64 change : 1;
       u64 linear_search:1;
       u64 log2_pages:8;
       u64 refcnt:16;
@@ -298,9 +299,19 @@ try_again:
     }
 }
 
-static inline void BV (clib_bihash_unlock_bucket)
-  (BVT (clib_bihash_bucket) * b)
+static inline void BV (clib_bihash_unlock_bucket) (BVT (clib_bihash_bucket) *
+						     b,
+						   int bucket_changed)
 {
+  static const BVT (clib_bihash_bucket) lock_bit_mask = { .lock = 1 };
+  static const BVT (clib_bihash_bucket) change_bit_mask = { .change = 1 };
+
+  u64 v = b->as_u64 & ~lock_bit_mask.as_u64;
+
+  if (bucket_changed)
+    v ^= change_bit_mask.as_u64;
+
+  __atomic_store_n ((u64 *) b, v, __ATOMIC_RELEASE);
   b->lock = 0;
 }
 
@@ -405,14 +416,13 @@ static inline int BV (clib_bihash_search_inline_with_hash)
 {
   BVT (clib_bihash_value) * v;
   BVT (clib_bihash_bucket) * b;
+  u64 old_b;
   int i, limit;
 
-  /* *INDENT-OFF* */
   static const BVT (clib_bihash_bucket) mask = {
     .linear_search = 1,
     .log2_pages = -1
   };
-  /* *INDENT-ON* */
 
 #if BIHASH_LAZY_INSTANTIATE
   if (PREDICT_FALSE (h->instantiated == 0))
@@ -424,12 +434,8 @@ static inline int BV (clib_bihash_search_inline_with_hash)
   if (PREDICT_FALSE (BV (clib_bihash_bucket_is_empty) (b)))
     return -1;
 
-  if (PREDICT_FALSE (b->lock))
-    {
-      volatile BVT (clib_bihash_bucket) * bv = b;
-      while (bv->lock)
-	CLIB_PAUSE ();
-    }
+retry:
+  old_b = *(volatile u64 *) b;
 
   v = BV (clib_bihash_get_value) (h, b->offset);
 
@@ -448,6 +454,14 @@ static inline int BV (clib_bihash_search_inline_with_hash)
     {
       if (BV (clib_bihash_key_compare) (v->kvp[i].key, key_result->key))
 	{
+	  static const BVT (clib_bihash_bucket) lock_bit_mask = { .lock = 1 };
+	  u64 new_b = *(volatile u64 *) b;
+
+	  /* we need to retry if new bucket value is different than old one
+	   * or lock bit is set in both */
+	  if ((new_b ^ old_b) | (new_b & lock_bit_mask.as_u64))
+	    goto retry;
+
 	  *key_result = v->kvp[i];
 	  return 0;
 	}
@@ -505,13 +519,12 @@ static inline int BV (clib_bihash_search_inline_2_with_hash)
   BVT (clib_bihash_value) * v;
   BVT (clib_bihash_bucket) * b;
   int i, limit;
+  u64 old_b;
 
-/* *INDENT-OFF* */
   static const BVT (clib_bihash_bucket) mask = {
     .linear_search = 1,
     .log2_pages = -1
   };
-/* *INDENT-ON* */
 
   ASSERT (valuep);
 
@@ -525,12 +538,8 @@ static inline int BV (clib_bihash_search_inline_2_with_hash)
   if (PREDICT_FALSE (BV (clib_bihash_bucket_is_empty) (b)))
     return -1;
 
-  if (PREDICT_FALSE (b->lock))
-    {
-      volatile BVT (clib_bihash_bucket) * bv = b;
-      while (bv->lock)
-	CLIB_PAUSE ();
-    }
+retry:
+  old_b = *(volatile u64 *) b;
 
   v = BV (clib_bihash_get_value) (h, b->offset);
 
@@ -549,6 +558,14 @@ static inline int BV (clib_bihash_search_inline_2_with_hash)
     {
       if (BV (clib_bihash_key_compare) (v->kvp[i].key, search_key->key))
 	{
+	  static const BVT (clib_bihash_bucket) lock_bit_mask = { .lock = 1 };
+	  u64 new_b = *(volatile u64 *) b;
+
+	  /* we need to retry if new bucket value is different than old one
+	   * or lock bit is set in both */
+	  if ((new_b ^ old_b) | (new_b & lock_bit_mask.as_u64))
+	    goto retry;
+
 	  *valuep = v->kvp[i];
 	  return 0;
 	}
