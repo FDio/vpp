@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "30583152_9a32d978",
+        "filename": "src/vppinfra/pool.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 299,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-11-04T21:29:35Z",
+      "side": 1,
+      "message": "Should also check if pool\u0027s free_indices vector expands.",
+      "range": {
+        "startLine": 299,
+        "startChar": 1,
+        "endLine": 299,
+        "endChar": 14
+      },
+      "revId": "c4f7bc7782690d17191dd686895eeef1f6cfbd60",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
