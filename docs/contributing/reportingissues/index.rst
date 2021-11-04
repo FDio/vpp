@@ -7,6 +7,8 @@ Although every situation is different, this section describes how to
 collect data which will help make efficient use of everyone's time
 when dealing with vpp bugs.
 
+FD.io's Jira server can be found at `jira.fd.io <https://jira.fd.io>`_
+
 Before you press the Jira button to create a bug report - or email
 vpp-dev@lists.fd.io - please ask yourself whether there's enough
 information for someone else to understand and to reproduce the issue
