@@ -287,6 +287,19 @@ do {                                                                    \
     }                                                                   \
 } while (0)
 
+/** See if pool_get will expand the pool or not */
+#define pool_put_will_expand(P, E, YESNO)                                     \
+  do                                                                          \
+    {                                                                         \
+      pool_header_t *_pool_var (p) = pool_header (P);                         \
+                                                                              \
+      uword _pool_var (i) = (E) - (P);                                        \
+      /* Nothing on free list, make a new element and return it. */           \
+      YESNO =                                                                 \
+	clib_bitmap_will_expand (_pool_var (p)->free_bitmap, _pool_var (i));  \
+    }                                                                         \
+  while (0)
+
 /** Tell the caller if pool get will expand the pool */
 #define pool_get_will_expand(P,YESNO) pool_get_aligned_will_expand(P,YESNO,0)
 
