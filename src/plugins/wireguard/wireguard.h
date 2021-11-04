@@ -28,6 +28,8 @@ extern vlib_node_registration_t wg6_output_tun_node;
 
 typedef struct wg_per_thread_data_t_
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  vnet_crypto_op_t *crypto_ops;
   u8 data[WG_DEFAULT_DATA_SIZE];
 } wg_per_thread_data_t;
 typedef struct
