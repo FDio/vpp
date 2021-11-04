@@ -94,6 +94,30 @@
       "revId": "f2892ff7e529bd7d692c428d2cae5c892259f18b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f1530a98_47299e3a",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1901,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-11-04T15:04:30Z",
+      "side": 1,
+      "message": "Let\u0027s make this vcl.conf configurable then and use as default a larger but still reasonable number (say 180?).",
+      "parentUuid": "ec7584ef_4469a553",
+      "range": {
+        "startLine": 1900,
+        "startChar": 0,
+        "endLine": 1901,
+        "endChar": 27
+      },
+      "revId": "f2892ff7e529bd7d692c428d2cae5c892259f18b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
