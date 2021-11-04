@@ -206,6 +206,14 @@ clib_bitmap_set (uword * ai, uword i, uword value)
   return ai;
 }
 
+always_inline u8
+clib_bitmap_will_expand (uword *ai, uword i)
+{
+  uword i0 = i / BITS (ai[0]);
+  return _vec_resize_will_expand (ai, 1, i0 * sizeof (ai[0]), 0,
+				  sizeof (uword));
+}
+
 /** Gets the ith bit value from a bitmap
     @param ai - pointer to the bitmap
     @param i - the bit position to interrogate
