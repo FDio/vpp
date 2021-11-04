@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fe5ef21a_1789d95c",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 184,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2021-11-04T11:07:18Z",
+      "side": 1,
+      "message": "nat44_ed_add_internal_static_mapping kinda suggests existence of \"internal static mappings\" - at least that\u0027s what I think of the moment I read it.\n\nmaybe a better name would be nat44_ed_add_static_mapping_internal - which suggests that this is an internal function... thoughts?",
+      "revId": "63ca770c2aa753eaa51660c2be412f21699e451f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d3c3f3d6_7746b9b0",
+        "filename": "src/plugins/nat/nat44-ei/nat44_ei.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 204,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2021-11-04T11:07:18Z",
+      "side": 1,
+      "message": "same naming issue (?) here",
+      "revId": "63ca770c2aa753eaa51660c2be412f21699e451f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
