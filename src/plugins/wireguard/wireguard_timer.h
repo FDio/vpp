@@ -41,9 +41,13 @@ typedef struct wg_peer wg_peer_t;
 void wg_timer_wheel_init ();
 void wg_timers_stop (wg_peer_t * peer);
 void wg_timers_data_sent (wg_peer_t * peer);
+void wg_timers_data_sent_opt (wg_peer_t *peer, f64 time);
 void wg_timers_data_received (wg_peer_t * peer);
 void wg_timers_any_authenticated_packet_sent (wg_peer_t * peer);
+void wg_timers_any_authenticated_packet_sent_opt (wg_peer_t *peer, f64 time);
 void wg_timers_any_authenticated_packet_received (wg_peer_t * peer);
+void wg_timers_any_authenticated_packet_received_opt (wg_peer_t *peer,
+						      f64 time);
 void wg_timers_handshake_initiated (wg_peer_t * peer);
 void wg_timers_handshake_complete (wg_peer_t * peer);
 void wg_timers_session_derived (wg_peer_t * peer);
@@ -55,6 +59,13 @@ wg_birthdate_has_expired (f64 birthday_seconds, f64 expiration_seconds)
 {
   f64 now_seconds = vlib_time_now (vlib_get_main ());
   return (birthday_seconds + expiration_seconds) < now_seconds;
+}
+
+static inline bool
+wg_birthdate_has_expired_opt (f64 birthday_seconds, f64 expiration_seconds,
+			      f64 time)
+{
+  return (birthday_seconds + expiration_seconds) < time;
 }
 
 #endif /* __included_wg_timer_h__ */
