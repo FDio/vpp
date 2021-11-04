@@ -892,7 +892,22 @@ load_balance_destroy (load_balance_t *lb)
     fib_urpf_list_unlock(lb->lb_urpf);
     load_balance_map_unlock(lb->lb_map);
 
+    u8 need_barrier_sync = 0;
+    vlib_main_t *vm = vlib_get_main();
+    ASSERT (vm->thread_index == 0);
+
+#if CLIB_DEBUG > 0
+    pool_put_will_expand (load_balance_pool, lb, need_barrier_sync);
+    if (need_barrier_sync)
+        vlib_worker_thread_barrier_sync (vm);
+#endif
+
     pool_put(load_balance_pool, lb);
+
+#if CLIB_DEBUG > 0
+    if (need_barrier_sync)
+        vlib_worker_thread_barrier_release (vm);
+#endif
 }
 
 static void
