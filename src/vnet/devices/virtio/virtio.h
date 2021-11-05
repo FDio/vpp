@@ -213,7 +213,7 @@ typedef struct
 
 typedef struct
 {
-  u32 interrupt_queues_count;
+  u32 gro_or_buffering_if_count;
   /* logging */
   vlib_log_class_t log_default;
 
@@ -224,7 +224,6 @@ typedef struct
 extern virtio_main_t virtio_main;
 extern vnet_device_class_t virtio_device_class;
 extern vlib_node_registration_t virtio_input_node;
-extern vlib_node_registration_t virtio_send_interrupt_node;
 
 clib_error_t *virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx,
 				 u16 sz);
@@ -233,6 +232,7 @@ clib_error_t *virtio_vring_free_rx (vlib_main_t * vm, virtio_if_t * vif,
 clib_error_t *virtio_vring_free_tx (vlib_main_t * vm, virtio_if_t * vif,
 				    u32 idx);
 void virtio_vring_set_rx_queues (vlib_main_t *vm, virtio_if_t *vif);
+void virtio_vring_set_tx_queues (vlib_main_t *vm, virtio_if_t *vif);
 extern void virtio_free_buffers (vlib_main_t * vm, virtio_vring_t * vring);
 extern void virtio_set_net_hdr_size (virtio_if_t * vif);
 extern void virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,
@@ -245,6 +245,9 @@ extern void virtio_pci_legacy_notify_queue (vlib_main_t * vm,
 extern void virtio_pci_modern_notify_queue (vlib_main_t * vm,
 					    virtio_if_t * vif, u16 queue_id,
 					    u16 queue_notify_offset);
+extern void virtio_pre_input_node_enable (vlib_main_t *vm, virtio_if_t *vif);
+extern void virtio_pre_input_node_disable (vlib_main_t *vm, virtio_if_t *vif);
+
 format_function_t format_virtio_device_name;
 format_function_t format_virtio_log_name;
 
