@@ -301,7 +301,7 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
   u32 n_left;
   u32 thread_index = vm->thread_index;
   int queue_id = thread_index;
-  u32 tx_pkts = 0, all_or_flags = 0;
+  u32 tx_pkts = 0;
   dpdk_per_thread_data_t *ptd = vec_elt_at_index (dm->per_thread_data,
 						  thread_index);
   struct rte_mbuf **mb;
@@ -333,7 +333,6 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
       b[3] = vlib_buffer_from_rte_mbuf (mb[3]);
 
       or_flags = b[0]->flags | b[1]->flags | b[2]->flags | b[3]->flags;
-      all_or_flags |= or_flags;
 
       if (or_flags & VLIB_BUFFER_NEXT_PRESENT)
 	{
@@ -391,7 +390,6 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
       b[1] = vlib_buffer_from_rte_mbuf (mb[1]);
 
       or_flags = b[0]->flags | b[1]->flags;
-      all_or_flags |= or_flags;
 
       if (or_flags & VLIB_BUFFER_NEXT_PRESENT)
 	{
@@ -427,7 +425,6 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
   while (n_left > 0)
     {
       b[0] = vlib_buffer_from_rte_mbuf (mb[0]);
-      all_or_flags |= b[0]->flags;
 
       dpdk_validate_rte_mbuf (vm, b[0], 1);
       dpdk_buffer_tx_offload (xd, b[0], mb[0]);
