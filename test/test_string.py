@@ -32,7 +32,7 @@ class TestString(VppTestCase):
                  "memcmp_s", "memcpy_s", "memset_s ",
                  "strcat_s", "strcmp_s", "strcpy_s",
                  "strncat_s", "strncmp_s", "strncpy_s",
-                 "strnlen_s", "strstr_s", "strtok_s", "clib_count_equal"]
+                 "strnlen_s", "strstr_s", "strtok_s"]
 
         for name in names:
             error = self.vapi.cli("test string " + name)

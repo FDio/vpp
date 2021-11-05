@@ -22,6 +22,7 @@
 
 #include <vppinfra/error.h>
 #include <vppinfra/hash.h>
+#include <vppinfra/vector/count_equal.h>
 #include <vnet/l2/feat_bitmap.h>
 #include <vnet/l2/l2_output.h>
 
