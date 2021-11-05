@@ -192,6 +192,9 @@ set(VPPINFRA_HEADERS
   vector_altivec.h
   vector_avx2.h
   vector_avx512.h
+  vector/array_mask.h
+  vector/compress.h
+  vector/count_equal.h
   vector/mask_compare.h
   vector/compress.h
   vector/array_mask.h
@@ -272,6 +275,7 @@ if(VPP_BUILD_VPPINFRA_TESTS)
 
 set(test_files
   vector/test/compress.c
+  vector/test/count_equal.c
   vector/test/mask_compare.c
   vector/test/array_mask.c
 )

@@ -1301,98 +1301,6 @@ test_strstr_s (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
-static int
-test_clib_count_equal (vlib_main_t * vm, unformat_input_t * input)
-{
-  u64 s64[15];
-  u32 s32[31];
-  u16 s16[63];
-  u8 s8[127];
-  uword count;
-
-  vlib_cli_output (vm, "Test clib_count_equal_u64...");
-  memset (s64, 0, sizeof (s64));
-  count = clib_count_equal_u64 (s64, 0);
-  if (0 != count)
-    return -1;
-  count = clib_count_equal_u64 (s64, 1);
-  if (1 != count)
-    return -1;
-  count = clib_count_equal_u64 (s64, 3);
-  if (3 != count)
-    return -1;
-  count = clib_count_equal_u64 (s64, 15);
-  if (15 != count)
-    return -1;
-  s64[10] = 0xcafe;
-  count = clib_count_equal_u64 (s64, 13);
-  if (10 != count)
-    return -1;
-  s64[10] = 0;
-
-  vlib_cli_output (vm, "Test clib_count_equal_u32...");
-  memset (s32, 0, sizeof (s32));
-  count = clib_count_equal_u32 (s32, 0);
-  if (0 != count)
-    return -1;
-  count = clib_count_equal_u32 (s32, 1);
-  if (1 != count)
-    return -1;
-  count = clib_count_equal_u32 (s32, 3);
-  if (3 != count)
-    return -1;
-  count = clib_count_equal_u32 (s32, 31);
-  if (31 != count)
-    return -1;
-  s32[10] = 0xcafe;
-  count = clib_count_equal_u32 (s32, 13);
-  if (10 != count)
-    return -1;
-  s32[10] = 0;
-
-  vlib_cli_output (vm, "Test clib_count_equal_u16...");
-  memset (s16, 0, sizeof (s16));
-  count = clib_count_equal_u16 (s16, 0);
-  if (0 != count)
-    return -1;
-  count = clib_count_equal_u16 (s16, 1);
-  if (1 != count)
-    return -1;
-  count = clib_count_equal_u16 (s16, 3);
-  if (3 != count)
-    return -1;
-  count = clib_count_equal_u16 (s16, 63);
-  if (63 != count)
-    return -1;
-  s16[10] = 0xcafe;
-  count = clib_count_equal_u16 (s16, 13);
-  if (10 != count)
-    return -1;
-  s16[10] = 0;
-
-  vlib_cli_output (vm, "Test clib_count_equal_u8...");
-  memset (s8, 0, sizeof (s8));
-  count = clib_count_equal_u8 (s8, 0);
-  if (0 != count)
-    return -1;
-  count = clib_count_equal_u8 (s8, 1);
-  if (1 != count)
-    return -1;
-  count = clib_count_equal_u8 (s8, 3);
-  if (3 != count)
-    return -1;
-  count = clib_count_equal_u8 (s8, 127);
-  if (127 != count)
-    return -1;
-  s8[10] = 0xfe;
-  count = clib_count_equal_u8 (s8, 13);
-  if (10 != count)
-    return -1;
-  s8[10] = 0;
-
-  return 0;
-}
-
 #define foreach_string_test                                                   \
   _ (0, MEMCPY_S, "memcpy_s", memcpy_s)                                       \
   _ (1, CLIB_MEMCPY, "clib_memcpy", clib_memcpy)                              \
@@ -1413,8 +1321,7 @@ test_clib_count_equal (vlib_main_t * vm, unformat_input_t * input)
   _ (16, CLIB_STRTOK, "clib_strtok", clib_strtok)                             \
   _ (17, STRNLEN_S, "strnlen_s", strnlen_s)                                   \
   _ (18, CLIB_STRNLEN, "clib_strnlen", clib_strnlen)                          \
-  _ (19, STRSTR_S, "strstr_s", strstr_s)                                      \
-  _ (20, CLIB_COUNT_EQUAL, "clib_count_equal", clib_count_equal)
+  _ (19, STRSTR_S, "strstr_s", strstr_s)
 
 typedef enum
 {
@@ -1422,7 +1329,7 @@ typedef enum
   foreach_string_test
 #undef _
 #define STRING_TEST_FIRST       STRING_TEST_MEMCPY_S
-#define STRING_TEST_LAST        STRING_TEST_CLIB_COUNT_EQUAL
+#define STRING_TEST_LAST	STRING_TEST_STRSTR_S
 } string_test_t;
 
 static uword
@@ -1504,8 +1411,7 @@ VLIB_CLI_COMMAND (string_test_command, static) = {
     "clib_memset | memcmp_s | clib_memcmp | strcmp_s | clib_strcmp | "
     "strncmp_s | clib_strncmp | strcpy_s | strncpy_s | "
     "clib_strncpy | strcat_s | strncat_s | "
-    "strtok_s |  clib_strtok | strnlen_s | clib_strnlen | strstr_s | "
-    "clib_count_equal ]",
+    "strtok_s |  clib_strtok | strnlen_s | clib_strnlen | strstr_s ]",
   .function = string_test_command_fn,
 };
 /* *INDENT-ON* */
