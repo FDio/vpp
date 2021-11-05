@@ -131,7 +131,7 @@ pipe_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   u32 n_left_from, n_left_to_next, n_copy, *from, *to_next;
   u32 next_index = VNET_PIPE_TX_NEXT_ETHERNET_INPUT;
-  u32 i, sw_if_index = 0, n_pkts = 0, n_bytes = 0;
+  u32 i, sw_if_index = 0, n_pkts = 0;
   vlib_buffer_t *b;
   pipe_t *pipe;
 
@@ -160,7 +160,6 @@ pipe_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  i++;
 	  n_pkts++;
-	  n_bytes += vlib_buffer_length_in_chain (vm, b);
 	}
       from += n_copy;
 
