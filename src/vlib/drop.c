@@ -16,6 +16,7 @@
  */
 
 #include <vlib/vlib.h>
+#include <vppinfra/vector/count_equal.h>
 
 typedef enum
 {
