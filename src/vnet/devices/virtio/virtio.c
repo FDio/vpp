@@ -33,6 +33,7 @@
 #include <vnet/devices/virtio/virtio_inline.h>
 #include <vnet/devices/virtio/pci.h>
 #include <vnet/interface/rx_queue_funcs.h>
+#include <vnet/interface/tx_queue_funcs.h>
 
 virtio_main_t virtio_main;
 
@@ -73,12 +74,10 @@ virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
 
   if (idx % 2)
     {
-      vlib_thread_main_t *thm = vlib_get_thread_main ();
       vec_validate_aligned (vif->txq_vrings, TX_QUEUE_ACCESS (idx),
 			    CLIB_CACHE_LINE_BYTES);
       vring = vec_elt_at_index (vif->txq_vrings, TX_QUEUE_ACCESS (idx));
-      if (thm->n_vlib_mains > vif->num_txqs)
-	clib_spinlock_init (&vring->lockp);
+      clib_spinlock_init (&vring->lockp);
     }
   else
     {
@@ -280,6 +279,28 @@ virtio_vring_set_rx_queues (vlib_main_t *vm, virtio_if_t *vif)
 				    VNET_HW_IF_RX_MODE_POLLING);
       vring->mode = VNET_HW_IF_RX_MODE_POLLING;
       virtio_vring_fill (vm, vif, vring);
+    }
+  vnet_hw_if_update_runtime_data (vnm, vif->hw_if_index);
+}
+
+void
+virtio_vring_set_tx_queues (vlib_main_t *vm, virtio_if_t *vif)
+{
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
+  vnet_main_t *vnm = vnet_get_main ();
+  virtio_vring_t *vring;
+
+  vec_validate (vif->qi, vtm->n_vlib_mains - 1);
+  vec_foreach (vring, vif->txq_vrings)
+    {
+      vring->queue_index = vnet_hw_if_register_tx_queue (
+	vnm, vif->hw_if_index, TX_QUEUE_ACCESS (vring->queue_id));
+      vnet_hw_if_tx_queue_assign_thread (vnm, vring->queue_index,
+					 TX_QUEUE_ACCESS (vring->queue_id));
+
+      ASSERT (vtm->n_vlib_mains > TX_QUEUE_ACCESS (vring->queue_id));
+      vif->qi[TX_QUEUE_ACCESS (vring->queue_id)].queue_index =
+	vring->queue_index;
     }
   vnet_hw_if_update_runtime_data (vnm, vif->hw_if_index);
 }

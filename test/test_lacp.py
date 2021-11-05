@@ -126,6 +126,7 @@ class TestMarker(VppTestCase):
 
         self.vapi.ppcli("trace add memif-input 100")
 
+        self.vapi.ppcli("sh hardware")
         # create marker request
         marker = (Ether(src=bond_mac, dst=lacp_dst_mac) /
                   SlowProtocol() /
