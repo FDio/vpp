@@ -237,7 +237,7 @@ virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 mask = vring->size - 1;
   u16 last = vring->last_used_idx;
   u16 n_left = virtio_n_left_to_process (vring, packed);
-  vlib_buffer_t bt;
+  vlib_buffer_t bt = {};
 
   if (n_left == 0)
     return 0;
