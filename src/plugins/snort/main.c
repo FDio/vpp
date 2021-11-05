@@ -13,7 +13,6 @@ snort_main_t snort_main;
 
 VLIB_REGISTER_LOG_CLASS (snort_log, static) = {
   .class_name = "snort",
-  .default_syslog_level = VLIB_LOG_LEVEL_DEBUG,
 };
 
 #define log_debug(fmt, ...) vlib_log_debug (snort_log.class, fmt, __VA_ARGS__)
