@@ -1455,7 +1455,6 @@ static void
 layout_sections (elf_main_t * em)
 {
   elf_section_t *s;
-  u32 n_sections_with_changed_exec_address = 0;
   u32 *deferred_symbol_and_string_sections = 0;
   u32 n_deleted_sections = 0;
   /* note: rebuild is always zero. Intent lost in the sands of time */
@@ -1614,7 +1613,6 @@ layout_sections (elf_main_t * em)
       if (s->header.flags & ELF_SECTION_FLAG_ALLOC)
 	{
 	  s->exec_address_change = exec_address - s->header.exec_address;
-	  n_sections_with_changed_exec_address += s->exec_address_change != 0;
 	  s->header.exec_address = exec_address;
 	}
 
