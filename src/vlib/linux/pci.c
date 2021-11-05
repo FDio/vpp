@@ -1192,7 +1192,6 @@ vlib_pci_map_region_int (vlib_main_t * vm, vlib_pci_dev_handle_t h,
   linux_pci_device_t *p = linux_pci_get_device (h);
   int fd = -1;
   clib_error_t *error;
-  int flags = MAP_SHARED;
   u64 size = 0, offset = 0;
   u16 command;
 
@@ -1211,9 +1210,6 @@ vlib_pci_map_region_int (vlib_main_t * vm, vlib_pci_dev_handle_t h,
 
   if ((error = vlib_pci_region (vm, h, bar, &fd, &size, &offset)))
     return error;
-
-  if (p->type == LINUX_PCI_DEVICE_TYPE_UIO && addr != 0)
-    flags |= MAP_FIXED;
 
   *result = clib_mem_vm_map_shared (addr, size, fd, offset,
 				    "PCIe %U region %u", format_vlib_pci_addr,
