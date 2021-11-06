@@ -73,6 +73,8 @@ set(CMAKE_C_COMPILER_TARGET ${CMAKE_SYSTEM_PROCESSOR}-linux-gnu)
 ##############################################################################
 check_c_compiler_flag("-Wno-address-of-packed-member"
 		      compiler_flag_no_address_of_packed_member)
+check_c_compiler_flag("-Wno-stringop-overflow"
+		      compiler_flag_no_stringop_overflow)
 set(VPP_RUNTIME_DIR ${CMAKE_INSTALL_BINDIR} CACHE STRING "Relative runtime directory path")
 set(VPP_LIBRARY_DIR ${CMAKE_INSTALL_LIBDIR} CACHE STRING "Relative library directory path")
 
@@ -87,6 +89,10 @@ endif()
 
 if (compiler_flag_no_address_of_packed_member)
   add_compile_options(-Wno-address-of-packed-member)
+endif()
+
+if (compiler_flag_no_stringop_overflow)
+  add_compile_options(-Wno-stringop-overflow)
 endif()
 
 string(TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_LC)
