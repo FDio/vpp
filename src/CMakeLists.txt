@@ -125,6 +125,10 @@ if (CMAKE_BUILD_TYPE_UC STREQUAL "RELEASE")
   endif()
 endif()
 
+if(VPP_USE_LTO)
+  check_c_compiler_flag("-Wno-stringop-overflow"
+		        compiler_flag_no_stringop_overflow)
+endif()
 ##############################################################################
 # sanitizers
 ##############################################################################
