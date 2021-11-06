@@ -272,9 +272,10 @@ if(VPP_BUILD_VPPINFRA_TESTS)
   endforeach()
 
 set(test_files
-  vector/test/compress.c
-  vector/test/mask_compare.c
   vector/test/array_mask.c
+  vector/test/compress.c
+  vector/test/count_equal.c
+  vector/test/mask_compare.c
 )
 
 add_vpp_executable(test_vector_funcs
