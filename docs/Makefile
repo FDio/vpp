@@ -1,4 +1,15 @@
-# Minimal makefile for Sphinx documentation
+# Copyright (c) 2021 Cisco and/or its affiliates.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
 # We support MacOS for docs generation
 ifeq ($(shell uname),Darwin)
@@ -20,6 +31,10 @@ PIP_VERSION ?= $(shell grep 'PIP_VERSION=' ${WS_ROOT}/test/Makefile | cut -d'=' 
 PIP_TOOLS_VERSION ?= $(shell grep 'PIP_TOOLS_VERSION=' ${WS_ROOT}/test/Makefile | cut -d'=' -f2)
 
 PYTHON ?= "python3"
+PYTHON_VERSION_OK := $(shell $(PYTHON) -c "exec('import sys\nif sys.hexversion >= 0x03070000: print(\"true\")\nelse: print(\"false\")')")
+ifneq ($(PYTHON_VERSION_OK),true)
+$(error "ERROR: docs build requires python version >= to 3.7")
+endif
 
 # You can set these variables from the command line.
 SPHINXOPTS        = --keep-going -n -W
@@ -96,4 +111,3 @@ clean:
 
 .PHONY: build
 build: docs
-
