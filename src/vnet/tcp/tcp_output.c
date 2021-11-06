@@ -613,11 +613,11 @@ tcp_buffer_make_reset (vlib_main_t *vm, vlib_buffer_t *b, u8 is_ip4)
 
   /* Zero all flags but free list index and trace flag */
   b->flags &= VLIB_BUFFER_NEXT_PRESENT - 1;
-  b->current_data = 0;
+  /* Make sure new tcp header comes after current ip */
+  b->current_data = ((u8 *) th - b->data) + sizeof (tcp_header_t);
   b->current_length = 0;
   b->total_length_not_including_first_buffer = 0;
   vnet_buffer (b)->tcp.flags = 0;
-  vlib_buffer_make_headroom (b, TRANSPORT_MAX_HDRS_LEN);
 
   /*
    * Add TCP and IP headers
