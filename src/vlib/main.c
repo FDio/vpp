@@ -1105,6 +1105,7 @@ dispatch_node (vlib_main_t * vm,
 	      nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] -= 1;
 	      nm->input_node_counts_by_state[VLIB_NODE_STATE_INTERRUPT] += 1;
 
+	      vlib_node_set_interrupt_pending (vm, n->index);
 	    }
 	  else
 	    {
