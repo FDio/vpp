@@ -49,6 +49,7 @@
 #include <vnet/interface_output.h>
 #include <vppinfra/vector/mask_compare.h>
 #include <vppinfra/vector/compress.h>
+#include <vppinfra/vector/count_equal.h>
 
 typedef struct
 {
