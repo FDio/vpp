@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Cisco and/or its affiliates.
+# Copyright (c) 2021 Cisco and/or its affiliates.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at:
@@ -452,7 +452,7 @@ test-dep:
 
 .PHONY: test-doc
 test-doc:
-	@echo "make test-doc is DEPRECATED: use 'make doc'"
+	@echo "make test-doc is DEPRECATED: use 'make docs'"
 	sleep 300
 
 .PHONY: test-wipe-doc

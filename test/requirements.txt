@@ -19,4 +19,4 @@ sphinx-rtd-theme                        # MIT
 noiseprotocol                           # MIT
 recommonmark                            # MIT
 pyyaml                                  # MIT
-jsonschema                              # MIT
+jsonschema; python_version >= '3.7'     # MIT
