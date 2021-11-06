@@ -192,9 +192,10 @@ set(VPPINFRA_HEADERS
   vector_altivec.h
   vector_avx2.h
   vector_avx512.h
-  vector/mask_compare.h
-  vector/compress.h
   vector/array_mask.h
+  vector/compress.h
+  vector/count_equal.h
+  vector/mask_compare.h
   vector.h
   vector_neon.h
   vector_sse42.h
