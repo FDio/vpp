@@ -324,19 +324,29 @@ det44_expire_walk_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
   snat_det_session_t *ses;
   snat_det_map_t *mp;
 
-  vlib_process_wait_for_event_or_clock (vm, 10.0);
-  vlib_process_get_events (vm, NULL);
-  u32 now = (u32) vlib_time_now (vm);
-  /* *INDENT-OFF* */
-  pool_foreach (mp, dm->det_maps)  {
-    vec_foreach(ses, mp->sessions)
-      {
-        /* Delete if session expired */
-        if (ses->in_port && (ses->expire < now))
-          snat_det_ses_close (mp, ses);
-      }
-  }
-  /* *INDENT-ON* */
+  while (1)
+    {
+      vlib_process_wait_for_event_or_clock (vm, 10.0);
+      vlib_process_get_events (vm, NULL);
+      u32 now = (u32) vlib_time_now (vm);
+
+      if (!plugin_enabled ())
+	{
+	  continue;
+	}
+
+      pool_foreach (mp, dm->det_maps)
+	{
+	  vec_foreach (ses, mp->sessions)
+	    {
+	      // close expired sessions
+	      if (ses->in_port && (ses->expire < now))
+		{
+		  snat_det_ses_close (mp, ses);
+		}
+	    }
+	}
+    }
   return 0;
 }
 
@@ -374,10 +384,11 @@ det44_plugin_enable (det44_config_t c)
 							    c.inside_vrf_id,
 							    dm->fib_src_hi);
 
-  det44_create_expire_walk_process ();
   dm->mss_clamping = 0;
   dm->config = c;
   dm->enabled = 1;
+
+  det44_create_expire_walk_process ();
   return 0;
 }
 
@@ -394,6 +405,8 @@ det44_plugin_disable ()
       det44_log_err ("plugin already disabled!");
       return 1;
     }
+
+  dm->enabled = 0;
 
   // DET44 cleanup (order dependent)
   // 1) remove interfaces (det44_interface_add_del) removes map ranges from fib
@@ -436,7 +449,6 @@ det44_plugin_disable ()
   /* *INDENT-ON* */
 
   det44_reset_timeouts ();
-  dm->enabled = 0;
 
   pool_free (dm->interfaces);
   pool_free (dm->det_maps);
