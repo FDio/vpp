@@ -196,6 +196,7 @@ set(VPPINFRA_HEADERS
   vector/compress.h
   vector/count_equal.h
   vector/mask_compare.h
+  vector/ip_csum.h
   vector.h
   vector_neon.h
   vector_sse42.h
@@ -275,6 +276,7 @@ set(test_files
   vector/test/compress.c
   vector/test/mask_compare.c
   vector/test/array_mask.c
+  vector/test/ip_csum.c
 )
 
 add_vpp_executable(test_vector_funcs

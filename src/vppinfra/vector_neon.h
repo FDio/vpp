@@ -211,6 +211,18 @@ u32x4_min_scalar (u32x4 v)
 #define u8x16_word_shift_left(x,n)  vextq_u8(u8x16_splat (0), x, 16 - n)
 #define u8x16_word_shift_right(x,n) vextq_u8(x, u8x16_splat (0), n)
 
+always_inline u32x4
+u32x4_interleave_hi (u32x4 a, u32x4 b)
+{
+  return (u32x4) vzip2q_u32 (a, b);
+}
+
+always_inline u32x4
+u32x4_interleave_lo (u32x4 a, u32x4 b)
+{
+  return (u32x4) vzip1q_u32 (a, b);
+}
+
 static_always_inline u8x16
 u8x16_reflect (u8x16 v)
 {
