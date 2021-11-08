@@ -196,6 +196,7 @@ set(VPPINFRA_HEADERS
   vector/compress.h
   vector/count_equal.h
   vector/index_to_ptr.h
+  vector/ip_csum.h
   vector/mask_compare.h
   vector.h
   vector_neon.h
@@ -277,6 +278,7 @@ set(test_files
   vector/test/compress.c
   vector/test/count_equal.c
   vector/test/index_to_ptr.c
+  vector/test/ip_csum.c
   vector/test/mask_compare.c
 )
 
