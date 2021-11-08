@@ -324,19 +324,24 @@ det44_expire_walk_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
   snat_det_session_t *ses;
   snat_det_map_t *mp;
 
-  vlib_process_wait_for_event_or_clock (vm, 10.0);
-  vlib_process_get_events (vm, NULL);
-  u32 now = (u32) vlib_time_now (vm);
-  /* *INDENT-OFF* */
-  pool_foreach (mp, dm->det_maps)  {
-    vec_foreach(ses, mp->sessions)
-      {
-        /* Delete if session expired */
-        if (ses->in_port && (ses->expire < now))
-          snat_det_ses_close (mp, ses);
-      }
-  }
-  /* *INDENT-ON* */
+  while (1)
+    {
+      vlib_process_wait_for_event_or_clock (vm, 10.0);
+      vlib_process_get_events (vm, NULL);
+      u32 now = (u32) vlib_time_now (vm);
+
+      pool_foreach (mp, dm->det_maps)
+	{
+	  vec_foreach (ses, mp->sessions)
+	    {
+	      // delete expired sessions
+	      if (ses->in_port && (ses->expire < now))
+		{
+		  snat_det_ses_close (mp, ses);
+		}
+	    }
+	}
+    }
   return 0;
 }
 
