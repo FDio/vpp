@@ -20,3 +20,4 @@ noiseprotocol                           # MIT
 recommonmark                            # MIT
 pyyaml                                  # MIT
 jsonschema; python_version >= '3.7'     # MIT
+dataclasses; python_version == '3.6'    # Apache-2.0
