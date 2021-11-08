@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Cisco and/or its affiliates.
+ * Copyright (c) 2021 Intel and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -127,8 +127,6 @@ format_stack_socket (u8 *s, va_list *va)
 
   uword *pu = hash_get (h, root_bus.bus);
   e = pool_elt_at_index (p, (index_t) pu[0]);
-  if (!e)
-    return s;
 
   s = format (s, "IIO%u/%u", e->socket_id, e->iio_unit_id);
   return s;

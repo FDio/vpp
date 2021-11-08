@@ -389,7 +389,7 @@ vlib_pci_get_device_root_bus (vlib_pci_addr_t *addr, vlib_pci_addr_t *root_bus)
 {
   u8 *rel_path = 0, *abs_path = 0, *link_path = 0;
   unformat_input_t input;
-  u32 fd = open (sysfs_pci_dev_path, O_RDONLY);
+  int fd = open (sysfs_pci_dev_path, O_RDONLY);
   u32 size = 0;
   u32 domain = 0, bus;
   clib_error_t *err = NULL;

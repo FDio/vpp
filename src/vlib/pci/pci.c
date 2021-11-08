@@ -158,7 +158,7 @@ format_vlib_pci_link_port (u8 *s, va_list *va)
   if (!r)
     return format (s, "unknown");
 
-  return format (s, "P%d", r->link_status >> 24);
+  return format (s, "P%d", r->link_capabilities >> 24);
 }
 
 u8 *
