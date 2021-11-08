@@ -2331,76 +2331,98 @@ typedef enum _tcp_reset_next
   _(DROP, "error-drop")                 \
   _(IP_LOOKUP, "ip6-lookup")
 
-static uword
-tcp46_send_reset_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-			 vlib_frame_t * from_frame, u8 is_ip4)
+static void
+tcp_reset_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
+		       vlib_buffer_t **bs, u32 n_bufs, u8 is_ip4)
 {
-  u32 error0 = TCP_ERROR_RST_SENT, next0 = TCP_RESET_NEXT_IP_LOOKUP;
-  u32 n_left_from, next_index, *from, *to_next;
+  tcp_header_t *tcp;
+  tcp_tx_trace_t *t;
+  int i;
 
-  from = vlib_frame_vector_args (from_frame);
-  n_left_from = from_frame->n_vectors;
+  for (i = 0; i < n_bufs; i++)
+    {
+      if (bs[i]->flags & VLIB_BUFFER_IS_TRACED)
+	{
+	  tcp = vlib_buffer_get_current (bs[i]);
+	  t = vlib_add_trace (vm, node, bs[i], sizeof (*t));
 
-  next_index = node->cached_next_index;
+	  if (is_ip4)
+	    {
+	      ip4_header_t *ih4 = vlib_buffer_get_current (bs[i]);
+	      tcp = ip4_next_header (ih4);
+	      t->tcp_connection.c_lcl_ip.ip4 = ih4->dst_address;
+	      t->tcp_connection.c_rmt_ip.ip4 = ih4->src_address;
+	      t->tcp_connection.c_is_ip4 = 1;
+	    }
+	  else
+	    {
+	      ip6_header_t *ih6 = vlib_buffer_get_current (bs[i]);
+	      tcp = ip6_next_header (ih6);
+	      t->tcp_connection.c_lcl_ip.ip6 = ih6->dst_address;
+	      t->tcp_connection.c_rmt_ip.ip6 = ih6->src_address;
+	    }
+	  t->tcp_connection.c_lcl_port = tcp->dst_port;
+	  t->tcp_connection.c_rmt_port = tcp->src_port;
+	  t->tcp_connection.c_proto = TRANSPORT_PROTO_TCP;
+	  clib_memcpy_fast (&t->tcp_header, tcp, sizeof (t->tcp_header));
+	}
+    }
+}
+
+static uword
+tcp46_reset_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		    vlib_frame_t *frame, u8 is_ip4)
+{
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  u16 nexts[VLIB_FRAME_SIZE], *next;
+  u32 n_left_from, *from;
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+  vlib_get_buffers (vm, from, bufs, n_left_from);
+
+  b = bufs;
+  next = nexts;
 
   while (n_left_from > 0)
     {
-      u32 n_left_to_next;
+      tcp_buffer_make_reset (vm, b[0], is_ip4);
 
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+      /* IP lookup in fib where it was received. Previous value
+       * was overwritten by tcp-input */
+      vnet_buffer (b[0])->sw_if_index[VLIB_TX] =
+	vec_elt (ip4_main.fib_index_by_sw_if_index,
+		 vnet_buffer (b[0])->sw_if_index[VLIB_RX]);
 
-      while (n_left_from > 0 && n_left_to_next > 0)
-	{
-	  vlib_buffer_t *b0;
-	  tcp_tx_trace_t *t0;
-	  tcp_header_t *th0;
-	  u32 bi0;
+      b[0]->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
+      next[0] = TCP_RESET_NEXT_IP_LOOKUP;
 
-	  bi0 = from[0];
-	  to_next[0] = bi0;
-	  from += 1;
-	  to_next += 1;
-	  n_left_from -= 1;
-	  n_left_to_next -= 1;
-
-	  b0 = vlib_get_buffer (vm, bi0);
-	  tcp_buffer_make_reset (vm, b0, is_ip4);
-
-	  /* Prepare to send to IP lookup */
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ~0;
-
-	  b0->error = node->errors[error0];
-	  b0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
-	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
-	    {
-	      th0 = vlib_buffer_get_current (b0);
-	      if (is_ip4)
-		th0 = ip4_next_header ((ip4_header_t *) th0);
-	      else
-		th0 = ip6_next_header ((ip6_header_t *) th0);
-	      t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
-	      clib_memcpy_fast (&t0->tcp_header, th0,
-				sizeof (t0->tcp_header));
-	    }
-
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
-					   n_left_to_next, bi0, next0);
-	}
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+      b += 1;
+      next += 1;
+      n_left_from -= 1;
     }
-  return from_frame->n_vectors;
+
+  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
+    tcp_reset_trace_frame (vm, node, bufs, frame->n_vectors, is_ip4);
+
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
+
+  vlib_node_increment_counter (vm, node->node_index, TCP_ERROR_RST_SENT,
+			       frame->n_vectors);
+
+  return frame->n_vectors;
 }
 
 VLIB_NODE_FN (tcp4_reset_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 				vlib_frame_t * from_frame)
 {
-  return tcp46_send_reset_inline (vm, node, from_frame, 1);
+  return tcp46_reset_inline (vm, node, from_frame, 1);
 }
 
 VLIB_NODE_FN (tcp6_reset_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 				vlib_frame_t * from_frame)
 {
-  return tcp46_send_reset_inline (vm, node, from_frame, 0);
+  return tcp46_reset_inline (vm, node, from_frame, 0);
 }
 
 /* *INDENT-OFF* */
