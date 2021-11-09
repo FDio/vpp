@@ -458,6 +458,29 @@ autoreply define sw_interface_set_rx_placement
     bool is_main;
 };
 
+/** \brief Set an interface's tx-placement
+    Tx-Queue placement on specific thread is operational for only hardware
+    interface. It will not set queue - thread placement for sub-interfaces,
+    p2p and pipe interfaces.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - the interface whose tx-placement will be set
+    @param queue_id - the queue number whose tx-placement will be set.
+    @param array_size - the size of the thread indexes array
+    @param threads - the thread indexes of main and worker(s) threads
+                     whom tx-placement will be at.
+*/
+autoendian autoreply define sw_interface_set_tx_placement
+{
+    u32 client_index;
+    u32 context;
+    vl_api_interface_index_t sw_if_index;
+    u32 queue_id;
+    u32 array_size;
+    u32 threads[array_size];
+    option vat_help = "<interface | sw_if_index <index>> queue <n> [threads <list> | mask <hex>]";
+};
+
 /** \brief Set custom interface name
     Set custom interface name for the interface.
     @param client_index - opaque cookie to identify the sender
@@ -510,6 +533,60 @@ define sw_interface_rx_placement_details
   u32 queue_id;
   u32 worker_id;
   vl_api_rx_mode_t mode;
+};
+
+service {
+  rpc sw_interface_tx_placement_get returns sw_interface_tx_placement_get_reply
+    stream sw_interface_tx_placement_details;
+};
+
+/** \brief get the tx queue placement of interface(s)
+    @param cursor - optional, it allows client to continue a dump
+    @param sw_if_index - optional interface index for which queue placement to
+      be requested. sw_if_index = ~0 will get the placement information for all
+      interfaces. It will not get information related to sub-interfaces, p2p
+      and pipe interfaces.
+*/
+autoendian define sw_interface_tx_placement_get
+{
+  u32 client_index;
+  u32 context;
+  u32 cursor;
+  vl_api_interface_index_t sw_if_index;
+  option vat_help = "[interface | sw_if_index <index>]";
+};
+
+autoendian define sw_interface_tx_placement_get_reply
+{
+  u32 context;
+  i32 retval;
+  u32 cursor;
+};
+
+/** \brief show the interface's queue - thread placement
+    This api is used to display the interface and queue worker
+    thread placement. One message per tx-queue per interface will
+    be sent to client.
+    Each message will contain information about tx-queue id of an
+    interface, interface index, thread on which this tx-queue is
+    placed and mode of tx-queue.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - the interface whose tx-placement will be dumped
+    @param queue_id - the queue id
+    @param shared - the queue is shared on other threads
+    @param array_size - the size of the threads array
+    @param threads - the main and worker(s) thread index(es) whom tx-placement are at.
+*/
+autoendian define sw_interface_tx_placement_details
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  u32 queue_id;
+  u8 shared;
+  u32 array_size;
+  u32 threads[array_size];
 };
 
 /* Gross kludge, DGMS */
