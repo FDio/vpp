@@ -1,0 +1,12 @@
+---
+name: CLI utils
+maintainer: Nathan Skrzypczak <nathan.skrzypczak@gmail.com>
+features:
+  - Interface pps CLI
+
+description: "This plugin is intended to contain debug CLI that have more
+             logic than simple CRUD operations.
+             Intent being to providing debug & performance measuring tools
+             from within VPP."
+state: development
+properties: [CLI, MULTITHREAD]
