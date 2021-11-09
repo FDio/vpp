@@ -22,6 +22,7 @@
 
 #include <vnet/interface.h>
 #include <vnet/interface/rx_queue_funcs.h>
+#include <vnet/interface/tx_queue_funcs.h>
 #include <vnet/api_errno.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/ip.h>
@@ -56,7 +57,9 @@ vpe_api_main_t vpe_api_main;
   _ (SW_INTERFACE_ADD_DEL_ADDRESS, sw_interface_add_del_address)              \
   _ (SW_INTERFACE_SET_RX_MODE, sw_interface_set_rx_mode)                      \
   _ (SW_INTERFACE_RX_PLACEMENT_DUMP, sw_interface_rx_placement_dump)          \
+  _ (SW_INTERFACE_TX_PLACEMENT_DUMP, sw_interface_tx_placement_dump)          \
   _ (SW_INTERFACE_SET_RX_PLACEMENT, sw_interface_set_rx_placement)            \
+  _ (SW_INTERFACE_SET_TX_PLACEMENT, sw_interface_set_tx_placement)            \
   _ (SW_INTERFACE_SET_TABLE, sw_interface_set_table)                          \
   _ (SW_INTERFACE_GET_TABLE, sw_interface_get_table)                          \
   _ (SW_INTERFACE_SET_UNNUMBERED, sw_interface_set_unnumbered)                \
@@ -1188,6 +1191,166 @@ static void vl_api_sw_interface_set_rx_placement_t_handler
   BAD_SW_IF_INDEX_LABEL;
 out:
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_RX_PLACEMENT_REPLY);
+}
+
+static void
+send_interface_tx_placement_details (vpe_api_main_t *am,
+				     vl_api_registration_t *rp,
+				     u32 sw_if_index, uword *bitmap,
+				     u32 queue_id, u8 shared, u32 context)
+{
+  vl_api_sw_interface_tx_placement_details_t *mp;
+  u32 n_bits = clib_bitmap_count_set_bits (bitmap);
+  u32 v;
+
+  mp = vl_msg_api_alloc (sizeof (*mp) + (n_bits * sizeof (u32)));
+  clib_memset (mp, 0, sizeof (*mp));
+
+  mp->_vl_msg_id =
+    htons (REPLY_MSG_ID_BASE + VL_API_SW_INTERFACE_TX_PLACEMENT_DETAILS);
+  mp->sw_if_index = htonl (sw_if_index);
+  mp->queue_id = htonl (queue_id);
+  mp->shared = shared;
+  mp->array_size = htonl (n_bits);
+  mp->context = context;
+
+  v = clib_bitmap_first_set (bitmap);
+  for (u32 i = 0; i < n_bits; i++)
+    {
+      mp->threads[i] = htonl (v);
+      v = clib_bitmap_next_set (bitmap, v + 1);
+    }
+
+  vl_api_send_msg (rp, (u8 *) mp);
+}
+
+static void
+vl_api_sw_interface_tx_placement_dump_t_handler (
+  vl_api_sw_interface_tx_placement_dump_t *mp)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vpe_api_main_t *am = &vpe_api_main;
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  vl_api_registration_t *reg;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  if (sw_if_index == ~0)
+    {
+      vnet_hw_if_tx_queue_t **all_queues = 0;
+      vnet_hw_if_tx_queue_t **qptr;
+      vnet_hw_if_tx_queue_t *q;
+      pool_foreach (q, vnm->interface_main.hw_if_tx_queues)
+	vec_add1 (all_queues, q);
+      vec_sort_with_function (all_queues, vnet_hw_if_txq_cmp_cli_api);
+
+      vec_foreach (qptr, all_queues)
+	{
+	  uword *bitmap = qptr[0]->threads;
+	  u32 hw_if_index = qptr[0]->hw_if_index;
+	  vnet_hw_interface_t *hw_if =
+	    vnet_get_hw_interface (vnm, hw_if_index);
+	  send_interface_tx_placement_details (
+	    am, reg, hw_if->sw_if_index, bitmap, qptr[0]->queue_id,
+	    qptr[0]->shared_queue, mp->context);
+	}
+      vec_free (all_queues);
+    }
+  else
+    {
+      int i;
+      vnet_sw_interface_t *si;
+
+      if (!vnet_sw_if_index_is_api_valid (sw_if_index))
+	{
+	  clib_warning ("sw_if_index %u does not exist", sw_if_index);
+	  goto bad_sw_if_index;
+	}
+
+      si = vnet_get_sw_interface (vnm, sw_if_index);
+      if (si->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
+	{
+	  clib_warning ("interface type is not HARDWARE! P2P, PIPE and SUB"
+			" interfaces are not supported");
+	  goto bad_sw_if_index;
+	}
+
+      vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, si->hw_if_index);
+
+      for (i = 0; i < vec_len (hw->tx_queue_indices); i++)
+	{
+	  vnet_hw_if_tx_queue_t *txq =
+	    vnet_hw_if_get_tx_queue (vnm, hw->tx_queue_indices[i]);
+	  send_interface_tx_placement_details (am, reg, hw->sw_if_index,
+					       txq->threads, txq->queue_id,
+					       txq->shared_queue, mp->context);
+	}
+    }
+
+  BAD_SW_IF_INDEX_LABEL;
+}
+
+static void
+vl_api_sw_interface_set_tx_placement_t_handler (
+  vl_api_sw_interface_set_tx_placement_t *mp)
+{
+  vl_api_sw_interface_set_tx_placement_reply_t *rmp;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  vnet_sw_interface_t *si;
+  uword *bitmap = 0;
+  u32 queue_id = ~0;
+  u32 size = 0;
+  clib_error_t *error = 0;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  si = vnet_get_sw_interface (vnm, sw_if_index);
+  if (si->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto bad_sw_if_index;
+    }
+
+  size = clib_net_to_host_u32 (mp->array_size);
+  for (u32 i = 0; i < size; i++)
+    {
+      u32 thread_index = clib_net_to_host_u32 (mp->threads[i]);
+      bitmap = clib_bitmap_set (bitmap, thread_index, 1);
+    }
+
+  queue_id = clib_net_to_host_u32 (mp->queue_id);
+  rv = set_hw_interface_tx_queue (si->hw_if_index, queue_id, bitmap);
+
+  switch (rv)
+    {
+    case VNET_API_ERROR_INVALID_VALUE:
+      error = clib_error_return (
+	0, "please specify valid thread(s) - last thread index %u",
+	clib_bitmap_last_set (bitmap));
+      break;
+    case VNET_API_ERROR_INVALID_QUEUE:
+      error = clib_error_return (
+	0, "unknown queue %u on interface %s", queue_id,
+	vnet_get_hw_interface (vnet_get_main (), si->hw_if_index)->name);
+      break;
+    default:
+      break;
+    }
+
+  if (error)
+    {
+      clib_error_report (error);
+      goto out;
+    }
+
+  BAD_SW_IF_INDEX_LABEL;
+out:
+  REPLY_MACRO (VL_API_SW_INTERFACE_SET_TX_PLACEMENT_REPLY);
+  clib_bitmap_free (bitmap);
 }
 
 static void

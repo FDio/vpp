@@ -833,6 +833,10 @@ vnet_register_interface (vnet_main_t * vnm,
   hw->hw_if_index = hw_index;
   hw->default_rx_mode = VNET_HW_IF_RX_MODE_POLLING;
 
+  if (hw_class->default_tx_hash_fn_type == VNET_HASH_FN_TYPE_ETHERNET ||
+      hw_class->default_tx_hash_fn_type == VNET_HASH_FN_TYPE_IP)
+    hw->hf = vnet_hash_default_function (hw_class->default_tx_hash_fn_type);
+
   if (dev_class->format_device_name)
     hw->name = format (0, "%U", dev_class->format_device_name, dev_instance);
   else if (hw_class->format_interface_name)
@@ -990,6 +994,7 @@ vnet_register_interface (vnet_main_t * vnm,
 	static char *e[] = {
 	  "interface is down",
 	  "interface is deleted",
+	  "no tx queue available",
 	};
 
 	r.n_errors = ARRAY_LEN (e);

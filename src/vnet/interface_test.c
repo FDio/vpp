@@ -570,6 +570,63 @@ api_sw_interface_set_rx_placement (vat_main_t *vam)
 }
 
 static int
+api_sw_interface_set_tx_placement (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_set_tx_placement_t *mp;
+  u32 sw_if_index;
+  u8 sw_if_index_set = 0;
+  int ret;
+  uword *bitmap = 0;
+  u32 queue_id, n_bits = 0;
+  u32 v;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "queue %d", &queue_id))
+	;
+      else if (unformat (i, "threads %U", unformat_bitmap_list, &bitmap))
+	;
+      else if (unformat (i, "mask %U", unformat_bitmap_mask, &bitmap))
+	;
+      else if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_set = 1;
+      else
+	break;
+    }
+
+  if (sw_if_index_set == 0)
+    {
+      errmsg ("missing interface name or sw_if_index");
+      return -99;
+    }
+
+  n_bits = clib_bitmap_count_set_bits (bitmap);
+  /* Construct the API message */
+  M2 (SW_INTERFACE_SET_TX_PLACEMENT, mp, sizeof (u32) * n_bits);
+  mp->sw_if_index = htonl (sw_if_index);
+  mp->queue_id = htonl (queue_id);
+  mp->array_size = htonl (n_bits);
+
+  v = clib_bitmap_first_set (bitmap);
+  for (u32 j = 0; j < n_bits; j++)
+    {
+      mp->threads[j] = htonl (v);
+      v = clib_bitmap_next_set (bitmap, v + 1);
+    }
+
+  /* send it... */
+  S (mp);
+  /* Wait for a reply, return the good/bad news... */
+  W (ret);
+  clib_bitmap_free (bitmap);
+  return ret;
+}
+
+static int
 api_interface_name_renumber (vat_main_t *vam)
 {
   unformat_input_t *line_input = vam->input;
@@ -845,6 +902,25 @@ vl_api_sw_interface_rx_placement_details_t_handler (
 }
 
 static void
+vl_api_sw_interface_tx_placement_details_t_handler (
+  vl_api_sw_interface_tx_placement_details_t *mp)
+{
+  vat_main_t *vam = interface_test_main.vat_main;
+  u32 size = ntohl (mp->array_size);
+  uword *bitmap = 0;
+
+  for (u32 i = 0; i < size; i++)
+    {
+      u32 thread_index = ntohl (mp->threads[i]);
+      bitmap = clib_bitmap_set (bitmap, thread_index, 1);
+    }
+
+  print (vam->ofp, "\n%-11d %-6d %-7s %U", ntohl (mp->sw_if_index),
+	 ntohl (mp->queue_id), (mp->shared == 1) ? "yes" : "no",
+	 format_bitmap_list, bitmap);
+}
+
+static void
 vl_api_create_vlan_subif_reply_t_handler (vl_api_create_vlan_subif_reply_t *mp)
 {
   vat_main_t *vam = interface_test_main.vat_main;
@@ -944,6 +1020,47 @@ api_sw_interface_rx_placement_dump (vat_main_t *vam)
 
   /* Dump Interface rx placement */
   M (SW_INTERFACE_RX_PLACEMENT_DUMP, mp);
+
+  if (sw_if_index_set)
+    mp->sw_if_index = htonl (sw_if_index);
+  else
+    mp->sw_if_index = ~0;
+
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  PING (&interface_test_main, mp_ping);
+  S (mp_ping);
+
+  W (ret);
+  return ret;
+}
+
+static int
+api_sw_interface_tx_placement_dump (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_rx_placement_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  int ret;
+  u32 sw_if_index;
+  u8 sw_if_index_set = 0;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
+	sw_if_index_set++;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_set++;
+      else
+	break;
+    }
+
+  fformat (vam->ofp, "\n%-11s %-6s %-7s %-11s", "sw_if_index", "queue",
+	   "shared", "threads");
+
+  /* Dump Interface rx placement */
+  M (SW_INTERFACE_TX_PLACEMENT_DUMP, mp);
 
   if (sw_if_index_set)
     mp->sw_if_index = htonl (sw_if_index);
