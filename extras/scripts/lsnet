@@ -1,20 +1,51 @@
 #!/bin/bash
 
-echo "PCI Address  MAC address       Device Name    Driver     State    Speed      Port Type"
-echo "============ ================= ============== ========== ======== ========== ===================="
+declare -A IDS
+IDS["8086:10fb"]="82599ES PF"
+IDS["8086:1583"]="XL710 PF"
+IDS["8086:158b"]="XXV710 PF"
+IDS["8086:154c"]="XXV710 VF"
+IDS["8086:37d1"]="X722 PF"
+IDS["8086:37cd"]="X722 VF"
+IDS["8086:1889"]="AVF"
+IDS["8086:1593"]="E810 PF"
+IDS["15b3:1015"]="CX-4 Lx PF"
+IDS["15b3:1017"]="CX-5 PF"
+IDS["15b3:1019"]="CX-5 Ex PF"
 
-for f in /sys/class/net/*; do
-	dev=$(basename ${f})
-	if [ -e $f/device ] ; then
-		dev=$(basename ${f})
-		pci_addr=$(basename $(readlink $f/device))
-		mac=$(cat $f/address)
-		driver=$(basename $(readlink $f/device/driver))
-		oper=$(cat $f/operstate)
-		speed=$(sudo ethtool $dev | grep Speed | cut -d" " -f2)
-		port=$(ethtool $dev 2> /dev/null | sed -ne 's/.*Port: \(.*\)/\1/p')
-		printf "%-12s %-14s %-14s %-10s %-8s %-10s %-20s\n" $pci_addr $mac $dev $driver $oper $speed "$port"
-		# ethtool $dev | grep Port:
-	fi
+echo "PCI Address  N PCI-ID       Driver    MAC address       Device Name    State Speed      Port Type"
+echo "============ = =========== ========== ================= ============== ===== ========== ===================="
+
+for d in /sys/bus/pci/devices/*; do
+  class=$(cat $d/class)
+  [ "${class}" == "0x020000" ] || continue
+  pci_addr=$(basename $d)
+  numa=$(cat $d/numa_node)
+  vid=$(cat $d/vendor | sed -e s/0x//g)
+  did=$(cat $d/device| sed -e s/0x//g)
+  pci_id=${IDS[$vid:$did]}
+
+  [ "$pci_id" == "" ] && pci_id="$vid:$did"
+
+  if [ -e $d/driver ] ; then
+    driver=$(basename $(readlink $d/driver))
+  else
+    driver=" "
+  fi
+  if [ -e $d/net ] ; then
+    dev=$(basename $(ls $d/net | head -1))
+    n=/sys/class/net/$dev
+    mac=$(cat $n/address)
+    oper=$(cat $n/operstate)
+#    speed=$(sudo ethtool $dev | grep Speed | cut -d" " -f2)
+##port=$(ethtool $dev 2> /dev/null | sed -ne 's/.*Port: \(.*\)/\1/p')
+  else
+    dev=" "
+    mac=" "
+    oper=" "
+    speed=" "
+    port=" "
+  fi
+  printf "%-12s %s %-11s %-10s %-17s %-14s %-5s %-10s %s\n" \
+        $pci_addr $numa "$pci_id" $driver $mac $dev $oper $speed "$port"
 done
-
