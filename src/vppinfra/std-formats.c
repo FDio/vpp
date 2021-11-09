@@ -204,6 +204,24 @@ format_time_interval (u8 * s, va_list * args)
   return s;
 }
 
+/* Format base 10 e.g. 100, 100K, 100M, 100G */
+__clib_export u8 *
+format_base10 (u8 *s, va_list *va)
+{
+  uword size = va_arg (*va, uword);
+
+  if (size < 1000)
+    s = format (s, "%d", size);
+  else if (size < 1000000)
+    s = format (s, "%.2fK", (f64) size / 1000.);
+  else if (size < 1000000000)
+    s = format (s, "%.2fM", (f64) size / 1000000.);
+  else
+    s = format (s, "%.2fG", (f64) size / 1000000000.);
+
+  return s;
+}
+
 /* Unparse memory size e.g. 100, 100k, 100m, 100g. */
 __clib_export u8 *
 format_memory_size (u8 * s, va_list * va)

@@ -641,6 +641,13 @@ M:	Florin Coras <fcoras@cisco.com>
 Y:	src/plugins/quic/FEATURE.yaml
 F:	src/plugins/quic/
 
+Plugin - CLI utilities
+I:	cliutils
+M:	Nathan Skrzypczak <nathan.skrzypczak@gmail.com>
+Y:	src/plugins/cliutils/FEATURE.yaml
+F:	src/plugins/cliutils/
+
+
 Plugin - snort plugin
 I:	snort
 M:	Damjan Marion <damarion@cisco.com>
