@@ -53,6 +53,7 @@
 #include <vnet/classify/vnet_classify.h>
 #include <vnet/interface/rx_queue_funcs.h>
 #include <vnet/interface/tx_queue_funcs.h>
+#include <vnet/hash/hash.h>
 static int
 compare_interface_names (void *a1, void *a2)
 {
@@ -1840,11 +1841,11 @@ VLIB_CLI_COMMAND (cmd_set_if_rx_placement,static) = {
 };
 /* *INDENT-ON* */
 
-clib_error_t *
+int
 set_hw_interface_tx_queue (u32 hw_if_index, u32 queue_id, uword *bitmap)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  vnet_device_main_t *vdm = &vnet_device_main;
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
   vnet_hw_interface_t *hw;
   vnet_hw_if_tx_queue_t *txq;
   u32 queue_index;
@@ -1854,14 +1855,13 @@ set_hw_interface_tx_queue (u32 hw_if_index, u32 queue_id, uword *bitmap)
 
   /* highest set bit in bitmap should not exceed last worker thread index */
   thread_index = clib_bitmap_last_set (bitmap);
-  if ((thread_index != ~0) && (thread_index > vdm->last_worker_thread_index))
-    return clib_error_return (0, "please specify valid thread(s)");
+  if ((thread_index != ~0) && (thread_index >= vtm->n_vlib_mains))
+    return VNET_API_ERROR_INVALID_VALUE;
 
   queue_index =
     vnet_hw_if_get_tx_queue_index_by_id (vnm, hw_if_index, queue_id);
   if (queue_index == ~0)
-    return clib_error_return (0, "unknown queue %u on interface %s", queue_id,
-			      hw->name);
+    return VNET_API_ERROR_INVALID_QUEUE;
 
   txq = vnet_hw_if_get_tx_queue (vnm, queue_index);
 
@@ -1889,6 +1889,7 @@ set_interface_tx_queue (vlib_main_t *vm, unformat_input_t *input,
   u32 hw_if_index = (u32) ~0;
   u32 queue_id = (u32) 0;
   uword *bitmap = 0;
+  int rv = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -1920,7 +1921,23 @@ set_interface_tx_queue (vlib_main_t *vm, unformat_input_t *input,
       goto error;
     }
 
-  error = set_hw_interface_tx_queue (hw_if_index, queue_id, bitmap);
+  rv = set_hw_interface_tx_queue (hw_if_index, queue_id, bitmap);
+
+  switch (rv)
+    {
+    case VNET_API_ERROR_INVALID_VALUE:
+      error = clib_error_return (
+	0, "please specify valid thread(s) - last thread index %u",
+	clib_bitmap_last_set (bitmap));
+      break;
+    case VNET_API_ERROR_INVALID_QUEUE:
+      error = clib_error_return (
+	0, "unknown queue %u on interface %s", queue_id,
+	vnet_get_hw_interface (vnet_get_main (), hw_if_index)->name);
+      break;
+    default:
+      break;
+    }
 
 error:
   clib_bitmap_free (bitmap);
@@ -2467,6 +2484,132 @@ VLIB_CLI_COMMAND (cmd_set_if_name, static) = {
   .function = set_interface_name,
   .is_mp_safe = 1,
 };
+
+static clib_error_t *
+set_interface_tx_hash_cmd (vlib_main_t *vm, unformat_input_t *input,
+			   vlib_cli_command_t *cmd)
+{
+  clib_error_t *error = 0;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_t *hi;
+  u8 *hash_name = 0;
+  u32 hw_if_index = (u32) ~0;
+  vnet_hash_fn_t hf;
+  vnet_hash_fn_type_t ftype;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U", unformat_vnet_hw_interface, vnm,
+		    &hw_if_index))
+	;
+      else if (unformat (line_input, "hash-name %s", &hash_name))
+	;
+      else
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  unformat_free (line_input);
+	  return error;
+	}
+    }
+
+  unformat_free (line_input);
+
+  if (hw_if_index == (u32) ~0)
+    {
+      error = clib_error_return (0, "please specify valid interface name");
+      goto error;
+    }
+
+  hi = vnet_get_hw_interface (vnm, hw_if_index);
+  ftype = vnet_get_hw_interface_class (vnm, hi->hw_class_index)
+	    ->default_tx_hash_fn_type;
+  hf = vnet_hash_function_from_name ((const char *) hash_name, ftype);
+
+  if (!hf)
+    {
+      error = clib_error_return (0, "please specify valid hash name");
+      goto error;
+    }
+
+  hi->hf = hf;
+error:
+  vec_free (hash_name);
+  return (error);
+}
+
+VLIB_CLI_COMMAND (cmd_set_if_tx_hash, static) = {
+  .path = "set interface tx-hash",
+  .short_help = "set interface tx-hash <interface> hash-name <hash-name>",
+  .function = set_interface_tx_hash_cmd,
+};
+
+static clib_error_t *
+show_tx_hash (vlib_main_t *vm, unformat_input_t *input,
+	      vlib_cli_command_t *cmd)
+{
+  clib_error_t *error = 0;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_t *hi;
+  vnet_hash_function_registration_t *hash;
+  u32 hw_if_index = (u32) ~0;
+  vnet_hash_fn_type_t ftype;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U", unformat_vnet_hw_interface, vnm,
+		    &hw_if_index))
+	;
+      else
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  unformat_free (line_input);
+	  goto error;
+	}
+    }
+
+  unformat_free (line_input);
+
+  if (hw_if_index == (u32) ~0)
+    {
+      error = clib_error_return (0, "please specify valid interface name");
+      goto error;
+    }
+
+  hi = vnet_get_hw_interface (vnm, hw_if_index);
+  ftype = vnet_get_hw_interface_class (vnm, hi->hw_class_index)
+	    ->default_tx_hash_fn_type;
+
+  if (hi->hf)
+    {
+      hash = vnet_hash_function_from_func (hi->hf, ftype);
+      if (hash)
+	vlib_cli_output (vm, "%U", format_vnet_hash, hash);
+      else
+	vlib_cli_output (vm, "no matching hash function found");
+    }
+  else
+    vlib_cli_output (vm, "no hashing function set");
+
+error:
+  return (error);
+}
+
+VLIB_CLI_COMMAND (cmd_show_tx_hash, static) = {
+  .path = "show interface tx-hash",
+  .short_help = "show interface tx-hash [interface]",
+  .function = show_tx_hash,
+};
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

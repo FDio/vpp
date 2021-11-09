@@ -458,6 +458,28 @@ autoreply define sw_interface_set_rx_placement
     bool is_main;
 };
 
+/** \brief Set an interface's tx-placement
+    Tx-Queue placement on specific thread is operational for only hardware
+    interface. It will not set queue - thread placement for sub-interfaces,
+    p2p and pipe interfaces.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - the interface whose tx-placement will be set
+    @param queue_id - the queue number whose tx-placement will be set.
+    @param array_size - the size of the mask array
+    @param mask - the main and worker(s) mask whom tx-placement will be at.
+*/
+autoreply define sw_interface_set_tx_placement
+{
+    u32 client_index;
+    u32 context;
+    vl_api_interface_index_t sw_if_index;
+    u32 queue_id;
+    u8 array_size;
+    u8 mask[array_size];
+    option vat_help = "<interface | sw_if_index <index>> queue <n> [threads <list> | mask <hex>]";
+};
+
 /** \brief Set custom interface name
     Set custom interface name for the interface.
     @param client_index - opaque cookie to identify the sender

@@ -57,6 +57,7 @@ vpe_api_main_t vpe_api_main;
   _ (SW_INTERFACE_SET_RX_MODE, sw_interface_set_rx_mode)                      \
   _ (SW_INTERFACE_RX_PLACEMENT_DUMP, sw_interface_rx_placement_dump)          \
   _ (SW_INTERFACE_SET_RX_PLACEMENT, sw_interface_set_rx_placement)            \
+  _ (SW_INTERFACE_SET_TX_PLACEMENT, sw_interface_set_tx_placement)            \
   _ (SW_INTERFACE_SET_TABLE, sw_interface_set_table)                          \
   _ (SW_INTERFACE_GET_TABLE, sw_interface_get_table)                          \
   _ (SW_INTERFACE_SET_UNNUMBERED, sw_interface_set_unnumbered)                \
@@ -1188,6 +1189,71 @@ static void vl_api_sw_interface_set_rx_placement_t_handler
   BAD_SW_IF_INDEX_LABEL;
 out:
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_RX_PLACEMENT_REPLY);
+}
+
+static void
+vl_api_sw_interface_set_tx_placement_t_handler (
+  vl_api_sw_interface_set_tx_placement_t *mp)
+{
+  vl_api_sw_interface_set_tx_placement_reply_t *rmp;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  vnet_sw_interface_t *si;
+  uword *bitmap = 0;
+  u32 queue_id = ~0;
+  u8 size = 0;
+  clib_error_t *error = 0;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  si = vnet_get_sw_interface (vnm, sw_if_index);
+  if (si->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto bad_sw_if_index;
+    }
+
+  size = mp->array_size;
+  for (int i = 0; i < size; i++)
+    {
+      u8 mask = mp->mask[i];
+      for (int j = 0; j < 8; j++)
+	{
+	  if (mask & (1 << j))
+	    bitmap = clib_bitmap_set (bitmap, j, 1);
+	}
+    }
+
+  queue_id = ntohl (mp->queue_id);
+  rv = set_hw_interface_tx_queue (si->hw_if_index, queue_id, bitmap);
+
+  switch (rv)
+    {
+    case VNET_API_ERROR_INVALID_VALUE:
+      error = clib_error_return (
+	0, "please specify valid thread(s) - last thread index %u",
+	clib_bitmap_last_set (bitmap));
+      break;
+    case VNET_API_ERROR_INVALID_QUEUE:
+      error = clib_error_return (
+	0, "unknown queue %u on interface %s", queue_id,
+	vnet_get_hw_interface (vnet_get_main (), si->hw_if_index)->name);
+      break;
+    default:
+      break;
+    }
+
+  if (error)
+    {
+      clib_error_report (error);
+      goto out;
+    }
+
+  BAD_SW_IF_INDEX_LABEL;
+out:
+  REPLY_MACRO (VL_API_SW_INTERFACE_SET_TX_PLACEMENT_REPLY);
+  clib_bitmap_free (bitmap);
 }
 
 static void
