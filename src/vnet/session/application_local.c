@@ -963,6 +963,18 @@ ct_program_cleanup (ct_connection_t *ct)
     thread_index, ct_handle_cleanups, uword_to_pointer (thread_index, void *));
 }
 
+static inline int
+ct_close_is_reset (ct_connection_t *ct, session_t *s)
+{
+  if (transport_protocol_is_cl (ct->actual_tp))
+    return 0;
+
+  if (ct->flags & CT_CONN_F_CLIENT)
+    return (svm_fifo_max_dequeue (ct->client_rx_fifo) > 0);
+  else
+    return (svm_fifo_max_dequeue (s->rx_fifo) > 0);
+}
+
 static void
 ct_session_close (u32 ct_index, u32 thread_index)
 {
@@ -981,7 +993,12 @@ ct_session_close (u32 ct_index, u32 thread_index)
 	  ct_session_connect_notify (s, SESSION_E_REFUSED);
 	}
       else if (peer_ct->c_s_index != ~0)
-	session_transport_closing_notify (&peer_ct->connection);
+	{
+	  if (PREDICT_FALSE (ct_close_is_reset (ct, s)))
+	    session_transport_reset_notify (&peer_ct->connection);
+	  else
+	    session_transport_closing_notify (&peer_ct->connection);
+	}
       else
 	{
 	  /* should not happen */
