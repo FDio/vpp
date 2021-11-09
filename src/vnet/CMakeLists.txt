@@ -38,6 +38,7 @@ list(APPEND VNET_SOURCES
   interface/rx_queue.c
   interface/tx_queue.c
   interface/runtime.c
+  interface/monitor.c
   interface_stats.c
   misc.c
 )
