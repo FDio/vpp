@@ -377,7 +377,7 @@ class TestLinuxCPIpsec(TemplateIpsec,
 
         pair = VppLcpPair(self, p.tun_if, self.host).add_vpp_config()
 
-        self.logger.error(self.vapi.cli("sh int addr"))
+        self.logger.info(self.vapi.cli("sh int addr"))
         self.logger.info(self.vapi.cli("sh lcp"))
         self.logger.info(self.vapi.cli("sh ip punt redirect"))
 
@@ -399,11 +399,8 @@ class TestLinuxCPIpsec(TemplateIpsec,
                                      src=p.tun_if.remote_ip4,
                                      dst=p.tun_if.local_ip4,
                                      count=N_PKTS)
-        try:
-            rxs = self.send_and_expect(self.tun_if, pkts, self.host)
-            self.verify_decrypted(p, rxs)
-        finally:
-            self.logger.error(self.vapi.cli("sh trace"))
+        rxs = self.send_and_expect(self.tun_if, pkts, self.host)
+        self.verify_decrypted(p, rxs)
 
         # cleanup
         pair.remove_vpp_config()
