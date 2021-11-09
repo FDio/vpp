@@ -423,6 +423,8 @@ clib_error_t *set_hw_interface_change_rx_mode (vnet_main_t * vnm,
 /* Set rx-placement on the interface */
 clib_error_t *set_hw_interface_rx_placement (u32 hw_if_index, u32 queue_id,
 					     u32 thread_index, u8 is_main);
+/* Set tx-queue placement on the interface */
+int set_hw_interface_tx_queue (u32 hw_if_index, u32 queue_id, uword *bitmap);
 
 /* Set the MTU on the HW interface */
 void vnet_hw_interface_set_mtu (vnet_main_t * vnm, u32 hw_if_index, u32 mtu);
@@ -505,6 +507,7 @@ typedef enum
 {
   VNET_INTERFACE_OUTPUT_ERROR_INTERFACE_DOWN,
   VNET_INTERFACE_OUTPUT_ERROR_INTERFACE_DELETED,
+  VNET_INTERFACE_OUTPUT_ERROR_NO_TX_QUEUE,
 } vnet_interface_output_error_t;
 
 /* Format for interface output traces. */
