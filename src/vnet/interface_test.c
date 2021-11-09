@@ -570,6 +570,57 @@ api_sw_interface_set_rx_placement (vat_main_t *vam)
 }
 
 static int
+api_sw_interface_set_tx_placement (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_set_tx_placement_t *mp;
+  u32 sw_if_index;
+  u8 sw_if_index_set = 0;
+  int ret;
+  uword *bitmap = 0;
+  u32 queue_id;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "queue %d", &queue_id))
+	;
+      else if (unformat (i, "threads %U", unformat_bitmap_list, &bitmap))
+	;
+      else if (unformat (i, "mask %U", unformat_bitmap_mask, &bitmap))
+	;
+      else if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_set = 1;
+      else
+	break;
+    }
+
+  if (sw_if_index_set == 0)
+    {
+      errmsg ("missing interface name or sw_if_index");
+      return -99;
+    }
+
+  u8 size = clib_bitmap_bytes (bitmap);
+  /* Construct the API message */
+  M2 (SW_INTERFACE_SET_TX_PLACEMENT, mp, size);
+  mp->sw_if_index = htonl (sw_if_index);
+  mp->queue_id = htonl (queue_id);
+  mp->array_size = size;
+
+  clib_memcpy (mp->mask, (u8 *) bitmap, size);
+
+  /* send it... */
+  S (mp);
+  /* Wait for a reply, return the good/bad news... */
+  W (ret);
+  clib_bitmap_free (bitmap);
+  return ret;
+}
+
+static int
 api_interface_name_renumber (vat_main_t *vam)
 {
   unformat_input_t *line_input = vam->input;
