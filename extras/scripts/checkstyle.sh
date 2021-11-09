@@ -18,6 +18,8 @@ set -eEo pipefail
 CLANG_FORMAT_VER_REGEX='([0-9]+)\.[0-9]+\.[0-9]+'
 CLANG_FORMAT_DIFF="/usr/share/clang/clang-format-diff.py"
 
+# TODO: Remove clang-format-${CLANG_FORMAT_VER} from 'make install-deps' when
+#       CLANG_FORMAT_VER default value is upgraded
 CLANG_FORMAT_VER=${CLANG_FORMAT_VER:-10}
 GIT_DIFF_ARGS="-U0 --no-color --relative HEAD~1"
 CLANG_FORMAT_DIFF_ARGS="-style file -p1"
