@@ -73,7 +73,7 @@ start_timer_thread_fn (void *arg)
   return 0;
 }
 
-static void
+static_always_inline void
 start_timer_from_mt (u32 peer_idx, u32 timer_id, u32 interval_ticks)
 {
   wg_timers_args a = {
@@ -204,8 +204,8 @@ wg_expired_zero_key_material (vlib_main_t * vm, wg_peer_t * peer)
     }
 }
 
-void
-wg_timers_any_authenticated_packet_traversal (wg_peer_t * peer)
+inline void
+wg_timers_any_authenticated_packet_traversal (wg_peer_t *peer)
 {
   if (peer->persistent_keepalive_interval)
     {
@@ -221,7 +221,7 @@ wg_timers_any_authenticated_packet_sent (wg_peer_t * peer)
   peer->last_sent_packet = vlib_time_now (vlib_get_main ());
 }
 
-void
+inline void
 wg_timers_any_authenticated_packet_sent_opt (wg_peer_t *peer, f64 time)
 {
   peer->last_sent_packet = time;
@@ -259,7 +259,7 @@ wg_timers_data_sent (wg_peer_t * peer)
 		       peer->new_handshake_interval_tick);
 }
 
-void
+inline void
 wg_timers_data_sent_opt (wg_peer_t *peer, f64 time)
 {
   peer->new_handshake_interval_tick =
@@ -299,7 +299,7 @@ wg_timers_any_authenticated_packet_received (wg_peer_t * peer)
   peer->last_received_packet = vlib_time_now (vlib_get_main ());
 }
 
-void
+inline void
 wg_timers_any_authenticated_packet_received_opt (wg_peer_t *peer, f64 time)
 {
   peer->last_received_packet = time;

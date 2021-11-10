@@ -630,58 +630,6 @@ error:
 }
 
 enum noise_state_crypt
-noise_sync_remote_encrypt (vlib_main_t *vm, vnet_crypto_op_t **crypto_ops,
-			   noise_remote_t *r, uint32_t *r_idx, uint64_t *nonce,
-			   uint8_t *src, size_t srclen, uint8_t *dst, u32 bi,
-			   u8 *iv, f64 time)
-{
-  noise_keypair_t *kp;
-  enum noise_state_crypt ret = SC_FAILED;
-
-  if ((kp = r->r_current) == NULL)
-    goto error;
-
-  /* We confirm that our values are within our tolerances. We want:
-   *  - a valid keypair
-   *  - our keypair to be less than REJECT_AFTER_TIME seconds old
-   *  - our receive counter to be less than REJECT_AFTER_MESSAGES
-   *  - our send counter to be less than REJECT_AFTER_MESSAGES
-   */
-  if (!kp->kp_valid ||
-      wg_birthdate_has_expired_opt (kp->kp_birthdate, REJECT_AFTER_TIME,
-				    time) ||
-      kp->kp_ctr.c_recv >= REJECT_AFTER_MESSAGES ||
-      ((*nonce = noise_counter_send (&kp->kp_ctr)) > REJECT_AFTER_MESSAGES))
-    goto error;
-
-  /* We encrypt into the same buffer, so the caller must ensure that buf
-   * has NOISE_AUTHTAG_LEN bytes to store the MAC. The nonce and index
-   * are passed back out to the caller through the provided data pointer. */
-  *r_idx = kp->kp_remote_index;
-
-  wg_prepare_sync_op (vm, crypto_ops, src, srclen, dst, NULL, 0, *nonce,
-		      VNET_CRYPTO_OP_CHACHA20_POLY1305_ENC, kp->kp_send_index,
-		      bi, iv);
-
-  /* If our values are still within tolerances, but we are approaching
-   * the tolerances, we notify the caller with ESTALE that they should
-   * establish a new keypair. The current keypair can continue to be used
-   * until the tolerances are hit. We notify if:
-   *  - our send counter is valid and not less than REKEY_AFTER_MESSAGES
-   *  - we're the initiator and our keypair is older than
-   *    REKEY_AFTER_TIME seconds */
-  ret = SC_KEEP_KEY_FRESH;
-  if ((kp->kp_valid && *nonce >= REKEY_AFTER_MESSAGES) ||
-      (kp->kp_is_initiator && wg_birthdate_has_expired_opt (
-				kp->kp_birthdate, REKEY_AFTER_TIME, time)))
-    goto error;
-
-  ret = SC_OK;
-error:
-  return ret;
-}
-
-enum noise_state_crypt
 noise_sync_remote_decrypt (vlib_main_t *vm, vnet_crypto_op_t **crypto_ops,
 			   noise_remote_t *r, uint32_t r_idx, uint64_t nonce,
 			   uint8_t *src, size_t srclen, uint8_t *dst, u32 bi,
@@ -789,14 +737,6 @@ noise_remote_handshake_index_drop (noise_remote_t * r)
   struct noise_upcall *u = &local->l_upcall;
   if (hs->hs_state != HS_ZEROED)
     u->u_index_drop (hs->hs_local_index);
-}
-
-static uint64_t
-noise_counter_send (noise_counter_t * ctr)
-{
-  uint64_t ret;
-  ret = ctr->c_send++;
-  return ret;
 }
 
 static void
