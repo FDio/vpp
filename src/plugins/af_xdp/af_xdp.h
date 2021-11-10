@@ -86,6 +86,7 @@ typedef struct
   struct xsk_ring_prod tx;
   struct xsk_ring_cons cq;
   int xsk_fd;
+  u32 queue_index;
 } af_xdp_txq_t;
 
 typedef struct
