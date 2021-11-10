@@ -301,7 +301,7 @@ always_inline u16
 ip_csum_fold (ip_csum_t c)
 {
   /* Reduce to 16 bits. */
-#ifdef __x86_64__
+#if defined(__x86_64__) && defined(__BMI2__)
   u64 tmp;
   asm volatile(
     /* using ADC is much faster than mov, shift, add sequence
