@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2cf8765c_723a2386",
+        "filename": "src/vlib/main.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1108,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-11-10T01:49:54Z",
+      "side": 1,
+      "message": "Could you provide a bit more context for this? \n\nNote that the first time the switch is about to happen, the else branch is hit so node is dispatched one more time in polling mode with VLIB_NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE flag set.",
+      "range": {
+        "startLine": 1108,
+        "startChar": 7,
+        "endLine": 1108,
+        "endChar": 53
+      },
+      "revId": "88b21d564bfb27d07eeed20cb24f5f1a73aa2887",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
