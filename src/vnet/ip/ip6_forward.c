@@ -1507,16 +1507,16 @@ ip6_local_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    {
 	      u32 next32 = next[0];
 	      vnet_feature_arc_start (arc_index,
-				      vnet_buffer (b[0])->sw_if_index
-				      [VLIB_RX], &next32, b[0]);
+				      vnet_buffer (b[0])->ip.rx_sw_if_index,
+				      &next32, b[0]);
 	      next[0] = next32;
 	    }
 	  if (PREDICT_TRUE (ip6_unknown[1]))
 	    {
 	      u32 next32 = next[1];
 	      vnet_feature_arc_start (arc_index,
-				      vnet_buffer (b[1])->sw_if_index
-				      [VLIB_RX], &next32, b[1]);
+				      vnet_buffer (b[1])->ip.rx_sw_if_index,
+				      &next32, b[1]);
 	      next[1] = next32;
 	    }
 	}
@@ -1636,8 +1636,8 @@ ip6_local_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    {
 	      u32 next32 = next[0];
 	      vnet_feature_arc_start (arc_index,
-				      vnet_buffer (b[0])->sw_if_index
-				      [VLIB_RX], &next32, b[0]);
+				      vnet_buffer (b[0])->ip.rx_sw_if_index,
+				      &next32, b[0]);
 	      next[0] = next32;
 	    }
 	}
