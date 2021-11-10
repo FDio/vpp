@@ -215,9 +215,9 @@ VNET_DEVICE_CLASS_TX_FN (af_xdp_device_class) (vlib_main_t * vm,
   af_xdp_main_t *rm = &af_xdp_main;
   vnet_interface_output_runtime_t *ord = (void *) node->runtime_data;
   af_xdp_device_t *ad = pool_elt_at_index (rm->devices, ord->dev_instance);
-  u32 thread_index = vm->thread_index;
-  af_xdp_txq_t *txq = vec_elt_at_index (
-    ad->txqs, (thread_index - 1 + ad->txq_num) % ad->txq_num);
+  vnet_hw_if_tx_frame_t *tf = vlib_frame_scalar_args (frame);
+  u32 qid = tf->queue_id;
+  af_xdp_txq_t *txq = vec_elt_at_index (ad->txqs, qid);
   u32 *from;
   u32 n, n_tx;
   int i;
@@ -225,7 +225,8 @@ VNET_DEVICE_CLASS_TX_FN (af_xdp_device_class) (vlib_main_t * vm,
   from = vlib_frame_vector_args (frame);
   n_tx = frame->n_vectors;
 
-  clib_spinlock_lock_if_init (&txq->lock);
+  if (tf->shared_queue)
+    clib_spinlock_lock (&txq->lock);
 
   for (i = 0, n = 0; i < AF_XDP_TX_RETRIES && n < n_tx; i++)
     {
@@ -238,7 +239,8 @@ VNET_DEVICE_CLASS_TX_FN (af_xdp_device_class) (vlib_main_t * vm,
 
   af_xdp_device_output_tx_db (vm, node, ad, txq, n);
 
-  clib_spinlock_unlock_if_init (&txq->lock);
+  if (tf->shared_queue)
+    clib_spinlock_unlock (&txq->lock);
 
   if (PREDICT_FALSE (n != n_tx))
     {

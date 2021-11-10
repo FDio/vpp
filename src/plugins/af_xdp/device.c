@@ -29,6 +29,7 @@
 #include <vppinfra/unix.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/interface/rx_queue_funcs.h>
+#include <vnet/interface/tx_queue_funcs.h>
 #include "af_xdp.h"
 
 af_xdp_main_t af_xdp_main;
@@ -487,13 +488,6 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 	}
     }
 
-  if (ad->txq_num < tm->n_vlib_mains)
-    {
-      /* initialize lock for shared txq */
-      for (i = 0; i < ad->txq_num; i++)
-	clib_spinlock_init (&vec_elt (ad->txqs, i).lock);
-    }
-
   ad->dev_instance = ad - am->devices;
   ad->per_interface_next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   ad->pool =
@@ -544,6 +538,30 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 					  rxq->file_index);
       if (af_xdp_device_set_rxq_mode (ad, rxq, AF_XDP_RXQ_MODE_POLLING))
 	goto err1;
+    }
+
+  for (i = 0; i < ad->txq_num; i++)
+    {
+      u32 thread_index = (i + 1) % ad->txq_num;
+      af_xdp_txq_t *txq = vec_elt_at_index (ad->txqs, i);
+      txq->queue_index =
+	vnet_hw_if_register_tx_queue (vnm, ad->hw_if_index, i);
+      if (i < ad->rxq_num && i + 1 < ad->txq_num)
+	{
+	  af_xdp_rxq_t *rxq = vec_elt_at_index (ad->rxqs, i);
+	  vnet_hw_if_rx_queue_t *vrxq =
+	    vnet_hw_if_get_rx_queue (vnm, rxq->queue_index);
+	  thread_index = vrxq->thread_index;
+	}
+      vnet_hw_if_tx_queue_assign_thread (vnm, txq->queue_index, thread_index);
+      clib_spinlock_init (&txq->lock);
+    }
+
+  for (i = 0; i < tm->n_vlib_mains - ad->txq_num; i++)
+    {
+      af_xdp_txq_t *txq = vec_elt_at_index (ad->txqs, i % ad->txq_num);
+      vnet_hw_if_tx_queue_assign_thread (vnm, txq->queue_index,
+					 i + ad->txq_num);
     }
 
   vnet_hw_if_update_runtime_data (vnm, ad->hw_if_index);
