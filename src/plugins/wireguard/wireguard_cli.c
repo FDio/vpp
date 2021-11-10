@@ -356,6 +356,61 @@ VLIB_CLI_COMMAND (wg_show_itfs_command, static) =
   .short_help = "show wireguard",
   .function = wg_show_if_command_fn,
 };
+
+static clib_error_t *
+wg_set_async_mode_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			      vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  int async_enable = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "on"))
+	async_enable = 1;
+      else if (unformat (line_input, "off"))
+	async_enable = 0;
+      else
+	return (clib_error_return (0, "unknown input '%U'",
+				   format_unformat_error, line_input));
+    }
+
+  wg_set_async_mode (async_enable);
+
+  unformat_free (line_input);
+  return (NULL);
+}
+
+VLIB_CLI_COMMAND (wg_set_async_mode_command, static) = {
+  .path = "set wireguard async mode",
+  .short_help = "set wireguard async mode on|off",
+  .function = wg_set_async_mode_command_fn,
+};
+
+static clib_error_t *
+wg_show_mode_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			 vlib_cli_command_t *cmd)
+{
+  vlib_cli_output (vm, "Wireguard mode");
+
+#define _(v, f, s)                                                            \
+  vlib_cli_output (vm, "\t%s: %s", s,                                         \
+		   (wg_op_mode_is_set_##f () ? "enabled" : "disabled"));
+  foreach_wg_op_mode_flags
+#undef _
+
+    return (NULL);
+}
+
+VLIB_CLI_COMMAND (wg_show_modemode_command, static) = {
+  .path = "show wireguard mode",
+  .short_help = "show wireguard mode",
+  .function = wg_show_mode_command_fn,
+};
+
 /* *INDENT-ON* */
 
 /*
