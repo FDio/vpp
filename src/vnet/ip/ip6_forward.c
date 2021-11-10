@@ -1481,8 +1481,10 @@ ip6_local_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    }
 	  else
 	    {
-	      vnet_buffer (b[0])->ip.rx_sw_if_index = ~0;
-	      vnet_buffer (b[1])->ip.rx_sw_if_index = ~0;
+	      vnet_buffer (b[0])->ip.rx_sw_if_index =
+		vnet_buffer (b[0])->ip.adj_index[VLIB_RX];
+	      vnet_buffer (b[1])->ip.rx_sw_if_index =
+		vnet_buffer (b[1])->ip.adj_index[VLIB_RX];
 	    }
 	}			/* head_of_feature_arc */
 
@@ -1618,7 +1620,8 @@ ip6_local_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      vnet_buffer (b[0])->ip.rx_sw_if_index = rd->rd_sw_if_index;
 	    }
 	  else
-	    vnet_buffer (b[0])->ip.rx_sw_if_index = ~0;
+	    vnet_buffer (b[0])->ip.rx_sw_if_index =
+	      vnet_buffer (b[0])->ip.adj_index[VLIB_RX];
 	}			/* head_of_feature_arc */
 
       next[0] = lm->local_next_by_ip_protocol[ip->protocol];
