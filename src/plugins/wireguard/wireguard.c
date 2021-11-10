@@ -16,6 +16,7 @@
 #include <vnet/vnet.h>
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>
+#include <vnet/crypto/crypto.h>
 
 #include <wireguard/wireguard_send.h>
 #include <wireguard/wireguard_key.h>
@@ -23,6 +24,31 @@
 #include <wireguard/wireguard.h>
 
 wg_main_t wg_main;
+wg_async_post_next_t wg_encrypt_async_next;
+
+void
+wg_set_async_mode (u32 is_enabled)
+{
+  vnet_crypto_request_async_mode (is_enabled);
+
+  if (is_enabled)
+    wg_op_mode_set_ASYNC ();
+  else
+    wg_op_mode_unset_ASYNC ();
+}
+
+static void
+wireguard_register_post_node (vlib_main_t *vm)
+{
+  wg_async_post_next_t *eit;
+
+  eit = &wg_encrypt_async_next;
+
+  eit->wg4_post_next =
+    vnet_crypto_register_post_node (vm, "wg4-output-tun-post-node");
+  eit->wg6_post_next =
+    vnet_crypto_register_post_node (vm, "wg6-output-tun-post-node");
+}
 
 static clib_error_t *
 wg_init (vlib_main_t * vm)
@@ -44,6 +70,8 @@ wg_init (vlib_main_t * vm)
 			CLIB_CACHE_LINE_BYTES);
 
   wg_timer_wheel_init ();
+  wireguard_register_post_node (vm);
+  wmp->op_mode_flags = 0;
 
   return (NULL);
 }
