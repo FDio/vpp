@@ -28,6 +28,12 @@ extern vlib_node_registration_t wg6_output_tun_node;
 
 typedef struct wg_per_thread_data_t_
 {
+<<<<<<< HEAD   (93e5be misc: Initial changes for stable/2202 branch)
+=======
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  vnet_crypto_op_t *crypto_ops;
+  vnet_crypto_async_frame_t **async_frames;
+>>>>>>> CHANGE (492d77 wireguard: add async mode for encryption packets)
   u8 data[WG_DEFAULT_DATA_SIZE];
 } wg_per_thread_data_t;
 typedef struct
@@ -48,12 +54,69 @@ typedef struct
   u8 feature_init;
 
   tw_timer_wheel_16t_2w_512sl_t timer_wheel;
+
+  /* operation mode flags (e.g. async) */
+  u8 op_mode_flags;
 } wg_main_t;
 
+typedef struct
+{
+  /* wg post node index for async crypto */
+  u32 wg4_post_next;
+  u32 wg6_post_next;
+} wg_async_post_next_t;
+
+extern wg_async_post_next_t wg_encrypt_async_next;
 extern wg_main_t wg_main;
+
+/**
+ * Wireguard operation mode
+ **/
+#define foreach_wg_op_mode_flags _ (0, ASYNC, "async")
+
+/**
+ * Helper function to set/unset and check op modes
+ **/
+typedef enum wg_op_mode_flags_t_
+{
+#define _(v, f, s) WG_OP_MODE_FLAG_##f = 1 << v,
+  foreach_wg_op_mode_flags
+#undef _
+} __clib_packed wg_op_mode_flags_t;
+
+#define _(a, v, s)                                                            \
+  always_inline int wg_op_mode_set_##v (void)                                 \
+  {                                                                           \
+    return (wg_main.op_mode_flags |= WG_OP_MODE_FLAG_##v);                    \
+  }                                                                           \
+  always_inline int wg_op_mode_unset_##v (void)                               \
+  {                                                                           \
+    return (wg_main.op_mode_flags &= ~WG_OP_MODE_FLAG_##v);                   \
+  }                                                                           \
+  always_inline int wg_op_mode_is_set_##v (void)                              \
+  {                                                                           \
+    return (wg_main.op_mode_flags & WG_OP_MODE_FLAG_##v);                     \
+  }
+foreach_wg_op_mode_flags
+#undef _
+
+  typedef struct
+{
+  u8 __pad[22];
+  u16 next_index;
+} wg_post_data_t;
+
+STATIC_ASSERT (sizeof (wg_post_data_t) <=
+		 STRUCT_SIZE_OF (vnet_buffer_opaque_t, unused),
+	       "Custom meta-data too large for vnet_buffer_opaque_t");
+
+#define wg_post_data(b)                                                       \
+  ((wg_post_data_t *) ((u8 *) ((b)->opaque) +                                 \
+		       STRUCT_OFFSET_OF (vnet_buffer_opaque_t, unused)))
 
 #define WG_START_EVENT	1
 void wg_feature_init (wg_main_t * wmp);
+void wg_set_async_mode (u32 is_enabled);
 
 #endif /* __included_wg_h__ */
 

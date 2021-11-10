@@ -592,6 +592,7 @@ error:
 }
 
 enum noise_state_crypt
+<<<<<<< HEAD   (93e5be misc: Initial changes for stable/2202 branch)
 noise_remote_decrypt (vlib_main_t * vm, noise_remote_t * r, uint32_t r_idx,
 		      uint64_t nonce, uint8_t * src, size_t srclen,
 		      uint8_t * dst)
@@ -612,6 +613,17 @@ noise_remote_decrypt (vlib_main_t * vm, noise_remote_t * r, uint32_t r_idx,
       kp = r->r_next;
     }
   else
+=======
+noise_sync_remote_decrypt (vlib_main_t *vm, vnet_crypto_op_t **crypto_ops,
+			   noise_remote_t *r, uint32_t r_idx, uint64_t nonce,
+			   uint8_t *src, size_t srclen, uint8_t *dst, u32 bi,
+			   u8 *iv, f64 time)
+{
+  noise_keypair_t *kp;
+  enum noise_state_crypt ret = SC_FAILED;
+
+  if ((kp = wg_get_active_keypair (r, r_idx)) == NULL)
+>>>>>>> CHANGE (492d77 wireguard: add async mode for encryption packets)
     {
       goto error;
     }
@@ -716,6 +728,7 @@ noise_remote_handshake_index_drop (noise_remote_t * r)
     u->u_index_drop (hs->hs_local_index);
 }
 
+<<<<<<< HEAD   (93e5be misc: Initial changes for stable/2202 branch)
 static uint64_t
 noise_counter_send (noise_counter_t * ctr)
 {
@@ -765,6 +778,8 @@ error:
   return ret;
 }
 
+=======
+>>>>>>> CHANGE (492d77 wireguard: add async mode for encryption packets)
 static void
 noise_kdf (uint8_t * a, uint8_t * b, uint8_t * c, const uint8_t * x,
 	   size_t a_len, size_t b_len, size_t c_len, size_t x_len,

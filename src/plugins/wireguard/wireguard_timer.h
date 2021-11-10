@@ -57,6 +57,16 @@ wg_birthdate_has_expired (f64 birthday_seconds, f64 expiration_seconds)
   return (birthday_seconds + expiration_seconds) < now_seconds;
 }
 
+<<<<<<< HEAD   (93e5be misc: Initial changes for stable/2202 branch)
+=======
+static_always_inline bool
+wg_birthdate_has_expired_opt (f64 birthday_seconds, f64 expiration_seconds,
+			      f64 time)
+{
+  return (birthday_seconds + expiration_seconds) < time;
+}
+
+>>>>>>> CHANGE (492d77 wireguard: add async mode for encryption packets)
 #endif /* __included_wg_timer_h__ */
 
 /*

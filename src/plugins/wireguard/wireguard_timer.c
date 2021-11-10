@@ -66,7 +66,7 @@ start_timer_thread_fn (void *arg)
   return 0;
 }
 
-static void
+static_always_inline void
 start_timer_from_mt (u32 peer_idx, u32 timer_id, u32 interval_ticks)
 {
   wg_timers_args a = {
@@ -197,8 +197,8 @@ wg_expired_zero_key_material (vlib_main_t * vm, wg_peer_t * peer)
     }
 }
 
-void
-wg_timers_any_authenticated_packet_traversal (wg_peer_t * peer)
+inline void
+wg_timers_any_authenticated_packet_traversal (wg_peer_t *peer)
 {
   if (peer->persistent_keepalive_interval)
     {
@@ -214,6 +214,15 @@ wg_timers_any_authenticated_packet_sent (wg_peer_t * peer)
   peer->last_sent_packet = vlib_time_now (vlib_get_main ());
 }
 
+<<<<<<< HEAD   (93e5be misc: Initial changes for stable/2202 branch)
+=======
+inline void
+wg_timers_any_authenticated_packet_sent_opt (wg_peer_t *peer, f64 time)
+{
+  peer->last_sent_packet = time;
+}
+
+>>>>>>> CHANGE (492d77 wireguard: add async mode for encryption packets)
 void
 wg_timers_handshake_initiated (wg_peer_t * peer)
 {
@@ -246,6 +255,20 @@ wg_timers_data_sent (wg_peer_t * peer)
 		       peer->new_handshake_interval_tick);
 }
 
+<<<<<<< HEAD   (93e5be misc: Initial changes for stable/2202 branch)
+=======
+inline void
+wg_timers_data_sent_opt (wg_peer_t *peer, f64 time)
+{
+  peer->new_handshake_interval_tick =
+    (KEEPALIVE_TIMEOUT + REKEY_TIMEOUT) * WHZ +
+    get_random_u32_max_opt (REKEY_TIMEOUT_JITTER, time);
+
+  start_timer_from_mt (peer - wg_peer_pool, WG_TIMER_NEW_HANDSHAKE,
+		       peer->new_handshake_interval_tick);
+}
+
+>>>>>>> CHANGE (492d77 wireguard: add async mode for encryption packets)
 /* Should be called after an authenticated data packet is received. */
 void
 wg_timers_data_received (wg_peer_t * peer)
@@ -275,6 +298,15 @@ wg_timers_any_authenticated_packet_received (wg_peer_t * peer)
   peer->last_received_packet = vlib_time_now (vlib_get_main ());
 }
 
+<<<<<<< HEAD   (93e5be misc: Initial changes for stable/2202 branch)
+=======
+inline void
+wg_timers_any_authenticated_packet_received_opt (wg_peer_t *peer, f64 time)
+{
+  peer->last_received_packet = time;
+}
+
+>>>>>>> CHANGE (492d77 wireguard: add async mode for encryption packets)
 static vlib_node_registration_t wg_timer_mngr_node;
 
 static void
