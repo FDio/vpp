@@ -365,6 +365,18 @@ wg_api_peer_event (index_t peeri, wg_peer_flags flags)
     };
 }
 
+static void
+vl_api_wg_set_async_mode_t_handler (vl_api_wg_set_async_mode_t *mp)
+{
+  wg_main_t *wmp = &wg_main;
+  vl_api_wg_set_async_mode_reply_t *rmp;
+  int rv = 0;
+
+  wg_set_async_mode (mp->async_enable);
+
+  REPLY_MACRO (VL_API_WG_SET_ASYNC_MODE_REPLY);
+}
+
 /* set tup the API message handling tables */
 #include <wireguard/wireguard.api.c>
 static clib_error_t *
