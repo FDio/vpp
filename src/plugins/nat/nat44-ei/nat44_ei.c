@@ -576,10 +576,34 @@ nat44_ei_get_interface (nat44_ei_interface_t *interfaces, u32 sw_if_index)
 }
 
 static_always_inline int
-nat44_ei_hairpinning_enable (u32 sw_if_index, u8 is_enable)
+nat44_ei_hairpinning_enable (u8 is_enable)
 {
-  return vnet_feature_enable_disable ("ip4-local", "nat44-ei-hairpinning",
-				      sw_if_index, is_enable, 0, 0);
+  nat44_ei_main_t *nm = &nat44_ei_main;
+  u32 sw_if_index = 0; // local0
+
+  if (is_enable)
+    {
+      nm->hairpin_reg += 1;
+      if (1 == nm->hairpin_reg)
+	{
+	  return vnet_feature_enable_disable (
+	    "ip4-local", "nat44-ei-hairpinning", sw_if_index, is_enable, 0, 0);
+	}
+    }
+  else
+    {
+      if (0 == nm->hairpin_reg)
+	return 1;
+
+      nm->hairpin_reg -= 1;
+      if (0 == nm->hairpin_reg)
+	{
+	  return vnet_feature_enable_disable (
+	    "ip4-local", "nat44-ei-hairpinning", sw_if_index, is_enable, 0, 0);
+	}
+    }
+
+  return 0;
 }
 
 int
@@ -648,7 +672,7 @@ nat44_ei_add_interface (u32 sw_if_index, u8 is_inside)
 	}
       if (!is_inside)
 	{
-	  rv = nat44_ei_hairpinning_enable (sw_if_index, 0);
+	  rv = nat44_ei_hairpinning_enable (0);
 	  if (rv)
 	    {
 	      return rv;
@@ -681,7 +705,7 @@ nat44_ei_add_interface (u32 sw_if_index, u8 is_inside)
 	}
       if (is_inside && !nm->out2in_dpo)
 	{
-	  rv = nat44_ei_hairpinning_enable (sw_if_index, 1);
+	  rv = nat44_ei_hairpinning_enable (1);
 	  if (rv)
 	    {
 	      return rv;
@@ -786,7 +810,7 @@ nat44_ei_del_interface (u32 sw_if_index, u8 is_inside)
 	}
       else
 	{
-	  rv = nat44_ei_hairpinning_enable (sw_if_index, 1);
+	  rv = nat44_ei_hairpinning_enable (1);
 	  if (rv)
 	    {
 	      return rv;
@@ -819,7 +843,7 @@ nat44_ei_del_interface (u32 sw_if_index, u8 is_inside)
 	}
       if (is_inside)
 	{
-	  rv = nat44_ei_hairpinning_enable (sw_if_index, 0);
+	  rv = nat44_ei_hairpinning_enable (0);
 	  if (rv)
 	    {
 	      return rv;
