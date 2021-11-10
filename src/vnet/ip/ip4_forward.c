@@ -1498,9 +1498,8 @@ ip4_local_set_next_and_error (vlib_node_runtime_t * error_node,
       next_index = *next;
       if (PREDICT_TRUE (error == (u8) IP4_ERROR_UNKNOWN_PROTOCOL))
 	{
-	  vnet_feature_arc_start (arc_index,
-				  vnet_buffer (b)->sw_if_index[VLIB_RX],
-				  &next_index, b);
+	  vnet_feature_arc_start (
+	    arc_index, vnet_buffer (b)->ip.rx_sw_if_index, &next_index, b);
 	  *next = next_index;
 	}
     }
