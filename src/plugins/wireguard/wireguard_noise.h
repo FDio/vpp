@@ -136,6 +136,14 @@ noise_local_get (uint32_t locali)
   return (pool_elt_at_index (noise_local_pool, locali));
 }
 
+static_always_inline uint64_t
+noise_counter_send (noise_counter_t *ctr)
+{
+  uint64_t ret;
+  ret = ctr->c_send++;
+  return ret;
+}
+
 void noise_local_init (noise_local_t *, struct noise_upcall *);
 bool noise_local_set_private (noise_local_t *,
 			      const uint8_t[NOISE_PUBLIC_KEY_LEN]);
@@ -187,12 +195,6 @@ noise_remote_encrypt (vlib_main_t * vm, noise_remote_t *,
 		      uint32_t * r_idx,
 		      uint64_t * nonce,
 		      uint8_t * src, size_t srclen, uint8_t * dst);
-
-enum noise_state_crypt
-noise_sync_remote_encrypt (vlib_main_t *vm, vnet_crypto_op_t **crypto_ops,
-			   noise_remote_t *r, uint32_t *r_idx, uint64_t *nonce,
-			   uint8_t *src, size_t srclen, uint8_t *dst, u32 bi,
-			   u8 *iv, f64 time);
 
 enum noise_state_crypt
 noise_sync_remote_decrypt (vlib_main_t *vm, vnet_crypto_op_t **crypto_ops,

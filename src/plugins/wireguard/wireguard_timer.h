@@ -61,7 +61,7 @@ wg_birthdate_has_expired (f64 birthday_seconds, f64 expiration_seconds)
   return (birthday_seconds + expiration_seconds) < now_seconds;
 }
 
-static inline bool
+static_always_inline bool
 wg_birthdate_has_expired_opt (f64 birthday_seconds, f64 expiration_seconds,
 			      f64 time)
 {
