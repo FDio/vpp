@@ -22,6 +22,30 @@
       "revId": "88b21d564bfb27d07eeed20cb24f5f1a73aa2887",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ed3dbd03_e44af573",
+        "filename": "src/vlib/main.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1108,
+      "author": {
+        "id": 1737
+      },
+      "writtenOn": "2021-11-10T02:06:53Z",
+      "side": 1,
+      "message": "yes, you are right, I forgot this, I will abandon the patch",
+      "parentUuid": "2cf8765c_723a2386",
+      "range": {
+        "startLine": 1108,
+        "startChar": 7,
+        "endLine": 1108,
+        "endChar": 53
+      },
+      "revId": "88b21d564bfb27d07eeed20cb24f5f1a73aa2887",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
