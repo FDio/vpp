@@ -21,11 +21,12 @@
 #include <wireguard/wireguard.h>
 #include <wireguard/wireguard_send.h>
 
-#define foreach_wg_output_error                                         \
- _(NONE, "No error")							\
- _(PEER, "Peer error")                                                  \
- _(KEYPAIR, "Keypair error")                                            \
- _(TOO_BIG, "packet too big")                                           \
+#define foreach_wg_output_error                                               \
+  _ (NONE, "No error")                                                        \
+  _ (PEER, "Peer error")                                                      \
+  _ (KEYPAIR, "Keypair error")                                                \
+  _ (TOO_BIG, "packet too big")                                               \
+  _ (CRYPTO_ENGINE_ERROR, "crypto engine error (packet dropped)")
 
 typedef enum
 {
@@ -55,6 +56,12 @@ typedef struct
   u8 header[sizeof (ip6_udp_header_t)];
   u8 is_ip4;
 } wg_output_tun_trace_t;
+
+typedef struct
+{
+  index_t peer;
+  u32 next_index;
+} wg_output_tun_post_trace_t;
 
 u8 *
 format_ip4_udp_header (u8 * s, va_list * args)
@@ -93,6 +100,47 @@ format_wg_output_tun_trace (u8 * s, va_list * args)
   return s;
 }
 
+/* post node - packet trace format function */
+static u8 *
+format_wg_output_tun_post_trace (u8 *s, va_list *args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+
+  wg_output_tun_post_trace_t *t = va_arg (*args, wg_output_tun_post_trace_t *);
+
+  s = format (s, "peer: %d\n", t->peer);
+  s = format (s, "  wg-post: next node index %u", t->next_index);
+  return s;
+}
+
+static_always_inline void
+wg_prepare_sync_enc_op (vlib_main_t *vm, vnet_crypto_op_t **crypto_ops,
+			u8 *src, u32 src_len, u8 *dst, u8 *aad, u32 aad_len,
+			u64 nonce, vnet_crypto_key_index_t key_index, u32 bi,
+			u8 *iv)
+{
+  vnet_crypto_op_t _op, *op = &_op;
+  u8 src_[] = {};
+
+  clib_memset (iv, 0, 4);
+  clib_memcpy (iv + 4, &nonce, sizeof (nonce));
+
+  vec_add2_aligned (crypto_ops[0], op, 1, CLIB_CACHE_LINE_BYTES);
+  vnet_crypto_op_init (op, VNET_CRYPTO_OP_CHACHA20_POLY1305_ENC);
+
+  op->tag_len = NOISE_AUTHTAG_LEN;
+  op->tag = dst + src_len;
+  op->src = !src ? src_ : src;
+  op->len = src_len;
+  op->dst = dst;
+  op->key_index = key_index;
+  op->aad = aad;
+  op->aad_len = aad_len;
+  op->iv = iv;
+  op->user_data = bi;
+}
+
 static_always_inline void
 wg_output_process_ops (vlib_main_t *vm, vlib_node_runtime_t *node,
 		       vnet_crypto_op_t *ops, vlib_buffer_t *b[], u16 *nexts,
@@ -121,10 +169,148 @@ wg_output_process_ops (vlib_main_t *vm, vlib_node_runtime_t *node,
     }
 }
 
+static_always_inline void
+wg_output_tun_add_to_frame (vlib_main_t *vm, vnet_crypto_async_frame_t *f,
+			    u32 key_index, u32 crypto_len,
+			    i16 crypto_start_offset, u32 buffer_index,
+			    u16 next_node, u8 *iv, u8 *tag, u8 flags)
+{
+  vnet_crypto_async_frame_elt_t *fe;
+  u16 index;
+
+  ASSERT (f->n_elts < VNET_CRYPTO_FRAME_SIZE);
+
+  index = f->n_elts;
+  fe = &f->elts[index];
+  f->n_elts++;
+  fe->key_index = key_index;
+  fe->crypto_total_length = crypto_len;
+  fe->crypto_start_offset = crypto_start_offset;
+  fe->iv = iv;
+  fe->tag = tag;
+  fe->flags = flags;
+  f->buffer_indices[index] = buffer_index;
+  f->next_node_index[index] = next_node;
+}
+
+static_always_inline enum noise_state_crypt
+wq_output_tun_process (vlib_main_t *vm, vnet_crypto_op_t **crypto_ops,
+		       noise_remote_t *r, uint32_t *r_idx, uint64_t *nonce,
+		       uint8_t *src, size_t srclen, uint8_t *dst, u32 bi,
+		       u8 *iv, f64 time)
+{
+  noise_keypair_t *kp;
+  enum noise_state_crypt ret = SC_FAILED;
+
+  if ((kp = r->r_current) == NULL)
+    goto error;
+
+  /* We confirm that our values are within our tolerances. We want:
+   *  - a valid keypair
+   *  - our keypair to be less than REJECT_AFTER_TIME seconds old
+   *  - our receive counter to be less than REJECT_AFTER_MESSAGES
+   *  - our send counter to be less than REJECT_AFTER_MESSAGES
+   */
+  if (!kp->kp_valid ||
+      wg_birthdate_has_expired_opt (kp->kp_birthdate, REJECT_AFTER_TIME,
+				    time) ||
+      kp->kp_ctr.c_recv >= REJECT_AFTER_MESSAGES ||
+      ((*nonce = noise_counter_send (&kp->kp_ctr)) > REJECT_AFTER_MESSAGES))
+    goto error;
+
+  /* We encrypt into the same buffer, so the caller must ensure that buf
+   * has NOISE_AUTHTAG_LEN bytes to store the MAC. The nonce and index
+   * are passed back out to the caller through the provided data pointer. */
+  *r_idx = kp->kp_remote_index;
+
+  wg_prepare_sync_enc_op (vm, crypto_ops, src, srclen, dst, NULL, 0, *nonce,
+			  kp->kp_send_index, bi, iv);
+
+  /* If our values are still within tolerances, but we are approaching
+   * the tolerances, we notify the caller with ESTALE that they should
+   * establish a new keypair. The current keypair can continue to be used
+   * until the tolerances are hit. We notify if:
+   *  - our send counter is valid and not less than REKEY_AFTER_MESSAGES
+   *  - we're the initiator and our keypair is older than
+   *    REKEY_AFTER_TIME seconds */
+  ret = SC_KEEP_KEY_FRESH;
+  if ((kp->kp_valid && *nonce >= REKEY_AFTER_MESSAGES) ||
+      (kp->kp_is_initiator && wg_birthdate_has_expired_opt (
+				kp->kp_birthdate, REKEY_AFTER_TIME, time)))
+    goto error;
+
+  ret = SC_OK;
+error:
+  return ret;
+}
+
+static_always_inline enum noise_state_crypt
+wg_add_to_async_frame (vlib_main_t *vm, wg_per_thread_data_t *ptd,
+		       vnet_crypto_async_frame_t *async_frame,
+		       vlib_buffer_t *b, u8 *payload, u32 payload_len, u32 bi,
+		       u16 next, u16 async_next, noise_remote_t *r,
+		       uint32_t *r_idx, uint64_t *nonce, u8 *iv, f64 time)
+{
+  wg_post_data_t *post = wg_post_data (b);
+  u8 flag = 0;
+  noise_keypair_t *kp;
+
+  post->next_index = next;
+
+  /* crypto */
+  enum noise_state_crypt ret = SC_FAILED;
+
+  if ((kp = r->r_current) == NULL)
+    goto error;
+
+  /* We confirm that our values are within our tolerances. We want:
+   *  - a valid keypair
+   *  - our keypair to be less than REJECT_AFTER_TIME seconds old
+   *  - our receive counter to be less than REJECT_AFTER_MESSAGES
+   *  - our send counter to be less than REJECT_AFTER_MESSAGES
+   */
+  if (!kp->kp_valid ||
+      wg_birthdate_has_expired_opt (kp->kp_birthdate, REJECT_AFTER_TIME,
+				    time) ||
+      kp->kp_ctr.c_recv >= REJECT_AFTER_MESSAGES ||
+      ((*nonce = noise_counter_send (&kp->kp_ctr)) > REJECT_AFTER_MESSAGES))
+    goto error;
+
+  /* We encrypt into the same buffer, so the caller must ensure that buf
+   * has NOISE_AUTHTAG_LEN bytes to store the MAC. The nonce and index
+   * are passed back out to the caller through the provided data pointer. */
+  *r_idx = kp->kp_remote_index;
+
+  clib_memset (iv, 0, 4);
+  clib_memcpy (iv + 4, nonce, sizeof (nonce));
+
+  /* this always succeeds because we know the frame is not full */
+  wg_output_tun_add_to_frame (vm, async_frame, kp->kp_send_index, payload_len,
+			      payload - b->data, bi, async_next, iv,
+			      payload + payload_len, flag);
+
+  /* If our values are still within tolerances, but we are approaching
+   * the tolerances, we notify the caller with ESTALE that they should
+   * establish a new keypair. The current keypair can continue to be used
+   * until the tolerances are hit. We notify if:
+   *  - our send counter is valid and not less than REKEY_AFTER_MESSAGES
+   *  - we're the initiator and our keypair is older than
+   *    REKEY_AFTER_TIME seconds */
+  ret = SC_KEEP_KEY_FRESH;
+  if ((kp->kp_valid && *nonce >= REKEY_AFTER_MESSAGES) ||
+      (kp->kp_is_initiator && wg_birthdate_has_expired_opt (
+				kp->kp_birthdate, REKEY_AFTER_TIME, time)))
+    goto error;
+
+  ret = SC_OK;
+error:
+  return ret;
+}
+
 /* is_ip4 - inner header flag */
 always_inline uword
 wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
-		      vlib_frame_t *frame, u8 is_ip4)
+		      vlib_frame_t *frame, u8 is_ip4, u16 async_next_node)
 {
   wg_main_t *wmp = &wg_main;
   wg_per_thread_data_t *ptd =
@@ -140,10 +326,18 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   vlib_buffer_t *sync_bufs[VLIB_FRAME_SIZE];
   u32 thread_index = vm->thread_index;
   u16 sync_nexts[VLIB_FRAME_SIZE], *sync_next = sync_nexts, n_sync = 0;
-  u16 drop_next = WG_OUTPUT_NEXT_ERROR;
+  const u16 drop_next = WG_OUTPUT_NEXT_ERROR;
+  const u8 is_async = wg_op_mode_is_set_ASYNC ();
+  vnet_crypto_async_frame_t *async_frame = NULL;
+  u16 n_async = 0;
+  u16 noop_nexts[VLIB_FRAME_SIZE], *noop_next = noop_nexts, n_noop = 0;
+  u16 err = !0;
+  u32 sync_bi[VLIB_FRAME_SIZE];
+  u32 noop_bi[VLIB_FRAME_SIZE];
 
   vlib_get_buffers (vm, from, bufs, n_left_from);
   vec_reset_length (ptd->crypto_ops);
+  vec_reset_length (ptd->async_frames);
 
   wg_peer_t *peer = NULL;
   u32 adj_index = 0;
@@ -169,7 +363,8 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 			 LOAD);
 	}
 
-      next[0] = WG_OUTPUT_NEXT_ERROR;
+      noop_next[0] = WG_OUTPUT_NEXT_ERROR;
+      err = WG_OUTPUT_NEXT_ERROR;
 
       adj_index = vnet_buffer (b[0])->ip.adj_index[VLIB_TX];
 
@@ -193,9 +388,10 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 				    wg_peer_assign_thread (thread_index));
 	}
 
-      if (PREDICT_TRUE (thread_index != peer->output_thread_index))
+      if (PREDICT_FALSE (thread_index != peer->output_thread_index))
 	{
-	  next[0] = WG_OUTPUT_NEXT_HANDOFF;
+	  noop_next[0] = WG_OUTPUT_NEXT_HANDOFF;
+	  err = WG_OUTPUT_NEXT_HANDOFF;
 	  goto next;
 	}
 
@@ -245,12 +441,35 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  last_adj_index = adj_index;
 	}
 
+      /* Here we are sure that can send packet to next node */
+      next[0] = WG_OUTPUT_NEXT_INTERFACE_OUTPUT;
+
       enum noise_state_crypt state;
 
-      state = noise_sync_remote_encrypt (
-	vm, crypto_ops, &peer->remote, &message_data_wg->receiver_index,
-	&message_data_wg->counter, plain_data, plain_data_len, plain_data,
-	n_sync, iv_data, time);
+      if (is_async)
+	{
+	  /* get a frame for this op if we don't yet have one or it's full  */
+	  if (NULL == async_frame ||
+	      vnet_crypto_async_frame_is_full (async_frame))
+	    {
+	      async_frame = vnet_crypto_async_get_frame (
+		vm, VNET_CRYPTO_OP_CHACHA20_POLY1305_TAG16_AAD0_ENC);
+	      /* Save the frame to the list we'll submit at the end */
+	      vec_add1 (ptd->async_frames, async_frame);
+	    }
+	  state = wg_add_to_async_frame (
+	    vm, ptd, async_frame, b[0], plain_data, plain_data_len,
+	    from[b - bufs], next[0], async_next_node, &peer->remote,
+	    &message_data_wg->receiver_index, &message_data_wg->counter,
+	    iv_data, time);
+	}
+      else
+	{
+	  state = wq_output_tun_process (
+	    vm, crypto_ops, &peer->remote, &message_data_wg->receiver_index,
+	    &message_data_wg->counter, plain_data, plain_data_len, plain_data,
+	    n_sync, iv_data, time);
+	}
 
       if (PREDICT_FALSE (state == SC_KEEP_KEY_FRESH))
 	{
@@ -261,11 +480,11 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  // TODO: Maybe wrong
 	  wg_send_handshake_from_mt (peeri, false);
 	  wg_peer_update_flags (peeri, WG_PEER_ESTABLISHED, false);
+	  noop_next[0] = WG_OUTPUT_NEXT_ERROR;
 	  goto out;
 	}
 
-      /* Here we are sure that can send packet to next node */
-      next[0] = WG_OUTPUT_NEXT_INTERFACE_OUTPUT;
+      err = WG_OUTPUT_NEXT_INTERFACE_OUTPUT;
 
       if (is_ip4_out)
 	{
@@ -304,32 +523,215 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
 
     next:
-      sync_bufs[n_sync] = b[0];
-      sync_next += 1;
-      n_sync += 1;
+      if (PREDICT_FALSE (err != WG_OUTPUT_NEXT_INTERFACE_OUTPUT))
+	{
+	  noop_bi[n_noop] = from[b - bufs];
+	  n_noop++;
+	  noop_next++;
+	  goto next_left;
+	}
+      if (!is_async)
+	{
+	  sync_bi[n_sync] = from[b - bufs];
+	  sync_bufs[n_sync] = b[0];
+	  sync_next += 1;
+	  n_sync += 1;
+	  next += 1;
+	}
+      else
+	{
+	  n_async++;
+	}
+    next_left:
       n_left_from -= 1;
-      next += 1;
       b += 1;
     }
 
-  /* wg-output-process-ops */
-  wg_output_process_ops (vm, node, ptd->crypto_ops, sync_bufs, nexts,
-			 drop_next);
+  if (n_sync)
+    {
+      /* wg-output-process-ops */
+      wg_output_process_ops (vm, node, ptd->crypto_ops, sync_bufs, nexts,
+			     drop_next);
+      vlib_buffer_enqueue_to_next (vm, node, sync_bi, nexts, n_sync);
+    }
+  if (n_async)
+    {
+      /* submit all of the open frames */
+      vnet_crypto_async_frame_t **async_frame;
 
-  vlib_buffer_enqueue_to_next (vm, node, from, nexts, n_sync);
+      vec_foreach (async_frame, ptd->async_frames)
+	{
+	  if (PREDICT_FALSE (
+		vnet_crypto_async_submit_open_frame (vm, *async_frame) < 0))
+	    {
+	      u32 n_drop = (*async_frame)->n_elts;
+	      u32 *bi = (*async_frame)->buffer_indices;
+	      u16 index = n_noop;
+	      while (n_drop--)
+		{
+		  noop_bi[index] = bi[0];
+		  vlib_buffer_t *b = vlib_get_buffer (vm, bi[0]);
+		  noop_nexts[index] = drop_next;
+		  b->error = node->errors[WG_OUTPUT_ERROR_CRYPTO_ENGINE_ERROR];
+		  bi++;
+		  index++;
+		}
+	      n_noop += (*async_frame)->n_elts;
+
+	      vnet_crypto_async_reset_frame (*async_frame);
+	      vnet_crypto_async_free_frame (vm, *async_frame);
+	    }
+	}
+    }
+  if (n_noop)
+    {
+      vlib_buffer_enqueue_to_next (vm, node, noop_bi, noop_nexts, n_noop);
+    }
+
   return frame->n_vectors;
+}
+
+always_inline uword
+wg_output_tun_post (vlib_main_t *vm, vlib_node_runtime_t *node,
+		    vlib_frame_t *frame)
+{
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
+  u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
+  u32 *from = vlib_frame_vector_args (frame);
+  u32 n_left = frame->n_vectors;
+
+  index_t peeri = ~0;
+
+  vlib_get_buffers (vm, from, b, n_left);
+
+  if (n_left >= 4)
+    {
+      vlib_prefetch_buffer_header (b[0], LOAD);
+      vlib_prefetch_buffer_header (b[1], LOAD);
+      vlib_prefetch_buffer_header (b[2], LOAD);
+      vlib_prefetch_buffer_header (b[3], LOAD);
+    }
+
+  while (n_left > 8)
+    {
+      vlib_prefetch_buffer_header (b[4], LOAD);
+      vlib_prefetch_buffer_header (b[5], LOAD);
+      vlib_prefetch_buffer_header (b[6], LOAD);
+      vlib_prefetch_buffer_header (b[7], LOAD);
+
+      next[0] = (wg_post_data (b[0]))->next_index;
+      next[1] = (wg_post_data (b[1]))->next_index;
+      next[2] = (wg_post_data (b[2]))->next_index;
+      next[3] = (wg_post_data (b[3]))->next_index;
+
+      if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
+	{
+	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      wg_output_tun_post_trace_t *tr =
+		vlib_add_trace (vm, node, b[0], sizeof (*tr));
+	      peeri = wg_peer_get_by_adj_index (
+		vnet_buffer (b[0])->ip.adj_index[VLIB_TX]);
+	      tr->peer = peeri;
+	      tr->next_index = next[0];
+	    }
+	  if (b[1]->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      wg_output_tun_post_trace_t *tr =
+		vlib_add_trace (vm, node, b[1], sizeof (*tr));
+	      peeri = wg_peer_get_by_adj_index (
+		vnet_buffer (b[1])->ip.adj_index[VLIB_TX]);
+	      tr->next_index = next[1];
+	    }
+	  if (b[2]->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      wg_output_tun_post_trace_t *tr =
+		vlib_add_trace (vm, node, b[2], sizeof (*tr));
+	      peeri = wg_peer_get_by_adj_index (
+		vnet_buffer (b[2])->ip.adj_index[VLIB_TX]);
+	      tr->next_index = next[2];
+	    }
+	  if (b[3]->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      wg_output_tun_post_trace_t *tr =
+		vlib_add_trace (vm, node, b[3], sizeof (*tr));
+	      peeri = wg_peer_get_by_adj_index (
+		vnet_buffer (b[3])->ip.adj_index[VLIB_TX]);
+	      tr->next_index = next[3];
+	    }
+	}
+
+      b += 4;
+      next += 4;
+      n_left -= 4;
+    }
+
+  while (n_left > 0)
+    {
+      next[0] = (wg_post_data (b[0]))->next_index;
+      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			 (b[0]->flags & VLIB_BUFFER_IS_TRACED)))
+	{
+	  wg_output_tun_post_trace_t *tr =
+	    vlib_add_trace (vm, node, b[0], sizeof (*tr));
+	  peeri = wg_peer_get_by_adj_index (
+	    vnet_buffer (b[0])->ip.adj_index[VLIB_TX]);
+	  tr->next_index = next[0];
+	}
+
+      b += 1;
+      next += 1;
+      n_left -= 1;
+    }
+
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
+  return frame->n_vectors;
+}
+
+VLIB_REGISTER_NODE (wg4_output_tun_post_node) = {
+  .name = "wg4-output-tun-post-node",
+  .vector_size = sizeof (u32),
+  .format_trace = format_wg_output_tun_post_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .sibling_of = "wg4-output-tun",
+  .n_errors = ARRAY_LEN (wg_output_error_strings),
+  .error_strings = wg_output_error_strings,
+};
+
+VLIB_REGISTER_NODE (wg6_output_tun_post_node) = {
+  .name = "wg6-output-tun-post-node",
+  .vector_size = sizeof (u32),
+  .format_trace = format_wg_output_tun_post_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .sibling_of = "wg6-output-tun",
+  .n_errors = ARRAY_LEN (wg_output_error_strings),
+  .error_strings = wg_output_error_strings,
+};
+
+VLIB_NODE_FN (wg4_output_tun_post_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
+{
+  return wg_output_tun_post (vm, node, from_frame);
+}
+
+VLIB_NODE_FN (wg6_output_tun_post_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
+{
+  return wg_output_tun_post (vm, node, from_frame);
 }
 
 VLIB_NODE_FN (wg4_output_tun_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return wg_output_tun_inline (vm, node, frame, /* is_ip4 */ 1);
+  return wg_output_tun_inline (vm, node, frame, /* is_ip4 */ 1,
+			       wg_encrypt_async_next.wg4_post_next);
 }
 
 VLIB_NODE_FN (wg6_output_tun_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return wg_output_tun_inline (vm, node, frame, /* is_ip4 */ 0);
+  return wg_output_tun_inline (vm, node, frame, /* is_ip4 */ 0,
+			       wg_encrypt_async_next.wg6_post_next);
 }
 
 /* *INDENT-OFF* */
