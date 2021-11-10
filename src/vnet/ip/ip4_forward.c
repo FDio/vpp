@@ -1499,7 +1499,7 @@ ip4_local_set_next_and_error (vlib_node_runtime_t * error_node,
       if (PREDICT_TRUE (error == (u8) IP4_ERROR_UNKNOWN_PROTOCOL))
 	{
 	  vnet_feature_arc_start (arc_index,
-				  vnet_buffer (b)->sw_if_index[VLIB_RX],
+	                          vnet_buffer (b)->sw_if_index[VLIB_RX],
 				  &next_index, b);
 	  *next = next_index;
 	}
@@ -1534,7 +1534,7 @@ ip4_local_check_src (vlib_buffer_t *b, ip4_header_t *ip0,
       vnet_buffer (b)->ip.rx_sw_if_index = rd->rd_sw_if_index;
     }
   else
-    vnet_buffer (b)->ip.rx_sw_if_index = ~0;
+    vnet_buffer (b)->ip.rx_sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
 
   /*
    * vnet_buffer()->ip.adj_index[VLIB_RX] will be set to the index of the
@@ -1622,8 +1622,10 @@ ip4_local_check_src_x2 (vlib_buffer_t **b, ip4_header_t **ip,
     }
   else
     {
-      vnet_buffer (b[0])->ip.rx_sw_if_index = ~0;
-      vnet_buffer (b[1])->ip.rx_sw_if_index = ~0;
+      vnet_buffer (b[0])->ip.rx_sw_if_index =
+	vnet_buffer (b[0])->sw_if_index[VLIB_RX];
+      vnet_buffer (b[1])->ip.rx_sw_if_index =
+	vnet_buffer (b[1])->sw_if_index[VLIB_RX];
     }
 
   /*
