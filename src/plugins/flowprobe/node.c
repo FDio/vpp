@@ -400,9 +400,21 @@ add_to_flow_record_state (vlib_main_t * vm, vlib_node_runtime_t * node,
       clib_memcpy_fast (k.dst_mac, eth->dst_address, 6);
       k.ethertype = ethertype;
     }
+  if (ethertype == ETHERNET_TYPE_VLAN)
+    {
+      /*VLAN TAG*/
+      ethernet_vlan_header_tv_t *ethv =
+	(ethernet_vlan_header_tv_t *) (&(eth->type));
+      /*Q in Q possibility */
+      while (clib_net_to_host_u16 (ethv->type) == ETHERNET_TYPE_VLAN)
+	{
+	  ethv++;
+	}
+      k.ethertype = ethertype = clib_net_to_host_u16 ((ethv)->type);
+    }
   if (collect_ip6 && ethertype == ETHERNET_TYPE_IP6)
     {
-      ip6 = (ip6_header_t *) (eth + 1);
+      ip6 = (ip6_header_t *) (b->data + vnet_buffer (b)->l3_hdr_offset);
       if (flags & FLOW_RECORD_L3)
 	{
 	  k.src_address.as_u64[0] = ip6->src_address.as_u64[0];
@@ -421,7 +433,7 @@ add_to_flow_record_state (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
   if (collect_ip4 && ethertype == ETHERNET_TYPE_IP4)
     {
-      ip4 = (ip4_header_t *) (eth + 1);
+      ip4 = (ip4_header_t *) (b->data + vnet_buffer (b)->l3_hdr_offset);
       if (flags & FLOW_RECORD_L3)
 	{
 	  k.src_address.ip4.as_u32 = ip4->src_address.as_u32;
