@@ -235,7 +235,8 @@ memif_connect (memif_if_t * mif)
   vnet_main_t *vnm = vnet_get_main ();
   clib_file_t template = { 0 };
   memif_region_t *mr;
-  int i;
+  int i, j;
+  u32 n_txqs, n_threads = vlib_get_n_threads ();
   clib_error_t *err = NULL;
 
   memif_log_debug (mif, "connect %u", mif->dev_instance);
@@ -268,7 +269,6 @@ memif_connect (memif_if_t * mif)
   template.write_function = memif_int_fd_write_ready;
 
   /* *INDENT-OFF* */
-  u32 n_threads = vlib_get_n_threads ();
   vec_foreach_index (i, mif->tx_queues)
     {
       memif_queue_t *mq = vec_elt_at_index (mif->tx_queues, i);
@@ -281,8 +281,14 @@ memif_connect (memif_if_t * mif)
 	}
       mq->queue_index =
 	vnet_hw_if_register_tx_queue (vnm, mif->hw_if_index, i);
-      vnet_hw_if_tx_queue_assign_thread (vnm, mq->queue_index, i % n_threads);
       clib_spinlock_init (&mq->lockp);
+    }
+
+  n_txqs = vec_len (mif->tx_queues);
+  for (j = 0; j < n_threads; j++)
+    {
+      u32 qi = mif->tx_queues[j % n_txqs].queue_index;
+      vnet_hw_if_tx_queue_assign_thread (vnm, qi, j);
     }
 
   vec_foreach_index (i, mif->rx_queues)
