@@ -371,7 +371,7 @@ virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->next_index = next0;
 	      tr->hw_if_index = vif->hw_if_index;
 	      tr->len = len;
-	      clib_memcpy_fast (&tr->hdr, hdr, hdr_sz);
+	      clib_memcpy_fast (&tr->hdr, hdr, (hdr_sz == 12) ? 12 : 10);
 	    }
 
 	  /* enqueue buffer */
