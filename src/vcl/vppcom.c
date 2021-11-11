@@ -508,10 +508,18 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
 
   session_index = mp->context;
   session = vcl_session_get (wrk, session_index);
-  if (!session)
+  if (PREDICT_FALSE (!session))
     {
       VDBG (0, "ERROR: vpp handle 0x%llx has no session index (%u)!",
 	    mp->handle, session_index);
+      /* Should not happen but if it does, force vpp session cleanup */
+      vcl_session_t tmp_session = {
+	.vpp_handle = mp->handle,
+      };
+      vcl_segment_attach_session (
+	mp->segment_handle, mp->server_rx_fifo, mp->server_tx_fifo,
+	mp->vpp_event_queue_address, mp->mq_index, 0, session);
+      vcl_send_session_disconnect (wrk, &tmp_session);
       return VCL_INVALID_SESSION_INDEX;
     }
   if (mp->retval)
