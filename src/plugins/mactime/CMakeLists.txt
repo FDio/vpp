@@ -38,6 +38,5 @@ if(VPP_BUILD_MACTIME_TOP)
     svm
     vppinfra
     Threads::Threads
-    rt m dl crypto
     )
 endif()
