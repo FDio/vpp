@@ -732,7 +732,7 @@ ct_connect (app_worker_t * client_wrk, session_t * ll,
   clib_memcpy (&ho->c_rmt_ip, &sep->ip, sizeof (sep->ip));
   ho->flags |= CT_CONN_F_CLIENT;
   ho->c_s_index = ~0;
-  ho->actual_tp = sep->transport_proto;
+  ho->actual_tp = sep->original_tp;
 
   /*
    * Accept connection on thread selected above. Connected reply comes
