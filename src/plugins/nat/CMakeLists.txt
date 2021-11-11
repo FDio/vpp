@@ -199,7 +199,7 @@ add_custom_target(test_pnat-run
   DEPENDS test_pnat
 )
 
-if("${CMAKE_VERSION}" VERSION_GREATER_EQUAL "3.13" AND "${CMAKE_C_COMPILER_ID}" MATCHES "(Apple)?[Cc]lang")
+if(VPP_BUILD_TESTS_WITH_COVERAGE)
   set(TARGET_NAME test_pnat)
   set(COV_SOURCES ${CMAKE_SOURCE_DIR}/plugins/nat/pnat/pnat.c ${CMAKE_SOURCE_DIR}/plugins/nat/pnat/pnat_node.h ${CMAKE_SOURCE_DIR}/plugins/nat/pnat/pnat_node.c)
 

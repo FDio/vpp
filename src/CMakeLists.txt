@@ -157,6 +157,14 @@ if(VPP_ENABLE_TRAJECTORY_TRACE)
 endif()
 
 ##############################################################################
+# unittest with clang ode coverage
+##############################################################################
+
+if("${CMAKE_VERSION}" VERSION_GREATER_EQUAL "3.13" AND "${CMAKE_C_COMPILER_ID}" MATCHES "(Apple)?[Cc]lang")
+  option(VPP_BUILD_TESTS_WITH_COVERAGE "Build unit tests with code coverage" OFF)
+endif()
+
+##############################################################################
 # install config
 ##############################################################################
 option(VPP_SET_RPATH "Set rpath for resulting binaries and libraries." ON)
