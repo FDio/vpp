@@ -27,7 +27,6 @@ add_vpp_executable(vat2 ENABLE_EXPORTS
   vppinfra
   vppapiclient
   Threads::Threads
-  rt m dl crypto
 )
 
 #
@@ -49,7 +48,6 @@ add_vpp_executable(test_vat2 ENABLE_EXPORTS NO_INSTALL
   vppinfra
   vppapiclient
   Threads::Threads
-  rt m dl crypto
 )
 #target_link_options(test_vat2 PUBLIC "LINKER:-fsanitize=address")
 

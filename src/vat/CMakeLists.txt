@@ -41,7 +41,6 @@ add_vpp_executable(vpp_api_test ENABLE_EXPORTS
   vatplugin
   vppinfra
   Threads::Threads
-  rt m dl crypto
 )
 
 ##############################################################################
