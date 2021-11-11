@@ -19,9 +19,14 @@
 
 #define foreach_x86_cpu_uarch \
  _(0x06, 0x9e, "Kaby Lake", "Kaby Lake DT/H/S/X") \
+ _(0x06, 0x9c, "Tremont", "Jasper Lake") \
+ _(0x06, 0x9a, "Alder Lake", "Alder Lake L") \
+ _(0x06, 0x97, "Alder Lake", "Alder Lake") \
+ _(0x06, 0x96, "Tremont", "Elkhart Lake") \
+ _(0x06, 0x8f, "Sapphire Rapids", "Sapphire Rapids X") \
  _(0x06, 0x8e, "Kaby Lake", "Kaby Lake Y/U") \
  _(0x06, 0x8c, "Tiger Lake", "Tiger Lake U") \
- _(0x06, 0x86, "Tremont", "Elkhart Lake") \
+ _(0x06, 0x86, "Tremont", "Jacobsville") \
  _(0x06, 0x85, "Knights Mill", "Knights Mill") \
  _(0x06, 0x7e, "Ice Lake", "Ice Lake U") \
  _(0x06, 0x7d, "Ice Lake", "Ice Lake Y") \
