@@ -17,53 +17,58 @@
 #include <vppinfra/format.h>
 #include <vppinfra/cpu.h>
 
-#define foreach_x86_cpu_uarch \
- _(0x06, 0x9e, "Kaby Lake", "Kaby Lake DT/H/S/X") \
- _(0x06, 0x8e, "Kaby Lake", "Kaby Lake Y/U") \
- _(0x06, 0x8c, "Tiger Lake", "Tiger Lake U") \
- _(0x06, 0x86, "Tremont", "Elkhart Lake") \
- _(0x06, 0x85, "Knights Mill", "Knights Mill") \
- _(0x06, 0x7e, "Ice Lake", "Ice Lake U") \
- _(0x06, 0x7d, "Ice Lake", "Ice Lake Y") \
- _(0x06, 0x7a, "Goldmont Plus", "Gemini Lake") \
- _(0x06, 0x6c, "Ice Lake", "Ice Lake SP") \
- _(0x06, 0x6a, "Ice Lake", "Ice Lake DE") \
- _(0x06, 0x66, "Cannon Lake", "Cannon Lake U") \
- _(0x06, 0x5f, "Goldmont", "Denverton") \
- _(0x06, 0x5e, "Skylake", "Skylake DT/H/S") \
- _(0x06, 0x5c, "Goldmont", "Apollo Lake") \
- _(0x06, 0x5a, "Silvermont", "Moorefield") \
- _(0x06, 0x57, "Knights Landing", "Knights Landing") \
- _(0x06, 0x56, "Broadwell", "Broadwell DE") \
- _(0x06, 0x55, "Skylake", "Skylake X/SP") \
- _(0x06, 0x4f, "Broadwell", "Broadwell EP/EX") \
- _(0x06, 0x4e, "Skylake", "Skylake Y/U") \
- _(0x06, 0x4d, "Silvermont", "Rangeley") \
- _(0x06, 0x4c, "Airmont", "Braswell") \
- _(0x06, 0x47, "Broadwell", "Broadwell H") \
- _(0x06, 0x46, "Haswell", "Crystalwell") \
- _(0x06, 0x45, "Haswell", "Haswell ULT") \
- _(0x06, 0x3f, "Haswell", "Haswell E") \
- _(0x06, 0x3e, "Ivy Bridge", "Ivy Bridge E/EN/EP") \
- _(0x06, 0x3d, "Broadwell", "Broadwell U") \
- _(0x06, 0x3c, "Haswell", "Haswell") \
- _(0x06, 0x3a, "Ivy Bridge", "IvyBridge") \
- _(0x06, 0x37, "Silvermont", "BayTrail") \
- _(0x06, 0x36, "Saltwell", "Cedarview,Centerton") \
- _(0x06, 0x35, "Saltwell", "Cloverview") \
- _(0x06, 0x2f, "Westmere", "Westmere EX") \
- _(0x06, 0x2e, "Nehalem", "Nehalem EX") \
- _(0x06, 0x2d, "Sandy Bridge", "SandyBridge E/EN/EP") \
- _(0x06, 0x2c, "Westmere", "Westmere EP/EX,Gulftown") \
- _(0x06, 0x2a, "Sandy Bridge", "Sandy Bridge") \
- _(0x06, 0x27, "Saltwell", "Medfield") \
- _(0x06, 0x26, "Bonnell", "Tunnel Creek") \
- _(0x06, 0x25, "Westmere", "Arrandale,Clarksdale") \
- _(0x06, 0x1e, "Nehalem", "Clarksfield,Lynnfield,Jasper Forest") \
- _(0x06, 0x1d, "Penryn", "Dunnington") \
- _(0x06, 0x1c, "Bonnell", "Pineview,Silverthorne") \
- _(0x06, 0x1a, "Nehalem", "Nehalem EP,Bloomfield)") \
- _(0x06, 0x17, "Penryn", "Yorkfield,Wolfdale,Penryn,Harpertown")
+#define foreach_x86_cpu_uarch                                                 \
+  _ (0x06, 0x9e, "Kaby Lake", "Kaby Lake DT/H/S/X")                           \
+  _ (0x06, 0x9c, "Tremont", "Jasper Lake")                                    \
+  _ (0x06, 0x9a, "Alder Lake", "Alder Lake L")                                \
+  _ (0x06, 0x97, "Alder Lake", "Alder Lake")                                  \
+  _ (0x06, 0x96, "Tremont", "Elkhart Lake")                                   \
+  _ (0x06, 0x8f, "Sapphire Rapids", "Sapphire Rapids X")                      \
+  _ (0x06, 0x8e, "Kaby Lake", "Kaby Lake Y/U")                                \
+  _ (0x06, 0x8c, "Tiger Lake", "Tiger Lake U")                                \
+  _ (0x06, 0x86, "Tremont", "Jacobsville")                                    \
+  _ (0x06, 0x85, "Knights Mill", "Knights Mill")                              \
+  _ (0x06, 0x7e, "Ice Lake", "Ice Lake U")                                    \
+  _ (0x06, 0x7d, "Ice Lake", "Ice Lake Y")                                    \
+  _ (0x06, 0x7a, "Goldmont Plus", "Gemini Lake")                              \
+  _ (0x06, 0x6c, "Ice Lake", "Ice Lake SP")                                   \
+  _ (0x06, 0x6a, "Ice Lake", "Ice Lake DE")                                   \
+  _ (0x06, 0x66, "Cannon Lake", "Cannon Lake U")                              \
+  _ (0x06, 0x5f, "Goldmont", "Denverton")                                     \
+  _ (0x06, 0x5e, "Skylake", "Skylake DT/H/S")                                 \
+  _ (0x06, 0x5c, "Goldmont", "Apollo Lake")                                   \
+  _ (0x06, 0x5a, "Silvermont", "Moorefield")                                  \
+  _ (0x06, 0x57, "Knights Landing", "Knights Landing")                        \
+  _ (0x06, 0x56, "Broadwell", "Broadwell DE")                                 \
+  _ (0x06, 0x55, "Skylake", "Skylake X/SP")                                   \
+  _ (0x06, 0x4f, "Broadwell", "Broadwell EP/EX")                              \
+  _ (0x06, 0x4e, "Skylake", "Skylake Y/U")                                    \
+  _ (0x06, 0x4d, "Silvermont", "Rangeley")                                    \
+  _ (0x06, 0x4c, "Airmont", "Braswell")                                       \
+  _ (0x06, 0x47, "Broadwell", "Broadwell H")                                  \
+  _ (0x06, 0x46, "Haswell", "Crystalwell")                                    \
+  _ (0x06, 0x45, "Haswell", "Haswell ULT")                                    \
+  _ (0x06, 0x3f, "Haswell", "Haswell E")                                      \
+  _ (0x06, 0x3e, "Ivy Bridge", "Ivy Bridge E/EN/EP")                          \
+  _ (0x06, 0x3d, "Broadwell", "Broadwell U")                                  \
+  _ (0x06, 0x3c, "Haswell", "Haswell")                                        \
+  _ (0x06, 0x3a, "Ivy Bridge", "IvyBridge")                                   \
+  _ (0x06, 0x37, "Silvermont", "BayTrail")                                    \
+  _ (0x06, 0x36, "Saltwell", "Cedarview,Centerton")                           \
+  _ (0x06, 0x35, "Saltwell", "Cloverview")                                    \
+  _ (0x06, 0x2f, "Westmere", "Westmere EX")                                   \
+  _ (0x06, 0x2e, "Nehalem", "Nehalem EX")                                     \
+  _ (0x06, 0x2d, "Sandy Bridge", "SandyBridge E/EN/EP")                       \
+  _ (0x06, 0x2c, "Westmere", "Westmere EP/EX,Gulftown")                       \
+  _ (0x06, 0x2a, "Sandy Bridge", "Sandy Bridge")                              \
+  _ (0x06, 0x27, "Saltwell", "Medfield")                                      \
+  _ (0x06, 0x26, "Bonnell", "Tunnel Creek")                                   \
+  _ (0x06, 0x25, "Westmere", "Arrandale,Clarksdale")                          \
+  _ (0x06, 0x1e, "Nehalem", "Clarksfield,Lynnfield,Jasper Forest")            \
+  _ (0x06, 0x1d, "Penryn", "Dunnington")                                      \
+  _ (0x06, 0x1c, "Bonnell", "Pineview,Silverthorne")                          \
+  _ (0x06, 0x1a, "Nehalem", "Nehalem EP,Bloomfield)")                         \
+  _ (0x06, 0x17, "Penryn", "Yorkfield,Wolfdale,Penryn,Harpertown")
 
 /* _(implementor-id, part-id, vendor-name, cpu-name, show CPU pass as string) */
 #define foreach_aarch64_cpu_uarch \
