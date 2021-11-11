@@ -52,8 +52,9 @@ add_vpp_executable(test_vat2 ENABLE_EXPORTS NO_INSTALL
   rt m dl crypto
 )
 #target_link_options(test_vat2 PUBLIC "LINKER:-fsanitize=address")
-
-if("${CMAKE_VERSION}" VERSION_GREATER_EQUAL "3.13" AND "${CMAKE_C_COMPILER_ID}" MATCHES "(Apple)?[Cc]lang")
+option(VPP_BUILD_TESTS_WITH_COVERAGE "Build unit tests with code coverage" OFF)
+if(VPP_BUILD_TESTS_WITH_COVERAGE AND "${CMAKE_VERSION}" VERSION_GREATER_EQUAL "3.13"
+   AND "${CMAKE_C_COMPILER_ID}" MATCHES "(Apple)?[Cc]lang")
   set(TARGET_NAME test_vat2)
 
   message("Building with llvm Code Coverage Tools ${TARGET_NAME}")
