@@ -22,12 +22,9 @@ add_vpp_executable(vat2 ENABLE_EXPORTS
   DEPENDS api_headers
 
   LINK_LIBRARIES
-  vlibmemoryclient
-  svm
   vppinfra
   vppapiclient
-  Threads::Threads
-  rt m dl crypto
+  dl
 )
 
 #
@@ -44,12 +41,7 @@ add_vpp_executable(test_vat2 ENABLE_EXPORTS NO_INSTALL
   DEPENDS api_headers
 
   LINK_LIBRARIES
-  vlibmemoryclient
-  svm
   vppinfra
-  vppapiclient
-  Threads::Threads
-  rt m dl crypto
 )
 #target_link_options(test_vat2 PUBLIC "LINKER:-fsanitize=address")
 
