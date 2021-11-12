@@ -38,23 +38,15 @@ nat44_ed_enable_disable_command_fn (vlib_main_t *vm, unformat_input_t *input,
   clib_error_t *error = 0;
 
   nat44_config_t c = { 0 };
-  u8 enable_set = 0, enable = 0, mode_set = 0;
+  u8 enable_set = 0, enable = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (!mode_set && unformat (line_input, "static-mapping-only"))
-	{
-	  mode_set = 1;
-	  c.static_mapping_only = 1;
-	  if (unformat (line_input, "connection-tracking"))
-	    {
-	      c.connection_tracking = 1;
-	    }
-	}
-      else if (unformat (line_input, "inside-vrf %u", &c.inside_vrf));
+      if (unformat (line_input, "inside-vrf %u", &c.inside_vrf))
+	;
       else if (unformat (line_input, "outside-vrf %u", &c.outside_vrf));
       else if (unformat (line_input, "sessions %u", &c.sessions));
       else if (!enable_set)
@@ -350,7 +342,6 @@ add_address_command_fn (vlib_main_t * vm,
 			unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  snat_main_t *sm = &snat_main;
   ip4_address_t start_addr, end_addr, this_addr;
   u32 start_host_order, end_host_order;
   u32 vrf_id = ~0;
@@ -386,12 +377,6 @@ add_address_command_fn (vlib_main_t * vm,
 	}
     }
 
-  if (sm->static_mapping_only)
-    {
-      error = clib_error_return (0, "static mapping only mode");
-      goto done;
-    }
-
   start_host_order = clib_host_to_net_u32 (start_addr.as_u32);
   end_host_order = clib_host_to_net_u32 (end_addr.as_u32);
 
@@ -418,7 +403,7 @@ add_address_command_fn (vlib_main_t * vm,
 	}
       else
 	{
-	  rv = nat44_ed_del_address (this_addr, 0, twice_nat);
+	  rv = nat44_ed_del_address (this_addr, twice_nat);
 	}
 
       switch (rv)
@@ -1279,14 +1264,14 @@ nat44_show_static_mappings_command_fn (vlib_main_t * vm,
 {
   snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m;
-  snat_static_map_resolve_t *rp;
+  snat_static_mapping_resolve_t *rp;
 
   vlib_cli_output (vm, "NAT44 static mappings:");
   pool_foreach (m, sm->static_mappings)
    {
     vlib_cli_output (vm, " %U", format_snat_static_mapping, m);
   }
-  vec_foreach (rp, sm->to_resolve)
+  vec_foreach (rp, sm->sm_to_resolve)
     vlib_cli_output (vm, " %U", format_snat_static_map_to_resolve, rp);
 
   return 0;
@@ -1358,21 +1343,14 @@ nat44_show_interface_address_command_fn (vlib_main_t * vm,
 {
   snat_main_t *sm = &snat_main;
   vnet_main_t *vnm = vnet_get_main ();
-  u32 *sw_if_index;
+  snat_address_resolve_t *ap;
 
   vlib_cli_output (vm, "NAT44 pool address interfaces:");
-  vec_foreach (sw_if_index, sm->auto_add_sw_if_indices)
+  vec_foreach (ap, sm->addr_to_resolve)
     {
-      vlib_cli_output (vm, " %U", format_vnet_sw_if_index_name, vnm,
-                       *sw_if_index);
+      vlib_cli_output (vm, " %U%s", format_vnet_sw_if_index_name, vnm,
+		       ap->sw_if_index, ap->is_twice_nat ? " twice-nat" : "");
     }
-  vlib_cli_output (vm, "NAT44 twice-nat pool address interfaces:");
-  vec_foreach (sw_if_index, sm->auto_add_sw_if_indices_twice_nat)
-    {
-      vlib_cli_output (vm, " %U", format_vnet_sw_if_index_name, vnm,
-                       *sw_if_index);
-    }
-
   return 0;
 }
 
@@ -1737,16 +1715,13 @@ done:
  *  vpp# nat44 enable
  * To disable nat44-ed, use:
  *  vpp# nat44 disable
- * To enable nat44-ed static mapping with connection tracking, use:
- *  vpp# nat44-ed enable static-mapping connection-tracking
  * To set inside-vrf outside-vrf, use:
  *  vpp# nat44 enable inside-vrf <id> outside-vrf <id>
  * @cliexend
 ?*/
 VLIB_CLI_COMMAND (nat44_ed_enable_disable_command, static) = {
   .path = "nat44",
-  .short_help = "nat44 <enable [sessions <max-number>] [static-mapping-only "
-		"connection-tracking] [inside-vrf <vrf-id>] "
+  .short_help = "nat44 <enable [sessions <max-number>] [inside-vrf <vrf-id>] "
 		"[outside-vrf <vrf-id>]>|disable",
   .function = nat44_ed_enable_disable_command_fn,
 };
