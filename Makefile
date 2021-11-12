@@ -72,7 +72,6 @@ DEB_DEPENDS += cmake ninja-build uuid-dev python3-jsonschema python3-yaml
 DEB_DEPENDS += python3-venv  # ensurepip
 DEB_DEPENDS += python3-dev   # needed for python3 -m pip install psutil
 DEB_DEPENDS += libnl-3-dev libnl-route-3-dev
-DEB_DEPENDS += enchant  # for docs
 
 LIBFFI=libffi6 # works on all but 20.04 and debian-testing
 
@@ -88,6 +87,7 @@ else ifeq ($(OS_VERSION_ID),20.04)
 	#       when clang-format-10 is removed
 	DEB_DEPENDS += clang-11 clang-format-11 clang-format-10
 	LIBFFI=libffi7
+	DEB_DEPENDS += enchant-2  # for docs
 else ifeq ($(OS_VERSION_ID),20.10)
 	DEB_DEPENDS += python3-virtualenv
 	DEB_DEPENDS += libssl-dev
