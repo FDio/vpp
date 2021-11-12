@@ -25,6 +25,7 @@
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vlib/pci/pci.h>
+#include <vppinfra/linux/netns.h>
 #include <vppinfra/linux/sysfs.h>
 #include <vppinfra/unix.h>
 #include <vnet/ethernet/ethernet.h>
@@ -89,6 +90,37 @@ af_xdp_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
   return ~0;
 }
 
+int
+af_xdp_enter_netns (u8 *netns, int *fds)
+{
+  if (netns != NULL)
+    {
+      *fds = clib_netns_open (NULL /* self */);
+      if ((*(fds + 1) = clib_netns_open (netns)) == -1)
+	return VNET_API_ERROR_SYSCALL_ERROR_2;
+      if (clib_setns (*(fds + 1)) == -1)
+	return VNET_API_ERROR_SYSCALL_ERROR_3;
+    }
+  return 0;
+}
+
+int
+af_xdp_exit_netns (u8 *netns, int fd)
+{
+  if (netns != NULL)
+    return clib_setns (fd);
+  return 0;
+}
+
+void
+af_xdp_cleanup_netns (int *fds)
+{
+  if (*fds != -1)
+    close (*fds);
+  if (*(fds + 1) != -1)
+    close (*(fds + 1));
+}
+
 void
 af_xdp_delete_if (vlib_main_t * vm, af_xdp_device_t * ad)
 {
@@ -118,7 +150,12 @@ af_xdp_delete_if (vlib_main_t * vm, af_xdp_device_t * ad)
 
   if (ad->bpf_obj)
     {
+      int ns_fds[2] = { -1, -1 };
+      af_xdp_enter_netns (ad->netns, ns_fds);
       bpf_set_link_xdp_fd (ad->linux_ifindex, -1, 0);
+      af_xdp_exit_netns (ad->netns, *ns_fds);
+      af_xdp_cleanup_netns (ns_fds);
+
       bpf_object__unload (ad->bpf_obj);
     }
 
@@ -127,6 +164,9 @@ af_xdp_delete_if (vlib_main_t * vm, af_xdp_device_t * ad)
   vec_free (ad->buffer_template);
   vec_free (ad->rxqs);
   vec_free (ad->txqs);
+  vec_free (ad->name);
+  vec_free (ad->linux_ifname);
+  vec_free (ad->netns);
   clib_error_free (ad->error);
   pool_put (axm->devices, ad);
 }
@@ -392,7 +432,8 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
   vnet_sw_interface_t *sw;
   vnet_hw_interface_t *hw;
   int rxq_num, txq_num, q_num;
-  int i;
+  int ns_fds[2] = { -1, -1 };
+  int i, ret;
 
   args->rxq_size = args->rxq_size ? args->rxq_size : 2 * VLIB_FRAME_SIZE;
   args->txq_size = args->txq_size ? args->txq_size : 2 * VLIB_FRAME_SIZE;
@@ -417,12 +458,22 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
       goto err0;
     }
 
+  ret = af_xdp_enter_netns (args->netns, ns_fds);
+  if (ret)
+    {
+      args->rv = ret;
+      args->error = clib_error_return (0, "enter netns %s failed, ret %d",
+				       args->netns, args->rv);
+      goto err0;
+    }
+
   af_xdp_get_q_count (args->linux_ifname, &rxq_num, &txq_num);
   if (args->rxq_num > rxq_num && AF_XDP_NUM_RX_QUEUES_ALL != args->rxq_num)
     {
       args->rv = VNET_API_ERROR_INVALID_VALUE;
       args->error = clib_error_create ("too many rxq requested (%d > %d)",
 				       args->rxq_num, rxq_num);
+      af_xdp_exit_netns (args->netns, *ns_fds);
       goto err0;
     }
   rxq_num = clib_min (rxq_num, args->rxq_num);
@@ -437,8 +488,13 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
   ad->linux_ifname = (char *) format (0, "%s", args->linux_ifname);
   vec_validate (ad->linux_ifname, IFNAMSIZ - 1);	/* libbpf expects ifname to be at least IFNAMSIZ */
 
+  ad->netns = format (0, "%s", args->netns);
+
   if (args->prog && af_xdp_load_program (args, ad))
-    goto err1;
+    {
+      af_xdp_exit_netns (args->netns, *ns_fds);
+      goto err1;
+    }
 
   q_num = clib_max (rxq_num, txq_num);
   ad->rxq_num = rxq_num;
@@ -476,6 +532,7 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 	      (i < rxq_num && AF_XDP_NUM_RX_QUEUES_ALL != args->rxq_num))
 	    {
 	      ad->rxq_num = ad->txq_num = 0;
+	      af_xdp_exit_netns (args->netns, *ns_fds);
 	      goto err1; /* failed creating requested rxq: fatal error, bailing
 			    out */
 	    }
@@ -485,6 +542,13 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 	  clib_error_free (args->error);
 	  break;
 	}
+    }
+
+  if (af_xdp_exit_netns (args->netns, *ns_fds))
+    {
+      args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
+      args->error = clib_error_return (0, "exit netns failed");
+      goto err1;
     }
 
   if (ad->txq_num < tm->n_vlib_mains)
@@ -501,8 +565,16 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 					   af_xdp_get_numa
 					   (ad->linux_ifname));
   if (!args->name)
-    ad->name =
-      (char *) format (0, "%s/%d", ad->linux_ifname, ad->dev_instance);
+    {
+      char *ifname = ad->linux_ifname;
+      if (args->netns != NULL && strncmp ((char *)args->netns, "pid:", 4) == 0)
+	{
+	  ad->name =
+	    (char *) format (0, "%s/%u", ifname, atoi ((char *)args->netns + 4));
+	}
+      else
+	ad->name = (char *) format (0, "%s/%d", ifname, ad->dev_instance);
+    }
   else
     ad->name = (char *) format (0, "%s", args->name);
 
@@ -556,12 +628,14 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
   vnet_buffer (ad->buffer_template)->sw_if_index[VLIB_TX] = (u32) ~ 0;
   ad->buffer_template->buffer_pool_index = ad->pool;
 
-  return;
+  goto done;
 
 err1:
   af_xdp_delete_if (vm, ad);
 err0:
   vlib_log_err (am->log_class, "%U", format_clib_error, args->error);
+done:
+  af_xdp_cleanup_netns (ns_fds);
 }
 
 static clib_error_t *

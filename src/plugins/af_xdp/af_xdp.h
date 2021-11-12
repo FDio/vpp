@@ -113,6 +113,8 @@ typedef struct
 
   u8 rxq_num;
 
+  u8 *netns;
+
   struct xsk_umem **umem;
   struct xsk_socket **xsk;
 
@@ -149,6 +151,7 @@ typedef struct
   char *linux_ifname;
   char *name;
   char *prog;
+  u8 *netns;
   af_xdp_mode_t mode;
   af_xdp_create_flag_t flags;
   u32 rxq_size;
