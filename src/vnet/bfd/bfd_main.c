@@ -35,9 +35,9 @@ bfd_calc_echo_checksum (u32 discriminator, u64 expire_time, u32 secret)
 {
   u64 checksum = 0;
 #if defined(clib_crc32c_uses_intrinsics) && !defined (__i386__)
-  checksum = crc32_u64 (0, discriminator);
-  checksum = crc32_u64 (checksum, expire_time);
-  checksum = crc32_u64 (checksum, secret);
+  checksum = clib_crc32c_u64 (0, discriminator);
+  checksum = clib_crc32c_u64 (checksum, expire_time);
+  checksum = clib_crc32c_u64 (checksum, secret);
 #else
   checksum = clib_xxhash (discriminator ^ expire_time ^ secret);
 #endif
