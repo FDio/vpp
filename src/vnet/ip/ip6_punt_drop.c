@@ -151,10 +151,7 @@ VLIB_REGISTER_NODE (ip6_not_enabled_node) =
   .name = "ip6-not-enabled",
   .vector_size = sizeof (u32),
   .format_trace = format_ip6_forward_next_trace,
-  .n_next_nodes = 1,
-  .next_nodes = {
-    [0] = "error-drop",
-  },
+  .sibling_of = "ip6-drop",
 };
 
 VLIB_REGISTER_NODE (ip6_punt_node) =
