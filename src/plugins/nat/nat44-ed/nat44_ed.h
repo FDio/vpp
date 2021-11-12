@@ -450,6 +450,7 @@ typedef struct
 
 typedef struct
 {
+  u8 is_resolved;
   ip4_address_t l_addr;
   ip4_address_t pool_addr;
   u16 l_port;
@@ -459,7 +460,14 @@ typedef struct
   ip_protocol_t proto;
   u32 flags;
   u8 *tag;
-} snat_static_map_resolve_t;
+} snat_static_mapping_resolve_t;
+
+typedef struct
+{
+  u8 is_resolved;
+  u8 is_twice_nat;
+  u32 sw_if_index;
+} snat_address_resolve_t;
 
 typedef struct
 {
@@ -533,9 +541,8 @@ typedef struct snat_main_s
   /* Vector of twice NAT addresses for external hosts */
   snat_address_t *twice_nat_addresses;
 
-  /* sw_if_indices whose intfc addresses should be auto-added */
-  u32 *auto_add_sw_if_indices;
-  u32 *auto_add_sw_if_indices_twice_nat;
+  /* first interface address should be auto-added */
+  snat_address_resolve_t *addr_to_resolve;
 
   /* Address and port allocation function */
   nat_alloc_out_addr_and_port_function_t *alloc_addr_and_port;
@@ -556,7 +563,7 @@ typedef struct snat_main_s
   nat_outside_fib_t *outside_fibs;
 
   /* vector of interface address static mappings to resolve. */
-  snat_static_map_resolve_t *to_resolve;
+  snat_static_mapping_resolve_t *sm_to_resolve;
 
   /* Randomize port allocation order */
   u32 random_seed;
@@ -876,7 +883,7 @@ int nat44_ed_add_output_interface (u32 sw_if_index);
 int nat44_ed_del_output_interface (u32 sw_if_index);
 
 int nat44_ed_add_address (ip4_address_t *addr, u32 vrf_id, u8 twice_nat);
-int nat44_ed_del_address (ip4_address_t addr, u8 delete_sm, u8 twice_nat);
+int nat44_ed_del_address (ip4_address_t addr, u8 twice_nat);
 int nat44_ed_add_interface_address (u32 sw_if_index, u8 twice_nat);
 int nat44_ed_del_interface_address (u32 sw_if_index, u8 twice_nat);
 
