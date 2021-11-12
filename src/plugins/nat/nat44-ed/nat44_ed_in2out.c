@@ -278,7 +278,7 @@ nat_ed_alloc_addr_and_port (snat_main_t *sm, u32 rx_fib_index,
 	}
       else
 	{
-	  // frist try nat pool addresses to sw interface addreses mappings
+	  // first try nat pool addresses to sw interface addreses mappings
 	  for (i = s_addr_offset; i < vec_len (sm->addresses); ++i)
 	    {
 	      a = sm->addresses + i;
