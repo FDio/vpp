@@ -46,6 +46,7 @@ typedef struct _session_endpoint_cfg
   u8 original_tp;
   u64 parent_handle;
   u8 flags;
+  u8 reuseport;
   transport_endpt_ext_cfg_t *ext_cfg;
 } session_endpoint_cfg_t;
 

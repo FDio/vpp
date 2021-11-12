@@ -39,6 +39,7 @@ app_listener_alloc (application_t * app)
   app_listener->session_index = SESSION_INVALID_INDEX;
   app_listener->local_index = SESSION_INVALID_INDEX;
   app_listener->ls_handle = SESSION_INVALID_HANDLE;
+  app_listener->reuseport_group_index = REUSEPORT_INVALID_INDEX;
   return app_listener;
 }
 
@@ -95,12 +96,15 @@ app_listener_get_w_handle (session_handle_t handle)
 }
 
 app_listener_t *
-app_listener_lookup (application_t * app, session_endpoint_cfg_t * sep_ext)
+app_listener_lookup (application_t *app, session_endpoint_cfg_t *sep_ext,
+		     u32 *reuseport_group_index)
 {
   u32 table_index, fib_proto;
   session_endpoint_t *sep;
   session_handle_t handle;
   session_t *ls;
+  u32 rg_index = REUSEPORT_INVALID_INDEX;
+  u32 thread_index = 0;
   void *iface_ip;
   ip46_address_t original_ip;
 
@@ -111,6 +115,15 @@ app_listener_lookup (application_t * app, session_endpoint_cfg_t * sep_ext)
       handle = session_lookup_endpoint_listener (table_index, sep, 1);
       if (handle != SESSION_INVALID_HANDLE)
 	{
+	  listen_session_parse_handle (handle, &rg_index, &thread_index);
+	  if (thread_index == REUSEPORT_SESSION_THREAD)
+	    {
+	      *reuseport_group_index = rg_index;
+	      handle = session_lookup_get_listener_in_reuseport_group (
+		rg_index, app->app_index, 1 /* is_local */);
+	      if (handle == SESSION_INVALID_HANDLE)
+		return 0;
+	    }
 	  ls = listen_session_get_from_handle (handle);
 	  return app_listener_get_w_session (ls);
 	}
@@ -121,6 +134,15 @@ app_listener_lookup (application_t * app, session_endpoint_cfg_t * sep_ext)
   handle = session_lookup_endpoint_listener (table_index, sep, 1);
   if (handle != SESSION_INVALID_HANDLE)
     {
+      listen_session_parse_handle (handle, &rg_index, &thread_index);
+      if (thread_index == REUSEPORT_SESSION_THREAD)
+	{
+	  *reuseport_group_index = rg_index;
+	  handle = session_lookup_get_listener_in_reuseport_group (
+	    rg_index, app->app_index, 0 /* is_local */);
+	  if (handle == SESSION_INVALID_HANDLE)
+	    return 0;
+	}
       ls = listen_session_get_from_handle (handle);
       return app_listener_get_w_session ((session_t *) ls);
     }
@@ -153,9 +175,9 @@ app_listener_lookup (application_t * app, session_endpoint_cfg_t * sep_ext)
 }
 
 int
-app_listener_alloc_and_init (application_t * app,
-			     session_endpoint_cfg_t * sep,
-			     app_listener_t ** listener)
+app_listener_alloc_and_init (application_t *app, session_endpoint_cfg_t *sep,
+			     u32 reuseport_group_index,
+			     app_listener_t **listener)
 {
   app_listener_t *app_listener;
   transport_connection_t *tc;
@@ -163,11 +185,22 @@ app_listener_alloc_and_init (application_t * app,
   session_handle_t lh;
   session_type_t st;
   session_t *ls = 0;
+  u8 is_alloc_group = 0;
   int rv;
 
   app_listener = app_listener_alloc (app);
   al_index = app_listener->al_index;
   st = session_type_from_proto_and_ip (sep->transport_proto, sep->is_ip4);
+
+  if (sep->reuseport)
+    {
+      if (reuseport_group_index == REUSEPORT_INVALID_INDEX)
+	{
+	  reuseport_group_index = reuseport_group_alloc ();
+	  is_alloc_group = 1;
+	}
+      app_listener->reuseport_group_index = reuseport_group_index;
+    }
 
   /*
    * Add session endpoint to local session table. Only binds to "inaddr_any"
@@ -199,8 +232,35 @@ app_listener_alloc_and_init (application_t * app,
       ls->al_index = al_index;
 
       table_index = application_local_session_table (app);
-      session_lookup_add_session_endpoint (table_index,
-					   (session_endpoint_t *) sep, lh);
+      if (sep->reuseport)
+	{
+	  /*
+	   * If a listener is REUSEPORT enabled, the real session index
+	   * is to be stored in a reuseport group. At the same time,
+	   * the reuseport group info is to be stored in the session table.
+	   *
+	   * This means the elements in session table have two formats:
+	   * - [0 << 32 | listen_session_index]
+	   * - [REUSEPORT_SESSION_THREAD << 32 | reuseport_group_index]
+	   *
+	   * We can distinguish them by the high 32 bits.
+	   */
+	  session_lookup_add_app_to_reuseport_group (
+	    reuseport_group_index, app->app_index, app_listener->local_index,
+	    1 /* is_local */);
+	  if (is_alloc_group)
+	    {
+	      session_lookup_add_session_endpoint (
+		table_index, (session_endpoint_t *) sep,
+		((u64) REUSEPORT_SESSION_THREAD << 32) |
+		  reuseport_group_index);
+	    }
+	}
+      else
+	{
+	  session_lookup_add_session_endpoint (table_index,
+					       (session_endpoint_t *) sep, lh);
+	}
     }
 
   if (application_has_global_scope (app))
@@ -244,9 +304,24 @@ app_listener_alloc_and_init (application_t * app,
 	  /* Assume namespace vetted previously so make sure table exists */
 	  table_index = session_lookup_get_or_alloc_index_for_fib (
 	    fib_proto, sep->fib_index);
-	  session_lookup_add_session_endpoint (table_index,
-					       (session_endpoint_t *) sep,
-					       lh);
+	  if (sep->reuseport)
+	    {
+	      session_lookup_add_app_to_reuseport_group (
+		reuseport_group_index, app->app_index,
+		app_listener->session_index, 0 /* is_local */);
+	      if (is_alloc_group)
+		{
+		  session_lookup_add_session_endpoint (
+		    table_index, (session_endpoint_t *) sep,
+		    ((u64) REUSEPORT_SESSION_THREAD << 32) |
+		      reuseport_group_index);
+		}
+	    }
+	  else
+	    {
+	      session_lookup_add_session_endpoint (
+		table_index, (session_endpoint_t *) sep, lh);
+	    }
 	}
     }
 
@@ -265,11 +340,12 @@ app_listener_cleanup (app_listener_t * al)
 {
   application_t *app = application_get (al->app_index);
   session_t *ls;
+  u32 rg_index = al->reuseport_group_index;
 
   if (al->session_index != SESSION_INVALID_INDEX)
     {
       ls = session_get (al->session_index, 0);
-      session_stop_listen (ls);
+      session_stop_listen (ls, rg_index);
       listen_session_free (ls);
     }
   if (al->local_index != SESSION_INVALID_INDEX)
@@ -280,8 +356,12 @@ app_listener_cleanup (app_listener_t * al)
       table_index = application_local_session_table (app);
       ls = listen_session_get (al->local_index);
       ct_session_endpoint (ls, &sep);
-      session_lookup_del_session_endpoint (table_index, &sep);
-      session_stop_listen (ls);
+      session_lookup_del_app_from_reuseport_group (rg_index, app->app_index,
+						   1);
+      if (!is_reuseport_group_has_sessions (rg_index, 1 /* is_local */))
+	session_lookup_del_session_endpoint (table_index, &sep);
+
+      session_stop_listen (ls, rg_index);
       listen_session_free (ls);
     }
   app_listener_free (app, al);
@@ -1296,6 +1376,7 @@ vnet_listen (vnet_listen_args_t * a)
   app_listener_t *app_listener;
   app_worker_t *app_wrk;
   application_t *app;
+  u32 rg_index = REUSEPORT_INVALID_INDEX;
   int rv;
 
   ASSERT (vlib_thread_is_main_w_barrier ());
@@ -1317,7 +1398,7 @@ vnet_listen (vnet_listen_args_t * a)
   /*
    * Check if we already have an app listener
    */
-  app_listener = app_listener_lookup (app, &a->sep_ext);
+  app_listener = app_listener_lookup (app, &a->sep_ext, &rg_index);
   if (app_listener)
     {
       if (app_listener->app_index != app->app_index)
@@ -1328,10 +1409,16 @@ vnet_listen (vnet_listen_args_t * a)
       return 0;
     }
 
+  if (!a->sep_ext.reuseport && rg_index != REUSEPORT_INVALID_INDEX)
+    {
+      return SESSION_E_ALREADY_LISTENING;
+    }
+
   /*
    * Create new app listener
    */
-  if ((rv = app_listener_alloc_and_init (app, &a->sep_ext, &app_listener)))
+  if ((rv = app_listener_alloc_and_init (app, &a->sep_ext, rg_index,
+					 &app_listener)))
     return rv;
 
   if ((rv = app_worker_start_listen (app_wrk, app_listener)))
@@ -1549,7 +1636,8 @@ application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
 	  /* force global scope listener */
 	  flags = app->flags;
 	  app->flags &= ~APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
-	  app_listener_alloc_and_init (app, &sep, &al);
+	  app_listener_alloc_and_init (app, &sep, REUSEPORT_INVALID_INDEX,
+				       &al);
 	  app->flags = flags;
 
 	  app_worker_start_listen (app_wrk, al);

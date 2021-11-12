@@ -324,6 +324,7 @@ typedef struct session_listen_msg_
   u8 is_ip4;
   ip46_address_t ip;
   u8 flags;
+  u8 reuseport;
   uword ext_config;
 } __clib_packed session_listen_msg_t;
 

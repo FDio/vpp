@@ -1447,9 +1447,10 @@ session_listen (session_t * ls, session_endpoint_cfg_t * sep)
  * Ask transport to stop listening on local transport endpoint.
  *
  * @param s Session to stop listening on. It must be in state LISTENING.
+ *        rg_index Reuseport group that the session is belong to.
  */
 int
-session_stop_listen (session_t * s)
+session_stop_listen (session_t *s, u32 rg_index)
 {
   transport_proto_t tp = session_get_transport_proto (s);
   transport_connection_t *tc;
@@ -1464,7 +1465,17 @@ session_stop_listen (session_t * s)
     return SESSION_E_NONE;
 
   if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
-    session_lookup_del_connection (tc);
+    {
+      if (rg_index != REUSEPORT_INVALID_INDEX)
+	{
+	  session_lookup_del_app_from_reuseport_group (rg_index, s->app_index,
+						       0 /* is_local */);
+	  if (!is_reuseport_group_has_sessions (rg_index, 0 /* is_local */))
+	    session_lookup_del_connection (tc);
+	}
+      else
+	session_lookup_del_connection (tc);
+    }
 
   transport_stop_listen (tp, s->connection_index);
   return 0;

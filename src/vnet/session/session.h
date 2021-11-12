@@ -453,7 +453,7 @@ session_clone_safe (u32 session_index, u32 thread_index)
 
 int session_open (session_endpoint_cfg_t *sep, session_handle_t *rsh);
 int session_listen (session_t * s, session_endpoint_cfg_t * sep);
-int session_stop_listen (session_t * s);
+int session_stop_listen (session_t *s, u32 rg_index);
 void session_half_close (session_t *s);
 void session_close (session_t * s);
 void session_reset (session_t * s);

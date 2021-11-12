@@ -222,6 +222,178 @@ session_lookup_get_or_alloc_index_for_fib (u32 fib_proto, u32 fib_index)
   return session_table_index (st);
 }
 
+typedef struct _reuseport_group
+{
+  u32 group_index;	     /* index in reuseport_groups pool */
+  clib_bitmap_t *local_apps; /* apps that have local sessions in the group */
+  clib_bitmap_t *apps;	     /* apps that have global sessions in the group */
+  u32 accept_rotor;
+  uword *local_session_by_app_index;  /* map for app and local sessions  */
+  uword *global_session_by_app_index; /* map for app and global sessions */
+} reuseport_group_t;
+
+typedef struct _session_lookup_main_t
+{
+  reuseport_group_t *reuseport_groups; /* Pool of reuseport group */
+} session_lookup_main_t;
+
+static session_lookup_main_t slm;
+
+static reuseport_group_t *
+reuseport_group_get (u32 group_index)
+{
+  if (pool_is_free_index (slm.reuseport_groups, group_index))
+    return 0;
+
+  return pool_elt_at_index (slm.reuseport_groups, group_index);
+}
+
+u32
+reuseport_group_alloc (void)
+{
+  reuseport_group_t *rg;
+  pool_get (slm.reuseport_groups, rg);
+
+  clib_memset (rg, 0, sizeof (*rg));
+
+  rg->group_index = rg - slm.reuseport_groups;
+  rg->local_session_by_app_index = hash_create (0, sizeof (uword));
+  rg->global_session_by_app_index = hash_create (0, sizeof (uword));
+
+  return rg->group_index;
+}
+
+static void
+reuseport_group_free (reuseport_group_t *rg)
+{
+  hash_free (rg->local_session_by_app_index);
+  hash_free (rg->global_session_by_app_index);
+
+  clib_bitmap_free (rg->local_apps);
+  clib_bitmap_free (rg->apps);
+  pool_put (slm.reuseport_groups, rg);
+}
+
+u8
+is_reuseport_group_has_sessions (u32 rg_index, u8 is_local)
+{
+  reuseport_group_t *rg;
+
+  rg = reuseport_group_get (rg_index);
+  if (!rg)
+    return 0;
+
+  if (is_local)
+    return !clib_bitmap_is_zero (rg->local_apps);
+  else
+    return !clib_bitmap_is_zero (rg->apps);
+}
+
+/**
+ * Add an app into a reuseport group
+ *
+ * @param rg_index 	reuseport group index
+ * @app_index           app that owns this session
+ * @session_index       session index
+ * @is_local            1 if this is a local session
+ *
+ * @return non-zero if failure
+ */
+int
+session_lookup_add_app_to_reuseport_group (u32 rg_index, u32 app_index,
+					   u32 session_index, u8 is_local)
+{
+  reuseport_group_t *rg;
+
+  rg = reuseport_group_get (rg_index);
+  if (!rg)
+    return -1;
+
+  if (is_local)
+    {
+      hash_set (rg->local_session_by_app_index, app_index, session_index);
+      rg->local_apps = clib_bitmap_set (rg->local_apps, app_index, 1);
+    }
+  else
+    {
+      hash_set (rg->global_session_by_app_index, app_index, session_index);
+      rg->apps = clib_bitmap_set (rg->apps, app_index, 1);
+    }
+
+  return 0;
+}
+
+/**
+ * Remove an app from the reuseport group
+ *
+ * @param rg_index 	reuseport group index
+ * @app_index           app that owns this session
+ * @session_index       session index
+ * @is_local            1 if this is a local session
+ *
+ * @retun void
+ */
+void
+session_lookup_del_app_from_reuseport_group (u32 rg_index, u32 app_index,
+					     u8 is_local)
+{
+  reuseport_group_t *rg;
+
+  rg = reuseport_group_get (rg_index);
+  if (!rg)
+    return;
+
+  if (is_local)
+    {
+      hash_unset (rg->local_session_by_app_index, app_index);
+      clib_bitmap_set_no_check (rg->local_apps, app_index, 0);
+    }
+  else
+    {
+      hash_unset (rg->global_session_by_app_index, app_index);
+      clib_bitmap_set_no_check (rg->apps, app_index, 0);
+    }
+
+  if (clib_bitmap_is_zero (rg->local_apps) && (clib_bitmap_is_zero (rg->apps)))
+    reuseport_group_free (rg);
+
+  return;
+}
+
+/**
+ * Select a listen session from the reuseport group
+ *
+ * @param rg_index 	reuseport group index
+ *
+ * @return listen session handle
+ */
+u64
+session_lookup_sel_session_from_reuseport_group (u32 rg_index)
+{
+  reuseport_group_t *rg;
+  u32 app_index;
+  uword *result;
+  u64 handle = SESSION_INVALID_HANDLE;
+
+  rg = reuseport_group_get (rg_index);
+  if (!rg)
+    return SESSION_INVALID_HANDLE;
+
+  app_index = clib_bitmap_next_set (rg->apps, rg->accept_rotor + 1);
+  if (app_index == ~0)
+    app_index = clib_bitmap_first_set (rg->apps);
+
+  ASSERT (app_index != ~0);
+
+  rg->accept_rotor = app_index;
+
+  result = hash_get (rg->global_session_by_app_index, app_index);
+  if (NULL != result)
+    handle = (u64) (result[0]);
+
+  return handle;
+}
+
 /**
  * Add transport connection to a session table
  *
@@ -284,6 +456,38 @@ session_lookup_add_session_endpoint (u32 table_index,
       kv6.value = value;
       return clib_bihash_add_del_48_8 (&st->v6_session_hash, &kv6, 1);
     }
+}
+
+/**
+ *
+ * Get listner in a reuseport group for an application
+ *
+ * @param rg_index 	reuseport group
+ * @param app_index 	application
+ * @param is_local      1 for local, 0 for global
+ *
+ * @return real session handle
+ */
+u64
+session_lookup_get_listener_in_reuseport_group (u32 rg_index, u32 app_index,
+						u8 is_local)
+{
+  reuseport_group_t *rg;
+  uword *result;
+
+  rg = reuseport_group_get (rg_index);
+  if (!rg)
+    return SESSION_INVALID_HANDLE;
+
+  if (is_local)
+    result = hash_get (rg->local_session_by_app_index, app_index);
+  else
+    result = hash_get (rg->global_session_by_app_index, app_index);
+
+  if (NULL != result)
+    return (u64) (result[0]);
+
+  return SESSION_INVALID_HANDLE;
 }
 
 int
@@ -654,6 +858,7 @@ session_lookup_listener4_i (session_table_t * st, ip4_address_t * lcl,
 {
   session_kv4_t kv4;
   int rv;
+  u64 handle;
 
   /*
    * First, try a fully formed listener
@@ -661,8 +866,16 @@ session_lookup_listener4_i (session_table_t * st, ip4_address_t * lcl,
   make_v4_listener_kv (&kv4, lcl, lcl_port, proto);
   rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
   if (rv == 0)
-    return listen_session_get ((u32) kv4.value);
-
+    {
+      if ((kv4.value >> 32) == REUSEPORT_SESSION_THREAD)
+	{
+	  handle =
+	    session_lookup_sel_session_from_reuseport_group ((u32) kv4.value);
+	  return listen_session_get_from_handle (handle);
+	}
+      else
+	return listen_session_get ((u32) kv4.value);
+    }
   /*
    * Zero out the lcl ip and check if any 0/0 port binds have been done
    */
@@ -671,7 +884,16 @@ session_lookup_listener4_i (session_table_t * st, ip4_address_t * lcl,
       kv4.key[0] = 0;
       rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
       if (rv == 0)
-	return listen_session_get ((u32) kv4.value);
+	{
+	  if ((kv4.value >> 32) == REUSEPORT_SESSION_THREAD)
+	    {
+	      handle = session_lookup_sel_session_from_reuseport_group (
+		(u32) kv4.value);
+	      return listen_session_get_from_handle (handle);
+	    }
+	  else
+	    return listen_session_get ((u32) kv4.value);
+	}
     }
   else
     {
@@ -684,7 +906,16 @@ session_lookup_listener4_i (session_table_t * st, ip4_address_t * lcl,
   make_v4_proxy_kv (&kv4, lcl, proto);
   rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
   if (rv == 0)
-    return listen_session_get ((u32) kv4.value);
+    {
+      if ((kv4.value >> 32) == REUSEPORT_SESSION_THREAD)
+	{
+	  handle =
+	    session_lookup_sel_session_from_reuseport_group ((u32) kv4.value);
+	  return listen_session_get_from_handle (handle);
+	}
+      else
+	return listen_session_get ((u32) kv4.value);
+    }
 
   return 0;
 }
@@ -1044,6 +1275,57 @@ session_lookup_connection4 (u32 fib_index, ip4_address_t * lcl,
 }
 
 /**
+ * Lookup non-LISTENING connection with ip4 and transport layer information
+ *
+ * Lookup logic is similar to that of
+ * @ref session_lookup_connection4
+ *
+ * @param fib_index	index of the fib wherein the connection was received
+ * @param lcl		local ip4 address
+ * @param rmt		remote ip4 address
+ * @param lcl_port	local port
+ * @param rmt_port	remote port
+ * @param proto		transport protocol (e.g., tcp, udp)
+ *
+ * @return pointer to transport connection, if one is found, 0 otherwise
+ */
+transport_connection_t *
+session_lookup_connection_exclude_listener4 (u32 fib_index, ip4_address_t *lcl,
+					     ip4_address_t *rmt, u16 lcl_port,
+					     u16 rmt_port, u8 proto)
+{
+  session_table_t *st;
+  session_kv4_t kv4;
+  session_t *s;
+  int rv;
+
+  st = session_table_get_for_fib_index (FIB_PROTOCOL_IP4, fib_index);
+  if (PREDICT_FALSE (!st))
+    return 0;
+
+  /*
+   * Lookup session amongst established ones
+   */
+  make_v4_ss_kv (&kv4, lcl, rmt, lcl_port, rmt_port, proto);
+  rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
+  if (rv == 0)
+    {
+      s = session_get_from_handle (kv4.value);
+      return transport_get_connection (proto, s->connection_index,
+				       s->thread_index);
+    }
+
+  /*
+   * Try half-open connections
+   */
+  rv = clib_bihash_search_inline_16_8 (&st->v4_half_open_hash, &kv4);
+  if (rv == 0)
+    return transport_get_half_open (proto, kv4.value & 0xFFFFFFFF);
+
+  return 0;
+}
+
+/**
  * Lookup session with ip4 and transport layer information
  *
  * Important note: this may look into another thread's pool table and
@@ -1247,6 +1529,52 @@ session_lookup_connection6 (u32 fib_index, ip6_address_t * lcl,
   s = session_lookup_listener6_i (st, lcl, lcl_port, proto, 1);
   if (s)
     return transport_get_listener (proto, s->connection_index);
+
+  return 0;
+}
+
+/**
+ * Lookup non-LISTENING connection with ip6 and transport layer information
+ *
+ * Lookup logic is similar to that of
+ * @ref session_lookup_connection6
+ *
+ * @param fib_index	index of the fib wherein the connection was received
+ * @param lcl		local ip6 address
+ * @param rmt		remote ip6 address
+ * @param lcl_port	local port
+ * @param rmt_port	remote port
+ * @param proto		transport protocol (e.g., tcp, udp)
+ *
+ * @return pointer to transport connection, if one is found, 0 otherwise
+ */
+transport_connection_t *
+session_lookup_connection_exclude_listener6 (u32 fib_index, ip6_address_t *lcl,
+					     ip6_address_t *rmt, u16 lcl_port,
+					     u16 rmt_port, u8 proto)
+{
+  session_table_t *st;
+  session_t *s;
+  session_kv6_t kv6;
+  int rv;
+
+  st = session_table_get_for_fib_index (FIB_PROTOCOL_IP6, fib_index);
+  if (PREDICT_FALSE (!st))
+    return 0;
+
+  make_v6_ss_kv (&kv6, lcl, rmt, lcl_port, rmt_port, proto);
+  rv = clib_bihash_search_inline_48_8 (&st->v6_session_hash, &kv6);
+  if (rv == 0)
+    {
+      s = session_get_from_handle (kv6.value);
+      return transport_get_connection (proto, s->connection_index,
+				       s->thread_index);
+    }
+
+  /* Try half-open connections */
+  rv = clib_bihash_search_inline_48_8 (&st->v6_half_open_hash, &kv6);
+  if (rv == 0)
+    return transport_get_half_open (proto, kv6.value & 0xFFFFFFFF);
 
   return 0;
 }
