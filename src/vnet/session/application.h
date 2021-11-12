@@ -84,6 +84,7 @@ typedef struct app_listener_
   u32 app_index;		/**< owning app index */
   u32 local_index;		/**< local listening session index */
   u32 session_index;		/**< global listening session index */
+  u32 reuseport_group_index;	/**< owning reuseport group index */
   session_handle_t ls_handle;	/**< session handle of the local or global
 				     listening session that also identifies
 				     the app listener */
@@ -228,13 +229,15 @@ typedef struct _vnet_app_worker_add_del_args
 #define APP_INVALID_SEGMENT_MANAGER_INDEX ((u32) ~0)
 
 app_listener_t *app_listener_get (application_t * app, u32 al_index);
-int app_listener_alloc_and_init (application_t * app,
-				 session_endpoint_cfg_t * sep,
-				 app_listener_t ** listener);
+int app_listener_alloc_and_init (application_t *app,
+				 session_endpoint_cfg_t *sep,
+				 u32 reuseport_group_index,
+				 app_listener_t **listener);
 void app_listener_cleanup (app_listener_t * app_listener);
 session_handle_t app_listener_handle (app_listener_t * app_listener);
-app_listener_t *app_listener_lookup (application_t * app,
-				     session_endpoint_cfg_t * sep);
+app_listener_t *app_listener_lookup (application_t *app,
+				     session_endpoint_cfg_t *sep,
+				     u32 *reuseport_group_index);
 
 /**
  * Get app listener handle for listening session

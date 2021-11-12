@@ -21,6 +21,8 @@
 #include <vnet/session/application_namespace.h>
 
 #define HALF_OPEN_LOOKUP_INVALID_VALUE ((u64)~0)
+#define REUSEPORT_INVALID_INDEX	       ((u32) ~0)
+#define REUSEPORT_SESSION_THREAD       (1)
 
 typedef enum session_lookup_result_
 {
@@ -29,6 +31,16 @@ typedef enum session_lookup_result_
   SESSION_LOOKUP_RESULT_FILTERED
 } session_lookup_result_t;
 
+u32 reuseport_group_alloc (void);
+u8 is_reuseport_group_has_sessions (u32 rg_index, u8 is_local);
+int session_lookup_add_app_to_reuseport_group (u32 rg_index, u32 app_index,
+					       u32 session_index, u8 is_local);
+void session_lookup_del_app_from_reuseport_group (u32 rg_index, u32 app_index,
+						  u8 is_local);
+u64 session_lookup_sel_session_from_reuseport_group (u32 rg_index);
+u64 session_lookup_get_listener_in_reuseport_group (u32 rg_index,
+						    u32 app_index,
+						    u8 is_local);
 session_t *session_lookup_safe4 (u32 fib_index, ip4_address_t * lcl,
 				 ip4_address_t * rmt, u16 lcl_port,
 				 u16 rmt_port, u8 proto);
@@ -64,6 +76,14 @@ transport_connection_t *session_lookup_connection (u32 fib_index,
 						   ip46_address_t * rmt,
 						   u16 lcl_port, u16 rmt_port,
 						   u8 proto, u8 is_ip4);
+transport_connection_t *
+session_lookup_connection_exclude_listener4 (u32 fib_index, ip4_address_t *lcl,
+					     ip4_address_t *rmt, u16 lcl_port,
+					     u16 rmt_port, u8 proto);
+transport_connection_t *
+session_lookup_connection_exclude_listener6 (u32 fib_index, ip6_address_t *lcl,
+					     ip6_address_t *rmt, u16 lcl_port,
+					     u16 rmt_port, u8 proto);
 session_t *session_lookup_listener4 (u32 fib_index, ip4_address_t * lcl,
 				     u16 lcl_port, u8 proto, u8 use_wildcard);
 session_t *session_lookup_listener6 (u32 fib_index, ip6_address_t * lcl,

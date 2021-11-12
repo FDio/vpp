@@ -1715,6 +1715,42 @@ tcp_lookup_connection (u32 fib_index, vlib_buffer_t * b, u8 thread_index,
   return tc;
 }
 
+/**
+ * Lookup transport connection exclude listener
+ *
+ */
+static tcp_connection_t *
+tcp_lookup_connection_exclude_listener (u32 fib_index, vlib_buffer_t *b,
+					u8 thread_index, u8 is_ip4)
+{
+  tcp_header_t *tcp;
+  transport_connection_t *tconn;
+  tcp_connection_t *tc = NULL;
+  if (is_ip4)
+    {
+      ip4_header_t *ip4;
+      ip4 = vlib_buffer_get_current (b);
+      tcp = ip4_next_header (ip4);
+      tconn = session_lookup_connection_exclude_listener4 (
+	fib_index, &ip4->dst_address, &ip4->src_address, tcp->dst_port,
+	tcp->src_port, TRANSPORT_PROTO_TCP);
+      tc = tcp_get_connection_from_transport (tconn);
+      ASSERT (tcp_lookup_is_valid (tc, b, tcp));
+    }
+  else
+    {
+      ip6_header_t *ip6;
+      ip6 = vlib_buffer_get_current (b);
+      tcp = ip6_next_header (ip6);
+      tconn = session_lookup_connection_exclude_listener6 (
+	fib_index, &ip6->dst_address, &ip6->src_address, tcp->dst_port,
+	tcp->src_port, TRANSPORT_PROTO_TCP);
+      tc = tcp_get_connection_from_transport (tconn);
+      ASSERT (tcp_lookup_is_valid (tc, b, tcp));
+    }
+  return tc;
+}
+
 static tcp_connection_t *
 tcp_lookup_listener (vlib_buffer_t * b, u32 fib_index, int is_ip4)
 {
@@ -2702,9 +2738,9 @@ tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
 
       /* Make sure connection wasn't just created */
-      child =
-	tcp_lookup_connection (lc->c_fib_index, b[0], thread_index, is_ip4);
-      if (PREDICT_FALSE (child->state != TCP_STATE_LISTEN))
+      child = tcp_lookup_connection_exclude_listener (lc->c_fib_index, b[0],
+						      thread_index, is_ip4);
+      if (PREDICT_FALSE (child != 0))
 	{
 	  error = TCP_ERROR_CREATE_EXISTS;
 	  goto done;

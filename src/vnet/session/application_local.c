@@ -816,6 +816,7 @@ ct_session_connect (transport_endpoint_cfg_t * tep)
   application_t *app;
   app_listener_t *al;
   u32 table_index;
+  u32 rg_index, thread_index;
   session_t *ll;
   u8 fib_proto;
 
@@ -832,6 +833,15 @@ ct_session_connect (transport_endpoint_cfg_t * tep)
 
   if (lh == SESSION_INVALID_HANDLE)
     goto global_scope;
+
+  listen_session_parse_handle (lh, &rg_index, &thread_index);
+  if (thread_index == REUSEPORT_SESSION_THREAD)
+    {
+      lh = session_lookup_get_listener_in_reuseport_group (rg_index,
+							   app->app_index, 1);
+      if (lh == SESSION_INVALID_HANDLE)
+	goto global_scope;
+    }
 
   ll = listen_session_get_from_handle (lh);
   al = app_listener_get_w_session (ll);

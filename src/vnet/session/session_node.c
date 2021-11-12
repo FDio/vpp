@@ -117,6 +117,7 @@ session_mq_listen_handler (void *data)
   a->app_index = app->app_index;
   a->wrk_map_index = mp->wrk_index;
   a->sep_ext.transport_flags = mp->flags;
+  a->sep_ext.reuseport = mp->reuseport;
 
   if (mp->ext_config)
     a->sep_ext.ext_cfg = session_mq_get_ext_config (app, mp->ext_config);
