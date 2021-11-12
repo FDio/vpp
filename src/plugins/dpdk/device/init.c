@@ -248,7 +248,6 @@ dpdk_lib_init (dpdk_main_t * dm)
   RTE_ETH_FOREACH_DEV(i)
     {
       u8 addr[6];
-      int vlan_off;
       struct rte_eth_dev_info dev_info;
       struct rte_pci_device *pci_dev;
       struct rte_vmbus_device *vmbus_dev;
@@ -891,52 +890,6 @@ dpdk_lib_init (dpdk_main_t * dm)
                       format_dpdk_device_name, i,
                       format_dpdk_device_errors, xd);
 
-      /*
-       * A note on Cisco VIC (PMD_ENIC) and VLAN:
-       *
-       * With Cisco VIC vNIC, every ingress packet is tagged. On a
-       * trunk vNIC (C series "standalone" server), packets on no VLAN
-       * are tagged with vlan 0. On an access vNIC (standalone or B
-       * series "blade" server), packets on the default/native VLAN
-       * are tagged with that vNIC's VLAN. VPP expects these packets
-       * to be untagged, and previously enabled VLAN strip on VIC by
-       * default. But it also broke vlan sub-interfaces.
-       *
-       * The VIC adapter has "untag default vlan" ingress VLAN rewrite
-       * mode, which removes tags from these packets. VPP now includes
-       * a local patch for the enic driver to use this untag mode, so
-       * enabling vlan stripping is no longer needed. In future, the
-       * driver + dpdk will have an API to set the mode after
-       * rte_eal_init. Then, this note and local patch will be
-       * removed.
-       */
-
-      /*
-       * VLAN stripping: default to VLAN strip disabled, unless specified
-       * otherwise in the startup config.
-       */
-
-        vlan_off = rte_eth_dev_get_vlan_offload (xd->port_id);
-        if (devconf->vlan_strip_offload == DPDK_DEVICE_VLAN_STRIP_ON)
-          {
-            vlan_off |= ETH_VLAN_STRIP_OFFLOAD;
-            if (rte_eth_dev_set_vlan_offload (xd->port_id, vlan_off) >= 0)
-              dpdk_log_info ("VLAN strip enabled for interface\n");
-            else
-              dpdk_log_warn ("VLAN strip cannot be supported by interface\n");
-            xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
-          }
-        else
-          {
-            if (vlan_off & ETH_VLAN_STRIP_OFFLOAD)
-              {
-        	vlan_off &= ~ETH_VLAN_STRIP_OFFLOAD;
-        	if (rte_eth_dev_set_vlan_offload (xd->port_id, vlan_off) >= 0)
-        	  dpdk_log_warn ("set VLAN offload failed\n");
-              }
-            xd->port_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
-          }
-
         if (hi)
           hi->max_packet_bytes = xd->port_conf.rxmode.max_rx_pkt_len
             - sizeof (ethernet_header_t);
@@ -1316,10 +1269,6 @@ dpdk_device_config (dpdk_config_main_t *conf, void *addr,
 	  if (error)
 	    break;
 	}
-      else if (unformat (input, "vlan-strip-offload off"))
-	devconf->vlan_strip_offload = DPDK_DEVICE_VLAN_STRIP_OFF;
-      else if (unformat (input, "vlan-strip-offload on"))
-	devconf->vlan_strip_offload = DPDK_DEVICE_VLAN_STRIP_ON;
       else if (unformat (input, "tso on"))
 	{
 	  devconf->tso = DPDK_DEVICE_TSO_ON;
@@ -1649,9 +1598,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
     /* default per-device config items */
     foreach_dpdk_device_config_item
-
-      /* copy vlan_strip config from default device */
-      _ (vlan_strip_offload)
 
       /* copy tso config from default device */
       _ (tso)
