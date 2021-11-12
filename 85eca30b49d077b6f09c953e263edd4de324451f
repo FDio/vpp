@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6c70e098_fe16c482",
+        "filename": "src/vnet/session/transport_types.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 109,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-11-12T20:41:07Z",
+      "side": 1,
+      "message": "My original idea was to track this in the actual transports (not the base struct) but this should be fine, at least for now.",
+      "range": {
+        "startLine": 109,
+        "startChar": 2,
+        "endLine": 109,
+        "endChar": 10
+      },
+      "revId": "85eca30b49d077b6f09c953e263edd4de324451f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
