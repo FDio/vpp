@@ -7,31 +7,10 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
-#include <vnet/ip/ip46_address.h>
-#include <vnet/udp/udp_packet.h>
 #include <vnet/hash/hash.h>
 #include <vppinfra/crc32.h>
 
 #ifdef clib_crc32c_uses_intrinsics
-
-typedef union
-{
-  struct
-  {
-    ip46_address_t src_address;
-    ip46_address_t dst_address;
-    union
-    {
-      struct
-      {
-	u16 src_port;
-	u16 dst_port;
-      };
-      u32 l4_hdr;
-    };
-  };
-  u8 as_u8[36];
-} crc32c_5tuple_key_t;
 
 static const u8 l4_mask_bits[256] = {
   [IP_PROTOCOL_ICMP] = 16,	[IP_PROTOCOL_IGMP] = 8,
@@ -40,39 +19,42 @@ static const u8 l4_mask_bits[256] = {
   [IP_PROTOCOL_ICMP6] = 16,
 };
 
-static_always_inline void
-compute_ip6_key (ip6_header_t *ip, crc32c_5tuple_key_t *k)
+static_always_inline u32
+compute_ip6_key (ip6_header_t *ip)
 {
+  u32 hash = 0, l4hdr;
   u8 pr;
-
-  /* copy 32 bytes of ip6 src and dst addresses into hash_key_t */
-  clib_memcpy_fast ((u8 *) k, (u8 *) ip + 8, sizeof (ip6_address_t) * 2);
+  /* dst + src ip as u64 */
+  hash = clib_crc32c_u64 (hash, *(u64u *) ((u8 *) ip + 8));
+  hash = clib_crc32c_u64 (hash, *(u64u *) ((u8 *) ip + 16));
+  hash = clib_crc32c_u64 (hash, *(u64u *) ((u8 *) ip + 24));
+  hash = clib_crc32c_u64 (hash, *(u64u *) ((u8 *) ip + 32));
   pr = ip->protocol;
-  /* write l4 header */
-  k->l4_hdr = *(u32 *) ip6_next_header (ip) & pow2_mask (l4_mask_bits[pr]);
+  l4hdr = *(u32 *) ip6_next_header (ip) & pow2_mask (l4_mask_bits[pr]);
+  /* protocol + l4 hdr */
+  return clib_crc32c_u64 (hash, ((u64) pr << 32) | l4hdr);
 }
 
-static_always_inline void
-compute_ip4_key (ip4_header_t *ip, crc32c_5tuple_key_t *k)
+static_always_inline u32
+compute_ip4_key (ip4_header_t *ip)
 {
+  u32 hash = 0, l4hdr;
   u8 pr;
-  u64 *key = (u64 *) k;
-  /* copy 8 bytes of ip src and dst addresses into hash_key_t */
-  key[0] = 0;
-  key[1] = 0;
-  key[2] = 0;
-  key[3] = *(u64 *) ((u8 *) ip + 12);
+  /* dst + src ip as u64 */
+  hash = clib_crc32c_u64 (0, *(u64 *) ((u8 *) ip + 12));
   pr = ip->protocol;
-  /* write l4 header */
-  k->l4_hdr = *(u32 *) ip4_next_header (ip) & pow2_mask (l4_mask_bits[pr]);
+  l4hdr = *(u32 *) ip4_next_header (ip) & pow2_mask (l4_mask_bits[pr]);
+  /* protocol + l4 hdr */
+  return clib_crc32c_u64 (hash, ((u64) pr << 32) | l4hdr);
 }
-static_always_inline void
-compute_ip_key (void *p, crc32c_5tuple_key_t *key)
+static_always_inline u32
+compute_ip_key (void *p)
 {
   if ((((u8 *) p)[0] & 0xf0) == 0x40)
-    compute_ip4_key (p, key);
+    return compute_ip4_key (p);
   else if ((((u8 *) p)[0] & 0xf0) == 0x60)
-    compute_ip6_key (p, key);
+    return compute_ip6_key (p);
+  return 0;
 }
 
 void
@@ -82,22 +64,15 @@ vnet_crc32c_5tuple_ip_func (void **p, u32 *hash, u32 n_packets)
 
   while (n_left_from >= 8)
     {
-      crc32c_5tuple_key_t key[4] = {};
-
       clib_prefetch_load (p[4]);
       clib_prefetch_load (p[5]);
       clib_prefetch_load (p[6]);
       clib_prefetch_load (p[7]);
 
-      compute_ip_key (p[0], &key[0]);
-      compute_ip_key (p[1], &key[1]);
-      compute_ip_key (p[2], &key[2]);
-      compute_ip_key (p[3], &key[3]);
-
-      hash[0] = clib_crc32c (key[0].as_u8, sizeof (key[0]));
-      hash[1] = clib_crc32c (key[1].as_u8, sizeof (key[1]));
-      hash[2] = clib_crc32c (key[2].as_u8, sizeof (key[2]));
-      hash[3] = clib_crc32c (key[3].as_u8, sizeof (key[3]));
+      hash[0] = compute_ip_key (p[0]);
+      hash[1] = compute_ip_key (p[1]);
+      hash[2] = compute_ip_key (p[2]);
+      hash[3] = compute_ip_key (p[3]);
 
       hash += 4;
       n_left_from -= 4;
@@ -106,11 +81,7 @@ vnet_crc32c_5tuple_ip_func (void **p, u32 *hash, u32 n_packets)
 
   while (n_left_from > 0)
     {
-      crc32c_5tuple_key_t key = {};
-
-      compute_ip_key (p[0], &key);
-
-      hash[0] = clib_crc32c (key.as_u8, sizeof (key));
+      hash[0] = compute_ip_key (p[0]);
 
       hash += 1;
       n_left_from -= 1;
@@ -118,8 +89,8 @@ vnet_crc32c_5tuple_ip_func (void **p, u32 *hash, u32 n_packets)
     }
 }
 
-static_always_inline void
-compute_ethernet_key (void *p, crc32c_5tuple_key_t *key)
+static_always_inline u32
+compute_ethernet_key (void *p)
 {
   u16 ethertype = 0, l2hdr_sz = 0;
 
@@ -144,13 +115,14 @@ compute_ethernet_key (void *p, crc32c_5tuple_key_t *key)
   if (ethertype == ETHERNET_TYPE_IP4)
     {
       ip4_header_t *ip4 = (ip4_header_t *) (p + l2hdr_sz);
-      compute_ip4_key (ip4, key);
+      return compute_ip4_key (ip4);
     }
   else if (ethertype == ETHERNET_TYPE_IP6)
     {
       ip6_header_t *ip6 = (ip6_header_t *) (p + l2hdr_sz);
-      compute_ip6_key (ip6, key);
+      return compute_ip6_key (ip6);
     }
+  return 0;
 }
 
 void
@@ -160,22 +132,15 @@ vnet_crc32c_5tuple_ethernet_func (void **p, u32 *hash, u32 n_packets)
 
   while (n_left_from >= 8)
     {
-      crc32c_5tuple_key_t key[4] = {};
-
       clib_prefetch_load (p[4]);
       clib_prefetch_load (p[5]);
       clib_prefetch_load (p[6]);
       clib_prefetch_load (p[7]);
 
-      compute_ethernet_key (p[0], &key[0]);
-      compute_ethernet_key (p[1], &key[1]);
-      compute_ethernet_key (p[2], &key[2]);
-      compute_ethernet_key (p[3], &key[3]);
-
-      hash[0] = clib_crc32c (key[0].as_u8, sizeof (key[0]));
-      hash[1] = clib_crc32c (key[1].as_u8, sizeof (key[1]));
-      hash[2] = clib_crc32c (key[2].as_u8, sizeof (key[2]));
-      hash[3] = clib_crc32c (key[3].as_u8, sizeof (key[3]));
+      hash[0] = compute_ethernet_key (p[0]);
+      hash[1] = compute_ethernet_key (p[1]);
+      hash[2] = compute_ethernet_key (p[2]);
+      hash[3] = compute_ethernet_key (p[3]);
 
       hash += 4;
       n_left_from -= 4;
@@ -184,11 +149,7 @@ vnet_crc32c_5tuple_ethernet_func (void **p, u32 *hash, u32 n_packets)
 
   while (n_left_from > 0)
     {
-      crc32c_5tuple_key_t key = {};
-
-      compute_ethernet_key (p[0], &key);
-
-      hash[0] = clib_crc32c (key.as_u8, sizeof (key));
+      hash[0] = compute_ethernet_key (p[0]);
 
       hash += 1;
       n_left_from -= 1;

@@ -24,11 +24,11 @@ static_always_inline u32
 lb_hash_hash (u64 k0, u64 k1, u64 k2, u64 k3, u64 k4)
 {
   u64 val = 0;
-  val = crc32_u64 (val, k0);
-  val = crc32_u64 (val, k1);
-  val = crc32_u64 (val, k2);
-  val = crc32_u64 (val, k3);
-  val = crc32_u64 (val, k4);
+  val = clib_crc32c_u64 (val, k0);
+  val = clib_crc32c_u64 (val, k1);
+  val = clib_crc32c_u64 (val, k2);
+  val = clib_crc32c_u64 (val, k3);
+  val = clib_crc32c_u64 (val, k4);
   return (u32) val;
 }
 
@@ -37,8 +37,8 @@ static_always_inline u32
 lb_hash_hash_2_tuples (u64 k0, u32 k1)
 {
   u64 val = 0;
-  val = crc32_u64 (val, k0);
-  val = crc32_u32 (val, k1);
+  val = clib_crc32c_u64 (val, k0);
+  val = clib_crc32c_u32 (val, k1);
   return (u32) val;
 }
 #else
