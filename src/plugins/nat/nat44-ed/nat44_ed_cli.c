@@ -418,7 +418,7 @@ add_address_command_fn (vlib_main_t * vm,
 	}
       else
 	{
-	  rv = nat44_ed_del_address (this_addr, 0, twice_nat);
+	  rv = nat44_ed_del_address (this_addr, twice_nat);
 	}
 
       switch (rv)
@@ -1279,14 +1279,14 @@ nat44_show_static_mappings_command_fn (vlib_main_t * vm,
 {
   snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m;
-  snat_static_map_resolve_t *rp;
+  snat_static_mapping_resolve_t *rp;
 
   vlib_cli_output (vm, "NAT44 static mappings:");
   pool_foreach (m, sm->static_mappings)
    {
     vlib_cli_output (vm, " %U", format_snat_static_mapping, m);
   }
-  vec_foreach (rp, sm->to_resolve)
+  vec_foreach (rp, sm->sm_to_resolve)
     vlib_cli_output (vm, " %U", format_snat_static_map_to_resolve, rp);
 
   return 0;
@@ -1358,21 +1358,14 @@ nat44_show_interface_address_command_fn (vlib_main_t * vm,
 {
   snat_main_t *sm = &snat_main;
   vnet_main_t *vnm = vnet_get_main ();
-  u32 *sw_if_index;
+  snat_address_resolve_t *ap;
 
   vlib_cli_output (vm, "NAT44 pool address interfaces:");
-  vec_foreach (sw_if_index, sm->auto_add_sw_if_indices)
+  vec_foreach (ap, sm->addr_to_resolve)
     {
-      vlib_cli_output (vm, " %U", format_vnet_sw_if_index_name, vnm,
-                       *sw_if_index);
+      vlib_cli_output (vm, " %U%s", format_vnet_sw_if_index_name, vnm,
+		       ap->sw_if_index, ap->is_twice_nat ? " twice-nat" : "");
     }
-  vlib_cli_output (vm, "NAT44 twice-nat pool address interfaces:");
-  vec_foreach (sw_if_index, sm->auto_add_sw_if_indices_twice_nat)
-    {
-      vlib_cli_output (vm, " %U", format_vnet_sw_if_index_name, vnm,
-                       *sw_if_index);
-    }
-
   return 0;
 }
 

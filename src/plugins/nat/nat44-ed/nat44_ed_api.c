@@ -308,7 +308,7 @@ static void
 	}
       else
 	{
-	  rv = nat44_ed_del_address (this_addr, 0, twice_nat);
+	  rv = nat44_ed_del_address (this_addr, twice_nat);
 	}
 
       if (rv)
@@ -825,9 +825,8 @@ send_nat44_static_mapping_details (snat_static_mapping_t * m,
 }
 
 static void
-send_nat44_static_map_resolve_details (snat_static_map_resolve_t * m,
-				       vl_api_registration_t * reg,
-				       u32 context)
+send_nat44_static_map_resolve_details (snat_static_mapping_resolve_t *m,
+				       vl_api_registration_t *reg, u32 context)
 {
   vl_api_nat44_static_mapping_details_t *rmp;
   snat_main_t *sm = &snat_main;
@@ -870,7 +869,7 @@ vl_api_nat44_static_mapping_dump_t_handler (vl_api_nat44_static_mapping_dump_t
   vl_api_registration_t *reg;
   snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m;
-  snat_static_map_resolve_t *rp;
+  snat_static_mapping_resolve_t *rp;
   int j;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
@@ -883,9 +882,9 @@ vl_api_nat44_static_mapping_dump_t_handler (vl_api_nat44_static_mapping_dump_t
        send_nat44_static_mapping_details (m, reg, mp->context);
   }
 
-  for (j = 0; j < vec_len (sm->to_resolve); j++)
+  for (j = 0; j < vec_len (sm->sm_to_resolve); j++)
     {
-      rp = sm->to_resolve + j;
+      rp = sm->sm_to_resolve + j;
       if (!is_sm_identity_nat (rp->flags))
 	send_nat44_static_map_resolve_details (rp, reg, mp->context);
     }
@@ -977,8 +976,8 @@ send_nat44_identity_mapping_details (snat_static_mapping_t * m, int index,
 }
 
 static void
-send_nat44_identity_map_resolve_details (snat_static_map_resolve_t * m,
-					 vl_api_registration_t * reg,
+send_nat44_identity_map_resolve_details (snat_static_mapping_resolve_t *m,
+					 vl_api_registration_t *reg,
 					 u32 context)
 {
   vl_api_nat44_identity_mapping_details_t *rmp;
@@ -1010,7 +1009,7 @@ static void
   vl_api_registration_t *reg;
   snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m;
-  snat_static_map_resolve_t *rp;
+  snat_static_mapping_resolve_t *rp;
   int j;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
@@ -1028,9 +1027,9 @@ static void
 	}
     }
 
-  for (j = 0; j < vec_len (sm->to_resolve); j++)
+  for (j = 0; j < vec_len (sm->sm_to_resolve); j++)
     {
-      rp = sm->to_resolve + j;
+      rp = sm->sm_to_resolve + j;
       if (is_sm_identity_nat (rp->flags))
 	send_nat44_identity_map_resolve_details (rp, reg, mp->context);
     }
@@ -1096,21 +1095,18 @@ static void
 vl_api_nat44_interface_addr_dump_t_handler (vl_api_nat44_interface_addr_dump_t
 					    * mp)
 {
-  vl_api_registration_t *reg;
   snat_main_t *sm = &snat_main;
-  u32 *i;
+  vl_api_registration_t *reg;
+  snat_address_resolve_t *ap;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     return;
 
-  vec_foreach (i, sm->auto_add_sw_if_indices)
+  vec_foreach (ap, sm->addr_to_resolve)
     {
-      send_nat44_interface_addr_details (*i, reg, mp->context, 0);
-    }
-  vec_foreach (i, sm->auto_add_sw_if_indices_twice_nat)
-    {
-      send_nat44_interface_addr_details (*i, reg, mp->context, 1);
+      send_nat44_interface_addr_details (ap->sw_if_index, reg, mp->context,
+					 ap->is_twice_nat);
     }
 }
 
