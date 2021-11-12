@@ -261,10 +261,6 @@ typedef struct
   dpdk_device_addr_type_t dev_addr_type;
   u8 *name;
   u8 is_blacklisted;
-  u8 vlan_strip_offload;
-#define DPDK_DEVICE_VLAN_STRIP_DEFAULT 0
-#define DPDK_DEVICE_VLAN_STRIP_OFF 1
-#define DPDK_DEVICE_VLAN_STRIP_ON  2
 
 #define _(x) uword x;
     foreach_dpdk_device_config_item
