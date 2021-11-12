@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8a5b8c10_1ab2fc3c",
+        "filename": "src/vat/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-11-12T07:46:47Z",
+      "side": 0,
+      "message": "vat loads plugins so you cannot remove dl.",
+      "revId": "ef2c0f177dd3c6ea174ed210f15567b08939db4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
