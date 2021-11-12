@@ -188,7 +188,8 @@ format_snat_static_mapping (u8 * s, va_list * args)
 u8 *
 format_snat_static_map_to_resolve (u8 * s, va_list * args)
 {
-  snat_static_map_resolve_t *m = va_arg (*args, snat_static_map_resolve_t *);
+  snat_static_mapping_resolve_t *m =
+    va_arg (*args, snat_static_mapping_resolve_t *);
   vnet_main_t *vnm = vnet_get_main ();
 
   if (is_sm_addr_only (m->flags))

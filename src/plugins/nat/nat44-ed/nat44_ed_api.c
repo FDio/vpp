@@ -47,15 +47,19 @@ vl_api_nat44_ed_plugin_enable_disable_t_handler (
 
   if (mp->enable)
     {
-      c.static_mapping_only = mp->flags & NAT44_API_IS_STATIC_MAPPING_ONLY;
-      c.connection_tracking = mp->flags & NAT44_API_IS_CONNECTION_TRACKING;
+      if ((mp->flags & NAT44_API_IS_STATIC_MAPPING_ONLY) ||
+	  (mp->flags & NAT44_API_IS_CONNECTION_TRACKING))
+	{
+	  rv = VNET_API_ERROR_UNSUPPORTED;
+	}
+      else
+	{
+	  c.sessions = ntohl (mp->sessions);
+	  c.inside_vrf = ntohl (mp->inside_vrf);
+	  c.outside_vrf = ntohl (mp->outside_vrf);
 
-      c.inside_vrf = ntohl (mp->inside_vrf);
-      c.outside_vrf = ntohl (mp->outside_vrf);
-
-      c.sessions = ntohl (mp->sessions);
-
-      rv = nat44_plugin_enable (c);
+	  rv = nat44_plugin_enable (c);
+	}
     }
   else
     {
@@ -275,12 +279,6 @@ static void
   int rv = 0;
   u32 *tmp;
 
-  if (sm->static_mapping_only)
-    {
-      rv = VNET_API_ERROR_FEATURE_DISABLED;
-      goto send_reply;
-    }
-
   is_add = mp->is_add;
   twice_nat = mp->flags & NAT_API_IS_TWICE_NAT;
 
@@ -308,7 +306,7 @@ static void
 	}
       else
 	{
-	  rv = nat44_ed_del_address (this_addr, 0, twice_nat);
+	  rv = nat44_ed_del_address (this_addr, twice_nat);
 	}
 
       if (rv)
@@ -825,9 +823,8 @@ send_nat44_static_mapping_details (snat_static_mapping_t * m,
 }
 
 static void
-send_nat44_static_map_resolve_details (snat_static_map_resolve_t * m,
-				       vl_api_registration_t * reg,
-				       u32 context)
+send_nat44_static_map_resolve_details (snat_static_mapping_resolve_t *m,
+				       vl_api_registration_t *reg, u32 context)
 {
   vl_api_nat44_static_mapping_details_t *rmp;
   snat_main_t *sm = &snat_main;
@@ -870,7 +867,7 @@ vl_api_nat44_static_mapping_dump_t_handler (vl_api_nat44_static_mapping_dump_t
   vl_api_registration_t *reg;
   snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m;
-  snat_static_map_resolve_t *rp;
+  snat_static_mapping_resolve_t *rp;
   int j;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
@@ -883,9 +880,9 @@ vl_api_nat44_static_mapping_dump_t_handler (vl_api_nat44_static_mapping_dump_t
        send_nat44_static_mapping_details (m, reg, mp->context);
   }
 
-  for (j = 0; j < vec_len (sm->to_resolve); j++)
+  for (j = 0; j < vec_len (sm->sm_to_resolve); j++)
     {
-      rp = sm->to_resolve + j;
+      rp = sm->sm_to_resolve + j;
       if (!is_sm_identity_nat (rp->flags))
 	send_nat44_static_map_resolve_details (rp, reg, mp->context);
     }
@@ -977,8 +974,8 @@ send_nat44_identity_mapping_details (snat_static_mapping_t * m, int index,
 }
 
 static void
-send_nat44_identity_map_resolve_details (snat_static_map_resolve_t * m,
-					 vl_api_registration_t * reg,
+send_nat44_identity_map_resolve_details (snat_static_mapping_resolve_t *m,
+					 vl_api_registration_t *reg,
 					 u32 context)
 {
   vl_api_nat44_identity_mapping_details_t *rmp;
@@ -1010,7 +1007,7 @@ static void
   vl_api_registration_t *reg;
   snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m;
-  snat_static_map_resolve_t *rp;
+  snat_static_mapping_resolve_t *rp;
   int j;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
@@ -1028,9 +1025,9 @@ static void
 	}
     }
 
-  for (j = 0; j < vec_len (sm->to_resolve); j++)
+  for (j = 0; j < vec_len (sm->sm_to_resolve); j++)
     {
-      rp = sm->to_resolve + j;
+      rp = sm->sm_to_resolve + j;
       if (is_sm_identity_nat (rp->flags))
 	send_nat44_identity_map_resolve_details (rp, reg, mp->context);
     }
@@ -1045,12 +1042,6 @@ static void
   u32 sw_if_index = ntohl (mp->sw_if_index);
   u8 twice_nat;
   int rv = 0;
-
-  if (sm->static_mapping_only)
-    {
-      rv = VNET_API_ERROR_FEATURE_DISABLED;
-      goto send_reply;
-    }
 
   VALIDATE_SW_IF_INDEX (mp);
 
@@ -1067,7 +1058,6 @@ static void
 
   BAD_SW_IF_INDEX_LABEL;
 
-send_reply:
   REPLY_MACRO (VL_API_NAT44_ADD_DEL_INTERFACE_ADDR_REPLY);
 }
 
@@ -1096,21 +1086,18 @@ static void
 vl_api_nat44_interface_addr_dump_t_handler (vl_api_nat44_interface_addr_dump_t
 					    * mp)
 {
-  vl_api_registration_t *reg;
   snat_main_t *sm = &snat_main;
-  u32 *i;
+  vl_api_registration_t *reg;
+  snat_address_resolve_t *ap;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     return;
 
-  vec_foreach (i, sm->auto_add_sw_if_indices)
+  vec_foreach (ap, sm->addr_to_resolve)
     {
-      send_nat44_interface_addr_details (*i, reg, mp->context, 0);
-    }
-  vec_foreach (i, sm->auto_add_sw_if_indices_twice_nat)
-    {
-      send_nat44_interface_addr_details (*i, reg, mp->context, 1);
+      send_nat44_interface_addr_details (ap->sw_if_index, reg, mp->context,
+					 ap->is_twice_nat);
     }
 }
 
@@ -1450,19 +1437,17 @@ vl_api_nat44_plugin_enable_disable_t_handler (
 
   if (mp->enable)
     {
-      if (mp->users || mp->user_sessions)
+      if ((mp->flags & NAT44_API_IS_STATIC_MAPPING_ONLY) ||
+	  (mp->flags & NAT44_API_IS_CONNECTION_TRACKING) || mp->users ||
+	  mp->user_sessions)
 	{
 	  rv = VNET_API_ERROR_UNSUPPORTED;
 	}
       else
 	{
-	  c.static_mapping_only = mp->flags & NAT44_API_IS_STATIC_MAPPING_ONLY;
-	  c.connection_tracking = mp->flags & NAT44_API_IS_CONNECTION_TRACKING;
-
+	  c.sessions = ntohl (mp->sessions);
 	  c.inside_vrf = ntohl (mp->inside_vrf);
 	  c.outside_vrf = ntohl (mp->outside_vrf);
-
-	  c.sessions = ntohl (mp->sessions);
 
 	  rv = nat44_plugin_enable (c);
 	}
@@ -1500,9 +1485,8 @@ vl_api_nat_show_config_t_handler (vl_api_nat_show_config_t *mp)
 		       rmp->max_translations_per_user = 0;
 		       rmp->outside_vrf_id = htonl (sm->outside_vrf_id);
 		       rmp->inside_vrf_id = htonl (sm->inside_vrf_id);
-		       rmp->static_mapping_only = sm->static_mapping_only;
-		       rmp->static_mapping_connection_tracking =
-			 sm->static_mapping_connection_tracking;
+		       rmp->static_mapping_only = 0;
+		       rmp->static_mapping_connection_tracking = 0;
 		       rmp->endpoint_dependent = 1;
 		       rmp->out2in_dpo = 0;
 		     }));
@@ -1522,9 +1506,8 @@ vl_api_nat_show_config_2_t_handler (vl_api_nat_show_config_2_t *mp)
       rmp->max_translations_per_user = 0;
       rmp->outside_vrf_id = htonl (sm->outside_vrf_id);
       rmp->inside_vrf_id = htonl (sm->inside_vrf_id);
-      rmp->static_mapping_only = sm->static_mapping_only;
-      rmp->static_mapping_connection_tracking =
-	sm->static_mapping_connection_tracking;
+      rmp->static_mapping_only = 0;
+      rmp->static_mapping_connection_tracking = 0;
       rmp->endpoint_dependent = 1;
       rmp->out2in_dpo = 0;
       rmp->max_translations_per_thread =
@@ -1564,10 +1547,6 @@ vl_api_nat44_show_running_config_t_handler (
       // consider how to split functionality between subplugins
       rmp->ipfix_logging_enabled = nat_ipfix_logging_enabled ();
       rmp->flags |= NAT44_IS_ENDPOINT_DEPENDENT;
-      if (rc->static_mapping_only)
-	rmp->flags |= NAT44_IS_STATIC_MAPPING_ONLY;
-      if (rc->connection_tracking)
-	rmp->flags |= NAT44_IS_CONNECTION_TRACKING;
     }));
 }
 
