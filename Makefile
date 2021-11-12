@@ -76,11 +76,7 @@ DEB_DEPENDS += enchant  # for docs
 
 LIBFFI=libffi6 # works on all but 20.04 and debian-testing
 
-ifeq ($(OS_VERSION_ID),18.04)
-	DEB_DEPENDS += python-dev python-all python-pip python-virtualenv
-	DEB_DEPENDS += libssl-dev
-	DEB_DEPENDS += clang-9 clang-format-10
-else ifeq ($(OS_VERSION_ID),20.04)
+ifeq ($(OS_VERSION_ID),20.04)
 	DEB_DEPENDS += python3-virtualenv
 	DEB_DEPENDS += libssl-dev
 	DEB_DEPENDS += libelf-dev # for libbpf (af_xdp)
@@ -708,7 +704,7 @@ pkg-verify: install-dep $(BR)/.deps.ok install-ext-deps
 	$(call banner,"Building $(PKG) packages")
 	@make pkg-$(PKG)
 
-MAKE_VERIFY_GATE_OS ?= ubuntu-18.04
+MAKE_VERIFY_GATE_OS ?= ubuntu-20.04
 .PHONY: verify
 verify: pkg-verify
 ifeq ($(OS_ID)-$(OS_VERSION_ID),$(MAKE_VERIFY_GATE_OS))
