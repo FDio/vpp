@@ -295,6 +295,8 @@ format_policer_action_type (u8 * s, va_list * va)
     s = format (s, "transmit");
   else if (a->action_type == QOS_ACTION_MARK_AND_TRANSMIT)
     s = format (s, "mark-and-transmit %U", format_ip_dscp, a->dscp);
+  else if (a->action_type == QOS_ACTION_HANDOFF)
+    s = format (s, "handoff");
   else
     s = format (s, "ILLEGAL");
   return s;
@@ -429,6 +431,8 @@ unformat_policer_action_type (unformat_input_t * input, va_list * va)
   else if (unformat (input, "mark-and-transmit %U", unformat_ip_dscp,
 		     &a->dscp))
     a->action_type = QOS_ACTION_MARK_AND_TRANSMIT;
+  else if (unformat (input, "handoff"))
+    a->action_type = QOS_ACTION_HANDOFF;
   else
     return 0;
   return 1;
