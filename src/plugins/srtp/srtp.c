@@ -227,7 +227,7 @@ srtp_ctx_write (srtp_tc_t *ctx, session_t *app_session,
 {
   u32 n_wrote = 0, to_deq, dgram_sz;
   session_dgram_pre_hdr_t hdr;
-  app_session_transport_t at;
+  app_session_transport_t at = {};
   svm_msg_q_t *mq;
   session_t *us;
   u8 buf[2000];
