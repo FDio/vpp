@@ -69,6 +69,7 @@ vl_api_af_xdp_create_t_handler (vl_api_af_xdp_create_t * mp)
   args.linux_ifname = mp->host_if[0] ? (char *) mp->host_if : 0;
   args.name = mp->name[0] ? (char *) mp->name : 0;
   args.prog = mp->prog[0] ? (char *) mp->prog : 0;
+  args.netns = mp->namespace[0] ? (u8 *) mp->namespace : 0;
   args.mode = af_xdp_api_mode (mp->mode);
   args.flags = af_xdp_api_flags (mp->flags);
   args.rxq_size = ntohs (mp->rxq_size);

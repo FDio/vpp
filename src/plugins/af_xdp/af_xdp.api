@@ -41,6 +41,7 @@ enumflag af_xdp_flag : u8
     @param mode - operation mode (optional)
     @param flags - flags (optional)
     @param prog - eBPF program path (optional)
+    @param namespace - netns of nic (optional)
 */
 
 define af_xdp_create
@@ -56,7 +57,8 @@ define af_xdp_create
   vl_api_af_xdp_mode_t mode [default=0];
   vl_api_af_xdp_flag_t flags [default=0];
   string prog[256];
-  option vat_help = "<host-if linux-ifname> [name ifname] [rx-queue-size size] [tx-queue-size size] [num-rx-queues <num|all>] [prog pathname] [zero-copy|no-zero-copy] [no-syscall-lock]";
+  string namespace[64];
+  option vat_help = "<host-if linux-ifname> [name ifname] [rx-queue-size size] [tx-queue-size size] [num-rx-queues <num|all>] [prog pathname] [netns ns][zero-copy|no-zero-copy] [no-syscall-lock]";
   option status="in_progress";
 };
 
