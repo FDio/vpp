@@ -25,6 +25,7 @@
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vlib/pci/pci.h>
+#include <vppinfra/linux/netns.h>
 #include <vppinfra/linux/sysfs.h>
 #include <vppinfra/unix.h>
 #include <vnet/ethernet/ethernet.h>
@@ -89,6 +90,48 @@ af_xdp_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
   return ~0;
 }
 
+int
+af_xdp_enter_netns (char *netns, int *fds)
+{
+  if (netns != NULL)
+    {
+      *fds = *(fds + 1) = -1;
+      *fds = clib_netns_open (NULL /* self */);
+      if ((*(fds + 1) = clib_netns_open ((u8 *) netns)) == -1)
+	return VNET_API_ERROR_SYSCALL_ERROR_8;
+      if (clib_setns (*(fds + 1)) == -1)
+	return VNET_API_ERROR_SYSCALL_ERROR_9;
+    }
+  return 0;
+}
+
+void
+af_xdp_cleanup_netns (int *fds)
+{
+  if (*fds != -1)
+    close (*fds);
+
+  if (*(fds + 1) != -1)
+    close (*(fds + 1));
+
+  *fds = *(fds + 1) = -1;
+}
+
+int
+af_xdp_exit_netns (char *netns, int *fds)
+{
+  int ret = 0;
+  if (netns != NULL)
+    {
+      if (*fds != -1)
+	ret = clib_setns (*fds);
+
+      af_xdp_cleanup_netns (fds);
+    }
+
+  return ret;
+}
+
 void
 af_xdp_delete_if (vlib_main_t * vm, af_xdp_device_t * ad)
 {
@@ -118,7 +161,11 @@ af_xdp_delete_if (vlib_main_t * vm, af_xdp_device_t * ad)
 
   if (ad->bpf_obj)
     {
+      int ns_fds[2];
+      af_xdp_enter_netns (ad->netns, ns_fds);
       bpf_set_link_xdp_fd (ad->linux_ifindex, -1, 0);
+      af_xdp_exit_netns (ad->netns, ns_fds);
+
       bpf_object__unload (ad->bpf_obj);
     }
 
@@ -127,6 +174,9 @@ af_xdp_delete_if (vlib_main_t * vm, af_xdp_device_t * ad)
   vec_free (ad->buffer_template);
   vec_free (ad->rxqs);
   vec_free (ad->txqs);
+  vec_free (ad->name);
+  vec_free (ad->linux_ifname);
+  vec_free (ad->netns);
   clib_error_free (ad->error);
   pool_put (axm->devices, ad);
 }
@@ -392,7 +442,8 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
   vnet_sw_interface_t *sw;
   vnet_hw_interface_t *hw;
   int rxq_num, txq_num, q_num;
-  int i;
+  int ns_fds[2];
+  int i, ret;
 
   args->rxq_size = args->rxq_size ? args->rxq_size : 2 * VLIB_FRAME_SIZE;
   args->txq_size = args->txq_size ? args->txq_size : 2 * VLIB_FRAME_SIZE;
@@ -417,13 +468,22 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
       goto err0;
     }
 
+  ret = af_xdp_enter_netns (args->netns, ns_fds);
+  if (ret)
+    {
+      args->rv = ret;
+      args->error = clib_error_return (0, "enter netns %s failed, ret %d",
+				       args->netns, args->rv);
+      goto err0;
+    }
+
   af_xdp_get_q_count (args->linux_ifname, &rxq_num, &txq_num);
   if (args->rxq_num > rxq_num && AF_XDP_NUM_RX_QUEUES_ALL != args->rxq_num)
     {
       args->rv = VNET_API_ERROR_INVALID_VALUE;
       args->error = clib_error_create ("too many rxq requested (%d > %d)",
 				       args->rxq_num, rxq_num);
-      goto err0;
+      goto err1;
     }
   rxq_num = clib_min (rxq_num, args->rxq_num);
   txq_num = clib_min (txq_num, tm->n_vlib_mains);
@@ -437,8 +497,10 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
   ad->linux_ifname = (char *) format (0, "%s", args->linux_ifname);
   vec_validate (ad->linux_ifname, IFNAMSIZ - 1);	/* libbpf expects ifname to be at least IFNAMSIZ */
 
+  ad->netns = (char *) format (0, "%s", args->netns);
+
   if (args->prog && af_xdp_load_program (args, ad))
-    goto err1;
+    goto err2;
 
   q_num = clib_max (rxq_num, txq_num);
   ad->rxq_num = rxq_num;
@@ -476,7 +538,7 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 	      (i < rxq_num && AF_XDP_NUM_RX_QUEUES_ALL != args->rxq_num))
 	    {
 	      ad->rxq_num = ad->txq_num = 0;
-	      goto err1; /* failed creating requested rxq: fatal error, bailing
+	      goto err2; /* failed creating requested rxq: fatal error, bailing
 			    out */
 	    }
 
@@ -485,6 +547,13 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 	  clib_error_free (args->error);
 	  break;
 	}
+    }
+
+  if (af_xdp_exit_netns (args->netns, ns_fds))
+    {
+      args->rv = VNET_API_ERROR_SYSCALL_ERROR_10;
+      args->error = clib_error_return (0, "exit netns failed");
+      goto err2;
     }
 
   if (ad->txq_num < tm->n_vlib_mains)
@@ -501,8 +570,16 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 					   af_xdp_get_numa
 					   (ad->linux_ifname));
   if (!args->name)
-    ad->name =
-      (char *) format (0, "%s/%d", ad->linux_ifname, ad->dev_instance);
+    {
+      char *ifname = ad->linux_ifname;
+      if (args->netns != NULL && strncmp (args->netns, "pid:", 4) == 0)
+	{
+	  ad->name =
+	    (char *) format (0, "%s/%u", ifname, atoi (args->netns + 4));
+	}
+      else
+	ad->name = (char *) format (0, "%s/%d", ifname, ad->dev_instance);
+    }
   else
     ad->name = (char *) format (0, "%s", args->name);
 
@@ -516,7 +593,7 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
       args->rv = VNET_API_ERROR_INVALID_INTERFACE;
       args->error =
 	clib_error_return (0, "ethernet_register_interface() failed");
-      goto err1;
+      goto err2;
     }
 
   sw = vnet_get_hw_sw_interface (vnm, ad->hw_if_index);
@@ -543,7 +620,7 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
       vnet_hw_if_set_rx_queue_file_index (vnm, rxq->queue_index,
 					  rxq->file_index);
       if (af_xdp_device_set_rxq_mode (ad, rxq, AF_XDP_RXQ_MODE_POLLING))
-	goto err1;
+	goto err2;
     }
 
   vnet_hw_if_update_runtime_data (vnm, ad->hw_if_index);
@@ -558,8 +635,10 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 
   return;
 
-err1:
+err2:
   af_xdp_delete_if (vm, ad);
+err1:
+  af_xdp_cleanup_netns (ns_fds);
 err0:
   vlib_log_err (am->log_class, "%U", format_clib_error, args->error);
 }

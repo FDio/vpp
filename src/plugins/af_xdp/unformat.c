@@ -46,6 +46,8 @@ unformat_af_xdp_create_if_args (unformat_input_t * input, va_list * vargs)
 	;
       else if (unformat (line_input, "prog %s", &args->prog))
 	;
+      else if (unformat (line_input, "netns %s", &args->netns))
+	;
       else if (unformat (line_input, "no-zero-copy"))
 	args->mode = AF_XDP_MODE_COPY;
       else if (unformat (line_input, "zero-copy"))
