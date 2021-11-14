@@ -21,6 +21,9 @@
 #include <termios.h>
 #include <unistd.h>
 #include <string.h>
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #define DEBUG 0
 
@@ -31,45 +34,57 @@
 
 #include <arpa/telnet.h>
 
-#include <vppinfra/mem.h>
-#include <vppinfra/format.h>
-#include <vppinfra/socket.h>
-
 #define SOCKET_FILE "/run/vpp/cli.sock"
 
 volatile int window_resized = 0;
 struct termios orig_tio;
 
 static void
-send_ttype (clib_socket_t * s, int is_interactive)
+send_ttype (int sock_fd, int is_interactive)
 {
   char *term;
+  static char buf[2048];
+
+  /* wipe the buffer so there is no potential
+   * for inter-invocation leakage */
+  memset (buf, 0, sizeof (buf));
 
   term = is_interactive ? getenv ("TERM") : "vppctl";
   if (term == NULL)
     term = "dumb";
 
-  clib_socket_tx_add_formatted (s, "%c%c%c" "%c%s" "%c%c",
-				IAC, SB, TELOPT_TTYPE, 0, term, IAC, SE);
-  clib_socket_tx (s);
+  int len = snprintf (buf, sizeof (buf),
+		      "%c%c%c"
+		      "%c%s"
+		      "%c%c",
+		      IAC, SB, TELOPT_TTYPE, 0, term, IAC, SE);
+  send (sock_fd, buf, len, 0);
 }
 
 static void
-send_naws (clib_socket_t * s)
+send_naws (int sock_fd)
 {
   struct winsize ws;
+  static char buf[2048];
 
+  memset (buf, 0, sizeof (buf));
   if (ioctl (STDIN_FILENO, TIOCGWINSZ, &ws) < 0)
     {
-      clib_unix_warning ("ioctl(TIOCGWINSZ)");
+      fprintf (stderr, "ioctl(TIOCGWINSZ)");
       return;
     }
 
-  clib_socket_tx_add_formatted (s, "%c%c%c" "%c%c%c%c" "%c%c",
-				IAC, SB, TELOPT_NAWS,
-				ws.ws_col >> 8, ws.ws_col & 0xff,
-				ws.ws_row >> 8, ws.ws_row & 0xff, IAC, SE);
-  clib_socket_tx (s);
+  int len = snprintf (buf, sizeof (buf),
+		      "%c%c%c"
+		      "%c%c%c%c"
+		      "%c%c",
+		      IAC, SB, TELOPT_NAWS, ws.ws_col >> 8, ws.ws_col & 0xff,
+		      ws.ws_row >> 8, ws.ws_row & 0xff, IAC, SE);
+  int n_written = write (sock_fd, buf, len);
+  if (n_written < len)
+    {
+      perror ("send_naws");
+    }
 }
 
 static void
@@ -84,74 +99,82 @@ signal_handler_term (int signum)
   tcsetattr (STDIN_FILENO, TCSAFLUSH, &orig_tio);
 }
 
-static u8 *
-process_input (u8 * str, clib_socket_t * s, int is_interactive,
-	       int *sent_ttype)
+static int
+process_input (int sock_fd, unsigned char *rx_buf, int rx_buf_len,
+	       int is_interactive, int *sent_ttype)
 {
   int i = 0;
+  int j = 0;
 
-  while (i < vec_len (s->rx_buffer))
+  while (i < rx_buf_len)
     {
-      if (s->rx_buffer[i] == IAC)
+      if (rx_buf[i] == IAC)
 	{
-	  if (s->rx_buffer[i + 1] == SB)
+	  if (rx_buf[i + 1] == SB)
 	    {
-	      u8 *sb = 0;
-	      char opt = s->rx_buffer[i + 2];
+	      char opt = rx_buf[i + 2];
 	      i += 3;
-	      while (s->rx_buffer[i] != IAC)
-		vec_add1 (sb, s->rx_buffer[i++]);
-
 #if DEBUG
-	      clib_warning ("SB %s\n  %U", TELOPT (opt),
-			    format_hexdump, sb, vec_len (sb));
+	      if (rx_buf[i] != IAC)
+		{
+		  fprintf (stderr, "SB ");
+		}
+	      while (rx_buf[i] != IAC && i < rx_buf_len)
+		fprintf (stderr, "%02x ", rx_buf[i++]);
+	      fprintf (stderr, "\n");
+#else
+	      while (rx_buf[i] != IAC && i < rx_buf_len)
+		{
+		  i++;
+		}
 #endif
-	      vec_free (sb);
 	      i += 2;
 	      if (opt == TELOPT_TTYPE)
 		{
-		  send_ttype (s, is_interactive);
+		  send_ttype (sock_fd, is_interactive);
 		  *sent_ttype = 1;
 		}
 	      else if (is_interactive && opt == TELOPT_NAWS)
-		send_naws (s);
+		send_naws (sock_fd);
 	    }
 	  else
 	    {
 #if DEBUG
-	      clib_warning ("IAC at %d, IAC %s %s", i,
-			    TELCMD (s->rx_buffer[i + 1]),
-			    TELOPT (s->rx_buffer[i + 2]));
+	      fprintf (stderr, "IAC at %d, IAC %s %s", i,
+		       TELCMD (rx_buf[i + 1]), TELOPT (rx_buf[i + 2]));
 #endif
 	      i += 3;
 	    }
 	}
       else
-	vec_add1 (str, s->rx_buffer[i++]);
+	{
+	  /* i is always the same or ahead of j, so at worst this is a no-op */
+	  rx_buf[j] = rx_buf[i];
+	  i++;
+	  j++;
+	}
     }
-  vec_reset_length (s->rx_buffer);
-  return str;
+  return j;
 }
 
 
 int
 main (int argc, char *argv[])
 {
-  clib_socket_t _s = { 0 }, *s = &_s;
-  clib_error_t *error = 0;
   struct epoll_event event;
   struct sigaction sa;
   struct termios tio;
   int efd = -1;
-  u8 *str = 0;
-  u8 *cmd = 0;
+  char *cmd = 0;
+  int cmd_len = 0;
   int do_quit = 0;
   int is_interactive = 0;
   int acked = 1;		/* counts messages from VPP; starts at 1 */
   int sent_ttype = 0;
-
-
-  clib_mem_init (0, 64ULL << 10);
+  char *sock_fname = SOCKET_FILE;
+  int sock_fd = -1;
+  int error = 0;
+  int arg = 0;
 
   /* process command line */
   argc--;
@@ -159,32 +182,56 @@ main (int argc, char *argv[])
 
   if (argc > 1 && strncmp (argv[0], "-s", 2) == 0)
     {
-      s->config = argv[1];
+      sock_fname = argv[1];
       argc -= 2;
       argv += 2;
     }
-  else
-    s->config = SOCKET_FILE;
 
-  while (argc--)
-    cmd = format (cmd, "%s%c", (argv++)[0], argc ? ' ' : 0);
+  struct sockaddr_un saddr = { 0 };
+  saddr.sun_family = AF_UNIX;
+  strncpy (saddr.sun_path, sock_fname, sizeof (saddr.sun_path));
 
-  s->flags = CLIB_SOCKET_F_IS_CLIENT;
+  sock_fd = socket (AF_UNIX, SOCK_STREAM, 0);
+  if (sock_fd < 0)
+    {
+      perror ("socket");
+      exit (1);
+    }
 
-  error = clib_socket_init (s);
-  if (error)
-    goto done;
+  if (connect (sock_fd, (struct sockaddr *) &saddr, sizeof (saddr)) < 0)
+    {
+      perror ("connect");
+      exit (1);
+    }
+
+  for (arg = 0; arg < argc; arg++)
+    {
+      cmd_len += strlen (argv[arg]) + 1;
+    }
+  if (cmd_len > 0)
+    {
+      cmd_len++; // account for \n in the end
+      cmd = malloc (cmd_len);
+      while (argc--)
+	{
+	  strncat (cmd, *argv++, cmd_len);
+	  strncat (cmd, " ", cmd_len);
+	}
+      cmd[cmd_len - 2] = '\n';
+      cmd[cmd_len - 1] = 0;
+    }
 
   is_interactive = isatty (STDIN_FILENO) && cmd == 0;
 
   if (is_interactive)
     {
       /* Capture terminal resize events */
-      clib_memset (&sa, 0, sizeof (struct sigaction));
+      memset (&sa, 0, sizeof (struct sigaction));
       sa.sa_handler = signal_handler_winch;
       if (sigaction (SIGWINCH, &sa, 0) < 0)
 	{
-	  error = clib_error_return_unix (0, "sigaction");
+	  error = errno;
+	  perror ("sigaction for SIGWINCH");
 	  goto done;
 	}
 
@@ -192,14 +239,16 @@ main (int argc, char *argv[])
       sa.sa_handler = signal_handler_term;
       if (sigaction (SIGTERM, &sa, 0) < 0)
 	{
-	  error = clib_error_return_unix (0, "sigaction");
+	  error = errno;
+	  perror ("sigaction for SIGTERM");
 	  goto done;
 	}
 
       /* Save the original tty state so we can restore it later */
       if (tcgetattr (STDIN_FILENO, &orig_tio) < 0)
 	{
-	  error = clib_error_return_unix (0, "tcgetattr");
+	  error = errno;
+	  perror ("tcgetattr");
 	  goto done;
 	}
 
@@ -212,7 +261,8 @@ main (int argc, char *argv[])
 
       if (tcsetattr (STDIN_FILENO, TCSAFLUSH, &tio) < 0)
 	{
-	  error = clib_error_return_unix (0, "tcsetattr");
+	  error = errno;
+	  perror ("tcsetattr");
 	  goto done;
 	}
     }
@@ -227,28 +277,33 @@ main (int argc, char *argv[])
       /* ignore EPERM; it means stdin is something like /dev/null */
       if (errno != EPERM)
 	{
-	  error = clib_error_return_unix (0, "epoll_ctl[%d]", STDIN_FILENO);
+	  error = errno;
+	  fprintf (stderr, "epoll_ctl[%d]", STDIN_FILENO);
+	  perror (0);
 	  goto done;
 	}
     }
 
   /* register socket */
   event.events = EPOLLIN | EPOLLPRI | EPOLLERR;
-  event.data.fd = s->fd;
-  if (epoll_ctl (efd, EPOLL_CTL_ADD, s->fd, &event) != 0)
+  event.data.fd = sock_fd;
+  if (epoll_ctl (efd, EPOLL_CTL_ADD, sock_fd, &event) != 0)
     {
-      error = clib_error_return_unix (0, "epoll_ctl[%d]", s->fd);
+      error = errno;
+      fprintf (stderr, "epoll_ctl[%d]", sock_fd);
+      perror (0);
       goto done;
     }
 
   while (1)
     {
       int n;
+      static int sent_cmd = 0;
 
       if (window_resized)
 	{
 	  window_resized = 0;
-	  send_naws (s);
+	  send_naws (sock_fd);
 	}
 
       if ((n = epoll_wait (efd, &event, 1, -1)) < 0)
@@ -257,7 +312,8 @@ main (int argc, char *argv[])
 	  if (errno == EINTR)
 	    continue;
 
-	  error = clib_error_return_unix (0, "epoll_wait");
+	  error = errno;
+	  perror ("epoll_wait");
 	  goto done;
 	}
 
@@ -275,31 +331,40 @@ main (int argc, char *argv[])
 	  n = read (STDIN_FILENO, c, sizeof (c));
 	  if (n > 0)
 	    {
-	      memcpy (clib_socket_tx_add (s, n), c, n);
-	      error = clib_socket_tx (s);
+	      int n_written = write (sock_fd, c, n);
+	      if (n_written < n)
+		error = errno;
 	      if (error)
 		goto done;
 	    }
 	  else if (n < 0)
-	    clib_warning ("read rv=%d", n);
-	  else			/* EOF */
-	    do_quit = 1;
+	    fprintf (stderr, "read rv=%d", n);
+	  else
+	    { /* EOF */
+	      printf ("eof on stdin\n");
+	      do_quit = 1;
+	    }
 	}
-      else if (event.data.fd == s->fd)
+      else if (event.data.fd == sock_fd)
 	{
-	  error = clib_socket_rx (s, 100);
+	  unsigned char rx_buf[100];
+	  memset (rx_buf, 0, sizeof (rx_buf));
+	  int nread = recv (sock_fd, rx_buf, sizeof (rx_buf), 0);
+
+	  if (nread < 0)
+	    error = errno;
 	  if (error)
 	    break;
 
-	  if (clib_socket_rx_end_of_file (s))
+	  if (nread == 0)
 	    break;
 
-	  str = process_input (str, s, is_interactive, &sent_ttype);
+	  int len = process_input (sock_fd, rx_buf, nread, is_interactive,
+				   &sent_ttype);
 
-	  if (vec_len (str) > 0)
+	  if (len > 0)
 	    {
-	      int len = vec_len (str);
-	      u8 *p = str, *q = str;
+	      unsigned char *p = rx_buf, *q = rx_buf;
 
 	      while (len)
 		{
@@ -310,7 +375,8 @@ main (int argc, char *argv[])
 		  n = write (STDOUT_FILENO, p, q - p);
 		  if (n < 0)
 		    {
-		      error = clib_error_return_unix (0, "write");
+		      error = errno;
+		      perror ("write");
 		      goto done;
 		    }
 
@@ -322,42 +388,49 @@ main (int argc, char *argv[])
 		  len -= q - p;
 		  p = q;
 		}
-
-	      vec_reset_length (str);
 	    }
 
 	  if (do_quit && do_quit < acked)
 	    {
 	      /* Ask the other end to close the connection */
-	      clib_socket_tx_add_formatted (s, "quit\n");
-	      clib_socket_tx (s);
+	      char quit_str[] = "quit\n";
+	      int n = write (sock_fd, quit_str, strlen (quit_str));
+	      if (n < strlen (quit_str))
+		{
+		  error = errno;
+		  perror ("write quit");
+		}
 	      do_quit = 0;
 	    }
-	  if (cmd && sent_ttype)
+	  if (cmd && sent_ttype && !sent_cmd)
 	    {
 	      /* We wait until after the TELNET TTYPE option has been sent.
 	       * That is to make sure the session at the VPP end has switched
 	       * to line-by-line mode, and thus avoid prompts and echoing.
 	       * Note that it does also disable further TELNET option processing.
 	       */
-	      clib_socket_tx_add_formatted (s, "%s\n", cmd);
-	      clib_socket_tx (s);
-	      vec_free (cmd);
+	      int n_written = write (sock_fd, cmd, strlen (cmd) + 1);
+	      sent_cmd = 1;
+	      if (n_written < strlen (cmd))
+		{
+		  error = errno;
+		  perror ("write command");
+		  goto done;
+		}
 	      do_quit = acked;	/* quit after the next response */
 	    }
 	}
       else
 	{
-	  error = clib_error_return (0, "unknown fd");
+	  error = errno;
+	  perror ("unknown fd");
 	  goto done;
 	}
     }
 
-  error = clib_socket_close (s);
+  close (sock_fd);
 
 done:
-  vec_free (cmd);
-  vec_free (str);
   if (efd > -1)
     close (efd);
 
@@ -366,7 +439,6 @@ done:
 
   if (error)
     {
-      clib_error_report (error);
       return 1;
     }
 
