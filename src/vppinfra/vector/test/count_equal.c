@@ -35,37 +35,42 @@
                                                                               \
     mprotect (data, 1ULL < ps, PROT_NONE);                                    \
                                                                               \
-    for (int i = 1; i <= (1 << ps) / sizeof (data[0]); i++)                   \
-      data[-i] = 7;                                                           \
-                                                                              \
-    for (int i = 0; i < ARRAY_LEN (lengths); i++)                             \
+    for (u8 d = 0; d < 255; d++)                                              \
       {                                                                       \
-	uword rv, len = lengths[i];                                           \
-                                                                              \
-	if ((rv = wfn_##type (data - len, len)) != len)                       \
+	for (int i = 1; i <= (1 << ps) / sizeof (data[0]); i++)               \
+	  data[-i] = d;                                                       \
+	for (int i = 0; i < ARRAY_LEN (lengths); i++)                         \
 	  {                                                                   \
-	    err = clib_error_return (                                         \
-	      err, "testcase 1 failed for len %u (rv %u)", len, rv);          \
-	    goto done;                                                        \
-	  }                                                                   \
+	    uword rv, len = lengths[i];                                       \
                                                                               \
-	data[-1] = 8;                                                         \
-	if (len > 1 && ((rv = wfn_##type (data - len, len)) != len - 1))      \
-	  {                                                                   \
-	    err = clib_error_return (                                         \
-	      err, "testcase 2 failed for len %u (rv %u)", len, rv);          \
-	    goto done;                                                        \
-	  }                                                                   \
-	data[-1] = 7;                                                         \
+	    if ((rv = wfn_##type (data - len, len)) != len)                   \
+	      {                                                               \
+		err = clib_error_return (                                     \
+		  err, "testcase 1 failed for len %u data %u(rv %u)", len, d, \
+		  rv);                                                        \
+		goto done;                                                    \
+	      }                                                               \
                                                                               \
-	data[-2] = 8;                                                         \
-	if (len > 2 && ((rv = wfn_##type (data - len, len)) != len - 2))      \
-	  {                                                                   \
-	    err = clib_error_return (                                         \
-	      err, "testcase 3 failed for len %u (rv %u)", len, rv);          \
-	    goto done;                                                        \
+	    data[-1] = d + 1;                                                 \
+	    if (len > 1 && ((rv = wfn_##type (data - len, len)) != len - 1))  \
+	      {                                                               \
+		err = clib_error_return (                                     \
+		  err, "testcase 2 failed for len %u data %u (rv %u)", len,   \
+		  d, rv);                                                     \
+		goto done;                                                    \
+	      }                                                               \
+	    data[-1] = d;                                                     \
+                                                                              \
+	    data[-2] = d + 1;                                                 \
+	    if (len > 2 && ((rv = wfn_##type (data - len, len)) != len - 2))  \
+	      {                                                               \
+		err = clib_error_return (                                     \
+		  err, "testcase 3 failed for len %u data %u (rv %u)", len,   \
+		  d, rv);                                                     \
+		goto done;                                                    \
+	      }                                                               \
+	    data[-2] = d;                                                     \
 	  }                                                                   \
-	data[-2] = 7;                                                         \
       }                                                                       \
                                                                               \
   done:                                                                       \
