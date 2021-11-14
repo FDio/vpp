@@ -144,6 +144,27 @@ ct_session_endpoint (session_t * ll, session_endpoint_t * sep)
 }
 
 static void
+ct_set_invalid_app_wrk (ct_connection_t *ct, u8 is_client)
+{
+  ct_connection_t *peer_ct;
+
+  peer_ct = ct_connection_get (ct->peer_index, ct->c_thread_index);
+
+  if (is_client)
+    {
+      ct->client_wrk = APP_INVALID_INDEX;
+      if (peer_ct)
+	ct->client_wrk = APP_INVALID_INDEX;
+    }
+  else
+    {
+      ct->server_wrk = APP_INVALID_INDEX;
+      if (peer_ct)
+	ct->server_wrk = APP_INVALID_INDEX;
+    }
+}
+
+static void
 ct_session_dealloc_fifos (ct_connection_t *ct, svm_fifo_t *rx_fifo,
 			  svm_fifo_t *tx_fifo)
 {
@@ -155,6 +176,7 @@ ct_session_dealloc_fifos (ct_connection_t *ct, svm_fifo_t *rx_fifo,
   fifo_segment_t *fs;
   u8 del_segment = 0;
   u32 seg_index;
+  session_t *s;
   int cnt;
 
   /*
@@ -210,13 +232,27 @@ ct_session_dealloc_fifos (ct_connection_t *ct, svm_fifo_t *rx_fifo,
     {
       cnt = ct_seg->client_n_sessions;
       if (!cnt)
-	ct_seg->flags |= CT_SEGMENT_F_CLIENT_DETACHED;
+	{
+	  ct_seg->flags |= CT_SEGMENT_F_CLIENT_DETACHED;
+	  s = session_get (ct->c_s_index, ct->c_thread_index);
+	  if (s->app_wrk_index == APP_INVALID_INDEX)
+	    ct_set_invalid_app_wrk (ct, 1 /* is_client */);
+	}
+      else
+	goto done;
     }
   else
     {
       cnt = ct_seg->server_n_sessions;
       if (!cnt)
-	ct_seg->flags |= CT_SEGMENT_F_SERVER_DETACHED;
+	{
+	  ct_seg->flags |= CT_SEGMENT_F_SERVER_DETACHED;
+	  s = session_get (ct->c_s_index, ct->c_thread_index);
+	  if (s->app_wrk_index == APP_INVALID_INDEX)
+	    ct_set_invalid_app_wrk (ct, 0 /* is_client */);
+	}
+      else
+	goto done;
     }
 
   /*
@@ -242,37 +278,30 @@ ct_session_dealloc_fifos (ct_connection_t *ct, svm_fifo_t *rx_fifo,
       del_segment = 1;
     }
 
-  clib_rwlock_writer_unlock (&cm->app_segs_lock);
-
   /*
    * Session counter went to zero, notify the app that detached
    */
-  if (cnt)
-    return;
+  if (!del_segment)
+    goto done;
 
-  if (ct->flags & CT_CONN_F_CLIENT)
+  app_wrk = app_worker_get_if_valid (ct->client_wrk);
+  /* Determine if client app still needs notification, i.e., if it is
+   * still attached. If client detached and this is the last ct session
+   * on this segment, then its connects segment manager should also be
+   * detached, so do not send notification */
+  if (app_wrk)
     {
-      app_wrk = app_worker_get_if_valid (ct->client_wrk);
-      /* Determine if client app still needs notification, i.e., if it is
-       * still attached. If client detached and this is the last ct session
-       * on this segment, then its connects segment manager should also be
-       * detached, so do not send notification */
-      if (app_wrk)
-	{
-	  segment_manager_t *csm;
-	  csm = app_worker_get_connect_segment_manager (app_wrk);
-	  if (!segment_manager_app_detached (csm))
-	    app_worker_del_segment_notify (app_wrk, ct->segment_handle);
-	}
+      segment_manager_t *csm;
+      csm = app_worker_get_connect_segment_manager (app_wrk);
+      if (!segment_manager_app_detached (csm))
+	app_worker_del_segment_notify (app_wrk, ct->segment_handle);
     }
-  else if (!segment_manager_app_detached (sm))
+
+  if (!segment_manager_app_detached (sm))
     {
       app_wrk = app_worker_get (ct->server_wrk);
       app_worker_del_segment_notify (app_wrk, ct->segment_handle);
     }
-
-  if (!del_segment)
-    return;
 
   segment_manager_lock_and_del_segment (sm, seg_index);
 
@@ -280,6 +309,10 @@ ct_session_dealloc_fifos (ct_connection_t *ct, svm_fifo_t *rx_fifo,
    * the client's sessions will hold up segment removal */
   if (segment_manager_app_detached (sm) && !segment_manager_has_fifos (sm))
     segment_manager_free_safe (sm);
+
+done:
+
+  clib_rwlock_writer_unlock (&cm->app_segs_lock);
 }
 
 int
@@ -380,9 +413,6 @@ ct_lookup_free_segment (ct_main_t *cm, segment_manager_t *sm,
   pool_foreach (ct_seg, seg_ctx->segments)
     {
       /* Client or server has detached so segment cannot be used */
-      if ((ct_seg->flags & CT_SEGMENT_F_SERVER_DETACHED) ||
-	  (ct_seg->flags & CT_SEGMENT_F_CLIENT_DETACHED))
-	continue;
       fs = segment_manager_get_segment (sm, ct_seg->segment_index);
       free_bytes = fifo_segment_available_bytes (fs);
       max_fifos = fifo_segment_size (fs) / seg_ctx->fifo_pair_bytes;
@@ -522,6 +552,8 @@ ct_init_accepted_session (app_worker_t *server_wrk, ct_connection_t *ct,
 	  ct->seg_ctx_index = ct_seg->seg_ctx_index;
 	  ct->ct_seg_index = ct_seg->ct_seg_index;
 	  fs_index = ct_seg->segment_index;
+	  ct_seg->flags &=
+	    ~(CT_SEGMENT_F_SERVER_DETACHED | CT_SEGMENT_F_CLIENT_DETACHED);
 	  __atomic_add_fetch (&ct_seg->server_n_sessions, 1, __ATOMIC_RELAXED);
 	  __atomic_add_fetch (&ct_seg->client_n_sessions, 1, __ATOMIC_RELAXED);
 	}
@@ -682,6 +714,7 @@ ct_accept_rpc_wrk_handler (void *accept_args)
       return;
     }
 
+  cct->server_wrk = sct->server_wrk;
   cct->seg_ctx_index = sct->seg_ctx_index;
   cct->ct_seg_index = sct->ct_seg_index;
   cct->client_rx_fifo = ss->tx_fifo;
@@ -887,8 +920,8 @@ ct_session_postponed_cleanup (ct_connection_t *ct)
       /* Normal free for client session as the fifos are allocated through
        * the connects segment manager in a segment that's not shared with
        * the server */
-      session_free_w_fifos (s);
       ct_session_dealloc_fifos (ct, ct->client_rx_fifo, ct->client_tx_fifo);
+      session_free_w_fifos (s);
     }
   else
     {
