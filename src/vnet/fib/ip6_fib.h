@@ -149,6 +149,70 @@ ip6_fib_table_fwding_lookup (u32 fib_index,
     return 0;
 }
 
+always_inline void
+ip6_fib_table_fwding_lookup_x2 (u32 fib_index0,
+                                u32 fib_index1,
+                                const ip6_address_t * dst0,
+                                const ip6_address_t * dst1,
+                                index_t * lbi0,
+                                index_t * lbi1)
+{
+    ip6_fib_table_instance_t *table;
+    clib_bihash_kv_24_8_t kv0, kv1, value0 = { 0 }, value1 = { 0 };
+    int i, len;
+    int rv0 = ~0, rv1 = ~0;
+    u64 fib0, fib1;
+
+    table = &ip6_fib_table[IP6_FIB_TABLE_FWDING];
+    len = vec_len(table->prefix_lengths_in_search_order);
+
+    kv0.key[0] = dst0->as_u64[0];
+    kv0.key[1] = dst0->as_u64[1];
+    fib0 = ((u64)((fib_index0))<<32);
+
+    kv1.key[0] = dst1->as_u64[0];
+    kv1.key[1] = dst1->as_u64[1];
+    fib1 = ((u64)((fib_index1))<<32);
+
+    /* initialize lb index at the beginnig */
+    *lbi0 = 0;
+    *lbi1 = 0;
+
+    for (i = 0; i < len; i++)
+    {
+        int dst_address_length = table->prefix_lengths_in_search_order[i];
+        ip6_address_t * mask = &ip6_main.fib_masks[dst_address_length];
+
+        ASSERT(dst_address_length >= 0 && dst_address_length <= 128);
+        if (rv0 != 0)
+        {
+            kv0.key[0] &= mask->as_u64[0];
+            kv0.key[1] &= mask->as_u64[1];
+            kv0.key[2] = fib0 | dst_address_length;
+            rv0 = clib_bihash_search_inline_2_24_8(&table->ip6_hash, &kv0, &value0);
+            *lbi0 = value0.value;
+        }
+
+        if (rv1 != 0)
+        {
+            kv1.key[0] &= mask->as_u64[0];
+            kv1.key[1] &= mask->as_u64[1];
+            kv1.key[2] = fib1 | dst_address_length;
+            rv1 = clib_bihash_search_inline_2_24_8(&table->ip6_hash, &kv1, &value1);
+            *lbi1 = value1.value;
+        }
+
+        /* if both rv0 and rv1 are equal to zero, jump out of the for loop */
+        if ((rv0 | rv1) == 0)
+            break;
+    }
+
+    if (rv0 == 0)
+        *lbi0 = value0.value;
+    if (rv1 == 0)
+        *lbi1 = value1.value;
+}
+
 /**
  * @brief Walk all entries in a sub-tree of the FIB table
  * N.B: This is NOT safe to deletes. If you need to delete walk the whole

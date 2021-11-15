@@ -109,11 +109,9 @@ ip6_lookup_inline (vlib_main_t * vm,
 	  ip_lookup_set_buffer_fib_index (im->fib_index_by_sw_if_index, p0);
 	  ip_lookup_set_buffer_fib_index (im->fib_index_by_sw_if_index, p1);
 
-	  lbi0 = ip6_fib_table_fwding_lookup (vnet_buffer (p0)->ip.fib_index,
-					      dst_addr0);
-	  lbi1 = ip6_fib_table_fwding_lookup (vnet_buffer (p1)->ip.fib_index,
-					      dst_addr1);
-
+	  ip6_fib_table_fwding_lookup_x2 (vnet_buffer (p0)->ip.fib_index,
+					  vnet_buffer (p1)->ip.fib_index,
+					  dst_addr0, dst_addr1, &lbi0, &lbi1);
 	  lb0 = load_balance_get (lbi0);
 	  lb1 = load_balance_get (lbi1);
 	  ASSERT (lb0->lb_n_buckets > 0);
