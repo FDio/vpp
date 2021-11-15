@@ -23,7 +23,7 @@ add_vpp_plugin(perfmon
   perfmon.c
   intel/core.c
   intel/uncore.c
-  intel/bundle/membw_bound.c
+  intel/bundle/memory_stalls.c
   intel/bundle/inst_and_clock.c
   intel/bundle/load_blocks.c
   intel/bundle/mem_bw.c
