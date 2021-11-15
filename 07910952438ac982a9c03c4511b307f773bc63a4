@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6530fea4_f8226b0f",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-11-15T14:34:22Z",
+      "side": 1,
+      "message": "Fixed: \nhttps://gerrit.fd.io/r/c/vpp/+/34518",
+      "revId": "07910952438ac982a9c03c4511b307f773bc63a4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
