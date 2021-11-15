@@ -219,6 +219,7 @@ vcl_send_session_connect (vcl_worker_t * wrk, vcl_session_t * s)
   memset (mp, 0, sizeof (*mp));
   mp->client_index = wrk->api_client_handle;
   mp->context = s->session_index;
+  mp->dscp = s->dscp;
   mp->wrk_index = wrk->vpp_wrk_index;
   mp->is_ip4 = s->transport.is_ip4;
   mp->parent_handle = s->parent_handle;
@@ -3603,6 +3604,18 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
 	  VDBG (2, "VPPCOM_ATTR_GET_TX_FIFO_LEN: %u (0x%x), buflen %d,"
 		" #VPP-TBD#", *(size_t *) buffer, *(size_t *) buffer,
 		*buflen);
+	}
+      else
+	rv = VPPCOM_EINVAL;
+      break;
+
+    case VPPCOM_ATTR_SET_DSCP:
+      if (buffer && buflen && (*buflen >= sizeof (u8)))
+	{
+	  session->dscp = *(u8 *) buffer;
+
+	  VDBG (2, "VPPCOM_ATTR_SET_DSCP: %u (0x%x), buflen %d,",
+		*(u8 *) buffer, *(u8 *) buffer, *buflen);
 	}
       else
 	rv = VPPCOM_EINVAL;

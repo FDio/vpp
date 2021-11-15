@@ -173,6 +173,7 @@ session_mq_connect_one (session_connect_msg_t *mp)
   a->sep.port = mp->port;
   a->sep.transport_proto = mp->proto;
   a->sep.peer.fib_index = mp->vrf;
+  a->sep.dscp = mp->dscp;
   clib_memcpy_fast (&a->sep.peer.ip, &mp->lcl_ip, sizeof (mp->lcl_ip));
   if (mp->is_ip4)
     {
