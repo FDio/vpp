@@ -82,6 +82,7 @@ typedef vapi_error_e (*vapi_cb_t) (struct vapi_ctx_s *, void *, vapi_error_e,
 				   bool, void *);
 
 typedef void (*generic_swap_fn_t) (void *payload);
+typedef int (*verify_msg_size_fn_t) (void *msg, uword buf_size);
 
 typedef struct
 {
@@ -92,7 +93,7 @@ typedef struct
   bool has_context;
   unsigned int context_offset;
   unsigned int payload_offset;
-  size_t size;
+  verify_msg_size_fn_t verify_msg_size;
   generic_swap_fn_t swap_to_be;
   generic_swap_fn_t swap_to_host;
   vapi_msg_id_t id;		/* assigned at run-time */
@@ -122,7 +123,6 @@ void vapi_store_request (vapi_ctx_t ctx, u32 context, bool is_dump,
 int vapi_get_payload_offset (vapi_msg_id_t id);
 void (*vapi_get_swap_to_host_func (vapi_msg_id_t id)) (void *payload);
 void (*vapi_get_swap_to_be_func (vapi_msg_id_t id)) (void *payload);
-size_t vapi_get_message_size (vapi_msg_id_t id);
 size_t vapi_get_context_offset (vapi_msg_id_t id);
 bool vapi_msg_is_with_context (vapi_msg_id_t id);
 size_t vapi_get_message_count();
