@@ -753,12 +753,19 @@ vapi_msg_is_with_context (vapi_msg_id_t id)
   return __vapi_metadata.msgs[id]->has_context;
 }
 
+static int
+vapi_verify_msg_size (vapi_msg_id_t id, void *buf, uword buf_size)
+{
+  assert (id < __vapi_metadata.count);
+  return __vapi_metadata.msgs[id]->verify_msg_size (buf, buf_size);
+}
+
 vapi_error_e
 vapi_dispatch_one (vapi_ctx_t ctx)
 {
   VAPI_DBG ("vapi_dispatch_one()");
   void *msg;
-  size_t size;
+  uword size;
   vapi_error_e rv = vapi_recv (ctx, &msg, &size, SVM_Q_WAIT, 0);
   if (VAPI_OK != rv)
     {
@@ -781,12 +788,8 @@ vapi_dispatch_one (vapi_ctx_t ctx)
       return VAPI_EINVAL;
     }
   const vapi_msg_id_t id = ctx->vl_msg_id_to_vapi_msg_t[vpp_id];
-  const size_t expect_size = vapi_get_message_size (id);
-  if (size < expect_size)
+  if (vapi_verify_msg_size (id, msg, size))
     {
-      VAPI_ERR
-	("Invalid msg received, unexpected size `%zu' < expected min `%zu'",
-	 size, expect_size);
       vapi_msg_free (ctx, msg);
       return VAPI_EINVAL;
     }
@@ -897,13 +900,6 @@ void (*vapi_get_swap_to_be_func (vapi_msg_id_t id)) (void *msg)
 {
   assert (id < __vapi_metadata.count);
   return __vapi_metadata.msgs[id]->swap_to_be;
-}
-
-size_t
-vapi_get_message_size (vapi_msg_id_t id)
-{
-  assert (id < __vapi_metadata.count);
-  return __vapi_metadata.msgs[id]->size;
 }
 
 size_t
