@@ -145,6 +145,7 @@ typedef enum
   VPPCOM_ATTR_GET_VRF,
   VPPCOM_ATTR_GET_DOMAIN,
   VPPCOM_ATTR_SET_ENDPT_EXT_CFG,
+  VPPCOM_ATTR_SET_DSCP,
 } vppcom_attr_op_t;
 
 typedef struct _vcl_poll

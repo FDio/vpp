@@ -408,6 +408,7 @@ typedef struct session_connect_msg_
   u32 ckpair_index;
   u8 crypto_engine;
   u8 flags;
+  u8 dscp;
   uword ext_config;
 } __clib_packed session_connect_msg_t;
 

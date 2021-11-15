@@ -168,6 +168,7 @@ typedef struct vcl_session_
   u32 rcvbuf_size;		// VPP-TBD: Hack until support setsockopt(SO_RCVBUF)
 
   transport_endpt_ext_cfg_t *ext_config;
+  u8 dscp;
 
 #if VCL_ELOG
   elog_track_t elog_track;
