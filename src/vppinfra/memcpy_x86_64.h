@@ -597,10 +597,9 @@ clib_memcpy_x86_64 (void *restrict dst, const void *restrict src, size_t n)
     }
   return dst;
 #else
-#error "SSE/AVX2/AVX512 must be enabled"
-#endif
-
+  __builtin_memcpy (dst, src, n);
   return dst;
+#endif
 }
 
 /* clang-format off */
