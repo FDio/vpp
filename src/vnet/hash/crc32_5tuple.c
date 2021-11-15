@@ -22,7 +22,7 @@ static const u8 l4_mask_bits[256] = {
 static_always_inline u32
 compute_ip6_key (ip6_header_t *ip)
 {
-  u32 hash = 0, l4hdr;
+  u32 hash = 0, l4hdr = 0;
   u8 pr;
   /* dst + src ip as u64 */
   hash = clib_crc32c_u64 (hash, *(u64u *) ((u8 *) ip + 8));
@@ -31,6 +31,14 @@ compute_ip6_key (ip6_header_t *ip)
   hash = clib_crc32c_u64 (hash, *(u64u *) ((u8 *) ip + 32));
   pr = ip->protocol;
   l4hdr = *(u32 *) ip6_next_header (ip) & pow2_mask (l4_mask_bits[pr]);
+
+  /*
+   * Some extension headers are handled above. Rest can be handled
+   * below by using flow label.
+   */
+  if (l4hdr == 0)
+    l4hdr = (ip->ip_version_traffic_class_and_flow_label & 0xfffff);
+
   /* protocol + l4 hdr */
   return clib_crc32c_u64 (hash, ((u64) pr << 32) | l4hdr);
 }
