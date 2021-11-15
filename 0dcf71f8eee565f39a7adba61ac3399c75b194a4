@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "43fd80f5_2e810529",
+        "filename": "src/vnet/hash/crc32_5tuple.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-11-15T14:54:28Z",
+      "side": 1,
+      "message": "what if headers listed above are not 1st EH? I.e. If packet have 2 EH in following order: HbH, TCP.",
+      "revId": "0dcf71f8eee565f39a7adba61ac3399c75b194a4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
