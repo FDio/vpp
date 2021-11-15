@@ -17,7 +17,7 @@
 #include <perfmon/intel/core.h>
 
 static u8 *
-format_intel_membw_bound (u8 *s, va_list *args)
+format_intel_memory_stalls (u8 *s, va_list *args)
 {
   perfmon_node_stats_t *ss = va_arg (*args, perfmon_node_stats_t *);
   int row = va_arg (*args, int);
@@ -33,13 +33,13 @@ format_intel_membw_bound (u8 *s, va_list *args)
   return s;
 }
 
-static perfmon_cpu_supports_t membw_bound_cpu_supports[] = {
+static perfmon_cpu_supports_t memory_stalls_cpu_supports[] = {
   { clib_cpu_supports_avx512_bitalg, PERFMON_BUNDLE_TYPE_NODE },
 };
 
-PERFMON_REGISTER_BUNDLE (intel_core_membw_bound) = {
-  .name = "membw-bound",
-  .description = "memory bandwidth boundedness",
+PERFMON_REGISTER_BUNDLE (intel_core_memory_stalls) = {
+  .name = "memory-stalls",
+  .description = "cycles not retiring instructions due to memory stalls",
   .source = "intel-core",
   .events[0] = INTEL_CORE_E_CPU_CLK_UNHALTED_THREAD_P,	      /* FIXED */
   .events[1] = INTEL_CORE_E_CYCLE_ACTIVITY_CYCLES_NO_EXECUTE, /*CMask: 0xFF*/
@@ -49,9 +49,9 @@ PERFMON_REGISTER_BUNDLE (intel_core_membw_bound) = {
   .events[5] = INTEL_CORE_E_CYCLE_ACTIVITY_STALLS_L3_MISS,    /*CMask: 0xF*/
   .events[6] = INTEL_CORE_E_SQ_MISC_SQ_FULL,		      /*CMask: 0xF*/
   .n_events = 7,
-  .format_fn = format_intel_membw_bound,
-  .cpu_supports = membw_bound_cpu_supports,
-  .n_cpu_supports = ARRAY_LEN (membw_bound_cpu_supports),
+  .format_fn = format_intel_memory_stalls,
+  .cpu_supports = memory_stalls_cpu_supports,
+  .n_cpu_supports = ARRAY_LEN (memory_stalls_cpu_supports),
   .column_headers = PERFMON_STRINGS ("Cycles/Packet", "Cycles Stall/Packet",
 				     "Mem Stall/Packet",
 				     "L1D Miss Stall/Packet", "FB Full/Packet",
