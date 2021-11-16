@@ -126,9 +126,16 @@ format_stack_socket (u8 *s, va_list *va)
     }
 
   uword *pu = hash_get (h, root_bus.bus);
-  e = pool_elt_at_index (p, (index_t) pu[0]);
+  if (pu)
+    {
+      e = pool_elt_at_index (p, (index_t) pu[0]);
 
-  s = format (s, "IIO%u/%u", e->socket_id, e->iio_unit_id);
+      s = format (s, "IIO%u/%u", e->socket_id, e->iio_unit_id);
+    }
+  else
+    {
+      s = format (s, "[ERR: hash lookup for bus '%u' failed]", root_bus.bus);
+    }
   return s;
 }
 
