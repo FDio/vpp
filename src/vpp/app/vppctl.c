@@ -192,6 +192,13 @@ main (int argc, char *argv[])
 
   struct sockaddr_un saddr = { 0 };
   saddr.sun_family = AF_UNIX;
+
+  if (strlen (sock_fname) > sizeof (saddr.sun_path) - 1)
+    {
+      perror ("socket path too long");
+      exit (1);
+    }
+
   strncpy (saddr.sun_path, sock_fname, sizeof (saddr.sun_path) - 1);
 
   sock_fd = socket (AF_UNIX, SOCK_STREAM, 0);
