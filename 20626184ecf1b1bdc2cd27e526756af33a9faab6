@@ -19,6 +19,23 @@
     },
     {
       "key": {
+        "uuid": "47738c89_78da6d71",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 542,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2021-11-16T17:41:15Z",
+      "side": 1,
+      "message": "Can you please keep it simple, (for the sake of maintainability)?\n\nfor (u32 i \u003d 0; i \u003c ad-\u003etxq_num; i++)\n  {\n     af_xdp_txq_t *txq \u003d vec_elt_at_index (ad-\u003etxqs, i);\n      txq-\u003equeue_index \u003d\n \tvnet_hw_if_register_tx_queue (vnm, ad-\u003ehw_if_index, i);\n   }\n\nfor (u32 j \u003d 0; j \u003c vlib_get_n_threads(); j++)\n  {\n    u32 qi \u003d ad-\u003etxqs[j % ad-\u003etxq_num].queue_index;\n    vnet_hw_if_tx_queue_assign_thread (vnm, qi, j);\n  }",
+      "revId": "20626184ecf1b1bdc2cd27e526756af33a9faab6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "4ee176ec_bf73e766",
         "filename": "src/plugins/af_xdp/device.c",
         "patchSetId": 3
