@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "f9049136_32b1b10f",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 34
+      },
+      "lineNbr": 461,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-11-16T15:32:03Z",
+      "side": 1,
+      "message": "An array of thread_ids might be easier on the consumer than a bitmap perhaps?",
+      "revId": "2acb8790e1077e43decd7089c9cd9ab522c021c7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "7d63a8f1_0db8f93c",
         "filename": "src/vnet/interface_api.c",
         "patchSetId": 34
@@ -19,6 +36,23 @@
         "endLine": 1319,
         "endChar": 40
       },
+      "revId": "2acb8790e1077e43decd7089c9cd9ab522c021c7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "51323705_24e468b3",
+        "filename": "src/vnet/interface_api.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 1319,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-11-16T15:32:03Z",
+      "side": 1,
+      "message": "Should this be clib_bitmap_set(bitmap, j+i, 1);?\nWould be good to validate mp-\u003earray_size against message size.\nOtherwise coverity will complain.",
       "revId": "2acb8790e1077e43decd7089c9cd9ab522c021c7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
