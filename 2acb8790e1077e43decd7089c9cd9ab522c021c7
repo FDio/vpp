@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "646c0864_e75a4830",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 502,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2021-11-16T10:02:17Z",
+      "side": 1,
+      "message": "enqueue",
+      "range": {
+        "startLine": 502,
+        "startChar": 0,
+        "endLine": 502,
+        "endChar": 6
+      },
+      "revId": "2acb8790e1077e43decd7089c9cd9ab522c021c7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
