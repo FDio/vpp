@@ -169,7 +169,7 @@ main (int argc, char *argv[])
   struct termios tio;
   int efd = -1;
   char *cmd = 0;
-  int cmd_len = 0;
+  unsigned long cmd_len = 0;
   int do_quit = 0;
   int is_interactive = 0;
   int acked = 1;		/* counts messages from VPP; starts at 1 */
@@ -220,7 +220,7 @@ main (int argc, char *argv[])
     }
   if (cmd_len > 0)
     {
-      cmd_len++; // account for \n in the end
+      cmd_len++; // account for 0 at end
       cmd = malloc (cmd_len);
       if (!cmd)
 	{
@@ -229,10 +229,14 @@ main (int argc, char *argv[])
 	  goto done;
 	}
       memset (cmd, 0, cmd_len);
+      unsigned long space_left = cmd_len - 1; // reserve space for 0 at end
       while (argc--)
 	{
-	  strncat (cmd, *argv++, cmd_len);
-	  strncat (cmd, " ", cmd_len);
+	  strncat (cmd, *argv, space_left);
+	  space_left -= strlen (*argv);
+	  ++argv;
+	  strncat (cmd, " ", space_left);
+	  --space_left;
 	}
       cmd[cmd_len - 2] = '\n';
       cmd[cmd_len - 1] = 0;
