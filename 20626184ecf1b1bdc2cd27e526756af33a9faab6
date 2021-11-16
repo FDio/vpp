@@ -36,6 +36,24 @@
     },
     {
       "key": {
+        "uuid": "4e525170_6b3c8ee8",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 542,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-16T17:54:24Z",
+      "side": 1,
+      "message": "This is not that simple, because by default we want to make sure that the rxq and the txq belonging to the same Linux queue pair are scheduled on the same thread. This is to avoid locking in the dataplane, because of some idiosyncrasies of AF_XDP.",
+      "parentUuid": "47738c89_78da6d71",
+      "revId": "20626184ecf1b1bdc2cd27e526756af33a9faab6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "4ee176ec_bf73e766",
         "filename": "src/plugins/af_xdp/device.c",
         "patchSetId": 3
