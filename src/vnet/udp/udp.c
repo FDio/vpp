@@ -281,7 +281,7 @@ udp_session_close (u32 connection_index, u32 thread_index)
   udp_connection_t *uc;
 
   uc = udp_connection_get (connection_index, thread_index);
-  if (!uc)
+  if (!uc || (uc->flags & UDP_CONN_F_MIGRATED))
     return;
 
   if (!transport_max_tx_dequeue (&uc->connection))
