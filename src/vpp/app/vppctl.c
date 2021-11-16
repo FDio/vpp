@@ -58,7 +58,10 @@ send_ttype (int sock_fd, int is_interactive)
 		      "%c%s"
 		      "%c%c",
 		      IAC, SB, TELOPT_TTYPE, 0, term, IAC, SE);
-  send (sock_fd, buf, len, 0);
+  if (send (sock_fd, buf, len, 0) < 0)
+    {
+      perror ("send_ttype");
+    }
 }
 
 static void
