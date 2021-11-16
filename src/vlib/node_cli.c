@@ -564,7 +564,6 @@ show_node_runtime (vlib_main_t * vm,
 	      n_clocks += l;
 
 	      v = n->stats_total.vectors - n->stats_last_clear.vectors;
-	      c = n->stats_total.calls - n->stats_last_clear.calls;
 
 	      switch (n->type)
 		{
