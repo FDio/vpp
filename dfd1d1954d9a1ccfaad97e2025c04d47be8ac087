@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b140a8d1_6534f286",
+        "filename": "src/plugins/af_xdp/af_xdp.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-16T17:50:57Z",
+      "side": 1,
+      "message": "why not char* ? I suspect it should be a NULL-terminated C-string?",
+      "revId": "dfd1d1954d9a1ccfaad97e2025c04d47be8ac087",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6ffa30f9_fe2d6a06",
+        "filename": "src/plugins/af_xdp/af_xdp.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 154,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-16T17:50:57Z",
+      "side": 1,
+      "message": "why not char* ? I suspect it should be a NULL-terminated C-string?",
+      "revId": "dfd1d1954d9a1ccfaad97e2025c04d47be8ac087",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d93ebece_290c5b59",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 461,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-16T17:50:57Z",
+      "side": 1,
+      "message": "is there a good reason to enter the namespace early? Or can it be done at the end? This would simplify the error case in my opinion",
+      "revId": "dfd1d1954d9a1ccfaad97e2025c04d47be8ac087",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d40c27d9_33c03f83",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 571,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-16T17:50:57Z",
+      "side": 1,
+      "message": "strcmp() should be used here I think, there is no value to strncmp in this case\n\nAlso, is this \u0027pid:\u0027 thing a generic Linux feature? Or something specific to a particular usecase?",
+      "revId": "dfd1d1954d9a1ccfaad97e2025c04d47be8ac087",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
