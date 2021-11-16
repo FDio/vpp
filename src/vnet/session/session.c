@@ -936,15 +936,40 @@ session_stream_connect_notify (transport_connection_t * tc,
   return 0;
 }
 
+typedef union session_switch_pool_reply_args_
+{
+  struct
+  {
+    u32 session_index;
+    u16 thread_index;
+    u8 is_closed;
+  };
+  u64 as_u64;
+} session_switch_pool_reply_args_t;
+
+STATIC_ASSERT (sizeof (session_switch_pool_reply_args_t) <= sizeof (uword),
+	       "switch pool reply args size");
+
 static void
 session_switch_pool_reply (void *arg)
 {
-  u32 session_index = pointer_to_uword (arg);
+  session_switch_pool_reply_args_t rargs;
   session_t *s;
 
-  s = session_get_if_valid (session_index, vlib_get_thread_index ());
+  rargs.as_u64 = pointer_to_uword (arg);
+  s = session_get_if_valid (rargs.session_index, rargs.thread_index);
   if (!s)
     return;
+
+  /* Session closed during migration. Clean everything up */
+  if (rargs.is_closed)
+    {
+      transport_cleanup (session_get_transport_proto (s), s->connection_index,
+			 s->thread_index);
+      segment_manager_dealloc_fifos (s->rx_fifo, s->tx_fifo);
+      session_free (s);
+      return;
+    }
 
   /* Notify app that it has data on the new session */
   session_enqueue_notify (s);
@@ -965,11 +990,11 @@ static void
 session_switch_pool (void *cb_args)
 {
   session_switch_pool_args_t *args = (session_switch_pool_args_t *) cb_args;
+  session_switch_pool_reply_args_t rargs;
   session_handle_t new_sh;
   segment_manager_t *sm;
   app_worker_t *app_wrk;
   session_t *s;
-  void *rargs;
 
   ASSERT (args->thread_index == vlib_get_thread_index ());
   s = session_get (args->session_index, args->thread_index);
@@ -977,8 +1002,8 @@ session_switch_pool (void *cb_args)
   transport_cleanup (session_get_transport_proto (s), s->connection_index,
 		     s->thread_index);
 
-  new_sh = session_make_handle (args->new_session_index,
-				args->new_thread_index);
+  /* Check if session closed during migration */
+  rargs.is_closed = s->session_state > SESSION_STATE_READY;
 
   app_wrk = app_worker_get_if_valid (s->app_wrk_index);
   if (app_wrk)
@@ -989,13 +1014,20 @@ session_switch_pool (void *cb_args)
       segment_manager_detach_fifo (sm, &s->tx_fifo);
 
       /* Notify app, using old session, about the migration event */
-      app_worker_migrate_notify (app_wrk, s, new_sh);
+      if (!rargs.is_closed)
+	{
+	  new_sh = session_make_handle (args->new_session_index,
+					args->new_thread_index);
+	  app_worker_migrate_notify (app_wrk, s, new_sh);
+	}
     }
 
   /* Trigger app read and fifo updates on the new thread */
-  rargs = uword_to_pointer (args->new_session_index, void *);
+  rargs.session_index = args->new_session_index;
+  rargs.thread_index = args->new_thread_index;
   session_send_rpc_evt_to_thread (args->new_thread_index,
-				  session_switch_pool_reply, rargs);
+				  session_switch_pool_reply,
+				  uword_to_pointer (rargs.as_u64, void *));
 
   session_free (s);
   clib_mem_free (cb_args);
