@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4d6d5612_2b76c16b",
+        "filename": "src/plugins/af_xdp/af_xdp.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-16T14:10:45Z",
+      "side": 1,
+      "message": "can you add a comment   /* fields below are accessed in control-plane only (cold) */ before it as is done in af_xdp_device_t below?",
+      "revId": "20626184ecf1b1bdc2cd27e526756af33a9faab6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4ee176ec_bf73e766",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 545,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-16T14:10:45Z",
+      "side": 1,
+      "message": "I\u0027d rather have the assignment in the \u0027else\u0027 branch of the \u0027if\u0027 below to make it clearer",
+      "revId": "20626184ecf1b1bdc2cd27e526756af33a9faab6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "20e0751a_e7378474",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 549,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-16T14:10:45Z",
+      "side": 1,
+      "message": "why the test \u0027i + 1 \u003c ad-\u003etxq_num\u0027?\nAlso maybe add a comment to explain that we set the rxq and txq of the same queue pair on the same thread by default to avoid locking",
+      "revId": "20626184ecf1b1bdc2cd27e526756af33a9faab6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4ffbba90_8090f66c",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 560,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-16T14:10:45Z",
+      "side": 1,
+      "message": "why is this loop needed? I think we already assigned the thread of all txq in the loop above?",
+      "revId": "20626184ecf1b1bdc2cd27e526756af33a9faab6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "55b6d0fa_0d2f0f19",
+        "filename": "src/plugins/af_xdp/output.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 218,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-16T14:10:45Z",
+      "side": 1,
+      "message": "can we declare it const?",
+      "revId": "20626184ecf1b1bdc2cd27e526756af33a9faab6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c7480b4a_67a22731",
+        "filename": "src/plugins/af_xdp/output.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-16T14:10:45Z",
+      "side": 1,
+      "message": "can we declare it const?",
+      "revId": "20626184ecf1b1bdc2cd27e526756af33a9faab6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
