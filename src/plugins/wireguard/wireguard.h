@@ -50,6 +50,18 @@ typedef struct
   tw_timer_wheel_16t_2w_512sl_t timer_wheel;
 } wg_main_t;
 
+<<<<<<< HEAD   (93e5be misc: Initial changes for stable/2202 branch)
+=======
+typedef struct
+{
+  /* wg post node index for async crypto */
+  u32 wg4_post_next;
+  u32 wg6_post_next;
+} wg_async_post_next_t;
+
+extern wg_async_post_next_t wg_encrypt_async_next;
+extern wg_async_post_next_t wg_decrypt_async_next;
+>>>>>>> CHANGE (77e69a wireguard: add async mode for decryption packets)
 extern wg_main_t wg_main;
 
 #define WG_START_EVENT	1

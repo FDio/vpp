@@ -591,6 +591,7 @@ error:
   return ret;
 }
 
+<<<<<<< HEAD   (93e5be misc: Initial changes for stable/2202 branch)
 enum noise_state_crypt
 noise_remote_decrypt (vlib_main_t * vm, noise_remote_t * r, uint32_t r_idx,
 		      uint64_t nonce, uint8_t * src, size_t srclen,
@@ -673,6 +674,8 @@ error:
   return ret;
 }
 
+=======
+>>>>>>> CHANGE (77e69a wireguard: add async mode for decryption packets)
 /* Private functions - these should not be called outside this file under any
  * circumstances. */
 static noise_keypair_t *
@@ -681,21 +684,6 @@ noise_remote_keypair_allocate (noise_remote_t * r)
   noise_keypair_t *kp;
   kp = clib_mem_alloc (sizeof (*kp));
   return kp;
-}
-
-static void
-noise_remote_keypair_free (vlib_main_t * vm, noise_remote_t * r,
-			   noise_keypair_t ** kp)
-{
-  noise_local_t *local = noise_local_get (r->r_local_idx);
-  struct noise_upcall *u = &local->l_upcall;
-  if (*kp)
-    {
-      u->u_index_drop ((*kp)->kp_local_index);
-      vnet_crypto_key_del (vm, (*kp)->kp_send_index);
-      vnet_crypto_key_del (vm, (*kp)->kp_recv_index);
-      clib_mem_free (*kp);
-    }
 }
 
 static uint32_t

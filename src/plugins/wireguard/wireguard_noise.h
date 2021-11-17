@@ -187,12 +187,92 @@ noise_remote_encrypt (vlib_main_t * vm, noise_remote_t *,
 		      uint32_t * r_idx,
 		      uint64_t * nonce,
 		      uint8_t * src, size_t srclen, uint8_t * dst);
+<<<<<<< HEAD   (93e5be misc: Initial changes for stable/2202 branch)
 enum noise_state_crypt
 noise_remote_decrypt (vlib_main_t * vm, noise_remote_t *,
 		      uint32_t r_idx,
 		      uint64_t nonce,
 		      uint8_t * src, size_t srclen, uint8_t * dst);
 
+=======
+
+static_always_inline noise_keypair_t *
+wg_get_active_keypair (noise_remote_t *r, uint32_t r_idx)
+{
+  if (r->r_current != NULL && r->r_current->kp_local_index == r_idx)
+    {
+      return r->r_current;
+    }
+  else if (r->r_previous != NULL && r->r_previous->kp_local_index == r_idx)
+    {
+      return r->r_previous;
+    }
+  else if (r->r_next != NULL && r->r_next->kp_local_index == r_idx)
+    {
+      return r->r_next;
+    }
+  else
+    {
+      return NULL;
+    }
+}
+
+inline bool
+noise_counter_recv (noise_counter_t *ctr, uint64_t recv)
+{
+  uint64_t i, top, index_recv, index_ctr;
+  unsigned long bit;
+  bool ret = false;
+
+  /* Check that the recv counter is valid */
+  if (ctr->c_recv >= REJECT_AFTER_MESSAGES || recv >= REJECT_AFTER_MESSAGES)
+    goto error;
+
+  /* If the packet is out of the window, invalid */
+  if (recv + COUNTER_WINDOW_SIZE < ctr->c_recv)
+    goto error;
+
+  /* If the new counter is ahead of the current counter, we'll need to
+   * zero out the bitmap that has previously been used */
+  index_recv = recv / COUNTER_BITS;
+  index_ctr = ctr->c_recv / COUNTER_BITS;
+
+  if (recv > ctr->c_recv)
+    {
+      top = clib_min (index_recv - index_ctr, COUNTER_NUM);
+      for (i = 1; i <= top; i++)
+	ctr->c_backtrack[(i + index_ctr) & (COUNTER_NUM - 1)] = 0;
+      ctr->c_recv = recv;
+    }
+
+  index_recv %= COUNTER_NUM;
+  bit = 1ul << (recv % COUNTER_BITS);
+
+  if (ctr->c_backtrack[index_recv] & bit)
+    goto error;
+
+  ctr->c_backtrack[index_recv] |= bit;
+
+  ret = true;
+error:
+  return ret;
+}
+>>>>>>> CHANGE (77e69a wireguard: add async mode for decryption packets)
+
+static_always_inline void
+noise_remote_keypair_free (vlib_main_t *vm, noise_remote_t *r,
+			   noise_keypair_t **kp)
+{
+  noise_local_t *local = noise_local_get (r->r_local_idx);
+  struct noise_upcall *u = &local->l_upcall;
+  if (*kp)
+    {
+      u->u_index_drop ((*kp)->kp_local_index);
+      vnet_crypto_key_del (vm, (*kp)->kp_send_index);
+      vnet_crypto_key_del (vm, (*kp)->kp_recv_index);
+      clib_mem_free (*kp);
+    }
+}
 
 #endif /* __included_wg_noise_h__ */
 
