@@ -111,13 +111,13 @@ vtep4_check (vtep_table_t * t, vlib_buffer_t * b0, ip4_header_t * ip40,
   return VTEP_CHECK_PASS;
 }
 
-#ifdef CLIB_HAVE_VEC512
 typedef struct
 {
   vtep4_key_t vtep4_cache[8];
   int idx;
 } vtep4_cache_t;
 
+#ifdef CLIB_HAVE_VEC512
 always_inline u8
 vtep4_check_vector (vtep_table_t * t, vlib_buffer_t * b0, ip4_header_t * ip40,
 		    vtep4_key_t * last_k4, vtep4_cache_t * vtep4_u512)
