@@ -54,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "285d34c0_1e061172",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 542,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2021-11-17T06:18:33Z",
+      "side": 1,
+      "message": "Thanks Ben for the information. I would say still keep it simple. You can manually place the rxqs and txqs using CLI/API once interface is created and if required as you will have better view of number of threads, rxqs and txqs by then.",
+      "parentUuid": "4e525170_6b3c8ee8",
+      "revId": "20626184ecf1b1bdc2cd27e526756af33a9faab6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "4ee176ec_bf73e766",
         "filename": "src/plugins/af_xdp/device.c",
         "patchSetId": 3
