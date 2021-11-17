@@ -155,6 +155,7 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   map_main_t *mm = &map_main;
   vlib_combined_counter_main_t *cm = mm->domain_counters;
   u32 thread_index = vm->thread_index;
+  u32 *buffer0 = 0;
 
   while (n_left_from > 0)
     {
@@ -170,7 +171,6 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  ip6_header_t *ip6h0;
 	  u32 next0 = IP4_MAP_NEXT_IP6_LOOKUP;
 	  u32 map_domain_index0 = ~0;
-	  u32 *buffer0 = 0;
 	  bool free_original_buffer0 = false;
 	  u32 *frag_from0, frag_left0;
 
@@ -322,6 +322,7 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
+  vec_free (buffer0);
   return frame->n_vectors;
 }
 
