@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "462a0495_3cb205c1",
+        "filename": "src/plugins/af_xdp/af_xdp.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-17T17:04:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4d6d5612_2b76c16b",
+      "revId": "20626184ecf1b1bdc2cd27e526756af33a9faab6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "47738c89_78da6d71",
         "filename": "src/plugins/af_xdp/device.c",
         "patchSetId": 3
@@ -72,6 +90,24 @@
     },
     {
       "key": {
+        "uuid": "490fbcaf_63d24888",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 542,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-17T17:04:55Z",
+      "side": 1,
+      "message": "I think it is better to do this, otherwise that would mean poor performance by default as we are always going to lock between workers",
+      "parentUuid": "285d34c0_1e061172",
+      "revId": "20626184ecf1b1bdc2cd27e526756af33a9faab6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "4ee176ec_bf73e766",
         "filename": "src/plugins/af_xdp/device.c",
         "patchSetId": 3
@@ -86,6 +122,24 @@
       "revId": "20626184ecf1b1bdc2cd27e526756af33a9faab6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2a3d0dc7_40428f02",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 545,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-17T17:04:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4ee176ec_bf73e766",
+      "revId": "20626184ecf1b1bdc2cd27e526756af33a9faab6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -124,6 +178,24 @@
     },
     {
       "key": {
+        "uuid": "3ecf3cc1_a4c0327c",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 549,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-17T17:04:55Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "1886bdd8_0f4b19bd",
+      "revId": "20626184ecf1b1bdc2cd27e526756af33a9faab6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "4ffbba90_8090f66c",
         "filename": "src/plugins/af_xdp/device.c",
         "patchSetId": 3
@@ -159,6 +231,24 @@
     },
     {
       "key": {
+        "uuid": "7762ed8b_f47cd4c3",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 560,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-17T17:04:55Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "0ea0963d_f391ea3c",
+      "revId": "20626184ecf1b1bdc2cd27e526756af33a9faab6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "55b6d0fa_0d2f0f19",
         "filename": "src/plugins/af_xdp/output.c",
         "patchSetId": 3
@@ -176,6 +266,24 @@
     },
     {
       "key": {
+        "uuid": "bd134a88_8af803e3",
+        "filename": "src/plugins/af_xdp/output.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 218,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-17T17:04:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "55b6d0fa_0d2f0f19",
+      "revId": "20626184ecf1b1bdc2cd27e526756af33a9faab6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c7480b4a_67a22731",
         "filename": "src/plugins/af_xdp/output.c",
         "patchSetId": 3
@@ -190,6 +298,24 @@
       "revId": "20626184ecf1b1bdc2cd27e526756af33a9faab6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "aee0e0fc_5d8d0646",
+        "filename": "src/plugins/af_xdp/output.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-17T17:04:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c7480b4a_67a22731",
+      "revId": "20626184ecf1b1bdc2cd27e526756af33a9faab6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
