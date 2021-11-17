@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "ab6d5c85_5cf5d995",
+        "filename": "src/plugins/af_xdp/af_xdp.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 2414
+      },
+      "writtenOn": "2021-11-17T08:39:54Z",
+      "side": 1,
+      "message": "yes, it is a string. clib_netns_open using u8* as argument, so it is not need to convert.",
+      "parentUuid": "b140a8d1_6534f286",
+      "revId": "dfd1d1954d9a1ccfaad97e2025c04d47be8ac087",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "6ffa30f9_fe2d6a06",
         "filename": "src/plugins/af_xdp/af_xdp.h",
         "patchSetId": 4
@@ -53,6 +71,24 @@
     },
     {
       "key": {
+        "uuid": "28c59643_39f7c436",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 461,
+      "author": {
+        "id": 2414
+      },
+      "writtenOn": "2021-11-17T08:39:54Z",
+      "side": 1,
+      "message": "we need to enter the namespace to do some operator like get nic real queue num, load prog and create queue...",
+      "parentUuid": "d93ebece_290c5b59",
+      "revId": "dfd1d1954d9a1ccfaad97e2025c04d47be8ac087",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "d40c27d9_33c03f83",
         "filename": "src/plugins/af_xdp/device.c",
         "patchSetId": 4
@@ -64,6 +100,24 @@
       "writtenOn": "2021-11-16T17:50:57Z",
       "side": 1,
       "message": "strcmp() should be used here I think, there is no value to strncmp in this case\n\nAlso, is this \u0027pid:\u0027 thing a generic Linux feature? Or something specific to a particular usecase?",
+      "revId": "dfd1d1954d9a1ccfaad97e2025c04d47be8ac087",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0e6d64c0_aea884bb",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 571,
+      "author": {
+        "id": 2414
+      },
+      "writtenOn": "2021-11-17T08:39:54Z",
+      "side": 1,
+      "message": "\"pid:\" is support by clib_netns_open, it is not linux feature. We use pid as device name for recover when vpp restart, if we use dev_instance device name will change more in restart situation.",
+      "parentUuid": "d40c27d9_33c03f83",
       "revId": "dfd1d1954d9a1ccfaad97e2025c04d47be8ac087",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
