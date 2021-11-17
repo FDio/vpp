@@ -999,11 +999,11 @@ session_switch_pool (void *cb_args)
   ASSERT (args->thread_index == vlib_get_thread_index ());
   s = session_get (args->session_index, args->thread_index);
 
+  /* Check if session closed during migration */
+  rargs.is_closed = s->session_state >= SESSION_STATE_TRANSPORT_CLOSING;
+
   transport_cleanup (session_get_transport_proto (s), s->connection_index,
 		     s->thread_index);
-
-  /* Check if session closed during migration */
-  rargs.is_closed = s->session_state > SESSION_STATE_READY;
 
   app_wrk = app_worker_get_if_valid (s->app_wrk_index);
   if (app_wrk)
