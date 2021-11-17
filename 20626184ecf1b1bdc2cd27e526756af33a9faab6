@@ -106,6 +106,24 @@
     },
     {
       "key": {
+        "uuid": "1886bdd8_0f4b19bd",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 549,
+      "author": {
+        "id": 2414
+      },
+      "writtenOn": "2021-11-17T08:03:18Z",
+      "side": 1,
+      "message": "We should make sure a txq assigned to thread #0 (main thread), here reserve the last one for it.",
+      "parentUuid": "20e0751a_e7378474",
+      "revId": "20626184ecf1b1bdc2cd27e526756af33a9faab6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "4ffbba90_8090f66c",
         "filename": "src/plugins/af_xdp/device.c",
         "patchSetId": 3
@@ -117,6 +135,24 @@
       "writtenOn": "2021-11-16T14:10:45Z",
       "side": 1,
       "message": "why is this loop needed? I think we already assigned the thread of all txq in the loop above?",
+      "revId": "20626184ecf1b1bdc2cd27e526756af33a9faab6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0ea0963d_f391ea3c",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 560,
+      "author": {
+        "id": 2414
+      },
+      "writtenOn": "2021-11-17T08:03:18Z",
+      "side": 1,
+      "message": "5 threads and nic has 2 txq and 2 rxq, rx #0 -\u003e thread #2, rx #1 -\u003e thead #3, per thread do not has per txq, we need share txq.",
+      "parentUuid": "4ffbba90_8090f66c",
       "revId": "20626184ecf1b1bdc2cd27e526756af33a9faab6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
