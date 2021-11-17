@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a2dd5e95_67e10956",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-17T17:37:53Z",
+      "side": 1,
+      "message": "SYSCALL_ERROR_2 and 3 are already used I think. I think you can use 8 and 9 so that we can distinguish which error was raised",
+      "revId": "4fcd625b61f9d419a6ed955db26006be87c5eb8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "27681c5a_038f4405",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-17T17:37:53Z",
+      "side": 1,
+      "message": "I think it would be better to initialize the array in af_xdp_enter_netns() so that we do not have to know which magic values are used to denote \u0027not initialized\u0027",
+      "revId": "4fcd625b61f9d419a6ed955db26006be87c5eb8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5bd1d155_2185cba0",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 157,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-17T17:37:53Z",
+      "side": 1,
+      "message": "I think we can collapse af_xdp_exit_netns() and af_xdp_cleanup_netns() in a single function.\nIdeally it would look like this:\n  int ns_fds[2];\n  af_xdp_enter_netns (ad-\u003enetns, ns_fds);\n  ...\n  af_xdp_exit_netns (ad-\u003enetns, ns_fds);",
+      "revId": "4fcd625b61f9d419a6ed955db26006be87c5eb8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "636272d6_14f55391",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 476,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-17T17:37:53Z",
+      "side": 1,
+      "message": "I think we want to add a new error goto label for this instead, ie we would have (note that you\u0027ll have to update the other goto statements as err1 changed to err2):\n  err2:\n    af_xdp_delete_if (vm, ad);\n  err1:\n    af_xdp_exit_netns (args-\u003enetns, ns_fds);\n  err0:\n    vlib_log_err (am-\u003elog_class, \"%U\", format_clib_error, args-\u003eerror);",
+      "revId": "4fcd625b61f9d419a6ed955db26006be87c5eb8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fd26d502_e5f00cfa",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 571,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-17T17:37:53Z",
+      "side": 1,
+      "message": "please replace strncmp() by strcmp()",
+      "revId": "4fcd625b61f9d419a6ed955db26006be87c5eb8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "06cacf77_c10cd222",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 632,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-17T17:37:53Z",
+      "side": 1,
+      "message": "if af_xdp_cleanup_netns() is merged into af_xdp_exit_netns() (see other comment) then I think we can keep the return here, as af_xdp_exit_netns() above woud have done the cleanup",
+      "revId": "4fcd625b61f9d419a6ed955db26006be87c5eb8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
