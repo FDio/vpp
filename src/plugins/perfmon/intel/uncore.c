@@ -63,7 +63,7 @@ intel_uncore_instance_name_cmp (void *v1, void *v2)
   return strcmp (i1->name, i2->name);
 }
 
-static_always_inline u8 *
+static u8 *
 format_instance_name (intel_uncore_unit_type_t u, char *unit_fmt, u8 socket_id,
 		      u8 ubox)
 {
