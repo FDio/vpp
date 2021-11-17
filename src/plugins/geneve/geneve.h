@@ -186,10 +186,9 @@ typedef struct
   vnet_main_t *vnet_main;
 
   u16 msg_id_base;
+
   /* cache for last 8 geneve tunnel */
-#ifdef CLIB_HAVE_VEC512
   vtep4_cache_t vtep4_u512;
-#endif
 
 } geneve_main_t;
 
