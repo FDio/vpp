@@ -64,6 +64,7 @@ typedef struct
 } wg_async_post_next_t;
 
 extern wg_async_post_next_t wg_encrypt_async_next;
+extern wg_async_post_next_t wg_decrypt_async_next;
 extern wg_main_t wg_main;
 
 /**

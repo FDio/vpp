@@ -25,6 +25,7 @@
 
 wg_main_t wg_main;
 wg_async_post_next_t wg_encrypt_async_next;
+wg_async_post_next_t wg_decrypt_async_next;
 
 void
 wg_set_async_mode (u32 is_enabled)
@@ -39,15 +40,23 @@ wg_set_async_mode (u32 is_enabled)
 
 static void
 wireguard_register_post_node (vlib_main_t *vm)
+
 {
   wg_async_post_next_t *eit;
+  wg_async_post_next_t *dit;
 
   eit = &wg_encrypt_async_next;
+  dit = &wg_decrypt_async_next;
 
   eit->wg4_post_next =
     vnet_crypto_register_post_node (vm, "wg4-output-tun-post-node");
   eit->wg6_post_next =
     vnet_crypto_register_post_node (vm, "wg6-output-tun-post-node");
+
+  dit->wg4_post_next =
+    vnet_crypto_register_post_node (vm, "wg4-input-post-node");
+  dit->wg6_post_next =
+    vnet_crypto_register_post_node (vm, "wg6-input-post-node");
 }
 
 static clib_error_t *

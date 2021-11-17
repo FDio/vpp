@@ -201,12 +201,6 @@ noise_remote_decrypt (vlib_main_t * vm, noise_remote_t *,
 		      uint64_t nonce,
 		      uint8_t * src, size_t srclen, uint8_t * dst);
 
-enum noise_state_crypt
-noise_sync_remote_decrypt (vlib_main_t *vm, vnet_crypto_op_t **crypto_ops,
-			   noise_remote_t *, uint32_t r_idx, uint64_t nonce,
-			   uint8_t *src, size_t srclen, uint8_t *dst, u32 bi,
-			   u8 *iv, f64 time);
-
 static_always_inline noise_keypair_t *
 wg_get_active_keypair (noise_remote_t *r, uint32_t r_idx)
 {
@@ -267,6 +261,21 @@ noise_counter_recv (noise_counter_t *ctr, uint64_t recv)
   ret = true;
 error:
   return ret;
+}
+
+static_always_inline void
+noise_remote_keypair_free (vlib_main_t *vm, noise_remote_t *r,
+			   noise_keypair_t **kp)
+{
+  noise_local_t *local = noise_local_get (r->r_local_idx);
+  struct noise_upcall *u = &local->l_upcall;
+  if (*kp)
+    {
+      u->u_index_drop ((*kp)->kp_local_index);
+      vnet_crypto_key_del (vm, (*kp)->kp_send_index);
+      vnet_crypto_key_del (vm, (*kp)->kp_recv_index);
+      clib_mem_free (*kp);
+    }
 }
 
 #endif /* __included_wg_noise_h__ */
