@@ -1685,8 +1685,6 @@ session_vpp_wrk_mqs_alloc (session_main_t *smm)
   mqs_seg->ssvm.ssvm_size = mqs_seg_size;
   mqs_seg->ssvm.my_pid = getpid ();
   mqs_seg->ssvm.name = format (0, "%s%c", "session: evt-qs-segment", 0);
-  /* clib_mem_vm_map_shared consumes first page before requested_va */
-  mqs_seg->ssvm.requested_va = smm->session_baseva + clib_mem_get_page_size ();
 
   if (ssvm_server_init (&mqs_seg->ssvm, SSVM_SEGMENT_MEMFD))
     {
@@ -1986,15 +1984,6 @@ session_main_init (vlib_main_t * vm)
   smm->poll_main = 0;
   smm->use_private_rx_mqs = 0;
   smm->no_adaptive = 0;
-  smm->session_baseva = HIGH_SEGMENT_BASEVA;
-
-#if (HIGH_SEGMENT_BASEVA > (4ULL << 30))
-  smm->session_va_space_size = 128ULL << 30;
-#else
-  smm->session_va_space_size = 128 << 20;
-  smm->wrk_mqs_segment_size = 1 << 20;
-#endif
-
   smm->last_transport_proto_type = TRANSPORT_PROTO_SRTP;
 
   return 0;
@@ -2092,8 +2081,7 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "enable"))
 	smm->session_enable_asap = 1;
-      else if (unformat (input, "segment-baseva 0x%lx", &smm->session_baseva))
-	;
+
       else if (unformat (input, "use-app-socket-api"))
 	(void) appns_sapi_enable_disable (1 /* is_enable */);
       else if (unformat (input, "poll-main"))
@@ -2102,14 +2090,16 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	smm->use_private_rx_mqs = 1;
       else if (unformat (input, "no-adaptive"))
 	smm->no_adaptive = 1;
-      /* Deprecated but maintained for compatibility */
+      /*
+       * Deprecated but maintained for compatibility
+       */
       else if (unformat (input, "evt_qs_memfd_seg"))
 	;
-      /* Deprecated */
+      else if (unformat (input, "segment-baseva 0x%lx", &tmp))
+	;
       else if (unformat (input, "evt_qs_seg_size %U", unformat_memory_size,
 			 &tmp))
 	;
-      /* Deprecated */
       else if (unformat (input, "event-queue-length %d", &nitems))
 	{
 	  if (nitems >= 2048)
