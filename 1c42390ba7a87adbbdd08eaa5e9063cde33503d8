@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e82dfb38_d12f8129",
+        "filename": "src/vnet/adj/adj_internal.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-18T18:34:51Z",
+      "side": 1,
+      "message": "I think this one is not used anymore?",
+      "revId": "1c42390ba7a87adbbdd08eaa5e9063cde33503d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b36dd4f2_1734e486",
+        "filename": "src/vnet/adj/adj_midchain_node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 249,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-18T18:34:51Z",
+      "side": 1,
+      "message": "does this still exist?",
+      "revId": "1c42390ba7a87adbbdd08eaa5e9063cde33503d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0594023f_a1ee34f1",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 646,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-18T18:34:51Z",
+      "side": 1,
+      "message": "Maybe we could have 2 special values for sa_index: INDEX_INVALID for ESP_ENCRYPT_ERROR_NO_PROTECTION and INDEX_INVALID-1 for ESP_ENCRYPT_ERROR_NO_ENCRYPTION?\nThe idea is that ESP_ENCRYPT_ERROR_NO_ENCRYPTION can be determined at configuration time, so we would not need to check the SA again on line 668 below.\nOr, maybe we do not have separate error types for those and INDEX_INVALID can be set in both cases?",
+      "revId": "1c42390ba7a87adbbdd08eaa5e9063cde33503d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4296afe7_4f101f84",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 993,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-18T18:34:51Z",
+      "side": 1,
+      "message": "shouldn\u0027t we check for INDEX_INVALID \u003d\u003d sa_index0 instead?\nAnd it might be easier to do eg.\n  if (INDEX_INVALID \u003d\u003d sa_index0)\n    clib_memset_u8 (tr, 0xff, sizeof(*tr));\n  else\n    {\n      tr-\u003esa_index \u003d sa_index0;\n      tr-\u003espi \u003d sa0-\u003espi;\n      ...\n    }",
+      "revId": "1c42390ba7a87adbbdd08eaa5e9063cde33503d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "67ccf384_5b4593c8",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1025,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-18T18:34:51Z",
+      "side": 1,
+      "message": "why not move this to line 986 instead (above the trace goto label)? That would remove the need for the if (INDEX_INVALID !\u003d current_sa_index) test I think.",
+      "revId": "1c42390ba7a87adbbdd08eaa5e9063cde33503d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
