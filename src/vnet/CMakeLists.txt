@@ -436,6 +436,7 @@ list(APPEND VNET_MULTIARCH_SOURCES
   ip/punt_node.c
   ip/ip_in_out_acl.c
   ip/ip_path_mtu_node.c
+  ip/ip_frag.c
 )
 
 list(APPEND VNET_HEADERS
