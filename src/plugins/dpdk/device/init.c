@@ -387,8 +387,10 @@ dpdk_lib_init (dpdk_main_t * dm)
 
       if (dm->conf->enable_lro)
 	{
+	  clib_warning ("\n\n LRO REQUESTED \n\n");
 	  if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_TCP_LRO)
 	    {
+	      clib_warning ("\n\n LRO CONFIGURED \n\n");
 	      xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_TCP_LRO;
 	      if (devconf->max_lro_pkt_size)
 		xd->port_conf.rxmode.max_lro_pkt_size =

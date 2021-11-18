@@ -1096,7 +1096,6 @@ tls_transport_listener_endpoint_get (u32 ctx_handle,
 static clib_error_t *
 tls_enable (vlib_main_t * vm, u8 is_en)
 {
-  u32 add_segment_size = 256 << 20, first_seg_size = 32 << 20;
   vnet_app_detach_args_t _da, *da = &_da;
   vnet_app_attach_args_t _a, *a = &_a;
   u64 options[APP_OPTIONS_N_OPTIONS];
@@ -1111,7 +1110,6 @@ tls_enable (vlib_main_t * vm, u8 is_en)
       return 0;
     }
 
-  first_seg_size = tm->first_seg_size ? tm->first_seg_size : first_seg_size;
   fifo_size = tm->fifo_size ? tm->fifo_size : fifo_size;
 
   clib_memset (a, 0, sizeof (*a));
@@ -1121,8 +1119,8 @@ tls_enable (vlib_main_t * vm, u8 is_en)
   a->api_client_index = APP_INVALID_INDEX;
   a->options = options;
   a->name = format (0, "tls");
-  a->options[APP_OPTIONS_SEGMENT_SIZE] = first_seg_size;
-  a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = add_segment_size;
+  a->options[APP_OPTIONS_SEGMENT_SIZE] = tm->first_seg_size;
+  a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = tm->add_seg_size;
   a->options[APP_OPTIONS_RX_FIFO_SIZE] = fifo_size;
   a->options[APP_OPTIONS_TX_FIFO_SIZE] = fifo_size;
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
@@ -1316,6 +1314,9 @@ tls_init (vlib_main_t * vm)
   vec_validate (tm->rx_bufs, num_threads - 1);
   vec_validate (tm->tx_bufs, num_threads - 1);
 
+  tm->first_seg_size = 32 << 20;
+  tm->add_seg_size = 256 << 20;
+
   transport_register_protocol (TRANSPORT_PROTO_TLS, &tls_proto,
 			       FIB_PROTOCOL_IP4, ~0);
   transport_register_protocol (TRANSPORT_PROTO_TLS, &tls_proto,
@@ -1343,6 +1344,9 @@ tls_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "first-segment-size %U", unformat_memory_size,
 			 &tm->first_seg_size))
+	;
+      else if (unformat (input, "add-segment-size %U", unformat_memory_size,
+			 &tm->add_seg_size))
 	;
       else if (unformat (input, "fifo-size %U", unformat_memory_size, &tmp))
 	{
