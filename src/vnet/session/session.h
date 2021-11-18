@@ -220,8 +220,6 @@ typedef struct session_main_
   u32 configured_wrk_mq_length;
 
   /** Session ssvm segment configs*/
-  uword session_baseva;
-  uword session_va_space_size;
   uword wrk_mqs_segment_size;
 
   /** Session table size parameters */
