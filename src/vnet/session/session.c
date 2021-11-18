@@ -1648,64 +1648,65 @@ session_transport_cleanup (session_t * s)
 }
 
 /**
- * Allocate event queues in the shared-memory segment
+ * Allocate worker mqs in share-able segment
  *
- * That can only be a newly created memfd segment, that must be
- * mapped by all apps/stack users.
+ * That can only be a newly created memfd segment, that must be mapped
+ * by all apps/stack users unless private rx mqs are enabled.
  */
 void
-session_vpp_event_queues_allocate (session_main_t * smm)
+session_vpp_wrk_mqs_alloc (session_main_t *smm)
 {
-  u32 evt_q_length = 2048, evt_size = sizeof (session_event_t);
-  fifo_segment_t *eqs = &smm->evt_qs_segment;
-  uword eqs_size = 64 << 20;
-  pid_t vpp_pid = getpid ();
+  u32 mq_q_length = 2048, evt_size = sizeof (session_event_t);
+  fifo_segment_t *mqs_seg = &smm->wrk_mqs_segment;
+  svm_msg_q_cfg_t _cfg, *cfg = &_cfg;
+  uword mqs_seg_size;
   int i;
 
-  if (smm->configured_event_queue_length)
-    evt_q_length = smm->configured_event_queue_length;
+  mq_q_length = clib_max (mq_q_length, smm->configured_wrk_mq_length);
 
-  if (smm->evt_qs_segment_size)
-    eqs_size = smm->evt_qs_segment_size;
+  svm_msg_q_ring_cfg_t rc[SESSION_MQ_N_RINGS] = {
+    { mq_q_length, evt_size, 0 }, { mq_q_length >> 1, 256, 0 }
+  };
+  cfg->consumer_pid = 0;
+  cfg->n_rings = 2;
+  cfg->q_nitems = mq_q_length;
+  cfg->ring_cfgs = rc;
 
-  eqs->ssvm.ssvm_size = eqs_size;
-  eqs->ssvm.my_pid = vpp_pid;
-  eqs->ssvm.name = format (0, "%s%c", "session: evt-qs-segment", 0);
+  /*
+   * Compute mqs segment size based on rings config and leave space
+   * for passing extended configuration messages, i.e., data allocated
+   * outside of the rings. If provided with a config value, accept it
+   * if larger than minimum size.
+   */
+  mqs_seg_size = svm_msg_q_size_to_alloc (cfg) * vec_len (smm->wrk);
+  mqs_seg_size = mqs_seg_size + (32 << 10);
+  mqs_seg_size = clib_max (mqs_seg_size, smm->wrk_mqs_segment_size);
+
+  mqs_seg->ssvm.ssvm_size = mqs_seg_size;
+  mqs_seg->ssvm.my_pid = getpid ();
+  mqs_seg->ssvm.name = format (0, "%s%c", "session: evt-qs-segment", 0);
   /* clib_mem_vm_map_shared consumes first page before requested_va */
-  eqs->ssvm.requested_va = smm->session_baseva + clib_mem_get_page_size ();
+  mqs_seg->ssvm.requested_va = smm->session_baseva + clib_mem_get_page_size ();
 
-  if (ssvm_server_init (&eqs->ssvm, SSVM_SEGMENT_MEMFD))
+  if (ssvm_server_init (&mqs_seg->ssvm, SSVM_SEGMENT_MEMFD))
     {
       clib_warning ("failed to initialize queue segment");
       return;
     }
 
-  fifo_segment_init (eqs);
+  fifo_segment_init (mqs_seg);
 
   /* Special fifo segment that's filled only with mqs */
-  eqs->h->n_mqs = vec_len (smm->wrk);
+  mqs_seg->h->n_mqs = vec_len (smm->wrk);
 
   for (i = 0; i < vec_len (smm->wrk); i++)
-    {
-      svm_msg_q_cfg_t _cfg, *cfg = &_cfg;
-      svm_msg_q_ring_cfg_t rc[SESSION_MQ_N_RINGS] = {
-	{evt_q_length, evt_size, 0}
-	,
-	{evt_q_length >> 1, 256, 0}
-      };
-      cfg->consumer_pid = 0;
-      cfg->n_rings = 2;
-      cfg->q_nitems = evt_q_length;
-      cfg->ring_cfgs = rc;
-
-      smm->wrk[i].vpp_event_queue = fifo_segment_msg_q_alloc (eqs, i, cfg);
-    }
+    smm->wrk[i].vpp_event_queue = fifo_segment_msg_q_alloc (mqs_seg, i, cfg);
 }
 
 fifo_segment_t *
-session_main_get_evt_q_segment (void)
+session_main_get_wrk_mqs_segment (void)
 {
-  return &session_main.evt_qs_segment;
+  return &session_main.wrk_mqs_segment;
 }
 
 u64
@@ -1862,7 +1863,7 @@ session_manager_main_enable (vlib_main_t * vm)
     }
 
   /* Allocate vpp event queues segment and queue */
-  session_vpp_event_queues_allocate (smm);
+  session_vpp_wrk_mqs_alloc (smm);
 
   /* Initialize segment manager properties */
   segment_manager_main_init ();
@@ -1989,10 +1990,9 @@ session_main_init (vlib_main_t * vm)
 
 #if (HIGH_SEGMENT_BASEVA > (4ULL << 30))
   smm->session_va_space_size = 128ULL << 30;
-  smm->evt_qs_segment_size = 64 << 20;
 #else
   smm->session_va_space_size = 128 << 20;
-  smm->evt_qs_segment_size = 1 << 20;
+  smm->wrk_mqs_segment_size = 1 << 20;
 #endif
 
   smm->last_transport_proto_type = TRANSPORT_PROTO_SRTP;
@@ -2025,10 +2025,10 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "event-queue-length %d", &nitems))
+      if (unformat (input, "wrk-mq-length %d", &nitems))
 	{
 	  if (nitems >= 2048)
-	    smm->configured_event_queue_length = nitems;
+	    smm->configured_wrk_mq_length = nitems;
 	  else
 	    clib_warning ("event queue length %d too small, ignored", nitems);
 	}
@@ -2090,12 +2090,6 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "local-endpoints-table-buckets %d",
 			 &smm->local_endpoints_table_buckets))
 	;
-      /* Deprecated but maintained for compatibility */
-      else if (unformat (input, "evt_qs_memfd_seg"))
-	;
-      else if (unformat (input, "evt_qs_seg_size %U", unformat_memory_size,
-			 &smm->evt_qs_segment_size))
-	;
       else if (unformat (input, "enable"))
 	smm->session_enable_asap = 1;
       else if (unformat (input, "segment-baseva 0x%lx", &smm->session_baseva))
@@ -2108,6 +2102,21 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	smm->use_private_rx_mqs = 1;
       else if (unformat (input, "no-adaptive"))
 	smm->no_adaptive = 1;
+      /* Deprecated but maintained for compatibility */
+      else if (unformat (input, "evt_qs_memfd_seg"))
+	;
+      /* Deprecated */
+      else if (unformat (input, "evt_qs_seg_size %U", unformat_memory_size,
+			 &tmp))
+	;
+      /* Deprecated */
+      else if (unformat (input, "event-queue-length %d", &nitems))
+	{
+	  if (nitems >= 2048)
+	    smm->configured_wrk_mq_length = nitems;
+	  else
+	    clib_warning ("event queue length %d too small, ignored", nitems);
+	}
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);

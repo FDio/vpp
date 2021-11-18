@@ -176,7 +176,7 @@ typedef struct session_main_
   session_worker_t *wrk;
 
   /** Event queues memfd segment */
-  fifo_segment_t evt_qs_segment;
+  fifo_segment_t wrk_mqs_segment;
 
   /** Unique segment name counter */
   u32 unique_segment_name_counter;
@@ -217,12 +217,12 @@ typedef struct session_main_
   u8 no_adaptive;
 
   /** vpp fifo event queue configured length */
-  u32 configured_event_queue_length;
+  u32 configured_wrk_mq_length;
 
   /** Session ssvm segment configs*/
   uword session_baseva;
   uword session_va_space_size;
-  uword evt_qs_segment_size;
+  uword wrk_mqs_segment_size;
 
   /** Session table size parameters */
   u32 configured_v4_session_table_buckets;
@@ -761,7 +761,7 @@ session_wrk_update_time (session_worker_t *wrk, f64 now)
 }
 
 void session_wrk_enable_adaptive_mode (session_worker_t *wrk);
-fifo_segment_t *session_main_get_evt_q_segment (void);
+fifo_segment_t *session_main_get_wrk_mqs_segment (void);
 void session_node_enable_disable (u8 is_en);
 clib_error_t *vnet_session_enable_disable (vlib_main_t * vm, u8 is_en);
 
