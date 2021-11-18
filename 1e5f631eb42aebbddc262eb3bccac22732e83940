@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b31a38ac_dfb7a38e",
+        "filename": "Makefile",
+        "patchSetId": 5
+      },
+      "lineNbr": 161,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-18T09:59:43Z",
+      "side": 1,
+      "message": "looks like this is not used",
+      "revId": "1e5f631eb42aebbddc262eb3bccac22732e83940",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6f42c340_ef01b2a5",
+        "filename": "Makefile",
+        "patchSetId": 5
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-18T09:59:43Z",
+      "side": 1,
+      "message": "why can\u0027t we use OS_VERSION_ID?",
+      "revId": "1e5f631eb42aebbddc262eb3bccac22732e83940",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
