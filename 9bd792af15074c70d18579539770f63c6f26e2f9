@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0aa8a035_1605a913",
+        "filename": "src/vpp/app/vppctl.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 192,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-11-18T11:31:48Z",
+      "side": 1,
+      "message": "You could not use strncpy_s instead?",
+      "revId": "9bd792af15074c70d18579539770f63c6f26e2f9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
