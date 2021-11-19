@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "46ac2291_5fc881af",
+        "filename": "src/vnet/interface_api.c",
+        "patchSetId": 35
+      },
+      "lineNbr": 1217,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2021-11-19T09:18:43Z",
+      "side": 1,
+      "message": "What happens when there is no bit set (e.g. when there is more queues than threads)?",
+      "range": {
+        "startLine": 1217,
+        "startChar": 6,
+        "endLine": 1217,
+        "endChar": 27
+      },
+      "revId": "ad48dae430ac92b41566e8ecd12dbe97ccf226ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
