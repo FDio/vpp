@@ -22,6 +22,57 @@
       "revId": "ad48dae430ac92b41566e8ecd12dbe97ccf226ed",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "504c06fc_6ddfc18d",
+        "filename": "src/vnet/interface_api.c",
+        "patchSetId": 35
+      },
+      "lineNbr": 1228,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-11-19T09:25:01Z",
+      "side": 1,
+      "message": "Could you please use the new _get/details/reply convention?",
+      "revId": "ad48dae430ac92b41566e8ecd12dbe97ccf226ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "58e46dde_aada1433",
+        "filename": "src/vnet/interface_api.c",
+        "patchSetId": 35
+      },
+      "lineNbr": 1318,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-11-19T09:25:01Z",
+      "side": 1,
+      "message": "You need to validate size here",
+      "revId": "ad48dae430ac92b41566e8ecd12dbe97ccf226ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "558f51a4_87288793",
+        "filename": "src/vnet/interface_api.c",
+        "patchSetId": 35
+      },
+      "lineNbr": 1325,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-11-19T09:25:01Z",
+      "side": 1,
+      "message": "If you mark the message \"autoendian\" in the .api, the handler will be called with mp in native endian. Same thing with rmp.\n\nPlease don\u0027t use clib_error_report in API handlers.",
+      "revId": "ad48dae430ac92b41566e8ecd12dbe97ccf226ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
