@@ -61,6 +61,7 @@ For more details click on the links below or press next.
    usecases/trafficgen
    usecases/ikev2/index
    usecases/contiv/index
+   usecases/vpp_testbench/index
 
 
 .. toctree::
