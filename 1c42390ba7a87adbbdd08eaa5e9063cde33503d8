@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "6d5fd4e6_e24fe81a",
+        "filename": "src/vnet/adj/adj_internal.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-11-19T08:31:14Z",
+      "side": 1,
+      "message": "removed.",
+      "parentUuid": "e82dfb38_d12f8129",
+      "revId": "1c42390ba7a87adbbdd08eaa5e9063cde33503d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b36dd4f2_1734e486",
         "filename": "src/vnet/adj/adj_midchain_node.c",
         "patchSetId": 3
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "48eb6531_bea33bdc",
+        "filename": "src/vnet/adj/adj_midchain_node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 249,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-11-19T08:31:14Z",
+      "side": 1,
+      "message": "removed",
+      "parentUuid": "b36dd4f2_1734e486",
+      "revId": "1c42390ba7a87adbbdd08eaa5e9063cde33503d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "0594023f_a1ee34f1",
         "filename": "src/vnet/ipsec/esp_encrypt.c",
         "patchSetId": 3
@@ -47,6 +83,24 @@
       "writtenOn": "2021-11-18T18:34:51Z",
       "side": 1,
       "message": "Maybe we could have 2 special values for sa_index: INDEX_INVALID for ESP_ENCRYPT_ERROR_NO_PROTECTION and INDEX_INVALID-1 for ESP_ENCRYPT_ERROR_NO_ENCRYPTION?\nThe idea is that ESP_ENCRYPT_ERROR_NO_ENCRYPTION can be determined at configuration time, so we would not need to check the SA again on line 668 below.\nOr, maybe we do not have separate error types for those and INDEX_INVALID can be set in both cases?",
+      "revId": "1c42390ba7a87adbbdd08eaa5e9063cde33503d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "33ba908b_63ed8239",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 646,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-11-19T08:31:14Z",
+      "side": 1,
+      "message": "that\u0027s a neat optimization. can i add it in a follow up patch?",
+      "parentUuid": "0594023f_a1ee34f1",
       "revId": "1c42390ba7a87adbbdd08eaa5e9063cde33503d8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -70,6 +124,24 @@
     },
     {
       "key": {
+        "uuid": "21f49da0_f0cb2b03",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 993,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-11-19T08:31:14Z",
+      "side": 1,
+      "message": "that\u0027s better :)",
+      "parentUuid": "4296afe7_4f101f84",
+      "revId": "1c42390ba7a87adbbdd08eaa5e9063cde33503d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "67ccf384_5b4593c8",
         "filename": "src/vnet/ipsec/esp_encrypt.c",
         "patchSetId": 3
@@ -84,6 +156,24 @@
       "revId": "1c42390ba7a87adbbdd08eaa5e9063cde33503d8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1b3c9864_69213be6",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1025,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-11-19T08:31:14Z",
+      "side": 1,
+      "message": "because it would then be called for each buffer in the loop. The goal is to only bump the counter when the sa-index changes (at line 660), then it needs to be here too when the loop is finished.\nthis check is once per-node, so the cost is negligible.",
+      "parentUuid": "67ccf384_5b4593c8",
+      "revId": "1c42390ba7a87adbbdd08eaa5e9063cde33503d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
