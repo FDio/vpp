@@ -426,6 +426,7 @@ void BV (clib_bihash_free) (BVT (clib_bihash) * h)
 
   vec_free (h->working_copies);
   vec_free (h->working_copy_lengths);
+  clib_mem_free ((void *) h->alloc_lock);
 #if BIHASH_32_64_SVM == 0
   vec_free (h->freelists);
 #else
