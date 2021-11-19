@@ -354,6 +354,17 @@ VLIB_CLI_COMMAND (ip6_show_fib_command, static) = {
 /* *INDENT-ON* */
 
 static clib_error_t *
+ip6_ll_sw_interface_add_del (vnet_main_t *vnm, u32 sw_if_index, u32 is_add)
+{
+  /* Fill in lookup table with default table (0). */
+  vec_validate (ip6_ll_table.ilt_fibs, sw_if_index);
+
+  return (NULL);
+}
+
+VNET_SW_INTERFACE_ADD_DEL_FUNCTION (ip6_ll_sw_interface_add_del);
+
+static clib_error_t *
 ip6_ll_module_init (vlib_main_t * vm)
 {
   clib_error_t *error;
