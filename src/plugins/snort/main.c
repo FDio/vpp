@@ -195,9 +195,18 @@ snort_deq_ready (clib_file_t *uf)
   snort_per_thread_data_t *ptd =
     vec_elt_at_index (sm->per_thread_data, vm->thread_index);
   u64 counter;
+  ssize_t bytes_read;
 
-  if (read (uf->file_descriptor, &counter, sizeof (counter)) < 0)
-    return clib_error_return (0, "client closed socket");
+  bytes_read = read (uf->file_descriptor, &counter, sizeof (counter));
+  if (bytes_read < 0)
+    {
+      return clib_error_return (0, "client closed socket");
+    }
+
+  if (bytes_read < sizeof (counter))
+    {
+      return clib_error_return (0, "unexpected truncated read");
+    }
 
   clib_interrupt_set (ptd->interrupts, uf->private_data);
   vlib_node_set_interrupt_pending (vm, snort_deq_node.index);
