@@ -298,8 +298,8 @@ snort_instance_create (vlib_main_t *vm, char *name, u8 log2_queue_sz,
   /* enq and deq head pointer */
   qpair_mem_sz += 2 * round_pow2 (sizeof (u32), align);
 
-  size =
-    round_pow2 (tm->n_vlib_mains * qpair_mem_sz, clib_mem_get_page_size ());
+  size = round_pow2 ((uword) tm->n_vlib_mains * qpair_mem_sz,
+		     clib_mem_get_page_size ());
   fd = clib_mem_vm_create_fd (CLIB_MEM_PAGE_SZ_DEFAULT, "snort instance %s",
 			      name);
 
