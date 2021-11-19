@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "e7550fc5_7d52fa9b",
+        "filename": "Makefile",
+        "patchSetId": 5
+      },
+      "lineNbr": 161,
+      "author": {
+        "id": 2582
+      },
+      "writtenOn": "2021-11-19T14:45:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b31a38ac_dfb7a38e",
+      "revId": "1e5f631eb42aebbddc262eb3bccac22732e83940",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6f42c340_ef01b2a5",
         "filename": "Makefile",
         "patchSetId": 5
@@ -33,6 +51,24 @@
       "revId": "1e5f631eb42aebbddc262eb3bccac22732e83940",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0be4d93a_178c9f98",
+        "filename": "Makefile",
+        "patchSetId": 5
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 2582
+      },
+      "writtenOn": "2021-11-19T14:45:57Z",
+      "side": 1,
+      "message": "Yes, the only difference is on last cut command which split by space delimiter, but based on the manual page for /etc/os-release should not contain spaces 😊\nVERSION_ID\u003d\n           A lower-case string (mostly numeric, no spaces or other characters outside of 0-9, a-z, \".\", \"_\" and \"-\")\" ...",
+      "parentUuid": "6f42c340_ef01b2a5",
+      "revId": "1e5f631eb42aebbddc262eb3bccac22732e83940",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
