@@ -97,6 +97,11 @@ typedef enum ip6_ll_next_t_
   IP6_LL_NEXT_NUM,
 } ip6_ll_next_t;
 
+typedef enum ip6_ll_error_t_
+{
+  IP6_LL_ERROR_NO_TABLE,
+} ip6_ll_error_t;
+
 always_inline uword
 ip6_ll_dpo_inline (vlib_main_t * vm,
 		   vlib_node_runtime_t * node, vlib_frame_t * frame)
@@ -131,10 +136,19 @@ ip6_ll_dpo_inline (vlib_main_t * vm,
 	  /* use the packet's RX interface to pick the link-local FIB */
 	  fib_index0 =
 	    ip6_ll_fib_get (vnet_buffer (p0)->sw_if_index[VLIB_RX]);
+
+	  if (~0 == fib_index0)
+	    {
+	      next0 = IP6_LL_NEXT_DROP;
+	      p0->error = node->errors[IP6_LL_ERROR_NO_TABLE];
+	      goto trace0;
+	    }
+
 	  /* write that fib index into the packet so it's used in the
 	   * lookup node next */
 	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = fib_index0;
 
+	trace0:
 	  if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      ip6_ll_dpo_trace_t *tr = vlib_add_trace (vm, node, p0,
@@ -170,6 +184,10 @@ ip6_ll_dpo_switch (vlib_main_t * vm,
   return (ip6_ll_dpo_inline (vm, node, frame));
 }
 
+static char *ip6_ll_dpo_error_strings[] = {
+  [IP6_LL_ERROR_NO_TABLE] = "Interface is not mapped to an IP6-LL table",
+};
+
 /**
  * @brief
  */
@@ -180,6 +198,8 @@ VLIB_REGISTER_NODE (ip6_ll_dpo_node) =
   .name = "ip6-link-local",
   .vector_size = sizeof (u32),
   .format_trace = format_ip6_ll_dpo_trace,
+  .n_errors = ARRAY_LEN (ip6_ll_dpo_error_strings),
+  .error_strings = ip6_ll_dpo_error_strings,
   .n_next_nodes = IP6_LL_NEXT_NUM,
   .next_nodes = {
     [IP6_LL_NEXT_DROP] = "ip6-drop",
