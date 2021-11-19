@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "575bd229_69290383",
+        "filename": "src/vnet/interface_api.c",
+        "patchSetId": 35
+      },
+      "lineNbr": 1217,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2021-11-19T12:33:07Z",
+      "side": 1,
+      "message": "\u003e What happens when there is no bit set \nn_bits will be \u00270\u0027. We will not set threads array in that case.\n\n\u003e (e.g. when there is more queues than threads)?\nAPI is per queue basis!",
+      "parentUuid": "46ac2291_5fc881af",
+      "range": {
+        "startLine": 1217,
+        "startChar": 6,
+        "endLine": 1217,
+        "endChar": 27
+      },
+      "revId": "ad48dae430ac92b41566e8ecd12dbe97ccf226ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "504c06fc_6ddfc18d",
         "filename": "src/vnet/interface_api.c",
         "patchSetId": 35
