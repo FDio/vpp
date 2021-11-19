@@ -1,0 +1,82 @@
+#------------------------------------------------------------------------------#
+# @brief:       Dockerfile for building the VPP testbench project.
+# @author:      Matthew Giassa <mgiassa@cisco.com>
+# @copyright:   (C) Cisco 2021.
+#------------------------------------------------------------------------------#
+# Baseline image both client and server inherit from.
+FROM ubuntu:focal as baseline
+
+# System packages.
+RUN apt update -y && \
+    DEBIAN_FRONTEND="noninteractive" apt install -y tzdata termshark && \
+    apt install -y \
+        apt-transport-https \
+        axel \
+        bash \
+        binutils \
+        bridge-utils \
+        ca-certificates \
+        coreutils \
+        curl \
+        gnupg \
+        htop \
+        iftop \
+        iproute2 \
+        iptables \
+        iputils-ping \
+        netcat \
+        net-tools \
+        nload \
+        nmap \
+        procps \
+        python3 \
+        python3-dev \
+        python3-pip \
+        sudo \
+        wget \
+        tcpdump \
+        vim \
+        && \
+    apt clean -y
+# Python packages.
+RUN python3 -m pip install \
+    scapy
+
+# VPP.
+RUN bash -c "curl -L https://packagecloud.io/fdio/master/gpgkey | apt-key add -" && \
+    bash -c "echo \"deb [trusted=yes] https://packagecloud.io/fdio/release/ubuntu focal main\" >> /etc/apt/sources.list.d/99fd.io.list" && \
+    apt update && \
+    apt install -y \
+        vpp \
+        vpp-plugin-core \
+        vpp-plugin-dpdk \
+    && \
+    apt clean -y
+
+# Used by client/server entrypoint scripts.
+ADD vpp_testbench_helpers.sh /
+
+
+#------------------------------------------------------------------------------#
+# Client image.
+FROM baseline as client_img
+# Enable a health probe.
+ARG HEALTHCHECK_PORT=8080
+ENV HEALTHCHECK_PORT_RUNTIME="${HEALTHCHECK_PORT}"
+HEALTHCHECK CMD curl --fail "http://localhost:$HEALTHCHECK_PORT_RUNTIME" || exit 1
+# Image-specific overrides.
+ADD ./entrypoint_client.sh /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
+
+
+#------------------------------------------------------------------------------#
+# Server image.
+FROM baseline as server_img
+# Enable a health probe.
+ARG HEALTHCHECK_PORT=8080
+ENV HEALTHCHECK_PORT_RUNTIME="${HEALTHCHECK_PORT}"
+HEALTHCHECK CMD curl --fail "http://localhost:$HEALTHCHECK_PORT_RUNTIME" || exit 1
+# Image-specific overrides.
+ADD ./entrypoint_server.sh /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
+
