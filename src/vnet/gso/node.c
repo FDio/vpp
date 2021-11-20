@@ -581,6 +581,7 @@ vnet_gso_node_inline (vlib_main_t * vm,
 		t0->flags = b[0]->flags & VNET_BUFFER_F_GSO;
 		t0->gso_size = vnet_buffer2 (b[0])->gso_size;
 		t0->gso_l4_hdr_sz = vnet_buffer2 (b[0])->gso_l4_hdr_sz;
+		clib_memset (&t0->gho, 0, sizeof (t0->gho));
 		vnet_generic_header_offset_parser (b[0], &t0->gho, is_l2,
 						   is_ip4, is_ip6);
 	      }
@@ -590,6 +591,7 @@ vnet_gso_node_inline (vlib_main_t * vm,
 		t1->flags = b[1]->flags & VNET_BUFFER_F_GSO;
 		t1->gso_size = vnet_buffer2 (b[1])->gso_size;
 		t1->gso_l4_hdr_sz = vnet_buffer2 (b[1])->gso_l4_hdr_sz;
+		clib_memset (&t1->gho, 0, sizeof (t1->gho));
 		vnet_generic_header_offset_parser (b[1], &t1->gho, is_l2,
 						   is_ip4, is_ip6);
 	      }
@@ -599,6 +601,7 @@ vnet_gso_node_inline (vlib_main_t * vm,
 		t2->flags = b[2]->flags & VNET_BUFFER_F_GSO;
 		t2->gso_size = vnet_buffer2 (b[2])->gso_size;
 		t2->gso_l4_hdr_sz = vnet_buffer2 (b[2])->gso_l4_hdr_sz;
+		clib_memset (&t2->gho, 0, sizeof (t2->gho));
 		vnet_generic_header_offset_parser (b[2], &t2->gho, is_l2,
 						   is_ip4, is_ip6);
 	      }
@@ -608,6 +611,7 @@ vnet_gso_node_inline (vlib_main_t * vm,
 		t3->flags = b[3]->flags & VNET_BUFFER_F_GSO;
 		t3->gso_size = vnet_buffer2 (b[3])->gso_size;
 		t3->gso_l4_hdr_sz = vnet_buffer2 (b[3])->gso_l4_hdr_sz;
+		clib_memset (&t3->gho, 0, sizeof (t3->gho));
 		vnet_generic_header_offset_parser (b[3], &t3->gho, is_l2,
 						   is_ip4, is_ip6);
 	      }
@@ -661,6 +665,7 @@ vnet_gso_node_inline (vlib_main_t * vm,
 	      t0->flags = b[0]->flags & VNET_BUFFER_F_GSO;
 	      t0->gso_size = vnet_buffer2 (b[0])->gso_size;
 	      t0->gso_l4_hdr_sz = vnet_buffer2 (b[0])->gso_l4_hdr_sz;
+	      clib_memset (&t0->gho, 0, sizeof (t0->gho));
 	      vnet_generic_header_offset_parser (b[0], &t0->gho, is_l2,
 						 is_ip4, is_ip6);
 	    }
