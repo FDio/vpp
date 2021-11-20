@@ -109,6 +109,7 @@ virtio_tx_trace (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b0,
   t = vlib_add_trace (vm, node, b0, sizeof (t[0]));
   t->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
   t->buffer_index = bi;
+  clib_memset (&t->gho, 0, sizeof (t->gho));
   if (is_tun)
     {
       int is_ip4 = 0, is_ip6 = 0;
