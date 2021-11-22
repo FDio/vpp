@@ -1501,6 +1501,18 @@ class TestIPPunt(IPPuntSetup, VppTestCase):
         super(TestIPPunt, self).punt_teardown()
         super(TestIPPunt, self).tearDown()
 
+    def test_ip_punt_api_validation(self):
+        """ IP punt API parameter validation """
+
+        nh_addr = self.pg1.remote_ip4
+        punt = {"rx_sw_if_index": self.pg0.sw_if_index,
+                "af": VppEnum.vl_api_address_family_t.ADDRESS_IP4,
+                "n_paths": 1000000,
+                "paths": []}
+        with self.vapi.assert_negative_api_retval():
+            self.vapi.add_del_ip_punt_redirect_v2(punt=punt,
+                                                  is_add=True)
+
     def test_ip_punt(self):
         """ IP punt police and redirect """
 
