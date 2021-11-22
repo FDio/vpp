@@ -58,6 +58,10 @@
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_endianfun
 
+#define vl_calcsizefun
+#include <vlibmemory/vl_memory_api_h.h>
+#undef vl_calcsizefun
+
 static void
 vl_api_get_first_msg_id_t_handler (vl_api_get_first_msg_id_t *mp)
 {
@@ -177,6 +181,7 @@ vlib_api_init (void)
       c->print_json = vl_api_##n##_t_print_json;                              \
       c->tojson = vl_api_##n##_t_tojson;                                      \
       c->fromjson = vl_api_##n##_t_fromjson;                                  \
+      c->calc_size = vl_api_##n##_t_calc_size;                                \
       c->size = sizeof (vl_api_##n##_t);                                      \
       c->traced = 1;	     /* trace, so these msgs print */                 \
       c->replay = 0;	     /* don't replay client create/delete msgs */     \
@@ -505,8 +510,9 @@ api_rx_from_node (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      vec_add (long_msg, msg, msg_len);
 	    }
 	  msg = long_msg;
+	  msg_len = vec_len (long_msg);
 	}
-      vl_msg_api_handler_no_trace_no_free (msg);
+      vl_msg_api_handler_no_trace_no_free (msg, msg_len);
     }
 
   /* Free what we've been given. */
@@ -704,20 +710,20 @@ rpc_api_hookup (vlib_main_t *vm)
 {
   api_main_t *am = vlibapi_get_main ();
 #define _(N, n)                                                               \
-  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
-			   vl_noop_handler, vl_noop_handler,                  \
-			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t),     \
-			   0 /* do not trace */, vl_api_##n##_t_print_json,   \
-			   vl_api_##n##_t_tojson, vl_api_##n##_t_fromjson);
+  vl_msg_api_set_handlers (                                                   \
+    VL_API_##N, #n, vl_api_##n##_t_handler, vl_noop_handler, vl_noop_handler, \
+    vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 0 /* do not trace */,      \
+    vl_api_##n##_t_print_json, vl_api_##n##_t_tojson,                         \
+    vl_api_##n##_t_fromjson, vl_api_##n##_t_calc_size);
   foreach_rpc_api_msg;
 #undef _
 
 #define _(N, n)                                                               \
-  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
-			   vl_noop_handler, vl_noop_handler,                  \
-			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t),     \
-			   1 /* do trace */, vl_api_##n##_t_print_json,       \
-			   vl_api_##n##_t_tojson, vl_api_##n##_t_fromjson);
+  vl_msg_api_set_handlers (                                                   \
+    VL_API_##N, #n, vl_api_##n##_t_handler, vl_noop_handler, vl_noop_handler, \
+    vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1 /* do trace */,          \
+    vl_api_##n##_t_print_json, vl_api_##n##_t_tojson,                         \
+    vl_api_##n##_t_fromjson, vl_api_##n##_t_calc_size);
   foreach_plugin_trace_msg;
 #undef _
 

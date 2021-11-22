@@ -514,7 +514,9 @@ vl_api_add_del_ip_punt_redirect_v2_t_handler (
     goto out;
 
   if (0 != n_paths)
-    vec_validate (rpaths, n_paths - 1);
+    {
+      vec_validate (rpaths, n_paths - 1);
+    }
 
   for (ii = 0; ii < n_paths; ii++)
     {
