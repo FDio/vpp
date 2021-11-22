@@ -39,6 +39,10 @@
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_endianfun
 
+#define vl_calcsizefun
+#include <vlibmemory/vl_memory_api_h.h>
+#undef vl_calcsizefun
+
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) clib_warning (__VA_ARGS__)
 #define vl_printfun
@@ -240,7 +244,8 @@ vl_client_connect (const char *name, int ctx_quota, int input_queue_size)
 	}
       rv = clib_net_to_host_u32 (rp->response);
 
-      vl_msg_api_handler ((void *) rp);
+      msgbuf_t *msgbuf = (msgbuf_t *) ((u8 *) rp - offsetof (msgbuf_t, data));
+      vl_msg_api_handler ((void *) rp, ntohl (msgbuf->data_len));
       break;
     }
   return (rv);
@@ -289,6 +294,7 @@ vl_client_disconnect (void)
   svm_queue_t *vl_input_queue;
   api_main_t *am = vlibapi_get_main ();
   time_t begin;
+  msgbuf_t *msgbuf;
 
   vl_input_queue = am->vl_input_queue;
   vl_client_send_disconnect (0 /* wait for reply */ );
@@ -321,10 +327,12 @@ vl_client_disconnect (void)
       if (ntohs (rp->_vl_msg_id) != VL_API_MEMCLNT_DELETE_REPLY)
 	{
 	  clib_warning ("queue drain: %d", ntohs (rp->_vl_msg_id));
-	  vl_msg_api_handler ((void *) rp);
+	  msgbuf = (msgbuf_t *) ((u8 *) rp - offsetof (msgbuf_t, data));
+	  vl_msg_api_handler ((void *) rp, ntohl (msgbuf->data_len));
 	  continue;
 	}
-      vl_msg_api_handler ((void *) rp);
+      msgbuf = (msgbuf_t *) ((u8 *) rp - offsetof (msgbuf_t, data));
+      vl_msg_api_handler ((void *) rp, ntohl (msgbuf->data_len));
       break;
     }
 
@@ -364,11 +372,11 @@ vl_client_install_client_message_handlers (void)
 {
   api_main_t *am = vlibapi_get_main ();
 #define _(N, n)                                                               \
-  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
-			   noop_handler, vl_api_##n##_t_endian,               \
-			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 0,  \
-			   vl_api_##n##_t_print_json, vl_api_##n##_t_tojson,  \
-			   vl_api_##n##_t_fromjson);                          \
+  vl_msg_api_set_handlers (                                                   \
+    VL_API_##N, #n, vl_api_##n##_t_handler, noop_handler,                     \
+    vl_api_##n##_t_endian, vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 0,  \
+    vl_api_##n##_t_print_json, vl_api_##n##_t_tojson,                         \
+    vl_api_##n##_t_fromjson, vl_api_##n##_t_calc_size);                       \
   am->api_trace_cfg[VL_API_##N].replay_enable = 0;
   foreach_api_msg;
 #undef _
@@ -569,6 +577,11 @@ vl_client_get_first_plugin_msg_id (const char *plugin_name)
   old_handler = am->msg_handlers[VL_API_GET_FIRST_MSG_ID_REPLY];
   am->msg_handlers[VL_API_GET_FIRST_MSG_ID_REPLY] = (void *)
     vl_api_get_first_msg_id_reply_t_handler;
+  if (!am->msg_calc_size_funcs[VL_API_GET_FIRST_MSG_ID_REPLY])
+    {
+      am->msg_calc_size_funcs[VL_API_GET_FIRST_MSG_ID_REPLY] =
+	(uword (*) (void *)) vl_api_get_first_msg_id_reply_t_calc_size;
+    }
 
   /* Ask the data-plane for the message-ID base of the indicated plugin */
   mm->first_msg_id_reply_ready = 0;

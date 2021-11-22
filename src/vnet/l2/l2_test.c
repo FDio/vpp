@@ -28,6 +28,10 @@
 #include <vnet/l2/l2.api.h>
 #undef vl_endianfun
 
+#define vl_calcsizefun
+#include <vnet/l2/l2.api.h>
+#undef vl_calcsizefun
+
 typedef struct
 {
   /* API message ID base */

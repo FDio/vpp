@@ -36,6 +36,10 @@
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_endianfun
 
+#define vl_calcsizefun
+#include <vlibmemory/vl_memory_api_h.h>
+#undef vl_calcsizefun
+
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) clib_warning (__VA_ARGS__)
 #define vl_printfun
@@ -134,7 +138,7 @@ vl_socket_client_read_internal (socket_client_main_t * scm, int wait)
 
       if (vec_len (scm->socket_rx_buffer) >= data_len + sizeof (*mbp))
 	{
-	  vl_msg_api_socket_handler ((void *) (mbp->data));
+	  vl_msg_api_socket_handler ((void *) (mbp->data), data_len);
 
 	  if (vec_len (scm->socket_rx_buffer) == data_len + sizeof (*mbp))
 	    _vec_len (scm->socket_rx_buffer) = 0;
@@ -433,11 +437,11 @@ vl_sock_client_install_message_handlers (void)
 {
 
 #define _(N, n)                                                               \
-  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
-			   noop_handler, vl_api_##n##_t_endian,               \
-			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 0,  \
-			   vl_api_##n##_t_print_json, vl_api_##n##_t_tojson,  \
-			   vl_api_##n##_t_fromjson);
+  vl_msg_api_set_handlers (                                                   \
+    VL_API_##N, #n, vl_api_##n##_t_handler, noop_handler,                     \
+    vl_api_##n##_t_endian, vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 0,  \
+    vl_api_##n##_t_print_json, vl_api_##n##_t_tojson,                         \
+    vl_api_##n##_t_fromjson, vl_api_##n##_t_calc_size);
   foreach_sock_client_api_msg;
 #undef _
 }

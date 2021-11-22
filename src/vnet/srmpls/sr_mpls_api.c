@@ -39,6 +39,10 @@
 #include <vnet/srmpls/sr_mpls.api.h>
 #undef vl_endianfun
 
+#define vl_calcsizefun
+#include <vnet/srmpls/sr_mpls.api.h>
+#undef vl_calcsizefun
+
 #define vl_printfun
 #include <vnet/srmpls/sr_mpls.api.h>
 #undef vl_printfun
@@ -194,7 +198,8 @@ sr_mpls_api_hookup (vlib_main_t * vm)
     REPLY_MSG_ID_BASE + VL_API_##N, #n, vl_api_##n##_t_handler,               \
     vl_noop_handler, vl_api_##n##_t_endian, vl_api_##n##_t_print,             \
     sizeof (vl_api_##n##_t), 1, vl_api_##n##_t_print_json,                    \
-    vl_api_##n##_t_tojson, vl_api_##n##_t_fromjson);
+    vl_api_##n##_t_tojson, vl_api_##n##_t_fromjson,                           \
+    vl_api_##n##_t_calc_size);
   foreach_vpe_api_msg;
 #undef _
 
@@ -207,7 +212,8 @@ sr_mpls_api_hookup (vlib_main_t * vm)
     vl_api_sr_mpls_policy_add_t_handler, vl_noop_handler,
     vl_api_sr_mpls_policy_add_t_endian, vl_api_sr_mpls_policy_add_t_print, 256,
     1, vl_api_sr_mpls_policy_add_t_print_json,
-    vl_api_sr_mpls_policy_mod_t_tojson, vl_api_sr_mpls_policy_mod_t_fromjson);
+    vl_api_sr_mpls_policy_add_t_tojson, vl_api_sr_mpls_policy_add_t_fromjson,
+    vl_api_sr_mpls_policy_add_t_calc_size);
 
   /*
    * Manually register the sr policy mod msg, so we trace enough bytes
@@ -218,7 +224,8 @@ sr_mpls_api_hookup (vlib_main_t * vm)
     vl_api_sr_mpls_policy_mod_t_handler, vl_noop_handler,
     vl_api_sr_mpls_policy_mod_t_endian, vl_api_sr_mpls_policy_mod_t_print, 256,
     1, vl_api_sr_mpls_policy_mod_t_print_json,
-    vl_api_sr_mpls_policy_mod_t_tojson, vl_api_sr_mpls_policy_mod_t_fromjson);
+    vl_api_sr_mpls_policy_mod_t_tojson, vl_api_sr_mpls_policy_mod_t_fromjson,
+    vl_api_sr_mpls_policy_mod_t_calc_size);
 
   /*
    * Set up the (msg_name, crc, message-id) table

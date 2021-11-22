@@ -36,6 +36,10 @@
 #include <vnet/ip/ip.api.h>
 #undef vl_endianfun
 
+#define vl_calcsizefun
+#include <vnet/ip/ip.api.h>
+#undef vl_calcsizefun
+
 typedef struct
 {
   /* API message ID base */

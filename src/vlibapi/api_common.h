@@ -132,6 +132,7 @@ typedef struct
   void *print_json;		/**< message print function (JSON format)  */
   void *tojson;			/**< binary to JSON convert function */
   void *fromjson;		/**< JSON to binary convert function */
+  void *calc_size;		/**< message size calculation */
   int size;			/**< message size  */
   int traced;			/**< is this message to be traced?  */
   int replay;			/**< is this message to be replayed?  */
@@ -170,17 +171,18 @@ VL_MSG_API_POISON (const void *a)
 }
 
 /* api_shared.c prototypes */
-void vl_msg_api_handler (void *the_msg);
-void vl_msg_api_handler_no_free (void *the_msg);
-void vl_msg_api_handler_no_trace_no_free (void *the_msg);
-void vl_msg_api_trace_only (void *the_msg);
+void vl_msg_api_handler (void *the_msg, uword msg_len);
+void vl_msg_api_handler_no_free (void *the_msg, uword msg_len);
+void vl_msg_api_handler_no_trace_no_free (void *the_msg, uword msg_len);
+void vl_msg_api_trace_only (void *the_msg, uword msg_len);
 void vl_msg_api_cleanup_handler (void *the_msg);
 void vl_msg_api_replay_handler (void *the_msg);
-void vl_msg_api_socket_handler (void *the_msg);
+void vl_msg_api_socket_handler (void *the_msg, uword msg_len);
 void vl_msg_api_set_handlers (int msg_id, char *msg_name, void *handler,
 			      void *cleanup, void *endian, void *print,
 			      int msg_size, int traced, void *print_json,
-			      void *tojson, void *fromjson);
+			      void *tojson, void *fromjson,
+			      void *validate_size);
 void vl_msg_api_clean_handlers (int msg_id);
 void vl_msg_api_config (vl_msg_api_msg_config_t *);
 void vl_msg_api_set_cleanup_handler (int msg_id, void *fp);
@@ -250,6 +252,9 @@ typedef struct api_main_t
 
   /** Message convert function vector */
   void *(**msg_fromjson_handlers) (cJSON *, int *);
+
+  /** Message calc size function vector */
+  uword (**msg_calc_size_funcs) (void *);
 
   /** Message name vector */
   const char **msg_names;
