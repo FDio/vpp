@@ -20,7 +20,7 @@ from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpMRoute, \
     VppIpInterfaceAddress, find_route_in_dump, find_mroute_in_dump
 from vpp_ip import VppIpPuntPolicer, VppIpPuntRedirect, VppIpPathMtu
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
-from vpp_papi import VppEnum
+from vpp_papi import vpp_papi, VppEnum
 from vpp_neighbor import VppNeighbor
 from vpp_lo_interface import VppLoInterface
 from vpp_policer import VppPolicer, PolicerAction
@@ -1494,12 +1494,31 @@ class TestIPPunt(IPPuntSetup, VppTestCase):
     """ IPv4 Punt Police/Redirect """
 
     def setUp(self):
-        super(TestIPPunt, self).setUp()
-        super(TestIPPunt, self).punt_setup()
+        super().setUp()
+        super().punt_setup()
 
     def tearDown(self):
-        super(TestIPPunt, self).punt_teardown()
-        super(TestIPPunt, self).tearDown()
+        super().punt_teardown()
+        super().tearDown()
+
+    def test_ip_punt_api_validation(self):
+        """ IP punt API parameter validation """
+
+        nh_addr = self.pg1.remote_ip4
+        punt = {"rx_sw_if_index": self.pg0.sw_if_index,
+                "af": VppEnum.vl_api_address_family_t.ADDRESS_IP4,
+                "n_paths": 1000000,
+                "paths": []}
+
+        with self.assertRaises(vpp_papi.VPPIOError):
+            self.vapi.add_del_ip_punt_redirect_v2(punt=punt, is_add=True)
+
+        punt = {"rx_sw_if_index": self.pg0.sw_if_index,
+                "af": VppEnum.vl_api_address_family_t.ADDRESS_IP4,
+                "n_paths": 0,
+                "paths": []}
+
+        self.vapi.add_del_ip_punt_redirect_v2(punt=punt, is_add=True)
 
     def test_ip_punt(self):
         """ IP punt police and redirect """
