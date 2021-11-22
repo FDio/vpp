@@ -109,10 +109,13 @@ af_xdp_device_input_refill_inline (vlib_main_t *vm,
 				   af_xdp_device_t *ad, af_xdp_rxq_t *rxq)
 {
   __u64 *fill;
+  const u32 buf_size = rxq->size;
+  const u32 buf_mask = rxq->mask;
   const u32 size = rxq->fq.size;
   const u32 mask = size - 1;
-  u32 bis[VLIB_FRAME_SIZE], *bi = bis;
-  u32 n_alloc, n, n_wrap;
+  u32 slot = rxq->next;
+  u32 *bi = rxq->bufs + slot;
+  u32 n_alloc, n, n_wrap, m, m_wrap, l, l_wrap, gap;
   u32 idx = 0;
 
   ASSERT (mask == rxq->fq.mask);
@@ -123,20 +126,30 @@ af_xdp_device_input_refill_inline (vlib_main_t *vm,
   if (n_alloc < 16)
     return;
 
-  n_alloc = clib_min (n_alloc, ARRAY_LEN (bis));
-  n_alloc = vlib_buffer_alloc_from_pool (vm, bis, n_alloc, ad->pool);
+  n_alloc = clib_min (n_alloc, VLIB_FRAME_SIZE);
+  n_alloc = vlib_buffer_alloc_to_ring_from_pool (vm, rxq->bufs, slot, buf_size,
+						 n_alloc, ad->pool);
   n = xsk_ring_prod__reserve (&rxq->fq, n_alloc, &idx);
   ASSERT (n == n_alloc);
+
+  rxq->next = (rxq->next + n) & buf_mask;
+  rxq->total_num += n;
+  m = clib_min (n_alloc, buf_size - slot);
+  m_wrap = n_alloc - m;
 
   fill = xsk_ring_prod__fill_addr (&rxq->fq, idx);
   n = clib_min (n_alloc, size - (idx & mask));
   n_wrap = n_alloc - n;
 
+  l = clib_min (m, n);
+  gap = clib_abs (n_wrap - m_wrap);
+  l_wrap = n_alloc - l - gap;
+
 #define bi2addr(bi) ((bi) << CLIB_LOG2_CACHE_LINE_BYTES)
 
 wrap_around:
 
-  while (n >= 8)
+  while (l >= 8)
     {
 #ifdef CLIB_HAVE_VEC256
       u64x4 b0 = u64x4_from_u32x4 (*(u32x4u *) (bi + 0));
@@ -155,22 +168,39 @@ wrap_around:
 #endif
       fill += 8;
       bi += 8;
-      n -= 8;
+      l -= 8;
     }
 
-  while (n >= 1)
+  while (l >= 1)
     {
       fill[0] = bi2addr (bi[0]);
       fill += 1;
       bi += 1;
-      n -= 1;
+      l -= 1;
     }
 
   if (n_wrap)
     {
       fill = xsk_ring_prod__fill_addr (&rxq->fq, 0);
-      n = n_wrap;
+      l = gap;
+      gap = 0;
       n_wrap = 0;
+      goto wrap_around;
+    }
+
+  if (m_wrap)
+    {
+      bi = rxq->bufs;
+      l = gap;
+      gap = 0;
+      m_wrap = 0;
+      goto wrap_around;
+    }
+
+  if (l_wrap)
+    {
+      l = l_wrap;
+      l_wrap = 0;
       goto wrap_around;
     }
 
@@ -230,6 +260,8 @@ af_xdp_device_input_bufs (vlib_main_t *vm, const af_xdp_device_t *ad,
     }
 
   vlib_get_buffers (vm, bis, bufs, n_rx);
+
+  rxq->total_num -= n_rx;
 
   n = n_rx;
   off = offs;
