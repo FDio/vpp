@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e661b950_83ed7800",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 534,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2021-11-22T15:54:31Z",
+      "side": 1,
+      "message": "Instead of looking up the peer index again, we may store all previous found index into an array and use it here.\nAlso to this point we can guarantee there is no invalid peer index at all.",
+      "revId": "1359ac544d96bf95e40c797472edf602cd82b32c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3386da04_dc8ba385",
+        "filename": "src/plugins/wireguard/wireguard_noise.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 553,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2021-11-22T15:54:31Z",
+      "side": 1,
+      "message": "we don\u0027t need to memset all 12 bytes - 4 bytes is enough.",
+      "revId": "1359ac544d96bf95e40c797472edf602cd82b32c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e15a73f5_a4637074",
+        "filename": "src/plugins/wireguard/wireguard_noise.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 229,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2021-11-22T15:54:31Z",
+      "side": 1,
+      "message": "This function may be inlined as the functions who calls it are inlined.",
+      "revId": "1359ac544d96bf95e40c797472edf602cd82b32c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d26f6fe4_2d972bb9",
+        "filename": "src/plugins/wireguard/wireguard_output_tun.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2021-11-22T15:54:31Z",
+      "side": 1,
+      "message": "Better to have different function name to distinguish outbound and inbound process ops (also update the input.c please)",
+      "revId": "1359ac544d96bf95e40c797472edf602cd82b32c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "876af729_7b72a633",
+        "filename": "src/plugins/wireguard/wireguard_timer.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2021-11-22T15:54:31Z",
+      "side": 1,
+      "message": "If origin functions (\"wg_timers_any_authenticated_packet_sent\" and others) are no longer used, we shall remove them - also they can be inlined as all are simple and short.",
+      "revId": "1359ac544d96bf95e40c797472edf602cd82b32c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
