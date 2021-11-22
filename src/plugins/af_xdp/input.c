@@ -111,7 +111,8 @@ af_xdp_device_input_refill_inline (vlib_main_t *vm,
   __u64 *fill;
   const u32 size = rxq->fq.size;
   const u32 mask = size - 1;
-  u32 bis[VLIB_FRAME_SIZE], *bi = bis;
+  u32 slot = rxq->next;
+  u32 *bi = rxq->bufs + slot;
   u32 n_alloc, n, n_wrap;
   u32 idx = 0;
 
@@ -123,10 +124,14 @@ af_xdp_device_input_refill_inline (vlib_main_t *vm,
   if (n_alloc < 16)
     return;
 
-  n_alloc = clib_min (n_alloc, ARRAY_LEN (bis));
-  n_alloc = vlib_buffer_alloc_from_pool (vm, bis, n_alloc, ad->pool);
+  n_alloc = clib_min (n_alloc, VLIB_FRAME_SIZE);
+  n_alloc = vlib_buffer_alloc_to_ring_from_pool (vm, rxq->bufs, slot, size,
+						 n_alloc, ad->pool);
   n = xsk_ring_prod__reserve (&rxq->fq, n_alloc, &idx);
   ASSERT (n == n_alloc);
+
+  ASSERT ((idx & mask) == rxq->next);
+  rxq->next = (rxq->next + n_alloc) & mask;
 
   fill = xsk_ring_prod__fill_addr (&rxq->fq, idx);
   n = clib_min (n_alloc, size - (idx & mask));
@@ -171,6 +176,7 @@ wrap_around:
       fill = xsk_ring_prod__fill_addr (&rxq->fq, 0);
       n = n_wrap;
       n_wrap = 0;
+      bi = rxq->bufs;
       goto wrap_around;
     }
 

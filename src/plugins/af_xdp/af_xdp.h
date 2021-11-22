@@ -66,6 +66,8 @@ typedef struct
   clib_spinlock_t syscall_lock;
   struct xsk_ring_cons rx;
   struct xsk_ring_prod fq;
+  u32 *bufs;
+  u32 next;
   int xsk_fd;
 
   /* fields below are accessed in control-plane only (cold) */
