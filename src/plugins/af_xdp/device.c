@@ -158,7 +158,15 @@ af_xdp_delete_if (vlib_main_t * vm, af_xdp_device_t * ad)
     xsk_umem__delete (*umem);
 
   for (i = 0; i < ad->rxq_num; i++)
-    clib_file_del_by_index (&file_main, vec_elt (ad->rxqs, i).file_index);
+    {
+      af_xdp_rxq_t *rxq = vec_elt_at_index (ad->rxqs, i);
+      const u32 size = rxq->size;
+      u32 start = (rxq->next + size - rxq->total_num) % size;
+      vlib_buffer_free_from_ring (vm, rxq->bufs, start, size, rxq->total_num);
+      vec_free (rxq->bufs);
+
+      clib_file_del_by_index (&file_main, rxq->file_index);
+    }
 
   if (ad->bpf_obj)
     {
@@ -179,6 +187,7 @@ af_xdp_delete_if (vlib_main_t * vm, af_xdp_device_t * ad)
   vec_free (ad->linux_ifname);
   vec_free (ad->netns);
   clib_error_free (ad->error);
+  clib_memset (ad, 0, sizeof (*ad));
   pool_put (axm->devices, ad);
 }
 
@@ -311,7 +320,17 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
   if (opt.flags & XDP_OPTIONS_ZEROCOPY)
     ad->flags |= AF_XDP_DEVICE_F_ZEROCOPY;
 
-  rxq->xsk_fd = is_rx ? fd : -1;
+  if (is_rx)
+    {
+      rxq->size = fq->size + rx->size;
+      rxq->mask = rxq->size - 1;
+      vec_validate_aligned (rxq->bufs, rxq->size - 1, CLIB_CACHE_LINE_BYTES);
+      rxq->xsk_fd = fd;
+    }
+  else
+    {
+      rxq->xsk_fd = -1;
+    }
 
   if (is_tx)
     {
