@@ -22,7 +22,7 @@ from vpp_papi import VppEnum
 class TestNAT44ED(VppTestCase):
     """ NAT44ED Test Case """
 
-    nat_addr = '10.0.0.3'
+    nat_addr = '10.0.10.3'
 
     tcp_port_in = 6303
     tcp_port_out = 6303
