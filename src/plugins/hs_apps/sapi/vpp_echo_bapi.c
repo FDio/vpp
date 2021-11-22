@@ -548,6 +548,10 @@ _(APP_DEL_CERT_KEY_PAIR_REPLY, app_del_cert_key_pair_reply)
 #include <vnet/session/session.api.h>
 #undef vl_endianfun
 
+#define vl_calcsizefun
+#include <vnet/session/session.api.h>
+#undef vl_calcsizefun
+
 #define vl_printfun
 #include <vnet/session/session.api.h>
 #undef vl_printfun
@@ -573,7 +577,8 @@ echo_api_hookup (echo_main_t * em)
     REPLY_MSG_ID_BASE + VL_API_##N, #n, vl_api_##n##_t_handler,               \
     vl_noop_handler, vl_api_##n##_t_endian, vl_api_##n##_t_print,             \
     sizeof (vl_api_##n##_t), 1, vl_api_##n##_t_print_json,                    \
-    vl_api_##n##_t_tojson, vl_api_##n##_t_fromjson);
+    vl_api_##n##_t_tojson, vl_api_##n##_t_fromjson,                           \
+    vl_api_##n##_t_calc_size);
   foreach_quic_echo_msg;
 #undef _
 }

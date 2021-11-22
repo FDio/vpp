@@ -39,6 +39,10 @@
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_endianfun
 
+#define vl_calcsizefun
+#include <vlibmemory/vl_memory_api_h.h>
+#undef vl_calcsizefun
+
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) clib_warning (__VA_ARGS__)
 #define vl_printfun
@@ -364,11 +368,11 @@ vl_client_install_client_message_handlers (void)
 {
   api_main_t *am = vlibapi_get_main ();
 #define _(N, n)                                                               \
-  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
-			   noop_handler, vl_api_##n##_t_endian,               \
-			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 0,  \
-			   vl_api_##n##_t_print_json, vl_api_##n##_t_tojson,  \
-			   vl_api_##n##_t_fromjson);                          \
+  vl_msg_api_set_handlers (                                                   \
+    VL_API_##N, #n, vl_api_##n##_t_handler, noop_handler,                     \
+    vl_api_##n##_t_endian, vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 0,  \
+    vl_api_##n##_t_print_json, vl_api_##n##_t_tojson,                         \
+    vl_api_##n##_t_fromjson, vl_api_##n##_t_calc_size);                       \
   am->api_trace_cfg[VL_API_##N].replay_enable = 0;
   foreach_api_msg;
 #undef _

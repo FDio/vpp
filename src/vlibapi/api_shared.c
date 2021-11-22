@@ -927,6 +927,7 @@ vl_msg_api_config (vl_msg_api_msg_config_t * c)
   am->msg_print_json_handlers[c->id] = c->print_json;
   am->msg_tojson_handlers[c->id] = c->tojson;
   am->msg_fromjson_handlers[c->id] = c->fromjson;
+  am->msg_calc_size_handlers[c->id] = c->calc_size;
   am->message_bounce[c->id] = c->message_bounce;
   am->is_mp_safe[c->id] = c->is_mp_safe;
   am->is_autoendian[c->id] = c->is_autoendian;
@@ -948,7 +949,8 @@ vl_msg_api_config (vl_msg_api_msg_config_t * c)
 void
 vl_msg_api_set_handlers (int id, char *name, void *handler, void *cleanup,
 			 void *endian, void *print, int size, int traced,
-			 void *print_json, void *tojson, void *fromjson)
+			 void *print_json, void *tojson, void *fromjson,
+			 void *calc_size)
 {
   vl_msg_api_msg_config_t cfg;
   vl_msg_api_msg_config_t *c = &cfg;
@@ -969,6 +971,7 @@ vl_msg_api_set_handlers (int id, char *name, void *handler, void *cleanup,
   c->tojson = tojson;
   c->fromjson = fromjson;
   c->print_json = print_json;
+  c->calc_size = calc_size;
   vl_msg_api_config (c);
 }
 

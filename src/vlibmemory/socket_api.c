@@ -45,6 +45,10 @@
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_endianfun
 
+#define vl_calcsizefun
+#include <vlibmemory/vl_memory_api_h.h>
+#undef vl_calcsizefun
+
 socket_main_t socket_main;
 
 #define SOCK_API_REG_HANDLE_BIT (1<<31)
@@ -792,11 +796,11 @@ vl_sock_api_init (vlib_main_t * vm)
     return 0;
 
 #define _(N, n, t)                                                            \
-  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
-			   vl_noop_handler, vl_api_##n##_t_endian,            \
-			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), t,  \
-			   vl_api_##n##_t_print_json, vl_api_##n##_t_tojson,  \
-			   vl_api_##n##_t_fromjson);                          \
+  vl_msg_api_set_handlers (                                                   \
+    VL_API_##N, #n, vl_api_##n##_t_handler, vl_noop_handler,                  \
+    vl_api_##n##_t_endian, vl_api_##n##_t_print, sizeof (vl_api_##n##_t), t,  \
+    vl_api_##n##_t_print_json, vl_api_##n##_t_tojson,                         \
+    vl_api_##n##_t_fromjson, vl_api_##n##_t_calc_size);                       \
   am->api_trace_cfg[VL_API_##N].replay_enable = 0;
   foreach_vlib_api_msg;
 #undef _
