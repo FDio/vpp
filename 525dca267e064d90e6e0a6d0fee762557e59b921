@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9d02f7fb_d74ce381",
+        "filename": "docs/index.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-11-22T09:04:59Z",
+      "side": 1,
+      "message": "Maybe we should make the labs subpages of `usecases/vpp_testbench/index`\n(e.g. with toctree in comment below)",
+      "revId": "525dca267e064d90e6e0a6d0fee762557e59b921",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a3efc17a_1ba2c33b",
+        "filename": "docs/usecases/vpp_testbench/index.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-11-22T09:04:59Z",
+      "side": 1,
+      "message": "Maybe we could include the vpp_intro lab as a subpage here, e.g.\n````\n.. toctree::\n\n   labs/intro_to_vpp/index\n````",
+      "revId": "525dca267e064d90e6e0a6d0fee762557e59b921",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
