@@ -10,7 +10,8 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether, GRE
 from scapy.layers.inet import IP, UDP, ICMP
 from scapy.layers.inet6 import HBHOptUnknown, ICMPv6ParamProblem,\
-    ICMPv6TimeExceeded, IPv6, IPv6ExtHdrFragment, IPv6ExtHdrHopByHop
+    ICMPv6TimeExceeded, IPv6, IPv6ExtHdrFragment,\
+    IPv6ExtHdrHopByHop, IPv6ExtHdrDestOpt, PadN
 from framework import VppTestCase, VppTestRunner
 from util import ppp, ppc, fragment_rfc791, fragment_rfc8200
 from vpp_gre_interface import VppGreInterface
@@ -1375,18 +1376,16 @@ class TestIPv6Reassembly(VppTestCase):
 
     def test_missing_upper(self):
         """ missing upper layer """
+        optdata = '\x00' * 100
         p = (Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac) /
              IPv6(src=self.src_if.remote_ip6,
                   dst=self.src_if.local_ip6) /
-             UDP(sport=1234, dport=5678) /
-             Raw())
-        self.extend_packet(p, 1000, self.padding)
-        fragments = fragment_rfc8200(p, 1, 500)
-        bad_fragment = p.__class__(scapy.compat.raw(fragments[1]))
-        bad_fragment[IPv6ExtHdrFragment].nh = 59
-        bad_fragment[IPv6ExtHdrFragment].offset = 0
+             IPv6ExtHdrFragment(m=1) /
+             IPv6ExtHdrDestOpt(nh=17, options=PadN(optdata='\101' * 255) /
+             PadN(optdata='\102'*255)))
+
         self.pg_enable_capture()
-        self.src_if.add_stream([bad_fragment])
+        self.src_if.add_stream([p])
         self.pg_start()
         pkts = self.src_if.get_capture(expected_count=1)
         icmp = pkts[0]
@@ -1430,6 +1429,17 @@ class TestIPv6Reassembly(VppTestCase):
         icmp = pkts[0]
         self.assertIn(ICMPv6ParamProblem, icmp)
         self.assert_equal(icmp[ICMPv6ParamProblem].code, 0, "ICMP code")
+
+    def test_atomic_fragment(self):
+        """ IPv6 atomic fragment """
+        pkt = (Ether(src=self.pg0.local_mac, dst=self.pg0.remote_mac) /
+               IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6,
+                    nh=44, plen=65535) /
+               IPv6ExtHdrFragment(offset=8191, m=1, res1=0xFF, res2=0xFF,
+                                  nh=255, id=0xffff)/('X'*1452))
+
+        rx = self.send_and_expect(self.pg0, [pkt], self.pg0)
+        self.assertIn(ICMPv6ParamProblem, rx[0])
 
 
 class TestIPv6MWReassembly(VppTestCase):

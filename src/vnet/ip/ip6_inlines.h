@@ -134,65 +134,17 @@ ip6_compute_flow_hash (const ip6_header_t * ip,
  *      it is a non-first fragment -1 is returned.
  */
 always_inline int
-ip6_locate_header (vlib_buffer_t * p0,
-		   ip6_header_t * ip0, int find_hdr_type, u32 * offset)
+ip6_locate_header (vlib_buffer_t *b, ip6_header_t *ip, int find_hdr_type,
+		   u32 *offset)
 {
-  u8 next_proto = ip0->protocol;
-  u8 *next_header;
-  u8 done = 0;
-  u32 cur_offset;
-  u8 *temp_nxthdr = 0;
-  u32 exthdr_len = 0;
-
-  next_header = ip6_next_header (ip0);
-  cur_offset = sizeof (ip6_header_t);
-  while (1)
+  ip6_ext_hdr_chain_t hdr_chain;
+  int res = ip6_ext_header_walk (b, ip, find_hdr_type, &hdr_chain);
+  if (res >= 0)
     {
-      done = (next_proto == find_hdr_type);
-      if (PREDICT_FALSE
-	  (next_header >=
-	   (u8 *) vlib_buffer_get_current (p0) + p0->current_length))
-	{
-	  //A malicious packet could set an extension header with a too big size
-	  return (-1);
-	}
-      if (done)
-	break;
-      if ((!ip6_ext_hdr (next_proto)) || next_proto == IP_PROTOCOL_IP6_NONXT)
-	{
-	  if (find_hdr_type < 0)
-	    break;
-	  return -1;
-	}
-      if (next_proto == IP_PROTOCOL_IPV6_FRAGMENTATION)
-	{
-	  ip6_frag_hdr_t *frag_hdr = (ip6_frag_hdr_t *) next_header;
-	  u16 frag_off = ip6_frag_hdr_offset (frag_hdr);
-	  /* Non first fragment return -1 */
-	  if (frag_off)
-	    return (-1);
-	  exthdr_len = sizeof (ip6_frag_hdr_t);
-	  temp_nxthdr = next_header + exthdr_len;
-	}
-      else if (next_proto == IP_PROTOCOL_IPSEC_AH)
-	{
-	  exthdr_len =
-	    ip6_ext_authhdr_len (((ip6_ext_header_t *) next_header));
-	  temp_nxthdr = next_header + exthdr_len;
-	}
-      else
-	{
-	  exthdr_len =
-	    ip6_ext_header_len (((ip6_ext_header_t *) next_header));
-	  temp_nxthdr = next_header + exthdr_len;
-	}
-      next_proto = ((ip6_ext_header_t *) next_header)->next_hdr;
-      next_header = temp_nxthdr;
-      cur_offset += exthdr_len;
+      *offset = hdr_chain.eh[res].offset;
+      return hdr_chain.eh[res].protocol;
     }
-
-  *offset = cur_offset;
-  return (next_proto);
+  return -1;
 }
 
 
