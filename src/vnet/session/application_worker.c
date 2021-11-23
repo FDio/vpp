@@ -33,6 +33,7 @@ app_worker_alloc (application_t * app)
   app_wrk->wrk_map_index = ~0;
   app_wrk->connects_seg_manager = APP_INVALID_SEGMENT_MANAGER_INDEX;
   clib_spinlock_init (&app_wrk->detached_seg_managers_lock);
+  clib_spinlock_init (&app_wrk->postponed_mq_msgs_lock);
   APP_DBG ("New app %v worker %u", app->name, app_wrk->wrk_index);
   return app_wrk;
 }
@@ -126,6 +127,7 @@ app_worker_free (app_worker_t * app_wrk)
     }
   vec_free (app_wrk->detached_seg_managers);
   clib_spinlock_free (&app_wrk->detached_seg_managers_lock);
+  clib_spinlock_free (&app_wrk->postponed_mq_msgs_lock);
 
   if (CLIB_DEBUG)
     clib_memset (app_wrk, 0xfe, sizeof (*app_wrk));
@@ -338,8 +340,10 @@ app_worker_init_accepted (session_t * s)
 
   listener = listen_session_get_from_handle (s->listener_handle);
   app_wrk = application_listener_select_worker (listener);
-  s->app_wrk_index = app_wrk->wrk_index;
+  if (PREDICT_FALSE (app_wrk->mq_congested))
+    return -1;
 
+  s->app_wrk_index = app_wrk->wrk_index;
   app = application_get (app_wrk->app_index);
   if (app->cb_fns.fifo_tuning_callback)
     s->flags |= SESSION_F_CUSTOM_FIFO_TUNING;
@@ -614,12 +618,234 @@ app_worker_application_is_builtin (app_worker_t * app_wrk)
   return app_wrk->app_is_builtin;
 }
 
+static int
+app_wrk_send_fd (app_worker_t *app_wrk, int fd)
+{
+  if (!appns_sapi_enabled ())
+    {
+      vl_api_registration_t *reg;
+      clib_error_t *error;
+
+      reg =
+	vl_mem_api_client_index_to_registration (app_wrk->api_client_index);
+      if (!reg)
+	{
+	  clib_warning ("no api registration for client: %u",
+			app_wrk->api_client_index);
+	  return -1;
+	}
+
+      if (vl_api_registration_file_index (reg) == VL_API_INVALID_FI)
+	return -1;
+
+      error = vl_api_send_fd_msg (reg, &fd, 1);
+      if (error)
+	{
+	  clib_error_report (error);
+	  return -1;
+	}
+
+      return 0;
+    }
+
+  app_sapi_msg_t smsg = { 0 };
+  app_namespace_t *app_ns;
+  clib_error_t *error;
+  application_t *app;
+  clib_socket_t *cs;
+  u32 cs_index;
+
+  app = application_get (app_wrk->app_index);
+  app_ns = app_namespace_get (app->ns_index);
+  cs_index = appns_sapi_handle_sock_index (app_wrk->api_client_index);
+  cs = appns_sapi_get_socket (app_ns, cs_index);
+  if (PREDICT_FALSE (!cs))
+    return -1;
+
+  /* There's no payload for the message only the type */
+  smsg.type = APP_SAPI_MSG_TYPE_SEND_FDS;
+  error = clib_socket_sendmsg (cs, &smsg, sizeof (smsg), &fd, 1);
+  if (error)
+    {
+      clib_error_report (error);
+      return -1;
+    }
+
+  return 0;
+}
+
+static int
+mq_try_lock_and_alloc_msg (svm_msg_q_t *mq, session_mq_rings_e ring,
+			   svm_msg_q_msg_t *msg)
+{
+  int rv, n_try = 0;
+
+  while (n_try < 5)
+    {
+      rv = svm_msg_q_lock_and_alloc_msg_w_ring (mq, ring, SVM_Q_NOWAIT, msg);
+      if (!rv)
+	return 0;
+      /*
+       * Break the loop if mq is full, usually this is because the
+       * app has crashed or is hanging on somewhere.
+       */
+      if (rv != -1)
+	break;
+      n_try += 1;
+      usleep (1);
+    }
+
+  return -1;
+}
+
+typedef union app_wrk_mq_rpc_args_
+{
+  struct
+  {
+    u32 thread_index;
+    u32 app_wrk_index;
+  };
+  uword as_uword;
+} app_wrk_mq_rpc_ags_t;
+
+static int
+app_wrk_handle_mq_postponed_msgs (void *arg)
+{
+  app_wrk_postponed_msg_t *pm;
+  app_wrk_mq_rpc_ags_t args;
+  app_worker_t *app_wrk;
+  u32 max_msg, n_msg = 0;
+
+  svm_msg_q_msg_t _mq_msg, *mq_msg = &_mq_msg;
+  session_event_t *evt;
+  svm_msg_q_t *mq;
+
+  args.as_uword = pointer_to_uword (arg);
+  app_wrk = app_worker_get_if_valid (args.app_wrk_index);
+  if (!app_wrk)
+    return 0;
+
+  mq = app_wrk->event_queue;
+
+  clib_spinlock_lock (&app_wrk->postponed_mq_msgs_lock);
+
+  max_msg = clib_min (32, clib_fifo_elts (app_wrk->postponed_mq_msgs));
+
+  while (n_msg < max_msg)
+    {
+      pm = clib_fifo_head (app_wrk->postponed_mq_msgs);
+      if (mq_try_lock_and_alloc_msg (mq, pm->ring, mq_msg))
+	break;
+
+      evt = svm_msg_q_msg_data (mq, mq_msg);
+      clib_memset (evt, 0, sizeof (*evt));
+      evt->event_type = pm->event_type;
+      clib_memcpy_fast (evt->data, pm->data, pm->len);
+
+      if (pm->fd != -1)
+	app_wrk_send_fd (app_wrk, pm->fd);
+
+      svm_msg_q_add_and_unlock (mq, mq_msg);
+
+      clib_fifo_advance_head (app_wrk->postponed_mq_msgs, 1);
+      n_msg += 1;
+    }
+
+  if (!clib_fifo_elts (app_wrk->postponed_mq_msgs))
+    {
+      app_wrk->mq_congested = 0;
+    }
+  else
+    {
+      session_send_rpc_evt_to_thread_force (
+	args.thread_index, app_wrk_handle_mq_postponed_msgs,
+	uword_to_pointer (args.as_uword, void *));
+    }
+
+  clib_spinlock_unlock (&app_wrk->postponed_mq_msgs_lock);
+
+  return 0;
+}
+
+static void
+app_wrk_add_mq_postponed_msg (app_worker_t *app_wrk, session_mq_rings_e ring,
+			      u8 evt_type, void *msg, u32 msg_len, int fd)
+{
+  app_wrk_postponed_msg_t *pm;
+
+  clib_spinlock_lock (&app_wrk->postponed_mq_msgs_lock);
+
+  app_wrk->mq_congested = 1;
+
+  clib_fifo_add2 (app_wrk->postponed_mq_msgs, pm);
+  clib_memcpy_fast (pm->data, msg, msg_len);
+  pm->event_type = evt_type;
+  pm->ring = ring;
+  pm->len = msg_len;
+  pm->fd = fd;
+
+  if (clib_fifo_elts (app_wrk->postponed_mq_msgs) == 1)
+    {
+      app_wrk_mq_rpc_ags_t args = { .thread_index = vlib_get_thread_index (),
+				    .app_wrk_index = app_wrk->wrk_index };
+
+      session_send_rpc_evt_to_thread_force (
+	args.thread_index, app_wrk_handle_mq_postponed_msgs,
+	uword_to_pointer (args.as_uword, void *));
+    }
+
+  clib_spinlock_unlock (&app_wrk->postponed_mq_msgs_lock);
+}
+
+void
+app_wrk_send_ctrl_evt_fd (app_worker_t *app_wrk, u8 evt_type, void *msg,
+			  u32 msg_len, int fd)
+{
+  svm_msg_q_msg_t _mq_msg, *mq_msg = &_mq_msg;
+  svm_msg_q_t *mq = app_wrk->event_queue;
+  session_event_t *evt;
+  int rv;
+
+  if (PREDICT_FALSE (app_wrk->mq_congested))
+    goto handle_congestion;
+
+  rv = mq_try_lock_and_alloc_msg (mq, SESSION_MQ_CTRL_EVT_RING, mq_msg);
+  if (PREDICT_FALSE (rv))
+    goto handle_congestion;
+
+  evt = svm_msg_q_msg_data (mq, mq_msg);
+  clib_memset (evt, 0, sizeof (*evt));
+  evt->event_type = evt_type;
+  clib_memcpy_fast (evt->data, msg, msg_len);
+
+  if (fd != -1)
+    app_wrk_send_fd (app_wrk, fd);
+
+  svm_msg_q_add_and_unlock (mq, mq_msg);
+
+  return;
+
+handle_congestion:
+
+  app_wrk_add_mq_postponed_msg (app_wrk, SESSION_MQ_CTRL_EVT_RING, evt_type,
+				msg, msg_len, fd);
+}
+
+void
+app_wrk_send_ctrl_evt (app_worker_t *app_wrk, u8 evt_type, void *msg,
+		       u32 msg_len)
+{
+  app_wrk_send_ctrl_evt_fd (app_wrk, evt_type, msg, msg_len, -1);
+}
+
 static inline int
 app_send_io_evt_rx (app_worker_t * app_wrk, session_t * s)
 {
+  svm_msg_q_msg_t _mq_msg = { 0 }, *mq_msg = &_mq_msg;
   session_event_t *evt;
-  svm_msg_q_msg_t msg;
   svm_msg_q_t *mq;
+  u32 app_session;
+  int rv;
 
   if (app_worker_application_is_builtin (app_wrk))
     return app_worker_builtin_rx (app_wrk, s);
@@ -627,68 +853,72 @@ app_send_io_evt_rx (app_worker_t * app_wrk, session_t * s)
   if (svm_fifo_has_event (s->rx_fifo))
     return 0;
 
+  app_session = s->rx_fifo->shr->client_session_index;
   mq = app_wrk->event_queue;
-  svm_msg_q_lock (mq);
 
-  if (PREDICT_FALSE (svm_msg_q_is_full (mq)))
-    {
-      clib_warning ("evt q full");
-      svm_msg_q_unlock (mq);
-      return -1;
-    }
+  if (PREDICT_FALSE (app_wrk->mq_congested))
+    goto handle_congestion;
 
-  if (PREDICT_FALSE (svm_msg_q_ring_is_full (mq, SESSION_MQ_IO_EVT_RING)))
-    {
-      clib_warning ("evt q rings full");
-      svm_msg_q_unlock (mq);
-      return -1;
-    }
+  rv = mq_try_lock_and_alloc_msg (mq, SESSION_MQ_IO_EVT_RING, mq_msg);
 
-  msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
-  evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
-  evt->session_index = s->rx_fifo->shr->client_session_index;
+  if (PREDICT_FALSE (rv))
+    goto handle_congestion;
+
+  evt = svm_msg_q_msg_data (mq, mq_msg);
   evt->event_type = SESSION_IO_EVT_RX;
+  evt->session_index = app_session;
 
   (void) svm_fifo_set_event (s->rx_fifo);
-  svm_msg_q_add_and_unlock (mq, &msg);
+
+  svm_msg_q_add_and_unlock (mq, mq_msg);
 
   return 0;
+
+handle_congestion:
+
+  app_wrk_add_mq_postponed_msg (app_wrk, SESSION_MQ_IO_EVT_RING,
+				SESSION_IO_EVT_RX, &app_session,
+				sizeof (app_session), -1);
+  return -1;
 }
 
 static inline int
 app_send_io_evt_tx (app_worker_t * app_wrk, session_t * s)
 {
-  svm_msg_q_t *mq;
+  svm_msg_q_msg_t _mq_msg = { 0 }, *mq_msg = &_mq_msg;
   session_event_t *evt;
-  svm_msg_q_msg_t msg;
+  svm_msg_q_t *mq;
+  u32 app_session;
+  int rv;
 
   if (app_worker_application_is_builtin (app_wrk))
     return app_worker_builtin_tx (app_wrk, s);
 
+  app_session = s->tx_fifo->shr->client_session_index;
   mq = app_wrk->event_queue;
-  svm_msg_q_lock (mq);
 
-  if (PREDICT_FALSE (svm_msg_q_is_full (mq)))
-    {
-      clib_warning ("evt q full");
-      svm_msg_q_unlock (mq);
-      return -1;
-    }
+  if (PREDICT_FALSE (app_wrk->mq_congested))
+    goto handle_congestion;
 
-  if (PREDICT_FALSE (svm_msg_q_ring_is_full (mq, SESSION_MQ_IO_EVT_RING)))
-    {
-      clib_warning ("evt q rings full");
-      svm_msg_q_unlock (mq);
-      return -1;
-    }
+  rv = mq_try_lock_and_alloc_msg (mq, SESSION_MQ_IO_EVT_RING, mq_msg);
 
-  msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
-  evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
+  if (PREDICT_FALSE (rv))
+    goto handle_congestion;
+
+  evt = svm_msg_q_msg_data (mq, mq_msg);
   evt->event_type = SESSION_IO_EVT_TX;
-  evt->session_index = s->tx_fifo->shr->client_session_index;
+  evt->session_index = app_session;
 
-  svm_msg_q_add_and_unlock (mq, &msg);
+  svm_msg_q_add_and_unlock (mq, mq_msg);
+
   return 0;
+
+handle_congestion:
+
+  app_wrk_add_mq_postponed_msg (app_wrk, SESSION_MQ_IO_EVT_RING,
+				SESSION_IO_EVT_TX, &app_session,
+				sizeof (app_session), -1);
+  return -1;
 }
 
 /* *INDENT-OFF* */
@@ -764,10 +994,12 @@ format_app_worker (u8 * s, va_list * args)
   app_worker_t *app_wrk = va_arg (*args, app_worker_t *);
   u32 indent = 1;
 
-  s = format (s, "%U wrk-index %u app-index %u map-index %u "
-	      "api-client-index %d\n", format_white_space, indent,
-	      app_wrk->wrk_index, app_wrk->app_index, app_wrk->wrk_map_index,
-	      app_wrk->api_client_index);
+  s = format (s,
+	      "%U wrk-index %u app-index %u map-index %u "
+	      "api-client-index %d mq-cong %u\n",
+	      format_white_space, indent, app_wrk->wrk_index,
+	      app_wrk->app_index, app_wrk->wrk_map_index,
+	      app_wrk->api_client_index, app_wrk->mq_congested);
   return s;
 }
 
