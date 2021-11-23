@@ -29,6 +29,17 @@
 #define APP_DBG(_fmt, _args...)
 #endif
 
+typedef struct app_wrk_postponed_msg_
+{
+  u32 len;
+  u8 event_type;
+  session_mq_rings_e ring;
+  u8 is_sapi;
+  u32 bapi_reg_index;
+  int fd;
+  u8 data[SESSION_CTRL_MSG_MAX_SIZE];
+} app_wrk_postponed_msg_t;
+
 typedef struct app_worker_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -59,6 +70,7 @@ typedef struct app_worker_
   /** API index for the worker. Needed for multi-process apps */
   u32 api_client_index;
 
+  u8 mq_congestion;
   u8 app_is_builtin;
 
   /** Pool of half-open session handles. Tracked in case worker detaches */
@@ -69,6 +81,9 @@ typedef struct app_worker_
 
   /** Vector of detached listener segment managers */
   u32 *detached_seg_managers;
+
+  app_wrk_postponed_msg_t *postponed_mq_msgs;
+  clib_spinlock_t postponed_mq_msgs_lock;
 } app_worker_t;
 
 typedef struct app_worker_map_
@@ -339,6 +354,10 @@ int app_worker_del_segment_notify (app_worker_t * app_wrk,
 u32 app_worker_n_listeners (app_worker_t * app);
 session_t *app_worker_first_listener (app_worker_t * app,
 				      u8 fib_proto, u8 transport_proto);
+void app_wrk_send_ctrl_evt_fd (app_worker_t *app_wrk, u8 evt_type, void *msg,
+                            u32 msg_len, int fd);
+void app_wrk_send_ctrl_evt (app_worker_t *app_wrk,
+			 u8 evt_type, void *msg, u32 msg_len);
 int app_worker_send_event (app_worker_t * app, session_t * s, u8 evt);
 int app_worker_lock_and_send_event (app_worker_t * app, session_t * s,
 				    u8 evt_type);
