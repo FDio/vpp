@@ -225,9 +225,8 @@ esp_get_ip6_hdr_len (ip6_header_t * ip6, ip6_ext_header_t ** ext_hdr)
       return len;
     }
 
-  p = (void *) (ip6 + 1);
+  p = ip6_next_header (ip6);
   len += ip6_ext_header_len (p);
-
   while (ext_hdr_is_pre_esp (p->next_hdr))
     {
       len += ip6_ext_header_len (p);
@@ -842,16 +841,28 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
       else			/* transport mode */
 	{
-	  u8 *l2_hdr, l2_len, *ip_hdr, ip_len;
+	  u8 *l2_hdr, l2_len, *ip_hdr;
+	  u16 ip_len;
 	  ip6_ext_header_t *ext_hdr;
 	  udp_header_t *udp = 0;
 	  u16 udp_len = 0;
 	  u8 *old_ip_hdr = vlib_buffer_get_current (b[0]);
 
+	  /*
+	   * Get extension header chain length. It might be longer than the
+	   * buffer's pre_data area.
+	   */
 	  ip_len =
 	    (VNET_LINK_IP6 == lt ?
 	       esp_get_ip6_hdr_len ((ip6_header_t *) old_ip_hdr, &ext_hdr) :
 	       ip4_header_bytes ((ip4_header_t *) old_ip_hdr));
+	  if ((old_ip_hdr - ip_len) < &b[0]->pre_data[0])
+	    {
+	      err = ESP_ENCRYPT_ERROR_NO_BUFFERS;
+	      esp_set_next_index (b[0], node, err, n_noop, noop_nexts,
+				  drop_next);
+	      goto trace;
+	    }
 
 	  vlib_buffer_advance (b[0], ip_len);
 	  payload = vlib_buffer_get_current (b[0]);

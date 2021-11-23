@@ -26,6 +26,7 @@
 #include <vnet/ip/ip6_to_ip4.h>
 #include <vppinfra/bihash_48_8.h>
 #include <vnet/ip/reass/ip6_sv_reass.h>
+#include <vnet/ip/ip6_inlines.h>
 
 #define MSEC_PER_SEC 1000
 #define IP6_SV_REASS_TIMEOUT_DEFAULT_MS 100
@@ -440,22 +441,18 @@ ip6_sv_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
 }
 
 always_inline bool
-ip6_sv_reass_verify_upper_layer_present (vlib_node_runtime_t * node,
-					 vlib_buffer_t * b,
-					 ip6_frag_hdr_t * frag_hdr)
+ip6_sv_reass_verify_upper_layer_present (vlib_node_runtime_t *node,
+					 vlib_buffer_t *b,
+					 ip6_ext_hdr_chain_t *hc)
 {
-  ip6_ext_header_t *tmp = (ip6_ext_header_t *) frag_hdr;
-  while (ip6_ext_hdr (tmp->next_hdr))
+  int nh = hc->eh[hc->length - 1].protocol;
+  /* Checking to see if it's a terminating header */
+  if (ip6_ext_hdr (nh))
     {
-      tmp = ip6_ext_next_header (tmp);
-    }
-  if (IP_PROTOCOL_IP6_NONXT == tmp->next_hdr)
-    {
-      icmp6_error_set_vnet_buffer (b, ICMP6_parameter_problem,
-				   ICMP6_parameter_problem_first_fragment_has_incomplete_header_chain,
-				   0);
+      icmp6_error_set_vnet_buffer (
+	b, ICMP6_parameter_problem,
+	ICMP6_parameter_problem_first_fragment_has_incomplete_header_chain, 0);
       b->error = node->errors[IP6_ERROR_REASS_MISSING_UPPER];
-
       return false;
     }
   return true;
@@ -533,16 +530,13 @@ ip6_sv_reassembly_inline (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 
 	  ip6_header_t *ip0 = vlib_buffer_get_current (b0);
-	  ip6_frag_hdr_t *frag_hdr = NULL;
-	  ip6_ext_header_t *prev_hdr;
-	  if (ip6_ext_hdr (ip0->protocol))
-	    {
-	      frag_hdr =
-		ip6_ext_header_find (vm, b0, ip0,
-				     IP_PROTOCOL_IPV6_FRAGMENTATION,
-				     &prev_hdr);
-	    }
-	  if (!frag_hdr)
+	  ip6_frag_hdr_t *frag_hdr;
+	  ip6_ext_hdr_chain_t hdr_chain;
+
+	  int res = ip6_ext_header_walk (
+	    b0, ip0, IP_PROTOCOL_IPV6_FRAGMENTATION, &hdr_chain);
+	  if (res < 0 ||
+	      hdr_chain.eh[res].protocol != IP_PROTOCOL_IPV6_FRAGMENTATION)
 	    {
 	      // this is a regular packet - no fragmentation
 	      if (!ip6_get_port
@@ -571,13 +565,15 @@ ip6_sv_reassembly_inline (vlib_main_t * vm,
 		}
 	      goto packet_enqueue;
 	    }
+	  frag_hdr =
+	    ip6_ext_next_header_offset (ip0, hdr_chain.eh[res].offset);
 	  vnet_buffer (b0)->ip.reass.ip6_frag_hdr_offset =
-	    (u8 *) frag_hdr - (u8 *) ip0;
+	    hdr_chain.eh[res].offset;
 	  if (0 == ip6_frag_hdr_offset (frag_hdr))
 	    {
 	      // first fragment - verify upper-layer is present
-	      if (!ip6_sv_reass_verify_upper_layer_present
-		  (node, b0, frag_hdr))
+	      if (!ip6_sv_reass_verify_upper_layer_present (node, b0,
+							    &hdr_chain))
 		{
 		  next0 = IP6_SV_REASSEMBLY_NEXT_ICMP_ERROR;
 		  goto packet_enqueue;

@@ -1227,14 +1227,11 @@ always_inline u8
 ip6_next_proto_is_tcp_udp (vlib_buffer_t * p0, ip6_header_t * ip0,
 			   u32 * udp_offset0)
 {
-  u32 proto0;
-  proto0 = ip6_locate_header (p0, ip0, IP_PROTOCOL_UDP, udp_offset0);
-  if (proto0 != IP_PROTOCOL_UDP)
-    {
-      proto0 = ip6_locate_header (p0, ip0, IP_PROTOCOL_TCP, udp_offset0);
-      proto0 = (proto0 == IP_PROTOCOL_TCP) ? proto0 : 0;
-    }
-  return proto0;
+  int nh = ip6_locate_header (p0, ip0, -1, udp_offset0);
+  if (nh > 0)
+    if (nh == IP_PROTOCOL_UDP || nh == IP_PROTOCOL_TCP)
+      return nh;
+  return 0;
 }
 
 /* *INDENT-OFF* */
