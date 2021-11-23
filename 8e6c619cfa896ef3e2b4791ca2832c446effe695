@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e06b8b3f_dc79f99d",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-11-23T12:58:17Z",
+      "side": 1,
+      "message": "clib_prefetch_store....",
+      "revId": "8e6c619cfa896ef3e2b4791ca2832c446effe695",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
