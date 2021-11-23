@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1555f9ea_de071091",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 165,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-11-23T14:30:39Z",
+      "side": 1,
+      "message": "this is only useful in debug mode, we cannot rely on it in the general case",
+      "revId": "6112965d2613171827254b4a781b4bb2c22ab034",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
