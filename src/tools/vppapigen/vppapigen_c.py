@@ -206,6 +206,8 @@ class ToJSON():
         write('    cJSON *array = cJSON_CreateArray();\n')
 
         for b in o.block:
+            if b[1] == 0:
+                    continue
             write('    if (a & {})\n'.format(b[0]))
             write('       cJSON_AddItemToArray(array, cJSON_CreateString("{}"));\n'.format(b[0]))
         write('    return array;\n')
