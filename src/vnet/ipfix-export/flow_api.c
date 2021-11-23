@@ -107,8 +107,6 @@ vl_api_set_ipfix_exporter_t_internal (
 	      if (pool_elts (frm->exporters) >= IPFIX_EXPORTERS_MAX)
 		return VNET_API_ERROR_INVALID_VALUE;
 	      pool_get (frm->exporters, exp);
-	      if (!exp)
-		return VNET_API_ERROR_INVALID_VALUE;
 	    }
 	}
       else
