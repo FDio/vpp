@@ -1132,7 +1132,11 @@ ct_custom_tx (void *session, transport_send_params_t * sp)
    * interpreted as successful notification and session is descheduled. */
   svm_fifo_unset_event (s->tx_fifo);
   if (!ct_session_tx (s))
-    sp->flags = TRANSPORT_SND_F_DESCHED;
+    {
+      sp->flags = TRANSPORT_SND_F_DESCHED;
+      /* Avoid generating dequeue notifications */
+      sp->max_burst_size = 0;
+    }
 
   /* The scheduler uses packet count as a means of upper bounding the amount
    * of work done per dispatch. So make it look like we have sent something */
