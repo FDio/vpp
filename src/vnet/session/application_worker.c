@@ -338,8 +338,10 @@ app_worker_init_accepted (session_t * s)
 
   listener = listen_session_get_from_handle (s->listener_handle);
   app_wrk = application_listener_select_worker (listener);
-  s->app_wrk_index = app_wrk->wrk_index;
+  if (app_wrk->mq_congestion)
+    return -1;
 
+  s->app_wrk_index = app_wrk->wrk_index;
   app = application_get (app_wrk->app_index);
   if (app->cb_fns.fifo_tuning_callback)
     s->flags |= SESSION_F_CUSTOM_FIFO_TUNING;
