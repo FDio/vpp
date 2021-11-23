@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bbed9dc9_53224875",
+        "filename": "src/vnet/l2/l2_input_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 256,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-11-23T12:59:43Z",
+      "side": 1,
+      "message": "clib_prefetch_store (b + 4);",
+      "revId": "968efbae8c77f628d5f67a657525cdca7ef6a160",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
