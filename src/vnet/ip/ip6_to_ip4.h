@@ -62,41 +62,25 @@ static u8 icmp6_to_icmp_updater_pointer_table[] =
  * @returns 0 on success, non-zero value otherwise.
  */
 static_always_inline int
-ip6_parse (vlib_main_t * vm, vlib_buffer_t * b, const ip6_header_t * ip6,
-	   u32 buff_len, u8 * l4_protocol, u16 * l4_offset,
-	   u16 * frag_hdr_offset)
+ip6_parse (vlib_main_t *vm, vlib_buffer_t *b, ip6_header_t *ip6, u32 buff_len,
+	   u8 *l4_protocol, u16 *l4_offset, u16 *frag_hdr_offset)
 {
-  ip6_ext_header_t *last_hdr, *frag_hdr;
-  u32 length;
-  if (ip6_walk_ext_hdr
-      (vm, b, ip6, IP_PROTOCOL_IPV6_FRAGMENTATION, &length, &frag_hdr,
-       &last_hdr))
+  ip6_ext_hdr_chain_t hdr_chain;
+  int res =
+    ip6_ext_header_walk (b, ip6, IP_PROTOCOL_IPV6_FRAGMENTATION, &hdr_chain);
+  if (res < 0)
     {
       return -1;
     }
-
-  if (length > 0)
-    {
-      if (frag_hdr)
-	{
-	  *frag_hdr_offset = (u8 *) frag_hdr - (u8 *) ip6;
-	}
-      else
-	{
-	  *frag_hdr_offset = 0;
-	}
-      *l4_protocol = last_hdr->next_hdr;
-    }
+  if (hdr_chain.eh[res].protocol == IP_PROTOCOL_IPV6_FRAGMENTATION)
+    *frag_hdr_offset = hdr_chain.eh[res].offset;
   else
-    {
-      *frag_hdr_offset = 0;
-      *l4_protocol = ip6->protocol;
-    }
-  *l4_offset = sizeof (*ip6) + length;
+    *frag_hdr_offset = 0;
 
-  return (buff_len < (*l4_offset + 4)) ||
-    (clib_net_to_host_u16 (ip6->payload_length) <
-     (*l4_offset + 4 - sizeof (*ip6)));
+  *l4_protocol = hdr_chain.eh[hdr_chain.length - 1].protocol;
+  *l4_offset = hdr_chain.eh[hdr_chain.length - 1].offset;
+
+  return 0;
 }
 
 /**
@@ -124,13 +108,13 @@ ip6_get_port (vlib_main_t * vm, vlib_buffer_t * b, ip6_header_t * ip6,
   u16 frag_offset;
   u8 *l4;
 
-  if (ip6_parse
-      (vm, b, ip6, buffer_len, &l4_protocol, &l4_offset, &frag_offset))
-    return 0;
-
+  if (ip6_parse (vm, b, ip6, buffer_len, &l4_protocol, &l4_offset,
+		 &frag_offset))
+    {
+      return 0;
+    }
   if (frag_offset &&
-      ip6_frag_hdr_offset (((ip6_frag_hdr_t *)
-			    u8_ptr_add (ip6, frag_offset))))
+      ip6_frag_hdr_offset (((ip6_frag_hdr_t *) u8_ptr_add (ip6, frag_offset))))
     return 0;			//Can't deal with non-first fragment for now
 
   if (ip_protocol)

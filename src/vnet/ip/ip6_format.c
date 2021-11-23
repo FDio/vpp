@@ -288,7 +288,7 @@ format_ip6_header (u8 * s, va_list * args)
 	    "\n%Utos 0x%02x, flow label 0x%x, hop limit %d, payload length %d",
 	    format_white_space, indent, traffic_class, flow_label,
 	    ip->hop_limit, clib_net_to_host_u16 (ip->payload_length));
-
+#if 0
   /* Recurse into next protocol layer. */
   if (max_header_bytes != 0 && sizeof (ip[0]) < max_header_bytes)
     {
@@ -301,7 +301,7 @@ format_ip6_header (u8 * s, va_list * args)
 		    /* next protocol header */ (void *) (ip + 1),
 		    max_header_bytes - sizeof (ip[0]));
     }
-
+#endif
   return s;
 }
 
