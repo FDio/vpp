@@ -189,6 +189,7 @@ create_packet_v2_sock (int host_if_index, tpacket_req_t * rx_req,
       goto error;
     }
 
+#if defined(PACKET_QDISC_BYPASS)
   if (setsockopt (*fd, SOL_PACKET, PACKET_QDISC_BYPASS, &opt, sizeof (opt)) <
       0)
     {
@@ -197,6 +198,7 @@ create_packet_v2_sock (int host_if_index, tpacket_req_t * rx_req,
 		      "handling option: %s (errno %d)",
 		      strerror (errno), errno);
     }
+#endif
 
   if (setsockopt (*fd, SOL_PACKET, PACKET_RX_RING, rx_req, req_sz) < 0)
     {
