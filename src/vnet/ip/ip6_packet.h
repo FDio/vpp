@@ -40,6 +40,7 @@
 #ifndef included_ip6_packet_h
 #define included_ip6_packet_h
 
+#include <stdbool.h>
 #include <vnet/tcp/tcp_packet.h>
 #include <vnet/ip/ip4_packet.h>
 
@@ -62,13 +63,11 @@ typedef struct
 } ip6_address_and_mask_t;
 
 /* Packed so that the mhash key doesn't include uninitialized pad bytes */
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   /* IP address must be first for ip_interface_address_get_address() to work */
   ip6_address_t ip6_addr;
   u32 fib_index;
 }) ip6_address_fib_t;
-/* *INDENT-ON* */
 
 always_inline void
 ip6_addr_fib_init (ip6_address_fib_t * addr_fib,
@@ -477,44 +476,61 @@ ip6_tcp_reply_x2 (ip6_header_t * ip0, ip6_header_t * ip1,
   }
 }
 
-
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   u8 data;
 }) ip6_pad1_option_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   u8 type;
   u8 len;
   u8 data[0];
 }) ip6_padN_option_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
 #define IP6_MLDP_ALERT_TYPE  0x5
   u8 type;
   u8 len;
   u16 value;
 }) ip6_router_alert_option_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   u8 next_hdr;
   /* Length of this header plus option data in 8 byte units. */
   u8 n_data_u64s;
 }) ip6_ext_header_t;
-/* *INDENT-ON* */
 
+typedef CLIB_PACKED (struct {
+  u8 next_hdr;
+  /* Length of this header plus option data in 8 byte units. */
+  u8 n_data_u64s;
+  u8 data[0];
+}) ip6_hop_by_hop_ext_t;
+
+typedef CLIB_PACKED (struct {
+  u8 next_hdr;
+  u8 rsv;
+  u16 fragment_offset_and_more;
+  u32 identification;
+}) ip6_frag_hdr_t;
+
+#define ip6_frag_hdr_offset(hdr)                                              \
+  (clib_net_to_host_u16 ((hdr)->fragment_offset_and_more) >> 3)
+
+#define ip6_frag_hdr_offset_bytes(hdr) (8 * ip6_frag_hdr_offset (hdr))
+
+#define ip6_frag_hdr_more(hdr)                                                \
+  (clib_net_to_host_u16 ((hdr)->fragment_offset_and_more) & 0x1)
+
+#define ip6_frag_hdr_offset_and_more(offset, more)                            \
+  clib_host_to_net_u16 (((offset) << 3) + !!(more))
+
+/*
+ * NB: Only Extension headers that follow the ip6_ext_header_t structure here.
+ * AH and fragment header needs special handling for length.
+ */
 #define foreach_ext_hdr_type \
   _(IP6_HOP_BY_HOP_OPTIONS) \
   _(IPV6_ROUTE) \
-  _(IPV6_FRAGMENTATION) \
-  _(IPSEC_ESP) \
-  _(IPSEC_AH) \
   _(IP6_DESTINATION_OPTIONS) \
   _(MOBILITY) \
   _(HIP) \
@@ -542,172 +558,202 @@ ip6_ext_hdr (u8 nexthdr)
 #endif
 }
 
-#define ip6_ext_header_len(p)  ((((ip6_ext_header_t *)(p))->n_data_u64s+1) << 3)
+#define ip6_ext_header_len(p)                                                 \
+  ((((ip6_ext_header_t *) (p))->n_data_u64s + 1) << 3)
 #define ip6_ext_authhdr_len(p) ((((ip6_ext_header_t *)(p))->n_data_u64s+2) << 2)
 
-always_inline void *
-ip6_ext_next_header (ip6_ext_header_t * ext_hdr)
+static inline int
+ip6_ext_header_len_s (ip_protocol_t nh, void *p)
 {
-  return (void *) ((u8 *) ext_hdr + ip6_ext_header_len (ext_hdr));
-}
+  if (ip6_ext_hdr (nh))
+    return ip6_ext_header_len (p);
 
-always_inline int
-vlib_object_within_buffer_data (vlib_main_t * vm, vlib_buffer_t * b,
-				void *obj, size_t len)
-{
-  u8 *o = obj;
-  if (o < b->data ||
-      o + len > b->data + vlib_buffer_get_default_data_size (vm))
-    return 0;
-  return 1;
-}
-
-/*
- * find ipv6 extension header within ipv6 header within buffer b
- *
- * @param vm
- * @param b buffer to limit search to
- * @param ip6_header ipv6 header
- * @param header_type extension header type to search for
- * @param[out] prev_ext_header address of header preceding found header
- */
-always_inline void *
-ip6_ext_header_find (vlib_main_t * vm, vlib_buffer_t * b,
-		     ip6_header_t * ip6_header, u8 header_type,
-		     ip6_ext_header_t ** prev_ext_header)
-{
-  ip6_ext_header_t *prev = NULL;
-  ip6_ext_header_t *result = NULL;
-  if ((ip6_header)->protocol == header_type)
+  switch (nh)
     {
-      result = (void *) (ip6_header + 1);
-      if (!vlib_object_within_buffer_data (vm, b, result,
-					   ip6_ext_header_len (result)))
-	{
-	  result = NULL;
-	}
-    }
-  else
-    {
-      result = NULL;
-      prev = (void *) (ip6_header + 1);
-      while (ip6_ext_hdr (prev->next_hdr) && prev->next_hdr != header_type)
-	{
-	  prev = ip6_ext_next_header (prev);
-	  if (!vlib_object_within_buffer_data (vm, b, prev,
-					       ip6_ext_header_len (prev)))
-	    {
-	      prev = NULL;
-	      break;
-	    }
-	}
-      if (prev && (prev->next_hdr == header_type))
-	{
-	  result = ip6_ext_next_header (prev);
-	  if (!vlib_object_within_buffer_data (vm, b, result,
-					       ip6_ext_header_len (result)))
-	    {
-	      result = NULL;
-	    }
-	}
-    }
-  if (prev_ext_header)
-    {
-      *prev_ext_header = prev;
-    }
-  return result;
-}
-
-/*
- * walk extension headers, looking for a specific extension header and last
- * extension header, calculating length of all extension headers
- *
- * @param vm
- * @param b buffer to limit search to
- * @param ip6_header ipv6 header
- * @param find_hdr extension header to look for (ignored if ext_hdr is NULL)
- * @param length[out] length of all extension headers
- * @param ext_hdr[out] extension header of type find_hdr (may be NULL)
- * @param last_ext_hdr[out] last extension header (may be NULL)
- *
- * @return 0 on success, -1 on failure (ext headers crossing buffer boundary)
- */
-always_inline int
-ip6_walk_ext_hdr (vlib_main_t * vm, vlib_buffer_t * b,
-		  const ip6_header_t * ip6_header, u8 find_hdr, u32 * length,
-		  ip6_ext_header_t ** ext_hdr,
-		  ip6_ext_header_t ** last_ext_hdr)
-{
-  if (!ip6_ext_hdr (ip6_header->protocol))
-    {
-      *length = 0;
-      *ext_hdr = NULL;
-      *last_ext_hdr = NULL;
-      return 0;
-    }
-  *length = 0;
-  ip6_ext_header_t *h = (void *) (ip6_header + 1);
-  if (!vlib_object_within_buffer_data (vm, b, h, ip6_ext_header_len (h)))
-    {
-      return -1;
-    }
-  *length += ip6_ext_header_len (h);
-  *last_ext_hdr = h;
-  *ext_hdr = NULL;
-  if (ip6_header->protocol == find_hdr)
-    {
-      *ext_hdr = h;
-    }
-  while (ip6_ext_hdr (h->next_hdr))
-    {
-      if (h->next_hdr == find_hdr)
-	{
-	  h = ip6_ext_next_header (h);
-	  *ext_hdr = h;
-	}
-      else
-	{
-	  h = ip6_ext_next_header (h);
-	}
-      if (!vlib_object_within_buffer_data (vm, b, h, ip6_ext_header_len (h)))
-	{
-	  return -1;
-	}
-      *length += ip6_ext_header_len (h);
-      *last_ext_hdr = h;
+    case IP_PROTOCOL_IPSEC_AH:
+      return ip6_ext_authhdr_len (p);
+    case IP_PROTOCOL_IPV6_FRAGMENTATION:
+      return sizeof (ip6_frag_hdr_t);
+    case IP_PROTOCOL_ICMP6:
+      return 4;
+    case IP_PROTOCOL_UDP:
+      return 8;
+    case IP_PROTOCOL_TCP:
+      return 20;
+    default:
+	/* Caller is responsible for validating the length of terminating
+	   protocols */
+	;
     }
   return 0;
 }
 
-/* *INDENT-OFF* */
-typedef CLIB_PACKED (struct {
-  u8 next_hdr;
-  /* Length of this header plus option data in 8 byte units. */
-  u8 n_data_u64s;
-  u8 data[0];
-}) ip6_hop_by_hop_ext_t;
-/* *INDENT-ON* */
+/*
+ * Returns a pointer to the _next_ extension header (or terminating header)
+ */
+always_inline void *
+ip6_ext_next_header (void *ext_hdr)
+{
+  return (ext_hdr + ip6_ext_header_len (ext_hdr));
+}
 
-/* *INDENT-OFF* */
-typedef CLIB_PACKED (struct {
-  u8 next_hdr;
-  u8 rsv;
-  u16 fragment_offset_and_more;
-  u32 identification;
-}) ip6_frag_hdr_t;
-/* *INDENT-ON* */
+always_inline void *
+ip6_ext_next_header_offset (void *hdr, u16 offset)
+{
+  return (hdr + offset);
+}
 
-#define ip6_frag_hdr_offset(hdr) \
-  (clib_net_to_host_u16((hdr)->fragment_offset_and_more) >> 3)
+always_inline int
+vlib_object_within_buffer_data (vlib_main_t *vm, vlib_buffer_t *b, void *obj,
+				size_t len)
+{
+  u8 *o = obj;
+  if (o < b->data || o + len > b->data + b->current_length)
+    {
+      return 0;
+    }
+  return 1;
+}
 
-#define ip6_frag_hdr_offset_bytes(hdr) \
-  (8 * ip6_frag_hdr_offset(hdr))
+/* Returns the number of bytes left in buffer from p. */
+static inline u32
+vlib_bytes_left_in_buffer (vlib_buffer_t *b, void *obj)
+{
+  return b->current_length - (((u8 *) obj - b->data) - b->current_data);
+}
 
-#define ip6_frag_hdr_more(hdr) \
-  (clib_net_to_host_u16((hdr)->fragment_offset_and_more) & 0x1)
+always_inline void *
+ip6_ext_next_header_s (ip_protocol_t cur_nh, void *hdr, u32 max_offset,
+		       u32 *offset, int *res_nh)
+{
+  u16 hdrlen = 0;
+  int new_nh = -1;
+  void *res = 0;
+  if (ip6_ext_hdr (cur_nh))
+    {
+      hdrlen = ip6_ext_header_len (hdr);
+      new_nh = ((ip6_ext_header_t *) hdr)->next_hdr;
+      res = hdr + hdrlen;
+    }
+  else if (cur_nh == IP_PROTOCOL_IPV6_FRAGMENTATION)
+    {
+      ip6_frag_hdr_t *frag_hdr = (ip6_frag_hdr_t *) hdr;
+      if (ip6_frag_hdr_offset (frag_hdr) == 0)
+	{
+	  new_nh = frag_hdr->next_hdr;
+	  hdrlen = sizeof (ip6_frag_hdr_t);
+	  res = hdr + hdrlen;
+	}
+    }
+  else if (cur_nh == IP_PROTOCOL_IPSEC_AH)
+    {
+      new_nh = ((ip6_ext_header_t *) hdr)->next_hdr;
+      hdrlen = ip6_ext_authhdr_len (hdr);
+      res = hdr + hdrlen;
+    }
+  else
+    {
+      ;
+    }
 
-#define ip6_frag_hdr_offset_and_more(offset, more) \
-  clib_host_to_net_u16(((offset) << 3) + !!(more))
+  if (res && (*offset + hdrlen) >= max_offset)
+    {
+      return 0;
+    }
+  *res_nh = new_nh;
+  *offset += hdrlen;
+  return res;
+}
+
+#define IP6_EXT_HDR_MAX	      (4)   /* Maximum number of headers */
+#define IP6_EXT_HDR_MAX_DEPTH (256) /* Maximum header depth */
+typedef struct
+{
+  int length;
+  struct
+  {
+    u16 protocol;
+    u16 offset;
+  } eh[IP6_EXT_HDR_MAX];
+} ip6_ext_hdr_chain_t;
+
+/*
+ * find ipv6 extension header within ipv6 header within
+ * whichever is smallest of buffer or IP6_EXT_HDR_MAX_DEPTH.
+ * The complete header chain must be in first buffer.
+ *
+ * The complete header chain (up to the terminating header) is
+ * returned in res.
+ * Returns the index of the find_hdr_type if > 0. Otherwise
+ * it returns the index of the last header.
+ */
+always_inline int
+ip6_ext_header_walk (vlib_buffer_t *b, ip6_header_t *ip, int find_hdr_type,
+		     ip6_ext_hdr_chain_t *res)
+{
+  int i = 0;
+  int found = -1;
+  void *next_header = ip6_next_header (ip);
+  int next_proto = ip->protocol;
+  res->length = 0;
+  u32 n_bytes_this_buffer =
+    clib_min (vlib_bytes_left_in_buffer (b, ip), IP6_EXT_HDR_MAX_DEPTH);
+  u32 max_offset = clib_min (n_bytes_this_buffer,
+			     sizeof (ip6_header_t) +
+			       clib_net_to_host_u16 (ip->payload_length));
+  u32 offset = sizeof (ip6_header_t);
+  if ((ip6_ext_header_len_s (ip->protocol, next_header) + offset) > max_offset)
+    {
+      return -1;
+    }
+  while (next_header)
+    {
+      /* Move on to next header */
+      res->eh[i].offset = offset;
+      res->eh[i].protocol = next_proto;
+      if (next_proto == find_hdr_type)
+	{
+	  found = i;
+	}
+      next_header = ip6_ext_next_header_s (next_proto, next_header, max_offset,
+					   &offset, &next_proto);
+      if (++i > IP6_EXT_HDR_MAX)
+	{
+	  break;
+	}
+    }
+  if (ip6_ext_hdr (res->eh[i].protocol))
+    {
+      /* Header chain is not terminated */
+      ;
+    }
+  res->length = i;
+  return (find_hdr_type < 0) ? i - 1 : found;
+}
+
+always_inline void *
+ip6_ext_header_find (vlib_main_t *vm, vlib_buffer_t *b, ip6_header_t *ip,
+		     int find_hdr_type, ip6_ext_header_t **prev_ext_header)
+{
+  ip6_ext_hdr_chain_t hdr_chain;
+  int res = ip6_ext_header_walk (b, ip, find_hdr_type, &hdr_chain);
+  if (res < 0)
+    return 0;
+
+  if (prev_ext_header)
+    {
+      if (res > 0)
+	{
+	  *prev_ext_header =
+	    ip6_ext_next_header_offset (ip, hdr_chain.eh[res - 1].offset);
+	}
+      else
+	{
+	  *prev_ext_header = 0;
+	}
+    }
+  return ip6_ext_next_header_offset (ip, hdr_chain.eh[res].offset);
+}
 
 #endif /* included_ip6_packet_h */
 

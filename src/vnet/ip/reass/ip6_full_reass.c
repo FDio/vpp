@@ -25,6 +25,7 @@
 #include <vnet/ip/ip.h>
 #include <vppinfra/bihash_48_8.h>
 #include <vnet/ip/reass/ip6_full_reass.h>
+#include <vnet/ip/ip6_inlines.h>
 
 #define MSEC_PER_SEC 1000
 #define IP6_FULL_REASS_TIMEOUT_DEFAULT_MS 100
@@ -729,19 +730,27 @@ ip6_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
   vnet_buffer_opaque_t *first_b_vnb = vnet_buffer (first_b);
   ip6_header_t *ip = vlib_buffer_get_current (first_b);
   u16 ip6_frag_hdr_offset = first_b_vnb->ip.reass.ip6_frag_hdr_offset;
-  ip6_ext_header_t *prev_hdr;
-  frag_hdr =
-    ip6_ext_header_find (vm, first_b, ip, IP_PROTOCOL_IPV6_FRAGMENTATION,
-			 &prev_hdr);
-  if (prev_hdr)
+  ip6_ext_hdr_chain_t hdr_chain;
+  ip6_ext_header_t *prev_hdr = 0;
+  int res = ip6_ext_header_walk (first_b, ip, IP_PROTOCOL_IPV6_FRAGMENTATION,
+				 &hdr_chain);
+  if (res < 0)
     {
+      rv = IP6_FULL_REASS_RC_INTERNAL_ERROR;
+      goto free_buffers_and_return;
+    }
+
+  frag_hdr = ip6_ext_next_header_offset (ip, hdr_chain.eh[res].offset);
+  if (res > 0)
+    {
+      prev_hdr = ip6_ext_next_header_offset (ip, hdr_chain.eh[res - 1].offset);
       prev_hdr->next_hdr = frag_hdr->next_hdr;
     }
   else
     {
       ip->protocol = frag_hdr->next_hdr;
     }
-  if (!((u8 *) frag_hdr - (u8 *) ip == ip6_frag_hdr_offset))
+  if (hdr_chain.eh[res].offset != ip6_frag_hdr_offset)
     {
       rv = IP6_FULL_REASS_RC_INTERNAL_ERROR;
       goto free_buffers_and_return;
@@ -982,22 +991,18 @@ check_if_done_maybe:
 }
 
 always_inline bool
-ip6_full_reass_verify_upper_layer_present (vlib_node_runtime_t * node,
-					   vlib_buffer_t * b,
-					   ip6_frag_hdr_t * frag_hdr)
+ip6_full_reass_verify_upper_layer_present (vlib_node_runtime_t *node,
+					   vlib_buffer_t *b, ip6_header_t *ip)
 {
-  ip6_ext_header_t *tmp = (ip6_ext_header_t *) frag_hdr;
-  while (ip6_ext_hdr (tmp->next_hdr))
+  u32 offset;
+  int nh = ip6_locate_header (b, ip, -1, &offset);
+  /* Checking to see if it's a terminating header */
+  if (nh < 0 || ip6_ext_hdr (nh))
     {
-      tmp = ip6_ext_next_header (tmp);
-    }
-  if (IP_PROTOCOL_IP6_NONXT == tmp->next_hdr)
-    {
-      icmp6_error_set_vnet_buffer (b, ICMP6_parameter_problem,
-				   ICMP6_parameter_problem_first_fragment_has_incomplete_header_chain,
-				   0);
+      icmp6_error_set_vnet_buffer (
+	b, ICMP6_parameter_problem,
+	ICMP6_parameter_problem_first_fragment_has_incomplete_header_chain, 0);
       b->error = node->errors[IP6_ERROR_REASS_MISSING_UPPER];
-
       return false;
     }
   return true;
@@ -1076,29 +1081,25 @@ ip6_full_reassembly_inline (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 
 	  ip6_header_t *ip0 = vlib_buffer_get_current (b0);
-	  ip6_frag_hdr_t *frag_hdr = NULL;
-	  ip6_ext_header_t *prev_hdr;
-	  if (ip6_ext_hdr (ip0->protocol))
-	    {
-	      frag_hdr =
-		ip6_ext_header_find (vm, b0, ip0,
-				     IP_PROTOCOL_IPV6_FRAGMENTATION,
-				     &prev_hdr);
-	    }
-	  if (!frag_hdr)
+	  ip6_frag_hdr_t *frag_hdr;
+	  ip6_ext_hdr_chain_t hdr_chain;
+	  int res = ip6_ext_header_walk (
+	    b0, ip0, IP_PROTOCOL_IPV6_FRAGMENTATION, &hdr_chain);
+	  if (res < 0)
 	    {
 	      // this is a regular packet - no fragmentation
 	      next0 = IP6_FULL_REASSEMBLY_NEXT_INPUT;
 	      goto skip_reass;
 	    }
+	  frag_hdr =
+	    ip6_ext_next_header_offset (ip0, hdr_chain.eh[res].offset);
 	  vnet_buffer (b0)->ip.reass.ip6_frag_hdr_offset =
-	    (u8 *) frag_hdr - (u8 *) ip0;
+	    hdr_chain.eh[res].offset;
 
 	  if (0 == ip6_frag_hdr_offset (frag_hdr))
 	    {
 	      // first fragment - verify upper-layer is present
-	      if (!ip6_full_reass_verify_upper_layer_present
-		  (node, b0, frag_hdr))
+	      if (!ip6_full_reass_verify_upper_layer_present (node, b0, ip0))
 		{
 		  next0 = IP6_FULL_REASSEMBLY_NEXT_ICMP_ERROR;
 		  goto skip_reass;
