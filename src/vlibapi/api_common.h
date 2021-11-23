@@ -171,13 +171,13 @@ VL_MSG_API_POISON (const void *a)
 }
 
 /* api_shared.c prototypes */
-void vl_msg_api_handler (void *the_msg);
-void vl_msg_api_handler_no_free (void *the_msg);
-void vl_msg_api_handler_no_trace_no_free (void *the_msg);
-void vl_msg_api_trace_only (void *the_msg);
+void vl_msg_api_handler (void *the_msg, uword msg_len);
+void vl_msg_api_handler_no_free (void *the_msg, uword msg_len);
+void vl_msg_api_handler_no_trace_no_free (void *the_msg, uword msg_len);
+void vl_msg_api_trace_only (void *the_msg, uword msg_len);
 void vl_msg_api_cleanup_handler (void *the_msg);
 void vl_msg_api_replay_handler (void *the_msg);
-void vl_msg_api_socket_handler (void *the_msg);
+void vl_msg_api_socket_handler (void *the_msg, uword msg_len);
 void vl_msg_api_set_handlers (int msg_id, char *msg_name, void *handler,
 			      void *cleanup, void *endian, void *print,
 			      int msg_size, int traced, void *print_json,

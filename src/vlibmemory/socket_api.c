@@ -204,7 +204,7 @@ vl_socket_process_api_msg (vl_api_registration_t * rp, i8 * input_v)
 
   u8 *the_msg = (u8 *) (mbp->data);
   socket_main.current_rp = rp;
-  vl_msg_api_socket_handler (the_msg);
+  vl_msg_api_socket_handler (the_msg, ntohl(mbp->data_len));
   socket_main.current_rp = 0;
 }
 

@@ -138,7 +138,7 @@ vl_socket_client_read_internal (socket_client_main_t * scm, int wait)
 
       if (vec_len (scm->socket_rx_buffer) >= data_len + sizeof (*mbp))
 	{
-	  vl_msg_api_socket_handler ((void *) (mbp->data));
+	  vl_msg_api_socket_handler ((void *) (mbp->data), data_len);
 
 	  if (vec_len (scm->socket_rx_buffer) == data_len + sizeof (*mbp))
 	    _vec_len (scm->socket_rx_buffer) = 0;
