@@ -82,14 +82,16 @@ session_send_fds (vl_api_registration_t * reg, int fds[], int n_fds)
 }
 
 static int
-mq_try_lock_and_alloc_msg (svm_msg_q_t * app_mq, svm_msg_q_msg_t * msg)
+app_wrk_try_lock_and_alloc_msg (app_worker_t *app_wrk, session_mq_rings_e ring,
+				svm_msg_q_msg_t *msg)
 {
-  int rv;
-  u8 try = 0;
-  while (try < 100)
+  int rv,
+  try
+    = 0;
+
+  while (try < 5)
     {
-      rv = svm_msg_q_lock_and_alloc_msg_w_ring (app_mq,
-						SESSION_MQ_CTRL_EVT_RING,
+      rv = svm_msg_q_lock_and_alloc_msg_w_ring (app_wrk->event_queue, ring,
 						SVM_Q_NOWAIT, msg);
       if (!rv)
 	return 0;
@@ -102,20 +104,145 @@ mq_try_lock_and_alloc_msg (svm_msg_q_t * app_mq, svm_msg_q_msg_t * msg)
       try++;
       usleep (1);
     }
+
   clib_warning ("failed to alloc msg");
   return -1;
+}
+
+static inline int
+app_wrk_try_enqueue_app_msg (app_worker_t *app_wrk, session_mq_rings_e ring,
+			     u8 evt_type, void *msg, u32 msg_len)
+{
+  svm_msg_q_t *mq = app_wrk->event_queue;
+  svm_msg_q_msg_t _msg, *mq_msg = &_msg;
+  session_event_t *evt;
+  int rv,
+  try
+    = 0;
+
+  while (try < 5)
+    {
+      rv =
+	svm_msg_q_lock_and_alloc_msg_w_ring (mq, ring, SVM_Q_NOWAIT, mq_msg);
+      if (!rv)
+	{
+	  evt = svm_msg_q_msg_data (mq, mq_msg);
+	  clib_memset (evt, 0, sizeof (*evt));
+	  evt->event_type = evt_type;
+	  clib_memcpy_fast (evt->data, msg, msg_len);
+	  svm_msg_q_add_and_unlock (mq, mq_msg);
+	  return 0;
+	}
+      /*
+       * Break the loop if mq is full, usually this is because the
+       * app has crashed or is hanging on somewhere.
+       */
+      if (rv != -1)
+	break;
+      try
+	++;
+      usleep (1);
+    }
+
+  return -1;
+}
+
+typedef union app_wrk_mq_rpc_args_
+{
+  struct
+  {
+    u32 thread_index;
+    u32 app_wrk_index;
+  };
+  uword as_uword;
+} app_wrk_mq_rpc_ags_t;
+
+static int
+app_wrk_postponed_app_msg_handler (void *arg)
+{
+  app_wrk_postponed_msg_t *pm;
+  app_wrk_mq_rpc_ags_t args;
+  app_worker_t *app_wrk;
+  u32 max_msg, n_msg = 0, hi;
+
+  args.as_uword = pointer_to_uword (arg);
+
+  app_wrk = app_worker_get_if_valid (args.app_wrk_index);
+  if (!app_wrk)
+    return 0;
+
+  clib_spinlock_lock (app_wrk->postponed_mq_msgs_lock);
+
+  max_msg = clib_min (32, clib_fifo_elts (app_wrk->postponed_mq_msgs));
+  if (!max_msg)
+    goto unlock;
+
+  while (n_msg < max_msg)
+    {
+      hi = clib_fifo_head_index (app_wrk->postponed_mq_msgs);
+      pm = clib_fifo_elt_at_index (app_wrk->postponed_mq_msgs, hi);
+      if (app_wrk_try_enqueue_app_msg (app_wrk, pm->ring, pm->event_type,
+				       pm->data, pm->len))
+	break;
+      clib_fifo_advance_head (app_wrk->postponed_mq_msgs, 1);
+      n_msg += 1;
+    }
+
+unlock:
+  clib_spinlock_unlock (app_wrk->postponed_mq_msgs_lock);
+
+  return 0;
+}
+
+static void
+app_wrk_enqueue_app_msg (app_worker_t *app_wrk, session_mq_rings_e ring,
+			 u8 evt_type, void *msg, u32 msg_len)
+{
+  app_wrk_postponed_msg_t *pm;
+  int rv;
+
+  if (PREDICT_FALSE (app_wrk->mq_congestion))
+    goto congested;
+
+  rv = app_wrk_try_enqueue_app_msg (app_wrk, ring, evt_type, msg, msg_len);
+  if (PREDICT_TRUE (!rv))
+    return;
+
+  app_wrk->mq_congestion = 1;
+
+congested:
+
+  clib_spinlock_lock (app_wrk->postponed_mq_msgs_lock);
+
+  clib_fifo_add2 (app_wrk->postponed_mq_msgs, pm);
+  clib_memcpy_fast (pm->data, msg, msg_len);
+  pm->event_type = evt_type;
+  pm->ring = ring;
+  pm->len = msg_len;
+
+  if (clib_fifo_elts (app_wrk->postponed_mq_msgs) == 1)
+    {
+      app_wrk_mq_rpc_ags_t args = { .thread_index = vlib_get_thread_index (),
+				    .app_wrk_index = app_wrk->wrk_index };
+
+      session_send_rpc_evt_to_thread_force (
+	args.thread_index, app_wrk_postponed_app_msg_handler,
+	uword_to_pointer (args.as_uword, void *));
+    }
+
+  clib_spinlock_unlock (app_wrk->postponed_mq_msgs_lock);
 }
 
 static int
 mq_send_session_accepted_cb (session_t * s)
 {
   app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
-  svm_msg_q_msg_t _msg, *msg = &_msg;
+  //  svm_msg_q_msg_t _msg, *msg = &_msg;
   session_accepted_msg_t m = { 0 };
-  svm_msg_q_t *app_mq;
+  //  svm_msg_q_t *app_mq;
   fifo_segment_t *eq_seg;
   session_t *listener;
-  session_event_t *evt;
+  //  session_event_t *evt;
   application_t *app;
 
   app = application_get (app_wrk->app_index);
@@ -164,15 +291,19 @@ mq_send_session_accepted_cb (session_t * s)
       m.mq_index = s->thread_index;
     }
 
-  app_mq = app_wrk->event_queue;
-  if (mq_try_lock_and_alloc_msg (app_mq, msg))
-    return SESSION_E_MQ_MSG_ALLOC;
+  app_wrk_enqueue_app_msg (app_wrk, SESSION_MQ_CTRL_EVT_RING,
+			   SESSION_CTRL_EVT_ACCEPTED, &m, sizeof (m));
 
-  evt = svm_msg_q_msg_data (app_mq, msg);
-  clib_memset (evt, 0, sizeof (*evt));
-  evt->event_type = SESSION_CTRL_EVT_ACCEPTED;
-  clib_memcpy_fast (evt->data, &m, sizeof (m));
-  svm_msg_q_add_and_unlock (app_mq, msg);
+  //  if (app_wrk_try_lock_and_alloc_msg (app_wrk, SESSION_MQ_CTRL_EVT_RING,
+  //  msg))
+  //    return SESSION_E_MQ_MSG_ALLOC;
+  //
+  //  app_mq = app_wrk->event_queue;
+  //  evt = svm_msg_q_msg_data (app_mq, msg);
+  //  clib_memset (evt, 0, sizeof (*evt));
+  //  evt->event_type = SESSION_CTRL_EVT_ACCEPTED;
+  //  clib_memcpy_fast (evt->data, &m, sizeof (m));
+  //  svm_msg_q_add_and_unlock (app_mq, msg);
 
   return 0;
 }
@@ -181,21 +312,29 @@ static inline void
 mq_send_session_close_evt (app_worker_t * app_wrk, session_handle_t sh,
 			   session_evt_type_t evt_type)
 {
-  svm_msg_q_msg_t _msg, *msg = &_msg;
-  session_disconnected_msg_t *mp;
-  svm_msg_q_t *app_mq;
-  session_event_t *evt;
+  //  svm_msg_q_msg_t _msg, *msg = &_msg;
+  session_disconnected_msg_t m = {};
+  //  svm_msg_q_t *app_mq;
+  //  session_event_t *evt;
 
-  app_mq = app_wrk->event_queue;
-  if (mq_try_lock_and_alloc_msg (app_mq, msg))
-    return;
-  evt = svm_msg_q_msg_data (app_mq, msg);
-  clib_memset (evt, 0, sizeof (*evt));
-  evt->event_type = evt_type;
-  mp = (session_disconnected_msg_t *) evt->data;
-  mp->handle = sh;
-  mp->context = app_wrk->api_client_index;
-  svm_msg_q_add_and_unlock (app_mq, msg);
+  m.handle = sh;
+  m.context = app_wrk->api_client_index;
+
+  app_wrk_enqueue_app_msg (app_wrk, SESSION_MQ_CTRL_EVT_RING, evt_type, &m,
+			   sizeof (m));
+
+  //  if (app_wrk_try_lock_and_alloc_msg (app_wrk, SESSION_MQ_CTRL_EVT_RING,
+  //  msg))
+  //    return;
+  //
+  //  app_mq = app_wrk->event_queue;
+  //  evt = svm_msg_q_msg_data (app_mq, msg);
+  //  clib_memset (evt, 0, sizeof (*evt));
+  //  evt->event_type = evt_type;
+  //  mp = (session_disconnected_msg_t *) evt->data;
+  //  mp->handle = sh;
+  //  mp->context = app_wrk->api_client_index;
+  //  svm_msg_q_add_and_unlock (app_mq, msg);
 }
 
 static inline void
@@ -318,11 +457,10 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
 
 snd_msg:
 
-  app_mq = app_wrk->event_queue;
-
-  if (mq_try_lock_and_alloc_msg (app_mq, msg))
+  if (app_wrk_try_lock_and_alloc_msg (app_wrk, SESSION_MQ_CTRL_EVT_RING, msg))
     return SESSION_E_MQ_MSG_ALLOC;
 
+  app_mq = app_wrk->event_queue;
   evt = svm_msg_q_msg_data (app_mq, msg);
   clib_memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_CONNECTED;
@@ -381,11 +519,10 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
 
 snd_msg:
 
-  app_mq = app_wrk->event_queue;
-
-  if (mq_try_lock_and_alloc_msg (app_mq, msg))
+  if (app_wrk_try_lock_and_alloc_msg (app_wrk, SESSION_MQ_CTRL_EVT_RING, msg))
     return SESSION_E_MQ_MSG_ALLOC;
 
+  app_mq = app_wrk->event_queue;
   evt = svm_msg_q_msg_data (app_mq, msg);
   clib_memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_BOUND;
@@ -404,10 +541,10 @@ mq_send_unlisten_reply (app_worker_t * app_wrk, session_handle_t sh,
   svm_msg_q_t *app_mq;
   session_event_t *evt;
 
-  app_mq = app_wrk->event_queue;
-  if (mq_try_lock_and_alloc_msg (app_mq, msg))
+  if (app_wrk_try_lock_and_alloc_msg (app_wrk, SESSION_MQ_CTRL_EVT_RING, msg))
     return;
 
+  app_mq = app_wrk->event_queue;
   evt = svm_msg_q_msg_data (app_mq, msg);
   clib_memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_UNLISTEN_REPLY;
@@ -432,7 +569,6 @@ mq_send_session_migrate_cb (session_t * s, session_handle_t new_sh)
 
   thread_index = session_thread_from_handle (new_sh);
   app_wrk = app_worker_get (s->app_wrk_index);
-  app_mq = app_wrk->event_queue;
   app = application_get (app_wrk->app_index);
   eq_seg = application_get_rx_mqs_segment (app);
 
@@ -442,9 +578,10 @@ mq_send_session_migrate_cb (session_t * s, session_handle_t new_sh)
   m.vpp_evt_q = fifo_segment_msg_q_offset (eq_seg, thread_index);
   m.segment_handle = SESSION_INVALID_HANDLE;
 
-  if (mq_try_lock_and_alloc_msg (app_mq, msg))
+  if (app_wrk_try_lock_and_alloc_msg (app_wrk, SESSION_MQ_CTRL_EVT_RING, msg))
     return;
 
+  app_mq = app_wrk->event_queue;
   evt = svm_msg_q_msg_data (app_mq, msg);
   clib_memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_MIGRATED;
@@ -492,10 +629,10 @@ mq_send_add_segment_cb (u32 app_wrk_index, u64 segment_handle)
       n_fds += 1;
     }
 
-  app_mq = app_wrk->event_queue;
-  if (mq_try_lock_and_alloc_msg (app_mq, msg))
-    return -1;
+  if (app_wrk_try_lock_and_alloc_msg (app_wrk, SESSION_MQ_CTRL_EVT_RING, msg))
+    return SESSION_E_MQ_MSG_ALLOC;
 
+  app_mq = app_wrk->event_queue;
   if (n_fds)
     session_send_fds (reg, fds, n_fds);
 
@@ -533,10 +670,10 @@ mq_send_del_segment_cb (u32 app_wrk_index, u64 segment_handle)
       return -1;
     }
 
-  app_mq = app_wrk->event_queue;
-  if (mq_try_lock_and_alloc_msg (app_mq, msg))
-    return -1;
+  if (app_wrk_try_lock_and_alloc_msg (app_wrk, SESSION_MQ_CTRL_EVT_RING, msg))
+    return SESSION_E_MQ_MSG_ALLOC;
 
+  app_mq = app_wrk->event_queue;
   evt = svm_msg_q_msg_data (app_mq, msg);
   clib_memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_APP_DEL_SEGMENT;
@@ -566,10 +703,10 @@ mq_send_session_cleanup_cb (session_t * s, session_cleanup_ntf_t ntf)
   if (!app_wrk)
     return;
 
-  app_mq = app_wrk->event_queue;
-  if (mq_try_lock_and_alloc_msg (app_mq, msg))
+  if (app_wrk_try_lock_and_alloc_msg (app_wrk, SESSION_MQ_CTRL_EVT_RING, msg))
     return;
 
+  app_mq = app_wrk->event_queue;
   evt = svm_msg_q_msg_data (app_mq, msg);
   clib_memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_CLEANUP;
@@ -1283,9 +1420,10 @@ mq_send_add_segment_sapi_cb (u32 app_wrk_index, u64 segment_handle)
   fds[n_fds] = sp->fd;
   n_fds += 1;
 
+  if (app_wrk_try_lock_and_alloc_msg (app_wrk, SESSION_MQ_CTRL_EVT_RING, msg))
+    return SESSION_E_MQ_MSG_ALLOC;
+
   app_mq = app_wrk->event_queue;
-  if (mq_try_lock_and_alloc_msg (app_mq, msg))
-    return -1;
 
   /*
    * Send the fd over api socket
@@ -1322,10 +1460,10 @@ mq_send_del_segment_sapi_cb (u32 app_wrk_index, u64 segment_handle)
 
   app_wrk = app_worker_get (app_wrk_index);
 
-  app_mq = app_wrk->event_queue;
-  if (mq_try_lock_and_alloc_msg (app_mq, msg))
-    return -1;
+  if (app_wrk_try_lock_and_alloc_msg (app_wrk, SESSION_MQ_CTRL_EVT_RING, msg))
+    return SESSION_E_MQ_MSG_ALLOC;
 
+  app_mq = app_wrk->event_queue;
   evt = svm_msg_q_msg_data (app_mq, msg);
   clib_memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_APP_DEL_SEGMENT;
