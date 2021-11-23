@@ -59,6 +59,7 @@ typedef struct app_worker_
   /** API index for the worker. Needed for multi-process apps */
   u32 api_client_index;
 
+  u8 mq_congestion;
   u8 app_is_builtin;
 
   /** Pool of half-open session handles. Tracked in case worker detaches */
