@@ -542,7 +542,30 @@ ip6_ext_hdr (u8 nexthdr)
 #endif
 }
 
-#define ip6_ext_header_len(p)  ((((ip6_ext_header_t *)(p))->n_data_u64s+1) << 3)
+/*
+ * This function only works for HBH, RH and DestOpt
+ */
+#define ip6_ext_header_len(p)                                                 \
+  ((((ip6_ext_header_t *) (p))->n_data_u64s + 1) << 3)
+
+#if 0
+static inline int
+ip6_ext_header_len (ip_protocol_t nh, void *p)
+{
+  switch (nh)
+    {
+    case IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS:
+    case IP_PROTOCOL_IP6_DESTINATION_OPTIONS:
+    case IP_PROTOCOL_IPV6_ROUTE:
+      return ((((ip6_ext_header_t *) (p))->n_data_u64s + 1) << 3) break;
+    case IP_PROTOCOL_IPV6_FRAGMENTATION:
+      return sizeof (ip6_frag_hdr_t);
+      break;
+    default:
+      return -1
+    }
+}
+#endif
 #define ip6_ext_authhdr_len(p) ((((ip6_ext_header_t *)(p))->n_data_u64s+2) << 2)
 
 always_inline void *

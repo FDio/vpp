@@ -169,7 +169,7 @@ ip6_locate_header (vlib_buffer_t * p0,
 	  ip6_frag_hdr_t *frag_hdr = (ip6_frag_hdr_t *) next_header;
 	  u16 frag_off = ip6_frag_hdr_offset (frag_hdr);
 	  /* Non first fragment return -1 */
-	  if (frag_off)
+	  if (find_hdr_type != IP_PROTOCOL_IPV6_FRAGMENTATION && frag_off)
 	    return (-1);
 	  exthdr_len = sizeof (ip6_frag_hdr_t);
 	  temp_nxthdr = next_header + exthdr_len;
@@ -181,6 +181,8 @@ ip6_locate_header (vlib_buffer_t * p0,
 	  temp_nxthdr = next_header + exthdr_len;
 	}
       else
+      // TODO: Check if routing header, HBH or destination options header
+      // Otherwise return -1
 	{
 	  exthdr_len =
 	    ip6_ext_header_len (((ip6_ext_header_t *) next_header));

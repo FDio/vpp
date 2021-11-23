@@ -25,6 +25,7 @@
 #include <vnet/ip/ip.h>
 #include <vppinfra/bihash_48_8.h>
 #include <vnet/ip/reass/ip6_full_reass.h>
+#include <vnet/ip/ip6_inlines.h>
 
 #define MSEC_PER_SEC 1000
 #define IP6_FULL_REASS_TIMEOUT_DEFAULT_MS 100
@@ -981,6 +982,7 @@ check_if_done_maybe:
   return IP6_FULL_REASS_RC_OK;
 }
 
+// TODO: BROKEN
 always_inline bool
 ip6_full_reass_verify_upper_layer_present (vlib_node_runtime_t * node,
 					   vlib_buffer_t * b,
@@ -1077,18 +1079,21 @@ ip6_full_reassembly_inline (vlib_main_t * vm,
 
 	  ip6_header_t *ip0 = vlib_buffer_get_current (b0);
 	  ip6_frag_hdr_t *frag_hdr = NULL;
-	  ip6_ext_header_t *prev_hdr;
+//	  ip6_ext_header_t *prev_hdr;
 	  if (ip6_ext_hdr (ip0->protocol))
 	    {
-	      frag_hdr =
-		ip6_ext_header_find (vm, b0, ip0,
-				     IP_PROTOCOL_IPV6_FRAGMENTATION,
-				     &prev_hdr);
+	      u32 offset = 0;
+	      int proto = ip6_locate_header (
+		b0, ip0, IP_PROTOCOL_IPV6_FRAGMENTATION, &offset);
+	      if (proto == IP_PROTOCOL_IPV6_FRAGMENTATION) {
+		  frag_hdr = (void *)ip0 + offset;
+		}
 	    }
+            // TODO: THis fails of course if ext_header_find fails to find the header
 	  if (!frag_hdr)
 	    {
 	      // this is a regular packet - no fragmentation
-	      next0 = IP6_FULL_REASSEMBLY_NEXT_INPUT;
+	      next0 = IP6_FULL_REASSEMBLY_NEXT_INPUT; // HERE????
 	      goto skip_reass;
 	    }
 	  vnet_buffer (b0)->ip.reass.ip6_frag_hdr_offset =

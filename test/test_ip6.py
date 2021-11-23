@@ -13,7 +13,7 @@ from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_RS, \
     ICMPv6ND_RA, ICMPv6NDOptMTU, ICMPv6NDOptSrcLLAddr, ICMPv6NDOptPrefixInfo, \
     ICMPv6ND_NA, ICMPv6NDOptDstLLAddr, ICMPv6DestUnreach, icmp6types, \
     ICMPv6TimeExceeded, ICMPv6EchoRequest, ICMPv6EchoReply, \
-    IPv6ExtHdrHopByHop, ICMPv6MLReport2, ICMPv6MLDMultAddrRec
+    IPv6ExtHdrHopByHop, ICMPv6MLReport2, ICMPv6MLDMultAddrRec, IPv6ExtHdrFragment
 from scapy.layers.l2 import Ether, Dot1Q, GRE
 from scapy.packet import Raw
 from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ptop, in6_islladdr, \
@@ -355,6 +355,17 @@ class TestIPv6(TestIPv6ND):
 
         # wait for reassembly
         self.sleep(10)
+
+    def test_atomic_fragment(self):
+        """ IPv6 atomic fragment
+        """
+        pkt = (Ether(src=self.pg0.local_mac, dst=self.pg0.remote_mac) /
+               IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6, nh=44, plen=65535) /
+               IPv6ExtHdrFragment(offset=8191, m=1, res1=0xFF, res2=0xFF, nh=255)/('X'*1452))
+
+        rx = self.send_and_expect(self.pg0, [pkt], self.pg0)
+        for p in rx:
+                p.show2()
 
     def test_fib(self):
         """ IPv6 FIB test
