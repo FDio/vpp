@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "287eda40_47d67a6a",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 534,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2021-11-23T12:32:22Z",
+      "side": 1,
+      "message": "fixed in patchset 5",
+      "parentUuid": "e661b950_83ed7800",
+      "revId": "1359ac544d96bf95e40c797472edf602cd82b32c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3386da04_dc8ba385",
         "filename": "src/plugins/wireguard/wireguard_noise.c",
         "patchSetId": 4
@@ -33,6 +51,24 @@
       "revId": "1359ac544d96bf95e40c797472edf602cd82b32c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "23290f43_78cc3a30",
+        "filename": "src/plugins/wireguard/wireguard_noise.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 553,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2021-11-23T12:32:22Z",
+      "side": 1,
+      "message": "fixed in patchset 5",
+      "parentUuid": "3386da04_dc8ba385",
+      "revId": "1359ac544d96bf95e40c797472edf602cd82b32c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "4acd3731_497d1de6",
+        "filename": "src/plugins/wireguard/wireguard_noise.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 229,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2021-11-23T12:32:22Z",
+      "side": 1,
+      "message": "fixed in patchset 5",
+      "parentUuid": "e15a73f5_a4637074",
+      "revId": "1359ac544d96bf95e40c797472edf602cd82b32c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d26f6fe4_2d972bb9",
         "filename": "src/plugins/wireguard/wireguard_output_tun.c",
         "patchSetId": 4
@@ -70,6 +124,24 @@
     },
     {
       "key": {
+        "uuid": "35db6601_a7abaf05",
+        "filename": "src/plugins/wireguard/wireguard_output_tun.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2021-11-23T12:32:22Z",
+      "side": 1,
+      "message": "fixed in patchset 5",
+      "parentUuid": "d26f6fe4_2d972bb9",
+      "revId": "1359ac544d96bf95e40c797472edf602cd82b32c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "876af729_7b72a633",
         "filename": "src/plugins/wireguard/wireguard_timer.h",
         "patchSetId": 4
@@ -84,6 +156,24 @@
       "revId": "1359ac544d96bf95e40c797472edf602cd82b32c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6de071db_ac0d6ff3",
+        "filename": "src/plugins/wireguard/wireguard_timer.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2021-11-23T12:32:22Z",
+      "side": 1,
+      "message": "other functions are used in handshake process",
+      "parentUuid": "876af729_7b72a633",
+      "revId": "1359ac544d96bf95e40c797472edf602cd82b32c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
