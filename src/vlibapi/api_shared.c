@@ -500,8 +500,8 @@ vl_msg_api_barrier_release (void)
 }
 
 always_inline void
-msg_handler_internal (api_main_t * am,
-		      void *the_msg, int trace_it, int do_it, int free_it)
+msg_handler_internal (api_main_t *am, void *the_msg, uword msg_len,
+		      int trace_it, int do_it, int free_it)
 {
   u16 id = clib_net_to_host_u16 (*((u16 *) the_msg));
   u8 *(*print_fp) (void *, void *);
@@ -545,8 +545,22 @@ msg_handler_internal (api_main_t * am,
 	    }
 	}
 
-      if (do_it)
+      uword (*nbo_calc_size_fp) (void *);
+      nbo_calc_size_fp = am->msg_nbo_calc_size_handlers[id];
+      uword calc_size = (*nbo_calc_size_fp) (the_msg);
+      if (calc_size > msg_len)
 	{
+	  clib_warning ("Truncated message received, calculated size "
+			"%lu is bigger than actual size %lu.",
+			calc_size, msg_len);
+	}
+
+      /* don't process message if it's truncated, otherwise byte swaps
+       * and stuff could corrupt memory even beyond message if it's malicious
+       * e.g. VLA length field set to 1M elements, but VLA empty */
+      if (do_it && calc_size <= msg_len)
+	{
+
 	  if (!am->is_mp_safe[id])
 	    {
 	      vl_msg_api_barrier_trace_context (am->msg_names[id]);
@@ -569,6 +583,7 @@ msg_handler_internal (api_main_t * am,
 	  if (PREDICT_FALSE (vec_len (am->perf_counter_cbs) != 0))
 	    clib_call_callbacks (am->perf_counter_cbs, am, id,
 				 1 /* after */ );
+
 	  if (!am->is_mp_safe[id])
 	    vl_msg_api_barrier_release ();
 	}
@@ -767,32 +782,30 @@ vl_msg_api_handler_with_vm_node (api_main_t * am, svm_region_t * vlib_rp,
 }
 
 void
-vl_msg_api_handler (void *the_msg)
+vl_msg_api_handler (void *the_msg, uword msg_len)
 {
   api_main_t *am = vlibapi_get_main ();
 
-  msg_handler_internal (am, the_msg,
-			(am->rx_trace
-			 && am->rx_trace->enabled) /* trace_it */ ,
-			1 /* do_it */ , 1 /* free_it */ );
+  msg_handler_internal (am, the_msg, msg_len,
+			(am->rx_trace && am->rx_trace->enabled) /* trace_it */,
+			1 /* do_it */, 1 /* free_it */);
 }
 
 void
-vl_msg_api_handler_no_free (void *the_msg)
+vl_msg_api_handler_no_free (void *the_msg, uword msg_len)
 {
   api_main_t *am = vlibapi_get_main ();
-  msg_handler_internal (am, the_msg,
-			(am->rx_trace
-			 && am->rx_trace->enabled) /* trace_it */ ,
-			1 /* do_it */ , 0 /* free_it */ );
+  msg_handler_internal (am, the_msg, msg_len,
+			(am->rx_trace && am->rx_trace->enabled) /* trace_it */,
+			1 /* do_it */, 0 /* free_it */);
 }
 
 void
-vl_msg_api_handler_no_trace_no_free (void *the_msg)
+vl_msg_api_handler_no_trace_no_free (void *the_msg, uword msg_len)
 {
   api_main_t *am = vlibapi_get_main ();
-  msg_handler_internal (am, the_msg, 0 /* trace_it */ , 1 /* do_it */ ,
-			0 /* free_it */ );
+  msg_handler_internal (am, the_msg, msg_len, 0 /* trace_it */, 1 /* do_it */,
+			0 /* free_it */);
 }
 
 /*
@@ -805,14 +818,13 @@ vl_msg_api_handler_no_trace_no_free (void *the_msg)
  *
  */
 void
-vl_msg_api_trace_only (void *the_msg)
+vl_msg_api_trace_only (void *the_msg, uword msg_len)
 {
   api_main_t *am = vlibapi_get_main ();
 
-  msg_handler_internal (am, the_msg,
-			(am->rx_trace
-			 && am->rx_trace->enabled) /* trace_it */ ,
-			0 /* do_it */ , 0 /* free_it */ );
+  msg_handler_internal (am, the_msg, msg_len,
+			(am->rx_trace && am->rx_trace->enabled) /* trace_it */,
+			0 /* do_it */, 0 /* free_it */);
 }
 
 void
@@ -863,14 +875,13 @@ vl_msg_api_get_msg_length (void *msg_arg)
  * vl_msg_api_socket_handler
  */
 void
-vl_msg_api_socket_handler (void *the_msg)
+vl_msg_api_socket_handler (void *the_msg, uword msg_len)
 {
   api_main_t *am = vlibapi_get_main ();
 
-  msg_handler_internal (am, the_msg,
-			(am->rx_trace
-			 && am->rx_trace->enabled) /* trace_it */ ,
-			1 /* do_it */ , 0 /* free_it */ );
+  msg_handler_internal (am, the_msg, msg_len,
+			(am->rx_trace && am->rx_trace->enabled) /* trace_it */,
+			1 /* do_it */, 0 /* free_it */);
 }
 
 #define foreach_msg_api_vector                                                \
@@ -1003,8 +1014,11 @@ vl_msg_api_queue_handler (svm_queue_t * q)
 {
   uword msg;
 
-  while (!svm_queue_sub (q, (u8 *) & msg, SVM_Q_WAIT, 0))
-    vl_msg_api_handler ((void *) msg);
+  while (!svm_queue_sub (q, (u8 *) &msg, SVM_Q_WAIT, 0))
+    {
+      msgbuf_t *msgbuf = (msgbuf_t *) ((u8 *) msg - offsetof (msgbuf_t, data));
+      vl_msg_api_handler ((void *) msg, ntohl (msgbuf->data_len));
+    }
 }
 
 u32

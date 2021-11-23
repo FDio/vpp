@@ -510,8 +510,9 @@ api_rx_from_node (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      vec_add (long_msg, msg, msg_len);
 	    }
 	  msg = long_msg;
+	  msg_len = vec_len (long_msg);
 	}
-      vl_msg_api_handler_no_trace_no_free (msg);
+      vl_msg_api_handler_no_trace_no_free (msg, msg_len);
     }
 
   /* Free what we've been given. */

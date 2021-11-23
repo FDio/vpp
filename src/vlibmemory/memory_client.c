@@ -244,7 +244,8 @@ vl_client_connect (const char *name, int ctx_quota, int input_queue_size)
 	}
       rv = clib_net_to_host_u32 (rp->response);
 
-      vl_msg_api_handler ((void *) rp);
+      msgbuf_t *msgbuf = (msgbuf_t *) ((u8 *) rp - offsetof (msgbuf_t, data));
+      vl_msg_api_handler ((void *) rp, ntohl (msgbuf->data_len));
       break;
     }
   return (rv);
@@ -293,6 +294,7 @@ vl_client_disconnect (void)
   svm_queue_t *vl_input_queue;
   api_main_t *am = vlibapi_get_main ();
   time_t begin;
+  msgbuf_t *msgbuf;
 
   vl_input_queue = am->vl_input_queue;
   vl_client_send_disconnect (0 /* wait for reply */ );
@@ -325,10 +327,12 @@ vl_client_disconnect (void)
       if (ntohs (rp->_vl_msg_id) != VL_API_MEMCLNT_DELETE_REPLY)
 	{
 	  clib_warning ("queue drain: %d", ntohs (rp->_vl_msg_id));
-	  vl_msg_api_handler ((void *) rp);
+	  msgbuf = (msgbuf_t *) ((u8 *) rp - offsetof (msgbuf_t, data));
+	  vl_msg_api_handler ((void *) rp, ntohl (msgbuf->data_len));
 	  continue;
 	}
-      vl_msg_api_handler ((void *) rp);
+      msgbuf = (msgbuf_t *) ((u8 *) rp - offsetof (msgbuf_t, data));
+      vl_msg_api_handler ((void *) rp, ntohl (msgbuf->data_len));
       break;
     }
 
