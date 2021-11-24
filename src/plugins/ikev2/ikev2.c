@@ -4373,8 +4373,15 @@ ikev2_resolve_responder_hostname (vlib_main_t *vm, ikev2_responder_t *r)
 
   if (ep == 0)
     return 0;
+  if (rn->is_ip4)
+    {
+      ip_address_set (&r->addr, &rn->ad4, AF_IP4);
+    }
+  else
+    {
+      ip_address_set (&r->addr, &rn->ad6, AF_IP6);
+    }
 
-  ip_address_copy (&r->addr, &rn->address);
   r->is_resolved = 1;
   return 0;
 }
