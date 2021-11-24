@@ -204,6 +204,8 @@ typedef enum
 {
   APP_OPTIONS_FLAGS,
   APP_OPTIONS_EVT_QUEUE_SIZE,
+  /* note: in order to fully utilize segment usage the size has to be
+   * double the size of fifo which is power of 2 */
   APP_OPTIONS_SEGMENT_SIZE,
   APP_OPTIONS_ADD_SEGMENT_SIZE,
   APP_OPTIONS_PRIVATE_SEGMENT_COUNT,

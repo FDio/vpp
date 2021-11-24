@@ -295,7 +295,7 @@ fss_fl_chunk_bytes_sub (fifo_segment_slice_t * fss, uword size)
 int
 fifo_segment_init (fifo_segment_t * fs)
 {
-  u32 align = 8, offset = 2 * 4096, slices_sz, i;
+  u32 align = 8, offset = 2 * clib_mem_get_page_size (), slices_sz, i;
   uword max_fifo, seg_start, seg_sz;
   fifo_segment_header_t *fsh;
   ssvm_shared_header_t *sh;

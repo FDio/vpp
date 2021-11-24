@@ -119,6 +119,12 @@ segment_manager_add_segment_inline (segment_manager_t *sm, uword segment_size,
    * Allocate ssvm segment
    */
   segment_size = segment_size ? segment_size : props->add_segment_size;
+  /* add overhead to ensure the result segment size is at least
+   * of that requested */
+  segment_size +=
+    sizeof (fifo_segment_header_t) +
+    vlib_thread_main.n_vlib_mains * sizeof (fifo_segment_slice_t) +
+    2 * clib_mem_get_page_size ();
   segment_size = round_pow2 (segment_size, clib_mem_get_page_size ());
 
   if (props->segment_type != SSVM_SEGMENT_PRIVATE)
