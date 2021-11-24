@@ -41,7 +41,10 @@ typedef struct
 
 typedef struct
 {
-  ip_address_t address;
+  ip4_address_t ad4;
+  u8 is_ip4;
+  ip6_address_t ad6;
+  u8 is_ip6;
 } dns_resolve_name_t;
 
 typedef enum
@@ -78,6 +81,8 @@ typedef struct
 
   /** Cached dns response */
   u8 *dns_response;
+  u8 *dns_a_response;
+  u8 *dns_aaaa_response;
 
   /** Clients / peers awaiting responses */
   dns_pending_request_t *pending_requests;
@@ -172,8 +177,8 @@ typedef enum
     DNS46_REPLY_N_ERROR,
 } dns46_reply_error_t;
 
-void vnet_send_dns_request (vlib_main_t * vm, dns_main_t * dm,
-			    dns_cache_entry_t * ep);
+void vnet_send_dns_request (vlib_main_t *vm, dns_main_t *dm,
+			    dns_cache_entry_t *ep, u8 qtype);
 int vnet_dns_cname_indirection_nolock (vlib_main_t * vm, dns_main_t * dm,
 				       u32 ep_index, u8 * reply);
 
