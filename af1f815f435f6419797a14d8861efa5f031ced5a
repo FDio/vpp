@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "57ade04b_60ddb003",
+        "filename": "src/vnet/dpo/load_balance.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 896,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-11-24T23:10:24Z",
+      "side": 1,
+      "message": "vlib_get_thread_index ()",
+      "range": {
+        "startLine": 896,
+        "startChar": 12,
+        "endLine": 896,
+        "endChar": 28
+      },
+      "revId": "af1f815f435f6419797a14d8861efa5f031ced5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
