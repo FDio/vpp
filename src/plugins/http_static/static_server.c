@@ -893,7 +893,7 @@ state_send_more_data (session_t * s, http_session_t * hs,
     {
       /* No: ask for a shoulder-tap when the tx fifo has space */
       svm_fifo_add_want_deq_ntf (hs->tx_fifo,
-				 SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
+				 SVM_FIFO_WANT_DEQ_NOTIF_IF_EMPTY);
       hs->session_state = HTTP_STATE_SEND_MORE_DATA;
       return 0;
     }
