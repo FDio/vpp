@@ -231,7 +231,8 @@ dns46_request_inline (vlib_main_t * vm,
 	    }
 
 	  t0->client_index = ~0;
-	  t0->is_ip6 = is_ip6;
+	  t0->is_ip6 =
+	    (clib_net_to_host_u16 (q0->type) == DNS_TYPE_AAAA) ? 1 : 0;
 	  t0->dst_port = u0->src_port;
 	  t0->id = d0->id;
 	  t0->name = name0;

@@ -444,13 +444,13 @@ vnet_dns_labels_to_name (u8 * label, u8 * full_text, u8 ** parse_from_here)
 }
 
 void
-vnet_send_dns_request (vlib_main_t * vm, dns_main_t * dm,
-		       dns_cache_entry_t * ep)
+vnet_send_dns_request (vlib_main_t *vm, dns_main_t *dm, dns_cache_entry_t *ep,
+		       u8 qtype)
 {
   dns_header_t *h;
   dns_query_t *qp;
   u16 tmp;
-  u8 *request, *name_copy;
+  u8 *request;
   u32 qp_offset;
 
   /* This can easily happen if sitting in GDB, etc. */
@@ -458,7 +458,8 @@ vnet_send_dns_request (vlib_main_t * vm, dns_main_t * dm,
     return;
 
   /* Construct the dns request, if we haven't been here already */
-  if (vec_len (ep->dns_request) == 0)
+  // if (vec_len (ep->dns_request) == 0)
+  if (1)
     {
       /*
        * Start with the variadic portion of the exercise.
@@ -466,29 +467,14 @@ vnet_send_dns_request (vlib_main_t * vm, dns_main_t * dm,
        * per label is 63, enforce that.
        */
       request = name_to_labels (ep->name);
-      name_copy = vec_dup (request);
       qp_offset = vec_len (request);
 
-      /*
-       * At least when testing against "known good" DNS servers:
-       * it turns out that sending 2x requests - one for an A-record
-       * and another for a AAAA-record - seems to work better than
-       * sending a DNS_TYPE_ALL request.
-       */
-
       /* Add space for the query header */
-      vec_validate (request, 2 * qp_offset + 2 * sizeof (dns_query_t) - 1);
+      vec_validate (request, qp_offset + sizeof (dns_query_t));
 
       qp = (dns_query_t *) (request + qp_offset);
 
-      qp->type = clib_host_to_net_u16 (DNS_TYPE_A);
-      qp->class = clib_host_to_net_u16 (DNS_CLASS_IN);
-      qp++;
-      clib_memcpy (qp, name_copy, vec_len (name_copy));
-      qp = (dns_query_t *) (((u8 *) qp) + vec_len (name_copy));
-      vec_free (name_copy);
-
-      qp->type = clib_host_to_net_u16 (DNS_TYPE_AAAA);
+      qp->type = clib_host_to_net_u16 (qtype);
       qp->class = clib_host_to_net_u16 (DNS_CLASS_IN);
 
       /* Punch in space for the dns_header_t */
@@ -502,7 +488,7 @@ vnet_send_dns_request (vlib_main_t * vm, dns_main_t * dm,
       /* Ask for a recursive lookup */
       tmp = DNS_RD | DNS_OPCODE_QUERY;
       h->flags = clib_host_to_net_u16 (tmp);
-      h->qdcount = clib_host_to_net_u16 (2);
+      h->qdcount = clib_host_to_net_u16 (1);
       h->nscount = 0;
       h->arcount = 0;
 
@@ -859,7 +845,8 @@ re_resolve:
       clib_memcpy (pr->dst_address, t->dst_address, count);
     }
 
-  vnet_send_dns_request (vm, dm, ep);
+  vnet_send_dns_request (vm, dm, ep, DNS_TYPE_A);
+  vnet_send_dns_request (vm, dm, ep, DNS_TYPE_AAAA);
   dns_cache_unlock (dm);
   return 0;
 }
@@ -1064,7 +1051,7 @@ found_last_request:
    */
 
   vec_add1 (dm->unresolved_entries, next_ep - dm->entries);
-  vnet_send_dns_request (vm, dm, next_ep);
+  vnet_send_dns_request (vm, dm, next_ep, DNS_TYPE_A);
   return (1);
 }
 
@@ -1178,15 +1165,18 @@ vnet_dns_response_to_reply (u8 *response, dns_resolve_name_t *rn,
 	{
 	case DNS_TYPE_A:
 	  /* Collect an ip4 address. Do not pass go. Do not collect $200 */
-	  ip_address_set (&rn->address, rr->rdata, AF_IP4);
+	  clib_memcpy (&rn->ad4, rr->rdata, 4);
+	  rn->is_ip4 = 1;
 	  ttl = clib_net_to_host_u32 (rr->ttl);
 	  addr_set += 1;
 	  if (min_ttlp && *min_ttlp > ttl)
 	    *min_ttlp = ttl;
+
 	  break;
 	case DNS_TYPE_AAAA:
 	  /* Collect an ip6 address. Do not pass go. Do not collect $200 */
-	  ip_address_set (&rn->address, rr->rdata, AF_IP6);
+	  clib_memcpy (&rn->ad6, rr->rdata, 16);
+	  rn->is_ip6 = 1;
 	  ttl = clib_net_to_host_u32 (rr->ttl);
 	  if (min_ttlp && *min_ttlp > ttl)
 	    *min_ttlp = ttl;
@@ -1372,7 +1362,7 @@ vl_api_dns_resolve_name_t_handler (vl_api_dns_resolve_name_t * mp)
   dns_cache_entry_t *ep = 0;
   dns_pending_request_t _t0, *t0 = &_t0;
   int rv;
-  dns_resolve_name_t rn;
+  dns_resolve_name_t _rn, *rn = &_rn;
 
   /* Sanitize the name slightly */
   mp->name[ARRAY_LEN (mp->name) - 1] = 0;
@@ -1381,7 +1371,7 @@ vl_api_dns_resolve_name_t_handler (vl_api_dns_resolve_name_t * mp)
   t0->client_index = mp->client_index;
   t0->client_context = mp->context;
 
-  rv = dns_resolve_name (mp->name, &ep, t0, &rn);
+  rv = dns_resolve_name (mp->name, &ep, t0, rn);
 
   /* Error, e.g. not enabled? Tell the user */
   if (rv < 0)
@@ -1389,18 +1379,26 @@ vl_api_dns_resolve_name_t_handler (vl_api_dns_resolve_name_t * mp)
       REPLY_MACRO (VL_API_DNS_RESOLVE_NAME_REPLY);
       return;
     }
-
   /* Resolution pending? Don't reply... */
+  /*No reply will block thread so tell the user that resolution is pending*/
   if (ep == 0)
-    return;
+    {
+      REPLY_MACRO2 (VL_API_DNS_RESOLVE_NAME_REPLY, { rmp->retval = 0; });
+      return;
+    }
 
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_DNS_RESOLVE_NAME_REPLY, ({
-		  ip_address_copy_addr (rmp->ip4_address, &rn.address);
-		  if (ip_addr_version (&rn.address) == AF_IP4)
-		    rmp->ip4_set = 1;
-		  else
-		    rmp->ip6_set = 1;
+		  if (rn->is_ip4)
+		    {
+		      clib_memcpy (rmp->ip4_address, &rn->ad4, 4);
+		      rmp->ip4_set = 1;
+		    }
+		  if (rn->is_ip6)
+		    {
+		      clib_memcpy (rmp->ip6_address, &rn->ad6, 16);
+		      rmp->ip6_set = 1;
+		    }
 		}));
   /* *INDENT-ON* */
 }
@@ -2282,6 +2280,26 @@ dns_cache_add_del_command_fn (vlib_main_t * vm,
   if (unformat (input, "%U", unformat_dns_reply, &dns_reply_data, &name))
     {
       rv = dns_add_static_entry (dm, name, dns_reply_data);
+      dns_header_t *h = (dns_header_t *) dns_reply_data;
+      dns_query_t *qp;
+      u8 *pos = (u8 *) (h + 1);
+      u8 len, limit;
+      len = *pos++;
+      while (len)
+	{
+	  pos += len;
+	  len = *pos++;
+	}
+
+      /* Skip queries */
+      limit = clib_net_to_host_u16 (h->qdcount);
+      qp = (dns_query_t *) pos;
+      qp += limit;
+      pos = (u8 *) qp;
+
+      /* Parse answers */
+      limit = clib_net_to_host_u16 (h->anscount);
+
       switch (rv)
 	{
 	case VNET_API_ERROR_ENTRY_ALREADY_EXISTS:
@@ -2538,7 +2556,10 @@ test_dns_fmt_command_fn (vlib_main_t * vm,
       break;
 
     case 0:
-      vlib_cli_output (vm, "ip address: %U", format_ip_address, &rn->address);
+      if (rn->is_ip4)
+	vlib_cli_output (vm, "ip address: %U", format_ip4_address, &rn->ad4);
+      if (rn->is_ip6)
+	vlib_cli_output (vm, "ip address: %U", format_ip6_address, &rn->ad6);
       break;
     }
 
@@ -2689,9 +2710,14 @@ vnet_send_dns4_reply (vlib_main_t * vm, dns_main_t * dm,
 	  /* clib_warning ("response_to_reply failed..."); */
 	  is_fail = 1;
 	}
-      else if (ip_addr_version (&rn->address) != AF_IP4)
+      else if (!pr->is_ip6 && !rn->is_ip4)
 	{
 	  /* clib_warning ("No A-record..."); */
+	  is_fail = 1;
+	}
+      else if (pr->is_ip6 && !rn->is_ip6)
+	{
+	  /*No AAAA-record*/
 	  is_fail = 1;
 	}
     }
@@ -2768,7 +2794,7 @@ vnet_send_dns4_reply (vlib_main_t * vm, dns_main_t * dm,
   qp = (dns_query_t *) (reply + qp_offset);
 
   if (pr->request_type == DNS_PEER_PENDING_NAME_TO_IP)
-    qp->type = clib_host_to_net_u16 (DNS_TYPE_A);
+    qp->type = clib_host_to_net_u16 (pr->is_ip6 ? DNS_TYPE_AAAA : DNS_TYPE_A);
   else
     qp->type = clib_host_to_net_u16 (DNS_TYPE_PTR);
 
@@ -2802,14 +2828,28 @@ vnet_send_dns4_reply (vlib_main_t * vm, dns_main_t * dm,
       /* Now, add single A-rec RR */
       if (pr->request_type == DNS_PEER_PENDING_NAME_TO_IP)
 	{
-	  vec_add2 (reply, rrptr, sizeof (dns_rr_t) + sizeof (ip4_address_t));
+	  if (pr->is_ip6)
+	    {
+	      vec_add2 (reply, rrptr,
+			sizeof (dns_rr_t) + sizeof (ip6_address_t));
+	    }
+	  else
+	    {
+	      vec_add2 (reply, rrptr,
+			sizeof (dns_rr_t) + sizeof (ip4_address_t));
+	    }
 	  rr = (dns_rr_t *) rrptr;
 
-	  rr->type = clib_host_to_net_u16 (DNS_TYPE_A);
+	  rr->type =
+	    clib_host_to_net_u16 ((pr->is_ip6) ? DNS_TYPE_AAAA : DNS_TYPE_A);
 	  rr->class = clib_host_to_net_u16 (1 /* internet */ );
 	  rr->ttl = clib_host_to_net_u32 (ttl);
-	  rr->rdlength = clib_host_to_net_u16 (sizeof (ip4_address_t));
-	  ip_address_copy_addr (rr->rdata, &rn->address);
+	  rr->rdlength = clib_host_to_net_u16 (
+	    pr->is_ip6 ? sizeof (ip6_address_t) : sizeof (ip4_address_t));
+	  if (!pr->is_ip6)
+	    clib_memcpy (rr->rdata, &rn->ad4, 4);
+	  else
+	    clib_memcpy (rr->rdata, &rn->ad6, 16);
 	}
       else
 	{
