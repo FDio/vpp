@@ -2,6 +2,74 @@
   "comments": [
     {
       "key": {
+        "uuid": "9d970f05_5354f22d",
+        "filename": "src/plugins/wireguard/blake/blake3.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2021-11-24T06:56:39Z",
+      "side": 1,
+      "message": "replace it with clib_memcpy. Others do the same.",
+      "revId": "f0ca6494b29b29a50dc156bebe9e1ca2f7755407",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "72840a41_46595987",
+        "filename": "src/plugins/wireguard/blake/blake3.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2021-11-24T06:56:39Z",
+      "side": 1,
+      "message": "replace it with clib_memset. Others do the same.",
+      "revId": "f0ca6494b29b29a50dc156bebe9e1ca2f7755407",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d6a8bb80_b260ed27",
+        "filename": "src/plugins/wireguard/blake/blake3.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2021-11-24T06:56:39Z",
+      "side": 1,
+      "message": "Please put it to blake3.h",
+      "revId": "f0ca6494b29b29a50dc156bebe9e1ca2f7755407",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "354e7347_2db49b33",
+        "filename": "src/plugins/wireguard/blake/blake3.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2021-11-24T06:56:39Z",
+      "side": 1,
+      "message": "Please contains copy rights in each file.",
+      "revId": "f0ca6494b29b29a50dc156bebe9e1ca2f7755407",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "dacd1a58_7c06f964",
         "filename": "src/plugins/wireguard/blake/blake3.h",
         "patchSetId": 11
