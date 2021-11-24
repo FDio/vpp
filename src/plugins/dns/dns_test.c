@@ -51,6 +51,11 @@ static void vl_api_dns_resolve_name_reply_t_handler
       if (mp->ip6_set)
 	clib_warning ("resolved: %U", format_ip6_address, mp->ip6_address);
     }
+  if (retval == -1)
+    {
+      clib_warning ("Pending vl_api_dns_resolve_name_reply_t_handler");
+    }
+
   if (vam->async_mode)
     vam->async_errors += (retval < 0);
   else
@@ -144,6 +149,15 @@ api_dns_resolve_name (vat_main_t * vam)
   S (mp);
   /* Wait for the reply */
   W (ret);
+
+  if (ret == -1)
+    {
+      errmsg ("Pending");
+    }
+  else if (ret == -99)
+    {
+      errmsg ("No reply");
+    }
   return ret;
 }
 

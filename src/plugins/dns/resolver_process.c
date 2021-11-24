@@ -34,12 +34,80 @@ int
 vnet_dns_response_to_name (u8 * response,
 			   vl_api_dns_resolve_ip_reply_t * rmp,
 			   u32 * min_ttlp);
+static u8 *
+create_type_all_response (u8 *source_a, u8 *source_b)
+{
+  dns_header_t *h, *h_src;
+  dns_query_t *qp;
+  dns_rr_t *rr_src, *rr;
+  u8 *pos, len, *rr_ptr;
+  u8 *destination = NULL;
+  u32 qp_offset;
+
+  h_src = (dns_header_t *) source_a;
+  pos = (u8 *) (h_src + 1);
+  len = *pos;
+  destination = vec_new (u8, 0);
+  while (len)
+    {
+      vec_add1 (destination, len);
+      pos++;
+      len = *pos;
+    }
+  vec_add1 (destination, 0);
+
+  while (*pos != 0xC0)
+    {
+      pos++;
+    }
+  /*0xC0 + 0x0C*/
+  rr_src = (dns_rr_t *) (pos + 2);
+  qp_offset = vec_len (destination);
+  vec_validate (destination, qp_offset + sizeof (dns_query_t) - 1);
+
+  qp = (dns_query_t *) (destination + qp_offset);
+  qp->type = clib_host_to_net_u16 (DNS_TYPE_ALL);
+  qp->class = clib_host_to_net_u16 (DNS_CLASS_IN);
+
+  vec_insert (destination, sizeof (dns_header_t), 0);
+
+  h = (dns_header_t *) destination;
+  h->id = h_src->id;
+  h->flags = h_src->flags;
+  h->qdcount = clib_host_to_net_u16 (1);
+  h->nscount = 0;
+  h->arcount = 0;
+  h->anscount = clib_host_to_net_u16 (2);
+
+  vec_add1 (destination, 0xC0);
+  vec_add1 (destination, 0x0C);
+
+  vec_add2 (destination, rr_ptr, sizeof (*rr) + 4);
+  rr = (dns_rr_t *) rr_ptr;
+  rr->class = rr_src->class;
+  rr->rdlength = rr_src->rdlength;
+  rr->ttl = clib_host_to_net_u32 (300);
+  rr->type = rr_src->type;
+  clib_memcpy (rr->rdata, rr_src->rdata, 4);
+  vec_add1 (destination, 0xC0);
+  vec_add1 (destination, 0x0C);
+  vec_add2 (destination, rr_ptr, sizeof (*rr) + 16);
+  rr_src = (dns_rr_t *) ((source_b) + (((u8 *) rr_src) - source_a));
+  rr = (dns_rr_t *) rr_ptr;
+  rr->class = rr_src->class;
+  rr->rdlength = rr_src->rdlength;
+  rr->ttl = clib_host_to_net_u32 (300);
+  rr->type = rr_src->type;
+  clib_memcpy (rr->rdata, rr_src->rdata, 16);
+  return destination;
+}
 
 static void
 resolve_event (vlib_main_t * vm, dns_main_t * dm, f64 now, u8 * reply)
 {
   dns_pending_request_t *pr;
   dns_header_t *d;
+  dns_query_t *h;
   u32 pool_index;
   dns_cache_entry_t *ep;
   u32 min_ttl;
@@ -49,10 +117,24 @@ resolve_event (vlib_main_t * vm, dns_main_t * dm, f64 now, u8 * reply)
   int entry_was_valid;
   int remove_count;
   int rv = 0;
+  u16 qtype, len;
+  u8 *pos, *curpos;
 
   d = (dns_header_t *) reply;
   flags = clib_net_to_host_u16 (d->flags);
   rcode = flags & DNS_RCODE_MASK;
+  curpos = (u8 *) (d + 1);
+  pos = curpos;
+  len = *pos++;
+
+  while (len)
+    {
+      pos += len;
+      len = *pos++;
+    }
+  curpos = pos;
+  h = (dns_query_t *) curpos;
+  qtype = clib_host_to_net_u16 (h->type);
 
   /* $$$ u16 limits cache to 65K entries, fix later multiple dst ports */
   pool_index = clib_net_to_host_u16 (d->id);
@@ -71,9 +153,20 @@ resolve_event (vlib_main_t * vm, dns_main_t * dm, f64 now, u8 * reply)
 
   ep = pool_elt_at_index (dm->entries, pool_index);
 
+  if (qtype == DNS_TYPE_A)
+    {
+      if (ep->dns_a_response)
+	vec_free (ep->dns_a_response);
+    }
+  else
+    {
+      if (ep->dns_aaaa_response)
+	vec_free (ep->dns_aaaa_response);
+    }
+  /**
   if (ep->dns_response)
     vec_free (ep->dns_response);
-
+**/
   /* Handle [sic] recursion AKA CNAME indirection */
   rv = vnet_dns_cname_indirection_nolock (vm, dm, pool_index, reply);
 
@@ -139,7 +232,35 @@ resolve_event (vlib_main_t * vm, dns_main_t * dm, f64 now, u8 * reply)
 
 reply:
   /* Save the response */
-  ep->dns_response = reply;
+  if (qtype == DNS_TYPE_A)
+    {
+      ep->dns_a_response = reply;
+    }
+  else
+    {
+      ep->dns_aaaa_response = reply;
+    }
+  ep->response_counter++;
+  if (ep->response_counter < 2)
+    {
+      dns_cache_unlock (dm);
+      return;
+    }
+
+  if (ep->dns_a_response == NULL && ep->dns_aaaa_response == NULL)
+    {
+      // TODO: response without answers
+    }
+  else if (ep->dns_a_response == NULL || ep->dns_aaaa_response == NULL)
+    {
+      ep->dns_response = (ep->dns_a_response != NULL) ? ep->dns_a_response :
+							ep->dns_aaaa_response;
+    }
+  else
+    {
+      ep->dns_response =
+	create_type_all_response (ep->dns_a_response, ep->dns_aaaa_response);
+    }
 
   /*
    * Pick a sensible default cache entry expiration time.
@@ -296,7 +417,8 @@ retry_scan (vlib_main_t * vm, dns_main_t * dm, f64 now)
       ep = pool_elt_at_index (dm->entries, dm->unresolved_entries[i]);
 
       ASSERT ((ep->flags & DNS_CACHE_ENTRY_FLAG_VALID) == 0);
-      vnet_send_dns_request (vm, dm, ep);
+      vnet_send_dns_request (vm, dm, ep, DNS_TYPE_A);
+      vnet_send_dns_request (vm, dm, ep, DNS_TYPE_AAAA);
       dns_cache_unlock (dm);
     }
 }
