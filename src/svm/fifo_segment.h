@@ -20,6 +20,8 @@
 #include <svm/message_queue.h>
 #include <svm/svm_fifo.h>
 
+#define FIFO_SEGMENT_ALLOC_OVERHEAD (2 * clib_mem_get_page_size ())
+
 typedef enum
 {
   FIFO_SEGMENT_FTYPE_NONE = -1,
