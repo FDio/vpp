@@ -398,6 +398,8 @@ connect_error:
 
 cleanup_client:
 
+  sct->peer_index = ~0;
+
   if (cct->client_rx_fifo)
     ct_session_dealloc_fifos (cct, cct->client_rx_fifo, cct->client_tx_fifo);
   ct_connection_free (cct);
