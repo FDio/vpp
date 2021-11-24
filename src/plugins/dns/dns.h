@@ -41,7 +41,10 @@ typedef struct
 
 typedef struct
 {
-  ip_address_t address;
+  ip4_address_t ad4;
+  u8 is_ip4;
+  ip6_address_t ad6;
+  u8 is_ip6;
 } dns_resolve_name_t;
 
 typedef enum
