@@ -16,6 +16,18 @@
 #include <perfmon/perfmon.h>
 #include <perfmon/intel/core.h>
 
+enum
+{
+  STALLS_L1D_MISS = 0,
+  STALLS_L2_MISS = 1,
+  STALLS_L3_MISS = 2,
+  STALLS_MEM_ANY = 3,
+  STALLS_TOTAL = 4,
+  BOUND_ON_STORES = 5,
+  FB_FULL = 6,
+  CPU_CLK_UNHALTED = 7,
+};
+
 static u8 *
 format_intel_memory_stalls (u8 *s, va_list *args)
 {
@@ -26,9 +38,39 @@ format_intel_memory_stalls (u8 *s, va_list *args)
   if (!ss->n_packets)
     return s;
 
-  sv = ss->value[row] / ss->n_packets;
+  if (0 == row)
+    {
+      sv = ss->value[CPU_CLK_UNHALTED] / ss->n_packets ;
 
-  s = format (s, "%5.0f", sv);
+      s = format (s, "%05.2f", sv);
+    }
+  else {
+      switch (row)
+	{
+	case 1:
+	  sv = ss->value[BOUND_ON_STORES];
+	  break;
+	case 2:
+	  sv = ss->value[STALLS_MEM_ANY] - ss->value[STALLS_L1D_MISS];
+	  break;
+	case 3:
+	  sv = ss->value[FB_FULL];
+	  break;
+	case 4:
+	  sv = ss->value[STALLS_L1D_MISS] - ss->value[STALLS_L2_MISS];
+	  break;
+	case 5:
+	  sv = ss->value[STALLS_L2_MISS] - ss->value[STALLS_L3_MISS];
+	  break;
+	case 6:
+	  sv = ss->value[STALLS_L3_MISS];
+	  break;
+	}
+
+      sv = clib_max ((sv / ss->value[CPU_CLK_UNHALTED]) * 100, 0);
+
+      s = format (s, "%05.2f", sv);
+  }
 
   return s;
 }
@@ -39,21 +81,21 @@ static perfmon_cpu_supports_t memory_stalls_cpu_supports[] = {
 
 PERFMON_REGISTER_BUNDLE (intel_core_memory_stalls) = {
   .name = "memory-stalls",
-  .description = "cycles not retiring instructions due to memory stalls",
+  .description = "% cycles not retiring instructions due to memory stalls",
   .source = "intel-core",
-  .events[0] = INTEL_CORE_E_CPU_CLK_UNHALTED_THREAD_P,	      /* FIXED */
-  .events[1] = INTEL_CORE_E_CYCLE_ACTIVITY_CYCLES_NO_EXECUTE, /*CMask: 0xFF*/
-  .events[2] = INTEL_CORE_E_CYCLE_ACTIVITY_STALLS_MEM_ANY,    /*CMask: 0xFF*/
-  .events[3] = INTEL_CORE_E_CYCLE_ACTIVITY_STALLS_L1D_MISS,   /*CMask: 0xF*/
-  .events[4] = INTEL_CORE_E_L1D_PEND_MISS_FB_FULL,	      /*CMask: 0xF*/
-  .events[5] = INTEL_CORE_E_CYCLE_ACTIVITY_STALLS_L3_MISS,    /*CMask: 0xF*/
-  .events[6] = INTEL_CORE_E_SQ_MISC_SQ_FULL,		      /*CMask: 0xF*/
-  .n_events = 7,
+  .events[0] = INTEL_CORE_E_CYCLE_ACTIVITY_STALLS_L1D_MISS, /* 0x0F */
+  .events[1] = INTEL_CORE_E_CYCLE_ACTIVITY_STALLS_L2_MISS,  /* 0x0F */
+  .events[2] = INTEL_CORE_E_CYCLE_ACTIVITY_STALLS_L3_MISS,  /* 0x0F */
+  .events[3] = INTEL_CORE_E_CYCLE_ACTIVITY_STALLS_MEM_ANY,  /* 0xFF */
+  .events[4] = INTEL_CORE_E_CYCLE_ACTIVITY_STALLS_TOTAL,    /* 0xFF */
+  .events[5] = INTEL_CORE_E_EXE_ACTIVITY_BOUND_ON_STORES,   /* 0xFF */
+  .events[6] = INTEL_CORE_E_L1D_PEND_MISS_FB_FULL,	    /* 0x0F */
+  .events[7] = INTEL_CORE_E_CPU_CLK_UNHALTED_THREAD_P,	    /* 0xFF */
+  .n_events = 8,
   .format_fn = format_intel_memory_stalls,
   .cpu_supports = memory_stalls_cpu_supports,
   .n_cpu_supports = ARRAY_LEN (memory_stalls_cpu_supports),
-  .column_headers = PERFMON_STRINGS ("Cycles/Packet", "Cycles Stall/Packet",
-				     "Mem Stall/Packet",
-				     "L1D Miss Stall/Packet", "FB Full/Packet",
-				     "L3 Miss Stall/Packet", "SQ Full/Packet"),
+  .column_headers = PERFMON_STRINGS ("Clocks/Packet", "%Store Bound",
+				     "%L1 Bound", "%FB Full", "%L2 Bound",
+				     "%L3 Bound", "%DRAM Bound"),
 };

@@ -55,6 +55,8 @@
 /* EventCode, UMask, EdgeDetect, AnyThread, Invert, CounterMask
  * counter_unit, name, suffix, description */
 #define foreach_perf_intel_core_event                                         \
+  _ (0x00, 0x01, 0, 0, 0, 0x00, INST_RETIRED, ANY,                            \
+     "Number of instructions retired. Fixed Counter - architectural event")   \
   _ (0x00, 0x02, 0, 0, 0, 0x00, CPU_CLK_UNHALTED, THREAD,                     \
      "Core cycles when the thread is not in halt state")                      \
   _ (0x00, 0x03, 0, 0, 0, 0x00, CPU_CLK_UNHALTED, REF_TSC,                    \
@@ -86,9 +88,12 @@
      "load. EPT page walk duration are excluded in Skylake.")                 \
   _ (0x08, 0x20, 0, 0, 0, 0x00, DTLB_LOAD_MISSES, STLB_HIT,                   \
      "Loads that miss the DTLB and hit the STLB.")                            \
-  _ (0x0D, 0x01, 0, 0, 0, 0x00, INT_MISC, RECOVERY_CYCLES,                    \
+  _ (0x0D, 0x01, 0, 1, 0, 0x01, INT_MISC, RECOVERY_CYCLES,                    \
      "Core cycles the allocator was stalled due to recovery from earlier "    \
      "clear event for this thread (e.g. misprediction or memory nuke)")       \
+  _ (0x0D, 0x10, 0, 0, 0, 0x00, INT_MISC, UOP_DROPPING,                       \
+     "Estimated number of Top-down Microarchitecture Analysis slots that got" \
+     " due to non front-end reasons")                                         \
   _ (0x0E, 0x01, 0, 0, 0, 0x00, UOPS_ISSUED, ANY,                             \
      "Uops that Resource Allocation Table (RAT) issues to Reservation "       \
      "Station (RS)")                                                          \
@@ -134,9 +139,8 @@
      "full. This counts cycles that the pipeline back-end blocked uop "       \
      "delivery"                                                               \
      "from the front-end.")                                                   \
-  _ (0xA3, 0x04, 0, 0, 0, 0x04, CYCLE_ACTIVITY, CYCLES_NO_EXECUTE,            \
-     "This event counts cycles during which no instructions were executed in" \
-     " the execution stage of the pipeline.")                                 \
+  _ (0xA3, 0x04, 0, 0, 0, 0x04, CYCLE_ACTIVITY, STALLS_TOTAL,                 \
+     "Total execution stalls.")                                               \
   _ (0xA3, 0x05, 0, 0, 0, 0x05, CYCLE_ACTIVITY, STALLS_L2_MISS,               \
      "Execution stalls while L2 cache miss demand load is outstanding")       \
   _ (0xA3, 0x06, 0, 0, 0, 0x06, CYCLE_ACTIVITY, STALLS_L3_MISS,               \
@@ -145,6 +149,9 @@
      "Execution stalls while L1 cache miss demand load is outstanding")       \
   _ (0xA3, 0x14, 0, 0, 0, 0x14, CYCLE_ACTIVITY, STALLS_MEM_ANY,               \
      "Execution stalls while memory subsystem has an outstanding load.")      \
+  _ (0xA6, 0x40, 0, 0, 0, 0x02, EXE_ACTIVITY, BOUND_ON_STORES,                \
+     "Cycles where the Store Buffer was full and no loads caused an "         \
+     "execution stall.")                                                      \
   _ (0xC0, 0x00, 0, 0, 0, 0x00, INST_RETIRED, ANY_P,                          \
      "Number of instructions retired. General Counter - architectural event") \
   _ (0xC2, 0x02, 0, 0, 0, 0x00, UOPS_RETIRED, RETIRE_SLOTS,                   \
