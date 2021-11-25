@@ -554,11 +554,7 @@ vl_api_nat44_ed_add_del_output_interface_t_handler (
   snat_main_t *sm = &snat_main;
   int rv = 0;
 
-  if (!vnet_sw_if_index_is_api_valid (mp->sw_if_index))
-    {
-      rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
-      goto bad_sw_if_index;
-    }
+  VALIDATE_SW_IF_INDEX_END (mp);
 
   if (mp->is_add)
     {

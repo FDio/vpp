@@ -273,6 +273,17 @@ do {								\
     }                                                           \
 } while(0);
 
+#define VALIDATE_SW_IF_INDEX_END(mp)                                          \
+  do                                                                          \
+    {                                                                         \
+      if (!vnet_sw_if_index_is_api_valid ((mp)->sw_if_index))                 \
+	{                                                                     \
+	  rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;                            \
+	  goto bad_sw_if_index;                                               \
+	}                                                                     \
+    }                                                                         \
+  while (0);
+
 #define BAD_SW_IF_INDEX_LABEL                   \
 do {                                            \
 bad_sw_if_index:                                \
@@ -286,6 +297,17 @@ bad_sw_if_index:                                \
         goto bad_rx_sw_if_index;				\
     }                                                           \
 } while(0);
+
+#define VALIDATE_RX_SW_IF_INDEX_END(mp)                                       \
+  do                                                                          \
+    {                                                                         \
+      if (!vnet_sw_if_index_is_api_valid ((mp)->rx_sw_if_index))              \
+	{                                                                     \
+	  rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;                            \
+	  goto bad_rx_sw_if_index;                                            \
+	}                                                                     \
+    }                                                                         \
+  while (0);
 
 #define BAD_RX_SW_IF_INDEX_LABEL		\
 do {                                            \
@@ -301,6 +323,17 @@ bad_rx_sw_if_index:				\
     }                                                           \
 } while(0);
 
+#define VALIDATE_TX_SW_IF_INDEX_END(mp)                                       \
+  do                                                                          \
+    {                                                                         \
+      if (!vnet_sw_if_index_is_api_valid (mp->tx_sw_if_index))                \
+	{                                                                     \
+	  rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;                            \
+	  goto bad_tx_sw_if_index;                                            \
+	}                                                                     \
+    }                                                                         \
+  while (0);
+
 #define BAD_TX_SW_IF_INDEX_LABEL		\
 do {                                            \
 bad_tx_sw_if_index:				\
@@ -314,6 +347,17 @@ bad_tx_sw_if_index:				\
         goto bad_bd_id;				\
     }						\
 } while(0);
+
+#define VALIDATE_BD_ID_END(mp)                                                \
+  do                                                                          \
+    {                                                                         \
+      if (mp->bd_id > L2_BD_ID_MAX)                                           \
+	{                                                                     \
+	  rv = VNET_API_ERROR_BD_ID_EXCEED_MAX;                               \
+	  goto bad_bd_id;                                                     \
+	}                                                                     \
+    }                                                                         \
+  while (0);
 
 #define BAD_BD_ID_LABEL				\
 do {                                            \
