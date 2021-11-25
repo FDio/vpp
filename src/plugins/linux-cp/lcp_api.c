@@ -78,11 +78,7 @@ vl_api_lcp_itf_pair_add_del_t_handler (vl_api_lcp_itf_pair_add_del_t *mp)
   lip_host_type_t lip_host_type;
   int rv;
 
-  if (!vnet_sw_if_index_is_api_valid (mp->sw_if_index))
-    {
-      rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
-      goto bad_sw_if_index;
-    }
+  VALIDATE_SW_IF_INDEX_END (mp);
 
   phy_sw_if_index = mp->sw_if_index;
   lip_host_type = api_decode_host_type (mp->host_if_type);
@@ -110,11 +106,7 @@ vl_api_lcp_itf_pair_add_del_v2_t_handler (vl_api_lcp_itf_pair_add_del_v2_t *mp)
   lip_host_type_t lip_host_type;
   int rv;
 
-  if (!vnet_sw_if_index_is_api_valid (mp->sw_if_index))
-    {
-      rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
-      goto bad_sw_if_index;
-    }
+  VALIDATE_SW_IF_INDEX_END (mp);
 
   phy_sw_if_index = mp->sw_if_index;
   lip_host_type = api_decode_host_type (mp->host_if_type);
