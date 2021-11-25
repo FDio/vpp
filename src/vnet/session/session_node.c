@@ -454,19 +454,10 @@ session_mq_accepted_reply_handler (void *data)
   app_worker_t *app_wrk;
   session_t *s;
 
-  /* Server isn't interested, kill the session */
-  if (mp->retval)
-    {
-      a->app_index = mp->context;
-      a->handle = mp->handle;
-      vnet_disconnect_session (a);
-      return;
-    }
-
   /* Mail this back from the main thread. We're not polling in main
    * thread so we're using other workers for notifications. */
-  if (vlib_num_workers () && vlib_get_thread_index () != 0
-      && session_thread_from_handle (mp->handle) == 0)
+  if (session_thread_from_handle (mp->handle) == 0 && vlib_num_workers () &&
+      vlib_get_thread_index () != 0)
     {
       vlib_rpc_call_main_thread (session_mq_accepted_reply_handler,
 				 (u8 *) mp, sizeof (*mp));
@@ -484,27 +475,35 @@ session_mq_accepted_reply_handler (void *data)
       return;
     }
 
+  /* Server isn't interested, kill the session */
+  if (mp->retval)
+    {
+      a->app_index = mp->context;
+      a->handle = mp->handle;
+      vnet_disconnect_session (a);
+      return;
+    }
+
+  /* Special handling for cut-through sessions */
   if (!session_has_transport (s))
     {
       s->session_state = SESSION_STATE_READY;
-      if (ct_session_connect_notify (s, SESSION_E_NONE))
-	return;
+      ct_session_connect_notify (s, SESSION_E_NONE);
+      return;
     }
-  else
+
+  old_state = s->session_state;
+  s->session_state = SESSION_STATE_READY;
+
+  if (!svm_fifo_is_empty_prod (s->rx_fifo))
+    app_worker_lock_and_send_event (app_wrk, s, SESSION_IO_EVT_RX);
+
+  /* Closed while waiting for app to reply. Resend disconnect */
+  if (old_state >= SESSION_STATE_TRANSPORT_CLOSING)
     {
-      old_state = s->session_state;
-      s->session_state = SESSION_STATE_READY;
-
-      if (!svm_fifo_is_empty_prod (s->rx_fifo))
-	app_worker_lock_and_send_event (app_wrk, s, SESSION_IO_EVT_RX);
-
-      /* Closed while waiting for app to reply. Resend disconnect */
-      if (old_state >= SESSION_STATE_TRANSPORT_CLOSING)
-	{
-	  app_worker_close_notify (app_wrk, s);
-	  s->session_state = old_state;
-	  return;
-	}
+      app_worker_close_notify (app_wrk, s);
+      s->session_state = old_state;
+      return;
     }
 }
 
