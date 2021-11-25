@@ -209,6 +209,7 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 thread_index = vm->thread_index;
   u32 n_buffer_bytes = vlib_buffer_get_default_data_size (vm);
   u32 min_bufs = apif->rx_req->tp_frame_size / n_buffer_bytes;
+  u32 eth_header_size = 0;
   vlib_buffer_t bt;
 
   if (apif->mode == AF_PACKET_IF_MODE_IP)
@@ -217,6 +218,7 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
   else
     {
+      eth_header_size = sizeof (ethernet_header_t);
       next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
       if (PREDICT_FALSE (apif->per_interface_next_index != ~0))
 	next_index = apif->per_interface_next_index;
@@ -307,7 +309,10 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  first_b0 = vlib_get_buffer (vm, first_bi0);
 		  if (tph->tp_status & TP_STATUS_CSUMNOTREADY)
 		    mark_tcp_udp_cksum_calc (first_b0, &l4_hdr_sz);
-		  if (tph->tp_snaplen > apif->host_mtu)
+		  /* This is a trade-off for GSO. As kernel isn't passing
+		   * us the GSO state or size, we guess it by comparing it
+		   * to the host MTU of the interface */
+		  if (tph->tp_snaplen > (apif->host_mtu + eth_header_size))
 		    fill_gso_buffer_flags (first_b0, apif->host_mtu,
 					   l4_hdr_sz);
 		}
