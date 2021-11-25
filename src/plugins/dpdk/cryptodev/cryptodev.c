@@ -51,12 +51,19 @@ prepare_aead_xform (struct rte_crypto_sym_xform *xform,
   xform->type = RTE_CRYPTO_SYM_XFORM_AEAD;
   xform->next = 0;
 
-  if (key->alg != VNET_CRYPTO_ALG_AES_128_GCM &&
-      key->alg != VNET_CRYPTO_ALG_AES_192_GCM &&
-      key->alg != VNET_CRYPTO_ALG_AES_256_GCM)
+  if (key->alg == VNET_CRYPTO_ALG_AES_128_GCM ||
+      key->alg == VNET_CRYPTO_ALG_AES_192_GCM ||
+      key->alg == VNET_CRYPTO_ALG_AES_256_GCM)
+    {
+      aead_xform->algo = RTE_CRYPTO_AEAD_AES_GCM;
+    }
+  else if (key->alg == VNET_CRYPTO_ALG_CHACHA20_POLY1305)
+    {
+      aead_xform->algo = RTE_CRYPTO_AEAD_CHACHA20_POLY1305;
+    }
+  else
     return -1;
 
-  aead_xform->algo = RTE_CRYPTO_AEAD_AES_GCM;
   aead_xform->op = (op_type == CRYPTODEV_OP_TYPE_ENCRYPT) ?
     RTE_CRYPTO_AEAD_OP_ENCRYPT : RTE_CRYPTO_AEAD_OP_DECRYPT;
   aead_xform->aad_length = aad_len;

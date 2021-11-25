@@ -459,6 +459,13 @@ cryptodev_frame_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
 }
 
 static_always_inline int
+cryptodev_enqueue_aead_aad_0_enc (vlib_main_t *vm,
+				  vnet_crypto_async_frame_t *frame)
+{
+  return cryptodev_frame_aead_enqueue (vm, frame, CRYPTODEV_OP_TYPE_ENCRYPT,
+				       0);
+}
+static_always_inline int
 cryptodev_enqueue_aead_aad_8_enc (vlib_main_t *vm,
 				  vnet_crypto_async_frame_t *frame)
 {
@@ -473,6 +480,13 @@ cryptodev_enqueue_aead_aad_12_enc (vlib_main_t *vm,
 				       12);
 }
 
+static_always_inline int
+cryptodev_enqueue_aead_aad_0_dec (vlib_main_t *vm,
+				  vnet_crypto_async_frame_t *frame)
+{
+  return cryptodev_frame_aead_enqueue (vm, frame, CRYPTODEV_OP_TYPE_DECRYPT,
+				       0);
+}
 static_always_inline int
 cryptodev_enqueue_aead_aad_8_dec (vlib_main_t *vm,
 				  vnet_crypto_async_frame_t *frame)
