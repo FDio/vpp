@@ -342,8 +342,6 @@ ct_session_connect_notify (session_t *ss, session_error_t err)
   if (PREDICT_FALSE (!cct))
     {
       session_transport_closing_notify (&sct->connection);
-      session_transport_delete_notify (&sct->connection);
-      ct_connection_free (sct);
       return 0;
     }
 
@@ -354,8 +352,10 @@ ct_session_connect_notify (session_t *ss, session_error_t err)
     goto connect_error;
 
   /*
-   * Alloc client session
+   * Alloc client session, server session assumed to be established
    */
+
+  ASSERT (ss->session_state >= SESSION_STATE_READY);
 
   cs = session_alloc (thread_index);
   ss = session_get (ss_index, thread_index);
@@ -372,7 +372,7 @@ ct_session_connect_notify (session_t *ss, session_error_t err)
   if ((err = app_worker_init_connected (client_wrk, cs)))
     {
       session_free (cs);
-      session_close (ss);
+      session_transport_closing_notify (&sct->connection);
       err = SESSION_E_ALLOC;
       goto connect_error;
     }
@@ -383,7 +383,7 @@ ct_session_connect_notify (session_t *ss, session_error_t err)
     {
       segment_manager_dealloc_fifos (cs->rx_fifo, cs->tx_fifo);
       session_free (cs);
-      session_close (ss);
+      session_transport_closing_notify (&sct->connection);
       goto cleanup_client;
     }
 
@@ -397,8 +397,6 @@ connect_error:
   app_worker_connect_notify (client_wrk, 0, err, cct->client_opaque);
 
 cleanup_client:
-
-  sct->peer_index = ~0;
 
   if (cct->client_rx_fifo)
     ct_session_dealloc_fifos (cct, cct->client_rx_fifo, cct->client_tx_fifo);
