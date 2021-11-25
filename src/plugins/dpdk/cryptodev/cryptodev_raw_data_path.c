@@ -347,7 +347,10 @@ cryptodev_raw_aead_enqueue (vlib_main_t *vm, vnet_crypto_async_frame_t *frame,
 	  digest_vec.iova = vlib_physmem_get_pa (vm, fe->tag);
 	}
 
-      if (aad_len == 8)
+      if (aad_len == 0)
+	{
+	}
+      else if (aad_len == 8)
 	*(u64 *) (cet->aad_buf + aad_offset) = *(u64 *) fe->aad;
       else
 	{
@@ -586,6 +589,13 @@ end_deq:
 }
 
 static_always_inline int
+cryptodev_raw_enq_aead_aad_0_enc (vlib_main_t *vm,
+				  vnet_crypto_async_frame_t *frame)
+{
+  return cryptodev_raw_aead_enqueue (vm, frame, CRYPTODEV_OP_TYPE_ENCRYPT, 0);
+}
+
+static_always_inline int
 cryptodev_raw_enq_aead_aad_8_enc (vlib_main_t *vm,
 				  vnet_crypto_async_frame_t *frame)
 {
@@ -596,6 +606,13 @@ cryptodev_raw_enq_aead_aad_12_enc (vlib_main_t *vm,
 				   vnet_crypto_async_frame_t *frame)
 {
   return cryptodev_raw_aead_enqueue (vm, frame, CRYPTODEV_OP_TYPE_ENCRYPT, 12);
+}
+
+static_always_inline int
+cryptodev_raw_enq_aead_aad_0_dec (vlib_main_t *vm,
+				  vnet_crypto_async_frame_t *frame)
+{
+  return cryptodev_raw_aead_enqueue (vm, frame, CRYPTODEV_OP_TYPE_DECRYPT, 0);
 }
 
 static_always_inline int
