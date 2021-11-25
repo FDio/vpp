@@ -43,7 +43,10 @@
   _ (AES_192_GCM, AEAD, AES_GCM, 12, 16, 8, 24)                               \
   _ (AES_192_GCM, AEAD, AES_GCM, 12, 16, 12, 24)                              \
   _ (AES_256_GCM, AEAD, AES_GCM, 12, 16, 8, 32)                               \
-  _ (AES_256_GCM, AEAD, AES_GCM, 12, 16, 12, 32)
+  _ (AES_256_GCM, AEAD, AES_GCM, 12, 16, 12, 32)                              \
+  _ (CHACHA20_POLY1305, AEAD, CHACHA20_POLY1305, 12, 16, 0, 32)               \
+  _ (CHACHA20_POLY1305, AEAD, CHACHA20_POLY1305, 12, 16, 8, 32)               \
+  _ (CHACHA20_POLY1305, AEAD, CHACHA20_POLY1305, 12, 16, 12, 32)
 
 /**
  * crypto (alg, cryptodev_alg, key_size), hash (alg, digest-size)
