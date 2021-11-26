@@ -90,16 +90,24 @@ af_xdp_device_output_tx_db (vlib_main_t * vm,
 			    af_xdp_device_t * ad,
 			    af_xdp_txq_t * txq, const u32 n_tx)
 {
+  u32 cnt, i;
+
+  if (PREDICT_FALSE (0 == n_tx))
+    return;
+
   xsk_ring_prod__submit (&txq->tx, n_tx);
 
   if (!xsk_ring_prod__needs_wakeup (&txq->tx))
     return;
 
-  vlib_error_count (vm, node->node_index, AF_XDP_TX_ERROR_SYSCALL_REQUIRED, 1);
+  cnt = (n_tx - 1) / ad->tx_burst;
+
+  vlib_error_count (vm, node->node_index, AF_XDP_TX_ERROR_SYSCALL_REQUIRED,
+		    cnt + 1);
 
   clib_spinlock_lock_if_init (&txq->syscall_lock);
 
-  if (xsk_ring_prod__needs_wakeup (&txq->tx))
+  for (i = 0; i <= cnt; i++)
     {
       struct pollfd fd = { .fd = txq->xsk_fd, .events = POLLIN | POLLOUT };
       int ret = poll (&fd, 1, 0);
@@ -238,6 +246,9 @@ VNET_DEVICE_CLASS_TX_FN (af_xdp_device_class) (vlib_main_t * vm,
     }
 
   af_xdp_device_output_tx_db (vm, node, ad, txq, n);
+
+  /* we should not delay to free buffer in next loop, try it here */
+  af_xdp_device_output_free (vm, node, txq);
 
   if (shared_queue)
     clib_spinlock_unlock (&txq->lock);

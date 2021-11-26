@@ -11,6 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+add_definitions (-DAF_XDP_TX_BATCH_SIZE=16)
+
 vpp_find_path(BPF_INCLUDE_DIR NAMES bpf/xsk.h)
 if (NOT BPF_INCLUDE_DIR)
   message(WARNING "libbpf headers not found - af_xdp plugin disabled")

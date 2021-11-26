@@ -567,6 +567,9 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 
   ad->netns = (char *) format (0, "%s", args->netns);
 
+  ad->tx_burst = args->mode == AF_XDP_MODE_ZERO_COPY ? VLIB_FRAME_SIZE :
+						       AF_XDP_TX_BATCH_SIZE;
+
   if (args->prog && af_xdp_load_program (args, ad))
     goto err2;
 
