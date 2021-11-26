@@ -73,11 +73,21 @@ intel_core_init (vlib_main_t *vm, perfmon_source_t *src)
   return 0;
 }
 
+u8
+intel_core_is_fixed (u32 event)
+{
+  u64 config = events[event].config;
+  u8 eventcode = (config & 0xFF);
+
+  return !eventcode ? 1 : 0;
+}
+
 PERFMON_REGISTER_SOURCE (intel_core) = {
   .name = "intel-core",
   .description = "intel arch core events",
   .events = events,
   .n_events = ARRAY_LEN (events),
   .init_fn = intel_core_init,
+  .is_fixed = intel_core_is_fixed,
   .format_config = format_intel_core_config,
 };
