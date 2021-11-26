@@ -91,11 +91,19 @@ unformat_perfmon_source_name (unformat_input_t *input, va_list *args)
   return p ? 1 : 0;
 }
 
+typedef enum
+{
+  FORMAT_PERFMON_BUNDLE_NONE = 0,
+  FORMAT_PERFMON_BUNDLE_VERBOSE = 1,
+  FORMAT_PERFMON_BUNDLE_SHOW_CONFIG = 2
+} format_perfmon_bundle_args_t;
+
 u8 *
 format_perfmon_bundle (u8 *s, va_list *args)
 {
   perfmon_bundle_t *b = va_arg (*args, perfmon_bundle_t *);
-  int verbose = va_arg (*args, int);
+  format_perfmon_bundle_args_t cfg =
+    va_arg (*args, format_perfmon_bundle_args_t);
 
   int vl = 0;
 
@@ -109,7 +117,7 @@ format_perfmon_bundle (u8 *s, va_list *args)
     if (b == 0) return format (s, "%-20s%-20s%-20s%s", "Name", "Type(s)",
 			       "Source", "Description");
 
-  if (verbose)
+  if (cfg != FORMAT_PERFMON_BUNDLE_NONE)
     {
       s = format (s, "name: %s\n", b->name);
       s = format (s, "description: %s\n", b->description);
@@ -117,7 +125,14 @@ format_perfmon_bundle (u8 *s, va_list *args)
       for (int i = 0; i < b->n_events; i++)
 	{
 	  perfmon_event_t *e = b->src->events + b->events[i];
-	  s = format (s, "event %u: %s\n", i, e->name);
+	  s = format (s, "event %u: %s", i, e->name);
+
+	  format_function_t *format_config = b->src->format_config;
+
+	  if (format_config && cfg == FORMAT_PERFMON_BUNDLE_SHOW_CONFIG)
+	    s = format (s, " (%U)", format_config, e->config);
+
+	  s = format (s, "\n");
 	}
     }
   else
@@ -159,6 +174,7 @@ show_perfmon_bundle_command_fn (vlib_main_t *vm, unformat_input_t *input,
   unformat_input_t _line_input, *line_input = &_line_input;
   perfmon_bundle_t *b = 0, **vb = 0;
   int verbose = 0;
+  format_perfmon_bundle_args_t cfg = FORMAT_PERFMON_BUNDLE_NONE;
 
   if (unformat_user (input, unformat_line_input, line_input))
     {
@@ -176,23 +192,31 @@ show_perfmon_bundle_command_fn (vlib_main_t *vm, unformat_input_t *input,
       unformat_free (line_input);
     }
 
-  if (vb == 0)
+  if (verbose) /* if verbose is specified */
+    cfg = FORMAT_PERFMON_BUNDLE_VERBOSE;
+
+  if (vb)
+    {
+      if (verbose) /* if verbose is specified with a bundle */
+	cfg = FORMAT_PERFMON_BUNDLE_SHOW_CONFIG;
+      else
+	cfg = FORMAT_PERFMON_BUNDLE_VERBOSE;
+    }
+  else
     {
       char *key;
       hash_foreach_mem (key, b, pm->bundle_by_name, vec_add (vb, &b, 1););
     }
-  else
-    verbose = 1;
 
-  if (verbose == 0)
-    vlib_cli_output (vm, "%U\n", format_perfmon_bundle, 0, 0);
+  if (cfg == FORMAT_PERFMON_BUNDLE_NONE)
+    vlib_cli_output (vm, "%U\n", format_perfmon_bundle, 0, cfg);
 
   vec_sort_with_function (vb, bundle_name_sort_cmp);
 
   for (int i = 0; i < vec_len (vb); i++)
     /* bundle type will be unknown if no cpu_supports matched */
     if (vb[i]->type_flags)
-      vlib_cli_output (vm, "%U\n", format_perfmon_bundle, vb[i], verbose);
+      vlib_cli_output (vm, "%U\n", format_perfmon_bundle, vb[i], cfg);
 
   vec_free (vb);
   return 0;
