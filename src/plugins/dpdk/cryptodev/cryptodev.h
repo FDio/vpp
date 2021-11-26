@@ -66,7 +66,10 @@
   _ (AES_256_CBC, AES_CBC, 32, SHA384, 24)                                    \
   _ (AES_128_CBC, AES_CBC, 16, SHA512, 32)                                    \
   _ (AES_192_CBC, AES_CBC, 24, SHA512, 32)                                    \
-  _ (AES_256_CBC, AES_CBC, 32, SHA512, 32)
+  _ (AES_256_CBC, AES_CBC, 32, SHA512, 32)                                    \
+  _ (AES_128_CTR, AES_CTR, 16, SHA1, 12)                                      \
+  _ (AES_192_CTR, AES_CTR, 24, SHA1, 12)                                      \
+  _ (AES_256_CTR, AES_CTR, 32, SHA1, 12)
 
 typedef enum
 {
