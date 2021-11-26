@@ -218,6 +218,7 @@ VNET_DEVICE_CLASS_TX_FN (af_xdp_device_class) (vlib_main_t * vm,
   const vnet_hw_if_tx_frame_t *tf = vlib_frame_scalar_args (frame);
   const int shared_queue = tf->shared_queue;
   af_xdp_txq_t *txq = vec_elt_at_index (ad->txqs, tf->queue_id);
+  const u32 burst = ad->tx_burst;
   u32 *from;
   u32 n, n_tx;
   int i;
@@ -237,7 +238,12 @@ VNET_DEVICE_CLASS_TX_FN (af_xdp_device_class) (vlib_main_t * vm,
       n += n_enq;
     }
 
-  af_xdp_device_output_tx_db (vm, node, ad, txq, n);
+  for (i = 0; n > 0 && i <= (n - 1) / burst; i++)
+    af_xdp_device_output_tx_db (vm, node, ad, txq,
+				(i + 1) * burst > n ? n % burst : burst);
+
+  /* we should not delay to free buffer in next loop, try it here */
+  af_xdp_device_output_free (vm, node, txq);
 
   if (shared_queue)
     clib_spinlock_unlock (&txq->lock);
