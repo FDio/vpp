@@ -114,6 +114,36 @@ vnet_calc_checksums_inline (vlib_main_t * vm, vlib_buffer_t * b,
 				       VNET_BUFFER_OFFLOAD_F_TCP_CKSUM));
 }
 
+static_always_inline void
+vnet_calc_outer_checksums_inline (vlib_main_t *vm, vlib_buffer_t *b)
+{
+
+  if (!(b->flags & VNET_BUFFER_F_OFFLOAD))
+    return;
+
+  vnet_buffer_oflags_t oflags = vnet_buffer (b)->oflags;
+  if (oflags & VNET_BUFFER_OFFLOAD_F_OUTER_IP_CKSUM)
+    {
+      ip4_header_t *ip4;
+      ip4 = (ip4_header_t *) (b->data + vnet_buffer2 (b)->outer_l3_hdr_offset);
+      ip4->checksum = ip4_header_checksum (ip4);
+      vnet_buffer_offload_flags_clear (b,
+				       VNET_BUFFER_OFFLOAD_F_OUTER_IP_CKSUM);
+    }
+  else if (oflags & VNET_BUFFER_OFFLOAD_F_OUTER_UDP_CKSUM)
+    {
+      int bogus;
+      ip6_header_t *ip6;
+      udp_header_t *uh;
+
+      ip6 = (ip6_header_t *) (b->data + vnet_buffer2 (b)->outer_l3_hdr_offset);
+      uh = (udp_header_t *) (b->data + vnet_buffer2 (b)->outer_l4_hdr_offset);
+      uh->checksum = 0;
+      uh->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b, ip6, &bogus);
+      vnet_buffer_offload_flags_clear (b,
+				       VNET_BUFFER_OFFLOAD_F_OUTER_UDP_CKSUM);
+    }
+}
 #endif
 
 /*
