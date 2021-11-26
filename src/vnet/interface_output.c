@@ -170,6 +170,7 @@ vnet_interface_output_handle_offload (vlib_main_t *vm, vlib_buffer_t *b)
 {
   vnet_calc_checksums_inline (vm, b, b->flags & VNET_BUFFER_F_IS_IP4,
 			      b->flags & VNET_BUFFER_F_IS_IP6);
+  vnet_calc_outer_checksums_inline (vm, b);
 }
 
 static_always_inline uword
