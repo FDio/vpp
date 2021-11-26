@@ -107,6 +107,7 @@ typedef struct
   u32 flags;
   u8 pool;			/* buffer pool index */
   u8 txq_num;
+  u32 tx_burst;
 
   /* fields below are accessed in control-plane only (cold) */
 

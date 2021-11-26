@@ -500,6 +500,33 @@ af_xdp_finalize_queues (vnet_main_t *vnm, af_xdp_device_t *ad,
   return 0;
 }
 
+#define VETH_TX_BURST 16
+u32
+af_xdp_get_tx_burst (const char *ifname)
+{
+  struct ethtool_drvinfo drv = { .cmd = ETHTOOL_GDRVINFO };
+  struct ifreq ifr = { .ifr_data = (void *) &drv };
+  u32 tx_burst = VLIB_FRAME_SIZE;
+  int fd, err;
+
+  fd = socket (AF_INET, SOCK_DGRAM, 0);
+  if (fd < 0)
+    return tx_burst;
+
+  snprintf (ifr.ifr_name, sizeof (ifr.ifr_name), "%s", ifname);
+  err = ioctl (fd, SIOCETHTOOL, &ifr);
+
+  close (fd);
+
+  if (err)
+    return tx_burst;
+
+  if (strcmp (drv.driver, "veth") == 0)
+    tx_burst = VETH_TX_BURST;
+
+  return tx_burst;
+}
+
 void
 af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 {
@@ -566,6 +593,8 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
   vec_validate (ad->linux_ifname, IFNAMSIZ - 1);	/* libbpf expects ifname to be at least IFNAMSIZ */
 
   ad->netns = (char *) format (0, "%s", args->netns);
+
+  ad->tx_burst = af_xdp_get_tx_burst (args->linux_ifname);
 
   if (args->prog && af_xdp_load_program (args, ad))
     goto err2;
