@@ -325,9 +325,35 @@ perfmon_stop (vlib_main_t *vm)
 }
 
 static_always_inline u8
+is_enough_counters (perfmon_bundle_t *b)
+{
+  struct
+  {
+    u8 general;
+    u8 fixed;
+  } bl = { 0, 0 }, cpu = { 0, 0 };
+
+  /* how many does this uarch support */
+  if (!clib_get_pmu_counter_count (&cpu.fixed, &cpu.general))
+    return 0;
+
+  /* how many does the bundle require */
+  for (u16 i = 0; i < b->n_events; i++)
+    if (b->src->is_fixed && b->src->is_fixed (b->events[i]))
+      bl.fixed++;
+    else
+      bl.general++;
+
+  return cpu.general >= bl.general && cpu.fixed >= bl.fixed;
+}
+
+static_always_inline u8
 is_bundle_supported (perfmon_bundle_t *b)
 {
   perfmon_cpu_supports_t *supports = b->cpu_supports;
+
+  if (!is_enough_counters (b))
+    return 0;
 
   if (!b->cpu_supports)
     return 1;
