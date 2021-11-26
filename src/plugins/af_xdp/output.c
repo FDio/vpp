@@ -101,14 +101,19 @@ af_xdp_device_output_tx_db (vlib_main_t * vm,
 
   if (xsk_ring_prod__needs_wakeup (&txq->tx))
     {
-      struct pollfd fd = { .fd = txq->xsk_fd, .events = POLLIN | POLLOUT };
-      int ret = poll (&fd, 1, 0);
-      if (PREDICT_FALSE (ret < 0))
+      const u32 burst = ad->tx_burst;
+      int i;
+      for (i = 0; n_tx > 0 && i <= (n_tx - 1) / burst; i++)
 	{
-	  /* something bad is happening */
-	  vlib_error_count (vm, node->node_index,
-			    AF_XDP_TX_ERROR_SYSCALL_FAILURES, 1);
-	  af_xdp_device_error (ad, "tx poll() failed");
+	  struct pollfd fd = { .fd = txq->xsk_fd, .events = POLLIN | POLLOUT };
+	  int ret = poll (&fd, 1, 0);
+	  if (PREDICT_FALSE (ret < 0))
+	    {
+	      /* something bad is happening */
+	      vlib_error_count (vm, node->node_index,
+				AF_XDP_TX_ERROR_SYSCALL_FAILURES, 1);
+	      af_xdp_device_error (ad, "tx poll() failed");
+	    }
 	}
     }
 
@@ -238,6 +243,9 @@ VNET_DEVICE_CLASS_TX_FN (af_xdp_device_class) (vlib_main_t * vm,
     }
 
   af_xdp_device_output_tx_db (vm, node, ad, txq, n);
+
+  /* we should not delay to free buffer in next loop, try it here */
+  af_xdp_device_output_free (vm, node, txq);
 
   if (shared_queue)
     clib_spinlock_unlock (&txq->lock);
