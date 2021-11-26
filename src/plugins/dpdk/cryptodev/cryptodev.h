@@ -27,7 +27,7 @@
 #define CRYPTODEV_MAX_INFLIGHT	   (CRYPTODEV_NB_CRYPTO_OPS - 1)
 #define CRYPTODEV_AAD_MASK	   (CRYPTODEV_NB_CRYPTO_OPS - 1)
 #define CRYPTODEV_DEQ_CACHE_SZ	   32
-#define CRYPTODEV_NB_SESSION	   10240
+#define CRYPTODEV_NB_SESSION	   4096
 #define CRYPTODEV_MAX_IV_SIZE	   16
 #define CRYPTODEV_MAX_AAD_SIZE	   16
 #define CRYPTODEV_MAX_N_SGL	   8 /**< maximum number of segments */
@@ -120,6 +120,11 @@ typedef struct
 {
   struct rte_mempool *sess_pool;
   struct rte_mempool *sess_priv_pool;
+} cryptodev_session_pool_t;
+
+typedef struct
+{
+  cryptodev_session_pool_t *sess_pools;
 } cryptodev_numa_data_t;
 
 typedef struct
@@ -170,6 +175,8 @@ typedef struct
   clib_bitmap_t *active_cdev_inst_mask;
   clib_spinlock_t tlock;
   cryptodev_capability_t *supported_caps;
+  u32 sess_sz;
+  u32 drivers_cnt;
   u8 is_raw_api;
 } cryptodev_main_t;
 
