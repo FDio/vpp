@@ -266,6 +266,24 @@ clib_cpu_march_priority_hsw ()
   return -1;
 }
 
+#define X86_CPU_ARCH_PERF_FUNC 0xA
+
+static inline int
+clib_get_pmu_counter_count (u8 *fixed, u8 *general)
+{
+#if defined(__x86_64__)
+  u32 __clib_unused eax = 0, ebx = 0, ecx = 0, edx = 0;
+  clib_get_cpuid (X86_CPU_ARCH_PERF_FUNC, &eax, &ebx, &ecx, &edx);
+
+  *general = (eax & 0xFF00) >> 8;
+  *fixed = (edx & 0xF);
+
+  return 1;
+#else
+  return 0;
+#endif
+}
+
 static inline u32
 clib_cpu_implementer ()
 {
