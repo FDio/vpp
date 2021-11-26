@@ -952,14 +952,34 @@ global_scope:
   return SESSION_E_LOCAL_CONNECT;
 }
 
+static inline int
+ct_close_is_reset (ct_connection_t *ct, session_t *s)
+{
+  if (ct->flags & CT_CONN_F_CLIENT)
+    return (svm_fifo_max_dequeue (ct->client_rx_fifo) > 0);
+  else
+    return (svm_fifo_max_dequeue (s->rx_fifo) > 0);
+}
+
 static void
 ct_session_postponed_cleanup (ct_connection_t *ct)
 {
+  ct_connection_t *peer_ct;
   app_worker_t *app_wrk;
   session_t *s;
 
   s = session_get (ct->c_s_index, ct->c_thread_index);
   app_wrk = app_worker_get_if_valid (s->app_wrk_index);
+
+  peer_ct = ct_connection_get (ct->peer_index, ct->c_thread_index);
+  if (peer_ct)
+    {
+      if (ct_close_is_reset (ct, s))
+	session_transport_reset_notify (&peer_ct->connection);
+      else
+	session_transport_closing_notify (&peer_ct->connection);
+    }
+  session_transport_closed_notify (&ct->connection);
 
   if (ct->flags & CT_CONN_F_CLIENT)
     {
@@ -1048,15 +1068,6 @@ ct_program_cleanup (ct_connection_t *ct)
     thread_index, ct_handle_cleanups, uword_to_pointer (thread_index, void *));
 }
 
-static inline int
-ct_close_is_reset (ct_connection_t *ct, session_t *s)
-{
-  if (ct->flags & CT_CONN_F_CLIENT)
-    return (svm_fifo_max_dequeue (ct->client_rx_fifo) > 0);
-  else
-    return (svm_fifo_max_dequeue (s->rx_fifo) > 0);
-}
-
 static void
 ct_session_close (u32 ct_index, u32 thread_index)
 {
@@ -1076,13 +1087,6 @@ ct_session_close (u32 ct_index, u32 thread_index)
 	  ct->peer_index = ~0;
 	}
       else if (peer_ct->c_s_index != ~0)
-	{
-	  if (ct_close_is_reset (ct, s))
-	    session_transport_reset_notify (&peer_ct->connection);
-	  else
-	    session_transport_closing_notify (&peer_ct->connection);
-	}
-      else
 	{
 	  /* should not happen */
 	  clib_warning ("ct peer without session");
@@ -1132,7 +1136,7 @@ static int
 ct_custom_tx (void *session, transport_send_params_t * sp)
 {
   session_t *s = (session_t *) session;
-  if (session_has_transport (s))
+  if (session_has_transport (s) || s->session_state < SESSION_STATE_READY)
     return 0;
   /* If event enqueued towards peer, remove from scheduler and remove
    * session tx flag, i.e., accept new tx events. Unset fifo flag now to
@@ -1151,12 +1155,17 @@ static int
 ct_app_rx_evt (transport_connection_t * tc)
 {
   ct_connection_t *ct = (ct_connection_t *) tc, *peer_ct;
-  session_t *ps;
+  session_t *ps, *s;
 
+  s = session_get (ct->c_s_index, ct->c_thread_index);
+  if (session_has_transport (s) || s->session_state < SESSION_STATE_READY)
+    return -1;
   peer_ct = ct_connection_get (ct->peer_index, tc->thread_index);
-  if (!peer_ct)
+  if (!peer_ct || (peer_ct->flags & CT_CONN_F_HALF_OPEN))
     return -1;
   ps = session_get (peer_ct->c_s_index, peer_ct->c_thread_index);
+  if (ps->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
+    return -1;
   return session_dequeue_notify (ps);
 }
 
