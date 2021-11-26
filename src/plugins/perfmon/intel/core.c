@@ -57,6 +57,10 @@ format_intel_core_config (u8 *s, va_list *args)
   if ((v = (config >> 24) & 0xff))
     s = format (s, ", cmask=0x%02x", v);
 
+  /* show the raw config, for convenience sake */
+  if (!((config >> 16) & 0xffff))
+    s = format (s, ", raw=r%x", config & 0xffff);
+
   return s;
 }
 
