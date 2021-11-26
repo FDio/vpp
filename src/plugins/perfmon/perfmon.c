@@ -292,6 +292,11 @@ static_always_inline u8
 is_bundle_supported (perfmon_bundle_t *b)
 {
   perfmon_cpu_supports_t *supports = b->cpu_supports;
+  u8 general = 0, fixed = 0;
+
+  if (!clib_get_pmu_counter_count (&fixed, &general) ||
+      b->n_events > (fixed + general))
+    return 0;
 
   if (!b->cpu_supports)
     return 1;
