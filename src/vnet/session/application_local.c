@@ -1132,7 +1132,7 @@ static int
 ct_custom_tx (void *session, transport_send_params_t * sp)
 {
   session_t *s = (session_t *) session;
-  if (session_has_transport (s))
+  if (session_has_transport (s) || s->session_state < SESSION_STATE_READY)
     return 0;
   /* If event enqueued towards peer, remove from scheduler and remove
    * session tx flag, i.e., accept new tx events. Unset fifo flag now to
@@ -1151,12 +1151,17 @@ static int
 ct_app_rx_evt (transport_connection_t * tc)
 {
   ct_connection_t *ct = (ct_connection_t *) tc, *peer_ct;
-  session_t *ps;
+  session_t *ps, *s;
 
+  s = session_get (ct->c_s_index, ct->c_thread_index);
+  if (session_has_transport (s) || s->session_state < SESSION_STATE_READY)
+    return -1;
   peer_ct = ct_connection_get (ct->peer_index, tc->thread_index);
-  if (!peer_ct)
+  if (!peer_ct || (peer_ct->flags & CT_CONN_F_HALF_OPEN))
     return -1;
   ps = session_get (peer_ct->c_s_index, peer_ct->c_thread_index);
+  if (ps->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
+    return -1;
   return session_dequeue_notify (ps);
 }
 
