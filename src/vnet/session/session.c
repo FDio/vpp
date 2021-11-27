@@ -1528,6 +1528,9 @@ session_close (session_t * s)
   if (!s)
     return;
 
+  /* App closed so stop propagating dequeue notifications */
+  svm_fifo_clear_deq_ntf (s->tx_fifo);
+
   if (s->session_state >= SESSION_STATE_CLOSING)
     {
       /* Session will only be removed once both app and transport
