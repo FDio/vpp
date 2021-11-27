@@ -1552,6 +1552,8 @@ session_close (session_t * s)
       return;
     }
 
+  /* App closed so stop propagating dequeue notifications */
+  svm_fifo_clear_deq_ntf (s->tx_fifo);
   s->session_state = SESSION_STATE_CLOSING;
   session_program_transport_ctrl_evt (s, SESSION_CTRL_EVT_CLOSE);
 }
