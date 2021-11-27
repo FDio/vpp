@@ -1099,6 +1099,15 @@ session_transport_closing_notify (transport_connection_t * tc)
   s = session_get (tc->s_index, tc->thread_index);
   if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
     return;
+
+  /* Wait for reply from app before sending notification as the
+   * accept might be rejected */
+  if (s->session_state == SESSION_STATE_ACCEPTING)
+    {
+      s->session_state = SESSION_STATE_TRANSPORT_CLOSING;
+      return;
+    }
+
   s->session_state = SESSION_STATE_TRANSPORT_CLOSING;
   app_wrk = app_worker_get (s->app_wrk_index);
   app_worker_close_notify (app_wrk, s);
