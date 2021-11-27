@@ -241,7 +241,8 @@ segment_manager_get_segment_if_valid (segment_manager_t * sm,
  * Removes segment after acquiring writer lock
  */
 static inline void
-sm_lock_and_del_segment_inline (segment_manager_t * sm, u32 fs_index)
+sm_lock_and_del_segment_inline (segment_manager_t *sm, u32 fs_index,
+				u8 check_if_empty)
 {
   fifo_segment_t *fs;
   u8 is_prealloc;
@@ -250,6 +251,9 @@ sm_lock_and_del_segment_inline (segment_manager_t * sm, u32 fs_index)
 
   fs = segment_manager_get_segment_if_valid (sm, fs_index);
   if (!fs)
+    goto done;
+
+  if (check_if_empty && fifo_segment_has_fifos (fs))
     goto done;
 
   is_prealloc = fifo_segment_flags (fs) & FIFO_SEGMENT_F_IS_PREALLOCATED;
@@ -265,7 +269,7 @@ done:
 void
 segment_manager_lock_and_del_segment (segment_manager_t * sm, u32 fs_index)
 {
-  sm_lock_and_del_segment_inline (sm, fs_index);
+  sm_lock_and_del_segment_inline (sm, fs_index, 0 /* check_if_empty */);
 }
 
 /**
@@ -833,6 +837,7 @@ segment_manager_dealloc_fifos (svm_fifo_t * rx_fifo, svm_fifo_t * tx_fifo)
   segment_manager_t *sm;
   fifo_segment_t *fs;
   u32 segment_index;
+  u8 try_delete = 0;
 
   if (!rx_fifo || !tx_fifo)
     return;
@@ -848,26 +853,30 @@ segment_manager_dealloc_fifos (svm_fifo_t * rx_fifo, svm_fifo_t * tx_fifo)
   fifo_segment_free_fifo (fs, tx_fifo);
 
   /*
-   * Try to remove svm segment if it has no fifos. This can be done only if
+   * Try to remove fifo segment if it has no fifos. This can be done only if
    * the segment is not the first in the segment manager or if it is first
    * and it is not protected. Moreover, if the segment is first and the app
    * has detached from the segment manager, remove the segment manager.
    */
   if (!fifo_segment_has_fifos (fs))
     {
-      segment_manager_segment_reader_unlock (sm);
+      /* If first, remove only if not protected */
+      try_delete = segment_index != 0 || !sm->first_is_protected;
+    }
 
-      /* Remove segment if it holds no fifos or first but not protected */
-      if (segment_index != 0 || !sm->first_is_protected)
-	sm_lock_and_del_segment_inline (sm, segment_index);
+  segment_manager_segment_reader_unlock (sm);
+
+  if (PREDICT_FALSE (try_delete))
+    {
+      /* Only remove if empty after writer lock acquired */
+      sm_lock_and_del_segment_inline (sm, segment_index,
+				      1 /* check_if_empty */);
 
       /* Remove segment manager if no sessions and detached from app */
       if (segment_manager_app_detached (sm)
 	  && !segment_manager_has_fifos (sm))
 	segment_manager_free_safe (sm);
     }
-  else
-    segment_manager_segment_reader_unlock (sm);
 }
 
 void
