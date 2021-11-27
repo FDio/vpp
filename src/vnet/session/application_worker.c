@@ -184,6 +184,9 @@ app_worker_init_listener (app_worker_t * app_wrk, session_t * ls)
   if (!(sm = app_worker_alloc_segment_manager (app_wrk)))
     return SESSION_E_ALLOC;
 
+  /* Once the first segment is mapped, don't remove it until unlisten */
+  sm->first_is_protected = 1;
+
   /* Keep track of the segment manager for the listener or this worker */
   hash_set (app_wrk->listeners_table, listen_session_get_handle (ls),
 	    segment_manager_index (sm));
@@ -274,6 +277,7 @@ app_worker_stop_listen_session (app_worker_t * app_wrk, session_t * ls)
   sm = segment_manager_get (*sm_indexp);
   if (sm)
     {
+      sm->first_is_protected = 0;
       segment_manager_app_detach (sm);
       if (!segment_manager_has_fifos (sm))
 	{
