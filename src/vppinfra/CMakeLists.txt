@@ -280,6 +280,7 @@ set(test_files
   vector/test/mask_compare.c
   vector/test/memcpy_x86_64.c
   vector/test/sha2.c
+  vector/test/toeplitz.c
 )
 
 add_vpp_executable(test_vector_funcs
