@@ -98,6 +98,18 @@ _ (i32x16, i16x32, _mm512_packs_epi32)
 _ (i32x16, u16x32, _mm512_packus_epi32)
 #undef _
 
+static_always_inline u64x8
+u64x8_byte_swap (u64x8 v)
+{
+  u8x64 swap = {
+    7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8,
+    7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8,
+    7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8,
+    7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8,
+  };
+  return (u64x8) _mm512_shuffle_epi8 ((__m512i) v, (__m512i) swap);
+}
+
 static_always_inline u32x16
 u32x16_byte_swap (u32x16 v)
 {
@@ -181,6 +193,13 @@ static_always_inline u8x64
 u8x64_xor3 (u8x64 a, u8x64 b, u8x64 c)
 {
   return (u8x64) _mm512_ternarylogic_epi32 ((__m512i) a, (__m512i) b,
+					    (__m512i) c, 0x96);
+}
+
+static_always_inline u64x8
+u64x8_xor3 (u64x8 a, u64x8 b, u64x8 c)
+{
+  return (u64x8) _mm512_ternarylogic_epi32 ((__m512i) a, (__m512i) b,
 					    (__m512i) c, 0x96);
 }
 
@@ -300,6 +319,12 @@ static_always_inline u8x64
 u8x64_mask_blend (u8x64 a, u8x64 b, u64 mask)
 {
   return (u8x64) _mm512_mask_blend_epi8 (mask, (__m512i) a, (__m512i) b);
+}
+
+static_always_inline u8x64
+u8x64_permute (u8x64 v, u8x64 idx)
+{
+  return (u8x64) _mm512_permutexvar_epi8 ((__m512i) v, (__m512i) idx);
 }
 
 #define _(t, m, e, p, it)                                                     \

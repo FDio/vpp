@@ -99,6 +99,7 @@ set(VPPINFRA_SRCS
   valloc.c
   vec.c
   vector.c
+  vector/toeplitz.c
   cJSON.c
 )
 
@@ -196,6 +197,7 @@ set(VPPINFRA_HEADERS
   vector/index_to_ptr.h
   vector/ip_csum.h
   vector/mask_compare.h
+  vector/toeplitz.h
   vector.h
   vector_neon.h
   vector_sse42.h
@@ -280,6 +282,7 @@ set(test_files
   vector/test/mask_compare.c
   vector/test/memcpy_x86_64.c
   vector/test/sha2.c
+  vector/test/toeplitz.c
 )
 
 add_vpp_executable(test_vector_funcs
