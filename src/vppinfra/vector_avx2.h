@@ -189,6 +189,9 @@ u8x32_shuffle (u8x32 v, u8x32 m)
   return (u8x32) _mm256_shuffle_epi8 ((__m256i) v, (__m256i) m);
 }
 
+#define u32x8_shuffle(v1, v2, ...)                                            \
+  (u32x8) __builtin_shufflevector ((u32x8) (v1), (u32x8) (v2), __VA_ARGS__);
+
 #define u8x32_align_right(a, b, imm) \
   (u8x32) _mm256_alignr_epi8 ((__m256i) a, (__m256i) b, imm)
 
