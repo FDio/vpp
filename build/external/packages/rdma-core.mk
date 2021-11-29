@@ -13,10 +13,10 @@
 
 RDMA_CORE_DEBUG?=n
 
-rdma-core_version             := 35.0
+rdma-core_version             := 38.0
 rdma-core_tarball             := rdma-core-$(rdma-core_version).tar.gz
-rdma-core_tarball_md5sum_31.1 := f14b3eba775c2eba0d9433bfb3bae637
 rdma-core_tarball_md5sum_35.0 := 85afb89ec536ef229c0fef6cb87e8665
+rdma-core_tarball_md5sum_38.0 := 44e14dd392ac139a0d452148eb0a0514
 rdma-core_tarball_md5sum      := $(rdma-core_tarball_md5sum_$(rdma-core_version))
 rdma-core_tarball_strip_dirs  := 1
 rdma-core_url                 := http://github.com/linux-rdma/rdma-core/releases/download/v$(rdma-core_version)/$(rdma-core_tarball)
@@ -42,12 +42,12 @@ endef
 
 define  rdma-core_install_cmds
 	mkdir -p $(rdma-core_install_dir)/lib/pkgconfig
-	cp -av $(rdma-core_build_dir)/include $(rdma-core_install_dir) > $(rdma-core_install_log)
-	cp -v $(rdma-core_build_dir)/lib/pkgconfig/libibverbs.pc \
+	cp -avL $(rdma-core_build_dir)/include $(rdma-core_install_dir) > $(rdma-core_install_log)
+	cp -avL $(rdma-core_build_dir)/lib/pkgconfig/libibverbs.pc \
 	  $(rdma-core_build_dir)/lib/pkgconfig/libmlx5.pc \
 	  $(rdma-core_build_dir)/lib/pkgconfig/libmlx4.pc \
 	  $(rdma-core_install_dir)/lib/pkgconfig >> $(rdma-core_install_log)
-	cp -v $(rdma-core_build_dir)/lib/statics/libibverbs.a \
+	cp -avL $(rdma-core_build_dir)/lib/statics/libibverbs.a \
 	  $(rdma-core_build_dir)/lib/statics/libmlx5.a \
 	  $(rdma-core_build_dir)/lib/statics/libmlx4.a \
 	  $(rdma-core_build_dir)/util/librdma_util.a \
