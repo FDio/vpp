@@ -188,6 +188,36 @@ do {                                                                    \
     }                                                                         \
   while (0);
 
+#define REPLY_MACRO_DETAILS5(t, n, rp, context, body)                         \
+  do                                                                          \
+    {                                                                         \
+      rmp = vl_msg_api_alloc (sizeof (*rmp) + n);                             \
+      rmp->_vl_msg_id = htons ((t) + (REPLY_MSG_ID_BASE));                    \
+      rmp->context = context;                                                 \
+      do                                                                      \
+	{                                                                     \
+	  body;                                                               \
+	}                                                                     \
+      while (0);                                                              \
+      vl_api_send_msg (rp, (u8 *) rmp);                                       \
+    }                                                                         \
+  while (0);
+
+#define REPLY_MACRO_DETAILS5_END(t, n, rp, context, body)                     \
+  do                                                                          \
+    {                                                                         \
+      rmp = vl_msg_api_alloc (sizeof (*rmp) + n);                             \
+      rmp->_vl_msg_id = ((t) + (REPLY_MSG_ID_BASE));                          \
+      rmp->context = context;                                                 \
+      do                                                                      \
+	{                                                                     \
+	  body;                                                               \
+	}                                                                     \
+      while (0);                                                              \
+      vl_api_send_msg (rp, (u8 *) rmp);                                       \
+    }                                                                         \
+  while (0);
+
 #define REPLY_MACRO3(t, n, body)                                        \
 do {                                                                    \
     vl_api_registration_t *rp;                                          \
