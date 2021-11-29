@@ -308,7 +308,7 @@ aes128_key_expand_round_neon (u8x16 * rk, u32 rcon)
 }
 
 static_always_inline void
-aes128_key_expand (u8x16 * rk, const u8x16 * k)
+aes128_key_expand (u8x16 *rk, u8x16u const *k)
 {
   rk[0] = k[0];
   aes128_key_expand_round_neon (rk + 1, 0x01);
@@ -385,7 +385,7 @@ aes256_key_expand_round_neon (u8x16 * rk, u32 rcon)
 }
 
 static_always_inline void
-aes256_key_expand (u8x16 * rk, u8x16 const *k)
+aes256_key_expand (u8x16 *rk, u8x16u const *k)
 {
   rk[0] = k[0];
   rk[1] = k[1];
