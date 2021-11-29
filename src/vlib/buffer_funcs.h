@@ -47,6 +47,7 @@
 #include <vlib/physmem_funcs.h>
 #include <vlib/main.h>
 #include <vlib/node.h>
+#include <vlib/node_funcs.h>
 
 /** \file
     vlib buffer access methods.
@@ -516,6 +517,9 @@ vlib_buffer_pool_get (vlib_main_t * vm, u8 buffer_pool_index, u32 * buffers,
       vlib_buffer_copy_indices (buffers, bp->buffers, len);
       bp->n_avail = 0;
       clib_spinlock_unlock (&bp->lock);
+      vlib_node_increment_counter (vm, 0 /* null-node */,
+				   1 /* buffer allocation failures */,
+				   n_buffers - len);
       return len;
     }
 }

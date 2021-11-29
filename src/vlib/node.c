@@ -577,13 +577,14 @@ vlib_register_all_static_nodes (vlib_main_t * vm)
 
   static char *null_node_error_strings[] = {
     "blackholed packets",
+    "buffer allocation failures",
   };
 
   static vlib_node_registration_t null_node_reg = {
     .function = null_node_fn,
     .vector_size = sizeof (u32),
     .name = "null-node",
-    .n_errors = 1,
+    .n_errors = ARRAY_LEN (null_node_error_strings),
     .error_strings = null_node_error_strings,
   };
 
