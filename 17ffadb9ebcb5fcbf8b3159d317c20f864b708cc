@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b63760e7_7e739602",
+        "filename": "src/vppinfra/cpu.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 275,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-11-29T12:33:02Z",
+      "side": 1,
+      "message": "Please use __clib_unused, in the past there was big PITA with different formatterversions having different opinion about space between.",
+      "revId": "17ffadb9ebcb5fcbf8b3159d317c20f864b708cc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
