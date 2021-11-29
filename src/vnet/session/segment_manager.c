@@ -178,7 +178,10 @@ segment_manager_add_segment_inline (segment_manager_t *sm, uword segment_size,
       app_wrk = app_worker_get (sm->app_wrk_index);
       rv = app_worker_add_segment_notify (app_wrk, fs_handle);
       if (rv)
-	return rv;
+	{
+	  fs_index = rv;
+	  goto done;
+	}
     }
 done:
 
