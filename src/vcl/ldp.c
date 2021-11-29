@@ -1669,7 +1669,7 @@ sendmsg (int fd, const struct msghdr * msg, int flags)
     {
       struct iovec *iov = msg->msg_iov;
       ssize_t total = 0;
-      int i, rv;
+      int i, rv = 0;
 
       for (i = 0; i < msg->msg_iovlen; ++i)
 	{
