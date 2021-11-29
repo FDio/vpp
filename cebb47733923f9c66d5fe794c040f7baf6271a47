@@ -16,6 +16,24 @@
       "revId": "cebb47733923f9c66d5fe794c040f7baf6271a47",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7ec002c5_8fc99091",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1157,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2021-11-29T19:48:47Z",
+      "side": 0,
+      "message": "I see, thanks for that clarification. Restored this up/down function now.",
+      "parentUuid": "41cf14f6_d52f3b68",
+      "revId": "cebb47733923f9c66d5fe794c040f7baf6271a47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }

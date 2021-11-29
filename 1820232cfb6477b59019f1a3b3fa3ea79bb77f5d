@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "cdab8c24_ef314c04",
+        "filename": "src/plugins/linux-cp/lcp.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2021-11-29T19:48:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3e1b3c9e_9a49cbca",
+      "revId": "1820232cfb6477b59019f1a3b3fa3ea79bb77f5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "0683eb0f_7a5f647c",
         "filename": "src/plugins/linux-cp/lcp_interface.c",
         "patchSetId": 8
@@ -33,6 +51,24 @@
       "revId": "1820232cfb6477b59019f1a3b3fa3ea79bb77f5d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "830cd5aa_b7515dc0",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 627,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2021-11-29T19:48:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0683eb0f_7a5f647c",
+      "revId": "1820232cfb6477b59019f1a3b3fa3ea79bb77f5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "716213a9_32693182",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 640,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2021-11-29T19:48:47Z",
+      "side": 1,
+      "message": "Done - also by restoring the link up/down callback below.",
+      "parentUuid": "3bec9589_24c00be7",
+      "revId": "1820232cfb6477b59019f1a3b3fa3ea79bb77f5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c9ab7601_b2781b99",
         "filename": "src/plugins/linux-cp/lcp_interface.c",
         "patchSetId": 8
@@ -67,6 +121,24 @@
       "revId": "1820232cfb6477b59019f1a3b3fa3ea79bb77f5d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ffa5ed95_fa34144f",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1146,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2021-11-29T19:48:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c9ab7601_b2781b99",
+      "revId": "1820232cfb6477b59019f1a3b3fa3ea79bb77f5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -87,6 +159,24 @@
     },
     {
       "key": {
+        "uuid": "cc3fad28_dc800cf8",
+        "filename": "src/plugins/linux-cp/lcp_interface.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2021-11-29T19:48:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e5018b73_d32ae8d6",
+      "revId": "1820232cfb6477b59019f1a3b3fa3ea79bb77f5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "4679ef1c_76b5e49c",
         "filename": "src/plugins/linux-cp/lcp_interface_sync.c",
         "patchSetId": 8
@@ -101,6 +191,24 @@
       "revId": "1820232cfb6477b59019f1a3b3fa3ea79bb77f5d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "aa397c0b_b243278c",
+        "filename": "src/plugins/linux-cp/lcp_interface_sync.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2021-11-29T19:48:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4679ef1c_76b5e49c",
+      "revId": "1820232cfb6477b59019f1a3b3fa3ea79bb77f5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -121,6 +229,24 @@
     },
     {
       "key": {
+        "uuid": "67fc9a70_9294dec9",
+        "filename": "src/plugins/linux-cp/lcp_interface_sync.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2021-11-29T19:48:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5c3ac629_4e54cc94",
+      "revId": "1820232cfb6477b59019f1a3b3fa3ea79bb77f5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "003a7e0a_19f621da",
         "filename": "src/plugins/linux-cp/lcp_interface_sync.c",
         "patchSetId": 8
@@ -135,6 +261,24 @@
       "revId": "1820232cfb6477b59019f1a3b3fa3ea79bb77f5d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "25d082d2_d8b17d61",
+        "filename": "src/plugins/linux-cp/lcp_interface_sync.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 157,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2021-11-29T19:48:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "003a7e0a_19f621da",
+      "revId": "1820232cfb6477b59019f1a3b3fa3ea79bb77f5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -155,6 +299,24 @@
     },
     {
       "key": {
+        "uuid": "750a8dfd_a916c851",
+        "filename": "src/plugins/linux-cp/lcp_interface_sync.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 389,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2021-11-29T19:48:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a8673432_42643331",
+      "revId": "1820232cfb6477b59019f1a3b3fa3ea79bb77f5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "8ae27bdb_6c639576",
         "filename": "src/plugins/linux-cp/lcp_interface_sync.c",
         "patchSetId": 8
@@ -172,6 +334,24 @@
     },
     {
       "key": {
+        "uuid": "7b839d73_bde9a904",
+        "filename": "src/plugins/linux-cp/lcp_interface_sync.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 398,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2021-11-29T19:48:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8ae27bdb_6c639576",
+      "revId": "1820232cfb6477b59019f1a3b3fa3ea79bb77f5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "dfa8933c_d337fd14",
         "filename": "src/plugins/linux-cp/lcp_interface_sync.c",
         "patchSetId": 8
@@ -186,6 +366,24 @@
       "revId": "1820232cfb6477b59019f1a3b3fa3ea79bb77f5d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "03337f8f_dece5ca4",
+        "filename": "src/plugins/linux-cp/lcp_interface_sync.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 431,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2021-11-29T19:48:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "dfa8933c_d337fd14",
+      "revId": "1820232cfb6477b59019f1a3b3fa3ea79bb77f5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
