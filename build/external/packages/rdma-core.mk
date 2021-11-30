@@ -42,12 +42,12 @@ endef
 
 define  rdma-core_install_cmds
 	mkdir -p $(rdma-core_install_dir)/lib/pkgconfig
-	cp -av $(rdma-core_build_dir)/include $(rdma-core_install_dir) > $(rdma-core_install_log)
-	cp -v $(rdma-core_build_dir)/lib/pkgconfig/libibverbs.pc \
+	cp -avL $(rdma-core_build_dir)/include $(rdma-core_install_dir) > $(rdma-core_install_log)
+	cp -avL $(rdma-core_build_dir)/lib/pkgconfig/libibverbs.pc \
 	  $(rdma-core_build_dir)/lib/pkgconfig/libmlx5.pc \
 	  $(rdma-core_build_dir)/lib/pkgconfig/libmlx4.pc \
 	  $(rdma-core_install_dir)/lib/pkgconfig >> $(rdma-core_install_log)
-	cp -v $(rdma-core_build_dir)/lib/statics/libibverbs.a \
+	cp -avL $(rdma-core_build_dir)/lib/statics/libibverbs.a \
 	  $(rdma-core_build_dir)/lib/statics/libmlx5.a \
 	  $(rdma-core_build_dir)/lib/statics/libmlx4.a \
 	  $(rdma-core_build_dir)/util/librdma_util.a \
