@@ -37,131 +37,7 @@ vcl_mq_dequeue_batch (vcl_worker_t * wrk, svm_msg_q_t * mq, u32 n_max_msg)
   return n_msgs;
 }
 
-const char *
-vppcom_session_state_str (vcl_session_state_t state)
-{
-  char *st;
 
-  switch (state)
-    {
-    case VCL_STATE_CLOSED:
-      st = "STATE_CLOSED";
-      break;
-    case VCL_STATE_LISTEN:
-      st = "STATE_LISTEN";
-      break;
-    case VCL_STATE_READY:
-      st = "STATE_READY";
-      break;
-    case VCL_STATE_VPP_CLOSING:
-      st = "STATE_VPP_CLOSING";
-      break;
-    case VCL_STATE_DISCONNECT:
-      st = "STATE_DISCONNECT";
-      break;
-    case VCL_STATE_DETACHED:
-      st = "STATE_DETACHED";
-      break;
-    case VCL_STATE_UPDATED:
-      st = "STATE_UPDATED";
-      break;
-    case VCL_STATE_LISTEN_NO_MQ:
-      st = "STATE_LISTEN_NO_MQ";
-      break;
-    default:
-      st = "UNKNOWN_STATE";
-      break;
-    }
-
-  return st;
-}
-
-u8 *
-format_ip4_address (u8 * s, va_list * args)
-{
-  u8 *a = va_arg (*args, u8 *);
-  return format (s, "%d.%d.%d.%d", a[0], a[1], a[2], a[3]);
-}
-
-u8 *
-format_ip6_address (u8 * s, va_list * args)
-{
-  ip6_address_t *a = va_arg (*args, ip6_address_t *);
-  u32 i, i_max_n_zero, max_n_zeros, i_first_zero, n_zeros, last_double_colon;
-
-  i_max_n_zero = ARRAY_LEN (a->as_u16);
-  max_n_zeros = 0;
-  i_first_zero = i_max_n_zero;
-  n_zeros = 0;
-  for (i = 0; i < ARRAY_LEN (a->as_u16); i++)
-    {
-      u32 is_zero = a->as_u16[i] == 0;
-      if (is_zero && i_first_zero >= ARRAY_LEN (a->as_u16))
-	{
-	  i_first_zero = i;
-	  n_zeros = 0;
-	}
-      n_zeros += is_zero;
-      if ((!is_zero && n_zeros > max_n_zeros)
-	  || (i + 1 >= ARRAY_LEN (a->as_u16) && n_zeros > max_n_zeros))
-	{
-	  i_max_n_zero = i_first_zero;
-	  max_n_zeros = n_zeros;
-	  i_first_zero = ARRAY_LEN (a->as_u16);
-	  n_zeros = 0;
-	}
-    }
-
-  last_double_colon = 0;
-  for (i = 0; i < ARRAY_LEN (a->as_u16); i++)
-    {
-      if (i == i_max_n_zero && max_n_zeros > 1)
-	{
-	  s = format (s, "::");
-	  i += max_n_zeros - 1;
-	  last_double_colon = 1;
-	}
-      else
-	{
-	  s = format (s, "%s%x",
-		      (last_double_colon || i == 0) ? "" : ":",
-		      clib_net_to_host_u16 (a->as_u16[i]));
-	  last_double_colon = 0;
-	}
-    }
-
-  return s;
-}
-
-/* Format an IP46 address. */
-u8 *
-format_ip46_address (u8 * s, va_list * args)
-{
-  ip46_address_t *ip46 = va_arg (*args, ip46_address_t *);
-  ip46_type_t type = va_arg (*args, ip46_type_t);
-  int is_ip4 = 1;
-
-  switch (type)
-    {
-    case IP46_TYPE_ANY:
-      is_ip4 = ip46_address_is_ip4 (ip46);
-      break;
-    case IP46_TYPE_IP4:
-      is_ip4 = 1;
-      break;
-    case IP46_TYPE_IP6:
-      is_ip4 = 0;
-      break;
-    }
-
-  return is_ip4 ?
-    format (s, "%U", format_ip4_address, &ip46->ip4) :
-    format (s, "%U", format_ip6_address, &ip46->ip6);
-}
-
-/*
- * VPPCOM Utility Functions
- */
 
 static void
 vcl_msg_add_ext_config (vcl_session_t *s, uword *offset)
@@ -479,9 +355,11 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
   session->listener_index = listen_session->session_index;
   listen_session->n_accepted_sessions++;
 
-  VDBG (1, "session %u [0x%llx]: client accept request from %s address %U"
-	" port %d queue %p!", session->session_index, mp->handle,
-	mp->rmt.is_ip4 ? "IPv4" : "IPv6", format_ip46_address, &mp->rmt.ip,
+  VDBG (1,
+	"session %u [0x%llx]: client accept request from %s address %U"
+	" port %d queue %p!",
+	session->session_index, mp->handle, mp->rmt.is_ip4 ? "IPv4" : "IPv6",
+	vcl_format_ip46_address, &mp->rmt.ip,
 	mp->rmt.is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
 	clib_net_to_host_u16 (mp->rmt.port), session->vpp_evt_q);
   vcl_evt (VCL_EVT_ACCEPT, session, listen_session, session_index);
@@ -835,7 +713,7 @@ vppcom_session_shutdown (uint32_t session_handle, int how)
   state = session->session_state;
 
   VDBG (1, "session %u [0x%llx] state 0x%x (%s)", session->session_index,
-	vpp_handle, state, vppcom_session_state_str (state));
+	vpp_handle, state, vcl_session_state_str (state));
 
   if (PREDICT_FALSE (state == VCL_STATE_LISTEN))
     {
@@ -878,7 +756,7 @@ vppcom_session_disconnect (u32 session_handle)
   state = session->session_state;
 
   VDBG (1, "session %u [0x%llx] state 0x%x (%s)", session->session_index,
-	vpp_handle, state, vppcom_session_state_str (state));
+	vpp_handle, state, vcl_session_state_str (state));
 
   if (PREDICT_FALSE (state == VCL_STATE_LISTEN))
     {
@@ -1228,7 +1106,7 @@ vppcom_wait_for_session_state_change (u32 session_index,
   while (clib_time_now (&wrk->clib_time) < timeout);
 
   VDBG (0, "timeout waiting for state 0x%x (%s)", state,
-	vppcom_session_state_str (state));
+	vcl_session_state_str (state));
   vcl_evt (VCL_EVT_SESSION_TIMEOUT, session, session_state);
 
   return VPPCOM_ETIMEDOUT;
@@ -1629,10 +1507,12 @@ vppcom_session_bind (uint32_t session_handle, vppcom_endpt_t * ep)
 		      sizeof (ip6_address_t));
   session->transport.lcl_port = ep->port;
 
-  VDBG (0, "session %u handle %u: binding to local %s address %U port %u, "
-	"proto %s", session->session_index, session_handle,
-	session->transport.is_ip4 ? "IPv4" : "IPv6",
-	format_ip46_address, &session->transport.lcl_ip,
+  VDBG (0,
+	"session %u handle %u: binding to local %s address %U port %u, "
+	"proto %s",
+	session->session_index, session_handle,
+	session->transport.is_ip4 ? "IPv4" : "IPv6", vcl_format_ip46_address,
+	&session->transport.lcl_ip,
 	session->transport.is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
 	clib_net_to_host_u16 (session->transport.lcl_port),
 	vppcom_proto_str (session->session_type));
@@ -1699,9 +1579,11 @@ validate_args_session_accept_ (vcl_worker_t * wrk, vcl_session_t * ls)
   if ((ls->session_state != VCL_STATE_LISTEN)
       && (!vcl_session_is_connectable_listener (wrk, ls)))
     {
-      VDBG (0, "ERROR: session [0x%llx]: not in listen state! state 0x%x"
-	    " (%s)", ls->vpp_handle, ls->session_state,
-	    vppcom_session_state_str (ls->session_state));
+      VDBG (0,
+	    "ERROR: session [0x%llx]: not in listen state! state 0x%x"
+	    " (%s)",
+	    ls->vpp_handle, ls->session_state,
+	    vcl_session_state_str (ls->session_state));
       return VPPCOM_EBADFD;
     }
   return VPPCOM_OK;
@@ -1813,13 +1695,15 @@ handle:
 			  sizeof (ip6_address_t));
     }
 
-  VDBG (0, "listener %u [0x%llx] accepted %u [0x%llx] peer: %U:%u "
-	"local: %U:%u", listen_session_handle, listen_session->vpp_handle,
+  VDBG (0,
+	"listener %u [0x%llx] accepted %u [0x%llx] peer: %U:%u "
+	"local: %U:%u",
+	listen_session_handle, listen_session->vpp_handle,
 	client_session_index, client_session->vpp_handle,
-	format_ip46_address, &client_session->transport.rmt_ip,
+	vcl_format_ip46_address, &client_session->transport.rmt_ip,
 	client_session->transport.is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
 	clib_net_to_host_u16 (client_session->transport.rmt_port),
-	format_ip46_address, &client_session->transport.lcl_ip,
+	vcl_format_ip46_address, &client_session->transport.lcl_ip,
 	client_session->transport.is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
 	clib_net_to_host_u16 (client_session->transport.lcl_port));
   vcl_evt (VCL_EVT_ACCEPT, client_session, listen_session,
@@ -1860,15 +1744,16 @@ vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
 
   if (PREDICT_FALSE (vcl_session_is_ready (session)))
     {
-      VDBG (0, "session handle %u [0x%llx]: session already "
+      VDBG (0,
+	    "session handle %u [0x%llx]: session already "
 	    "connected to %s %U port %d proto %s, state 0x%x (%s)",
 	    session_handle, session->vpp_handle,
-	    session->transport.is_ip4 ? "IPv4" : "IPv6", format_ip46_address,
-	    &session->transport.rmt_ip, session->transport.is_ip4 ?
-	    IP46_TYPE_IP4 : IP46_TYPE_IP6,
+	    session->transport.is_ip4 ? "IPv4" : "IPv6",
+	    vcl_format_ip46_address, &session->transport.rmt_ip,
+	    session->transport.is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
 	    clib_net_to_host_u16 (session->transport.rmt_port),
 	    vppcom_proto_str (session->session_type), session->session_state,
-	    vppcom_session_state_str (session->session_state));
+	    vcl_session_state_str (session->session_state));
       return VPPCOM_OK;
     }
 
@@ -1887,13 +1772,13 @@ vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
   session->parent_handle = VCL_INVALID_SESSION_HANDLE;
   session->flags |= VCL_SESSION_F_CONNECTED;
 
-  VDBG (0, "session handle %u (%s): connecting to peer %s %U "
-	"port %d proto %s", session_handle,
-	vppcom_session_state_str (session->session_state),
-	session->transport.is_ip4 ? "IPv4" : "IPv6",
-	format_ip46_address,
-	&session->transport.rmt_ip, session->transport.is_ip4 ?
-	IP46_TYPE_IP4 : IP46_TYPE_IP6,
+  VDBG (0,
+	"session handle %u (%s): connecting to peer %s %U "
+	"port %d proto %s",
+	session_handle, vcl_session_state_str (session->session_state),
+	session->transport.is_ip4 ? "IPv4" : "IPv6", vcl_format_ip46_address,
+	&session->transport.rmt_ip,
+	session->transport.is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
 	clib_net_to_host_u16 (session->transport.rmt_port),
 	vppcom_proto_str (session->session_type));
 
@@ -1948,12 +1833,13 @@ vppcom_session_stream_connect (uint32_t session_handle,
 
   if (PREDICT_FALSE (vcl_session_is_ready (session)))
     {
-      VDBG (0, "session handle %u [0x%llx]: session already "
+      VDBG (0,
+	    "session handle %u [0x%llx]: session already "
 	    "connected to session %u [0x%llx] proto %s, state 0x%x (%s)",
-	    session_handle, session->vpp_handle,
-	    parent_session_handle, parent_session->vpp_handle,
+	    session_handle, session->vpp_handle, parent_session_handle,
+	    parent_session->vpp_handle,
 	    vppcom_proto_str (session->session_type), session->session_state,
-	    vppcom_session_state_str (session->session_state));
+	    vcl_session_state_str (session->session_state));
       return VPPCOM_OK;
     }
 
@@ -2008,7 +1894,7 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
     {
       VDBG (0, "session %u[0x%llx] is not open! state 0x%x (%s)",
 	    s->session_index, s->vpp_handle, s->session_state,
-	    vppcom_session_state_str (s->session_state));
+	    vcl_session_state_str (s->session_state));
       return vcl_session_closed_error (s);
     }
 
@@ -2246,7 +2132,7 @@ vppcom_session_write_inline (vcl_worker_t * wrk, vcl_session_t * s, void *buf,
     {
       VDBG (1, "session %u [0x%llx]: is not open! state 0x%x (%s)",
 	    s->session_index, s->vpp_handle, s->session_state,
-	    vppcom_session_state_str (s->session_state));
+	    vcl_session_state_str (s->session_state));
       return vcl_session_closed_error (s);;
     }
 
@@ -2254,7 +2140,7 @@ vppcom_session_write_inline (vcl_worker_t * wrk, vcl_session_t * s, void *buf,
     {
       VDBG (1, "session %u [0x%llx]: is shutdown! state 0x%x (%s)",
 	    s->session_index, s->vpp_handle, s->session_state,
-	    vppcom_session_state_str (s->session_state));
+	    vcl_session_state_str (s->session_state));
       return VPPCOM_EPIPE;
     }
 
@@ -3480,9 +3366,11 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
 	    clib_memcpy_fast (ep->ip, &session->transport.rmt_ip.ip6,
 			      sizeof (ip6_address_t));
 	  *buflen = sizeof (*ep);
-	  VDBG (1, "VPPCOM_ATTR_GET_PEER_ADDR: sh %u, is_ip4 = %u, "
-		"addr = %U, port %u", session_handle, ep->is_ip4,
-		format_ip46_address, &session->transport.rmt_ip,
+	  VDBG (1,
+		"VPPCOM_ATTR_GET_PEER_ADDR: sh %u, is_ip4 = %u, "
+		"addr = %U, port %u",
+		session_handle, ep->is_ip4, vcl_format_ip46_address,
+		&session->transport.rmt_ip,
 		ep->is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
 		clib_net_to_host_u16 (ep->port));
 	}
@@ -3503,8 +3391,10 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
 	    clib_memcpy_fast (ep->ip, &session->transport.lcl_ip.ip6,
 			      sizeof (ip6_address_t));
 	  *buflen = sizeof (*ep);
-	  VDBG (1, "VPPCOM_ATTR_GET_LCL_ADDR: sh %u, is_ip4 = %u, addr = %U"
-		" port %d", session_handle, ep->is_ip4, format_ip46_address,
+	  VDBG (1,
+		"VPPCOM_ATTR_GET_LCL_ADDR: sh %u, is_ip4 = %u, addr = %U"
+		" port %d",
+		session_handle, ep->is_ip4, vcl_format_ip46_address,
 		&session->transport.lcl_ip,
 		ep->is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
 		clib_net_to_host_u16 (ep->port));
@@ -3521,8 +3411,10 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
 	  session->transport.lcl_port = ep->port;
 	  vcl_ip_copy_from_ep (&session->transport.lcl_ip, ep);
 	  *buflen = sizeof (*ep);
-	  VDBG (1, "VPPCOM_ATTR_SET_LCL_ADDR: sh %u, is_ip4 = %u, addr = %U"
-		" port %d", session_handle, ep->is_ip4, format_ip46_address,
+	  VDBG (1,
+		"VPPCOM_ATTR_SET_LCL_ADDR: sh %u, is_ip4 = %u, addr = %U"
+		" port %d",
+		session_handle, ep->is_ip4, vcl_format_ip46_address,
 		&session->transport.lcl_ip,
 		ep->is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
 		clib_net_to_host_u16 (ep->port));
