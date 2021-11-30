@@ -153,6 +153,35 @@ RPM_DEPENDS_DEBUG += krb5-debuginfo openssl-debuginfo
 RPM_DEPENDS_DEBUG += zlib-debuginfo nss-softokn-debuginfo
 RPM_DEPENDS_DEBUG += yum-plugin-auto-update-debug-info
 
+<<<<<<< HEAD   (bb7418 dpdk: fix missing symbol)
+=======
+RPM_SUSE_BUILDTOOLS_DEPS = autoconf automake ccache check-devel chrpath
+RPM_SUSE_BUILDTOOLS_DEPS += clang cmake indent libtool make ninja python3-ply
+
+RPM_SUSE_DEVEL_DEPS = glibc-devel-static libnuma-devel libelf-devel
+RPM_SUSE_DEVEL_DEPS += libopenssl-devel openssl-devel mbedtls-devel libuuid-devel
+
+RPM_SUSE_PYTHON_DEPS = python-devel python3-devel python-pip python3-pip
+RPM_SUSE_PYTHON_DEPS += python-rpm-macros python3-rpm-macros
+
+RPM_SUSE_PLATFORM_DEPS = distribution-release shadow rpm-build
+
+ifeq ($(OS_ID),opensuse-leap)
+ifeq ($(OS_VERSION_ID),15.3)
+	RPM_SUSE_DEVEL_DEPS += curl libstdc++-devel bison gcc-c++ zlib-devel xmlto
+	RPM_SUSE_DEVEL_DEPS += lsb-release
+	RPM_SUSE_DEVEL_DEPS += asciidoc git
+	RPM_SUSE_PYTHON_DEPS += python3 python2-ply
+endif
+ifeq ($(OS_VERSION_ID),15.0)
+	RPM_SUSE_DEVEL_DEPS += gcc git curl
+	RPM_SUSE_PYTHON_DEPS += python3-ply python2-virtualenv
+endif
+endif
+
+RPM_SUSE_DEPENDS += $(RPM_SUSE_BUILDTOOLS_DEPS) $(RPM_SUSE_DEVEL_DEPS) $(RPM_SUSE_PYTHON_DEPS) $(RPM_SUSE_PLATFORM_DEPS)
+
+>>>>>>> CHANGE (bfcd23 build rpm-packaging: Remove boost dependencies from VOM)
 ifneq ($(wildcard $(STARTUP_DIR)/startup.conf),)
         STARTUP_CONF ?= $(STARTUP_DIR)/startup.conf
 endif
