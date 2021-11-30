@@ -83,8 +83,6 @@ unformat_vl_api_timestamp_t (unformat_input_t *input, va_list *args);
 CJSON_PUBLIC (uword)
 unformat_vl_api_gbp_scope_t (unformat_input_t *input, va_list *args);
 
-CJSON_PUBLIC (int)
-vl_api_c_string_to_api_string (const char *buf, vl_api_string_t *str);
 CJSON_PUBLIC (void)
 vl_api_string_cJSON_AddToObject (cJSON *const object, const char *const name,
 				 vl_api_string_t *astr);
