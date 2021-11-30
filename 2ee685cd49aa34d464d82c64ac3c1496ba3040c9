@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7780fbef_3e0f4f17",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 896,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-11-30T20:21:20Z",
+      "side": 1,
+      "message": "Nice find! \n\nNow one that could be done that should be an improvement is to ask here for SVM_FIFO_WANT_DEQ_NOTIF, so notification when something is dequeued, and in http_static_server_tx_callback, where the tx notification comes, check the amount of write space available. So if svm_fifo_max_enqueue (hs-\u003etx_fifo) \u003c limit, request a dequeue notification again without trying to send. Limit could be something like clib_min (svm_fifo_size (hs-\u003etx_fifo), 16 \u003c\u003c 10), or something like that. \n\nThat way we can keep the tx fifo reasonably full and the underlying transport busy.\n\nOn a separate note, for high throughput scenarios, I\u0027d use fifos that are at least 1MB (even larger if rtt is high)",
+      "range": {
+        "startLine": 895,
+        "startChar": 0,
+        "endLine": 896,
+        "endChar": 39
+      },
+      "revId": "2ee685cd49aa34d464d82c64ac3c1496ba3040c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
