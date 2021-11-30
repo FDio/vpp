@@ -511,8 +511,8 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
   session = vcl_session_get (wrk, session_index);
   if (PREDICT_FALSE (!session))
     {
-      VDBG (0, "ERROR: vpp handle 0x%llx has no session index (%u)!",
-	    mp->handle, session_index);
+      VERR ("vpp handle 0x%llx has no session index (%u)!", mp->handle,
+	    session_index);
       /* Should not happen but if it does, force vpp session cleanup */
       vcl_session_t tmp_session = {
 	.vpp_handle = mp->handle,
@@ -525,23 +525,29 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
 	vcl_send_session_disconnect (wrk, &tmp_session);
       return VCL_INVALID_SESSION_INDEX;
     }
+
   if (mp->retval)
     {
-      VDBG (0, "ERROR: session index %u: connect failed! %U",
-	    session_index, format_session_error, mp->retval);
+      VDBG (0, "session index %u: connect failed! %U", session_index,
+	    format_session_error, mp->retval);
       session->session_state = VCL_STATE_DETACHED;
-      session->vpp_handle = mp->handle;
+      session->vpp_handle = VCL_INVALID_SESSION_HANDLE;
       return session_index;
     }
 
   session->vpp_handle = mp->handle;
+
+  /* Add to lookup table. Even if something fails, session cannot be
+   * cleaned up prior to notifying vpp and going through the cleanup
+   * "procedure" see @ref vcl_session_cleanup_handler */
+  vcl_session_table_add_vpp_handle (wrk, mp->handle, session_index);
 
   if (vcl_segment_attach_session (
 	mp->segment_handle, mp->server_rx_fifo, mp->server_tx_fifo,
 	mp->vpp_event_queue_address, mp->mq_index, 0, session))
     {
       VDBG (0, "failed to attach fifos for %u", session->session_index);
-      session->session_state = VCL_STATE_DETACHED;
+      session->session_state = VCL_STATE_UPDATED;
       vcl_send_session_disconnect (wrk, session);
       return session_index;
     }
@@ -553,7 +559,7 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
 				      session))
 	{
 	  VDBG (0, "failed to attach ct fifos for %u", session->session_index);
-	  session->session_state = VCL_STATE_DETACHED;
+	  session->session_state = VCL_STATE_UPDATED;
 	  vcl_send_session_disconnect (wrk, session);
 	  return session_index;
 	}
@@ -570,9 +576,6 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
     vcl_send_session_disconnect (wrk, session);
   else
     session->session_state = VCL_STATE_READY;
-
-  /* Add it to lookup table */
-  vcl_session_table_add_vpp_handle (wrk, mp->handle, session_index);
 
   VDBG (1, "session %u [0x%llx] connected! rx_fifo %p, refcnt %d, tx_fifo %p,"
 	" refcnt %d", session_index, mp->handle, session->rx_fifo,
