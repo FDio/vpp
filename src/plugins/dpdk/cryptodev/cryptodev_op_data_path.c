@@ -515,6 +515,7 @@ cryptodev_register_cop_hdl (vlib_main_t *vm, u32 eidx)
   struct rte_cryptodev_sym_capability_idx cap_aead_idx;
   u8 *name;
   clib_error_t *error = 0;
+  u32 ref_cnt = 0;
 
   vec_foreach (cet, cmt->per_thread_data)
     {
@@ -550,18 +551,18 @@ cryptodev_register_cop_hdl (vlib_main_t *vm, u32 eidx)
       vec_validate (cet->cops, VNET_CRYPTO_FRAME_SIZE - 1);
     }
 
-    /** INDENT-OFF **/
 #define _(a, b, c, d, e, f, g)                                                \
   cap_aead_idx.type = RTE_CRYPTO_SYM_XFORM_AEAD;                              \
   cap_aead_idx.algo.aead = RTE_CRYPTO_##b##_##c;                              \
   if (cryptodev_check_cap_support (&cap_aead_idx, g, e, f))                   \
     {                                                                         \
-      vnet_crypto_register_async_handler (                                    \
+      vnet_crypto_register_enqueue_handler (                                  \
 	vm, eidx, VNET_CRYPTO_OP_##a##_TAG##e##_AAD##f##_ENC,                 \
-	cryptodev_enqueue_aead_aad_##f##_enc, cryptodev_frame_dequeue);       \
-      vnet_crypto_register_async_handler (                                    \
+	cryptodev_enqueue_aead_aad_##f##_enc);                                \
+      vnet_crypto_register_enqueue_handler (                                  \
 	vm, eidx, VNET_CRYPTO_OP_##a##_TAG##e##_AAD##f##_DEC,                 \
-	cryptodev_enqueue_aead_aad_##f##_dec, cryptodev_frame_dequeue);       \
+	cryptodev_enqueue_aead_aad_##f##_dec);                                \
+      ref_cnt++;                                                              \
     }
   foreach_vnet_aead_crypto_conversion
 #undef _
@@ -574,16 +575,19 @@ cryptodev_register_cop_hdl (vlib_main_t *vm, u32 eidx)
   if (cryptodev_check_cap_support (&cap_cipher_idx, c, -1, -1) &&             \
       cryptodev_check_cap_support (&cap_auth_idx, -1, e, -1))                 \
     {                                                                         \
-      vnet_crypto_register_async_handler (                                    \
+      vnet_crypto_register_enqueue_handler (                                  \
 	vm, eidx, VNET_CRYPTO_OP_##a##_##d##_TAG##e##_ENC,                    \
-	cryptodev_enqueue_linked_alg_enc, cryptodev_frame_dequeue);           \
-      vnet_crypto_register_async_handler (                                    \
+	cryptodev_enqueue_linked_alg_enc);                                    \
+      vnet_crypto_register_enqueue_handler (                                  \
 	vm, eidx, VNET_CRYPTO_OP_##a##_##d##_TAG##e##_DEC,                    \
-	cryptodev_enqueue_linked_alg_dec, cryptodev_frame_dequeue);           \
+	cryptodev_enqueue_linked_alg_dec);                                    \
+      ref_cnt++;                                                              \
     }
     foreach_cryptodev_link_async_alg
 #undef _
-    /** INDENT-ON **/
+
+    if (ref_cnt)
+      vnet_crypto_register_dequeue_handler (vm, eidx, cryptodev_frame_dequeue);
 
     return 0;
 
