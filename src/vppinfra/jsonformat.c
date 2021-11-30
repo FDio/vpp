@@ -428,17 +428,6 @@ format_ip4_address (u8 * s, va_list * args)
   return format (s, "%d.%d.%d.%d", a[0], a[1], a[2], a[3]);
 }
 
-int
-vl_api_c_string_to_api_string (const char *buf, vl_api_string_t * str)
-{
-  /* copy without nul terminator */
-  u32 len = strlen (buf);
-  if (len > 0)
-    clib_memcpy_fast (str->buf, buf, len);
-  str->length = htonl (len);
-  return len + sizeof (u32);
-}
-
 void
 vl_api_string_cJSON_AddToObject(cJSON * const object, const char * const name, vl_api_string_t *astr)
 {
