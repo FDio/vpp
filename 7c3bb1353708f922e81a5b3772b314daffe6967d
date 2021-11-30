@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7f216de8_5f5c1f4a",
+        "filename": "test/test_reassembly.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 1379,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2021-11-30T15:28:07Z",
+      "side": 1,
+      "message": "set but not used it seems",
+      "revId": "7c3bb1353708f922e81a5b3772b314daffe6967d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
