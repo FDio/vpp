@@ -41,7 +41,7 @@ BuildRequires: mbedtls-devel mbedtls
 %if 0%{?fedora}
 Requires: vpp-lib = %{_version}-%{_release}, vpp-selinux-policy = %{_version}-%{_release}, net-tools, pciutils
 Requires: compat-openssl10
-Requires: boost-filesystem mbedtls libffi-devel
+Requires: mbedtls libffi-devel
 BuildRequires: subunit, subunit-devel
 BuildRequires: compat-openssl10-devel
 BuildRequires: python, python-devel, python-virtualenv, python-ply
@@ -50,7 +50,7 @@ BuildRequires: cmake
 %else
 %if 0%{rhel} >= 7
 Requires: vpp-lib = %{_version}-%{_release}, vpp-selinux-policy = %{_version}-%{_release}, net-tools, pciutils, python36
-Requires: boost-filesystem mbedtls libffi-devel
+Requires: mbedtls libffi-devel
 BuildRequires: epel-release
 BuildRequires: mbedtls-devel mbedtls
 BuildREquires: openssl-devel
@@ -70,7 +70,6 @@ BuildRequires: redhat-lsb
 BuildRequires: apr-devel
 BuildRequires: numactl-devel
 BuildRequires: autoconf automake libtool byacc bison flex
-BuildRequires: boost boost-devel
 BuildRequires: selinux-policy selinux-policy-devel
 
 Source: %{name}-%{_version}-%{_release}.tar.xz

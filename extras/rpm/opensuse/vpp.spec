@@ -41,8 +41,6 @@ BuildRequires:  gcc
 BuildRequires:  gcc-c++
 BuildRequires:  glibc-devel
 BuildRequires:  glibc-devel-static
-BuildRequires:  libboost_headers-devel
-BuildRequires:  libboost_thread-devel
 BuildRequires:  libnuma-devel
 BuildRequires:  libopenssl-devel
 BuildRequires:  libtool
