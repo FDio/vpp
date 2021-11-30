@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7cd0f308_1bb1d47b",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 313,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2021-11-30T12:26:48Z",
+      "side": 1,
+      "message": "name suggests that it gets address by address, but it looks like it gets address len by address, right?\n\nso maybe nat44_ed_get_if_ip_addr_len_by_addr would be a better name\n\nalso not changed order ... ip_if_addr read weirdly, but if_ip_addr I read \"interface ip address\", which makes more sense to me\n\n-or-\n\nmaybe even better might be to \n\n1. remove u32 *out_addr_len\n2. change return value from int to const ip4_address_t\n\nand then one can do\n\nconst ip_interface_address_t *ifa;\nif((a \u003d nat44_ed_get_if_ip_addr_by_addr(sw_if_index, addr)))\n{\n  out_addr_len \u003d ifa-\u003eaddress_length;\n  flags \u003d ifa-\u003eflags;\n}\n\nthis has the advantage that the caller can use found address in any way they want and is not limited to getting address length",
+      "revId": "dedf7268e1e54ebc10afabe355db356674b764aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d6e136fd_c912a190",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 376,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2021-11-30T12:26:48Z",
+      "side": 1,
+      "message": "maybe a better name could be nat44_ed_update_outside_intf_addresses ?",
+      "revId": "dedf7268e1e54ebc10afabe355db356674b764aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1cd493da_e61e9cbc",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 392,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2021-11-30T12:26:48Z",
+      "side": 1,
+      "message": "maybe a better name could be nat44_ed_bind_if_addr_to_nat_addr\n\nabove name suggests that all addresses are updated, while in fact only one is\n\nalso is in line with debug message ...\n\nthis function could also return success/fail instead of void",
+      "revId": "dedf7268e1e54ebc10afabe355db356674b764aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0130cc01_86486dfb",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 3389,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2021-11-30T12:26:48Z",
+      "side": 1,
+      "message": "this code block looks very similar to\n\nnat44_ed_update_addr_to_sw_if_foreach_addr\n\nmaybe with that function returning success/fail instead of void, it could be used here with ~0 setting in the fail branch",
+      "revId": "dedf7268e1e54ebc10afabe355db356674b764aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b76a3825_4c6d16f9",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_in2out.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2021-11-30T12:26:48Z",
+      "side": 1,
+      "message": "u32 s_addr_offset \u003d s_addr.as_u32 % vec_len (sm-\u003eaddresses);\n\ncombined with 2 for loops as seen below is designed so that the usage of addresses is more balanced. if we always start with first address, then it\u0027s more likely to be used than the other addresses, yes? if so, it might be a good idea to incorporate a similar technique here to kinda jump randomly into the address space and start searching from there.",
+      "revId": "dedf7268e1e54ebc10afabe355db356674b764aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a4acdeaa_c7bbf545",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_in2out.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 248,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2021-11-30T12:26:48Z",
+      "side": 1,
+      "message": "first",
+      "revId": "dedf7268e1e54ebc10afabe355db356674b764aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
