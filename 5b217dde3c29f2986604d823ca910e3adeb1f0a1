@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7c5b368b_ca088107",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 404,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2021-11-30T15:20:51Z",
+      "side": 1,
+      "message": "instead of returning 0/1 and an index through pointer to a variable, wouldn\u0027t it be simpler to just return snat_fib_entry_reg_t* pointer with entry or NULL?\n\nthen the below logic of\n\nif (nat44_ed_get_fib_entry_reg (addr, sw_if_index, \u0026i)){\n  vec_add2(..., fe, ..);\n}else{\n  fe \u003d array + i;\n}\n\nwould be a cleaner \n\nif (!(fe \u003d nat44_ed_get_fib_entry_reg (addr, sw_if_index)))\n{\n   vec_add2( ...., fe, ...);\n}\n\nyou also get rid of one local variable (i) in the calling function, can do vec_foreach instead of for()\n\n-and-\n\ndon\u0027t require the caller to know/use logic that the returned index is an index into an array, reducing possible number of places where new bugs might be introduced (for example if the underlying organisation changes and somebody forgets to update all the places where it needs to be updated)",
+      "revId": "5b217dde3c29f2986604d823ca910e3adeb1f0a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "879822b4_04221eab",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 496,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2021-11-30T15:20:51Z",
+      "side": 1,
+      "message": "may I suggest a different name\n\nnat44_ed_add_del_interface_fib_reg_entries\n\nexisting name suggests that the address is added to fib, but that\u0027s not really the case",
+      "revId": "5b217dde3c29f2986604d823ca910e3adeb1f0a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a65f7be7_b903e313",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 532,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2021-11-30T15:20:51Z",
+      "side": 1,
+      "message": "nat44_ed_add_del_nat_addr_fib_reg_entries?",
+      "revId": "5b217dde3c29f2986604d823ca910e3adeb1f0a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4175061a_6dd4b7eb",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 551,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2021-11-30T15:20:51Z",
+      "side": 1,
+      "message": "nat44_ed_add_del_sm_fib_reg_entries?",
+      "revId": "5b217dde3c29f2986604d823ca910e3adeb1f0a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "565d0e0b_f67f021f",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 3262,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2021-11-30T15:20:51Z",
+      "side": 1,
+      "message": "this could be done using vec_foreach, dropping i and match variables, keeping rp only and testing for NULL",
+      "revId": "5b217dde3c29f2986604d823ca910e3adeb1f0a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "93facf81_52796e3f",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 3313,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2021-11-30T15:20:51Z",
+      "side": 1,
+      "message": "same point here about returning pointer/NULL instead of index ...",
+      "revId": "5b217dde3c29f2986604d823ca910e3adeb1f0a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
