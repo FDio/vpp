@@ -98,13 +98,6 @@ static char *states_str[] = {
 };
 
 static u32 size_4KB = 4 << 10;
-static u32 size_8KB = 8 << 10;
-static u32 size_12KB = 12 << 10;
-static u32 size_16KB = 16 << 10;
-static u32 size_20KB = 20 << 10;
-static u32 size_32KB = 32 << 10;
-static u32 size_52KB = 52 << 10;
-static u32 size_64KB = 64 << 10;
 static u32 size_128KB = 128 << 10;
 static u32 size_1MB = 1 << 20;
 static u32 size_2MB = 2 << 20;
@@ -178,14 +171,14 @@ segment_manager_test_pressure_1 (vlib_main_t * vm, unformat_input_t * input)
   svm_fifo_enqueue (rx_fifo, fifo_size, data);
   svm_fifo_enqueue (tx_fifo, fifo_size, data);
   svm_fifo_enqueue (tx_fifo, fifo_size, data);
-  svm_fifo_enqueue (tx_fifo, fifo_size, data);
 
-  /* 8 chunks : 49% */
+  /* 7 chunks : ~44% */
   rv = fifo_segment_get_mem_status (fs);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_NO_PRESSURE),
 		"fifo_segment_get_mem_status %s", states_str[rv]);
 
   /* grow fifos */
+  svm_fifo_enqueue (tx_fifo, fifo_size, data);
   svm_fifo_enqueue (rx_fifo, fifo_size, data);
   svm_fifo_enqueue (tx_fifo, fifo_size, data);
 
@@ -212,7 +205,7 @@ segment_manager_test_pressure_1 (vlib_main_t * vm, unformat_input_t * input)
   svm_fifo_dequeue_drop (tx_fifo, fifo_size);
   svm_fifo_dequeue_drop (tx_fifo, fifo_size);
 
-  /* 10 chunks : 61% */
+  /* 10 chunks : 63% */
   rv = fifo_segment_get_mem_status (fs);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_LOW_PRESSURE),
 		"fifo_segment_get_mem_status %s", states_str[rv]);
@@ -224,7 +217,7 @@ segment_manager_test_pressure_1 (vlib_main_t * vm, unformat_input_t * input)
   svm_fifo_enqueue (tx_fifo, fifo_size, data);
   svm_fifo_enqueue (tx_fifo, fifo_size, data);
 
-  /* 14 chunks : 85% */
+  /* 14 chunks : 88% */
   rv = fifo_segment_get_mem_status (fs);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_HIGH_PRESSURE),
 		"fifo_segment_get_mem_status %s", states_str[rv]);
@@ -234,8 +227,7 @@ segment_manager_test_pressure_1 (vlib_main_t * vm, unformat_input_t * input)
   svm_fifo_dequeue_drop (tx_fifo, fifo_size);
   svm_fifo_dequeue_drop (tx_fifo, fifo_size);
 
-
-  /* 10 chunks : 61% */
+  /* 10 chunks : 63% */
   rv = fifo_segment_get_mem_status (fs);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_LOW_PRESSURE),
 		"fifo_segment_get_mem_status %s", states_str[rv]);
@@ -285,7 +277,7 @@ segment_manager_test_pressure_2 (vlib_main_t * vm, unformat_input_t * input)
     .options = options,
     .namespace_id = 0,
     .session_cb_vft = &placeholder_session_cbs,
-    .name = format (0, "segment_manager_test_pressure_1"),
+    .name = format (0, "segment_manager_test_pressure_2"),
   };
 
   attach_args.options[APP_OPTIONS_SEGMENT_SIZE] = app_seg_size;
@@ -313,8 +305,8 @@ segment_manager_test_pressure_2 (vlib_main_t * vm, unformat_input_t * input)
 					    &rx_fifo, &tx_fifo);
   SEG_MGR_TEST ((rv == 0), "segment_manager_alloc_session_fifos %d", rv);
 
-  svm_fifo_set_size (rx_fifo, size_2MB);
-  svm_fifo_set_size (tx_fifo, size_2MB);
+  svm_fifo_set_size (rx_fifo, size_1MB);
+  svm_fifo_set_size (tx_fifo, size_1MB);
 
   /* fill fifos (but not add chunks) */
   svm_fifo_enqueue (rx_fifo, fifo_size - 1, data);
@@ -326,9 +318,10 @@ segment_manager_test_pressure_2 (vlib_main_t * vm, unformat_input_t * input)
   for (i = 0; i < 509; ++i)
     {
       svm_fifo_enqueue (rx_fifo, fifo_size, data);
+      svm_fifo_enqueue (tx_fifo, fifo_size, data);
     }
 
-  /* 510 chunks : 100% of 2MB */
+  /* 100% of 2MB */
   rv = fifo_segment_get_mem_status (fs);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_HIGH_PRESSURE),
 		"fifo_segment_get_mem_status %s", states_str[rv]);
@@ -337,24 +330,12 @@ segment_manager_test_pressure_2 (vlib_main_t * vm, unformat_input_t * input)
   rv = svm_fifo_enqueue (rx_fifo, fifo_size, data);
   SEG_MGR_TEST ((rv == SVM_FIFO_EGROW), "svm_fifo_enqueue %d", rv);
 
-  /* then, no-memory is detected */
-  rv = fifo_segment_get_mem_status (fs);
-  SEG_MGR_TEST ((rv == MEMORY_PRESSURE_NO_MEMORY),
-		"fifo_segment_get_mem_status %s", states_str[rv]);
-
   /* shrink fifos */
   for (i = 0; i < 20; ++i)
     {
       svm_fifo_dequeue_drop (rx_fifo, fifo_size);
+      svm_fifo_dequeue_drop (tx_fifo, fifo_size);
     }
-
-  /* 489 chunks : 96%, it is high-pressure level
-   * but the reached-mem-limit record is not reset
-   * so the no-memory state lasts.
-   */
-  rv = fifo_segment_get_mem_status (fs);
-  SEG_MGR_TEST ((rv == MEMORY_PRESSURE_NO_MEMORY),
-		"fifo_segment_get_mem_status %s", states_str[rv]);
 
   /* shrink fifos */
   for (i = 0; i < 133; ++i)
@@ -368,9 +349,10 @@ segment_manager_test_pressure_2 (vlib_main_t * vm, unformat_input_t * input)
 		"fifo_segment_get_mem_status %s", states_str[rv]);
 
   /* shrink fifos */
-  for (i = 0; i < 354; ++i)
+  for (i = 0; i < 360; ++i)
     {
       svm_fifo_dequeue_drop (rx_fifo, fifo_size);
+      svm_fifo_dequeue_drop (tx_fifo, fifo_size);
     }
 
   /* 2 chunks : 3% of 2MB */
@@ -409,7 +391,7 @@ segment_manager_test_fifo_balanced_alloc (vlib_main_t * vm,
     .options = options,
     .namespace_id = 0,
     .session_cb_vft = &placeholder_session_cbs,
-    .name = format (0, "segment_manager_test_pressure_1"),
+    .name = format (0, "segment_manager_test_fifo_balanced_alloc"),
   };
 
   attach_args.options[APP_OPTIONS_SEGMENT_SIZE] = app_seg_size;
@@ -510,186 +492,12 @@ segment_manager_test_fifo_balanced_alloc (vlib_main_t * vm,
 }
 
 static int
-segment_manager_test_fifo_ops (vlib_main_t * vm, unformat_input_t * input)
-{
-  int rv, i;
-  segment_manager_t *sm;
-  fifo_segment_t *fs;
-  svm_fifo_t *rx_fifo, *tx_fifo;
-  uword app_seg_size = size_2MB, most_grown = 0;
-  u32 fifo_size = size_4KB;
-  u32 max_dequeue = 0;
-  u64 options[APP_OPTIONS_N_OPTIONS];
-  u8 data[size_128KB];
-
-  memset (&options, 0, sizeof (options));
-
-  vnet_app_attach_args_t attach_args = {
-    .api_client_index = ~0,
-    .options = options,
-    .namespace_id = 0,
-    .session_cb_vft = &placeholder_session_cbs,
-    .name = format (0, "segment_manager_test_pressure_1"),
-  };
-
-  attach_args.options[APP_OPTIONS_SEGMENT_SIZE] = app_seg_size;
-  attach_args.options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
-  attach_args.options[APP_OPTIONS_RX_FIFO_SIZE] = fifo_size;
-  attach_args.options[APP_OPTIONS_TX_FIFO_SIZE] = fifo_size;
-  rv = vnet_application_attach (&attach_args);
-  SEG_MGR_TEST ((rv == 0), "vnet_application_attach %d", rv);
-
-  sm =
-    segment_manager_get (SEGMENT_MANAGER_GET_INDEX_FROM_HANDLE
-			 (attach_args.segment_handle));
-  SEG_MGR_TEST ((sm != 0), "segment_manager_get %p", sm);
-
-  /* initial status : (0 / 2MB) */
-  fs = segment_manager_get_segment (sm, 0);
-  rv = fifo_segment_get_mem_status (fs);
-  SEG_MGR_TEST ((rv == MEMORY_PRESSURE_NO_PRESSURE),
-		"fifo_segment_get_mem_status %s", states_str[rv]);
-
-  /* allocate fifos : 4KB x2 */
-  rv = segment_manager_alloc_session_fifos (sm,
-					    vlib_get_thread_index (),
-					    &rx_fifo, &tx_fifo);
-  SEG_MGR_TEST ((rv == 0), "segment_manager_alloc_session_fifos %d", rv);
-
-  /* check the initial fifo size : 4KB */
-  rv = svm_fifo_size (rx_fifo);
-  SEG_MGR_TEST ((rv == size_4KB), "svm_fifo_size %d", rv);
-
-  /* fill 4KB */
-  rv = svm_fifo_enqueue (rx_fifo, size_4KB, data);
-  SEG_MGR_TEST ((rv == size_4KB), "svm_fifo_enqueue %d", rv);
-  max_dequeue = svm_fifo_max_dequeue (rx_fifo);
-  SEG_MGR_TEST ((max_dequeue == size_4KB), "max_dequeue %u", max_dequeue);
-
-  /* grow the fifo size : 4KB -> 8KB */
-  svm_fifo_set_size (rx_fifo, size_8KB);
-  rv = svm_fifo_size (rx_fifo);
-  SEG_MGR_TEST ((rv == size_8KB), "svm_fifo_size %d", rv);
-
-  /* verify that fifo cannot grow larger than the fifo size */
-  /* 4KB + 8KB > 8KB, so only 4KB is queued */
-  rv = svm_fifo_enqueue (rx_fifo, size_8KB, data);
-  SEG_MGR_TEST ((rv == size_4KB), "svm_fifo_enqueue %d", rv);
-  max_dequeue = svm_fifo_max_dequeue (rx_fifo);
-  SEG_MGR_TEST ((max_dequeue == size_8KB), "max_dequeue %u", max_dequeue);
-
-  /* grow the fifo size : 8KB -> 16KB */
-  svm_fifo_set_size (rx_fifo, size_16KB);
-
-  /* 8KB + 4KB = 12KB */
-  svm_fifo_enqueue (rx_fifo, size_4KB, data);
-  max_dequeue = svm_fifo_max_dequeue (rx_fifo);
-  SEG_MGR_TEST ((max_dequeue == size_12KB), "max_dequeue %u", max_dequeue);
-
-  /* grow the fifo size : 16KB -> 32KB */
-  svm_fifo_set_size (rx_fifo, size_32KB);
-
-  /* 12KB + 8KB = 20KB */
-  svm_fifo_enqueue (rx_fifo, size_8KB, data);
-  max_dequeue = svm_fifo_max_dequeue (rx_fifo);
-  SEG_MGR_TEST ((max_dequeue == size_20KB), "max_dequeue %u", max_dequeue);
-
-  /* grow the fifo size : 32KB -> 64KB */
-  svm_fifo_set_size (rx_fifo, size_64KB);
-
-  /* 20KB + 32KB = 52KB */
-  svm_fifo_enqueue (rx_fifo, size_32KB, data);
-  max_dequeue = svm_fifo_max_dequeue (rx_fifo);
-  SEG_MGR_TEST ((max_dequeue == size_52KB), "max_dequeue %u", max_dequeue);
-
-  /* bulk enqueue */
-  for (i = 0; i < 55; ++i)
-    {
-      svm_fifo_set_size (rx_fifo, svm_fifo_size (rx_fifo) + size_32KB);
-      svm_fifo_enqueue (rx_fifo, size_32KB, data);
-    }
-  max_dequeue = svm_fifo_max_dequeue (rx_fifo);
-  SEG_MGR_TEST ((max_dequeue == (size_52KB + size_32KB * 55)),
-		"max_dequeue %u", max_dequeue);
-  rv = fifo_segment_get_mem_status (fs);
-  SEG_MGR_TEST ((rv == MEMORY_PRESSURE_HIGH_PRESSURE),
-		"fifo_segment_get_mem_status %s", states_str[rv]);
-  most_grown = svm_fifo_size (rx_fifo);
-
-  /* dequeue */
-  svm_fifo_dequeue_drop (rx_fifo, size_20KB);
-  svm_fifo_dequeue_drop (rx_fifo, size_32KB);
-
-  /* bulk dequeue */
-  for (i = 0; i < 20; ++i)
-    svm_fifo_dequeue_drop (rx_fifo, size_32KB);
-  max_dequeue = svm_fifo_max_dequeue (rx_fifo);
-  SEG_MGR_TEST ((max_dequeue == (size_32KB * 35)), "max_dequeue %u",
-		max_dequeue);
-  rv = fifo_segment_get_mem_status (fs);
-  SEG_MGR_TEST ((rv == MEMORY_PRESSURE_LOW_PRESSURE),
-		"fifo_segment_get_mem_status %s", states_str[rv]);
-
-  /* bulk dequeue */
-  for (i = 0; i < 10; ++i)
-    svm_fifo_dequeue_drop (rx_fifo, size_32KB);
-  max_dequeue = svm_fifo_max_dequeue (rx_fifo);
-  SEG_MGR_TEST ((max_dequeue == (size_32KB * 25)), "max_dequeue %u",
-		max_dequeue);
-  rv = fifo_segment_get_mem_status (fs);
-  SEG_MGR_TEST ((rv == MEMORY_PRESSURE_NO_PRESSURE),
-		"fifo_segment_get_mem_status %s", states_str[rv]);
-
-  /* bulk enqueue */
-  for (i = 0; i < 30; ++i)
-    svm_fifo_enqueue (rx_fifo, size_32KB, data);
-  max_dequeue = svm_fifo_max_dequeue (rx_fifo);
-  SEG_MGR_TEST ((max_dequeue == (size_32KB * 55)), "max_dequeue %u",
-		max_dequeue);
-  rv = fifo_segment_get_mem_status (fs);
-  SEG_MGR_TEST ((rv == MEMORY_PRESSURE_HIGH_PRESSURE),
-		"fifo_segment_get_mem_status %s", states_str[rv]);
-
-  /* bulk dequeue */
-  for (i = 0; i < 20; ++i)
-    svm_fifo_dequeue_drop (rx_fifo, size_32KB);
-  max_dequeue = svm_fifo_max_dequeue (rx_fifo);
-  SEG_MGR_TEST ((max_dequeue == (size_32KB * 35)), "max_dequeue %u",
-		max_dequeue);
-  rv = fifo_segment_get_mem_status (fs);
-  SEG_MGR_TEST ((rv == MEMORY_PRESSURE_LOW_PRESSURE),
-		"fifo_segment_get_mem_status %s", states_str[rv]);
-
-  /* bulk dequeue */
-  for (i = 0; i < 35; ++i)
-    svm_fifo_dequeue_drop (rx_fifo, size_32KB);
-  max_dequeue = svm_fifo_max_dequeue (rx_fifo);
-  SEG_MGR_TEST ((max_dequeue == 0), "max_dequeue %u", max_dequeue);
-  rv = fifo_segment_get_mem_status (fs);
-  SEG_MGR_TEST ((rv == MEMORY_PRESSURE_NO_PRESSURE),
-		"fifo_segment_get_mem_status %s", states_str[rv]);
-
-  /* (virtual) fifo size is still large as it is not updated */
-  SEG_MGR_TEST ((rx_fifo->shr->size == most_grown), "rx_fifo->size %u",
-		rx_fifo->shr->size);
-
-  vnet_app_detach_args_t detach_args = {
-    .app_index = attach_args.app_index,
-    .api_client_index = ~0,
-  };
-  rv = vnet_application_detach (&detach_args);
-  SEG_MGR_TEST ((rv == 0), "vnet_application_detach %d", rv);
-
-  return 0;
-}
-
-static int
 segment_manager_test_prealloc_hdrs (vlib_main_t * vm,
 				    unformat_input_t * input)
 {
   u32 fifo_size = size_4KB, prealloc_hdrs, sm_index, fs_index;
   u64 options[APP_OPTIONS_N_OPTIONS];
-  uword app_seg_size = size_2MB;
+  uword app_seg_size = size_2MB * 2;
   segment_manager_t *sm;
   fifo_segment_t *fs;
   int rv;
@@ -701,10 +509,10 @@ segment_manager_test_prealloc_hdrs (vlib_main_t * vm,
     .options = options,
     .namespace_id = 0,
     .session_cb_vft = &placeholder_session_cbs,
-    .name = format (0, "segment_manager_prealloc_hdrs"),
+    .name = format (0, "segment_manager_test_prealloc_hdrs"),
   };
 
-  prealloc_hdrs = (app_seg_size - (16 << 10)) / sizeof (svm_fifo_t);
+  prealloc_hdrs = 64;
 
   attach_args.options[APP_OPTIONS_SEGMENT_SIZE] = app_seg_size;
   attach_args.options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
@@ -752,8 +560,6 @@ segment_manager_test (vlib_main_t * vm,
 	res = segment_manager_test_pressure_2 (vm, input);
       else if (unformat (input, "alloc"))
 	res = segment_manager_test_fifo_balanced_alloc (vm, input);
-      else if (unformat (input, "fifo_ops"))
-	res = segment_manager_test_fifo_ops (vm, input);
       else if (unformat (input, "prealloc_hdrs"))
 	res = segment_manager_test_prealloc_hdrs (vm, input);
 
@@ -764,8 +570,6 @@ segment_manager_test (vlib_main_t * vm,
 	  if ((res = segment_manager_test_pressure_2 (vm, input)))
 	    goto done;
 	  if ((res = segment_manager_test_fifo_balanced_alloc (vm, input)))
-	    goto done;
-	  if ((res = segment_manager_test_fifo_ops (vm, input)))
 	    goto done;
 	  if ((res = segment_manager_test_prealloc_hdrs (vm, input)))
 	    goto done;
