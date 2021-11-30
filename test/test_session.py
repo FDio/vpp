@@ -122,6 +122,33 @@ class TestSessionUnitTests(VppTestCase):
 
 
 @tag_run_solo
+class TestSegmentManagerTests(VppTestCase):
+    """ SVM Fifo Unit Tests Case """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestSegmentManagerTests, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestSegmentManagerTests, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestSegmentManagerTests, self).setUp()
+
+    def test_segment_manager(self):
+        """ Segment manager Tests """
+        error = self.vapi.cli("test segment-manager all")
+
+        if error:
+            self.logger.critical(error)
+        self.assertNotIn("failed", error)
+
+    def tearDown(self):
+        super(TestSegmentManagerTests, self).tearDown()
+
+
+@tag_run_solo
 class TestSvmFifoUnitTests(VppTestCase):
     """ SVM Fifo Unit Tests Case """
 
