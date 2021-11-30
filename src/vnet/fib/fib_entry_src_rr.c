@@ -25,6 +25,37 @@
 #include "fib_entry.h"
 #include "fib_table.h"
 #include "fib_path_ext.h"
+#include "fib_path_list.h"
+
+struct fib_entry_src_rr_context {
+    fib_route_path_t *paths;
+    const fib_entry_t *fib_entry;
+};
+
+static fib_path_list_walk_rc_t
+fib_entry_src_rr_fill_path_list (fib_node_index_t pl_index,
+    fib_node_index_t path_index,
+    void *arg)
+{
+    u32 sw_if_index = fib_path_get_resolving_interface (path_index);
+    if (sw_if_index == ~0)
+    {
+        return FIB_PATH_LIST_WALK_CONTINUE;
+    }
+
+    struct fib_entry_src_rr_context *ctx = (struct fib_entry_src_rr_context *)arg;
+    const fib_route_path_t path = {
+	.frp_proto = fib_proto_to_dpo(ctx->fib_entry->fe_prefix.fp_proto),
+	.frp_addr = ctx->fib_entry->fe_prefix.fp_addr,
+	.frp_sw_if_index = sw_if_index,
+	.frp_fib_index = ~0,
+	.frp_weight = 1,
+    };
+
+    vec_add1(ctx->paths, path);
+
+    return FIB_PATH_LIST_WALK_CONTINUE;
+}
 
 /*
  * fib_entry_src_rr_resolve_via_connected
@@ -36,16 +67,12 @@ fib_entry_src_rr_resolve_via_connected (fib_entry_src_t *src,
 					const fib_entry_t *fib_entry,
 					const fib_entry_t *cover)
 {
-    const fib_route_path_t path = {
-	.frp_proto = fib_proto_to_dpo(fib_entry->fe_prefix.fp_proto),
-	.frp_addr = fib_entry->fe_prefix.fp_addr,
-	.frp_sw_if_index = fib_entry_get_resolving_interface(
-	                       fib_entry_get_index(cover)),
-	.frp_fib_index = ~0,
-	.frp_weight = 1,
+    struct fib_entry_src_rr_context ctx = {
+        .paths = NULL,
+        .fib_entry = fib_entry,
     };
-    fib_route_path_t *paths = NULL;
-    vec_add1(paths, path);
+    fib_node_index_t path_list = fib_entry_get(fib_entry_get_index(cover))->fe_parent;
+    fib_path_list_walk (path_list, fib_entry_src_rr_fill_path_list, &ctx);
 
     /*
      * since the cover is connected, the address this entry corresponds
@@ -54,11 +81,11 @@ fib_entry_src_rr_resolve_via_connected (fib_entry_src_t *src,
      * source is the first SRC to use said peer. The ARP source will be along
      * shortly to over-rule this RR source.
      */
-    src->fes_pl = fib_path_list_create(FIB_PATH_LIST_FLAG_NONE, paths);
+    src->fes_pl = fib_path_list_create(FIB_PATH_LIST_FLAG_NONE, ctx.paths);
     src->fes_entry_flags |= (fib_entry_get_flags(fib_entry_get_index(cover)) &
                              FIB_ENTRY_FLAGS_RR_INHERITED);
 
-    vec_free(paths);
+    vec_free(ctx.paths);
 }
 
 
