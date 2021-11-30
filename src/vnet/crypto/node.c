@@ -158,14 +158,12 @@ VLIB_NODE_FN (crypto_dispatch_node) (vlib_main_t * vm,
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_thread_t *ct = cm->threads + vm->thread_index;
-  u32 n_dispatched = 0, n_cache = 0;
-  u32 index;
+  u32 n_dispatched = 0, n_cache = 0, index;
+  vec_foreach_index (index, cm->dequeue_handlers)
 
-  /* *INDENT-OFF* */
-  clib_bitmap_foreach (index, cm->async_active_ids)  {
     n_cache = crypto_dequeue_frame (vm, node, ct, cm->dequeue_handlers[index],
 				    n_cache, &n_dispatched);
-  }
+
   /* *INDENT-ON* */
   if (n_cache)
     vlib_buffer_enqueue_to_next_vec (vm, node, &ct->buffer_indices, &ct->nexts,
