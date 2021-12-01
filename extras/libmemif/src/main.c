@@ -1563,6 +1563,7 @@ memif_buffer_alloc (memif_conn_handle_t conn, uint16_t qid,
 
       b0->desc_index = mq->next_buf;
       ring->desc[mq->next_buf & mask].flags = 0;
+      b0->flags = 0;
 
       /* slave can produce buffer with original length */
       dst_left = (c->args.is_master) ? ring->desc[mq->next_buf & mask].length :
@@ -1841,6 +1842,7 @@ memif_rx_burst (memif_conn_handle_t conn, uint16_t qid,
       b0->desc_index = cur_slot;
       b0->data = memif_get_buffer (c, ring, cur_slot & mask);
       b0->len = ring->desc[cur_slot & mask].length;
+      b0->flags = 0;
       /* slave resets buffer length */
       if (c->args.is_master == 0)
 	{
