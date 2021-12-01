@@ -192,7 +192,7 @@ wg_peer_add_command_fn (vlib_main_t * vm,
 	;
       else if (unformat (line_input, "table-id %d", &table_id))
 	;
-      else if (unformat (line_input, "port %d", &portDst))
+      else if (unformat (line_input, "dst-port %d", &portDst))
 	;
       else if (unformat (line_input, "persistent-keepalive %d",
 			 &persistent_keepalive))
@@ -246,12 +246,12 @@ done:
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (wg_peer_add_command, static) =
-{
+VLIB_CLI_COMMAND (wg_peer_add_command, static) = {
   .path = "wireguard peer add",
-  .short_help = "wireguard peer add <wg_int> public-key <pub_key_other>"
-  "endpoint <ip4_dst> allowed-ip <prefix>"
-  "dst-port [port_dst] persistent-keepalive [keepalive_interval]",
+  .short_help =
+    "wireguard peer add <wg_int> public-key <pub_key_other> "
+    "endpoint <ip4_dst> allowed-ip <prefix> "
+    "dst-port [port_dst] persistent-keepalive [keepalive_interval]",
   .function = wg_peer_add_command_fn,
 };
 /* *INDENT-ON* */
