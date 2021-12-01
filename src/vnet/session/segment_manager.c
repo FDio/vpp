@@ -89,7 +89,7 @@ segment_manager_segment_index (segment_manager_t * sm, fifo_segment_t * seg)
  */
 static inline int
 segment_manager_add_segment_inline (segment_manager_t *sm, uword segment_size,
-				    u8 notify_app, u8 flags)
+				    u8 notify_app, u8 flags, u8 need_lock)
 {
   segment_manager_main_t *smm = &sm_main;
   segment_manager_props_t *props;
@@ -112,7 +112,7 @@ segment_manager_add_segment_inline (segment_manager_t *sm, uword segment_size,
   /*
    * Allocate fifo segment and grab lock if needed
    */
-  if (vlib_num_workers ())
+  if (need_lock)
     clib_rwlock_writer_lock (&sm->segments_rwlock);
 
   pool_get_zero (sm->segments, fs);
@@ -179,7 +179,7 @@ segment_manager_add_segment_inline (segment_manager_t *sm, uword segment_size,
     }
 done:
 
-  if (vlib_num_workers ())
+  if (need_lock)
     clib_rwlock_writer_unlock (&sm->segments_rwlock);
 
   return fs_index;
@@ -189,14 +189,16 @@ int
 segment_manager_add_segment (segment_manager_t *sm, uword segment_size,
 			     u8 notify_app)
 {
-  return segment_manager_add_segment_inline (sm, segment_size, notify_app, 0);
+  return segment_manager_add_segment_inline (sm, segment_size, notify_app,
+					     0 /* flags */, 0 /* need_lock */);
 }
 
 int
 segment_manager_add_segment2 (segment_manager_t *sm, uword segment_size,
 			      u8 flags)
 {
-  return segment_manager_add_segment_inline (sm, segment_size, 0, flags);
+  return segment_manager_add_segment_inline (sm, segment_size, 0, flags,
+					     vlib_num_workers ());
 }
 
 /**
@@ -331,12 +333,6 @@ void
 segment_manager_segment_reader_unlock (segment_manager_t * sm)
 {
   clib_rwlock_reader_unlock (&sm->segments_rwlock);
-}
-
-void
-segment_manager_segment_writer_unlock (segment_manager_t * sm)
-{
-  clib_rwlock_writer_unlock (&sm->segments_rwlock);
 }
 
 segment_manager_t *
@@ -740,27 +736,14 @@ segment_manager_try_alloc_fifos (fifo_segment_t * fifo_segment,
   return 0;
 }
 
-int
-segment_manager_alloc_session_fifos (segment_manager_t * sm,
-				     u32 thread_index,
-				     svm_fifo_t ** rx_fifo,
-				     svm_fifo_t ** tx_fifo)
+static inline fifo_segment_t *
+sm_lookup_avail_segment (segment_manager_t *sm, uword min_space)
 {
-  int alloc_fail = 1, rv = 0, new_fs_index;
-  uword free_bytes, max_free_bytes = 0;
-  segment_manager_props_t *props;
-  fifo_segment_t *fs = 0, *cur;
-  u32 sm_index, fs_index;
+  uword free_bytes, max_free_bytes = min_space - 1;
+  fifo_segment_t *cur, *fs = 0;
 
-  props = segment_manager_properties_get (sm);
-
-  /*
-   * Find the first free segment to allocate the fifos in
-   */
-
-  segment_manager_segment_reader_lock (sm);
-
-  pool_foreach (cur, sm->segments)  {
+  pool_foreach (cur, sm->segments)
+    {
       if (fifo_segment_flags (cur) & FIFO_SEGMENT_F_CUSTOM_USE)
 	continue;
       free_bytes = fifo_segment_available_bytes (cur);
@@ -769,61 +752,114 @@ segment_manager_alloc_session_fifos (segment_manager_t * sm,
 	  max_free_bytes = free_bytes;
 	  fs = cur;
 	}
-  }
+    }
 
+  return fs;
+}
+
+static int
+sm_lock_and_alloc_segment_and_fifos (segment_manager_t *sm, u32 thread_index,
+				     svm_fifo_t **rx_fifo,
+				     svm_fifo_t **tx_fifo)
+{
+  segment_manager_props_t *props;
+  int new_fs_index, rv;
+  fifo_segment_t *fs;
+
+  props = segment_manager_properties_get (sm);
+  if (!props->add_segment)
+    return SESSION_E_SEG_NO_SPACE;
+
+  clib_rwlock_writer_lock (&sm->segments_rwlock);
+
+  /* Make sure there really is no free space. Another worker might've freed
+   * some fifos or allocated a segment */
+  fs = sm_lookup_avail_segment (sm, props->rx_fifo_size + props->tx_fifo_size);
   if (fs)
     {
-      alloc_fail = segment_manager_try_alloc_fifos (fs, thread_index,
-						    props->rx_fifo_size,
-						    props->tx_fifo_size,
-						    rx_fifo, tx_fifo);
-      /* On success, keep lock until fifos are initialized */
-      if (!alloc_fail)
-	goto alloc_success;
+      rv = segment_manager_try_alloc_fifos (
+	fs, thread_index, props->rx_fifo_size, props->tx_fifo_size, rx_fifo,
+	tx_fifo);
+      if (!rv)
+	{
+	  rv = segment_manager_segment_index (sm, fs);
+	  goto done;
+	}
+    }
+
+  new_fs_index =
+    segment_manager_add_segment (sm, 0 /* segment_size*/, 1 /* notify_app */);
+  if (new_fs_index < 0)
+    {
+      rv = SESSION_E_SEG_CREATE;
+      goto done;
+    }
+  fs = segment_manager_get_segment (sm, new_fs_index);
+  rv = segment_manager_try_alloc_fifos (fs, thread_index, props->rx_fifo_size,
+					props->tx_fifo_size, rx_fifo, tx_fifo);
+  if (rv)
+    {
+      clib_warning ("Added a segment, still can't allocate a fifo");
+      rv = SESSION_E_SEG_NO_SPACE2;
+      goto done;
+    }
+
+  rv = new_fs_index;
+
+done:
+
+  clib_rwlock_writer_unlock (&sm->segments_rwlock);
+
+  return rv;
+}
+
+int
+segment_manager_alloc_session_fifos (segment_manager_t * sm,
+				     u32 thread_index,
+				     svm_fifo_t ** rx_fifo,
+				     svm_fifo_t ** tx_fifo)
+{
+  int alloc_fail = 1, rv = 0;
+  segment_manager_props_t *props;
+  fifo_segment_t *fs = 0;
+  u32 sm_index, fs_index;
+
+  props = segment_manager_properties_get (sm);
+  sm_index = segment_manager_index (sm);
+
+  /*
+   * Find the first free segment to allocate the fifos in
+   */
+
+  segment_manager_segment_reader_lock (sm);
+
+  fs = sm_lookup_avail_segment (sm, props->rx_fifo_size + props->tx_fifo_size);
+
+  if (PREDICT_TRUE (fs != 0))
+    {
+      fs_index = segment_manager_segment_index (sm, fs);
+      alloc_fail = segment_manager_try_alloc_fifos (
+	fs, thread_index, props->rx_fifo_size, props->tx_fifo_size, rx_fifo,
+	tx_fifo);
     }
 
   segment_manager_segment_reader_unlock (sm);
 
   /*
-   * Allocation failed, see if we can add a new segment
+   * If no fs or alloc fail try to allocate new segment
    */
-  if (props->add_segment)
+  if (PREDICT_FALSE (alloc_fail))
     {
-      if ((new_fs_index = segment_manager_add_segment (sm, 0, 1)) < 0)
-	{
-	  clib_warning ("Failed to add new segment");
-	  return SESSION_E_SEG_CREATE;
-	}
-      fs = segment_manager_get_segment_w_lock (sm, new_fs_index);
-      alloc_fail = segment_manager_try_alloc_fifos (fs, thread_index,
-						    props->rx_fifo_size,
-						    props->tx_fifo_size,
-						    rx_fifo, tx_fifo);
-      if (alloc_fail)
-	{
-	  clib_warning ("Added a segment, still can't allocate a fifo");
-	  segment_manager_segment_reader_unlock (sm);
-	  return SESSION_E_SEG_NO_SPACE2;
-	}
-    }
-  else
-    {
-      SESSION_DBG ("Can't add new seg and no space to allocate fifos!");
-      return SESSION_E_SEG_NO_SPACE;
+      fs_index = sm_lock_and_alloc_segment_and_fifos (sm, thread_index,
+						      rx_fifo, tx_fifo);
+      if (fs_index < 0)
+	return fs_index;
     }
 
-alloc_success:
-  ASSERT (rx_fifo && tx_fifo);
-
-  sm_index = segment_manager_index (sm);
-  fs_index = segment_manager_segment_index (sm, fs);
   (*tx_fifo)->segment_manager = sm_index;
   (*rx_fifo)->segment_manager = sm_index;
   (*tx_fifo)->segment_index = fs_index;
   (*rx_fifo)->segment_index = fs_index;
-
-  /* Drop the lock after app is notified */
-  segment_manager_segment_reader_unlock (sm);
 
   return rv;
 }
