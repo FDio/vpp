@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c33aec37_f16d27fc",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 325,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-12-01T18:02:12Z",
+      "side": 1,
+      "message": "it would be good to integrate rxq-\u003exsk_fd in the same if/else:\n  if (is_rx)\n    {\n      vec_validate_aligned(...);\n      rxq-\u003exsk_fd \u003d fd;\n    }\n  else\n    {\n      rxq-\u003exsk_fd \u003d -1;\n    }",
+      "revId": "f993f17b0d5394fc8308ab2e993fb6a16133fde4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b8e53d2f_37d15193",
+        "filename": "src/plugins/af_xdp/input.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 124,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-12-01T18:02:12Z",
+      "side": 1,
+      "message": "Why the check \u0027rxq-\u003etotal_num + n_alloc \u003e size\u0027?\nrxq-\u003ebufs should have the same buffers as rxq-\u003efq and xsk_prod_nb_free() should return the number of free elements in rxq-\u003efq - which should match the avail size of rxq-\u003ebufs",
+      "revId": "f993f17b0d5394fc8308ab2e993fb6a16133fde4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
