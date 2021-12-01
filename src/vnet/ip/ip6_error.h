@@ -89,6 +89,7 @@
   _ (REASS_NO_BUF, "out of buffers (drop)")                             \
   _ (REASS_TIMEOUT, "fragments dropped due to reassembly timeout")      \
   _ (REASS_INTERNAL_ERROR, "drops due to internal reassembly error")    \
+  _ (REASS_INVALID_FRAG_LEN, "invalid fragment length")    \
   _ (REASS_UNSUPP_IP_PROTO, "unsupported ip protocol")
 
 // clang-format on
