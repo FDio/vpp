@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "cee48f9d_890d7772",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 313,
+      "author": {
+        "id": 1541
+      },
+      "writtenOn": "2021-12-01T17:33:00Z",
+      "side": 1,
+      "message": "good suggestion. resolved.",
+      "parentUuid": "7cd0f308_1bb1d47b",
+      "revId": "dedf7268e1e54ebc10afabe355db356674b764aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "d6e136fd_c912a190",
         "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
         "patchSetId": 5
@@ -30,6 +48,24 @@
       "writtenOn": "2021-11-30T12:26:48Z",
       "side": 1,
       "message": "maybe a better name could be nat44_ed_update_outside_intf_addresses ?",
+      "revId": "dedf7268e1e54ebc10afabe355db356674b764aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "66d15aed_f73a2036",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 376,
+      "author": {
+        "id": 1541
+      },
+      "writtenOn": "2021-12-01T17:33:00Z",
+      "side": 1,
+      "message": "good suggestion. resolved.",
+      "parentUuid": "d6e136fd_c912a190",
       "revId": "dedf7268e1e54ebc10afabe355db356674b764aa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "5b71da8e_93ffc2c9",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 392,
+      "author": {
+        "id": 1541
+      },
+      "writtenOn": "2021-12-01T17:33:00Z",
+      "side": 1,
+      "message": "good suggestion. resolved naming. i can\u0027t see any use of adding return value to this function. this function is a best effort function. it is expected to bind only if there is already user added nat address that matches interface address, this is not a requirement for configuration.",
+      "parentUuid": "1cd493da_e61e9cbc",
+      "revId": "dedf7268e1e54ebc10afabe355db356674b764aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "0130cc01_86486dfb",
         "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
         "patchSetId": 5
@@ -64,6 +118,24 @@
       "writtenOn": "2021-11-30T12:26:48Z",
       "side": 1,
       "message": "this code block looks very similar to\n\nnat44_ed_update_addr_to_sw_if_foreach_addr\n\nmaybe with that function returning success/fail instead of void, it could be used here with ~0 setting in the fail branch",
+      "revId": "dedf7268e1e54ebc10afabe355db356674b764aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d497f52b_bb889d78",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 3389,
+      "author": {
+        "id": 1541
+      },
+      "writtenOn": "2021-12-01T17:33:00Z",
+      "side": 1,
+      "message": "i don\u0027t agree, this callback is directly giving me address_length. compared to nat44_ed_update_addr_to_sw_if_foreach_addr that internally has to go through the trouble of resolving interface address based on sw_if_index and ip address to get to value of address_length.",
+      "parentUuid": "0130cc01_86486dfb",
       "revId": "dedf7268e1e54ebc10afabe355db356674b764aa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
