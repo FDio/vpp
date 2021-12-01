@@ -843,9 +843,10 @@ set_ipfix_exporter_command_fn (vlib_main_t * vm,
 		     "fib index %d, path MTU %u, "
 		     "template resend interval %us, "
 		     "udp checksum %s",
-		     format_ip4_address, exp->ipfix_collector,
-		     format_ip4_address, exp->src_address, fib_index, path_mtu,
-		     template_interval, udp_checksum ? "enabled" : "disabled");
+		     format_ip4_address, &exp->ipfix_collector.ip.ip4,
+		     format_ip4_address, &exp->src_address.ip.ip4, fib_index,
+		     path_mtu, template_interval,
+		     udp_checksum ? "enabled" : "disabled");
   else
     vlib_cli_output (vm, "IPFIX Collector is disabled");
 
