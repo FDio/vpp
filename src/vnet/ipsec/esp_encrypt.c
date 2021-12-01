@@ -1056,7 +1056,7 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    {
 	      n_noop += esp_async_recycle_failed_submit (
 		vm, *async_frame, node, ESP_ENCRYPT_ERROR_CRYPTO_ENGINE_ERROR,
-		n_sync, noop_bi, noop_nexts, drop_next);
+		n_noop, noop_bi, noop_nexts, drop_next);
 	      vnet_crypto_async_reset_frame (*async_frame);
 	      vnet_crypto_async_free_frame (vm, *async_frame);
 	    }

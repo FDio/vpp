@@ -171,7 +171,6 @@ esp_async_recycle_failed_submit (vlib_main_t *vm, vnet_crypto_async_frame_t *f,
       bi++;
       index++;
     }
-  vnet_crypto_async_reset_frame (f);
 
   return (f->n_elts);
 }
