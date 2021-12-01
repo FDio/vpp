@@ -1392,6 +1392,15 @@ class TestIPv6Reassembly(VppTestCase):
         self.assertIn(ICMPv6ParamProblem, icmp)
         self.assert_equal(icmp[ICMPv6ParamProblem].code, 3, "ICMP code")
 
+    def test_truncated_fragment(self):
+        """ truncated fragment """
+        pkt = (Ether(src=self.pg0.local_mac, dst=self.pg0.remote_mac) /
+               IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6,
+                    nh=44, plen=2) /
+               IPv6ExtHdrFragment(nh=6))
+
+        self.send_and_assert_no_replies(self.pg0, [pkt], self.pg0)
+
     def test_invalid_frag_size(self):
         """ fragment size not a multiple of 8 """
         p = (Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac) /
@@ -1916,6 +1925,15 @@ class TestIPv6SVReassembly(VppTestCase):
                IPv6(src=self.src_if.remote_ip6, dst=self.dst_if.remote_ip6) /
                IPv6ExtHdrFragment(id=1)/ICMPv6EchoRequest())
         rx = self.send_and_expect(self.src_if, [pkt], self.dst_if)
+
+    def test_truncated_fragment(self):
+        """ truncated fragment """
+        pkt = (Ether(src=self.pg0.local_mac, dst=self.pg0.remote_mac) /
+               IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6,
+                    nh=44, plen=2) /
+               IPv6ExtHdrFragment(nh=6))
+
+        self.send_and_assert_no_replies(self.pg0, [pkt], self.pg0)
 
 
 class TestIPv4ReassemblyLocalNode(VppTestCase):
