@@ -102,8 +102,23 @@ segment_manager_t *segment_manager_get (u32 index);
 segment_manager_t *segment_manager_get_if_valid (u32 index);
 u32 segment_manager_index (segment_manager_t * sm);
 
+/**
+ * Add segment without lock
+ *
+ * @param sm		Segment manager
+ * @param segment_size	Size of segment to be added
+ * @param notify_app	Flag set if app notification requested
+ */
 int segment_manager_add_segment (segment_manager_t *sm, uword segment_size,
 				 u8 notify_app);
+
+/**
+ * Add segment with lock
+ *
+ * @param sm		Segment manager
+ * @param segment_size	Size of segment to be added
+ * @param flags		Flags to be set on segment
+ */
 int segment_manager_add_segment2 (segment_manager_t *sm, uword segment_size,
 				  u8 flags);
 void segment_manager_del_segment (segment_manager_t * sm,
@@ -122,7 +137,6 @@ u64 segment_manager_make_segment_handle (u32 segment_manager_index,
 u64 segment_manager_segment_handle (segment_manager_t * sm,
 				    fifo_segment_t * segment);
 void segment_manager_segment_reader_unlock (segment_manager_t * sm);
-void segment_manager_segment_writer_unlock (segment_manager_t * sm);
 
 int segment_manager_alloc_session_fifos (segment_manager_t * sm,
 					 u32 thread_index,
