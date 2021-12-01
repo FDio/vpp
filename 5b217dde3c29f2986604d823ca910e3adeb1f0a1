@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "799b1761_18000c29",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 404,
+      "author": {
+        "id": 1541
+      },
+      "writtenOn": "2021-12-01T17:32:48Z",
+      "side": 1,
+      "message": "i agree that it is much simpler to just return the value. i was trying to avoid multiple loops through sm-\u003efib_entry_reg get / del situations. i made a compromise returning entry outside through return value and also leaving and changing out to out_idx for purpose of delete code.",
+      "parentUuid": "7c5b368b_ca088107",
+      "revId": "5b217dde3c29f2986604d823ca910e3adeb1f0a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "879822b4_04221eab",
         "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
         "patchSetId": 6
@@ -87,6 +105,24 @@
     },
     {
       "key": {
+        "uuid": "92353b9e_4bf37be6",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 3262,
+      "author": {
+        "id": 1541
+      },
+      "writtenOn": "2021-12-01T17:32:48Z",
+      "side": 1,
+      "message": "i dropped the i and match requirement and used vec_foreach, though i am not quite sure what do you mean by testing rp for NULL. if vector is not empty and no match is found rp points to address after last record.",
+      "parentUuid": "565d0e0b_f67f021f",
+      "revId": "5b217dde3c29f2986604d823ca910e3adeb1f0a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "93facf81_52796e3f",
         "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
         "patchSetId": 6
@@ -98,6 +134,24 @@
       "writtenOn": "2021-11-30T15:20:51Z",
       "side": 1,
       "message": "same point here about returning pointer/NULL instead of index ...",
+      "revId": "5b217dde3c29f2986604d823ca910e3adeb1f0a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c969e6e2_f2cce9b3",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 3313,
+      "author": {
+        "id": 1541
+      },
+      "writtenOn": "2021-12-01T17:32:48Z",
+      "side": 1,
+      "message": "done the same as above",
+      "parentUuid": "93facf81_52796e3f",
       "revId": "5b217dde3c29f2986604d823ca910e3adeb1f0a1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
