@@ -41,6 +41,7 @@ typedef enum
   IP6_SV_REASS_RC_TOO_MANY_FRAGMENTS,
   IP6_SV_REASS_RC_INTERNAL_ERROR,
   IP6_SV_REASS_RC_UNSUPP_IP_PROTO,
+  IP6_SV_REASS_RC_INVALID_FRAG_LEN,
 } ip6_sv_reass_rc_t;
 
 typedef struct
@@ -400,6 +401,10 @@ ip6_sv_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
   u32 fragment_length =
     vlib_buffer_length_in_chain (vm, fb) -
     (fvnb->ip.reass.ip6_frag_hdr_offset + sizeof (*frag_hdr));
+  if (0 == fragment_length)
+    {
+      return IP6_SV_REASS_RC_INVALID_FRAG_LEN;
+    }
   u32 fragment_last = fvnb->ip.reass.fragment_last =
     fragment_first + fragment_length - 1;
   fvnb->ip.reass.range_first = fragment_first;
@@ -666,6 +671,9 @@ ip6_sv_reassembly_inline (vlib_main_t * vm,
 	      break;
 	    case IP6_SV_REASS_RC_INTERNAL_ERROR:
 	      counter = IP6_ERROR_REASS_INTERNAL_ERROR;
+	      break;
+	    case IP6_SV_REASS_RC_INVALID_FRAG_LEN:
+	      counter = IP6_ERROR_REASS_INVALID_FRAG_LEN;
 	      break;
 	    }
 	  if (~0 != counter)
