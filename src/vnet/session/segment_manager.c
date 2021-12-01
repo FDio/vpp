@@ -787,29 +787,30 @@ segment_manager_alloc_session_fifos (segment_manager_t * sm,
   /*
    * Allocation failed, see if we can add a new segment
    */
-  if (props->add_segment)
-    {
-      if ((new_fs_index = segment_manager_add_segment (sm, 0, 1)) < 0)
-	{
-	  clib_warning ("Failed to add new segment");
-	  return SESSION_E_SEG_CREATE;
-	}
-      fs = segment_manager_get_segment_w_lock (sm, new_fs_index);
-      alloc_fail = segment_manager_try_alloc_fifos (fs, thread_index,
-						    props->rx_fifo_size,
-						    props->tx_fifo_size,
-						    rx_fifo, tx_fifo);
-      if (alloc_fail)
-	{
-	  clib_warning ("Added a segment, still can't allocate a fifo");
-	  segment_manager_segment_reader_unlock (sm);
-	  return SESSION_E_SEG_NO_SPACE2;
-	}
-    }
-  else
+
+  if (!props->add_segment)
     {
       SESSION_DBG ("Can't add new seg and no space to allocate fifos!");
       return SESSION_E_SEG_NO_SPACE;
+    }
+
+
+
+  if ((new_fs_index = segment_manager_add_segment (sm, 0, 1)) < 0)
+    {
+      clib_warning("Failed to add new segment");
+      return SESSION_E_SEG_CREATE;
+    }
+  fs = segment_manager_get_segment_w_lock (sm, new_fs_index);
+  alloc_fail = segment_manager_try_alloc_fifos (fs, thread_index,
+	                                        props->rx_fifo_size,
+	                                        props->tx_fifo_size, rx_fifo,
+	                                        tx_fifo);
+  if (alloc_fail)
+    {
+      clib_warning("Added a segment, still can't allocate a fifo");
+      segment_manager_segment_reader_unlock (sm);
+      return SESSION_E_SEG_NO_SPACE2;
     }
 
 alloc_success:
