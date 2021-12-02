@@ -24,6 +24,7 @@ VAT2 tests.
 '''
 
 import datetime
+import itertools
 import os
 import time
 import sys
@@ -1256,7 +1257,7 @@ def generate_include_types(s, module, stream):
             filename = i.filename.replace('plugins/', '')
             write('#include <{}_types.h>\n'.format(filename))
 
-    for o in s['types'] + s['Define']:
+    for o in itertools.chain(s['types'], s['Define']):
         tname = o.__class__.__name__
         if tname == 'Using':
             if 'length' in o.alias:
@@ -1315,6 +1316,7 @@ def generate_include_types(s, module, stream):
                                      .format(b, o.name))
 
             write('} vl_api_%s_t;\n' % o.name)
+            write(f'#define VL_API_{o.name.upper()}_IS_CONSTANT_SIZE ({0 if o.vla else 1})\n\n')
 
     for t in s['Define']:
         write('#define VL_API_{ID}_CRC "{n}_{crc:08x}"\n'
