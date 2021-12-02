@@ -411,24 +411,6 @@ u32x4_sum_elts (u32x4 sum4)
   return sum4[0];
 }
 
-static_always_inline u8x16
-u8x16_shuffle (u8x16 v, u8x16 m)
-{
-  return (u8x16) _mm_shuffle_epi8 ((__m128i) v, (__m128i) m);
-}
-
-static_always_inline u32x4
-u32x4_shuffle (u32x4 v, const int a, const int b, const int c, const int d)
-{
-#if defined(__clang__) || !__OPTIMIZE__
-  u32x4 r = { v[a], v[b], v[c], v[d] };
-  return r;
-#else
-  return (u32x4) _mm_shuffle_epi32 ((__m128i) v,
-				    a | b << 2 | c << 4 | d << 6);
-#endif
-}
-
 /* _from_ */
 /* *INDENT-OFF* */
 #define _(f,t,i) \

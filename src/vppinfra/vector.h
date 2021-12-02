@@ -126,6 +126,68 @@ foreach_vec
 
 #undef _vector_size
 
+  /* _shuffle and _shuffle2 */
+#if defined(__GNUC__) && !defined(__clang__)
+#define __builtin_shufflevector(v1, v2, ...)                                  \
+  __builtin_shuffle ((v1), (v2), (__typeof__ (v1)){ __VA_ARGS__ })
+#endif
+
+#define u8x16_shuffle(v1, ...)                                                \
+  (u8x16) __builtin_shufflevector ((u8x16) (v1), (u8x16) (v1), __VA_ARGS__)
+#define u8x32_shuffle(v1, ...)                                                \
+  (u8x32) __builtin_shufflevector ((u8x32) (v1), (u8x32) (v1), __VA_ARGS__)
+#define u8x64_shuffle(v1, ...)                                                \
+  (u8x64) __builtin_shufflevector ((u8x64) (v1), (u8x64) (v1), __VA_ARGS__)
+
+#define u16x8_shuffle(v1, ...)                                                \
+  (u16x8) __builtin_shufflevector ((u16x8) (v1), (u16x8) (v1), __VA_ARGS__)
+#define u16x16_shuffle(v1, ...)                                               \
+  (u16x16) __builtin_shufflevector ((u16x16) (v1), (u16x16) (v1), __VA_ARGS__)
+#define u16x32_shuffle(v1, ...)                                               \
+  (u16u32) __builtin_shufflevector ((u16x32) (v1), (u16x32) (v1), __VA_ARGS__);
+
+#define u32x4_shuffle(v1, ...)                                                \
+  (u32x4) __builtin_shufflevector ((u32x4) (v1), (u32x4) (v1), __VA_ARGS__)
+#define u32x8_shuffle(v1, ...)                                                \
+  (u32x8) __builtin_shufflevector ((u32x8) (v1), (u32x8) (v1), __VA_ARGS__)
+#define u32x16_shuffle(v1, ...)                                               \
+  (u32x16) __builtin_shufflevector ((u32x16) (v1), (u32x16) (v1), __VA_ARGS__)
+
+#define u64x2_shuffle(v1, ...)                                                \
+  (u64x2) __builtin_shufflevector ((u64x2) (v1), (u64x2) (v1), __VA_ARGS__)
+#define u64x4_shuffle(v1, ...)                                                \
+  (u64x4) __builtin_shufflevector ((u64x4) (v1), (u64x4) (v1), __VA_ARGS__)
+#define u64x8_shuffle(v1, ...)                                                \
+  (u64x8) __builtin_shufflevector ((u64x8) (v1), (u64x8) (v1), __VA_ARGS__)
+
+#define u8x16_shuffle2(v1, v2, ...)                                           \
+  (u8x16) __builtin_shufflevector ((u8x16) (v1), (u8x16) (v2), __VA_ARGS__)
+#define u8x32_shuffle2(v1, v2, ...)                                           \
+  (u8x32) __builtin_shufflevector ((u8x32) (v1), (u8x32) (v2), __VA_ARGS__)
+#define u8x64_shuffle2(v1, v2, ...)                                           \
+  (u8x64) __builtin_shufflevector ((u8x64) (v1), (u8x64) (v2), __VA_ARGS__)
+
+#define u16x8_shuffle2(v1, v2, ...)                                           \
+  (u16x8) __builtin_shufflevector ((u16x8) (v1), (u16x8) (v2), __VA_ARGS__)
+#define u16x16_shuffle2(v1, v2, ...)                                          \
+  (u16x16) __builtin_shufflevector ((u16x16) (v1), (u16x16) (v2), __VA_ARGS__)
+#define u16x32_shuffle2(v1, v2, ...)                                          \
+  (u16u32) __builtin_shufflevector ((u16x32) (v1), (u16x32) (v2), __VA_ARGS__);
+
+#define u32x4_shuffle2(v1, v2, ...)                                           \
+  (u32x4) __builtin_shufflevector ((u32x4) (v1), (u32x4) (v2), __VA_ARGS__)
+#define u32x8_shuffle2(v1, v2, ...)                                           \
+  (u32x8) __builtin_shufflevector ((u32x8) (v1), (u32x8) (v2), __VA_ARGS__)
+#define u32x16_shuffle2(v1, v2, ...)                                          \
+  (u32x16) __builtin_shufflevector ((u32x16) (v1), (u32x16) (v2), __VA_ARGS__)
+
+#define u64x2_shuffle2(v1, v2, ...)                                           \
+  (u64x2) __builtin_shufflevector ((u64x2) (v1), (u64x2) (v2), __VA_ARGS__)
+#define u64x4_shuffle2(v1, v2, ...)                                           \
+  (u64x4) __builtin_shufflevector ((u64x4) (v1), (u64x4) (v2), __VA_ARGS__)
+#define u64x8_shuffle2(v1, v2, ...)                                           \
+  (u64x8) __builtin_shufflevector ((u64x8) (v1), (u64x8) (v2), __VA_ARGS__)
+
 #define VECTOR_WORD_TYPE(t) t##x
 #define VECTOR_WORD_TYPE_LEN(t) (sizeof (VECTOR_WORD_TYPE(t)) / sizeof (t))
 

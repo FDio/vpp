@@ -183,12 +183,6 @@ u16x16_byte_swap (u16x16 v)
   return (u16x16) _mm256_shuffle_epi8 ((__m256i) v, (__m256i) swap);
 }
 
-static_always_inline u8x32
-u8x32_shuffle (u8x32 v, u8x32 m)
-{
-  return (u8x32) _mm256_shuffle_epi8 ((__m256i) v, (__m256i) m);
-}
-
 #define u8x32_align_right(a, b, imm) \
   (u8x32) _mm256_alignr_epi8 ((__m256i) a, (__m256i) b, imm)
 

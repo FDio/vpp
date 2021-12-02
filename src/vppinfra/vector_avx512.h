@@ -196,12 +196,6 @@ u8x64_reflect_u8x16 (u8x64 x)
   return (u8x64) _mm512_shuffle_epi8 ((__m512i) x, (__m512i) mask);
 }
 
-static_always_inline u8x64
-u8x64_shuffle (u8x64 v, u8x64 m)
-{
-  return (u8x64) _mm512_shuffle_epi8 ((__m512i) v, (__m512i) m);
-}
-
 #define u8x64_align_right(a, b, imm) \
   (u8x64) _mm512_alignr_epi8 ((__m512i) a, (__m512i) b, imm)
 
