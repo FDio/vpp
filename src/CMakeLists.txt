@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.13)
 
 set(CMAKE_C_COMPILER_NAMES
   clang-13
@@ -25,14 +25,6 @@ set(CMAKE_C_COMPILER_NAMES
 )
 
 project(vpp C)
-
-if(CMAKE_VERSION VERSION_LESS 3.12)
-  macro(add_compile_definitions defs)
-    foreach(d ${defs})
-      add_compile_options(-D${d})
-    endforeach()
-  endmacro()
-endif()
 
 if(NOT DEFINED CMAKE_INSTALL_LIBDIR AND EXISTS "/etc/debian_version")
   set(CMAKE_INSTALL_LIBDIR "lib/${CMAKE_LIBRARY_ARCHITECTURE}")
@@ -98,7 +90,7 @@ set(CMAKE_C_FLAGS_DEBUG "")
 if (${CMAKE_BUILD_TYPE_LC} MATCHES "release")
   add_compile_options(-O3 -fstack-protector -fno-common)
   add_compile_definitions(_FORTIFY_SOURCE=2)
-  set(CMAKE_EXE_LINKER_FLAGS_RELEASE "-pie")
+  add_link_options("-pie")
 elseif (${CMAKE_BUILD_TYPE_LC} MATCHES "debug")
   add_compile_options(-O0 -fstack-protector -fno-common)
   add_compile_definitions(CLIB_DEBUG)
@@ -143,8 +135,7 @@ set(VPP_SANITIZE_ADDR_OPTIONS
 if (VPP_ENABLE_SANITIZE_ADDR)
   add_compile_options(-fsanitize=address)
   add_compile_definitions(CLIB_SANITIZE_ADDR)
-  set(CMAKE_EXE_LINKER_FLAGS "-fsanitize=address ${CMAKE_EXE_LINKER_FLAGS}")
-  set(CMAKE_SHARED_LINKER_FLAGS "-fsanitize=address ${CMAKE_SHARED_LINKER_FLAGS}")
+  add_link_options(-fsanitize=address)
 endif (VPP_ENABLE_SANITIZE_ADDR)
 
 ##############################################################################
