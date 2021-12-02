@@ -49,13 +49,6 @@ typedef enum
 
 } perfmon_bundle_type_flag_t;
 
-typedef enum
-{
-  PERFMON_OFFSET_TYPE_MMAP,
-  PERFMON_OFFSET_TYPE_METRICS,
-  PERFMON_OFFSET_TYPE_MAX,
-} perfmon_offset_type_t;
-
 typedef struct
 {
   u32 type_from_instance : 1;
@@ -85,12 +78,7 @@ typedef struct
 } perfmon_instance_type_t;
 
 struct perfmon_source;
-vlib_node_function_t perfmon_dispatch_wrapper_mmap;
-vlib_node_function_t perfmon_dispatch_wrapper_metrics;
-
-#define foreach_permon_offset_type                                            \
-  _ (PERFMON_OFFSET_TYPE_MMAP, perfmon_dispatch_wrapper_mmap)                 \
-  _ (PERFMON_OFFSET_TYPE_METRICS, perfmon_dispatch_wrapper_metrics)
+vlib_node_function_t perfmon_dispatch_wrapper;
 
 typedef clib_error_t *(perfmon_source_init_fn_t) (vlib_main_t *vm,
 						  struct perfmon_source *);
@@ -131,12 +119,10 @@ typedef struct perfmon_bundle
   };
   perfmon_bundle_type_t active_type;
 
-  perfmon_offset_type_t offset_type;
   u32 events[PERF_MAX_EVENTS];
   u32 n_events;
 
-  u32 metrics[PERF_MAX_EVENTS];
-  u32 n_metrics;
+  u16 preserve_samples;
 
   perfmon_cpu_supports_t *cpu_supports;
   u32 n_cpu_supports;
@@ -180,6 +166,8 @@ typedef struct
   u16 n_nodes;
   perfmon_node_stats_t *node_stats;
   perfmon_bundle_t *bundle;
+  u32 indexes[PERF_MAX_EVENTS];
+  u16 preserve_samples;
   struct perf_event_mmap_page *mmap_pages[PERF_MAX_EVENTS];
 } perfmon_thread_runtime_t;
 
