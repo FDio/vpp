@@ -1,4 +1,3 @@
-#include <poll.h>
 #include <string.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
@@ -101,11 +100,19 @@ af_xdp_device_output_tx_db (vlib_main_t * vm,
 
   if (xsk_ring_prod__needs_wakeup (&txq->tx))
     {
-      struct pollfd fd = { .fd = txq->xsk_fd, .events = POLLIN | POLLOUT };
-      int ret = poll (&fd, 1, 0);
+      const struct msghdr msg = {};
+      int ret;
+      /* On tx, xsk socket will only tx up to TX_BATCH_SIZE, as defined in
+       * kernel net/xdp/xsk.c. Unfortunately we do not know how much this is,
+       * our only option is to retry until everything is sent... */
+      do
+	{
+	  ret = sendmsg (txq->xsk_fd, &msg, MSG_DONTWAIT);
+	}
+      while (ret < 0 && EAGAIN == errno);
       if (PREDICT_FALSE (ret < 0))
 	{
-	  /* something bad is happening */
+	  /* not EAGAIN: something bad is happening */
 	  vlib_error_count (vm, node->node_index,
 			    AF_XDP_TX_ERROR_SYSCALL_FAILURES, 1);
 	  af_xdp_device_error (ad, "tx poll() failed");
