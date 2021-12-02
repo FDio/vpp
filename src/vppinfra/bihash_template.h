@@ -356,12 +356,19 @@ void BV (clib_bihash_free) (BVT (clib_bihash) * h);
 
 int BV (clib_bihash_add_del) (BVT (clib_bihash) * h,
 			      BVT (clib_bihash_kv) * add_v, int is_add);
+
+int BV (clib_bihash_add_del_with_hash) (BVT (clib_bihash) * h,
+					BVT (clib_bihash_kv) * add_v, u64 hash,
+					int is_add);
 int BV (clib_bihash_add_or_overwrite_stale) (BVT (clib_bihash) * h,
 					     BVT (clib_bihash_kv) * add_v,
 					     int (*is_stale_cb) (BVT
 								 (clib_bihash_kv)
 								 *, void *),
 					     void *arg);
+int BV (clib_bihash_add_with_overwrite_cb) (
+  BVT (clib_bihash) * h, BVT (clib_bihash_kv) * add_v,
+  void (*overwrite_cb) (BVT (clib_bihash_kv) *, void *), void *arg);
 int BV (clib_bihash_search) (BVT (clib_bihash) * h,
 			     BVT (clib_bihash_kv) * search_v,
 			     BVT (clib_bihash_kv) * return_v);
