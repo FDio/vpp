@@ -80,7 +80,7 @@ static clib_error_t *
 test_clib_ip_csum (clib_error_t *err)
 {
   u8 *buf;
-  buf = clib_mem_alloc_aligned (65536, CLIB_CACHE_LINE_BYTES);
+  buf = test_mem_alloc (65536);
   for (int i = 0; i < 65536; i++)
     buf[i] = 0xf0 + ((i * 7) & 0xf);
 
@@ -110,11 +110,72 @@ test_clib_ip_csum (clib_error_t *err)
 	}
     }
 done:
-  clib_mem_free (buf);
+  test_mem_free (buf);
   return err;
+}
+
+void __test_perf_fn
+perftest_ip4_hdr (int fd, test_perf_t *tp)
+{
+  u32 n = tp->n_ops;
+  u8 *data = test_mem_alloc_and_splat (20, n, (void *) &test1);
+  u16 *res = test_mem_alloc (n * sizeof (u16));
+
+  test_perf_event_enable (fd);
+  for (int i = 0; i < n; i++)
+    res[i] = clib_ip_csum (data + i * 20, 20);
+  test_perf_event_disable (fd);
+
+  test_mem_free (data);
+  test_mem_free (res);
+}
+
+void __test_perf_fn
+perftest_tcp_payload (int fd, test_perf_t *tp)
+{
+  u32 n = tp->n_ops;
+  volatile uword *lenp = &tp->arg0;
+  u8 *data = test_mem_alloc_and_splat (20, n, (void *) &test1);
+  u16 *res = test_mem_alloc (n * sizeof (u16));
+
+  test_perf_event_enable (fd);
+  for (int i = 0; i < n; i++)
+    res[i] = clib_ip_csum (data + i * lenp[0], lenp[0]);
+  test_perf_event_disable (fd);
+
+  test_mem_free (data);
+  test_mem_free (res);
+}
+
+void __test_perf_fn
+perftest_byte (int fd, test_perf_t *tp)
+{
+  volatile uword *np = &tp->n_ops;
+  u8 *data = test_mem_alloc_and_fill_inc_u8 (*np, 0, 0);
+  u16 *res = test_mem_alloc (sizeof (u16));
+
+  test_perf_event_enable (fd);
+  res[0] = clib_ip_csum (data, np[0]);
+  test_perf_event_disable (fd);
+
+  test_mem_free (data);
+  test_mem_free (res);
 }
 
 REGISTER_TEST (clib_ip_csum) = {
   .name = "clib_ip_csum",
   .fn = test_clib_ip_csum,
+  .perf_tests = PERF_TESTS (
+    { .name = "ip4_hdr",
+      .op_name = "IP4Hdr",
+      .n_ops = 1024,
+      .fn = perftest_ip4_hdr },
+    { .name = "tcp_paylaad",
+      .op_name = "1460Byte",
+      .n_ops = 16,
+      .arg0 = 1460,
+      .fn = perftest_tcp_payload },
+    { .name = "byte", .op_name = "Byte", .n_ops = 16384, .fn = perftest_byte }
+
+    ),
 };
