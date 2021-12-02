@@ -53,6 +53,7 @@ memif_socket_filename_create_command_fn (vlib_main_t * vm,
       else
 	{
 	  vec_free (socket_filename);
+	  unformat_free (line_input);
 	  return clib_error_return (0, "unknown input `%U'",
 				    format_unformat_error, input);
 	}
@@ -125,6 +126,7 @@ memif_socket_filename_delete_command_fn (vlib_main_t * vm,
 	;
       else
 	{
+	  unformat_free (line_input);
 	  return clib_error_return (0, "unknown input `%U'",
 				    format_unformat_error, input);
 	}
@@ -213,8 +215,11 @@ memif_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 unformat_ethernet_address, args.hw_addr))
 	args.hw_addr_set = 1;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  unformat_free (line_input);
+	  return clib_error_return (0, "unknown input `%U'",
+				    format_unformat_error, input);
+	}
     }
   unformat_free (line_input);
 
@@ -289,8 +294,11 @@ memif_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 vnm, &sw_if_index))
 	;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  unformat_free (line_input);
+	  return clib_error_return (0, "unknown input `%U'",
+				    format_unformat_error, input);
+	}
     }
   unformat_free (line_input);
 
