@@ -6,13 +6,13 @@
 #include <vppinfra/vector/test/test.h>
 #include <vppinfra/vector/mask_compare.h>
 
-__clib_test_fn void
+__test_funct_fn void
 clib_mask_compare_u16_wrapper (u16 v, u16 *a, u64 *mask, u32 n_elts)
 {
   clib_mask_compare_u16 (v, a, mask, n_elts);
 }
 
-__clib_test_fn void
+__test_funct_fn void
 clib_mask_compare_u32_wrapper (u32 v, u32 *a, u64 *mask, u32 n_elts)
 {
   clib_mask_compare_u32 (v, a, mask, n_elts);

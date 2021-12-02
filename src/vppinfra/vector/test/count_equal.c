@@ -9,8 +9,8 @@
 #define foreach_clib_count_equal(type)                                        \
   typedef uword (wrapper_fn_##type) (type * a, uword maxcount);               \
                                                                               \
-  __clib_test_fn uword clib_count_equal_##type##_wrapper (type *a,            \
-							  uword maxcount)     \
+  __test_funct_fn uword clib_count_equal_##type##_wrapper (type *a,           \
+							   uword maxcount)    \
   {                                                                           \
     return clib_count_equal_##type (a, maxcount);                             \
   }                                                                           \
