@@ -46,6 +46,30 @@
       "revId": "2ee685cd49aa34d464d82c64ac3c1496ba3040c9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "37f9f4a6_e992d9f1",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 896,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-12-02T17:24:22Z",
+      "side": 1,
+      "message": "Definitely a good feature to have. I\u0027m too spread out these days but if you have the time to look into it, I\u0027d be glad to review.",
+      "parentUuid": "53ef2749_345b3e9e",
+      "range": {
+        "startLine": 895,
+        "startChar": 0,
+        "endLine": 896,
+        "endChar": 39
+      },
+      "revId": "2ee685cd49aa34d464d82c64ac3c1496ba3040c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
