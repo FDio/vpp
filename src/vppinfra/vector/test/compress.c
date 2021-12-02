@@ -6,25 +6,25 @@
 #include <vppinfra/vector/test/test.h>
 #include <vppinfra/vector/compress.h>
 
-__clib_test_fn u32
+__test_funct_fn u32
 clib_compress_u64_wrapper (u64 *dst, u64 *src, u64 *mask, u32 n_elts)
 {
   return clib_compress_u64 (dst, src, mask, n_elts);
 }
 
-__clib_test_fn u32
+__test_funct_fn u32
 clib_compress_u32_wrapper (u32 *dst, u32 *src, u64 *mask, u32 n_elts)
 {
   return clib_compress_u32 (dst, src, mask, n_elts);
 }
 
-__clib_test_fn u32
+__test_funct_fn u32
 clib_compress_u16_wrapper (u16 *dst, u16 *src, u64 *mask, u32 n_elts)
 {
   return clib_compress_u16 (dst, src, mask, n_elts);
 }
 
-__clib_test_fn u32
+__test_funct_fn u32
 clib_compress_u8_wrapper (u8 *dst, u8 *src, u64 *mask, u32 n_elts)
 {
   return clib_compress_u8 (dst, src, mask, n_elts);

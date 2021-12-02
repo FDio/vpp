@@ -8,7 +8,7 @@
 #include <vppinfra/vector/test/test.h>
 #include <vppinfra/vector/mask_compare.h>
 
-__clib_test_fn void
+__test_funct_fn void
 wrapper (u8 *dst, u8 *src, uword n)
 {
   clib_memcpy_x86_64 (dst, src, n);
