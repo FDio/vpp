@@ -291,7 +291,6 @@ VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
   sample_next_t next_index;
   u32 pkts_swapped = 0;
   /* Vector shuffle mask to swap src, dst */
-  u8x16 swapmac = { 6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5, 12, 13, 14, 15 };
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -345,8 +344,10 @@ VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  src_dst0 = ((u8x16 *) en0)[0];
 	  src_dst1 = ((u8x16 *) en1)[0];
-	  src_dst0 = u8x16_shuffle (src_dst0, swapmac);
-	  src_dst1 = u8x16_shuffle (src_dst1, swapmac);
+	  src_dst0 = u8x16_shuffle (src_dst0, 6, 7, 8, 9, 10, 11, 0, 1, 2, 3,
+				    4, 5, 12, 13, 14, 15);
+	  src_dst1 = u8x16_shuffle (src_dst1, 6, 7, 8, 9, 10, 11, 0, 1, 2, 3,
+				    4, 5, 12, 13, 14, 15);
 	  ((u8x16 *) en0)[0] = src_dst0;
 	  ((u8x16 *) en1)[0] = src_dst1;
 
@@ -418,7 +419,8 @@ VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  en0 = vlib_buffer_get_current (b0);
 	  src_dst0 = ((u8x16 *) en0)[0];
-	  src_dst0 = u8x16_shuffle (src_dst0, swapmac);
+	  src_dst0 = u8x16_shuffle (src_dst0, 6, 7, 8, 9, 10, 11, 0, 1, 2, 3,
+				    4, 5, 12, 13, 14, 15);
 	  ((u8x16 *) en0)[0] = src_dst0;
 
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
@@ -469,7 +471,6 @@ VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 #ifdef VERSION_3
 
-#define u8x16_shuffle __builtin_shuffle
 /* This would normally be a stack local, but since it's a constant... */
 static const u16 nexts[VLIB_FRAME_SIZE] = { 0 };
 
@@ -479,7 +480,6 @@ VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_left_from, *from;
   u32 pkts_swapped = 0;
   /* Vector shuffle mask to swap src, dst */
-  u8x16 swapmac = { 6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5, 12, 13, 14, 15 };
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   /* See comment below about sending all pkts to the same place... */
   u16 *next __attribute__ ((unused));
@@ -518,10 +518,14 @@ VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
       src_dst2 = ((u8x16 *) vlib_buffer_get_current (b[2]))[0];
       src_dst3 = ((u8x16 *) vlib_buffer_get_current (b[3]))[0];
 
-      src_dst0 = u8x16_shuffle (src_dst0, swapmac);
-      src_dst1 = u8x16_shuffle (src_dst1, swapmac);
-      src_dst2 = u8x16_shuffle (src_dst2, swapmac);
-      src_dst3 = u8x16_shuffle (src_dst3, swapmac);
+      src_dst0 = u8x16_shuffle (src_dst0, 6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5,
+				12, 13, 14, 15);
+      src_dst1 = u8x16_shuffle (src_dst1, 6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5,
+				12, 13, 14, 15);
+      src_dst2 = u8x16_shuffle (src_dst2, 6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5,
+				12, 13, 14, 15);
+      src_dst3 = u8x16_shuffle (src_dst3, 6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5,
+				12, 13, 14, 15);
 
       ((u8x16 *) vlib_buffer_get_current (b[0]))[0] = src_dst0;
       ((u8x16 *) vlib_buffer_get_current (b[1]))[0] = src_dst1;
@@ -552,7 +556,8 @@ VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
     {
       u8x16 src_dst0;
       src_dst0 = ((u8x16 *) vlib_buffer_get_current (b[0]))[0];
-      src_dst0 = u8x16_shuffle (src_dst0, swapmac);
+      src_dst0 = u8x16_shuffle (src_dst0, 6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5,
+				12, 13, 14, 15);
       ((u8x16 *) vlib_buffer_get_current (b[0]))[0] = src_dst0;
       vnet_buffer (b[0])->sw_if_index[VLIB_TX] =
 	vnet_buffer (b[0])->sw_if_index[VLIB_RX];
@@ -611,18 +616,14 @@ VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 #ifdef VERSION_4
 
-#define u8x16_shuffle __builtin_shuffle
-
-static u8x16 swapmac =
-  { 6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5, 12, 13, 14, 15 };
-
 /* Final stage in the pipeline, do the mac swap */
 static inline u32
 last_stage (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t * b)
 {
   u8x16 src_dst0;
   src_dst0 = ((u8x16 *) vlib_buffer_get_current (b))[0];
-  src_dst0 = u8x16_shuffle (src_dst0, swapmac);
+  src_dst0 = u8x16_shuffle (src_dst0, 6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5, 12,
+			    13, 14, 15);
   ((u8x16 *) vlib_buffer_get_current (b))[0] = src_dst0;
   vnet_buffer (b)->sw_if_index[VLIB_TX] =
     vnet_buffer (b)->sw_if_index[VLIB_RX];
