@@ -69,6 +69,24 @@
       "revId": "f993f17b0d5394fc8308ab2e993fb6a16133fde4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f53e05fa_7b4a565f",
+        "filename": "src/plugins/af_xdp/input.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 124,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-12-02T10:51:48Z",
+      "side": 1,
+      "message": "Ha I see, the maximum number of in-flight buffers we can have is really the capacity of the fill queue + completion queue, not the fill queue only.\nThen I think we should increase rxq-\u003ebufs so it can accommodate this instead, otherwise we\u0027ll be starving the kernel (we\u0027ll allocate less buffers in the fill queue that we could have, which in turn can lead to rx tail drop earlier).\nWhat do you think?",
+      "parentUuid": "46e0ccca_53b25db9",
+      "revId": "f993f17b0d5394fc8308ab2e993fb6a16133fde4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }

@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dc6a4112_5754ceeb",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 325,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-12-02T10:51:48Z",
+      "side": 1,
+      "message": "based on our discussion I think this should be fq-\u003esize + rx-\u003esize - 1 instead",
+      "revId": "b91516b945d914d63ff8f1461cf7e876a552b93c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8305836e_c2cfb26b",
+        "filename": "src/plugins/af_xdp/input.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-12-02T10:51:48Z",
+      "side": 1,
+      "message": "Based on our discussion, I think that if we make rxq-\u003ebufs size equal to rxq-\u003efq.size + rxq-\u003erx.size then we should no longer need this",
+      "revId": "b91516b945d914d63ff8f1461cf7e876a552b93c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
