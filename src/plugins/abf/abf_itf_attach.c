@@ -760,7 +760,7 @@ static clib_error_t *
 abf_itf_bond_init (vlib_main_t * vm)
 {
   abf_itf_attach_fib_node_type =
-    fib_node_register_new_type (&abf_itf_attach_vft);
+    fib_node_register_new_type ("abf-attach", &abf_itf_attach_vft);
   clib_error_t *acl_init_res = acl_plugin_exports_init (&acl_plugin);
   if (acl_init_res)
     return (acl_init_res);

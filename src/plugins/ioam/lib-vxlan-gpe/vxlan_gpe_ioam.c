@@ -751,7 +751,8 @@ void
 vxlan_gpe_ioam_interface_init (void)
 {
   vxlan_gpe_ioam_main_t *hm = &vxlan_gpe_ioam_main;
-  hm->fib_entry_type = fib_node_register_new_type (&vxlan_gpe_ioam_vft);
+  hm->fib_entry_type =
+    fib_node_register_new_type ("vxlan-gpe", &vxlan_gpe_ioam_vft);
   return;
 }
 

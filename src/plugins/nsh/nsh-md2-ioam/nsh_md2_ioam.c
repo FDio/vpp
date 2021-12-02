@@ -500,7 +500,7 @@ void
 nsh_md2_ioam_interface_init (void)
 {
   nsh_md2_ioam_main_t *hm = &nsh_md2_ioam_main;
-  hm->fib_entry_type = fib_node_register_new_type (&nsh_md2_ioam_vft);
+  hm->fib_entry_type = fib_node_register_new_type ("nsh", &nsh_md2_ioam_vft);
   return;
 }
 

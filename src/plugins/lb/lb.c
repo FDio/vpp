@@ -1412,7 +1412,7 @@ lb_init (vlib_main_t * vm)
                                                   lb_dpo_nat4_port_nodes);
   lbm->dpo_nat6_port_type = dpo_register_new_type(&lb_vft,
                                                   lb_dpo_nat6_port_nodes);
-  lbm->fib_node_type = fib_node_register_new_type(&lb_fib_node_vft);
+  lbm->fib_node_type = fib_node_register_new_type ("lb", &lb_fib_node_vft);
 
   //Init AS reference counters
   vlib_refcount_init(&lbm->as_refcount);

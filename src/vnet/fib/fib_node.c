@@ -31,23 +31,20 @@ static fib_node_type_t last_new_type = FIB_NODE_TYPE_LAST;
 /*
  * the node type names
  */
-static const char *fn_type_names[] = FIB_NODE_TYPES;
+static const char *fn_type_builtin_names[] = FIB_NODE_TYPES;
+static const char **fn_type_names;
 
 const char*
 fib_node_type_get_name (fib_node_type_t type)
 {
-    if (type < FIB_NODE_TYPE_LAST)
-	return (fn_type_names[type]);
+    if ((type < vec_len(fn_type_names)) &&
+         (NULL != fn_type_names[type]))
+    {
+        return (fn_type_names[type]);
+    }
     else
     {
-	if (NULL != fn_vfts[type].fnv_format)
-	{
-	    return ("fixme");
-	}
-	else
-	{
-	    return ("unknown");
-	}
+        return ("unknown");
     }
 }
 
@@ -56,9 +53,10 @@ fib_node_type_get_name (fib_node_type_t type)
  *
  * Register the function table for a given type
  */
-void
-fib_node_register_type (fib_node_type_t type,
-			const fib_node_vft_t *vft)
+static void
+fib_node_register_type_i (fib_node_type_t type,
+                          const char *name,
+                          const fib_node_vft_t *vft)
 {
     /*
      * assert that one only registration is made per-node type
@@ -74,16 +72,31 @@ fib_node_register_type (fib_node_type_t type,
 
     vec_validate(fn_vfts, type);
     fn_vfts[type] = *vft;
+    vec_validate(fn_type_names, type);
+    fn_type_names[type] = name;
+}
+
+/**
+ * fib_node_register_type
+ *
+ * Register the function table for a given type
+ */
+void
+fib_node_register_type (fib_node_type_t type,
+			const fib_node_vft_t *vft)
+{
+    fib_node_register_type_i(type, fn_type_builtin_names[type], vft);
 }
 
 fib_node_type_t
-fib_node_register_new_type (const fib_node_vft_t *vft)
+fib_node_register_new_type (const char *name,
+                            const fib_node_vft_t *vft)
 {
     fib_node_type_t new_type;
 
     new_type = ++last_new_type;
 
-    fib_node_register_type(new_type, vft);
+    fib_node_register_type_i(new_type, name, vft);
 
     return (new_type);
 }   

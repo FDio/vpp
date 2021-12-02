@@ -826,7 +826,8 @@ ip_path_module_init (vlib_main_t *vm)
     adj_delegate_register_new_type (&ip_path_adj_delegate_vft);
   ip_pmtu_source = fib_source_allocate ("path-mtu", FIB_SOURCE_PRIORITY_HI,
 					FIB_SOURCE_BH_SIMPLE);
-  ip_pmtu_fib_type = fib_node_register_new_type (&ip_ptmu_fib_node_vft);
+  ip_pmtu_fib_type =
+    fib_node_register_new_type ("ip-pmtu", &ip_ptmu_fib_node_vft);
 
   ip_pmtu_db = hash_create_mem (0, sizeof (ip_pmtu_key_t), sizeof (index_t));
   ip_pmtu_logger = vlib_log_register_class ("ip", "pmtu");

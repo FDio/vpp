@@ -1262,7 +1262,7 @@ gtpu_init (vlib_main_t * vm)
 				       sizeof (ip46_address_t),
 				       sizeof (mcast_shared_t));
 
-  gtm->fib_node_type = fib_node_register_new_type (&gtpu_vft);
+  gtm->fib_node_type = fib_node_register_new_type ("gtpu", &gtpu_vft);
 
   return 0;
 }
