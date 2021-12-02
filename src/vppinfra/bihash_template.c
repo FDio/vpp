@@ -672,9 +672,10 @@ BV (split_and_rehash_linear)
   return new_values;
 }
 
-static_always_inline int BV (clib_bihash_add_del_inline_with_hash)
-  (BVT (clib_bihash) * h, BVT (clib_bihash_kv) * add_v, u64 hash, int is_add,
-   int (*is_stale_cb) (BVT (clib_bihash_kv) *, void *), void *arg)
+static_always_inline int BV (clib_bihash_add_del_inline_with_hash) (
+  BVT (clib_bihash) * h, BVT (clib_bihash_kv) * add_v, u64 hash, int is_add,
+  int (*is_stale_cb) (BVT (clib_bihash_kv) *, void *), void *is_stale_arg,
+  void (*overwrite_cb) (BVT (clib_bihash_kv) *, void *), void *overwrite_arg)
 {
   BVT (clib_bihash_bucket) * b, tmp_b;
   BVT (clib_bihash_value) * v, *new_v, *save_new_v, *working_copy;
@@ -776,7 +777,8 @@ static_always_inline int BV (clib_bihash_add_del_inline_with_hash)
 		  BV (clib_bihash_unlock_bucket) (b);
 		  return (-2);
 		}
-
+	      if (overwrite_cb)
+		overwrite_cb (&(v->kvp[i]), overwrite_arg);
 	      clib_memcpy_fast (&(v->kvp[i].value),
 				&add_v->value, sizeof (add_v->value));
 	      BV (clib_bihash_unlock_bucket) (b);
@@ -812,7 +814,7 @@ static_always_inline int BV (clib_bihash_add_del_inline_with_hash)
 	{
 	  for (i = 0; i < limit; i++)
 	    {
-	      if (is_stale_cb (&(v->kvp[i]), arg))
+	      if (is_stale_cb (&(v->kvp[i]), is_stale_arg))
 		{
 		  clib_memcpy_fast (&(v->kvp[i]), add_v, sizeof (*add_v));
 		  CLIB_MEMORY_STORE_BARRIER ();
@@ -994,7 +996,15 @@ static_always_inline int BV (clib_bihash_add_del_inline)
 {
   u64 hash = BV (clib_bihash_hash) (add_v);
   return BV (clib_bihash_add_del_inline_with_hash) (h, add_v, hash, is_add,
-						    is_stale_cb, arg);
+						    is_stale_cb, arg, 0, 0);
+}
+
+int BV (clib_bihash_add_del_with_hash) (BVT (clib_bihash) * h,
+					BVT (clib_bihash_kv) * add_v, u64 hash,
+					int is_add)
+{
+  return BV (clib_bihash_add_del_inline_with_hash) (h, add_v, hash, is_add, 0,
+						    0, 0, 0);
 }
 
 int BV (clib_bihash_add_del)
@@ -1008,6 +1018,15 @@ int BV (clib_bihash_add_or_overwrite_stale)
    int (*stale_callback) (BVT (clib_bihash_kv) *, void *), void *arg)
 {
   return BV (clib_bihash_add_del_inline) (h, add_v, 1, stale_callback, arg);
+}
+
+int BV (clib_bihash_add_with_overwrite_cb) (
+  BVT (clib_bihash) * h, BVT (clib_bihash_kv) * add_v,
+  void (overwrite_cb) (BVT (clib_bihash_kv) *, void *), void *arg)
+{
+  u64 hash = BV (clib_bihash_hash) (add_v);
+  return BV (clib_bihash_add_del_inline_with_hash) (h, add_v, hash, 1, 0, 0,
+						    overwrite_cb, arg);
 }
 
 int BV (clib_bihash_search)
