@@ -696,25 +696,28 @@ vl_api_app_attach_t_handler (vl_api_app_attach_t * mp)
 
 done:
   /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_APP_ATTACH_REPLY, ({
-    if (!rv)
-      {
-	ctrl_thread = n_workers ? 1 : 0;
-	segp = (fifo_segment_t *) a->segment;
-	rmp->app_index = clib_host_to_net_u32 (a->app_index);
-	rmp->app_mq = fifo_segment_msg_q_offset (segp, 0);
-	rmp->vpp_ctrl_mq = fifo_segment_msg_q_offset (rx_mqs_seg, ctrl_thread);
-	rmp->vpp_ctrl_mq_thread = ctrl_thread;
-	rmp->n_fds = n_fds;
-	rmp->fd_flags = fd_flags;
-	if (vec_len (segp->ssvm.name))
-	  {
-	    vl_api_vec_to_api_string (segp->ssvm.name, &rmp->segment_name);
-	  }
-	rmp->segment_size = segp->ssvm.ssvm_size;
-	rmp->segment_handle = clib_host_to_net_u64 (a->segment_handle);
-      }
-  }));
+  REPLY_MACRO3 (
+    VL_API_APP_ATTACH_REPLY,
+    ((!rv) ? vec_len (((fifo_segment_t *) a->segment)->ssvm.name) : 0), ({
+      if (!rv)
+	{
+	  ctrl_thread = n_workers ? 1 : 0;
+	  segp = (fifo_segment_t *) a->segment;
+	  rmp->app_index = clib_host_to_net_u32 (a->app_index);
+	  rmp->app_mq = fifo_segment_msg_q_offset (segp, 0);
+	  rmp->vpp_ctrl_mq =
+	    fifo_segment_msg_q_offset (rx_mqs_seg, ctrl_thread);
+	  rmp->vpp_ctrl_mq_thread = ctrl_thread;
+	  rmp->n_fds = n_fds;
+	  rmp->fd_flags = fd_flags;
+	  if (vec_len (segp->ssvm.name))
+	    {
+	      vl_api_vec_to_api_string (segp->ssvm.name, &rmp->segment_name);
+	    }
+	  rmp->segment_size = segp->ssvm.ssvm_size;
+	  rmp->segment_handle = clib_host_to_net_u64 (a->segment_handle);
+	}
+    }));
   /* *INDENT-ON* */
 
   if (n_fds)
@@ -780,22 +783,25 @@ vl_api_app_worker_add_del_t_handler (vl_api_app_worker_add_del_t * mp)
 
   /* *INDENT-OFF* */
 done:
-  REPLY_MACRO2 (VL_API_APP_WORKER_ADD_DEL_REPLY, ({
-    rmp->is_add = mp->is_add;
-    rmp->wrk_index = clib_host_to_net_u32 (args.wrk_map_index);
-    rmp->segment_handle = clib_host_to_net_u64 (args.segment_handle);
-    if (!rv && mp->is_add)
-      {
-	rmp->app_event_queue_address =
-	  fifo_segment_msg_q_offset ((fifo_segment_t *) args.segment, 0);
-	rmp->n_fds = n_fds;
-	rmp->fd_flags = fd_flags;
-	if (vec_len (args.segment->name))
-	  {
-	    vl_api_vec_to_api_string (args.segment->name, &rmp->segment_name);
-	  }
-      }
-  }));
+  REPLY_MACRO3 (
+    VL_API_APP_WORKER_ADD_DEL_REPLY,
+    ((!rv && mp->is_add) ? vec_len (args.segment->name) : 0), ({
+      rmp->is_add = mp->is_add;
+      rmp->wrk_index = clib_host_to_net_u32 (args.wrk_map_index);
+      rmp->segment_handle = clib_host_to_net_u64 (args.segment_handle);
+      if (!rv && mp->is_add)
+	{
+	  rmp->app_event_queue_address =
+	    fifo_segment_msg_q_offset ((fifo_segment_t *) args.segment, 0);
+	  rmp->n_fds = n_fds;
+	  rmp->fd_flags = fd_flags;
+	  if (vec_len (args.segment->name))
+	    {
+	      vl_api_vec_to_api_string (args.segment->name,
+					&rmp->segment_name);
+	    }
+	}
+    }));
   /* *INDENT-ON* */
 
   if (n_fds)
