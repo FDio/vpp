@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "d905ca71_9194d0c6",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 325,
+      "author": {
+        "id": 2414
+      },
+      "writtenOn": "2021-12-02T02:32:37Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c33aec37_f16d27fc",
+      "revId": "f993f17b0d5394fc8308ab2e993fb6a16133fde4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b8e53d2f_37d15193",
         "filename": "src/plugins/af_xdp/input.c",
         "patchSetId": 4
@@ -30,6 +48,24 @@
       "writtenOn": "2021-12-01T18:02:12Z",
       "side": 1,
       "message": "Why the check \u0027rxq-\u003etotal_num + n_alloc \u003e size\u0027?\nrxq-\u003ebufs should have the same buffers as rxq-\u003efq and xsk_prod_nb_free() should return the number of free elements in rxq-\u003efq - which should match the avail size of rxq-\u003ebufs",
+      "revId": "f993f17b0d5394fc8308ab2e993fb6a16133fde4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "46e0ccca_53b25db9",
+        "filename": "src/plugins/af_xdp/input.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 124,
+      "author": {
+        "id": 2414
+      },
+      "writtenOn": "2021-12-02T02:32:37Z",
+      "side": 1,
+      "message": "\u003e\u003e Why the check \u0027rxq-\u003etotal_num + n_alloc \u003e size\u0027?\nI guess situation is 1) fill fq 2) consumer tx #N 3) kernel consumer fq and fill rx $M 4) fill fq again #M 5) delete interface. while M \u003e N, rxq-\u003etotal_num may beyond the fq size, so check here to avoid this, otherwise, it may hit assert in vlib_buffer_free_from_ring. \n\n\u003e\u003e rxq-\u003ebufs should have the same buffers as rxq-\u003efq and xsk_prod_nb_free() should return the \u003e\u003e number of free elements in rxq-\u003efq - which should match the avail size of rxq-\u003ebufs\nYes, here something confuse me. xsk_prod_nb_free() allways get zero. If it works, it could more simple. My kernel version is 5.4, i try to bump libbpf version, it is not work too.",
+      "parentUuid": "b8e53d2f_37d15193",
       "revId": "f993f17b0d5394fc8308ab2e993fb6a16133fde4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
