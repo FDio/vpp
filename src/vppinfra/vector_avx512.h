@@ -246,14 +246,42 @@ _ (u64x4, u8, _mm256, __m256i, epi64)
 _ (u64x2, u8, _mm, __m128i, epi64)
 #undef _
 
+#define _(t, m, p, i, e)                                                      \
+  static_always_inline t t##_mask_and (t a, t b, m mask)                      \
+  {                                                                           \
+    return (t) p##_mask_and_##e ((i) a, mask, (i) a, (i) b);                  \
+  }                                                                           \
+  static_always_inline t t##_mask_andnot (t a, t b, m mask)                   \
+  {                                                                           \
+    return (t) p##_mask_andnot_##e ((i) a, mask, (i) a, (i) b);               \
+  }                                                                           \
+  static_always_inline t t##_mask_xor (t a, t b, m mask)                      \
+  {                                                                           \
+    return (t) p##_mask_xor_##e ((i) a, mask, (i) a, (i) b);                  \
+  }                                                                           \
+  static_always_inline t t##_mask_or (t a, t b, m mask)                       \
+  {                                                                           \
+    return (t) p##_mask_or_##e ((i) a, mask, (i) a, (i) b);                   \
+  }
+_ (u32x16, u16, _mm512, __m512i, epi32)
+_ (u32x8, u8, _mm256, __m256i, epi32)
+_ (u32x4, u8, _mm, __m128i, epi32)
+_ (u64x8, u8, _mm512, __m512i, epi64)
+_ (u64x4, u8, _mm256, __m256i, epi64)
+_ (u64x2, u8, _mm, __m128i, epi64)
+#undef _
+
 #ifdef CLIB_HAVE_VEC512
 #define CLIB_HAVE_VEC512_MASK_LOAD_STORE
+#define CLIB_HAVE_VEC512_MASK_BITWISE_OPS
 #endif
 #ifdef CLIB_HAVE_VEC256
 #define CLIB_HAVE_VEC256_MASK_LOAD_STORE
+#define CLIB_HAVE_VEC256_MASK_BITWISE_OPS
 #endif
 #ifdef CLIB_HAVE_VEC128
 #define CLIB_HAVE_VEC128_MASK_LOAD_STORE
+#define CLIB_HAVE_VEC128_MASK_BITWISE_OPS
 #endif
 
 static_always_inline u8x64
