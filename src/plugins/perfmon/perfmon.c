@@ -285,8 +285,8 @@ perfmon_start (vlib_main_t *vm, perfmon_bundle_t *b)
 	}
 
       for (int i = 0; i < vlib_get_n_threads (); i++)
-	vlib_node_set_dispatch_wrapper (vlib_get_main_by_index (i),
-					perfmon_dispatch_wrapper);
+	vlib_node_set_dispatch_wrapper (
+	  vlib_get_main_by_index (i), perfmon_dispatch_wrappers[b->n_events]);
     }
   pm->sample_time = vlib_time_now (vm);
   pm->is_running = 1;

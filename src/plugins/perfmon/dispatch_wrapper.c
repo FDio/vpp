@@ -28,46 +28,19 @@
 static_always_inline void
 perfmon_read_pmcs (u64 *counters, u32 *indexes, u8 n_counters)
 {
-  switch (n_counters)
-    {
-    case 12:
-      counters[11] = _rdpmc (indexes[11] - 1);
-    case 11:
-      counters[10] = _rdpmc (indexes[10] - 1);
-    case 10:
-      counters[9] = _rdpmc (indexes[9] - 1);
-    case 9:
-      counters[8] = _rdpmc (indexes[8] - 1);
-    case 8:
-      counters[7] = _rdpmc (indexes[7] - 1);
-    case 7:
-      counters[6] = _rdpmc (indexes[6] - 1);
-    case 6:
-      counters[5] = _rdpmc (indexes[5] - 1);
-    case 5:
-      counters[4] = _rdpmc (indexes[4] - 1);
-    case 4:
-      counters[3] = _rdpmc (indexes[3] - 1);
-    case 3:
-      counters[2] = _rdpmc (indexes[2] - 1);
-    case 2:
-      counters[1] = _rdpmc (indexes[1] - 1);
-    case 1:
-      counters[0] = _rdpmc (indexes[0] - 1);
-    }
+  for (int i = 0; i < n_counters; i++)
+    counters[i] = _rdpmc (indexes[i] - 1);
 }
 
-uword
-perfmon_dispatch_wrapper (vlib_main_t *vm, vlib_node_runtime_t *node,
-			  vlib_frame_t *frame)
+static_always_inline uword
+perfmon_dispatch_wrapper_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+				 vlib_frame_t *frame, u8 n_events)
 {
   perfmon_main_t *pm = &perfmon_main;
   perfmon_thread_runtime_t *rt =
     vec_elt_at_index (pm->thread_runtimes, vm->thread_index);
   perfmon_node_stats_t *s =
     vec_elt_at_index (rt->node_stats, node->node_index);
-
-  u8 n_events = rt->n_events;
 
   struct
   {
@@ -102,3 +75,22 @@ perfmon_dispatch_wrapper (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   return rv;
 }
+
+#define foreach_n_events                                                      \
+  _ (1) _ (2) _ (3) _ (4) _ (5) _ (6) _ (7) _ (8) _ (9) _ (10) _ (11) _ (12)
+
+#define _(x)                                                                  \
+  static uword perfmon_dispatch_wrapper##x (                                  \
+    vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)          \
+  {                                                                           \
+    return perfmon_dispatch_wrapper_inline (vm, node, frame, x);              \
+  }
+
+foreach_n_events
+#undef _
+
+  vlib_node_function_t *perfmon_dispatch_wrappers[PERF_MAX_EVENTS + 1] = {
+#define _(x) [x] = &perfmon_dispatch_wrapper##x,
+    foreach_n_events
+#undef _
+  };
