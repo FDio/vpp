@@ -22,6 +22,30 @@
       "revId": "2ee685cd49aa34d464d82c64ac3c1496ba3040c9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "53ef2749_345b3e9e",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 896,
+      "author": {
+        "id": 2576
+      },
+      "writtenOn": "2021-12-02T16:51:41Z",
+      "side": 1,
+      "message": "Thanks Florin.\nPerhaps this should be a fifo feature? As there may be more scenarios that would require a notification when the fifo reaches some threshold.\nAdd additional flags: SVM_FIFO_WANT_DEQ_NOTIF_IF_LOW_THRESHOLD, SVM_FIFO_WANT_DEQ_NOTIF_IF_HIGH_THRESHOLD\nThresholds will be set by default to 0, full and an additional api for setting them can be provided. \nlet me know what you think. thanks",
+      "parentUuid": "7780fbef_3e0f4f17",
+      "range": {
+        "startLine": 895,
+        "startChar": 0,
+        "endLine": 896,
+        "endChar": 39
+      },
+      "revId": "2ee685cd49aa34d464d82c64ac3c1496ba3040c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
