@@ -196,6 +196,7 @@ perfmon_set (vlib_main_t *vm, perfmon_bundle_t *b)
 	  rt->bundle = b;
 	  rt->n_events = b->n_events;
 	  rt->n_nodes = n_nodes;
+	  rt->preserve_samples = b->preserve_samples;
 	  vec_validate_aligned (rt->node_stats, n_nodes - 1,
 				CLIB_CACHE_LINE_BYTES);
 	}
@@ -210,6 +211,33 @@ error:
       perfmon_reset (vm);
     }
   return err;
+}
+
+static_always_inline u32
+perfmon_mmap_read_index (const struct perf_event_mmap_page *mmap_page)
+{
+  u32 idx;
+  u32 seq;
+
+  /* See documentation in /usr/include/linux/perf_event.h, for more details
+   * but the 2 main important things are:
+   *  1) if seq != mmap_page->lock, it means the kernel is currently updating
+   *     the user page and we need to read it again
+   *  2) if idx == 0, it means the perf event is currently turned off and we
+   *     just need to read the kernel-updated 'offset', otherwise we must also
+   *     add the current hw value (hence rdmpc) */
+  do
+    {
+      seq = mmap_page->lock;
+      CLIB_COMPILER_BARRIER ();
+
+      idx = mmap_page->index;
+
+      CLIB_COMPILER_BARRIER ();
+    }
+  while (mmap_page->lock != seq);
+
+  return idx;
 }
 
 clib_error_t *
@@ -238,20 +266,28 @@ perfmon_start (vlib_main_t *vm, perfmon_bundle_t *b)
     }
   if (b->active_type == PERFMON_BUNDLE_TYPE_NODE)
     {
+      for (int i = 0; i < vec_len (pm->thread_runtimes); i++)
+	{
+	  perfmon_thread_runtime_t *tr;
+	  tr = vec_elt_at_index (pm->thread_runtimes, i);
 
-      vlib_node_function_t *funcs[PERFMON_OFFSET_TYPE_MAX];
-#define _(type, pfunc) funcs[type] = pfunc;
+	  for (int j = 0; j < b->n_events; j++)
+	    {
+	      tr->indexes[j] = perfmon_mmap_read_index (tr->mmap_pages[j]);
 
-      foreach_permon_offset_type
-#undef _
-
-	ASSERT (funcs[b->offset_type]);
+	      /* if a zero index is returned generate error */
+	      if (!tr->indexes[j])
+		{
+		  perfmon_reset (vm);
+		  return clib_error_return (0, "invalid rdpmc index");
+		}
+	    }
+	}
 
       for (int i = 0; i < vlib_get_n_threads (); i++)
 	vlib_node_set_dispatch_wrapper (vlib_get_main_by_index (i),
-					funcs[b->offset_type]);
+					perfmon_dispatch_wrapper);
     }
-
   pm->sample_time = vlib_time_now (vm);
   pm->is_running = 1;
 
