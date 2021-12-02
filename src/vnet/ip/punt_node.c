@@ -23,6 +23,7 @@
  */
 
 #include <vnet/ip/ip.h>
+#include <vnet/ethernet/ethernet.h>
 #include <vlib/vlib.h>
 #include <vnet/ip/punt.h>
 #include <vlib/unix/unix.h>
@@ -339,7 +340,7 @@ punt_socket_inline (vlib_main_t * vm,
       iov->iov_len = sizeof (packetdesc);
 
       /** VLIB buffer chain -> Unix iovec(s). */
-      vlib_buffer_advance (b, -(sizeof (ethernet_header_t)));
+      vlib_buffer_advance (b, -ethernet_buffer_header_size (b));
       vec_add2 (ptd->iovecs, iov, 1);
       iov->iov_base = b->data + b->current_data;
       iov->iov_len = l = b->current_length;
