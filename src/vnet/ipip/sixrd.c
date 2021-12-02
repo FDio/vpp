@@ -505,7 +505,8 @@ sixrd_init (vlib_main_t * vm)
 
   sixrd_adj_delegate_type =
     adj_delegate_register_new_type (&sixrd_adj_delegate_vft);
-  sixrd_fib_node_type = fib_node_register_new_type (&sixrd_fib_node_vft);
+  sixrd_fib_node_type =
+    fib_node_register_new_type ("sixrd", &sixrd_fib_node_vft);
 
   return error;
 }

@@ -381,7 +381,7 @@ static const fib_node_vft_t l3xc_vft = {
 static clib_error_t *
 l3xc_init (vlib_main_t * vm)
 {
-  l3xc_fib_node_type = fib_node_register_new_type (&l3xc_vft);
+  l3xc_fib_node_type = fib_node_register_new_type ("l3xc", &l3xc_vft);
 
   return (NULL);
 }

@@ -939,7 +939,7 @@ ila_init (vlib_main_t * vm)
 			 ilm->lookup_table_nbuckets, ilm->lookup_table_size);
 
   ila_dpo_type = dpo_register_new_type(&ila_vft, ila_nodes);
-  ila_fib_node_type = fib_node_register_new_type(&ila_fib_node_vft);
+  ila_fib_node_type = fib_node_register_new_type ("ila", &ila_fib_node_vft);
   ila_fib_src = fib_source_allocate("ila",
                                     FIB_SOURCE_PRIORITY_HI,
                                     FIB_SOURCE_BH_SIMPLE);

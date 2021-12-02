@@ -306,7 +306,6 @@ typedef struct fib_node_vft_t_ {
     fib_node_get_t fnv_get;
     fib_node_last_lock_gone_t fnv_last_lock;
     fib_node_back_walk_t fnv_back_walk;
-    format_function_t *fnv_format;
     fib_node_memory_show_t fnv_mem_show;
 } fib_node_vft_t;
 
@@ -357,12 +356,13 @@ extern void fib_node_register_type (fib_node_type_t ft,
  * @brief
  *  Create a new FIB node type and Register the function table for it.
  *
- * @param vft
- * virtual function table
+ * @param name Name of the type (as display when printing children)
+ * @param vft virtual function table
  *
  * @return new FIB node type
  */
-extern fib_node_type_t fib_node_register_new_type (const fib_node_vft_t *vft);
+extern fib_node_type_t fib_node_register_new_type (const char *name,
+                                                   const fib_node_vft_t *vft);
 
 /**
  * @brief Show the memory usage for a type

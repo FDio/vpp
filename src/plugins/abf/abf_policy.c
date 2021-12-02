@@ -456,7 +456,8 @@ static const fib_node_vft_t abf_policy_vft = {
 static clib_error_t *
 abf_policy_init (vlib_main_t * vm)
 {
-  abf_policy_fib_node_type = fib_node_register_new_type (&abf_policy_vft);
+  abf_policy_fib_node_type =
+    fib_node_register_new_type ("abf-policy", &abf_policy_vft);
 
   return (NULL);
 }

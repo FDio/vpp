@@ -825,7 +825,7 @@ cnat_translation_init (vlib_main_t * vm)
   ip6_main_t *i6m = &ip6_main;
   cnat_main_t *cm = &cnat_main;
   cnat_translation_fib_node_type =
-    fib_node_register_new_type (&cnat_translation_vft);
+    fib_node_register_new_type ("cnat-translation", &cnat_translation_vft);
 
   clib_bihash_init_8_8 (&cnat_translation_db, "CNat translation DB",
 			cm->translation_hash_buckets,
