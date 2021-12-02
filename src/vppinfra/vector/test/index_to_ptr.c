@@ -9,7 +9,7 @@
 typedef void (wrapper_fn) (u32 *indices, void *base, u8 shift, void **ptrs,
 			   u32 n_elts);
 
-__clib_test_fn void
+__test_func_fn void
 clib_index_to_ptr_u32_wrapper (u32 *indices, void *base, u8 shift, void **ptrs,
 			       u32 n_elts)
 {

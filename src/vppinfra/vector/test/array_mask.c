@@ -6,7 +6,7 @@
 #include <vppinfra/vector/test/test.h>
 #include <vppinfra/vector/array_mask.h>
 
-__clib_test_fn void
+__test_func_fn void
 clib_array_mask_u32_wrapper (u32 *src, u32 mask, u32 n_elts)
 {
   clib_array_mask_u32 (src, mask, n_elts);
