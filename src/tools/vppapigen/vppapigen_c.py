@@ -24,6 +24,7 @@ VAT2 tests.
 '''
 
 import datetime
+import itertools
 import os
 import time
 import sys
@@ -1256,8 +1257,12 @@ def generate_include_types(s, module, stream):
             filename = i.filename.replace('plugins/', '')
             write('#include <{}_types.h>\n'.format(filename))
 
-    for o in s['types'] + s['Define']:
+    dynamic_sized = set()
+    dynamic_sized.add('vl_api_string_t')
+    for o in itertools.chain(s['types'], s['Define']):
         tname = o.__class__.__name__
+        # DEBUG
+        # write(f'/* {dynamic_sized} */')
         if tname == 'Using':
             if 'length' in o.alias:
                 write('typedef %s vl_api_%s_t[%s];\n' %
@@ -1292,10 +1297,15 @@ def generate_include_types(s, module, stream):
                 if b.type == 'Field':
                     write("    %s %s;\n" % (api2c(b.fieldtype),
                                             b.fieldname))
+                    # DEBUG
+                    # write(f"/* check {b.fieldtype} in {dynamic_sized} */")
+                    if api2c(b.fieldtype) in dynamic_sized:
+                        dynamic_sized.add(f"vl_api_{o.name}_t")
                 elif b.type == 'Array':
                     if b.lengthfield:
                         write("    %s %s[0];\n" % (api2c(b.fieldtype),
                                                    b.fieldname))
+                        dynamic_sized.add(f"vl_api_{o.name}_t")
                     else:
                         # Fixed length strings decay to nul terminated u8
                         if b.fieldtype == 'string':
@@ -1303,18 +1313,27 @@ def generate_include_types(s, module, stream):
                                 write('    {} {};\n'
                                       .format(api2c(b.fieldtype),
                                               b.fieldname))
+                                dynamic_sized.add(f"vl_api_{o.name}_t")
                             else:
                                 write('    u8 {}[{}];\n'
                                       .format(b.fieldname, b.length))
+                                if b.length == 0:
+                                    dynamic_sized.add(f"vl_api_{o.name}_t")
                         else:
                             write("    %s %s[%s];\n" %
                                   (api2c(b.fieldtype), b.fieldname,
                                    b.length))
+                            if b.length == 0:
+                                dynamic_sized.add(f"vl_api_{o.name}_t")
                 else:
                     raise ValueError("Error in processing type {} for {}"
                                      .format(b, o.name))
 
             write('} vl_api_%s_t;\n' % o.name)
+            # DEBUG
+            # write(f"/* {o.name} vl_api_{o.name}_t in {dynamic_sized} ? */")
+            c = 0 if f"vl_api_{o.name}_t" in dynamic_sized else 1
+            write(f'#define VL_API_{o.name.upper()}_IS_CONSTANT_SIZE ({c})\n\n')
 
     for t in s['Define']:
         write('#define VL_API_{ID}_CRC "{n}_{crc:08x}"\n'

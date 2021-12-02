@@ -33,20 +33,26 @@
   endian_fp = am->msg_endian_handlers[t + (REPLY_MSG_ID_BASE)];               \
   (*endian_fp) (rmp);
 
-#define REPLY_MACRO(t)                                                  \
-do {                                                                    \
-    vl_api_registration_t *rp;                                          \
-    rp = vl_api_client_index_to_registration (mp->client_index);        \
-    if (rp == 0)                                                        \
-      return;                                                           \
-                                                                        \
-    rmp = vl_msg_api_alloc (sizeof (*rmp));                             \
-    rmp->_vl_msg_id = htons((t)+(REPLY_MSG_ID_BASE));                   \
-    rmp->context = mp->context;                                         \
-    rmp->retval = ntohl(rv);                                            \
-                                                                        \
-    vl_api_send_msg (rp, (u8 *)rmp);                                    \
-} while(0);
+#define REPLY_MACRO(msg)                                                      \
+  do                                                                          \
+    {                                                                         \
+      STATIC_ASSERT (                                                         \
+	msg##_IS_CONSTANT_SIZE,                                               \
+	"REPLY_MACRO can only be used with constant size messages, "          \
+	"use REPLY_MACRO[3|4]* instead");                                     \
+      vl_api_registration_t *rp;                                              \
+      rp = vl_api_client_index_to_registration (mp->client_index);            \
+      if (rp == 0)                                                            \
+	return;                                                               \
+                                                                              \
+      rmp = vl_msg_api_alloc (sizeof (*rmp));                                 \
+      rmp->_vl_msg_id = htons (msg + (REPLY_MSG_ID_BASE));                    \
+      rmp->context = mp->context;                                             \
+      rmp->retval = ntohl (rv);                                               \
+                                                                              \
+      vl_api_send_msg (rp, (u8 *) rmp);                                       \
+    }                                                                         \
+  while (0);
 
 #define REPLY_MACRO_END(t)                                                    \
   do                                                                          \
@@ -65,20 +71,30 @@ do {                                                                    \
     }                                                                         \
   while (0);
 
-#define REPLY_MACRO2(t, body)                                           \
-do {                                                                    \
-    vl_api_registration_t *rp;                                          \
-    rp = vl_api_client_index_to_registration (mp->client_index);        \
-    if (rp == 0)                                                        \
-      return;                                                           \
-                                                                        \
-    rmp = vl_msg_api_alloc (sizeof (*rmp));                             \
-    rmp->_vl_msg_id = htons((t)+(REPLY_MSG_ID_BASE));                   \
-    rmp->context = mp->context;                                         \
-    rmp->retval = ntohl(rv);                                            \
-    do {body;} while (0);                                               \
-    vl_api_send_msg (rp, (u8 *)rmp);                                    \
-} while(0);
+#define REPLY_MACRO2(t, body)                                                 \
+  do                                                                          \
+    {                                                                         \
+      STATIC_ASSERT (                                                         \
+	t##_IS_CONSTANT_SIZE,                                                 \
+	"REPLY_MACRO2 can only be used with constant size messages, "         \
+	"use REPLY_MACRO[3|4]* instead");                                     \
+      vl_api_registration_t *rp;                                              \
+      rp = vl_api_client_index_to_registration (mp->client_index);            \
+      if (rp == 0)                                                            \
+	return;                                                               \
+                                                                              \
+      rmp = vl_msg_api_alloc (sizeof (*rmp));                                 \
+      rmp->_vl_msg_id = htons ((t) + (REPLY_MSG_ID_BASE));                    \
+      rmp->context = mp->context;                                             \
+      rmp->retval = ntohl (rv);                                               \
+      do                                                                      \
+	{                                                                     \
+	  body;                                                               \
+	}                                                                     \
+      while (0);                                                              \
+      vl_api_send_msg (rp, (u8 *) rmp);                                       \
+    }                                                                         \
+  while (0);
 
 #define REPLY_MACRO2_END(t, body)                                             \
   do                                                                          \
@@ -230,20 +246,26 @@ do {                                                                    \
     }                                                                         \
   while (0);
 
-#define REPLY_MACRO3(t, n, body)                                        \
-do {                                                                    \
-    vl_api_registration_t *rp;                                          \
-    rp = vl_api_client_index_to_registration (mp->client_index);        \
-    if (rp == 0)                                                        \
-      return;                                                           \
-                                                                        \
-    rmp = vl_msg_api_alloc (sizeof (*rmp) + n);                         \
-    rmp->_vl_msg_id = htons((t)+(REPLY_MSG_ID_BASE));                   \
-    rmp->context = mp->context;                                         \
-    rmp->retval = ntohl(rv);                                            \
-    do {body;} while (0);                                               \
-    vl_api_send_msg (rp, (u8 *)rmp);                                    \
-} while(0);
+#define REPLY_MACRO3(t, n, body)                                              \
+  do                                                                          \
+    {                                                                         \
+      vl_api_registration_t *rp;                                              \
+      rp = vl_api_client_index_to_registration (mp->client_index);            \
+      if (rp == 0)                                                            \
+	return;                                                               \
+                                                                              \
+      rmp = vl_msg_api_alloc (sizeof (*rmp) + (n));                           \
+      rmp->_vl_msg_id = htons ((t) + (REPLY_MSG_ID_BASE));                    \
+      rmp->context = mp->context;                                             \
+      rmp->retval = ntohl (rv);                                               \
+      do                                                                      \
+	{                                                                     \
+	  body;                                                               \
+	}                                                                     \
+      while (0);                                                              \
+      vl_api_send_msg (rp, (u8 *) rmp);                                       \
+    }                                                                         \
+  while (0);
 
 #define REPLY_MACRO3_END(t, n, body)                                          \
   do                                                                          \
@@ -619,62 +641,65 @@ bad_bd_id:					\
     ;                                           \
 } while (0);
 
-#define pub_sub_handler(lca,UCA)                                        \
-static void vl_api_want_##lca##_t_handler (                             \
-    vl_api_want_##lca##_t *mp)                                          \
-{                                                                       \
-    vpe_api_main_t *vam = &vpe_api_main;                                \
-    vpe_client_registration_t *rp;                                      \
-    vl_api_want_##lca##_reply_t *rmp;                                   \
-    uword *p;                                                           \
-    i32 rv = 0;                                                         \
-                                                                        \
-    p = hash_get (vam->lca##_registration_hash, mp->client_index);      \
-    if (p) {                                                            \
-        if (mp->enable_disable) {                                       \
-	    clib_warning ("pid %d: already enabled...", ntohl(mp->pid)); \
-            rv = VNET_API_ERROR_INVALID_REGISTRATION;                   \
-            goto reply;                                                 \
-        } else {                                                        \
-            rp = pool_elt_at_index (vam->lca##_registrations, p[0]);    \
-            pool_put (vam->lca##_registrations, rp);                    \
-            hash_unset (vam->lca##_registration_hash,                   \
-                mp->client_index);                                      \
-            goto reply;                                                 \
-        }                                                               \
-    }                                                                   \
-    if (mp->enable_disable == 0) {                                      \
-        clib_warning ("pid %d: already disabled...", mp->pid);          \
-        rv = VNET_API_ERROR_INVALID_REGISTRATION;                       \
-        goto reply;                                                     \
-    }                                                                   \
-    pool_get (vam->lca##_registrations, rp);                            \
-    rp->client_index = mp->client_index;                                \
-    rp->client_pid = mp->pid;                                           \
-    hash_set (vam->lca##_registration_hash, rp->client_index,           \
-              rp - vam->lca##_registrations);                           \
-                                                                        \
-reply:                                                                  \
-    REPLY_MACRO (VL_API_WANT_##UCA##_REPLY);                            \
-}                                                                       \
-                                                                        \
-static clib_error_t * vl_api_want_##lca##_t_reaper (u32 client_index)   \
-{                                                                       \
-    vpe_api_main_t *vam = &vpe_api_main;                                \
-    vpe_client_registration_t *rp;                                      \
-    uword *p;                                                           \
-                                                                        \
-    p = hash_get (vam->lca##_registration_hash, client_index);          \
-    if (p)                                                              \
-      {                                                                 \
-        rp = pool_elt_at_index (vam->lca##_registrations, p[0]);        \
-        pool_put (vam->lca##_registrations, rp);                        \
-        hash_unset (vam->lca##_registration_hash, client_index);        \
-      }                                                                 \
-    return (NULL);                                                      \
-}                                                                       \
-                                                                        \
-VL_MSG_API_REAPER_FUNCTION (vl_api_want_##lca##_t_reaper);              \
+#define pub_sub_handler(lca, UCA)                                             \
+  static void vl_api_want_##lca##_t_handler (vl_api_want_##lca##_t *mp)       \
+  {                                                                           \
+    vpe_api_main_t *vam = &vpe_api_main;                                      \
+    vpe_client_registration_t *rp;                                            \
+    vl_api_want_##lca##_reply_t *rmp;                                         \
+    uword *p;                                                                 \
+    i32 rv = 0;                                                               \
+                                                                              \
+    p = hash_get (vam->lca##_registration_hash, mp->client_index);            \
+    if (p)                                                                    \
+      {                                                                       \
+	if (mp->enable_disable)                                               \
+	  {                                                                   \
+	    clib_warning ("pid %d: already enabled...", ntohl (mp->pid));     \
+	    rv = VNET_API_ERROR_INVALID_REGISTRATION;                         \
+	    goto reply;                                                       \
+	  }                                                                   \
+	else                                                                  \
+	  {                                                                   \
+	    rp = pool_elt_at_index (vam->lca##_registrations, p[0]);          \
+	    pool_put (vam->lca##_registrations, rp);                          \
+	    hash_unset (vam->lca##_registration_hash, mp->client_index);      \
+	    goto reply;                                                       \
+	  }                                                                   \
+      }                                                                       \
+    if (mp->enable_disable == 0)                                              \
+      {                                                                       \
+	clib_warning ("pid %d: already disabled...", mp->pid);                \
+	rv = VNET_API_ERROR_INVALID_REGISTRATION;                             \
+	goto reply;                                                           \
+      }                                                                       \
+    pool_get (vam->lca##_registrations, rp);                                  \
+    rp->client_index = mp->client_index;                                      \
+    rp->client_pid = mp->pid;                                                 \
+    hash_set (vam->lca##_registration_hash, rp->client_index,                 \
+	      rp - vam->lca##_registrations);                                 \
+                                                                              \
+  reply:                                                                      \
+    REPLY_MACRO (VL_API_WANT_##UCA##_REPLY);                                  \
+  }                                                                           \
+                                                                              \
+  static clib_error_t *vl_api_want_##lca##_t_reaper (u32 client_index)        \
+  {                                                                           \
+    vpe_api_main_t *vam = &vpe_api_main;                                      \
+    vpe_client_registration_t *rp;                                            \
+    uword *p;                                                                 \
+                                                                              \
+    p = hash_get (vam->lca##_registration_hash, client_index);                \
+    if (p)                                                                    \
+      {                                                                       \
+	rp = pool_elt_at_index (vam->lca##_registrations, p[0]);              \
+	pool_put (vam->lca##_registrations, rp);                              \
+	hash_unset (vam->lca##_registration_hash, client_index);              \
+      }                                                                       \
+    return (NULL);                                                            \
+  }                                                                           \
+                                                                              \
+  VL_MSG_API_REAPER_FUNCTION (vl_api_want_##lca##_t_reaper);
 
 #define foreach_registration_hash               \
 _(interface_events)                             \
