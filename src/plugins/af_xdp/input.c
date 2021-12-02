@@ -15,7 +15,6 @@
  *------------------------------------------------------------------
  */
 
-#include <poll.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vlib/pci/pci.h>
@@ -89,8 +88,7 @@ af_xdp_device_input_refill_db (vlib_main_t * vm,
 
   if (clib_spinlock_trylock_if_init (&rxq->syscall_lock))
     {
-      struct pollfd fd = { .fd = rxq->xsk_fd, .events = POLLIN | POLLOUT };
-      int ret = poll (&fd, 1, 0);
+      int ret = recvmsg (rxq->xsk_fd, 0, MSG_DONTWAIT);
       clib_spinlock_unlock_if_init (&rxq->syscall_lock);
       if (PREDICT_FALSE (ret < 0))
 	{
