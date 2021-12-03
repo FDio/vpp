@@ -21,6 +21,7 @@
 #include <vppinfra/hash.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/interface.h>
+#include <vnet/hash/hash.h>
 
 #define LACP_FAST_PERIODIC_TIMER        1.0
 #define LACP_SHORT_TIMOUT_TIME          (LACP_FAST_PERIODIC_TIMER * 3)
@@ -163,6 +164,7 @@ typedef struct
 typedef struct
 {
   bond_per_port_queue_t *per_port_queue;
+  void **data;
 } bond_per_thread_data_t;
 
 typedef struct
@@ -208,6 +210,7 @@ typedef struct
   u8 hw_address[6];
 
   clib_spinlock_t lockp;
+  vnet_hash_fn_t hash_func;
 } bond_if_t;
 
 typedef struct

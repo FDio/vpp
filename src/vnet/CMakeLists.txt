@@ -869,6 +869,7 @@ list(APPEND VNET_SOURCES
   hash/cli.c
   hash/crc32_5tuple.c
   hash/handoff_eth.c
+  hash/hash_eth.c
 )
 
 list(APPEND VNET_HEADERS

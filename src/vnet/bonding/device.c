@@ -17,16 +17,9 @@
 
 #define _GNU_SOURCE
 #include <stdint.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/ip/ip4_packet.h>
-#include <vnet/ip/ip6_packet.h>
-#include <vnet/ip/ip6_hop_by_hop_packet.h>
-#include <vnet/bonding/node.h>
-#include <vppinfra/lb_hash_hash.h>
-#include <vnet/ip/ip.h>
-#include <vnet/ip-neighbor/ip_neighbor.h>
 #include <vnet/ip-neighbor/ip4_neighbor.h>
 #include <vnet/ip-neighbor/ip6_neighbor.h>
+#include <vnet/bonding/node.h>
 
 #define foreach_bond_tx_error                                                 \
   _ (NONE, "no error")                                                        \
@@ -194,8 +187,8 @@ bond_tx_add_to_queue (bond_per_thread_data_t * ptd, u32 port, u32 bi)
 }
 
 static_always_inline u32
-bond_lb_broadcast (vlib_main_t * vm,
-		   bond_if_t * bif, vlib_buffer_t * b0, uword n_members)
+bond_lb_broadcast (vlib_main_t *vm, bond_if_t *bif, vlib_buffer_t *b0,
+		   uword n_members)
 {
   bond_main_t *bm = &bond_main;
   vlib_buffer_t *c0;
@@ -220,178 +213,7 @@ bond_lb_broadcast (vlib_main_t * vm,
 }
 
 static_always_inline u32
-bond_lb_l2 (vlib_buffer_t * b0)
-{
-  ethernet_header_t *eth = vlib_buffer_get_current (b0);
-  u64 *dst = (u64 *) & eth->dst_address[0];
-  u64 a = clib_mem_unaligned (dst, u64);
-  u32 *src = (u32 *) & eth->src_address[2];
-  u32 b = clib_mem_unaligned (src, u32);
-
-  return lb_hash_hash_2_tuples (a, b);
-}
-
-static_always_inline u16 *
-bond_locate_ethertype (ethernet_header_t * eth)
-{
-  u16 *ethertype_p;
-  ethernet_vlan_header_t *vlan;
-
-  if (!ethernet_frame_is_tagged (clib_net_to_host_u16 (eth->type)))
-    {
-      ethertype_p = &eth->type;
-    }
-  else
-    {
-      vlan = (void *) (eth + 1);
-      ethertype_p = &vlan->type;
-      if (*ethertype_p == ntohs (ETHERNET_TYPE_VLAN))
-	{
-	  vlan++;
-	  ethertype_p = &vlan->type;
-	}
-    }
-  return ethertype_p;
-}
-
-static_always_inline u32
-bond_lb_l23 (vlib_buffer_t * b0)
-{
-  ethernet_header_t *eth = vlib_buffer_get_current (b0);
-  u8 ip_version;
-  ip4_header_t *ip4;
-  u16 ethertype, *ethertype_p;
-  u32 *mac1, *mac2, *mac3;
-
-  ethertype_p = bond_locate_ethertype (eth);
-  ethertype = clib_mem_unaligned (ethertype_p, u16);
-
-  if ((ethertype != htons (ETHERNET_TYPE_IP4)) &&
-      (ethertype != htons (ETHERNET_TYPE_IP6)))
-    return bond_lb_l2 (b0);
-
-  ip4 = (ip4_header_t *) (ethertype_p + 1);
-  ip_version = (ip4->ip_version_and_header_length >> 4);
-
-  if (ip_version == 0x4)
-    {
-      u32 a, c;
-
-      mac1 = (u32 *) & eth->dst_address[0];
-      mac2 = (u32 *) & eth->dst_address[4];
-      mac3 = (u32 *) & eth->src_address[2];
-
-      a = clib_mem_unaligned (mac1, u32) ^ clib_mem_unaligned (mac2, u32) ^
-	clib_mem_unaligned (mac3, u32);
-      c =
-	lb_hash_hash_2_tuples (clib_mem_unaligned (&ip4->address_pair, u64),
-			       a);
-      return c;
-    }
-  else if (ip_version == 0x6)
-    {
-      u64 a;
-      u32 c;
-      ip6_header_t *ip6 = (ip6_header_t *) (eth + 1);
-
-      mac1 = (u32 *) & eth->dst_address[0];
-      mac2 = (u32 *) & eth->dst_address[4];
-      mac3 = (u32 *) & eth->src_address[2];
-
-      a = clib_mem_unaligned (mac1, u32) ^ clib_mem_unaligned (mac2, u32) ^
-	clib_mem_unaligned (mac3, u32);
-      c =
-	lb_hash_hash (clib_mem_unaligned
-		      (&ip6->src_address.as_uword[0], uword),
-		      clib_mem_unaligned (&ip6->src_address.as_uword[1],
-					  uword),
-		      clib_mem_unaligned (&ip6->dst_address.as_uword[0],
-					  uword),
-		      clib_mem_unaligned (&ip6->dst_address.as_uword[1],
-					  uword), a);
-      return c;
-    }
-  return bond_lb_l2 (b0);
-}
-
-static_always_inline u32
-bond_lb_l34 (vlib_buffer_t * b0)
-{
-  ethernet_header_t *eth = vlib_buffer_get_current (b0);
-  u8 ip_version;
-  uword is_tcp_udp;
-  ip4_header_t *ip4;
-  u16 ethertype, *ethertype_p;
-
-  ethertype_p = bond_locate_ethertype (eth);
-  ethertype = clib_mem_unaligned (ethertype_p, u16);
-
-  if ((ethertype != htons (ETHERNET_TYPE_IP4)) &&
-      (ethertype != htons (ETHERNET_TYPE_IP6)))
-    return (bond_lb_l2 (b0));
-
-  ip4 = (ip4_header_t *) (ethertype_p + 1);
-  ip_version = (ip4->ip_version_and_header_length >> 4);
-
-  if (ip_version == 0x4)
-    {
-      u32 a, t1, t2;
-      tcp_header_t *tcp = (void *) (ip4 + 1);
-
-      is_tcp_udp = (ip4->protocol == IP_PROTOCOL_TCP) ||
-	(ip4->protocol == IP_PROTOCOL_UDP);
-      t1 = is_tcp_udp ? clib_mem_unaligned (&tcp->src, u16) : 0;
-      t2 = is_tcp_udp ? clib_mem_unaligned (&tcp->dst, u16) : 0;
-      a = t1 ^ t2;
-      return
-	lb_hash_hash_2_tuples (clib_mem_unaligned (&ip4->address_pair, u64),
-			       a);
-    }
-  else if (ip_version == 0x6)
-    {
-      u64 a;
-      u32 c, t1, t2;
-      ip6_header_t *ip6 = (ip6_header_t *) (eth + 1);
-      tcp_header_t *tcp = (void *) (ip6 + 1);
-
-      is_tcp_udp = 0;
-      if (PREDICT_TRUE ((ip6->protocol == IP_PROTOCOL_TCP) ||
-			(ip6->protocol == IP_PROTOCOL_UDP)))
-	{
-	  is_tcp_udp = 1;
-	  tcp = (void *) (ip6 + 1);
-	}
-      else if (ip6->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS)
-	{
-	  ip6_hop_by_hop_header_t *hbh =
-	    (ip6_hop_by_hop_header_t *) (ip6 + 1);
-	  if ((hbh->protocol == IP_PROTOCOL_TCP)
-	      || (hbh->protocol == IP_PROTOCOL_UDP))
-	    {
-	      is_tcp_udp = 1;
-	      tcp = (tcp_header_t *) ((u8 *) hbh + ((hbh->length + 1) << 3));
-	    }
-	}
-      t1 = is_tcp_udp ? clib_mem_unaligned (&tcp->src, u16) : 0;
-      t2 = is_tcp_udp ? clib_mem_unaligned (&tcp->dst, u16) : 0;
-      a = t1 ^ t2;
-      c =
-	lb_hash_hash (clib_mem_unaligned
-		      (&ip6->src_address.as_uword[0], uword),
-		      clib_mem_unaligned (&ip6->src_address.as_uword[1],
-					  uword),
-		      clib_mem_unaligned (&ip6->dst_address.as_uword[0],
-					  uword),
-		      clib_mem_unaligned (&ip6->dst_address.as_uword[1],
-					  uword), a);
-      return c;
-    }
-
-  return bond_lb_l2 (b0);
-}
-
-static_always_inline u32
-bond_lb_round_robin (bond_if_t * bif, vlib_buffer_t * b0, uword n_members)
+bond_lb_round_robin (bond_if_t *bif, vlib_buffer_t *b0, uword n_members)
 {
   bif->lb_rr_last_index++;
   if (bif->lb_rr_last_index >= n_members)
@@ -401,49 +223,65 @@ bond_lb_round_robin (bond_if_t * bif, vlib_buffer_t * b0, uword n_members)
 }
 
 static_always_inline void
-bond_tx_inline (vlib_main_t * vm, bond_if_t * bif, vlib_buffer_t ** b,
-		u32 * h, u32 n_left, uword n_members, u32 lb_alg)
+bond_tx_hash (vlib_main_t *vm, bond_per_thread_data_t *ptd, bond_if_t *bif,
+	      vlib_buffer_t **b, u32 *h, u32 n_left)
 {
-  while (n_left >= 4)
+  u32 n_left_from = n_left;
+  void **data;
+
+  ASSERT (bif->hash_func != 0);
+
+  vec_validate_aligned (ptd->data, n_left - 1, CLIB_CACHE_LINE_BYTES);
+  data = ptd->data;
+  while (n_left >= 8)
     {
       // Prefetch next iteration
-      if (n_left >= 8)
-	{
-	  vlib_buffer_t **pb = b + 4;
+      vlib_prefetch_buffer_header (b[4], LOAD);
+      vlib_prefetch_buffer_header (b[5], LOAD);
+      vlib_prefetch_buffer_header (b[6], LOAD);
+      vlib_prefetch_buffer_header (b[7], LOAD);
 
-	  vlib_prefetch_buffer_header (pb[0], LOAD);
-	  vlib_prefetch_buffer_header (pb[1], LOAD);
-	  vlib_prefetch_buffer_header (pb[2], LOAD);
-	  vlib_prefetch_buffer_header (pb[3], LOAD);
+      data[0] = vlib_buffer_get_current (b[0]);
+      data[1] = vlib_buffer_get_current (b[1]);
+      data[2] = vlib_buffer_get_current (b[2]);
+      data[3] = vlib_buffer_get_current (b[3]);
 
-	  clib_prefetch_load (pb[0]->data);
-	  clib_prefetch_load (pb[1]->data);
-	  clib_prefetch_load (pb[2]->data);
-	  clib_prefetch_load (pb[3]->data);
-	}
+      n_left -= 4;
+      b += 4;
+      data += 4;
+    }
 
-      if (lb_alg == BOND_LB_L2)
-	{
-	  h[0] = bond_lb_l2 (b[0]);
-	  h[1] = bond_lb_l2 (b[1]);
-	  h[2] = bond_lb_l2 (b[2]);
-	  h[3] = bond_lb_l2 (b[3]);
-	}
-      else if (lb_alg == BOND_LB_L34)
-	{
-	  h[0] = bond_lb_l34 (b[0]);
-	  h[1] = bond_lb_l34 (b[1]);
-	  h[2] = bond_lb_l34 (b[2]);
-	  h[3] = bond_lb_l34 (b[3]);
-	}
-      else if (lb_alg == BOND_LB_L23)
-	{
-	  h[0] = bond_lb_l23 (b[0]);
-	  h[1] = bond_lb_l23 (b[1]);
-	  h[2] = bond_lb_l23 (b[2]);
-	  h[3] = bond_lb_l23 (b[3]);
-	}
-      else if (lb_alg == BOND_LB_RR)
+  while (n_left > 0)
+    {
+      data[0] = vlib_buffer_get_current (b[0]);
+
+      n_left -= 1;
+      b += 1;
+      data += 1;
+    }
+
+  bif->hash_func (ptd->data, h, n_left_from);
+  vec_reset_length (ptd->data);
+}
+
+static_always_inline void
+bond_tx_no_hash (vlib_main_t *vm, bond_if_t *bif, vlib_buffer_t **b, u32 *h,
+		 u32 n_left, uword n_members, u32 lb_alg)
+{
+  while (n_left >= 8)
+    {
+      // Prefetch next iteration
+      vlib_prefetch_buffer_header (b[4], LOAD);
+      vlib_prefetch_buffer_header (b[5], LOAD);
+      vlib_prefetch_buffer_header (b[6], LOAD);
+      vlib_prefetch_buffer_header (b[7], LOAD);
+
+      clib_prefetch_load (b[4]->data);
+      clib_prefetch_load (b[5]->data);
+      clib_prefetch_load (b[6]->data);
+      clib_prefetch_load (b[7]->data);
+
+      if (lb_alg == BOND_LB_RR)
 	{
 	  h[0] = bond_lb_round_robin (bif, b[0], n_members);
 	  h[1] = bond_lb_round_robin (bif, b[1], n_members);
@@ -469,13 +307,7 @@ bond_tx_inline (vlib_main_t * vm, bond_if_t * bif, vlib_buffer_t ** b,
 
   while (n_left > 0)
     {
-      if (bif->lb == BOND_LB_L2)
-	h[0] = bond_lb_l2 (b[0]);
-      else if (bif->lb == BOND_LB_L34)
-	h[0] = bond_lb_l34 (b[0]);
-      else if (bif->lb == BOND_LB_L23)
-	h[0] = bond_lb_l23 (b[0]);
-      else if (bif->lb == BOND_LB_RR)
+      if (bif->lb == BOND_LB_RR)
 	h[0] = bond_lb_round_robin (bif, b[0], n_members);
       else if (bif->lb == BOND_LB_BC)
 	h[0] = bond_lb_broadcast (vm, bif, b[0], n_members);
@@ -495,40 +327,6 @@ bond_hash_to_port (u32 * h, u32 n_left, u32 n_members,
 		   int use_modulo_shortcut)
 {
   u32 mask = n_members - 1;
-
-#ifdef CLIB_HAVE_VEC256
-  /* only lower 16 bits of hash due to single precision fp arithmetic */
-  u32x8 mask8, sc8u, h8a, h8b;
-  f32x8 sc8f;
-
-  if (use_modulo_shortcut)
-    {
-      mask8 = u32x8_splat (mask);
-    }
-  else
-    {
-      mask8 = u32x8_splat (0xffff);
-      sc8u = u32x8_splat (n_members);
-      sc8f = f32x8_from_u32x8 (sc8u);
-    }
-
-  while (n_left > 16)
-    {
-      h8a = u32x8_load_unaligned (h) & mask8;
-      h8b = u32x8_load_unaligned (h + 8) & mask8;
-
-      if (use_modulo_shortcut == 0)
-	{
-	  h8a -= sc8u * u32x8_from_f32x8 (f32x8_from_u32x8 (h8a) / sc8f);
-	  h8b -= sc8u * u32x8_from_f32x8 (f32x8_from_u32x8 (h8b) / sc8f);
-	}
-
-      u32x8_store_unaligned (h8a, h);
-      u32x8_store_unaligned (h8b, h + 8);
-      n_left -= 16;
-      h += 16;
-    }
-#endif
 
   while (n_left > 4)
     {
@@ -568,17 +366,13 @@ bond_update_sw_if_index (bond_per_thread_data_t * ptd, bond_if_t * bif,
   u32 sw_if_index = data[0];
   u32 *h = data;
 
-  while (n_left >= 4)
+  while (n_left >= 8)
     {
       // Prefetch next iteration
-      if (n_left >= 8)
-	{
-	  vlib_buffer_t **pb = b + 4;
-	  vlib_prefetch_buffer_header (pb[0], LOAD);
-	  vlib_prefetch_buffer_header (pb[1], LOAD);
-	  vlib_prefetch_buffer_header (pb[2], LOAD);
-	  vlib_prefetch_buffer_header (pb[3], LOAD);
-	}
+      vlib_prefetch_buffer_header (b[4], LOAD);
+      vlib_prefetch_buffer_header (b[5], LOAD);
+      vlib_prefetch_buffer_header (b[6], LOAD);
+      vlib_prefetch_buffer_header (b[7], LOAD);
 
       if (PREDICT_FALSE (single_sw_if_index))
 	{
@@ -594,17 +388,14 @@ bond_update_sw_if_index (bond_per_thread_data_t * ptd, bond_if_t * bif,
 	}
       else
 	{
-	  u32 sw_if_index[4];
-
-	  sw_if_index[0] = *vec_elt_at_index (bif->active_members, h[0]);
-	  sw_if_index[1] = *vec_elt_at_index (bif->active_members, h[1]);
-	  sw_if_index[2] = *vec_elt_at_index (bif->active_members, h[2]);
-	  sw_if_index[3] = *vec_elt_at_index (bif->active_members, h[3]);
-
-	  vnet_buffer (b[0])->sw_if_index[VLIB_TX] = sw_if_index[0];
-	  vnet_buffer (b[1])->sw_if_index[VLIB_TX] = sw_if_index[1];
-	  vnet_buffer (b[2])->sw_if_index[VLIB_TX] = sw_if_index[2];
-	  vnet_buffer (b[3])->sw_if_index[VLIB_TX] = sw_if_index[3];
+	  vnet_buffer (b[0])->sw_if_index[VLIB_TX] =
+	    *vec_elt_at_index (bif->active_members, h[0]);
+	  vnet_buffer (b[1])->sw_if_index[VLIB_TX] =
+	    *vec_elt_at_index (bif->active_members, h[1]);
+	  vnet_buffer (b[2])->sw_if_index[VLIB_TX] =
+	    *vec_elt_at_index (bif->active_members, h[2]);
+	  vnet_buffer (b[3])->sw_if_index[VLIB_TX] =
+	    *vec_elt_at_index (bif->active_members, h[3]);
 
 	  bond_tx_add_to_queue (ptd, h[0], bi[0]);
 	  bond_tx_add_to_queue (ptd, h[1], bi[1]);
@@ -626,9 +417,8 @@ bond_update_sw_if_index (bond_per_thread_data_t * ptd, bond_if_t * bif,
 	}
       else
 	{
-	  u32 sw_if_index0 = *vec_elt_at_index (bif->active_members, h[0]);
-
-	  vnet_buffer (b[0])->sw_if_index[VLIB_TX] = sw_if_index0;
+	  vnet_buffer (b[0])->sw_if_index[VLIB_TX] =
+	    *vec_elt_at_index (bif->active_members, h[0]);
 	  bond_tx_add_to_queue (ptd, h[0], bi[0]);
 	}
 
@@ -735,7 +525,7 @@ VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
     {
       sw_if_index = *vec_elt_at_index (bif->active_members, 0);
 
-      bond_tx_inline (vm, bif, bufs, hashes, n_left, n_members, BOND_LB_BC);
+      bond_tx_no_hash (vm, bif, bufs, hashes, n_left, n_members, BOND_LB_BC);
       bond_tx_trace (vm, node, bif, bufs, frame->n_vectors, 0);
       bond_update_sw_if_index (ptd, bif, from, bufs, &sw_if_index, n_left,
 			       /* single_sw_if_index */ 1);
@@ -747,24 +537,10 @@ VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
   if (bif->n_numa_members >= 1)
     n_members = bif->n_numa_members;
 
-  if (bif->lb == BOND_LB_L2)
-    bond_tx_inline (vm, bif, bufs, hashes, n_left, n_members, BOND_LB_L2);
-  else if (bif->lb == BOND_LB_L34)
-    bond_tx_inline (vm, bif, bufs, hashes, n_left, n_members, BOND_LB_L34);
-  else if (bif->lb == BOND_LB_L23)
-    bond_tx_inline (vm, bif, bufs, hashes, n_left, n_members, BOND_LB_L23);
-  else if (bif->lb == BOND_LB_RR)
-    bond_tx_inline (vm, bif, bufs, hashes, n_left, n_members, BOND_LB_RR);
+  if (bif->lb == BOND_LB_RR)
+    bond_tx_no_hash (vm, bif, bufs, hashes, n_left, n_members, BOND_LB_RR);
   else
-    {
-      vlib_buffer_free (vm, vlib_frame_vector_args (frame), frame->n_vectors);
-      vlib_increment_simple_counter (
-	vnet_main.interface_main.sw_if_counters + VNET_INTERFACE_COUNTER_DROP,
-	thread_index, bif->sw_if_index, frame->n_vectors);
-      vlib_error_count (vm, node->node_index, BOND_TX_ERROR_BAD_LB_MODE,
-			frame->n_vectors);
-      return frame->n_vectors;
-    }
+    bond_tx_hash (vm, ptd, bif, bufs, hashes, n_left);
 
   /* calculate port out of hash */
   h = hashes;

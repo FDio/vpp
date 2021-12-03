@@ -408,6 +408,16 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
   bif->mode = args->mode;
   bif->gso = args->gso;
 
+  if (bif->lb == BOND_LB_L2)
+    bif->hash_func =
+      vnet_hash_function_from_name ("hash-eth-l2", VNET_HASH_FN_TYPE_ETHERNET);
+  else if (bif->lb == BOND_LB_L34)
+    bif->hash_func = vnet_hash_function_from_name ("hash-eth-l34",
+						   VNET_HASH_FN_TYPE_ETHERNET);
+  else if (bif->lb == BOND_LB_L23)
+    bif->hash_func = vnet_hash_function_from_name ("hash-eth-l23",
+						   VNET_HASH_FN_TYPE_ETHERNET);
+
   // Adjust requested interface id
   if (bif->id == ~0)
     bif->id = bif->dev_instance;
