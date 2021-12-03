@@ -45,6 +45,7 @@
 #include <vnet/l3_types.h>
 #include <vppinfra/lock.h>
 #include <vnet/hash/hash.h>
+#include <vnet/dependency/dep.h>
 
 struct vnet_main_t;
 struct vnet_hw_interface_t;

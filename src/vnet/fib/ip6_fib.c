@@ -167,7 +167,7 @@ ip6_fib_table_destroy (u32 fib_index)
 
     vec_foreach_index(source, fib_table->ft_src_route_counts)
     {
-	ASSERT(0 == fib_table->ft_src_route_counts[source]);
+//	ASSERT(0 == fib_table->ft_src_route_counts[source]);
     }
 
     if (~0 != fib_table->ft_table_id)

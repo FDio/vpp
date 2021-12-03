@@ -166,15 +166,6 @@ vnet_clear_sw_interface_tag (vnet_main_t * vnm, u32 sw_if_index)
 }
 
 /**
- * Walk return code
- */
-typedef enum walk_rc_t_
-{
-  WALK_STOP,
-  WALK_CONTINUE,
-} walk_rc_t;
-
-/**
  * Call back walk type for walking SW indices on a HW interface
  */
 typedef walk_rc_t (*vnet_hw_sw_interface_walk_t) (vnet_main_t * vnm,
