@@ -39,6 +39,11 @@ list(APPEND VNET_SOURCES
   interface/tx_queue.c
   interface/runtime.c
   interface_stats.c
+  interface_types_api.c
+  dependency/dep.c
+  dependency/dep_list.c
+  dependency/dep_walk.c
+  memory_usage.c
   misc.c
 )
 
@@ -75,6 +80,7 @@ list(APPEND VNET_HEADERS
   ip/ip_sas.h
   ethernet/ethernet_format_fns.h
   ethernet/ethernet_types_api.h
+  dependency/dep.h
 )
 
 list(APPEND VNET_API_FILES

@@ -37,7 +37,7 @@ class TestFIB(VppTestCase):
         self.logger.info(self.vapi.cli("sh fib path-list"))
         self.logger.info(self.vapi.cli("sh fib path-list 0"))
         self.logger.info(self.vapi.cli("sh fib path-list 10000"))
-        self.logger.info(self.vapi.cli("sh fib walk"))
+        self.logger.info(self.vapi.cli("sh dep walk"))
         self.logger.info(self.vapi.cli("sh fib uRPF"))
 
         if error:
