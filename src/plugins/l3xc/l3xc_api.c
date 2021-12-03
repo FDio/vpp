@@ -37,6 +37,7 @@
  */
 static u32 l3xc_base_msg_id;
 
+#define REPLY_MSG_ID_BASE (l3xc_base_msg_id)
 #include <vlibapi/api_helper_macros.h>
 
 static void
@@ -96,12 +97,7 @@ done:
 
   BAD_SW_IF_INDEX_LABEL;
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_L3XC_UPDATE_REPLY + l3xc_base_msg_id,
-  ({
-    rmp->stats_index = 0;
-  }))
-  /* *INDENT-ON* */
+  REPLY_MACRO2 (VL_API_L3XC_UPDATE_REPLY, ({ rmp->stats_index = 0; }))
 }
 
 static void
@@ -116,7 +112,7 @@ vl_api_l3xc_del_t_handler (vl_api_l3xc_del_t * mp)
 
   BAD_SW_IF_INDEX_LABEL;
 
-  REPLY_MACRO (VL_API_L3XC_DEL_REPLY + l3xc_base_msg_id);
+  REPLY_MACRO (VL_API_L3XC_DEL_REPLY);
 }
 
 typedef struct l3xc_dump_walk_ctx_t_

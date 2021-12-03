@@ -35,6 +35,7 @@
  * Base message ID fot the plugin
  */
 static u32 svs_base_msg_id;
+#define REPLY_MSG_ID_BASE (svs_base_msg_id)
 #include <vlibapi/api_helper_macros.h>
 
 static void
@@ -80,7 +81,7 @@ vl_api_svs_table_add_del_t_handler (vl_api_svs_table_add_del_t * mp)
     }
 
 error:
-  REPLY_MACRO (VL_API_SVS_TABLE_ADD_DEL_REPLY + svs_base_msg_id);
+  REPLY_MACRO (VL_API_SVS_TABLE_ADD_DEL_REPLY);
 }
 
 static void
@@ -102,7 +103,7 @@ vl_api_svs_route_add_del_t_handler (vl_api_svs_route_add_del_t * mp)
       rv = svs_route_delete (ntohl (mp->table_id), &pfx);
     }
 
-  REPLY_MACRO (VL_API_SVS_ROUTE_ADD_DEL_REPLY + svs_base_msg_id);
+  REPLY_MACRO (VL_API_SVS_ROUTE_ADD_DEL_REPLY);
 }
 
 static void
@@ -130,7 +131,7 @@ vl_api_svs_enable_disable_t_handler (vl_api_svs_enable_disable_t * mp)
 
   BAD_SW_IF_INDEX_LABEL;
 error:
-  REPLY_MACRO (VL_API_SVS_ENABLE_DISABLE_REPLY + svs_base_msg_id);
+  REPLY_MACRO (VL_API_SVS_ENABLE_DISABLE_REPLY);
 }
 
 typedef struct svs_dump_walk_ctx_t_

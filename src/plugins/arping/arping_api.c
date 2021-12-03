@@ -31,6 +31,7 @@
 #include <arping/arping.api_enum.h>
 #include <arping/arping.api_types.h>
 
+#define REPLY_MSG_ID_BASE (am->msg_id_base)
 #include <vlibapi/api_helper_macros.h>
 
 static void
@@ -57,7 +58,7 @@ vl_api_arping_t_handler (vl_api_arping_t *mp)
 
   BAD_SW_IF_INDEX_LABEL;
 
-  REPLY_MACRO2 (VL_API_ARPING_REPLY + am->msg_id_base,
+  REPLY_MACRO2 (VL_API_ARPING_REPLY,
 		({ rmp->reply_count = ntohl (args.reply_count); }));
 }
 

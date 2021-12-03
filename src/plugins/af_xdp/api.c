@@ -27,6 +27,7 @@
 #include <af_xdp/af_xdp.api_enum.h>
 #include <af_xdp/af_xdp.api_types.h>
 
+#define REPLY_MSG_ID_BASE (rm->msg_id_base)
 #include <vlibapi/api_helper_macros.h>
 
 static af_xdp_mode_t
@@ -78,12 +79,8 @@ vl_api_af_xdp_create_t_handler (vl_api_af_xdp_create_t * mp)
   af_xdp_create_if (vm, &args);
   rv = args.rv;
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_AF_XDP_CREATE_REPLY + rm->msg_id_base,
-    ({
-      rmp->sw_if_index = ntohl (args.sw_if_index);
-    }));
-  /* *INDENT-ON* */
+  REPLY_MACRO2 (VL_API_AF_XDP_CREATE_REPLY,
+		({ rmp->sw_if_index = ntohl (args.sw_if_index); }));
 }
 
 static void
@@ -111,7 +108,7 @@ vl_api_af_xdp_create_v2_t_handler (vl_api_af_xdp_create_v2_t *mp)
   rv = args.rv;
 
   /* clang-format off */
-  REPLY_MACRO2 (VL_API_AF_XDP_CREATE_V2_REPLY + rm->msg_id_base,
+  REPLY_MACRO2 (VL_API_AF_XDP_CREATE_V2_REPLY,
     ({
       rmp->sw_if_index = ntohl (args.sw_if_index);
     }));
@@ -143,7 +140,7 @@ vl_api_af_xdp_delete_t_handler (vl_api_af_xdp_delete_t * mp)
   af_xdp_delete_if (vm, rd);
 
 reply:
-  REPLY_MACRO (VL_API_AF_XDP_DELETE_REPLY + rm->msg_id_base);
+  REPLY_MACRO (VL_API_AF_XDP_DELETE_REPLY);
 }
 
 /* set tup the API message handling tables */

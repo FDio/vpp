@@ -20,6 +20,7 @@
 
 #include <vlib/vlib.h>
 #include <vnet/ip/ip.h>
+#define REPLY_MSG_ID_BASE (igmp_main.msg_id_base)
 #include <vlibapi/api_helper_macros.h>
 #include <vnet/ip/igmp_packet.h>
 #include <vnet/adj/adj_mcast.h>

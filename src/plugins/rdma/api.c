@@ -27,6 +27,7 @@
 #include <rdma/rdma.api_enum.h>
 #include <rdma/rdma.api_types.h>
 
+#define REPLY_MSG_ID_BASE (rm->msg_id_base)
 #include <vlibapi/api_helper_macros.h>
 
 static rdma_mode_t
@@ -103,7 +104,7 @@ vl_api_rdma_create_v3_t_handler (vl_api_rdma_create_v3_t *mp)
   rdma_create_if (vm, &args);
   rv = args.rv;
 
-  REPLY_MACRO2 (VL_API_RDMA_CREATE_V3_REPLY + rm->msg_id_base,
+  REPLY_MACRO2 (VL_API_RDMA_CREATE_V3_REPLY,
 		({ rmp->sw_if_index = ntohl (args.sw_if_index); }));
 }
 
@@ -131,10 +132,8 @@ vl_api_rdma_create_v2_t_handler (vl_api_rdma_create_v2_t * mp)
   rv = args.rv;
 
   /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_RDMA_CREATE_V2_REPLY + rm->msg_id_base,
-    ({
-      rmp->sw_if_index = ntohl (args.sw_if_index);
-    }));
+  REPLY_MACRO2 (VL_API_RDMA_CREATE_V2_REPLY,
+		({ rmp->sw_if_index = ntohl (args.sw_if_index); }));
   /* *INDENT-ON* */
 }
 
@@ -163,10 +162,8 @@ vl_api_rdma_create_t_handler (vl_api_rdma_create_t * mp)
   rv = args.rv;
 
   /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_RDMA_CREATE_REPLY + rm->msg_id_base,
-    ({
-      rmp->sw_if_index = ntohl (args.sw_if_index);
-    }));
+  REPLY_MACRO2 (VL_API_RDMA_CREATE_REPLY,
+		({ rmp->sw_if_index = ntohl (args.sw_if_index); }));
   /* *INDENT-ON* */
 }
 
@@ -195,7 +192,7 @@ vl_api_rdma_delete_t_handler (vl_api_rdma_delete_t * mp)
   rdma_delete_if (vm, rd);
 
 reply:
-  REPLY_MACRO (VL_API_RDMA_DELETE_REPLY + rm->msg_id_base);
+  REPLY_MACRO (VL_API_RDMA_DELETE_REPLY);
 }
 
 /* set tup the API message handling tables */

@@ -34,10 +34,11 @@
 #include <abf/abf.api_types.h>
 
 /**
- * Base message ID fot the plugin
+ * Base message ID for the plugin
  */
 static u32 abf_base_msg_id;
 
+#define REPLY_MSG_ID_BASE (abf_base_msg_id)
 #include <vlibapi/api_helper_macros.h>
 
 static void
@@ -93,7 +94,7 @@ vl_api_abf_policy_add_del_t_handler (vl_api_abf_policy_add_del_t * mp)
 done:
   vec_free (paths);
 
-  REPLY_MACRO (VL_API_ABF_POLICY_ADD_DEL_REPLY + abf_base_msg_id);
+  REPLY_MACRO (VL_API_ABF_POLICY_ADD_DEL_REPLY);
 }
 
 static void
@@ -118,7 +119,7 @@ vl_api_abf_itf_attach_add_del_t_handler (vl_api_abf_itf_attach_add_del_t * mp)
 		      ntohl (mp->attach.sw_if_index));
     }
 
-  REPLY_MACRO (VL_API_ABF_ITF_ATTACH_ADD_DEL_REPLY + abf_base_msg_id);
+  REPLY_MACRO (VL_API_ABF_ITF_ATTACH_ADD_DEL_REPLY);
 }
 
 typedef struct abf_dump_walk_ctx_t_

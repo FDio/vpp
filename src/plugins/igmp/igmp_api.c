@@ -71,7 +71,7 @@ vl_api_igmp_listen_t_handler (vl_api_igmp_listen_t * mp)
 
   BAD_SW_IF_INDEX_LABEL;
 done:;
-  REPLY_MACRO (IGMP_MSG_ID (VL_API_IGMP_LISTEN_REPLY));
+  REPLY_MACRO (VL_API_IGMP_LISTEN_REPLY);
 }
 
 static void
@@ -88,7 +88,7 @@ vl_api_igmp_enable_disable_t_handler (vl_api_igmp_enable_disable_t * mp)
 
   BAD_SW_IF_INDEX_LABEL;
 
-  REPLY_MACRO (IGMP_MSG_ID (VL_API_IGMP_ENABLE_DISABLE_REPLY));
+  REPLY_MACRO (VL_API_IGMP_ENABLE_DISABLE_REPLY);
 }
 
 static void
@@ -106,7 +106,7 @@ vl_api_igmp_proxy_device_add_del_t_handler (vl_api_igmp_proxy_device_add_del_t
 
   BAD_SW_IF_INDEX_LABEL;
 
-  REPLY_MACRO (IGMP_MSG_ID (VL_API_IGMP_PROXY_DEVICE_ADD_DEL_REPLY));
+  REPLY_MACRO (VL_API_IGMP_PROXY_DEVICE_ADD_DEL_REPLY);
 }
 
 static void
@@ -124,8 +124,7 @@ static void
 
   BAD_SW_IF_INDEX_LABEL;
 
-  REPLY_MACRO (IGMP_MSG_ID
-	       (VL_API_IGMP_PROXY_DEVICE_ADD_DEL_INTERFACE_REPLY));
+  REPLY_MACRO (VL_API_IGMP_PROXY_DEVICE_ADD_DEL_INTERFACE_REPLY);
 }
 
 static void
@@ -209,7 +208,7 @@ vl_api_igmp_clear_interface_t_handler (vl_api_igmp_clear_interface_t * mp)
   if (config)
     igmp_clear_config (config);
 
-  REPLY_MACRO (IGMP_MSG_ID (VL_API_IGMP_CLEAR_INTERFACE_REPLY));
+  REPLY_MACRO (VL_API_IGMP_CLEAR_INTERFACE_REPLY);
 }
 
 static vl_api_group_prefix_type_t
@@ -250,7 +249,7 @@ vl_api_igmp_group_prefix_set_t_handler (vl_api_igmp_group_prefix_set_t * mp)
   ip_prefix_decode (&mp->gp.prefix, &pfx);
   igmp_group_prefix_set (&pfx, igmp_group_type_api_to_int (mp->gp.type));
 
-  REPLY_MACRO (IGMP_MSG_ID (VL_API_IGMP_GROUP_PREFIX_SET_REPLY));
+  REPLY_MACRO (VL_API_IGMP_GROUP_PREFIX_SET_REPLY);
 }
 
 typedef struct igmp_ssm_range_walk_ctx_t_
@@ -343,7 +342,7 @@ vl_api_want_igmp_events_t_handler (vl_api_want_igmp_events_t * mp)
   rv = VNET_API_ERROR_INVALID_REGISTRATION;
 
 done:
-  REPLY_MACRO (VL_API_WANT_IGMP_EVENTS_REPLY + im->msg_id_base);
+  REPLY_MACRO (VL_API_WANT_IGMP_EVENTS_REPLY);
 }
 
 static clib_error_t *

@@ -29,6 +29,7 @@
 #include <avf/avf.api_enum.h>
 #include <avf/avf.api_types.h>
 
+#define REPLY_MSG_ID_BASE (am->msg_id_base)
 #include <vlibapi/api_helper_macros.h>
 
 static void
@@ -52,10 +53,8 @@ vl_api_avf_create_t_handler (vl_api_avf_create_t * mp)
   rv = args.rv;
 
   /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_AVF_CREATE_REPLY + am->msg_id_base,
-    ({
-      rmp->sw_if_index = ntohl (args.sw_if_index);
-    }));
+  REPLY_MACRO2 (VL_API_AVF_CREATE_REPLY,
+		({ rmp->sw_if_index = ntohl (args.sw_if_index); }));
   /* *INDENT-ON* */
 }
 
@@ -82,7 +81,7 @@ vl_api_avf_delete_t_handler (vl_api_avf_delete_t * mp)
 			     AVF_PROCESS_EVENT_DELETE_IF, hw->dev_instance);
 
 reply:
-  REPLY_MACRO (VL_API_AVF_DELETE_REPLY + am->msg_id_base);
+  REPLY_MACRO (VL_API_AVF_DELETE_REPLY);
 }
 
 /* set tup the API message handling tables */
