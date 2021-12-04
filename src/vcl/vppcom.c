@@ -336,7 +336,8 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
 	mp->segment_handle, mp->server_rx_fifo, mp->server_tx_fifo,
 	mp->vpp_event_queue_address, mp->mq_index, 0, session))
     {
-      VDBG (0, "failed to attach fifos for %u", session->session_index);
+      VDBG (0, "session %u [0x%llx]: failed to attach fifos",
+            session->session_index, mp->handle);
       goto error;
     }
 
@@ -355,13 +356,6 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
   session->listener_index = listen_session->session_index;
   listen_session->n_accepted_sessions++;
 
-  VDBG (1,
-	"session %u [0x%llx]: client accept request from %s address %U"
-	" port %d queue %p!",
-	session->session_index, mp->handle, mp->rmt.is_ip4 ? "IPv4" : "IPv6",
-	vcl_format_ip46_address, &mp->rmt.ip,
-	mp->rmt.is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
-	clib_net_to_host_u16 (mp->rmt.port), session->vpp_evt_q);
   vcl_evt (VCL_EVT_ACCEPT, session, listen_session, session_index);
 
   vcl_send_session_accepted_reply (session->vpp_evt_q, mp->context,
@@ -406,7 +400,7 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
 
   if (mp->retval)
     {
-      VDBG (0, "session index %u: connect failed! %U", session_index,
+      VDBG (0, "session %u: connect failed! %U", session_index,
 	    format_session_error, mp->retval);
       session->session_state = VCL_STATE_DETACHED;
       session->vpp_handle = VCL_INVALID_SESSION_HANDLE;
@@ -424,7 +418,8 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
 	mp->segment_handle, mp->server_rx_fifo, mp->server_tx_fifo,
 	mp->vpp_event_queue_address, mp->mq_index, 0, session))
     {
-      VDBG (0, "failed to attach fifos for %u", session->session_index);
+      VDBG (0, "session %u [0x%llx]: failed to attach fifos",
+            session->session_index, session->vpp_handle);
       session->session_state = VCL_STATE_UPDATED;
       vcl_send_session_disconnect (wrk, session);
       return session_index;
@@ -436,7 +431,8 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
 				      mp->ct_tx_fifo, (uword) ~0, ~0, 1,
 				      session))
 	{
-	  VDBG (0, "failed to attach ct fifos for %u", session->session_index);
+	  VDBG (0, "session %u [0x%llx]: failed to attach ct fifos",
+	        session->session_index, session->vpp_handle);
 	  session->session_state = VCL_STATE_UPDATED;
 	  vcl_send_session_disconnect (wrk, session);
 	  return session_index;
@@ -455,9 +451,14 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
   else
     session->session_state = VCL_STATE_READY;
 
-  VDBG (1, "session %u [0x%llx] connected! rx_fifo %p, refcnt %d, tx_fifo %p,"
-	" refcnt %d", session_index, mp->handle, session->rx_fifo,
-	session->rx_fifo->refcnt, session->tx_fifo, session->tx_fifo->refcnt);
+  VDBG (0, "session %u [0x%llx] connected local: %U:%u remote %U:%u",
+       session->session_index, session->vpp_handle, vcl_format_ip46_address,
+       &session->transport.lcl_ip,
+       session->transport.is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
+       clib_net_to_host_u16 (session->transport.lcl_port),
+       vcl_format_ip46_address, &session->transport.rmt_ip,
+       session->transport.is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
+       clib_net_to_host_u16 (session->transport.rmt_port));
 
   return session_index;
 }
@@ -507,7 +508,7 @@ vcl_session_reset_handler (vcl_worker_t * wrk,
 
   if (session->session_state != VCL_STATE_CLOSED)
     session->session_state = VCL_STATE_DISCONNECT;
-  VDBG (0, "reset session %u [0x%llx]", sid, reset_msg->handle);
+  VDBG (0, "session %u [0x%llx]: reset", sid, reset_msg->handle);
   return sid;
 }
 
@@ -530,7 +531,7 @@ vcl_session_bound_handler (vcl_worker_t * wrk, session_bound_msg_t * mp)
 	}
       else
 	{
-	  VDBG (0, "ERROR: session %u [0x%llx]: Invalid session index!",
+	  VDBG (0, "session %u [0x%llx]: Invalid session index!",
 		sid, mp->handle);
 	  return VCL_INVALID_SESSION_INDEX;
 	}
@@ -550,7 +551,8 @@ vcl_session_bound_handler (vcl_worker_t * wrk, session_bound_msg_t * mp)
 				      mp->tx_fifo, mp->vpp_evt_q, mp->mq_index,
 				      0, session))
 	{
-	  VDBG (0, "failed to attach fifos for %u", session->session_index);
+	  VDBG (0, "session %u [0x%llx]: failed to attach fifos",
+	        session->session_index, session->vpp_handle);
 	  session->session_state = VCL_STATE_DETACHED;
 	  return VCL_INVALID_SESSION_INDEX;
 	}
@@ -676,7 +678,7 @@ vcl_session_disconnected_handler (vcl_worker_t * wrk,
   session = vcl_session_get_w_vpp_handle (wrk, msg->handle);
   if (!session)
     {
-      VDBG (0, "request to disconnect unknown handle 0x%llx", msg->handle);
+      VWRN ("request to disconnect unknown handle 0x%llx", msg->handle);
       return 0;
     }
 
@@ -758,8 +760,8 @@ vppcom_session_disconnect (u32 session_handle)
   vpp_handle = session->vpp_handle;
   state = session->session_state;
 
-  VDBG (1, "session %u [0x%llx] state 0x%x (%s)", session->session_index,
-	vpp_handle, state, vcl_session_state_str (state));
+  VDBG (1, "session %u [0x%llx]: disconnecting state (%s)",
+        session->session_index, vpp_handle, vcl_session_state_str (state));
 
   if (PREDICT_FALSE (state == VCL_STATE_LISTEN))
     {
@@ -780,7 +782,7 @@ vppcom_session_disconnect (u32 session_handle)
       if (PREDICT_FALSE (!session->vpp_evt_q))
 	return VPPCOM_OK;
 
-      VDBG (1, "session %u [0x%llx]: sending disconnect...",
+      VDBG (1, "session %u [0x%llx]: sending disconnect",
 	    session->session_index, vpp_handle);
       vcl_send_session_disconnect (wrk, session);
     }
@@ -804,7 +806,7 @@ vcl_session_cleanup_handler (vcl_worker_t * wrk, void *data)
   session = vcl_session_get_w_vpp_handle (wrk, msg->handle);
   if (!session)
     {
-      VDBG (0, "disconnect confirmed for unknown handle 0x%llx", msg->handle);
+      VWRN ("disconnect confirmed for unknown handle 0x%llx", msg->handle);
       return;
     }
 
@@ -839,7 +841,7 @@ vcl_session_cleanup_handler (vcl_worker_t * wrk, void *data)
   /* Should not happen. App did not close the connection so don't free it. */
   if (session->session_state != VCL_STATE_CLOSED)
     {
-      VDBG (0, "app did not close session %d", session->session_index);
+      VDBG (0, "session %u: app did not close", session->session_index);
       session->session_state = VCL_STATE_DETACHED;
       session->vpp_handle = VCL_INVALID_SESSION_HANDLE;
       return;
@@ -1740,22 +1742,19 @@ vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
 
   if (PREDICT_FALSE (session->flags & VCL_SESSION_F_IS_VEP))
     {
-      VDBG (0, "ERROR: cannot connect epoll session %u!",
-	    session->session_index);
+      VWRN ("cannot connect epoll session %u!", session->session_index);
       return VPPCOM_EBADFD;
     }
 
   if (PREDICT_FALSE (vcl_session_is_ready (session)))
     {
       VDBG (0,
-	    "session handle %u [0x%llx]: session already "
-	    "connected to %s %U port %d proto %s, state 0x%x (%s)",
-	    session_handle, session->vpp_handle,
-	    session->transport.is_ip4 ? "IPv4" : "IPv6",
+	    "session %u [0x%llx]: already connected to %U:%d proto %s,"
+	    " state (%s)", session->session_index, session->vpp_handle,
 	    vcl_format_ip46_address, &session->transport.rmt_ip,
 	    session->transport.is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
 	    clib_net_to_host_u16 (session->transport.rmt_port),
-	    vppcom_proto_str (session->session_type), session->session_state,
+	    vppcom_proto_str (session->session_type),
 	    vcl_session_state_str (session->session_state));
       return VPPCOM_OK;
     }
@@ -1775,11 +1774,8 @@ vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
   session->parent_handle = VCL_INVALID_SESSION_HANDLE;
   session->flags |= VCL_SESSION_F_CONNECTED;
 
-  VDBG (0,
-	"session handle %u (%s): connecting to peer %s %U "
-	"port %d proto %s",
-	session_handle, vcl_session_state_str (session->session_state),
-	session->transport.is_ip4 ? "IPv4" : "IPv6", vcl_format_ip46_address,
+  VDBG (0, "session %u: connecting to peer %U:%d proto %s",
+	session->session_index, vcl_format_ip46_address,
 	&session->transport.rmt_ip,
 	session->transport.is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
 	clib_net_to_host_u16 (session->transport.rmt_port),
