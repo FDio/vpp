@@ -34,6 +34,7 @@ vlib_simple_counter_main_t ipsec_sa_lost_counters = {
 };
 
 ipsec_sa_t *ipsec_sa_pool;
+static dep_type_t DEP_TYPE_IPSEC_SA;
 
 static clib_error_t *
 ipsec_call_add_del_callbacks (ipsec_main_t * im, ipsec_sa_t * sa,
@@ -191,8 +192,8 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 
   pool_get_aligned_zero (ipsec_sa_pool, sa, CLIB_CACHE_LINE_BYTES);
 
-  fib_node_init (&sa->node, FIB_NODE_TYPE_IPSEC_SA);
-  fib_node_lock (&sa->node);
+  dep_init (&sa->node, DEP_TYPE_IPSEC_SA);
+  dep_lock (&sa->node);
   sa_index = sa - ipsec_sa_pool;
 
   vlib_validate_combined_counter (&ipsec_sa_counters, sa_index);
@@ -284,7 +285,7 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
     {
       sa->tunnel_flags = sa->tunnel.t_encap_decap_flags;
 
-      rv = tunnel_resolve (&sa->tunnel, FIB_NODE_TYPE_IPSEC_SA, sa_index);
+      rv = tunnel_resolve (&sa->tunnel, DEP_TYPE_IPSEC_SA, sa_index);
 
       if (rv)
 	{
@@ -373,7 +374,7 @@ ipsec_sa_unlock (index_t sai)
 
   sa = ipsec_sa_get (sai);
 
-  fib_node_unlock (&sa->node);
+  dep_unlock (&sa->node);
 }
 
 void
@@ -386,7 +387,7 @@ ipsec_sa_lock (index_t sai)
 
   sa = ipsec_sa_get (sai);
 
-  fib_node_lock (&sa->node);
+  dep_lock (&sa->node);
 }
 
 index_t
@@ -403,7 +404,7 @@ ipsec_sa_find_and_lock (u32 id)
 
   sa = ipsec_sa_get (p[0]);
 
-  fib_node_lock (&sa->node);
+  dep_lock (&sa->node);
 
   return (p[0]);
 }
@@ -448,8 +449,8 @@ ipsec_sa_walk (ipsec_sa_walk_cb_t cb, void *ctx)
 /**
  * Function definition to get a FIB node from its index
  */
-static fib_node_t *
-ipsec_sa_fib_node_get (fib_node_index_t index)
+static dep_t *
+ipsec_sa_dep_get (fib_node_index_t index)
 {
   ipsec_sa_t *sa;
 
@@ -459,9 +460,9 @@ ipsec_sa_fib_node_get (fib_node_index_t index)
 }
 
 static ipsec_sa_t *
-ipsec_sa_from_fib_node (fib_node_t * node)
+ipsec_sa_from_dep (dep_t *node)
 {
-  ASSERT (FIB_NODE_TYPE_IPSEC_SA == node->fn_type);
+  ASSERT (DEP_TYPE_IPSEC_SA == node->d_type);
   return ((ipsec_sa_t *) (((char *) node) -
 			  STRUCT_OFFSET_OF (ipsec_sa_t, node)));
 
@@ -471,41 +472,41 @@ ipsec_sa_from_fib_node (fib_node_t * node)
  * Function definition to inform the FIB node that its last lock has gone.
  */
 static void
-ipsec_sa_last_lock_gone (fib_node_t * node)
+ipsec_sa_last_lock_gone (dep_t *node)
 {
   /*
    * The ipsec SA is a root of the graph. As such
    * it never has children and thus is never locked.
    */
-  ipsec_sa_del (ipsec_sa_from_fib_node (node));
+  ipsec_sa_del (ipsec_sa_from_dep (node));
 }
 
 /**
  * Function definition to backwalk a FIB node
  */
-static fib_node_back_walk_rc_t
-ipsec_sa_back_walk (fib_node_t * node, fib_node_back_walk_ctx_t * ctx)
+static dep_back_walk_rc_t
+ipsec_sa_back_walk (dep_t *node, dep_back_walk_ctx_t *ctx)
 {
-  ipsec_sa_stack (ipsec_sa_from_fib_node (node));
+  ipsec_sa_stack (ipsec_sa_from_dep (node));
 
-  return (FIB_NODE_BACK_WALK_CONTINUE);
+  return (DEP_BACK_WALK_CONTINUE);
 }
 
 /*
  * Virtual function table registered by SAs
  * for participation in the FIB object graph.
  */
-const static fib_node_vft_t ipsec_sa_vft = {
-  .fnv_get = ipsec_sa_fib_node_get,
-  .fnv_last_lock = ipsec_sa_last_lock_gone,
-  .fnv_back_walk = ipsec_sa_back_walk,
+const static dep_vft_t ipsec_sa_vft = {
+  .dv_get = ipsec_sa_dep_get,
+  .dv_last_lock = ipsec_sa_last_lock_gone,
+  .dv_back_walk = ipsec_sa_back_walk,
 };
 
 /* force inclusion from application's main.c */
 clib_error_t *
 ipsec_sa_interface_init (vlib_main_t * vm)
 {
-  fib_node_register_type (FIB_NODE_TYPE_IPSEC_SA, &ipsec_sa_vft);
+  DEP_TYPE_IPSEC_SA = dep_register_type ("ipsec-sa", &ipsec_sa_vft);
 
   return 0;
 }

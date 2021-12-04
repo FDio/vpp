@@ -14,10 +14,13 @@
  */
 
 #include <vnet/dpo/dvr_dpo.h>
-#include <vnet/fib/fib_node.h>
+#include <vnet/dependency/dep.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/l2/l2_input.h>
+#include <vnet/memory_usage.h>
+
+// clang-format off
 
 #ifndef CLIB_MARCH_VARIANT
 dvr_dpo_t *dvr_dpo_pool;
@@ -215,12 +218,12 @@ format_dvr_dpo (u8* s, va_list *ap)
 }
 
 static void
-dvr_dpo_mem_show (void)
+dvr_dpo_mem_show (vlib_main_t *vm)
 {
-    fib_show_memory_usage("DVR",
-                          pool_elts(dvr_dpo_pool),
-                          pool_len(dvr_dpo_pool),
-                          sizeof(dvr_dpo_t));
+    memory_usage_show(vm ,"DVR",
+                      pool_elts(dvr_dpo_pool),
+                      pool_len(dvr_dpo_pool),
+                      sizeof(dvr_dpo_t));
 }
 
 
@@ -639,3 +642,4 @@ VNET_FEATURE_INIT (ip6_dvr_reinject_feat_node, static) =
   .node_name = "ip6-dvr-reinject",
 };
 
+// clang-format on

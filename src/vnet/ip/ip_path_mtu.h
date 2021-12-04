@@ -72,7 +72,7 @@ typedef enum ip_pmtu_flags_t_
 typedef struct ip_pmtu_t_
 {
   /** linkage into the FIB graph */
-  fib_node_t ipt_node;
+  dep_t ipt_node;
 
   /** Track fib entry */
   fib_node_index_t ipt_fib_entry;

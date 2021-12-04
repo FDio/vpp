@@ -19,6 +19,9 @@
 #include <vnet/dpo/receive_dpo.h>
 #include <vnet/adj/adj.h>
 #include <vnet/mpls/mpls_types.h>
+#include <vnet/memory_usage.h>
+
+// clang-format off
 
 /**
  * the logger
@@ -618,12 +621,12 @@ replicate_unlock (dpo_id_t *dpo)
 }
 
 static void
-replicate_mem_show (void)
+replicate_mem_show (vlib_main_t *vm)
 {
-    fib_show_memory_usage("replicate",
-			  pool_elts(replicate_pool),
-			  pool_len(replicate_pool),
-			  sizeof(replicate_t));
+    memory_usage_show(vm, "replicate",
+                      pool_elts(replicate_pool),
+                      pool_len(replicate_pool),
+                      sizeof(replicate_t));
 }
 
 const static dpo_vft_t rep_vft = {
@@ -916,3 +919,5 @@ replicate_dpo_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (replicate_dpo_init);
+
+// clang-format on

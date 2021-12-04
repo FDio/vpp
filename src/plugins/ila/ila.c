@@ -66,7 +66,7 @@ static dpo_type_t ila_dpo_type;
 /**
  * @brief Dynamically registered FIB node type for ILA
  */
-static fib_node_type_t ila_fib_node_type;
+static dep_type_t ila_dep_type;
 
 /**
  * FIB source for adding entries
@@ -742,10 +742,8 @@ ila_add_del_entry (ila_add_del_entry_args_t * args)
 					  &next_hop,
 					  FIB_SOURCE_RR,
 					  FIB_ENTRY_FLAG_NONE);
-	  e->next_hop_child_index =
-	      fib_entry_child_add(e->next_hop_fib_entry_index,
-				  ila_fib_node_type,
-				  e - ilm->entries);
+	  e->next_hop_child_index = fib_entry_child_add (
+	    e->next_hop_fib_entry_index, ila_dep_type, e - ilm->entries);
 
 	  /*
 	   * Create a route that results in the ILA entry
@@ -877,13 +875,13 @@ const static char* const * const ila_nodes[DPO_PROTO_NUM] =
     [DPO_PROTO_IP6]  = ila_ip6_nodes,
 };
 
-static fib_node_t *
-ila_fib_node_get_node (fib_node_index_t index)
+static dep_t *
+ila_dep_get_node (dep_index_t index)
 {
   ila_main_t *ilm = &ila_main;
   ila_entry_t *ie = pool_elt_at_index (ilm->entries, index);
 
-  return (&ie->ila_fib_node);
+  return (&ie->ila_dep);
 }
 
 /**
@@ -891,37 +889,36 @@ ila_fib_node_get_node (fib_node_index_t index)
  * The lifetime of the ILA entry is managed by the control plane
  */
 static void
-ila_fib_node_last_lock_gone (fib_node_t *node)
+ila_dep_last_lock_gone (dep_t *node)
 {
 }
 
 static ila_entry_t *
-ila_entry_from_fib_node (fib_node_t *node)
+ila_entry_from_dep (dep_t *node)
 {
-    return ((ila_entry_t*)(((char*)node) -
-			   STRUCT_OFFSET_OF(ila_entry_t, ila_fib_node)));
+  return ((ila_entry_t *) (((char *) node) -
+			   STRUCT_OFFSET_OF (ila_entry_t, ila_dep)));
 }
 
 /**
  * @brief
  * Callback function invoked when the forwarding changes for the ILA next-hop
  */
-static fib_node_back_walk_rc_t
-ila_fib_node_back_walk_notify (fib_node_t *node,
-			       fib_node_back_walk_ctx_t *ctx)
+static dep_back_walk_rc_t
+ila_dep_back_walk_notify (dep_t *node, dep_back_walk_ctx_t *ctx)
 {
-    ila_entry_stack(ila_entry_from_fib_node(node));
+  ila_entry_stack (ila_entry_from_dep (node));
 
-    return (FIB_NODE_BACK_WALK_CONTINUE);
+  return (DEP_BACK_WALK_CONTINUE);
 }
 
 /*
  * ILA's FIB graph node virtual function table
  */
-static const fib_node_vft_t ila_fib_node_vft = {
-    .fnv_get = ila_fib_node_get_node,
-    .fnv_last_lock = ila_fib_node_last_lock_gone,
-    .fnv_back_walk = ila_fib_node_back_walk_notify,
+static const dep_vft_t ila_dep_vft = {
+  .dv_get = ila_dep_get_node,
+  .dv_last_lock = ila_dep_last_lock_gone,
+  .dv_back_walk = ila_dep_back_walk_notify,
 };
 
 clib_error_t *
@@ -939,7 +936,7 @@ ila_init (vlib_main_t * vm)
 			 ilm->lookup_table_nbuckets, ilm->lookup_table_size);
 
   ila_dpo_type = dpo_register_new_type(&ila_vft, ila_nodes);
-  ila_fib_node_type = fib_node_register_new_type ("ila", &ila_fib_node_vft);
+  ila_dep_type = dep_register_type ("ila", &ila_dep_vft);
   ila_fib_src = fib_source_allocate("ila",
                                     FIB_SOURCE_PRIORITY_HI,
                                     FIB_SOURCE_BH_SIMPLE);

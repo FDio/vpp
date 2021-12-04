@@ -337,9 +337,8 @@ vxlan_gpe_enable_disable_ioam_for_dest (vlib_main_t * vm,
 	    fib_table_entry_special_add (outer_fib_index,
 					 &tun_dst_pfx,
 					 FIB_SOURCE_RR, FIB_ENTRY_FLAG_NONE);
-	  t1->sibling_index =
-	    fib_entry_child_add (t1->fib_entry_index,
-				 hm->fib_entry_type, t1 - hm->dst_tunnels);
+	  t1->sibling_index = fib_entry_child_add (
+	    t1->fib_entry_index, hm->dep_type, t1 - hm->dst_tunnels);
 	  t1->outer_fib_index = outer_fib_index;
 
 	}
@@ -710,18 +709,18 @@ VLIB_CLI_COMMAND (vxlan_gpe_clear_ioam_flags_cmd, static) =
 /**
  * Function definition to backwalk a FIB node
  */
-static fib_node_back_walk_rc_t
-vxlan_gpe_ioam_back_walk (fib_node_t * node, fib_node_back_walk_ctx_t * ctx)
+static dep_back_walk_rc_t
+vxlan_gpe_ioam_back_walk (dep_t *node, dep_back_walk_ctx_t *ctx)
 {
   vxlan_gpe_refresh_output_feature_on_all_dest ();
-  return (FIB_NODE_BACK_WALK_CONTINUE);
+  return (DEP_BACK_WALK_CONTINUE);
 }
 
 /**
  * Function definition to get a FIB node from its index
  */
-static fib_node_t *
-vxlan_gpe_ioam_fib_node_get (fib_node_index_t index)
+static dep_t *
+vxlan_gpe_ioam_dep_get (fib_node_index_t index)
 {
   vxlan_gpe_ioam_main_t *hm = &vxlan_gpe_ioam_main;
   return (&hm->node);
@@ -731,7 +730,7 @@ vxlan_gpe_ioam_fib_node_get (fib_node_index_t index)
  * Function definition to inform the FIB node that its last lock has gone.
  */
 static void
-vxlan_gpe_ioam_last_lock_gone (fib_node_t * node)
+vxlan_gpe_ioam_last_lock_gone (dep_t *node)
 {
   ASSERT (0);
 }
@@ -741,18 +740,17 @@ vxlan_gpe_ioam_last_lock_gone (fib_node_t * node)
  * Virtual function table registered by MPLS GRE tunnels
  * for participation in the FIB object graph.
  */
-const static fib_node_vft_t vxlan_gpe_ioam_vft = {
-  .fnv_get = vxlan_gpe_ioam_fib_node_get,
-  .fnv_last_lock = vxlan_gpe_ioam_last_lock_gone,
-  .fnv_back_walk = vxlan_gpe_ioam_back_walk,
+const static dep_vft_t vxlan_gpe_ioam_vft = {
+  .dv_get = vxlan_gpe_ioam_dep_get,
+  .dv_last_lock = vxlan_gpe_ioam_last_lock_gone,
+  .dv_back_walk = vxlan_gpe_ioam_back_walk,
 };
 
 void
 vxlan_gpe_ioam_interface_init (void)
 {
   vxlan_gpe_ioam_main_t *hm = &vxlan_gpe_ioam_main;
-  hm->fib_entry_type =
-    fib_node_register_new_type ("vxlan-gpe", &vxlan_gpe_ioam_vft);
+  hm->dep_type = dep_register_type ("vxlan-gpe", &vxlan_gpe_ioam_vft);
   return;
 }
 

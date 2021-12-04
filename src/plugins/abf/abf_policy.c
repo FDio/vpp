@@ -18,12 +18,12 @@
 #include <vlib/vlib.h>
 #include <vnet/plugin/plugin.h>
 #include <vnet/fib/fib_path_list.h>
-#include <vnet/fib/fib_walk.h>
+#include <vnet/dependency/dep_walk.h>
 
 /**
  * FIB node type the attachment is registered
  */
-fib_node_type_t abf_policy_fib_node_type;
+dep_type_t abf_policy_dep_type;
 
 /**
  * Pool of ABF objects
@@ -93,7 +93,7 @@ abf_policy_update (u32 policy_id,
       pool_get (abf_policy_pool, ap);
 
       api = ap - abf_policy_pool;
-      fib_node_init (&ap->ap_node, abf_policy_fib_node_type);
+      dep_init (&ap->ap_node, abf_policy_dep_type);
       ap->ap_acl = acl_index;
       ap->ap_id = policy_id;
       ap->ap_pl = fib_path_list_create ((FIB_PATH_LIST_FLAG_SHARED |
@@ -103,9 +103,8 @@ abf_policy_update (u32 policy_id,
        * become a child of the path list so we get poked when
        * the forwarding changes.
        */
-      ap->ap_sibling = fib_path_list_child_add (ap->ap_pl,
-						abf_policy_fib_node_type,
-						api);
+      ap->ap_sibling =
+	fib_path_list_child_add (ap->ap_pl, abf_policy_dep_type, api);
 
       /*
        * add this new policy to the DB
@@ -115,7 +114,7 @@ abf_policy_update (u32 policy_id,
       /*
        * take a lock on behalf of the CLI/API creation
        */
-      fib_node_lock (&ap->ap_node);
+      dep_lock (&ap->ap_node);
     }
   else
     {
@@ -150,15 +149,14 @@ abf_policy_update (u32 policy_id,
 					    rpaths);
 	}
 
-      ap->ap_sibling = fib_path_list_child_add (ap->ap_pl,
-						abf_policy_fib_node_type,
-						api);
+      ap->ap_sibling =
+	fib_path_list_child_add (ap->ap_pl, abf_policy_dep_type, api);
 
-      fib_node_back_walk_ctx_t ctx = {
-	.fnbw_reason = FIB_NODE_BW_REASON_FLAG_EVALUATE,
+      dep_back_walk_ctx_t ctx = {
+	.dbw_reason = DEP_BW_REASON_FLAG_EVALUATE,
       };
 
-      fib_walk_sync (abf_policy_fib_node_type, api, &ctx);
+      dep_walk_sync (abf_policy_dep_type, api, &ctx);
     }
   return (0);
 }
@@ -220,19 +218,18 @@ abf_policy_delete (u32 policy_id, const fib_route_path_t * rpaths)
 	   * no more paths on this policy. It's toast
 	   * remove the CLI/API's lock
 	   */
-	  fib_node_unlock (&ap->ap_node);
+	  dep_unlock (&ap->ap_node);
 	}
       else
 	{
-	  ap->ap_sibling = fib_path_list_child_add (ap->ap_pl,
-						    abf_policy_fib_node_type,
-						    api);
+	  ap->ap_sibling =
+	    fib_path_list_child_add (ap->ap_pl, abf_policy_dep_type, api);
 
-	  fib_node_back_walk_ctx_t ctx = {
-	    .fnbw_reason = FIB_NODE_BW_REASON_FLAG_EVALUATE,
+	  dep_back_walk_ctx_t ctx = {
+	    .dbw_reason = DEP_BW_REASON_FLAG_EVALUATE,
 	  };
 
-	  fib_walk_sync (abf_policy_fib_node_type, api, &ctx);
+	  dep_walk_sync (abf_policy_dep_type, api, &ctx);
 	}
       fib_path_list_unlock (old_pl);
     }
@@ -403,7 +400,7 @@ VLIB_CLI_COMMAND (abf_policy_show_policy_cmd_node, static) = {
 };
 /* *INDENT-ON* */
 
-static fib_node_t *
+static dep_t *
 abf_policy_get_node (fib_node_index_t index)
 {
   abf_policy_t *ap = abf_policy_get (index);
@@ -411,14 +408,14 @@ abf_policy_get_node (fib_node_index_t index)
 }
 
 static abf_policy_t *
-abf_policy_get_from_node (fib_node_t * node)
+abf_policy_get_from_node (dep_t *node)
 {
   return ((abf_policy_t *) (((char *) node) -
 			    STRUCT_OFFSET_OF (abf_policy_t, ap_node)));
 }
 
 static void
-abf_policy_last_lock_gone (fib_node_t * node)
+abf_policy_last_lock_gone (dep_t *node)
 {
   abf_policy_destroy (abf_policy_get_from_node (node));
 }
@@ -426,9 +423,8 @@ abf_policy_last_lock_gone (fib_node_t * node)
 /*
  * A back walk has reached this ABF policy
  */
-static fib_node_back_walk_rc_t
-abf_policy_back_walk_notify (fib_node_t * node,
-			     fib_node_back_walk_ctx_t * ctx)
+static dep_back_walk_rc_t
+abf_policy_back_walk_notify (dep_t *node, dep_back_walk_ctx_t *ctx)
 {
   /*
    * re-stack the fmask on the n-eos of the via
@@ -439,25 +435,24 @@ abf_policy_back_walk_notify (fib_node_t * node,
    * propagate further up the graph.
    * we can do this synchronously since the fan out is small.
    */
-  fib_walk_sync (abf_policy_fib_node_type, abf_policy_get_index (abf), ctx);
+  dep_walk_sync (abf_policy_dep_type, abf_policy_get_index (abf), ctx);
 
-  return (FIB_NODE_BACK_WALK_CONTINUE);
+  return (DEP_BACK_WALK_CONTINUE);
 }
 
 /*
  * The BIER fmask's graph node virtual function table
  */
-static const fib_node_vft_t abf_policy_vft = {
-  .fnv_get = abf_policy_get_node,
-  .fnv_last_lock = abf_policy_last_lock_gone,
-  .fnv_back_walk = abf_policy_back_walk_notify,
+static const dep_vft_t abf_policy_vft = {
+  .dv_get = abf_policy_get_node,
+  .dv_last_lock = abf_policy_last_lock_gone,
+  .dv_back_walk = abf_policy_back_walk_notify,
 };
 
 static clib_error_t *
 abf_policy_init (vlib_main_t * vm)
 {
-  abf_policy_fib_node_type =
-    fib_node_register_new_type ("abf-policy", &abf_policy_vft);
+  abf_policy_dep_type = dep_register_type ("abf-policy", &abf_policy_vft);
 
   return (NULL);
 }

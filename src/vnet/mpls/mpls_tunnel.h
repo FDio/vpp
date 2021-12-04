@@ -57,7 +57,7 @@ typedef struct mpls_tunnel_t_
     /**
      * @brief The tunnel hooks into the FIB control plane graph.
      */
-    fib_node_t mt_node;
+    dep_t mt_node;
 
     /**
      * @brief Tunnel flags

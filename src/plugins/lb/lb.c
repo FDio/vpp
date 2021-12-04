@@ -671,10 +671,8 @@ next:
                                     &nh,
                                     FIB_SOURCE_RR,
                                     FIB_ENTRY_FLAG_NONE);
-    as->next_hop_child_index =
-        fib_entry_child_add(as->next_hop_fib_entry_index,
-                            lbm->fib_node_type,
-                            as - lbm->ass);
+    as->next_hop_child_index = fib_entry_child_add (
+      as->next_hop_fib_entry_index, lbm->dep_type, as - lbm->ass);
 
     lb_as_stack(as);
 
@@ -1268,24 +1266,24 @@ u8 *format_lb_dpo (u8 * s, va_list * va)
 static void lb_dpo_lock (dpo_id_t *dpo) {}
 static void lb_dpo_unlock (dpo_id_t *dpo) {}
 
-static fib_node_t *
-lb_fib_node_get_node (fib_node_index_t index)
+static dep_t *
+lb_dep_get_node (fib_node_index_t index)
 {
   lb_main_t *lbm = &lb_main;
   lb_as_t *as = pool_elt_at_index (lbm->ass, index);
-  return (&as->fib_node);
+  return (&as->dep_node);
 }
 
 static void
-lb_fib_node_last_lock_gone (fib_node_t *node)
+lb_dep_last_lock_gone (dep_t *node)
 {
 }
 
 static lb_as_t *
-lb_as_from_fib_node (fib_node_t *node)
+lb_as_from_dep (dep_t *node)
 {
-  return ((lb_as_t*)(((char*)node) -
-      STRUCT_OFFSET_OF(lb_as_t, fib_node)));
+  return (
+    (lb_as_t *) (((char *) node) - STRUCT_OFFSET_OF (lb_as_t, dep_node)));
 }
 
 static void
@@ -1319,12 +1317,11 @@ lb_as_stack (lb_as_t *as)
                 as->next_hop_fib_entry_index));
 }
 
-static fib_node_back_walk_rc_t
-lb_fib_node_back_walk_notify (fib_node_t *node,
-                 fib_node_back_walk_ctx_t *ctx)
+static dep_back_walk_rc_t
+lb_dep_back_walk_notify (dep_t *node, dep_back_walk_ctx_t *ctx)
 {
-    lb_as_stack(lb_as_from_fib_node(node));
-    return (FIB_NODE_BACK_WALK_CONTINUE);
+  lb_as_stack (lb_as_from_dep (node));
+  return (DEP_BACK_WALK_CONTINUE);
 }
 
 int lb_nat4_interface_add_del (u32 sw_if_index, int is_del)
@@ -1359,6 +1356,17 @@ int lb_nat6_interface_add_del (u32 sw_if_index, int is_del)
   return 0;
 }
 
+static dep_vft_t lb_dep_vft = {
+  .dv_get = lb_dep_get_node,
+  .dv_last_lock = lb_dep_last_lock_gone,
+  .dv_back_walk = lb_dep_back_walk_notify,
+};
+static dpo_vft_t lb_vft = {
+  .dv_lock = lb_dpo_lock,
+  .dv_unlock = lb_dpo_unlock,
+  .dv_format = format_lb_dpo,
+};
+
 clib_error_t *
 lb_init (vlib_main_t * vm)
 {
@@ -1369,16 +1377,6 @@ lb_init (vlib_main_t * vm)
 
   lb_vip_t *default_vip;
   lb_as_t *default_as;
-  fib_node_vft_t lb_fib_node_vft = {
-      .fnv_get = lb_fib_node_get_node,
-      .fnv_last_lock = lb_fib_node_last_lock_gone,
-      .fnv_back_walk = lb_fib_node_back_walk_notify,
-  };
-  dpo_vft_t lb_vft = {
-      .dv_lock = lb_dpo_lock,
-      .dv_unlock = lb_dpo_unlock,
-      .dv_format = format_lb_dpo,
-  };
 
   //Allocate and init default VIP.
   lbm->vips = 0;
@@ -1412,7 +1410,7 @@ lb_init (vlib_main_t * vm)
                                                   lb_dpo_nat4_port_nodes);
   lbm->dpo_nat6_port_type = dpo_register_new_type(&lb_vft,
                                                   lb_dpo_nat6_port_nodes);
-  lbm->fib_node_type = fib_node_register_new_type ("lb", &lb_fib_node_vft);
+  lbm->dep_type = dep_register_type ("lb", &lb_dep_vft);
 
   //Init AS reference counters
   vlib_refcount_init(&lbm->as_refcount);

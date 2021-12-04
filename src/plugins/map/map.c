@@ -26,6 +26,8 @@
 
 map_main_t map_main;
 
+static dep_type_t DEP_TYPE_MAP_E;
+
 /*
  * This code supports the following MAP modes:
  *
@@ -286,7 +288,7 @@ static void
 map_pre_resolve_init (map_main_pre_resolved_t * pr)
 {
   pr->fei = FIB_NODE_INDEX_INVALID;
-  fib_node_init (&pr->node, FIB_NODE_TYPE_MAP_E);
+  dep_init (&pr->node, DEP_TYPE_MAP_E);
 }
 
 static u8 *
@@ -315,7 +317,7 @@ format_map_pre_resolve (u8 * s, va_list * ap)
  * Function definition to inform the FIB node that its last lock has gone.
  */
 static void
-map_last_lock_gone (fib_node_t * node)
+map_last_lock_gone (dep_t *node)
 {
   /*
    * The MAP is a root of the graph. As such
@@ -325,9 +327,9 @@ map_last_lock_gone (fib_node_t * node)
 }
 
 static map_main_pre_resolved_t *
-map_from_fib_node (fib_node_t * node)
+map_from_dep (dep_t *node)
 {
-  ASSERT (FIB_NODE_TYPE_MAP_E == node->fn_type);
+  ASSERT (DEP_TYPE_MAP_E == node->d_type);
   return ((map_main_pre_resolved_t *)
 	  (((char *) node) -
 	   STRUCT_OFFSET_OF (map_main_pre_resolved_t, node)));
@@ -346,19 +348,19 @@ map_stack (map_main_pre_resolved_t * pr)
 /**
  * Function definition to backwalk a FIB node
  */
-static fib_node_back_walk_rc_t
-map_back_walk (fib_node_t * node, fib_node_back_walk_ctx_t * ctx)
+static dep_back_walk_rc_t
+map_back_walk (dep_t *node, dep_back_walk_ctx_t *ctx)
 {
-  map_stack (map_from_fib_node (node));
+  map_stack (map_from_dep (node));
 
-  return (FIB_NODE_BACK_WALK_CONTINUE);
+  return (DEP_BACK_WALK_CONTINUE);
 }
 
 /**
  * Function definition to get a FIB node from its index
  */
-static fib_node_t *
-map_fib_node_get (fib_node_index_t index)
+static dep_t *
+map_dep_get (fib_node_index_t index)
 {
   return (&pre_resolved[index].node);
 }
@@ -367,10 +369,10 @@ map_fib_node_get (fib_node_index_t index)
  * Virtual function table registered by MPLS GRE tunnels
  * for participation in the FIB object graph.
  */
-const static fib_node_vft_t map_vft = {
-  .fnv_get = map_fib_node_get,
-  .fnv_last_lock = map_last_lock_gone,
-  .fnv_back_walk = map_back_walk,
+const static dep_vft_t map_vft = {
+  .dv_get = map_dep_get,
+  .dv_last_lock = map_last_lock_gone,
+  .dv_back_walk = map_back_walk,
 };
 
 static void
@@ -383,8 +385,8 @@ map_fib_resolve (map_main_pre_resolved_t * pr,
     .fp_addr = *addr,
   };
 
-  pr->fei = fib_entry_track (0,	// default fib
-			     &pfx, FIB_NODE_TYPE_MAP_E, proto, &pr->sibling);
+  pr->fei = fib_entry_track (0, // default fib
+			     &pfx, DEP_TYPE_MAP_E, proto, &pr->sibling);
   map_stack (pr);
 }
 
@@ -1520,7 +1522,7 @@ map_init (vlib_main_t * vm)
   /* IP6 virtual reassembly */
 
 #ifdef MAP_SKIP_IP6_LOOKUP
-  fib_node_register_type (FIB_NODE_TYPE_MAP_E, &map_vft);
+  DEP_TYPE_MAP_E = dep_register_type ("map-e", &map_vft);
 #endif
 
   /* LPM lookup tables */

@@ -26,7 +26,7 @@ extern vlib_node_registration_t abf_ip6_node;
 /**
  * FIB node registered type for the bonds
  */
-static fib_node_type_t abf_itf_attach_fib_node_type;
+static dep_type_t abf_itf_attach_dep_type;
 
 /**
  * Pool of ABF interface attachment objects
@@ -188,7 +188,7 @@ abf_itf_attach (fib_protocol_t fproto,
    */
   pool_get (abf_itf_attach_pool, aia);
 
-  fib_node_init (&aia->aia_node, abf_itf_attach_fib_node_type);
+  dep_init (&aia->aia_node, abf_itf_attach_dep_type);
   aia->aia_prio = priority;
   aia->aia_proto = fproto;
   aia->aia_acl = ap->ap_acl;
@@ -239,9 +239,8 @@ abf_itf_attach (fib_protocol_t fproto,
    * become a child of the ABF policy so we are notified when
    * its forwarding changes.
    */
-  aia->aia_sibling = fib_node_child_add (abf_policy_fib_node_type,
-					 api,
-					 abf_itf_attach_fib_node_type, aiai);
+  aia->aia_sibling =
+    dep_child_add (abf_policy_dep_type, api, abf_itf_attach_dep_type, aiai);
 
   return (0);
 }
@@ -303,8 +302,7 @@ abf_itf_detach (fib_protocol_t fproto, u32 policy_id, u32 sw_if_index)
   /*
    * remove the dependency on the policy
    */
-  fib_node_child_remove (abf_policy_fib_node_type,
-			 aia->aia_abf, aia->aia_sibling);
+  dep_child_remove (abf_policy_dep_type, aia->aia_abf, aia->aia_sibling);
 
   /*
    * remove the attachment from the DB
@@ -704,7 +702,7 @@ VNET_FEATURE_INIT (abf_ip6_feat, static) =
 };
 /* *INDENT-ON* */
 
-static fib_node_t *
+static dep_t *
 abf_itf_attach_get_node (fib_node_index_t index)
 {
   abf_itf_attach_t *aia = abf_itf_attach_get (index);
@@ -712,7 +710,7 @@ abf_itf_attach_get_node (fib_node_index_t index)
 }
 
 static abf_itf_attach_t *
-abf_itf_attach_get_from_node (fib_node_t * node)
+abf_itf_attach_get_from_node (dep_t *node)
 {
   return ((abf_itf_attach_t *) (((char *) node) -
 				STRUCT_OFFSET_OF (abf_itf_attach_t,
@@ -720,7 +718,7 @@ abf_itf_attach_get_from_node (fib_node_t * node)
 }
 
 static void
-abf_itf_attach_last_lock_gone (fib_node_t * node)
+abf_itf_attach_last_lock_gone (dep_t *node)
 {
   /*
    * ABF interface attachments are leaves on the graph.
@@ -733,9 +731,8 @@ abf_itf_attach_last_lock_gone (fib_node_t * node)
  *
  * A back walk has reached this BIER fmask
  */
-static fib_node_back_walk_rc_t
-abf_itf_attach_back_walk_notify (fib_node_t * node,
-				 fib_node_back_walk_ctx_t * ctx)
+static dep_back_walk_rc_t
+abf_itf_attach_back_walk_notify (dep_t *node, dep_back_walk_ctx_t *ctx)
 {
   /*
    * re-stack the fmask on the n-eos of the via
@@ -744,23 +741,23 @@ abf_itf_attach_back_walk_notify (fib_node_t * node,
 
   abf_itf_attach_stack (aia);
 
-  return (FIB_NODE_BACK_WALK_CONTINUE);
+  return (DEP_BACK_WALK_CONTINUE);
 }
 
 /*
  * The BIER fmask's graph node virtual function table
  */
-static const fib_node_vft_t abf_itf_attach_vft = {
-  .fnv_get = abf_itf_attach_get_node,
-  .fnv_last_lock = abf_itf_attach_last_lock_gone,
-  .fnv_back_walk = abf_itf_attach_back_walk_notify,
+static const dep_vft_t abf_itf_attach_vft = {
+  .dv_get = abf_itf_attach_get_node,
+  .dv_last_lock = abf_itf_attach_last_lock_gone,
+  .dv_back_walk = abf_itf_attach_back_walk_notify,
 };
 
 static clib_error_t *
 abf_itf_bond_init (vlib_main_t * vm)
 {
-  abf_itf_attach_fib_node_type =
-    fib_node_register_new_type ("abf-attach", &abf_itf_attach_vft);
+  abf_itf_attach_dep_type =
+    dep_register_type ("abf-attach", &abf_itf_attach_vft);
   clib_error_t *acl_init_res = acl_plugin_exports_init (&acl_plugin);
   if (acl_init_res)
     return (acl_init_res);

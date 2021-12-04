@@ -19,7 +19,8 @@
 #include <vnet/mfib/mfib_entry_src.h>
 #include <vnet/mfib/mfib_entry_cover.h>
 #include <vnet/fib/fib_path_list.h>
-#include <vnet/fib/fib_walk.h>
+#include <vnet/memory_usage.h>
+#include <vnet/dependency/dep_walk.h>
 
 #include <vnet/dpo/drop_dpo.h>
 #include <vnet/dpo/replicate_dpo.h>
@@ -28,6 +29,11 @@
  * the logger
  */
 vlib_log_class_t mfib_entry_logger;
+
+/**
+ * The dependency type
+ */
+dep_type_t DEP_TYPE_MFIB_ENTRY;
 
 /**
  * Pool of path extensions
@@ -45,10 +51,10 @@ static const char *mfib_src_attribute_names[] = MFIB_ENTRY_SRC_ATTRIBUTES;
  */
 mfib_entry_t *mfib_entry_pool;
 
-static fib_node_t *
+static dep_t *
 mfib_entry_get_node (fib_node_index_t index)
 {
-    return ((fib_node_t*)mfib_entry_get(index));
+    return ((dep_t*)mfib_entry_get(index));
 }
 
 static fib_protocol_t
@@ -145,7 +151,7 @@ format_mfib_entry (u8 * s, va_list * args)
         s = format (s, "\n");
         s = format (s, " fib:%d", mfib_entry->mfe_fib_index);
         s = format (s, " index:%d", mfib_entry_get_index(mfib_entry));
-        s = format (s, " locks:%d\n", mfib_entry->mfe_node.fn_locks);
+        s = format (s, " locks:%d\n", mfib_entry->mfe_node.d_locks);
         vec_foreach(msrc, mfib_entry->mfe_srcs)
         {
             s = format (s, "  src:%s flags:%U locks:%d:",
@@ -194,16 +200,16 @@ format_mfib_entry (u8 * s, va_list * args)
     if (level >= MFIB_ENTRY_FORMAT_DETAIL2)
     {
         s = format(s, "\nchildren:");
-        s = fib_node_children_format(mfib_entry->mfe_node.fn_children, s);
+        s = dep_children_format(mfib_entry->mfe_node.d_children, s);
     }
 
     return (s);
 }
 
 static mfib_entry_t*
-mfib_entry_from_fib_node (fib_node_t *node)
+mfib_entry_from_dep (dep_t *node)
 {
-    ASSERT(FIB_NODE_TYPE_MFIB_ENTRY == node->fn_type);
+    ASSERT(DEP_TYPE_MFIB_ENTRY == node->d_type);
     return ((mfib_entry_t*)node);
 }
 
@@ -445,22 +451,22 @@ mfib_entry_src_remove (mfib_entry_t *mfib_entry,
 
 u32
 mfib_entry_child_add (fib_node_index_t mfib_entry_index,
-                      fib_node_type_t child_type,
+                      dep_type_t child_type,
                       fib_node_index_t child_index)
 {
-    return (fib_node_child_add(FIB_NODE_TYPE_MFIB_ENTRY,
-                               mfib_entry_index,
-                               child_type,
-                               child_index));
+    return (dep_child_add(DEP_TYPE_MFIB_ENTRY,
+                          mfib_entry_index,
+                          child_type,
+                          child_index));
 };
 
 void
 mfib_entry_child_remove (fib_node_index_t mfib_entry_index,
                          u32 sibling_index)
 {
-    fib_node_child_remove(FIB_NODE_TYPE_MFIB_ENTRY,
-                          mfib_entry_index,
-                          sibling_index);
+    dep_child_remove(DEP_TYPE_MFIB_ENTRY,
+                     mfib_entry_index,
+                     sibling_index);
 }
 
 static mfib_entry_t *
@@ -472,8 +478,8 @@ mfib_entry_alloc (u32 fib_index,
 
     pool_get_aligned(mfib_entry_pool, mfib_entry, CLIB_CACHE_LINE_BYTES);
 
-    fib_node_init(&mfib_entry->mfe_node,
-                  FIB_NODE_TYPE_MFIB_ENTRY);
+    dep_init(&mfib_entry->mfe_node,
+             DEP_TYPE_MFIB_ENTRY);
 
     /*
      * Some of the members require non-default initialisation
@@ -648,7 +654,7 @@ mfib_entry_stack (mfib_entry_t *mfib_entry,
         {
             mfib_entry->mfe_sibling =
                 fib_path_list_child_add(mfib_entry->mfe_pl,
-                                        FIB_NODE_TYPE_MFIB_ENTRY,
+                                        DEP_TYPE_MFIB_ENTRY,
                                         mfib_entry_get_index(mfib_entry));
 
             fib_path_list_walk(mfib_entry->mfe_pl,
@@ -726,11 +732,11 @@ mfib_entry_stack (mfib_entry_t *mfib_entry,
     /*
      * time for walkies fido.
      */
-    fib_node_back_walk_ctx_t bw_ctx = {
-        .fnbw_reason = FIB_NODE_BW_REASON_FLAG_EVALUATE,
+    dep_back_walk_ctx_t bw_ctx = {
+        .dbw_reason = DEP_BW_REASON_FLAG_EVALUATE,
     };
 
-    fib_walk_sync(FIB_NODE_TYPE_MFIB_ENTRY,
+    dep_walk_sync(DEP_TYPE_MFIB_ENTRY,
                   mfib_entry_get_index(mfib_entry),
                   &bw_ctx);
 }
@@ -1319,12 +1325,12 @@ mfib_entry_cmp_for_sort (void *i1, void *i2)
 }
 
 static void
-mfib_entry_last_lock_gone (fib_node_t *node)
+mfib_entry_last_lock_gone (dep_t *node)
 {
     mfib_entry_t *mfib_entry;
     mfib_entry_src_t *msrc;
 
-    mfib_entry = mfib_entry_from_fib_node(node);
+    mfib_entry = mfib_entry_from_dep(node);
 
     dpo_reset(&mfib_entry->mfe_rep);
 
@@ -1337,7 +1343,7 @@ mfib_entry_last_lock_gone (fib_node_t *node)
 
     vec_free(mfib_entry->mfe_srcs);
 
-    fib_node_deinit(&mfib_entry->mfe_node);
+    dep_deinit(&mfib_entry->mfe_node);
     pool_put(mfib_entry_pool, mfib_entry);
 }
 
@@ -1356,36 +1362,35 @@ mfib_entry_get_stats_index (fib_node_index_t fib_entry_index)
  *
  * A back walk has reach this entry.
  */
-static fib_node_back_walk_rc_t
-mfib_entry_back_walk_notify (fib_node_t *node,
-                            fib_node_back_walk_ctx_t *ctx)
+static dep_back_walk_rc_t
+mfib_entry_back_walk_notify (dep_t *node,
+                             dep_back_walk_ctx_t *ctx)
 {
     mfib_entry_t *mfib_entry;
 
-    mfib_entry = mfib_entry_from_fib_node(node);
+    mfib_entry = mfib_entry_from_dep(node);
     mfib_entry_recalculate_forwarding(mfib_entry,
                                       mfib_entry_get_best_source(mfib_entry));
 
-    return (FIB_NODE_BACK_WALK_CONTINUE);
+    return (DEP_BACK_WALK_CONTINUE);
 }
 
 static void
-mfib_entry_show_memory (void)
+mfib_entry_show_memory (vlib_main_t *vm)
 {
-    fib_show_memory_usage("multicast-Entry",
-                          pool_elts(mfib_entry_pool),
-                          pool_len(mfib_entry_pool),
-                          sizeof(mfib_entry_t));
+    memory_usage_show(vm, "mfib-Entry",
+                      pool_elts(mfib_entry_pool),
+                      pool_len(mfib_entry_pool),
+                      sizeof(mfib_entry_t));
 }
 
 /*
  * The MFIB entry's graph node virtual function table
  */
-static const fib_node_vft_t mfib_entry_vft = {
-    .fnv_get = mfib_entry_get_node,
-    .fnv_last_lock = mfib_entry_last_lock_gone,
-    .fnv_back_walk = mfib_entry_back_walk_notify,
-    .fnv_mem_show = mfib_entry_show_memory,
+static const dep_vft_t mfib_entry_vft = {
+    .dv_get = mfib_entry_get_node,
+    .dv_last_lock = mfib_entry_last_lock_gone,
+    .dv_back_walk = mfib_entry_back_walk_notify,
 };
 
 void
@@ -1395,7 +1400,7 @@ mfib_entry_lock (fib_node_index_t mfib_entry_index)
 
     mfib_entry = mfib_entry_get(mfib_entry_index);
 
-    fib_node_lock(&mfib_entry->mfe_node);
+    dep_lock(&mfib_entry->mfe_node);
 }
 
 void
@@ -1405,7 +1410,7 @@ mfib_entry_unlock (fib_node_index_t mfib_entry_index)
 
     mfib_entry = mfib_entry_get(mfib_entry_index);
 
-    fib_node_unlock(&mfib_entry->mfe_node);
+    dep_unlock(&mfib_entry->mfe_node);
 }
 
 static void
@@ -1444,7 +1449,7 @@ const static char* const * const mfib_entry_nodes[DPO_PROTO_NUM] =
 void
 mfib_entry_module_init (void)
 {
-    fib_node_register_type (FIB_NODE_TYPE_MFIB_ENTRY, &mfib_entry_vft);
+    DEP_TYPE_MFIB_ENTRY = dep_register_type ("mfib-entry", &mfib_entry_vft);
     dpo_register(DPO_MFIB_ENTRY, &mfib_entry_dpo_vft, mfib_entry_nodes);
     mfib_entry_logger = vlib_log_register_class("mfib", "entry");
 }

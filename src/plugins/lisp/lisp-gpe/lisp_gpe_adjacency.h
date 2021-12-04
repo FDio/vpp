@@ -21,7 +21,8 @@
 #ifndef LISP_GPE_ADJACENCY_H__
 #define LISP_GPE_ADJACENCY_H__
 
-#include <vnet/fib/fib_node.h>
+#include <vnet/fib/fib_types.h>
+#include <vnet/dependency/dep.h>
 #include <lisp/lisp-gpe/lisp_gpe.h>
 
 /**
@@ -45,7 +46,7 @@ typedef struct lisp_gpe_adjacency_t_
   /**
    * The LISP adj is a part of the FIB control plane graph.
    */
-  fib_node_t fib_node;
+  dep_t dep_node;
 
   /**
    * remote RLOC. The adjacency's next-hop

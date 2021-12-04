@@ -214,7 +214,7 @@ typedef struct ip_punt_redirect_rx_t_
   /**
    * Node linkage into the FIB graph
    */
-  fib_node_t node;
+  dep_t node;
 
   fib_protocol_t fproto;
   fib_forward_chain_type_t payload_type;

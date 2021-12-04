@@ -16,8 +16,8 @@
 #include <vnet/fib/fib_entry_src.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_path.h>
-#include <vnet/fib/fib_walk.h>
 #include <vnet/fib/fib_path_list.h>
+#include <vnet/fib/fib_urpf_list.h>
 
 static clib_error_t *
 fib_module_init (vlib_main_t * vm)
@@ -27,7 +27,7 @@ fib_module_init (vlib_main_t * vm)
     fib_entry_src_module_init();
     fib_path_module_init();
     fib_path_list_module_init();
-    fib_walk_module_init();
+    fib_urpf_list_module_init();
 
     return (NULL);
 }

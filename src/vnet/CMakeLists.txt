@@ -81,6 +81,8 @@ list(APPEND VNET_HEADERS
   ethernet/ethernet_format_fns.h
   ethernet/ethernet_types_api.h
   dependency/dep.h
+  dependency/dep_list.h
+  memory_usage.h
 )
 
 list(APPEND VNET_API_FILES
@@ -1172,10 +1174,7 @@ list(APPEND VNET_SOURCES
   fib/ip6_fib.c
   fib/mpls_fib.c
   fib/fib_table.c
-  fib/fib_walk.c
   fib/fib_types.c
-  fib/fib_node.c
-  fib/fib_node_list.c
   fib/fib_entry.c
   fib/fib_entry_src.c
   fib/fib_entry_src_adj.c
@@ -1211,8 +1210,6 @@ list(APPEND VNET_HEADERS
   fib/ip6_fib.h
   fib/fib_types.h
   fib/fib_table.h
-  fib/fib_node.h
-  fib/fib_node_list.h
   fib/fib_entry.h
   fib/fib_entry_delegate.h
   fib/fib_sas.h

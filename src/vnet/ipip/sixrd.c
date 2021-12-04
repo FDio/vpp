@@ -46,7 +46,7 @@ extern vlib_node_registration_t ip4_sixrd_node;
 typedef struct sixrd_adj_delegate_t_
 {
   u32 adj_index;
-  fib_node_t sixrd_node;
+  dep_t sixrd_node;
   fib_node_index_t sixrd_fib_entry_index;
   u32 sixrd_sibling;
 } sixrd_adj_delegate_t;
@@ -64,7 +64,7 @@ static adj_delegate_type_t sixrd_adj_delegate_type;
 /**
  * FIB node registered type
  */
-static fib_node_type_t sixrd_fib_node_type;
+static dep_type_t sixrd_dep_type;
 
 static inline sixrd_adj_delegate_t *
 sixrd_adj_from_base (adj_delegate_t * ad)
@@ -225,13 +225,11 @@ sixrd_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
       if (sixrd_ad == NULL)
 	{
 	  pool_get (sixrd_adj_delegate_pool, sixrd_ad);
-	  fib_node_init (&sixrd_ad->sixrd_node, sixrd_fib_node_type);
+	  dep_init (&sixrd_ad->sixrd_node, sixrd_dep_type);
 	  sixrd_ad->adj_index = ai;
-	  sixrd_ad->sixrd_fib_entry_index =
-	    fib_entry_track (t->fib_index, &pfx,
-			     sixrd_fib_node_type,
-			     sixrd_ad - sixrd_adj_delegate_pool,
-			     &sixrd_ad->sixrd_sibling);
+	  sixrd_ad->sixrd_fib_entry_index = fib_entry_track (
+	    t->fib_index, &pfx, sixrd_dep_type,
+	    sixrd_ad - sixrd_adj_delegate_pool, &sixrd_ad->sixrd_sibling);
 
 	  adj_delegate_add (adj, sixrd_adj_delegate_type,
 			    sixrd_ad - sixrd_adj_delegate_pool);
@@ -440,36 +438,35 @@ sixrd_adj_delegate_format (const adj_delegate_t * aed, u8 * s)
 }
 
 static void
-sixrd_fib_node_last_lock_gone (fib_node_t * node)
+sixrd_dep_last_lock_gone (dep_t *node)
 {
   /* top of the dependency tree, locks not managed here. */
 }
 
 static sixrd_adj_delegate_t *
-sixrd_adj_delegate_from_fib_node (fib_node_t * node)
+sixrd_adj_delegate_from_dep (dep_t *node)
 {
   return ((sixrd_adj_delegate_t *) (((char *) node) -
 				    STRUCT_OFFSET_OF (sixrd_adj_delegate_t,
 						      sixrd_node)));
 }
 
-static fib_node_back_walk_rc_t
-sixrd_fib_node_back_walk_notify (fib_node_t * node,
-				 fib_node_back_walk_ctx_t * ctx)
+static dep_back_walk_rc_t
+sixrd_dep_back_walk_notify (dep_t *node, dep_back_walk_ctx_t *ctx)
 {
   sixrd_adj_delegate_t *sixrd_ad;
 
-  sixrd_ad = sixrd_adj_delegate_from_fib_node (node);
+  sixrd_ad = sixrd_adj_delegate_from_dep (node);
   ip6ip_tunnel_stack (sixrd_ad->adj_index, sixrd_ad->sixrd_fib_entry_index);
 
-  return (FIB_NODE_BACK_WALK_CONTINUE);
+  return (DEP_BACK_WALK_CONTINUE);
 }
 
 /**
  * Function definition to get a FIB node from its index
  */
-static fib_node_t *
-sixrd_fib_node_get (fib_node_index_t index)
+static dep_t *
+sixrd_dep_get (fib_node_index_t index)
 {
   sixrd_adj_delegate_t *sixrd_ad;
 
@@ -489,10 +486,10 @@ const static adj_delegate_vft_t sixrd_adj_delegate_vft = {
 /**
  * VFT registered with the FIB node for the adj delegate
  */
-const static fib_node_vft_t sixrd_fib_node_vft = {
-  .fnv_get = sixrd_fib_node_get,
-  .fnv_last_lock = sixrd_fib_node_last_lock_gone,
-  .fnv_back_walk = sixrd_fib_node_back_walk_notify,
+const static dep_vft_t sixrd_dep_vft = {
+  .dv_get = sixrd_dep_get,
+  .dv_last_lock = sixrd_dep_last_lock_gone,
+  .dv_back_walk = sixrd_dep_back_walk_notify,
 };
 
 static clib_error_t *
@@ -505,8 +502,7 @@ sixrd_init (vlib_main_t * vm)
 
   sixrd_adj_delegate_type =
     adj_delegate_register_new_type (&sixrd_adj_delegate_vft);
-  sixrd_fib_node_type =
-    fib_node_register_new_type ("sixrd", &sixrd_fib_node_vft);
+  sixrd_dep_type = dep_register_type ("sixrd", &sixrd_dep_vft);
 
   return error;
 }

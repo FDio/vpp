@@ -18,7 +18,8 @@
 #include <vlib/vlib.h>
 #include <vnet/crypto/crypto.h>
 #include <vnet/ip/ip.h>
-#include <vnet/fib/fib_node.h>
+#include <vnet/fib/fib_types.h>
+#include <vnet/dependency/dep.h>
 #include <vnet/tunnel/tunnel.h>
 
 #define foreach_ipsec_crypto_alg    \
@@ -204,7 +205,7 @@ typedef struct
 
   tunnel_t tunnel;
 
-  fib_node_t node;
+  dep_t node;
 
   /* elements with u32 size */
   u32 id;

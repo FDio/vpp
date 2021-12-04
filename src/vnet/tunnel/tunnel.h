@@ -19,7 +19,8 @@
 #define __TUNNEL_H__
 
 #include <vnet/ip/ip_types.h>
-#include <vnet/fib/fib_node.h>
+#include <vnet/fib/fib_types.h>
+#include <vnet/dependency/dep.h>
 
 #define foreach_tunnel_mode     \
   _(P2P, "point-to-point")      \
@@ -107,7 +108,7 @@ extern u8 *format_tunnel (u8 *s, va_list *args);
 extern uword unformat_tunnel (unformat_input_t *input, va_list *args);
 
 extern void tunnel_copy (const tunnel_t *src, tunnel_t *dst);
-extern int tunnel_resolve (tunnel_t *t, fib_node_type_t child_type,
+extern int tunnel_resolve (tunnel_t *t, dep_type_t child_type,
 			   index_t child_index);
 extern void tunnel_unresolve (tunnel_t *t);
 

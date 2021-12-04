@@ -245,7 +245,7 @@ fib_entry_src_interpose_cover_change (fib_entry_src_t *src,
 {
     fib_entry_src_cover_res_t res = {
        .install = !0,
-       .bw_reason = FIB_NODE_BW_REASON_FLAG_NONE,
+       .bw_reason = DEP_BW_REASON_FLAG_NONE,
     };
 
     if (FIB_NODE_INDEX_INVALID == src->u.interpose.fesi_cover)
@@ -272,7 +272,7 @@ fib_entry_src_interpose_cover_change (fib_entry_src_t *src,
        /*
         * dependent children need to re-resolve to the new forwarding info
         */
-       res.bw_reason = FIB_NODE_BW_REASON_FLAG_EVALUATE;
+       res.bw_reason = DEP_BW_REASON_FLAG_EVALUATE;
     }
     return (res);
 }

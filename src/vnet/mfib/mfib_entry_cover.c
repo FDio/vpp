@@ -15,7 +15,7 @@
 
 #include <vnet/mfib/mfib_entry_cover.h>
 #include <vnet/mfib/mfib_entry_src.h>
-#include <vnet/fib/fib_node_list.h>
+#include <vnet/dependency/dep_list.h>
 
 u32
 mfib_entry_cover_track (mfib_entry_t* cover,
@@ -32,12 +32,12 @@ mfib_entry_cover_track (mfib_entry_t* cover,
     if (NULL == mfed)
     {
         mfed = mfib_entry_delegate_find_or_add(cover, MFIB_ENTRY_DELEGATE_COVERED);
-        mfed->mfd_list = fib_node_list_create();
+        mfed->mfd_list = dep_list_create();
     }
 
-    return (fib_node_list_push_front(mfed->mfd_list,
-                                     0, FIB_NODE_TYPE_MFIB_ENTRY,
-                                     covered));
+    return (dep_list_push_front(mfed->mfd_list,
+                                0, DEP_TYPE_MFIB_ENTRY,
+                                covered));
 }
 
 void
@@ -53,11 +53,11 @@ mfib_entry_cover_untrack (mfib_entry_t* cover,
     if (NULL == mfed)
         return;
 
-    fib_node_list_remove(mfed->mfd_list, tracked_index);
+    dep_list_remove(mfed->mfd_list, tracked_index);
 
-    if (0 == fib_node_list_get_size(mfed->mfd_list))
+    if (0 == dep_list_get_size(mfed->mfd_list))
     {
-        fib_node_list_destroy(&mfed->mfd_list);
+        dep_list_destroy(&mfed->mfd_list);
         mfib_entry_delegate_remove(cover, MFIB_ENTRY_DELEGATE_COVERED);        
     }
 }
@@ -72,12 +72,12 @@ typedef struct mfib_enty_cover_walk_ctx_t_ {
 } mfib_enty_cover_walk_ctx_t;
 
 static walk_rc_t
-mfib_entry_cover_walk_node_ptr (fib_node_ptr_t *depend,
+mfib_entry_cover_walk_node_ptr (dep_ptr_t *depend,
                                 void *args)
 {
     mfib_enty_cover_walk_ctx_t *ctx = args;
 
-    ctx->walk(ctx->cover, depend->fnp_index, ctx->ctx);
+    ctx->walk(ctx->cover, depend->dp_index, ctx->ctx);
 
     return (WALK_CONTINUE);
 }
@@ -100,7 +100,7 @@ mfib_entry_cover_walk (mfib_entry_t *cover,
         .ctx = args,
     };
 
-    fib_node_list_walk(mfed->mfd_list,
+    dep_list_walk(mfed->mfd_list,
                        mfib_entry_cover_walk_node_ptr,
                        &ctx);
 }

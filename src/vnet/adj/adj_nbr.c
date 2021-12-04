@@ -16,7 +16,8 @@
 #include <vnet/adj/adj_nbr.h>
 #include <vnet/adj/adj_internal.h>
 #include <vnet/ethernet/arp_packet.h>
-#include <vnet/fib/fib_walk.h>
+#include <vnet/dependency/dep_walk.h>
+#include <vnet/memory_usage.h>
 
 /*
  * Vector Hash tables of neighbour (traditional) adjacencies
@@ -519,20 +520,20 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
          * this  the children will send packets to a VLIB graph node that does
          * not correspond to the adj's type - and it goes downhill from there.
          */
-	fib_node_back_walk_ctx_t bw_ctx = {
-	    .fnbw_reason = FIB_NODE_BW_REASON_FLAG_ADJ_DOWN,
+	dep_back_walk_ctx_t bw_ctx = {
+	    .dbw_reason = DEP_BW_REASON_FLAG_ADJ_DOWN,
             /*
              * force this walk to be synchronous. if we don't and a node in the graph
              * (a heavily shared path-list) chooses to back-ground the walk (make it
              * async) then it will pause and we will do the adj update below, before
              * all the children are updated. not good.
              */
-            .fnbw_flags = FIB_NODE_BW_FLAG_FORCE_SYNC,
+            .dbw_flags = DEP_BW_FLAG_FORCE_SYNC,
 	};
 
-	fib_walk_sync(FIB_NODE_TYPE_ADJ, walk_ai, &bw_ctx);
+	dep_walk_sync(DEP_TYPE_ADJ, walk_ai, &bw_ctx);
 	/*
-	 * fib_walk_sync may allocate a new adjacency and potentially cuase a
+	 * dep_walk_sync may allocate a new adjacency and potentially cuase a
 	 * realloc for adj_pool. When that happens, adj pointer is no longer
 	 * valid here. We refresh the adj pointer accordingly.
 	 */
@@ -585,11 +586,11 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
          * backwalk to the children so they can stack on the now updated
          * adjacency
          */
-        fib_node_back_walk_ctx_t bw_ctx = {
-	    .fnbw_reason = FIB_NODE_BW_REASON_FLAG_ADJ_UPDATE,
+        dep_back_walk_ctx_t bw_ctx = {
+	    .dbw_reason = DEP_BW_REASON_FLAG_ADJ_UPDATE,
 	};
 
-	fib_walk_sync(FIB_NODE_TYPE_ADJ, walk_ai, &bw_ctx);
+	dep_walk_sync(DEP_TYPE_ADJ, walk_ai, &bw_ctx);
     }
     /*
      * Prevent re-entrant walk of the same adj
@@ -775,18 +776,18 @@ adj_nbr_interface_state_change_one (adj_index_t ai,
      * since this is the walk that provides convergence
      */
     adj_nbr_interface_state_change_ctx_t *ctx = arg;
-    fib_node_back_walk_ctx_t bw_ctx = {
-	.fnbw_reason = ((ctx->flags & ADJ_NBR_INTERFACE_UP) ?
-                        FIB_NODE_BW_REASON_FLAG_INTERFACE_UP :
-                        FIB_NODE_BW_REASON_FLAG_INTERFACE_DOWN),
+    dep_back_walk_ctx_t bw_ctx = {
+	.dbw_reason = ((ctx->flags & ADJ_NBR_INTERFACE_UP) ?
+                        DEP_BW_REASON_FLAG_INTERFACE_UP :
+                        DEP_BW_REASON_FLAG_INTERFACE_DOWN),
         /*
          * the force sync applies only as far as the first fib_entry.
          * And it's the fib_entry's we need to converge away from
          * the adjacencies on the now down link
          */
-        .fnbw_flags = (!(ctx->flags & ADJ_NBR_INTERFACE_UP) ?
-                       FIB_NODE_BW_FLAG_FORCE_SYNC :
-                       FIB_NODE_BW_FLAG_NONE),
+        .dbw_flags = (!(ctx->flags & ADJ_NBR_INTERFACE_UP) ?
+                       DEP_BW_FLAG_FORCE_SYNC :
+                       DEP_BW_FLAG_NONE),
     };
     ip_adjacency_t *adj;
 
@@ -795,7 +796,7 @@ adj_nbr_interface_state_change_one (adj_index_t ai,
     adj = adj_get(ai);
 
     adj->ia_flags |= ADJ_FLAG_SYNC_WALK_ACTIVE;
-    fib_walk_sync(FIB_NODE_TYPE_ADJ, ai, &bw_ctx);
+    dep_walk_sync(DEP_TYPE_ADJ, ai, &bw_ctx);
     adj->ia_flags &= ~ADJ_FLAG_SYNC_WALK_ACTIVE;
 
     adj_unlock (ai);
@@ -895,8 +896,8 @@ adj_nbr_interface_delete_one (adj_index_t ai,
      * Back walk the graph to inform the forwarding entries
      * that this interface has been deleted.
      */
-    fib_node_back_walk_ctx_t bw_ctx = {
-	.fnbw_reason = FIB_NODE_BW_REASON_FLAG_INTERFACE_DELETE,
+    dep_back_walk_ctx_t bw_ctx = {
+	.dbw_reason = DEP_BW_REASON_FLAG_INTERFACE_DELETE,
     };
     ip_adjacency_t *adj;
 
@@ -905,7 +906,7 @@ adj_nbr_interface_delete_one (adj_index_t ai,
     adj = adj_get(ai);
 
     adj->ia_flags |= ADJ_FLAG_SYNC_WALK_ACTIVE;
-    fib_walk_sync(FIB_NODE_TYPE_ADJ, ai, &bw_ctx);
+    dep_walk_sync(DEP_TYPE_ADJ, ai, &bw_ctx);
     adj->ia_flags &= ~ADJ_FLAG_SYNC_WALK_ACTIVE;
 
     adj_unlock(ai);
@@ -1132,19 +1133,18 @@ adj_dpo_unlock (dpo_id_t *dpo)
 }
 
 static void
-adj_mem_show (void)
+adj_mem_show (vlib_main_t *vm)
 {
-    fib_show_memory_usage("Adjacency",
-			  pool_elts(adj_pool),
-			  pool_len(adj_pool),
-			  sizeof(ip_adjacency_t));
+    memory_usage_show(vm, "Adjacency",
+                      pool_elts(adj_pool),
+                      pool_len(adj_pool),
+                      sizeof(ip_adjacency_t));
 }
 
 const static dpo_vft_t adj_nbr_dpo_vft = {
     .dv_lock = adj_dpo_lock,
     .dv_unlock = adj_dpo_unlock,
     .dv_format = format_adj_nbr,
-    .dv_mem_show = adj_mem_show,
     .dv_get_urpf = adj_dpo_get_urpf,
     .dv_get_mtu = adj_dpo_get_mtu,
 };
@@ -1223,6 +1223,7 @@ adj_nbr_module_init (void)
     dpo_register(DPO_ADJACENCY_INCOMPLETE,
                  &adj_nbr_incompl_dpo_vft,
                  nbr_incomplete_nodes);
+    memory_usage_register(adj_mem_show);
 
     ethernet_address_change_ctx_t ctx = {
         .function = adj_nbr_ethernet_change_mac,

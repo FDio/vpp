@@ -54,7 +54,7 @@
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/ip_types.h>
-#include <vnet/fib/fib_node.h>
+#include <vnet/dependency/dep.h>
 #include <vnet/adj/adj.h>
 #include <vnet/dpo/dpo.h>
 ///#include <vnet/feature/feature.h>

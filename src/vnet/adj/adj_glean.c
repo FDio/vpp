@@ -15,7 +15,7 @@
 
 #include <vnet/adj/adj.h>
 #include <vnet/adj/adj_internal.h>
-#include <vnet/fib/fib_walk.h>
+#include <vnet/dependency/dep_walk.h>
 
 /*
  * The 'DB' of all glean adjs.
@@ -313,9 +313,9 @@ static adj_walk_rc_t
 adj_glean_start_backwalk (adj_index_t ai,
                           void *data)
 {
-    fib_node_back_walk_ctx_t bw_ctx = *(fib_node_back_walk_ctx_t*) data;
+    dep_back_walk_ctx_t bw_ctx = *(dep_back_walk_ctx_t*) data;
 
-    fib_walk_sync(FIB_NODE_TYPE_ADJ, ai, &bw_ctx);
+    dep_walk_sync(DEP_TYPE_ADJ, ai, &bw_ctx);
 
     return (ADJ_WALK_RC_CONTINUE);
 }
@@ -328,10 +328,10 @@ adj_glean_interface_state_change (vnet_main_t * vnm,
     /*
      * for each glean on the interface trigger a walk back to the children
      */
-    fib_node_back_walk_ctx_t bw_ctx = {
-        .fnbw_reason = (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP ?
-                        FIB_NODE_BW_REASON_FLAG_INTERFACE_UP :
-                        FIB_NODE_BW_REASON_FLAG_INTERFACE_DOWN),
+    dep_back_walk_ctx_t bw_ctx = {
+        .dbw_reason = (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP ?
+                        DEP_BW_REASON_FLAG_INTERFACE_UP :
+                        DEP_BW_REASON_FLAG_INTERFACE_DOWN),
     };
 
     adj_glean_walk (sw_if_index, adj_glean_start_backwalk, &bw_ctx);
@@ -408,8 +408,8 @@ adj_glean_interface_delete (vnet_main_t * vnm,
     /*
      * for each glean on the interface trigger a walk back to the children
      */
-    fib_node_back_walk_ctx_t bw_ctx = {
-        .fnbw_reason =  FIB_NODE_BW_REASON_FLAG_INTERFACE_DELETE,
+    dep_back_walk_ctx_t bw_ctx = {
+        .dbw_reason =  DEP_BW_REASON_FLAG_INTERFACE_DELETE,
     };
 
     adj_glean_walk (sw_if_index, adj_glean_start_backwalk, &bw_ctx);
@@ -438,10 +438,10 @@ adj_glean_table_bind (fib_protocol_t fproto,
     /*
      * for each glean on the interface trigger a walk back to the children
      */
-    fib_node_back_walk_ctx_t bw_ctx = {
-        .fnbw_reason =  FIB_NODE_BW_REASON_FLAG_INTERFACE_BIND,
+    dep_back_walk_ctx_t bw_ctx = {
+        .dbw_reason =  DEP_BW_REASON_FLAG_INTERFACE_BIND,
         .interface_bind = {
-            .fnbw_to_fib_index = itf_fib_index,
+            .dbw_to_fib_index = itf_fib_index,
         },
     };
 

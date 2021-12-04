@@ -14,7 +14,10 @@
  */
 
 #include <vnet/dpo/pw_cw.h>
-#include <vnet/fib/fib_node.h>
+#include <vnet/fib/fib_types.h>
+#include <vnet/memory_usage.h>
+
+// clang-format off
 
 #ifndef CLIB_MARCH_VARIANT
 
@@ -277,12 +280,12 @@ VLIB_REGISTER_NODE(pw_cw_node) = {
 
 #ifndef CLIB_MARCH_VARIANT
 static void
-pw_cw_dpo_mem_show (void)
+pw_cw_dpo_mem_show (vlib_main_t *vm)
 {
-    fib_show_memory_usage("PW-CW",
-			  pool_elts(pw_cw_dpo_pool),
-			  pool_len(pw_cw_dpo_pool),
-			  sizeof(pw_cw_dpo_t));
+    memory_usage_show(vm, "PW-CW",
+                      pool_elts(pw_cw_dpo_pool),
+                      pool_len(pw_cw_dpo_pool),
+                      sizeof(pw_cw_dpo_t));
 }
 
 const static dpo_vft_t pwcw_vft = {
@@ -313,3 +316,5 @@ pw_cw_dpo_module_init (void)
 }
 
 #endif /* CLIB_MARCH_VARIANT */
+
+// clang-format on

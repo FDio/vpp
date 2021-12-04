@@ -43,6 +43,8 @@ vlib_combined_counter_main_t udp_encap_counters = {
   .stat_segment_name = "/net/udp-encap",
 };
 
+static dep_type_t DEP_TYPE_UDP_ENCAP;
+
 static void
 udp_encap_restack (udp_encap_t * ue)
 {
@@ -70,8 +72,8 @@ udp_encap_add_and_lock (fib_protocol_t proto,
   vlib_validate_combined_counter (&(udp_encap_counters), uei);
   vlib_zero_combined_counter (&(udp_encap_counters), uei);
 
-  fib_node_init (&ue->ue_fib_node, FIB_NODE_TYPE_UDP_ENCAP);
-  fib_node_lock (&ue->ue_fib_node);
+  dep_init (&ue->ue_dep, DEP_TYPE_UDP_ENCAP);
+  dep_lock (&ue->ue_dep);
   ue->ue_fib_index = fib_index;
   ue->ue_flags = flags;
   ue->ue_ip_proto = proto;
@@ -118,10 +120,8 @@ udp_encap_add_and_lock (fib_protocol_t proto,
     .fp_addr = *dst_ip,
   };
 
-  ue->ue_fib_entry_index = fib_entry_track (fib_index,
-					    &dst_pfx,
-					    FIB_NODE_TYPE_UDP_ENCAP,
-					    uei, &ue->ue_fib_sibling);
+  ue->ue_fib_entry_index = fib_entry_track (
+    fib_index, &dst_pfx, DEP_TYPE_UDP_ENCAP, uei, &ue->ue_fib_sibling);
   udp_encap_restack (ue);
 
   return (uei);
@@ -154,7 +154,7 @@ udp_encap_lock (index_t uei)
 
   if (NULL != ue)
     {
-      fib_node_lock (&ue->ue_fib_node);
+      dep_lock (&ue->ue_dep);
     }
 }
 
@@ -172,7 +172,7 @@ udp_encap_unlock (index_t uei)
 
   if (NULL != ue)
     {
-      fib_node_unlock (&ue->ue_fib_node);
+      dep_unlock (&ue->ue_dep);
     }
 }
 
@@ -183,7 +183,7 @@ udp_encap_dpo_lock (dpo_id_t * dpo)
 
   ue = udp_encap_get (dpo->dpoi_index);
 
-  fib_node_lock (&ue->ue_fib_node);
+  dep_lock (&ue->ue_dep);
 }
 
 static void
@@ -193,7 +193,7 @@ udp_encap_dpo_unlock (dpo_id_t * dpo)
 
   ue = udp_encap_get (dpo->dpoi_index);
 
-  fib_node_unlock (&ue->ue_fib_node);
+  dep_unlock (&ue->ue_dep);
 }
 
 static u8 *
@@ -234,7 +234,7 @@ format_udp_encap_i (u8 * s, va_list * args)
 
   if (details)
     {
-      s = format (s, " locks:%d", ue->ue_fib_node.fn_locks);
+      s = format (s, " locks:%d", ue->ue_dep.d_locks);
       s = format (s, "\n%UStacked on:", format_white_space, indent + 1);
       s = format (s, "\n%U%U",
 		  format_white_space, indent + 2,
@@ -273,50 +273,50 @@ format_udp_encap (u8 * s, va_list * args)
 }
 
 static udp_encap_t *
-udp_encap_from_fib_node (fib_node_t * node)
+udp_encap_from_dep (dep_t *node)
 {
-  ASSERT (FIB_NODE_TYPE_UDP_ENCAP == node->fn_type);
+  ASSERT (DEP_TYPE_UDP_ENCAP == node->d_type);
   return ((udp_encap_t *) (((char *) node) -
-			   STRUCT_OFFSET_OF (udp_encap_t, ue_fib_node)));
+			   STRUCT_OFFSET_OF (udp_encap_t, ue_dep)));
 }
 
 /**
  * Function definition to backwalk a FIB node
  */
-static fib_node_back_walk_rc_t
-udp_encap_fib_back_walk (fib_node_t * node, fib_node_back_walk_ctx_t * ctx)
+static dep_back_walk_rc_t
+udp_encap_fib_back_walk (dep_t *node, dep_back_walk_ctx_t *ctx)
 {
-  udp_encap_restack (udp_encap_from_fib_node (node));
+  udp_encap_restack (udp_encap_from_dep (node));
 
-  return (FIB_NODE_BACK_WALK_CONTINUE);
+  return (DEP_BACK_WALK_CONTINUE);
 }
 
 /**
  * Function definition to get a FIB node from its index
  */
-static fib_node_t *
-udp_encap_fib_node_get (fib_node_index_t index)
+static dep_t *
+udp_encap_dep_get (fib_node_index_t index)
 {
   udp_encap_t *ue;
 
   ue = pool_elt_at_index (udp_encap_pool, index);
 
-  return (&ue->ue_fib_node);
+  return (&ue->ue_dep);
 }
 
 /**
  * Function definition to inform the FIB node that its last lock has gone.
  */
 static void
-udp_encap_fib_last_lock_gone (fib_node_t * node)
+udp_encap_fib_last_lock_gone (dep_t *node)
 {
   udp_encap_t *ue;
 
-  ue = udp_encap_from_fib_node (node);
+  ue = udp_encap_from_dep (node);
 
-    /**
-     * reset the stacked DPO to unlock it
-     */
+  /**
+   * reset the stacked DPO to unlock it
+   */
   dpo_reset (&ue->ue_dpo);
 
   fib_entry_untrack (ue->ue_fib_entry_index, ue->ue_fib_sibling);
@@ -382,10 +382,10 @@ const static char *const *const udp6_encap_nodes[DPO_PROTO_NUM] = {
  * Virtual function table registered by UDP encaps
  * for participation in the FIB object graph.
  */
-const static fib_node_vft_t udp_encap_fib_vft = {
-  .fnv_get = udp_encap_fib_node_get,
-  .fnv_last_lock = udp_encap_fib_last_lock_gone,
-  .fnv_back_walk = udp_encap_fib_back_walk,
+const static dep_vft_t udp_encap_fib_vft = {
+  .dv_get = udp_encap_dep_get,
+  .dv_last_lock = udp_encap_fib_last_lock_gone,
+  .dv_back_walk = udp_encap_fib_back_walk,
 };
 
 const static dpo_vft_t udp_encap_dpo_vft = {
@@ -397,7 +397,7 @@ const static dpo_vft_t udp_encap_dpo_vft = {
 clib_error_t *
 udp_encap_init (vlib_main_t * vm)
 {
-  fib_node_register_type (FIB_NODE_TYPE_UDP_ENCAP, &udp_encap_fib_vft);
+  DEP_TYPE_UDP_ENCAP = dep_register_type ("udp-encap", &udp_encap_fib_vft);
 
   udp_encap_dpo_types[FIB_PROTOCOL_IP4] =
     dpo_register_new_type (&udp_encap_dpo_vft, udp4_encap_nodes);

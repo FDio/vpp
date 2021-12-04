@@ -25,6 +25,7 @@
 #include <vnet/bier/bier_hdr_inlines.h>
 #include <vnet/fib/fib_path_list.h>
 #include <vnet/dpo/drop_dpo.h>
+#include <vnet/memory_usage.h>
 
 /**
  * The memory pool of all imp objects
@@ -313,12 +314,12 @@ bier_disp_entry_dpo_unlock (dpo_id_t *dpo)
 }
 
 static void
-bier_disp_entry_dpo_mem_show (void)
+bier_disp_entry_dpo_mem_show (vlib_main_t *vm)
 {
-    fib_show_memory_usage("BIER disposition",
-                          pool_elts(bier_disp_entry_pool),
-                          pool_len(bier_disp_entry_pool),
-                          sizeof(bier_disp_entry_t));
+    memory_usage_show(vm, "BIER disposition",
+                      pool_elts(bier_disp_entry_pool),
+                      pool_len(bier_disp_entry_pool),
+                      sizeof(bier_disp_entry_t));
 }
 
 static u8*

@@ -124,7 +124,7 @@ adj_midchain_delegate_stack (adj_index_t ai,
 
         amd->amd_fei = fib_entry_track(fib_index,
                                        pfx,
-                                       FIB_NODE_TYPE_ADJ,
+                                       DEP_TYPE_ADJ,
                                        ai,
                                        &amd->amd_sibling);
     }

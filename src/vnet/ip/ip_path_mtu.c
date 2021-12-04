@@ -59,7 +59,7 @@ static dpo_type_t ip_pmtu_dpo_type;
 /**
  * Fib node type for the tracker
  */
-static fib_node_type_t ip_pmtu_fib_type;
+static dep_type_t ip_pmtu_fib_type;
 
 /**
  * Path MTU tracker pool
@@ -476,7 +476,7 @@ ip_pmtu_alloc (u32 fib_index, const fib_prefix_t *pfx,
   index_t ipti;
 
   pool_get (ip_pmtu_pool, ipt);
-  fib_node_init (&(ipt->ipt_node), ip_pmtu_fib_type);
+  dep_init (&(ipt->ipt_node), ip_pmtu_fib_type);
 
   ipti = ipt - ip_pmtu_pool;
   hash_set_mem_alloc (&ip_pmtu_db, key, ipti);
@@ -768,7 +768,7 @@ ip_path_mtu_walk (ip_path_mtu_walk_t fn, void *ctx)
     }
 }
 
-static fib_node_t *
+static dep_t *
 ip_pmtu_get_node (fib_node_index_t index)
 {
   ip_pmtu_t *ipt;
@@ -779,14 +779,14 @@ ip_pmtu_get_node (fib_node_index_t index)
 }
 
 static ip_pmtu_t *
-ip_pmtu_get_from_node (fib_node_t *node)
+ip_pmtu_get_from_node (dep_t *node)
 {
   return (
     (ip_pmtu_t *) (((char *) node) - STRUCT_OFFSET_OF (ip_pmtu_t, ipt_node)));
 }
 
 static void
-ip_pmtu_last_lock_gone (fib_node_t *node)
+ip_pmtu_last_lock_gone (dep_t *node)
 {
   /*
    * the lifetime of the entry is managed by the API.
@@ -797,8 +797,8 @@ ip_pmtu_last_lock_gone (fib_node_t *node)
 /*
  * A back walk has reached this BIER entry
  */
-static fib_node_back_walk_rc_t
-ip_pmtu_back_walk_notify (fib_node_t *node, fib_node_back_walk_ctx_t *ctx)
+static dep_back_walk_rc_t
+ip_pmtu_back_walk_notify (dep_t *node, dep_back_walk_ctx_t *ctx)
 {
   /*
    * re-populate the ECMP tables with new choices
@@ -810,13 +810,13 @@ ip_pmtu_back_walk_notify (fib_node_t *node, fib_node_back_walk_ctx_t *ctx)
   /*
    * no need to propagate further up the graph, since there's nothing there
    */
-  return (FIB_NODE_BACK_WALK_CONTINUE);
+  return (DEP_BACK_WALK_CONTINUE);
 }
 
-static const fib_node_vft_t ip_ptmu_fib_node_vft = {
-  .fnv_get = ip_pmtu_get_node,
-  .fnv_last_lock = ip_pmtu_last_lock_gone,
-  .fnv_back_walk = ip_pmtu_back_walk_notify,
+static const dep_vft_t ip_ptmu_dep_vft = {
+  .dv_get = ip_pmtu_get_node,
+  .dv_last_lock = ip_pmtu_last_lock_gone,
+  .dv_back_walk = ip_pmtu_back_walk_notify,
 };
 
 static clib_error_t *
@@ -826,8 +826,7 @@ ip_path_module_init (vlib_main_t *vm)
     adj_delegate_register_new_type (&ip_path_adj_delegate_vft);
   ip_pmtu_source = fib_source_allocate ("path-mtu", FIB_SOURCE_PRIORITY_HI,
 					FIB_SOURCE_BH_SIMPLE);
-  ip_pmtu_fib_type =
-    fib_node_register_new_type ("ip-pmtu", &ip_ptmu_fib_node_vft);
+  ip_pmtu_fib_type = dep_register_type ("ip-pmtu", &ip_ptmu_dep_vft);
 
   ip_pmtu_db = hash_create_mem (0, sizeof (ip_pmtu_key_t), sizeof (index_t));
   ip_pmtu_logger = vlib_log_register_class ("ip", "pmtu");

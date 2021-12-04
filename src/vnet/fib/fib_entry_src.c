@@ -230,7 +230,7 @@ fib_entry_src_action_cover_change (fib_entry_t *fib_entry,
 
     fib_entry_src_cover_res_t res = {
 	.install = !0,
-	.bw_reason = FIB_NODE_BW_REASON_FLAG_NONE,
+	.bw_reason = DEP_BW_REASON_FLAG_NONE,
     };
     return (res);
 }
@@ -244,7 +244,7 @@ fib_entry_src_action_cover_update (fib_entry_t *fib_entry,
 
     fib_entry_src_cover_res_t res = {
 	.install = !0,
-	.bw_reason = FIB_NODE_BW_REASON_FLAG_NONE,
+	.bw_reason = DEP_BW_REASON_FLAG_NONE,
     };
     return (res);
 }
@@ -1107,7 +1107,7 @@ fib_entry_src_action_activate (fib_entry_t *fib_entry,
     fib_entry->fe_parent = esrc->fes_pl;
     fib_entry->fe_sibling =
 	fib_path_list_child_add(fib_entry->fe_parent,
-				FIB_NODE_TYPE_ENTRY,
+				DEP_TYPE_FIB_ENTRY,
 				fib_entry_get_index(fib_entry));
 
     fib_entry_recursive_loop_detect_i(fib_entry->fe_parent);
@@ -1247,7 +1247,7 @@ fib_entry_src_action_reactivate (fib_entry_t *fib_entry,
 	fib_entry->fe_parent = esrc->fes_pl;
 	fib_entry->fe_sibling =
 	    fib_path_list_child_add(fib_entry->fe_parent,
-				    FIB_NODE_TYPE_ENTRY,
+				    DEP_TYPE_FIB_ENTRY,
 				    fib_entry_get_index(fib_entry));
 
 	fib_entry_recursive_loop_detect_i(fib_entry->fe_parent);

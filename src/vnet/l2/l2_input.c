@@ -22,7 +22,6 @@
 #include <vnet/ip/ip_packet.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
-#include <vnet/fib/fib_node.h>
 #include <vnet/ethernet/arp_packet.h>
 #include <vlib/cli.h>
 #include <vnet/l2/l2_input.h>

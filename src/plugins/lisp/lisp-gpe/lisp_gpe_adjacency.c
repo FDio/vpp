@@ -36,6 +36,11 @@
 static lisp_gpe_adjacency_t *lisp_adj_pool;
 
 /**
+ * Dependency Type
+ */
+static dep_type_t DEP_TYPE_LISP_ADJ;
+
+/**
  * Hash table of all adjacencies. key:{nh, itf}
  * We never have an all zeros address since the interfaces are multi-access,
  * therefore there is no ambiguity between a v4 and v6 next-hop, so we don't
@@ -391,9 +396,8 @@ lisp_gpe_adjacency_find_or_create_and_lock (const locator_pair_t * pair,
        * become of child of the RLOC FIB entry so we are updated when
        * its reachability changes, allowing us to re-stack the midcahins
        */
-      ladj->fib_entry_child_index = fib_entry_child_add (lgt->fib_entry_index,
-							 FIB_NODE_TYPE_LISP_ADJ,
-							 lai);
+      ladj->fib_entry_child_index =
+	fib_entry_child_add (lgt->fib_entry_index, DEP_TYPE_LISP_ADJ, lai);
 
       lisp_adj_insert (&ladj->remote_rloc, ladj->sw_if_index, lai);
     }
@@ -413,11 +417,11 @@ lisp_gpe_adjacency_find_or_create_and_lock (const locator_pair_t * pair,
  * @brief Get a pointer to a tunnel from a pointer to a FIB node
  */
 static lisp_gpe_adjacency_t *
-lisp_gpe_adjacency_from_fib_node (const fib_node_t * node)
+lisp_gpe_adjacency_from_dep (const dep_t *node)
 {
-  return ((lisp_gpe_adjacency_t *)
-	  ((char *) node -
-	   STRUCT_OFFSET_OF (lisp_gpe_adjacency_t, fib_node)));
+  return ((lisp_gpe_adjacency_t *) ((char *) node -
+				    STRUCT_OFFSET_OF (lisp_gpe_adjacency_t,
+						      dep_node)));
 }
 
 static void
@@ -472,34 +476,33 @@ lisp_gpe_adjacency_get (index_t lai)
  * The FIB entry through which this tunnel resolves has been updated.
  * re-stack the midchain on the new forwarding.
  */
-static fib_node_back_walk_rc_t
-lisp_gpe_adjacency_back_walk (fib_node_t * node,
-			      fib_node_back_walk_ctx_t * ctx)
+static dep_back_walk_rc_t
+lisp_gpe_adjacency_back_walk (dep_t *node, dep_back_walk_ctx_t *ctx)
 {
-  lisp_gpe_adj_stack (lisp_gpe_adjacency_from_fib_node (node));
+  lisp_gpe_adj_stack (lisp_gpe_adjacency_from_dep (node));
 
-  return (FIB_NODE_BACK_WALK_CONTINUE);
+  return (DEP_BACK_WALK_CONTINUE);
 }
 
-static fib_node_t *
-lisp_gpe_adjacency_get_fib_node (fib_node_index_t index)
+static dep_t *
+lisp_gpe_adjacency_get_dep (fib_node_index_t index)
 {
   lisp_gpe_adjacency_t *ladj;
 
   ladj = pool_elt_at_index (lisp_adj_pool, index);
-  return (&ladj->fib_node);
+  return (&ladj->dep_node);
 }
 
 static void
-lisp_gpe_adjacency_last_fib_lock_gone (fib_node_t * node)
+lisp_gpe_adjacency_last_fib_lock_gone (dep_t *node)
 {
-  lisp_gpe_adjacency_last_lock_gone (lisp_gpe_adjacency_from_fib_node (node));
+  lisp_gpe_adjacency_last_lock_gone (lisp_gpe_adjacency_from_dep (node));
 }
 
-const static fib_node_vft_t lisp_gpe_tuennel_vft = {
-  .fnv_get = lisp_gpe_adjacency_get_fib_node,
-  .fnv_back_walk = lisp_gpe_adjacency_back_walk,
-  .fnv_last_lock = lisp_gpe_adjacency_last_fib_lock_gone,
+const static dep_vft_t lisp_gpe_tuennel_vft = {
+  .dv_get = lisp_gpe_adjacency_get_dep,
+  .dv_back_walk = lisp_gpe_adjacency_back_walk,
+  .dv_last_lock = lisp_gpe_adjacency_last_fib_lock_gone,
 };
 
 u8 *
@@ -589,7 +592,7 @@ lisp_gpe_adj_module_init (vlib_main_t * vm)
 			 LISP_ADJ_NBR_DEFAULT_HASH_NUM_BUCKETS,
 			 LISP_ADJ_NBR_DEFAULT_HASH_MEMORY_SIZE);
 
-  fib_node_register_type (FIB_NODE_TYPE_LISP_ADJ, &lisp_gpe_tuennel_vft);
+  DEP_TYPE_LISP_ADJ = dep_register_type ("lisp-adj", &lisp_gpe_tuennel_vft);
   return (NULL);
 }
 

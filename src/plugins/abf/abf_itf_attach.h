@@ -41,7 +41,7 @@ typedef struct abf_itf_attach_t_
   /**
    * Linkage into the FIB graph
    */
-  fib_node_t aia_node;
+  dep_t aia_node;
 
   /**
    * The VPP index of the ABF policy

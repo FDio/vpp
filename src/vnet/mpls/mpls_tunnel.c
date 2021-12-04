@@ -40,6 +40,8 @@ static u32 *mpls_tunnel_db;
  */
 static const char *mpls_tunnel_attribute_names[] = MPLS_TUNNEL_ATTRIBUTES;
 
+static dep_type_t DEP_TYPE_MPLS_TUNNEL;
+
 /**
  * @brief Packet trace structure
  */
@@ -423,9 +425,8 @@ mpls_tunnel_stack (adj_index_t ai)
         adj_nbr_midchain_unstack(ai);
     }
 
-    mt->mt_sibling_index = fib_path_list_child_add(mt->mt_path_list,
-                                                   FIB_NODE_TYPE_MPLS_TUNNEL,
-                                                   mt - mpls_tunnel_pool);
+    mt->mt_sibling_index = fib_path_list_child_add (
+      mt->mt_path_list, DEP_TYPE_MPLS_TUNNEL, mt - mpls_tunnel_pool);
 
     fib_path_list_unlock(mt->mt_path_list);
 }
@@ -659,7 +660,7 @@ vnet_mpls_tunnel_create (u8 l2_only,
     pool_get(mpls_tunnel_pool, mt);
     clib_memset (mt, 0, sizeof (*mt));
     mti = mt - mpls_tunnel_pool;
-    fib_node_init(&mt->mt_node, FIB_NODE_TYPE_MPLS_TUNNEL);
+    dep_init (&mt->mt_node, DEP_TYPE_MPLS_TUNNEL);
     mt->mt_path_list = FIB_NODE_INDEX_INVALID;
     mt->mt_sibling_index = FIB_NODE_INDEX_INVALID;
 
@@ -724,9 +725,8 @@ vnet_mpls_tunnel_path_add (u32 sw_if_index,
     if (FIB_NODE_INDEX_INVALID == mt->mt_path_list)
     {
         mt->mt_path_list = fib_path_list_create(FIB_PATH_LIST_FLAG_SHARED, rpaths);
-        mt->mt_sibling_index = fib_path_list_child_add(mt->mt_path_list,
-                                                       FIB_NODE_TYPE_MPLS_TUNNEL,
-                                                       mti);
+	mt->mt_sibling_index = fib_path_list_child_add (
+	  mt->mt_path_list, DEP_TYPE_MPLS_TUNNEL, mti);
     }
     else
     {
@@ -741,13 +741,12 @@ vnet_mpls_tunnel_path_add (u32 sw_if_index,
 
         fib_path_list_child_remove(old_pl_index,
                                    mt->mt_sibling_index);
-        mt->mt_sibling_index = fib_path_list_child_add(mt->mt_path_list,
-                                                       FIB_NODE_TYPE_MPLS_TUNNEL,
-                                                       mti);
-        /*
-         * re-resolve all the path-extensions with the new path-list
-         */
-        fib_path_ext_list_resolve(&mt->mt_path_exts, mt->mt_path_list);
+	mt->mt_sibling_index = fib_path_list_child_add (
+	  mt->mt_path_list, DEP_TYPE_MPLS_TUNNEL, mti);
+	/*
+	 * re-resolve all the path-extensions with the new path-list
+	 */
+	fib_path_ext_list_resolve (&mt->mt_path_exts, mt->mt_path_list);
     }
     vec_foreach(rpath, rpaths)
     {
@@ -804,26 +803,22 @@ vnet_mpls_tunnel_path_remove (u32 sw_if_index,
         }
         else
         {
-            mt->mt_sibling_index =
-                fib_path_list_child_add(mt->mt_path_list,
-                                        FIB_NODE_TYPE_MPLS_TUNNEL,
-                                        mti);
-        }
-        /*
-         * find the matching path extension and remove it
-         */
-        fib_path_ext_list_remove(&mt->mt_path_exts,
-                                  FIB_PATH_EXT_MPLS,
-                                  rpaths);
+	  mt->mt_sibling_index = fib_path_list_child_add (
+	    mt->mt_path_list, DEP_TYPE_MPLS_TUNNEL, mti);
+	}
+	/*
+	 * find the matching path extension and remove it
+	 */
+	fib_path_ext_list_remove (&mt->mt_path_exts, FIB_PATH_EXT_MPLS,
+				  rpaths);
 
-        /*
-         * re-resolve all the path-extensions with the new path-list
-         */
-        fib_path_ext_list_resolve(&mt->mt_path_exts,
-                                  mt->mt_path_list);
+	/*
+	 * re-resolve all the path-extensions with the new path-list
+	 */
+	fib_path_ext_list_resolve (&mt->mt_path_exts, mt->mt_path_list);
 
-        mpls_tunnel_restack(mt);
-        fib_path_list_unlock(old_pl_index);
+	mpls_tunnel_restack (mt);
+	fib_path_list_unlock (old_pl_index);
    }
 
     return (fib_path_list_get_n_paths(mt->mt_path_list));
@@ -1036,30 +1031,29 @@ VLIB_CLI_COMMAND (show_mpls_tunnel_command, static) = {
 };
 
 static mpls_tunnel_t *
-mpls_tunnel_from_fib_node (fib_node_t *node)
+mpls_tunnel_from_dep (dep_t *node)
 {
-    ASSERT(FIB_NODE_TYPE_MPLS_TUNNEL == node->fn_type);
-    return ((mpls_tunnel_t*) (((char*)node) -
-                             STRUCT_OFFSET_OF(mpls_tunnel_t, mt_node)));
+  ASSERT (DEP_TYPE_MPLS_TUNNEL == node->d_type);
+  return ((mpls_tunnel_t *) (((char *) node) -
+			     STRUCT_OFFSET_OF (mpls_tunnel_t, mt_node)));
 }
 
 /**
  * Function definition to backwalk a FIB node
  */
-static fib_node_back_walk_rc_t
-mpls_tunnel_back_walk (fib_node_t *node,
-                      fib_node_back_walk_ctx_t *ctx)
+static dep_back_walk_rc_t
+mpls_tunnel_back_walk (dep_t *node, dep_back_walk_ctx_t *ctx)
 {
-    mpls_tunnel_restack(mpls_tunnel_from_fib_node(node));
+  mpls_tunnel_restack (mpls_tunnel_from_dep (node));
 
-    return (FIB_NODE_BACK_WALK_CONTINUE);
+  return (DEP_BACK_WALK_CONTINUE);
 }
 
 /**
  * Function definition to get a FIB node from its index
  */
-static fib_node_t*
-mpls_tunnel_fib_node_get (fib_node_index_t index)
+static dep_t *
+mpls_tunnel_dep_get (fib_node_index_t index)
 {
     mpls_tunnel_t * mt;
 
@@ -1072,7 +1066,7 @@ mpls_tunnel_fib_node_get (fib_node_index_t index)
  * Function definition to inform the FIB node that its last lock has gone.
  */
 static void
-mpls_tunnel_last_lock_gone (fib_node_t *node)
+mpls_tunnel_last_lock_gone (dep_t *node)
 {
     /*
      * The MPLS MPLS tunnel is a root of the graph. As such
@@ -1085,16 +1079,16 @@ mpls_tunnel_last_lock_gone (fib_node_t *node)
  * Virtual function table registered by MPLS MPLS tunnels
  * for participation in the FIB object graph.
  */
-const static fib_node_vft_t mpls_vft = {
-    .fnv_get = mpls_tunnel_fib_node_get,
-    .fnv_last_lock = mpls_tunnel_last_lock_gone,
-    .fnv_back_walk = mpls_tunnel_back_walk,
+const static dep_vft_t mpls_vft = {
+  .dv_get = mpls_tunnel_dep_get,
+  .dv_last_lock = mpls_tunnel_last_lock_gone,
+  .dv_back_walk = mpls_tunnel_back_walk,
 };
 
 static clib_error_t *
 mpls_tunnel_init (vlib_main_t *vm)
 {
-  fib_node_register_type(FIB_NODE_TYPE_MPLS_TUNNEL, &mpls_vft);
+  DEP_TYPE_MPLS_TUNNEL = dep_register_type ("mpls-tunnel", &mpls_vft);
 
   return 0;
 }

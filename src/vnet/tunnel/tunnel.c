@@ -186,7 +186,7 @@ unformat_tunnel (unformat_input_t *input, va_list *args)
 }
 
 int
-tunnel_resolve (tunnel_t *t, fib_node_type_t child_type, index_t child_index)
+tunnel_resolve (tunnel_t *t, dep_type_t child_type, index_t child_index)
 {
   fib_prefix_t pfx;
 

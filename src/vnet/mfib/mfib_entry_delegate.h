@@ -16,7 +16,8 @@
 #ifndef __MFIB_ENTRY_DELEGATE_T__
 #define __MFIB_ENTRY_DELEGATE_T__
 
-#include <vnet/fib/fib_node.h>
+#include <vnet/fib/fib_types.h>
+#include <vnet/dependency/dep.h>
 
 /**
  * Delegate types
@@ -71,7 +72,7 @@ typedef struct mfib_entry_delegate_t_
         /**
          * For the cover tracking. The node list;
          */
-        fib_node_list_t mfd_list;
+        dep_list_t mfd_list;
     };
 } mfib_entry_delegate_t;
 

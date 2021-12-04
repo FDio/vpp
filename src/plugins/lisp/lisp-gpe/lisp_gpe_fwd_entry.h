@@ -83,7 +83,7 @@ typedef struct lisp_gpe_fwd_entry_t_
    * This object joins the FIB control plane graph to receive updates to
    * for changes to the graph.
    */
-  fib_node_t node;
+  dep_t node;
 
   /**
    * The Entry's key: {lEID,rEID,vni}

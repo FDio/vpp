@@ -15,7 +15,7 @@
 
 #include <vnet/adj/adj_mcast.h>
 #include <vnet/adj/adj_internal.h>
-#include <vnet/fib/fib_walk.h>
+#include <vnet/dependency/dep_walk.h>
 #include <vnet/ip/ip.h>
 
 /*
@@ -205,13 +205,13 @@ adj_mcast_interface_state_change (vnet_main_t * vnm,
 
 	adj = adj_get(adj_mcasts[proto][sw_if_index]);
 
-	fib_node_back_walk_ctx_t bw_ctx = {
-	    .fnbw_reason = (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP ?
-			    FIB_NODE_BW_REASON_FLAG_INTERFACE_UP :
-			    FIB_NODE_BW_REASON_FLAG_INTERFACE_DOWN),
+	dep_back_walk_ctx_t bw_ctx = {
+	    .dbw_reason = (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP ?
+			    DEP_BW_REASON_FLAG_INTERFACE_UP :
+			    DEP_BW_REASON_FLAG_INTERFACE_DOWN),
 	};
 
-	fib_walk_sync(FIB_NODE_TYPE_ADJ, adj_get_index(adj), &bw_ctx);
+	dep_walk_sync(DEP_TYPE_ADJ, adj_get_index(adj), &bw_ctx);
     }
 
     return (NULL);
@@ -297,11 +297,11 @@ adj_mcast_interface_delete (vnet_main_t * vnm,
 
 	adj = adj_get(adj_mcasts[proto][sw_if_index]);
 
-	fib_node_back_walk_ctx_t bw_ctx = {
-	    .fnbw_reason =  FIB_NODE_BW_REASON_FLAG_INTERFACE_DELETE,
+	dep_back_walk_ctx_t bw_ctx = {
+	    .dbw_reason =  DEP_BW_REASON_FLAG_INTERFACE_DELETE,
 	};
 
-	fib_walk_sync(FIB_NODE_TYPE_ADJ, adj_get_index(adj), &bw_ctx);
+	dep_walk_sync(DEP_TYPE_ADJ, adj_get_index(adj), &bw_ctx);
     }
 
     return (NULL);

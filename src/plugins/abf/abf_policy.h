@@ -16,7 +16,8 @@
 #ifndef __ABF_H__
 #define __ABF_H__
 
-#include <vnet/fib/fib_node.h>
+#include <vnet/fib/fib_types.h>
+#include <vnet/dependency/dep.h>
 
 #define ABF_PLUGIN_VERSION_MAJOR 1
 #define ABF_PLUGIN_VERSION_MINOR 0
@@ -35,7 +36,7 @@ typedef struct abf_policy_t_
   /**
    * Linkage into the FIB graph
    */
-  fib_node_t ap_node;
+  dep_t ap_node;
 
   /**
    * ACL index to match
@@ -74,7 +75,7 @@ extern index_t abf_policy_find (u32 policy_id);
 /**
  * The FIB node type for ABF policies
  */
-extern fib_node_type_t abf_policy_fib_node_type;
+extern dep_type_t abf_policy_dep_type;
 
 /**
  * Create or update an ABF Policy
