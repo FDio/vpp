@@ -170,7 +170,7 @@ gtpu_tunnel_restack_dpo (gtpu_tunnel_t * t)
 }
 
 static gtpu_tunnel_t *
-gtpu_tunnel_from_fib_node (fib_node_t * node)
+gtpu_tunnel_from_dep (dep_t *node)
 {
   return ((gtpu_tunnel_t *) (((char *) node) -
 			     STRUCT_OFFSET_OF (gtpu_tunnel_t, node)));
@@ -180,18 +180,18 @@ gtpu_tunnel_from_fib_node (fib_node_t * node)
  * Function definition to backwalk a FIB node -
  * Here we will restack the new dpo of GTPU DIP to encap node.
  */
-static fib_node_back_walk_rc_t
-gtpu_tunnel_back_walk (fib_node_t * node, fib_node_back_walk_ctx_t * ctx)
+static dep_back_walk_rc_t
+gtpu_tunnel_back_walk (dep_t *node, dep_back_walk_ctx_t *ctx)
 {
-  gtpu_tunnel_restack_dpo (gtpu_tunnel_from_fib_node (node));
-  return (FIB_NODE_BACK_WALK_CONTINUE);
+  gtpu_tunnel_restack_dpo (gtpu_tunnel_from_dep (node));
+  return (DEP_BACK_WALK_CONTINUE);
 }
 
 /**
  * Function definition to get a FIB node from its index
  */
-static fib_node_t *
-gtpu_tunnel_fib_node_get (fib_node_index_t index)
+static dep_t *
+gtpu_tunnel_dep_get (fib_node_index_t index)
 {
   gtpu_tunnel_t *t;
   gtpu_main_t *gtm = &gtpu_main;
@@ -205,7 +205,7 @@ gtpu_tunnel_fib_node_get (fib_node_index_t index)
  * Function definition to inform the FIB node that its last lock has gone.
  */
 static void
-gtpu_tunnel_last_lock_gone (fib_node_t * node)
+gtpu_tunnel_last_lock_gone (dep_t *node)
 {
   /*
    * The GTPU tunnel is a root of the graph. As such
@@ -218,12 +218,11 @@ gtpu_tunnel_last_lock_gone (fib_node_t * node)
  * Virtual function table registered by GTPU tunnels
  * for participation in the FIB object graph.
  */
-const static fib_node_vft_t gtpu_vft = {
-  .fnv_get = gtpu_tunnel_fib_node_get,
-  .fnv_last_lock = gtpu_tunnel_last_lock_gone,
-  .fnv_back_walk = gtpu_tunnel_back_walk,
+const static dep_vft_t gtpu_vft = {
+  .dv_get = gtpu_tunnel_dep_get,
+  .dv_last_lock = gtpu_tunnel_last_lock_gone,
+  .dv_back_walk = gtpu_tunnel_back_walk,
 };
-
 
 #define foreach_copy_field                      \
 _(teid)                                         \
@@ -469,7 +468,7 @@ int vnet_gtpu_add_mod_del_tunnel
       vnet_sw_interface_set_flags (vnm, sw_if_index,
 				   VNET_SW_INTERFACE_FLAG_ADMIN_UP);
 
-      fib_node_init (&t->node, gtm->fib_node_type);
+      dep_init (&t->node, gtm->dep_type);
       fib_prefix_t tun_dst_pfx;
       vnet_flood_class_t flood_class = VNET_FLOOD_CLASS_TUNNEL_NORMAL;
 
@@ -483,11 +482,9 @@ int vnet_gtpu_add_mod_del_tunnel
 	   * re-stack accordingly
 	   */
 	  vtep_addr_ref (&gtm->vtep_table, t->encap_fib_index, &t->src);
-	  t->fib_entry_index = fib_entry_track (t->encap_fib_index,
-						&tun_dst_pfx,
-						gtm->fib_node_type,
-						t - gtm->tunnels,
-						&t->sibling_index);
+	  t->fib_entry_index =
+	    fib_entry_track (t->encap_fib_index, &tun_dst_pfx, gtm->dep_type,
+			     t - gtm->tunnels, &t->sibling_index);
 	  gtpu_tunnel_restack_dpo (t);
 	}
       else
@@ -502,7 +499,7 @@ int vnet_gtpu_add_mod_del_tunnel
 	  if (vtep_addr_ref (&gtm->vtep_table,
 			     t->encap_fib_index, &t->dst) == 1)
 	    {
-	      fib_node_index_t mfei;
+	      dep_index_t mfei;
 	      adj_index_t ai;
 	      fib_route_path_t path = {
 		.frp_proto = fib_proto_to_dpo (fp),
@@ -613,7 +610,7 @@ int vnet_gtpu_add_mod_del_tunnel
 	  mcast_shared_remove (&t->dst);
 	}
 
-      fib_node_deinit (&t->node);
+      dep_deinit (&t->node);
       vec_free (t->rewrite);
       pool_put (gtm->tunnels, t);
     }
@@ -1262,7 +1259,7 @@ gtpu_init (vlib_main_t * vm)
 				       sizeof (ip46_address_t),
 				       sizeof (mcast_shared_t));
 
-  gtm->fib_node_type = fib_node_register_new_type ("gtpu", &gtpu_vft);
+  gtm->dep_type = dep_register_type ("gtpu", &gtpu_vft);
 
   return 0;
 }

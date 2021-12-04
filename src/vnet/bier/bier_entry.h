@@ -28,7 +28,8 @@
 #define __BIER_ENTRY_H__
 
 #include <vlib/vlib.h>
-#include <vnet/fib/fib_node.h>
+#include <vnet/fib/fib_types.h>
+#include <vnet/dependency/dep.h>
 #include <vnet/bier/bier_types.h>
 
 /**
@@ -47,7 +48,7 @@ typedef struct bier_entry_t_ {
     /**
      * linkage into the FIB graph
      */
-    fib_node_t be_node;
+    dep_t be_node;
 
     /**
      * The index of the BIER table in which this entry resides

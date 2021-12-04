@@ -26,7 +26,7 @@ class TestFIB(VppTestCase):
         # no i mean to ensure they don't crash
         self.logger.info(self.vapi.cli("sh fib source"))
         self.logger.info(self.vapi.cli("sh fib source prio"))
-        self.logger.info(self.vapi.cli("sh fib memory"))
+        self.logger.info(self.vapi.cli("sh memory-usage"))
         self.logger.info(self.vapi.cli("sh fib entry"))
         self.logger.info(self.vapi.cli("sh fib entry 0"))
         self.logger.info(self.vapi.cli("sh fib entry 10000"))

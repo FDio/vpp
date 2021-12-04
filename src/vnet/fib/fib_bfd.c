@@ -18,7 +18,7 @@
 #include <vnet/fib/fib_entry_delegate.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
-#include <vnet/fib/fib_walk.h>
+#include <vnet/dependency/dep_walk.h>
 
 static fib_bfd_state_t
 fib_bfd_bfd_state_to_fib (bfd_state_e bstate)
@@ -42,10 +42,10 @@ fib_bfd_update_walk (fib_node_index_t fei)
      * initiate a backwalk of dependent children
      * to notify of the state change of this entry.
      */
-    fib_node_back_walk_ctx_t ctx = {
-        .fnbw_reason = FIB_NODE_BW_REASON_FLAG_EVALUATE,
+    dep_back_walk_ctx_t ctx = {
+        .dbw_reason = DEP_BW_REASON_FLAG_EVALUATE,
     };
-    fib_walk_sync(FIB_NODE_TYPE_ENTRY, fei, &ctx);
+    dep_walk_sync(DEP_TYPE_FIB_ENTRY, fei, &ctx);
 }
 
 /**

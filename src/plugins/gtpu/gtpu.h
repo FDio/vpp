@@ -160,7 +160,7 @@ typedef struct
   /**
    * Linkage into the FIB object graph
    */
-  fib_node_t node;
+  dep_t node;
 
   /*
    * The FIB entry for (depending on gtpu tunnel is unicast or mcast)
@@ -227,7 +227,7 @@ typedef struct
   /**
    * Node type for registering to fib changes.
    */
-  fib_node_type_t fib_node_type;
+  dep_type_t dep_type;
 
   /* API message ID base */
   u16 msg_id_base;

@@ -32,7 +32,8 @@
 
 #include <vlib/vlib.h>
 
-#include <vnet/fib/fib_node.h>
+#include <vnet/fib/fib_types.h>
+#include <vnet/dependency/dep.h>
 #include <vnet/mpls/packet.h>
 #include <vnet/dpo/dpo.h>
 
@@ -105,7 +106,7 @@ typedef struct bier_fmask_t_ {
     /**
      * The BIER fmask is a child of a FIB entry in the FIB graph.
      */
-    fib_node_t bfm_node;
+    dep_t bfm_node;
 
     /**
      * operational/state flags on the fmask
@@ -159,8 +160,8 @@ extern void bier_fmask_contribute_forwarding(index_t bfmi,
                                              dpo_id_t *dpo);
 
 extern u32 bier_fmask_child_add (fib_node_index_t fib_entry_index,
-                                 fib_node_type_t child_type,
-                                 fib_node_index_t child_index);
+				 dep_type_t child_type,
+				 fib_node_index_t child_index);
 extern void bier_fmask_child_remove (fib_node_index_t fib_entry_index,
                                      u32 sibling_index);
 extern void bier_fmask_get_stats (index_t bfmi, u64 * packets, u64 * bytes);

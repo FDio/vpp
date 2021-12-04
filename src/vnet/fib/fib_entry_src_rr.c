@@ -215,7 +215,7 @@ fib_entry_src_rr_cover_change (fib_entry_src_t *src,
 {
     fib_entry_src_cover_res_t res = {
 	.install = !0,
-	.bw_reason = FIB_NODE_BW_REASON_FLAG_NONE,
+	.bw_reason = DEP_BW_REASON_FLAG_NONE,
     };
 
     if (FIB_NODE_INDEX_INVALID == src->u.rr.fesr_cover)
@@ -241,7 +241,7 @@ fib_entry_src_rr_cover_change (fib_entry_src_t *src,
 	/*
 	 * dependent children need to re-resolve to the new forwarding info
 	 */
-	res.bw_reason = FIB_NODE_BW_REASON_FLAG_EVALUATE;
+	res.bw_reason = DEP_BW_REASON_FLAG_EVALUATE;
     }
     return (res);
 }
@@ -258,7 +258,7 @@ fib_entry_src_rr_cover_update (fib_entry_src_t *src,
 {
     fib_entry_src_cover_res_t res = {
 	.install = !0,
-	.bw_reason = FIB_NODE_BW_REASON_FLAG_NONE,
+	.bw_reason = DEP_BW_REASON_FLAG_NONE,
     };
     fib_node_index_t old_path_list;
     fib_entry_t *cover;
@@ -293,7 +293,7 @@ fib_entry_src_rr_cover_update (fib_entry_src_t *src,
     /*
      * dependent children need to re-resolve to the new forwarding info
      */
-    res.bw_reason = FIB_NODE_BW_REASON_FLAG_EVALUATE;
+    res.bw_reason = DEP_BW_REASON_FLAG_EVALUATE;
 
     return (res);
 }

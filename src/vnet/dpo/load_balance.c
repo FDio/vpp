@@ -24,6 +24,7 @@
 #include <vnet/fib/mpls_fib.h>
 #include <vnet/ip/ip4_inlines.h>
 #include <vnet/ip/ip6_inlines.h>
+#include <vnet/memory_usage.h>
 
 // clang-format off
 
@@ -911,13 +912,12 @@ load_balance_unlock (dpo_id_t *dpo)
 }
 
 static void
-load_balance_mem_show (void)
+load_balance_mem_show (vlib_main_t *vm)
 {
-    fib_show_memory_usage("load-balance",
-			  pool_elts(load_balance_pool),
-			  pool_len(load_balance_pool),
-			  sizeof(load_balance_t));
-    load_balance_map_show_mem();
+    memory_usage_show(vm, "load-balance",
+                      pool_elts(load_balance_pool),
+                      pool_len(load_balance_pool),
+                      sizeof(load_balance_t));
 }
 
 static u16

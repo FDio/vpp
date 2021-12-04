@@ -20,7 +20,7 @@
 #include <vnet/mpls/mpls_types.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/fib/fib_node.h>
+#include <vnet/dependency/dep.h>
 #include <vnet/adj/adj.h>
 
 typedef enum

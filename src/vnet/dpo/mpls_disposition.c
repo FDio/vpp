@@ -17,6 +17,9 @@
 #include <vnet/ip/ip6_input.h>
 #include <vnet/dpo/mpls_disposition.h>
 #include <vnet/mpls/mpls.h>
+#include <vnet/memory_usage.h>
+
+// clang-format off
 
 #ifndef CLIB_MARCH_VARIANT
 /*
@@ -497,12 +500,12 @@ VLIB_REGISTER_NODE(ip6_mpls_label_disposition_uniform_node) = {
 
 #ifndef CLIB_MARCH_VARIANT
 static void
-mpls_disp_dpo_mem_show (void)
+mpls_disp_dpo_mem_show (vlib_main_t *vm)
 {
-    fib_show_memory_usage("MPLS label",
-			  pool_elts(mpls_disp_dpo_pool),
-			  pool_len(mpls_disp_dpo_pool),
-			  sizeof(mpls_disp_dpo_t));
+    memory_usage_show(vm, "MPLS label",
+                      pool_elts(mpls_disp_dpo_pool),
+                      pool_len(mpls_disp_dpo_pool),
+                      sizeof(mpls_disp_dpo_t));
 }
 
 const static dpo_vft_t mdd_vft = {
@@ -554,3 +557,5 @@ mpls_disp_dpo_module_init(void)
                  mpls_label_disp_uniform_nodes);
 }
 #endif /* CLIB_MARCH_VARIANT */
+
+// clang-format on

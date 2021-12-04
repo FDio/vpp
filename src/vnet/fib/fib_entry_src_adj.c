@@ -349,7 +349,7 @@ fib_entry_src_adj_cover_change (fib_entry_src_t *src,
 {
     fib_entry_src_cover_res_t res = {
         .install = 0,
-        .bw_reason = FIB_NODE_BW_REASON_FLAG_NONE,
+        .bw_reason = DEP_BW_REASON_FLAG_NONE,
     };
 
     /*
@@ -367,7 +367,7 @@ fib_entry_src_adj_cover_change (fib_entry_src_t *src,
         /*
          * ADJ fib can install
          */
-        res.bw_reason = FIB_NODE_BW_REASON_FLAG_EVALUATE;
+        res.bw_reason = DEP_BW_REASON_FLAG_EVALUATE;
     }
 
     FIB_ENTRY_DBG(fib_entry, "adj-src-cover-changed");
@@ -388,7 +388,7 @@ fib_entry_src_adj_cover_update (fib_entry_src_t *src,
      */
     fib_entry_src_cover_res_t res = {
         .install = 0,
-        .bw_reason = FIB_NODE_BW_REASON_FLAG_NONE,
+        .bw_reason = DEP_BW_REASON_FLAG_NONE,
     };
     fib_entry_t *cover;
 

@@ -17,7 +17,7 @@
 
 #include <vnet/adj/adj_delegate.h>
 #include <vnet/adj/adj_nbr.h>
-#include <vnet/fib/fib_walk.h>
+#include <vnet/dependency/dep_walk.h>
 
 /**
  * Distillation of the BFD session states into a go/no-go for using
@@ -99,10 +99,10 @@ adj_bfd_update_walk (adj_index_t ai)
      * initiate a backwalk of dependent children
      * to notify of the state change of this adj.
      */
-    fib_node_back_walk_ctx_t ctx = {
-        .fnbw_reason = FIB_NODE_BW_REASON_FLAG_ADJ_UPDATE,
+    dep_back_walk_ctx_t ctx = {
+        .dbw_reason = DEP_BW_REASON_FLAG_ADJ_UPDATE,
     };
-    fib_walk_sync(FIB_NODE_TYPE_ADJ, ai, &ctx);
+    dep_walk_sync(DEP_TYPE_ADJ, ai, &ctx);
 }
 
 /**

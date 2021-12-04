@@ -137,7 +137,7 @@ typedef struct map_main_pre_resolved_t_
   /**
    * Linkage into the FIB graph
    */
-  fib_node_t node;
+  dep_t node;
 
   /**
    * The FIB entry index of the next-hop

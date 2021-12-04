@@ -57,7 +57,7 @@ format_interface_tx_dpo (u8* s, va_list *ap)
 }
 
 static void
-interface_tx_dpo_mem_show (void)
+interface_tx_dpo_mem_show (vlib_main_t *vm)
 {
 }
 

@@ -386,7 +386,7 @@ typedef void (*dpo_unlock_fn_t)(dpo_id_t *dpo);
 /**
  * @brief An memory usage show command
  */
-typedef void (*dpo_mem_show_t)(void);
+typedef void (*dpo_mem_show_t)(vlib_main_t *vm);
 
 /**
  * @brief Given a DPO instance return a vector of node indices that

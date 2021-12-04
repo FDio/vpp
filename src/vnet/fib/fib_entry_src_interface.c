@@ -185,7 +185,7 @@ fib_entry_src_interface_cover_change (fib_entry_src_t *src,
 {
     fib_entry_src_cover_res_t res = {
 	.install = !0,
-	.bw_reason = FIB_NODE_BW_REASON_FLAG_NONE,
+	.bw_reason = DEP_BW_REASON_FLAG_NONE,
     };
 
     if (FIB_NODE_INDEX_INVALID == src->u.interface.fesi_cover)

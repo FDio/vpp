@@ -15,8 +15,8 @@
 
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
-#include <vnet/fib/fib_walk.h>
 #include <vnet/fib/fib_path_list.h>
+#include <vnet/memory_usage.h>
 
 #include <vnet/bier/bier_table.h>
 #include <vnet/bier/bier_fmask.h>
@@ -26,6 +26,7 @@
 #include <vnet/mpls/mpls.h>
 #include <vnet/dpo/drop_dpo.h>
 #include <vnet/dpo/load_balance.h>
+#include <vnet/dependency/dep_walk.h>
 
 /*
  * attributes names for formatting
@@ -36,6 +37,7 @@ static const char *const bier_fmask_attr_names[] = BIER_FMASK_ATTR_NAMES;
  * pool of BIER fmask objects
  */
 bier_fmask_t *bier_fmask_pool;
+static dep_type_t DEP_TYPE_BIER_FMASK;
 
 /**
  * Stats for each BIER fmask object
@@ -138,14 +140,10 @@ bier_fmask_contribute_forwarding (index_t bfmi,
 }
 
 u32
-bier_fmask_child_add (fib_node_index_t bfmi,
-                     fib_node_type_t child_type,
-                     fib_node_index_t child_index)
+bier_fmask_child_add (fib_node_index_t bfmi, dep_type_t child_type,
+		      dep_index_t child_index)
 {
-    return (fib_node_child_add(FIB_NODE_TYPE_BIER_FMASK,
-                               bfmi,
-                               child_type,
-                               child_index));
+  return (dep_child_add (DEP_TYPE_BIER_FMASK, bfmi, child_type, child_index));
 };
 
 void
@@ -157,9 +155,7 @@ bier_fmask_child_remove (fib_node_index_t bfmi,
         return;
     }
 
-    fib_node_child_remove(FIB_NODE_TYPE_BIER_FMASK,
-                          bfmi,
-                          sibling_index);
+    dep_child_remove (DEP_TYPE_BIER_FMASK, bfmi, sibling_index);
 }
 
 static void
@@ -175,7 +171,7 @@ bier_fmask_init (bier_fmask_t *bfm,
     
     bfm->bfm_id = clib_mem_alloc(sizeof(*bfm->bfm_id));
 
-    fib_node_init(&bfm->bfm_node, FIB_NODE_TYPE_BIER_FMASK);
+    dep_init (&bfm->bfm_node, DEP_TYPE_BIER_FMASK);
     *bfm->bfm_id = *fmid;
     dpo_reset(&bfm->bfm_dpo);
     btid = bier_table_get_id(bfm->bfm_id->bfmi_bti);
@@ -229,9 +225,9 @@ bier_fmask_init (bier_fmask_t *bfm,
     bfm->bfm_pl = fib_path_list_create((FIB_PATH_LIST_FLAG_SHARED |
                                         FIB_PATH_LIST_FLAG_NO_URPF),
                                        rpaths);
-    bfm->bfm_sibling = fib_path_list_child_add(bfm->bfm_pl,
-                                               FIB_NODE_TYPE_BIER_FMASK,
-                                               bier_fmask_get_index(bfm));
+    bfm->bfm_sibling = fib_path_list_child_add (bfm->bfm_pl,
+                                                DEP_TYPE_BIER_FMASK,
+                                                bier_fmask_get_index (bfm));
     vec_free(rpaths);
     bier_fmask_stack(bfm);
 }
@@ -262,7 +258,7 @@ bier_fmask_unlock (index_t bfmi)
 
     bfm = bier_fmask_get(bfmi);
 
-    fib_node_unlock(&bfm->bfm_node);
+    dep_unlock (&bfm->bfm_node);
 }
 
 void
@@ -277,7 +273,7 @@ bier_fmask_lock (index_t bfmi)
 
     bfm = bier_fmask_get(bfmi);
 
-    fib_node_lock(&bfm->bfm_node);
+    dep_lock (&bfm->bfm_node);
 }
 
 index_t
@@ -356,10 +352,10 @@ format_bier_fmask (u8 *s, va_list *ap)
 
     bfm = bier_fmask_get(bfmi);
 
-    s = format(s, "fmask: nh:%U bs:%U locks:%d ",
-               format_ip46_address, &bfm->bfm_id->bfmi_nh, IP46_TYPE_ANY,
-               format_bier_bit_string, &bfm->bfm_bits.bfmb_input_reset_string,
-               bfm->bfm_node.fn_locks);
+    s = format (s, "fmask: nh:%U bs:%U locks:%d ",
+                format_ip46_address, &bfm->bfm_id->bfmi_nh, IP46_TYPE_ANY,
+                format_bier_bit_string, &bfm->bfm_bits.bfmb_input_reset_string,
+                bfm->bfm_node.d_locks);
     s = format(s, "flags:");
     FOR_EACH_BIER_FMASK_ATTR(attr) {
         if ((1<<attr) & bfm->bfm_flags) {
@@ -428,15 +424,15 @@ bier_fmask_encode (index_t bfmi,
     }
 }
 
-static fib_node_t *
-bier_fmask_get_node (fib_node_index_t index)
+static dep_t *
+bier_fmask_get_node (dep_index_t index)
 {
     bier_fmask_t *bfm = bier_fmask_get(index);
     return (&(bfm->bfm_node));
 }
 
-static bier_fmask_t*
-bier_fmask_get_from_node (fib_node_t *node)
+static bier_fmask_t *
+bier_fmask_get_from_node (dep_t *node)
 {
     return ((bier_fmask_t*)(((char*)node) -
                             STRUCT_OFFSET_OF(bier_fmask_t,
@@ -447,7 +443,7 @@ bier_fmask_get_from_node (fib_node_t *node)
  * bier_fmask_last_lock_gone
  */
 static void
-bier_fmask_last_lock_gone (fib_node_t *node)
+bier_fmask_last_lock_gone (dep_t *node)
 {
     bier_fmask_destroy(bier_fmask_get_from_node(node));
 }
@@ -457,9 +453,8 @@ bier_fmask_last_lock_gone (fib_node_t *node)
  *
  * A back walk has reached this BIER fmask
  */
-static fib_node_back_walk_rc_t
-bier_fmask_back_walk_notify (fib_node_t *node,
-                             fib_node_back_walk_ctx_t *ctx)
+static dep_back_walk_rc_t
+bier_fmask_back_walk_notify (dep_t *node, dep_back_walk_ctx_t *ctx)
 {
     /*
      * re-stack the fmask on the n-eos of the via
@@ -472,18 +467,18 @@ bier_fmask_back_walk_notify (fib_node_t *node,
      * propagate further up the graph.
      * we can do this synchronously since the fan out is small.
      */
-    fib_walk_sync(FIB_NODE_TYPE_BIER_FMASK, bier_fmask_get_index(bfm), ctx);
+    dep_walk_sync (DEP_TYPE_BIER_FMASK, bier_fmask_get_index (bfm), ctx);
 
-    return (FIB_NODE_BACK_WALK_CONTINUE);
+    return (DEP_BACK_WALK_CONTINUE);
 }
 
 /*
  * The BIER fmask's graph node virtual function table
  */
-static const fib_node_vft_t bier_fmask_vft = {
-    .fnv_get = bier_fmask_get_node,
-    .fnv_last_lock = bier_fmask_last_lock_gone,
-    .fnv_back_walk = bier_fmask_back_walk_notify,
+static const dep_vft_t bier_fmask_vft = {
+  .dv_get = bier_fmask_get_node,
+  .dv_last_lock = bier_fmask_last_lock_gone,
+  .dv_back_walk = bier_fmask_back_walk_notify,
 };
 
 static void
@@ -497,12 +492,12 @@ bier_fmask_dpo_unlock (dpo_id_t *dpo)
 }
 
 static void
-bier_fmask_dpo_mem_show (void)
+bier_fmask_dpo_mem_show (vlib_main_t *vm)
 {
-    fib_show_memory_usage("BIER-fmask",
-                          pool_elts(bier_fmask_pool),
-                          pool_len(bier_fmask_pool),
-                          sizeof(bier_fmask_t));
+    memory_usage_show(vm, "BIER-fmask",
+                      pool_elts(bier_fmask_pool),
+                      pool_len(bier_fmask_pool),
+                      sizeof(bier_fmask_t));
 }
 
 const static dpo_vft_t bier_fmask_dpo_vft = {
@@ -526,8 +521,8 @@ const static char * const * const bier_fmask_nodes[DPO_PROTO_NUM] =
 clib_error_t *
 bier_fmask_module_init (vlib_main_t * vm)
 {
-    fib_node_register_type (FIB_NODE_TYPE_BIER_FMASK, &bier_fmask_vft);
-    dpo_register(DPO_BIER_FMASK, &bier_fmask_dpo_vft, bier_fmask_nodes);
+    DEP_TYPE_BIER_FMASK = dep_register_type ("bier-fmask", &bier_fmask_vft);
+    dpo_register (DPO_BIER_FMASK, &bier_fmask_dpo_vft, bier_fmask_nodes);
 
     return (NULL);
 }

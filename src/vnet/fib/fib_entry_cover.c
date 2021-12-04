@@ -15,8 +15,8 @@
 
 #include <vnet/fib/fib_entry_cover.h>
 #include <vnet/fib/fib_entry_src.h>
-#include <vnet/fib/fib_node_list.h>
 #include <vnet/fib/fib_entry_delegate.h>
+#include <vnet/dependency/dep_list.h>
 
 u32
 fib_entry_cover_track (fib_entry_t* cover,
@@ -33,12 +33,12 @@ fib_entry_cover_track (fib_entry_t* cover,
     if (NULL == fed)
     {
         fed = fib_entry_delegate_find_or_add(cover, FIB_ENTRY_DELEGATE_COVERED);
-        fed->fd_list = fib_node_list_create();
+        fed->fd_list = dep_list_create();
     }
 
-    return (fib_node_list_push_front(fed->fd_list,
-                                     0, FIB_NODE_TYPE_ENTRY,
-                                     covered));
+    return (dep_list_push_front(fed->fd_list,
+                                0, DEP_TYPE_FIB_ENTRY,
+                                covered));
 }
 
 void
@@ -54,11 +54,11 @@ fib_entry_cover_untrack (fib_entry_t* cover,
     if (NULL == fed)
         return;
 
-    fib_node_list_remove(fed->fd_list, tracked_index);
+    dep_list_remove(fed->fd_list, tracked_index);
 
-    if (0 == fib_node_list_get_size(fed->fd_list))
+    if (0 == dep_list_get_size(fed->fd_list))
     {
-        fib_node_list_destroy(&fed->fd_list);
+        dep_list_destroy(&fed->fd_list);
         fib_entry_delegate_remove(cover, FIB_ENTRY_DELEGATE_COVERED);        
     }
 }
@@ -73,12 +73,12 @@ typedef struct fib_enty_cover_walk_ctx_t_ {
 } fib_enty_cover_walk_ctx_t;
 
 static walk_rc_t
-fib_entry_cover_walk_node_ptr (fib_node_ptr_t *depend,
+fib_entry_cover_walk_node_ptr (dep_ptr_t *depend,
 			       void *args)
 {
     fib_enty_cover_walk_ctx_t *ctx = args;
 
-    ctx->walk(ctx->cover, depend->fnp_index, ctx->ctx);
+    ctx->walk(ctx->cover, depend->dp_index, ctx->ctx);
 
     return (WALK_CONTINUE);
 }
@@ -101,7 +101,7 @@ fib_entry_cover_walk (fib_entry_t *cover,
         .ctx = args,
     };
 
-    fib_node_list_walk(fed->fd_list,
+    dep_list_walk(fed->fd_list,
                        fib_entry_cover_walk_node_ptr,
                        &ctx);
 }

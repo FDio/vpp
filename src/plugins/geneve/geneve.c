@@ -37,6 +37,7 @@
 
 
 geneve_main_t geneve_main;
+static dep_type_t DEP_TYPE_GENEVE_TUNNEL;
 
 u8 *
 format_geneve_encap_trace (u8 * s, va_list * args)
@@ -167,9 +168,9 @@ geneve_tunnel_restack_dpo (geneve_tunnel_t * t)
 }
 
 static geneve_tunnel_t *
-geneve_tunnel_from_fib_node (fib_node_t * node)
+geneve_tunnel_from_dep (dep_t *node)
 {
-  ASSERT (FIB_NODE_TYPE_GENEVE_TUNNEL == node->fn_type);
+  ASSERT (DEP_TYPE_GENEVE_TUNNEL == node->d_type);
   return ((geneve_tunnel_t *) (((char *) node) -
 			       STRUCT_OFFSET_OF (geneve_tunnel_t, node)));
 }
@@ -178,18 +179,18 @@ geneve_tunnel_from_fib_node (fib_node_t * node)
  * Function definition to backwalk a FIB node -
  * Here we will restack the new dpo of GENEVE DIP to encap node.
  */
-static fib_node_back_walk_rc_t
-geneve_tunnel_back_walk (fib_node_t * node, fib_node_back_walk_ctx_t * ctx)
+static dep_back_walk_rc_t
+geneve_tunnel_back_walk (dep_t *node, dep_back_walk_ctx_t *ctx)
 {
-  geneve_tunnel_restack_dpo (geneve_tunnel_from_fib_node (node));
-  return (FIB_NODE_BACK_WALK_CONTINUE);
+  geneve_tunnel_restack_dpo (geneve_tunnel_from_dep (node));
+  return (DEP_BACK_WALK_CONTINUE);
 }
 
 /**
  * Function definition to get a FIB node from its index
  */
-static fib_node_t *
-geneve_tunnel_fib_node_get (fib_node_index_t index)
+static dep_t *
+geneve_tunnel_dep_get (fib_node_index_t index)
 {
   geneve_tunnel_t *t;
   geneve_main_t *vxm = &geneve_main;
@@ -203,7 +204,7 @@ geneve_tunnel_fib_node_get (fib_node_index_t index)
  * Function definition to inform the FIB node that its last lock has gone.
  */
 static void
-geneve_tunnel_last_lock_gone (fib_node_t * node)
+geneve_tunnel_last_lock_gone (dep_t *node)
 {
   /*
    * The GENEVE tunnel is a root of the graph. As such
@@ -216,12 +217,11 @@ geneve_tunnel_last_lock_gone (fib_node_t * node)
  * Virtual function table registered by GENEVE tunnels
  * for participation in the FIB object graph.
  */
-const static fib_node_vft_t geneve_vft = {
-  .fnv_get = geneve_tunnel_fib_node_get,
-  .fnv_last_lock = geneve_tunnel_last_lock_gone,
-  .fnv_back_walk = geneve_tunnel_back_walk,
+const static dep_vft_t geneve_vft = {
+  .dv_get = geneve_tunnel_dep_get,
+  .dv_last_lock = geneve_tunnel_last_lock_gone,
+  .dv_back_walk = geneve_tunnel_back_walk,
 };
-
 
 #define foreach_copy_field                      \
 _(vni)                                          \
@@ -469,7 +469,7 @@ int vnet_geneve_add_del_tunnel
       vnet_sw_interface_set_flags (vnm, sw_if_index,
 				   VNET_SW_INTERFACE_FLAG_ADMIN_UP);
 
-      fib_node_init (&t->node, FIB_NODE_TYPE_GENEVE_TUNNEL);
+      dep_init (&t->node, DEP_TYPE_GENEVE_TUNNEL);
       fib_prefix_t tun_remote_pfx;
       vnet_flood_class_t flood_class = VNET_FLOOD_CLASS_TUNNEL_NORMAL;
 
@@ -483,11 +483,9 @@ int vnet_geneve_add_del_tunnel
 	   * re-stack accordingly
 	   */
 	  vtep_addr_ref (&vxm->vtep_table, t->encap_fib_index, &t->local);
-	  t->fib_entry_index = fib_entry_track (t->encap_fib_index,
-						&tun_remote_pfx,
-						FIB_NODE_TYPE_GENEVE_TUNNEL,
-						t - vxm->tunnels,
-						&t->sibling_index);
+	  t->fib_entry_index = fib_entry_track (
+	    t->encap_fib_index, &tun_remote_pfx, DEP_TYPE_GENEVE_TUNNEL,
+	    t - vxm->tunnels, &t->sibling_index);
 	  geneve_tunnel_restack_dpo (t);
 	}
       else
@@ -603,7 +601,7 @@ int vnet_geneve_add_del_tunnel
 	  mcast_shared_remove (&t->remote);
 	}
 
-      fib_node_deinit (&t->node);
+      dep_deinit (&t->node);
       vec_free (t->rewrite);
       pool_put (vxm->tunnels, t);
     }
@@ -1117,7 +1115,7 @@ geneve_init (vlib_main_t * vm)
 				       sizeof (ip46_address_t),
 				       sizeof (mcast_shared_t));
 
-  fib_node_register_type (FIB_NODE_TYPE_GENEVE_TUNNEL, &geneve_vft);
+  DEP_TYPE_GENEVE_TUNNEL = dep_register_type ("geneve-tunnel", &geneve_vft);
 
   return 0;
 }

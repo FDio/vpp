@@ -136,6 +136,8 @@ typedef enum
     [IP6_LOOKUP_NEXT_POP_HOP_BY_HOP] = "ip6-pop-hop-by-hop",	\
 }
 
+extern dep_type_t DEP_TYPE_ADJ;
+
 /**
  * The special broadcast address (to construct a broadcast adjacency
  */
@@ -230,7 +232,7 @@ typedef struct ip_adjacency_t_
    * Linkage into the FIB node graph. First member since this type
    * has 8 byte alignment requirements.
    */
-  fib_node_t ia_node;
+  dep_t ia_node;
   /**
    * feature [arc] config index
    */
@@ -385,7 +387,7 @@ extern void adj_unlock(adj_index_t adj_index);
  *  when the adjacency state changes.
  */
 extern u32 adj_child_add(adj_index_t adj_index,
-			 fib_node_type_t type,
+			 dep_type_t type,
 			 fib_node_index_t child_index);
 /**
  * @brief

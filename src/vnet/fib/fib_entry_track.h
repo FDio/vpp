@@ -40,7 +40,7 @@
  */
 extern fib_node_index_t fib_entry_track(u32 fib_index,
                                         const fib_prefix_t *prefix,
-                                        fib_node_type_t child_type,
+                                        dep_type_t child_type,
                                         index_t child_index,
                                         u32 *sibling);
 

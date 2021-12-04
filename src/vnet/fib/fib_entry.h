@@ -16,11 +16,17 @@
 #ifndef __FIB_ENTRY_H__
 #define __FIB_ENTRY_H__
 
-#include <vnet/fib/fib_node.h>
+#include <vnet/fib/fib_types.h>
+#include <vnet/dependency/dep.h>
 #include <vnet/fib/fib_source.h>
 #include <vnet/adj/adj.h>
 #include <vnet/ip/ip.h>
 #include <vnet/dpo/dpo.h>
+
+/**
+ * Dependency type in the object graph
+ */
+extern dep_type_t DEP_TYPE_FIB_ENTRY;
 
 /**
  * The different sources that can create a route.
@@ -306,7 +312,7 @@ typedef struct fib_entry_t_ {
     /**
      * Base class. The entry's node representation in the graph.
      */
-    fib_node_t fe_node;
+    dep_t fe_node;
     /**
      * The prefix of the route. this is const just to be sure.
      * It is the entry's key/identity and so should never change.
@@ -435,7 +441,7 @@ extern void fib_entry_lock(fib_node_index_t fib_entry_index);
 extern void fib_entry_unlock(fib_node_index_t fib_entry_index);
 
 extern u32 fib_entry_child_add(fib_node_index_t fib_entry_index,
-			       fib_node_type_t type,
+			       dep_type_t type,
 			       fib_node_index_t child_index);
 extern void fib_entry_child_remove(fib_node_index_t fib_entry_index,
 				   u32 sibling_index);

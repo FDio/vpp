@@ -22,7 +22,7 @@
 /**
  * FIB node type the attachment is registered
  */
-fib_node_type_t l3xc_fib_node_type;
+dep_type_t l3xc_dep_type;
 
 /**
  * Pool of L3XC objects
@@ -98,7 +98,7 @@ l3xc_update (u32 sw_if_index, u8 is_ip6, const fib_route_path_t * rpaths)
       pool_get_aligned_zero (l3xc_pool, l3xc, CLIB_CACHE_LINE_BYTES);
 
       l3xci = l3xc - l3xc_pool;
-      fib_node_init (&l3xc->l3xc_node, l3xc_fib_node_type);
+      dep_init (&l3xc->l3xc_node, l3xc_dep_type);
       l3xc->l3xc_sw_if_index = sw_if_index;
       l3xc->l3xc_proto = fproto;
 
@@ -109,9 +109,8 @@ l3xc_update (u32 sw_if_index, u8 is_ip6, const fib_route_path_t * rpaths)
       l3xc->l3xc_pl = fib_path_list_create ((FIB_PATH_LIST_FLAG_SHARED |
 					     FIB_PATH_LIST_FLAG_NO_URPF),
 					    rpaths);
-      l3xc->l3xc_sibling = fib_path_list_child_add (l3xc->l3xc_pl,
-						    l3xc_fib_node_type,
-						    l3xci);
+      l3xc->l3xc_sibling =
+	fib_path_list_child_add (l3xc->l3xc_pl, l3xc_dep_type, l3xci);
       l3xc_stack (l3xc);
 
       /*
@@ -145,9 +144,8 @@ l3xc_update (u32 sw_if_index, u8 is_ip6, const fib_route_path_t * rpaths)
 					     FIB_PATH_LIST_FLAG_NO_URPF),
 					    rpaths);
 
-      l3xc->l3xc_sibling = fib_path_list_child_add (l3xc->l3xc_pl,
-						    l3xc_fib_node_type,
-						    l3xci);
+      l3xc->l3xc_sibling =
+	fib_path_list_child_add (l3xc->l3xc_pl, l3xc_dep_type, l3xci);
     }
   return (0);
 }
@@ -339,7 +337,7 @@ VLIB_CLI_COMMAND (l3xc_show_cmd_node, static) = {
 };
 /* *INDENT-ON* */
 
-static fib_node_t *
+static dep_t *
 l3xc_get_node (fib_node_index_t index)
 {
   l3xc_t *l3xc = l3xc_get (index);
@@ -347,41 +345,41 @@ l3xc_get_node (fib_node_index_t index)
 }
 
 static l3xc_t *
-l3xc_get_from_node (fib_node_t * node)
+l3xc_get_from_node (dep_t *node)
 {
   return ((l3xc_t *) (((char *) node) -
 		      STRUCT_OFFSET_OF (l3xc_t, l3xc_node)));
 }
 
 static void
-l3xc_last_lock_gone (fib_node_t * node)
+l3xc_last_lock_gone (dep_t *node)
 {
 }
 
 /*
  * A back walk has reached this L3XC policy
  */
-static fib_node_back_walk_rc_t
-l3xc_back_walk_notify (fib_node_t * node, fib_node_back_walk_ctx_t * ctx)
+static dep_back_walk_rc_t
+l3xc_back_walk_notify (dep_t *node, dep_back_walk_ctx_t *ctx)
 {
   l3xc_stack (l3xc_get_from_node (node));
 
-  return (FIB_NODE_BACK_WALK_CONTINUE);
+  return (DEP_BACK_WALK_CONTINUE);
 }
 
 /*
  * The BIER fmask's graph node virtual function table
  */
-static const fib_node_vft_t l3xc_vft = {
-  .fnv_get = l3xc_get_node,
-  .fnv_last_lock = l3xc_last_lock_gone,
-  .fnv_back_walk = l3xc_back_walk_notify,
+static const dep_vft_t l3xc_vft = {
+  .dv_get = l3xc_get_node,
+  .dv_last_lock = l3xc_last_lock_gone,
+  .dv_back_walk = l3xc_back_walk_notify,
 };
 
 static clib_error_t *
 l3xc_init (vlib_main_t * vm)
 {
-  l3xc_fib_node_type = fib_node_register_new_type ("l3xc", &l3xc_vft);
+  l3xc_dep_type = dep_register_type ("l3xc", &l3xc_vft);
 
   return (NULL);
 }

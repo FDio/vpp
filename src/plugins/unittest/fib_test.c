@@ -37,9 +37,9 @@
 #include <vnet/fib/fib_test.h>
 #include <vnet/fib/fib_path_list.h>
 #include <vnet/fib/fib_entry_src.h>
-#include <vnet/fib/fib_walk.h>
-#include <vnet/fib/fib_node_list.h>
 #include <vnet/fib/fib_urpf_list.h>
+#include <vnet/dependency/dep_walk.h>
+#include <vnet/dependency/dep_list.h>
 
 #include <vlib/unix/plugin.h>
 
@@ -7558,10 +7558,10 @@ fib_test_label (void)
 
 typedef struct fib_node_test_t_
 {
-    fib_node_t node;
+    dep_t node;
     u32 sibling;
     u32 index;
-    fib_node_back_walk_ctx_t *ctxs;
+    dep_back_walk_ctx_t *ctxs;
     u32 destroyed;
 } fib_node_test_t;
 
@@ -7574,33 +7574,34 @@ static fib_node_test_t fib_test_nodes[N_TEST_CHILDREN+1];
          ii < N_TEST_CHILDREN+1;                \
          ii++, (_tc) = &fib_test_nodes[ii])
 
-static fib_node_t *
+static dep_t *
 fib_test_child_get_node (fib_node_index_t index)
 {
     return (&fib_test_nodes[index].node);
 }
 
 static int fib_test_walk_spawns_walks;
+static dep_type_t DEP_TYPE_FIB_TEST;
 
-static fib_node_back_walk_rc_t
-fib_test_child_back_walk_notify (fib_node_t *node,
-                                 fib_node_back_walk_ctx_t *ctx)
+static dep_back_walk_rc_t
+fib_test_child_back_walk_notify (dep_t *node,
+                                 dep_back_walk_ctx_t *ctx)
 {
     fib_node_test_t *tc = (fib_node_test_t*) node;
 
     vec_add1(tc->ctxs, *ctx);
 
     if (1 == fib_test_walk_spawns_walks)
-        fib_walk_sync(FIB_NODE_TYPE_TEST, tc->index, ctx);
+        dep_walk_sync(DEP_TYPE_FIB_TEST, tc->index, ctx);
     if (2 == fib_test_walk_spawns_walks)
-        fib_walk_async(FIB_NODE_TYPE_TEST, tc->index,
-                       FIB_WALK_PRIORITY_HIGH, ctx);
+        dep_walk_async(DEP_TYPE_FIB_TEST, tc->index,
+                       DEP_WALK_PRIORITY_HIGH, ctx);
 
-    return (FIB_NODE_BACK_WALK_CONTINUE);
+    return (DEP_BACK_WALK_CONTINUE);
 }
 
 static void
-fib_test_child_last_lock_gone (fib_node_t *node)
+fib_test_child_last_lock_gone (dep_t *node)
 {
     fib_node_test_t *tc = (fib_node_test_t *)node;
 
@@ -7610,64 +7611,64 @@ fib_test_child_last_lock_gone (fib_node_t *node)
 /**
  * The FIB walk's graph node virtual function table
  */
-static const fib_node_vft_t fib_test_child_vft = {
-    .fnv_get = fib_test_child_get_node,
-    .fnv_last_lock = fib_test_child_last_lock_gone,
-    .fnv_back_walk = fib_test_child_back_walk_notify,
+static const dep_vft_t fib_test_child_vft = {
+    .dv_get = fib_test_child_get_node,
+    .dv_last_lock = fib_test_child_last_lock_gone,
+    .dv_back_walk = fib_test_child_back_walk_notify,
 };
 
 /*
  * the function (that should have been static but isn't so I can do this)
  * that processes the walk from the async queue,
  */
-f64 fib_walk_process_queues(vlib_main_t * vm,
+f64 dep_walk_process_queues(vlib_main_t * vm,
                             const f64 quota);
-u32 fib_walk_queue_get_size(fib_walk_priority_t prio);
+u32 dep_walk_queue_get_size(dep_walk_priority_t prio);
 
 static int
 fib_test_walk (void)
 {
-    fib_node_back_walk_ctx_t high_ctx = {}, low_ctx = {};
+    dep_back_walk_ctx_t high_ctx = {}, low_ctx = {};
     fib_node_test_t *tc;
     vlib_main_t *vm;
     u32 ii, res;
 
     res = 0;
     vm = vlib_get_main();
-    fib_node_register_type(FIB_NODE_TYPE_TEST, &fib_test_child_vft);
+    DEP_TYPE_FIB_TEST = dep_register_type("fib-test", &fib_test_child_vft);
 
     /*
      * init a fake node on which we will add children
      */
-    fib_node_init(&fib_test_nodes[PARENT_INDEX].node,
-                  FIB_NODE_TYPE_TEST);
+    dep_init(&fib_test_nodes[PARENT_INDEX].node,
+                  DEP_TYPE_FIB_TEST);
 
     FOR_EACH_TEST_CHILD(tc)
     {
-        fib_node_init(&tc->node, FIB_NODE_TYPE_TEST);
-        fib_node_lock(&tc->node);
+        dep_init(&tc->node, DEP_TYPE_FIB_TEST);
+        dep_lock(&tc->node);
         tc->ctxs = NULL;
         tc->index = ii;
-        tc->sibling = fib_node_child_add(FIB_NODE_TYPE_TEST,
+        tc->sibling = dep_child_add(DEP_TYPE_FIB_TEST,
                                          PARENT_INDEX,
-                                         FIB_NODE_TYPE_TEST, ii);
+                                         DEP_TYPE_FIB_TEST, ii);
     }
 
     /*
      * enqueue a walk across the parents children.
      */
-    high_ctx.fnbw_reason = FIB_NODE_BW_REASON_FLAG_RESOLVE;
+    high_ctx.dbw_reason = DEP_BW_REASON_FLAG_RESOLVE;
 
-    fib_walk_async(FIB_NODE_TYPE_TEST, PARENT_INDEX,
-                   FIB_WALK_PRIORITY_HIGH, &high_ctx);
-    FIB_TEST(N_TEST_CHILDREN+1 == fib_node_list_get_size(PARENT()->fn_children),
+    dep_walk_async(DEP_TYPE_FIB_TEST, PARENT_INDEX,
+                   DEP_WALK_PRIORITY_HIGH, &high_ctx);
+    FIB_TEST(N_TEST_CHILDREN+1 == dep_list_get_size(PARENT()->d_children),
              "Parent has %d children pre-walk",
-             fib_node_list_get_size(PARENT()->fn_children));
+             dep_list_get_size(PARENT()->d_children));
 
     /*
      * give the walk a large amount of time so it gets to the end
      */
-    fib_walk_process_queues(vm, 1);
+    dep_walk_process_queues(vm, 1);
 
     FOR_EACH_TEST_CHILD(tc)
     {
@@ -7676,17 +7677,17 @@ fib_test_walk (void)
                  ii, vec_len(tc->ctxs));
         vec_free(tc->ctxs);
     }
-    FIB_TEST(0 == fib_walk_queue_get_size(FIB_WALK_PRIORITY_HIGH),
+    FIB_TEST(0 == dep_walk_queue_get_size(DEP_WALK_PRIORITY_HIGH),
              "Queue is empty post walk");
-    FIB_TEST(N_TEST_CHILDREN == fib_node_list_get_size(PARENT()->fn_children),
+    FIB_TEST(N_TEST_CHILDREN == dep_list_get_size(PARENT()->d_children),
              "Parent has %d children post walk",
-             fib_node_list_get_size(PARENT()->fn_children));
+             dep_list_get_size(PARENT()->d_children));
 
     /*
      * walk again. should be no increase in the number of visits, since
      * the walk will have terminated.
      */
-    fib_walk_process_queues(vm, 1);
+    dep_walk_process_queues(vm, 1);
 
     FOR_EACH_TEST_CHILD(tc)
     {
@@ -7701,43 +7702,43 @@ fib_test_walk (void)
      * schedule the high prio walk first so that it is further from the head
      * of the dependency list. that way it won't merge with the low one.
      */
-    high_ctx.fnbw_reason = FIB_NODE_BW_REASON_FLAG_RESOLVE;
-    low_ctx.fnbw_reason = FIB_NODE_BW_REASON_FLAG_ADJ_UPDATE;
+    high_ctx.dbw_reason = DEP_BW_REASON_FLAG_RESOLVE;
+    low_ctx.dbw_reason = DEP_BW_REASON_FLAG_ADJ_UPDATE;
 
-    fib_walk_async(FIB_NODE_TYPE_TEST, PARENT_INDEX,
-                   FIB_WALK_PRIORITY_HIGH, &high_ctx);
-    fib_walk_async(FIB_NODE_TYPE_TEST, PARENT_INDEX,
-                   FIB_WALK_PRIORITY_LOW, &low_ctx);
+    dep_walk_async(DEP_TYPE_FIB_TEST, PARENT_INDEX,
+                   DEP_WALK_PRIORITY_HIGH, &high_ctx);
+    dep_walk_async(DEP_TYPE_FIB_TEST, PARENT_INDEX,
+                   DEP_WALK_PRIORITY_LOW, &low_ctx);
 
-    fib_walk_process_queues(vm, 1);
+    dep_walk_process_queues(vm, 1);
 
     FOR_EACH_TEST_CHILD(tc)
     {
-        FIB_TEST(high_ctx.fnbw_reason == tc->ctxs[0].fnbw_reason,
+        FIB_TEST(high_ctx.dbw_reason == tc->ctxs[0].dbw_reason,
                  "%d child visitsed by high prio walk", ii);
-        FIB_TEST(low_ctx.fnbw_reason  == tc->ctxs[1].fnbw_reason,
+        FIB_TEST(low_ctx.dbw_reason  == tc->ctxs[1].dbw_reason,
                  "%d child visitsed by low prio walk", ii);
         vec_free(tc->ctxs);
     }
-    FIB_TEST(0 == fib_walk_queue_get_size(FIB_WALK_PRIORITY_HIGH),
+    FIB_TEST(0 == dep_walk_queue_get_size(DEP_WALK_PRIORITY_HIGH),
              "Queue is empty post prio walk");
-    FIB_TEST(N_TEST_CHILDREN == fib_node_list_get_size(PARENT()->fn_children),
+    FIB_TEST(N_TEST_CHILDREN == dep_list_get_size(PARENT()->d_children),
              "Parent has %d children post prio walk",
-             fib_node_list_get_size(PARENT()->fn_children));
+             dep_list_get_size(PARENT()->d_children));
 
     /*
      * schedule 2 walks of the same priority that can be megred.
      * expect that each child is thus visited only once.
      */
-    high_ctx.fnbw_reason = FIB_NODE_BW_REASON_FLAG_RESOLVE;
-    low_ctx.fnbw_reason  = FIB_NODE_BW_REASON_FLAG_RESOLVE;
+    high_ctx.dbw_reason = DEP_BW_REASON_FLAG_RESOLVE;
+    low_ctx.dbw_reason  = DEP_BW_REASON_FLAG_RESOLVE;
 
-    fib_walk_async(FIB_NODE_TYPE_TEST, PARENT_INDEX,
-                   FIB_WALK_PRIORITY_HIGH, &high_ctx);
-    fib_walk_async(FIB_NODE_TYPE_TEST, PARENT_INDEX,
-                   FIB_WALK_PRIORITY_HIGH, &low_ctx);
+    dep_walk_async(DEP_TYPE_FIB_TEST, PARENT_INDEX,
+                   DEP_WALK_PRIORITY_HIGH, &high_ctx);
+    dep_walk_async(DEP_TYPE_FIB_TEST, PARENT_INDEX,
+                   DEP_WALK_PRIORITY_HIGH, &low_ctx);
 
-    fib_walk_process_queues(vm, 1);
+    dep_walk_process_queues(vm, 1);
 
     FOR_EACH_TEST_CHILD(tc)
     {
@@ -7746,51 +7747,51 @@ fib_test_walk (void)
                  ii, vec_len(tc->ctxs));
         vec_free(tc->ctxs);
     }
-    FIB_TEST(0 == fib_walk_queue_get_size(FIB_WALK_PRIORITY_HIGH),
+    FIB_TEST(0 == dep_walk_queue_get_size(DEP_WALK_PRIORITY_HIGH),
              "Queue is empty post merge walk");
-    FIB_TEST(N_TEST_CHILDREN == fib_node_list_get_size(PARENT()->fn_children),
+    FIB_TEST(N_TEST_CHILDREN == dep_list_get_size(PARENT()->d_children),
              "Parent has %d children post merge walk",
-             fib_node_list_get_size(PARENT()->fn_children));
+             dep_list_get_size(PARENT()->d_children));
 
     /*
      * schedule 2 walks of the same priority that cannot be megred.
      * expect that each child is thus visited twice and in the order
      * in which the walks were scheduled.
      */
-    high_ctx.fnbw_reason = FIB_NODE_BW_REASON_FLAG_RESOLVE;
-    low_ctx.fnbw_reason  = FIB_NODE_BW_REASON_FLAG_ADJ_UPDATE;
+    high_ctx.dbw_reason = DEP_BW_REASON_FLAG_RESOLVE;
+    low_ctx.dbw_reason  = DEP_BW_REASON_FLAG_ADJ_UPDATE;
 
-    fib_walk_async(FIB_NODE_TYPE_TEST, PARENT_INDEX,
-                   FIB_WALK_PRIORITY_HIGH, &high_ctx);
-    fib_walk_async(FIB_NODE_TYPE_TEST, PARENT_INDEX,
-                   FIB_WALK_PRIORITY_HIGH, &low_ctx);
+    dep_walk_async(DEP_TYPE_FIB_TEST, PARENT_INDEX,
+                   DEP_WALK_PRIORITY_HIGH, &high_ctx);
+    dep_walk_async(DEP_TYPE_FIB_TEST, PARENT_INDEX,
+                   DEP_WALK_PRIORITY_HIGH, &low_ctx);
 
-    fib_walk_process_queues(vm, 1);
+    dep_walk_process_queues(vm, 1);
 
     FOR_EACH_TEST_CHILD(tc)
     {
-        FIB_TEST(high_ctx.fnbw_reason == tc->ctxs[0].fnbw_reason,
+        FIB_TEST(high_ctx.dbw_reason == tc->ctxs[0].dbw_reason,
                  "%d child visitsed by high prio walk", ii);
-        FIB_TEST(low_ctx.fnbw_reason  == tc->ctxs[1].fnbw_reason,
+        FIB_TEST(low_ctx.dbw_reason  == tc->ctxs[1].dbw_reason,
                  "%d child visitsed by low prio walk", ii);
         vec_free(tc->ctxs);
     }
-    FIB_TEST(0 == fib_walk_queue_get_size(FIB_WALK_PRIORITY_HIGH),
+    FIB_TEST(0 == dep_walk_queue_get_size(DEP_WALK_PRIORITY_HIGH),
              "Queue is empty post no-merge walk");
-    FIB_TEST(N_TEST_CHILDREN == fib_node_list_get_size(PARENT()->fn_children),
+    FIB_TEST(N_TEST_CHILDREN == dep_list_get_size(PARENT()->d_children),
              "Parent has %d children post no-merge walk",
-             fib_node_list_get_size(PARENT()->fn_children));
+             dep_list_get_size(PARENT()->d_children));
 
     /*
      * schedule a walk that makes one one child progress.
      * we do this by giving the queue draining process zero
      * time quanta. it's a do..while loop, so it does something.
      */
-    high_ctx.fnbw_reason = FIB_NODE_BW_REASON_FLAG_RESOLVE;
+    high_ctx.dbw_reason = DEP_BW_REASON_FLAG_RESOLVE;
 
-    fib_walk_async(FIB_NODE_TYPE_TEST, PARENT_INDEX,
-                   FIB_WALK_PRIORITY_HIGH, &high_ctx);
-    fib_walk_process_queues(vm, 0);
+    dep_walk_async(DEP_TYPE_FIB_TEST, PARENT_INDEX,
+                   DEP_WALK_PRIORITY_HIGH, &high_ctx);
+    dep_walk_process_queues(vm, 0);
 
     FOR_EACH_TEST_CHILD(tc)
     {
@@ -7807,16 +7808,16 @@ fib_test_walk (void)
                      ii, vec_len(tc->ctxs));
         }
     }
-    FIB_TEST(1 == fib_walk_queue_get_size(FIB_WALK_PRIORITY_HIGH),
+    FIB_TEST(1 == dep_walk_queue_get_size(DEP_WALK_PRIORITY_HIGH),
              "Queue is not empty post zero quanta walk");
-    FIB_TEST(N_TEST_CHILDREN+1 == fib_node_list_get_size(PARENT()->fn_children),
+    FIB_TEST(N_TEST_CHILDREN+1 == dep_list_get_size(PARENT()->d_children),
              "Parent has %d children post zero qunta walk",
-             fib_node_list_get_size(PARENT()->fn_children));
+             dep_list_get_size(PARENT()->d_children));
 
     /*
      * another one step
      */
-    fib_walk_process_queues(vm, 0);
+    dep_walk_process_queues(vm, 0);
 
     FOR_EACH_TEST_CHILD(tc)
     {
@@ -7833,18 +7834,18 @@ fib_test_walk (void)
                      ii, vec_len(tc->ctxs));
         }
     }
-    FIB_TEST(1 == fib_walk_queue_get_size(FIB_WALK_PRIORITY_HIGH),
+    FIB_TEST(1 == dep_walk_queue_get_size(DEP_WALK_PRIORITY_HIGH),
              "Queue is not empty post zero quanta walk");
-    FIB_TEST(N_TEST_CHILDREN+1 == fib_node_list_get_size(PARENT()->fn_children),
+    FIB_TEST(N_TEST_CHILDREN+1 == dep_list_get_size(PARENT()->d_children),
              "Parent has %d children post zero qunta walk",
-             fib_node_list_get_size(PARENT()->fn_children));
+             dep_list_get_size(PARENT()->d_children));
 
     /*
      * schedule another walk that will catch-up and merge.
      */
-    fib_walk_async(FIB_NODE_TYPE_TEST, PARENT_INDEX,
-                   FIB_WALK_PRIORITY_HIGH, &high_ctx);
-    fib_walk_process_queues(vm, 1);
+    dep_walk_async(DEP_TYPE_FIB_TEST, PARENT_INDEX,
+                   DEP_WALK_PRIORITY_HIGH, &high_ctx);
+    dep_walk_process_queues(vm, 1);
 
     FOR_EACH_TEST_CHILD(tc)
     {
@@ -7863,25 +7864,25 @@ fib_test_walk (void)
             vec_free(tc->ctxs);
         }
     }
-    FIB_TEST(0 == fib_walk_queue_get_size(FIB_WALK_PRIORITY_HIGH),
+    FIB_TEST(0 == dep_walk_queue_get_size(DEP_WALK_PRIORITY_HIGH),
              "Queue is not empty post 2nd zero quanta merge walk");
-    FIB_TEST(N_TEST_CHILDREN == fib_node_list_get_size(PARENT()->fn_children),
+    FIB_TEST(N_TEST_CHILDREN == dep_list_get_size(PARENT()->d_children),
              "Parent has %d children post 2nd zero qunta merge walk",
-             fib_node_list_get_size(PARENT()->fn_children));
+             dep_list_get_size(PARENT()->d_children));
 
     /*
      * park a async walk in the middle of the list, then have an sync walk catch
      * it. same expectations as async catches async.
      */
-    high_ctx.fnbw_reason = FIB_NODE_BW_REASON_FLAG_RESOLVE;
+    high_ctx.dbw_reason = DEP_BW_REASON_FLAG_RESOLVE;
 
-    fib_walk_async(FIB_NODE_TYPE_TEST, PARENT_INDEX,
-                   FIB_WALK_PRIORITY_HIGH, &high_ctx);
+    dep_walk_async(DEP_TYPE_FIB_TEST, PARENT_INDEX,
+                   DEP_WALK_PRIORITY_HIGH, &high_ctx);
 
-    fib_walk_process_queues(vm, 0);
-    fib_walk_process_queues(vm, 0);
+    dep_walk_process_queues(vm, 0);
+    dep_walk_process_queues(vm, 0);
 
-    fib_walk_sync(FIB_NODE_TYPE_TEST, PARENT_INDEX, &high_ctx);
+    dep_walk_sync(DEP_TYPE_FIB_TEST, PARENT_INDEX, &high_ctx);
 
     FOR_EACH_TEST_CHILD(tc)
     {
@@ -7900,19 +7901,19 @@ fib_test_walk (void)
             vec_free(tc->ctxs);
         }
     }
-    FIB_TEST(0 == fib_walk_queue_get_size(FIB_WALK_PRIORITY_HIGH),
+    FIB_TEST(0 == dep_walk_queue_get_size(DEP_WALK_PRIORITY_HIGH),
              "Queue is not empty post 2nd zero quanta merge walk");
-    FIB_TEST(N_TEST_CHILDREN == fib_node_list_get_size(PARENT()->fn_children),
+    FIB_TEST(N_TEST_CHILDREN == dep_list_get_size(PARENT()->d_children),
              "Parent has %d children post 2nd zero qunta merge walk",
-             fib_node_list_get_size(PARENT()->fn_children));
+             dep_list_get_size(PARENT()->d_children));
 
     /*
      * make the parent a child of one of its children, thus inducing a routing loop.
      */
     fib_test_nodes[PARENT_INDEX].sibling =
-        fib_node_child_add(FIB_NODE_TYPE_TEST,
+        dep_child_add(DEP_TYPE_FIB_TEST,
                            1, // the first child
-                           FIB_NODE_TYPE_TEST,
+                           DEP_TYPE_FIB_TEST,
                            PARENT_INDEX);
 
     /*
@@ -7921,7 +7922,7 @@ fib_test_walk (void)
      */
     fib_test_walk_spawns_walks = 1;
 
-    fib_walk_sync(FIB_NODE_TYPE_TEST, PARENT_INDEX, &high_ctx);
+    dep_walk_sync(DEP_TYPE_FIB_TEST, PARENT_INDEX, &high_ctx);
 
     FOR_EACH_TEST_CHILD(tc)
     {
@@ -7946,26 +7947,26 @@ fib_test_walk (void)
         }
         vec_free(tc->ctxs);
     }
-    FIB_TEST(N_TEST_CHILDREN == fib_node_list_get_size(PARENT()->fn_children),
+    FIB_TEST(N_TEST_CHILDREN == dep_list_get_size(PARENT()->d_children),
              "Parent has %d children post sync loop walk",
-             fib_node_list_get_size(PARENT()->fn_children));
+             dep_list_get_size(PARENT()->d_children));
 
     /*
      * the walk doesn't reach the max depth because the infra knows that sync
      * meets sync implies a loop and bails early.
      */
-    FIB_TEST(high_ctx.fnbw_depth == 9,
+    FIB_TEST(high_ctx.dbw_depth == 9,
              "Walk context depth %d post sync loop walk",
-             high_ctx.fnbw_depth);
+             high_ctx.dbw_depth);
 
     /*
      * execute an async walk of the graph loop, with each child spawns sync walks
      */
-    high_ctx.fnbw_depth = 0;
-    fib_walk_async(FIB_NODE_TYPE_TEST, PARENT_INDEX,
-                   FIB_WALK_PRIORITY_HIGH, &high_ctx);
+    high_ctx.dbw_depth = 0;
+    dep_walk_async(DEP_TYPE_FIB_TEST, PARENT_INDEX,
+                   DEP_WALK_PRIORITY_HIGH, &high_ctx);
 
-    fib_walk_process_queues(vm, 1);
+    dep_walk_process_queues(vm, 1);
 
     FOR_EACH_TEST_CHILD(tc)
     {
@@ -7983,11 +7984,11 @@ fib_test_walk (void)
      * execute an async walk of the graph loop, with each child spawns async walks
      */
     fib_test_walk_spawns_walks = 2;
-    high_ctx.fnbw_depth = 0;
-    fib_walk_async(FIB_NODE_TYPE_TEST, PARENT_INDEX,
-                   FIB_WALK_PRIORITY_HIGH, &high_ctx);
+    high_ctx.dbw_depth = 0;
+    dep_walk_async(DEP_TYPE_FIB_TEST, PARENT_INDEX,
+                   DEP_WALK_PRIORITY_HIGH, &high_ctx);
 
-    fib_walk_process_queues(vm, 1);
+    dep_walk_process_queues(vm, 1);
 
     FOR_EACH_TEST_CHILD(tc)
     {
@@ -8002,7 +8003,7 @@ fib_test_walk (void)
     }
 
 
-    fib_node_child_remove(FIB_NODE_TYPE_TEST,
+    dep_child_remove(DEP_TYPE_FIB_TEST,
                           1, // the first child
                           fib_test_nodes[PARENT_INDEX].sibling);
 
@@ -8011,12 +8012,13 @@ fib_test_walk (void)
      */
     FOR_EACH_TEST_CHILD(tc)
     {
-        fib_node_child_remove(FIB_NODE_TYPE_TEST, PARENT_INDEX,
-                              tc->sibling);
-        fib_node_deinit(&tc->node);
-        fib_node_unlock(&tc->node);
+        dep_child_remove(DEP_TYPE_FIB_TEST,
+                         PARENT_INDEX,
+                         tc->sibling);
+        dep_deinit(&tc->node);
+        dep_unlock(&tc->node);
     }
-    fib_node_deinit(PARENT());
+    dep_deinit(PARENT());
 
     /*
      * The parent will be destroyed when the last lock on it goes.
@@ -10848,9 +10850,9 @@ fib_test (vlib_main_t * vm,
         /*
          * fib-walk process must be disabled in order for the walk tests to work
          */
-        fib_walk_process_disable();
+        dep_walk_process_disable();
         res += fib_test_walk();
-        fib_walk_process_enable();
+        dep_walk_process_enable();
     }
 
     fflush(NULL);

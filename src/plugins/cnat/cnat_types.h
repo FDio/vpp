@@ -17,7 +17,8 @@
 #define __CNAT_TYPES_H__
 
 #include <vppinfra/bihash_24_8.h>
-#include <vnet/fib/fib_node.h>
+#include <vnet/fib/fib_types.h>
+#include <vnet/dependency/dep.h>
 #include <vnet/fib/fib_source.h>
 #include <vnet/ip/ip_types.h>
 #include <vnet/ip/ip.h>

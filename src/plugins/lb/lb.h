@@ -109,7 +109,7 @@ typedef struct {
   /**
    * Registration to FIB event.
    */
-  fib_node_t fib_node;
+  dep_t dep_node;
 
   /**
    * Destination address used to tunnel traffic towards
@@ -545,7 +545,7 @@ typedef struct {
   /**
    * Node type for registering to fib changes.
    */
-  fib_node_type_t fib_node_type;
+  dep_type_t dep_type;
 
   /* lookup per_port vip by key */
   clib_bihash_8_8_t vip_index_per_port;

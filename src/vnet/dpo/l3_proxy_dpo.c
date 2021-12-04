@@ -19,6 +19,9 @@
 #include <vlib/vlib.h>
 #include <vnet/ip/ip.h>
 #include <vnet/dpo/l3_proxy_dpo.h>
+#include <vnet/memory_usage.h>
+
+// clang-format off
 
 /**
  * @brief pool of all l3_proxy DPOs
@@ -127,12 +130,12 @@ format_l3_proxy_dpo (u8 *s, va_list *ap)
 }
 
 static void
-l3_proxy_dpo_mem_show (void)
+l3_proxy_dpo_mem_show (vlib_main_t *vm)
 {
-    fib_show_memory_usage("L3 Proxy",
-			  pool_elts(l3_proxy_dpo_pool),
-			  pool_len(l3_proxy_dpo_pool),
-			  sizeof(l3_proxy_dpo_t));
+    memory_usage_show(vm, "L3 Proxy",
+                      pool_elts(l3_proxy_dpo_pool),
+                      pool_len(l3_proxy_dpo_pool),
+                      sizeof(l3_proxy_dpo_t));
 }
 
 const static dpo_vft_t l3_proxy_vft = {
@@ -173,3 +176,5 @@ l3_proxy_dpo_module_init (void)
 {
     dpo_register(DPO_L3_PROXY, &l3_proxy_vft, l3_proxy_nodes);
 }
+
+// clang-format on

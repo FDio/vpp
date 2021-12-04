@@ -122,7 +122,7 @@ typedef struct
   /**
    * Linkage into the FIB object graph
    */
-  fib_node_t node;
+  dep_t node;
 
   /*
    * The FIB entry for (depending on GENEVE tunnel is unicast or mcast)

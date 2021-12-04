@@ -21,9 +21,12 @@
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/fib/mpls_fib.h>
+#include <vnet/memory_usage.h>
 #include <vnet/mfib/mfib_table.h>
 #include <vnet/mfib/ip4_mfib.h>
 #include <vnet/mfib/ip6_mfib.h>
+
+// clang-format off
 
 static const char *const lookup_input_names[] = LOOKUP_INPUTS;
 static const char *const lookup_cast_names[] = LOOKUP_CASTS;
@@ -1312,12 +1315,12 @@ VLIB_REGISTER_NODE (lookup_ip6_dst_mcast_node) = {
 };
 
 static void
-lookup_dpo_mem_show (void)
+lookup_dpo_mem_show (vlib_main_t *vm)
 {
-    fib_show_memory_usage("Lookup",
-			  pool_elts(lookup_dpo_pool),
-			  pool_len(lookup_dpo_pool),
-			  sizeof(lookup_dpo_t));
+    memory_usage_show(vm, "Lookup",
+                      pool_elts(lookup_dpo_pool),
+                      pool_len(lookup_dpo_pool),
+                      sizeof(lookup_dpo_t));
 }
 
 const static dpo_vft_t lkd_vft = {
@@ -1474,3 +1477,5 @@ lookup_dpo_module_init (void)
     lookup_dpo_sub_types[LOOKUP_SUB_TYPE_DST_TABLE_FROM_INTERFACE] =
         dpo_register_new_type(&lkd_vft, lookup_dst_from_interface_nodes);
 }
+
+// clang-format on

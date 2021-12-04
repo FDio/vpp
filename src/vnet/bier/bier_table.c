@@ -25,6 +25,7 @@
 #include <vnet/fib/mpls_fib.h>
 #include <vnet/mpls/mpls.h>
 #include <vnet/fib/fib_path_list.h>
+#include <vnet/memory_usage.h>
 
 /**
  * Memory pool of all the allocated tables
@@ -475,12 +476,12 @@ bier_table_dpo_unlock (dpo_id_t *dpo)
 }
 
 static void
-bier_table_dpo_mem_show (void)
+bier_table_dpo_mem_show (vlib_main_t *vm)
 {
-    fib_show_memory_usage("BIER-table",
-                          pool_elts(bier_table_pool),
-                          pool_len(bier_table_pool),
-                          sizeof(bier_table_t));
+    memory_usage_show(vm, "BIER-table",
+                      pool_elts(bier_table_pool),
+                      pool_len(bier_table_pool),
+                      sizeof(bier_table_t));
 }
 static u8 *
 format_bier_table_dpo (u8 *s, va_list *ap)
