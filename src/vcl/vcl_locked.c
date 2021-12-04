@@ -619,7 +619,8 @@ vls_listener_wrk_set (vcl_locked_session_t * vls, u32 wrk_index, u8 is_active)
   vls_shd = vls_shared_data_get (vls->shared_data_index);
 
   clib_spinlock_lock (&vls_shd->lock);
-  clib_bitmap_set (vls_shd->listeners, wrk_index, is_active);
+  vls_shd->listeners =
+    clib_bitmap_set (vls_shd->listeners, wrk_index, is_active);
   clib_spinlock_unlock (&vls_shd->lock);
 
   vls_shared_data_pool_runlock ();
