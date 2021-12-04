@@ -835,8 +835,10 @@ vcl_session_cleanup_handler (vcl_worker_t * wrk, void *data)
       return;
     }
 
+  /* VPP will reuse the handle so clean it up now */
   vcl_session_table_del_vpp_handle (wrk, msg->handle);
-  /* Should not happen. App did not close the connection so don't free it. */
+
+  /* App did not close the connection yet so don't free it. */
   if (session->session_state != VCL_STATE_CLOSED)
     {
       VDBG (0, "app did not close session %d", session->session_index);
@@ -844,6 +846,17 @@ vcl_session_cleanup_handler (vcl_worker_t * wrk, void *data)
       session->vpp_handle = VCL_INVALID_SESSION_HANDLE;
       return;
     }
+
+  /* Session probably tracked with epoll, disconnect not yet handled and
+   * 1) both transport and session cleanup completed 2) app closed. Wait
+   * until message is drained to free the session.
+   * See @ref vcl_handle_mq_event */
+  if (session->flags & VCL_SESSION_F_PENDING_DISCONNECT)
+    {
+      session->flags |= VCL_SESSION_F_PENDING_FREE;
+      return;
+    }
+
   vcl_session_free (wrk, session);
 }
 
@@ -1016,9 +1029,16 @@ vcl_handle_mq_event (vcl_worker_t * wrk, session_event_t * e)
       disconnected_msg = (session_disconnected_msg_t *) e->data;
       if (!(s = vcl_session_get_w_vpp_handle (wrk, disconnected_msg->handle)))
 	break;
+      if (s->session_state == VCL_STATE_CLOSED)
+	break;
       if (vcl_session_has_attr (s, VCL_SESS_ATTR_NONBLOCK))
 	{
-	  vec_add1 (wrk->unhandled_evts_vector, *e);
+	  s->session_state = VCL_STATE_VPP_CLOSING;
+	  s->flags |= VCL_SESSION_F_PENDING_DISCONNECT;
+	  vec_add2 (wrk->unhandled_evts_vector, ecpy, 1);
+	  *ecpy = *e;
+	  ecpy->postponed = 1;
+	  ecpy->session_index = s->session_index;
 	  break;
 	}
       if (!(s = vcl_session_disconnected_handler (wrk, disconnected_msg)))
@@ -1030,9 +1050,16 @@ vcl_handle_mq_event (vcl_worker_t * wrk, session_event_t * e)
       reset_msg = (session_reset_msg_t *) e->data;
       if (!(s = vcl_session_get_w_vpp_handle (wrk, reset_msg->handle)))
 	break;
+      if (s->session_state == VCL_STATE_CLOSED)
+	break;
       if (vcl_session_has_attr (s, VCL_SESS_ATTR_NONBLOCK))
 	{
-	  vec_add1 (wrk->unhandled_evts_vector, *e);
+	  s->flags |= VCL_SESSION_F_PENDING_DISCONNECT;
+	  s->session_state = VCL_STATE_DISCONNECT;
+	  vec_add2 (wrk->unhandled_evts_vector, ecpy, 1);
+	  *ecpy = *e;
+	  ecpy->postponed = 1;
+	  ecpy->session_index = s->session_index;
 	  break;
 	}
       vcl_session_reset_handler (wrk, (session_reset_msg_t *) e->data);
@@ -1449,9 +1476,14 @@ vcl_session_cleanup (vcl_worker_t * wrk, vcl_session_t * s,
     }
   else if (s->session_state == VCL_STATE_DETACHED)
     {
-      /* Should not happen. VPP cleaned up before app confirmed close */
       VDBG (0, "vpp freed session %d before close", s->session_index);
-      goto free_session;
+
+      if (!(s->flags & VCL_SESSION_F_PENDING_DISCONNECT))
+	goto free_session;
+
+      /* Disconnect/reset messages pending but vpp transport and session
+       * cleanups already done. Free only after messages drained. */
+      s->flags |= VCL_SESSION_F_PENDING_FREE;
     }
 
   s->session_state = VCL_STATE_CLOSED;
@@ -2925,7 +2957,7 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
     case SESSION_IO_EVT_TX:
       sid = e->session_index;
       s = vcl_session_get (wrk, sid);
-      if (vcl_session_is_closed (s))
+      if (!s || !vcl_session_is_open (s))
 	break;
       session_events = s->vep.ev.events;
       if (!(EPOLLOUT & session_events))
@@ -2982,10 +3014,15 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       else
 	{
 	  s = vcl_session_get (wrk, e->session_index);
+	  s->flags &= ~VCL_SESSION_F_PENDING_DISCONNECT;
 	}
       if (vcl_session_is_closed (s) ||
 	  !(s->flags & VCL_SESSION_F_IS_VEP_SESSION))
-	break;
+	{
+	  if (s->flags & VCL_SESSION_F_PENDING_FREE)
+	    vcl_session_free (wrk, s);
+	  break;
+	}
       sid = s->session_index;
       session_events = s->vep.ev.events;
       add_event = 1;
@@ -3008,13 +3045,24 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       break;
     case SESSION_CTRL_EVT_RESET:
       if (!e->postponed)
-	sid = vcl_session_reset_handler (wrk, (session_reset_msg_t *) e->data);
+	{
+	  sid =
+	    vcl_session_reset_handler (wrk, (session_reset_msg_t *) e->data);
+	  s = vcl_session_get (wrk, sid);
+	}
       else
-	sid = e->session_index;
-      s = vcl_session_get (wrk, sid);
+	{
+	  sid = e->session_index;
+	  s = vcl_session_get (wrk, sid);
+	  s->flags &= ~VCL_SESSION_F_PENDING_DISCONNECT;
+	}
       if (vcl_session_is_closed (s) ||
 	  !(s->flags & VCL_SESSION_F_IS_VEP_SESSION))
-	break;
+	{
+	  if (s->flags & VCL_SESSION_F_PENDING_FREE)
+	    vcl_session_free (wrk, s);
+	  break;
+	}
       session_events = s->vep.ev.events;
       add_event = 1;
       events[*num_ev].events = EPOLLHUP | EPOLLRDHUP;

@@ -139,6 +139,8 @@ typedef enum vcl_session_flags_
   VCL_SESSION_F_HAS_RX_EVT = 1 << 3,
   VCL_SESSION_F_RD_SHUTDOWN = 1 << 4,
   VCL_SESSION_F_WR_SHUTDOWN = 1 << 5,
+  VCL_SESSION_F_PENDING_DISCONNECT = 1 << 6,
+  VCL_SESSION_F_PENDING_FREE = 1 << 7,
 } __clib_packed vcl_session_flags_t;
 
 typedef struct vcl_session_
