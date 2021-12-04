@@ -40,7 +40,7 @@ typedef struct vxlan_gpe_ioam_main_
   /**
    * Linkage into the FIB object graph
    */
-  fib_node_t node;
+  dep_t node;
 
   /* time scale transform. Joy. */
   u32 unix_time_0;
@@ -94,7 +94,7 @@ typedef struct vxlan_gpe_ioam_main_
 
   /** per sw_if_index, to maintain bitmap */
   u8 *bool_ref_by_sw_if_index;
-  fib_node_type_t fib_entry_type;
+  dep_type_t dep_type;
 
   /** State convenience vlib_main_t */
   vlib_main_t *vlib_main;

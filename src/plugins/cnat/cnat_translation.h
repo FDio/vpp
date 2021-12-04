@@ -119,7 +119,7 @@ typedef struct cnat_translation_t_
   /**
    * Linkage into the FIB graph
    */
-  fib_node_t ct_node;
+  dep_t ct_node;
 
   /**
    * The LB used to forward to the backends

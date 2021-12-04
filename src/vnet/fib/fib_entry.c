@@ -21,7 +21,6 @@
 #include <vnet/dpo/drop_dpo.h>
 
 #include <vnet/fib/fib_entry.h>
-#include <vnet/fib/fib_walk.h>
 #include <vnet/fib/fib_entry_src.h>
 #include <vnet/fib/fib_entry_cover.h>
 #include <vnet/fib/fib_table.h>
@@ -30,6 +29,8 @@
 #include <vnet/fib/fib_path_ext.h>
 #include <vnet/fib/fib_entry_delegate.h>
 #include <vnet/fib/fib_entry_track.h>
+#include <vnet/memory_usage.h>
+#include <vnet/dependency/dep_walk.h>
 
 /*
  * Array of strings/names for the FIB sources
@@ -41,6 +42,7 @@ static const char *fib_src_attribute_names[] = FIB_ENTRY_SRC_ATTRIBUTES;
  * Pool for all fib_entries
  */
 static fib_entry_t *fib_entry_pool;
+dep_type_t DEP_TYPE_FIB_ENTRY;
 
 /**
  * the logger
@@ -53,10 +55,10 @@ fib_entry_get (fib_node_index_t index)
     return (pool_elt_at_index(fib_entry_pool, index));
 }
 
-static fib_node_t *
+static dep_t *
 fib_entry_get_node (fib_node_index_t index)
 {
-    return ((fib_node_t*)fib_entry_get(index));
+    return ((dep_t*)fib_entry_get(index));
 }
 
 fib_node_index_t
@@ -146,7 +148,7 @@ format_fib_entry (u8 * s, va_list * args)
     {
 	s = format (s, " fib:%d", fib_entry->fe_fib_index);
 	s = format (s, " index:%d", fib_entry_get_index(fib_entry));
-	s = format (s, " locks:%d", fib_entry->fe_node.fn_locks);
+	s = format (s, " locks:%d", fib_entry->fe_node.d_locks);
 
 	FOR_EACH_SRC_ADDED(fib_entry, src, source,
         ({
@@ -207,27 +209,27 @@ format_fib_entry (u8 * s, va_list * args)
     if (level >= FIB_ENTRY_FORMAT_DETAIL2)
     {
         s = format(s, " Children:");
-        s = fib_node_children_format(fib_entry->fe_node.fn_children, s);
+        s = dep_children_format(fib_entry->fe_node.d_children, s);
     }
 
     return (s);
 }
 
 static fib_entry_t*
-fib_entry_from_fib_node (fib_node_t *node)
+fib_entry_from_dep (dep_t *node)
 {
-    ASSERT(FIB_NODE_TYPE_ENTRY == node->fn_type);
+    ASSERT(DEP_TYPE_FIB_ENTRY == node->d_type);
     return ((fib_entry_t*)node);
 }
 
 static void
-fib_entry_last_lock_gone (fib_node_t *node)
+fib_entry_last_lock_gone (dep_t *node)
 {
     fib_entry_delegate_type_t fdt;
     fib_entry_delegate_t *fed;
     fib_entry_t *fib_entry;
 
-    fib_entry = fib_entry_from_fib_node(node);
+    fib_entry = fib_entry_from_dep(node);
 
     ASSERT(!dpo_id_is_valid(&fib_entry->fe_lb));
 
@@ -239,7 +241,7 @@ fib_entry_last_lock_gone (fib_node_t *node)
 
     FIB_ENTRY_DBG(fib_entry, "last-lock");
 
-    fib_node_deinit(&fib_entry->fe_node);
+    dep_deinit(&fib_entry->fe_node);
 
     ASSERT(0 == vec_len(fib_entry->fe_delegates));
     vec_free(fib_entry->fe_delegates);
@@ -294,16 +296,16 @@ fib_entry_get_flags (fib_node_index_t fib_entry_index)
 }
 
 static void
-fib_entry_show_memory (void)
+fib_entry_show_memory (vlib_main_t *vm)
 {
     u32 n_srcs = 0, n_exts = 0;
     fib_entry_src_t *esrc;
     fib_entry_t *entry;
 
-    fib_show_memory_usage("Entry",
-			  pool_elts(fib_entry_pool),
-			  pool_len(fib_entry_pool),
-			  sizeof(fib_entry_t));
+    memory_usage_show(vm, "Entry",
+                      pool_elts(fib_entry_pool),
+                      pool_len(fib_entry_pool),
+                      sizeof(fib_entry_t));
 
     pool_foreach (entry, fib_entry_pool)
      {
@@ -314,11 +316,11 @@ fib_entry_show_memory (void)
 	}
     }
 
-    fib_show_memory_usage("Entry Source",
-			  n_srcs, n_srcs, sizeof(fib_entry_src_t));
-    fib_show_memory_usage("Entry Path-Extensions",
-			  n_exts, n_exts,
-			  sizeof(fib_path_ext_t));
+    memory_usage_show(vm, "Entry Source",
+                      n_srcs, n_srcs, sizeof(fib_entry_src_t));
+    memory_usage_show(vm, "Entry Path-Extensions",
+                      n_exts, n_exts,
+                      sizeof(fib_path_ext_t));
 }
 
 /**
@@ -491,25 +493,25 @@ fib_entry_get_path_list (fib_node_index_t fib_entry_index)
 
 u32
 fib_entry_child_add (fib_node_index_t fib_entry_index,
-		     fib_node_type_t child_type,
+		     dep_type_t child_type,
 		     fib_node_index_t child_index)
 {
-    return (fib_node_child_add(FIB_NODE_TYPE_ENTRY,
-                               fib_entry_index,
-                               child_type,
-                               child_index));
+    return (dep_child_add(DEP_TYPE_FIB_ENTRY,
+                          fib_entry_index,
+                          child_type,
+                          child_index));
 };
 
 void
 fib_entry_child_remove (fib_node_index_t fib_entry_index,
 			u32 sibling_index)
 {
-    fib_node_child_remove(FIB_NODE_TYPE_ENTRY,
-                          fib_entry_index,
-                          sibling_index);
+    dep_child_remove(DEP_TYPE_FIB_ENTRY,
+                     fib_entry_index,
+                     sibling_index);
 
-    if (0 == fib_node_get_n_children(FIB_NODE_TYPE_ENTRY,
-                                     fib_entry_index))
+    if (0 == dep_get_n_children(DEP_TYPE_FIB_ENTRY,
+                                fib_entry_index))
     {
         /*
          * if there are no children left then there is no reason to keep
@@ -552,8 +554,7 @@ fib_entry_alloc (u32 fib_index,
 
     clib_memset(fib_entry, 0, sizeof(*fib_entry));
 
-    fib_node_init(&fib_entry->fe_node,
-		  FIB_NODE_TYPE_ENTRY);
+    dep_init(&fib_entry->fe_node, DEP_TYPE_FIB_ENTRY);
 
     fib_entry->fe_fib_index = fib_index;
 
@@ -749,11 +750,11 @@ fib_entry_post_update_actions (fib_entry_t *fib_entry,
     /*
      * backwalk to children to inform then of the change to forwarding.
      */
-    fib_node_back_walk_ctx_t bw_ctx = {
-	.fnbw_reason = FIB_NODE_BW_REASON_FLAG_EVALUATE,
+    dep_back_walk_ctx_t bw_ctx = {
+	.dbw_reason = DEP_BW_REASON_FLAG_EVALUATE,
     };
 
-    fib_walk_sync(FIB_NODE_TYPE_ENTRY, fib_entry_get_index(fib_entry), &bw_ctx);
+    dep_walk_sync(DEP_TYPE_FIB_ENTRY, fib_entry_get_index(fib_entry), &bw_ctx);
 
     /*
      * then inform any covered prefixes
@@ -1221,7 +1222,7 @@ fib_entry_cover_changed (fib_node_index_t fib_entry_index)
 {
     fib_entry_src_cover_res_t res = {
 	.install = !0,
-	.bw_reason = FIB_NODE_BW_REASON_FLAG_NONE,
+	.bw_reason = DEP_BW_REASON_FLAG_NONE,
     };
     CLIB_UNUSED(fib_source_t source);
     fib_source_t best_source;
@@ -1272,16 +1273,16 @@ fib_entry_cover_changed (fib_node_index_t fib_entry_index)
 	fib_entry_src_action_uninstall(fib_entry);
     }
 
-    if (FIB_NODE_BW_REASON_FLAG_NONE != res.bw_reason)
+    if (DEP_BW_REASON_FLAG_NONE != res.bw_reason)
     {
 	/*
 	 * time for walkies fido.
 	 */
-	fib_node_back_walk_ctx_t bw_ctx = {
-	    .fnbw_reason = res.bw_reason,
+	dep_back_walk_ctx_t bw_ctx = {
+	    .dbw_reason = res.bw_reason,
         };
 
-	fib_walk_sync(FIB_NODE_TYPE_ENTRY, fib_entry_index, &bw_ctx);
+	dep_walk_sync(DEP_TYPE_FIB_ENTRY, fib_entry_index, &bw_ctx);
     }
     FIB_ENTRY_DBG(fib_entry, "cover-changed");
 }
@@ -1297,7 +1298,7 @@ fib_entry_cover_updated (fib_node_index_t fib_entry_index)
 {
     fib_entry_src_cover_res_t res = {
 	.install = !0,
-	.bw_reason = FIB_NODE_BW_REASON_FLAG_NONE,
+	.bw_reason = DEP_BW_REASON_FLAG_NONE,
     };
     CLIB_UNUSED(fib_source_t source);
     fib_source_t best_source;
@@ -1336,7 +1337,7 @@ fib_entry_cover_updated (fib_node_index_t fib_entry_index)
             {
                 fib_entry_src_cover_res_t tmp = {
                     .install = !0,
-                    .bw_reason = FIB_NODE_BW_REASON_FLAG_NONE,
+                    .bw_reason = DEP_BW_REASON_FLAG_NONE,
                 };
 
                 tmp = fib_entry_src_action_cover_update(fib_entry, esrc);
@@ -1364,16 +1365,16 @@ fib_entry_cover_updated (fib_node_index_t fib_entry_index)
 	fib_entry_src_action_uninstall(fib_entry);
     }
 
-    if (FIB_NODE_BW_REASON_FLAG_NONE != res.bw_reason)
+    if (DEP_BW_REASON_FLAG_NONE != res.bw_reason)
     {
 	/*
 	 * time for walkies fido.
 	 */
-	fib_node_back_walk_ctx_t bw_ctx = {
-	    .fnbw_reason = res.bw_reason,
+	dep_back_walk_ctx_t bw_ctx = {
+	    .dbw_reason = res.bw_reason,
         };
 
-	fib_walk_sync(FIB_NODE_TYPE_ENTRY, fib_entry_index, &bw_ctx);
+	dep_walk_sync(DEP_TYPE_FIB_ENTRY, fib_entry_index, &bw_ctx);
     }
     FIB_ENTRY_DBG(fib_entry, "cover-updated");
 }
@@ -1465,19 +1466,19 @@ fib_entry_attached_cross_table (const fib_entry_t *fib_entry,
  *
  * A back walk has reach this entry.
  */
-static fib_node_back_walk_rc_t
-fib_entry_back_walk_notify (fib_node_t *node,
-			    fib_node_back_walk_ctx_t *ctx)
+static dep_back_walk_rc_t
+fib_entry_back_walk_notify (dep_t *node,
+			    dep_back_walk_ctx_t *ctx)
 {
     fib_source_t best_source;
     fib_entry_t *fib_entry;
     fib_entry_src_t *bsrc;
 
-    fib_entry = fib_entry_from_fib_node(node);
+    fib_entry = fib_entry_from_dep(node);
     bsrc = fib_entry_get_best_src_i(fib_entry);
     best_source = fib_entry_src_get_source(bsrc);
 
-    if (FIB_NODE_BW_REASON_FLAG_INTERFACE_BIND & ctx->fnbw_reason)
+    if (DEP_BW_REASON_FLAG_INTERFACE_BIND & ctx->dbw_reason)
     {
         fib_entry_flag_t bflags;
 
@@ -1487,7 +1488,7 @@ fib_entry_back_walk_notify (fib_node_t *node,
 
         /* re-evaluate whether the prefix is cross table */
         if (fib_entry_attached_cross_table(
-                fib_entry, ctx->interface_bind.fnbw_to_fib_index) &&
+                fib_entry, ctx->interface_bind.dbw_to_fib_index) &&
             !(bsrc->fes_entry_flags & FIB_ENTRY_FLAG_NO_ATTACHED_EXPORT))
         {
             bsrc->fes_entry_flags |= FIB_ENTRY_FLAG_IMPORT;
@@ -1499,15 +1500,15 @@ fib_entry_back_walk_notify (fib_node_t *node,
 
         fib_entry = fib_entry_post_flag_update_actions(
             fib_entry, bflags,
-            ctx->interface_bind.fnbw_to_fib_index);
+            ctx->interface_bind.dbw_to_fib_index);
     }
-    else if (FIB_NODE_BW_REASON_FLAG_EVALUATE & ctx->fnbw_reason        ||
-             FIB_NODE_BW_REASON_FLAG_ADJ_UPDATE & ctx->fnbw_reason      ||
-             FIB_NODE_BW_REASON_FLAG_ADJ_DOWN & ctx->fnbw_reason        ||
-             FIB_NODE_BW_REASON_FLAG_INTERFACE_UP & ctx->fnbw_reason    ||
-             FIB_NODE_BW_REASON_FLAG_INTERFACE_DOWN & ctx->fnbw_reason  ||
-             FIB_NODE_BW_REASON_FLAG_INTERFACE_BIND & ctx->fnbw_reason  ||
-             FIB_NODE_BW_REASON_FLAG_INTERFACE_DELETE & ctx->fnbw_reason)
+    else if (DEP_BW_REASON_FLAG_EVALUATE & ctx->dbw_reason        ||
+             DEP_BW_REASON_FLAG_ADJ_UPDATE & ctx->dbw_reason      ||
+             DEP_BW_REASON_FLAG_ADJ_DOWN & ctx->dbw_reason        ||
+             DEP_BW_REASON_FLAG_INTERFACE_UP & ctx->dbw_reason    ||
+             DEP_BW_REASON_FLAG_INTERFACE_DOWN & ctx->dbw_reason  ||
+             DEP_BW_REASON_FLAG_INTERFACE_BIND & ctx->dbw_reason  ||
+             DEP_BW_REASON_FLAG_INTERFACE_DELETE & ctx->dbw_reason)
     {
 	fib_entry_src_action_reactivate(fib_entry, best_source);
     }
@@ -1518,35 +1519,34 @@ fib_entry_back_walk_notify (fib_node_t *node,
      * By reclassifying we ensure that should any of these walk types meet
      * they can be merged.
      */
-    ctx->fnbw_reason = FIB_NODE_BW_REASON_FLAG_EVALUATE;
+    ctx->dbw_reason = DEP_BW_REASON_FLAG_EVALUATE;
 
     /*
      * ... and nothing is forced sync from now on.
      */
-    ctx->fnbw_flags &= ~FIB_NODE_BW_FLAG_FORCE_SYNC;
+    ctx->dbw_flags &= ~DEP_BW_FLAG_FORCE_SYNC;
 
     FIB_ENTRY_DBG(fib_entry, "bw:%U",
-                  format_fib_node_bw_reason, ctx->fnbw_reason);
+                  format_dep_bw_reason, ctx->dbw_reason);
 
     /*
      * propagate the backwalk further if we haven't already reached the
      * maximum depth.
      */
-    fib_walk_sync(FIB_NODE_TYPE_ENTRY,
+    dep_walk_sync(DEP_TYPE_FIB_ENTRY,
 		  fib_entry_get_index(fib_entry),
 		  ctx);
 
-    return (FIB_NODE_BACK_WALK_CONTINUE);
+    return (DEP_BACK_WALK_CONTINUE);
 }
 
 /*
  * The FIB path-list's graph node virtual function table
  */
-static const fib_node_vft_t fib_entry_vft = {
-    .fnv_get = fib_entry_get_node,
-    .fnv_last_lock = fib_entry_last_lock_gone,
-    .fnv_back_walk = fib_entry_back_walk_notify,
-    .fnv_mem_show = fib_entry_show_memory,
+static const dep_vft_t fib_entry_vft = {
+    .dv_get = fib_entry_get_node,
+    .dv_last_lock = fib_entry_last_lock_gone,
+    .dv_back_walk = fib_entry_back_walk_notify,
 };
 
 u32
@@ -1751,7 +1751,7 @@ fib_entry_lock (fib_node_index_t fib_entry_index)
 
     fib_entry = fib_entry_get(fib_entry_index);
 
-    fib_node_lock(&fib_entry->fe_node);
+    dep_lock(&fib_entry->fe_node);
 }
 
 void
@@ -1761,16 +1761,17 @@ fib_entry_unlock (fib_node_index_t fib_entry_index)
 
     fib_entry = fib_entry_get(fib_entry_index);
 
-    fib_node_unlock(&fib_entry->fe_node);
+    dep_unlock(&fib_entry->fe_node);
 }
 
 void
 fib_entry_module_init (void)
 {
-    fib_node_register_type(FIB_NODE_TYPE_ENTRY, &fib_entry_vft);
+    DEP_TYPE_FIB_ENTRY = dep_register_type("fib-entry", &fib_entry_vft);
     fib_entry_logger = vlib_log_register_class("fib", "entry");
 
     fib_entry_track_module_init();
+    memory_usage_register(fib_entry_show_memory);
 }
 
 fib_route_path_t *

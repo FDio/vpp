@@ -46,6 +46,7 @@
 #include <vnet/dpo/l3_proxy_dpo.h>
 #include <vnet/dpo/ip6_ll_dpo.h>
 #include <vnet/dpo/pw_cw.h>
+#include <vnet/memory_usage.h>
 
 /**
  * Array of char* names for the DPO types and protos
@@ -590,6 +591,18 @@ dpo_stack_from_node (u32 child_node_index,
     vec_free(parent_indices);
 }
 
+static void
+dpo_memory_show (vlib_main_t * vm)
+{
+    dpo_vft_t *vft;
+
+    vec_foreach(vft, dpo_vfts)
+    {
+	if (NULL != vft->dv_mem_show)
+	    vft->dv_mem_show(vm);
+    }
+}
+
 static clib_error_t *
 dpo_module_init (vlib_main_t * vm)
 {
@@ -609,6 +622,7 @@ dpo_module_init (vlib_main_t * vm)
     dvr_dpo_module_init();
     l3_proxy_dpo_module_init();
     pw_cw_dpo_module_init();
+    memory_usage_register(dpo_memory_show);
 
     return (NULL);
 }
@@ -621,21 +635,14 @@ VLIB_INIT_FUNCTION(dpo_module_init) =
 /* *INDENT-ON* */
 
 static clib_error_t *
-dpo_memory_show (vlib_main_t * vm,
-		 unformat_input_t * input,
-		 vlib_cli_command_t * cmd)
+dpo_memory_show_cli (vlib_main_t * vm,
+                     unformat_input_t * input,
+                     vlib_cli_command_t * cmd)
 {
-    dpo_vft_t *vft;
-
     vlib_cli_output (vm, "DPO memory");
     vlib_cli_output (vm, "%=30s %=5s %=8s/%=9s   totals",
 		     "Name","Size", "in-use", "allocated");
-
-    vec_foreach(vft, dpo_vfts)
-    {
-	if (NULL != vft->dv_mem_show)
-	    vft->dv_mem_show();
-    }
+    dpo_memory_show(vm);
 
     return (NULL);
 }
@@ -659,7 +666,7 @@ dpo_memory_show (vlib_main_t * vm,
 ?*/
 VLIB_CLI_COMMAND (show_fib_memory, static) = {
     .path = "show dpo memory",
-    .function = dpo_memory_show,
+    .function = dpo_memory_show_cli,
     .short_help = "show dpo memory",
 };
 /* *INDENT-ON* */

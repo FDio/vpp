@@ -23,7 +23,8 @@
 #ifndef __L3XC_H__
 #define __L3XC_H__
 
-#include <vnet/fib/fib_node.h>
+#include <vnet/fib/fib_types.h>
+#include <vnet/dependency/dep.h>
 
 #define L3XC_PLUGIN_VERSION_MAJOR 1
 #define L3XC_PLUGIN_VERSION_MINOR 0
@@ -36,7 +37,7 @@ typedef struct l3xc_t_
   /**
    * Linkage into the FIB graph
    */
-  fib_node_t l3xc_node;
+  dep_t l3xc_node;
 
   /**
    * The path-list describing how to forward in case of a match

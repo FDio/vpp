@@ -21,11 +21,16 @@
 
 #include <vnet/fib/fib_path_list.h>
 #include <vnet/fib/fib_internal.h>
-#include <vnet/fib/fib_node_list.h>
-#include <vnet/fib/fib_walk.h>
 #include <vnet/fib/fib_urpf_list.h>
 #include <vnet/fib/fib_path_ext.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/memory_usage.h>
+#include <vnet/dependency/dep_walk.h>
+
+/**
+ * Dependency type for a path list
+ */
+static dep_type_t DEP_TYPE_FIB_PATH_LIST;
 
 /**
  * The magic number of child entries that make a path-list popular.
@@ -45,7 +50,7 @@ typedef struct fib_path_list_t_ {
     /**
      * A path-list is a node in the FIB graph.
      */
-    fib_node_t fpl_node;
+    dep_t fpl_node;
 
     /**
      * Flags on the path-list
@@ -82,7 +87,9 @@ static uword *fib_path_list_db;
 /**
  * the logger
  */
-vlib_log_class_t fib_path_list_logger;
+static vlib_log_class_t fib_path_list_logger;
+
+static dep_type_t DEP_TYPE_FIB_PATH_LIST;
 
 /*
  * Debug macro
@@ -102,16 +109,16 @@ fib_path_list_get (fib_node_index_t index)
     return (pool_elt_at_index(fib_path_list_pool, index));
 }
 
-static fib_node_t *
+static dep_t *
 fib_path_list_get_node (fib_node_index_t index)
 {
-    return ((fib_node_t*)fib_path_list_get(index));
+    return ((dep_t*)fib_path_list_get(index));
 }
 
 static fib_path_list_t*
-fib_path_list_from_fib_node (fib_node_t *node)
+fib_path_list_from_dep (dep_t *node)
 {
-    ASSERT(FIB_NODE_TYPE_PATH_LIST == node->fn_type);
+    ASSERT(DEP_TYPE_FIB_PATH_LIST == node->d_type);
     return ((fib_path_list_t*)node);
 }
 
@@ -136,7 +143,7 @@ format_fib_path_list (u8 * s, va_list * args)
     s = format (s, "%Upath-list:[%d]",
                 format_white_space, indent,
                 fib_path_list_get_index(path_list));
-    s = format (s, " locks:%u", path_list->fpl_node.fn_locks);
+    s = format (s, " locks:%u", path_list->fpl_node.d_locks);
 
     if (FIB_PATH_LIST_FLAG_NONE != path_list->fpl_flags)
     {
@@ -319,16 +326,16 @@ fib_path_list_destroy (fib_path_list_t *path_list)
     vec_free(path_list->fpl_paths);
     fib_urpf_list_unlock(path_list->fpl_urpf);
 
-    fib_node_deinit(&path_list->fpl_node);
+    dep_deinit(&path_list->fpl_node);
     pool_put(fib_path_list_pool, path_list);
 }
 
 static void
-fib_path_list_last_lock_gone (fib_node_t *node)
+fib_path_list_last_lock_gone (dep_t *node)
 {
     fib_path_list_t *path_list;
 
-    path_list = fib_path_list_from_fib_node(node);
+    path_list = fib_path_list_from_dep(node);
 
     FIB_PATH_LIST_DBG(path_list, "last-lock");
 
@@ -463,7 +470,7 @@ fib_path_list_get_urpf (fib_node_index_t path_list_index)
  */
 void
 fib_path_list_back_walk (fib_node_index_t path_list_index,
-			 fib_node_back_walk_ctx_t *ctx)
+			 dep_back_walk_ctx_t *ctx)
 {
     fib_path_list_t *path_list;
 
@@ -472,7 +479,7 @@ fib_path_list_back_walk (fib_node_index_t path_list_index,
     fib_path_list_mk_urpf(path_list);
 
     FIB_PATH_LIST_DBG(path_list, "bw:%U",
-                      format_fib_node_bw_reason, ctx->fnbw_reason);
+                      format_dep_bw_reason, ctx->dbw_reason);
 
     /*
      * propagate the backwalk further
@@ -482,9 +489,9 @@ fib_path_list_back_walk (fib_node_index_t path_list_index,
         /*
          * many children. schedule a async walk
          */
-        fib_walk_async(FIB_NODE_TYPE_PATH_LIST,
+        dep_walk_async(DEP_TYPE_FIB_PATH_LIST,
                        path_list_index,
-                       FIB_WALK_PRIORITY_LOW,
+                       DEP_WALK_PRIORITY_LOW,
                        ctx);
     }
     else
@@ -492,7 +499,7 @@ fib_path_list_back_walk (fib_node_index_t path_list_index,
         /*
          * only a few children. continue the walk synchronously
          */
-	fib_walk_sync(FIB_NODE_TYPE_PATH_LIST, path_list_index, ctx);
+	dep_walk_sync(DEP_TYPE_FIB_PATH_LIST, path_list_index, ctx);
     }
 }
 
@@ -501,9 +508,9 @@ fib_path_list_back_walk (fib_node_index_t path_list_index,
  *
  * A back walk has reach this path-list.
  */
-static fib_node_back_walk_rc_t
-fib_path_list_back_walk_notify (fib_node_t *node,
-				fib_node_back_walk_ctx_t *ctx)
+static dep_back_walk_rc_t
+fib_path_list_back_walk_notify (dep_t *node,
+				dep_back_walk_ctx_t *ctx)
 {
     /*
      * the path-list is not a direct child of any other node type
@@ -512,30 +519,28 @@ fib_path_list_back_walk_notify (fib_node_t *node,
      */
     ASSERT(0);
 
-    return (FIB_NODE_BACK_WALK_CONTINUE);
+    return (DEP_BACK_WALK_CONTINUE);
 }
 
 /*
  * Display the path-list memory usage
  */
 static void
-fib_path_list_memory_show (void)
+fib_path_list_memory_show (vlib_main_t *vm)
 {
-    fib_show_memory_usage("Path-list",
-			  pool_elts(fib_path_list_pool),
-			  pool_len(fib_path_list_pool),
-			  sizeof(fib_path_list_t));
-    fib_urpf_list_show_mem();
+    memory_usage_show(vm, "Path-list",
+                      pool_elts(fib_path_list_pool),
+                      pool_len(fib_path_list_pool),
+                      sizeof(fib_path_list_t));
 }
 
 /*
  * The FIB path-list's graph node virtual function table
  */
-static const fib_node_vft_t fib_path_list_vft = {
-    .fnv_get = fib_path_list_get_node,
-    .fnv_last_lock = fib_path_list_last_lock_gone,
-    .fnv_back_walk = fib_path_list_back_walk_notify,
-    .fnv_mem_show = fib_path_list_memory_show,
+static const dep_vft_t fib_path_list_vft = {
+    .dv_get = fib_path_list_get_node,
+    .dv_last_lock = fib_path_list_last_lock_gone,
+    .dv_back_walk = fib_path_list_back_walk_notify,
 };
 
 static inline fib_path_list_t *
@@ -546,8 +551,8 @@ fib_path_list_alloc (fib_node_index_t *path_list_index)
     pool_get(fib_path_list_pool, path_list);
     clib_memset(path_list, 0, sizeof(*path_list));
 
-    fib_node_init(&path_list->fpl_node,
-		  FIB_NODE_TYPE_PATH_LIST);
+    dep_init(&path_list->fpl_node,
+             DEP_TYPE_FIB_PATH_LIST);
     path_list->fpl_urpf = INDEX_INVALID;
     path_list->fpl_paths = NULL;
 
@@ -1294,11 +1299,11 @@ fib_path_list_recursive_loop_detect (fib_node_index_t path_list_index,
 
 u32
 fib_path_list_child_add (fib_node_index_t path_list_index,
-			 fib_node_type_t child_type,
+			 dep_type_t child_type,
 			 fib_node_index_t child_index)
 {
-    if (FIB_PATH_LIST_POPULAR - 1 == fib_node_get_n_children(FIB_NODE_TYPE_PATH_LIST,
-                                                             path_list_index))
+    if (FIB_PATH_LIST_POPULAR - 1 == dep_get_n_children(DEP_TYPE_FIB_PATH_LIST,
+                                                        path_list_index))
     {
         /*
          * Set the popular flag on the path-list once we pass the magic
@@ -1310,30 +1315,30 @@ fib_path_list_child_add (fib_node_index_t path_list_index,
          * flip-flop over the threshold, then this non-trivial work is added
          * to each of those routes adds/deletes - not a situation we want.
          */
-        fib_node_back_walk_ctx_t ctx = {
-            .fnbw_reason = FIB_NODE_BW_REASON_FLAG_EVALUATE,
+        dep_back_walk_ctx_t ctx = {
+            .dbw_reason = DEP_BW_REASON_FLAG_EVALUATE,
         };
         fib_path_list_t *path_list;
 
         path_list = fib_path_list_get(path_list_index);
         path_list->fpl_flags |= FIB_PATH_LIST_FLAG_POPULAR;
 
-	fib_walk_sync(FIB_NODE_TYPE_PATH_LIST, path_list_index, &ctx);
+	dep_walk_sync(DEP_TYPE_FIB_PATH_LIST, path_list_index, &ctx);
     }
 
-    return (fib_node_child_add(FIB_NODE_TYPE_PATH_LIST,
-                                 path_list_index,
-                                 child_type,
-                                 child_index));
+    return (dep_child_add(DEP_TYPE_FIB_PATH_LIST,
+                          path_list_index,
+                          child_type,
+                          child_index));
 }
 
 void
 fib_path_list_child_remove (fib_node_index_t path_list_index,
 			    u32 si)
 {
-    fib_node_child_remove(FIB_NODE_TYPE_PATH_LIST,
-                          path_list_index,
-                          si);
+    dep_child_remove(DEP_TYPE_FIB_PATH_LIST,
+                     path_list_index,
+                     si);
 }
 
 void
@@ -1345,7 +1350,7 @@ fib_path_list_lock(fib_node_index_t path_list_index)
     {
 	path_list = fib_path_list_get(path_list_index);
 
-	fib_node_lock(&path_list->fpl_node);
+	dep_lock(&path_list->fpl_node);
     }
 }
 
@@ -1358,7 +1363,7 @@ fib_path_list_unlock (fib_node_index_t path_list_index)
     {
 	path_list = fib_path_list_get(path_list_index);
     
-	fib_node_unlock(&path_list->fpl_node);
+	dep_unlock(&path_list->fpl_node);
     }
 }
 
@@ -1420,7 +1425,8 @@ fib_path_list_walk_w_ext (fib_node_index_t path_list_index,
 void
 fib_path_list_module_init (void)
 {
-    fib_node_register_type (FIB_NODE_TYPE_PATH_LIST, &fib_path_list_vft);
+    DEP_TYPE_FIB_PATH_LIST = dep_register_type ("fib-path-list",
+                                                &fib_path_list_vft);
 
     fib_path_list_db = hash_create2 (/* elts */ 0,
     				     /* user */ 0,
@@ -1430,6 +1436,7 @@ fib_path_list_module_init (void)
     				     /* format pair/arg */
     				     0, 0);
     fib_path_list_logger = vlib_log_register_class("fib", "path-list");
+    memory_usage_register(fib_path_list_memory_show);
 }
 
 static clib_error_t *
@@ -1450,7 +1457,7 @@ show_fib_path_list_command (vlib_main_t * vm,
 	    path_list = fib_path_list_get(pli);
 	    u8 *s = fib_path_list_format(pli, NULL);
 	    s = format(s, "children:");
-	    s = fib_node_children_format(path_list->fpl_node.fn_children, s);
+	    s = dep_children_format(path_list->fpl_node.d_children, s);
 	    vlib_cli_output (vm, "%v", s);
 	    vec_free(s);
 	}

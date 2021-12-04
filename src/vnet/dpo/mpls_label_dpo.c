@@ -17,6 +17,7 @@
 #include <vnet/dpo/mpls_label_dpo.h>
 #include <vnet/mpls/mpls.h>
 #include <vnet/dpo/drop_dpo.h>
+#include <vnet/memory_usage.h>
 
 // clang-format off
 
@@ -1183,12 +1184,12 @@ VLIB_REGISTER_NODE (ip6_mpls_label_imposition_uniform_no_ip_ttl_decr_node) = {
 
 #ifndef CLIB_MARCH_VARIANT
 static void
-mpls_label_dpo_mem_show (void)
+mpls_label_dpo_mem_show (vlib_main_t *vm)
 {
-    fib_show_memory_usage("MPLS label",
-			  pool_elts(mpls_label_dpo_pool),
-			  pool_len(mpls_label_dpo_pool),
-			  sizeof(mpls_label_dpo_t));
+    memory_usage_show(vm, "MPLS label",
+                      pool_elts(mpls_label_dpo_pool),
+                      pool_len(mpls_label_dpo_pool),
+                      sizeof(mpls_label_dpo_t));
 }
 
 /**

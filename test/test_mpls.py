@@ -1920,7 +1920,7 @@ class TestMPLSPIC(VppTestCase):
         # will prevent the FIB converging the VPN routes and thus allow
         # us to probe the interim (post-fail, pre-converge) state
         #
-        self.vapi.ppcli("test fib-walk-process disable")
+        self.vapi.ppcli("test dep-walk-process disable")
 
         #
         # withdraw the connected prefix on the interface.
@@ -1942,7 +1942,7 @@ class TestMPLSPIC(VppTestCase):
         #
         # enable the FIB walk process to converge the FIB
         #
-        self.vapi.ppcli("test fib-walk-process enable")
+        self.vapi.ppcli("test dep-walk-process enable")
 
         #
         # packets should still be forwarded through the remaining peer
@@ -2036,7 +2036,7 @@ class TestMPLSPIC(VppTestCase):
         # will prevent the FIB converging the VPN routes and thus allow
         # us to probe the interim (post-fail, pre-converge) state
         #
-        self.vapi.ppcli("test fib-walk-process disable")
+        self.vapi.ppcli("test dep-walk-process disable")
 
         #
         # withdraw the connected prefix on the interface.
@@ -2060,7 +2060,7 @@ class TestMPLSPIC(VppTestCase):
         #
         # enable the FIB walk process to converge the FIB
         #
-        self.vapi.ppcli("test fib-walk-process enable")
+        self.vapi.ppcli("test dep-walk-process enable")
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()

@@ -24,6 +24,8 @@
 
 bier_entry_t *bier_entry_pool;
 
+static dep_type_t DEP_TYPE_BIER_ENTRY;
+
 static index_t
 bier_entry_get_index (const bier_entry_t *be)
 {
@@ -189,7 +191,7 @@ bier_entry_path_add (index_t bei,
                                                  FIB_PATH_LIST_FLAG_NO_URPF),
                                                 rpaths);
         be->be_sibling_index = fib_path_list_child_add(be->be_path_list,
-                                                       FIB_NODE_TYPE_BIER_ENTRY,
+                                                       DEP_TYPE_BIER_ENTRY,
                                                        bier_entry_get_index(be));
     }
     else
@@ -206,7 +208,7 @@ bier_entry_path_add (index_t bei,
         fib_path_list_child_remove(old_pl_index,
                                    be->be_sibling_index);
         be->be_sibling_index = fib_path_list_child_add(be->be_path_list,
-                                                       FIB_NODE_TYPE_BIER_ENTRY,
+                                                       DEP_TYPE_BIER_ENTRY,
                                                        bier_entry_get_index(be));
     }
     /*
@@ -262,7 +264,7 @@ bier_entry_path_update (index_t bei,
                                              FIB_PATH_LIST_FLAG_NO_URPF),
                                             rpaths);
     be->be_sibling_index = fib_path_list_child_add(be->be_path_list,
-                                                   FIB_NODE_TYPE_BIER_ENTRY,
+                                                   DEP_TYPE_BIER_ENTRY,
                                                    bier_entry_get_index(be));
 
     /*
@@ -331,7 +333,7 @@ bier_entry_path_remove (index_t bei,
                                be);
             be->be_sibling_index =
                 fib_path_list_child_add(be->be_path_list,
-                                        FIB_NODE_TYPE_BIER_ENTRY,
+                                        DEP_TYPE_BIER_ENTRY,
                                         bier_entry_get_index(be));
         }
 
@@ -389,7 +391,7 @@ format_bier_entry (u8* s, va_list *ap)
     return (s);
 }
 
-static fib_node_t *
+static dep_t *
 bier_entry_get_node (fib_node_index_t index)
 {
     bier_entry_t *be = bier_entry_get(index);
@@ -397,7 +399,7 @@ bier_entry_get_node (fib_node_index_t index)
 }
 
 static bier_entry_t*
-bier_entry_get_from_node (fib_node_t *node)
+bier_entry_get_from_node (dep_t *node)
 {
     return ((bier_entry_t*)(((char*)node) -
                             STRUCT_OFFSET_OF(bier_entry_t,
@@ -405,7 +407,7 @@ bier_entry_get_from_node (fib_node_t *node)
 }
 
 static void
-bier_entry_last_lock_gone (fib_node_t *node)
+bier_entry_last_lock_gone (dep_t *node)
 {
     /*
      * the lifetime of the entry is managed by the table.
@@ -416,9 +418,9 @@ bier_entry_last_lock_gone (fib_node_t *node)
 /*
  * A back walk has reached this BIER entry
  */
-static fib_node_back_walk_rc_t
-bier_entry_back_walk_notify (fib_node_t *node,
-                             fib_node_back_walk_ctx_t *ctx)
+static dep_back_walk_rc_t
+bier_entry_back_walk_notify (dep_t *node,
+                             dep_back_walk_ctx_t *ctx)
 {
     /*
      * re-populate the ECMP tables with new choices
@@ -432,22 +434,22 @@ bier_entry_back_walk_notify (fib_node_t *node,
     /*
      * no need to propagate further up the graph.
      */
-    return (FIB_NODE_BACK_WALK_CONTINUE);
+    return (DEP_BACK_WALK_CONTINUE);
 }
 
 /*
  * The BIER fmask's graph node virtual function table
  */
-static const fib_node_vft_t bier_entry_vft = {
-    .fnv_get = bier_entry_get_node,
-    .fnv_last_lock = bier_entry_last_lock_gone,
-    .fnv_back_walk = bier_entry_back_walk_notify,
+static const dep_vft_t bier_entry_vft = {
+    .dv_get = bier_entry_get_node,
+    .dv_last_lock = bier_entry_last_lock_gone,
+    .dv_back_walk = bier_entry_back_walk_notify,
 };
 
 clib_error_t *
 bier_entry_module_init (vlib_main_t * vm)
 {
-    fib_node_register_type (FIB_NODE_TYPE_BIER_ENTRY, &bier_entry_vft);
+    DEP_TYPE_BIER_ENTRY = dep_register_type ("bier-entry", &bier_entry_vft);
 
     return (NULL);
 }

@@ -22,7 +22,7 @@
 #include <vnet/ethernet/packet.h>
 #include <vnet/ip/ip4.h>
 #include <vnet/ip/ip6.h>
-#include <vnet/fib/fib_node.h>
+#include <vnet/fib/fib_types.h>
 #include <vnet/ethernet/arp_packet.h>
 #include <vlib/cli.h>
 #include <vnet/l2/l2_input.h>

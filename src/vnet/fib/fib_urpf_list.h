@@ -85,7 +85,7 @@ extern void fib_urpf_list_bake(index_t urpf);
 
 extern u8 *format_fib_urpf_list(u8 *s, va_list *ap);
 
-extern void fib_urpf_list_show_mem(void);
+extern void fib_urpf_list_module_init(void);
 
 /**
  * @brief pool of all fib_urpf_list

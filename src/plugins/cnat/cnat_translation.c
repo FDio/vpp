@@ -28,7 +28,7 @@ clib_bihash_8_8_t cnat_translation_db;
 addr_resolution_t *tr_resolutions;
 cnat_if_addr_add_cb_t *cnat_if_addr_add_cbs;
 
-static fib_node_type_t cnat_translation_fib_node_type;
+static dep_type_t cnat_translation_dep_type;
 
 vlib_combined_counter_main_t cnat_translation_counters = {
   .name = "cnat-translation",
@@ -100,10 +100,8 @@ cnat_tracker_track (index_t cti, cnat_ep_trk_t * trk)
     }
 
   ip_address_to_fib_prefix (&trk->ct_ep[VLIB_TX].ce_ip, &pfx);
-  trk->ct_fei = fib_entry_track (CNAT_FIB_TABLE,
-				 &pfx,
-				 cnat_translation_fib_node_type,
-				 cti, &trk->ct_sibling);
+  trk->ct_fei = fib_entry_track (
+    CNAT_FIB_TABLE, &pfx, cnat_translation_dep_type, cti, &trk->ct_sibling);
 
   fib_entry_contribute_forwarding (trk->ct_fei,
 				   fib_forw_chain_type_from_fib_proto
@@ -580,7 +578,7 @@ VLIB_CLI_COMMAND (cnat_translation_show_cmd_node, static) = {
   .is_mp_safe = 1,
 };
 
-static fib_node_t *
+static dep_t *
 cnat_translation_get_node (fib_node_index_t index)
 {
   cnat_translation_t *ct = cnat_translation_get (index);
@@ -588,7 +586,7 @@ cnat_translation_get_node (fib_node_index_t index)
 }
 
 static cnat_translation_t *
-cnat_translation_get_from_node (fib_node_t * node)
+cnat_translation_get_from_node (dep_t *node)
 {
   return ((cnat_translation_t *) (((char *) node) -
 				  STRUCT_OFFSET_OF (cnat_translation_t,
@@ -596,16 +594,15 @@ cnat_translation_get_from_node (fib_node_t * node)
 }
 
 static void
-cnat_translation_last_lock_gone (fib_node_t * node)
+cnat_translation_last_lock_gone (dep_t *node)
 {
  /**/}
 
 /*
  * A back walk has reached this ABF policy
  */
-static fib_node_back_walk_rc_t
-cnat_translation_back_walk_notify (fib_node_t * node,
-				   fib_node_back_walk_ctx_t * ctx)
+static dep_back_walk_rc_t
+cnat_translation_back_walk_notify (dep_t *node, dep_back_walk_ctx_t *ctx)
 {
   /*
    * re-stack the fmask on the n-eos of the via
@@ -616,20 +613,20 @@ cnat_translation_back_walk_notify (fib_node_t * node,
    * we might get called during path tracking
    * (cnat_tracker_track) */
   if (!(ct->flags & CNAT_TRANSLATION_STACKED))
-    return (FIB_NODE_BACK_WALK_CONTINUE);
+    return (DEP_BACK_WALK_CONTINUE);
 
   cnat_translation_stack (ct);
 
-  return (FIB_NODE_BACK_WALK_CONTINUE);
+  return (DEP_BACK_WALK_CONTINUE);
 }
 
 /*
  * The translation's graph node virtual function table
  */
-static const fib_node_vft_t cnat_translation_vft = {
-  .fnv_get = cnat_translation_get_node,
-  .fnv_last_lock = cnat_translation_last_lock_gone,
-  .fnv_back_walk = cnat_translation_back_walk_notify,
+static const dep_vft_t cnat_translation_vft = {
+  .dv_get = cnat_translation_get_node,
+  .dv_last_lock = cnat_translation_last_lock_gone,
+  .dv_back_walk = cnat_translation_back_walk_notify,
 };
 
 static clib_error_t *
@@ -824,8 +821,8 @@ cnat_translation_init (vlib_main_t * vm)
   ip4_main_t *i4m = &ip4_main;
   ip6_main_t *i6m = &ip6_main;
   cnat_main_t *cm = &cnat_main;
-  cnat_translation_fib_node_type =
-    fib_node_register_new_type ("cnat-translation", &cnat_translation_vft);
+  cnat_translation_dep_type =
+    dep_register_type ("cnat-translation", &cnat_translation_vft);
 
   clib_bihash_init_8_8 (&cnat_translation_db, "CNat translation DB",
 			cm->translation_hash_buckets,

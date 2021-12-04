@@ -18,7 +18,8 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
-#include <vnet/fib/fib_node.h>
+#include <vnet/fib/fib_types.h>
+#include <vnet/dependency/dep.h>
 
 #include <vppinfra/bihash_24_8.h>
 #include <vppinfra/bihash_template.h>
@@ -63,7 +64,7 @@ typedef struct {
   /**
    * Fib Node base class
    */
-  fib_node_t ila_fib_node;
+  dep_t ila_dep;
   ila_type_t type;
   ip6_address_t sir_address;
   ip6_address_t ila_address;

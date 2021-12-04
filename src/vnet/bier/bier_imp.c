@@ -24,7 +24,9 @@
 #include <vnet/bier/bier_imp.h>
 #include <vnet/bier/bier_table.h>
 #include <vnet/bier/bier_hdr_inlines.h>
-#include <vnet/fib/fib_node.h>
+#include <vnet/fib/fib_types.h>
+#include <vnet/memory_usage.h>
+#include <vnet/dependency/dep.h>
 #include <vnet/mpls/mpls_types.h>
 
 /**
@@ -208,12 +210,12 @@ bier_imp_dpo_unlock (dpo_id_t *dpo)
 }
 
 static void
-bier_imp_dpo_mem_show (void)
+bier_imp_dpo_mem_show (vlib_main_t *vm)
 {
-    fib_show_memory_usage("BIER imposition",
-                          pool_elts(bier_imp_pool),
-                          pool_len(bier_imp_pool),
-                          sizeof(bier_imp_t));
+    memory_usage_show(vm, "BIER imposition",
+                      pool_elts(bier_imp_pool),
+                      pool_len(bier_imp_pool),
+                      sizeof(bier_imp_t));
 }
 
 static u8*

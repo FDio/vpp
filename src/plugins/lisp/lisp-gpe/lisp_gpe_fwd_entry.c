@@ -25,6 +25,8 @@
 #include <vnet/dpo/load_balance.h>
 #include <vnet/adj/adj_midchain.h>
 
+static dep_type_t DEP_TYPE_LISP_GPE_FWD_ENTRY;
+
 /**
  * @brief Add route to IP4 or IP6 Destination FIB.
  *
@@ -885,10 +887,9 @@ add_l2_fwd_entry (lisp_gpe_main_t * lgm,
        * become a child of the path-list so we receive updates when
        * its forwarding state changes. this includes an implicit lock.
        */
-      lfe->l2.child_index =
-	fib_path_list_child_add (lfe->l2.path_list_index,
-				 FIB_NODE_TYPE_LISP_GPE_FWD_ENTRY,
-				 lfe - lgm->lisp_fwd_entry_pool);
+      lfe->l2.child_index = fib_path_list_child_add (
+	lfe->l2.path_list_index, DEP_TYPE_LISP_GPE_FWD_ENTRY,
+	lfe - lgm->lisp_fwd_entry_pool);
     }
   else
     {
@@ -1158,10 +1159,9 @@ add_nsh_fwd_entry (lisp_gpe_main_t * lgm,
        * become a child of the path-list so we receive updates when
        * its forwarding state changes. this includes an implicit lock.
        */
-      lfe->nsh.child_index =
-	fib_path_list_child_add (lfe->nsh.path_list_index,
-				 FIB_NODE_TYPE_LISP_GPE_FWD_ENTRY,
-				 lfe - lgm->lisp_fwd_entry_pool);
+      lfe->nsh.child_index = fib_path_list_child_add (
+	lfe->nsh.path_list_index, DEP_TYPE_LISP_GPE_FWD_ENTRY,
+	lfe - lgm->lisp_fwd_entry_pool);
     }
   else
     {
@@ -1174,10 +1174,10 @@ add_nsh_fwd_entry (lisp_gpe_main_t * lgm,
 }
 
 /**
- * @brief conver from the embedded fib_node_t struct to the LSIP entry
+ * @brief conver from the embedded dep_t struct to the LSIP entry
  */
 static lisp_gpe_fwd_entry_t *
-lisp_gpe_fwd_entry_from_fib_node (fib_node_t * node)
+lisp_gpe_fwd_entry_from_dep (dep_t *node)
 {
   return ((lisp_gpe_fwd_entry_t *) (((char *) node) -
 				    STRUCT_OFFSET_OF (lisp_gpe_fwd_entry_t,
@@ -1187,25 +1187,24 @@ lisp_gpe_fwd_entry_from_fib_node (fib_node_t * node)
 /**
  * @brief Function invoked during a backwalk of the FIB graph
  */
-static fib_node_back_walk_rc_t
-lisp_gpe_fib_node_back_walk (fib_node_t * node,
-			     fib_node_back_walk_ctx_t * ctx)
+static dep_back_walk_rc_t
+lisp_gpe_dep_back_walk (dep_t *node, dep_back_walk_ctx_t *ctx)
 {
-  lisp_gpe_fwd_entry_t *lfe = lisp_gpe_fwd_entry_from_fib_node (node);
+  lisp_gpe_fwd_entry_t *lfe = lisp_gpe_fwd_entry_from_dep (node);
 
   if (fid_addr_type (&lfe->key->rmt) == FID_ADDR_MAC)
     lisp_gpe_l2_update_fwding (lfe);
   else if (fid_addr_type (&lfe->key->rmt) == FID_ADDR_NSH)
     lisp_gpe_nsh_update_fwding (lfe);
 
-  return (FIB_NODE_BACK_WALK_CONTINUE);
+  return (DEP_BACK_WALK_CONTINUE);
 }
 
 /**
- * @brief Get a fib_node_t struct from the index of a LISP fwd entry
+ * @brief Get a dep_t struct from the index of a LISP fwd entry
  */
-static fib_node_t *
-lisp_gpe_fwd_entry_get_fib_node (fib_node_index_t index)
+static dep_t *
+lisp_gpe_fwd_entry_get_dep (fib_node_index_t index)
 {
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
   lisp_gpe_fwd_entry_t *lfe;
@@ -1219,7 +1218,7 @@ lisp_gpe_fwd_entry_get_fib_node (fib_node_index_t index)
  * @brief An indication from the graph that the last lock has gone
  */
 static void
-lisp_gpe_fwd_entry_fib_node_last_lock_gone (fib_node_t * node)
+lisp_gpe_fwd_entry_dep_last_lock_gone (dep_t *node)
 {
   /* We don't manage the locks of the LISP objects via the graph, since
    * this object has no children. so this is a no-op. */
@@ -1228,10 +1227,10 @@ lisp_gpe_fwd_entry_fib_node_last_lock_gone (fib_node_t * node)
 /**
  * @brief Virtual function table to register with FIB for the LISP type
  */
-const static fib_node_vft_t lisp_fwd_vft = {
-  .fnv_get = lisp_gpe_fwd_entry_get_fib_node,
-  .fnv_last_lock = lisp_gpe_fwd_entry_fib_node_last_lock_gone,
-  .fnv_back_walk = lisp_gpe_fib_node_back_walk,
+const static dep_vft_t lisp_fwd_vft = {
+  .dv_get = lisp_gpe_fwd_entry_get_dep,
+  .dv_last_lock = lisp_gpe_fwd_entry_dep_last_lock_gone,
+  .dv_back_walk = lisp_gpe_dep_back_walk,
 };
 
 /**
@@ -1509,7 +1508,8 @@ lisp_gpe_fwd_entry_init (vlib_main_t * vm)
   l2_fib_init (lgm);
   nsh_fib_init (lgm);
 
-  fib_node_register_type (FIB_NODE_TYPE_LISP_GPE_FWD_ENTRY, &lisp_fwd_vft);
+  DEP_TYPE_LISP_GPE_FWD_ENTRY =
+    dep_register_type ("lisp-fwd-entry", &lisp_fwd_vft);
 
   return (error);
 }

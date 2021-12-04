@@ -16,10 +16,10 @@
  * @brief
  */
 #include <vnet/fib/fib_path.h>
+#include <vnet/memory_usage.h>
 #include <vnet/dependency/dep_list.h>
 #include <vnet/dpo/load_balance_map.h>
 #include <vnet/dpo/load_balance.h>
-#include <vnet/memory_usage.h>
 
 // clang-format off
 
@@ -79,12 +79,12 @@ vlib_log_class_t load_balance_map_logger;
 /*
  * Debug macro
  */
-#define LOAD_BALANCE_MAP_DBG(_pl, _fmt, _args...)               \
-{                                                               \
-    vlib_log_debug(load_balance_map_logger,                     \
-                   "lbm:" _fmt,                                 \
-                   ##_args);                                    \
-}
+#define LOAD_BALANCE_MAP_DBG(_pl, _fmt, _args...)       \
+    {                                                   \
+        vlib_log_debug(load_balance_map_logger,         \
+                       "lbm:" _fmt,                     \
+                       ##_args);                        \
+    }
 
 static index_t
 load_balance_map_get_index (load_balance_map_t *lbm)
@@ -241,18 +241,17 @@ load_balance_map_db_insert (load_balance_map_t *lbm)
 
         if (NULL == p)
         {
-            list = dep_list_create();
-            hash_set(lb_maps_by_path_index, lbmp->lbmp_index, list);
-        }
-        else
+            list = dep_list_create ();
+            hash_set (lb_maps_by_path_index, lbmp->lbmp_index, list);
+	}
+	else
         {
             list = p[0];
         }
 
-        lbmp->lbmp_sibling =
-            dep_list_push_front(list,
-                                     0, DEP_TYPE_FIRST,
-                                     load_balance_map_get_index(lbm));
+	lbmp->lbmp_sibling = dep_list_push_front (
+            list, 0, DEP_TYPE_FIRST,
+            load_balance_map_get_index (lbm));
     }
 
     LOAD_BALANCE_MAP_DBG(lbm, "DB-inserted");
@@ -279,7 +278,7 @@ load_balance_map_db_remove (load_balance_map_t *lbm)
 
         ALWAYS_ASSERT(NULL != p);
 
-        dep_list_remove(p[0], lbmp->lbmp_sibling);
+	dep_list_remove (p[0], lbmp->lbmp_sibling);
     }
 
     LOAD_BALANCE_MAP_DBG(lbm, "DB-removed");
@@ -379,7 +378,7 @@ load_balance_map_fill (load_balance_map_t *lbm)
                     }
                 }
             }
-       }
+        }
     }
 
     vec_free(tmp_buckets);
@@ -495,12 +494,11 @@ load_balance_map_unlock (index_t lbmi)
 }
 
 static walk_rc_t
-load_balance_map_path_state_change_walk (dep_ptr_t *fptr,
-                                         void *ctx)
+load_balance_map_path_state_change_walk (dep_ptr_t *fptr, void *ctx)
 {
     load_balance_map_t *lbm;
 
-    lbm = load_balance_map_get(fptr->dp_index);
+    lbm = load_balance_map_get (fptr->dp_index);
 
     load_balance_map_fill(lbm);
 
@@ -525,7 +523,7 @@ load_balance_map_path_state_change (fib_node_index_t path_index)
     if (NULL == p)
         return;
 
-    dep_list_walk(p[0], load_balance_map_path_state_change_walk, NULL);
+    dep_list_walk (p[0], load_balance_map_path_state_change_walk, NULL);
 }
 
 static void
@@ -552,8 +550,8 @@ load_balance_map_module_init (void)
                       /* format pair/arg */
                       0, 0);
 
+    lb_maps_by_path_index = hash_create (0, sizeof (dep_list_t));
     memory_usage_register(load_balance_map_show_mem);
-    lb_maps_by_path_index = hash_create(0, sizeof(dep_list_t));
 }
 
 static clib_error_t *
@@ -580,7 +578,7 @@ load_balance_map_show (vlib_main_t * vm,
         load_balance_map_t *lbm;
 
         pool_foreach (lbm, load_balance_map_pool)
-         {
+        {
             vlib_cli_output (vm, "%U", format_load_balance_map,
                              load_balance_map_get_index(lbm), 0);
         }
@@ -595,4 +593,4 @@ VLIB_CLI_COMMAND (load_balance_map_show_command, static) = {
     .function = load_balance_map_show,
 };
 
-// clang-format off
+// clang-format on

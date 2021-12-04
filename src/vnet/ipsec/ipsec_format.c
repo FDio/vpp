@@ -301,7 +301,7 @@ format_ipsec_sa (u8 * s, va_list * args)
   if (!(flags & IPSEC_FORMAT_DETAIL))
     goto done;
 
-  s = format (s, "\n   locks %d", sa->node.fn_locks);
+  s = format (s, "\n   locks %d", sa->node.d_locks);
   s = format (s, "\n   salt 0x%x", clib_net_to_host_u32 (sa->salt));
   s = format (s, "\n   thread-index:%d", sa->thread_index);
   s = format (s, "\n   seq %u seq-hi %u", sa->seq, sa->seq_hi);

@@ -18,7 +18,8 @@
 
 #include <vnet/ip/ip.h>
 #include <vnet/udp/udp_packet.h>
-#include <vnet/fib/fib_node.h>
+#include <vnet/fib/fib_types.h>
+#include <vnet/dependency/dep.h>
 
 /**
  * UDP encapsulation.
@@ -90,18 +91,18 @@ typedef struct udp_encap_t_
   /**
    * linkage into the FIB graph
    */
-  fib_node_t ue_fib_node;
+    dep_t ue_dep;
 
-  /**
-   * Tracking information for the IP destination
-   */
-  fib_node_index_t ue_fib_entry_index;
-  u32 ue_fib_sibling;
+    /**
+     * Tracking information for the IP destination
+     */
+    fib_node_index_t ue_fib_entry_index;
+    u32 ue_fib_sibling;
 
-  /**
-   * The FIB index in which the encap destination resides
-   */
-  index_t ue_fib_index;
+    /**
+     * The FIB index in which the encap destination resides
+     */
+    index_t ue_fib_index;
 } udp_encap_t;
 
 extern index_t udp_encap_add_and_lock (fib_protocol_t proto,

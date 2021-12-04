@@ -14,6 +14,7 @@
  */
 
 #include <vnet/fib/fib_urpf_list.h>
+#include <vnet/memory_usage.h>
 #include <vnet/adj/adj.h>
 
 /**
@@ -180,13 +181,19 @@ fib_urpf_list_bake (index_t ui)
     urpf->furpf_flags |= FIB_URPF_LIST_BAKED;
 }
 
-void
-fib_urpf_list_show_mem (void)
+static void
+fib_urpf_list_show_mem (vlib_main_t *vm)
 {
-    fib_show_memory_usage("uRPF-list",
-			  pool_elts(fib_urpf_list_pool),
-			  pool_len(fib_urpf_list_pool),
-			  sizeof(fib_urpf_list_t));
+    memory_usage_show(vm, "uRPF-list",
+                      pool_elts(fib_urpf_list_pool),
+                      pool_len(fib_urpf_list_pool),
+                      sizeof(fib_urpf_list_t));
+}
+
+void
+fib_urpf_list_module_init(void)
+{
+    memory_usage_register(fib_urpf_list_show_mem);
 }
 
 static clib_error_t *

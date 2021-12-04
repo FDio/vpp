@@ -14,11 +14,15 @@
  */
 
 #include <vnet/dpo/interface_rx_dpo.h>
-#include <vnet/fib/fib_node.h>
+#include <vnet/fib/fib_types.h>
+#include <vnet/dependency/dep.h>
 #include <vnet/l2/l2_input.h>
+#include <vnet/memory_usage.h>
 
 #ifndef CLIB_MARCH_VARIANT
 interface_rx_dpo_t *interface_rx_dpo_pool;
+
+// clang-format off
 
 /*
  * The 'DB' of interface DPOs.
@@ -168,12 +172,12 @@ format_interface_rx_dpo (u8* s, va_list *ap)
 }
 
 static void
-interface_rx_dpo_mem_show (void)
+interface_rx_dpo_mem_show (vlib_main_t *vm)
 {
-    fib_show_memory_usage("Interface",
-                          pool_elts(interface_rx_dpo_pool),
-                          pool_len(interface_rx_dpo_pool),
-                          sizeof(interface_rx_dpo_t));
+    memory_usage_show(vm, "Interface-rx",
+                      pool_elts(interface_rx_dpo_pool),
+                      pool_len(interface_rx_dpo_pool),
+                      sizeof(interface_rx_dpo_t));
 }
 
 
@@ -440,3 +444,4 @@ VLIB_REGISTER_NODE (interface_rx_dpo_l2_node) = {
     },
 };
 
+// clang-format on

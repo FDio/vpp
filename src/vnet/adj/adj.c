@@ -19,14 +19,16 @@
 #include <vnet/adj/adj_midchain.h>
 #include <vnet/adj/adj_mcast.h>
 #include <vnet/adj/adj_delegate.h>
-#include <vnet/fib/fib_node_list.h>
-#include <vnet/fib/fib_walk.h>
+#include <vnet/dependency/dep_walk.h>
+#include <vnet/dependency/dep_list.h>
 
 /* Adjacency packet/byte counters indexed by adjacency index. */
 vlib_combined_counter_main_t adjacency_counters = {
     .name = "adjacency",
     .stat_segment_name = "/net/adjacency",
 };
+
+dep_type_t DEP_TYPE_ADJ;
 
 /*
  * the single adj pool
@@ -95,8 +97,8 @@ adj_alloc (fib_protocol_t proto)
     /* Make sure certain fields are always initialized. */
     vlib_zero_combined_counter(&adjacency_counters,
                                adj_get_index(adj));
-    fib_node_init(&adj->ia_node,
-                  FIB_NODE_TYPE_ADJ);
+    dep_init(&adj->ia_node,
+                  DEP_TYPE_ADJ);
 
     adj->ia_nh_proto = proto;
     adj->ia_flags = 0;
@@ -206,15 +208,15 @@ format_ip_adjacency (u8 * s, va_list * args)
         vlib_get_combined_counter(&adjacency_counters, adj_index, &counts);
         s = format (s, "\n   flags:%U", format_adj_flags, adj->ia_flags);
         s = format (s, "\n   counts:[%Ld:%Ld]", counts.packets, counts.bytes);
-	s = format (s, "\n   locks:%d", adj->ia_node.fn_locks);
+	s = format (s, "\n   locks:%d", adj->ia_node.d_locks);
 	s = format(s, "\n delegates:");
         s = adj_delegate_format(s, adj);
 
 	s = format(s, "\n children:");
-        if (fib_node_list_get_size(adj->ia_node.fn_children))
+        if (dep_list_get_size(adj->ia_node.d_children))
         {
             s = format(s, "\n  ");
-            s = fib_node_children_format(adj->ia_node.fn_children, s);
+            s = dep_children_format(adj->ia_node.d_children, s);
         }
     }
 
@@ -264,7 +266,7 @@ adj_last_lock_gone (ip_adjacency_t *adj)
 {
     vlib_main_t * vm = vlib_get_main();
 
-    ASSERT(0 == fib_node_list_get_size(adj->ia_node.fn_children));
+    ASSERT(0 == dep_list_get_size(adj->ia_node.d_children));
     ADJ_DBG(adj, "last-lock-gone");
 
     adj_delegate_adj_deleted(adj);
@@ -311,7 +313,7 @@ adj_last_lock_gone (ip_adjacency_t *adj)
 
     vlib_worker_thread_barrier_release(vm);
 
-    fib_node_deinit(&adj->ia_node);
+    dep_deinit(&adj->ia_node);
     ASSERT(0 == vec_len(adj->ia_delegates));
     vec_free(adj->ia_delegates);
     pool_put(adj_pool, adj);
@@ -351,7 +353,7 @@ adj_lock (adj_index_t adj_index)
     ASSERT(adj);
 
     ADJ_DBG(adj, "lock");
-    fib_node_lock(&adj->ia_node);
+    dep_lock(&adj->ia_node);
 }
 
 void
@@ -370,12 +372,12 @@ adj_unlock (adj_index_t adj_index)
     ADJ_DBG(adj, "unlock");
     ASSERT(adj);
 
-    fib_node_unlock(&adj->ia_node);
+    dep_unlock(&adj->ia_node);
 }
 
 u32
 adj_child_add (adj_index_t adj_index,
-	       fib_node_type_t child_type,
+	       dep_type_t child_type,
 	       fib_node_index_t child_index)
 {
     ASSERT(ADJ_INDEX_INVALID != adj_index);
@@ -384,7 +386,7 @@ adj_child_add (adj_index_t adj_index,
 	return (~0);
     }
 
-    return (fib_node_child_add(FIB_NODE_TYPE_ADJ,
+    return (dep_child_add(DEP_TYPE_ADJ,
                                adj_index,
                                child_type,
                                child_index));
@@ -399,7 +401,7 @@ adj_child_remove (adj_index_t adj_index,
 	return;
     }
 
-    fib_node_child_remove(FIB_NODE_TYPE_ADJ,
+    dep_child_remove(DEP_TYPE_ADJ,
                           adj_index,
                           sibling_index);
 }
@@ -482,12 +484,12 @@ adj_mtu_update_walk_cb (adj_index_t ai,
      * Backwalk to all Path MTU trackers, casual like ..
      */
     {
-	fib_node_back_walk_ctx_t bw_ctx = {
-	    .fnbw_reason = FIB_NODE_BW_REASON_FLAG_ADJ_MTU,
+	dep_back_walk_ctx_t bw_ctx = {
+	    .dbw_reason = DEP_BW_REASON_FLAG_ADJ_MTU,
 	};
 
-	fib_walk_async(FIB_NODE_TYPE_ADJ, ai,
-                       FIB_WALK_PRIORITY_LOW, &bw_ctx);
+	dep_walk_async(DEP_TYPE_ADJ, ai,
+                       DEP_WALK_PRIORITY_LOW, &bw_ctx);
     }
 
     return (ADJ_WALK_RC_CONTINUE);
@@ -576,7 +578,7 @@ adj_get_rewrite (adj_index_t ai)
     return (rw->data - rw->data_bytes);
 }
 
-static fib_node_t *
+static dep_t *
 adj_get_node (fib_node_index_t index)
 {
     ip_adjacency_t *adj;
@@ -590,14 +592,14 @@ adj_get_node (fib_node_index_t index)
     ((ip_adjacency_t*)((char*)_node - STRUCT_OFFSET_OF(ip_adjacency_t, ia_node)))
 
 static void
-adj_node_last_lock_gone (fib_node_t *node)
+adj_node_last_lock_gone (dep_t *node)
 {
     adj_last_lock_gone(ADJ_FROM_NODE(node));
 }
 
-static fib_node_back_walk_rc_t
-adj_back_walk_notify (fib_node_t *node,
-		      fib_node_back_walk_ctx_t *ctx)
+static dep_back_walk_rc_t
+adj_back_walk_notify (dep_t *node,
+		      dep_back_walk_ctx_t *ctx)
 {
     ip_adjacency_t *adj;
 
@@ -626,22 +628,22 @@ adj_back_walk_notify (fib_node_t *node,
         break;
     }
 
-    return (FIB_NODE_BACK_WALK_CONTINUE);
+    return (DEP_BACK_WALK_CONTINUE);
 }
 
 /*
  * Adjacency's graph node virtual function table
  */
-static const fib_node_vft_t adj_vft = {
-    .fnv_get = adj_get_node,
-    .fnv_last_lock = adj_node_last_lock_gone,
-    .fnv_back_walk = adj_back_walk_notify,
+static const dep_vft_t adj_vft = {
+    .dv_get = adj_get_node,
+    .dv_last_lock = adj_node_last_lock_gone,
+    .dv_back_walk = adj_back_walk_notify,
 };
 
 static clib_error_t *
 adj_module_init (vlib_main_t * vm)
 {
-    fib_node_register_type(FIB_NODE_TYPE_ADJ, &adj_vft);
+    DEP_TYPE_ADJ = dep_register_type("adjacnecy", &adj_vft);
 
     adj_nbr_module_init();
     adj_glean_module_init();

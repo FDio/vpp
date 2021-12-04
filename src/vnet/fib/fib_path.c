@@ -32,7 +32,6 @@
 #include <vnet/adj/adj_mcast.h>
 
 #include <vnet/fib/fib_path.h>
-#include <vnet/fib/fib_node.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_path_list.h>
@@ -40,11 +39,13 @@
 #include <vnet/fib/fib_urpf_list.h>
 #include <vnet/fib/mpls_fib.h>
 #include <vnet/fib/fib_path_ext.h>
+#include <vnet/memory_usage.h>
 #include <vnet/udp/udp_encap.h>
 #include <vnet/bier/bier_fmask.h>
 #include <vnet/bier/bier_table.h>
 #include <vnet/bier/bier_imp.h>
 #include <vnet/bier/bier_disp_table.h>
+#include <vnet/dependency/dep.h>
 
 /**
  * Enurmeration of path types
@@ -124,6 +125,8 @@ typedef enum fib_path_type_t_ {
     [FIB_PATH_TYPE_DVR]               = "dvr",   	        \
 }
 
+static dep_type_t DEP_TYPE_FIB_PATH;
+
 /**
  * Enurmeration of path operational (i.e. derived) attributes
  */
@@ -183,7 +186,7 @@ typedef struct fib_path_t_ {
     /**
      * A path is a node in the FIB graph.
      */
-    fib_node_t fp_node;
+    dep_t fp_node;
 
     /**
      * The index of the path-list to which this path belongs
@@ -400,7 +403,9 @@ static fib_path_t *fib_path_pool;
 /**
  * the logger
  */
-vlib_log_class_t fib_path_logger;
+static vlib_log_class_t fib_path_logger;
+
+static dep_type_t DEP_TYPE_FIB_PATH;
 
 /*
  * Debug macro
@@ -426,16 +431,16 @@ fib_path_get_index (fib_path_t *path)
     return (path - fib_path_pool);
 }
 
-static fib_node_t *
+static dep_t *
 fib_path_get_node (fib_node_index_t index)
 {
-    return ((fib_node_t*)fib_path_get(index));
+    return ((dep_t*)fib_path_get(index));
 }
 
 static fib_path_t*
-fib_path_from_fib_node (fib_node_t *node)
+fib_path_from_dep (dep_t *node)
 {
-    ASSERT(FIB_NODE_TYPE_PATH == node->fn_type);
+    ASSERT(DEP_TYPE_FIB_PATH == node->d_type);
     return ((fib_path_t*)node);
 }
 
@@ -619,7 +624,7 @@ format_fib_path (u8 * s, va_list * args)
  * are no-ops
  */
 static void
-fib_path_last_lock_gone (fib_node_t *node)
+fib_path_last_lock_gone (dep_t *node)
 {
     ASSERT(0);
 }
@@ -683,7 +688,7 @@ fib_path_attached_next_hop_set (fib_path_t *path)
      * when its rewrite changes
      */
     path->fp_sibling = adj_child_add(path->fp_dpo.dpoi_index,
-				     FIB_NODE_TYPE_PATH,
+				     DEP_TYPE_FIB_PATH,
 				     fib_path_get_index(path));
 
     if (!vnet_sw_interface_is_up(vnet_get_main(),
@@ -976,21 +981,21 @@ fib_path_to_chain_type (const fib_path_t *path)
  *
  * A back walk has reach this path.
  */
-static fib_node_back_walk_rc_t
-fib_path_back_walk_notify (fib_node_t *node,
-			   fib_node_back_walk_ctx_t *ctx)
+static dep_back_walk_rc_t
+fib_path_back_walk_notify (dep_t *node,
+			   dep_back_walk_ctx_t *ctx)
 {
     fib_path_t *path;
 
-    path = fib_path_from_fib_node(node);
+    path = fib_path_from_dep(node);
 
     FIB_PATH_DBG(path, "bw:%U",
-                 format_fib_node_bw_reason, ctx->fnbw_reason);
+                 format_dep_bw_reason, ctx->dbw_reason);
 
     switch (path->fp_type)
     {
     case FIB_PATH_TYPE_RECURSIVE:
-	if (FIB_NODE_BW_REASON_FLAG_EVALUATE & ctx->fnbw_reason)
+	if (DEP_BW_REASON_FLAG_EVALUATE & ctx->dbw_reason)
 	{
 	    /*
 	     * modify the recursive adjacency to use the new forwarding
@@ -1002,9 +1007,9 @@ fib_path_back_walk_notify (fib_node_t *node,
 		fib_path_to_chain_type(path),
 		&path->fp_dpo);
 	}
-	if ((FIB_NODE_BW_REASON_FLAG_ADJ_UPDATE & ctx->fnbw_reason) ||
-            (FIB_NODE_BW_REASON_FLAG_ADJ_MTU    & ctx->fnbw_reason) ||
-            (FIB_NODE_BW_REASON_FLAG_ADJ_DOWN   & ctx->fnbw_reason))
+	if ((DEP_BW_REASON_FLAG_ADJ_UPDATE & ctx->dbw_reason) ||
+            (DEP_BW_REASON_FLAG_ADJ_MTU    & ctx->dbw_reason) ||
+            (DEP_BW_REASON_FLAG_ADJ_DOWN   & ctx->dbw_reason))
 	{
 	    /*
 	     * ADJ updates (complete<->incomplete) do not need to propagate to
@@ -1016,19 +1021,19 @@ fib_path_back_walk_notify (fib_node_t *node,
 	     * children (like tunnels that collapse out the LB when they stack)
 	     * would not see the update.
 	     */
-	    return (FIB_NODE_BACK_WALK_CONTINUE);
+	    return (DEP_BACK_WALK_CONTINUE);
 	}
 	break;
     case FIB_PATH_TYPE_BIER_FMASK:
-	if (FIB_NODE_BW_REASON_FLAG_EVALUATE & ctx->fnbw_reason)
+	if (DEP_BW_REASON_FLAG_EVALUATE & ctx->dbw_reason)
 	{
 	    /*
 	     * update to use the BIER fmask's new forwading
 	     */
 	    fib_path_bier_fmask_update(path, &path->fp_dpo);
 	}
-	if ((FIB_NODE_BW_REASON_FLAG_ADJ_UPDATE & ctx->fnbw_reason) ||
-            (FIB_NODE_BW_REASON_FLAG_ADJ_DOWN   & ctx->fnbw_reason))
+	if ((DEP_BW_REASON_FLAG_ADJ_UPDATE & ctx->dbw_reason) ||
+            (DEP_BW_REASON_FLAG_ADJ_DOWN   & ctx->dbw_reason))
 	{
 	    /*
 	     * ADJ updates (complete<->incomplete) do not need to propagate to
@@ -1040,7 +1045,7 @@ fib_path_back_walk_notify (fib_node_t *node,
 	     * children (like tunnels that collapse out the LB when they stack)
 	     * would not see the update.
 	     */
-	    return (FIB_NODE_BACK_WALK_CONTINUE);
+	    return (DEP_BACK_WALK_CONTINUE);
 	}
 	break;
     case FIB_PATH_TYPE_ATTACHED_NEXT_HOP:
@@ -1055,29 +1060,29 @@ FIXME comment
 	 * VPP also has dedicated CPUs, so we are not stealing resources
 	 * from the CP to do so.
 	 */
-	if (FIB_NODE_BW_REASON_FLAG_INTERFACE_UP & ctx->fnbw_reason)
+	if (DEP_BW_REASON_FLAG_INTERFACE_UP & ctx->dbw_reason)
 	{
             if (path->fp_oper_flags & FIB_PATH_OPER_FLAG_RESOLVED)
             {
                 /*
                  * alreday resolved. no need to walk back again
                  */
-                return (FIB_NODE_BACK_WALK_CONTINUE);
+                return (DEP_BACK_WALK_CONTINUE);
             }
 	    path->fp_oper_flags |= FIB_PATH_OPER_FLAG_RESOLVED;
 	}
-	if (FIB_NODE_BW_REASON_FLAG_INTERFACE_DOWN & ctx->fnbw_reason)
+	if (DEP_BW_REASON_FLAG_INTERFACE_DOWN & ctx->dbw_reason)
 	{
             if (!(path->fp_oper_flags & FIB_PATH_OPER_FLAG_RESOLVED))
             {
                 /*
                  * alreday unresolved. no need to walk back again
                  */
-                return (FIB_NODE_BACK_WALK_CONTINUE);
+                return (DEP_BACK_WALK_CONTINUE);
             }
 	    path->fp_oper_flags &= ~FIB_PATH_OPER_FLAG_RESOLVED;
 	}
-	if (FIB_NODE_BW_REASON_FLAG_INTERFACE_DELETE & ctx->fnbw_reason)
+	if (DEP_BW_REASON_FLAG_INTERFACE_DELETE & ctx->dbw_reason)
 	{
 	    /*
 	     * The interface this path resolves through has been deleted.
@@ -1088,7 +1093,7 @@ FIXME comment
 	    fib_path_unresolve(path);
 	    path->fp_oper_flags |= FIB_PATH_OPER_FLAG_DROP;
 	}
-        if (FIB_NODE_BW_REASON_FLAG_ADJ_UPDATE & ctx->fnbw_reason)
+        if (DEP_BW_REASON_FLAG_ADJ_UPDATE & ctx->dbw_reason)
 	{
             /*
              * restack the DPO to pick up the correct DPO sub-type
@@ -1123,17 +1128,17 @@ FIXME comment
                  * not contribute the adjacency - so it would be wasted
                  * CPU time.
                  */
-                return (FIB_NODE_BACK_WALK_CONTINUE);
+                return (DEP_BACK_WALK_CONTINUE);
             }
         }
-        if (FIB_NODE_BW_REASON_FLAG_ADJ_DOWN & ctx->fnbw_reason)
+        if (DEP_BW_REASON_FLAG_ADJ_DOWN & ctx->dbw_reason)
 	{
             if (!(path->fp_oper_flags & FIB_PATH_OPER_FLAG_RESOLVED))
             {
                 /*
                  * alreday unresolved. no need to walk back again
                  */
-                return (FIB_NODE_BACK_WALK_CONTINUE);
+                return (DEP_BACK_WALK_CONTINUE);
             }
             /*
              * the adj has gone down. the path is no longer resolved.
@@ -1148,20 +1153,20 @@ FIXME comment
 	 * routes are not usually in ECMP configurations so the backwalk to
 	 * the FIB entry does not need to be high priority
 	 */
-	if (FIB_NODE_BW_REASON_FLAG_INTERFACE_UP & ctx->fnbw_reason)
+	if (DEP_BW_REASON_FLAG_INTERFACE_UP & ctx->dbw_reason)
 	{
 	    path->fp_oper_flags |= FIB_PATH_OPER_FLAG_RESOLVED;
 	}
-	if (FIB_NODE_BW_REASON_FLAG_INTERFACE_DOWN & ctx->fnbw_reason)
+	if (DEP_BW_REASON_FLAG_INTERFACE_DOWN & ctx->dbw_reason)
 	{
 	    path->fp_oper_flags &= ~FIB_PATH_OPER_FLAG_RESOLVED;
 	}
-	if (FIB_NODE_BW_REASON_FLAG_INTERFACE_DELETE & ctx->fnbw_reason)
+	if (DEP_BW_REASON_FLAG_INTERFACE_DELETE & ctx->dbw_reason)
 	{
 	    fib_path_unresolve(path);
 	    path->fp_oper_flags |= FIB_PATH_OPER_FLAG_DROP;
 	}
-	if (FIB_NODE_BW_REASON_FLAG_INTERFACE_BIND & ctx->fnbw_reason)
+	if (DEP_BW_REASON_FLAG_INTERFACE_BIND & ctx->dbw_reason)
 	{
             /* bind walks should appear here and pass silently up to
              * to the fib_entry */
@@ -1218,26 +1223,25 @@ FIXME comment
      */
     fib_path_list_back_walk(path->fp_pl_index, ctx);
 
-    return (FIB_NODE_BACK_WALK_CONTINUE);
+    return (DEP_BACK_WALK_CONTINUE);
 }
 
 static void
-fib_path_memory_show (void)
+fib_path_memory_show (vlib_main_t *vm)
 {
-    fib_show_memory_usage("Path",
-			  pool_elts(fib_path_pool),
-			  pool_len(fib_path_pool),
-			  sizeof(fib_path_t));
+    memory_usage_show(vm ,"Path",
+                      pool_elts(fib_path_pool),
+                      pool_len(fib_path_pool),
+                      sizeof(fib_path_t));
 }
 
 /*
  * The FIB path's graph node virtual function table
  */
-static const fib_node_vft_t fib_path_vft = {
-    .fnv_get = fib_path_get_node,
-    .fnv_last_lock = fib_path_last_lock_gone,
-    .fnv_back_walk = fib_path_back_walk_notify,
-    .fnv_mem_show = fib_path_memory_show,
+static const dep_vft_t fib_path_vft = {
+    .dv_get = fib_path_get_node,
+    .dv_last_lock = fib_path_last_lock_gone,
+    .dv_back_walk = fib_path_back_walk_notify,
 };
 
 static fib_path_cfg_flags_t
@@ -1290,8 +1294,7 @@ fib_path_create (fib_node_index_t pl_index,
     pool_get(fib_path_pool, path);
     clib_memset(path, 0, sizeof(*path));
 
-    fib_node_init(&path->fp_node,
-		  FIB_NODE_TYPE_PATH);
+    dep_init(&path->fp_node, DEP_TYPE_FIB_PATH);
 
     dpo_reset(&path->fp_dpo);
     path->fp_pl_index = pl_index;
@@ -1447,8 +1450,7 @@ fib_path_create_special (fib_node_index_t pl_index,
     pool_get(fib_path_pool, path);
     clib_memset(path, 0, sizeof(*path));
 
-    fib_node_init(&path->fp_node,
-		  FIB_NODE_TYPE_PATH);
+    dep_init(&path->fp_node, DEP_TYPE_FIB_PATH);
     dpo_reset(&path->fp_dpo);
 
     path->fp_pl_index = pl_index;
@@ -1500,7 +1502,7 @@ fib_path_copy (fib_node_index_t path_index,
     /*
      * reset the dynamic section
      */
-    fib_node_init(&path->fp_node, FIB_NODE_TYPE_PATH);
+    dep_init(&path->fp_node, DEP_TYPE_FIB_PATH);
     path->fp_oper_flags     = FIB_PATH_OPER_FLAG_NONE;
     path->fp_pl_index  = path_list_index;
     path->fp_via_fib   = FIB_NODE_INDEX_INVALID;
@@ -1527,7 +1529,7 @@ fib_path_destroy (fib_node_index_t path_index)
 
     fib_path_unresolve(path);
 
-    fib_node_deinit(&path->fp_node);
+    dep_deinit(&path->fp_node);
     pool_put(fib_path_pool, path);
 }
 
@@ -1964,7 +1966,7 @@ fib_path_resolve (fib_node_index_t path_index)
         if (dpo_is_adj(&path->fp_dpo))
         {
             path->fp_sibling = adj_child_add(path->fp_dpo.dpoi_index,
-                                             FIB_NODE_TYPE_PATH,
+                                             DEP_TYPE_FIB_PATH,
                                              fib_path_get_index(path));
         }
         dpo_reset(&tmp);
@@ -2011,7 +2013,7 @@ fib_path_resolve (fib_node_index_t path_index)
 	 * informed when the forwarding for the entry changes.
 	 */
 	path->fp_sibling = fib_entry_child_add(path->fp_via_fib,
-					       FIB_NODE_TYPE_PATH,
+					       DEP_TYPE_FIB_PATH,
 					       fib_path_get_index(path));
 
 	/*
@@ -2031,7 +2033,7 @@ fib_path_resolve (fib_node_index_t path_index)
          * informed when the forwarding for the entry changes.
          */
         path->fp_sibling = bier_fmask_child_add(path->bier_fmask.fp_bier_fmask,
-                                                FIB_NODE_TYPE_PATH,
+                                                DEP_TYPE_FIB_PATH,
                                                 fib_path_get_index(path));
 
         path->fp_via_bier_fmask = path->bier_fmask.fp_bier_fmask;
@@ -2808,8 +2810,9 @@ fib_path_get_proto (fib_node_index_t path_index)
 void
 fib_path_module_init (void)
 {
-    fib_node_register_type (FIB_NODE_TYPE_PATH, &fib_path_vft);
+    DEP_TYPE_FIB_PATH = dep_register_type ("fib-path", &fib_path_vft);
     fib_path_logger = vlib_log_register_class ("fib", "path");
+    memory_usage_register(fib_path_memory_show);
 }
 
 static clib_error_t *
@@ -2831,7 +2834,7 @@ show_fib_path_command (vlib_main_t * vm,
 	    u8 *s = format(NULL, "%U", format_fib_path, pi, 1,
                            FIB_PATH_FORMAT_FLAGS_NONE);
 	    s = format(s, "\n  children:");
-	    s = fib_node_children_format(path->fp_node.fn_children, s);
+	    s = dep_children_format(path->fp_node.d_children, s);
 	    vlib_cli_output (vm, "%v", s);
 	    vec_free(s);
 	}

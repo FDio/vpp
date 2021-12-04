@@ -90,7 +90,7 @@ typedef void (*fib_entry_src_remove_t)(fib_entry_src_t *src);
  */
 typedef struct fib_entry_src_cover_res_t_ {
     u16 install;
-    fib_node_bw_reason_flag_t bw_reason;
+    dep_bw_reason_flag_t bw_reason;
 } fib_entry_src_cover_res_t;
 
 /**

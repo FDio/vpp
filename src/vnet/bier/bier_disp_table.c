@@ -15,6 +15,7 @@
 
 #include <vnet/bier/bier_disp_table.h>
 #include <vnet/bier/bier_disp_entry.h>
+#include <vnet/memory_usage.h>
 
 /**
  * memory pool for disposition tables
@@ -313,12 +314,12 @@ bier_disp_table_dpo_unlock (dpo_id_t *dpo)
 }
 
 static void
-bier_disp_table_dpo_mem_show (void)
+bier_disp_table_dpo_mem_show (vlib_main_t *vm)
 {
-    fib_show_memory_usage("BIER disposition table",
-                          pool_elts(bier_disp_table_pool),
-                          pool_len(bier_disp_table_pool),
-                          sizeof(bier_disp_table_t));
+    memory_usage_show(vm, "BIER disposition table",
+                      pool_elts(bier_disp_table_pool),
+                      pool_len(bier_disp_table_pool),
+                      sizeof(bier_disp_table_t));
 }
 
 const static dpo_vft_t bier_disp_table_dpo_vft = {

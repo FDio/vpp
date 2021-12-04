@@ -262,9 +262,8 @@ u32 fib_path_get_resolving_interface (fib_node_index_t path_index);
 					 &tun_dst_pfx,
 					 FIB_SOURCE_RR,
 					 FIB_ENTRY_FLAG_NONE);
-	  t1->sibling_index =
-	    fib_entry_child_add (t1->fib_entry_index,
-				 hm->fib_entry_type, t1 - hm->dst_tunnels);
+	  t1->sibling_index = fib_entry_child_add (
+	    t1->fib_entry_index, hm->dep_type, t1 - hm->dst_tunnels);
 	  t1->outer_fib_index = outer_fib_index;
 
 	}
@@ -459,18 +458,18 @@ VLIB_CLI_COMMAND (nsh_md2_ioam_set_transit_rewrite_cmd, static) = {
 /**
  * Function definition to backwalk a FIB node
  */
-static fib_node_back_walk_rc_t
-nsh_md2_ioam_back_walk (fib_node_t * node, fib_node_back_walk_ctx_t * ctx)
+static dep_back_walk_rc_t
+nsh_md2_ioam_back_walk (dep_t *node, dep_back_walk_ctx_t *ctx)
 {
   nsh_md2_ioam_refresh_output_feature_on_all_dest ();
-  return (FIB_NODE_BACK_WALK_CONTINUE);
+  return (DEP_BACK_WALK_CONTINUE);
 }
 
 /**
  * Function definition to get a FIB node from its index
  */
-static fib_node_t *
-nsh_md2_ioam_fib_node_get (fib_node_index_t index)
+static dep_t *
+nsh_md2_ioam_dep_get (fib_node_index_t index)
 {
   nsh_md2_ioam_main_t *hm = &nsh_md2_ioam_main;
   return (&hm->node);
@@ -480,7 +479,7 @@ nsh_md2_ioam_fib_node_get (fib_node_index_t index)
  * Function definition to inform the FIB node that its last lock has gone.
  */
 static void
-nsh_md2_ioam_last_lock_gone (fib_node_t * node)
+nsh_md2_ioam_last_lock_gone (dep_t *node)
 {
   ASSERT (0);
 }
@@ -490,17 +489,17 @@ nsh_md2_ioam_last_lock_gone (fib_node_t * node)
  * Virtual function table registered by MPLS GRE tunnels
  * for participation in the FIB object graph.
  */
-const static fib_node_vft_t nsh_md2_ioam_vft = {
-  .fnv_get = nsh_md2_ioam_fib_node_get,
-  .fnv_last_lock = nsh_md2_ioam_last_lock_gone,
-  .fnv_back_walk = nsh_md2_ioam_back_walk,
+const static dep_vft_t nsh_md2_ioam_vft = {
+  .dv_get = nsh_md2_ioam_dep_get,
+  .dv_last_lock = nsh_md2_ioam_last_lock_gone,
+  .dv_back_walk = nsh_md2_ioam_back_walk,
 };
 
 void
 nsh_md2_ioam_interface_init (void)
 {
   nsh_md2_ioam_main_t *hm = &nsh_md2_ioam_main;
-  hm->fib_entry_type = fib_node_register_new_type ("nsh", &nsh_md2_ioam_vft);
+  hm->dep_type = dep_register_type ("nsh", &nsh_md2_ioam_vft);
   return;
 }
 

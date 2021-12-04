@@ -23,7 +23,8 @@
 
 #include <vnet/vnet.h>
 #include <vnet/adj/adj_types.h>
-#include <vnet/fib/fib_node.h>
+#include <vnet/fib/fib_types.h>
+#include <vnet/dependency/dep.h>
 #include <vnet/dpo/dpo.h>
 
 /**

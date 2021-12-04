@@ -19,6 +19,9 @@
 #include <vlib/vlib.h>
 #include <vnet/ip/ip.h>
 #include <vnet/dpo/receive_dpo.h>
+#include <vnet/memory_usage.h>
+
+// clang-format off
 
 /**
  * @brief pool of all receive DPOs
@@ -134,12 +137,12 @@ format_receive_dpo (u8 *s, va_list *ap)
 }
 
 static void
-receive_dpo_mem_show (void)
+receive_dpo_mem_show (vlib_main_t *vm)
 {
-    fib_show_memory_usage("Receive",
-			  pool_elts(receive_dpo_pool),
-			  pool_len(receive_dpo_pool),
-			  sizeof(receive_dpo_t));
+    memory_usage_show(vm, "Receive",
+                      pool_elts(receive_dpo_pool),
+                      pool_len(receive_dpo_pool),
+                      sizeof(receive_dpo_t));
 }
 
 const static dpo_vft_t receive_vft = {
@@ -177,3 +180,5 @@ receive_dpo_module_init (void)
 {
     dpo_register(DPO_RECEIVE, &receive_vft, receive_nodes);
 }
+
+// clang-format on

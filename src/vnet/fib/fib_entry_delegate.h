@@ -16,7 +16,7 @@
 #ifndef __FIB_ENTRY_DELEGATE_T__
 #define __FIB_ENTRY_DELEGATE_T__
 
-#include <vnet/fib/fib_node.h>
+#include <vnet/dependency/dep.h>
 #include <vnet/fib/fib_entry.h>
 
 /**
@@ -86,7 +86,7 @@ typedef enum fib_bfd_state_t_
  */
 typedef struct fib_entry_delegate_track_t_
 {
-    fib_node_t fedt_node;
+    dep_t fedt_node;
     u32 fedt_sibling;
 } fib_entry_delegate_track_t;
 
@@ -130,7 +130,7 @@ typedef struct fib_entry_delegate_t_
         /**
          * For the cover tracking. The node list;
          */
-        fib_node_list_t fd_list;
+        dep_list_t fd_list;
 
         /**
          * BFD state

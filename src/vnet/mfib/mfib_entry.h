@@ -16,7 +16,8 @@
 #ifndef __MFIB_ENTRY_H__
 #define __MFIB_ENTRY_H__
 
-#include <vnet/fib/fib_node.h>
+#include <vnet/fib/fib_types.h>
+#include <vnet/dependency/dep.h>
 #include <vnet/mfib/mfib_types.h>
 #include <vnet/mfib/mfib_itf.h>
 #include <vnet/mfib/mfib_entry_delegate.h>
@@ -34,7 +35,7 @@ typedef struct mfib_entry_t_ {
     /**
      * Base class. The entry's node representation in the graph.
      */
-    fib_node_t mfe_node;
+    dep_t mfe_node;
 
     /**
      * The prefix of the route
@@ -92,6 +93,8 @@ typedef struct mfib_entry_t_ {
     mfib_entry_delegate_t *fe_delegates;
 } mfib_entry_t;
 
+extern dep_type_t DEP_TYPE_MFIB_ENTRY;
+
 /**
  * Debug macro
  */
@@ -148,7 +151,7 @@ extern int mfib_entry_delete(fib_node_index_t mfib_entry_index,
 extern int mfib_entry_cmp_for_sort(void *i1, void *i2);
 
 extern u32 mfib_entry_child_add(fib_node_index_t mfib_entry_index,
-                                fib_node_type_t type,
+                                dep_type_t type,
                                 fib_node_index_t child_index);
 extern void mfib_entry_child_remove(fib_node_index_t mfib_entry_index,
                                     u32 sibling_index);

@@ -20,7 +20,7 @@
 #include <vnet/adj/adj_midchain.h>
 #include <vnet/dpo/drop_dpo.h>
 #include <vnet/dpo/load_balance.h>
-#include <vnet/fib/fib_walk.h>
+#include <vnet/dependency/dep_walk.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/ip/ip4_inlines.h>
 #include <vnet/ip/ip6_inlines.h>

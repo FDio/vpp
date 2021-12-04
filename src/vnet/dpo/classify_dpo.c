@@ -16,6 +16,9 @@
 #include <vnet/ip/ip.h>
 #include <vnet/dpo/classify_dpo.h>
 #include <vnet/mpls/mpls.h>
+#include <vnet/memory_usage.h>
+
+// clang-format off
 
 /*
  * pool of all MPLS Label DPOs
@@ -97,12 +100,12 @@ classify_dpo_unlock (dpo_id_t *dpo)
 }
 
 static void
-classify_dpo_mem_show (void)
+classify_dpo_mem_show (vlib_main_t *vm)
 {
-    fib_show_memory_usage("Classify",
-			  pool_elts(classify_dpo_pool),
-			  pool_len(classify_dpo_pool),
-			  sizeof(classify_dpo_t));
+    memory_usage_show(vm, "Classify",
+                      pool_elts(classify_dpo_pool),
+                      pool_len(classify_dpo_pool),
+                      sizeof(classify_dpo_t));
 }
 
 const static dpo_vft_t cd_vft = {
@@ -134,3 +137,5 @@ classify_dpo_module_init (void)
 {
     dpo_register(DPO_CLASSIFY, &cd_vft, classify_nodes);
 }
+
+// clang-format on

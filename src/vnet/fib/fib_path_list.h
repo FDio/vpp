@@ -19,7 +19,8 @@
 #include <vlib/vlib.h>
 #include <vnet/adj/adj.h>
 
-#include <vnet/fib/fib_node.h>
+#include <vnet/fib/fib_types.h>
+#include <vnet/dependency/dep.h>
 #include <vnet/fib/fib_path.h>
 
 /**
@@ -155,12 +156,12 @@ extern index_t fib_path_list_get_adj(fib_node_index_t path_list_index,
 				     fib_forward_chain_type_t type);
 
 extern u32 fib_path_list_child_add(fib_node_index_t pl_index,
-				   fib_node_type_t type,
+				   dep_type_t type,
 				   fib_node_index_t child_index);
 extern void fib_path_list_child_remove(fib_node_index_t pl_index,
 				       fib_node_index_t sibling_index);
 extern void fib_path_list_back_walk(fib_node_index_t pl_index,
-				    fib_node_back_walk_ctx_t *ctx);
+				    dep_back_walk_ctx_t *ctx);
 extern void fib_path_list_lock(fib_node_index_t pl_index);
 extern void fib_path_list_unlock(fib_node_index_t pl_index);
 extern int fib_path_list_recursive_loop_detect(fib_node_index_t path_list_index,

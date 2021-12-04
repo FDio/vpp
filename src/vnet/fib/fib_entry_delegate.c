@@ -213,7 +213,7 @@ fib_entry_delegate_fmt_covered (const fib_entry_delegate_t *fed,
                                   u8 *s)
 {
     s = format(s, "covered:[");
-    s = fib_node_children_format(fed->fd_list, s);
+    s = dep_children_format(fed->fd_list, s);
     s = format(s, "]");
 
     return (s);
@@ -269,7 +269,7 @@ fib_entry_delegate_fmt_track (const fib_entry_delegate_t *fed,
     s = format(s, "track: sibling:%d", fed->fd_track.fedt_sibling);
 
     s = format(s, "\n%UChildren:", format_white_space, indent);
-    s = fib_node_children_format(fed->fd_track.fedt_node.fn_children, s);
+    s = dep_children_format(fed->fd_track.fedt_node.d_children, s);
 
     return (s);
 }
