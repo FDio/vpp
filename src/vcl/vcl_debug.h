@@ -28,7 +28,7 @@
 		  __vcl_worker_index, ##_args)
 
 #define VWRN(_fmt, _args...)						\
-  clib_warning ("vcl<%d:%d>: " _fmt,		 			\
+  clib_warning ("vcl<%d:%d>: WRN" _fmt,		 			\
                 vcm->workers[__vcl_worker_index].current_pid, 		\
                 __vcl_worker_index, ##_args)
 
