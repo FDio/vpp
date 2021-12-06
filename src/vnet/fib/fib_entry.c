@@ -209,7 +209,7 @@ format_fib_entry (u8 * s, va_list * args)
     if (level >= FIB_ENTRY_FORMAT_DETAIL2)
     {
         s = format(s, " Children:");
-        s = dep_children_format(fib_entry->fe_node.d_children, s);
+        s = format(s, "%U", format_dep_children, fib_entry->fe_node.d_children);
     }
 
     return (s);

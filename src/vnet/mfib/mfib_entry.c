@@ -200,7 +200,7 @@ format_mfib_entry (u8 * s, va_list * args)
     if (level >= MFIB_ENTRY_FORMAT_DETAIL2)
     {
         s = format(s, "\nchildren:");
-        s = dep_children_format(mfib_entry->mfe_node.d_children, s);
+        s = format(s, "%U", format_dep_children, mfib_entry->mfe_node.d_children);
     }
 
     return (s);
