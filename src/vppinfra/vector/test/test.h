@@ -19,7 +19,21 @@ typedef void (test_perf_fn_t) (int fd, struct test_perf_ *tp);
 typedef struct test_perf_
 {
   u64 n_ops;
-  u64 arg0;
+  union
+  {
+    u64 arg0;
+    void *ptr0;
+  };
+  union
+  {
+    u64 arg1;
+    void *ptr1;
+  };
+  union
+  {
+    u64 arg2;
+    void *ptr2;
+  };
   char *op_name;
   char *name;
   test_perf_fn_t *fn;
