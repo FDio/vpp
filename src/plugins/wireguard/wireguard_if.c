@@ -351,7 +351,7 @@ wg_if_delete (u32 sw_if_index)
     {
       if (*ii == wgii)
 	{
-	  vec_del1 (ifs, ifs - ii);
+	  vec_del1 (ifs, ii - ifs);
 	  break;
 	}
     }
