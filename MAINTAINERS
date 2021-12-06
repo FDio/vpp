@@ -141,6 +141,11 @@ F:	src/vnet/mfib/
 F:	src/vnet/dpo
 F:	src/vnet/adj
 
+VNET Dependency Tracking
+I:	dependency
+M:	Neale Ranns <neale@graphiant.com>
+F:	src/vnet/dependency
+
 VNET IPv4 LPM
 I:	ip
 M:	Dave Barach <vpp@barachs.net>

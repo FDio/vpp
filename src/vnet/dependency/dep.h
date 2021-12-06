@@ -37,6 +37,8 @@ typedef u32 dep_index_t;
  * if-down  - A resolving interface has gone down
  * if-bind  - A resolving interface has been bound to another table
  * if-delete - A resolving interface has been deleted.
+ * if-mtu    - An interface's MTU has changed.
+ * if-mac    - An interface's MAC has changed.
  * adj-update- Walk to re-collapse the multipath adjs when the rewrite of
  *             a unipath adjacency changes
  * adj-mtu   - Walk update the adjacency MTU
@@ -49,6 +51,8 @@ typedef u32 dep_index_t;
   _ (INTERFACE_DOWN, "if-down")                                               \
   _ (INTERFACE_BIND, "if-bind")                                               \
   _ (INTERFACE_DELETE, "if-delete")                                           \
+  _ (INTERFACE_MTU, "if-mtu")                                                 \
+  _ (INTERFACE_MAC, "if-mac")                                                 \
   _ (ADJ_UPDATE, "adj-update")                                                \
   _ (ADJ_MTU, "adj-mtu")                                                      \
   _ (ADJ_DOWN, "adj-down")
@@ -128,9 +132,15 @@ typedef struct dep_back_walk_ctx_t_
   {
     struct
     {
+      u8 dbw_is_ip6;
       u32 dbw_from_fib_index;
       u32 dbw_to_fib_index;
     } interface_bind;
+    struct
+    {
+      const u8 *dbw_old;
+      const u8 *dbw_new;
+    } interface_mac;
   };
 } dep_back_walk_ctx_t;
 
@@ -152,6 +162,8 @@ typedef struct dep_ptr_t_
    */
   dep_index_t dp_index;
 } dep_ptr_t;
+
+extern int dep_ptr_cmp (const dep_ptr_t *p1, const dep_ptr_t *p2);
 
 /**
  * @brief A list of FIB nodes.
@@ -258,7 +270,7 @@ extern void dep_child_remove (dep_type_t parent_type, dep_index_t parent_index,
 extern dep_back_walk_rc_t dep_back_walk_one (dep_ptr_t *ptr,
 					     dep_back_walk_ctx_t *ctx);
 
-extern u8 *dep_children_format (dep_list_t list, u8 *s);
+extern u8 *format_dep_children (u8 *s, va_list *arg);
 
 extern const char *dep_type_get_name (dep_type_t type);
 

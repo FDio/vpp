@@ -76,6 +76,21 @@ dep_register_type (const char *name, const dep_vft_t *vft)
   return (type);
 }
 
+int
+dep_ptr_cmp (const dep_ptr_t *p1, const dep_ptr_t *p2)
+{
+  int rc;
+
+  rc = p1->dp_type - p2->dp_type;
+
+  if (rc != 0)
+    return rc;
+
+  rc = p1->dp_index - p2->dp_index;
+
+  return (rc);
+}
+
 static u8 *
 dep_format (dep_ptr_t *dp, u8 *s)
 {
@@ -90,9 +105,6 @@ dep_child_add (dep_type_t parent_type, dep_index_t parent_index,
 
   parent = d_vfts[parent_type].dv_get (parent_index);
 
-  /*
-   * return the index of the sibling in the child list
-   */
   dep_lock (parent);
 
   if (DEP_INDEX_INVALID == parent->d_children)
@@ -152,8 +164,10 @@ dep_ptr_format_one_child (dep_ptr_t *ptr, void *arg)
 }
 
 u8 *
-dep_children_format (dep_list_t list, u8 *s)
+format_dep_children (u8 *s, va_list *arg)
 {
+  dep_list_t list = va_arg (*arg, dep_list_t);
+
   dep_list_walk (list, dep_ptr_format_one_child, (void *) &s);
 
   return (s);

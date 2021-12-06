@@ -2834,7 +2834,7 @@ show_fib_path_command (vlib_main_t * vm,
 	    u8 *s = format(NULL, "%U", format_fib_path, pi, 1,
                            FIB_PATH_FORMAT_FLAGS_NONE);
 	    s = format(s, "\n  children:");
-	    s = dep_children_format(path->fp_node.d_children, s);
+	    s = format(s, "%U", format_dep_children, path->fp_node.d_children);
 	    vlib_cli_output (vm, "%v", s);
 	    vec_free(s);
 	}
