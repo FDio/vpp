@@ -333,8 +333,8 @@ shani_sha256_shuffle (u32x4 d[2], u32x4 s[2])
 }
 #endif
 
-void
-clib_sha256_block (clib_sha2_ctx_t * ctx, const u8 * msg, uword n_blocks)
+static inline void
+clib_sha256_block (clib_sha2_ctx_t *ctx, const u8 *msg, uword n_blocks)
 {
 #if defined(__SHA__) && defined (__x86_64__)
   u32x4 h[2], s[2], w[4];
