@@ -215,6 +215,13 @@ main (int argc, char *argv[])
     {
       cmd_len++; // account for \n in the end
       cmd = malloc (cmd_len);
+      if (!cmd)
+	{
+	  error = errno;
+	  perror ("malloc failed");
+	  goto done;
+	}
+      memset (cmd, 0, cmd_len);
       while (argc--)
 	{
 	  strncat (cmd, *argv++, cmd_len);
@@ -431,6 +438,7 @@ main (int argc, char *argv[])
   close (sock_fd);
 
 done:
+  free (cmd);
   if (efd > -1)
     close (efd);
 
