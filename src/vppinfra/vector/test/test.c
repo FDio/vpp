@@ -35,6 +35,8 @@ test_funct (test_main_t *tm)
       while (r)
 	{
 	  clib_error_t *err;
+	  if (tm->filter && strstr (r->name, (char *) tm->filter) == 0)
+	    goto next;
 	  err = (r->fn) (0);
 	  fformat (stdout, "%-50s %s\n", r->name, err ? "FAIL" : "PASS");
 	  if (err)
@@ -42,7 +44,7 @@ test_funct (test_main_t *tm)
 	      clib_error_report (err);
 	      fformat (stdout, "\n");
 	    }
-
+	next:
 	  r = r->next;
 	}
     }
@@ -161,6 +163,8 @@ test_perf (test_main_t *tm)
 	  if (r->perf_tests)
 	    {
 	      test_perf_t *pt = r->perf_tests;
+	      if (tm->filter && strstr (r->name, (char *) tm->filter) == 0)
+		goto next;
 	      fformat (stdout, "%-22s%-12s%U\n", r->name, "OpType",
 		       b->format_fn, b, pt, 0UL);
 	      do
@@ -190,6 +194,7 @@ test_perf (test_main_t *tm)
 		}
 	      while ((++pt)->fn);
 	    }
+	next:
 	  r = r->next;
 	}
     }
@@ -220,6 +225,8 @@ main (int argc, char *argv[])
     {
       if (unformat (i, "perf"))
 	perf = 1;
+      else if (unformat (i, "filter %s", &tm->filter))
+	;
       else if (unformat (i, "repeat %d", &tm->repeat))
 	;
       else
