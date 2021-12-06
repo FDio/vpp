@@ -54,6 +54,8 @@
 #include <vnet/interface/rx_queue_funcs.h>
 #include <vnet/interface/tx_queue_funcs.h>
 #include <vnet/hash/hash.h>
+#include <vnet/dependency/dep_list.h>
+
 static int
 compare_interface_names (void *a1, void *a2)
 {
@@ -294,6 +296,7 @@ show_sw_interfaces (vlib_main_t * vm,
   u8 show_tag = 0;
   u8 show_vtr = 0;
   int verbose = 0;
+  int show_dep = 0;
 
   /*
    * Get a line of input. Won't work if the user typed
@@ -320,6 +323,8 @@ show_sw_interfaces (vlib_main_t * vm,
 	    show_vtr = 1;
 	  else if (unformat (linput, "verbose"))
 	    verbose = 1;
+	  else if (unformat (linput, "dep"))
+	    show_dep = 1;
 	  else if (unformat (linput, "%d", &sw_if_index))
 	    {
 	      if (!pool_is_free_index (im->sw_interfaces, sw_if_index))
@@ -400,7 +405,7 @@ show_sw_interfaces (vlib_main_t * vm,
       return 0;
     }
 
-  if (!show_addresses)
+  if (!show_addresses && !show_dep)
     vlib_cli_output (vm, "%U\n", format_vnet_sw_interface, vnm, 0);
 
   if (vec_len (sorted_sis) == 0)	/* Get all interfaces */
@@ -493,6 +498,19 @@ show_sw_interfaces (vlib_main_t * vm,
 	/* *INDENT-ON* */
       }
     }
+  else if (show_dep)
+    {
+      vec_foreach (si, sorted_sis)
+	{
+	  vlib_cli_output (vm, "%U\n", format_vnet_sw_interface_name, vnm, si);
+	  vlib_cli_output (vm, " children:");
+	  if (dep_list_get_size (si->dep_node.d_children))
+	    {
+	      vlib_cli_output (vm, "  %U", format_dep_children,
+			       si->dep_node.d_children);
+	    }
+	}
+    }
   else
     {
       vec_foreach (si, sorted_sis)
@@ -509,7 +527,8 @@ done:
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_sw_interfaces_command, static) = {
   .path = "show interface",
-  .short_help = "show interface [address|addr|features|feat|vtr] [<interface> [<interface> [..]]] [verbose]",
+  .short_help = "show interface [address|addr|features|feat|vtr|dep] "
+		"[<interface> [<interface> [..]]] [verbose]",
   .function = show_sw_interfaces,
   .is_mp_safe = 1,
 };

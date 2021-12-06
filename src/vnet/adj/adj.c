@@ -63,7 +63,8 @@ adj_poison (ip_adjacency_t * adj)
 }
 
 ip_adjacency_t *
-adj_alloc (fib_protocol_t proto)
+adj_alloc (fib_protocol_t proto,
+           u32 sw_if_index)
 {
     ip_adjacency_t *adj;
     u8 need_barrier_sync = 0;
@@ -97,8 +98,7 @@ adj_alloc (fib_protocol_t proto)
     /* Make sure certain fields are always initialized. */
     vlib_zero_combined_counter(&adjacency_counters,
                                adj_get_index(adj));
-    dep_init(&adj->ia_node,
-                  DEP_TYPE_ADJ);
+    dep_init(&adj->ia_node, DEP_TYPE_ADJ);
 
     adj->ia_nh_proto = proto;
     adj->ia_flags = 0;
@@ -107,6 +107,13 @@ adj_alloc (fib_protocol_t proto)
     adj->rewrite_header.flags = 0;
     adj->lookup_next_index = 0;
     adj->ia_delegates = NULL;
+
+    /* Add this adj as a child dependent of the interface it
+     * refers to. It's a priority child since, the interface down
+     * signal is how the FIB converges. */
+    adj->ia_sibling = vnet_sw_interface_priority_child_add (sw_if_index,
+                                                            DEP_TYPE_ADJ,
+                                                            adj_get_index(adj));
 
     /* lest it become a midchain in the future */
     clib_memset(&adj->sub_type.midchain.next_dpo, 0,
@@ -271,6 +278,15 @@ adj_last_lock_gone (ip_adjacency_t *adj)
 
     adj_delegate_adj_deleted(adj);
 
+    /* remove this adj as a child dependent of the interface it
+     * refers to, if this has not been done already
+     * as it would during an interface delete BW */
+    if (~0 != adj->ia_sibling)
+    {
+        vnet_sw_interface_child_remove (adj->rewrite_header.sw_if_index,
+                                        adj->ia_sibling);
+    }
+
     vlib_worker_thread_barrier_sync (vm);
 
     switch (adj->lookup_next_index)
@@ -387,9 +403,9 @@ adj_child_add (adj_index_t adj_index,
     }
 
     return (dep_child_add(DEP_TYPE_ADJ,
-                               adj_index,
-                               child_type,
-                               child_index));
+                          adj_index,
+                          child_type,
+                          child_index));
 }
 
 void
@@ -402,8 +418,8 @@ adj_child_remove (adj_index_t adj_index,
     }
 
     dep_child_remove(DEP_TYPE_ADJ,
-                          adj_index,
-                          sibling_index);
+                     adj_index,
+                     sibling_index);
 }
 
 /*
@@ -467,43 +483,6 @@ adj_feature_update (u32 sw_if_index,
     };
     adj_walk (sw_if_index, adj_feature_update_walk_cb, &ctx);
 }
-
-static adj_walk_rc_t
-adj_mtu_update_walk_cb (adj_index_t ai,
-                        void *arg)
-{
-    ip_adjacency_t *adj;
-
-    adj = adj_get(ai);
-
-    vnet_rewrite_update_mtu (vnet_get_main(), adj->ia_link,
-                             &adj->rewrite_header);
-    adj_delegate_adj_modified(adj);
-
-    /**
-     * Backwalk to all Path MTU trackers, casual like ..
-     */
-    {
-	dep_back_walk_ctx_t bw_ctx = {
-	    .dbw_reason = DEP_BW_REASON_FLAG_ADJ_MTU,
-	};
-
-	dep_walk_async(DEP_TYPE_ADJ, ai,
-                       DEP_WALK_PRIORITY_LOW, &bw_ctx);
-    }
-
-    return (ADJ_WALK_RC_CONTINUE);
-}
-
-static clib_error_t *
-adj_mtu_update (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
-{
-  adj_walk (sw_if_index, adj_mtu_update_walk_cb, NULL);
-
-  return (NULL);
-}
-
-VNET_SW_INTERFACE_MTU_CHANGE_FUNCTION(adj_mtu_update);
 
 /**
  * @brief Walk the Adjacencies on a given interface
@@ -601,9 +580,65 @@ static dep_back_walk_rc_t
 adj_back_walk_notify (dep_t *node,
 		      dep_back_walk_ctx_t *ctx)
 {
+    dep_back_walk_rc_t rc;
     ip_adjacency_t *adj;
 
+    rc = DEP_BACK_WALK_CONTINUE;
     adj = ADJ_FROM_NODE(node);
+
+    adj_lock(adj_get_index(adj));
+
+    ADJ_DBG(adj, "back-walk: %U", format_dep_bw_reason, ctx->dbw_reason);
+
+    if (ctx->dbw_reason & DEP_BW_REASON_FLAG_INTERFACE_DELETE)
+    {
+        ASSERT (~0 != adj->ia_sibling);
+        vnet_sw_interface_child_remove (adj->rewrite_header.sw_if_index,
+                                        adj->ia_sibling);
+        adj->ia_sibling = ~0;
+
+        /* propagate to children so they can unresolve */
+        adj->ia_flags |= ADJ_FLAG_SYNC_WALK_ACTIVE;
+        dep_walk_sync(DEP_TYPE_ADJ, adj_get_index(adj), ctx);
+        adj->ia_flags &= ~ADJ_FLAG_SYNC_WALK_ACTIVE;
+    }
+    if (ctx->dbw_reason & DEP_BW_REASON_FLAG_INTERFACE_DOWN)
+    {
+        /*
+         * the force sync applies only as far as the first fib_entry.
+         * And it's the fib_entry's we need to converge away from
+         * the adjacencies on the now down link
+         */
+        ctx->dbw_flags = DEP_BW_FLAG_FORCE_SYNC;
+
+        adj->ia_flags |= ADJ_FLAG_SYNC_WALK_ACTIVE;
+        dep_walk_sync(DEP_TYPE_ADJ, adj_get_index(adj), ctx);
+        adj->ia_flags &= ~ADJ_FLAG_SYNC_WALK_ACTIVE;
+    }
+    if (ctx->dbw_reason & DEP_BW_REASON_FLAG_INTERFACE_UP)
+    {
+        adj->ia_flags |= ADJ_FLAG_SYNC_WALK_ACTIVE;
+        dep_walk_sync(DEP_TYPE_ADJ, adj_get_index(adj), ctx);
+        adj->ia_flags &= ~ADJ_FLAG_SYNC_WALK_ACTIVE;
+    }
+    if (ctx->dbw_reason & DEP_BW_REASON_FLAG_INTERFACE_MTU)
+    {
+        vnet_rewrite_update_mtu (vnet_get_main(), adj->ia_link,
+                                 &adj->rewrite_header);
+        adj_delegate_adj_modified(adj);
+
+        /**
+         * Backwalk to all Path MTU trackers, casual like ..
+         */
+        {
+            dep_back_walk_ctx_t bw_ctx = {
+                .dbw_reason = DEP_BW_REASON_FLAG_ADJ_MTU,
+            };
+
+            dep_walk_async(DEP_TYPE_ADJ, adj_get_index(adj),
+                           DEP_WALK_PRIORITY_LOW, &bw_ctx);
+        }
+    }
 
     switch (adj->lookup_next_index)
     {
@@ -612,9 +647,15 @@ adj_back_walk_notify (dep_t *node,
         break;
     case IP_LOOKUP_NEXT_ARP:
     case IP_LOOKUP_NEXT_REWRITE:
-    case IP_LOOKUP_NEXT_BCAST:
+        rc = adj_nbr_back_walk(adj, ctx);
+        break;
     case IP_LOOKUP_NEXT_GLEAN:
+        rc = adj_glean_back_walk(adj, ctx);
+        break;
     case IP_LOOKUP_NEXT_MCAST:
+        rc = adj_mcast_back_walk(adj, ctx);
+        break;
+    case IP_LOOKUP_NEXT_BCAST:
     case IP_LOOKUP_NEXT_MCAST_MIDCHAIN:
     case IP_LOOKUP_NEXT_DROP:
     case IP_LOOKUP_NEXT_PUNT:
@@ -628,7 +669,9 @@ adj_back_walk_notify (dep_t *node,
         break;
     }
 
-    return (DEP_BACK_WALK_CONTINUE);
+    adj_unlock(adj_get_index(adj));
+
+    return (rc);
 }
 
 /*

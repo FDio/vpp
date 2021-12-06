@@ -329,9 +329,6 @@ typedef struct ethernet_main_t_
   /* Allocated loopback instances */
   uword *bm_loopback_instances;
 
-  /** Functions to call when interface hw address changes. */
-  ethernet_address_change_ctx_t *address_change_callbacks;
-
   /** Default interface MTU */
   u32 default_mtu;
 

@@ -61,7 +61,7 @@ adj_mcast_add_or_lock (fib_protocol_t proto,
         vnet_main_t *vnm;
 
         vnm = vnet_get_main();
-	adj = adj_alloc(proto);
+	adj = adj_alloc(proto, sw_if_index);
 
 	adj->lookup_next_index = IP_LOOKUP_NEXT_MCAST;
 	adj->ia_nh_proto = proto;
@@ -185,129 +185,12 @@ adj_mcast_remove (fib_protocol_t proto,
     adj_mcasts[proto][sw_if_index] = ADJ_INDEX_INVALID;
 }
 
-static clib_error_t *
-adj_mcast_interface_state_change (vnet_main_t * vnm,
-				  u32 sw_if_index,
-				  u32 flags)
+dep_back_walk_rc_t
+adj_mcast_back_walk (ip_adjacency_t *adj,
+                     dep_back_walk_ctx_t *ctx)
 {
-    /*
-     * for each mcast on the interface trigger a walk back to the children
-     */
-    fib_protocol_t proto;
-    ip_adjacency_t *adj;
-
-
-    for (proto = FIB_PROTOCOL_IP4; proto <= FIB_PROTOCOL_IP6; proto++)
-    {
-	if (sw_if_index >= vec_len(adj_mcasts[proto]) ||
-	    ADJ_INDEX_INVALID == adj_mcasts[proto][sw_if_index])
-	    continue;
-
-	adj = adj_get(adj_mcasts[proto][sw_if_index]);
-
-	dep_back_walk_ctx_t bw_ctx = {
-	    .dbw_reason = (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP ?
-			    DEP_BW_REASON_FLAG_INTERFACE_UP :
-			    DEP_BW_REASON_FLAG_INTERFACE_DOWN),
-	};
-
-	dep_walk_sync(DEP_TYPE_ADJ, adj_get_index(adj), &bw_ctx);
-    }
-
-    return (NULL);
+    return (DEP_BACK_WALK_CONTINUE);
 }
-
-VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION(adj_mcast_interface_state_change);
-
-/**
- * @brief Invoked on each SW interface of a HW interface when the
- * HW interface state changes
- */
-static walk_rc_t
-adj_mcast_hw_sw_interface_state_change (vnet_main_t * vnm,
-                                        u32 sw_if_index,
-                                        void *arg)
-{
-    adj_mcast_interface_state_change(vnm, sw_if_index, (uword) arg);
-
-    return (WALK_CONTINUE);
-}
-
-/**
- * @brief Registered callback for HW interface state changes
- */
-static clib_error_t *
-adj_mcast_hw_interface_state_change (vnet_main_t * vnm,
-                                     u32 hw_if_index,
-                                     u32 flags)
-{
-    /*
-     * walk SW interfaces on the HW
-     */
-    uword sw_flags;
-
-    sw_flags = ((flags & VNET_HW_INTERFACE_FLAG_LINK_UP) ?
-                VNET_SW_INTERFACE_FLAG_ADMIN_UP :
-                0);
-
-    vnet_hw_interface_walk_sw(vnm, hw_if_index,
-                              adj_mcast_hw_sw_interface_state_change,
-                              (void*) sw_flags);
-
-    return (NULL);
-}
-
-VNET_HW_INTERFACE_LINK_UP_DOWN_FUNCTION(
-    adj_mcast_hw_interface_state_change);
-
-static clib_error_t *
-adj_mcast_interface_delete (vnet_main_t * vnm,
-			    u32 sw_if_index,
-			    u32 is_add)
-{
-    /*
-     * for each mcast on the interface trigger a walk back to the children
-     */
-    fib_protocol_t proto;
-    ip_adjacency_t *adj;
-
-    if (is_add)
-    {
-	/*
-	 * not interested in interface additions. we will not back walk
-	 * to resolve paths through newly added interfaces. Why? The control
-	 * plane should have the brains to add interfaces first, then routes.
-	 * So the case where there are paths with a interface that matches
-	 * one just created is the case where the path resolved through an
-	 * interface that was deleted, and still has not been removed. The
-	 * new interface added, is NO GUARANTEE that the interface being
-	 * added now, even though it may have the same sw_if_index, is the
-	 * same interface that the path needs. So tough!
-	 * If the control plane wants these routes to resolve it needs to
-	 * remove and add them again.
-	 */
-	return (NULL);
-    }
-
-    for (proto = FIB_PROTOCOL_IP4; proto <= FIB_PROTOCOL_IP6; proto++)
-    {
-	if (sw_if_index >= vec_len(adj_mcasts[proto]) ||
-	    ADJ_INDEX_INVALID == adj_mcasts[proto][sw_if_index])
-	    continue;
-
-	adj = adj_get(adj_mcasts[proto][sw_if_index]);
-
-	dep_back_walk_ctx_t bw_ctx = {
-	    .dbw_reason =  DEP_BW_REASON_FLAG_INTERFACE_DELETE,
-	};
-
-	dep_walk_sync(DEP_TYPE_ADJ, adj_get_index(adj), &bw_ctx);
-    }
-
-    return (NULL);
-}
-
-VNET_SW_INTERFACE_ADD_DEL_FUNCTION(adj_mcast_interface_delete);
 
 /**
  * @brief Walk the multicast Adjacencies on a given interface

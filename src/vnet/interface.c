@@ -44,6 +44,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/interface/rx_queue_funcs.h>
 #include <vnet/interface/tx_queue_funcs.h>
+#include <vnet/dependency/dep_walk.h>
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_LOG_CLASS (if_default_log, static) = {
@@ -53,6 +54,8 @@ VLIB_REGISTER_LOG_CLASS (if_default_log, static) = {
 
 #define log_debug(fmt,...) vlib_log_debug(if_default_log.class, fmt, __VA_ARGS__)
 #define log_err(fmt,...) vlib_log_err(if_default_log.class, fmt, __VA_ARGS__)
+
+dep_type_t dep_type_sw_interface;
 
 typedef enum vnet_interface_helper_flags_t_
 {
@@ -299,6 +302,14 @@ static clib_error_t *
 call_sw_interface_add_del_callbacks (vnet_main_t * vnm, u32 sw_if_index,
 				     u32 is_create)
 {
+  if (!is_create)
+    {
+      dep_back_walk_ctx_t bw_ctx = {
+	.dbw_reason = DEP_BW_REASON_FLAG_INTERFACE_DELETE,
+      };
+
+      dep_walk_sync (dep_type_sw_interface, sw_if_index, &bw_ctx);
+    }
   return call_elf_section_interface_callbacks
     (vnm, sw_if_index, is_create, vnm->sw_interface_add_del_functions);
 }
@@ -354,6 +365,63 @@ done:
   return error;
 }
 
+/**
+ * Context for the state change walk of the DB
+ */
+typedef struct vnet_interface_state_change_ctx_t_
+{
+  /**
+   * Flags on the interface
+   */
+  u32 flags;
+} vnet_interface_state_change_ctx_t;
+
+/**
+ * @brief Invoked on each SW interface of a HW interface when the
+ * HW interface state changes
+ */
+static walk_rc_t
+vnet_hw_sw_interface_state_change (vnet_main_t *vnm, u32 sw_if_index,
+				   void *arg)
+{
+  vnet_interface_state_change_ctx_t *ctx = arg;
+
+  dep_back_walk_ctx_t bw_ctx = {
+    .dbw_reason = (ctx->flags & VNET_HW_INTERFACE_FLAG_LINK_UP ?
+			   DEP_BW_REASON_FLAG_INTERFACE_UP :
+			   DEP_BW_REASON_FLAG_INTERFACE_DOWN),
+    /* force a sync walk so that bad news travels fast */
+    .dbw_flags = (!(ctx->flags & VNET_HW_INTERFACE_FLAG_LINK_UP) ?
+			  DEP_BW_FLAG_FORCE_SYNC :
+			  DEP_BW_FLAG_NONE),
+  };
+  dep_walk_sync (dep_type_sw_interface, sw_if_index, &bw_ctx);
+
+  return (WALK_CONTINUE);
+}
+
+/**
+ * @brief Registered callback for HW interface state changes
+ */
+static clib_error_t *
+vnet_hw_interface_state_change (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
+{
+  /*
+   * walk all SW interfaces on the HW
+   */
+  vnet_interface_state_change_ctx_t ctx = {
+    .flags = flags,
+  };
+
+  vnet_hw_interface_walk_sw (vnm, hw_if_index,
+			     vnet_hw_sw_interface_state_change, &ctx);
+
+  return (NULL);
+}
+
+VNET_HW_INTERFACE_LINK_UP_DOWN_FUNCTION_PRIO (vnet_hw_interface_state_change,
+					      VNET_ITF_FUNC_PRIORITY_HIGH);
+
 static clib_error_t *
 vnet_sw_interface_set_flags_helper (vnet_main_t * vnm, u32 sw_if_index,
 				    vnet_sw_interface_flags_t flags,
@@ -386,6 +454,12 @@ vnet_sw_interface_set_flags_helper (vnet_main_t * vnm, u32 sw_if_index,
 							sw_interface_admin_up_down_functions);
 	  if (error)
 	    goto done;
+
+	  dep_back_walk_ctx_t bw_ctx = {
+	    .dbw_reason = DEP_BW_REASON_FLAG_INTERFACE_UP,
+	  };
+
+	  dep_walk_sync (dep_type_sw_interface, si->sw_if_index, &bw_ctx);
 	}
     }
   else
@@ -435,9 +509,19 @@ vnet_sw_interface_set_flags_helper (vnet_main_t * vnm, u32 sw_if_index,
       si->flags &= ~mask;
       si->flags |= flags;
       if ((flags | old_flags) & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
-	error = call_elf_section_interface_callbacks
-	  (vnm, sw_if_index, flags,
-	   vnm->sw_interface_admin_up_down_functions);
+	{
+	  dep_back_walk_ctx_t bw_ctx = {
+	    .dbw_reason = (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP ?
+				   DEP_BW_REASON_FLAG_INTERFACE_UP :
+				   DEP_BW_REASON_FLAG_INTERFACE_DOWN),
+	  };
+
+	  dep_walk_sync (dep_type_sw_interface, si->sw_if_index, &bw_ctx);
+
+	  error = call_elf_section_interface_callbacks (
+	    vnm, sw_if_index, flags,
+	    vnm->sw_interface_admin_up_down_functions);
+	}
 
       if (error)
 	{
@@ -577,8 +661,9 @@ vnet_create_sw_interface_no_callbacks (vnet_main_t * vnm,
 
   pool_get (im->sw_interfaces, sw);
   sw_if_index = sw - im->sw_interfaces;
-
   sw[0] = template[0];
+  dep_init (&sw->dep_node, dep_type_sw_interface);
+  dep_lock (&sw->dep_node);
 
   sw->flags = 0;
   sw->sw_if_index = sw_if_index;
@@ -657,6 +742,7 @@ vnet_create_sw_interface (vnet_main_t * vnm, vnet_sw_interface_t * template,
 	       format_clib_error, error);
       vnet_sw_interface_t *sw =
 	pool_elt_at_index (im->sw_interfaces, *sw_if_index);
+      dep_deinit (&sw->dep_node);
       pool_put (im->sw_interfaces, sw);
     }
   else
@@ -689,14 +775,20 @@ vnet_delete_sw_interface (vnet_main_t * vnm, u32 sw_if_index)
 
   call_sw_interface_add_del_callbacks (vnm, sw_if_index, /* is_create */ 0);
 
+  dep_deinit (&sw->dep_node);
   pool_put (im->sw_interfaces, sw);
 }
 
 static clib_error_t *
 call_sw_interface_mtu_change_callbacks (vnet_main_t * vnm, u32 sw_if_index)
 {
-  return call_elf_section_interface_callbacks
-    (vnm, sw_if_index, 0, vnm->sw_interface_mtu_change_functions);
+  dep_back_walk_ctx_t bw_ctx = {
+    .dbw_reason = DEP_BW_REASON_FLAG_INTERFACE_MTU,
+  };
+
+  dep_walk_sync (dep_type_sw_interface, sw_if_index, &bw_ctx);
+
+  return (NULL);
 }
 
 void
@@ -1387,6 +1479,60 @@ vnet_sw_interface_supports_addressing (vnet_main_t *vnm, u32 sw_if_index)
   return NULL;
 }
 
+u32
+vnet_sw_interface_priority_child_add (u32 sw_if_index, dep_type_t child_type,
+				      u32 child_index)
+{
+  return (dep_child_priority_add (dep_type_sw_interface, sw_if_index,
+				  child_type, child_index));
+}
+
+u32
+vnet_sw_interface_child_add (u32 sw_if_index, dep_type_t child_type,
+			     u32 child_index)
+{
+  return (dep_child_add (dep_type_sw_interface, sw_if_index, child_type,
+			 child_index));
+}
+
+void
+vnet_sw_interface_child_remove (u32 sw_if_index, u32 sibling_index)
+{
+  dep_child_remove (dep_type_sw_interface, sw_if_index, sibling_index);
+}
+
+static dep_t *
+vnet_sw_interface_get_dep_node (u32 sw_if_index)
+{
+  vnet_sw_interface_t *si;
+
+  si = vnet_get_sw_interface (vnet_get_main (), sw_if_index);
+
+  return (&si->dep_node);
+}
+
+static void
+vnet_sw_interface_last_lock_gone (dep_t *node)
+{
+  /* not tracking the locks yet */
+}
+
+static dep_back_walk_rc_t
+vnet_sw_interface_back_walk_notify (dep_t *node, dep_back_walk_ctx_t *ctx)
+{
+  /* bottom of the dependency graph, do not expect a walk here */
+  return (DEP_BACK_WALK_CONTINUE);
+}
+
+/*
+ * Adjacency's graph node virtual function table
+ */
+static const dep_vft_t sw_vft = {
+  .dv_get = vnet_sw_interface_get_dep_node,
+  .dv_last_lock = vnet_sw_interface_last_lock_gone,
+  .dv_back_walk = vnet_sw_interface_back_walk_notify,
+};
+
 clib_error_t *
 vnet_interface_init (vlib_main_t * vm)
 {
@@ -1493,6 +1639,7 @@ vnet_interface_init (vlib_main_t * vm)
     return error;
 
   vnm->interface_tag_by_sw_if_index = hash_create (0, sizeof (uword));
+  dep_type_sw_interface = dep_register_type ("sw-interface", &sw_vft);
 
   return 0;
 }

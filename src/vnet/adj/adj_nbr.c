@@ -241,7 +241,7 @@ adj_nbr_alloc (fib_protocol_t nh_proto,
 {
     ip_adjacency_t *adj;
 
-    adj = adj_alloc(nh_proto);
+    adj = adj_alloc(nh_proto, sw_if_index);
 
     adj_nbr_insert(nh_proto, link_type, nh_addr,
 		   sw_if_index,
@@ -747,241 +747,22 @@ adj_nbr_walk_nh (u32 sw_if_index,
     }
 }
 
-/**
- * Flags associated with the interface state walks
- */
-typedef enum adj_nbr_interface_flags_t_
+dep_back_walk_rc_t
+adj_nbr_back_walk (ip_adjacency_t *adj,
+                   dep_back_walk_ctx_t *ctx)
 {
-    ADJ_NBR_INTERFACE_UP = (1 << 0),
-} adj_nbr_interface_flags_t;
+    adj_index_t ai;
 
-/**
- * Context for the state change walk of the DB
- */
-typedef struct adj_nbr_interface_state_change_ctx_t_
-{
-    /**
-     * Flags on the interface
-     */
-    adj_nbr_interface_flags_t flags;
-} adj_nbr_interface_state_change_ctx_t;
+    ai = adj_get_index(adj);
 
-static adj_walk_rc_t
-adj_nbr_interface_state_change_one (adj_index_t ai,
-                                    void *arg)
-{
-    /*
-     * Back walk the graph to inform the forwarding entries
-     * that this interface state has changed. Do this synchronously
-     * since this is the walk that provides convergence
-     */
-    adj_nbr_interface_state_change_ctx_t *ctx = arg;
-    dep_back_walk_ctx_t bw_ctx = {
-	.dbw_reason = ((ctx->flags & ADJ_NBR_INTERFACE_UP) ?
-                        DEP_BW_REASON_FLAG_INTERFACE_UP :
-                        DEP_BW_REASON_FLAG_INTERFACE_DOWN),
-        /*
-         * the force sync applies only as far as the first fib_entry.
-         * And it's the fib_entry's we need to converge away from
-         * the adjacencies on the now down link
-         */
-        .dbw_flags = (!(ctx->flags & ADJ_NBR_INTERFACE_UP) ?
-                       DEP_BW_FLAG_FORCE_SYNC :
-                       DEP_BW_FLAG_NONE),
-    };
-    ip_adjacency_t *adj;
-
-    adj_lock (ai);
-
-    adj = adj_get(ai);
-
-    adj->ia_flags |= ADJ_FLAG_SYNC_WALK_ACTIVE;
-    dep_walk_sync(DEP_TYPE_ADJ, ai, &bw_ctx);
-    adj->ia_flags &= ~ADJ_FLAG_SYNC_WALK_ACTIVE;
-
-    adj_unlock (ai);
-    return (ADJ_WALK_RC_CONTINUE);
-}
-
-/**
- * @brief Registered function for SW interface state changes
- */
-static clib_error_t *
-adj_nbr_sw_interface_state_change (vnet_main_t * vnm,
-                                   u32 sw_if_index,
-                                   u32 flags)
-{
-    fib_protocol_t proto;
-
-    /*
-     * walk each adj on the interface and trigger a walk from that adj
-     */
-    for (proto = FIB_PROTOCOL_IP4; proto <= FIB_PROTOCOL_IP6; proto++)
+    if (ctx->dbw_reason & DEP_BW_REASON_FLAG_INTERFACE_MAC)
     {
-	adj_nbr_interface_state_change_ctx_t ctx = {
-	    .flags = ((flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ?
-                      ADJ_NBR_INTERFACE_UP :
-                      0),
-	};
-
-	adj_nbr_walk(sw_if_index, proto,
-		     adj_nbr_interface_state_change_one,
-		     &ctx);
+        vnet_update_adjacency_for_sw_interface(vnet_get_main(),
+                                               adj_get_sw_if_index(ai),
+                                               ai);
     }
 
-    return (NULL);
-}
-
-VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION_PRIO(
-    adj_nbr_sw_interface_state_change,
-    VNET_ITF_FUNC_PRIORITY_HIGH);
-
-/**
- * @brief Invoked on each SW interface of a HW interface when the
- * HW interface state changes
- */
-static walk_rc_t
-adj_nbr_hw_sw_interface_state_change (vnet_main_t * vnm,
-                                      u32 sw_if_index,
-                                      void *arg)
-{
-    adj_nbr_interface_state_change_ctx_t *ctx = arg;
-    fib_protocol_t proto;
-
-    /*
-     * walk each adj on the interface and trigger a walk from that adj
-     */
-    for (proto = FIB_PROTOCOL_IP4; proto <= FIB_PROTOCOL_IP6; proto++)
-    {
-	adj_nbr_walk(sw_if_index, proto,
-		     adj_nbr_interface_state_change_one,
-		     ctx);
-    }
-    return (WALK_CONTINUE);
-}
-
-/**
- * @brief Registered callback for HW interface state changes
- */
-static clib_error_t *
-adj_nbr_hw_interface_state_change (vnet_main_t * vnm,
-                                   u32 hw_if_index,
-                                   u32 flags)
-{
-    /*
-     * walk SW interface on the HW
-     */
-    adj_nbr_interface_state_change_ctx_t ctx = {
-        .flags = ((flags & VNET_HW_INTERFACE_FLAG_LINK_UP) ?
-                  ADJ_NBR_INTERFACE_UP :
-                  0),
-    };
-
-    vnet_hw_interface_walk_sw(vnm, hw_if_index,
-                              adj_nbr_hw_sw_interface_state_change,
-                              &ctx);
-
-    return (NULL);
-}
-
-VNET_HW_INTERFACE_LINK_UP_DOWN_FUNCTION_PRIO(
-    adj_nbr_hw_interface_state_change,
-    VNET_ITF_FUNC_PRIORITY_HIGH);
-
-static adj_walk_rc_t
-adj_nbr_interface_delete_one (adj_index_t ai,
-			      void *arg)
-{
-    /*
-     * Back walk the graph to inform the forwarding entries
-     * that this interface has been deleted.
-     */
-    dep_back_walk_ctx_t bw_ctx = {
-	.dbw_reason = DEP_BW_REASON_FLAG_INTERFACE_DELETE,
-    };
-    ip_adjacency_t *adj;
-
-    adj_lock(ai);
-
-    adj = adj_get(ai);
-
-    adj->ia_flags |= ADJ_FLAG_SYNC_WALK_ACTIVE;
-    dep_walk_sync(DEP_TYPE_ADJ, ai, &bw_ctx);
-    adj->ia_flags &= ~ADJ_FLAG_SYNC_WALK_ACTIVE;
-
-    adj_unlock(ai);
-    return (ADJ_WALK_RC_CONTINUE);
-}
-
-/**
- * adj_nbr_interface_add_del
- *
- * Registered to receive interface Add and delete notifications
- */
-static clib_error_t *
-adj_nbr_interface_add_del (vnet_main_t * vnm,
-			   u32 sw_if_index,
-			   u32 is_add)
-{
-    fib_protocol_t proto;
-
-    if (is_add)
-    {
-	/*
-	 * not interested in interface additions. we will not back walk
-	 * to resolve paths through newly added interfaces. Why? The control
-	 * plane should have the brains to add interfaces first, then routes.
-	 * So the case where there are paths with a interface that matches
-	 * one just created is the case where the path resolved through an
-	 * interface that was deleted, and still has not been removed. The
-	 * new interface added, is NO GUARANTEE that the interface being
-	 * added now, even though it may have the same sw_if_index, is the
-	 * same interface that the path needs. So tough!
-	 * If the control plane wants these routes to resolve it needs to
-	 * remove and add them again.
-	 */
-	return (NULL);
-    }
-
-    for (proto = FIB_PROTOCOL_IP4; proto <= FIB_PROTOCOL_IP6; proto++)
-    {
-	adj_nbr_walk(sw_if_index, proto,
-		     adj_nbr_interface_delete_one,
-		     NULL);
-    }
-
-    return (NULL);
-}
-
-VNET_SW_INTERFACE_ADD_DEL_FUNCTION(adj_nbr_interface_add_del);
-
-
-static adj_walk_rc_t
-adj_nbr_ethernet_mac_change_one (adj_index_t ai,
-                                 void *arg)
-{
-    vnet_update_adjacency_for_sw_interface(vnet_get_main(),
-                                           adj_get_sw_if_index(ai),
-                                           ai);
-
-    return (ADJ_WALK_RC_CONTINUE);
-}
-
-/**
- * Callback function invoked when an interface's MAC Address changes
- */
-static void
-adj_nbr_ethernet_change_mac (ethernet_main_t * em,
-                             u32 sw_if_index, uword opaque)
-{
-    fib_protocol_t proto;
-
-    FOR_EACH_FIB_IP_PROTOCOL(proto)
-    {
-	adj_nbr_walk(sw_if_index, proto,
-		     adj_nbr_ethernet_mac_change_one,
-		     NULL);
-    }
+    return (DEP_BACK_WALK_CONTINUE);
 }
 
 static adj_walk_rc_t
@@ -1224,10 +1005,4 @@ adj_nbr_module_init (void)
                  &adj_nbr_incompl_dpo_vft,
                  nbr_incomplete_nodes);
     memory_usage_register(adj_mem_show);
-
-    ethernet_address_change_ctx_t ctx = {
-        .function = adj_nbr_ethernet_change_mac,
-        .function_opaque = 0,
-    };
-    vec_add1 (ethernet_main.address_change_callbacks, ctx);
 }

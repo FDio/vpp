@@ -684,6 +684,7 @@ class TestGRE(VppTestCase):
         #
         # test case cleanup
         #
+        self.logger.info(self.vapi.cli("sh int gre0 dep"))
         route_tun_dst.remove_vpp_config()
         route_via_tun.remove_vpp_config()
         route6_via_tun.remove_vpp_config()

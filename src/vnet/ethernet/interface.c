@@ -47,6 +47,7 @@
 #include <vnet/adj/adj.h>
 #include <vnet/adj/adj_mcast.h>
 #include <vnet/ip-neighbor/ip_neighbor.h>
+#include <vnet/dependency/dep_walk.h>
 
 /**
  * @file
@@ -301,11 +302,15 @@ ethernet_mac_change (vnet_hw_interface_t * hi,
 
   ethernet_set_mac (hi, ei, mac_address);
 
-  {
-    ethernet_address_change_ctx_t *cb;
-    vec_foreach (cb, em->address_change_callbacks)
-      cb->function (em, hi->sw_if_index, cb->function_opaque);
-  }
+  dep_back_walk_ctx_t bw_ctx = {
+    .dbw_reason = DEP_BW_REASON_FLAG_INTERFACE_MAC,
+    .interface_mac = {
+      .dbw_old = old_address,
+      .dbw_new = mac_address,
+    },
+  };
+
+  dep_walk_sync (dep_type_sw_interface, hi->sw_if_index, &bw_ctx);
 
   return (NULL);
 }

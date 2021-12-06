@@ -31,6 +31,7 @@
 #include <vnet/l2/l2_vtr.h>
 #include <vnet/fib/fib_api.h>
 #include <vnet/mfib/mfib_table.h>
+#include <vnet/dependency/dep_walk.h>
 #include <vlibapi/api_types.h>
 
 #include <vnet/format_fns.h>
@@ -493,6 +494,17 @@ fib_table_bind (fib_protocol_t fproto, u32 sw_if_index, u32 fib_index)
 		      fib_index,
 		      ip6_main.fib_index_by_sw_if_index[sw_if_index]);
 
+      dep_back_walk_ctx_t bw_ctx = {
+        .dbw_reason = DEP_BW_REASON_FLAG_INTERFACE_BIND,
+        .interface_bind = {
+          .dbw_is_ip6 = 1,
+          .dbw_from_fib_index = ip6_main.fib_index_by_sw_if_index[sw_if_index],
+          .dbw_to_fib_index = fib_index,
+        },
+      };
+
+      dep_walk_sync (dep_type_sw_interface, sw_if_index, &bw_ctx);
+
       /* unlock currently assigned tables */
       if (0 != ip6_main.fib_index_by_sw_if_index[sw_if_index])
 	fib_table_unlock (ip6_main.fib_index_by_sw_if_index[sw_if_index],
@@ -517,6 +529,17 @@ fib_table_bind (fib_protocol_t fproto, u32 sw_if_index, u32 fib_index)
 		      sw_if_index,
 		      fib_index,
 		      ip4_main.fib_index_by_sw_if_index[sw_if_index]);
+
+      dep_back_walk_ctx_t bw_ctx = {
+        .dbw_reason = DEP_BW_REASON_FLAG_INTERFACE_BIND,
+        .interface_bind = {
+          .dbw_is_ip6 = 0,
+          .dbw_from_fib_index = ip6_main.fib_index_by_sw_if_index[sw_if_index],
+          .dbw_to_fib_index = fib_index,
+        },
+      };
+
+      dep_walk_sync (dep_type_sw_interface, sw_if_index, &bw_ctx);
 
       /* unlock currently assigned tables */
       if (0 != ip4_main.fib_index_by_sw_if_index[sw_if_index])

@@ -120,7 +120,8 @@ extern void adj_midchain_setup(adj_index_t adj_index,
                                const void *data,
                                adj_flags_t flags);
 
-extern ip_adjacency_t * adj_alloc(fib_protocol_t proto);
+extern ip_adjacency_t * adj_alloc(fib_protocol_t proto,
+                                  u32 sw_if_index);
 
 extern void adj_nbr_remove(adj_index_t ai,
                            fib_protocol_t nh_proto,
@@ -135,6 +136,17 @@ extern void adj_midchain_teardown(ip_adjacency_t *adj);
 
 extern u32 adj_dpo_get_urpf(const dpo_id_t *dpo);
 extern u16 adj_dpo_get_mtu(const dpo_id_t *dpo);
+
+/*
+ * per ady type back walk functions
+ */
+extern dep_back_walk_rc_t adj_nbr_back_walk(ip_adjacency_t *adj,
+                                            dep_back_walk_ctx_t *ctx);
+extern dep_back_walk_rc_t adj_glean_back_walk(ip_adjacency_t *adj,
+                                              dep_back_walk_ctx_t *ctx);
+extern dep_back_walk_rc_t adj_mcast_back_walk(ip_adjacency_t *adj,
+                                              dep_back_walk_ctx_t *ctx);
+
 
 /*
  * Adj BFD

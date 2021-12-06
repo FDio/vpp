@@ -445,6 +445,14 @@ clib_error_t *vnet_hw_interface_set_rss_queues (vnet_main_t * vnm,
 
 void vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index);
 
+/* Child dependants on a sw interface */
+u32 vnet_sw_interface_child_add (u32 sw_if_index, dep_type_t child_type,
+				 u32 child_index);
+u32 vnet_sw_interface_priority_child_add (u32 sw_if_index,
+					  dep_type_t child_type,
+					  u32 child_index);
+void vnet_sw_interface_child_remove (u32 sw_if_index, u32 sibling_index);
+
 /* Formats sw/hw interface. */
 format_function_t format_vnet_hw_interface;
 format_function_t format_vnet_hw_if_rx_mode;

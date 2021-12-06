@@ -177,8 +177,6 @@ static __clib_unused void * __clib_unused_##f = f;
   _VNET_INTERFACE_FUNCTION_DECL(f,hw_interface_link_up_down)
 #define VNET_HW_INTERFACE_LINK_UP_DOWN_FUNCTION_PRIO(f,p)       \
   _VNET_INTERFACE_FUNCTION_DECL_PRIO(f,hw_interface_link_up_down,p)
-#define VNET_SW_INTERFACE_MTU_CHANGE_FUNCTION(f)                \
-  _VNET_INTERFACE_FUNCTION_DECL(f,sw_interface_mtu_change)
 #define VNET_SW_INTERFACE_ADD_DEL_FUNCTION(f)			\
   _VNET_INTERFACE_FUNCTION_DECL(f,sw_interface_add_del)
 #define VNET_SW_INTERFACE_ADD_DEL_FUNCTION_PRIO(f,p)		\
@@ -914,7 +912,14 @@ typedef struct
   vnet_p2p_sub_interface_t p2p;
 
   vnet_flood_class_t flood_class;
+
+  dep_t dep_node;
 } vnet_sw_interface_t;
+
+/**
+ * The dependency type value for sw interfaces
+ */
+extern dep_type_t dep_type_sw_interface;
 
 typedef enum
 {

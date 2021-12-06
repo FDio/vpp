@@ -348,9 +348,14 @@ typedef struct ip_adjacency_t_
   adj_flags_t ia_flags;
 
   /**
+   * Sibling child on the parent interface
+   */
+  u32 ia_sibling;
+
+  /**
    * Free space on the fourth cacheline (not used in the DP)
    */
-  u8 __ia_pad[48];
+  u8 __ia_pad[44];
 } ip_adjacency_t;
 
 STATIC_ASSERT ((STRUCT_OFFSET_OF (ip_adjacency_t, cacheline0) == 0),
