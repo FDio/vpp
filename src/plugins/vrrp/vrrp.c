@@ -574,7 +574,7 @@ vrrp_vr_addr_add_del (vrrp_vr_t * vr, u8 is_add, ip46_address_t * vr_addr)
 	  {
 	    if (!ip46_address_cmp (addr, vr_addr))
 	      {
-		vec_del1 (vr->config.vr_addrs, vr->config.vr_addrs - addr);
+		vec_del1 (vr->config.vr_addrs, addr - vr->config.vr_addrs);
 		break;
 	      }
 	  }
@@ -596,7 +596,7 @@ vrrp_vr_addr_add_del (vrrp_vr_t * vr, u8 is_add, ip46_address_t * vr_addr)
 	  {
 	    if (!ip46_address_cmp (addr, vr_addr))
 	      {
-		vec_del1 (vr->config.vr_addrs, vr->config.vr_addrs - addr);
+		vec_del1 (vr->config.vr_addrs, addr - vr->config.vr_addrs);
 		break;
 	      }
 	  }
