@@ -216,7 +216,7 @@ format_ip_adjacency (u8 * s, va_list * args)
         if (dep_list_get_size(adj->ia_node.d_children))
         {
             s = format(s, "\n  ");
-            s = dep_children_format(adj->ia_node.d_children, s);
+            s = format(s, "%U", format_dep_children, adj->ia_node.d_children);
         }
     }
 

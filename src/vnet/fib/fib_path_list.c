@@ -1457,7 +1457,7 @@ show_fib_path_list_command (vlib_main_t * vm,
 	    path_list = fib_path_list_get(pli);
 	    u8 *s = fib_path_list_format(pli, NULL);
 	    s = format(s, "children:");
-	    s = dep_children_format(path_list->fpl_node.d_children, s);
+	    s = format(s, "%U", format_dep_children, path_list->fpl_node.d_children);
 	    vlib_cli_output (vm, "%v", s);
 	    vec_free(s);
 	}

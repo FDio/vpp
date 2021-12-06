@@ -118,7 +118,7 @@ mfib_entry_delegate_fmt_covered (const mfib_entry_delegate_t *fed,
                                  u8 *s)
 {
     s = format(s, "covered:[");
-    s = dep_children_format(fed->mfd_list, s);
+    s = format(s, "%U", format_dep_children, fed->mfd_list);
     s = format(s, "]");
 
     return (s);

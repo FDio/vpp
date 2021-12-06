@@ -386,9 +386,15 @@ dep_walk_advance (dep_index_t dwi)
 	  n_ctxs = vec_len (dwalk->dw_ctx);
 	}
       /*
-       * move foward to the next node to visit
+       * if the next on the list is the one we just walked,
+       * move foward to the next node to visit, if it's not then it got
+       * removed during the walk.
        */
-      more_elts = dep_list_advance (dwalk->dw_dep_sibling);
+      dep_ptr_t next_sibling;
+      more_elts = dep_list_elt_get_next (dwalk->dw_dep_sibling, &next_sibling);
+
+      if (more_elts && 0 == dep_ptr_cmp (&sibling, &next_sibling))
+	more_elts = dep_list_advance (dwalk->dw_dep_sibling);
     }
 
   if (more_elts)
