@@ -304,12 +304,7 @@ ct_session_dealloc_fifos (ct_connection_t *ct, svm_fifo_t *rx_fifo,
 	app_worker_del_segment_notify (app_wrk, ct->segment_handle);
     }
 
-  if (!segment_manager_app_detached (sm))
-    {
-      app_wrk = app_worker_get (ct->server_wrk);
-      app_worker_del_segment_notify (app_wrk, ct->segment_handle);
-    }
-
+  /* Notify server app and free segment */
   segment_manager_lock_and_del_segment (sm, seg_index);
 
   /* Cleanup segment manager if needed. If server detaches there's a chance
