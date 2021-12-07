@@ -1131,7 +1131,7 @@ static int
 ct_custom_tx (void *session, transport_send_params_t * sp)
 {
   session_t *s = (session_t *) session;
-  if (session_has_transport (s) || s->session_state < SESSION_STATE_READY)
+  if (session_has_transport (s))
     return 0;
   /* If event enqueued towards peer, remove from scheduler and remove
    * session tx flag, i.e., accept new tx events. Unset fifo flag now to
@@ -1267,12 +1267,22 @@ static const transport_proto_vft_t cut_thru_proto = {
 };
 /* *INDENT-ON* */
 
+static inline int
+ct_session_can_tx (session_t *s)
+{
+  return (s->session_state == SESSION_STATE_READY ||
+	  s->session_state == SESSION_STATE_CLOSING ||
+	  s->session_state == SESSION_STATE_APP_CLOSED);
+}
+
 int
 ct_session_tx (session_t * s)
 {
   ct_connection_t *ct, *peer_ct;
   session_t *peer_s;
 
+  if (!ct_session_can_tx (s))
+    return 0;
   ct = (ct_connection_t *) session_get_transport (s);
   peer_ct = ct_connection_get (ct->peer_index, ct->c_thread_index);
   if (!peer_ct)
