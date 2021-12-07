@@ -1082,40 +1082,6 @@ VLIB_CLI_COMMAND (enable_disable_memory_trace_command, static) = {
 };
 /* *INDENT-ON* */
 
-static clib_error_t *
-restart_cmd_fn (vlib_main_t * vm, unformat_input_t * input,
-		vlib_cli_command_t * cmd)
-{
-  vlib_global_main_t *vgm = vlib_get_global_main ();
-  clib_file_main_t *fm = &file_main;
-  clib_file_t *f;
-
-  /* environ(7) does not indicate a header for this */
-  extern char **environ;
-
-  /* Close all known open files */
-  /* *INDENT-OFF* */
-  pool_foreach (f, fm->file_pool)
-     {
-      if (f->file_descriptor > 2)
-        close(f->file_descriptor);
-    }
-  /* *INDENT-ON* */
-
-  /* Exec ourself */
-  execve (vgm->name, (char **) vm->argv, environ);
-
-  return 0;
-}
-
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (restart_cmd,static) = {
-    .path = "restart",
-    .short_help = "restart process",
-    .function = restart_cmd_fn,
-};
-/* *INDENT-ON* */
-
 #ifdef TEST_CODE
 /*
  * A trivial test harness to verify the per-process output_function
