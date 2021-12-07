@@ -498,11 +498,11 @@ ip6_full_reass_on_timeout (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 always_inline ip6_full_reass_t *
-ip6_full_reass_find_or_create (vlib_main_t * vm, vlib_node_runtime_t * node,
-			       ip6_full_reass_main_t * rm,
-			       ip6_full_reass_per_thread_t * rt,
-			       ip6_full_reass_kv_t * kv, u32 * icmp_bi,
-			       u8 * do_handoff)
+ip6_full_reass_find_or_create (vlib_main_t *vm, vlib_node_runtime_t *node,
+			       ip6_full_reass_main_t *rm,
+			       ip6_full_reass_per_thread_t *rt,
+			       ip6_full_reass_kv_t *kv, u32 *icmp_bi,
+			       u8 *do_handoff, int skip_bihash)
 {
   ip6_full_reass_t *reass;
   f64 now;
@@ -512,7 +512,7 @@ again:
   reass = NULL;
   now = vlib_time_now (vm);
 
-  if (!clib_bihash_search_48_8 (&rm->hash, &kv->kv, &kv->kv))
+  if (!skip_bihash && !clib_bihash_search_48_8 (&rm->hash, &kv->kv, &kv->kv))
     {
       if (vm->thread_index != kv->v.memory_owner_thread_index)
 	{
@@ -558,24 +558,37 @@ again:
       ++rt->reass_n;
     }
 
-  reass->key.as_u64[0] = kv->kv.key[0];
-  reass->key.as_u64[1] = kv->kv.key[1];
-  reass->key.as_u64[2] = kv->kv.key[2];
-  reass->key.as_u64[3] = kv->kv.key[3];
-  reass->key.as_u64[4] = kv->kv.key[4];
-  reass->key.as_u64[5] = kv->kv.key[5];
   kv->v.reass_index = (reass - rt->pool);
   kv->v.memory_owner_thread_index = vm->thread_index;
   reass->last_heard = now;
 
-  int rv = clib_bihash_add_del_48_8 (&rm->hash, &kv->kv, 2);
-  if (rv)
+  if (!skip_bihash)
     {
-      ip6_full_reass_free (rm, rt, reass);
-      reass = NULL;
-      // if other worker created a context already work with the other copy
-      if (-2 == rv)
-	goto again;
+      reass->key.as_u64[0] = kv->kv.key[0];
+      reass->key.as_u64[1] = kv->kv.key[1];
+      reass->key.as_u64[2] = kv->kv.key[2];
+      reass->key.as_u64[3] = kv->kv.key[3];
+      reass->key.as_u64[4] = kv->kv.key[4];
+      reass->key.as_u64[5] = kv->kv.key[5];
+
+      int rv = clib_bihash_add_del_48_8 (&rm->hash, &kv->kv, 2);
+      if (rv)
+	{
+	  ip6_full_reass_free (rm, rt, reass);
+	  reass = NULL;
+	  // if other worker created a context already work with the other copy
+	  if (-2 == rv)
+	    goto again;
+	}
+    }
+  else
+    {
+      reass->key.as_u64[0] = ~0;
+      reass->key.as_u64[1] = ~0;
+      reass->key.as_u64[2] = ~0;
+      reass->key.as_u64[3] = ~0;
+      reass->key.as_u64[4] = ~0;
+      reass->key.as_u64[5] = ~0;
     }
 
   return reass;
@@ -843,12 +856,13 @@ ip6_full_reass_insert_range_in_chain (vlib_main_t * vm,
 }
 
 always_inline ip6_full_reass_rc_t
-ip6_full_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
-		       ip6_full_reass_main_t * rm,
-		       ip6_full_reass_per_thread_t * rt,
-		       ip6_full_reass_t * reass, u32 * bi0, u32 * next0,
-		       u32 * error0, ip6_frag_hdr_t * frag_hdr,
-		       bool is_custom_app, u32 * handoff_thread_idx)
+ip6_full_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
+		       ip6_full_reass_main_t *rm,
+		       ip6_full_reass_per_thread_t *rt,
+		       ip6_full_reass_t *reass, u32 *bi0, u32 *next0,
+		       u32 *error0, ip6_frag_hdr_t *frag_hdr,
+		       bool is_custom_app, u32 *handoff_thread_idx,
+		       int skip_bihash)
 {
   int consumed = 0;
   vlib_buffer_t *fb = vlib_get_buffer (vm, *bi0);
@@ -956,6 +970,12 @@ check_if_done_maybe:
 				    ~0);
 	}
     }
+  else if (skip_bihash)
+    {
+      // if this reassembly is not in bihash, then the packet must have been
+      // consumed
+      return IP6_FULL_REASS_RC_INTERNAL_ERROR;
+    }
   if (~0 != reass->last_packet_octet &&
       reass->data_len == reass->last_packet_octet + 1)
     {
@@ -973,6 +993,12 @@ check_if_done_maybe:
     }
   else
     {
+      if (skip_bihash)
+	{
+	  // if this reassembly is not in bihash, it should've been an atomic
+	  // fragment and thus finalized
+	  return IP6_FULL_REASS_RC_INTERNAL_ERROR;
+	}
       if (consumed)
 	{
 	  *bi0 = ~0;
@@ -1113,22 +1139,33 @@ ip6_full_reassembly_inline (vlib_main_t * vm,
 	      next0 = IP6_FULL_REASSEMBLY_NEXT_ICMP_ERROR;
 	      goto skip_reass;
 	    }
+
+	  int skip_bihash = 0;
 	  ip6_full_reass_kv_t kv;
 	  u8 do_handoff = 0;
 
-	  kv.k.as_u64[0] = ip0->src_address.as_u64[0];
-	  kv.k.as_u64[1] = ip0->src_address.as_u64[1];
-	  kv.k.as_u64[2] = ip0->dst_address.as_u64[0];
-	  kv.k.as_u64[3] = ip0->dst_address.as_u64[1];
-	  kv.k.as_u64[4] =
-	    ((u64) vec_elt (ip6_main.fib_index_by_sw_if_index,
-			    vnet_buffer (b0)->sw_if_index[VLIB_RX])) << 32 |
-	    (u64) frag_hdr->identification;
-	  kv.k.as_u64[5] = ip0->protocol;
+	  if (0 == ip6_frag_hdr_offset (frag_hdr) &&
+	      !ip6_frag_hdr_more (frag_hdr))
+	    {
+	      // this is atomic fragment and needs to be processed separately
+	      skip_bihash = 1;
+	    }
+	  else
+	    {
+	      kv.k.as_u64[0] = ip0->src_address.as_u64[0];
+	      kv.k.as_u64[1] = ip0->src_address.as_u64[1];
+	      kv.k.as_u64[2] = ip0->dst_address.as_u64[0];
+	      kv.k.as_u64[3] = ip0->dst_address.as_u64[1];
+	      kv.k.as_u64[4] =
+		((u64) vec_elt (ip6_main.fib_index_by_sw_if_index,
+				vnet_buffer (b0)->sw_if_index[VLIB_RX]))
+		  << 32 |
+		(u64) frag_hdr->identification;
+	      kv.k.as_u64[5] = ip0->protocol;
+	    }
 
-	  ip6_full_reass_t *reass =
-	    ip6_full_reass_find_or_create (vm, node, rm, rt, &kv, &icmp_bi,
-					   &do_handoff);
+	  ip6_full_reass_t *reass = ip6_full_reass_find_or_create (
+	    vm, node, rm, rt, &kv, &icmp_bi, &do_handoff, skip_bihash);
 
 	  if (reass)
 	    {
@@ -1148,9 +1185,9 @@ ip6_full_reassembly_inline (vlib_main_t * vm,
 	    {
 	      u32 handoff_thread_idx;
 	      u32 counter = ~0;
-	      switch (ip6_full_reass_update
-		      (vm, node, rm, rt, reass, &bi0, &next0, &error0,
-		       frag_hdr, is_custom_app, &handoff_thread_idx))
+	      switch (ip6_full_reass_update (
+		vm, node, rm, rt, reass, &bi0, &next0, &error0, frag_hdr,
+		is_custom_app, &handoff_thread_idx, skip_bihash))
 		{
 		case IP6_FULL_REASS_RC_OK:
 		  /* nothing to do here */

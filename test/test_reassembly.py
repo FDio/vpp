@@ -1448,12 +1448,53 @@ class TestIPv6Reassembly(VppTestCase):
                     nh=44, plen=2) /
                IPv6ExtHdrFragment(nh=6))
 
-        self.send_and_assert_no_replies(self.pg0, [pkt], self.pg0)
+        self.send_and_assert_no_replies(self.pg0, [pkt])
 
         pkt = (Ether(src=self.pg0.local_mac, dst=self.pg0.remote_mac) /
                IPv6(src=self.pg0.remote_ip6, dst=self.pg0.remote_ip6) /
                ICMPv6EchoRequest())
         rx = self.send_and_expect(self.pg0, [pkt], self.pg0)
+
+    def test_one_fragment(self):
+        """ whole packet in one fragment processed independently """
+        pkt = (Ether(src=self.pg0.local_mac, dst=self.pg0.remote_mac) /
+               IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6) /
+               ICMPv6EchoRequest()/Raw('X' * 1600))
+        frags = fragment_rfc8200(pkt, 1, 400)
+
+        # send a fragment with known id
+        self.send_and_assert_no_replies(self.pg0, [frags[0]])
+
+        # send an atomic fragment with same id - should be reassembled
+        pkt = (Ether(src=self.pg0.local_mac, dst=self.pg0.remote_mac) /
+               IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6) /
+               IPv6ExtHdrFragment(id=1)/ICMPv6EchoRequest())
+        rx = self.send_and_expect(self.pg0, [pkt], self.pg0)
+        self.assertNotIn(IPv6ExtHdrFragment, rx)
+
+        # now finish the original reassembly, this should still be possible
+        rx = self.send_and_expect(self.pg0, frags[1:], self.pg0, n_rx=1)
+        self.assertNotIn(IPv6ExtHdrFragment, rx)
+
+    def test_bunch_of_fragments(self):
+        """ valid fragments followed by rogue fragments and atomic fragment"""
+        pkt = (Ether(src=self.pg0.local_mac, dst=self.pg0.remote_mac) /
+               IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6) /
+               ICMPv6EchoRequest()/Raw('X' * 1600))
+        frags = fragment_rfc8200(pkt, 1, 400)
+        self.send_and_expect(self.pg0, frags, self.pg0, n_rx=1)
+
+        inc_frag = (Ether(src=self.pg0.local_mac, dst=self.pg0.remote_mac) /
+                    IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6) /
+                    IPv6ExtHdrFragment(id=1, nh=58, offset=608)/Raw('X'*308))
+
+        self.send_and_assert_no_replies(self.pg0, inc_frag*604)
+
+        pkt = (Ether(src=self.pg0.local_mac, dst=self.pg0.remote_mac) /
+               IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6) /
+               IPv6ExtHdrFragment(id=1)/ICMPv6EchoRequest())
+        rx = self.send_and_expect(self.pg0, [pkt], self.pg0)
+        self.assertNotIn(IPv6ExtHdrFragment, rx)
 
 
 class TestIPv6MWReassembly(VppTestCase):
@@ -1837,6 +1878,44 @@ class TestIPv6SVReassembly(VppTestCase):
             self.assertEqual(sent[IPv6].src, recvd[IPv6].src)
             self.assertEqual(sent[IPv6].dst, recvd[IPv6].dst)
             self.assertEqual(sent[Raw].payload, recvd[Raw].payload)
+
+    def test_one_fragment(self):
+        """ whole packet in one fragment processed independently """
+        pkt = (Ether(src=self.src_if.local_mac, dst=self.src_if.remote_mac) /
+               IPv6(src=self.src_if.remote_ip6, dst=self.dst_if.remote_ip6) /
+               ICMPv6EchoRequest()/Raw('X' * 1600))
+        frags = fragment_rfc8200(pkt, 1, 400)
+
+        # send a fragment with known id
+        self.send_and_expect(self.src_if, [frags[0]], self.dst_if)
+
+        # send an atomic fragment with same id - should be reassembled
+        pkt = (Ether(src=self.src_if.local_mac, dst=self.src_if.remote_mac) /
+               IPv6(src=self.src_if.remote_ip6, dst=self.dst_if.remote_ip6) /
+               IPv6ExtHdrFragment(id=1)/ICMPv6EchoRequest())
+        rx = self.send_and_expect(self.src_if, [pkt], self.dst_if)
+
+        # now forward packets matching original reassembly, should still work
+        rx = self.send_and_expect(self.src_if, frags[1:], self.dst_if)
+
+    def test_bunch_of_fragments(self):
+        """ valid fragments followed by rogue fragments and atomic fragment"""
+        pkt = (Ether(src=self.src_if.local_mac, dst=self.src_if.remote_mac) /
+               IPv6(src=self.src_if.remote_ip6, dst=self.dst_if.remote_ip6) /
+               ICMPv6EchoRequest()/Raw('X' * 1600))
+        frags = fragment_rfc8200(pkt, 1, 400)
+        rx = self.send_and_expect(self.src_if, frags, self.dst_if)
+
+        rogue = (Ether(src=self.src_if.local_mac, dst=self.src_if.remote_mac) /
+                 IPv6(src=self.src_if.remote_ip6, dst=self.dst_if.remote_ip6) /
+                 IPv6ExtHdrFragment(id=1, nh=58, offset=608)/Raw('X'*308))
+
+        self.send_and_expect(self.src_if, rogue*604, self.dst_if)
+
+        pkt = (Ether(src=self.src_if.local_mac, dst=self.src_if.remote_mac) /
+               IPv6(src=self.src_if.remote_ip6, dst=self.dst_if.remote_ip6) /
+               IPv6ExtHdrFragment(id=1)/ICMPv6EchoRequest())
+        rx = self.send_and_expect(self.src_if, [pkt], self.dst_if)
 
 
 class TestIPv4ReassemblyLocalNode(VppTestCase):

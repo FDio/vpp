@@ -215,7 +215,7 @@ format_ip6_sv_reass_trace (u8 * s, va_list * args)
 		clib_net_to_host_u16 (t->l4_dst_port));
       break;
     case REASS_PASSTHROUGH:
-      s = format (s, "[not-fragmented]");
+      s = format (s, "[not fragmented or atomic fragment]");
       break;
     }
   return s;
@@ -532,13 +532,24 @@ ip6_sv_reassembly_inline (vlib_main_t * vm,
 	  ip6_header_t *ip0 = vlib_buffer_get_current (b0);
 	  ip6_frag_hdr_t *frag_hdr;
 	  ip6_ext_hdr_chain_t hdr_chain;
+	  bool is_atomic_fragment = false;
 
 	  int res = ip6_ext_header_walk (
 	    b0, ip0, IP_PROTOCOL_IPV6_FRAGMENTATION, &hdr_chain);
-	  if (res < 0 ||
-	      hdr_chain.eh[res].protocol != IP_PROTOCOL_IPV6_FRAGMENTATION)
+	  if (res >= 0 &&
+	      hdr_chain.eh[res].protocol == IP_PROTOCOL_IPV6_FRAGMENTATION)
 	    {
-	      // this is a regular packet - no fragmentation
+	      frag_hdr =
+		ip6_ext_next_header_offset (ip0, hdr_chain.eh[res].offset);
+	      is_atomic_fragment = (0 == ip6_frag_hdr_offset (frag_hdr) &&
+				    !ip6_frag_hdr_more (frag_hdr));
+	    }
+
+	  if (res < 0 ||
+	      hdr_chain.eh[res].protocol != IP_PROTOCOL_IPV6_FRAGMENTATION ||
+	      is_atomic_fragment)
+	    {
+	      // this is a regular unfragmented packet or an atomic fragment
 	      if (!ip6_get_port
 		  (vm, b0, ip0, b0->current_length,
 		   &(vnet_buffer (b0)->ip.reass.ip_proto),
@@ -565,10 +576,10 @@ ip6_sv_reassembly_inline (vlib_main_t * vm,
 		}
 	      goto packet_enqueue;
 	    }
-	  frag_hdr =
-	    ip6_ext_next_header_offset (ip0, hdr_chain.eh[res].offset);
+
 	  vnet_buffer (b0)->ip.reass.ip6_frag_hdr_offset =
 	    hdr_chain.eh[res].offset;
+
 	  if (0 == ip6_frag_hdr_offset (frag_hdr))
 	    {
 	      // first fragment - verify upper-layer is present
