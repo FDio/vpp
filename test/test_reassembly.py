@@ -1455,6 +1455,52 @@ class TestIPv6Reassembly(VppTestCase):
                ICMPv6EchoRequest())
         rx = self.send_and_expect(self.pg0, [pkt], self.pg0)
 
+    def test_one_fragment(self):
+        """ whole packet in one fragment processed independently """
+        pkt = (Ether(src=self.pg0.local_mac, dst=self.pg0.remote_mac) /
+               IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6) /
+               ICMPv6EchoRequest()/Raw('X' * 1600))
+        frags = fragment_rfc8200(pkt, 1, 400)
+
+        # send a fragment with known id
+        self.send_and_assert_no_replies(self.pg0, [frags[0]], self.pg0)
+        self.logger.debug(self.vapi.ppcli("show trace"))
+
+        # send an atomic fragment with same id - should be reassembled
+        pkt = (Ether(src=self.pg0.local_mac, dst=self.pg0.remote_mac) /
+               IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6) /
+               IPv6ExtHdrFragment(id=1)/ICMPv6EchoRequest())
+        rx = self.send_and_expect(self.pg0, [pkt], self.pg0)
+        self.assertNotIn(IPv6ExtHdrFragment, rx)
+        self.logger.debug(self.vapi.ppcli("show trace"))
+
+        # now finish the original reassembly, this should still be possible
+        rx = self.send_and_expect(self.pg0, frags[1:], self.pg0, n_rx=1)
+        self.assertNotIn(IPv6ExtHdrFragment, rx)
+        self.logger.debug(self.vapi.ppcli("show trace"))
+
+    def test_bunch_of_fragments(self):
+        """ valid fragments mixed with rogue fragments and atomic fragment"""
+        pkt = (Ether(src=self.pg0.local_mac, dst=self.pg0.remote_mac) /
+               IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6) /
+               ICMPv6EchoRequest()/Raw('X' * 1600))
+        frags = fragment_rfc8200(pkt, 1, 400)
+        rx = self.send_and_expect(self.pg0, frags, self.pg0, n_rx=1)
+        self.logger.debug(self.vapi.ppcli("show trace"))
+
+        inc_frag = (Ether(src=self.pg0.local_mac, dst=self.pg0.remote_mac) /
+                    IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6) /
+                    IPv6ExtHdrFragment(id=1, nh=58, offset=608)/Raw('X'*308))
+
+        self.send_and_assert_no_replies(self.pg0, inc_frag*604, self.pg0)
+        self.logger.debug(self.vapi.ppcli("show trace"))
+
+        pkt = (Ether(src=self.pg0.local_mac, dst=self.pg0.remote_mac) /
+               IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6) /
+               IPv6ExtHdrFragment(id=1)/ICMPv6EchoRequest())
+        rx = self.send_and_expect(self.pg0, [pkt], self.pg0)
+        self.logger.debug(self.vapi.ppcli("show trace"))
+
 
 class TestIPv6MWReassembly(VppTestCase):
     """ IPv6 Reassembly (multiple workers) """
