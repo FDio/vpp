@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "301b88d9_8e77f84b",
+        "filename": "src/vnet/dependency/dep.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-12-08T12:44:37Z",
+      "side": 1,
+      "message": "typo s/evaulate/evaluate",
+      "revId": "90cee937442271fd01d51dd29a4ad4115a7bb72a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6ffd5998_f9c4f4c3",
+        "filename": "src/vnet/fib/fib_entry.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1836,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-12-08T12:44:37Z",
+      "side": 1,
+      "message": "should it be removed entirely?",
+      "revId": "90cee937442271fd01d51dd29a4ad4115a7bb72a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c7b5ec0c_8c4fa9c7",
+        "filename": "src/vnet/fib/ip6_fib.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 163,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-12-08T12:44:37Z",
+      "side": 1,
+      "message": "maybe this should be removed as fib_table_assert_empty() is going away?",
+      "revId": "90cee937442271fd01d51dd29a4ad4115a7bb72a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1d480e27_ada96164",
+        "filename": "src/vnet/fib/ip6_fib.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 168,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-12-08T12:44:37Z",
+      "side": 1,
+      "message": "should be removed?",
+      "revId": "90cee937442271fd01d51dd29a4ad4115a7bb72a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6145e829_2c5a44aa",
+        "filename": "src/vnet/memory_usage.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-12-08T12:44:37Z",
+      "side": 1,
+      "message": "this is fib specific and should probably go in src/vnet/fib ?",
+      "revId": "90cee937442271fd01d51dd29a4ad4115a7bb72a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
