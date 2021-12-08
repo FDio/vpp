@@ -3016,7 +3016,7 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       if (vcl_session_is_closed (s) ||
 	  !(s->flags & VCL_SESSION_F_IS_VEP_SESSION))
 	{
-	  if (s->flags & VCL_SESSION_F_PENDING_FREE)
+	  if (s && (s->flags & VCL_SESSION_F_PENDING_FREE))
 	    vcl_session_free (wrk, s);
 	  break;
 	}
@@ -3056,7 +3056,7 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       if (vcl_session_is_closed (s) ||
 	  !(s->flags & VCL_SESSION_F_IS_VEP_SESSION))
 	{
-	  if (s->flags & VCL_SESSION_F_PENDING_FREE)
+	  if (s && (s->flags & VCL_SESSION_F_PENDING_FREE))
 	    vcl_session_free (wrk, s);
 	  break;
 	}
