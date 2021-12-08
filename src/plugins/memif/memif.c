@@ -231,6 +231,7 @@ memif_int_fd_read_ready (clib_file_t * uf)
 clib_error_t *
 memif_connect (memif_if_t * mif)
 {
+  memif_main_t *mm = &memif_main;
   vlib_main_t *vm = vlib_get_main ();
   vnet_main_t *vnm = vnet_get_main ();
   clib_file_t template = { 0 };
@@ -238,6 +239,7 @@ memif_connect (memif_if_t * mif)
   int i, j;
   u32 n_txqs = 0, n_threads = vlib_get_n_threads ();
   clib_error_t *err = NULL;
+  u8 max_log2_ring_sz = 0;
 
   memif_log_debug (mif, "connect %u", mif->dev_instance);
 
@@ -272,6 +274,7 @@ memif_connect (memif_if_t * mif)
   vec_foreach_index (i, mif->tx_queues)
     {
       memif_queue_t *mq = vec_elt_at_index (mif->tx_queues, i);
+      max_log2_ring_sz = clib_max (max_log2_ring_sz, mq->log2_ring_size);
 
       mq->ring = mif->regions[mq->region].shm + mq->offset;
       if (mq->ring->cookie != MEMIF_COOKIE)
@@ -300,6 +303,8 @@ memif_connect (memif_if_t * mif)
       u32 ti;
       u32 qi;
       int rv;
+
+      max_log2_ring_sz = clib_max (max_log2_ring_sz, mq->log2_ring_size);
 
       mq->ring = mif->regions[mq->region].shm + mq->offset;
       if (mq->ring->cookie != MEMIF_COOKIE)
@@ -342,6 +347,30 @@ memif_connect (memif_if_t * mif)
 	}
     }
   /* *INDENT-ON* */
+
+  if (1 << max_log2_ring_sz > vec_len (mm->per_thread_data[0].desc_data))
+    {
+      memif_per_thread_data_t *ptd;
+      int with_barrier = 1;
+
+      if (vlib_worker_thread_barrier_held ())
+	with_barrier = 0;
+
+      if (with_barrier)
+	vlib_worker_thread_barrier_sync (vm);
+
+      vec_foreach (ptd, mm->per_thread_data)
+	{
+	  vec_validate_aligned (ptd->desc_data, pow2_mask (max_log2_ring_sz),
+				CLIB_CACHE_LINE_BYTES);
+	  vec_validate_aligned (ptd->desc_len, pow2_mask (max_log2_ring_sz),
+				CLIB_CACHE_LINE_BYTES);
+	  vec_validate_aligned (ptd->desc_status, pow2_mask (max_log2_ring_sz),
+				CLIB_CACHE_LINE_BYTES);
+	}
+      if (with_barrier)
+	vlib_worker_thread_barrier_release (vm);
+    }
 
   mif->flags &= ~MEMIF_IF_FLAG_CONNECTING;
   mif->flags |= MEMIF_IF_FLAG_CONNECTED;
