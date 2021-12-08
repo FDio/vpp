@@ -211,7 +211,7 @@ typedef struct
 
 typedef struct
 {
-  u32 packet_len;
+  u16 packet_len;
   u16 first_buffer_vec_index;
 } memif_packet_op_t;
 
@@ -226,14 +226,45 @@ typedef struct
 
 #define MEMIF_RX_VECTOR_SZ VLIB_FRAME_SIZE
 
+typedef enum
+{
+  MEMIF_DESC_STATUS_OK = 0,
+  MEMIF_DESC_STATUS_ERR_BAD_REGION,
+  MEMIF_DESC_STATUS_ERR_REGION_OVERRUN,
+  MEMIF_DESC_STATUS_ERR_DATA_TOO_BIG,
+  MEMIF_DESC_STATUS_ERR_ZERO_LENGTH
+} __clib_packed memif_desc_status_err_code_t;
+
+typedef union
+{
+  struct
+  {
+    u8 next : 1;
+    u8 err : 1;
+    u8 reserved : 2;
+    memif_desc_status_err_code_t err_code : 4;
+  };
+  u8 as_u8;
+} memif_desc_status_t;
+
+STATIC_ASSERT_SIZEOF (memif_desc_status_t, 1);
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-
+  u16 n_packets;
+  u16 max_desc_len;
+  u32 n_rx_bytes;
+  u8 xor_status;
   /* copy vector */
-  memif_packet_op_t packet_ops[MEMIF_RX_VECTOR_SZ];
   memif_copy_op_t *copy_ops;
   u32 *buffers;
+  memif_packet_op_t packet_ops[MEMIF_RX_VECTOR_SZ];
+
+  /* temp storage for compressed descriptors */
+  void **desc_data;
+  u16 *desc_len;
+  memif_desc_status_t *desc_status;
 
   /* buffer template */
   vlib_buffer_t buffer_template;
