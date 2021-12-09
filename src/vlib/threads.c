@@ -175,7 +175,6 @@ vlib_thread_init (vlib_main_t * vm)
   vlib_thread_main_t *tm = &vlib_thread_main;
   vlib_worker_thread_t *w;
   vlib_thread_registration_t *tr;
-  cpu_set_t cpuset;
   u32 n_vlib_mains = 1;
   u32 first_index = 1;
   u32 i;
@@ -205,33 +204,26 @@ vlib_thread_init (vlib_main_t * vm)
     }
 
   /* grab cpu for main thread */
-  if (tm->main_lcore == ~0)
-    {
-      /* if main-lcore is not set, we try to use lcore 1 */
-      if (clib_bitmap_get (avail_cpu, 1))
-	tm->main_lcore = 1;
-      else
-	tm->main_lcore = clib_bitmap_first_set (avail_cpu);
-      if (tm->main_lcore == (u8) ~ 0)
-	return clib_error_return (0, "no available cpus to be used for the"
-				  " main thread");
-    }
-  else
+  if (tm->main_lcore != ~0)
     {
       if (clib_bitmap_get (avail_cpu, tm->main_lcore) == 0)
 	return clib_error_return (0, "cpu %u is not available to be used"
 				  " for the main thread", tm->main_lcore);
+      avail_cpu = clib_bitmap_set (avail_cpu, tm->main_lcore, 0);
     }
-  avail_cpu = clib_bitmap_set (avail_cpu, tm->main_lcore, 0);
 
   /* assume that there is socket 0 only if there is no data from sysfs */
   if (!tm->cpu_socket_bitmap)
     tm->cpu_socket_bitmap = clib_bitmap_set (0, 0, 1);
 
   /* pin main thread to main_lcore  */
-  CPU_ZERO (&cpuset);
-  CPU_SET (tm->main_lcore, &cpuset);
-  pthread_setaffinity_np (pthread_self (), sizeof (cpu_set_t), &cpuset);
+  if (tm->main_lcore != ~0)
+    {
+      cpu_set_t cpuset;
+      CPU_ZERO (&cpuset);
+      CPU_SET (tm->main_lcore, &cpuset);
+      pthread_setaffinity_np (pthread_self (), sizeof (cpu_set_t), &cpuset);
+    }
 
   /* Set up thread 0 */
   vec_validate_aligned (vlib_worker_threads, 0, CLIB_CACHE_LINE_BYTES);
@@ -1652,11 +1644,20 @@ vlib_rpc_call_main_thread (void *callback, u8 * args, u32 arg_size)
 clib_error_t *
 threads_init (vlib_main_t * vm)
 {
+  const vlib_thread_main_t *tm = vlib_get_thread_main ();
+
+  if (tm->main_lcore == ~0)
+    {
+      if (tm->n_vlib_mains > 1)
+	return clib_error_return (0, "Configuration error, a main core must "
+				     "be specified when using worker threads");
+      clib_warning ("Unpinned main core, performance may vary");
+    }
+
   return 0;
 }
 
 VLIB_INIT_FUNCTION (threads_init);
-
 
 static clib_error_t *
 show_clock_command_fn (vlib_main_t * vm,
