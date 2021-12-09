@@ -43,6 +43,7 @@ static clib_error_t *
 show_threads_fn (vlib_main_t * vm,
 		 unformat_input_t * input, vlib_cli_command_t * cmd)
 {
+  const vlib_thread_main_t *tm = vlib_get_thread_main ();
   vlib_worker_thread_t *w;
   int i;
 
@@ -64,7 +65,7 @@ show_threads_fn (vlib_main_t * vm,
       line = format (line, "%-25U", format_sched_policy_and_priority, w->lwp);
 
       int cpu_id = w->cpu_id;
-      if (cpu_id > -1)
+      if (cpu_id > -1 && !tm->no_pinning)
 	{
 	  int core_id = w->core_id;
 	  int numa_id = w->numa_id;
