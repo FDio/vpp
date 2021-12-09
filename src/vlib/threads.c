@@ -223,16 +223,20 @@ vlib_thread_init (vlib_main_t * vm)
     tm->cpu_socket_bitmap = clib_bitmap_set (0, 0, 1);
 
   /* pin main thread to main_lcore  */
-  if (tm->cb.vlib_thread_set_lcore_cb)
+  if (!tm->no_pinning)
     {
-      tm->cb.vlib_thread_set_lcore_cb (0, tm->main_lcore);
-    }
-  else
-    {
-      cpu_set_t cpuset;
-      CPU_ZERO (&cpuset);
-      CPU_SET (tm->main_lcore, &cpuset);
-      pthread_setaffinity_np (pthread_self (), sizeof (cpu_set_t), &cpuset);
+      if (tm->cb.vlib_thread_set_lcore_cb)
+	{
+	  tm->cb.vlib_thread_set_lcore_cb (0, tm->main_lcore);
+	}
+      else
+	{
+	  cpu_set_t cpuset;
+	  CPU_ZERO (&cpuset);
+	  CPU_SET (tm->main_lcore, &cpuset);
+	  pthread_setaffinity_np (pthread_self (), sizeof (cpu_set_t),
+				  &cpuset);
+	}
     }
 
   /* Set up thread 0 */
@@ -489,7 +493,9 @@ vlib_launch_thread_int (void *fp, vlib_worker_thread_t * w, unsigned cpu_id)
 	}
     }
 
-  if (tm->cb.vlib_launch_thread_cb && !w->registration->use_pthreads)
+  if (tm->no_pinning)
+    return 0;
+  else if (tm->cb.vlib_launch_thread_cb && !w->registration->use_pthreads)
     return tm->cb.vlib_launch_thread_cb (fp, (void *) w, cpu_id);
   else
     {
@@ -1106,6 +1112,7 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
   u8 *name;
   uword *bitmap;
   u32 count;
+  int no_pinning_incompat = 0;
 
   tm->thread_registrations_by_name = hash_create_string (0, sizeof (uword));
 
@@ -1129,9 +1136,9 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "thread-prefix %v", &tm->thread_prefix))
 	;
       else if (unformat (input, "main-core %u", &tm->main_lcore))
-	;
+	no_pinning_incompat = 1;
       else if (unformat (input, "skip-cores %u", &tm->skip_cores))
-	;
+	no_pinning_incompat = 1;
       else if (unformat (input, "numa-heap-size %U",
 			 unformat_memory_size, &tm->numa_heap_size))
 	;
@@ -1157,6 +1164,7 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 
 	  tr->coremask = bitmap;
 	  tr->count = clib_bitmap_count_set_bits (tr->coremask);
+	  no_pinning_incompat = 1;
 	}
       else
 	if (unformat
@@ -1181,9 +1189,20 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 	      (0, "number of '%s' threads is already configured", name);
 
 	  tr->count = count;
+	  no_pinning_incompat = 1;
 	}
+      else if (unformat (input, "no-pinning"))
+	tm->no_pinning = 1;
       else
 	break;
+    }
+
+  if (tm->no_pinning)
+    {
+      if (no_pinning_incompat)
+	return clib_error_return (
+	  0, "No pinning option is not compatible with other cpu options");
+      clib_warning ("No thread pinning requested, your performance may vary.");
     }
 
   if (tm->sched_priority != ~0)
