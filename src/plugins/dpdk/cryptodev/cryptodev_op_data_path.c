@@ -27,7 +27,6 @@
 #include <rte_cryptodev.h>
 #include <rte_crypto_sym.h>
 #include <rte_crypto.h>
-#include <rte_cryptodev_pmd.h>
 #include <rte_ring_peek_zc.h>
 #include <rte_config.h>
 

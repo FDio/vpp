@@ -127,7 +127,7 @@ dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
       xd->flags |= DPDK_DEVICE_FLAG_PROMISC;
       break;
     case ETHERNET_INTERFACE_FLAG_MTU:
-      xd->port_conf.rxmode.max_rx_pkt_len = hi->max_packet_bytes;
+      xd->port_conf.rxmode.mtu = hi->max_packet_bytes;
       dpdk_device_setup (xd);
       return 0;
     default:
@@ -401,13 +401,11 @@ dpdk_lib_init (dpdk_main_t * dm)
       if (dm->conf->no_multi_seg)
 	{
 	  xd->port_conf.txmode.offloads &= ~DEV_TX_OFFLOAD_MULTI_SEGS;
-	  xd->port_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
 	  xd->port_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_SCATTER;
 	}
       else
 	{
 	  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_MULTI_SEGS;
-	  xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 	  xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_SCATTER;
 	  xd->flags |= DPDK_DEVICE_FLAG_MAYBE_MULTISEG;
 	}
@@ -609,13 +607,12 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      xd->nb_rx_desc = DPDK_NB_RX_DESC_VIRTIO;
 	      xd->nb_tx_desc = DPDK_NB_TX_DESC_VIRTIO;
 	      /*
-	       * Enable use of RX interrupts if supported.
-	       *
-	       * There is no device flag or capability for this, so
-	       * use the same check that the virtio driver does.
+	       *As in DPDK 21.11 there is no way to know if the port rx queue
+	       *interrupt is supported, blindly guess yes here. The field will
+	       *be disabled if the configuration is failed later.
+	       *TODO: add port rx queue feature check when DPDK supports it
 	       */
-	      if (pci_dev && rte_intr_cap_multiple (&pci_dev->intr_handle))
-		xd->port_conf.intr_conf.rxq = 1;
+	      xd->port_conf.intr_conf.rxq = 1;
 	      break;
 
 	      /* vmxnet3 */
@@ -791,7 +788,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	}
 
       /*Set port rxmode config */
-      xd->port_conf.rxmode.max_rx_pkt_len = max_rx_frame;
+      xd->port_conf.rxmode.mtu = max_rx_frame;
 
       sw = vnet_get_hw_sw_interface (dm->vnet_main, xd->hw_if_index);
       xd->sw_if_index = sw->sw_if_index;
@@ -935,15 +932,15 @@ dpdk_lib_init (dpdk_main_t * dm)
           }
 
         if (hi)
-          hi->max_packet_bytes = xd->port_conf.rxmode.max_rx_pkt_len
-            - sizeof (ethernet_header_t);
-        else
-          dpdk_log_warn ("hi NULL");
+	  hi->max_packet_bytes =
+	    xd->port_conf.rxmode.mtu - sizeof (ethernet_header_t);
+	else
+	  dpdk_log_warn ("hi NULL");
 
-        if (dm->conf->no_multi_seg)
-          mtu = mtu > ETHER_MAX_LEN ? ETHER_MAX_LEN : mtu;
+	if (dm->conf->no_multi_seg)
+	  mtu = mtu > ETHER_MAX_LEN ? ETHER_MAX_LEN : mtu;
 
-        rte_eth_dev_set_mtu (xd->port_id, mtu);
+	rte_eth_dev_set_mtu (xd->port_id, mtu);
 }
 
   /* *INDENT-ON* */
