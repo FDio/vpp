@@ -92,11 +92,21 @@ dpdk_device_setup (dpdk_device_t * xd)
 
   rv = rte_eth_dev_configure (xd->port_id, xd->rx_q_used,
 			      xd->tx_q_used, &xd->port_conf);
-
+  /*
+   *As rxq interrupt was blindly enabled,
+   *it is possible the port queue does not support this feature,
+   *in case of queue configuration failed, drop the rxq interrupt and try again
+   */
   if (rv < 0)
     {
-      dpdk_device_error (xd, "rte_eth_dev_configure", rv);
-      goto error;
+      xd->port_conf.intr_conf.rxq = 0;
+      rv = rte_eth_dev_configure (xd->port_id, xd->rx_q_used, xd->tx_q_used,
+				  &xd->port_conf);
+      if (rv < 0)
+	{
+	  dpdk_device_error (xd, "rte_eth_dev_configure", rv);
+	  goto error;
+	}
     }
 
   vec_validate_aligned (xd->tx_queues, xd->tx_q_used - 1,
