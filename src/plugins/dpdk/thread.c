@@ -73,7 +73,9 @@ dpdk_thread_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (dpdk_thread_init);
+VLIB_INIT_FUNCTION (dpdk_thread_init) = {
+  .runs_before = VLIB_INITS ("threads_init"),
+};
 
 /** @endcond */
 /*

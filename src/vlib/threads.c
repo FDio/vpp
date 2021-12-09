@@ -227,7 +227,7 @@ vlib_thread_init (vlib_main_t * vm)
     {
       tm->cb.vlib_thread_set_lcore_cb (0, tm->main_lcore);
     }
-  else
+  else if (!tm->no_pinning)
     {
       cpu_set_t cpuset;
       CPU_ZERO (&cpuset);
@@ -1182,6 +1182,8 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 
 	  tr->count = count;
 	}
+      else if (unformat (input, "no-pinning"))
+	tm->no_pinning = 1;
       else
 	break;
     }
@@ -1624,14 +1626,30 @@ vlib_rpc_call_main_thread (void *callback, u8 * args, u32 arg_size)
     clib_warning ("BUG: rpc_call_main_thread_cb_fn NULL!");
 }
 
+/* Here is the catch: we need to detect whether threads are managed (ie
+ * created and pinned) outside of vlib, eg. by DPDK. However, when the cpu
+ * config section is processed (in cpu_config() above), the dpdk plugin init
+ * functions are not called yet, hence we cannot detect it.
+ * This init function should execute *after* dpdk_thread_init which sets the
+ * external thread manager, so we can fail here if we detect config
+ * inconsistencies */
 clib_error_t *
 threads_init (vlib_main_t * vm)
 {
+  const vlib_thread_main_t *tm = vlib_get_thread_main ();
+
+  if (tm->no_pinning)
+    {
+      if (tm->n_vlib_mains > 1 || tm->extern_thread_mgmt)
+	return clib_error_return (
+	  0, "No pinning not compatible with current configuration");
+      clib_warning ("No pinning requested, your performance may vary");
+    }
+
   return 0;
 }
 
 VLIB_INIT_FUNCTION (threads_init);
-
 
 static clib_error_t *
 show_clock_command_fn (vlib_main_t * vm,
