@@ -2080,6 +2080,8 @@ format_dns_cache (u8 * s, va_list * args)
 	    }
 	  vec_add1 (s, '\n');
 	}
+
+      dns_cache_unlock (dm);
       return s;
     }
 
