@@ -39,7 +39,6 @@
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 #include <rte_version.h>
-#include <rte_sched.h>
 #include <rte_net.h>
 #include <rte_bus_pci.h>
 #include <rte_flow.h>
