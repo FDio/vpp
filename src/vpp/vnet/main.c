@@ -115,6 +115,7 @@ main (int argc, char *argv[])
   int main_core = 1;
   cpu_set_t cpuset;
   void *main_heap;
+  int no_pinning = 1;
 
 #if __x86_64__
   CLIB_UNUSED (const char *msg)
@@ -265,7 +266,10 @@ main (int argc, char *argv[])
 	      errno = 0;
 	      unsigned long x = strtol (argv[++i], 0, 0);
 	      if (errno == 0)
-		main_core = x;
+		{
+		  no_pinning = 0;
+		  main_core = x;
+		}
 	    }
 	}
     }
@@ -316,9 +320,12 @@ defaulted:
   unformat_free (&input);
 
   /* set process affinity for main thread */
-  CPU_ZERO (&cpuset);
-  CPU_SET (main_core, &cpuset);
-  pthread_setaffinity_np (pthread_self (), sizeof (cpu_set_t), &cpuset);
+  if (!no_pinning)
+    {
+      CPU_ZERO (&cpuset);
+      CPU_SET (main_core, &cpuset);
+      pthread_setaffinity_np (pthread_self (), sizeof (cpu_set_t), &cpuset);
+    }
 
   /* Set up the plugin message ID allocator right now... */
   vl_msg_api_set_first_available_msg_id (VL_MSG_MEMCLNT_LAST + 1);
