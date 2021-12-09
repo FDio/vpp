@@ -175,7 +175,6 @@ vlib_thread_init (vlib_main_t * vm)
   vlib_thread_main_t *tm = &vlib_thread_main;
   vlib_worker_thread_t *w;
   vlib_thread_registration_t *tr;
-  cpu_set_t cpuset;
   u32 n_vlib_mains = 1;
   u32 first_index = 1;
   u32 i;
@@ -229,9 +228,13 @@ vlib_thread_init (vlib_main_t * vm)
     tm->cpu_socket_bitmap = clib_bitmap_set (0, 0, 1);
 
   /* pin main thread to main_lcore  */
-  CPU_ZERO (&cpuset);
-  CPU_SET (tm->main_lcore, &cpuset);
-  pthread_setaffinity_np (pthread_self (), sizeof (cpu_set_t), &cpuset);
+  if (!tm->no_pinning)
+    {
+      cpu_set_t cpuset;
+      CPU_ZERO (&cpuset);
+      CPU_SET (tm->main_lcore, &cpuset);
+      pthread_setaffinity_np (pthread_self (), sizeof (cpu_set_t), &cpuset);
+    }
 
   /* Set up thread 0 */
   vec_validate_aligned (vlib_worker_threads, 0, CLIB_CACHE_LINE_BYTES);
@@ -1108,7 +1111,7 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
   tm->sched_policy = ~0;
   tm->sched_priority = ~0;
   tm->main_lcore = ~0;
-
+  tm->no_pinning = 1;
   tr = tm->next;
 
   while (tr)
@@ -1124,7 +1127,7 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "thread-prefix %v", &tm->thread_prefix))
 	;
       else if (unformat (input, "main-core %u", &tm->main_lcore))
-	;
+	tm->no_pinning = 0;
       else if (unformat (input, "skip-cores %u", &tm->skip_cores))
 	;
       else if (unformat (input, "numa-heap-size %U",
@@ -1152,6 +1155,7 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 
 	  tr->coremask = bitmap;
 	  tr->count = clib_bitmap_count_set_bits (tr->coremask);
+	  tm->no_pinning = 0;
 	}
       else
 	if (unformat
@@ -1649,14 +1653,30 @@ vlib_rpc_call_main_thread (void *callback, u8 * args, u32 arg_size)
     clib_warning ("BUG: rpc_call_main_thread_cb_fn NULL!");
 }
 
+/* Here is the catch: we need to detect whether threads are managed (ie
+ * created and pinned) outside of vlib, eg. by DPDK. However, when the cpu
+ * config section is processed (in cpu_config() above), the dpdk plugin init
+ * functions are not called yet, hence we cannot detect it.
+ * This init function should execute *after* dpdk_thread_init which sets the
+ * external thread manager, so we can fail here if we detect config
+ * inconsistencies */
 clib_error_t *
 threads_init (vlib_main_t * vm)
 {
+  const vlib_thread_main_t *tm = vlib_get_thread_main ();
+
+  if (tm->no_pinning)
+    {
+      if (tm->n_vlib_mains > 1)
+	return clib_error_return (
+	  0, "No pinning not compatible with current configuration");
+      clib_warning ("No pinning requested, your performance may vary");
+    }
+
   return 0;
 }
 
 VLIB_INIT_FUNCTION (threads_init);
-
 
 static clib_error_t *
 show_clock_command_fn (vlib_main_t * vm,
