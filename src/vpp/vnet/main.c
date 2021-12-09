@@ -112,7 +112,7 @@ main (int argc, char *argv[])
   clib_mem_page_sz_t default_log2_hugepage_sz = CLIB_MEM_PAGE_SZ_UNKNOWN;
   unformat_input_t input, sub_input;
   u8 *s = 0, *v = 0;
-  int main_core = 1;
+  int main_core = ~0;
   cpu_set_t cpuset;
   void *main_heap;
 
@@ -316,9 +316,12 @@ defaulted:
   unformat_free (&input);
 
   /* set process affinity for main thread */
-  CPU_ZERO (&cpuset);
-  CPU_SET (main_core, &cpuset);
-  pthread_setaffinity_np (pthread_self (), sizeof (cpu_set_t), &cpuset);
+  if (main_core != ~0)
+    {
+      CPU_ZERO (&cpuset);
+      CPU_SET (main_core, &cpuset);
+      pthread_setaffinity_np (pthread_self (), sizeof (cpu_set_t), &cpuset);
+    }
 
   /* Set up the plugin message ID allocator right now... */
   vl_msg_api_set_first_available_msg_id (VL_MSG_MEMCLNT_LAST + 1);
