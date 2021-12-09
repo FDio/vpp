@@ -304,6 +304,10 @@ typedef struct
   /* NUMA-bound heap size */
   uword numa_heap_size;
 
+  /* do not pin threads to cpu cores, let the scheduler decide (only valid for
+   * single threaded mode) */
+  int no_pinning;
+
 } vlib_thread_main_t;
 
 extern vlib_thread_main_t vlib_thread_main;
