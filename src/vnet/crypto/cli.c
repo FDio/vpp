@@ -324,11 +324,6 @@ show_crypto_async_status_command_fn (vlib_main_t * vm,
   if (unformat_user (input, unformat_line_input, line_input))
     unformat_free (line_input);
 
-  vlib_cli_output (vm, "Crypto async dispatch mode: %s",
-		   cm->dispatch_mode ==
-		   VNET_CRYPTO_ASYNC_DISPATCH_POLLING ? "POLLING" :
-		   "INTERRUPT");
-
   for (i = skip_master; i < tm->n_vlib_mains; i++)
     {
       vlib_node_state_t state = vlib_node_get_state (
@@ -432,50 +427,6 @@ VLIB_CLI_COMMAND (set_crypto_async_handler_command, static) =
   .path = "set crypto async handler",
   .short_help = "set crypto async handler type [type2 type3 ...] engine",
   .function = set_crypto_async_handler_command_fn,
-};
-/* *INDENT-ON* */
-
-static inline void
-print_crypto_async_dispatch_warning ()
-{
-  clib_warning ("Switching dispatch mode might not work is some situations.");
-  clib_warning
-    ("Use 'show crypto async status' to verify that the nodes' states were set");
-  clib_warning ("and if not, set 'crypto async dispatch' mode again.");
-}
-
-static clib_error_t *
-set_crypto_async_dispatch_polling_command_fn (vlib_main_t * vm,
-					      unformat_input_t * input,
-					      vlib_cli_command_t * cmd)
-{
-  print_crypto_async_dispatch_warning ();
-  vnet_crypto_set_async_dispatch_mode (VNET_CRYPTO_ASYNC_DISPATCH_POLLING);
-  return 0;
-}
-
-static clib_error_t *
-set_crypto_async_dispatch_interrupt_command_fn (vlib_main_t * vm,
-						unformat_input_t * input,
-						vlib_cli_command_t * cmd)
-{
-  print_crypto_async_dispatch_warning ();
-  vnet_crypto_set_async_dispatch_mode (VNET_CRYPTO_ASYNC_DISPATCH_INTERRUPT);
-  return 0;
-}
-
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (set_crypto_async_dispatch_polling_command, static) =
-{
-  .path = "set crypto async dispatch polling",
-  .short_help = "set crypto async dispatch polling|interrupt",
-  .function = set_crypto_async_dispatch_polling_command_fn,
-};
-VLIB_CLI_COMMAND (set_crypto_async_dispatch_interrupt_command, static) =
-{
-  .path = "set crypto async dispatch interrupt",
-  .short_help = "set crypto async dispatch polling|interrupt",
-  .function = set_crypto_async_dispatch_interrupt_command_fn,
 };
 /*
  * fd.io coding-style-patch-verification: ON
