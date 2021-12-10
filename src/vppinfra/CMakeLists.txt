@@ -250,7 +250,6 @@ if(VPP_BUILD_VPPINFRA_TESTS)
     random_isaac
     rwlock
     serialize
-    socket
     spinlock
     time
     time_range
