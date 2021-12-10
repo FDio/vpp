@@ -15,30 +15,11 @@
 
 option version = "1.0.1";
 
-enum crypto_dispatch_mode:u8
-{
-  CRYPTO_ASYNC_DISPATCH_POLLING = 0,
-  CRYPTO_ASYNC_DISPATCH_INTERRUPT = 1,
-};
-
 enum crypto_op_class_type:u8
 {
   CRYPTO_API_OP_SIMPLE = 0,
   CRYPTO_API_OP_CHAINED,
   CRYPTO_API_OP_BOTH,
-};
-
- /** \brief crypto: use polling or interrupt dispatch
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param mode - dispatch mode
-*/
-
-autoreply define crypto_set_async_dispatch
-{
-  u32 client_index;
-  u32 context;
-  vl_api_crypto_dispatch_mode_t mode;
 };
 
  /** \brief crypto: set crypto handler
