@@ -61,12 +61,13 @@ static u8 fn_name[] = "SRv6-End.M.GTP6.D-plugin";
 static u8 keyword_str[] = "end.m.gtp6.d";
 static u8 def_str[] =
   "Endpoint function with dencapsulation for IPv6/GTP tunnel";
-static u8 param_str[] = "<sr-prefix>/<sr-prefixlen> [nhtype <nhtype>]";
+static u8 param_str[] =
+  "<sr-prefix>/<sr-prefixlen> [nhtype <nhtype>] fib-table <id>";
 
 static u8 *
 clb_format_srv6_end_m_gtp6_d (u8 * s, va_list * args)
 {
-  srv6_end_gtp6_param_t *ls_mem = va_arg (*args, void *);
+  srv6_end_gtp6_d_param_t *ls_mem = va_arg (*args, void *);
 
   s = format (s, "SRv6 End gtp6.d\n\t");
 
@@ -77,16 +78,18 @@ clb_format_srv6_end_m_gtp6_d (u8 * s, va_list * args)
   if (ls_mem->nhtype != SRV6_NHTYPE_NONE)
     {
       if (ls_mem->nhtype == SRV6_NHTYPE_IPV4)
-	s = format (s, ", NHType IPv4\n");
+	s = format (s, ", NHType IPv4");
       else if (ls_mem->nhtype == SRV6_NHTYPE_IPV6)
-	s = format (s, ", NHType IPv6\n");
+	s = format (s, ", NHType IPv6");
       else if (ls_mem->nhtype == SRV6_NHTYPE_NON_IP)
-	s = format (s, ", NHType Non-IP\n");
+	s = format (s, ", NHType Non-IP");
       else
-	s = format (s, ", NHType Unknow(%d)\n", ls_mem->nhtype);
+	s = format (s, ", NHType Unknow(%d)", ls_mem->nhtype);
     }
-  else
-    s = format (s, "\n");
+
+  s = format (s, " FIB table %d", ls_mem->fib_table);
+
+  s = format (s, " Drop In %d", ls_mem->drop_in);
 
   return s;
 }
@@ -95,32 +98,54 @@ static uword
 clb_unformat_srv6_end_m_gtp6_d (unformat_input_t * input, va_list * args)
 {
   void **plugin_mem_p = va_arg (*args, void **);
-  srv6_end_gtp6_param_t *ls_mem;
+  srv6_end_gtp6_d_param_t *ls_mem;
   ip6_address_t sr_prefix;
   u32 sr_prefixlen;
-  u8 nhtype;
+  u8 nhtype = SRV6_NHTYPE_NONE;
+  bool drop_in = false;
+  bool config = false;
+  u32 fib_table = 0;
 
-  if (unformat (input, "end.m.gtp6.d %U/%d nh-type ipv4",
-		unformat_ip6_address, &sr_prefix, &sr_prefixlen))
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      nhtype = SRV6_NHTYPE_IPV4;
+      if (unformat (input, "end.m.gtp6.d %U/%d nh-type ipv4 fib-table %d",
+		    unformat_ip6_address, &sr_prefix, &sr_prefixlen,
+		    &fib_table))
+	{
+	  config = true;
+	  nhtype = SRV6_NHTYPE_IPV4;
+	}
+      else if (unformat (input, "end.m.gtp6.d %U/%d nh-type ipv6 fib-table %d",
+			 unformat_ip6_address, &sr_prefix, &sr_prefixlen,
+			 &fib_table))
+	{
+	  config = true;
+	  nhtype = SRV6_NHTYPE_IPV6;
+	}
+      else if (unformat (input, "end.m.gtp6.d %U/%d nh-type none",
+			 unformat_ip6_address, &sr_prefix, &sr_prefixlen))
+	{
+	  config = true;
+	  nhtype = SRV6_NHTYPE_NON_IP;
+	}
+      else if (unformat (input, "end.m.gtp6.d %U/%d fib-table %d",
+			 unformat_ip6_address, &sr_prefix, &sr_prefixlen,
+			 &fib_table))
+	{
+	  config = true;
+	  nhtype = SRV6_NHTYPE_NONE;
+	}
+      else if (unformat (input, "drop-in"))
+	{
+	  drop_in = true;
+	}
+      else
+	{
+	  return 0;
+	}
     }
-  else if (unformat (input, "end.m.gtp6.d %U/%d nh-type ipv6",
-		     unformat_ip6_address, &sr_prefix, &sr_prefixlen))
-    {
-      nhtype = SRV6_NHTYPE_IPV6;
-    }
-  else if (unformat (input, "end.m.gtp6.d %U/%d nh-type none",
-		     unformat_ip6_address, &sr_prefix, &sr_prefixlen))
-    {
-      nhtype = SRV6_NHTYPE_NON_IP;
-    }
-  else if (unformat (input, "end.m.gtp6.d %U/%d",
-		     unformat_ip6_address, &sr_prefix, &sr_prefixlen))
-    {
-      nhtype = SRV6_NHTYPE_NONE;
-    }
-  else
+
+  if (!config)
     {
       return 0;
     }
@@ -134,6 +159,12 @@ clb_unformat_srv6_end_m_gtp6_d (unformat_input_t * input, va_list * args)
 
   ls_mem->nhtype = nhtype;
 
+  ls_mem->drop_in = drop_in;
+
+  ls_mem->fib_table = fib_table;
+  ls_mem->fib4_index = ip4_fib_index_from_table_id (fib_table);
+  ls_mem->fib6_index = ip6_fib_index_from_table_id (fib_table);
+
   return 1;
 }
 
@@ -144,11 +175,29 @@ clb_creation_srv6_end_m_gtp6_d (ip6_sr_localsid_t * localsid)
 }
 
 static int
+clb_creation_srv6_end_m_gtp6_d_2 (ip6_sr_policy_t *sr_policy)
+{
+  return 0;
+}
+
+static int
 clb_removal_srv6_end_m_gtp6_d (ip6_sr_localsid_t * localsid)
 {
-  srv6_end_gtp6_param_t *ls_mem;
+  srv6_end_gtp6_d_param_t *ls_mem;
 
   ls_mem = localsid->plugin_mem;
+
+  clib_mem_free (ls_mem);
+
+  return 0;
+}
+
+static int
+clb_removal_srv6_end_m_gtp6_d_2 (ip6_sr_policy_t *sr_policy)
+{
+  srv6_end_gtp6_d_param_t *ls_mem;
+
+  ls_mem = sr_policy->plugin_mem;
 
   clib_mem_free (ls_mem);
 
@@ -193,6 +242,15 @@ srv6_end_m_gtp6_d_init (vlib_main_t * vm)
   if (rc < 0)
     clib_error_return (0, "SRv6 Endpoint GTP6.D LocalSID function"
 		       "couldn't be registered");
+
+  rc = sr_policy_register_function (
+    vm, fn_name, keyword_str, def_str, param_str, 128, // prefix len
+    &dpo_type, clb_format_srv6_end_m_gtp6_d, clb_unformat_srv6_end_m_gtp6_d,
+    clb_creation_srv6_end_m_gtp6_d_2, clb_removal_srv6_end_m_gtp6_d_2);
+  if (rc < 0)
+    clib_error_return (0, "SRv6 GTP6.D Steering function"
+			  "couldn't be registered");
+
   return 0;
 }
 
