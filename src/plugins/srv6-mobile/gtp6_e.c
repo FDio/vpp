@@ -66,15 +66,34 @@ static u8 param_str[] = "";
 static u8 *
 clb_format_srv6_end_m_gtp6_e (u8 * s, va_list * args)
 {
-  s = format (s, "SRv6 End format function unsupported.");
+  srv6_end_gtp6_e_param_t *ls_mem = va_arg (*args, void *);
+  ;
+
+  s = format (s, "SRv6 End.M.GTP6.E function.");
+
+  s = format (s, "\tFib Table %d\n", ls_mem->fib_table);
+
   return s;
 }
 
 static uword
 clb_unformat_srv6_end_m_gtp6_e (unformat_input_t * input, va_list * args)
 {
-  if (!unformat (input, "end.m.gtp6.e"))
+  void **plugin_mem_p = va_arg (*args, void **);
+  srv6_end_gtp6_e_param_t *ls_mem;
+  u32 fib_table;
+
+  if (!unformat (input, "end.m.gtp6.e fib-table %d", &fib_table))
     return 0;
+
+  ls_mem = clib_mem_alloc_aligned_at_offset (sizeof *ls_mem, 0, 0, 1);
+  clib_memset (ls_mem, 0, sizeof *ls_mem);
+  *plugin_mem_p = ls_mem;
+
+  ls_mem->fib_table = fib_table;
+  ls_mem->fib4_index = ip4_fib_index_from_table_id (fib_table);
+  ls_mem->fib6_index = ip6_fib_index_from_table_id (fib_table);
+
   return 1;
 }
 
@@ -87,6 +106,12 @@ clb_creation_srv6_end_m_gtp6_e (ip6_sr_localsid_t * localsid)
 static int
 clb_removal_srv6_end_m_gtp6_e (ip6_sr_localsid_t * localsid)
 {
+  srv6_end_gtp6_e_param_t *ls_mem;
+
+  ls_mem = localsid->plugin_mem;
+
+  clib_mem_free (ls_mem);
+
   return 0;
 }
 
