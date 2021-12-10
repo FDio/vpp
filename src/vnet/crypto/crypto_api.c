@@ -38,19 +38,6 @@ static u32 crypto_base_msg_id;
 #define REPLY_MSG_ID_BASE crypto_base_msg_id
 
 #include <vlibapi/api_helper_macros.h>
-
-static void
-vl_api_crypto_set_async_dispatch_t_handler (vl_api_crypto_set_async_dispatch_t
-					    * mp)
-{
-  vl_api_crypto_set_async_dispatch_reply_t *rmp;
-  int rv = 0;
-
-  vnet_crypto_set_async_dispatch_mode ((u8) mp->mode);
-
-  REPLY_MACRO (VL_API_CRYPTO_SET_ASYNC_DISPATCH_REPLY);
-}
-
 static void
 vl_api_crypto_set_handler_t_handler (vl_api_crypto_set_handler_t * mp)
 {

@@ -254,7 +254,6 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
     {
       if (ipsec_sa_is_set_IS_ASYNC (sa))
 	{
-	  vnet_crypto_request_async_mode (1);
 	  sa->crypto_op_data = sa->async_op_data.data;
 	}
       else
@@ -350,8 +349,6 @@ ipsec_sa_del (ipsec_sa_t * sa)
   /* no recovery possible when deleting an SA */
   (void) ipsec_call_add_del_callbacks (im, sa, sa_index, 0);
 
-  if (ipsec_sa_is_set_IS_ASYNC (sa))
-    vnet_crypto_request_async_mode (0);
   if (ipsec_sa_is_set_UDP_ENCAP (sa) && ipsec_sa_is_set_IS_INBOUND (sa))
     ipsec_unregister_udp_port (clib_net_to_host_u16 (sa->udp_hdr.dst_port));
 
