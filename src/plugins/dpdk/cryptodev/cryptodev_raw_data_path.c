@@ -511,8 +511,7 @@ cryptodev_raw_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
 	}
     }
 
-  if (cm->dispatch_mode == VNET_CRYPTO_ASYNC_DISPATCH_INTERRUPT &&
-      inflight > 0)
+  if (inflight > 0)
     vlib_node_set_interrupt_pending (vlib_get_main_by_index (vm->thread_index),
 				     cm->crypto_node_index);
 
