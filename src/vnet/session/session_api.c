@@ -1811,7 +1811,7 @@ appns_sapi_add_ns_socket (app_namespace_t * app_ns)
     {
       if (!app_ns->sock_name)
 	app_ns->sock_name = format (0, "@vpp/session/%v%c", app_ns->ns_id, 0);
-      if (app_ns->sock_name[0] != '@')
+      if (!clib_socket_name_is_abstract (app_ns->sock_name))
 	return VNET_API_ERROR_INVALID_VALUE;
     }
   else

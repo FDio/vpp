@@ -35,97 +35,94 @@
   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+#include <vlib/vlib.h>
 #include <vppinfra/format.h>
 #include <vppinfra/socket.h>
 
-static int verbose;
-#define if_verbose(format,args...) \
-  if (verbose) { clib_warning(format, ## args); }
-
-int
-test_socket_main (unformat_input_t * input)
+typedef struct test_clib_socket_example_msg_t_
 {
-  clib_socket_t _s = { 0 }, *s = &_s;
-  char *config;
-  clib_error_t *error;
+  char b;
+  int a;
+} test_clib_socket_example_msg_t;
 
-  s->config = "localhost:22";
-  s->flags = CLIB_SOCKET_F_IS_CLIENT;
+static clib_error_t *
+test_clib_socket_fn (vlib_main_t *vm, unformat_input_t *input,
+		     vlib_cli_command_t *cmd)
+{
+  clib_socket_t _srv = { 0 }, *srv = &_srv;
+  clib_socket_t _cli = { 0 }, *cli = &_cli;
+  clib_socket_t _srv2 = { 0 }, *srv2 = &_srv2;
+  clib_error_t *err = 0;
+
+  srv->flags = CLIB_SOCKET_F_IS_SERVER;
+  cli->flags = CLIB_SOCKET_F_IS_CLIENT;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "server %s %=", &config,
-		    &s->flags, CLIB_SOCKET_F_IS_SERVER))
-	;
-      else if (unformat (input, "client %s %=", &config,
-			 &s->flags, CLIB_SOCKET_F_IS_CLIENT))
-	;
+      if (unformat (input, "config %s", &srv->config))
+	cli->config = srv->config;
       else
 	{
-	  error = clib_error_create ("unknown input `%U'\n",
-				     format_unformat_error, input);
+	  err = clib_error_create ("unknown input `%U'\n",
+				   format_unformat_error, input);
 	  goto done;
 	}
     }
 
-  error = clib_socket_init (s);
-  if (error)
-    goto done;
-
-  if (0)
+  if (!srv->config)
     {
-      struct
-      {
-	int a, b;
-      } *msg;
-      msg = clib_socket_tx_add (s, sizeof (msg[0]));
-      msg->a = 99;
-      msg->b = 100;
-    }
-  else
-    clib_socket_tx_add_formatted (s, "hello there mr server %d\n", 99);
-
-  error = clib_socket_tx (s);
-  if (error)
-    goto done;
-
-  while (1)
-    {
-      error = clib_socket_rx (s, 100);
-      if (error)
-	break;
-
-      if (clib_socket_rx_end_of_file (s))
-	break;
-
-      if_verbose ("%v", s->rx_buffer);
-      _vec_len (s->rx_buffer) = 0;
+      err = clib_error_create ("Missing socket name");
+      goto done;
     }
 
-  error = clib_socket_close (s);
+  if ((err = clib_socket_init (srv)))
+    goto done;
 
+  if ((err = clib_socket_init (cli)))
+    goto done;
+
+  if ((err = clib_socket_accept (srv, srv2)))
+    goto done;
+
+  test_clib_socket_example_msg_t srv_msg;
+  test_clib_socket_example_msg_t cli_msg;
+
+  srv_msg.a = 54321;
+  srv_msg.b = 'f';
+
+  if ((err = clib_socket_sendmsg (srv2, &srv_msg, sizeof (srv_msg), 0, 0)))
+    goto done;
+
+  if ((err = clib_socket_recvmsg (cli, &cli_msg, sizeof (cli_msg), 0, 0)))
+    goto done;
+
+  if (cli_msg.a != 54321 || cli_msg.b != 'f')
+    {
+      err = clib_error_create ("socket message mismatch");
+      goto done;
+    }
+
+  if ((err = clib_socket_close (srv2)))
+    goto done;
+
+  if ((err = clib_socket_close (cli)))
+    goto done;
+
+  if ((err = clib_socket_close (srv)))
+    goto done;
+
+  fprintf (stderr, "PASS test_socket %s", srv->config);
 done:
-  if (error)
-    clib_error_report (error);
-  return 0;
+  return err;
 }
-
 #ifdef CLIB_UNIX
-int
-main (int argc, char *argv[])
-{
-  unformat_input_t i;
-  int r;
-
-  clib_mem_init (0, 64ULL << 20);
-
-  verbose = (argc > 1);
-  unformat_init_command_line (&i, argv);
-  r = test_socket_main (&i);
-  unformat_free (&i);
-  return r;
-}
 #endif
+
+VLIB_CLI_COMMAND (test_clib_socket_command, static) = {
+  .path = "test clib socket",
+  .short_help = "test clib socket",
+  .function = test_clib_socket_fn,
+};
 
 /*
  * fd.io coding-style-patch-verification: ON

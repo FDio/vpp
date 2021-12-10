@@ -96,8 +96,8 @@ find_free_port (word sock)
 /* Convert a config string to a struct sockaddr and length for use
    with bind or connect. */
 static clib_error_t *
-socket_config (char *config,
-	       void *addr, socklen_t * addr_len, u32 ip4_default_address)
+socket_config (const char *config, void *addr, socklen_t *addr_len,
+	       u32 ip4_default_address)
 {
   clib_error_t *error = 0;
 
@@ -115,7 +115,7 @@ socket_config (char *config,
     }
 
   /* Treat everything that starts with @ as an abstract socket. */
-  else if (config[0] == '@')
+  else if (clib_socket_name_is_abstract ((u8 *) config))
     {
       struct sockaddr_un *su = addr;
       su->sun_family = PF_LOCAL;
