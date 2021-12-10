@@ -1806,13 +1806,17 @@ appns_sapi_add_ns_socket (app_namespace_t * app_ns)
   clib_error_t *err;
   clib_socket_t *cs;
   char dir[4096];
+  char *cs_config = 0;
 
   if (app_ns->netns)
     {
       if (!app_ns->sock_name)
 	app_ns->sock_name = format (0, "@vpp/session/%v%c", app_ns->ns_id, 0);
-      if (app_ns->sock_name[0] != '@')
+      if (!clib_socket_name_is_abstract (app_ns->sock_name))
 	return VNET_API_ERROR_INVALID_VALUE;
+
+      cs_config =
+	(char *) format (0, "@netns:%s%s", app_ns->netns, app_ns->sock_name);
     }
   else
     {
@@ -1827,18 +1831,20 @@ appns_sapi_add_ns_socket (app_namespace_t * app_ns)
 
       if (!app_ns->sock_name)
 	app_ns->sock_name = format (0, "%s%v%c", dir, app_ns->ns_id, 0);
+
+      cs_config = (char *) vec_dup (app_ns->sock_name);
     }
 
   /*
    * Create and initialize socket to listen on
    */
   cs = appns_sapi_alloc_socket (app_ns);
-  cs->config = (char *) vec_dup (app_ns->sock_name);
+  cs->config = cs_config;
   cs->flags = CLIB_SOCKET_F_IS_SERVER |
     CLIB_SOCKET_F_ALLOW_GROUP_WRITE |
     CLIB_SOCKET_F_SEQPACKET | CLIB_SOCKET_F_PASSCRED;
 
-  if ((err = clib_socket_init_netns (cs, app_ns->netns)))
+  if ((err = clib_socket_init (cs)))
     {
       clib_error_report (err);
       return -1;

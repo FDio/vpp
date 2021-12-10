@@ -93,8 +93,6 @@ typedef struct _socket_t
    from IPPORT_USERRESERVED (5000). */
 clib_error_t *clib_socket_init (clib_socket_t * socket);
 
-clib_error_t *clib_socket_init_netns (clib_socket_t *socket, u8 *namespace);
-
 clib_error_t *clib_socket_accept (clib_socket_t * server,
 				  clib_socket_t * client);
 
@@ -116,6 +114,12 @@ clib_socket_is_connected (clib_socket_t * sock)
   return sock->fd > 0;
 }
 
+always_inline int
+clib_socket_name_is_abstract (const u8 *name)
+{
+  /* Treat everything that starts with @ as an abstract socket. */
+  return (name[0] == '@');
+}
 
 always_inline int
 clib_socket_rx_end_of_file (clib_socket_t * s)
