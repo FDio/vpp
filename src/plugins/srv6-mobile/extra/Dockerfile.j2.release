@@ -15,6 +15,7 @@ RUN set -eux; \
     net-tools \
     iproute2 \
     tcpdump \
+    python3-cffi \
     python2.7 \
     libssl-dev \
     netcat; \
