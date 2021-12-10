@@ -442,6 +442,15 @@ struct vlib_main_t;
 
 typedef struct
 {
+  u32 available_buffers;
+  u32 cached_buffers;
+  u32 used_buffers;
+} buffers_stats_t;
+
+void get_buffers_stats (buffers_stats_t *bs, u32 index);
+
+typedef struct
+{
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u32 cached_buffers[VLIB_BUFFER_POOL_PER_THREAD_CACHE_SZ];
   u32 n_cached;
