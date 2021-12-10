@@ -411,6 +411,9 @@ tcp_configure_v4_source_address_range (vlib_main_t * vm,
     return VNET_API_ERROR_NEXT_HOP_NOT_IN_FIB;
 
   sw_if_index = fib_entry_get_resolving_interface (fei);
+  if (sw_if_index == (u32) ~ 0)
+    return VNET_API_ERROR_NO_MATCHING_INTERFACE;
+
 
   /* Configure proxy arp across the range */
   rv = ip4_neighbor_proxy_add (fib_index, start, end);
