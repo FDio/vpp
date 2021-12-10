@@ -20,6 +20,8 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
+#include <vnet/fib/ip4_fib.h>
+#include <vnet/fib/ip6_fib.h>
 #include <vnet/srv6/sr.h>
 #include <vnet/srv6/sr_packet.h>
 
@@ -174,14 +176,24 @@ typedef struct
 
 #define USER_PLANE_SUB_TLV_IE	0x01
 
-typedef struct srv6_end_gtp6_param_s
+/* SRv6 mobile Plugin Params */
+
+/* GTP6.D, GTP6.Di */
+typedef struct srv6_end_gtp6_d_param_s
 {
   u8 nhtype;
 
   ip6_address_t sr_prefix;
   u32 sr_prefixlen;
-} srv6_end_gtp6_param_t;
 
+  bool drop_in;
+
+  u32 fib_table;
+  u32 fib4_index;
+  u32 fib6_index;
+} srv6_end_gtp6_d_param_t;
+
+/* GTP6.DT */
 typedef struct srv6_end_gtp6_dt_param_s
 {
   u8 type;
@@ -191,6 +203,15 @@ typedef struct srv6_end_gtp6_dt_param_s
   u32 local_fib_index;
 } srv6_end_gtp6_dt_param_t;
 
+/* GTP6.E */
+typedef struct srv6_end_gtp6_e_param_s
+{
+  u32 fib_table;
+  u32 fib4_index;
+  u32 fib6_index;
+} srv6_end_gtp6_e_param_t;
+
+/* GTP4.DT */
 typedef struct srv6_t_gtp4_dt_param_s
 {
   u8 type;
@@ -200,7 +221,19 @@ typedef struct srv6_t_gtp4_dt_param_s
   u32 local_fib_index;
 } srv6_t_gtp4_dt_param_t;
 
-typedef struct srv6_end_gtp4_param_s
+/* GTP4.E */
+typedef struct srv6_end_gtp4_e_param_s
+{
+  u32 v4src_position;
+  ip4_address_t v4src_addr;
+
+  u32 fib_table;
+  u32 fib4_index;
+  u32 fib6_index;
+} srv6_end_gtp4_e_param_t;
+
+/* GTP4.D */
+typedef struct srv6_end_gtp4_d_param_s
 {
   u8 nhtype;
 
@@ -210,8 +243,12 @@ typedef struct srv6_end_gtp4_param_s
   ip6_address_t v6src_prefix;
   u32 v6src_prefixlen;
 
-  u32 v4src_position;
-} srv6_end_gtp4_param_t;
+  bool drop_in;
+
+  u32 fib_table;
+  u32 fib4_index;
+  u32 fib6_index;
+} srv6_end_gtp4_d_param_t;
 
 typedef struct srv6_end_main_v4_s
 {
