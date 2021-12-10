@@ -66,7 +66,7 @@ static u8 param_str[] = "<sr-prefix>/<sr-prefixlen> [nhtype <nhtype>]";
 static u8 *
 clb_format_srv6_end_m_gtp6_d_di (u8 * s, va_list * args)
 {
-  srv6_end_gtp6_param_t *ls_mem = va_arg (*args, void *);
+  srv6_end_gtp6_d_param_t *ls_mem = va_arg (*args, void *);
 
   s = format (s, "SRv6 End gtp6.d Drop-in\n\t");
 
@@ -95,7 +95,7 @@ static uword
 clb_unformat_srv6_end_m_gtp6_d_di (unformat_input_t * input, va_list * args)
 {
   void **plugin_mem_p = va_arg (*args, void **);
-  srv6_end_gtp6_param_t *ls_mem;
+  srv6_end_gtp6_d_param_t *ls_mem;
   ip6_address_t sr_prefix;
   u32 sr_prefixlen = 0;
   u8 nhtype;
@@ -145,7 +145,7 @@ clb_creation_srv6_end_m_gtp6_d_di (ip6_sr_localsid_t * localsid)
 static int
 clb_removal_srv6_end_m_gtp6_d_di (ip6_sr_localsid_t * localsid)
 {
-  srv6_end_gtp6_param_t *ls_mem;
+  srv6_end_gtp6_d_param_t *ls_mem;
 
   ls_mem = localsid->plugin_mem;
 
