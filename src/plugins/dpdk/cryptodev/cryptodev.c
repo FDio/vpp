@@ -1196,7 +1196,6 @@ dpdk_cryptodev_init (vlib_main_t * vm)
   /* this engine is only enabled when cryptodev device(s) are presented in
    * startup.conf. Assume it is wanted to be used, turn on async mode here.
    */
-  vnet_crypto_request_async_mode (1);
   ipsec_set_async_mode (1);
 
   return 0;
