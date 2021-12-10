@@ -82,6 +82,23 @@ vpe_api_main_t vpe_api_main;
   _ (SW_INTERFACE_ADDRESS_REPLACE_END, sw_interface_address_replace_end)
 
 static void
+vl_api_get_buffers_stats_t_handler (vl_api_get_buffers_stats_t *mp)
+{
+  vl_api_get_buffers_stats_reply_t *rmp;
+
+  int rv = 0;
+  buffers_stats_t obj = { 0, 0, 0 };
+  buffers_stats_t *bs = &obj;
+  get_buffers_stats (bs, mp->buffer_index);
+
+  REPLY_MACRO2 (VL_API_GET_BUFFERS_STATS_REPLY, ({
+		  rmp->available_buffers = bs->available_buffers;
+		  rmp->cached_buffers = bs->cached_buffers;
+		  rmp->used_buffers = bs->used_buffers;
+		}));
+}
+
+static void
 vl_api_sw_interface_set_flags_t_handler (vl_api_sw_interface_set_flags_t * mp)
 {
   vl_api_sw_interface_set_flags_reply_t *rmp;

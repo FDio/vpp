@@ -47,6 +47,18 @@ typedef struct
 static interface_test_main_t interface_test_main;
 
 static int
+api_get_buffers_stats (vat_main_t *vam)
+{
+  int ret = 0;
+  return ret;
+}
+
+static void
+vl_api_get_buffers_stats_reply_t_handler (vl_api_get_buffers_stats_reply_t *mp)
+{
+}
+
+static int
 api_sw_interface_set_flags (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;

@@ -780,6 +780,20 @@ buffer_get_by_index (vlib_buffer_main_t * bm, u32 index)
   return bp;
 }
 
+void
+get_buffers_stats (buffers_stats_t *bs, u32 index)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_buffer_pool_t *bp =
+    buffer_get_by_index (vm->buffer_main, clib_net_to_host_u32 (index));
+  if (!bp)
+    return;
+  bs->available_buffers = htonl (bp->n_avail);
+  bs->cached_buffers = htonl (buffer_get_cached (bp));
+  bs->used_buffers =
+    htonl (bp->n_buffers - bp->n_avail - buffer_get_cached (bp));
+}
+
 static void
 buffer_gauges_collect_used_fn (vlib_stats_collector_data_t *d)
 {

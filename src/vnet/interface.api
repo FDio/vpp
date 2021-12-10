@@ -774,6 +774,27 @@ autoreply define pcap_trace_off
   u32 context;
 };
 
+/** \brief Get available, cached and used buffers
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param buffer_index - buffer stat index
+*/
+define get_buffers_stats
+{
+  u32 client_index;
+  u32 context;
+  u32 buffer_index;
+};
+
+define get_buffers_stats_reply
+{
+  u32 context;
+  i32 retval;
+  u32 available_buffers;
+  u32 cached_buffers;
+  u32 used_buffers;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")
