@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1c04a85c_67491df9",
+        "filename": "src/vnet/arp/arp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 873,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-12-11T18:26:27Z",
+      "side": 1,
+      "message": "Could you push this as a separate patch?",
+      "range": {
+        "startLine": 873,
+        "startChar": 32,
+        "endLine": 873,
+        "endChar": 35
+      },
+      "revId": "1cb1174fbfa516f04660ab788ce489fff13d5776",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
