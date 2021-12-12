@@ -56,7 +56,10 @@ test_funct (test_main_t *tm)
 #define TEST_PERF_MAX_EVENTS 7
 typedef struct
 {
+  char *name;
+  char *desc;
   u64 config[TEST_PERF_MAX_EVENTS];
+  u32 type;
   u8 n_events;
   format_function_t *format_fn;
 } test_perf_event_bundle_t;
@@ -96,26 +99,73 @@ format_test_perf_bundle_default (u8 *s, va_list *args)
   return s;
 }
 
-test_perf_event_bundle_t perf_bundles[] = { {
-  .config[0] = PERF_COUNT_HW_CPU_CYCLES,
-  .config[1] = PERF_COUNT_HW_INSTRUCTIONS,
-  .config[2] = PERF_COUNT_HW_BRANCH_INSTRUCTIONS,
-  .config[3] = PERF_COUNT_HW_BRANCH_MISSES,
-  .n_events = 4,
-  .format_fn = format_test_perf_bundle_default,
-} };
+static u8 *
+format_test_perf_bundle_core_power (u8 *s, va_list *args)
+{
+  test_perf_event_bundle_t __clib_unused *b =
+    va_arg (*args, test_perf_event_bundle_t *);
+  test_perf_t __clib_unused *tp = va_arg (*args, test_perf_t *);
+  u64 *data = va_arg (*args, u64 *);
+
+  if (data)
+    s = format (s, "%7.1f %%", (f64) 100 * data[1] / data[0]);
+  else
+    s = format (s, "%9s", "Level 0");
+
+  if (data)
+    s = format (s, "%8.1f %%", (f64) 100 * data[2] / data[0]);
+  else
+    s = format (s, "%9s", "Level 1");
+
+  if (data)
+    s = format (s, "%7.1f %%", (f64) 100 * data[3] / data[0]);
+  else
+    s = format (s, "%9s", "Level 2");
+
+  return s;
+}
+
+test_perf_event_bundle_t perf_bundles[] = {
+  {
+    .name = "default",
+    .desc = "IPC, Clocks/Operatiom, Instr/Operation, Branch Total & Miss",
+    .type = PERF_TYPE_HARDWARE,
+    .config[0] = PERF_COUNT_HW_CPU_CYCLES,
+    .config[1] = PERF_COUNT_HW_INSTRUCTIONS,
+    .config[2] = PERF_COUNT_HW_BRANCH_INSTRUCTIONS,
+    .config[3] = PERF_COUNT_HW_BRANCH_MISSES,
+    .n_events = 4,
+    .format_fn = format_test_perf_bundle_default,
+  }
+#ifdef __x86_64__
+#define PERF_INTEL_CODE(event, umask) ((event) | (umask) << 8)
+  ,
+  {
+    .name = "core-power",
+    .desc =
+      "Core cycles where the core was running under specific turbo schedule.",
+    .type = PERF_TYPE_RAW,
+    .config[0] = PERF_INTEL_CODE (0x3c, 0x00),
+    .config[1] = PERF_INTEL_CODE (0x28, 0x07),
+    .config[2] = PERF_INTEL_CODE (0x28, 0x18),
+    .config[3] = PERF_INTEL_CODE (0x28, 0x20),
+    .config[4] = PERF_INTEL_CODE (0x28, 0x40),
+    .n_events = 5,
+    .format_fn = format_test_perf_bundle_core_power,
+  }
+#endif
+};
 
 #ifdef __linux__
 clib_error_t *
 test_perf (test_main_t *tm)
 {
   clib_error_t *err = 0;
-  test_perf_event_bundle_t *b = perf_bundles;
+  test_perf_event_bundle_t *b = 0;
   int group_fd = -1, fds[TEST_PERF_MAX_EVENTS];
   u64 count[TEST_PERF_MAX_EVENTS + 3] = {};
   struct perf_event_attr pe = {
     .size = sizeof (struct perf_event_attr),
-    .type = PERF_TYPE_HARDWARE,
     .disabled = 1,
     .exclude_kernel = 1,
     .exclude_hv = 1,
@@ -128,9 +178,25 @@ test_perf (test_main_t *tm)
   for (int i = 0; i < TEST_PERF_MAX_EVENTS; i++)
     fds[i] = -1;
 
+  if (tm->bundle)
+    {
+      for (int i = 0; i < ARRAY_LEN (perf_bundles); i++)
+	if (strncmp ((char *) tm->bundle, perf_bundles[i].name,
+		     vec_len (tm->bundle)) == 0)
+	  {
+	    b = perf_bundles + i;
+	    break;
+	  }
+      if (b == 0)
+	return clib_error_return (0, "Unknown bundle '%s'", tm->bundle);
+    }
+  else
+    b = perf_bundles;
+
   for (int i = 0; i < b->n_events; i++)
     {
       pe.config = b->config[i];
+      pe.type = b->type;
       int fd = syscall (__NR_perf_event_open, &pe, /* pid */ 0, /* cpu */ -1,
 			/* group_fd */ group_fd, /* flags */ 0);
       if (fd < 0)
@@ -226,6 +292,8 @@ main (int argc, char *argv[])
       if (unformat (i, "perf"))
 	perf = 1;
       else if (unformat (i, "filter %s", &tm->filter))
+	;
+      else if (unformat (i, "bundle %s", &tm->bundle))
 	;
       else if (unformat (i, "repeat %d", &tm->repeat))
 	;

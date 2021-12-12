@@ -54,6 +54,7 @@ typedef struct
   test_registration_t *registrations[CLIB_MARCH_TYPE_N_VARIANTS];
   u32 repeat;
   u8 *filter;
+  u8 *bundle;
 } test_main_t;
 extern test_main_t test_main;
 
