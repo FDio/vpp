@@ -870,7 +870,7 @@ VNET_SW_INTERFACE_ADD_DEL_FUNCTION (vnet_arp_add_del_sw_interface);
 const static ip_neighbor_vft_t arp_vft = {
   .inv_proxy4_add = arp_proxy_add,
   .inv_proxy4_del = arp_proxy_del,
-  .inv_proxy4_enable = arp_proxy_disable,
+  .inv_proxy4_enable = arp_proxy_enable,
   .inv_proxy4_disable = arp_proxy_disable,
 };
 
