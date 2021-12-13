@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7729eeb6_0059acc5",
+        "filename": "src/plugins/memif/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 171,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2021-12-13T01:06:42Z",
+      "side": 1,
+      "message": "PREDICT_FALSE",
+      "revId": "a85876c23b938506452aa645d2e0ae00d0c6c13b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4eac685f_4fef0285",
+        "filename": "src/plugins/memif/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 447,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2021-12-13T01:06:42Z",
+      "side": 1,
+      "message": "We don\u0027t need 4 elements array. A single u32 variable will do.",
+      "revId": "a85876c23b938506452aa645d2e0ae00d0c6c13b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7cd8de5c_74a1b3a5",
+        "filename": "src/plugins/memif/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 500,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2021-12-13T01:06:42Z",
+      "side": 1,
+      "message": "14 \u003c- MEMIF_IP_OFFSET",
+      "revId": "a85876c23b938506452aa645d2e0ae00d0c6c13b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a5f4f550_746ee8e5",
+        "filename": "src/plugins/memif/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 533,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2021-12-13T01:06:42Z",
+      "side": 1,
+      "message": "Combine the above 2 if statements.",
+      "revId": "a85876c23b938506452aa645d2e0ae00d0c6c13b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e72e4c58_7feb7b46",
+        "filename": "src/plugins/memif/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 537,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2021-12-13T01:06:42Z",
+      "side": 1,
+      "message": "Don\u0027t need maybe_chained because this is the only call and maybe_chained is always passed with 1.",
+      "revId": "a85876c23b938506452aa645d2e0ae00d0c6c13b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
