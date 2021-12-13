@@ -448,7 +448,7 @@ int vnet_vxlan_add_del_tunnel
       t->user_instance = user_instance; /* name */
       t->flow_index = ~0;
 
-      if (a->is_l3)
+      if (a->is_l3 == 0)
 	t->hw_if_index =
 	  vnet_register_interface (vnm, vxlan_device_class.index, dev_instance,
 				   vxlan_hw_class.index, dev_instance);
@@ -503,7 +503,7 @@ int vnet_vxlan_add_del_tunnel
 
       if (add_failed)
 	{
-	  if (a->is_l3)
+	  if (a->is_l3 == 0)
 	    vnet_delete_hw_interface (vnm, t->hw_if_index);
 	  else
 	    ethernet_delete_interface (vnm, t->hw_if_index);
