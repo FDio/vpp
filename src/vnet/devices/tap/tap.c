@@ -87,6 +87,8 @@ tap_free (vlib_main_t * vm, virtio_if_t * vif)
   clib_error_t *err = 0;
   int i;
 
+  virtio_pre_input_node_disable (vm, vif);
+
   /* *INDENT-OFF* */
   vec_foreach_index (i, vif->vhost_fds) if (vif->vhost_fds[i] != -1)
     close (vif->vhost_fds[i]);
@@ -694,7 +696,9 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
       vnet_sw_interface_set_mtu (vnm, hw->sw_if_index, hw->max_packet_bytes);
     }
 
+  virtio_pre_input_node_enable (vm, vif);
   virtio_vring_set_rx_queues (vm, vif);
+  virtio_vring_set_tx_queues (vm, vif);
 
   vif->per_interface_next_index = ~0;
   vif->flags |= VIRTIO_IF_FLAG_ADMIN_UP;
