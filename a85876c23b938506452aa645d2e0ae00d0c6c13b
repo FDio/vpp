@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "b84c973c_c07de295",
+        "filename": "src/plugins/memif/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 171,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-12-13T12:26:25Z",
+      "side": 1,
+      "message": "Will not help much, modern CPUs have branch predictor which will know how to deal with this. PREDICT_FALSE still helps compiler to decide what is near/far flow of instruction, but in this case we have jump....",
+      "parentUuid": "7729eeb6_0059acc5",
+      "revId": "a85876c23b938506452aa645d2e0ae00d0c6c13b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "4eac685f_4fef0285",
         "filename": "src/plugins/memif/node.c",
         "patchSetId": 2
@@ -30,6 +48,24 @@
       "writtenOn": "2021-12-13T01:06:42Z",
       "side": 1,
       "message": "We don\u0027t need 4 elements array. A single u32 variable will do.",
+      "revId": "a85876c23b938506452aa645d2e0ae00d0c6c13b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7c578ada_961c884d",
+        "filename": "src/plugins/memif/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 447,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-12-13T12:26:25Z",
+      "side": 1,
+      "message": "Yeah, leftover from the old code, compiler will optimize it out...",
+      "parentUuid": "4eac685f_4fef0285",
       "revId": "a85876c23b938506452aa645d2e0ae00d0c6c13b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -70,6 +106,24 @@
     },
     {
       "key": {
+        "uuid": "cbbd6514_4eb19fb5",
+        "filename": "src/plugins/memif/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 533,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-12-13T12:26:25Z",
+      "side": 1,
+      "message": "intentionally done this way for better readability....",
+      "parentUuid": "a5f4f550_746ee8e5",
+      "revId": "a85876c23b938506452aa645d2e0ae00d0c6c13b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "e72e4c58_7feb7b46",
         "filename": "src/plugins/memif/node.c",
         "patchSetId": 2
@@ -81,6 +135,24 @@
       "writtenOn": "2021-12-13T01:06:42Z",
       "side": 1,
       "message": "Don\u0027t need maybe_chained because this is the only call and maybe_chained is always passed with 1.",
+      "revId": "a85876c23b938506452aa645d2e0ae00d0c6c13b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0a70909d_fdfea1f5",
+        "filename": "src/plugins/memif/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 537,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-12-13T12:26:25Z",
+      "side": 1,
+      "message": "yep, will remove",
+      "parentUuid": "e72e4c58_7feb7b46",
       "revId": "a85876c23b938506452aa645d2e0ae00d0c6c13b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
