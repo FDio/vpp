@@ -836,6 +836,30 @@ autoreply define ip_reassembly_enable_disable
   vl_api_ip_reass_type_t type;
 };
 
+/** enable/disable full reassembly of packets aimed at our addresses */
+autoreply define ip_forus_reass_enable_disable
+{
+  u32 client_index;
+  u32 context;
+  bool enable_ip4;
+  bool enable_ip6;
+};
+
+/** get status of forus reassembly */
+define ip_forus_reass_get
+{
+  u32 client_index;
+  u32 context;
+};
+
+define ip_forus_reass_get_reply
+{
+  u32 context;
+  i32 retval;
+  bool ip4_is_enabled;
+  bool ip6_is_enabled;
+};
+
 /**
     @brief Set a Path MTU value. i.e. a MTU value for a given neighbour.
            The neighbour can be described as attached (w/ interface and next-hop)
