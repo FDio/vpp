@@ -61,6 +61,7 @@
 #include <vnet/ip/ip4_forward.h>
 #include <vnet/interface_output.h>
 #include <vnet/classify/vnet_classify.h>
+#include <vnet/ip/reass/ip4_full_reass.h>
 
 /** @brief IPv4 lookup node.
     @node ip4-lookup
@@ -1880,7 +1881,7 @@ VLIB_REGISTER_NODE (ip4_local_node) =
     [IP_LOCAL_NEXT_PUNT] = "ip4-punt",
     [IP_LOCAL_NEXT_UDP_LOOKUP] = "ip4-udp-lookup",
     [IP_LOCAL_NEXT_ICMP] = "ip4-icmp-input",
-    [IP_LOCAL_NEXT_REASSEMBLY] = "ip4-full-reassembly",
+    [IP_LOCAL_NEXT_REASSEMBLY] = "ip4-full-forus-reassembly",
   },
 };
 
