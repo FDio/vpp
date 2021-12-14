@@ -828,7 +828,7 @@ hash_resize_internal (void *old, uword new_size, uword free_old)
   return new;
 }
 
-void *
+__clib_export void *
 hash_resize (void *old, uword new_size)
 {
   return hash_resize_internal (old, new_size, 1);
