@@ -164,10 +164,14 @@ typedef struct
 
   /** Worker handoff */
   u32 fq_index;
+  u32 fq_local_index;
   u32 fq_feature_index;
 
   // reference count for enabling/disabling feature - per interface
   u32 *feature_use_refcount_per_intf;
+
+  // whether local fragmented packets are reassembled or not
+  int is_local_reass_enabled;
 } ip6_full_reass_main_t;
 
 extern ip6_full_reass_main_t ip6_full_reass_main;
@@ -194,6 +198,7 @@ typedef enum
   ICMP_ERROR_FL_NOT_MULT_8,
   FINALIZE,
   HANDOFF,
+  PASSTHROUGH,
 } ip6_full_reass_trace_operation_e;
 
 typedef struct
@@ -305,6 +310,9 @@ format_ip6_full_reass_trace (u8 * s, va_list * args)
       s =
 	format (s, "handoff from thread #%u to thread #%u", t->thread_id,
 		t->thread_id_to);
+      break;
+    case PASSTHROUGH:
+      s = format (s, "passthrough - not a fragment");
       break;
     }
   return s;
@@ -1084,10 +1092,9 @@ ip6_full_reass_verify_packet_size_lt_64k (vlib_main_t * vm,
 }
 
 always_inline uword
-ip6_full_reassembly_inline (vlib_main_t * vm,
-			    vlib_node_runtime_t * node,
-			    vlib_frame_t * frame, bool is_feature,
-			    bool is_custom_app)
+ip6_full_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+			    vlib_frame_t *frame, bool is_feature,
+			    bool is_custom_app, bool is_local)
 {
   u32 *from = vlib_frame_vector_args (frame);
   u32 n_left_from, n_left_to_next, *to_next, next_index;
@@ -1121,6 +1128,13 @@ ip6_full_reassembly_inline (vlib_main_t * vm,
 	      hdr_chain.eh[res].protocol != IP_PROTOCOL_IPV6_FRAGMENTATION)
 	    {
 	      // this is a mangled packet - no fragmentation
+	      next0 = IP6_FULL_REASSEMBLY_NEXT_DROP;
+	      ip6_full_reass_add_trace (vm, node, NULL, bi0, NULL, PASSTHROUGH,
+					~0);
+	      goto skip_reass;
+	    }
+	  if (is_local && !rm->is_local_reass_enabled)
+	    {
 	      next0 = IP6_FULL_REASSEMBLY_NEXT_DROP;
 	      goto skip_reass;
 	    }
@@ -1303,8 +1317,9 @@ VLIB_NODE_FN (ip6_full_reass_node) (vlib_main_t * vm,
 				    vlib_node_runtime_t * node,
 				    vlib_frame_t * frame)
 {
-  return ip6_full_reassembly_inline (vm, node, frame, false /* is_feature */ ,
-				     false /* is_custom_app */ );
+  return ip6_full_reassembly_inline (vm, node, frame, false /* is_feature */,
+				     false /* is_custom_app */,
+				     false /* is_local */);
 }
 
 VLIB_REGISTER_NODE (ip6_full_reass_node) = {
@@ -1323,12 +1338,37 @@ VLIB_REGISTER_NODE (ip6_full_reass_node) = {
         },
 };
 
+VLIB_NODE_FN (ip6_local_full_reass_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return ip6_full_reassembly_inline (vm, node, frame, false /* is_feature */,
+				     false /* is_custom_app */,
+				     true /* is_local */);
+}
+
+VLIB_REGISTER_NODE (ip6_local_full_reass_node) = {
+    .name = "ip6-local-full-reassembly",
+    .vector_size = sizeof (u32),
+    .format_trace = format_ip6_full_reass_trace,
+    .n_errors = ARRAY_LEN (ip6_full_reassembly_error_strings),
+    .error_strings = ip6_full_reassembly_error_strings,
+    .n_next_nodes = IP6_FULL_REASSEMBLY_N_NEXT,
+    .next_nodes =
+        {
+                [IP6_FULL_REASSEMBLY_NEXT_INPUT] = "ip6-input",
+                [IP6_FULL_REASSEMBLY_NEXT_DROP] = "ip6-drop",
+                [IP6_FULL_REASSEMBLY_NEXT_ICMP_ERROR] = "ip6-icmp-error",
+                [IP6_FULL_REASSEMBLY_NEXT_HANDOFF] = "ip6-local-full-reassembly-handoff",
+        },
+};
+
 VLIB_NODE_FN (ip6_full_reass_node_feature) (vlib_main_t * vm,
 					    vlib_node_runtime_t * node,
 					    vlib_frame_t * frame)
 {
-  return ip6_full_reassembly_inline (vm, node, frame, true /* is_feature */ ,
-				     false /* is_custom_app */ );
+  return ip6_full_reassembly_inline (vm, node, frame, true /* is_feature */,
+				     false /* is_custom_app */,
+				     false /* is_local */);
 }
 
 VLIB_REGISTER_NODE (ip6_full_reass_node_feature) = {
@@ -1500,9 +1540,12 @@ ip6_full_reass_init_function (vlib_main_t * vm)
   if ((error = vlib_call_init_function (vm, ip_main_init)))
     return error;
   ip6_register_protocol (IP_PROTOCOL_IPV6_FRAGMENTATION,
-			 ip6_full_reass_node.index);
+			 ip6_local_full_reass_node.index);
+  rm->is_local_reass_enabled = 1;
 
   rm->fq_index = vlib_frame_queue_main_init (ip6_full_reass_node.index, 0);
+  rm->fq_local_index =
+    vlib_frame_queue_main_init (ip6_local_full_reass_node.index, 0);
   rm->fq_feature_index =
     vlib_frame_queue_main_init (ip6_full_reass_node_feature.index, 0);
 
@@ -1777,9 +1820,9 @@ format_ip6_full_reassembly_handoff_trace (u8 * s, va_list * args)
 }
 
 always_inline uword
-ip6_full_reassembly_handoff_inline (vlib_main_t * vm,
-				    vlib_node_runtime_t * node,
-				    vlib_frame_t * frame, bool is_feature)
+ip6_full_reassembly_handoff_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+				    vlib_frame_t *frame, bool is_feature,
+				    bool is_local)
 {
   ip6_full_reass_main_t *rm = &ip6_full_reass_main;
 
@@ -1795,7 +1838,21 @@ ip6_full_reassembly_handoff_inline (vlib_main_t * vm,
   b = bufs;
   ti = thread_indices;
 
-  fq_index = (is_feature) ? rm->fq_feature_index : rm->fq_index;
+  if (is_feature)
+    {
+      fq_index = rm->fq_feature_index;
+    }
+  else
+    {
+      if (is_local)
+	{
+	  fq_index = rm->fq_local_index;
+	}
+      else
+	{
+	  fq_index = rm->fq_index;
+	}
+    }
 
   while (n_left_from > 0)
     {
@@ -1828,8 +1885,8 @@ VLIB_NODE_FN (ip6_full_reassembly_handoff_node) (vlib_main_t * vm,
 						 vlib_node_runtime_t * node,
 						 vlib_frame_t * frame)
 {
-  return ip6_full_reassembly_handoff_inline (vm, node, frame,
-					     false /* is_feature */ );
+  return ip6_full_reassembly_handoff_inline (
+    vm, node, frame, false /* is_feature */, false /* is_local */);
 }
 
 VLIB_REGISTER_NODE (ip6_full_reassembly_handoff_node) = {
@@ -1846,11 +1903,32 @@ VLIB_REGISTER_NODE (ip6_full_reassembly_handoff_node) = {
   },
 };
 
+VLIB_NODE_FN (ip6_local_full_reassembly_handoff_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return ip6_full_reassembly_handoff_inline (
+    vm, node, frame, false /* is_feature */, true /* is_feature */);
+}
+
+VLIB_REGISTER_NODE (ip6_local_full_reassembly_handoff_node) = {
+  .name = "ip6-local-full-reassembly-handoff",
+  .vector_size = sizeof (u32),
+  .n_errors = ARRAY_LEN(ip6_full_reassembly_handoff_error_strings),
+  .error_strings = ip6_full_reassembly_handoff_error_strings,
+  .format_trace = format_ip6_full_reassembly_handoff_trace,
+
+  .n_next_nodes = 1,
+
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
 
 VLIB_NODE_FN (ip6_full_reassembly_feature_handoff_node) (vlib_main_t * vm,
                                vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  return ip6_full_reassembly_handoff_inline (vm, node, frame, true /* is_feature */ );
+  return ip6_full_reassembly_handoff_inline (
+    vm, node, frame, true /* is_feature */, false /* is_local */);
 }
 
 
@@ -1895,6 +1973,35 @@ ip6_full_reass_enable_disable_with_refcnt (u32 sw_if_index, int is_enable)
     }
   return -1;
 }
+
+void
+ip6_local_full_reass_enable_disable (int enable)
+{
+  if (enable)
+    {
+      if (!ip6_full_reass_main.is_local_reass_enabled)
+	{
+	  ip6_full_reass_main.is_local_reass_enabled = 1;
+	  ip6_register_protocol (IP_PROTOCOL_IPV6_FRAGMENTATION,
+				 ip6_local_full_reass_node.index);
+	}
+    }
+  else
+    {
+      if (ip6_full_reass_main.is_local_reass_enabled)
+	{
+	  ip6_full_reass_main.is_local_reass_enabled = 0;
+	  ip6_unregister_protocol (IP_PROTOCOL_IPV6_FRAGMENTATION);
+	}
+    }
+}
+
+int
+ip6_local_full_reass_enabled ()
+{
+  return ip6_full_reass_main.is_local_reass_enabled;
+}
+
 #endif
 
 /*
