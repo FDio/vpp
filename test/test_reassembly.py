@@ -8,10 +8,11 @@ from framework import VppTestCase, VppTestRunner
 import scapy.compat
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, GRE
-from scapy.layers.inet import IP, UDP, ICMP
+from scapy.layers.inet import IP, UDP, ICMP, icmptypes
 from scapy.layers.inet6 import HBHOptUnknown, ICMPv6ParamProblem,\
     ICMPv6TimeExceeded, IPv6, IPv6ExtHdrFragment,\
-    IPv6ExtHdrHopByHop, IPv6ExtHdrDestOpt, PadN, ICMPv6EchoRequest
+    IPv6ExtHdrHopByHop, IPv6ExtHdrDestOpt, PadN, ICMPv6EchoRequest,\
+    ICMPv6EchoReply
 from framework import VppTestCase, VppTestRunner
 from util import ppp, ppc, fragment_rfc791, fragment_rfc8200
 from vpp_gre_interface import VppGreInterface
@@ -28,7 +29,7 @@ class TestIPv4Reassembly(VppTestCase):
 
     @classmethod
     def setUpClass(cls):
-        super(TestIPv4Reassembly, cls).setUpClass()
+        super().setUpClass()
 
         cls.create_pg_interfaces([0, 1])
         cls.src_if = cls.pg0
@@ -48,11 +49,11 @@ class TestIPv4Reassembly(VppTestCase):
 
     @classmethod
     def tearDownClass(cls):
-        super(TestIPv4Reassembly, cls).tearDownClass()
+        super().tearDownClass()
 
     def setUp(self):
         """ Test setup - force timeout on existing reassemblies """
-        super(TestIPv4Reassembly, self).setUp()
+        super().setUp()
         self.vapi.ip_reassembly_enable_disable(
             sw_if_index=self.src_if.sw_if_index, enable_ip4=True)
         self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
@@ -64,7 +65,9 @@ class TestIPv4Reassembly(VppTestCase):
                                     expire_walk_interval_ms=10000)
 
     def tearDown(self):
-        super(TestIPv4Reassembly, self).tearDown()
+        self.vapi.ip_reassembly_enable_disable(
+            sw_if_index=self.src_if.sw_if_index, enable_ip4=False)
+        super().tearDown()
 
     def show_commands_at_teardown(self):
         self.logger.debug(self.vapi.ppcli("show ip4-full-reassembly details"))
@@ -511,13 +514,31 @@ Ethernet-Payload.IPv4-Packet.IPv4-Header.Fragment-Offset; Test-case: 5737'''
         self.verify_capture(packets, dropped_packet_indexes)
         self.src_if.assert_nothing_captured()
 
+    def test_forus_enable_disable(self):
+        """ forus reassembly enabled/disable """
+        self.vapi.ip_reassembly_enable_disable(
+            sw_if_index=self.src_if.sw_if_index, enable_ip4=False)
+        p = (Ether(src=self.src_if.remote_mac, dst=self.src_if.local_mac) /
+             IP(src=self.src_if.remote_ip4, dst=self.src_if.local_ip4) /
+             ICMP(id=1234, type='echo-request') /
+             Raw('x' * 1000))
+        frags = fragment_rfc791(p, 400)
+        r = self.send_and_expect(self.src_if, frags, self.src_if,
+                                 n_rx=1)[0]
+        self.assertEqual(1234, r[ICMP].id)
+        self.assertEqual(icmptypes[r[ICMP].type], 'echo-reply')
+        self.vapi.ip_forus_reass_enable_disable()
+
+        self.send_and_assert_no_replies(self.src_if, frags)
+        self.vapi.ip_forus_reass_enable_disable(enable_ip4=True)
+
 
 class TestIPv4SVReassembly(VppTestCase):
     """ IPv4 Shallow Virtual Reassembly """
 
     @classmethod
     def setUpClass(cls):
-        super(TestIPv4SVReassembly, cls).setUpClass()
+        super().setUpClass()
 
         cls.create_pg_interfaces([0, 1])
         cls.src_if = cls.pg0
@@ -531,7 +552,7 @@ class TestIPv4SVReassembly(VppTestCase):
 
     def setUp(self):
         """ Test setup - force timeout on existing reassemblies """
-        super(TestIPv4SVReassembly, self).setUp()
+        super().setUp()
         self.vapi.ip_reassembly_enable_disable(
             sw_if_index=self.src_if.sw_if_index, enable_ip4=True,
             type=VppEnum.vl_api_ip_reass_type_t.IP_REASS_TYPE_SHALLOW_VIRTUAL)
@@ -548,7 +569,7 @@ class TestIPv4SVReassembly(VppTestCase):
             expire_walk_interval_ms=10000)
 
     def tearDown(self):
-        super(TestIPv4SVReassembly, self).tearDown()
+        super().tearDown()
         self.logger.debug(self.vapi.ppcli("show ip4-sv-reassembly details"))
         self.logger.debug(self.vapi.ppcli("show buffers"))
 
@@ -791,7 +812,7 @@ class TestIPv4MWReassembly(VppTestCase):
 
     @classmethod
     def setUpClass(cls):
-        super(TestIPv4MWReassembly, cls).setUpClass()
+        super().setUpClass()
 
         cls.create_pg_interfaces(range(cls.vpp_worker_count+1))
         cls.src_if = cls.pg0
@@ -815,11 +836,11 @@ class TestIPv4MWReassembly(VppTestCase):
 
     @classmethod
     def tearDownClass(cls):
-        super(TestIPv4MWReassembly, cls).tearDownClass()
+        super().tearDownClass()
 
     def setUp(self):
         """ Test setup - force timeout on existing reassemblies """
-        super(TestIPv4MWReassembly, self).setUp()
+        super().setUp()
         for intf in self.send_ifs:
             self.vapi.ip_reassembly_enable_disable(
                 sw_if_index=intf.sw_if_index, enable_ip4=True)
@@ -832,7 +853,10 @@ class TestIPv4MWReassembly(VppTestCase):
                                     expire_walk_interval_ms=10000)
 
     def tearDown(self):
-        super(TestIPv4MWReassembly, self).tearDown()
+        for intf in self.send_ifs:
+            self.vapi.ip_reassembly_enable_disable(
+                sw_if_index=intf.sw_if_index, enable_ip4=False)
+        super().tearDown()
 
     def show_commands_at_teardown(self):
         self.logger.debug(self.vapi.ppcli("show ip4-full-reassembly details"))
@@ -968,7 +992,7 @@ class TestIPv6Reassembly(VppTestCase):
 
     @classmethod
     def setUpClass(cls):
-        super(TestIPv6Reassembly, cls).setUpClass()
+        super().setUpClass()
 
         cls.create_pg_interfaces([0, 1])
         cls.src_if = cls.pg0
@@ -988,11 +1012,11 @@ class TestIPv6Reassembly(VppTestCase):
 
     @classmethod
     def tearDownClass(cls):
-        super(TestIPv6Reassembly, cls).tearDownClass()
+        super().tearDownClass()
 
     def setUp(self):
         """ Test setup - force timeout on existing reassemblies """
-        super(TestIPv6Reassembly, self).setUp()
+        super().setUp()
         self.vapi.ip_reassembly_enable_disable(
             sw_if_index=self.src_if.sw_if_index, enable_ip6=True)
         self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
@@ -1006,7 +1030,9 @@ class TestIPv6Reassembly(VppTestCase):
         self.logger.debug(self.vapi.ppcli("show buffers"))
 
     def tearDown(self):
-        super(TestIPv6Reassembly, self).tearDown()
+        self.vapi.ip_reassembly_enable_disable(
+            sw_if_index=self.src_if.sw_if_index, enable_ip6=False)
+        super().tearDown()
 
     def show_commands_at_teardown(self):
         self.logger.debug(self.vapi.ppcli("show ip6-full-reassembly details"))
@@ -1505,6 +1531,22 @@ class TestIPv6Reassembly(VppTestCase):
         rx = self.send_and_expect(self.pg0, [pkt], self.pg0)
         self.assertNotIn(IPv6ExtHdrFragment, rx)
 
+    def test_forus_enable_disable(self):
+        """ forus reassembly enabled/disable """
+        self.vapi.ip_reassembly_enable_disable(
+            sw_if_index=self.src_if.sw_if_index, enable_ip6=False)
+        pkt = (Ether(src=self.src_if.local_mac, dst=self.src_if.remote_mac) /
+               IPv6(src=self.src_if.remote_ip6, dst=self.src_if.local_ip6) /
+               ICMPv6EchoRequest(id=1234)/Raw('X' * 1600))
+        frags = fragment_rfc8200(pkt, 1, 400)
+        r = self.send_and_expect(self.src_if, frags, self.src_if,
+                                 n_rx=1)[0]
+        self.assertEqual(1234, r[ICMPv6EchoReply].id)
+        self.vapi.ip_forus_reass_enable_disable()
+
+        self.send_and_assert_no_replies(self.src_if, frags)
+        self.vapi.ip_forus_reass_enable_disable(enable_ip6=True)
+
 
 class TestIPv6MWReassembly(VppTestCase):
     """ IPv6 Reassembly (multiple workers) """
@@ -1512,7 +1554,7 @@ class TestIPv6MWReassembly(VppTestCase):
 
     @classmethod
     def setUpClass(cls):
-        super(TestIPv6MWReassembly, cls).setUpClass()
+        super().setUpClass()
 
         cls.create_pg_interfaces(range(cls.vpp_worker_count+1))
         cls.src_if = cls.pg0
@@ -1536,11 +1578,11 @@ class TestIPv6MWReassembly(VppTestCase):
 
     @classmethod
     def tearDownClass(cls):
-        super(TestIPv6MWReassembly, cls).tearDownClass()
+        super().tearDownClass()
 
     def setUp(self):
         """ Test setup - force timeout on existing reassemblies """
-        super(TestIPv6MWReassembly, self).setUp()
+        super().setUp()
         for intf in self.send_ifs:
             self.vapi.ip_reassembly_enable_disable(
                 sw_if_index=intf.sw_if_index, enable_ip6=True)
@@ -1553,7 +1595,10 @@ class TestIPv6MWReassembly(VppTestCase):
                                     expire_walk_interval_ms=1000, is_ip6=1)
 
     def tearDown(self):
-        super(TestIPv6MWReassembly, self).tearDown()
+        for intf in self.send_ifs:
+            self.vapi.ip_reassembly_enable_disable(
+                sw_if_index=intf.sw_if_index, enable_ip6=False)
+        super().tearDown()
 
     def show_commands_at_teardown(self):
         self.logger.debug(self.vapi.ppcli("show ip6-full-reassembly details"))
@@ -1689,7 +1734,7 @@ class TestIPv6SVReassembly(VppTestCase):
 
     @classmethod
     def setUpClass(cls):
-        super(TestIPv6SVReassembly, cls).setUpClass()
+        super().setUpClass()
 
         cls.create_pg_interfaces([0, 1])
         cls.src_if = cls.pg0
@@ -1703,7 +1748,7 @@ class TestIPv6SVReassembly(VppTestCase):
 
     def setUp(self):
         """ Test setup - force timeout on existing reassemblies """
-        super(TestIPv6SVReassembly, self).setUp()
+        super().setUp()
         self.vapi.ip_reassembly_enable_disable(
             sw_if_index=self.src_if.sw_if_index, enable_ip6=True,
             type=VppEnum.vl_api_ip_reass_type_t.IP_REASS_TYPE_SHALLOW_VIRTUAL)
@@ -1720,7 +1765,7 @@ class TestIPv6SVReassembly(VppTestCase):
             expire_walk_interval_ms=10000, is_ip6=1)
 
     def tearDown(self):
-        super(TestIPv6SVReassembly, self).tearDown()
+        super().tearDown()
         self.logger.debug(self.vapi.ppcli("show ip6-sv-reassembly details"))
         self.logger.debug(self.vapi.ppcli("show buffers"))
 
@@ -1941,7 +1986,7 @@ class TestIPv4ReassemblyLocalNode(VppTestCase):
 
     @classmethod
     def setUpClass(cls):
-        super(TestIPv4ReassemblyLocalNode, cls).setUpClass()
+        super().setUpClass()
 
         cls.create_pg_interfaces([0])
         cls.src_dst_if = cls.pg0
@@ -1958,11 +2003,11 @@ class TestIPv4ReassemblyLocalNode(VppTestCase):
 
     @classmethod
     def tearDownClass(cls):
-        super(TestIPv4ReassemblyLocalNode, cls).tearDownClass()
+        super().tearDownClass()
 
     def setUp(self):
         """ Test setup - force timeout on existing reassemblies """
-        super(TestIPv4ReassemblyLocalNode, self).setUp()
+        super().setUp()
         self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
                                     max_reassembly_length=1000,
                                     expire_walk_interval_ms=10)
@@ -1972,7 +2017,7 @@ class TestIPv4ReassemblyLocalNode(VppTestCase):
                                     expire_walk_interval_ms=10000)
 
     def tearDown(self):
-        super(TestIPv4ReassemblyLocalNode, self).tearDown()
+        super().tearDown()
 
     def show_commands_at_teardown(self):
         self.logger.debug(self.vapi.ppcli("show ip4-full-reassembly details"))
@@ -2068,7 +2113,7 @@ class TestFIFReassembly(VppTestCase):
 
     @classmethod
     def setUpClass(cls):
-        super(TestFIFReassembly, cls).setUpClass()
+        super().setUpClass()
 
         cls.create_pg_interfaces([0, 1])
         cls.src_if = cls.pg0
@@ -2085,11 +2130,11 @@ class TestFIFReassembly(VppTestCase):
 
     @classmethod
     def tearDownClass(cls):
-        super(TestFIFReassembly, cls).tearDownClass()
+        super().tearDownClass()
 
     def setUp(self):
         """ Test setup - force timeout on existing reassemblies """
-        super(TestFIFReassembly, self).setUp()
+        super().setUp()
         self.vapi.ip_reassembly_enable_disable(
             sw_if_index=self.src_if.sw_if_index, enable_ip4=True,
             enable_ip6=True)
@@ -2111,7 +2156,7 @@ class TestFIFReassembly(VppTestCase):
                                     expire_walk_interval_ms=10000, is_ip6=1)
 
     def tearDown(self):
-        super(TestFIFReassembly, self).tearDown()
+        super().tearDown()
 
     def show_commands_at_teardown(self):
         self.logger.debug(self.vapi.ppcli("show ip4-full-reassembly details"))
