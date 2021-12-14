@@ -183,11 +183,15 @@ typedef struct
 
   /** Worker handoff */
   u32 fq_index;
+  u32 fq_local_index;
   u32 fq_feature_index;
   u32 fq_custom_index;
 
   // reference count for enabling/disabling feature - per interface
   u32 *feature_use_refcount_per_intf;
+
+  // whether local fragmented packets are reassembled or not
+  int is_local_reass_enabled;
 } ip4_full_reass_main_t;
 
 extern ip4_full_reass_main_t ip4_full_reass_main;
@@ -219,6 +223,7 @@ typedef enum
   RANGE_OVERLAP,
   FINALIZE,
   HANDOFF,
+  PASSTHROUGH,
 } ip4_full_reass_trace_operation_e;
 
 typedef struct
@@ -328,6 +333,9 @@ format_ip4_full_reass_trace (u8 * s, va_list * args)
       s =
 	format (s, "handoff from thread #%u to thread #%u", t->thread_id,
 		t->thread_id_to);
+      break;
+    case PASSTHROUGH:
+      s = format (s, "passthrough - not a fragment");
       break;
     }
   return s;
@@ -1090,8 +1098,9 @@ ip4_full_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 always_inline uword
-ip4_full_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-		       vlib_frame_t * frame, ip4_full_reass_node_type_t type)
+ip4_full_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		       vlib_frame_t *frame, ip4_full_reass_node_type_t type,
+		       bool is_local)
 {
   u32 *from = vlib_frame_vector_args (frame);
   u32 n_left_from, n_left_to_next, *to_next, next_index;
@@ -1127,8 +1136,17 @@ ip4_full_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  next0 = vnet_buffer (b0)->ip.reass.next_index;
 		}
+	      ip4_full_reass_add_trace (vm, node, NULL, bi0, PASSTHROUGH, 0,
+					~0);
 	      goto packet_enqueue;
 	    }
+
+	  if (is_local && !rm->is_local_reass_enabled)
+	    {
+	      next0 = IP4_FULL_REASS_NEXT_DROP;
+	      goto packet_enqueue;
+	    }
+
 	  const u32 fragment_first = ip4_get_fragment_offset_bytes (ip0);
 	  const u32 fragment_length =
 	    clib_net_to_host_u16 (ip0->length) - ip4_header_bytes (ip0);
@@ -1269,7 +1287,7 @@ VLIB_NODE_FN (ip4_full_reass_node) (vlib_main_t * vm,
 				    vlib_node_runtime_t * node,
 				    vlib_frame_t * frame)
 {
-  return ip4_full_reass_inline (vm, node, frame, NORMAL);
+  return ip4_full_reass_inline (vm, node, frame, NORMAL, false /* is_local */);
 }
 
 VLIB_REGISTER_NODE (ip4_full_reass_node) = {
@@ -1288,11 +1306,34 @@ VLIB_REGISTER_NODE (ip4_full_reass_node) = {
         },
 };
 
+VLIB_NODE_FN (ip4_local_full_reass_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return ip4_full_reass_inline (vm, node, frame, NORMAL, true /* is_local */);
+}
+
+VLIB_REGISTER_NODE (ip4_local_full_reass_node) = {
+    .name = "ip4-local-full-reassembly",
+    .vector_size = sizeof (u32),
+    .format_trace = format_ip4_full_reass_trace,
+    .n_errors = ARRAY_LEN (ip4_full_reass_error_strings),
+    .error_strings = ip4_full_reass_error_strings,
+    .n_next_nodes = IP4_FULL_REASS_N_NEXT,
+    .next_nodes =
+        {
+                [IP4_FULL_REASS_NEXT_INPUT] = "ip4-input",
+                [IP4_FULL_REASS_NEXT_DROP] = "ip4-drop",
+                [IP4_FULL_REASS_NEXT_HANDOFF] = "ip4-local-full-reassembly-handoff",
+
+        },
+};
+
 VLIB_NODE_FN (ip4_full_reass_node_feature) (vlib_main_t * vm,
 					    vlib_node_runtime_t * node,
 					    vlib_frame_t * frame)
 {
-  return ip4_full_reass_inline (vm, node, frame, FEATURE);
+  return ip4_full_reass_inline (vm, node, frame, FEATURE,
+				false /* is_local */);
 }
 
 VLIB_REGISTER_NODE (ip4_full_reass_node_feature) = {
@@ -1322,7 +1363,7 @@ VLIB_NODE_FN (ip4_full_reass_node_custom) (vlib_main_t * vm,
 					   vlib_node_runtime_t * node,
 					   vlib_frame_t * frame)
 {
-  return ip4_full_reass_inline (vm, node, frame, CUSTOM);
+  return ip4_full_reass_inline (vm, node, frame, CUSTOM, false /* is_local */);
 }
 
 VLIB_REGISTER_NODE (ip4_full_reass_node_custom) = {
@@ -1495,12 +1536,16 @@ ip4_full_reass_init_function (vlib_main_t * vm)
   rm->ip4_drop_idx = node->index;
 
   rm->fq_index = vlib_frame_queue_main_init (ip4_full_reass_node.index, 0);
+  rm->fq_local_index =
+    vlib_frame_queue_main_init (ip4_local_full_reass_node.index, 0);
   rm->fq_feature_index =
     vlib_frame_queue_main_init (ip4_full_reass_node_feature.index, 0);
   rm->fq_custom_index =
     vlib_frame_queue_main_init (ip4_full_reass_node_custom.index, 0);
 
   rm->feature_use_refcount_per_intf = NULL;
+  rm->is_local_reass_enabled = 1;
+
   return error;
 }
 
@@ -1745,10 +1790,10 @@ format_ip4_full_reass_handoff_trace (u8 * s, va_list * args)
 }
 
 always_inline uword
-ip4_full_reass_handoff_node_inline (vlib_main_t * vm,
-				    vlib_node_runtime_t * node,
-				    vlib_frame_t * frame,
-				    ip4_full_reass_node_type_t type)
+ip4_full_reass_handoff_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+				    vlib_frame_t *frame,
+				    ip4_full_reass_node_type_t type,
+				    bool is_local)
 {
   ip4_full_reass_main_t *rm = &ip4_full_reass_main;
 
@@ -1767,7 +1812,14 @@ ip4_full_reass_handoff_node_inline (vlib_main_t * vm,
   switch (type)
     {
     case NORMAL:
-      fq_index = rm->fq_index;
+      if (is_local)
+	{
+	  fq_index = rm->fq_local_index;
+	}
+      else
+	{
+	  fq_index = rm->fq_index;
+	}
       break;
     case FEATURE:
       fq_index = rm->fq_feature_index;
@@ -1777,7 +1829,6 @@ ip4_full_reass_handoff_node_inline (vlib_main_t * vm,
       break;
     default:
       clib_warning ("Unexpected `type' (%d)!", type);
-      ASSERT (0);
     }
 
   while (n_left_from > 0)
@@ -1811,7 +1862,8 @@ VLIB_NODE_FN (ip4_full_reass_handoff_node) (vlib_main_t * vm,
 					    vlib_node_runtime_t * node,
 					    vlib_frame_t * frame)
 {
-  return ip4_full_reass_handoff_node_inline (vm, node, frame, NORMAL);
+  return ip4_full_reass_handoff_node_inline (vm, node, frame, NORMAL,
+					     false /* is_local */);
 }
 
 
@@ -1829,13 +1881,34 @@ VLIB_REGISTER_NODE (ip4_full_reass_handoff_node) = {
   },
 };
 
+VLIB_NODE_FN (ip4_local_full_reass_handoff_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return ip4_full_reass_handoff_node_inline (vm, node, frame, NORMAL,
+					     true /* is_local */);
+}
+
+VLIB_REGISTER_NODE (ip4_local_full_reass_handoff_node) = {
+  .name = "ip4-local-full-reassembly-handoff",
+  .vector_size = sizeof (u32),
+  .n_errors = ARRAY_LEN(ip4_full_reass_handoff_error_strings),
+  .error_strings = ip4_full_reass_handoff_error_strings,
+  .format_trace = format_ip4_full_reass_handoff_trace,
+
+  .n_next_nodes = 1,
+
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
 
 VLIB_NODE_FN (ip4_full_reass_feature_handoff_node) (vlib_main_t * vm,
 						    vlib_node_runtime_t *
 						    node,
 						    vlib_frame_t * frame)
 {
-  return ip4_full_reass_handoff_node_inline (vm, node, frame, FEATURE);
+  return ip4_full_reass_handoff_node_inline (vm, node, frame, FEATURE,
+					     false /* is_local */);
 }
 
 
@@ -1858,7 +1931,8 @@ VLIB_NODE_FN (ip4_full_reass_custom_handoff_node) (vlib_main_t * vm,
 						    node,
 						    vlib_frame_t * frame)
 {
-  return ip4_full_reass_handoff_node_inline (vm, node, frame, CUSTOM);
+  return ip4_full_reass_handoff_node_inline (vm, node, frame, CUSTOM,
+					     false /* is_local */);
 }
 
 
@@ -1903,6 +1977,26 @@ ip4_full_reass_enable_disable_with_refcnt (u32 sw_if_index, int is_enable)
     }
   return -1;
 }
+
+void
+ip4_local_full_reass_enable_disable (int enable)
+{
+  if (enable)
+    {
+      ip4_full_reass_main.is_local_reass_enabled = 1;
+    }
+  else
+    {
+      ip4_full_reass_main.is_local_reass_enabled = 0;
+    }
+}
+
+int
+ip4_local_full_reass_enabled ()
+{
+  return ip4_full_reass_main.is_local_reass_enabled;
+}
+
 #endif
 
 /*
