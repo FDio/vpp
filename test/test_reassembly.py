@@ -8,10 +8,11 @@ from framework import VppTestCase, VppTestRunner
 import scapy.compat
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, GRE
-from scapy.layers.inet import IP, UDP, ICMP
+from scapy.layers.inet import IP, UDP, ICMP, icmptypes
 from scapy.layers.inet6 import HBHOptUnknown, ICMPv6ParamProblem,\
     ICMPv6TimeExceeded, IPv6, IPv6ExtHdrFragment,\
-    IPv6ExtHdrHopByHop, IPv6ExtHdrDestOpt, PadN, ICMPv6EchoRequest
+    IPv6ExtHdrHopByHop, IPv6ExtHdrDestOpt, PadN, ICMPv6EchoRequest,\
+    ICMPv6EchoReply
 from framework import VppTestCase, VppTestRunner
 from util import ppp, ppc, fragment_rfc791, fragment_rfc8200
 from vpp_gre_interface import VppGreInterface
@@ -510,6 +511,23 @@ Ethernet-Payload.IPv4-Packet.IPv4-Header.Fragment-Offset; Test-case: 5737'''
             len(self.pkt_infos) - len(dropped_packet_indexes))
         self.verify_capture(packets, dropped_packet_indexes)
         self.src_if.assert_nothing_captured()
+
+    def test_forus_enable_disable(self):
+        """ forus reassembly enabled/disable """
+        self.vapi.ip_reassembly_enable_disable(
+            sw_if_index=self.src_if.sw_if_index, enable_ip4=False)
+        p = (Ether(src=self.src_if.remote_mac, dst=self.src_if.local_mac) /
+             IP(src=self.src_if.remote_ip4, dst=self.src_if.local_ip4) /
+             ICMP(id=1234, type='echo-request') /
+             Raw('x' * 1000))
+        frags = fragment_rfc791(p, 400)
+        r = self.send_and_expect(self.src_if, frags, self.src_if,
+                                 n_rx=1)[0]
+        self.assertEqual(1234, r[ICMP].id)
+        self.assertEqual(icmptypes[r[ICMP].type], 'echo-reply')
+        self.vapi.ip_reass_forus_enable_disable()
+
+        self.send_and_assert_no_replies(self.src_if, frags)
 
 
 class TestIPv4SVReassembly(VppTestCase):
@@ -1504,6 +1522,21 @@ class TestIPv6Reassembly(VppTestCase):
                IPv6ExtHdrFragment(id=1)/ICMPv6EchoRequest())
         rx = self.send_and_expect(self.pg0, [pkt], self.pg0)
         self.assertNotIn(IPv6ExtHdrFragment, rx)
+
+    def test_forus_enable_disable(self):
+        """ forus reassembly enabled/disable """
+        self.vapi.ip_reassembly_enable_disable(
+            sw_if_index=self.src_if.sw_if_index, enable_ip6=False)
+        pkt = (Ether(src=self.src_if.local_mac, dst=self.src_if.remote_mac) /
+               IPv6(src=self.src_if.remote_ip6, dst=self.src_if.local_ip6) /
+               ICMPv6EchoRequest(id=1234)/Raw('X' * 1600))
+        frags = fragment_rfc8200(pkt, 1, 400)
+        r = self.send_and_expect(self.src_if, frags, self.src_if,
+                                 n_rx=1)[0]
+        self.assertEqual(1234, r[ICMPv6EchoReply].id)
+        self.vapi.ip_reass_forus_enable_disable()
+
+        self.send_and_assert_no_replies(self.src_if, frags)
 
 
 class TestIPv6MWReassembly(VppTestCase):

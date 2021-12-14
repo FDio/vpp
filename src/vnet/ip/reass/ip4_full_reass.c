@@ -188,6 +188,9 @@ typedef struct
 
   // reference count for enabling/disabling feature - per interface
   u32 *feature_use_refcount_per_intf;
+
+  // whether forus fragmented packets are reassembled or not
+  int is_forus_reass_enabled;
 } ip4_full_reass_main_t;
 
 extern ip4_full_reass_main_t ip4_full_reass_main;
@@ -1129,6 +1132,14 @@ ip4_full_reass_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 	      goto packet_enqueue;
 	    }
+
+	  if (b0->flags & VNET_BUFFER_F_IS_FORUS &&
+	      !rm->is_forus_reass_enabled)
+	    {
+	      next0 = IP4_FULL_REASS_NEXT_DROP;
+	      goto packet_enqueue;
+	    }
+
 	  const u32 fragment_first = ip4_get_fragment_offset_bytes (ip0);
 	  const u32 fragment_length =
 	    clib_net_to_host_u16 (ip0->length) - ip4_header_bytes (ip0);
@@ -1501,6 +1512,8 @@ ip4_full_reass_init_function (vlib_main_t * vm)
     vlib_frame_queue_main_init (ip4_full_reass_node_custom.index, 0);
 
   rm->feature_use_refcount_per_intf = NULL;
+  rm->is_forus_reass_enabled = 1;
+
   return error;
 }
 
@@ -1902,6 +1915,25 @@ ip4_full_reass_enable_disable_with_refcnt (u32 sw_if_index, int is_enable)
 					    sw_if_index, 0, 0, 0);
     }
   return -1;
+}
+
+void
+ip4_full_reass_forus_enable_disable (int enable)
+{
+  if (enable)
+    {
+      ip4_full_reass_main.is_forus_reass_enabled = 1;
+    }
+  else
+    {
+      ip4_full_reass_main.is_forus_reass_enabled = 0;
+    }
+}
+
+int
+ip4_full_reass_forus_enabled ()
+{
+  return ip4_full_reass_main.is_forus_reass_enabled;
 }
 #endif
 

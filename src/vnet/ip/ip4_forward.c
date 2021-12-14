@@ -61,6 +61,7 @@
 #include <vnet/ip/ip4_forward.h>
 #include <vnet/interface_output.h>
 #include <vnet/classify/vnet_classify.h>
+#include <vnet/ip/reass/ip4_full_reass.h>
 
 /** @brief IPv4 lookup node.
     @node ip4-lookup
@@ -1825,6 +1826,9 @@ ip4_local_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       ip4_local_set_next_and_error (error_node, b[1], &next[1], error[1],
 				    head_of_feature_arc);
 
+      b[0]->flags |= VNET_BUFFER_F_IS_FORUS;
+      b[1]->flags |= VNET_BUFFER_F_IS_FORUS;
+
       b += 2;
       next += 2;
       n_left_from -= 2;
@@ -1850,6 +1854,7 @@ ip4_local_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       ip4_local_set_next_and_error (error_node, b[0], &next[0], error[0],
 				    head_of_feature_arc);
 
+      b[0]->flags |= VNET_BUFFER_F_IS_FORUS;
       b += 1;
       next += 1;
       n_left_from -= 1;

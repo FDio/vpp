@@ -168,6 +168,9 @@ typedef struct
 
   // reference count for enabling/disabling feature - per interface
   u32 *feature_use_refcount_per_intf;
+
+  // whether forus fragmented packets are reassembled or not
+  int is_forus_reass_enabled;
 } ip6_full_reass_main_t;
 
 extern ip6_full_reass_main_t ip6_full_reass_main;
@@ -1123,6 +1126,12 @@ ip6_full_reassembly_inline (vlib_main_t * vm,
 	      next0 = IP6_FULL_REASSEMBLY_NEXT_DROP;
 	      goto skip_reass;
 	    }
+	  if (b0->flags & VNET_BUFFER_F_IS_FORUS &&
+	      !rm->is_forus_reass_enabled)
+	    {
+	      next0 = IP6_FULL_REASSEMBLY_NEXT_DROP;
+	      goto skip_reass;
+	    }
 	  frag_hdr =
 	    ip6_ext_next_header_offset (ip0, hdr_chain.eh[res].offset);
 	  vnet_buffer (b0)->ip.reass.ip6_frag_hdr_offset =
@@ -1500,6 +1509,7 @@ ip6_full_reass_init_function (vlib_main_t * vm)
     return error;
   ip6_register_protocol (IP_PROTOCOL_IPV6_FRAGMENTATION,
 			 ip6_full_reass_node.index);
+  rm->is_forus_reass_enabled = 1;
 
   rm->fq_index = vlib_frame_queue_main_init (ip6_full_reass_node.index, 0);
   rm->fq_feature_index =
@@ -1893,6 +1903,34 @@ ip6_full_reass_enable_disable_with_refcnt (u32 sw_if_index, int is_enable)
 					    sw_if_index, 0, 0, 0);
     }
   return -1;
+}
+
+void
+ip6_full_reass_forus_enable_disable (int enable)
+{
+  if (enable)
+    {
+      if (!ip6_full_reass_main.is_forus_reass_enabled)
+	{
+	  ip6_full_reass_main.is_forus_reass_enabled = 1;
+	  ip6_register_protocol (IP_PROTOCOL_IPV6_FRAGMENTATION,
+				 ip6_full_reass_node.index);
+	}
+    }
+  else
+    {
+      if (ip6_full_reass_main.is_forus_reass_enabled)
+	{
+	  ip6_full_reass_main.is_forus_reass_enabled = 0;
+	  ip6_unregister_protocol (IP_PROTOCOL_IPV6_FRAGMENTATION);
+	}
+    }
+}
+
+int
+ip6_full_reass_forus_enabled ()
+{
+  return ip6_full_reass_main.is_forus_reass_enabled;
 }
 #endif
 

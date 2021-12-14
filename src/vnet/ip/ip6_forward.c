@@ -1527,6 +1527,9 @@ ip6_local_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    }
 	}
 
+      b[0]->flags |= VNET_BUFFER_F_IS_FORUS;
+      b[1]->flags |= VNET_BUFFER_F_IS_FORUS;
+
       /* next */
       b += 2;
       next += 2;
@@ -1648,6 +1651,7 @@ ip6_local_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    }
 	}
 
+      b[0]->flags |= VNET_BUFFER_F_IS_FORUS;
       /* next */
       b += 1;
       next += 1;
