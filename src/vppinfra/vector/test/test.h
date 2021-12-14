@@ -55,6 +55,7 @@ typedef struct
   u32 repeat;
   u8 *filter;
   u8 *bundle;
+  f64 ref_clock;
 } test_main_t;
 extern test_main_t test_main;
 

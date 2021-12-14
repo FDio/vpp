@@ -67,13 +67,22 @@ typedef struct
 static u8 *
 format_test_perf_bundle_default (u8 *s, va_list *args)
 {
+  test_main_t *tm = &test_main;
   test_perf_event_bundle_t __clib_unused *b =
     va_arg (*args, test_perf_event_bundle_t *);
   test_perf_t *tp = va_arg (*args, test_perf_t *);
   u64 *data = va_arg (*args, u64 *);
 
+  if (tm->ref_clock > 0)
+    {
+      if (data)
+	s = format (s, "%8.1f", tm->ref_clock * data[0] / data[1] / 1e9);
+      else
+	s = format (s, "%8s", "Freq");
+    }
+
   if (data)
-    s = format (s, "%5.2f", (f64) data[1] / data[0]);
+    s = format (s, "%5.2f", (f64) data[2] / data[0]);
   else
     s = format (s, "%5s", "IPC");
 
@@ -83,17 +92,17 @@ format_test_perf_bundle_default (u8 *s, va_list *args)
     s = format (s, "%8s", "Clks/Op");
 
   if (data)
-    s = format (s, "%8.2f", (f64) data[1] / tp->n_ops);
+    s = format (s, "%8.2f", (f64) data[2] / tp->n_ops);
   else
     s = format (s, "%8s", "Inst/Op");
 
   if (data)
-    s = format (s, "%9.2f", (f64) data[2] / tp->n_ops);
+    s = format (s, "%9.2f", (f64) data[3] / tp->n_ops);
   else
     s = format (s, "%9s", "Brnch/Op");
 
   if (data)
-    s = format (s, "%10.2f", (f64) data[3] / tp->n_ops);
+    s = format (s, "%10.2f", (f64) data[4] / tp->n_ops);
   else
     s = format (s, "%10s", "BrMiss/Op");
   return s;
@@ -131,10 +140,11 @@ test_perf_event_bundle_t perf_bundles[] = {
     .desc = "IPC, Clocks/Operatiom, Instr/Operation, Branch Total & Miss",
     .type = PERF_TYPE_HARDWARE,
     .config[0] = PERF_COUNT_HW_CPU_CYCLES,
-    .config[1] = PERF_COUNT_HW_INSTRUCTIONS,
-    .config[2] = PERF_COUNT_HW_BRANCH_INSTRUCTIONS,
-    .config[3] = PERF_COUNT_HW_BRANCH_MISSES,
-    .n_events = 4,
+    .config[1] = PERF_COUNT_HW_REF_CPU_CYCLES,
+    .config[2] = PERF_COUNT_HW_INSTRUCTIONS,
+    .config[3] = PERF_COUNT_HW_BRANCH_INSTRUCTIONS,
+    .config[4] = PERF_COUNT_HW_BRANCH_MISSES,
+    .n_events = 5,
     .format_fn = format_test_perf_bundle_default,
   }
 #ifdef __x86_64__
@@ -178,6 +188,8 @@ test_perf (test_main_t *tm)
   for (int i = 0; i < TEST_PERF_MAX_EVENTS; i++)
     fds[i] = -1;
 
+  tm->ref_clock = os_cpu_clock_frequency ();
+
   if (tm->bundle)
     {
       for (int i = 0; i < ARRAY_LEN (perf_bundles); i++)
@@ -213,6 +225,9 @@ test_perf (test_main_t *tm)
 	}
       fds[i] = fd;
     }
+  fformat (stdout, "Warming up...\n");
+  for (u64 i = 0; i < (u64) tm->ref_clock; i++)
+    asm inline("" : : "r"(i * i) : "memory");
 
   for (int i = 0; i < CLIB_MARCH_TYPE_N_VARIANTS; i++)
     {
