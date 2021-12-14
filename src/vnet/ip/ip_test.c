@@ -1014,6 +1014,24 @@ api_ip_reassembly_enable_disable (vat_main_t *vat)
   return -1;
 }
 
+static int
+api_ip_local_reass_enable_disable (vat_main_t *vat)
+{
+  return -1;
+}
+
+static int
+api_ip_local_reass_get (vat_main_t *vat)
+{
+  return -1;
+}
+
+static void
+vl_api_ip_local_reass_get_reply_t_handler (
+  vl_api_ip_local_reass_get_reply_t *mp)
+{
+}
+
 static void
 vl_api_ip_reassembly_get_reply_t_handler (vl_api_ip_reassembly_get_reply_t *mp)
 {

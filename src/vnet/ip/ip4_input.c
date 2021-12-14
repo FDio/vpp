@@ -399,7 +399,6 @@ VLIB_REGISTER_NODE (ip4_input_node) = {
     [IP4_INPUT_NEXT_LOOKUP] = "ip4-lookup",
     [IP4_INPUT_NEXT_LOOKUP_MULTICAST] = "ip4-mfib-forward-lookup",
     [IP4_INPUT_NEXT_ICMP_ERROR] = "ip4-icmp-error",
-    [IP4_INPUT_NEXT_REASSEMBLY] = "ip4-full-reassembly",
   },
 
   .format_buffer = format_ip4_header,
