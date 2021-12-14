@@ -46,6 +46,8 @@ vnet_api_error_t ip6_full_reass_enable_disable (u32 sw_if_index,
 int ip6_full_reass_enable_disable_with_refcnt (u32 sw_if_index,
 					       int is_enable);
 
+void ip6_local_full_reass_enable_disable (int enable);
+int ip6_local_full_reass_enabled ();
 #endif /* __included_ip6_full_reass_h */
 
 /*
