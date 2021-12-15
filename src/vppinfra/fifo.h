@@ -274,7 +274,7 @@ clib_fifo_elt_index (void *v, uword i)
   return result;
 }
 
-#define clib_fifo_elt_at_index(v,i) ((v) + clib_fifo_elt_index (v, (i)))
+#define clib_fifo_elt_at_index(v, i) ((v) + (i))
 
 #define clib_fifo_foreach(v,f,body)		\
 do {						\
