@@ -43,6 +43,82 @@ enum tap_flags {
     @param use_random_mac - let the system generate a unique mac address
     @param mac_address - mac addr to assign to the interface if use_random not set
     @param num_rx_queues - number of rx queues
+    @param num_tx_queues - number of tx queues
+    @param tx_ring_sz - the number of entries of TX ring, optional, default is 256 entries, must be power of 2
+    @param rx_ring_sz - the number of entries of RX ring, optional, default is 256 entries, must be power of 2
+    @param host_mtu_set - host MTU should be set
+    @param host_mtu_size - host MTU size
+    @param host_mac_addr_set - host side interface mac address should be set
+    @param host_mac_addr - host side interface mac address
+    @param host_ip4_prefix_set - host IPv4 ip address should be set
+    @param host_ip4_prefix - host IPv4 ip address
+    @param host_ip6_prefix_set - host IPv6 ip address should be set
+    @param host_ip6_prefix - host IPv6 ip address
+    @param host_ip4_gw_set - host IPv4 default gateway should be set
+    @param host_ip4_gw - host IPv4 default gateway
+    @param host_ip6_gw_set - host IPv6 default gateway should be set
+    @param host_ip6_gw - host IPv6 default gateway
+    @param tap_flags - flags for the TAP interface creation
+    @param host_if_name_set - host side interface name should be set
+    @param host_if_name - host side interface name
+    @param host_namespace_set - host namespace should be set
+    @param host_namespace - host namespace to attach interface to
+    @param host_bridge_set - host bridge should be set
+    @param host_bridge - host bridge to attach interface to
+    @param tag - tag
+*/
+autoendian define tap_create_v3
+{
+  u32 client_index;
+  u32 context;
+  u32 id [default=0xffffffff];
+  bool use_random_mac [default=true];
+  vl_api_mac_address_t mac_address;
+  u16 num_rx_queues [default=1];
+  u16 num_tx_queues [default=1];
+  u16 tx_ring_sz [default=256];
+  u16 rx_ring_sz [default=256];
+  bool host_mtu_set;
+  u32 host_mtu_size;
+  bool host_mac_addr_set;
+  vl_api_mac_address_t host_mac_addr;
+  bool host_ip4_prefix_set;
+  vl_api_ip4_address_with_prefix_t host_ip4_prefix;
+  bool host_ip6_prefix_set;
+  vl_api_ip6_address_with_prefix_t host_ip6_prefix;
+  bool host_ip4_gw_set;
+  vl_api_ip4_address_t host_ip4_gw;
+  bool host_ip6_gw_set;
+  vl_api_ip6_address_t host_ip6_gw;
+  vl_api_tap_flags_t tap_flags;
+  bool host_namespace_set;
+  string host_namespace[64];
+  bool host_if_name_set;
+  string host_if_name[64];
+  bool host_bridge_set;
+  string host_bridge[64];
+  string tag[];
+};
+
+/** \brief Reply for tap create reply
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+    @param sw_if_index - software index allocated for the new tap interface
+*/
+autoendian define tap_create_v3_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief Initialize a new tap interface with the given parameters
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param id - interface id, 0xffffffff means auto
+    @param use_random_mac - let the system generate a unique mac address
+    @param mac_address - mac addr to assign to the interface if use_random not set
+    @param num_rx_queues - number of rx queues
     @param tx_ring_sz - the number of entries of TX ring, optional, default is 256 entries, must be power of 2
     @param rx_ring_sz - the number of entries of RX ring, optional, default is 256 entries, must be power of 2
     @param host_mtu_set - host MTU should be set
