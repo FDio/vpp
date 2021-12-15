@@ -191,7 +191,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 
   vif->dev_instance = vif - vim->interfaces;
   vif->id = args->id;
-  vif->num_txqs = thm->n_vlib_mains;
+  vif->num_txqs = clib_max (args->num_tx_queues, thm->n_vlib_mains);
   vif->num_rxqs = clib_max (args->num_rx_queues, 1);
 
   if (args->tap_flags & TAP_FLAG_ATTACH)
