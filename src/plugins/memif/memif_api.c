@@ -72,6 +72,42 @@ reply:
   REPLY_MACRO (VL_API_MEMIF_SOCKET_FILENAME_ADD_DEL_REPLY);
 }
 
+/**
+ * @brief Message handler for memif_socket_filename_add_del API.
+ * @param mp the vl_api_memif_socket_filename_add_del_t API message
+ */
+void
+vl_api_memif_socket_filename_add_del_v2_t_handler (
+  vl_api_memif_socket_filename_add_del_v2_t *mp)
+{
+  vl_api_memif_socket_filename_add_del_v2_reply_t *rmp;
+  memif_main_t *mm = &memif_main;
+  char *socket_filename = 0;
+  u32 socket_id;
+  int rv;
+
+  /* socket_id */
+  socket_id = clib_net_to_host_u32 (mp->socket_id);
+  if (socket_id == 0)
+    {
+      rv = VNET_API_ERROR_INVALID_ARGUMENT;
+      goto reply;
+    }
+
+  /* socket filename */
+  socket_filename = vl_api_from_api_to_new_c_string (&mp->socket_filename);
+  if (mp->is_add && socket_id == (u32) ~0)
+    socket_id = memif_get_unused_socket_id ();
+
+  rv = vnet_api_error (
+    memif_socket_filename_add_del (mp->is_add, socket_id, socket_filename));
+
+  vec_free (socket_filename);
+
+reply:
+  REPLY_MACRO2 (VL_API_MEMIF_SOCKET_FILENAME_ADD_DEL_V2_REPLY,
+		({ rmp->socket_id = htonl (socket_id); }));
+}
 
 /**
  * @brief Message handler for memif_create API.

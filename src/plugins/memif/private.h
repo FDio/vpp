@@ -321,6 +321,7 @@ typedef struct
   u32 sw_if_index;
 } memif_create_if_args_t;
 
+u32 memif_get_unused_socket_id ();
 clib_error_t *memif_socket_filename_add_del (u8 is_add, u32 sock_id,
 					     char *sock_filename);
 clib_error_t *memif_create_if (vlib_main_t *vm, memif_create_if_args_t *args);
