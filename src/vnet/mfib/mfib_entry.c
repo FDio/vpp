@@ -412,6 +412,8 @@ mfib_entry_src_flush (mfib_entry_src_t *msrc)
     }));
     hash_free(msrc->mfes_itfs);
     msrc->mfes_itfs = NULL;
+    hash_free(msrc->mfes_exts);
+    msrc->mfes_exts = NULL;
     fib_path_list_unlock(msrc->mfes_pl);
 }
 
