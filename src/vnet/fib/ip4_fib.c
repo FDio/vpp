@@ -216,6 +216,7 @@ ip4_fib_table_destroy (u32 fib_index)
 	hash_unset (ip4_main.fib_index_by_table_id, fib_table->ft_table_id);
     }
 
+    vec_free (fib_table->ft_locks);
     vec_free(fib_table->ft_src_route_counts);
     ip4_fib_table_free(v4_fib);
 

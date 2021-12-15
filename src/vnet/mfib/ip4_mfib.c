@@ -112,12 +112,22 @@ ip4_mfib_table_destroy (ip4_mfib_t *mfib)
                             &all_zeros,
                             MFIB_SOURCE_DEFAULT_ROUTE);
 
+    const fib_route_path_t path = {
+        .frp_proto = DPO_PROTO_IP4,
+        .frp_addr = zero_addr,
+        .frp_sw_if_index = ~0,
+        .frp_fib_index = ~0,
+        .frp_weight = 1,
+        .frp_flags = FIB_ROUTE_PATH_LOCAL,
+        .frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
+    };
     for (ii = 0; ii < ARRAY_LEN(ip4_specials); ii++)
-    {
-        mfib_table_entry_delete(mfib_table->mft_index,
-                                &ip4_specials[ii],
-                                MFIB_SOURCE_SPECIAL);
-    }
+      {
+	mfib_table_entry_path_remove(mfib_table->mft_index,
+				     &ip4_specials[ii],
+				     MFIB_SOURCE_SPECIAL,
+				     &path);
+      }
 
     /*
      * validate no more routes.
@@ -125,6 +135,8 @@ ip4_mfib_table_destroy (ip4_mfib_t *mfib)
     ASSERT(0 == mfib_table->mft_total_route_counts);
     ASSERT(~0 != mfib_table->mft_table_id);
 
+    for (u32 i = 0; i < ARRAY_LEN (mfib->fib_entry_by_dst_address); i++)
+      hash_free (mfib->fib_entry_by_dst_address[i]);
     hash_unset (ip4_main.mfib_index_by_table_id, mfib_table->mft_table_id);
     pool_put(ip4_main.mfibs, mfib_table);
 }

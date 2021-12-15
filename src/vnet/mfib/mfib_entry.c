@@ -539,6 +539,7 @@ mfib_path_ext_remove (mfib_entry_src_t *msrc,
     path_ext = mfib_entry_path_ext_find(msrc->mfes_exts, path_index);
 
     hash_unset(msrc->mfes_exts, path_index);
+    hash_free(msrc->mfes_exts);
     pool_put(mfib_path_ext_pool, path_ext);
 }
 
