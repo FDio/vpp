@@ -183,7 +183,8 @@ vl_socket_free_registration_index (u32 pool_index)
     }
   rp = pool_elt_at_index (socket_main.registration_pool, pool_index);
 
-  vl_api_call_reaper_functions (pool_index);
+  vl_api_call_reaper_functions (
+    clib_host_to_net_u32 (sock_api_registration_handle (rp)));
 
   ASSERT (rp->registration_type != REGISTRATION_TYPE_FREE);
   for (i = 0; i < vec_len (rp->additional_fds_to_close); i++)
