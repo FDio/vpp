@@ -410,6 +410,7 @@ vnet_ip_table_cmd (vlib_main_t * vm,
 	}
 
 done:
+  vec_free (name);
   unformat_free (line_input);
   return error;
 }
