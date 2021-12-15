@@ -681,6 +681,36 @@ VLIB_REGISTER_NODE (memif_process_node,static) = {
   .name = "memif-process",
 };
 
+/*
+ * Returns an unused socket id, and ~0 if it can't find one.
+ */
+u32
+memif_get_unused_socket_id ()
+{
+  memif_main_t *mm = &memif_main;
+  uword *p;
+  int i, j;
+
+  static u32 seed = 0;
+  /* limit to 1M tries */
+  for (j = 0; j < 1 << 10; j++)
+    {
+      seed = random_u32 (&seed);
+      for (i = 0; i < 1 << 10; i++)
+	{
+	  /* look around randomly generated id */
+	  seed += (2 * (i % 2) - 1) * i;
+	  if (seed == (u32) ~0)
+	    continue;
+	  p = hash_get (mm->socket_file_index_by_sock_id, seed);
+	  if (!p)
+	    return seed;
+	}
+    }
+
+  return ~0;
+}
+
 clib_error_t *
 memif_socket_filename_add_del (u8 is_add, u32 sock_id, char *sock_filename)
 {
