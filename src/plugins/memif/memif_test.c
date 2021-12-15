@@ -121,6 +121,86 @@ api_memif_socket_filename_add_del (vat_main_t * vam)
   return ret;
 }
 
+/* memif_socket_filename_add_del API */
+static int
+api_memif_socket_filename_add_del_v2 (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_memif_socket_filename_add_del_v2_t *mp;
+  u8 is_add;
+  u32 socket_id;
+  u8 *socket_filename;
+  int ret;
+
+  is_add = 1;
+  socket_id = ~0;
+  socket_filename = 0;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "id %u", &socket_id))
+	;
+      else if (unformat (i, "filename %s", &socket_filename))
+	;
+      else if (unformat (i, "del"))
+	is_add = 0;
+      else if (unformat (i, "add"))
+	is_add = 1;
+      else
+	{
+	  vec_free (socket_filename);
+	  clib_warning ("unknown input `%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (socket_id == 0 || socket_id == ~0)
+    {
+      vec_free (socket_filename);
+      errmsg ("Invalid socket id");
+      return -99;
+    }
+
+  if (is_add && (!socket_filename || *socket_filename == 0))
+    {
+      vec_free (socket_filename);
+      errmsg ("Invalid socket filename");
+      return -99;
+    }
+
+  M2 (MEMIF_SOCKET_FILENAME_ADD_DEL_V2, mp, strlen ((char *) socket_filename));
+
+  mp->is_add = is_add;
+  mp->socket_id = htonl (socket_id);
+  char *p = (char *) &mp->socket_filename;
+  p += vl_api_vec_to_api_string (socket_filename, (vl_api_string_t *) p);
+
+  vec_free (socket_filename);
+
+  S (mp);
+  W (ret);
+
+  return ret;
+}
+
+/* memif socket-create reply handler */
+static void
+vl_api_memif_socket_filename_add_del_v2_reply_t_handler (
+  vl_api_memif_socket_filename_add_del_v2_reply_t *mp)
+{
+  vat_main_t *vam = memif_test_main.vat_main;
+  i32 retval = ntohl (mp->retval);
+
+  if (retval == 0)
+    {
+      fformat (vam->ofp, "created memif socket with socket_id %d\n",
+	       ntohl (mp->socket_id));
+    }
+
+  vam->retval = retval;
+  vam->result_ready = 1;
+}
+
 /* memif_socket_filename_add_del reply handler */
 #define VL_API_MEMIF_SOCKET_FILENAME_ADD_DEL_REPLY_T_HANDLER
 static void vl_api_memif_socket_filename_add_del_reply_t_handler

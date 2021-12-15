@@ -292,6 +292,7 @@ typedef struct
 
 int memif_socket_filename_add_del (u8 is_add, u32 sock_id,
 				   u8 * sock_filename);
+u32 memif_get_unused_socket_id ();
 int memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args);
 int memif_delete_if (vlib_main_t * vm, memif_if_t * mif);
 clib_error_t *memif_plugin_api_hookup (vlib_main_t * vm);
