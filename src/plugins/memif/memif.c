@@ -699,9 +699,39 @@ memif_delete_socket_file (u32 sock_id)
   vec_free (msf->filename);
   pool_put (mm->socket_files, msf);
 
-  hash_unset (mm->socket_file_index_by_sock_id, sock_id);
+  hash_unset (mm->socket_file_index_by_sock_id, socket_id);
 
   return 0;
+}
+
+/*
+ * Returns an unused socket id, and ~0 if it can't find one.
+ */
+u32
+memif_get_unused_socket_id ()
+{
+  memif_main_t *mm = &memif_main;
+  uword *p;
+  int i, j;
+
+  static u32 seed = 0;
+  /* limit to 1M tries */
+  for (j = 0; j < 1 << 10; j++)
+    {
+      seed = random_u32 (&seed);
+      for (i = 0; i < 1 << 10; i++)
+	{
+	  /* look around randomly generated id */
+	  seed += (2 * (i % 2) - 1) * i;
+	  if (seed == (u32) ~0)
+	    continue;
+	  p = hash_get (mm->socket_file_index_by_sock_id, seed);
+	  if (!p)
+	    return seed;
+	}
+    }
+
+  return ~0;
 }
 
 int

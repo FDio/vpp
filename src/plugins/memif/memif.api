@@ -51,6 +51,40 @@ autoreply define memif_socket_filename_add_del
   option vat_help = "[add|del] id <id> filename <file>";
 };
 
+/** \brief Create or remove named socket file for memif interfaces
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 0 = remove, 1 = add association
+    @param socket_id - non-0 32-bit integer used to identify a socket file
+          ~0 means autogenerate
+    @param socket_filename - filename of the socket to be used for connection
+           establishment; id 0 always maps to default "/var/vpp/memif.sock";
+	   no socket filename needed when is_add == 0.
+	   socket_filename starting with '@' will create an abstract socket
+	   in the given namespace
+*/
+define memif_socket_filename_add_del_v2
+{
+  u32 client_index;
+  u32 context;
+  bool is_add;		                /* 0 = remove, 1 = add association */
+  u32 socket_id [default=0xffffffff];	/* unique non-0 id for given socket file name */
+  string socket_filename[];             /* NUL terminated filename */
+  option vat_help = "[add|del] id <id> filename <file>";
+};
+
+/** \brief Create memory interface socket file response
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+    @param socket_id - non-0 32-bit integer used to identify a socket file
+*/
+define memif_socket_filename_add_del_v2_reply
+{
+  u32 context;
+  i32 retval;
+  u32 socket_id;
+};
+
 /** \brief Create memory interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
