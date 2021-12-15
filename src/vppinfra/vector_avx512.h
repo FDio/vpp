@@ -322,9 +322,16 @@ u8x64_mask_blend (u8x64 a, u8x64 b, u64 mask)
 }
 
 static_always_inline u8x64
-u8x64_permute (u8x64 v, u8x64 idx)
+u8x64_permute (u8x64 idx, u8x64 a)
 {
-  return (u8x64) _mm512_permutexvar_epi8 ((__m512i) v, (__m512i) idx);
+  return (u8x64) _mm512_permutexvar_epi8 ((__m512i) idx, (__m512i) a);
+}
+
+static_always_inline u8x64
+u8x64_permute2 (u8x64 idx, u8x64 a, u8x64 b)
+{
+  return (u8x64) _mm512_permutex2var_epi8 ((__m512i) a, (__m512i) idx,
+					   (__m512i) b);
 }
 
 #define _(t, m, e, p, it)                                                     \
@@ -435,6 +442,14 @@ u16x8_compress (u16x8 v, u8 mask)
   return u16x8_from_u32x8 (u32x8_compress (u32x8_from_u16x8 (v), mask));
 }
 #endif
+
+static_always_inline u64
+u64x8_hxor (u64x8 v)
+{
+  v ^= u64x8_align_right (v, v, 4);
+  v ^= u64x8_align_right (v, v, 2);
+  return v[0] ^ v[1];
+}
 
 static_always_inline void
 u32x16_transpose (u32x16 m[16])

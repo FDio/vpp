@@ -175,6 +175,13 @@ wrapper (clib_toeplitz_hash_key_t *k, u8 *data, u32 n_bytes)
   return clib_toeplitz_hash (k, data, n_bytes);
 }
 
+__test_funct_fn void
+wrapper_x4 (clib_toeplitz_hash_key_t *k, u8 *d0, u8 *d1, u8 *d2, u8 *d3,
+	    u32 *h0, u32 *h1, u32 *h2, u32 *h3, u32 n_bytes)
+{
+  clib_toeplitz_hash_x4 (k, d0, d1, d2, d3, h0, h1, h2, h3, n_bytes);
+}
+
 static clib_error_t *
 test_clib_toeplitz_hash (clib_error_t *err)
 {
@@ -222,15 +229,9 @@ test_clib_toeplitz_hash (clib_error_t *err)
   n_key_copies = 6;
   bigkey_len = k->key_length * n_key_copies;
   bigdata_len = bigkey_len - 4;
-  bigkey = clib_mem_alloc (bigkey_len);
-  bigdata = clib_mem_alloc (bigdata_len);
+  bigkey = test_mem_alloc_and_splat (k->key_length, n_key_copies, k->data);
+  bigdata = test_mem_alloc_and_fill_inc_u8 (bigdata_len, 0, 0);
   u32 key_len = k->key_length;
-
-  for (int i = 0; i < n_key_copies; i++)
-    clib_memcpy (bigkey + i * key_len, k->data, key_len);
-
-  for (int i = 0; i < bigdata_len; i++)
-    bigdata[i] = (u8) i;
 
   clib_toeplitz_hash_key_free (k);
   k = clib_toeplitz_hash_key_init (bigkey, n_key_copies * key_len);
@@ -252,8 +253,8 @@ test_clib_toeplitz_hash (clib_error_t *err)
 
 done:
   clib_toeplitz_hash_key_free (k);
-  clib_mem_free (bigkey);
-  clib_mem_free (bigdata);
+  test_mem_free (bigkey);
+  test_mem_free (bigdata);
   return err;
 }
 
@@ -333,4 +334,226 @@ REGISTER_TEST (clib_toeplitz_hash) = {
 			      .op_name = "Byte",
 			      .n_ops = 16384,
 			      .fn = perftest_variable_size }),
+};
+
+static clib_error_t *
+test_clib_toeplitz_hash_x4 (clib_error_t *err)
+{
+  u32 r[4];
+  int n_key_copies, bigkey_len, bigdata_len;
+  u8 *bigkey, *bigdata0, *bigdata1, *bigdata2, *bigdata3;
+  clib_toeplitz_hash_key_t *k;
+
+  k = clib_toeplitz_hash_key_init (0, 0);
+
+  wrapper_x4 (k, (u8 *) &ip4_tests[0].key, (u8 *) &ip4_tests[1].key,
+	      (u8 *) &ip4_tests[2].key, (u8 *) &ip4_tests[3].key, r, r + 1,
+	      r + 2, r + 3, 8);
+
+  if (ip4_tests[0].hash_2t != r[0] || ip4_tests[1].hash_2t != r[1] ||
+      ip4_tests[2].hash_2t != r[2] || ip4_tests[3].hash_2t != r[3])
+    return clib_error_return (err,
+			      "wrong IPv4 2 tuple x4 hash "
+			      "calculated { 0x%08x, 0x%08x, 0x%08x, 0x%08x } "
+			      "expected { 0x%08x, 0x%08x, 0x%08x, 0x%08x }",
+			      ip4_tests[0].hash_2t, ip4_tests[1].hash_2t,
+			      ip4_tests[2].hash_2t, ip4_tests[3].hash_2t, r[0],
+			      r[1], r[2], r[3]);
+
+  wrapper_x4 (k, (u8 *) &ip4_tests[0].key, (u8 *) &ip4_tests[1].key,
+	      (u8 *) &ip4_tests[2].key, (u8 *) &ip4_tests[3].key, r, r + 1,
+	      r + 2, r + 3, 12);
+
+  if (ip4_tests[0].hash_4t != r[0] || ip4_tests[1].hash_4t != r[1] ||
+      ip4_tests[2].hash_4t != r[2] || ip4_tests[3].hash_4t != r[3])
+    return clib_error_return (err,
+			      "wrong IPv4 4 tuple x4 hash "
+			      "calculated { 0x%08x, 0x%08x, 0x%08x, 0x%08x } "
+			      "expected { 0x%08x, 0x%08x, 0x%08x, 0x%08x }",
+			      ip4_tests[0].hash_4t, ip4_tests[1].hash_4t,
+			      ip4_tests[2].hash_4t, ip4_tests[3].hash_4t, r[0],
+			      r[1], r[2], r[3]);
+
+  wrapper_x4 (k, (u8 *) &ip6_tests[0].key, (u8 *) &ip6_tests[1].key,
+	      (u8 *) &ip6_tests[2].key, (u8 *) &ip6_tests[0].key, r, r + 1,
+	      r + 2, r + 3, 32);
+
+  if (ip6_tests[0].hash_2t != r[0] || ip6_tests[1].hash_2t != r[1] ||
+      ip6_tests[2].hash_2t != r[2] || ip6_tests[0].hash_2t != r[3])
+    return clib_error_return (err,
+			      "wrong IPv6 2 tuple x4 hash "
+			      "calculated { 0x%08x, 0x%08x, 0x%08x, 0x%08x } "
+			      "expected { 0x%08x, 0x%08x, 0x%08x, 0x%08x }",
+			      ip6_tests[0].hash_2t, ip6_tests[1].hash_2t,
+			      ip6_tests[2].hash_2t, ip6_tests[0].hash_2t, r[0],
+			      r[1], r[2], r[3]);
+
+  wrapper_x4 (k, (u8 *) &ip6_tests[0].key, (u8 *) &ip6_tests[1].key,
+	      (u8 *) &ip6_tests[2].key, (u8 *) &ip6_tests[0].key, r, r + 1,
+	      r + 2, r + 3, 36);
+
+  if (ip6_tests[0].hash_4t != r[0] || ip6_tests[1].hash_4t != r[1] ||
+      ip6_tests[2].hash_4t != r[2] || ip6_tests[0].hash_4t != r[3])
+    return clib_error_return (err,
+			      "wrong IPv6 4 tuple x4 hash "
+			      "calculated { 0x%08x, 0x%08x, 0x%08x, 0x%08x } "
+			      "expected { 0x%08x, 0x%08x, 0x%08x, 0x%08x }",
+			      ip6_tests[0].hash_4t, ip6_tests[1].hash_4t,
+			      ip6_tests[2].hash_4t, ip6_tests[0].hash_4t, r[0],
+			      r[1], r[2], r[3]);
+
+  n_key_copies = 6;
+  bigkey_len = k->key_length * n_key_copies;
+  bigdata_len = bigkey_len - 4;
+  bigkey = test_mem_alloc_and_splat (k->key_length, n_key_copies, k->data);
+  bigdata0 = test_mem_alloc_and_fill_inc_u8 (bigdata_len, 0, 0);
+  bigdata1 = test_mem_alloc_and_fill_inc_u8 (bigdata_len, 0, 0);
+  bigdata2 = test_mem_alloc_and_fill_inc_u8 (bigdata_len, 0, 0);
+  bigdata3 = test_mem_alloc_and_fill_inc_u8 (bigdata_len, 0, 0);
+  u32 key_len = k->key_length;
+
+  clib_toeplitz_hash_key_free (k);
+  k = clib_toeplitz_hash_key_init (bigkey, n_key_copies * key_len);
+
+  for (int i = 0; i < N_LENGTH_TESTS - 4; i++)
+    {
+      wrapper_x4 (k, bigdata0, bigdata1, bigdata2, bigdata3, r, r + 1, r + 2,
+		  r + 3, i);
+      if (length_test_hashes[i] != r[0] || length_test_hashes[i] != r[1] ||
+	  length_test_hashes[i] != r[2] || length_test_hashes[i] != r[3])
+	{
+	  err = clib_error_return (
+	    err,
+	    "wrong length test hash x4 for length %u, "
+	    "calculated { 0x%08x, 0x%08x, 0x%08x, 0x%08x }, expected 0x%08x",
+	    i, r[0], r[1], r[2], r[3], length_test_hashes[i]);
+	  goto done;
+	}
+    }
+
+done:
+  clib_toeplitz_hash_key_free (k);
+  test_mem_free (bigkey);
+  test_mem_free (bigdata0);
+  test_mem_free (bigdata1);
+  test_mem_free (bigdata2);
+  test_mem_free (bigdata3);
+  return err;
+}
+
+void __test_perf_fn
+perftest_fixed_12byte_x4 (int fd, test_perf_t *tp)
+{
+  u32 n = tp->n_ops / 4;
+  u8 *d0 = test_mem_alloc_and_splat (12, n, (void *) &ip4_tests[0].key);
+  u8 *d1 = test_mem_alloc_and_splat (12, n, (void *) &ip4_tests[1].key);
+  u8 *d2 = test_mem_alloc_and_splat (12, n, (void *) &ip4_tests[2].key);
+  u8 *d3 = test_mem_alloc_and_splat (12, n, (void *) &ip4_tests[3].key);
+  u32 *h0 = test_mem_alloc (4 * n);
+  u32 *h1 = test_mem_alloc (4 * n);
+  u32 *h2 = test_mem_alloc (4 * n);
+  u32 *h3 = test_mem_alloc (4 * n);
+  clib_toeplitz_hash_key_t *k = clib_toeplitz_hash_key_init (0, 0);
+
+  test_perf_event_enable (fd);
+  for (int i = 0; i < n; i++)
+    clib_toeplitz_hash_x4 (k, d0 + i * 12, d1 + i * 12, d2 + i * 12,
+			   d3 + i * 12, h0 + i, h1 + i, h2 + i, h3 + i, 12);
+  test_perf_event_disable (fd);
+
+  clib_toeplitz_hash_key_free (k);
+  test_mem_free (d0);
+  test_mem_free (d1);
+  test_mem_free (d2);
+  test_mem_free (d3);
+  test_mem_free (h0);
+  test_mem_free (h1);
+  test_mem_free (h2);
+  test_mem_free (h3);
+}
+
+void __test_perf_fn
+perftest_fixed_36byte_x4 (int fd, test_perf_t *tp)
+{
+  u32 n = tp->n_ops / 4;
+  u8 *d0 = test_mem_alloc_and_splat (36, n, (void *) &ip4_tests[0].key);
+  u8 *d1 = test_mem_alloc_and_splat (36, n, (void *) &ip4_tests[1].key);
+  u8 *d2 = test_mem_alloc_and_splat (36, n, (void *) &ip4_tests[2].key);
+  u8 *d3 = test_mem_alloc_and_splat (36, n, (void *) &ip4_tests[3].key);
+  u32 *h0 = test_mem_alloc (4 * n);
+  u32 *h1 = test_mem_alloc (4 * n);
+  u32 *h2 = test_mem_alloc (4 * n);
+  u32 *h3 = test_mem_alloc (4 * n);
+  clib_toeplitz_hash_key_t *k = clib_toeplitz_hash_key_init (0, 0);
+
+  test_perf_event_enable (fd);
+  for (int i = 0; i < n; i++)
+    clib_toeplitz_hash_x4 (k, d0 + i * 36, d1 + i * 36, d2 + i * 36,
+			   d3 + i * 36, h0 + i, h1 + i, h2 + i, h3 + i, 36);
+  test_perf_event_disable (fd);
+
+  clib_toeplitz_hash_key_free (k);
+  test_mem_free (d0);
+  test_mem_free (d1);
+  test_mem_free (d2);
+  test_mem_free (d3);
+  test_mem_free (h0);
+  test_mem_free (h1);
+  test_mem_free (h2);
+  test_mem_free (h3);
+}
+
+void __test_perf_fn
+perftest_variable_size_x4 (int fd, test_perf_t *tp)
+{
+  u32 key_len, n_keys, n = tp->n_ops / 4;
+  u8 *key;
+  u8 *d0 = test_mem_alloc (n);
+  u8 *d1 = test_mem_alloc (n);
+  u8 *d2 = test_mem_alloc (n);
+  u8 *d3 = test_mem_alloc (n);
+  u32 *h0 = test_mem_alloc (sizeof (u32));
+  u32 *h1 = test_mem_alloc (sizeof (u32));
+  u32 *h2 = test_mem_alloc (sizeof (u32));
+  u32 *h3 = test_mem_alloc (sizeof (u32));
+  clib_toeplitz_hash_key_t *k = clib_toeplitz_hash_key_init (0, 0);
+
+  k = clib_toeplitz_hash_key_init (0, 0);
+  key_len = k->key_length;
+  n_keys = ((n + 4) / k->key_length) + 1;
+  key = test_mem_alloc_and_splat (n_keys, key_len, k->data);
+  clib_toeplitz_hash_key_free (k);
+  k = clib_toeplitz_hash_key_init (key, key_len * n_keys);
+
+  test_perf_event_enable (fd);
+  clib_toeplitz_hash_x4 (k, d0, d1, d2, d3, h0, h1, h2, h3, n);
+  test_perf_event_disable (fd);
+
+  clib_toeplitz_hash_key_free (k);
+  test_mem_free (key);
+  test_mem_free (d0);
+  test_mem_free (d1);
+  test_mem_free (d2);
+  test_mem_free (d3);
+  test_mem_free (h0);
+  test_mem_free (h1);
+  test_mem_free (h2);
+  test_mem_free (h3);
+}
+
+REGISTER_TEST (clib_toeplitz_hash_x4) = {
+  .name = "clib_toeplitz_hash_x4",
+  .fn = test_clib_toeplitz_hash_x4,
+  .perf_tests = PERF_TESTS ({ .name = "fixed_12",
+			      .op_name = "12B Tuple",
+			      .n_ops = 1024,
+			      .fn = perftest_fixed_12byte_x4 },
+			    { .name = "fixed_36",
+			      .op_name = "36B Tuple",
+			      .n_ops = 1024,
+			      .fn = perftest_fixed_36byte_x4 },
+			    { .name = "variable_size",
+			      .op_name = "Byte",
+			      .n_ops = 16384,
+			      .fn = perftest_variable_size_x4 }),
 };

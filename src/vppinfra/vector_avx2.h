@@ -203,6 +203,16 @@ u32x8_hadd (u32x8 v1, u32x8 v2)
   return (u32x8) _mm256_hadd_epi32 ((__m256i) v1, (__m256i) v2);
 }
 
+static_always_inline u32
+u32x8_hxor (u32x8 v)
+{
+  u32x4 v4;
+  v4 = u32x8_extract_lo (v) ^ u32x8_extract_hi (v);
+  v4 ^= (u32x4) u8x16_align_right (v4, v4, 8);
+  v4 ^= (u32x4) u8x16_align_right (v4, v4, 4);
+  return v4[0];
+}
+
 static_always_inline u16x16
 u16x16_mask_last (u16x16 v, u8 n_last)
 {

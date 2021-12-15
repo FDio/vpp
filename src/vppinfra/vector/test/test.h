@@ -59,8 +59,10 @@ typedef struct
 } test_main_t;
 extern test_main_t test_main;
 
-#define __test_funct_fn static __clib_noinline __clib_section (".test_func")
-#define __test_perf_fn	static __clib_noinline __clib_section (".test_perf")
+#define __test_funct_fn                                                       \
+  static __clib_noinline __clib_noclone __clib_section (".test_func")
+#define __test_perf_fn                                                        \
+  static __clib_noinline __clib_noclone __clib_section (".test_perf")
 
 #define REGISTER_TEST(x)                                                      \
   test_registration_t CLIB_MARCH_SFX (__test_##x);                            \
