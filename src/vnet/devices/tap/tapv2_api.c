@@ -36,6 +36,102 @@
 #include <vlibapi/api_helper_macros.h>
 
 static void
+vl_api_tap_create_v3_t_handler (vl_api_tap_create_v3_t *mp)
+{
+  vl_api_registration_t *reg;
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  vnet_main_t *vnm = vnet_get_main ();
+  vlib_main_t *vm = vlib_get_main ();
+  vl_api_tap_create_v3_reply_t *rmp;
+
+  tap_create_if_args_t _a, *ap = &_a;
+
+  clib_memset (ap, 0, sizeof (*ap));
+
+  ap->id = ntohl (mp->id);
+  if (!mp->use_random_mac)
+    {
+      mac_address_decode (mp->mac_address, &ap->mac_addr);
+      ap->mac_addr_set = 1;
+    }
+  ap->rx_ring_sz = ntohs (mp->rx_ring_sz);
+  ap->tx_ring_sz = ntohs (mp->tx_ring_sz);
+  ap->sw_if_index = (u32) ~0;
+  ap->num_rx_queues = clib_max (1, clib_net_to_host_u16 (mp->num_rx_queues));
+  ap->num_tx_queues = clib_net_to_host_u16 (mp->num_tx_queues);
+
+  if (mp->host_if_name_set)
+    ap->host_if_name = format (0, "%s%c", mp->host_if_name, 0);
+
+  if (mp->host_mac_addr_set)
+    {
+      mac_address_decode (mp->host_mac_addr, &ap->host_mac_addr);
+    }
+
+  if (mp->host_namespace_set)
+    ap->host_namespace = format (0, "%s%c", mp->host_namespace, 0);
+
+  if (mp->host_bridge_set)
+    ap->host_bridge = format (0, "%s%c", mp->host_bridge, 0);
+
+  if (mp->host_ip4_prefix_set)
+    {
+      ip4_address_decode (mp->host_ip4_prefix.address, &ap->host_ip4_addr);
+      ap->host_ip4_prefix_len = mp->host_ip4_prefix.len;
+    }
+
+  if (mp->host_ip6_prefix_set)
+    {
+      ip6_address_decode (mp->host_ip6_prefix.address, &ap->host_ip6_addr);
+      ap->host_ip6_prefix_len = mp->host_ip6_prefix.len;
+    }
+
+  if (mp->host_ip4_gw_set)
+    {
+      ip4_address_decode (mp->host_ip4_gw, &ap->host_ip4_gw);
+      ap->host_ip4_gw_set = 1;
+    }
+
+  if (mp->host_ip6_gw_set)
+    {
+      ip6_address_decode (mp->host_ip6_gw, &ap->host_ip6_gw);
+      ap->host_ip6_gw_set = 1;
+    }
+
+  if (mp->host_mtu_set)
+    {
+      ap->host_mtu_size = ntohl (mp->host_mtu_size);
+      ap->host_mtu_set = 1;
+    }
+
+  ap->tap_flags = ntohl (mp->tap_flags);
+
+  tap_create_if (vm, ap);
+
+  /* If a tag was supplied... */
+  if (vl_api_string_len (&mp->tag))
+    {
+      u8 *tag = vl_api_from_api_to_new_vec (mp, &mp->tag);
+      vnet_set_sw_interface_tag (vnm, tag, ap->sw_if_index);
+    }
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_TAP_CREATE_V3_REPLY);
+  rmp->context = mp->context;
+  rmp->retval = ntohl (ap->rv);
+  rmp->sw_if_index = ntohl (ap->sw_if_index);
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+
+  vec_free (ap->host_if_name);
+  vec_free (ap->host_namespace);
+  vec_free (ap->host_bridge);
+}
+
+static void
 vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
 {
   vl_api_registration_t *reg;
@@ -61,6 +157,7 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
   ap->tx_ring_sz = ntohs (mp->tx_ring_sz);
   ap->sw_if_index = (u32) ~ 0;
   ap->num_rx_queues = 1;
+  ap->num_tx_queues = 1;
 
   if (mp->num_rx_queues > 1)
     ap->num_rx_queues = mp->num_rx_queues;

@@ -76,6 +76,8 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	    args.host_ip6_gw_set = 1;
 	  else if (unformat (line_input, "num-rx-queues %d", &tmp))
 	    args.num_rx_queues = tmp;
+	  else if (unformat (line_input, "num-tx-queues %d", &tmp))
+	    args.num_tx_queues = tmp;
 	  else if (unformat (line_input, "rx-ring-size %d", &tmp))
 	    args.rx_ring_sz = tmp;
 	  else if (unformat (line_input, "tx-ring-size %d", &tmp))
@@ -136,9 +138,10 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (tap_create_command, static) = {
   .path = "create tap",
-  .short_help = "create tap {id <if-id>} [hw-addr <mac-address>] "
-    "[num-rx-queues <n>] [rx-ring-size <size>] [tx-ring-size <size>] "
-    "[host-ns <netns>] [host-bridge <bridge-name>] "
+  .short_help =
+    "create tap {id <if-id>} [hw-addr <mac-address>] "
+    "[num-rx-queues <n>] [num-tx-queues <n>] [rx-ring-size <size>] "
+    "[tx-ring-size <size>] [host-ns <netns>] [host-bridge <bridge-name>] "
     "[host-ip4-addr <ip4addr/mask>] [host-ip6-addr <ip6-addr>] "
     "[host-ip4-gw <ip4-addr>] [host-ip6-gw <ip6-addr>] "
     "[host-mac-addr <host-mac-address>] [host-if-name <name>] "
