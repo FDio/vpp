@@ -16,6 +16,24 @@
       "revId": "94d3ed65128ee1a6d6169e4ddb1e846cf4354200",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d619e376_4698c463",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 945,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-12-16T17:30:17Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "0cb8bd86_20d85af3",
+      "revId": "94d3ed65128ee1a6d6169e4ddb1e846cf4354200",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
