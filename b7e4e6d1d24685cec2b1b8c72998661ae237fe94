@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "12bb3cea_9881fd5b",
+        "filename": "src/vppinfra/test_socket.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-12-16T12:09:33Z",
+      "side": 0,
+      "message": "I think this should stay here....",
+      "revId": "b7e4e6d1d24685cec2b1b8c72998661ae237fe94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
