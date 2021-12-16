@@ -1040,20 +1040,22 @@ tcp_session_cal_goal_size (tcp_connection_t * tc)
 always_inline u32
 tcp_round_snd_space (tcp_connection_t * tc, u32 snd_space)
 {
-  if (PREDICT_FALSE (tc->snd_wnd < tc->snd_mss))
-    {
-      return tc->snd_wnd <= snd_space ? tc->snd_wnd : 0;
-    }
-
-  /* If not snd_wnd constrained and we can't write at least a segment,
-   * don't try at all */
   if (PREDICT_FALSE (snd_space < tc->snd_mss))
-    return snd_space < tc->cwnd ? 0 : snd_space;
+    {
+      /* If psh pending and next seqment includes psh seq allow
+       * small segment as we might not get new data */
+      if ((tc->flags & TCP_CONN_PSH_PENDING) &&
+	  seq_geq (tc->snd_nxt + snd_space, tc->psh_seq))
+	return snd_space;
+
+      /* If we have data in flight, wait for window to open. Otherwise,
+       * allow small segment through */
+      return (tc->snd_nxt - tc->snd_una) > 0 ? 0 : snd_space;
+    }
 
   /* round down to mss multiple */
   return snd_space - (snd_space % tc->snd_mss);
 }
-
 /**
  * Compute tx window session is allowed to fill.
  *
