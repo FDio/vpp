@@ -1002,10 +1002,20 @@ segment_manager_main_init (void)
   sm->default_low_watermark = 50;
 }
 
+u8 *
+format_segment_manager (u8 * s, va_list * args)
+{
+  segment_manager_t *sm = va_arg (*args, segment_manager_t *);
+  int verbose = va_arg (*args, int);
+
+  return s;
+}
+
 static clib_error_t *
 segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
 			 vlib_cli_command_t * cmd)
 {
+  unformat_input_t _line_input, *line_input = &_line_input;
   segment_manager_main_t *smm = &sm_main;
   u8 show_segments = 0, verbose = 0;
   uword max_fifo_size;
@@ -1014,20 +1024,35 @@ segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
   app_worker_t *app_wrk;
   application_t *app;
   u8 custom_logic;
+  u32 sm_index = ~0;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  if (!unformat_user (input, unformat_line_input, line_input))
     {
-      if (unformat (input, "segments"))
-	show_segments = 1;
-      else if (unformat (input, "verbose"))
-	verbose = 1;
-      else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+      vlib_cli_output (vm, "%d segment managers allocated",
+	               pool_elts (smm->segment_managers));
+      return 0;
     }
-  vlib_cli_output (vm, "%d segment managers allocated",
-		   pool_elts (smm->segment_managers));
-  if (verbose && pool_elts (smm->segment_managers))
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "segments"))
+	show_segments = 1;
+      else if (unformat (line_input, "verbose"))
+	verbose = 1;
+      else if (unformat (line_input, "index %u", &sm_index))
+	;
+      else
+	{
+	  vlib_cli_output (vm, "unknown input [%U]", format_unformat_error,
+		           line_input);
+	  goto done;
+	}
+    }
+
+  if (!pool_elts (smm->segment_managers))
+    goto done;
+
+  if (verbose)
     {
       vlib_cli_output (vm, "%-6s%=10s%=10s%=13s%=11s%=11s%=12s",
 		       "Index", "AppIndex", "Segments", "MaxFifoSize",
@@ -1064,6 +1089,11 @@ segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
       /* *INDENT-ON* */
 
     }
+
+done:
+
+  unformat_free (line_input);
+
   return 0;
 }
 
