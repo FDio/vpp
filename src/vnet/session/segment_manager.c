@@ -127,16 +127,17 @@ segment_manager_add_segment_inline (segment_manager_t *sm, uword segment_size,
     FIFO_SEGMENT_ALLOC_OVERHEAD;
   segment_size = round_pow2 (segment_size, clib_mem_get_page_size ());
 
-  if (props->segment_type != SSVM_SEGMENT_PRIVATE)
-    {
-      seg_name = format (0, "%d-%d%c", getpid (), smm->seg_name_counter++, 0);
-    }
-  else
-    {
+//  if (props->segment_type != SSVM_SEGMENT_PRIVATE)
+//    {
+//      seg_name = format (0, "%d-%d%c", getpid (), smm->seg_name_counter++, 0);
+//    }
+//  else
+//    {
       app_worker_t *app_wrk = app_worker_get (sm->app_wrk_index);
-      application_t *app = application_get (app_wrk->app_index);
-      seg_name = format (0, "%v segment%c", app->name, 0);
-    }
+//      application_t *app = application_get (app_wrk->app_index);
+  seg_name = format (0, "%u-%u-%u%c", app_wrk->app_index, app_wrk->wrk_index,
+	             smm->seg_name_counter++, 0);
+//    }
 
   fs->ssvm.ssvm_size = segment_size;
   fs->ssvm.name = seg_name;
@@ -1002,68 +1003,111 @@ segment_manager_main_init (void)
   sm->default_low_watermark = 50;
 }
 
+static u8 *
+format_segment_manager (u8 * s, va_list * args)
+{
+  segment_manager_t *sm = va_arg (*args, segment_manager_t *);
+  int verbose = va_arg (*args, int);
+  app_worker_t *app_wrk;
+  uword max_fifo_size;
+  fifo_segment_t *seg;
+  application_t *app;
+  u8 custom_logic;
+
+  app_wrk = app_worker_get_if_valid (sm->app_wrk_index);
+  app = app_wrk ? application_get (app_wrk->app_index) : 0;
+  custom_logic = (app && (app->cb_fns.fifo_tuning_callback)) ? 1 : 0;
+  max_fifo_size = sm->max_fifo_size;
+
+  s = format (s, "[%u] %v app-wrk: %u segs: %u max-fifo-sz: %U "
+	      "wmarks: %u %u %s flags: 0x%x",
+	      segment_manager_index (sm), app->name, sm->app_wrk_index,
+	      pool_elts (sm->segments), format_memory_size, max_fifo_size,
+	      sm->high_watermark, sm->low_watermark,
+	      custom_logic ? "custom-tuning" : "no-tuning", sm->flags);
+
+  if (!verbose)
+    return s;
+
+  s = format (s, "\n\n");
+
+  segment_manager_foreach_segment_w_lock (seg, sm, ({
+      s = format (s, "%U", format_fifo_segment, seg, verbose);
+  }));
+
+  return s;
+}
+
 static clib_error_t *
 segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
 			 vlib_cli_command_t * cmd)
 {
+  unformat_input_t _line_input, *line_input = &_line_input;
   segment_manager_main_t *smm = &sm_main;
   u8 show_segments = 0, verbose = 0;
-  uword max_fifo_size;
+//  uword max_fifo_size;
   segment_manager_t *sm;
-  fifo_segment_t *seg;
-  app_worker_t *app_wrk;
-  application_t *app;
-  u8 custom_logic;
+//  fifo_segment_t *seg;
+//  app_worker_t *app_wrk;
+//  application_t *app;
+//  u8 custom_logic;
+  u32 sm_index = ~0;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  if (!unformat_user (input, unformat_line_input, line_input))
     {
-      if (unformat (input, "segments"))
-	show_segments = 1;
-      else if (unformat (input, "verbose"))
-	verbose = 1;
-      else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+      vlib_cli_output (vm, "%d segment managers allocated",
+	               pool_elts (smm->segment_managers));
+      return 0;
     }
-  vlib_cli_output (vm, "%d segment managers allocated",
-		   pool_elts (smm->segment_managers));
-  if (verbose && pool_elts (smm->segment_managers))
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      vlib_cli_output (vm, "%-6s%=10s%=10s%=13s%=11s%=11s%=12s",
-		       "Index", "AppIndex", "Segments", "MaxFifoSize",
-		       "HighWater", "LowWater", "FifoTuning");
+      if (unformat (line_input, "segments"))
+	show_segments = 1;
+      else if (unformat (line_input, "verbose"))
+	verbose = 1;
+      else if (unformat (line_input, "index %u", &sm_index))
+	;
+      else
+	{
+	  vlib_cli_output (vm, "unknown input [%U]", format_unformat_error,
+		           line_input);
+	  goto done;
+	}
+    }
 
-      /* *INDENT-OFF* */
+  if (!pool_elts (smm->segment_managers))
+    goto done;
+
+  if (sm_index != ~0)
+    {
+      sm = segment_manager_get_if_valid (sm_index);
+      if (!sm)
+	{
+	  vlib_cli_output (vm, "segment manager %u not allocated", sm_index);
+	  goto done;
+	}
+      vlib_cli_output (vm, "%U", format_segment_manager, sm, 1 /* verbose */);
+      goto done;
+    }
+
+  if (verbose)
+    {
+//      vlib_cli_output (vm, "%-6s%=10s%=10s%=13s%=11s%=11s%=12s",
+//		       "Index", "AppIndex", "Segments", "MaxFifoSize",
+//		       "HighWater", "LowWater", "FifoTuning");
+
       pool_foreach (sm, smm->segment_managers)  {
-        app_wrk = app_worker_get_if_valid (sm->app_wrk_index);
-        app = app_wrk ? application_get (app_wrk->app_index) : 0;
-        custom_logic = (app && (app->cb_fns.fifo_tuning_callback)) ? 1 : 0;
-        max_fifo_size = sm->max_fifo_size;
-
-	vlib_cli_output (vm, "%-6d%=10d%=10d%=13U%=11d%=11d%=12s",
-                         segment_manager_index (sm),
-			 sm->app_wrk_index, pool_elts (sm->segments),
-                         format_memory_size, max_fifo_size,
-                         sm->high_watermark, sm->low_watermark,
-                         custom_logic ? "custom" : "none");
+	vlib_cli_output (vm, "%U", format_segment_manager, sm, show_segments);
       }
-      /* *INDENT-ON* */
 
       vlib_cli_output (vm, "\n");
     }
-  if (show_segments)
-    {
-      vlib_cli_output (vm, "%U", format_fifo_segment, 0, verbose);
 
-      /* *INDENT-OFF* */
-      pool_foreach (sm, smm->segment_managers)  {
-	  segment_manager_foreach_segment_w_lock (seg, sm, ({
-	    vlib_cli_output (vm, "%U", format_fifo_segment, seg, verbose);
-	  }));
-      }
-      /* *INDENT-ON* */
+done:
 
-    }
+  unformat_free (line_input);
+
   return 0;
 }
 

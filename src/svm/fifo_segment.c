@@ -1538,20 +1538,24 @@ format_fifo_segment (u8 * s, va_list * args)
 
   indent = format_get_indent (s) + 2;
 
-  if (fs == 0)
-    {
-      s = format (s, "%-20s%10s%15s%15s%15s%15s", "Name", "Type",
-		  "HeapSize (M)", "ActiveFifos", "FreeFifos", "Address");
-      return s;
-    }
+//  if (fs == 0)
+//    {
+//      s = format (s, "%-20s%10s%15s%15s%15s%15s", "Name", "Type",
+//		  "HeapSize (M)", "ActiveFifos", "FreeFifos", "Address");
+//      return s;
+//    }
 
   fifo_segment_info (fs, &address, &size);
   active_fifos = fifo_segment_num_fifos (fs);
   free_fifos = fifo_segment_num_free_fifos (fs);
 
-  s = format (s, "%-20v%10U%15llu%15u%15u%15llx", ssvm_name (&fs->ssvm),
-	      format_fifo_segment_type, fs, size >> 20ULL, active_fifos,
-	      free_fifos, address);
+//  s = format (s, "%-20v%10U%15llu%15u%15u%15llx", ssvm_name (&fs->ssvm),
+//	      format_fifo_segment_type, fs, size >> 20ULL, active_fifos,
+//	      free_fifos, address);
+  s = format (s, "%U* %v type: %U size: %U active fifos: %u",
+              format_white_space, indent,
+              ssvm_name (&fs->ssvm), format_fifo_segment_type, fs,
+              format_memory_size, size, active_fifos);
 
   if (!verbose)
     return s;
