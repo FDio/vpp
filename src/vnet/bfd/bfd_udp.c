@@ -614,7 +614,8 @@ bfd_udp_validate_api_input (u32 sw_if_index,
 	{
 	  const ip6_address_t *ll_addr;
 	  ll_addr = ip6_get_link_local_address (sw_if_index);
-	  if (ip6_address_is_equal (ll_addr, &local_addr->ip6))
+	  if (ll_addr &&
+	      ip6_address_is_equal (ll_addr, &local_addr->ip6))
 	    {
 	      /* valid address for this interface */
 	      local_ip_valid = 1;
