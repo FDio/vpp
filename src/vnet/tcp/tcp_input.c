@@ -811,7 +811,7 @@ tcp_cc_update (tcp_connection_t * tc, tcp_rate_sample_t * rs)
   if (PREDICT_FALSE
       (seq_leq (tc->snd_congestion, tc->snd_una - tc->bytes_acked)
        && seq_gt (tc->snd_congestion, tc->snd_una)))
-    tc->snd_congestion = tc->snd_una - 1;
+    tc->snd_congestion = tc->snd_una - tc->bytes_acked - 1;
 }
 
 /**
