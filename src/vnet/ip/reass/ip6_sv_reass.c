@@ -311,6 +311,8 @@ ip6_sv_reass_find_or_create (vlib_main_t *vm, ip6_sv_reass_main_t *rm,
   ip6_sv_reass_t *reass = NULL;
   f64 now = vlib_time_now (vm);
 
+again:
+
   if (!clib_bihash_search_48_8 (&rm->hash, &kv->kv, &kv->kv))
     {
       if (vm->thread_index != kv->v.thread_index)
@@ -370,10 +372,14 @@ ip6_sv_reass_find_or_create (vlib_main_t *vm, ip6_sv_reass_main_t *rm,
   kv->v.thread_index = vm->thread_index;
   reass->last_heard = now;
 
-  if (clib_bihash_add_del_48_8 (&rm->hash, &kv->kv, 1))
+  int rv = clib_bihash_add_del_48_8 (&rm->hash, &kv->kv, 2);
+  if (rv)
     {
       ip6_sv_reass_free (vm, rm, rt, reass);
       reass = NULL;
+      // if other worker created a context already work with the other copy
+      if (-2 == rv)
+	goto again;
     }
 
   return reass;
