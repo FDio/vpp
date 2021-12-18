@@ -696,6 +696,7 @@ vrrp_vr_add_del (u8 is_add, vrrp_vr_config_t * vr_conf)
       vrrp_vr_tracking_ifs_add_del (vr, vr->tracking.interfaces, is_add);
       vrrp_vr_addrs_add_del (vr, is_add, vr->config.vr_addrs);
       mhash_unset (&vrm->vr_index_by_key, &key, 0);
+      vec_free (vr->config.peer_addrs);
       vec_free (vr->config.vr_addrs);
       vec_free (vr->tracking.interfaces);
       pool_put (vrm->vrs, vr);
