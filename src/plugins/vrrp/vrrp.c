@@ -227,9 +227,6 @@ vrrp_vr_transition_addrs (vrrp_vr_t * vr, vrrp_vr_state_t new_state)
   if (vrrp_vr_is_owner (vr))
     return;
 
-  if (vrrp_vr_is_unicast (vr))
-    return;
-
   /* only need to do something if entering or leaving master state */
   if ((vr->runtime.state != VRRP_VR_STATE_MASTER) &&
       (new_state != VRRP_VR_STATE_MASTER))
