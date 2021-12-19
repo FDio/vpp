@@ -180,7 +180,6 @@ dump_thread_0_event_queue (void)
 static u8
 session_node_cmp_event (session_event_t * e, svm_fifo_t * f)
 {
-  session_t *s;
   switch (e->event_type)
     {
     case SESSION_IO_EVT_RX:
@@ -192,16 +191,7 @@ session_node_cmp_event (session_event_t * e, svm_fifo_t * f)
 	return 1;
       break;
     case SESSION_CTRL_EVT_CLOSE:
-      break;
     case SESSION_CTRL_EVT_RPC:
-      s = session_get_from_handle (e->session_handle);
-      if (!s)
-	{
-	  clib_warning ("session has event but doesn't exist!");
-	  break;
-	}
-      if (s->rx_fifo == f || s->tx_fifo == f)
-	return 1;
       break;
     default:
       break;
