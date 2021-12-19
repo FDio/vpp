@@ -1508,7 +1508,7 @@ fib_route_attached_cross_table (const fib_entry_t *fib_entry,
         /* Ignore link local addresses these also can't be imported/exported */
         if (ip6_address_is_link_local_unicast (&pfx->fp_addr.ip6))
         {
-            return (!0);
+            return (0);
         }
         break;
     case FIB_PROTOCOL_IP4:
