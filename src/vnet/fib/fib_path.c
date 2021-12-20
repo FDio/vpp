@@ -2421,6 +2421,7 @@ fib_path_stack_mpls_disp (fib_node_index_t path_index,
 void
 fib_path_contribute_forwarding (fib_node_index_t path_index,
 				fib_forward_chain_type_t fct,
+                                dpo_proto_t payload_proto,
 				dpo_id_t *dpo)
 {
     fib_path_t *path;
@@ -2428,7 +2429,6 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
     path = fib_path_get(path_index);
 
     ASSERT(path);
-    ASSERT(FIB_FORW_CHAIN_TYPE_MPLS_EOS != fct);
 
     /*
      * The DPO stored in the path was created when the path was resolved.
@@ -2446,9 +2446,19 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
 	case FIB_PATH_TYPE_ATTACHED_NEXT_HOP:
 	    switch (fct)
 	    {
+	    case FIB_FORW_CHAIN_TYPE_MPLS_EOS: {
+                    dpo_id_t tmp = DPO_INVALID;
+                    dpo_copy (&tmp, dpo);
+                    path = fib_path_attached_next_hop_get_adj(
+                           path,
+                           dpo_proto_to_link(payload_proto),
+                           &tmp);
+                    dpo_copy (dpo, &tmp);
+                    dpo_reset(&tmp);
+                    break;
+            }
 	    case FIB_FORW_CHAIN_TYPE_UNICAST_IP4:
 	    case FIB_FORW_CHAIN_TYPE_UNICAST_IP6:
-	    case FIB_FORW_CHAIN_TYPE_MPLS_EOS:
 	    case FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS:
 	    case FIB_FORW_CHAIN_TYPE_ETHERNET:
 	    case FIB_FORW_CHAIN_TYPE_NSH:
@@ -2560,10 +2570,25 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
         case FIB_PATH_TYPE_ATTACHED:
 	    switch (fct)
 	    {
+	    case FIB_FORW_CHAIN_TYPE_MPLS_EOS:
+                /*
+                 * End of stack traffic via an attacehd path (a glean)
+                 * must forace an IP lookup so that the IP packet can
+                 * match against any installed adj-fibs
+                 */
+                lookup_dpo_add_or_lock_w_fib_index(
+                    fib_table_get_index_for_sw_if_index(
+                        dpo_proto_to_fib(payload_proto),
+                        path->attached.fp_interface),
+                    payload_proto,
+                    LOOKUP_UNICAST,
+                    LOOKUP_INPUT_DST_ADDR,
+                    LOOKUP_TABLE_FROM_CONFIG,
+                    dpo);
+                break;
 	    case FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS:
 	    case FIB_FORW_CHAIN_TYPE_UNICAST_IP4:
 	    case FIB_FORW_CHAIN_TYPE_UNICAST_IP6:
-	    case FIB_FORW_CHAIN_TYPE_MPLS_EOS:
 	    case FIB_FORW_CHAIN_TYPE_ETHERNET:
 	    case FIB_FORW_CHAIN_TYPE_NSH:
             case FIB_FORW_CHAIN_TYPE_BIER:
@@ -2609,8 +2634,8 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
             /*
              * Create the adj needed for sending IP multicast traffic
              */
-            interface_rx_dpo_add_or_lock(fib_forw_chain_type_to_dpo_proto(fct),
-                                         path->attached.fp_interface,
+            interface_rx_dpo_add_or_lock(payload_proto,
+                                         path->intf_rx.fp_interface,
                                          dpo);
             break;
         case FIB_PATH_TYPE_UDP_ENCAP:
@@ -2630,6 +2655,7 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
 load_balance_path_t *
 fib_path_append_nh_for_multipath_hash (fib_node_index_t path_index,
 				       fib_forward_chain_type_t fct,
+                                       dpo_proto_t payload_proto,
 				       load_balance_path_t *hash_key)
 {
     load_balance_path_t *mnh;
@@ -2646,7 +2672,7 @@ fib_path_append_nh_for_multipath_hash (fib_node_index_t path_index,
 
     if (fib_path_is_resolved(path_index))
     {
-        fib_path_contribute_forwarding(path_index, fct, &mnh->path_dpo);
+        fib_path_contribute_forwarding(path_index, fct, payload_proto, &mnh->path_dpo);
     }
     else
     {
