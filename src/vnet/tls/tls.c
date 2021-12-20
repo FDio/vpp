@@ -834,6 +834,7 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
   lctx->tls_ctx_engine = engine_type;
   lctx->tls_type = sep->transport_proto;
   lctx->ckpair_index = ccfg->ckpair_index;
+  lctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
 
   if (tls_vfts[engine_type].ctx_start_listen (lctx))
     {
