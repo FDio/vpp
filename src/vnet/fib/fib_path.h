@@ -191,6 +191,7 @@ extern uword fib_path_hash(fib_node_index_t path_index);
 extern load_balance_path_t * fib_path_append_nh_for_multipath_hash(
     fib_node_index_t path_index,
     fib_forward_chain_type_t fct,
+    dpo_proto_t payload_proto,
     load_balance_path_t *hash_key);
 extern void fib_path_stack_mpls_disp(fib_node_index_t path_index,
                                      dpo_proto_t payload_proto,
@@ -198,6 +199,7 @@ extern void fib_path_stack_mpls_disp(fib_node_index_t path_index,
                                      dpo_id_t *dpo);
 extern void fib_path_contribute_forwarding(fib_node_index_t path_index,
 					   fib_forward_chain_type_t type,
+                                           dpo_proto_t payload_proto,
 					   dpo_id_t *dpo);
 extern void fib_path_contribute_urpf(fib_node_index_t path_index,
 				     index_t urpf);

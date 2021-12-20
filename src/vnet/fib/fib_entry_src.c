@@ -257,6 +257,7 @@ typedef struct fib_entry_src_collect_forwarding_ctx_t_
     fib_forward_chain_type_t fct;
     int n_recursive_constrained;
     u16 preference;
+    dpo_proto_t payload_proto;
 } fib_entry_src_collect_forwarding_ctx_t;
 
 /**
@@ -287,47 +288,6 @@ fib_entry_src_valid_out_label (mpls_label_t label)
              MPLS_IETF_IPV4_EXPLICIT_NULL_LABEL == label ||
              MPLS_IETF_IPV6_EXPLICIT_NULL_LABEL == label ||
              MPLS_IETF_IMPLICIT_NULL_LABEL == label));
-}
-
-/**
- * @brief Turn the chain type requested by the client into the one they
- * really wanted
- */
-fib_forward_chain_type_t
-fib_entry_chain_type_fixup (const fib_entry_t *entry,
-			    fib_forward_chain_type_t fct)
-{
-    /*
-     * The EOS chain is a tricky since one cannot know the adjacency
-     * to link to without knowing what the packets payload protocol
-     * will be once the label is popped.
-     */
-    fib_forward_chain_type_t dfct;
-
-    if (FIB_FORW_CHAIN_TYPE_MPLS_EOS != fct)
-    {
-        return (fct);
-    }
-
-    dfct = fib_entry_get_default_chain_type(entry);
-
-    if (FIB_FORW_CHAIN_TYPE_MPLS_EOS == dfct)
-    {
-        /*
-         * If the entry being asked is a eos-MPLS label entry,
-         * then use the payload-protocol field, that we stashed there
-         * for just this purpose
-         */
-        return (fib_forw_chain_type_from_dpo_proto(
-                    entry->fe_prefix.fp_payload_proto));
-    }
-    /*
-     * else give them what this entry would be by default. i.e. if it's a v6
-     * entry, then the label its local labelled should be carrying v6 traffic.
-     * If it's a non-EOS label entry, then there are more labels and we want
-     * a non-eos chain.
-     */
-    return (dfct);
 }
 
 static dpo_proto_t
@@ -371,7 +331,8 @@ fib_entry_src_get_path_forwarding (fib_node_index_t path_index,
 
         nh->path_index = path_index;
         nh->path_weight = fib_path_get_weight(path_index);
-        fib_path_contribute_forwarding(path_index, ctx->fct, &nh->path_dpo);
+        fib_path_contribute_forwarding(path_index, ctx->fct,
+                                       ctx->payload_proto, &nh->path_dpo);
 
         break;
     case FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS:
@@ -384,6 +345,7 @@ fib_entry_src_get_path_forwarding (fib_node_index_t path_index,
             nh->path_weight = fib_path_get_weight(path_index);
             fib_path_contribute_forwarding(path_index,
                                            FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
+                                           ctx->payload_proto,
                                            &nh->path_dpo);
         }
         break;
@@ -397,11 +359,11 @@ fib_entry_src_get_path_forwarding (fib_node_index_t path_index,
             nh->path_index = path_index;
             nh->path_weight = fib_path_get_weight(path_index);
             fib_path_contribute_forwarding(path_index,
-                                           fib_entry_chain_type_fixup(ctx->fib_entry,
-                                                                      ctx->fct),
+                                           ctx->fct,
+                                           ctx->payload_proto,
                                            &nh->path_dpo);
             fib_path_stack_mpls_disp(path_index,
-                                     fib_prefix_get_payload_proto(&ctx->fib_entry->fe_prefix),
+                                     ctx->payload_proto,
                                      FIB_MPLS_LSP_MODE_PIPE,
                                      &nh->path_dpo);
 
@@ -480,9 +442,8 @@ fib_entry_src_collect_forwarding (fib_node_index_t pl_index,
                  */
                 ctx->next_hops =
                     fib_path_ext_stack(path_ext,
+                                       ctx->payload_proto,
                                        ctx->fct,
-                                       fib_entry_chain_type_fixup(ctx->fib_entry,
-                                                                  ctx->fct),
                                        ctx->next_hops);
             }
             else
@@ -609,6 +570,7 @@ fib_entry_src_mk_lb (fib_entry_t *fib_entry,
         .preference = 0xffff,
         .start_source_index = start,
         .end_source_index = end,
+        .payload_proto = fib_prefix_get_payload_proto(&fib_entry->fe_prefix),
     };
 
     /*

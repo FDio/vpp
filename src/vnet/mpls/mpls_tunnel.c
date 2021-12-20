@@ -265,10 +265,8 @@ mpls_tunnel_collect_forwarding (fib_node_index_t pl_index,
      * found a matching extension. stack it to obtain the forwarding
      * info for this path.
      */
-    ctx->next_hops = fib_path_ext_stack(path_ext,
-                                        ctx->fct,
-                                        ctx->fct,
-                                        ctx->next_hops);
+    ctx->next_hops =
+      fib_path_ext_stack (path_ext, DPO_PROTO_MPLS, ctx->fct, ctx->next_hops);
 
     return (FIB_PATH_LIST_WALK_CONTINUE);
 }

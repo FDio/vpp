@@ -163,8 +163,8 @@ fib_path_ext_mpls_flags_to_mpls_label (fib_path_ext_mpls_flags_t fpe_flags)
 
 load_balance_path_t *
 fib_path_ext_stack (fib_path_ext_t *path_ext,
+                    dpo_proto_t payload_proto,
                     fib_forward_chain_type_t child_fct,
-                    fib_forward_chain_type_t imp_null_fct,
 		    load_balance_path_t *nhs)
 {
     fib_forward_chain_type_t parent_fct;
@@ -189,7 +189,7 @@ fib_path_ext_stack (fib_path_ext_t *path_ext,
 	 */
 	if (fib_path_ext_is_imp_null(path_ext))
 	{
-            parent_fct = imp_null_fct;
+            parent_fct = fib_forw_chain_type_from_dpo_proto(payload_proto);
         }
         else
         {
@@ -240,6 +240,7 @@ fib_path_ext_stack (fib_path_ext_t *path_ext,
      */
     fib_path_contribute_forwarding(path_ext->fpe_path_index,
 				   parent_fct,
+                                   payload_proto,
 				   &via_dpo);
 
     if (dpo_is_drop(&via_dpo) ||
