@@ -121,7 +121,9 @@ app_listener_lookup (application_t * app, session_endpoint_cfg_t * sep_ext)
   handle = session_lookup_endpoint_listener (table_index, sep, 1);
   if (handle != SESSION_INVALID_HANDLE)
     {
-      ls = listen_session_get_from_handle (handle);
+      ls = session_get_from_handle_if_valid (handle);
+      if (!ls)
+	return 0;
       return app_listener_get_w_session ((session_t *) ls);
     }
 
