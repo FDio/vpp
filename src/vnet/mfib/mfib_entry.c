@@ -547,6 +547,7 @@ typedef struct mfib_entry_collect_forwarding_ctx_t_
     load_balance_path_t * next_hops;
     fib_forward_chain_type_t fct;
     mfib_entry_src_t *msrc;
+    dpo_proto_t payload_proto;
 } mfib_entry_collect_forwarding_ctx_t;
 
 static fib_path_list_walk_rc_t
@@ -592,7 +593,8 @@ mfib_entry_src_collect_forwarding (fib_node_index_t pl_index,
 
         nh->path_index = path_index;
         nh->path_weight = fib_path_get_weight(path_index);
-        fib_path_contribute_forwarding(path_index, ctx->fct, &nh->path_dpo);
+        fib_path_contribute_forwarding(path_index, ctx->fct,
+                                       ctx->payload_proto, &nh->path_dpo);
         break;
 
     case FIB_FORW_CHAIN_TYPE_UNICAST_IP4:
@@ -632,6 +634,7 @@ mfib_entry_stack (mfib_entry_t *mfib_entry,
             .next_hops = NULL,
             .fct = mfib_entry_get_default_chain_type(mfib_entry),
             .msrc = msrc,
+            .payload_proto = fib_proto_to_dpo(mfib_entry->mfe_prefix.fp_proto),
         };
 
         /*

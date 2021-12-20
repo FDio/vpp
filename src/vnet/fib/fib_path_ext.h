@@ -141,8 +141,8 @@ extern void fib_path_ext_resolve(fib_path_ext_t *path_ext,
 				 fib_node_index_t path_list_index);
 
 extern load_balance_path_t *fib_path_ext_stack(fib_path_ext_t *path_ext,
+                                               dpo_proto_t payload_proto,
                                                fib_forward_chain_type_t fct,
-                                               fib_forward_chain_type_t imp_null_fct,
                                                load_balance_path_t *nhs);
 
 extern fib_path_ext_t * fib_path_ext_list_push_back (fib_path_ext_list_t *list,

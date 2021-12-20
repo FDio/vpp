@@ -378,8 +378,10 @@ fib_path_list_mk_lb (fib_path_list_t *path_list,
         if ((flags & FIB_PATH_LIST_FWD_FLAG_STICKY) ||
             fib_path_is_resolved(*path_index))
         {
-            nhs = fib_path_append_nh_for_multipath_hash(*path_index,
-                                                        fct, nhs);
+            nhs = fib_path_append_nh_for_multipath_hash(
+                *path_index, fct,
+                fib_forw_chain_type_to_dpo_proto(fct),
+                nhs);
         }
     }
 
