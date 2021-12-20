@@ -1862,18 +1862,19 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
   if ((xd->link.link_duplex != prev_link.link_duplex))
     {
       hw_flags_chg = 1;
-      switch (xd->link.link_duplex)
-	{
-	case ETH_LINK_HALF_DUPLEX:
-	  hw_flags |= VNET_HW_INTERFACE_FLAG_HALF_DUPLEX;
-	  break;
-	case ETH_LINK_FULL_DUPLEX:
-	  hw_flags |= VNET_HW_INTERFACE_FLAG_FULL_DUPLEX;
-	  break;
-	default:
-	  break;
-	}
     }
+  switch (xd->link.link_duplex)
+    {
+    case ETH_LINK_HALF_DUPLEX:
+      hw_flags |= VNET_HW_INTERFACE_FLAG_HALF_DUPLEX;
+      break;
+    case ETH_LINK_FULL_DUPLEX:
+      hw_flags |= VNET_HW_INTERFACE_FLAG_FULL_DUPLEX;
+      break;
+    default:
+      break;
+    }
+
   if (xd->link.link_speed != prev_link.link_speed)
     vnet_hw_interface_set_link_speed (vnm, xd->hw_if_index,
 				      xd->link.link_speed * 1000);
@@ -1881,10 +1882,10 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
   if (xd->link.link_status != prev_link.link_status)
     {
       hw_flags_chg = 1;
-
-      if (xd->link.link_status)
-	hw_flags |= VNET_HW_INTERFACE_FLAG_LINK_UP;
     }
+
+  if (xd->link.link_status)
+	  hw_flags |= VNET_HW_INTERFACE_FLAG_LINK_UP;
 
   if (hw_flags_chg)
     {
