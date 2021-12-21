@@ -105,6 +105,7 @@ typedef struct _svm_fifo
   i8 refcnt;		  /**< reference count  */
   u32 segment_manager;	  /**< session layer segment manager index */
   u32 segment_index;	  /**< segment index in segment manager */
+  u32 thresh;		  /**< fifo threshold used for notifications */
 
   struct _svm_fifo *next; /**< prev in active chain */
   struct _svm_fifo *prev; /**< prev in active chain */
