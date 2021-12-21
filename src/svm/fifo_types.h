@@ -78,6 +78,7 @@ typedef struct svm_fifo_shr_
   u32 head;			/**< fifo head position/byte */
   volatile u32 want_deq_ntf;	/**< producer wants nudge */
   volatile u32 has_deq_ntf;
+  u32 deq_thresh; /**< fifo threshold used for notifications */
 
   CLIB_CACHE_LINE_ALIGN_MARK (producer);
   u32 tail;			/**< fifo tail position/byte */
