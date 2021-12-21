@@ -199,7 +199,7 @@ main (int argc, char *argv[])
 	    continue;
 
 	  sent = send (accfd, rx_buffer, n, 0 /* flags */ );
-	  if (n < 0)
+	  if (sent < 0)
 	    {
 	      clib_unix_warning ("send");
 	      close (accfd);
