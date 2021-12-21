@@ -422,6 +422,7 @@ cryptodev_raw_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
 		       u32 *enqueue_thread_idx)
 {
   cryptodev_main_t *cmt = &cryptodev_main;
+  vnet_crypto_main_t *cm = &crypto_main;
   cryptodev_engine_thread_t *cet = cmt->per_thread_data + vm->thread_index;
   vnet_crypto_async_frame_t *frame, *frame_ret = 0;
   u32 n_deq, n_success;
@@ -509,6 +510,11 @@ cryptodev_raw_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
 	  n_room_left++;
 	}
     }
+
+  if (cm->dispatch_mode == VNET_CRYPTO_ASYNC_DISPATCH_INTERRUPT &&
+      inflight > 0)
+    vlib_node_set_interrupt_pending (vlib_get_main_by_index (vm->thread_index),
+				     cm->crypto_node_index);
 
   /* no point to dequeue further */
   if (!inflight || no_job_to_deq || !n_room_left)
