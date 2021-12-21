@@ -495,9 +495,6 @@ fs_try_alloc_multi_chunk (fifo_segment_header_t * fsh,
   svm_fifo_chunk_t *c, *first = 0, *next;
 
   fl_index = fs_freelist_for_size (req_bytes);
-  if (fl_index > 0)
-    fl_index -= 1;
-
   fl_size = fs_freelist_index_to_size (fl_index);
 
   while (req_bytes)
@@ -663,14 +660,11 @@ fsh_try_alloc_chunk (fifo_segment_header_t * fsh,
   fl_index = fs_freelist_for_size (data_bytes);
 
 free_list:
-  c = fss_chunk_free_list_pop (fsh, fss, fl_index);
-  if (c)
-    {
-      c->next = 0;
-      fss_fl_chunk_bytes_sub (fss, fs_freelist_index_to_size (fl_index));
-      fsh_cached_bytes_sub (fsh, fs_freelist_index_to_size (fl_index));
-    }
-  else
+  /* data_bytes may be larger than maxium chunk size (fl_index=10)
+   * so we always alloc multi although we may receive just one chunk
+   */
+  c = fs_try_alloc_multi_chunk (fsh, fss, data_bytes);
+  if (!c)
     {
       u32 chunk_size, batch = FIFO_SEGMENT_ALLOC_BATCH_SIZE;
       uword n_free;
