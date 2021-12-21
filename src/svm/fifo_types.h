@@ -74,6 +74,7 @@ typedef struct svm_fifo_shr_
   fs_sptr_t next;		/**< next in freelist */
 
   CLIB_CACHE_LINE_ALIGN_MARK (consumer);
+  u32 deq_thresh;		/**< fifo threshold used for notifications */
   fs_sptr_t head_chunk;		/**< tracks chunk where head lands */
   u32 head;			/**< fifo head position/byte */
   volatile u32 want_deq_ntf;	/**< producer wants nudge */
