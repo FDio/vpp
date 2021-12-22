@@ -305,6 +305,9 @@ u8 *format_c_identifier (u8 * s, va_list * va);
 /* Format hexdump with both hex and printable chars - compatible with text2pcap */
 u8 *format_hexdump (u8 * s, va_list * va);
 
+/* Format bitmap of array of u64 numbers */
+u8 *format_u64_bitmap (u8 *s, va_list *va);
+
 /* Unix specific formats. */
 #ifdef CLIB_UNIX
 /* Setup input from Unix file. */

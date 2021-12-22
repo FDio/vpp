@@ -411,6 +411,37 @@ format_hexdump (u8 * s, va_list * args)
   return s;
 }
 
+__clib_export u8 *
+format_u64_bitmap (u8 *s, va_list *args)
+{
+  u64 *bitmap = va_arg (*args, u64 *);
+  int n_uword = va_arg (*args, int);
+  u32 indent = format_get_indent (s);
+
+  s = format (s, "%6s", "");
+
+  for (int i = 60; i >= 0; i -= 4)
+    s = format (s, "%5d", i);
+
+  vec_add1 (s, '\n');
+
+  for (int j = n_uword - 1; j >= 0; j--)
+    {
+      s = format (s, "%U0x%04x ", format_white_space, indent, j * 8);
+      for (int i = 63; i >= 0; i--)
+	{
+	  vec_add1 (s, (1ULL << i) & bitmap[j] ? '1' : '.');
+	  if (i % 4 == 0)
+	    vec_add1 (s, ' ');
+	}
+      s = format (s, "0x%016lx", bitmap[j]);
+      if (j)
+	vec_add1 (s, '\n');
+    }
+
+  return s;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
