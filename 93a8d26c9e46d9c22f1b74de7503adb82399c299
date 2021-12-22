@@ -22,6 +22,30 @@
       "revId": "93a8d26c9e46d9c22f1b74de7503adb82399c299",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4a2076db_78f6a5dd",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 844,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-12-22T18:43:25Z",
+      "side": 1,
+      "message": "That\u0027s how things were done before but that lead to all our troubles in this area. The point with the current separation is that we now have a fast path and a slow path. The former has minimal branching but fair point that we could maybe avoid some of the duplication.\n\nNext patch should somewhat fix that but I might push a subsequent patch to maybe avoid passing fs_index all over the place.",
+      "parentUuid": "e319bf65_4c2ecb5b",
+      "range": {
+        "startLine": 836,
+        "startChar": 2,
+        "endLine": 844,
+        "endChar": 5
+      },
+      "revId": "93a8d26c9e46d9c22f1b74de7503adb82399c299",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
