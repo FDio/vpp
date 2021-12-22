@@ -74,6 +74,8 @@ typedef struct
   fifo_slice_private_t *slices; /**< private slice information */
   svm_msg_q_t *mqs;		/**< private vec of attached mqs */
   uword max_byte_index;		/**< max byte index for segment */
+  u32 sm_index;			/**< owner segment manager index */
+  u32 fs_index;			/**< fs index in sm pool */
   u8 n_slices;			/**< number of fifo segment slices */
   u8 flags;			/**< private fifo segment flags */
   u8 high_watermark;		/**< memory pressure watermark high */

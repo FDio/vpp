@@ -621,10 +621,6 @@ ct_init_accepted_session (app_worker_t *server_wrk, ct_connection_t *ct,
   ls->tx_fifo->shr->master_session_index = ls->session_index;
   ls->rx_fifo->master_thread_index = ls->thread_index;
   ls->tx_fifo->master_thread_index = ls->thread_index;
-  ls->rx_fifo->segment_manager = sm_index;
-  ls->tx_fifo->segment_manager = sm_index;
-  ls->rx_fifo->segment_index = fs_index;
-  ls->tx_fifo->segment_index = fs_index;
 
   seg_handle = segment_manager_segment_handle (sm, fs);
   segment_manager_segment_reader_unlock (sm);
