@@ -97,16 +97,14 @@ static char *ip_outacl_error_strings[] = {
 };
 
 static_always_inline void
-ip_in_out_acl_inline_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
-			    vlib_frame_t *frame, vlib_buffer_t **b, u16 *next,
-			    u32 n_left, u32 *hits__, u32 *misses__,
-			    u32 *chain_hits__, const vlib_error_t error_none,
-			    const vlib_error_t error_deny,
-			    const vlib_error_t error_miss,
-			    vnet_classify_table_t *tables,
-			    const u32 *table_index_by_sw_if_index,
-			    vnet_config_main_t *cm, const vlib_rx_or_tx_t way,
-			    const int is_output, const int do_trace)
+ip_in_out_acl_inline_trace (
+  vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
+  vlib_buffer_t **b, u16 *next, u32 n_left, u32 *hits__, u32 *misses__,
+  u32 *chain_hits__, const vlib_error_t error_none,
+  const vlib_error_t error_deny, const vlib_error_t error_miss,
+  vnet_classify_table_t *tables, const u32 *table_index_by_sw_if_index,
+  u32 *fib_index_by_sw_if_index, vnet_config_main_t *cm,
+  const vlib_rx_or_tx_t way, const int is_output, const int do_trace)
 {
   f64 now = vlib_time_now (vm);
   u32 hits = 0;
@@ -301,8 +299,13 @@ ip_in_out_acl_inline_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
 		      e[0]->action == CLASSIFY_ACTION_SET_IP6_FIB_INDEX)
 		    vnet_buffer (b[0])->sw_if_index[VLIB_TX] = e[0]->metadata;
 		  else if (e[0]->action == CLASSIFY_ACTION_SET_METADATA)
-		    vnet_buffer (b[0])->ip.adj_index[VLIB_TX] =
-		      e[0]->metadata;
+		    {
+		      vnet_buffer (b[0])->ip.adj_index[VLIB_TX] =
+			e[0]->metadata;
+		      /* For source check in case we skip the lookup node */
+		      ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index,
+						      b[0]);
+		    }
 		}
 	    }
 	  else
@@ -364,8 +367,14 @@ ip_in_out_acl_inline_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
 			      e[0]->metadata;
 			  else if (e[0]->action ==
 				   CLASSIFY_ACTION_SET_METADATA)
-			    vnet_buffer (b[0])->ip.adj_index[VLIB_TX] =
-			      e[0]->metadata;
+			    {
+			      vnet_buffer (b[0])->ip.adj_index[VLIB_TX] =
+				e[0]->metadata;
+			      /* For source check in case we skip the lookup
+			       * node */
+			      ip_lookup_set_buffer_fib_index (
+				fib_index_by_sw_if_index, b[0]);
+			    }
 			}
 		      break;
 		    }
@@ -397,8 +406,13 @@ ip_in_out_acl_inline_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
 		      e[1]->action == CLASSIFY_ACTION_SET_IP6_FIB_INDEX)
 		    vnet_buffer (b[1])->sw_if_index[VLIB_TX] = e[1]->metadata;
 		  else if (e[1]->action == CLASSIFY_ACTION_SET_METADATA)
-		    vnet_buffer (b[1])->ip.adj_index[VLIB_TX] =
-		      e[1]->metadata;
+		    {
+		      vnet_buffer (b[1])->ip.adj_index[VLIB_TX] =
+			e[1]->metadata;
+		      /* For source check in case we skip the lookup node */
+		      ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index,
+						      b[1]);
+		    }
 		}
 	    }
 	  else
@@ -460,8 +474,14 @@ ip_in_out_acl_inline_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
 			      e[1]->metadata;
 			  else if (e[1]->action ==
 				   CLASSIFY_ACTION_SET_METADATA)
-			    vnet_buffer (b[1])->ip.adj_index[VLIB_TX] =
-			      e[1]->metadata;
+			    {
+			      vnet_buffer (b[1])->ip.adj_index[VLIB_TX] =
+				e[1]->metadata;
+			      /* For source check in case we skip the lookup
+			       * node */
+			      ip_lookup_set_buffer_fib_index (
+				fib_index_by_sw_if_index, b[1]);
+			    }
 			}
 		      break;
 		    }
@@ -589,7 +609,12 @@ ip_in_out_acl_inline_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
 		      e0->action == CLASSIFY_ACTION_SET_IP6_FIB_INDEX)
 		    vnet_buffer (b[0])->sw_if_index[VLIB_TX] = e0->metadata;
 		  else if (e0->action == CLASSIFY_ACTION_SET_METADATA)
-		    vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = e0->metadata;
+		    {
+		      vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = e0->metadata;
+		      /* For source check in case we skip the lookup node */
+		      ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index,
+						      b[0]);
+		    }
 		}
 	    }
 	  else
@@ -647,8 +672,14 @@ ip_in_out_acl_inline_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
 			    vnet_buffer (b[0])->sw_if_index[VLIB_TX] =
 			      e0->metadata;
 			  else if (e0->action == CLASSIFY_ACTION_SET_METADATA)
-			    vnet_buffer (b[0])->ip.adj_index[VLIB_TX] =
-			      e0->metadata;
+			    {
+			      vnet_buffer (b[0])->ip.adj_index[VLIB_TX] =
+				e0->metadata;
+			      /* For source check in case we skip the lookup
+			       * node */
+			      ip_lookup_set_buffer_fib_index (
+				fib_index_by_sw_if_index, b[0]);
+			    }
 			}
 		      break;
 		    }
@@ -689,6 +720,7 @@ ip_in_out_acl_inline_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
 static_always_inline uword
 ip_in_out_acl_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		      vlib_frame_t *frame, const in_out_acl_table_id_t tid,
+		      u32 *fib_index_by_sw_if_index,
 		      const vlib_node_registration_t *parent_error_node,
 		      const u32 error_none_index, const u32 error_deny_index,
 		      const u32 error_miss_index, const vlib_rx_or_tx_t way,
@@ -715,7 +747,8 @@ ip_in_out_acl_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   ip_in_out_acl_inline_trace (                                                \
     vm, node, frame, bufs, nexts, frame->n_vectors, &hits, &misses,           \
     &chain_hits, error_deny, error_miss, error_none, tables,                  \
-    table_index_by_sw_if_index, cm, way, is_output, do_trace)
+    table_index_by_sw_if_index, fib_index_by_sw_if_index, cm, way, is_output, \
+    do_trace)
 
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
     ip_in_out_acl_inline_trace__ (1 /* do_trace */);
@@ -741,27 +774,28 @@ VLIB_NODE_FN (ip4_inacl_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return ip_in_out_acl_inline (
-    vm, node, frame, IN_OUT_ACL_TABLE_IP4, &ip4_input_node, IP4_ERROR_NONE,
-    IP4_ERROR_INACL_SESSION_DENY, IP4_ERROR_INACL_TABLE_MISS, VLIB_RX,
-    0 /* is_output */);
+    vm, node, frame, IN_OUT_ACL_TABLE_IP4, ip4_main.fib_index_by_sw_if_index,
+    &ip4_input_node, IP4_ERROR_NONE, IP4_ERROR_INACL_SESSION_DENY,
+    IP4_ERROR_INACL_TABLE_MISS, VLIB_RX, 0 /* is_output */);
 }
 
 VLIB_NODE_FN (ip4_punt_acl_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return ip_in_out_acl_inline (
-    vm, node, frame, IN_OUT_ACL_TABLE_IP4_PUNT, &ip4_input_node,
-    IP4_ERROR_NONE, IP4_ERROR_INACL_SESSION_DENY, IP4_ERROR_INACL_TABLE_MISS,
-    ~0 /* way */, 0 /* is_output */);
+    vm, node, frame, IN_OUT_ACL_TABLE_IP4_PUNT,
+    ip4_main.fib_index_by_sw_if_index, &ip4_input_node, IP4_ERROR_NONE,
+    IP4_ERROR_INACL_SESSION_DENY, IP4_ERROR_INACL_TABLE_MISS, ~0 /* way */,
+    0 /* is_output */);
 }
 
 VLIB_NODE_FN (ip4_outacl_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return ip_in_out_acl_inline (
-    vm, node, frame, IN_OUT_ACL_TABLE_IP4, &ip4_input_node, IP4_ERROR_NONE,
-    IP4_ERROR_INACL_SESSION_DENY, IP4_ERROR_INACL_TABLE_MISS, VLIB_TX,
-    1 /* is_output */);
+    vm, node, frame, IN_OUT_ACL_TABLE_IP4, NULL, &ip4_input_node,
+    IP4_ERROR_NONE, IP4_ERROR_INACL_SESSION_DENY, IP4_ERROR_INACL_TABLE_MISS,
+    VLIB_TX, 1 /* is_output */);
 }
 
 /* *INDENT-OFF* */
@@ -815,27 +849,28 @@ VLIB_NODE_FN (ip6_inacl_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 			       vlib_frame_t * frame)
 {
   return ip_in_out_acl_inline (
-    vm, node, frame, IN_OUT_ACL_TABLE_IP6, &ip6_input_node, IP6_ERROR_NONE,
-    IP6_ERROR_INACL_SESSION_DENY, IP6_ERROR_INACL_TABLE_MISS, VLIB_RX,
-    0 /* is_output */);
+    vm, node, frame, IN_OUT_ACL_TABLE_IP6, ip6_main.fib_index_by_sw_if_index,
+    &ip6_input_node, IP6_ERROR_NONE, IP6_ERROR_INACL_SESSION_DENY,
+    IP6_ERROR_INACL_TABLE_MISS, VLIB_RX, 0 /* is_output */);
 }
 
 VLIB_NODE_FN (ip6_punt_acl_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return ip_in_out_acl_inline (
-    vm, node, frame, IN_OUT_ACL_TABLE_IP6_PUNT, &ip6_input_node,
-    IP6_ERROR_NONE, IP6_ERROR_INACL_SESSION_DENY, IP6_ERROR_INACL_TABLE_MISS,
-    ~0 /* way */, 0 /* is_output */);
+    vm, node, frame, IN_OUT_ACL_TABLE_IP6_PUNT,
+    ip4_main.fib_index_by_sw_if_index, &ip6_input_node, IP6_ERROR_NONE,
+    IP6_ERROR_INACL_SESSION_DENY, IP6_ERROR_INACL_TABLE_MISS, ~0 /* way */,
+    0 /* is_output */);
 }
 
 VLIB_NODE_FN (ip6_outacl_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 				vlib_frame_t * frame)
 {
   return ip_in_out_acl_inline (
-    vm, node, frame, IN_OUT_ACL_TABLE_IP6, &ip6_input_node, IP6_ERROR_NONE,
-    IP6_ERROR_INACL_SESSION_DENY, IP6_ERROR_INACL_TABLE_MISS, VLIB_TX,
-    1 /* is_output */);
+    vm, node, frame, IN_OUT_ACL_TABLE_IP6, NULL, &ip6_input_node,
+    IP6_ERROR_NONE, IP6_ERROR_INACL_SESSION_DENY, IP6_ERROR_INACL_TABLE_MISS,
+    VLIB_TX, 1 /* is_output */);
 }
 
 /* *INDENT-OFF* */
