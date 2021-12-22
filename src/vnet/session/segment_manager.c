@@ -154,6 +154,8 @@ segment_manager_add_segment_inline (segment_manager_t *sm, uword segment_size,
    * Save segment index before dropping lock, if any held
    */
   fs_index = fs - sm->segments;
+  fs->fs_index = fs_index;
+  fs->sm_index = segment_manager_index (sm);
 
   /*
    * Set watermarks in segment
@@ -698,19 +700,16 @@ segment_manager_del_sessions_filter (segment_manager_t *sm,
 }
 
 int
-segment_manager_try_alloc_fifos (fifo_segment_t * fifo_segment,
-				 u32 thread_index,
+segment_manager_try_alloc_fifos (fifo_segment_t *fs, u32 thread_index,
 				 u32 rx_fifo_size, u32 tx_fifo_size,
-				 svm_fifo_t ** rx_fifo, svm_fifo_t ** tx_fifo)
+				 svm_fifo_t **rx_fifo, svm_fifo_t **tx_fifo)
 {
   rx_fifo_size = clib_max (rx_fifo_size, sm_main.default_fifo_size);
-  *rx_fifo = fifo_segment_alloc_fifo_w_slice (fifo_segment, thread_index,
-					      rx_fifo_size,
+  *rx_fifo = fifo_segment_alloc_fifo_w_slice (fs, thread_index, rx_fifo_size,
 					      FIFO_SEGMENT_RX_FIFO);
 
   tx_fifo_size = clib_max (tx_fifo_size, sm_main.default_fifo_size);
-  *tx_fifo = fifo_segment_alloc_fifo_w_slice (fifo_segment, thread_index,
-					      tx_fifo_size,
+  *tx_fifo = fifo_segment_alloc_fifo_w_slice (fs, thread_index, tx_fifo_size,
 					      FIFO_SEGMENT_TX_FIFO);
 
   if (*rx_fifo == 0)
@@ -718,7 +717,7 @@ segment_manager_try_alloc_fifos (fifo_segment_t * fifo_segment,
       /* This would be very odd, but handle it... */
       if (*tx_fifo != 0)
 	{
-	  fifo_segment_free_fifo (fifo_segment, *tx_fifo);
+	  fifo_segment_free_fifo (fs, *tx_fifo);
 	  *tx_fifo = 0;
 	}
       return -1;
@@ -727,7 +726,7 @@ segment_manager_try_alloc_fifos (fifo_segment_t * fifo_segment,
     {
       if (*rx_fifo != 0)
 	{
-	  fifo_segment_free_fifo (fifo_segment, *rx_fifo);
+	  fifo_segment_free_fifo (fs, *rx_fifo);
 	  *rx_fifo = 0;
 	}
       return -1;
@@ -744,8 +743,6 @@ sm_lookup_segment_and_alloc_fifos (segment_manager_t *sm,
 {
   uword free_bytes, max_free_bytes;
   fifo_segment_t *cur, *fs = 0;
-  u32 fs_index;
-  int rv;
 
   max_free_bytes = props->rx_fifo_size + props->tx_fifo_size - 1;
 
@@ -764,11 +761,9 @@ sm_lookup_segment_and_alloc_fifos (segment_manager_t *sm,
   if (PREDICT_FALSE (!fs))
     return SESSION_E_SEG_NO_SPACE;
 
-  fs_index = segment_manager_segment_index (sm, fs);
-  rv = segment_manager_try_alloc_fifos (fs, thread_index, props->rx_fifo_size,
-					props->tx_fifo_size, rx_fifo, tx_fifo);
-
-  return rv ? SESSION_E_SEG_NO_SPACE : fs_index;
+  return segment_manager_try_alloc_fifos (
+    fs, thread_index, props->rx_fifo_size, props->tx_fifo_size, rx_fifo,
+    tx_fifo);
 }
 
 static int
@@ -789,7 +784,7 @@ sm_lock_and_alloc_segment_and_fifos (segment_manager_t *sm,
    * some fifos or allocated a segment */
   rv = sm_lookup_segment_and_alloc_fifos (sm, props, thread_index, rx_fifo,
 					  tx_fifo);
-  if (rv > 0)
+  if (!rv)
     goto done;
 
   new_fs_index =
@@ -825,11 +820,9 @@ segment_manager_alloc_session_fifos (segment_manager_t * sm,
 				     svm_fifo_t ** tx_fifo)
 {
   segment_manager_props_t *props;
-  u32 sm_index;
-  int fs_index;
+  int rv;
 
   props = segment_manager_properties_get (sm);
-  sm_index = segment_manager_index (sm);
 
   /*
    * Fast path: find the first segment with enough free space and
@@ -838,8 +831,8 @@ segment_manager_alloc_session_fifos (segment_manager_t * sm,
 
   segment_manager_segment_reader_lock (sm);
 
-  fs_index = sm_lookup_segment_and_alloc_fifos (sm, props, thread_index,
-						rx_fifo, tx_fifo);
+  rv = sm_lookup_segment_and_alloc_fifos (sm, props, thread_index, rx_fifo,
+					  tx_fifo);
 
   segment_manager_segment_reader_unlock (sm);
 
@@ -847,18 +840,9 @@ segment_manager_alloc_session_fifos (segment_manager_t * sm,
    * Slow path: if no fifo segment or alloc fail grab writer lock and try
    * to allocate new segment
    */
-  if (PREDICT_FALSE (fs_index < 0))
-    {
-      fs_index = sm_lock_and_alloc_segment_and_fifos (sm, props, thread_index,
-						      rx_fifo, tx_fifo);
-      if (fs_index < 0)
-	return fs_index;
-    }
-
-  (*tx_fifo)->segment_manager = sm_index;
-  (*rx_fifo)->segment_manager = sm_index;
-  (*tx_fifo)->segment_index = fs_index;
-  (*rx_fifo)->segment_index = fs_index;
+  if (PREDICT_FALSE (rv < 0))
+    return sm_lock_and_alloc_segment_and_fifos (sm, props, thread_index,
+						rx_fifo, tx_fifo);
 
   return 0;
 }

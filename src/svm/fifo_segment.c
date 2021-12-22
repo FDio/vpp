@@ -387,6 +387,8 @@ fifo_segment_attach (fifo_segment_main_t * sm, fifo_segment_create_args_t * a)
 
   pool_get_zero (sm->segments, fs);
 
+  fs->fs_index = fs - sm->segments;
+  fs->sm_index = ~0;
   fs->ssvm.ssvm_size = a->segment_size;
   fs->ssvm.my_pid = getpid ();
   fs->ssvm.name = format (0, "%s%c", a->segment_name, 0);
@@ -867,6 +869,9 @@ fifo_segment_alloc_fifo_w_slice (fifo_segment_t * fs, u32 slice_index,
   f->shr = sf;
 
   svm_fifo_init (f, data_bytes);
+
+  f->segment_manager = fs->sm_index;
+  f->segment_index = fs->fs_index;
 
   fss = fsh_slice_get (fsh, slice_index);
   pfss = fs_slice_private_get (fs, slice_index);
