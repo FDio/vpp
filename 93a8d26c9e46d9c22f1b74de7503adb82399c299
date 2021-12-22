@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e319bf65_4c2ecb5b",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 844,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2021-12-22T03:24:57Z",
+      "side": 1,
+      "message": "These codes seems redundant compared to sm_lock_and_alloc_segment_and_fifos, maybe combine segment_manager_alloc_session_fifos and sm_lock_and_alloc_segment_and_fifos to one function is more resonable?",
+      "range": {
+        "startLine": 836,
+        "startChar": 2,
+        "endLine": 844,
+        "endChar": 5
+      },
+      "revId": "93a8d26c9e46d9c22f1b74de7503adb82399c299",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
