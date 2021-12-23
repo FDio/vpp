@@ -769,6 +769,7 @@ tcp_alloc_custom_local_endpoint (tcp_main_t * tm, ip46_address_t * lcl_addr,
       index = tm->last_v4_addr_rotor++;
       if (tm->last_v4_addr_rotor >= vec_len (tcp_cfg.ip4_src_addrs))
 	tm->last_v4_addr_rotor = 0;
+      clib_memset (lcl_addr, 0, sizeof (*lcl_addr));
       lcl_addr->ip4.as_u32 = tcp_cfg.ip4_src_addrs[index].as_u32;
     }
   else
