@@ -45,71 +45,12 @@
 
 #include <vlib/unix/unix.h>
 
-/* Actually allocate a few extra slots of vector data to support
-   speculative vector enqueues which overflow vector data in next frame. */
-#define VLIB_FRAME_SIZE_ALLOC (VLIB_FRAME_SIZE + 4)
-
-always_inline u32
-vlib_frame_bytes (u32 n_scalar_bytes, u32 n_vector_bytes)
-{
-  u32 n_bytes;
-
-  /* Make room for vlib_frame_t plus scalar arguments. */
-  n_bytes = vlib_frame_vector_byte_offset (n_scalar_bytes);
-
-  /* Make room for vector arguments.
-     Allocate a few extra slots of vector data to support
-     speculative vector enqueues which overflow vector data in next frame. */
-#define VLIB_FRAME_SIZE_EXTRA 4
-  n_bytes += (VLIB_FRAME_SIZE + VLIB_FRAME_SIZE_EXTRA) * n_vector_bytes;
-
-  /* Magic number is first 32bit number after vector data.
-     Used to make sure that vector data is never overrun. */
 #define VLIB_FRAME_MAGIC (0xabadc0ed)
-  n_bytes += sizeof (u32);
-
-  /* Pad to cache line. */
-  n_bytes = round_pow2 (n_bytes, CLIB_CACHE_LINE_BYTES);
-
-  return n_bytes;
-}
 
 always_inline u32 *
 vlib_frame_find_magic (vlib_frame_t * f, vlib_node_t * node)
 {
-  void *p = f;
-
-  p += vlib_frame_vector_byte_offset (node->scalar_size);
-
-  p += (VLIB_FRAME_SIZE + VLIB_FRAME_SIZE_EXTRA) * node->vector_size;
-
-  return p;
-}
-
-static inline vlib_frame_size_t *
-get_frame_size_info (vlib_node_main_t * nm,
-		     u32 n_scalar_bytes, u32 n_vector_bytes)
-{
-#ifdef VLIB_SUPPORTS_ARBITRARY_SCALAR_SIZES
-  uword key = (n_scalar_bytes << 16) | n_vector_bytes;
-  uword *p, i;
-
-  p = hash_get (nm->frame_size_hash, key);
-  if (p)
-    i = p[0];
-  else
-    {
-      i = vec_len (nm->frame_sizes);
-      vec_validate (nm->frame_sizes, i);
-      hash_set (nm->frame_size_hash, key, i);
-    }
-
-  return vec_elt_at_index (nm->frame_sizes, i);
-#else
-  ASSERT (vlib_frame_bytes (n_scalar_bytes, n_vector_bytes)
-	  == (vlib_frame_bytes (0, 4)));
-  return vec_elt_at_index (nm->frame_sizes, 0);
-#endif
+  return (void *) f + node->magic_offset;
 }
 
 static vlib_frame_t *
@@ -120,17 +61,21 @@ vlib_frame_alloc_to_node (vlib_main_t * vm, u32 to_node_index,
   vlib_frame_size_t *fs;
   vlib_node_t *to_node;
   vlib_frame_t *f;
-  u32 l, n, scalar_size, vector_size;
+  u32 l, n;
 
   ASSERT (vm == vlib_get_main ());
 
   to_node = vlib_get_node (vm, to_node_index);
 
-  scalar_size = to_node->scalar_size;
-  vector_size = to_node->vector_size;
+  vec_validate (nm->frame_sizes, to_node->frame_size_index);
+  fs = vec_elt_at_index (nm->frame_sizes, to_node->frame_size_index);
 
-  fs = get_frame_size_info (nm, scalar_size, vector_size);
-  n = vlib_frame_bytes (scalar_size, vector_size);
+  if (fs->frame_size == 0)
+    fs->frame_size = to_node->frame_size;
+  else
+    ASSERT (fs->frame_size == to_node->frame_size);
+
+  n = fs->frame_size;
   if ((l = vec_len (fs->free_frames)) > 0)
     {
       /* Allocate from end of free list. */
@@ -139,12 +84,12 @@ vlib_frame_alloc_to_node (vlib_main_t * vm, u32 to_node_index,
     }
   else
     {
-      f = clib_mem_alloc_aligned_no_fail (n, VLIB_FRAME_ALIGN);
+      f = clib_mem_alloc_aligned_no_fail (n, CLIB_CACHE_LINE_BYTES);
     }
 
   /* Poison frame when debugging. */
   if (CLIB_DEBUG > 0)
-    clib_memset (f, 0xfe, n);
+    clib_memset_u8 (f, 0xfe, n);
 
   /* Insert magic number. */
   {
@@ -156,8 +101,9 @@ vlib_frame_alloc_to_node (vlib_main_t * vm, u32 to_node_index,
 
   f->frame_flags = VLIB_FRAME_IS_ALLOCATED | frame_flags;
   f->n_vectors = 0;
-  f->scalar_size = scalar_size;
-  f->vector_size = vector_size;
+  f->scalar_offset = to_node->scalar_offset;
+  f->vector_offset = to_node->vector_offset;
+  f->aux_offset = to_node->aux_offset;
   f->flags = 0;
 
   fs->n_alloc_frames += 1;
@@ -249,7 +195,7 @@ vlib_frame_free (vlib_main_t * vm, vlib_node_runtime_t * r, vlib_frame_t * f)
   ASSERT (f->frame_flags & VLIB_FRAME_IS_ALLOCATED);
 
   node = vlib_get_node (vm, r->node_index);
-  fs = get_frame_size_info (nm, node->scalar_size, node->vector_size);
+  fs = vec_elt_at_index (nm->frame_sizes, node->frame_size_index);
 
   ASSERT (f->frame_flags & VLIB_FRAME_IS_ALLOCATED);
 
@@ -271,19 +217,24 @@ static clib_error_t *
 show_frame_stats (vlib_main_t * vm,
 		  unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  vlib_node_main_t *nm = &vm->node_main;
   vlib_frame_size_t *fs;
 
-  vlib_cli_output (vm, "%=6s%=12s%=12s", "Size", "# Alloc", "# Free");
-  vec_foreach (fs, nm->frame_sizes)
-  {
-    u32 n_alloc = fs->n_alloc_frames;
-    u32 n_free = vec_len (fs->free_frames);
+  vlib_cli_output (vm, "%=8s%=6s%=12s%=12s", "Thread", "Size", "# Alloc",
+		   "# Free");
+  foreach_vlib_main ()
+    {
+      vlib_node_main_t *nm = &this_vlib_main->node_main;
+      vec_foreach (fs, nm->frame_sizes)
+	{
+	  u32 n_alloc = fs->n_alloc_frames;
+	  u32 n_free = vec_len (fs->free_frames);
 
-    if (n_alloc + n_free > 0)
-      vlib_cli_output (vm, "%=6d%=12d%=12d",
-		       fs - nm->frame_sizes, n_alloc, n_free);
-  }
+	  if (n_alloc + n_free > 0)
+	    vlib_cli_output (vm, "%=8d%=6d%=12d%=12d",
+			     this_vlib_main->thread_index, fs->frame_size,
+			     n_alloc, n_free);
+	}
+    }
 
   return 0;
 }

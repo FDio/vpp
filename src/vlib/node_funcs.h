@@ -283,16 +283,6 @@ vlib_frame_no_append (vlib_frame_t * f)
   f->frame_flags |= VLIB_FRAME_NO_APPEND;
 }
 
-/* Byte alignment for vector arguments. */
-#define VLIB_FRAME_VECTOR_ALIGN (1 << 4)
-
-always_inline u32
-vlib_frame_vector_byte_offset (u32 scalar_size)
-{
-  return round_pow2 (sizeof (vlib_frame_t) + scalar_size,
-		     VLIB_FRAME_VECTOR_ALIGN);
-}
-
 /** \brief Get pointer to frame vector data.
  @param f vlib_frame_t pointer
  @return pointer to first vector element in frame
@@ -300,7 +290,19 @@ vlib_frame_vector_byte_offset (u32 scalar_size)
 always_inline void *
 vlib_frame_vector_args (vlib_frame_t * f)
 {
-  return (void *) f + vlib_frame_vector_byte_offset (f->scalar_size);
+  ASSERT (f->vector_offset);
+  return (void *) f + f->vector_offset;
+}
+
+/** \brief Get pointer to frame vector aux data.
+ @param f vlib_frame_t pointer
+ @return pointer to first vector aux data element in frame
+*/
+always_inline void *
+vlib_frame_aux_args (vlib_frame_t *f)
+{
+  ASSERT (f->aux_offset);
+  return (void *) f + f->aux_offset;
 }
 
 /** \brief Get pointer to frame scalar data.
@@ -314,7 +316,8 @@ vlib_frame_vector_args (vlib_frame_t * f)
 always_inline void *
 vlib_frame_scalar_args (vlib_frame_t * f)
 {
-  return vlib_frame_vector_args (f) - f->scalar_size;
+  ASSERT (f->scalar_offset);
+  return (void *) f + f->scalar_offset;
 }
 
 always_inline vlib_next_frame_t *
