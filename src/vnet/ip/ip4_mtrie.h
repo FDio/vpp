@@ -65,14 +65,7 @@ typedef struct ip4_mtrie_16_ply_t_
   /**
    * The leaves/slots/buckets to be filed with leafs
    */
-  union
-  {
-    ip4_mtrie_leaf_t leaves[PLY_16_SIZE];
-
-#ifdef CLIB_HAVE_VEC128
-    u32x4 leaves_as_u32x4[PLY_16_SIZE / 4];
-#endif
-  };
+  ip4_mtrie_leaf_t leaves[PLY_16_SIZE];
 
   /**
    * Prefix length for terminal leaves.
@@ -88,14 +81,7 @@ typedef struct ip4_mtrie_8_ply_t_
   /**
    * The leaves/slots/buckets to be filed with leafs
    */
-  union
-  {
-    ip4_mtrie_leaf_t leaves[256];
-
-#ifdef CLIB_HAVE_VEC128
-    u32x4 leaves_as_u32x4[256 / 4];
-#endif
-  };
+  ip4_mtrie_leaf_t leaves[256];
 
   /**
    * Prefix length for leaves/ply.
