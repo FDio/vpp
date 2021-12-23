@@ -149,7 +149,7 @@ typedef struct _vlib_node_registration
   u8 protocol_hint;
 
   /* Size of scalar and vector arguments in bytes. */
-  u16 scalar_size, vector_size;
+  u8 scalar_size, vector_size, aux_size;
 
   /* Number of error codes used by this node. */
   u16 n_errors;
@@ -309,7 +309,8 @@ typedef struct vlib_node_t
   u16 n_errors;
 
   /* Size of scalar and vector arguments in bytes. */
-  u16 scalar_size, vector_size;
+  u16 frame_size, scalar_offset, vector_offset, magic_offset, aux_offset;
+  u16 frame_size_index;
 
   /* Handle/index in error heap for this node. */
   u32 error_heap_handle;
@@ -367,7 +368,10 @@ typedef struct vlib_node_t
 
 /* Max number of vector elements to process at once per node. */
 #define VLIB_FRAME_SIZE 256
-#define VLIB_FRAME_ALIGN CLIB_CACHE_LINE_BYTES
+/* Number of extra elements allocated at the end of vecttor. */
+#define VLIB_FRAME_SIZE_EXTRA 4
+/* Frame data alignment */
+#define VLIB_FRAME_DATA_ALIGN 16
 
 /* Calling frame (think stack frame) for a node. */
 typedef struct vlib_frame_t
@@ -378,11 +382,8 @@ typedef struct vlib_frame_t
   /* User flags. Used for sending hints to the next node. */
   u16 flags;
 
-  /* Number of scalar bytes in arguments. */
-  u8 scalar_size;
-
-  /* Number of bytes per vector argument. */
-  u8 vector_size;
+  /* Scalar, vector and aux offsets in this frame. */
+  u16 scalar_offset, vector_offset, aux_offset;
 
   /* Number of vector elements currently in frame. */
   u16 n_vectors;
@@ -521,9 +522,14 @@ typedef struct
   /* Number of allocated frames for this scalar/vector size. */
   u32 n_alloc_frames;
 
+  /* Frame size */
+  u16 frame_size;
+
   /* Vector of free frames for this scalar/vector size. */
   vlib_frame_t **free_frames;
 } vlib_frame_size_t;
+
+STATIC_ASSERT_SIZEOF (vlib_frame_size_t, 16);
 
 typedef struct
 {
@@ -720,9 +726,6 @@ typedef struct
 
   /* Current counts of nodes in each state. */
   u32 input_node_counts_by_state[VLIB_N_NODE_STATE];
-
-  /* Hash of (scalar_size,vector_size) to frame_sizes index. */
-  uword *frame_size_hash;
 
   /* Per-size frame allocation information. */
   vlib_frame_size_t *frame_sizes;

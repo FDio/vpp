@@ -626,8 +626,9 @@ start_workers (vlib_main_t * vm)
 
 	      vm_clone->thread_index = worker_thread_index;
 	      vm_clone->heap_base = w->thread_mheap;
-	      vm_clone->heap_aligned_base = (void *)
-		(((uword) w->thread_mheap) & ~(VLIB_FRAME_ALIGN - 1));
+	      vm_clone->heap_aligned_base =
+		(void *) (((uword) w->thread_mheap) &
+			  ~(CLIB_CACHE_LINE_BYTES - 1));
 	      vm_clone->pending_rpc_requests = 0;
 	      vec_validate (vm_clone->pending_rpc_requests, 0);
 	      _vec_len (vm_clone->pending_rpc_requests) = 0;
@@ -730,10 +731,7 @@ start_workers (vlib_main_t * vm)
 						     CLIB_CACHE_LINE_BYTES);
 
 	      /* Create per-thread frame freelist */
-	      nm_clone->frame_sizes = vec_new (vlib_frame_size_t, 1);
-#ifdef VLIB_SUPPORTS_ARBITRARY_SCALAR_SIZES
-	      nm_clone->frame_size_hash = hash_create (0, sizeof (uword));
-#endif
+	      nm_clone->frame_sizes = 0;
 	      nm_clone->node_by_error = nm->node_by_error;
 
 	      /* Packet trace buffers are guaranteed to be empty, nothing to do here */

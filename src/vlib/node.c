@@ -333,6 +333,7 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
 {
   vlib_node_main_t *nm = &vm->node_main;
   vlib_node_t *n;
+  u32 size;
   int i;
 
   if (CLIB_DEBUG > 0)
@@ -400,12 +401,65 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
   _(type);
   _(flags);
   _(state);
-  _(scalar_size);
-  _(vector_size);
   _(format_buffer);
   _(unformat_buffer);
   _(format_trace);
   _(validate_frame);
+
+  size = round_pow2 (sizeof (vlib_frame_t), VLIB_FRAME_DATA_ALIGN);
+
+  /* scalar data size */
+  if (r->scalar_size)
+    {
+      n->scalar_offset = size;
+      size += round_pow2 (r->scalar_size, VLIB_FRAME_DATA_ALIGN);
+    }
+  else
+    n->scalar_offset = 0;
+
+  /* Vecor data size */
+  n->vector_offset = size;
+  size += r->vector_size * VLIB_FRAME_SIZE;
+
+  /* Allocate a few extra slots of vector data to support
+     speculative vector enqueues which overflow vector data in next frame. */
+  size += r->vector_size * VLIB_FRAME_SIZE_EXTRA;
+
+  /* space for VLIB_FRAME_MAGIC */
+  n->magic_offset = size;
+  size += sizeof (u32);
+
+  /* round size to VLIB_FRAME_DATA_ALIGN */
+  size = round_pow2 (size, VLIB_FRAME_DATA_ALIGN);
+
+  if (r->aux_size)
+    {
+      n->aux_offset = size;
+      size += r->aux_size * VLIB_FRAME_SIZE;
+    }
+  else
+    n->aux_offset = 0;
+
+  /* final size */
+  n->frame_size = size = round_pow2 (size, CLIB_CACHE_LINE_BYTES);
+  ASSERT (size <= __UINT16_MAX__);
+
+  vlib_frame_size_t *fs = 0;
+
+  n->frame_size_index = (u16) ~0;
+  vec_foreach (fs, nm->frame_sizes)
+    if (fs->frame_size == size)
+      {
+	n->frame_size_index = fs - nm->frame_sizes;
+	break;
+      }
+
+  if (n->frame_size_index == (u16) ~0)
+    {
+      vec_add2 (nm->frame_sizes, fs, 1);
+      fs->frame_size = size;
+      n->frame_size_index = fs - nm->frame_sizes;
+    }
 
   /* Register error counters. */
   vlib_register_errors (vm, n->index, r->n_errors, r->error_strings,
@@ -669,10 +723,6 @@ vlib_node_main_init (vlib_main_t * vm)
   vlib_node_t *n;
   uword ni;
 
-  nm->frame_sizes = vec_new (vlib_frame_size_t, 1);
-#ifdef VLIB_SUPPORTS_ARBITRARY_SCALAR_SIZES
-  nm->frame_size_hash = hash_create (0, sizeof (uword));
-#endif
   nm->flags |= VLIB_NODE_MAIN_RUNTIME_STARTED;
 
   /* Generate sibling relationships */
