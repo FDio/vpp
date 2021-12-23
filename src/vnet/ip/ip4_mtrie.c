@@ -91,82 +91,24 @@ ip4_mtrie_leaf_set_next_ply_index (u32 i)
   return l;
 }
 
-#ifndef __ALTIVEC__
-#define PLY_X4_SPLAT_INIT(init_x4, init) \
-  init_x4 = u32x4_splat (init);
-#else
-#define PLY_X4_SPLAT_INIT(init_x4, init)                                \
-{                                                                       \
-  u32x4_union_t y;                                                      \
-  y.as_u32[0] = init;                                                   \
-  y.as_u32[1] = init;                                                   \
-  y.as_u32[2] = init;                                                   \
-  y.as_u32[3] = init;                                                   \
-  init_x4 = y.as_u32x4;                                                 \
-}
-#endif
-
-#ifdef CLIB_HAVE_VEC128
-#define PLY_INIT_LEAVES(p)                                              \
-{                                                                       \
-    u32x4 *l, init_x4;                                                  \
-                                                                        \
-    PLY_X4_SPLAT_INIT(init_x4, init);                                   \
-    for (l = p->leaves_as_u32x4;                                        \
-	 l < p->leaves_as_u32x4 + ARRAY_LEN (p->leaves_as_u32x4);       \
-         l += 4)                                                        \
-      {                                                                 \
-	l[0] = init_x4;                                                 \
-	l[1] = init_x4;                                                 \
-	l[2] = init_x4;                                                 \
-	l[3] = init_x4;                                                 \
-      }                                                                 \
-}
-#else
-#define PLY_INIT_LEAVES(p)                                              \
-{                                                                       \
-  u32 *l;                                                               \
-                                                                        \
-  for (l = p->leaves; l < p->leaves + ARRAY_LEN (p->leaves); l += 4)    \
-    {                                                                   \
-      l[0] = init;                                                      \
-      l[1] = init;                                                      \
-      l[2] = init;                                                      \
-      l[3] = init;                                                      \
-      }                                                                 \
-}
-#endif
-
-#define PLY_INIT(p, init, prefix_len, ply_base_len)                     \
-{                                                                       \
-  /*                                                                    \
-   * A leaf is 'empty' if it represents a leaf from the covering PLY    \
-   * i.e. if the prefix length of the leaf is less than or equal to     \
-   * the prefix length of the PLY                                       \
-   */                                                                   \
-  p->n_non_empty_leafs = (prefix_len > ply_base_len ?                   \
-			  ARRAY_LEN (p->leaves) : 0);                   \
-  clib_memset (p->dst_address_bits_of_leaves, prefix_len,                    \
-	  sizeof (p->dst_address_bits_of_leaves));                      \
-  p->dst_address_bits_base = ply_base_len;                              \
-                                                                        \
-  /* Initialize leaves. */                                              \
-  PLY_INIT_LEAVES(p);                                                   \
-}
-
 static void
 ply_8_init (ip4_mtrie_8_ply_t *p, ip4_mtrie_leaf_t init, uword prefix_len,
 	    u32 ply_base_len)
 {
-  PLY_INIT (p, init, prefix_len, ply_base_len);
+  p->n_non_empty_leafs = prefix_len > ply_base_len ? ARRAY_LEN (p->leaves) : 0;
+  clib_memset_u8 (p->dst_address_bits_of_leaves, prefix_len,
+		  sizeof (p->dst_address_bits_of_leaves));
+  p->dst_address_bits_base = ply_base_len;
+
+  clib_memset_u32 (p->leaves, init, ARRAY_LEN (p->leaves));
 }
 
 static void
 ply_16_init (ip4_mtrie_16_ply_t *p, ip4_mtrie_leaf_t init, uword prefix_len)
 {
-  clib_memset (p->dst_address_bits_of_leaves, prefix_len,
-	       sizeof (p->dst_address_bits_of_leaves));
-  PLY_INIT_LEAVES (p);
+  clib_memset_u8 (p->dst_address_bits_of_leaves, prefix_len,
+		  sizeof (p->dst_address_bits_of_leaves));
+  clib_memset_u32 (p->leaves, init, ARRAY_LEN (p->leaves));
 }
 
 static ip4_mtrie_leaf_t
