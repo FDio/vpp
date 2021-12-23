@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0ffe308b_af090dd5",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 663,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-12-23T16:27:25Z",
+      "side": 1,
+      "message": "data_bytes is clamped in f_try_chunk_alloc so it shouldn\u0027t be more than 64kB. Could you provide details about the issue you\u0027ve hit?",
+      "range": {
+        "startLine": 663,
+        "startChar": 4,
+        "endLine": 663,
+        "endChar": 15
+      },
+      "revId": "e0055cf01a816d91f3899f7c0a66784dc9aa661e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
