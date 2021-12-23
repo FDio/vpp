@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "986fe461_a1d0b5bf",
+        "filename": "src/svm/fifo_types.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-12-23T17:12:31Z",
+      "side": 1,
+      "message": "This is the private fifo structure not the shared one. So the feature would only work from within vpp, but we may want to support scenarios where either vpp wants this types of notifications from external apps (vcl) or vice-versa. \n\nSo let\u0027s move this to svm_fifo_shared_t under the consumer cache line and rename to deq_thresh or something similar",
+      "range": {
+        "startLine": 108,
+        "startChar": 6,
+        "endLine": 108,
+        "endChar": 12
+      },
+      "revId": "389524c4697f0e0b14f33f9396e179c21a91ad2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0a87e32b_a7c10ea2",
+        "filename": "src/svm/svm_fifo.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 603,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-12-23T17:12:31Z",
+      "side": 1,
+      "message": "Rename to svm_fifo_set_deq_thresh and could you move it somewhere closer to svm_fifo_needs_deq_ntf, just to keep all deq notifications functions in one place?",
+      "range": {
+        "startLine": 603,
+        "startChar": 0,
+        "endLine": 603,
+        "endChar": 19
+      },
+      "revId": "389524c4697f0e0b14f33f9396e179c21a91ad2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ad1e0c84_d492cdc8",
+        "filename": "src/svm/svm_fifo.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 872,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-12-23T17:12:31Z",
+      "side": 1,
+      "message": "Any particular reason why not just do the comparison svm_fifo_max_dequeue (f) \u003c\u003d (f-\u003eshr-\u003edeq_thresh) here?",
+      "range": {
+        "startLine": 872,
+        "startChar": 34,
+        "endLine": 872,
+        "endChar": 60
+      },
+      "revId": "389524c4697f0e0b14f33f9396e179c21a91ad2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "657f02e9_5ae698ba",
+        "filename": "src/svm/svm_fifo.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 874,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-12-23T17:12:31Z",
+      "side": 1,
+      "message": "One thing that needs to happen after this is the clearing of the flag, i.e., svm_fifo_del_want_deq_ntf (f, SVM_FIFO_WANT_DEQ_NOTIF_IF_LEQ_THRESH) because we don\u0027t want to keep on generating notifications after each dequeue. In other words, this should be a one shot event. \n\nNote how both vcl and vpp call svm_fifo_clear_deq_ntf after svm_fifo_needs_deq_ntf returns true, so let\u0027s add SVM_FIFO_WANT_DEQ_NOTIF_IF_LEQ_THRESH to the events cleared, i.e.:\n\n```\nsvm_fifo_del_want_deq_ntf (f, SVM_FIFO_WANT_DEQ_NOTIF | SVM_FIFO_WANT_DEQ_NOTIF_IF_LEQ_THRESH);\n```",
+      "range": {
+        "startLine": 874,
+        "startChar": 4,
+        "endLine": 874,
+        "endChar": 5
+      },
+      "revId": "389524c4697f0e0b14f33f9396e179c21a91ad2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
