@@ -132,7 +132,7 @@ _vec_resize_inline (void *v,
 		    uword data_bytes, uword header_bytes, uword data_align,
 		    uword numa_id)
 {
-  vec_header_t *vh = _vec_find (v);
+  vec_header_t *vh;
   uword new_data_bytes, aligned_header_bytes;
   void *oldheap;
 
@@ -142,6 +142,7 @@ _vec_resize_inline (void *v,
 
   if (PREDICT_TRUE (v != 0))
     {
+      vh = _vec_find (v);
       void *p = v - aligned_header_bytes;
 
       if (PREDICT_FALSE (numa_id != VEC_NUMA_UNSPECIFIED))
