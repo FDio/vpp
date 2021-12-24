@@ -433,7 +433,7 @@ tcp_configure_v4_source_address_range (vlib_main_t * vm,
 
       /* Add local adjacencies for the range */
 
-      receive_dpo_add_or_lock (DPO_PROTO_IP4, ~0 /* sw_if_index */ ,
+      receive_dpo_add_or_lock (DPO_PROTO_IP4, sw_if_index /* sw_if_index */,
 			       NULL, &dpo);
       prefix.fp_len = 32;
       prefix.fp_proto = FIB_PROTOCOL_IP4;
@@ -508,7 +508,7 @@ tcp_configure_v6_source_address_range (vlib_main_t * vm,
       ip6_neighbor_proxy_add (sw_if_index, start);
 
       /* Add a receive adjacency for this address */
-      receive_dpo_add_or_lock (DPO_PROTO_IP6, ~0 /* sw_if_index */ ,
+      receive_dpo_add_or_lock (DPO_PROTO_IP6, sw_if_index /* sw_if_index */,
 			       NULL, &dpo);
 
       fib_table_entry_special_dpo_update (fib_index,
