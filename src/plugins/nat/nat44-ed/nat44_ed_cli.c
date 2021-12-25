@@ -855,9 +855,6 @@ add_static_mapping_command_fn (vlib_main_t * vm,
 	{
 	  e_port_set = 1;
 	}
-      else if (unformat (line_input, "external %U", unformat_ip4_address,
-			 &e_addr))
-	;
       else if (unformat (line_input, "external %U %u",
 			 unformat_vnet_sw_interface, vnm, &sw_if_index,
 			 &e_port))
@@ -865,6 +862,9 @@ add_static_mapping_command_fn (vlib_main_t * vm,
 	  flags |= NAT_SM_FLAG_SWITCH_ADDRESS;
 	  e_port_set = 1;
 	}
+      else if (unformat (line_input, "external %U", unformat_ip4_address,
+			 &e_addr))
+	;
       else if (unformat (line_input, "external %U",
 			 unformat_vnet_sw_interface, vnm, &sw_if_index))
 	{
