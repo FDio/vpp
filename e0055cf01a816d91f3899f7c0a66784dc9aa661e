@@ -22,6 +22,30 @@
       "revId": "e0055cf01a816d91f3899f7c0a66784dc9aa661e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b8fe3515_29a372d8",
+        "filename": "src/svm/fifo_segment.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 663,
+      "author": {
+        "id": 2576
+      },
+      "writtenOn": "2021-12-26T07:38:54Z",
+      "side": 1,
+      "message": "Hi Florin, \nRunning the following scenario: \nhttp static server www-root /var/www/data uri tcp://0.0.0.0/80 cache-size 5m fifo-size 30000\n\non peer: wget http://11.0.0.2/file_size_32M\n\nI got the crash: \nThread 3 \"vpp_wk_0\" received signal SIGSEGV, Segmentation fault.\n[Switching to Thread 0x7fffa17e5700 (LWP 11504)]\n0x00007ffff6214fb1 in svm_fifo_copy_to_chunk_ma_hsw (f\u003d0x7fffbcc960c0, c\u003d0x0, tail_idx\u003d165, \n    src\u003d0x7fffbde6af50 \"0000001\\t0000002\\t0000003\\t0000004\\t0000005\\t0000006\\t0000007\\t0000008\\t0000009\\t0000010\\n0000011\\t0000012\\t0000013\\t0000014\\t0000015\\t0000016\\t0000017\\t0000018\\t0000019\\t0000020\\n0000021\\t0000022\\t0000023\\t0000024\\t0000025\\t\"..., len\u003d30719835, last\u003d0x7ff7608ffe48)\n    at /home/michal/vpp_upstream/vpp/src/svm/svm_fifo.c:44\n44\t\t  n_chunk \u003d clib_min (c-\u003elength, to_copy);\n\n\nAdding some prints of data_size: \nDec 25 23:26:12 qsrv1 vnet[11499]: fsh_try_alloc_chunk:665: try_alloc_chunk: data_bytes \u003d 4096\nDec 25 23:26:12 qsrv1 vnet[11499]: fsh_try_alloc_chunk:665: try_alloc_chunk: data_bytes \u003d 4096\nDec 25 23:26:12 qsrv1 vnet[11499]: fsh_try_alloc_chunk:665: try_alloc_chunk: data_bytes \u003d 30715904\n\nI see that f_try_chunk_alloc clamps data to 64K but then: svm_fifo_copy_to_chunk uses original data size of 30715904",
+      "parentUuid": "0ffe308b_af090dd5",
+      "range": {
+        "startLine": 663,
+        "startChar": 4,
+        "endLine": 663,
+        "endChar": 15
+      },
+      "revId": "e0055cf01a816d91f3899f7c0a66784dc9aa661e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
