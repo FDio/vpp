@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "eb23e220_3d56a23c",
+        "filename": "src/svm/fifo_types.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-12-26T23:16:17Z",
+      "side": 1,
+      "message": "Move to last position in this cache line.",
+      "range": {
+        "startLine": 77,
+        "startChar": 2,
+        "endLine": 77,
+        "endChar": 16
+      },
+      "revId": "5607e002aaf2ac960eb0aa7b0193270366941033",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
