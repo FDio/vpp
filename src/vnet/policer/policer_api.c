@@ -67,7 +67,10 @@ vl_api_policer_add_del_t_handler (vl_api_policer_add_del_t * mp)
   error = policer_add_del (vm, name, &cfg, &policer_index, mp->is_add);
 
   if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
+    {
+      rv = VNET_API_ERROR_UNSPECIFIED;
+      clib_error_free (error);
+    }
 
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_POLICER_ADD_DEL_REPLY,
