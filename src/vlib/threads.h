@@ -40,7 +40,6 @@ typedef struct vlib_thread_registration_
   u32 frame_queue_nelts;
 
   /* All threads of this type run on pthreads */
-  int use_pthreads;
   u32 first_index;
   uword *coremask;
 } vlib_thread_registration_t;
@@ -235,13 +234,6 @@ typedef enum
 
 typedef struct
 {
-  clib_error_t *(*vlib_launch_thread_cb) (void *fp, vlib_worker_thread_t * w,
-					  unsigned cpu_id);
-  clib_error_t *(*vlib_thread_set_lcore_cb) (u32 thread, u16 cpu);
-} vlib_thread_callbacks_t;
-
-typedef struct
-{
   /* Link list of registrations, built by constructors */
   vlib_thread_registration_t *next;
 
@@ -252,20 +244,11 @@ typedef struct
 
   vlib_worker_thread_t *worker_threads;
 
-  /*
-   * Launch all threads as pthreads,
-   * not eal_rte_launch (strict affinity) threads
-   */
-  int use_pthreads;
-
   /* Number of vlib_main / vnet_main clones */
   u32 n_vlib_mains;
 
   /* Number of thread stacks to create */
   u32 n_thread_stacks;
-
-  /* Number of pthreads */
-  u32 n_pthreads;
 
   /* Number of threads */
   u32 n_threads;
@@ -296,10 +279,6 @@ typedef struct
 
   /* scheduling policy priority */
   u32 sched_priority;
-
-  /* callbacks */
-  vlib_thread_callbacks_t cb;
-  int extern_thread_mgmt;
 
   /* NUMA-bound heap size */
   uword numa_heap_size;
@@ -490,8 +469,6 @@ vlib_thread_is_main_w_barrier (void)
 }
 
 u8 *vlib_thread_stack_init (uword thread_index);
-int vlib_thread_cb_register (struct vlib_main_t *vm,
-			     vlib_thread_callbacks_t * cb);
 extern void *rpc_call_main_thread_cb_fn;
 
 void

@@ -373,7 +373,8 @@ show_dpdk_version_command_fn (vlib_main_t * vm,
  * Example of how to display how many DPDK buffer test command has allocated:
  * @cliexstart{show dpdk version}
  * DPDK Version:        DPDK 16.11.0
- * DPDK EAL init args:  -c 1 -n 4 --huge-dir /run/vpp/hugepages --file-prefix vpp -w 0000:00:08.0 -w 0000:00:09.0 --master-lcore 0 --socket-mem 256
+ * DPDK EAL init args:  --in-memory --no-telemetry --file-prefix vpp
+ *  -w 0000:00:08.0 -w 0000:00:09.0
  * @cliexend
 ?*/
 /* *INDENT-OFF* */
