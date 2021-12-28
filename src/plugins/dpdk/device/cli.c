@@ -265,6 +265,7 @@ set_dpdk_if_desc (vlib_main_t * vm, unformat_input_t * input,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   dpdk_main_t *dm = &dpdk_main;
+  vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hw;
   dpdk_device_t *xd;
   u32 hw_if_index = (u32) ~ 0;
@@ -277,9 +278,8 @@ set_dpdk_if_desc (vlib_main_t * vm, unformat_input_t * input,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (line_input, "%U", unformat_vnet_hw_interface, dm->vnet_main,
-	   &hw_if_index))
+      if (unformat (line_input, "%U", unformat_vnet_hw_interface, vnm,
+		    &hw_if_index))
 	;
       else if (unformat (line_input, "tx %d", &nb_tx_desc))
 	;
@@ -299,30 +299,21 @@ set_dpdk_if_desc (vlib_main_t * vm, unformat_input_t * input,
       goto done;
     }
 
-  hw = vnet_get_hw_interface (dm->vnet_main, hw_if_index);
+  hw = vnet_get_hw_interface (vnm, hw_if_index);
   xd = vec_elt_at_index (dm->devices, hw->dev_instance);
 
-  if ((xd->flags & DPDK_DEVICE_FLAG_PMD) == 0)
-    {
-      error =
-	clib_error_return (0,
-			   "number of descriptors can be set only for "
-			   "physical devices");
-      goto done;
-    }
-
-  if ((nb_rx_desc == (u32) ~ 0 || nb_rx_desc == xd->nb_rx_desc) &&
-      (nb_tx_desc == (u32) ~ 0 || nb_tx_desc == xd->nb_tx_desc))
+  if ((nb_rx_desc == (u32) ~0 || nb_rx_desc == xd->conf.n_rx_desc) &&
+      (nb_tx_desc == (u32) ~0 || nb_tx_desc == xd->conf.n_tx_desc))
     {
       error = clib_error_return (0, "nothing changed");
       goto done;
     }
 
   if (nb_rx_desc != (u32) ~ 0)
-    xd->nb_rx_desc = nb_rx_desc;
+    xd->conf.n_rx_desc = nb_rx_desc;
 
   if (nb_tx_desc != (u32) ~ 0)
-    xd->nb_tx_desc = nb_tx_desc;
+    xd->conf.n_tx_desc = nb_tx_desc;
 
   dpdk_device_setup (xd);
 

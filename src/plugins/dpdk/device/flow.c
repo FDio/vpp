@@ -555,6 +555,7 @@ int
 dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
 		  u32 flow_index, uword * private_data)
 {
+  vlib_main_t *vm = vlib_get_main ();
   dpdk_main_t *dm = &dpdk_main;
   vnet_flow_t *flow = vnet_get_flow (flow_index);
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, dev_instance);
@@ -565,7 +566,7 @@ dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
   /* recycle old flow lookup entries only after the main loop counter
      increases - i.e. previously DMA'ed packets were handled */
   if (vec_len (xd->parked_lookup_indexes) > 0 &&
-      xd->parked_loop_count != dm->vlib_main->main_loop_count)
+      xd->parked_loop_count != vm->main_loop_count)
     {
       u32 *fl_index;
 
@@ -588,7 +589,7 @@ dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
 	  fle = pool_elt_at_index (xd->flow_lookup_entries, fe->mark);
 	  clib_memset (fle, -1, sizeof (*fle));
 	  vec_add1 (xd->parked_lookup_indexes, fe->mark);
-	  xd->parked_loop_count = dm->vlib_main->main_loop_count;
+	  xd->parked_loop_count = vm->main_loop_count;
 	}
 
       clib_memset (fe, 0, sizeof (*fe));
