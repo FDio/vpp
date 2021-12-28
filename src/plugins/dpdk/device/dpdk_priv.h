@@ -16,8 +16,6 @@
 #define DPDK_NB_RX_DESC_DEFAULT   1024
 #define DPDK_NB_TX_DESC_DEFAULT   1024
 #define DPDK_MAX_LRO_SIZE_DEFAULT 65536
-#define DPDK_NB_RX_DESC_VIRTIO    256
-#define DPDK_NB_TX_DESC_VIRTIO    256
 
 #define I40E_DEV_ID_SFP_XL710           0x1572
 #define I40E_DEV_ID_QSFP_A              0x1583
@@ -96,10 +94,6 @@ dpdk_update_counters (dpdk_device_t * xd, f64 now)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 thread_index = vlib_get_thread_index ();
-
-  /* only update counters for PMD interfaces */
-  if ((xd->flags & DPDK_DEVICE_FLAG_PMD) == 0)
-    return;
 
   xd->time_last_stats_update = now ? now : xd->time_last_stats_update;
   clib_memcpy_fast (&xd->last_stats, &xd->stats, sizeof (xd->last_stats));

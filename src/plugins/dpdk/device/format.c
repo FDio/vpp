@@ -191,7 +191,7 @@ format_dpdk_device_name (u8 * s, va_list * args)
       break;
 
     case VNET_DPDK_PORT_TYPE_AF_PACKET:
-      return format (s, "af_packet%d", xd->af_packet_instance_num);
+      device_name = "af_packet";
 
     case VNET_DPDK_PORT_TYPE_VIRTIO_USER:
       device_name = "VirtioUser";
@@ -244,126 +244,12 @@ static u8 *
 format_dpdk_device_type (u8 * s, va_list * args)
 {
   dpdk_main_t *dm = &dpdk_main;
-  char *dev_type;
   u32 i = va_arg (*args, u32);
 
-  switch (dm->devices[i].pmd)
-    {
-    case VNET_DPDK_PMD_E1000EM:
-      dev_type = "Intel 82540EM (e1000)";
-      break;
-
-    case VNET_DPDK_PMD_IGB:
-      dev_type = "Intel e1000";
-      break;
-
-    case VNET_DPDK_PMD_I40E:
-      dev_type = "Intel X710/XL710 Family";
-      break;
-
-    case VNET_DPDK_PMD_I40EVF:
-      dev_type = "Intel X710/XL710 Family VF";
-      break;
-
-    case VNET_DPDK_PMD_ICE:
-      dev_type = "Intel E810 Family";
-      break;
-
-    case VNET_DPDK_PMD_IAVF:
-      dev_type = "Intel iAVF";
-      break;
-
-    case VNET_DPDK_PMD_FM10K:
-      dev_type = "Intel FM10000 Family Ethernet Switch";
-      break;
-
-    case VNET_DPDK_PMD_IGBVF:
-      dev_type = "Intel e1000 VF";
-      break;
-
-    case VNET_DPDK_PMD_VIRTIO:
-      dev_type = "Red Hat Virtio";
-      break;
-
-    case VNET_DPDK_PMD_IXGBEVF:
-      dev_type = "Intel 82599 VF";
-      break;
-
-    case VNET_DPDK_PMD_IXGBE:
-      dev_type = "Intel 82599";
-      break;
-
-    case VNET_DPDK_PMD_ENIC:
-      dev_type = "Cisco VIC";
-      break;
-
-    case VNET_DPDK_PMD_CXGBE:
-      dev_type = "Chelsio T4/T5";
-      break;
-
-    case VNET_DPDK_PMD_MLX4:
-      dev_type = "Mellanox ConnectX-3 Family";
-      break;
-
-    case VNET_DPDK_PMD_MLX5:
-      dev_type = "Mellanox ConnectX-4 Family";
-      break;
-
-    case VNET_DPDK_PMD_VMXNET3:
-      dev_type = "VMware VMXNET3";
-      break;
-
-    case VNET_DPDK_PMD_AF_PACKET:
-      dev_type = "af_packet";
-      break;
-
-    case VNET_DPDK_PMD_DPAA2:
-      dev_type = "NXP DPAA2 Mac";
-      break;
-
-    case VNET_DPDK_PMD_VIRTIO_USER:
-      dev_type = "Virtio User";
-      break;
-
-    case VNET_DPDK_PMD_THUNDERX:
-      dev_type = "Cavium ThunderX";
-      break;
-
-    case VNET_DPDK_PMD_VHOST_ETHER:
-      dev_type = "VhostEthernet";
-      break;
-
-    case VNET_DPDK_PMD_ENA:
-      dev_type = "AWS ENA VF";
-      break;
-
-    case VNET_DPDK_PMD_FAILSAFE:
-      dev_type = "FailsafeEthernet";
-      break;
-
-    case VNET_DPDK_PMD_LIOVF_ETHER:
-      dev_type = "Cavium Lio VF";
-      break;
-
-    case VNET_DPDK_PMD_QEDE:
-      dev_type = "Cavium QLogic FastLinQ QL4xxxx";
-      break;
-
-    case VNET_DPDK_PMD_NETVSC:
-      dev_type = "Microsoft Hyper-V Netvsc";
-      break;
-
-    case VNET_DPDK_PMD_BNXT:
-      dev_type = "Broadcom NetXtreme E/S-Series";
-      break;
-
-    default:
-    case VNET_DPDK_PMD_UNKNOWN:
-      dev_type = "### UNKNOWN ###";
-      break;
-    }
-
-  return format (s, dev_type);
+  if (dm->devices[i].driver)
+    return format (s, "%s", dm->devices[i].driver->desc);
+  else
+    return format (s, "### UNKNOWN ###");
 }
 
 static u8 *
@@ -555,11 +441,16 @@ format_dpdk_device (u8 * s, va_list * args)
   u32 dev_instance = va_arg (*args, u32);
   int verbose = va_arg (*args, int);
   dpdk_main_t *dm = &dpdk_main;
+  vlib_main_t *vm = vlib_get_main ();
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, dev_instance);
   u32 indent = format_get_indent (s);
-  f64 now = vlib_time_now (dm->vlib_main);
+  f64 now = vlib_time_now (vm);
   struct rte_eth_dev_info di;
   struct rte_eth_burst_mode mode;
+  struct rte_pci_device *pci;
+  struct rte_eth_rss_conf rss_conf;
+  int vlan_off;
+  int retval;
 
   dpdk_update_counters (xd, now);
   dpdk_update_link_state (xd, now);
@@ -573,121 +464,109 @@ format_dpdk_device (u8 * s, va_list * args)
   if (di.device->devargs && di.device->devargs->args)
     s = format (s, "%UDevargs: %s\n",
 		format_white_space, indent + 2, di.device->devargs->args);
-  s = format (s, "%Urx: queues %d (max %d), desc %d "
+  s = format (s,
+	      "%Urx: queues %d (max %d), desc %d "
 	      "(min %d max %d align %d)\n",
-	      format_white_space, indent + 2, xd->rx_q_used, di.max_rx_queues,
-	      xd->nb_rx_desc, di.rx_desc_lim.nb_min, di.rx_desc_lim.nb_max,
-	      di.rx_desc_lim.nb_align);
-  s = format (s, "%Utx: queues %d (max %d), desc %d "
+	      format_white_space, indent + 2, xd->conf.n_rx_queues,
+	      di.max_rx_queues, xd->conf.n_rx_desc, di.rx_desc_lim.nb_min,
+	      di.rx_desc_lim.nb_max, di.rx_desc_lim.nb_align);
+  s = format (s,
+	      "%Utx: queues %d (max %d), desc %d "
 	      "(min %d max %d align %d)\n",
-	      format_white_space, indent + 2, xd->tx_q_used, di.max_tx_queues,
-	      xd->nb_tx_desc, di.tx_desc_lim.nb_min, di.tx_desc_lim.nb_max,
-	      di.tx_desc_lim.nb_align);
+	      format_white_space, indent + 2, xd->conf.n_tx_queues,
+	      di.max_tx_queues, xd->conf.n_tx_desc, di.tx_desc_lim.nb_min,
+	      di.tx_desc_lim.nb_max, di.tx_desc_lim.nb_align);
 
-  if (xd->flags & DPDK_DEVICE_FLAG_PMD)
+  rss_conf.rss_key = 0;
+  rss_conf.rss_hf = 0;
+  retval = rte_eth_dev_rss_hash_conf_get (xd->port_id, &rss_conf);
+  if (retval < 0)
+    clib_warning ("rte_eth_dev_rss_hash_conf_get returned %d", retval);
+
+  pci = dpdk_get_pci_device (&di);
+
+  if (pci)
     {
-      struct rte_pci_device *pci;
-      struct rte_eth_rss_conf rss_conf;
-      int vlan_off;
-      int retval;
-
-      rss_conf.rss_key = 0;
-      rss_conf.rss_hf = 0;
-      retval = rte_eth_dev_rss_hash_conf_get (xd->port_id, &rss_conf);
-      if (retval < 0)
-	clib_warning ("rte_eth_dev_rss_hash_conf_get returned %d", retval);
-
-      pci = dpdk_get_pci_device (&di);
-
-      if (pci)
-	{
-	  u8 *s2;
-	  if (xd->cpu_socket > -1)
-	    s2 = format (0, "%d", xd->cpu_socket);
-	  else
-	    s2 = format (0, "unknown");
-	  s = format (s, "%Upci: device %04x:%04x subsystem %04x:%04x "
-		      "address %04x:%02x:%02x.%02x numa %v\n",
-		      format_white_space, indent + 2, pci->id.vendor_id,
-		      pci->id.device_id, pci->id.subsystem_vendor_id,
-		      pci->id.subsystem_device_id, pci->addr.domain,
-		      pci->addr.bus, pci->addr.devid, pci->addr.function, s2);
-	  vec_free (s2);
-	}
-
-      if (di.switch_info.domain_id != RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID)
-	{
-	  s =
-	    format (s, "%Uswitch info: %U\n", format_white_space, indent + 2,
-		    format_switch_info, &di.switch_info);
-	}
-
-      if (1 < verbose)
-	{
-	  s = format (s, "%Umodule: %U\n", format_white_space, indent + 2,
-		      format_dpdk_device_module_info, xd);
-	}
-
-      s = format (s, "%Umax rx packet len: %d\n", format_white_space,
-		  indent + 2, di.max_rx_pktlen);
-      s = format (s, "%Upromiscuous: unicast %s all-multicast %s\n",
-		  format_white_space, indent + 2,
-		  rte_eth_promiscuous_get (xd->port_id) ? "on" : "off",
-		  rte_eth_allmulticast_get (xd->port_id) ? "on" : "off");
-      vlan_off = rte_eth_dev_get_vlan_offload (xd->port_id);
-      s = format (s, "%Uvlan offload: strip %s filter %s qinq %s\n",
-		  format_white_space, indent + 2,
-		  vlan_off & ETH_VLAN_STRIP_OFFLOAD ? "on" : "off",
-		  vlan_off & ETH_VLAN_FILTER_OFFLOAD ? "on" : "off",
-		  vlan_off & ETH_VLAN_EXTEND_OFFLOAD ? "on" : "off");
-      s = format (s, "%Urx offload avail:  %U\n",
-		  format_white_space, indent + 2,
-		  format_dpdk_rx_offload_caps, di.rx_offload_capa);
-      s = format (s, "%Urx offload active: %U\n",
-		  format_white_space, indent + 2,
-		  format_dpdk_rx_offload_caps, xd->port_conf.rxmode.offloads);
-      s = format (s, "%Utx offload avail:  %U\n",
-		  format_white_space, indent + 2,
-		  format_dpdk_tx_offload_caps, di.tx_offload_capa);
-      s = format (s, "%Utx offload active: %U\n",
-		  format_white_space, indent + 2,
-		  format_dpdk_tx_offload_caps, xd->port_conf.txmode.offloads);
-      s = format (s, "%Urss avail:         %U\n"
-		  "%Urss active:        %U\n",
-		  format_white_space, indent + 2,
-		  format_dpdk_rss_hf_name, di.flow_type_rss_offloads,
-		  format_white_space, indent + 2,
-		  format_dpdk_rss_hf_name, rss_conf.rss_hf);
-
-      if (rte_eth_tx_burst_mode_get (xd->port_id, 0, &mode) == 0)
-	{
-	  s = format (s, "%Utx burst mode: %s%s\n",
-		      format_white_space, indent + 2,
-		      mode.info,
-		      mode.flags & RTE_ETH_BURST_FLAG_PER_QUEUE ?
-		      " (per queue)" : "");
-	}
+      u8 *s2;
+      if (xd->cpu_socket > -1)
+	s2 = format (0, "%d", xd->cpu_socket);
       else
-	{
-	  s = format (s, "%Utx burst function: %s\n",
-		      format_white_space, indent + 2,
-		      ptr2sname (rte_eth_devices[xd->port_id].tx_pkt_burst));
-	}
+	s2 = format (0, "unknown");
+      s = format (s,
+		  "%Upci: device %04x:%04x subsystem %04x:%04x "
+		  "address %04x:%02x:%02x.%02x numa %v\n",
+		  format_white_space, indent + 2, pci->id.vendor_id,
+		  pci->id.device_id, pci->id.subsystem_vendor_id,
+		  pci->id.subsystem_device_id, pci->addr.domain, pci->addr.bus,
+		  pci->addr.devid, pci->addr.function, s2);
+      vec_free (s2);
+    }
 
-      if (rte_eth_rx_burst_mode_get (xd->port_id, 0, &mode) == 0)
-	{
-	  s = format (s, "%Urx burst mode: %s%s\n",
-		      format_white_space, indent + 2,
-		      mode.info,
-		      mode.flags & RTE_ETH_BURST_FLAG_PER_QUEUE ?
-		      " (per queue)" : "");
-	}
-      else
-	{
-	  s = format (s, "%Urx burst function: %s\n",
-		      format_white_space, indent + 2,
-		      ptr2sname (rte_eth_devices[xd->port_id].rx_pkt_burst));
-	}
+  if (di.switch_info.domain_id != RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID)
+    {
+      s = format (s, "%Uswitch info: %U\n", format_white_space, indent + 2,
+		  format_switch_info, &di.switch_info);
+    }
+
+  if (1 < verbose)
+    {
+      s = format (s, "%Umodule: %U\n", format_white_space, indent + 2,
+		  format_dpdk_device_module_info, xd);
+    }
+
+  s = format (s, "%Umax rx packet len: %d\n", format_white_space, indent + 2,
+	      di.max_rx_pktlen);
+  s = format (s, "%Upromiscuous: unicast %s all-multicast %s\n",
+	      format_white_space, indent + 2,
+	      rte_eth_promiscuous_get (xd->port_id) ? "on" : "off",
+	      rte_eth_allmulticast_get (xd->port_id) ? "on" : "off");
+  vlan_off = rte_eth_dev_get_vlan_offload (xd->port_id);
+  s = format (s, "%Uvlan offload: strip %s filter %s qinq %s\n",
+	      format_white_space, indent + 2,
+	      vlan_off & ETH_VLAN_STRIP_OFFLOAD ? "on" : "off",
+	      vlan_off & ETH_VLAN_FILTER_OFFLOAD ? "on" : "off",
+	      vlan_off & ETH_VLAN_EXTEND_OFFLOAD ? "on" : "off");
+  s = format (s, "%Urx offload avail:  %U\n", format_white_space, indent + 2,
+	      format_dpdk_rx_offload_caps, di.rx_offload_capa);
+  s = format (s, "%Urx offload active: %U\n", format_white_space, indent + 2,
+	      format_dpdk_rx_offload_caps, xd->enabled_rx_off);
+  s = format (s, "%Utx offload avail:  %U\n", format_white_space, indent + 2,
+	      format_dpdk_tx_offload_caps, di.tx_offload_capa);
+  s = format (s, "%Utx offload active: %U\n", format_white_space, indent + 2,
+	      format_dpdk_tx_offload_caps, xd->enabled_tx_off);
+  s = format (s,
+	      "%Urss avail:         %U\n"
+	      "%Urss active:        %U\n",
+	      format_white_space, indent + 2, format_dpdk_rss_hf_name,
+	      di.flow_type_rss_offloads, format_white_space, indent + 2,
+	      format_dpdk_rss_hf_name, rss_conf.rss_hf);
+
+  if (rte_eth_tx_burst_mode_get (xd->port_id, 0, &mode) == 0)
+    {
+      s = format (s, "%Utx burst mode: %s%s\n", format_white_space, indent + 2,
+		  mode.info,
+		  mode.flags & RTE_ETH_BURST_FLAG_PER_QUEUE ? " (per queue)" :
+								    "");
+    }
+  else
+    {
+      s =
+	format (s, "%Utx burst function: %s\n", format_white_space, indent + 2,
+		ptr2sname (rte_eth_devices[xd->port_id].tx_pkt_burst));
+    }
+
+  if (rte_eth_rx_burst_mode_get (xd->port_id, 0, &mode) == 0)
+    {
+      s = format (s, "%Urx burst mode: %s%s\n", format_white_space, indent + 2,
+		  mode.info,
+		  mode.flags & RTE_ETH_BURST_FLAG_PER_QUEUE ? " (per queue)" :
+								    "");
+    }
+  else
+    {
+      s =
+	format (s, "%Urx burst function: %s\n", format_white_space, indent + 2,
+		ptr2sname (rte_eth_devices[xd->port_id].rx_pkt_burst));
     }
 
   /* $$$ MIB counters  */
