@@ -158,38 +158,29 @@ static_always_inline
 				dpdk_device_t * xd,
 				struct rte_mbuf **mb, u32 n_left)
 {
-  dpdk_main_t *dm = &dpdk_main;
   dpdk_tx_queue_t *txq;
   u32 n_retry;
   int n_sent = 0;
   int queue_id;
 
   n_retry = 16;
-  queue_id = vm->thread_index % xd->tx_q_used;
+  queue_id = vm->thread_index % xd->conf.n_tx_queues;
   txq = vec_elt_at_index (xd->tx_queues, queue_id);
 
   do
     {
       clib_spinlock_lock_if_init (&txq->lock);
 
-      if (PREDICT_TRUE (xd->flags & DPDK_DEVICE_FLAG_PMD))
-	{
 	  /* no wrap, transmit in one burst */
 	  n_sent = rte_eth_tx_burst (xd->port_id, queue_id, mb, n_left);
 	  n_retry--;
-	}
-      else
-	{
-	  ASSERT (0);
-	  n_sent = 0;
-	}
 
       clib_spinlock_unlock_if_init (&txq->lock);
 
       if (PREDICT_FALSE (n_sent < 0))
 	{
 	  // emit non-fatal message, bump counter
-	  vnet_main_t *vnm = dm->vnet_main;
+	  vnet_main_t *vnm = vnet_get_main ();
 	  vnet_interface_main_t *im = &vnm->interface_main;
 	  u32 node_index;
 
@@ -495,7 +486,7 @@ dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 	  if (vec_len (xd->errors))
 	    return clib_error_create ("Interface start failed");
 	  xd->flags |= DPDK_DEVICE_FLAG_ADMIN_UP;
-	  f64 now = vlib_time_now (dm->vlib_main);
+	  f64 now = vlib_time_now (vlib_get_main ());
 	  dpdk_update_counters (xd, now);
 	  dpdk_update_link_state (xd, now);
 	}
@@ -531,7 +522,7 @@ dpdk_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
     }
 
   xd->per_interface_next_index =
-    vlib_node_add_next (xm->vlib_main, dpdk_input_node.index, node_index);
+    vlib_node_add_next (vlib_get_main (), dpdk_input_node.index, node_index);
 }
 
 
@@ -553,11 +544,8 @@ dpdk_subif_add_del_function (vnet_main_t * vnm,
   else if (xd->num_subifs)
     xd->num_subifs--;
 
-  if ((xd->flags & DPDK_DEVICE_FLAG_PMD) == 0)
-    goto done;
-
   /* currently we program VLANS only for IXGBE VF */
-  if (xd->pmd != VNET_DPDK_PMD_IXGBEVF)
+  if (xd->driver->program_vlans == 0)
     goto done;
 
   if (t->sub.eth.flags.no_tags == 1)
