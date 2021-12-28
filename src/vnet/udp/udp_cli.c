@@ -187,7 +187,7 @@ show_udp_punt_fn (vlib_main_t * vm, unformat_input_t * input,
       u8 *s = NULL;
       vec_foreach (port_info, um->dst_port_infos[UDP_IP6])
       {
-	if (udp_is_valid_dst_port (port_info->dst_port, 01))
+	if (udp_is_valid_dst_port (port_info->dst_port, 0))
 	  {
 	    s = format (s, (!s) ? "%d" : ", %d", port_info->dst_port);
 	  }
