@@ -175,6 +175,7 @@ vlib_thread_init (vlib_main_t * vm)
   vlib_thread_main_t *tm = &vlib_thread_main;
   vlib_worker_thread_t *w;
   vlib_thread_registration_t *tr;
+  cpu_set_t cpuset;
   u32 n_vlib_mains = 1;
   u32 first_index = 1;
   u32 i;
@@ -223,17 +224,9 @@ vlib_thread_init (vlib_main_t * vm)
     tm->cpu_socket_bitmap = clib_bitmap_set (0, 0, 1);
 
   /* pin main thread to main_lcore  */
-  if (tm->cb.vlib_thread_set_lcore_cb)
-    {
-      tm->cb.vlib_thread_set_lcore_cb (0, tm->main_lcore);
-    }
-  else
-    {
-      cpu_set_t cpuset;
-      CPU_ZERO (&cpuset);
-      CPU_SET (tm->main_lcore, &cpuset);
-      pthread_setaffinity_np (pthread_self (), sizeof (cpu_set_t), &cpuset);
-    }
+  CPU_ZERO (&cpuset);
+  CPU_SET (tm->main_lcore, &cpuset);
+  pthread_setaffinity_np (pthread_self (), sizeof (cpu_set_t), &cpuset);
 
   /* Set up thread 0 */
   vec_validate_aligned (vlib_worker_threads, 0, CLIB_CACHE_LINE_BYTES);
@@ -463,6 +456,8 @@ vlib_launch_thread_int (void *fp, vlib_worker_thread_t * w, unsigned cpu_id)
 {
   clib_mem_main_t *mm = &clib_mem_main;
   vlib_thread_main_t *tm = &vlib_thread_main;
+  pthread_t worker;
+  cpu_set_t cpuset;
   void *(*fp_arg) (void *) = fp;
   void *numa_heap;
 
@@ -489,12 +484,6 @@ vlib_launch_thread_int (void *fp, vlib_worker_thread_t * w, unsigned cpu_id)
 	}
     }
 
-  if (tm->cb.vlib_launch_thread_cb && !w->registration->use_pthreads)
-    return tm->cb.vlib_launch_thread_cb (fp, (void *) w, cpu_id);
-  else
-    {
-      pthread_t worker;
-      cpu_set_t cpuset;
       CPU_ZERO (&cpuset);
       CPU_SET (cpu_id, &cpuset);
 
@@ -505,7 +494,6 @@ vlib_launch_thread_int (void *fp, vlib_worker_thread_t * w, unsigned cpu_id)
 	return clib_error_return_unix (0, "pthread_setaffinity_np");
 
       return 0;
-    }
 }
 
 static clib_error_t *
@@ -1520,7 +1508,6 @@ vlib_worker_thread_fn (void *arg)
 {
   vlib_global_main_t *vgm = vlib_get_global_main ();
   vlib_worker_thread_t *w = (vlib_worker_thread_t *) arg;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
   vlib_main_t *vm = vlib_get_main ();
   clib_error_t *e;
 
@@ -1539,10 +1526,6 @@ vlib_worker_thread_fn (void *arg)
     0 /* is_global */);
   if (e)
     clib_error_report (e);
-
-  /* Wait until the dpdk init sequence is complete */
-  while (tm->extern_thread_mgmt && tm->worker_thread_release == 0)
-    vlib_worker_thread_barrier_check ();
 
   vlib_worker_loop (vm);
 }
@@ -1584,19 +1567,6 @@ vlib_frame_queue_main_init (u32 node_index, u32 frame_queue_nelts)
     }
 
   return (fqm - tm->frame_queue_mains);
-}
-
-int
-vlib_thread_cb_register (struct vlib_main_t *vm, vlib_thread_callbacks_t * cb)
-{
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-
-  if (tm->extern_thread_mgmt)
-    return -1;
-
-  tm->cb.vlib_launch_thread_cb = cb->vlib_launch_thread_cb;
-  tm->extern_thread_mgmt = 1;
-  return 0;
 }
 
 void

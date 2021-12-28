@@ -1504,11 +1504,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
 	  num_whitelisted++;
 	}
-      else if (unformat (input, "num-mem-channels %d", &conf->nchannels))
-	conf->nchannels_set_manually = 0;
-      else if (unformat (input, "num-crypto-mbufs %d",
-			 &conf->num_crypto_mbufs))
-	;
       else if (unformat (input, "uio-driver %s", &conf->uio_driver_name))
 	;
       else if (unformat (input, "socket-mem %s", &socket_mem))
@@ -1585,17 +1580,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	    }
 	foreach_eal_single_hyphen_arg
 #undef _
-#define _(a,b)						\
-	    else if (unformat(input, #a " %s", &s))	\
-	      {						\
-		tmp = format (0, "-%s%c", #b, 0);	\
-		vec_add1 (conf->eal_init_args, tmp);	\
-		vec_add1 (s, 0);			\
-		vec_add1 (conf->eal_init_args, s);	\
-		conf->a##_set_manually = 1;		\
-	      }
-	foreach_eal_single_hyphen_mandatory_arg
-#undef _
 	else if (unformat (input, "default"))
 	;
 
@@ -1651,38 +1635,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   if (error)
     return error;
 
-  /* I'll bet that -c and -n must be the first and second args... */
-  if (!conf->coremask_set_manually)
-    {
-      vlib_thread_registration_t *tr;
-      uword *coremask = 0;
-      int i;
-
-      /* main thread core */
-      coremask = clib_bitmap_set (coremask, tm->main_lcore, 1);
-
-      for (i = 0; i < vec_len (tm->registrations); i++)
-	{
-	  tr = tm->registrations[i];
-	  coremask = clib_bitmap_or (coremask, tr->coremask);
-	}
-
-      vec_insert (conf->eal_init_args, 2, 1);
-      conf->eal_init_args[1] = (u8 *) "-c";
-      tmp = format (0, "%U%c", format_bitmap_hex, coremask, 0);
-      conf->eal_init_args[2] = tmp;
-      clib_bitmap_free (coremask);
-    }
-
-  if (!conf->nchannels_set_manually)
-    {
-      vec_insert (conf->eal_init_args, 2, 3);
-      conf->eal_init_args[3] = (u8 *) "-n";
-      tmp = format (0, "%d", conf->nchannels);
-      vec_terminate_c_string (tmp);
-      conf->eal_init_args[4] = tmp;
-    }
-
   if (no_pci == 0 && geteuid () == 0)
     dpdk_bind_devices_to_uio (conf);
 
@@ -1693,7 +1645,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
     if (devconf->x == 0 && conf->default_devconf.x > 0) \
       devconf->x = conf->default_devconf.x ;
 
-  /* *INDENT-OFF* */
   pool_foreach (devconf, conf->dev_confs)  {
 
     /* default per-device config items */
@@ -1737,16 +1688,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	  vec_add1 (conf->eal_init_args, tmp);
     }
   }
-  /* *INDENT-ON* */
 
 #undef _
-
-  /* set master-lcore */
-  tmp = format (0, "--main-lcore%c", 0);
-  vec_add1 (conf->eal_init_args, tmp);
-  tmp = format (0, "%u%c", tm->main_lcore, 0);
-  vec_add1 (conf->eal_init_args, tmp);
-
 
   if (socket_mem)
     clib_warning ("socket-mem argument is deprecated");
@@ -1999,7 +1942,6 @@ dpdk_init (vlib_main_t * vm)
   dm->vnet_main = vnet_get_main ();
   dm->conf = &dpdk_config_main;
 
-  dm->conf->nchannels = 4;
   vec_add1 (dm->conf->eal_init_args, (u8 *) "vnet");
 
   /* Default vlib_buffer_t flags, DISABLES tcp/udp checksumming... */
@@ -2020,10 +1962,13 @@ dpdk_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (dpdk_init);
 
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+static clib_error_t *
+dpdk_worker_thread_init (vlib_main_t *vm)
+{
+  if (rte_thread_register () < 0)
+    clib_panic ("dpdk: cannot register thread %u - %s", vm->thread_index,
+		rte_strerror (rte_errno));
+  return 0;
+}
+
+VLIB_WORKER_INIT_FUNCTION (dpdk_worker_thread_init);

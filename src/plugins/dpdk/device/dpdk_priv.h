@@ -33,10 +33,6 @@ _(no-hpet)                                      \
 _(no-huge)                                      \
 _(vmware-tsc-map)
 
-#define foreach_eal_single_hyphen_mandatory_arg \
-_(coremask, c)                                  \
-_(nchannels, n)                                 \
-
 #define foreach_eal_single_hyphen_arg           \
 _(mem-alloc-request, m)                         \
 _(force-ranks, r)
