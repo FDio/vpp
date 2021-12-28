@@ -22,27 +22,12 @@
 
 #include <rte_config.h>
 
-#include <rte_common.h>
-#include <rte_dev.h>
-#include <rte_memory.h>
 #include <rte_eal.h>
-#include <rte_per_lcore.h>
-#include <rte_cycles.h>
-#include <rte_lcore.h>
-#include <rte_per_lcore.h>
-#include <rte_interrupts.h>
-#include <rte_pci.h>
-#include <rte_bus_vmbus.h>
-#include <rte_ether.h>
-#include <rte_ethdev.h>
-#include <rte_ring.h>
-#include <rte_mempool.h>
-#include <rte_mbuf.h>
-#include <rte_version.h>
-#include <rte_sched.h>
-#include <rte_net.h>
 #include <rte_bus_pci.h>
-#include <rte_flow.h>
+#include <rte_bus_vmbus.h>
+#include <rte_ethdev.h>
+#include <rte_version.h>
+#include <rte_net.h>
 
 #include <vnet/devices/devices.h>
 
@@ -312,13 +297,6 @@ typedef struct
 #define DPDK_MAX_SIMD_BITWIDTH_DEFAULT 0
 #define DPDK_MAX_SIMD_BITWIDTH_256     256
 #define DPDK_MAX_SIMD_BITWIDTH_512     512
-
-  /* Required config parameters */
-  u8 coremask_set_manually;
-  u8 nchannels_set_manually;
-  u32 coremask;
-  u32 nchannels;
-  u32 num_crypto_mbufs;
 
   /*
    * format interface names ala xxxEthernet%d/%d/%d instead of
