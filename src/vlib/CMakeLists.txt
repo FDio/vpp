@@ -77,6 +77,7 @@ add_vpp_library(vlib
   init.c
   linux/pci.c
   linux/vfio.c
+  linux/idxdbus.c
   log.c
   main.c
   node.c
