@@ -1693,7 +1693,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
     if (devconf->x == 0 && conf->default_devconf.x > 0) \
       devconf->x = conf->default_devconf.x ;
 
-  /* *INDENT-OFF* */
   pool_foreach (devconf, conf->dev_confs)  {
 
     /* default per-device config items */
@@ -1737,16 +1736,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	  vec_add1 (conf->eal_init_args, tmp);
     }
   }
-  /* *INDENT-ON* */
 
 #undef _
-
-  /* set master-lcore */
-  tmp = format (0, "--main-lcore%c", 0);
-  vec_add1 (conf->eal_init_args, tmp);
-  tmp = format (0, "%u%c", tm->main_lcore, 0);
-  vec_add1 (conf->eal_init_args, tmp);
-
 
   if (socket_mem)
     clib_warning ("socket-mem argument is deprecated");
@@ -2020,10 +2011,13 @@ dpdk_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (dpdk_init);
 
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+static clib_error_t *
+dpdk_worker_thread_init (vlib_main_t *vm)
+{
+  if (rte_thread_register () < 0)
+    clib_panic ("dpdk: cannot register thread %u - %s", vm->thread_index,
+		rte_strerror (rte_errno));
+  return 0;
+}
+
+VLIB_WORKER_INIT_FUNCTION (dpdk_worker_thread_init);

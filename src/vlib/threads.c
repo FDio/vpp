@@ -175,6 +175,7 @@ vlib_thread_init (vlib_main_t * vm)
   vlib_thread_main_t *tm = &vlib_thread_main;
   vlib_worker_thread_t *w;
   vlib_thread_registration_t *tr;
+  cpu_set_t cpuset;
   u32 n_vlib_mains = 1;
   u32 first_index = 1;
   u32 i;
@@ -223,17 +224,9 @@ vlib_thread_init (vlib_main_t * vm)
     tm->cpu_socket_bitmap = clib_bitmap_set (0, 0, 1);
 
   /* pin main thread to main_lcore  */
-  if (tm->cb.vlib_thread_set_lcore_cb)
-    {
-      tm->cb.vlib_thread_set_lcore_cb (0, tm->main_lcore);
-    }
-  else
-    {
-      cpu_set_t cpuset;
-      CPU_ZERO (&cpuset);
-      CPU_SET (tm->main_lcore, &cpuset);
-      pthread_setaffinity_np (pthread_self (), sizeof (cpu_set_t), &cpuset);
-    }
+  CPU_ZERO (&cpuset);
+  CPU_SET (tm->main_lcore, &cpuset);
+  pthread_setaffinity_np (pthread_self (), sizeof (cpu_set_t), &cpuset);
 
   /* Set up thread 0 */
   vec_validate_aligned (vlib_worker_threads, 0, CLIB_CACHE_LINE_BYTES);
@@ -279,7 +272,7 @@ vlib_thread_init (vlib_main_t * vm)
       n_vlib_mains += (tr->no_data_structure_clone == 0) ? tr->count : 0;
 
       /* construct coremask */
-      if (tr->use_pthreads || !tr->count)
+      if (!tr->count)
 	continue;
 
       if (tr->coremask)
@@ -389,17 +382,13 @@ vlib_worker_thread_init (vlib_worker_thread_t * w)
       vlib_set_thread_name ((char *) w->name);
     }
 
-  if (!w->registration->use_pthreads)
-    {
+  /* Initial barrier sync, for both worker and i/o threads */
+  clib_atomic_fetch_add (vlib_worker_threads->workers_at_barrier, 1);
 
-      /* Initial barrier sync, for both worker and i/o threads */
-      clib_atomic_fetch_add (vlib_worker_threads->workers_at_barrier, 1);
+  while (*vlib_worker_threads->wait_at_barrier)
+    ;
 
-      while (*vlib_worker_threads->wait_at_barrier)
-	;
-
-      clib_atomic_fetch_add (vlib_worker_threads->workers_at_barrier, -1);
-    }
+  clib_atomic_fetch_add (vlib_worker_threads->workers_at_barrier, -1);
 }
 
 void *
@@ -463,6 +452,8 @@ vlib_launch_thread_int (void *fp, vlib_worker_thread_t * w, unsigned cpu_id)
 {
   clib_mem_main_t *mm = &clib_mem_main;
   vlib_thread_main_t *tm = &vlib_thread_main;
+  pthread_t worker;
+  cpu_set_t cpuset;
   void *(*fp_arg) (void *) = fp;
   void *numa_heap;
 
@@ -489,12 +480,6 @@ vlib_launch_thread_int (void *fp, vlib_worker_thread_t * w, unsigned cpu_id)
 	}
     }
 
-  if (tm->cb.vlib_launch_thread_cb && !w->registration->use_pthreads)
-    return tm->cb.vlib_launch_thread_cb (fp, (void *) w, cpu_id);
-  else
-    {
-      pthread_t worker;
-      cpu_set_t cpuset;
       CPU_ZERO (&cpuset);
       CPU_SET (cpu_id, &cpuset);
 
@@ -505,7 +490,6 @@ vlib_launch_thread_int (void *fp, vlib_worker_thread_t * w, unsigned cpu_id)
 	return clib_error_return_unix (0, "pthread_setaffinity_np");
 
       return 0;
-    }
 }
 
 static clib_error_t *
@@ -794,35 +778,19 @@ start_workers (vlib_main_t * vm)
   for (i = 0; i < vec_len (tm->registrations); i++)
     {
       clib_error_t *err;
-      int j;
+      uword c;
 
       tr = tm->registrations[i];
 
-      if (tr->use_pthreads || tm->use_pthreads)
+      clib_bitmap_foreach (c, tr->coremask)
 	{
-	  for (j = 0; j < tr->count; j++)
-	    {
-	      w = vlib_worker_threads + worker_thread_index++;
-	      err = vlib_launch_thread_int (vlib_worker_thread_bootstrap_fn,
-					    w, 0);
-	      if (err)
-		clib_error_report (err);
-	    }
-	}
-      else
-	{
-	  uword c;
-          /* *INDENT-OFF* */
-          clib_bitmap_foreach (c, tr->coremask)  {
-            w = vlib_worker_threads + worker_thread_index++;
-	    err = vlib_launch_thread_int (vlib_worker_thread_bootstrap_fn,
-					  w, c);
-	    if (err)
-	      clib_error_report (err);
-          }
-          /* *INDENT-ON* */
+	  w = vlib_worker_threads + worker_thread_index++;
+	  err = vlib_launch_thread_int (vlib_worker_thread_bootstrap_fn, w, c);
+	  if (err)
+	    clib_error_report (err);
 	}
     }
+
   vlib_worker_thread_barrier_sync (vm);
   vlib_worker_thread_barrier_release (vm);
   return 0;
@@ -1122,9 +1090,7 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "use-pthreads"))
-	tm->use_pthreads = 1;
-      else if (unformat (input, "thread-prefix %v", &tm->thread_prefix))
+      if (unformat (input, "thread-prefix %v", &tm->thread_prefix))
 	;
       else if (unformat (input, "main-core %u", &tm->main_lcore))
 	;
@@ -1144,10 +1110,6 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 
 	  tr = (vlib_thread_registration_t *) p[0];
 
-	  if (tr->use_pthreads)
-	    return clib_error_return (0,
-				      "corelist cannot be set for '%s' threads",
-				      name);
 	  if (tr->count)
 	    return clib_error_return
 	      (0, "core placement of '%s' threads is already configured",
@@ -1211,8 +1173,7 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
   while (tr)
     {
       tm->n_thread_stacks += tr->count;
-      tm->n_pthreads += tr->count * tr->use_pthreads;
-      tm->n_threads += tr->count * (tr->use_pthreads == 0);
+      tm->n_threads += tr->count;
       tr = tr->next;
     }
 
@@ -1520,7 +1481,6 @@ vlib_worker_thread_fn (void *arg)
 {
   vlib_global_main_t *vgm = vlib_get_global_main ();
   vlib_worker_thread_t *w = (vlib_worker_thread_t *) arg;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
   vlib_main_t *vm = vlib_get_main ();
   clib_error_t *e;
 
@@ -1539,10 +1499,6 @@ vlib_worker_thread_fn (void *arg)
     0 /* is_global */);
   if (e)
     clib_error_report (e);
-
-  /* Wait until the dpdk init sequence is complete */
-  while (tm->extern_thread_mgmt && tm->worker_thread_release == 0)
-    vlib_worker_thread_barrier_check ();
 
   vlib_worker_loop (vm);
 }
@@ -1584,19 +1540,6 @@ vlib_frame_queue_main_init (u32 node_index, u32 frame_queue_nelts)
     }
 
   return (fqm - tm->frame_queue_mains);
-}
-
-int
-vlib_thread_cb_register (struct vlib_main_t *vm, vlib_thread_callbacks_t * cb)
-{
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-
-  if (tm->extern_thread_mgmt)
-    return -1;
-
-  tm->cb.vlib_launch_thread_cb = cb->vlib_launch_thread_cb;
-  tm->extern_thread_mgmt = 1;
-  return 0;
 }
 
 void
