@@ -1087,7 +1087,7 @@ add_lb_static_mapping_command_fn (vlib_main_t * vm,
 	{
 	  clib_memset (&local, 0, sizeof (local));
 	  local.addr = l_addr;
-	  local.port = (u16) l_port;
+	  local.port = clib_host_to_net_u16 (l_port);
 	  local.probability = (u8) probability;
 	  vec_add1 (locals, local);
 	}
@@ -1097,7 +1097,7 @@ add_lb_static_mapping_command_fn (vlib_main_t * vm,
 	{
 	  clib_memset (&local, 0, sizeof (local));
 	  local.addr = l_addr;
-	  local.port = (u16) l_port;
+	  local.port = clib_host_to_net_u16 (l_port);
 	  local.probability = (u8) probability;
 	  local.vrf_id = vrf_id;
 	  vec_add1 (locals, local);
@@ -1146,6 +1146,11 @@ add_lb_static_mapping_command_fn (vlib_main_t * vm,
     {
       error = clib_error_return (0, "missing protocol");
       goto done;
+    }
+
+  if (e_port)
+    {
+      e_port = clib_host_to_net_u16 (e_port);
     }
 
   if (is_add)
@@ -1236,6 +1241,9 @@ add_lb_backend_command_fn (vlib_main_t * vm,
       error = clib_error_return (0, "missing protocol");
       goto done;
     }
+
+  e_port = clib_host_to_net_u16 (e_port);
+  l_port = clib_host_to_net_u16 (l_port);
 
   rv = nat44_ed_add_del_lb_static_mapping_local (
     e_addr, (u16) e_port, l_addr, l_port, proto, vrf_id, probability, is_add);
