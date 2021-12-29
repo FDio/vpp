@@ -1312,6 +1312,10 @@ unix_cli_new_session_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	    /* Add an identifier to the new session list */
 	    unix_cli_new_session_t ns;
 
+	    /* Check the connection didn't close already */
+	    if (pool_is_free_index (cm->cli_file_pool, event_data[0]))
+	      break;
+
 	    ns.cf_index = event_data[0];
 	    ns.deadline = vlib_time_now (vm) + 1.0;
 
@@ -2693,7 +2697,7 @@ unix_cli_kill (unix_cli_main_t * cm, uword cli_file_index)
 
       if (ns->cf_index == cli_file_index)
 	{
-	  vec_del1 (cm->new_sessions, i);
+	  ns->cf_index = ~0;
 	  break;
 	}
     }
