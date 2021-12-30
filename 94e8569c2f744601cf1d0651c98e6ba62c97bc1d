@@ -16,6 +16,24 @@
       "revId": "94e8569c2f744601cf1d0651c98e6ba62c97bc1d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d69109da_63b00ffb",
+        "filename": "src/svm/svm_fifo.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 832,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-12-30T17:03:53Z",
+      "side": 1,
+      "message": "Thanks, actually that should\u0027ve been max_enqueue not max_dequeue. I changed the sign but not the function call. Updated.\n\nPoint is that we want/generate a notification whenever there\u0027s more space to enqueue than the threshold.",
+      "parentUuid": "5470235c_bcf35f97",
+      "revId": "94e8569c2f744601cf1d0651c98e6ba62c97bc1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
