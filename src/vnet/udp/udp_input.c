@@ -152,7 +152,7 @@ udp_connection_enqueue (udp_connection_t * uc0, session_t * s0,
 						 TRANSPORT_PROTO_UDP,
 						 /* queue event */ 0);
       if (queue_event && !svm_fifo_has_event (s0->rx_fifo))
-	session_enqueue_notify (s0);
+	session_enqueue_notify_thread (s0);
     }
   else
     {

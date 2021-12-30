@@ -462,6 +462,7 @@ void session_transport_cleanup (session_t * s);
 int session_send_io_evt_to_thread (svm_fifo_t * f,
 				   session_evt_type_t evt_type);
 int session_enqueue_notify (session_t * s);
+void session_enqueue_notify_thread (session_handle_t sh);
 int session_dequeue_notify (session_t * s);
 int session_send_io_evt_to_thread_custom (void *data, u32 thread_index,
 					  session_evt_type_t evt_type);
