@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5470235c_bcf35f97",
+        "filename": "src/svm/svm_fifo.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 832,
+      "author": {
+        "id": 2576
+      },
+      "writtenOn": "2021-12-30T11:32:10Z",
+      "side": 1,
+      "message": "This will actually leave us in the same state we were before. Where we get too many notifications and enter a loop of sending small amounts of data every time. The idea of the threshold was to get a notification after we\u0027ve emptied out a fairly large amount of data ~16K to avoid the penalty of all the context switches for 1K...",
+      "revId": "94e8569c2f744601cf1d0651c98e6ba62c97bc1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
