@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bbfa055a_631418d9",
+        "filename": "src/vnet/udp/udp_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-12-30T17:29:49Z",
+      "side": 0,
+      "message": "As per comment above, we\u0027re delivering the event to another thread, on purpose.",
+      "range": {
+        "startLine": 155,
+        "startChar": 1,
+        "endLine": 155,
+        "endChar": 29
+      },
+      "revId": "fe2231f01fb56af21d6b4d6f63d7e1a2c4d14848",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
