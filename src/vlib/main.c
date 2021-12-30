@@ -2007,7 +2007,9 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
   vlib_main_loop (vm);
 
 done:
+  /* Stop worker threads, barrier will not be released */
   vlib_worker_thread_barrier_sync (vm);
+
   /* Call all exit functions. */
   {
     clib_error_t *sub_error;
@@ -2015,7 +2017,6 @@ done:
     if (sub_error)
       clib_error_report (sub_error);
   }
-  vlib_worker_thread_barrier_release (vm);
 
   if (error)
     clib_error_report (error);
