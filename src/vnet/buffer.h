@@ -467,15 +467,7 @@ typedef struct
   } qos;
 
   u8 loop_counter;
-  u8 __unused[1];
-
-  /* Group Based Policy */
-  struct
-  {
-    u8 __unused;
-    u8 flags;
-    u16 sclass;
-  } gbp;
+  u8 __unused[5];
 
   /**
    * The L4 payload size set on input on GSO enabled interfaces
