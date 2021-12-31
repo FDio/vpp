@@ -600,7 +600,7 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
         walk_adj->ia_flags &= ~ADJ_FLAG_SYNC_WALK_ACTIVE;
     }
 
-    adj_delegate_adj_modified(adj);
+    adj_delegate_adj_modified(adj_get(ai));
     adj_unlock(ai);
     adj_unlock(walk_ai);
 }
