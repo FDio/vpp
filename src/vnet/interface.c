@@ -655,6 +655,7 @@ vnet_create_sw_interface (vnet_main_t * vnm, vnet_sw_interface_t * template,
       /* undo the work done by vnet_create_sw_interface_no_callbacks() */
       log_err ("create_sw_interface: set flags failed\n  %U",
 	       format_clib_error, error);
+      call_sw_interface_add_del_callbacks (vnm, *sw_if_index, 0);
       vnet_sw_interface_t *sw =
 	pool_elt_at_index (im->sw_interfaces, *sw_if_index);
       pool_put (im->sw_interfaces, sw);
