@@ -150,7 +150,7 @@ nsim_wheel_alloc (nsim_main_t * nsm, u32 wheel_slots)
 }
 
 static int
-nsim_configure (nsim_main_t * nsm, f64 bandwidth, f64 delay, f64 packet_size,
+nsim_configure (nsim_main_t *nsm, f64 bandwidth, f64 delay, u32 packet_size,
 		f64 drop_fraction, f64 reorder_fraction)
 {
   u64 total_buffer_size_in_bytes, per_worker_buffer_size, wheel_slots_per_wrk;
@@ -666,9 +666,8 @@ static clib_error_t *
 set_nsim_command_fn (vlib_main_t * vm,
 		     unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  f64 drop_fraction = 0.0, reorder_fraction = 0.0;
-  f64 delay, bandwidth, packet_size = 1500.0;
-  u32 packets_per_drop, packets_per_reorder;
+  f64 drop_fraction = 0.0, reorder_fraction = 0.0, delay, bandwidth;
+  u32 packets_per_drop, packets_per_reorder, packet_size = 1500;
   nsim_main_t *nsm = &nsim_main;
   int rv;
 
@@ -679,7 +678,7 @@ set_nsim_command_fn (vlib_main_t * vm,
       else if (unformat (input, "bandwidth %U", unformat_bandwidth,
 			 &bandwidth))
 	;
-      else if (unformat (input, "packet-size %f", &packet_size))
+      else if (unformat (input, "packet-size %u", &packet_size))
 	;
       else if (unformat (input, "packets-per-drop %d", &packets_per_drop))
 	{

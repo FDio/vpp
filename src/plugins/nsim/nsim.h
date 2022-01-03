@@ -99,9 +99,9 @@ typedef struct
   nsim_wheel_t **wheel_by_thread;
 
   /* Config parameters */
+  u32 packet_size;
   f64 delay;
   f64 bandwidth;
-  f64 packet_size;
   f64 drop_fraction;
   f64 reorder_fraction;
   u32 poll_main_thread;
