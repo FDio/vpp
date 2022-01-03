@@ -788,7 +788,7 @@ tcp_send_syn (tcp_connection_t * tc)
    * such that we can return if we've ran out.
    */
   tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT_SYN,
-		    tc->rto * TCP_TO_TIMER_TICK);
+		    (u32) tc->rto * TCP_TO_TIMER_TICK);
 
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
@@ -1478,7 +1478,7 @@ tcp_timer_retransmit_syn_handler (tcp_connection_t * tc)
   tcp_enqueue_half_open (wrk, tc, b, bi);
 
   tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT_SYN,
-		    tc->rto * TCP_TO_TIMER_TICK);
+		    (u32) tc->rto * TCP_TO_TIMER_TICK);
 }
 
 /**
