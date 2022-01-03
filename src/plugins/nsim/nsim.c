@@ -127,20 +127,20 @@ nsim_output_feature_enable_disable (nsim_main_t * nsm, u32 sw_if_index,
 }
 
 static nsim_wheel_t *
-nsim_wheel_alloc (nsim_main_t * nsm, u32 wheel_slots)
+nsim_wheel_alloc (nsim_main_t *nsm)
 {
   u32 pagesize = getpagesize ();
   nsim_wheel_t *wp;
 
-  nsm->mmap_size = sizeof (nsim_wheel_t)
-    + wheel_slots * sizeof (nsim_wheel_entry_t);
+  nsm->mmap_size = sizeof (nsim_wheel_t) +
+		   nsm->wheel_slots_per_wrk * sizeof (nsim_wheel_entry_t);
 
   nsm->mmap_size += pagesize - 1;
   nsm->mmap_size &= ~(pagesize - 1);
 
   wp = clib_mem_vm_alloc (nsm->mmap_size);
   ASSERT (wp != 0);
-  wp->wheel_size = wheel_slots;
+  wp->wheel_size = nsm->wheel_slots_per_wrk;
   wp->cursize = 0;
   wp->head = 0;
   wp->tail = 0;
@@ -150,7 +150,7 @@ nsim_wheel_alloc (nsim_main_t * nsm, u32 wheel_slots)
 }
 
 static int
-nsim_configure (nsim_main_t * nsm, f64 bandwidth, f64 delay, f64 packet_size,
+nsim_configure (nsim_main_t *nsm, f64 bandwidth, f64 delay, u32 packet_size,
 		f64 drop_fraction, f64 reorder_fraction)
 {
   u64 total_buffer_size_in_bytes, per_worker_buffer_size, wheel_slots_per_wrk;
@@ -163,7 +163,7 @@ nsim_configure (nsim_main_t * nsm, f64 bandwidth, f64 delay, f64 packet_size,
   if (delay == 0.0)
     return VNET_API_ERROR_INVALID_VALUE_2;
 
-  if (packet_size < 64.0 || packet_size > 9000.0)
+  if (packet_size < 64 || packet_size > 9000)
     return VNET_API_ERROR_INVALID_VALUE_3;
 
   if (reorder_fraction > 0.0 && delay == 0.0)
@@ -201,13 +201,14 @@ nsim_configure (nsim_main_t * nsm, f64 bandwidth, f64 delay, f64 packet_size,
   /* Save these for the show command */
   nsm->bandwidth = bandwidth;
   nsm->packet_size = packet_size;
+  nsm->wheel_slots_per_wrk = wheel_slots_per_wrk;
 
   vec_validate (nsm->wheel_by_thread, num_workers);
 
   /* Initialize the output scheduler wheels */
   i = (!nsm->poll_main_thread && num_workers) ? 1 : 0;
   for (; i < num_workers + 1; i++)
-    nsm->wheel_by_thread[i] = nsim_wheel_alloc (nsm, wheel_slots_per_wrk);
+    nsm->wheel_by_thread[i] = nsim_wheel_alloc (nsm);
 
   vlib_worker_thread_barrier_sync (vm);
 
@@ -624,6 +625,7 @@ format_nsim_config (u8 * s, va_list * args)
   else
     s = format (s, " reorder fraction: 0\n");
   s = format (s, " packet size: %u\n", nsm->packet_size);
+  s = format (s, " worker wheel size: %u\n", nsm->wheel_slots_per_wrk);
   s = format (s, " throughput (Gbps): %.2f\n", nsm->bandwidth / 1e9);
 
   if (verbose)
@@ -666,9 +668,8 @@ static clib_error_t *
 set_nsim_command_fn (vlib_main_t * vm,
 		     unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  f64 drop_fraction = 0.0, reorder_fraction = 0.0;
-  f64 delay, bandwidth, packet_size = 1500.0;
-  u32 packets_per_drop, packets_per_reorder;
+  f64 drop_fraction = 0.0, reorder_fraction = 0.0, delay, bandwidth;
+  u32 packets_per_drop, packets_per_reorder, packet_size = 1500;
   nsim_main_t *nsm = &nsim_main;
   int rv;
 
@@ -679,7 +680,7 @@ set_nsim_command_fn (vlib_main_t * vm,
       else if (unformat (input, "bandwidth %U", unformat_bandwidth,
 			 &bandwidth))
 	;
-      else if (unformat (input, "packet-size %f", &packet_size))
+      else if (unformat (input, "packet-size %u", &packet_size))
 	;
       else if (unformat (input, "packets-per-drop %d", &packets_per_drop))
 	{
