@@ -101,9 +101,10 @@ typedef struct
   /* Config parameters */
   f64 delay;
   f64 bandwidth;
-  f64 packet_size;
   f64 drop_fraction;
   f64 reorder_fraction;
+  u32 packet_size;
+  u32 wheel_slots_per_wrk;
   u32 poll_main_thread;
 
   u64 mmap_size;
