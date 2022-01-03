@@ -1438,7 +1438,8 @@ tcp_expired_timers_dispatch (u32 * expired_timers)
 
   clib_fifo_add (wrk->pending_timers, expired_timers, n_expired);
 
-  max_loops = clib_max (1, 0.5 * TCP_TIMER_TICK * wrk->vm->loops_per_second);
+  max_loops =
+    clib_max ((u32) 0.5 * TCP_TIMER_TICK * wrk->vm->loops_per_second, 1);
   max_per_loop = clib_max ((n_left + n_expired) / max_loops, 10);
   max_per_loop = clib_min (max_per_loop, VLIB_FRAME_SIZE);
   wrk->max_timers_per_loop = clib_max (n_left ? wrk->max_timers_per_loop : 0,
