@@ -229,10 +229,6 @@ dpdk_lib_init (dpdk_main_t * dm)
   if (CLIB_DEBUG > 0)
     dpdk_log_notice ("DPDK drivers found %d ports...", nports);
 
-  if (dm->conf->enable_tcp_udp_checksum)
-    dm->buffer_flags_template &= ~(VNET_BUFFER_F_L4_CHECKSUM_CORRECT
-				   | VNET_BUFFER_F_L4_CHECKSUM_COMPUTED);
-
   /* vlib_buffer_t template */
   vec_validate_aligned (dm->per_thread_data, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
@@ -240,7 +236,6 @@ dpdk_lib_init (dpdk_main_t * dm)
     {
       dpdk_per_thread_data_t *ptd = vec_elt_at_index (dm->per_thread_data, i);
       clib_memset (&ptd->buffer_template, 0, sizeof (vlib_buffer_t));
-      ptd->buffer_template.flags = dm->buffer_flags_template;
       vnet_buffer (&ptd->buffer_template)->sw_if_index[VLIB_TX] = (u32) ~ 0;
     }
 
@@ -1943,12 +1938,6 @@ dpdk_init (vlib_main_t * vm)
   dm->conf = &dpdk_config_main;
 
   vec_add1 (dm->conf->eal_init_args, (u8 *) "vnet");
-
-  /* Default vlib_buffer_t flags, DISABLES tcp/udp checksumming... */
-  dm->buffer_flags_template = (VLIB_BUFFER_TOTAL_LENGTH_VALID |
-			       VLIB_BUFFER_EXT_HDR_VALID |
-			       VNET_BUFFER_F_L4_CHECKSUM_COMPUTED |
-			       VNET_BUFFER_F_L4_CHECKSUM_CORRECT);
 
   dm->stat_poll_interval = DPDK_STATS_POLL_INTERVAL;
   dm->link_state_poll_interval = DPDK_LINK_POLL_INTERVAL;

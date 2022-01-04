@@ -176,6 +176,7 @@ typedef struct
 
   u32 hw_if_index;
   u32 sw_if_index;
+  u32 buffer_flags;
 
   /* next node index if we decide to steal the rx graph arc */
   u32 per_interface_next_index;
@@ -334,13 +335,9 @@ typedef struct
 
 typedef struct
 {
-
   /* Devices */
   dpdk_device_t *devices;
   dpdk_per_thread_data_t *per_thread_data;
-
-  /* buffer flags template, configurable to enable/disable tcp / udp cksum */
-  u32 buffer_flags_template;
 
   /*
    * flag indicating that a posted admin up/down
