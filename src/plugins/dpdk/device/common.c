@@ -41,7 +41,6 @@ dpdk_device_error (dpdk_device_t * xd, char *str, int rv)
 void
 dpdk_device_setup (dpdk_device_t * xd)
 {
-  dpdk_main_t *dm = &dpdk_main;
   vlib_main_t *vm = vlib_get_main ();
   vnet_main_t *vnm = vnet_get_main ();
   vlib_thread_main_t *tm = vlib_get_thread_main ();
@@ -59,7 +58,7 @@ dpdk_device_setup (dpdk_device_t * xd)
 
   if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
     {
-      vnet_hw_interface_set_flags (dm->vnet_main, xd->hw_if_index, 0);
+      vnet_hw_interface_set_flags (vnm, xd->hw_if_index, 0);
       dpdk_device_stop (xd);
     }
 

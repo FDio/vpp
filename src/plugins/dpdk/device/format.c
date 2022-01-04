@@ -555,9 +555,10 @@ format_dpdk_device (u8 * s, va_list * args)
   u32 dev_instance = va_arg (*args, u32);
   int verbose = va_arg (*args, int);
   dpdk_main_t *dm = &dpdk_main;
+  vlib_main_t *vm = vlib_get_main ();
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, dev_instance);
   u32 indent = format_get_indent (s);
-  f64 now = vlib_time_now (dm->vlib_main);
+  f64 now = vlib_time_now (vm);
   struct rte_eth_dev_info di;
   struct rte_eth_burst_mode mode;
 

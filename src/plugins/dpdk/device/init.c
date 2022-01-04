@@ -204,6 +204,7 @@ dpdk_enable_l4_csum_offload (dpdk_device_t * xd)
 static clib_error_t *
 dpdk_lib_init (dpdk_main_t * dm)
 {
+  vnet_main_t *vnm = vnet_get_main ();
   u32 nports;
   u32 mtu, max_rx_frame;
   int i;
@@ -714,10 +715,9 @@ dpdk_lib_init (dpdk_main_t * dm)
       /* assign interface to input thread */
       int q;
 
-      error = ethernet_register_interface
-	(dm->vnet_main, dpdk_device_class.index, xd->device_index,
-	 /* ethernet address */ addr,
-	 &xd->hw_if_index, dpdk_flag_change);
+      error = ethernet_register_interface (
+	vnm, dpdk_device_class.index, xd->device_index,
+	/* ethernet address */ addr, &xd->hw_if_index, dpdk_flag_change);
       if (error)
 	return error;
 
@@ -796,34 +796,33 @@ dpdk_lib_init (dpdk_main_t * dm)
       /*Set port rxmode config */
       xd->port_conf.rxmode.max_rx_pkt_len = max_rx_frame;
 
-      sw = vnet_get_hw_sw_interface (dm->vnet_main, xd->hw_if_index);
+      sw = vnet_get_hw_sw_interface (vnm, xd->hw_if_index);
       xd->sw_if_index = sw->sw_if_index;
-      vnet_hw_if_set_input_node (dm->vnet_main, xd->hw_if_index,
-				 dpdk_input_node.index);
+      vnet_hw_if_set_input_node (vnm, xd->hw_if_index, dpdk_input_node.index);
 
       if (devconf->workers)
 	{
-	  int i;
+	  int j;
 	  q = 0;
-	  clib_bitmap_foreach (i, devconf->workers)  {
+	  clib_bitmap_foreach (j, devconf->workers)
+	    {
 	      dpdk_rx_queue_t *rxq = vec_elt_at_index (xd->rx_queues, q);
 	      rxq->queue_index = vnet_hw_if_register_rx_queue (
-		dm->vnet_main, xd->hw_if_index, q++,
-		vdm->first_worker_thread_index + i);
-	  }
+		vnm, xd->hw_if_index, q++, vdm->first_worker_thread_index + j);
+	    }
 	}
       else
 	for (q = 0; q < xd->rx_q_used; q++)
 	  {
 	    dpdk_rx_queue_t *rxq = vec_elt_at_index (xd->rx_queues, q);
 	    rxq->queue_index = vnet_hw_if_register_rx_queue (
-	      dm->vnet_main, xd->hw_if_index, q, VNET_HW_IF_RXQ_THREAD_ANY);
+	      vnm, xd->hw_if_index, q, VNET_HW_IF_RXQ_THREAD_ANY);
 	  }
 
-      vnet_hw_if_update_runtime_data (dm->vnet_main, xd->hw_if_index);
+      vnet_hw_if_update_runtime_data (vnm, xd->hw_if_index);
 
       /*Get vnet hardware interface */
-      hi = vnet_get_hw_interface (dm->vnet_main, xd->hw_if_index);
+      hi = vnet_get_hw_interface (vnm, xd->hw_if_index);
 
       /*Override default max_packet_bytes and max_supported_bytes set in
        * ethernet_register_interface() above*/
@@ -836,8 +835,8 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  /* Indicate ability to support L3 DMAC filtering and
 	   * initialize interface to L3 non-promisc mode */
 	  hi->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_MAC_FILTER;
-	  ethernet_set_flags (dm->vnet_main, xd->hw_if_index,
-			     ETHERNET_INTERFACE_FLAG_DEFAULT_L3);
+	  ethernet_set_flags (vnm, xd->hw_if_index,
+			      ETHERNET_INTERFACE_FLAG_DEFAULT_L3);
 	}
 
       if (dm->conf->no_tx_checksum_offload == 0)
@@ -1938,8 +1937,6 @@ dpdk_init (vlib_main_t * vm)
 
   dpdk_cli_reference ();
 
-  dm->vlib_main = vm;
-  dm->vnet_main = vnet_get_main ();
   dm->conf = &dpdk_config_main;
 
   vec_add1 (dm->conf->eal_init_args, (u8 *) "vnet");
