@@ -4,7 +4,7 @@ import copy
 
 from scapy.layers.ipsec import SecurityAssociation, ESP
 from scapy.layers.l2 import Ether, GRE, Dot1Q
-from scapy.packet import Raw
+from scapy.packet import Raw, bind_layers
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from scapy.contrib.mpls import MPLS
@@ -40,6 +40,18 @@ def config_tun_params(p, encryption_type, tun_if, src=None, dst=None):
         p.tun_dst = dst
         p.tun_src = src
 
+    if p.nat_header:
+        is_default_port = (p.nat_header.dport == 4500)
+    else:
+        is_default_port = True
+
+    if is_default_port:
+        outbound_nat_header = p.nat_header
+    else:
+        outbound_nat_header = UDP(sport=p.nat_header.dport,
+                                  dport=p.nat_header.sport)
+        bind_layers(UDP, ESP, dport=p.nat_header.dport)
+
     p.scapy_tun_sa = SecurityAssociation(
         encryption_type, spi=p.vpp_tun_spi,
         crypt_algo=p.crypt_algo,
@@ -48,7 +60,7 @@ def config_tun_params(p, encryption_type, tun_if, src=None, dst=None):
         tunnel_header=ip_class_by_addr_type[p.addr_type](
             src=p.tun_dst,
             dst=p.tun_src),
-        nat_t_header=p.nat_header,
+        nat_t_header=outbound_nat_header,
         esn_en=esn_en)
     p.vpp_tun_sa = SecurityAssociation(
         encryption_type, spi=p.scapy_tun_spi,
@@ -69,13 +81,26 @@ def config_tra_params(p, encryption_type, tun_if):
     crypt_key = mk_scapy_crypt_key(p)
     p.tun_dst = tun_if.remote_ip
     p.tun_src = tun_if.local_ip
+
+    if p.nat_header:
+        is_default_port = (p.nat_header.dport == 4500)
+    else:
+        is_default_port = True
+
+    if is_default_port:
+        outbound_nat_header = p.nat_header
+    else:
+        outbound_nat_header = UDP(sport=p.nat_header.dport,
+                                  dport=p.nat_header.sport)
+        bind_layers(UDP, ESP, dport=p.nat_header.dport)
+
     p.scapy_tun_sa = SecurityAssociation(
         encryption_type, spi=p.vpp_tun_spi,
         crypt_algo=p.crypt_algo,
         crypt_key=crypt_key,
         auth_algo=p.auth_algo, auth_key=p.auth_key,
         esn_en=esn_en,
-        nat_t_header=p.nat_header)
+        nat_t_header=outbound_nat_header)
     p.vpp_tun_sa = SecurityAssociation(
         encryption_type, spi=p.scapy_tun_spi,
         crypt_algo=p.crypt_algo,
@@ -1354,8 +1379,8 @@ class TestIpsecGreTebUdpIfEspTra(TemplateIpsec,
                                  flags=(p.flags |
                                         VppEnum.vl_api_ipsec_sad_flags_t.
                                         IPSEC_API_SAD_FLAG_IS_INBOUND),
-                                 udp_src=5454,
-                                 udp_dst=4545)
+                                 udp_src=4545,
+                                 udp_dst=5454)
         p.tun_sa_in.add_vpp_config()
 
         p.tun_if = VppGreInterface(self,
