@@ -158,7 +158,6 @@ static_always_inline
 				dpdk_device_t * xd,
 				struct rte_mbuf **mb, u32 n_left)
 {
-  dpdk_main_t *dm = &dpdk_main;
   dpdk_tx_queue_t *txq;
   u32 n_retry;
   int n_sent = 0;
@@ -189,7 +188,7 @@ static_always_inline
       if (PREDICT_FALSE (n_sent < 0))
 	{
 	  // emit non-fatal message, bump counter
-	  vnet_main_t *vnm = dm->vnet_main;
+	  vnet_main_t *vnm = vnet_get_main ();
 	  vnet_interface_main_t *im = &vnm->interface_main;
 	  u32 node_index;
 
@@ -495,7 +494,7 @@ dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 	  if (vec_len (xd->errors))
 	    return clib_error_create ("Interface start failed");
 	  xd->flags |= DPDK_DEVICE_FLAG_ADMIN_UP;
-	  f64 now = vlib_time_now (dm->vlib_main);
+	  f64 now = vlib_time_now (vlib_get_main ());
 	  dpdk_update_counters (xd, now);
 	  dpdk_update_link_state (xd, now);
 	}
@@ -531,7 +530,7 @@ dpdk_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
     }
 
   xd->per_interface_next_index =
-    vlib_node_add_next (xm->vlib_main, dpdk_input_node.index, node_index);
+    vlib_node_add_next (vlib_get_main (), dpdk_input_node.index, node_index);
 }
 
 

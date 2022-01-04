@@ -352,9 +352,6 @@ typedef struct
   f64 link_state_poll_interval;
   f64 stat_poll_interval;
 
-  /* convenience */
-  vlib_main_t *vlib_main;
-  vnet_main_t *vnet_main;
   dpdk_config_main_t *conf;
 
   /* API message ID base */

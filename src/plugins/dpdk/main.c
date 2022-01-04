@@ -79,11 +79,7 @@ rte_delay_us_override_cb (unsigned us)
 
 static clib_error_t * dpdk_main_init (vlib_main_t * vm)
 {
-  dpdk_main_t * dm = &dpdk_main;
   clib_error_t * error = 0;
-
-  dm->vlib_main = vm;
-  dm->vnet_main = vnet_get_main ();
 
   /* register custom delay function */
   rte_delay_us_callback_register (rte_delay_us_override_cb);
