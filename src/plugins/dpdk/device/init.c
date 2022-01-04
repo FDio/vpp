@@ -1898,7 +1898,6 @@ dpdk_init (vlib_main_t * vm)
 
   dm->log_default = vlib_log_register_class ("dpdk", 0);
   dm->log_cryptodev = vlib_log_register_class ("dpdk", "cryptodev");
-  dm->log_ipsec = vlib_log_register_class ("dpdk", "ipsec");
 
   return error;
 }
