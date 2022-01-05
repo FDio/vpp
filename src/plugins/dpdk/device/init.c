@@ -80,36 +80,6 @@ port_type_from_speed_capa (struct rte_eth_dev_info *dev_info)
   return VNET_DPDK_PORT_TYPE_UNKNOWN;
 }
 
-static dpdk_port_type_t
-port_type_from_link_speed (u32 link_speed)
-{
-  switch (link_speed)
-    {
-    case ETH_SPEED_NUM_1G:
-      return VNET_DPDK_PORT_TYPE_ETH_1G;
-    case ETH_SPEED_NUM_2_5G:
-      return VNET_DPDK_PORT_TYPE_ETH_2_5G;
-    case ETH_SPEED_NUM_5G:
-      return VNET_DPDK_PORT_TYPE_ETH_5G;
-    case ETH_SPEED_NUM_10G:
-      return VNET_DPDK_PORT_TYPE_ETH_10G;
-    case ETH_SPEED_NUM_20G:
-      return VNET_DPDK_PORT_TYPE_ETH_20G;
-    case ETH_SPEED_NUM_25G:
-      return VNET_DPDK_PORT_TYPE_ETH_25G;
-    case ETH_SPEED_NUM_40G:
-      return VNET_DPDK_PORT_TYPE_ETH_40G;
-    case ETH_SPEED_NUM_50G:
-      return VNET_DPDK_PORT_TYPE_ETH_50G;
-    case ETH_SPEED_NUM_56G:
-      return VNET_DPDK_PORT_TYPE_ETH_56G;
-    case ETH_SPEED_NUM_100G:
-      return VNET_DPDK_PORT_TYPE_ETH_100G;
-    default:
-      return VNET_DPDK_PORT_TYPE_UNKNOWN;
-    }
-}
-
 static u32
 dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
 {
@@ -581,9 +551,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      /* Cisco VIC */
 	    case VNET_DPDK_PMD_ENIC:
 	      {
-		struct rte_eth_link l;
-		rte_eth_link_get_nowait (port_id, &l);
-		xd->port_type = port_type_from_link_speed (l.link_speed);
+		xd->port_type = port_type_from_speed_capa (&di);
 		if (xd->conf.enable_tcp_udp_checksum)
 		  dpdk_enable_l4_csum_offload (xd);
 	      }
@@ -649,8 +617,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	    case VNET_DPDK_PMD_NETVSC:
 	      {
-		struct rte_eth_link l;
-		rte_eth_link_get_nowait (port_id, &l);
 		xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
 	      }
 	      break;
