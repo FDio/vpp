@@ -508,7 +508,6 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
   af_xdp_main_t *am = &af_xdp_main;
   af_xdp_device_t *ad;
   vnet_sw_interface_t *sw;
-  vnet_hw_interface_t *hw;
   int rxq_num, txq_num, q_num;
   int ns_fds[2];
   int i, ret;
@@ -658,9 +657,9 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
     }
 
   sw = vnet_get_hw_sw_interface (vnm, ad->hw_if_index);
-  hw = vnet_get_hw_interface (vnm, ad->hw_if_index);
   args->sw_if_index = ad->sw_if_index = sw->sw_if_index;
-  hw->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_INT_MODE;
+
+  vnet_hw_if_set_caps (vnm, ad->hw_if_index, VNET_HW_IF_CAP_INT_MODE);
 
   vnet_hw_if_set_input_node (vnm, ad->hw_if_index, af_xdp_input_node.index);
 

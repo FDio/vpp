@@ -553,19 +553,20 @@ vhost_user_socket_read (clib_file_t * uf)
 	(vui->features & VIRTIO_FEATURE (VIRTIO_F_ANY_LAYOUT)) ? 1 : 0;
 
       ASSERT (vui->virtio_net_hdr_sz < VLIB_BUFFER_PRE_DATA_SIZE);
-      vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, vui->hw_if_index);
       if (vui->enable_gso &&
 	  ((vui->features & FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS)
 	   == FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS))
 	{
-	  hw->caps |= (VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO |
-		       VNET_HW_INTERFACE_CAP_SUPPORTS_TX_TCP_CKSUM |
-		       VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_CKSUM);
+	  vnet_hw_if_set_caps (vnm, vui->hw_if_index,
+			       VNET_HW_IF_CAP_TCP_GSO |
+				 VNET_HW_IF_CAP_TX_TCP_CKSUM |
+				 VNET_HW_IF_CAP_TX_UDP_CKSUM);
 	}
       else
 	{
-	  hw->caps &= ~(VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO |
-			VNET_HW_INTERFACE_CAP_SUPPORTS_L4_TX_CKSUM);
+	  vnet_hw_if_set_caps (vnm, vui->hw_if_index,
+			       VNET_HW_IF_CAP_TCP_GSO |
+				 VNET_HW_IF_CAP_L4_TX_CKSUM);
 	}
       vnet_hw_interface_set_flags (vnm, vui->hw_if_index, 0);
       vui->is_ready = 0;
@@ -1603,9 +1604,7 @@ vhost_user_vui_init (vnet_main_t * vnm, vhost_user_intf_t * vui,
   vnet_sw_interface_t *sw;
   int q;
   vhost_user_main_t *vum = &vhost_user_main;
-  vnet_hw_interface_t *hw;
 
-  hw = vnet_get_hw_interface (vnm, vui->hw_if_index);
   sw = vnet_get_hw_sw_interface (vnm, vui->hw_if_index);
   if (server_sock_fd != -1)
     {
@@ -1658,7 +1657,7 @@ vhost_user_vui_init (vnet_main_t * vnm, vhost_user_intf_t * vui,
   for (q = 0; q < vec_len (vui->vrings); q++)
     vhost_user_vring_init (vui, q);
 
-  hw->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_INT_MODE;
+  vnet_hw_if_set_caps (vnm, vui->hw_if_index, VNET_HW_IF_CAP_INT_MODE);
   vnet_hw_interface_set_flags (vnm, vui->hw_if_index, 0);
 
   if (sw_if_index)

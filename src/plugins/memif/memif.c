@@ -902,7 +902,6 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
   clib_error_t *error = 0;
   int ret = 0;
   uword *p;
-  vnet_hw_interface_t *hw;
   memif_socket_file_t *msf = 0;
   int rv = 0;
 
@@ -1090,8 +1089,7 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
 	mif->flags |= MEMIF_IF_FLAG_ZERO_COPY;
     }
 
-  hw = vnet_get_hw_interface (vnm, mif->hw_if_index);
-  hw->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_INT_MODE;
+  vnet_hw_if_set_caps (vnm, mif->hw_if_index, VNET_HW_IF_CAP_INT_MODE);
   vnet_hw_if_set_input_node (vnm, mif->hw_if_index, memif_input_node.index);
   mhash_set (&msf->dev_instance_by_id, &mif->id, mif->dev_instance, 0);
 

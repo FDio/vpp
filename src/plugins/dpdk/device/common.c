@@ -29,6 +29,21 @@
 #include <dpdk/device/dpdk_priv.h>
 #include <vppinfra/error.h>
 
+/* DPDK TX offload to vnet hw interface caps mapppings */
+static struct
+{
+  u64 offload;
+  vnet_hw_if_caps_t caps;
+} tx_off_caps_map[] = {
+  { DEV_TX_OFFLOAD_IPV4_CKSUM, VNET_HW_IF_CAP_TX_IP4_CKSUM },
+  { DEV_TX_OFFLOAD_TCP_CKSUM, VNET_HW_IF_CAP_TX_TCP_CKSUM },
+  { DEV_TX_OFFLOAD_UDP_CKSUM, VNET_HW_IF_CAP_TX_UDP_CKSUM },
+  { DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM, VNET_HW_IF_CAP_TX_IP4_OUTER_CKSUM },
+  { DEV_TX_OFFLOAD_OUTER_UDP_CKSUM, VNET_HW_IF_CAP_TX_UDP_OUTER_CKSUM },
+  { DEV_TX_OFFLOAD_TCP_TSO, VNET_HW_IF_CAP_TCP_GSO },
+  { DEV_TX_OFFLOAD_VXLAN_TNL_TSO, VNET_HW_IF_CAP_VXLAN_TNL_GSO }
+};
+
 void
 dpdk_device_error (dpdk_device_t * xd, char *str, int rv)
 {
@@ -47,7 +62,8 @@ dpdk_device_setup (dpdk_device_t * xd)
   vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, xd->sw_if_index);
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, xd->hw_if_index);
   struct rte_eth_dev_info dev_info;
-  u64 bitmap;
+  u64 txo, bitmap;
+  vnet_hw_if_caps_change_t caps;
   int rv;
   int j;
 
@@ -153,6 +169,19 @@ dpdk_device_setup (dpdk_device_t * xd)
   if (xd->port_conf.rxmode.offloads & DEV_RX_OFFLOAD_TCP_CKSUM)
     xd->buffer_flags |=
       (VNET_BUFFER_F_L4_CHECKSUM_COMPUTED | VNET_BUFFER_F_L4_CHECKSUM_CORRECT);
+
+  txo = xd->port_conf.txmode.offloads;
+  caps.val = caps.mask = VNET_HW_IF_CAP_MAC_FILTER;
+  for (int i = 0; i < ARRAY_LEN (tx_off_caps_map); i++)
+    {
+      __typeof__ (tx_off_caps_map[0]) *v = tx_off_caps_map + i;
+      caps.mask |= v->caps;
+      if ((v->offload & txo) == v->offload)
+	caps.val |= v->caps;
+    }
+
+  vnet_hw_if_change_caps (vnm, xd->hw_if_index, &caps);
+
   if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
     dpdk_device_start (xd);
 
@@ -191,6 +220,7 @@ dpdk_setup_interrupts (dpdk_device_t *xd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, xd->hw_if_index);
+  int int_mode = 0;
   if (!hi)
     return;
 
@@ -214,7 +244,7 @@ dpdk_setup_interrupts (dpdk_device_t *xd)
 
   if (xd->flags & DPDK_DEVICE_FLAG_INT_SUPPORTED)
     {
-      hi->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_INT_MODE;
+      int_mode = 1;
       for (int q = 0; q < xd->rx_q_used; q++)
 	{
 	  dpdk_rx_queue_t *rxq = vec_elt_at_index (xd->rx_queues, q);
@@ -223,7 +253,7 @@ dpdk_setup_interrupts (dpdk_device_t *xd)
 	  if (rxq->efd < 0)
 	    {
 	      xd->flags &= ~DPDK_DEVICE_FLAG_INT_SUPPORTED;
-	      hi->caps &= ~VNET_HW_INTERFACE_CAP_SUPPORTS_INT_MODE;
+	      int_mode = 0;
 	      break;
 	    }
 	  f.read_function = dpdk_rx_read_ready;
@@ -244,6 +274,11 @@ dpdk_setup_interrupts (dpdk_device_t *xd)
 	    }
 	}
     }
+
+  if (int_mode)
+    vnet_hw_if_set_caps (vnm, hi->hw_if_index, VNET_HW_IF_CAP_INT_MODE);
+  else
+    vnet_hw_if_unset_caps (vnm, hi->hw_if_index, VNET_HW_IF_CAP_INT_MODE);
   vnet_hw_if_update_runtime_data (vnm, xd->hw_if_index);
 }
 

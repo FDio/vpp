@@ -619,6 +619,7 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
   vmxnet3_main_t *vmxm = &vmxnet3_main;
   vmxnet3_device_t *vd;
   vlib_pci_dev_handle_t h;
+  vnet_hw_if_caps_change_t cc = {};
   clib_error_t *error = 0;
   u16 qid;
   u32 num_intr;
@@ -817,14 +818,13 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
   vd->sw_if_index = sw->sw_if_index;
   args->sw_if_index = sw->sw_if_index;
 
-  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, vd->hw_if_index);
-  hw->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_INT_MODE;
+  cc.mask = VNET_HW_IF_CAP_INT_MODE | VNET_HW_IF_CAP_TCP_GSO |
+	    VNET_HW_IF_CAP_TX_TCP_CKSUM | VNET_HW_IF_CAP_TX_UDP_CKSUM;
+
   if (vd->gso_enable)
-    {
-      hw->caps |= (VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO |
-		   VNET_HW_INTERFACE_CAP_SUPPORTS_TX_TCP_CKSUM |
-		   VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_CKSUM);
-    }
+    cc.val = cc.mask;
+  else
+    cc.val = VNET_HW_IF_CAP_INT_MODE;
 
   vnet_hw_if_set_input_node (vnm, vd->hw_if_index, vmxnet3_input_node.index);
   /* Disable interrupts */

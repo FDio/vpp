@@ -508,7 +508,7 @@ virtio_pci_offloads (vlib_main_t * vm, virtio_if_t * vif, int gso_enabled,
 		     int csum_offload_enabled)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, vif->hw_if_index);
+  vnet_hw_if_caps_change_t cc = {};
 
   if ((vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_VQ)) &&
       (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_GUEST_OFFLOADS)))
@@ -525,9 +525,9 @@ virtio_pci_offloads (vlib_main_t * vm, virtio_if_t * vif, int gso_enabled,
 	    {
 	      vif->gso_enabled = 1;
 	      vif->csum_offload_enabled = 0;
-	      hw->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO |
-			  VNET_HW_INTERFACE_CAP_SUPPORTS_TX_TCP_CKSUM |
-			  VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_CKSUM;
+	      cc.val = cc.mask = VNET_HW_IF_CAP_TCP_GSO |
+				 VNET_HW_IF_CAP_TX_TCP_CKSUM |
+				 VNET_HW_IF_CAP_TX_UDP_CKSUM;
 	    }
 	}
       else if (csum_offload_enabled
@@ -541,9 +541,10 @@ virtio_pci_offloads (vlib_main_t * vm, virtio_if_t * vif, int gso_enabled,
 	    {
 	      vif->csum_offload_enabled = 1;
 	      vif->gso_enabled = 0;
-	      hw->caps &= ~VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO;
-	      hw->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_TX_TCP_CKSUM |
-			  VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_CKSUM;
+	      cc.val =
+		VNET_HW_IF_CAP_TX_TCP_CKSUM | VNET_HW_IF_CAP_TX_UDP_CKSUM;
+	      cc.mask = VNET_HW_IF_CAP_TCP_GSO | VNET_HW_IF_CAP_TX_TCP_CKSUM |
+			VNET_HW_IF_CAP_TX_UDP_CKSUM;
 	    }
 	}
       else
@@ -556,11 +557,14 @@ virtio_pci_offloads (vlib_main_t * vm, virtio_if_t * vif, int gso_enabled,
 	    {
 	      vif->csum_offload_enabled = 0;
 	      vif->gso_enabled = 0;
-	      hw->caps &= ~(VNET_HW_INTERFACE_CAP_SUPPORTS_L4_TX_CKSUM |
-			    VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO);
+	      cc.val = 0;
+	      cc.mask = VNET_HW_IF_CAP_L4_TX_CKSUM | VNET_HW_IF_CAP_TCP_GSO;
 	    }
 	}
     }
+
+  if (cc.mask)
+    vnet_hw_if_change_caps (vnm, vif->hw_if_index, &cc);
 
   return 0;
 }
@@ -1479,8 +1483,7 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
   vif->sw_if_index = sw->sw_if_index;
   args->sw_if_index = sw->sw_if_index;
 
-  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, vif->hw_if_index);
-  hw->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_INT_MODE;
+  vnet_hw_if_set_caps (vnm, vif->hw_if_index, VNET_HW_IF_CAP_INT_MODE);
 
   if (args->virtio_flags & VIRTIO_FLAG_BUFFERING)
     {
