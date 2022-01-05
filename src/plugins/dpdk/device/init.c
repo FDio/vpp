@@ -207,7 +207,7 @@ dpdk_lib_init (dpdk_main_t * dm)
   vnet_main_t *vnm = vnet_get_main ();
   u32 nports;
   u32 mtu, max_rx_frame;
-  int i;
+  u16 port_id;
   clib_error_t *error;
   vlib_main_t *vm = vlib_get_main ();
   vlib_thread_main_t *tm = vlib_get_thread_main ();
@@ -233,18 +233,27 @@ dpdk_lib_init (dpdk_main_t * dm)
   /* vlib_buffer_t template */
   vec_validate_aligned (dm->per_thread_data, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
-  for (i = 0; i < tm->n_vlib_mains; i++)
+  for (int i = 0; i < tm->n_vlib_mains; i++)
     {
       dpdk_per_thread_data_t *ptd = vec_elt_at_index (dm->per_thread_data, i);
       clib_memset (&ptd->buffer_template, 0, sizeof (vlib_buffer_t));
       vnet_buffer (&ptd->buffer_template)->sw_if_index[VLIB_TX] = (u32) ~ 0;
     }
 
-  /* *INDENT-OFF* */
-  RTE_ETH_FOREACH_DEV(i)
+  /* device config defaults */
+  dm->default_port_conf.n_rx_desc = DPDK_NB_RX_DESC_DEFAULT;
+  dm->default_port_conf.n_tx_desc = DPDK_NB_TX_DESC_DEFAULT;
+  dm->default_port_conf.n_rx_queues = 1;
+  dm->default_port_conf.n_tx_queues = tm->n_vlib_mains;
+
+  if ((clib_mem_get_default_hugepage_size () == 2 << 20) &&
+      check_l3cache () == 0)
+    dm->default_port_conf.n_rx_desc = dm->default_port_conf.n_tx_desc = 512;
+
+  RTE_ETH_FOREACH_DEV (port_id)
     {
       u8 addr[6];
-      struct rte_eth_dev_info dev_info;
+      struct rte_eth_dev_info di;
       struct rte_pci_device *pci_dev;
       struct rte_vmbus_device *vmbus_dev;
       dpdk_portid_t next_port_id;
@@ -253,19 +262,19 @@ dpdk_lib_init (dpdk_main_t * dm)
       vlib_vmbus_addr_t vmbus_addr;
       uword *p = 0;
 
-      if (!rte_eth_dev_is_valid_port(i))
+      if (!rte_eth_dev_is_valid_port (port_id))
 	continue;
 
-      rte_eth_dev_info_get (i, &dev_info);
+      rte_eth_dev_info_get (port_id, &di);
 
-      if (dev_info.device == 0)
+      if (di.device == 0)
 	{
 	  dpdk_log_notice ("DPDK bug: missing device info. Skipping %s device",
-			dev_info.driver_name);
+			   di.driver_name);
 	  continue;
 	}
 
-      pci_dev = dpdk_get_pci_device (&dev_info);
+      pci_dev = dpdk_get_pci_device (&di);
 
       if (pci_dev)
 	{
@@ -277,13 +286,13 @@ dpdk_lib_init (dpdk_main_t * dm)
 			pci_addr.as_u32);
 	}
 
-      vmbus_dev = dpdk_get_vmbus_device (&dev_info);
+      vmbus_dev = dpdk_get_vmbus_device (&di);
 
       if (vmbus_dev)
 	{
 	  unformat_input_t input_vmbus;
-	  unformat_init_string (&input_vmbus, dev_info.device->name,
-				strlen (dev_info.device->name));
+	  unformat_init_string (&input_vmbus, di.device->name,
+				strlen (di.device->name));
 	  if (unformat (&input_vmbus, "%U", unformat_vlib_vmbus_addr,
 			&vmbus_addr))
 	    {
@@ -307,41 +316,43 @@ dpdk_lib_init (dpdk_main_t * dm)
 
       /* Create vnet interface */
       vec_add2_aligned (dm->devices, xd, 1, CLIB_CACHE_LINE_BYTES);
-      xd->nb_rx_desc = DPDK_NB_RX_DESC_DEFAULT;
-      xd->nb_tx_desc = DPDK_NB_TX_DESC_DEFAULT;
-      xd->cpu_socket = (i8) rte_eth_dev_socket_id (i);
+      xd->cpu_socket = (i8) rte_eth_dev_socket_id (port_id);
+      clib_memcpy (&xd->conf, &dm->default_port_conf,
+		   sizeof (dpdk_port_conf_t));
+
       if (p)
 	{
 	  xd->name = devconf->name;
 	}
 
       /* Handle representor devices that share the same PCI ID */
-      if (dev_info.switch_info.domain_id != RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID)
-        {
-          if (dev_info.switch_info.port_id != (uint16_t)-1)
-            xd->interface_name_suffix = format (0, "%d", dev_info.switch_info.port_id);
-        }
-      /* Handle interface naming for devices with multiple ports sharing same PCI ID */
-      else if (pci_dev &&
-	  ((next_port_id = rte_eth_find_next (i + 1)) != RTE_MAX_ETHPORTS))
+      if (di.switch_info.domain_id != RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID)
 	{
-	  struct rte_eth_dev_info di = { 0 };
+	  if (di.switch_info.port_id != (uint16_t) -1)
+	    xd->interface_name_suffix =
+	      format (0, "%d", di.switch_info.port_id);
+	}
+      /* Handle interface naming for devices with multiple ports sharing same
+       * PCI ID */
+      else if (pci_dev && ((next_port_id = rte_eth_find_next (port_id + 1)) !=
+			   RTE_MAX_ETHPORTS))
+	{
+	  struct rte_eth_dev_info next_di = { 0 };
 	  struct rte_pci_device *next_pci_dev;
-	  rte_eth_dev_info_get (next_port_id, &di);
-	  next_pci_dev = di.device ? RTE_DEV_TO_PCI (di.device) : 0;
-	  if (next_pci_dev &&
-	      pci_addr.as_u32 != last_pci_addr.as_u32 &&
+	  rte_eth_dev_info_get (next_port_id, &next_di);
+	  next_pci_dev = next_di.device ? RTE_DEV_TO_PCI (next_di.device) : 0;
+	  if (next_pci_dev && pci_addr.as_u32 != last_pci_addr.as_u32 &&
 	      memcmp (&pci_dev->addr, &next_pci_dev->addr,
 		      sizeof (struct rte_pci_addr)) == 0)
 	    {
 	      xd->interface_name_suffix = format (0, "0");
 	      last_pci_addr.as_u32 = pci_addr.as_u32;
-	      last_pci_addr_port = i;
+	      last_pci_addr_port = port_id;
 	    }
 	  else if (pci_addr.as_u32 == last_pci_addr.as_u32)
 	    {
 	      xd->interface_name_suffix =
-		format (0, "%u", i - last_pci_addr_port);
+		format (0, "%u", port_id - last_pci_addr_port);
 	    }
 	  else
 	    {
@@ -351,38 +362,38 @@ dpdk_lib_init (dpdk_main_t * dm)
       else
 	last_pci_addr.as_u32 = ~0;
 
-      clib_memcpy (&xd->tx_conf, &dev_info.default_txconf,
+      clib_memcpy (&xd->tx_conf, &di.default_txconf,
 		   sizeof (struct rte_eth_txconf));
 
-      if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_IPV4_CKSUM)
+      if (di.rx_offload_capa & DEV_RX_OFFLOAD_IPV4_CKSUM)
 	{
 	  xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_IPV4_CKSUM;
 	  xd->flags |= DPDK_DEVICE_FLAG_RX_IP4_CKSUM;
 	}
 
-      if (dm->conf->enable_tcp_udp_checksum)
+      if (xd->conf.enable_tcp_udp_checksum)
 	{
-	  if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_UDP_CKSUM)
+	  if (di.rx_offload_capa & DEV_RX_OFFLOAD_UDP_CKSUM)
 	    xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_UDP_CKSUM;
-	  if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_TCP_CKSUM)
+	  if (di.rx_offload_capa & DEV_RX_OFFLOAD_TCP_CKSUM)
 	    xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_TCP_CKSUM;
-	  if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_IPV4_CKSUM)
+	  if (di.tx_offload_capa & DEV_TX_OFFLOAD_IPV4_CKSUM)
 	    xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_IPV4_CKSUM;
 
-	  if (dm->conf->enable_outer_checksum_offload)
+	  if (xd->conf.enable_outer_checksum_offload)
 	    {
-	      if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM)
+	      if (di.tx_offload_capa & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM)
 		xd->port_conf.txmode.offloads |=
 		  DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
-	      if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_OUTER_UDP_CKSUM)
+	      if (di.tx_offload_capa & DEV_TX_OFFLOAD_OUTER_UDP_CKSUM)
 		xd->port_conf.txmode.offloads |=
 		  DEV_TX_OFFLOAD_OUTER_UDP_CKSUM;
 	    }
 	}
 
-      if (dm->conf->enable_lro)
+      if (xd->conf.enable_lro)
 	{
-	  if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_TCP_LRO)
+	  if (di.rx_offload_capa & DEV_RX_OFFLOAD_TCP_LRO)
 	    {
 	      xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_TCP_LRO;
 	      if (devconf->max_lro_pkt_size)
@@ -393,7 +404,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 		  DPDK_MAX_LRO_SIZE_DEFAULT;
 	    }
 	}
-      if (dm->conf->no_multi_seg)
+      if (xd->conf.no_multi_seg)
 	{
 	  xd->port_conf.txmode.offloads &= ~DEV_TX_OFFLOAD_MULTI_SEGS;
 	  xd->port_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
@@ -407,16 +418,16 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  xd->flags |= DPDK_DEVICE_FLAG_MAYBE_MULTISEG;
 	}
 
-      xd->tx_q_used = clib_min (dev_info.max_tx_queues, tm->n_vlib_mains);
+      xd->conf.n_tx_queues = clib_min (di.max_tx_queues, xd->conf.n_tx_queues);
 
-      if (devconf->num_tx_queues > 0
-	  && devconf->num_tx_queues < xd->tx_q_used)
-	xd->tx_q_used = clib_min (xd->tx_q_used, devconf->num_tx_queues);
+      if (devconf->num_tx_queues > 0 &&
+	  devconf->num_tx_queues < xd->conf.n_tx_queues)
+	xd->conf.n_tx_queues = devconf->num_tx_queues;
 
-      if (devconf->num_rx_queues > 1
-	  && dev_info.max_rx_queues >= devconf->num_rx_queues)
+      if (devconf->num_rx_queues > 1 &&
+	  di.max_rx_queues >= devconf->num_rx_queues)
 	{
-	  xd->rx_q_used = devconf->num_rx_queues;
+	  xd->conf.n_rx_queues = devconf->num_rx_queues;
 	  xd->port_conf.rxmode.mq_mode = ETH_MQ_RX_RSS;
 	  if (devconf->rss_fn == 0)
 	    xd->port_conf.rx_adv_conf.rss_conf.rss_hf =
@@ -426,43 +437,37 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      u64 unsupported_bits;
 	      xd->port_conf.rx_adv_conf.rss_conf.rss_hf = devconf->rss_fn;
 	      unsupported_bits = xd->port_conf.rx_adv_conf.rss_conf.rss_hf;
-	      unsupported_bits &= ~dev_info.flow_type_rss_offloads;
+	      unsupported_bits &= ~di.flow_type_rss_offloads;
 	      if (unsupported_bits)
 		dpdk_log_warn ("Unsupported RSS hash functions: %U",
 			       format_dpdk_rss_hf_name, unsupported_bits);
 	    }
 	  xd->port_conf.rx_adv_conf.rss_conf.rss_hf &=
-	    dev_info.flow_type_rss_offloads;
+	    di.flow_type_rss_offloads;
 	}
-      else
-	xd->rx_q_used = 1;
 
-      vec_validate_aligned (xd->rx_queues, xd->rx_q_used - 1,
+      vec_validate_aligned (xd->rx_queues, xd->conf.n_rx_queues - 1,
 			    CLIB_CACHE_LINE_BYTES);
 
       /* workaround for drivers not setting driver_name */
-      if ((!dev_info.driver_name) && (pci_dev))
-	dev_info.driver_name = pci_dev->driver->driver.name;
+      if ((!di.driver_name) && (pci_dev))
+	di.driver_name = pci_dev->driver->driver.name;
 
-      ASSERT (dev_info.driver_name);
+      ASSERT (di.driver_name);
 
       if (!xd->pmd)
 	{
 
-
-#define _(s,f) else if (dev_info.driver_name &&                 \
-                        !strcmp(dev_info.driver_name, s))       \
-                 xd->pmd = VNET_DPDK_PMD_##f;
+#define _(s, f)                                                               \
+  else if (di.driver_name && !strcmp (di.driver_name, s)) xd->pmd =           \
+    VNET_DPDK_PMD_##f;
 	  if (0)
 	    ;
 	  foreach_dpdk_pmd
 #undef _
-	    else
-	    xd->pmd = VNET_DPDK_PMD_UNKNOWN;
+	    else xd->pmd = VNET_DPDK_PMD_UNKNOWN;
 
 	  xd->port_type = VNET_DPDK_PORT_TYPE_UNKNOWN;
-	  xd->nb_rx_desc = DPDK_NB_RX_DESC_DEFAULT;
-	  xd->nb_tx_desc = DPDK_NB_TX_DESC_DEFAULT;
 
 	  switch (xd->pmd)
 	    {
@@ -475,18 +480,17 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    case VNET_DPDK_PMD_IGC:
 	    case VNET_DPDK_PMD_IXGBE:
 	    case VNET_DPDK_PMD_ICE:
-	      xd->port_type = port_type_from_speed_capa (&dev_info);
-	      xd->supported_flow_actions = VNET_FLOW_ACTION_MARK |
-		VNET_FLOW_ACTION_REDIRECT_TO_NODE |
+	      xd->port_type = port_type_from_speed_capa (&di);
+	      xd->supported_flow_actions =
+		VNET_FLOW_ACTION_MARK | VNET_FLOW_ACTION_REDIRECT_TO_NODE |
 		VNET_FLOW_ACTION_REDIRECT_TO_QUEUE |
-		VNET_FLOW_ACTION_BUFFER_ADVANCE |
-		VNET_FLOW_ACTION_COUNT | VNET_FLOW_ACTION_DROP |
-		VNET_FLOW_ACTION_RSS;
+		VNET_FLOW_ACTION_BUFFER_ADVANCE | VNET_FLOW_ACTION_COUNT |
+		VNET_FLOW_ACTION_DROP | VNET_FLOW_ACTION_RSS;
 
-	      if (dm->conf->no_tx_checksum_offload == 0)
+	      if (xd->conf.no_tx_checksum_offload == 0)
 		{
-	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
-	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
+		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
+		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
 		  xd->flags |= DPDK_DEVICE_FLAG_TX_OFFLOAD |
 			       DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
 		}
@@ -494,20 +498,20 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      xd->port_conf.intr_conf.rxq = 1;
 	      break;
 	    case VNET_DPDK_PMD_MLX5:
-	      if (dm->conf->no_tx_checksum_offload == 0)
+	      if (xd->conf.no_tx_checksum_offload == 0)
 		{
 		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
 		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
 		  xd->flags |= DPDK_DEVICE_FLAG_TX_OFFLOAD |
 			       DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
 		}
-	      xd->port_type = port_type_from_speed_capa (&dev_info);
+	      xd->port_type = port_type_from_speed_capa (&di);
 	      break;
 	    case VNET_DPDK_PMD_CXGBE:
 	    case VNET_DPDK_PMD_MLX4:
 	    case VNET_DPDK_PMD_QEDE:
 	    case VNET_DPDK_PMD_BNXT:
-	      xd->port_type = port_type_from_speed_capa (&dev_info);
+	      xd->port_type = port_type_from_speed_capa (&di);
 	      break;
 
 	      /* SR-IOV VFs */
@@ -517,13 +521,12 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    case VNET_DPDK_PMD_IGBVF:
 	    case VNET_DPDK_PMD_IXGBEVF:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
-	      if (dm->conf->no_tx_checksum_offload == 0)
+	      if (xd->conf.no_tx_checksum_offload == 0)
 		{
-	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
-	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
-		  xd->flags |=
-		    DPDK_DEVICE_FLAG_TX_OFFLOAD |
-		    DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
+		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
+		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
+		  xd->flags |= DPDK_DEVICE_FLAG_TX_OFFLOAD |
+			       DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
 		}
 	      /* DPDK bug in multiqueue... */
 	      /* xd->port_conf.intr_conf.rxq = 1; */
@@ -539,13 +542,12 @@ dpdk_lib_init (dpdk_main_t * dm)
 		VNET_FLOW_ACTION_BUFFER_ADVANCE | VNET_FLOW_ACTION_COUNT |
 		VNET_FLOW_ACTION_DROP | VNET_FLOW_ACTION_RSS;
 
-	      if (dm->conf->no_tx_checksum_offload == 0)
+	      if (xd->conf.no_tx_checksum_offload == 0)
 		{
-                  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
-                  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
-		  xd->flags |=
-		    DPDK_DEVICE_FLAG_TX_OFFLOAD |
-		    DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
+		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
+		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
+		  xd->flags |= DPDK_DEVICE_FLAG_TX_OFFLOAD |
+			       DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
 		}
 	      /* DPDK bug in multiqueue... */
 	      /* xd->port_conf.intr_conf.rxq = 1; */
@@ -554,10 +556,10 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    case VNET_DPDK_PMD_THUNDERX:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
 
-	      if (dm->conf->no_tx_checksum_offload == 0)
+	      if (xd->conf.no_tx_checksum_offload == 0)
 		{
-	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
-	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
+		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
+		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
 		  xd->flags |= DPDK_DEVICE_FLAG_TX_OFFLOAD;
 		}
 	      break;
@@ -566,7 +568,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
 	      xd->port_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_SCATTER;
 	      xd->port_conf.intr_conf.rxq = 1;
-	      if (dm->conf->no_tx_checksum_offload == 0)
+	      if (xd->conf.no_tx_checksum_offload == 0)
 		{
 		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_IPV4_CKSUM;
 		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
@@ -581,13 +583,13 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	      /* Cisco VIC */
 	    case VNET_DPDK_PMD_ENIC:
-                {
-                  struct rte_eth_link l;
-                  rte_eth_link_get_nowait (i, &l);
-                  xd->port_type = port_type_from_link_speed (l.link_speed);
-                  if (dm->conf->enable_tcp_udp_checksum)
-                    dpdk_enable_l4_csum_offload (xd);
-                }
+	      {
+		struct rte_eth_link l;
+		rte_eth_link_get_nowait (port_id, &l);
+		xd->port_type = port_type_from_link_speed (l.link_speed);
+		if (xd->conf.enable_tcp_udp_checksum)
+		  dpdk_enable_l4_csum_offload (xd);
+	      }
 	      break;
 
 	      /* Intel Red Rock Canyon */
@@ -599,8 +601,8 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    case VNET_DPDK_PMD_VIRTIO:
 	      xd->port_conf.rxmode.mq_mode = ETH_MQ_RX_NONE;
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_1G;
-	      xd->nb_rx_desc = DPDK_NB_RX_DESC_VIRTIO;
-	      xd->nb_tx_desc = DPDK_NB_TX_DESC_VIRTIO;
+	      xd->conf.n_rx_desc = DPDK_NB_RX_DESC_VIRTIO;
+	      xd->conf.n_tx_desc = DPDK_NB_TX_DESC_VIRTIO;
 	      /*
 	       * Enable use of RX interrupts if supported.
 	       *
@@ -617,7 +619,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_MULTI_SEGS;
 	      /* TCP csum offload not working although udp might work. Left
 	       * disabled for now */
-	      if (0 && (dm->conf->no_tx_checksum_offload == 0))
+	      if (0 && (xd->conf.no_tx_checksum_offload == 0))
 		{
 		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_IPV4_CKSUM;
 		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
@@ -649,43 +651,17 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      break;
 
 	    case VNET_DPDK_PMD_NETVSC:
-                {
-                  struct rte_eth_link l;
-                  rte_eth_link_get_nowait (i, &l);
-		  xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
-                }
+	      {
+		struct rte_eth_link l;
+		rte_eth_link_get_nowait (port_id, &l);
+		xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
+	      }
 	      break;
 
 	    default:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_UNKNOWN;
 	    }
-
-	  if (devconf->num_rx_desc)
-	    xd->nb_rx_desc = devconf->num_rx_desc;
-          else {
-
-            /* If num_rx_desc is not specified by VPP user, the current CPU is working
-            with 2M page and has no L3 cache, default num_rx_desc is changed to 512
-            from original 1024 to help reduce TLB misses.
-            */
-            if ((clib_mem_get_default_hugepage_size () == 2 << 20)
-              && check_l3cache() == 0)
-              xd->nb_rx_desc = 512;
-          }
-
-	  if (devconf->num_tx_desc)
-	    xd->nb_tx_desc = devconf->num_tx_desc;
-          else {
-
-            /* If num_tx_desc is not specified by VPP user, the current CPU is working
-            with 2M page and has no L3 cache, default num_tx_desc is changed to 512
-            from original 1024 to help reduce TLB misses.
-            */
-            if ((clib_mem_get_default_hugepage_size () == 2 << 20)
-              && check_l3cache() == 0)
-              xd->nb_tx_desc = 512;
-	  }
-       }
+	}
 
       if (xd->pmd == VNET_DPDK_PMD_AF_PACKET)
 	{
@@ -698,9 +674,9 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  addr[1] = 0xfe;
 	}
       else
-	rte_eth_macaddr_get (i, (void *) addr);
+	rte_eth_macaddr_get (port_id, (void *) addr);
 
-      xd->port_id = i;
+      xd->port_id = port_id;
       xd->device_index = xd - dm->devices;
       xd->per_interface_next_index = ~0;
 
@@ -719,14 +695,14 @@ dpdk_lib_init (dpdk_main_t * dm)
        * not be available.
        * Calculate max_frame_size and mtu supported by NIC
        */
-      if (ETHERNET_MAX_PACKET_BYTES > dev_info.max_rx_pktlen)
+      if (ETHERNET_MAX_PACKET_BYTES > di.max_rx_pktlen)
 	{
 	  /*
 	   * This device does not support the platforms's max frame
 	   * size. Use it's advertised mru instead.
 	   */
-	  max_rx_frame = dev_info.max_rx_pktlen;
-	  mtu = dev_info.max_rx_pktlen - sizeof (ethernet_header_t);
+	  max_rx_frame = di.max_rx_pktlen;
+	  mtu = di.max_rx_pktlen - sizeof (ethernet_header_t);
 	}
       else
 	{
@@ -734,8 +710,8 @@ dpdk_lib_init (dpdk_main_t * dm)
 	   * ETHERNET_MAX_PACKET_BYTES, if dev_info.max_rx_pktlen >=
 	   * ETHERNET_MAX_PACKET_BYTES + sizeof(ethernet_header_t)
 	   */
-	  if (dev_info.max_rx_pktlen >= (ETHERNET_MAX_PACKET_BYTES +
-					 sizeof (ethernet_header_t)))
+	  if (di.max_rx_pktlen >=
+	      (ETHERNET_MAX_PACKET_BYTES + sizeof (ethernet_header_t)))
 	    {
 	      mtu = ETHERNET_MAX_PACKET_BYTES;
 	      max_rx_frame = ETHERNET_MAX_PACKET_BYTES;
@@ -746,9 +722,8 @@ dpdk_lib_init (dpdk_main_t * dm)
 	       * if the device's settings can support it.
 	       */
 	      if (dpdk_port_crc_strip_enabled (xd) &&
-		  (dev_info.max_rx_pktlen >= (ETHERNET_MAX_PACKET_BYTES +
-					      sizeof (ethernet_header_t) +
-					      4)))
+		  (di.max_rx_pktlen >= (ETHERNET_MAX_PACKET_BYTES +
+					sizeof (ethernet_header_t) + 4)))
 		{
 		  max_rx_frame += 4;
 		}
@@ -759,7 +734,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      mtu = ETHERNET_MAX_PACKET_BYTES - sizeof (ethernet_header_t);
 
 	      if (dpdk_port_crc_strip_enabled (xd) &&
-		  (dev_info.max_rx_pktlen >= (ETHERNET_MAX_PACKET_BYTES + 4)))
+		  (di.max_rx_pktlen >= (ETHERNET_MAX_PACKET_BYTES + 4)))
 		{
 		  max_rx_frame += 4;
 		}
@@ -773,7 +748,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	   * reported value.
 	   */
 	  uint16_t dev_mtu;
-	  if (!rte_eth_dev_get_mtu (i, &dev_mtu))
+	  if (!rte_eth_dev_get_mtu (port_id, &dev_mtu))
 	    {
 	      mtu = dev_mtu;
 	      max_rx_frame = mtu + sizeof (ethernet_header_t);
@@ -804,7 +779,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    }
 	}
       else
-	for (q = 0; q < xd->rx_q_used; q++)
+	for (q = 0; q < xd->conf.n_rx_queues; q++)
 	  {
 	    dpdk_rx_queue_t *rxq = vec_elt_at_index (xd->rx_queues, q);
 	    rxq->queue_index = vnet_hw_if_register_rx_queue (
@@ -831,13 +806,13 @@ dpdk_lib_init (dpdk_main_t * dm)
 			      ETHERNET_INTERFACE_FLAG_DEFAULT_L3);
 	}
 
-      if (dm->conf->no_tx_checksum_offload == 0)
+      if (xd->conf.no_tx_checksum_offload == 0)
 	if (xd->flags & DPDK_DEVICE_FLAG_TX_OFFLOAD && hi != NULL)
 	  {
 	    hi->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_TX_IP4_CKSUM |
 			VNET_HW_INTERFACE_CAP_SUPPORTS_TX_TCP_CKSUM |
 			VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_CKSUM;
-	    if (dm->conf->enable_outer_checksum_offload)
+	    if (xd->conf.enable_outer_checksum_offload)
 	      {
 		hi->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_TX_IP4_OUTER_CKSUM |
 			    VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_OUTER_CKSUM;
@@ -846,14 +821,14 @@ dpdk_lib_init (dpdk_main_t * dm)
       if (devconf->tso == DPDK_DEVICE_TSO_ON && hi != NULL)
 	{
 	  /*tcp_udp checksum must be enabled*/
-	  if ((dm->conf->enable_tcp_udp_checksum) &&
+	  if ((xd->conf.enable_tcp_udp_checksum) &&
 	      (hi->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TX_CKSUM))
 	    {
 	      hi->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO;
 	      xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_TSO;
 
-	      if (dm->conf->enable_outer_checksum_offload &&
-		  (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_VXLAN_TNL_TSO))
+	      if (xd->conf.enable_outer_checksum_offload &&
+		  (di.tx_offload_capa & DEV_TX_OFFLOAD_VXLAN_TNL_TSO))
 		{
 		  xd->port_conf.txmode.offloads |=
 		    DEV_TX_OFFLOAD_VXLAN_TNL_TSO;
@@ -862,39 +837,37 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    }
 	  else
 	    clib_warning ("%s: TCP/UDP checksum offload must be enabled",
-	      hi->name);
+			  hi->name);
 	}
 
       dpdk_device_setup (xd);
 
       /* rss queues should be configured after dpdk_device_setup() */
       if ((hi != NULL) && (devconf->rss_queues != NULL))
-        {
-          if (vnet_hw_interface_set_rss_queues
-              (vnet_get_main (), hi, devconf->rss_queues))
-          {
-            clib_warning ("%s: Failed to set rss queues", hi->name);
-          }
-        }
+	{
+	  if (vnet_hw_interface_set_rss_queues (vnet_get_main (), hi,
+						devconf->rss_queues))
+	    {
+	      clib_warning ("%s: Failed to set rss queues", hi->name);
+	    }
+	}
 
       if (vec_len (xd->errors))
-        dpdk_log_err ("setup failed for device %U. Errors:\n  %U",
-                      format_dpdk_device_name, i,
-                      format_dpdk_device_errors, xd);
+	dpdk_log_err ("setup failed for device %U. Errors:\n  %U",
+		      format_dpdk_device_name, port_id,
+		      format_dpdk_device_errors, xd);
 
-        if (hi)
-          hi->max_packet_bytes = xd->port_conf.rxmode.max_rx_pkt_len
-            - sizeof (ethernet_header_t);
-        else
-          dpdk_log_warn ("hi NULL");
+      if (hi)
+	hi->max_packet_bytes =
+	  xd->port_conf.rxmode.max_rx_pkt_len - sizeof (ethernet_header_t);
+      else
+	dpdk_log_warn ("hi NULL");
 
-        if (dm->conf->no_multi_seg)
-          mtu = mtu > ETHER_MAX_LEN ? ETHER_MAX_LEN : mtu;
+      if (xd->conf.no_multi_seg)
+	mtu = mtu > ETHER_MAX_LEN ? ETHER_MAX_LEN : mtu;
 
-        rte_eth_dev_set_mtu (xd->port_id, mtu);
-}
-
-  /* *INDENT-ON* */
+      rte_eth_dev_set_mtu (xd->port_id, mtu);
+    }
 
   return 0;
 }
@@ -1335,6 +1308,7 @@ dpdk_log_read_ready (clib_file_t * uf)
 static clib_error_t *
 dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 {
+  dpdk_main_t *dm = &dpdk_main;
   clib_error_t *error = 0;
   dpdk_config_main_t *conf = &dpdk_config_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
@@ -1374,20 +1348,20 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
       else if (unformat (input, "enable-tcp-udp-checksum"))
 	{
-	  conf->enable_tcp_udp_checksum = 1;
+	  dm->default_port_conf.enable_tcp_udp_checksum = 1;
 	  if (unformat (input, "enable-outer-checksum-offload"))
-	    conf->enable_outer_checksum_offload = 1;
+	    dm->default_port_conf.enable_outer_checksum_offload = 1;
 	}
       else if (unformat (input, "no-tx-checksum-offload"))
-	conf->no_tx_checksum_offload = 1;
+	dm->default_port_conf.no_tx_checksum_offload = 1;
 
       else if (unformat (input, "decimal-interface-names"))
 	conf->interface_name_format_decimal = 1;
 
       else if (unformat (input, "no-multi-seg"))
-	conf->no_multi_seg = 1;
+	dm->default_port_conf.no_multi_seg = 1;
       else if (unformat (input, "enable-lro"))
-	conf->enable_lro = 1;
+	dm->default_port_conf.enable_lro = 1;
       else if (unformat (input, "max-simd-bitwidth %U",
 			 unformat_max_simd_bitwidth, &conf->max_simd_bitwidth))
 	;

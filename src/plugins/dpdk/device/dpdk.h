@@ -163,6 +163,25 @@ typedef struct
   clib_spinlock_t lock;
 } dpdk_tx_queue_t;
 
+typedef union
+{
+  struct
+  {
+    u16 no_multi_seg : 1;
+    u16 enable_lro : 1;
+    u16 enable_tcp_udp_checksum : 1;
+    u16 enable_outer_checksum_offload : 1;
+    u16 no_tx_checksum_offload : 1;
+    u16 n_rx_queues;
+    u16 n_tx_queues;
+    u16 n_rx_desc;
+    u16 n_tx_desc;
+  };
+  u64 as_u64[3];
+} dpdk_port_conf_t;
+
+STATIC_ASSERT_SIZEOF (dpdk_port_conf_t, 24);
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -180,8 +199,6 @@ typedef struct
   /* next node index if we decide to steal the rx graph arc */
   u32 per_interface_next_index;
 
-  u16 rx_q_used;
-  u16 tx_q_used;
   u16 flags;
 
   /* DPDK device port number */
@@ -190,8 +207,6 @@ typedef struct
   i8 cpu_socket;
 
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
-  u16 nb_tx_desc;
-  u16 nb_rx_desc;
 
   u8 *name;
   u8 *interface_name_suffix;
@@ -228,6 +243,7 @@ typedef struct
 
   /* error string */
   clib_error_t *errors;
+  dpdk_port_conf_t conf;
 } dpdk_device_t;
 
 #define DPDK_STATS_POLL_INTERVAL      (10.0)
@@ -282,11 +298,6 @@ typedef struct
   u8 **eal_init_args;
   u8 *eal_init_args_str;
   u8 *uio_driver_name;
-  u8 no_multi_seg;
-  u8 enable_lro;
-  u8 enable_tcp_udp_checksum;
-  u8 enable_outer_checksum_offload;
-  u8 no_tx_checksum_offload;
   u8 enable_telemetry;
   u16 max_simd_bitwidth;
 
@@ -345,6 +356,7 @@ typedef struct
   f64 stat_poll_interval;
 
   dpdk_config_main_t *conf;
+  dpdk_port_conf_t default_port_conf;
 
   /* API message ID base */
   u16 msg_id_base;

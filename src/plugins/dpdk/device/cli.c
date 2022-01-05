@@ -302,18 +302,18 @@ set_dpdk_if_desc (vlib_main_t * vm, unformat_input_t * input,
   hw = vnet_get_hw_interface (vnm, hw_if_index);
   xd = vec_elt_at_index (dm->devices, hw->dev_instance);
 
-  if ((nb_rx_desc == (u32) ~ 0 || nb_rx_desc == xd->nb_rx_desc) &&
-      (nb_tx_desc == (u32) ~ 0 || nb_tx_desc == xd->nb_tx_desc))
+  if ((nb_rx_desc == (u32) ~0 || nb_rx_desc == xd->conf.n_rx_desc) &&
+      (nb_tx_desc == (u32) ~0 || nb_tx_desc == xd->conf.n_tx_desc))
     {
       error = clib_error_return (0, "nothing changed");
       goto done;
     }
 
   if (nb_rx_desc != (u32) ~ 0)
-    xd->nb_rx_desc = nb_rx_desc;
+    xd->conf.n_rx_desc = nb_rx_desc;
 
   if (nb_tx_desc != (u32) ~ 0)
-    xd->nb_tx_desc = nb_tx_desc;
+    xd->conf.n_tx_desc = nb_tx_desc;
 
   dpdk_device_setup (xd);
 
