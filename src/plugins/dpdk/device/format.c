@@ -44,24 +44,20 @@
   _ (tx_bytes_ok, q_obytes)                     \
   _ (rx_errors, q_errors)
 
-#if RTE_VERSION < RTE_VERSION_NUM(21, 5, 0, 0)
-#define PKT_RX_OUTER_IP_CKSUM_BAD PKT_RX_EIP_CKSUM_BAD
-#endif
-
 #define foreach_dpdk_pkt_rx_offload_flag                                      \
-  _ (PKT_RX_VLAN, "RX packet is a 802.1q VLAN packet")                        \
-  _ (PKT_RX_RSS_HASH, "RX packet with RSS hash result")                       \
-  _ (PKT_RX_FDIR, "RX packet with FDIR infos")                                \
-  _ (PKT_RX_L4_CKSUM_BAD, "L4 cksum of RX pkt. is not OK")                    \
-  _ (PKT_RX_IP_CKSUM_BAD, "IP cksum of RX pkt. is not OK")                    \
-  _ (PKT_RX_OUTER_IP_CKSUM_BAD, "External IP header checksum error")          \
-  _ (PKT_RX_VLAN_STRIPPED, "RX packet VLAN tag stripped")                     \
-  _ (PKT_RX_IP_CKSUM_GOOD, "IP cksum of RX pkt. is valid")                    \
-  _ (PKT_RX_L4_CKSUM_GOOD, "L4 cksum of RX pkt. is valid")                    \
-  _ (PKT_RX_IEEE1588_PTP, "RX IEEE1588 L2 Ethernet PT Packet")                \
-  _ (PKT_RX_IEEE1588_TMST, "RX IEEE1588 L2/L4 timestamped packet")            \
-  _ (PKT_RX_LRO, "LRO packet")                                                \
-  _ (PKT_RX_QINQ_STRIPPED, "RX packet QinQ tags stripped")
+  _ (RX_VLAN, "RX packet is a 802.1q VLAN packet")                            \
+  _ (RX_RSS_HASH, "RX packet with RSS hash result")                           \
+  _ (RX_FDIR, "RX packet with FDIR infos")                                    \
+  _ (RX_L4_CKSUM_BAD, "L4 cksum of RX pkt. is not OK")                        \
+  _ (RX_IP_CKSUM_BAD, "IP cksum of RX pkt. is not OK")                        \
+  _ (RX_OUTER_IP_CKSUM_BAD, "External IP header checksum error")              \
+  _ (RX_VLAN_STRIPPED, "RX packet VLAN tag stripped")                         \
+  _ (RX_IP_CKSUM_GOOD, "IP cksum of RX pkt. is valid")                        \
+  _ (RX_L4_CKSUM_GOOD, "L4 cksum of RX pkt. is valid")                        \
+  _ (RX_IEEE1588_PTP, "RX IEEE1588 L2 Ethernet PT Packet")                    \
+  _ (RX_IEEE1588_TMST, "RX IEEE1588 L2/L4 timestamped packet")                \
+  _ (RX_LRO, "LRO packet")                                                    \
+  _ (RX_QINQ_STRIPPED, "RX packet QinQ tags stripped")
 
 #define foreach_dpdk_pkt_type                                           \
   _ (L2, ETHER, "Ethernet packet")                                      \
@@ -104,18 +100,26 @@
   _ (INNER_L4, NONFRAG, "Inner non-fragmented IP packet")
 
 #define foreach_dpdk_pkt_tx_offload_flag                                      \
-  _ (PKT_TX_VLAN_PKT, "TX packet is a 802.1q VLAN packet")                    \
-  _ (PKT_TX_TUNNEL_VXLAN, "TX packet is a VXLAN packet")                      \
-  _ (PKT_TX_IP_CKSUM, "IP cksum of TX pkt. computed by NIC")                  \
-  _ (PKT_TX_TCP_CKSUM, "TCP cksum of TX pkt. computed by NIC")                \
-  _ (PKT_TX_SCTP_CKSUM, "SCTP cksum of TX pkt. computed by NIC")              \
-  _ (PKT_TX_OUTER_IP_CKSUM, "Outer IP cksum of Tx pkt. computed by NIC")      \
-  _ (PKT_TX_TCP_SEG, "TSO of TX pkt. done by NIC")                            \
-  _ (PKT_TX_IEEE1588_TMST, "TX IEEE1588 packet to timestamp")
+  _ (TX_VLAN_PKT, "TX packet is a 802.1q VLAN packet")                        \
+  _ (TX_TUNNEL_VXLAN, "TX packet is a VXLAN packet")                          \
+  _ (TX_IP_CKSUM, "IP cksum of TX pkt. computed by NIC")                      \
+  _ (TX_TCP_CKSUM, "TCP cksum of TX pkt. computed by NIC")                    \
+  _ (TX_UDP_CKSUM, "UDP cksum of TX pkt. computed by NIC")                    \
+  _ (TX_SCTP_CKSUM, "SCTP cksum of TX pkt. computed by NIC")                  \
+  _ (TX_OUTER_IP_CKSUM, "Outer IP cksum of Tx pkt. computed by NIC")          \
+  _ (TX_TCP_SEG, "TSO of TX pkt. done by NIC")                                \
+  _ (TX_IEEE1588_TMST, "TX IEEE1588 packet to timestamp")
 
-#define foreach_dpdk_pkt_offload_flag           \
-  foreach_dpdk_pkt_rx_offload_flag              \
-  foreach_dpdk_pkt_tx_offload_flag
+static const struct
+{
+  u64 flag;
+  char *name;
+  char *desc;
+} ol_flags_desc[] = {
+#define _(f, d) { .flag = RTE_MBUF_F_##f, .name = #f, .desc = (d) },
+  foreach_dpdk_pkt_tx_offload_flag foreach_dpdk_pkt_rx_offload_flag
+#undef _
+};
 
 #define foreach_dpdk_pkt_dyn_rx_offload_flag				\
   _ (RX_TIMESTAMP, 0, "Timestamp field is valid")
@@ -847,15 +851,12 @@ format_dpdk_pkt_offload_flags (u8 * s, va_list * va)
 
   s = format (s, "Packet Offload Flags");
 
-#define _(F, S)             \
-  if (*ol_flags & F)            \
-    {               \
-      s = format (s, "\n%U%s (0x%04x) %s",      \
-      format_white_space, indent, #F, F, S);  \
-    }
+  for (int i = 0; i < ARRAY_LEN (ol_flags_desc); i++)
+    if (0 && *ol_flags & ol_flags_desc[i].flag)
+      s = format (s, "\n%U%s (0x%04x) %s", format_white_space, indent,
+		  ol_flags_desc[i].name, ol_flags_desc[i].flag,
+		  ol_flags_desc[i].desc);
 
-  foreach_dpdk_pkt_offload_flag
-#undef _
 #define _(F, P, S)							\
   {									\
     rx_dynflag_offset = rte_mbuf_dynflag_lookup(RTE_MBUF_DYNFLAG_##F##_NAME, \
@@ -879,7 +880,7 @@ u8 *
 format_dpdk_rte_mbuf_tso (u8 *s, va_list *va)
 {
   struct rte_mbuf *mb = va_arg (*va, struct rte_mbuf *);
-  if (mb->ol_flags & PKT_TX_TCP_SEG)
+  if (mb->ol_flags & RTE_MBUF_F_TX_TCP_SEG)
     {
       s = format (s, "l4_len %u tso_segsz %u", mb->l4_len, mb->tso_segsz);
     }
@@ -932,8 +933,9 @@ format_dpdk_rte_mbuf (u8 * s, va_list * va)
     s = format (s, "\n%U%U", format_white_space, indent,
 		format_dpdk_pkt_offload_flags, &mb->ol_flags);
 
-  if ((mb->ol_flags & PKT_RX_VLAN) &&
-      ((mb->ol_flags & (PKT_RX_VLAN_STRIPPED | PKT_RX_QINQ_STRIPPED)) == 0))
+  if ((mb->ol_flags & RTE_MBUF_F_RX_VLAN) &&
+      ((mb->ol_flags &
+	(RTE_MBUF_F_RX_VLAN_STRIPPED | RTE_MBUF_F_RX_QINQ_STRIPPED)) == 0))
     {
       ethernet_vlan_header_tv_t *vlan_hdr =
 	((ethernet_vlan_header_tv_t *) & (eth_hdr->type));
