@@ -669,17 +669,17 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   args->sw_if_index = vif->sw_if_index;
   args->rv = 0;
   hw = vnet_get_hw_interface (vnm, vif->hw_if_index);
-  hw->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_INT_MODE;
+  hw->caps |= VNET_HW_IF_CAP_INT_MODE;
   if (args->tap_flags & TAP_FLAG_GSO)
     {
-      hw->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO |
-		  VNET_HW_INTERFACE_CAP_SUPPORTS_TX_TCP_CKSUM |
-		  VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_CKSUM;
+      hw->caps |= VNET_HW_IF_CAP_TCP_GSO |
+		  VNET_HW_IF_CAP_TX_TCP_CKSUM |
+		  VNET_HW_IF_CAP_TX_UDP_CKSUM;
     }
   else if (args->tap_flags & TAP_FLAG_CSUM_OFFLOAD)
     {
-      hw->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_TX_TCP_CKSUM |
-		  VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_CKSUM;
+      hw->caps |= VNET_HW_IF_CAP_TX_TCP_CKSUM |
+		  VNET_HW_IF_CAP_TX_UDP_CKSUM;
     }
   if ((args->tap_flags & TAP_FLAG_GSO)
       && (args->tap_flags & TAP_FLAG_GRO_COALESCE))
@@ -795,18 +795,18 @@ tap_csum_offload_enable_disable (vlib_main_t * vm, u32 sw_if_index,
   vif->packet_coalesce = 0;
   vif->csum_offload_enabled = enable_disable ? 1 : 0;
 
-  if ((hw->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO) != 0)
+  if ((hw->caps & VNET_HW_IF_CAP_TCP_GSO) != 0)
     {
-      hw->caps &= ~VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO;
+      hw->caps &= ~VNET_HW_IF_CAP_TCP_GSO;
     }
 
   if (enable_disable)
     {
-      hw->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_L4_TX_CKSUM;
+      hw->caps |= VNET_HW_IF_CAP_L4_TX_CKSUM;
     }
   else
     {
-      hw->caps &= ~VNET_HW_INTERFACE_CAP_SUPPORTS_L4_TX_CKSUM;
+      hw->caps &= ~VNET_HW_IF_CAP_L4_TX_CKSUM;
     }
 
 error:
@@ -846,10 +846,10 @@ tap_gso_enable_disable (vlib_main_t * vm, u32 sw_if_index, int enable_disable,
   vif->csum_offload_enabled = 0;
   if (enable_disable)
     {
-      if ((hw->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO) == 0)
+      if ((hw->caps & VNET_HW_IF_CAP_TCP_GSO) == 0)
 	{
-	  hw->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO |
-		      VNET_HW_INTERFACE_CAP_SUPPORTS_L4_TX_CKSUM;
+	  hw->caps |= VNET_HW_IF_CAP_TCP_GSO |
+		      VNET_HW_IF_CAP_L4_TX_CKSUM;
 	}
       if (is_packet_coalesce)
 	{
@@ -858,10 +858,10 @@ tap_gso_enable_disable (vlib_main_t * vm, u32 sw_if_index, int enable_disable,
     }
   else
     {
-      if ((hw->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO) != 0)
+      if ((hw->caps & VNET_HW_IF_CAP_TCP_GSO) != 0)
 	{
-	  hw->caps &= ~(VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO |
-			VNET_HW_INTERFACE_CAP_SUPPORTS_L4_TX_CKSUM);
+	  hw->caps &= ~(VNET_HW_IF_CAP_TCP_GSO |
+			VNET_HW_IF_CAP_L4_TX_CKSUM);
 	}
       vif->packet_coalesce = 0;
     }

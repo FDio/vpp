@@ -1729,21 +1729,18 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   if (error)
     goto error;
 
-  /* Indicate ability to support L3 DMAC filtering and
-   * initialize interface to L3 non-promisc mode */
-  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, ad->hw_if_index);
-  hi->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_MAC_FILTER |
-	      VNET_HW_INTERFACE_CAP_SUPPORTS_L4_TX_CKSUM |
-	      VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO;
   ethernet_set_flags (vnm, ad->hw_if_index,
 		      ETHERNET_INTERFACE_FLAG_DEFAULT_L3);
 
   vnet_sw_interface_t *sw = vnet_get_hw_sw_interface (vnm, ad->hw_if_index);
   args->sw_if_index = ad->sw_if_index = sw->sw_if_index;
 
-  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, ad->hw_if_index);
-  hw->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_INT_MODE;
   vnet_hw_if_set_input_node (vnm, ad->hw_if_index, avf_input_node.index);
+
+  /* set hw interface caps */
+  vnet_hw_if_set_caps (vnm, ad->hw_if_index,
+		       VNET_HW_IF_CAP_INT_MODE | VNET_HW_IF_CAP_MAC_FILTER |
+			 VNET_HW_IF_CAP_L4_TX_CKSUM | VNET_HW_IF_CAP_TCP_GSO);
 
   for (i = 0; i < ad->n_rx_queues; i++)
     {

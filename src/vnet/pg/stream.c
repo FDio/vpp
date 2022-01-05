@@ -299,7 +299,7 @@ pg_interface_add_or_get (pg_main_t *pg, uword if_id, u8 gso_enabled,
       hi = vnet_get_hw_interface (vnm, pi->hw_if_index);
       if (gso_enabled)
 	{
-	  hi->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO;
+	  vnet_hw_if_set_caps (vnm, pi->hw_if_index, VNET_HW_IF_CAP_TCP_GSO);
 	  pi->gso_enabled = 1;
 	  pi->gso_size = gso_size;
 	  if (coalesce_enabled)
