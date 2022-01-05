@@ -445,8 +445,6 @@ dpdk_lib_init (dpdk_main_t * dm)
       vec_validate_aligned (xd->rx_queues, xd->rx_q_used - 1,
 			    CLIB_CACHE_LINE_BYTES);
 
-      xd->flags |= DPDK_DEVICE_FLAG_PMD;
-
       /* workaround for drivers not setting driver_name */
       if ((!dev_info.driver_name) && (pci_dev))
 	dev_info.driver_name = pci_dev->driver->driver.name;
@@ -1770,10 +1768,6 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
   struct rte_eth_link prev_link = xd->link;
   u32 hw_flags = 0;
   u8 hw_flags_chg = 0;
-
-  /* only update link state for PMD interfaces */
-  if ((xd->flags & DPDK_DEVICE_FLAG_PMD) == 0)
-    return;
 
   xd->time_last_link_update = now ? now : xd->time_last_link_update;
   clib_memset (&xd->link, 0, sizeof (xd->link));

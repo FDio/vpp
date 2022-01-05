@@ -560,6 +560,10 @@ format_dpdk_device (u8 * s, va_list * args)
   f64 now = vlib_time_now (dm->vlib_main);
   struct rte_eth_dev_info di;
   struct rte_eth_burst_mode mode;
+  struct rte_pci_device *pci;
+  struct rte_eth_rss_conf rss_conf;
+  int vlan_off;
+  int retval;
 
   dpdk_update_counters (xd, now);
   dpdk_update_link_state (xd, now);
@@ -584,110 +588,96 @@ format_dpdk_device (u8 * s, va_list * args)
 	      xd->nb_tx_desc, di.tx_desc_lim.nb_min, di.tx_desc_lim.nb_max,
 	      di.tx_desc_lim.nb_align);
 
-  if (xd->flags & DPDK_DEVICE_FLAG_PMD)
+  rss_conf.rss_key = 0;
+  rss_conf.rss_hf = 0;
+  retval = rte_eth_dev_rss_hash_conf_get (xd->port_id, &rss_conf);
+  if (retval < 0)
+    clib_warning ("rte_eth_dev_rss_hash_conf_get returned %d", retval);
+
+  pci = dpdk_get_pci_device (&di);
+
+  if (pci)
     {
-      struct rte_pci_device *pci;
-      struct rte_eth_rss_conf rss_conf;
-      int vlan_off;
-      int retval;
-
-      rss_conf.rss_key = 0;
-      rss_conf.rss_hf = 0;
-      retval = rte_eth_dev_rss_hash_conf_get (xd->port_id, &rss_conf);
-      if (retval < 0)
-	clib_warning ("rte_eth_dev_rss_hash_conf_get returned %d", retval);
-
-      pci = dpdk_get_pci_device (&di);
-
-      if (pci)
-	{
-	  u8 *s2;
-	  if (xd->cpu_socket > -1)
-	    s2 = format (0, "%d", xd->cpu_socket);
-	  else
-	    s2 = format (0, "unknown");
-	  s = format (s, "%Upci: device %04x:%04x subsystem %04x:%04x "
-		      "address %04x:%02x:%02x.%02x numa %v\n",
-		      format_white_space, indent + 2, pci->id.vendor_id,
-		      pci->id.device_id, pci->id.subsystem_vendor_id,
-		      pci->id.subsystem_device_id, pci->addr.domain,
-		      pci->addr.bus, pci->addr.devid, pci->addr.function, s2);
-	  vec_free (s2);
-	}
-
-      if (di.switch_info.domain_id != RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID)
-	{
-	  s =
-	    format (s, "%Uswitch info: %U\n", format_white_space, indent + 2,
-		    format_switch_info, &di.switch_info);
-	}
-
-      if (1 < verbose)
-	{
-	  s = format (s, "%Umodule: %U\n", format_white_space, indent + 2,
-		      format_dpdk_device_module_info, xd);
-	}
-
-      s = format (s, "%Umax rx packet len: %d\n", format_white_space,
-		  indent + 2, di.max_rx_pktlen);
-      s = format (s, "%Upromiscuous: unicast %s all-multicast %s\n",
-		  format_white_space, indent + 2,
-		  rte_eth_promiscuous_get (xd->port_id) ? "on" : "off",
-		  rte_eth_allmulticast_get (xd->port_id) ? "on" : "off");
-      vlan_off = rte_eth_dev_get_vlan_offload (xd->port_id);
-      s = format (s, "%Uvlan offload: strip %s filter %s qinq %s\n",
-		  format_white_space, indent + 2,
-		  vlan_off & ETH_VLAN_STRIP_OFFLOAD ? "on" : "off",
-		  vlan_off & ETH_VLAN_FILTER_OFFLOAD ? "on" : "off",
-		  vlan_off & ETH_VLAN_EXTEND_OFFLOAD ? "on" : "off");
-      s = format (s, "%Urx offload avail:  %U\n",
-		  format_white_space, indent + 2,
-		  format_dpdk_rx_offload_caps, di.rx_offload_capa);
-      s = format (s, "%Urx offload active: %U\n",
-		  format_white_space, indent + 2,
-		  format_dpdk_rx_offload_caps, xd->port_conf.rxmode.offloads);
-      s = format (s, "%Utx offload avail:  %U\n",
-		  format_white_space, indent + 2,
-		  format_dpdk_tx_offload_caps, di.tx_offload_capa);
-      s = format (s, "%Utx offload active: %U\n",
-		  format_white_space, indent + 2,
-		  format_dpdk_tx_offload_caps, xd->port_conf.txmode.offloads);
-      s = format (s, "%Urss avail:         %U\n"
-		  "%Urss active:        %U\n",
-		  format_white_space, indent + 2,
-		  format_dpdk_rss_hf_name, di.flow_type_rss_offloads,
-		  format_white_space, indent + 2,
-		  format_dpdk_rss_hf_name, rss_conf.rss_hf);
-
-      if (rte_eth_tx_burst_mode_get (xd->port_id, 0, &mode) == 0)
-	{
-	  s = format (s, "%Utx burst mode: %s%s\n",
-		      format_white_space, indent + 2,
-		      mode.info,
-		      mode.flags & RTE_ETH_BURST_FLAG_PER_QUEUE ?
-		      " (per queue)" : "");
-	}
+      u8 *s2;
+      if (xd->cpu_socket > -1)
+	s2 = format (0, "%d", xd->cpu_socket);
       else
-	{
-	  s = format (s, "%Utx burst function: %s\n",
-		      format_white_space, indent + 2,
-		      ptr2sname (rte_eth_devices[xd->port_id].tx_pkt_burst));
-	}
+	s2 = format (0, "unknown");
+      s = format (s,
+		  "%Upci: device %04x:%04x subsystem %04x:%04x "
+		  "address %04x:%02x:%02x.%02x numa %v\n",
+		  format_white_space, indent + 2, pci->id.vendor_id,
+		  pci->id.device_id, pci->id.subsystem_vendor_id,
+		  pci->id.subsystem_device_id, pci->addr.domain, pci->addr.bus,
+		  pci->addr.devid, pci->addr.function, s2);
+      vec_free (s2);
+    }
 
-      if (rte_eth_rx_burst_mode_get (xd->port_id, 0, &mode) == 0)
-	{
-	  s = format (s, "%Urx burst mode: %s%s\n",
-		      format_white_space, indent + 2,
-		      mode.info,
-		      mode.flags & RTE_ETH_BURST_FLAG_PER_QUEUE ?
-		      " (per queue)" : "");
-	}
-      else
-	{
-	  s = format (s, "%Urx burst function: %s\n",
-		      format_white_space, indent + 2,
-		      ptr2sname (rte_eth_devices[xd->port_id].rx_pkt_burst));
-	}
+  if (di.switch_info.domain_id != RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID)
+    {
+      s = format (s, "%Uswitch info: %U\n", format_white_space, indent + 2,
+		  format_switch_info, &di.switch_info);
+    }
+
+  if (1 < verbose)
+    {
+      s = format (s, "%Umodule: %U\n", format_white_space, indent + 2,
+		  format_dpdk_device_module_info, xd);
+    }
+
+  s = format (s, "%Umax rx packet len: %d\n", format_white_space, indent + 2,
+	      di.max_rx_pktlen);
+  s = format (s, "%Upromiscuous: unicast %s all-multicast %s\n",
+	      format_white_space, indent + 2,
+	      rte_eth_promiscuous_get (xd->port_id) ? "on" : "off",
+	      rte_eth_allmulticast_get (xd->port_id) ? "on" : "off");
+  vlan_off = rte_eth_dev_get_vlan_offload (xd->port_id);
+  s = format (s, "%Uvlan offload: strip %s filter %s qinq %s\n",
+	      format_white_space, indent + 2,
+	      vlan_off & ETH_VLAN_STRIP_OFFLOAD ? "on" : "off",
+	      vlan_off & ETH_VLAN_FILTER_OFFLOAD ? "on" : "off",
+	      vlan_off & ETH_VLAN_EXTEND_OFFLOAD ? "on" : "off");
+  s = format (s, "%Urx offload avail:  %U\n", format_white_space, indent + 2,
+	      format_dpdk_rx_offload_caps, di.rx_offload_capa);
+  s = format (s, "%Urx offload active: %U\n", format_white_space, indent + 2,
+	      format_dpdk_rx_offload_caps, xd->port_conf.rxmode.offloads);
+  s = format (s, "%Utx offload avail:  %U\n", format_white_space, indent + 2,
+	      format_dpdk_tx_offload_caps, di.tx_offload_capa);
+  s = format (s, "%Utx offload active: %U\n", format_white_space, indent + 2,
+	      format_dpdk_tx_offload_caps, xd->port_conf.txmode.offloads);
+  s = format (s,
+	      "%Urss avail:         %U\n"
+	      "%Urss active:        %U\n",
+	      format_white_space, indent + 2, format_dpdk_rss_hf_name,
+	      di.flow_type_rss_offloads, format_white_space, indent + 2,
+	      format_dpdk_rss_hf_name, rss_conf.rss_hf);
+
+  if (rte_eth_tx_burst_mode_get (xd->port_id, 0, &mode) == 0)
+    {
+      s = format (s, "%Utx burst mode: %s%s\n", format_white_space, indent + 2,
+		  mode.info,
+		  mode.flags & RTE_ETH_BURST_FLAG_PER_QUEUE ? " (per queue)" :
+								    "");
+    }
+  else
+    {
+      s =
+	format (s, "%Utx burst function: %s\n", format_white_space, indent + 2,
+		ptr2sname (rte_eth_devices[xd->port_id].tx_pkt_burst));
+    }
+
+  if (rte_eth_rx_burst_mode_get (xd->port_id, 0, &mode) == 0)
+    {
+      s = format (s, "%Urx burst mode: %s%s\n", format_white_space, indent + 2,
+		  mode.info,
+		  mode.flags & RTE_ETH_BURST_FLAG_PER_QUEUE ? " (per queue)" :
+								    "");
+    }
+  else
+    {
+      s =
+	format (s, "%Urx burst function: %s\n", format_white_space, indent + 2,
+		ptr2sname (rte_eth_devices[xd->port_id].rx_pkt_burst));
     }
 
   /* $$$ MIB counters  */
