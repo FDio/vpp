@@ -692,6 +692,7 @@ tcp_cc_init_congestion (tcp_connection_t * tc)
 static void
 tcp_cc_congestion_undo (tcp_connection_t * tc)
 {
+  clib_warning ("undo");
   tc->cwnd = tc->prev_cwnd;
   tc->ssthresh = tc->prev_ssthresh;
   tcp_cc_undo_recovery (tc);
@@ -751,6 +752,7 @@ tcp_cc_recover (tcp_connection_t * tc)
 
   if (tcp_cc_is_spurious_retransmit (tc))
     {
+      clib_warning ("spurious");
       tcp_cc_congestion_undo (tc);
       is_spurious = 1;
     }
@@ -762,6 +764,9 @@ tcp_cc_recover (tcp_connection_t * tc)
    * of the current recovery event with an updated snd_congestion */
   if (tc->sack_sb.sacked_bytes)
     {
+      tcp_recovery_off (tc);
+      clib_warning ("left congested");
+      tcp_cc_congestion (tc);
       tc->snd_congestion = tc->snd_nxt;
       tcp_program_retransmit (tc);
       return is_spurious;
@@ -902,6 +907,8 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
 	  return;
 	}
 
+      if (tcp_in_cong_recovery (tc))
+	clib_warning ("HOW??");
       /* Treat as congestion avoidance ack */
       tcp_cc_rcv_ack (tc, rs);
       return;
