@@ -103,12 +103,12 @@ dpdk_device_setup (dpdk_device_t * xd)
   for (j = 0; j < xd->conf.n_tx_queues; j++)
     {
       rv = rte_eth_tx_queue_setup (xd->port_id, j, xd->conf.n_tx_desc,
-				   xd->cpu_socket, &xd->tx_conf);
+				   xd->cpu_socket, 0);
 
       /* retry with any other CPU socket */
       if (rv < 0)
 	rv = rte_eth_tx_queue_setup (xd->port_id, j, xd->conf.n_tx_desc,
-				     SOCKET_ID_ANY, &xd->tx_conf);
+				     SOCKET_ID_ANY, 0);
       if (rv < 0)
 	dpdk_device_error (xd, "rte_eth_tx_queue_setup", rv);
 

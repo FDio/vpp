@@ -216,7 +216,6 @@ typedef struct
 
   /* PMD related */
   struct rte_eth_conf port_conf;
-  struct rte_eth_txconf tx_conf;
 
   /* flow related */
   u32 supported_flow_actions;
