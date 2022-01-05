@@ -36,9 +36,12 @@ static char *dpdk_error_strings[] = {
 };
 
 /* make sure all flags we need are stored in lower 32 bits */
-STATIC_ASSERT ((u64) (PKT_RX_IP_CKSUM_BAD | PKT_RX_FDIR | PKT_RX_LRO) <
-		 (1ULL << 32),
+STATIC_ASSERT ((u64) (PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD | PKT_RX_FDIR |
+		      PKT_RX_LRO) < (1ULL << 32),
 	       "dpdk flags not in lower word, fix needed");
+
+STATIC_ASSERT (PKT_RX_L4_CKSUM_BAD == (1ULL << 3),
+	       "bit number of PKT_RX_L4_CKSUM_BAD is no longer 3!");
 
 static_always_inline uword
 dpdk_process_subseq_segs (vlib_main_t * vm, vlib_buffer_t * b,
@@ -449,6 +452,23 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
 	  if (xd->flags & DPDK_DEVICE_FLAG_RX_IP4_CKSUM &&
 	      (or_flags & PKT_RX_IP_CKSUM_BAD) == 0)
 	    f->flags |= ETH_INPUT_FRAME_F_IP4_CKSUM_OK;
+
+	  if (PREDICT_FALSE ((or_flags & PKT_RX_L4_CKSUM_BAD) &&
+			     (dm->conf->enable_tcp_udp_checksum)))
+	    {
+	      for (n = 0; n < n_rx_packets; n++)
+		{
+		  /* Check and reset VNET_BUFFER_F_L4_CHECKSUM_CORRECT flag
+		     if PKT_RX_L4_CKSUM_BAD is set.
+		     The magic num 3 is the bit number of PKT_RX_L4_CKSUM_BAD
+		     which is defined in DPDK.
+		     Have made a STATIC_ASSERT in this file to ensure this.
+		   */
+		  b0 = vlib_buffer_from_rte_mbuf (ptd->mbufs[n]);
+		  b0->flags ^= (ptd->flags[n] & PKT_RX_L4_CKSUM_BAD)
+			       << (VNET_BUFFER_F_LOG2_L4_CHECKSUM_CORRECT - 3);
+		}
+	    }
 	  vlib_frame_no_append (f);
 	}
       n_left_to_next -= n_rx_packets;
