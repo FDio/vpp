@@ -742,7 +742,7 @@ tcp_should_fastrecover (tcp_connection_t * tc, u8 has_sack)
 }
 
 static int
-tcp_cc_recover (tcp_connection_t * tc)
+tcp_cc_try_recover (tcp_connection_t *tc)
 {
   sack_scoreboard_hole_t *hole;
   u8 is_spurious = 0;
@@ -763,8 +763,7 @@ tcp_cc_recover (tcp_connection_t * tc)
   if (tc->sack_sb.sacked_bytes)
     {
       tc->snd_congestion = tc->snd_nxt;
-      tcp_program_retransmit (tc);
-      return is_spurious;
+      return -1;
     }
 
   tc->rxt_delivered = 0;
@@ -790,7 +789,7 @@ tcp_cc_recover (tcp_connection_t * tc)
   ASSERT (!tcp_in_cong_recovery (tc));
   ASSERT (tcp_scoreboard_is_sane_post_recovery (tc));
 
-  return is_spurious;
+  return 0;
 }
 
 static void
@@ -857,6 +856,20 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
    */
 
   /*
+   * See if we can exit and stop retransmitting
+   */
+  if (seq_geq (tc->snd_una, tc->snd_congestion))
+    {
+      /* If successfully recovered, treat ack as congestion avoidance ack
+       * and return. Otherwise, we're still congested so process feedback */
+      if (!tcp_cc_try_recover (tc))
+	{
+	  tcp_cc_rcv_ack (tc, rs);
+	  return;
+	}
+    }
+
+  /*
    * Process (re)transmit feedback. Output path uses this to decide how much
    * more data to release into the network
    */
@@ -889,23 +902,6 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
       /* If partial ack, assume that the first un-acked segment was lost */
       if (tc->bytes_acked || tc->rcv_dupacks == TCP_DUPACK_THRESHOLD)
 	tcp_fastrecovery_first_on (tc);
-    }
-
-  /*
-   * See if we can exit and stop retransmitting
-   */
-  if (seq_geq (tc->snd_una, tc->snd_congestion))
-    {
-      /* If spurious return, we've already updated everything */
-      if (tcp_cc_recover (tc))
-	{
-	  tc->tsecr_last_ack = tc->rcv_opts.tsecr;
-	  return;
-	}
-
-      /* Treat as congestion avoidance ack */
-      tcp_cc_rcv_ack (tc, rs);
-      return;
     }
 
   tcp_program_retransmit (tc);
