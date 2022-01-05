@@ -19,13 +19,6 @@
 #define DPDK_NB_RX_DESC_VIRTIO    256
 #define DPDK_NB_TX_DESC_VIRTIO    256
 
-#define I40E_DEV_ID_SFP_XL710           0x1572
-#define I40E_DEV_ID_QSFP_A              0x1583
-#define I40E_DEV_ID_QSFP_B              0x1584
-#define I40E_DEV_ID_QSFP_C              0x1585
-#define I40E_DEV_ID_10G_BASE_T          0x1586
-#define I40E_DEV_ID_VF                  0x154C
-
 /* These args appear by themselves */
 #define foreach_eal_double_hyphen_predicate_arg \
 _(no-shconf)                                    \
