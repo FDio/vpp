@@ -1379,6 +1379,8 @@ tcp_connection_tx_pacer_update (tcp_connection_t * tc)
 
   f64 srtt = clib_min ((f64) tc->srtt * TCP_TICK, tc->mrtt_us);
 
+  //  clib_warning ("pacing rate is %u srtt %.2f cwnd %u",
+  //  tcp_cc_get_pacing_rate (tc), srtt, tc->cwnd);
   transport_connection_tx_pacer_update (&tc->connection,
 					tcp_cc_get_pacing_rate (tc),
 					srtt * CLIB_US_TIME_FREQ);
@@ -1389,6 +1391,8 @@ tcp_connection_tx_pacer_reset (tcp_connection_t * tc, u32 window,
 			       u32 start_bucket)
 {
   f64 srtt = clib_min ((f64) tc->srtt * TCP_TICK, tc->mrtt_us);
+  //  clib_warning ("pacing rate is %u srtt %.2f cwnd %u",
+  //  tcp_cc_get_pacing_rate (tc), srtt, tc->cwnd);
   transport_connection_tx_pacer_reset (&tc->connection,
 				       tcp_cc_get_pacing_rate (tc),
 				       start_bucket,
