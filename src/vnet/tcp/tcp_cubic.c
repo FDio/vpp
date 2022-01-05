@@ -104,8 +104,12 @@ cubic_congestion (tcp_connection_t * tc)
   if (cubic_cfg.fast_convergence && w_max < cd->w_max)
     w_max = w_max * ((1.0 + beta_cubic) / 2.0);
 
+  //  if (tcp_in_recovery (tc))
+  //    os_panic ();
   cd->w_max = w_max;
   tc->ssthresh = clib_max (tc->cwnd * beta_cubic, 2 * tc->snd_mss);
+  clib_warning ("congestion: old cwnd %u cwnd %u wmax %u recov %u", tc->cwnd,
+		tc->ssthresh, w_max, tcp_in_cong_recovery (tc));
   tc->cwnd = tc->ssthresh;
 }
 
@@ -114,6 +118,8 @@ cubic_loss (tcp_connection_t * tc)
 {
   cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
 
+  clib_warning ("cwnd %u loss-cwnd %u wmax %u", tc->cwnd, tcp_loss_wnd (tc),
+		tcp_loss_wnd (tc) / tc->snd_mss);
   tc->cwnd = tcp_loss_wnd (tc);
   cd->t_start = cubic_time (tc->c_thread_index);
   cd->K = 0;
@@ -123,6 +129,7 @@ cubic_loss (tcp_connection_t * tc)
 static void
 cubic_recovered (tcp_connection_t * tc)
 {
+  clib_warning ("recovered");
   cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
   cd->t_start = cubic_time (tc->c_thread_index);
   tc->cwnd = tc->ssthresh;
@@ -142,6 +149,8 @@ cubic_cwnd_accumulate (tcp_connection_t * tc, u32 thresh, u32 bytes_acked)
     }
 
   tcp_cwnd_accumulate (tc, thresh, tc->bytes_acked);
+  if (tc->cwnd > 20000)
+    os_panic ();
 }
 
 static void
@@ -232,6 +241,18 @@ cubic_unformat_config (unformat_input_t * input)
   return 1;
 }
 
+void
+cubic_event (tcp_connection_t *tc, tcp_cc_event_t evt)
+{
+  cubic_data_t *cd;
+
+  if (evt != TCP_CC_EVT_START_TX)
+    return;
+
+  cd = (cubic_data_t *) tcp_cc_data (tc);
+  cd->t_start = cubic_time (tc->c_thread_index);
+}
+
 const static tcp_cc_algorithm_t tcp_cubic = {
   .name = "cubic",
   .unformat_cfg = cubic_unformat_config,
@@ -240,6 +261,7 @@ const static tcp_cc_algorithm_t tcp_cubic = {
   .recovered = cubic_recovered,
   .rcv_ack = cubic_rcv_ack,
   .rcv_cong_ack = newreno_rcv_cong_ack,
+  .event = cubic_event,
   .init = cubic_conn_init,
 };
 

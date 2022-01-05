@@ -1262,7 +1262,17 @@ tcp_cc_init_rxt_timeout (tcp_connection_t * tc)
   /* If we entrered loss without fast recovery, notify cc algo of the
    * congestion event such that it can update ssthresh and its state */
   if (!tcp_in_fastrecovery (tc))
-    tcp_cc_congestion (tc);
+    {
+      tcp_fastrecovery_on (tc);
+      tc->snd_congestion = tc->snd_nxt;
+      tc->cwnd_acc_bytes = 0;
+      //      tc->snd_rxt_bytes = 0;
+      tc->rxt_delivered = 0;
+      tc->prr_delivered = 0;
+      tc->prr_start = tc->snd_una;
+
+      tcp_cc_congestion (tc);
+    }
 
   /* Let cc algo decide loss cwnd and ssthresh post unrecovered loss */
   tcp_cc_loss (tc);
@@ -1337,7 +1347,10 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
 	}
 
       if (tcp_opts_sack_permitted (&tc->rcv_opts))
-	tcp_check_sack_reneging (tc);
+	{
+	  tcp_check_sack_reneging (tc);
+	  scoreboard_rxt_mark_lost (&tc->sack_sb, tc->snd_una, tc->snd_nxt);
+	}
 
       /* Update send congestion to make sure that rxt has data to send */
       tc->snd_congestion = tc->snd_nxt;
