@@ -49,19 +49,19 @@
 #endif
 
 #define foreach_dpdk_pkt_rx_offload_flag                                      \
-  _ (PKT_RX_VLAN, "RX packet is a 802.1q VLAN packet")                        \
-  _ (PKT_RX_RSS_HASH, "RX packet with RSS hash result")                       \
-  _ (PKT_RX_FDIR, "RX packet with FDIR infos")                                \
-  _ (PKT_RX_L4_CKSUM_BAD, "L4 cksum of RX pkt. is not OK")                    \
-  _ (PKT_RX_IP_CKSUM_BAD, "IP cksum of RX pkt. is not OK")                    \
-  _ (PKT_RX_OUTER_IP_CKSUM_BAD, "External IP header checksum error")          \
-  _ (PKT_RX_VLAN_STRIPPED, "RX packet VLAN tag stripped")                     \
-  _ (PKT_RX_IP_CKSUM_GOOD, "IP cksum of RX pkt. is valid")                    \
-  _ (PKT_RX_L4_CKSUM_GOOD, "L4 cksum of RX pkt. is valid")                    \
-  _ (PKT_RX_IEEE1588_PTP, "RX IEEE1588 L2 Ethernet PT Packet")                \
-  _ (PKT_RX_IEEE1588_TMST, "RX IEEE1588 L2/L4 timestamped packet")            \
-  _ (PKT_RX_LRO, "LRO packet")                                                \
-  _ (PKT_RX_QINQ_STRIPPED, "RX packet QinQ tags stripped")
+  _ (RTE_MBUF_F_RX_VLAN, "RX packet is a 802.1q VLAN packet")                 \
+  _ (RTE_MBUF_F_RX_RSS_HASH, "RX packet with RSS hash result")                \
+  _ (RTE_MBUF_F_RX_FDIR, "RX packet with FDIR infos")                         \
+  _ (RTE_MBUF_F_RX_L4_CKSUM_BAD, "L4 cksum of RX pkt. is not OK")             \
+  _ (RTE_MBUF_F_RX_IP_CKSUM_BAD, "IP cksum of RX pkt. is not OK")             \
+  _ (RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD, "External IP header checksum error")   \
+  _ (RTE_MBUF_F_RX_VLAN_STRIPPED, "RX packet VLAN tag stripped")              \
+  _ (RTE_MBUF_F_RX_IP_CKSUM_GOOD, "IP cksum of RX pkt. is valid")             \
+  _ (RTE_MBUF_F_RX_L4_CKSUM_GOOD, "L4 cksum of RX pkt. is valid")             \
+  _ (RTE_MBUF_F_RX_IEEE1588_PTP, "RX IEEE1588 L2 Ethernet PT Packet")         \
+  _ (RTE_MBUF_F_RX_IEEE1588_TMST, "RX IEEE1588 L2/L4 timestamped packet")     \
+  _ (RTE_MBUF_F_RX_LRO, "LRO packet")                                         \
+  _ (RTE_MBUF_F_RX_QINQ_STRIPPED, "RX packet QinQ tags stripped")
 
 #define foreach_dpdk_pkt_type                                           \
   _ (L2, ETHER, "Ethernet packet")                                      \
@@ -879,7 +879,7 @@ u8 *
 format_dpdk_rte_mbuf_tso (u8 *s, va_list *va)
 {
   struct rte_mbuf *mb = va_arg (*va, struct rte_mbuf *);
-  if (mb->ol_flags & PKT_TX_TCP_SEG)
+  if (mb->ol_flags & RTE_MBUF_F_TX_TCP_SEG)
     {
       s = format (s, "l4_len %u tso_segsz %u", mb->l4_len, mb->tso_segsz);
     }
@@ -932,8 +932,9 @@ format_dpdk_rte_mbuf (u8 * s, va_list * va)
     s = format (s, "\n%U%U", format_white_space, indent,
 		format_dpdk_pkt_offload_flags, &mb->ol_flags);
 
-  if ((mb->ol_flags & PKT_RX_VLAN) &&
-      ((mb->ol_flags & (PKT_RX_VLAN_STRIPPED | PKT_RX_QINQ_STRIPPED)) == 0))
+  if ((mb->ol_flags & RTE_MBUF_F_RX_VLAN) &&
+      ((mb->ol_flags &
+	(RTE_MBUF_F_RX_VLAN_STRIPPED | RTE_MBUF_F_RX_QINQ_STRIPPED)) == 0))
     {
       ethernet_vlan_header_tv_t *vlan_hdr =
 	((ethernet_vlan_header_tv_t *) & (eth_hdr->type));
