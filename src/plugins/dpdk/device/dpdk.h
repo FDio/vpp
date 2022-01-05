@@ -117,7 +117,6 @@ typedef uint16_t dpdk_portid_t;
 #define foreach_dpdk_device_flags                                             \
   _ (0, ADMIN_UP, "admin-up")                                                 \
   _ (1, PROMISC, "promisc")                                                   \
-  _ (2, PMD, "pmd")                                                           \
   _ (3, PMD_INIT_FAIL, "pmd-init-fail")                                       \
   _ (4, MAYBE_MULTISEG, "maybe-multiseg")                                     \
   _ (5, HAVE_SUBIF, "subif")                                                  \

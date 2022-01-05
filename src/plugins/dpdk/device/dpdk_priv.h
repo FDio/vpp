@@ -97,10 +97,6 @@ dpdk_update_counters (dpdk_device_t * xd, f64 now)
   vnet_main_t *vnm = vnet_get_main ();
   u32 thread_index = vlib_get_thread_index ();
 
-  /* only update counters for PMD interfaces */
-  if ((xd->flags & DPDK_DEVICE_FLAG_PMD) == 0)
-    return;
-
   xd->time_last_stats_update = now ? now : xd->time_last_stats_update;
   clib_memcpy_fast (&xd->last_stats, &xd->stats, sizeof (xd->last_stats));
   rte_eth_stats_get (xd->port_id, &xd->stats);
