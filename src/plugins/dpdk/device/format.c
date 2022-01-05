@@ -578,16 +578,18 @@ format_dpdk_device (u8 * s, va_list * args)
   if (di.device->devargs && di.device->devargs->args)
     s = format (s, "%UDevargs: %s\n",
 		format_white_space, indent + 2, di.device->devargs->args);
-  s = format (s, "%Urx: queues %d (max %d), desc %d "
+  s = format (s,
+	      "%Urx: queues %d (max %d), desc %d "
 	      "(min %d max %d align %d)\n",
-	      format_white_space, indent + 2, xd->rx_q_used, di.max_rx_queues,
-	      xd->nb_rx_desc, di.rx_desc_lim.nb_min, di.rx_desc_lim.nb_max,
-	      di.rx_desc_lim.nb_align);
-  s = format (s, "%Utx: queues %d (max %d), desc %d "
+	      format_white_space, indent + 2, xd->conf.n_rx_queues,
+	      di.max_rx_queues, xd->conf.n_rx_desc, di.rx_desc_lim.nb_min,
+	      di.rx_desc_lim.nb_max, di.rx_desc_lim.nb_align);
+  s = format (s,
+	      "%Utx: queues %d (max %d), desc %d "
 	      "(min %d max %d align %d)\n",
-	      format_white_space, indent + 2, xd->tx_q_used, di.max_tx_queues,
-	      xd->nb_tx_desc, di.tx_desc_lim.nb_min, di.tx_desc_lim.nb_max,
-	      di.tx_desc_lim.nb_align);
+	      format_white_space, indent + 2, xd->conf.n_tx_queues,
+	      di.max_tx_queues, xd->conf.n_tx_desc, di.tx_desc_lim.nb_min,
+	      di.tx_desc_lim.nb_max, di.tx_desc_lim.nb_align);
 
   rss_conf.rss_key = 0;
   rss_conf.rss_hf = 0;

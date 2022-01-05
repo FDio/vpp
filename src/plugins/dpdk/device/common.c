@@ -89,8 +89,8 @@ dpdk_device_setup (dpdk_device_t * xd)
       xd->port_conf.rxmode.offloads ^= bitmap;
     }
 
-  rv = rte_eth_dev_configure (xd->port_id, xd->rx_q_used,
-			      xd->tx_q_used, &xd->port_conf);
+  rv = rte_eth_dev_configure (xd->port_id, xd->conf.n_rx_queues,
+			      xd->conf.n_tx_queues, &xd->port_conf);
 
   if (rv < 0)
     {
@@ -98,30 +98,28 @@ dpdk_device_setup (dpdk_device_t * xd)
       goto error;
     }
 
-  vec_validate_aligned (xd->tx_queues, xd->tx_q_used - 1,
+  vec_validate_aligned (xd->tx_queues, xd->conf.n_tx_queues - 1,
 			CLIB_CACHE_LINE_BYTES);
-  for (j = 0; j < xd->tx_q_used; j++)
+  for (j = 0; j < xd->conf.n_tx_queues; j++)
     {
-      rv =
-	rte_eth_tx_queue_setup (xd->port_id, j, xd->nb_tx_desc,
-				xd->cpu_socket, &xd->tx_conf);
+      rv = rte_eth_tx_queue_setup (xd->port_id, j, xd->conf.n_tx_desc,
+				   xd->cpu_socket, &xd->tx_conf);
 
       /* retry with any other CPU socket */
       if (rv < 0)
-	rv =
-	  rte_eth_tx_queue_setup (xd->port_id, j,
-				  xd->nb_tx_desc, SOCKET_ID_ANY,
-				  &xd->tx_conf);
+	rv = rte_eth_tx_queue_setup (xd->port_id, j, xd->conf.n_tx_desc,
+				     SOCKET_ID_ANY, &xd->tx_conf);
       if (rv < 0)
 	dpdk_device_error (xd, "rte_eth_tx_queue_setup", rv);
 
-      if (xd->tx_q_used < tm->n_vlib_mains)
+      if (xd->conf.n_tx_queues < tm->n_vlib_mains)
 	clib_spinlock_init (&vec_elt (xd->tx_queues, j).lock);
     }
 
-  vec_validate_aligned (xd->rx_queues, xd->rx_q_used - 1,
+  vec_validate_aligned (xd->rx_queues, xd->conf.n_rx_queues - 1,
 			CLIB_CACHE_LINE_BYTES);
-  for (j = 0; j < xd->rx_q_used; j++)
+
+  for (j = 0; j < xd->conf.n_rx_queues; j++)
     {
       dpdk_rx_queue_t *rxq = vec_elt_at_index (xd->rx_queues, j);
       u8 bpidx = vlib_buffer_pool_get_default_for_numa (
@@ -129,12 +127,12 @@ dpdk_device_setup (dpdk_device_t * xd)
       vlib_buffer_pool_t *bp = vlib_get_buffer_pool (vm, bpidx);
       struct rte_mempool *mp = dpdk_mempool_by_buffer_pool_index[bpidx];
 
-      rv = rte_eth_rx_queue_setup (xd->port_id, j, xd->nb_rx_desc,
+      rv = rte_eth_rx_queue_setup (xd->port_id, j, xd->conf.n_rx_desc,
 				   xd->cpu_socket, 0, mp);
 
       /* retry with any other CPU socket */
       if (rv < 0)
-	rv = rte_eth_rx_queue_setup (xd->port_id, j, xd->nb_rx_desc,
+	rv = rte_eth_rx_queue_setup (xd->port_id, j, xd->conf.n_rx_desc,
 				     SOCKET_ID_ANY, 0, mp);
 
       rxq->buffer_pool_index = bp->index;
@@ -215,7 +213,7 @@ dpdk_setup_interrupts (dpdk_device_t *xd)
   if (xd->flags & DPDK_DEVICE_FLAG_INT_SUPPORTED)
     {
       hi->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_INT_MODE;
-      for (int q = 0; q < xd->rx_q_used; q++)
+      for (int q = 0; q < xd->conf.n_rx_queues; q++)
 	{
 	  dpdk_rx_queue_t *rxq = vec_elt_at_index (xd->rx_queues, q);
 	  clib_file_t f = { 0 };
