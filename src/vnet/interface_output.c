@@ -640,8 +640,7 @@ VLIB_NODE_FN (vnet_interface_output_node)
 
   /* if not all three flags IP4_,TCP_,UDP_CKSUM set, do compute them
    * here before sending to the interface */
-  if ((hi->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TX_CKSUM) !=
-      VNET_HW_INTERFACE_CAP_SUPPORTS_TX_CKSUM)
+  if ((hi->caps & VNET_HW_IF_CAP_TX_CKSUM) != VNET_HW_IF_CAP_TX_CKSUM)
     do_tx_offloads = 1;
 
   // basic processing

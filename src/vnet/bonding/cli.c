@@ -380,7 +380,6 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
   vnet_main_t *vnm = vnet_get_main ();
   vnet_sw_interface_t *sw;
   bond_if_t *bif;
-  vnet_hw_interface_t *hw;
 
   if ((args->mode == BOND_MODE_LACP) && bm->lacp_plugin_loaded == 0)
     {
@@ -458,15 +457,15 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
   bif->group = bif->sw_if_index;
   bif->numa_only = args->numa_only;
 
-  hw = vnet_get_hw_interface (vnm, bif->hw_if_index);
   /*
    * Add GSO and Checksum offload flags if GSO is enabled on Bond
    */
   if (args->gso)
     {
-      hw->caps |= (VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO |
-		   VNET_HW_INTERFACE_CAP_SUPPORTS_TX_TCP_CKSUM |
-		   VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_CKSUM);
+      vnet_hw_if_set_caps (vnm, bif->hw_if_index,
+			   VNET_HW_IF_CAP_TCP_GSO |
+			     VNET_HW_IF_CAP_TX_TCP_CKSUM |
+			     VNET_HW_IF_CAP_TX_UDP_CKSUM);
     }
   if (vlib_get_thread_main ()->n_vlib_mains > 1)
     clib_spinlock_init (&bif->lockp);
@@ -632,7 +631,7 @@ bond_add_member (vlib_main_t * vm, bond_add_member_args_t * args)
 	clib_error_return (0, "bond interface cannot be added as member");
       return;
     }
-  if (bif->gso && !(mif_hw->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO))
+  if (bif->gso && !(mif_hw->caps & VNET_HW_IF_CAP_TCP_GSO))
     {
       args->rv = VNET_API_ERROR_INVALID_INTERFACE;
       args->error =

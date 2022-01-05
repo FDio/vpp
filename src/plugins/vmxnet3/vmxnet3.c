@@ -818,12 +818,11 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
   args->sw_if_index = sw->sw_if_index;
 
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, vd->hw_if_index);
-  hw->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_INT_MODE;
+  hw->caps |= VNET_HW_IF_CAP_INT_MODE;
   if (vd->gso_enable)
     {
-      hw->caps |= (VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO |
-		   VNET_HW_INTERFACE_CAP_SUPPORTS_TX_TCP_CKSUM |
-		   VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_CKSUM);
+      hw->caps |= (VNET_HW_IF_CAP_TCP_GSO | VNET_HW_IF_CAP_TX_TCP_CKSUM |
+		   VNET_HW_IF_CAP_TX_UDP_CKSUM);
     }
 
   vnet_hw_if_set_input_node (vnm, vd->hw_if_index, vmxnet3_input_node.index);

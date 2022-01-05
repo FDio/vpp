@@ -212,7 +212,7 @@ dpdk_setup_interrupts (dpdk_device_t *xd)
 
   if (xd->flags & DPDK_DEVICE_FLAG_INT_SUPPORTED)
     {
-      hi->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_INT_MODE;
+      hi->caps |= VNET_HW_IF_CAP_INT_MODE;
       for (int q = 0; q < xd->conf.n_rx_queues; q++)
 	{
 	  dpdk_rx_queue_t *rxq = vec_elt_at_index (xd->rx_queues, q);
@@ -221,7 +221,7 @@ dpdk_setup_interrupts (dpdk_device_t *xd)
 	  if (rxq->efd < 0)
 	    {
 	      xd->flags &= ~DPDK_DEVICE_FLAG_INT_SUPPORTED;
-	      hi->caps &= ~VNET_HW_INTERFACE_CAP_SUPPORTS_INT_MODE;
+	      hi->caps &= ~VNET_HW_IF_CAP_INT_MODE;
 	      break;
 	    }
 	  f.read_function = dpdk_rx_read_ready;

@@ -430,7 +430,7 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
   apif->queue_index = vnet_hw_if_register_rx_queue (vnm, apif->hw_if_index, 0,
 						    VNET_HW_IF_RXQ_THREAD_ANY);
 
-  hw->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_INT_MODE;
+  hw->caps |= VNET_HW_IF_CAP_INT_MODE;
   vnet_hw_interface_set_flags (vnm, apif->hw_if_index,
 			       VNET_HW_INTERFACE_FLAG_LINK_UP);
 
@@ -544,13 +544,11 @@ af_packet_set_l4_cksum_offload (u32 sw_if_index, u8 set)
 
   if (set)
     {
-      hw->caps &= ~(VNET_HW_INTERFACE_CAP_SUPPORTS_TX_TCP_CKSUM |
-		    VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_CKSUM);
+      hw->caps &= ~(VNET_HW_IF_CAP_TX_TCP_CKSUM | VNET_HW_IF_CAP_TX_UDP_CKSUM);
     }
   else
     {
-      hw->caps |= (VNET_HW_INTERFACE_CAP_SUPPORTS_TX_TCP_CKSUM |
-		   VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_CKSUM);
+      hw->caps |= (VNET_HW_IF_CAP_TX_TCP_CKSUM | VNET_HW_IF_CAP_TX_UDP_CKSUM);
     }
   return 0;
 }
