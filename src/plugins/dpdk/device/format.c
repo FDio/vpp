@@ -879,7 +879,7 @@ u8 *
 format_dpdk_rte_mbuf_tso (u8 *s, va_list *va)
 {
   struct rte_mbuf *mb = va_arg (*va, struct rte_mbuf *);
-  if (mb->ol_flags & PKT_TX_TCP_SEG)
+  if (mb->ol_flags & RTE_MBUF_F_TX_TCP_SEG)
     {
       s = format (s, "l4_len %u tso_segsz %u", mb->l4_len, mb->tso_segsz);
     }
@@ -932,8 +932,9 @@ format_dpdk_rte_mbuf (u8 * s, va_list * va)
     s = format (s, "\n%U%U", format_white_space, indent,
 		format_dpdk_pkt_offload_flags, &mb->ol_flags);
 
-  if ((mb->ol_flags & PKT_RX_VLAN) &&
-      ((mb->ol_flags & (PKT_RX_VLAN_STRIPPED | PKT_RX_QINQ_STRIPPED)) == 0))
+  if ((mb->ol_flags & RTE_MBUF_F_RX_VLAN) &&
+      ((mb->ol_flags &
+	(RTE_MBUF_F_RX_VLAN_STRIPPED | RTE_MBUF_F_RX_QINQ_STRIPPED)) == 0))
     {
       ethernet_vlan_header_tv_t *vlan_hdr =
 	((ethernet_vlan_header_tv_t *) & (eth_hdr->type));
