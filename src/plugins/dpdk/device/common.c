@@ -238,6 +238,8 @@ dpdk_device_setup (dpdk_device_t * xd)
     (txo & (DEV_TX_OFFLOAD_TCP_CKSUM | DEV_TX_OFFLOAD_UDP_CKSUM)) ==
       (DEV_TX_OFFLOAD_TCP_CKSUM | DEV_TX_OFFLOAD_UDP_CKSUM));
 
+  dpdk_log_debug ("[%u] promisc %d", xd->port_type, rte_eth_promiscuous_get (xd->port_id));
+
   /* unconditionally set mac filtering cap */
   caps.val = caps.mask = VNET_HW_IF_CAP_MAC_FILTER;
 
@@ -374,9 +376,9 @@ dpdk_device_start (dpdk_device_t * xd)
 
   dpdk_setup_interrupts (xd);
 
-  if (xd->default_mac_address)
+  if (!mac_address_is_zero (&xd->default_mac_address))
     rv = rte_eth_dev_default_mac_addr_set (xd->port_id,
-					   (void *) xd->default_mac_address);
+					   (void *) &xd->default_mac_address);
 
   if (rv)
     dpdk_device_error (xd, "rte_eth_dev_default_mac_addr_set", rv);

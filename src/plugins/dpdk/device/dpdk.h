@@ -29,8 +29,6 @@
 #include <rte_version.h>
 #include <rte_net.h>
 
-#include <vnet/devices/devices.h>
-
 #if CLIB_DEBUG > 0
 #define always_inline static inline
 #else
@@ -39,56 +37,13 @@
 
 #include <vlib/pci/pci.h>
 #include <vlib/vmbus/vmbus.h>
+#include <vnet/ethernet/mac_address.h>
+#include <vnet/devices/devices.h>
 #include <vnet/flow/flow.h>
 
 extern vnet_device_class_t dpdk_device_class;
 extern vlib_node_registration_t dpdk_input_node;
 extern vlib_node_registration_t admin_up_down_process_node;
-
-#if RTE_VERSION < RTE_VERSION_NUM(20, 8, 0, 0)
-#define DPDK_MLX5_PMD_NAME "net_mlx5"
-#else
-#define DPDK_MLX5_PMD_NAME "mlx5_pci"
-#endif
-
-#define foreach_dpdk_pmd                                                      \
-  _ ("net_thunderx", THUNDERX)                                                \
-  _ ("net_e1000_em", E1000EM)                                                 \
-  _ ("net_e1000_igb", IGB)                                                    \
-  _ ("net_e1000_igb_vf", IGBVF)                                               \
-  _ ("net_ixgbe", IXGBE)                                                      \
-  _ ("net_ixgbe_vf", IXGBEVF)                                                 \
-  _ ("net_i40e", I40E)                                                        \
-  _ ("net_i40e_vf", I40EVF)                                                   \
-  _ ("net_ice", ICE)                                                          \
-  _ ("net_iavf", IAVF)                                                        \
-  _ ("net_igc", IGC)                                                          \
-  _ ("net_virtio", VIRTIO)                                                    \
-  _ ("net_enic", ENIC)                                                        \
-  _ ("net_vmxnet3", VMXNET3)                                                  \
-  _ ("AF_PACKET PMD", AF_PACKET)                                              \
-  _ ("net_fm10k", FM10K)                                                      \
-  _ ("net_cxgbe", CXGBE)                                                      \
-  _ ("net_mlx4", MLX4)                                                        \
-  _ (DPDK_MLX5_PMD_NAME, MLX5)                                                \
-  _ ("net_dpaa2", DPAA2)                                                      \
-  _ ("net_virtio_user", VIRTIO_USER)                                          \
-  _ ("net_vhost", VHOST_ETHER)                                                \
-  _ ("net_ena", ENA)                                                          \
-  _ ("net_failsafe", FAILSAFE)                                                \
-  _ ("net_liovf", LIOVF_ETHER)                                                \
-  _ ("net_qede", QEDE)                                                        \
-  _ ("net_netvsc", NETVSC)                                                    \
-  _ ("net_bnxt", BNXT)
-
-typedef enum
-{
-  VNET_DPDK_PMD_NONE,
-#define _(s,f) VNET_DPDK_PMD_##f,
-  foreach_dpdk_pmd
-#undef _
-    VNET_DPDK_PMD_UNKNOWN,	/* must be last */
-} dpdk_pmd_t;
 
 #define forach_dpdk_port_type                                                 \
   _ (ETH_1G, "GigabitEthernet")                                               \
@@ -133,12 +88,12 @@ typedef uint16_t dpdk_portid_t;
   _ (13, INT_SUPPORTED, "int-supported")                                      \
   _ (14, INT_UNMASKABLE, "int-unmaskable")
 
-enum
+typedef enum
 {
 #define _(a, b, c) DPDK_DEVICE_FLAG_##b = (1 << a),
   foreach_dpdk_device_flags
 #undef _
-};
+} dpdk_device_flag_t;
 
 typedef struct
 {
@@ -168,6 +123,24 @@ typedef struct
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   clib_spinlock_t lock;
 } dpdk_tx_queue_t;
+
+typedef struct
+{
+  const char *name;
+  const char *desc;
+  dpdk_port_type_t port_type;
+  u16 n_rx_desc;
+  u16 n_tx_desc;
+  dpdk_device_flag_t dev_flags;
+  i32 supported_flow_actions;
+  i32 enable_lsc_int : 1;
+  i32 enable_rxq_int : 1;
+  i32 disable_rx_scatter : 1;
+  i32 program_vlans : 1;
+  i32 mq_mode_none : 1;
+} dpdk_driver_t;
+
+dpdk_driver_t *dpdk_driver_find (const char *name);
 
 typedef union
 {
@@ -216,42 +189,38 @@ typedef struct
 
   /* DPDK device port number */
   dpdk_portid_t port_id;
-  dpdk_pmd_t pmd:8;
-  i8 cpu_socket;
+  dpdk_port_conf_t conf;
 
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
-
+  /* */
   u64 enabled_tx_off;
   u64 enabled_rx_off;
+  dpdk_driver_t *driver;
   u8 *name;
   u8 *interface_name_suffix;
-
-  /* number of sub-interfaces */
+  struct rte_eth_link link;
+  dpdk_port_type_t port_type;
+  mac_address_t default_mac_address;
   u16 num_subifs;
+  i8 cpu_socket;
 
   /* flow related */
-  u32 supported_flow_actions;
-  dpdk_flow_entry_t *flow_entries;	/* pool */
-  dpdk_flow_lookup_entry_t *flow_lookup_entries;	/* pool */
-  u32 *parked_lookup_indexes;	/* vector */
-  u32 parked_loop_count;
+  dpdk_flow_entry_t *flow_entries;		 /* pool */
+  dpdk_flow_lookup_entry_t *flow_lookup_entries; /* pool */
+  u32 *parked_lookup_indexes;			 /* vector */
   struct rte_flow_error last_flow_error;
+  u32 parked_loop_count;
+  u32 supported_flow_actions;
 
-  struct rte_eth_link link;
+  /* error string */
+  clib_error_t *errors;
   f64 time_last_link_update;
 
   struct rte_eth_stats stats;
   struct rte_eth_stats last_stats;
   struct rte_eth_xstat *xstats;
   f64 time_last_stats_update;
-  dpdk_port_type_t port_type;
 
-  /* mac address */
-  u8 *default_mac_address;
-
-  /* error string */
-  clib_error_t *errors;
-  dpdk_port_conf_t conf;
 } dpdk_device_t;
 
 #define DPDK_STATS_POLL_INTERVAL      (10.0)
@@ -301,7 +270,6 @@ typedef struct
 
 typedef struct
 {
-
   /* Config stuff */
   u8 **eal_init_args;
   u8 *eal_init_args_str;
