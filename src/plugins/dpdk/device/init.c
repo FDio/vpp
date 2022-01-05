@@ -362,9 +362,6 @@ dpdk_lib_init (dpdk_main_t * dm)
       else
 	last_pci_addr.as_u32 = ~0;
 
-      clib_memcpy (&xd->tx_conf, &di.default_txconf,
-		   sizeof (struct rte_eth_txconf));
-
       if (di.rx_offload_capa & DEV_RX_OFFLOAD_IPV4_CKSUM)
 	{
 	  xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_IPV4_CKSUM;
