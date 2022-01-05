@@ -420,6 +420,8 @@ typedef enum
   vlib_log(VLIB_LOG_LEVEL_NOTICE, dpdk_main.log_default, __VA_ARGS__)
 #define dpdk_log_info(...) \
   vlib_log(VLIB_LOG_LEVEL_INFO, dpdk_main.log_default, __VA_ARGS__)
+#define dpdk_log_debug(...)                                                   \
+  vlib_log (VLIB_LOG_LEVEL_DEBUG, dpdk_main.log_default, __VA_ARGS__)
 
 void dpdk_update_link_state (dpdk_device_t * xd, f64 now);
 
