@@ -158,7 +158,7 @@ cubic_rcv_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 
   if (tcp_in_slowstart (tc))
     {
-      tc->cwnd += tc->bytes_acked;
+      tc->cwnd += rs->delivered;
       return;
     }
 
@@ -169,7 +169,7 @@ cubic_rcv_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
   w_aimd = (u64) W_est (cd, t, rtt_sec) * tc->snd_mss;
   if (w_cubic < w_aimd)
     {
-      cubic_cwnd_accumulate (tc, tc->cwnd, tc->bytes_acked);
+      cubic_cwnd_accumulate (tc, tc->cwnd, rs->delivered);
     }
   else
     {
@@ -195,7 +195,7 @@ cubic_rcv_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 	  /* Practically we can't increment so just inflate threshold */
 	  thresh = 50 * tc->cwnd;
 	}
-      cubic_cwnd_accumulate (tc, thresh, tc->bytes_acked);
+      cubic_cwnd_accumulate (tc, thresh, rs->delivered);
     }
 }
 
