@@ -16,8 +16,6 @@
 #define DPDK_NB_RX_DESC_DEFAULT   1024
 #define DPDK_NB_TX_DESC_DEFAULT   1024
 #define DPDK_MAX_LRO_SIZE_DEFAULT 65536
-#define DPDK_NB_RX_DESC_VIRTIO    256
-#define DPDK_NB_TX_DESC_VIRTIO    256
 
 /* These args appear by themselves */
 #define foreach_eal_double_hyphen_predicate_arg \
