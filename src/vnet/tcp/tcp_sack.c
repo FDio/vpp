@@ -265,6 +265,28 @@ scoreboard_init_rxt (sack_scoreboard_t * sb, u32 snd_una)
 }
 
 void
+scoreboard_rxt_mark_lost (sack_scoreboard_t * sb, u32 snd_una, u32 snd_nxt)
+{
+  sack_scoreboard_hole_t *hole;
+
+  hole = scoreboard_first_hole (sb);
+  if (!hole)
+    {
+      hole = scoreboard_insert_hole (sb, TCP_INVALID_SACK_HOLE_INDEX, snd_una,
+	                             snd_nxt);
+      sb->tail = scoreboard_hole_index (sb, hole);
+      sb->high_sacked = snd_una;
+    }
+
+  if (hole->is_lost)
+    return;
+
+  hole->is_lost = 1;
+  sb->lost_bytes += scoreboard_hole_bytes (hole);
+  clib_warning ("added lost bytes %u", scoreboard_hole_bytes (hole));
+}
+
+void
 scoreboard_init (sack_scoreboard_t * sb)
 {
   sb->head = TCP_INVALID_SACK_HOLE_INDEX;

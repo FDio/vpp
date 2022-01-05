@@ -105,6 +105,8 @@ void scoreboard_clear (sack_scoreboard_t * sb);
 void scoreboard_clear_reneging (sack_scoreboard_t * sb, u32 start, u32 end);
 void scoreboard_init (sack_scoreboard_t * sb);
 void scoreboard_init_rxt (sack_scoreboard_t * sb, u32 snd_una);
+void scoreboard_rxt_mark_lost (sack_scoreboard_t * sb, u32 snd_una,
+                               u32 snd_nxt);
 
 format_function_t format_tcp_scoreboard;
 
