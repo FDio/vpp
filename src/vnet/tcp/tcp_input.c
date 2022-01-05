@@ -923,7 +923,7 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
    * reset dupacks to 0. Also needed if in congestion recovery */
   tc->rcv_dupacks = 0;
 
-  if (tcp_in_recovery (tc))
+  if (!tcp_in_fastrecovery (tc))
     tcp_cc_rcv_ack (tc, rs);
   else
     tcp_cc_rcv_cong_ack (tc, TCP_CC_PARTIALACK, rs);
