@@ -171,17 +171,9 @@ static_always_inline
     {
       clib_spinlock_lock_if_init (&txq->lock);
 
-      if (PREDICT_TRUE (xd->flags & DPDK_DEVICE_FLAG_PMD))
-	{
-	  /* no wrap, transmit in one burst */
-	  n_sent = rte_eth_tx_burst (xd->port_id, queue_id, mb, n_left);
-	  n_retry--;
-	}
-      else
-	{
-	  ASSERT (0);
-	  n_sent = 0;
-	}
+      /* no wrap, transmit in one burst */
+      n_sent = rte_eth_tx_burst (xd->port_id, queue_id, mb, n_left);
+      n_retry--;
 
       clib_spinlock_unlock_if_init (&txq->lock);
 
@@ -551,9 +543,6 @@ dpdk_subif_add_del_function (vnet_main_t * vnm,
     xd->num_subifs++;
   else if (xd->num_subifs)
     xd->num_subifs--;
-
-  if ((xd->flags & DPDK_DEVICE_FLAG_PMD) == 0)
-    goto done;
 
   /* currently we program VLANS only for IXGBE VF */
   if (xd->pmd != VNET_DPDK_PMD_IXGBEVF)
