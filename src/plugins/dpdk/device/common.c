@@ -146,11 +146,9 @@ dpdk_device_setup (dpdk_device_t * xd)
 
   rte_eth_dev_set_mtu (xd->port_id, hi->max_packet_bytes);
   xd->buffer_flags =
-    (VLIB_BUFFER_TOTAL_LENGTH_VALID | VLIB_BUFFER_EXT_HDR_VALID);
+    (VLIB_BUFFER_TOTAL_LENGTH_VALID | VLIB_BUFFER_EXT_HDR_VALID |
+     VNET_BUFFER_F_L4_CHECKSUM_COMPUTED | VNET_BUFFER_F_L4_CHECKSUM_CORRECT);
 
-  if (xd->port_conf.rxmode.offloads & DEV_RX_OFFLOAD_TCP_CKSUM)
-    xd->buffer_flags |=
-      (VNET_BUFFER_F_L4_CHECKSUM_COMPUTED | VNET_BUFFER_F_L4_CHECKSUM_CORRECT);
   if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
     dpdk_device_start (xd);
 
