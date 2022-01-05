@@ -232,6 +232,23 @@ cubic_unformat_config (unformat_input_t * input)
   return 1;
 }
 
+void
+cubic_event (tcp_connection_t *tc, tcp_cc_event_t evt)
+{
+  cubic_data_t *cd;
+  f64 now;
+
+  if (evt != TCP_CC_EVT_START_TX)
+    return;
+
+  /* App was idle so try to update t_start to avoid inflating cwnd
+   * if nothing recently sent and acked */
+  cd = (cubic_data_t *) tcp_cc_data (tc);
+  now = cubic_time (tc->c_thread_index);
+  if (now > tc->mrtt_us + 1)
+    cd->t_start = now;
+}
+
 const static tcp_cc_algorithm_t tcp_cubic = {
   .name = "cubic",
   .unformat_cfg = cubic_unformat_config,
@@ -240,6 +257,7 @@ const static tcp_cc_algorithm_t tcp_cubic = {
   .recovered = cubic_recovered,
   .rcv_ack = cubic_rcv_ack,
   .rcv_cong_ack = newreno_rcv_cong_ack,
+  .event = cubic_event,
   .init = cubic_conn_init,
 };
 
