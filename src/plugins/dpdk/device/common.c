@@ -148,9 +148,12 @@ dpdk_device_setup (dpdk_device_t * xd)
   xd->buffer_flags =
     (VLIB_BUFFER_TOTAL_LENGTH_VALID | VLIB_BUFFER_EXT_HDR_VALID);
 
-  if (xd->port_conf.rxmode.offloads & DEV_RX_OFFLOAD_TCP_CKSUM)
+  if (xd->port_conf.rxmode.offloads
+      & (DEV_RX_OFFLOAD_TCP_CKSUM | DEV_RX_OFFLOAD_UDP_CKSUM)
+	  == (DEV_RX_OFFLOAD_TCP_CKSUM | DEV_RX_OFFLOAD_UDP_CKSUM))
     xd->buffer_flags |=
       (VNET_BUFFER_F_L4_CHECKSUM_COMPUTED | VNET_BUFFER_F_L4_CHECKSUM_CORRECT);
+
   if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
     dpdk_device_start (xd);
 
