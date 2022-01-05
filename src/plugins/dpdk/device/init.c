@@ -127,8 +127,11 @@ dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
       xd->flags |= DPDK_DEVICE_FLAG_PROMISC;
       break;
     case ETHERNET_INTERFACE_FLAG_MTU:
-      xd->port_conf.rxmode.max_rx_pkt_len = hi->max_packet_bytes;
-      dpdk_device_setup (xd);
+      dpdk_device_stop (xd);
+      rte_eth_dev_set_mtu (xd->port_id, hi->max_packet_bytes);
+      dpdk_device_start (xd);
+      dpdk_log_debug ("[%u} mtu changed to %u", xd->port_id,
+		      hi->max_packet_bytes);
       return 0;
     default:
       return ~0;
@@ -143,12 +146,6 @@ dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
     }
 
   return old;
-}
-
-static int
-dpdk_port_crc_strip_enabled (dpdk_device_t * xd)
-{
-  return !(xd->port_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC);
 }
 
 /* The function check_l3cache helps check if Level 3 cache exists or not on current CPUs
@@ -206,7 +203,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 nports;
-  u32 mtu, max_rx_frame;
   u16 port_id;
   clib_error_t *error;
   vlib_main_t *vm = vlib_get_main ();
@@ -686,80 +682,6 @@ dpdk_lib_init (dpdk_main_t * dm)
       if (error)
 	return error;
 
-      /*
-       * Ensure default mtu is not > the mtu read from the hardware.
-       * Otherwise rte_eth_dev_configure() will fail and the port will
-       * not be available.
-       * Calculate max_frame_size and mtu supported by NIC
-       */
-      if (ETHERNET_MAX_PACKET_BYTES > di.max_rx_pktlen)
-	{
-	  /*
-	   * This device does not support the platforms's max frame
-	   * size. Use it's advertised mru instead.
-	   */
-	  max_rx_frame = di.max_rx_pktlen;
-	  mtu = di.max_rx_pktlen - sizeof (ethernet_header_t);
-	}
-      else
-	{
-	  /* VPP treats MTU and max_rx_pktlen both equal to
-	   * ETHERNET_MAX_PACKET_BYTES, if dev_info.max_rx_pktlen >=
-	   * ETHERNET_MAX_PACKET_BYTES + sizeof(ethernet_header_t)
-	   */
-	  if (di.max_rx_pktlen >=
-	      (ETHERNET_MAX_PACKET_BYTES + sizeof (ethernet_header_t)))
-	    {
-	      mtu = ETHERNET_MAX_PACKET_BYTES;
-	      max_rx_frame = ETHERNET_MAX_PACKET_BYTES;
-
-	      /*
-	       * Some platforms do not account for Ethernet FCS (4 bytes) in
-	       * MTU calculations. To interop with them increase mru but only
-	       * if the device's settings can support it.
-	       */
-	      if (dpdk_port_crc_strip_enabled (xd) &&
-		  (di.max_rx_pktlen >= (ETHERNET_MAX_PACKET_BYTES +
-					sizeof (ethernet_header_t) + 4)))
-		{
-		  max_rx_frame += 4;
-		}
-	    }
-	  else
-	    {
-	      max_rx_frame = ETHERNET_MAX_PACKET_BYTES;
-	      mtu = ETHERNET_MAX_PACKET_BYTES - sizeof (ethernet_header_t);
-
-	      if (dpdk_port_crc_strip_enabled (xd) &&
-		  (di.max_rx_pktlen >= (ETHERNET_MAX_PACKET_BYTES + 4)))
-		{
-		  max_rx_frame += 4;
-		}
-	    }
-	}
-
-      if (xd->pmd == VNET_DPDK_PMD_FAILSAFE)
-	{
-	  /* failsafe device numerables are reported with active device only,
-	   * need to query the mtu for current device setup to overwrite
-	   * reported value.
-	   */
-	  uint16_t dev_mtu;
-	  if (!rte_eth_dev_get_mtu (port_id, &dev_mtu))
-	    {
-	      mtu = dev_mtu;
-	      max_rx_frame = mtu + sizeof (ethernet_header_t);
-
-	      if (dpdk_port_crc_strip_enabled (xd))
-		{
-		  max_rx_frame += 4;
-		}
-	    }
-	}
-
-      /*Set port rxmode config */
-      xd->port_conf.rxmode.max_rx_pkt_len = max_rx_frame;
-
       sw = vnet_get_hw_sw_interface (vnm, xd->hw_if_index);
       xd->sw_if_index = sw->sw_if_index;
       vnet_hw_if_set_input_node (vnm, xd->hw_if_index, dpdk_input_node.index);
@@ -788,12 +710,8 @@ dpdk_lib_init (dpdk_main_t * dm)
       /*Get vnet hardware interface */
       hi = vnet_get_hw_interface (vnm, xd->hw_if_index);
 
-      /*Override default max_packet_bytes and max_supported_bytes set in
-       * ethernet_register_interface() above*/
       if (hi)
 	{
-	  hi->max_packet_bytes = mtu;
-	  hi->max_supported_packet_bytes = max_rx_frame;
 	  hi->numa_node = xd->cpu_socket;
 
 	  /* Indicate ability to support L3 DMAC filtering and
@@ -853,17 +771,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 	dpdk_log_err ("setup failed for device %U. Errors:\n  %U",
 		      format_dpdk_device_name, port_id,
 		      format_dpdk_device_errors, xd);
-
-      if (hi)
-	hi->max_packet_bytes =
-	  xd->port_conf.rxmode.max_rx_pkt_len - sizeof (ethernet_header_t);
-      else
-	dpdk_log_warn ("hi NULL");
-
-      if (xd->conf.no_multi_seg)
-	mtu = mtu > ETHER_MAX_LEN ? ETHER_MAX_LEN : mtu;
-
-      rte_eth_dev_set_mtu (xd->port_id, mtu);
     }
 
   return 0;

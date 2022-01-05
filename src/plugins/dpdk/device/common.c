@@ -48,6 +48,7 @@ dpdk_device_setup (dpdk_device_t * xd)
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, xd->hw_if_index);
   struct rte_eth_dev_info dev_info;
   u64 bitmap;
+  u16 mtu;
   int rv;
   int j;
 
@@ -89,6 +90,12 @@ dpdk_device_setup (dpdk_device_t * xd)
       xd->port_conf.rxmode.offloads ^= bitmap;
     }
 
+  if (xd->port_conf.rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME)
+    xd->port_conf.rxmode.max_rx_pkt_len =
+      clib_min (ETHERNET_MAX_PACKET_BYTES, dev_info.max_rx_pktlen);
+  else
+    xd->port_conf.rxmode.max_rx_pkt_len = 0;
+
   rv = rte_eth_dev_configure (xd->port_id, xd->conf.n_rx_queues,
 			      xd->conf.n_tx_queues, &xd->port_conf);
 
@@ -96,6 +103,22 @@ dpdk_device_setup (dpdk_device_t * xd)
     {
       dpdk_device_error (xd, "rte_eth_dev_configure", rv);
       goto error;
+    }
+
+  rte_eth_dev_get_mtu (xd->port_id, &mtu);
+  dpdk_log_debug ("[%u] mtu %u", xd->port_id, mtu);
+
+  hi->max_supported_packet_bytes = mtu;
+  if (hi->max_packet_bytes > mtu)
+    {
+      vnet_sw_interface_set_mtu (vnm, xd->sw_if_index, mtu);
+      dpdk_log_debug ("[%u] interface mtu set to %u", xd->port_id, mtu);
+    }
+  else
+    {
+      rte_eth_dev_set_mtu (xd->port_id, hi->max_packet_bytes);
+      dpdk_log_debug ("[%u] port mtu set to %u", xd->port_id,
+		      hi->max_packet_bytes);
     }
 
   vec_validate_aligned (xd->tx_queues, xd->conf.n_tx_queues - 1,
@@ -144,7 +167,6 @@ dpdk_device_setup (dpdk_device_t * xd)
   if (vec_len (xd->errors))
     goto error;
 
-  rte_eth_dev_set_mtu (xd->port_id, hi->max_packet_bytes);
   xd->buffer_flags =
     (VLIB_BUFFER_TOTAL_LENGTH_VALID | VLIB_BUFFER_EXT_HDR_VALID);
 
