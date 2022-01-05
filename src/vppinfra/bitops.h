@@ -176,6 +176,32 @@ do {									\
     }									\
 } while (0)
 
+static_always_inline u64
+reset_lowest_set_bit (u64 x)
+{
+#ifdef __BMI__
+  return _blsr_u64 (x);
+#else
+  return x & (x - 1);
+#endif
+}
+
+static_always_inline u64
+get_lowest_set_bit (u64 x)
+{
+#ifdef __BMI__
+  return _blsi_u64 (x);
+#else
+  return x & -x;
+#endif
+}
+
+static_always_inline u64
+get_lowest_set_bit_index (u64 x)
+{
+  return __builtin_ctzll (x);
+}
+
 #endif /* included_clib_bitops_h */
 
 /*
