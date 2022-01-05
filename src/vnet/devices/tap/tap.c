@@ -126,6 +126,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   vlib_thread_main_t *thm = vlib_get_thread_main ();
   vlib_physmem_main_t *vpm = &vm->physmem_main;
   vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_if_caps_change_t cc;
   virtio_main_t *vim = &virtio_main;
   tap_main_t *tm = &tap_main;
   vnet_sw_interface_t *sw;
@@ -669,17 +670,18 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   args->sw_if_index = vif->sw_if_index;
   args->rv = 0;
   hw = vnet_get_hw_interface (vnm, vif->hw_if_index);
-  hw->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_INT_MODE;
+  cc.mask = VNET_HW_IF_CAP_INT_MODE | VNET_HW_IF_CAP_TCP_GSO |
+	    VNET_HW_IF_CAP_TX_TCP_CKSUM | VNET_HW_IF_CAP_TX_UDP_CKSUM;
+  cc.val = VNET_HW_IF_CAP_INT_MODE;
+
   if (args->tap_flags & TAP_FLAG_GSO)
     {
-      hw->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO |
-		  VNET_HW_INTERFACE_CAP_SUPPORTS_TX_TCP_CKSUM |
-		  VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_CKSUM;
+      cc.val |= VNET_HW_IF_CAP_TCP_GSO | VNET_HW_IF_CAP_TX_TCP_CKSUM |
+		VNET_HW_IF_CAP_TX_UDP_CKSUM;
     }
   else if (args->tap_flags & TAP_FLAG_CSUM_OFFLOAD)
     {
-      hw->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_TX_TCP_CKSUM |
-		  VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_CKSUM;
+      cc.val |= VNET_HW_IF_CAP_TX_TCP_CKSUM | VNET_HW_IF_CAP_TX_UDP_CKSUM;
     }
   if ((args->tap_flags & TAP_FLAG_GSO)
       && (args->tap_flags & TAP_FLAG_GRO_COALESCE))
@@ -696,6 +698,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
       vnet_sw_interface_set_mtu (vnm, hw->sw_if_index, hw->max_packet_bytes);
     }
 
+  vnet_hw_if_change_caps (vnm, vif->hw_if_index, &cc);
   virtio_pre_input_node_enable (vm, vif);
   virtio_vring_set_rx_queues (vm, vif);
   virtio_vring_set_tx_queues (vm, vif);
@@ -773,6 +776,7 @@ tap_csum_offload_enable_disable (vlib_main_t * vm, u32 sw_if_index,
 				 int enable_disable)
 {
   vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_if_caps_change_t cc;
   virtio_main_t *mm = &virtio_main;
   virtio_if_t *vif;
   vnet_hw_interface_t *hw;
@@ -795,19 +799,9 @@ tap_csum_offload_enable_disable (vlib_main_t * vm, u32 sw_if_index,
   vif->packet_coalesce = 0;
   vif->csum_offload_enabled = enable_disable ? 1 : 0;
 
-  if ((hw->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO) != 0)
-    {
-      hw->caps &= ~VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO;
-    }
-
-  if (enable_disable)
-    {
-      hw->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_L4_TX_CKSUM;
-    }
-  else
-    {
-      hw->caps &= ~VNET_HW_INTERFACE_CAP_SUPPORTS_L4_TX_CKSUM;
-    }
+  cc.mask = VNET_HW_IF_CAP_TCP_GSO | VNET_HW_IF_CAP_L4_TX_CKSUM;
+  cc.val = enable_disable ? VNET_HW_IF_CAP_L4_TX_CKSUM : 0;
+  vnet_hw_if_change_caps (vnm, vif->hw_if_index, &cc);
 
 error:
   if (err)
@@ -825,6 +819,7 @@ tap_gso_enable_disable (vlib_main_t * vm, u32 sw_if_index, int enable_disable,
 {
   vnet_main_t *vnm = vnet_get_main ();
   virtio_main_t *mm = &virtio_main;
+  vnet_hw_if_caps_change_t cc;
   virtio_if_t *vif;
   vnet_hw_interface_t *hw;
   clib_error_t *err = 0;
@@ -844,27 +839,16 @@ tap_gso_enable_disable (vlib_main_t * vm, u32 sw_if_index, int enable_disable,
     _IOCTL (vif->tap_fds[i], TUNSETOFFLOAD, offload);
   vif->gso_enabled = enable_disable ? 1 : 0;
   vif->csum_offload_enabled = 0;
-  if (enable_disable)
-    {
-      if ((hw->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO) == 0)
-	{
-	  hw->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO |
-		      VNET_HW_INTERFACE_CAP_SUPPORTS_L4_TX_CKSUM;
-	}
-      if (is_packet_coalesce)
-	{
-	  virtio_set_packet_coalesce (vif);
-	}
-    }
+
+  cc.mask = VNET_HW_IF_CAP_TCP_GSO | VNET_HW_IF_CAP_L4_TX_CKSUM;
+  cc.val = enable_disable ? cc.mask : 0;
+
+  if (enable_disable && is_packet_coalesce)
+    virtio_set_packet_coalesce (vif);
   else
-    {
-      if ((hw->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO) != 0)
-	{
-	  hw->caps &= ~(VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO |
-			VNET_HW_INTERFACE_CAP_SUPPORTS_L4_TX_CKSUM);
-	}
       vif->packet_coalesce = 0;
-    }
+
+  vnet_hw_if_change_caps (vnm, vif->hw_if_index, &cc);
 
 error:
   if (err)
