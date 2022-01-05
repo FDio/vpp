@@ -164,7 +164,7 @@ static_always_inline
   int queue_id;
 
   n_retry = 16;
-  queue_id = vm->thread_index % xd->tx_q_used;
+  queue_id = vm->thread_index % xd->conf.n_tx_queues;
   txq = vec_elt_at_index (xd->tx_queues, queue_id);
 
   do
