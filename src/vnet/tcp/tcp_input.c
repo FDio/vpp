@@ -866,8 +866,7 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
 	tcp_fastrecovery_first_on (tc);
 
       tc->rxt_delivered += tc->sack_sb.rxt_sacked;
-      tc->prr_delivered += tc->bytes_acked + tc->sack_sb.last_sacked_bytes
-	- tc->sack_sb.last_bytes_delivered;
+      tc->prr_delivered += rs->delivered;
     }
   else
     {
@@ -1042,6 +1041,9 @@ process_ack:
 
   if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
     tcp_bt_sample_delivery_rate (tc, &rs);
+  else
+    rs.delivered = tc->bytes_acked + tc->sack_sb.last_sacked_bytes -
+		   tc->sack_sb.last_bytes_delivered;
 
   if (tc->bytes_acked + tc->sack_sb.last_sacked_bytes)
     {
