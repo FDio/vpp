@@ -923,9 +923,13 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
    * reset dupacks to 0. Also needed if in congestion recovery */
   tc->rcv_dupacks = 0;
 
-  if (tcp_in_recovery (tc))
-    tcp_cc_rcv_ack (tc, rs);
-  else
+  //  if (tcp_in_recovery (tc))
+  //    tcp_cc_rcv_ack (tc, rs);
+  //  else
+  //  tcp_cc_rcv_cong_ack (tc, TCP_CC_PARTIALACK, rs);
+
+  /* In (fast)recovery with sacks cwnd is controlled by prr */
+  if (!has_sack)
     tcp_cc_rcv_cong_ack (tc, TCP_CC_PARTIALACK, rs);
 }
 
