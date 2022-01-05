@@ -1337,7 +1337,10 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
 	}
 
       if (tcp_opts_sack_permitted (&tc->rcv_opts))
-	tcp_check_sack_reneging (tc);
+	{
+	  tcp_check_sack_reneging (tc);
+	  scoreboard_rxt_mark_lost (&tc->sack_sb, tc->snd_una, tc->snd_nxt);
+	}
 
       /* Update send congestion to make sure that rxt has data to send */
       tc->snd_congestion = tc->snd_nxt;
