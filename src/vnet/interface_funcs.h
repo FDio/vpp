@@ -557,6 +557,31 @@ pcap_add_buffer (pcap_main_t *pm, struct vlib_main_t *vm, u32 buffer_index,
       clib_spinlock_unlock_if_init (&pm->lock);
     }
 }
+
+typedef struct
+{
+  vnet_hw_if_caps_t val;
+  vnet_hw_if_caps_t mask;
+} vnet_hw_if_caps_change_t;
+
+void vnet_hw_if_change_caps (vnet_main_t *vnm, u32 hw_if_index,
+			     vnet_hw_if_caps_change_t *caps);
+
+static_always_inline void
+vnet_hw_if_set_caps (vnet_main_t *vnm, u32 hw_if_index, vnet_hw_if_caps_t caps)
+{
+  vnet_hw_if_caps_change_t cc = { .val = caps, .mask = caps };
+  vnet_hw_if_change_caps (vnm, hw_if_index, &cc);
+}
+
+static_always_inline void
+vnet_hw_if_unset_caps (vnet_main_t *vnm, u32 hw_if_index,
+		       vnet_hw_if_caps_t caps)
+{
+  vnet_hw_if_caps_change_t cc = { .val = 0, .mask = caps };
+  vnet_hw_if_change_caps (vnm, hw_if_index, &cc);
+}
+
 #endif /* included_vnet_interface_funcs_h */
 
 /*
