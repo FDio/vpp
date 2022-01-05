@@ -36,12 +36,12 @@ static char *dpdk_error_strings[] = {
 };
 
 /* make sure all flags we need are stored in lower 32 bits */
-STATIC_ASSERT ((u64) (PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD | PKT_RX_FDIR |
-		      PKT_RX_LRO) < (1ULL << 32),
+STATIC_ASSERT ((u64) (RTE_MBUF_F_RX_IP_CKSUM_BAD | RTE_MBUF_F_RX_L4_CKSUM_BAD |
+		      RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_LRO) < (1ULL << 32),
 	       "dpdk flags not in lower word, fix needed");
 
-STATIC_ASSERT (PKT_RX_L4_CKSUM_BAD == (1ULL << 3),
-	       "bit number of PKT_RX_L4_CKSUM_BAD is no longer 3!");
+STATIC_ASSERT (RTE_MBUF_F_RX_L4_CKSUM_BAD == (1ULL << 3),
+	       "bit number of RTE_MBUF_F_RX_L4_CKSUM_BAD is no longer 3!");
 
 static_always_inline uword
 dpdk_process_subseq_segs (vlib_main_t * vm, vlib_buffer_t * b,
@@ -128,18 +128,18 @@ dpdk_prefetch_buffer_x4 (struct rte_mbuf *mb[])
 
     @em Uses:
     - <code>struct rte_mbuf mb->ol_flags</code>
-        - PKT_RX_IP_CKSUM_BAD
+	- RTE_MBUF_F_RX_IP_CKSUM_BAD
 
     @em Sets:
     - <code>b->error</code> if the packet is to be dropped immediately
     - <code>b->current_data, b->current_length</code>
-        - adjusted as needed to skip the L2 header in  direct-dispatch cases
+	- adjusted as needed to skip the L2 header in  direct-dispatch cases
     - <code>vnet_buffer(b)->sw_if_index[VLIB_RX]</code>
-        - rx interface sw_if_index
+	- rx interface sw_if_index
     - <code>vnet_buffer(b)->sw_if_index[VLIB_TX] = ~0</code>
-        - required by ipX-lookup
+	- required by ipX-lookup
     - <code>b->flags</code>
-        - to indicate multi-segment pkts (VLIB_BUFFER_NEXT_PRESENT), etc.
+	- to indicate multi-segment pkts (VLIB_BUFFER_NEXT_PRESENT), etc.
 
     <em>Next Nodes:</em>
     - Static arcs to: error-drop, ethernet-input,
@@ -256,7 +256,7 @@ dpdk_process_flow_offload (dpdk_device_t * xd, dpdk_per_thread_data_t * ptd,
   /* TODO prefetch and quad-loop */
   for (n = 0; n < n_rx_packets; n++)
     {
-      if ((ptd->flags[n] & PKT_RX_FDIR_ID) == 0)
+      if ((ptd->flags[n] & RTE_MBUF_F_RX_FDIR_ID) == 0)
 	continue;
 
       fle = pool_elt_at_index (xd->flow_lookup_entries,
@@ -329,7 +329,7 @@ dpdk_process_lro_offload (dpdk_device_t *xd, dpdk_per_thread_data_t *ptd,
   for (n = 0; n < n_rx_packets; n++)
     {
       b0 = vlib_buffer_from_rte_mbuf (ptd->mbufs[n]);
-      if (ptd->flags[n] & PKT_RX_LRO)
+      if (ptd->flags[n] & RTE_MBUF_F_RX_LRO)
 	{
 	  b0->flags |= VNET_BUFFER_F_GSO;
 	  vnet_buffer2 (b0)->gso_size = ptd->mbufs[n]->tso_segsz;
@@ -401,27 +401,27 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
   else
     n_rx_bytes = dpdk_process_rx_burst (vm, ptd, n_rx_packets, 0, &or_flags);
 
-  if (PREDICT_FALSE ((or_flags & PKT_RX_LRO)))
+  if (PREDICT_FALSE ((or_flags & RTE_MBUF_F_RX_LRO)))
     dpdk_process_lro_offload (xd, ptd, n_rx_packets);
 
-  if (PREDICT_FALSE ((or_flags & PKT_RX_L4_CKSUM_BAD) &&
+  if (PREDICT_FALSE ((or_flags & RTE_MBUF_F_RX_L4_CKSUM_BAD) &&
 		     (xd->buffer_flags & VNET_BUFFER_F_L4_CHECKSUM_CORRECT)))
     {
       for (n = 0; n < n_rx_packets; n++)
 	{
 	  /* Check and reset VNET_BUFFER_F_L4_CHECKSUM_CORRECT flag
-	     if PKT_RX_L4_CKSUM_BAD is set.
-	     The magic num 3 is the bit number of PKT_RX_L4_CKSUM_BAD
+	     if RTE_MBUF_F_RX_L4_CKSUM_BAD is set.
+	     The magic num 3 is the bit number of RTE_MBUF_F_RX_L4_CKSUM_BAD
 	     which is defined in DPDK.
 	     Have made a STATIC_ASSERT in this file to ensure this.
 	   */
 	  b0 = vlib_buffer_from_rte_mbuf (ptd->mbufs[n]);
-	  b0->flags ^= (ptd->flags[n] & PKT_RX_L4_CKSUM_BAD)
+	  b0->flags ^= (ptd->flags[n] & RTE_MBUF_F_RX_L4_CKSUM_BAD)
 		       << (VNET_BUFFER_F_LOG2_L4_CHECKSUM_CORRECT - 3);
 	}
     }
 
-  if (PREDICT_FALSE (or_flags & PKT_RX_FDIR))
+  if (PREDICT_FALSE (or_flags & RTE_MBUF_F_RX_FDIR))
     {
       /* some packets will need to go to different next nodes */
       for (n = 0; n < n_rx_packets; n++)
@@ -430,7 +430,7 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
       /* flow offload - process if rx flow offload enabled and at least one
          packet is marked */
       if (PREDICT_FALSE ((xd->flags & DPDK_DEVICE_FLAG_RX_FLOW_OFFLOAD) &&
-			 (or_flags & PKT_RX_FDIR)))
+			 (or_flags & RTE_MBUF_F_RX_FDIR)))
 	dpdk_process_flow_offload (xd, ptd, n_rx_packets);
 
       /* enqueue buffers to the next node */
@@ -467,7 +467,7 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
 	     marked as ip4 checksum bad we can notify ethernet input so it
 	     can send pacets to ip4-input-no-checksum node */
 	  if (xd->flags & DPDK_DEVICE_FLAG_RX_IP4_CKSUM &&
-	      (or_flags & PKT_RX_IP_CKSUM_BAD) == 0)
+	      (or_flags & RTE_MBUF_F_RX_IP_CKSUM_BAD) == 0)
 	    f->flags |= ETH_INPUT_FRAME_F_IP4_CKSUM_OK;
 	  vlib_frame_no_append (f);
 	}
