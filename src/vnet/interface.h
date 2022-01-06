@@ -70,6 +70,10 @@ typedef clib_error_t *(vnet_subif_add_del_function_t)
   (struct vnet_main_t * vnm, u32 if_index,
    struct vnet_sw_interface_t * template, int is_add);
 
+/* Interface set mtu callback. */
+typedef clib_error_t *(vnet_interface_set_mtu_function_t) (
+  struct vnet_main_t *vnm, struct vnet_hw_interface_t *hi, u32 mtu);
+
 /* Interface set mac address callback. */
 typedef clib_error_t *(vnet_interface_set_mac_address_function_t)
   (struct vnet_hw_interface_t * hi,
@@ -428,6 +432,8 @@ typedef struct _vnet_hw_interface_class
 
   /* Function to add/delete additional MAC addresses */
   vnet_interface_add_del_mac_address_function_t *mac_addr_add_del_function;
+  /* Function to set mtu. */
+  vnet_interface_set_mtu_function_t *set_mtu;
 
   /* Format function to display interface name. */
   format_function_t *format_interface_name;
