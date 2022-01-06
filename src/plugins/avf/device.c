@@ -263,7 +263,7 @@ avf_rxq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 rxq_size)
     vlib_buffer_pool_get_default_for_numa (vm, ad->numa_node);
 
   if (rxq->descs == 0)
-    return vlib_physmem_last_error (vm);
+    return clib_error_return (0, "Failed to allocate descriptors");
 
   if ((err = vlib_pci_map_dma (vm, ad->pci_dev_handle, (void *) rxq->descs)))
     return err;
@@ -324,7 +324,7 @@ avf_txq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 txq_size)
 						   2 * CLIB_CACHE_LINE_BYTES,
 						   ad->numa_node);
   if (txq->descs == 0)
-    return vlib_physmem_last_error (vm);
+    return clib_error_return (0, "Failed to allocate descriptors");
 
   if ((err = vlib_pci_map_dma (vm, ad->pci_dev_handle, (void *) txq->descs)))
     return err;
@@ -1655,7 +1655,7 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
 						ad->numa_node);
   if (ad->atq == 0)
     {
-      error = vlib_physmem_last_error (vm);
+      error = clib_error_return (0, "Allocation failure");
       goto error;
     }
 
@@ -1668,7 +1668,7 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
 						ad->numa_node);
   if (ad->arq == 0)
     {
-      error = vlib_physmem_last_error (vm);
+      error = clib_error_return (0, "Allocation failure");
       goto error;
     }
 
@@ -1681,7 +1681,7 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
 						     ad->numa_node);
   if (ad->atq_bufs == 0)
     {
-      error = vlib_physmem_last_error (vm);
+      error = clib_error_return (0, "Allocation failure");
       goto error;
     }
 
@@ -1694,7 +1694,7 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
 						     ad->numa_node);
   if (ad->arq_bufs == 0)
     {
-      error = vlib_physmem_last_error (vm);
+      error = clib_error_return (0, "Allocation failure");
       goto error;
     }
 

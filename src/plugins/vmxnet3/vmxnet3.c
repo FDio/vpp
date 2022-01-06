@@ -192,7 +192,7 @@ vmxnet3_provision_driver_shared (vlib_main_t * vm, vmxnet3_device_t * vd)
     vlib_physmem_alloc_aligned_on_numa (vm, sizeof (*vd->driver_shared), 512,
 					vd->numa_node);
   if (vd->driver_shared == 0)
-    return vlib_physmem_last_error (vm);
+    return clib_error_return (0, "Allocation failure");
 
   clib_memset (vd->driver_shared, 0, sizeof (*vd->driver_shared));
 
@@ -307,7 +307,7 @@ vmxnet3_rxq_init (vlib_main_t * vm, vmxnet3_device_t * vd, u16 qid, u16 qsz)
 	(vm, qsz * sizeof (*rxq->rx_desc[rid]), 512, vd->numa_node);
 
       if (rxq->rx_desc[rid] == 0)
-	return vlib_physmem_last_error (vm);
+	return clib_error_return (0, "Allocation failure");
 
       clib_memset (rxq->rx_desc[rid], 0, qsz * sizeof (*rxq->rx_desc[rid]));
     }
@@ -315,7 +315,7 @@ vmxnet3_rxq_init (vlib_main_t * vm, vmxnet3_device_t * vd, u16 qid, u16 qsz)
     vlib_physmem_alloc_aligned_on_numa (vm, qsz * sizeof (*rxq->rx_comp), 512,
 					vd->numa_node);
   if (rxq->rx_comp == 0)
-    return vlib_physmem_last_error (vm);
+    return clib_error_return (0, "Allocation failure");
 
   clib_memset (rxq->rx_comp, 0, qsz * sizeof (*rxq->rx_comp));
   for (rid = 0; rid < VMXNET3_RX_RING_SIZE; rid++)
@@ -355,7 +355,7 @@ vmxnet3_txq_init (vlib_main_t * vm, vmxnet3_device_t * vd, u16 qid, u16 qsz)
   txq->tx_desc =
     vlib_physmem_alloc_aligned_on_numa (vm, size, 512, vd->numa_node);
   if (txq->tx_desc == 0)
-    return vlib_physmem_last_error (vm);
+    return clib_error_return (0, "Allocation failure");
 
   clib_memset (txq->tx_desc, 0, size);
 
@@ -363,7 +363,7 @@ vmxnet3_txq_init (vlib_main_t * vm, vmxnet3_device_t * vd, u16 qid, u16 qsz)
   txq->tx_comp =
     vlib_physmem_alloc_aligned_on_numa (vm, size, 512, vd->numa_node);
   if (txq->tx_comp == 0)
-    return vlib_physmem_last_error (vm);
+    return clib_error_return (0, "Allocation failure");
 
   clib_memset (txq->tx_comp, 0, size);
   vec_validate_aligned (txq->tx_ring.bufs, txq->size, CLIB_CACHE_LINE_BYTES);
@@ -390,7 +390,7 @@ vmxnet3_rss_init (vlib_main_t * vm, vmxnet3_device_t * vd)
 
   vd->rss = vlib_physmem_alloc_aligned_on_numa (vm, size, 512, vd->numa_node);
   if (vd->rss == 0)
-    return vlib_physmem_last_error (vm);
+    return clib_error_return (0, "Allocation failure");
 
   clib_memset (vd->rss, 0, size);
   rss = vd->rss;
@@ -493,7 +493,7 @@ vmxnet3_device_init (vlib_main_t * vm, vmxnet3_device_t * vd,
   vd->queues =
     vlib_physmem_alloc_aligned_on_numa (vm, size, 512, vd->numa_node);
   if (vd->queues == 0)
-    return vlib_physmem_last_error (vm);
+    return clib_error_return (0, "Allocation failure");
 
   clib_memset (vd->queues, 0, size);
 

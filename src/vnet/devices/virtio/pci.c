@@ -622,7 +622,8 @@ virtio_pci_control_vring_packed_init (vlib_main_t * vm, virtio_if_t * vif,
     vlib_physmem_alloc_aligned_on_numa (vm, i, VIRTIO_PCI_VRING_ALIGN,
 					vif->numa_node);
   if (!ptr)
-    return vlib_physmem_last_error (vm);
+    return clib_error_return (
+      0, "Failed to allocate vring (%u bytes on numa %u)", i, vif->numa_node);
   clib_memset (ptr, 0, i);
 
   vring->packed_desc = ptr;
@@ -689,7 +690,8 @@ virtio_pci_control_vring_split_init (vlib_main_t * vm, virtio_if_t * vif,
     vlib_physmem_alloc_aligned_on_numa (vm, i, VIRTIO_PCI_VRING_ALIGN,
 					vif->numa_node);
   if (!ptr)
-    return vlib_physmem_last_error (vm);
+    return clib_error_return (
+      0, "Failed to allocate vring (%u bytes on numa %u)", i, vif->numa_node);
   clib_memset (ptr, 0, i);
   vring_init (&vr, queue_size, ptr, VIRTIO_PCI_VRING_ALIGN);
   vring->desc = vr.desc;
@@ -766,7 +768,8 @@ virtio_pci_vring_split_init (vlib_main_t * vm, virtio_if_t * vif,
     vlib_physmem_alloc_aligned_on_numa (vm, i, VIRTIO_PCI_VRING_ALIGN,
 					vif->numa_node);
   if (!ptr)
-    return vlib_physmem_last_error (vm);
+    return clib_error_return (
+      0, "Failed to allocate vring (%u bytes on numa %u)", i, vif->numa_node);
   clib_memset (ptr, 0, i);
   vring_init (&vr, queue_size, ptr, VIRTIO_PCI_VRING_ALIGN);
   vring->desc = vr.desc;
@@ -842,7 +845,8 @@ virtio_pci_vring_packed_init (vlib_main_t * vm, virtio_if_t * vif,
     vlib_physmem_alloc_aligned_on_numa (vm, i, VIRTIO_PCI_VRING_ALIGN,
 					vif->numa_node);
   if (!ptr)
-    return vlib_physmem_last_error (vm);
+    return clib_error_return (
+      0, "Failed to allocate vring (%u bytes on numa %u)", i, vif->numa_node);
 
   clib_memset (ptr, 0, i);
   vring->packed_desc = ptr;
