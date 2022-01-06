@@ -58,11 +58,13 @@ vmxnet3_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (line_input, "num-rx-queues %u", &size))
 	args.rxq_num = size;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  unformat_free (line_input);
+	  return clib_error_return (0, "unknown input `%U'",
+				    format_unformat_error, input);
+	}
     }
   unformat_free (line_input);
-
 
   vmxnet3_create_if (vm, &args);
   if (args.error == 0)
