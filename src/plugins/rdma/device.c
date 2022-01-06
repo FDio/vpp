@@ -183,11 +183,10 @@ rdma_mac_change (vnet_hw_interface_t * hw, const u8 * old, const u8 * new)
   return 0;
 }
 
-static u32
-rdma_dev_change_mtu (rdma_device_t * rd)
+static clib_error_t *
+rdma_set_mtu (vnet_main_t *vnm, vnet_hw_interface_t *hw, u32 mtu)
 {
-  rdma_log__ (VLIB_LOG_LEVEL_ERR, rd, "MTU change not supported");
-  return ~0;
+  return vnet_error (VNET_ERR_UNSUPPORTED, 0);
 }
 
 static u32
@@ -202,8 +201,6 @@ rdma_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
       return rdma_dev_set_ucast (rd);
     case ETHERNET_INTERFACE_FLAG_ACCEPT_ALL:
       return rdma_dev_set_promisc (rd);
-    case ETHERNET_INTERFACE_FLAG_MTU:
-      return rdma_dev_change_mtu (rd);
     }
 
   rdma_log__ (VLIB_LOG_LEVEL_ERR, rd, "unknown flag %x requested", flags);
@@ -361,6 +358,7 @@ rdma_register_interface (vnet_main_t * vnm, rdma_device_t * rd)
   eir.dev_instance = rd->dev_instance;
   eir.address = rd->hwaddr.bytes;
   eir.cb.flag_change = rdma_flag_change;
+  eir.cb.set_mtu = rdma_set_mtu;
   rd->hw_if_index = vnet_eth_register_interface (vnm, &eir);
   /* Indicate ability to support L3 DMAC filtering and
    * initialize interface to L3 non-promisc mode */

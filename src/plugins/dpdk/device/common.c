@@ -162,21 +162,6 @@ dpdk_device_setup (dpdk_device_t * xd)
       goto error;
     }
 
-  rte_eth_dev_get_mtu (xd->port_id, &mtu);
-  dpdk_log_debug ("[%u] device default mtu %u", xd->port_id, mtu);
-
-  hi->max_supported_packet_bytes = mtu;
-  if (hi->max_packet_bytes > mtu)
-    {
-      vnet_hw_interface_set_mtu (vnm, xd->hw_if_index, mtu);
-    }
-  else
-    {
-      rte_eth_dev_set_mtu (xd->port_id, hi->max_packet_bytes);
-      dpdk_log_debug ("[%u] port mtu set to %u", xd->port_id,
-		      hi->max_packet_bytes);
-    }
-
   vec_validate_aligned (xd->tx_queues, xd->conf.n_tx_queues - 1,
 			CLIB_CACHE_LINE_BYTES);
   for (j = 0; j < xd->conf.n_tx_queues; j++)
@@ -218,6 +203,21 @@ dpdk_device_setup (dpdk_device_t * xd)
 
       if (rv < 0)
 	dpdk_device_error (xd, "rte_eth_rx_queue_setup", rv);
+    }
+
+  rte_eth_dev_get_mtu (xd->port_id, &mtu);
+  dpdk_log_debug ("[%u] device default mtu %u", xd->port_id, mtu);
+
+  hi->max_supported_packet_bytes = mtu;
+  if (hi->max_packet_bytes > mtu)
+    {
+      vnet_hw_interface_set_mtu (vnm, xd->hw_if_index, mtu);
+    }
+  else
+    {
+      rte_eth_dev_set_mtu (xd->port_id, hi->max_packet_bytes);
+      dpdk_log_debug ("[%u] port mtu set to %u", xd->port_id,
+		      hi->max_packet_bytes);
     }
 
   if (vec_len (xd->errors))
