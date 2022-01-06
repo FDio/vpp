@@ -533,6 +533,7 @@ vnet_create_pipe_interface (u8 is_specified,
 {
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
+  vnet_eth_interface_registration_t eir = {};
   u8 address[6] = {
     [0] = 0x22,
     [1] = 0x22,
@@ -563,15 +564,10 @@ vnet_create_pipe_interface (u8 is_specified,
    */
   address[5] = instance;
 
-  error = ethernet_register_interface (vnm, pipe_device_class.index,
-				       instance, address, &hw_if_index,
-				       /* flag change */ 0);
-
-  if (error)
-    {
-      rv = VNET_API_ERROR_INVALID_REGISTRATION;
-      goto oops;
-    }
+  eir.dev_class_index = pipe_device_class.index;
+  eir.dev_instance = instance;
+  eir.address = address;
+  hw_if_index = vnet_eth_register_interface (vnm, &eir);
 
   hi = vnet_get_hw_interface (vnm, hw_if_index);
   *parent_sw_if_index = hi->sw_if_index;

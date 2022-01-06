@@ -1462,18 +1462,12 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
     }
 
   /* create interface */
-  error = ethernet_register_interface (vnm, virtio_device_class.index,
-				       vif->dev_instance, vif->mac_addr,
-				       &vif->hw_if_index,
-				       virtio_pci_flag_change);
-
-  if (error)
-    {
-      args->rv = VNET_API_ERROR_INVALID_REGISTRATION;
-      virtio_log_error (vif,
-			"error encountered on ethernet register interface");
-      goto error;
-    }
+  vnet_eth_interface_registration_t eir = {};
+  eir.dev_class_index = virtio_device_class.index;
+  eir.dev_instance = vif->dev_instance;
+  eir.address = vif->mac_addr;
+  eir.cb.flag_change = virtio_pci_flag_change;
+  vif->hw_if_index = vnet_eth_register_interface (vnm, &eir);
 
   vnet_sw_interface_t *sw = vnet_get_hw_sw_interface (vnm, vif->hw_if_index);
   vif->sw_if_index = sw->sw_if_index;

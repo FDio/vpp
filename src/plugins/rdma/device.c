@@ -355,17 +355,19 @@ rdma_async_event_cleanup (rdma_device_t * rd)
 static clib_error_t *
 rdma_register_interface (vnet_main_t * vnm, rdma_device_t * rd)
 {
-  clib_error_t *err =
-    ethernet_register_interface (vnm, rdma_device_class.index,
-				 rd->dev_instance, rd->hwaddr.bytes,
-				 &rd->hw_if_index, rdma_flag_change);
+  vnet_eth_interface_registration_t eir = {};
 
+  eir.dev_class_index = rdma_device_class.index;
+  eir.dev_instance = rd->dev_instance;
+  eir.address = rd->hwaddr.bytes;
+  eir.cb.flag_change = rdma_flag_change;
+  rd->hw_if_index = vnet_eth_register_interface (vnm, &eir);
   /* Indicate ability to support L3 DMAC filtering and
    * initialize interface to L3 non-promisc mode */
   vnet_hw_if_set_caps (vnm, rd->hw_if_index, VNET_HW_IF_CAP_MAC_FILTER);
   ethernet_set_flags (vnm, rd->hw_if_index,
 		      ETHERNET_INTERFACE_FLAG_DEFAULT_L3);
-  return err;
+  return 0;
 }
 
 static void

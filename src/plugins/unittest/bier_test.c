@@ -118,28 +118,29 @@ bier_test_mk_intf (u32 ninterfaces)
 
     for (i = 0; i < ninterfaces; i++)
     {
-        hw_address[5] = i;
+      vnet_eth_interface_registration_t eir = {};
+      vnet_main_t *vnm = vnet_get_main ();
 
-        error = ethernet_register_interface(vnet_get_main(),
-                                            test_interface_device_class.index,
-                                            i /* instance */,
-                                            hw_address,
-                                            &tm->hw_if_indicies[i],
-                                            /* flag change */ 0);
+      hw_address[5] = i;
 
-        error = vnet_hw_interface_set_flags(vnet_get_main(),
-                                            tm->hw_if_indicies[i],
-                                            VNET_HW_INTERFACE_FLAG_LINK_UP);
-        BIER_TEST((NULL == error), "ADD interface %d", i);
+      eir.dev_class_index = test_interface_device_class.index;
+      eir.dev_instance = i;
+      eir.address = hw_address;
+      tm->hw_if_indicies[i] = vnet_eth_register_interface (vnm, &eir);
 
-        tm->hw[i] = vnet_get_hw_interface(vnet_get_main(),
-                                          tm->hw_if_indicies[i]);
-        ip4_main.fib_index_by_sw_if_index[tm->hw[i]->sw_if_index] = 0;
-        ip6_main.fib_index_by_sw_if_index[tm->hw[i]->sw_if_index] = 0;
-        error = vnet_sw_interface_set_flags(vnet_get_main(),
-                                            tm->hw[i]->sw_if_index,
-                                            VNET_SW_INTERFACE_FLAG_ADMIN_UP);
-        BIER_TEST((NULL == error), "UP interface %d", i);
+      error =
+	vnet_hw_interface_set_flags (vnet_get_main (), tm->hw_if_indicies[i],
+				     VNET_HW_INTERFACE_FLAG_LINK_UP);
+      BIER_TEST ((NULL == error), "ADD interface %d", i);
+
+      tm->hw[i] =
+	vnet_get_hw_interface (vnet_get_main (), tm->hw_if_indicies[i]);
+      ip4_main.fib_index_by_sw_if_index[tm->hw[i]->sw_if_index] = 0;
+      ip6_main.fib_index_by_sw_if_index[tm->hw[i]->sw_if_index] = 0;
+      error =
+	vnet_sw_interface_set_flags (vnet_get_main (), tm->hw[i]->sw_if_index,
+				     VNET_SW_INTERFACE_FLAG_ADMIN_UP);
+      BIER_TEST ((NULL == error), "UP interface %d", i);
     }
     /*
      * re-eval after the inevitable realloc

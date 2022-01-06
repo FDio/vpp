@@ -268,6 +268,7 @@ pg_interface_add_or_get (pg_main_t *pg, uword if_id, u8 gso_enabled,
     }
   else
     {
+      vnet_eth_interface_registration_t eir = {};
       u8 hw_addr[6];
       f64 now = vlib_time_now (vm);
       u32 rnd;
@@ -287,8 +288,11 @@ pg_interface_add_or_get (pg_main_t *pg, uword if_id, u8 gso_enabled,
       switch (pi->mode)
 	{
 	case PG_MODE_ETHERNET:
-	  ethernet_register_interface (vnm, pg_dev_class.index, i, hw_addr,
-				       &pi->hw_if_index, pg_eth_flag_change);
+	  eir.dev_class_index = pg_dev_class.index;
+	  eir.dev_instance = i;
+	  eir.address = hw_addr;
+	  eir.cb.flag_change = pg_eth_flag_change;
+	  pi->hw_if_index = vnet_eth_register_interface (vnm, &eir);
 	  break;
 	case PG_MODE_IP4:
 	case PG_MODE_IP6:
