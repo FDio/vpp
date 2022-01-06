@@ -146,6 +146,7 @@ vl_api_hw_interface_set_mtu_t_handler (vl_api_hw_interface_set_mtu_t * mp)
   u32 sw_if_index = ntohl (mp->sw_if_index);
   u16 mtu = ntohs (mp->mtu);
   ethernet_main_t *em = &ethernet_main;
+  clib_error_t *err;
   int rv = 0;
 
   VALIDATE_SW_IF_INDEX (mp);
@@ -178,7 +179,14 @@ vl_api_hw_interface_set_mtu_t_handler (vl_api_hw_interface_set_mtu_t * mp)
       goto bad_sw_if_index;
     }
 
-  vnet_hw_interface_set_mtu (vnm, si->hw_if_index, mtu);
+  if ((err = vnet_hw_interface_set_mtu (vnm, si->hw_if_index, mtu)))
+    {
+      // previous version of API would not ever error out on setting MTU.
+      // See what happens.
+      // rv = vnet_api_error (err);
+      clib_error_free (err);
+      goto bad_sw_if_index;
+    }
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_HW_INTERFACE_SET_MTU_REPLY);
