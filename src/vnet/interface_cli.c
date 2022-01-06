@@ -1158,6 +1158,7 @@ mtu_cmd (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
   u32 hw_if_index, sw_if_index, mtu;
   ethernet_main_t *em = &ethernet_main;
   u32 mtus[VNET_N_MTU] = { 0, 0, 0, 0 };
+  clib_error_t *err;
 
   if (unformat (input, "%d %U", &mtu,
 		unformat_vnet_hw_interface, vnm, &hw_if_index))
@@ -1181,7 +1182,9 @@ mtu_cmd (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 	return clib_error_return (0, "Invalid mtu (%d): must be <= (%d)", mtu,
 				  hi->max_supported_packet_bytes);
 
-      vnet_hw_interface_set_mtu (vnm, hw_if_index, mtu);
+      err = vnet_hw_interface_set_mtu (vnm, hw_if_index, mtu);
+      if (err)
+	return err;
       goto done;
     }
   else if (unformat (input, "packet %d %U", &mtu,

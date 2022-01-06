@@ -130,7 +130,11 @@ typedef u32 (ethernet_flag_change_function_t)
 
 typedef struct
 {
+  /* ethernet interface flags change */
   ethernet_flag_change_function_t *flag_change;
+
+  /* set MTU callback */
+  vnet_interface_set_mtu_function_t *set_mtu;
 } vnet_eth_if_callbacks_t;
 
 #define ETHERNET_MIN_PACKET_BYTES  64
@@ -165,9 +169,6 @@ typedef struct ethernet_interface
 
   /* Set interface to accept all packets (promiscuous mode). */
 #define ETHERNET_INTERFACE_FLAG_ACCEPT_ALL 1
-
-  /* Change MTU on interface from hw interface structure */
-#define ETHERNET_INTERFACE_FLAG_MTU        2
 
   /* Callback, e.g. to turn on/off promiscuous mode */
   vnet_eth_if_callbacks_t cb;
