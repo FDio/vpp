@@ -757,10 +757,11 @@ tcp_cc_try_recover (tcp_connection_t *tc)
 
   tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */ );
   tc->rcv_dupacks = 0;
+  tcp_recovery_off (tc);
 
   /* Previous recovery left us congested. Continue sending as part
    * of the current recovery event with an updated snd_congestion */
-  if (tc->sack_sb.sacked_bytes)
+  if (tc->sack_sb.sacked_bytes && tcp_in_fastrecovery (tc))
     {
       tc->snd_congestion = tc->snd_nxt;
       return -1;
@@ -777,12 +778,11 @@ tcp_cc_try_recover (tcp_connection_t *tc)
   if (hole && hole->start == tc->snd_una && hole->end == tc->snd_nxt)
     scoreboard_clear (&tc->sack_sb);
 
-  if (!tcp_in_recovery (tc) && !is_spurious)
+  if (tcp_in_fastrecovery (tc) && !is_spurious)
     tcp_cc_recovered (tc);
 
   tcp_fastrecovery_off (tc);
   tcp_fastrecovery_first_off (tc);
-  tcp_recovery_off (tc);
   TCP_EVT (TCP_EVT_CC_EVT, tc, 3);
 
   ASSERT (tc->rto_boff == 0);
