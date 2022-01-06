@@ -21,6 +21,7 @@
 #include <vlib/unix/unix.h>
 #include <vlib/log.h>
 
+#include <vnet/vnet.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/interface/rx_queue_funcs.h>
 #include <dpdk/buffer.h>

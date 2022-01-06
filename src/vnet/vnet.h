@@ -45,6 +45,7 @@
 #include <vppinfra/types.h>
 
 #include <vppinfra/pcap.h>
+#include <vnet/error.h>
 #include <vnet/buffer.h>
 #include <vnet/config.h>
 #include <vnet/interface.h>
