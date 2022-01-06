@@ -398,6 +398,7 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
       eir.dev_instance = if_index;
       eir.address = hw_addr;
       eir.cb.set_mtu = af_packet_eth_set_mtu;
+      eir.cb.mac_addr_change = af_packet_set_mac_address_function,
       apif->hw_if_index = vnet_eth_register_interface (vnm, &eir);
     }
   else

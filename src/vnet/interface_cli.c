@@ -1339,8 +1339,7 @@ interface_add_del_mac_address (vlib_main_t * vm, unformat_input_t * input,
     }
 
   si = vnet_get_sw_interface (vnm, sw_if_index);
-  error =
-    vnet_hw_interface_add_del_mac_address (vnm, si->hw_if_index, mac, is_add);
+  error = vnet_eth_add_del_mac_addr (vnm, si->hw_if_index, mac, is_add);
 
 done:
   return error;
@@ -1393,7 +1392,7 @@ set_interface_mac_address (vlib_main_t * vm, unformat_input_t * input,
       goto done;
     }
   si = vnet_get_sw_interface (vnm, sw_if_index);
-  error = vnet_hw_interface_change_mac_address (vnm, si->hw_if_index, mac);
+  error = vnet_eth_change_mac_addr (vnm, si->hw_if_index, mac);
 done:
   return error;
 }

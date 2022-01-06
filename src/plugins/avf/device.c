@@ -1585,6 +1585,20 @@ avf_validate_queue_size (avf_create_if_args_t * args)
   return 0;
 }
 
+static clib_error_t *
+avf_add_del_mac_address (vnet_hw_interface_t *hw, const u8 *address, u8 is_add)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  avf_process_req_t req;
+
+  req.dev_instance = hw->dev_instance;
+  req.type = AVF_PROCESS_REQ_ADD_DEL_ETH_ADDR;
+  req.is_add = is_add;
+  clib_memcpy (req.eth_addr, address, 6);
+
+  return avf_process_request (vm, &req);
+}
+
 void
 avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
 {
@@ -1727,6 +1741,7 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   eir.dev_instance = ad->dev_instance;
   eir.address = ad->hwaddr;
   eir.cb.flag_change = avf_flag_change;
+  eir.cb.mac_addr_add_del = avf_add_del_mac_address;
   ad->hw_if_index = vnet_eth_register_interface (vnm, &eir);
 
   ethernet_set_flags (vnm, ad->hw_if_index,
@@ -1857,21 +1872,6 @@ avf_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
     vlib_node_add_next (vlib_get_main (), avf_input_node.index, node_index);
 }
 
-static clib_error_t *
-avf_add_del_mac_address (vnet_hw_interface_t * hw,
-			 const u8 * address, u8 is_add)
-{
-  vlib_main_t *vm = vlib_get_main ();
-  avf_process_req_t req;
-
-  req.dev_instance = hw->dev_instance;
-  req.type = AVF_PROCESS_REQ_ADD_DEL_ETH_ADDR;
-  req.is_add = is_add;
-  clib_memcpy (req.eth_addr, address, 6);
-
-  return avf_process_request (vm, &req);
-}
-
 static char *avf_tx_func_error_strings[] = {
 #define _(n,s) s,
   foreach_avf_tx_func_error
@@ -1913,7 +1913,6 @@ VNET_DEVICE_CLASS (avf_device_class, ) = {
   .admin_up_down_function = avf_interface_admin_up_down,
   .rx_mode_change_function = avf_interface_rx_mode_change,
   .rx_redirect_to_node = avf_set_interface_next_node,
-  .mac_addr_add_del_function = avf_add_del_mac_address,
   .tx_function_n_errors = AVF_TX_N_ERROR,
   .tx_function_error_strings = avf_tx_func_error_strings,
   .flow_ops_function = avf_flow_ops_fn,

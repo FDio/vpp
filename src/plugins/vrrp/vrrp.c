@@ -122,8 +122,8 @@ vrrp_vr_transition_vmac (vrrp_vr_t * vr, vrrp_vr_state_t new_state)
 		    format_ethernet_address, vr->runtime.mac.bytes,
 		    hw->hw_if_index);
 
-      error = vnet_hw_interface_add_del_mac_address
-	(vnm, hw->hw_if_index, vr->runtime.mac.bytes, enable);
+      error = vnet_eth_add_del_mac_addr (vnm, hw->hw_if_index,
+					 vr->runtime.mac.bytes, enable);
     }
 
   if (error)

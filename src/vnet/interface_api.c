@@ -956,8 +956,8 @@ static void vl_api_sw_interface_add_del_mac_address_t_handler
 
   /* for subifs, the MAC should be changed on the actual hw if */
   hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
-  error = vnet_hw_interface_add_del_mac_address (vnm, hi->hw_if_index,
-						 mp->addr, mp->is_add);
+  error =
+    vnet_eth_add_del_mac_addr (vnm, hi->hw_if_index, mp->addr, mp->is_add);
   if (error)
     {
       rv = VNET_API_ERROR_UNIMPLEMENTED;
@@ -985,8 +985,7 @@ static void vl_api_sw_interface_set_mac_address_t_handler
 
   si = vnet_get_sw_interface (vnm, sw_if_index);
   mac_address_decode (mp->mac_address, &mac);
-  error =
-    vnet_hw_interface_change_mac_address (vnm, si->hw_if_index, (u8 *) & mac);
+  error = vnet_eth_change_mac_addr (vnm, si->hw_if_index, (u8 *) &mac);
   if (error)
     {
       rv = VNET_API_ERROR_UNIMPLEMENTED;

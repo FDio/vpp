@@ -359,6 +359,7 @@ rdma_register_interface (vnet_main_t * vnm, rdma_device_t * rd)
   eir.address = rd->hwaddr.bytes;
   eir.cb.flag_change = rdma_flag_change;
   eir.cb.set_mtu = rdma_set_mtu;
+  eir.cb.mac_addr_change = rdma_mac_change,
   rd->hw_if_index = vnet_eth_register_interface (vnm, &eir);
   /* Indicate ability to support L3 DMAC filtering and
    * initialize interface to L3 non-promisc mode */
@@ -1108,7 +1109,6 @@ VNET_DEVICE_CLASS (rdma_device_class) =
   .rx_redirect_to_node = rdma_set_interface_next_node,
   .tx_function_n_errors = RDMA_TX_N_ERROR,
   .tx_function_error_strings = rdma_tx_func_error_strings,
-  .mac_addr_change_function = rdma_mac_change,
 };
 
 clib_error_t *

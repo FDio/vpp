@@ -538,6 +538,9 @@ bond_get_member_by_sw_if_index (u32 sw_if_index)
   return mif;
 }
 
+clib_error_t *bond_add_del_mac_address (vnet_hw_interface_t *hi,
+					const u8 *address, u8 is_add);
+
 #endif /* __included_vnet_bonding_node_h__ */
 
 /*

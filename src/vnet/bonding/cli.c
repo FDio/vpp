@@ -275,8 +275,8 @@ bond_member_add_del_mac_addrs (bond_if_t * bif, u32 mif_sw_if_index,
   s_hwif = vnet_get_sup_hw_interface (vnm, mif_sw_if_index);
 
   vec_foreach (sec_mac, b_ei->secondary_addrs)
-    vnet_hw_interface_add_del_mac_address (vnm, s_hwif->hw_if_index,
-					   sec_mac->mac.bytes, is_add);
+    vnet_eth_add_del_mac_addr (vnm, s_hwif->hw_if_index, sec_mac->mac.bytes,
+			       is_add);
 }
 
 static void
@@ -311,8 +311,8 @@ bond_delete_neighbor (vlib_main_t * vm, bond_if_t * bif, member_if_t * mif)
 			       mif->sw_if_index, 0, 0, 0);
 
   /* Put back the old mac */
-  vnet_hw_interface_change_mac_address (vnm, mif_hw->hw_if_index,
-					mif->persistent_hw_address);
+  vnet_eth_change_mac_addr (vnm, mif_hw->hw_if_index,
+			    mif->persistent_hw_address);
 
   /* delete the bond's secondary/virtual mac addrs from the member */
   bond_member_add_del_mac_addrs (bif, mif->sw_if_index, 0 /* is_add */ );
@@ -444,6 +444,7 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
   eir.dev_class_index = bond_dev_class.index;
   eir.dev_instance = bif->dev_instance;
   eir.address = bif->hw_address;
+  eir.cb.mac_addr_add_del = bond_add_del_mac_address,
   bif->hw_if_index = vnet_eth_register_interface (vnm, &eir);
 
   sw = vnet_get_hw_sw_interface (vnm, bif->hw_if_index);
@@ -699,8 +700,7 @@ bond_add_member (vlib_main_t * vm, bond_add_member_args_t * args)
   bif_hw = vnet_get_sup_hw_interface (vnm, bif->sw_if_index);
   if (bif->use_custom_mac)
     {
-      vnet_hw_interface_change_mac_address (vnm, mif_hw->hw_if_index,
-					    bif->hw_address);
+      vnet_eth_change_mac_addr (vnm, mif_hw->hw_if_index, bif->hw_address);
     }
   else
     {
@@ -708,14 +708,13 @@ bond_add_member (vlib_main_t * vm, bond_add_member_args_t * args)
       if (vec_len (bif->members) == 1)
 	{
 	  memcpy (bif->hw_address, mif_hw->hw_address, 6);
-	  vnet_hw_interface_change_mac_address (vnm, bif_hw->hw_if_index,
-						mif_hw->hw_address);
+	  vnet_eth_change_mac_addr (vnm, bif_hw->hw_if_index,
+				    mif_hw->hw_address);
 	}
       else
 	{
 	  // subsequent members gets the mac address of the bond interface
-	  vnet_hw_interface_change_mac_address (vnm, mif_hw->hw_if_index,
-						bif->hw_address);
+	  vnet_eth_change_mac_addr (vnm, mif_hw->hw_if_index, bif->hw_address);
 	}
     }
 

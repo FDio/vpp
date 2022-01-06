@@ -178,7 +178,6 @@ VNET_DEVICE_CLASS (pg_dev_class) = {
   .format_device_name = format_pg_interface_name,
   .format_tx_trace = format_pg_output_trace,
   .admin_up_down_function = pg_interface_admin_up_down,
-  .mac_addr_add_del_function = pg_add_del_mac_address,
 };
 /* *INDENT-ON* */
 
@@ -292,6 +291,7 @@ pg_interface_add_or_get (pg_main_t *pg, uword if_id, u8 gso_enabled,
 	  eir.dev_instance = i;
 	  eir.address = hw_addr;
 	  eir.cb.flag_change = pg_eth_flag_change;
+	  eir.cb.mac_addr_add_del = pg_add_del_mac_address;
 	  pi->hw_if_index = vnet_eth_register_interface (vnm, &eir);
 	  break;
 	case PG_MODE_IP4:

@@ -97,6 +97,9 @@ int af_packet_create_if (af_packet_create_if_arg_t *arg);
 int af_packet_delete_if (u8 *host_if_name);
 int af_packet_set_l4_cksum_offload (u32 sw_if_index, u8 set);
 int af_packet_dump_ifs (af_packet_if_detail_t ** out_af_packet_ifs);
+clib_error_t *af_packet_set_mac_address_function (vnet_hw_interface_t *hi,
+						  const u8 *old_address,
+						  const u8 *address);
 
 format_function_t format_af_packet_device_name;
 

@@ -55,6 +55,13 @@
  * This file contains code to manage loopback interfaces.
  */
 
+VLIB_REGISTER_LOG_CLASS (eth_log, static) = {
+  .class_name = "ethernet",
+};
+
+#define log_err(fmt, ...)   vlib_log_err (eth_log.class, fmt, __VA_ARGS__)
+#define log_debug(fmt, ...) vlib_log_debug (eth_log.class, fmt, __VA_ARGS__)
+
 static const u8 *
 ethernet_ip4_mcast_dst_addr (void)
 {
@@ -290,27 +297,6 @@ ethernet_set_mac (vnet_hw_interface_t * hi, ethernet_interface_t * ei,
 }
 
 static clib_error_t *
-ethernet_mac_change (vnet_hw_interface_t * hi,
-		     const u8 * old_address, const u8 * mac_address)
-{
-  ethernet_interface_t *ei;
-  ethernet_main_t *em;
-
-  em = &ethernet_main;
-  ei = pool_elt_at_index (em->interfaces, hi->hw_instance);
-
-  ethernet_set_mac (hi, ei, mac_address);
-
-  {
-    ethernet_address_change_ctx_t *cb;
-    vec_foreach (cb, em->address_change_callbacks)
-      cb->function (em, hi->sw_if_index, cb->function_opaque);
-  }
-
-  return (NULL);
-}
-
-static clib_error_t *
 ethernet_set_mtu (vnet_main_t *vnm, vnet_hw_interface_t *hi, u32 mtu)
 {
   ethernet_interface_t *ei =
@@ -332,7 +318,6 @@ VNET_HW_INTERFACE_CLASS (ethernet_hw_interface_class) = {
   .unformat_header = unformat_ethernet_header,
   .build_rewrite = ethernet_build_rewrite,
   .update_adjacency = ethernet_update_adjacency,
-  .mac_addr_change_function = ethernet_mac_change,
   .set_mtu = ethernet_set_mtu,
 };
 /* *INDENT-ON* */
@@ -750,7 +735,6 @@ VNET_DEVICE_CLASS (ethernet_simulated_device_class) = {
   .format_device_name = format_simulated_ethernet_name,
   .tx_function = simulated_ethernet_interface_tx,
   .admin_up_down_function = simulated_ethernet_admin_up_down,
-  .mac_addr_change_function = simulated_ethernet_mac_change,
 };
 /* *INDENT-ON* */
 
@@ -872,6 +856,7 @@ vnet_create_loopback_interface (u32 * sw_if_indexp, u8 * mac_address,
   eir.dev_class_index = ethernet_simulated_device_class.index;
   eir.dev_instance = instance;
   eir.address = address;
+  eir.cb.mac_addr_change = simulated_ethernet_mac_change,
   hw_if_index = vnet_eth_register_interface (vnm, &eir);
   hw_if = vnet_get_hw_interface (vnm, hw_if_index);
   slot = vlib_node_add_named_next_with_slot
@@ -1165,6 +1150,79 @@ delete_sub_interface (vlib_main_t * vm,
   if (rv)
     return clib_error_return (0, "delete_subinterface_interface failed");
   return 0;
+}
+
+clib_error_t *
+vnet_eth_add_del_mac_addr (vnet_main_t *vnm, u32 hw_if_index,
+			   const u8 *mac_address, u8 is_add)
+{
+  clib_error_t *error = 0;
+  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
+  ethernet_interface_t *ei;
+
+  if (hi->dev_class_index != ethernet_hw_interface_class.index)
+    {
+      error = clib_error_return (0, "interface index %u is not etheernet",
+				 hw_if_index);
+      goto done;
+    }
+
+  ei = pool_elt_at_index (ethernet_main.interfaces, hi->hw_instance);
+
+  if (ei->cb.mac_addr_add_del)
+    error = ei->cb.mac_addr_add_del (hi, mac_address, is_add);
+  else
+    error = clib_error_return (0, "not supported");
+
+  /* If no errors, add to the list of secondary MACs on the ethernet intf */
+  if (!error)
+    ethernet_interface_add_del_address (&ethernet_main, hw_if_index,
+					mac_address, is_add);
+
+done:
+  if (error)
+    log_err ("add_del_mac_address: %U", format_clib_error, error);
+  return error;
+}
+
+clib_error_t *
+vnet_eth_change_mac_addr (vnet_main_t *vnm, u32 hw_if_index,
+			  const u8 *mac_address)
+{
+  clib_error_t *error = 0;
+  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
+  u8 *old_address = vec_dup (hi->hw_address);
+  ethernet_interface_t *ei;
+
+  if (hi->dev_class_index != ethernet_hw_interface_class.index)
+    {
+      return clib_error_return (0, "interface index %u is not etheernet",
+				hw_if_index);
+      goto done;
+    }
+
+  ei = pool_elt_at_index (ethernet_main.interfaces, hi->hw_instance);
+
+  if (ei->cb.mac_addr_change)
+    error = ei->cb.mac_addr_change (hi, old_address, mac_address);
+  else
+    error = clib_error_return (0, "not supported");
+
+  if (!error)
+    {
+      ethernet_main_t *em = &ethernet_main;
+      ethernet_address_change_ctx_t *cb;
+      ethernet_set_mac (hi, ei, mac_address);
+
+      vec_foreach (cb, em->address_change_callbacks)
+	cb->function (em, hi->sw_if_index, cb->function_opaque);
+    }
+
+done:
+  vec_free (old_address);
+  if (error)
+    log_err ("change_mac_addr: %U", format_clib_error, error);
+  return error;
 }
 
 /*?
