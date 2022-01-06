@@ -800,7 +800,13 @@ vnet_hw_interface_set_max_frame_size (vnet_main_t *vnm, u32 hw_if_index,
 clib_error_t *
 vnet_hw_interface_set_mtu (vnet_main_t *vnm, u32 hw_if_index, u32 mtu)
 {
+	/*
+  int *ptr = 0;
+  *ptr = 1; // this will make a core.
+  return vnet_error (VNET_ERR_UNSUPPORTED, 0);
+  */
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
+
   return vnet_hw_interface_set_max_frame_size (vnm, hw_if_index,
 					       mtu + hi->frame_overhead);
 }
