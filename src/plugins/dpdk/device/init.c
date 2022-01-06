@@ -21,6 +21,7 @@
 #include <vlib/unix/unix.h>
 #include <vlib/log.h>
 
+#include <vnet/vnet.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/interface/rx_queue_funcs.h>
 #include <dpdk/buffer.h>
@@ -80,6 +81,41 @@ port_type_from_speed_capa (struct rte_eth_dev_info *dev_info)
   return VNET_DPDK_PORT_TYPE_UNKNOWN;
 }
 
+static clib_error_t *
+dpdk_set_mtu (vnet_main_t *vnm, vnet_hw_interface_t *hi, u32 mtu)
+{
+  dpdk_main_t *dm = &dpdk_main;
+  dpdk_device_t *xd = vec_elt_at_index (dm->devices, hi->dev_instance);
+  int rv;
+
+  rv = rte_eth_dev_set_mtu (xd->port_id, mtu);
+
+  if (rv < 0)
+    {
+      dpdk_log_err ("[%u] rte_eth_dev_set_mtu failed (mtu %u, rv %d)",
+		    xd->port_id, mtu, rv);
+      switch (rv)
+	{
+	case -ENOTSUP:
+	  return vnet_error (VNET_ERR_UNSUPPORTED,
+			     "dpdk driver doesn't support MTU change");
+	case -EBUSY:
+	  return vnet_error (VNET_ERR_BUSY, "port is running");
+	case -EINVAL:
+	  return vnet_error (VNET_ERR_INVALID_VALUE, "invalid MTU");
+	default:
+	  return vnet_error (VNET_ERR_BUG,
+			     "unexpected return value %d returned from "
+			     "rte_eth_dev_set_mtu(...)",
+			     rv);
+	}
+    }
+  else
+    dpdk_log_debug ("[%u] mtu set to %u", xd->port_id, mtu);
+
+  return 0;
+}
+
 static u32
 dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
 {
@@ -96,15 +132,6 @@ dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
     case ETHERNET_INTERFACE_FLAG_ACCEPT_ALL:
       dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_PROMISC, 1);
       break;
-    case ETHERNET_INTERFACE_FLAG_MTU:
-      if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
-	rte_eth_dev_stop (xd->port_id);
-      rte_eth_dev_set_mtu (xd->port_id, hi->max_packet_bytes);
-      if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
-	rte_eth_dev_start (xd->port_id);
-      dpdk_log_debug ("[%u] mtu changed to %u", xd->port_id,
-		      hi->max_packet_bytes);
-      return 0;
     default:
       return ~0;
     }
@@ -520,6 +547,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       eir.dev_instance = xd->device_index;
       eir.address = addr;
       eir.cb.flag_change = dpdk_flag_change;
+      eir.cb.set_mtu = dpdk_set_mtu;
       xd->hw_if_index = vnet_eth_register_interface (vnm, &eir);
 
       sw = vnet_get_hw_sw_interface (vnm, xd->hw_if_index);
