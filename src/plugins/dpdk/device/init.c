@@ -107,6 +107,51 @@ dpdk_set_mtu (vnet_main_t *vnm, vnet_hw_interface_t *hi, u32 mtu)
   return 0;
 }
 
+static clib_error_t *
+dpdk_set_mac_address (vnet_hw_interface_t *hi, const u8 *old_address,
+		      const u8 *address)
+{
+  int error;
+  dpdk_main_t *dm = &dpdk_main;
+  dpdk_device_t *xd = vec_elt_at_index (dm->devices, hi->dev_instance);
+
+  error = rte_eth_dev_default_mac_addr_set (xd->port_id, (void *) address);
+
+  if (error)
+    {
+      return clib_error_return (0, "mac address set failed: %d", error);
+    }
+  else
+    {
+      vec_reset_length (xd->default_mac_address);
+      vec_add (xd->default_mac_address, address, sizeof (mac_address_t));
+      return NULL;
+    }
+}
+
+static clib_error_t *
+dpdk_add_del_mac_address (vnet_hw_interface_t *hi, const u8 *address,
+			  u8 is_add)
+{
+  int error;
+  dpdk_main_t *dm = &dpdk_main;
+  dpdk_device_t *xd = vec_elt_at_index (dm->devices, hi->dev_instance);
+
+  if (is_add)
+    error = rte_eth_dev_mac_addr_add (xd->port_id,
+				      (struct rte_ether_addr *) address, 0);
+  else
+    error = rte_eth_dev_mac_addr_remove (xd->port_id,
+					 (struct rte_ether_addr *) address);
+
+  if (error)
+    {
+      return clib_error_return (0, "mac address add/del failed: %d", error);
+    }
+
+  return NULL;
+}
+
 static u32
 dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
 {
@@ -673,6 +718,9 @@ dpdk_lib_init (dpdk_main_t * dm)
       eir.address = addr;
       eir.cb.flag_change = dpdk_flag_change;
       eir.cb.set_mtu = dpdk_set_mtu;
+      eir.cb.mac_addr_change = dpdk_set_mac_address,
+      eir.cb.mac_addr_add_del = dpdk_add_del_mac_address,
+
       xd->hw_if_index = vnet_eth_register_interface (vnm, &eir);
 
       sw = vnet_get_hw_sw_interface (vnm, xd->hw_if_index);

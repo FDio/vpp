@@ -406,17 +406,6 @@ void vnet_hw_interface_init_for_class (vnet_main_t * vnm, u32 hw_if_index,
 clib_error_t *vnet_rename_interface (vnet_main_t * vnm, u32 hw_if_index,
 				     char *new_name);
 
-/* Add/delete secondary interface mac address*/
-clib_error_t *vnet_hw_interface_add_del_mac_address (vnet_main_t * vnm,
-						     u32 hw_if_index,
-						     const u8 * mac_address,
-						     u8 is_add);
-
-/* Change interface mac address*/
-clib_error_t *vnet_hw_interface_change_mac_address (vnet_main_t * vnm,
-						    u32 hw_if_index,
-						    const u8 * mac_address);
-
 /* Change rx-mode */
 clib_error_t *set_hw_interface_change_rx_mode (vnet_main_t * vnm,
 					       u32 hw_if_index,

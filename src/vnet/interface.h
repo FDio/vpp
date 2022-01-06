@@ -74,15 +74,6 @@ typedef clib_error_t *(vnet_subif_add_del_function_t)
 typedef clib_error_t *(vnet_interface_set_mtu_function_t) (
   struct vnet_main_t *vnm, struct vnet_hw_interface_t *hi, u32 mtu);
 
-/* Interface set mac address callback. */
-typedef clib_error_t *(vnet_interface_set_mac_address_function_t)
-  (struct vnet_hw_interface_t * hi,
-   const u8 * old_address, const u8 * new_address);
-
-/* Interface add/del additional mac address callback */
-typedef clib_error_t *(vnet_interface_add_del_mac_address_function_t)
-  (struct vnet_hw_interface_t * hi, const u8 * address, u8 is_add);
-
 /* Interface set rx mode callback. */
 typedef clib_error_t *(vnet_interface_set_rx_mode_function_t)
   (struct vnet_main_t * vnm, u32 if_index, u32 queue_id,
@@ -281,12 +272,6 @@ typedef struct _vnet_device_class
   /* Link-list of all device classes set up by constructors created below */
   struct _vnet_device_class *next_class_registration;
 
-  /* Function to set mac address. */
-  vnet_interface_set_mac_address_function_t *mac_addr_change_function;
-
-  /* Function to add/delete additional MAC addresses */
-  vnet_interface_add_del_mac_address_function_t *mac_addr_add_del_function;
-
   /* Interface to set rss queues of the interface */
   vnet_interface_rss_queues_set_t *set_rss_queues_function;
 
@@ -427,11 +412,6 @@ typedef struct _vnet_hw_interface_class
   /* Function to call when link state changes. */
   vnet_interface_function_t *link_up_down_function;
 
-  /* Function to call when link MAC changes. */
-  vnet_interface_set_mac_address_function_t *mac_addr_change_function;
-
-  /* Function to add/delete additional MAC addresses */
-  vnet_interface_add_del_mac_address_function_t *mac_addr_add_del_function;
   /* Function to set mtu. */
   vnet_interface_set_mtu_function_t *set_mtu;
 

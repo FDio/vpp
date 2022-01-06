@@ -141,8 +141,9 @@ bond_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   return 0;
 }
 
-static clib_error_t *
-bond_add_del_mac_address (vnet_hw_interface_t * hi, const u8 * address,
+#ifndef CLIB_MARCH_VARIANT
+clib_error_t *
+bond_add_del_mac_address (vnet_hw_interface_t *hi, const u8 *address,
 			  u8 is_add)
 {
   vnet_main_t *vnm = vnet_get_main ();
@@ -164,8 +165,8 @@ bond_add_del_mac_address (vnet_hw_interface_t * hi, const u8 * address,
   vec_foreach_index (i, bif->members)
   {
     s_hi = vnet_get_sup_hw_interface (vnm, vec_elt (bif->members, i));
-    error = vnet_hw_interface_add_del_mac_address (vnm, s_hi->hw_if_index,
-						   address, is_add);
+    error =
+      vnet_eth_add_del_mac_addr (vnm, s_hi->hw_if_index, address, is_add);
 
     if (error)
       {
@@ -175,8 +176,8 @@ bond_add_del_mac_address (vnet_hw_interface_t * hi, const u8 * address,
 	for (j = i - 1; j > -1; j--)
 	  {
 	    s_hi = vnet_get_sup_hw_interface (vnm, vec_elt (bif->members, j));
-	    vnet_hw_interface_add_del_mac_address (vnm, s_hi->hw_if_index,
-						   address, !(is_add));
+	    vnet_eth_add_del_mac_addr (vnm, s_hi->hw_if_index, address,
+				       !(is_add));
 	  }
 
 	return error;
@@ -185,6 +186,7 @@ bond_add_del_mac_address (vnet_hw_interface_t * hi, const u8 * address,
 
   return 0;
 }
+#endif
 
 static_always_inline void
 bond_tx_add_to_queue (bond_per_thread_data_t * ptd, u32 port, u32 bi)
@@ -857,7 +859,6 @@ VNET_DEVICE_CLASS (bond_dev_class) = {
   .admin_up_down_function = bond_interface_admin_up_down,
   .subif_add_del_function = bond_subif_add_del_function,
   .format_tx_trace = format_bond_tx_trace,
-  .mac_addr_add_del_function = bond_add_del_mac_address,
 };
 
 /* *INDENT-ON* */

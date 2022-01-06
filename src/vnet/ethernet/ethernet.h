@@ -128,6 +128,15 @@ struct vnet_hw_interface_t;
 typedef u32 (ethernet_flag_change_function_t)
   (vnet_main_t * vnm, struct vnet_hw_interface_t * hi, u32 flags);
 
+/* Interface set mac address callback. */
+typedef clib_error_t *(vnet_interface_set_mac_address_function_t) (
+  struct vnet_hw_interface_t *hi, const u8 *old_address,
+  const u8 *new_address);
+
+/* Interface add/del additional mac address callback */
+typedef clib_error_t *(vnet_interface_add_del_mac_address_function_t) (
+  struct vnet_hw_interface_t *hi, const u8 *address, u8 is_add);
+
 typedef struct
 {
   /* ethernet interface flags change */
@@ -135,6 +144,12 @@ typedef struct
 
   /* set MTU callback */
   vnet_interface_set_mtu_function_t *set_mtu;
+
+  /* Function to call when link MAC changes. */
+  vnet_interface_set_mac_address_function_t *mac_addr_change;
+
+  /* Function to add/delete additional MAC addresses */
+  vnet_interface_add_del_mac_address_function_t *mac_addr_add_del;
 } vnet_eth_if_callbacks_t;
 
 #define ETHERNET_MIN_PACKET_BYTES  64
@@ -589,6 +604,14 @@ u8 *ethernet_build_rewrite (vnet_main_t * vnm,
 void ethernet_input_init (vlib_main_t * vm, ethernet_main_t * em);
 
 extern vlib_node_registration_t ethernet_input_node;
+
+/* Add/delete secondary interface mac address*/
+clib_error_t *vnet_eth_add_del_mac_addr (vnet_main_t *vnm, u32 hw_if_index,
+					 const u8 *mac_address, u8 is_add);
+
+/* Change interface mac address*/
+clib_error_t *vnet_eth_change_mac_addr (vnet_main_t *vnm, u32 hw_if_index,
+					const u8 *mac_address);
 
 #endif /* included_ethernet_h */
 

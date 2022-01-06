@@ -120,7 +120,6 @@ VNET_DEVICE_CLASS (geneve_device_class, static) = {
   .format_device_name = format_geneve_name,
   .format_tx_trace = format_geneve_encap_trace,
   .admin_up_down_function = geneve_interface_admin_up_down,
-  .mac_addr_change_function = geneve_mac_change,
 };
 /* *INDENT-ON* */
 
@@ -433,6 +432,7 @@ int vnet_geneve_add_del_tunnel
 	  eir.dev_class_index = geneve_device_class.index;
 	  eir.dev_instance = t_idx;
 	  eir.address = address;
+	  eir.cb.mac_addr_change = geneve_mac_change,
 	  hw_if_index = vnet_eth_register_interface (vnm, &eir);
 	}
       else

@@ -63,7 +63,6 @@ VNET_DEVICE_CLASS (bvi_device_class) = {
   .name = "BVI",
   .format_device_name = format_bvi_name,
   .admin_up_down_function = bvi_admin_up_down,
-  .mac_addr_change_function = bvi_mac_change,
 };
 /* *INDENT-ON* */
 
@@ -179,6 +178,7 @@ l2_bvi_create (u32 user_instance,
   eir.dev_class_index = bvi_device_class.index;
   eir.dev_instance = instance;
   eir.address = mac.bytes;
+  eir.cb.mac_addr_change = bvi_mac_change,
   hw_if_index = vnet_eth_register_interface (vnm, &eir);
 
   hw_if = vnet_get_hw_interface (vnm, hw_if_index);

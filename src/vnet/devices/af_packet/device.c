@@ -330,8 +330,10 @@ af_packet_subif_add_del_function (vnet_main_t * vnm,
   return 0;
 }
 
-static clib_error_t *af_packet_set_mac_address_function
-  (struct vnet_hw_interface_t *hi, const u8 * old_address, const u8 * address)
+#ifndef CLIB_MARCH_VARIANT
+clib_error_t *
+af_packet_set_mac_address_function (struct vnet_hw_interface_t *hi,
+				    const u8 *old_address, const u8 *address)
 {
   af_packet_main_t *apm = &af_packet_main;
   af_packet_if_t *apif =
@@ -388,6 +390,7 @@ error:
 
   return 0;			/* no error */
 }
+#endif
 
 VNET_DEVICE_CLASS (af_packet_device_class) = {
   .name = "af-packet",
@@ -400,7 +403,6 @@ VNET_DEVICE_CLASS (af_packet_device_class) = {
   .clear_counters = af_packet_clear_hw_interface_counters,
   .admin_up_down_function = af_packet_interface_admin_up_down,
   .subif_add_del_function = af_packet_subif_add_del_function,
-  .mac_addr_change_function = af_packet_set_mac_address_function,
 };
 
 /*

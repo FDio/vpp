@@ -658,6 +658,7 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
   eir.address = ad->hwaddr;
   eir.cb.flag_change = af_xdp_flag_change;
   eir.cb.set_mtu = af_xdp_set_mtu;
+  eir.cb.mac_addr_change = af_xdp_mac_change,
   ad->hw_if_index = vnet_eth_register_interface (vnm, &eir);
 
   sw = vnet_get_hw_sw_interface (vnm, ad->hw_if_index);
@@ -789,7 +790,6 @@ VNET_DEVICE_CLASS (af_xdp_device_class) = {
   .rx_redirect_to_node = af_xdp_set_interface_next_node,
   .tx_function_n_errors = AF_XDP_TX_N_ERROR,
   .tx_function_error_strings = af_xdp_tx_func_error_strings,
-  .mac_addr_change_function = af_xdp_mac_change,
   .clear_counters = af_xdp_clear,
 };
 /* *INDENT-ON* */
