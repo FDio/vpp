@@ -26,6 +26,7 @@ list(APPEND VNET_SOURCES
   config.c
   devices/devices.c
   devices/netlink.c
+  error.c
   flow/flow.c
   flow/flow_cli.c
   flow/flow_api.c
@@ -52,6 +53,7 @@ list(APPEND VNET_MULTIARCH_SOURCES
 
 list(APPEND VNET_HEADERS
   api_errno.h
+  error.h
   buffer.h
   config.h
   devices/devices.h
