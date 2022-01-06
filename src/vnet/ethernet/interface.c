@@ -310,6 +310,23 @@ ethernet_mac_change (vnet_hw_interface_t * hi,
   return (NULL);
 }
 
+static clib_error_t *
+ethernet_set_mtu (vnet_main_t *vnm, vnet_hw_interface_t *hi, u32 mtu)
+{
+  ethernet_interface_t *ei =
+    pool_elt_at_index (ethernet_main.interfaces, hi->hw_instance);
+
+#if 0
+  if (ei->cb.set_mtu)
+    return ei->cb.set_mtu (vnm, hi, mtu);
+#else
+  if (ei->cb.set_mtu)
+    ei->cb.set_mtu (vnm, hi, mtu);
+#endif
+
+  return 0;
+}
+
 /* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (ethernet_hw_interface_class) = {
   .name = "Ethernet",
@@ -321,6 +338,7 @@ VNET_HW_INTERFACE_CLASS (ethernet_hw_interface_class) = {
   .build_rewrite = ethernet_build_rewrite,
   .update_adjacency = ethernet_update_adjacency,
   .mac_addr_change_function = ethernet_mac_change,
+  .set_mtu = ethernet_set_mtu,
 };
 /* *INDENT-ON* */
 
@@ -367,8 +385,8 @@ vnet_eth_register_interface (vnet_main_t *vnm,
 
   hi->min_packet_bytes = hi->min_supported_packet_bytes =
     ETHERNET_MIN_PACKET_BYTES;
-  hi->max_packet_bytes = hi->max_supported_packet_bytes =
-    ETHERNET_MAX_PACKET_BYTES;
+  hi->max_supported_packet_bytes = ETHERNET_MAX_PACKET_BYTES;
+  hi->max_packet_bytes = em->default_mtu;
 
   /* Default ethernet MTU, 9000 unless set by ethernet_config see below */
   vnet_sw_interface_set_mtu (vnm, hi->sw_if_index, em->default_mtu);
@@ -461,8 +479,6 @@ ethernet_set_flags (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 	case ETHERNET_INTERFACE_FLAG_ACCEPT_ALL:
 	  ei->flags &= ~ETHERNET_INTERFACE_FLAG_STATUS_L3;
 	  /* fall through */
-	case ETHERNET_INTERFACE_FLAG_MTU:
-	  return ei->cb.flag_change (vnm, hi, opn_flags);
 	default:
 	  return ~0;
 	}
