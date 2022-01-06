@@ -624,12 +624,12 @@ tuntap_config (vlib_main_t * vm, unformat_input_t * input)
   if (have_normal_interface)
     {
       vnet_main_t *vnm = vnet_get_main ();
-      error = ethernet_register_interface
-	(vnm, tuntap_dev_class.index, 0 /* device instance */ ,
-	 tm->ether_dst_mac /* ethernet address */ ,
-	 &tm->hw_if_index, 0 /* flag change */ );
-      if (error)
-	clib_error_report (error);
+      vnet_eth_interface_registration_t eir = {};
+
+      eir.dev_class_index = tuntap_dev_class.index;
+      eir.address = tm->ether_dst_mac;
+      tm->hw_if_index = vnet_eth_register_interface (vnm, &eir);
+
       tm->sw_if_index = tm->hw_if_index;
       vm->os_punt_frame = tuntap_nopunt_frame;
     }

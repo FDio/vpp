@@ -252,7 +252,6 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
   u8 *ring = 0;
   af_packet_if_t *apif = 0;
   u8 hw_addr[6];
-  clib_error_t *error;
   vnet_sw_interface_t *sw;
   vnet_hw_interface_t *hw;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
@@ -386,6 +385,7 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
 
   if (apif->mode != AF_PACKET_IF_MODE_IP)
     {
+      vnet_eth_interface_registration_t eir = {};
       /*use configured or generate random MAC address */
       if (arg->hw_addr)
 	clib_memcpy (hw_addr, arg->hw_addr, 6);
@@ -401,20 +401,11 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
 	  hw_addr[1] = 0xfe;
 	}
 
-      error = ethernet_register_interface (
-	vnm, af_packet_device_class.index, if_index, hw_addr,
-	&apif->hw_if_index, af_packet_eth_flag_change);
-
-      if (error)
-	{
-	  clib_memset (apif, 0, sizeof (*apif));
-	  pool_put (apm->interfaces, apif);
-	  vlib_log_err (apm->log_class, "Unable to register interface: %U",
-			format_clib_error, error);
-	  clib_error_free (error);
-	  ret = VNET_API_ERROR_SYSCALL_ERROR_1;
-	  goto error;
-	}
+      eir.dev_class_index = af_packet_device_class.index;
+      eir.dev_instance = if_index;
+      eir.address = hw_addr;
+      eir.cb.flag_change = af_packet_eth_flag_change;
+      apif->hw_if_index = vnet_eth_register_interface (vnm, &eir);
     }
   else
     {

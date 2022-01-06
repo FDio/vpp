@@ -128,6 +128,11 @@ struct vnet_hw_interface_t;
 typedef u32 (ethernet_flag_change_function_t)
   (vnet_main_t * vnm, struct vnet_hw_interface_t * hi, u32 flags);
 
+typedef struct
+{
+  ethernet_flag_change_function_t *flag_change;
+} vnet_eth_if_callbacks_t;
+
 #define ETHERNET_MIN_PACKET_BYTES  64
 #define ETHERNET_MAX_PACKET_BYTES  9216
 
@@ -165,7 +170,7 @@ typedef struct ethernet_interface
 #define ETHERNET_INTERFACE_FLAG_MTU        2
 
   /* Callback, e.g. to turn on/off promiscuous mode */
-  ethernet_flag_change_function_t *flag_change;
+  vnet_eth_if_callbacks_t cb;
 
   u32 driver_instance;
 
@@ -352,14 +357,6 @@ mac_address_t *ethernet_interface_add_del_address (ethernet_main_t * em,
 						   u32 hw_if_index,
 						   const u8 * address,
 						   u8 is_add);
-
-clib_error_t *ethernet_register_interface (vnet_main_t * vnm,
-					   u32 dev_class_index,
-					   u32 dev_instance,
-					   const u8 * address,
-					   u32 * hw_if_index_return,
-					   ethernet_flag_change_function_t
-					   flag_change);
 
 void ethernet_delete_interface (vnet_main_t * vnm, u32 hw_if_index);
 
@@ -574,6 +571,16 @@ vnet_get_ethernet_main (void)
   return &ethernet_main;
 }
 
+typedef struct
+{
+  u32 dev_class_index;
+  u32 dev_instance;
+  vnet_eth_if_callbacks_t cb;
+  const u8 *address;
+} vnet_eth_interface_registration_t;
+
+u32 vnet_eth_register_interface (vnet_main_t *vnm,
+				 vnet_eth_interface_registration_t *r);
 void ethernet_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai);
 u8 *ethernet_build_rewrite (vnet_main_t * vnm,
 			    u32 sw_if_index,

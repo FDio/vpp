@@ -617,6 +617,8 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vmxnet3_main_t *vmxm = &vmxnet3_main;
+  vnet_eth_interface_registration_t eir = {};
+
   vmxnet3_device_t *vd;
   vlib_pci_dev_handle_t h;
   clib_error_t *error = 0;
@@ -802,16 +804,11 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
     }
 
   /* create interface */
-  error = ethernet_register_interface (vnm, vmxnet3_device_class.index,
-				       vd->dev_instance, vd->mac_addr,
-				       &vd->hw_if_index, vmxnet3_flag_change);
-
-  if (error)
-    {
-      vmxnet3_log_error (vd,
-			 "error encountered on ethernet register interface");
-      goto error;
-    }
+  eir.dev_class_index = vmxnet3_device_class.index;
+  eir.dev_instance = vd->dev_instance;
+  eir.address = vd->mac_addr;
+  eir.cb.flag_change = vmxnet3_flag_change;
+  vd->hw_if_index = vnet_eth_register_interface (vnm, &eir);
 
   vnet_sw_interface_t *sw = vnet_get_hw_sw_interface (vnm, vd->hw_if_index);
   vd->sw_if_index = sw->sw_if_index;

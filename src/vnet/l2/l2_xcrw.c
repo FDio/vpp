@@ -291,6 +291,7 @@ static u32
 create_xcrw_interface (vlib_main_t * vm)
 {
   vnet_main_t *vnm = vnet_get_main ();
+  vnet_eth_interface_registration_t eir = {};
   static u32 instance;
   u8 address[6];
   u32 hw_if_index;
@@ -301,10 +302,9 @@ create_xcrw_interface (vlib_main_t * vm)
   clib_memset (address, 0, sizeof (address));
   address[2] = 0x12;
 
-  /* can returns error iff phy != 0 */
-  (void) ethernet_register_interface
-    (vnm, xcrw_device_class.index, instance++, address, &hw_if_index,
-     /* flag change */ 0);
+  eir.dev_class_index = xcrw_device_class.index;
+  eir.dev_instance = instance++, eir.address = address;
+  hw_if_index = vnet_eth_register_interface (vnm, &eir);
 
   hi = vnet_get_hw_interface (vnm, hw_if_index);
   sw_if_index = hi->sw_if_index;

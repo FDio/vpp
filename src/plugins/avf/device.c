@@ -1589,6 +1589,7 @@ void
 avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
 {
   vnet_main_t *vnm = vnet_get_main ();
+  vnet_eth_interface_registration_t eir = {};
   avf_main_t *am = &avf_main;
   avf_device_t *ad, **adp;
   vlib_pci_dev_handle_t h;
@@ -1722,12 +1723,11 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
     goto error;
 
   /* create interface */
-  error = ethernet_register_interface (vnm, avf_device_class.index,
-				       ad->dev_instance, ad->hwaddr,
-				       &ad->hw_if_index, avf_flag_change);
-
-  if (error)
-    goto error;
+  eir.dev_class_index = avf_device_class.index;
+  eir.dev_instance = ad->dev_instance;
+  eir.address = ad->hwaddr;
+  eir.cb.flag_change = avf_flag_change;
+  ad->hw_if_index = vnet_eth_register_interface (vnm, &eir);
 
   ethernet_set_flags (vnm, ad->hw_if_index,
 		      ETHERNET_INTERFACE_FLAG_DEFAULT_L3);
