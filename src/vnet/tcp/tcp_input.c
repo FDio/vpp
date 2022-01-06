@@ -802,15 +802,6 @@ tcp_cc_update (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 
   /* If a cumulative ack, make sure dupacks is 0 */
   tc->rcv_dupacks = 0;
-
-  /* When dupacks hits the threshold we only enter fast retransmit if
-   * cumulative ack covers more than snd_congestion. Should snd_una
-   * wrap this test may fail under otherwise valid circumstances.
-   * Therefore, proactively update snd_congestion when wrap detected. */
-  if (PREDICT_FALSE
-      (seq_leq (tc->snd_congestion, tc->snd_una - tc->bytes_acked)
-       && seq_gt (tc->snd_congestion, tc->snd_una)))
-    tc->snd_congestion = tc->snd_una - 1;
 }
 
 /**

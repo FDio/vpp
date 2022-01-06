@@ -71,6 +71,10 @@ tcp_add_del_adjacency (tcp_connection_t * tc, u8 is_add)
 static void
 tcp_cc_init (tcp_connection_t * tc)
 {
+  /* As per RFC 6582 initialize "recover" to iss */
+  if (tcp_opts_sack_permitted (&tc->rcv_opts))
+    tc->snd_congestion = tc->iss;
+
   tc->cc_algo->init (tc);
 }
 
