@@ -56,31 +56,26 @@ unsigned int if_nametoindex (const char *ifname);
 
 typedef struct tpacket_req tpacket_req_t;
 
-static u32
-af_packet_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi,
-			   u32 flags)
+static clib_error_t *
+af_packet_eth_set_mtu (vnet_main_t *vnm, vnet_hw_interface_t *hi, u32 mtu)
 {
-  clib_error_t *error;
+  clib_error_t *error, *rv;
   af_packet_main_t *apm = &af_packet_main;
-  af_packet_if_t *apif =
-    pool_elt_at_index (apm->interfaces, hi->dev_instance);
+  af_packet_if_t *apif = pool_elt_at_index (apm->interfaces, hi->dev_instance);
 
-  if (flags == ETHERNET_INTERFACE_FLAG_MTU)
+  error = vnet_netlink_set_link_mtu (apif->host_if_index, mtu);
+
+  if (error)
     {
-      error =
-	vnet_netlink_set_link_mtu (apif->host_if_index, hi->max_packet_bytes);
-
-      if (error)
-	{
-	  vlib_log_err (apm->log_class, "netlink failed to change MTU: %U",
-			format_clib_error, error);
-	  clib_error_free (error);
-	  return VNET_API_ERROR_SYSCALL_ERROR_1;
-	}
-      else
-	apif->host_mtu = hi->max_packet_bytes;
+      vlib_log_err (apm->log_class, "netlink failed to change MTU: %U",
+		    format_clib_error, error);
+      rv = vnet_error (VNET_ERR_SYSCALL_ERROR_1, "netlink error: %U",
+		       format_clib_error, error);
+      clib_error_free (error);
+      return rv;
     }
-
+  else
+    apif->host_mtu = mtu;
   return 0;
 }
 
@@ -403,7 +398,7 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
       eir.dev_class_index = af_packet_device_class.index;
       eir.dev_instance = if_index;
       eir.address = hw_addr;
-      eir.cb.flag_change = af_packet_eth_flag_change;
+      eir.cb.set_mtu = af_packet_eth_set_mtu;
       apif->hw_if_index = vnet_eth_register_interface (vnm, &eir);
     }
   else
