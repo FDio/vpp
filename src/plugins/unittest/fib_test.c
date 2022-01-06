@@ -142,16 +142,15 @@ fib_test_mk_intf (u32 ninterfaces)
 
     for (i = 0; i < ninterfaces; i++)
     {
+      vnet_eth_interface_registration_t eir = {};
+      vnet_main_t *vnm = vnet_get_main();
+
         hw_address[5] = i;
 
-        error = ethernet_register_interface(vnet_get_main(),
-                                            test_interface_device_class.index,
-                                            i /* instance */,
-                                            hw_address,
-                                            &tm->hw_if_indicies[i],
-                                            /* flag change */ 0);
-
-        FIB_TEST((NULL == error), "ADD interface %d", i);
+       eir.dev_class_index = test_interface_device_class.index;
+       eir.dev_instance = i;
+       eir.address = hw_address;
+       tm->hw_if_indicies[i] = vnet_eth_register_interface (vnm, &eir);
 
         error = vnet_hw_interface_set_flags(vnet_get_main(),
                                             tm->hw_if_indicies[i],
@@ -5169,12 +5168,11 @@ fib_test_v6 (void)
     /*
      * Add the interface back. routes stay unresolved.
      */
-    error = ethernet_register_interface(vnet_get_main(),
-                                        test_interface_device_class.index,
-                                        0 /* instance */,
-                                        hw_address,
-                                        &tm->hw_if_indicies[0],
-                                        /* flag change */ 0);
+    vnet_eth_interface_registration_t eir = {};
+    eir.dev_class_index = test_interface_device_class.index;
+    eir.dev_instance = 0;
+    eir.address = hw_address;
+    tm->hw_if_indicies[0] = vnet_eth_register_interface (vnet_get_main(), &eir);
 
     fei = fib_table_lookup_exact_match(fib_index, &pfx_2001_b_s_64);
     FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),

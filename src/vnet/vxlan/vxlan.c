@@ -457,6 +457,7 @@ int vnet_vxlan_add_del_tunnel
 				   vxlan_hw_class.index, dev_instance);
       else
 	{
+	  vnet_eth_interface_registration_t eir = {};
 	  f64 now = vlib_time_now (vm);
 	  u32 rnd;
 	  rnd = (u32) (now * 1e6);
@@ -464,15 +465,12 @@ int vnet_vxlan_add_del_tunnel
 	  memcpy (hw_addr + 2, &rnd, sizeof (rnd));
 	  hw_addr[0] = 2;
 	  hw_addr[1] = 0xfe;
-	  if (ethernet_register_interface (
-		vnm, vxlan_device_class.index, dev_instance, hw_addr,
-		&t->hw_if_index, vxlan_eth_flag_change))
-	    {
-	      hash_unset (vxm->instance_used, t->user_instance);
 
-	      pool_put (vxm->tunnels, t);
-	      return VNET_API_ERROR_SYSCALL_ERROR_2;
-	    }
+	  eir.dev_class_index = vxlan_device_class.index;
+	  eir.dev_instance = dev_instance;
+	  eir.address = hw_addr;
+	  eir.cb.flag_change = vxlan_eth_flag_change;
+	  t->hw_if_index = vnet_eth_register_interface (vnm, &eir);
 	}
 
       vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, t->hw_if_index);

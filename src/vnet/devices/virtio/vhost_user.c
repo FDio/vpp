@@ -1563,8 +1563,8 @@ vhost_user_create_ethernet (vnet_main_t *vnm, vlib_main_t *vm,
 			    vhost_user_create_if_args_t *args)
 {
   vhost_user_main_t *vum = &vhost_user_main;
+  vnet_eth_interface_registration_t eir = {};
   u8 hwaddr[6];
-  clib_error_t *error;
 
   /* create hw and sw interface */
   if (args->use_custom_mac)
@@ -1579,15 +1579,10 @@ vhost_user_create_ethernet (vnet_main_t *vnm, vlib_main_t *vm,
       hwaddr[1] = 0xfe;
     }
 
-  error = ethernet_register_interface
-    (vnm,
-     vhost_user_device_class.index,
-     vui - vum->vhost_user_interfaces /* device instance */ ,
-     hwaddr /* ethernet address */ ,
-     &vui->hw_if_index, 0 /* flag change */ );
-
-  if (error)
-    clib_error_report (error);
+  eir.dev_class_index = vhost_user_device_class.index;
+  eir.dev_instance = vui - vum->vhost_user_interfaces /* device instance */,
+  eir.address = hwaddr;
+  vui->hw_if_index = vnet_eth_register_interface (vnm, &eir);
 }
 
 /*

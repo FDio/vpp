@@ -376,6 +376,7 @@ bond_delete_if (vlib_main_t * vm, u32 sw_if_index)
 void
 bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
 {
+  vnet_eth_interface_registration_t eir = {};
   bond_main_t *bm = &bond_main;
   vnet_main_t *vnm = vnet_get_main ();
   vnet_sw_interface_t *sw;
@@ -439,18 +440,11 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
       args->hw_addr[1] = 0xfe;
     }
   memcpy (bif->hw_address, args->hw_addr, 6);
-  args->error = ethernet_register_interface
-    (vnm, bond_dev_class.index, bif->dev_instance /* device instance */ ,
-     bif->hw_address /* ethernet address */ ,
-     &bif->hw_if_index, 0 /* flag change */ );
 
-  if (args->error)
-    {
-      args->rv = VNET_API_ERROR_INVALID_REGISTRATION;
-      hash_unset (bm->id_used, bif->id);
-      pool_put (bm->interfaces, bif);
-      return;
-    }
+  eir.dev_class_index = bond_dev_class.index;
+  eir.dev_instance = bif->dev_instance;
+  eir.address = bif->hw_address;
+  bif->hw_if_index = vnet_eth_register_interface (vnm, &eir);
 
   sw = vnet_get_hw_sw_interface (vnm, bif->hw_if_index);
   bif->sw_if_index = sw->sw_if_index;

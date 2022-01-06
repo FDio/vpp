@@ -138,12 +138,10 @@ l2_bvi_create (u32 user_instance,
 {
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
+  vnet_eth_interface_registration_t eir = {};
   u32 instance, hw_if_index, slot;
   vnet_hw_interface_t *hw_if;
-  clib_error_t *error;
   mac_address_t mac;
-
-  int rv = 0;
 
   ASSERT (sw_if_indexp);
 
@@ -178,17 +176,10 @@ l2_bvi_create (u32 user_instance,
       mac_address_copy (&mac, mac_in);
     }
 
-  error = ethernet_register_interface (vnm,
-				       bvi_device_class.index,
-				       instance, mac.bytes, &hw_if_index,
-				       /* flag change */ 0);
-
-  if (error)
-    {
-      rv = VNET_API_ERROR_INVALID_REGISTRATION;
-      clib_error_report (error);
-      return rv;
-    }
+  eir.dev_class_index = bvi_device_class.index;
+  eir.dev_instance = instance;
+  eir.address = mac.bytes;
+  hw_if_index = vnet_eth_register_interface (vnm, &eir);
 
   hw_if = vnet_get_hw_interface (vnm, hw_if_index);
 

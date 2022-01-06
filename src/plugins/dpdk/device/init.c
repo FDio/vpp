@@ -176,7 +176,6 @@ dpdk_lib_init (dpdk_main_t * dm)
   vnet_main_t *vnm = vnet_get_main ();
   u32 nports;
   u16 port_id;
-  clib_error_t *error;
   vlib_main_t *vm = vlib_get_main ();
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vnet_device_main_t *vdm = &vnet_device_main;
@@ -226,6 +225,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       struct rte_vmbus_device *vmbus_dev;
       dpdk_portid_t next_port_id;
       dpdk_device_config_t *devconf = 0;
+      vnet_eth_interface_registration_t eir = {};
       vlib_pci_addr_t pci_addr;
       vlib_vmbus_addr_t vmbus_addr;
       uword *p = 0;
@@ -644,11 +644,11 @@ dpdk_lib_init (dpdk_main_t * dm)
       /* assign interface to input thread */
       int q;
 
-      error = ethernet_register_interface (
-	vnm, dpdk_device_class.index, xd->device_index,
-	/* ethernet address */ addr, &xd->hw_if_index, dpdk_flag_change);
-      if (error)
-	return error;
+      eir.dev_class_index = dpdk_device_class.index;
+      eir.dev_instance = xd->device_index;
+      eir.address = addr;
+      eir.cb.flag_change = dpdk_flag_change;
+      xd->hw_if_index = vnet_eth_register_interface (vnm, &eir);
 
       sw = vnet_get_hw_sw_interface (vnm, xd->hw_if_index);
       xd->sw_if_index = sw->sw_if_index;
