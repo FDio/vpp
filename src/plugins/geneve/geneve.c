@@ -425,18 +425,15 @@ int vnet_geneve_add_del_tunnel
       vnet_hw_interface_t *hi;
       if (a->l3_mode)
 	{
+	  vnet_eth_interface_registration_t eir = {};
 	  u32 t_idx = t - vxm->tunnels;
 	  u8 address[6] =
 	    { 0xd0, 0x0b, 0xee, 0xd0, (u8) (t_idx >> 8), (u8) t_idx };
-	  clib_error_t *error =
-	    ethernet_register_interface (vnm, geneve_device_class.index,
-					 t_idx,
-					 address, &hw_if_index, 0);
-	  if (error)
-	    {
-	      clib_error_report (error);
-	      return VNET_API_ERROR_INVALID_REGISTRATION;
-	    }
+
+	  eir.dev_class_index = geneve_device_class.index;
+	  eir.dev_instance = t_idx;
+	  eir.address = address;
+	  hw_if_index = vnet_eth_register_interface (vnm, &eir);
 	}
       else
 	{

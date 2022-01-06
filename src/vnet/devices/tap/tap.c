@@ -643,17 +643,13 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 
   if (vif->type != VIRTIO_IF_TYPE_TUN)
     {
-      args->error =
-	ethernet_register_interface (vnm, virtio_device_class.index,
-				     vif->dev_instance, vif->mac_addr,
-				     &vif->hw_if_index,
-				     virtio_eth_flag_change);
-      if (args->error)
-	{
-	  args->rv = VNET_API_ERROR_INVALID_REGISTRATION;
-	  goto error;
-	}
+      vnet_eth_interface_registration_t eir = {};
 
+      eir.dev_class_index = virtio_device_class.index;
+      eir.dev_instance = vif->dev_instance;
+      eir.address = vif->mac_addr;
+      eir.cb.flag_change = virtio_eth_flag_change;
+      vif->hw_if_index = vnet_eth_register_interface (vnm, &eir);
     }
   else
     {

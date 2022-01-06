@@ -370,7 +370,6 @@ vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t * a,
   gre_tunnel_t *t;
   vnet_hw_interface_t *hi;
   u32 hw_if_index, sw_if_index;
-  clib_error_t *error;
   u8 is_ipv6 = a->is_ipv6;
   gre_tunnel_key_t key;
 
@@ -415,17 +414,16 @@ vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t * a,
     }
   else
     {
+      vnet_eth_interface_registration_t eir = {};
+
       /* Default MAC address (d00b:eed0:0000 + sw_if_index) */
       u8 address[6] =
 	{ 0xd0, 0x0b, 0xee, 0xd0, (u8) (t_idx >> 8), (u8) t_idx };
-      error =
-	ethernet_register_interface (vnm, gre_device_class.index, t_idx,
-				     address, &hw_if_index, 0);
-      if (error)
-	{
-	  clib_error_report (error);
-	  return VNET_API_ERROR_INVALID_REGISTRATION;
-	}
+
+      eir.dev_class_index = gre_device_class.index;
+      eir.dev_instance = t_idx;
+      eir.address = address;
+      hw_if_index = vnet_eth_register_interface (vnm, &eir);
     }
 
   /* Set GRE tunnel interface output node (not used for L3 payload) */
