@@ -403,7 +403,7 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
       eir.dev_class_index = af_packet_device_class.index;
       eir.dev_instance = if_index;
       eir.address = hw_addr;
-      eir.cb.flag_change = af_packet_eth_flag_change;
+      eir.cb.set_mtu = af_packet_eth_set_mtu;
       apif->hw_if_index = vnet_eth_register_interface (vnm, &eir);
     }
   else
