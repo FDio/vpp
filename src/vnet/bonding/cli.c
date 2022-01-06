@@ -516,12 +516,18 @@ bond_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  if (args.mode == BOND_MODE_LACP)
 	    args.numa_only = 1;
 	  else
-	    return clib_error_return (0,
-				      "Only lacp mode supports numa-only so far!");
+	    {
+	      unformat_free (line_input);
+	      return clib_error_return (
+		0, "Only lacp mode supports numa-only so far!");
+	    }
 	}
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  unformat_free (line_input);
+	  return clib_error_return (0, "unknown input `%U'",
+				    format_unformat_error, input);
+	}
     }
   unformat_free (line_input);
 
