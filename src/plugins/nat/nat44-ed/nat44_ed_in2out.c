@@ -461,6 +461,8 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
 
   s = nat_ed_session_alloc (sm, thread_index, now, proto);
   ASSERT (s);
+  if (PREDICT_TRUE (proto == IP_PROTOCOL_TCP))
+    nat44_init_tcp_session_state_i2o (s, b);
 
   if (!is_sm)
     {
