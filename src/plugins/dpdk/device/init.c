@@ -411,6 +411,12 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    di.flow_type_rss_offloads;
 	}
 
+      if (devconf->num_rx_desc)
+	xd->conf.n_rx_desc = devconf->num_rx_desc;
+
+      if (devconf->num_tx_desc)
+	xd->conf.n_tx_desc = devconf->num_tx_desc;
+
       vec_validate_aligned (xd->rx_queues, xd->conf.n_rx_queues - 1,
 			    CLIB_CACHE_LINE_BYTES);
 
