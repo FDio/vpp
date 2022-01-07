@@ -380,6 +380,8 @@ create_session_for_static_mapping_ed (
       nat_elog_warn (sm, "create NAT session failed");
       return 0;
     }
+  if (proto == IP_PROTOCOL_TCP)
+      nat44_init_tcp_session_state_o2i (s, b);
 
   ip = vlib_buffer_get_current (b);
 
@@ -617,6 +619,8 @@ create_bypass_for_fwd (snat_main_t *sm, vlib_buffer_t *b, snat_session_t *s,
 	  nat_elog_warn (sm, "create NAT session failed");
 	  return;
 	}
+      if (ip->protocol == IP_PROTOCOL_TCP)
+	nat44_init_tcp_session_state_o2i (s, b);
 
       s->ext_host_addr = ip->src_address;
       s->ext_host_port = lookup_dport;

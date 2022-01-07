@@ -701,6 +701,14 @@ is_interface_addr (snat_main_t *sm, vlib_node_runtime_t *node,
 }
 
 always_inline void
+nat44_init_tcp_session_state_i2o (snat_session_t *ses, vlib_buffer_t *b)
+{
+  u8 tcp_flags = vnet_buffer (b)->ip.reass.icmp_type_or_tcp_flags;
+  if (tcp_flags & TCP_FLAG_SYN)
+    ses->state |= NAT44_SES_I2O_SYN;
+}
+
+always_inline void
 nat44_set_tcp_session_state_i2o (snat_main_t *sm, f64 now, snat_session_t *ses,
 				 vlib_buffer_t *b, u32 thread_index)
 {
@@ -712,11 +720,8 @@ nat44_set_tcp_session_state_i2o (snat_main_t *sm, f64 now, snat_session_t *ses,
     ses->state = NAT44_SES_RST;
   if ((ses->state == NAT44_SES_RST) && !(tcp_flags & TCP_FLAG_RST))
     ses->state = 0;
-  if ((tcp_flags & TCP_FLAG_ACK) && (ses->state & NAT44_SES_I2O_SYN) &&
-      (ses->state & NAT44_SES_O2I_SYN))
+  if ((tcp_flags & TCP_FLAG_SYN) && (ses->state & NAT44_SES_O2I_SYN))
     ses->state = 0;
-  if (tcp_flags & TCP_FLAG_SYN)
-    ses->state |= NAT44_SES_I2O_SYN;
   if (tcp_flags & TCP_FLAG_FIN)
     {
       ses->i2o_fin_seq = clib_net_to_host_u32 (tcp_seq_number);
@@ -749,6 +754,14 @@ nat44_set_tcp_session_state_i2o (snat_main_t *sm, f64 now, snat_session_t *ses,
 }
 
 always_inline void
+nat44_init_tcp_session_state_o2i (snat_session_t *ses, vlib_buffer_t *b)
+{
+  u8 tcp_flags = vnet_buffer (b)->ip.reass.icmp_type_or_tcp_flags;
+  if (tcp_flags & TCP_FLAG_SYN)
+    ses->state |= NAT44_SES_O2I_SYN;
+}
+
+always_inline void
 nat44_set_tcp_session_state_o2i (snat_main_t *sm, f64 now, snat_session_t *ses,
 				 u8 tcp_flags, u32 tcp_ack_number,
 				 u32 tcp_seq_number, u32 thread_index)
@@ -758,11 +771,8 @@ nat44_set_tcp_session_state_o2i (snat_main_t *sm, f64 now, snat_session_t *ses,
     ses->state = NAT44_SES_RST;
   if ((ses->state == NAT44_SES_RST) && !(tcp_flags & TCP_FLAG_RST))
     ses->state = 0;
-  if ((tcp_flags & TCP_FLAG_ACK) && (ses->state & NAT44_SES_I2O_SYN) &&
-      (ses->state & NAT44_SES_O2I_SYN))
+  if ((tcp_flags & TCP_FLAG_SYN) && (ses->state & NAT44_SES_I2O_SYN))
     ses->state = 0;
-  if (tcp_flags & TCP_FLAG_SYN)
-    ses->state |= NAT44_SES_O2I_SYN;
   if (tcp_flags & TCP_FLAG_FIN)
     {
       ses->o2i_fin_seq = clib_net_to_host_u32 (tcp_seq_number);
