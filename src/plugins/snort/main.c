@@ -407,8 +407,38 @@ done:
   return err;
 }
 
+static int
+snort_instances_context_alloc_per_iface (u32 sw_if_index)
+{
+  snort_main_t *sm = &snort_main;
+  snort_instance_context_t *context;
+  u32 *instances = sm->instance_vec_by_sw_if_index[sw_if_index];
+
+  pool_get (sm->contexts, context);
+  context->flow_hash_config = sm->hash_config;
+  context->instances_per_iface = vec_dup (instances);
+  context->n_instances = vec_len (context->instances_per_iface);
+
+  u32 index = context - sm->contexts;
+
+  return index;
+}
+
+static void
+snort_instances_context_release (u32 index)
+{
+  snort_main_t *sm = &snort_main;
+  snort_instance_context_t *context;
+  u32 *instances = NULL;
+
+  context = pool_elt_at_index (sm->contexts, index);
+  instances = context->instances_per_iface;
+  vec_free (instances);
+  pool_put (sm->contexts, context);
+}
+
 clib_error_t *
-snort_interface_enable_disable (vlib_main_t *vm, char *instance_name,
+snort_interface_enable_disable (vlib_main_t *vm, u8 **instance_vec,
 				u32 sw_if_index, int is_enable)
 {
   snort_main_t *sm = &snort_main;
@@ -416,37 +446,50 @@ snort_interface_enable_disable (vlib_main_t *vm, char *instance_name,
   snort_instance_t *si;
   clib_error_t *err = 0;
   u32 index;
+  u8 **instance_name;
 
   if (is_enable)
     {
-      if ((si = snort_get_instance_by_name (instance_name)) == 0)
+      vec_validate (sm->instance_vec_by_sw_if_index, sw_if_index);
+      vec_foreach (instance_name, instance_vec)
 	{
-	  err = clib_error_return (0, "unknown instance '%s'", instance_name);
-	  goto done;
+	  if ((si = snort_get_instance_by_name ((char *) *instance_name)) == 0)
+	    {
+	      err =
+		clib_error_return (0, "unknown instance '%s'", *instance_name);
+	      goto done;
+	    }
+
+	  index = vec_search (sm->instance_vec_by_sw_if_index[sw_if_index],
+			      si->index);
+
+	  if (index != ~0)
+	    {
+	      si = vec_elt_at_index (sm->instances, index);
+	      err = clib_error_return (0,
+				       "interface %U already assgined to "
+				       "instance '%s'",
+				       format_vnet_sw_if_index_name, vnm,
+				       sw_if_index, si->name);
+	      goto done;
+	    }
+	  else
+	    {
+	      vec_add1 (sm->instance_vec_by_sw_if_index[sw_if_index],
+			si->index);
+	    }
 	}
+      vec_validate (sm->context_by_sw_if_index, sw_if_index);
+      u32 context_id = snort_instances_context_alloc_per_iface (sw_if_index);
 
-      vec_validate_init_empty (sm->instance_by_sw_if_index, sw_if_index, ~0);
-
-      index = sm->instance_by_sw_if_index[sw_if_index];
-      if (index != ~0)
-	{
-	  si = vec_elt_at_index (sm->instances, index);
-	  err = clib_error_return (0,
-				   "interface %U already assgined to "
-				   "instance '%s'",
-				   format_vnet_sw_if_index_name, vnm,
-				   sw_if_index, si->name);
-	  goto done;
-	}
-
-      index = sm->instance_by_sw_if_index[sw_if_index] = si->index;
+      clib_atomic_store_rel_n (&sm->context_by_sw_if_index[sw_if_index],
+			       context_id);
       vnet_feature_enable_disable ("ip4-unicast", "snort-enq", sw_if_index, 1,
-				   &index, sizeof (index));
+				   &sw_if_index, sizeof (sw_if_index));
     }
   else
     {
-      if (sw_if_index >= vec_len (sm->instance_by_sw_if_index) ||
-	  sm->instance_by_sw_if_index[sw_if_index] == ~0)
+      if (sw_if_index >= vec_len (sm->instance_vec_by_sw_if_index))
 	{
 	  err =
 	    clib_error_return (0,
@@ -455,12 +498,17 @@ snort_interface_enable_disable (vlib_main_t *vm, char *instance_name,
 			       format_vnet_sw_if_index_name, vnm, sw_if_index);
 	  goto done;
 	}
-      index = sm->instance_by_sw_if_index[sw_if_index];
-      si = vec_elt_at_index (sm->instances, index);
-
-      sm->instance_by_sw_if_index[sw_if_index] = ~0;
-      vnet_feature_enable_disable ("ip4-unicast", "snort-enq", sw_if_index, 0,
-				   &index, sizeof (index));
+      if (sw_if_index < vec_len (sm->context_by_sw_if_index))
+	{
+	  u32 index = sm->context_by_sw_if_index[sw_if_index];
+	  vnet_feature_enable_disable ("ip4-unicast", "snort-enq", sw_if_index,
+				       0, &sw_if_index, sizeof (sw_if_index));
+	  clib_atomic_store_rel_n (&sm->context_by_sw_if_index[sw_if_index],
+				   ~0);
+	  snort_instances_context_release (index);
+	}
+      vec_delete (sm->instance_vec_by_sw_if_index[sw_if_index],
+		  vec_len (sm->instance_vec_by_sw_if_index[sw_if_index]), 0);
     }
 
 done:
@@ -500,6 +548,8 @@ snort_init (vlib_main_t *vm)
   snort_main_t *sm = &snort_main;
   sm->input_mode = VLIB_NODE_STATE_INTERRUPT;
   sm->instance_by_name = hash_create_string (0, sizeof (uword));
+  sm->hash_config = SNORT_HASH_L3_L4_ADDRS;
+  sm->key_s = clib_toeplitz_hash_key_init (0, 0);
   vlib_buffer_pool_t *bp;
 
   vec_foreach (bp, vm->buffer_main->buffer_pools)
