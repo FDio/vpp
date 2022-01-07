@@ -3837,6 +3837,181 @@ class TestNAT44EDMW(TestNAT44ED):
         self.logger.info(ppp("p2 packet:", p2))
         self.logger.info(ppp("capture packet:", capture))
 
+    def test_tcp_session_open_retransmit1(self):
+        """ NAT44ED Open TCP session with SYN,ACK retransmit 1
+
+            The client does not receive the [SYN,ACK] or the
+            ACK from the client is lost. Therefore, the [SYN, ACK]
+            is retransmitted by the server.
+        """
+
+        in_port = self.tcp_port_in
+        ext_port = self.tcp_external_port
+        payload = "H" * 10
+
+        self.nat_add_address(self.nat_addr)
+        self.nat_add_inside_interface(self.pg0)
+        self.nat_add_outside_interface(self.pg1)
+
+        self.vapi.nat_set_timeouts(udp=300, tcp_established=7440,
+                                   tcp_transitory=5, icmp=60)
+        # SYN packet in->out
+        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=in_port, dport=ext_port, flags="S"))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(1)
+        p = capture[0]
+        out_port = p[TCP].sport
+
+        # SYN + ACK packet out->in
+        p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
+             TCP(sport=ext_port, dport=out_port, flags="SA"))
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg0.get_capture(1)
+
+	# ACK in->out does not arrive
+
+        # resent SYN + ACK packet out->in
+        p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
+             TCP(sport=ext_port, dport=out_port, flags="SA"))
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg0.get_capture(1)
+
+        # ACK packet in->out
+        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=in_port, dport=ext_port, flags="A"))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg1.get_capture(1)
+
+	# Verify that the data can be transmitted after the transitory time
+        self.virtual_sleep(6)
+
+        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=in_port, dport=ext_port, flags="PA") /
+	     Raw(payload))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg1.get_capture(1)
+
+    def test_tcp_session_open_retransmit2(self):
+        """ NAT44ED Open TCP session with SYN,ACK retransmit 2
+
+            The ACK is lost to the server after the TCP session is opened.
+            Data is sent by the client, then the [SYN,ACK] is
+            retransmitted by the server.
+        """
+
+        in_port = self.tcp_port_in
+        ext_port = self.tcp_external_port
+        payload = "H" * 10
+
+        self.nat_add_address(self.nat_addr)
+        self.nat_add_inside_interface(self.pg0)
+        self.nat_add_outside_interface(self.pg1)
+
+        self.vapi.nat_set_timeouts(udp=300, tcp_established=7440,
+                                   tcp_transitory=5, icmp=60)
+        # SYN packet in->out
+        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=in_port, dport=ext_port, flags="S"))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(1)
+        p = capture[0]
+        out_port = p[TCP].sport
+
+        # SYN + ACK packet out->in
+        p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
+             TCP(sport=ext_port, dport=out_port, flags="SA"))
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg0.get_capture(1)
+
+	# ACK packet in->out -- not received by the server
+        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=in_port, dport=ext_port, flags="A"))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg1.get_capture(1)
+
+        # PUSH + ACK packet in->out
+        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=in_port, dport=ext_port, flags="PA") /
+	     Raw(payload))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg1.get_capture(1)
+
+        # resent SYN + ACK packet out->in
+        p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
+             TCP(sport=ext_port, dport=out_port, flags="SA"))
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg0.get_capture(1)
+
+        # resent ACK packet in->out
+        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=in_port, dport=ext_port, flags="A"))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg1.get_capture(1)
+
+        # resent PUSH + ACK packet in->out
+        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=in_port, dport=ext_port, flags="PA") /
+	     Raw(payload))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg1.get_capture(1)
+
+        # ACK packet out->in
+        p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
+             TCP(sport=ext_port, dport=out_port, flags="A"))
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg0.get_capture(1)
+
+	# Verify that the data can be transmitted after the transitory time
+        self.virtual_sleep(6)
+
+        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=in_port, dport=ext_port, flags="PA") /
+	     Raw(payload))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg1.get_capture(1)
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
