@@ -116,28 +116,6 @@ typedef struct _vpp_context
   volatile bool interrupted;
 } VPP_Context_t;
 
-static VPP_Context_t *global_vpp_ctx = 0;
-
-static int
-vpp_daq_qpair_lock (VPPQueuePair *p)
-{
-  int free = 0;
-  while (!__atomic_compare_exchange_n (&p->lock, &free, 1, 0, __ATOMIC_ACQUIRE,
-				       __ATOMIC_RELAXED))
-    {
-      while (__atomic_load_n (&p->lock, __ATOMIC_RELAXED))
-	VPP_DAQ_PAUSE ();
-      free = 0;
-    }
-  return 0;
-}
-
-static void
-vpp_daq_qpair_unlock (VPPQueuePair *p)
-{
-  __atomic_store_n (&p->lock, 0, __ATOMIC_RELEASE);
-}
-
 static int
 vpp_daq_module_load (const DAQ_BaseAPI_t *base_api)
 {
@@ -272,12 +250,6 @@ vpp_daq_instantiate (const DAQ_ModuleConfig_h modcfg,
   int i, fd = -1, shm_fd = -1;
   const char *input;
   uint8_t *base;
-
-  if (global_vpp_ctx)
-    {
-      *ctxt_ptr = global_vpp_ctx;
-      return DAQ_SUCCESS;
-    }
 
   vc = calloc (1, sizeof (VPP_Context_t));
 
@@ -464,7 +436,7 @@ vpp_daq_instantiate (const DAQ_ModuleConfig_h modcfg,
 	}
     }
 
-  *ctxt_ptr = global_vpp_ctx = vc;
+  *ctxt_ptr = vc;
   return DAQ_SUCCESS;
 err:
   if (vc)
@@ -525,7 +497,6 @@ vpp_daq_msg_receive_one (VPP_Context_t *vc, VPPQueuePair *qp,
   if (max_recv == 0)
     return 0;
 
-  vpp_daq_qpair_lock (qp);
   next = qp->next_desc;
   head = __atomic_load_n (qp->enq_head, __ATOMIC_ACQUIRE);
   n_recv = n_left = head - next;
@@ -551,7 +522,6 @@ vpp_daq_msg_receive_one (VPP_Context_t *vc, VPPQueuePair *qp,
     }
 
   qp->next_desc = next;
-  vpp_daq_qpair_unlock (qp);
 
   return n_recv;
 }
@@ -646,7 +616,6 @@ vpp_daq_msg_finalize (void *handle, const DAQ_Msg_t *msg, DAQ_Verdict verdict)
   uint64_t counter_increment = 1;
   int rv, retv = DAQ_SUCCESS;
 
-  vpp_daq_qpair_lock (qp);
   mask = qp->queue_size - 1;
   head = *qp->deq_head;
   d = qp->descs + dd->index;
@@ -667,7 +636,6 @@ vpp_daq_msg_finalize (void *handle, const DAQ_Msg_t *msg, DAQ_Verdict verdict)
 	retv = DAQ_ERROR;
     }
 
-  vpp_daq_qpair_unlock (qp);
   return retv;
 }
 
