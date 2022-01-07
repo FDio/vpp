@@ -141,7 +141,7 @@ cubic_cwnd_accumulate (tcp_connection_t * tc, u32 thresh, u32 bytes_acked)
       tc->cwnd_acc_bytes = 0;
     }
 
-  tcp_cwnd_accumulate (tc, thresh, tc->bytes_acked);
+  tcp_cwnd_accumulate (tc, thresh, bytes_acked);
 }
 
 static void
