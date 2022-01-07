@@ -408,45 +408,53 @@ done:
 }
 
 clib_error_t *
-snort_interface_enable_disable (vlib_main_t *vm, char *instance_name,
-				u32 sw_if_index, int is_enable)
+snort_interface_enable_disable (vlib_main_t *vm, char **instance_name,
+				u8 count, u32 sw_if_index, int is_enable)
 {
   snort_main_t *sm = &snort_main;
   vnet_main_t *vnm = vnet_get_main ();
   snort_instance_t *si;
   clib_error_t *err = 0;
-  u32 index;
+  u32 index, id;
 
   if (is_enable)
     {
-      if ((si = snort_get_instance_by_name (instance_name)) == 0)
+      vec_validate (sm->instance_vec_by_sw_if_index, sw_if_index);
+      for (id = 0; id < count; id++)
 	{
-	  err = clib_error_return (0, "unknown instance '%s'", instance_name);
-	  goto done;
+	  if ((si = snort_get_instance_by_name (instance_name[id])) == 0)
+	    {
+	      err = clib_error_return (0, "unknown instance '%s'",
+				       instance_name[id]);
+	      goto done;
+	    }
+
+	  index = vec_search (sm->instance_vec_by_sw_if_index[sw_if_index],
+			      si->index);
+
+	  if (index != ~0)
+	    {
+	      si = vec_elt_at_index (sm->instances, index);
+	      err = clib_error_return (0,
+				       "interface %U already assgined to "
+				       "instance '%s'",
+				       format_vnet_sw_if_index_name, vnm,
+				       sw_if_index, si->name);
+	      goto done;
+	    }
+	  else
+	    {
+	      vec_add1 (sm->instance_vec_by_sw_if_index[sw_if_index],
+			si->index);
+	    }
 	}
-
-      vec_validate_init_empty (sm->instance_by_sw_if_index, sw_if_index, ~0);
-
-      index = sm->instance_by_sw_if_index[sw_if_index];
-      if (index != ~0)
-	{
-	  si = vec_elt_at_index (sm->instances, index);
-	  err = clib_error_return (0,
-				   "interface %U already assgined to "
-				   "instance '%s'",
-				   format_vnet_sw_if_index_name, vnm,
-				   sw_if_index, si->name);
-	  goto done;
-	}
-
-      index = sm->instance_by_sw_if_index[sw_if_index] = si->index;
-      vnet_feature_enable_disable ("ip4-unicast", "snort-enq", sw_if_index, 1,
-				   &index, sizeof (index));
+      vnet_feature_enable_disable (
+	"ip4-unicast", "snort-enq", sw_if_index, 1,
+	&sm->instance_vec_by_sw_if_index[sw_if_index], sizeof (u32 **));
     }
   else
     {
-      if (sw_if_index >= vec_len (sm->instance_by_sw_if_index) ||
-	  sm->instance_by_sw_if_index[sw_if_index] == ~0)
+      if (sw_if_index >= vec_len (sm->instance_vec_by_sw_if_index))
 	{
 	  err =
 	    clib_error_return (0,
@@ -455,12 +463,11 @@ snort_interface_enable_disable (vlib_main_t *vm, char *instance_name,
 			       format_vnet_sw_if_index_name, vnm, sw_if_index);
 	  goto done;
 	}
-      index = sm->instance_by_sw_if_index[sw_if_index];
-      si = vec_elt_at_index (sm->instances, index);
-
-      sm->instance_by_sw_if_index[sw_if_index] = ~0;
-      vnet_feature_enable_disable ("ip4-unicast", "snort-enq", sw_if_index, 0,
-				   &index, sizeof (index));
+      vec_delete (sm->instance_vec_by_sw_if_index[sw_if_index],
+		  vec_len (sm->instance_vec_by_sw_if_index[sw_if_index]), 0);
+      vnet_feature_enable_disable (
+	"ip4-unicast", "snort-enq", sw_if_index, 0,
+	&sm->instance_vec_by_sw_if_index[sw_if_index], sizeof (u64 *));
     }
 
 done:
@@ -500,6 +507,7 @@ snort_init (vlib_main_t *vm)
   snort_main_t *sm = &snort_main;
   sm->input_mode = VLIB_NODE_STATE_INTERRUPT;
   sm->instance_by_name = hash_create_string (0, sizeof (uword));
+  sm->key_s = clib_toeplitz_hash_key_init (0, 0);
   vlib_buffer_pool_t *bp;
 
   vec_foreach (bp, vm->buffer_main->buffer_pools)

@@ -83,7 +83,7 @@ snort_attach_command_fn (vlib_main_t *vm, unformat_input_t *input,
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
   clib_error_t *err = 0;
-  u8 *name = 0;
+  u8 *name[64] = { 0 }, insts = 0;
   u32 sw_if_index = ~0;
 
   /* Get a line of input. */
@@ -95,13 +95,23 @@ snort_attach_command_fn (vlib_main_t *vm, unformat_input_t *input,
       if (unformat (line_input, "interface %U", unformat_vnet_sw_interface,
 		    vnm, &sw_if_index))
 	;
-      else if (unformat (line_input, "instance %s", &name))
-	;
+      else if (unformat (line_input, "instances %s", &name[insts]))
+	insts++;
+      else if (unformat (line_input, "instance %s", &name[insts]))
+	insts++;
       else
 	{
-	  err = clib_error_return (0, "unknown input `%U'",
-				   format_unformat_error, input);
-	  goto done;
+	  if (insts > 0 && insts < 64)
+	    {
+	      if (unformat (line_input, "%s", &name[insts]))
+		insts++;
+	    }
+	  else
+	    {
+	      err = clib_error_return (0, "unknown input `%U'",
+				       format_unformat_error, input);
+	      goto done;
+	    }
 	}
     }
 
@@ -111,16 +121,20 @@ snort_attach_command_fn (vlib_main_t *vm, unformat_input_t *input,
       goto done;
     }
 
-  if (!name)
+  if (!name[0])
     {
       err = clib_error_return (0, "please specify instance name");
       goto done;
     }
 
-  err = snort_interface_enable_disable (vm, (char *) name, sw_if_index, 1);
+  err =
+    snort_interface_enable_disable (vm, (char **) name, insts, sw_if_index, 1);
 
 done:
-  vec_free (name);
+  while (insts--)
+    {
+      vec_free (name[insts]);
+    }
   unformat_free (line_input);
   return err;
 }
@@ -163,7 +177,7 @@ snort_detach_command_fn (vlib_main_t *vm, unformat_input_t *input,
       goto done;
     }
 
-  err = snort_interface_enable_disable (vm, 0, sw_if_index, 0);
+  err = snort_interface_enable_disable (vm, 0, 0, sw_if_index, 0);
 
 done:
   unformat_free (line_input);
@@ -202,17 +216,19 @@ snort_show_interfaces_command_fn (vlib_main_t *vm, unformat_input_t *input,
   snort_main_t *sm = &snort_main;
   vnet_main_t *vnm = vnet_get_main ();
   snort_instance_t *si;
-  u32 *index;
+  u32 *index, **instc_vec;
+  u32 if_idx = 0;
 
   vlib_cli_output (vm, "interface\tsnort instance");
-  vec_foreach (index, sm->instance_by_sw_if_index)
+  vec_foreach (instc_vec, sm->instance_vec_by_sw_if_index)
     {
-      if (index[0] != ~0)
+      vec_foreach (index, *instc_vec)
 	{
 	  si = vec_elt_at_index (sm->instances, index[0]);
 	  vlib_cli_output (vm, "%U:\t%s", format_vnet_sw_if_index_name, vnm,
-			   index - sm->instance_by_sw_if_index, si->name);
+			   if_idx, si->name);
 	}
+      if_idx++;
     }
   return 0;
 }
