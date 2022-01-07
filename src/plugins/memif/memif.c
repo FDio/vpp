@@ -240,6 +240,7 @@ memif_connect (memif_if_t * mif)
   u32 n_txqs = 0, n_threads = vlib_get_n_threads ();
   clib_error_t *err = NULL;
   u8 max_log2_ring_sz = 0;
+  int with_barrier = 0;
 
   memif_log_debug (mif, "connect %u", mif->dev_instance);
 
@@ -269,6 +270,13 @@ memif_connect (memif_if_t * mif)
 
   template.read_function = memif_int_fd_read_ready;
   template.write_function = memif_int_fd_write_ready;
+
+  with_barrier = 1;
+  if (vlib_worker_thread_barrier_held ())
+    with_barrier = 0;
+
+  if (with_barrier)
+    vlib_worker_thread_barrier_sync (vm);
 
   /* *INDENT-OFF* */
   vec_foreach_index (i, mif->tx_queues)
@@ -351,13 +359,6 @@ memif_connect (memif_if_t * mif)
   if (1 << max_log2_ring_sz > vec_len (mm->per_thread_data[0].desc_data))
     {
       memif_per_thread_data_t *ptd;
-      int with_barrier = 1;
-
-      if (vlib_worker_thread_barrier_held ())
-	with_barrier = 0;
-
-      if (with_barrier)
-	vlib_worker_thread_barrier_sync (vm);
 
       vec_foreach (ptd, mm->per_thread_data)
 	{
@@ -368,9 +369,9 @@ memif_connect (memif_if_t * mif)
 	  vec_validate_aligned (ptd->desc_status, pow2_mask (max_log2_ring_sz),
 				CLIB_CACHE_LINE_BYTES);
 	}
-      if (with_barrier)
-	vlib_worker_thread_barrier_release (vm);
     }
+  if (with_barrier)
+    vlib_worker_thread_barrier_release (vm);
 
   mif->flags &= ~MEMIF_IF_FLAG_CONNECTING;
   mif->flags |= MEMIF_IF_FLAG_CONNECTED;
@@ -380,6 +381,8 @@ memif_connect (memif_if_t * mif)
   return 0;
 
 error:
+  if (with_barrier)
+    vlib_worker_thread_barrier_release (vm);
   memif_log_err (mif, "%U", format_clib_error, err);
   return err;
 }
