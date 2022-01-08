@@ -848,10 +848,10 @@ format_dpdk_pkt_offload_flags (u8 * s, va_list * va)
   s = format (s, "Packet Offload Flags");
 
 #define _(F, S)                                                               \
-  if (*ol_flags & PKT_##F)                                                    \
+  if (*ol_flags & RTE_MBUF_F_##F)                                             \
     {                                                                         \
       s = format (s, "\n%U%s (0x%04x) %s", format_white_space, indent, #F,    \
-		  PKT_##F, S);                                                \
+		  RTE_MBUF_F_##F, S);                                         \
     }
 
   foreach_dpdk_pkt_offload_flag
