@@ -49,19 +49,19 @@
 #endif
 
 #define foreach_dpdk_pkt_rx_offload_flag                                      \
-  _ (PKT_RX_VLAN, "RX packet is a 802.1q VLAN packet")                        \
-  _ (PKT_RX_RSS_HASH, "RX packet with RSS hash result")                       \
-  _ (PKT_RX_FDIR, "RX packet with FDIR infos")                                \
-  _ (PKT_RX_L4_CKSUM_BAD, "L4 cksum of RX pkt. is not OK")                    \
-  _ (PKT_RX_IP_CKSUM_BAD, "IP cksum of RX pkt. is not OK")                    \
-  _ (PKT_RX_OUTER_IP_CKSUM_BAD, "External IP header checksum error")          \
-  _ (PKT_RX_VLAN_STRIPPED, "RX packet VLAN tag stripped")                     \
-  _ (PKT_RX_IP_CKSUM_GOOD, "IP cksum of RX pkt. is valid")                    \
-  _ (PKT_RX_L4_CKSUM_GOOD, "L4 cksum of RX pkt. is valid")                    \
-  _ (PKT_RX_IEEE1588_PTP, "RX IEEE1588 L2 Ethernet PT Packet")                \
-  _ (PKT_RX_IEEE1588_TMST, "RX IEEE1588 L2/L4 timestamped packet")            \
-  _ (PKT_RX_LRO, "LRO packet")                                                \
-  _ (PKT_RX_QINQ_STRIPPED, "RX packet QinQ tags stripped")
+  _ (RX_VLAN, "RX packet is a 802.1q VLAN packet")                            \
+  _ (RX_RSS_HASH, "RX packet with RSS hash result")                           \
+  _ (RX_FDIR, "RX packet with FDIR infos")                                    \
+  _ (RX_L4_CKSUM_BAD, "L4 cksum of RX pkt. is not OK")                        \
+  _ (RX_IP_CKSUM_BAD, "IP cksum of RX pkt. is not OK")                        \
+  _ (RX_OUTER_IP_CKSUM_BAD, "External IP header checksum error")              \
+  _ (RX_VLAN_STRIPPED, "RX packet VLAN tag stripped")                         \
+  _ (RX_IP_CKSUM_GOOD, "IP cksum of RX pkt. is valid")                        \
+  _ (RX_L4_CKSUM_GOOD, "L4 cksum of RX pkt. is valid")                        \
+  _ (RX_IEEE1588_PTP, "RX IEEE1588 L2 Ethernet PT Packet")                    \
+  _ (RX_IEEE1588_TMST, "RX IEEE1588 L2/L4 timestamped packet")                \
+  _ (RX_LRO, "LRO packet")                                                    \
+  _ (RX_QINQ_STRIPPED, "RX packet QinQ tags stripped")
 
 #define foreach_dpdk_pkt_type                                           \
   _ (L2, ETHER, "Ethernet packet")                                      \
@@ -104,14 +104,14 @@
   _ (INNER_L4, NONFRAG, "Inner non-fragmented IP packet")
 
 #define foreach_dpdk_pkt_tx_offload_flag                                      \
-  _ (PKT_TX_VLAN_PKT, "TX packet is a 802.1q VLAN packet")                    \
-  _ (PKT_TX_TUNNEL_VXLAN, "TX packet is a VXLAN packet")                      \
-  _ (PKT_TX_IP_CKSUM, "IP cksum of TX pkt. computed by NIC")                  \
-  _ (PKT_TX_TCP_CKSUM, "TCP cksum of TX pkt. computed by NIC")                \
-  _ (PKT_TX_SCTP_CKSUM, "SCTP cksum of TX pkt. computed by NIC")              \
-  _ (PKT_TX_OUTER_IP_CKSUM, "Outer IP cksum of Tx pkt. computed by NIC")      \
-  _ (PKT_TX_TCP_SEG, "TSO of TX pkt. done by NIC")                            \
-  _ (PKT_TX_IEEE1588_TMST, "TX IEEE1588 packet to timestamp")
+  _ (TX_VLAN_PKT, "TX packet is a 802.1q VLAN packet")                        \
+  _ (TX_TUNNEL_VXLAN, "TX packet is a VXLAN packet")                          \
+  _ (TX_IP_CKSUM, "IP cksum of TX pkt. computed by NIC")                      \
+  _ (TX_TCP_CKSUM, "TCP cksum of TX pkt. computed by NIC")                    \
+  _ (TX_SCTP_CKSUM, "SCTP cksum of TX pkt. computed by NIC")                  \
+  _ (TX_OUTER_IP_CKSUM, "Outer IP cksum of Tx pkt. computed by NIC")          \
+  _ (TX_TCP_SEG, "TSO of TX pkt. done by NIC")                                \
+  _ (TX_IEEE1588_TMST, "TX IEEE1588 packet to timestamp")
 
 #define foreach_dpdk_pkt_offload_flag           \
   foreach_dpdk_pkt_rx_offload_flag              \
@@ -847,11 +847,11 @@ format_dpdk_pkt_offload_flags (u8 * s, va_list * va)
 
   s = format (s, "Packet Offload Flags");
 
-#define _(F, S)             \
-  if (*ol_flags & F)            \
-    {               \
-      s = format (s, "\n%U%s (0x%04x) %s",      \
-      format_white_space, indent, #F, F, S);  \
+#define _(F, S)                                                               \
+  if (*ol_flags & PKT_##F)                                                    \
+    {                                                                         \
+      s = format (s, "\n%U%s (0x%04x) %s", format_white_space, indent, #F,    \
+		  PKT_##F, S);                                                \
     }
 
   foreach_dpdk_pkt_offload_flag
