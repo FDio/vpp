@@ -420,6 +420,7 @@ vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t * a,
       u8 address[6] =
 	{ 0xd0, 0x0b, 0xee, 0xd0, (u8) (t_idx >> 8), (u8) t_idx };
 
+      eir.promisc_mode = 1;
       eir.dev_class_index = gre_device_class.index;
       eir.dev_instance = t_idx;
       eir.address = address;

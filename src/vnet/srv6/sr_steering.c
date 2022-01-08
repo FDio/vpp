@@ -150,7 +150,12 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
 		vnet_get_sup_hw_interface (vnm, sw_if_index);
 	      /* Make sure it is main interface */
 	      if (hi->sw_if_index == sw_if_index)
-		ethernet_set_flags (vnm, hi->hw_if_index, 0);
+		{
+		  clib_error_t *err;
+		  if ((err =
+			 vnet_eth_if_set_promisc (vnm, hi->hw_if_index, 0)))
+		    clib_error_report (err);
+		}
 	    }
 
 	  /* Delete SR steering policy entry */
@@ -289,8 +294,11 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
       vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
       /* Make sure it is main interface */
       if (hi->sw_if_index == sw_if_index)
-	ethernet_set_flags (vnm, hi->hw_if_index,
-			    ETHERNET_INTERFACE_FLAG_ACCEPT_ALL);
+	{
+	  clib_error_t *err;
+	  if ((err = vnet_eth_if_set_promisc (vnm, hi->hw_if_index, 1)))
+	    clib_error_report (err);
+	}
     }
   else if (traffic_type == SR_STEER_IPV4)
     if (!sr_policy->is_encap)

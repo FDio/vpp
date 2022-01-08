@@ -650,6 +650,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       /* assign interface to input thread */
       int q;
 
+      eir.promisc_mode = 1;
       eir.dev_class_index = dpdk_device_class.index;
       eir.dev_instance = xd->device_index;
       eir.address = addr;
@@ -687,12 +688,6 @@ dpdk_lib_init (dpdk_main_t * dm)
       if (hi)
 	{
 	  hi->numa_node = xd->cpu_socket;
-
-	  /* Indicate ability to support L3 DMAC filtering and
-	   * initialize interface to L3 non-promisc mode */
-	  hi->caps |= VNET_HW_IF_CAP_MAC_FILTER;
-	  ethernet_set_flags (vnm, xd->hw_if_index,
-			      ETHERNET_INTERFACE_FLAG_DEFAULT_L3);
 	}
 
       if (xd->conf.no_tx_checksum_offload == 0)

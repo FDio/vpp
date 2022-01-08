@@ -362,11 +362,6 @@ rdma_register_interface (vnet_main_t * vnm, rdma_device_t * rd)
   eir.address = rd->hwaddr.bytes;
   eir.cb.flag_change = rdma_flag_change;
   rd->hw_if_index = vnet_eth_register_interface (vnm, &eir);
-  /* Indicate ability to support L3 DMAC filtering and
-   * initialize interface to L3 non-promisc mode */
-  vnet_hw_if_set_caps (vnm, rd->hw_if_index, VNET_HW_IF_CAP_MAC_FILTER);
-  ethernet_set_flags (vnm, rd->hw_if_index,
-		      ETHERNET_INTERFACE_FLAG_DEFAULT_L3);
   return 0;
 }
 

@@ -488,20 +488,22 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 
   if (hi->hw_class_index == ethernet_hw_interface_class.index)
     {
+      clib_error_t *err;
       if ((hi->l2_if_count == 1) && (l2_if_adjust == 1))
 	{
 	  /* Just added first L2 interface on this port
 	   * Set promiscuous mode on the l2 interface */
-	  ethernet_set_flags (vnet_main, hi->hw_if_index,
-			      ETHERNET_INTERFACE_FLAG_ACCEPT_ALL);
+	  if ((err = vnet_eth_if_set_promisc (vnet_main, hi->hw_if_index,
+					      VNET_ETH_PROMISC_ALL)))
+	    clib_error_report (err);
 	}
       else if ((hi->l2_if_count == 0) && (l2_if_adjust == -1))
 	{
 	  /* Just removed only L2 subinterface on this port
 	   * Disable promiscuous mode on the l2 interface */
-	  ethernet_set_flags (vnet_main, hi->hw_if_index,
-			      /*ETHERNET_INTERFACE_FLAG_DEFAULT_L3 */ 0);
-
+	  if ((err = vnet_eth_if_set_promisc (vnet_main, hi->hw_if_index,
+					      VNET_ETH_PROMISC_NONE)))
+	    clib_error_report (err);
 	}
     }
 

@@ -1463,6 +1463,7 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
 
   /* create interface */
   vnet_eth_interface_registration_t eir = {};
+  eir.promisc_mode = 1;
   eir.dev_class_index = virtio_device_class.index;
   eir.dev_instance = vif->dev_instance;
   eir.address = vif->mac_addr;

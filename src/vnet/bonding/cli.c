@@ -441,6 +441,7 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
     }
   memcpy (bif->hw_address, args->hw_addr, 6);
 
+  eir.promisc_mode = 1;
   eir.dev_class_index = bond_dev_class.index;
   eir.dev_instance = bif->dev_instance;
   eir.address = bif->hw_address;
@@ -728,12 +729,12 @@ bond_add_member (vlib_main_t * vm, bond_add_member_args_t * args)
   /* if there are secondary/virtual mac addrs, propagate to the member */
   bond_member_add_del_mac_addrs (bif, mif->sw_if_index, 1 /* is_add */ );
 
-  if (bif_hw->l2_if_count)
-    ethernet_set_flags (vnm, mif_hw->hw_if_index,
-			ETHERNET_INTERFACE_FLAG_ACCEPT_ALL);
-  else
-    ethernet_set_flags (vnm, mif_hw->hw_if_index,
-			/*ETHERNET_INTERFACE_FLAG_DEFAULT_L3 */ 0);
+  if ((args->error = vnet_eth_if_set_promisc (vnm, mif_hw->hw_if_index,
+					      bif_hw->l2_if_count > 0)))
+    {
+      args->rv = VNET_API_ERROR_UNSUPPORTED;
+      return;
+    }
 
   if (bif->mode == BOND_MODE_LACP)
     {

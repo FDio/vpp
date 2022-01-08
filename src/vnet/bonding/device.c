@@ -86,6 +86,7 @@ bond_set_l2_mode_function (vnet_main_t * vnm,
 			   struct vnet_hw_interface_t *bif_hw,
 			   i32 l2_if_adjust)
 {
+  clib_error_t *err;
   bond_if_t *bif;
   u32 *sw_if_index;
   struct vnet_hw_interface_t *mif_hw;
@@ -100,8 +101,8 @@ bond_set_l2_mode_function (vnet_main_t * vnm,
       vec_foreach (sw_if_index, bif->members)
       {
 	mif_hw = vnet_get_sup_hw_interface (vnm, *sw_if_index);
-	ethernet_set_flags (vnm, mif_hw->hw_if_index,
-			    ETHERNET_INTERFACE_FLAG_ACCEPT_ALL);
+	if ((err = vnet_eth_if_set_promisc (vnm, mif_hw->hw_if_index, 1)))
+	  clib_error_report (err);
       }
     }
   else if ((bif_hw->l2_if_count == 0) && (l2_if_adjust == -1))
@@ -110,8 +111,8 @@ bond_set_l2_mode_function (vnet_main_t * vnm,
       vec_foreach (sw_if_index, bif->members)
       {
 	mif_hw = vnet_get_sup_hw_interface (vnm, *sw_if_index);
-	ethernet_set_flags (vnm, mif_hw->hw_if_index,
-			    /*ETHERNET_INTERFACE_FLAG_DEFAULT_L3 */ 0);
+	if ((err = vnet_eth_if_set_promisc (vnm, mif_hw->hw_if_index, 0)))
+	  clib_error_report (err);
       }
     }
 

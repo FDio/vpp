@@ -804,6 +804,7 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
     }
 
   /* create interface */
+  eir.promisc_mode = 1;
   eir.dev_class_index = vmxnet3_device_class.index;
   eir.dev_instance = vd->dev_instance;
   eir.address = vd->mac_addr;

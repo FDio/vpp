@@ -117,7 +117,7 @@ vl_api_sw_interface_set_promisc_t_handler (
   int rv = 0;
   ethernet_interface_t *eif;
   vnet_sw_interface_t *swif;
-  u32 flags, sw_if_index;
+  u32 sw_if_index;
 
   VALIDATE_SW_IF_INDEX (mp);
 
@@ -130,8 +130,15 @@ vl_api_sw_interface_set_promisc_t_handler (
       goto done;
     }
 
-  flags = mp->promisc_on ? ETHERNET_INTERFACE_FLAG_ACCEPT_ALL : 0;
-  rv = ethernet_set_flags (vnm, swif->hw_if_index, flags);
+  clib_error_t *err;
+
+  if ((err = vnet_eth_if_set_promisc (vnm, swif->hw_if_index,
+				      mp->promisc_on ? VNET_ETH_PROMISC_ALL :
+							     VNET_ETH_PROMISC_NONE)))
+    {
+      clib_error_free (err);
+      rv = VNET_API_ERROR_UNSUPPORTED;
+    }
 
 done:
   BAD_SW_IF_INDEX_LABEL;

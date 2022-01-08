@@ -102,20 +102,13 @@ lldp_cfg_intf_set (u32 hw_if_index, u8 ** port_desc, u8 ** mgmt_ip4,
 	  *mgmt_oid = NULL;
 	}
 
-      /* Add MAC address to an interface's filter */
-      if (hi->caps & VNET_HW_IF_CAP_MAC_FILTER)
+      error = vnet_hw_interface_add_del_mac_address (
+	lm->vnet_main, hw_if_index, lldp_mac_addr, 1 /* is_add */);
+      if (error)
 	{
-	  error =
-	    vnet_hw_interface_add_del_mac_address (lm->vnet_main,
-						   hw_if_index,
-						   lldp_mac_addr,
-						   1 /* is_add */ );
-	  if (error)
-	    {
-	      clib_error_free (error);
-	      lldp_delete_intf (lm, n);
-	      return lldp_internal_error;
-	    }
+	  clib_error_free (error);
+	  lldp_delete_intf (lm, n);
+	  return lldp_internal_error;
 	}
 
       const vnet_sw_interface_t *sw =
@@ -130,17 +123,11 @@ lldp_cfg_intf_set (u32 hw_if_index, u8 ** port_desc, u8 ** mgmt_ip4,
       lldp_intf_t *n = lldp_get_intf (lm, hi->sw_if_index);
       lldp_delete_intf (lm, n);
       /* Remove MAC address from the interface's filter */
-      if ((n) && (hi->caps & VNET_HW_IF_CAP_MAC_FILTER))
+      error = vnet_hw_interface_add_del_mac_address (
+	lm->vnet_main, hw_if_index, lldp_mac_addr, 0 /* is_add */);
+      if (error)
 	{
-	  error =
-	    vnet_hw_interface_add_del_mac_address (lm->vnet_main,
-						   hw_if_index,
-						   lldp_mac_addr,
-						   0 /* is_add */ );
-	  if (error)
-	    {
-	      clib_error_free (error);
-	    }
+	  clib_error_free (error);
 	}
     }
 

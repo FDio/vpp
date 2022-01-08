@@ -626,6 +626,7 @@ tuntap_config (vlib_main_t * vm, unformat_input_t * input)
       vnet_main_t *vnm = vnet_get_main ();
       vnet_eth_interface_registration_t eir = {};
 
+      eir.promisc_mode = 1;
       eir.dev_class_index = tuntap_dev_class.index;
       eir.address = tm->ether_dst_mac;
       tm->hw_if_index = vnet_eth_register_interface (vnm, &eir);

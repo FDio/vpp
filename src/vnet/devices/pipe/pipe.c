@@ -564,6 +564,7 @@ vnet_create_pipe_interface (u8 is_specified,
    */
   address[5] = instance;
 
+  eir.promisc_mode = 1;
   eir.dev_class_index = pipe_device_class.index;
   eir.dev_instance = instance;
   eir.address = address;

@@ -345,6 +345,40 @@ unformat_ethernet_interface (unformat_input_t * input, va_list * args)
   return 0;
 }
 
+static inline ethernet_interface_t *
+vnet_eth_get_if (vnet_main_t *vnm, u32 hw_if_index)
+{
+  ethernet_main_t *em = &ethernet_main;
+  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
+  if (hi->hw_class_index != ethernet_hw_interface_class.index)
+	  return 0;
+  return pool_elt_at_index (em->interfaces, hi->hw_instance);
+}
+
+void
+vnet_eth_if_set_promisc_no_callback (vnet_main_t *vnm, u32 hw_if_index,
+			 vnet_eth_promisc_mode_t mode)
+{
+  ethernet_interface_t *ei = vnet_eth_get_if (vnm, hw_if_index);
+
+}
+
+clib_error_t *
+vnet_eth_if_set_promisc (vnet_main_t *vnm, u32 hw_if_index,
+			 vnet_eth_promisc_mode_t mode)
+{
+  ethernet_interface_t *ei = vnet_eth_get_if (vnm, hw_if_index);
+  if (ei == 0)
+    return clib_error_return (0, "not an ethernet interface");
+  if (ei->cb.flag_change)
+    ;
+  else
+    return clib_error_return (0, "not supported");
+
+
+  return 0;
+}
+
 u32
 vnet_eth_register_interface (vnet_main_t *vnm,
 			     vnet_eth_interface_registration_t *r)
@@ -425,50 +459,6 @@ ethernet_delete_interface (vnet_main_t * vnm, u32 hw_if_index)
   pool_put (em->interfaces, ei);
 }
 
-u32
-ethernet_set_flags (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
-{
-  ethernet_main_t *em = &ethernet_main;
-  vnet_hw_interface_t *hi;
-  ethernet_interface_t *ei;
-  u32 opn_flags = flags & ETHERNET_INTERFACE_FLAGS_SET_OPN_MASK;
-
-  hi = vnet_get_hw_interface (vnm, hw_if_index);
-
-  ASSERT (hi->hw_class_index == ethernet_hw_interface_class.index);
-
-  ei = pool_elt_at_index (em->interfaces, hi->hw_instance);
-
-  /* preserve status bits and update last set operation bits */
-  ei->flags = (ei->flags & ETHERNET_INTERFACE_FLAGS_STATUS_MASK) | opn_flags;
-
-  if (ei->cb.flag_change)
-    {
-      switch (opn_flags)
-	{
-	case ETHERNET_INTERFACE_FLAG_DEFAULT_L3:
-	  if (hi->caps & VNET_HW_IF_CAP_MAC_FILTER)
-	    {
-	      if (ei->cb.flag_change (vnm, hi, opn_flags) != ~0)
-		{
-		  ei->flags |= ETHERNET_INTERFACE_FLAG_STATUS_L3;
-		  return 0;
-		}
-	      ei->flags &= ~ETHERNET_INTERFACE_FLAG_STATUS_L3;
-	      return ~0;
-	    }
-	  /* fall through */
-	case ETHERNET_INTERFACE_FLAG_ACCEPT_ALL:
-	  ei->flags &= ~ETHERNET_INTERFACE_FLAG_STATUS_L3;
-	  /* fall through */
-	case ETHERNET_INTERFACE_FLAG_MTU:
-	  return ei->cb.flag_change (vnm, hi, opn_flags);
-	default:
-	  return ~0;
-	}
-    }
-  return ~0;
-}
 
 /**
  * Echo packets back to ethernet/l2-input.
@@ -858,6 +848,7 @@ vnet_create_loopback_interface (u32 * sw_if_indexp, u8 * mac_address,
     }
 
   vnet_eth_interface_registration_t eir = {};
+  eir.promisc_mode = 1;
   eir.dev_class_index = ethernet_simulated_device_class.index;
   eir.dev_instance = instance;
   eir.address = address;

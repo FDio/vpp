@@ -1010,7 +1010,7 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
       if (host_if_type == LCP_ITF_HOST_TAP)
 	{
 	  ei = pool_elt_at_index (ethernet_main.interfaces, hw->hw_instance);
-	  ei->flags |= ETHERNET_INTERFACE_FLAG_STATUS_L3;
+	  ei->foo_flags |= ETHERNET_INTERFACE_FLAG_STATUS_L3;
 	}
 
       vif_index = vif->ifindex;

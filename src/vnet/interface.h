@@ -539,8 +539,7 @@ typedef enum vnet_hw_interface_flags_t_
   _ (16, UDP_TNL_GSO, "udp-tnl-gso")                                          \
   _ (17, IP_TNL_GSO, "ip-tnl-gso")                                            \
   _ (18, TCP_LRO, "tcp-lro")                                                  \
-  _ (30, INT_MODE, "int-mode")                                                \
-  _ (31, MAC_FILTER, "mac-filter")
+  _ (30, INT_MODE, "int-mode")
 
 typedef enum vnet_hw_if_caps_t_
 {

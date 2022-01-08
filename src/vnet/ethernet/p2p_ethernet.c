@@ -143,13 +143,14 @@ p2p_ethernet_add_del (vlib_main_t * vm, u32 parent_if_index,
 	  vec_validate (p2pm->p2p_ethernet_by_sw_if_index, parent_if_index);
 	  if (p2pm->p2p_ethernet_by_sw_if_index[parent_if_index] == 0)
 	    {
+	      clib_error_t *err;
 	      vnet_feature_enable_disable ("device-input",
 					   "p2p-ethernet-input",
 					   parent_if_index, 1, 0, 0);
-	      /* Set promiscuous mode on the l2 interface */
-	      ethernet_set_flags (vnm, parent_if_index,
-				  ETHERNET_INTERFACE_FLAG_ACCEPT_ALL);
 
+	      /* Set promiscuous mode on the l2 interface */
+	      if ((err = vnet_eth_if_set_promisc (vnm, parent_if_index, 1)))
+		clib_error_report (err);
 	    }
 	  p2pm->p2p_ethernet_by_sw_if_index[parent_if_index]++;
 	  /* set the interface mode */
@@ -173,11 +174,14 @@ p2p_ethernet_add_del (vlib_main_t * vm, u32 parent_if_index,
 			    parent_if_index);
 	      if (p2pm->p2p_ethernet_by_sw_if_index[parent_if_index] == 1)
 		{
+		  clib_error_t *err;
 		  vnet_feature_enable_disable ("device-input",
 					       "p2p-ethernet-input",
 					       parent_if_index, 0, 0, 0);
 		  /* Disable promiscuous mode on the l2 interface */
-		  ethernet_set_flags (vnm, parent_if_index, 0);
+		  if ((err =
+			 vnet_eth_if_set_promisc (vnm, parent_if_index, 1)))
+		    clib_error_report (err);
 		}
 	      p2pm->p2p_ethernet_by_sw_if_index[parent_if_index]--;
 

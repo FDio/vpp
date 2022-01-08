@@ -647,6 +647,7 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
   ethernet_mac_address_generate (ad->hwaddr);
 
   /* create interface */
+  eir.promisc_mode = 1;
   eir.dev_class_index = af_xdp_device_class.index;
   eir.dev_instance = ad->dev_instance;
   eir.address = ad->hwaddr;

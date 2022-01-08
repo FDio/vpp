@@ -283,6 +283,7 @@ mrvl_pp2_create_if (mrvl_pp2_create_if_args_t * args)
       goto error;
     }
 
+  eir.promisc_mode = 1;
   eir.dev_class_index = mrvl_pp2_device_class.index;
   eir.dev_instance = ppif->dev_instance;
   eir.address = mac_addr;

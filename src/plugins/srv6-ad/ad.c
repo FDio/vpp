@@ -109,8 +109,12 @@ srv6_ad_localsid_creation_fn (ip6_sr_localsid_t * localsid)
 	vnet_get_sup_hw_interface (vnm, ls_mem->sw_if_index_in);
       /* Make sure it is main interface */
       if (hi->sw_if_index == ls_mem->sw_if_index_in)
-	ethernet_set_flags (vnm, hi->hw_if_index,
-			    ETHERNET_INTERFACE_FLAG_ACCEPT_ALL);
+	{
+	  clib_error_t *err;
+	  if ((err = vnet_eth_if_set_promisc (vnm, hi->hw_if_index,
+					      VNET_ETH_PROMISC_ALL)))
+	    clib_error_report (err);
+	}
 
       /* Associate local SID index to this interface (resize vector if needed) */
       if (ls_mem->sw_if_index_in >= vec_len (sm->sw_iface_localsid2))
@@ -204,7 +208,12 @@ srv6_ad_localsid_removal_fn (ip6_sr_localsid_t * localsid)
 	vnet_get_sup_hw_interface (vnm, ls_mem->sw_if_index_in);
       /* Make sure it is main interface */
       if (hi->sw_if_index == ls_mem->sw_if_index_in)
-	ethernet_set_flags (vnm, hi->hw_if_index, 0);
+	{
+	  clib_error_t *err;
+	  if ((err = vnet_eth_if_set_promisc (vnm, hi->hw_if_index,
+					      VNET_ETH_PROMISC_NONE)))
+	    clib_error_report (err);
+	}
 
       /* Remove local SID index from interface table */
       sm->sw_iface_localsid2[ls_mem->sw_if_index_in] = ~(u32) 0;

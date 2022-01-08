@@ -1121,26 +1121,26 @@ promiscuous_cmd (vlib_main_t * vm,
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 hw_if_index;
-  u32 flags = ETHERNET_INTERFACE_FLAG_ACCEPT_ALL;
-  ethernet_main_t *em = &ethernet_main;
-  ethernet_interface_t *eif;
+  u32 flags = ~0;
 
   if (unformat (input, "on %U",
 		unformat_vnet_hw_interface, vnm, &hw_if_index))
-    ;
-  else if (unformat (input, "off %U",
-		     unformat_ethernet_interface, vnm, &hw_if_index))
+    flags = 1;
+  else if (unformat (input, "off %U", unformat_vnet_hw_interface, vnm,
+		     &hw_if_index))
     flags = 0;
   else
     return clib_error_return (0, "unknown input `%U'",
 			      format_unformat_error, input);
 
-  eif = ethernet_get_interface (em, hw_if_index);
-  if (!eif)
+  if (flags == ~0)
+    return clib_error_return (0, "please specify interface");
+
+  if (vnet_eth_interface_is_ethernet (vnm, hw_if_index) == 0)
     return clib_error_return (0, "not supported");
 
-  ethernet_set_flags (vnm, hw_if_index, flags);
-  return 0;
+  return vnet_eth_if_set_promisc (
+    vnm, hw_if_index, flags ? VNET_ETH_PROMISC_ALL : VNET_ETH_PROMISC_NONE);
 }
 
 /* *INDENT-OFF* */

@@ -147,21 +147,16 @@ typedef union ethernet_interface_address
   u64 as_u64;
 } ethernet_interface_address_t;
 
+typedef enum
+
 /* Ethernet interface instance. */
 typedef struct ethernet_interface
 {
-  u32 flags;
-
-  /* Top 16 bits for status and bottom 16 bits for set operation */
-#define ETHERNET_INTERFACE_FLAGS_STATUS_MASK  (0xffff0000)
-#define ETHERNET_INTERFACE_FLAGS_SET_OPN_MASK (0x0000ffff)
+  u32 foo_flags;
 
   /* Interface driver/hw is in L3/non-promiscuous mode so packet DMAC
      would already be filtered */
 #define ETHERNET_INTERFACE_FLAG_STATUS_L3 (1 << 16)
-
-  /* Set interface to default L3 mode */
-#define ETHERNET_INTERFACE_FLAG_DEFAULT_L3 0
 
   /* Set interface to accept all packets (promiscuous mode). */
 #define ETHERNET_INTERFACE_FLAG_ACCEPT_ALL 1
@@ -453,7 +448,6 @@ ethernet_buffer_get_header (vlib_buffer_t * b)
 )
 
 ethernet_main_t *ethernet_get_main (vlib_main_t * vm);
-u32 ethernet_set_flags (vnet_main_t * vnm, u32 hw_if_index, u32 flags);
 void ethernet_sw_interface_set_l2_mode (vnet_main_t * vnm, u32 sw_if_index,
 					u32 l2);
 void ethernet_sw_interface_set_l2_mode_noport (vnet_main_t * vnm,
@@ -573,14 +567,33 @@ vnet_get_ethernet_main (void)
 
 typedef struct
 {
+  u32 promisc_mode : 1;
   u32 dev_class_index;
   u32 dev_instance;
   vnet_eth_if_callbacks_t cb;
   const u8 *address;
 } vnet_eth_interface_registration_t;
 
+typedef enum
+{
+  VNET_ETH_PROMISC_NONE,
+  VNET_ETH_PROMISC_MULTICAST,
+  VNET_ETH_PROMISC_ALL
+} vnet_eth_promisc_mode_t;
+
 u32 vnet_eth_register_interface (vnet_main_t *vnm,
 				 vnet_eth_interface_registration_t *r);
+clib_error_t __clib_warn_unused_result *
+vnet_eth_if_set_promisc (vnet_main_t *vnm, u32 hw_if_index,
+			 vnet_eth_promisc_mode_t mode);
+
+static_always_inline int __clib_warn_unused_result
+vnet_eth_interface_is_ethernet (vnet_main_t *vnm, u32 hw_if_index)
+{
+  vnet_hw_interface_t *i = vnet_get_hw_interface (vnm, hw_if_index);
+  return (i->hw_class_index == ethernet_hw_interface_class.index);
+}
+
 void ethernet_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai);
 u8 *ethernet_build_rewrite (vnet_main_t * vnm,
 			    u32 sw_if_index,

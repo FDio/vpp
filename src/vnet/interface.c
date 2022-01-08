@@ -776,7 +776,6 @@ vnet_hw_interface_set_mtu (vnet_main_t * vnm, u32 hw_if_index, u32 mtu)
   if (hi->max_packet_bytes != mtu)
     {
       hi->max_packet_bytes = mtu;
-      ethernet_set_flags (vnm, hw_if_index, ETHERNET_INTERFACE_FLAG_MTU);
       vnet_hw_interface_walk_sw (vnm, hw_if_index, sw_interface_walk_callback,
 				 &mtu);
     }

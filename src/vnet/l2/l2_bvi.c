@@ -176,6 +176,7 @@ l2_bvi_create (u32 user_instance,
       mac_address_copy (&mac, mac_in);
     }
 
+  eir.promisc_mode = 1;
   eir.dev_class_index = bvi_device_class.index;
   eir.dev_instance = instance;
   eir.address = mac.bytes;

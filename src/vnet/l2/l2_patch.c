@@ -233,6 +233,7 @@ vnet_l2_patch_add_del (u32 rx_sw_if_index, u32 tx_sw_if_index, int is_add)
 {
   l2_patch_main_t *l2pm = &l2_patch_main;
   vnet_hw_interface_t *rxhi, *txhi;
+  clib_error_t *err;
   u32 tx_next_index;
 
   /*
@@ -265,16 +266,18 @@ vnet_l2_patch_add_del (u32 rx_sw_if_index, u32 tx_sw_if_index, int is_add)
       l2pm->tx_sw_if_index_by_rx_sw_if_index[rx_sw_if_index]
 	= txhi->sw_if_index;
 
-      ethernet_set_flags (l2pm->vnet_main, rxhi->hw_if_index,
-			  ETHERNET_INTERFACE_FLAG_ACCEPT_ALL);
+      if ((err = vnet_eth_if_set_promisc (l2pm->vnet_main, rxhi->hw_if_index,
+					  VNET_ETH_PROMISC_ALL)))
+	clib_error_report (err);
 
       vnet_feature_enable_disable ("device-input", "l2-patch",
 				   rxhi->sw_if_index, 1, 0, 0);
     }
   else
     {
-      ethernet_set_flags (l2pm->vnet_main, rxhi->hw_if_index,
-			  /*ETHERNET_INTERFACE_FLAG_DEFAULT_L3 */ 0);
+      if ((err = vnet_eth_if_set_promisc (l2pm->vnet_main, rxhi->hw_if_index,
+					  VNET_ETH_PROMISC_NONE)))
+	clib_error_report (err);
 
       vnet_feature_enable_disable ("device-input", "l2-patch",
 				   rxhi->sw_if_index, 0, 0, 0);

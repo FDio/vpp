@@ -466,6 +466,7 @@ int vnet_vxlan_add_del_tunnel
 	  hw_addr[0] = 2;
 	  hw_addr[1] = 0xfe;
 
+	  eir.promisc_mode = 1;
 	  eir.dev_class_index = vxlan_device_class.index;
 	  eir.dev_instance = dev_instance;
 	  eir.address = hw_addr;

@@ -147,6 +147,7 @@ fib_test_mk_intf (u32 ninterfaces)
 
         hw_address[5] = i;
 
+       eir.promisc_mode = 1;
        eir.dev_class_index = test_interface_device_class.index;
        eir.dev_instance = i;
        eir.address = hw_address;
@@ -5169,6 +5170,7 @@ fib_test_v6 (void)
      * Add the interface back. routes stay unresolved.
      */
     vnet_eth_interface_registration_t eir = {};
+    eir.promisc_mode = 1;
     eir.dev_class_index = test_interface_device_class.index;
     eir.dev_instance = 0;
     eir.address = hw_address;

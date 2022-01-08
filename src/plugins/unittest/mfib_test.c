@@ -128,6 +128,7 @@ mfib_test_mk_intf (u32 ninterfaces)
 
       hw_address[5] = i;
 
+      eir.promisc_mode = 1;
       eir.dev_class_index = test_interface_device_class.index;
       eir.dev_instance = i;
       eir.address = hw_address;

@@ -430,6 +430,7 @@ int vnet_geneve_add_del_tunnel
 	  u8 address[6] =
 	    { 0xd0, 0x0b, 0xee, 0xd0, (u8) (t_idx >> 8), (u8) t_idx };
 
+	  eir.promisc_mode = 1;
 	  eir.dev_class_index = geneve_device_class.index;
 	  eir.dev_instance = t_idx;
 	  eir.address = address;

@@ -401,6 +401,7 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
 	  hw_addr[1] = 0xfe;
 	}
 
+      eir.promisc_mode = 1;
       eir.dev_class_index = af_packet_device_class.index;
       eir.dev_instance = if_index;
       eir.address = hw_addr;

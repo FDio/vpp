@@ -288,6 +288,7 @@ pg_interface_add_or_get (pg_main_t *pg, uword if_id, u8 gso_enabled,
       switch (pi->mode)
 	{
 	case PG_MODE_ETHERNET:
+	  eir.promisc_mode = 1;
 	  eir.dev_class_index = pg_dev_class.index;
 	  eir.dev_instance = i;
 	  eir.address = hw_addr;

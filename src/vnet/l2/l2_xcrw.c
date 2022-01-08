@@ -302,6 +302,7 @@ create_xcrw_interface (vlib_main_t * vm)
   clib_memset (address, 0, sizeof (address));
   address[2] = 0x12;
 
+  eir.promisc_mode = 1;
   eir.dev_class_index = xcrw_device_class.index;
   eir.dev_instance = instance++, eir.address = address;
   hw_if_index = vnet_eth_register_interface (vnm, &eir);
