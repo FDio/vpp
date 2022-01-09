@@ -223,7 +223,16 @@ sparse_vec_index2 (void *v,
   *i1_return = is_member1 + d1;
 }
 
-#define sparse_vec_free(v) vec_free(v)
+#define sparse_vec_free(V)                                                    \
+  do                                                                          \
+    {                                                                         \
+      if (V)                                                                  \
+	{                                                                     \
+	  clib_mem_free (sparse_vec_header (V));                              \
+	  V = 0;                                                              \
+	}                                                                     \
+    }                                                                         \
+  while (0)
 
 #define sparse_vec_elt_at_index(v,i) \
   vec_elt_at_index ((v), sparse_vec_index ((v), (i)))
