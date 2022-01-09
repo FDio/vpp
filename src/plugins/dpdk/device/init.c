@@ -91,10 +91,10 @@ dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
     {
     case ETHERNET_INTERFACE_FLAG_DEFAULT_L3:
       /* set to L3/non-promisc mode */
-      xd->flags &= ~DPDK_DEVICE_FLAG_PROMISC;
+      dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_PROMISC, 0);
       break;
     case ETHERNET_INTERFACE_FLAG_ACCEPT_ALL:
-      xd->flags |= DPDK_DEVICE_FLAG_PROMISC;
+      dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_PROMISC, 1);
       break;
     case ETHERNET_INTERFACE_FLAG_MTU:
       if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
@@ -159,15 +159,6 @@ check_l3cache ()
     closedir (dir_cache);
 
   return 0;
-}
-
-static void
-dpdk_enable_l4_csum_offload (dpdk_device_t * xd)
-{
-  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
-  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
-  xd->flags |= DPDK_DEVICE_FLAG_TX_OFFLOAD |
-    DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
 }
 
 static clib_error_t *
@@ -329,58 +320,10 @@ dpdk_lib_init (dpdk_main_t * dm)
       else
 	last_pci_addr.as_u32 = ~0;
 
-      if (di.rx_offload_capa & DEV_RX_OFFLOAD_IPV4_CKSUM)
-	{
-	  xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_IPV4_CKSUM;
-	  xd->flags |= DPDK_DEVICE_FLAG_RX_IP4_CKSUM;
-	}
-
-      if (xd->conf.enable_tcp_udp_checksum)
-	{
-	  if (di.rx_offload_capa & DEV_RX_OFFLOAD_UDP_CKSUM)
-	    xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_UDP_CKSUM;
-	  if (di.rx_offload_capa & DEV_RX_OFFLOAD_TCP_CKSUM)
-	    xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_TCP_CKSUM;
-	  if (di.tx_offload_capa & DEV_TX_OFFLOAD_IPV4_CKSUM)
-	    xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_IPV4_CKSUM;
-
-	  if (xd->conf.enable_outer_checksum_offload)
-	    {
-	      if (di.tx_offload_capa & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM)
-		xd->port_conf.txmode.offloads |=
-		  DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
-	      if (di.tx_offload_capa & DEV_TX_OFFLOAD_OUTER_UDP_CKSUM)
-		xd->port_conf.txmode.offloads |=
-		  DEV_TX_OFFLOAD_OUTER_UDP_CKSUM;
-	    }
-	}
-
-      if (xd->conf.enable_lro)
-	{
-	  if (di.rx_offload_capa & DEV_RX_OFFLOAD_TCP_LRO)
-	    {
-	      xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_TCP_LRO;
-	      if (devconf->max_lro_pkt_size)
-		xd->port_conf.rxmode.max_lro_pkt_size =
-		  devconf->max_lro_pkt_size;
-	      else
-		xd->port_conf.rxmode.max_lro_pkt_size =
-		  DPDK_MAX_LRO_SIZE_DEFAULT;
-	    }
-	}
-      if (xd->conf.no_multi_seg)
-	{
-	  xd->port_conf.txmode.offloads &= ~DEV_TX_OFFLOAD_MULTI_SEGS;
-	  xd->port_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
-	  xd->port_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_SCATTER;
-	}
+      if (devconf->max_lro_pkt_size)
+	xd->conf.max_lro_pkt_size = devconf->max_lro_pkt_size;
       else
-	{
-	  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_MULTI_SEGS;
-	  xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
-	  xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_SCATTER;
-	  xd->flags |= DPDK_DEVICE_FLAG_MAYBE_MULTISEG;
-	}
+	xd->conf.max_lro_pkt_size = DPDK_MAX_LRO_SIZE_DEFAULT;
 
       xd->conf.n_tx_queues = clib_min (di.max_tx_queues, xd->conf.n_tx_queues);
 
@@ -392,22 +335,17 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  di.max_rx_queues >= devconf->num_rx_queues)
 	{
 	  xd->conf.n_rx_queues = devconf->num_rx_queues;
-	  xd->port_conf.rxmode.mq_mode = ETH_MQ_RX_RSS;
-	  if (devconf->rss_fn == 0)
-	    xd->port_conf.rx_adv_conf.rss_conf.rss_hf =
-	      ETH_RSS_IP | ETH_RSS_UDP | ETH_RSS_TCP;
-	  else
+	  if (devconf->rss_fn)
 	    {
 	      u64 unsupported_bits;
-	      xd->port_conf.rx_adv_conf.rss_conf.rss_hf = devconf->rss_fn;
-	      unsupported_bits = xd->port_conf.rx_adv_conf.rss_conf.rss_hf;
+	      xd->conf.rss_hf = devconf->rss_fn;
+	      unsupported_bits = xd->conf.rss_hf;
 	      unsupported_bits &= ~di.flow_type_rss_offloads;
 	      if (unsupported_bits)
 		dpdk_log_warn ("Unsupported RSS hash functions: %U",
 			       format_dpdk_rss_hf_name, unsupported_bits);
 	    }
-	  xd->port_conf.rx_adv_conf.rss_conf.rss_hf &=
-	    di.flow_type_rss_offloads;
+	  xd->conf.rss_hf &= di.flow_type_rss_offloads;
 	}
 
       if (devconf->num_rx_desc)
@@ -443,7 +381,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    {
 	      /* Drivers with valid speed_capa set */
 	    case VNET_DPDK_PMD_I40E:
-	      xd->flags |= DPDK_DEVICE_FLAG_INT_UNMASKABLE;
+	      dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_INT_UNMASKABLE, 1);
 	      /* fall through */
 	    case VNET_DPDK_PMD_E1000EM:
 	    case VNET_DPDK_PMD_IGB:
@@ -456,25 +394,11 @@ dpdk_lib_init (dpdk_main_t * dm)
 		VNET_FLOW_ACTION_REDIRECT_TO_QUEUE |
 		VNET_FLOW_ACTION_BUFFER_ADVANCE | VNET_FLOW_ACTION_COUNT |
 		VNET_FLOW_ACTION_DROP | VNET_FLOW_ACTION_RSS;
+	      dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM, 1);
 
-	      if (xd->conf.no_tx_checksum_offload == 0)
-		{
-		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
-		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
-		  xd->flags |= DPDK_DEVICE_FLAG_TX_OFFLOAD |
-			       DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
-		}
-
-	      xd->port_conf.intr_conf.rxq = 1;
+	      xd->conf.enable_rxq_int = 1;
 	      break;
 	    case VNET_DPDK_PMD_MLX5:
-	      if (xd->conf.no_tx_checksum_offload == 0)
-		{
-		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
-		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
-		  xd->flags |= DPDK_DEVICE_FLAG_TX_OFFLOAD |
-			       DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
-		}
 	      xd->port_type = port_type_from_speed_capa (&di);
 	      break;
 	    case VNET_DPDK_PMD_CXGBE:
@@ -486,65 +410,38 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	      /* SR-IOV VFs */
 	    case VNET_DPDK_PMD_I40EVF:
-	      xd->flags |= DPDK_DEVICE_FLAG_INT_UNMASKABLE;
+	      dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_INT_UNMASKABLE, 1);
 	      /* fall through */
 	    case VNET_DPDK_PMD_IGBVF:
 	    case VNET_DPDK_PMD_IXGBEVF:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
-	      if (xd->conf.no_tx_checksum_offload == 0)
-		{
-		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
-		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
-		  xd->flags |= DPDK_DEVICE_FLAG_TX_OFFLOAD |
-			       DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
-		}
+	      dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM, 1);
 	      /* DPDK bug in multiqueue... */
 	      /* xd->port_conf.intr_conf.rxq = 1; */
 	      break;
 
 	      /* iAVF */
 	    case VNET_DPDK_PMD_IAVF:
-	      xd->flags |= DPDK_DEVICE_FLAG_INT_UNMASKABLE;
+	      dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_INT_UNMASKABLE, 1);
+	      dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM, 1);
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
 	      xd->supported_flow_actions =
 		VNET_FLOW_ACTION_MARK | VNET_FLOW_ACTION_REDIRECT_TO_NODE |
 		VNET_FLOW_ACTION_REDIRECT_TO_QUEUE |
 		VNET_FLOW_ACTION_BUFFER_ADVANCE | VNET_FLOW_ACTION_COUNT |
 		VNET_FLOW_ACTION_DROP | VNET_FLOW_ACTION_RSS;
-
-	      if (xd->conf.no_tx_checksum_offload == 0)
-		{
-		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
-		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
-		  xd->flags |= DPDK_DEVICE_FLAG_TX_OFFLOAD |
-			       DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
-		}
 	      /* DPDK bug in multiqueue... */
 	      /* xd->port_conf.intr_conf.rxq = 1; */
 	      break;
 
 	    case VNET_DPDK_PMD_THUNDERX:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
-
-	      if (xd->conf.no_tx_checksum_offload == 0)
-		{
-		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
-		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
-		  xd->flags |= DPDK_DEVICE_FLAG_TX_OFFLOAD;
-		}
 	      break;
 
 	    case VNET_DPDK_PMD_ENA:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
-	      xd->port_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_SCATTER;
-	      xd->port_conf.intr_conf.rxq = 1;
-	      if (xd->conf.no_tx_checksum_offload == 0)
-		{
-		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_IPV4_CKSUM;
-		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
-		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
-		  xd->flags |= DPDK_DEVICE_FLAG_TX_OFFLOAD;
-		}
+	      xd->conf.disable_rx_scatter = 1;
+	      xd->conf.enable_rxq_int = 1;
 	      break;
 
 	    case VNET_DPDK_PMD_DPAA2:
@@ -555,8 +452,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    case VNET_DPDK_PMD_ENIC:
 	      {
 		xd->port_type = port_type_from_speed_capa (&di);
-		if (xd->conf.enable_tcp_udp_checksum)
-		  dpdk_enable_l4_csum_offload (xd);
 	      }
 	      break;
 
@@ -567,7 +462,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	      /* virtio */
 	    case VNET_DPDK_PMD_VIRTIO:
-	      xd->port_conf.rxmode.mq_mode = ETH_MQ_RX_NONE;
+	      xd->conf.mq_mode_none = 1;
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_1G;
 	      xd->conf.n_rx_desc = DPDK_NB_RX_DESC_VIRTIO;
 	      xd->conf.n_tx_desc = DPDK_NB_TX_DESC_VIRTIO;
@@ -578,22 +473,12 @@ dpdk_lib_init (dpdk_main_t * dm)
 	       * use the same check that the virtio driver does.
 	       */
 	      if (pci_dev && rte_intr_cap_multiple (&pci_dev->intr_handle))
-		xd->port_conf.intr_conf.rxq = 1;
+		xd->conf.enable_rxq_int = 1;
 	      break;
 
 	      /* vmxnet3 */
 	    case VNET_DPDK_PMD_VMXNET3:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_1G;
-	      xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_MULTI_SEGS;
-	      /* TCP csum offload not working although udp might work. Left
-	       * disabled for now */
-	      if (0 && (xd->conf.no_tx_checksum_offload == 0))
-		{
-		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_IPV4_CKSUM;
-		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
-		  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
-		  xd->flags |= DPDK_DEVICE_FLAG_TX_OFFLOAD;
-		}
 	      break;
 
 	    case VNET_DPDK_PMD_AF_PACKET:
@@ -614,7 +499,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	    case VNET_DPDK_PMD_FAILSAFE:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_FAILSAFE;
-	      xd->port_conf.intr_conf.lsc = 1;
+	      xd->conf.enable_lsc_int = 1;
 	      break;
 
 	    case VNET_DPDK_PMD_NETVSC:
@@ -692,24 +577,16 @@ dpdk_lib_init (dpdk_main_t * dm)
 			      ETHERNET_INTERFACE_FLAG_DEFAULT_L3);
 	}
 
-      if (devconf->tso == DPDK_DEVICE_TSO_ON && hi != NULL)
+      if (devconf->tso == DPDK_DEVICE_TSO_ON)
 	{
 	  /*tcp_udp checksum must be enabled*/
-	  if ((xd->conf.enable_tcp_udp_checksum) &&
-	      (xd->flags & DPDK_DEVICE_FLAG_TX_OFFLOAD))
-	    {
-	      xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_TSO;
-
-	      if (xd->conf.enable_outer_checksum_offload &&
-		  (di.tx_offload_capa & DEV_TX_OFFLOAD_VXLAN_TNL_TSO))
-		{
-		  xd->port_conf.txmode.offloads |=
-		    DEV_TX_OFFLOAD_VXLAN_TNL_TSO;
-		}
-	    }
+	  if (xd->conf.enable_tcp_udp_checksum == 0)
+	    dpdk_log_warn ("[%u] TCP/UDP checksum offload must be enabled",
+			   xd->port_id);
+	  else if (di.tx_offload_capa & DEV_TX_OFFLOAD_TCP_TSO)
+	    dpdk_log_warn ("[%u] TSO not supported by device", xd->port_id);
 	  else
-	    clib_warning ("%s: TCP/UDP checksum offload must be enabled",
-			  hi->name);
+	    xd->conf.enable_tso = 1;
 	}
 
       dpdk_device_setup (xd);
