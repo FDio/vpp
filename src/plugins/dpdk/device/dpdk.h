@@ -90,26 +90,32 @@ typedef enum
     VNET_DPDK_PMD_UNKNOWN,	/* must be last */
 } dpdk_pmd_t;
 
+#define forach_dpdk_port_type                                                 \
+  _ (ETH_1G, "GigabitEthernet")                                               \
+  _ (ETH_2_5G, "Two_FiveGigabitEthernet")                                     \
+  _ (ETH_5G, "FiveGigabitEthernet")                                           \
+  _ (ETH_10G, "TenGigabitEthernet")                                           \
+  _ (ETH_20G, "TwentyGigabitEthernet")                                        \
+  _ (ETH_25G, "TwentyFiveGigabitEthernet")                                    \
+  _ (ETH_40G, "FortyGigabitEthernet")                                         \
+  _ (ETH_50G, "FiftyGigabitEthernet")                                         \
+  _ (ETH_56G, "FiftySixGigabitEthernet")                                      \
+  _ (ETH_100G, "HundredGigabitEthernet")                                      \
+  _ (ETH_200G, "TwoHundredGigabitEthernet")                                   \
+  _ (ETH_SWITCH, "EthernetSwitch")                                            \
+  _ (ETH_VF, "VirtualFunctionEthernet")                                       \
+  _ (AF_PACKET, "af_packet")                                                  \
+  _ (VIRTIO_USER, "VirtioUser")                                               \
+  _ (VHOST_ETHER, "VhostEthernet")                                            \
+  _ (FAILSAFE, "FailsafeEthernet")                                            \
+  _ (NETVSC, "NetVSC")
+
 typedef enum
 {
-  VNET_DPDK_PORT_TYPE_ETH_1G,
-  VNET_DPDK_PORT_TYPE_ETH_2_5G,
-  VNET_DPDK_PORT_TYPE_ETH_5G,
-  VNET_DPDK_PORT_TYPE_ETH_10G,
-  VNET_DPDK_PORT_TYPE_ETH_20G,
-  VNET_DPDK_PORT_TYPE_ETH_25G,
-  VNET_DPDK_PORT_TYPE_ETH_40G,
-  VNET_DPDK_PORT_TYPE_ETH_50G,
-  VNET_DPDK_PORT_TYPE_ETH_56G,
-  VNET_DPDK_PORT_TYPE_ETH_100G,
-  VNET_DPDK_PORT_TYPE_ETH_SWITCH,
-  VNET_DPDK_PORT_TYPE_AF_PACKET,
-  VNET_DPDK_PORT_TYPE_ETH_VF,
-  VNET_DPDK_PORT_TYPE_VIRTIO_USER,
-  VNET_DPDK_PORT_TYPE_VHOST_ETHER,
-  VNET_DPDK_PORT_TYPE_FAILSAFE,
-  VNET_DPDK_PORT_TYPE_NETVSC,
-  VNET_DPDK_PORT_TYPE_UNKNOWN,
+  VNET_DPDK_PORT_TYPE_UNKNOWN = 0,
+#define _(n, s) VNET_DPDK_PORT_TYPE_##n,
+  forach_dpdk_port_type
+#undef _
 } dpdk_port_type_t;
 
 typedef uint16_t dpdk_portid_t;
@@ -224,9 +230,6 @@ typedef struct
   u32 *parked_lookup_indexes;	/* vector */
   u32 parked_loop_count;
   struct rte_flow_error last_flow_error;
-
-  /* af_packet instance number */
-  u16 af_packet_instance_num;
 
   struct rte_eth_link link;
   f64 time_last_link_update;

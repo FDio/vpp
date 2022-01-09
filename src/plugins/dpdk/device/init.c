@@ -184,7 +184,6 @@ dpdk_lib_init (dpdk_main_t * dm)
   dpdk_device_t *xd;
   vlib_pci_addr_t last_pci_addr;
   u32 last_pci_addr_port = 0;
-  u8 af_packet_instance_num = 0;
   last_pci_addr.as_u32 = ~0;
 
   nports = rte_eth_dev_count_avail ();
@@ -599,7 +598,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	    case VNET_DPDK_PMD_AF_PACKET:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_AF_PACKET;
-	      xd->af_packet_instance_num = af_packet_instance_num++;
 	      break;
 
 	    case VNET_DPDK_PMD_VIRTIO_USER:
