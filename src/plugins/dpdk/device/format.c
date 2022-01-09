@@ -120,12 +120,22 @@
 #define foreach_dpdk_pkt_dyn_rx_offload_flag				\
   _ (RX_TIMESTAMP, 0, "Timestamp field is valid")
 
+static const struct
+{
+  dpdk_port_type_t port_type;
+  char *device_name;
+} device_name_by_port_type[] = {
+#define _(n, s) { .port_type = VNET_DPDK_PORT_TYPE_##n, .device_name = (s) },
+  forach_dpdk_port_type
+#undef _
+};
+
 u8 *
 format_dpdk_device_name (u8 * s, va_list * args)
 {
   dpdk_main_t *dm = &dpdk_main;
   char *devname_format;
-  char *device_name;
+  char *device_name = 0;
   u32 i = va_arg (*args, u32);
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, i);
   struct rte_eth_dev_info dev_info;
@@ -140,76 +150,14 @@ format_dpdk_device_name (u8 * s, va_list * args)
   else
     devname_format = "%s%x/%x/%x";
 
-  switch (xd->port_type)
-    {
-    case VNET_DPDK_PORT_TYPE_ETH_1G:
-      device_name = "GigabitEthernet";
-      break;
+  for (int i = 0; i < ARRAY_LEN (device_name_by_port_type); i++)
+    if (device_name_by_port_type[i].port_type == xd->port_type)
+      {
+	device_name = device_name_by_port_type[i].device_name;
+	break;
+      }
 
-    case VNET_DPDK_PORT_TYPE_ETH_2_5G:
-      device_name = "Two_FiveGigabitEthernet";
-      break;
-
-    case VNET_DPDK_PORT_TYPE_ETH_5G:
-      device_name = "FiveGigabitEthernet";
-      break;
-
-    case VNET_DPDK_PORT_TYPE_ETH_10G:
-      device_name = "TenGigabitEthernet";
-      break;
-
-    case VNET_DPDK_PORT_TYPE_ETH_20G:
-      device_name = "TwentyGigabitEthernet";
-      break;
-
-    case VNET_DPDK_PORT_TYPE_ETH_25G:
-      device_name = "TwentyFiveGigabitEthernet";
-      break;
-
-    case VNET_DPDK_PORT_TYPE_ETH_40G:
-      device_name = "FortyGigabitEthernet";
-      break;
-
-    case VNET_DPDK_PORT_TYPE_ETH_50G:
-      device_name = "FiftyGigabitEthernet";
-      break;
-
-    case VNET_DPDK_PORT_TYPE_ETH_56G:
-      device_name = "FiftySixGigabitEthernet";
-      break;
-
-    case VNET_DPDK_PORT_TYPE_ETH_100G:
-      device_name = "HundredGigabitEthernet";
-      break;
-
-    case VNET_DPDK_PORT_TYPE_ETH_SWITCH:
-      device_name = "EthernetSwitch";
-      break;
-
-    case VNET_DPDK_PORT_TYPE_ETH_VF:
-      device_name = "VirtualFunctionEthernet";
-      break;
-
-    case VNET_DPDK_PORT_TYPE_AF_PACKET:
-      return format (s, "af_packet%d", xd->af_packet_instance_num);
-
-    case VNET_DPDK_PORT_TYPE_VIRTIO_USER:
-      device_name = "VirtioUser";
-      break;
-
-    case VNET_DPDK_PORT_TYPE_VHOST_ETHER:
-      device_name = "VhostEthernet";
-      break;
-
-    case VNET_DPDK_PORT_TYPE_FAILSAFE:
-      device_name = "FailsafeEthernet";
-      break;
-
-    default:
-    case VNET_DPDK_PORT_TYPE_UNKNOWN:
-      device_name = "UnknownEthernet";
-      break;
-    }
+  device_name = device_name ? device_name : "UnknownEthernet";
 
   rte_eth_dev_info_get (xd->port_id, &dev_info);
   pci_dev = dpdk_get_pci_device (&dev_info);
