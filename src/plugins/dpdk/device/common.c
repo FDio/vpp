@@ -63,7 +63,7 @@ dpdk_device_setup (dpdk_device_t * xd)
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, xd->hw_if_index);
   vnet_hw_if_caps_change_t caps = {};
   struct rte_eth_dev_info dev_info;
-  u64 bitmap;
+  struct rte_eth_conf conf = {};
   u64 rxo, txo;
   u16 mtu;
   int rv;
@@ -80,44 +80,81 @@ dpdk_device_setup (dpdk_device_t * xd)
       dpdk_device_stop (xd);
     }
 
-  /* Enable flow director when flows exist */
-  if (xd->pmd == VNET_DPDK_PMD_I40E)
-    {
-      if ((xd->flags & DPDK_DEVICE_FLAG_RX_FLOW_OFFLOAD) != 0)
-	xd->port_conf.fdir_conf.mode = RTE_FDIR_MODE_PERFECT;
-      else
-	xd->port_conf.fdir_conf.mode = RTE_FDIR_MODE_NONE;
-    }
-
   rte_eth_dev_info_get (xd->port_id, &dev_info);
 
-  bitmap = xd->port_conf.txmode.offloads & ~dev_info.tx_offload_capa;
-  if (bitmap)
+  /* create rx and tx offload wishlist */
+  rxo = DEV_RX_OFFLOAD_IPV4_CKSUM;
+  txo = 0;
+
+  if (xd->conf.enable_tcp_udp_checksum)
+    rxo |= DEV_RX_OFFLOAD_UDP_CKSUM | DEV_RX_OFFLOAD_TCP_CKSUM;
+
+  if (xd->conf.disable_tx_checksum_offload == 0 &&
+      xd->conf.enable_outer_checksum_offload)
+    txo |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM | DEV_TX_OFFLOAD_OUTER_UDP_CKSUM;
+
+  if (xd->conf.disable_tx_checksum_offload == 0)
+    txo |= DEV_TX_OFFLOAD_IPV4_CKSUM | DEV_TX_OFFLOAD_TCP_CKSUM |
+	   DEV_TX_OFFLOAD_UDP_CKSUM;
+
+  if (xd->conf.disable_multi_seg == 0)
     {
-      dpdk_log_warn ("unsupported tx offloads requested on port %u: %U",
-		     xd->port_id, format_dpdk_tx_offload_caps, bitmap);
-      xd->port_conf.txmode.offloads ^= bitmap;
+      txo |= DEV_TX_OFFLOAD_MULTI_SEGS;
+      rxo |= DEV_RX_OFFLOAD_JUMBO_FRAME | DEV_RX_OFFLOAD_SCATTER;
     }
 
-  bitmap = xd->port_conf.rxmode.offloads & ~dev_info.rx_offload_capa;
-  if (bitmap)
-    {
-      dpdk_log_warn ("unsupported rx offloads requested on port %u: %U",
-		     xd->port_id, format_dpdk_rx_offload_caps, bitmap);
-      xd->port_conf.rxmode.offloads ^= bitmap;
-    }
+  if (xd->conf.enable_lro)
+    rxo |= DEV_RX_OFFLOAD_TCP_LRO;
 
-  rxo = xd->port_conf.rxmode.offloads;
-  txo = xd->port_conf.txmode.offloads;
+  /* per-device offload config */
+  if (xd->conf.enable_tso)
+    txo |= DEV_TX_OFFLOAD_TCP_CKSUM | DEV_TX_OFFLOAD_TCP_TSO |
+	   DEV_TX_OFFLOAD_VXLAN_TNL_TSO;
+
+  if (xd->conf.disable_rx_scatter)
+    rxo &= ~DEV_RX_OFFLOAD_SCATTER;
+
+  /* mask unsupported offloads */
+  rxo &= dev_info.rx_offload_capa;
+  txo &= dev_info.tx_offload_capa;
+
+  dpdk_log_debug ("[%u] Configured RX offloads: %U", xd->port_id,
+		  format_dpdk_rx_offload_caps, rxo);
+  dpdk_log_debug ("[%u] Configured TX offloads: %U", xd->port_id,
+		  format_dpdk_tx_offload_caps, txo);
+
+  /* Enable flow director when flows exist */
+  if (xd->supported_flow_actions &&
+      (xd->flags & DPDK_DEVICE_FLAG_RX_FLOW_OFFLOAD) != 0)
+    conf.fdir_conf.mode = RTE_FDIR_MODE_PERFECT;
+
+  /* finalize configuration */
+  conf.rxmode.offloads = rxo;
+  conf.txmode.offloads = txo;
+  if (rxo & DEV_RX_OFFLOAD_TCP_LRO)
+    conf.rxmode.max_lro_pkt_size = xd->conf.max_lro_pkt_size;
+
+  if (xd->conf.enable_lsc_int)
+    conf.intr_conf.lsc = 1;
+  if (xd->conf.enable_rxq_int)
+    conf.intr_conf.rxq = 1;
+
+  conf.rxmode.mq_mode = ETH_MQ_RX_NONE;
+  if (xd->conf.n_rx_queues > 1)
+    {
+      if (xd->conf.disable_rss == 0)
+	{
+	  conf.rxmode.mq_mode = ETH_MQ_RX_RSS;
+	  conf.rx_adv_conf.rss_conf.rss_hf = xd->conf.rss_hf;
+	}
+    }
 
   if (rxo & DEV_RX_OFFLOAD_JUMBO_FRAME)
-    xd->port_conf.rxmode.max_rx_pkt_len =
+    conf.rxmode.max_rx_pkt_len =
       clib_min (ETHERNET_MAX_PACKET_BYTES, dev_info.max_rx_pktlen);
-  else
-    xd->port_conf.rxmode.max_rx_pkt_len = 0;
 
   rv = rte_eth_dev_configure (xd->port_id, xd->conf.n_rx_queues,
-			      xd->conf.n_tx_queues, &xd->port_conf);
+			      xd->conf.n_tx_queues, &conf);
 
   if (rv < 0)
     {
@@ -194,6 +231,15 @@ dpdk_device_setup (dpdk_device_t * xd)
     xd->buffer_flags |=
       (VNET_BUFFER_F_L4_CHECKSUM_COMPUTED | VNET_BUFFER_F_L4_CHECKSUM_CORRECT);
 
+  dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_RX_IP4_CKSUM,
+			rxo & DEV_RX_OFFLOAD_IPV4_CKSUM);
+  dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_MAYBE_MULTISEG,
+			rxo & DEV_RX_OFFLOAD_SCATTER);
+  dpdk_device_flag_set (
+    xd, DPDK_DEVICE_FLAG_TX_OFFLOAD,
+    (txo & (DEV_TX_OFFLOAD_TCP_CKSUM | DEV_TX_OFFLOAD_UDP_CKSUM)) ==
+      (DEV_TX_OFFLOAD_TCP_CKSUM | DEV_TX_OFFLOAD_UDP_CKSUM));
+
   /* unconditionally set mac filtering cap */
   caps.val = caps.mask = VNET_HW_IF_CAP_MAC_FILTER;
 
@@ -254,7 +300,7 @@ dpdk_setup_interrupts (dpdk_device_t *xd)
   if (!hi)
     return;
 
-  if (!xd->port_conf.intr_conf.rxq)
+  if (!xd->conf.enable_rxq_int)
     return;
 
   /* Probe for interrupt support */

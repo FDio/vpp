@@ -42,6 +42,12 @@ _(iova-mode)                                    \
 _(base-virtaddr)
 /* clang-format on */
 
+static_always_inline void
+dpdk_device_flag_set (dpdk_device_t *xd, __typeof__ (xd->flags) flag, int val)
+{
+  xd->flags = val ? xd->flags | flag : xd->flags & ~flag;
+}
+
 static inline void
 dpdk_get_xstats (dpdk_device_t * xd)
 {

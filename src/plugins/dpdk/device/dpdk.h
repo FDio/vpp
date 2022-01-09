@@ -173,15 +173,22 @@ typedef union
 {
   struct
   {
-    u16 no_multi_seg : 1;
+    u16 disable_multi_seg : 1;
     u16 enable_lro : 1;
+    u16 enable_tso : 1;
     u16 enable_tcp_udp_checksum : 1;
     u16 enable_outer_checksum_offload : 1;
-    u16 no_tx_checksum_offload : 1;
+    u16 enable_lsc_int : 1;
+    u16 enable_rxq_int : 1;
+    u16 disable_tx_checksum_offload : 1;
+    u16 disable_rss : 1;
+    u16 disable_rx_scatter : 1;
     u16 n_rx_queues;
     u16 n_tx_queues;
     u16 n_rx_desc;
     u16 n_tx_desc;
+    u32 max_lro_pkt_size;
+    u64 rss_hf;
   };
   u64 as_u64[3];
 } dpdk_port_conf_t;
@@ -221,9 +228,6 @@ typedef struct
 
   /* number of sub-interfaces */
   u16 num_subifs;
-
-  /* PMD related */
-  struct rte_eth_conf port_conf;
 
   /* flow related */
   u32 supported_flow_actions;
