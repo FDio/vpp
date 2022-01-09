@@ -212,8 +212,10 @@ typedef struct
   dpdk_pmd_t pmd:8;
   i8 cpu_socket;
 
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
+  u64 enabled_tx_off;
+  u64 enabled_rx_off;
   u8 *name;
   u8 *interface_name_suffix;
 

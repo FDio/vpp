@@ -688,30 +688,16 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	  /* Indicate ability to support L3 DMAC filtering and
 	   * initialize interface to L3 non-promisc mode */
-	  hi->caps |= VNET_HW_IF_CAP_MAC_FILTER;
 	  ethernet_set_flags (vnm, xd->hw_if_index,
 			      ETHERNET_INTERFACE_FLAG_DEFAULT_L3);
 	}
 
-      if (xd->conf.no_tx_checksum_offload == 0)
-	if (xd->flags & DPDK_DEVICE_FLAG_TX_OFFLOAD && hi != NULL)
-	  {
-	    hi->caps |= VNET_HW_IF_CAP_TX_IP4_CKSUM |
-			VNET_HW_IF_CAP_TX_TCP_CKSUM |
-			VNET_HW_IF_CAP_TX_UDP_CKSUM;
-	    if (xd->conf.enable_outer_checksum_offload)
-	      {
-		hi->caps |= VNET_HW_IF_CAP_TX_IP4_OUTER_CKSUM |
-			    VNET_HW_IF_CAP_TX_UDP_OUTER_CKSUM;
-	      }
-	  }
       if (devconf->tso == DPDK_DEVICE_TSO_ON && hi != NULL)
 	{
 	  /*tcp_udp checksum must be enabled*/
 	  if ((xd->conf.enable_tcp_udp_checksum) &&
-	      (hi->caps & VNET_HW_IF_CAP_TX_CKSUM))
+	      (xd->flags & DPDK_DEVICE_FLAG_TX_OFFLOAD))
 	    {
-	      hi->caps |= VNET_HW_IF_CAP_TCP_GSO;
 	      xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_TSO;
 
 	      if (xd->conf.enable_outer_checksum_offload &&
@@ -719,7 +705,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 		{
 		  xd->port_conf.txmode.offloads |=
 		    DEV_TX_OFFLOAD_VXLAN_TNL_TSO;
-		  hi->caps |= VNET_HW_IF_CAP_VXLAN_TNL_GSO;
 		}
 	    }
 	  else
