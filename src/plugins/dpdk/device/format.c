@@ -583,11 +583,11 @@ format_dpdk_device (u8 * s, va_list * args)
   s = format (s, "%Urx offload avail:  %U\n", format_white_space, indent + 2,
 	      format_dpdk_rx_offload_caps, di.rx_offload_capa);
   s = format (s, "%Urx offload active: %U\n", format_white_space, indent + 2,
-	      format_dpdk_rx_offload_caps, xd->port_conf.rxmode.offloads);
+	      format_dpdk_rx_offload_caps, xd->enabled_rx_off);
   s = format (s, "%Utx offload avail:  %U\n", format_white_space, indent + 2,
 	      format_dpdk_tx_offload_caps, di.tx_offload_capa);
   s = format (s, "%Utx offload active: %U\n", format_white_space, indent + 2,
-	      format_dpdk_tx_offload_caps, xd->port_conf.txmode.offloads);
+	      format_dpdk_tx_offload_caps, xd->enabled_tx_off);
   s = format (s,
 	      "%Urss avail:         %U\n"
 	      "%Urss active:        %U\n",
