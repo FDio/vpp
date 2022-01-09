@@ -213,15 +213,17 @@ u32 vec_len_not_inline (void *v);
 #define vec_foreach(var,vec) for (var = (vec); var < vec_end (vec); var++)
 
 /** \brief Vector iterator (reverse) */
-#define vec_foreach_backwards(var,vec) \
-for (var = vec_end (vec) - 1; var >= (vec); var--)
+#define vec_foreach_backwards(var, vec)                                       \
+  if (vec)                                                                    \
+    for (var = vec_end (vec) - 1; var >= (vec); var--)
 
 /** \brief Iterate over vector indices. */
 #define vec_foreach_index(var,v) for ((var) = 0; (var) < vec_len (v); (var)++)
 
 /** \brief Iterate over vector indices (reverse). */
-#define vec_foreach_index_backwards(var,v) \
-  for ((var) = vec_len((v)) - 1; (var) >= 0; (var)--)
+#define vec_foreach_index_backwards(var, v)                                   \
+  if (v)                                                                      \
+    for ((var) = vec_len ((v)) - 1; (var) >= 0; (var)--)
 
 /** \brief return the NUMA index for a vector */
 always_inline uword
