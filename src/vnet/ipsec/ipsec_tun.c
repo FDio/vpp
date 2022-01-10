@@ -176,12 +176,6 @@ ipsec_tun_protect_get_adj_next (vnet_link_t linkt,
 }
 
 static void
-ipsec_tun_reset_tx_nodes (u32 sw_if_index)
-{
-  vnet_reset_interface_l3_output_node (vlib_get_main (), sw_if_index);
-}
-
-static void
 ipsec_tun_setup_tx_nodes (u32 sw_if_index, const ipsec_tun_protect_t *itp)
 {
   vnet_feature_modify_end_node (
@@ -444,7 +438,7 @@ ipsec_tun_protect_tx_db_remove (ipsec_tun_protect_t * itp)
 
   if (vnet_sw_interface_is_p2p (vnet_get_main (), itp->itp_sw_if_index))
     {
-      ipsec_tun_reset_tx_nodes (itp->itp_sw_if_index);
+      ipsec_itf_reset_tx_nodes (itp->itp_sw_if_index);
       idi->id_itp = INDEX_INVALID;
 
       FOR_EACH_FIB_IP_PROTOCOL (nh_proto)
@@ -460,7 +454,7 @@ ipsec_tun_protect_tx_db_remove (ipsec_tun_protect_t * itp)
 
       if (0 == hash_elts (idi->id_hash))
 	{
-	  ipsec_tun_reset_tx_nodes (itp->itp_sw_if_index);
+	  ipsec_itf_reset_tx_nodes (itp->itp_sw_if_index);
 	  hash_free (idi->id_hash);
 	  idi->id_hash = NULL;
 	}

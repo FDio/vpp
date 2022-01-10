@@ -1375,7 +1375,17 @@ class IpsecTun6(object):
                     pass
                 raise
 
-    def verify_drop_tun_66(self, p_in, count=1, payload_size=64):
+    def verify_drop_tun_tx_66(self, p_in, count=1, payload_size=64):
+        self.vapi.cli("clear errors")
+        self.vapi.cli("clear ipsec sa")
+
+        send_pkts = self.gen_pkts6(p_in, self.pg1, src=self.pg1.remote_ip6,
+                                   dst=p_in.remote_tun_if_host, count=count,
+                                   payload_size=payload_size)
+        self.send_and_assert_no_replies(self.tun_if, send_pkts)
+        self.logger.info(self.vapi.cli("sh punt stats"))
+
+    def verify_drop_tun_rx_66(self, p_in, count=1, payload_size=64):
         self.vapi.cli("clear errors")
         self.vapi.cli("clear ipsec sa")
 
@@ -1385,7 +1395,12 @@ class IpsecTun6(object):
                                            dst=self.pg1.remote_ip6,
                                            count=count)
         self.send_and_assert_no_replies(self.tun_if, send_pkts)
-        self.logger.info(self.vapi.cli("sh punt stats"))
+
+    def verify_drop_tun_66(self, p_in, count=1, payload_size=64):
+        self.verify_drop_tun_tx_66(p_in, count=count,
+                                   payload_size=payload_size)
+        self.verify_drop_tun_rx_66(p_in, count=count,
+                                   payload_size=payload_size)
 
     def verify_tun_66(self, p_in, p_out=None, count=1, payload_size=64):
         self.vapi.cli("clear errors")
