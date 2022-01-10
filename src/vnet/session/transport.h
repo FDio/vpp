@@ -266,7 +266,7 @@ transport_elog_track_index (transport_connection_t * tc)
 
 void transport_connection_tx_pacer_reset (transport_connection_t * tc,
 					  u64 rate_bytes_per_sec,
-					  u32 initial_bucket,
+					  i32 initial_bucket,
 					  clib_us_time_t rtt);
 /**
  * Initialize tx pacer for connection
@@ -316,7 +316,7 @@ u64 transport_connection_tx_pacer_rate (transport_connection_t * tc);
  * @param bucket	value the bucket will be reset to
  */
 void transport_connection_tx_pacer_reset_bucket (transport_connection_t * tc,
-						 u32 bucket);
+						 i32 bucket);
 
 /**
  * Check if transport connection is paced
