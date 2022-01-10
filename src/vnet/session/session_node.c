@@ -1188,8 +1188,13 @@ session_tx_maybe_reschedule (session_worker_t * wrk,
 
   svm_fifo_unset_event (s->tx_fifo);
   if (svm_fifo_max_dequeue_cons (s->tx_fifo) > ctx->sp.tx_offset)
-    if (svm_fifo_set_event (s->tx_fifo))
-      session_evt_add_head_old (wrk, elt);
+    {
+      if (svm_fifo_set_event (s->tx_fifo))
+	session_evt_add_head_old (wrk, elt);
+    }
+  else
+    transport_connection_deschedule (ctx->tc);
+  // set descheduled otherwise??
 }
 
 always_inline int
@@ -1228,8 +1233,10 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
       e->event_type = SESSION_IO_EVT_TX;
     }
 
+  u8 is_custom = 0;
   if (ctx->s->flags & SESSION_F_CUSTOM_TX)
     {
+      is_custom = 1;
       u32 n_custom_tx;
       ctx->s->flags &= ~SESSION_F_CUSTOM_TX;
       ctx->sp.max_burst_size = max_burst;
@@ -1244,6 +1251,13 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 	  session_evt_add_old (wrk, elt);
 	  return SESSION_TX_OK;
 	}
+    }
+
+  // maybe reschedule here if descheduled. It will be desched lower again if needed
+  if (transport_connection_is_descheduled (ctx->tc))
+    {
+      ctx->tc->flags &= ~TRANSPORT_CONNECTION_F_DESCHED;
+      transport_connection_tx_pacer_reset_bucket (ctx->tc, -TRANSPORT_PACER_MIN_BURST);
     }
 
   transport_connection_snd_params (ctx->tc, &ctx->sp);
@@ -1284,7 +1298,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 
   if (PREDICT_FALSE (!ctx->max_len_to_snd))
     {
-      transport_connection_tx_pacer_reset_bucket (ctx->tc, 0);
+      transport_connection_tx_pacer_reset_bucket (ctx->tc, -TRANSPORT_PACER_MIN_BURST);
       session_tx_maybe_reschedule (wrk, ctx, elt);
       return SESSION_TX_NO_DATA;
     }
@@ -1303,7 +1317,11 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
     }
 
   if (transport_connection_is_tx_paced (ctx->tc))
-    transport_connection_tx_pacer_update_bytes (ctx->tc, ctx->max_len_to_snd);
+    {
+//      clib_warning ("bytes %u is custom %u bucket %u", ctx->max_len_to_snd, is_custom,
+//                    ctx->tc->pacer.bucket);
+      transport_connection_tx_pacer_update_bytes (ctx->tc, ctx->max_len_to_snd);
+    }
 
   ctx->left_to_snd = ctx->max_len_to_snd;
   n_left = ctx->n_segs_per_evt;
