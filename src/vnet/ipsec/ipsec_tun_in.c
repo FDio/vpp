@@ -190,14 +190,30 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       else
 	{
-	  /* NAT UDP port 4500 case, don't advance any more */
 	  if (ip40->protocol == IP_PROTOCOL_UDP)
 	    {
+	      /* NAT UDP port 4500 case, don't advance any more */
 	      esp0 =
 		(esp_header_t *) ((u8 *) ip40 + ip4_header_bytes (ip40) +
 				  sizeof (udp_header_t));
 	      hdr_sz0 = 0;
 	      buf_rewind0 = ip4_header_bytes (ip40) + sizeof (udp_header_t);
+
+	      const udp_header_t *udp0 =
+		(udp_header_t *) ((u8 *) ip40 + ip4_header_bytes (ip40));
+
+	      /* length 9 = sizeof(udp_header) + 1 byte of special SPI */
+	      if (clib_net_to_host_u16 (udp0->length) == 9 &&
+		  esp0->spi_bytes[0] == 0xff)
+		{
+		  b[0]->error =
+		    node->errors[IPSEC_TUN_PROTECT_INPUT_ERROR_NAT_KEEPALIVE];
+
+		  next[0] = VNET_DEVICE_INPUT_NEXT_IP4_DROP;
+
+		  vlib_buffer_advance (b[0], -buf_rewind0);
+		  goto trace00;
+		}
 	    }
 	  else
 	    {
@@ -213,15 +229,11 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       if (len0 < sizeof (esp_header_t))
 	{
-	  if (esp0->spi_bytes[0] == 0xff)
-	    b[0]->error =
-	      node->errors[IPSEC_TUN_PROTECT_INPUT_ERROR_NAT_KEEPALIVE];
-	  else
-	    b[0]->error =
-	      node->errors[IPSEC_TUN_PROTECT_INPUT_ERROR_TOO_SHORT];
+	  b[0]->error = node->errors[IPSEC_TUN_PROTECT_INPUT_ERROR_TOO_SHORT];
 
 	  next[0] = is_ip6 ? VNET_DEVICE_INPUT_NEXT_IP6_DROP :
 			     VNET_DEVICE_INPUT_NEXT_IP4_DROP;
+	  vlib_buffer_advance (b[0], -buf_rewind0);
 	  goto trace00;
 	}
 
