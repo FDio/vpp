@@ -1179,14 +1179,18 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t *vm,
 	    {
 	      // session is closed, go slow path, freed in slow path
 	      next[0] = def_slow;
+	      goto trace0;
 	    }
-	  else
+	  else if (PREDICT_FALSE (tcp_flags_is_init (
+		     vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags)))
 	    {
-	      // session in transitory timeout, drop
-	      b0->error = node->errors[NAT_IN2OUT_ED_ERROR_TCP_CLOSED];
-	      next[0] = NAT_NEXT_DROP;
+	      // session in transitory timeout is matched, it will be
+	      // freed in slow path
+	      nat44_ed_free_session_data (sm, s0, thread_index, 0);
+	      nat_ed_session_delete (sm, s0, thread_index, 1);
+	      next[0] = def_slow;
+	      goto trace0;
 	    }
-	  goto trace0;
 	}
 
       // drop if session expired

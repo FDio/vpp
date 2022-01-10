@@ -3297,12 +3297,8 @@ class TestNAT44EDMW(TestNAT44ED):
         sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
         self.assertEqual(len(sessions) - session_n, 1)
 
-        out2in_drops = self.get_err_counter(
-            '/err/nat44-ed-out2in/drops due to TCP in transitory timeout')
-        in2out_drops = self.get_err_counter(
-            '/err/nat44-ed-in2out/drops due to TCP in transitory timeout')
-
-        # extra FIN packet out -> in - this should be dropped
+	# Assume the previous ACK is lost on the way.
+        # resent FIN packet out -> in - this should be forwarded
         p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
              IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
              TCP(sport=ext_port, dport=out_port,
@@ -3311,9 +3307,9 @@ class TestNAT44EDMW(TestNAT44ED):
         self.pg1.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        self.pg0.assert_nothing_captured()
+        self.pg0.get_capture(1)
 
-        # extra ACK packet in -> out - this should be dropped
+        # resent ACK packet in -> out - this should be forwarded
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
              TCP(sport=in_port, dport=ext_port,
@@ -3321,14 +3317,7 @@ class TestNAT44EDMW(TestNAT44ED):
         self.pg0.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        self.pg1.assert_nothing_captured()
-
-        stats = self.get_err_counter(
-            '/err/nat44-ed-out2in/drops due to TCP in transitory timeout')
-        self.assertEqual(stats - out2in_drops, 1)
-        stats = self.get_err_counter(
-            '/err/nat44-ed-in2out/drops due to TCP in transitory timeout')
-        self.assertEqual(stats - in2out_drops, 1)
+        self.pg1.get_capture(1)
 
         self.virtual_sleep(3)
         # extra ACK packet in -> out - this will cause session to be wiped
@@ -3399,38 +3388,27 @@ class TestNAT44EDMW(TestNAT44ED):
         sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
         self.assertEqual(len(sessions) - session_n, 1)
 
-        out2in_drops = self.get_err_counter(
-            '/err/nat44-ed-out2in/drops due to TCP in transitory timeout')
-        in2out_drops = self.get_err_counter(
-            '/err/nat44-ed-in2out/drops due to TCP in transitory timeout')
-
-        # extra FIN packet out -> in - this should be dropped
-        p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
-             IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
-             TCP(sport=ext_port, dport=out_port,
-                 flags="FA", seq=300, ack=101))
-
-        self.pg1.add_stream(p)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        self.pg0.assert_nothing_captured()
-
-        # extra ACK packet in -> out - this should be dropped
+	# Assume the previous ACK is lost on the way.
+        # resent FIN packet in -> out - this should be forwarded
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
              TCP(sport=in_port, dport=ext_port,
-                 flags="A", seq=101, ack=301))
+                 flags="FA", seq=300, ack=101))
+
         self.pg0.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        self.pg1.assert_nothing_captured()
+        self.pg1.get_capture(1)
 
-        stats = self.get_err_counter(
-            '/err/nat44-ed-out2in/drops due to TCP in transitory timeout')
-        self.assertEqual(stats - out2in_drops, 1)
-        stats = self.get_err_counter(
-            '/err/nat44-ed-in2out/drops due to TCP in transitory timeout')
-        self.assertEqual(stats - in2out_drops, 1)
+        # resent ACK packet out -> in - this should be forwarded
+        p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
+             TCP(sport=ext_port, dport=out_port,
+                 flags="A", seq=101, ack=301))
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg0.get_capture(1)
 
         self.virtual_sleep(3)
         # extra ACK packet in -> out - this will cause session to be wiped
@@ -3509,12 +3487,8 @@ class TestNAT44EDMW(TestNAT44ED):
         sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
         self.assertEqual(len(sessions) - session_n, 1)
 
-        out2in_drops = self.get_err_counter(
-            '/err/nat44-ed-out2in/drops due to TCP in transitory timeout')
-        in2out_drops = self.get_err_counter(
-            '/err/nat44-ed-in2out/drops due to TCP in transitory timeout')
-
-        # extra FIN packet out -> in - this should be dropped
+	# Assume the previous in -> out ACK is lost on the way.
+        # resent FIN packet out -> in - this should be forwarded
         p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
              IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
              TCP(sport=ext_port, dport=out_port,
@@ -3523,9 +3497,9 @@ class TestNAT44EDMW(TestNAT44ED):
         self.pg1.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        self.pg0.assert_nothing_captured()
+        self.pg0.get_capture(1)
 
-        # extra ACK packet in -> out - this should be dropped
+        # resent ACK packet in -> out - this should be forwarded
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
              TCP(sport=in_port, dport=ext_port,
@@ -3533,14 +3507,7 @@ class TestNAT44EDMW(TestNAT44ED):
         self.pg0.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        self.pg1.assert_nothing_captured()
-
-        stats = self.get_err_counter(
-            '/err/nat44-ed-out2in/drops due to TCP in transitory timeout')
-        self.assertEqual(stats - out2in_drops, 1)
-        stats = self.get_err_counter(
-            '/err/nat44-ed-in2out/drops due to TCP in transitory timeout')
-        self.assertEqual(stats - in2out_drops, 1)
+        self.pg1.get_capture(1)
 
         self.virtual_sleep(3)
         # extra ACK packet in -> out - this will cause session to be wiped
