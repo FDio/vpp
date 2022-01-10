@@ -485,8 +485,6 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   u32 timed_out = 0;
   u32 transitory = 0;
-  u32 transitory_wait_closed = 0;
-  u32 transitory_closed = 0;
   u32 established = 0;
 
   u32 fib;
@@ -501,43 +499,30 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
         {
           pool_foreach (s, tsm->sessions)
            {
-            sess_timeout_time = s->last_heard +
-	      (f64) nat44_session_get_timeout (sm, s);
-            if (now >= sess_timeout_time)
-              timed_out++;
+	     sess_timeout_time =
+	       s->last_heard + (f64) nat44_session_get_timeout (sm, s);
+	     if (now >= sess_timeout_time)
+	       timed_out++;
 
-	    switch (s->proto)
-	      {
-	      case IP_PROTOCOL_ICMP:
-		icmp_sessions++;
-		break;
-	      case IP_PROTOCOL_TCP:
-		tcp_sessions++;
-		if (s->state)
-		  {
-		    if (s->tcp_closed_timestamp)
-		      {
-			if (now >= s->tcp_closed_timestamp)
-			  {
-			    ++transitory_closed;
-			  }
-			else
-			  {
-			    ++transitory_wait_closed;
-			  }
-		      }
-		    transitory++;
-		  }
-		else
-		  established++;
-		break;
-	      case IP_PROTOCOL_UDP:
-		udp_sessions++;
-		break;
-	      default:
-		++other_sessions;
-		break;
-	      }
+	     switch (s->proto)
+	       {
+	       case IP_PROTOCOL_ICMP:
+		 icmp_sessions++;
+		 break;
+	       case IP_PROTOCOL_TCP:
+		 tcp_sessions++;
+		 if (NAT44_ED_TCP_ESTABLISHED == s->tcp_state)
+		   established++;
+		 else
+		   transitory++;
+		 break;
+	       case IP_PROTOCOL_UDP:
+		 udp_sessions++;
+		 break;
+	       default:
+		 ++other_sessions;
+		 break;
+	       }
 	   }
 	  nat44_show_lru_summary (vm, tsm, now, sess_timeout_time);
 	  count += pool_elts (tsm->sessions);
@@ -560,23 +545,10 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	    break;
 	  case IP_PROTOCOL_TCP:
 	    tcp_sessions++;
-	    if (s->state)
-	      {
-		if (s->tcp_closed_timestamp)
-		  {
-		    if (now >= s->tcp_closed_timestamp)
-		      {
-			++transitory_closed;
-		      }
-		    else
-		      {
-			++transitory_wait_closed;
-		      }
-		  }
-		transitory++;
-	      }
-	    else
+	    if (NAT44_ED_TCP_ESTABLISHED == s->tcp_state)
 	      established++;
+	    else
+	      transitory++;
 	    break;
 	  case IP_PROTOCOL_UDP:
 	    udp_sessions++;
@@ -595,10 +567,6 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
   vlib_cli_output (vm, "total tcp sessions: %u", tcp_sessions);
   vlib_cli_output (vm, "total tcp established sessions: %u", established);
   vlib_cli_output (vm, "total tcp transitory sessions: %u", transitory);
-  vlib_cli_output (vm, "total tcp transitory (WAIT-CLOSED) sessions: %u",
-		   transitory_wait_closed);
-  vlib_cli_output (vm, "total tcp transitory (CLOSED) sessions: %u",
-		   transitory_closed);
   vlib_cli_output (vm, "total udp sessions: %u", udp_sessions);
   vlib_cli_output (vm, "total icmp sessions: %u", icmp_sessions);
   vlib_cli_output (vm, "total other sessions: %u", other_sessions);
@@ -1456,7 +1424,8 @@ print:
 		continue;
 	      showed_sessions++;
 	    }
-	  vlib_cli_output (vm, "  %U\n", format_snat_session, tsm, s);
+	  vlib_cli_output (vm, "  %U\n", format_snat_session, sm, tsm, s,
+			   vlib_time_now (vm));
 	}
       if (filtering)
 	{

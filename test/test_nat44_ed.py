@@ -3000,7 +3000,10 @@ class TestNAT44EDMW(TestNAT44ED):
         self.assertEqual(server2_n, 0)
         self.assertGreater(server3_n, 0)
 
-    def test_syslog_sess(self):
+    # put zzz in front of syslog test name so that it runs last as setting
+    # sender cannot be undone and messes with self.send_and_assert_no_replies
+    # functionality
+    def test_zzz_syslog_sess(self):
         """ NAT44ED Test syslog session creation and deletion """
         self.vapi.syslog_set_filter(
             self.syslog_severity.SYSLOG_API_SEVERITY_INFO)
@@ -3150,10 +3153,7 @@ class TestNAT44EDMW(TestNAT44ED):
         p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
              IP(src=self.pg1.remote_ip4, dst=service_ip) /
              TCP(sport=33898, dport=80, flags="S"))
-        self.pg1.add_stream(p)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        capture = self.pg0.get_capture(1)
+        capture = self.send_and_expect(self.pg1, p, self.pg0, n_rx=1)
         p = capture[0]
         tcp_port = p[TCP].sport
 
@@ -3161,58 +3161,43 @@ class TestNAT44EDMW(TestNAT44ED):
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=twice_nat_addr) /
              TCP(sport=80, dport=tcp_port, flags="SA"))
-        self.pg0.add_stream(p)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        self.pg1.get_capture(1)
+        self.send_and_expect(self.pg0, p, self.pg1, n_rx=1)
 
         # ACK packet out->in
         p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
              IP(src=self.pg1.remote_ip4, dst=service_ip) /
              TCP(sport=33898, dport=80, flags="A"))
-        self.pg1.add_stream(p)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        self.pg0.get_capture(1)
+        self.send_and_expect(self.pg1, p, self.pg0, n_rx=1)
 
         # FIN packet in -> out
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=twice_nat_addr) /
              TCP(sport=80, dport=tcp_port, flags="FA", seq=100, ack=300))
-        self.pg0.add_stream(p)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        self.pg1.get_capture(1)
+        self.send_and_expect(self.pg0, p, self.pg1, n_rx=1)
 
         # FIN+ACK packet out -> in
         p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
              IP(src=self.pg1.remote_ip4, dst=service_ip) /
              TCP(sport=33898, dport=80, flags="FA", seq=300, ack=101))
-        self.pg1.add_stream(p)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        self.pg0.get_capture(1)
+        self.send_and_expect(self.pg1, p, self.pg0, n_rx=1)
 
         # ACK packet in -> out
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=twice_nat_addr) /
              TCP(sport=80, dport=tcp_port, flags="A", seq=101, ack=301))
-        self.pg0.add_stream(p)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        self.pg1.get_capture(1)
+        self.send_and_expect(self.pg0, p, self.pg1, n_rx=1)
 
-        # session now in transitory timeout
-        # try SYN packet out->in - should be dropped
+        # session now in transitory timeout, but traffic still flows
+        # try FIN packet out->in
         p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
              IP(src=self.pg1.remote_ip4, dst=service_ip) /
-             TCP(sport=33898, dport=80, flags="S"))
+             TCP(sport=33898, dport=80, flags="F"))
         self.pg1.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
         self.virtual_sleep(new_transitory, "wait for transitory timeout")
-        self.pg0.assert_nothing_captured(0)
+        self.pg0.get_capture(1)
 
         # session should still exist
         sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
@@ -3223,13 +3208,9 @@ class TestNAT44EDMW(TestNAT44ED):
         p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
              IP(src=self.pg1.remote_ip4, dst=service_ip) /
              TCP(sport=33898, dport=80, flags="FA", seq=300, ack=101))
-        self.pg1.add_stream(p)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-
+        self.send_and_assert_no_replies(self.pg1, p)
         sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
         self.assertEqual(len(sessions) - start_sessnum, 0)
-        self.pg0.assert_nothing_captured(0)
 
     def test_tcp_session_close_in(self):
         """ NAT44ED Close TCP session from inside network """
@@ -3258,11 +3239,7 @@ class TestNAT44EDMW(TestNAT44ED):
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
              TCP(sport=in_port, dport=ext_port,
                  flags="FA", seq=100, ack=300))
-        self.pg0.add_stream(p)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        self.pg1.get_capture(1)
-
+        self.send_and_expect(self.pg0, p, self.pg1)
         pkts = []
 
         # ACK packet out -> in
@@ -3279,67 +3256,40 @@ class TestNAT44EDMW(TestNAT44ED):
                  flags="FA", seq=300, ack=101))
         pkts.append(p)
 
-        self.pg1.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        self.pg0.get_capture(2)
+        self.send_and_expect(self.pg1, pkts, self.pg0)
 
         # ACK packet in -> out
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
              TCP(sport=in_port, dport=ext_port,
                  flags="A", seq=101, ack=301))
-        self.pg0.add_stream(p)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        self.pg1.get_capture(1)
+        self.send_and_expect(self.pg0, p, self.pg1)
 
         sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
         self.assertEqual(len(sessions) - session_n, 1)
 
-        out2in_drops = self.get_err_counter(
-            '/err/nat44-ed-out2in/drops due to TCP in transitory timeout')
-        in2out_drops = self.get_err_counter(
-            '/err/nat44-ed-in2out/drops due to TCP in transitory timeout')
-
-        # extra FIN packet out -> in - this should be dropped
+        # retransmit FIN packet out -> in
         p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
              IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
              TCP(sport=ext_port, dport=out_port,
                  flags="FA", seq=300, ack=101))
 
-        self.pg1.add_stream(p)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        self.pg0.assert_nothing_captured()
+        self.send_and_expect(self.pg1, p, self.pg0)
 
-        # extra ACK packet in -> out - this should be dropped
+        # retransmit ACK packet in -> out
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
              TCP(sport=in_port, dport=ext_port,
                  flags="A", seq=101, ack=301))
-        self.pg0.add_stream(p)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        self.pg1.assert_nothing_captured()
-
-        stats = self.get_err_counter(
-            '/err/nat44-ed-out2in/drops due to TCP in transitory timeout')
-        self.assertEqual(stats - out2in_drops, 1)
-        stats = self.get_err_counter(
-            '/err/nat44-ed-in2out/drops due to TCP in transitory timeout')
-        self.assertEqual(stats - in2out_drops, 1)
+        self.send_and_expect(self.pg0, p, self.pg1)
 
         self.virtual_sleep(3)
-        # extra ACK packet in -> out - this will cause session to be wiped
+        # retransmit ACK packet in -> out - this will cause session to be wiped
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
              TCP(sport=in_port, dport=ext_port,
                  flags="A", seq=101, ack=301))
-        self.pg0.add_stream(p)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        self.pg1.assert_nothing_captured()
+        self.send_and_assert_no_replies(self.pg0, p)
         sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
         self.assertEqual(len(sessions) - session_n, 0)
 
@@ -3399,54 +3349,32 @@ class TestNAT44EDMW(TestNAT44ED):
         sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
         self.assertEqual(len(sessions) - session_n, 1)
 
-        out2in_drops = self.get_err_counter(
-            '/err/nat44-ed-out2in/drops due to TCP in transitory timeout')
-        in2out_drops = self.get_err_counter(
-            '/err/nat44-ed-in2out/drops due to TCP in transitory timeout')
-
-        # extra FIN packet out -> in - this should be dropped
+        # retransmit FIN packet out -> in
         p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
              IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
              TCP(sport=ext_port, dport=out_port,
                  flags="FA", seq=300, ack=101))
+        self.send_and_expect(self.pg1, p, self.pg0)
 
-        self.pg1.add_stream(p)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        self.pg0.assert_nothing_captured()
-
-        # extra ACK packet in -> out - this should be dropped
+        # retransmit ACK packet in -> out
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
              TCP(sport=in_port, dport=ext_port,
                  flags="A", seq=101, ack=301))
-        self.pg0.add_stream(p)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        self.pg1.assert_nothing_captured()
-
-        stats = self.get_err_counter(
-            '/err/nat44-ed-out2in/drops due to TCP in transitory timeout')
-        self.assertEqual(stats - out2in_drops, 1)
-        stats = self.get_err_counter(
-            '/err/nat44-ed-in2out/drops due to TCP in transitory timeout')
-        self.assertEqual(stats - in2out_drops, 1)
+        self.send_and_expect(self.pg0, p, self.pg1)
 
         self.virtual_sleep(3)
-        # extra ACK packet in -> out - this will cause session to be wiped
+        # retransmit ACK packet in -> out - this will cause session to be wiped
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
              TCP(sport=in_port, dport=ext_port,
                  flags="A", seq=101, ack=301))
-        self.pg0.add_stream(p)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        self.pg1.assert_nothing_captured()
+        self.send_and_assert_no_replies(self.pg0, p)
         sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
         self.assertEqual(len(sessions) - session_n, 0)
 
     def test_tcp_session_close_simultaneous(self):
-        """ NAT44ED Close TCP session from inside network """
+        """ Simultaneous TCP close from both sides """
 
         in_port = self.tcp_port_in
         ext_port = 10505
@@ -3471,89 +3399,225 @@ class TestNAT44EDMW(TestNAT44ED):
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
              TCP(sport=in_port, dport=ext_port,
                  flags="FA", seq=100, ack=300))
-        self.pg0.add_stream(p)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        self.pg1.get_capture(1)
+        self.send_and_expect(self.pg0, p, self.pg1)
 
         # FIN packet out -> in
         p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
              IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
              TCP(sport=ext_port, dport=out_port,
                  flags="FA", seq=300, ack=100))
-        self.pg1.add_stream(p)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        self.pg0.get_capture(1)
+        self.send_and_expect(self.pg1, p, self.pg0)
 
         # ACK packet in -> out
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
              TCP(sport=in_port, dport=ext_port,
                  flags="A", seq=101, ack=301))
-        self.pg0.add_stream(p)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        self.pg1.get_capture(1)
+        self.send_and_expect(self.pg0, p, self.pg1)
 
         # ACK packet out -> in
         p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
              IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
              TCP(sport=ext_port, dport=out_port,
                  flags="A", seq=301, ack=101))
-        self.pg1.add_stream(p)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        self.pg0.get_capture(1)
+        self.send_and_expect(self.pg1, p, self.pg0)
 
         sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
         self.assertEqual(len(sessions) - session_n, 1)
 
-        out2in_drops = self.get_err_counter(
-            '/err/nat44-ed-out2in/drops due to TCP in transitory timeout')
-        in2out_drops = self.get_err_counter(
-            '/err/nat44-ed-in2out/drops due to TCP in transitory timeout')
-
-        # extra FIN packet out -> in - this should be dropped
+        # retransmit FIN packet out -> in
         p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
              IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
              TCP(sport=ext_port, dport=out_port,
                  flags="FA", seq=300, ack=101))
+        self.send_and_expect(self.pg1, p, self.pg0)
 
-        self.pg1.add_stream(p)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        self.pg0.assert_nothing_captured()
-
-        # extra ACK packet in -> out - this should be dropped
+        # retransmit ACK packet in -> out
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
              TCP(sport=in_port, dport=ext_port,
                  flags="A", seq=101, ack=301))
-        self.pg0.add_stream(p)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        self.pg1.assert_nothing_captured()
-
-        stats = self.get_err_counter(
-            '/err/nat44-ed-out2in/drops due to TCP in transitory timeout')
-        self.assertEqual(stats - out2in_drops, 1)
-        stats = self.get_err_counter(
-            '/err/nat44-ed-in2out/drops due to TCP in transitory timeout')
-        self.assertEqual(stats - in2out_drops, 1)
+        self.send_and_expect(self.pg0, p, self.pg1)
 
         self.virtual_sleep(3)
-        # extra ACK packet in -> out - this will cause session to be wiped
+        # retransmit ACK packet in -> out - this will cause session to be wiped
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
              TCP(sport=in_port, dport=ext_port,
                  flags="A", seq=101, ack=301))
-        self.pg0.add_stream(p)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        self.pg1.assert_nothing_captured()
+        self.pg_send(self.pg0, p)
+        self.send_and_assert_no_replies(self.pg0, p)
         sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
         self.assertEqual(len(sessions) - session_n, 0)
+
+    def test_tcp_session_half_revival_inside(self):
+        """ TCP session in FIN/FIN state not revived by in2out SYN only """
+        in_port = self.tcp_port_in
+        ext_port = 10505
+
+        self.nat_add_address(self.nat_addr)
+        self.nat_add_inside_interface(self.pg0)
+        self.nat_add_outside_interface(self.pg1)
+        self.nat_add_static_mapping(self.pg0.remote_ip4, self.nat_addr,
+                                    in_port, ext_port, proto=IP_PROTOS.tcp,
+                                    flags=self.config_flags.NAT_IS_TWICE_NAT)
+
+        sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
+        session_n = len(sessions)
+
+        self.vapi.nat_set_timeouts(udp=300, tcp_established=7440,
+                                   tcp_transitory=2, icmp=5)
+
+        out_port = self.init_tcp_session(self.pg0, self.pg1, in_port, ext_port)
+
+        # FIN packet in -> out
+        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=in_port, dport=ext_port,
+                 flags="FA", seq=100, ack=300))
+        self.send_and_expect(self.pg0, p, self.pg1)
+
+        # FIN packet out -> in
+        p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
+             TCP(sport=ext_port, dport=out_port,
+                 flags="FA", seq=300, ack=100))
+        self.send_and_expect(self.pg1, p, self.pg0)
+
+        sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
+        self.assertEqual(len(sessions) - session_n, 1)
+
+        # send SYN packet in -> out
+        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=in_port, dport=ext_port,
+                 flags="S", seq=101, ack=301))
+        self.send_and_expect(self.pg0, p, self.pg1)
+
+        self.virtual_sleep(3)
+        # send ACK packet in -> out - session should be wiped
+        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=in_port, dport=ext_port,
+                 flags="A", seq=101, ack=301))
+        self.send_and_assert_no_replies(self.pg0, p, self.pg1)
+        sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
+        self.assertEqual(len(sessions) - session_n, 0)
+
+    def test_tcp_session_half_revival_outside(self):
+        """ TCP session in FIN/FIN state not revived by out2in SYN only """
+        in_port = self.tcp_port_in
+        ext_port = 10505
+
+        self.nat_add_address(self.nat_addr)
+        self.nat_add_inside_interface(self.pg0)
+        self.nat_add_outside_interface(self.pg1)
+        self.nat_add_static_mapping(self.pg0.remote_ip4, self.nat_addr,
+                                    in_port, ext_port, proto=IP_PROTOS.tcp,
+                                    flags=self.config_flags.NAT_IS_TWICE_NAT)
+
+        sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
+        session_n = len(sessions)
+
+        self.vapi.nat_set_timeouts(udp=300, tcp_established=7440,
+                                   tcp_transitory=2, icmp=5)
+
+        out_port = self.init_tcp_session(self.pg0, self.pg1, in_port, ext_port)
+
+        # FIN packet in -> out
+        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=in_port, dport=ext_port,
+                 flags="FA", seq=100, ack=300))
+        self.send_and_expect(self.pg0, p, self.pg1)
+
+        # FIN packet out -> in
+        p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
+             TCP(sport=ext_port, dport=out_port,
+                 flags="FA", seq=300, ack=100))
+        self.send_and_expect(self.pg1, p, self.pg0)
+
+        sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
+        self.assertEqual(len(sessions) - session_n, 1)
+
+        # send SYN packet out -> in
+        p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
+             TCP(sport=ext_port, dport=out_port,
+                 flags="S", seq=300, ack=101))
+        self.send_and_expect(self.pg1, p, self.pg0)
+
+        self.virtual_sleep(3)
+        # send ACK packet in -> out - session should be wiped
+        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=in_port, dport=ext_port,
+                 flags="A", seq=101, ack=301))
+        self.send_and_assert_no_replies(self.pg0, p, self.pg1)
+        sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
+        self.assertEqual(len(sessions) - session_n, 0)
+
+    def test_tcp_session_revival(self):
+        """ TCP session in FIN/FIN state revived by SYN from both sides """
+        in_port = self.tcp_port_in
+        ext_port = 10505
+
+        self.nat_add_address(self.nat_addr)
+        self.nat_add_inside_interface(self.pg0)
+        self.nat_add_outside_interface(self.pg1)
+        self.nat_add_static_mapping(self.pg0.remote_ip4, self.nat_addr,
+                                    in_port, ext_port, proto=IP_PROTOS.tcp,
+                                    flags=self.config_flags.NAT_IS_TWICE_NAT)
+
+        sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
+        session_n = len(sessions)
+
+        self.vapi.nat_set_timeouts(udp=300, tcp_established=7440,
+                                   tcp_transitory=2, icmp=5)
+
+        out_port = self.init_tcp_session(self.pg0, self.pg1, in_port, ext_port)
+
+        # FIN packet in -> out
+        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=in_port, dport=ext_port,
+                 flags="FA", seq=100, ack=300))
+        self.send_and_expect(self.pg0, p, self.pg1)
+
+        # FIN packet out -> in
+        p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
+             TCP(sport=ext_port, dport=out_port,
+                 flags="FA", seq=300, ack=100))
+        self.send_and_expect(self.pg1, p, self.pg0)
+
+        sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
+        self.assertEqual(len(sessions) - session_n, 1)
+
+        # send SYN packet out -> in
+        p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
+             TCP(sport=ext_port, dport=out_port,
+                 flags="S", seq=300, ack=101))
+        self.send_and_expect(self.pg1, p, self.pg0)
+
+        # send SYN packet in -> out
+        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=in_port, dport=ext_port,
+                 flags="S", seq=101, ack=301))
+        self.send_and_expect(self.pg0, p, self.pg1)
+
+        self.virtual_sleep(3)
+        # send ACK packet in -> out - should be forwarded and session alive
+        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=in_port, dport=ext_port,
+                 flags="A", seq=101, ack=301))
+        self.send_and_expect(self.pg0, p, self.pg1)
+        sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
+        self.assertEqual(len(sessions) - session_n, 1)
 
     def test_dynamic_vrf(self):
         """ NAT44ED dynamic translation test: different VRF"""
