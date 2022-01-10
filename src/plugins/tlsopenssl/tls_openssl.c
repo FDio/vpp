@@ -363,6 +363,8 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
 static void
 openssl_confirm_app_close (tls_ctx_t * ctx)
 {
+  openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
+  SSL_shutdown (oc->ssl);
   tls_disconnect_transport (ctx);
   session_transport_closed_notify (&ctx->connection);
 }
@@ -930,8 +932,6 @@ openssl_app_close (tls_ctx_t * ctx)
 {
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
   session_t *app_session;
-
-  SSL_shutdown (oc->ssl);
 
   /* Wait for all data to be written to tcp */
   app_session = session_get_from_handle (ctx->app_session_handle);
