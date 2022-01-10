@@ -1826,7 +1826,8 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 
 done:
 
-  transport_connection_tx_pacer_reset_bucket (&tc->connection, 0);
+//clib_warning ("retransmit?");
+  transport_connection_tx_pacer_reset_bucket (&tc->connection, -TRANSPORT_PACER_MIN_BURST);
   return n_segs;
 }
 
