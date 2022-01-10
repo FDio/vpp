@@ -323,7 +323,7 @@ void tcp_init_snd_vars (tcp_connection_t * tc);
 void tcp_connection_init_vars (tcp_connection_t * tc);
 void tcp_connection_tx_pacer_update (tcp_connection_t * tc);
 void tcp_connection_tx_pacer_reset (tcp_connection_t * tc, u32 window,
-				    u32 start_bucket);
+				    i32 start_bucket);
 void tcp_program_cleanup (tcp_worker_ctx_t * wrk, tcp_connection_t * tc);
 void tcp_check_gso (tcp_connection_t *tc);
 

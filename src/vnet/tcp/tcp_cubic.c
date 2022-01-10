@@ -149,8 +149,8 @@ cubic_cwnd_accumulate (tcp_connection_t * tc, u32 thresh, u32 bytes_acked)
     }
 
   tcp_cwnd_accumulate (tc, thresh, bytes_acked);
-  if (tc->cwnd > 20000)
-    os_panic ();
+//  if (tc->cwnd > 20000)
+//    os_panic ();
 }
 
 static void

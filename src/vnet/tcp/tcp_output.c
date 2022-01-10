@@ -321,7 +321,8 @@ tcp_update_burst_snd_vars (tcp_connection_t * tc)
   if (tc->snd_una == tc->snd_nxt)
     {
       tcp_cc_event (tc, TCP_CC_EVT_START_TX);
-      tcp_connection_tx_pacer_reset (tc, tc->cwnd, TRANSPORT_PACER_MIN_BURST);
+      // maybe do it if descheduled?
+//      tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0);
     }
 
   if (tc->flags & TCP_CONN_PSH_PENDING)
@@ -1840,7 +1841,8 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 
 done:
 
-  transport_connection_tx_pacer_reset_bucket (&tc->connection, 0);
+clib_warning ("retransmit?");
+  transport_connection_tx_pacer_reset_bucket (&tc->connection, -TRANSPORT_PACER_MIN_BURST);
   return n_segs;
 }
 
