@@ -2390,6 +2390,9 @@ nat44_plugin_enable (nat44_config_t c)
 
   nat44_ed_db_init (sm->max_translations_per_thread, sm->translation_buckets);
 
+  nat44_ed_init_tcp_state_stable (sm);
+  nat44_ed_init_tcp_flag_lookup_table (sm);
+
   nat_affinity_enable ();
 
   nat_reset_timeouts (&sm->timeouts);
@@ -4064,6 +4067,51 @@ nat_syslog_nat44_sdel (u32 ssubix, u32 sfibix, ip4_address_t *isaddr,
   nat_syslog_nat44_sess (ssubix, sfibix, isaddr, isport, xsaddr, xsport,
 			 idaddr, idport, xdaddr, xdport, proto, 0,
 			 is_twicenat);
+}
+
+u8 *
+format_nat44_ed_tcp_state (u8 *s, va_list *args)
+{
+  nat44_ed_tcp_state_e e = va_arg (*args, nat44_ed_tcp_state_e);
+  switch (e)
+    {
+    case NAT44_ED_TCP_STATE_CLOSED:
+      s = format (s, "closed");
+      break;
+    case NAT44_ED_TCP_STATE_SYN_I2O:
+      s = format (s, "SYN seen in in2out direction");
+      break;
+    case NAT44_ED_TCP_STATE_SYN_O2I:
+      s = format (s, "SYN seen in out2in direction");
+      break;
+    case NAT44_ED_TCP_STATE_ESTABLISHED:
+      s = format (s, "SYN seen in both directions/established");
+      break;
+    case NAT44_ED_TCP_STATE_FIN_I2O:
+      s = format (s, "FIN seen in in2out direction");
+      break;
+    case NAT44_ED_TCP_STATE_FIN_O2I:
+      s = format (s, "FIN seen in out2in direction");
+      break;
+    case NAT44_ED_TCP_STATE_RST_TRANS:
+      s = format (s, "RST seen/transitory timeout");
+      break;
+    case NAT44_ED_TCP_STATE_FIN_TRANS:
+      s = format (s, "FIN seen in both directions/transitory timeout");
+      break;
+    case NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_O2I:
+      s = format (s, "FIN seen in both directions/transitory timeout/session "
+		     "reopening in out2in direction");
+      break;
+    case NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_I2O:
+      s = format (s, "FIN seen in both directions/transitory timeout/session "
+		     "reopening in in2out direction");
+      break;
+    case NAT44_ED_TCP_N_STATE:
+      s = format (s, "BUG! unexpected N_STATE! BUG!");
+      break;
+    }
+  return s;
 }
 
 /*
