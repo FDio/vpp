@@ -1032,9 +1032,9 @@ format_segment_manager (u8 *s, va_list *args)
   s = format (s,
 	      "[%u] %v app-wrk: %u segs: %u max-fifo-sz: %U "
 	      "wmarks: %u %u %s flags: 0x%x",
-	      segment_manager_index (sm), app->name, sm->app_wrk_index,
-	      pool_elts (sm->segments), format_memory_size, max_fifo_size,
-	      sm->high_watermark, sm->low_watermark,
+	      segment_manager_index (sm), app ? app->name : "-",
+	      sm->app_wrk_index, pool_elts (sm->segments), format_memory_size,
+	      max_fifo_size, sm->high_watermark, sm->low_watermark,
 	      custom_logic ? "custom-tuning" : "no-tuning", sm->flags);
 
   if (!verbose || !pool_elts (sm->segments))
