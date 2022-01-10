@@ -49,6 +49,7 @@ typedef struct
   u8 is_slow_path;
   u8 translation_via_i2of;
   u8 lookup_skipped;
+  u8 tcp_state;
 } nat_in2out_ed_trace_t;
 
 static u8 *
@@ -78,13 +79,18 @@ format_nat_in2out_ed_trace (u8 * s, va_list * args)
     {
       if (t->lookup_skipped)
 	{
-	  s = format (s, "\n lookup skipped - cached session index used");
+	  s = format (s, "\n  lookup skipped - cached session index used");
 	}
       else
 	{
 	  s = format (s, "\n  search key %U", format_ed_session_kvp,
 		      &t->search_key);
 	}
+    }
+  if (IP_PROTOCOL_TCP == t->i2of.match.proto)
+    {
+      s = format (s, "\n  TCP state: %U", format_nat44_ed_tcp_state,
+		  t->tcp_state);
     }
 
   return s;
@@ -675,7 +681,9 @@ nat_not_translate_output_feature_fwd (snat_main_t * sm, ip4_header_t * ip,
 	{
 	  if (ip->protocol == IP_PROTOCOL_TCP)
 	    {
-	      nat44_set_tcp_session_state_i2o (sm, now, s, b, thread_index);
+	      nat44_set_tcp_session_state_i2o (
+		sm, now, s, vnet_buffer (b)->ip.reass.icmp_type_or_tcp_flags,
+		thread_index);
 	    }
 	  /* Accounting */
 	  nat44_session_update_counters (s, now,
@@ -697,7 +705,7 @@ nat44_ed_not_translate_output_feature (snat_main_t *sm, vlib_buffer_t *b,
 				       ip4_header_t *ip, u16 src_port,
 				       u16 dst_port, u32 thread_index,
 				       u32 rx_sw_if_index, u32 tx_sw_if_index,
-				       f64 now, int is_multi_worker)
+				       int is_multi_worker)
 {
   clib_bihash_kv_16_8_t kv, value;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
@@ -715,12 +723,6 @@ nat44_ed_not_translate_output_feature (snat_main_t *sm, vlib_buffer_t *b,
       s =
 	pool_elt_at_index (tsm->sessions,
 			   ed_value_get_session_index (&value));
-      if (nat44_is_ses_closed (s)
-	  && (!s->tcp_closed_timestamp || now >= s->tcp_closed_timestamp))
-	{
-	  nat44_ed_free_session_data (sm, s, thread_index, 0);
-	  nat_ed_session_delete (sm, s, thread_index, 1);
-	}
       return 1;
     }
 
@@ -800,7 +802,7 @@ icmp_in2out_ed_slow_path (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
     {
       if (PREDICT_FALSE (nat44_ed_not_translate_output_feature (
 	    sm, b, ip, lookup_sport, lookup_dport, thread_index, sw_if_index,
-	    tx_sw_if_index, now, is_multi_worker)))
+	    tx_sw_if_index, is_multi_worker)))
 	{
 	  return next;
 	}
@@ -1173,22 +1175,6 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t *vm,
 	  goto trace0;
 	}
 
-      if (s0->tcp_closed_timestamp)
-	{
-	  if (now >= s0->tcp_closed_timestamp)
-	    {
-	      // session is closed, go slow path, freed in slow path
-	      next[0] = def_slow;
-	    }
-	  else
-	    {
-	      // session in transitory timeout, drop
-	      b0->error = node->errors[NAT_IN2OUT_ED_ERROR_TCP_CLOSED];
-	      next[0] = NAT_NEXT_DROP;
-	    }
-	  goto trace0;
-	}
-
       // drop if session expired
       u64 sess_timeout_time;
       sess_timeout_time =
@@ -1239,7 +1225,9 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t *vm,
 	case IP_PROTOCOL_TCP:
 	  vlib_increment_simple_counter (&sm->counters.fastpath.in2out.tcp,
 					 thread_index, cntr_sw_if_index0, 1);
-	  nat44_set_tcp_session_state_i2o (sm, now, s0, b0, thread_index);
+	  nat44_set_tcp_session_state_i2o (
+	    sm, now, s0, vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags,
+	    thread_index);
 	  break;
 	case IP_PROTOCOL_UDP:
 	  vlib_increment_simple_counter (&sm->counters.fastpath.in2out.udp,
@@ -1282,6 +1270,7 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t *vm,
 	      clib_memcpy (&t->i2of, &s0->i2o, sizeof (t->i2of));
 	      clib_memcpy (&t->o2if, &s0->o2i, sizeof (t->o2if));
 	      t->translation_via_i2of = (&s0->i2o == f);
+	      t->tcp_state = s0->tcp_state;
 	    }
 	  else
 	    {
@@ -1426,13 +1415,6 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
 	  s0 =
 	    pool_elt_at_index (tsm->sessions,
 			       ed_value_get_session_index (&value0));
-
-	  if (s0->tcp_closed_timestamp && now >= s0->tcp_closed_timestamp)
-	    {
-	      nat44_ed_free_session_data (sm, s0, thread_index, 0);
-	      nat_ed_session_delete (sm, s0, thread_index, 1);
-	      s0 = NULL;
-	    }
 	}
 
       if (!s0)
@@ -1442,7 +1424,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
 	      if (PREDICT_FALSE (nat44_ed_not_translate_output_feature (
 		    sm, b0, ip0, vnet_buffer (b0)->ip.reass.l4_src_port,
 		    vnet_buffer (b0)->ip.reass.l4_dst_port, thread_index,
-		    rx_sw_if_index0, tx_sw_if_index0, now, is_multi_worker)))
+		    rx_sw_if_index0, tx_sw_if_index0, is_multi_worker)))
 		goto trace0;
 
 	      /*
@@ -1496,7 +1478,9 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
 	{
 	  vlib_increment_simple_counter (&sm->counters.slowpath.in2out.tcp,
 					 thread_index, cntr_sw_if_index0, 1);
-	  nat44_set_tcp_session_state_i2o (sm, now, s0, b0, thread_index);
+	  nat44_set_tcp_session_state_i2o (
+	    sm, now, s0, vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags,
+	    thread_index);
 	}
       else
 	{
@@ -1529,6 +1513,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
 	      clib_memcpy (&t->i2of, &s0->i2o, sizeof (t->i2of));
 	      clib_memcpy (&t->o2if, &s0->o2i, sizeof (t->o2if));
 	      t->translation_via_i2of = 1;
+	      t->tcp_state = s0->tcp_state;
 	    }
 
 	  else
