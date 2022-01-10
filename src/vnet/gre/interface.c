@@ -353,7 +353,7 @@ static walk_rc_t
 gre_tunnel_add_teib_walk (index_t nei, void *ctx)
 {
   gre_tunnel_t *t = ctx;
-  gre_tunnel_key_t key;
+  gre_tunnel_key_t key = {};
 
   gre_teib_mk_key (t, teib_entry_get (nei), &key);
   gre_tunnel_db_add (t, &key);
