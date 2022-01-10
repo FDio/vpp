@@ -2345,7 +2345,7 @@ class TestIpsec6TunProtect(TemplateIpsec,
         p.tun_protect.update_vpp_config(np3.tun_sa_out,
                                         [np3.tun_sa_in])
         self.verify_tun_66(np3, np3, count=127)
-        self.verify_drop_tun_66(np, count=127)
+        self.verify_drop_tun_rx_66(np, count=127)
 
         self.assertEqual(p.tun_if.get_rx_stats(), 127*9)
         self.assertEqual(p.tun_if.get_tx_stats(), 127*8)
@@ -2621,6 +2621,10 @@ class TestIpsecItf4(TemplateIpsec,
         p = self.ipv4_params
 
         self.config_network(p)
+        config_tun_params(p, self.encryption_type, None,
+                          self.pg0.local_ip4,
+                          self.pg0.remote_ip4)
+        self.verify_tun_dropped_44(p, count=n_pkts)
         self.config_sa_tun(p,
                            self.pg0.local_ip4,
                            self.pg0.remote_ip4)
@@ -2693,7 +2697,7 @@ class TestIpsecItf4(TemplateIpsec,
                            self.pg0.remote_ip4)
         self.config_protect(p)
 
-        self.logger.error(self.vapi.cli("sh ipsec sa"))
+        self.logger.info(self.vapi.cli("sh ipsec sa"))
         self.verify_tun_44(p, count=n_pkts)
 
         # teardown
@@ -2912,7 +2916,7 @@ class TestIpsecItf6(TemplateIpsec,
     def tearDown(self):
         super(TestIpsecItf6, self).tearDown()
 
-    def test_tun_44(self):
+    def test_tun_66(self):
         """IPSEC interface IPv6"""
 
         tf = VppEnum.vl_api_tunnel_encap_decap_flags_t
@@ -2924,6 +2928,10 @@ class TestIpsecItf6(TemplateIpsec,
         p.tun_flags = tf.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_HOP_LIMIT
 
         self.config_network(p)
+        config_tun_params(p, self.encryption_type, None,
+                          self.pg0.local_ip6,
+                          self.pg0.remote_ip6)
+        self.verify_drop_tun_66(p, count=n_pkts)
         self.config_sa_tun(p,
                            self.pg0.local_ip6,
                            self.pg0.remote_ip6)
