@@ -21,6 +21,7 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/adj/adj_midchain.h>
 #include <vnet/ethernet/mac_address.h>
+#include <vnet/mpls/mpls.h>
 
 /* bitmap of Allocated IPSEC_ITF instances */
 static uword *ipsec_itf_instances;
@@ -274,6 +275,20 @@ ipsec_itf_instance_free (u32 instance)
   return 0;
 }
 
+void
+ipsec_itf_reset_tx_nodes (u32 sw_if_index)
+{
+  vnet_feature_modify_end_node (
+    ip4_main.lookup_main.output_feature_arc_index, sw_if_index,
+    vlib_get_node_by_name (vlib_get_main (), (u8 *) "ip4-drop")->index);
+  vnet_feature_modify_end_node (
+    ip6_main.lookup_main.output_feature_arc_index, sw_if_index,
+    vlib_get_node_by_name (vlib_get_main (), (u8 *) "ip6-drop")->index);
+  vnet_feature_modify_end_node (
+    mpls_main.output_feature_arc_index, sw_if_index,
+    vlib_get_node_by_name (vlib_get_main (), (u8 *) "mpls-drop")->index);
+}
+
 int
 ipsec_itf_create (u32 user_instance, tunnel_mode_t mode, u32 * sw_if_indexp)
 {
@@ -318,6 +333,7 @@ ipsec_itf_create (u32 user_instance, tunnel_mode_t mode, u32 * sw_if_indexp)
   ipsec_itf_index_by_sw_if_index[hi->sw_if_index] = t_idx;
 
   ipsec_itf->ii_sw_if_index = *sw_if_indexp = hi->sw_if_index;
+  ipsec_itf_reset_tx_nodes (hi->sw_if_index);
 
   return 0;
 }
