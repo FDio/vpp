@@ -21,20 +21,7 @@
 
 #include <vppinfra/elog.h>
 
-#define foreach_nat_log_level                                                 \
-  _ (0x00, LOG_NONE)                                                          \
-  _ (0x01, LOG_ERROR)                                                         \
-  _ (0x02, LOG_WARNING)                                                       \
-  _ (0x03, LOG_NOTICE)                                                        \
-  _ (0x04, LOG_INFO)                                                          \
-  _ (0x05, LOG_DEBUG)
-
-typedef enum nat_log_level_t_
-{
-#define _(n, f) NAT_##f = n,
-  foreach_nat_log_level
-#undef _
-} nat_log_level_t;
+#include <nat/lib/nat_types.api_types.h>
 
 #define nat_elog(_pm, _level, _str)                                           \
   do                                                                          \
