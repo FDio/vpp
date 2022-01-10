@@ -31,6 +31,8 @@
 #include <nat/nat44-ed/nat44_ed.api_enum.h>
 #include <nat/nat44-ed/nat44_ed.api_types.h>
 
+#include <nat/nat44-ed/nat44_ed_inlines.h>
+
 #define REPLY_MSG_ID_BASE sm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
@@ -1806,26 +1808,7 @@ send_nat44_user_session_v2_details (snat_session_t *s,
       rmp->ext_host_nat_port = s->ext_host_nat_port;
     }
 
-  sess_timeout_time = s->last_heard;
-  switch (s->proto)
-    {
-    case IP_PROTOCOL_TCP:
-      if (s->state)
-	sess_timeout_time += sm->timeouts.tcp.established;
-      else
-	sess_timeout_time += sm->timeouts.tcp.transitory;
-      break;
-    case IP_PROTOCOL_UDP:
-      sess_timeout_time += sm->timeouts.udp;
-      break;
-    case IP_PROTOCOL_ICMP:
-      sess_timeout_time += sm->timeouts.icmp;
-      break;
-    default:
-      sess_timeout_time += sm->timeouts.udp;
-      break;
-    }
-
+  sess_timeout_time = s->last_heard + nat44_session_get_timeout (sm, s);
   rmp->is_timed_out = (now >= sess_timeout_time);
 
   vl_api_send_msg (reg, (u8 *) rmp);
