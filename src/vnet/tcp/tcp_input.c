@@ -757,7 +757,7 @@ tcp_cc_try_recover (tcp_connection_t *tc)
       is_spurious = 1;
     }
 
-  tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */ );
+  tcp_connection_tx_pacer_reset (tc, tc->cwnd, -TRANSPORT_PACER_MIN_BURST /* start bucket */ );
   tc->rcv_dupacks = 0;
   tcp_recovery_off (tc);
 
@@ -838,7 +838,7 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
 	  if (has_sack)
 	    scoreboard_init_rxt (&tc->sack_sb, tc->snd_una);
 
-	  tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */ );
+	  tcp_connection_tx_pacer_reset (tc, tc->cwnd, -TRANSPORT_PACER_MIN_BURST /* start bucket */ );
 	  tcp_program_retransmit (tc);
 	}
 
