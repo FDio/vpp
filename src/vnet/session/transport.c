@@ -668,7 +668,7 @@ spacer_max_burst (spacer_t * pacer, clib_us_time_t time_now)
       pacer->bucket = clib_min (pacer->bucket + inc, (i64) pacer->max_burst);
     }
 
-  return pacer->bucket > 0 ? pacer->max_burst : 0;
+  return pacer->bucket >= 0 ? pacer->max_burst : 0;
 }
 
 static inline void
@@ -790,7 +790,7 @@ void
 transport_connection_reschedule (transport_connection_t * tc)
 {
   tc->flags &= ~TRANSPORT_CONNECTION_F_DESCHED;
-  transport_connection_tx_pacer_reset_bucket (tc, TRANSPORT_PACER_MIN_BURST);
+  transport_connection_tx_pacer_reset_bucket (tc, 0 /* bucket */);
   if (transport_max_tx_dequeue (tc))
     sesssion_reschedule_tx (tc);
   else
