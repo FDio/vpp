@@ -130,6 +130,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   tap_main_t *tm = &tap_main;
   vnet_sw_interface_t *sw;
   vnet_hw_interface_t *hw;
+  vnet_hw_if_caps_change_t cc;
   int i, num_vhost_queues;
   int old_netns_fd = -1;
   struct ifreq ifr = {.ifr_flags = IFF_NO_PI | IFF_VNET_HDR };
@@ -665,16 +666,16 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   args->sw_if_index = vif->sw_if_index;
   args->rv = 0;
   hw = vnet_get_hw_interface (vnm, vif->hw_if_index);
-  hw->caps |= VNET_HW_IF_CAP_INT_MODE;
+  cc.mask = VNET_HW_IF_CAP_INT_MODE | VNET_HW_IF_CAP_TCP_GSO |
+	    VNET_HW_IF_CAP_TX_TCP_CKSUM | VNET_HW_IF_CAP_TX_UDP_CKSUM;
+  cc.val = VNET_HW_IF_CAP_INT_MODE;
+
   if (args->tap_flags & TAP_FLAG_GSO)
-    {
-      hw->caps |= VNET_HW_IF_CAP_TCP_GSO | VNET_HW_IF_CAP_TX_TCP_CKSUM |
-		  VNET_HW_IF_CAP_TX_UDP_CKSUM;
-    }
+    cc.val |= VNET_HW_IF_CAP_TCP_GSO | VNET_HW_IF_CAP_TX_TCP_CKSUM |
+	      VNET_HW_IF_CAP_TX_UDP_CKSUM;
   else if (args->tap_flags & TAP_FLAG_CSUM_OFFLOAD)
-    {
-      hw->caps |= VNET_HW_IF_CAP_TX_TCP_CKSUM | VNET_HW_IF_CAP_TX_UDP_CKSUM;
-    }
+    cc.val |= VNET_HW_IF_CAP_TX_TCP_CKSUM | VNET_HW_IF_CAP_TX_UDP_CKSUM;
+
   if ((args->tap_flags & TAP_FLAG_GSO)
       && (args->tap_flags & TAP_FLAG_GRO_COALESCE))
     {
@@ -690,6 +691,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
       vnet_sw_interface_set_mtu (vnm, hw->sw_if_index, hw->max_packet_bytes);
     }
 
+  vnet_hw_if_change_caps (vnm, vif->hw_if_index, &cc);
   virtio_pre_input_node_enable (vm, vif);
   virtio_vring_set_rx_queues (vm, vif);
   virtio_vring_set_tx_queues (vm, vif);
@@ -770,6 +772,7 @@ tap_csum_offload_enable_disable (vlib_main_t * vm, u32 sw_if_index,
   virtio_main_t *mm = &virtio_main;
   virtio_if_t *vif;
   vnet_hw_interface_t *hw;
+  vnet_hw_if_caps_change_t cc;
   clib_error_t *err = 0;
   int i = 0;
 
@@ -789,19 +792,18 @@ tap_csum_offload_enable_disable (vlib_main_t * vm, u32 sw_if_index,
   vif->packet_coalesce = 0;
   vif->csum_offload_enabled = enable_disable ? 1 : 0;
 
-  if ((hw->caps & VNET_HW_IF_CAP_TCP_GSO) != 0)
-    {
-      hw->caps &= ~VNET_HW_IF_CAP_TCP_GSO;
-    }
-
+  cc.mask = VNET_HW_IF_CAP_TCP_GSO | VNET_HW_IF_CAP_L4_TX_CKSUM;
   if (enable_disable)
     {
-      hw->caps |= VNET_HW_IF_CAP_L4_TX_CKSUM;
+      cc.val = VNET_HW_IF_CAP_L4_TX_CKSUM;
+      vif->csum_offload_enabled = 1;
     }
   else
     {
-      hw->caps &= ~VNET_HW_IF_CAP_L4_TX_CKSUM;
+      cc.val = 0;
+      vif->csum_offload_enabled = 0;
     }
+  vnet_hw_if_change_caps (vnm, vif->hw_if_index, &cc);
 
 error:
   if (err)
@@ -821,6 +823,7 @@ tap_gso_enable_disable (vlib_main_t * vm, u32 sw_if_index, int enable_disable,
   virtio_main_t *mm = &virtio_main;
   virtio_if_t *vif;
   vnet_hw_interface_t *hw;
+  vnet_hw_if_caps_change_t cc;
   clib_error_t *err = 0;
   int i = 0;
 
@@ -836,27 +839,25 @@ tap_gso_enable_disable (vlib_main_t * vm, u32 sw_if_index, int enable_disable,
   unsigned int offload = enable_disable ? gso_on : gso_off;
   vec_foreach_index (i, vif->tap_fds)
     _IOCTL (vif->tap_fds[i], TUNSETOFFLOAD, offload);
-  vif->gso_enabled = enable_disable ? 1 : 0;
-  vif->csum_offload_enabled = 0;
+
+  cc.mask = VNET_HW_IF_CAP_TCP_GSO | VNET_HW_IF_CAP_L4_TX_CKSUM;
+
   if (enable_disable)
     {
-      if ((hw->caps & VNET_HW_IF_CAP_TCP_GSO) == 0)
-	{
-	  hw->caps |= VNET_HW_IF_CAP_TCP_GSO | VNET_HW_IF_CAP_L4_TX_CKSUM;
-	}
+      cc.val = cc.mask;
+      vif->gso_enabled = 1;
+      vif->csum_offload_enabled = 1;
       if (is_packet_coalesce)
-	{
-	  virtio_set_packet_coalesce (vif);
-	}
+	virtio_set_packet_coalesce (vif);
     }
   else
     {
-      if ((hw->caps & VNET_HW_IF_CAP_TCP_GSO) != 0)
-	{
-	  hw->caps &= ~(VNET_HW_IF_CAP_TCP_GSO | VNET_HW_IF_CAP_L4_TX_CKSUM);
-	}
+      cc.val = 0;
+      vif->gso_enabled = 0;
+      vif->csum_offload_enabled = 0;
       vif->packet_coalesce = 0;
     }
+  vnet_hw_if_change_caps (vnm, vif->hw_if_index, &cc);
 
 error:
   if (err)
