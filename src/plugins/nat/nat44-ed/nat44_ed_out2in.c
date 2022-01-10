@@ -41,7 +41,6 @@ typedef enum
   NAT_ED_SP_REASON_NO_REASON,
   NAT_ED_SP_REASON_LOOKUP_FAILED,
   NAT_ED_SP_REASON_VRF_EXPIRED,
-  NAT_ED_SP_TCP_CLOSED,
   NAT_ED_SP_SESS_EXPIRED,
 } nat_slow_path_reason_e;
 
@@ -57,6 +56,7 @@ typedef struct
   u8 is_slow_path;
   u8 translation_via_i2of;
   u8 lookup_skipped;
+  u8 tcp_state;
   nat_slow_path_reason_e slow_path_reason;
 } nat44_ed_out2in_trace_t;
 
@@ -72,8 +72,6 @@ format_slow_path_reason (u8 *s, va_list *args)
       return format (s, "slow path because lookup failed");
     case NAT_ED_SP_REASON_VRF_EXPIRED:
       return format (s, "slow path because vrf expired");
-    case NAT_ED_SP_TCP_CLOSED:
-      return format (s, "slow path because tcp closed");
     case NAT_ED_SP_SESS_EXPIRED:
       return format (s, "slow path because session expired");
     }
@@ -107,14 +105,19 @@ format_nat44_ed_out2in_trace (u8 * s, va_list * args)
     {
       if (t->lookup_skipped)
 	{
-	  s = format (s, "\n lookup skipped - cached session index used");
+	  s = format (s, "\n  lookup skipped - cached session index used");
 	}
       else
 	{
 	  s = format (s, "\n  search key %U", format_ed_session_kvp,
 		      &t->search_key);
 	}
-      s = format (s, "\n %U", format_slow_path_reason, t->slow_path_reason);
+      s = format (s, "\n  %U", format_slow_path_reason, t->slow_path_reason);
+    }
+  if (IP_PROTOCOL_TCP == t->i2of.match.proto)
+    {
+      s = format (s, "\n  TCP state: %U", format_nat44_ed_tcp_state,
+		  t->tcp_state);
     }
 
   return s;
@@ -645,10 +648,9 @@ create_bypass_for_fwd (snat_main_t *sm, vlib_buffer_t *b, snat_session_t *s,
 
   if (ip->protocol == IP_PROTOCOL_TCP)
     {
-      tcp_header_t *tcp = ip4_next_header (ip);
-      nat44_set_tcp_session_state_o2i (sm, now, s, tcp->flags,
-				       tcp->ack_number, tcp->seq_number,
-				       thread_index);
+      nat44_set_tcp_session_state_o2i (
+	sm, now, s, vnet_buffer (b)->ip.reass.icmp_type_or_tcp_flags,
+	thread_index);
     }
 
   /* Accounting */
@@ -883,23 +885,6 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 	  goto trace0;
 	}
 
-      if (s0->tcp_closed_timestamp)
-	{
-	  if (now >= s0->tcp_closed_timestamp)
-	    {
-	      // session is closed, go slow path, freed in slow path
-	      slow_path_reason = NAT_ED_SP_TCP_CLOSED;
-	      next[0] = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
-	    }
-	  else
-	    {
-	      // session in transitory timeout, drop
-	      b0->error = node->errors[NAT_OUT2IN_ED_ERROR_TCP_CLOSED];
-	      next[0] = NAT_NEXT_DROP;
-	    }
-	  goto trace0;
-	}
-
       // drop if session expired
       u64 sess_timeout_time;
       sess_timeout_time =
@@ -981,10 +966,6 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 	  nat44_set_tcp_session_state_o2i (sm, now, s0,
 					   vnet_buffer (b0)->ip.
 					   reass.icmp_type_or_tcp_flags,
-					   vnet_buffer (b0)->ip.
-					   reass.tcp_ack_number,
-					   vnet_buffer (b0)->ip.
-					   reass.tcp_seq_number,
 					   thread_index);
 	  break;
 	case IP_PROTOCOL_UDP:
@@ -1028,6 +1009,7 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 	      clib_memcpy (&t->i2of, &s0->i2o, sizeof (t->i2of));
 	      clib_memcpy (&t->o2if, &s0->o2i, sizeof (t->o2if));
 	      t->translation_via_i2of = (&s0->i2o == f);
+	      t->tcp_state = s0->tcp_state;
 	    }
 	  else
 	    {
@@ -1170,13 +1152,6 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
 	  s0 =
 	    pool_elt_at_index (tsm->sessions,
 			       ed_value_get_session_index (&value0));
-
-	  if (s0->tcp_closed_timestamp && now >= s0->tcp_closed_timestamp)
-	    {
-	      nat44_ed_free_session_data (sm, s0, thread_index, 0);
-	      nat_ed_session_delete (sm, s0, thread_index, 1);
-	      s0 = NULL;
-	    }
 	}
 
       if (!s0)
@@ -1264,10 +1239,6 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
 	  nat44_set_tcp_session_state_o2i (sm, now, s0,
 					   vnet_buffer (b0)->ip.
 					   reass.icmp_type_or_tcp_flags,
-					   vnet_buffer (b0)->ip.
-					   reass.tcp_ack_number,
-					   vnet_buffer (b0)->ip.
-					   reass.tcp_seq_number,
 					   thread_index);
 	}
       else
@@ -1300,6 +1271,7 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
 	      t->session_index = s0 - tsm->sessions;
 	      clib_memcpy (&t->i2of, &s0->i2o, sizeof (t->i2of));
 	      clib_memcpy (&t->o2if, &s0->o2i, sizeof (t->o2if));
+	      t->tcp_state = s0->tcp_state;
 	    }
 	  else
 	    {
