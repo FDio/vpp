@@ -253,7 +253,6 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
   af_packet_if_t *apif = 0;
   u8 hw_addr[6];
   vnet_sw_interface_t *sw;
-  vnet_hw_interface_t *hw;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vnet_main_t *vnm = vnet_get_main ();
   uword *p;
@@ -414,14 +413,13 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
 	af_packet_ip_device_hw_interface_class.index, if_index);
     }
   sw = vnet_get_hw_sw_interface (vnm, apif->hw_if_index);
-  hw = vnet_get_hw_interface (vnm, apif->hw_if_index);
   apif->sw_if_index = sw->sw_if_index;
   vnet_hw_if_set_input_node (vnm, apif->hw_if_index,
 			     af_packet_input_node.index);
   apif->queue_index = vnet_hw_if_register_rx_queue (vnm, apif->hw_if_index, 0,
 						    VNET_HW_IF_RXQ_THREAD_ANY);
 
-  hw->caps |= VNET_HW_IF_CAP_INT_MODE;
+  vnet_hw_if_set_caps (vnm, apif->hw_if_index, VNET_HW_IF_CAP_INT_MODE);
   vnet_hw_interface_set_flags (vnm, apif->hw_if_index,
 			       VNET_HW_INTERFACE_FLAG_LINK_UP);
 
@@ -527,20 +525,18 @@ af_packet_set_l4_cksum_offload (u32 sw_if_index, u8 set)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hw;
-
+  vnet_hw_if_caps_t caps =
+    VNET_HW_IF_CAP_TX_TCP_CKSUM | VNET_HW_IF_CAP_TX_UDP_CKSUM;
   hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
 
   if (hw->dev_class_index != af_packet_device_class.index)
     return VNET_API_ERROR_INVALID_INTERFACE;
 
   if (set)
-    {
-      hw->caps &= ~(VNET_HW_IF_CAP_TX_TCP_CKSUM | VNET_HW_IF_CAP_TX_UDP_CKSUM);
-    }
+    vnet_hw_if_set_caps (vnm, hw->hw_if_index, caps);
   else
-    {
-      hw->caps |= (VNET_HW_IF_CAP_TX_TCP_CKSUM | VNET_HW_IF_CAP_TX_UDP_CKSUM);
-    }
+    vnet_hw_if_unset_caps (vnm, hw->hw_if_index, caps);
+
   return 0;
 }
 
