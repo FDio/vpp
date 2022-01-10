@@ -1810,7 +1810,7 @@ send_nat44_user_session_v2_details (snat_session_t *s,
   switch (s->proto)
     {
     case IP_PROTOCOL_TCP:
-      if (s->state)
+      if (NAT44_ED_TCP_ESTABLISHED == s->tcp_state)
 	sess_timeout_time += sm->timeouts.tcp.established;
       else
 	sess_timeout_time += sm->timeouts.tcp.transitory;

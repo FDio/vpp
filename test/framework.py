@@ -26,7 +26,7 @@ from abc import ABC, abstractmethod
 from struct import pack, unpack
 
 import scapy.compat
-from scapy.packet import Raw
+from scapy.packet import Raw, Packet
 import hook as hookmodule
 from vpp_pg_interface import VppPGInterface
 from vpp_sub_interface import VppSubInterface
@@ -1308,7 +1308,7 @@ class VppTestCase(CPUInterface, unittest.TestCase):
     def send_and_expect(self, intf, pkts, output, n_rx=None, worker=None,
                         trace=True):
         if not n_rx:
-            n_rx = len(pkts)
+            n_rx = 1 if isinstance(pkts, Packet) else len(pkts)
         self.pg_send(intf, pkts, worker=worker, trace=trace)
         rx = output.get_capture(n_rx)
         if trace:
