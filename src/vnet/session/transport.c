@@ -662,14 +662,14 @@ spacer_max_burst (spacer_t * pacer, clib_us_time_t time_now)
   u64 n_periods = (time_now - pacer->last_update);
   u64 inc;
 
-  if ((inc = (f32) n_periods * pacer->tokens_per_period) > 10)
+  if ((inc = (u64) (n_periods * (f64) pacer->tokens_per_period)) > 1000)
     {
       pacer->last_update = time_now;
       pacer->bucket =
 	clib_min ((i64) (pacer->bucket + inc), (i64) pacer->max_burst);
     }
 
-  return pacer->bucket > 0 ? pacer->max_burst : 0;
+  return pacer->bucket >= 0 ? pacer->max_burst : 0;
 }
 
 static inline void
@@ -684,6 +684,7 @@ spacer_set_pace_rate (spacer_t * pacer, u64 rate_bytes_per_sec,
 {
   clib_us_time_t max_time;
 
+//  rate_bytes_per_sec = 25000;
   ASSERT (rate_bytes_per_sec != 0);
   pacer->bytes_per_sec = rate_bytes_per_sec;
   pacer->tokens_per_period = rate_bytes_per_sec * CLIB_US_TIME_PERIOD;
@@ -712,7 +713,7 @@ spacer_pace_rate (spacer_t * pacer)
 }
 
 static inline void
-spacer_reset (spacer_t * pacer, clib_us_time_t time_now, u64 bucket)
+spacer_reset (spacer_t * pacer, clib_us_time_t time_now, i64 bucket)
 {
   pacer->last_update = time_now;
   pacer->bucket = bucket;
@@ -720,9 +721,10 @@ spacer_reset (spacer_t * pacer, clib_us_time_t time_now, u64 bucket)
 
 void
 transport_connection_tx_pacer_reset (transport_connection_t * tc,
-				     u64 rate_bytes_per_sec, u32 start_bucket,
+				     u64 rate_bytes_per_sec, i32 start_bucket,
 				     clib_us_time_t rtt)
 {
+  clib_warning ("reset to %d", start_bucket);
   spacer_set_pace_rate (&tc->pacer, rate_bytes_per_sec, rtt,
 			transport_seconds_per_loop (tc->thread_index));
   spacer_reset (&tc->pacer, transport_us_time_now (tc->thread_index),
@@ -731,8 +733,10 @@ transport_connection_tx_pacer_reset (transport_connection_t * tc,
 
 void
 transport_connection_tx_pacer_reset_bucket (transport_connection_t * tc,
-					    u32 bucket)
+					    i32 bucket)
 {
+  // update bucket first and then compare?
+//  bucket = clib_min (bucket, tc->pacer.bucket);
   spacer_reset (&tc->pacer, transport_us_time_now (tc->thread_index), bucket);
 }
 
@@ -757,6 +761,9 @@ transport_connection_tx_pacer_update (transport_connection_t * tc,
 u32
 transport_connection_tx_pacer_burst (transport_connection_t * tc)
 {
+  // check if descheduled and reset bucket?
+  if (transport_connection_is_descheduled (tc))
+    clib_warning ("this");
   return spacer_max_burst (&tc->pacer,
 			   transport_us_time_now (tc->thread_index));
 }
@@ -791,7 +798,7 @@ void
 transport_connection_reschedule (transport_connection_t * tc)
 {
   tc->flags &= ~TRANSPORT_CONNECTION_F_DESCHED;
-  transport_connection_tx_pacer_reset_bucket (tc, TRANSPORT_PACER_MIN_BURST);
+  transport_connection_tx_pacer_reset_bucket (tc, -TRANSPORT_PACER_MIN_BURST);
   if (transport_max_tx_dequeue (tc))
     sesssion_reschedule_tx (tc);
   else
