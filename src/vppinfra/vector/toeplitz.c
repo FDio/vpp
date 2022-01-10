@@ -66,7 +66,7 @@ void
 clib_toeplitz_hash_key_expand (u64 *matrixes, u8 *key, int size)
 {
   u64x8u *m = (u64x8u *) matrixes;
-  u64x2 kv, zero = {};
+  u64x2 kv = {}, zero = {};
 
   while (size >= 8)
     {
