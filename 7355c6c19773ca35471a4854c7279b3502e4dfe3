@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b1449934_7263cf02",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 246,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2022-01-10T22:49:56Z",
+      "side": 1,
+      "message": "with the addition of the same condition at line 237, this is now redundant and should be removed.",
+      "revId": "7355c6c19773ca35471a4854c7279b3502e4dfe3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4c63c37d_4a610583",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 639,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2022-01-10T22:49:56Z",
+      "side": 1,
+      "message": "This seems unnecessary. There are two calls to lcp_itf_set_link_state(). Both of them pass in the current value of the sw interface\u0027s admin state (sw-\u003eflags \u0026 VNET_SW_INTERFACE_FLAG_ADMIN_UP) as the value of the parameter \u0027state\u0027.\n\nEffectively, this will always be a no-op. We will always call vnet_sw_interface_admin_up() on an interface which is already up or call vnet_sw_interface_admin_down() on an interface which is already down.",
+      "revId": "7355c6c19773ca35471a4854c7279b3502e4dfe3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
