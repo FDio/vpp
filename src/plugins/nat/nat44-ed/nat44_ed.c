@@ -4066,6 +4066,48 @@ nat_syslog_nat44_sdel (u32 ssubix, u32 sfibix, ip4_address_t *isaddr,
 			 is_twicenat);
 }
 
+u8 *
+format_nat44_ed_tcp_state (u8 *s, va_list *args)
+{
+  nat44_ed_tcp_state_e e = va_arg (*args, nat44_ed_tcp_state_e);
+  switch (e)
+    {
+    case NAT44_ED_TCP_CLOSED:
+      s = format (s, "closed");
+      break;
+    case NAT44_ED_TCP_SYN_I2O:
+      s = format (s, "SYN seen in in2out direction");
+      break;
+    case NAT44_ED_TCP_SYN_O2I:
+      s = format (s, "SYN seen in out2in direction");
+      break;
+    case NAT44_ED_TCP_ESTABLISHED:
+      s = format (s, "SYN seen in both directions/established");
+      break;
+    case NAT44_ED_TCP_FIN_I2O:
+      s = format (s, "FIN seen in in2out direction");
+      break;
+    case NAT44_ED_TCP_FIN_O2I:
+      s = format (s, "FIN seen in out2in direction");
+      break;
+    case NAT44_ED_TCP_RST_TRANS:
+      s = format (s, "RST seen/transitory timeout");
+      break;
+    case NAT44_ED_TCP_FIN_TRANS:
+      s = format (s, "FIN seen in both directions/transitory timeout");
+      break;
+    case NAT44_ED_TCP_FIN_REOPEN_SYN_O2I:
+      s = format (s, "FIN seen in both directions/transitory timeout/session "
+		     "reopening in out2in direction");
+      break;
+    case NAT44_ED_TCP_FIN_REOPEN_SYN_I2O:
+      s = format (s, "FIN seen in both directions/transitory timeout/session "
+		     "reopening in in2out direction");
+      break;
+    }
+  return s;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
