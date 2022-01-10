@@ -478,16 +478,12 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u64 now = vlib_time_now (vm);
   u64 sess_timeout_time = 0;
 
-  u32 udp_sessions = 0;
-  u32 tcp_sessions = 0;
-  u32 icmp_sessions = 0;
-  u32 other_sessions = 0;
-
-  u32 timed_out = 0;
-  u32 transitory = 0;
-  u32 transitory_wait_closed = 0;
-  u32 transitory_closed = 0;
-  u32 established = 0;
+  struct
+  {
+    u32 total;
+    u32 timed_out;
+  } udp = { 0 }, tcp = { 0 }, tcp_established = { 0 }, tcp_transitory = { 0 },
+    icmp = { 0 }, other = { 0 };
 
   u32 fib;
 
@@ -501,43 +497,44 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
         {
           pool_foreach (s, tsm->sessions)
            {
-            sess_timeout_time = s->last_heard +
-	      (f64) nat44_session_get_timeout (sm, s);
-            if (now >= sess_timeout_time)
-              timed_out++;
+	     sess_timeout_time =
+	       s->last_heard + (f64) nat44_session_get_timeout (sm, s);
 
-	    switch (s->proto)
-	      {
-	      case IP_PROTOCOL_ICMP:
-		icmp_sessions++;
-		break;
-	      case IP_PROTOCOL_TCP:
-		tcp_sessions++;
-		if (s->state)
-		  {
-		    if (s->tcp_closed_timestamp)
-		      {
-			if (now >= s->tcp_closed_timestamp)
-			  {
-			    ++transitory_closed;
-			  }
-			else
-			  {
-			    ++transitory_wait_closed;
-			  }
-		      }
-		    transitory++;
-		  }
-		else
-		  established++;
-		break;
-	      case IP_PROTOCOL_UDP:
-		udp_sessions++;
-		break;
-	      default:
-		++other_sessions;
-		break;
-	      }
+	     switch (s->proto)
+	       {
+	       case IP_PROTOCOL_ICMP:
+		 ++icmp.total;
+		 if (now >= sess_timeout_time)
+		   ++icmp.timed_out;
+		 break;
+	       case IP_PROTOCOL_TCP:
+		 ++tcp.total;
+		 if (now >= sess_timeout_time)
+		   ++tcp.timed_out;
+		 if (nat44_ed_tcp_is_established (s->tcp_state))
+		   {
+		     ++tcp_established.total;
+		     if (now >= sess_timeout_time)
+		       ++tcp_established.timed_out;
+		   }
+		 else
+		   {
+		     ++tcp_transitory.total;
+		     if (now >= sess_timeout_time)
+		       ++tcp_transitory.timed_out;
+		   }
+		 break;
+	       case IP_PROTOCOL_UDP:
+		 ++udp.total;
+		 if (now >= sess_timeout_time)
+		   ++udp.timed_out;
+		 break;
+	       default:
+		 ++other.total;
+		 if (now >= sess_timeout_time)
+		   ++other.timed_out;
+		 break;
+	       }
 	   }
 	  nat44_show_lru_summary (vm, tsm, now, sess_timeout_time);
 	  count += pool_elts (tsm->sessions);
@@ -550,39 +547,40 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
        {
         sess_timeout_time = s->last_heard +
 	    (f64) nat44_session_get_timeout (sm, s);
-        if (now >= sess_timeout_time)
-          timed_out++;
 
 	switch (s->proto)
 	  {
 	  case IP_PROTOCOL_ICMP:
-	    icmp_sessions++;
+	    ++icmp.total;
+	    if (now >= sess_timeout_time)
+	      ++icmp.timed_out;
 	    break;
 	  case IP_PROTOCOL_TCP:
-	    tcp_sessions++;
-	    if (s->state)
+	    ++tcp.total;
+	    if (now >= sess_timeout_time)
+	      ++tcp.timed_out;
+	    if (nat44_ed_tcp_is_established (s->tcp_state))
 	      {
-		if (s->tcp_closed_timestamp)
-		  {
-		    if (now >= s->tcp_closed_timestamp)
-		      {
-			++transitory_closed;
-		      }
-		    else
-		      {
-			++transitory_wait_closed;
-		      }
-		  }
-		transitory++;
+		++tcp_established.total;
+		if (now >= sess_timeout_time)
+		  ++tcp_established.timed_out;
 	      }
 	    else
-	      established++;
+	      {
+		++tcp_transitory.total;
+		if (now >= sess_timeout_time)
+		  ++tcp_transitory.timed_out;
+	      }
 	    break;
 	  case IP_PROTOCOL_UDP:
-	    udp_sessions++;
+	    ++udp.total;
+	    if (now >= sess_timeout_time)
+	      ++udp.timed_out;
 	    break;
 	  default:
-	    ++other_sessions;
+	    ++other.total;
+	    if (now >= sess_timeout_time)
+	      ++other.timed_out;
 	    break;
 	  }
       }
@@ -590,18 +588,25 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
       count = pool_elts (tsm->sessions);
     }
 
-  vlib_cli_output (vm, "total timed out sessions: %u", timed_out);
-  vlib_cli_output (vm, "total sessions: %u", count);
-  vlib_cli_output (vm, "total tcp sessions: %u", tcp_sessions);
-  vlib_cli_output (vm, "total tcp established sessions: %u", established);
-  vlib_cli_output (vm, "total tcp transitory sessions: %u", transitory);
-  vlib_cli_output (vm, "total tcp transitory (WAIT-CLOSED) sessions: %u",
-		   transitory_wait_closed);
-  vlib_cli_output (vm, "total tcp transitory (CLOSED) sessions: %u",
-		   transitory_closed);
-  vlib_cli_output (vm, "total udp sessions: %u", udp_sessions);
-  vlib_cli_output (vm, "total icmp sessions: %u", icmp_sessions);
-  vlib_cli_output (vm, "total other sessions: %u", other_sessions);
+  u32 timed_out =
+    tcp.timed_out + icmp.timed_out + udp.timed_out + other.timed_out;
+  vlib_cli_output (vm, "total sessions: %u (timed out: %u)", count, timed_out);
+  vlib_cli_output (vm, "tcp sessions:");
+  vlib_cli_output (vm, "    total: %u (timed out: %u)", tcp.total,
+		   tcp.timed_out);
+  vlib_cli_output (vm, "        established: %u (timed out: %u)",
+		   tcp_established.total, tcp_established.timed_out);
+  vlib_cli_output (vm, "        transitory: %u (timed out: %u)",
+		   tcp_transitory.total, tcp_transitory.timed_out);
+  vlib_cli_output (vm, "udp sessions:");
+  vlib_cli_output (vm, "    total: %u (timed out: %u)", udp.total,
+		   udp.timed_out);
+  vlib_cli_output (vm, "icmp sessions:");
+  vlib_cli_output (vm, "    total: %u (timed out: %u)", icmp.total,
+		   icmp.timed_out);
+  vlib_cli_output (vm, "other sessions:");
+  vlib_cli_output (vm, "    total: %u (timed out: %u)", other.total,
+		   other.timed_out);
   return 0;
 }
 
@@ -1456,7 +1461,8 @@ print:
 		continue;
 	      showed_sessions++;
 	    }
-	  vlib_cli_output (vm, "  %U\n", format_snat_session, tsm, s);
+	  vlib_cli_output (vm, "  %U\n", format_snat_session, sm, tsm, s,
+			   vlib_time_now (vm));
 	}
       if (filtering)
 	{
