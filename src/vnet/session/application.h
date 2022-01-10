@@ -36,7 +36,7 @@ typedef struct app_wrk_postponed_msg_
   u8 ring;
   u8 is_sapi;
   int fd;
-  u8 data[SESSION_CTRL_MSG_MAX_SIZE];
+  u8 data[SESSION_CTRL_MSG_TX_MAX_SIZE];
 } app_wrk_postponed_msg_t;
 
 typedef struct app_worker_
