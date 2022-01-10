@@ -1188,8 +1188,14 @@ session_tx_maybe_reschedule (session_worker_t * wrk,
 
   svm_fifo_unset_event (s->tx_fifo);
   if (svm_fifo_max_dequeue_cons (s->tx_fifo) > ctx->sp.tx_offset)
-    if (svm_fifo_set_event (s->tx_fifo))
-      session_evt_add_head_old (wrk, elt);
+    {
+      if (svm_fifo_set_event (s->tx_fifo))
+	session_evt_add_head_old (wrk, elt);
+    }
+  else
+    {
+      transport_connection_deschedule (ctx->tc);
+    }
 }
 
 always_inline int
@@ -1245,6 +1251,11 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 	  return SESSION_TX_OK;
 	}
     }
+
+  /* Connection previously descheduled because it had no data to send.
+   * Clear descheduled flag and reset pacer if in use */
+  if (transport_connection_is_descheduled (ctx->tc))
+    transport_connection_clear_descheduled (ctx->tc);
 
   transport_connection_snd_params (ctx->tc, &ctx->sp);
 
