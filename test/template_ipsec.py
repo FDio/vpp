@@ -1292,10 +1292,13 @@ class IpsecTun4(object):
         self.verify_counters4(p, count)
 
     def verify_keepalive(self, p):
+        # the sizeof Raw is calculated to pad to the minimum ehternet
+        # frame size of 64 btyes
         pkt = (Ether(src=self.tun_if.remote_mac, dst=self.tun_if.local_mac) /
                IP(src=p.remote_tun_if_host, dst=self.tun_if.local_ip4) /
                UDP(sport=333, dport=4500) /
-               Raw(b'\xff'))
+               Raw(b'\xff') /
+               Padding(0 * 21))
         self.send_and_assert_no_replies(self.tun_if, pkt*31)
         self.assert_error_counter_equal(
             '/err/%s/NAT Keepalive' % self.tun4_input_node, 31)
@@ -1307,6 +1310,15 @@ class IpsecTun4(object):
         self.send_and_assert_no_replies(self.tun_if, pkt*31)
         self.assert_error_counter_equal(
             '/err/%s/Too Short' % self.tun4_input_node, 31)
+
+        pkt = (Ether(src=self.tun_if.remote_mac, dst=self.tun_if.local_mac) /
+               IP(src=p.remote_tun_if_host, dst=self.tun_if.local_ip4) /
+               UDP(sport=333, dport=4500) /
+               Raw(b'\xfe') /
+               Padding(0 * 21))
+        self.send_and_assert_no_replies(self.tun_if, pkt*31)
+        self.assert_error_counter_equal(
+            '/err/%s/Too Short' % self.tun4_input_node, 62)
 
 
 class IpsecTun4Tests(IpsecTun4):
