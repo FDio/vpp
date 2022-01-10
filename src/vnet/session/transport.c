@@ -660,12 +660,12 @@ static inline u32
 spacer_max_burst (spacer_t * pacer, clib_us_time_t time_now)
 {
   u64 n_periods = (time_now - pacer->last_update);
-  u64 inc;
+  i64 inc;
 
   if ((inc = (f32) n_periods * pacer->tokens_per_period) > 10)
     {
       pacer->last_update = time_now;
-      pacer->bucket = clib_min (pacer->bucket + inc, pacer->max_burst);
+      pacer->bucket = clib_min (pacer->bucket + inc, (i64) pacer->max_burst);
     }
 
   return pacer->bucket > 0 ? pacer->max_burst : 0;
