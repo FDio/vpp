@@ -40,29 +40,13 @@ format_nat_addr_and_port_alloc_alg (u8 * s, va_list * args)
 }
 
 u8 *
-format_snat_session_state (u8 * s, va_list * args)
-{
-  u32 i = va_arg (*args, u32);
-  u8 *t = 0;
-
-  switch (i)
-    {
-#define _(v, N, str) case SNAT_SESSION_##N: t = (u8 *) str; break;
-      foreach_snat_session_state
-#undef _
-    default:
-      t = format (t, "unknown");
-    }
-  s = format (s, "%s", t);
-  return s;
-}
-
-u8 *
 format_snat_session (u8 * s, va_list * args)
 {
+  snat_main_t *sm = va_arg (*args, snat_main_t *);
   snat_main_per_thread_data_t *tsm =
     va_arg (*args, snat_main_per_thread_data_t *);
   snat_session_t *sess = va_arg (*args, snat_session_t *);
+  f64 now = va_arg (*args, f64);
 
   if (nat44_ed_is_unk_proto (sess->proto))
     {
@@ -103,8 +87,10 @@ format_snat_session (u8 * s, va_list * args)
       s = format (s, "       o2i flow: %U\n", format_nat_6t_flow, &sess->o2i);
   s = format (s, "       index %llu\n", sess - tsm->sessions);
   s = format (s, "       last heard %.2f\n", sess->last_heard);
-  s = format (s, "       total pkts %d, total bytes %lld\n",
-	      sess->total_pkts, sess->total_bytes);
+  s = format (s, "       timeout in %.2f\n",
+	      nat44_session_get_timeout (sm, sess) - (now - sess->last_heard));
+  s = format (s, "       total pkts %d, total bytes %lld\n", sess->total_pkts,
+	      sess->total_bytes);
   if (nat44_ed_is_session_static (sess))
     s = format (s, "       static translation\n");
   else

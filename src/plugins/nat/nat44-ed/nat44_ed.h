@@ -105,33 +105,12 @@ typedef enum
 #undef _
 } nat_addr_and_port_alloc_alg_t;
 
-/* Session state */
-#define foreach_snat_session_state          \
-  _(0, UNKNOWN, "unknown")                 \
-  _(1, UDP_ACTIVE, "udp-active")           \
-  _(2, TCP_SYN_SENT, "tcp-syn-sent")       \
-  _(3, TCP_ESTABLISHED, "tcp-established") \
-  _(4, TCP_FIN_WAIT, "tcp-fin-wait")       \
-  _(5, TCP_CLOSE_WAIT, "tcp-close-wait")   \
-  _(6, TCP_CLOSING, "tcp-closing")         \
-  _(7, TCP_LAST_ACK, "tcp-last-ack")       \
-  _(8, TCP_CLOSED, "tcp-closed")           \
-  _(9, ICMP_ACTIVE, "icmp-active")
-
-typedef enum
-{
-#define _(v, N, s) SNAT_SESSION_##N = v,
-  foreach_snat_session_state
-#undef _
-} snat_session_state_t;
-
 #define foreach_nat_in2out_ed_error                                           \
   _ (UNSUPPORTED_PROTOCOL, "unsupported protocol")                            \
   _ (OUT_OF_PORTS, "out of ports")                                            \
   _ (BAD_ICMP_TYPE, "unsupported ICMP type")                                  \
   _ (MAX_SESSIONS_EXCEEDED, "maximum sessions exceeded")                      \
   _ (NON_SYN, "non-SYN packet try to create session")                         \
-  _ (TCP_CLOSED, "drops due to TCP in transitory timeout")                    \
   _ (TRNSL_FAILED, "couldn't translate packet")
 
 typedef enum
@@ -161,15 +140,43 @@ typedef enum
     NAT_OUT2IN_ED_N_ERROR,
 } nat_out2in_ed_error_t;
 
+typedef enum
+{
+  NAT44_ED_TCP_FLAG_NONE = 0,
+  NAT44_ED_TCP_FLAG_FIN,
+  NAT44_ED_TCP_FLAG_SYN,
+  NAT44_ED_TCP_FLAG_SYNFIN,
+  NAT44_ED_TCP_FLAG_RST,
+  NAT44_ED_TCP_FLAG_FINRST,
+  NAT44_ED_TCP_FLAG_SYNRST,
+  NAT44_ED_TCP_FLAG_SYNFINRST,
+  NAT44_ED_TCP_N_FLAG,
+} nat44_ed_tcp_flag_e;
+
+typedef enum
+{
+  NAT44_ED_DIR_I2O = 0,
+  NAT44_ED_DIR_O2I,
+  NAT44_ED_N_DIR,
+} nat44_ed_dir_e;
 
 /* Endpoint dependent TCP session state */
-#define NAT44_SES_I2O_FIN 1
-#define NAT44_SES_O2I_FIN 2
-#define NAT44_SES_I2O_FIN_ACK 4
-#define NAT44_SES_O2I_FIN_ACK 8
-#define NAT44_SES_I2O_SYN 16
-#define NAT44_SES_O2I_SYN 32
-#define NAT44_SES_RST     64
+typedef enum
+{
+  NAT44_ED_TCP_STATE_CLOSED = 0,
+  NAT44_ED_TCP_STATE_SYN_I2O,
+  NAT44_ED_TCP_STATE_SYN_O2I,
+  NAT44_ED_TCP_STATE_ESTABLISHED,
+  NAT44_ED_TCP_STATE_FIN_I2O,
+  NAT44_ED_TCP_STATE_FIN_O2I,
+  NAT44_ED_TCP_STATE_RST_TRANS,
+  NAT44_ED_TCP_STATE_FIN_TRANS,
+  NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_I2O,
+  NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_O2I,
+  NAT44_ED_TCP_N_STATE,
+} nat44_ed_tcp_state_e;
+
+format_function_t format_nat44_ed_tcp_state;
 
 /* Session flags */
 #define SNAT_SESSION_FLAG_STATIC_MAPPING     (1 << 0)
@@ -341,10 +348,7 @@ typedef CLIB_PACKED(struct
   u16 ext_host_nat_port;
 
   /* TCP session state */
-  u8 state;
-  u32 i2o_fin_seq;
-  u32 o2i_fin_seq;
-  u64 tcp_closed_timestamp;
+  nat44_ed_tcp_state_e tcp_state;
 
   /* per vrf sessions index */
   u32 per_vrf_sessions_index;
@@ -668,6 +672,16 @@ typedef struct snat_main_s
 
   vnet_main_t *vnet_main;
 
+  /* TCP session state machine table:
+   *   first dimension is possible states
+   *   second dimension is direction (in2out/out2in)
+   *   third dimension is TCP flag (SYN, RST, FIN)
+   *
+   *   value is next state to change to
+   */
+  nat44_ed_tcp_state_e tcp_state_change_table[NAT44_ED_TCP_N_STATE]
+					     [NAT44_ED_N_DIR]
+					     [NAT44_ED_TCP_N_FLAG];
 } snat_main_t;
 
 typedef struct
@@ -787,16 +801,6 @@ always_inline bool
 nat44_ed_is_interface_outside (snat_interface_t *i)
 {
   return i->flags & NAT_INTERFACE_FLAG_IS_OUTSIDE;
-}
-
-/** \brief Check if NAT44 endpoint-dependent TCP session is closed.
-    @param s NAT session
-    @return true if session is closed
-*/
-always_inline bool
-nat44_is_ses_closed (snat_session_t *s)
-{
-  return s->state == 0xf;
 }
 
 /** \brief Check if client initiating TCP connection (received SYN from client)
