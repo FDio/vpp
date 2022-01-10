@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f9f7210e_2ed026c8",
+        "filename": "src/vnet/ip6-nd/ip6_nd_inline.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2022-01-10T16:45:17Z",
+      "side": 0,
+      "message": "ethernet_buffer_header_size (b) considers the vlan tag(s) for ethernet header size calculation.",
+      "revId": "26ea3ede43b9eb157a97850c70be3016040bd025",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
