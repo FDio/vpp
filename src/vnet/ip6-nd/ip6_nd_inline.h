@@ -42,6 +42,7 @@ icmp6_send_neighbor_advertisement (
   vnet_sw_interface_t *sw_if;
   ethernet_interface_t *eth_if;
   ethernet_header_t *eth;
+  u8 src_mac[6];
   int bogus_length;
 
   /* dst address is either source address or the all-nodes mcast addr */
@@ -77,11 +78,19 @@ icmp6_send_neighbor_advertisement (
 
   /* Reuse current MAC header, copy SMAC to DMAC and
    * interface MAC to SMAC */
-  vlib_buffer_advance (b, -ethernet_buffer_header_size (b));
+  ASSERT (b->flags & VNET_BUFFER_F_L2_HDR_OFFSET_VALID);
+  eth = (void *) (b->data + vnet_buffer (b)->l2_hdr_offset);
+  clib_memcpy (src_mac, eth->src_address, 6);
+
+  vlib_buffer_advance (b, -sizeof (ethernet_header_t));
+  vnet_buffer (b)->l2_hdr_offset = b->current_data;
+
   eth = vlib_buffer_get_current (b);
-  clib_memcpy (eth->dst_address, eth->src_address, 6);
+
+  clib_memcpy (eth->dst_address, src_mac, 6);
   if (eth_if)
     clib_memcpy (eth->src_address, &eth_if->address, 6);
+  eth->type = clib_host_to_net_u16 (ETHERNET_TYPE_IP6);
 
   /* Setup input and output sw_if_index for packet */
   ASSERT (vnet_buffer (b)->sw_if_index[VLIB_RX] == sw_if_index0);
