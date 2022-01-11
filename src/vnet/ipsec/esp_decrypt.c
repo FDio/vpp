@@ -1365,6 +1365,12 @@ esp_decrypt_post_inline (vlib_main_t * vm,
 	  vlib_prefetch_buffer_header (b[1], LOAD);
 	}
 
+      if (pool_is_free_index (ipsec_sa_pool, pd->sa_index))
+	{
+	  next[0] = ESP_DECRYPT_NEXT_DROP;
+	  goto next;
+	}
+
       if (!pd->is_chain)
 	esp_decrypt_post_crypto (vm, node, pd, 0, b[0], next, is_ip6, is_tun,
 				 1);
@@ -1392,6 +1398,7 @@ esp_decrypt_post_inline (vlib_main_t * vm,
 	  tr->sa_seq_hi = sa0->seq_hi;
 	}
 
+    next:
       n_left--;
       next++;
       b++;
