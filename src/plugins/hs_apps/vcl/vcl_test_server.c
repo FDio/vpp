@@ -502,18 +502,20 @@ vcl_test_server_process_opts (vcl_test_server_main_t * vsm, int argc,
 	print_usage_and_exit ();
       }
 
-  if (argc < (optind + 1))
+  if (argc > (optind + 1))
     {
-      fprintf (stderr, "SERVER: ERROR: Insufficient number of arguments!\n");
+      fprintf (stderr, "Incorrect number of arguments!\n");
       print_usage_and_exit ();
     }
-
-  if (sscanf (argv[optind], "%d", &v) == 1)
-    vsm->server_cfg.port = (uint16_t) v;
-  else
+  else if (argc > 1 && argc == (optind + 1))
     {
-      fprintf (stderr, "SERVER: ERROR: Invalid port (%s)!\n", argv[optind]);
-      print_usage_and_exit ();
+      if (sscanf (argv[optind], "%d", &v) == 1)
+	vsm->server_cfg.port = (uint16_t) v;
+      else
+	{
+	  fprintf (stderr, "Invalid port (%s)!\n", argv[optind]);
+	  print_usage_and_exit ();
+	}
     }
 
   vcl_test_init_endpoint_addr (vsm);
