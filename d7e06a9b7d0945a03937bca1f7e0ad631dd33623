@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e8dc37da_388101ab",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 548,
+      "author": {
+        "id": 1961
+      },
+      "writtenOn": "2022-01-11T12:01:22Z",
+      "side": 1,
+      "message": "Can the user precisely see the number of established and transitory sessions that are still active? As far as I understand, these numbers are polluted by the already timed out sessions and there is no way for the user to tell them apart.\nI am wondering if this is a problem also for ICMP and UDP, from the numbers, we do not know how many ICMP or UDP sessions are still \"active\". Did I overlook something?\nI would suggest to continue the loop after the `if (now \u003e\u003d sess_timeout_time)` check.",
+      "revId": "d7e06a9b7d0945a03937bca1f7e0ad631dd33623",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6a2ba9c6_476ec624",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_inlines.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 774,
+      "author": {
+        "id": 1961
+      },
+      "writtenOn": "2022-01-11T12:01:22Z",
+      "side": 1,
+      "message": "Apart from tracing and being able to debug the state, is there a reason for the REOPEN_SYN_* states and not putting the session back to SYN_*?",
+      "revId": "d7e06a9b7d0945a03937bca1f7e0ad631dd33623",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "efbeafc2_0bf868b2",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_inlines.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 832,
+      "author": {
+        "id": 1961
+      },
+      "writtenOn": "2022-01-11T12:01:22Z",
+      "side": 1,
+      "message": "What is the reason of not updating last_heard by an RST?\nSuppose the session is established and there was no packet received for 10 mins. Then an RST is forwarded and the state is set to RST_TRANS. The transitory timeout is immediately over in this case because `s-\u003elast_heard + nat44_session_get_timeout (s)` is already in the past.\n\nAnd it seems to me that the other 3 states below could have the same problem.\nWe could see if this is a real issue with a test case.",
+      "revId": "d7e06a9b7d0945a03937bca1f7e0ad631dd33623",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "20d5f0a5_8ac50836",
+        "filename": "test/test_nat44_ed.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 3453,
+      "author": {
+        "id": 1961
+      },
+      "writtenOn": "2022-01-11T12:01:22Z",
+      "side": 1,
+      "message": "A test case for the [SYN, ACK] retransmit would also be nice. Feel free to take it from patch #34851.",
+      "revId": "d7e06a9b7d0945a03937bca1f7e0ad631dd33623",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
