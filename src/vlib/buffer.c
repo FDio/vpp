@@ -107,7 +107,7 @@ format_vlib_buffer_no_chain (u8 * s, va_list * args)
 		"ref-count %u", b->current_data, b->current_length,
 		b->buffer_pool_index, b->ref_count);
 
-  if (b->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID)
+  if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
     s = format (s, ", totlen-nifb %d",
 		b->total_length_not_including_first_buffer);
 
