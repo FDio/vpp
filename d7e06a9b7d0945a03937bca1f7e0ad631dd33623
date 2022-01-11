@@ -107,6 +107,24 @@
     },
     {
       "key": {
+        "uuid": "dd1fedcc_4210fad3",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_inlines.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 832,
+      "author": {
+        "id": 1961
+      },
+      "writtenOn": "2022-01-11T15:09:25Z",
+      "side": 1,
+      "message": "Thank you for the explanation.\nAn interesting part of the RFC 7857 state machine is that in both the FIN_I2O and FIN_O2I states (C FIN or S FIN RCV), the established timeout is used. It is set to transitory only in FIN_TRANS, when both FINs are forwarded. This is slightly different from the timeout value returned by nat44_session_get_timeout().\nI am wondering what could be the reason of still using the established timeout, this relies on the RST when the other FIN does not arrive. I suppose there can still be outstanding data transmitted (in half closed state), this might be the background. With your current implementation and updating the last_heard value in FIN_I2O and FIN_O2I states, this should work I think.",
+      "parentUuid": "1f596ced_35a7895d",
+      "revId": "d7e06a9b7d0945a03937bca1f7e0ad631dd33623",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "20d5f0a5_8ac50836",
         "filename": "test/test_nat44_ed.py",
         "patchSetId": 3
