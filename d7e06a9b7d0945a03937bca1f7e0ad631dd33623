@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "2340b717_ca8a1509",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 548,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-01-11T13:56:22Z",
+      "side": 1,
+      "message": "Okay, I think I can improve this to be more usable. Stay tuned.",
+      "parentUuid": "e8dc37da_388101ab",
+      "revId": "d7e06a9b7d0945a03937bca1f7e0ad631dd33623",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "6a2ba9c6_476ec624",
         "filename": "src/plugins/nat/nat44-ed/nat44_ed_inlines.h",
         "patchSetId": 3
@@ -30,6 +48,24 @@
       "writtenOn": "2022-01-11T12:01:22Z",
       "side": 1,
       "message": "Apart from tracing and being able to debug the state, is there a reason for the REOPEN_SYN_* states and not putting the session back to SYN_*?",
+      "revId": "d7e06a9b7d0945a03937bca1f7e0ad631dd33623",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "602306a3_0e7ba166",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_inlines.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 774,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-01-11T13:56:22Z",
+      "side": 1,
+      "message": "Yes, because open transition to ESTABLISHED from these states, the session will be reset (counters, events) and that\u0027s a different behaviour from SYN-\u003eESTABLISHED. I am currently writing the code for that, will amend patch.",
+      "parentUuid": "6a2ba9c6_476ec624",
       "revId": "d7e06a9b7d0945a03937bca1f7e0ad631dd33623",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "1f596ced_35a7895d",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_inlines.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 832,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-01-11T13:56:22Z",
+      "side": 1,
+      "message": "last_heard is update by RST in nat44_set_tcp_session_state, see line 806 above.\n\nNormal traffic should not update last_heard while in transitory timeout as that would negate transitory timeout\u0027s purpose - that is unconditional timeout if state is not changed within timeout. But for RST_TRANS case this will not be hit as normal traffic will change RST_TRANS to ESTABLISHED in nat44_set_tcp_session_state above. Still, for completeness sake I think it\u0027s best to have it \"if in transitory then don\u0027t update\".",
+      "parentUuid": "efbeafc2_0bf868b2",
+      "revId": "d7e06a9b7d0945a03937bca1f7e0ad631dd33623",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "20d5f0a5_8ac50836",
         "filename": "test/test_nat44_ed.py",
         "patchSetId": 3
@@ -64,6 +118,24 @@
       "writtenOn": "2022-01-11T12:01:22Z",
       "side": 1,
       "message": "A test case for the [SYN, ACK] retransmit would also be nice. Feel free to take it from patch #34851.",
+      "revId": "d7e06a9b7d0945a03937bca1f7e0ad631dd33623",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "682e0db2_7d17be9f",
+        "filename": "test/test_nat44_ed.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 3453,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-01-11T13:56:22Z",
+      "side": 1,
+      "message": "Alright thanks",
+      "parentUuid": "20d5f0a5_8ac50836",
       "revId": "d7e06a9b7d0945a03937bca1f7e0ad631dd33623",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
