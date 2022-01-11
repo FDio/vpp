@@ -537,6 +537,7 @@ list(APPEND VNET_SOURCES
   crypto/format.c
   crypto/node.c
   crypto/crypto_api.c
+  crypto/drbg_ctr.c
 )
 
 list(APPEND VNET_HEADERS

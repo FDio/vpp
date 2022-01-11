@@ -27,6 +27,7 @@ add_vpp_plugin(unittest
   crypto/aes_ctr.c
   crypto/aes_gcm.c
   ${chacha20_poly1305}
+  crypto/drbg_ctr.c
   crypto/rfc2202_hmac_md5.c
   crypto/rfc2202_hmac_sha1.c
   crypto/rfc4231.c

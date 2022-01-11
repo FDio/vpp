@@ -17,6 +17,8 @@
 #ifndef included_unittest_crypto_crypto_h
 #define included_unittest_crypto_crypto_h
 
+#include <vnet/crypto/crypto.h>
+
 #define CRYPTO_TEST_MAX_OP_CHUNKS 8
 
 typedef struct
@@ -73,6 +75,10 @@ __unittest_crypto_test_registration_##x (void)                               \
     cm->test_registrations = & __unittest_crypto_test_##x;                   \
 }                                                                            \
 unittest_crypto_test_registration_t __unittest_crypto_test_##x
+
+clib_error_t *crypto_test_drbg_ctr (vlib_main_t *vm);
+clib_error_t *crypto_test_drbg_ctr_perf (vlib_main_t *vm,
+					 const crypto_test_main_t *tm);
 
 #endif
 

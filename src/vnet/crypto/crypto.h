@@ -17,6 +17,7 @@
 #define included_vnet_crypto_crypto_h
 
 #include <vlib/vlib.h>
+#include "drbg_ctr_defs.h"
 
 #define VNET_CRYPTO_FRAME_SIZE 64
 #define VNET_CRYPTO_FRAME_POOL_SIZE 1024
@@ -371,6 +372,7 @@ typedef struct
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  vnet_crypto_drbg_ctr_t drbg;
   vnet_crypto_async_frame_t *frame_pool;
   u32 *buffer_indices;
   u16 *nexts;
@@ -484,7 +486,6 @@ u32 vnet_crypto_process_chained_ops (vlib_main_t * vm, vnet_crypto_op_t ops[],
 u32 vnet_crypto_process_ops (vlib_main_t * vm, vnet_crypto_op_t ops[],
 			     u32 n_ops);
 
-
 int vnet_crypto_set_handler2 (char *ops_handler_name, char *engine,
 			      crypto_op_class_type_t oct);
 int vnet_crypto_is_set_handler (vnet_crypto_alg_t alg);
@@ -551,7 +552,21 @@ static_always_inline vnet_crypto_key_t *
 vnet_crypto_get_key (vnet_crypto_key_index_t index)
 {
   vnet_crypto_main_t *cm = &crypto_main;
-  return vec_elt_at_index (cm->keys, index);
+  return pool_elt_at_index (cm->keys, index);
+}
+
+static_always_inline void
+vnet_crypto_key_modify (vlib_main_t *vm, const vnet_crypto_key_index_t index,
+			const u8 *data, const u16 length)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_key_t *key = pool_elt_at_index (cm->keys, index);
+  const vnet_crypto_engine_t *engine;
+  ASSERT (length == vec_len (key->data));
+  clib_memcpy_fast (key->data, data, length);
+  vec_foreach (engine, cm->engines)
+    if (engine->key_op_handler)
+      engine->key_op_handler (vm, VNET_CRYPTO_KEY_OP_MODIFY, index);
 }
 
 static_always_inline int

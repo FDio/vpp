@@ -1028,6 +1028,7 @@ test_crypto_command_fn (vlib_main_t * vm,
   crypto_test_main_t *tm = &crypto_test_main;
   unittest_crypto_test_registration_t *tr;
   int is_perf = 0;
+  int is_drbg = 0;
 
   tr = tm->test_registrations;
   memset (tm, 0, sizeof (crypto_test_main_t));
@@ -1040,8 +1041,11 @@ test_crypto_command_fn (vlib_main_t * vm,
 	tm->verbose = 1;
       else if (unformat (input, "detail"))
 	tm->verbose = 2;
-      else
-	if (unformat (input, "perf %U", unformat_vnet_crypto_alg, &tm->alg))
+      else if (unformat (input, "perf drbg"))
+	is_drbg = is_perf = 1;
+      else if (unformat (input, "drbg"))
+	is_drbg = 1;
+      else if (unformat (input, "perf %U", unformat_vnet_crypto_alg, &tm->alg))
 	is_perf = 1;
       else if (unformat (input, "buffers %u", &tm->n_buffers))
 	;
@@ -1056,7 +1060,14 @@ test_crypto_command_fn (vlib_main_t * vm,
 				  format_unformat_error, input);
     }
 
-  if (is_perf)
+  if (is_drbg)
+    {
+      if (is_perf)
+	return crypto_test_drbg_ctr_perf (vm, tm);
+      else
+	return crypto_test_drbg_ctr (vm);
+    }
+  else if (is_perf)
     return test_crypto_perf (vm, tm);
   else
     return test_crypto (vm, tm);

@@ -1003,8 +1003,8 @@ crypto_ipsecmb_init (vlib_main_t * vm)
 }
 
 /* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (crypto_ipsecmb_init) =
-{
+VLIB_INIT_FUNCTION (crypto_ipsecmb_init) = {
+  .runs_before = VLIB_INITS ("vnet_crypto_drbg_ctr_module_init"),
   .runs_after = VLIB_INITS ("vnet_crypto_init"),
 };
 /* *INDENT-ON* */
