@@ -666,7 +666,7 @@ typedef struct
 } ip6_ext_hdr_chain_t;
 
 /*
- * find ipv6 extension header within ipv6 header within
+ * Find ipv6 extension header within ipv6 header within
  * whichever is smallest of buffer or IP6_EXT_HDR_MAX_DEPTH.
  * The complete header chain must be in first buffer.
  *
@@ -710,16 +710,9 @@ ip6_ext_header_walk (vlib_buffer_t *b, ip6_header_t *ip, int find_hdr_type,
       next_header = ip6_ext_next_header_s (next_proto, next_header, max_offset,
 					   &offset, &next_proto, &last);
     }
-  if (ip6_ext_hdr (res->eh[i].protocol))
-    {
-      /* Header chain is not terminated */
-      ;
-    }
   res->length = i;
   if (find_hdr_type < 0)
-    {
-      return i - 1;
-    }
+    return i - 1;
   return found != -1 ? found : i - 1;
 }
 
