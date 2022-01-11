@@ -52,7 +52,11 @@ typedef struct
   uint32_t n_workers;
   volatile int active_workers;
   volatile int test_running;
-  struct sockaddr_storage server_addr;
+  union
+  {
+    struct in_addr v4;
+    struct in6_addr v6;
+  } server_addr;
 } vcl_test_client_main_t;
 
 vcl_test_client_main_t vcl_client_main;
@@ -882,9 +886,9 @@ vtc_process_opts (vcl_test_client_main_t * vcm, int argc, char **argv)
 	print_usage_and_exit ();
       }
 
-  if (argc < (optind + 2))
+  if (argc > (optind + 2))
     {
-      vtwrn ("Insufficient number of arguments!");
+      vtwrn ("Invalid number of arguments!");
       print_usage_and_exit ();
     }
 
@@ -895,26 +899,25 @@ vtc_process_opts (vcl_test_client_main_t * vcm, int argc, char **argv)
   memset (&vcm->server_addr, 0, sizeof (vcm->server_addr));
   if (ctrl->cfg.address_ip6)
     {
-      struct sockaddr_in6 *sddr6 = (struct sockaddr_in6 *) &vcm->server_addr;
-      sddr6->sin6_family = AF_INET6;
-      inet_pton (AF_INET6, argv[optind++], &(sddr6->sin6_addr));
-      sddr6->sin6_port = htons (atoi (argv[optind]));
+      struct in6_addr *in6 = &vcm->server_addr.v6;
+      inet_pton (AF_INET6, argv[optind++], in6);
 
       vcm->server_endpt.is_ip4 = 0;
-      vcm->server_endpt.ip = (uint8_t *) & sddr6->sin6_addr;
-      vcm->server_endpt.port = (uint16_t) sddr6->sin6_port;
+      vcm->server_endpt.ip = (uint8_t *) in6;
     }
   else
     {
-      struct sockaddr_in *saddr4 = (struct sockaddr_in *) &vcm->server_addr;
-      saddr4->sin_family = AF_INET;
-      inet_pton (AF_INET, argv[optind++], &(saddr4->sin_addr));
-      saddr4->sin_port = htons (atoi (argv[optind]));
+      struct in_addr *in4 = &vcm->server_addr.v4;
+      inet_pton (AF_INET, argv[optind++], in4);
 
       vcm->server_endpt.is_ip4 = 1;
-      vcm->server_endpt.ip = (uint8_t *) & saddr4->sin_addr;
-      vcm->server_endpt.port = (uint16_t) saddr4->sin_port;
+      vcm->server_endpt.ip = (uint8_t *) in4;
     }
+
+  if (argc == optind + 1)
+    vcm->server_endpt.port = htons (atoi (argv[optind]));
+  else
+    vcm->server_endpt.port = htons (VCL_TEST_SERVER_PORT);
 }
 
 static void
