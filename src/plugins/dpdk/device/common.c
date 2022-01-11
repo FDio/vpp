@@ -100,7 +100,10 @@ dpdk_device_setup (dpdk_device_t * xd)
   if (xd->conf.disable_multi_seg == 0)
     {
       txo |= DEV_TX_OFFLOAD_MULTI_SEGS;
-      rxo |= DEV_RX_OFFLOAD_JUMBO_FRAME | DEV_RX_OFFLOAD_SCATTER;
+      rxo |= DEV_RX_OFFLOAD_SCATTER;
+#if RTE_VERSION < RTE_VERSION_NUM(21, 11, 0, 0)
+      rxo |= DEV_RX_OFFLOAD_JUMBO_FRAME;
+#endif
     }
 
   if (xd->conf.enable_lro)
@@ -149,12 +152,25 @@ dpdk_device_setup (dpdk_device_t * xd)
 	}
     }
 
+#if RTE_VERSION < RTE_VERSION_NUM(21, 11, 0, 0)
   if (rxo & DEV_RX_OFFLOAD_JUMBO_FRAME)
     conf.rxmode.max_rx_pkt_len =
       clib_min (ETHERNET_MAX_PACKET_BYTES, dev_info.max_rx_pktlen);
+#else
+  conf.rxmode.mtu =
+    clib_min (ETHERNET_MAX_PACKET_BYTES, dev_info.max_rx_pktlen);
+#endif
 
+retry:
   rv = rte_eth_dev_configure (xd->port_id, xd->conf.n_rx_queues,
 			      xd->conf.n_tx_queues, &conf);
+
+  if (rv < 0 && xd->conf.enable_rxq_int)
+    {
+      xd->conf.enable_rxq_int = 0;
+      conf.intr_conf.rxq = 0;
+      goto retry;
+    }
 
   if (rv < 0)
     {
