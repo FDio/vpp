@@ -29,7 +29,6 @@
 #include <rte_cryptodev.h>
 #include <rte_crypto_sym.h>
 #include <rte_crypto.h>
-#include <rte_cryptodev_pmd.h>
 #include <rte_config.h>
 
 #include "cryptodev.h"
@@ -380,6 +379,7 @@ cryptodev_session_create (vlib_main_t *vm, vnet_crypto_key_index_t idx,
   struct rte_crypto_sym_xform xforms_enc[2] = { { 0 } };
   struct rte_crypto_sym_xform xforms_dec[2] = { { 0 } };
   struct rte_cryptodev_sym_session *sessions[CRYPTODEV_N_OP_TYPES] = { 0 };
+  struct rte_cryptodev_info dev_info;
   u32 numa_node = vm->numa_node;
   clib_error_t *error;
   int ret = 0;
@@ -447,8 +447,8 @@ cryptodev_session_create (vlib_main_t *vm, vnet_crypto_key_index_t idx,
   vec_foreach (dev_inst, cmt->cryptodev_inst)
     {
       u32 dev_id = dev_inst->dev_id;
-      struct rte_cryptodev *cdev = rte_cryptodev_pmd_get_dev (dev_id);
-      u32 driver_id = cdev->driver_id;
+      rte_cryptodev_info_get (dev_id, &dev_info);
+      u32 driver_id = dev_info.driver_id;
 
       /* if the session is already configured for the driver type, avoid
 	 configuring it again to increase the session data's refcnt */
@@ -1117,6 +1117,7 @@ dpdk_cryptodev_init (vlib_main_t * vm)
   cryptodev_engine_thread_t *cet;
   cryptodev_numa_data_t *numa_data;
   cryptodev_inst_t *dev_inst;
+  struct rte_cryptodev_info dev_info;
   u32 node;
   u8 nodes = 0;
   u32 skip_master = vlib_num_workers () > 0;
@@ -1150,8 +1151,8 @@ dpdk_cryptodev_init (vlib_main_t * vm)
   vec_foreach (dev_inst, cmt->cryptodev_inst)
     {
       u32 dev_id = dev_inst->dev_id;
-      struct rte_cryptodev *cdev = rte_cryptodev_pmd_get_dev (dev_id);
-      u32 driver_id = cdev->driver_id;
+      rte_cryptodev_info_get (dev_id, &dev_info);
+      u32 driver_id = dev_info.driver_id;
       is_drv_unique (driver_id, &unique_drivers);
 
       u32 sess_sz =

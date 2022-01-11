@@ -456,14 +456,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_1G;
 	      xd->conf.n_rx_desc = DPDK_NB_RX_DESC_VIRTIO;
 	      xd->conf.n_tx_desc = DPDK_NB_TX_DESC_VIRTIO;
-	      /*
-	       * Enable use of RX interrupts if supported.
-	       *
-	       * There is no device flag or capability for this, so
-	       * use the same check that the virtio driver does.
-	       */
-	      if (pci_dev && rte_intr_cap_multiple (&pci_dev->intr_handle))
-		xd->conf.enable_rxq_int = 1;
+	      xd->conf.enable_rxq_int = 1;
 	      break;
 
 	      /* vmxnet3 */
