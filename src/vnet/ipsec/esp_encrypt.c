@@ -20,6 +20,7 @@
 #include <vnet/ip/ip.h>
 
 #include <vnet/crypto/crypto.h>
+#include <vnet/crypto/drbg_ctr.h>
 
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/ipsec_tun.h>
@@ -403,7 +404,7 @@ esp_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
       else
 	{
 	  op->iv = payload - iv_sz;
-	  op->flags = VNET_CRYPTO_OP_FLAG_INIT_IV;
+	  vnet_crypto_rand (vm, op->iv, 16);
 	}
 
       if (lb != b[0])
@@ -502,7 +503,7 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
   else
     {
       iv = payload - iv_sz;
-      flag |= VNET_CRYPTO_OP_FLAG_INIT_IV;
+      vnet_crypto_rand (vm, iv, 16);
     }
 
   if (lb != b)
