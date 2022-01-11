@@ -104,7 +104,6 @@
   _ (INNER_L4, NONFRAG, "Inner non-fragmented IP packet")
 
 #define foreach_dpdk_pkt_tx_offload_flag                                      \
-  _ (TX_VLAN_PKT, "TX packet is a 802.1q VLAN packet")                        \
   _ (TX_TUNNEL_VXLAN, "TX packet is a VXLAN packet")                          \
   _ (TX_IP_CKSUM, "IP cksum of TX pkt. computed by NIC")                      \
   _ (TX_TCP_CKSUM, "TCP cksum of TX pkt. computed by NIC")                    \
@@ -619,7 +618,7 @@ format_dpdk_device (u8 * s, va_list * args)
     }
 
   s = format (s, "%Urx burst function: %s\n", format_white_space, indent + 2,
-	      ptr2sname (rte_eth_devices[xd->port_id].rx_pkt_burst));
+	      ptr2sname (rte_eth_fp_ops[xd->port_id].rx_pkt_burst));
 
   /* $$$ MIB counters  */
   {
