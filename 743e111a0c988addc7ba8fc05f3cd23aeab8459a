@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7e46ab26_7005248d",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 432,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2022-01-11T19:59:24Z",
+      "side": 1,
+      "message": "With this call changing from noise_remote_decrypt() to noise_sync_remote_decrypt(), it appears that noise_remote_decrypt() is not used anymore. Can that function be removed or will it still be needed for some future patch?",
+      "revId": "743e111a0c988addc7ba8fc05f3cd23aeab8459a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
