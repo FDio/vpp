@@ -716,7 +716,7 @@ echo_clients_start_tx_pthread (echo_client_main_t * ecm)
 }
 
 static int
-echo_client_transport_needs_crypto (transport_proto_t proto)
+ec_transport_needs_crypto (transport_proto_t proto)
 {
   return proto == TRANSPORT_PROTO_TLS || proto == TRANSPORT_PROTO_DTLS ||
 	 proto == TRANSPORT_PROTO_QUIC;
@@ -725,46 +725,75 @@ echo_client_transport_needs_crypto (transport_proto_t proto)
 clib_error_t *
 echo_clients_connect (vlib_main_t * vm, u32 n_clients)
 {
-  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   echo_client_main_t *ecm = &echo_client_main;
-  vnet_connect_args_t _a, *a = &_a;
-  int i, rv;
+  vnet_connect_args_t _a = {}, *a = &_a;
+  int ci = 0, rv, need_crypto;
 
-  clib_memset (a, 0, sizeof (*a));
+  u32 max_pending = 160, max_burst = 32, max_rate = 5e5;
+  clib_us_time_t start, now;
+  u64 inc;
+  i64 bucket = max_burst;
+  f64 tokens_per_us;
 
-  if (parse_uri ((char *) ecm->connect_uri, &sep))
-    return clib_error_return (0, "invalid uri");
+  start = transport_us_time_now (0);
+  tokens_per_us = (f64) max_rate / 1e6;
 
-  for (i = 0; i < n_clients; i++)
+  clib_memcpy (&a->sep_ext, &ecm->connect_sep, sizeof (ecm->connect_sep));
+  a->app_index = ecm->app_index;
+  need_crypto = ec_transport_needs_crypto (a->sep_ext.transport_proto);
+
+  vlib_worker_thread_barrier_sync (vm);
+
+  while (ci < n_clients)
     {
-      clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
-      a->api_context = i;
-      a->app_index = ecm->app_index;
-      if (echo_client_transport_needs_crypto (a->sep_ext.transport_proto))
+      a->api_context = ci;
+      if (need_crypto)
 	{
 	  session_endpoint_alloc_ext_cfg (&a->sep_ext,
 					  TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
 	  a->sep_ext.ext_cfg->crypto.ckpair_index = ecm->ckpair_index;
 	}
 
-      vlib_worker_thread_barrier_sync (vm);
       rv = vnet_connect (a);
-      if (a->sep_ext.ext_cfg)
+
+      if (need_crypto)
 	clib_mem_free (a->sep_ext.ext_cfg);
+
       if (rv)
 	{
 	  vlib_worker_thread_barrier_release (vm);
 	  return clib_error_return (0, "connect returned: %d", rv);
 	}
-      vlib_worker_thread_barrier_release (vm);
 
-      /* Crude pacing for call setups  */
-      if ((i % 16) == 0)
-	vlib_process_suspend (vm, 100e-6);
-      ASSERT (i + 1 >= ecm->ready_connections);
-      while (i + 1 - ecm->ready_connections > 128)
-	vlib_process_suspend (vm, 1e-3);
+      ci += 1;
+      bucket -= 1;
+
+      if (bucket <= 0 || (ci - ecm->ready_connections > max_pending))
+	{
+	  vlib_worker_thread_barrier_release (vm);
+
+	  while (ci - ecm->ready_connections > max_pending)
+	    vlib_process_suspend (vm, 10e-6);
+
+	  while (bucket <= 0)
+	    {
+	      now = transport_us_time_now (0);
+	      inc = (u64) (tokens_per_us * (now - start));
+	      if (inc >= 10)
+		{
+		  bucket += inc;
+		  bucket = clib_min (bucket, max_burst);
+		  start = now;
+		}
+	      if (bucket <= 0)
+		vlib_process_suspend (vm, 10e-6);
+	    }
+
+	  vlib_worker_thread_barrier_sync (vm);
+	}
     }
+
+  vlib_worker_thread_barrier_release (vm);
   return 0;
 }
 
@@ -943,12 +972,18 @@ echo_clients_command_fn (vlib_main_t * vm,
   ecm->test_client_attached = 1;
 
   /* Turn on the builtin client input nodes */
-  for (i = 0; i < thread_main->n_vlib_mains; i++)
+  for (i = 1; i < thread_main->n_vlib_mains; i++)
     vlib_node_set_state (vlib_get_main_by_index (i), echo_clients_node.index,
 			 VLIB_NODE_STATE_POLLING);
 
   if (preallocate_sessions)
     pool_init_fixed (ecm->sessions, 1.1 * n_clients);
+
+  if (parse_uri ((char *) ecm->connect_uri, &ecm->connect_sep))
+    {
+      error = clib_error_return (0, "invalid uri");
+      goto cleanup;
+    }
 
   /* Fire off connect requests */
   time_before_connects = vlib_time_now (vm);

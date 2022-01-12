@@ -55,6 +55,7 @@ typedef struct
    * Configuration params
    */
   u8 *connect_uri;			/**< URI for slave's connect */
+  session_endpoint_cfg_t connect_sep;	/**< Sever session endpoint */
   u64 bytes_to_send;			/**< Bytes to send */
   u32 configured_segment_size;
   u32 fifo_size;
