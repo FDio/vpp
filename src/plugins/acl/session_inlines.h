@@ -288,7 +288,7 @@ acl_fa_track_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
     {
       sess->tcp_flags_seen.as_u8[is_input] = new_flags;
     }
-  return 3;
+  return 2;
 }
 
 always_inline u64
