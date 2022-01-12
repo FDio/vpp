@@ -621,9 +621,9 @@ static clib_error_t *
 echo_clients_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
 {
   vnet_app_add_cert_key_pair_args_t _ck_pair, *ck_pair = &_ck_pair;
-  u32 prealloc_fifos, segment_size = 256 << 20;
   echo_client_main_t *ecm = &echo_client_main;
   vnet_app_attach_args_t _a, *a = &_a;
+  u32 prealloc_fifos;
   u64 options[18];
   int rv;
 
@@ -639,12 +639,9 @@ echo_clients_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
 
   prealloc_fifos = ecm->prealloc_fifos ? ecm->expected_connections : 1;
 
-  if (ecm->private_segment_size)
-    segment_size = ecm->private_segment_size;
-
   options[APP_OPTIONS_ACCEPT_COOKIE] = 0x12345678;
-  options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
-  options[APP_OPTIONS_ADD_SEGMENT_SIZE] = segment_size;
+  options[APP_OPTIONS_SEGMENT_SIZE] = ecm->private_segment_size;
+  options[APP_OPTIONS_ADD_SEGMENT_SIZE] = ecm->private_segment_size;
   options[APP_OPTIONS_RX_FIFO_SIZE] = ecm->fifo_size;
   options[APP_OPTIONS_TX_FIFO_SIZE] = ecm->fifo_size;
   options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT] = ecm->private_segment_count;
@@ -799,7 +796,7 @@ echo_clients_command_fn (vlib_main_t * vm,
   ecm->fifo_size = 64 << 10;
   ecm->connections_per_batch = 1000;
   ecm->private_segment_count = 0;
-  ecm->private_segment_size = 0;
+  ecm->private_segment_size = 256 << 20;
   ecm->no_output = 0;
   ecm->test_bytes = 0;
   ecm->test_failed = 0;
@@ -858,16 +855,8 @@ echo_clients_command_fn (vlib_main_t * vm,
 			 &ecm->private_segment_count))
 	;
       else if (unformat (input, "private-segment-size %U",
-			 unformat_memory_size, &tmp))
-	{
-	  if (tmp >= 0x100000000ULL)
-	    {
-	      error = clib_error_return (
-		0, "private segment size %lld (%llu) too large", tmp, tmp);
-	      goto cleanup;
-	    }
-	  ecm->private_segment_size = tmp;
-	}
+			 unformat_memory_size, &ecm->private_segment_size))
+	;
       else if (unformat (input, "preallocate-fifos"))
 	ecm->prealloc_fifos = 1;
       else if (unformat (input, "preallocate-sessions"))
