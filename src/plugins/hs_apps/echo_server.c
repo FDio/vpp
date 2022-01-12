@@ -44,7 +44,7 @@ typedef struct
   u32 rcv_buffer_size;		/**< Rcv buffer size */
   u32 prealloc_fifos;		/**< Preallocate fifos */
   u32 private_segment_count;	/**< Number of private segments  */
-  u32 private_segment_size;	/**< Size of private segments  */
+  u64 private_segment_size;	/**< Size of private segments  */
   char *server_uri;		/**< Server URI */
   u32 tls_engine;		/**< TLS engine: mbedtls/openssl */
   u32 ckpair_index;		/**< Cert and key for tls/quic */
@@ -310,7 +310,6 @@ echo_server_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
   echo_server_main_t *esm = &echo_server_main;
   vnet_app_attach_args_t _a, *a = &_a;
   u64 options[APP_OPTIONS_N_OPTIONS];
-  u32 segment_size = 512 << 20;
 
   clib_memset (a, 0, sizeof (*a));
   clib_memset (options, 0, sizeof (options));
@@ -325,15 +324,12 @@ echo_server_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
     echo_server_session_cb_vft.session_accept_callback =
       quic_echo_server_session_accept_callback;
 
-  if (esm->private_segment_size)
-    segment_size = esm->private_segment_size;
-
   a->api_client_index = ~0;
   a->name = format (0, "echo_server");
   a->session_cb_vft = &echo_server_session_cb_vft;
   a->options = options;
-  a->options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
-  a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = segment_size;
+  a->options[APP_OPTIONS_SEGMENT_SIZE] = esm->private_segment_size;
+  a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = esm->private_segment_size;
   a->options[APP_OPTIONS_RX_FIFO_SIZE] = esm->fifo_size;
   a->options[APP_OPTIONS_TX_FIFO_SIZE] = esm->fifo_size;
   a->options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT] = esm->private_segment_count;
@@ -466,7 +462,7 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   echo_server_main_t *esm = &echo_server_main;
   u8 server_uri_set = 0, *appns_id = 0;
-  u64 tmp, appns_flags = 0, appns_secret = 0;
+  u64 appns_flags = 0, appns_secret = 0;
   char *default_uri = "tcp://0.0.0.0/1234";
   int rv, is_stop = 0;
   clib_error_t *error = 0;
@@ -476,7 +472,7 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   esm->rcv_buffer_size = 128 << 10;
   esm->prealloc_fifos = 0;
   esm->private_segment_count = 0;
-  esm->private_segment_size = 0;
+  esm->private_segment_size = 512 << 20;
   esm->tls_engine = CRYPTO_ENGINE_OPENSSL;
   vec_free (esm->server_uri);
 
@@ -496,16 +492,8 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 &esm->private_segment_count))
 	;
       else if (unformat (input, "private-segment-size %U",
-			 unformat_memory_size, &tmp))
-	{
-	  if (tmp >= 0x100000000ULL)
-	    {
-	      error = clib_error_return (
-		0, "private segment size %lld (%llu) too large", tmp, tmp);
-	      goto cleanup;
-	    }
-	  esm->private_segment_size = tmp;
-	}
+			 unformat_memory_size, &esm->private_segment_size))
+	;
       else if (unformat (input, "appns %_%v%_", &appns_id))
 	;
       else if (unformat (input, "all-scope"))
