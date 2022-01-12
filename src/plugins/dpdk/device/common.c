@@ -82,6 +82,9 @@ dpdk_device_setup (dpdk_device_t * xd)
 
   rte_eth_dev_info_get (xd->port_id, &dev_info);
 
+  dpdk_log_debug ("[%u] configuring device %U", xd->port_id,
+		  format_dpdk_rte_device, dev_info.device);
+
   /* create rx and tx offload wishlist */
   rxo = DEV_RX_OFFLOAD_IPV4_CKSUM;
   txo = 0;
@@ -118,8 +121,12 @@ dpdk_device_setup (dpdk_device_t * xd)
   rxo &= dev_info.rx_offload_capa;
   txo &= dev_info.tx_offload_capa;
 
+  dpdk_log_debug ("[%u] Supported RX offloads: %U", xd->port_id,
+		  format_dpdk_rx_offload_caps, dev_info.rx_offload_capa);
   dpdk_log_debug ("[%u] Configured RX offloads: %U", xd->port_id,
 		  format_dpdk_rx_offload_caps, rxo);
+  dpdk_log_debug ("[%u] Supported TX offloads: %U", xd->port_id,
+		  format_dpdk_tx_offload_caps, dev_info.tx_offload_capa);
   dpdk_log_debug ("[%u] Configured TX offloads: %U", xd->port_id,
 		  format_dpdk_tx_offload_caps, txo);
 
@@ -373,6 +380,11 @@ dpdk_device_start (dpdk_device_t * xd)
       dpdk_device_error (xd, "rte_eth_dev_start", rv);
       return;
     }
+
+  dpdk_log_debug ("[%u] RX burst function: %U", xd->port_id,
+		  format_dpdk_burst_fn, xd, VLIB_RX);
+  dpdk_log_debug ("[%u] TX burst function: %U", xd->port_id,
+		  format_dpdk_burst_fn, xd, VLIB_TX);
 
   dpdk_setup_interrupts (xd);
 
