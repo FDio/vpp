@@ -367,8 +367,8 @@ vnet_eth_register_interface (vnet_main_t *vnm,
 
   hi->min_packet_bytes = hi->min_supported_packet_bytes =
     ETHERNET_MIN_PACKET_BYTES;
-  hi->max_packet_bytes = hi->max_supported_packet_bytes =
-    ETHERNET_MAX_PACKET_BYTES;
+  hi->max_supported_packet_bytes = ETHERNET_MAX_PACKET_BYTES;
+  hi->max_packet_bytes = em->default_mtu;
 
   /* Default ethernet MTU, 9000 unless set by ethernet_config see below */
   vnet_sw_interface_set_mtu (vnm, hi->sw_if_index, em->default_mtu);
