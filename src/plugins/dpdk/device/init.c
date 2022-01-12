@@ -275,7 +275,9 @@ dpdk_lib_init (dpdk_main_t * dm)
 	devconf = &dm->conf->default_devconf;
 
       /* Create vnet interface */
+      vlib_worker_thread_barrier_sync (vm);
       vec_add2_aligned (dm->devices, xd, 1, CLIB_CACHE_LINE_BYTES);
+      vlib_worker_thread_barrier_release (vm);
       xd->cpu_socket = (i8) rte_eth_dev_socket_id (port_id);
       clib_memcpy (&xd->conf, &dm->default_port_conf,
 		   sizeof (dpdk_port_conf_t));
