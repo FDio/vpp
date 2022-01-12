@@ -45,79 +45,6 @@ extern vnet_device_class_t dpdk_device_class;
 extern vlib_node_registration_t dpdk_input_node;
 extern vlib_node_registration_t admin_up_down_process_node;
 
-#if RTE_VERSION < RTE_VERSION_NUM(20, 8, 0, 0)
-#define DPDK_MLX5_PMD_NAME "net_mlx5"
-#else
-#define DPDK_MLX5_PMD_NAME "mlx5_pci"
-#endif
-
-#define foreach_dpdk_pmd                                                      \
-  _ ("net_thunderx", THUNDERX)                                                \
-  _ ("net_e1000_em", E1000EM)                                                 \
-  _ ("net_e1000_igb", IGB)                                                    \
-  _ ("net_e1000_igb_vf", IGBVF)                                               \
-  _ ("net_ixgbe", IXGBE)                                                      \
-  _ ("net_ixgbe_vf", IXGBEVF)                                                 \
-  _ ("net_i40e", I40E)                                                        \
-  _ ("net_i40e_vf", I40EVF)                                                   \
-  _ ("net_ice", ICE)                                                          \
-  _ ("net_iavf", IAVF)                                                        \
-  _ ("net_igc", IGC)                                                          \
-  _ ("net_virtio", VIRTIO)                                                    \
-  _ ("net_enic", ENIC)                                                        \
-  _ ("net_vmxnet3", VMXNET3)                                                  \
-  _ ("AF_PACKET PMD", AF_PACKET)                                              \
-  _ ("net_fm10k", FM10K)                                                      \
-  _ ("net_cxgbe", CXGBE)                                                      \
-  _ ("net_mlx4", MLX4)                                                        \
-  _ (DPDK_MLX5_PMD_NAME, MLX5)                                                \
-  _ ("net_dpaa2", DPAA2)                                                      \
-  _ ("net_virtio_user", VIRTIO_USER)                                          \
-  _ ("net_vhost", VHOST_ETHER)                                                \
-  _ ("net_ena", ENA)                                                          \
-  _ ("net_failsafe", FAILSAFE)                                                \
-  _ ("net_liovf", LIOVF_ETHER)                                                \
-  _ ("net_qede", QEDE)                                                        \
-  _ ("net_netvsc", NETVSC)                                                    \
-  _ ("net_bnxt", BNXT)
-
-typedef enum
-{
-  VNET_DPDK_PMD_NONE,
-#define _(s,f) VNET_DPDK_PMD_##f,
-  foreach_dpdk_pmd
-#undef _
-    VNET_DPDK_PMD_UNKNOWN,	/* must be last */
-} dpdk_pmd_t;
-
-#define forach_dpdk_port_type                                                 \
-  _ (ETH_1G, "GigabitEthernet")                                               \
-  _ (ETH_2_5G, "Two_FiveGigabitEthernet")                                     \
-  _ (ETH_5G, "FiveGigabitEthernet")                                           \
-  _ (ETH_10G, "TenGigabitEthernet")                                           \
-  _ (ETH_20G, "TwentyGigabitEthernet")                                        \
-  _ (ETH_25G, "TwentyFiveGigabitEthernet")                                    \
-  _ (ETH_40G, "FortyGigabitEthernet")                                         \
-  _ (ETH_50G, "FiftyGigabitEthernet")                                         \
-  _ (ETH_56G, "FiftySixGigabitEthernet")                                      \
-  _ (ETH_100G, "HundredGigabitEthernet")                                      \
-  _ (ETH_200G, "TwoHundredGigabitEthernet")                                   \
-  _ (ETH_SWITCH, "EthernetSwitch")                                            \
-  _ (ETH_VF, "VirtualFunctionEthernet")                                       \
-  _ (AF_PACKET, "af_packet")                                                  \
-  _ (VIRTIO_USER, "VirtioUser")                                               \
-  _ (VHOST_ETHER, "VhostEthernet")                                            \
-  _ (FAILSAFE, "FailsafeEthernet")                                            \
-  _ (NETVSC, "NetVSC")
-
-typedef enum
-{
-  VNET_DPDK_PORT_TYPE_UNKNOWN = 0,
-#define _(n, s) VNET_DPDK_PORT_TYPE_##n,
-  forach_dpdk_port_type
-#undef _
-} dpdk_port_type_t;
-
 typedef uint16_t dpdk_portid_t;
 
 #define foreach_dpdk_device_flags                                             \
@@ -133,12 +60,12 @@ typedef uint16_t dpdk_portid_t;
   _ (13, INT_SUPPORTED, "int-supported")                                      \
   _ (14, INT_UNMASKABLE, "int-unmaskable")
 
-enum
+typedef enum
 {
 #define _(a, b, c) DPDK_DEVICE_FLAG_##b = (1 << a),
   foreach_dpdk_device_flags
 #undef _
-};
+} dpdk_device_flag_t;
 
 typedef struct
 {
@@ -168,6 +95,31 @@ typedef struct
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   clib_spinlock_t lock;
 } dpdk_tx_queue_t;
+
+typedef struct
+{
+  const char *name;
+  const char *desc;
+} dpdk_driver_name_t;
+
+typedef struct
+{
+  dpdk_driver_name_t *drivers;
+  const char *interface_name_prefix;
+  u16 n_rx_desc;
+  u16 n_tx_desc;
+  u32 supported_flow_actions;
+  i32 enable_lsc_int : 1;
+  i32 enable_rxq_int : 1;
+  i32 disable_rx_scatter : 1;
+  i32 program_vlans : 1;
+  i32 mq_mode_none : 1;
+  i32 interface_number_from_port_id : 1;
+  i32 use_intel_phdr_cksum : 1;
+  i32 int_unmaskable : 1;
+} dpdk_driver_t;
+
+dpdk_driver_t *dpdk_driver_find (const char *name, const char **desc);
 
 typedef union
 {
@@ -216,15 +168,15 @@ typedef struct
 
   /* DPDK device port number */
   dpdk_portid_t port_id;
-  dpdk_pmd_t pmd:8;
   i8 cpu_socket;
 
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
   u64 enabled_tx_off;
   u64 enabled_rx_off;
+  dpdk_driver_t *driver;
   u8 *name;
-  u8 *interface_name_suffix;
+  const char *if_desc;
 
   /* number of sub-interfaces */
   u16 num_subifs;
@@ -244,7 +196,6 @@ typedef struct
   struct rte_eth_stats last_stats;
   struct rte_eth_xstat *xstats;
   f64 time_last_stats_update;
-  dpdk_port_type_t port_type;
 
   /* mac address */
   u8 *default_mac_address;
