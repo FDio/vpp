@@ -464,15 +464,25 @@ format_dpdk_device_module_info (u8 * s, va_list * args)
   return s;
 }
 
-static const char *
-ptr2sname (void *p)
+u8 *
+format_dpdk_burst_fn (u8 *s, va_list *args)
 {
+  dpdk_device_t *xd = va_arg (*args, dpdk_device_t *);
+  vlib_rx_or_tx_t dir = va_arg (*args, vlib_rx_or_tx_t);
+  void *p;
   Dl_info info = { 0 };
+
+#if RTE_VERSION < RTE_VERSION_NUM(21, 11, 0, 0)
+#define rte_eth_fp_ops rte_eth_devices
+#endif
+
+  p = (dir == VLIB_TX) ? rte_eth_fp_ops[xd->port_id].tx_pkt_burst :
+			 rte_eth_fp_ops[xd->port_id].rx_pkt_burst;
 
   if (dladdr (p, &info) == 0)
     return 0;
 
-  return info.dli_sname;
+  return format (s, "%s", info.dli_sname);
 }
 
 static u8 *
@@ -485,6 +495,25 @@ format_switch_info (u8 * s, va_list * args)
     s = format (s, "name %s ", si->name);
 
   s = format (s, "domain id %d port id %d", si->domain_id, si->port_id);
+
+  return s;
+}
+
+u8 *
+format_dpdk_rte_device (u8 *s, va_list *args)
+{
+  struct rte_device *d = va_arg (*args, struct rte_device *);
+
+  if (!d)
+    return format (s, "not available");
+
+  s = format (s, "name: %s, numa: %d", d->name, d->numa_node);
+
+  if (d->driver)
+    s = format (s, ", driver: %s", d->driver->name);
+
+  if (d->bus)
+    s = format (s, ", bus: %s", d->bus->name);
 
   return s;
 }
@@ -603,12 +632,8 @@ format_dpdk_device (u8 * s, va_list * args)
 							      "");
     }
 
-#if RTE_VERSION < RTE_VERSION_NUM(21, 11, 0, 0)
-#define rte_eth_fp_ops rte_eth_devices
-#endif
-
-  s = format (s, "%Utx burst function: %s\n", format_white_space, indent + 2,
-	      ptr2sname (rte_eth_fp_ops[xd->port_id].tx_pkt_burst));
+  s = format (s, "%Utx burst function: %U\n", format_white_space, indent + 2,
+	      format_dpdk_burst_fn, xd, VLIB_RX);
 
   if (rte_eth_rx_burst_mode_get (xd->port_id, 0, &mode) == 0)
     {
@@ -619,7 +644,7 @@ format_dpdk_device (u8 * s, va_list * args)
     }
 
   s = format (s, "%Urx burst function: %s\n", format_white_space, indent + 2,
-	      ptr2sname (rte_eth_devices[xd->port_id].rx_pkt_burst));
+	      format_dpdk_burst_fn, xd, VLIB_TX);
 
   /* $$$ MIB counters  */
   {
