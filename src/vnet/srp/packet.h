@@ -40,8 +40,7 @@
 #ifndef included_srp_packet_h
 #define included_srp_packet_h
 
-#include <vppinfra/byte_order.h>
-#include <vppinfra/bitops.h>
+#include <vppinfra/clib.h>
 #include <vnet/ethernet/packet.h>
 
 /* SRP version 2. */

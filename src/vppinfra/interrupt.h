@@ -17,7 +17,6 @@
 #define included_clib_interrupt_h
 
 #include <vppinfra/clib.h>
-#include <vppinfra/bitops.h> /* for count_set_bits */
 #include <vppinfra/vec.h>
 
 typedef struct

@@ -38,8 +38,8 @@
 #ifndef included_sparse_vec_h
 #define included_sparse_vec_h
 
+#include <vppinfra/clib.h>
 #include <vppinfra/vec.h>
-#include <vppinfra/bitops.h>
 
 /* Sparsely indexed vectors.  Basic idea taken from Hacker's delight.
    Eliot added ranges. */
