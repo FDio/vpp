@@ -143,6 +143,24 @@
     },
     {
       "key": {
+        "uuid": "c0913983_a5174eab",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_inlines.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 832,
+      "author": {
+        "id": 1961
+      },
+      "writtenOn": "2022-01-12T09:47:54Z",
+      "side": 1,
+      "message": "Hi Klement,\nI am rather interested in your opinion than a code change.\nI personally find this part of the RFC state machine very fragile, it relies on the receipt of the RST when a FIN cannot be delivered or the other side does not send a FIN in return. In these cases, the session would remain in established state for a long time, which is very bad with a lot of sessions, they can pile up.\n\nLooking at our traces, I could easily find such cases. The FIN was re-transmitted several times but no RST was sent afterwards. And this happens in both directions, when the client tries to terminate the session as well as when the server does it. The server-initiated termination is  important for us because our clients can go offline suddenly (loss of connectivity, flat battery...).\nYour implementation with applying the transitory timer when the first FIN is forwarded is more robust in my opinion. If the last_heard value is still updated with the packets in the FIN_I2O and FIN_O2I states, it also allows data transmit for a long time.",
+      "parentUuid": "e7b18591_90850d83",
+      "revId": "d7e06a9b7d0945a03937bca1f7e0ad631dd33623",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "20d5f0a5_8ac50836",
         "filename": "test/test_nat44_ed.py",
         "patchSetId": 3
