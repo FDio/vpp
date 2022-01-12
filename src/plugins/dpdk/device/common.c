@@ -153,8 +153,15 @@ dpdk_device_setup (dpdk_device_t * xd)
     conf.rxmode.max_rx_pkt_len =
       clib_min (ETHERNET_MAX_PACKET_BYTES, dev_info.max_rx_pktlen);
 
+retry:
   rv = rte_eth_dev_configure (xd->port_id, xd->conf.n_rx_queues,
 			      xd->conf.n_tx_queues, &conf);
+
+  if (rv < 0 && conf.intr_conf.rxq)
+    {
+      conf.intr_conf.rxq = 0;
+      goto retry;
+    }
 
   if (rv < 0)
     {
