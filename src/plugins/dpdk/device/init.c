@@ -1025,7 +1025,19 @@ dpdk_log_read_ready (clib_file_t * uf)
 
   while (unformat_user (&input, unformat_line, &line))
     {
-      dpdk_log_notice ("%v", line);
+      int skip = 0;
+      vec_add1 (line, 0);
+
+      /* unfortunatelly DPDK polutes log with this error messages
+       * even when we pass --in-memory which means no secondary process */
+      if (strstr ((char *) line, "WARNING! Base virtual address hint"))
+	skip = 1;
+      else if (strstr ((char *) line, "This may cause issues with mapping "
+				      "memory into secondary processes"))
+	skip = 1;
+      vec_pop (line);
+      if (!skip)
+	dpdk_log_notice ("%v", line);
       vec_free (line);
     }
 
