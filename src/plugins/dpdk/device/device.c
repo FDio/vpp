@@ -547,7 +547,7 @@ dpdk_subif_add_del_function (vnet_main_t * vnm,
     xd->num_subifs--;
 
   /* currently we program VLANS only for IXGBE VF */
-  if (xd->pmd != VNET_DPDK_PMD_IXGBEVF)
+  if (xd->driver->program_vlans == 0)
     goto done;
 
   if (t->sub.eth.flags.no_tags == 1)
