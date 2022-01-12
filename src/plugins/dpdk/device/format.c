@@ -602,12 +602,13 @@ format_dpdk_device (u8 * s, va_list * args)
 		  mode.flags & RTE_ETH_BURST_FLAG_PER_QUEUE ? " (per queue)" :
 							      "");
     }
-  else
-    {
-      s =
-	format (s, "%Utx burst function: %s\n", format_white_space, indent + 2,
-		ptr2sname (rte_eth_devices[xd->port_id].tx_pkt_burst));
-    }
+
+#if RTE_VERSION < RTE_VERSION_NUM(21, 11, 0, 0)
+#define rte_eth_fp_ops rte_eth_devices
+#endif
+
+  s = format (s, "%Utx burst function: %s\n", format_white_space, indent + 2,
+	      ptr2sname (rte_eth_fp_ops[xd->port_id].tx_pkt_burst));
 
   if (rte_eth_rx_burst_mode_get (xd->port_id, 0, &mode) == 0)
     {
@@ -616,12 +617,9 @@ format_dpdk_device (u8 * s, va_list * args)
 		  mode.flags & RTE_ETH_BURST_FLAG_PER_QUEUE ? " (per queue)" :
 							      "");
     }
-  else
-    {
-      s =
-	format (s, "%Urx burst function: %s\n", format_white_space, indent + 2,
-		ptr2sname (rte_eth_devices[xd->port_id].rx_pkt_burst));
-    }
+
+  s = format (s, "%Urx burst function: %s\n", format_white_space, indent + 2,
+	      ptr2sname (rte_eth_devices[xd->port_id].rx_pkt_burst));
 
   /* $$$ MIB counters  */
   {
