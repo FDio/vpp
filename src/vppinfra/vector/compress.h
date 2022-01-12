@@ -27,12 +27,9 @@ clib_compress_u64_x64 (u64 *dst, u64 *src, u64 mask)
       mask >>= 4;
     }
 #else
-  while (mask)
-    {
-      u16 bit = count_trailing_zeros (mask);
-      mask = clear_lowest_set_bit (mask);
-      dst++[0] = src[bit];
-    }
+  u32 i;
+  foreach_set_bit_index (i, mask)
+    dst++[0] = src[i];
 #endif
   return dst;
 }
@@ -93,12 +90,9 @@ clib_compress_u32_x64 (u32 *dst, u32 *src, u64 mask)
       mask >>= 8;
     }
 #else
-  while (mask)
-    {
-      u16 bit = count_trailing_zeros (mask);
-      mask = clear_lowest_set_bit (mask);
-      dst++[0] = src[bit];
-    }
+  u32 i;
+  foreach_set_bit_index (i, mask)
+    dst++[0] = src[i];
 #endif
   return dst;
 }
@@ -150,12 +144,9 @@ clib_compress_u16_x64 (u16 *dst, u16 *src, u64 mask)
       mask >>= 32;
     }
 #else
-  while (mask)
-    {
-      u16 bit = count_trailing_zeros (mask);
-      mask = clear_lowest_set_bit (mask);
-      dst++[0] = src[bit];
-    }
+  u32 i;
+  foreach_set_bit_index (i, mask)
+    dst++[0] = src[i];
 #endif
   return dst;
 }
@@ -203,12 +194,9 @@ clib_compress_u8_x64 (u8 *dst, u8 *src, u64 mask)
   u8x64_compress_store (sv[0], mask, dst);
   dst += _popcnt64 (mask);
 #else
-  while (mask)
-    {
-      u16 bit = count_trailing_zeros (mask);
-      mask = clear_lowest_set_bit (mask);
-      dst++[0] = src[bit];
-    }
+  u32 i;
+  foreach_set_bit_index (i, mask)
+    dst++[0] = src[i];
 #endif
   return dst;
 }

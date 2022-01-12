@@ -91,7 +91,6 @@
 # include <netinet/if_ether.h>
 #endif /* __KERNEL__ */
 
-#include <vppinfra/bitops.h> /* foreach_set_bit */
 #include <vppinfra/format.h>
 #include <vppinfra/error.h>
 

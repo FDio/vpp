@@ -45,7 +45,6 @@
 #include <vppinfra/vec.h>
 #include <vppinfra/random.h>
 #include <vppinfra/error.h>
-#include <vppinfra/bitops.h>	/* for count_set_bits */
 
 typedef uword clib_bitmap_t;
 
