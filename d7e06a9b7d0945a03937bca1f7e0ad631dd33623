@@ -161,6 +161,24 @@
     },
     {
       "key": {
+        "uuid": "6a87a72a_aec65fdf",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_inlines.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 832,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-01-12T17:00:06Z",
+      "side": 1,
+      "message": "well if there is a FIN in one direction but not in the other then we can\u0027t know for sure whether the other side even received the original FIN, so we can\u0027t assume anything. I think that\u0027s the reasoning behind logic in RFC 6146. It even explicitly says that RST shouldn\u0027t get any special treatment.\n\nRFC 5382 though allows a NAT implementation to check liveness of an endpoint by sending a TCP keep-alive packet and waiting for a TCP RST:\n\n  A common method that is applicable only to TCP is to preferentially\n   abandon sessions for crashed endpoints, followed by closed TCP\n   connections and partially open connections.  A NAT can check if an\n   endpoint for a session has crashed by sending a TCP keep-alive packet\n   and receiving a TCP RST packet in response.  If the NAT cannot\n   determine whether the endpoint is active, it should not abandon the\n   session until the TCP connection has been idle for some time.\n\nWe don\u0027t do this, though, so we are obliged to hold the session until it idles out.",
+      "parentUuid": "c0913983_a5174eab",
+      "revId": "d7e06a9b7d0945a03937bca1f7e0ad631dd33623",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "20d5f0a5_8ac50836",
         "filename": "test/test_nat44_ed.py",
         "patchSetId": 3
