@@ -54,7 +54,7 @@ format_vnet_hw_if_caps (u8 *s, va_list *va)
       else
 	s = format (s, "unknown-%u", bit);
 
-      caps = reset_lowest_set_bit (caps);
+      caps = clear_lowest_set_bit (caps);
       if (caps)
 	vec_add1 (s, ' ');
     }
