@@ -374,7 +374,7 @@ perfmon_init (vlib_main_t *vm)
 
       if (!is_bundle_supported (b))
 	{
-	  log_warn ("skipping bundle '%s' - not supported", b->name);
+	  log_debug ("skipping bundle '%s' - not supported", b->name);
 	  b = b->next;
 	  continue;
 	}
