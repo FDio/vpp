@@ -147,49 +147,14 @@
 #define foreach_dpdk_pkt_dyn_rx_offload_flag				\
   _ (RX_TIMESTAMP, 0, "Timestamp field is valid")
 
-static char *device_name_by_port_type[] = {
-#define _(n, s) [VNET_DPDK_PORT_TYPE_##n] = (s),
-  forach_dpdk_port_type
-#undef _
-};
-
 u8 *
 format_dpdk_device_name (u8 * s, va_list * args)
 {
   dpdk_main_t *dm = &dpdk_main;
-  char *devname_format;
-  char *device_name = 0;
   u32 i = va_arg (*args, u32);
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, i);
-  struct rte_eth_dev_info dev_info;
-  struct rte_pci_device *pci_dev;
-  u8 *ret;
 
-  if (xd->name)
-    return format (s, "%s", xd->name);
-
-  if (dm->conf->interface_name_format_decimal)
-    devname_format = "%s%d/%d/%d";
-  else
-    devname_format = "%s%x/%x/%x";
-
-  if (xd->port_type < ARRAY_LEN (device_name_by_port_type))
-    device_name = device_name_by_port_type[xd->port_type];
-
-  device_name = device_name ? device_name : "UnknownEthernet";
-
-  rte_eth_dev_info_get (xd->port_id, &dev_info);
-  pci_dev = dpdk_get_pci_device (&dev_info);
-
-  if (pci_dev && xd->port_type != VNET_DPDK_PORT_TYPE_FAILSAFE)
-    ret = format (s, devname_format, device_name, pci_dev->addr.bus,
-		  pci_dev->addr.devid, pci_dev->addr.function);
-  else
-    ret = format (s, "%s%d", device_name, xd->port_id);
-
-  if (xd->interface_name_suffix)
-    return format (ret, "/%s", xd->interface_name_suffix);
-  return ret;
+  return format (s, "%v", xd->name);
 }
 
 u8 *
@@ -211,126 +176,12 @@ static u8 *
 format_dpdk_device_type (u8 * s, va_list * args)
 {
   dpdk_main_t *dm = &dpdk_main;
-  char *dev_type;
   u32 i = va_arg (*args, u32);
 
-  switch (dm->devices[i].pmd)
-    {
-    case VNET_DPDK_PMD_E1000EM:
-      dev_type = "Intel 82540EM (e1000)";
-      break;
-
-    case VNET_DPDK_PMD_IGB:
-      dev_type = "Intel e1000";
-      break;
-
-    case VNET_DPDK_PMD_I40E:
-      dev_type = "Intel X710/XL710 Family";
-      break;
-
-    case VNET_DPDK_PMD_I40EVF:
-      dev_type = "Intel X710/XL710 Family VF";
-      break;
-
-    case VNET_DPDK_PMD_ICE:
-      dev_type = "Intel E810 Family";
-      break;
-
-    case VNET_DPDK_PMD_IAVF:
-      dev_type = "Intel iAVF";
-      break;
-
-    case VNET_DPDK_PMD_FM10K:
-      dev_type = "Intel FM10000 Family Ethernet Switch";
-      break;
-
-    case VNET_DPDK_PMD_IGBVF:
-      dev_type = "Intel e1000 VF";
-      break;
-
-    case VNET_DPDK_PMD_VIRTIO:
-      dev_type = "Red Hat Virtio";
-      break;
-
-    case VNET_DPDK_PMD_IXGBEVF:
-      dev_type = "Intel 82599 VF";
-      break;
-
-    case VNET_DPDK_PMD_IXGBE:
-      dev_type = "Intel 82599";
-      break;
-
-    case VNET_DPDK_PMD_ENIC:
-      dev_type = "Cisco VIC";
-      break;
-
-    case VNET_DPDK_PMD_CXGBE:
-      dev_type = "Chelsio T4/T5";
-      break;
-
-    case VNET_DPDK_PMD_MLX4:
-      dev_type = "Mellanox ConnectX-3 Family";
-      break;
-
-    case VNET_DPDK_PMD_MLX5:
-      dev_type = "Mellanox ConnectX-4 Family";
-      break;
-
-    case VNET_DPDK_PMD_VMXNET3:
-      dev_type = "VMware VMXNET3";
-      break;
-
-    case VNET_DPDK_PMD_AF_PACKET:
-      dev_type = "af_packet";
-      break;
-
-    case VNET_DPDK_PMD_DPAA2:
-      dev_type = "NXP DPAA2 Mac";
-      break;
-
-    case VNET_DPDK_PMD_VIRTIO_USER:
-      dev_type = "Virtio User";
-      break;
-
-    case VNET_DPDK_PMD_THUNDERX:
-      dev_type = "Cavium ThunderX";
-      break;
-
-    case VNET_DPDK_PMD_VHOST_ETHER:
-      dev_type = "VhostEthernet";
-      break;
-
-    case VNET_DPDK_PMD_ENA:
-      dev_type = "AWS ENA VF";
-      break;
-
-    case VNET_DPDK_PMD_FAILSAFE:
-      dev_type = "FailsafeEthernet";
-      break;
-
-    case VNET_DPDK_PMD_LIOVF_ETHER:
-      dev_type = "Cavium Lio VF";
-      break;
-
-    case VNET_DPDK_PMD_QEDE:
-      dev_type = "Cavium QLogic FastLinQ QL4xxxx";
-      break;
-
-    case VNET_DPDK_PMD_NETVSC:
-      dev_type = "Microsoft Hyper-V Netvsc";
-      break;
-
-    case VNET_DPDK_PMD_BNXT:
-      dev_type = "Broadcom NetXtreme E/S-Series";
-      break;
-
-    default:
-    case VNET_DPDK_PMD_UNKNOWN:
-      dev_type = "### UNKNOWN ###";
-      break;
-    }
-
-  return format (s, dev_type);
+  if (dm->devices[i].driver)
+    return format (s, dm->devices[i].driver->desc);
+  else
+    return format (s, "### UNKNOWN ###");
 }
 
 static u8 *
