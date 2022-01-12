@@ -115,12 +115,26 @@ static ip4_mtrie_leaf_t
 ply_create (ip4_mtrie_leaf_t init_leaf, u32 leaf_prefix_len, u32 ply_base_len)
 {
   ip4_mtrie_8_ply_t *p;
-  /* Get cache aligned ply. */
+  ip4_mtrie_leaf_t l;
+  u8 need_barrier_sync = 0;
+  vlib_main_t *vm = vlib_get_main ();
+  ASSERT (vm->thread_index == 0);
 
+  pool_get_aligned_will_expand (ip4_ply_pool, need_barrier_sync,
+				CLIB_CACHE_LINE_BYTES);
+  if (need_barrier_sync)
+    vlib_worker_thread_barrier_sync (vm);
+
+  /* Get cache aligned ply. */
   pool_get_aligned (ip4_ply_pool, p, CLIB_CACHE_LINE_BYTES);
 
   ply_8_init (p, init_leaf, leaf_prefix_len, ply_base_len);
-  return ip4_mtrie_leaf_set_next_ply_index (p - ip4_ply_pool);
+  l = ip4_mtrie_leaf_set_next_ply_index (p - ip4_ply_pool);
+
+  if (need_barrier_sync)
+    vlib_worker_thread_barrier_release (vm);
+
+  return l;
 }
 
 always_inline ip4_mtrie_8_ply_t *
