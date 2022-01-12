@@ -552,7 +552,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      vnm, xd->hw_if_index, q, VNET_HW_IF_RXQ_THREAD_ANY);
 	  }
 
-      vnet_hw_if_update_runtime_data (vnm, xd->hw_if_index);
 
       /*Get vnet hardware interface */
       hi = vnet_get_hw_interface (vnm, xd->hw_if_index);
@@ -596,6 +595,9 @@ dpdk_lib_init (dpdk_main_t * dm)
 		      format_dpdk_device_name, port_id,
 		      format_dpdk_device_errors, xd);
     }
+
+  for (int i = 0; i < vec_len (dm->devices); i++)
+    vnet_hw_if_update_runtime_data (vnm, dm->devices[i].hw_if_index);
 
   return 0;
 }
