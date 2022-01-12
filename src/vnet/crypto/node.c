@@ -160,10 +160,12 @@ VLIB_NODE_FN (crypto_dispatch_node) (vlib_main_t * vm,
   vnet_crypto_thread_t *ct = cm->threads + vm->thread_index;
   u32 n_dispatched = 0, n_cache = 0, index;
   vec_foreach_index (index, cm->dequeue_handlers)
-
-    n_cache = crypto_dequeue_frame (vm, node, ct, cm->dequeue_handlers[index],
-				    n_cache, &n_dispatched);
-
+    {
+      if (PREDICT_FALSE (cm->dequeue_handlers[index] == 0))
+	continue;
+      n_cache = crypto_dequeue_frame (
+	vm, node, ct, cm->dequeue_handlers[index], n_cache, &n_dispatched);
+    }
   /* *INDENT-ON* */
   if (n_cache)
     vlib_buffer_enqueue_to_next_vec (vm, node, &ct->buffer_indices, &ct->nexts,
