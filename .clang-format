@@ -19,6 +19,7 @@ ForEachMacros:
   - 'vec_foreach_index_backwards'
   - 'vlib_foreach_rx_tx'
   - 'foreach_vlib_main'
+  - 'foreach_set_bit_index'
   - 'RTE_ETH_FOREACH_DEV'
 
 StatementMacros:

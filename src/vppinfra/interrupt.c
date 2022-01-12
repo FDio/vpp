@@ -15,7 +15,6 @@
  */
 
 #include <vppinfra/clib.h>
-#include <vppinfra/bitops.h> /* for count_set_bits */
 #include <vppinfra/vec.h>
 #include <vppinfra/interrupt.h>
 #include <vppinfra/format.h>
