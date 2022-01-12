@@ -23,7 +23,7 @@ add_vpp_plugin(perfmon
   perfmon.c
   intel/core.c
   intel/uncore.c
-  intel/bundle/memory_stalls.c
+  intel/bundle/backend_bound_mem.c
   intel/bundle/inst_and_clock.c
   intel/bundle/load_blocks.c
   intel/bundle/mem_bw.c
@@ -32,6 +32,8 @@ add_vpp_plugin(perfmon
   intel/bundle/power_license.c
   intel/bundle/topdown_metrics.c
   intel/bundle/topdown_tremont.c
+  intel/bundle/frontend_bound_bw.c
+  intel/bundle/frontend_bound_lat.c
   intel/bundle/iio_bw.c
 
   COMPONENT

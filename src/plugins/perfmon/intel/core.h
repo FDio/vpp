@@ -89,6 +89,12 @@
   _ (0x0D, 0x01, 0, 0, 0, 0x00, INT_MISC, RECOVERY_CYCLES,                    \
      "Core cycles the allocator was stalled due to recovery from earlier "    \
      "clear event for this thread (e.g. misprediction or memory nuke)")       \
+  _ (0x0D, 0x10, 0, 0, 0, 0x00, INT_MISC, UOP_DROPPING,                       \
+     "Estimated number of Top-down Microarchitecture Analysis slots that got" \
+     " due to non front-end reasons")                                         \
+  _ (0x0D, 0x80, 0, 0, 0, 0x00, INT_MISC, CLEAR_RESTEER_CYCLES,               \
+     "Counts cycles after recovery from a branch misprediction or machine"    \
+     "clear till the first uop is issued from the resteered path.")           \
   _ (0x0E, 0x01, 0, 0, 0, 0x00, UOPS_ISSUED, ANY,                             \
      "Uops that Resource Allocation Table (RAT) issues to Reservation "       \
      "Station (RS)")                                                          \
@@ -123,9 +129,23 @@
   _ (0x51, 0x01, 0, 0, 0, 0x00, L1D, REPLACEMENT,                             \
      "L1D data line replacements")                                            \
   _ (0x51, 0x04, 0, 0, 0, 0x00, L1D, M_EVICT, "L1D data line evictions")      \
-  _ (0x83, 0x02, 0, 0, 0, 0x00, ICACHE_64B, IFTAG_MISS,                       \
-     "Instruction fetch tag lookups that miss in the instruction cache "      \
-     "(L1I). Counts at 64-byte cache-line granularity.")                      \
+  _ (0x79, 0x04, 0, 0, 0, 0x00, IDQ, MITE_UOPS,                               \
+     "Counts the number of uops delivered to Instruction Decode Queue (IDQ) " \
+     "from the MITE path.")                                                   \
+  _ (0x79, 0x08, 0, 0, 0, 0x00, IDQ, DSB_UOPS,                                \
+     "Counts the number of uops delivered to Instruction Decode Queue (IDQ) " \
+     "from the Decode Stream Buffer (DSB) path.")                             \
+  _ (0x79, 0x30, 0, 0, 0, 0x00, IDQ, MS_UOPS,                                 \
+     "Counts the number of uops delivered to Instruction Decode Queue (IDQ) " \
+     "from the Microcode Sequencer (MS) path.")                               \
+  _ (0x79, 0x30, 1, 0, 0, 0x01, IDQ, MS_SWITCHES,                             \
+     "Number of switches from DSB or MITE to the MS")                         \
+  _ (                                                                         \
+    0x80, 0x04, 0, 0, 0, 0x00, ICACHE_16B, IFDATA_STALL,                      \
+    "Cycles where a code fetch is stalled due to L1 instruction cache miss.") \
+  _ (0x83, 0x04, 0, 0, 0, 0x00, ICACHE_64B, IFTAG_STALL,                      \
+     "Cycles where a code fetch is stalled due to L1 instruction cache tag "  \
+     "miss.")                                                                 \
   _ (0x9C, 0x01, 0, 0, 0, 0x00, IDQ_UOPS_NOT_DELIVERED, CORE,                 \
      "Uops not delivered to Resource Allocation Table (RAT) per thread when " \
      "backend of the machine is not stalled")                                 \
@@ -134,9 +154,8 @@
      "full. This counts cycles that the pipeline back-end blocked uop "       \
      "delivery"                                                               \
      "from the front-end.")                                                   \
-  _ (0xA3, 0x04, 0, 0, 0, 0x04, CYCLE_ACTIVITY, CYCLES_NO_EXECUTE,            \
-     "This event counts cycles during which no instructions were executed in" \
-     " the execution stage of the pipeline.")                                 \
+  _ (0xA3, 0x04, 0, 0, 0, 0x04, CYCLE_ACTIVITY, STALLS_TOTAL,                 \
+     "Total execution stalls.")                                               \
   _ (0xA3, 0x05, 0, 0, 0, 0x05, CYCLE_ACTIVITY, STALLS_L2_MISS,               \
      "Execution stalls while L2 cache miss demand load is outstanding")       \
   _ (0xA3, 0x06, 0, 0, 0, 0x06, CYCLE_ACTIVITY, STALLS_L3_MISS,               \
@@ -145,6 +164,17 @@
      "Execution stalls while L1 cache miss demand load is outstanding")       \
   _ (0xA3, 0x14, 0, 0, 0, 0x14, CYCLE_ACTIVITY, STALLS_MEM_ANY,               \
      "Execution stalls while memory subsystem has an outstanding load.")      \
+  _ (0xA6, 0x40, 0, 0, 0, 0x02, EXE_ACTIVITY, BOUND_ON_STORES,                \
+     "Cycles where the Store Buffer was full and no loads caused an "         \
+     "execution stall.")                                                      \
+  _ (0xA8, 0x01, 0, 0, 0, 0x00, LSD, UOPS,                                    \
+     "Counts the number of uops delivered to the back-end by the LSD"         \
+     "(Loop Stream Detector)")                                                \
+  _ (0xAB, 0x02, 0, 0, 0, 0x00, DSB2MITE_SWITCHES, PENALTY_CYCLES,            \
+     "This event counts fetch penalty cycles when a transition occurs from"   \
+     "DSB to MITE.")                                                          \
+  _ (0xB1, 0x01, 0, 0, 0, 0x00, UOPS_EXECUTED, THREAD,                        \
+     "Counts the number of uops to be executed per-thread each cycle.")       \
   _ (0xC0, 0x00, 0, 0, 0, 0x00, INST_RETIRED, ANY_P,                          \
      "Number of instructions retired. General Counter - architectural event") \
   _ (0xC2, 0x02, 0, 0, 0, 0x00, UOPS_RETIRED, RETIRE_SLOTS,                   \
@@ -155,8 +185,6 @@
      "All mispredicted macro branch instructions retired.")                   \
   _ (0xC4, 0x20, 0, 0, 0, 0x00, BR_INST_RETIRED, NEAR_TAKEN,                  \
      "Taken branch instructions retired.")                                    \
-  _ (0xD0, 0x81, 0, 0, 0, 0x00, MEM_INST_RETIRED, ALL_LOADS,                  \
-     "All retired load instructions.")                                        \
   _ (0xD0, 0x82, 0, 0, 0, 0x00, MEM_INST_RETIRED, ALL_STORES,                 \
      "All retired store instructions.")                                       \
   _ (0xD1, 0x01, 0, 0, 0, 0x00, MEM_LOAD_RETIRED, L1_HIT,                     \
@@ -198,6 +226,10 @@
   _ (0xD3, 0x08, 0, 0, 0, 0x00, MEM_LOAD_L3_MISS_RETIRED, REMOTE_FWD,         \
      "Retired load instructions whose data sources was forwarded from a "     \
      "remote cache")                                                          \
+  _ (0xE6, 0x01, 0, 0, 0, 0x00, BACLEARS, ANY,                                \
+     "Counts the total number when the front end is resteered, mainly when "  \
+     "the BPU cannot provide a correct prediction and this is corrected by "  \
+     "other branch handling mechanisms at the front end.")                    \
   _ (0xF0, 0x40, 0, 0, 0, 0x00, L2_TRANS, L2_WB,                              \
      "L2 writebacks that access L2 cache")                                    \
   _ (0xF1, 0x1F, 0, 0, 0, 0x00, L2_LINES_IN, ALL,                             \
