@@ -2000,7 +2000,7 @@ session_main_init (vlib_main_t * vm)
   smm->poll_main = 0;
   smm->use_private_rx_mqs = 0;
   smm->no_adaptive = 0;
-  smm->last_transport_proto_type = TRANSPORT_PROTO_SRTP;
+  smm->last_transport_proto_type = TRANSPORT_PROTO_HTTP;
 
   return 0;
 }
