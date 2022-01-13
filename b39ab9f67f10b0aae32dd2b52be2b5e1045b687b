@@ -140,6 +140,24 @@
       "revId": "b39ab9f67f10b0aae32dd2b52be2b5e1045b687b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7d8d6e4a_a7dbe9ad",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_inlines.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 781,
+      "author": {
+        "id": 1961
+      },
+      "writtenOn": "2022-01-13T21:03:49Z",
+      "side": 1,
+      "message": "I meant something different by VPP sending an RST, sorry for the confusion.\nRFC 5382:\n   The handling of non-SYN packets for connections for which there is no\n   active mapping is left unspecified.  Such packets may be received if\n   the NAT silently abandons a live connection, or abandons a connection\n   in TIME_WAIT state before the 4 minute TIME_WAIT period expires.  The\n   decision to either silently drop such packets or to respond with a\n   TCP RST packet is left up to the implementation.\n\nWhen the session is half-closed, like in the above example, and the open side sends a packet after the session has already been deleted by VPP, we could respond with an RST. I think it helps the client recognize the lost session quickly and allows VPP to delete a half-closed session faster. This should be relatively simple to implement.\nBut let us move this to another patch of course.",
+      "parentUuid": "ae549061_f736d82a",
+      "revId": "b39ab9f67f10b0aae32dd2b52be2b5e1045b687b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
