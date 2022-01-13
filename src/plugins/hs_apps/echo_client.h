@@ -42,19 +42,43 @@ typedef struct
 typedef struct
 {
   /*
+   * Test state variables
+   */
+  eclient_session_t *sessions;	 /**< Session pool, shared */
+  clib_spinlock_t sessions_lock; /**< Session pool lock */
+  u8 **rx_buf;			 /**< intermediate rx buffers */
+  u8 *connect_test_data;	 /**< Pre-computed test data */
+  u32 **quic_session_index_by_thread;
+  u32 **connection_index_by_thread;
+  u32 **connections_this_batch_by_thread; /**< active connection batch */
+
+  volatile u32 ready_connections;
+  volatile u32 finished_connections;
+  volatile u64 rx_total;
+  volatile u64 tx_total;
+  volatile int run_test; /**< Signal start of test */
+
+  f64 syn_start_time;
+  f64 test_start_time;
+  f64 test_end_time;
+  u32 prev_conns;
+  u32 repeats;
+
+  /*
    * Application setup parameters
    */
-  svm_queue_t *vl_input_queue;		/**< vpe input queue */
   svm_msg_q_t **vpp_event_queue;
 
   u32 cli_node_index;			/**< cli process node index */
-  u32 my_client_index;			/**< loopback API client handle */
   u32 app_index;			/**< app index after attach */
+  pthread_t client_thread_handle;
 
   /*
    * Configuration params
    */
+  u32 n_clients;			/**< Number of clients */
   u8 *connect_uri;			/**< URI for slave's connect */
+  session_endpoint_cfg_t connect_sep;	/**< Sever session endpoint */
   u64 bytes_to_send;			/**< Bytes to send */
   u32 configured_segment_size;
   u32 fifo_size;
@@ -67,43 +91,27 @@ typedef struct
   u32 no_copy;				/**< Don't memcpy data to tx fifo */
   u32 quic_streams;			/**< QUIC streams per connection */
   u32 ckpair_index;			/**< Cert key pair for tls/quic */
+  u64 attach_flags;			/**< App attach flags */
+  u8 *appns_id;				/**< App namespaces id */
+  u64 appns_secret;			/**< App namespace secret */
+  f64 syn_timeout;			/**< Test syn timeout (s) */
+  f64 test_timeout;			/**< Test timeout (s) */
 
-  /*
-   * Test state variables
-   */
-  eclient_session_t *sessions;		/**< Session pool, shared */
-  clib_spinlock_t sessions_lock;
-  u8 **rx_buf;				/**< intermediate rx buffers */
-  u8 *connect_test_data;		/**< Pre-computed test data */
-  u32 **quic_session_index_by_thread;
-  u32 **connection_index_by_thread;
-  u32 **connections_this_batch_by_thread; /**< active connection batch */
-  pthread_t client_thread_handle;
-
-  volatile u32 ready_connections;
-  volatile u32 finished_connections;
-  volatile u64 rx_total;
-  volatile u64 tx_total;
-  volatile int run_test;		/**< Signal start of test */
-
-  f64 test_start_time;
-  f64 test_end_time;
-  u32 prev_conns;
-  u32 repeats;
   /*
    * Flags
    */
-  u8 is_init;
+  u8 app_is_init;
   u8 test_client_attached;
   u8 no_return;
   u8 test_return_packets;
-  int i_am_master;
   int drop_packets;		/**< drop all packets */
   u8 prealloc_fifos;		/**< Request fifo preallocation */
+  u8 prealloc_sessions;
   u8 no_output;
   u8 test_bytes;
   u8 test_failed;
   u8 transport_proto;
+  u8 barrier_acq_needed;
 
   vlib_main_t *vlib_main;
 } echo_client_main_t;
