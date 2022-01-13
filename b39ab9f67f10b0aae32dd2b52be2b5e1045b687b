@@ -104,6 +104,24 @@
       "revId": "b39ab9f67f10b0aae32dd2b52be2b5e1045b687b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "58cc36e8_626e2083",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_inlines.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 781,
+      "author": {
+        "id": 1961
+      },
+      "writtenOn": "2022-01-13T17:56:52Z",
+      "side": 1,
+      "message": "Okey, this state machine from RFC 7857/6146 is pretty permissive and it is in favor of keeping the established session, even if the two sides can obviously no longer communicate. Like in case 1 above, when the server is RFC compliant:\n\nclient - server\n       ...\n       \u003c- FIN\n       \u003c- FIN\n       \u003c- FIN\n       ...\n       \u003c- RST\n\nThe RST could be handled in the FIN_I2O/O2I states I think. This state transition is not mentioned after the diagram in RFC 6146, but suggested before that:\n\n      TRANS: The lifetime of the state for the connection is set to\n      TCP_TRANS minutes either because a packet containing a TCP RST was\n      received by the NAT64 for this connection or simply because the\n      lifetime of the connection has decreased and there are only\n      TCP_TRANS minutes left. \n\nAnd in RFC 7857:\n   Update:  This document adopts a similar default behavior as in\n      [RFC6146].  Concretely, when the NAT receives a TCP RST matching\n      an existing mapping, it MUST translate the packet according to the\n      NAT mapping entry.  Moreover, the NAT SHOULD wait for 4 minutes\n      before deleting the session and removing any state associated with\n      it if no packets are received during that 4-minute timeout.\n\n\nAnyway, keeping the established state could help if there was only a temporary network outage and the client will try to still send some packet that the server will answer with an RST subsequently. To conserve sessions, a faster cleanup with the same result could happen if VPP sent back the RST in closed state by itself, which was an optional NAT behavior in RFC 5382. -- We could contribute a separate patch later, if you think this is of general interest.",
+      "parentUuid": "db4e4793_b8e2d8c8",
+      "revId": "b39ab9f67f10b0aae32dd2b52be2b5e1045b687b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
