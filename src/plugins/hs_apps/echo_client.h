@@ -85,7 +85,7 @@ typedef struct
   u32 expected_connections;		/**< Number of clients/connections */
   u32 connections_per_batch;		/**< Connections to rx/tx at once */
   u32 private_segment_count;		/**< Number of private fifo segs */
-  u32 private_segment_size;		/**< size of private fifo segs */
+  u64 private_segment_size;		/**< size of private fifo segs */
   u32 tls_engine;			/**< TLS engine mbedtls/openssl */
   u8 is_dgram;
   u32 no_copy;				/**< Don't memcpy data to tx fifo */
