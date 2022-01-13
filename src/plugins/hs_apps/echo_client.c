@@ -816,12 +816,21 @@ ec_transport_needs_crypto (transport_proto_t proto)
 	 proto == TRANSPORT_PROTO_QUIC;
 }
 
+static inline void
+ec_connect_suspend (vlib_main_t *vm, f64 time)
+{
+  vlib_worker_thread_barrier_release (vm);
+  vlib_process_suspend (vm, time);
+  vlib_worker_thread_barrier_sync (vm);
+}
+
 clib_error_t *
 echo_clients_connect (vlib_main_t *vm)
 {
   echo_client_main_t *ecm = &echo_client_main;
   vnet_connect_args_t _a = {}, *a = &_a;
-  int i, rv, needs_crypto;
+  int ci = 0, rv, needs_crypto;
+  clib_error_t *error = 0;
   u32 n_clients;
 
   n_clients = ecm->n_clients;
@@ -829,17 +838,17 @@ echo_clients_connect (vlib_main_t *vm)
   clib_memcpy (&a->sep_ext, &ecm->connect_sep, sizeof (ecm->connect_sep));
   a->app_index = ecm->app_index;
 
-  for (i = 0; i < n_clients; i++)
+  vlib_worker_thread_barrier_sync (vm);
+
+  while (ci < n_clients)
     {
-      a->api_context = i;
+      a->api_context = ci;
       if (needs_crypto)
 	{
 	  session_endpoint_alloc_ext_cfg (&a->sep_ext,
 					  TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
 	  a->sep_ext.ext_cfg->crypto.ckpair_index = ecm->ckpair_index;
 	}
-
-      vlib_worker_thread_barrier_sync (vm);
 
       rv = vnet_connect (a);
 
@@ -848,20 +857,24 @@ echo_clients_connect (vlib_main_t *vm)
 
       if (rv)
 	{
-	  vlib_worker_thread_barrier_release (vm);
-	  return clib_error_return (0, "connect returned: %d", rv);
+	  error = clib_error_return (0, "connect returned: %d", rv);
+	  break;
 	}
 
-      vlib_worker_thread_barrier_release (vm);
+      ci += 1;
 
       /* Crude pacing for call setups  */
-      if ((i % 16) == 0)
-	vlib_process_suspend (vm, 100e-6);
-      ASSERT (i + 1 >= ecm->ready_connections);
-      while (i + 1 - ecm->ready_connections > 128)
-	vlib_process_suspend (vm, 1e-3);
+      if ((ci % 16) == 0)
+	ec_connect_suspend (vm, 50e-6);
+
+      ASSERT (ci >= ecm->ready_connections);
+      while (ci - ecm->ready_connections > 128)
+	ec_connect_suspend (vm, 1e-3);
     }
-  return 0;
+
+  vlib_worker_thread_barrier_release (vm);
+
+  return error;
 }
 
 #define ec_cli(_fmt, _args...)                                                \
@@ -873,14 +886,13 @@ echo_clients_command_fn (vlib_main_t *vm, unformat_input_t *input,
 			 vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
+  char *default_uri = "tcp://6.0.1.1/1234", *transfer_type;
   echo_client_main_t *ecm = &echo_client_main;
-  u64 tmp, total_bytes;
-  f64 delta;
-  char *default_uri = "tcp://6.0.1.1/1234";
   uword *event_data = 0, event_type;
-  char *transfer_type;
   clib_error_t *error = 0;
   int rv, had_config = 1;
+  u64 tmp, total_bytes;
+  f64 delta;
 
   if (ecm->test_client_attached)
     return clib_error_return (0, "failed: already running!");
