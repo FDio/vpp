@@ -21,9 +21,7 @@
 #include <vnet/tcp/tcp_debug.h>
 #include <vppinfra/bihash_24_8.h>
 
-
 #define TRANSPORT_MAX_HDRS_LEN    140	/* Max number of bytes for headers */
-
 
 typedef enum transport_dequeue_type_
 {
@@ -166,7 +164,8 @@ STATIC_ASSERT (sizeof (transport_connection_t) <= 128,
   _ (TLS, "tls", "J")                                                         \
   _ (QUIC, "quic", "Q")                                                       \
   _ (DTLS, "dtls", "D")                                                       \
-  _ (SRTP, "srtp", "R")
+  _ (SRTP, "srtp", "R")								\
+  _ (HTTP, "http", "H")
 
 typedef enum _transport_proto
 {
