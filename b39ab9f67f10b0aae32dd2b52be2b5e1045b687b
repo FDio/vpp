@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "71b25c2e_fd62dafe",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_api.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1813,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-01-13T16:16:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2c3ca720_fce694b0",
+      "revId": "b39ab9f67f10b0aae32dd2b52be2b5e1045b687b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6770c65f_85c94f72",
         "filename": "src/plugins/nat/nat44-ed/nat44_ed_format.c",
         "patchSetId": 7
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "c64e9a11_da5152a5",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_format.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-01-13T16:16:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6770c65f_85c94f72",
+      "revId": "b39ab9f67f10b0aae32dd2b52be2b5e1045b687b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "72920eed_03fd134b",
         "filename": "src/plugins/nat/nat44-ed/nat44_ed_inlines.h",
         "patchSetId": 7
@@ -47,6 +83,24 @@
       "writtenOn": "2022-01-13T12:05:52Z",
       "side": 1,
       "message": "Suppose one side restarts while the session is in ESTABLISHED state and later the other side sends a FIN, the state is set to FIN_I2O or FIN_O2I. The FIN will be re-transmitted, then the following 2 cases can happen:\n - An RST is sent to abandon the connection, as required by the standard as far as I know.\n   The RST is not handled in these states, the session is left hanging for the established timeout.\n - There is no RST sent, simply the FIN is given up. This is what I could observe is some of our traces.\n   Similarly, the session is left in the current state for the established timeout. This is RFC compliant as you have previously pointed out, it is just not very optimal.\n\nIt is also not possible to reopen the session in the above scenarios and this can be a real issue because these FIN_I2O/O2I states can take very long when the RST does not arrive. In the second case, neither sides have the connection anymore, the server will not answer the SYN with an RST.",
+      "revId": "b39ab9f67f10b0aae32dd2b52be2b5e1045b687b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "db4e4793_b8e2d8c8",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_inlines.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 781,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-01-13T16:16:05Z",
+      "side": 1,
+      "message": "Yes, that is correct.\n\nI am not sure what RFC compliant solution is available here.\n\nBut in your case, if the client is dead, it can simply try a different port (as it should IIRC port randomisation is a SHOULD)",
+      "parentUuid": "72920eed_03fd134b",
       "revId": "b39ab9f67f10b0aae32dd2b52be2b5e1045b687b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
