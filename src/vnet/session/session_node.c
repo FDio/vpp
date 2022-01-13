@@ -210,6 +210,7 @@ session_mq_handle_connects_rpc (void *arg)
   session_evt_elt_t *he, *elt, *next;
   session_worker_t *fwrk, *wrk;
 
+  clib_warning ("here");
   ASSERT (vlib_get_thread_index () == 0);
 
   /* Pending connects on linked list pertaining to first worker */

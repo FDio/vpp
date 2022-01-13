@@ -308,7 +308,6 @@ echo_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (echo_clients_node) =
 {
   .function = echo_client_node_fn,
@@ -316,7 +315,36 @@ VLIB_REGISTER_NODE (echo_clients_node) =
   .type = VLIB_NODE_TYPE_INPUT,
   .state = VLIB_NODE_STATE_DISABLED,
 };
-/* *INDENT-ON* */
+
+static void
+ec_reset_runtime_config (echo_client_main_t *ecm)
+{
+  ecm->n_clients = 1;
+  ecm->quic_streams = 1;
+  ecm->bytes_to_send = 8192;
+  ecm->no_return = 0;
+  ecm->fifo_size = 64 << 10;
+  ecm->connections_per_batch = 1000;
+  ecm->private_segment_count = 0;
+  ecm->private_segment_size = 256 << 20;
+  ecm->no_output = 0;
+  ecm->test_bytes = 0;
+  ecm->test_failed = 0;
+  ecm->tls_engine = CRYPTO_ENGINE_OPENSSL;
+  ecm->no_copy = 0;
+  ecm->run_test = ECHO_CLIENTS_STARTING;
+  ecm->ready_connections = 0;
+  ecm->rx_total = 0;
+  ecm->tx_total = 0;
+  ecm->barrier_acq_needed = 0;
+  ecm->prealloc_sessions = 0;
+  ecm->prealloc_fifos = 0;
+  ecm->appns_secret = 0;
+  ecm->attach_flags = 0;
+  ecm->syn_timeout = 20.0;
+  ecm->test_timeout = 20.0;
+  vec_free (ecm->connect_uri);
+}
 
 static int
 echo_clients_init (vlib_main_t * vm)
@@ -325,6 +353,38 @@ echo_clients_init (vlib_main_t * vm)
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   u32 num_threads;
   int i;
+
+  ec_reset_runtime_config (ecm);
+
+  /* Store cli process node index for signaling */
+  ecm->cli_node_index = vlib_get_current_process (vm)->node_runtime.node_index;
+  ecm->vlib_main = vm;
+
+  if (vlib_num_workers ())
+    {
+      /* The request came over the binary api and the inband cli handler
+       * is not mp_safe. Drop the barrier to make sure the workers are not
+       * blocked.
+       */
+      if (vlib_thread_is_main_w_barrier ())
+	{
+	  ecm->barrier_acq_needed = 1;
+	  vlib_worker_thread_barrier_release (vm);
+	}
+      /*
+       * There's a good chance that both the client and the server echo
+       * apps will be enabled so make sure the session queue node polls on
+       * the main thread as connections will probably be established on it.
+       */
+      vlib_node_set_state (vm, session_queue_node.index,
+			   VLIB_NODE_STATE_POLLING);
+
+      clib_spinlock_init (&ecm->sessions_lock);
+    }
+
+  /* App init done only once */
+  if (ecm->app_is_init)
+    return 0;
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
 
@@ -337,14 +397,44 @@ echo_clients_init (vlib_main_t * vm)
   for (i = 0; i < num_threads; i++)
     vec_validate (ecm->rx_buf[i], vec_len (ecm->connect_test_data) - 1);
 
-  ecm->is_init = 1;
+  ecm->app_is_init = 1;
 
   vec_validate (ecm->connection_index_by_thread, vtm->n_vlib_mains);
   vec_validate (ecm->connections_this_batch_by_thread, vtm->n_vlib_mains);
   vec_validate (ecm->quic_session_index_by_thread, vtm->n_vlib_mains);
   vec_validate (ecm->vpp_event_queue, vtm->n_vlib_mains);
 
+  vlib_worker_thread_barrier_sync (vm);
+  vnet_session_enable_disable (vm, 1 /* turn on session and transports */);
+  vlib_worker_thread_barrier_release (vm);
+
+  /* Turn on the builtin client input nodes */
+  for (i = 0; i < vtm->n_vlib_mains; i++)
+    vlib_node_set_state (vlib_get_main_by_index (i), echo_clients_node.index,
+			 VLIB_NODE_STATE_POLLING);
+
   return 0;
+}
+
+static void
+echo_clients_cleanup (echo_client_main_t *ecm)
+{
+  int i;
+
+  for (i = 0; i < vec_len (ecm->connection_index_by_thread); i++)
+    {
+      vec_reset_length (ecm->connection_index_by_thread[i]);
+      vec_reset_length (ecm->connections_this_batch_by_thread[i]);
+      vec_reset_length (ecm->quic_session_index_by_thread[i]);
+    }
+
+  pool_free (ecm->sessions);
+  vec_free (ecm->connect_uri);
+  vec_free (ecm->appns_id);
+  clib_spinlock_free (&ecm->sessions_lock);
+
+  if (ecm->barrier_acq_needed)
+    vlib_worker_thread_barrier_sync (ecm->vlib_main);
 }
 
 static int
@@ -606,7 +696,6 @@ echo_client_add_segment_callback (u32 client_index, u64 segment_handle)
   return 0;
 }
 
-/* *INDENT-OFF* */
 static session_cb_vft_t echo_clients = {
   .session_reset_callback = echo_clients_session_reset_callback,
   .session_connected_callback = echo_clients_session_connected_callback,
@@ -615,10 +704,9 @@ static session_cb_vft_t echo_clients = {
   .builtin_app_rx_callback = echo_clients_rx_callback,
   .add_segment_callback = echo_client_add_segment_callback
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-echo_clients_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
+echo_clients_attach ()
 {
   vnet_app_add_cert_key_pair_args_t _ck_pair, *ck_pair = &_ck_pair;
   echo_client_main_t *ecm = &echo_client_main;
@@ -649,13 +737,13 @@ echo_clients_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
   options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   options[APP_OPTIONS_TLS_ENGINE] = ecm->tls_engine;
   options[APP_OPTIONS_PCT_FIRST_ALLOC] = 100;
-  if (appns_id)
+  options[APP_OPTIONS_FLAGS] |= ecm->attach_flags;
+  if (ecm->appns_id)
     {
-      options[APP_OPTIONS_FLAGS] |= appns_flags;
-      options[APP_OPTIONS_NAMESPACE_SECRET] = appns_secret;
+      options[APP_OPTIONS_NAMESPACE_SECRET] = ecm->appns_secret;
+      a->namespace_id = ecm->appns_id;
     }
   a->options = options;
-  a->namespace_id = appns_id;
 
   if ((rv = vnet_application_attach (a)))
     return clib_error_return (0, "attach returned %d", rv);
@@ -671,6 +759,8 @@ echo_clients_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
   vnet_app_add_cert_key_pair (ck_pair);
   ecm->ckpair_index = ck_pair->index;
 
+  ecm->test_client_attached = 1;
+
   return 0;
 }
 
@@ -680,6 +770,9 @@ echo_clients_detach ()
   echo_client_main_t *ecm = &echo_client_main;
   vnet_app_detach_args_t _da, *da = &_da;
   int rv;
+
+  if (!ecm->test_client_attached)
+    return 0;
 
   da->app_index = ecm->app_index;
   da->api_client_index = ~0;
@@ -716,31 +809,29 @@ echo_clients_start_tx_pthread (echo_client_main_t * ecm)
 }
 
 static int
-echo_client_transport_needs_crypto (transport_proto_t proto)
+ec_transport_needs_crypto (transport_proto_t proto)
 {
   return proto == TRANSPORT_PROTO_TLS || proto == TRANSPORT_PROTO_DTLS ||
 	 proto == TRANSPORT_PROTO_QUIC;
 }
 
 clib_error_t *
-echo_clients_connect (vlib_main_t * vm, u32 n_clients)
+echo_clients_connect (vlib_main_t *vm)
 {
-  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   echo_client_main_t *ecm = &echo_client_main;
-  vnet_connect_args_t _a, *a = &_a;
-  int i, rv;
+  vnet_connect_args_t _a = {}, *a = &_a;
+  int i, rv, needs_crypto;
+  u32 n_clients;
 
-  clib_memset (a, 0, sizeof (*a));
-
-  if (parse_uri ((char *) ecm->connect_uri, &sep))
-    return clib_error_return (0, "invalid uri");
+  n_clients = ecm->n_clients;
+  needs_crypto = ec_transport_needs_crypto (ecm->transport_proto);
+  clib_memcpy (&a->sep_ext, &ecm->connect_sep, sizeof (ecm->connect_sep));
+  a->app_index = ecm->app_index;
 
   for (i = 0; i < n_clients; i++)
     {
-      clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
       a->api_context = i;
-      a->app_index = ecm->app_index;
-      if (echo_client_transport_needs_crypto (a->sep_ext.transport_proto))
+      if (needs_crypto)
 	{
 	  session_endpoint_alloc_ext_cfg (&a->sep_ext,
 					  TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
@@ -748,14 +839,18 @@ echo_clients_connect (vlib_main_t * vm, u32 n_clients)
 	}
 
       vlib_worker_thread_barrier_sync (vm);
+
       rv = vnet_connect (a);
-      if (a->sep_ext.ext_cfg)
+
+      if (needs_crypto)
 	clib_mem_free (a->sep_ext.ext_cfg);
+
       if (rv)
 	{
 	  vlib_worker_thread_barrier_release (vm);
 	  return clib_error_return (0, "connect returned: %d", rv);
 	}
+
       vlib_worker_thread_barrier_release (vm);
 
       /* Crude pacing for call setups  */
@@ -768,145 +863,103 @@ echo_clients_connect (vlib_main_t * vm, u32 n_clients)
   return 0;
 }
 
-#define ec_cli_output(_fmt, _args...) 			\
-  if (!ecm->no_output)  				\
-    vlib_cli_output(vm, _fmt, ##_args)
+#define ec_cli(_fmt, _args...)                                                \
+  if (!ecm->no_output)                                                        \
+  vlib_cli_output (vm, _fmt, ##_args)
 
 static clib_error_t *
-echo_clients_command_fn (vlib_main_t * vm,
-			 unformat_input_t * input, vlib_cli_command_t * cmd)
+echo_clients_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			 vlib_cli_command_t *cmd)
 {
+  unformat_input_t _line_input, *line_input = &_line_input;
   echo_client_main_t *ecm = &echo_client_main;
-  vlib_thread_main_t *thread_main = vlib_get_thread_main ();
-  u64 tmp, total_bytes, appns_flags = 0, appns_secret = 0;
-  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
-  f64 test_timeout = 20.0, syn_timeout = 20.0, delta;
+  u64 tmp, total_bytes;
+  f64 delta;
   char *default_uri = "tcp://6.0.1.1/1234";
-  u8 *appns_id = 0, barrier_acq_needed = 0;
-  int preallocate_sessions = 0, i, rv;
   uword *event_data = 0, event_type;
-  f64 time_before_connects;
-  u32 n_clients = 1;
   char *transfer_type;
   clib_error_t *error = 0;
+  int rv, had_config = 1;
 
-  ecm->quic_streams = 1;
-  ecm->bytes_to_send = 8192;
-  ecm->no_return = 0;
-  ecm->fifo_size = 64 << 10;
-  ecm->connections_per_batch = 1000;
-  ecm->private_segment_count = 0;
-  ecm->private_segment_size = 256 << 20;
-  ecm->no_output = 0;
-  ecm->test_bytes = 0;
-  ecm->test_failed = 0;
-  ecm->vlib_main = vm;
-  ecm->tls_engine = CRYPTO_ENGINE_OPENSSL;
-  ecm->no_copy = 0;
-  ecm->run_test = ECHO_CLIENTS_STARTING;
+  if (ecm->test_client_attached)
+    return clib_error_return (0, "failed: already running!");
 
-  if (vlib_num_workers ())
+  if (echo_clients_init (vm))
     {
-      /* The request came over the binary api and the inband cli handler
-       * is not mp_safe. Drop the barrier to make sure the workers are not
-       * blocked.
-       */
-      if (vlib_thread_is_main_w_barrier ())
-	{
-	  barrier_acq_needed = 1;
-	  vlib_worker_thread_barrier_release (vm);
-	}
-      /*
-       * There's a good chance that both the client and the server echo
-       * apps will be enabled so make sure the session queue node polls on
-       * the main thread as connections will probably be established on it.
-       */
-      vlib_node_set_state (vm, session_queue_node.index,
-			   VLIB_NODE_STATE_POLLING);
+      error = clib_error_return (0, "failed init");
+      goto cleanup;
     }
 
-  if (thread_main->n_vlib_mains > 1)
-    clib_spinlock_init (&ecm->sessions_lock);
-  vec_free (ecm->connect_uri);
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  if (!unformat_user (input, unformat_line_input, line_input))
     {
-      if (unformat (input, "uri %s", &ecm->connect_uri))
+      had_config = 0;
+      goto parse_config;
+    }
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "uri %s", &ecm->connect_uri))
 	;
-      else if (unformat (input, "nclients %d", &n_clients))
+      else if (unformat (line_input, "nclients %d", &ecm->n_clients))
 	;
-      else if (unformat (input, "quic-streams %d", &ecm->quic_streams))
+      else if (unformat (line_input, "quic-streams %d", &ecm->quic_streams))
 	;
-      else if (unformat (input, "mbytes %lld", &tmp))
+      else if (unformat (line_input, "mbytes %lld", &tmp))
 	ecm->bytes_to_send = tmp << 20;
-      else if (unformat (input, "gbytes %lld", &tmp))
+      else if (unformat (line_input, "gbytes %lld", &tmp))
 	ecm->bytes_to_send = tmp << 30;
-      else if (unformat (input, "bytes %lld", &ecm->bytes_to_send))
+      else if (unformat (line_input, "bytes %U", unformat_memory_size,
+			 &ecm->bytes_to_send))
 	;
-      else if (unformat (input, "test-timeout %f", &test_timeout))
+      else if (unformat (line_input, "test-timeout %f", &ecm->test_timeout))
 	;
-      else if (unformat (input, "syn-timeout %f", &syn_timeout))
+      else if (unformat (line_input, "syn-timeout %f", &ecm->syn_timeout))
 	;
-      else if (unformat (input, "no-return"))
+      else if (unformat (line_input, "no-return"))
 	ecm->no_return = 1;
-      else if (unformat (input, "fifo-size %d", &ecm->fifo_size))
+      else if (unformat (line_input, "fifo-size %d", &ecm->fifo_size))
 	ecm->fifo_size <<= 10;
-      else if (unformat (input, "private-segment-count %d",
+      else if (unformat (line_input, "private-segment-count %d",
 			 &ecm->private_segment_count))
 	;
-      else if (unformat (input, "private-segment-size %U",
+      else if (unformat (line_input, "private-segment-size %U",
 			 unformat_memory_size, &ecm->private_segment_size))
 	;
-      else if (unformat (input, "preallocate-fifos"))
+      else if (unformat (line_input, "preallocate-fifos"))
 	ecm->prealloc_fifos = 1;
-      else if (unformat (input, "preallocate-sessions"))
-	preallocate_sessions = 1;
-      else
-	if (unformat (input, "client-batch %d", &ecm->connections_per_batch))
+      else if (unformat (line_input, "preallocate-sessions"))
+	ecm->prealloc_sessions = 1;
+      else if (unformat (line_input, "client-batch %d",
+			 &ecm->connections_per_batch))
 	;
-      else if (unformat (input, "appns %_%v%_", &appns_id))
+      else if (unformat (line_input, "appns %_%v%_", ecm->appns_id))
 	;
-      else if (unformat (input, "all-scope"))
-	appns_flags |= (APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE
-			| APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE);
-      else if (unformat (input, "local-scope"))
-	appns_flags = APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
-      else if (unformat (input, "global-scope"))
-	appns_flags = APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
-      else if (unformat (input, "secret %lu", &appns_secret))
+      else if (unformat (line_input, "all-scope"))
+	ecm->attach_flags |= (APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE |
+			      APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE);
+      else if (unformat (line_input, "local-scope"))
+	ecm->attach_flags = APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
+      else if (unformat (line_input, "global-scope"))
+	ecm->attach_flags = APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
+      else if (unformat (line_input, "secret %lu", &ecm->appns_secret))
 	;
-      else if (unformat (input, "no-output"))
+      else if (unformat (line_input, "no-output"))
 	ecm->no_output = 1;
-      else if (unformat (input, "test-bytes"))
+      else if (unformat (line_input, "test-bytes"))
 	ecm->test_bytes = 1;
-      else if (unformat (input, "tls-engine %d", &ecm->tls_engine))
+      else if (unformat (line_input, "tls-engine %d", &ecm->tls_engine))
 	;
       else
 	{
 	  error = clib_error_return (0, "failed: unknown input `%U'",
-				     format_unformat_error, input);
+				     format_unformat_error, line_input);
 	  goto cleanup;
 	}
     }
 
-  /* Store cli process node index for signalling */
-  ecm->cli_node_index =
-    vlib_get_current_process (vm)->node_runtime.node_index;
+parse_config:
 
-  if (ecm->is_init == 0)
-    {
-      if (echo_clients_init (vm))
-	{
-	  error = clib_error_return (0, "failed init");
-	  goto cleanup;
-	}
-    }
-
-
-  ecm->ready_connections = 0;
-  ecm->expected_connections = n_clients * ecm->quic_streams;
-  ecm->rx_total = 0;
-  ecm->tx_total = 0;
+  ecm->expected_connections = ecm->n_clients * ecm->quic_streams;
 
   if (!ecm->connect_uri)
     {
@@ -914,159 +967,138 @@ echo_clients_command_fn (vlib_main_t * vm,
       ecm->connect_uri = format (0, "%s%c", default_uri, 0);
     }
 
-  if ((rv = parse_uri ((char *) ecm->connect_uri, &sep)))
+  if ((rv = parse_uri ((char *) ecm->connect_uri, &ecm->connect_sep)))
     {
       error = clib_error_return (0, "Uri parse error: %d", rv);
       goto cleanup;
     }
-  ecm->transport_proto = sep.transport_proto;
-  ecm->is_dgram = (sep.transport_proto == TRANSPORT_PROTO_UDP);
+  ecm->transport_proto = ecm->connect_sep.transport_proto;
+  ecm->is_dgram = (ecm->transport_proto == TRANSPORT_PROTO_UDP);
 
-#if ECHO_CLIENT_PTHREAD
-  echo_clients_start_tx_pthread ();
-#endif
+  if (ecm->prealloc_sessions)
+    pool_init_fixed (ecm->sessions, 1.1 * ecm->n_clients);
 
-  vlib_worker_thread_barrier_sync (vm);
-  vnet_session_enable_disable (vm, 1 /* turn on session and transports */ );
-  vlib_worker_thread_barrier_release (vm);
-
-  if (ecm->test_client_attached == 0)
+  if ((error = echo_clients_attach ()))
     {
-      if ((error = echo_clients_attach (appns_id, appns_flags, appns_secret)))
-	{
-	  vec_free (appns_id);
-	  clib_error_report (error);
-	  goto cleanup;
-	}
-      vec_free (appns_id);
+      clib_error_report (error);
+      goto cleanup;
     }
-  ecm->test_client_attached = 1;
 
-  /* Turn on the builtin client input nodes */
-  for (i = 0; i < thread_main->n_vlib_mains; i++)
-    vlib_node_set_state (vlib_get_main_by_index (i), echo_clients_node.index,
-			 VLIB_NODE_STATE_POLLING);
+  /*
+   * Start. Fire off connect requests
+   */
 
-  if (preallocate_sessions)
-    pool_init_fixed (ecm->sessions, 1.1 * n_clients);
-
-  /* Fire off connect requests */
-  time_before_connects = vlib_time_now (vm);
-  if ((error = echo_clients_connect (vm, n_clients)))
+  ecm->syn_start_time = vlib_time_now (vm);
+  if ((error = echo_clients_connect (vm)))
     {
       goto cleanup;
     }
 
-  /* Park until the sessions come up, or ten seconds elapse... */
-  vlib_process_wait_for_event_or_clock (vm, syn_timeout);
+  /*
+   * Park until the sessions come up, or syn_timeout seconds pass
+   */
+
+  vlib_process_wait_for_event_or_clock (vm, ecm->syn_timeout);
   event_type = vlib_process_get_events (vm, &event_data);
   switch (event_type)
     {
     case ~0:
-      ec_cli_output ("Timeout with only %d sessions active...",
-		     ecm->ready_connections);
+      ec_cli ("Timeout with only %d sessions active...",
+	      ecm->ready_connections);
       error = clib_error_return (0, "failed: syn timeout with %d sessions",
 				 ecm->ready_connections);
       goto cleanup;
 
     case 1:
-      delta = vlib_time_now (vm) - time_before_connects;
+      delta = vlib_time_now (vm) - ecm->syn_start_time;
       if (delta != 0.0)
-	ec_cli_output ("%d three-way handshakes in %.2f seconds %.2f/s",
-		       n_clients, delta, ((f64) n_clients) / delta);
-
-      ecm->test_start_time = vlib_time_now (ecm->vlib_main);
-      ec_cli_output ("Test started at %.6f", ecm->test_start_time);
+	ec_cli ("%d three-way handshakes in %.2f seconds %.2f/s",
+		ecm->n_clients, delta, ((f64) ecm->n_clients) / delta);
       break;
 
     default:
-      ec_cli_output ("unexpected event(1): %d", event_type);
+      ec_cli ("unexpected event(1): %d", event_type);
       error = clib_error_return (0, "failed: unexpected event(1): %d",
 				 event_type);
       goto cleanup;
     }
 
-  /* Now wait for the sessions to finish... */
-  vlib_process_wait_for_event_or_clock (vm, test_timeout);
+  /*
+   * Wait for the sessions to finish or test_timeout seconds pass
+   */
+  ecm->test_start_time = vlib_time_now (ecm->vlib_main);
+  ec_cli ("Test started at %.6f", ecm->test_start_time);
+  vlib_process_wait_for_event_or_clock (vm, ecm->test_timeout);
   event_type = vlib_process_get_events (vm, &event_data);
   switch (event_type)
     {
     case ~0:
-      ec_cli_output ("Timeout with %d sessions still active...",
-		     ecm->ready_connections);
+      ec_cli ("Timeout with %d sessions still active...",
+	      ecm->ready_connections);
       error = clib_error_return (0, "failed: timeout with %d sessions",
 				 ecm->ready_connections);
       goto cleanup;
 
     case 2:
       ecm->test_end_time = vlib_time_now (vm);
-      ec_cli_output ("Test finished at %.6f", ecm->test_end_time);
+      ec_cli ("Test finished at %.6f", ecm->test_end_time);
       break;
 
     default:
-      ec_cli_output ("unexpected event(2): %d", event_type);
+      ec_cli ("unexpected event(2): %d", event_type);
       error = clib_error_return (0, "failed: unexpected event(2): %d",
 				 event_type);
       goto cleanup;
     }
 
+  /*
+   * Done. Compute stats
+   */
   delta = ecm->test_end_time - ecm->test_start_time;
-  if (delta != 0.0)
+  if (delta == 0.0)
     {
-      total_bytes = (ecm->no_return ? ecm->tx_total : ecm->rx_total);
-      transfer_type = ecm->no_return ? "half-duplex" : "full-duplex";
-      ec_cli_output ("%lld bytes (%lld mbytes, %lld gbytes) in %.2f seconds",
-		     total_bytes, total_bytes / (1ULL << 20),
-		     total_bytes / (1ULL << 30), delta);
-      ec_cli_output ("%.2f bytes/second %s", ((f64) total_bytes) / (delta),
-		     transfer_type);
-      ec_cli_output ("%.4f gbit/second %s",
-		     (((f64) total_bytes * 8.0) / delta / 1e9),
-		     transfer_type);
-    }
-  else
-    {
-      ec_cli_output ("zero delta-t?");
+      ec_cli ("zero delta-t?");
       error = clib_error_return (0, "failed: zero delta-t");
       goto cleanup;
     }
+
+  total_bytes = (ecm->no_return ? ecm->tx_total : ecm->rx_total);
+  transfer_type = ecm->no_return ? "half-duplex" : "full-duplex";
+  ec_cli ("%lld bytes (%lld mbytes, %lld gbytes) in %.2f seconds", total_bytes,
+	  total_bytes / (1ULL << 20), total_bytes / (1ULL << 30), delta);
+  ec_cli ("%.2f bytes/second %s", ((f64) total_bytes) / (delta),
+	  transfer_type);
+  ec_cli ("%.4f gbit/second %s", (((f64) total_bytes * 8.0) / delta / 1e9),
+	  transfer_type);
 
   if (ecm->test_bytes && ecm->test_failed)
     error = clib_error_return (0, "failed: test bytes");
 
 cleanup:
+
+  /*
+   * Cleanup
+   */
   ecm->run_test = ECHO_CLIENTS_EXITING;
   vlib_process_wait_for_event_or_clock (vm, 10e-3);
-  for (i = 0; i < vec_len (ecm->connection_index_by_thread); i++)
-    {
-      vec_reset_length (ecm->connection_index_by_thread[i]);
-      vec_reset_length (ecm->connections_this_batch_by_thread[i]);
-      vec_reset_length (ecm->quic_session_index_by_thread[i]);
-    }
-
-  pool_free (ecm->sessions);
 
   /* Detach the application, so we can use different fifo sizes next time */
-  if (ecm->test_client_attached)
+  if (echo_clients_detach ())
     {
-      if (echo_clients_detach ())
-	{
-	  error = clib_error_return (0, "failed: app detach");
-	  ec_cli_output ("WARNING: app detach failed...");
-	}
+      error = clib_error_return (0, "failed: app detach");
+      ec_cli ("WARNING: app detach failed...");
     }
-  if (error)
-    ec_cli_output ("test failed");
-  vec_free (ecm->connect_uri);
-  clib_spinlock_free (&ecm->sessions_lock);
 
-  if (barrier_acq_needed)
-    vlib_worker_thread_barrier_sync (vm);
+  echo_clients_cleanup (ecm);
+  if (had_config)
+    unformat_free (line_input);
+
+  if (error)
+    ec_cli ("test failed");
 
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (echo_clients_command, static) =
 {
   .path = "test echo clients",
@@ -1078,13 +1110,12 @@ VLIB_CLI_COMMAND (echo_clients_command, static) =
   .function = echo_clients_command_fn,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 echo_clients_main_init (vlib_main_t * vm)
 {
   echo_client_main_t *ecm = &echo_client_main;
-  ecm->is_init = 0;
+  ecm->app_is_init = 0;
   return 0;
 }
 
