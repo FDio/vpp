@@ -122,6 +122,24 @@
       "revId": "b39ab9f67f10b0aae32dd2b52be2b5e1045b687b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ae549061_f736d82a",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_inlines.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 781,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-01-13T19:34:53Z",
+      "side": 1,
+      "message": "I\u0027ll leave it as it is for now. Let\u0027s not complicate things further at this step. Feel free to submit a patch with your suggested RST/transitory timeout changes. I would also bring this up on vpp-dev mailing list as this is a limited channel ...\n\nOne more option in a deployment is a custom configuration of an established timeout value - that would of course depend on knowing your environment, but if tearing down long lived sessions with occasional traffic is not an issue, then setting it to a lower value might be an option.\n\nRegarding VPP sending RST by itself, feel free to submit a patch. It would require writing a new node though, which would had to have a timer wheel to keep track of sessions to keep alive and if there are lots and lots of them, that could be a bit resource intensive. Such a timer wheel is implemented in BFD code. Another complication is that reading session data is currently possible only by owner thread as there are no locks (and I\u0027m pretty sure we don\u0027t want to introduce any), so the code would have to deal with that somehow.",
+      "parentUuid": "58cc36e8_626e2083",
+      "revId": "b39ab9f67f10b0aae32dd2b52be2b5e1045b687b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
