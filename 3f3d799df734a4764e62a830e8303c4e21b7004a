@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a8add661_e8ecc22b",
+        "filename": "src/plugins/snort/main.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 454,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2022-01-13T16:17:45Z",
+      "side": 1,
+      "message": "passing pointers here is not a good idea as sm-\u003einstance_vec_by_sw_if_index might grow larger and realloc",
+      "range": {
+        "startLine": 454,
+        "startChar": 1,
+        "endLine": 454,
+        "endChar": 63
+      },
+      "revId": "3f3d799df734a4764e62a830e8303c4e21b7004a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
