@@ -768,6 +768,11 @@ I:	hsi
 M:	Florin Coras <fcoras@cisco.com>
 F:	src/plugins/hsi/
 
+Plugin - HTTP
+I:	http
+M:	Florin Coras <fcoras@cisco.com>
+F:	src/plugins/http
+
 cJSON
 I:	cjson
 M:	Ole Troan <ot@cisco.com>
