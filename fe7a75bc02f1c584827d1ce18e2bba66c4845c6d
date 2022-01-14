@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "08ab871b_12215e19",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 1961
+      },
+      "writtenOn": "2022-01-14T15:21:43Z",
+      "side": 1,
+      "message": "The right order of the values should be:\ntypedef enum\n{\n  NAT44_ED_TCP_FLAG_NONE \u003d 0,\n  NAT44_ED_TCP_FLAG_FIN,\n  NAT44_ED_TCP_FLAG_SYN,\n  NAT44_ED_TCP_FLAG_SYNFIN,\n  NAT44_ED_TCP_FLAG_RST,\n  NAT44_ED_TCP_FLAG_FINRST,\n  NAT44_ED_TCP_FLAG_SYNRST,\n  NAT44_ED_TCP_FLAG_SYNFINRST,\n  NAT44_ED_TCP_N_FLAG,\n} nat44_ed_tcp_flag_e;",
+      "revId": "fe7a75bc02f1c584827d1ce18e2bba66c4845c6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6ee3173f_b4a0e3e6",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_inlines.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 973,
+      "author": {
+        "id": 1961
+      },
+      "writtenOn": "2022-01-14T15:21:43Z",
+      "side": 1,
+      "message": "Missing a check for:\n      else if (f \u0026 TCP_FLAG_RST)\n        {\n          flag \u003d NAT44_ED_TCP_FLAG_RST;\n        }",
+      "revId": "fe7a75bc02f1c584827d1ce18e2bba66c4845c6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
