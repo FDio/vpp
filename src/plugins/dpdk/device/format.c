@@ -506,8 +506,8 @@ format_dpdk_burst_fn (u8 *s, va_list *args)
   p = (dir == VLIB_TX) ? rte_eth_fp_ops[xd->port_id].tx_pkt_burst :
 			 rte_eth_fp_ops[xd->port_id].rx_pkt_burst;
 
-  if (dladdr (p, &info) == 0)
-    return 0;
+  if (dladdr (p, &info) == 0 || info.dli_sname == 0)
+    return format (s, "(not available)");
 
   return format (s, "%s", info.dli_sname);
 }
@@ -670,7 +670,7 @@ format_dpdk_device (u8 * s, va_list * args)
 							      "");
     }
 
-  s = format (s, "%Urx burst function: %s\n", format_white_space, indent + 2,
+  s = format (s, "%Urx burst function: %U\n", format_white_space, indent + 2,
 	      format_dpdk_burst_fn, xd, VLIB_TX);
 
   /* $$$ MIB counters  */
