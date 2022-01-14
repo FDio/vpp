@@ -36,6 +36,42 @@
     },
     {
       "key": {
+        "uuid": "b64e0029_2de5d135",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-01-14T19:38:24Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "08ab871b_12215e19",
+      "revId": "fe7a75bc02f1c584827d1ce18e2bba66c4845c6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "087990a9_02023d84",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-01-14T19:38:24Z",
+      "side": 1,
+      "message": "That\u0027s smart, less code and faster, so I\u0027ve implemented this change. I wanted to check the possibility of something similar when I was writing the original code but it slipped out of my mind...\n\nPlease do push all the test cases you think are relevant. The more (reasonable) tests we have, the better.\n\nThanks for all your contributions.",
+      "parentUuid": "5cad313f_65443da9",
+      "revId": "fe7a75bc02f1c584827d1ce18e2bba66c4845c6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "6ee3173f_b4a0e3e6",
         "filename": "src/plugins/nat/nat44-ed/nat44_ed_inlines.h",
         "patchSetId": 9
