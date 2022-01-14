@@ -19,6 +19,23 @@
     },
     {
       "key": {
+        "uuid": "5cad313f_65443da9",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 1961
+      },
+      "writtenOn": "2022-01-14T18:04:58Z",
+      "side": 1,
+      "message": "This order is actually not an issue, sorry.\nOn the other hand, if the order was the same as the actual bits, then no lookup table would be necessary. flags \u0026\u003d (TCP_FLAG_SYN | TCP_FLAG_FIN | TCP_FLAG_RST)",
+      "revId": "fe7a75bc02f1c584827d1ce18e2bba66c4845c6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "6ee3173f_b4a0e3e6",
         "filename": "src/plugins/nat/nat44-ed/nat44_ed_inlines.h",
         "patchSetId": 9
