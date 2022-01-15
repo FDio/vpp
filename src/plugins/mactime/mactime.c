@@ -637,7 +637,8 @@ show_mactime_command_fn (vlib_main_t * vm,
 
     print:
       vec_reset_length (macstring);
-      macstring = format (0, "%U", format_mac_address, dp->mac_address);
+      macstring =
+	format (macstring, "%U", format_mac_address, dp->mac_address);
       switch (current_status)
 	{
 	case 0:
