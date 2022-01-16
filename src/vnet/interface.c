@@ -768,18 +768,25 @@ sw_interface_walk_callback (vnet_main_t * vnm, u32 sw_if_index, void *ctx)
   return WALK_CONTINUE;
 }
 
-void
-vnet_hw_interface_set_mtu (vnet_main_t * vnm, u32 hw_if_index, u32 mtu)
+clib_error_t *
+vnet_hw_interface_set_mtu (vnet_main_t *vnm, u32 hw_if_index, u32 mtu)
 {
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
 
   if (hi->max_packet_bytes != mtu)
     {
+      if (mtu > hi->max_supported_packet_bytes ||
+	  mtu < hi->min_supported_packet_bytes)
+	return vnet_error (VNET_ERR_INVALID_VALUE,
+			   "requested mtu must be in the %u to %u range",
+			   hi->min_supported_packet_bytes,
+			   hi->max_supported_packet_bytes);
       hi->max_packet_bytes = mtu;
       ethernet_set_flags (vnm, hw_if_index, ETHERNET_INTERFACE_FLAG_MTU);
       vnet_hw_interface_walk_sw (vnm, hw_if_index, sw_interface_walk_callback,
 				 &mtu);
     }
+  return 0;
 }
 
 static void

@@ -28,6 +28,11 @@ M:	Dave Barach <vpp@barachs.net>
 F:	build-root/Makefile
 F:	build-data/
 
+VNET
+I:	vnet
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/vnet/error.*
+
 VNET Link Bonding
 I:	bonding
 M:	Steven Luong <sluong@cisco.com>

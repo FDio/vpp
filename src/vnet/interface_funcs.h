@@ -431,7 +431,8 @@ clib_error_t *set_hw_interface_rx_placement (u32 hw_if_index, u32 queue_id,
 int set_hw_interface_tx_queue (u32 hw_if_index, u32 queue_id, uword *bitmap);
 
 /* Set the MTU on the HW interface */
-void vnet_hw_interface_set_mtu (vnet_main_t * vnm, u32 hw_if_index, u32 mtu);
+clib_error_t *vnet_hw_interface_set_mtu (vnet_main_t *vnm, u32 hw_if_index,
+					 u32 mtu);
 
 /* Set the MTU on the SW interface */
 void vnet_sw_interface_set_mtu (vnet_main_t * vnm, u32 sw_if_index, u32 mtu);
