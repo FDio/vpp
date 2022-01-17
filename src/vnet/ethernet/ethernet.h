@@ -133,8 +133,8 @@ typedef struct
   /* ethernet interface flags change */
   ethernet_flag_change_function_t *flag_change;
 
-  /* set MTU callback */
-  vnet_interface_set_mtu_function_t *set_mtu;
+  /* set Max Frame Size callback */
+  vnet_interface_set_max_frame_size_function_t *set_max_frame_size;
 } vnet_eth_if_callbacks_t;
 
 #define ETHERNET_MIN_PACKET_BYTES  64
@@ -576,6 +576,8 @@ typedef struct
 {
   u32 dev_class_index;
   u32 dev_instance;
+  u16 max_frame_size;
+  u16 frame_overhead;
   vnet_eth_if_callbacks_t cb;
   const u8 *address;
 } vnet_eth_interface_registration_t;
