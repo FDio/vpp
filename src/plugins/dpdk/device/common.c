@@ -61,6 +61,7 @@ dpdk_device_setup (dpdk_device_t * xd)
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, xd->sw_if_index);
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, xd->hw_if_index);
+  u16 buf_sz = vlib_buffer_get_default_data_size (vm);
   vnet_hw_if_caps_change_t caps = {};
   struct rte_eth_dev_info dev_info;
   struct rte_eth_conf conf = {};
@@ -161,49 +162,51 @@ dpdk_device_setup (dpdk_device_t * xd)
 
 #if RTE_VERSION < RTE_VERSION_NUM(21, 11, 0, 0)
   if (rxo & DEV_RX_OFFLOAD_JUMBO_FRAME)
-    conf.rxmode.max_rx_pkt_len =
-      clib_min (ETHERNET_MAX_PACKET_BYTES, dev_info.max_rx_pktlen);
+    {
+      conf.rxmode.max_rx_pkt_len = dev_info.max_rx_pktlen;
+      xd->max_supported_frame_size = dev_info.max_rx_pktlen;
+      mtu = xd->max_supported_frame_size - xd->driver_frame_overhead;
+    }
+  else
+    {
+      mtu = 1500;
+      xd->max_supported_frame_size = mtu + xd->driver_frame_overhead;
+    }
 #else
-  dpdk_log_debug ("[%u] min_mtu: %u, max_mtu: %u, min_rx_bufsize: %u, "
-		  "max_rx_pktlen: %u, max_lro_pkt_size: %u",
-		  xd->port_id, dev_info.min_mtu, dev_info.max_mtu,
-		  dev_info.min_rx_bufsize, dev_info.max_rx_pktlen,
-		  dev_info.max_lro_pkt_size);
+  if (xd->conf.disable_multi_seg)
+    xd->max_supported_frame_size = clib_min (dev_info.max_rx_pktlen, buf_sz);
+  else
+    xd->max_supported_frame_size = dev_info.max_rx_pktlen;
+#endif
 
-  mtu = xd->conf.disable_multi_seg ? 2000 : ETHERNET_MAX_PACKET_BYTES;
-  conf.rxmode.mtu = clib_min (mtu, dev_info.max_rx_pktlen);
+  mtu = clib_min (xd->max_supported_frame_size - xd->driver_frame_overhead,
+		  ethernet_main.default_mtu);
+  mtu = mtu + hi->frame_overhead - xd->driver_frame_overhead;
+
+#if RTE_VERSION >= RTE_VERSION_NUM(21, 11, 0, 0)
+  conf.rxmode.mtu = mtu;
 #endif
 
 retry:
   rv = rte_eth_dev_configure (xd->port_id, xd->conf.n_rx_queues,
 			      xd->conf.n_tx_queues, &conf);
-
   if (rv < 0 && conf.intr_conf.rxq)
     {
       conf.intr_conf.rxq = 0;
       goto retry;
     }
 
-  if (rv < 0)
-    {
-      dpdk_device_error (xd, "rte_eth_dev_configure", rv);
-      goto error;
-    }
+#if RTE_VERSION < RTE_VERSION_NUM(21, 11, 0, 0)
+  rte_eth_dev_set_mtu (xd->port_id, mtu);
+#endif
 
-  rte_eth_dev_get_mtu (xd->port_id, &mtu);
-  dpdk_log_debug ("[%u] device default mtu %u", xd->port_id, mtu);
-
-  hi->max_supported_packet_bytes = mtu;
-  if (hi->max_packet_bytes > mtu)
-    {
-      vnet_hw_interface_set_mtu (vnm, xd->hw_if_index, mtu);
-    }
-  else
-    {
-      rte_eth_dev_set_mtu (xd->port_id, hi->max_packet_bytes);
-      dpdk_log_debug ("[%u] port mtu set to %u", xd->port_id,
-		      hi->max_packet_bytes);
-    }
+  hi->max_frame_size = 0;
+  vnet_hw_interface_set_max_frame_size (vnm, xd->hw_if_index,
+					mtu + hi->frame_overhead);
+  dpdk_log_debug ("[%u] mtu %u max_frame_size %u max max_frame_size %u "
+		  "driver_frame_overhead %u",
+		  xd->port_id, mtu, hi->max_frame_size,
+		  xd->max_supported_frame_size, xd->driver_frame_overhead);
 
   vec_validate_aligned (xd->tx_queues, xd->conf.n_tx_queues - 1,
 			CLIB_CACHE_LINE_BYTES);

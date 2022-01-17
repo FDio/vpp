@@ -683,12 +683,10 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
     }
   if (vif->type == VIRTIO_IF_TYPE_TUN)
     {
-      hw->max_supported_packet_bytes = TUN_MAX_PACKET_BYTES;
-      hw->min_packet_bytes = hw->min_supported_packet_bytes =
-	TUN_MIN_PACKET_BYTES;
-      hw->max_packet_bytes =
-	args->host_mtu_size ? args->host_mtu_size : TUN_DEFAULT_PACKET_BYTES;
-      vnet_sw_interface_set_mtu (vnm, hw->sw_if_index, hw->max_packet_bytes);
+      hw->min_frame_size = TUN_MIN_PACKET_BYTES;
+      vnet_hw_interface_set_mtu (
+	vnm, hw->sw_if_index,
+	args->host_mtu_size ? args->host_mtu_size : TUN_DEFAULT_PACKET_BYTES);
     }
 
   vnet_hw_if_change_caps (vnm, vif->hw_if_index, &cc);
