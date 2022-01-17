@@ -331,6 +331,8 @@ dpdk_lib_init (dpdk_main_t * dm)
       if (devconf->num_tx_queues > 0 &&
 	  devconf->num_tx_queues < xd->conf.n_tx_queues)
 	xd->conf.n_tx_queues = devconf->num_tx_queues;
+      /*number of Tx queues can not larger than the physical size*/
+      xd->conf.n_tx_queues = clib_min (di.max_tx_queues, xd->conf.n_tx_queues);
 
       if (devconf->num_rx_queues > 1 &&
 	  di.max_rx_queues >= devconf->num_rx_queues)
