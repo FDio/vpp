@@ -70,11 +70,15 @@ const struct
 };
 
 static clib_error_t *
-dpdk_set_mtu (vnet_main_t *vnm, vnet_hw_interface_t *hi, u32 mtu)
+dpdk_set_max_frame_size (vnet_main_t *vnm, vnet_hw_interface_t *hi,
+			 u32 frame_size)
 {
   dpdk_main_t *dm = &dpdk_main;
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, hi->dev_instance);
   int rv;
+  u32 mtu;
+
+  mtu = frame_size - xd->driver_frame_overhead;
 
   rv = rte_eth_dev_set_mtu (xd->port_id, mtu);
 
@@ -99,7 +103,8 @@ dpdk_set_mtu (vnet_main_t *vnm, vnet_hw_interface_t *hi, u32 mtu)
 	}
     }
   else
-    dpdk_log_debug ("[%u] mtu set to %u", xd->port_id, mtu);
+    dpdk_log_debug ("[%u] max_frame_size set to %u by setting MTU to %u",
+		    xd->port_id, frame_size, mtu);
 
   return 0;
 }
@@ -376,6 +381,21 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  xd->conf.rss_hf &= di.flow_type_rss_offloads;
 	}
 
+      xd->driver_frame_overhead =
+	RTE_ETHER_HDR_LEN + 2 * RTE_VLAN_HLEN + RTE_ETHER_CRC_LEN;
+#if RTE_VERSION >= RTE_VERSION_NUM(21, 11, 0, 0)
+      q = di.max_rx_pktlen - di.max_mtu;
+
+      if (q < xd->driver_frame_overhead && q > 0)
+	xd->driver_frame_overhead = q;
+      dpdk_log_debug ("[%u] min_mtu: %u, max_mtu: %u, min_rx_bufsize: %u, "
+		      "max_rx_pktlen: %u, max_lro_pkt_size: %u",
+		      xd->port_id, di.min_mtu, di.max_mtu, di.min_rx_bufsize,
+		      di.max_rx_pktlen, di.max_lro_pkt_size);
+#endif
+      dpdk_log_debug ("[%u] driver frame overhead is %u", port_id,
+		      xd->driver_frame_overhead);
+
       /* number of RX and TX tescriptors */
       if (devconf->num_rx_desc)
 	xd->conf.n_rx_desc = devconf->num_rx_desc;
@@ -397,7 +417,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       eir.dev_instance = xd->device_index;
       eir.address = addr;
       eir.cb.flag_change = dpdk_flag_change;
-      eir.cb.set_mtu = dpdk_set_mtu;
+      eir.cb.set_max_frame_size = dpdk_set_max_frame_size;
       xd->hw_if_index = vnet_eth_register_interface (vnm, &eir);
       hi = vnet_get_hw_interface (vnm, xd->hw_if_index);
       hi->numa_node = xd->cpu_socket = (i8) rte_eth_dev_socket_id (port_id);

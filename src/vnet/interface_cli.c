@@ -1167,20 +1167,10 @@ mtu_cmd (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
        * Change physical MTU on interface. Only supported for Ethernet
        * interfaces
        */
-      vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
       ethernet_interface_t *eif = ethernet_get_interface (em, hw_if_index);
 
       if (!eif)
 	return clib_error_return (0, "not supported");
-
-      if (mtu < hi->min_supported_packet_bytes)
-	return clib_error_return (0, "Invalid mtu (%d): "
-				  "must be >= min pkt bytes (%d)", mtu,
-				  hi->min_supported_packet_bytes);
-
-      if (mtu > hi->max_supported_packet_bytes)
-	return clib_error_return (0, "Invalid mtu (%d): must be <= (%d)", mtu,
-				  hi->max_supported_packet_bytes);
 
       err = vnet_hw_interface_set_mtu (vnm, hw_if_index, mtu);
       if (err)

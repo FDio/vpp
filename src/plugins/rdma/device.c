@@ -184,7 +184,8 @@ rdma_mac_change (vnet_hw_interface_t * hw, const u8 * old, const u8 * new)
 }
 
 static clib_error_t *
-rdma_set_mtu (vnet_main_t *vnm, vnet_hw_interface_t *hw, u32 mtu)
+rdma_set_max_frame_size (vnet_main_t *vnm, vnet_hw_interface_t *hw,
+			 u32 frame_size)
 {
   return vnet_error (VNET_ERR_UNSUPPORTED, 0);
 }
@@ -358,7 +359,7 @@ rdma_register_interface (vnet_main_t * vnm, rdma_device_t * rd)
   eir.dev_instance = rd->dev_instance;
   eir.address = rd->hwaddr.bytes;
   eir.cb.flag_change = rdma_flag_change;
-  eir.cb.set_mtu = rdma_set_mtu;
+  eir.cb.set_max_frame_size = rdma_set_max_frame_size;
   rd->hw_if_index = vnet_eth_register_interface (vnm, &eir);
   /* Indicate ability to support L3 DMAC filtering and
    * initialize interface to L3 non-promisc mode */

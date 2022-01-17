@@ -57,13 +57,15 @@ unsigned int if_nametoindex (const char *ifname);
 typedef struct tpacket_req tpacket_req_t;
 
 static clib_error_t *
-af_packet_eth_set_mtu (vnet_main_t *vnm, vnet_hw_interface_t *hi, u32 mtu)
+af_packet_eth_set_max_frame_size (vnet_main_t *vnm, vnet_hw_interface_t *hi,
+				  u32 frame_size)
 {
   clib_error_t *error, *rv;
   af_packet_main_t *apm = &af_packet_main;
   af_packet_if_t *apif = pool_elt_at_index (apm->interfaces, hi->dev_instance);
 
-  error = vnet_netlink_set_link_mtu (apif->host_if_index, mtu);
+  error = vnet_netlink_set_link_mtu (apif->host_if_index,
+				     frame_size + hi->frame_overhead);
 
   if (error)
     {
@@ -75,7 +77,7 @@ af_packet_eth_set_mtu (vnet_main_t *vnm, vnet_hw_interface_t *hi, u32 mtu)
       return rv;
     }
   else
-    apif->host_mtu = mtu;
+    apif->host_mtu = frame_size + hi->frame_overhead;
   return 0;
 }
 
@@ -398,7 +400,7 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
       eir.dev_class_index = af_packet_device_class.index;
       eir.dev_instance = if_index;
       eir.address = hw_addr;
-      eir.cb.set_mtu = af_packet_eth_set_mtu;
+      eir.cb.set_max_frame_size = af_packet_eth_set_max_frame_size;
       apif->hw_if_index = vnet_eth_register_interface (vnm, &eir);
     }
   else
