@@ -782,13 +782,11 @@ ipip_add_tunnel (ipip_transport_t transport,
   gm->tunnel_index_by_sw_if_index[sw_if_index] = t_idx;
 
   if (t->transport == IPIP_TRANSPORT_IP4)
-    {
-      hi->min_packet_bytes = 64 + sizeof (ip4_header_t);
-    }
+    hi->frame_overhead = sizeof (ip4_header_t);
   else
-    {
-      hi->min_packet_bytes = 64 + sizeof (ip6_header_t);
-    }
+    hi->frame_overhead = sizeof (ip6_header_t);
+
+  hi->min_frame_size = hi->frame_overhead + 64;
 
   /* Standard default ipip MTU. */
   vnet_sw_interface_set_mtu (vnm, sw_if_index, 9000);

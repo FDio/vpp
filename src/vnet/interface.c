@@ -769,29 +769,36 @@ sw_interface_walk_callback (vnet_main_t * vnm, u32 sw_if_index, void *ctx)
 }
 
 clib_error_t *
-vnet_hw_interface_set_mtu (vnet_main_t *vnm, u32 hw_if_index, u32 mtu)
+vnet_hw_interface_set_max_frame_size (vnet_main_t *vnm, u32 hw_if_index,
+				      u32 fs)
 {
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
   vnet_hw_interface_class_t *hw_if_class =
     vnet_get_hw_interface_class (vnm, hi->hw_class_index);
   clib_error_t *err = 0;
 
-  if (hi->max_packet_bytes != mtu)
+  log_debug ("set_max_frame_size: interface %s, max_frame_size %u -> %u",
+	     hi->name, hi->max_frame_size, fs);
+
+  if (hi->max_frame_size != fs)
     {
-      if (mtu > hi->max_supported_packet_bytes ||
-	  mtu < hi->min_supported_packet_bytes)
-	return vnet_error (VNET_ERR_INVALID_VALUE,
-			   "requested mtu must be in the %u to %u range",
-			   hi->min_supported_packet_bytes,
-			   hi->max_supported_packet_bytes);
-      if (hw_if_class->set_mtu)
-	if ((err = hw_if_class->set_mtu (vnm, hi, mtu)))
+      u32 mtu;
+      if (hw_if_class->set_max_frame_size)
+	if ((err = hw_if_class->set_max_frame_size (vnm, hi, fs)))
 	  return err;
-      hi->max_packet_bytes = mtu;
+      hi->max_frame_size = fs;
+      mtu = fs - hi->frame_overhead;
       vnet_hw_interface_walk_sw (vnm, hw_if_index, sw_interface_walk_callback,
 				 &mtu);
     }
   return 0;
+}
+clib_error_t *
+vnet_hw_interface_set_mtu (vnet_main_t *vnm, u32 hw_if_index, u32 mtu)
+{
+  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
+  return vnet_hw_interface_set_max_frame_size (vnm, hw_if_index,
+					       mtu + hi->frame_overhead);
 }
 
 static void
@@ -910,7 +917,6 @@ vnet_register_interface (vnet_main_t * vnm,
   hw->hw_instance = hw_instance;
 
   hw->max_rate_bits_per_sec = 0;
-  hw->min_packet_bytes = 0;
   vnet_sw_interface_set_mtu (vnm, hw->sw_if_index, 0);
 
   if (dev_class->tx_function == 0 && dev_class->tx_fn_registrations == 0)

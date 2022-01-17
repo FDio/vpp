@@ -447,13 +447,13 @@ vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t * a,
 
   if (!is_ipv6)
     {
-      hi->min_packet_bytes =
-	64 + sizeof (gre_header_t) + sizeof (ip4_header_t);
+      hi->frame_overhead = sizeof (gre_header_t) + sizeof (ip4_header_t);
+      hi->min_frame_size = hi->frame_overhead + 64;
     }
   else
     {
-      hi->min_packet_bytes =
-	64 + sizeof (gre_header_t) + sizeof (ip6_header_t);
+      hi->frame_overhead = sizeof (gre_header_t) + sizeof (ip6_header_t);
+      hi->min_frame_size = hi->frame_overhead + 64;
     }
 
   /* Standard default gre MTU. */

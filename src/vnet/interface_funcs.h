@@ -310,7 +310,7 @@ always_inline u32
 vnet_hw_interface_get_mtu (vnet_main_t * vnm, u32 hw_if_index)
 {
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
-  return hw->max_packet_bytes;
+  return hw->max_frame_size - hw->frame_overhead;
 }
 
 always_inline u32
@@ -430,6 +430,10 @@ clib_error_t *set_hw_interface_rx_placement (u32 hw_if_index, u32 queue_id,
 /* Set tx-queue placement on the interface */
 int set_hw_interface_tx_queue (u32 hw_if_index, u32 queue_id, uword *bitmap);
 
+/* Set the Max Frame Size on the HW interface */
+clib_error_t *vnet_hw_interface_set_max_frame_size (vnet_main_t *vnm,
+						    u32 hw_if_index,
+						    u32 max_frame_size);
 /* Set the MTU on the HW interface */
 clib_error_t *vnet_hw_interface_set_mtu (vnet_main_t *vnm, u32 hw_if_index,
 					 u32 mtu);

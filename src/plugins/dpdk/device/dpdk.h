@@ -200,6 +200,13 @@ typedef struct
   /* mac address */
   u8 *default_mac_address;
 
+  /* maximum supported max frame size */
+  u16 max_supported_frame_size;
+
+  /* due to lack of API to get ethernet max_frame_size we store information
+   * deducted from device info */
+  u8 driver_frame_overhead;
+
   /* error string */
   clib_error_t *errors;
   dpdk_port_conf_t conf;

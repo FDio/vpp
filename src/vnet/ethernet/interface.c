@@ -311,13 +311,14 @@ ethernet_mac_change (vnet_hw_interface_t * hi,
 }
 
 static clib_error_t *
-ethernet_set_mtu (vnet_main_t *vnm, vnet_hw_interface_t *hi, u32 mtu)
+ethernet_set_max_frame_size (vnet_main_t *vnm, vnet_hw_interface_t *hi,
+			     u32 frame_size)
 {
   ethernet_interface_t *ei =
     pool_elt_at_index (ethernet_main.interfaces, hi->hw_instance);
 
-  if (ei->cb.set_mtu)
-    return ei->cb.set_mtu (vnm, hi, mtu);
+  if (ei->cb.set_max_frame_size)
+    return ei->cb.set_max_frame_size (vnm, hi, frame_size);
 
   return 0;
 }
@@ -333,7 +334,7 @@ VNET_HW_INTERFACE_CLASS (ethernet_hw_interface_class) = {
   .build_rewrite = ethernet_build_rewrite,
   .update_adjacency = ethernet_update_adjacency,
   .mac_addr_change_function = ethernet_mac_change,
-  .set_mtu = ethernet_set_mtu,
+  .set_max_frame_size = ethernet_set_max_frame_size,
 };
 /* *INDENT-ON* */
 
@@ -378,10 +379,15 @@ vnet_eth_register_interface (vnet_main_t *vnm,
 
   ethernet_setup_node (vnm->vlib_main, hi->output_node_index);
 
-  hi->min_packet_bytes = hi->min_supported_packet_bytes =
-    ETHERNET_MIN_PACKET_BYTES;
-  hi->max_supported_packet_bytes = ETHERNET_MAX_PACKET_BYTES;
-  hi->max_packet_bytes = em->default_mtu;
+  hi->min_frame_size = ETHERNET_MIN_PACKET_BYTES;
+  hi->frame_overhead =
+    r->frame_overhead ?
+	    r->max_frame_size :
+	    sizeof (ethernet_header_t) + 2 * sizeof (ethernet_vlan_header_t);
+  hi->max_frame_size = r->max_frame_size ?
+			       r->max_frame_size :
+			       ethernet_main.default_mtu + hi->frame_overhead;
+  ;
 
   /* Default ethernet MTU, 9000 unless set by ethernet_config see below */
   vnet_sw_interface_set_mtu (vnm, hi->sw_if_index, em->default_mtu);

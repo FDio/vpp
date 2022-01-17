@@ -71,7 +71,7 @@ typedef clib_error_t *(vnet_subif_add_del_function_t)
    struct vnet_sw_interface_t * template, int is_add);
 
 /* Interface set mtu callback. */
-typedef clib_error_t *(vnet_interface_set_mtu_function_t) (
+typedef clib_error_t *(vnet_interface_set_max_frame_size_function_t) (
   struct vnet_main_t *vnm, struct vnet_hw_interface_t *hi, u32 mtu);
 
 /* Interface set mac address callback. */
@@ -432,8 +432,9 @@ typedef struct _vnet_hw_interface_class
 
   /* Function to add/delete additional MAC addresses */
   vnet_interface_add_del_mac_address_function_t *mac_addr_add_del_function;
-  /* Function to set mtu. */
-  vnet_interface_set_mtu_function_t *set_mtu;
+
+  /* Function to set max frame size. */
+  vnet_interface_set_max_frame_size_function_t *set_max_frame_size;
 
   /* Format function to display interface name. */
   format_function_t *format_interface_name;
@@ -701,17 +702,14 @@ typedef struct vnet_hw_interface_t
   /* Maximum transmit rate for this interface in bits/sec. */
   f64 max_rate_bits_per_sec;
 
-  /* Smallest packet size supported by this interface. */
-  u32 min_supported_packet_bytes;
-
-  /* Largest packet size supported by this interface. */
-  u32 max_supported_packet_bytes;
-
   /* Smallest packet size for this interface. */
-  u32 min_packet_bytes;
+  u32 min_frame_size;
 
-  /* Largest packet size for this interface. */
-  u32 max_packet_bytes;
+  /* Largest frame size for this interface. */
+  u32 max_frame_size;
+
+  /* Layer 2 overhead */
+  u16 frame_overhead;
 
   /* Hash table mapping sub interface id to sw_if_index. */
   uword *sub_interface_sw_if_index_by_id;

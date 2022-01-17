@@ -258,7 +258,7 @@ send_sw_interface_details (vpe_api_main_t * am,
   mp->link_duplex = ntohl (((hi->flags & VNET_HW_INTERFACE_FLAG_DUPLEX_MASK) >>
 			    VNET_HW_INTERFACE_FLAG_DUPLEX_SHIFT));
   mp->link_speed = ntohl (hi->link_speed);
-  mp->link_mtu = ntohs (hi->max_packet_bytes);
+  mp->link_mtu = ntohs (hi->max_frame_size - hi->frame_overhead);
   mp->mtu[VNET_MTU_L3] = ntohl (swif->mtu[VNET_MTU_L3]);
   mp->mtu[VNET_MTU_IP4] = ntohl (swif->mtu[VNET_MTU_IP4]);
   mp->mtu[VNET_MTU_IP6] = ntohl (swif->mtu[VNET_MTU_IP6]);

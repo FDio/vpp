@@ -68,7 +68,8 @@ af_xdp_mac_change (vnet_hw_interface_t * hw, const u8 * old, const u8 * new)
 }
 
 static clib_error_t *
-af_xdp_set_mtu (vnet_main_t *vnm, vnet_hw_interface_t *hw, u32 mtu)
+af_xdp_set_max_frame_size (vnet_main_t *vnm, vnet_hw_interface_t *hw,
+			   u32 frame_size)
 {
   af_xdp_main_t *am = &af_xdp_main;
   af_xdp_device_t *ad = vec_elt_at_index (am->devices, hw->dev_instance);
@@ -657,7 +658,7 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
   eir.dev_instance = ad->dev_instance;
   eir.address = ad->hwaddr;
   eir.cb.flag_change = af_xdp_flag_change;
-  eir.cb.set_mtu = af_xdp_set_mtu;
+  eir.cb.set_max_frame_size = af_xdp_set_max_frame_size;
   ad->hw_if_index = vnet_eth_register_interface (vnm, &eir);
 
   sw = vnet_get_hw_sw_interface (vnm, ad->hw_if_index);
