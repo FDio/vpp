@@ -1,0 +1,47 @@
+From 27c5c59aaf29236ba178ad18e399d3d6d9574739 Mon Sep 17 00:00:00 2001
+From: Fan Zhang <roy.fan.zhang@intel.com>
+Date: Mon, 17 Jan 2022 15:22:18 +0000
+Subject: [PATCH] crypto/qat: fix raw data path aead
+
+This patch fixes raw data path AEAD operation for 4th QAT
+generation.
+
+Fixes: 328d690d2f60 ("crypto/qat: update raw data path")
+
+Signed-off-by: Fan Zhang <roy.fan.zhang@intel.com>
+---
+ drivers/crypto/qat/qat_sym_hw_dp.c | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/crypto/qat/qat_sym_hw_dp.c b/drivers/crypto/qat/qat_sym_hw_dp.c
+index 12825e448b..02875b822e 100644
+--- a/drivers/crypto/qat/qat_sym_hw_dp.c
++++ b/drivers/crypto/qat/qat_sym_hw_dp.c
+@@ -520,6 +520,8 @@ enqueue_one_aead_job(struct qat_sym_session *ctx,
+ {
+ 	struct icp_qat_fw_la_cipher_req_params *cipher_param =
+ 		(void *)&req->serv_specif_rqpars;
++	struct icp_qat_fw_la_cipher_20_req_params *cipher_param20 =
++		(void *)&req->serv_specif_rqpars;
+ 	struct icp_qat_fw_la_auth_req_params *auth_param =
+ 		(void *)((uint8_t *)&req->serv_specif_rqpars +
+ 		ICP_QAT_FW_HASH_REQUEST_PARAMETERS_OFFSET);
+@@ -533,8 +535,13 @@ enqueue_one_aead_job(struct qat_sym_session *ctx,
+ 	/* CPM 1.7 uses single pass to treat AEAD as cipher operation */
+ 	if (ctx->is_single_pass) {
+ 		enqueue_one_cipher_job(ctx, req, iv, ofs, data_len);
+-		cipher_param->spc_aad_addr = aad->iova;
+-		cipher_param->spc_auth_res_addr = digest->iova;
++		if (ctx->is_ucs) {
++			cipher_param20->spc_aad_addr = aad->iova;
++			cipher_param20->spc_auth_res_addr = digest->iova;
++		} else {
++			cipher_param->spc_aad_addr = aad->iova;
++			cipher_param->spc_auth_res_addr = digest->iova;
++		}
+ 		return;
+ 	}
+ 
+-- 
+2.25.1
+
