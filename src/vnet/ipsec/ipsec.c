@@ -408,10 +408,7 @@ ipsec_set_async_mode (u32 is_enabled)
 
   /* change SA crypto op data */
   pool_foreach (sa, ipsec_sa_pool)
-    {
-      sa->crypto_op_data =
-	(is_enabled ? sa->async_op_data.data : sa->sync_op_data.data);
-    }
+    ipsec_sa_set_async_mode (sa, is_enabled);
 }
 
 static void

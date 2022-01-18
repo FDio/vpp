@@ -85,9 +85,6 @@ typedef struct esp_aead_t_
 } __clib_packed esp_aead_t;
 
 #define ESP_SEQ_MAX		(4294967295UL)
-#define ESP_MAX_BLOCK_SIZE	(16)
-#define ESP_MAX_IV_SIZE		(16)
-#define ESP_MAX_ICV_SIZE	(32)
 
 u8 *format_esp_header (u8 * s, va_list * args);
 

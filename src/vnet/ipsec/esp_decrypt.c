@@ -601,7 +601,7 @@ esp_decrypt_prepare_async_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
   esp_decrypt_packet_data_t *async_pd = &(esp_post_data (b))->decrypt_data;
   esp_decrypt_packet_data2_t *async_pd2 = esp_post_data2 (b);
   u8 *tag = payload + len, *iv = payload + esp_sz, *aad = 0;
-  u32 key_index;
+  const u32 key_index = sa0->crypto_key_index;
   u32 crypto_len, integ_len = 0;
   i16 crypto_start_offset, integ_start_offset = 0;
   u8 flags = 0;
@@ -609,7 +609,6 @@ esp_decrypt_prepare_async_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
   if (!ipsec_sa_is_set_IS_AEAD (sa0))
     {
       /* linked algs */
-      key_index = sa0->linked_key_index;
       integ_start_offset = payload - b->data;
       integ_len = len;
       if (PREDICT_TRUE (sa0->integ_op_id != VNET_CRYPTO_OP_NONE))
@@ -662,8 +661,6 @@ esp_decrypt_prepare_async_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
       else
 	esp_insert_esn (vm, sa0, pd, pd2, &integ_len, &tag, &len, b, payload);
     }
-  else
-    key_index = sa0->crypto_key_index;
 
 out:
   /* crypto */
@@ -1092,7 +1089,7 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  is_async = im->async_mode | ipsec_sa_is_set_IS_ASYNC (sa0);
 	}
 
-      if (PREDICT_FALSE (~0 == sa0->thread_index))
+      if (PREDICT_FALSE ((u16) ~0 == sa0->thread_index))
 	{
 	  /* this is the first packet to use this SA, claim the SA
 	   * for this thread. this could happen simultaneously on
