@@ -39,8 +39,8 @@ vl_api_det44_add_del_map_t_handler (vl_api_det44_add_del_map_t * mp)
   ip4_address_t in_addr, out_addr;
   clib_memcpy (&in_addr, mp->in_addr, 4);
   clib_memcpy (&out_addr, mp->out_addr, 4);
-  rv = snat_det_add_map (&in_addr, mp->in_plen, &out_addr,
-			 mp->out_plen, mp->is_add);
+  rv = snat_det_add_map (&in_addr, mp->in_plen, &out_addr, mp->out_plen, ~0,
+			 ~0, ~0, ~0, mp->is_add);
   REPLY_MACRO (VL_API_DET44_ADD_DEL_MAP_REPLY);
 }
 
@@ -154,7 +154,6 @@ vl_api_det44_close_session_out_t_handler (vl_api_det44_close_session_out_t
   ip4_address_t out_addr, ext_addr, in_addr;
   snat_det_out_key_t key;
   snat_det_map_t *m;
-  snat_det_session_t *ses;
   int rv = 0;
 
   clib_memcpy (&out_addr, mp->out_addr, 4);
@@ -170,13 +169,13 @@ vl_api_det44_close_session_out_t_handler (vl_api_det44_close_session_out_t
   key.ext_host_addr = ext_addr;
   key.ext_host_port = mp->ext_port;
   key.out_port = mp->out_port;
-  ses = snat_det_get_ses_by_out (m, &in_addr, key.as_u64);
-  if (!ses)
+
+  u32 count = snat_det_close_ses_by_out (m, &in_addr, key.as_u64);
+  if (0 == count)
     {
       rv = VNET_API_ERROR_NO_SUCH_ENTRY;
       goto send_reply;
     }
-  snat_det_ses_close (m, ses);
 
 send_reply:
   REPLY_MACRO (VL_API_DET44_CLOSE_SESSION_OUT_REPLY);
@@ -190,7 +189,6 @@ vl_api_det44_close_session_in_t_handler (vl_api_det44_close_session_in_t * mp)
   ip4_address_t in_addr, ext_addr;
   snat_det_out_key_t key;
   snat_det_map_t *m;
-  snat_det_session_t *ses;
   int rv = 0;
 
   clib_memcpy (&in_addr, mp->in_addr, 4);
@@ -204,13 +202,12 @@ vl_api_det44_close_session_in_t_handler (vl_api_det44_close_session_in_t * mp)
     }
   key.ext_host_addr = ext_addr;
   key.ext_host_port = mp->ext_port;
-  ses = snat_det_find_ses_by_in (m, &in_addr, mp->in_port, key);
-  if (!ses)
+  u32 count = snat_det_close_ses_by_in (m, &in_addr, mp->in_port, key);
+  if (0 == count)
     {
       rv = VNET_API_ERROR_NO_SUCH_ENTRY;
       goto send_reply;
     }
-  snat_det_ses_close (m, ses);
 
 send_reply:
   REPLY_MACRO (VL_API_DET44_CLOSE_SESSION_OUT_REPLY);
@@ -256,7 +253,8 @@ vl_api_det44_session_dump_t_handler (vl_api_det44_session_dump_t * mp)
   if (!m)
     return;
 
-  s = m->sessions + snat_det_user_ses_offset (&user_addr, m->in_plen);
+  s = m->sessions +
+      snat_det_user_ses_offset (m->ses_per_user, &user_addr, m->in_plen);
   for (i = 0; i < DET44_SES_PER_USER; i++)
     {
       if (s->out.as_u64)
@@ -384,8 +382,8 @@ vl_api_nat_det_add_del_map_t_handler (vl_api_nat_det_add_del_map_t * mp)
 
   clib_memcpy (&in_addr, mp->in_addr, 4);
   clib_memcpy (&out_addr, mp->out_addr, 4);
-  rv = snat_det_add_map (&in_addr, mp->in_plen, &out_addr,
-			 mp->out_plen, mp->is_add);
+  rv = snat_det_add_map (&in_addr, mp->in_plen, &out_addr, mp->out_plen, ~0,
+			 ~0, ~0, ~0, mp->is_add);
   REPLY_MACRO (VL_API_NAT_DET_ADD_DEL_MAP_REPLY);
 }
 
@@ -499,7 +497,6 @@ vl_api_nat_det_close_session_out_t_handler (vl_api_nat_det_close_session_out_t
   ip4_address_t out_addr, ext_addr, in_addr;
   snat_det_out_key_t key;
   snat_det_map_t *m;
-  snat_det_session_t *ses;
   int rv = 0;
 
   clib_memcpy (&out_addr, mp->out_addr, 4);
@@ -515,13 +512,12 @@ vl_api_nat_det_close_session_out_t_handler (vl_api_nat_det_close_session_out_t
   key.ext_host_addr = ext_addr;
   key.ext_host_port = mp->ext_port;
   key.out_port = mp->out_port;
-  ses = snat_det_get_ses_by_out (m, &in_addr, key.as_u64);
-  if (!ses)
+  u32 count = snat_det_close_ses_by_out (m, &in_addr, key.as_u64);
+  if (0 == count)
     {
       rv = VNET_API_ERROR_NO_SUCH_ENTRY;
       goto send_reply;
     }
-  snat_det_ses_close (m, ses);
 
 send_reply:
   REPLY_MACRO (VL_API_NAT_DET_CLOSE_SESSION_OUT_REPLY);
@@ -536,7 +532,6 @@ vl_api_nat_det_close_session_in_t_handler (vl_api_nat_det_close_session_in_t *
   ip4_address_t in_addr, ext_addr;
   snat_det_out_key_t key;
   snat_det_map_t *m;
-  snat_det_session_t *ses;
   int rv = 0;
 
   clib_memcpy (&in_addr, mp->in_addr, 4);
@@ -550,13 +545,12 @@ vl_api_nat_det_close_session_in_t_handler (vl_api_nat_det_close_session_in_t *
     }
   key.ext_host_addr = ext_addr;
   key.ext_host_port = mp->ext_port;
-  ses = snat_det_find_ses_by_in (m, &in_addr, mp->in_port, key);
-  if (!ses)
+  u32 count = snat_det_close_ses_by_in (m, &in_addr, mp->in_port, key);
+  if (0 == count)
     {
       rv = VNET_API_ERROR_NO_SUCH_ENTRY;
       goto send_reply;
     }
-  snat_det_ses_close (m, ses);
 
 send_reply:
   REPLY_MACRO (VL_API_NAT_DET_CLOSE_SESSION_OUT_REPLY);
@@ -602,8 +596,9 @@ vl_api_nat_det_session_dump_t_handler (vl_api_nat_det_session_dump_t * mp)
   if (!m)
     return;
 
-  s = m->sessions + snat_det_user_ses_offset (&user_addr, m->in_plen);
-  for (i = 0; i < DET44_SES_PER_USER; i++)
+  s = m->sessions +
+      snat_det_user_ses_offset (m->ses_per_user, &user_addr, m->in_plen);
+  for (i = 0; i < m->ses_per_user; i++)
     {
       if (s->out.as_u64)
 	send_nat_det_session_details (s, reg, mp->context);

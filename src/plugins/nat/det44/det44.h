@@ -98,6 +98,8 @@ typedef struct
 
 typedef struct
 {
+  /* IP protocol */
+  ip_protocol_t proto;
   /* Inside network port */
   u16 in_port;
   /* Outside network address and port */
@@ -122,6 +124,19 @@ typedef struct
   u16 ports_per_host;
   /* session counter */
   u32 ses_num;
+  /* number of maximum sessions per user */
+  u32 ses_per_user;
+  /* number of maximum sessions */
+  u32 ses_max;
+
+  /* protocol offsets in sessions list */
+  u32 udp_start;
+  u32 udp_end;
+  u32 tcp_start;
+  u32 tcp_end;
+  u32 other_start;
+  u32 other_end;
+
   /* vector of sessions */
   snat_det_session_t *sessions;
 } snat_det_map_t;
@@ -232,6 +247,11 @@ extern vlib_node_registration_t det44_out2in_node;
 int det44_plugin_enable ();
 int det44_plugin_disable ();
 
+u32 snat_det_close_ses_by_in (snat_det_map_t *dm, ip4_address_t *in_addr,
+			      u16 in_port, snat_det_out_key_t out_key);
+u32 snat_det_close_ses_by_out (snat_det_map_t *dm, ip4_address_t *in_addr,
+			       u64 out_key);
+
 int det44_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del);
 
 int det44_set_timeouts (nat_timeouts_t * timeouts);
@@ -241,8 +261,10 @@ void det44_reset_timeouts ();
 /* format functions */
 format_function_t format_det_map_ses;
 
-int snat_det_add_map (ip4_address_t * in_addr, u8 in_plen,
-		      ip4_address_t * out_addr, u8 out_plen, int is_add);
+int snat_det_add_map (ip4_address_t *in_addr, u8 in_plen,
+		      ip4_address_t *out_addr, u8 out_plen, u32 ses_per_user,
+		      u32 tcp_per_user, u32 udp_per_user, u32 other_per_user,
+		      int is_add);
 
 /* icmp session match functions */
 u32 icmp_match_out2in_det (vlib_node_runtime_t * node,
@@ -335,78 +357,110 @@ snat_det_reverse (snat_det_map_t * dm, ip4_address_t * out_addr, u16 out_port,
 }
 
 static_always_inline u32
-snat_det_user_ses_offset (ip4_address_t * addr, u8 plen)
+snat_det_user_ses_offset (u32 ses_per_user, ip4_address_t *addr, u8 plen)
 {
   return (clib_net_to_host_u32 (addr->as_u32) & pow2_mask (32 - plen)) *
-    DET44_SES_PER_USER;
+	 ses_per_user;
 }
 
-static_always_inline snat_det_session_t *
-snat_det_get_ses_by_out (snat_det_map_t * dm, ip4_address_t * in_addr,
-			 u64 out_key)
+static_always_inline void
+det44_proto_ses_range (snat_det_map_t *dm, ip_protocol_t proto, u32 *start,
+		       u32 *end)
 {
-  u32 user_offset;
-  u16 i;
-
-  user_offset = snat_det_user_ses_offset (in_addr, dm->in_plen);
-  for (i = 0; i < DET44_SES_PER_USER; i++)
+  switch (ip_proto_to_nat_proto (proto))
     {
-      if (dm->sessions[i + user_offset].out.as_u64 == out_key)
-	return &dm->sessions[i + user_offset];
+    case NAT_PROTOCOL_TCP:
+      *start = dm->tcp_start;
+      *end = dm->tcp_end;
+      break;
+    case NAT_PROTOCOL_UDP:
+      *start = dm->udp_start;
+      *end = dm->udp_end;
+      break;
+    default:
+      *start = dm->other_start;
+      *end = dm->other_end;
     }
-
-  return 0;
 }
 
 static_always_inline snat_det_session_t *
-snat_det_find_ses_by_in (snat_det_map_t * dm, ip4_address_t * in_addr,
-			 u16 in_port, snat_det_out_key_t out_key)
+snat_det_get_ses_by_out (snat_det_map_t *dm, ip4_address_t *in_addr,
+			 u64 out_key, ip_protocol_t proto)
 {
   snat_det_session_t *ses;
-  u32 user_offset;
-  u16 i;
+  u32 user_offset, s, e;
 
-  user_offset = snat_det_user_ses_offset (in_addr, dm->in_plen);
-  for (i = 0; i < DET44_SES_PER_USER; i++)
+  user_offset =
+    snat_det_user_ses_offset (dm->ses_per_user, in_addr, dm->in_plen);
+  det44_proto_ses_range (dm, proto, &s, &e);
+
+  for (; s < e; s++)
     {
-      ses = &dm->sessions[i + user_offset];
-      if (ses->in_port == in_port &&
-	  ses->out.ext_host_addr.as_u32 == out_key.ext_host_addr.as_u32 &&
-	  ses->out.ext_host_port == out_key.ext_host_port)
-	return &dm->sessions[i + user_offset];
+      ses = &dm->sessions[s + user_offset];
+      if (ses->out.as_u64 == out_key && ses->proto == proto)
+	{
+	  return ses;
+	}
     }
-
   return 0;
 }
 
 static_always_inline snat_det_session_t *
-snat_det_ses_create (u32 thread_index, snat_det_map_t * dm,
-		     ip4_address_t * in_addr, u16 in_port,
-		     snat_det_out_key_t * out)
+snat_det_find_ses_by_in (snat_det_map_t *dm, ip4_address_t *in_addr,
+			 u16 in_port, snat_det_out_key_t out_key,
+			 ip_protocol_t proto)
 {
-  u32 user_offset;
-  u16 i;
+  snat_det_session_t *ses;
+  u32 user_offset, s, e;
 
-  user_offset = snat_det_user_ses_offset (in_addr, dm->in_plen);
+  user_offset =
+    snat_det_user_ses_offset (dm->ses_per_user, in_addr, dm->in_plen);
+  det44_proto_ses_range (dm, proto, &s, &e);
 
-  for (i = 0; i < DET44_SES_PER_USER; i++)
+  for (; s < e; s++)
     {
-      if (!dm->sessions[i + user_offset].in_port)
+      ses = &dm->sessions[s + user_offset];
+      if (ses->in_port == in_port &&
+	  ses->out.ext_host_addr.as_u32 == out_key.ext_host_addr.as_u32 &&
+	  ses->out.ext_host_port == out_key.ext_host_port &&
+	  ses->proto == proto)
 	{
-	  if (clib_atomic_bool_cmp_and_swap
-	      (&dm->sessions[i + user_offset].in_port, 0, in_port))
+	  return ses;
+	}
+    }
+  return 0;
+}
+
+static_always_inline snat_det_session_t *
+snat_det_ses_create (u32 thread_index, snat_det_map_t *dm,
+		     ip4_address_t *in_addr, u16 in_port,
+		     snat_det_out_key_t *out, ip_protocol_t proto)
+{
+  snat_det_session_t *ses;
+  u32 user_offset, s, e;
+
+  user_offset =
+    snat_det_user_ses_offset (dm->ses_per_user, in_addr, dm->in_plen);
+  det44_proto_ses_range (dm, proto, &s, &e);
+
+  for (; s < e; s++)
+    {
+      ses = &dm->sessions[s + user_offset];
+      if (!ses->in_port)
+	{
+	  if (clib_atomic_bool_cmp_and_swap (&ses->in_port, 0, in_port))
 	    {
-	      dm->sessions[i + user_offset].out.as_u64 = out->as_u64;
-	      dm->sessions[i + user_offset].state = DET44_SESSION_UNKNOWN;
-	      dm->sessions[i + user_offset].expire = 0;
+	      ses->out.as_u64 = out->as_u64;
+	      ses->state = DET44_SESSION_UNKNOWN;
+	      ses->expire = 0;
+	      ses->proto = proto;
 	      clib_atomic_add_fetch (&dm->ses_num, 1);
-	      return &dm->sessions[i + user_offset];
+	      return ses;
 	    }
 	}
     }
 
-  nat_ipfix_logging_max_entries_per_user (thread_index,
-					  DET44_SES_PER_USER,
+  nat_ipfix_logging_max_entries_per_user (thread_index, dm->ses_per_user,
 					  in_addr->as_u32);
   return 0;
 }
