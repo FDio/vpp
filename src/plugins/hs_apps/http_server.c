@@ -18,6 +18,7 @@
 #include <vnet/session/application_interface.h>
 #include <vnet/session/session.h>
 #include <vppinfra/tw_timer_2t_1w_2048sl.h>
+#include <http/http.h>
 
 typedef enum
 {
@@ -29,6 +30,7 @@ typedef struct
   u32 hs_index;
   u32 thread_index;
   u64 node_index;
+  u8 *buf;
 } http_server_args;
 
 typedef enum
@@ -37,6 +39,7 @@ typedef enum
   HTTP_STATE_ESTABLISHED,
   HTTP_STATE_OK_SENT,
 } http_session_state_t;
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -45,9 +48,12 @@ typedef struct
 #undef _
   u32 thread_index;
   u8 *rx_buf;
+  u8 *tx_buf;
+  u32 tx_offset;
   u32 vpp_session_index;
   u64 vpp_session_handle;
   u32 timer_handle;
+  http_msg_t msg;
 } http_session_t;
 
 typedef struct
@@ -76,8 +82,8 @@ typedef struct
   /* Cert key pair for tls */
   u32 ckpair_index;
 
-  tw_timer_wheel_2t_1w_2048sl_t tw;
-  clib_spinlock_t tw_lock;
+  //  tw_timer_wheel_2t_1w_2048sl_t tw;
+  //  clib_spinlock_t tw_lock;
 
   u32 prealloc_fifos;
   u32 private_segment_size;
@@ -89,29 +95,29 @@ typedef struct
 
 http_server_main_t http_server_main;
 
-static void
-http_server_sessions_reader_lock (void)
-{
-  clib_rwlock_reader_lock (&http_server_main.sessions_lock);
-}
+// static void
+// http_server_sessions_reader_lock (void)
+//{
+//  clib_rwlock_reader_lock (&http_server_main.sessions_lock);
+//}
+//
+// static void
+// http_server_sessions_reader_unlock (void)
+//{
+//  clib_rwlock_reader_unlock (&http_server_main.sessions_lock);
+//}
 
-static void
-http_server_sessions_reader_unlock (void)
-{
-  clib_rwlock_reader_unlock (&http_server_main.sessions_lock);
-}
-
-static void
-http_server_sessions_writer_lock (void)
-{
-  clib_rwlock_writer_lock (&http_server_main.sessions_lock);
-}
-
-static void
-http_server_sessions_writer_unlock (void)
-{
-  clib_rwlock_writer_unlock (&http_server_main.sessions_lock);
-}
+// static void
+// http_server_sessions_writer_lock (void)
+//{
+//  clib_rwlock_writer_lock (&http_server_main.sessions_lock);
+//}
+//
+// static void
+// http_server_sessions_writer_unlock (void)
+//{
+//  clib_rwlock_writer_unlock (&http_server_main.sessions_lock);
+//}
 
 static http_session_t *
 http_server_session_alloc (u32 thread_index)
@@ -145,65 +151,64 @@ http_server_session_free (http_session_t * hs)
   pool_put (hsm->sessions[thread], hs);
 }
 
-static void
-http_server_session_lookup_add (u32 thread_index, u32 s_index, u32 hs_index)
-{
-  http_server_main_t *hsm = &http_server_main;
-  vec_validate (hsm->session_to_http_session[thread_index], s_index);
-  hsm->session_to_http_session[thread_index][s_index] = hs_index;
-}
+// static void
+// http_server_session_lookup_add (u32 thread_index, u32 s_index, u32 hs_index)
+//{
+//  http_server_main_t *hsm = &http_server_main;
+//  vec_validate (hsm->session_to_http_session[thread_index], s_index);
+//  hsm->session_to_http_session[thread_index][s_index] = hs_index;
+//}
 
-static void
-http_server_session_lookup_del (u32 thread_index, u32 s_index)
-{
-  http_server_main_t *hsm = &http_server_main;
-  hsm->session_to_http_session[thread_index][s_index] = ~0;
-}
+// static void
+// http_server_session_lookup_del (u32 thread_index, u32 s_index)
+//{
+//  http_server_main_t *hsm = &http_server_main;
+//  hsm->session_to_http_session[thread_index][s_index] = ~0;
+//}
+//
+// static http_session_t *
+// http_server_session_lookup (u32 thread_index, u32 s_index)
+//{
+//  http_server_main_t *hsm = &http_server_main;
+//  u32 hs_index;
+//
+//  if (s_index < vec_len (hsm->session_to_http_session[thread_index]))
+//    {
+//      hs_index = hsm->session_to_http_session[thread_index][s_index];
+//      return http_server_session_get (thread_index, hs_index);
+//    }
+//  return 0;
+//}
 
-static http_session_t *
-http_server_session_lookup (u32 thread_index, u32 s_index)
-{
-  http_server_main_t *hsm = &http_server_main;
-  u32 hs_index;
+// static void
+// http_server_session_timer_start (http_session_t * hs)
+//{
+//  u32 hs_handle;
+//  hs_handle = hs->thread_index << 24 | hs->session_index;
+//  clib_spinlock_lock (&http_server_main.tw_lock);
+//  hs->timer_handle = tw_timer_start_2t_1w_2048sl (&http_server_main.tw,
+//						  hs_handle, 0, 60);
+//  clib_spinlock_unlock (&http_server_main.tw_lock);
+//}
 
-  if (s_index < vec_len (hsm->session_to_http_session[thread_index]))
-    {
-      hs_index = hsm->session_to_http_session[thread_index][s_index];
-      return http_server_session_get (thread_index, hs_index);
-    }
-  return 0;
-}
+// static void
+// http_server_session_timer_stop (http_session_t * hs)
+//{
+//  if (hs->timer_handle == ~0)
+//    return;
+//  clib_spinlock_lock (&http_server_main.tw_lock);
+//  tw_timer_stop_2t_1w_2048sl (&http_server_main.tw, hs->timer_handle);
+//  clib_spinlock_unlock (&http_server_main.tw_lock);
+//}
 
-
-static void
-http_server_session_timer_start (http_session_t * hs)
-{
-  u32 hs_handle;
-  hs_handle = hs->thread_index << 24 | hs->session_index;
-  clib_spinlock_lock (&http_server_main.tw_lock);
-  hs->timer_handle = tw_timer_start_2t_1w_2048sl (&http_server_main.tw,
-						  hs_handle, 0, 60);
-  clib_spinlock_unlock (&http_server_main.tw_lock);
-}
-
-static void
-http_server_session_timer_stop (http_session_t * hs)
-{
-  if (hs->timer_handle == ~0)
-    return;
-  clib_spinlock_lock (&http_server_main.tw_lock);
-  tw_timer_stop_2t_1w_2048sl (&http_server_main.tw, hs->timer_handle);
-  clib_spinlock_unlock (&http_server_main.tw_lock);
-}
-
-static void
-http_server_session_disconnect (http_session_t * hs)
-{
-  vnet_disconnect_args_t _a = { 0 }, *a = &_a;
-  a->handle = hs->vpp_session_handle;
-  a->app_index = http_server_main.app_index;
-  vnet_disconnect_session (a);
-}
+// static void
+// http_server_session_disconnect (http_session_t * hs)
+//{
+//  vnet_disconnect_args_t _a = { 0 }, *a = &_a;
+//  a->handle = hs->vpp_session_handle;
+//  a->app_index = http_server_main.app_index;
+//  vnet_disconnect_session (a);
+//}
 
 static void
 http_process_free (http_server_args * args)
@@ -234,23 +239,23 @@ http_process_free (http_server_args * args)
 }
 
 /* *INDENT-OFF* */
-static const char *http_ok =
-    "HTTP/1.1 200 OK\r\n";
+// static const char *http_ok =
+//    "HTTP/1.1 200 OK\r\n";
+//
+// static const char *http_response =
+//    "Content-Type: text/html\r\n"
+//    "Expires: Mon, 11 Jan 1970 10:10:10 GMT\r\n"
+//    "Connection: close \r\n"
+//    "Pragma: no-cache\r\n"
+//    "Content-Length: %d\r\n\r\n%v";
 
-static const char *http_response =
-    "Content-Type: text/html\r\n"
-    "Expires: Mon, 11 Jan 1970 10:10:10 GMT\r\n"
-    "Connection: close \r\n"
-    "Pragma: no-cache\r\n"
-    "Content-Length: %d\r\n\r\n%v";
-
-static const char *http_error_template =
-    "HTTP/1.1 %s\r\n"
-    "Content-Type: text/html\r\n"
-    "Expires: Mon, 11 Jan 1970 10:10:10 GMT\r\n"
-    "Connection: close\r\n"
-    "Pragma: no-cache\r\n"
-    "Content-Length: 0\r\n\r\n";
+// static const char *http_error_template =
+//    "HTTP/1.1 %s\r\n"
+//    "Content-Type: text/html\r\n"
+//    "Expires: Mon, 11 Jan 1970 10:10:10 GMT\r\n"
+//    "Connection: close\r\n"
+//    "Pragma: no-cache\r\n"
+//    "Content-Length: 0\r\n\r\n";
 
 /* Header, including incantation to suppress favicon.ico requests */
 static const char *html_header_template =
@@ -267,8 +272,8 @@ static const char *html_header_static =
     "<body><pre>hello</pre></body></html>\r\n";
 /* *INDENT-ON* */
 
-static u8 *static_http;
-static u8 *static_ok;
+// static u8 *static_http;
+// static u8 *static_ok;
 
 static void
 http_cli_output (uword arg, u8 * buffer, uword buffer_bytes)
@@ -287,109 +292,153 @@ http_cli_output (uword arg, u8 * buffer, uword buffer_bytes)
 }
 
 void
-send_data (http_session_t * hs, u8 * data)
+send_data (void *rpc_args)
 {
-  http_server_main_t *hsm = &http_server_main;
-  vnet_disconnect_args_t _a = { 0 }, *a = &_a;
-  vlib_main_t *vm = vlib_get_main ();
-  f64 last_sent_timer = vlib_time_now (vm);
-  u32 offset, bytes_to_send;
-  f64 delay = 10e-3;
+  http_server_args *args = (http_server_args *) rpc_args;
+  http_session_t *hs;
+  http_msg_t msg;
+  session_t *ts;
+  int rv;
 
-  bytes_to_send = vec_len (data);
-  offset = 0;
-
-  while (bytes_to_send > 0)
+  hs = http_server_session_get (args->thread_index, args->hs_index);
+  if (!hs)
     {
-      int actual_transfer;
-
-      actual_transfer = svm_fifo_enqueue
-	(hs->tx_fifo, bytes_to_send, data + offset);
-
-      /* Made any progress? */
-      if (actual_transfer <= 0)
-	{
-	  http_server_sessions_reader_unlock ();
-	  vlib_process_suspend (vm, delay);
-	  http_server_sessions_reader_lock ();
-
-	  /* 10s deadman timer */
-	  if (vlib_time_now (vm) > last_sent_timer + 10.0)
-	    {
-	      a->handle = hs->vpp_session_handle;
-	      a->app_index = hsm->app_index;
-	      vnet_disconnect_session (a);
-	      break;
-	    }
-	  /* Exponential backoff, within reason */
-	  if (delay < 1.0)
-	    delay = delay * 2.0;
-	}
-      else
-	{
-	  last_sent_timer = vlib_time_now (vm);
-	  offset += actual_transfer;
-	  bytes_to_send -= actual_transfer;
-
-	  if (svm_fifo_set_event (hs->tx_fifo))
-	    session_send_io_evt_to_thread (hs->tx_fifo,
-					   SESSION_IO_EVT_TX_FLUSH);
-	  delay = 10e-3;
-	}
+      clib_warning ("no hs");
+      vec_free (args->buf);
+      goto cleanup;
     }
+
+  msg.type = HTTP_MSG_REPLY;
+  msg.data.content_type = HTTP_CONTENT_TEXT_HTML;
+  msg.data.len = vec_len (args->buf);
+
+  ts = session_get (hs->vpp_session_index, hs->thread_index);
+  rv = svm_fifo_enqueue (ts->tx_fifo, sizeof (msg), (u8 *) &msg);
+  ASSERT (rv == sizeof (msg));
+
+  rv = svm_fifo_enqueue (ts->tx_fifo, vec_len (args->buf), args->buf);
+
+  clib_warning ("enqueued %u out of %u", rv, vec_len (args->buf));
+  if (rv != vec_len (args->buf))
+    {
+      hs->tx_buf = args->buf;
+      hs->tx_offset = rv;
+      svm_fifo_add_want_deq_ntf (ts->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
+    }
+  else
+    {
+      vec_free (args->buf);
+    }
+
+  if (svm_fifo_set_event (ts->tx_fifo))
+    session_send_io_evt_to_thread (ts->tx_fifo, SESSION_IO_EVT_TX);
+
+cleanup:
+
+  clib_mem_free (rpc_args);
+
+  //  u8 * data;
+  //  http_server_main_t *hsm = &http_server_main;
+  //  vnet_disconnect_args_t _a = { 0 }, *a = &_a;
+  //  vlib_main_t *vm = vlib_get_main ();
+  //  f64 last_sent_timer = vlib_time_now (vm);
+  //  u32 offset, bytes_to_send;
+  //  f64 delay = 10e-3;
+  //
+  //  bytes_to_send = vec_len (data);
+  //  offset = 0;
+  //
+  //  while (bytes_to_send > 0)
+  //    {
+  //      int actual_transfer;
+  //
+  //      actual_transfer = svm_fifo_enqueue
+  //	(hs->tx_fifo, bytes_to_send, data + offset);
+  //
+  //      /* Made any progress? */
+  //      if (actual_transfer <= 0)
+  //	{
+  ////	  http_server_sessions_reader_unlock ();
+  //	  vlib_process_suspend (vm, delay);
+  ////	  http_server_sessions_reader_lock ();
+  //
+  //	  /* 10s deadman timer */
+  //	  if (vlib_time_now (vm) > last_sent_timer + 10.0)
+  //	    {
+  //	      a->handle = hs->vpp_session_handle;
+  //	      a->app_index = hsm->app_index;
+  //	      vnet_disconnect_session (a);
+  //	      break;
+  //	    }
+  //	  /* Exponential backoff, within reason */
+  //	  if (delay < 1.0)
+  //	    delay = delay * 2.0;
+  //	}
+  //      else
+  //	{
+  //	  last_sent_timer = vlib_time_now (vm);
+  //	  offset += actual_transfer;
+  //	  bytes_to_send -= actual_transfer;
+  //
+  //	  if (svm_fifo_set_event (hs->tx_fifo))
+  //	    session_send_io_evt_to_thread (hs->tx_fifo,
+  //					   SESSION_IO_EVT_TX_FLUSH);
+  //	  delay = 10e-3;
+  //	}
+  //    }
 }
 
-static void
-send_error (http_session_t * hs, char *str)
-{
-  u8 *data;
-
-  data = format (0, http_error_template, str);
-  send_data (hs, data);
-  vec_free (data);
-}
+// static void
+// send_error (http_session_t * hs, char *str)
+//{
+//  u8 *data;
+//
+//  data = format (0, http_error_template, str);
+//  send_data (hs, data);
+//  vec_free (data);
+//}
 
 static uword
 http_cli_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		  vlib_frame_t * f)
 {
-  u8 *request = 0, *reply = 0, *http = 0, *html = 0;
+  u8 *request = 0, *reply = 0, *html = 0;
   http_server_main_t *hsm = &http_server_main;
   http_server_args **save_args;
-  http_server_args *args;
+  http_server_args *args, *rpc_args;
   unformat_input_t input;
-  http_session_t *hs;
+  //  http_session_t *hs;
   int i;
 
   save_args = vlib_node_get_runtime_data (hsm->vlib_main, rt->node_index);
   args = *save_args;
 
-  http_server_sessions_reader_lock ();
+  //  http_server_sessions_reader_lock ();
 
-  hs = http_server_session_get (args->thread_index, args->hs_index);
-  ASSERT (hs);
+  //  hs = http_server_session_get (args->thread_index, args->hs_index);
+  //  ASSERT (hs);
 
-  request = hs->rx_buf;
-  if (vec_len (request) < 7)
-    {
-      send_error (hs, "400 Bad Request");
-      goto out;
-    }
+  request = args->buf;
+  //  if (vec_len (request) < 7)
+  //    {
+  //      send_error (hs, "400 Bad Request");
+  //      goto out;
+  //    }
+  //
+  //  for (i = 0; i < vec_len (request) - 4; i++)
+  //    {
+  //      if (request[i] == 'G' &&
+  //	  request[i + 1] == 'E' &&
+  //	  request[i + 2] == 'T' && request[i + 3] == ' ')
+  //	goto found;
+  //    }
+  // bad_request:
+  //  send_error (hs, "400 Bad Request");
+  //  goto out;
 
-  for (i = 0; i < vec_len (request) - 4; i++)
-    {
-      if (request[i] == 'G' &&
-	  request[i + 1] == 'E' &&
-	  request[i + 2] == 'T' && request[i + 3] == ' ')
-	goto found;
-    }
-bad_request:
-  send_error (hs, "400 Bad Request");
-  goto out;
-
-found:
-  /* Lose "GET " */
-  vec_delete (request, i + 5, 0);
+  // found:
+  //  /* Lose "GET " */
+  //  vec_delete (request, i + 5, 0);
 
   /* Replace slashes with spaces, stop at the end of the path */
   i = 0;
@@ -406,7 +455,11 @@ found:
       i++;
       /* Should never happen */
       if (i == vec_len (request))
-	goto bad_request;
+	{
+	  char *msg = "Bad CLI";
+	  vec_validate_init_c_string (html, msg, strlen (msg));
+	  goto send;
+	}
     }
 
   /* Generate the html header */
@@ -422,18 +475,26 @@ found:
   html = format (html, "%v", reply);
   html = format (html, html_footer);
   /* And the http reply */
-  http = format (0, http_ok);
-  http = format (http, http_response, vec_len (html), html);
+  //  http = format (0, http_ok);
+  //  http = format (http, http_response, vec_len (html), html);
+
+send:
 
   /* Send it */
-  send_data (hs, http);
+  rpc_args = clib_mem_alloc (sizeof (*args));
+  clib_memcpy_fast (rpc_args, args, sizeof (*args));
+  rpc_args->buf = html;
 
-out:
+  session_send_rpc_evt_to_thread_force (args->thread_index, send_data,
+					rpc_args);
+
+  // out:
   /* Cleanup */
-  http_server_sessions_reader_unlock ();
+  //  http_server_sessions_reader_unlock ();
   vec_free (reply);
-  vec_free (html);
-  vec_free (http);
+  //  vec_free (html);
+  //  vec_free (http);
+  vec_free (args->buf);
 
   http_process_free (args);
   return (0);
@@ -489,50 +550,59 @@ alloc_http_process_callback (void *cb_args)
   alloc_http_process ((http_server_args *) cb_args);
 }
 
-static int
-session_rx_request (http_session_t * hs)
-{
-  u32 max_dequeue, cursize;
-  int n_read;
-
-  cursize = vec_len (hs->rx_buf);
-  max_dequeue = svm_fifo_max_dequeue_cons (hs->rx_fifo);
-  if (PREDICT_FALSE (max_dequeue == 0))
-    return -1;
-
-  vec_validate (hs->rx_buf, cursize + max_dequeue - 1);
-  n_read = app_recv_stream_raw (hs->rx_fifo, hs->rx_buf + cursize,
-				max_dequeue, 0, 0 /* peek */ );
-  ASSERT (n_read == max_dequeue);
-  if (svm_fifo_is_empty_cons (hs->rx_fifo))
-    svm_fifo_unset_event (hs->rx_fifo);
-
-  _vec_len (hs->rx_buf) = cursize + n_read;
-  return 0;
-}
+// static int
+// session_rx_request (http_session_t * hs)
+//{
+//  u32 max_dequeue, cursize;
+//  int n_read;
+//
+//  cursize = vec_len (hs->rx_buf);
+//  max_dequeue = svm_fifo_max_dequeue_cons (hs->rx_fifo);
+//  if (PREDICT_FALSE (max_dequeue == 0))
+//    return -1;
+//
+//  vec_validate (hs->rx_buf, cursize + max_dequeue - 1);
+//  n_read = app_recv_stream_raw (hs->rx_fifo, hs->rx_buf + cursize,
+//				max_dequeue, 0, 0 /* peek */ );
+//  ASSERT (n_read == max_dequeue);
+//  if (svm_fifo_is_empty_cons (hs->rx_fifo))
+//    svm_fifo_unset_event (hs->rx_fifo);
+//
+//  _vec_len (hs->rx_buf) = cursize + n_read;
+//  return 0;
+//}
 
 static int
 http_server_rx_callback (session_t * s)
 {
-  http_server_args args;
+  http_server_args args = {};
   http_session_t *hs;
   int rv;
 
-  http_server_sessions_reader_lock ();
+  //  http_server_sessions_reader_lock ();
+  //
+  //  hs = http_server_session_lookup (s->thread_index, s->session_index);
+  //  if (!hs || hs->session_state != HTTP_STATE_ESTABLISHED)
+  //    return -1;
 
-  hs = http_server_session_lookup (s->thread_index, s->session_index);
-  if (!hs || hs->session_state != HTTP_STATE_ESTABLISHED)
-    return -1;
+  hs = http_server_session_get (s->thread_index, s->opaque);
 
-  rv = session_rx_request (hs);
-  if (rv)
-    return rv;
+  rv = svm_fifo_dequeue (s->rx_fifo, sizeof (hs->msg), (u8 *) &hs->msg);
+  ASSERT (rv == sizeof (hs->msg));
+  //  rv = session_rx_request (hs);
+  //  if (rv)
+  //    return rv;
 
   /* send the command to a new/recycled vlib process */
-  args.hs_index = hs->session_index;
-  args.thread_index = hs->thread_index;
+  vec_validate (args.buf, hs->msg.data.len - 1);
+  rv = svm_fifo_dequeue (s->rx_fifo, hs->msg.data.len, args.buf);
+  ASSERT (rv == hs->msg.data.len);
+  vec_set_len (args.buf, rv);
 
-  http_server_sessions_reader_unlock ();
+  args.hs_index = hs->session_index;
+  args.thread_index = s->thread_index;
+
+  //  http_server_sessions_reader_unlock ();
 
   /* Send RPC request to main thread */
   if (vlib_get_thread_index () != 0)
@@ -544,97 +614,138 @@ http_server_rx_callback (session_t * s)
 }
 
 static int
-http_server_rx_callback_static (session_t * s)
+http_server_tx_callback (session_t *ts)
 {
   http_session_t *hs;
-  u32 request_len;
-  u8 *request = 0;
-  int i, rv;
+  u32 to_send;
+  int rv;
 
-  hs = http_server_session_lookup (s->thread_index, s->session_index);
-  if (!hs || hs->session_state == HTTP_STATE_CLOSED)
+  clib_warning ("hit");
+  hs = http_server_session_get (ts->thread_index, ts->opaque);
+  if (!hs || !hs->tx_buf)
     return 0;
 
-  /* ok 200 was sent */
-  if (hs->session_state == HTTP_STATE_OK_SENT)
-    goto send_data;
+  to_send = vec_len (hs->tx_buf) - hs->tx_offset;
+  rv = svm_fifo_enqueue (ts->tx_fifo, to_send, hs->tx_buf + hs->tx_offset);
 
-  rv = session_rx_request (hs);
-  if (rv)
-    goto wait_for_data;
-
-  request = hs->rx_buf;
-  request_len = vec_len (request);
-  if (vec_len (request) < 7)
+  if (rv <= 0)
     {
-      send_error (hs, "400 Bad Request");
-      goto close_session;
+      svm_fifo_add_want_deq_ntf (ts->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
+      return 0;
     }
 
-  for (i = 0; i < request_len - 4; i++)
+  if (rv < to_send)
     {
-      if (request[i] == 'G' &&
-	  request[i + 1] == 'E' &&
-	  request[i + 2] == 'T' && request[i + 3] == ' ')
-	goto find_end;
+      hs->tx_offset += rv;
+      svm_fifo_add_want_deq_ntf (ts->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
+      clib_warning ("enq %u offset %u", rv, hs->tx_offset);
     }
-  send_error (hs, "400 Bad Request");
-  goto close_session;
+  else
+    {
+      vec_free (hs->tx_buf);
+      clib_warning ("done");
+      //      os_panic ();
+    }
 
-find_end:
+  if (svm_fifo_set_event (ts->tx_fifo))
+    session_send_io_evt_to_thread (ts->tx_fifo, SESSION_IO_EVT_TX);
 
-  /* check for the end sequence: /r/n/r/n */
-  if (request[request_len - 1] != 0xa || request[request_len - 3] != 0xa
-      || request[request_len - 2] != 0xd || request[request_len - 4] != 0xd)
-    goto wait_for_data;
-
-  /* send 200 OK first */
-  send_data (hs, static_ok);
-  hs->session_state = HTTP_STATE_OK_SENT;
-  goto postpone;
-
-send_data:
-  send_data (hs, static_http);
-
-close_session:
-  http_server_session_disconnect (hs);
-  return 0;
-
-postpone:
-  (void) svm_fifo_set_event (hs->rx_fifo);
-  session_send_io_evt_to_thread (hs->rx_fifo, SESSION_IO_EVT_BUILTIN_RX);
-  return 0;
-
-wait_for_data:
   return 0;
 }
 
+// static int
+// http_server_rx_callback_static (session_t * s)
+//{
+//  http_session_t *hs;
+//  u32 request_len;
+//  u8 *request = 0;
+//  int i, rv;
+//
+//  hs = http_server_session_lookup (s->thread_index, s->session_index);
+//  if (!hs || hs->session_state == HTTP_STATE_CLOSED)
+//    return 0;
+//
+//  /* ok 200 was sent */
+//  if (hs->session_state == HTTP_STATE_OK_SENT)
+//    goto send_data;
+//
+//  rv = session_rx_request (hs);
+//  if (rv)
+//    goto wait_for_data;
+//
+//  request = hs->rx_buf;
+//  request_len = vec_len (request);
+//  if (vec_len (request) < 7)
+//    {
+//      send_error (hs, "400 Bad Request");
+//      goto close_session;
+//    }
+//
+//  for (i = 0; i < request_len - 4; i++)
+//    {
+//      if (request[i] == 'G' &&
+//	  request[i + 1] == 'E' &&
+//	  request[i + 2] == 'T' && request[i + 3] == ' ')
+//	goto find_end;
+//    }
+//  send_error (hs, "400 Bad Request");
+//  goto close_session;
+//
+// find_end:
+//
+//  /* check for the end sequence: /r/n/r/n */
+//  if (request[request_len - 1] != 0xa || request[request_len - 3] != 0xa
+//      || request[request_len - 2] != 0xd || request[request_len - 4] != 0xd)
+//    goto wait_for_data;
+//
+//  /* send 200 OK first */
+//  send_data (hs, static_ok);
+//  hs->session_state = HTTP_STATE_OK_SENT;
+//  goto postpone;
+//
+// send_data:
+//  send_data (hs, static_http);
+//
+// close_session:
+//  http_server_session_disconnect (hs);
+//  return 0;
+//
+// postpone:
+//  (void) svm_fifo_set_event (hs->rx_fifo);
+//  session_send_io_evt_to_thread (hs->rx_fifo, SESSION_IO_EVT_BUILTIN_RX);
+//  return 0;
+//
+// wait_for_data:
+//  return 0;
+//}
+
 static int
-http_server_session_accept_callback (session_t * s)
+http_server_session_accept_callback (session_t *ts)
 {
-  http_server_main_t *hsm = &http_server_main;
+  //  http_server_main_t *hsm = &http_server_main;
   http_session_t *hs;
 
-  hsm->vpp_queue[s->thread_index] =
-    session_main_get_vpp_event_queue (s->thread_index);
+  //  hsm->vpp_queue[s->thread_index] =
+  //    session_main_get_vpp_event_queue (s->thread_index);
 
-  if (!hsm->is_static)
-    http_server_sessions_writer_lock ();
+  //  if (!hsm->is_static)
+  //    http_server_sessions_writer_lock ();
 
-  hs = http_server_session_alloc (s->thread_index);
-  http_server_session_lookup_add (s->thread_index, s->session_index,
-				  hs->session_index);
-  hs->rx_fifo = s->rx_fifo;
-  hs->tx_fifo = s->tx_fifo;
-  hs->vpp_session_index = s->session_index;
-  hs->vpp_session_handle = session_handle (s);
+  hs = http_server_session_alloc (ts->thread_index);
+  ts->opaque = hs->session_index;
+  //  http_server_session_lookup_add (s->thread_index, s->session_index,
+  //				  hs->session_index);
+  hs->rx_fifo = ts->rx_fifo;
+  hs->tx_fifo = ts->tx_fifo;
+  hs->vpp_session_index = ts->session_index;
+  hs->vpp_session_handle = session_handle (ts);
   hs->session_state = HTTP_STATE_ESTABLISHED;
-  http_server_session_timer_start (hs);
+  //  http_server_session_timer_start (hs);
 
-  if (!hsm->is_static)
-    http_server_sessions_writer_unlock ();
+  //  if (!hsm->is_static)
+  //    http_server_sessions_writer_unlock ();
 
-  s->session_state = SESSION_STATE_READY;
+  ts->session_state = SESSION_STATE_READY;
   return 0;
 }
 
@@ -677,28 +788,28 @@ http_server_add_segment_callback (u32 client_index, u64 segment_handle)
 static void
 http_server_cleanup_callback (session_t * s, session_cleanup_ntf_t ntf)
 {
-  http_server_main_t *hsm = &http_server_main;
+  //  http_server_main_t *hsm = &http_server_main;
   http_session_t *hs;
 
   if (ntf == SESSION_CLEANUP_TRANSPORT)
     return;
 
-  if (!hsm->is_static)
-    http_server_sessions_writer_lock ();
+  //  if (!hsm->is_static)
+  //    http_server_sessions_writer_lock ();
 
-  hs = http_server_session_lookup (s->thread_index, s->session_index);
+  hs = http_server_session_get (s->thread_index, s->opaque);
   if (!hs)
-    goto done;
+    return;
 
-  http_server_session_lookup_del (hs->thread_index, hs->vpp_session_index);
+  //  http_server_session_lookup_del (hs->thread_index, hs->vpp_session_index);
   vec_free (hs->rx_buf);
-  http_server_session_timer_stop (hs);
+  //  http_server_session_timer_stop (hs);
   http_server_session_free (hs);
 
-done:
+  // done:
 
-  if (!hsm->is_static)
-    http_server_sessions_writer_unlock ();
+  //  if (!hsm->is_static)
+  //    http_server_sessions_writer_unlock ();
 }
 
 static session_cb_vft_t http_server_session_cb_vft = {
@@ -707,6 +818,7 @@ static session_cb_vft_t http_server_session_cb_vft = {
   .session_connected_callback = http_server_session_connected_callback,
   .add_segment_callback = http_server_add_segment_callback,
   .builtin_app_rx_callback = http_server_rx_callback,
+  .builtin_app_tx_callback = http_server_tx_callback,
   .session_reset_callback = http_server_session_reset_callback,
   .session_cleanup_callback = http_server_cleanup_callback,
 };
@@ -735,7 +847,7 @@ http_server_attach ()
   a->options[APP_OPTIONS_RX_FIFO_SIZE] =
     hsm->fifo_size ? hsm->fifo_size : 8 << 10;
   a->options[APP_OPTIONS_TX_FIFO_SIZE] =
-    hsm->fifo_size ? hsm->fifo_size : 32 << 10;
+    hsm->fifo_size ? hsm->fifo_size : 4 << 10;
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = hsm->prealloc_fifos;
 
@@ -784,6 +896,8 @@ http_server_listen ()
   if (parse_uri (uri, &sep))
     return -1;
 
+  sep.transport_proto = TRANSPORT_PROTO_HTTP;
+
   clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
   if (http_transport_needs_crypto (a->sep_ext.transport_proto))
     {
@@ -798,69 +912,67 @@ http_server_listen ()
   return rv;
 }
 
-static void
-http_server_session_close_cb (void *hs_handlep)
-{
-  http_session_t *hs;
-  uword hs_handle;
-  hs_handle = pointer_to_uword (hs_handlep);
-  hs = http_server_session_get (hs_handle >> 24, hs_handle & 0x00FFFFFF);
-  if (!hs)
-    return;
-  hs->timer_handle = ~0;
-  http_server_session_disconnect (hs);
-}
+// static void
+// http_server_session_close_cb (void *hs_handlep)
+//{
+//  http_session_t *hs;
+//  uword hs_handle;
+//  hs_handle = pointer_to_uword (hs_handlep);
+//  hs = http_server_session_get (hs_handle >> 24, hs_handle & 0x00FFFFFF);
+//  if (!hs)
+//    return;
+//  hs->timer_handle = ~0;
+//  http_server_session_disconnect (hs);
+//}
 
-static void
-http_expired_timers_dispatch (u32 * expired_timers)
-{
-  u32 hs_handle;
-  int i;
+// static void
+// http_expired_timers_dispatch (u32 * expired_timers)
+//{
+//  u32 hs_handle;
+//  int i;
+//
+//  for (i = 0; i < vec_len (expired_timers); i++)
+//    {
+//      /* Get session handle. The first bit is the timer id */
+//      hs_handle = expired_timers[i] & 0x7FFFFFFF;
+//      session_send_rpc_evt_to_thread (hs_handle >> 24,
+//				      http_server_session_close_cb,
+//				      uword_to_pointer (hs_handle, void *));
+//    }
+//}
 
-  for (i = 0; i < vec_len (expired_timers); i++)
-    {
-      /* Get session handle. The first bit is the timer id */
-      hs_handle = expired_timers[i] & 0x7FFFFFFF;
-      session_send_rpc_evt_to_thread (hs_handle >> 24,
-				      http_server_session_close_cb,
-				      uword_to_pointer (hs_handle, void *));
-    }
-}
-
-static uword
-http_server_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
-		     vlib_frame_t * f)
-{
-  http_server_main_t *hsm = &http_server_main;
-  f64 now, timeout = 1.0;
-  uword *event_data = 0;
-  uword __clib_unused event_type;
-
-  while (1)
-    {
-      vlib_process_wait_for_event_or_clock (vm, timeout);
-      now = vlib_time_now (vm);
-      event_type = vlib_process_get_events (vm, (uword **) & event_data);
-
-      /* expire timers */
-      clib_spinlock_lock (&http_server_main.tw_lock);
-      tw_timer_expire_timers_2t_1w_2048sl (&hsm->tw, now);
-      clib_spinlock_unlock (&http_server_main.tw_lock);
-
-      vec_reset_length (event_data);
-    }
-  return 0;
-}
-
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (http_server_process_node) =
-{
-  .function = http_server_process,
-  .type = VLIB_NODE_TYPE_PROCESS,
-  .name = "http-server-process",
-  .state = VLIB_NODE_STATE_DISABLED,
-};
-/* *INDENT-ON* */
+// static uword
+// http_server_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
+//		     vlib_frame_t * f)
+//{
+//  http_server_main_t *hsm = &http_server_main;
+//  f64 now, timeout = 1.0;
+//  uword *event_data = 0;
+//  uword __clib_unused event_type;
+//
+//  while (1)
+//    {
+//      vlib_process_wait_for_event_or_clock (vm, timeout);
+//      now = vlib_time_now (vm);
+//      event_type = vlib_process_get_events (vm, (uword **) & event_data);
+//
+//      /* expire timers */
+//      clib_spinlock_lock (&http_server_main.tw_lock);
+//      tw_timer_expire_timers_2t_1w_2048sl (&hsm->tw, now);
+//      clib_spinlock_unlock (&http_server_main.tw_lock);
+//
+//      vec_reset_length (event_data);
+//    }
+//  return 0;
+//}
+//
+// VLIB_REGISTER_NODE (http_server_process_node) =
+//{
+//  .function = http_server_process,
+//  .type = VLIB_NODE_TYPE_PROCESS,
+//  .name = "http-server-process",
+//  .state = VLIB_NODE_STATE_DISABLED,
+//};
 
 static int
 http_server_create (vlib_main_t * vm)
@@ -868,7 +980,7 @@ http_server_create (vlib_main_t * vm)
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   http_server_main_t *hsm = &http_server_main;
   u32 num_threads;
-  vlib_node_t *n;
+  //  vlib_node_t *n;
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
   vec_validate (hsm->vpp_queue, num_threads - 1);
@@ -876,7 +988,7 @@ http_server_create (vlib_main_t * vm)
   vec_validate (hsm->session_to_http_session, num_threads - 1);
 
   clib_rwlock_init (&hsm->sessions_lock);
-  clib_spinlock_init (&hsm->tw_lock);
+  //  clib_spinlock_init (&hsm->tw_lock);
 
   if (http_server_attach ())
     {
@@ -889,13 +1001,13 @@ http_server_create (vlib_main_t * vm)
       return -1;
     }
 
-  /* Init timer wheel and process */
-  tw_timer_wheel_init_2t_1w_2048sl (&hsm->tw, http_expired_timers_dispatch,
-				    1 /* timer interval */ , ~0);
-  vlib_node_set_state (vm, http_server_process_node.index,
-		       VLIB_NODE_STATE_POLLING);
-  n = vlib_get_node (vm, http_server_process_node.index);
-  vlib_start_process (vm, n->runtime_index);
+  //  /* Init timer wheel and process */
+  //  tw_timer_wheel_init_2t_1w_2048sl (&hsm->tw, http_expired_timers_dispatch,
+  //				    1 /* timer interval */ , ~0);
+  //  vlib_node_set_state (vm, http_server_process_node.index,
+  //		       VLIB_NODE_STATE_POLLING);
+  //  n = vlib_get_node (vm, http_server_process_node.index);
+  //  vlib_start_process (vm, n->runtime_index);
 
   return 0;
 }
@@ -957,11 +1069,11 @@ start_server:
 
   if (hsm->is_static)
     {
-      http_server_session_cb_vft.builtin_app_rx_callback =
-	http_server_rx_callback_static;
+      //      http_server_session_cb_vft.builtin_app_rx_callback =
+      //	http_server_rx_callback_static;
       html = format (0, html_header_static);
-      static_http = format (0, http_response, vec_len (html), html);
-      static_ok = format (0, http_ok);
+      //      static_http = format (0, http_response, vec_len (html), html);
+      //      static_ok = format (0, http_ok);
     }
   rv = http_server_create (vm);
   switch (rv)
