@@ -165,7 +165,7 @@ ah_encrypt_inline (vlib_main_t * vm,
       pd->sa_index = current_sa_index;
       next[0] = AH_ENCRYPT_NEXT_DROP;
 
-      if (PREDICT_FALSE (~0 == sa0->thread_index))
+      if (PREDICT_FALSE ((u16) ~0 == sa0->thread_index))
 	{
 	  /* this is the first packet to use this SA, claim the SA
 	   * for this thread. this could happen simultaneously on
