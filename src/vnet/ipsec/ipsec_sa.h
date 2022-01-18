@@ -125,7 +125,7 @@ typedef struct
   u8 esp_block_align;
   u8 integ_icv_size;
 
-  u8 __pad1[3];
+  u8 __pad1[11];
 
   u32 thread_index;
 
@@ -133,7 +133,6 @@ typedef struct
   u32 seq;
   u32 seq_hi;
   u64 replay_window;
-  u64 ctr_iv_counter;
   dpo_id_t dpo;
 
   vnet_crypto_key_index_t crypto_key_index;

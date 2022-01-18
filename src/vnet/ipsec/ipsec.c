@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+#include <sys/random.h>
+
 #include <vnet/vnet.h>
 #include <vnet/api_errno.h>
 #include <vnet/ip/ip.h>
@@ -385,6 +387,11 @@ ipsec_init (vlib_main_t * vm)
   clib_error_t *error;
   ipsec_main_t *im = &ipsec_main;
   ipsec_main_crypto_alg_t *a;
+  struct
+  {
+    u64 initstate;
+    u64 initseq;
+  } *rand = 0;
 
   /* Backend registration requires the feature arcs to be set up */
   if ((error = vlib_call_init_function (vm, vnet_feature_init)))
@@ -549,6 +556,15 @@ ipsec_init (vlib_main_t * vm)
   i->icv_size = 32;
 
   vec_validate_aligned (im->ptd, vlib_num_workers (), CLIB_CACHE_LINE_BYTES);
+  vec_validate (rand, vec_len (im->ptd));
+  if (getrandom (rand, vec_bytes (rand), 0) != vec_bytes (rand))
+    return clib_error_return_unix_fatal (0,
+					 "getrandom() failed to get entropy");
+  vec_foreach_index (idx, im->ptd)
+    clib_pcg64i_srandom_r (&vec_elt (im->ptd, idx).iv_prng,
+			   vec_elt (rand, idx).initstate,
+			   vec_elt (rand, idx).initseq);
+  vec_free (rand);
 
   im->async_mode = 0;
   crypto_engine_backend_register_post_node (vm);
