@@ -360,9 +360,9 @@ read_request (http_conn_t *hc)
 }
 
 static int
-v_find_index (u8 *vec, char *str)
+v_find_index (u8 *vec, u32 offset, char *str)
 {
-  int start_index;
+  int start_index = offset;
   u32 slen = (u32) strnlen_s_inline (str, 8);
   u32 vlen = vec_len (vec);
 
@@ -371,9 +371,9 @@ v_find_index (u8 *vec, char *str)
   if (vlen <= slen)
     return -1;
 
-  for (start_index = 0; start_index < (vlen - slen); start_index++)
+  for (; start_index < (vlen - slen); start_index++)
     {
-      if (!memcmp (vec, str, slen))
+      if (!memcmp (vec + start_index, str, slen))
 	return start_index;
     }
 
@@ -386,7 +386,7 @@ v_find_index (u8 *vec, char *str)
 static int
 state_wait_method (http_conn_t *hc, transport_send_params_t *sp)
 {
-  http_main_t *hm = &http_main;
+  http_status_code_t ec;
   app_worker_t *app_wrk;
   http_msg_t msg;
   session_t *as;
@@ -402,35 +402,41 @@ state_wait_method (http_conn_t *hc, transport_send_params_t *sp)
 
   if (vec_len (hc->rx_buf) < 8)
     {
-      send_error (hc, HTTP_STATUS_BAD_REQUEST);
-      http_disconnect_transport (hc);
-      return -1;
+      ec = HTTP_STATUS_BAD_REQUEST;
+      goto error;
     }
 
-  if ((i = v_find_index (hc->rx_buf, "GET ")) >= 0)
+  if ((i = v_find_index (hc->rx_buf, 0, "GET ")) >= 0)
     {
       hc->method = HTTP_REQ_GET;
       hc->rx_buf_offset = i + 5;
+
+      i = v_find_index (hc->rx_buf, hc->rx_buf_offset, "HTTP");
+      if (i < 0)
+	{
+	  ec = HTTP_STATUS_BAD_REQUEST;
+	  goto error;
+	}
+
+      len = i - hc->rx_buf_offset;
     }
-  else if ((i = v_find_index (hc->rx_buf, "POST ")) >= 0)
+  else if ((i = v_find_index (hc->rx_buf, 0, "POST ")) >= 0)
     {
       hc->method = HTTP_REQ_POST;
       hc->rx_buf_offset = i + 6;
+      len = vec_len (hc->rx_buf) - hc->rx_buf_offset;
     }
   else
     {
-      if (hm->debug_level > 1)
-	clib_warning ("Unknown http method");
-
-      send_error (hc, HTTP_STATUS_METHOD_NOT_ALLOWED);
-      http_disconnect_transport (hc);
-      return -1;
+      HTTP_DBG (0, "Unknown http method");
+      ec = HTTP_STATUS_METHOD_NOT_ALLOWED;
+      goto error;
     }
 
   buf = &hc->rx_buf[hc->rx_buf_offset];
-  len = vec_len (hc->rx_buf) - hc->rx_buf_offset;
 
   msg.type = HTTP_MSG_REQUEST;
+  msg.method_type = hc->method;
   msg.data.content_type = HTTP_CONTENT_TEXT_HTML;
   msg.data.len = len;
   msg.data.offset = 0;
@@ -455,6 +461,14 @@ state_wait_method (http_conn_t *hc, transport_send_params_t *sp)
   app_worker_lock_and_send_event (app_wrk, as, SESSION_IO_EVT_RX);
 
   return 0;
+
+error:
+
+  send_error (hc, ec);
+  session_transport_closing_notify (&hc->connection);
+  http_disconnect_transport (hc);
+
+  return -1;
 }
 
 /**
@@ -528,6 +542,7 @@ error:
 
   send_error (hc, ec);
   hc->req_state = HTTP_REQ_STATE_WAIT_METHOD;
+  session_transport_closing_notify (&hc->connection);
   http_disconnect_transport (hc);
 
   /* stop state machine processing */
