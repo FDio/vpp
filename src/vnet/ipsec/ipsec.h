@@ -30,6 +30,8 @@
 
 #include <vppinfra/bihash_24_16.h>
 
+#include <vppinfra/pcg.h>
+
 typedef clib_error_t *(*add_del_sa_sess_cb_t) (u32 sa_index, u8 is_add);
 typedef clib_error_t *(*check_support_cb_t) (ipsec_sa_t * sa);
 typedef clib_error_t *(*enable_disable_cb_t) (int is_enable);
@@ -117,6 +119,7 @@ typedef struct
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  clib_pcg64i_random_t iv_prng;
   vnet_crypto_op_t *crypto_ops;
   vnet_crypto_op_t *integ_ops;
   vnet_crypto_op_t *chained_crypto_ops;
