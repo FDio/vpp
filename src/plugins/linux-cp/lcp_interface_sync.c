@@ -46,6 +46,8 @@ lcp_itf_pair_sync_state (lcp_itf_pair_t *lip)
     return;
   sup_sw =
     vnet_get_sw_interface_or_null (vnet_get_main (), sw->sup_sw_if_index);
+  if (!sup_sw)
+    return;
 
   if (lip->lip_namespace)
     {
