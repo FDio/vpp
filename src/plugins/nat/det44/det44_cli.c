@@ -27,6 +27,8 @@ det44_map_command_fn (vlib_main_t * vm, unformat_input_t * input,
   unformat_input_t _line_input, *line_input = &_line_input;
   ip4_address_t in_addr, out_addr;
   u32 in_plen, out_plen;
+  u32 ses_per_user = ~0;
+  u32 tcp_per_user = ~0, udp_per_user = ~0, other_per_user = ~0;
   int is_add = 1, rv;
   clib_error_t *error = 0;
 
@@ -43,6 +45,14 @@ det44_map_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	    (line_input, "out %U/%u", unformat_ip4_address, &out_addr,
 	     &out_plen))
 	;
+      else if (unformat (line_input, "ses %u", &ses_per_user))
+	;
+      else if (unformat (line_input, "tcp %u", &tcp_per_user))
+	;
+      else if (unformat (line_input, "udp %u", &udp_per_user))
+	;
+      else if (unformat (line_input, "other %u", &other_per_user))
+	;
       else if (unformat (line_input, "del"))
 	is_add = 0;
       else
@@ -54,8 +64,8 @@ det44_map_command_fn (vlib_main_t * vm, unformat_input_t * input,
     }
 
   rv = snat_det_add_map (&in_addr, (u8) in_plen, &out_addr, (u8) out_plen,
-			 is_add);
-
+			 ses_per_user, tcp_per_user, udp_per_user,
+			 other_per_user, is_add);
   if (rv)
     {
       error = clib_error_return (0, "snat_det_add_map return %d", rv);
@@ -85,6 +95,8 @@ det44_show_mappings_command_fn (vlib_main_t * vm,
                      mp->sharing_ratio);
     vlib_cli_output (vm, "  number of ports per inside host: %d\n",
                      mp->ports_per_host);
+    vlib_cli_output (vm, "  number of sessions per inside host: %d\n",
+		     mp->ses_per_user);
     vlib_cli_output (vm, "  sessions number: %d\n", mp->ses_num);
   }
   return 0;
@@ -208,6 +220,7 @@ det44_close_session_out_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   ip4_address_t out_addr, ext_addr, in_addr;
   u32 out_port, ext_port;
+  u16 proto;
   snat_det_map_t *mp;
   snat_det_session_t *ses;
   snat_det_out_key_t key;
@@ -218,9 +231,9 @@ det44_close_session_out_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "%U:%d %U:%d",
-		    unformat_ip4_address, &out_addr, &out_port,
-		    unformat_ip4_address, &ext_addr, &ext_port))
+      if (unformat (line_input, "%U:%d %U:%d %U", unformat_ip4_address,
+		    &out_addr, &out_port, unformat_ip4_address, &ext_addr,
+		    &ext_port, unformat_ip_protocol, &proto))
 	;
       else
 	{
@@ -241,7 +254,7 @@ det44_close_session_out_fn (vlib_main_t * vm,
       key.ext_host_addr = out_addr;
       key.ext_host_port = ntohs ((u16) ext_port);
       key.out_port = ntohs ((u16) out_port);
-      ses = snat_det_get_ses_by_out (mp, &out_addr, key.as_u64);
+      ses = snat_det_get_ses_by_out (mp, &out_addr, key.as_u64, proto);
       if (!ses)
 	vlib_cli_output (vm, "no match");
       else
@@ -261,6 +274,7 @@ det44_close_session_in_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   ip4_address_t in_addr, ext_addr;
   u32 in_port, ext_port;
+  u16 proto;
   snat_det_map_t *mp;
   snat_det_session_t *ses;
   snat_det_out_key_t key;
@@ -271,9 +285,9 @@ det44_close_session_in_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "%U:%d %U:%d",
-		    unformat_ip4_address, &in_addr, &in_port,
-		    unformat_ip4_address, &ext_addr, &ext_port))
+      if (unformat (line_input, "%U:%d %U:%d %U", unformat_ip4_address,
+		    &in_addr, &in_port, unformat_ip4_address, &ext_addr,
+		    &ext_port, unformat_ip_protocol, &proto))
 	;
       else
 	{
@@ -292,8 +306,8 @@ det44_close_session_in_fn (vlib_main_t * vm,
     {
       key.ext_host_addr = ext_addr;
       key.ext_host_port = ntohs ((u16) ext_port);
-      ses =
-	snat_det_find_ses_by_in (mp, &in_addr, ntohs ((u16) in_port), key);
+      ses = snat_det_find_ses_by_in (mp, &in_addr, ntohs ((u16) in_port), key,
+				     proto);
       if (!ses)
 	vlib_cli_output (vm, "no match");
       else
@@ -502,12 +516,18 @@ det44_show_interfaces_command_fn (vlib_main_t * vm, unformat_input_t * input,
  * To create mapping between inside network 10.0.0.0/18 and
  * outside network 1.1.1.0/30 use:
  * # vpp# det44 add in 10.0.0.0/18 out 1.1.1.0/30
+ * To specify number of sessions per inside host
+ * # vpp# det44 add in 10.0.0.0/18 out 1.1.1.0/30 ses 60
+ * TO limit number of host sessions per protocol other
+ * # vpp# det44 add in 10.0.0.0/18 out 1.1.1.0/30 other 100
  * @cliexend
 ?*/
 VLIB_CLI_COMMAND (det44_map_command, static) = {
-    .path = "det44 add",
-    .short_help = "det44 add in <addr>/<plen> out <addr>/<plen> [del]",
-    .function = det44_map_command_fn,
+  .path = "det44 add",
+  .short_help = "det44 add in <addr>/<plen> out <addr>/<plen> "
+		"[ses <num>] [tcp <num>] [udp <num>] [other <num>] "
+		"[del]",
+  .function = det44_map_command_fn,
 };
 
 /*?
@@ -519,6 +539,7 @@ VLIB_CLI_COMMAND (det44_map_command, static) = {
  *  in 10.0.0.0/24 out 1.1.1.1/32
  *   outside address sharing ratio: 256
  *   number of ports per inside host: 252
+ *   number of sessions per inside host: 1000
  *   sessions number: 0
  * @cliexend
 ?*/
@@ -580,13 +601,13 @@ VLIB_CLI_COMMAND (det44_show_sessions_command, static) = {
  * @cliexstart{det44 close session out}
  * Close session using outside ip address and port
  * and external ip address and port, use:
- *  vpp# det44 close session out 1.1.1.1:1276 2.2.2.2:2387
+ *  vpp# det44 close session out 1.1.1.1:1276 2.2.2.2:2387 tcp
  * @cliexend
 ?*/
 VLIB_CLI_COMMAND (det44_close_sesion_out_command, static) = {
   .path = "det44 close session out",
   .short_help = "det44 close session out "
-                "<out_addr>:<out_port> <ext_addr>:<ext_port>",
+		"<out_addr>:<out_port> <ext_addr>:<ext_port> <proto>",
   .function = det44_close_session_out_fn,
 };
 
@@ -595,13 +616,13 @@ VLIB_CLI_COMMAND (det44_close_sesion_out_command, static) = {
  * @cliexstart{det44 deterministic close session in}
  * Close session using inside ip address and port
  * and external ip address and port, use:
- *  vpp# det44 close session in 3.3.3.3:3487 2.2.2.2:2387
+ *  vpp# det44 close session in 3.3.3.3:3487 2.2.2.2:2387 tcp
  * @cliexend
 ?*/
 VLIB_CLI_COMMAND (det44_close_session_in_command, static) = {
   .path = "det44 close session in",
   .short_help = "det44 close session in "
-                "<in_addr>:<in_port> <ext_addr>:<ext_port>",
+		"<in_addr>:<in_port> <ext_addr>:<ext_port> <proto>",
   .function = det44_close_session_in_fn,
 };
 

@@ -182,7 +182,7 @@ icmp_match_out2in_det (vlib_node_runtime_t * node,
   snat_det_reverse (mp0, &ip0->dst_address,
 		    clib_net_to_host_u16 (key0.out_port), &new_addr0);
 
-  ses0 = snat_det_get_ses_by_out (mp0, &new_addr0, key0.as_u64);
+  ses0 = snat_det_get_ses_by_out (mp0, &new_addr0, key0.as_u64, ip0->protocol);
   if (PREDICT_FALSE (!ses0))
     {
       /* Don't NAT packet aimed at the intfc address */
@@ -470,7 +470,8 @@ VLIB_NODE_FN (det44_out2in_node) (vlib_main_t * vm,
       snat_det_reverse (mp0, &ip0->dst_address,
 			clib_net_to_host_u16 (tcp0->dst), &new_addr0);
 
-      ses0 = snat_det_get_ses_by_out (mp0, &new_addr0, key0.as_u64);
+      ses0 =
+	snat_det_get_ses_by_out (mp0, &new_addr0, key0.as_u64, ip0->protocol);
       if (PREDICT_FALSE (!ses0))
 	{
 	  det44_log_info ("no match src %U:%d dst %U:%d for user %U",
@@ -588,7 +589,8 @@ VLIB_NODE_FN (det44_out2in_node) (vlib_main_t * vm,
       snat_det_reverse (mp1, &ip1->dst_address,
 			clib_net_to_host_u16 (tcp1->dst), &new_addr1);
 
-      ses1 = snat_det_get_ses_by_out (mp1, &new_addr1, key1.as_u64);
+      ses1 =
+	snat_det_get_ses_by_out (mp1, &new_addr1, key1.as_u64, ip1->protocol);
       if (PREDICT_FALSE (!ses1))
 	{
 	  det44_log_info ("no match src %U:%d dst %U:%d for user %U",
@@ -733,7 +735,8 @@ VLIB_NODE_FN (det44_out2in_node) (vlib_main_t * vm,
       snat_det_reverse (mp0, &ip0->dst_address,
 			clib_net_to_host_u16 (tcp0->dst), &new_addr0);
 
-      ses0 = snat_det_get_ses_by_out (mp0, &new_addr0, key0.as_u64);
+      ses0 =
+	snat_det_get_ses_by_out (mp0, &new_addr0, key0.as_u64, ip0->protocol);
       if (PREDICT_FALSE (!ses0))
 	{
 	  det44_log_info ("no match src %U:%d dst %U:%d for user %U",

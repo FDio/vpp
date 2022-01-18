@@ -180,7 +180,7 @@ icmp_match_in2out_det (vlib_node_runtime_t * node,
   key0.ext_host_addr = ip0->dst_address;
   key0.ext_host_port = 0;
 
-  ses0 = snat_det_find_ses_by_in (mp0, &in_addr, in_port, key0);
+  ses0 = snat_det_find_ses_by_in (mp0, &in_addr, in_port, key0, ip0->protocol);
   if (PREDICT_FALSE (!ses0))
     {
       if (PREDICT_FALSE (det44_translate (node, sw_if_index0, ip0,
@@ -203,12 +203,12 @@ icmp_match_in2out_det (vlib_node_runtime_t * node,
 						  (echo0->identifier)) %
 						 mp0->ports_per_host));
 
-	  if (snat_det_get_ses_by_out (mp0, &in_addr, key0.as_u64))
+	  if (snat_det_get_ses_by_out (mp0, &in_addr, key0.as_u64,
+				       ip0->protocol))
 	    continue;
 
-	  ses0 =
-	    snat_det_ses_create (thread_index, mp0,
-				 &in_addr, echo0->identifier, &key0);
+	  ses0 = snat_det_ses_create (thread_index, mp0, &in_addr,
+				      echo0->identifier, &key0, ip0->protocol);
 	  break;
 	}
       if (PREDICT_FALSE (!ses0))
@@ -504,10 +504,13 @@ VLIB_NODE_FN (det44_in2out_node) (vlib_main_t * vm,
       key0.ext_host_addr = ip0->dst_address;
       key0.ext_host_port = tcp0->dst;
 
-      ses0 =
-	snat_det_find_ses_by_in (mp0, &ip0->src_address, tcp0->src, key0);
+      ses0 = snat_det_find_ses_by_in (mp0, &ip0->src_address, tcp0->src, key0,
+				      ip0->protocol);
       if (PREDICT_FALSE (!ses0))
 	{
+	  // TODO: also ports per host need to be adjust per protocol
+	  // TCP/UDP/OTHER
+	  // TODO: do we have enough space now ?
 	  for (i0 = 0; i0 < mp0->ports_per_host; i0++)
 	    {
 	      key0.out_port = clib_host_to_net_u16 (lo_port0 +
@@ -516,13 +519,12 @@ VLIB_NODE_FN (det44_in2out_node) (vlib_main_t * vm,
 						      (tcp0->src)) %
 						     mp0->ports_per_host));
 
-	      if (snat_det_get_ses_by_out
-		  (mp0, &ip0->src_address, key0.as_u64))
+	      if (snat_det_get_ses_by_out (mp0, &ip0->src_address, key0.as_u64,
+					   ip0->protocol))
 		continue;
 
-	      ses0 =
-		snat_det_ses_create (thread_index, mp0, &ip0->src_address,
-				     tcp0->src, &key0);
+	      ses0 = snat_det_ses_create (thread_index, mp0, &ip0->src_address,
+					  tcp0->src, &key0, ip0->protocol);
 	      break;
 	    }
 	  if (PREDICT_FALSE (!ses0))
@@ -674,8 +676,8 @@ VLIB_NODE_FN (det44_in2out_node) (vlib_main_t * vm,
       key1.ext_host_addr = ip1->dst_address;
       key1.ext_host_port = tcp1->dst;
 
-      ses1 =
-	snat_det_find_ses_by_in (mp1, &ip1->src_address, tcp1->src, key1);
+      ses1 = snat_det_find_ses_by_in (mp1, &ip1->src_address, tcp1->src, key1,
+				      ip1->protocol);
       if (PREDICT_FALSE (!ses1))
 	{
 	  for (i1 = 0; i1 < mp1->ports_per_host; i1++)
@@ -686,13 +688,12 @@ VLIB_NODE_FN (det44_in2out_node) (vlib_main_t * vm,
 						      (tcp1->src)) %
 						     mp1->ports_per_host));
 
-	      if (snat_det_get_ses_by_out
-		  (mp1, &ip1->src_address, key1.as_u64))
+	      if (snat_det_get_ses_by_out (mp1, &ip1->src_address, key1.as_u64,
+					   ip1->protocol))
 		continue;
 
-	      ses1 =
-		snat_det_ses_create (thread_index, mp1, &ip1->src_address,
-				     tcp1->src, &key1);
+	      ses1 = snat_det_ses_create (thread_index, mp1, &ip1->src_address,
+					  tcp1->src, &key1, ip1->protocol);
 	      break;
 	    }
 	  if (PREDICT_FALSE (!ses1))
@@ -872,8 +873,8 @@ VLIB_NODE_FN (det44_in2out_node) (vlib_main_t * vm,
       key0.ext_host_addr = ip0->dst_address;
       key0.ext_host_port = tcp0->dst;
 
-      ses0 =
-	snat_det_find_ses_by_in (mp0, &ip0->src_address, tcp0->src, key0);
+      ses0 = snat_det_find_ses_by_in (mp0, &ip0->src_address, tcp0->src, key0,
+				      ip0->protocol);
       if (PREDICT_FALSE (!ses0))
 	{
 	  for (i0 = 0; i0 < mp0->ports_per_host; i0++)
@@ -884,13 +885,12 @@ VLIB_NODE_FN (det44_in2out_node) (vlib_main_t * vm,
 						      (tcp0->src)) %
 						     mp0->ports_per_host));
 
-	      if (snat_det_get_ses_by_out
-		  (mp0, &ip0->src_address, key0.as_u64))
+	      if (snat_det_get_ses_by_out (mp0, &ip0->src_address, key0.as_u64,
+					   ip0->protocol))
 		continue;
 
-	      ses0 =
-		snat_det_ses_create (thread_index, mp0, &ip0->src_address,
-				     tcp0->src, &key0);
+	      ses0 = snat_det_ses_create (thread_index, mp0, &ip0->src_address,
+					  tcp0->src, &key0, ip0->protocol);
 	      break;
 	    }
 	  if (PREDICT_FALSE (!ses0))
