@@ -133,7 +133,7 @@ typedef struct
   u32 seq;
   u32 seq_hi;
   u64 replay_window;
-  u64 ctr_iv_counter;
+  u64 iv_counter;
   dpo_id_t dpo;
 
   vnet_crypto_key_index_t crypto_key_index;
