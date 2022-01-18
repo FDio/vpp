@@ -474,7 +474,7 @@ vnet_crypto_key_del (vlib_main_t * vm, vnet_crypto_key_index_t index)
     }
   else if (key->type == VNET_CRYPTO_KEY_TYPE_LINK)
     {
-      key->index_crypto = key->index_integ = 0;
+      key->index_crypto = key->index_integ = ~0;
     }
 
   pool_put (cm->keys, key);
