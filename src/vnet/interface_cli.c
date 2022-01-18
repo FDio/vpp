@@ -2515,6 +2515,12 @@ set_interface_tx_hash_cmd (vlib_main_t *vm, unformat_input_t *input,
       goto error;
     }
 
+  if (hash_name == 0)
+    {
+      error = clib_error_return (0, "hash-name is required");
+      goto error;
+    }
+
   hi = vnet_get_hw_interface (vnm, hw_if_index);
   ftype =
     vnet_get_hw_interface_class (vnm, hi->hw_class_index)->tx_hash_fn_type;
