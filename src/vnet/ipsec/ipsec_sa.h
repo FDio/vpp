@@ -133,6 +133,8 @@ typedef struct
   /* data accessed by dataplane code should be above this comment */
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
+  u64 iv_counter;
+
   union
   {
     ip4_header_t ip4_hdr;
@@ -163,7 +165,6 @@ typedef struct
 
   /* Salt used in GCM modes - stored in network byte order */
   u32 salt;
-  u64 gcm_iv_counter;
 } ipsec_sa_t;
 
 STATIC_ASSERT_OFFSET_OF (ipsec_sa_t, cacheline1, CLIB_CACHE_LINE_BYTES);
