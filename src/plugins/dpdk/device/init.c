@@ -360,9 +360,16 @@ dpdk_lib_init (dpdk_main_t * dm)
 	xd->name = format (xd->name, "/%d", di.switch_info.port_id);
 
       /* number of RX and TX queues */
-      if (devconf->num_tx_queues > 0 &&
-	  devconf->num_tx_queues < xd->conf.n_tx_queues)
-	xd->conf.n_tx_queues = devconf->num_tx_queues;
+      if (devconf->num_tx_queues > 0)
+	{
+	  if (di.max_tx_queues < devconf->num_tx_queues)
+	    dpdk_log_warn ("[%u] Configured number of TX queues (%u) is "
+			   "bigger than maximum supported (%u)",
+			   port_id, devconf->num_tx_queues, di.max_tx_queues);
+	  xd->conf.n_tx_queues = devconf->num_tx_queues;
+	}
+
+      xd->conf.n_tx_queues = clib_min (di.max_tx_queues, xd->conf.n_tx_queues);
 
       if (devconf->num_rx_queues > 1 &&
 	  di.max_rx_queues >= devconf->num_rx_queues)
@@ -379,6 +386,8 @@ dpdk_lib_init (dpdk_main_t * dm)
 			       format_dpdk_rss_hf_name, unsupported_bits);
 	    }
 	  xd->conf.rss_hf &= di.flow_type_rss_offloads;
+	  dpdk_log_debug ("[%u] rss_hf: %U", port_id, format_dpdk_rss_hf_name,
+			  xd->conf.rss_hf);
 	}
 
       xd->driver_frame_overhead =
@@ -406,6 +415,11 @@ dpdk_lib_init (dpdk_main_t * dm)
 	xd->conf.n_tx_desc = devconf->num_tx_desc;
       else if (dr && dr->n_tx_desc)
 	xd->conf.n_tx_desc = dr->n_tx_desc;
+
+      dpdk_log_debug (
+	"[%u] n_rx_queues: %u n_tx_queues: %u n_rx_desc: %u n_tx_desc: %u",
+	port_id, xd->conf.n_rx_queues, xd->conf.n_tx_queues,
+	xd->conf.n_rx_desc, xd->conf.n_tx_desc);
 
       vec_validate_aligned (xd->rx_queues, xd->conf.n_rx_queues - 1,
 			    CLIB_CACHE_LINE_BYTES);
