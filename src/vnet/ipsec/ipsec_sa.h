@@ -152,7 +152,7 @@ typedef struct
 
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
-  u64 gcm_iv_counter;
+  u64 iv_counter;
   union
   {
     ip4_header_t ip4_hdr;
