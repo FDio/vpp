@@ -664,9 +664,9 @@ VLIB_NODE_FN (srv6_end_m_gtp4_e)
 		  srv6_end_rewrite_trace_t *tr =
 		    vlib_add_trace (vm, node, b0, sizeof (*tr));
 		  clib_memcpy (tr->src.as_u8, hdr0->ip4.src_address.as_u8,
-			       sizeof (tr->src.as_u8));
+			       sizeof (hdr0->ip4.src_address.as_u8));
 		  clib_memcpy (tr->dst.as_u8, hdr0->ip4.dst_address.as_u8,
-			       sizeof (tr->dst.as_u8));
+			       sizeof (hdr0->ip4.dst_address.as_u8));
 		  tr->teid = hdr0->gtpu.teid;
 		}
 	    }
