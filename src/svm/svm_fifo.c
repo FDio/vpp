@@ -1010,25 +1010,26 @@ svm_fifo_enqueue_segments (svm_fifo_t * f, const svm_fifo_seg_t segs[],
     }
   else
     {
-      len = clib_min (free_count, len);
+      u32 n_left = clib_min (free_count, len);
 
-      if (f_pos_gt (tail + len, f_chunk_end (f_end_cptr (f))))
+      if (f_pos_gt (tail + n_left, f_chunk_end (f_end_cptr (f))))
 	{
-	  if (PREDICT_FALSE (f_try_chunk_alloc (f, head, tail, len)))
+	  if (PREDICT_FALSE (f_try_chunk_alloc (f, head, tail, n_left)))
 	    {
-	      len = f_chunk_end (f_end_cptr (f)) - tail;
-	      if (!len)
+	      n_left = f_chunk_end (f_end_cptr (f)) - tail;
+	      if (!n_left)
 		return SVM_FIFO_EGROW;
 	    }
 	}
 
+      len = n_left;
       i = 0;
-      while (len)
+      while (n_left)
 	{
-	  u32 to_copy = clib_min (segs[i].len, len);
+	  u32 to_copy = clib_min (segs[i].len, n_left);
 	  svm_fifo_copy_to_chunk (f, f_tail_cptr (f), tail, segs[i].data,
 				  to_copy, &f->shr->tail_chunk);
-	  len -= to_copy;
+	  n_left -= to_copy;
 	  tail += to_copy;
 	  i++;
 	}
