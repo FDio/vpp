@@ -40,7 +40,6 @@
 nat44_ei_main_t nat44_ei_main;
 
 extern vlib_node_registration_t nat44_ei_hairpinning_node;
-extern vlib_node_registration_t nat44_ei_hairpin_dst_node;
 extern vlib_node_registration_t
   nat44_ei_in2out_hairpinning_finish_ip4_lookup_node;
 extern vlib_node_registration_t
@@ -108,31 +107,6 @@ VNET_FEATURE_INIT (ip4_nat44_ei_out2in, static) = {
 VNET_FEATURE_INIT (ip4_nat44_ei_in2out_output, static) = {
   .arc_name = "ip4-output",
   .node_name = "nat44-ei-in2out-output",
-  .runs_after = VNET_FEATURES ("acl-plugin-out-ip4-fa",
-			       "ip4-sv-reassembly-output-feature"),
-};
-VNET_FEATURE_INIT (ip4_nat44_ei_in2out_fast, static) = {
-  .arc_name = "ip4-unicast",
-  .node_name = "nat44-ei-in2out-fast",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa",
-			       "ip4-sv-reassembly-feature"),
-};
-VNET_FEATURE_INIT (ip4_nat44_ei_out2in_fast, static) = {
-  .arc_name = "ip4-unicast",
-  .node_name = "nat44-ei-out2in-fast",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa",
-			       "ip4-sv-reassembly-feature",
-			       "ip4-dhcp-client-detect"),
-};
-VNET_FEATURE_INIT (ip4_nat44_ei_hairpin_dst, static) = {
-  .arc_name = "ip4-unicast",
-  .node_name = "nat44-ei-hairpin-dst",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa",
-			       "ip4-sv-reassembly-feature"),
-};
-VNET_FEATURE_INIT (ip4_nat44_ei_hairpin_src, static) = {
-  .arc_name = "ip4-output",
-  .node_name = "nat44-ei-hairpin-src",
   .runs_after = VNET_FEATURES ("acl-plugin-out-ip4-fa",
 			       "ip4-sv-reassembly-output-feature"),
 };
@@ -482,8 +456,6 @@ nat44_ei_init (vlib_main_t *vm)
 
   nm->hairpinning_fq_index =
     vlib_frame_queue_main_init (nat44_ei_hairpinning_node.index, 0);
-  nm->hairpin_dst_fq_index =
-    vlib_frame_queue_main_init (nat44_ei_hairpin_dst_node.index, 0);
   nm->in2out_hairpinning_finish_ip4_lookup_node_fq_index =
     vlib_frame_queue_main_init (
       nat44_ei_in2out_hairpinning_finish_ip4_lookup_node.index, 0);
@@ -546,8 +518,6 @@ nat44_ei_plugin_enable (nat44_ei_config_t c)
 		    nm->user_buckets);
   nat44_ei_set_alloc_default ();
 
-  // TODO: zero simple counter for all counters missing
-
   vlib_zero_simple_counter (&nm->total_users, 0);
   vlib_zero_simple_counter (&nm->total_sessions, 0);
   vlib_zero_simple_counter (&nm->user_limit_reached, 0);
@@ -603,6 +573,13 @@ nat44_ei_get_interface (nat44_ei_interface_t *interfaces, u32 sw_if_index)
 	}
     }
   return 0;
+}
+
+static_always_inline int
+nat44_ei_hairpinning_enable (u32 sw_if_index, u8 is_enable)
+{
+  return vnet_feature_enable_disable ("ip4-local", "nat44-ei-hairpinning",
+				      sw_if_index, is_enable, 0, 0);
 }
 
 int
@@ -671,8 +648,7 @@ nat44_ei_add_interface (u32 sw_if_index, u8 is_inside)
 	}
       if (!is_inside)
 	{
-	  rv = vnet_feature_enable_disable (
-	    "ip4-local", "nat44-ei-hairpinning", sw_if_index, 0, 0, 0);
+	  rv = nat44_ei_hairpinning_enable (sw_if_index, 0);
 	  if (rv)
 	    {
 	      return rv;
@@ -705,8 +681,7 @@ nat44_ei_add_interface (u32 sw_if_index, u8 is_inside)
 	}
       if (is_inside && !nm->out2in_dpo)
 	{
-	  rv = vnet_feature_enable_disable (
-	    "ip4-local", "nat44-ei-hairpinning", sw_if_index, 1, 0, 0);
+	  rv = nat44_ei_hairpinning_enable (sw_if_index, 1);
 	  if (rv)
 	    {
 	      return rv;
@@ -811,8 +786,7 @@ nat44_ei_del_interface (u32 sw_if_index, u8 is_inside)
 	}
       else
 	{
-	  rv = vnet_feature_enable_disable (
-	    "ip4-local", "nat44-ei-hairpinning", sw_if_index, 1, 0, 0);
+	  rv = nat44_ei_hairpinning_enable (sw_if_index, 1);
 	  if (rv)
 	    {
 	      return rv;
@@ -845,8 +819,7 @@ nat44_ei_del_interface (u32 sw_if_index, u8 is_inside)
 	}
       if (is_inside)
 	{
-	  rv = vnet_feature_enable_disable (
-	    "ip4-local", "nat44-ei-hairpinning", sw_if_index, 0, 0, 0);
+	  rv = nat44_ei_hairpinning_enable (sw_if_index, 0);
 	  if (rv)
 	    {
 	      return rv;

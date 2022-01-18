@@ -3712,7 +3712,7 @@ class TestNAT44EI(MethodHolder):
         return self.vapi.nat44_ei_show_fq_options().frame_queue_nelts
 
     def test_set_frame_queue_nelts(self):
-        """ NAT44 EI API test - worker handoff frame queue elements """
+        """ NAT44EI API test - worker handoff frame queue elements """
         self.assertEqual(self.reconfigure_frame_queue_nelts(512), 512)
 
     def show_commands_at_teardown(self):

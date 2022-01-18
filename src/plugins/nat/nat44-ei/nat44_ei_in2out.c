@@ -34,50 +34,8 @@
 #include <nat/lib/nat_inlines.h>
 #include <nat/nat44-ei/nat44_ei_inlines.h>
 #include <nat/nat44-ei/nat44_ei.h>
-#include <nat/nat44-ei/nat44_ei_hairpinning.h>
 
-typedef struct
-{
-  u32 sw_if_index;
-  u32 next_index;
-  u32 session_index;
-  u32 is_slow_path;
-  u32 is_hairpinning;
-} nat44_ei_in2out_trace_t;
-
-/* packet trace format function */
-static u8 *
-format_nat44_ei_in2out_trace (u8 *s, va_list *args)
-{
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  nat44_ei_in2out_trace_t *t = va_arg (*args, nat44_ei_in2out_trace_t *);
-  char *tag;
-
-  tag = t->is_slow_path ? "NAT44_IN2OUT_SLOW_PATH" : "NAT44_IN2OUT_FAST_PATH";
-
-  s = format (s, "%s: sw_if_index %d, next index %d, session %d", tag,
-	      t->sw_if_index, t->next_index, t->session_index);
-  if (t->is_hairpinning)
-    {
-      s = format (s, ", with-hairpinning");
-    }
-
-  return s;
-}
-
-static u8 *
-format_nat44_ei_in2out_fast_trace (u8 *s, va_list *args)
-{
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  nat44_ei_in2out_trace_t *t = va_arg (*args, nat44_ei_in2out_trace_t *);
-
-  s = format (s, "NAT44_IN2OUT_FAST: sw_if_index %d, next index %d",
-	      t->sw_if_index, t->next_index);
-
-  return s;
-}
+extern vnet_feature_arc_registration_t vnet_feat_arc_ip4_local;
 
 #define foreach_nat44_ei_in2out_error                                         \
   _ (UNSUPPORTED_PROTOCOL, "unsupported protocol")                            \
@@ -87,6 +45,9 @@ format_nat44_ei_in2out_fast_trace (u8 *s, va_list *args)
   _ (NO_TRANSLATION, "no translation")                                        \
   _ (MAX_SESSIONS_EXCEEDED, "maximum sessions exceeded")                      \
   _ (CANNOT_CREATE_USER, "cannot create NAT user")
+
+#define foreach_nat44_ei_hairpinning_handoff_error                            \
+  _ (CONGESTION_DROP, "congestion drop")
 
 typedef enum
 {
@@ -99,6 +60,20 @@ typedef enum
 static char *nat44_ei_in2out_error_strings[] = {
 #define _(sym,string) string,
   foreach_nat44_ei_in2out_error
+#undef _
+};
+
+typedef enum
+{
+#define _(sym, str) NAT44_EI_HAIRPINNING_HANDOFF_ERROR_##sym,
+  foreach_nat44_ei_hairpinning_handoff_error
+#undef _
+    NAT44_EI_HAIRPINNING_HANDOFF_N_ERROR,
+} nat44_ei_hairpinning_handoff_error_t;
+
+static char *nat44_ei_hairpinning_handoff_error_strings[] = {
+#define _(sym, string) string,
+  foreach_nat44_ei_hairpinning_handoff_error
 #undef _
 };
 
@@ -119,7 +94,98 @@ typedef enum
   NAT44_EI_IN2OUT_HAIRPINNING_FINISH_N_NEXT,
 } nat44_ei_in2out_hairpinnig_finish_next_t;
 
-static inline int
+typedef enum
+{
+  NAT44_EI_HAIRPIN_NEXT_LOOKUP,
+  NAT44_EI_HAIRPIN_NEXT_DROP,
+  NAT44_EI_HAIRPIN_NEXT_HANDOFF,
+  NAT44_EI_HAIRPIN_N_NEXT,
+} nat44_ei_hairpin_next_t;
+
+typedef struct
+{
+  u32 sw_if_index;
+  u32 next_index;
+  u32 session_index;
+  u32 is_slow_path;
+  u32 is_hairpinning;
+} nat44_ei_in2out_trace_t;
+
+typedef struct
+{
+  ip4_address_t addr;
+  u16 port;
+  u32 fib_index;
+  u32 session_index;
+} nat44_ei_hairpin_trace_t;
+
+typedef struct
+{
+  u32 next_worker_index;
+} nat44_ei_hairpinning_handoff_trace_t;
+
+static u8 *
+format_nat44_ei_in2out_trace (u8 *s, va_list *args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  nat44_ei_in2out_trace_t *t = va_arg (*args, nat44_ei_in2out_trace_t *);
+  char *tag;
+  tag = t->is_slow_path ? "NAT44_IN2OUT_SLOW_PATH" : "NAT44_IN2OUT_FAST_PATH";
+  s = format (s, "%s: sw_if_index %d, next index %d, session %d", tag,
+	      t->sw_if_index, t->next_index, t->session_index);
+  if (t->is_hairpinning)
+    s = format (s, ", with-hairpinning");
+  return s;
+}
+
+static u8 *
+format_nat44_ei_in2out_fast_trace (u8 *s, va_list *args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  nat44_ei_in2out_trace_t *t = va_arg (*args, nat44_ei_in2out_trace_t *);
+  s = format (s, "NAT44_IN2OUT_FAST: sw_if_index %d, next index %d",
+	      t->sw_if_index, t->next_index);
+  return s;
+}
+
+static u8 *
+format_nat44_ei_hairpin_trace (u8 *s, va_list *args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  nat44_ei_hairpin_trace_t *t = va_arg (*args, nat44_ei_hairpin_trace_t *);
+
+  s = format (s, "new dst addr %U port %u fib-index %u", format_ip4_address,
+	      &t->addr, clib_net_to_host_u16 (t->port), t->fib_index);
+  if (~0 == t->session_index)
+    {
+      s = format (s, " is-static-mapping");
+    }
+  else
+    {
+      s = format (s, " session-index %u", t->session_index);
+    }
+
+  return s;
+}
+
+static u8 *
+format_nat44_ei_hairpinning_handoff_trace (u8 *s, va_list *args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  nat44_ei_hairpinning_handoff_trace_t *t =
+    va_arg (*args, nat44_ei_hairpinning_handoff_trace_t *);
+
+  s = format (s, "nat44-ei-hairpinning-handoff: next-worker %d",
+	      t->next_worker_index);
+
+  return s;
+}
+
+static_always_inline int
 nat44_ei_not_translate_fast (vlib_node_runtime_t *node, u32 sw_if_index0,
 			     ip4_header_t *ip0, u32 proto0, u32 rx_fib_index0)
 {
@@ -177,7 +243,7 @@ nat44_ei_not_translate_fast (vlib_node_runtime_t *node, u32 sw_if_index0,
   return 1;
 }
 
-static inline int
+static_always_inline int
 nat44_ei_not_translate (nat44_ei_main_t *nm, vlib_node_runtime_t *node,
 			u32 sw_if_index0, ip4_header_t *ip0, u32 proto0,
 			u32 rx_fib_index0, u32 thread_index)
@@ -212,7 +278,7 @@ nat44_ei_not_translate (nat44_ei_main_t *nm, vlib_node_runtime_t *node,
 				      rx_fib_index0);
 }
 
-static inline int
+static_always_inline int
 nat44_ei_not_translate_output_feature (nat44_ei_main_t *nm, ip4_header_t *ip0,
 				       u32 proto0, u16 src_port, u16 dst_port,
 				       u32 thread_index, u32 sw_if_index)
@@ -443,7 +509,6 @@ slow_path (nat44_ei_main_t *nm, vlib_buffer_t *b0, ip4_header_t *ip0,
   return next0;
 }
 
-#ifndef CLIB_MARCH_VARIANT
 static_always_inline nat44_ei_in2out_error_t
 icmp_get_key (vlib_buffer_t *b, ip4_header_t *ip0, ip4_address_t *addr,
 	      u16 *port, nat_protocol_t *nat_proto)
@@ -488,22 +553,7 @@ icmp_get_key (vlib_buffer_t *b, ip4_header_t *ip0, ip4_address_t *addr,
   return -1;			/* success */
 }
 
-/**
- * Get address and port values to be used for ICMP packet translation
- * and create session if needed
- *
- * @param[in,out] nm             NAT main
- * @param[in,out] node           NAT node runtime
- * @param[in] thread_index       thread index
- * @param[in,out] b0             buffer containing packet to be translated
- * @param[in,out] ip0            ip header
- * @param[out] p_proto           protocol used for matching
- * @param[out] p_value           address and port after NAT translation
- * @param[out] p_dont_translate  if packet should not be translated
- * @param d                      optional parameter
- * @param e                      optional parameter
- */
-u32
+static_always_inline u32
 nat44_ei_icmp_match_in2out_slow (vlib_node_runtime_t *node, u32 thread_index,
 				 vlib_buffer_t *b0, ip4_header_t *ip0,
 				 ip4_address_t *addr, u16 *port,
@@ -605,10 +655,8 @@ out:
     *p_s0 = s0;
   return next0;
 }
-#endif
 
-#ifndef CLIB_MARCH_VARIANT
-u32
+static_always_inline u32
 nat44_ei_icmp_match_in2out_fast (vlib_node_runtime_t *node, u32 thread_index,
 				 vlib_buffer_t *b0, ip4_header_t *ip0,
 				 ip4_address_t *addr, u16 *port,
@@ -674,16 +722,135 @@ nat44_ei_icmp_match_in2out_fast (vlib_node_runtime_t *node, u32 thread_index,
 out:
   return next0;
 }
-#endif
 
-u32 nat44_ei_icmp_in2out (vlib_buffer_t *b0, ip4_header_t *ip0,
-			  icmp46_header_t *icmp0, u32 sw_if_index0,
-			  u32 rx_fib_index0, vlib_node_runtime_t *node,
-			  u32 next0, u32 thread_index,
-			  nat44_ei_session_t **p_s0);
+static_always_inline u32
+nat44_ei_icmp_hairpinning (nat44_ei_main_t *nm, vlib_buffer_t *b0,
+			   u32 thread_index, ip4_header_t *ip0,
+			   icmp46_header_t *icmp0, u32 *required_thread_index)
+{
+  clib_bihash_kv_8_8_t kv0, value0;
+  u32 old_dst_addr0, new_dst_addr0;
+  u32 old_addr0, new_addr0;
+  u16 old_port0, new_port0;
+  u16 old_checksum0, new_checksum0;
+  u32 si, ti = 0;
+  ip_csum_t sum0;
+  nat44_ei_session_t *s0;
+  nat44_ei_static_mapping_t *m0;
 
-#ifndef CLIB_MARCH_VARIANT
-u32
+  if (icmp_type_is_error_message (
+	vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags))
+    {
+      ip4_header_t *inner_ip0 = 0;
+      tcp_udp_header_t *l4_header = 0;
+
+      inner_ip0 = (ip4_header_t *) ((icmp_echo_header_t *) (icmp0 + 1) + 1);
+      l4_header = ip4_next_header (inner_ip0);
+      u32 protocol = ip_proto_to_nat_proto (inner_ip0->protocol);
+
+      if (protocol != NAT_PROTOCOL_TCP && protocol != NAT_PROTOCOL_UDP)
+	return 1;
+
+      init_nat_k (&kv0, ip0->dst_address, l4_header->src_port,
+		  nm->outside_fib_index, protocol);
+      if (clib_bihash_search_8_8 (&nm->out2in, &kv0, &value0))
+	return 1;
+      ti = nat_value_get_thread_index (&value0);
+      if (ti != thread_index)
+	{
+	  *required_thread_index = ti;
+	  return 1;
+	}
+      si = nat_value_get_session_index (&value0);
+      s0 = pool_elt_at_index (nm->per_thread_data[ti].sessions, si);
+      new_dst_addr0 = s0->in2out.addr.as_u32;
+      vnet_buffer (b0)->sw_if_index[VLIB_TX] = s0->in2out.fib_index;
+
+      /* update inner source IP address */
+      old_addr0 = inner_ip0->src_address.as_u32;
+      inner_ip0->src_address.as_u32 = new_dst_addr0;
+      new_addr0 = inner_ip0->src_address.as_u32;
+      sum0 = icmp0->checksum;
+      sum0 =
+	ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t, src_address);
+      icmp0->checksum = ip_csum_fold (sum0);
+
+      /* update inner IP header checksum */
+      old_checksum0 = inner_ip0->checksum;
+      sum0 = inner_ip0->checksum;
+      sum0 =
+	ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t, src_address);
+      inner_ip0->checksum = ip_csum_fold (sum0);
+      new_checksum0 = inner_ip0->checksum;
+      sum0 = icmp0->checksum;
+      sum0 = ip_csum_update (sum0, old_checksum0, new_checksum0, ip4_header_t,
+			     checksum);
+      icmp0->checksum = ip_csum_fold (sum0);
+
+      /* update inner source port */
+      old_port0 = l4_header->src_port;
+      l4_header->src_port = s0->in2out.port;
+      new_port0 = l4_header->src_port;
+      sum0 = icmp0->checksum;
+      sum0 = ip_csum_update (sum0, old_port0, new_port0, tcp_udp_header_t,
+			     src_port);
+      icmp0->checksum = ip_csum_fold (sum0);
+    }
+  else
+    {
+      init_nat_k (&kv0, ip0->dst_address, 0, nm->outside_fib_index, 0);
+      if (clib_bihash_search_8_8 (&nm->static_mapping_by_external, &kv0,
+				  &value0))
+	{
+	  icmp_echo_header_t *echo0 = (icmp_echo_header_t *) (icmp0 + 1);
+	  u16 icmp_id0 = echo0->identifier;
+	  init_nat_k (&kv0, ip0->dst_address, icmp_id0, nm->outside_fib_index,
+		      NAT_PROTOCOL_ICMP);
+	  int rv = clib_bihash_search_8_8 (&nm->out2in, &kv0, &value0);
+	  if (!rv)
+	    {
+	      ti = nat_value_get_thread_index (&value0);
+	      if (ti != thread_index)
+		{
+		  *required_thread_index = ti;
+		  return 1;
+		}
+	      si = nat_value_get_session_index (&value0);
+	      s0 = pool_elt_at_index (nm->per_thread_data[ti].sessions, si);
+	      new_dst_addr0 = s0->in2out.addr.as_u32;
+	      vnet_buffer (b0)->sw_if_index[VLIB_TX] = s0->in2out.fib_index;
+	      echo0->identifier = s0->in2out.port;
+	      sum0 = icmp0->checksum;
+	      sum0 = ip_csum_update (sum0, icmp_id0, s0->in2out.port,
+				     icmp_echo_header_t, identifier);
+	      icmp0->checksum = ip_csum_fold (sum0);
+	      goto change_addr;
+	    }
+
+	  return 1;
+	}
+
+      m0 = pool_elt_at_index (nm->static_mappings, value0.value);
+
+      new_dst_addr0 = m0->local_addr.as_u32;
+      if (vnet_buffer (b0)->sw_if_index[VLIB_TX] == ~0)
+	vnet_buffer (b0)->sw_if_index[VLIB_TX] = m0->fib_index;
+    }
+change_addr:
+  /* Destination is behind the same NAT, use internal address and port */
+  if (new_dst_addr0)
+    {
+      old_dst_addr0 = ip0->dst_address.as_u32;
+      ip0->dst_address.as_u32 = new_dst_addr0;
+      sum0 = ip0->checksum;
+      sum0 = ip_csum_update (sum0, old_dst_addr0, new_dst_addr0, ip4_header_t,
+			     dst_address);
+      ip0->checksum = ip_csum_fold (sum0);
+    }
+  return 0;
+}
+
+static_always_inline u32
 nat44_ei_icmp_in2out (vlib_buffer_t *b0, ip4_header_t *ip0,
 		      icmp46_header_t *icmp0, u32 sw_if_index0,
 		      u32 rx_fib_index0, vlib_node_runtime_t *node, u32 next0,
@@ -854,7 +1021,6 @@ nat44_ei_icmp_in2out (vlib_buffer_t *b0, ip4_header_t *ip0,
 out:
   return next0;
 }
-#endif
 
 static_always_inline u32
 nat44_ei_icmp_in2out_slow_path (nat44_ei_main_t *nm, vlib_buffer_t *b0,
@@ -877,6 +1043,31 @@ nat44_ei_icmp_in2out_slow_path (nat44_ei_main_t *nm, vlib_buffer_t *b0,
       nat44_ei_session_update_lru (nm, s0, thread_index);
     }
   return next0;
+}
+
+static_always_inline void
+nat44_ei_hairpinning_sm_unknown_proto (nat44_ei_main_t *nm, vlib_buffer_t *b,
+				       ip4_header_t *ip)
+{
+  clib_bihash_kv_8_8_t kv, value;
+  nat44_ei_static_mapping_t *m;
+  u32 old_addr, new_addr;
+  ip_csum_t sum;
+
+  init_nat_k (&kv, ip->dst_address, 0, 0, 0);
+  if (clib_bihash_search_8_8 (&nm->static_mapping_by_external, &kv, &value))
+    return;
+
+  m = pool_elt_at_index (nm->static_mappings, value.value);
+
+  old_addr = ip->dst_address.as_u32;
+  new_addr = ip->dst_address.as_u32 = m->local_addr.as_u32;
+  sum = ip->checksum;
+  sum = ip_csum_update (sum, old_addr, new_addr, ip4_header_t, dst_address);
+  ip->checksum = ip_csum_fold (sum);
+
+  if (vnet_buffer (b)->sw_if_index[VLIB_TX] == ~0)
+    vnet_buffer (b)->sw_if_index[VLIB_TX] = m->fib_index;
 }
 
 static int
@@ -911,7 +1102,174 @@ nat_in2out_sm_unknown_proto (nat44_ei_main_t *nm, vlib_buffer_t *b,
   return 0;
 }
 
-static inline uword
+static_always_inline int
+nat44_ei_hairpinning (vlib_main_t *vm, vlib_node_runtime_t *node,
+		      nat44_ei_main_t *nm, u32 thread_index, vlib_buffer_t *b0,
+		      ip4_header_t *ip0, udp_header_t *udp0,
+		      tcp_header_t *tcp0, u32 proto0, int do_trace,
+		      u32 *required_thread_index)
+{
+  nat44_ei_session_t *s0 = NULL;
+  clib_bihash_kv_8_8_t kv0, value0;
+  ip_csum_t sum0;
+  u32 new_dst_addr0 = 0, old_dst_addr0, si = ~0;
+  u16 new_dst_port0 = ~0, old_dst_port0;
+  int rv;
+  ip4_address_t sm0_addr;
+  u16 sm0_port;
+  u32 sm0_fib_index;
+  u32 old_sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+
+  /* Check if destination is static mappings */
+  if (!nat44_ei_static_mapping_match (
+	ip0->dst_address, udp0->dst_port, nm->outside_fib_index, proto0,
+	&sm0_addr, &sm0_port, &sm0_fib_index, 1 /* by external */, 0, 0))
+    {
+      new_dst_addr0 = sm0_addr.as_u32;
+      new_dst_port0 = sm0_port;
+      vnet_buffer (b0)->sw_if_index[VLIB_TX] = sm0_fib_index;
+    }
+  /* or active session */
+  else
+    {
+      init_nat_k (&kv0, ip0->dst_address, udp0->dst_port,
+		  nm->outside_fib_index, proto0);
+      rv = clib_bihash_search_8_8 (&nm->out2in, &kv0, &value0);
+      if (rv)
+	{
+	  rv = 0;
+	  goto trace;
+	}
+
+      if (thread_index != nat_value_get_thread_index (&value0))
+	{
+	  *required_thread_index = nat_value_get_thread_index (&value0);
+	  return 0;
+	}
+
+      si = nat_value_get_session_index (&value0);
+      s0 = pool_elt_at_index (nm->per_thread_data[thread_index].sessions, si);
+      new_dst_addr0 = s0->in2out.addr.as_u32;
+      new_dst_port0 = s0->in2out.port;
+      vnet_buffer (b0)->sw_if_index[VLIB_TX] = s0->in2out.fib_index;
+    }
+
+  /* Check if anything has changed and if not, then return 0. This
+     helps avoid infinite loop, repeating the three nodes
+     nat44-hairpinning-->ip4-lookup-->ip4-local, in case nothing has
+     changed. */
+  old_dst_addr0 = ip0->dst_address.as_u32;
+  old_dst_port0 = tcp0->dst;
+  if (new_dst_addr0 == old_dst_addr0 && new_dst_port0 == old_dst_port0 &&
+      vnet_buffer (b0)->sw_if_index[VLIB_TX] == old_sw_if_index)
+    return 0;
+
+  /* Destination is behind the same NAT, use internal address and port */
+  if (new_dst_addr0)
+    {
+      old_dst_addr0 = ip0->dst_address.as_u32;
+      ip0->dst_address.as_u32 = new_dst_addr0;
+      sum0 = ip0->checksum;
+      sum0 = ip_csum_update (sum0, old_dst_addr0, new_dst_addr0, ip4_header_t,
+			     dst_address);
+      ip0->checksum = ip_csum_fold (sum0);
+
+      old_dst_port0 = tcp0->dst;
+      if (PREDICT_TRUE (new_dst_port0 != old_dst_port0))
+	{
+	  if (PREDICT_TRUE (proto0 == NAT_PROTOCOL_TCP))
+	    {
+	      tcp0->dst = new_dst_port0;
+	      sum0 = tcp0->checksum;
+	      sum0 = ip_csum_update (sum0, old_dst_addr0, new_dst_addr0,
+				     ip4_header_t, dst_address);
+	      sum0 = ip_csum_update (sum0, old_dst_port0, new_dst_port0,
+				     ip4_header_t /* cheat */, length);
+	      tcp0->checksum = ip_csum_fold (sum0);
+	    }
+	  else
+	    {
+	      udp0->dst_port = new_dst_port0;
+	      udp0->checksum = 0;
+	    }
+	}
+      else
+	{
+	  if (PREDICT_TRUE (proto0 == NAT_PROTOCOL_TCP))
+	    {
+	      sum0 = tcp0->checksum;
+	      sum0 = ip_csum_update (sum0, old_dst_addr0, new_dst_addr0,
+				     ip4_header_t, dst_address);
+	      tcp0->checksum = ip_csum_fold (sum0);
+	    }
+	}
+      rv = 1;
+      goto trace;
+    }
+  rv = 0;
+trace:
+  if (do_trace && PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+				 (b0->flags & VLIB_BUFFER_IS_TRACED)))
+    {
+      nat44_ei_hairpin_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
+      t->addr.as_u32 = new_dst_addr0;
+      t->port = new_dst_port0;
+      t->fib_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+      if (s0)
+	{
+	  t->session_index = si;
+	}
+      else
+	{
+	  t->session_index = ~0;
+	}
+    }
+  return rv;
+}
+
+static_always_inline uword
+nat44_ei_hairpinning_handoff_fn_inline (vlib_main_t *vm,
+					vlib_node_runtime_t *node,
+					vlib_frame_t *frame, u32 fq_index)
+{
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  u32 n_enq, n_left_from, *from;
+  u16 thread_indices[VLIB_FRAME_SIZE], *ti;
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+  vlib_get_buffers (vm, from, bufs, n_left_from);
+
+  b = bufs;
+  ti = thread_indices;
+
+  while (n_left_from > 0)
+    {
+      ti[0] = vnet_buffer (b[0])->snat.required_thread_index;
+
+      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			 (b[0]->flags & VLIB_BUFFER_IS_TRACED)))
+	{
+	  nat44_ei_hairpinning_handoff_trace_t *t =
+	    vlib_add_trace (vm, node, b[0], sizeof (*t));
+	  t->next_worker_index = ti[0];
+	}
+
+      n_left_from -= 1;
+      ti += 1;
+      b += 1;
+    }
+  n_enq = vlib_buffer_enqueue_to_thread (vm, node, fq_index, from,
+					 thread_indices, frame->n_vectors, 1);
+
+  if (n_enq < frame->n_vectors)
+    vlib_node_increment_counter (
+      vm, node->node_index, NAT44_EI_HAIRPINNING_HANDOFF_ERROR_CONGESTION_DROP,
+      frame->n_vectors - n_enq);
+  return frame->n_vectors;
+}
+
+static_always_inline uword
 nat44_ei_in2out_node_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 				vlib_frame_t *frame, int is_slow_path,
 				int is_output_feature)
@@ -1667,389 +2025,7 @@ nat44_ei_in2out_node_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (nat44_ei_in2out_node)
-(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
-{
-  return nat44_ei_in2out_node_fn_inline (vm, node, frame, 0 /* is_slow_path */,
-					 0);
-}
-
-VLIB_REGISTER_NODE (nat44_ei_in2out_node) = {
-  .name = "nat44-ei-in2out",
-  .vector_size = sizeof (u32),
-  .format_trace = format_nat44_ei_in2out_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
-
-  .n_errors = ARRAY_LEN(nat44_ei_in2out_error_strings),
-  .error_strings = nat44_ei_in2out_error_strings,
-
-  .runtime_data_bytes = sizeof (nat44_ei_runtime_t),
-
-  .n_next_nodes = NAT44_EI_IN2OUT_N_NEXT,
-
-  /* edit / add dispositions here */
-  .next_nodes = {
-    [NAT44_EI_IN2OUT_NEXT_DROP] = "error-drop",
-    [NAT44_EI_IN2OUT_NEXT_LOOKUP] = "ip4-lookup",
-    [NAT44_EI_IN2OUT_NEXT_SLOW_PATH] = "nat44-ei-in2out-slowpath",
-    [NAT44_EI_IN2OUT_NEXT_ICMP_ERROR] = "ip4-icmp-error",
-    [NAT44_EI_IN2OUT_NEXT_HAIRPINNING_HANDOFF] = "nat44-ei-in2out-hairpinning-handoff-ip4-lookup",
-  },
-};
-
-VLIB_NODE_FN (nat44_ei_in2out_output_node)
-(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
-{
-  return nat44_ei_in2out_node_fn_inline (vm, node, frame, 0 /* is_slow_path */,
-					 1);
-}
-
-VLIB_REGISTER_NODE (nat44_ei_in2out_output_node) = {
-  .name = "nat44-ei-in2out-output",
-  .vector_size = sizeof (u32),
-  .format_trace = format_nat44_ei_in2out_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
-
-  .n_errors = ARRAY_LEN(nat44_ei_in2out_error_strings),
-  .error_strings = nat44_ei_in2out_error_strings,
-
-  .runtime_data_bytes = sizeof (nat44_ei_runtime_t),
-
-  .n_next_nodes = NAT44_EI_IN2OUT_N_NEXT,
-
-  /* edit / add dispositions here */
-  .next_nodes = {
-    [NAT44_EI_IN2OUT_NEXT_DROP] = "error-drop",
-    [NAT44_EI_IN2OUT_NEXT_LOOKUP] = "interface-output",
-    [NAT44_EI_IN2OUT_NEXT_SLOW_PATH] = "nat44-ei-in2out-output-slowpath",
-    [NAT44_EI_IN2OUT_NEXT_ICMP_ERROR] = "ip4-icmp-error",
-    [NAT44_EI_IN2OUT_NEXT_HAIRPINNING_HANDOFF] = "nat44-ei-in2out-hairpinning-handoff-interface-output",
-  },
-};
-
-VLIB_NODE_FN (nat44_ei_in2out_slowpath_node)
-(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
-{
-  return nat44_ei_in2out_node_fn_inline (vm, node, frame, 1 /* is_slow_path */,
-					 0);
-}
-
-VLIB_REGISTER_NODE (nat44_ei_in2out_slowpath_node) = {
-  .name = "nat44-ei-in2out-slowpath",
-  .vector_size = sizeof (u32),
-  .format_trace = format_nat44_ei_in2out_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
-
-  .n_errors = ARRAY_LEN(nat44_ei_in2out_error_strings),
-  .error_strings = nat44_ei_in2out_error_strings,
-
-  .runtime_data_bytes = sizeof (nat44_ei_runtime_t),
-
-  .n_next_nodes = NAT44_EI_IN2OUT_N_NEXT,
-
-  /* edit / add dispositions here */
-  .next_nodes = {
-    [NAT44_EI_IN2OUT_NEXT_DROP] = "error-drop",
-    [NAT44_EI_IN2OUT_NEXT_LOOKUP] = "ip4-lookup",
-    [NAT44_EI_IN2OUT_NEXT_SLOW_PATH] = "nat44-ei-in2out-slowpath",
-    [NAT44_EI_IN2OUT_NEXT_ICMP_ERROR] = "ip4-icmp-error",
-    [NAT44_EI_IN2OUT_NEXT_HAIRPINNING_HANDOFF] = "nat44-ei-in2out-hairpinning-handoff-ip4-lookup",
-  },
-};
-
-VLIB_NODE_FN (nat44_ei_in2out_output_slowpath_node)
-(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
-{
-  return nat44_ei_in2out_node_fn_inline (vm, node, frame, 1 /* is_slow_path */,
-					 1);
-}
-
-VLIB_REGISTER_NODE (nat44_ei_in2out_output_slowpath_node) = {
-  .name = "nat44-ei-in2out-output-slowpath",
-  .vector_size = sizeof (u32),
-  .format_trace = format_nat44_ei_in2out_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
-
-  .n_errors = ARRAY_LEN(nat44_ei_in2out_error_strings),
-  .error_strings = nat44_ei_in2out_error_strings,
-
-  .runtime_data_bytes = sizeof (nat44_ei_runtime_t),
-
-  .n_next_nodes = NAT44_EI_IN2OUT_N_NEXT,
-
-  /* edit / add dispositions here */
-  .next_nodes = {
-    [NAT44_EI_IN2OUT_NEXT_DROP] = "error-drop",
-    [NAT44_EI_IN2OUT_NEXT_LOOKUP] = "interface-output",
-    [NAT44_EI_IN2OUT_NEXT_SLOW_PATH] = "nat44-ei-in2out-output-slowpath",
-    [NAT44_EI_IN2OUT_NEXT_ICMP_ERROR] = "ip4-icmp-error",
-    [NAT44_EI_IN2OUT_NEXT_HAIRPINNING_HANDOFF] = "nat44-ei-in2out-hairpinning-handoff-interface-output",
-  },
-};
-
-VLIB_NODE_FN (nat44_ei_in2out_fast_node)
-(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
-{
-  u32 n_left_from, *from, *to_next;
-  u32 thread_index = vm->thread_index;
-  nat44_ei_in2out_next_t next_index;
-  nat44_ei_main_t *nm = &nat44_ei_main;
-  int is_hairpinning = 0;
-
-  from = vlib_frame_vector_args (frame);
-  n_left_from = frame->n_vectors;
-  next_index = node->cached_next_index;
-
-  while (n_left_from > 0)
-    {
-      u32 n_left_to_next;
-
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
-
-      while (n_left_from > 0 && n_left_to_next > 0)
-	{
-	  u32 bi0;
-	  vlib_buffer_t *b0;
-	  u32 next0;
-	  u32 sw_if_index0;
-	  ip4_header_t *ip0;
-	  ip_csum_t sum0;
-	  u32 new_addr0, old_addr0;
-	  u16 old_port0, new_port0;
-	  udp_header_t *udp0;
-	  tcp_header_t *tcp0;
-	  icmp46_header_t *icmp0;
-	  u32 proto0;
-	  u32 rx_fib_index0;
-	  ip4_address_t sm0_addr;
-	  u16 sm0_port;
-	  u32 sm0_fib_index;
-	  u32 required_thread_index = thread_index;
-
-	  /* speculatively enqueue b0 to the current next frame */
-	  bi0 = from[0];
-	  to_next[0] = bi0;
-	  from += 1;
-	  to_next += 1;
-	  n_left_from -= 1;
-	  n_left_to_next -= 1;
-
-	  b0 = vlib_get_buffer (vm, bi0);
-	  next0 = NAT44_EI_IN2OUT_NEXT_LOOKUP;
-
-	  ip0 = vlib_buffer_get_current (b0);
-	  udp0 = ip4_next_header (ip0);
-	  tcp0 = (tcp_header_t *) udp0;
-	  icmp0 = (icmp46_header_t *) udp0;
-
-	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-	  rx_fib_index0 =
-	    ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
-
-	  if (PREDICT_FALSE (ip0->ttl == 1))
-	    {
-	      vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-	      icmp4_error_set_vnet_buffer (b0, ICMP4_time_exceeded,
-					   ICMP4_time_exceeded_ttl_exceeded_in_transit,
-					   0);
-	      next0 = NAT44_EI_IN2OUT_NEXT_ICMP_ERROR;
-	      goto trace0;
-	    }
-
-	  proto0 = ip_proto_to_nat_proto (ip0->protocol);
-
-	  if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_OTHER))
-	    goto trace0;
-
-	  if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_ICMP))
-	    {
-	      next0 = nat44_ei_icmp_in2out (b0, ip0, icmp0, sw_if_index0,
-					    rx_fib_index0, node, next0, ~0, 0);
-	      goto trace0;
-	    }
-
-	  if (nat44_ei_static_mapping_match (
-		ip0->src_address, udp0->src_port, rx_fib_index0, proto0,
-		&sm0_addr, &sm0_port, &sm0_fib_index, 0, 0, 0))
-	    {
-	      b0->error = node->errors[NAT44_EI_IN2OUT_ERROR_NO_TRANSLATION];
-	      next0 = NAT44_EI_IN2OUT_NEXT_DROP;
-	      goto trace0;
-	    }
-
-	  new_addr0 = sm0_addr.as_u32;
-	  new_port0 = sm0_port;
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = sm0_fib_index;
-	  old_addr0 = ip0->src_address.as_u32;
-	  ip0->src_address.as_u32 = new_addr0;
-
-	  sum0 = ip0->checksum;
-	  sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
-				 ip4_header_t,
-				 src_address /* changed member */ );
-	  ip0->checksum = ip_csum_fold (sum0);
-
-	  if (PREDICT_FALSE (new_port0 != udp0->dst_port))
-	    {
-	      old_port0 = udp0->src_port;
-	      udp0->src_port = new_port0;
-
-	      if (PREDICT_TRUE (proto0 == NAT_PROTOCOL_TCP))
-		{
-		  sum0 = tcp0->checksum;
-		  sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
-					 ip4_header_t,
-					 dst_address /* changed member */ );
-		  sum0 = ip_csum_update (sum0, old_port0, new_port0,
-					 ip4_header_t /* cheat */ ,
-					 length /* changed member */ );
-		  mss_clamping (nm->mss_clamping, tcp0, &sum0);
-		  tcp0->checksum = ip_csum_fold (sum0);
-		}
-	      else if (udp0->checksum)
-		{
-		  sum0 = udp0->checksum;
-		  sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
-					 ip4_header_t,
-					 dst_address /* changed member */ );
-		  sum0 = ip_csum_update (sum0, old_port0, new_port0,
-					 ip4_header_t /* cheat */ ,
-					 length /* changed member */ );
-		  udp0->checksum = ip_csum_fold (sum0);
-		}
-	    }
-	  else
-	    {
-	      if (PREDICT_TRUE (proto0 == NAT_PROTOCOL_TCP))
-		{
-		  sum0 = tcp0->checksum;
-		  sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
-					 ip4_header_t,
-					 dst_address /* changed member */ );
-		  mss_clamping (nm->mss_clamping, tcp0, &sum0);
-		  tcp0->checksum = ip_csum_fold (sum0);
-		}
-	      else if (udp0->checksum)
-		{
-		  sum0 = udp0->checksum;
-		  sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
-					 ip4_header_t,
-					 dst_address /* changed member */ );
-		  udp0->checksum = ip_csum_fold (sum0);
-		}
-	    }
-
-	  /* Hairpinning */
-	  is_hairpinning = nat44_ei_hairpinning (
-	    vm, node, nm, thread_index, b0, ip0, udp0, tcp0, proto0,
-	    0 /* do_trace */, &required_thread_index);
-
-	  if (thread_index != required_thread_index)
-	    {
-	      vnet_buffer (b0)->snat.required_thread_index =
-		required_thread_index;
-	      next0 = NAT44_EI_IN2OUT_NEXT_HAIRPINNING_HANDOFF;
-	    }
-
-	trace0:
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
-	    {
-	      nat44_ei_in2out_trace_t *t =
-		vlib_add_trace (vm, node, b0, sizeof (*t));
-	      t->sw_if_index = sw_if_index0;
-	      t->next_index = next0;
-	      t->is_hairpinning = is_hairpinning;
-	    }
-
-	  if (next0 != NAT44_EI_IN2OUT_NEXT_DROP)
-	    {
-
-	      vlib_increment_simple_counter (
-		&nm->counters.fastpath.in2out.other, sw_if_index0,
-		vm->thread_index, 1);
-	    }
-
-	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
-	}
-
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-    }
-
-  return frame->n_vectors;
-}
-
-VLIB_REGISTER_NODE (nat44_ei_in2out_fast_node) = {
-  .name = "nat44-ei-in2out-fast",
-  .vector_size = sizeof (u32),
-  .format_trace = format_nat44_ei_in2out_fast_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
-
-  .n_errors = ARRAY_LEN(nat44_ei_in2out_error_strings),
-  .error_strings = nat44_ei_in2out_error_strings,
-
-  .runtime_data_bytes = sizeof (nat44_ei_runtime_t),
-
-  .n_next_nodes = NAT44_EI_IN2OUT_N_NEXT,
-
-  /* edit / add dispositions here */
-  .next_nodes = {
-    [NAT44_EI_IN2OUT_NEXT_DROP] = "error-drop",
-    [NAT44_EI_IN2OUT_NEXT_LOOKUP] = "ip4-lookup",
-    [NAT44_EI_IN2OUT_NEXT_SLOW_PATH] = "nat44-ei-in2out-slowpath",
-    [NAT44_EI_IN2OUT_NEXT_ICMP_ERROR] = "ip4-icmp-error",
-    [NAT44_EI_IN2OUT_NEXT_HAIRPINNING_HANDOFF] = "nat44-ei-in2out-hairpinning-handoff-ip4-lookup",
-  },
-};
-
-VLIB_NODE_FN (nat44_ei_in2out_hairpinning_handoff_ip4_lookup_node)
-(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
-{
-  return nat44_ei_hairpinning_handoff_fn_inline (
-    vm, node, frame,
-    nat44_ei_main.in2out_hairpinning_finish_ip4_lookup_node_fq_index);
-}
-
-VLIB_REGISTER_NODE (nat44_ei_in2out_hairpinning_handoff_ip4_lookup_node) = {
-  .name = "nat44-ei-in2out-hairpinning-handoff-ip4-lookup",
-  .vector_size = sizeof (u32),
-  .n_errors = ARRAY_LEN(nat44_ei_hairpinning_handoff_error_strings),
-  .error_strings = nat44_ei_hairpinning_handoff_error_strings,
-  .format_trace = format_nat44_ei_hairpinning_handoff_trace,
-
-  .n_next_nodes = 1,
-
-  .next_nodes = {
-    [0] = "error-drop",
-  },
-};
-
-VLIB_NODE_FN (nat44_ei_in2out_hairpinning_handoff_interface_output_node)
-(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
-{
-  return nat44_ei_hairpinning_handoff_fn_inline (
-    vm, node, frame,
-    nat44_ei_main.in2out_hairpinning_finish_interface_output_node_fq_index);
-}
-
-VLIB_REGISTER_NODE (nat44_ei_in2out_hairpinning_handoff_interface_output_node) = {
-  .name = "nat44-ei-in2out-hairpinning-handoff-interface-output",
-  .vector_size = sizeof (u32),
-  .n_errors = ARRAY_LEN(nat44_ei_hairpinning_handoff_error_strings),
-  .error_strings = nat44_ei_hairpinning_handoff_error_strings,
-  .format_trace = format_nat44_ei_hairpinning_handoff_trace,
-
-  .n_next_nodes = 1,
-
-  .next_nodes = {
-    [0] = "error-drop",
-  },
-};
-
-static_always_inline int
+static_always_inline uword
 nat44_ei_in2out_hairpinning_finish_inline (vlib_main_t *vm,
 					   vlib_node_runtime_t *node,
 					   vlib_frame_t *frame)
@@ -2083,7 +2059,6 @@ nat44_ei_in2out_hairpinning_finish_inline (vlib_main_t *vm,
 	  u32 proto0;
 	  u32 required_thread_index = thread_index;
 
-	  /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
 	  to_next[0] = bi0;
 	  from += 1;
@@ -2145,7 +2120,6 @@ nat44_ei_in2out_hairpinning_finish_inline (vlib_main_t *vm,
 		vm->thread_index, 1);
 	    }
 
-	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
 	}
@@ -2156,31 +2130,135 @@ nat44_ei_in2out_hairpinning_finish_inline (vlib_main_t *vm,
   return frame->n_vectors;
 }
 
+VLIB_NODE_FN (nat44_ei_hairpinning_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  u32 n_left_from, *from, *to_next;
+  u32 thread_index = vm->thread_index;
+  nat44_ei_hairpin_next_t next_index;
+  nat44_ei_main_t *nm = &nat44_ei_main;
+  vnet_feature_main_t *fm = &feature_main;
+  u8 arc_index = vnet_feat_arc_ip4_local.feature_arc_index;
+  vnet_feature_config_main_t *cm = &fm->feature_config_mains[arc_index];
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+  next_index = node->cached_next_index;
+
+  while (n_left_from > 0)
+    {
+      u32 n_left_to_next;
+
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+	  u32 bi0;
+	  vlib_buffer_t *b0;
+	  u32 next0;
+	  ip4_header_t *ip0;
+	  u32 proto0;
+	  udp_header_t *udp0;
+	  tcp_header_t *tcp0;
+	  u32 sw_if_index0;
+	  u32 required_thread_index = thread_index;
+
+	  bi0 = from[0];
+	  to_next[0] = bi0;
+	  from += 1;
+	  to_next += 1;
+	  n_left_from -= 1;
+	  n_left_to_next -= 1;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+	  ip0 = vlib_buffer_get_current (b0);
+	  udp0 = ip4_next_header (ip0);
+	  tcp0 = (tcp_header_t *) udp0;
+	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+
+	  proto0 = ip_proto_to_nat_proto (ip0->protocol);
+	  int next0_resolved = 0;
+
+	  if (nat44_ei_hairpinning (vm, node, nm, thread_index, b0, ip0, udp0,
+				    tcp0, proto0, 1, &required_thread_index))
+	    {
+	      next0 = NAT44_EI_HAIRPIN_NEXT_LOOKUP;
+	      next0_resolved = 1;
+	    }
+
+	  if (thread_index != required_thread_index)
+	    {
+	      vnet_buffer (b0)->snat.required_thread_index =
+		required_thread_index;
+	      next0 = NAT44_EI_HAIRPIN_NEXT_HANDOFF;
+	      next0_resolved = 1;
+	    }
+
+	  if (!next0_resolved)
+	    vnet_get_config_data (&cm->config_main, &b0->current_config_index,
+				  &next0, 0);
+
+	  if (next0 != NAT44_EI_HAIRPIN_NEXT_DROP)
+	    {
+	      vlib_increment_simple_counter (
+		&nm->counters.hairpinning, vm->thread_index, sw_if_index0, 1);
+	    }
+
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
+	}
+
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+
+  return frame->n_vectors;
+}
+
+VLIB_NODE_FN (nat44_ei_in2out_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return nat44_ei_in2out_node_fn_inline (vm, node, frame, 0, 0);
+}
+
+VLIB_NODE_FN (nat44_ei_in2out_output_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return nat44_ei_in2out_node_fn_inline (vm, node, frame, 0, 1);
+}
+
+VLIB_NODE_FN (nat44_ei_in2out_slowpath_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return nat44_ei_in2out_node_fn_inline (vm, node, frame, 1, 0);
+}
+
+VLIB_NODE_FN (nat44_ei_in2out_output_slowpath_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return nat44_ei_in2out_node_fn_inline (vm, node, frame, 1, 1);
+}
+
+VLIB_NODE_FN (nat44_ei_in2out_hairpinning_handoff_ip4_lookup_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return nat44_ei_hairpinning_handoff_fn_inline (
+    vm, node, frame,
+    nat44_ei_main.in2out_hairpinning_finish_ip4_lookup_node_fq_index);
+}
+
+VLIB_NODE_FN (nat44_ei_in2out_hairpinning_handoff_interface_output_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return nat44_ei_hairpinning_handoff_fn_inline (
+    vm, node, frame,
+    nat44_ei_main.in2out_hairpinning_finish_interface_output_node_fq_index);
+}
+
 VLIB_NODE_FN (nat44_ei_in2out_hairpinning_finish_ip4_lookup_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return nat44_ei_in2out_hairpinning_finish_inline (vm, node, frame);
 }
-
-VLIB_REGISTER_NODE (nat44_ei_in2out_hairpinning_finish_ip4_lookup_node) = {
-  .name = "nat44-ei-in2out-hairpinning-finish-ip4-lookup",
-  .vector_size = sizeof (u32),
-  .format_trace = format_nat44_ei_in2out_fast_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
-
-  .n_errors = ARRAY_LEN(nat44_ei_in2out_error_strings),
-  .error_strings = nat44_ei_in2out_error_strings,
-
-  .runtime_data_bytes = sizeof (nat44_ei_runtime_t),
-
-  .n_next_nodes = NAT44_EI_IN2OUT_HAIRPINNING_FINISH_N_NEXT,
-
-  /* edit / add dispositions here */
-  .next_nodes = {
-    [NAT44_EI_IN2OUT_HAIRPINNING_FINISH_NEXT_DROP] = "error-drop",
-    [NAT44_EI_IN2OUT_HAIRPINNING_FINISH_NEXT_LOOKUP] = "ip4-lookup",
-  },
-};
 
 VLIB_NODE_FN (nat44_ei_in2out_hairpinning_finish_interface_output_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
@@ -2188,23 +2266,161 @@ VLIB_NODE_FN (nat44_ei_in2out_hairpinning_finish_interface_output_node)
   return nat44_ei_in2out_hairpinning_finish_inline (vm, node, frame);
 }
 
+VLIB_NODE_FN (nat44_ei_hairpinning_handoff_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return nat44_ei_hairpinning_handoff_fn_inline (
+    vm, node, frame, nat44_ei_main.hairpinning_fq_index);
+}
+
+VLIB_REGISTER_NODE (nat44_ei_in2out_node) = {
+  .name = "nat44-ei-in2out",
+  .vector_size = sizeof (u32),
+  .format_trace = format_nat44_ei_in2out_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN(nat44_ei_in2out_error_strings),
+  .error_strings = nat44_ei_in2out_error_strings,
+  .runtime_data_bytes = sizeof (nat44_ei_runtime_t),
+  .n_next_nodes = NAT44_EI_IN2OUT_N_NEXT,
+  .next_nodes = {
+    [NAT44_EI_IN2OUT_NEXT_DROP] = "error-drop",
+    [NAT44_EI_IN2OUT_NEXT_LOOKUP] = "ip4-lookup",
+    [NAT44_EI_IN2OUT_NEXT_SLOW_PATH] = "nat44-ei-in2out-slowpath",
+    [NAT44_EI_IN2OUT_NEXT_ICMP_ERROR] = "ip4-icmp-error",
+    [NAT44_EI_IN2OUT_NEXT_HAIRPINNING_HANDOFF] = "nat44-ei-in2out-hairpinning-handoff-ip4-lookup",
+  },
+};
+
+VLIB_REGISTER_NODE (nat44_ei_in2out_output_node) = {
+  .name = "nat44-ei-in2out-output",
+  .vector_size = sizeof (u32),
+  .format_trace = format_nat44_ei_in2out_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN(nat44_ei_in2out_error_strings),
+  .error_strings = nat44_ei_in2out_error_strings,
+  .runtime_data_bytes = sizeof (nat44_ei_runtime_t),
+  .n_next_nodes = NAT44_EI_IN2OUT_N_NEXT,
+  .next_nodes = {
+    [NAT44_EI_IN2OUT_NEXT_DROP] = "error-drop",
+    [NAT44_EI_IN2OUT_NEXT_LOOKUP] = "interface-output",
+    [NAT44_EI_IN2OUT_NEXT_SLOW_PATH] = "nat44-ei-in2out-output-slowpath",
+    [NAT44_EI_IN2OUT_NEXT_ICMP_ERROR] = "ip4-icmp-error",
+    [NAT44_EI_IN2OUT_NEXT_HAIRPINNING_HANDOFF] = "nat44-ei-in2out-hairpinning-handoff-interface-output",
+  },
+};
+
+VLIB_REGISTER_NODE (nat44_ei_in2out_slowpath_node) = {
+  .name = "nat44-ei-in2out-slowpath",
+  .vector_size = sizeof (u32),
+  .format_trace = format_nat44_ei_in2out_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN(nat44_ei_in2out_error_strings),
+  .error_strings = nat44_ei_in2out_error_strings,
+  .runtime_data_bytes = sizeof (nat44_ei_runtime_t),
+  .n_next_nodes = NAT44_EI_IN2OUT_N_NEXT,
+  .next_nodes = {
+    [NAT44_EI_IN2OUT_NEXT_DROP] = "error-drop",
+    [NAT44_EI_IN2OUT_NEXT_LOOKUP] = "ip4-lookup",
+    [NAT44_EI_IN2OUT_NEXT_SLOW_PATH] = "nat44-ei-in2out-slowpath",
+    [NAT44_EI_IN2OUT_NEXT_ICMP_ERROR] = "ip4-icmp-error",
+    [NAT44_EI_IN2OUT_NEXT_HAIRPINNING_HANDOFF] = "nat44-ei-in2out-hairpinning-handoff-ip4-lookup",
+  },
+};
+
+VLIB_REGISTER_NODE (nat44_ei_in2out_output_slowpath_node) = {
+  .name = "nat44-ei-in2out-output-slowpath",
+  .vector_size = sizeof (u32),
+  .format_trace = format_nat44_ei_in2out_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN(nat44_ei_in2out_error_strings),
+  .error_strings = nat44_ei_in2out_error_strings,
+  .runtime_data_bytes = sizeof (nat44_ei_runtime_t),
+  .n_next_nodes = NAT44_EI_IN2OUT_N_NEXT,
+  .next_nodes = {
+    [NAT44_EI_IN2OUT_NEXT_DROP] = "error-drop",
+    [NAT44_EI_IN2OUT_NEXT_LOOKUP] = "interface-output",
+    [NAT44_EI_IN2OUT_NEXT_SLOW_PATH] = "nat44-ei-in2out-output-slowpath",
+    [NAT44_EI_IN2OUT_NEXT_ICMP_ERROR] = "ip4-icmp-error",
+    [NAT44_EI_IN2OUT_NEXT_HAIRPINNING_HANDOFF] = "nat44-ei-in2out-hairpinning-handoff-interface-output",
+  },
+};
+
+VLIB_REGISTER_NODE (nat44_ei_in2out_hairpinning_handoff_ip4_lookup_node) = {
+  .name = "nat44-ei-in2out-hairpinning-handoff-ip4-lookup",
+  .vector_size = sizeof (u32),
+  .n_errors = ARRAY_LEN(nat44_ei_hairpinning_handoff_error_strings),
+  .error_strings = nat44_ei_hairpinning_handoff_error_strings,
+  .format_trace = format_nat44_ei_hairpinning_handoff_trace,
+  .n_next_nodes = 1,
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
+
+VLIB_REGISTER_NODE (nat44_ei_in2out_hairpinning_handoff_interface_output_node) = {
+  .name = "nat44-ei-in2out-hairpinning-handoff-interface-output",
+  .vector_size = sizeof (u32),
+  .n_errors = ARRAY_LEN(nat44_ei_hairpinning_handoff_error_strings),
+  .error_strings = nat44_ei_hairpinning_handoff_error_strings,
+  .format_trace = format_nat44_ei_hairpinning_handoff_trace,
+  .n_next_nodes = 1,
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
+
+VLIB_REGISTER_NODE (nat44_ei_in2out_hairpinning_finish_ip4_lookup_node) = {
+  .name = "nat44-ei-in2out-hairpinning-finish-ip4-lookup",
+  .vector_size = sizeof (u32),
+  .format_trace = format_nat44_ei_in2out_fast_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN(nat44_ei_in2out_error_strings),
+  .error_strings = nat44_ei_in2out_error_strings,
+  .runtime_data_bytes = sizeof (nat44_ei_runtime_t),
+  .n_next_nodes = NAT44_EI_IN2OUT_HAIRPINNING_FINISH_N_NEXT,
+  .next_nodes = {
+    [NAT44_EI_IN2OUT_HAIRPINNING_FINISH_NEXT_DROP] = "error-drop",
+    [NAT44_EI_IN2OUT_HAIRPINNING_FINISH_NEXT_LOOKUP] = "ip4-lookup",
+  },
+};
+
 VLIB_REGISTER_NODE (nat44_ei_in2out_hairpinning_finish_interface_output_node) = {
   .name = "nat44-ei-in2out-hairpinning-finish-interface-output",
   .vector_size = sizeof (u32),
   .format_trace = format_nat44_ei_in2out_fast_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-
   .n_errors = ARRAY_LEN(nat44_ei_in2out_error_strings),
   .error_strings = nat44_ei_in2out_error_strings,
-
   .runtime_data_bytes = sizeof (nat44_ei_runtime_t),
-
   .n_next_nodes = NAT44_EI_IN2OUT_HAIRPINNING_FINISH_N_NEXT,
-
-  /* edit / add dispositions here */
   .next_nodes = {
     [NAT44_EI_IN2OUT_HAIRPINNING_FINISH_NEXT_DROP] = "error-drop",
     [NAT44_EI_IN2OUT_HAIRPINNING_FINISH_NEXT_LOOKUP] = "interface-output",
+  },
+};
+
+VLIB_REGISTER_NODE (nat44_ei_hairpinning_handoff_node) = {
+  .name = "nat44-ei-hairpinning-handoff",
+  .vector_size = sizeof (u32),
+  .n_errors = ARRAY_LEN(nat44_ei_hairpinning_handoff_error_strings),
+  .error_strings = nat44_ei_hairpinning_handoff_error_strings,
+  .format_trace = format_nat44_ei_hairpinning_handoff_trace,
+  .n_next_nodes = 1,
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
+
+VLIB_REGISTER_NODE (nat44_ei_hairpinning_node) = {
+  .name = "nat44-ei-hairpinning",
+  .vector_size = sizeof (u32),
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .format_trace = format_nat44_ei_hairpin_trace,
+  .n_next_nodes = NAT44_EI_HAIRPIN_N_NEXT,
+  .next_nodes = {
+    [NAT44_EI_HAIRPIN_NEXT_DROP] = "error-drop",
+    [NAT44_EI_HAIRPIN_NEXT_LOOKUP] = "ip4-lookup",
+    [NAT44_EI_HAIRPIN_NEXT_HANDOFF] = "nat44-ei-hairpinning-handoff",
   },
 };
 
