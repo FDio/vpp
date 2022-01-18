@@ -30,6 +30,8 @@
 
 #include <vppinfra/bihash_24_16.h>
 
+#include <vppinfra/pcg.h>
+
 #define IPSEC_FP_IP4_HASHES_POOL_SIZE 128
 #define IPSEC_FP_IP6_HASHES_POOL_SIZE 128
 
@@ -132,6 +134,7 @@ typedef struct
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  clib_pcg64i_random_t iv_prng;
   vnet_crypto_op_t *crypto_ops;
   vnet_crypto_op_t *integ_ops;
   vnet_crypto_op_t *chained_crypto_ops;
