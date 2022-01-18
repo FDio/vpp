@@ -182,7 +182,7 @@ typedef struct
 
   /* Salt used in GCM modes - stored in network byte order */
   u32 salt;
-  u64 gcm_iv_counter;
+  u64 iv_counter;
 
   union
   {

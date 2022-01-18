@@ -304,7 +304,7 @@ typedef struct
   i16 integ_start_offset;
   u32 crypto_total_length;
   /* adj total_length for integ, e.g.4 bytes for IPSec ESN */
-  u16 integ_length_adj;
+  i16 integ_length_adj;
   u8 *iv;
   union
   {
@@ -573,7 +573,7 @@ vnet_crypto_async_add_to_frame (vlib_main_t * vm,
 				u32 key_index,
 				u32 crypto_len, i16 integ_len_adj,
 				i16 crypto_start_offset,
-				u16 integ_start_offset,
+				i16 integ_start_offset,
 				u32 buffer_index,
 				u16 next_node,
 				u8 * iv, u8 * tag, u8 * aad, u8 flags)

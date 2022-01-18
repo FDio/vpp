@@ -234,6 +234,24 @@ esp_get_ip6_hdr_len (ip6_header_t * ip6, ip6_ext_header_t ** ext_hdr)
   return len;
 }
 
+/* IPsec IV generation: IVs requirements differ depending of the
+ * encryption mode: IVs must be unpredictable for AES-CBC whereas it can
+ * be predictable but should never be reused with the same key material
+ * for CTR and GCM.
+ * We use a packet counter as the IV for CTR and GCM, and to ensure the
+ * IV is unpredictable for CBC, it is then encrypted using the same key
+ * as the message. You can refer to NIST SP800-38a and NIST SP800-38d
+ * for more details. */
+static_always_inline void *
+esp_generate_iv (ipsec_sa_t * sa, void *payload, int iv_sz)
+{
+  ASSERT (iv_sz >= sizeof (u64));
+  u64 *iv = (u64 *) (payload - iv_sz);
+  clib_memset_u8 (iv, 0, iv_sz);
+  *iv = sa->iv_counter++;
+  return iv;
+}
+
 static_always_inline void
 esp_process_chained_ops (vlib_main_t * vm, vlib_node_runtime_t * node,
 			 vnet_crypto_op_t * ops, vlib_buffer_t * b[],
@@ -396,10 +414,16 @@ esp_prepare_sync_op (vlib_main_t * vm, ipsec_per_thread_data_t * ptd,
       vnet_crypto_op_t *op;
       vec_add2_aligned (crypto_ops[0], op, 1, CLIB_CACHE_LINE_BYTES);
       vnet_crypto_op_init (op, sa0->crypto_enc_op_id);
+      u8 *crypto_start = payload;
+      /* esp_add_footer_and_icv() in esp_encrypt_inline() makes sure we always
+       * have enough space for ESP header and footer which includes ICV */
+      ASSERT (payload_len > icv_sz);
+      u16 crypto_len = payload_len - icv_sz;
 
-      op->src = op->dst = payload;
+      /* generate the IV in front of the payload */
+      void *pkt_iv = esp_generate_iv (sa0, payload, iv_sz);
+
       op->key_index = sa0->crypto_key_index;
-      op->len = payload_len - icv_sz;
       op->user_data = b - bufs;
 
       if (ipsec_sa_is_set_IS_AEAD (sa0))
@@ -411,18 +435,21 @@ esp_prepare_sync_op (vlib_main_t * vm, ipsec_per_thread_data_t * ptd,
 	  op->aad = payload - hdr_len - sizeof (esp_aead_t);
 	  op->aad_len = esp_aad_fill (op->aad, esp, sa0);
 
-	  op->tag = payload + op->len;
+	  op->tag = payload + crypto_len;
 	  op->tag_len = 16;
 
-	  u64 *iv = (u64 *) (payload - iv_sz);
 	  nonce->salt = sa0->salt;
-	  nonce->iv = *iv = clib_host_to_net_u64 (sa0->gcm_iv_counter++);
+	  nonce->iv = *(u64 *) pkt_iv;
 	  op->iv = (u8 *) nonce;
 	}
       else
 	{
-	  op->iv = payload - iv_sz;
-	  op->flags = VNET_CRYPTO_OP_FLAG_INIT_IV;
+	  /* construct zero iv in front of the IP header */
+	  op->iv = pkt_iv - hdr_len - iv_sz;
+	  clib_memset_u8 (op->iv, 0, iv_sz);
+	  /* include iv field in crypto */
+	  crypto_start -= iv_sz;
+	  crypto_len += iv_sz;
 	}
 
       if (lb != b[0])
@@ -431,8 +458,15 @@ esp_prepare_sync_op (vlib_main_t * vm, ipsec_per_thread_data_t * ptd,
 	  op->flags |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
 	  op->chunk_index = vec_len (ptd->chunks);
 	  op->tag = vlib_buffer_get_tail (lb) - icv_sz;
-	  esp_encrypt_chain_crypto (vm, ptd, sa0, b[0], lb, icv_sz, payload,
-				    payload_len, &op->n_chunks);
+	  esp_encrypt_chain_crypto (vm, ptd, sa0, b[0], lb, icv_sz,
+				    crypto_start, crypto_len + icv_sz,
+				    &op->n_chunks);
+	}
+      else
+	{
+	  /* not chained */
+	  op->src = op->dst = crypto_start;
+	  op->len = crypto_len;
 	}
     }
 
@@ -482,16 +516,19 @@ esp_prepare_async_frame (vlib_main_t * vm, ipsec_per_thread_data_t * ptd,
   u8 *tag, *iv, *aad = 0;
   u8 flag = 0;
   u32 key_index;
-  i16 crypto_start_offset, integ_start_offset = 0;
+  i16 crypto_start_offset, integ_start_offset;
   u16 crypto_total_len, integ_total_len;
 
   post->next_index = next[0];
   next[0] = ESP_ENCRYPT_NEXT_PENDING;
 
   /* crypto */
-  crypto_start_offset = payload - b->data;
+  crypto_start_offset = integ_start_offset = payload - b->data;
   crypto_total_len = integ_total_len = payload_len - icv_sz;
   tag = payload + crypto_total_len;
+
+  /* generate the IV in front of the payload */
+  void *pkt_iv = esp_generate_iv (sa, payload, iv_sz);
 
   /* aead */
   if (ipsec_sa_is_set_IS_AEAD (sa))
@@ -503,7 +540,7 @@ esp_prepare_async_frame (vlib_main_t * vm, ipsec_per_thread_data_t * ptd,
       esp_aad_fill (aad, esp, sa);
       nonce = (esp_gcm_nonce_t *) (aad - sizeof (*nonce));
       nonce->salt = sa->salt;
-      nonce->iv = *pkt_iv = clib_host_to_net_u64 (sa->gcm_iv_counter++);
+      nonce->iv = *(u64 *) pkt_iv;
       iv = (u8 *) nonce;
       key_index = sa->crypto_key_index;
 
@@ -513,25 +550,38 @@ esp_prepare_async_frame (vlib_main_t * vm, ipsec_per_thread_data_t * ptd,
 	  flag |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
 	  tag = vlib_buffer_get_tail (lb) - icv_sz;
 	  crypto_total_len = esp_encrypt_chain_crypto (vm, ptd, sa, b, lb,
-						       icv_sz, payload,
-						       payload_len, 0);
+						       icv_sz,
+						       b->data +
+						       crypto_start_offset,
+						       crypto_total_len +
+						       icv_sz, 0);
 	}
       goto out;
     }
+  else
+    {
+      /* construct zero iv in front of the IP header */
+      iv = pkt_iv - hdr_len - iv_sz;
+      clib_memset_u8 (iv, 0, iv_sz);
+      /* include iv field in crypto */
+      crypto_start_offset -= iv_sz;
+      crypto_total_len += iv_sz;
+    }
 
   /* cipher then hash */
-  iv = payload - iv_sz;
-  integ_start_offset = crypto_start_offset - iv_sz - sizeof (esp_header_t);
+  integ_start_offset -= iv_sz + sizeof (esp_header_t);
   integ_total_len += iv_sz + sizeof (esp_header_t);
-  flag |= VNET_CRYPTO_OP_FLAG_INIT_IV;
   key_index = sa->linked_key_index;
 
   if (b != lb)
     {
       flag |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
       crypto_total_len = esp_encrypt_chain_crypto (vm, ptd, sa, b, lb,
-						   icv_sz, payload,
-						   payload_len, 0);
+						   icv_sz,
+						   b->data +
+						   crypto_start_offset,
+						   crypto_total_len + icv_sz,
+						   0);
       tag = vlib_buffer_get_tail (lb) - icv_sz;
       integ_total_len = esp_encrypt_chain_integ (vm, ptd, sa, b, lb, icv_sz,
 						 payload - iv_sz -
