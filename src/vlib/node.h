@@ -149,7 +149,8 @@ typedef struct _vlib_node_registration
   u8 protocol_hint;
 
   /* Size of scalar and vector arguments in bytes. */
-  u8 scalar_size, vector_size, aux_size;
+  u8 vector_size, aux_size;
+  u16 scalar_size;
 
   /* Number of error codes used by this node. */
   u16 n_errors;
