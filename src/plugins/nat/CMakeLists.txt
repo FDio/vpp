@@ -62,12 +62,10 @@ add_vpp_plugin(nat44_ei
   nat44-ei/nat44_ei_in2out.c
   nat44-ei/nat44_ei_out2in.c
   nat44-ei/nat44_ei_handoff.c
-  nat44-ei/nat44_ei_hairpinning.c
 
   MULTIARCH_SOURCES
   nat44-ei/nat44_ei_in2out.c
   nat44-ei/nat44_ei_out2in.c
-  nat44-ei/nat44_ei_hairpinning.c
 
   API_FILES
   nat44-ei/nat44_ei.api

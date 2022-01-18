@@ -470,12 +470,14 @@ typedef struct nat44_ei_main_s
   /* nat44 plugin enabled */
   u8 enabled;
 
+  /* hairpinning registration counter */
+  u32 hairpin_reg;
+
   nat44_ei_config_t rconfig;
 
   u32 in2out_hairpinning_finish_ip4_lookup_node_fq_index;
   u32 in2out_hairpinning_finish_interface_output_node_fq_index;
   u32 hairpinning_fq_index;
-  u32 hairpin_dst_fq_index;
 
   vnet_main_t *vnet_main;
 } nat44_ei_main_t;
@@ -625,21 +627,6 @@ void nat44_ei_delete_session (nat44_ei_main_t *nm, nat44_ei_session_t *ses,
 /* Call back functions for clib_bihash_add_or_overwrite_stale */
 int nat44_i2o_is_idle_session_cb (clib_bihash_kv_8_8_t *kv, void *arg);
 int nat44_o2i_is_idle_session_cb (clib_bihash_kv_8_8_t *kv, void *arg);
-
-int nat44_ei_hairpinning (vlib_main_t *vm, vlib_node_runtime_t *node,
-			  nat44_ei_main_t *nm, u32 thread_index,
-			  vlib_buffer_t *b0, ip4_header_t *ip0,
-			  udp_header_t *udp0, tcp_header_t *tcp0, u32 proto0,
-			  int do_trace, u32 *required_thread_index);
-
-void nat44_ei_hairpinning_sm_unknown_proto (nat44_ei_main_t *nm,
-					    vlib_buffer_t *b,
-					    ip4_header_t *ip);
-
-u32 nat44_ei_icmp_hairpinning (nat44_ei_main_t *nm, vlib_buffer_t *b0,
-			       u32 thread_index, ip4_header_t *ip0,
-			       icmp46_header_t *icmp0,
-			       u32 *required_thread_index);
 
 int nat44_ei_set_frame_queue_nelts (u32 frame_queue_nelts);
 
