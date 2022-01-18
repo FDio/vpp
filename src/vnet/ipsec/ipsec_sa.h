@@ -122,6 +122,8 @@ typedef struct
   u64 replay_window;
   dpo_id_t dpo;
 
+  u64 iv_counter;
+
   vnet_crypto_key_index_t crypto_key_index;
   vnet_crypto_key_index_t integ_key_index;
   vnet_crypto_op_id_t crypto_enc_op_id:16;
@@ -161,7 +163,6 @@ typedef struct
 
   /* Salt used in GCM modes - stored in network byte order */
   u32 salt;
-  u64 gcm_iv_counter;
 } ipsec_sa_t;
 
 STATIC_ASSERT_OFFSET_OF (ipsec_sa_t, cacheline1, CLIB_CACHE_LINE_BYTES);
