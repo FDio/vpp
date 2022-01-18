@@ -49,6 +49,52 @@ VLIB_PLUGIN_REGISTER () = {
 };
 /* *INDENT-ON* */
 
+u32
+snat_det_close_ses_by_in (snat_det_map_t *dm, ip4_address_t *in_addr,
+			  u16 in_port, snat_det_out_key_t out_key)
+{
+  u32 user_offset, count = 0;
+  snat_det_session_t *ses;
+  u16 i;
+
+  user_offset =
+    snat_det_user_ses_offset (dm->ses_per_user, in_addr, dm->in_plen);
+  for (i = 0; i < dm->ses_per_user; i++)
+    {
+      ses = &dm->sessions[i + user_offset];
+      if (ses->in_port == in_port &&
+	  ses->out.ext_host_addr.as_u32 == out_key.ext_host_addr.as_u32 &&
+	  ses->out.ext_host_port == out_key.ext_host_port)
+	{
+	  snat_det_ses_close (dm, ses);
+	  count++;
+	}
+    }
+  return count;
+}
+
+u32
+snat_det_close_ses_by_out (snat_det_map_t *dm, ip4_address_t *in_addr,
+			   u64 out_key)
+{
+  u32 user_offset, count = 0;
+  snat_det_session_t *ses;
+  u16 i;
+
+  user_offset =
+    snat_det_user_ses_offset (dm->ses_per_user, in_addr, dm->in_plen);
+  for (i = 0; i < dm->ses_per_user; i++)
+    {
+      ses = &dm->sessions[i + user_offset];
+      if (ses->out.as_u64 == out_key)
+	{
+	  snat_det_ses_close (dm, ses);
+	  count++;
+	}
+    }
+  return count;
+}
+
 void
 det44_add_del_addr_to_fib (ip4_address_t * addr, u8 p_len, u32 sw_if_index,
 			   int is_add)
@@ -96,8 +142,9 @@ det44_add_del_addr_to_fib (ip4_address_t * addr, u8 p_len, u32 sw_if_index,
  * @param is_add   If 0 delete, otherwise add.
  */
 int
-snat_det_add_map (ip4_address_t * in_addr, u8 in_plen,
-		  ip4_address_t * out_addr, u8 out_plen, int is_add)
+snat_det_add_map (ip4_address_t *in_addr, u8 in_plen, ip4_address_t *out_addr,
+		  u8 out_plen, u32 ses_per_user, u32 tcp_per_user,
+		  u32 udp_per_user, u32 other_per_user, int is_add)
 {
   static snat_det_session_t empty_snat_det_session = { 0 };
   det44_main_t *dm = &det44_main;
@@ -130,18 +177,77 @@ snat_det_add_map (ip4_address_t * in_addr, u8 in_plen,
 
   if (is_add)
     {
+
+      if (~0 == ses_per_user)
+	ses_per_user = DET44_SES_PER_USER;
+
+      if (~0 == tcp_per_user)
+	tcp_per_user = 0;
+
+      if (~0 == udp_per_user)
+	udp_per_user = 0;
+
+      if (~0 == other_per_user)
+	other_per_user = 0;
+
+      if ((tcp_per_user + udp_per_user + other_per_user) > ses_per_user)
+	{
+	  return VNET_API_ERROR_INVALID_VALUE;
+	}
+
+      // number of inside addresses
+      u32 num_in_addr = 1 << (32 - in_plen);
+
+      // number of outside addresses
+      u32 num_out_addr = 1 << (32 - out_plen);
+
       pool_get (dm->det_maps, mp);
       clib_memset (mp, 0, sizeof (*mp));
+
+      u32 end = ses_per_user;
+
+      mp->tcp_end = end;
+      if (tcp_per_user > 0)
+	{
+	  end = end - tcp_per_user;
+	  mp->tcp_start = end;
+	}
+
+      mp->udp_end = end;
+      if (udp_per_user > 0)
+	{
+	  end = end - udp_per_user;
+	  mp->udp_start = end;
+	}
+
+      mp->other_end = end;
+      if (other_per_user > 0)
+	{
+	  end = end - other_per_user;
+	  mp->other_start = end;
+	}
+
+      if (0 == tcp_per_user)
+	mp->tcp_end = end;
+
+      if (0 == udp_per_user)
+	mp->udp_end = end;
+
+      mp->ses_per_user = ses_per_user;
+      // DET44_SES_PER_USER * (1 << (32 - in_plen)) - 1
+      mp->ses_max = ses_per_user * num_in_addr;
+
       mp->in_addr.as_u32 = in_cmp.as_u32;
       mp->in_plen = in_plen;
+
       mp->out_addr.as_u32 = out_cmp.as_u32;
       mp->out_plen = out_plen;
-      mp->sharing_ratio = (1 << (32 - in_plen)) / (1 << (32 - out_plen));
+
+      mp->sharing_ratio = num_in_addr / num_out_addr;
       mp->ports_per_host = (65535 - 1023) / mp->sharing_ratio;
 
-      vec_validate_init_empty (mp->sessions,
-			       DET44_SES_PER_USER * (1 << (32 - in_plen)) -
-			       1, empty_snat_det_session);
+      vec_validate_init_empty (mp->sessions, mp->ses_max,
+			       empty_snat_det_session);
     }
   else
     {
@@ -595,15 +701,14 @@ format_det_map_ses (u8 * s, va_list * args)
   out_addr.as_u32 =
     clib_host_to_net_u32 (clib_net_to_host_u32 (det_map->out_addr.as_u32) +
 			  out_offset);
-  s =
-    format (s,
-	    "in %U:%d out %U:%d external host %U:%d state: %U expire: %d\n",
-	    format_ip4_address, &in_addr, clib_net_to_host_u16 (ses->in_port),
-	    format_ip4_address, &out_addr,
-	    clib_net_to_host_u16 (ses->out.out_port), format_ip4_address,
-	    &ses->out.ext_host_addr,
-	    clib_net_to_host_u16 (ses->out.ext_host_port),
-	    format_det44_session_state, ses->state, ses->expire);
+  s = format (
+    s,
+    "in %U:%d out %U:%d external host %U:%d proto: %U state: %U expire: %d\n",
+    format_ip4_address, &in_addr, clib_net_to_host_u16 (ses->in_port),
+    format_ip4_address, &out_addr, clib_net_to_host_u16 (ses->out.out_port),
+    format_ip4_address, &ses->out.ext_host_addr,
+    clib_net_to_host_u16 (ses->out.ext_host_port), format_ip_protocol,
+    ses->proto, format_det44_session_state, ses->state, ses->expire);
 
   return s;
 }
