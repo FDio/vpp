@@ -219,17 +219,18 @@ esp_get_ip6_hdr_len (ip6_header_t * ip6, ip6_ext_header_t ** ext_hdr)
  * encryption mode: IVs must be unpredictable for AES-CBC whereas it can
  * be predictable but should never be reused with the same key material
  * for CTR and GCM.
- * We use a packet counter as the IV for CTR and GCM, and to ensure the
- * IV is unpredictable for CBC, it is then encrypted using the same key
- * as the message. You can refer to NIST SP800-38a and NIST SP800-38d
- * for more details. */
+ * To avoid reusing the same IVs between multiple VPP instances and between
+ * restarts, we use a properly chosen PRNG to generate IVs. To ensure the IV is
+ * unpredictable for CBC, it is then encrypted using the same key as the
+ * message. You can refer to NIST SP800-38a and NIST SP800-38d for more
+ * details. */
 static_always_inline void *
 esp_generate_iv (ipsec_sa_t *sa, void *payload, int iv_sz)
 {
   ASSERT (iv_sz >= sizeof (u64));
   u64 *iv = (u64 *) (payload - iv_sz);
   clib_memset_u8 (iv, 0, iv_sz);
-  *iv = sa->iv_counter++;
+  *iv = clib_pcg64i_random_r (&sa->iv_prng);
   return iv;
 }
 
@@ -430,7 +431,7 @@ esp_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 	  crypto_len += iv_sz;
 	}
 
-      if (lb != b[0])
+      if (PREDICT_FALSE (lb != b[0]))
 	{
 	  /* is chained */
 	  op->flags |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
@@ -493,7 +494,7 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
   esp_post_data_t *post = esp_post_data (b);
   u8 *tag, *iv, *aad = 0;
   u8 flag = 0;
-  u32 key_index;
+  const u32 key_index = sa->crypto_key_index;
   i16 crypto_start_offset, integ_start_offset;
   u16 crypto_total_len, integ_total_len;
 
@@ -503,8 +504,6 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
   crypto_start_offset = integ_start_offset = payload - b->data;
   crypto_total_len = integ_total_len = payload_len - icv_sz;
   tag = payload + crypto_total_len;
-
-  key_index = sa->linked_key_index;
 
   /* generate the IV in front of the payload */
   void *pkt_iv = esp_generate_iv (sa, payload, iv_sz);
@@ -519,7 +518,6 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 	  /* constuct aad in a scratch space in front of the nonce */
 	  aad = (u8 *) nonce - sizeof (esp_aead_t);
 	  esp_aad_fill (aad, esp, sa, sa->seq_hi);
-	  key_index = sa->crypto_key_index;
 	}
       else
 	{
@@ -698,7 +696,7 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  is_async = im->async_mode | ipsec_sa_is_set_IS_ASYNC (sa0);
 	}
 
-      if (PREDICT_FALSE (~0 == sa0->thread_index))
+      if (PREDICT_FALSE ((u16) ~0 == sa0->thread_index))
 	{
 	  /* this is the first packet to use this SA, claim the SA
 	   * for this thread. this could happen simultaneously on

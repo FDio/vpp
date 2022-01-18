@@ -156,7 +156,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 					  thread_index, current_sa_index);
 	}
 
-      if (PREDICT_FALSE (~0 == sa0->thread_index))
+      if (PREDICT_FALSE ((u16) ~0 == sa0->thread_index))
 	{
 	  /* this is the first packet to use this SA, claim the SA
 	   * for this thread. this could happen simultaneously on
