@@ -131,13 +131,11 @@ virtio_pci_irq_config_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h,
 
   if (virtio_pci_is_link_up (vm, vif) & VIRTIO_NET_S_LINK_UP)
     {
-      vif->flags |= VIRTIO_IF_FLAG_ADMIN_UP;
       vnet_hw_interface_set_flags (vnm, vif->hw_if_index,
 				   VNET_HW_INTERFACE_FLAG_LINK_UP);
     }
   else
     {
-      vif->flags &= ~VIRTIO_IF_FLAG_ADMIN_UP;
       vnet_hw_interface_set_flags (vnm, vif->hw_if_index, 0);
     }
 }
@@ -1497,7 +1495,6 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
 
   if (virtio_pci_is_link_up (vm, vif) & VIRTIO_NET_S_LINK_UP)
     {
-      vif->flags |= VIRTIO_IF_FLAG_ADMIN_UP;
       vnet_hw_interface_set_flags (vnm, vif->hw_if_index,
 				   VNET_HW_INTERFACE_FLAG_LINK_UP);
     }
