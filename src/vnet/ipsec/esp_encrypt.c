@@ -198,6 +198,24 @@ esp_trailer_icv_overflow (vlib_node_runtime_t * node, vlib_buffer_t * b,
   return 1;
 }
 
+/* IPsec IV generation: IVs requirements differ depending of the
+ * encryption mode: IVs must be unpredictable for AES-CBC whereas it can
+ * be predictable but should never be reused with the same key material
+ * for CTR and GCM.
+ * We use a packet counter as the IV for CTR and GCM, and to ensure the
+ * IV is unpredictable for CBC, it is then encrypted using the same key
+ * as the message. You can refer to NIST SP800-38a and NIST SP800-38d
+ * for more details. */
+static_always_inline void *
+esp_generate_iv (ipsec_sa_t * sa, void *payload, int iv_sz)
+{
+  ASSERT (iv_sz >= sizeof (u64));
+  u64 *iv = (u64 *) (payload - iv_sz);
+  clib_memset_u8 (iv, 0, iv_sz);
+  *iv = sa->iv_counter++;
+  return iv;
+}
+
 static_always_inline void
 esp_process_ops (vlib_main_t * vm, vlib_node_runtime_t * node,
 		 vnet_crypto_op_t * ops, vlib_buffer_t * b[], u16 * nexts)
@@ -439,11 +457,10 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vnet_crypto_op_t *op;
 	  vec_add2_aligned (ptd->crypto_ops, op, 1, CLIB_CACHE_LINE_BYTES);
 	  vnet_crypto_op_init (op, sa0->crypto_enc_op_id);
-	  op->iv = payload - iv_sz;
+	  op->iv = esp_generate_iv (sa0, payload, iv_sz);
 	  op->src = op->dst = payload;
 	  op->key = sa0->crypto_key.data;
 	  op->len = payload_len - icv_sz;
-	  op->flags = VNET_CRYPTO_OP_FLAG_INIT_IV;
 	  op->user_data = b - bufs;
 	  op->salt = sa0->salt;
 
@@ -459,6 +476,15 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      op->tag = payload + op->len;
 	      op->tag_len = 16;
+	    }
+	  else
+	    {
+	      /* construct zero iv in front of the IP header */
+	      op->iv -= hdr_len - iv_sz;
+	      clib_memset_u8 (op->iv, 0, iv_sz);
+	      /* include iv field in crypto */
+	      op->src -= iv_sz;
+	      op->len += iv_sz;
 	    }
 	}
 
