@@ -102,9 +102,6 @@ openssl_ops_enc_cbc (vlib_main_t *vm, vnet_crypto_op_t *ops[],
       vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
       int out_len = 0;
 
-      if (op->flags & VNET_CRYPTO_OP_FLAG_INIT_IV)
-	RAND_bytes (op->iv, iv_len);
-
       EVP_EncryptInit_ex (ctx, cipher, NULL, key->data, op->iv);
 
       if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
@@ -218,9 +215,6 @@ openssl_ops_enc_aead (vlib_main_t *vm, vnet_crypto_op_t *ops[],
       vnet_crypto_op_t *op = ops[i];
       vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
       int len = 0;
-
-      if (op->flags & VNET_CRYPTO_OP_FLAG_INIT_IV)
-	RAND_bytes (op->iv, 8);
 
       EVP_EncryptInit_ex (ctx, cipher, 0, 0, 0);
       if (is_gcm)

@@ -244,7 +244,6 @@ crypto_sw_scheduler_convert_link_crypto (vlib_main_t * vm,
   integ_op->digest = fe->digest;
   integ_op->digest_len = digest_len;
   integ_op->key_index = key->index_integ;
-  integ_op->flags = fe->flags & ~VNET_CRYPTO_OP_FLAG_INIT_IV;
   crypto_op->user_data = integ_op->user_data = index;
 }
 

@@ -32,7 +32,6 @@ typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   MB_MGR *mgr;
-  __m128i cbc_iv;
 } ipsecmb_per_thread_data_t;
 
 typedef struct
@@ -229,7 +228,6 @@ ipsecmb_ops_aes_cipher_inline (vlib_main_t *vm, vnet_crypto_op_t *ops[],
       ipsecmb_aes_key_data_t *kd;
       vnet_crypto_op_t *op = ops[i];
       kd = (ipsecmb_aes_key_data_t *) imbm->key_data[op->key_index];
-      __m128i iv;
 
       job = IMB_GET_NEXT_JOB (ptd->mgr);
 
@@ -242,13 +240,6 @@ ipsecmb_ops_aes_cipher_inline (vlib_main_t *vm, vnet_crypto_op_t *ops[],
       job->cipher_mode = cipher_mode;
       job->cipher_direction = direction;
       job->chain_order = (direction == ENCRYPT ? CIPHER_HASH : HASH_CIPHER);
-
-      if ((direction == ENCRYPT) && (op->flags & VNET_CRYPTO_OP_FLAG_INIT_IV))
-	{
-	  iv = ptd->cbc_iv;
-	  _mm_storeu_si128 ((__m128i *) op->iv, iv);
-	  ptd->cbc_iv = _mm_aesenc_si128 (iv, iv);
-	}
 
       job->aes_key_len_in_bytes = key_len / 8;
       job->aes_enc_key_expanded = kd->enc_key_exp;
@@ -466,13 +457,11 @@ ipsecmb_ops_chacha_poly (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
   MB_MGR *m = ptd->mgr;
   u32 i, n_fail = 0, last_key_index = ~0;
   u8 scratch[VLIB_FRAME_SIZE][16];
-  u8 iv_data[16];
   u8 *key = 0;
 
   for (i = 0; i < n_ops; i++)
     {
       vnet_crypto_op_t *op = ops[i];
-      __m128i iv;
 
       job = IMB_GET_NEXT_JOB (m);
       if (last_key_index != op->key_index)
@@ -494,15 +483,6 @@ ipsecmb_ops_chacha_poly (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
       job->u.CHACHA20_POLY1305.aad_len_in_bytes = op->aad_len;
       job->src = op->src;
       job->dst = op->dst;
-
-      if ((dir == IMB_DIR_ENCRYPT) &&
-	  (op->flags & VNET_CRYPTO_OP_FLAG_INIT_IV))
-	{
-	  iv = ptd->cbc_iv;
-	  _mm_storeu_si128 ((__m128i *) iv_data, iv);
-	  clib_memcpy_fast (op->iv, iv_data, 12);
-	  ptd->cbc_iv = _mm_aesenc_si128 (iv, iv);
-	}
 
       job->iv = op->iv;
       job->iv_len_in_bytes = 12;
@@ -553,7 +533,6 @@ ipsecmb_ops_chacha_poly_chained (vlib_main_t *vm, vnet_crypto_op_t *ops[],
     vec_elt_at_index (imbm->per_thread_data, vm->thread_index);
   MB_MGR *m = ptd->mgr;
   u32 i, n_fail = 0, last_key_index = ~0;
-  u8 iv_data[16];
   u8 *key = 0;
 
   if (dir == IMB_DIR_ENCRYPT)
@@ -563,7 +542,6 @@ ipsecmb_ops_chacha_poly_chained (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 	  vnet_crypto_op_t *op = ops[i];
 	  struct chacha20_poly1305_context_data ctx;
 	  vnet_crypto_op_chunk_t *chp;
-	  __m128i iv;
 	  u32 j;
 
 	  ASSERT (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS);
@@ -574,14 +552,6 @@ ipsecmb_ops_chacha_poly_chained (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 
 	      key = kd->data;
 	      last_key_index = op->key_index;
-	    }
-
-	  if (op->flags & VNET_CRYPTO_OP_FLAG_INIT_IV)
-	    {
-	      iv = ptd->cbc_iv;
-	      _mm_storeu_si128 ((__m128i *) iv_data, iv);
-	      clib_memcpy_fast (op->iv, iv_data, 12);
-	      ptd->cbc_iv = _mm_aesenc_si128 (iv, iv);
 	    }
 
 	  IMB_CHACHA20_POLY1305_INIT (m, key, &ctx, op->iv, op->aad,
@@ -664,30 +634,6 @@ ipsec_mb_ops_chacha_poly_dec_chained (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 					  IMB_DIR_DECRYPT);
 }
 #endif
-
-clib_error_t *
-crypto_ipsecmb_iv_init (ipsecmb_main_t * imbm)
-{
-  ipsecmb_per_thread_data_t *ptd;
-  clib_error_t *err = 0;
-  int fd;
-
-  if ((fd = open ("/dev/urandom", O_RDONLY)) < 0)
-    return clib_error_return_unix (0, "failed to open '/dev/urandom'");
-
-  vec_foreach (ptd, imbm->per_thread_data)
-  {
-    if (read (fd, &ptd->cbc_iv, sizeof (ptd->cbc_iv)) != sizeof (ptd->cbc_iv))
-      {
-	err = clib_error_return_unix (0, "'/dev/urandom' read failure");
-	close (fd);
-	return (err);
-      }
-  }
-
-  close (fd);
-  return (NULL);
-}
 
 static void
 crypto_ipsecmb_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
@@ -775,7 +721,6 @@ crypto_ipsecmb_init (vlib_main_t * vm)
   ipsecmb_alg_data_t *ad;
   ipsecmb_per_thread_data_t *ptd;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
-  clib_error_t *error;
   MB_MGR *m = 0;
   u32 eidx;
   u8 *name;
@@ -808,9 +753,6 @@ crypto_ipsecmb_init (vlib_main_t * vm)
 	  m = ptd->mgr;
     }
   /* *INDENT-ON* */
-
-  if (clib_cpu_supports_x86_aes () && (error = crypto_ipsecmb_iv_init (imbm)))
-    return (error);
 
 #define _(a, b, c, d, e, f)                                              \
   vnet_crypto_register_ops_handler (vm, eidx, VNET_CRYPTO_OP_##a##_HMAC, \
