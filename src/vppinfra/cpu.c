@@ -198,7 +198,7 @@ format_cpu_model_name (u8 * s, va_list * args)
 #endif
 }
 
-
+#if defined(__x86_64__) || defined(__aarch64__)
 static inline char const *
 flag_skip_prefix (char const *flag, const char *pfx, int len)
 {
@@ -206,20 +206,22 @@ flag_skip_prefix (char const *flag, const char *pfx, int len)
     return flag + len - 1;
   return flag;
 }
+#endif
 
 __clib_export u8 *
-format_cpu_flags (u8 * s, va_list * args)
+format_cpu_flags (u8 *s, va_list *args)
 {
 #if defined(__x86_64__)
-#define _(flag, func, reg, bit) \
-  if (clib_cpu_supports_ ## flag()) \
-    s = format (s, "%s ", flag_skip_prefix(#flag, "x86_", sizeof("x86_")));
+#define _(flag, func, reg, bit)                                               \
+  if (clib_cpu_supports_##flag ())                                            \
+    s = format (s, "%s ", flag_skip_prefix (#flag, "x86_", sizeof ("x86_")));
   foreach_x86_64_flags return s;
 #undef _
 #elif defined(__aarch64__)
-#define _(flag, bit) \
-  if (clib_cpu_supports_ ## flag()) \
-    s = format (s, "%s ", flag_skip_prefix(#flag, "aarch64_", sizeof("aarch64_")));
+#define _(flag, bit)                                                          \
+  if (clib_cpu_supports_##flag ())                                            \
+    s = format (s, "%s ",                                                     \
+		flag_skip_prefix (#flag, "aarch64_", sizeof ("aarch64_")));
   foreach_aarch64_flags return s;
 #undef _
 #else /* ! ! __x86_64__ && ! __aarch64__ */
