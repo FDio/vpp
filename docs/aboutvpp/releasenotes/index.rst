@@ -8,5 +8,4 @@ Release notes
 
     v21.10.1
     v21.10
-    v21.06
     past
