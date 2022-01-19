@@ -295,6 +295,13 @@ virtio_vring_set_tx_queues (vlib_main_t *vm, virtio_if_t *vif)
 	vnm, vif->hw_if_index, TX_QUEUE_ACCESS (vring->queue_id));
     }
 
+  if (vif->num_txqs == 0)
+    {
+      virtio_log_error (vif, "Interface %U has 0 txq",
+			format_vnet_hw_if_index_name, vnm, vif->hw_if_index);
+      return;
+    }
+
   for (u32 j = 0; j < vlib_get_n_threads (); j++)
     {
       u32 qi = vif->txq_vrings[j % vif->num_txqs].queue_index;
