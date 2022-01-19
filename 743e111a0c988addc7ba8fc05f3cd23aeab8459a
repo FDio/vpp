@@ -16,6 +16,24 @@
       "revId": "743e111a0c988addc7ba8fc05f3cd23aeab8459a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5818082c_98228a41",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 432,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2022-01-19T13:03:56Z",
+      "side": 1,
+      "message": "Thank you for review. I will check and upload a change in a new patchset.",
+      "parentUuid": "7e46ab26_7005248d",
+      "revId": "743e111a0c988addc7ba8fc05f3cd23aeab8459a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
