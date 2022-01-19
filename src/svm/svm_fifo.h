@@ -431,8 +431,8 @@ void svm_fifo_dequeue_drop_all (svm_fifo_t * f);
  * @param max_bytes	max bytes to be mapped to fifo segments
  * @return 		number of bytes in fifo segments or SVM_FIFO_EEMPTY
  */
-int svm_fifo_segments (svm_fifo_t * f, u32 offset, svm_fifo_seg_t * fs,
-		       u32 n_segs, u32 max_bytes);
+int svm_fifo_segments (svm_fifo_t *f, u32 offset, svm_fifo_seg_t *fs,
+		       u32 *n_segs, u32 max_bytes);
 /**
  * Add io events subscriber to list
  *
