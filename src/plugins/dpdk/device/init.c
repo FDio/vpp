@@ -390,6 +390,9 @@ dpdk_lib_init (dpdk_main_t * dm)
 			  xd->conf.rss_hf);
 	}
 
+#ifndef RTE_VLAN_HLEN
+#define RTE_VLAN_HLEN 4
+#endif
       xd->driver_frame_overhead =
 	RTE_ETHER_HDR_LEN + 2 * RTE_VLAN_HLEN + RTE_ETHER_CRC_LEN;
 #if RTE_VERSION >= RTE_VERSION_NUM(21, 11, 0, 0)

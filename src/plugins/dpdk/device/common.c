@@ -169,8 +169,8 @@ dpdk_device_setup (dpdk_device_t * xd)
     }
   else
     {
-      mtu = 1500;
-      xd->max_supported_frame_size = mtu + xd->driver_frame_overhead;
+      xd->max_supported_frame_size =
+	clib_min (1500 + xd->driver_frame_overhead, buf_sz);
     }
 #else
   if (xd->conf.disable_multi_seg)
