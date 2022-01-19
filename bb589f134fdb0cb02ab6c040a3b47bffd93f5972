@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "28f96b26_2d2110f2",
+        "filename": "src/vnet/crypto/crypto.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2022-01-19T16:04:53Z",
+      "side": 1,
+      "message": "The entire change in this file is a whitespace change ? Is it necessary ?",
+      "revId": "bb589f134fdb0cb02ab6c040a3b47bffd93f5972",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
