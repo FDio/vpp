@@ -2,3 +2,4 @@
 host=gerrit.fd.io
 port=29418
 project=vpp
+defaultbranch=stable/2202
