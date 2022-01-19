@@ -90,7 +90,7 @@ monitor_interface_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
       tsd = ts[spin] - ts[spin ^ 1];
       vlib_cli_output (
-	vm, "rx: %Upps %Ubps tx: %Upps %Ubps%c", format_base10,
+	vm, "rx: %Upps %Ubps tx: %Upps %Ubps", format_base10,
 	(u32) ((vrx[spin].packets - vrx[spin ^ 1].packets) / tsd),
 	format_base10, (u32) ((vrx[spin].bytes - vrx[spin ^ 1].bytes) / tsd),
 	format_base10,
