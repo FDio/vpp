@@ -224,14 +224,14 @@ picotls_do_handshake (picotls_ctx_t *ptls_ctx, session_t *tcp_session)
   int rv = PTLS_ERROR_IN_PROGRESS, write = 0, i = 0, read = 0, len;
   svm_fifo_t *tcp_rx_fifo = tcp_session->rx_fifo;
   ptls_buffer_t *buf = &ptls_ctx->read_buffer;
-  const int n_segs = 2, max_len = 16384;
+  u32 n_segs = 2, max_len = 16384;
   ptls_t *tls = ptls_ctx->tls;
   svm_fifo_seg_t fs[n_segs];
   uword deq_now;
 
   ptls_buffer_init (buf, "", 0);
 
-  len = svm_fifo_segments (tcp_rx_fifo, 0, fs, n_segs, max_len);
+  len = svm_fifo_segments (tcp_rx_fifo, 0, fs, &n_segs, max_len);
   if (len <= 0)
     return 0;
 
@@ -309,7 +309,7 @@ ptls_tcp_to_app_write (picotls_ctx_t *ptls_ctx, svm_fifo_t *app_rx_fifo,
   u32 ai = 0, thread_index, min_buf_len, to_copy, left, wrote = 0;
   ptls_buffer_t *buf = &ptls_ctx->read_buffer;
   int ret, i = 0, read = 0, tcp_len, n_fs_app;
-  const int n_segs = 4, max_len = 1 << 16;
+  u32 n_segs = 4, max_len = 1 << 16;
   svm_fifo_seg_t tcp_fs[n_segs], app_fs[n_segs];
   picotls_main_t *pm = &picotls_main;
   uword deq_now;
@@ -321,7 +321,7 @@ ptls_tcp_to_app_write (picotls_ctx_t *ptls_ctx, svm_fifo_t *app_rx_fifo,
   if (n_fs_app <= 0)
     return 0;
 
-  tcp_len = svm_fifo_segments (tcp_rx_fifo, 0, tcp_fs, n_segs, max_len);
+  tcp_len = svm_fifo_segments (tcp_rx_fifo, 0, tcp_fs, &n_segs, max_len);
   if (tcp_len <= 0)
     return 0;
 
@@ -489,7 +489,7 @@ ptls_app_to_tcp_write (picotls_ctx_t *ptls_ctx, session_t *app_session,
 {
   u32 wrote = 0, max_enq, thread_index, app_buf_len, left, ti = 0;
   int read = 0, rv, i = 0, len, n_tcp_segs = 4, deq_len;
-  const int n_app_segs = 2, min_chunk = 2048;
+  u32 n_app_segs = 2, min_chunk = 2048;
   svm_fifo_seg_t app_fs[n_app_segs], tcp_fs[n_tcp_segs];
   picotls_main_t *pm = &picotls_main;
   ptls_buffer_t _buf, *buf = &_buf;
@@ -500,7 +500,7 @@ ptls_app_to_tcp_write (picotls_ctx_t *ptls_ctx, session_t *app_session,
   thread_index = app_session->thread_index;
   app_tx_fifo = app_session->tx_fifo;
 
-  len = svm_fifo_segments (app_tx_fifo, 0, app_fs, n_app_segs, max_len);
+  len = svm_fifo_segments (app_tx_fifo, 0, app_fs, &n_app_segs, max_len);
   if (len <= 0)
     return 0;
 

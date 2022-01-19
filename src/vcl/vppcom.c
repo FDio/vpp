@@ -2084,7 +2084,7 @@ vppcom_session_read_segments (uint32_t session_handle,
     }
 
   n_read = svm_fifo_segments (rx_fifo, s->rx_bytes_pending,
-			      (svm_fifo_seg_t *) ds, n_segments, max_bytes);
+			      (svm_fifo_seg_t *) ds, &n_segments, max_bytes);
   if (n_read < 0)
     return VPPCOM_EAGAIN;
 

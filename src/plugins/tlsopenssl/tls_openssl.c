@@ -194,10 +194,10 @@ static int
 openssl_write_from_fifo_into_ssl (svm_fifo_t *f, SSL *ssl, u32 max_len)
 {
   int wrote = 0, rv, i = 0, len;
-  const int n_segs = 2;
+  u32 n_segs = 2;
   svm_fifo_seg_t fs[n_segs];
 
-  len = svm_fifo_segments (f, 0, fs, n_segs, max_len);
+  len = svm_fifo_segments (f, 0, fs, &n_segs, max_len);
   if (len <= 0)
     return 0;
 
