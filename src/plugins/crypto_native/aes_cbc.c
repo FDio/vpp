@@ -234,8 +234,6 @@ aes_ops_enc_aes_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[],
 		     u32 n_ops, aes_key_size_t ks)
 {
   crypto_native_main_t *cm = &crypto_native_main;
-  crypto_native_per_thread_data_t *ptd =
-    vec_elt_at_index (cm->per_thread_data, vm->thread_index);
   int rounds = AES_KEY_ROUNDS (ks);
   u8 placeholder[8192];
   u32 i, j, count, n_left = n_ops;
@@ -269,15 +267,7 @@ more:
 	  }
 	else
 	  {
-	    u8x16 t;
-	    if (ops[0]->flags & VNET_CRYPTO_OP_FLAG_INIT_IV)
-	      {
-		t = ptd->cbc_iv[i];
-		*(u8x16u *) ops[0]->iv = t;
-		ptd->cbc_iv[i] = aes_enc_round (t, t);
-	      }
-	    else
-	      t = aes_block_load (ops[0]->iv);
+	    u8x16 t = aes_block_load (ops[0]->iv);
 #if __VAES__
 	    rq[i] = t;
 #else
@@ -486,27 +476,6 @@ crypto_native_aes_cbc_init_slm (vlib_main_t * vm)
 #endif
 {
   crypto_native_main_t *cm = &crypto_native_main;
-  crypto_native_per_thread_data_t *ptd;
-  clib_error_t *err = 0;
-  int fd;
-
-  if ((fd = open ("/dev/urandom", O_RDONLY)) < 0)
-    return clib_error_return_unix (0, "failed to open '/dev/urandom'");
-
-  /* *INDENT-OFF* */
-  vec_foreach (ptd, cm->per_thread_data)
-    {
-      for (int i = 0; i < 4; i++)
-	{
-	  if (read(fd, ptd->cbc_iv, sizeof (ptd->cbc_iv)) !=
-	      sizeof (ptd->cbc_iv))
-	    {
-	      err = clib_error_return_unix (0, "'/dev/urandom' read failure");
-	      goto error;
-	    }
-	}
-    }
-  /* *INDENT-ON* */
 
 #define _(x) \
   vnet_crypto_register_ops_handler (vm, cm->crypto_engine_index, \
@@ -519,9 +488,7 @@ crypto_native_aes_cbc_init_slm (vlib_main_t * vm)
   foreach_aes_cbc_handler_type;
 #undef _
 
-error:
-  close (fd);
-  return err;
+  return 0;
 }
 
 /*
