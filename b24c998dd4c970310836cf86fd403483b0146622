@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f0a71752_6b1eae14",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_inlines.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 951,
+      "author": {
+        "id": 1961
+      },
+      "writtenOn": "2022-01-19T16:41:08Z",
+      "side": 1,
+      "message": "We are experiencing a high number of transitory timed out sessions piling up in our system although they should be deleted by new sessions.\nThe reason is a missing check for half-closed states here, this clause should look like the same as in nat44_session_get_timeout().\n\nWith the current implementation, the session is put on the transitory LRU list when the first FIN is seen, although the applied timeout is still established. This session can remain in the transitory LRU list for a very long time if the other FIN does not arrive and it blocks the deletion of every subsequently added session that is already in FIN_TRANS state.\n\nTo make this check always consistent with the applied timer, I would prefer to add a define or a function, like\n\n#define NAT44_ED_TCP_USE_ESTABLISHED_TIMEOUT(s)                               \\\n  (NAT44_ED_TCP_STATE_ESTABLISHED \u003d\u003d (s)-\u003etcp_state ||                        \\\n   NAT44_ED_TCP_STATE_FIN_I2O \u003d\u003d (s)-\u003etcp_state ||                            \\\n   NAT44_ED_TCP_STATE_FIN_O2I \u003d\u003d (s)-\u003etcp_state)",
+      "revId": "b24c998dd4c970310836cf86fd403483b0146622",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7a4c6bed_547ea8a5",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_inlines.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 990,
+      "author": {
+        "id": 1961
+      },
+      "writtenOn": "2022-01-19T16:41:08Z",
+      "side": 1,
+      "message": "I think there is some problem with the updating of last_heard, which points me back to our previous discussion: You have written that the value shall not be updated in transitory state, which is correct. But this function does not know whether the state was just recently changed to transitory.\n\nFor example the state was before ESTABLISHED and last_heard was updated a long time ago. (The session is still established.) Then an RST is received and the state is changed to RST_TRANS,  last_lru_update is set but not last_heard. This function does not set last_heard value either and the session is immediately expired.\nI have changed one of the test cases to include a delay between the last data packet and the RST to show this scenario. This test case should fail now, I hope you do not mind.\n\nIs there any reason to update the value in the \"normal\" SYN_I2O and SYN_O2I states? Those are also transitory and I do not see a requirement in the RFC to update the timeout value for re-transmitted packets for example. I might have overlooked something.",
+      "revId": "b24c998dd4c970310836cf86fd403483b0146622",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
