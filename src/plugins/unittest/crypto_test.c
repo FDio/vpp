@@ -925,7 +925,6 @@ test_crypto_perf (vlib_main_t * vm, crypto_test_main_t * tm)
 			       ad->op_by_type[VNET_CRYPTO_OP_TYPE_ENCRYPT]);
 	  vnet_crypto_op_init (op2,
 			       ad->op_by_type[VNET_CRYPTO_OP_TYPE_DECRYPT]);
-	  op1->flags = VNET_CRYPTO_OP_FLAG_INIT_IV;
 	  op1->src = op2->src = op1->dst = op2->dst = b->data;
 	  op1->key_index = op2->key_index = key_index;
 	  op1->iv = op2->iv = b->data - 64;

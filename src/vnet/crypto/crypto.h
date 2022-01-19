@@ -259,9 +259,8 @@ typedef struct
   vnet_crypto_op_id_t op:16;
   vnet_crypto_op_status_t status:8;
   u8 flags;
-#define VNET_CRYPTO_OP_FLAG_INIT_IV (1 << 0)
-#define VNET_CRYPTO_OP_FLAG_HMAC_CHECK (1 << 1)
-#define VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS (1 << 2)
+#define VNET_CRYPTO_OP_FLAG_HMAC_CHECK	    (1 << 0)
+#define VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS (1 << 1)
 
   union
   {
