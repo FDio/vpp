@@ -34,6 +34,24 @@
       "revId": "743e111a0c988addc7ba8fc05f3cd23aeab8459a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "312f3d91_786c2bf5",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 432,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2022-01-20T11:05:45Z",
+      "side": 1,
+      "message": "Patchset 10 includes removal of function noise_remote_decrypt().",
+      "parentUuid": "5818082c_98228a41",
+      "revId": "743e111a0c988addc7ba8fc05f3cd23aeab8459a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
