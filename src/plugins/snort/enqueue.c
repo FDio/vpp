@@ -75,10 +75,37 @@ snort_enq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   while (n_left)
     {
-      u32 instance_index, next_index, n;
-      instance_index =
+      u32 next_index, n, idx = 0;
+      u32 n_insts, n_insts_minus_1;
+      u32 flow_hash, iface_index;
+      u32 *instance_index, context_id;
+      snort_instance_context_t *context;
+
+      iface_index =
 	*(u32 *) vnet_feature_next_with_data (&next_index, b[0], sizeof (u32));
-      si = vec_elt_at_index (sm->instances, instance_index);
+      context_id =
+	clib_atomic_load_acq_n (&sm->context_by_sw_if_index[iface_index]);
+      ASSERT (context_id != ~0);
+      context = pool_elt_at_index (sm->contexts, context_id);
+      n_insts = context->n_instances;
+      ASSERT (n_insts != 0);
+
+      if (n_insts > 1)
+	{
+	  flow_hash = snort4_compute_flow_hash (
+	    sm, context->flow_hash_config, vlib_buffer_get_current (b[0]));
+	  n_insts_minus_1 = n_insts - 1;
+	  if (n_insts & n_insts_minus_1)
+	    {
+	      idx = flow_hash % n_insts;
+	    }
+	  else
+	    {
+	      idx = flow_hash & n_insts_minus_1;
+	    }
+	}
+      instance_index = vec_elt_at_index (context->instances_per_iface, idx);
+      si = vec_elt_at_index (sm->instances, *instance_index);
 
       /* if client isn't connected skip enqueue and take default action */
       if (PREDICT_FALSE (si->client_index == ~0))

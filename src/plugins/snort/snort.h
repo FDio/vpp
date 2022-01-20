@@ -7,7 +7,9 @@
 
 #include <vppinfra/error.h>
 #include <vppinfra/socket.h>
+#include <vppinfra/vector/toeplitz.h>
 #include <vlib/vlib.h>
+#include <vnet/ip/ip4_inlines.h>
 #include <snort/daq_vpp.h>
 
 typedef struct
@@ -67,17 +69,34 @@ typedef struct
   void *interrupts;
 } snort_per_thread_data_t;
 
+typedef enum snort_hash_config_
+{
+  SNORT_HASH_L3_ADDRS = 0,
+  SNORT_HASH_L3_L4_ADDRS = 1
+} snort_hash_config_t;
+
+typedef struct
+{
+  u32 *instances_per_iface;
+  u32 n_instances;
+  u32 flow_hash_config;
+} snort_instance_context_t;
+
 typedef struct
 {
   clib_socket_t *listener;
   snort_client_t *clients;
   snort_instance_t *instances;
+  snort_instance_context_t *contexts;
   uword *instance_by_name;
-  u32 *instance_by_sw_if_index;
+  u32 *context_by_sw_if_index;
+  u32 **instance_vec_by_sw_if_index;
   u8 **buffer_pool_base_addrs;
   snort_per_thread_data_t *per_thread_data;
   u32 input_mode;
   u8 *socket_name;
+  clib_toeplitz_hash_key_t *key_s;
+  snort_hash_config_t hash_config;
 } snort_main_t;
 
 extern snort_main_t snort_main;
@@ -99,7 +118,7 @@ typedef enum
 clib_error_t *snort_instance_create (vlib_main_t *vm, char *name,
 				     u8 log2_queue_sz, u8 drop_on_disconnect);
 clib_error_t *snort_interface_enable_disable (vlib_main_t *vm,
-					      char *instance_name,
+					      u8 **instance_vec,
 					      u32 sw_if_index, int is_enable);
 clib_error_t *snort_set_node_mode (vlib_main_t *vm, u32 mode);
 
@@ -110,4 +129,33 @@ snort_freelist_init (u32 *fl)
     fl[j] = j;
 }
 
+/* Compute flow hash. */
+typedef struct
+{
+  u32 sip, dip;
+  u16 sport, dport;
+} __clib_packed ip4_key_t;
+
+always_inline u32
+snort4_compute_flow_hash (snort_main_t *sm, snort_hash_config_t config,
+			  const ip4_header_t *ip)
+{
+  ip4_key_t data;
+  u32 data_len = 8;
+
+  tcp_header_t *tcp = (void *) (ip + 1);
+  uword is_tcp_udp =
+    (ip->protocol == IP_PROTOCOL_TCP || ip->protocol == IP_PROTOCOL_UDP);
+
+  data.sip = ip->src_address.data_u32;
+  data.dip = ip->dst_address.data_u32;
+  if (config & SNORT_HASH_L3_L4_ADDRS)
+    {
+      data.sport = is_tcp_udp ? tcp->src : 0;
+      data.dport = is_tcp_udp ? tcp->dst : 0;
+      data_len += 4;
+    }
+
+  return clib_toeplitz_hash (sm->key_s, (u8 *) &data, data_len);
+}
 #endif /* __snort_snort_h__ */
