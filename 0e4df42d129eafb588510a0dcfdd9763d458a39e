@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ebc3ad6e_2a37ecab",
+        "filename": "src/vppinfra/bihash_16_8.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-01-20T12:12:53Z",
+      "side": 1,
+      "message": "Why is this better/faster than using simple NEON 128-bit load and compare?",
+      "revId": "0e4df42d129eafb588510a0dcfdd9763d458a39e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
