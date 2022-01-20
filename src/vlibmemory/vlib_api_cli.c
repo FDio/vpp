@@ -487,7 +487,11 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
     {
       u16 msg_index = unserialize_likely_small_unsigned_integer (sm);
       unserialize_cstring (sm, (char **) &name_and_crc);
-      u16 msg_index2 = vl_msg_api_get_msg_index (name_and_crc);
+      u32 msg_index2 = vl_msg_api_get_msg_index (name_and_crc);
+      ASSERT (~0 == msg_index2 || msg_index2 <= 65535);
+      if (~0 == msg_index2)
+	vlib_cli_output (vm, "warning: can't find msg index for id %d\n",
+			 msg_index);
       vec_validate (msgid_vec, msg_index);
       msgid_vec[msg_index] = msg_index2;
     }
@@ -496,7 +500,6 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 
   for (i = 0; i < first_index; i++)
     {
-      trace_cfg_t *cfgp;
       int size;
       u16 msg_id;
 
@@ -504,18 +507,13 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
       size = clib_host_to_net_u32 (*(u32 *) msg);
       msg += sizeof (u32);
 
-      assert_size (file_size_left, size);
+      assert_size (file_size_left, clib_max (size, sizeof (u16)));
       msg_id = ntohs (*((u16 *) msg));
-      if (msg_id < vec_len (msgid_vec))
-	msg_id = msgid_vec[msg_id];
-      cfgp = am->api_trace_cfg + msg_id;
-      if (!cfgp)
-	{
-	  vlib_cli_output (vm, "Ugh: msg id %d no trace config\n", msg_id);
-	  munmap (hp, file_size);
-	  vec_free (msgid_vec);
-	  return;
-	}
+      if (msg_id >= vec_len (msgid_vec) ||
+	  msgid_vec[msg_id] >= vec_len (am->api_trace_cfg))
+	vlib_cli_output (vm, "warning: unknown msg id %d for msg number %d\n",
+			 msg_id, i);
+
       msg += size;
     }
 
@@ -531,24 +529,25 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
       if (which == DUMP)
 	vlib_cli_output (vm, "---------- trace %d -----------\n", i);
 
+      assert_size (file_size_left, sizeof (u32));
       size = clib_host_to_net_u32 (*(u32 *) msg);
       msg += sizeof (u32);
 
+      assert_size (file_size_left, clib_max (size, sizeof (u16)));
       msg_id = ntohs (*((u16 *) msg));
-      if (msg_id < vec_len (msgid_vec))
+
+      if (msg_id >= vec_len (msgid_vec) ||
+	  msgid_vec[msg_id] >= vec_len (am->api_trace_cfg))
 	{
-	  msg_id = msgid_vec[msg_id];
+	  vlib_cli_output (
+	    vm, "warning: unknown msg id %d for msg number %d, skipping\n",
+	    msg_id, i);
+	  msg += size;
+	  continue;
 	}
 
+      msg_id = msgid_vec[msg_id];
       cfgp = am->api_trace_cfg + msg_id;
-      if (!cfgp)
-	{
-	  vlib_cli_output (vm, "Ugh: msg id %d no trace config\n", msg_id);
-	  munmap (hp, file_size);
-	  vec_free (tmpbuf);
-	  am->replay_in_progress = 0;
-	  return;
-	}
 
       /* Copy the buffer (from the read-only mmap'ed file) */
       vec_validate (tmpbuf, size - 1 + sizeof (uword));
