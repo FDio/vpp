@@ -16,6 +16,24 @@
       "revId": "e5fdd8af119a53c52ccd2ee8aec69a51cd05b8d6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "db23e3c4_81e6e6ad",
+        "filename": "src/plugins/dpdk/device/common.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 173,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-01-20T11:50:26Z",
+      "side": 1,
+      "message": "buf_sz is defined at the beginning of the function but not used in this case.\nI could have added eg. (void)buf_sz in this branch instead but I think this is better",
+      "parentUuid": "9ff33d6b_10f7d17b",
+      "revId": "e5fdd8af119a53c52ccd2ee8aec69a51cd05b8d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
