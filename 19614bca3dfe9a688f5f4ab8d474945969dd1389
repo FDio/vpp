@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a289e1e_00ed4f3d",
+        "filename": "src/vnet/bonding/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 494,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-01-20T12:03:28Z",
+      "side": 1,
+      "message": "This function should not use floating arithmetics at first place, so instead of improving will be great if you can convert it to use lookup table indexed by lowest bits of hash result.",
+      "revId": "19614bca3dfe9a688f5f4ab8d474945969dd1389",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
