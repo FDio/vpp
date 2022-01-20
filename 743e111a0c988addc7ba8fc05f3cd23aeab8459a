@@ -52,6 +52,23 @@
       "revId": "743e111a0c988addc7ba8fc05f3cd23aeab8459a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e7f7163d_e48ec331",
+        "filename": "src/plugins/wireguard/wireguard_output_tun.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 250,
+      "author": {
+        "id": 2280
+      },
+      "writtenOn": "2022-01-20T13:29:26Z",
+      "side": 1,
+      "message": "I think we also need to check noise_remote_encrypt() usage. Can this function be removed?",
+      "revId": "743e111a0c988addc7ba8fc05f3cd23aeab8459a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
