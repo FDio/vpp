@@ -69,6 +69,24 @@
       "revId": "743e111a0c988addc7ba8fc05f3cd23aeab8459a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "37eb1a24_fd3f039d",
+        "filename": "src/plugins/wireguard/wireguard_output_tun.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 250,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2022-01-20T13:52:57Z",
+      "side": 1,
+      "message": "Hi, in addtion to here, noise_remote_encrypt() is using by another function: wg_send_keepalive() in wireguard_send.c file. We know there are rooms for improvement. We can and will keep improving the code in the next and future releases.",
+      "parentUuid": "e7f7163d_e48ec331",
+      "revId": "743e111a0c988addc7ba8fc05f3cd23aeab8459a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
