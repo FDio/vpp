@@ -34,6 +34,24 @@
       "revId": "e5fdd8af119a53c52ccd2ee8aec69a51cd05b8d6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "96aecff5_77038560",
+        "filename": "src/plugins/dpdk/device/common.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 173,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-01-20T12:08:26Z",
+      "side": 1,
+      "message": "Ah, ok :) you managed to confuse me... Merging...",
+      "parentUuid": "db23e3c4_81e6e6ad",
+      "revId": "e5fdd8af119a53c52ccd2ee8aec69a51cd05b8d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
