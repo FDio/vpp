@@ -1292,6 +1292,7 @@ list(APPEND VNET_MULTIARCH_SOURCES
 
 list(APPEND VNET_HEADERS
   dpo/load_balance.h
+  dpo/load_balance_map.h
   dpo/drop_dpo.h
   dpo/lookup_dpo.h
   dpo/punt_dpo.h
