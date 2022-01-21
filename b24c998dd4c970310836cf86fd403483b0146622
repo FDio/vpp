@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "f946b361_adbb8747",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_inlines.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 951,
+      "author": {
+        "id": 1961
+      },
+      "writtenOn": "2022-01-21T13:36:01Z",
+      "side": 1,
+      "message": "Hi Klement,\nI can confirm that the timed-out sessions are no longer piling up in our test setup with the change I am proposing.",
+      "parentUuid": "f0a71752_6b1eae14",
+      "revId": "b24c998dd4c970310836cf86fd403483b0146622",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "7a4c6bed_547ea8a5",
         "filename": "src/plugins/nat/nat44-ed/nat44_ed_inlines.h",
         "patchSetId": 12
