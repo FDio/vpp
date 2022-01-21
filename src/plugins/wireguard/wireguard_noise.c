@@ -704,12 +704,23 @@ static void
 noise_mix_hash (uint8_t hash[NOISE_HASH_LEN], const uint8_t * src,
 		size_t src_len)
 {
-  blake2s_state_t blake;
+  if (wg_main.blake3 == false)
+    {
+      blake2s_state_t blake;
 
-  blake2s_init (&blake, NOISE_HASH_LEN);
-  blake2s_update (&blake, hash, NOISE_HASH_LEN);
-  blake2s_update (&blake, src, src_len);
-  blake2s_final (&blake, hash, NOISE_HASH_LEN);
+      blake2s_init (&blake, NOISE_HASH_LEN);
+      blake2s_update (&blake, hash, NOISE_HASH_LEN);
+      blake2s_update (&blake, src, src_len);
+      blake2s_final (&blake, hash, NOISE_HASH_LEN);
+    }
+  else
+    {
+      blake3_hasher blake3_self;
+      blake3_hasher_init (&blake3_self);
+      blake3_hasher_update (&blake3_self, hash, NOISE_HASH_LEN);
+      blake3_hasher_update (&blake3_self, src, src_len);
+      blake3_hasher_finalize (&blake3_self, hash, NOISE_HASH_LEN);
+    }
 }
 
 static void
@@ -730,16 +741,34 @@ static void
 noise_param_init (uint8_t ck[NOISE_HASH_LEN], uint8_t hash[NOISE_HASH_LEN],
 		  const uint8_t s[NOISE_PUBLIC_KEY_LEN])
 {
-  blake2s_state_t blake;
+  if (wg_main.blake3 == false)
+    {
+      blake2s_state_t blake;
 
-  blake2s (ck, NOISE_HASH_LEN, (uint8_t *) NOISE_HANDSHAKE_NAME,
-	   strlen (NOISE_HANDSHAKE_NAME), NULL, 0);
+      blake2s (ck, NOISE_HASH_LEN, (uint8_t *) NOISE_HANDSHAKE_NAME,
+	       strlen (NOISE_HANDSHAKE_NAME), NULL, 0);
 
-  blake2s_init (&blake, NOISE_HASH_LEN);
-  blake2s_update (&blake, ck, NOISE_HASH_LEN);
-  blake2s_update (&blake, (uint8_t *) NOISE_IDENTIFIER_NAME,
-		  strlen (NOISE_IDENTIFIER_NAME));
-  blake2s_final (&blake, hash, NOISE_HASH_LEN);
+      blake2s_init (&blake, NOISE_HASH_LEN);
+      blake2s_update (&blake, ck, NOISE_HASH_LEN);
+      blake2s_update (&blake, (uint8_t *) NOISE_IDENTIFIER_NAME,
+		      strlen (NOISE_IDENTIFIER_NAME));
+      blake2s_final (&blake, hash, NOISE_HASH_LEN);
+    }
+  else
+    {
+      blake3_hasher blake3_self, blake3;
+
+      blake3_hasher_init (&blake3);
+      blake3_hasher_update (&blake3, (uint8_t *) NOISE_HANDSHAKE_NAME,
+			    strlen (NOISE_HANDSHAKE_NAME));
+      blake3_hasher_finalize (&blake3, ck, NOISE_HASH_LEN);
+
+      blake3_hasher_init (&blake3_self);
+      blake3_hasher_update (&blake3_self, ck, NOISE_HASH_LEN);
+      blake3_hasher_update (&blake3_self, (uint8_t *) NOISE_IDENTIFIER_NAME,
+			    strlen (NOISE_IDENTIFIER_NAME));
+      blake3_hasher_finalize (&blake3_self, hash, NOISE_HASH_LEN);
+    }
 
   noise_mix_hash (hash, s, NOISE_PUBLIC_KEY_LEN);
 }

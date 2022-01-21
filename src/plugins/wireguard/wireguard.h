@@ -54,6 +54,7 @@ typedef struct
 
   /* operation mode flags (e.g. async) */
   u8 op_mode_flags;
+  bool blake3;
 } wg_main_t;
 
 typedef struct

@@ -413,6 +413,35 @@ VLIB_CLI_COMMAND (wg_show_modemode_command, static) = {
 
 /* *INDENT-ON* */
 
+static clib_error_t *
+wg_set_blake_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			 vlib_cli_command_t *cmd)
+{
+  wg_main_t *wmp = &wg_main;
+  wmp->blake3 = false;
+  clib_error_t *error = NULL;
+
+  unformat_input_t _line_input, *line_input = &_line_input;
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+  if (unformat (line_input, "%d", &(wmp->blake3)))
+    ;
+  else
+    {
+      error = clib_error_return (0, "Input error");
+      goto done;
+    }
+
+done:
+  unformat_free (line_input);
+  return error;
+}
+
+VLIB_CLI_COMMAND (wg_set_blake_command, static) = {
+  .path = "set wireguard blake3",
+  .short_help = "set wireguard blake3 [0|1]",
+  .function = wg_set_blake_command_fn,
+};
 /*
  * fd.io coding-style-patch-verification: ON
  *
