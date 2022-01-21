@@ -85,6 +85,7 @@ snort_attach_command_fn (vlib_main_t *vm, unformat_input_t *input,
   clib_error_t *err = 0;
   u8 *name = 0;
   u32 sw_if_index = ~0;
+  snort_attach_dir_t dir = SNORT_INOUT;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -97,6 +98,12 @@ snort_attach_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	;
       else if (unformat (line_input, "instance %s", &name))
 	;
+      else if (unformat (line_input, "input"))
+	dir = SNORT_INPUT;
+      else if (unformat (line_input, "output"))
+	dir = SNORT_OUTPUT;
+      else if (unformat (line_input, "inout"))
+	dir = SNORT_INOUT;
       else
 	{
 	  err = clib_error_return (0, "unknown input `%U'",
@@ -117,7 +124,8 @@ snort_attach_command_fn (vlib_main_t *vm, unformat_input_t *input,
       goto done;
     }
 
-  err = snort_interface_enable_disable (vm, (char *) name, sw_if_index, 1);
+  err =
+    snort_interface_enable_disable (vm, (char *) name, sw_if_index, 1, dir);
 
 done:
   vec_free (name);
@@ -127,7 +135,8 @@ done:
 
 VLIB_CLI_COMMAND (snort_attach_command, static) = {
   .path = "snort attach",
-  .short_help = "snort attach instance <name> interface <if-name>",
+  .short_help = "snort attach instance <name> interface <if-name> "
+		"[input|ouput|inout]",
   .function = snort_attach_command_fn,
 };
 
@@ -163,7 +172,7 @@ snort_detach_command_fn (vlib_main_t *vm, unformat_input_t *input,
       goto done;
     }
 
-  err = snort_interface_enable_disable (vm, 0, sw_if_index, 0);
+  err = snort_interface_enable_disable (vm, 0, sw_if_index, 0, SNORT_INOUT);
 
 done:
   unformat_free (line_input);
