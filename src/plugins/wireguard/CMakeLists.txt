@@ -21,6 +21,9 @@ include_directories(${OPENSSL_INCLUDE_DIR})
 list(APPEND WG_BLAKE_SOURCES
   blake/blake2s.h
   blake/blake2s.c
+  blake/blake3.c
+  blake/blake3_dispatch.c
+  blake/blake3.h
 )
 
 add_vpp_plugin(wireguard
@@ -57,3 +60,17 @@ add_vpp_plugin(wireguard
   wireguard.api
 
 )
+
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
+  set (COMPILE_OPTS -Wall -fno-common)
+  add_library(blake3_x86 OBJECT blake/blake3_portable.c)
+  set_target_properties(blake3_x86 PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  target_compile_options(blake3_x86 PUBLIC ${COMPILE_OPTS})
+  target_sources(wireguard_plugin PRIVATE $<TARGET_OBJECTS:blake3_x86>)
+  if(compiler_flag_march_skylake_avx512)
+  add_library(blake3_avx512 OBJECT blake/blake3_avx512.c)
+  set_target_properties(blake3_avx512 PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  target_compile_options(blake3_avx512 PUBLIC -march=skylake-avx512 -mtune=skylake-avx512 ${COMPILE_OPTS})
+  target_sources(wireguard_plugin PRIVATE $<TARGET_OBJECTS:blake3_avx512>)
+  endif()
+endif()
