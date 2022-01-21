@@ -830,6 +830,9 @@ transport_enable_disable (vlib_main_t * vm, u8 is_en)
   {
     if (vft->enable)
       (vft->enable) (vm, is_en);
+
+    if (vft->update_time)
+      session_register_update_time_fn (vft->update_time, is_en);
   }
 }
 

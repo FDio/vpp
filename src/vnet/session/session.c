@@ -1768,6 +1768,39 @@ session_register_transport (transport_proto_t transport_proto,
     session_tx_fns[vft->transport_options.tx_type];
 }
 
+void
+session_register_update_time_fn (session_update_time_fn fn, u8 is_add)
+{
+  session_main_t *smm = &session_main;
+  session_update_time_fn *fi;
+  u32 fi_pos = ~0;
+  u8 found = 0;
+
+  vec_foreach (fi, smm->update_time_fns)
+    {
+      if (*fi == fn)
+	{
+	  fi_pos = fi - smm->update_time_fns;
+	  found = 1;
+	  break;
+	}
+    }
+
+  if (is_add)
+    {
+      if (found)
+	{
+	  clib_warning ("update time fn %p already registered", fn);
+	  return;
+	}
+      vec_add1 (smm->update_time_fns, fn);
+    }
+  else
+    {
+      vec_del1 (smm->update_time_fns, fi_pos);
+    }
+}
+
 transport_proto_t
 session_add_transport_proto (void)
 {

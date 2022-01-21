@@ -171,10 +171,15 @@ extern session_fifo_rx_fn session_tx_fifo_dequeue_internal;
 
 u8 session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e);
 
+typedef void (*session_update_time_fn) (f64 time_now, u8 thread_index);
+
 typedef struct session_main_
 {
   /** Worker contexts */
   session_worker_t *wrk;
+
+  /** Vector of transport update time functions */
+  session_update_time_fn *update_time_fns;
 
   /** Event queues memfd segment */
   fifo_segment_t wrk_mqs_segment;
@@ -528,6 +533,7 @@ void session_register_transport (transport_proto_t transport_proto,
 				 const transport_proto_vft_t * vft, u8 is_ip4,
 				 u32 output_node);
 transport_proto_t session_add_transport_proto (void);
+void session_register_update_time_fn (session_update_time_fn fn, u8 is_add);
 int session_tx_fifo_peek_bytes (transport_connection_t * tc, u8 * buffer,
 				u32 offset, u32 max_bytes);
 u32 session_tx_fifo_dequeue_drop (transport_connection_t * tc, u32 max_bytes);
