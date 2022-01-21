@@ -21,6 +21,7 @@
 #include <vlib/vlib.h>
 #include <vnet/crypto/crypto.h>
 #include <wireguard/blake/blake2s.h>
+#include <wireguard/blake/blake3.h>
 #include <wireguard/wireguard_key.h>
 
 #define NOISE_PUBLIC_KEY_LEN	CURVE25519_KEY_SIZE
