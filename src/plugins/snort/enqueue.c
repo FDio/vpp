@@ -75,9 +75,16 @@ snort_enq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   while (n_left)
     {
+      u64 fa_data;
       u32 instance_index, next_index, n;
-      instance_index =
-	*(u32 *) vnet_feature_next_with_data (&next_index, b[0], sizeof (u32));
+      u32 l3_offset;
+
+      fa_data =
+	*(u64 *) vnet_feature_next_with_data (&next_index, b[0], sizeof (u64));
+
+      instance_index = (u32) (fa_data & 0xffffffff);
+      l3_offset =
+	(fa_data >> 32) ? vnet_buffer (b[0])->ip.save_rewrite_length : 0;
       si = vec_elt_at_index (sm->instances, instance_index);
 
       /* if client isn't connected skip enqueue and take default action */
@@ -108,7 +115,7 @@ snort_enq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  /* fill descriptor */
 	  d->buffer_pool = b[0]->buffer_pool_index;
 	  d->length = b[0]->current_length;
-	  d->offset = (u8 *) b[0]->data + b[0]->current_data -
+	  d->offset = (u8 *) b[0]->data + b[0]->current_data + l3_offset -
 		      sm->buffer_pool_base_addrs[d->buffer_pool];
 	  d->address_space_id = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
 	}

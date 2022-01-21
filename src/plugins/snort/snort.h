@@ -90,6 +90,13 @@ typedef enum
   SNORT_ENQ_N_NEXT_NODES,
 } snort_enq_next_t;
 
+typedef enum
+{
+  SNORT_INPUT = 1,
+  SNORT_OUTPUT = 2,
+  SNORT_INOUT = 3
+} snort_attach_dir_t;
+
 #define SNORT_ENQ_NEXT_NODES                                                  \
   {                                                                           \
     [SNORT_ENQ_NEXT_DROP] = "error-drop",                                     \
@@ -100,7 +107,8 @@ clib_error_t *snort_instance_create (vlib_main_t *vm, char *name,
 				     u8 log2_queue_sz, u8 drop_on_disconnect);
 clib_error_t *snort_interface_enable_disable (vlib_main_t *vm,
 					      char *instance_name,
-					      u32 sw_if_index, int is_enable);
+					      u32 sw_if_index, int is_enable,
+					      snort_attach_dir_t dir);
 clib_error_t *snort_set_node_mode (vlib_main_t *vm, u32 mode);
 
 always_inline void

@@ -409,12 +409,14 @@ done:
 
 clib_error_t *
 snort_interface_enable_disable (vlib_main_t *vm, char *instance_name,
-				u32 sw_if_index, int is_enable)
+				u32 sw_if_index, int is_enable,
+				snort_attach_dir_t snort_dir)
 {
   snort_main_t *sm = &snort_main;
   vnet_main_t *vnm = vnet_get_main ();
   snort_instance_t *si;
   clib_error_t *err = 0;
+  u64 fa_data;
   u32 index;
 
   if (is_enable)
@@ -440,8 +442,18 @@ snort_interface_enable_disable (vlib_main_t *vm, char *instance_name,
 	}
 
       index = sm->instance_by_sw_if_index[sw_if_index] = si->index;
-      vnet_feature_enable_disable ("ip4-unicast", "snort-enq", sw_if_index, 1,
-				   &index, sizeof (index));
+      if (snort_dir & SNORT_INPUT)
+	{
+	  fa_data = (u64) index;
+	  vnet_feature_enable_disable ("ip4-unicast", "snort-enq", sw_if_index,
+				       1, &fa_data, sizeof (fa_data));
+	}
+      if (snort_dir & SNORT_OUTPUT)
+	{
+	  fa_data = (1LL << 32 | index);
+	  vnet_feature_enable_disable ("ip4-output", "snort-enq", sw_if_index,
+				       1, &fa_data, sizeof (fa_data));
+	}
     }
   else
     {
@@ -459,8 +471,18 @@ snort_interface_enable_disable (vlib_main_t *vm, char *instance_name,
       si = vec_elt_at_index (sm->instances, index);
 
       sm->instance_by_sw_if_index[sw_if_index] = ~0;
-      vnet_feature_enable_disable ("ip4-unicast", "snort-enq", sw_if_index, 0,
-				   &index, sizeof (index));
+      if (snort_dir & SNORT_INPUT)
+	{
+	  fa_data = (u64) index;
+	  vnet_feature_enable_disable ("ip4-unicast", "snort-enq", sw_if_index,
+				       0, &fa_data, sizeof (fa_data));
+	}
+      if (snort_dir & SNORT_OUTPUT)
+	{
+	  fa_data = (1LL << 32 | index);
+	  vnet_feature_enable_disable ("ip4-output", "snort-enq", sw_if_index,
+				       0, &fa_data, sizeof (fa_data));
+	}
     }
 
 done:
@@ -526,4 +548,10 @@ VNET_FEATURE_INIT (snort_enq, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "snort-enq",
   .runs_before = VNET_FEATURES ("ip4-lookup"),
+};
+
+VNET_FEATURE_INIT (snort_enq_out, static) = {
+  .arc_name = "ip4-output",
+  .node_name = "snort-enq",
+  .runs_before = VNET_FEATURES ("interface-output"),
 };
