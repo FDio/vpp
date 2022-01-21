@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "252a49e8_c17a7391",
+        "filename": "src/plugins/wireguard/wireguard_if.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 354,
+      "author": {
+        "id": 2605
+      },
+      "writtenOn": "2022-01-21T02:58:20Z",
+      "side": 1,
+      "message": "not good",
+      "range": {
+        "startLine": 354,
+        "startChar": 3,
+        "endLine": 354,
+        "endChar": 28
+      },
+      "revId": "e5b73f574d91ff3808c0c7971d8637b9168baad5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
