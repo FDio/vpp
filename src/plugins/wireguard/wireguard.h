@@ -50,6 +50,8 @@ typedef struct
   u8 feature_init;
 
   tw_timer_wheel_16t_2w_512sl_t timer_wheel;
+
+  bool blake3;
 } wg_main_t;
 
 extern wg_main_t wg_main;
