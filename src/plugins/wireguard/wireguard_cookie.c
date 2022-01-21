@@ -108,22 +108,44 @@ static void
 cookie_precompute_key (uint8_t * key, const uint8_t input[COOKIE_INPUT_SIZE],
 		       const char *label)
 {
-  blake2s_state_t blake;
+  if(wg_main.blake3 == false)
+  {
+    blake2s_state_t blake;
 
-  blake2s_init (&blake, COOKIE_KEY_SIZE);
-  blake2s_update (&blake, (const uint8_t *) label, strlen (label));
-  blake2s_update (&blake, input, COOKIE_INPUT_SIZE);
-  blake2s_final (&blake, key, COOKIE_KEY_SIZE);
+    blake2s_init (&blake, COOKIE_KEY_SIZE);
+    blake2s_update (&blake, (const uint8_t *) label, strlen (label));
+    blake2s_update (&blake, input, COOKIE_INPUT_SIZE);
+    blake2s_final (&blake, key, COOKIE_KEY_SIZE);
+  }
+  else
+  {
+    blake3_hasher blake3_self;
+    blake3_hasher_init (&blake3_self);
+    blake3_hasher_update (&blake3_self, (const uint8_t *) label, strlen (label));
+    blake3_hasher_update (&blake3_self, input, COOKIE_INPUT_SIZE);
+    blake3_hasher_finalize (&blake3_self, key, COOKIE_KEY_SIZE);
+  }
 }
 
 static void
 cookie_macs_mac1 (message_macs_t * cm, const void *buf, size_t len,
 		  const uint8_t key[COOKIE_KEY_SIZE])
 {
-  blake2s_state_t state;
-  blake2s_init_key (&state, COOKIE_MAC_SIZE, key, COOKIE_KEY_SIZE);
-  blake2s_update (&state, buf, len);
-  blake2s_final (&state, cm->mac1, COOKIE_MAC_SIZE);
+  if(wg_main.blake3 == false)
+  {
+    blake2s_state_t state;
+    blake2s_init_key (&state, COOKIE_MAC_SIZE, key, COOKIE_KEY_SIZE);
+    blake2s_update (&state, buf, len);
+    blake2s_final (&state, cm->mac1, COOKIE_MAC_SIZE);
+  }
+  else
+  {
+    blake3_hasher blake3_self;
+    blake3_hasher_init_keyed (&blake3_self, key);
+    blake3_hasher_update (&blake3_self, buf, len);
+    blake3_hasher_finalize (&blake3_self, cm->mac1, COOKIE_MAC_SIZE);
+
+  }
 
 }
 
@@ -131,11 +153,22 @@ static void
 cookie_macs_mac2 (message_macs_t * cm, const void *buf, size_t len,
 		  const uint8_t key[COOKIE_COOKIE_SIZE])
 {
-  blake2s_state_t state;
-  blake2s_init_key (&state, COOKIE_MAC_SIZE, key, COOKIE_COOKIE_SIZE);
-  blake2s_update (&state, buf, len);
-  blake2s_update (&state, cm->mac1, COOKIE_MAC_SIZE);
-  blake2s_final (&state, cm->mac2, COOKIE_MAC_SIZE);
+  if(wg_main.blake3 == false)
+  {
+    blake2s_state_t state;
+    blake2s_init_key (&state, COOKIE_MAC_SIZE, key, COOKIE_COOKIE_SIZE);
+    blake2s_update (&state, buf, len);
+    blake2s_update (&state, cm->mac1, COOKIE_MAC_SIZE);
+    blake2s_final (&state, cm->mac2, COOKIE_MAC_SIZE);
+  }
+  else
+  {
+    blake3_hasher blake3_self;
+    blake3_hasher_init_keyed (&blake3_self, key);
+    blake3_hasher_update (&blake3_self, buf, len);
+    blake3_hasher_update (&blake3_self, cm->mac1, COOKIE_MAC_SIZE);
+    blake3_hasher_finalize (&blake3_self, cm->mac2, COOKIE_MAC_SIZE);
+  }
 }
 
 static void
@@ -143,28 +176,43 @@ cookie_checker_make_cookie (vlib_main_t *vm, cookie_checker_t *cc,
 			    uint8_t cookie[COOKIE_COOKIE_SIZE],
 			    ip46_address_t *ip, u16 udp_port)
 {
-  blake2s_state_t state;
-
   if (wg_birthdate_has_expired (cc->cc_secret_birthdate,
 				COOKIE_SECRET_MAX_AGE))
     {
       cc->cc_secret_birthdate = vlib_time_now (vm);
       RAND_bytes (cc->cc_secret, COOKIE_SECRET_SIZE);
     }
-
-  blake2s_init_key (&state, COOKIE_COOKIE_SIZE, cc->cc_secret,
-		    COOKIE_SECRET_SIZE);
-
-  if (ip46_address_is_ip4 (ip))
+  if (wg_main.blake3 == false)
+  {
+    blake2s_state_t state;
+    blake2s_init_key (&state, COOKIE_COOKIE_SIZE, cc->cc_secret,
+		      COOKIE_SECRET_SIZE);
+    if (ip46_address_is_ip4 (ip))
     {
       blake2s_update (&state, ip->ip4.as_u8, sizeof (ip4_address_t));
     }
-  else
+    else
     {
       blake2s_update (&state, ip->ip6.as_u8, sizeof (ip6_address_t));
     }
-  blake2s_update (&state, (u8 *) & udp_port, sizeof (u16));
-  blake2s_final (&state, cookie, COOKIE_COOKIE_SIZE);
+    blake2s_update (&state, (u8 *) & udp_port, sizeof (u16));
+    blake2s_final (&state, cookie, COOKIE_COOKIE_SIZE);
+  }
+  else
+  {
+    blake3_hasher blake3_self;
+    blake3_hasher_init_keyed (&blake3_self, cc->cc_secret);
+    if (ip46_address_is_ip4 (ip))
+    {
+      blake3_hasher_update (&blake3_self, ip4.as_u8, sizeof (ip4_address_t));
+    }
+    else
+    {
+      blake3_hasher_update (&blake3_self, ip6.as_u8, sizeof (ip6_address_t));
+    }
+    blake3_hasher_update (&blake3_self, (u8 *) & udp_port, sizeof (u16));
+    blake3_hasher_finalize (&blake3_self, cookie, COOKIE_COOKIE_SIZE);
+  }
 }
 
 /*
