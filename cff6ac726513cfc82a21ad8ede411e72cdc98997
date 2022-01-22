@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9eb58aeb_ee97b64e",
+        "filename": "src/vnet/ip/reass/ip6_full_reass.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1129,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-01-22T07:59:01Z",
+      "side": 1,
+      "message": "instead of consuming a buffer flag [which is a valuable and v finite resource], can you derive the FOR_US state of the packet from the context of this node. i.e. have different node variants in the for-us path.",
+      "revId": "cff6ac726513cfc82a21ad8ede411e72cdc98997",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
