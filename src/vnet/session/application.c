@@ -1924,10 +1924,11 @@ static clib_error_t *
 show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		     vlib_cli_command_t * cmd)
 {
-  int do_server = 0, do_client = 0, do_mq = 0;
+  int do_server = 0, do_client = 0, do_mq = 0, do_transports = 0;
   application_t *app;
   u32 app_index = ~0;
   int verbose = 0;
+  u8 is_ta;
 
   session_cli_return_if_not_enabled ();
 
@@ -1937,6 +1938,8 @@ show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	do_server = 1;
       else if (unformat (input, "client"))
 	do_client = 1;
+      else if (unformat (input, "transports"))
+	do_transports = 1;
       else if (unformat (input, "mq"))
 	do_mq = 1;
       else if (unformat (input, "%u", &app_index))
@@ -1990,11 +1993,11 @@ show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (!do_server && !do_client)
     {
       vlib_cli_output (vm, "%U", format_application, 0, 0);
-      /* *INDENT-OFF* */
       pool_foreach (app, app_main.app_pool)  {
-	vlib_cli_output (vm, "%U", format_application, app, 0);
+	  is_ta = app->flags & APP_OPTIONS_FLAGS_IS_TRANSPORT_APP;
+	  if ((!do_transports && !is_ta) || (do_transports && is_ta))
+	    vlib_cli_output (vm, "%U", format_application, app, 0);
       }
-      /* *INDENT-ON* */
     }
 
   return 0;
@@ -2097,13 +2100,12 @@ application_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (application_init);
 
-VLIB_CLI_COMMAND (show_app_command, static) =
-{
+VLIB_CLI_COMMAND (show_app_command, static) = {
   .path = "show app",
-  .short_help = "show app [app_id] [server|client] [mq] [verbose]",
+  .short_help = "show app [index] [server|client] [mq] [verbose] "
+		"[transports]",
   .function = show_app_command_fn,
 };
 
@@ -2113,7 +2115,6 @@ VLIB_CLI_COMMAND (show_certificate_command, static) =
   .short_help = "list app certs and keys present in store",
   .function = show_certificate_command_fn,
 };
-/* *INDENT-ON* */
 
 crypto_engine_type_t
 app_crypto_engine_type_add (void)
