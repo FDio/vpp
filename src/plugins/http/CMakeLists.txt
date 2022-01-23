@@ -15,4 +15,6 @@ add_vpp_plugin(http
   SOURCES
   http.c
   http_timer.c
+  http_cache.c
+  http_cli.c
 )
