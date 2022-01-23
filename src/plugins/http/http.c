@@ -31,6 +31,12 @@ const char *http_content_type_str[] = {
 #undef _
 };
 
+http_main_t *
+http_get_main (void)
+{
+  return &http_main;
+}
+
 static inline http_worker_t *
 http_worker_get (u32 thread_index)
 {

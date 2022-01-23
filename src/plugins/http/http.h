@@ -24,6 +24,8 @@
 #include <vnet/session/application_interface.h>
 #include <vnet/session/application.h>
 
+#include <http/http_cache.h>
+
 #define HTTP_DEBUG 0
 
 #if HTTP_DEBUG
@@ -170,6 +172,7 @@ typedef struct http_main_
   u32 app_index;
 
   clib_timebase_t timebase;
+  http_cache_t cache;
 
   /*
    * Runtime config
@@ -182,6 +185,8 @@ typedef struct http_main_
   u64 first_seg_size;
   u32 fifo_size;
 } http_main_t;
+
+http_main_t *http_get_main (void);
 
 #endif /* SRC_PLUGINS_HTTP_HTTP_H_ */
 
