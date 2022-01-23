@@ -31,6 +31,12 @@ const char *http_content_type_str[] = {
 #undef _
 };
 
+http_main_t *
+http_get_main (void)
+{
+  return &http_main;
+}
+
 static inline http_worker_t *
 http_worker_get (u32 thread_index)
 {
@@ -386,13 +392,14 @@ v_find_index (u8 *vec, u32 offset, char *str)
 static int
 state_wait_method (http_conn_t *hc, transport_send_params_t *sp)
 {
+  http_cache_t *cache = &http_main.cache;
   http_status_code_t ec;
   app_worker_t *app_wrk;
   http_msg_t msg;
   session_t *as;
   int i, rv;
   u32 len;
-  u8 *buf;
+  u8 *buf = 0;
 
   rv = read_request (hc);
 
@@ -418,12 +425,22 @@ state_wait_method (http_conn_t *hc, transport_send_params_t *sp)
 	  goto error;
 	}
 
-      len = i - hc->rx_buf_offset;
+      len = i - hc->rx_buf_offset - 1;
+
+      vec_validate (buf, len - 1);
+      clib_memcpy_fast (buf, &hc->rx_buf[hc->rx_buf_offset], len);
+
+      if (http_cache_lookup (cache, buf))
+	{
+	  // send cache entry
+	  goto done;
+	}
     }
   else if ((i = v_find_index (hc->rx_buf, 0, "POST ")) >= 0)
     {
       hc->method = HTTP_REQ_POST;
       hc->rx_buf_offset = i + 6;
+      buf = &hc->rx_buf[hc->rx_buf_offset];
       len = vec_len (hc->rx_buf) - hc->rx_buf_offset;
     }
   else
@@ -432,8 +449,6 @@ state_wait_method (http_conn_t *hc, transport_send_params_t *sp)
       ec = HTTP_STATUS_METHOD_NOT_ALLOWED;
       goto error;
     }
-
-  buf = &hc->rx_buf[hc->rx_buf_offset];
 
   msg.type = HTTP_MSG_REQUEST;
   msg.method_type = hc->method;
@@ -454,11 +469,14 @@ state_wait_method (http_conn_t *hc, transport_send_params_t *sp)
       return -1;
     }
 
-  vec_free (hc->rx_buf);
   hc->req_state = HTTP_REQ_STATE_WAIT_APP;
 
   app_wrk = app_worker_get_if_valid (as->app_wrk_index);
   app_worker_lock_and_send_event (app_wrk, as, SESSION_IO_EVT_RX);
+
+done:
+
+  vec_free (hc->rx_buf);
 
   return 0;
 
