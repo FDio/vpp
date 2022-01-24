@@ -282,7 +282,7 @@ remove_free_block (void *v, uword b, uword i)
 static heap_elt_t *
 search_free_list (void *v, uword size)
 {
-  heap_header_t *h = heap_header (v);
+  heap_header_t *h;
   heap_elt_t *f, *u;
   uword b, fb, f_size, f_index;
   word s, l;
@@ -290,6 +290,7 @@ search_free_list (void *v, uword size)
   if (!v)
     return 0;
 
+  h = heap_header (v);
   /* Search free lists for bins >= given size. */
   for (b = size_to_bin (size); b < vec_len (h->free_lists); b++)
     if ((l = vec_len (h->free_lists[b])) > 0)
@@ -420,8 +421,7 @@ _heap_alloc (void *v,
       if (max_len && offset + align_size > max_len)
 	goto error;
 
-      h = heap_header (v);
-      if (!v || !(h->flags & HEAP_IS_STATIC))
+      if (!v || !(heap_header (v)->flags & HEAP_IS_STATIC))
 	v = _vec_resize (v,
 			 align_size,
 			 (offset + align_size) * elt_bytes,
@@ -610,12 +610,13 @@ heap_len (void *v, word handle)
 __clib_export void *
 _heap_free (void *v)
 {
-  heap_header_t *h = heap_header (v);
+  heap_header_t *h;
   uword b;
 
   if (!v)
     return v;
 
+  h = heap_header (v);
   clib_bitmap_free (h->used_elt_bitmap);
   for (b = 0; b < vec_len (h->free_lists); b++)
     vec_free (h->free_lists[b]);
@@ -631,12 +632,13 @@ _heap_free (void *v)
 uword
 heap_bytes (void *v)
 {
-  heap_header_t *h = heap_header (v);
+  heap_header_t *h;
   uword bytes, b;
 
   if (!v)
     return 0;
 
+  h = heap_header (v);
   bytes = sizeof (h[0]);
   bytes += vec_len (v) * sizeof (h->elt_bytes);
   for (b = 0; b < vec_len (h->free_lists); b++)

@@ -87,12 +87,13 @@ extern void fpool_free (void *);
 always_inline void
 pool_validate (void *v)
 {
-  pool_header_t *p = pool_header (v);
+  pool_header_t *p;
   uword i, n_free_bitmap;
 
   if (!v)
     return;
 
+  p = pool_header (v);
   n_free_bitmap = clib_bitmap_count_set_bits (p->free_bitmap);
   ASSERT (n_free_bitmap == vec_len (p->free_indices));
   for (i = 0; i < vec_len (p->free_indices); i++)
@@ -102,10 +103,13 @@ pool_validate (void *v)
 always_inline void
 pool_header_validate_index (void *v, uword index)
 {
-  pool_header_t *p = pool_header (v);
+  pool_header_t *p;
 
   if (v)
-    vec_validate (p->free_bitmap, index / BITS (uword));
+    {
+      p = pool_header (v);
+      vec_validate (p->free_bitmap, index / BITS (uword));
+    }
 }
 
 #define pool_validate_index(v,i)				\
@@ -144,11 +148,12 @@ pool_elts (void *v)
 always_inline uword
 pool_header_bytes (void *v)
 {
-  pool_header_t *p = pool_header (v);
+  pool_header_t *p;
 
   if (!v)
     return 0;
 
+  p = pool_header (v);
   return vec_bytes (p->free_bitmap) + vec_bytes (p->free_indices);
 }
 
@@ -164,10 +169,11 @@ pool_header_bytes (void *v)
 /** Number of free elements in pool */
 #define pool_free_elts(P)                                                     \
   ({                                                                          \
-    pool_header_t *_pool_var (p) = pool_header (P);                           \
+    pool_header_t *_pool_var (p);                                             \
     uword n_free = 0;                                                         \
     if (P)                                                                    \
       {                                                                       \
+	_pool_var (p) = pool_header (P);                                      \
 	n_free += vec_len (_pool_var (p)->free_indices);                      \
 	/* Fixed-size pools have max_elts set non-zero */                     \
 	if (_pool_var (p)->max_elts == 0)                                     \
@@ -183,7 +189,7 @@ pool_header_bytes (void *v)
 #define _pool_get_aligned_internal(P, E, A, Z)                                \
   do                                                                          \
     {                                                                         \
-      pool_header_t *_pool_var (p) = pool_header (P);                         \
+      pool_header_t *_pool_var (p) = P ? pool_header (P) : NULL;              \
       uword _pool_var (l);                                                    \
                                                                               \
       STATIC_ASSERT (A == 0 || ((A % sizeof (P[0])) == 0) ||                  \
@@ -277,12 +283,14 @@ _pool_put_will_expand (void *p, uword index, uword elt_size)
 #define pool_put_will_expand(P, E) _pool_put_will_expand (P, (E) - (P), sizeof ((P)[0])
 
 /** Use free bitmap to query whether given element is free. */
-#define pool_is_free(P,E)						\
-({									\
-  pool_header_t * _pool_var (p) = pool_header (P);			\
-  uword _pool_var (i) = (E) - (P);					\
-  (_pool_var (i) < vec_len (P)) ? clib_bitmap_get (_pool_var (p)->free_bitmap, _pool_i) : 1; \
-})
+#define pool_is_free(P, E)                                                    \
+  ({                                                                          \
+    pool_header_t *_pool_var (p) = (P) ? pool_header (P) : NULL;              \
+    uword _pool_var (i) = (P) ? (E) - (P) : 0;                                \
+    (_pool_var (i) < vec_len (P)) ?                                           \
+	    clib_bitmap_get (_pool_var (p)->free_bitmap, _pool_i) :                 \
+	    1;                                                                      \
+  })
 
 /** Use free bitmap to query whether given index is free */
 #define pool_is_free_index(P,I) pool_is_free((P),(P)+(I))
@@ -396,9 +404,10 @@ do {									\
 always_inline void *
 _pool_free (void *v)
 {
-  pool_header_t *p = pool_header (v);
+  pool_header_t *p;
   if (!v)
     return v;
+  p = pool_header (v);
   clib_bitmap_free (p->free_bitmap);
 
   vec_free (p->free_indices);
@@ -433,44 +442,50 @@ pool_get_next_index (void *pool, uword last)
     Optimized version which assumes that BODY is smart enough to
     process multiple (LOW,HI) chunks. See also pool_foreach().
  */
-#define pool_foreach_region(LO,HI,POOL,BODY)				\
-do {									\
-  uword _pool_var (i), _pool_var (lo), _pool_var (hi), _pool_var (len);	\
-  uword _pool_var (bl), * _pool_var (b);				\
-  pool_header_t * _pool_var (p);					\
-									\
-  _pool_var (p) = pool_header (POOL);					\
-  _pool_var (b) = (POOL) ? _pool_var (p)->free_bitmap : 0;		\
-  _pool_var (bl) = vec_len (_pool_var (b));				\
-  _pool_var (len) = vec_len (POOL);					\
-  _pool_var (lo) = 0;							\
-									\
-  for (_pool_var (i) = 0;						\
-       _pool_var (i) <= _pool_var (bl);					\
-       _pool_var (i)++)							\
-    {									\
-      uword _pool_var (m), _pool_var (f);				\
-      _pool_var (m) = (_pool_var (i) < _pool_var (bl)			\
-		       ? _pool_var (b) [_pool_var (i)]			\
-		       : 1);						\
-      while (_pool_var (m) != 0)					\
-	{								\
-	  _pool_var (f) = first_set (_pool_var (m));			\
-	  _pool_var (hi) = (_pool_var (i) * BITS (_pool_var (b)[0])	\
-			    + min_log2 (_pool_var (f)));		\
-	  _pool_var (hi) = (_pool_var (i) < _pool_var (bl)		\
-			    ? _pool_var (hi) : _pool_var (len));	\
-	  _pool_var (m) ^= _pool_var (f);				\
-	  if (_pool_var (hi) > _pool_var (lo))				\
-	    {								\
-	      (LO) = _pool_var (lo);					\
-	      (HI) = _pool_var (hi);					\
-	      do { BODY; } while (0);					\
-	    }								\
-	  _pool_var (lo) = _pool_var (hi) + 1;				\
-	}								\
-    }									\
-} while (0)
+#define pool_foreach_region(LO, HI, POOL, BODY)                               \
+  do                                                                          \
+    {                                                                         \
+      uword _pool_var (i), _pool_var (lo), _pool_var (hi), _pool_var (len);   \
+      uword _pool_var (bl), *_pool_var (b);                                   \
+      pool_header_t *_pool_var (p);                                           \
+                                                                              \
+      _pool_var (p) = (POOL) ? pool_header (POOL) : NULL;                     \
+      _pool_var (b) = (POOL) ? _pool_var (p)->free_bitmap : 0;                \
+      _pool_var (bl) = vec_len (_pool_var (b));                               \
+      _pool_var (len) = vec_len (POOL);                                       \
+      _pool_var (lo) = 0;                                                     \
+                                                                              \
+      for (_pool_var (i) = 0; _pool_var (i) <= _pool_var (bl);                \
+	   _pool_var (i)++)                                                   \
+	{                                                                     \
+	  uword _pool_var (m), _pool_var (f);                                 \
+	  _pool_var (m) =                                                     \
+	    (_pool_var (i) < _pool_var (bl) ? _pool_var (b)[_pool_var (i)] :  \
+						    1);                             \
+	  while (_pool_var (m) != 0)                                          \
+	    {                                                                 \
+	      _pool_var (f) = first_set (_pool_var (m));                      \
+	      _pool_var (hi) = (_pool_var (i) * BITS (_pool_var (b)[0]) +     \
+				min_log2 (_pool_var (f)));                    \
+	      _pool_var (hi) =                                                \
+		(_pool_var (i) < _pool_var (bl) ? _pool_var (hi) :            \
+							_pool_var (len));           \
+	      _pool_var (m) ^= _pool_var (f);                                 \
+	      if (_pool_var (hi) > _pool_var (lo))                            \
+		{                                                             \
+		  (LO) = _pool_var (lo);                                      \
+		  (HI) = _pool_var (hi);                                      \
+		  do                                                          \
+		    {                                                         \
+		      BODY;                                                   \
+		    }                                                         \
+		  while (0);                                                  \
+		}                                                             \
+	      _pool_var (lo) = _pool_var (hi) + 1;                            \
+	    }                                                                 \
+	}                                                                     \
+    }                                                                         \
+  while (0)
 
 /** Iterate through pool.
 

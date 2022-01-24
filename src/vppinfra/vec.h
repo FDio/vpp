@@ -124,7 +124,7 @@ always_inline void *
 _vec_resize_inline (void *v, word length_increment, uword data_bytes,
 		    uword header_bytes, uword data_align)
 {
-  vec_header_t *vh = _vec_find (v);
+  vec_header_t *vh;
   uword new_data_bytes, aligned_header_bytes;
 
   aligned_header_bytes = vec_header_bytes (header_bytes);
@@ -133,6 +133,7 @@ _vec_resize_inline (void *v, word length_increment, uword data_bytes,
 
   if (PREDICT_TRUE (v != 0))
     {
+      vh = _vec_find (v);
       void *p = v - aligned_header_bytes;
 
       /* Vector header must start heap object. */

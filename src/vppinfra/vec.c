@@ -48,7 +48,7 @@ __clib_export void *
 vec_resize_allocate_memory (void *v, word length_increment, uword data_bytes,
 			    uword header_bytes, uword data_align)
 {
-  vec_header_t *vh = _vec_find (v);
+  vec_header_t *vh;
   uword old_alloc_bytes, new_alloc_bytes;
   void *old, *new;
 
@@ -82,6 +82,7 @@ vec_resize_allocate_memory (void *v, word length_increment, uword data_bytes,
   ASSERT (data_align == (1 << _vec_find (v)->log2_align));
   data_align = 1 << _vec_find (v)->log2_align;
 
+  vh = _vec_find (v);
   vh->len += length_increment;
   old = v - header_bytes;
 
