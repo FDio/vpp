@@ -163,4 +163,63 @@ clib_mask_compare_u32 (u32 v, u32 *a, u64 *bitmap, u32 n_elts)
   bitmap[0] = clib_mask_compare_u32_x64 (v, a, n_elts) & pow2_mask (n_elts);
 }
 
+static_always_inline u64
+clib_mask_compare_u64_x64 (u64 v, u64 *a, u32 n_elts)
+{
+  u64 mask = 0;
+#if defined(CLIB_HAVE_VEC512)
+  u64x8 v8 = u64x8_splat (v);
+  u64x8u *av = (u64x8u *) a;
+  mask = ((u64) u64x8_is_equal_mask (av[0], v8) |
+	  (u64) u64x8_is_equal_mask (av[1], v8) << 8 |
+	  (u64) u64x8_is_equal_mask (av[2], v8) << 16 |
+	  (u64) u64x8_is_equal_mask (av[3], v8) << 24 |
+	  (u64) u64x8_is_equal_mask (av[4], v8) << 32 |
+	  (u64) u64x8_is_equal_mask (av[5], v8) << 40 |
+	  (u64) u64x8_is_equal_mask (av[6], v8) << 48 |
+	  (u64) u64x8_is_equal_mask (av[7], v8) << 56);
+
+#elif defined(CLIB_HAVE_VEC256) && defined(__BMI2__)
+  u64x4 v4 = u64x4_splat (v);
+  u64x4u *av = (u64x4u *) a;
+
+  for (int i = 0; i < 16; i += 2)
+    {
+      u64 l = u8x32_msb_mask (v4 == av[i]);
+      u64 h = u8x32_msb_mask (v4 == av[i + 1]);
+      mask |= _pext_u64 (l | h << 32, 0x0101010101010101) << (i * 4);
+    }
+#else
+  for (int i = 0; i < n_elts; i++)
+    if (a[i] == v)
+      mask |= 1ULL << i;
+#endif
+  return mask;
+}
+
+/** \brief Compare 64-bit elemments with provied value and return bitmap
+
+    @param v value to compare elements with
+    @param a array of u64 elements
+    @param mask array of u64 where reuslting mask will be stored
+    @param n_elts number of elements in the array
+    @return none
+*/
+
+static_always_inline void
+clib_mask_compare_u64 (u64 v, u64 *a, u64 *bitmap, u32 n_elts)
+{
+  while (n_elts >= 64)
+    {
+      bitmap++[0] = clib_mask_compare_u64_x64 (v, a, 64);
+      n_elts -= 64;
+      a += 64;
+    }
+
+  if (PREDICT_TRUE (n_elts == 0))
+    return;
+
+  bitmap[0] = clib_mask_compare_u64_x64 (v, a, n_elts) & pow2_mask (n_elts);
+}
+
 #endif
