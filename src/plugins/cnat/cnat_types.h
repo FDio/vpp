@@ -62,6 +62,8 @@ typedef enum cnat_trk_flag_t_
   /* Don't translate this endpoint, but still
    * forward. Used by maglev for DSR */
   CNAT_TRK_FLAG_NO_NAT = (1 << 1),
+  /* */
+  CNAT_TRK_FLAG_TEST_DISABLED = (1 << 7),
 } cnat_trk_flag_t;
 
 typedef enum
