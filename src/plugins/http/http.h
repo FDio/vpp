@@ -23,6 +23,7 @@
 
 #include <vnet/session/application_interface.h>
 #include <vnet/session/application.h>
+#include <http/http_buffer.h>
 
 #define HTTP_DEBUG 0
 
@@ -123,15 +124,6 @@ typedef struct http_msg_
   };
   http_msg_data_t data;
 } http_msg_t;
-
-typedef struct http_buffer_
-{
-  svm_fifo_t *src;
-  svm_fifo_seg_t *segs;
-  u32 len;
-  u32 cur_seg;
-  u32 offset;
-} http_buffer_t;
 
 typedef struct http_tc_
 {
