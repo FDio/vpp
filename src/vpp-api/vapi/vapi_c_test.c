@@ -585,7 +585,8 @@ START_TEST (test_show_version_3)
     ;
   ck_assert_int_eq (VAPI_OK, rv);
   ck_assert_int_eq (0, called);
-  rv = vapi_dispatch (ctx);
+  while (VAPI_EAGAIN == (rv = vapi_dispatch (ctx)))
+    ;
   ck_assert_int_eq (VAPI_OK, rv);
   ck_assert_int_eq (1, called);
   called = 0;
@@ -619,14 +620,16 @@ START_TEST (test_show_version_4)
 	  ck_assert_int_eq (0, contexts[j]);
 	}
     }
-  rv = vapi_dispatch (ctx);
+  while (VAPI_EAGAIN == (rv = vapi_dispatch (ctx)))
+    ;
   ck_assert_int_eq (VAPI_OK, rv);
   for (i = 0; i < num_req; ++i)
     {
       ck_assert_int_eq (1, contexts[i]);
     }
   clib_memset (contexts, 0, sizeof (contexts));
-  rv = vapi_dispatch (ctx);
+  while (VAPI_EAGAIN == (rv = vapi_dispatch (ctx)))
+    ;
   ck_assert_int_eq (VAPI_OK, rv);
   for (i = 0; i < num_req; ++i)
     {
@@ -670,7 +673,8 @@ START_TEST (test_loopbacks_2)
 	;
       ck_assert_int_eq (VAPI_OK, rv);
     }
-  rv = vapi_dispatch (ctx);
+  while (VAPI_EAGAIN == (rv = vapi_dispatch (ctx)))
+    ;
   ck_assert_int_eq (VAPI_OK, rv);
   for (i = 0; i < num_ifs; ++i)
     {
@@ -695,7 +699,8 @@ START_TEST (test_loopbacks_2)
     }
   clib_memset (&seen, 0, sizeof (seen));
   ck_assert_int_eq (false, dctx.last_called);
-  rv = vapi_dispatch (ctx);
+  while (VAPI_EAGAIN == (rv = vapi_dispatch (ctx)))
+    ;
   ck_assert_int_eq (VAPI_OK, rv);
   for (i = 0; i < num_ifs; ++i)
     {
@@ -713,7 +718,8 @@ START_TEST (test_loopbacks_2)
 	;
       ck_assert_int_eq (VAPI_OK, rv);
     }
-  rv = vapi_dispatch (ctx);
+  while (VAPI_EAGAIN == (rv = vapi_dispatch (ctx)))
+    ;
   ck_assert_int_eq (VAPI_OK, rv);
   for (i = 0; i < num_ifs; ++i)
     {
@@ -727,7 +733,8 @@ START_TEST (test_loopbacks_2)
 	 (rv =
 	  vapi_sw_interface_dump (ctx, dump, sw_interface_dump_cb, &dctx)))
     ;
-  rv = vapi_dispatch (ctx);
+  while (VAPI_EAGAIN == (rv = vapi_dispatch (ctx)))
+    ;
   ck_assert_int_eq (VAPI_OK, rv);
   for (i = 0; i < num_ifs; ++i)
     {
@@ -766,7 +773,8 @@ START_TEST (test_show_version_5)
   int called = 0;
   vapi_set_generic_event_cb (ctx, generic_cb, &called);
   ck_assert_int_eq (VAPI_OK, rv);
-  rv = vapi_dispatch_one (ctx);
+  while (VAPI_EAGAIN == (rv = vapi_dispatch_one (ctx)))
+    ;
   ck_assert_int_eq (VAPI_OK, rv);
   ck_assert_int_eq (1, called);
   sv = vapi_alloc_show_version (ctx);
@@ -776,7 +784,8 @@ START_TEST (test_show_version_5)
     ;
   ck_assert_int_eq (VAPI_OK, rv);
   vapi_clear_generic_event_cb (ctx);
-  rv = vapi_dispatch_one (ctx);
+  while (VAPI_EAGAIN == (rv = vapi_dispatch_one (ctx)))
+    ;
   ck_assert_int_eq (VAPI_OK, rv);
   ck_assert_int_eq (1, called);	/* needs to remain unchanged */
 }
@@ -813,7 +822,8 @@ START_TEST (test_no_response_1)
 	 (rv = vapi_show_version (ctx, sv, show_version_cb, &called)))
     ;
   ck_assert_int_eq (VAPI_OK, rv);
-  rv = vapi_dispatch (ctx);
+  while (VAPI_EAGAIN == (rv = vapi_dispatch (ctx)))
+    ;
   ck_assert_int_eq (VAPI_OK, rv);
   ck_assert_int_eq (2, called);
 }
@@ -844,7 +854,8 @@ START_TEST (test_no_response_2)
 	 (rv = vapi_sw_interface_dump (ctx, dump, no_msg_cb, &no_called)))
     ;
   ck_assert_int_eq (VAPI_OK, rv);
-  rv = vapi_dispatch (ctx);
+  while (VAPI_EAGAIN == (rv = vapi_dispatch (ctx)))
+    ;
   ck_assert_int_eq (VAPI_OK, rv);
   ck_assert_int_eq (1, no_called);
 }
