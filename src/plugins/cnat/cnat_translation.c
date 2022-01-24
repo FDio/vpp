@@ -20,6 +20,7 @@
 #include <vnet/dpo/drop_dpo.h>
 
 #include <cnat/cnat_translation.h>
+#include <cnat/cnat_maglev.h>
 #include <cnat/cnat_session.h>
 #include <cnat/cnat_client.h>
 
@@ -200,110 +201,7 @@ cnat_remove_translation_from_db (index_t cci, cnat_endpoint_t * vip,
   clib_bihash_add_del_8_8 (&cnat_translation_db, &bkey, 0);
 }
 
-typedef struct
-{
-  cnat_ep_trk_t *trk;
-  u32 index;
-  u32 offset;
-  u32 skip;
-} cnat_maglev_entry_t;
 
-static int
-cnat_maglev_entry_compare (void *_a, void *_b)
-{
-  cnat_ep_trk_t *a = ((cnat_maglev_entry_t *) _a)->trk;
-  cnat_ep_trk_t *b = ((cnat_maglev_entry_t *) _b)->trk;
-  int rv = 0;
-  if ((rv =
-	 ip_address_cmp (&a->ct_ep[VLIB_TX].ce_ip, &b->ct_ep[VLIB_TX].ce_ip)))
-    return rv;
-  if ((rv = a->ct_ep[VLIB_TX].ce_port - a->ct_ep[VLIB_TX].ce_port))
-    return rv;
-  if ((rv =
-	 ip_address_cmp (&a->ct_ep[VLIB_RX].ce_ip, &b->ct_ep[VLIB_RX].ce_ip)))
-    return rv;
-  if ((rv = a->ct_ep[VLIB_RX].ce_port - a->ct_ep[VLIB_RX].ce_port))
-    return rv;
-  return 0;
-}
-
-static void
-cnat_translation_init_maglev (cnat_translation_t *ct)
-{
-  cnat_maglev_entry_t *backends = NULL, *bk;
-  cnat_main_t *cm = &cnat_main;
-  u32 done = 0;
-  cnat_ep_trk_t *trk;
-  int ep_idx = 0;
-
-  vec_foreach (trk, ct->ct_active_paths)
-    {
-      cnat_maglev_entry_t bk;
-      u32 h1, h2;
-
-      if (AF_IP4 == ip_addr_version (&trk->ct_ep[VLIB_TX].ce_ip))
-	{
-	  u32 a, b, c;
-	  a = ip_addr_v4 (&trk->ct_ep[VLIB_TX].ce_ip).data_u32;
-	  b = (u64) trk->ct_ep[VLIB_TX].ce_port << 16 |
-	      (u64) trk->ct_ep[VLIB_RX].ce_port;
-	  c = ip_addr_v4 (&trk->ct_ep[VLIB_RX].ce_ip).data_u32;
-	  hash_v3_mix32 (a, b, c);
-	  hash_v3_finalize32 (a, b, c);
-	  h1 = c;
-	  h2 = b;
-	}
-      else
-	{
-	  u64 a, b, c;
-	  a = ip_addr_v6 (&trk->ct_ep[VLIB_TX].ce_ip).as_u64[0] ^
-	      ip_addr_v6 (&trk->ct_ep[VLIB_TX].ce_ip).as_u64[1];
-	  b = (u64) trk->ct_ep[VLIB_TX].ce_port << 16 |
-	      (u64) trk->ct_ep[VLIB_RX].ce_port;
-	  c = ip_addr_v6 (&trk->ct_ep[VLIB_RX].ce_ip).as_u64[0] ^
-	      ip_addr_v6 (&trk->ct_ep[VLIB_RX].ce_ip).as_u64[1];
-	  hash_mix64 (a, b, c);
-	  h1 = c;
-	  h2 = b;
-	}
-
-      bk.offset = h1 % cm->maglev_len;
-      bk.skip = h2 % (cm->maglev_len - 1) + 1;
-      bk.index = ep_idx++;
-      bk.trk = trk;
-      vec_add1 (backends, bk);
-    }
-
-  if (0 == ep_idx)
-    return;
-
-  vec_sort_with_function (backends, cnat_maglev_entry_compare);
-
-  /* Don't free if previous vector exists, just zero */
-  vec_validate (ct->lb_maglev, cm->maglev_len);
-  vec_set (ct->lb_maglev, -1);
-
-  while (1)
-    {
-      vec_foreach (bk, backends)
-	{
-	  u32 next = 0;
-	  u32 c = (bk->offset + next * bk->skip) % cm->maglev_len;
-	  while (ct->lb_maglev[c] != (u32) -1)
-	    {
-	      next++;
-	      c = (bk->offset + next * bk->skip) % cm->maglev_len;
-	    }
-	  ct->lb_maglev[c] = bk->index;
-	  done++;
-	  if (done == cm->maglev_len)
-	    goto finished;
-	}
-    }
-
-finished:
-  vec_free (backends);
-}
 
 static void
 cnat_translation_stack (cnat_translation_t * ct)

@@ -98,6 +98,7 @@ _(format_hex_bytes_no_wrap);
 _(format_white_space);
 _(format_f64);
 _(format_time_interval);
+_ (format_duration);
 
 #ifdef CLIB_UNIX
 /* Unix specific formats. */

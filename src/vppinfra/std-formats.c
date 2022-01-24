@@ -135,6 +135,52 @@ format_white_space (u8 * s, va_list * va)
 }
 
 u8 *
+format_duration (u8 *s, va_list *args)
+{
+  f64 t = va_arg (*args, f64);
+  s = format (s, "");
+
+  const f64 seconds_per_minute = 60;
+  const f64 seconds_per_hour = 60 * seconds_per_minute;
+  const f64 seconds_per_day = 24 * seconds_per_hour;
+  uword days, hours, minutes, secs, msecs, usecs;
+
+  days = t / seconds_per_day;
+  t -= days * seconds_per_day;
+
+  hours = t / seconds_per_hour;
+  t -= hours * seconds_per_hour;
+
+  minutes = t / seconds_per_minute;
+  t -= minutes * seconds_per_minute;
+
+  secs = t;
+  t -= secs;
+
+  msecs = 1e3 * t;
+
+  usecs = 1e6 * t;
+  usecs = usecs % 1000;
+
+  if (t == 0.)
+    s = format (s, "0");
+  if (days)
+    s = format (s, "%ddays ", days);
+  if (hours)
+    s = format (s, "%dh ", hours);
+  if (minutes)
+    s = format (s, "%dmin ", minutes);
+  if (secs)
+    s = format (s, "%ds ", secs);
+  if (msecs)
+    s = format (s, "%dms ", msecs);
+  if (usecs)
+    s = format (s, "%dus", usecs);
+
+  return (s);
+}
+
+u8 *
 format_time_interval (u8 * s, va_list * args)
 {
   u8 *fmt = va_arg (*args, u8 *);
