@@ -556,6 +556,7 @@ again:
       reass->data_len = 0;
       reass->next_index = ~0;
       reass->error_next_index = ~0;
+      reass->memory_owner_thread_index = vm->thread_index;
       ++rt->reass_n;
     }
 
