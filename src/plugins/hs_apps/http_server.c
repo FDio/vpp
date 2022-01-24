@@ -159,7 +159,8 @@ start_send_data (http_session_t *hs, http_status_code_t status)
 
   msg.type = HTTP_MSG_REPLY;
   msg.code = status;
-  msg.data.content_type = HTTP_CONTENT_TEXT_HTML;
+  msg.content_type = HTTP_CONTENT_TEXT_HTML;
+  msg.data.type = HTTP_MSG_DATA_INLINE;
   msg.data.len = vec_len (hs->tx_buf);
 
   ts = session_get (hs->vpp_session_index, hs->thread_index);
