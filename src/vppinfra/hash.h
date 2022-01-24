@@ -117,8 +117,7 @@ hash_header (void *v)
 always_inline uword
 hash_elts (void *v)
 {
-  hash_t *h = hash_header (v);
-  return v ? h->elts : 0;
+  return v ? hash_header (v)->elts : 0;
 }
 
 /* Number of elements the hash table can hold */
@@ -381,64 +380,72 @@ hash_forward (hash_t * h, void *v, uword n)
  * rvalue. If you were confused before you might be marginally less
  * confused after.
  */
-#define hash_foreach_pair(p,v,body)                                         \
-do {                                                                        \
- __label__ _hash_foreach_done;                                              \
-  hash_t * _h = hash_header (v);                                            \
-  void * _p;                                                                \
-  hash_pair_t * _q, * _q_end;                                               \
-  uword _i, _i1, _id, _pair_increment;                                      \
-                                                                            \
-  _p = (v);                                                                 \
-  _i = 0;                                                                   \
-  _pair_increment = 1;                                                      \
-  if ((v))                                                                  \
-      _pair_increment = 1 << _h->log2_pair_size;                            \
-  while (_i < hash_capacity (v))                                            \
-    {                                                                       \
-      _id = _h->is_user[_i / BITS (_h->is_user[0])];                        \
-      _i1 = _i + BITS (_h->is_user[0]);                                     \
-                                                                            \
-      do {                                                                  \
-        if (_id & 1)                                                        \
-          {                                                                 \
-            _q = _p;                                                        \
-            _q_end = _q + _pair_increment;                                  \
-          }                                                                 \
-        else                                                                \
-          {                                                                 \
-            hash_pair_indirect_t * _pi = _p;                                \
-            _q = _pi->pairs;                                                \
-            if (_h->log2_pair_size > 0)                                     \
-              _q_end = hash_forward (_h, _q, indirect_pair_get_len (_pi));  \
-            else                                                            \
-              _q_end = vec_end (_q);                                        \
-          }                                                                 \
-                                                                            \
-        /* Loop through all elements in bucket.                             \
-           Bucket may have 0 1 or more (indirect case) pairs. */            \
-        while (_q < _q_end)                                                 \
-          {                                                                 \
-            uword _break_in_body = 1;                                       \
-            (p) = _q;                                                       \
-            do {                                                            \
-              body;                                                         \
-              _break_in_body = 0;                                           \
-            } while (0);                                                    \
-            if (_break_in_body)                                             \
-              goto _hash_foreach_done;                                      \
-            _q += _pair_increment;                                          \
-          }                                                                 \
-                                                                            \
-        _p = (hash_pair_t *)_p + _pair_increment;                           \
-        _id = _id / 2;                                                      \
-        _i++;                                                               \
-      } while (_i < _i1);                                                   \
-    }                                                                       \
-  _hash_foreach_done:                                                       \
-  /* Be silent Mr. Compiler-Warning. */                                     \
-  ;                                                                         \
- } while (0)
+#define hash_foreach_pair(p, v, body)                                         \
+  do                                                                          \
+    {                                                                         \
+      __label__ _hash_foreach_done;                                           \
+      hash_t *_h;                                                             \
+      void *_p;                                                               \
+      hash_pair_t *_q, *_q_end;                                               \
+      uword _i, _i1, _id, _pair_increment;                                    \
+                                                                              \
+      if (!(v))                                                               \
+	goto _hash_foreach_done;                                              \
+                                                                              \
+      _h = hash_header (v);                                                   \
+      _p = (v);                                                               \
+      _i = 0;                                                                 \
+      _pair_increment = 1 << _h->log2_pair_size;                              \
+      while (_i < hash_capacity (v))                                          \
+	{                                                                     \
+	  _id = _h->is_user[_i / BITS (_h->is_user[0])];                      \
+	  _i1 = _i + BITS (_h->is_user[0]);                                   \
+                                                                              \
+	  do                                                                  \
+	    {                                                                 \
+	      if (_id & 1)                                                    \
+		{                                                             \
+		  _q = _p;                                                    \
+		  _q_end = _q + _pair_increment;                              \
+		}                                                             \
+	      else                                                            \
+		{                                                             \
+		  hash_pair_indirect_t *_pi = _p;                             \
+		  _q = _pi->pairs;                                            \
+		  if (_h->log2_pair_size > 0)                                 \
+		    _q_end =                                                  \
+		      hash_forward (_h, _q, indirect_pair_get_len (_pi));     \
+		  else                                                        \
+		    _q_end = vec_end (_q);                                    \
+		}                                                             \
+                                                                              \
+	      /* Loop through all elements in bucket.                         \
+		 Bucket may have 0 1 or more (indirect case) pairs. */        \
+	      while (_q < _q_end)                                             \
+		{                                                             \
+		  uword _break_in_body = 1;                                   \
+		  (p) = _q;                                                   \
+		  do                                                          \
+		    {                                                         \
+		      body;                                                   \
+		      _break_in_body = 0;                                     \
+		    }                                                         \
+		  while (0);                                                  \
+		  if (_break_in_body)                                         \
+		    goto _hash_foreach_done;                                  \
+		  _q += _pair_increment;                                      \
+		}                                                             \
+                                                                              \
+	      _p = (hash_pair_t *) _p + _pair_increment;                      \
+	      _id = _id / 2;                                                  \
+	      _i++;                                                           \
+	    }                                                                 \
+	  while (_i < _i1);                                                   \
+	}                                                                     \
+    _hash_foreach_done: /* Be silent Mr. Compiler-Warning. */                 \
+			;                                                     \
+    }                                                                         \
+  while (0)
 
 /* Iterate over key/value pairs
 

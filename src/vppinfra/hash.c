@@ -635,16 +635,18 @@ lookup (void *v, uword key, enum lookup_opcode op,
 __clib_export uword *
 _hash_get (void *v, uword key)
 {
-  hash_t *h = hash_header (v);
+  hash_t *h;
   hash_pair_t *p;
 
   /* Don't even search table if its empty. */
-  if (!v || h->elts == 0)
+  if (hash_elts (v) == 0)
     return 0;
 
   p = lookup (v, key, GET, 0, 0);
   if (!p)
     return 0;
+
+  h = hash_header (v);
   if (h->log2_pair_size == 0)
     return &p->key;
   else
@@ -781,13 +783,14 @@ _hash_create (uword elts, hash_t * h_user)
 __clib_export void *
 _hash_free (void *v)
 {
-  hash_t *h = hash_header (v);
+  hash_t *h;
   hash_pair_union_t *p;
   uword i;
 
   if (!v)
     return v;
 
+  h = hash_header (v);
   /* We zero all freed memory in case user would be tempted to use it. */
   for (i = 0; i < hash_capacity (v); i++)
     {

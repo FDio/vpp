@@ -66,11 +66,12 @@ always_inline uword
 clib_fifo_elts (void *v)
 {
   word l, r;
-  clib_fifo_header_t *f = clib_fifo_header (v);
+  clib_fifo_header_t *f;
 
   if (!v)
     return 0;
 
+  f = clib_fifo_header (v);
   l = _clib_fifo_len (v);
   r = (word) f->tail_index - (word) f->head_index;
   r = r < 0 ? r + l : r;

@@ -51,7 +51,7 @@ vec_resize_allocate_memory (void *v,
 			    uword header_bytes, uword data_align,
 			    uword numa_id)
 {
-  vec_header_t *vh = _vec_find (v);
+  vec_header_t *vh;
   uword old_alloc_bytes, new_alloc_bytes;
   void *old, *new;
   void *oldheap;
@@ -82,6 +82,7 @@ vec_resize_allocate_memory (void *v,
       return v;
     }
 
+  vh = _vec_find (v);
   vh->len += length_increment;
   old = v - header_bytes;
 
