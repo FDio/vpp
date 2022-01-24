@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "6bd74de0_d5d9f341",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_inlines.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 951,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-01-24T10:32:49Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f946b361_adbb8747",
+      "revId": "b24c998dd4c970310836cf86fd403483b0146622",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7a4c6bed_547ea8a5",
         "filename": "src/plugins/nat/nat44-ed/nat44_ed_inlines.h",
         "patchSetId": 12
@@ -51,6 +69,24 @@
       "revId": "b24c998dd4c970310836cf86fd403483b0146622",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f9185bcf_395322e4",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_inlines.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 990,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-01-24T10:32:49Z",
+      "side": 1,
+      "message": "hey, I added a special case for this to force an update on going to transitory timeout. This should fix your issue.",
+      "parentUuid": "7a4c6bed_547ea8a5",
+      "revId": "b24c998dd4c970310836cf86fd403483b0146622",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
