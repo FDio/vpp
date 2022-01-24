@@ -23,6 +23,7 @@
 
 #include <vnet/session/application_interface.h>
 #include <vnet/session/application.h>
+#include <http/http_buffer.h>
 
 #define HTTP_DEBUG 0
 
@@ -105,11 +106,16 @@ typedef enum http_status_code_
     HTTP_N_STATUS
 } http_status_code_t;
 
+typedef enum http_msg_data_type_
+{
+  HTTP_MSG_DATA_INLINE,
+  HTTP_MSG_DATA_PTR
+} http_msg_data_type_t;
+
 typedef struct http_msg_data_
 {
-  http_content_type_t content_type;
+  http_msg_data_type_t type;
   u32 len;
-  u32 offset;
   u8 data[0];
 } http_msg_data_t;
 
@@ -121,17 +127,9 @@ typedef struct http_msg_
     http_req_method_t method_type;
     http_status_code_t code;
   };
+  http_content_type_t content_type;
   http_msg_data_t data;
 } http_msg_t;
-
-typedef struct http_buffer_
-{
-  svm_fifo_t *src;
-  svm_fifo_seg_t *segs;
-  u32 len;
-  u32 cur_seg;
-  u32 offset;
-} http_buffer_t;
 
 typedef struct http_tc_
 {
