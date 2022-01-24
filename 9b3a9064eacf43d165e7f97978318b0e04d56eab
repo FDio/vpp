@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "26595540_8c002c37",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1368,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-01-24T09:50:44Z",
+      "side": 1,
+      "message": "I am not sure it would be enough: what happens if we remove and add a new SA?\nWe are almost guaranteed to recycle the same pool index, but the packet will not match the right SA.\nThis will at least screw-up the anti-replay window and we could inject clear-text packet in the wrong network.",
+      "revId": "9b3a9064eacf43d165e7f97978318b0e04d56eab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
