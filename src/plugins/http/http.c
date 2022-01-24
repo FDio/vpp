@@ -31,6 +31,11 @@ const char *http_content_type_str[] = {
 #undef _
 };
 
+const http_buffer_type_t msg_to_buf_type[] = {
+  [HTTP_MSG_DATA_INLINE] = HTTP_BUFFER_FIFO,
+  [HTTP_MSG_DATA_PTR] = HTTP_BUFFER_PTR,
+};
+
 static inline http_worker_t *
 http_worker_get (u32 thread_index)
 {
@@ -94,59 +99,6 @@ http_disconnect_transport (http_conn_t *hc)
 
   if (vnet_disconnect_session (&a))
     clib_warning ("disconnect returned");
-}
-
-static void
-http_buffer_init (http_buffer_t *hb, svm_fifo_t *f, u32 data_len)
-{
-  hb->len = data_len;
-  hb->offset = 0;
-  hb->cur_seg = 0;
-  hb->src = f;
-  hb->segs = 0;
-}
-
-static void
-http_buffer_free (http_buffer_t *hb)
-{
-  hb->src = 0;
-  vec_free (hb->segs);
-}
-
-svm_fifo_seg_t *
-http_buffer_get_segs (http_buffer_t *hb, u32 max_len, u32 *n_segs)
-{
-  u32 _n_segs = 5;
-  int len;
-
-  max_len = clib_max (hb->len - hb->offset, max_len);
-
-  vec_validate (hb->segs, _n_segs);
-
-  len = svm_fifo_segments (hb->src, 0, hb->segs, &_n_segs, max_len);
-  if (len < 0)
-    return 0;
-
-  *n_segs = _n_segs;
-
-  HTTP_DBG (1, "available to send %u n_segs %u", len, *n_segs);
-
-  return hb->segs;
-}
-
-void
-http_buffer_drain (http_buffer_t *hb, u32 len)
-{
-  hb->offset += len;
-  svm_fifo_dequeue_drop (hb->src, len);
-  HTTP_DBG (1, "drained %u len %u offset %u", len, hb->len, hb->offset);
-}
-
-static inline u8
-http_buffer_is_drained (http_buffer_t *hb)
-{
-  ASSERT (hb->offset <= hb->len);
-  return (hb->offset == hb->len);
 }
 
 static void
@@ -437,9 +389,9 @@ state_wait_method (http_conn_t *hc, transport_send_params_t *sp)
 
   msg.type = HTTP_MSG_REQUEST;
   msg.method_type = hc->method;
-  msg.data.content_type = HTTP_CONTENT_TEXT_HTML;
+  msg.content_type = HTTP_CONTENT_TEXT_HTML;
+  msg.data.type = HTTP_MSG_DATA_INLINE;
   msg.data.len = len;
-  msg.data.offset = 0;
 
   svm_fifo_seg_t segs[2] = { { (u8 *) &msg, sizeof (msg) }, { buf, len } };
 
@@ -491,7 +443,7 @@ state_wait_app (http_conn_t *hc, transport_send_params_t *sp)
   rv = svm_fifo_dequeue (as->tx_fifo, sizeof (msg), (u8 *) &msg);
   ASSERT (rv == sizeof (msg));
 
-  if (msg.type != HTTP_MSG_REPLY)
+  if (msg.type != HTTP_MSG_REPLY || msg.data.type > HTTP_MSG_DATA_PTR)
     {
       clib_warning ("unexpected msg type from app %u", msg.type);
       ec = HTTP_STATUS_INTERNAL_ERROR;
@@ -504,7 +456,8 @@ state_wait_app (http_conn_t *hc, transport_send_params_t *sp)
       goto error;
     }
 
-  http_buffer_init (&hc->tx_buf, as->tx_fifo, msg.data.len);
+  http_buffer_init (&hc->tx_buf, msg_to_buf_type[msg.data.type], as->tx_fifo,
+		    msg.data.len);
 
   /*
    * Add headers. For now:
@@ -520,7 +473,7 @@ state_wait_app (http_conn_t *hc, transport_send_params_t *sp)
 		   /* Expires */
 		   format_clib_timebase_time, now + 600.0,
 		   /* Content type */
-		   http_content_type_str[msg.data.content_type],
+		   http_content_type_str[msg.content_type],
 		   /* Length */
 		   msg.data.len);
 
@@ -565,10 +518,8 @@ state_send_more_data (http_conn_t *hc, transport_send_params_t *sp)
 
   if (sent > 0)
     {
-      http_buffer_drain (hb, sent);
-
       /* Ask scheduler to notify app of deq event if needed */
-      sp->max_burst_size = sent;
+      sp->max_burst_size = http_buffer_drain (hb, sent);
     }
   else
     {
