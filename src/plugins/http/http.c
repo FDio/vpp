@@ -97,59 +97,6 @@ http_disconnect_transport (http_conn_t *hc)
 }
 
 static void
-http_buffer_init (http_buffer_t *hb, svm_fifo_t *f, u32 data_len)
-{
-  hb->len = data_len;
-  hb->offset = 0;
-  hb->cur_seg = 0;
-  hb->src = f;
-  hb->segs = 0;
-}
-
-static void
-http_buffer_free (http_buffer_t *hb)
-{
-  hb->src = 0;
-  vec_free (hb->segs);
-}
-
-svm_fifo_seg_t *
-http_buffer_get_segs (http_buffer_t *hb, u32 max_len, u32 *n_segs)
-{
-  u32 _n_segs = 5;
-  int len;
-
-  max_len = clib_max (hb->len - hb->offset, max_len);
-
-  vec_validate (hb->segs, _n_segs);
-
-  len = svm_fifo_segments (hb->src, 0, hb->segs, &_n_segs, max_len);
-  if (len < 0)
-    return 0;
-
-  *n_segs = _n_segs;
-
-  HTTP_DBG (1, "available to send %u n_segs %u", len, *n_segs);
-
-  return hb->segs;
-}
-
-void
-http_buffer_drain (http_buffer_t *hb, u32 len)
-{
-  hb->offset += len;
-  svm_fifo_dequeue_drop (hb->src, len);
-  HTTP_DBG (1, "drained %u len %u offset %u", len, hb->len, hb->offset);
-}
-
-static inline u8
-http_buffer_is_drained (http_buffer_t *hb)
-{
-  ASSERT (hb->offset <= hb->len);
-  return (hb->offset == hb->len);
-}
-
-static void
 http_conn_timeout_cb (void *hc_handlep)
 {
   http_conn_t *hc;
@@ -504,7 +451,7 @@ state_wait_app (http_conn_t *hc, transport_send_params_t *sp)
       goto error;
     }
 
-  http_buffer_init (&hc->tx_buf, as->tx_fifo, msg.data.len);
+  http_buffer_init (&hc->tx_buf, HTTP_BUFFER_FIFO, as->tx_fifo, msg.data.len);
 
   /*
    * Add headers. For now:
