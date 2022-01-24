@@ -766,7 +766,9 @@ vapi_dispatch_one (vapi_ctx_t ctx)
   VAPI_DBG ("vapi_dispatch_one()");
   void *msg;
   uword size;
-  vapi_error_e rv = vapi_recv (ctx, &msg, &size, SVM_Q_WAIT, 0);
+  svm_q_conditional_wait_t cond =
+    vapi_is_nonblocking (ctx) ? SVM_Q_NOWAIT : SVM_Q_WAIT;
+  vapi_error_e rv = vapi_recv (ctx, &msg, &size, cond, 0);
   if (VAPI_OK != rv)
     {
       VAPI_DBG ("vapi_recv failed with rv=%d", rv);
