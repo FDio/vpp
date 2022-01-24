@@ -282,7 +282,7 @@ wg_add_to_async_frame (vlib_main_t *vm, wg_per_thread_data_t *ptd,
   *r_idx = kp->kp_remote_index;
 
   clib_memset (iv, 0, 4);
-  clib_memcpy (iv + 4, nonce, sizeof (nonce));
+  clib_memcpy (iv + 4, nonce, sizeof (*nonce));
 
   /* this always succeeds because we know the frame is not full */
   wg_output_tun_add_to_frame (vm, async_frame, kp->kp_send_index, payload_len,
