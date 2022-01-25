@@ -136,7 +136,7 @@ typedef struct
   /** Per thread vector of session pools */
   http_session_t **sessions;
   /** Session pool reader writer lock */
-  clib_rwlock_t sessions_lock;
+  clib_spinlock_t cache_lock;
   /** vpp session to http session index map */
   u32 **session_to_http_session;
 
@@ -169,8 +169,8 @@ typedef struct
   /** root path to be served */
   u8 *www_root;
 
-  /** Server's event queue */
-  svm_queue_t *vl_input_queue;
+//  /** Server's event queue */
+//  svm_queue_t *vl_input_queue;
 
   /** API client handle */
   u32 my_client_index;
@@ -185,11 +185,11 @@ typedef struct
   u32 ckpair_index;
 
   /** Session cleanup timer wheel */
-  tw_timer_wheel_2t_1w_2048sl_t tw;
-  clib_spinlock_t tw_lock;
+//  tw_timer_wheel_2t_1w_2048sl_t tw;
+//  clib_spinlock_t tw_lock;
 
   /** Time base, so we can generate browser cache control http spew */
-  clib_timebase_t timebase;
+//  clib_timebase_t timebase;
 
   /** Number of preallocated fifos, usually 0 */
   u32 prealloc_fifos;
@@ -202,7 +202,7 @@ typedef struct
   vlib_main_t *vlib_main;
 } http_static_server_main_t;
 
-extern http_static_server_main_t http_static_server_main;
+extern http_static_server_main_t hss_main;
 
 int http_static_server_enable_api (u32 fifo_size, u32 cache_limit,
 				   u32 prealloc_fifos,
