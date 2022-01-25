@@ -17,6 +17,7 @@ if(NOT OPENSSL_FOUND)
 endif()
 
 include_directories(${OPENSSL_INCLUDE_DIR})
+add_compile_definitions(OPENSSL_SUPPRESS_DEPRECATED)
 
 add_vpp_plugin(ikev2
   SOURCES
