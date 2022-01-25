@@ -12,6 +12,7 @@ Core Features
     punt
     ipsec
     bfd_doc
+    reassembly
     ipfix_doc
     span_doc
     mtu
