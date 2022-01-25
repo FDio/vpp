@@ -19,6 +19,8 @@
 
 static http_main_t http_main;
 
+#define HTTP_FIFO_THRESH (16 << 10)
+
 const char *http_status_code_str[] = {
 #define _(c, s, str) str,
   foreach_http_status_code
@@ -126,7 +128,7 @@ http_ts_accept_callback (session_t *ts)
   session_t *ts_listener, *as, *asl;
   app_worker_t *app_wrk;
   http_conn_t *lhc, *hc;
-  u32 hc_index;
+  u32 hc_index, thresh;
   int rv;
 
   ts_listener = listen_session_get_from_handle (ts->listener_handle);
@@ -185,6 +187,13 @@ http_ts_accept_callback (session_t *ts)
       session_free (as);
       return rv;
     }
+
+  /* Avoid enqueuing small chunks of data on transport tx notifications. If
+   * the fifo is small (under 16K) we set the threshold to it's size, meaning
+   * a notification will be given when the fifo empties.
+   */
+  thresh = clib_min (svm_fifo_size (ts->tx_fifo), HTTP_FIFO_THRESH);
+  svm_fifo_set_deq_thresh (ts->tx_fifo, thresh);
 
   http_conn_timer_start (hc);
 
@@ -370,7 +379,7 @@ state_wait_method (http_conn_t *hc, transport_send_params_t *sp)
 	  goto error;
 	}
 
-      len = i - hc->rx_buf_offset;
+      len = i - hc->rx_buf_offset - 1;
     }
   else if ((i = v_find_index (hc->rx_buf, 0, "POST ")) >= 0)
     {
@@ -534,7 +543,7 @@ state_send_more_data (http_conn_t *hc, transport_send_params_t *sp)
       if (sent && svm_fifo_set_event (ts->tx_fifo))
 	session_send_io_evt_to_thread (ts->tx_fifo, SESSION_IO_EVT_TX);
 
-      if (svm_fifo_max_enqueue (ts->tx_fifo) < 16 << 10)
+      if (svm_fifo_max_enqueue (ts->tx_fifo) < HTTP_FIFO_THRESH)
 	{
 	  /* Deschedule http session and wait for deq notification if
 	   * underlying ts tx fifo almost full */
@@ -834,6 +843,17 @@ http_app_tx_callback (void *session, transport_send_params_t *sp)
   return 0;
 }
 
+static void
+http_transport_get_endpoint (u32 hc_index, u32 thread_index,
+			    transport_endpoint_t * tep, u8 is_lcl)
+{
+  http_conn_t *hc = http_conn_get_w_thread (hc_index, thread_index);
+  session_t *ts;
+
+  ts = session_get_from_handle (hc->h_tc_session_handle);
+  session_get_endpoint (ts, tep, is_lcl);
+}
+
 static u8 *
 format_http_connection (u8 *s, va_list *args)
 {
@@ -939,6 +959,7 @@ static const transport_proto_vft_t http_proto = {
   .custom_tx = http_app_tx_callback,
   .get_connection = http_transport_get_connection,
   .get_listener = http_transport_get_listener,
+  .get_transport_endpoint = http_transport_get_endpoint,
   .format_connection = format_http_transport_connection,
   .format_listener = format_http_transport_listener,
   .transport_options = {
