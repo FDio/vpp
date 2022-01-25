@@ -49,7 +49,8 @@ void http_buffer_init (http_buffer_t *hb, http_buffer_type_t type,
 static inline void
 http_buffer_free (http_buffer_t *hb)
 {
-  hb->vft->free (hb);
+  if (hb->vft)
+    hb->vft->free (hb);
 }
 
 static inline svm_fifo_seg_t *
