@@ -29,7 +29,7 @@ typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   EVP_CIPHER_CTX *evp_cipher_ctx;
-  HMAC_CTX *hmac_ctx;
+  EVP_MAC_CTX *hmac_ctx;
   EVP_MD_CTX *hash_ctx;
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
   HMAC_CTX _hmac_ctx;
@@ -370,29 +370,35 @@ openssl_ops_hmac (vlib_main_t * vm, vnet_crypto_op_t * ops[],
   u8 buffer[64];
   openssl_per_thread_data_t *ptd = vec_elt_at_index (per_thread_data,
 						     vm->thread_index);
-  HMAC_CTX *ctx = ptd->hmac_ctx;
+  EVP_MAC_CTX *ctx = ptd->hmac_ctx;
+  OSSL_PARAM params[2];
   vnet_crypto_op_chunk_t *chp;
   u32 i, j, n_fail = 0;
+
+  params[0] =
+    OSSL_PARAM_construct_utf8_string ("digest", (char *) EVP_MD_name (md), 0);
+  params[1] = OSSL_PARAM_construct_end ();
+
   for (i = 0; i < n_ops; i++)
     {
       vnet_crypto_op_t *op = ops[i];
       vnet_crypto_key_t *key = vnet_crypto_get_key (op->key_index);
-      unsigned int out_len = 0;
+      size_t out_len = 0;
       size_t sz = op->digest_len ? op->digest_len : EVP_MD_size (md);
 
-      HMAC_Init_ex (ctx, key->data, vec_len (key->data), md, NULL);
+      EVP_MAC_init (ctx, key->data, vec_len (key->data), params);
       if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
 	{
 	  chp = chunks + op->chunk_index;
 	  for (j = 0; j < op->n_chunks; j++)
 	    {
-	      HMAC_Update (ctx, chp->src, chp->len);
+	      EVP_MAC_update (ctx, chp->src, chp->len);
 	      chp += 1;
 	    }
 	}
       else
-	HMAC_Update (ctx, op->src, op->len);
-      HMAC_Final (ctx, buffer, &out_len);
+	EVP_MAC_update (ctx, op->src, op->len);
+      EVP_MAC_final (ctx, buffer, &out_len, out_len);
 
       if (op->flags & VNET_CRYPTO_OP_FLAG_HMAC_CHECK)
 	{
@@ -510,17 +516,19 @@ crypto_openssl_init (vlib_main_t * vm)
   vec_validate_aligned (per_thread_data, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
 
+  EVP_MAC *mac = EVP_MAC_fetch (NULL, "HMAC", NULL);
   vec_foreach (ptd, per_thread_data)
   {
     ptd->evp_cipher_ctx = EVP_CIPHER_CTX_new ();
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-    ptd->hmac_ctx = HMAC_CTX_new ();
+    ptd->hmac_ctx = EVP_MAC_CTX_new (mac);
     ptd->hash_ctx = EVP_MD_CTX_create ();
 #else
     HMAC_CTX_init (&(ptd->_hmac_ctx));
     ptd->hmac_ctx = &ptd->_hmac_ctx;
 #endif
   }
+  EVP_MAC_free (mac);
 
   t = time (NULL);
   pid = getpid ();
