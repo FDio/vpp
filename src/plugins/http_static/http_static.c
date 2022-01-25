@@ -47,11 +47,10 @@ static void vl_api_http_static_enable_t_handler
   mp->uri[ARRAY_LEN (mp->uri) - 1] = 0;
   mp->www_root[ARRAY_LEN (mp->www_root) - 1] = 0;
 
-  rv = http_static_server_enable_api
-    (ntohl (mp->fifo_size),
-     ntohl (mp->cache_size_limit),
-     ntohl (mp->prealloc_fifos),
-     ntohl (mp->private_segment_size), mp->www_root, mp->uri);
+  rv =
+    hss_enable_api (ntohl (mp->fifo_size), ntohl (mp->cache_size_limit),
+		    ntohl (mp->prealloc_fifos),
+		    ntohl (mp->private_segment_size), mp->www_root, mp->uri);
 
   REPLY_MACRO (VL_API_HTTP_STATIC_ENABLE_REPLY);
 }
