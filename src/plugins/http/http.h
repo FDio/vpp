@@ -95,6 +95,7 @@ typedef enum http_content_type_
 #define foreach_http_status_code                                              \
   _ (200, OK, "200 OK")                                                       \
   _ (400, BAD_REQUEST, "400 Bad Request")                                     \
+  _ (404, NOT_FOUND, "404 Not Found")                                         \
   _ (405, METHOD_NOT_ALLOWED, "405 Method Not Allowed")                       \
   _ (500, INTERNAL_ERROR, "500 Internal Server Error")
 
