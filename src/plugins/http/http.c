@@ -578,7 +578,7 @@ state_send_more_data (http_conn_t *hc, transport_send_params_t *sp)
   /* Not finished sending all data */
   if (!http_buffer_is_drained (hb))
     {
-      if (svm_fifo_set_event (ts->tx_fifo))
+      if (sent && svm_fifo_set_event (ts->tx_fifo))
 	session_send_io_evt_to_thread (ts->tx_fifo, SESSION_IO_EVT_TX);
 
       if (svm_fifo_max_enqueue (ts->tx_fifo) < 16 << 10)
@@ -592,7 +592,7 @@ state_send_more_data (http_conn_t *hc, transport_send_params_t *sp)
     }
   else
     {
-      if (svm_fifo_set_event (ts->tx_fifo))
+      if (sent && svm_fifo_set_event (ts->tx_fifo))
 	session_send_io_evt_to_thread (ts->tx_fifo, SESSION_IO_EVT_TX_FLUSH);
 
       /* Finished transaction, back to HTTP_REQ_STATE_WAIT_METHOD */
@@ -657,7 +657,11 @@ http_ts_rx_callback (session_t *ts)
 int
 http_ts_builtin_tx_callback (session_t *ts)
 {
-  clib_warning ("called");
+  http_conn_t *hc;
+
+  hc = http_conn_get_w_thread (ts->opaque, ts->thread_index);
+  transport_connection_reschedule (&hc->connection);
+
   return 0;
 }
 
@@ -857,6 +861,8 @@ http_app_tx_callback (void *session, transport_send_params_t *sp)
 {
   session_t *as = (session_t *) session;
   http_conn_t *hc;
+
+  sp->flags = 0;
 
   hc = http_conn_get_w_thread (as->connection_index, as->thread_index);
   if (hc->req_state < HTTP_REQ_STATE_WAIT_APP)
