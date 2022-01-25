@@ -226,7 +226,7 @@ http_cli_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
   /* Replace slashes with spaces, stop at the end of the path */
   i = 0;
-  while (1)
+  while (i < vec_len (request))
     {
       if (request[i] == '/')
 	request[i] = ' ';
@@ -237,13 +237,6 @@ http_cli_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	  break;
 	}
       i++;
-      /* Should never happen */
-      if (i == vec_len (request))
-	{
-	  char *msg = "Bad CLI";
-	  vec_validate_init_c_string (html, msg, strlen (msg));
-	  goto send;
-	}
     }
 
   /* Generate the html header */
@@ -258,8 +251,6 @@ http_cli_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   /* Generate the html page */
   html = format (html, "%v", reply);
   html = format (html, html_footer);
-
-send:
 
   /* Send it */
   rpc_args = clib_mem_alloc (sizeof (*args));

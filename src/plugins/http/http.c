@@ -418,13 +418,13 @@ state_wait_method (http_conn_t *hc, transport_send_params_t *sp)
 	  goto error;
 	}
 
-      len = i - hc->rx_buf_offset;
+      len = i - hc->rx_buf_offset - 1;
     }
   else if ((i = v_find_index (hc->rx_buf, 0, "POST ")) >= 0)
     {
       hc->method = HTTP_REQ_POST;
       hc->rx_buf_offset = i + 6;
-      len = vec_len (hc->rx_buf) - hc->rx_buf_offset;
+      len = vec_len (hc->rx_buf) - hc->rx_buf_offset - 1;
     }
   else
     {
