@@ -14,6 +14,7 @@
 include (CheckFunctionExists)
 if(OPENSSL_FOUND AND OPENSSL_VERSION VERSION_GREATER_EQUAL "1.1.0")
   include_directories(${OPENSSL_INCLUDE_DIR})
+  add_compile_definitions(OPENSSL_SUPPRESS_DEPRECATED)
   add_vpp_plugin(tlsopenssl
     SOURCES
     tls_bio.c
