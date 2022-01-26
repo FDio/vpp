@@ -282,7 +282,8 @@ class TemplateIpsec(VppTestCase):
 
 class IpsecTcp(object):
     def verify_tcp_checksum(self):
-        self.vapi.cli("test http server")
+        # start http cli server listener on http://0.0.0.0:80
+        self.vapi.cli("http cli server")
         p = self.params[socket.AF_INET]
         send = (Ether(src=self.tun_if.remote_mac, dst=self.tun_if.local_mac) /
                 p.scapy_tun_sa.encrypt(IP(src=p.remote_tun_if_host,
