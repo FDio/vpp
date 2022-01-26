@@ -254,7 +254,7 @@ static const char *http_response_template = "HTTP/1.1 200 OK\r\n"
 					    "Expires: %U GMT\r\n"
 					    "Server: VPP Static\r\n"
 					    "Content-Type: %s\r\n"
-					    "Content-Length: %d\r\n\r\n";
+					    "Content-Length: %lu\r\n\r\n";
 
 static u32
 send_data (http_conn_t *hc, u8 *data, u32 length, u32 offset)

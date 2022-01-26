@@ -336,6 +336,33 @@ done:
 }
 
 static int
+try_test_file (http_session_t *hs, u8 *request)
+{
+  char *test_str = "test_file";
+  unformat_input_t input;
+  uword file_size;
+
+  if (memcmp (request, test_str, clib_strnlen (test_str, 9)))
+    return -1;
+
+  unformat_init_vector (&input, vec_dup (request));
+  if (unformat (&input, "test_file_%U", unformat_memory_size, &file_size))
+    {
+      if (file_size > 10ULL << 30)
+	goto done;
+
+      _vec_len (hss_main.test_file_map) = file_size;
+      hs->data = hss_main.test_file_map;
+      hs->free_data = 0;
+    }
+
+done:
+  unformat_free (&input);
+
+  return 0;
+}
+
+static int
 find_data (http_session_t *hs, http_req_method_t rt, u8 *request)
 {
   hss_main_t *hsm = &hss_main;
@@ -347,6 +374,16 @@ find_data (http_session_t *hs, http_req_method_t rt, u8 *request)
   http_status_code_t sc = HTTP_STATUS_OK;
 
   request_type = rt == HTTP_REQ_GET ? request_type : HTTP_BUILTIN_METHOD_POST;
+
+  if (hsm->use_test_files)
+    {
+      clib_warning ("status code %u", sc);
+      if (!try_test_file (hs, request))
+	{
+	  sc = HTTP_STATUS_OK;
+	  goto done;
+	}
+    }
 
   /*
    * Construct the file to open
@@ -839,6 +876,18 @@ hss_listen (void)
   return rv;
 }
 
+static void
+hss_init_test_file (hss_main_t *hsm)
+{
+  const u64 max_size = (10ULL << 30) + sizeof (vec_header_t);
+  vec_header_t *map;
+
+  map = clib_mem_vm_map (0, max_size, CLIB_MEM_PAGE_SZ_DEFAULT,
+			 (char *) "hsa_test_file_map");
+  map->len = 0;
+  hsm->test_file_map = map + 1;
+}
+
 static int
 hss_create (vlib_main_t *vm)
 {
@@ -867,6 +916,9 @@ hss_create (vlib_main_t *vm)
 
   hsm->get_url_handlers = hash_create_string (0, sizeof (uword));
   hsm->post_url_handlers = hash_create_string (0, sizeof (uword));
+
+  if (hsm->use_test_files)
+    hss_init_test_file (hsm);
 
   return 0;
 }
@@ -967,6 +1019,8 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
       else if (unformat (line_input, "ptr-thresh %U", unformat_memory_size,
 			 &hsm->use_ptr_thresh))
 	;
+      else if (unformat (line_input, "test-files"))
+	hsm->use_test_files = 1;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, line_input);

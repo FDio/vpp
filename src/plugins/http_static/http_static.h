@@ -162,6 +162,9 @@ typedef struct
 
   vlib_main_t *vlib_main;
 
+  /** Mmapped area used to generate variable sized files */
+  void *test_file_map;
+
   /*
    * Config
    */
@@ -176,6 +179,8 @@ typedef struct
   u8 *uri;
   /** Threshold for switching to ptr data in http msgs */
   u32 use_ptr_thresh;
+  /** Enable option to generate test files */
+  u8 use_test_files;
 } hss_main_t;
 
 extern hss_main_t hss_main;
