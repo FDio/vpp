@@ -1150,10 +1150,7 @@ dpdk_cryptodev_init (vlib_main_t * vm)
 
   /* probe all cryptodev devices and get queue info */
   if (cryptodev_probe (vm, n_workers) < 0)
-    {
-      error = clib_error_return (0, "Not enough cryptodev resources");
-      goto err_handling;
-    }
+    return 0;
 
   vec_foreach (dev_inst, cmt->cryptodev_inst)
     {
