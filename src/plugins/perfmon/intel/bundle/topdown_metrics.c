@@ -79,66 +79,6 @@ topdown_lvl1_rdpmc_metric (void *ps, topdown_e_t e)
   return (slots_t1 / slots_delta) * 100;
 }
 
-static u8 *
-format_topdown_lvl1 (u8 *s, va_list *args)
-{
-  void *ps = va_arg (*args, void *);
-  u64 idx = va_arg (*args, int);
-  perfmon_bundle_type_t type = va_arg (*args, perfmon_bundle_type_t);
-  f64 sv = 0;
-
-  topdown_lvl1_parse_fn_t *parse_fn,
-    *parse_fns[PERFMON_BUNDLE_TYPE_MAX] = { 0, topdown_lvl1_rdpmc_metric,
-					    topdown_lvl1_perf_reading, 0 };
-  parse_fn = parse_fns[type];
-  ASSERT (parse_fn);
-
-  switch (idx)
-    {
-    case 0:
-      sv =
-	parse_fn (ps, TOPDOWN_E_BAD_SPEC) + parse_fn (ps, TOPDOWN_E_RETIRING);
-      break;
-    case 1:
-      sv =
-	parse_fn (ps, TOPDOWN_E_BE_BOUND) + parse_fn (ps, TOPDOWN_E_FE_BOUND);
-      break;
-    default:
-      sv = parse_fn (ps, (topdown_e_t) idx - 2);
-      break;
-    }
-
-  s = format (s, "%f", sv);
-
-  return s;
-}
-
-static perfmon_cpu_supports_t topdown_lvl1_cpu_supports[] = {
-  /* Intel ICX supports papi/thread or rdpmc/node */
-  { clib_cpu_supports_avx512_bitalg, PERFMON_BUNDLE_TYPE_NODE_OR_THREAD }
-};
-
-PERFMON_REGISTER_BUNDLE (topdown_lvl1_metric) = {
-  .name = "topdown-level1",
-  .description = "Top-down Microarchitecture Analysis Level 1",
-  .source = "intel-core",
-  .events[0] = INTEL_CORE_E_TOPDOWN_SLOTS,
-  .events[1] = INTEL_CORE_E_TOPDOWN_L1_RETIRING_METRIC,
-  .events[2] = INTEL_CORE_E_TOPDOWN_L1_BAD_SPEC_METRIC,
-  .events[3] = INTEL_CORE_E_TOPDOWN_L1_FE_BOUND_METRIC,
-  .events[4] = INTEL_CORE_E_TOPDOWN_L1_BE_BOUND_METRIC,
-  .n_events = 5,
-  .preserve_samples = 0x1F,
-  .cpu_supports = topdown_lvl1_cpu_supports,
-  .n_cpu_supports = ARRAY_LEN (topdown_lvl1_cpu_supports),
-  .format_fn = format_topdown_lvl1,
-  .column_headers = PERFMON_STRINGS ("% NS", "% ST", "% NS.RT", "% NS.BS",
-				     "% ST.FE", "% ST.BE"),
-  .footer = "Not Stalled (NS),STalled (ST),\n"
-	    " Retiring (RT), Bad Speculation (BS),\n"
-	    " FrontEnd bound (FE), BackEnd bound (BE)",
-};
-
 /* Convert the TopDown enum to the perf reading index */
 #define TO_LVL2_PERF_IDX(e)                                                   \
   ({                                                                          \
@@ -245,8 +185,8 @@ static perfmon_cpu_supports_t topdown_lvl2_cpu_supports[] = {
 };
 
 PERFMON_REGISTER_BUNDLE (topdown_lvl2_metric) = {
-  .name = "topdown-level2",
-  .description = "Top-down Microarchitecture Analysis Level 2",
+  .name = "topdown",
+  .description = "Top-down Microarchitecture Analysis Level 1 & 2",
   .source = "intel-core",
   .events[0] = INTEL_CORE_E_TOPDOWN_SLOTS,
   .events[1] = INTEL_CORE_E_TOPDOWN_L1_RETIRING_METRIC,
