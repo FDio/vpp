@@ -106,6 +106,11 @@ extern "C"
 			     int max_outstanding_requests,
 			     int response_queue_size, vapi_mode_e mode,
 			     bool handle_keepalives);
+  vapi_error_e vapi_connect_from_vpp (vapi_ctx_t ctx, const char *name,
+				      int max_outstanding_requests,
+				      int response_queue_size,
+				      vapi_mode_e mode,
+				      bool handle_keepalives);
 
 /**
  * @brief disconnect from vpp
@@ -114,7 +119,7 @@ extern "C"
  *
  * @return VAPI_OK on success, other error code on error
  */
-  vapi_error_e vapi_disconnect (vapi_ctx_t ctx);
+vapi_error_e vapi_disconnect (vapi_ctx_t ctx);
 
 /**
  * @brief get event file descriptor

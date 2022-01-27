@@ -30,6 +30,7 @@
 #include <vlib/vlib.h>
 #include <vlibapi/api_common.h>
 #include <vlibmemory/memory_client.h>
+#include <vlibmemory/memory_api.h>
 
 #include <vapi/memclnt.api.vapi.h>
 #include <vapi/vlib.api.vapi.h>
@@ -89,6 +90,8 @@ struct vapi_ctx_s
   bool connected;
   bool handle_keepalives;
   pthread_mutex_t requests_mutex;
+
+  svm_queue_t *vl_input_queue;
 };
 
 u32
@@ -421,6 +424,129 @@ fail:
 }
 
 vapi_error_e
+vapi_connect_from_vpp (vapi_ctx_t ctx, const char *name,
+		       int max_outstanding_requests,
+		       int response_queue_size, vapi_mode_e mode,
+		       bool handle_keepalives)
+{
+  if (response_queue_size <= 0 || max_outstanding_requests <= 0)
+    {
+      return VAPI_EINVAL;
+    }
+  if (!clib_mem_get_per_cpu_heap () && !clib_mem_init (0, 1024 * 1024 * 32))
+    {
+      return VAPI_ENOMEM;
+    }
+
+  vl_api_registration_t **regpp;
+  vl_api_registration_t *regp;
+  void *oldheap;
+  api_main_t *am = vlibapi_get_main ();
+
+  pool_get (am->vl_clients, regpp);
+
+  oldheap = vl_msg_push_heap ();
+
+  *regpp = clib_mem_alloc (sizeof (vl_api_registration_t));
+
+  regp = *regpp;
+  clib_memset (regp, 0, sizeof (*regp));
+  regp->registration_type = REGISTRATION_TYPE_SHMEM;
+  regp->vl_api_registration_pool_index = regpp - am->vl_clients;
+  regp->vlib_rp = am->vlib_rp;
+  regp->shmem_hdr = am->shmem_hdr;
+
+  /* Loopback connection */
+  regp->vl_input_queue = am->shmem_hdr->vl_input_queue;
+
+  regp->name = format (0, "%s", name);
+  vec_add1 (regp->name, 0);
+
+  vl_msg_pop_heap (oldheap);
+
+  vlibapi_get_main ()->my_client_index =
+    vl_msg_api_handle_from_index_and_epoch (
+      regp->vl_api_registration_pool_index,
+      am->shmem_hdr->application_restarts);
+
+  ctx->vl_input_queue = am->shmem_hdr->vl_input_queue;
+
+  ctx->requests_size = max_outstanding_requests;
+  const size_t size = ctx->requests_size * sizeof (*ctx->requests);
+  void *tmp = realloc (ctx->requests, size);
+  if (!tmp)
+    {
+      return VAPI_ENOMEM;
+    }
+  ctx->requests = tmp;
+  clib_memset (ctx->requests, 0, size);
+  /* coverity[MISSING_LOCK] - 177211 requests_mutex is not needed here */
+  ctx->requests_start = ctx->requests_count = 0;
+
+  int i;
+  for (i = 0; i < __vapi_metadata.count; ++i)
+    {
+      vapi_message_desc_t *m = __vapi_metadata.msgs[i];
+      u8 scratch[m->name_with_crc_len + 1];
+      memcpy (scratch, m->name_with_crc, m->name_with_crc_len + 1);
+      u32 id = vl_msg_api_get_msg_index (scratch);
+      if (VAPI_INVALID_MSG_ID != id)
+	{
+	  if (id > UINT16_MAX)
+	    {
+	      VAPI_ERR ("Returned vl_msg_id `%u' > UINT16MAX `%u'!", id,
+			UINT16_MAX);
+	      return VAPI_EINVAL;
+	    }
+	  if (id > ctx->vl_msg_id_max)
+	    {
+	      vapi_msg_id_t *tmp =
+		realloc (ctx->vl_msg_id_to_vapi_msg_t,
+			 sizeof (*ctx->vl_msg_id_to_vapi_msg_t) * (id + 1));
+	      if (!tmp)
+		{
+		  return VAPI_ENOMEM;
+		}
+	      ctx->vl_msg_id_to_vapi_msg_t = tmp;
+	      ctx->vl_msg_id_max = id;
+	    }
+	  ctx->vl_msg_id_to_vapi_msg_t[id] = m->id;
+	  ctx->vapi_msg_id_t_to_vl_msg_id[m->id] = id;
+#if VAPI_DEBUG_CONNECT
+	  VAPI_DBG ("Message `%s' has vl_msg_id `%u'", m->name_with_crc,
+		    (unsigned) id);
+#endif
+	}
+      else
+	{
+	  ctx->vapi_msg_id_t_to_vl_msg_id[m->id] = UINT16_MAX;
+	  VAPI_DBG ("Message `%s' not available", m->name_with_crc);
+	}
+    }
+#if VAPI_DEBUG_CONNECT
+  VAPI_DBG ("finished probing messages");
+#endif
+  if (!vapi_is_msg_available (ctx, vapi_msg_id_control_ping) ||
+      !vapi_is_msg_available (ctx, vapi_msg_id_control_ping_reply))
+    {
+      VAPI_ERR (
+	"control ping or control ping reply not available, cannot connect");
+      return VAPI_EINCOMPATIBLE;
+    }
+  ctx->mode = mode;
+  ctx->connected = true;
+  if (vapi_is_msg_available (ctx, vapi_msg_id_memclnt_keepalive))
+    {
+      ctx->handle_keepalives = handle_keepalives;
+    }
+  else
+    {
+      ctx->handle_keepalives = false;
+    }
+  return VAPI_OK;
+}
+
+vapi_error_e
 vapi_disconnect (vapi_ctx_t ctx)
 {
   if (!ctx->connected)
@@ -549,7 +675,7 @@ vapi_recv (vapi_ctx_t ctx, void **msg, size_t * msg_size,
       return VAPI_EINVAL;
     }
 
-  svm_queue_t *q = am->vl_input_queue;
+  svm_queue_t *q = ctx->vl_input_queue;
 again:
   VAPI_DBG ("doing shm queue sub");
 
