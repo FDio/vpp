@@ -146,7 +146,10 @@
   _ (0x83, 0x04, 0, 0, 0, 0x00, ICACHE_64B, IFTAG_STALL,                      \
      "Cycles where a code fetch is stalled due to L1 instruction cache tag "  \
      "miss.")                                                                 \
-  _ (0x9C, 0x01, 0, 0, 0, 0x00, IDQ_UOPS_NOT_DELIVERED, CORE,                 \
+  _ (0x83, 0x02, 0, 0, 0, 0x00, ICACHE_64B, IFTAG_MISS,                       \
+     "Instruction fetch tag lookups that miss in the instruction cache "      \
+     "(L1I). Counts at 64-byte cache-line granularity.")                      \
+  _ (0x9C, 0x01, 0, 0, 0, 0x05, IDQ_UOPS_NOT_DELIVERED, CORE,                 \
      "Uops not delivered to Resource Allocation Table (RAT) per thread when " \
      "backend of the machine is not stalled")                                 \
   _ (0xA2, 0x08, 0, 0, 0, 0x00, RESOURCE_STALLS, SB,                          \
