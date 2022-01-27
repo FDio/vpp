@@ -96,6 +96,13 @@ if(SUBUNIT_INCLUDE_DIR AND SUBUNIT_LIB)
     LINK_LIBRARIES ${libs}
     NO_INSTALL
   )
+add_vpp_executable(vapi_c_test2
+    SOURCES
+    vapi_c_test2.c
+    DEPENDS fake_api_vapi_h
+    LINK_LIBRARIES ${libs}
+    NO_INSTALL
+  )
 
   enable_language(CXX)
   add_vpp_executable(vapi_cpp_test
