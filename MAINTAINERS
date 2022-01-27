@@ -425,6 +425,7 @@ F:	src/plugins/flowprobe/
 Plugin - http_static
 I:	http_static
 M:	Dave Barach <vpp@barachs.net>
+M:	Florin Coras <fcoras@cisco.com>
 F:	src/plugins/http_static/
 
 Plugin - builtinurl

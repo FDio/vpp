@@ -16,8 +16,8 @@ mactime_ip_neighbor_copy (index_t ipni, void *ctx)
 }
 
 static int
-handle_get_mactime (http_builtin_method_type_t reqtype,
-		    u8 * request, http_session_t * hs)
+handle_get_mactime (http_builtin_method_type_t reqtype, u8 *request,
+		    hss_session_t *hs)
 {
   mactime_main_t *mm = &mactime_main;
   mactime_device_t *dp;

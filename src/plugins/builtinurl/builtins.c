@@ -19,8 +19,8 @@
 #include <vpp/app/version.h>
 
 int
-handle_get_version (http_builtin_method_type_t reqtype,
-		    u8 * request, http_session_t * hs)
+handle_get_version (http_builtin_method_type_t reqtype, u8 *request,
+		    hss_session_t *hs)
 {
   u8 *s = 0;
 
@@ -64,8 +64,8 @@ trim_path_from_request (u8 * s, char *path)
 }
 
 int
-handle_get_interface_stats (http_builtin_method_type_t reqtype,
-			    u8 * request, http_session_t * hs)
+handle_get_interface_stats (http_builtin_method_type_t reqtype, u8 *request,
+			    hss_session_t *hs)
 {
   u8 *s = 0, *stats = 0;
   uword *p;
@@ -143,8 +143,8 @@ out:
 }
 
 int
-handle_get_interface_list (http_builtin_method_type_t reqtype,
-			   u8 * request, http_session_t * hs)
+handle_get_interface_list (http_builtin_method_type_t reqtype, u8 *request,
+			   hss_session_t *hs)
 {
   u8 *s = 0;
   int i;
