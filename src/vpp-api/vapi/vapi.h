@@ -106,27 +106,33 @@ extern "C"
 			     int max_outstanding_requests,
 			     int response_queue_size, vapi_mode_e mode,
 			     bool handle_keepalives);
+  vapi_error_e vapi_connect_from_vpp (vapi_ctx_t ctx, const char *name,
+				      const char *chroot_prefix,
+				      int max_outstanding_requests,
+				      int response_queue_size,
+				      vapi_mode_e mode,
+				      bool handle_keepalives);
 
-/**
- * @brief disconnect from vpp
- *
- * @param ctx opaque vapi context
- *
- * @return VAPI_OK on success, other error code on error
- */
+  /**
+   * @brief disconnect from vpp
+   *
+   * @param ctx opaque vapi context
+   *
+   * @return VAPI_OK on success, other error code on error
+   */
   vapi_error_e vapi_disconnect (vapi_ctx_t ctx);
 
-/**
- * @brief get event file descriptor
- *
- * @note this file descriptor becomes readable when messages (from vpp)
- * are waiting in queue
- *
- * @param ctx opaque vapi context
- * @param[out] fd pointer to result variable
- *
- * @return VAPI_OK on success, other error code on error
- */
+  /**
+   * @brief get event file descriptor
+   *
+   * @note this file descriptor becomes readable when messages (from vpp)
+   * are waiting in queue
+   *
+   * @param ctx opaque vapi context
+   * @param[out] fd pointer to result variable
+   *
+   * @return VAPI_OK on success, other error code on error
+   */
   vapi_error_e vapi_get_fd (vapi_ctx_t ctx, int *fd);
 
 /**
