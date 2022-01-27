@@ -57,7 +57,7 @@ hss_session_alloc (u32 thread_index)
   pool_get_zero (hsm->sessions[thread_index], hs);
   hs->session_index = hs - hsm->sessions[thread_index];
   hs->thread_index = thread_index;
-  hs->timer_handle = ~0;
+  //  hs->timer_handle = ~0;
   hs->cache_pool_index = ~0;
   return hs;
 }
@@ -84,7 +84,7 @@ hss_session_free (http_session_t *hs)
       save_thread_index = hs->thread_index;
       /* Poison the entry, preserve timer state and thread index */
       memset (hs, 0xfa, sizeof (*hs));
-      hs->timer_handle = ~0;
+      //      hs->timer_handle = ~0;
       hs->thread_index = save_thread_index;
     }
 }
@@ -251,39 +251,6 @@ lru_update (hss_main_t *hsm, file_data_cache_t *ep, f64 now)
 {
   lru_remove (hsm, ep);
   lru_add (hsm, ep, now);
-}
-
-/** \brief Register a builtin GET or POST handler
- */
-__clib_export void http_static_server_register_builtin_handler
-  (void *fp, char *url, int request_type)
-{
-  hss_main_t *hsm = &hss_main;
-  uword *p, *builtin_table;
-
-  builtin_table = (request_type == HTTP_BUILTIN_METHOD_GET)
-    ? hsm->get_url_handlers : hsm->post_url_handlers;
-
-  p = hash_get_mem (builtin_table, url);
-
-  if (p)
-    {
-      clib_warning ("WARNING: attempt to replace handler for %s '%s' ignored",
-		    (request_type == HTTP_BUILTIN_METHOD_GET) ?
-		    "GET" : "POST", url);
-      return;
-    }
-
-  hash_set_mem (builtin_table, url, (uword) fp);
-
-  /*
-   * Need to update the hash table pointer in http_static_server_main
-   * in case we just expanded it...
-   */
-  if (request_type == HTTP_BUILTIN_METHOD_GET)
-    hsm->get_url_handlers = builtin_table;
-  else
-    hsm->post_url_handlers = builtin_table;
 }
 
 static void
@@ -662,7 +629,7 @@ hss_ts_accept_callback (session_t *ts)
   hs->tx_fifo = ts->tx_fifo;
   hs->vpp_session_index = ts->session_index;
   hs->vpp_session_handle = session_handle (ts);
-  hs->session_state = HTTP_STATE_ESTABLISHED;
+  //  hs->session_state = HTTP_STATE_ESTABLISHED;
 
   /* The application sets a threshold for it's fifo to get notified when
    * additional data can be enqueued. We want to keep the TX fifo reasonably
@@ -745,7 +712,7 @@ static session_cb_vft_t hss_cb_vft = {
 };
 
 static int
-http_static_server_attach ()
+hss_attach ()
 {
   vnet_app_add_cert_key_pair_args_t _ck_pair, *ck_pair = &_ck_pair;
   hss_main_t *hsm = &hss_main;
@@ -760,7 +727,7 @@ http_static_server_attach ()
     segment_size = hsm->private_segment_size;
 
   a->api_client_index = ~0;
-  a->name = format (0, "test_http_static_server");
+  a->name = format (0, "http_static_server");
   a->session_cb_vft = &hss_cb_vft;
   a->options = options;
   a->options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
@@ -839,7 +806,7 @@ hss_listen (void)
   return rv;
 }
 
-static int
+int
 hss_create (vlib_main_t *vm)
 {
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
@@ -851,7 +818,7 @@ hss_create (vlib_main_t *vm)
 
   clib_spinlock_init (&hsm->cache_lock);
 
-  if (http_static_server_attach ())
+  if (hss_attach ())
     {
       clib_warning ("failed to attach server");
       return -1;
@@ -868,43 +835,6 @@ hss_create (vlib_main_t *vm)
   hsm->get_url_handlers = hash_create_string (0, sizeof (uword));
   hsm->post_url_handlers = hash_create_string (0, sizeof (uword));
 
-  return 0;
-}
-
-/** \brief API helper function for vl_api_http_static_enable_t messages
- */
-int
-hss_enable_api (u32 fifo_size, u32 cache_limit, u32 prealloc_fifos,
-		u32 private_segment_size, u8 *www_root, u8 *uri)
-{
-  hss_main_t *hsm = &hss_main;
-  int rv;
-
-  hsm->fifo_size = fifo_size;
-  hsm->cache_limit = cache_limit;
-  hsm->prealloc_fifos = prealloc_fifos;
-  hsm->private_segment_size = private_segment_size;
-  hsm->www_root = format (0, "%s%c", www_root, 0);
-  hsm->uri = format (0, "%s%c", uri, 0);
-
-  if (vec_len (hsm->www_root) < 2)
-    return VNET_API_ERROR_INVALID_VALUE;
-
-  if (hsm->app_index != ~0)
-    return VNET_API_ERROR_APP_ALREADY_ATTACHED;
-
-  vnet_session_enable_disable (hsm->vlib_main, 1 /* turn on TCP, etc. */ );
-
-  rv = hss_create (hsm->vlib_main);
-  switch (rv)
-    {
-    case 0:
-      break;
-    default:
-      vec_free (hsm->www_root);
-      vec_free (hsm->uri);
-      return VNET_API_ERROR_INIT_FAILED;
-    }
   return 0;
 }
 
@@ -1013,7 +943,6 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
  * @cliexcmd{http static server www-root <path> [prealloc-fios <nn>]
  *   [private-segment-size <nnMG>] [fifo-size <nbytes>] [uri <uri>]}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (hss_create_command, static) = {
   .path = "http static server",
   .short_help =
@@ -1022,7 +951,6 @@ VLIB_CLI_COMMAND (hss_create_command, static) = {
     "[ptr-thresh <nn>][debug [nn]]\n",
   .function = hss_create_command_fn,
 };
-/* *INDENT-ON* */
 
 /** \brief format a file cache entry
  */
@@ -1043,47 +971,42 @@ format_hss_cache_entry (u8 *s, va_list *args)
   return s;
 }
 
-u8 *
-format_hss_session_state (u8 *s, va_list *args)
-{
-  http_session_state_t state = va_arg (*args, http_session_state_t);
-  char *state_string = "bogus!";
-
-  switch (state)
-    {
-    case HTTP_STATE_CLOSED:
-      state_string = "closed";
-      break;
-    case HTTP_STATE_ESTABLISHED:
-      state_string = "established";
-      break;
-    case HTTP_STATE_OK_SENT:
-      state_string = "ok sent";
-      break;
-    case HTTP_STATE_SEND_MORE_DATA:
-      state_string = "send more data";
-      break;
-    default:
-      break;
-    }
-
-  return format (s, "%s", state_string);
-}
+// u8 *
+// format_hss_session_state (u8 *s, va_list *args)
+//{
+//  http_session_state_t state = va_arg (*args, http_session_state_t);
+//  char *state_string = "bogus!";
+//
+//  switch (state)
+//    {
+//    case HTTP_STATE_CLOSED:
+//      state_string = "closed";
+//      break;
+//    case HTTP_STATE_ESTABLISHED:
+//      state_string = "established";
+//      break;
+//    case HTTP_STATE_OK_SENT:
+//      state_string = "ok sent";
+//      break;
+//    case HTTP_STATE_SEND_MORE_DATA:
+//      state_string = "send more data";
+//      break;
+//    default:
+//      break;
+//    }
+//
+//  return format (s, "%s", state_string);
+//}
 
 u8 *
 format_hss_session (u8 *s, va_list *args)
 {
   http_session_t *hs = va_arg (*args, http_session_t *);
-  int verbose = va_arg (*args, int);
+  int __clib_unused verbose = va_arg (*args, int);
 
-  s = format (s, "[%d]: state %U", hs->session_index, format_hss_session_state,
-	      hs->session_state);
-  if (verbose > 0)
-    {
-      s = format (s, "\n path %s, data length %u, data_offset %u",
-		  hs->path ? hs->path : (u8 *) "[none]",
-		  vec_len (hs->data), hs->data_offset);
-    }
+  s = format (s, "\n path %s, data length %u, data_offset %u",
+	      hs->path ? hs->path : (u8 *) "[none]", vec_len (hs->data),
+	      hs->data_offset);
   return s;
 }
 
@@ -1157,12 +1080,10 @@ hss_show_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
       for (i = 0; i < vec_len (hsm->sessions); i++)
 	{
-          /* *INDENT-OFF* */
 	  pool_foreach (hs, hsm->sessions[i])
            {
             vec_add1 (session_indices, hs - hsm->sessions[i]);
           }
-          /* *INDENT-ON* */
 
 	  for (j = 0; j < vec_len (session_indices); j++)
 	    {
@@ -1189,13 +1110,11 @@ hss_show_command_fn (vlib_main_t *vm, unformat_input_t *input,
  * @cliend
  * @cliexcmd{show http static server sessions cache [verbose [nn]]}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (hss_show_command, static) = {
   .path = "show http static server",
   .short_help = "show http static server sessions cache [verbose [<nn>]]",
   .function = hss_show_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 hss_clear_cache_command_fn (vlib_main_t *vm, unformat_input_t *input,
@@ -1262,13 +1181,11 @@ hss_clear_cache_command_fn (vlib_main_t *vm, unformat_input_t *input,
  * @cliend
  * @cliexcmd{clear http static cache}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (clear_hss_cache_command, static) = {
   .path = "clear http static cache",
   .short_help = "clear http static cache",
   .function = hss_clear_cache_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 hss_main_init (vlib_main_t *vm)

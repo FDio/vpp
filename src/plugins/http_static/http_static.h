@@ -22,13 +22,13 @@
 #include <vnet/session/application.h>
 #include <vnet/session/application_interface.h>
 #include <vnet/session/session.h>
-#include <vnet/ip/ip.h>
-#include <vnet/ethernet/ethernet.h>
+//#include <vnet/ip/ip.h>
+//#include <vnet/ethernet/ethernet.h>
 
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
 #include <vppinfra/time_range.h>
-#include <vppinfra/tw_timer_2t_1w_2048sl.h>
+//#include <vppinfra/tw_timer_2t_1w_2048sl.h>
 #include <vppinfra/bihash_vec8_8.h>
 
 /** @file http_static.h
@@ -47,22 +47,22 @@ typedef struct
 
 extern http_static_main_t http_static_main;
 
-/** \brief Session States
- */
-
-typedef enum
-{
-  /** Session is closed */
-  HTTP_STATE_CLOSED,
-  /** Session is established */
-  HTTP_STATE_ESTABLISHED,
-  /** Session has sent an OK response */
-  HTTP_STATE_OK_SENT,
-  /** Session has sent an HTML response */
-  HTTP_STATE_SEND_MORE_DATA,
-  /** Number of states */
-  HTTP_STATE_N_STATES,
-} http_session_state_t;
+///** \brief Session States
+// */
+//
+// typedef enum
+//{
+//  /** Session is closed */
+//  HTTP_STATE_CLOSED,
+//  /** Session is established */
+//  HTTP_STATE_ESTABLISHED,
+//  /** Session has sent an OK response */
+//  HTTP_STATE_OK_SENT,
+//  /** Session has sent an HTML response */
+//  HTTP_STATE_SEND_MORE_DATA,
+//  /** Number of states */
+//  HTTP_STATE_N_STATES,
+//} http_session_state_t;
 
 typedef enum
 {
@@ -85,9 +85,9 @@ typedef struct
   u8 *rx_buf;
   /** vpp session index, handle */
   u32 vpp_session_index;
-  u64 vpp_session_handle;
-  /** Timeout timer handle */
-  u32 timer_handle;
+  session_handle_t vpp_session_handle;
+  //  /** Timeout timer handle */
+  //  u32 timer_handle;
   /** Fully-resolved file path */
   u8 *path;
   /** File data, a vector */
@@ -160,6 +160,9 @@ typedef struct
   /** Cert and key pair for tls */
   u32 ckpair_index;
 
+  /* API message ID base */
+  u16 msg_id_base;
+
   vlib_main_t *vlib_main;
 
   /*
@@ -180,8 +183,7 @@ typedef struct
 
 extern hss_main_t hss_main;
 
-int hss_enable_api (u32 fifo_size, u32 cache_limit, u32 prealloc_fifos,
-		    u32 private_segment_size, u8 *www_root, u8 *uri);
+int hss_create (vlib_main_t *vm);
 
 void http_static_server_register_builtin_handler
   (void *fp, char *url, int type);
