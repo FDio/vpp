@@ -89,9 +89,9 @@
   _ (0x0D, 0x01, 0, 0, 0, 0x00, INT_MISC, RECOVERY_CYCLES,                    \
      "Core cycles the allocator was stalled due to recovery from earlier "    \
      "clear event for this thread (e.g. misprediction or memory nuke)")       \
-  _ (0x0E, 0x01, 0, 0, 0, 0x00, UOPS_ISSUED, ANY,                             \
-     "Uops that Resource Allocation Table (RAT) issues to Reservation "       \
-     "Station (RS)")                                                          \
+  _ (0x0D, 0x10, 0, 0, 0, 0x00, INT_MISC, UOP_DROPPING,                       \
+     "Estimated number of Top-down Microarchitecture Analysis slots that got" \
+     " due to non front-end reasons")                                         \
   _ (0x28, 0x07, 0, 0, 0, 0x00, CORE_POWER, LVL0_TURBO_LICENSE,               \
      "Core cycles where the core was running in a manner where Turbo may be " \
      "clipped to the Non-AVX turbo schedule.")                                \
@@ -126,7 +126,7 @@
   _ (0x83, 0x02, 0, 0, 0, 0x00, ICACHE_64B, IFTAG_MISS,                       \
      "Instruction fetch tag lookups that miss in the instruction cache "      \
      "(L1I). Counts at 64-byte cache-line granularity.")                      \
-  _ (0x9C, 0x01, 0, 0, 0, 0x00, IDQ_UOPS_NOT_DELIVERED, CORE,                 \
+  _ (0x9C, 0x01, 0, 0, 0, 0x05, IDQ_UOPS_NOT_DELIVERED, CORE,                 \
      "Uops not delivered to Resource Allocation Table (RAT) per thread when " \
      "backend of the machine is not stalled")                                 \
   _ (0xA2, 0x08, 0, 0, 0, 0x00, RESOURCE_STALLS, SB,                          \
@@ -134,9 +134,8 @@
      "full. This counts cycles that the pipeline back-end blocked uop "       \
      "delivery"                                                               \
      "from the front-end.")                                                   \
-  _ (0xA3, 0x04, 0, 0, 0, 0x04, CYCLE_ACTIVITY, CYCLES_NO_EXECUTE,            \
-     "This event counts cycles during which no instructions were executed in" \
-     " the execution stage of the pipeline.")                                 \
+  _ (0xA3, 0x04, 0, 0, 0, 0x04, CYCLE_ACTIVITY, STALLS_TOTAL,                 \
+     "Total execution stalls.")                                               \
   _ (0xA3, 0x05, 0, 0, 0, 0x05, CYCLE_ACTIVITY, STALLS_L2_MISS,               \
      "Execution stalls while L2 cache miss demand load is outstanding")       \
   _ (0xA3, 0x06, 0, 0, 0, 0x06, CYCLE_ACTIVITY, STALLS_L3_MISS,               \
@@ -145,6 +144,9 @@
      "Execution stalls while L1 cache miss demand load is outstanding")       \
   _ (0xA3, 0x14, 0, 0, 0, 0x14, CYCLE_ACTIVITY, STALLS_MEM_ANY,               \
      "Execution stalls while memory subsystem has an outstanding load.")      \
+  _ (0xA6, 0x40, 0, 0, 0, 0x02, EXE_ACTIVITY, BOUND_ON_STORES,                \
+     "Cycles where the Store Buffer was full and no loads caused an "         \
+     "execution stall.")                                                      \
   _ (0xC0, 0x00, 0, 0, 0, 0x00, INST_RETIRED, ANY_P,                          \
      "Number of instructions retired. General Counter - architectural event") \
   _ (0xC2, 0x02, 0, 0, 0, 0x00, UOPS_RETIRED, RETIRE_SLOTS,                   \
