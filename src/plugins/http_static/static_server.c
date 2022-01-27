@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 Cisco and/or its affiliates.
+ * Copyright (c) 2017-2022 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -13,22 +13,16 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/session/application.h>
-#include <vnet/session/application_interface.h>
-#include <vnet/session/session.h>
+#include <http_static/http_static.h>
+#include <vppinfra/bihash_template.c>
 #include <vppinfra/unix.h>
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <http_static/http_static.h>
-
-#include <vppinfra/bihash_template.c>
-#include <http/http.h>
 
 /** @file static_server.c
- *  Static http server, sufficient to
- *  serve .html / .css / .js content.
+ *  Static http server, sufficient to serve .html / .css / .js content.
  */
 /*? %%clicmd:group_label Static HTTP Server %% ?*/
 
@@ -48,21 +42,20 @@ hss_cache_unlock (void)
   clib_spinlock_unlock (&hss_main.cache_lock);
 }
 
-static http_session_t *
+static hss_session_t *
 hss_session_alloc (u32 thread_index)
 {
   hss_main_t *hsm = &hss_main;
-  http_session_t *hs;
+  hss_session_t *hs;
 
   pool_get_zero (hsm->sessions[thread_index], hs);
   hs->session_index = hs - hsm->sessions[thread_index];
   hs->thread_index = thread_index;
-  hs->timer_handle = ~0;
   hs->cache_pool_index = ~0;
   return hs;
 }
 
-static http_session_t *
+static hss_session_t *
 hss_session_get (u32 thread_index, u32 hs_index)
 {
   hss_main_t *hsm = &hss_main;
@@ -72,7 +65,7 @@ hss_session_get (u32 thread_index, u32 hs_index)
 }
 
 static void
-hss_session_free (http_session_t *hs)
+hss_session_free (hss_session_t *hs)
 {
   hss_main_t *hsm = &hss_main;
 
@@ -84,7 +77,6 @@ hss_session_free (http_session_t *hs)
       save_thread_index = hs->thread_index;
       /* Poison the entry, preserve timer state and thread index */
       memset (hs, 0xfa, sizeof (*hs));
-      hs->timer_handle = ~0;
       hs->thread_index = save_thread_index;
     }
 }
@@ -92,10 +84,10 @@ hss_session_free (http_session_t *hs)
 /** \brief Detach cache entry from session
  */
 static void
-hss_detach_cache_entry (http_session_t *hs)
+hss_detach_cache_entry (hss_session_t *hs)
 {
   hss_main_t *hsm = &hss_main;
-  file_data_cache_t *ep;
+  hss_cache_entry_t *ep;
 
   /*
    * Decrement cache pool entry reference count
@@ -122,7 +114,7 @@ hss_detach_cache_entry (http_session_t *hs)
 /** \brief Disconnect a session
  */
 static void
-hss_session_disconnect_transport (http_session_t *hs)
+hss_session_disconnect_transport (hss_session_t *hs)
 {
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
   a->handle = hs->vpp_session_handle;
@@ -139,7 +131,7 @@ lru_validate (hss_main_t *hsm)
   f64 last_timestamp;
   u32 index;
   int i;
-  file_data_cache_t *ep;
+  hss_cache_entry_t *ep;
 
   last_timestamp = 1e70;
   for (i = 1, index = hsm->first_index; index != ~0;)
@@ -178,9 +170,9 @@ lru_validate (hss_main_t *hsm)
 /** \brief Remove a data cache entry from the LRU lists
  */
 static inline void
-lru_remove (hss_main_t *hsm, file_data_cache_t *ep)
+lru_remove (hss_main_t *hsm, hss_cache_entry_t *ep)
 {
-  file_data_cache_t *next_ep, *prev_ep;
+  hss_cache_entry_t *next_ep, *prev_ep;
   u32 ep_index;
 
   lru_validate (hsm);
@@ -211,9 +203,9 @@ lru_remove (hss_main_t *hsm, file_data_cache_t *ep)
 /** \brief Add an entry to the LRU lists, tag w/ supplied timestamp
  */
 static inline void
-lru_add (hss_main_t *hsm, file_data_cache_t *ep, f64 now)
+lru_add (hss_main_t *hsm, hss_cache_entry_t *ep, f64 now)
 {
-  file_data_cache_t *next_ep;
+  hss_cache_entry_t *next_ep;
   u32 ep_index;
 
   lru_validate (hsm);
@@ -247,47 +239,14 @@ lru_add (hss_main_t *hsm, file_data_cache_t *ep, f64 now)
 /** \brief Remove and re-add a cache entry from/to the LRU lists
  */
 static inline void
-lru_update (hss_main_t *hsm, file_data_cache_t *ep, f64 now)
+lru_update (hss_main_t *hsm, hss_cache_entry_t *ep, f64 now)
 {
   lru_remove (hsm, ep);
   lru_add (hsm, ep, now);
 }
 
-/** \brief Register a builtin GET or POST handler
- */
-__clib_export void http_static_server_register_builtin_handler
-  (void *fp, char *url, int request_type)
-{
-  hss_main_t *hsm = &hss_main;
-  uword *p, *builtin_table;
-
-  builtin_table = (request_type == HTTP_BUILTIN_METHOD_GET)
-    ? hsm->get_url_handlers : hsm->post_url_handlers;
-
-  p = hash_get_mem (builtin_table, url);
-
-  if (p)
-    {
-      clib_warning ("WARNING: attempt to replace handler for %s '%s' ignored",
-		    (request_type == HTTP_BUILTIN_METHOD_GET) ?
-		    "GET" : "POST", url);
-      return;
-    }
-
-  hash_set_mem (builtin_table, url, (uword) fp);
-
-  /*
-   * Need to update the hash table pointer in http_static_server_main
-   * in case we just expanded it...
-   */
-  if (request_type == HTTP_BUILTIN_METHOD_GET)
-    hsm->get_url_handlers = builtin_table;
-  else
-    hsm->post_url_handlers = builtin_table;
-}
-
 static void
-start_send_data (http_session_t *hs, http_status_code_t status)
+start_send_data (hss_session_t *hs, http_status_code_t status)
 {
   http_msg_t msg;
   session_t *ts;
@@ -336,17 +295,14 @@ done:
 }
 
 static int
-find_data (http_session_t *hs, http_req_method_t rt, u8 *request)
+find_data (hss_session_t *hs, http_req_method_t rt, u8 *request)
 {
   hss_main_t *hsm = &hss_main;
   u8 *path;
   struct stat _sb, *sb = &_sb;
   clib_error_t *error;
-  u8 request_type = HTTP_BUILTIN_METHOD_GET;
   uword *p, *builtin_table;
   http_status_code_t sc = HTTP_STATUS_OK;
-
-  request_type = rt == HTTP_REQ_GET ? request_type : HTTP_BUILTIN_METHOD_POST;
 
   /*
    * Construct the file to open
@@ -358,27 +314,25 @@ find_data (http_session_t *hs, http_req_method_t rt, u8 *request)
     path = format (0, "%s/%s%c", hsm->www_root, request, 0);
 
   if (hsm->debug_level > 0)
-    clib_warning ("%s '%s'", (request_type) == HTTP_BUILTIN_METHOD_GET ?
-		  "GET" : "POST", path);
+    clib_warning ("%s '%s'", (rt == HTTP_REQ_GET) ? "GET" : "POST", path);
 
   /* Look for built-in GET / POST handlers */
-  builtin_table = (request_type == HTTP_BUILTIN_METHOD_GET) ?
-    hsm->get_url_handlers : hsm->post_url_handlers;
+  builtin_table =
+    (rt == HTTP_REQ_GET) ? hsm->get_url_handlers : hsm->post_url_handlers;
 
   p = hash_get_mem (builtin_table, request);
 
   if (p)
     {
       int rv;
-      int (*fp) (http_builtin_method_type_t, u8 *, http_session_t *);
+      int (*fp) (http_req_method_t, u8 *, hss_session_t *);
       fp = (void *) p[0];
       hs->path = path;
-      rv = (*fp) (request_type, request, hs);
+      rv = (*fp) (rt, request, hs);
       if (rv)
 	{
 	  clib_warning ("builtin handler %llx hit on %s '%s' but failed!",
-			p[0], (request_type == HTTP_BUILTIN_METHOD_GET) ?
-			"GET" : "POST", request);
+			p[0], (rt == HTTP_REQ_GET) ? "GET" : "POST", request);
 
 	  sc = HTTP_STATUS_NOT_FOUND;
 	}
@@ -461,7 +415,7 @@ find_data (http_session_t *hs, http_req_method_t rt, u8 *request)
   if (hs->data == 0)
     {
       BVT (clib_bihash_kv) kv;
-      file_data_cache_t *dp;
+      hss_cache_entry_t *ce;
 
       hs->path = path;
 
@@ -475,15 +429,15 @@ find_data (http_session_t *hs, http_req_method_t rt, u8 *request)
 	  hss_cache_lock ();
 
 	  /* found the data.. */
-	  dp = pool_elt_at_index (hsm->cache_pool, kv.value);
-	  hs->data = dp->data;
+	  ce = pool_elt_at_index (hsm->cache_pool, kv.value);
+	  hs->data = ce->data;
 	  /* Update the cache entry, mark it in-use */
-	  lru_update (hsm, dp, vlib_time_now (vlib_get_main ()));
-	  hs->cache_pool_index = dp - hsm->cache_pool;
-	  dp->inuse++;
+	  lru_update (hsm, ce, vlib_time_now (vlib_get_main ()));
+	  hs->cache_pool_index = ce - hsm->cache_pool;
+	  ce->inuse++;
 	  if (hsm->debug_level > 1)
 	    clib_warning ("index %d refcnt now %d", hs->cache_pool_index,
-			  dp->inuse);
+			  ce->inuse);
 
 	  hss_cache_unlock ();
 	}
@@ -501,34 +455,33 @@ find_data (http_session_t *hs, http_req_method_t rt, u8 *request)
 	      while (free_index != ~0)
 		{
 		  /* pick the LRU */
-		  dp = pool_elt_at_index (hsm->cache_pool, free_index);
-		  free_index = dp->prev_index;
+		  ce = pool_elt_at_index (hsm->cache_pool, free_index);
+		  free_index = ce->prev_index;
 		  /* Which could be in use... */
-		  if (dp->inuse)
+		  if (ce->inuse)
 		    {
 		      if (hsm->debug_level > 1)
 			clib_warning ("index %d in use refcnt %d",
-				      dp - hsm->cache_pool, dp->inuse);
-
+				      ce - hsm->cache_pool, ce->inuse);
 		    }
-		  kv.key = (u64) (dp->filename);
+		  kv.key = (u64) (ce->filename);
 		  kv.value = ~0ULL;
 		  if (BV (clib_bihash_add_del) (&hsm->name_to_data, &kv,
 						0 /* is_add */ ) < 0)
 		    {
-		      clib_warning ("LRU delete '%s' FAILED!", dp->filename);
+		      clib_warning ("LRU delete '%s' FAILED!", ce->filename);
 		    }
 		  else if (hsm->debug_level > 1)
-		    clib_warning ("LRU delete '%s' ok", dp->filename);
+		    clib_warning ("LRU delete '%s' ok", ce->filename);
 
-		  lru_remove (hsm, dp);
-		  hsm->cache_size -= vec_len (dp->data);
+		  lru_remove (hsm, ce);
+		  hsm->cache_size -= vec_len (ce->data);
 		  hsm->cache_evictions++;
-		  vec_free (dp->filename);
-		  vec_free (dp->data);
+		  vec_free (ce->filename);
+		  vec_free (ce->data);
 		  if (hsm->debug_level > 1)
-		    clib_warning ("pool put index %d", dp - hsm->cache_pool);
-		  pool_put (hsm->cache_pool, dp);
+		    clib_warning ("pool put index %d", ce - hsm->cache_pool);
+		  pool_put (hsm->cache_pool, ce);
 		  if (hsm->cache_size < hsm->cache_limit)
 		    break;
 		}
@@ -545,17 +498,17 @@ find_data (http_session_t *hs, http_req_method_t rt, u8 *request)
 	      goto done;
 	    }
 	  /* Create a cache entry for it */
-	  pool_get_zero (hsm->cache_pool, dp);
-	  dp->filename = vec_dup (hs->path);
-	  dp->data = hs->data;
-	  hs->cache_pool_index = dp - hsm->cache_pool;
-	  dp->inuse++;
+	  pool_get_zero (hsm->cache_pool, ce);
+	  ce->filename = vec_dup (hs->path);
+	  ce->data = hs->data;
+	  hs->cache_pool_index = ce - hsm->cache_pool;
+	  ce->inuse++;
 	  if (hsm->debug_level > 1)
 	    clib_warning ("index %d refcnt now %d", hs->cache_pool_index,
-			  dp->inuse);
-	  lru_add (hsm, dp, vlib_time_now (vlib_get_main ()));
+			  ce->inuse);
+	  lru_add (hsm, ce, vlib_time_now (vlib_get_main ()));
 	  kv.key = (u64) vec_dup (hs->path);
-	  kv.value = dp - hsm->cache_pool;
+	  kv.value = ce - hsm->cache_pool;
 	  /* Add to the lookup table */
 	  if (hsm->debug_level > 1)
 	    clib_warning ("add '%s' value %lld", kv.key, kv.value);
@@ -565,7 +518,7 @@ find_data (http_session_t *hs, http_req_method_t rt, u8 *request)
 	    {
 	      clib_warning ("BUG: add failed!");
 	    }
-	  hsm->cache_size += vec_len (dp->data);
+	  hsm->cache_size += vec_len (ce->data);
 
 	  hss_cache_unlock ();
 	}
@@ -580,7 +533,7 @@ done:
 static int
 hss_ts_rx_callback (session_t *ts)
 {
-  http_session_t *hs;
+  hss_session_t *hs;
   u8 *request = 0;
   http_msg_t msg;
   int rv;
@@ -619,7 +572,7 @@ hss_ts_rx_callback (session_t *ts)
 static int
 hss_ts_tx_callback (session_t *ts)
 {
-  http_session_t *hs;
+  hss_session_t *hs;
   u32 to_send;
   int rv;
 
@@ -653,16 +606,13 @@ hss_ts_tx_callback (session_t *ts)
 static int
 hss_ts_accept_callback (session_t *ts)
 {
-  http_session_t *hs;
+  hss_session_t *hs;
   u32 thresh;
 
   hs = hss_session_alloc (ts->thread_index);
 
-  hs->rx_fifo = ts->rx_fifo;
-  hs->tx_fifo = ts->tx_fifo;
   hs->vpp_session_index = ts->session_index;
   hs->vpp_session_handle = session_handle (ts);
-  hs->session_state = HTTP_STATE_ESTABLISHED;
 
   /* The application sets a threshold for it's fifo to get notified when
    * additional data can be enqueued. We want to keep the TX fifo reasonably
@@ -719,7 +669,7 @@ hss_add_segment_callback (u32 client_index, u64 segment_handle)
 static void
 hss_ts_cleanup (session_t *s, session_cleanup_ntf_t ntf)
 {
-  http_session_t *hs;
+  hss_session_t *hs;
 
   if (ntf == SESSION_CLEANUP_TRANSPORT)
     return;
@@ -729,7 +679,6 @@ hss_ts_cleanup (session_t *s, session_cleanup_ntf_t ntf)
     return;
 
   hss_detach_cache_entry (hs);
-  vec_free (hs->rx_buf);
   hss_session_free (hs);
 }
 
@@ -745,7 +694,7 @@ static session_cb_vft_t hss_cb_vft = {
 };
 
 static int
-http_static_server_attach ()
+hss_attach ()
 {
   vnet_app_add_cert_key_pair_args_t _ck_pair, *ck_pair = &_ck_pair;
   hss_main_t *hsm = &hss_main;
@@ -760,7 +709,7 @@ http_static_server_attach ()
     segment_size = hsm->private_segment_size;
 
   a->api_client_index = ~0;
-  a->name = format (0, "test_http_static_server");
+  a->name = format (0, "http_static_server");
   a->session_cb_vft = &hss_cb_vft;
   a->options = options;
   a->options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
@@ -839,7 +788,7 @@ hss_listen (void)
   return rv;
 }
 
-static int
+int
 hss_create (vlib_main_t *vm)
 {
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
@@ -851,7 +800,7 @@ hss_create (vlib_main_t *vm)
 
   clib_spinlock_init (&hsm->cache_lock);
 
-  if (http_static_server_attach ())
+  if (hss_attach ())
     {
       clib_warning ("failed to attach server");
       return -1;
@@ -871,52 +820,18 @@ hss_create (vlib_main_t *vm)
   return 0;
 }
 
-/** \brief API helper function for vl_api_http_static_enable_t messages
- */
-int
-hss_enable_api (u32 fifo_size, u32 cache_limit, u32 prealloc_fifos,
-		u32 private_segment_size, u8 *www_root, u8 *uri)
-{
-  hss_main_t *hsm = &hss_main;
-  int rv;
-
-  hsm->fifo_size = fifo_size;
-  hsm->cache_limit = cache_limit;
-  hsm->prealloc_fifos = prealloc_fifos;
-  hsm->private_segment_size = private_segment_size;
-  hsm->www_root = format (0, "%s%c", www_root, 0);
-  hsm->uri = format (0, "%s%c", uri, 0);
-
-  if (vec_len (hsm->www_root) < 2)
-    return VNET_API_ERROR_INVALID_VALUE;
-
-  if (hsm->app_index != ~0)
-    return VNET_API_ERROR_APP_ALREADY_ATTACHED;
-
-  vnet_session_enable_disable (hsm->vlib_main, 1 /* turn on TCP, etc. */ );
-
-  rv = hss_create (hsm->vlib_main);
-  switch (rv)
-    {
-    case 0:
-      break;
-    default:
-      vec_free (hsm->www_root);
-      vec_free (hsm->uri);
-      return VNET_API_ERROR_INIT_FAILED;
-    }
-  return 0;
-}
-
 static clib_error_t *
 hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 		       vlib_cli_command_t *cmd)
 {
-  hss_main_t *hsm = &hss_main;
   unformat_input_t _line_input, *line_input = &_line_input;
+  hss_main_t *hsm = &hss_main;
+  clib_error_t *error = 0;
   u64 seg_size;
-  u8 *www_root = 0;
   int rv;
+
+  if (hsm->app_index != (u32) ~0)
+    return clib_error_return (0, "http server already running...");
 
   hsm->prealloc_fifos = 0;
   hsm->private_segment_size = 0;
@@ -926,38 +841,23 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    goto no_wwwroot;
+    goto no_input;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "www-root %s", &www_root))
+      if (unformat (line_input, "www-root %s", &hsm->www_root))
 	;
       else
 	if (unformat (line_input, "prealloc-fifos %d", &hsm->prealloc_fifos))
 	;
       else if (unformat (line_input, "private-segment-size %U",
 			 unformat_memory_size, &seg_size))
-	{
-	  if (seg_size >= 0x100000000ULL)
-	    {
-	      vlib_cli_output (vm, "private segment size %llu, too large",
-			       seg_size);
-	      return 0;
-	    }
-	  hsm->private_segment_size = seg_size;
-	}
+	hsm->private_segment_size = seg_size;
       else if (unformat (line_input, "fifo-size %d", &hsm->fifo_size))
 	hsm->fifo_size <<= 10;
       else if (unformat (line_input, "cache-size %U", unformat_memory_size,
 			 &hsm->cache_limit))
-	{
-	  if (hsm->cache_limit < (128 << 10))
-	    {
-	      return clib_error_return (0,
-					"cache-size must be at least 128kb");
-	    }
-	}
-
+	;
       else if (unformat (line_input, "uri %s", &hsm->uri))
 	;
       else if (unformat (line_input, "debug %d", &hsm->debug_level))
@@ -968,37 +868,41 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 			 &hsm->use_ptr_thresh))
 	;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	}
     }
+
   unformat_free (line_input);
 
-  if (www_root == 0)
+no_input:
+
+  if (error)
+    goto done;
+
+  if (hsm->www_root == 0)
     {
-    no_wwwroot:
-      return clib_error_return (0, "Must specify www-root <path>");
+      error = clib_error_return (0, "Must specify www-root <path>");
+      goto done;
     }
 
-  if (hsm->app_index != (u32) ~0)
+  if (hsm->cache_limit < (128 << 10))
     {
-      vec_free (www_root);
-      return clib_error_return (0, "http server already running...");
+      error = clib_error_return (0, "cache-size must be at least 128kb");
+      goto done;
     }
-
-  hsm->www_root = www_root;
 
   vnet_session_enable_disable (vm, 1 /* turn on TCP, etc. */ );
 
-  rv = hss_create (vm);
-  switch (rv)
-    {
-    case 0:
-      break;
-    default:
-      vec_free (hsm->www_root);
-      return clib_error_return (0, "server_create returned %d", rv);
-    }
-  return 0;
+  if ((rv = hss_create (vm)))
+    error = clib_error_return (0, "server_create returned %d", rv);
+
+done:
+
+  vec_free (hsm->www_root);
+
+  return error;
 }
 
 /*?
@@ -1013,7 +917,6 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
  * @cliexcmd{http static server www-root <path> [prealloc-fios <nn>]
  *   [private-segment-size <nnMG>] [fifo-size <nbytes>] [uri <uri>]}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (hss_create_command, static) = {
   .path = "http static server",
   .short_help =
@@ -1022,14 +925,13 @@ VLIB_CLI_COMMAND (hss_create_command, static) = {
     "[ptr-thresh <nn>][debug [nn]]\n",
   .function = hss_create_command_fn,
 };
-/* *INDENT-ON* */
 
 /** \brief format a file cache entry
  */
-u8 *
+static u8 *
 format_hss_cache_entry (u8 *s, va_list *args)
 {
-  file_data_cache_t *ep = va_arg (*args, file_data_cache_t *);
+  hss_cache_entry_t *ep = va_arg (*args, hss_cache_entry_t *);
   f64 now = va_arg (*args, f64);
 
   /* Header */
@@ -1043,47 +945,15 @@ format_hss_cache_entry (u8 *s, va_list *args)
   return s;
 }
 
-u8 *
-format_hss_session_state (u8 *s, va_list *args)
-{
-  http_session_state_t state = va_arg (*args, http_session_state_t);
-  char *state_string = "bogus!";
-
-  switch (state)
-    {
-    case HTTP_STATE_CLOSED:
-      state_string = "closed";
-      break;
-    case HTTP_STATE_ESTABLISHED:
-      state_string = "established";
-      break;
-    case HTTP_STATE_OK_SENT:
-      state_string = "ok sent";
-      break;
-    case HTTP_STATE_SEND_MORE_DATA:
-      state_string = "send more data";
-      break;
-    default:
-      break;
-    }
-
-  return format (s, "%s", state_string);
-}
-
-u8 *
+static u8 *
 format_hss_session (u8 *s, va_list *args)
 {
-  http_session_t *hs = va_arg (*args, http_session_t *);
-  int verbose = va_arg (*args, int);
+  hss_session_t *hs = va_arg (*args, hss_session_t *);
+  int __clib_unused verbose = va_arg (*args, int);
 
-  s = format (s, "[%d]: state %U", hs->session_index, format_hss_session_state,
-	      hs->session_state);
-  if (verbose > 0)
-    {
-      s = format (s, "\n path %s, data length %u, data_offset %u",
-		  hs->path ? hs->path : (u8 *) "[none]",
-		  vec_len (hs->data), hs->data_offset);
-    }
+  s = format (s, "\n path %s, data length %u, data_offset %u",
+	      hs->path ? hs->path : (u8 *) "[none]", vec_len (hs->data),
+	      hs->data_offset);
   return s;
 }
 
@@ -1092,7 +962,7 @@ hss_show_command_fn (vlib_main_t *vm, unformat_input_t *input,
 		     vlib_cli_command_t *cmd)
 {
   hss_main_t *hsm = &hss_main;
-  file_data_cache_t *ep, **entries = 0;
+  hss_cache_entry_t *ep, **entries = 0;
   int verbose = 0;
   int show_cache = 0;
   int show_sessions = 0;
@@ -1150,19 +1020,17 @@ hss_show_command_fn (vlib_main_t *vm, unformat_input_t *input,
   if (show_sessions)
     {
       u32 *session_indices = 0;
-      http_session_t *hs;
+      hss_session_t *hs;
       int i, j;
 
       hss_cache_lock ();
 
       for (i = 0; i < vec_len (hsm->sessions); i++)
 	{
-          /* *INDENT-OFF* */
 	  pool_foreach (hs, hsm->sessions[i])
            {
             vec_add1 (session_indices, hs - hsm->sessions[i]);
           }
-          /* *INDENT-ON* */
 
 	  for (j = 0; j < vec_len (session_indices); j++)
 	    {
@@ -1189,20 +1057,18 @@ hss_show_command_fn (vlib_main_t *vm, unformat_input_t *input,
  * @cliend
  * @cliexcmd{show http static server sessions cache [verbose [nn]]}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (hss_show_command, static) = {
   .path = "show http static server",
   .short_help = "show http static server sessions cache [verbose [<nn>]]",
   .function = hss_show_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 hss_clear_cache_command_fn (vlib_main_t *vm, unformat_input_t *input,
 			    vlib_cli_command_t *cmd)
 {
   hss_main_t *hsm = &hss_main;
-  file_data_cache_t *dp;
+  hss_cache_entry_t *ce;
   u32 free_index;
   u32 busy_items = 0;
   BVT (clib_bihash_kv) kv;
@@ -1216,31 +1082,31 @@ hss_clear_cache_command_fn (vlib_main_t *vm, unformat_input_t *input,
   free_index = hsm->last_index;
   while (free_index != ~0)
     {
-      dp = pool_elt_at_index (hsm->cache_pool, free_index);
-      free_index = dp->prev_index;
+      ce = pool_elt_at_index (hsm->cache_pool, free_index);
+      free_index = ce->prev_index;
       /* Which could be in use... */
-      if (dp->inuse)
+      if (ce->inuse)
 	{
 	  busy_items++;
-	  free_index = dp->next_index;
+	  free_index = ce->next_index;
 	  continue;
 	}
-      kv.key = (u64) (dp->filename);
+      kv.key = (u64) (ce->filename);
       kv.value = ~0ULL;
       if (BV (clib_bihash_add_del) (&hsm->name_to_data, &kv,
 				    0 /* is_add */ ) < 0)
 	{
-	  clib_warning ("BUG: cache clear delete '%s' FAILED!", dp->filename);
+	  clib_warning ("BUG: cache clear delete '%s' FAILED!", ce->filename);
 	}
 
-      lru_remove (hsm, dp);
-      hsm->cache_size -= vec_len (dp->data);
+      lru_remove (hsm, ce);
+      hsm->cache_size -= vec_len (ce->data);
       hsm->cache_evictions++;
-      vec_free (dp->filename);
-      vec_free (dp->data);
+      vec_free (ce->filename);
+      vec_free (ce->data);
       if (hsm->debug_level > 1)
-	clib_warning ("pool put index %d", dp - hsm->cache_pool);
-      pool_put (hsm->cache_pool, dp);
+	clib_warning ("pool put index %d", ce - hsm->cache_pool);
+      pool_put (hsm->cache_pool, ce);
       free_index = hsm->last_index;
     }
   hss_cache_unlock ();
@@ -1262,13 +1128,11 @@ hss_clear_cache_command_fn (vlib_main_t *vm, unformat_input_t *input,
  * @cliend
  * @cliexcmd{clear http static cache}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (clear_hss_cache_command, static) = {
   .path = "clear http static cache",
   .short_help = "clear http static cache",
   .function = hss_clear_cache_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 hss_main_init (vlib_main_t *vm)
