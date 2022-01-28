@@ -338,6 +338,7 @@ stat_segment_data_free (stat_segment_data_t * res)
 	  vec_free (res[i].error_vector);
 	  break;
 	case STAT_DIR_TYPE_SCALAR_INDEX:
+	case STAT_DIR_TYPE_EMPTY:
 	  break;
 	default:
 	  assert (0);
