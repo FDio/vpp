@@ -496,7 +496,7 @@ lcp_nl_open_socket (void)
 
   nl_connect (nm->sk_route, NETLINK_ROUTE);
 
-  if (dest_ns_fd)
+  if (dest_ns_fd && curr_ns_fd > 0)
     {
       setns (curr_ns_fd, CLONE_NEWNET);
       close (curr_ns_fd);
