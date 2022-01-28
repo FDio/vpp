@@ -16,6 +16,24 @@
       "revId": "9bd792af15074c70d18579539770f63c6f26e2f9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fa2fa6b7_7eb226c5",
+        "filename": "src/vpp/app/vppctl.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 192,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-01-28T09:37:04Z",
+      "side": 1,
+      "message": "we still need to detect errors, so we need the if condition - so theoretically, one line of code could be saved.\n\nI wasn\u0027t aware that we\u0027re doing C11 code ... are we? on all platforms? and is strncpy_s available on all platforms we support?",
+      "parentUuid": "0aa8a035_1605a913",
+      "revId": "9bd792af15074c70d18579539770f63c6f26e2f9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
