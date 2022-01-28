@@ -17,17 +17,6 @@
 #include <sched.h>
 #include <fcntl.h>
 
-#include <linux-cp/lcp_nl.h>
-
-#include <netlink/route/rule.h>
-#include <netlink/msg.h>
-#include <netlink/netlink.h>
-#include <netlink/socket.h>
-#include <netlink/route/link.h>
-#include <netlink/route/route.h>
-#include <netlink/route/neighbour.h>
-#include <netlink/route/addr.h>
-
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vppinfra/error.h>
@@ -36,6 +25,7 @@
 
 #include <libmnl/libmnl.h>
 
+#include <plugins/linux-cp/lcp_netlink.h>
 #include <plugins/linux-cp/lcp_interface.h>
 
 typedef enum nl_event_type_t_
@@ -185,8 +175,156 @@ nl_link_add (struct rtnl_link *rl, void *arg)
   FOREACH_VFT_CTX (nvl_rt_link_add, rl, arg);
 }
 
+u8 *
+format_nl_object (u8 *s, va_list *args)
+{
+  int type;
+  struct nl_object *obj = va_arg (*args, struct nl_object *);
+  if (!obj)
+    return s;
+
+  s = format (s, "%s: ", nl_object_get_type (obj));
+  type = nl_object_get_msgtype (obj);
+  switch (type)
+    {
+    case RTM_NEWROUTE:
+    case RTM_DELROUTE:
+      {
+	struct rtnl_route *route = (struct rtnl_route *) obj;
+	struct nl_addr *a;
+	int n;
+
+	char buf[128];
+	s = format (
+	  s, "%s family %s", type == RTM_NEWROUTE ? "add" : "del",
+	  nl_af2str (rtnl_route_get_family (route), buf, sizeof (buf)));
+	s = format (
+	  s, " type %d proto %d table %d", rtnl_route_get_type (route),
+	  rtnl_route_get_protocol (route), rtnl_route_get_table (route));
+	if ((a = rtnl_route_get_src (route)))
+	  s = format (s, " src %s", nl_addr2str (a, buf, sizeof (buf)));
+	if ((a = rtnl_route_get_dst (route)))
+	  s = format (s, " dst %s", nl_addr2str (a, buf, sizeof (buf)));
+
+	s = format (s, " nexthops {");
+	for (n = 0; n < rtnl_route_get_nnexthops (route); n++)
+	  {
+	    struct rtnl_nexthop *nh;
+	    nh = rtnl_route_nexthop_n (route, n);
+	    if ((a = rtnl_route_nh_get_via (nh)))
+	      s = format (s, " via %s", nl_addr2str (a, buf, sizeof (buf)));
+	    if ((a = rtnl_route_nh_get_gateway (nh)))
+	      s =
+		format (s, " gateway %s", nl_addr2str (a, buf, sizeof (buf)));
+	    if ((a = rtnl_route_nh_get_newdst (nh)))
+	      s = format (s, " newdst %s", nl_addr2str (a, buf, sizeof (buf)));
+	    s = format (s, " idx %d", rtnl_route_nh_get_ifindex (nh));
+	  }
+	s = format (s, " }");
+      }
+      break;
+    case RTM_NEWNEIGH:
+    case RTM_DELNEIGH:
+      {
+	struct rtnl_neigh *neigh = (struct rtnl_neigh *) obj;
+	int idx = rtnl_neigh_get_ifindex (neigh);
+	struct nl_addr *a;
+	char buf[128];
+	s = format (
+	  s, "%s idx %d family %s", type == RTM_NEWNEIGH ? "add" : "del", idx,
+	  nl_af2str (rtnl_neigh_get_family (neigh), buf, sizeof (buf)));
+	if ((a = rtnl_neigh_get_lladdr (neigh)))
+	  s = format (s, " lladdr %s", nl_addr2str (a, buf, sizeof (buf)));
+	if ((a = rtnl_neigh_get_dst (neigh)))
+	  s = format (s, " dst %s", nl_addr2str (a, buf, sizeof (buf)));
+
+	s = format (s, " state 0x%04x", rtnl_neigh_get_state (neigh));
+	rtnl_neigh_state2str (rtnl_neigh_get_state (neigh), buf, sizeof (buf));
+	if (buf[0])
+	  s = format (s, " (%s)", buf);
+
+	s = format (s, " flags 0x%04x", rtnl_neigh_get_flags (neigh));
+	rtnl_neigh_flags2str (rtnl_neigh_get_flags (neigh), buf, sizeof (buf));
+	if (buf[0])
+	  s = format (s, " (%s)", buf);
+      }
+      break;
+    case RTM_NEWADDR:
+    case RTM_DELADDR:
+      {
+	struct rtnl_addr *addr = (struct rtnl_addr *) obj;
+	int idx = rtnl_addr_get_ifindex (addr);
+	struct nl_addr *a;
+	char buf[128];
+
+	s = format (
+	  s, "%s idx %d family %s", type == RTM_NEWADDR ? "add" : "del", idx,
+	  nl_af2str (rtnl_addr_get_family (addr), buf, sizeof (buf)));
+	if ((a = rtnl_addr_get_local (addr)))
+	  s = format (s, " local %s", nl_addr2str (a, buf, sizeof (buf)));
+	if ((a = rtnl_addr_get_peer (addr)))
+	  s = format (s, " peer %s", nl_addr2str (a, buf, sizeof (buf)));
+	if ((a = rtnl_addr_get_broadcast (addr)))
+	  s = format (s, " broadcast %s", nl_addr2str (a, buf, sizeof (buf)));
+
+	s = format (s, " flags 0x%04x", rtnl_addr_get_flags (addr));
+	rtnl_addr_flags2str (rtnl_addr_get_flags (addr), buf, sizeof (buf));
+	if (buf[0])
+	  s = format (s, " (%s)", buf);
+      }
+      break;
+    case RTM_NEWLINK:
+    case RTM_DELLINK:
+      {
+	struct rtnl_link *link = (struct rtnl_link *) obj;
+	struct nl_addr *a;
+	char buf[128];
+	// mac_addr = rtnl_link_get_addr (l);
+	s =
+	  format (s, "%s idx %d name %s", type == RTM_NEWLINK ? "add" : "del",
+		  rtnl_link_get_ifindex (link), rtnl_link_get_name (link));
+
+	if ((a = rtnl_link_get_addr (link)))
+	  s = format (s, " addr %s", nl_addr2str (a, buf, sizeof (buf)));
+
+	s = format (s, " mtu %u carrier %d", rtnl_link_get_mtu (link),
+		    rtnl_link_get_carrier (link));
+
+	s = format (s, " operstate 0x%04x", rtnl_link_get_operstate (link));
+	rtnl_link_operstate2str (rtnl_link_get_operstate (link), buf,
+				 sizeof (buf));
+	if (buf[0])
+	  s = format (s, " (%s)", buf);
+
+	s = format (s, " flags 0x%04x", rtnl_link_get_flags (link));
+	rtnl_link_flags2str (rtnl_link_get_flags (link), buf, sizeof (buf));
+	if (buf[0])
+	  s = format (s, " (%s)", buf);
+
+	if (rtnl_link_is_vlan (link))
+	  {
+	    s =
+	      format (s, " vlan { parent-idx %d id %d proto 0x%04x",
+		      rtnl_link_get_link (link), rtnl_link_vlan_get_id (link),
+		      ntohs (rtnl_link_vlan_get_protocol (link)));
+	    s = format (s, " flags 0x%04x", rtnl_link_vlan_get_flags (link));
+	    rtnl_link_vlan_flags2str (rtnl_link_vlan_get_flags (link), buf,
+				      sizeof (buf));
+	    if (buf[0])
+	      s = format (s, " (%s)", buf);
+	    s = format (s, " }", buf);
+	  }
+      }
+      break;
+    default:
+      s = format (s, " <unknown>");
+      break;
+    }
+  return s;
+}
+
 static void
-nl_route_dispatch (struct nl_object *obj, void *arg)
+patch (struct nl_object *obj, void *arg)
 {
   /* nothing can be done without interface mappings */
   if (!lcp_itf_num_pairs ())
@@ -234,8 +372,7 @@ nl_route_process_msgs (void)
   /* process a batch of messages. break if we hit our limit */
   vec_foreach (msg_info, nm->nl_msg_queue)
     {
-      if ((err = nl_msg_parse (msg_info->msg, nl_route_dispatch, msg_info)) <
-	  0)
+      if ((err = nl_msg_parse (msg_info->msg, patch, msg_info)) < 0)
 	NL_ERROR ("Unable to parse object: %s", nl_geterror (err));
       nlmsg_free (msg_info->msg);
       if (++n_msgs >= nm->batch_size)
