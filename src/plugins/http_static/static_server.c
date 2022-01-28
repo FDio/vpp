@@ -295,14 +295,51 @@ done:
 }
 
 static int
+try_url_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
+		 u8 *request, http_status_code_t *sc)
+{
+  uword *p, *url_table;
+  hss_url_handler_t fp;
+  int rv;
+
+  if (!hsm->enable_url_handlers)
+    return -1;
+
+  /* Look for built-in GET / POST handlers */
+  url_table =
+    (rt == HTTP_REQ_GET) ? hsm->get_url_handlers : hsm->post_url_handlers;
+
+  p = hash_get_mem (url_table, request);
+  if (!p)
+    return -1;
+
+  if (hsm->debug_level > 0)
+    clib_warning ("%s '%s'", (rt == HTTP_REQ_GET) ? "GET" : "POST", request);
+
+  fp = (hss_url_handler_t) p[0];
+  hs->path = 0;
+  rv = fp (rt, request, hs);
+  if (rv)
+    {
+      clib_warning ("builtin handler %llx hit on %s '%s' but failed!", p[0],
+		    (rt == HTTP_REQ_GET) ? "GET" : "POST", request);
+      *sc = HTTP_STATUS_NOT_FOUND;
+    }
+
+  return 0;
+}
+
+static int
 find_data (hss_session_t *hs, http_req_method_t rt, u8 *request)
 {
+  http_status_code_t sc = HTTP_STATUS_OK;
   hss_main_t *hsm = &hss_main;
-  u8 *path;
   struct stat _sb, *sb = &_sb;
   clib_error_t *error;
-  uword *p, *builtin_table;
-  http_status_code_t sc = HTTP_STATUS_OK;
+  u8 *path;
+
+  if (!try_url_handler (hsm, hs, rt, request, &sc))
+    goto done;
 
   /*
    * Construct the file to open
@@ -315,29 +352,6 @@ find_data (hss_session_t *hs, http_req_method_t rt, u8 *request)
 
   if (hsm->debug_level > 0)
     clib_warning ("%s '%s'", (rt == HTTP_REQ_GET) ? "GET" : "POST", path);
-
-  /* Look for built-in GET / POST handlers */
-  builtin_table =
-    (rt == HTTP_REQ_GET) ? hsm->get_url_handlers : hsm->post_url_handlers;
-
-  p = hash_get_mem (builtin_table, request);
-
-  if (p)
-    {
-      int rv;
-      int (*fp) (http_req_method_t, u8 *, hss_session_t *);
-      fp = (void *) p[0];
-      hs->path = path;
-      rv = (*fp) (rt, request, hs);
-      if (rv)
-	{
-	  clib_warning ("builtin handler %llx hit on %s '%s' but failed!",
-			p[0], (rt == HTTP_REQ_GET) ? "GET" : "POST", request);
-
-	  sc = HTTP_STATUS_NOT_FOUND;
-	}
-      goto done;
-    }
 
   /* Try to find the file. 2x special cases to find index.html */
   if (stat ((char *) path, sb) < 0	/* cant even stat the file */
@@ -788,6 +802,18 @@ hss_listen (void)
   return rv;
 }
 
+static void
+hss_url_handlers_init (hss_main_t *hsm)
+{
+  if (!hsm->get_url_handlers)
+    {
+      hsm->get_url_handlers = hash_create_string (0, sizeof (uword));
+      hsm->post_url_handlers = hash_create_string (0, sizeof (uword));
+    }
+
+  hss_builtinurl_json_handlers_init ();
+}
+
 int
 hss_create (vlib_main_t *vm)
 {
@@ -814,8 +840,8 @@ hss_create (vlib_main_t *vm)
   /* Init path-to-cache hash table */
   BV (clib_bihash_init) (&hsm->name_to_data, "http cache", 128, 32 << 20);
 
-  hsm->get_url_handlers = hash_create_string (0, sizeof (uword));
-  hsm->post_url_handlers = hash_create_string (0, sizeof (uword));
+  if (hsm->enable_url_handlers)
+    hss_url_handlers_init (hsm);
 
   return 0;
 }
@@ -867,6 +893,8 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
       else if (unformat (line_input, "ptr-thresh %U", unformat_memory_size,
 			 &hsm->use_ptr_thresh))
 	;
+      else if (unformat (line_input, "url-handlers"))
+	hsm->enable_url_handlers = 1;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -881,9 +909,9 @@ no_input:
   if (error)
     goto done;
 
-  if (hsm->www_root == 0)
+  if (hsm->www_root == 0 && !hsm->enable_url_handlers)
     {
-      error = clib_error_return (0, "Must specify www-root <path>");
+      error = clib_error_return (0, "Must set www-root or url-handlers");
       goto done;
     }
 
@@ -924,7 +952,7 @@ VLIB_CLI_COMMAND (hss_create_command, static) = {
   .short_help =
     "http static server www-root <path> [prealloc-fifos <nn>]\n"
     "[private-segment-size <nnMG>] [fifo-size <nbytes>] [uri <uri>]\n"
-    "[ptr-thresh <nn>][debug [nn]]\n",
+    "[ptr-thresh <nn>] [url-handlers] [debug [nn]]\n",
   .function = hss_create_command_fn,
 };
 

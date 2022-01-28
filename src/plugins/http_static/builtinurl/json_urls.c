@@ -13,8 +13,6 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-#include <builtinurl/builtinurl.h>
 #include <http_static/http_static.h>
 #include <vpp/app/version.h>
 
@@ -23,7 +21,6 @@ handle_get_version (http_req_method_t reqtype, u8 *request, hss_session_t *hs)
 {
   u8 *s = 0;
 
-  /* Build some json bullshit */
   s = format (s, "{\"vpp_details\": {");
   s = format (s, "   \"version\": \"%s\",", VPP_BUILD_VER);
   s = format (s, "   \"build_date\": \"%s\"}}\r\n", VPP_BUILD_DATE);
@@ -36,10 +33,10 @@ handle_get_version (http_req_method_t reqtype, u8 *request, hss_session_t *hs)
 }
 
 void
-trim_path_from_request (u8 * s, char *path)
+trim_path_from_request (u8 *s, char *path)
 {
   u8 *cp;
-  int trim_length = strlen (path) + 1 /* remove '?' */ ;
+  int trim_length = strlen (path) + 1 /* remove '?' */;
 
   /* Get rid of the path and question-mark */
   vec_delete (s, trim_length, 0);
@@ -97,14 +94,12 @@ handle_get_interface_stats (http_req_method_t reqtype, u8 *request,
 
       vec_add1 (sw_if_indices, p[0]);
     }
-  else				/* default, HTTP_BUILTIN_METHOD_GET */
+  else /* default, HTTP_BUILTIN_METHOD_GET */
     {
-      /* *INDENT-OFF* */
       pool_foreach (hi, im->hw_interfaces)
-       {
-        vec_add1 (sw_if_indices, hi->sw_if_index);
-      }
-      /* *INDENT-ON* */
+	{
+	  vec_add1 (sw_if_indices, hi->sw_if_index);
+	}
     }
 
   s = format (s, "{%sinterface_stats%s: [\n", q, q);
@@ -121,7 +116,7 @@ handle_get_interface_stats (http_req_method_t reqtype, u8 *request,
 		  format_vnet_sw_if_index_name, vnm, sw_if_indices[i], q);
 
       stats = format_vnet_sw_interface_cntrs (stats, &vnm->interface_main, si,
-					      1 /* want json */ );
+					      1 /* want json */);
       if (vec_len (stats))
 	s = format (s, "%v}", stats);
       else
@@ -154,14 +149,12 @@ handle_get_interface_list (http_req_method_t reqtype, u8 *request,
   int need_comma = 0;
 
   /* Construct vector of active hw_if_indexes ... */
-  /* *INDENT-OFF* */
   pool_foreach (hi, im->hw_interfaces)
-   {
-    /* No point in mentioning "local0"... */
-    if (hi - im->hw_interfaces)
-      vec_add1 (hw_if_indices, hi - im->hw_interfaces);
-  }
-  /* *INDENT-ON* */
+    {
+      /* No point in mentioning "local0"... */
+      if (hi - im->hw_interfaces)
+	vec_add1 (hw_if_indices, hi - im->hw_interfaces);
+    }
 
   /* Build answer */
   s = format (s, "{\"interface_list\": [\n");
@@ -184,16 +177,15 @@ handle_get_interface_list (http_req_method_t reqtype, u8 *request,
 }
 
 void
-builtinurl_handler_init (builtinurl_main_t * bm)
+hss_builtinurl_json_handlers_init (void)
 {
-
-  bm->register_handler (handle_get_version, "version.json", HTTP_REQ_GET);
-  bm->register_handler (handle_get_interface_list, "interface_list.json",
-			HTTP_REQ_GET);
-  bm->register_handler (handle_get_interface_stats, "interface_stats.json",
-			HTTP_REQ_GET);
-  bm->register_handler (handle_get_interface_stats, "interface_stats.json",
-			HTTP_REQ_POST);
+  hss_register_url_handler (handle_get_version, "version.json", HTTP_REQ_GET);
+  hss_register_url_handler (handle_get_interface_list, "interface_list.json",
+			    HTTP_REQ_GET);
+  hss_register_url_handler (handle_get_interface_stats, "interface_stats.json",
+			    HTTP_REQ_GET);
+  hss_register_url_handler (handle_get_interface_stats, "interface_stats.json",
+			    HTTP_REQ_POST);
 }
 
 /*
