@@ -17,17 +17,6 @@
 #include <sched.h>
 #include <fcntl.h>
 
-#include <linux-cp/lcp_nl.h>
-
-#include <netlink/route/rule.h>
-#include <netlink/msg.h>
-#include <netlink/netlink.h>
-#include <netlink/socket.h>
-#include <netlink/route/link.h>
-#include <netlink/route/route.h>
-#include <netlink/route/neighbour.h>
-#include <netlink/route/addr.h>
-
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vppinfra/error.h>
@@ -36,41 +25,27 @@
 
 #include <libmnl/libmnl.h>
 
+#include <plugins/linux-cp/lcp_netlink.h>
 #include <plugins/linux-cp/lcp_interface.h>
 
 typedef enum nl_event_type_t_
 {
   NL_EVENT_READ,
-  NL_EVENT_ERR,
+  NL_EVENT_READ_ERR,
 } nl_event_type_t;
-
-typedef struct nl_main
-{
-
-  struct nl_sock *sk_route;
-  vlib_log_class_t nl_logger;
-  nl_vft_t *nl_vfts;
-  struct nl_cache *nl_caches[LCP_NL_N_OBJS];
-  nl_msg_info_t *nl_msg_queue;
-  uword clib_file_index;
-
-  u32 rx_buf_size;
-  u32 tx_buf_size;
-  u32 batch_size;
-  u32 batch_delay_ms;
-
-} nl_main_t;
 
 #define NL_RX_BUF_SIZE_DEF    (1 << 27) /* 128 MB */
 #define NL_TX_BUF_SIZE_DEF    (1 << 18) /* 256 kB */
-#define NL_BATCH_SIZE_DEF     (1 << 11) /* 2048 */
-#define NL_BATCH_DELAY_MS_DEF 50	/* 50 ms, max 20 batch/s */
+#define NL_BATCH_SIZE_DEF     (1 << 13) /* 8192 */
+#define NL_BATCH_WORK_MS_DEF  40	/* 40 ms */
+#define NL_BATCH_DELAY_MS_DEF 10	/* 10 ms */
 
-static nl_main_t nl_main = {
+lcp_nl_main_t lcp_nl_main = {
   .rx_buf_size = NL_RX_BUF_SIZE_DEF,
   .tx_buf_size = NL_TX_BUF_SIZE_DEF,
   .batch_size = NL_BATCH_SIZE_DEF,
   .batch_delay_ms = NL_BATCH_DELAY_MS_DEF,
+  .batch_work_ms = NL_BATCH_WORK_MS_DEF,
 };
 
 /* #define foreach_nl_nft_proto  \ */
@@ -86,7 +61,7 @@ static nl_main_t nl_main = {
 
 #define FOREACH_VFT(__func, __arg)                                            \
   {                                                                           \
-    nl_main_t *nm = &nl_main;                                                 \
+    lcp_nl_main_t *nm = &lcp_nl_main;                                         \
     nl_vft_t *__nv;                                                           \
     vec_foreach (__nv, nm->nl_vfts)                                           \
       {                                                                       \
@@ -105,7 +80,7 @@ static nl_main_t nl_main = {
 
 #define FOREACH_VFT_CTX(__func, __arg, __ctx)                                 \
   {                                                                           \
-    nl_main_t *nm = &nl_main;                                                 \
+    lcp_nl_main_t *nm = &lcp_nl_main;                                         \
     nl_vft_t *__nv;                                                           \
     vec_foreach (__nv, nm->nl_vfts)                                           \
       {                                                                       \
@@ -123,70 +98,214 @@ static nl_main_t nl_main = {
   }
 
 void
-nl_register_vft (const nl_vft_t *nv)
+lcp_nl_register_vft (const nl_vft_t *nv)
 {
-  nl_main_t *nm = &nl_main;
+  lcp_nl_main_t *nm = &lcp_nl_main;
 
   vec_add1 (nm->nl_vfts, *nv);
 }
-
-#define NL_DBG(...)   vlib_log_debug (nl_main.nl_logger, __VA_ARGS__);
-#define NL_INFO(...)  vlib_log_notice (nl_main.nl_logger, __VA_ARGS__);
-#define NL_ERROR(...) vlib_log_err (nl_main.nl_logger, __VA_ARGS__);
 
 static void lcp_nl_open_socket (void);
 static void lcp_nl_close_socket (void);
 
 static void
-nl_route_del (struct rtnl_route *rr, void *arg)
+lcp_nl_route_del (struct rtnl_route *rr, void *arg)
 {
   FOREACH_VFT (nvl_rt_route_del, rr);
 }
 
 static void
-nl_route_add (struct rtnl_route *rr, void *arg)
+lcp_nl_route_add (struct rtnl_route *rr, void *arg)
 {
   FOREACH_VFT (nvl_rt_route_add, rr);
 }
 
 static void
-nl_neigh_del (struct rtnl_neigh *rn, void *arg)
+lcp_nl_neigh_del (struct rtnl_neigh *rn, void *arg)
 {
   FOREACH_VFT (nvl_rt_neigh_del, rn);
 }
 
 static void
-nl_neigh_add (struct rtnl_neigh *rn, void *arg)
+lcp_nl_neigh_add (struct rtnl_neigh *rn, void *arg)
 {
   FOREACH_VFT (nvl_rt_neigh_add, rn);
 }
 
 static void
-nl_link_addr_del (struct rtnl_addr *rla, void *arg)
+lcp_nl_addr_del (struct rtnl_addr *rla, void *arg)
 {
   FOREACH_VFT (nvl_rt_addr_del, rla);
 }
 
 static void
-nl_link_addr_add (struct rtnl_addr *rla, void *arg)
+lcp_nl_addr_add (struct rtnl_addr *rla, void *arg)
 {
   FOREACH_VFT (nvl_rt_addr_add, rla);
 }
 
 static void
-nl_link_del (struct rtnl_link *rl, void *arg)
+lcp_nl_link_del (struct rtnl_link *rl, void *arg)
 {
   FOREACH_VFT_CTX (nvl_rt_link_del, rl, arg);
 }
 
 static void
-nl_link_add (struct rtnl_link *rl, void *arg)
+lcp_nl_link_add (struct rtnl_link *rl, void *arg)
 {
   FOREACH_VFT_CTX (nvl_rt_link_add, rl, arg);
 }
 
+u8 *
+format_nl_object (u8 *s, va_list *args)
+{
+  int type;
+  struct nl_object *obj = va_arg (*args, struct nl_object *);
+  if (!obj)
+    return s;
+
+  s = format (s, "%s: ", nl_object_get_type (obj));
+  type = nl_object_get_msgtype (obj);
+  switch (type)
+    {
+    case RTM_NEWROUTE:
+    case RTM_DELROUTE:
+      {
+	struct rtnl_route *route = (struct rtnl_route *) obj;
+	struct nl_addr *a;
+	int n;
+
+	char buf[128];
+	s = format (
+	  s, "%s family %s", type == RTM_NEWROUTE ? "add" : "del",
+	  nl_af2str (rtnl_route_get_family (route), buf, sizeof (buf)));
+	s = format (
+	  s, " type %d proto %d table %d", rtnl_route_get_type (route),
+	  rtnl_route_get_protocol (route), rtnl_route_get_table (route));
+	if ((a = rtnl_route_get_src (route)))
+	  s = format (s, " src %s", nl_addr2str (a, buf, sizeof (buf)));
+	if ((a = rtnl_route_get_dst (route)))
+	  s = format (s, " dst %s", nl_addr2str (a, buf, sizeof (buf)));
+
+	s = format (s, " nexthops {");
+	for (n = 0; n < rtnl_route_get_nnexthops (route); n++)
+	  {
+	    struct rtnl_nexthop *nh;
+	    nh = rtnl_route_nexthop_n (route, n);
+	    if ((a = rtnl_route_nh_get_via (nh)))
+	      s = format (s, " via %s", nl_addr2str (a, buf, sizeof (buf)));
+	    if ((a = rtnl_route_nh_get_gateway (nh)))
+	      s =
+		format (s, " gateway %s", nl_addr2str (a, buf, sizeof (buf)));
+	    if ((a = rtnl_route_nh_get_newdst (nh)))
+	      s = format (s, " newdst %s", nl_addr2str (a, buf, sizeof (buf)));
+	    s = format (s, " idx %d", rtnl_route_nh_get_ifindex (nh));
+	  }
+	s = format (s, " }");
+      }
+      break;
+    case RTM_NEWNEIGH:
+    case RTM_DELNEIGH:
+      {
+	struct rtnl_neigh *neigh = (struct rtnl_neigh *) obj;
+	int idx = rtnl_neigh_get_ifindex (neigh);
+	struct nl_addr *a;
+	char buf[128];
+	s = format (
+	  s, "%s idx %d family %s", type == RTM_NEWNEIGH ? "add" : "del", idx,
+	  nl_af2str (rtnl_neigh_get_family (neigh), buf, sizeof (buf)));
+	if ((a = rtnl_neigh_get_lladdr (neigh)))
+	  s = format (s, " lladdr %s", nl_addr2str (a, buf, sizeof (buf)));
+	if ((a = rtnl_neigh_get_dst (neigh)))
+	  s = format (s, " dst %s", nl_addr2str (a, buf, sizeof (buf)));
+
+	s = format (s, " state 0x%04x", rtnl_neigh_get_state (neigh));
+	rtnl_neigh_state2str (rtnl_neigh_get_state (neigh), buf, sizeof (buf));
+	if (buf[0])
+	  s = format (s, " (%s)", buf);
+
+	s = format (s, " flags 0x%04x", rtnl_neigh_get_flags (neigh));
+	rtnl_neigh_flags2str (rtnl_neigh_get_flags (neigh), buf, sizeof (buf));
+	if (buf[0])
+	  s = format (s, " (%s)", buf);
+      }
+      break;
+    case RTM_NEWADDR:
+    case RTM_DELADDR:
+      {
+	struct rtnl_addr *addr = (struct rtnl_addr *) obj;
+	int idx = rtnl_addr_get_ifindex (addr);
+	struct nl_addr *a;
+	char buf[128];
+
+	s = format (
+	  s, "%s idx %d family %s", type == RTM_NEWADDR ? "add" : "del", idx,
+	  nl_af2str (rtnl_addr_get_family (addr), buf, sizeof (buf)));
+	if ((a = rtnl_addr_get_local (addr)))
+	  s = format (s, " local %s", nl_addr2str (a, buf, sizeof (buf)));
+	if ((a = rtnl_addr_get_peer (addr)))
+	  s = format (s, " peer %s", nl_addr2str (a, buf, sizeof (buf)));
+	if ((a = rtnl_addr_get_broadcast (addr)))
+	  s = format (s, " broadcast %s", nl_addr2str (a, buf, sizeof (buf)));
+
+	s = format (s, " flags 0x%04x", rtnl_addr_get_flags (addr));
+	rtnl_addr_flags2str (rtnl_addr_get_flags (addr), buf, sizeof (buf));
+	if (buf[0])
+	  s = format (s, " (%s)", buf);
+      }
+      break;
+    case RTM_NEWLINK:
+    case RTM_DELLINK:
+      {
+	struct rtnl_link *link = (struct rtnl_link *) obj;
+	struct nl_addr *a;
+	char buf[128];
+	// mac_addr = rtnl_link_get_addr (l);
+	s =
+	  format (s, "%s idx %d name %s", type == RTM_NEWLINK ? "add" : "del",
+		  rtnl_link_get_ifindex (link), rtnl_link_get_name (link));
+
+	if ((a = rtnl_link_get_addr (link)))
+	  s = format (s, " addr %s", nl_addr2str (a, buf, sizeof (buf)));
+
+	s = format (s, " mtu %u carrier %d", rtnl_link_get_mtu (link),
+		    rtnl_link_get_carrier (link));
+
+	s = format (s, " operstate 0x%04x", rtnl_link_get_operstate (link));
+	rtnl_link_operstate2str (rtnl_link_get_operstate (link), buf,
+				 sizeof (buf));
+	if (buf[0])
+	  s = format (s, " (%s)", buf);
+
+	s = format (s, " flags 0x%04x", rtnl_link_get_flags (link));
+	rtnl_link_flags2str (rtnl_link_get_flags (link), buf, sizeof (buf));
+	if (buf[0])
+	  s = format (s, " (%s)", buf);
+
+	if (rtnl_link_is_vlan (link))
+	  {
+	    s =
+	      format (s, " vlan { parent-idx %d id %d proto 0x%04x",
+		      rtnl_link_get_link (link), rtnl_link_vlan_get_id (link),
+		      ntohs (rtnl_link_vlan_get_protocol (link)));
+	    s = format (s, " flags 0x%04x", rtnl_link_vlan_get_flags (link));
+	    rtnl_link_vlan_flags2str (rtnl_link_vlan_get_flags (link), buf,
+				      sizeof (buf));
+	    if (buf[0])
+	      s = format (s, " (%s)", buf);
+	    s = format (s, " }", buf);
+	  }
+      }
+      break;
+    default:
+      s = format (s, " <unknown>");
+      break;
+    }
+  return s;
+}
+
 static void
-nl_route_dispatch (struct nl_object *obj, void *arg)
+lcp_nl_dispatch (struct nl_object *obj, void *arg)
 {
   /* nothing can be done without interface mappings */
   if (!lcp_itf_num_pairs ())
@@ -195,58 +314,95 @@ nl_route_dispatch (struct nl_object *obj, void *arg)
   switch (nl_object_get_msgtype (obj))
     {
     case RTM_NEWROUTE:
-      nl_route_add ((struct rtnl_route *) obj, arg);
+      lcp_nl_route_add ((struct rtnl_route *) obj, arg);
       break;
     case RTM_DELROUTE:
-      nl_route_del ((struct rtnl_route *) obj, arg);
+      lcp_nl_route_del ((struct rtnl_route *) obj, arg);
       break;
     case RTM_NEWNEIGH:
-      nl_neigh_add ((struct rtnl_neigh *) obj, arg);
+      lcp_nl_neigh_add ((struct rtnl_neigh *) obj, arg);
       break;
     case RTM_DELNEIGH:
-      nl_neigh_del ((struct rtnl_neigh *) obj, arg);
+      lcp_nl_neigh_del ((struct rtnl_neigh *) obj, arg);
       break;
     case RTM_NEWADDR:
-      nl_link_addr_add ((struct rtnl_addr *) obj, arg);
+      lcp_nl_addr_add ((struct rtnl_addr *) obj, arg);
       break;
     case RTM_DELADDR:
-      nl_link_addr_del ((struct rtnl_addr *) obj, arg);
+      lcp_nl_addr_del ((struct rtnl_addr *) obj, arg);
       break;
     case RTM_NEWLINK:
-      nl_link_add ((struct rtnl_link *) obj, arg);
+      lcp_nl_link_add ((struct rtnl_link *) obj, arg);
       break;
     case RTM_DELLINK:
-      nl_link_del ((struct rtnl_link *) obj, arg);
+      lcp_nl_link_del ((struct rtnl_link *) obj, arg);
       break;
     default:
-      NL_INFO ("unhandled: %s", nl_object_get_type (obj));
+      NL_WARN ("dispatch: ignored %U", format_nl_object, obj);
       break;
     }
 }
 
 static int
-nl_route_process_msgs (void)
+lcp_nl_process_msgs (void)
 {
-  nl_main_t *nm = &nl_main;
+  lcp_nl_main_t *nm = &lcp_nl_main;
   nl_msg_info_t *msg_info;
   int err, n_msgs = 0;
+  f64 start = vlib_time_now (vlib_get_main ());
+  u64 usecs = 0;
+
+  /* To avoid loops where VPP->LCP sync fights with LCP->VPP
+   * sync, we turn off the former if it's enabled, while we consume
+   * the netlink messages in this function, and put it back at the
+   * end of the function.
+   */
+  lcp_main_t *lcpm = &lcp_main;
+  u8 old_lcp_sync = lcpm->lcp_sync;
+  lcpm->lcp_sync = 0;
 
   /* process a batch of messages. break if we hit our limit */
   vec_foreach (msg_info, nm->nl_msg_queue)
     {
-      if ((err = nl_msg_parse (msg_info->msg, nl_route_dispatch, msg_info)) <
-	  0)
-	NL_ERROR ("Unable to parse object: %s", nl_geterror (err));
+      if ((err = nl_msg_parse (msg_info->msg, lcp_nl_dispatch, msg_info)) < 0)
+	NL_ERROR ("process_msgs: Unable to parse object: %s",
+		  nl_geterror (err));
       nlmsg_free (msg_info->msg);
       if (++n_msgs >= nm->batch_size)
-	break;
+	{
+	  NL_INFO ("process_msgs: batch_size %u reached, yielding",
+		   nm->batch_size);
+	  break;
+	}
+      usecs = (u64) (1e6 * (vlib_time_now (vlib_get_main ()) - start));
+      if (usecs >= 1e3 * nm->batch_work_ms)
+	{
+	  NL_INFO ("process_msgs: batch_work_ms %u reached, yielding",
+		   nm->batch_work_ms);
+	  break;
+	}
     }
 
   /* remove the messages we processed from the head of the queue */
   if (n_msgs)
     vec_delete (nm->nl_msg_queue, n_msgs, 0);
 
-  NL_INFO ("Processed %u messages", n_msgs);
+  if (n_msgs > 0)
+    {
+      if (vec_len (nm->nl_msg_queue))
+	{
+	  NL_WARN ("process_msgs: Processed %u messages in %llu usecs, %u "
+		   "left in queue",
+		   n_msgs, usecs, vec_len (nm->nl_msg_queue));
+	}
+      else
+	{
+	  NL_INFO ("process_msgs: Processed %u messages in %llu usecs", n_msgs,
+		   usecs);
+	}
+    }
+
+  lcpm->lcp_sync = old_lcp_sync;
 
   return n_msgs;
 }
@@ -254,10 +410,10 @@ nl_route_process_msgs (void)
 #define DAY_F64 (1.0 * (24 * 60 * 60))
 
 static uword
-nl_route_process (vlib_main_t *vm, vlib_node_runtime_t *node,
-		  vlib_frame_t *frame)
+lcp_nl_process (vlib_main_t *vm, vlib_node_runtime_t *node,
+		vlib_frame_t *frame)
 {
-  nl_main_t *nm = &nl_main;
+  lcp_nl_main_t *nm = &lcp_nl_main;
   uword event_type;
   uword *event_data = 0;
   f64 wait_time = DAY_F64;
@@ -276,14 +432,14 @@ nl_route_process (vlib_main_t *vm, vlib_node_runtime_t *node,
 	/* process batch of queued messages on timeout or read event signal */
 	case ~0:
 	case NL_EVENT_READ:
-	  nl_route_process_msgs ();
+	  lcp_nl_process_msgs ();
 	  wait_time = (vec_len (nm->nl_msg_queue) != 0) ?
 			nm->batch_delay_ms * 1e-3 :
 			DAY_F64;
 	  break;
 
 	/* reopen the socket if there was an error polling/reading it */
-	case NL_EVENT_ERR:
+	case NL_EVENT_READ_ERR:
 	  lcp_nl_close_socket ();
 	  lcp_nl_open_socket ();
 	  break;
@@ -297,17 +453,17 @@ nl_route_process (vlib_main_t *vm, vlib_node_runtime_t *node,
   return frame->n_vectors;
 }
 
-VLIB_REGISTER_NODE (nl_route_process_node, static) = {
-  .function = nl_route_process,
+VLIB_REGISTER_NODE (lcp_nl_process_node, static) = {
+  .function = lcp_nl_process,
   .name = "linux-cp-netlink-process",
   .type = VLIB_NODE_TYPE_PROCESS,
   .process_log2_n_stack_bytes = 17,
 };
 
 static int
-nl_route_cb (struct nl_msg *msg, void *arg)
+lcp_nl_callback (struct nl_msg *msg, void *arg)
 {
-  nl_main_t *nm = &nl_main;
+  lcp_nl_main_t *nm = &lcp_nl_main;
   nl_msg_info_t *msg_info = 0;
 
   /* delay processing - increment ref count and queue for later */
@@ -319,17 +475,17 @@ nl_route_cb (struct nl_msg *msg, void *arg)
   nlmsg_get (msg);
 
   /* notify process node */
-  vlib_process_signal_event (vlib_get_main (), nl_route_process_node.index,
+  vlib_process_signal_event (vlib_get_main (), lcp_nl_process_node.index,
 			     NL_EVENT_READ, 0);
 
   return 0;
 }
 
-int
-lcp_nl_drain_messages (void)
+static clib_error_t *
+lcp_nl_read_cb (clib_file_t *f)
 {
   int err;
-  nl_main_t *nm = &nl_main;
+  lcp_nl_main_t *nm = &lcp_nl_main;
 
   /* Read until there's an error. Unless the error is ENOBUFS, which means
    * the kernel couldn't send a message due to socket buffer overflow.
@@ -341,41 +497,26 @@ lcp_nl_drain_messages (void)
   while ((err = nl_recvmsgs_default (nm->sk_route)) > -1 ||
 	 (err == -NLE_NOMEM && errno == ENOBUFS))
     ;
-
-  /* If there was an error other then EAGAIN, signal process node */
-  if (err != -NLE_AGAIN)
-    vlib_process_signal_event (vlib_get_main (), nl_route_process_node.index,
-			       NL_EVENT_ERR, 0);
-
-  return err;
-}
-
-void
-lcp_nl_pair_add_cb (lcp_itf_pair_t *pair)
-{
-  lcp_nl_drain_messages ();
-}
-
-static clib_error_t *
-nl_route_read_cb (clib_file_t *f)
-{
-  int err;
-  err = lcp_nl_drain_messages ();
   if (err < 0 && err != -NLE_AGAIN)
-    NL_ERROR ("Error reading netlink socket (fd %d): %s (%d)",
-	      f->file_descriptor, nl_geterror (err), err);
+    {
+      NL_ERROR ("read_cb: Error reading netlink socket (fd %d): %s (%d)",
+		f->file_descriptor, nl_geterror (err), err);
+      vlib_process_signal_event (vlib_get_main (), lcp_nl_process_node.index,
+				 NL_EVENT_READ_ERR, 0);
+    }
 
   return 0;
 }
 
 static clib_error_t *
-nl_route_error_cb (clib_file_t *f)
+lcp_nl_error_cb (clib_file_t *f)
 {
-  NL_ERROR ("Error polling netlink socket (fd %d)", f->file_descriptor);
+  NL_ERROR ("error_cb: Error polling netlink socket (fd %d)",
+	    f->file_descriptor);
 
   /* notify process node */
-  vlib_process_signal_event (vlib_get_main (), nl_route_process_node.index,
-			     NL_EVENT_ERR, 0);
+  vlib_process_signal_event (vlib_get_main (), lcp_nl_process_node.index,
+			     NL_EVENT_READ_ERR, 0);
 
   return clib_error_return (0, "Error polling netlink socket %d",
 			    f->file_descriptor);
@@ -384,7 +525,7 @@ nl_route_error_cb (clib_file_t *f)
 struct nl_cache *
 lcp_nl_get_cache (lcp_nl_obj_t t)
 {
-  nl_main_t *nm = &nl_main;
+  lcp_nl_main_t *nm = &lcp_nl_main;
 
   return nm->nl_caches[t];
 }
@@ -393,7 +534,7 @@ lcp_nl_get_cache (lcp_nl_obj_t t)
 void
 lcp_nl_set_buffer_size (u32 buf_size)
 {
-  nl_main_t *nm = &nl_main;
+  lcp_nl_main_t *nm = &lcp_nl_main;
 
   nm->rx_buf_size = buf_size;
 
@@ -405,7 +546,7 @@ lcp_nl_set_buffer_size (u32 buf_size)
 void
 lcp_nl_set_batch_size (u32 batch_size)
 {
-  nl_main_t *nm = &nl_main;
+  lcp_nl_main_t *nm = &lcp_nl_main;
 
   nm->batch_size = batch_size;
 }
@@ -414,7 +555,7 @@ lcp_nl_set_batch_size (u32 batch_size)
 void
 lcp_nl_set_batch_delay (u32 batch_delay_ms)
 {
-  nl_main_t *nm = &nl_main;
+  lcp_nl_main_t *nm = &lcp_nl_main;
 
   nm->batch_delay_ms = batch_delay_ms;
 }
@@ -445,7 +586,7 @@ VLIB_CONFIG_FUNCTION (lcp_itf_pair_config, "linux-nl");
 static void
 lcp_nl_close_socket (void)
 {
-  nl_main_t *nm = &nl_main;
+  lcp_nl_main_t *nm = &lcp_nl_main;
 
   /* delete existing fd from epoll fd set */
   if (nm->clib_file_index != ~0)
@@ -475,7 +616,7 @@ lcp_nl_close_socket (void)
 static void
 lcp_nl_open_socket (void)
 {
-  nl_main_t *nm = &nl_main;
+  lcp_nl_main_t *nm = &lcp_nl_main;
   int dest_ns_fd, curr_ns_fd;
 
   /* Allocate a new socket for both routes and acls
@@ -518,8 +659,8 @@ lcp_nl_open_socket (void)
   if (nm->clib_file_index == ~0)
     {
       clib_file_t rt_file = {
-	.read_function = nl_route_read_cb,
-	.error_function = nl_route_error_cb,
+	.read_function = lcp_nl_read_cb,
+	.error_function = lcp_nl_error_cb,
 	.file_descriptor = nl_socket_get_fd (nm->sk_route),
 	.description = format (0, "linux-cp netlink route socket"),
       };
@@ -538,8 +679,8 @@ lcp_nl_open_socket (void)
       NL_INFO ("Starting poll of %d", f->file_descriptor);
     }
 
-  nl_socket_modify_cb (nm->sk_route, NL_CB_VALID, NL_CB_CUSTOM, nl_route_cb,
-		       NULL);
+  nl_socket_modify_cb (nm->sk_route, NL_CB_VALID, NL_CB_CUSTOM,
+		       lcp_nl_callback, NULL);
   NL_INFO ("Opened netlink socket %d", nl_socket_get_fd (nm->sk_route));
 }
 
@@ -547,16 +688,12 @@ lcp_nl_open_socket (void)
 clib_error_t *
 lcp_nl_init (vlib_main_t *vm)
 {
-  nl_main_t *nm = &nl_main;
-  lcp_itf_pair_vft_t nl_itf_pair_vft = {
-    .pair_add_fn = lcp_nl_pair_add_cb,
-  };
+  lcp_nl_main_t *nm = &lcp_nl_main;
 
   nm->clib_file_index = ~0;
-  nm->nl_logger = vlib_log_register_class ("nl", "nl");
+  nm->nl_logger = vlib_log_register_class ("linux-cp", "nl");
 
   lcp_nl_open_socket ();
-  lcp_itf_pair_register_vft (&nl_itf_pair_vft);
 
   return (NULL);
 }
