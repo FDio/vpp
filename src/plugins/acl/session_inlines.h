@@ -193,26 +193,27 @@ static int
 acl_fa_conn_list_delete_session (acl_main_t * am,
 				 fa_full_session_id_t sess_id, u64 now)
 {
-  uword thread_index = os_get_thread_index ();
+  uword thread_index = sess_id.thread_index; // os_get_thread_index ();
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
-  if (thread_index != sess_id.thread_index)
-    {
-      /* If another thread attempts to delete the session, fail it. */
-#ifdef FA_NODE_VERBOSE_DEBUG
-      clib_warning ("thread id in key %d != curr thread index, not deleting");
-#endif
-      return 0;
-    }
+  //   if (thread_index != sess_id.thread_index)
+  //     {
+  //       /* If another thread attempts to delete the session, fail it. */
+  // #ifdef FA_NODE_VERBOSE_DEBUG
+  //       clib_warning ("thread id in key %d != curr thread index, not
+  //       deleting");
+  // #endif
+  //       return 0;
+  //     }
   fa_session_t *sess =
     get_session_ptr (am, sess_id.thread_index, sess_id.session_index);
   u64 next_expiry_time = ~0ULL;
   /* we should never try to delete the session with another thread index */
-  if (sess->thread_index != os_get_thread_index ())
-    {
-      clib_error
-	("Attempting to delete session belonging to thread %d by thread %d",
-	 sess->thread_index, thread_index);
-    }
+  //  if (sess->thread_index != os_get_thread_index ())
+  //    {
+  //      clib_error
+  // ("Attempting to delete session belonging to thread %d by thread %d",
+  //  sess->thread_index, thread_index);
+  //    }
   if (FA_SESSION_BOGUS_INDEX != sess->link_prev_idx)
     {
       fa_session_t *prev_sess =

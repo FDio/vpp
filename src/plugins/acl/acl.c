@@ -18,6 +18,7 @@
 #include <vnet/vnet.h>
 #include <vnet/plugin/plugin.h>
 #include <acl/acl.h>
+#include <plugins/acl/session_inlines.h>
 
 #include <vnet/l2/l2_classify.h>
 #include <vnet/l2/l2_in_out_feat_arc.h>
@@ -518,6 +519,82 @@ acl_clear_sessions (acl_main_t * am, u32 sw_if_index)
 			     sw_if_index);
 }
 
+typedef struct acl_session_purge_interface_walk_t_
+{
+  u64 *del_sessions;
+  acl_main_t *am;
+  u32 sw_if_index;
+} acl_session_purge_interface_walk_ctx_t;
+
+static int
+acl_session_purge_interface_ip6 (clib_bihash_kv_40_8_t *key, void *arg)
+{
+  acl_session_purge_interface_walk_ctx_t *ctx =
+    (acl_session_purge_interface_walk_ctx_t *) arg;
+  fa_full_session_id_t f_sess_id;
+  fa_session_t *session;
+
+  f_sess_id.as_u64 = key->value;
+  session = get_session_ptr_no_check (ctx->am, f_sess_id.thread_index,
+				      f_sess_id.session_index);
+
+  if (session->sw_if_index == ctx->sw_if_index)
+    vec_add1 (ctx->del_sessions, key->value);
+
+  return (BIHASH_WALK_CONTINUE);
+}
+
+static int
+acl_session_purge_interface_ip4 (clib_bihash_kv_16_8_t *key, void *arg)
+{
+  acl_session_purge_interface_walk_ctx_t *ctx =
+    (acl_session_purge_interface_walk_ctx_t *) arg;
+  fa_full_session_id_t f_sess_id;
+  fa_session_t *session;
+
+  f_sess_id.as_u64 = key->value;
+  session = get_session_ptr_no_check (ctx->am, f_sess_id.thread_index,
+				      f_sess_id.session_index);
+
+  if (session->sw_if_index == ctx->sw_if_index)
+    vec_add1 (ctx->del_sessions, key->value);
+
+  return (BIHASH_WALK_CONTINUE);
+}
+
+static void
+acl_purge_session (acl_main_t *am, u32 sw_if_index, f64 now, u64 f_sess_id_u64)
+{
+  fa_full_session_id_t f_sess_id;
+  f_sess_id.as_u64 = f_sess_id_u64;
+
+  if (acl_fa_conn_list_delete_session (am, f_sess_id, now))
+    {
+      /* delete the session only if we were able to unlink it */
+      acl_fa_two_stage_delete_session (am, sw_if_index, f_sess_id, now);
+    }
+}
+
+void
+acl_plugin_wip_clear_sessions (u32 sw_if_index)
+{
+  // acl_clear_sessions (&acl_main, sw_if_index);
+  acl_session_purge_interface_walk_ctx_t _ctx = { 0 }, *ctx = &_ctx;
+  acl_main_t *am = &acl_main;
+  u64 *idx;
+
+  ctx->am = am;
+
+  clib_bihash_foreach_key_value_pair_40_8 (
+    &am->fa_ip6_sessions_hash, acl_session_purge_interface_ip6, ctx);
+  clib_bihash_foreach_key_value_pair_16_8 (
+    &am->fa_ip4_sessions_hash, acl_session_purge_interface_ip4, ctx);
+
+  u64 now = clib_cpu_time_now ();
+
+  vec_foreach (idx, ctx->del_sessions)
+    acl_purge_session (am, sw_if_index, now, *idx);
+}
 
 static int
 acl_interface_in_enable_disable (acl_main_t * am, u32 sw_if_index,
@@ -1840,7 +1917,6 @@ static void
 
   REPLY_MACRO (VL_API_ACL_DEL_REPLY);
 }
-
 
 static void
 vl_api_acl_interface_add_del_t_handler (vl_api_acl_interface_add_del_t * mp)
