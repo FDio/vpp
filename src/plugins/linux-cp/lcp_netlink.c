@@ -17,7 +17,7 @@
 #include <sched.h>
 #include <fcntl.h>
 
-#include <linux-cp/lcp_nl.h>
+#include <linux-cp/lcp_netlink.h>
 
 #include <netlink/route/rule.h>
 #include <netlink/msg.h>
