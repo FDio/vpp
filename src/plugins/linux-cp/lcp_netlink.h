@@ -15,10 +15,14 @@
 
 #include <vlib/vlib.h>
 
+#include <netlink/msg.h>
+#include <netlink/netlink.h>
+#include <netlink/socket.h>
 #include <netlink/route/link.h>
 #include <netlink/route/route.h>
 #include <netlink/route/neighbour.h>
 #include <netlink/route/addr.h>
+#include <netlink/route/link/vlan.h>
 
 typedef void (*nl_rt_link_cb_t) (struct rtnl_link *rl, void *ctx);
 typedef void (*nl_rt_addr_cb_t) (struct rtnl_addr *ra);
@@ -99,10 +103,11 @@ typedef struct nl_msg_info
 #define LCP_NL_N_OBJS (LCP_NL_ROUTE + 1)
 
 extern struct nl_cache *lcp_nl_get_cache (lcp_nl_obj_t t);
-extern int lcp_nl_drain_messages (void);
 extern void lcp_nl_set_buffer_size (u32 buf_size);
 extern void lcp_nl_set_batch_size (u32 batch_size);
 extern void lcp_nl_set_batch_delay (u32 batch_delay_ms);
+
+u8 *format_nl_object (u8 *s, va_list *args);
 
 /*
  * fd.io coding-style-patch-verification: ON
