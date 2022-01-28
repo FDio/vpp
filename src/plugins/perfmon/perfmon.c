@@ -398,9 +398,6 @@ perfmon_init (vlib_main_t *vm)
       clib_error_t *err;
       uword *p;
 
-      if (hash_get_mem (pm->bundle_by_name, b->name) != 0)
-	clib_panic ("duplicate bundle name '%s'", b->name);
-
       if ((p = hash_get_mem (pm->source_by_name, b->source)) == 0)
 	{
 	  log_debug ("missing source '%s', skipping bundle '%s'", b->source,
@@ -425,6 +422,9 @@ perfmon_init (vlib_main_t *vm)
 	  b = b->next;
 	  continue;
 	}
+
+      if (hash_get_mem (pm->bundle_by_name, b->name) != 0)
+	clib_panic ("duplicate bundle name '%s'", b->name);
 
       hash_set_mem (pm->bundle_by_name, b->name, b);
       log_debug ("bundle '%s' regisrtered", b->name);
