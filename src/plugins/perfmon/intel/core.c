@@ -77,13 +77,22 @@ intel_core_init (vlib_main_t *vm, perfmon_source_t *src)
   return 0;
 }
 
-u8
-intel_core_is_fixed (u32 event)
+perfmon_event_type_t
+intel_core_get_event_type (u32 event)
 {
   u64 config = events[event].config;
   u8 eventcode = (config & 0xFF);
+  u8 umask = ((config >> 8) & 0xFF);
 
-  return !eventcode ? 1 : 0;
+  if (!eventcode) /* is fixed or pseudo */
+    {
+      if (umask >= 0x80) /* is pseudo */
+	return PERFMON_EVENT_TYPE_PSEUDO;
+      else /* is fixed */
+	return PERFMON_EVENT_TYPE_FIXED;
+    }
+  else
+    return PERFMON_EVENT_TYPE_GENERAL;
 }
 
 PERFMON_REGISTER_SOURCE (intel_core) = {
@@ -92,6 +101,6 @@ PERFMON_REGISTER_SOURCE (intel_core) = {
   .events = events,
   .n_events = ARRAY_LEN (events),
   .init_fn = intel_core_init,
-  .is_fixed = intel_core_is_fixed,
+  .get_event_type = intel_core_get_event_type,
   .format_config = format_intel_core_config,
 };

@@ -327,24 +327,30 @@ perfmon_stop (vlib_main_t *vm)
 static_always_inline u8
 is_enough_counters (perfmon_bundle_t *b)
 {
-  struct
-  {
-    u8 general;
-    u8 fixed;
-  } bl = { 0, 0 }, cpu = { 0, 0 };
+  u8 bl[PERFMON_EVENT_TYPE_MAX];
+  u8 cpu[PERFMON_EVENT_TYPE_MAX];
+
+  clib_memset (&bl, 0, sizeof (bl));
+  clib_memset (&cpu, 0, sizeof (cpu));
 
   /* how many does this uarch support */
-  if (!clib_get_pmu_counter_count (&cpu.fixed, &cpu.general))
+  if (!clib_get_pmu_counter_count (&cpu[PERFMON_EVENT_TYPE_FIXED],
+				   &cpu[PERFMON_EVENT_TYPE_GENERAL]))
     return 0;
 
   /* how many does the bundle require */
   for (u16 i = 0; i < b->n_events; i++)
-    if (b->src->is_fixed && b->src->is_fixed (b->events[i]))
-      bl.fixed++;
-    else
-      bl.general++;
+    {
+      /* if source allows us to identify events, otherwise assume general */
+      if (b->src->get_event_type)
+	bl[b->src->get_event_type (b->events[i])]++;
+      else
+	bl[PERFMON_EVENT_TYPE_GENERAL]++;
+    }
 
-  return cpu.general >= bl.general && cpu.fixed >= bl.fixed;
+  /* consciously ignoring pseudo events here */
+  return cpu[PERFMON_EVENT_TYPE_GENERAL] >= bl[PERFMON_EVENT_TYPE_GENERAL] &&
+	 cpu[PERFMON_EVENT_TYPE_FIXED] >= bl[PERFMON_EVENT_TYPE_FIXED];
 }
 
 static_always_inline u8
