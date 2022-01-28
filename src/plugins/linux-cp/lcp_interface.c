@@ -1173,7 +1173,7 @@ lcp_interface_init (vlib_main_t *vm)
   tcp_punt_unknown (vm, 0, 1);
   tcp_punt_unknown (vm, 1, 1);
 
-  lcp_itf_pair_logger = vlib_log_register_class ("linux-cp", "itf");
+  lcp_itf_pair_logger = vlib_log_register_class ("linux-cp", "if");
 
   return NULL;
 }

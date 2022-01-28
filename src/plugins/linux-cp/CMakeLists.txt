@@ -63,8 +63,8 @@ add_vpp_plugin(linux_cp_unittest
 
 add_vpp_plugin(linux_nl
   SOURCES
-  lcp_router.c
-  lcp_nl.c
+  lcp_netlink.c
+  lcp_netlink_sync.c
 
   LINK_LIBRARIES
   lcp

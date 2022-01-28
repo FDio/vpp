@@ -15,10 +15,20 @@
 
 #include <vlib/vlib.h>
 
+#include <netlink/msg.h>
+#include <netlink/netlink.h>
+#include <netlink/socket.h>
 #include <netlink/route/link.h>
 #include <netlink/route/route.h>
 #include <netlink/route/neighbour.h>
 #include <netlink/route/addr.h>
+#include <netlink/route/link/vlan.h>
+
+#define NL_DBG(...)    vlib_log_debug (lcp_nl_main.nl_logger, __VA_ARGS__);
+#define NL_INFO(...)   vlib_log_info (lcp_nl_main.nl_logger, __VA_ARGS__);
+#define NL_NOTICE(...) vlib_log_notice (lcp_nl_main.nl_logger, __VA_ARGS__);
+#define NL_WARN(...)   vlib_log_warn (lcp_nl_main.nl_logger, __VA_ARGS__);
+#define NL_ERROR(...)  vlib_log_err (lcp_nl_main.nl_logger, __VA_ARGS__);
 
 typedef void (*nl_rt_link_cb_t) (struct rtnl_link *rl, void *ctx);
 typedef void (*nl_rt_addr_cb_t) (struct rtnl_addr *ra);
@@ -69,7 +79,7 @@ typedef struct nl_vft_t_
   nl_rt_route_t nvl_rt_route_del;
 } nl_vft_t;
 
-extern void nl_register_vft (const nl_vft_t *nv);
+extern void lcp_nl_register_vft (const nl_vft_t *nv);
 
 typedef enum lcp_nl_obj_t_
 {
@@ -98,11 +108,32 @@ typedef struct nl_msg_info
 
 #define LCP_NL_N_OBJS (LCP_NL_ROUTE + 1)
 
+typedef struct lcp_nl_main
+{
+
+  struct nl_sock *sk_route;
+  vlib_log_class_t nl_logger;
+  nl_vft_t *nl_vfts;
+  struct nl_cache *nl_caches[LCP_NL_N_OBJS];
+  nl_msg_info_t *nl_msg_queue;
+  uword clib_file_index;
+
+  u32 rx_buf_size;
+  u32 tx_buf_size;
+  u32 batch_size;
+  u32 batch_delay_ms;
+  u32 batch_work_ms;
+
+} lcp_nl_main_t;
+
+extern lcp_nl_main_t lcp_nl_main;
+
 extern struct nl_cache *lcp_nl_get_cache (lcp_nl_obj_t t);
-extern int lcp_nl_drain_messages (void);
 extern void lcp_nl_set_buffer_size (u32 buf_size);
 extern void lcp_nl_set_batch_size (u32 batch_size);
 extern void lcp_nl_set_batch_delay (u32 batch_delay_ms);
+
+u8 *format_nl_object (u8 *s, va_list *args);
 
 /*
  * fd.io coding-style-patch-verification: ON
