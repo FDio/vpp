@@ -1,10 +1,18 @@
 ---
-name: Static http https server
-maintainer: Dave Barach <dave@barachs.net>
+name: Static HTTP(S) Server
+maintainer:
+ - Dave Barach <dave@barachs.net>
+ - Florin Coras <fcoras@cisco.com>
 features:
-  - An extensible static http/https server with caching
-description: "A simple caching static http / https server
-              A built-in vpp host stack application.
-              Supports HTTP GET and HTTP POST methods."
+  - HTTP GET/POST handling
+  - LRU file caching
+  - pluggable URL handlers
+  - builtin json URL handles:
+    - version.json - vpp version info
+    - interface_list.json - list of interfaces
+    - interface_stats - single interface via HTTP POST
+    - interface_stats - all intfcs via HTTP GET."
+description: "Static HTTP(S) server implemented as a
+					  built-in vpp host stack application. "
 state: production
 properties: [API, CLI, MULTITHREAD]
