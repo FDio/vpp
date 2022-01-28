@@ -149,6 +149,20 @@
   _ (0x9C, 0x01, 0, 0, 0, 0x00, IDQ_UOPS_NOT_DELIVERED, CORE,                 \
      "Uops not delivered to Resource Allocation Table (RAT) per thread when " \
      "backend of the machine is not stalled")                                 \
+  _ (0xA1, 0x01, 0, 0, 0, 0x00, UOPS_DISPATCHED, PORT_0,                      \
+     "Number of uops executed on port 0")                                     \
+  _ (0xA1, 0x02, 0, 0, 0, 0x00, UOPS_DISPATCHED, PORT_1,                      \
+     "Number of uops executed on port 1")                                     \
+  _ (0xA1, 0x04, 0, 0, 0, 0x00, UOPS_DISPATCHED, PORT_2_3,                    \
+     "Number of uops executed on port 2 and 3")                               \
+  _ (0xA1, 0x10, 0, 0, 0, 0x00, UOPS_DISPATCHED, PORT_4_9,                    \
+     "Number of uops executed on port 4 and 9")                               \
+  _ (0xA1, 0x20, 0, 0, 0, 0x00, UOPS_DISPATCHED, PORT_5,                      \
+     "Number of uops executed on port 5")                                     \
+  _ (0xA1, 0x40, 0, 0, 0, 0x00, UOPS_DISPATCHED, PORT_6,                      \
+     "Number of uops executed on port 6")                                     \
+  _ (0xA1, 0x80, 0, 0, 0, 0x00, UOPS_DISPATCHED, PORT_7_8,                    \
+     "Number of uops executed on port 7 and 8")                               \
   _ (0xA2, 0x08, 0, 0, 0, 0x00, RESOURCE_STALLS, SB,                          \
      "Counts allocation stall cycles caused by the store buffer (SB) being "  \
      "full. This counts cycles that the pipeline back-end blocked uop "       \
@@ -230,6 +244,9 @@
      "Counts the total number when the front end is resteered, mainly when "  \
      "the BPU cannot provide a correct prediction and this is corrected by "  \
      "other branch handling mechanisms at the front end.")                    \
+  _ (0xEC, 0x02, 0, 0, 0, 0x00, CPU_CLK_UNHALTED, DISTRIBUTED,                \
+     "Cycle counts are evenly distributed between active threads in the "     \
+     " Core")                                                                 \
   _ (0xF0, 0x40, 0, 0, 0, 0x00, L2_TRANS, L2_WB,                              \
      "L2 writebacks that access L2 cache")                                    \
   _ (0xF1, 0x1F, 0, 0, 0, 0x00, L2_LINES_IN, ALL,                             \

@@ -24,6 +24,7 @@ add_vpp_plugin(perfmon
   intel/core.c
   intel/uncore.c
   intel/bundle/backend_bound_mem.c
+  intel/bundle/backend_bound_core.c
   intel/bundle/inst_and_clock.c
   intel/bundle/load_blocks.c
   intel/bundle/mem_bw.c
