@@ -16,9 +16,8 @@
 #include <sys/socket.h>
 #include <linux/if.h>
 
-//#include <vlib/vlib.h>
 #include <vlib/unix/plugin.h>
-#include <linux-cp/lcp_nl.h>
+#include <linux-cp/lcp_netlink.h>
 #include <linux-cp/lcp_interface.h>
 
 #include <netlink/msg.h>
@@ -36,18 +35,18 @@
 #include <vnet/ip-neighbor/ip_neighbor.h>
 #include <vnet/ip/ip6_link.h>
 
-typedef struct lcp_router_table_t_
+typedef struct lcp_netlink_table_t_
 {
   uint32_t nlt_id;
   fib_protocol_t nlt_proto;
   u32 nlt_fib_index;
   u32 nlt_mfib_index;
   u32 nlt_refs;
-} lcp_router_table_t;
+} lcp_netlink_table_t;
 
-static uword *lcp_router_table_db[FIB_PROTOCOL_MAX];
-static lcp_router_table_t *lcp_router_table_pool;
-static vlib_log_class_t lcp_router_logger;
+static uword *lcp_netlink_table_db[FIB_PROTOCOL_MAX];
+static lcp_netlink_table_t *lcp_netlink_table_pool;
+static vlib_log_class_t lcp_netlink_logger;
 
 const static fib_prefix_t pfx_all1s = {
   .fp_addr = {
@@ -61,12 +60,6 @@ const static fib_prefix_t pfx_all1s = {
 
 static fib_source_t lcp_rt_fib_src;
 static fib_source_t lcp_rt_fib_src_dynamic;
-
-#define LCP_ROUTER_DBG(...) vlib_log_debug (lcp_router_logger, __VA_ARGS__);
-
-#define LCP_ROUTER_INFO(...) vlib_log_notice (lcp_router_logger, __VA_ARGS__);
-
-#define LCP_ROUTER_ERROR(...) vlib_log_err (lcp_router_logger, __VA_ARGS__);
 
 static const mfib_prefix_t ip4_specials[] = {
   /* ALL prefixes are in network order */
@@ -96,7 +89,7 @@ static const mfib_prefix_t ip6_specials[] = {
 static uword *lcp_routing_itf_db;
 
 static u32
-lcp_router_intf_h2p (u32 host)
+lcp_netlink_intf_h2p (u32 host)
 {
   lcp_itf_pair_t *lip;
   index_t lipi;
@@ -131,19 +124,18 @@ lcp_router_intf_h2p (u32 host)
  * Else, return -1.
  */
 static int
-lcp_router_lip_ts_check (nl_msg_info_t *msg_info, lcp_itf_pair_t *lip)
+lcp_netlink_lip_ts_check (nl_msg_info_t *msg_info, lcp_itf_pair_t *lip)
 {
   if (msg_info->ts > lip->lip_create_ts)
     return 0;
 
-  LCP_ROUTER_INFO ("Early message received for %U",
-		   format_vnet_sw_if_index_name, vnet_get_main (),
-		   lip->lip_phy_sw_if_index);
+  NL_INFO ("Early message received for %U", format_vnet_sw_if_index_name,
+	   vnet_get_main (), lip->lip_phy_sw_if_index);
   return -1;
 }
 
 static void
-lcp_router_link_del (struct rtnl_link *rl, void *ctx)
+lcp_netlink_link_del (struct rtnl_link *rl, void *ctx)
 {
   index_t lipi;
 
@@ -158,30 +150,30 @@ lcp_router_link_del (struct rtnl_link *rl, void *ctx)
 
       lip = lcp_itf_pair_get (lipi);
 
-      if (lcp_router_lip_ts_check ((nl_msg_info_t *) ctx, lip))
+      if (lcp_netlink_lip_ts_check ((nl_msg_info_t *) ctx, lip))
 	return;
 
-      LCP_ROUTER_INFO ("delete link: %s - %U", rtnl_link_get_type (rl),
-		       format_vnet_sw_if_index_name, vnet_get_main (),
-		       lip->lip_phy_sw_if_index);
+      NL_INFO ("delete link: %s - %U", rtnl_link_get_type (rl),
+	       format_vnet_sw_if_index_name, vnet_get_main (),
+	       lip->lip_phy_sw_if_index);
       lcp_itf_pair_delete (lip->lip_phy_sw_if_index);
 
       if (rtnl_link_is_vlan (rl))
 	{
-	  LCP_ROUTER_INFO ("delete vlan: %s -> %U", rtnl_link_get_name (rl),
-			   format_vnet_sw_if_index_name, vnet_get_main (),
-			   lip->lip_phy_sw_if_index);
+	  NL_INFO ("delete vlan: %s -> %U", rtnl_link_get_name (rl),
+		   format_vnet_sw_if_index_name, vnet_get_main (),
+		   lip->lip_phy_sw_if_index);
 	  vnet_delete_sub_interface (lip->lip_phy_sw_if_index);
 	  vnet_delete_sub_interface (lip->lip_host_sw_if_index);
 	}
     }
   else
-    LCP_ROUTER_INFO ("ignore link del: %s - %s", rtnl_link_get_type (rl),
-		     rtnl_link_get_name (rl));
+    NL_INFO ("ignore link del: %s - %s", rtnl_link_get_type (rl),
+	     rtnl_link_get_name (rl));
 }
 
 static void
-lcp_router_ip4_mroutes_add_del (u32 sw_if_index, u8 is_add)
+lcp_netlink_ip4_mroutes_add_del (u32 sw_if_index, u8 is_add)
 {
   const fib_route_path_t path = {
     .frp_proto = DPO_PROTO_IP4,
@@ -214,7 +206,7 @@ lcp_router_ip4_mroutes_add_del (u32 sw_if_index, u8 is_add)
 }
 
 static void
-lcp_router_ip6_mroutes_add_del (u32 sw_if_index, u8 is_add)
+lcp_netlink_ip6_mroutes_add_del (u32 sw_if_index, u8 is_add)
 {
   const fib_route_path_t path = {
     .frp_proto = DPO_PROTO_IP6,
@@ -247,7 +239,7 @@ lcp_router_ip6_mroutes_add_del (u32 sw_if_index, u8 is_add)
 }
 
 static void
-lcp_router_link_mtu (struct rtnl_link *rl, u32 sw_if_index)
+lcp_netlink_link_mtu (struct rtnl_link *rl, u32 sw_if_index)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 mtu;
@@ -270,7 +262,7 @@ lcp_router_link_mtu (struct rtnl_link *rl, u32 sw_if_index)
 }
 
 static void
-lcp_router_link_addr (struct rtnl_link *rl, lcp_itf_pair_t *lip)
+lcp_netlink_link_addr (struct rtnl_link *rl, lcp_itf_pair_t *lip)
 {
   vnet_main_t *vnm = vnet_get_main ();
   struct nl_addr *mac_addr;
@@ -305,7 +297,7 @@ lcp_router_link_addr (struct rtnl_link *rl, lcp_itf_pair_t *lip)
 }
 
 static void
-lcp_router_link_add (struct rtnl_link *rl, void *ctx)
+lcp_netlink_link_add (struct rtnl_link *rl, void *ctx)
 {
   index_t lipi;
   int up;
@@ -322,7 +314,7 @@ lcp_router_link_add (struct rtnl_link *rl, void *ctx)
       if (!vnet_get_sw_interface (vnm, lip->lip_phy_sw_if_index))
 	return;
 
-      if (lcp_router_lip_ts_check ((nl_msg_info_t *) ctx, lip))
+      if (lcp_netlink_lip_ts_check ((nl_msg_info_t *) ctx, lip))
 	return;
 
       if (up)
@@ -335,14 +327,13 @@ lcp_router_link_add (struct rtnl_link *rl, void *ctx)
 	  vnet_sw_interface_admin_down (vnet_get_main (),
 					lip->lip_phy_sw_if_index);
 	}
-      LCP_ROUTER_DBG ("link: %s (%d) -> %U/%U %s", rtnl_link_get_name (rl),
-		      rtnl_link_get_ifindex (rl), format_vnet_sw_if_index_name,
-		      vnm, lip->lip_phy_sw_if_index,
-		      format_vnet_sw_if_index_name, vnm,
-		      lip->lip_host_sw_if_index, (up ? "up" : "down"));
+      NL_DBG ("link: %s (%d) -> %U/%U %s", rtnl_link_get_name (rl),
+	      rtnl_link_get_ifindex (rl), format_vnet_sw_if_index_name, vnm,
+	      lip->lip_phy_sw_if_index, format_vnet_sw_if_index_name, vnm,
+	      lip->lip_host_sw_if_index, (up ? "up" : "down"));
 
-      lcp_router_link_mtu (rl, lip->lip_phy_sw_if_index);
-      lcp_router_link_addr (rl, lip);
+      lcp_netlink_link_mtu (rl, lip->lip_phy_sw_if_index);
+      lcp_netlink_link_addr (rl, lip);
     }
   else if (lcp_auto_subint () && rtnl_link_is_vlan (rl))
     {
@@ -364,34 +355,32 @@ lcp_router_link_add (struct rtnl_link *rl, void *ctx)
 	  if (vnet_create_sub_interface (lip->lip_phy_sw_if_index, vlan, 18, 0,
 					 vlan, &sub_phy_sw_if_index))
 	    {
-	      LCP_ROUTER_INFO ("failed create phy vlan: %s on %U",
-			       rtnl_link_get_name (rl),
-			       format_vnet_sw_if_index_name, vnet_get_main (),
-			       lip->lip_phy_sw_if_index);
+	      NL_INFO ("failed create phy vlan: %s on %U",
+		       rtnl_link_get_name (rl), format_vnet_sw_if_index_name,
+		       vnet_get_main (), lip->lip_phy_sw_if_index);
 	      return;
 	    }
 	  /* create the vlan interface on the parent host */
 	  if (vnet_create_sub_interface (lip->lip_host_sw_if_index, vlan, 18,
 					 0, vlan, &sub_host_sw_if_index))
 	    {
-	      LCP_ROUTER_INFO ("failed create vlan: %s on %U",
-			       rtnl_link_get_name (rl),
-			       format_vnet_sw_if_index_name, vnet_get_main (),
-			       lip->lip_host_sw_if_index);
+	      NL_INFO ("failed create vlan: %s on %U", rtnl_link_get_name (rl),
+		       format_vnet_sw_if_index_name, vnet_get_main (),
+		       lip->lip_host_sw_if_index);
 	      return;
 	    }
 
 	  char *if_name;
 	  u8 *if_namev = 0;
 
-	  LCP_ROUTER_INFO (
-	    "create vlan: %s -> (%U, %U) : (%U, %U)", rtnl_link_get_name (rl),
-	    format_vnet_sw_if_index_name, vnet_get_main (),
-	    lip->lip_phy_sw_if_index, format_vnet_sw_if_index_name,
-	    vnet_get_main (), sub_phy_sw_if_index,
-	    format_vnet_sw_if_index_name, vnet_get_main (),
-	    lip->lip_host_sw_if_index, format_vnet_sw_if_index_name,
-	    vnet_get_main (), sub_host_sw_if_index);
+	  NL_INFO ("create vlan: %s -> (%U, %U) : (%U, %U)",
+		   rtnl_link_get_name (rl), format_vnet_sw_if_index_name,
+		   vnet_get_main (), lip->lip_phy_sw_if_index,
+		   format_vnet_sw_if_index_name, vnet_get_main (),
+		   sub_phy_sw_if_index, format_vnet_sw_if_index_name,
+		   vnet_get_main (), lip->lip_host_sw_if_index,
+		   format_vnet_sw_if_index_name, vnet_get_main (),
+		   sub_host_sw_if_index);
 
 	  if ((if_name = rtnl_link_get_name (rl)) != NULL)
 	    vec_validate_init_c_string (if_namev, if_name,
@@ -407,17 +396,17 @@ lcp_router_link_add (struct rtnl_link *rl, void *ctx)
 	}
       else
 	{
-	  LCP_ROUTER_INFO ("ignore parent-link add: %s - %s",
-			   rtnl_link_get_type (rl), rtnl_link_get_name (rl));
+	  NL_INFO ("ignore parent-link add: %s - %s", rtnl_link_get_type (rl),
+		   rtnl_link_get_name (rl));
 	}
     }
   else
-    LCP_ROUTER_INFO ("ignore link add: %s - %s", rtnl_link_get_type (rl),
-		     rtnl_link_get_name (rl));
+    NL_INFO ("ignore link add: %s - %s", rtnl_link_get_type (rl),
+	     rtnl_link_get_name (rl));
 }
 
 static fib_protocol_t
-lcp_router_proto_k2f (uint32_t k)
+lcp_netlink_proto_k2f (uint32_t k)
 {
   if (AF_INET6 == k)
     return (FIB_PROTOCOL_IP6);
@@ -425,23 +414,25 @@ lcp_router_proto_k2f (uint32_t k)
 }
 
 static void
-lcp_router_mk_addr (const struct nl_addr *rna, ip_address_t *ia)
+lcp_netlink_mk_ip_addr (const struct nl_addr *rna, ip_address_t *ia)
 {
-  fib_protocol_t fproto;
-
   ip_address_reset (ia);
-  fproto = lcp_router_proto_k2f (nl_addr_get_family (rna));
-
   ip_address_set (ia, nl_addr_get_binary_addr (rna),
-		  FIB_PROTOCOL_IP4 == fproto ? AF_IP4 : AF_IP6);
+		  nl_addr_get_family (rna) == AF_INET6 ? AF_IP6 : AF_IP4);
+}
+
+static void
+lcp_netlink_mk_mac_addr (const struct nl_addr *rna, mac_address_t *mac)
+{
+  mac_address_from_bytes (mac, nl_addr_get_binary_addr (rna));
 }
 
 static fib_protocol_t
-lcp_router_mk_addr46 (const struct nl_addr *rna, ip46_address_t *ia)
+lcp_netlink_mk_addr46 (const struct nl_addr *rna, ip46_address_t *ia)
 {
   fib_protocol_t fproto;
 
-  fproto = lcp_router_proto_k2f (nl_addr_get_family (rna));
+  fproto = lcp_netlink_proto_k2f (nl_addr_get_family (rna));
   ip46_address_reset (ia);
   if (FIB_PROTOCOL_IP4 == fproto)
     memcpy (&ia->ip4, nl_addr_get_binary_addr (rna), nl_addr_get_len (rna));
@@ -452,24 +443,24 @@ lcp_router_mk_addr46 (const struct nl_addr *rna, ip46_address_t *ia)
 }
 
 static void
-lcp_router_link_addr_add_del (struct rtnl_addr *rla, int is_del)
+lcp_netlink_link_addr_add_del (struct rtnl_addr *rla, int is_del)
 {
   u32 sw_if_index;
 
-  sw_if_index = lcp_router_intf_h2p (rtnl_addr_get_ifindex (rla));
+  sw_if_index = lcp_netlink_intf_h2p (rtnl_addr_get_ifindex (rla));
 
   if (~0 != sw_if_index)
     {
       ip_address_t nh;
 
-      lcp_router_mk_addr (rtnl_addr_get_local (rla), &nh);
+      lcp_netlink_mk_ip_addr (rtnl_addr_get_local (rla), &nh);
 
       if (AF_IP4 == ip_addr_version (&nh))
 	{
 	  ip4_add_del_interface_address (
 	    vlib_get_main (), sw_if_index, &ip_addr_v4 (&nh),
 	    rtnl_addr_get_prefixlen (rla), is_del);
-	  lcp_router_ip4_mroutes_add_del (sw_if_index, !is_del);
+	  lcp_netlink_ip4_mroutes_add_del (sw_if_index, !is_del);
 	}
       else if (AF_IP6 == ip_addr_version (&nh))
 	{
@@ -485,65 +476,25 @@ lcp_router_link_addr_add_del (struct rtnl_addr *rla, int is_del)
 	    ip6_add_del_interface_address (
 	      vlib_get_main (), sw_if_index, &ip_addr_v6 (&nh),
 	      rtnl_addr_get_prefixlen (rla), is_del);
-	  lcp_router_ip6_mroutes_add_del (sw_if_index, !is_del);
+	  lcp_netlink_ip6_mroutes_add_del (sw_if_index, !is_del);
 	}
 
-      LCP_ROUTER_DBG ("link-addr: %U %U/%d", format_vnet_sw_if_index_name,
-		      vnet_get_main (), sw_if_index, format_ip_address, &nh,
-		      rtnl_addr_get_prefixlen (rla));
+      NL_DBG ("link-addr: %U %U/%d", format_vnet_sw_if_index_name,
+	      vnet_get_main (), sw_if_index, format_ip_address, &nh,
+	      rtnl_addr_get_prefixlen (rla));
     }
 }
 
 static void
-lcp_router_link_addr_del (struct rtnl_addr *la)
+lcp_netlink_link_addr_del (struct rtnl_addr *la)
 {
-  lcp_router_link_addr_add_del (la, 1);
+  lcp_netlink_link_addr_add_del (la, 1);
 }
 
 static void
-lcp_router_link_addr_add (struct rtnl_addr *la)
+lcp_netlink_link_addr_add (struct rtnl_addr *la)
 {
-  lcp_router_link_addr_add_del (la, 0);
-}
-
-static void
-lcp_router_mk_mac_addr (const struct nl_addr *rna, mac_address_t *mac)
-{
-  mac_address_from_bytes (mac, nl_addr_get_binary_addr (rna));
-}
-
-static void
-lcp_router_neigh_del (struct rtnl_neigh *rn)
-{
-  u32 sw_if_index;
-
-  sw_if_index = lcp_router_intf_h2p (rtnl_neigh_get_ifindex (rn));
-
-  if (~0 != sw_if_index)
-    {
-      ip_address_t nh;
-      int rv;
-
-      lcp_router_mk_addr (rtnl_neigh_get_dst (rn), &nh);
-
-      rv = ip_neighbor_del (&nh, sw_if_index);
-
-      if (rv)
-	{
-	  LCP_ROUTER_ERROR (
-	    "Failed to delete neighbor: %U %U", format_ip_address, &nh,
-	    format_vnet_sw_if_index_name, vnet_get_main (), sw_if_index);
-	}
-      else
-	{
-	  LCP_ROUTER_DBG ("neighbor del: %U %U", format_ip_address, &nh,
-			  format_vnet_sw_if_index_name, vnet_get_main (),
-			  sw_if_index);
-	}
-    }
-  else
-    LCP_ROUTER_INFO ("ignore neighbour del on: %d",
-		     rtnl_neigh_get_ifindex (rn));
+  lcp_netlink_link_addr_add_del (la, 0);
 }
 
 #ifndef NUD_VALID
@@ -553,74 +504,104 @@ lcp_router_neigh_del (struct rtnl_neigh *rn)
 #endif
 
 static void
-lcp_router_neigh_add (struct rtnl_neigh *rn)
+lcp_netlink_neigh_del (struct rtnl_neigh *rn)
 {
-  u32 sw_if_index;
+  ip_address_t nh;
+  int rv;
+  NL_DBG ("neigh_del: netlink %U", format_nl_object, rn);
 
-  sw_if_index = lcp_router_intf_h2p (rtnl_neigh_get_ifindex (rn));
-
-  if (~0 != sw_if_index)
+  lcp_itf_pair_t *lip;
+  if (!(lip = lcp_itf_pair_get (
+	  lcp_itf_pair_find_by_vif (rtnl_neigh_get_ifindex (rn)))))
     {
-      struct nl_addr *ll;
-      ip_address_t nh;
-      int state;
+      NL_WARN ("neigh_del: no LCP for %U ", format_nl_object, rn);
+      return;
+    }
 
-      lcp_router_mk_addr (rtnl_neigh_get_dst (rn), &nh);
-      ll = rtnl_neigh_get_lladdr (rn);
-      state = rtnl_neigh_get_state (rn);
+  lcp_netlink_mk_ip_addr (rtnl_neigh_get_dst (rn), &nh);
+  rv = ip_neighbor_del (&nh, lip->lip_phy_sw_if_index);
 
-      if (ll && (state & NUD_VALID))
-	{
-	  mac_address_t mac;
-	  ip_neighbor_flags_t flags;
-	  int rv;
-
-	  lcp_router_mk_mac_addr (ll, &mac);
-
-	  if (state & (NUD_NOARP | NUD_PERMANENT))
-	    flags = IP_NEIGHBOR_FLAG_STATIC;
-	  else
-	    flags = IP_NEIGHBOR_FLAG_DYNAMIC;
-
-	  rv = ip_neighbor_add (&nh, &mac, sw_if_index, flags, NULL);
-
-	  if (rv)
-	    {
-	      LCP_ROUTER_ERROR (
-		"Failed to create neighbor: %U %U", format_ip_address, &nh,
-		format_vnet_sw_if_index_name, vnet_get_main (), sw_if_index);
-	    }
-	  else
-	    {
-	      LCP_ROUTER_DBG ("neighbor add: %U %U", format_ip_address, &nh,
-			      format_vnet_sw_if_index_name, vnet_get_main (),
-			      sw_if_index);
-	    }
-	}
-      else
-	/* It's a delete */
-	lcp_router_neigh_del (rn);
+  if (rv == 0 || rv == VNET_API_ERROR_NO_SUCH_ENTRY)
+    {
+      NL_INFO ("neigh_del: Deleted %U iface %U", format_ip_address, &nh,
+	       format_vnet_sw_if_index_name, vnet_get_main (),
+	       lip->lip_phy_sw_if_index);
     }
   else
-    LCP_ROUTER_INFO ("ignore neighbour add on: %d",
-		     rtnl_neigh_get_ifindex (rn));
+    {
+      NL_ERROR ("neigh_del: Failed %U iface %U", format_ip_address, &nh,
+		format_vnet_sw_if_index_name, vnet_get_main (),
+		lip->lip_phy_sw_if_index);
+    }
 }
 
-static lcp_router_table_t *
-lcp_router_table_find (uint32_t id, fib_protocol_t fproto)
+static void
+lcp_netlink_neigh_add (struct rtnl_neigh *rn)
+{
+  lcp_itf_pair_t *lip;
+  struct nl_addr *ll;
+  ip_address_t nh;
+  int state;
+
+  NL_DBG ("neigh_add: netlink %U", format_nl_object, rn);
+
+  if (!(lip = lcp_itf_pair_get (
+	  lcp_itf_pair_find_by_vif (rtnl_neigh_get_ifindex (rn)))))
+    {
+      NL_WARN ("neigh_add: no LCP for %U ", format_nl_object, rn);
+      return;
+    }
+
+  lcp_netlink_mk_ip_addr (rtnl_neigh_get_dst (rn), &nh);
+  ll = rtnl_neigh_get_lladdr (rn);
+  state = rtnl_neigh_get_state (rn);
+
+  if (ll && (state & NUD_VALID))
+    {
+      mac_address_t mac;
+      ip_neighbor_flags_t flags;
+      int rv;
+
+      lcp_netlink_mk_mac_addr (ll, &mac);
+
+      if (state & (NUD_NOARP | NUD_PERMANENT))
+	flags = IP_NEIGHBOR_FLAG_STATIC;
+      else
+	flags = IP_NEIGHBOR_FLAG_DYNAMIC;
+
+      rv = ip_neighbor_add (&nh, &mac, lip->lip_phy_sw_if_index, flags, NULL);
+
+      if (rv)
+	{
+	  NL_ERROR ("neigh_add: Failed %U lladdr %U iface %U",
+		    format_ip_address, &nh, format_mac_address, &mac,
+		    format_vnet_sw_if_index_name, vnet_get_main (),
+		    lip->lip_phy_sw_if_index);
+	}
+      else
+	{
+	  NL_INFO ("neigh_add: Added %U lladdr %U iface %U", format_ip_address,
+		   &nh, format_mac_address, &mac, format_vnet_sw_if_index_name,
+		   vnet_get_main (), lip->lip_phy_sw_if_index);
+	}
+    }
+}
+
+static lcp_netlink_table_t *
+lcp_netlink_table_find (uint32_t id, fib_protocol_t fproto)
 {
   uword *p;
 
-  p = hash_get (lcp_router_table_db[fproto], id);
+  p = hash_get (lcp_netlink_table_db[fproto], id);
 
   if (p)
-    return pool_elt_at_index (lcp_router_table_pool, p[0]);
+    return pool_elt_at_index (lcp_netlink_table_pool, p[0]);
 
   return (NULL);
 }
 
 static uint32_t
-lcp_router_table_k2f (uint32_t k)
+lcp_netlink_table_k2f (uint32_t k)
 {
   // the kernel's table ID 255 is the default table
   if (k == 255 || k == 254)
@@ -628,17 +609,17 @@ lcp_router_table_k2f (uint32_t k)
   return k;
 }
 
-static lcp_router_table_t *
-lcp_router_table_add_or_lock (uint32_t id, fib_protocol_t fproto)
+static lcp_netlink_table_t *
+lcp_netlink_table_add_or_lock (uint32_t id, fib_protocol_t fproto)
 {
-  lcp_router_table_t *nlt;
+  lcp_netlink_table_t *nlt;
 
-  id = lcp_router_table_k2f (id);
-  nlt = lcp_router_table_find (id, fproto);
+  id = lcp_netlink_table_k2f (id);
+  nlt = lcp_netlink_table_find (id, fproto);
 
   if (NULL == nlt)
     {
-      pool_get_zero (lcp_router_table_pool, nlt);
+      pool_get_zero (lcp_netlink_table_pool, nlt);
 
       nlt->nlt_id = id;
       nlt->nlt_proto = fproto;
@@ -648,8 +629,8 @@ lcp_router_table_add_or_lock (uint32_t id, fib_protocol_t fproto)
       nlt->nlt_mfib_index = mfib_table_find_or_create_and_lock (
 	nlt->nlt_proto, nlt->nlt_id, MFIB_SOURCE_PLUGIN_LOW);
 
-      hash_set (lcp_router_table_db[fproto], nlt->nlt_id,
-		nlt - lcp_router_table_pool);
+      hash_set (lcp_netlink_table_db[fproto], nlt->nlt_id,
+		nlt - lcp_netlink_table_pool);
 
       if (FIB_PROTOCOL_IP4 == fproto)
 	{
@@ -703,7 +684,7 @@ lcp_router_table_add_or_lock (uint32_t id, fib_protocol_t fproto)
 }
 
 static void
-lcp_router_table_unlock (lcp_router_table_t *nlt)
+lcp_netlink_table_unlock (lcp_netlink_table_t *nlt)
 {
   nlt->nlt_refs--;
 
@@ -718,52 +699,52 @@ lcp_router_table_unlock (lcp_router_table_t *nlt)
 
       fib_table_unlock (nlt->nlt_fib_index, nlt->nlt_proto, lcp_rt_fib_src);
 
-      hash_unset (lcp_router_table_db[nlt->nlt_proto], nlt->nlt_id);
-      pool_put (lcp_router_table_pool, nlt);
+      hash_unset (lcp_netlink_table_db[nlt->nlt_proto], nlt->nlt_id);
+      pool_put (lcp_netlink_table_pool, nlt);
     }
 }
 
 static void
-lcp_router_route_mk_prefix (struct rtnl_route *r, fib_prefix_t *p)
+lcp_netlink_route_mk_prefix (struct rtnl_route *r, fib_prefix_t *p)
 {
   const struct nl_addr *addr = rtnl_route_get_dst (r);
 
   p->fp_len = nl_addr_get_prefixlen (addr);
-  p->fp_proto = lcp_router_mk_addr46 (addr, &p->fp_addr);
+  p->fp_proto = lcp_netlink_mk_addr46 (addr, &p->fp_addr);
 }
 
 static void
-lcp_router_route_mk_mprefix (struct rtnl_route *r, mfib_prefix_t *p)
+lcp_netlink_route_mk_mprefix (struct rtnl_route *r, mfib_prefix_t *p)
 {
   const struct nl_addr *addr;
 
   addr = rtnl_route_get_dst (r);
 
   p->fp_len = nl_addr_get_prefixlen (addr);
-  p->fp_proto = lcp_router_mk_addr46 (addr, &p->fp_grp_addr);
+  p->fp_proto = lcp_netlink_mk_addr46 (addr, &p->fp_grp_addr);
 
   addr = rtnl_route_get_src (r);
   if (addr)
-    p->fp_proto = lcp_router_mk_addr46 (addr, &p->fp_src_addr);
+    p->fp_proto = lcp_netlink_mk_addr46 (addr, &p->fp_src_addr);
 }
 
-typedef struct lcp_router_route_path_parse_t_
+typedef struct lcp_netlink_route_path_parse_t_
 {
   fib_route_path_t *paths;
   fib_protocol_t route_proto;
   bool is_mcast;
   fib_route_path_flags_t type_flags;
   u8 preference;
-} lcp_router_route_path_parse_t;
+} lcp_netlink_route_path_parse_t;
 
 static void
-lcp_router_route_path_parse (struct rtnl_nexthop *rnh, void *arg)
+lcp_netlink_route_path_parse (struct rtnl_nexthop *rnh, void *arg)
 {
-  lcp_router_route_path_parse_t *ctx = arg;
+  lcp_netlink_route_path_parse_t *ctx = arg;
   fib_route_path_t *path;
   u32 sw_if_index;
 
-  sw_if_index = lcp_router_intf_h2p (rtnl_route_nh_get_ifindex (rnh));
+  sw_if_index = lcp_netlink_intf_h2p (rtnl_route_nh_get_ifindex (rnh));
 
   if (~0 != sw_if_index)
     {
@@ -780,8 +761,8 @@ lcp_router_route_path_parse (struct rtnl_nexthop *rnh, void *arg)
       addr = rtnl_route_nh_get_gateway (rnh);
 
       if (addr)
-	fproto = lcp_router_mk_addr46 (rtnl_route_nh_get_gateway (rnh),
-				       &path->frp_addr);
+	fproto = lcp_netlink_mk_addr46 (rtnl_route_nh_get_gateway (rnh),
+					&path->frp_addr);
       else
 	fproto = ctx->route_proto;
 
@@ -790,7 +771,7 @@ lcp_router_route_path_parse (struct rtnl_nexthop *rnh, void *arg)
       if (ctx->is_mcast)
 	path->frp_mitf_flags = MFIB_ITF_FLAG_FORWARD;
 
-      LCP_ROUTER_DBG (" path:[%U]", format_fib_route_path, path);
+      NL_DBG (" path:[%U]", format_fib_route_path, path);
     }
 }
 
@@ -799,8 +780,8 @@ lcp_router_route_path_parse (struct rtnl_nexthop *rnh, void *arg)
  * RTM_NEWROUTE. Add a path for them.
  */
 static void
-lcp_router_route_path_add_special (struct rtnl_route *rr,
-				   lcp_router_route_path_parse_t *ctx)
+lcp_netlink_route_path_add_special (struct rtnl_route *rr,
+				    lcp_netlink_route_path_parse_t *ctx)
 {
   fib_route_path_t *path;
 
@@ -818,7 +799,7 @@ lcp_router_route_path_add_special (struct rtnl_route *rr,
   path->frp_proto = fib_proto_to_dpo (ctx->route_proto);
   path->frp_preference = ctx->preference;
 
-  LCP_ROUTER_DBG (" path:[%U]", format_fib_route_path, path);
+  NL_DBG (" path:[%U]", format_fib_route_path, path);
 }
 
 /*
@@ -828,13 +809,13 @@ lcp_router_route_path_add_special (struct rtnl_route *rr,
  * RTN_UNSPEC, RTN_ANYCAST, RTN_THROW, RTN_NAT, RTN_XRESOLVE -
  *   There's not a VPP equivalent for these currently.
  */
-static const u8 lcp_router_route_type_valid[__RTN_MAX] = {
+static const u8 lcp_netlink_route_type_valid[__RTN_MAX] = {
   [RTN_UNICAST] = 1,	 [RTN_MULTICAST] = 1, [RTN_BLACKHOLE] = 1,
   [RTN_UNREACHABLE] = 1, [RTN_PROHIBIT] = 1,
 };
 
 /* Map of fib entry flags by route type */
-static const fib_entry_flag_t lcp_router_route_type_feflags[__RTN_MAX] = {
+static const fib_entry_flag_t lcp_netlink_route_type_feflags[__RTN_MAX] = {
   [RTN_LOCAL] = FIB_ENTRY_FLAG_LOCAL | FIB_ENTRY_FLAG_CONNECTED,
   [RTN_BROADCAST] = FIB_ENTRY_FLAG_DROP | FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT,
   [RTN_BLACKHOLE] = FIB_ENTRY_FLAG_DROP,
@@ -842,24 +823,24 @@ static const fib_entry_flag_t lcp_router_route_type_feflags[__RTN_MAX] = {
 
 /* Map of fib route path flags by route type */
 static const fib_route_path_flags_t
-  lcp_router_route_type_frpflags[__RTN_MAX] = {
+  lcp_netlink_route_type_frpflags[__RTN_MAX] = {
     [RTN_UNREACHABLE] = FIB_ROUTE_PATH_ICMP_UNREACH,
     [RTN_PROHIBIT] = FIB_ROUTE_PATH_ICMP_PROHIBIT,
     [RTN_BLACKHOLE] = FIB_ROUTE_PATH_DROP,
   };
 
 static inline fib_source_t
-lcp_router_proto_fib_source (u8 rt_proto)
+lcp_netlink_proto_fib_source (u8 rt_proto)
 {
   return (rt_proto <= RTPROT_STATIC) ? lcp_rt_fib_src : lcp_rt_fib_src_dynamic;
 }
 
 static fib_entry_flag_t
-lcp_router_route_mk_entry_flags (uint8_t rtype, int table_id, uint8_t rproto)
+lcp_netlink_route_mk_entry_flags (uint8_t rtype, int table_id, uint8_t rproto)
 {
   fib_entry_flag_t fef = FIB_ENTRY_FLAG_NONE;
 
-  fef |= lcp_router_route_type_feflags[rtype];
+  fef |= lcp_netlink_route_type_feflags[rtype];
   if ((rproto == RTPROT_KERNEL) || PREDICT_FALSE (255 == table_id))
     /* kernel proto is interface prefixes, 255 is linux's 'local' table */
     fef |= FIB_ENTRY_FLAG_ATTACHED | FIB_ENTRY_FLAG_CONNECTED;
@@ -868,12 +849,12 @@ lcp_router_route_mk_entry_flags (uint8_t rtype, int table_id, uint8_t rproto)
 }
 
 static void
-lcp_router_route_del (struct rtnl_route *rr)
+lcp_netlink_route_del (struct rtnl_route *rr)
 {
   fib_entry_flag_t entry_flags;
   uint32_t table_id;
   fib_prefix_t pfx;
-  lcp_router_table_t *nlt;
+  lcp_netlink_table_t *nlt;
   uint8_t rtype, rproto;
 
   rtype = rtnl_route_get_type (rr);
@@ -881,33 +862,33 @@ lcp_router_route_del (struct rtnl_route *rr)
   rproto = rtnl_route_get_protocol (rr);
 
   /* skip unsupported route types and local table */
-  if (!lcp_router_route_type_valid[rtype] || (table_id == 255))
+  if (!lcp_netlink_route_type_valid[rtype] || (table_id == 255))
     return;
 
-  lcp_router_route_mk_prefix (rr, &pfx);
-  entry_flags = lcp_router_route_mk_entry_flags (rtype, table_id, rproto);
-  nlt = lcp_router_table_find (lcp_router_table_k2f (table_id), pfx.fp_proto);
+  lcp_netlink_route_mk_prefix (rr, &pfx);
+  entry_flags = lcp_netlink_route_mk_entry_flags (rtype, table_id, rproto);
+  nlt =
+    lcp_netlink_table_find (lcp_netlink_table_k2f (table_id), pfx.fp_proto);
 
-  LCP_ROUTER_DBG ("route del: %d:%U %U", rtnl_route_get_table (rr),
-		  format_fib_prefix, &pfx, format_fib_entry_flags,
-		  entry_flags);
+  NL_DBG ("route del: %d:%U %U", rtnl_route_get_table (rr), format_fib_prefix,
+	  &pfx, format_fib_entry_flags, entry_flags);
 
   if (NULL == nlt)
     return;
 
-  lcp_router_route_path_parse_t np = {
+  lcp_netlink_route_path_parse_t np = {
     .route_proto = pfx.fp_proto,
-    .type_flags = lcp_router_route_type_frpflags[rtype],
+    .type_flags = lcp_netlink_route_type_frpflags[rtype],
   };
 
-  rtnl_route_foreach_nexthop (rr, lcp_router_route_path_parse, &np);
-  lcp_router_route_path_add_special (rr, &np);
+  rtnl_route_foreach_nexthop (rr, lcp_netlink_route_path_parse, &np);
+  lcp_netlink_route_path_add_special (rr, &np);
 
   if (0 != vec_len (np.paths))
     {
       fib_source_t fib_src;
 
-      fib_src = lcp_router_proto_fib_source (rproto);
+      fib_src = lcp_netlink_proto_fib_source (rproto);
 
       if (pfx.fp_proto == FIB_PROTOCOL_IP6)
 	fib_table_entry_delete (nlt->nlt_fib_index, &pfx, fib_src);
@@ -918,16 +899,16 @@ lcp_router_route_del (struct rtnl_route *rr)
 
   vec_free (np.paths);
 
-  lcp_router_table_unlock (nlt);
+  lcp_netlink_table_unlock (nlt);
 }
 
 static void
-lcp_router_route_add (struct rtnl_route *rr)
+lcp_netlink_route_add (struct rtnl_route *rr)
 {
   fib_entry_flag_t entry_flags;
   uint32_t table_id;
   fib_prefix_t pfx;
-  lcp_router_table_t *nlt;
+  lcp_netlink_table_t *nlt;
   uint8_t rtype, rproto;
 
   rtype = rtnl_route_get_type (rr);
@@ -935,47 +916,45 @@ lcp_router_route_add (struct rtnl_route *rr)
   rproto = rtnl_route_get_protocol (rr);
 
   /* skip unsupported route types and local table */
-  if (!lcp_router_route_type_valid[rtype] || (table_id == 255))
+  if (!lcp_netlink_route_type_valid[rtype] || (table_id == 255))
     return;
 
-  lcp_router_route_mk_prefix (rr, &pfx);
-  entry_flags = lcp_router_route_mk_entry_flags (rtype, table_id, rproto);
+  lcp_netlink_route_mk_prefix (rr, &pfx);
+  entry_flags = lcp_netlink_route_mk_entry_flags (rtype, table_id, rproto);
 
   /* link local IPv6 */
   if (FIB_PROTOCOL_IP6 == pfx.fp_proto &&
       (ip6_address_is_multicast (&pfx.fp_addr.ip6) ||
        ip6_address_is_link_local_unicast (&pfx.fp_addr.ip6)))
     {
-      LCP_ROUTER_DBG ("route skip: %d:%U %U", rtnl_route_get_table (rr),
-		      format_fib_prefix, &pfx, format_fib_entry_flags,
-		      entry_flags);
+      NL_DBG ("route skip: %d:%U %U", rtnl_route_get_table (rr),
+	      format_fib_prefix, &pfx, format_fib_entry_flags, entry_flags);
     }
   else
     {
-      LCP_ROUTER_DBG ("route add: %d:%U %U", rtnl_route_get_table (rr),
-		      format_fib_prefix, &pfx, format_fib_entry_flags,
-		      entry_flags);
+      NL_DBG ("route add: %d:%U %U", rtnl_route_get_table (rr),
+	      format_fib_prefix, &pfx, format_fib_entry_flags, entry_flags);
 
-      lcp_router_route_path_parse_t np = {
+      lcp_netlink_route_path_parse_t np = {
 	.route_proto = pfx.fp_proto,
 	.is_mcast = (rtype == RTN_MULTICAST),
-	.type_flags = lcp_router_route_type_frpflags[rtype],
+	.type_flags = lcp_netlink_route_type_frpflags[rtype],
 	.preference = (u8) rtnl_route_get_priority (rr),
       };
 
-      rtnl_route_foreach_nexthop (rr, lcp_router_route_path_parse, &np);
-      lcp_router_route_path_add_special (rr, &np);
+      rtnl_route_foreach_nexthop (rr, lcp_netlink_route_path_parse, &np);
+      lcp_netlink_route_path_add_special (rr, &np);
 
       if (0 != vec_len (np.paths))
 	{
-	  nlt = lcp_router_table_add_or_lock (table_id, pfx.fp_proto);
+	  nlt = lcp_netlink_table_add_or_lock (table_id, pfx.fp_proto);
 	  if (rtype == RTN_MULTICAST)
 	    {
 	      /* it's not clear to me how linux expresses the RPF paramters
 	       * so we'll allow from all interfaces and hope for the best */
 	      mfib_prefix_t mpfx = {};
 
-	      lcp_router_route_mk_mprefix (rr, &mpfx);
+	      lcp_netlink_route_mk_mprefix (rr, &mpfx);
 
 	      mfib_table_entry_update (
 		nlt->nlt_mfib_index, &mpfx, MFIB_SOURCE_PLUGIN_LOW,
@@ -989,7 +968,7 @@ lcp_router_route_add (struct rtnl_route *rr)
 	    {
 	      fib_source_t fib_src;
 
-	      fib_src = lcp_router_proto_fib_source (rproto);
+	      fib_src = lcp_netlink_proto_fib_source (rproto);
 
 	      if (pfx.fp_proto == FIB_PROTOCOL_IP6)
 		fib_table_entry_path_add2 (nlt->nlt_fib_index, &pfx, fib_src,
@@ -1000,30 +979,29 @@ lcp_router_route_add (struct rtnl_route *rr)
 	    }
 	}
       else
-	LCP_ROUTER_DBG ("no paths for route add: %d:%U %U",
-			rtnl_route_get_table (rr), format_fib_prefix, &pfx,
-			format_fib_entry_flags, entry_flags);
+	NL_DBG ("no paths for route add: %d:%U %U", rtnl_route_get_table (rr),
+		format_fib_prefix, &pfx, format_fib_entry_flags, entry_flags);
       vec_free (np.paths);
     }
 }
 
-const nl_vft_t lcp_router_vft = {
-  .nvl_rt_link_add = { .is_mp_safe = 0, .cb = lcp_router_link_add },
-  .nvl_rt_link_del = { .is_mp_safe = 0, .cb = lcp_router_link_del },
-  .nvl_rt_addr_add = { .is_mp_safe = 0, .cb = lcp_router_link_addr_add },
-  .nvl_rt_addr_del = { .is_mp_safe = 0, .cb = lcp_router_link_addr_del },
-  .nvl_rt_neigh_add = { .is_mp_safe = 0, .cb = lcp_router_neigh_add },
-  .nvl_rt_neigh_del = { .is_mp_safe = 0, .cb = lcp_router_neigh_del },
-  .nvl_rt_route_add = { .is_mp_safe = 1, .cb = lcp_router_route_add },
-  .nvl_rt_route_del = { .is_mp_safe = 1, .cb = lcp_router_route_del },
+const nl_vft_t lcp_netlink_vft = {
+  .nvl_rt_link_add = { .is_mp_safe = 0, .cb = lcp_netlink_link_add },
+  .nvl_rt_link_del = { .is_mp_safe = 0, .cb = lcp_netlink_link_del },
+  .nvl_rt_addr_add = { .is_mp_safe = 0, .cb = lcp_netlink_link_addr_add },
+  .nvl_rt_addr_del = { .is_mp_safe = 0, .cb = lcp_netlink_link_addr_del },
+  .nvl_rt_neigh_add = { .is_mp_safe = 0, .cb = lcp_netlink_neigh_add },
+  .nvl_rt_neigh_del = { .is_mp_safe = 0, .cb = lcp_netlink_neigh_del },
+  .nvl_rt_route_add = { .is_mp_safe = 1, .cb = lcp_netlink_route_add },
+  .nvl_rt_route_del = { .is_mp_safe = 1, .cb = lcp_netlink_route_del },
 };
 
 static clib_error_t *
-lcp_router_init (vlib_main_t *vm)
+lcp_netlink_init (vlib_main_t *vm)
 {
-  lcp_router_logger = vlib_log_register_class ("linux-cp", "router");
+  lcp_netlink_logger = vlib_log_register_class ("linux-cp", "nl");
 
-  nl_register_vft (&lcp_router_vft);
+  nl_register_vft (&lcp_netlink_vft);
 
   /*
    * allocate 2 route sources. The low priority source will be for
@@ -1040,8 +1018,8 @@ lcp_router_init (vlib_main_t *vm)
   return (NULL);
 }
 
-VLIB_INIT_FUNCTION (lcp_router_init) = {
-  .runs_before = VLIB_INITS ("lcp_nl_init"),
+VLIB_INIT_FUNCTION (lcp_netlink_init) = {
+  .runs_before = VLIB_INITS ("lcp_netlink_init"),
 };
 
 /*
