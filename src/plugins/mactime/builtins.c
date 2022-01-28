@@ -1,5 +1,4 @@
 #include <vnet/vnet.h>
-#include <builtinurl/builtinurl.h>
 #include <http_static/http_static.h>
 #include <mactime/mactime.h>
 #include <vlib/unix/plugin.h>
@@ -160,7 +159,7 @@ mactime_url_init (vlib_main_t * vm)
 
   /* Look up the builtin URL registration handler */
   fp = vlib_get_plugin_symbol ("http_static_plugin.so",
-			       "http_static_server_register_builtin_handler");
+			       "hss_register_url_handler");
 
   if (fp == 0)
     {
