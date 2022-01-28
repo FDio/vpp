@@ -27,6 +27,14 @@
 
 typedef enum
 {
+  PERFMON_EVENT_TYPE_GENERAL,
+  PERFMON_EVENT_TYPE_FIXED,
+  PERFMON_EVENT_TYPE_PSEUDO,
+  PERFMON_EVENT_TYPE_MAX,
+} perfmon_event_type_t;
+
+typedef enum
+{
   PERFMON_BUNDLE_TYPE_UNKNOWN,
   PERFMON_BUNDLE_TYPE_NODE,
   PERFMON_BUNDLE_TYPE_THREAD,
@@ -82,7 +90,7 @@ extern vlib_node_function_t *perfmon_dispatch_wrappers[PERF_MAX_EVENTS + 1];
 
 typedef clib_error_t *(perfmon_source_init_fn_t) (vlib_main_t *vm,
 						  struct perfmon_source *);
-typedef u8 (perfmon_source_is_fixed) (u32 event);
+typedef perfmon_event_type_t (perfmon_source_get_event_type) (u32 event);
 
 typedef struct perfmon_source
 {
@@ -93,7 +101,7 @@ typedef struct perfmon_source
   u32 n_events;
   perfmon_instance_type_t *instances_by_type;
   format_function_t *format_config;
-  perfmon_source_is_fixed *is_fixed;
+  perfmon_source_get_event_type *get_event_type;
   perfmon_source_init_fn_t *init_fn;
 } perfmon_source_t;
 
