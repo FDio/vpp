@@ -149,11 +149,24 @@ class StepHook(PollHook):
         self.skip_stack = None
         self.skip_num = None
         self.skip_count = 0
+        self.break_func = None
         super(StepHook, self).__init__(test)
 
     def skip(self):
-        if self.skip_stack is None:
-            return False
+        if self.break_func is not None:
+            return self.should_skip_func_based()
+        if self.skip_stack is not None:
+            return self.should_skip_stack_based()
+
+    def should_skip_func_based(self):
+        stack = traceback.extract_stack()
+        for e in stack:
+            if e[2] == self.break_func:
+                self.break_func = None
+                return False
+        return True
+
+    def should_skip_stack_based(self):
         stack = traceback.extract_stack()
         counter = 0
         skip = True
@@ -186,6 +199,7 @@ class StepHook(PollHook):
         print(single_line_delim)
         print("You may enter a number of stack frame chosen from above")
         print("Calls in/below that stack frame will be not be stepped anymore")
+        print("Alternatively, enter a test function name to stop at")
         print(single_line_delim)
         while True:
             print("Enter your choice, if any, and press ENTER to continue "
@@ -197,15 +211,22 @@ class StepHook(PollHook):
                 if choice is not None:
                     num = int(choice)
             except ValueError:
+                if choice.startswith("test_"):
+                    break
                 print("Invalid input")
                 continue
             if choice is not None and (num < 0 or num >= len(stack)):
                 print("Invalid choice")
                 continue
             break
+        print(f"choice is {choice}")
         if choice is not None:
-            self.skip_stack = stack
-            self.skip_num = num
+            if choice.startswith("test_"):
+                self.break_func = choice
+            else:
+                self.break_func = None
+                self.skip_stack = stack
+                self.skip_num = num
 
     def before_cli(self, cli):
         """ Wait for ENTER before executing CLI """
