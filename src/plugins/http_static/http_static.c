@@ -32,19 +32,17 @@
 #define REPLY_MSG_ID_BASE hsm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
-/** \brief Register a builtin GET or POST handler
- */
 __clib_export void
-http_static_server_register_builtin_handler (void *fp, char *url,
-					     http_req_method_t request_type)
+hss_register_url_handler (hss_url_handler_t fp, const char *url,
+			  http_req_method_t request_type)
 {
   hss_main_t *hsm = &hss_main;
-  uword *p, *builtin_table;
+  uword *p, *url_table;
 
-  builtin_table = (request_type == HTTP_REQ_GET) ? hsm->get_url_handlers :
-						   hsm->post_url_handlers;
+  url_table = (request_type == HTTP_REQ_GET) ? hsm->get_url_handlers :
+					       hsm->post_url_handlers;
 
-  p = hash_get_mem (builtin_table, url);
+  p = hash_get_mem (url_table, url);
 
   if (p)
     {
@@ -53,16 +51,16 @@ http_static_server_register_builtin_handler (void *fp, char *url,
       return;
     }
 
-  hash_set_mem (builtin_table, url, (uword) fp);
+  hash_set_mem (url_table, url, (uword) fp);
 
   /*
    * Need to update the hash table pointer in http_static_server_main
    * in case we just expanded it...
    */
   if (request_type == HTTP_REQ_GET)
-    hsm->get_url_handlers = builtin_table;
+    hsm->get_url_handlers = url_table;
   else
-    hsm->post_url_handlers = builtin_table;
+    hsm->post_url_handlers = url_table;
 }
 
 /** \brief API helper function for vl_api_http_static_enable_t messages
