@@ -2584,6 +2584,8 @@ nat44_plugin_disable ()
 
   clib_memset (&sm->rconfig, 0, sizeof (sm->rconfig));
 
+  nat_affinity_disable ();
+
   sm->forwarding_enabled = 0;
   sm->enabled = 0;
 
