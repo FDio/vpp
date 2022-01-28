@@ -67,9 +67,10 @@ typedef struct
   int inuse;
 } hss_cache_entry_t;
 
+typedef int (*hss_url_handler_t) (http_req_method_t, u8 *, hss_session_t *);
+
 /** \brief Main data structure
  */
-
 typedef struct
 {
   /** Per thread vector of session pools */
@@ -127,14 +128,20 @@ typedef struct
   u8 *uri;
   /** Threshold for switching to ptr data in http msgs */
   u32 use_ptr_thresh;
+  /** Enable the use of builtinurls */
+  u8 enable_url_handlers;
 } hss_main_t;
 
 extern hss_main_t hss_main;
 
 int hss_create (vlib_main_t *vm);
 
-void http_static_server_register_builtin_handler (void *fp, char *url,
-						  http_req_method_t type);
+/**
+ * Register a GET or POST URL handler
+ */
+void hss_register_url_handler (hss_url_handler_t fp, const char *url,
+			       http_req_method_t type);
+void hss_builtinurl_json_handlers_init (void);
 
 #endif /* __included_http_static_h__ */
 
