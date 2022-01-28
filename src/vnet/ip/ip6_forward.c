@@ -1276,7 +1276,7 @@ ip6_tcp_udp_icmp_bad_length (vlib_main_t * vm, vlib_buffer_t * p0)
     }
 
   n_bytes_left -= n_this_buffer;
-  n_bytes_left -= p0->total_length_not_including_first_buffer;
+  n_bytes_left -= vlib_buffer_length_in_chain (vm, p0) - p0->current_length;
 
   if (n_bytes_left == 0)
     return 0;
