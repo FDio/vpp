@@ -49,21 +49,9 @@
 #define foreach_sse42_vec128f \
   _(f,32,4,ps) _(f,64,2,pd)
 
-/* splat, load_unaligned, store_unaligned, is_all_zero, is_equal,
+/* load_unaligned, store_unaligned, is_all_zero, is_equal,
    is_all_equal */
 #define _(t, s, c, i) \
-static_always_inline t##s##x##c						\
-t##s##x##c##_splat (t##s x)						\
-{ return (t##s##x##c) _mm_set1_##i (x); }				\
-\
-static_always_inline t##s##x##c						\
-t##s##x##c##_load_unaligned (void *p)					\
-{ return (t##s##x##c) _mm_loadu_si128 (p); }				\
-\
-static_always_inline void						\
-t##s##x##c##_store_unaligned (t##s##x##c v, void *p)			\
-{ _mm_storeu_si128 ((__m128i *) p, (__m128i) v); }			\
-\
 static_always_inline int						\
 t##s##x##c##_is_all_zero (t##s##x##c x)					\
 { return _mm_testz_si128 ((__m128i) x, (__m128i) x); }			\
@@ -475,12 +463,6 @@ static_always_inline void
 u32x4_scatter_one (u32x4 r, int index, void *p)
 {
   *(u32 *) p = r[index];
-}
-
-static_always_inline u8x16
-u8x16_is_greater (u8x16 v1, u8x16 v2)
-{
-  return (u8x16) _mm_cmpgt_epi8 ((__m128i) v1, (__m128i) v2);
 }
 
 static_always_inline u8x16
