@@ -27,13 +27,9 @@
 #define foreach_avx512_vec512f \
   _(f,32,8,ps) _(f,64,4,pd)
 
-/* splat, load_unaligned, store_unaligned, is_all_zero, is_equal,
+/* load_unaligned, store_unaligned, is_all_zero, is_equal,
    is_all_equal, is_zero_mask */
 #define _(t, s, c, i) \
-static_always_inline t##s##x##c						\
-t##s##x##c##_splat (t##s x)						\
-{ return (t##s##x##c) _mm512_set1_##i (x); }				\
-\
 static_always_inline t##s##x##c						\
 t##s##x##c##_load_aligned (void *p)					\
 { return (t##s##x##c) _mm512_load_si512 (p); }				\
