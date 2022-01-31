@@ -25,7 +25,6 @@
 #include <vlib/unix/unix.h>
 
 #define foreach_dpdk_tx_func_error			\
-  _(BAD_RETVAL, "DPDK tx function returned an error")	\
   _(PKT_DROP, "Tx packet drops (dpdk tx failure)")
 
 typedef enum
@@ -173,23 +172,10 @@ static_always_inline
 
       /* no wrap, transmit in one burst */
       n_sent = rte_eth_tx_burst (xd->port_id, queue_id, mb, n_left);
-      n_retry--;
 
       clib_spinlock_unlock_if_init (&txq->lock);
 
-      if (PREDICT_FALSE (n_sent < 0))
-	{
-	  // emit non-fatal message, bump counter
-	  vnet_main_t *vnm = vnet_get_main ();
-	  vnet_interface_main_t *im = &vnm->interface_main;
-	  u32 node_index;
-
-	  node_index = vec_elt_at_index (im->hw_interfaces,
-					 xd->hw_if_index)->tx_node_index;
-
-	  vlib_error_count (vm, node_index, DPDK_TX_FUNC_ERROR_BAD_RETVAL, 1);
-	  return n_left;	// untransmitted packets
-	}
+      n_retry--;
       n_left -= n_sent;
       mb += n_sent;
     }
