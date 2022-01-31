@@ -320,9 +320,17 @@ clib_memset_u64 (void *p, u64 val, uword count)
   if (count == 0)
     return;
 #else
+#if defined(CLIB_HAVE_VEC128)
+  u64x2 v = u64x2_splat (val);
+#endif
   while (count >= 4)
     {
+#if defined(CLIB_HAVE_VEC128)
+      u64x2_store_unaligned (v, ptr);
+      u64x2_store_unaligned (v, ptr + 2);
+#else
       ptr[0] = ptr[1] = ptr[2] = ptr[3] = val;
+#endif
       ptr += 4;
       count -= 4;
     }
