@@ -29,13 +29,9 @@
 
 #define _mm256_set1_epi64 _mm256_set1_epi64x
 
-/* splat, load_unaligned, store_unaligned, is_all_zero, is_equal,
+/* load_unaligned, store_unaligned, is_all_zero, is_equal,
    is_all_equal */
 #define _(t, s, c, i) \
-static_always_inline t##s##x##c						\
-t##s##x##c##_splat (t##s x)						\
-{ return (t##s##x##c) _mm256_set1_##i (x); }				\
-\
 static_always_inline t##s##x##c						\
 t##s##x##c##_load_unaligned (void *p)					\
 { return (t##s##x##c) _mm256_loadu_si256 (p); }				\
