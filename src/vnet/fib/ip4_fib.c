@@ -16,6 +16,17 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/ip4_fib.h>
+#include <vnet/mfib/mfib_table.h>
+#include <vnet/ip/ip_table.h>
+
+VLIB_REGISTER_LOG_CLASS (ip4_fib_log, static) = {
+  .class_name = "ip4",
+  .subclass_name = "fib",
+};
+
+#define ip4_fib_log_err(fmt, ...)                                                   \
+  vlib_log_err (ip4_fib_log.class, fmt, __VA_ARGS__)
+
 
 /*
  * A table of prefixes to be added to tables and the sources for them
@@ -201,9 +212,12 @@ ip4_fib_table_destroy (u32 fib_index)
     /*
      * validate no more routes.
      */
-#if CLIB_DEBUG > 0
     if (0 != fib_table->ft_total_route_counts)
-        fib_table_assert_empty(fib_table);
+#if CLIB_DEBUG > 0
+      fib_table_assert_empty(fib_table);
+#else
+      ip4_fib_log_err ("fib table not empty: route count is %u",
+		       fib_table->ft_total_route_counts);
 #endif
 
     vec_foreach(n_locks, fib_table->ft_src_route_counts)
@@ -628,3 +642,42 @@ VLIB_CLI_COMMAND (ip4_show_fib_command, static) = {
     .function = ip4_show_fib,
 };
 /* *INDENT-ON* */
+
+static clib_error_t *
+ip4_table_add_del (vnet_main_t * vnm, u32 table_id, u32 is_add)
+{
+  u32 fib_index;
+  fib_protocol_t fproto = FIB_PROTOCOL_IP4;
+
+  if (!is_add)
+    {
+      fib_index = ip4_fib_index_from_table_id (table_id);
+
+      if (fib_index != ~0)
+	{
+	  vnet_main_t *vnm = vnet_get_main ();
+	  vnet_interface_main_t *im = &vnm->interface_main;
+	  vnet_sw_interface_t *si;
+
+	  /* Shut down interfaces in this FIB / clean out intfc routes */
+	  pool_foreach (si, im->sw_interfaces)
+	    {
+	      if (fib_index ==
+		  fib_table_get_index_for_sw_if_index (fproto, si->sw_if_index))
+		{
+		  u32 flags = si->flags;
+
+		  flags &= ~VNET_SW_INTERFACE_FLAG_ADMIN_UP;
+		  vnet_sw_interface_set_flags (vnm, si->sw_if_index, flags);
+		}
+	    }
+
+	  fib_table_flush (fib_index, fproto, FIB_SOURCE_API);
+	  mfib_table_flush (mfib_table_find (fproto, table_id), fproto,
+			    MFIB_SOURCE_API);
+	}
+    }
+  return 0;
+}
+
+VNET_IP_TABLE_ADD_DEL_FUNCTION (ip4_table_add_del);
