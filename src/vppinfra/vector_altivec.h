@@ -91,16 +91,6 @@ _(u32x4, i32x4, hi, vmrghw)
 _(i32x4, i32x4, hi, vmrghw)
 _(u16x8, i16x8, hi, vmrghh) _(i16x8, i16x8, hi, vmrghh)
 #undef _
-/* Unaligned loads/stores. */
-#ifndef __cplusplus
-#define _(t)						\
-  always_inline void t##_store_unaligned (t x, t * a)	\
-  { clib_mem_unaligned (a, t) = x; }			\
-  always_inline t t##_load_unaligned (t * a)		\
-  { return clib_mem_unaligned (a, t); }
-  _(u8x16) _(u16x8) _(u32x4) _(u64x2) _(i8x16) _(i16x8) _(i32x4) _(i64x2)
-#undef _
-#endif
 #define _signed_binop(n,m,f,g)						\
   /* Unsigned */							\
   always_inline u##n##x##m						\

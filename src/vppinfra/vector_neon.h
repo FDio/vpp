@@ -52,22 +52,6 @@ u8x16_compare_byte_mask (u8x16 v)
   _(f,32,4,f32) _(f,64,2,f64)
 
 #define _(t, s, c, i)                                                         \
-  static_always_inline t##s##x##c t##s##x##c##_splat (t##s x)                 \
-  {                                                                           \
-    return (t##s##x##c) vdupq_n_##i (x);                                      \
-  }                                                                           \
-                                                                              \
-  static_always_inline t##s##x##c t##s##x##c##_load_unaligned (void *p)       \
-  {                                                                           \
-    return (t##s##x##c) vld1q_##i (p);                                        \
-  }                                                                           \
-                                                                              \
-  static_always_inline void t##s##x##c##_store_unaligned (t##s##x##c v,       \
-							  void *p)            \
-  {                                                                           \
-    vst1q_##i (p, v);                                                         \
-  }                                                                           \
-                                                                              \
   static_always_inline int t##s##x##c##_is_all_zero (t##s##x##c x)            \
   {                                                                           \
     return !!(vminvq_u##s (vceqq_##i (vdupq_n_##i (0), x)));                  \
@@ -234,7 +218,6 @@ __asm__ ("eor3 %0.16b,%1.16b,%2.16b,%3.16b": "=w" (r): "0" (a), "w" (b), "w" (c)
 #define CLIB_HAVE_VEC128_MSB_MASK
 
 #define CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE
-#define CLIB_VEC128_SPLAT_DEFINED
 #endif /* included_vector_neon_h */
 
 /*
