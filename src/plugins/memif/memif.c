@@ -873,6 +873,7 @@ memif_delete_if (vlib_main_t * vm, memif_if_t * mif)
 	}
     }
 
+  vec_free (mif->local_disc_string);
   clib_memset (mif, 0, sizeof (*mif));
   pool_put (mm->interfaces, mif);
 
