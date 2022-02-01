@@ -22,6 +22,7 @@
 #include <vpp-api/client/stat_client.h>
 
 stat_segment_main_t stat_segment_main;
+#define STATSEG_MAX_NAMESZ 128
 
 /*
  *  Used only by VPP writers
@@ -75,17 +76,6 @@ lookup_hash_index (u8 * name)
   return index;
 }
 
-static void
-create_hash_index (u8 * name, u32 index)
-{
-  stat_segment_main_t *sm = &stat_segment_main;
-
-  /* Must be called in the context of the main heap */
-  ASSERT (clib_mem_get_heap () != sm->heap);
-
-  hash_set (sm->directory_vector_by_name, format (0, "%s%c", name, 0), index);
-}
-
 static u32
 vlib_stats_get_next_vector_index ()
 {
@@ -105,6 +95,30 @@ vlib_stats_get_next_vector_index ()
   return next_vector_index;
 }
 
+/*
+ * Wrapper functions that copies the key. Hash function is on the main heap.
+ */
+static void
+hash_set_str_key_alloc (uword **h, const char *key, uword v)
+{
+  int size = strlen (key) + 1;
+  void *copy = clib_mem_alloc (size);
+  clib_memcpy_fast (copy, key, size);
+  hash_set_mem (*h, copy, v);
+}
+
+static void
+hash_unset_str_key_free (uword **h, const char *key)
+{
+  hash_pair_t *hp = hash_get_pair_mem (*h, key);
+  if (hp)
+    {
+      void *_k = uword_to_pointer (hp->key, void *);
+      hash_unset_mem (*h, _k);
+      clib_mem_free (_k);
+    }
+}
+
 static u32
 vlib_stats_create_counter (stat_segment_directory_entry_t * e, void *oldheap)
 {
@@ -113,13 +127,12 @@ vlib_stats_create_counter (stat_segment_directory_entry_t * e, void *oldheap)
   ASSERT (clib_mem_get_heap () == sm->heap);
 
   u32 index = vlib_stats_get_next_vector_index ();
-
-  clib_mem_set_heap (oldheap);
-  create_hash_index ((u8 *) e->name, index);
-  clib_mem_set_heap (sm->heap);
-
   vec_validate (sm->directory_vector, index);
   sm->directory_vector[index] = *e;
+
+  clib_mem_set_heap (oldheap);
+  hash_set_str_key_alloc (&sm->directory_vector_by_name, e->name, index);
+  clib_mem_set_heap (sm->heap);
 
   return index;
 }
@@ -138,7 +151,7 @@ vlib_stats_delete_counter (u32 index, void *oldheap)
   e = &sm->directory_vector[index];
 
   clib_mem_set_heap (oldheap);
-  hash_unset (sm->directory_vector_by_name, &e->name);
+  hash_unset_str_key_free (&sm->directory_vector_by_name, e->name);
   clib_mem_set_heap (sm->heap);
 
   memset (e, 0, sizeof (*e));
@@ -168,7 +181,7 @@ vlib_stats_delete_cm (void *cm_arg)
   u32 index = lookup_hash_index ((u8 *) stat_segment_name);
 
   e = &sm->directory_vector[index];
-  hash_unset (sm->directory_vector_by_name, &e->name);
+  hash_unset_str_key_free (&sm->directory_vector_by_name, e->name);
 
   void *oldheap = clib_mem_set_heap (sm->heap);	/* Enter stats segment */
   clib_mem_set_heap (oldheap);	/* Exit stats segment */
@@ -213,7 +226,8 @@ vlib_stats_pop_heap (void *cm_arg, void *oldheap, u32 cindex,
   /* Update the vector */
   if (vector_index == STAT_SEGMENT_INDEX_INVALID)
     {				/* New */
-      strncpy (e.name, stat_segment_name, 128 - 1);
+      strncpy_s (e.name, STATSEG_MAX_NAMESZ, stat_segment_name,
+		 STATSEG_MAX_NAMESZ - 1);
       e.type = type;
       vector_index = vlib_stats_create_counter (&e, oldheap);
     }
@@ -264,8 +278,8 @@ vlib_stats_register_symlink (void *oldheap, u8 *name, u32 index1, u32 index2,
 
   if (vector_index == STAT_SEGMENT_INDEX_INVALID)
     {
-      memcpy (e.name, name, vec_len (name));
-      e.name[vec_len (name)] = '\0';
+      strncpy_s (e.name, STATSEG_MAX_NAMESZ, (char *) name,
+		 STATSEG_MAX_NAMESZ - 1);
       e.type = STAT_DIR_TYPE_SYMLINK;
       e.index1 = index1;
       e.index2 = index2;
@@ -284,21 +298,22 @@ vlib_stats_rename_symlink (void *oldheap, u64 index, u8 *new_name)
 {
   stat_segment_main_t *sm = &stat_segment_main;
   stat_segment_directory_entry_t *e;
-
+  clib_warning ("RENAME new name: %s", new_name);
   ASSERT (clib_mem_get_heap () == sm->heap);
-
+  ASSERT (index < vec_len (sm->directory_vector));
   if (index > vec_len (sm->directory_vector))
     return;
 
   e = &sm->directory_vector[index];
 
   clib_mem_set_heap (oldheap);
-  hash_unset (sm->directory_vector_by_name, &e->name);
+  hash_unset_str_key_free (&sm->directory_vector_by_name, e->name);
   clib_mem_set_heap (sm->heap);
 
-  strncpy (e->name, (char *) new_name, 128 - 1);
+  strncpy_s (e->name, STATSEG_MAX_NAMESZ, (char *) new_name,
+	     STATSEG_MAX_NAMESZ - 1);
   clib_mem_set_heap (oldheap);
-  hash_set (sm->directory_vector_by_name, &e->name, index);
+  hash_set_str_key_alloc (&sm->directory_vector_by_name, e->name, index);
   clib_mem_set_heap (sm->heap);
 }
 
@@ -405,6 +420,7 @@ stat_segment_new_entry (u8 *name, stat_directory_type_t t)
 
   memset (&e, 0, sizeof (e));
   e.type = t;
+  // TODO, check length
   strcpy_s (e.name, sizeof (e.name), (char *) name);
 
   oldheap = vlib_stats_push_heap (NULL);
@@ -593,6 +609,24 @@ show_stat_segment_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+static clib_error_t *
+show_stat_segment_hash_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				   vlib_cli_command_t *cmd)
+{
+  stat_segment_main_t *sm = &stat_segment_main;
+  char *name;
+  u32 i;
+  hash_foreach_mem (name, i, sm->directory_vector_by_name,
+		    ({ vlib_cli_output (vm, "%d: %s\n", i, name); }));
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_stat_segment_hash_command, static) = {
+  .path = "show statistics hash",
+  .short_help = "show statistics hash",
+  .function = show_stat_segment_hash_command_fn,
+};
+
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_stat_segment_command, static) =
 {
@@ -653,8 +687,7 @@ update_node_counters (stat_segment_main_t * sm)
       for (i = 0; i < vec_len (nodes); i++)
 	{
 	  vlib_node_t *n = nodes[i];
-	  u8 *s = 0;
-	  s = format (s, "%v%c", n->name, 0);
+	  u8 *s = format (0, "%v%c", n->name, 0);
 	  if (sm->nodes[n->index])
 	    vec_free (sm->nodes[n->index]);
 	  sm->nodes[n->index] = s;
@@ -668,6 +701,7 @@ update_node_counters (stat_segment_main_t * sm)
 	  foreach_stat_segment_node_counter_name
 #undef _
 	}
+
       vec_free (symlink_name);
       vlib_stat_segment_unlock ();
       clib_mem_set_heap (oldheap);
@@ -689,18 +723,18 @@ update_node_counters (stat_segment_main_t * sm)
 	      if (strncmp ((char *) sm->nodes[n->index], (char *) n->name,
 			   strlen ((char *) sm->nodes[n->index])))
 		{
-		  u8 *s = 0;
 		  u32 vector_index;
 		  u8 *symlink_new_name = 0;
 		  void *oldheap = clib_mem_set_heap (sm->heap);
 		  vlib_stat_segment_lock ();
-		  s = format (s, "%v%c", n->name, 0);
+		  u8 *s = format (0, "%v%c", n->name, 0);
 #define _(E, t, name, p)                                                      \
   vec_reset_length (symlink_name);                                            \
   symlink_name = format (symlink_name, "/nodes/%U/" #name "%c",               \
 			 format_vlib_stats_symlink, sm->nodes[n->index], 0);  \
   clib_mem_set_heap (oldheap); /* Exit stats segment */                       \
   vector_index = lookup_hash_index ((u8 *) symlink_name);                     \
+  ASSERT (vector_index != -1);                                                \
   clib_mem_set_heap (sm->heap); /* Re-enter stat segment */                   \
   vec_reset_length (symlink_new_name);                                        \
   symlink_new_name = format (symlink_new_name, "/nodes/%U/" #name "%c",       \
@@ -1017,7 +1051,7 @@ statseg_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
   vnet_sw_interface_t *si_sup =
     vnet_get_sup_sw_interface (vnm, si->sw_if_index);
   vnet_hw_interface_t *hi_sup;
-  u8 *s = 0;
+  u8 *s;
   u8 *symlink_name = 0;
   u32 vector_index;
 
@@ -1029,7 +1063,7 @@ statseg_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
   ASSERT (si_sup->type == VNET_SW_INTERFACE_TYPE_HARDWARE);
   hi_sup = vnet_get_hw_interface (vnm, si_sup->hw_if_index);
 
-  s = format (s, "%v", hi_sup->name);
+  s = format (0, "%v", hi_sup->name);
   if (si->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
     s = format (s, ".%d", si->sub.id);
   s = format (s, "%c", 0);
@@ -1049,7 +1083,6 @@ statseg_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
       foreach_simple_interface_counter_name
 	foreach_combined_interface_counter_name
 #undef _
-
 	  vec_free (symlink_name);
     }
   else
@@ -1069,6 +1102,7 @@ statseg_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 #undef _
 
 	  vec_free (symlink_name);
+      vec_free (s);
     }
 
   stat_segment_directory_entry_t *ep;
