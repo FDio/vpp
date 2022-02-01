@@ -124,6 +124,33 @@ vlib_stats_create_counter (stat_segment_directory_entry_t * e, void *oldheap)
   return index;
 }
 
+static u8 *
+lookup_hash_key (u8 *name)
+{
+  stat_segment_main_t *sm = &stat_segment_main;
+  u8 *key = 0;
+  hash_pair_t *hp;
+
+  /* Must be called in the context of the main heap */
+  ASSERT (clib_mem_get_heap () != sm->heap);
+
+  hp = hash_get_pair (sm->directory_vector_by_name, name);
+  if (hp)
+    key = uword_to_pointer (hp->key, u8 *);
+
+  return key;
+}
+
+static void
+stat_hash_unset (u8 *name)
+{
+  stat_segment_main_t *sm = &stat_segment_main;
+  u8 *key = lookup_hash_key (name);
+
+  hash_unset (sm->directory_vector_by_name, name);
+  vec_free (key);
+}
+
 static void
 vlib_stats_delete_counter (u32 index, void *oldheap)
 {
@@ -138,7 +165,7 @@ vlib_stats_delete_counter (u32 index, void *oldheap)
   e = &sm->directory_vector[index];
 
   clib_mem_set_heap (oldheap);
-  hash_unset (sm->directory_vector_by_name, &e->name);
+  stat_hash_unset ((u8 *) e->name);
   clib_mem_set_heap (sm->heap);
 
   memset (e, 0, sizeof (*e));
@@ -168,7 +195,7 @@ vlib_stats_delete_cm (void *cm_arg)
   u32 index = lookup_hash_index ((u8 *) stat_segment_name);
 
   e = &sm->directory_vector[index];
-  hash_unset (sm->directory_vector_by_name, &e->name);
+  stat_hash_unset ((u8 *) e->name);
 
   void *oldheap = clib_mem_set_heap (sm->heap);	/* Enter stats segment */
   clib_mem_set_heap (oldheap);	/* Exit stats segment */
@@ -293,7 +320,7 @@ vlib_stats_rename_symlink (void *oldheap, u64 index, u8 *new_name)
   e = &sm->directory_vector[index];
 
   clib_mem_set_heap (oldheap);
-  hash_unset (sm->directory_vector_by_name, &e->name);
+  stat_hash_unset ((u8 *) e->name);
   clib_mem_set_heap (sm->heap);
 
   strncpy (e->name, (char *) new_name, 128 - 1);
