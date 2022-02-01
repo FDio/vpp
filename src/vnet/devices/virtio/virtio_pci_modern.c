@@ -265,32 +265,24 @@ virtio_pci_modern_set_queue_device (virtio_if_t * vif, u64 queue_device)
 }
 
 static u8
-virtio_pci_modern_setup_queue (vlib_main_t * vm, virtio_if_t * vif,
-			       u16 queue_id, void *p)
+virtio_pci_modern_setup_queue (vlib_main_t *vm, virtio_if_t *vif, u16 queue_id,
+			       vnet_virtio_vring_t *vring)
 {
   u64 desc, avail, used;
-  u16 queue_size = 0;
 
   virtio_pci_modern_set_queue_select (vif, queue_id);
-  queue_size = virtio_pci_modern_get_queue_size (vm, vif, queue_id);
 
   if (vif->is_packed)
     {
-      virtio_vring_t *vring = (virtio_vring_t *) p;
-
       desc = vlib_physmem_get_pa (vm, vring->packed_desc);
       avail = vlib_physmem_get_pa (vm, vring->driver_event);
       used = vlib_physmem_get_pa (vm, vring->device_event);
     }
   else
     {
-      vring_t vr;
-
-      vring_init (&vr, queue_size, p, VIRTIO_PCI_VRING_ALIGN);
-
-      desc = vlib_physmem_get_pa (vm, vr.desc);
-      avail = vlib_physmem_get_pa (vm, vr.avail);
-      used = vlib_physmem_get_pa (vm, vr.used);
+      desc = vlib_physmem_get_pa (vm, vring->desc);
+      avail = vlib_physmem_get_pa (vm, vring->avail);
+      used = vlib_physmem_get_pa (vm, vring->used);
     }
 
   virtio_pci_modern_set_queue_desc (vif, desc);

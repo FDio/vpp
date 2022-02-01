@@ -272,7 +272,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   else
     ifr.ifr_flags |= IFF_MULTI_QUEUE;
 
-  hdrsz = sizeof (virtio_net_hdr_v1_t);
+  hdrsz = sizeof (vnet_virtio_net_hdr_v1_t);
   if (args->tap_flags & TAP_FLAG_GSO)
     {
       offload = TUN_F_CSUM | TUN_F_TSO4 | TUN_F_TSO6;
@@ -577,7 +577,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
       vhost_vring_addr_t addr = { 0 };
       vhost_vring_state_t state = { 0 };
       vhost_vring_file_t file = { 0 };
-      virtio_vring_t *vring;
+      vnet_virtio_vring_t *vring;
       u16 qp = i >> 1;
       int fd = vif->vhost_fds[qp];
 
@@ -595,7 +595,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 	}
 
       addr.index = state.index = file.index = vring->queue_id & 1;
-      state.num = vring->size;
+      state.num = vring->queue_size;
       virtio_log_debug (vif, "VHOST_SET_VRING_NUM fd %d index %u num %u", fd,
 			state.index, state.num);
       _IOCTL (fd, VHOST_SET_VRING_NUM, &state);
@@ -880,7 +880,7 @@ tap_dump_ifs (tap_interface_details_t ** out_tapids)
   vnet_main_t *vnm = vnet_get_main ();
   virtio_main_t *mm = &virtio_main;
   virtio_if_t *vif;
-  virtio_vring_t *vring;
+  vnet_virtio_vring_t *vring;
   vnet_hw_interface_t *hi;
   tap_interface_details_t *r_tapids = NULL;
   tap_interface_details_t *tapid = NULL;
@@ -898,9 +898,9 @@ tap_dump_ifs (tap_interface_details_t ** out_tapids)
     clib_memcpy(tapid->dev_name, hi->name,
                 MIN (ARRAY_LEN (tapid->dev_name) - 1, vec_len (hi->name)));
     vring = vec_elt_at_index (vif->rxq_vrings, RX_QUEUE_ACCESS(0));
-    tapid->rx_ring_sz = vring->size;
+    tapid->rx_ring_sz = vring->queue_size;
     vring = vec_elt_at_index (vif->txq_vrings, TX_QUEUE_ACCESS(0));
-    tapid->tx_ring_sz = vring->size;
+    tapid->tx_ring_sz = vring->queue_size;
     tapid->tap_flags = vif->tap_flags;
     clib_memcpy(&tapid->host_mac_addr, vif->host_mac_addr, 6);
     if (vif->host_if_name)

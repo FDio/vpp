@@ -22,7 +22,7 @@
 #include <vnet/devices/virtio/virtio_inline.h>
 
 static_always_inline uword
-virtio_pre_input_inline (vlib_main_t *vm, virtio_vring_t *txq_vring,
+virtio_pre_input_inline (vlib_main_t *vm, vnet_virtio_vring_t *txq_vring,
 			 vnet_hw_if_tx_queue_t *txq, u8 packet_coalesce,
 			 u8 packet_buffering)
 {
@@ -66,7 +66,7 @@ virtio_pre_input (vlib_main_t *vm, vlib_node_runtime_t *node,
     {
       if (vif->packet_coalesce || vif->packet_buffering)
 	{
-	  virtio_vring_t *txq_vring;
+	  vnet_virtio_vring_t *txq_vring;
 	  vec_foreach (txq_vring, vif->txq_vrings)
 	    {
 	      vnet_hw_if_tx_queue_t *txq =

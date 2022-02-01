@@ -47,7 +47,7 @@ typedef struct
   u32 hw_if_index;
   u16 ring;
   u16 len;
-  virtio_net_hdr_v1_t hdr;
+  vnet_virtio_net_hdr_v1_t hdr;
 } virtio_input_trace_t;
 
 static u8 *
@@ -69,8 +69,8 @@ format_virtio_input_trace (u8 * s, va_list * args)
 }
 
 static_always_inline void
-virtio_needs_csum (vlib_buffer_t * b0, virtio_net_hdr_v1_t * hdr,
-		   u8 * l4_proto, u8 * l4_hdr_sz, virtio_if_type_t type)
+virtio_needs_csum (vlib_buffer_t *b0, vnet_virtio_net_hdr_v1_t *hdr,
+		   u8 *l4_proto, u8 *l4_hdr_sz, virtio_if_type_t type)
 {
   if (hdr->flags & VIRTIO_NET_HDR_F_NEEDS_CSUM)
     {
@@ -161,7 +161,7 @@ virtio_needs_csum (vlib_buffer_t * b0, virtio_net_hdr_v1_t * hdr,
 }
 
 static_always_inline void
-fill_gso_buffer_flags (vlib_buffer_t * b0, virtio_net_hdr_v1_t * hdr,
+fill_gso_buffer_flags (vlib_buffer_t *b0, vnet_virtio_net_hdr_v1_t *hdr,
 		       u8 l4_proto, u8 l4_hdr_sz)
 {
   if (hdr->gso_type == VIRTIO_NET_HDR_GSO_TCPV4)
@@ -181,7 +181,7 @@ fill_gso_buffer_flags (vlib_buffer_t * b0, virtio_net_hdr_v1_t * hdr,
 }
 
 static_always_inline u16
-virtio_n_left_to_process (virtio_vring_t * vring, const int packed)
+virtio_n_left_to_process (vnet_virtio_vring_t *vring, const int packed)
 {
   if (packed)
     return vring->desc_in_use;
@@ -190,7 +190,7 @@ virtio_n_left_to_process (virtio_vring_t * vring, const int packed)
 }
 
 static_always_inline u16
-virtio_get_slot_id (virtio_vring_t * vring, const int packed, u16 last,
+virtio_get_slot_id (vnet_virtio_vring_t *vring, const int packed, u16 last,
 		    u16 mask)
 {
   if (packed)
@@ -200,7 +200,7 @@ virtio_get_slot_id (virtio_vring_t * vring, const int packed, u16 last,
 }
 
 static_always_inline u16
-virtio_get_len (virtio_vring_t * vring, const int packed, const int hdr_sz,
+virtio_get_len (vnet_virtio_vring_t *vring, const int packed, const int hdr_sz,
 		u16 last, u16 mask)
 {
   if (packed)
@@ -209,22 +209,24 @@ virtio_get_len (virtio_vring_t * vring, const int packed, const int hdr_sz,
     return vring->used->ring[last & mask].len - hdr_sz;
 }
 
-#define increment_last(last, packed, vring) \
-   do {					    \
-         last++;                            \
-         if (packed && last >= vring->size) \
-           {                                \
-             last = 0;                      \
-             vring->used_wrap_counter ^= 1; \
-           }                                \
-    } while (0)
+#define increment_last(last, packed, vring)                                   \
+  do                                                                          \
+    {                                                                         \
+      last++;                                                                 \
+      if (packed && last >= vring->queue_size)                                \
+	{                                                                     \
+	  last = 0;                                                           \
+	  vring->used_wrap_counter ^= 1;                                      \
+	}                                                                     \
+    }                                                                         \
+  while (0)
 
 static_always_inline uword
-virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-				vlib_frame_t * frame, virtio_if_t * vif,
-				virtio_vring_t * vring, virtio_if_type_t type,
-				int gso_enabled, int checksum_offload_enabled,
-				int packed)
+virtio_device_input_gso_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+				vlib_frame_t *frame, virtio_if_t *vif,
+				vnet_virtio_vring_t *vring,
+				virtio_if_type_t type, int gso_enabled,
+				int checksum_offload_enabled, int packed)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 thread_index = vm->thread_index;
@@ -234,7 +236,7 @@ virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 *to_next = 0;
   u32 n_rx_packets = 0;
   u32 n_rx_bytes = 0;
-  u16 mask = vring->size - 1;
+  u16 mask = vring->queue_size - 1;
   u16 last = vring->last_used_idx;
   u16 n_left = virtio_n_left_to_process (vring, packed);
   vlib_buffer_t bt = {};
@@ -267,7 +269,7 @@ virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  if (packed)
 	    {
-	      vring_packed_desc_t *d = &vring->packed_desc[last];
+	      vnet_virtio_vring_packed_desc_t *d = &vring->packed_desc[last];
 	      u16 flags = d->flags;
 	      if ((flags & VRING_DESC_F_AVAIL) !=
 		  (vring->used_wrap_counter << 7)
@@ -280,13 +282,13 @@ virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  u8 l4_proto = 0, l4_hdr_sz = 0;
 	  u16 num_buffers = 1;
-	  virtio_net_hdr_v1_t *hdr;
+	  vnet_virtio_net_hdr_v1_t *hdr;
 	  u16 slot = virtio_get_slot_id (vring, packed, last, mask);
 	  u16 len = virtio_get_len (vring, packed, hdr_sz, last, mask);
 	  u32 bi0 = vring->buffers[slot];
 	  vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
 	  hdr = vlib_buffer_get_current (b0);
-	  if (hdr_sz == sizeof (virtio_net_hdr_v1_t))
+	  if (hdr_sz == sizeof (vnet_virtio_net_hdr_v1_t))
 	    num_buffers = hdr->num_buffers;
 
 	  b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
@@ -408,7 +410,7 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			    vlib_frame_t * frame, virtio_if_t * vif, u16 qid,
 			    virtio_if_type_t type)
 {
-  virtio_vring_t *vring = vec_elt_at_index (vif->rxq_vrings, qid);
+  vnet_virtio_vring_t *vring = vec_elt_at_index (vif->rxq_vrings, qid);
   const int hdr_sz = vif->virtio_net_hdr_sz;
   uword rv;
 

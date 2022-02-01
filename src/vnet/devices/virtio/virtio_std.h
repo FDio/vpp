@@ -64,7 +64,7 @@ typedef enum
 #define _(f,n) f = n,
   foreach_virtio_net_features
 #undef _
-} virtio_net_feature_t;
+} vnet_virtio_net_feature_t;
 
 #define VIRTIO_FEATURE(X) (1ULL << X)
 
@@ -87,7 +87,7 @@ typedef enum
 #define _(f,n) f = n,
   foreach_virtio_event_idx_flags
 #undef _
-} virtio_event_idx_flags_t;
+} vnet_virtio_event_idx_flags_t;
 
 #define VRING_USED_F_NO_NOTIFY  1
 #define VRING_AVAIL_F_NO_INTERRUPT 1
@@ -98,7 +98,7 @@ typedef struct
   u32 len;
   u16 flags;
   u16 next;
-} vring_desc_t;
+} vnet_virtio_vring_desc_t;
 
 typedef struct
 {
@@ -106,38 +106,36 @@ typedef struct
   u16 idx;
   u16 ring[0];
   /*  u16 used_event; */
-} vring_avail_t;
+} vnet_virtio_vring_avail_t;
 
 typedef struct
 {
   u32 id;
   u32 len;
-} vring_used_elem_t;
+} vnet_virtio_vring_used_elem_t;
 
 typedef struct
 {
   u16 flags;
   u16 idx;
-  vring_used_elem_t ring[0];
+  vnet_virtio_vring_used_elem_t ring[0];
   /* u16 avail_event; */
-} vring_used_t;
+} vnet_virtio_vring_used_t;
 
 /* *INDENT-OFF* */
-typedef CLIB_PACKED (struct
-{
-   u64 addr;	// packet data buffer address
-   u32 len;	// packet data buffer size
-   u16 id;	// buffer id
-   u16 flags;	// flags
-}) vring_packed_desc_t;
+typedef CLIB_PACKED (struct {
+  u64 addr;  // packet data buffer address
+  u32 len;   // packet data buffer size
+  u16 id;    // buffer id
+  u16 flags; // flags
+}) vnet_virtio_vring_packed_desc_t;
 
-STATIC_ASSERT_SIZEOF (vring_packed_desc_t, 16);
+STATIC_ASSERT_SIZEOF (vnet_virtio_vring_packed_desc_t, 16);
 
-typedef CLIB_PACKED (struct
-{
+typedef CLIB_PACKED (struct {
   u16 off_wrap;
   u16 flags;
-}) vring_desc_event_t;
+}) vnet_virtio_vring_desc_event_t;
 
 #define VIRTIO_NET_HDR_F_NEEDS_CSUM     1	/* Use csum_start, csum_offset */
 #define VIRTIO_NET_HDR_F_DATA_VALID     2	/* Csum is valid */
@@ -148,8 +146,7 @@ typedef CLIB_PACKED (struct
 #define VIRTIO_NET_HDR_GSO_TCPV6        4	/* GSO frame, IPv6 TCP */
 #define VIRTIO_NET_HDR_GSO_ECN          0x80	/* TCP has ECN set */
 
-typedef CLIB_PACKED (struct
-{
+typedef CLIB_PACKED (struct {
   u8 flags;
   u8 gso_type;
   u16 hdr_len;			/* Ethernet + IP + tcp/udp hdrs */
@@ -157,54 +154,23 @@ typedef CLIB_PACKED (struct
   u16 csum_start;		/* Position to start checksumming from */
   u16 csum_offset;		/* Offset after that to place checksum */
   u16 num_buffers;		/* Number of merged rx buffers */
-}) virtio_net_hdr_v1_t;
+}) vnet_virtio_net_hdr_v1_t;
 
-typedef CLIB_PACKED (struct
-{
+typedef CLIB_PACKED (struct {
   u8 flags;
   u8 gso_type;
   u16 hdr_len;
   u16 gso_size;
   u16 csum_start;
   u16 csum_offset;
-}) virtio_net_hdr_t;
+}) vnet_virtio_net_hdr_t;
 
-typedef CLIB_PACKED (struct
-{
-  virtio_net_hdr_t hdr;
+typedef CLIB_PACKED (struct {
+  vnet_virtio_net_hdr_t hdr;
   u16 num_buffers;
-}) virtio_net_hdr_mrg_rxbuf_t;
+}) vnet_virtio_net_hdr_mrg_rxbuf_t;
 
 /* *INDENT-ON* */
-
-typedef struct
-{
-  u16 num;
-  vring_desc_t *desc;
-  vring_avail_t *avail;
-  vring_used_t *used;
-} vring_t;
-
-static_always_inline void
-vring_init (vring_t * vr, u32 num, void *p, u32 align)
-{
-  vr->num = num;
-  vr->desc = p;
-  vr->avail = (vring_avail_t *) ((char *) p + num * sizeof (vring_desc_t));
-  vr->used =
-    (vring_used_t *) ((char *) p +
-		      ((sizeof (vring_desc_t) * num +
-			sizeof (u16) * (3 + num) + align - 1) & ~(align -
-								  1)));
-}
-
-static_always_inline u16
-vring_size (u32 num, u32 align)
-{
-  return ((sizeof (vring_desc_t) * num + sizeof (u16) * (3 + num)
-	   + align - 1) & ~(align - 1))
-    + sizeof (u16) * 3 + sizeof (vring_used_elem_t) * num;
-}
 #endif
 
 /*

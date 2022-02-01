@@ -87,7 +87,7 @@ typedef enum
 
 #define VIRTIO_PCI_QUEUE_ADDR_SHIFT 12
 
-#define VIRTIO_PCI_VRING_ALIGN 4096
+#define VNET_VIRTIO_PCI_VRING_ALIGN 4096
 
 typedef enum
 {
@@ -192,8 +192,8 @@ typedef struct _virtio_pci_func
     u16 (*get_queue_size) (vlib_main_t * vm, virtio_if_t * vif, u16 queue_id);
   void (*set_queue_size) (vlib_main_t * vm, virtio_if_t * vif, u16 queue_id,
 			  u16 queue_size);
-    u8 (*setup_queue) (vlib_main_t * vm, virtio_if_t * vif, u16 queue_id,
-		       void *p);
+  u8 (*setup_queue) (vlib_main_t *vm, virtio_if_t *vif, u16 queue_id,
+		     vnet_virtio_vring_t *vring);
   void (*del_queue) (vlib_main_t * vm, virtio_if_t * vif, u16 queue_id);
     u16 (*get_queue_notify_off) (vlib_main_t * vm, virtio_if_t * vif,
 				 u16 queue_id);
