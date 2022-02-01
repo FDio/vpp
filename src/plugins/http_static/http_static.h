@@ -50,6 +50,21 @@ typedef struct
   u32 cache_pool_index;
 } hss_session_t;
 
+typedef struct hss_session_handle_
+{
+  union
+  {
+    struct
+    {
+      u32 session_index;
+      u32 thread_index;
+    };
+    u64 as_u64;
+  };
+} hss_session_handle_t;
+
+STATIC_ASSERT_SIZEOF (hss_session_handle_t, sizeof (u64));
+
 /** \brief In-memory file data cache entry
  */
 typedef struct
@@ -67,7 +82,15 @@ typedef struct
   int inuse;
 } hss_cache_entry_t;
 
-typedef int (*hss_url_handler_t) (http_req_method_t, u8 *, hss_session_t *);
+typedef enum prom_process_evt_codes_
+{
+  PROM_SCRAPER_EVT_RUN,
+} prom_process_evt_codes_t;
+
+typedef int (*hss_url_handler_fn) (http_req_method_t, u8 *, hss_session_t *);
+typedef void (*hss_register_url_fn) (hss_url_handler_fn, char *, int);
+typedef void (*hss_session_send_fn) (hss_session_handle_t sh, u8 *data,
+				     uword data_len, http_status_code_t sc);
 
 /** \brief Main data structure
  */
@@ -139,8 +162,10 @@ int hss_create (vlib_main_t *vm);
 /**
  * Register a GET or POST URL handler
  */
-void hss_register_url_handler (hss_url_handler_t fp, const char *url,
+void hss_register_url_handler (hss_url_handler_fn fp, const char *url,
 			       http_req_method_t type);
+void hss_session_send_data (hss_session_handle_t sh, u8 *data, uword data_len,
+			    http_status_code_t sc);
 void hss_builtinurl_json_handlers_init (void);
 
 #endif /* __included_http_static_h__ */

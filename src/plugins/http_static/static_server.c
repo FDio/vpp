@@ -294,12 +294,24 @@ done:
     session_send_io_evt_to_thread (ts->tx_fifo, SESSION_IO_EVT_TX);
 }
 
+__clib_export void
+hss_session_send_data (hss_session_handle_t sh, u8 *data, uword data_len,
+		       http_status_code_t sc)
+{
+  hss_session_t *hs;
+
+  hs = hss_session_get (sh.thread_index, sh.session_index);
+  hs->data = data;
+  //  hs->data_len = data_len;
+  start_send_data (hs, sc);
+}
+
 static int
 try_url_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
 		 u8 *request, http_status_code_t *sc)
 {
   uword *p, *url_table;
-  hss_url_handler_t fp;
+  hss_url_handler_fn fp;
   int rv;
 
   if (!hsm->enable_url_handlers)
@@ -316,7 +328,7 @@ try_url_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
   if (hsm->debug_level > 0)
     clib_warning ("%s '%s'", (rt == HTTP_REQ_GET) ? "GET" : "POST", request);
 
-  fp = (hss_url_handler_t) p[0];
+  fp = (hss_url_handler_fn) p[0];
   hs->path = 0;
   rv = fp (rt, request, hs);
   if (rv)
