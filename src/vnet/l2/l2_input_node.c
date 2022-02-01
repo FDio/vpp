@@ -252,10 +252,10 @@ l2input_node_inline (vlib_main_t * vm,
 	  /* Prefetch next iteration. */
 	  {
 	    /* Prefetch the buffer header and packet for the N+2 loop iteration */
-	    clib_prefetch_store (b + 4);
-	    clib_prefetch_store (b + 5);
-	    clib_prefetch_store (b + 6);
-	    clib_prefetch_store (b + 7);
+	    vlib_prefetch_buffer_header (b[4], LOAD);
+	    vlib_prefetch_buffer_header (b[5], LOAD);
+	    vlib_prefetch_buffer_header (b[6], LOAD);
+	    vlib_prefetch_buffer_header (b[7], LOAD);
 
 	    clib_prefetch_store (b[4]->data);
 	    clib_prefetch_store (b[5]->data);
