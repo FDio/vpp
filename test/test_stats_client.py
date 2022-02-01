@@ -24,7 +24,7 @@ class StatsClientTestCase(VppTestCase):
 
     @classmethod
     def setUpConstants(cls):
-        cls.extra_vpp_statseg_config = "per-node-counters on"
+        cls.extra_vpp_statseg_config = "per-node-counters off"
         cls.extra_vpp_statseg_config += "update-interval 0.05"
         super(StatsClientTestCase, cls).setUpConstants()
 
@@ -68,7 +68,6 @@ class StatsClientTestCase(VppTestCase):
             p.append(packet)
 
         self.send_and_expect(self.pg0, p, self.pg1)
-
         pg1_tx = self.statistics.get_counter('/interfaces/pg1/tx')
         if_tx = self.statistics.get_counter('/if/tx')
 
