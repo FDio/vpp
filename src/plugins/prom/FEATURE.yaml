@@ -1,0 +1,10 @@
+---
+name: Prom (Prometheus Exporter)
+maintainer: Florin Coras <fcoras@cisco.com>
+features:
+  - Stats scraper
+  - Prometheus exporter
+description: "HTTP static server url handler that scrapes stats and exports
+              them in Prometheus format"
+state: experimental
+properties: [MULTITHREAD]
