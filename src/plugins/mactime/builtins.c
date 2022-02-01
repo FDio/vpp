@@ -14,8 +14,8 @@ mactime_ip_neighbor_copy (index_t ipni, void *ctx)
   return (WALK_CONTINUE);
 }
 
-static int
-handle_get_mactime (http_req_method_t reqtype, u8 *request, hss_session_t *hs)
+static hss_url_handler_rc_t
+handle_get_mactime (hss_url_handler_args_t *args)
 {
   mactime_main_t *mm = &mactime_main;
   mactime_device_t *dp;
@@ -145,17 +145,16 @@ handle_get_mactime (http_req_method_t reqtype, u8 *request, hss_session_t *hs)
   vec_free (macstring);
   vec_free (pool_indices);
 
-  hs->data = s;
-  hs->data_offset = 0;
-  hs->cache_pool_index = ~0;
-  hs->free_data = 1;
-  return 0;
+  args->data = s;
+  args->data_len = vec_len (s);
+  args->free_vec_data = 1;
+  return HSS_URL_HANDLER_OK;
 }
 
 void
 mactime_url_init (vlib_main_t * vm)
 {
-  void (*fp) (void *, char *, int);
+  hss_register_url_fn fp;
 
   /* Look up the builtin URL registration handler */
   fp = vlib_get_plugin_symbol ("http_static_plugin.so",

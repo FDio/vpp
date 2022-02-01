@@ -257,9 +257,9 @@ start_send_data (hss_session_t *hs, http_status_code_t status)
   msg.type = HTTP_MSG_REPLY;
   msg.code = status;
   msg.content_type = HTTP_CONTENT_TEXT_HTML;
-  msg.data.len = vec_len (hs->data);
+  msg.data.len = hs->data_len;
 
-  if (vec_len (hs->data) > hss_main.use_ptr_thresh)
+  if (hs->data_len > hss_main.use_ptr_thresh)
     {
       msg.data.type = HTTP_MSG_DATA_PTR;
       rv = svm_fifo_enqueue (ts->tx_fifo, sizeof (msg), (u8 *) &msg);
@@ -280,9 +280,9 @@ start_send_data (hss_session_t *hs, http_status_code_t status)
   if (!msg.data.len)
     goto done;
 
-  rv = svm_fifo_enqueue (ts->tx_fifo, vec_len (hs->data), hs->data);
+  rv = svm_fifo_enqueue (ts->tx_fifo, hs->data_len, hs->data);
 
-  if (rv != vec_len (hs->data))
+  if (rv != hs->data_len)
     {
       hs->data_offset = rv;
       svm_fifo_add_want_deq_ntf (ts->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
@@ -294,12 +294,25 @@ done:
     session_send_io_evt_to_thread (ts->tx_fifo, SESSION_IO_EVT_TX);
 }
 
+__clib_export void
+hss_session_send_data (hss_url_handler_args_t *args)
+{
+  hss_session_t *hs;
+
+  hs = hss_session_get (args->sh.thread_index, args->sh.session_index);
+  hs->data = args->data;
+  hs->data_len = args->data_len;
+  hs->free_data = args->free_vec_data;
+  start_send_data (hs, args->sc);
+}
+
 static int
 try_url_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
-		 u8 *request, http_status_code_t *sc)
+		 u8 *request)
 {
+  http_status_code_t sc = HTTP_STATUS_OK;
+  hss_url_handler_args_t args = {};
   uword *p, *url_table;
-  hss_url_handler_t fp;
   int rv;
 
   if (!hsm->enable_url_handlers)
@@ -313,24 +326,45 @@ try_url_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
   if (!p)
     return -1;
 
+  hs->path = 0;
+  hs->data_offset = 0;
+  hs->cache_pool_index = ~0;
+
   if (hsm->debug_level > 0)
     clib_warning ("%s '%s'", (rt == HTTP_REQ_GET) ? "GET" : "POST", request);
 
-  fp = (hss_url_handler_t) p[0];
-  hs->path = 0;
-  rv = fp (rt, request, hs);
-  if (rv)
+  args.reqtype = rt;
+  args.request = request;
+  args.sh.thread_index = hs->thread_index;
+  args.sh.session_index = hs->session_index;
+
+  rv = ((hss_url_handler_fn) p[0]) (&args);
+
+  /* Wait for data from handler */
+  if (rv == HSS_URL_HANDLER_ASYNC)
+    return 0;
+
+  if (rv == HSS_URL_HANDLER_ERROR)
     {
       clib_warning ("builtin handler %llx hit on %s '%s' but failed!", p[0],
 		    (rt == HTTP_REQ_GET) ? "GET" : "POST", request);
-      *sc = HTTP_STATUS_NOT_FOUND;
+      sc = HTTP_STATUS_NOT_FOUND;
     }
+
+  hs->data = args.data;
+  hs->data_len = args.data_len;
+  hs->free_data = args.free_vec_data;
+
+  start_send_data (hs, sc);
+
+  if (!hs->data)
+    hss_session_disconnect_transport (hs);
 
   return 0;
 }
 
 static int
-find_data (hss_session_t *hs, http_req_method_t rt, u8 *request)
+handle_request (hss_session_t *hs, http_req_method_t rt, u8 *request)
 {
   http_status_code_t sc = HTTP_STATUS_OK;
   hss_main_t *hsm = &hss_main;
@@ -338,8 +372,8 @@ find_data (hss_session_t *hs, http_req_method_t rt, u8 *request)
   clib_error_t *error;
   u8 *path;
 
-  if (!try_url_handler (hsm, hs, rt, request, &sc))
-    goto done;
+  if (!try_url_handler (hsm, hs, rt, request))
+    return 0;
 
   /*
    * Construct the file to open
@@ -541,6 +575,10 @@ find_data (hss_session_t *hs, http_req_method_t rt, u8 *request)
 
 done:
 
+  start_send_data (hs, sc);
+  if (!hs->data)
+    hss_session_disconnect_transport (hs);
+
   return sc;
 }
 
@@ -551,7 +589,6 @@ hss_ts_rx_callback (session_t *ts)
   u8 *request = 0;
   http_msg_t msg;
   int rv;
-  http_status_code_t sc;
 
   hs = hss_session_get (ts->thread_index, ts->opaque);
 
@@ -573,12 +610,9 @@ hss_ts_rx_callback (session_t *ts)
   ASSERT (rv == msg.data.len);
 
   /* Find and send data */
-  sc = find_data (hs, msg.method_type, request);
-  start_send_data (hs, sc);
+  handle_request (hs, msg.method_type, request);
 
   vec_free (request);
-  if (!hs->data)
-    hss_session_disconnect_transport (hs);
 
   return 0;
 }
@@ -594,7 +628,7 @@ hss_ts_tx_callback (session_t *ts)
   if (!hs || !hs->data)
     return 0;
 
-  to_send = vec_len (hs->data) - hs->data_offset;
+  to_send = hs->data_len - hs->data_offset;
   rv = svm_fifo_enqueue (ts->tx_fifo, to_send, hs->data + hs->data_offset);
 
   if (rv <= 0)
@@ -982,7 +1016,7 @@ format_hss_session (u8 *s, va_list *args)
   int __clib_unused verbose = va_arg (*args, int);
 
   s = format (s, "\n path %s, data length %u, data_offset %u",
-	      hs->path ? hs->path : (u8 *) "[none]", vec_len (hs->data),
+	      hs->path ? hs->path : (u8 *) "[none]", hs->data_len,
 	      hs->data_offset);
   return s;
 }
