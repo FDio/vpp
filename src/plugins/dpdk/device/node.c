@@ -100,13 +100,13 @@ dpdk_prefetch_buffer_x4 (struct rte_mbuf *mb[])
 {
   vlib_buffer_t *b;
   b = vlib_buffer_from_rte_mbuf (mb[0]);
-  clib_prefetch_store (b);
+  clib_prefetch_load (b);
   b = vlib_buffer_from_rte_mbuf (mb[1]);
-  clib_prefetch_store (b);
+  clib_prefetch_load (b);
   b = vlib_buffer_from_rte_mbuf (mb[2]);
-  clib_prefetch_store (b);
+  clib_prefetch_load (b);
   b = vlib_buffer_from_rte_mbuf (mb[3]);
-  clib_prefetch_store (b);
+  clib_prefetch_load (b);
 }
 
 /** \brief Main DPDK input node
