@@ -40,8 +40,10 @@ typedef struct
   session_handle_t vpp_session_handle;
   /** Fully-resolved file path */
   u8 *path;
-  /** File data, a vector */
+  /** Data to send */
   u8 *data;
+  /** Data length */
+  u32 data_len;
   /** Current data send offset */
   u32 data_offset;
   /** Need to free data in detach_cache_entry */
@@ -49,6 +51,21 @@ typedef struct
   /** File cache pool index */
   u32 cache_pool_index;
 } hss_session_t;
+
+typedef struct hss_session_handle_
+{
+  union
+  {
+    struct
+    {
+      u32 session_index;
+      u32 thread_index;
+    };
+    u64 as_u64;
+  };
+} hss_session_handle_t;
+
+STATIC_ASSERT_SIZEOF (hss_session_handle_t, sizeof (u64));
 
 /** \brief In-memory file data cache entry
  */
@@ -67,7 +84,17 @@ typedef struct
   int inuse;
 } hss_cache_entry_t;
 
-typedef int (*hss_url_handler_t) (http_req_method_t, u8 *, hss_session_t *);
+typedef enum hss_url_handler_rc_
+{
+  HSS_URL_HANDLER_RC_OK,
+  HSS_URL_HANDLER_RC_ASYNC,
+  HSS_URL_HANDLER_RC_NOT_FOUND
+} hss_url_handler_rc_t;
+
+typedef int (*hss_url_handler_fn) (http_req_method_t, u8 *, hss_session_t *);
+typedef void (*hss_register_url_fn) (hss_url_handler_fn, char *, int);
+typedef void (*hss_session_send_fn) (hss_session_handle_t sh, u8 *data,
+				     uword data_len, http_status_code_t sc);
 
 /** \brief Main data structure
  */
@@ -139,8 +166,10 @@ int hss_create (vlib_main_t *vm);
 /**
  * Register a GET or POST URL handler
  */
-void hss_register_url_handler (hss_url_handler_t fp, const char *url,
+void hss_register_url_handler (hss_url_handler_fn fp, const char *url,
 			       http_req_method_t type);
+void hss_session_send_data (hss_session_handle_t sh, u8 *data, uword data_len,
+			    http_status_code_t sc);
 void hss_builtinurl_json_handlers_init (void);
 
 #endif /* __included_http_static_h__ */
