@@ -102,8 +102,8 @@ vhost_user_rx_trace (vhost_trace_t * t,
 {
   vhost_user_main_t *vum = &vhost_user_main;
   u32 desc_current = txvq->avail->ring[last_avail_idx & txvq->qsz_mask];
-  vring_desc_t *hdr_desc = 0;
-  virtio_net_hdr_mrg_rxbuf_t *hdr;
+  vnet_virtio_vring_desc_t *hdr_desc = 0;
+  vnet_virtio_net_hdr_mrg_rxbuf_t *hdr;
   u32 hint = 0;
 
   clib_memset (t, 0, sizeof (*t));
@@ -249,8 +249,8 @@ vhost_user_input_rewind_buffers (vlib_main_t * vm,
 }
 
 static_always_inline void
-vhost_user_handle_rx_offload (vlib_buffer_t * b0, u8 * b0_data,
-			      virtio_net_hdr_t * hdr)
+vhost_user_handle_rx_offload (vlib_buffer_t *b0, u8 *b0_data,
+			      vnet_virtio_net_hdr_t *hdr)
 {
   u8 l4_hdr_sz = 0;
   u8 l4_proto = 0;
@@ -517,7 +517,7 @@ vhost_user_if_input (vlib_main_t *vm, vhost_user_main_t *vum,
       u32 bi_current;
       u16 desc_current;
       u32 desc_data_offset;
-      vring_desc_t *desc_table = txvq->desc;
+      vnet_virtio_vring_desc_t *desc_table = txvq->desc;
 
       if (PREDICT_FALSE (cpu->rx_buffers_len <= 1))
 	{
@@ -580,7 +580,7 @@ vhost_user_if_input (vlib_main_t *vm, vhost_user_main_t *vum,
 
       if (enable_csum)
 	{
-	  virtio_net_hdr_mrg_rxbuf_t *hdr;
+	  vnet_virtio_net_hdr_mrg_rxbuf_t *hdr;
 	  u8 *b_data;
 	  u16 current;
 
@@ -769,7 +769,7 @@ vhost_user_mark_desc_consumed (vhost_user_intf_t * vui,
 			       vhost_user_vring_t * txvq, u16 desc_head,
 			       u16 n_descs_processed)
 {
-  vring_packed_desc_t *desc_table = txvq->packed_desc;
+  vnet_virtio_vring_packed_desc_t *desc_table = txvq->packed_desc;
   u16 desc_idx;
   u16 mask = txvq->qsz_mask;
 
@@ -791,8 +791,8 @@ vhost_user_rx_trace_packed (vhost_trace_t * t, vhost_user_intf_t * vui,
 			    u16 desc_current)
 {
   vhost_user_main_t *vum = &vhost_user_main;
-  vring_packed_desc_t *hdr_desc;
-  virtio_net_hdr_mrg_rxbuf_t *hdr;
+  vnet_virtio_vring_packed_desc_t *hdr_desc;
+  vnet_virtio_net_hdr_mrg_rxbuf_t *hdr;
   u32 hint = 0;
 
   clib_memset (t, 0, sizeof (*t));
@@ -923,12 +923,13 @@ one_by_one:
 }
 
 static_always_inline u32
-vhost_user_do_offload (vhost_user_intf_t * vui,
-		       vring_packed_desc_t * desc_table, u16 desc_current,
-		       u16 mask, vlib_buffer_t * b_head, u32 * map_hint)
+vhost_user_do_offload (vhost_user_intf_t *vui,
+		       vnet_virtio_vring_packed_desc_t *desc_table,
+		       u16 desc_current, u16 mask, vlib_buffer_t *b_head,
+		       u32 *map_hint)
 {
   u32 rc = VHOST_USER_INPUT_FUNC_ERROR_NO_ERROR;
-  virtio_net_hdr_mrg_rxbuf_t *hdr;
+  vnet_virtio_net_hdr_mrg_rxbuf_t *hdr;
   u8 *b_data;
   u32 desc_data_offset = vui->virtio_net_hdr_sz;
 
@@ -989,7 +990,7 @@ vhost_user_compute_indirect_desc_len (vhost_user_intf_t * vui,
 				      u32 buffer_data_size, u16 desc_current,
 				      u32 * map_hint)
 {
-  vring_packed_desc_t *desc_table = txvq->packed_desc;
+  vnet_virtio_vring_packed_desc_t *desc_table = txvq->packed_desc;
   u32 desc_len = 0;
   u16 desc_data_offset = vui->virtio_net_hdr_sz;
   u16 desc_idx = desc_current;
@@ -1015,7 +1016,7 @@ vhost_user_compute_chained_desc_len (vhost_user_intf_t * vui,
 				     u32 buffer_data_size, u16 * current,
 				     u16 * n_left)
 {
-  vring_packed_desc_t *desc_table = txvq->packed_desc;
+  vnet_virtio_vring_packed_desc_t *desc_table = txvq->packed_desc;
   u32 desc_len = 0;
   u16 mask = txvq->qsz_mask;
 
@@ -1038,14 +1039,13 @@ vhost_user_compute_chained_desc_len (vhost_user_intf_t * vui,
 }
 
 static_always_inline void
-vhost_user_assemble_packet (vring_packed_desc_t * desc_table,
-			    u16 * desc_idx, vlib_buffer_t * b_head,
-			    vlib_buffer_t ** b_current, u32 ** next,
-			    vlib_buffer_t *** b, u32 * bi_current,
-			    vhost_cpu_t * cpu, u16 * copy_len,
-			    u32 * buffers_used, u32 buffers_required,
-			    u32 * desc_data_offset, u32 buffer_data_size,
-			    u16 mask)
+vhost_user_assemble_packet (vnet_virtio_vring_packed_desc_t *desc_table,
+			    u16 *desc_idx, vlib_buffer_t *b_head,
+			    vlib_buffer_t **b_current, u32 **next,
+			    vlib_buffer_t ***b, u32 *bi_current,
+			    vhost_cpu_t *cpu, u16 *copy_len, u32 *buffers_used,
+			    u32 buffers_required, u32 *desc_data_offset,
+			    u32 buffer_data_size, u16 mask)
 {
   u32 desc_data_l;
 
@@ -1108,7 +1108,7 @@ vhost_user_if_input_packed (vlib_main_t *vm, vhost_user_main_t *vum,
   u32 current_config_index = ~0;
   u16 mask = txvq->qsz_mask;
   u16 desc_current, desc_head, last_used_idx;
-  vring_packed_desc_t *desc_table = 0;
+  vnet_virtio_vring_packed_desc_t *desc_table = 0;
   u32 n_descs_processed = 0;
   u32 rv;
   vlib_buffer_t **b;

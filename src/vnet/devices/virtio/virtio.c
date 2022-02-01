@@ -60,7 +60,7 @@ call_read_ready (clib_file_t * uf)
 clib_error_t *
 virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
 {
-  virtio_vring_t *vring;
+  vnet_virtio_vring_t *vring;
   int i;
 
   if (!is_pow2 (sz))
@@ -85,19 +85,20 @@ virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
 			    CLIB_CACHE_LINE_BYTES);
       vring = vec_elt_at_index (vif->rxq_vrings, RX_QUEUE_ACCESS (idx));
     }
-  i = sizeof (vring_desc_t) * sz;
+  i = sizeof (vnet_virtio_vring_desc_t) * sz;
   i = round_pow2 (i, CLIB_CACHE_LINE_BYTES);
   vring->desc = clib_mem_alloc_aligned (i, CLIB_CACHE_LINE_BYTES);
   clib_memset (vring->desc, 0, i);
 
-  i = sizeof (vring_avail_t) + sz * sizeof (vring->avail->ring[0]);
+  i = sizeof (vnet_virtio_vring_avail_t) + sz * sizeof (vring->avail->ring[0]);
   i = round_pow2 (i, CLIB_CACHE_LINE_BYTES);
   vring->avail = clib_mem_alloc_aligned (i, CLIB_CACHE_LINE_BYTES);
   clib_memset (vring->avail, 0, i);
   // tell kernel that we don't need interrupt
   vring->avail->flags = VRING_AVAIL_F_NO_INTERRUPT;
 
-  i = sizeof (vring_used_t) + sz * sizeof (vring_used_elem_t);
+  i = sizeof (vnet_virtio_vring_used_t) +
+      sz * sizeof (vnet_virtio_vring_used_elem_t);
   i = round_pow2 (i, CLIB_CACHE_LINE_BYTES);
   vring->used = clib_mem_alloc_aligned (i, CLIB_CACHE_LINE_BYTES);
   clib_memset (vring->used, 0, i);
@@ -115,20 +116,20 @@ virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
   else
     vring->call_fd = eventfd (0, EFD_NONBLOCK | EFD_CLOEXEC);
 
-  vring->size = sz;
+  vring->queue_size = sz;
   vring->kick_fd = eventfd (0, EFD_NONBLOCK | EFD_CLOEXEC);
   virtio_log_debug (vif, "vring %u size %u call_fd %d kick_fd %d", idx,
-		    vring->size, vring->call_fd, vring->kick_fd);
+		    vring->queue_size, vring->call_fd, vring->kick_fd);
 
   return 0;
 }
 
 inline void
-virtio_free_buffers (vlib_main_t * vm, virtio_vring_t * vring)
+virtio_free_buffers (vlib_main_t *vm, vnet_virtio_vring_t *vring)
 {
   u16 used = vring->desc_in_use;
   u16 last = vring->last_used_idx;
-  u16 mask = vring->size - 1;
+  u16 mask = vring->queue_size - 1;
 
   while (used)
     {
@@ -141,7 +142,7 @@ virtio_free_buffers (vlib_main_t * vm, virtio_vring_t * vring)
 clib_error_t *
 virtio_vring_free_rx (vlib_main_t * vm, virtio_if_t * vif, u32 idx)
 {
-  virtio_vring_t *vring =
+  vnet_virtio_vring_t *vring =
     vec_elt_at_index (vif->rxq_vrings, RX_QUEUE_ACCESS (idx));
 
   clib_file_del_by_index (&file_main, vring->call_file_index);
@@ -163,7 +164,7 @@ virtio_vring_free_rx (vlib_main_t * vm, virtio_if_t * vif, u32 idx)
 clib_error_t *
 virtio_vring_free_tx (vlib_main_t * vm, virtio_if_t * vif, u32 idx)
 {
-  virtio_vring_t *vring =
+  vnet_virtio_vring_t *vring =
     vec_elt_at_index (vif->txq_vrings, TX_QUEUE_ACCESS (idx));
 
   close (vring->kick_fd);
@@ -188,7 +189,7 @@ virtio_set_packet_coalesce (virtio_if_t * vif)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, vif->hw_if_index);
-  virtio_vring_t *vring;
+  vnet_virtio_vring_t *vring;
   vif->packet_coalesce = 1;
   vec_foreach (vring, vif->txq_vrings)
   {
@@ -203,7 +204,7 @@ virtio_set_packet_buffering (virtio_if_t * vif, u16 buffering_size)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, vif->hw_if_index);
-  virtio_vring_t *vring;
+  vnet_virtio_vring_t *vring;
   clib_error_t *error = 0;
   vif->packet_buffering = 1;
 
@@ -221,7 +222,8 @@ virtio_set_packet_buffering (virtio_if_t * vif, u16 buffering_size)
 }
 
 static void
-virtio_vring_fill (vlib_main_t *vm, virtio_if_t *vif, virtio_vring_t *vring)
+virtio_vring_fill (vlib_main_t *vm, virtio_if_t *vif,
+		   vnet_virtio_vring_t *vring)
 {
   if (vif->is_packed)
     virtio_refill_vring_packed (vm, vif, vif->type, vring,
@@ -237,7 +239,7 @@ void
 virtio_vring_set_rx_queues (vlib_main_t *vm, virtio_if_t *vif)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  virtio_vring_t *vring;
+  vnet_virtio_vring_t *vring;
   u32 i = 0;
 
   vnet_hw_if_set_input_node (vnm, vif->hw_if_index, virtio_input_node.index);
@@ -287,7 +289,7 @@ void
 virtio_vring_set_tx_queues (vlib_main_t *vm, virtio_if_t *vif)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  virtio_vring_t *vring;
+  vnet_virtio_vring_t *vring;
 
   vec_foreach (vring, vif->txq_vrings)
     {
@@ -316,9 +318,9 @@ virtio_set_net_hdr_size (virtio_if_t * vif)
 {
   if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_MRG_RXBUF) ||
       vif->features & VIRTIO_FEATURE (VIRTIO_F_VERSION_1))
-    vif->virtio_net_hdr_sz = sizeof (virtio_net_hdr_v1_t);
+    vif->virtio_net_hdr_sz = sizeof (vnet_virtio_net_hdr_v1_t);
   else
-    vif->virtio_net_hdr_sz = sizeof (virtio_net_hdr_t);
+    vif->virtio_net_hdr_sz = sizeof (vnet_virtio_net_hdr_t);
 }
 
 inline void
@@ -329,7 +331,7 @@ virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,
   virtio_if_t *vif;
   vnet_main_t *vnm = &vnet_main;
   virtio_main_t *mm = &virtio_main;
-  virtio_vring_t *vring;
+  vnet_virtio_vring_t *vring;
   struct feat_struct
   {
     u8 bit;
@@ -442,10 +444,10 @@ virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,
       {
 	vring = vec_elt_at_index (vif->rxq_vrings, i);
 	vlib_cli_output (vm, "  Virtqueue (RX) %d", vring->queue_id);
-	vlib_cli_output (vm,
-			 "    qsz %d, last_used_idx %d, desc_next %d, desc_in_use %d",
-			 vring->size, vring->last_used_idx, vring->desc_next,
-			 vring->desc_in_use);
+	vlib_cli_output (
+	  vm, "    qsz %d, last_used_idx %d, desc_next %d, desc_in_use %d",
+	  vring->queue_size, vring->last_used_idx, vring->desc_next,
+	  vring->desc_in_use);
 	if (vif->is_packed)
 	  {
 	    vlib_cli_output (vm,
@@ -476,11 +478,12 @@ virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,
 			     "   id          addr         len  flags  next/id      user_addr\n");
 	    vlib_cli_output (vm,
 			     "  ===== ================== ===== ====== ======= ==================\n");
-	    for (j = 0; j < vring->size; j++)
+	    for (j = 0; j < vring->queue_size; j++)
 	      {
 		if (vif->is_packed)
 		  {
-		    vring_packed_desc_t *desc = &vring->packed_desc[j];
+		    vnet_virtio_vring_packed_desc_t *desc =
+		      &vring->packed_desc[j];
 		    vlib_cli_output (vm,
 				     "  %-5d 0x%016lx %-5d 0x%04x %-8d 0x%016lx\n",
 				     j, desc->addr,
@@ -489,7 +492,7 @@ virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,
 		  }
 		else
 		  {
-		    vring_desc_t *desc = &vring->desc[j];
+		    vnet_virtio_vring_desc_t *desc = &vring->desc[j];
 		    vlib_cli_output (vm,
 				     "  %-5d 0x%016lx %-5d 0x%04x %-8d 0x%016lx\n",
 				     j, desc->addr,
@@ -503,10 +506,10 @@ virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,
       {
 	vring = vec_elt_at_index (vif->txq_vrings, i);
 	vlib_cli_output (vm, "  Virtqueue (TX) %d", vring->queue_id);
-	vlib_cli_output (vm,
-			 "    qsz %d, last_used_idx %d, desc_next %d, desc_in_use %d",
-			 vring->size, vring->last_used_idx, vring->desc_next,
-			 vring->desc_in_use);
+	vlib_cli_output (
+	  vm, "    qsz %d, last_used_idx %d, desc_next %d, desc_in_use %d",
+	  vring->queue_size, vring->last_used_idx, vring->desc_next,
+	  vring->desc_in_use);
 	if (vif->is_packed)
 	  {
 	    vlib_cli_output (vm,
@@ -547,11 +550,12 @@ virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,
 			     "   id          addr         len  flags  next/id      user_addr\n");
 	    vlib_cli_output (vm,
 			     "  ===== ================== ===== ====== ======== ==================\n");
-	    for (j = 0; j < vring->size; j++)
+	    for (j = 0; j < vring->queue_size; j++)
 	      {
 		if (vif->is_packed)
 		  {
-		    vring_packed_desc_t *desc = &vring->packed_desc[j];
+		    vnet_virtio_vring_packed_desc_t *desc =
+		      &vring->packed_desc[j];
 		    vlib_cli_output (vm,
 				     "  %-5d 0x%016lx %-5d 0x%04x %-8d 0x%016lx\n",
 				     j, desc->addr,
@@ -560,7 +564,7 @@ virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,
 		  }
 		else
 		  {
-		    vring_desc_t *desc = &vring->desc[j];
+		    vnet_virtio_vring_desc_t *desc = &vring->desc[j];
 		    vlib_cli_output (vm,
 				     "  %-5d 0x%016lx %-5d 0x%04x %-8d 0x%016lx\n",
 				     j, desc->addr,
@@ -575,10 +579,10 @@ virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,
 	{
 	  vring = vif->cxq_vring;
 	  vlib_cli_output (vm, "  Virtqueue (CTRL) %d", vring->queue_id);
-	  vlib_cli_output (vm,
-			   "    qsz %d, last_used_idx %d, desc_next %d, desc_in_use %d",
-			   vring->size, vring->last_used_idx,
-			   vring->desc_next, vring->desc_in_use);
+	  vlib_cli_output (
+	    vm, "    qsz %d, last_used_idx %d, desc_next %d, desc_in_use %d",
+	    vring->queue_size, vring->last_used_idx, vring->desc_next,
+	    vring->desc_in_use);
 	  if (vif->is_packed)
 	    {
 	      vlib_cli_output (vm,
@@ -606,11 +610,12 @@ virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,
 			       "   id          addr         len  flags  next/id      user_addr\n");
 	      vlib_cli_output (vm,
 			       "  ===== ================== ===== ====== ======== ==================\n");
-	      for (j = 0; j < vring->size; j++)
+	      for (j = 0; j < vring->queue_size; j++)
 		{
 		  if (vif->is_packed)
 		    {
-		      vring_packed_desc_t *desc = &vring->packed_desc[j];
+		      vnet_virtio_vring_packed_desc_t *desc =
+			&vring->packed_desc[j];
 		      vlib_cli_output (vm,
 				       "  %-5d 0x%016lx %-5d 0x%04x %-8d 0x%016lx\n",
 				       j, desc->addr,
@@ -619,7 +624,7 @@ virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,
 		    }
 		  else
 		    {
-		      vring_desc_t *desc = &vring->desc[j];
+		      vnet_virtio_vring_desc_t *desc = &vring->desc[j];
 		      vlib_cli_output (vm,
 				       "  %-5d 0x%016lx %-5d 0x%04x %-8d 0x%016lx\n",
 				       j, desc->addr,

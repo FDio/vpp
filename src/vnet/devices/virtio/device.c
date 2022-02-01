@@ -166,11 +166,12 @@ virtio_memset_ring_u32 (u32 *ring, u32 start, u32 ring_size, u32 n_buffers)
 }
 
 static void
-virtio_free_used_device_desc_split (vlib_main_t *vm, virtio_vring_t *vring,
+virtio_free_used_device_desc_split (vlib_main_t *vm,
+				    vnet_virtio_vring_t *vring,
 				    uword node_index)
 {
   u16 used = vring->desc_in_use;
-  u16 sz = vring->size;
+  u16 sz = vring->queue_size;
   u16 mask = sz - 1;
   u16 last = vring->last_used_idx;
   u16 n_left = vring->used->idx - last;
@@ -181,7 +182,7 @@ virtio_free_used_device_desc_split (vlib_main_t *vm, virtio_vring_t *vring,
 
   while (n_left)
     {
-      vring_used_elem_t *e = &vring->used->ring[last & mask];
+      vnet_virtio_vring_used_elem_t *e = &vring->used->ring[last & mask];
       u16 slot, n_buffers;
       slot = n_buffers = e->id;
 
@@ -190,7 +191,7 @@ virtio_free_used_device_desc_split (vlib_main_t *vm, virtio_vring_t *vring,
 	  n_left--;
 	  last++;
 	  n_buffers++;
-	  vring_desc_t *d = &vring->desc[e->id];
+	  vnet_virtio_vring_desc_t *d = &vring->desc[e->id];
 	  u16 next;
 	  while (d->flags & VRING_DESC_F_NEXT)
 	    {
@@ -232,11 +233,12 @@ virtio_free_used_device_desc_split (vlib_main_t *vm, virtio_vring_t *vring,
 }
 
 static void
-virtio_free_used_device_desc_packed (vlib_main_t *vm, virtio_vring_t *vring,
+virtio_free_used_device_desc_packed (vlib_main_t *vm,
+				     vnet_virtio_vring_t *vring,
 				     uword node_index)
 {
-  vring_packed_desc_t *d;
-  u16 sz = vring->size;
+  vnet_virtio_vring_packed_desc_t *d;
+  u16 sz = vring->queue_size;
   u16 last = vring->last_used_idx;
   u16 n_buffers = 0, start;
   u16 flags;
@@ -273,7 +275,7 @@ virtio_free_used_device_desc_packed (vlib_main_t *vm, virtio_vring_t *vring,
 }
 
 static void
-virtio_free_used_device_desc (vlib_main_t *vm, virtio_vring_t *vring,
+virtio_free_used_device_desc (vlib_main_t *vm, vnet_virtio_vring_t *vring,
 			      uword node_index, int packed)
 {
   if (packed)
@@ -284,7 +286,7 @@ virtio_free_used_device_desc (vlib_main_t *vm, virtio_vring_t *vring,
 }
 
 static void
-set_checksum_offsets (vlib_buffer_t *b, virtio_net_hdr_v1_t *hdr,
+set_checksum_offsets (vlib_buffer_t *b, vnet_virtio_net_hdr_v1_t *hdr,
 		      const int is_l2)
 {
   vnet_buffer_oflags_t oflags = vnet_buffer (b)->oflags;
@@ -357,7 +359,8 @@ set_checksum_offsets (vlib_buffer_t *b, virtio_net_hdr_v1_t *hdr,
 }
 
 static void
-set_gso_offsets (vlib_buffer_t *b, virtio_net_hdr_v1_t *hdr, const int is_l2)
+set_gso_offsets (vlib_buffer_t *b, vnet_virtio_net_hdr_v1_t *hdr,
+		 const int is_l2)
 {
   vnet_buffer_oflags_t oflags = vnet_buffer (b)->oflags;
 
@@ -398,17 +401,17 @@ set_gso_offsets (vlib_buffer_t *b, virtio_net_hdr_v1_t *hdr, const int is_l2)
 
 static u16
 add_buffer_to_slot (vlib_main_t *vm, vlib_node_runtime_t *node,
-		    virtio_if_t *vif, virtio_vring_t *vring, u32 bi,
+		    virtio_if_t *vif, vnet_virtio_vring_t *vring, u32 bi,
 		    u16 free_desc_count, u16 avail, u16 next, u16 mask,
 		    int hdr_sz, int do_gso, int csum_offload, int is_pci,
 		    int is_tun, int is_indirect, int is_any_layout)
 {
   u16 n_added = 0;
-  vring_desc_t *d;
+  vnet_virtio_vring_desc_t *d;
   int is_l2 = !is_tun;
   d = &vring->desc[next];
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
-  virtio_net_hdr_v1_t *hdr = vlib_buffer_get_current (b) - hdr_sz;
+  vnet_virtio_net_hdr_v1_t *hdr = vlib_buffer_get_current (b) - hdr_sz;
   u32 drop_inline = ~0;
 
   clib_memset_u8 (hdr, 0, hdr_sz);
@@ -469,8 +472,8 @@ add_buffer_to_slot (vlib_main_t *vm, vlib_node_runtime_t *node,
       indirect_desc->next_buffer = bi;
       bi = indirect_buffer;
 
-      vring_desc_t *id =
-	(vring_desc_t *) vlib_buffer_get_current (indirect_desc);
+      vnet_virtio_vring_desc_t *id =
+	(vnet_virtio_vring_desc_t *) vlib_buffer_get_current (indirect_desc);
       u32 count = 1;
       if (is_pci)
 	{
@@ -539,7 +542,7 @@ add_buffer_to_slot (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
       id->flags = 0;
       id->next = 0;
-      d->len = count * sizeof (vring_desc_t);
+      d->len = count * sizeof (vnet_virtio_vring_desc_t);
       d->flags = VRING_DESC_F_INDIRECT;
     }
   else if (is_pci)
@@ -605,16 +608,16 @@ done:
 
 static u16
 add_buffer_to_slot_packed (vlib_main_t *vm, vlib_node_runtime_t *node,
-			   virtio_if_t *vif, virtio_vring_t *vring, u32 bi,
-			   u16 next, int hdr_sz, int do_gso, int csum_offload,
-			   int is_pci, int is_tun, int is_indirect,
-			   int is_any_layout)
+			   virtio_if_t *vif, vnet_virtio_vring_t *vring,
+			   u32 bi, u16 next, int hdr_sz, int do_gso,
+			   int csum_offload, int is_pci, int is_tun,
+			   int is_indirect, int is_any_layout)
 {
   u16 n_added = 0, flags = 0;
   int is_l2 = !is_tun;
-  vring_packed_desc_t *d = &vring->packed_desc[next];
+  vnet_virtio_vring_packed_desc_t *d = &vring->packed_desc[next];
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
-  virtio_net_hdr_v1_t *hdr = vlib_buffer_get_current (b) - hdr_sz;
+  vnet_virtio_net_hdr_v1_t *hdr = vlib_buffer_get_current (b) - hdr_sz;
   u32 drop_inline = ~0;
 
   clib_memset (hdr, 0, hdr_sz);
@@ -675,8 +678,9 @@ add_buffer_to_slot_packed (vlib_main_t *vm, vlib_node_runtime_t *node,
       indirect_desc->next_buffer = bi;
       bi = indirect_buffer;
 
-      vring_packed_desc_t *id =
-	(vring_packed_desc_t *) vlib_buffer_get_current (indirect_desc);
+      vnet_virtio_vring_packed_desc_t *id =
+	(vnet_virtio_vring_packed_desc_t *) vlib_buffer_get_current (
+	  indirect_desc);
       u32 count = 1;
       if (is_pci)
 	{
@@ -720,7 +724,7 @@ add_buffer_to_slot_packed (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
       id->flags = 0;
       id->id = 0;
-      d->len = count * sizeof (vring_packed_desc_t);
+      d->len = count * sizeof (vnet_virtio_vring_packed_desc_t);
       flags = VRING_DESC_F_INDIRECT;
     }
   else
@@ -752,12 +756,10 @@ done:
 }
 
 static uword
-virtio_interface_tx_packed_gso_inline (vlib_main_t *vm,
-				       vlib_node_runtime_t *node,
-				       virtio_if_t *vif, virtio_if_type_t type,
-				       virtio_vring_t *vring, u32 *buffers,
-				       u16 n_left, const int do_gso,
-				       const int csum_offload)
+virtio_interface_tx_packed_gso_inline (
+  vlib_main_t *vm, vlib_node_runtime_t *node, virtio_if_t *vif,
+  virtio_if_type_t type, vnet_virtio_vring_t *vring, u32 *buffers, u16 n_left,
+  const int do_gso, const int csum_offload)
 {
   int is_pci = (type == VIRTIO_IF_TYPE_PCI);
   int is_tun = (type == VIRTIO_IF_TYPE_TUN);
@@ -766,7 +768,7 @@ virtio_interface_tx_packed_gso_inline (vlib_main_t *vm,
   int is_any_layout =
     ((vif->features & VIRTIO_FEATURE (VIRTIO_F_ANY_LAYOUT)) != 0);
   const int hdr_sz = vif->virtio_net_hdr_sz;
-  u16 sz = vring->size;
+  u16 sz = vring->queue_size;
   u16 used, next, n_buffers = 0, n_buffers_left = 0;
   u16 n_vectors = n_left;
 
@@ -838,7 +840,7 @@ virtio_interface_tx_packed_gso_inline (vlib_main_t *vm,
 }
 
 static void
-virtio_find_free_desc (virtio_vring_t *vring, u16 size, u16 mask, u16 req,
+virtio_find_free_desc (vnet_virtio_vring_t *vring, u16 size, u16 mask, u16 req,
 		       u16 next, u32 *first_free_desc_index,
 		       u16 *free_desc_count)
 {
@@ -877,7 +879,7 @@ static u16
 virtio_interface_tx_split_gso_inline (vlib_main_t *vm,
 				      vlib_node_runtime_t *node,
 				      virtio_if_t *vif, virtio_if_type_t type,
-				      virtio_vring_t *vring, u32 *buffers,
+				      vnet_virtio_vring_t *vring, u32 *buffers,
 				      u16 n_left, int do_gso, int csum_offload)
 {
   u16 used, next, avail, n_buffers = 0, n_buffers_left = 0;
@@ -887,7 +889,7 @@ virtio_interface_tx_split_gso_inline (vlib_main_t *vm,
     ((vif->features & VIRTIO_FEATURE (VIRTIO_RING_F_INDIRECT_DESC)) != 0);
   int is_any_layout =
     ((vif->features & VIRTIO_FEATURE (VIRTIO_F_ANY_LAYOUT)) != 0);
-  u16 sz = vring->size;
+  u16 sz = vring->queue_size;
   int hdr_sz = vif->virtio_net_hdr_sz;
   u16 mask = sz - 1;
   u16 n_vectors = n_left;
@@ -986,7 +988,7 @@ virtio_interface_tx_split_gso_inline (vlib_main_t *vm,
 static u16
 virtio_interface_tx_gso_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 				virtio_if_t *vif, virtio_if_type_t type,
-				virtio_vring_t *vring, u32 *buffers,
+				vnet_virtio_vring_t *vring, u32 *buffers,
 				u16 n_left, int packed, int do_gso,
 				int csum_offload)
 {
@@ -1002,7 +1004,7 @@ virtio_interface_tx_gso_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 static u16
 virtio_interface_tx_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
-			    virtio_if_t *vif, virtio_vring_t *vring,
+			    virtio_if_t *vif, vnet_virtio_vring_t *vring,
 			    virtio_if_type_t type, u32 *buffers, u16 n_left,
 			    int packed)
 {
@@ -1035,7 +1037,7 @@ VNET_DEVICE_CLASS_TX_FN (virtio_device_class) (vlib_main_t * vm,
   virtio_if_t *vif = pool_elt_at_index (nm->interfaces, rund->dev_instance);
   vnet_hw_if_tx_frame_t *tf = vlib_frame_scalar_args (frame);
   u16 qid = tf->queue_id;
-  virtio_vring_t *vring = vec_elt_at_index (vif->txq_vrings, qid);
+  vnet_virtio_vring_t *vring = vec_elt_at_index (vif->txq_vrings, qid);
   u16 n_left = frame->n_vectors;
   u32 *buffers = vlib_frame_vector_args (frame);
   u32 to[GRO_TO_VECTOR_SIZE (n_left)];
@@ -1127,7 +1129,7 @@ virtio_clear_hw_interface_counters (u32 instance)
 }
 
 static void
-virtio_set_rx_interrupt (virtio_if_t *vif, virtio_vring_t *vring)
+virtio_set_rx_interrupt (virtio_if_t *vif, vnet_virtio_vring_t *vring)
 {
   if (vif->is_packed)
     vring->driver_event->flags &= ~VRING_EVENT_F_DISABLE;
@@ -1136,7 +1138,7 @@ virtio_set_rx_interrupt (virtio_if_t *vif, virtio_vring_t *vring)
 }
 
 static void
-virtio_set_rx_polling (virtio_if_t *vif, virtio_vring_t *vring)
+virtio_set_rx_polling (virtio_if_t *vif, vnet_virtio_vring_t *vring)
 {
   if (vif->is_packed)
     vring->driver_event->flags |= VRING_EVENT_F_DISABLE;
@@ -1151,7 +1153,7 @@ virtio_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
   virtio_main_t *mm = &virtio_main;
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   virtio_if_t *vif = pool_elt_at_index (mm->interfaces, hw->dev_instance);
-  virtio_vring_t *rx_vring = vec_elt_at_index (vif->rxq_vrings, qid);
+  vnet_virtio_vring_t *rx_vring = vec_elt_at_index (vif->rxq_vrings, qid);
 
   if (vif->type == VIRTIO_IF_TYPE_PCI && !(vif->support_int_mode))
     {

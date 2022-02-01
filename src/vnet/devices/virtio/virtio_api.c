@@ -193,10 +193,10 @@ virtio_pci_send_sw_interface_details (vpe_api_main_t * am,
   pci_address_encode ((vlib_pci_addr_t *) & vif->pci_addr.as_u32,
 		      &mp->pci_addr);
   mp->sw_if_index = htonl (vif->sw_if_index);
-  virtio_vring_t *vring = vec_elt_at_index (vif->rxq_vrings, 0);
-  mp->rx_ring_sz = htons (vring->size);
+  vnet_virtio_vring_t *vring = vec_elt_at_index (vif->rxq_vrings, 0);
+  mp->rx_ring_sz = htons (vring->queue_size);
   vring = vec_elt_at_index (vif->txq_vrings, 0);
-  mp->tx_ring_sz = htons (vring->size);
+  mp->tx_ring_sz = htons (vring->queue_size);
   clib_memcpy (mp->mac_addr, vif->mac_addr, 6);
   mp->features = clib_host_to_net_u64 (vif->features);
 

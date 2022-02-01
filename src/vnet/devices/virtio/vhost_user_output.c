@@ -127,7 +127,7 @@ vhost_user_tx_trace (vhost_trace_t * t,
   vhost_user_main_t *vum = &vhost_user_main;
   u32 last_avail_idx = rxvq->last_avail_idx;
   u32 desc_current = rxvq->avail->ring[last_avail_idx & rxvq->qsz_mask];
-  vring_desc_t *hdr_desc = 0;
+  vnet_virtio_vring_desc_t *hdr_desc = 0;
   u32 hint = 0;
 
   clib_memset (t, 0, sizeof (*t));
@@ -202,8 +202,8 @@ vhost_user_tx_copy (vhost_user_intf_t * vui, vhost_copy_t * cpy,
 }
 
 static_always_inline void
-vhost_user_handle_tx_offload (vhost_user_intf_t * vui, vlib_buffer_t * b,
-			      virtio_net_hdr_t * hdr)
+vhost_user_handle_tx_offload (vhost_user_intf_t *vui, vlib_buffer_t *b,
+			      vnet_virtio_net_hdr_t *hdr)
 {
   generic_header_offset_t gho = { 0 };
   int is_ip4 = b->flags & VNET_BUFFER_F_IS_IP4;
@@ -282,7 +282,7 @@ vhost_user_mark_desc_available (vlib_main_t * vm, vhost_user_intf_t * vui,
 				vlib_frame_t * frame, u32 n_left)
 {
   u16 desc_idx, flags;
-  vring_packed_desc_t *desc_table = rxvq->packed_desc;
+  vnet_virtio_vring_packed_desc_t *desc_table = rxvq->packed_desc;
   u16 last_used_idx = rxvq->last_used_idx;
 
   if (PREDICT_FALSE (*n_descs_processed == 0))
@@ -314,7 +314,7 @@ vhost_user_mark_desc_available (vlib_main_t * vm, vhost_user_intf_t * vui,
 
   if (chained)
     {
-      vring_packed_desc_t *desc_table = rxvq->packed_desc;
+      vnet_virtio_vring_packed_desc_t *desc_table = rxvq->packed_desc;
 
       while (desc_table[rxvq->last_used_idx & rxvq->qsz_mask].flags &
 	     VRING_DESC_F_NEXT)
@@ -344,7 +344,7 @@ vhost_user_tx_trace_packed (vhost_trace_t * t, vhost_user_intf_t * vui,
   vhost_user_main_t *vum = &vhost_user_main;
   u32 last_avail_idx = rxvq->last_avail_idx;
   u32 desc_current = last_avail_idx & rxvq->qsz_mask;
-  vring_packed_desc_t *hdr_desc = 0;
+  vnet_virtio_vring_packed_desc_t *hdr_desc = 0;
   u32 hint = 0;
 
   clib_memset (t, 0, sizeof (*t));
@@ -388,7 +388,7 @@ vhost_user_device_class_packed (vlib_main_t *vm, vlib_node_runtime_t *node,
   u8 retry = 8;
   u16 copy_len;
   u16 tx_headers_len;
-  vring_packed_desc_t *desc_table;
+  vnet_virtio_vring_packed_desc_t *desc_table;
   u32 or_flags;
   u16 desc_head, desc_index, desc_len;
   u16 n_descs_processed;
@@ -438,7 +438,7 @@ retry:
 	{
 	  indirect = 1;
 	  if (PREDICT_FALSE (desc_table[desc_head].len <
-			     sizeof (vring_packed_desc_t)))
+			     sizeof (vnet_virtio_vring_packed_desc_t)))
 	    {
 	      error = VHOST_USER_TX_FUNC_ERROR_INDIRECT_OVERFLOW;
 	      goto done;
@@ -461,7 +461,7 @@ retry:
       buffer_len = desc_table[desc_index].len;
 
       /* Get a header from the header array */
-      virtio_net_hdr_mrg_rxbuf_t *hdr = &cpu->tx_headers[tx_headers_len];
+      vnet_virtio_net_hdr_mrg_rxbuf_t *hdr = &cpu->tx_headers[tx_headers_len];
       tx_headers_len++;
       hdr->hdr.flags = 0;
       hdr->hdr.gso_type = VIRTIO_NET_HDR_GSO_NONE;
@@ -545,7 +545,7 @@ retry:
 		   * MRG is available
 		   * This is the default setting for the guest VM
 		   */
-		  virtio_net_hdr_mrg_rxbuf_t *hdr =
+		  vnet_virtio_net_hdr_mrg_rxbuf_t *hdr =
 		    &cpu->tx_headers[tx_headers_len - 1];
 
 		  desc_table[desc_index].len = desc_len;
@@ -742,7 +742,7 @@ retry:
     {
       vlib_buffer_t *b0, *current_b0;
       u16 desc_head, desc_index, desc_len;
-      vring_desc_t *desc_table;
+      vnet_virtio_vring_desc_t *desc_table;
       uword buffer_map_addr;
       u32 buffer_len;
       u16 bytes_left;
@@ -773,8 +773,8 @@ retry:
        * I don't know of any driver providing indirect for RX. */
       if (PREDICT_FALSE (rxvq->desc[desc_head].flags & VRING_DESC_F_INDIRECT))
 	{
-	  if (PREDICT_FALSE
-	      (rxvq->desc[desc_head].len < sizeof (vring_desc_t)))
+	  if (PREDICT_FALSE (rxvq->desc[desc_head].len <
+			     sizeof (vnet_virtio_vring_desc_t)))
 	    {
 	      error = VHOST_USER_TX_FUNC_ERROR_INDIRECT_OVERFLOW;
 	      goto done;
@@ -796,7 +796,8 @@ retry:
 
       {
 	// Get a header from the header array
-	virtio_net_hdr_mrg_rxbuf_t *hdr = &cpu->tx_headers[tx_headers_len];
+	vnet_virtio_net_hdr_mrg_rxbuf_t *hdr =
+	  &cpu->tx_headers[tx_headers_len];
 	tx_headers_len++;
 	hdr->hdr.flags = 0;
 	hdr->hdr.gso_type = VIRTIO_NET_HDR_GSO_NONE;
@@ -835,7 +836,7 @@ retry:
 		}
 	      else if (vui->virtio_net_hdr_sz == 12)	//MRG is available
 		{
-		  virtio_net_hdr_mrg_rxbuf_t *hdr =
+		  vnet_virtio_net_hdr_mrg_rxbuf_t *hdr =
 		    &cpu->tx_headers[tx_headers_len - 1];
 
 		  //Move from available to used buffer
@@ -870,8 +871,8 @@ retry:
 		    {
 		      //It is seriously unlikely that a driver will put indirect descriptor
 		      //after non-indirect descriptor.
-		      if (PREDICT_FALSE
-			  (rxvq->desc[desc_head].len < sizeof (vring_desc_t)))
+		      if (PREDICT_FALSE (rxvq->desc[desc_head].len <
+					 sizeof (vnet_virtio_vring_desc_t)))
 			{
 			  error = VHOST_USER_TX_FUNC_ERROR_INDIRECT_OVERFLOW;
 			  goto done;

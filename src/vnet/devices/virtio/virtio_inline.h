@@ -29,11 +29,11 @@ typedef enum
 
 static_always_inline void
 virtio_refill_vring_split (vlib_main_t *vm, virtio_if_t *vif,
-			   virtio_if_type_t type, virtio_vring_t *vring,
+			   virtio_if_type_t type, vnet_virtio_vring_t *vring,
 			   const int hdr_sz, u32 node_index)
 {
   u16 used, next, avail, n_slots, n_refill;
-  u16 sz = vring->size;
+  u16 sz = vring->queue_size;
   u16 mask = sz - 1;
 
 more:
@@ -47,8 +47,9 @@ more:
 
   next = vring->desc_next;
   avail = vring->avail->idx;
-  n_slots = vlib_buffer_alloc_to_ring_from_pool (
-    vm, vring->buffers, next, vring->size, n_refill, vring->buffer_pool_index);
+  n_slots = vlib_buffer_alloc_to_ring_from_pool (vm, vring->buffers, next,
+						 vring->queue_size, n_refill,
+						 vring->buffer_pool_index);
 
   if (PREDICT_FALSE (n_slots != n_refill))
     {
@@ -60,7 +61,7 @@ more:
 
   while (n_slots)
     {
-      vring_desc_t *d = &vring->desc[next];
+      vnet_virtio_vring_desc_t *d = &vring->desc[next];
       ;
       vlib_buffer_t *b = vlib_get_buffer (vm, vring->buffers[next]);
       /*
@@ -94,11 +95,11 @@ more:
 
 static_always_inline void
 virtio_refill_vring_packed (vlib_main_t *vm, virtio_if_t *vif,
-			    virtio_if_type_t type, virtio_vring_t *vring,
+			    virtio_if_type_t type, vnet_virtio_vring_t *vring,
 			    const int hdr_sz, u32 node_index)
 {
   u16 used, next, n_slots, n_refill, flags = 0, first_desc_flags;
-  u16 sz = vring->size;
+  u16 sz = vring->queue_size;
 
 more:
   used = vring->desc_in_use;
@@ -124,7 +125,7 @@ more:
 
   while (n_slots)
     {
-      vring_packed_desc_t *d = &vring->packed_desc[next];
+      vnet_virtio_vring_packed_desc_t *d = &vring->packed_desc[next];
       vlib_buffer_t *b = vlib_get_buffer (vm, vring->buffers[next]);
       /*
        * current_data may not be initialized with 0 and may contain

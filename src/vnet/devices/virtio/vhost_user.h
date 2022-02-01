@@ -186,18 +186,18 @@ typedef struct
   u16 n_since_last_int;
   union
   {
-    vring_desc_t *desc;
-    vring_packed_desc_t *packed_desc;
+    vnet_virtio_vring_desc_t *desc;
+    vnet_virtio_vring_packed_desc_t *packed_desc;
   };
   union
   {
-    vring_avail_t *avail;
-    vring_desc_event_t *avail_event;
+    vnet_virtio_vring_avail_t *avail;
+    vnet_virtio_vring_desc_event_t *avail_event;
   };
   union
   {
-    vring_used_t *used;
-    vring_desc_event_t *used_event;
+    vnet_virtio_vring_used_t *used;
+    vnet_virtio_vring_desc_event_t *used_event;
   };
   uword desc_user_addr;
   uword used_user_addr;
@@ -306,7 +306,7 @@ typedef struct
   u16 device_index; /** The device index */
   u32 virtio_ring_flags; /** Runtime queue flags  **/
   u16 first_desc_len; /** Length of the first data descriptor **/
-  virtio_net_hdr_mrg_rxbuf_t hdr; /** Virtio header **/
+  vnet_virtio_net_hdr_mrg_rxbuf_t hdr; /** Virtio header **/
 } vhost_trace_t;
 
 #define VHOST_USER_RX_BUFFERS_N (2 * VLIB_FRAME_SIZE + 2)
@@ -317,7 +317,7 @@ typedef struct
   u32 rx_buffers_len;
   u32 rx_buffers[VHOST_USER_RX_BUFFERS_N];
 
-  virtio_net_hdr_mrg_rxbuf_t tx_headers[VLIB_FRAME_SIZE];
+  vnet_virtio_net_hdr_mrg_rxbuf_t tx_headers[VLIB_FRAME_SIZE];
   vhost_copy_t copy[VHOST_USER_COPY_ARRAY_N];
 
   /* This is here so it doesn't end-up

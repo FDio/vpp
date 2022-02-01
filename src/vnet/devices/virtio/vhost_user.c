@@ -689,9 +689,12 @@ vhost_user_socket_read (clib_file_t * uf)
 	  goto close_socket;
 	}
 
-      vring_desc_t *desc = map_user_mem (vui, msg.addr.desc_user_addr);
-      vring_used_t *used = map_user_mem (vui, msg.addr.used_user_addr);
-      vring_avail_t *avail = map_user_mem (vui, msg.addr.avail_user_addr);
+      vnet_virtio_vring_desc_t *desc =
+	map_user_mem (vui, msg.addr.desc_user_addr);
+      vnet_virtio_vring_used_t *used =
+	map_user_mem (vui, msg.addr.used_user_addr);
+      vnet_virtio_vring_avail_t *avail =
+	map_user_mem (vui, msg.addr.avail_user_addr);
 
       if ((desc == NULL) || (used == NULL) || (avail == NULL))
 	{
@@ -1930,7 +1933,8 @@ format_vhost_user_desc (u8 * s, va_list * args)
 {
   char *fmt = va_arg (*args, char *);
   vhost_user_intf_t *vui = va_arg (*args, vhost_user_intf_t *);
-  vring_desc_t *desc_table = va_arg (*args, vring_desc_t *);
+  vnet_virtio_vring_desc_t *desc_table =
+    va_arg (*args, vnet_virtio_vring_desc_t *);
   int idx = va_arg (*args, int);
   u32 *mem_hint = va_arg (*args, u32 *);
 
@@ -1959,7 +1963,7 @@ vhost_user_show_desc (vlib_main_t * vm, vhost_user_intf_t * vui, int q,
   u32 mem_hint = 0;
   u32 idx;
   u32 n_entries;
-  vring_desc_t *desc_table;
+  vnet_virtio_vring_desc_t *desc_table;
   vhost_user_vring_t *vq = &vui->vrings[q];
 
   if (vq->avail && vq->used)
@@ -1989,7 +1993,8 @@ vhost_user_show_desc (vlib_main_t * vm, vhost_user_intf_t * vui, int q,
 			   desc_table, j, &mem_hint);
 	  if (show_verbose && (desc_table[j].flags & VRING_DESC_F_INDIRECT))
 	    {
-	      n_entries = desc_table[j].len / sizeof (vring_desc_t);
+	      n_entries =
+		desc_table[j].len / sizeof (vnet_virtio_vring_desc_t);
 	      desc_table = map_guest_mem (vui, desc_table[j].addr, &mem_hint);
 	      if (desc_table)
 		{
@@ -2014,7 +2019,8 @@ format_vhost_user_packed_desc (u8 * s, va_list * args)
 {
   char *fmt = va_arg (*args, char *);
   vhost_user_intf_t *vui = va_arg (*args, vhost_user_intf_t *);
-  vring_packed_desc_t *desc_table = va_arg (*args, vring_packed_desc_t *);
+  vnet_virtio_vring_packed_desc_t *desc_table =
+    va_arg (*args, vnet_virtio_vring_packed_desc_t *);
   int idx = va_arg (*args, int);
   u32 *mem_hint = va_arg (*args, u32 *);
 
@@ -2056,7 +2062,7 @@ vhost_user_show_desc_packed (vlib_main_t * vm, vhost_user_intf_t * vui, int q,
   u32 mem_hint = 0;
   u32 idx;
   u32 n_entries;
-  vring_packed_desc_t *desc_table;
+  vnet_virtio_vring_packed_desc_t *desc_table;
   vhost_user_vring_t *vq = &vui->vrings[q];
   u16 off_wrap, event_idx;
 

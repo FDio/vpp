@@ -50,7 +50,7 @@ virtio_send_interrupt_process (vlib_main_t * vm,
 	    {
 	      if (vif->packet_coalesce || vif->packet_buffering)
 		{
-		  virtio_vring_t *vring;
+		  vnet_virtio_vring_t *vring;
 		  vec_foreach (vring, vif->rxq_vrings)
 		    {
 		      if (vring->mode == VNET_HW_IF_RX_MODE_INTERRUPT ||
