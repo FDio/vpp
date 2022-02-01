@@ -33,7 +33,7 @@
 #include <vlibapi/api_helper_macros.h>
 
 __clib_export void
-hss_register_url_handler (hss_url_handler_t fp, const char *url,
+hss_register_url_handler (hss_url_handler_fn fp, const char *url,
 			  http_req_method_t request_type)
 {
   hss_main_t *hsm = &hss_main;
