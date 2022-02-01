@@ -155,8 +155,6 @@ vnet_geneve_inner_header_parser_inline (vlib_buffer_t * b0,
   /* not supported yet */
   if ((gho->gho_flags & GHO_F_GENEVE_TUNNEL) == 0)
     return;
-
-  ASSERT (0);
 }
 
 static_always_inline void
@@ -166,8 +164,6 @@ vnet_gre_inner_header_parser_inline (vlib_buffer_t * b0,
   /* not supported yet */
   if ((gho->gho_flags & GHO_F_GRE_TUNNEL) == 0)
     return;
-
-  ASSERT (0);
 }
 
 static_always_inline void
