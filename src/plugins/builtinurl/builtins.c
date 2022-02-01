@@ -18,8 +18,8 @@
 #include <http_static/http_static.h>
 #include <vpp/app/version.h>
 
-int
-handle_get_version (http_req_method_t reqtype, u8 *request, hss_session_t *hs)
+hss_url_handler_rc_t
+handle_get_version (hss_url_handler_args_t *args)
 {
   u8 *s = 0;
 
@@ -28,11 +28,10 @@ handle_get_version (http_req_method_t reqtype, u8 *request, hss_session_t *hs)
   s = format (s, "   \"version\": \"%s\",", VPP_BUILD_VER);
   s = format (s, "   \"build_date\": \"%s\"}}\r\n", VPP_BUILD_DATE);
 
-  hs->data = s;
-  hs->data_offset = 0;
-  hs->cache_pool_index = ~0;
-  hs->free_data = 1;
-  return 0;
+  args->data = s;
+  args->data_len = vec_len (s);
+  args->free_vec_data = 1;
+  return HSS_URL_HANDLER_OK;
 }
 
 void
@@ -62,9 +61,8 @@ trim_path_from_request (u8 * s, char *path)
     }
 }
 
-int
-handle_get_interface_stats (http_req_method_t reqtype, u8 *request,
-			    hss_session_t *hs)
+hss_url_handler_rc_t
+handle_get_interface_stats (hss_url_handler_args_t *args)
 {
   u8 *s = 0, *stats = 0;
   uword *p;
@@ -80,16 +78,16 @@ handle_get_interface_stats (http_req_method_t reqtype, u8 *request,
   vnet_interface_main_t *im = &vnm->interface_main;
 
   /* Get stats for a single interface via http POST */
-  if (reqtype == HTTP_REQ_POST)
+  if (args->reqtype == HTTP_REQ_POST)
     {
-      trim_path_from_request (request, "interface_stats.json");
+      trim_path_from_request (args->request, "interface_stats.json");
 
       /* Find the sw_if_index */
-      p = hash_get (im->hw_interface_by_name, request);
+      p = hash_get (im->hw_interface_by_name, args->request);
       if (!p)
 	{
 	  s = format (s, "{\"interface_stats\": {[\n");
-	  s = format (s, "   \"name\": \"%s\",", request);
+	  s = format (s, "   \"name\": \"%s\",", args->request);
 	  s = format (s, "   \"error\": \"%s\"", "UnknownInterface");
 	  s = format (s, "]}\n");
 	  goto out;
@@ -132,18 +130,16 @@ handle_get_interface_stats (http_req_method_t reqtype, u8 *request,
   s = format (s, "]}\n");
 
 out:
-  hs->data = s;
-  hs->data_offset = 0;
-  hs->cache_pool_index = ~0;
-  hs->free_data = 1;
+  args->data = s;
+  args->data_len = vec_len (s);
+  args->free_vec_data = 1;
   vec_free (sw_if_indices);
   vec_free (stats);
-  return 0;
+  return HSS_URL_HANDLER_OK;
 }
 
-int
-handle_get_interface_list (http_req_method_t reqtype, u8 *request,
-			   hss_session_t *hs)
+hss_url_handler_rc_t
+handle_get_interface_list (hss_url_handler_args_t *args)
 {
   u8 *s = 0;
   int i;
@@ -176,11 +172,10 @@ handle_get_interface_list (http_req_method_t reqtype, u8 *request,
   s = format (s, "]}\n");
   vec_free (hw_if_indices);
 
-  hs->data = s;
-  hs->data_offset = 0;
-  hs->cache_pool_index = ~0;
-  hs->free_data = 1;
-  return 0;
+  args->data = s;
+  args->data_len = vec_len (s);
+  args->free_vec_data = 1;
+  return HSS_URL_HANDLER_OK;
 }
 
 void
