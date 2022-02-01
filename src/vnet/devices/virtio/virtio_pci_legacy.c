@@ -176,10 +176,11 @@ virtio_pci_legacy_set_queue_num (vlib_main_t * vm, virtio_if_t * vif,
 }
 
 static u8
-virtio_pci_legacy_setup_queue (vlib_main_t * vm, virtio_if_t * vif,
-			       u16 queue_id, void *p)
+virtio_pci_legacy_setup_queue (vlib_main_t *vm, virtio_if_t *vif, u16 queue_id,
+			       vnet_virtio_vring_t *vring)
 {
-  u64 addr = vlib_physmem_get_pa (vm, p) >> VIRTIO_PCI_QUEUE_ADDR_SHIFT;
+  u64 addr =
+    vlib_physmem_get_pa (vm, vring->desc) >> VIRTIO_PCI_QUEUE_ADDR_SHIFT;
   u32 addr2 = 0, a = (u32) addr;
   vlib_pci_write_io_u16 (vm, vif->pci_dev_handle, VIRTIO_PCI_QUEUE_SEL,
 			 &queue_id);

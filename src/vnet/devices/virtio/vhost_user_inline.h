@@ -199,12 +199,15 @@ vhost_user_log_dirty_pages_2 (vhost_user_intf_t * vui,
     }
 }
 
-
-#define vhost_user_log_dirty_ring(vui, vq, member) \
-  if (PREDICT_FALSE(vq->log_used)) { \
-    vhost_user_log_dirty_pages_2(vui, vq->log_guest_addr + STRUCT_OFFSET_OF(vring_used_t, member), \
-                             sizeof(vq->used->member), 0); \
-  }
+#define vhost_user_log_dirty_ring(vui, vq, member)                            \
+  if (PREDICT_FALSE (vq->log_used))                                           \
+    {                                                                         \
+      vhost_user_log_dirty_pages_2 (                                          \
+	vui,                                                                  \
+	vq->log_guest_addr +                                                  \
+	  STRUCT_OFFSET_OF (vnet_virtio_vring_used_t, member),                \
+	sizeof (vq->used->member), 0);                                        \
+    }
 
 static_always_inline u8 *
 format_vhost_trace (u8 * s, va_list * va)
@@ -425,7 +428,7 @@ vhost_user_advance_last_avail_table_idx (vhost_user_intf_t * vui,
 {
   if (chained)
     {
-      vring_packed_desc_t *desc_table = vring->packed_desc;
+      vnet_virtio_vring_packed_desc_t *desc_table = vring->packed_desc;
 
       /* pick up the slot of the next avail idx */
       while (desc_table[vring->last_avail_idx & vring->qsz_mask].flags &
@@ -449,9 +452,9 @@ vhost_user_undo_advanced_last_avail_idx (vhost_user_vring_t * vring)
 }
 
 static_always_inline void
-vhost_user_dequeue_descs (vhost_user_vring_t * rxvq,
-			  virtio_net_hdr_mrg_rxbuf_t * hdr,
-			  u16 * n_descs_processed)
+vhost_user_dequeue_descs (vhost_user_vring_t *rxvq,
+			  vnet_virtio_net_hdr_mrg_rxbuf_t *hdr,
+			  u16 *n_descs_processed)
 {
   u16 i;
 
