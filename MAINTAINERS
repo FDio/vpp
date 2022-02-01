@@ -779,6 +779,11 @@ I:	http
 M:	Florin Coras <fcoras@cisco.com>
 F:	src/plugins/http
 
+Plugin - Prom
+I:	prom
+M:	Florin Coras <fcoras@cisco.com>
+F:	src/plugins/prom
+
 cJSON
 I:	cjson
 M:	Ole Troan <ot@cisco.com>
