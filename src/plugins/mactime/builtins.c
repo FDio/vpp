@@ -15,7 +15,7 @@ mactime_ip_neighbor_copy (index_t ipni, void *ctx)
 }
 
 static int
-handle_get_mactime (http_req_method_t reqtype, u8 *request, hss_session_t *hs)
+handle_get_mactime (hss_url_handler_args_t *args)
 {
   mactime_main_t *mm = &mactime_main;
   mactime_device_t *dp;
@@ -145,10 +145,9 @@ handle_get_mactime (http_req_method_t reqtype, u8 *request, hss_session_t *hs)
   vec_free (macstring);
   vec_free (pool_indices);
 
-  hs->data = s;
-  hs->data_offset = 0;
-  hs->cache_pool_index = ~0;
-  hs->free_data = 1;
+  args->data = s;
+  args->data_len = vec_len (s);
+  args->free_vec_data = 1;
   return 0;
 }
 
