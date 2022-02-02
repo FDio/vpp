@@ -564,6 +564,7 @@ vts_handle_ctrl_cfg (vcl_test_server_worker_t *wrk, vcl_test_cfg_t *rx_cfg,
       wrk->nfds--;
       if (wrk->nfds)
 	vts_wrk_cleanup_all (wrk);
+      vcl_server_main.ctrl = 0;
       break;
 
     default:
@@ -642,6 +643,8 @@ vts_inc_stats_check (vcl_test_session_t *ts)
     }
 }
 
+static void vts_ctrl_session_init (vcl_test_server_worker_t *wrk);
+
 static void *
 vts_worker_loop (void *arg)
 {
@@ -671,19 +674,25 @@ vts_worker_loop (void *arg)
 	}
       for (i = 0; i < num_ev; i++)
 	{
-	  conn = &wrk->conn_pool[ep_evts[i].data.u32];
+	  u32 ci = ep_evts[i].data.u32;
+	  conn = &wrk->conn_pool[ci];
 	  /*
 	   * Check for close events
 	   */
 	  if (ep_evts[i].events & (EPOLLHUP | EPOLLRDHUP))
 	    {
+              if (conn == vsm->ctrl)
+              {
+                vtinf("ctrl session went away");
+                vsm->ctrl = 0;
+              }
 	      vts_session_cleanup (conn);
 	      wrk->nfds--;
-	      if (!wrk->nfds)
-		{
-		  vtinf ("All client connections closed\n");
-		  goto done;
-		}
+	      /* if (!wrk->nfds) */
+		/* { */
+		  /* vtinf ("All client connections closed\n"); */
+		  /* goto done; */
+		/* } */
 	      continue;
 	    }
 
@@ -809,6 +818,10 @@ vts_ctrl_session_init (vcl_test_server_worker_t *wrk)
   if (rv < 0)
     vtfail ("vppcom_session_listen()", rv);
 
+  if (wrk->epfd)
+    {
+      clib_warning ("FIXME");
+    }
   wrk->epfd = vppcom_epoll_create ();
   if (wrk->epfd < 0)
     vtfail ("vppcom_epoll_create()", wrk->epfd);

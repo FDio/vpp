@@ -41,10 +41,11 @@ vcl_mq_evt_conn_get (vcl_worker_t * wrk, u32 mq_conn_idx)
 int
 vcl_mq_epoll_add_evfd (vcl_worker_t * wrk, svm_msg_q_t * mq)
 {
+  clib_socket_t *cs = &wrk->app_api_sock;
   struct epoll_event e = { 0 };
   vcl_mq_evt_conn_t *mqc;
   u32 mqc_index;
-  int mq_fd;
+  int mq_fd, rv;
 
   mq_fd = svm_msg_q_get_eventfd (mq);
 
@@ -61,6 +62,19 @@ vcl_mq_epoll_add_evfd (vcl_worker_t * wrk, svm_msg_q_t * mq)
   if (epoll_ctl (wrk->mqs_epfd, EPOLL_CTL_ADD, mq_fd, &e) < 0)
     {
       VDBG (0, "failed to add mq eventfd to mq epoll fd");
+      return -1;
+    }
+
+  /* Add unix socket to epoll.
+    Used only to get a notification on socket close */
+  e.events = 0;
+  /* e.data.fd = cs->fd; // use different value as */
+  /*                     //this might collide with mqc_index? */
+  e.data.u32 = ~0;
+  rv = epoll_ctl (wrk->mqs_epfd, EPOLL_CTL_ADD, cs->fd, &e);
+  if (rv != EEXIST && rv < 0)
+    {
+      VDBG (0, "failed to add mq socket to mq epoll fd");
       return -1;
     }
 

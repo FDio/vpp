@@ -30,7 +30,8 @@ vcl_api_connect_app_socket (vcl_worker_t * wrk)
 
   if ((err = clib_socket_init (cs)))
     {
-      clib_error_report (err);
+      /* clib_error_report (err); */
+      clib_error_free (err);
       rv = -1;
       goto done;
     }

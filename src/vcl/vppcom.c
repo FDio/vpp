@@ -3180,6 +3180,32 @@ vppcom_epoll_wait_condvar (vcl_worker_t *wrk, struct epoll_event *events,
 }
 
 static int
+vppcom_retry_connect (vcl_worker_t *wrk)
+{
+  if (vcl_api_attach ())
+    return -1;
+  return 0;
+}
+
+static void
+vcl_free_segments ()
+{
+  u64 *segs = 0, *seg, key;
+  u32 val;
+
+  clib_rwlock_writer_lock (&vcm->segment_table_lock);
+
+  hash_foreach (key, val, vcm->segment_table, ({ vec_add1 (segs, key); }));
+
+  clib_rwlock_writer_unlock (&vcm->segment_table_lock);
+
+  vec_foreach (seg, segs)
+    vcl_segment_detach (seg[0]);
+
+  vec_free (segs);
+}
+
+static int
 vppcom_epoll_wait_eventfd (vcl_worker_t *wrk, struct epoll_event *events,
 			   int maxevents, u32 n_evts, double timeout_ms)
 {
@@ -3188,6 +3214,25 @@ vppcom_epoll_wait_eventfd (vcl_worker_t *wrk, struct epoll_event *events,
   int n_mq_evts, i;
   double end = -1;
   u64 buf;
+  vcl_session_t *s;
+  session_event_t *e;
+
+  if (!vcm->is_init)
+    {
+      if (vppcom_retry_connect (wrk))
+	return n_evts;
+
+      vcm->is_init = 1;
+      pool_foreach (s, wrk->sessions)
+      {
+        if (s->flags & VCL_SESSION_F_IS_VEP)
+          continue;
+        if (s->session_state == VCL_STATE_LISTEN_NO_MQ)
+          vppcom_session_listen(vcl_session_handle(s), 10);
+        else
+          clib_warning("BUG?? state %d", s->session_state);
+      }
+    }
 
   vec_validate (wrk->mq_events, pool_elts (wrk->mq_evt_conns));
   if (!n_evts)
@@ -3208,10 +3253,36 @@ vppcom_epoll_wait_eventfd (vcl_worker_t *wrk, struct epoll_event *events,
 
       for (i = 0; i < n_mq_evts; i++)
 	{
-	  mqc = vcl_mq_evt_conn_get (wrk, wrk->mq_events[i].data.u32);
-	  n_read = read (mqc->mq_fd, &buf, sizeof (buf));
-	  vcl_epoll_wait_handle_mq (wrk, mqc->mq, events, maxevents, 0,
-				    &n_evts);
+	  if (wrk->mq_events[i].data.u32 == ~0)
+	    {
+	      close (wrk->app_api_sock.fd);
+	      vcm->is_init = 0;
+	      pool_foreach (s, wrk->sessions)
+                {
+                  if (s->session_state == VCL_STATE_LISTEN)
+                  {
+                    s->session_state = VCL_STATE_LISTEN_NO_MQ;
+                    continue;
+                  }
+                  if (s->flags & VCL_SESSION_F_IS_VEP)
+                    continue;
+
+                  s->session_state = VCL_STATE_DETACHED;
+                  vec_add2 (wrk->unhandled_evts_vector, e, 1);
+                  e->event_type = SESSION_CTRL_EVT_DISCONNECTED;
+                  e->session_index = s->session_index;
+                  e->postponed = 1;
+                }
+
+	      vcl_free_segments ();
+	    }
+	  else
+	    {
+	      mqc = vcl_mq_evt_conn_get (wrk, wrk->mq_events[i].data.u32);
+	      n_read = read (mqc->mq_fd, &buf, sizeof (buf));
+	      vcl_epoll_wait_handle_mq (wrk, mqc->mq, events, maxevents, 0,
+					&n_evts);
+	    }
 	}
 
       if (n_evts || !timeout_ms)
@@ -3319,6 +3390,7 @@ vppcom_epoll_wait (uint32_t vep_handle, struct epoll_event *events,
 	      return n_evts;
 	    }
 	}
+      clib_warning("unhandled evts %d", n_evts);
       vec_reset_length (wrk->unhandled_evts_vector);
     }
 
