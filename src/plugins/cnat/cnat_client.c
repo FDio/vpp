@@ -190,7 +190,7 @@ cnat_client_learn (const ip_address_t *addr)
   /* RPC call to add a client from the dataplane */
   index_t cci;
   cnat_client_t *cc;
-  cci = cnat_client_add (addr, 0 /* flags */);
+  cci = cnat_client_add (addr, CNAT_FLAG_EXCLUSIVE /* flags */);
   cc = pool_elt_at_index (cnat_client_pool, cci);
   cnat_client_cnt_session (cc);
   /* Process throttled calls if any */

@@ -225,6 +225,46 @@ cnat_ip4_translate_l4 (ip4_header_t * ip4, udp_header_t * udp,
     }
 }
 
+static u32
+sctp_crc32 (u8 *s, u32 len)
+{
+  u32 v = ~0;
+  for (; len >= 1; len -= 1, s += 1)
+    v = clib_crc32c_u8 (v, *((u8 *) s));
+  return v;
+}
+
+static_always_inline void
+cnat_ip4_translate_sctp (ip4_header_t *ip4, sctp_header_t *sctp,
+			 u16 new_port[VLIB_N_DIR])
+{
+  u16 old_port[VLIB_N_DIR];
+
+  /* Fastpath no checksum */
+  if (PREDICT_TRUE (0 == sctp->checksum))
+    {
+      sctp->dst_port = new_port[VLIB_TX];
+      sctp->src_port = new_port[VLIB_RX];
+      return;
+    }
+
+  old_port[VLIB_TX] = sctp->dst_port;
+  old_port[VLIB_RX] = sctp->src_port;
+
+  if (new_port[VLIB_TX])
+    sctp->dst_port = new_port[VLIB_TX];
+  if (new_port[VLIB_RX])
+    sctp->src_port = new_port[VLIB_RX];
+
+  sctp->checksum = 0;
+#ifdef clib_crc32c_uses_intrinsics
+  sctp->checksum =
+    sctp_crc32 ((u8 *) sctp, ip4->length - sizeof (ip4_header_t));
+#endif
+  sctp->checksum = ~sctp->checksum;
+  sctp->checksum = clib_host_to_net_u32 (sctp->checksum);
+}
+
 static_always_inline void
 cnat_ip4_translate_l3 (ip4_header_t * ip4, ip4_address_t new_addr[VLIB_N_DIR])
 {
@@ -405,6 +445,12 @@ cnat_translation_ip4 (const cnat_session_t * session,
       ip_csum_t sum = udp->checksum;
       cnat_ip4_translate_l4 (ip4, udp, &sum, new_addr, new_port);
       udp->checksum = ip_csum_fold (sum);
+      cnat_ip4_translate_l3 (ip4, new_addr);
+    }
+  else if (ip4->protocol == IP_PROTOCOL_SCTP)
+    {
+      sctp_header_t *sctp = (sctp_header_t *) udp;
+      cnat_ip4_translate_sctp (ip4, sctp, new_port);
       cnat_ip4_translate_l3 (ip4, new_addr);
     }
   else if (ip4->protocol == IP_PROTOCOL_ICMP)
@@ -742,6 +788,18 @@ cnat_session_make_key (vlib_buffer_t *b, ip_address_family_t af,
 	  session->key.cs_proto = ip4->protocol;
 	  session->key.cs_port[VLIB_RX] = udp->src_port;
 	  session->key.cs_port[VLIB_TX] = udp->dst_port;
+	}
+      else if (ip4->protocol == IP_PROTOCOL_SCTP)
+	{
+	  sctp_header_t *sctp;
+	  sctp = (sctp_header_t *) (ip4 + 1);
+	  ip46_address_set_ip4 (&session->key.cs_ip[VLIB_TX],
+				&ip4->dst_address);
+	  ip46_address_set_ip4 (&session->key.cs_ip[VLIB_RX],
+				&ip4->src_address);
+	  session->key.cs_proto = ip4->protocol;
+	  session->key.cs_port[VLIB_RX] = sctp->src_port;
+	  session->key.cs_port[VLIB_TX] = sctp->dst_port;
 	}
       else
 	goto error;
