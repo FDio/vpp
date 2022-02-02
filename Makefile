@@ -72,7 +72,7 @@ DEB_DEPENDS += cmake ninja-build uuid-dev python3-jsonschema python3-yaml
 DEB_DEPENDS += python3-venv  # ensurepip
 DEB_DEPENDS += python3-dev   # needed for python3 -m pip install psutil
 DEB_DEPENDS += libnl-3-dev libnl-route-3-dev libmnl-dev
-DEB_DEPENDS += enchant  # for docs
+# DEB_DEPENDS += enchant  # for docs
 DEB_DEPENDS += python3-virtualenv
 DEB_DEPENDS += libssl-dev
 DEB_DEPENDS += libelf-dev # for libbpf (af_xdp)
@@ -96,6 +96,10 @@ else ifeq ($(OS_VERSION_ID),20.10)
 	LIBFFI=libffi8ubuntu1
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-10)
 	DEB_DEPENDS += virtualenv
+else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-11)
+	DEB_DEPENDS += virtualenv
+	DEB_DEPENDS += clang-11 clang-format-11
+	LIBFFI=libffi7
 else
 	# TODO: change CLANG_FORMAT_VER default in extras/scripts/checkstyle.sh
 	#       when clang-format-10 is removed

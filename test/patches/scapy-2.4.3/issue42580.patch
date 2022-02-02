@@ -1,0 +1,19 @@
+*** a/scapy/arch/bpf/core.py.orig	2022-02-02 16:25:51.475845472 +0000
+--- b/scapy/arch/bpf/core.py	2022-02-02 16:26:11.868800941 +0000
+***************
+*** 28,34 ****
+  
+  # ctypes definitions
+  
+! LIBC = cdll.LoadLibrary(find_library("libc"))
+  LIBC.ioctl.argtypes = [c_int, c_ulong, c_char_p]
+  LIBC.ioctl.restype = c_int
+  
+--- 28,34 ----
+  
+  # ctypes definitions
+  
+! LIBC = cdll.LoadLibrary(find_library("c"))
+  LIBC.ioctl.argtypes = [c_int, c_ulong, c_char_p]
+  LIBC.ioctl.restype = c_int
+  
