@@ -1257,6 +1257,32 @@ vcl_api_attach (void)
 }
 
 static void
+vcl_retry_attach (vcl_worker_t *wrk)
+{
+  vcl_session_t *s;
+
+  if (vcl_api_attach ())
+    return;
+
+  pool_foreach (s, wrk->sessions)
+    {
+      if (s->flags & VCL_SESSION_F_IS_VEP)
+	continue;
+      if (s->session_state == VCL_STATE_LISTEN_NO_MQ)
+	vppcom_session_listen (vcl_session_handle (s), 10);
+      else
+	VDBG (0, "internal error: unexpected state %d", s->session_state);
+    }
+}
+
+static void
+vcl_handle_disconnect (vcl_worker_t *wrk)
+{
+  wrk->api_client_handle = ~0;
+  vcl_cleanup_sessions (wrk);
+}
+
+static void
 vcl_api_detach (vcl_worker_t * wrk)
 {
   vcl_send_app_detach (wrk);
@@ -2468,11 +2494,23 @@ vppcom_select_eventfd (vcl_worker_t * wrk, int n_bits,
   int n_mq_evts, i;
   u64 buf;
 
+  if (PREDICT_FALSE (wrk->api_client_handle == ~0))
+    {
+      vcl_retry_attach (wrk);
+      return 0;
+    }
+
   vec_validate (wrk->mq_events, pool_elts (wrk->mq_evt_conns));
   n_mq_evts = epoll_wait (wrk->mqs_epfd, wrk->mq_events,
 			  vec_len (wrk->mq_events), time_to_wait);
   for (i = 0; i < n_mq_evts; i++)
     {
+      if (PREDICT_FALSE (wrk->mq_events[i].data.u32 == ~0))
+	{
+	  vcl_handle_disconnect (wrk);
+	  continue;
+	}
+
       mqc = vcl_mq_evt_conn_get (wrk, wrk->mq_events[i].data.u32);
       n_read = read (mqc->mq_fd, &buf, sizeof (buf));
       vcl_select_handle_mq (wrk, mqc->mq, n_bits, read_map, write_map,
@@ -3189,6 +3227,12 @@ vppcom_epoll_wait_eventfd (vcl_worker_t *wrk, struct epoll_event *events,
   double end = -1;
   u64 buf;
 
+  if (PREDICT_FALSE (wrk->api_client_handle == ~0))
+    {
+      vcl_retry_attach (wrk);
+      return n_evts;
+    }
+
   vec_validate (wrk->mq_events, pool_elts (wrk->mq_evt_conns));
   if (!n_evts)
     {
@@ -3208,6 +3252,13 @@ vppcom_epoll_wait_eventfd (vcl_worker_t *wrk, struct epoll_event *events,
 
       for (i = 0; i < n_mq_evts; i++)
 	{
+	  if (PREDICT_FALSE (wrk->mq_events[i].data.u32 == ~0))
+	    {
+	      /* api socket was closed */
+	      vcl_handle_disconnect (wrk);
+	      continue;
+	    }
+
 	  mqc = vcl_mq_evt_conn_get (wrk, wrk->mq_events[i].data.u32);
 	  n_read = read (mqc->mq_fd, &buf, sizeof (buf));
 	  vcl_epoll_wait_handle_mq (wrk, mqc->mq, events, maxevents, 0,
