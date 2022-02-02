@@ -321,7 +321,8 @@ cnat_output_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       trace_flags |= CNAT_TRACE_SESSION_CREATED;
       cnat_session_create (session, ctx, CNAT_LOCATION_INPUT,
-			   CNAT_SESSION_FLAG_NO_CLIENT);
+			   CNAT_SESSION_FLAG_NO_CLIENT |
+			     CNAT_SESSION_RETRY_SNAT);
     }
 
   if (AF_IP4 == ctx->af)

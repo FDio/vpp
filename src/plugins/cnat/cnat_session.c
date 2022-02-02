@@ -172,15 +172,43 @@ cnat_session_purge (void)
   return (0);
 }
 
+void
+cnat_reverse_session_free (cnat_session_t *session)
+{
+  cnat_bihash_kv_t bkey, bvalue;
+  cnat_session_t *rsession = (cnat_session_t *) &bkey;
+  int rv;
+
+  ip46_address_copy (&rsession->key.cs_ip[VLIB_RX],
+		     &session->value.cs_ip[VLIB_TX]);
+  ip46_address_copy (&rsession->key.cs_ip[VLIB_TX],
+		     &session->value.cs_ip[VLIB_RX]);
+  rsession->key.cs_proto = session->key.cs_proto;
+  rsession->key.cs_loc = session->key.cs_loc == CNAT_LOCATION_OUTPUT ?
+			   CNAT_LOCATION_INPUT :
+			   CNAT_LOCATION_OUTPUT;
+  rsession->key.__cs_pad = 0;
+  rsession->key.cs_af = session->key.cs_af;
+  rsession->key.cs_port[VLIB_RX] = session->value.cs_port[VLIB_TX];
+  rsession->key.cs_port[VLIB_TX] = session->value.cs_port[VLIB_RX];
+
+  rv = cnat_bihash_search_i2 (&cnat_session_db, &bkey, &bvalue);
+  if (!rv)
+    {
+      /* other session is in bihash */
+      cnat_session_t *rsession = (cnat_session_t *) &bvalue;
+      cnat_session_free (rsession);
+    }
+}
+
 u64
 cnat_session_scan (vlib_main_t * vm, f64 start_time, int i)
 {
   BVT (clib_bihash) * h = &cnat_session_db;
   int j, k;
 
-  /* Don't scan the l2 fib if it hasn't been instantiated yet */
   if (alloc_arena (h) == 0)
-    return 0.0;
+    return 0;
 
   for ( /* caller saves starting point */ ; i < h->nbuckets; i++)
     {
@@ -219,6 +247,9 @@ cnat_session_scan (vlib_main_t * vm, f64 start_time, int i)
 		  cnat_timestamp_exp (session->value.cs_ts_index))
 		{
 		  /* age it */
+		  cnat_reverse_session_free (session);
+		  /* this should be last as deleting the session memset it to
+		   * 0xff */
 		  cnat_session_free (session);
 
 		  /*

@@ -846,11 +846,55 @@ cnat_session_create (cnat_session_t *session, cnat_node_ctx_t *ctx,
   cnat_bihash_kv_t rkey;
   cnat_session_t *rsession = (cnat_session_t *) & rkey;
   cnat_bihash_kv_t *bkey = (cnat_bihash_kv_t *) session;
-  cnat_bihash_kv_t rvalue;
-  int rv;
+  int rv, n_retries = 0;
+  static u32 sport_seed = 0;
 
   session->value.cs_ts_index = cnat_timestamp_new (ctx->now);
-  cnat_bihash_add_del (&cnat_session_db, bkey, 1);
+
+  /* First create the return session */
+  ip46_address_copy (&rsession->key.cs_ip[VLIB_RX],
+		     &session->value.cs_ip[VLIB_TX]);
+  ip46_address_copy (&rsession->key.cs_ip[VLIB_TX],
+		     &session->value.cs_ip[VLIB_RX]);
+  rsession->key.cs_proto = session->key.cs_proto;
+  rsession->key.cs_loc = rsession_location;
+  rsession->key.__cs_pad = 0;
+  rsession->key.cs_af = ctx->af;
+  rsession->key.cs_port[VLIB_RX] = session->value.cs_port[VLIB_TX];
+  rsession->key.cs_port[VLIB_TX] = session->value.cs_port[VLIB_RX];
+
+  ip46_address_copy (&rsession->value.cs_ip[VLIB_RX],
+		     &session->key.cs_ip[VLIB_TX]);
+  ip46_address_copy (&rsession->value.cs_ip[VLIB_TX],
+		     &session->key.cs_ip[VLIB_RX]);
+  rsession->value.cs_ts_index = session->value.cs_ts_index;
+  rsession->value.cs_lbi = INDEX_INVALID;
+  rsession->value.flags = rsession_flags | CNAT_SESSION_IS_RETURN;
+  rsession->value.cs_port[VLIB_TX] = session->key.cs_port[VLIB_RX];
+  rsession->value.cs_port[VLIB_RX] = session->key.cs_port[VLIB_TX];
+
+retry_add_ression:
+  rv = cnat_bihash_add_del (&cnat_session_db, &rkey,
+			    2 /* add but don't overwrite */);
+  if (rv)
+    {
+      if (!(rsession_flags & CNAT_SESSION_RETRY_SNAT))
+	return;
+
+      /* return session add failed pick an new random src port */
+      rsession->value.cs_port[VLIB_TX] = session->key.cs_port[VLIB_RX] =
+	random_u32 (&sport_seed);
+      if (n_retries++ < 100)
+	goto retry_add_ression;
+      else
+	{
+	  clib_warning ("Could not find a free port after 100 tries");
+	  /* translate this packet, but don't create state */
+	  return;
+	}
+    }
+
+  cnat_bihash_add_del (&cnat_session_db, bkey, 1 /* add */);
 
   if (!(rsession_flags & CNAT_SESSION_FLAG_NO_CLIENT))
     {
@@ -894,39 +938,6 @@ cnat_session_create (cnat_session_t *session, cnat_node_ctx_t *ctx,
 	}
     }
 
-  /* create the reverse flow key */
-  ip46_address_copy (&rsession->key.cs_ip[VLIB_RX],
-		     &session->value.cs_ip[VLIB_TX]);
-  ip46_address_copy (&rsession->key.cs_ip[VLIB_TX],
-		     &session->value.cs_ip[VLIB_RX]);
-  rsession->key.cs_proto = session->key.cs_proto;
-  rsession->key.cs_loc = rsession_location;
-  rsession->key.__cs_pad = 0;
-  rsession->key.cs_af = ctx->af;
-  rsession->key.cs_port[VLIB_RX] = session->value.cs_port[VLIB_TX];
-  rsession->key.cs_port[VLIB_TX] = session->value.cs_port[VLIB_RX];
-
-  /* First search for existing reverse session */
-  rv = cnat_bihash_search_i2 (&cnat_session_db, &rkey, &rvalue);
-  if (!rv)
-    {
-      /* Reverse session already exists
-         cleanup before creating for refcnts */
-      cnat_session_t *found_rsession = (cnat_session_t *) & rvalue;
-      cnat_session_free (found_rsession);
-    }
-  /* add the reverse flow */
-  ip46_address_copy (&rsession->value.cs_ip[VLIB_RX],
-		     &session->key.cs_ip[VLIB_TX]);
-  ip46_address_copy (&rsession->value.cs_ip[VLIB_TX],
-		     &session->key.cs_ip[VLIB_RX]);
-  rsession->value.cs_ts_index = session->value.cs_ts_index;
-  rsession->value.cs_lbi = INDEX_INVALID;
-  rsession->value.flags = rsession_flags | CNAT_SESSION_IS_RETURN;
-  rsession->value.cs_port[VLIB_TX] = session->key.cs_port[VLIB_RX];
-  rsession->value.cs_port[VLIB_RX] = session->key.cs_port[VLIB_TX];
-
-  cnat_bihash_add_del (&cnat_session_db, &rkey, 1);
 }
 
 always_inline uword

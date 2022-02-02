@@ -129,6 +129,11 @@ typedef enum cnat_session_flag_t_
 
   /* Debug flag marking return sessions */
   CNAT_SESSION_IS_RETURN = (1 << 4),
+
+  /** On conflicts when adding the return session, try to sNAT the
+   * forward session, and dNAT the return session with a random port */
+  CNAT_SESSION_RETRY_SNAT = (1 << 5),
+
 } cnat_session_flag_t;
 
 typedef enum cnat_session_location_t_
