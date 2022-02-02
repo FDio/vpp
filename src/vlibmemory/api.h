@@ -31,12 +31,20 @@ u16 vl_client_get_first_plugin_msg_id (const char *plugin_name);
 void vl_api_send_pending_rpc_requests (vlib_main_t * vm);
 u8 *vl_api_serialize_message_table (api_main_t * am, u8 * vector);
 
+/* Determine the type of API calls: socket, shared memory, internal
+ * For internal, we store the reply pointer in the registration itself,
+ * as this reply is processed by VPP.
+ */
 always_inline void
 vl_api_send_msg (vl_api_registration_t * rp, u8 * elem)
 {
   if (PREDICT_FALSE (rp->registration_type > REGISTRATION_TYPE_SHMEM))
     {
       vl_socket_api_send (rp, elem);
+    }
+  else if (rp->registration_type == REGISTRATION_TYPE_INTERNAL)
+    {
+      rp->buf = elem;
     }
   else
     {
@@ -75,11 +83,30 @@ vl_api_process_may_suspend (vlib_main_t * vm, vl_api_registration_t * rp,
   return false;
 }
 
+/* There is a unique client identifier for the internal client,
+ * because messages are processed synchronously by the main thread
+ * in that case. Thus, any internal call should use this index so that
+ * the API handlers understand that this is an interrnal call and the
+ * reply should be stored locally.
+ */
+always_inline u8
+vl_internal_api_index_is_valid (u32 index)
+{
+  return index == 1 << 30;
+}
+always_inline vl_api_registration_t *
+vl_internal_api_index_to_registration ()
+{
+  api_main_t *am = vlibapi_get_main ();
+  return am->my_registration;
+}
 always_inline vl_api_registration_t *
 vl_api_client_index_to_registration (u32 index)
 {
   if (vl_socket_api_registration_handle_is_valid (ntohl (index)))
     return vl_socket_api_client_handle_to_registration (ntohl (index));
+  else if (vl_internal_api_index_is_valid (index))
+    return vl_internal_api_index_to_registration ();
   return vl_mem_api_client_index_to_registration (index);
 }
 
