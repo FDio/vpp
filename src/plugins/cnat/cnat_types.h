@@ -55,6 +55,17 @@
 
 #define MIN_SRC_PORT ((u16) 0xC000)
 
+typedef struct
+{
+  /* Source and destination port. */
+  u16 src_port, dst_port;
+
+  /* Random value to distinguish connections. */
+  u32 verification_tag;
+
+  u32 checksum;
+} sctp_header_t;
+
 typedef enum cnat_trk_flag_t_
 {
   /* Endpoint is active (static or dhcp resolved) */
