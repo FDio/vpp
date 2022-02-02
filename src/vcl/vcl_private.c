@@ -38,6 +38,25 @@ vcl_mq_evt_conn_get (vcl_worker_t * wrk, u32 mq_conn_idx)
   return pool_elt_at_index (wrk->mq_evt_conns, mq_conn_idx);
 }
 
+/* Add unix socket to epoll.
+ * Used only to get a notification on socket close
+ * We can't use eventfd because we don't get notifications on that fds
+ */
+static int
+vcl_mq_epoll_add_api_sock (vcl_worker_t *wrk)
+{
+  clib_socket_t *cs = &wrk->app_api_sock;
+  struct epoll_event e = { 0 };
+  int rv;
+
+  e.data.u32 = ~0;
+  rv = epoll_ctl (wrk->mqs_epfd, EPOLL_CTL_ADD, cs->fd, &e);
+  if (rv != EEXIST && rv < 0)
+    return -1;
+
+  return 0;
+}
+
 int
 vcl_mq_epoll_add_evfd (vcl_worker_t * wrk, svm_msg_q_t * mq)
 {
@@ -61,6 +80,12 @@ vcl_mq_epoll_add_evfd (vcl_worker_t * wrk, svm_msg_q_t * mq)
   if (epoll_ctl (wrk->mqs_epfd, EPOLL_CTL_ADD, mq_fd, &e) < 0)
     {
       VDBG (0, "failed to add mq eventfd to mq epoll fd");
+      return -1;
+    }
+
+  if (vcl_mq_epoll_add_api_sock (wrk))
+    {
+      VDBG (0, "failed to add mq socket to mq epoll fd");
       return -1;
     }
 
@@ -156,6 +181,33 @@ vcl_worker_cleanup_cb (void *arg)
   vcl_worker_cleanup (wrk, 1 /* notify vpp */ );
   vcl_set_worker_index (~0);
   VDBG (0, "cleaned up worker %u", wrk_index);
+}
+
+void
+vcl_worker_detach_sessions (vcl_worker_t *wrk)
+{
+  session_event_t *e;
+  vcl_session_t *s;
+
+  close (wrk->app_api_sock.fd);
+  pool_foreach (s, wrk->sessions)
+    {
+      if (s->session_state == VCL_STATE_LISTEN)
+	{
+	  s->session_state = VCL_STATE_LISTEN_NO_MQ;
+	  continue;
+	}
+      if (s->flags & VCL_SESSION_F_IS_VEP)
+	continue;
+
+      s->session_state = VCL_STATE_DETACHED;
+      vec_add2 (wrk->unhandled_evts_vector, e, 1);
+      e->event_type = SESSION_CTRL_EVT_DISCONNECTED;
+      e->session_index = s->session_index;
+      e->postponed = 1;
+    }
+
+  vcl_segment_detach_all ();
 }
 
 vcl_worker_t *
@@ -408,6 +460,24 @@ vcl_segment_detach (u64 segment_handle)
   clib_rwlock_writer_unlock (&vcm->segment_table_lock);
 
   VDBG (0, "detached segment %u handle %u", segment_index, segment_handle);
+}
+
+void
+vcl_segment_detach_all ()
+{
+  u64 *segs = 0, *seg, key;
+  u32 val;
+
+  clib_rwlock_reader_lock (&vcm->segment_table_lock);
+
+  hash_foreach (key, val, vcm->segment_table, ({ vec_add1 (segs, key); }));
+
+  clib_rwlock_reader_unlock (&vcm->segment_table_lock);
+
+  vec_foreach (seg, segs)
+    vcl_segment_detach (seg[0]);
+
+  vec_free (segs);
 }
 
 int
