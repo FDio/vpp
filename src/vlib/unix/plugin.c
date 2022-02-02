@@ -306,8 +306,12 @@ process_reg:
     }
   vec_free (version_required);
 
+#if defined(RTLD_DEEPBIND)
   handle = dlopen ((char *) pi->filename,
 		   RTLD_LAZY | (reg->deep_bind ? RTLD_DEEPBIND : 0));
+#else
+  handle = dlopen ((char *) pi->filename, RTLD_LAZY);
+#endif
 
   if (handle == 0)
     {
