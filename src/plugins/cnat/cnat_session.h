@@ -183,6 +183,8 @@ extern int cnat_session_purge (void);
  */
 extern void cnat_session_free (cnat_session_t * session);
 
+extern void cnat_reverse_session_free (cnat_session_t *session);
+
 /**
  * Port cleanup callback
  */

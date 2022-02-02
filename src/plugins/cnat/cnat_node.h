@@ -914,6 +914,7 @@ cnat_session_create (cnat_session_t *session, cnat_node_ctx_t *ctx,
          cleanup before creating for refcnts */
       cnat_session_t *found_rsession = (cnat_session_t *) & rvalue;
       cnat_session_free (found_rsession);
+      cnat_reverse_session_free (session);
     }
   /* add the reverse flow */
   ip46_address_copy (&rsession->value.cs_ip[VLIB_RX],

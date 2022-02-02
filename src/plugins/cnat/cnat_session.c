@@ -172,6 +172,35 @@ cnat_session_purge (void)
   return (0);
 }
 
+void
+cnat_reverse_session_free (cnat_session_t *session)
+{
+  cnat_bihash_kv_t bkey, bvalue;
+  cnat_session_t *rsession = (cnat_session_t *) &bkey;
+  int rv;
+
+  ip46_address_copy (&rsession->key.cs_ip[VLIB_RX],
+		     &session->value.cs_ip[VLIB_TX]);
+  ip46_address_copy (&rsession->key.cs_ip[VLIB_TX],
+		     &session->value.cs_ip[VLIB_RX]);
+  rsession->key.cs_proto = session->key.cs_proto;
+  rsession->key.cs_loc = session->key.cs_loc == CNAT_LOCATION_OUTPUT ?
+			   CNAT_LOCATION_INPUT :
+			   CNAT_LOCATION_OUTPUT;
+  rsession->key.__cs_pad = 0;
+  rsession->key.cs_af = session->key.cs_af;
+  rsession->key.cs_port[VLIB_RX] = session->value.cs_port[VLIB_TX];
+  rsession->key.cs_port[VLIB_TX] = session->value.cs_port[VLIB_RX];
+
+  rv = cnat_bihash_search_i2 (&cnat_session_db, &bkey, &bvalue);
+  if (!rv)
+    {
+      /* other session is in bihash */
+      cnat_session_t *rsession = (cnat_session_t *) &bvalue;
+      cnat_session_free (rsession);
+    }
+}
+
 u64
 cnat_session_scan (vlib_main_t * vm, f64 start_time, int i)
 {
@@ -220,6 +249,7 @@ cnat_session_scan (vlib_main_t * vm, f64 start_time, int i)
 		{
 		  /* age it */
 		  cnat_session_free (session);
+		  cnat_reverse_session_free (session);
 
 		  /*
 		   * Note: we may have just freed the bucket's backing
