@@ -1634,6 +1634,11 @@ bfd_verify_pkt_auth_key_sha1 (vlib_main_t *vm, const bfd_pkt_t *pkt,
   op.len = sizeof (*with_sha1);
   op.digest = calculated_hash;
   vnet_crypto_process_ops (vm, &op, 1);
+
+  /* Restore the modified data within the packet */
+  clib_memcpy (with_sha1->sha1_auth.hash, hash_from_packet,
+	       sizeof (with_sha1->sha1_auth.hash));
+
   if (0 ==
       memcmp (calculated_hash, hash_from_packet, sizeof (calculated_hash)))
     {
