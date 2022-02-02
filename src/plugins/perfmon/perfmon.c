@@ -394,7 +394,7 @@ perfmon_init (vlib_main_t *vm)
 	}
 
       hash_set_mem (pm->source_by_name, s->name, s);
-      log_debug ("source '%s' regisrtered", s->name);
+      log_debug ("source '%s' registered", s->name);
       s = s->next;
     }
 
@@ -433,7 +433,7 @@ perfmon_init (vlib_main_t *vm)
 	clib_panic ("duplicate bundle name '%s'", b->name);
 
       hash_set_mem (pm->bundle_by_name, b->name, b);
-      log_debug ("bundle '%s' regisrtered", b->name);
+      log_debug ("bundle '%s' registered", b->name);
 
       b = b->next;
     }
