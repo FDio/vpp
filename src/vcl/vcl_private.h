@@ -716,6 +716,7 @@ int vcl_send_worker_rpc (u32 dst_wrk_index, void *data, u32 data_len);
 int vcl_segment_attach (u64 segment_handle, char *name,
 			ssvm_segment_type_t type, int fd);
 void vcl_segment_detach (u64 segment_handle);
+void vcl_segment_detach_all ();
 void vcl_send_session_unlisten (vcl_worker_t * wrk, vcl_session_t * s);
 
 int vcl_segment_attach_session (uword segment_handle, uword rxf_offset,
@@ -729,6 +730,7 @@ svm_fifo_chunk_t *vcl_segment_alloc_chunk (uword segment_handle,
 					   uword *offset);
 int vcl_session_share_fifos (vcl_session_t *s, svm_fifo_t *rxf,
 			     svm_fifo_t *txf);
+void vcl_worker_detach_sessions (vcl_worker_t *wrk);
 
 /*
  * VCL Binary API
