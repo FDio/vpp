@@ -729,6 +729,7 @@ svm_fifo_chunk_t *vcl_segment_alloc_chunk (uword segment_handle,
 					   uword *offset);
 int vcl_session_share_fifos (vcl_session_t *s, svm_fifo_t *rxf,
 			     svm_fifo_t *txf);
+void vcl_cleanup_sessions (vcl_worker_t *wrk);
 
 /*
  * VCL Binary API

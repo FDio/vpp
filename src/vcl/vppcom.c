@@ -1256,6 +1256,34 @@ vcl_api_attach (void)
   return vcl_bapi_attach ();
 }
 
+static int
+vcl_retry_connect (vcl_worker_t *wrk)
+{
+  if (vcl_api_attach ())
+    return -1;
+  return 0;
+}
+
+static int
+vcl_retry_attach (vcl_worker_t *wrk)
+{
+  vcl_session_t *s;
+
+  if (vcl_retry_connect (wrk))
+    return -1;
+
+  pool_foreach (s, wrk->sessions)
+    {
+      if (s->flags & VCL_SESSION_F_IS_VEP)
+	continue;
+      if (s->session_state == VCL_STATE_LISTEN_NO_MQ)
+	vppcom_session_listen (vcl_session_handle (s), 10);
+      else
+	VDBG (0, "internal error: unexpected state %d", s->session_state);
+    }
+  return 0;
+}
+
 static void
 vcl_api_detach (vcl_worker_t * wrk)
 {
@@ -3189,6 +3217,13 @@ vppcom_epoll_wait_eventfd (vcl_worker_t *wrk, struct epoll_event *events,
   double end = -1;
   u64 buf;
 
+  if (PREDICT_FALSE (!vcm->is_init))
+    {
+      vcm->is_init = 1;
+      if (vcl_retry_attach (wrk) < 0)
+	return n_evts;
+    }
+
   vec_validate (wrk->mq_events, pool_elts (wrk->mq_evt_conns));
   if (!n_evts)
     {
@@ -3208,6 +3243,14 @@ vppcom_epoll_wait_eventfd (vcl_worker_t *wrk, struct epoll_event *events,
 
       for (i = 0; i < n_mq_evts; i++)
 	{
+	  if (PREDICT_FALSE (wrk->mq_events[i].data.u32 == ~0))
+	    {
+	      /* api socket was closed */
+	      vcm->is_init = 0;
+	      vcl_cleanup_sessions (wrk);
+	      continue;
+	    }
+
 	  mqc = vcl_mq_evt_conn_get (wrk, wrk->mq_events[i].data.u32);
 	  n_read = read (mqc->mq_fd, &buf, sizeof (buf));
 	  vcl_epoll_wait_handle_mq (wrk, mqc->mq, events, maxevents, 0,

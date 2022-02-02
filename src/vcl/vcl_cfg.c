@@ -591,6 +591,13 @@ vppcom_cfg (vppcom_cfg_t * vcl_cfg)
       VCFG_DBG (0, "VCL<%d>: configured app-socket-api (%s)", getpid (),
 		vcl_cfg->vpp_app_socket_api);
     }
+  env_var_str = getenv (VPPCOM_ENV_APP_USE_MQ_EVENTFD);
+  if (env_var_str)
+    {
+      vcm->cfg.use_mq_eventfd = 1;
+      VCFG_DBG (0, "VCL<%d>: configured " VPPCOM_ENV_APP_USE_MQ_EVENTFD,
+		getpid ());
+    }
 }
 
 /*
