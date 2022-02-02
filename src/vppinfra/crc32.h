@@ -94,6 +94,24 @@ clib_crc32c (u8 * s, int len)
 
   return v;
 }
+
+static_always_inline u32
+clib_crc32c_with_init (u8 *s, int len, u32 last)
+{
+  for (; len >= 8; len -= 8, s += 8)
+    last = clib_crc32c_u64 (last, *((u64u *) s));
+
+  for (; len >= 4; len -= 4, s += 4)
+    last = clib_crc32c_u32 (last, *((u32u *) s));
+
+  for (; len >= 2; len -= 2, s += 2)
+    last = clib_crc32c_u16 (last, *((u16u *) s));
+
+  for (; len >= 1; len -= 1, s += 1)
+    last = clib_crc32c_u8 (last, *((u8 *) s));
+
+  return last;
+}
 #endif
 
 #endif /* __included_crc32_h__ */
