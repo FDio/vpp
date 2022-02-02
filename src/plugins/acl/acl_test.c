@@ -18,6 +18,8 @@
  *------------------------------------------------------------------
  */
 
+#include <byteswap.h>
+
 #include <vat/vat.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
