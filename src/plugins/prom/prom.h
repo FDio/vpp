@@ -27,11 +27,16 @@ typedef struct prom_main_
   hss_session_send_fn send_data;
   u32 scraper_node_index;
   u8 is_enabled;
+  u8 *name_scratch_pad;
+  vlib_main_t *vm;
 
+  /*
+   * Configs
+   */
   u8 **stats_patterns;
+  u8 *stat_name_prefix;
   f64 min_scrape_interval;
   u8 used_only;
-  vlib_main_t *vm;
 } prom_main_t;
 
 typedef enum prom_process_evt_codes_
@@ -46,6 +51,9 @@ void prom_stat_patterns_set (u8 **patterns);
 void prom_stat_patterns_add (u8 **patterns);
 u8 **prom_stat_patterns_get (void);
 void prom_stat_patterns_free (void);
+
+void prom_stat_name_prefix_set (u8 *prefix);
+void prom_report_used_only (u8 used_only);
 
 #endif /* SRC_PLUGINS_PROM_PROM_H_ */
 
