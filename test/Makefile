@@ -271,8 +271,8 @@ checkstyle-diff: $(PIP_INSTALL_DONE)
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
 		  python3 -m pip install pycodestyle"
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
-		cd $(WS_ROOT) && git diff --name-only --no-color --relative HEAD~1 ':!*.patch' | grep '.py$$' | xargs -n 1 \
-		pycodestyle --show-source --ignore=W504,E126,E241,E226,E305,E704,E741,E722 -v ||\
+		cd $(WS_ROOT) && git diff --name-only --no-color --relative HEAD~1 ':!*.patch' | grep '.py$$' | xargs -I XXX \
+		pycodestyle --show-source --ignore=W504,E126,E241,E226,E305,E704,E741,E722 -v XXX ||\
 		(echo \"*********************************************************************\" &&\
 		 echo \"* Test framework PEP8 compliance check FAILED (checked changed files)\" &&\
 	         echo \"*********************************************************************\" &&\
