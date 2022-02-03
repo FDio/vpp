@@ -212,10 +212,7 @@ af_xdp_load_program (af_xdp_create_if_args_t * args, af_xdp_device_t * ad)
       goto err0;
     }
 
-#ifndef XDP_FLAGS_REPLACE
-#define XDP_FLAGS_REPLACE 0
-#endif
-  if (bpf_set_link_xdp_fd (ad->linux_ifindex, fd, XDP_FLAGS_REPLACE))
+  if (bpf_set_link_xdp_fd (ad->linux_ifindex, fd, 0))
     {
       args->rv = VNET_API_ERROR_SYSCALL_ERROR_6;
       args->error =
