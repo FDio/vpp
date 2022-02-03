@@ -90,9 +90,9 @@ prom_command_fn (vlib_main_t *vm, unformat_input_t *input,
 		 vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
+  u8 **patterns = 0, *stat_name_prefix = 0;
   prom_main_t *pm = prom_get_main ();
   clib_error_t *error = 0;
-  u8 **patterns = 0;
   u8 is_enable = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -106,7 +106,12 @@ prom_command_fn (vlib_main_t *vm, unformat_input_t *input,
 			 &pm->min_scrape_interval))
 	;
       else if (unformat (line_input, "used-only"))
-	pm->used_only = 1;
+	prom_report_used_only (1 /* used only */);
+      else if (unformat (line_input, "all-stats"))
+	prom_report_used_only (0 /* used only */);
+      else if (unformat (line_input, "stat-name-prefix %_%v%_",
+			 &stat_name_prefix))
+	prom_stat_name_prefix_set (stat_name_prefix);
       else if (unformat (line_input, "stat-patterns %U",
 			 unformat_stats_patterns, &patterns))
 	prom_stat_patterns_set (patterns);
@@ -133,7 +138,8 @@ no_input:
 
 VLIB_CLI_COMMAND (prom_enable_command, static) = {
   .path = "prom",
-  .short_help = "prom [enable] [min-scrape-interval <n>] [used-only]"
+  .short_help = "prom [enable] [min-scrape-interval <n>] [used-only] "
+		"[all-stats] [stat-name-prefix <prefix>] "
 		"[stat-patterns <patterns>...]",
   .function = prom_command_fn,
 };
