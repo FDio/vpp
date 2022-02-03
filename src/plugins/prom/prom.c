@@ -22,17 +22,24 @@
 
 static prom_main_t prom_main;
 
-static char *
-fix_spaces (char *s)
+static u8 *
+make_stat_name (char *name)
 {
-  char *p = s;
+  prom_main_t *pm = &prom_main;
+  char *p = name;
+
   while (*p)
     {
       if (!isalnum (*p))
 	*p = '_';
       p++;
     }
-  return s;
+
+  /* Reuse vector, instead of always allocating, when building a name. */
+  vec_reset_length (pm->name_scratch_pad);
+  pm->name_scratch_pad =
+    format (pm->name_scratch_pad, "%v%s", pm->stat_name_prefix, name);
+  return pm->name_scratch_pad;
 }
 
 static u8 *
@@ -40,6 +47,9 @@ dump_counter_vector_simple (stat_segment_data_t *res, u8 *s, u8 used_only)
 {
   u8 need_header = 1;
   int j, k;
+  u8 *name;
+
+  name = make_stat_name (res->name);
 
   for (k = 0; k < vec_len (res->simple_counter_vec); k++)
     for (j = 0; j < vec_len (res->simple_counter_vec[k]); j++)
@@ -48,13 +58,13 @@ dump_counter_vector_simple (stat_segment_data_t *res, u8 *s, u8 used_only)
 	  continue;
 	if (need_header)
 	  {
-	    s = format (s, "# TYPE %s counter\n", fix_spaces (res->name));
+	    s = format (s, "# TYPE %v counter\n", name);
 	    need_header = 0;
 	  }
-	s =
-	  format (s, "%s{thread=\"%d\",interface=\"%d\"} %lld\n",
-		  fix_spaces (res->name), k, j, res->simple_counter_vec[k][j]);
+	s = format (s, "%v{thread=\"%d\",interface=\"%d\"} %lld\n", name, k, j,
+		    res->simple_counter_vec[k][j]);
       }
+
   return s;
 }
 
@@ -63,6 +73,9 @@ dump_counter_vector_combined (stat_segment_data_t *res, u8 *s, u8 used_only)
 {
   u8 need_header = 1;
   int j, k;
+  u8 *name;
+
+  name = make_stat_name (res->name);
 
   for (k = 0; k < vec_len (res->simple_counter_vec); k++)
     for (j = 0; j < vec_len (res->combined_counter_vec[k]); j++)
@@ -71,18 +84,14 @@ dump_counter_vector_combined (stat_segment_data_t *res, u8 *s, u8 used_only)
 	  continue;
 	if (need_header)
 	  {
-	    s = format (s, "# TYPE %s_packets counter\n",
-			fix_spaces (res->name));
-	    s =
-	      format (s, "# TYPE %s_bytes counter\n", fix_spaces (res->name));
+	    s = format (s, "# TYPE %v_packets counter\n", name);
+	    s = format (s, "# TYPE %v_bytes counter\n", name);
 	    need_header = 0;
 	  }
-	s = format (s, "%s_packets{thread=\"%d\",interface=\"%d\"} %lld\n",
-		    fix_spaces (res->name), k, j,
-		    res->combined_counter_vec[k][j].packets);
-	s = format (s, "%s_bytes{thread=\"%d\",interface=\"%d\"} %lld\n",
-		    fix_spaces (res->name), k, j,
-		    res->combined_counter_vec[k][j].bytes);
+	s = format (s, "%v_packets{thread=\"%d\",interface=\"%d\"} %lld\n",
+		    name, k, j, res->combined_counter_vec[k][j].packets);
+	s = format (s, "%v_bytes{thread=\"%d\",interface=\"%d\"} %lld\n", name,
+		    k, j, res->combined_counter_vec[k][j].bytes);
       }
 
   return s;
@@ -91,15 +100,18 @@ dump_counter_vector_combined (stat_segment_data_t *res, u8 *s, u8 used_only)
 static u8 *
 dump_error_index (stat_segment_data_t *res, u8 *s, u8 used_only)
 {
+  u8 *name;
   int j;
+
+  name = make_stat_name (res->name);
 
   for (j = 0; j < vec_len (res->error_vector); j++)
     {
       if (used_only && !res->error_vector[j])
 	continue;
-      s = format (s, "# TYPE %s counter\n", fix_spaces (res->name));
-      s = format (s, "%s{thread=\"%d\"} %lld\n", fix_spaces (res->name), j,
-		  res->error_vector[j]);
+      s = format (s, "# TYPE %v counter\n", name);
+      s =
+	format (s, "%v{thread=\"%d\"} %lld\n", name, j, res->error_vector[j]);
     }
 
   return s;
@@ -108,11 +120,15 @@ dump_error_index (stat_segment_data_t *res, u8 *s, u8 used_only)
 static u8 *
 dump_scalar_index (stat_segment_data_t *res, u8 *s, u8 used_only)
 {
+  u8 *name;
+
   if (used_only && !res->scalar_value)
     return s;
 
-  s = format (s, "# TYPE %s counter\n", fix_spaces (res->name));
-  s = format (s, "%s %.2f\n", fix_spaces (res->name), res->scalar_value);
+  name = make_stat_name (res->name);
+
+  s = format (s, "# TYPE %v counter\n", name);
+  s = format (s, "%v %.2f\n", name, res->scalar_value);
 
   return s;
 }
@@ -120,12 +136,15 @@ dump_scalar_index (stat_segment_data_t *res, u8 *s, u8 used_only)
 static u8 *
 dump_name_vector (stat_segment_data_t *res, u8 *s, u8 used_only)
 {
+  u8 *name;
   int k;
 
-  s = format (s, "# TYPE %s_info gauge\n", fix_spaces (res->name));
+  name = make_stat_name (res->name);
+
+  s = format (s, "# TYPE %v_info gauge\n", name);
   for (k = 0; k < vec_len (res->name_vector); k++)
-    s = format (s, "%s_info{index=\"%d\",name=\"%s\"} 1\n",
-		fix_spaces (res->name), k, res->name_vector[k]);
+    s = format (s, "%v_info{index=\"%d\",name=\"%s\"} 1\n", name, k,
+		res->name_vector[k]);
 
   return s;
 }
@@ -348,6 +367,23 @@ prom_stat_patterns_get (void)
   return prom_main.stats_patterns;
 }
 
+void
+prom_stat_name_prefix_set (u8 *prefix)
+{
+  prom_main_t *pm = &prom_main;
+
+  vec_free (pm->stat_name_prefix);
+  pm->stat_name_prefix = prefix;
+}
+
+void
+prom_report_used_only (u8 used_only)
+{
+  prom_main_t *pm = &prom_main;
+
+  pm->used_only = used_only;
+}
+
 static void
 prom_stat_segment_client_init (void)
 {
@@ -375,6 +411,8 @@ prom_enable (vlib_main_t *vm)
 
   pm->is_enabled = 1;
   pm->vm = vm;
+  if (!pm->stat_name_prefix)
+    pm->stat_name_prefix = format (0, "vpp");
 
   prom_scraper_process_enable (vm);
   prom_stat_segment_client_init ();
@@ -388,6 +426,7 @@ prom_init (vlib_main_t *vm)
   pm->is_enabled = 0;
   pm->min_scrape_interval = 1;
   pm->used_only = 0;
+  pm->stat_name_prefix = 0;
 
   return 0;
 }
