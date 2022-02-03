@@ -145,15 +145,22 @@ Custom eBPF XDP program
 This driver relies on libbpf and as such relies on the ``xsks_map`` eBPF
 map. The default behavior is to use the XDP program already attached to
 the interface if any, otherwise load the default one. You can request to
-load a custom XDP program with the ``prog`` option when creating the
-interface in VPP:
+load a custom XDP program, before that you have to ensure that no program
+is attached to the interface:
 
 ::
 
-   ~# vppctl create int af_xdp host-if enp216s0f0 num-rx-queues 4 prog extras/bpf/af_xdp.bpf.o
+   ~# ip link set dev <interface name> xdp off
 
-In that case it will replace any previously attached program. A custom
-XDP program example is provided in ``extras/bpf/``.
+
+Then add the ``prog`` option when creating the interface in VPP:
+
+::
+
+   ~# vppctl create int af_xdp host-if <enp216s0f0> num-rx-queues 4 prog extras/bpf/af_xdp.bpf.o
+
+A custom XDP program example is provided in ``extras/bpf/``.
+
 
 Performance consideration
 -------------------------
