@@ -158,6 +158,7 @@ buf_ptr_get_segs (http_buffer_t *hb, u32 max_len, u32 *n_segs)
   http_buffer_ptr_t *bf = (http_buffer_ptr_t *) &hb->data;
 
   *n_segs = 1;
+  bf->segs[1].len = clib_min (bf->segs[0].len, max_len);
 
   return &bf->segs[1];
 }
@@ -167,12 +168,14 @@ buf_ptr_drain (http_buffer_t *hb, u32 len)
 {
   http_buffer_ptr_t *bf = (http_buffer_ptr_t *) &hb->data;
 
+  ASSERT (bf->segs[0].len >= len);
+
   bf->segs[1].data += len;
-  bf->segs[1].len -= len;
+  bf->segs[0].len -= len;
 
   HTTP_DBG (1, "drained %u left %u", len, bf->segs[1].len);
 
-  if (!bf->segs[1].len)
+  if (!bf->segs[0].len)
     {
       svm_fifo_dequeue_drop (bf->f, sizeof (uword));
       return sizeof (uword);
@@ -186,8 +189,7 @@ buf_ptr_is_drained (http_buffer_t *hb)
 {
   http_buffer_ptr_t *bf = (http_buffer_ptr_t *) &hb->data;
 
-  ASSERT (bf->segs[1].len <= bf->segs[0].len);
-  return (bf->segs[1].len == 0);
+  return (bf->segs[0].len == 0);
 }
 
 const static http_buffer_vft_t buf_ptr_vft = {
