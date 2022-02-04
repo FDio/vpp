@@ -238,6 +238,7 @@ srtp_ctx_write (srtp_tc_t *ctx, session_t *app_session,
   us = session_get_from_handle (ctx->srtp_session_handle);
   to_deq = svm_fifo_max_dequeue_cons (app_session->tx_fifo);
   mq = session_main_get_vpp_event_queue (us->thread_index);
+  sp->bytes_dequeued = to_deq;
 
   while (to_deq > 0)
     {
@@ -295,6 +296,9 @@ done:
       srtp_disconnect_transport (ctx);
       session_transport_closed_notify (&ctx->connection);
     }
+
+  ASSERT (sp->bytes_dequeued >= to_deq);
+  sp->bytes_dequeued -= to_deq;
 
   return n_wrote > 0 ? clib_max (n_wrote / TRANSPORT_PACER_MIN_MSS, 1) : 0;
 }
@@ -812,7 +816,6 @@ srtp_custom_tx_callback (void *session, transport_send_params_t *sp)
 		     SESSION_STATE_TRANSPORT_CLOSED))
     return 0;
 
-  sp->flags = 0;
   ctx = srtp_ctx_get_w_thread (app_session->connection_index,
 			       app_session->thread_index);
   if (PREDICT_FALSE (ctx->is_migrated))
