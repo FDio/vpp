@@ -57,6 +57,7 @@ typedef struct transport_send_params_
     struct
     {
       u32 max_burst_size;
+      u32 bytes_dequeued;
     };
   };
   transport_snd_flags_t flags;

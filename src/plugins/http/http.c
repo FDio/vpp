@@ -528,11 +528,7 @@ state_send_more_data (http_conn_t *hc, transport_send_params_t *sp)
   if (sent > 0)
     {
       /* Ask scheduler to notify app of deq event if needed */
-      sp->max_burst_size = http_buffer_drain (hb, sent);
-    }
-  else
-    {
-      sp->max_burst_size = 0;
+      sp->bytes_dequeued += http_buffer_drain (hb, sent);
     }
 
   /* Not finished sending all data */
@@ -821,8 +817,6 @@ http_app_tx_callback (void *session, transport_send_params_t *sp)
 {
   session_t *as = (session_t *) session;
   http_conn_t *hc;
-
-  sp->flags = 0;
 
   hc = http_conn_get_w_thread (as->connection_index, as->thread_index);
   if (hc->req_state < HTTP_REQ_STATE_WAIT_APP)
