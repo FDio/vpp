@@ -1441,6 +1441,8 @@ session_tx_fifo_dequeue_internal (session_worker_t * wrk,
   /* Clear custom-tx flag used to request reschedule for tx */
   s->flags &= ~SESSION_F_CUSTOM_TX;
 
+  sp->flags = 0;
+  sp->bytes_dequeued = 0;
   sp->max_burst_size = clib_min (SESSION_NODE_FRAME_SIZE - *n_tx_packets,
 				 TRANSPORT_PACER_MAX_BURST_PKTS);
 
@@ -1459,8 +1461,8 @@ session_tx_fifo_dequeue_internal (session_worker_t * wrk,
 	  session_evt_add_head_old (wrk, elt);
     }
 
-  if (sp->max_burst_size &&
-      svm_fifo_needs_deq_ntf (s->tx_fifo, sp->max_burst_size))
+  if (sp->bytes_dequeued &&
+      svm_fifo_needs_deq_ntf (s->tx_fifo, sp->bytes_dequeued))
     session_dequeue_notify (s);
 
   return n_packets;

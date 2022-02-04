@@ -812,7 +812,6 @@ srtp_custom_tx_callback (void *session, transport_send_params_t *sp)
 		     SESSION_STATE_TRANSPORT_CLOSED))
     return 0;
 
-  sp->flags = 0;
   ctx = srtp_ctx_get_w_thread (app_session->connection_index,
 			       app_session->thread_index);
   if (PREDICT_FALSE (ctx->is_migrated))
