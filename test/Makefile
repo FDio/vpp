@@ -1,6 +1,10 @@
 ASAN_OPTIONS?=verify_asan_link_order=0:detect_leaks=0:abort_on_error=1:unmap_shadow_on_exit=1:disable_coredump=0
 export ASAN_OPTIONS
 
+ifeq ($(shell id -u),0)
+$(error Running as root is a bad idea and not supported.)
+endif
+
 .PHONY: verify-env
 verify-env:
 ifndef WS_ROOT
