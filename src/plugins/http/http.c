@@ -520,6 +520,7 @@ state_send_more_data (http_conn_t *hc, transport_send_params_t *sp)
   session_t *ts;
   int sent = 0;
 
+  max_send = clib_min (max_send, sp->max_burst_size);
   ts = session_get_from_handle (hc->h_tc_session_handle);
   if ((seg = http_buffer_get_segs (hb, max_send, &n_segs)))
     sent = svm_fifo_enqueue_segments (ts->tx_fifo, seg, n_segs,
@@ -529,6 +530,7 @@ state_send_more_data (http_conn_t *hc, transport_send_params_t *sp)
     {
       /* Ask scheduler to notify app of deq event if needed */
       sp->bytes_dequeued += http_buffer_drain (hb, sent);
+      sp->max_burst_size -= sent;
     }
 
   /* Not finished sending all data */
@@ -816,6 +818,7 @@ static int
 http_app_tx_callback (void *session, transport_send_params_t *sp)
 {
   session_t *as = (session_t *) session;
+  u32 max_burst_sz, sent;
   http_conn_t *hc;
 
   hc = http_conn_get_w_thread (as->connection_index, as->thread_index);
@@ -825,6 +828,9 @@ http_app_tx_callback (void *session, transport_send_params_t *sp)
       return 0;
     }
 
+  max_burst_sz = sp->max_burst_size * TRANSPORT_PACER_MIN_MSS;
+  sp->max_burst_size = max_burst_sz;
+
   http_req_run_state_machine (hc, sp);
 
   if (hc->state == HTTP_CONN_STATE_CLOSED)
@@ -832,7 +838,10 @@ http_app_tx_callback (void *session, transport_send_params_t *sp)
       if (!svm_fifo_max_dequeue_cons (as->rx_fifo))
 	http_disconnect_transport (hc);
     }
-  return 0;
+
+  sent = max_burst_sz - sp->max_burst_size;
+
+  return sent > 0 ? clib_max (sent / TRANSPORT_PACER_MIN_MSS, 1) : 0;
 }
 
 static void
