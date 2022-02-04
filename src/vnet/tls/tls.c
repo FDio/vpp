@@ -365,7 +365,7 @@ tls_ctx_write (tls_ctx_t * ctx, session_t * app_session,
 
   sp->max_burst_size = sp->max_burst_size * TRANSPORT_PACER_MIN_MSS;
   n_wrote = tls_vfts[ctx->tls_ctx_engine].ctx_write (ctx, app_session, sp);
-  sp->max_burst_size = n_wrote;
+  sp->bytes_dequeued = n_wrote;
   return n_wrote > 0 ? clib_max (n_wrote / TRANSPORT_PACER_MIN_MSS, 1) : 0;
 }
 
@@ -942,7 +942,6 @@ tls_custom_tx_callback (void *session, transport_send_params_t * sp)
 		     >= SESSION_STATE_TRANSPORT_CLOSED))
     return 0;
 
-  sp->flags = 0;
   ctx = tls_ctx_get (app_session->connection_index);
   return tls_ctx_write (ctx, app_session, sp);
 }
