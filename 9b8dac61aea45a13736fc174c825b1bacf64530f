@@ -16,6 +16,24 @@
       "revId": "9b8dac61aea45a13736fc174c825b1bacf64530f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f0cfcd25_0ba0b9ff",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-02-04T19:44:14Z",
+      "side": 1,
+      "message": "Please just remove this line.\nIt is only required for legacy stable branch doc generation on Ubuntu-18.04",
+      "parentUuid": "da4c416e_b8cf68aa",
+      "revId": "9b8dac61aea45a13736fc174c825b1bacf64530f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
