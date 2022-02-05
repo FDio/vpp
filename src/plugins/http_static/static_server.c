@@ -379,6 +379,12 @@ handle_request (hss_session_t *hs, http_req_method_t rt, u8 *request)
   if (!try_url_handler (hsm, hs, rt, request))
     return 0;
 
+  if (!hsm->www_root)
+    {
+      sc = HTTP_STATUS_NOT_FOUND;
+      goto done;
+    }
+
   /*
    * Construct the file to open
    * Browsers are capable of sporadically including a leading '/'
@@ -609,9 +615,12 @@ hss_ts_rx_callback (session_t *ts)
     }
 
   /* Read request */
-  vec_validate (request, msg.data.len - 1);
-  rv = svm_fifo_dequeue (ts->rx_fifo, msg.data.len, request);
-  ASSERT (rv == msg.data.len);
+  if (msg.data.len)
+    {
+      vec_validate (request, msg.data.len - 1);
+      rv = svm_fifo_dequeue (ts->rx_fifo, msg.data.len, request);
+      ASSERT (rv == msg.data.len);
+    }
 
   /* Find and send data */
   handle_request (hs, msg.method_type, request);
