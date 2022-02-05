@@ -80,9 +80,10 @@ PYTHON_INTERP=$(PYTHON)
 endif
 
 PYTHON_VERSION=$(shell $(PYTHON_INTERP) -c 'import sys; print(sys.version_info.major)')
-PIP_VERSION=21.3.1
+PIP_VERSION=22.0.3
 # Keep in sync with requirements.txt
-PIP_TOOLS_VERSION=6.4.0
+PIP_TOOLS_VERSION=6.5.0
+PIP_SETUPTOOLS_VERSION=60.7.1
 PYTHON_DEPENDS=requirements-$(PYTHON_VERSION).txt
 SCAPY_SOURCE=$(shell find $(VENV_PATH)/lib/python* -name site-packages)
 BUILD_COV_DIR=$(TEST_BR)/coverage
@@ -106,6 +107,8 @@ $(PIP_TOOLS_INSTALL_DONE):
 		  python3 -m pip install pip===$(PIP_VERSION)"
 	@bash -c "source $(VENV_PATH)/bin/activate && \
 		  python3 -m pip install pip-tools===$(PIP_TOOLS_VERSION)"
+	@bash -c "source $(VENV_PATH)/bin/activate && \
+		  python3 -m pip install setuptools===$(PIP_SETUPTOOLS_VERSION)"
 	@touch $@
 
 $(PYTHON_DEPENDS): requirements.txt
