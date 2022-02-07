@@ -158,5 +158,7 @@ extern void ip6_mfib_table_walk (ip6_mfib_t *mfib,
  */
 extern u8 *format_ip6_mfib_table_memory(u8 * s, va_list * args);
 
+extern u32 ip6_mfib_specials_route_count;
+
 #endif
 

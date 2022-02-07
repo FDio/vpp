@@ -117,5 +117,6 @@ extern void ip4_mfib_table_walk(ip4_mfib_t *mfib,
  * @brief format (display) the memory usage for IP4 mfibs
  */
 extern u8 * format_ip4_mfib_table_memory(u8 * s, va_list * args);
+extern u32 ip4_mfib_specials_route_count;
 
 #endif
