@@ -135,6 +135,12 @@ if (VPP_ENABLE_SANITIZE_ADDR)
   add_compile_options(-fsanitize=address)
   add_compile_definitions(CLIB_SANITIZE_ADDR)
   add_link_options(-fsanitize=address)
+  if ("${CMAKE_C_COMPILER_ID}" MATCHES "(Apple)?[Cc]lang")
+    # see https://github.com/google/sanitizers/issues/1017
+    # we cannot use add_compile_options() directly as it is used for c++
+    # compilation too and we might use another compiler (g++) for c++
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mllvm -asan-use-private-alias=1 -Wno-unused-command-line-argument")
+  endif()
 endif (VPP_ENABLE_SANITIZE_ADDR)
 
 ##############################################################################
