@@ -112,6 +112,11 @@ typedef struct fib_table_t_
     u32 ft_total_route_counts;
 
     /**
+     * Total specials route counters
+     */
+    u32 ft_specials_route_counts;
+
+    /**
      * Epoch - number of resyncs performed
      */
     u32 ft_epoch;
