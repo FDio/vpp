@@ -93,6 +93,8 @@ create_fib_with_table_id (u32 table_id,
     fib_table->ft_desc = desc;
 
     vnet_ip6_fib_init(fib_table->ft_index);
+    fib_table->ft_specials_route_counts = fib_table->ft_total_route_counts;
+
     fib_table_lock(fib_table->ft_index, FIB_PROTOCOL_IP6, src);
 
     return (fib_table->ft_index);
@@ -157,6 +159,7 @@ ip6_fib_table_destroy (u32 fib_index)
     fib_table_t *fib_table = fib_table_get(fib_index, FIB_PROTOCOL_IP6);
     fib_source_t source;
 
+    fib_table->ft_specials_route_counts = 0;
     /*
      * validate no more routes.
      */

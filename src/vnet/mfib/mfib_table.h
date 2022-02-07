@@ -122,6 +122,11 @@ typedef struct mfib_table_t_
     u32 mft_total_route_counts;
 
     /**
+     * Total specials route counters
+     */
+    u32 mft_specials_route_counts;
+
+    /**
      * Table description
      */
     u8* mft_desc;

@@ -186,6 +186,7 @@ ip6_create_mfib_with_table_id (u32 table_id,
                                      MFIB_ENTRY_FLAG_NONE,
                                      &path_for_us);
     }));
+    mfib_table->mft_specials_route_counts = mfib_table->mft_total_route_counts;
 
     return (mfib_table->mft_index);
 }
@@ -217,6 +218,7 @@ ip6_mfib_table_destroy (ip6_mfib_t *mfib)
                                      MFIB_SOURCE_SPECIAL,
                                      &path_for_us);
     });
+    mfib_table->mft_specials_route_counts = 0;
 
     mfei = mfib_table_lookup_exact_match(mfib_table->mft_index, &all_zeros);
     mfib_table_entry_delete_index(mfei, MFIB_SOURCE_DEFAULT_ROUTE);
