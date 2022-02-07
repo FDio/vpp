@@ -20,7 +20,7 @@
     called through a shared memory interface.
 */
 
-option version = "3.2.0";
+option version = "3.2.1";
 
 import "vnet/interface_types.api";
 import "vnet/fib/fib_types.api";
@@ -51,8 +51,28 @@ typedef ip_table
 */
 autoreply define ip_table_add_del
 {
+  option deprecated;
   u32 client_index;
   u32 context;
+  bool is_add [default=true];
+  vl_api_ip_table_t table;
+};
+
+/** \brief Add / del table request
+           A table can be added multiple times, but need be deleted only once.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param retval - return code of the add / del table request
+    @param is_add - is the table being added or removed
+    @param table - table ID associated with the route
+                   This table ID will apply to both the unicast
+		   and multicast FIBs
+*/
+autoreply define ip_table_add_del_v2
+{
+  u32 client_index;
+  u32 context;
+  i32 retval;
   bool is_add [default=true];
   vl_api_ip_table_t table;
 };

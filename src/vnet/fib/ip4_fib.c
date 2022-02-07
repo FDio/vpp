@@ -181,6 +181,7 @@ ip4_create_fib_with_table_id (u32 table_id,
      * add the special entries into the new FIB
      */
     ip4_fib_hash_load_specials(fib_table - ip4_main.fibs);
+    fib_table->ft_specials_route_counts = ARRAY_LEN(ip4_specials);
 
     return (fib_table->ft_index);
 }
@@ -197,6 +198,7 @@ ip4_fib_table_destroy (u32 fib_index)
      * In reverse order so the default route is last.
      */
     ip4_fib_hash_flush_specials(fib_table - ip4_main.fibs);
+    fib_table->ft_specials_route_counts = 0;
 
     /*
      * validate no more routes.

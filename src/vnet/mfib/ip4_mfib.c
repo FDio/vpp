@@ -87,6 +87,7 @@ ip4_create_mfib_with_table_id (u32 table_id,
                             MFIB_SOURCE_DEFAULT_ROUTE,
                             MFIB_RPF_ID_NONE,
                             MFIB_ENTRY_FLAG_DROP);
+    mfib_table->mft_specials_route_counts += 1;
 
     int ii;
 
@@ -98,6 +99,8 @@ ip4_create_mfib_with_table_id (u32 table_id,
                                      MFIB_ENTRY_FLAG_NONE,
                                      &ip4_special_path);
     }
+
+    mfib_table->mft_specials_route_counts += ARRAY_LEN(ip4_specials);
 
     return (mfib_table->mft_index);
 }
@@ -123,6 +126,7 @@ ip4_mfib_table_destroy (ip4_mfib_t *mfib)
 				     &ip4_special_path);
       }
 
+    mfib_table->mft_specials_route_counts = 0;
     /*
      * validate no more routes.
      */

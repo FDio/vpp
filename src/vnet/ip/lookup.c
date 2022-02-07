@@ -357,6 +357,7 @@ vnet_ip_table_cmd (vlib_main_t * vm,
   clib_error_t *error = NULL;
   u32 table_id, is_add;
   u8 *name = NULL;
+  int rc = 0;
 
   is_add = 1;
   table_id = ~0;
@@ -405,7 +406,12 @@ vnet_ip_table_cmd (vlib_main_t * vm,
 		  error = clib_error_return (0, "No table id");
 		  goto done;
 		}
-	      ip_table_delete (fproto, table_id, 0);
+	      rc = ip_table_delete (fproto, table_id, 0);
+	      if (rc != 0)
+		{
+		  error = vnet_error (rc, "");
+		  goto done;
+		}
 	    }
 	}
 
