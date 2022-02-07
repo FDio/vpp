@@ -1286,9 +1286,20 @@ fib_path_create (fib_node_index_t pl_index,
 		 const fib_route_path_t *rpath)
 {
     fib_path_t *path;
+    u8          need_barrier_sync     = 0;
+    vlib_main_t *vm                   = vlib_get_main();
+
+    pool_get_will_expand(fib_path_pool, need_barrier_sync);
+    if (need_barrier_sync) {
+        vlib_worker_thread_barrier_sync (vm);
+    }
 
     pool_get(fib_path_pool, path);
     clib_memset(path, 0, sizeof(*path));
+
+    if (need_barrier_sync) {
+        vlib_worker_thread_barrier_release(vm);
+    }
 
     fib_node_init(&path->fp_node,
 		  FIB_NODE_TYPE_PATH);
@@ -1443,9 +1454,20 @@ fib_path_create_special (fib_node_index_t pl_index,
 			 const dpo_id_t *dpo)
 {
     fib_path_t *path;
+    u8          need_barrier_sync     = 0;
+    vlib_main_t *vm                   = vlib_get_main();
+
+    pool_get_will_expand(fib_path_pool, need_barrier_sync);
+    if (need_barrier_sync) {
+        vlib_worker_thread_barrier_sync (vm);
+    }
 
     pool_get(fib_path_pool, path);
     clib_memset(path, 0, sizeof(*path));
+
+    if (need_barrier_sync) {
+        vlib_worker_thread_barrier_release(vm);
+    }
 
     fib_node_init(&path->fp_node,
 		  FIB_NODE_TYPE_PATH);
