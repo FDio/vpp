@@ -1,0 +1,188 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "389d7efa_62de5855",
+        "filename": "src/plugins/hs_apps/vcl/vcl_test_server.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 681,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-02-07T16:37:21Z",
+      "side": 1,
+      "message": "Nice! Really clean :-)",
+      "range": {
+        "startLine": 681,
+        "startChar": 0,
+        "endLine": 681,
+        "endChar": 29
+      },
+      "revId": "663c82ca74e945bb344a503be46a3ad1dd9b2806",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ddc44d39_839da5cb",
+        "filename": "src/vcl/vcl_sapi.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-02-07T16:37:21Z",
+      "side": 1,
+      "message": "Maybe add a comment as to why we\u0027re not reporting.",
+      "range": {
+        "startLine": 33,
+        "startChar": 6,
+        "endLine": 33,
+        "endChar": 21
+      },
+      "revId": "663c82ca74e945bb344a503be46a3ad1dd9b2806",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "901fe15d_963d9bcf",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3183,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-02-07T16:37:21Z",
+      "side": 1,
+      "message": "Let\u0027s rename to vcl_retry_connect and move under vcl_api_attach, to have them all together.",
+      "range": {
+        "startLine": 3183,
+        "startChar": 0,
+        "endLine": 3183,
+        "endChar": 20
+      },
+      "revId": "663c82ca74e945bb344a503be46a3ad1dd9b2806",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c6acffd6_fc7a63a0",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3232,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-02-07T16:37:21Z",
+      "side": 1,
+      "message": "I think we can move these to vcl_private.c, not to mix \"infra code\" with library logic. That separation is still WIP so if you hit any build complaints, leve the code here.",
+      "range": {
+        "startLine": 3190,
+        "startChar": 0,
+        "endLine": 3232,
+        "endChar": 1
+      },
+      "revId": "663c82ca74e945bb344a503be46a3ad1dd9b2806",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "230b94bc_612e2f3b",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3259,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-02-07T16:37:21Z",
+      "side": 1,
+      "message": "Let\u0027s move to separate vcl_try_reattach function, maybe just after vcl_api_detach, and I think we can get away with always returning 0 here.",
+      "range": {
+        "startLine": 3247,
+        "startChar": 0,
+        "endLine": 3259,
+        "endChar": 2
+      },
+      "revId": "663c82ca74e945bb344a503be46a3ad1dd9b2806",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c17dce8b_7fd0fa31",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3281,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-02-07T16:37:21Z",
+      "side": 1,
+      "message": "I can\u0027t properly remember now, did we consider the option of checking EPOLLHUP EPOLLERR on the existing mqs? Or we kept the binary api socket because we might be able to reuse it for mutex-condvar scenarios? \n\nEither way, calling epoll_wait when using mutex-condvars sort of defeats the purpose :-(, i.e., that syscall will slow the usecase down.",
+      "range": {
+        "startLine": 3281,
+        "startChar": 3,
+        "endLine": 3281,
+        "endChar": 56
+      },
+      "revId": "663c82ca74e945bb344a503be46a3ad1dd9b2806",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cbfcaf19_43e9a3ff",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3285,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-02-07T16:37:21Z",
+      "side": 1,
+      "message": "\"continue\" after this, and drop the else. Maybe make it a separate function like vcl_api_detached_handler (grouped with the above). So while reading the code it\u0027ll be like \"if not likely \u003cblob of exception code\u003e\", while the \"normal\" path code is properly indented afterwards.",
+      "range": {
+        "startLine": 3285,
+        "startChar": 7,
+        "endLine": 3285,
+        "endChar": 37
+      },
+      "revId": "663c82ca74e945bb344a503be46a3ad1dd9b2806",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "19949814_c18310f2",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1464,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-02-07T16:37:21Z",
+      "side": 1,
+      "message": "Do you remember when this happens? If yes, comment above to remember the scenario",
+      "range": {
+        "startLine": 1464,
+        "startChar": 7,
+        "endLine": 1464,
+        "endChar": 12
+      },
+      "revId": "663c82ca74e945bb344a503be46a3ad1dd9b2806",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
