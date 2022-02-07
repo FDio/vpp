@@ -319,7 +319,7 @@ try_url_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
   uword *p, *url_table;
   int rv;
 
-  if (!hsm->enable_url_handlers)
+  if (!hsm->enable_url_handlers || !request)
     return -1;
 
   /* Look for built-in GET / POST handlers */
@@ -389,7 +389,9 @@ handle_request (hss_session_t *hs, http_req_method_t rt, u8 *request)
    * Construct the file to open
    * Browsers are capable of sporadically including a leading '/'
    */
-  if (request[0] == '/')
+  if (!request)
+    path = format (0, "%s%c", hsm->www_root, 0);
+  else if (request[0] == '/')
     path = format (0, "%s%s%c", hsm->www_root, request, 0);
   else
     path = format (0, "%s/%s%c", hsm->www_root, request, 0);
