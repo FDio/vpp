@@ -219,7 +219,7 @@ send_sa (ikev2_sa_t * sa, vl_api_ikev2_sa_dump_t * mp, u32 api_sa_index)
   {
     vl_api_ikev2_sa_t *rsa = &rmp->sa;
     vl_api_ikev2_keys_t* k = &rsa->keys;
-    rsa->profile_index = rsa->profile_index;
+    rsa->profile_index = sa->profile_index;
     rsa->sa_index = api_sa_index;
     ip_address_encode2 (&sa->iaddr, &rsa->iaddr);
     ip_address_encode2 (&sa->raddr, &rsa->raddr);
