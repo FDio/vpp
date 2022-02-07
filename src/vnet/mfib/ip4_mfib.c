@@ -55,6 +55,9 @@ static const fib_route_path_t ip4_special_path =
    .frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
   };
 
+/* all_zeros + ip4_specials */
+u32 ip4_mfib_specials_route_count = 1 + ARRAY_LEN(ip4_specials);
+
 static u32
 ip4_create_mfib_with_table_id (u32 table_id,
                                mfib_source_t src)

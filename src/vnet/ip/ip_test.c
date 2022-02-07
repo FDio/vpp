@@ -464,6 +464,12 @@ api_ip_table_add_del (vat_main_t *vam)
 }
 
 static int
+api_ip_table_add_del_v2 (vat_main_t *vam)
+{
+  return -1;
+}
+
+static int
 api_ip_table_replace_begin (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;

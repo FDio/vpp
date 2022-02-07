@@ -265,7 +265,7 @@ extern vlib_node_registration_t ip6_inacl_node;
 void ip_table_create (fib_protocol_t fproto, u32 table_id, u8 is_api,
 		      const u8 * name);
 
-void ip_table_delete (fib_protocol_t fproto, u32 table_id, u8 is_api);
+int ip_table_delete (fib_protocol_t fproto, u32 table_id, u8 is_api);
 
 void fib_table_bind (fib_protocol_t fproto, u32 sw_if_index, u32 fib_index);
 void mfib_table_bind (fib_protocol_t fproto, u32 sw_if_index, u32 mfib_index);
