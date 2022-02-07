@@ -25,6 +25,7 @@ ip6_fib_table_instance_t ip6_fib_table[IP6_FIB_NUM_TABLES];
 /* ip6 lookup table config parameters */
 u32 ip6_fib_table_nbuckets;
 uword ip6_fib_table_size;
+u32 ip6_fib_specials_route_count;
 
 static void
 vnet_ip6_fib_init (u32 fib_index)
@@ -58,6 +59,7 @@ vnet_ip6_fib_init (u32 fib_index)
                                     FIB_SOURCE_SPECIAL,
                                     FIB_ENTRY_FLAG_NONE,
                                     ip6_ll_dpo_get());
+    ip6_fib_specials_route_count = 2;
 }
 
 static u32

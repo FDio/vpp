@@ -31,6 +31,8 @@
 #include <vnet/ip/ip_path_mtu.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/fib_api.h>
+#include <vnet/fib/ip4_fib.h>
+#include <vnet/fib/ip6_fib.h>
 #include <vnet/ethernet/arp_packet.h>
 #include <vnet/mfib/ip6_mfib.h>
 #include <vnet/mfib/ip4_mfib.h>
@@ -563,11 +565,14 @@ call_elf_section_ip_table_callbacks (vnet_main_t * vnm, u32 table_id,
   return error;
 }
 
-void
+int
 ip_table_delete (fib_protocol_t fproto, u32 table_id, u8 is_api)
 {
   u32 fib_index, mfib_index;
   vnet_main_t *vnm = vnet_get_main ();
+  fib_table_t *fib_table;
+  mfib_table_t *mfib_table;
+  fib_source_t source;
 
   /*
    * ignore action on the default table - this is always present
@@ -583,8 +588,55 @@ ip_table_delete (fib_protocol_t fproto, u32 table_id, u8 is_api)
        * same, since internal VPP systesm (like LISP and SR) create
        * their own unicast tables.
        */
-      fib_index = fib_table_find (fproto, table_id);
       mfib_index = mfib_table_find (fproto, table_id);
+      fib_index = fib_table_find (fproto, table_id);
+
+      if (~0 != fib_index)
+	{
+	  fib_table = fib_table_get (fib_index, fproto);
+	  if (fib_table->ft_proto == DPO_PROTO_IP4)
+	    {
+	      if (fib_table->ft_total_route_counts >
+		  ip4_fib_specials_route_count)
+		return VNET_API_ERROR_FIB_TABLE_NOT_EMPTY;
+	    }
+	  else /* ip6 table */
+	    {
+	      if (fib_table->ft_total_route_counts >
+		  ip6_fib_specials_route_count)
+		return VNET_API_ERROR_FIB_TABLE_NOT_EMPTY;
+	    }
+	  vec_foreach_index (source, fib_table->ft_locks)
+	    {
+	      if (source == FIB_SOURCE_API || source == FIB_SOURCE_CLI)
+		continue;
+	      if (0 != fib_table->ft_locks[source])
+		return VNET_API_ERROR_FIB_TABLE_LOCKED;
+	    }
+	}
+      if (~0 != mfib_index)
+	{
+	  mfib_table = mfib_table_get (mfib_index, fproto);
+	  if (fib_table->ft_proto == DPO_PROTO_IP4)
+	    {
+	      if (mfib_table->mft_total_route_counts >
+		  ip4_mfib_specials_route_count)
+		return VNET_API_ERROR_MFIB_TABLE_NOT_EMPTY;
+	    }
+	  else /* ip6 table */
+	    {
+	      if (mfib_table->mft_total_route_counts >
+		  ip6_mfib_specials_route_count)
+		return VNET_API_ERROR_MFIB_TABLE_NOT_EMPTY;
+	    }
+	  vec_foreach_index (source, mfib_table->mft_locks)
+	    {
+	      if (source == MFIB_SOURCE_API || source == MFIB_SOURCE_CLI)
+		continue;
+	      if (0 != mfib_table->mft_locks[source])
+		return VNET_API_ERROR_MFIB_TABLE_LOCKED;
+	    }
+	}
 
       if ((~0 != fib_index) || (~0 != mfib_index))
 	call_elf_section_ip_table_callbacks (vnm, table_id, 0 /* is_add */ ,
@@ -601,6 +653,7 @@ ip_table_delete (fib_protocol_t fproto, u32 table_id, u8 is_api)
 			     (is_api ? MFIB_SOURCE_API : MFIB_SOURCE_CLI));
 	}
     }
+  return 0;
 }
 
 /*
@@ -648,6 +701,28 @@ vl_api_ip_table_add_del_t_handler (vl_api_ip_table_add_del_t * mp)
     }
 
   REPLY_MACRO (VL_API_IP_TABLE_ADD_DEL_REPLY);
+}
+
+void
+vl_api_ip_table_add_del_v2_t_handler (vl_api_ip_table_add_del_v2_t *mp)
+{
+  vl_api_ip_table_add_del_v2_reply_t *rmp;
+  fib_protocol_t fproto =
+    (mp->table.is_ip6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4);
+  u32 table_id = ntohl (mp->table.table_id);
+  int rv = 0;
+
+  if (mp->is_add)
+    {
+      ip_table_create (fproto, table_id, 1, mp->table.name);
+    }
+  else
+    {
+      rv = ip_table_delete (fproto, table_id, 1);
+    }
+
+  REPLY_MACRO2 (VL_API_IP_TABLE_ADD_DEL_V2_REPLY,
+		{ rmp->retval = ntohl (rv); });
 }
 
 void

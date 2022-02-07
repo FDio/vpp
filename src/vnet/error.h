@@ -156,7 +156,11 @@
   _ (EAGAIN, -165, "Retry stream call with cursor")                           \
   _ (INVALID_VALUE_4, -166, "Invalid value #4")                               \
   _ (BUSY, -167, "Busy")                                                      \
-  _ (BUG, -168, "Bug")
+  _ (BUG, -168, "Bug")                                                        \
+  _ (FIB_TABLE_NOT_EMPTY, -169, "FIB table not empty")                        \
+  _ (MFIB_TABLE_NOT_EMPTY, -170, "MFIB table not empty")                      \
+  _ (FIB_TABLE_LOCKED, -171, "FIB table locked")                              \
+  _ (MFIB_TABLE_LOCKED, -172, "MFIB table locked")
 
 typedef enum
 {

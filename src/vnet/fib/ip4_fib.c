@@ -99,6 +99,8 @@ static const ip4_fib_table_special_prefix_t ip4_specials[] = {
     }
 };
 
+u32 ip4_fib_specials_route_count = ARRAY_LEN(ip4_specials);
+
 void
 ip4_fib_hash_load_specials (u32 fib_index)
 {
@@ -107,7 +109,7 @@ ip4_fib_hash_load_specials (u32 fib_index)
      */
     int ii;
 
-    for (ii = 0; ii < ARRAY_LEN(ip4_specials); ii++)
+    for (ii = 0; ii < ip4_fib_specials_route_count; ii++)
     {
 	fib_prefix_t prefix = ip4_specials[ii].ift_prefix;
 
@@ -130,7 +132,7 @@ ip4_fib_hash_flush_specials (u32 fib_index)
      * remove all the specials we added when the table was created.
      * In reverse order so the default route is last.
      */
-    for (ii = ARRAY_LEN(ip4_specials) - 1; ii >= 0; ii--)
+    for (ii = ip4_fib_specials_route_count - 1; ii >= 0; ii--)
     {
 	fib_prefix_t prefix = ip4_specials[ii].ift_prefix;
 

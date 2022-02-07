@@ -103,6 +103,9 @@ static const ip6_mfib_special_t ip6_mfib_specials[] =
     }
 };
 
+/* all_zeros + ip6_mfib_specials */
+u32 ip6_mfib_specials_route_count = 1 + ARRAY_LEN(ip6_mfib_specials);
+
 #define FOR_EACH_IP6_SPECIAL(_pfx, _body)                               \
 {                                                                       \
     const ip6_mfib_special_t *_spec;                                    \

@@ -230,6 +230,7 @@ u32 ip6_fib_index_from_table_id (u32 table_id)
 }
 
 extern u32 ip6_fib_table_get_index_for_sw_if_index(u32 sw_if_index);
+extern u32 ip6_fib_specials_route_count;
 
 #endif
 
