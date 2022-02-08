@@ -450,6 +450,14 @@ class VCLThruHostStackEcho(VCLTestCase):
         self.thru_host_stack_tear_down()
         super(VCLThruHostStackEcho, self).tearDown()
 
+    def test_vcl_thru_host_stack_echo(self):
+        """ run VCL IPv4 thru host stack echo test """
+
+        self.thru_host_stack_test("vcl_test_server",
+                                  self.server_args,
+                                  "vcl_test_client",
+                                  self.client_echo_test_args)
+
     def show_commands_at_teardown(self):
         self.logger.debug(self.vapi.cli("show app server"))
         self.logger.debug(self.vapi.cli("show session verbose"))
