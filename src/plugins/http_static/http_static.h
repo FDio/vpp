@@ -43,7 +43,7 @@ typedef struct
   /** Data to send */
   u8 *data;
   /** Data length */
-  u32 data_len;
+  u64 data_len;
   /** Current data send offset */
   u32 data_offset;
   /** Need to free data in detach_cache_entry */
