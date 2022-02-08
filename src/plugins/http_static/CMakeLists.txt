@@ -14,9 +14,10 @@
 
 add_vpp_plugin(http_static
   SOURCES
+  http_cache.c
+  http_cache.h
   http_static.c
   static_server.c
-  http_static.h
   builtinurl/json_urls.c
 
   API_FILES
