@@ -275,6 +275,7 @@ mpls_fib_table_destroy (u32 fib_index)
     }
     hash_free(mf->mf_entries);
 
+    vec_free (fib_table->ft_locks);
     vec_free(fib_table->ft_src_route_counts);
     pool_put(mpls_main.mpls_fibs, mf);
     pool_put(mpls_main.fibs, fib_table);
