@@ -21,7 +21,7 @@
 
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
-#include <vppinfra/bihash_vec8_8.h>
+#include <http_static/http_cache.h>
 
 /** @file http_static.h
  * Static http server definitions
@@ -43,7 +43,7 @@ typedef struct
   /** Data to send */
   u8 *data;
   /** Data length */
-  u32 data_len;
+  u64 data_len;
   /** Current data send offset */
   u32 data_offset;
   /** Need to free data in detach_cache_entry */
@@ -67,22 +67,6 @@ typedef struct hss_session_handle_
 
 STATIC_ASSERT_SIZEOF (hss_session_handle_t, sizeof (u64));
 
-/** \brief In-memory file data cache entry
- */
-typedef struct
-{
-  /** Name of the file */
-  u8 *filename;
-  /** Contents of the file, as a u8 * vector */
-  u8 *data;
-  /** Last time the cache entry was used */
-  f64 last_used;
-  /** Cache LRU links */
-  u32 next_index;
-  u32 prev_index;
-  /** Reference count, so we don't recycle while referenced */
-  int inuse;
-} hss_cache_entry_t;
 
 typedef struct hss_url_handler_args_
 {
@@ -125,28 +109,12 @@ typedef struct
 {
   /** Per thread vector of session pools */
   hss_session_t **sessions;
-  /** Session pool reader writer lock */
-  clib_spinlock_t cache_lock;
-
-  /** Unified file data cache pool */
-  hss_cache_entry_t *cache_pool;
-  /** Hash table which maps file name to file data */
-    BVT (clib_bihash) name_to_data;
 
   /** Hash tables for built-in GET and POST handlers */
   uword *get_url_handlers;
   uword *post_url_handlers;
 
-  /** Current cache size */
-  u64 cache_size;
-  /** Max cache size in bytes */
-  u64 cache_limit;
-  /** Number of cache evictions */
-  u64 cache_evictions;
-
-  /** Cache LRU listheads */
-  u32 first_index;
-  u32 last_index;
+  hss_cache_t cache;
 
   /** root path to be served */
   u8 *www_root;
@@ -180,6 +148,8 @@ typedef struct
   u32 use_ptr_thresh;
   /** Enable the use of builtinurls */
   u8 enable_url_handlers;
+  /** Max cache size before LRU occurs */
+  u64 cache_size;
 } hss_main_t;
 
 extern hss_main_t hss_main;

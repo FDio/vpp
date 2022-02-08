@@ -73,7 +73,7 @@ hss_enable_api (u32 fifo_size, u32 cache_limit, u32 prealloc_fifos,
   int rv;
 
   hsm->fifo_size = fifo_size;
-  hsm->cache_limit = cache_limit;
+  hsm->cache_size = cache_limit;
   hsm->prealloc_fifos = prealloc_fifos;
   hsm->private_segment_size = private_segment_size;
   hsm->www_root = format (0, "%s%c", www_root, 0);
