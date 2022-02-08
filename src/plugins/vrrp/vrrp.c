@@ -310,9 +310,10 @@ vrrp_vr_transition (vrrp_vr_t * vr, vrrp_vr_state_t new_state, void *data)
 
       if (vr->runtime.state == VRRP_VR_STATE_MASTER)
 	{
-	  vrrp_header_t *pkt = data;
-	  vr->runtime.master_adv_int = vrrp_adv_int_from_packet (pkt);
+	  vrrp_input_process_args_t *args = data;
 
+	  if (args)
+	    vr->runtime.master_adv_int = args->max_adv_int;
 	}
       else			/* INIT, INTF_DOWN */
 	vr->runtime.master_adv_int = vr->config.adv_interval;

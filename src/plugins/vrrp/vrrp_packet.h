@@ -47,6 +47,15 @@ vrrp_adv_int_from_packet (vrrp_header_t * pkt)
   return clib_net_to_host_u16 (pkt->rsvd_and_max_adv_int) & ((u16) 0x0fff);
 }
 
+/* Fields from VRRP advertisement packets needed by main thread */
+typedef struct vrrp_input_process_args
+{
+  u32 vr_index;
+  ip46_address_t src_addr;
+  u8 priority;
+  u8 max_adv_int;
+} vrrp_input_process_args_t;
+
 #endif /* __included_vrrp_packet_h__ */
 
 /*

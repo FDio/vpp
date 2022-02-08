@@ -86,22 +86,16 @@ typedef enum
   VRRP_INPUT_N_NEXT,
 } vrrp_next_t;
 
-typedef struct vrrp_input_process_args
-{
-  u32 vr_index;
-  vrrp_header_t *pkt;
-} vrrp_input_process_args_t;
-
 /* Given a VR and a pointer to the VRRP header of an incoming packet,
  * compare the local src address to the peers. Return < 0 if the local
  * address < the peer address, 0 if they're equal, > 0 if
  * the local address > the peer address
  */
 static int
-vrrp_vr_addr_cmp (vrrp_vr_t * vr, vrrp_header_t * pkt)
+vrrp_vr_addr_cmp (vrrp_vr_t *vr, ip46_address_t *peer_addr)
 {
   vrrp_vr_config_t *vrc = &vr->config;
-  void *peer_addr, *local_addr;
+  void *peer_addr_bytes, *local_addr;
   ip46_address_t addr;
   int addr_size;
 
@@ -109,7 +103,7 @@ vrrp_vr_addr_cmp (vrrp_vr_t * vr, vrrp_header_t * pkt)
 
   if (vrrp_vr_is_ipv6 (vr))
     {
-      peer_addr = &(((ip6_header_t *) pkt) - 1)->src_address;
+      peer_addr_bytes = &peer_addr->ip6;
       local_addr = &addr.ip6;
       addr_size = 16;
       ip6_address_copy (local_addr,
@@ -117,22 +111,22 @@ vrrp_vr_addr_cmp (vrrp_vr_t * vr, vrrp_header_t * pkt)
     }
   else
     {
-      peer_addr = &(((ip4_header_t *) pkt) - 1)->src_address;
+      peer_addr_bytes = &peer_addr->ip4;
       local_addr = &addr.ip4;
       addr_size = 4;
       fib_sas4_get (vrc->sw_if_index, NULL, local_addr);
     }
 
-  return memcmp (local_addr, peer_addr, addr_size);
+  return memcmp (local_addr, peer_addr_bytes, addr_size);
 }
 
 static void
-vrrp_input_process_master (vrrp_vr_t * vr, vrrp_header_t * pkt)
+vrrp_input_process_master (vrrp_vr_t *vr, vrrp_input_process_args_t *args)
 {
   /* received priority 0, another VR is shutting down. send an adv and
    * remain in the master state
    */
-  if (pkt->priority == 0)
+  if (args->priority == 0)
     {
       clib_warning ("Received shutdown message from a peer on VR %U",
 		    format_vrrp_vr_key, vr);
@@ -146,11 +140,11 @@ vrrp_input_process_master (vrrp_vr_t * vr, vrrp_header_t * pkt)
    * - received priority == adjusted priority and peer addr > local addr
    * allow the local VR to be preempted by the peer
    */
-  if ((pkt->priority > vrrp_vr_priority (vr)) ||
-      ((pkt->priority == vrrp_vr_priority (vr)) &&
-       (vrrp_vr_addr_cmp (vr, pkt) < 0)))
+  if ((args->priority > vrrp_vr_priority (vr)) ||
+      ((args->priority == vrrp_vr_priority (vr)) &&
+       (vrrp_vr_addr_cmp (vr, &args->src_addr) < 0)))
     {
-      vrrp_vr_transition (vr, VRRP_VR_STATE_BACKUP, pkt);
+      vrrp_vr_transition (vr, VRRP_VR_STATE_BACKUP, args);
 
       return;
     }
@@ -163,13 +157,13 @@ vrrp_input_process_master (vrrp_vr_t * vr, vrrp_header_t * pkt)
 
 /* RFC 5798 section 6.4.2 */
 static void
-vrrp_input_process_backup (vrrp_vr_t * vr, vrrp_header_t * pkt)
+vrrp_input_process_backup (vrrp_vr_t *vr, vrrp_input_process_args_t *args)
 {
   vrrp_vr_config_t *vrc = &vr->config;
   vrrp_vr_runtime_t *vrt = &vr->runtime;
 
   /* master shutting down, ready for election */
-  if (pkt->priority == 0)
+  if (args->priority == 0)
     {
       clib_warning ("Master for VR %U is shutting down", format_vrrp_vr_key,
 		    vr);
@@ -180,10 +174,9 @@ vrrp_input_process_backup (vrrp_vr_t * vr, vrrp_header_t * pkt)
 
   /* no preempt set or adv from a higher priority router, update timers */
   if (!(vrc->flags & VRRP_VR_PREEMPT) ||
-      (pkt->priority >= vrrp_vr_priority (vr)))
+      (args->priority >= vrrp_vr_priority (vr)))
     {
-      vrt->master_adv_int = clib_net_to_host_u16 (pkt->rsvd_and_max_adv_int);
-      vrt->master_adv_int &= ((u16) 0x0fff);	/* ignore rsvd bits */
+      vrt->master_adv_int = args->max_adv_int;
 
       vrrp_vr_skew_compute (vr);
       vrrp_vr_master_down_compute (vr);
@@ -214,13 +207,13 @@ vrrp_input_process (vrrp_input_process_args_t * args)
       return;
     case VRRP_VR_STATE_BACKUP:
       /* this is usually the only state an advertisement should be received */
-      vrrp_input_process_backup (vr, args->pkt);
+      vrrp_input_process_backup (vr, args);
       break;
     case VRRP_VR_STATE_MASTER:
       /* might be getting preempted. or have a misbehaving peer */
       clib_warning ("Received advertisement for master VR %U",
 		    format_vrrp_vr_key, vr);
-      vrrp_input_process_master (vr, args->pkt);
+      vrrp_input_process_master (vr, args);
       break;
     default:
       clib_warning ("Received advertisement for VR %U in unknown state %d",
@@ -586,6 +579,7 @@ vrrp_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  addr_len = 16;
 	  payload_len0 = clib_net_to_host_u16 (ip6->payload_length);
 	  vlib_buffer_advance (b0, sizeof (*ip6));
+	  clib_memcpy_fast (&args0.src_addr.ip6, &ip6->src_address, addr_len);
 	}
       else
 	{
@@ -596,6 +590,7 @@ vrrp_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  addr_len = 4;
 	  payload_len0 = clib_net_to_host_u16 (ip4->length) - sizeof(*ip4);
 	  vlib_buffer_advance (b0, sizeof (*ip4));
+	  clib_memcpy_fast (&args0.src_addr.ip4, &ip4->src_address, addr_len);
 	}
 
       next0 = VRRP_INPUT_NEXT_DROP;
@@ -656,7 +651,8 @@ vrrp_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       /* signal main thread to process contents of packet */
       args0.vr_index = vr0 - vmp->vrs;
-      args0.pkt = vrrp0;
+      args0.priority = vrrp0->priority;
+      args0.max_adv_int = vrrp_adv_int_from_packet (vrrp0);
 
       vl_api_rpc_call_main_thread (vrrp_input_process, (u8 *) &args0,
 				   sizeof (args0));
