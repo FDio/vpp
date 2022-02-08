@@ -425,8 +425,9 @@ vnet_mpls_table_cmd (vlib_main_t * vm,
     }
 
  done:
-  unformat_free (line_input);
-  return error;
+   vec_free (name);
+   unformat_free (line_input);
+   return error;
 }
 
 /* *INDENT-ON* */

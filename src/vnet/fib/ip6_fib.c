@@ -174,6 +174,7 @@ ip6_fib_table_destroy (u32 fib_index)
     {
 	hash_unset (ip6_main.fib_index_by_table_id, fib_table->ft_table_id);
     }
+    vec_free (fib_table->ft_locks);
     vec_free(fib_table->ft_src_route_counts);
     pool_put_index(ip6_main.v6_fibs, fib_table->ft_index);
     pool_put(ip6_main.fibs, fib_table);
