@@ -84,31 +84,24 @@ hss_session_free (hss_session_t *hs)
 /** \brief Detach cache entry from session
  */
 static void
-hss_detach_cache_entry (hss_session_t *hs)
+hss_detach_cache_entry (u32 ce_index)
 {
   hss_main_t *hsm = &hss_main;
-  hss_cache_entry_t *ep;
+  hss_cache_entry_t *ce;
+
+  hss_cache_lock ();
 
   /*
    * Decrement cache pool entry reference count
    * Note that if e.g. a file lookup fails, the cache pool index
    * won't be set
    */
-  if (hs->cache_pool_index != ~0)
-    {
-      ep = pool_elt_at_index (hsm->cache_pool, hs->cache_pool_index);
-      ep->inuse--;
-      if (hsm->debug_level > 1)
-	clib_warning ("index %d refcnt now %d", hs->cache_pool_index,
-		      ep->inuse);
-    }
-  hs->cache_pool_index = ~0;
-  if (hs->free_data)
-    vec_free (hs->data);
-  hs->data = 0;
-  hs->data_offset = 0;
-  hs->free_data = 0;
-  vec_free (hs->path);
+  ce = pool_elt_at_index (hsm->cache_pool, ce_index);
+  ce->inuse--;
+  if (hsm->debug_level > 1)
+    clib_warning ("index %d refcnt now %d", ce_index, ce->inuse);
+
+  hss_cache_unlock ();
 }
 
 /** \brief Disconnect a session
@@ -368,22 +361,17 @@ try_url_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
 }
 
 static int
-handle_request (hss_session_t *hs, http_req_method_t rt, u8 *request)
+try_file_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
+		  u8 *request)
 {
   http_status_code_t sc = HTTP_STATUS_OK;
-  hss_main_t *hsm = &hss_main;
   struct stat _sb, *sb = &_sb;
   clib_error_t *error;
   u8 *path;
 
-  if (!try_url_handler (hsm, hs, rt, request))
-    return 0;
-
+  /* Feature not enabled */
   if (!hsm->www_root)
-    {
-      sc = HTTP_STATUS_NOT_FOUND;
-      goto done;
-    }
+    return -1;
 
   /*
    * Construct the file to open
@@ -466,6 +454,7 @@ handle_request (hss_session_t *hs, http_req_method_t rt, u8 *request)
 	      vec_free (port_str);
 
 	      hs->data = redirect;
+	      hs->data_len = vec_len (hs->data);
 	      goto done;
 	    }
 	}
@@ -491,6 +480,7 @@ handle_request (hss_session_t *hs, http_req_method_t rt, u8 *request)
 	  /* found the data.. */
 	  ce = pool_elt_at_index (hsm->cache_pool, kv.value);
 	  hs->data = ce->data;
+	  hs->data_len = vec_len (ce->data);
 	  /* Update the cache entry, mark it in-use */
 	  lru_update (hsm, ce, vlib_time_now (vlib_get_main ()));
 	  hs->cache_pool_index = ce - hsm->cache_pool;
@@ -557,6 +547,8 @@ handle_request (hss_session_t *hs, http_req_method_t rt, u8 *request)
 	      hss_cache_unlock ();
 	      goto done;
 	    }
+	  hs->data_len = vec_len (hs->data);
+
 	  /* Create a cache entry for it */
 	  pool_get_zero (hsm->cache_pool, ce);
 	  ce->filename = vec_dup (hs->path);
@@ -591,7 +583,25 @@ done:
   if (!hs->data)
     hss_session_disconnect_transport (hs);
 
-  return sc;
+  return 0;
+}
+
+static int
+handle_request (hss_session_t *hs, http_req_method_t rt, u8 *request)
+{
+  hss_main_t *hsm = &hss_main;
+
+  if (!try_url_handler (hsm, hs, rt, request))
+    return 0;
+
+  if (!try_file_handler (hsm, hs, rt, request))
+    return 0;
+
+  /* Nothing found */
+  start_send_data (hs, HTTP_STATUS_NOT_FOUND);
+  hss_session_disconnect_transport (hs);
+
+  return 0;
 }
 
 static int
@@ -741,7 +751,19 @@ hss_ts_cleanup (session_t *s, session_cleanup_ntf_t ntf)
   if (!hs)
     return;
 
-  hss_detach_cache_entry (hs);
+  if (hs->cache_pool_index != ~0)
+    {
+      hss_detach_cache_entry (hs->cache_pool_index);
+      hs->cache_pool_index = ~0;
+    }
+
+  if (hs->free_data)
+    vec_free (hs->data);
+  hs->data = 0;
+  hs->data_offset = 0;
+  hs->free_data = 0;
+  vec_free (hs->path);
+
   hss_session_free (hs);
 }
 
