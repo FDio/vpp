@@ -298,7 +298,7 @@ vlib_stats_rename_symlink (void *oldheap, u64 index, u8 *new_name)
 {
   stat_segment_main_t *sm = &stat_segment_main;
   stat_segment_directory_entry_t *e;
-  clib_warning ("RENAME new name: %s", new_name);
+
   ASSERT (clib_mem_get_heap () == sm->heap);
   ASSERT (index < vec_len (sm->directory_vector));
   if (index > vec_len (sm->directory_vector))
