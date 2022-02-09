@@ -7579,6 +7579,7 @@ fib_test_child_get_node (fib_node_index_t index)
 }
 
 static int fib_test_walk_spawns_walks;
+static fib_node_type_t test_node_type;
 
 static fib_node_back_walk_rc_t
 fib_test_child_back_walk_notify (fib_node_t *node,
@@ -7589,9 +7590,9 @@ fib_test_child_back_walk_notify (fib_node_t *node,
     vec_add1(tc->ctxs, *ctx);
 
     if (1 == fib_test_walk_spawns_walks)
-        fib_walk_sync(FIB_NODE_TYPE_TEST, tc->index, ctx);
+        fib_walk_sync(test_node_type, tc->index, ctx);
     if (2 == fib_test_walk_spawns_walks)
-        fib_walk_async(FIB_NODE_TYPE_TEST, tc->index,
+        fib_walk_async(test_node_type, tc->index,
                        FIB_WALK_PRIORITY_HIGH, ctx);
 
     return (FIB_NODE_BACK_WALK_CONTINUE);
@@ -7632,23 +7633,23 @@ fib_test_walk (void)
 
     res = 0;
     vm = vlib_get_main();
-    fib_node_register_type(FIB_NODE_TYPE_TEST, &fib_test_child_vft);
+    test_node_type = fib_node_register_new_type("fib-test", &fib_test_child_vft);
 
     /*
      * init a fake node on which we will add children
      */
     fib_node_init(&fib_test_nodes[PARENT_INDEX].node,
-                  FIB_NODE_TYPE_TEST);
+                  test_node_type);
 
     FOR_EACH_TEST_CHILD(tc)
     {
-        fib_node_init(&tc->node, FIB_NODE_TYPE_TEST);
+        fib_node_init(&tc->node, test_node_type);
         fib_node_lock(&tc->node);
         tc->ctxs = NULL;
         tc->index = ii;
-        tc->sibling = fib_node_child_add(FIB_NODE_TYPE_TEST,
+        tc->sibling = fib_node_child_add(test_node_type,
                                          PARENT_INDEX,
-                                         FIB_NODE_TYPE_TEST, ii);
+                                         test_node_type, ii);
     }
 
     /*
@@ -7656,7 +7657,7 @@ fib_test_walk (void)
      */
     high_ctx.fnbw_reason = FIB_NODE_BW_REASON_FLAG_RESOLVE;
 
-    fib_walk_async(FIB_NODE_TYPE_TEST, PARENT_INDEX,
+    fib_walk_async(test_node_type, PARENT_INDEX,
                    FIB_WALK_PRIORITY_HIGH, &high_ctx);
     FIB_TEST(N_TEST_CHILDREN+1 == fib_node_list_get_size(PARENT()->fn_children),
              "Parent has %d children pre-walk",
@@ -7702,9 +7703,9 @@ fib_test_walk (void)
     high_ctx.fnbw_reason = FIB_NODE_BW_REASON_FLAG_RESOLVE;
     low_ctx.fnbw_reason = FIB_NODE_BW_REASON_FLAG_ADJ_UPDATE;
 
-    fib_walk_async(FIB_NODE_TYPE_TEST, PARENT_INDEX,
+    fib_walk_async(test_node_type, PARENT_INDEX,
                    FIB_WALK_PRIORITY_HIGH, &high_ctx);
-    fib_walk_async(FIB_NODE_TYPE_TEST, PARENT_INDEX,
+    fib_walk_async(test_node_type, PARENT_INDEX,
                    FIB_WALK_PRIORITY_LOW, &low_ctx);
 
     fib_walk_process_queues(vm, 1);
@@ -7730,9 +7731,9 @@ fib_test_walk (void)
     high_ctx.fnbw_reason = FIB_NODE_BW_REASON_FLAG_RESOLVE;
     low_ctx.fnbw_reason  = FIB_NODE_BW_REASON_FLAG_RESOLVE;
 
-    fib_walk_async(FIB_NODE_TYPE_TEST, PARENT_INDEX,
+    fib_walk_async(test_node_type, PARENT_INDEX,
                    FIB_WALK_PRIORITY_HIGH, &high_ctx);
-    fib_walk_async(FIB_NODE_TYPE_TEST, PARENT_INDEX,
+    fib_walk_async(test_node_type, PARENT_INDEX,
                    FIB_WALK_PRIORITY_HIGH, &low_ctx);
 
     fib_walk_process_queues(vm, 1);
@@ -7758,9 +7759,9 @@ fib_test_walk (void)
     high_ctx.fnbw_reason = FIB_NODE_BW_REASON_FLAG_RESOLVE;
     low_ctx.fnbw_reason  = FIB_NODE_BW_REASON_FLAG_ADJ_UPDATE;
 
-    fib_walk_async(FIB_NODE_TYPE_TEST, PARENT_INDEX,
+    fib_walk_async(test_node_type, PARENT_INDEX,
                    FIB_WALK_PRIORITY_HIGH, &high_ctx);
-    fib_walk_async(FIB_NODE_TYPE_TEST, PARENT_INDEX,
+    fib_walk_async(test_node_type, PARENT_INDEX,
                    FIB_WALK_PRIORITY_HIGH, &low_ctx);
 
     fib_walk_process_queues(vm, 1);
@@ -7786,7 +7787,7 @@ fib_test_walk (void)
      */
     high_ctx.fnbw_reason = FIB_NODE_BW_REASON_FLAG_RESOLVE;
 
-    fib_walk_async(FIB_NODE_TYPE_TEST, PARENT_INDEX,
+    fib_walk_async(test_node_type, PARENT_INDEX,
                    FIB_WALK_PRIORITY_HIGH, &high_ctx);
     fib_walk_process_queues(vm, 0);
 
@@ -7840,7 +7841,7 @@ fib_test_walk (void)
     /*
      * schedule another walk that will catch-up and merge.
      */
-    fib_walk_async(FIB_NODE_TYPE_TEST, PARENT_INDEX,
+    fib_walk_async(test_node_type, PARENT_INDEX,
                    FIB_WALK_PRIORITY_HIGH, &high_ctx);
     fib_walk_process_queues(vm, 1);
 
@@ -7873,13 +7874,13 @@ fib_test_walk (void)
      */
     high_ctx.fnbw_reason = FIB_NODE_BW_REASON_FLAG_RESOLVE;
 
-    fib_walk_async(FIB_NODE_TYPE_TEST, PARENT_INDEX,
+    fib_walk_async(test_node_type, PARENT_INDEX,
                    FIB_WALK_PRIORITY_HIGH, &high_ctx);
 
     fib_walk_process_queues(vm, 0);
     fib_walk_process_queues(vm, 0);
 
-    fib_walk_sync(FIB_NODE_TYPE_TEST, PARENT_INDEX, &high_ctx);
+    fib_walk_sync(test_node_type, PARENT_INDEX, &high_ctx);
 
     FOR_EACH_TEST_CHILD(tc)
     {
@@ -7908,9 +7909,9 @@ fib_test_walk (void)
      * make the parent a child of one of its children, thus inducing a routing loop.
      */
     fib_test_nodes[PARENT_INDEX].sibling =
-        fib_node_child_add(FIB_NODE_TYPE_TEST,
+        fib_node_child_add(test_node_type,
                            1, // the first child
-                           FIB_NODE_TYPE_TEST,
+                           test_node_type,
                            PARENT_INDEX);
 
     /*
@@ -7919,7 +7920,7 @@ fib_test_walk (void)
      */
     fib_test_walk_spawns_walks = 1;
 
-    fib_walk_sync(FIB_NODE_TYPE_TEST, PARENT_INDEX, &high_ctx);
+    fib_walk_sync(test_node_type, PARENT_INDEX, &high_ctx);
 
     FOR_EACH_TEST_CHILD(tc)
     {
@@ -7960,7 +7961,7 @@ fib_test_walk (void)
      * execute an async walk of the graph loop, with each child spawns sync walks
      */
     high_ctx.fnbw_depth = 0;
-    fib_walk_async(FIB_NODE_TYPE_TEST, PARENT_INDEX,
+    fib_walk_async(test_node_type, PARENT_INDEX,
                    FIB_WALK_PRIORITY_HIGH, &high_ctx);
 
     fib_walk_process_queues(vm, 1);
@@ -7982,7 +7983,7 @@ fib_test_walk (void)
      */
     fib_test_walk_spawns_walks = 2;
     high_ctx.fnbw_depth = 0;
-    fib_walk_async(FIB_NODE_TYPE_TEST, PARENT_INDEX,
+    fib_walk_async(test_node_type, PARENT_INDEX,
                    FIB_WALK_PRIORITY_HIGH, &high_ctx);
 
     fib_walk_process_queues(vm, 1);
@@ -8000,7 +8001,7 @@ fib_test_walk (void)
     }
 
 
-    fib_node_child_remove(FIB_NODE_TYPE_TEST,
+    fib_node_child_remove(test_node_type,
                           1, // the first child
                           fib_test_nodes[PARENT_INDEX].sibling);
 
@@ -8009,7 +8010,7 @@ fib_test_walk (void)
      */
     FOR_EACH_TEST_CHILD(tc)
     {
-        fib_node_child_remove(FIB_NODE_TYPE_TEST, PARENT_INDEX,
+        fib_node_child_remove(test_node_type, PARENT_INDEX,
                               tc->sibling);
         fib_node_deinit(&tc->node);
         fib_node_unlock(&tc->node);

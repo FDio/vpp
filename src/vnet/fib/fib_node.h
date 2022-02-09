@@ -53,8 +53,7 @@ typedef enum fib_node_type_t_ {
     /**
      * Marker. New types before this one. leave the test last.
      */
-    FIB_NODE_TYPE_TEST,
-    FIB_NODE_TYPE_LAST = FIB_NODE_TYPE_TEST,
+    FIB_NODE_TYPE_LAST = FIB_NODE_TYPE_ENTRY_TRACK,
 } __attribute__ ((packed)) fib_node_type_t;
 
 #define FIB_NODE_TYPE_MAX (FIB_NODE_TYPE_LAST + 1)
