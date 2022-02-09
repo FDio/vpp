@@ -369,7 +369,7 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
 			    DPDK_RX_BURST_SZ - n_rx_packets);
       n_rx_packets += n;
 
-      if (n < 32)
+      if (n < 32 && (n < 1 || n_rx_packets < 32))
 	break;
     }
 
