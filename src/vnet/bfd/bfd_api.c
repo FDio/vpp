@@ -71,6 +71,27 @@ vl_api_bfd_udp_add_t_handler (vl_api_bfd_udp_add_t * mp)
 }
 
 static void
+vl_api_bfd_udp_upd_t_handler (vl_api_bfd_udp_add_t *mp)
+{
+  vl_api_bfd_udp_upd_reply_t *rmp;
+  int rv;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  BFD_UDP_API_PARAM_COMMON_CODE;
+
+  rv = bfd_udp_upd_session (
+    BFD_UDP_API_PARAM_FROM_MP (mp), clib_net_to_host_u32 (mp->desired_min_tx),
+    clib_net_to_host_u32 (mp->required_min_rx), mp->detect_mult,
+    mp->is_authenticated, clib_net_to_host_u32 (mp->conf_key_id),
+    mp->bfd_key_id);
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO2 (VL_API_BFD_UDP_UPD_REPLY,
+		({ rmp->stats_index = clib_host_to_net_u32 (0); }));
+}
+
+static void
 vl_api_bfd_udp_mod_t_handler (vl_api_bfd_udp_mod_t * mp)
 {
   vl_api_bfd_udp_mod_reply_t *rmp;

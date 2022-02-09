@@ -392,6 +392,30 @@ class VppBFDUDPSession(VppObject):
                                    is_authenticated=is_authenticated)
         self._test.registry.register(self, self.test.logger)
 
+    def upd_vpp_config(self,
+                       detect_mult=None,
+                       desired_min_tx=None,
+                       required_min_rx=None):
+        if desired_min_tx:
+            self._desired_min_tx = desired_min_tx
+        if required_min_rx:
+            self._required_min_rx = required_min_rx
+        if detect_mult:
+            self._detect_mult = detect_mult
+        bfd_key_id = self._bfd_key_id if self._sha1_key else None
+        conf_key_id = self._sha1_key.conf_key_id if self._sha1_key else None
+        is_authenticated = True if self._sha1_key else False
+        self.test.vapi.bfd_udp_upd(sw_if_index=self._interface.sw_if_index,
+                                   desired_min_tx=self.desired_min_tx,
+                                   required_min_rx=self.required_min_rx,
+                                   detect_mult=self.detect_mult,
+                                   local_addr=self.local_addr,
+                                   peer_addr=self.peer_addr,
+                                   bfd_key_id=bfd_key_id,
+                                   conf_key_id=conf_key_id,
+                                   is_authenticated=is_authenticated)
+        self._test.registry.register(self, self.test.logger)
+
     def query_vpp_config(self):
         session = self.get_bfd_udp_session_dump_entry()
         return session is not None

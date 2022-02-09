@@ -142,6 +142,34 @@ class BFDAPITestCase(VppTestCase):
                           "required min receive interval")
         self.assert_equal(session.detect_mult, s.detect_mult, "detect mult")
 
+    def test_upd_bfd(self):
+        """ Create/Modify w/ Update BFD session parameters """
+        session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4,
+                                   desired_min_tx=50000,
+                                   required_min_rx=10000,
+                                   detect_mult=1)
+        session.upd_vpp_config()
+        s = session.get_bfd_udp_session_dump_entry()
+        self.assert_equal(session.desired_min_tx,
+                          s.desired_min_tx,
+                          "desired min transmit interval")
+        self.assert_equal(session.required_min_rx,
+                          s.required_min_rx,
+                          "required min receive interval")
+
+        self.assert_equal(session.detect_mult, s.detect_mult, "detect mult")
+        session.upd_vpp_config(desired_min_tx=session.desired_min_tx * 2,
+                               required_min_rx=session.required_min_rx * 2,
+                               detect_mult=session.detect_mult * 2)
+        s = session.get_bfd_udp_session_dump_entry()
+        self.assert_equal(session.desired_min_tx,
+                          s.desired_min_tx,
+                          "desired min transmit interval")
+        self.assert_equal(session.required_min_rx,
+                          s.required_min_rx,
+                          "required min receive interval")
+        self.assert_equal(session.detect_mult, s.detect_mult, "detect mult")
+
     def test_add_sha1_keys(self):
         """ add SHA1 keys """
         key_count = 10

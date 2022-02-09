@@ -738,6 +738,39 @@ bfd_udp_del_session_internal (vlib_main_t * vm, bfd_session_t * bs)
   bfd_put_session (bum->bfd_main, bs);
 }
 
+static vnet_api_error_t
+bfd_udp_add_and_start_session (u32 sw_if_index,
+			       const ip46_address_t *local_addr,
+			       const ip46_address_t *peer_addr,
+			       u32 desired_min_tx_usec,
+			       u32 required_min_rx_usec, u8 detect_mult,
+			       u8 is_authenticated, u32 conf_key_id,
+			       u8 bfd_key_id)
+{
+  bfd_session_t *bs = NULL;
+  vnet_api_error_t rv;
+
+  rv = bfd_udp_add_session_internal (
+    vlib_get_main (), &bfd_udp_main, sw_if_index, desired_min_tx_usec,
+    required_min_rx_usec, detect_mult, local_addr, peer_addr, &bs);
+
+  if (!rv && is_authenticated)
+    {
+      rv = bfd_auth_activate (bs, conf_key_id, bfd_key_id,
+			      0 /* is not delayed */);
+      if (rv)
+	{
+	  bfd_udp_del_session_internal (vlib_get_main (), bs);
+	}
+    }
+  if (!rv)
+    {
+      bfd_session_start (bfd_udp_main.bfd_main, bs);
+    }
+
+  return rv;
+}
+
 vnet_api_error_t
 bfd_udp_add_session (u32 sw_if_index, const ip46_address_t * local_addr,
 		     const ip46_address_t * peer_addr,
@@ -752,27 +785,44 @@ bfd_udp_add_session (u32 sw_if_index, const ip46_address_t * local_addr,
     bfd_api_verify_common (sw_if_index, desired_min_tx_usec,
 			   required_min_rx_usec, detect_mult,
 			   local_addr, peer_addr);
-  bfd_session_t *bs = NULL;
+
+  if (!rv)
+    rv = bfd_udp_add_and_start_session (
+      sw_if_index, local_addr, peer_addr, desired_min_tx_usec,
+      required_min_rx_usec, detect_mult, is_authenticated, conf_key_id,
+      bfd_key_id);
+
+  bfd_unlock (bm);
+  return rv;
+}
+
+vnet_api_error_t
+bfd_udp_upd_session (u32 sw_if_index, const ip46_address_t *local_addr,
+		     const ip46_address_t *peer_addr, u32 desired_min_tx_usec,
+		     u32 required_min_rx_usec, u8 detect_mult,
+		     u8 is_authenticated, u32 conf_key_id, u8 bfd_key_id)
+{
+  bfd_main_t *bm = &bfd_main;
+  bfd_lock (bm);
+
+  vnet_api_error_t rv = bfd_api_verify_common (
+    sw_if_index, desired_min_tx_usec, required_min_rx_usec, detect_mult,
+    local_addr, peer_addr);
   if (!rv)
     {
-      rv =
-	bfd_udp_add_session_internal (vlib_get_main (), &bfd_udp_main,
-				      sw_if_index, desired_min_tx_usec,
-				      required_min_rx_usec, detect_mult,
-				      local_addr, peer_addr, &bs);
-    }
-  if (!rv && is_authenticated)
-    {
-      rv = bfd_auth_activate (bs, conf_key_id, bfd_key_id,
-			      0 /* is not delayed */ );
-      if (rv)
-	{
-	  bfd_udp_del_session_internal (vlib_get_main (), bs);
-	}
-    }
-  if (!rv)
-    {
-      bfd_session_start (bfd_udp_main.bfd_main, bs);
+      bfd_session_t *bs = NULL;
+
+      rv = bfd_udp_find_session_by_api_input (sw_if_index, local_addr,
+					      peer_addr, &bs);
+      if (VNET_API_ERROR_BFD_ENOENT == rv)
+	rv = bfd_udp_add_and_start_session (
+	  sw_if_index, local_addr, peer_addr, desired_min_tx_usec,
+	  required_min_rx_usec, detect_mult, is_authenticated, conf_key_id,
+	  bfd_key_id);
+      else
+	rv = bfd_session_set_params (bfd_udp_main.bfd_main, bs,
+				     desired_min_tx_usec, required_min_rx_usec,
+				     detect_mult);
     }
 
   bfd_unlock (bm);
@@ -780,10 +830,8 @@ bfd_udp_add_session (u32 sw_if_index, const ip46_address_t * local_addr,
 }
 
 vnet_api_error_t
-bfd_udp_mod_session (u32 sw_if_index,
-		     const ip46_address_t * local_addr,
-		     const ip46_address_t * peer_addr,
-		     u32 desired_min_tx_usec,
+bfd_udp_mod_session (u32 sw_if_index, const ip46_address_t *local_addr,
+		     const ip46_address_t *peer_addr, u32 desired_min_tx_usec,
 		     u32 required_min_rx_usec, u8 detect_mult)
 {
   bfd_session_t *bs = NULL;

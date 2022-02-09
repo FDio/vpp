@@ -45,6 +45,15 @@ bfd_udp_add_session (u32 sw_if_index, const ip46_address_t * local_addr,
 		     u8 bfd_key_id);
 
 /**
+ * @brief create a new or modify and existing bfd session
+ */
+vnet_api_error_t
+bfd_udp_upd_session (u32 sw_if_index, const ip46_address_t *local_addr,
+		     const ip46_address_t *peer_addr, u32 desired_min_tx_usec,
+		     u32 required_min_rx_usec, u8 detect_mult,
+		     u8 is_authenticated, u32 conf_key_id, u8 bfd_key_id);
+
+/**
  * @brief modify existing session
  */
 vnet_api_error_t
