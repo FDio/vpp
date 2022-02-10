@@ -678,12 +678,10 @@ static session_cb_vft_t http_app_cb_vft = {
 static clib_error_t *
 http_transport_enable (vlib_main_t *vm, u8 is_en)
 {
-  u32 add_segment_size = 256 << 20, first_seg_size = 32 << 20;
   vnet_app_detach_args_t _da, *da = &_da;
   vnet_app_attach_args_t _a, *a = &_a;
   u64 options[APP_OPTIONS_N_OPTIONS];
   http_main_t *hm = &http_main;
-  u32 fifo_size = 128 << 12;
 
   if (!is_en)
     {
@@ -695,9 +693,6 @@ http_transport_enable (vlib_main_t *vm, u8 is_en)
 
   vec_validate (hm->wrk, vlib_num_workers ());
 
-  first_seg_size = hm->first_seg_size ? hm->first_seg_size : first_seg_size;
-  fifo_size = hm->fifo_size ? hm->fifo_size : fifo_size;
-
   clib_memset (a, 0, sizeof (*a));
   clib_memset (options, 0, sizeof (options));
 
@@ -705,10 +700,10 @@ http_transport_enable (vlib_main_t *vm, u8 is_en)
   a->api_client_index = APP_INVALID_INDEX;
   a->options = options;
   a->name = format (0, "http");
-  a->options[APP_OPTIONS_SEGMENT_SIZE] = first_seg_size;
-  a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = add_segment_size;
-  a->options[APP_OPTIONS_RX_FIFO_SIZE] = fifo_size;
-  a->options[APP_OPTIONS_TX_FIFO_SIZE] = fifo_size;
+  a->options[APP_OPTIONS_SEGMENT_SIZE] = hm->first_seg_size;
+  a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = hm->add_seg_size;
+  a->options[APP_OPTIONS_RX_FIFO_SIZE] = hm->fifo_size;
+  a->options[APP_OPTIONS_TX_FIFO_SIZE] = hm->fifo_size;
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   a->options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
   a->options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_IS_TRANSPORT_APP;
@@ -977,14 +972,59 @@ static const transport_proto_vft_t http_proto = {
 static clib_error_t *
 http_transport_init (vlib_main_t *vm)
 {
+  http_main_t *hm = &http_main;
+
   transport_register_protocol (TRANSPORT_PROTO_HTTP, &http_proto,
 			       FIB_PROTOCOL_IP4, ~0);
   transport_register_protocol (TRANSPORT_PROTO_HTTP, &http_proto,
 			       FIB_PROTOCOL_IP6, ~0);
+
+  /* Default values, configurable via startup conf */
+  hm->add_seg_size = 256 << 20;
+  hm->first_seg_size = 32 << 20;
+  hm->fifo_size = 512 << 10;
+
   return 0;
 }
 
 VLIB_INIT_FUNCTION (http_transport_init);
+
+static clib_error_t *
+http_config_fn (vlib_main_t *vm, unformat_input_t *input)
+{
+  http_main_t *hm = &http_main;
+  uword mem_sz;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "first-segment-size %U", unformat_memory_size,
+		    &mem_sz))
+	{
+	  hm->first_seg_size = clib_max (mem_sz, 1 << 20);
+	  if (hm->first_seg_size != mem_sz)
+	    clib_warning ("first seg size too small %u", mem_sz);
+	}
+      else if (unformat (input, "add-segment-size %U", unformat_memory_size,
+			 &mem_sz))
+	{
+	  hm->add_seg_size = clib_max (mem_sz, 1 << 20);
+	  if (hm->add_seg_size != mem_sz)
+	    clib_warning ("add seg size too small %u", mem_sz);
+	}
+      else if (unformat (input, "fifo-size %U", unformat_memory_size, &mem_sz))
+	{
+	  hm->fifo_size = clib_clamp (mem_sz, 4 << 10, 2 << 30);
+	  if (hm->fifo_size != mem_sz)
+	    clib_warning ("invalid fifo size %lu", mem_sz);
+	}
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+  return 0;
+}
+
+VLIB_EARLY_CONFIG_FUNCTION (http_config_fn, "http");
 
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
