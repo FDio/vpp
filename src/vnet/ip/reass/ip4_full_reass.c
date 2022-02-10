@@ -1121,6 +1121,12 @@ ip4_full_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  u32 next0;
 	  u32 error0 = IP4_ERROR_NONE;
 
+	  if (n_left_from > 1)
+	    {
+	      vlib_buffer_t *b1 = vlib_get_buffer (vm, from[1]);
+	      clib_prefetch_store (b1);
+	      clib_prefetch_store (vlib_buffer_get_current (b1));
+	    }
 	  bi0 = from[0];
 	  b0 = vlib_get_buffer (vm, bi0);
 
