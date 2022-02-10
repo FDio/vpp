@@ -734,7 +734,7 @@ http_transport_connect (transport_endpoint_cfg_t *tep)
 }
 
 static u32
-http_start_listen (u32 app_listener_index, transport_endpoint_t *tep)
+http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
 {
   vnet_listen_args_t _args = {}, *args = &_args;
   session_t *tc_listener, *app_listener;
