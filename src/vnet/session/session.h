@@ -676,6 +676,17 @@ ho_session_alloc (void)
   s = session_alloc (0);
   s->session_state = SESSION_STATE_CONNECTING;
   s->flags |= SESSION_F_HALF_OPEN;
+  /* Not ideal. Half-opens are only allocated from main with worker barrier
+   * but can be cleaned up, i.e., session_half_open_free, from main without
+   * a barrier. In debug images, the free_bitmap can grow while workers peek
+   * the sessions pool, e.g., session_half_open_migrate_notify, and as a
+   * result crash while validating the session. To avoid this, grow the bitmap
+   * now. */
+  if (CLIB_DEBUG)
+    {
+      session_t *sp = session_main.wrk[0].sessions;
+      clib_bitmap_validate (pool_header (sp)->free_bitmap, s->session_index);
+    }
   return s;
 }
 
