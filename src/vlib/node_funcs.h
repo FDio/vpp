@@ -1279,6 +1279,91 @@ vlib_node_function_t *
 vlib_node_get_preferred_node_fn_variant (vlib_main_t *vm,
 					 vlib_node_fn_registration_t *regs);
 
+/*
+ * vlib_frame_bitmap functions
+ */
+
+#define VLIB_FRAME_BITMAP_N_UWORDS                                            \
+  (((VLIB_FRAME_SIZE + uword_bits - 1) & ~(uword_bits - 1)) / uword_bits)
+
+typedef uword vlib_frame_bitmap_t[VLIB_FRAME_BITMAP_N_UWORDS];
+
+static_always_inline void
+vlib_frame_bitmap_init (uword *bmp, u32 n_first_bits_set)
+{
+  u32 n_left = VLIB_FRAME_BITMAP_N_UWORDS;
+  while (n_first_bits_set >= (sizeof (uword) * 8) && n_left)
+    {
+      bmp++[0] = ~0;
+      n_first_bits_set -= sizeof (uword) * 8;
+      n_left--;
+    }
+
+  if (n_first_bits_set && n_left)
+    {
+      bmp++[0] = pow2_mask (n_first_bits_set);
+      n_left--;
+    }
+
+  while (n_left--)
+    bmp++[0] = 0;
+}
+
+static_always_inline void
+vlib_frame_bitmap_clear (uword *bmp)
+{
+  u32 n_left = VLIB_FRAME_BITMAP_N_UWORDS;
+  while (n_left--)
+    bmp++[0] = 0;
+}
+
+static_always_inline void
+vlib_frame_bitmap_xor (uword *bmp, uword *bmp2)
+{
+  u32 n_left = VLIB_FRAME_BITMAP_N_UWORDS;
+  while (n_left--)
+    bmp++[0] ^= bmp2++[0];
+}
+
+static_always_inline void
+vlib_frame_bitmap_or (uword *bmp, uword *bmp2)
+{
+  u32 n_left = VLIB_FRAME_BITMAP_N_UWORDS;
+  while (n_left--)
+    bmp++[0] |= bmp2++[0];
+}
+
+static_always_inline u32
+vlib_frame_bitmap_count_set_bits (uword *bmp)
+{
+  u32 n_left = VLIB_FRAME_BITMAP_N_UWORDS;
+  u32 count = 0;
+  while (n_left--)
+    count += count_set_bits (bmp++[0]);
+  return count;
+}
+
+static_always_inline int
+vlib_frame_bitmap_find_first_set (uword *bmp)
+{
+  uword *b = bmp;
+  while (b[0] == 0)
+    {
+      ASSERT (b - bmp < VLIB_FRAME_BITMAP_N_UWORDS);
+      b++;
+    }
+
+  return (b - bmp) * uword_bits + get_lowest_set_bit_index (b[0]);
+}
+
+#define foreach_vlib_frame_bitmap_set_bit_index(i, v)                         \
+  for (uword _off = 0; _off < ARRAY_LEN (v); _off++)                          \
+    for (uword _tmp =                                                         \
+	   (v[_off]) + 0 * (uword) (i = _off * uword_bits +                   \
+					get_lowest_set_bit_index (v[_off]));  \
+	 _tmp; i = _off * uword_bits + get_lowest_set_bit_index (             \
+					 _tmp = clear_lowest_set_bit (_tmp)))
+
 #endif /* included_vlib_node_funcs_h */
 
 /*

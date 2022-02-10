@@ -405,7 +405,7 @@ enqueue_one_to_tx_node (vlib_main_t *vm, vlib_node_runtime_t *node, u32 *ppqi,
 			u32 n_vectors, u32 n_left, u32 next_index)
 {
   u32 tmp[VLIB_FRAME_SIZE];
-  u64 mask[VLIB_FRAME_SIZE / 64] = {};
+  vlib_frame_bitmap_t mask = {};
   vlib_frame_t *f;
   vnet_hw_if_tx_frame_t *tf;
   u32 *to;
@@ -1259,8 +1259,7 @@ VLIB_NODE_FN (vnet_interface_output_arc_end_node)
   vnet_hw_interface_t *hi;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   u32 sw_if_indices[VLIB_FRAME_SIZE], *sw_if_index = sw_if_indices;
-  u64 used_elts[VLIB_FRAME_SIZE / 64] = {};
-  u64 mask[VLIB_FRAME_SIZE / 64] = {};
+  vlib_frame_bitmap_t used_elts = {}, mask = {};
   u32 *tmp, *from, n_left, n_comp, n_p_comp, swif, off;
   u16 next_index;
   void *ptr[VLIB_FRAME_SIZE], **p = ptr;
@@ -1350,8 +1349,7 @@ drop:
   if (n_left)
     {
       /* store comparison mask so we can find next unused element */
-      for (int i = 0; i < ARRAY_LEN (used_elts); i++)
-	used_elts[i] |= mask[i];
+      vlib_frame_bitmap_or (used_elts, mask);
 
       /* fine first unused sw_if_index by scanning trough used_elts bitmap */
       while (PREDICT_FALSE (used_elts[off] == ~0))
