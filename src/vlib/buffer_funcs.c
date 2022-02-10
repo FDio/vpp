@@ -8,11 +8,11 @@
 #include <vppinfra/vector/compress.h>
 
 static_always_inline u32
-enqueue_one (vlib_main_t *vm, vlib_node_runtime_t *node, u64 *used_elt_bmp,
-	     u16 next_index, u32 *buffers, u16 *nexts, u32 n_buffers,
-	     u32 n_left, u32 *tmp)
+enqueue_one (vlib_main_t *vm, vlib_node_runtime_t *node,
+	     vlib_frame_bitmap_t used_elt_bmp, u16 next_index, u32 *buffers,
+	     u16 *nexts, u32 n_buffers, u32 n_left, u32 *tmp)
 {
-  u64 match_bmp[VLIB_FRAME_SIZE / 64];
+  vlib_frame_bitmap_t match_bmp;
   vlib_frame_t *f;
   u32 n_extracted, n_free;
   u32 *to;
@@ -29,11 +29,8 @@ enqueue_one (vlib_main_t *vm, vlib_node_runtime_t *node, u64 *used_elt_bmp,
     to = tmp;
 
   clib_mask_compare_u16 (next_index, nexts, match_bmp, n_buffers);
-
   n_extracted = clib_compress_u32 (to, buffers, match_bmp, n_buffers);
-
-  for (int i = 0; i < ARRAY_LEN (match_bmp); i++)
-    used_elt_bmp[i] |= match_bmp[i];
+  vlib_frame_bitmap_or (used_elt_bmp, match_bmp);
 
   if (to != tmp)
     {
@@ -77,9 +74,8 @@ CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_next_fn)
 
   while (count >= VLIB_FRAME_SIZE)
     {
-      u64 used_elt_bmp[VLIB_FRAME_SIZE / 64] = {};
+      vlib_frame_bitmap_t used_elt_bmp;
       n_left = VLIB_FRAME_SIZE;
-      u32 off = 0;
 
       next_index = nexts[0];
       n_left = enqueue_one (vm, node, used_elt_bmp, next_index, buffers, nexts,
@@ -87,14 +83,8 @@ CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_next_fn)
 
       while (n_left)
 	{
-	  while (PREDICT_FALSE (used_elt_bmp[off] == ~0))
-	    {
-	      off++;
-	      ASSERT (off < ARRAY_LEN (used_elt_bmp));
-	    }
-
 	  next_index =
-	    nexts[off * 64 + count_trailing_zeros (~used_elt_bmp[off])];
+	    nexts[vlib_frame_bitmap_find_first_clear (used_elt_bmp)];
 	  n_left = enqueue_one (vm, node, used_elt_bmp, next_index, buffers,
 				nexts, VLIB_FRAME_SIZE, n_left, tmp);
 	}
@@ -106,24 +96,17 @@ CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_next_fn)
 
   if (count)
     {
-      u64 used_elt_bmp[VLIB_FRAME_SIZE / 64] = {};
+      vlib_frame_bitmap_t used_elt_bmp = {};
       next_index = nexts[0];
       n_left = count;
-      u32 off = 0;
 
       n_left = enqueue_one (vm, node, used_elt_bmp, next_index, buffers, nexts,
 			    count, n_left, tmp);
 
       while (n_left)
 	{
-	  while (PREDICT_FALSE (used_elt_bmp[off] == ~0))
-	    {
-	      off++;
-	      ASSERT (off < ARRAY_LEN (used_elt_bmp));
-	    }
-
 	  next_index =
-	    nexts[off * 64 + count_trailing_zeros (~used_elt_bmp[off])];
+	    nexts[vlib_frame_bitmap_find_first_clear (used_elt_bmp)];
 	  n_left = enqueue_one (vm, node, used_elt_bmp, next_index, buffers,
 				nexts, count, n_left, tmp);
 	}
@@ -208,11 +191,10 @@ vlib_buffer_enqueue_to_thread_inline (vlib_main_t *vm,
 				      u32 n_packets, int drop_on_congestion)
 {
   u32 drop_list[VLIB_FRAME_SIZE], n_drop = 0;
-  u64 used_elts[VLIB_FRAME_SIZE / 64] = {};
-  u64 mask[VLIB_FRAME_SIZE / 64];
+  vlib_frame_bitmap_t mask, used_elts = {};
   vlib_frame_queue_elt_t *hf = 0;
   u16 thread_index;
-  u32 n_comp, off = 0, n_left = n_packets;
+  u32 n_comp, n_left = n_packets;
 
   thread_index = thread_indices[0];
 
@@ -238,17 +220,9 @@ more:
 
   if (n_left)
     {
-      for (int i = 0; i < ARRAY_LEN (used_elts); i++)
-	used_elts[i] |= mask[i];
-
-      while (PREDICT_FALSE (used_elts[off] == ~0))
-	{
-	  off++;
-	  ASSERT (off < ARRAY_LEN (used_elts));
-	}
-
+      vlib_frame_bitmap_or (used_elts, mask);
       thread_index =
-	thread_indices[off * 64 + count_trailing_zeros (~used_elts[off])];
+	thread_indices[vlib_frame_bitmap_find_first_clear (used_elts)];
       goto more;
     }
 
