@@ -88,12 +88,6 @@ u8x16_compare_byte_mask (u8x16 v)
     return u8x16_compare_byte_mask (v);                                       \
   }                                                                           \
                                                                               \
-  static_always_inline u##s##x##c t##s##x##c##_is_greater (t##s##x##c a,      \
-							   t##s##x##c b)      \
-  {                                                                           \
-    return (u##s##x##c) vcgtq_##i (a, b);                                     \
-  }                                                                           \
-                                                                              \
   static_always_inline t##s##x##c t##s##x##c##_add_saturate (t##s##x##c a,    \
 							     t##s##x##c b)    \
   {                                                                           \
