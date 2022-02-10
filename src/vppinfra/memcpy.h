@@ -6,6 +6,49 @@
 #ifndef included_memcpy_h
 #define included_memcpy_h
 
+static_always_inline void
+clib_memcpy_may_overrun (void *dst, void *src, u32 n_bytes)
+{
+  word n_left = n_bytes;
+#if defined(CLIB_HAVE_VEC512)
+  u8x64u *sv = (u8x64u *) src;
+  u8x64u *dv = (u8x64u *) dst;
+#elif defined(CLIB_HAVE_VEC256)
+  u8x32u *sv = (u8x32u *) src;
+  u8x32u *dv = (u8x32u *) dst;
+#elif defined(CLIB_HAVE_VEC128)
+  u8x16u *sv = (u8x16u *) src;
+  u8x16u *dv = (u8x16u *) dst;
+#else
+  u64u *sv = (u64u *) src;
+  u64u *dv = (u64u *) dst;
+#endif
+
+  while (n_left >= 4 * sizeof (sv[0]))
+    {
+      __typeof__ (*sv) v0, v1, v2, v3;
+      v0 = sv[0];
+      v1 = sv[1];
+      v2 = sv[2];
+      v3 = sv[3];
+      sv += 4;
+      n_left -= 4 * sizeof (sv[0]);
+      dv[0] = v0;
+      dv[1] = v1;
+      dv[2] = v2;
+      dv[3] = v3;
+      dv += 4;
+    }
+
+  while (n_left > 0)
+    {
+      dv[0] = sv[0];
+      sv += 1;
+      dv += 1;
+      n_left -= sizeof (sv[0]);
+    }
+}
+
 #ifndef __COVERITY__
 
 static_always_inline void
