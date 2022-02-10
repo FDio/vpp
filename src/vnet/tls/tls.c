@@ -773,7 +773,7 @@ tls_disconnect (u32 ctx_handle, u32 thread_index)
 }
 
 u32
-tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
+tls_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
 {
   vnet_listen_args_t _bargs, *args = &_bargs;
   transport_endpt_crypto_cfg_t *ccfg;

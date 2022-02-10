@@ -112,7 +112,7 @@ tcp_cc_algo_new_type (const tcp_cc_algorithm_t * vft)
 }
 
 static u32
-tcp_connection_bind (u32 session_index, transport_endpoint_t * lcl)
+tcp_connection_bind (u32 session_index, transport_endpoint_cfg_t *lcl)
 {
   tcp_main_t *tm = &tcp_main;
   tcp_connection_t *listener;
@@ -147,7 +147,7 @@ tcp_connection_bind (u32 session_index, transport_endpoint_t * lcl)
 }
 
 static u32
-tcp_session_bind (u32 session_index, transport_endpoint_t * tep)
+tcp_session_bind (u32 session_index, transport_endpoint_cfg_t *tep)
 {
   return tcp_connection_bind (session_index, tep);
 }

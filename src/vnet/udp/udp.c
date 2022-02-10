@@ -165,7 +165,7 @@ udp_default_mtu (udp_main_t * um, u8 is_ip4)
 }
 
 static u32
-udp_session_bind (u32 session_index, transport_endpoint_t * lcl)
+udp_session_bind (u32 session_index, transport_endpoint_cfg_t *lcl)
 {
   udp_main_t *um = vnet_get_udp_main ();
   vlib_main_t *vm = vlib_get_main ();
