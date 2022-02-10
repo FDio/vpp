@@ -232,14 +232,14 @@ clib_memcpy_le (u8 * dst, u8 * src, u8 len, u8 max_len)
   d0 = u8x32_load_unaligned (dst);
   d1 = u8x32_load_unaligned (dst + 32);
 
-  d0 = u8x32_blend (d0, s0, u8x32_is_greater (lv, mask));
+  d0 = u8x32_blend (d0, s0, lv > mask);
   u8x32_store_unaligned (d0, dst);
 
   if (max_len <= 32)
     return;
 
   mask += add;
-  d1 = u8x32_blend (d1, s1, u8x32_is_greater (lv, mask));
+  d1 = u8x32_blend (d1, s1, lv > mask);
   u8x32_store_unaligned (d1, dst + 32);
 
 #elif defined (CLIB_HAVE_VEC128)
@@ -257,25 +257,25 @@ clib_memcpy_le (u8 * dst, u8 * src, u8 len, u8 max_len)
   d2 = u8x16_load_unaligned (dst + 32);
   d3 = u8x16_load_unaligned (dst + 48);
 
-  d0 = u8x16_blend (d0, s0, u8x16_is_greater (lv, mask));
+  d0 = u8x16_blend (d0, s0, lv > mask);
   u8x16_store_unaligned (d0, dst);
 
   if (max_len <= 16)
     return;
 
   mask += add;
-  d1 = u8x16_blend (d1, s1, u8x16_is_greater (lv, mask));
+  d1 = u8x16_blend (d1, s1, lv > mask);
   u8x16_store_unaligned (d1, dst + 16);
 
   if (max_len <= 32)
     return;
 
   mask += add;
-  d2 = u8x16_blend (d2, s2, u8x16_is_greater (lv, mask));
+  d2 = u8x16_blend (d2, s2, lv > mask);
   u8x16_store_unaligned (d2, dst + 32);
 
   mask += add;
-  d3 = u8x16_blend (d3, s3, u8x16_is_greater (lv, mask));
+  d3 = u8x16_blend (d3, s3, lv > mask);
   u8x16_store_unaligned (d3, dst + 48);
 #else
   memmove (dst, src, len);
