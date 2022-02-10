@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "eb06ba2d_cc04f70b",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1284,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-02-10T07:07:13Z",
+      "side": 1,
+      "message": "Although I like the idea, let\u0027s keep this as the if in the caller, since ei and mq_events are caller context specific",
+      "range": {
+        "startLine": 1283,
+        "startChar": 2,
+        "endLine": 1284,
+        "endChar": 13
+      },
+      "revId": "ee3df9d06f5d98076c8347354c165495c84a84c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
