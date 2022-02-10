@@ -69,9 +69,6 @@
 #define _vector_size_unaligned(n)                                             \
   __attribute__ ((vector_size (n), __aligned__ (1), __may_alias__))
 
-#define foreach_vec64i  _(i,8,8)  _(i,16,4)  _(i,32,2)
-#define foreach_vec64u  _(u,8,8)  _(u,16,4)  _(u,32,2)
-#define foreach_vec64f  _(f,32,2)
 #define foreach_vec128i _(i,8,16) _(i,16,8)  _(i,32,4)  _(i,64,2)
 #define foreach_vec128u _(u,8,16) _(u,16,8)  _(u,32,4)  _(u,64,2)
 #define foreach_vec128f _(f,32,4) _(f,64,2)
@@ -83,22 +80,25 @@
 #define foreach_vec512f _(f,32,16) _(f,64,8)
 
 #if defined (CLIB_HAVE_VEC512)
-#define foreach_int_vec foreach_vec64i foreach_vec128i foreach_vec256i foreach_vec512i
-#define foreach_uint_vec foreach_vec64u foreach_vec128u foreach_vec256u foreach_vec512u
-#define foreach_float_vec foreach_vec64f foreach_vec128f foreach_vec256f foreach_vec512f
+#define CLIB_MAX_REG_BYTES 64
+#define foreach_int_vec	   foreach_vec128i foreach_vec256i foreach_vec512i
+#define foreach_uint_vec   foreach_vec128u foreach_vec256u foreach_vec512u
+#define foreach_float_vec  foreach_vec128f foreach_vec256f foreach_vec512f
 #elif defined (CLIB_HAVE_VEC256)
-#define foreach_int_vec foreach_vec64i foreach_vec128i foreach_vec256i
-#define foreach_uint_vec foreach_vec64u foreach_vec128u foreach_vec256u
-#define foreach_float_vec foreach_vec64f foreach_vec128f foreach_vec256f
+#define CLIB_MAX_REG_BYTES 32
+#define foreach_int_vec	   foreach_vec128i foreach_vec256i
+#define foreach_uint_vec   foreach_vec128u foreach_vec256u
+#define foreach_float_vec  foreach_vec128f foreach_vec256f
+#elif defined(CLIB_HAVE_VEC128)
+#define CLIB_MAX_REG_BYTES 16
+#define foreach_int_vec	   foreach_vec128i
+#define foreach_uint_vec   foreach_vec128u
+#define foreach_float_vec  foreach_vec128f
 #else
-#define foreach_int_vec foreach_vec64i foreach_vec128i
-#define foreach_uint_vec foreach_vec64u foreach_vec128u
-#define foreach_float_vec foreach_vec64f foreach_vec128f
+#define CLIB_MAX_REG_BYTES (uword_bits / 8)
 #endif
 
 #define foreach_vec foreach_int_vec foreach_uint_vec foreach_float_vec
-
-/* *INDENT-OFF* */
 
 /* Type Definitions */
 #define _(t,s,c) \
@@ -108,20 +108,21 @@ typedef union {	  \
   t##s##x##c as_##t##s##x##c;	\
   t##s as_##t##s[c];	  \
 } t##s##x##c##_union_t;
-
-  foreach_vec64i foreach_vec64u foreach_vec64f
-  foreach_vec128i foreach_vec128u foreach_vec128f
-  foreach_vec256i foreach_vec256u foreach_vec256f
-  foreach_vec512i foreach_vec512u foreach_vec512f
+/* clang-format off */
+foreach_vec128i foreach_vec128u foreach_vec128f
+foreach_vec256i foreach_vec256u foreach_vec256f
+foreach_vec512i foreach_vec512u foreach_vec512f
+/* clang-format on */
 #undef _
 
 /* universal inlines */
-#define _(t, s, c) \
-static_always_inline t##s##x##c                                         \
-t##s##x##c##_zero ()                                                    \
-{ return (t##s##x##c) {}; }                                             \
+#define _(t, s, c)                                                            \
+  static_always_inline t##s##x##c t##s##x##c##_zero ()                        \
+  {                                                                           \
+    return (t##s##x##c){};                                                    \
+  }
 
-foreach_vec
+    foreach_vec
 #undef _
 
 #undef _vector_size
@@ -225,17 +226,8 @@ t##s##x##c##_splat (t##s x)				\
 							\
     return r;						\
 }
-  foreach_vec128i foreach_vec128u
+      foreach_vec128i foreach_vec128u
 #undef _
 #endif
 
-/* *INDENT-ON* */
-
 #endif /* included_clib_vector_h */
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
