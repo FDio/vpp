@@ -116,7 +116,7 @@ typedef enum http_msg_data_type_
 typedef struct http_msg_data_
 {
   http_msg_data_type_t type;
-  u32 len;
+  u64 len;
   u8 data[0];
 } http_msg_data_t;
 

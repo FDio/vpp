@@ -28,14 +28,14 @@ typedef struct http_buffer_fifo_
 {
   svm_fifo_t *src;
   svm_fifo_seg_t *segs;
-  u32 len;
-  u32 offset;
+  u64 len;
+  u64 offset;
 } http_buffer_fifo_t;
 
 STATIC_ASSERT (sizeof (http_buffer_fifo_t) <= HTTP_BUFFER_DATA_SZ, "buf data");
 
 static void
-buf_fifo_init (http_buffer_t *hb, void *data, u32 len)
+buf_fifo_init (http_buffer_t *hb, void *data, u64 len)
 {
   svm_fifo_t *f = (svm_fifo_t *) data;
   http_buffer_fifo_t *bf;
@@ -65,7 +65,7 @@ buf_fifo_get_segs (http_buffer_t *hb, u32 max_len, u32 *n_segs)
   u32 _n_segs = 5;
   int len;
 
-  max_len = clib_max (bf->len - bf->offset, max_len);
+  max_len = clib_min (bf->len - bf->offset, (u64) max_len);
 
   vec_validate (bf->segs, _n_segs);
 
@@ -80,7 +80,7 @@ buf_fifo_get_segs (http_buffer_t *hb, u32 max_len, u32 *n_segs)
   return bf->segs;
 }
 
-static int
+static u32
 buf_fifo_drain (http_buffer_t *hb, u32 len)
 {
   http_buffer_fifo_t *bf = (http_buffer_fifo_t *) &hb->data;
@@ -120,7 +120,7 @@ typedef struct http_buffer_ptr_
 STATIC_ASSERT (sizeof (http_buffer_ptr_t) <= HTTP_BUFFER_DATA_SZ, "buf data");
 
 static void
-buf_ptr_init (http_buffer_t *hb, void *data, u32 len)
+buf_ptr_init (http_buffer_t *hb, void *data, u64 len)
 {
   svm_fifo_t *f = (svm_fifo_t *) data;
   http_buffer_ptr_t *bf;
@@ -163,7 +163,7 @@ buf_ptr_get_segs (http_buffer_t *hb, u32 max_len, u32 *n_segs)
   return &bf->segs[1];
 }
 
-static int
+static u32
 buf_ptr_drain (http_buffer_t *hb, u32 len)
 {
   http_buffer_ptr_t *bf = (http_buffer_ptr_t *) &hb->data;
@@ -204,7 +204,7 @@ HTTP_BUFFER_REGISTER_VFT (HTTP_BUFFER_PTR, buf_ptr_vft);
 
 void
 http_buffer_init (http_buffer_t *hb, http_buffer_type_t type, svm_fifo_t *f,
-		  u32 data_len)
+		  u64 data_len)
 {
   hb->vft = &buf_vfts[type];
   hb->vft->init (hb, f, data_len);
