@@ -27,6 +27,8 @@
  * Static http server definitions
  */
 
+typedef struct hss_module_vft_ hss_module_vft_t;
+
 /** \brief Application session
  */
 typedef struct
@@ -38,6 +40,7 @@ typedef struct
   /** vpp session index, handle */
   u32 vpp_session_index;
   session_handle_t vpp_session_handle;
+  hss_module_vft_t *handler_vft;
   /** Fully-resolved file path */
   u8 *path;
   /** Data to send */
@@ -103,12 +106,32 @@ typedef hss_url_handler_rc_t (*hss_url_handler_fn) (hss_url_handler_args_t *);
 typedef void (*hss_register_url_fn) (hss_url_handler_fn, char *, int);
 typedef void (*hss_session_send_fn) (hss_url_handler_args_t *args);
 
+struct hss_module_vft_
+{
+  int (*init_module) ();
+  int (*try_handle_req) (hss_session_t *hs, http_req_method_t rt, u8 *request);
+  int (*tx_callback) (hss_session_t *hs, session_t *ts);
+  uword (*unformat_cfg) (unformat_input_t *input, va_list *args);
+};
+
+typedef enum hss_module_type_
+{
+  HSS_MODULE_FILE_HANDLER,
+  HSS_MODULE_URL_HANDLER,
+} hss_module_type_t;
+
 /** \brief Main data structure
  */
 typedef struct
 {
   /** Per thread vector of session pools */
   hss_session_t **sessions;
+
+  /** Vector of active modules */
+  hss_module_vft_t *active_modules;
+
+  /** Vector of registered modules */
+  hss_module_vft_t *modules;
 
   /** Hash tables for built-in GET and POST handlers */
   uword *get_url_handlers;
@@ -155,6 +178,7 @@ typedef struct
 extern hss_main_t hss_main;
 
 int hss_create (vlib_main_t *vm);
+int hss_register_module (hss_module_type_t type, const hss_module_vft_t *vft);
 
 /**
  * Register a GET or POST URL handler

@@ -14,6 +14,7 @@
 
 add_vpp_plugin(http_static
   SOURCES
+  hss_file_handler.c
   http_cache.c
   http_cache.h
   http_static.c
