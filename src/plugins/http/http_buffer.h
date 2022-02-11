@@ -18,7 +18,7 @@
 
 #include <svm/svm_fifo.h>
 
-#define HTTP_BUFFER_DATA_SZ 24
+#define HTTP_BUFFER_DATA_SZ 32
 
 typedef enum http_buffer_type_
 {
@@ -36,15 +36,15 @@ typedef struct http_buffer_
 
 struct http_buffer_vft_
 {
-  void (*init) (http_buffer_t *, void *data, u32 len);
+  void (*init) (http_buffer_t *, void *data, u64 len);
   void (*free) (http_buffer_t *);
   svm_fifo_seg_t *(*get_segs) (http_buffer_t *, u32 max_len, u32 *n_segs);
-  int (*drain) (http_buffer_t *, u32 len);
+  u32 (*drain) (http_buffer_t *, u32 len);
   u8 (*is_drained) (http_buffer_t *);
 };
 
 void http_buffer_init (http_buffer_t *hb, http_buffer_type_t type,
-		       svm_fifo_t *f, u32 data_len);
+		       svm_fifo_t *f, u64 data_len);
 
 static inline void
 http_buffer_free (http_buffer_t *hb)
@@ -59,7 +59,7 @@ http_buffer_get_segs (http_buffer_t *hb, u32 max_len, u32 *n_segs)
   return hb->vft->get_segs (hb, max_len, n_segs);
 }
 
-static inline int
+static inline u32
 http_buffer_drain (http_buffer_t *hb, u32 len)
 {
   return hb->vft->drain (hb, len);
