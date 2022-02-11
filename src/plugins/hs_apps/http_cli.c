@@ -539,7 +539,7 @@ hcs_listen ()
   if (parse_uri (uri, &sep))
     return -1;
 
-  need_crypto = hcs_transport_needs_crypto (a->sep_ext.transport_proto);
+  need_crypto = hcs_transport_needs_crypto (sep.transport_proto);
 
   sep.transport_proto = TRANSPORT_PROTO_HTTP;
   clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
