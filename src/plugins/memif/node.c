@@ -557,7 +557,7 @@ memif_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       vlib_get_buffers (vm, ptd->buffers, buffer_ptrs, n_buffers);
 
-      for (i = 0; i < n_pkts - 8; i++)
+      for (i = 0; i + 8 < n_pkts; i++)
 	{
 	  clib_prefetch_load (desc_data[i + 8]);
 	  clib_prefetch_store (buffer_ptrs[i + 8]->data);
@@ -574,7 +574,7 @@ memif_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       u32 n_pkts = vec_len (ptd->copy_ops);
       co = ptd->copy_ops;
 
-      for (i = 0; i < n_pkts - 8; i++)
+      for (i = 0; i + 8 < n_pkts; i++)
 	{
 	  clib_prefetch_load (co[i + 8].data);
 	  b = vlib_get_buffer (vm, ptd->buffers[co[i].buffer_vec_index]);
