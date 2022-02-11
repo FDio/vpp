@@ -192,6 +192,7 @@ http_ts_accept_callback (session_t *ts)
    * the fifo is small (under 16K) we set the threshold to it's size, meaning
    * a notification will be given when the fifo empties.
    */
+  ts = session_get_from_handle (hc->h_tc_session_handle);
   thresh = clib_min (svm_fifo_size (ts->tx_fifo), HTTP_FIFO_THRESH);
   svm_fifo_set_deq_thresh (ts->tx_fifo, thresh);
 
@@ -254,7 +255,7 @@ static const char *http_response_template = "HTTP/1.1 200 OK\r\n"
 					    "Expires: %U GMT\r\n"
 					    "Server: VPP Static\r\n"
 					    "Content-Type: %s\r\n"
-					    "Content-Length: %d\r\n\r\n";
+					    "Content-Length: %lu\r\n\r\n";
 
 static u32
 send_data (http_conn_t *hc, u8 *data, u32 length, u32 offset)
