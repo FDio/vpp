@@ -238,6 +238,15 @@ ip6_interface_address_matching_destination (ip6_main_t * im,
   ip_interface_address_t *ia;
   ip6_address_t *result = 0;
 
+  if (ip6_address_is_link_local_unicast (dst))
+    {
+      if (result_ia)
+	{
+	  *result_ia = 0;
+	}
+      return ip6_get_link_local_address (sw_if_index);
+    }
+
   /* *INDENT-OFF* */
   foreach_ip_interface_address (lm, ia, sw_if_index,
                                 1 /* honor unnumbered */,
