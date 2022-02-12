@@ -185,6 +185,8 @@ extern void ip6_forward_next_trace (vlib_main_t * vm,
 				    vlib_frame_t * frame,
 				    vlib_rx_or_tx_t which_adj_index);
 
+extern ip6_address_t *get_ip6_link_local_address (u32 sw_if_index);
+
 always_inline uword
 ip6_destination_matches_route (const ip6_main_t * im,
 			       const ip6_address_t * key,
@@ -237,6 +239,15 @@ ip6_interface_address_matching_destination (ip6_main_t * im,
   ip_lookup_main_t *lm = &im->lookup_main;
   ip_interface_address_t *ia;
   ip6_address_t *result = 0;
+
+  if (ip6_address_is_link_local_unicast (dst))
+    {
+      if (result_ia)
+	{
+	  *result_ia = 0;
+	}
+      return get_ip6_link_local_address (sw_if_index);
+    }
 
   /* *INDENT-OFF* */
   foreach_ip_interface_address (lm, ia, sw_if_index,
