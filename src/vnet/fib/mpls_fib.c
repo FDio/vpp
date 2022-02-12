@@ -451,7 +451,7 @@ mpls_fib_show (vlib_main_t * vm,
 	    continue;
 
 	s = format (s, "%v, fib_index:%d locks:[",
-                    fib_table->ft_desc, mpls_main.fibs - fib_table);
+                    fib_table->ft_desc, fib_table - mpls_main.fibs);
         vec_foreach_index(source, fib_table->ft_locks)
         {
             if (0 != fib_table->ft_locks[source])
