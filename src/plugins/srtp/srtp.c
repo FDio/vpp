@@ -653,6 +653,7 @@ srtp_connect (transport_endpoint_cfg_t *tep)
   ctx->parent_app_api_context = sep->opaque;
   ctx->udp_is_ip4 = sep->is_ip4;
   ctx->srtp_ctx_handle = ctx_index;
+  ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
 
   srtp_init_policy (ctx, (transport_endpt_cfg_srtp_t *) sep->ext_cfg->data);
 
@@ -749,6 +750,7 @@ srtp_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
   lctx->srtp_session_handle = udp_al_handle;
   lctx->app_session_handle = listen_session_get_handle (app_listener);
   lctx->udp_is_ip4 = sep->is_ip4;
+  lctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
 
   srtp_init_policy (lctx, (transport_endpt_cfg_srtp_t *) sep->ext_cfg->data);
 
