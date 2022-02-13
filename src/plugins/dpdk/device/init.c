@@ -399,7 +399,8 @@ dpdk_lib_init (dpdk_main_t * dm)
 #if RTE_VERSION >= RTE_VERSION_NUM(21, 11, 0, 0)
       q = di.max_rx_pktlen - di.max_mtu;
 
-      if (q < xd->driver_frame_overhead && q > 0)
+      /* attempt to protect from bogus value provided by pmd */
+      if (q < (2 * xd->driver_frame_overhead) && q > 0)
 	xd->driver_frame_overhead = q;
       dpdk_log_debug ("[%u] min_mtu: %u, max_mtu: %u, min_rx_bufsize: %u, "
 		      "max_rx_pktlen: %u, max_lro_pkt_size: %u",

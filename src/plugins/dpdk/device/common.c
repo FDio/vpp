@@ -66,7 +66,7 @@ dpdk_device_setup (dpdk_device_t * xd)
   struct rte_eth_dev_info dev_info;
   struct rte_eth_conf conf = {};
   u64 rxo, txo;
-  u16 mtu;
+  u16 max_frame_size;
   int rv;
   int j;
 
@@ -179,12 +179,11 @@ dpdk_device_setup (dpdk_device_t * xd)
     xd->max_supported_frame_size = dev_info.max_rx_pktlen;
 #endif
 
-  mtu = clib_min (xd->max_supported_frame_size - xd->driver_frame_overhead,
-		  ethernet_main.default_mtu);
-  mtu = mtu + hi->frame_overhead - xd->driver_frame_overhead;
+  max_frame_size = clib_min (xd->max_supported_frame_size,
+			     ethernet_main.default_mtu + hi->frame_overhead);
 
 #if RTE_VERSION >= RTE_VERSION_NUM(21, 11, 0, 0)
-  conf.rxmode.mtu = mtu;
+  conf.rxmode.mtu = max_frame_size - xd->driver_frame_overhead;
 #endif
 
 retry:
@@ -197,15 +196,15 @@ retry:
     }
 
 #if RTE_VERSION < RTE_VERSION_NUM(21, 11, 0, 0)
-  rte_eth_dev_set_mtu (xd->port_id, mtu);
+  rte_eth_dev_set_mtu (xd->port_id,
+		       max_frame_size - xd->driver_frame_overhead);
 #endif
 
   hi->max_frame_size = 0;
-  vnet_hw_interface_set_max_frame_size (vnm, xd->hw_if_index,
-					mtu + hi->frame_overhead);
-  dpdk_log_debug ("[%u] mtu %u max_frame_size %u max max_frame_size %u "
+  vnet_hw_interface_set_max_frame_size (vnm, xd->hw_if_index, max_frame_size);
+  dpdk_log_debug ("[%u] max_frame_size %u max max_frame_size %u "
 		  "driver_frame_overhead %u",
-		  xd->port_id, mtu, hi->max_frame_size,
+		  xd->port_id, hi->max_frame_size,
 		  xd->max_supported_frame_size, xd->driver_frame_overhead);
 
   vec_validate_aligned (xd->tx_queues, xd->conf.n_tx_queues - 1,
