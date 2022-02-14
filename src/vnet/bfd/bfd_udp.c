@@ -685,9 +685,8 @@ bfd_udp_find_session_by_api_input (u32 sw_if_index,
 
 static vnet_api_error_t
 bfd_api_verify_common (u32 sw_if_index, u32 desired_min_tx_usec,
-		       u32 required_min_rx_usec, u8 detect_mult,
-		       const ip46_address_t * local_addr,
-		       const ip46_address_t * peer_addr)
+		       u8 detect_mult, const ip46_address_t *local_addr,
+		       const ip46_address_t *peer_addr)
 {
   bfd_udp_main_t *bum = &bfd_udp_main;
   vnet_api_error_t rv =
@@ -781,10 +780,8 @@ bfd_udp_add_session (u32 sw_if_index, const ip46_address_t * local_addr,
   bfd_main_t *bm = &bfd_main;
   bfd_lock (bm);
 
-  vnet_api_error_t rv =
-    bfd_api_verify_common (sw_if_index, desired_min_tx_usec,
-			   required_min_rx_usec, detect_mult,
-			   local_addr, peer_addr);
+  vnet_api_error_t rv = bfd_api_verify_common (
+    sw_if_index, desired_min_tx_usec, detect_mult, local_addr, peer_addr);
 
   if (!rv)
     rv = bfd_udp_add_and_start_session (
@@ -806,8 +803,7 @@ bfd_udp_upd_session (u32 sw_if_index, const ip46_address_t *local_addr,
   bfd_lock (bm);
 
   vnet_api_error_t rv = bfd_api_verify_common (
-    sw_if_index, desired_min_tx_usec, required_min_rx_usec, detect_mult,
-    local_addr, peer_addr);
+    sw_if_index, desired_min_tx_usec, detect_mult, local_addr, peer_addr);
   if (!rv)
     {
       bfd_session_t *bs = NULL;
@@ -1011,7 +1007,7 @@ bfd_udp4_find_headers (vlib_buffer_t * b, ip4_header_t ** ip4,
 {
   /* sanity check first */
   const i32 start = vnet_buffer (b)->l3_hdr_offset;
-  if (start < 0 && start < sizeof (b->pre_data))
+  if (start < -(signed) sizeof (b->pre_data))
     {
       BFD_ERR ("Start of ip header is before pre_data, ignoring");
       *ip4 = NULL;
@@ -1080,8 +1076,7 @@ bfd_rpc_update_session (vlib_main_t * vm, u32 bs_idx, const bfd_pkt_t * pkt)
 }
 
 static bfd_udp_error_t
-bfd_udp4_scan (vlib_main_t * vm, vlib_node_runtime_t * rt,
-	       vlib_buffer_t * b, bfd_session_t ** bs_out)
+bfd_udp4_scan (vlib_main_t *vm, vlib_buffer_t *b, bfd_session_t **bs_out)
 {
   const bfd_pkt_t *pkt = vlib_buffer_get_current (b);
   if (sizeof (*pkt) > b->current_length)
@@ -1158,7 +1153,7 @@ bfd_udp6_find_headers (vlib_buffer_t * b, ip6_header_t ** ip6,
 {
   /* sanity check first */
   const i32 start = vnet_buffer (b)->l3_hdr_offset;
-  if (start < 0 && start < sizeof (b->pre_data))
+  if (start < -(signed) sizeof (b->pre_data))
     {
       BFD_ERR ("Start of ip header is before pre_data, ignoring");
       *ip6 = NULL;
@@ -1222,8 +1217,7 @@ bfd_udp6_verify_transport (const ip6_header_t * ip6,
 }
 
 static bfd_udp_error_t
-bfd_udp6_scan (vlib_main_t * vm, vlib_node_runtime_t * rt,
-	       vlib_buffer_t * b, bfd_session_t ** bs_out)
+bfd_udp6_scan (vlib_main_t *vm, vlib_buffer_t *b, bfd_session_t **bs_out)
 {
   const bfd_pkt_t *pkt = vlib_buffer_get_current (b);
   if (sizeof (*pkt) > b->current_length)
@@ -1325,7 +1319,7 @@ bfd_udp_input (vlib_main_t * vm, vlib_node_runtime_t * rt,
       /* If this pkt is traced, snapshot the data */
       if (b0->flags & VLIB_BUFFER_IS_TRACED)
 	{
-	  int len;
+	  u64 len;
 	  t0 = vlib_add_trace (vm, rt, b0, sizeof (*t0));
 	  len = (b0->current_length < sizeof (t0->data)) ? b0->current_length
 	    : sizeof (t0->data);
@@ -1337,11 +1331,11 @@ bfd_udp_input (vlib_main_t * vm, vlib_node_runtime_t * rt,
       bfd_lock (bm);
       if (is_ipv6)
 	{
-	  error0 = bfd_udp6_scan (vm, rt, b0, &bs);
+	  error0 = bfd_udp6_scan (vm, b0, &bs);
 	}
       else
 	{
-	  error0 = bfd_udp4_scan (vm, rt, b0, &bs);
+	  error0 = bfd_udp4_scan (vm, b0, &bs);
 	}
       b0->error = rt->errors[error0];
 
@@ -1358,8 +1352,7 @@ bfd_udp_input (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	    {
 	      b0->current_data = 0;
 	      b0->current_length = 0;
-	      bfd_init_final_control_frame (vm, b0, bfd_udp_main.bfd_main, bs,
-					    0);
+	      bfd_init_final_control_frame (vm, b0, bs);
 	      if (is_ipv6)
 		{
 		  vlib_node_increment_counter (vm, bfd_udp6_input_node.index,
@@ -1487,7 +1480,7 @@ bfd_udp_echo_input (vlib_main_t * vm, vlib_node_runtime_t * rt,
       /* If this pkt is traced, snapshot the data */
       if (b0->flags & VLIB_BUFFER_IS_TRACED)
 	{
-	  int len;
+	  u64 len;
 	  t0 = vlib_add_trace (vm, rt, b0, sizeof (*t0));
 	  len = (b0->current_length < sizeof (t0->data)) ? b0->current_length
 	    : sizeof (t0->data);
@@ -1607,38 +1600,41 @@ VLIB_REGISTER_NODE (bfd_udp_echo6_input_node, static) = {
 /* *INDENT-ON* */
 
 static clib_error_t *
-bfd_udp_sw_if_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_create)
+bfd_udp_sw_if_add_del (CLIB_UNUSED (vnet_main_t *vnm), u32 sw_if_index,
+		       u32 is_create)
 {
-  bfd_session_t **to_be_freed = NULL;
+  u32 *to_be_freed = NULL;
   bfd_udp_main_t *bum = &bfd_udp_main;
   BFD_DBG ("sw_if_add_del called, sw_if_index=%u, is_create=%u", sw_if_index,
 	   is_create);
   if (!is_create)
     {
       bfd_session_t *bs;
-      pool_foreach (bs, bfd_udp_main.bfd_main->sessions)
-      {
-	if (bs->transport != BFD_TRANSPORT_UDP4 &&
-	    bs->transport != BFD_TRANSPORT_UDP6)
-	  {
-	    continue;
-	  }
-	if (bs->udp.key.sw_if_index != sw_if_index)
-	  {
-	    continue;
-	  }
-	vec_add1 (to_be_freed, bs);
-      }
+      pool_foreach (bs, bum->bfd_main->sessions)
+	{
+	  if (bs->transport != BFD_TRANSPORT_UDP4 &&
+	      bs->transport != BFD_TRANSPORT_UDP6)
+	    {
+	      continue;
+	    }
+	  if (bs->udp.key.sw_if_index != sw_if_index)
+	    {
+	      continue;
+	    }
+	  vec_add1 (to_be_freed, bs->bs_idx);
+	}
     }
-  bfd_session_t **bs;
-  vec_foreach (bs, to_be_freed)
-  {
-    vlib_log_notice (bum->log_class,
-		     "removal of sw_if_index=%u forces removal of bfd session "
-		     "with bs_idx=%u", sw_if_index, (*bs)->bs_idx);
-    bfd_session_set_flags (vlib_get_main (), *bs, 0);
-    bfd_udp_del_session_internal (vlib_get_main (), *bs);
-  }
+  u32 *bs_idx;
+  vec_foreach (bs_idx, to_be_freed)
+    {
+      bfd_session_t *bs = pool_elt_at_index (bum->bfd_main->sessions, *bs_idx);
+      vlib_log_notice (bum->log_class,
+		       "removal of sw_if_index=%u forces removal of bfd "
+		       "session with bs_idx=%u",
+		       sw_if_index, bs->bs_idx);
+      bfd_session_set_flags (vlib_get_main (), bs, 0);
+      bfd_udp_del_session_internal (vlib_get_main (), bs);
+    }
   return 0;
 }
 
