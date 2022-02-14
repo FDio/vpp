@@ -510,29 +510,56 @@ lcp_router_link_up_down (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
   if (!(flags & VNET_HW_INTERFACE_FLAG_LINK_UP))
     {
       u32 fib_index;
+      u32 **fib_index_to_sw_if_index_to_bool = NULL;
+      u32 id, sw_if_index;
       lcp_router_table_t *nlt;
 
       fib_index = fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
 						       hi->sw_if_index);
 
-      pool_foreach (nlt, lcp_router_table_pool)
+      vec_validate_init_empty (fib_index_to_sw_if_index_to_bool, fib_index,
+			       NULL);
+      vec_validate_init_empty (fib_index_to_sw_if_index_to_bool[fib_index],
+			       hi->sw_if_index, false);
+      fib_index_to_sw_if_index_to_bool[fib_index][hi->sw_if_index] = true;
+
+      /* clang-format off */
+      hash_foreach (id, sw_if_index, hi->sub_interface_sw_if_index_by_id,
+      ({
+	fib_index = fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
+							 sw_if_index);
+	vec_validate_init_empty (fib_index_to_sw_if_index_to_bool, fib_index,
+				 NULL);
+	vec_validate_init_empty (fib_index_to_sw_if_index_to_bool[fib_index],
+				 sw_if_index, false);
+	fib_index_to_sw_if_index_to_bool[fib_index][sw_if_index] = true;
+      }));
+      /* clang-format on */
+
+      vec_foreach_index (fib_index, fib_index_to_sw_if_index_to_bool)
 	{
-	  if (fib_index == nlt->nlt_fib_index &&
-	      FIB_PROTOCOL_IP4 == nlt->nlt_proto)
+	  u32 *sw_if_index_to_bool;
+
+	  sw_if_index_to_bool = fib_index_to_sw_if_index_to_bool[fib_index];
+	  if (NULL == sw_if_index_to_bool)
+	    continue;
+
+	  pool_foreach (nlt, lcp_router_table_pool)
 	    {
-	      u32 *sw_if_index_to_bool = NULL;
+	      if (fib_index == nlt->nlt_fib_index &&
+		  FIB_PROTOCOL_IP4 == nlt->nlt_proto)
+		{
+		  lcp_router_table_flush (nlt, sw_if_index_to_bool,
+					  lcp_rt_fib_src_dynamic);
 
-	      vec_validate_init_empty (sw_if_index_to_bool, hi->sw_if_index,
-				       false);
-	      sw_if_index_to_bool[hi->sw_if_index] = true;
-
-	      lcp_router_table_flush (nlt, sw_if_index_to_bool,
-				      lcp_rt_fib_src_dynamic);
-
-	      vec_free (sw_if_index_to_bool);
-	      break;
+		  break;
+		}
 	    }
+
+	  vec_free (sw_if_index_to_bool);
 	}
+
+      vec_free (fib_index_to_sw_if_index_to_bool);
     }
 
   return 0;
