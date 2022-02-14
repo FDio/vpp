@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b9409a52_c0e6402d",
+        "filename": "src/vnet/ip/ip6.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 248,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-02-14T11:10:30Z",
+      "side": 1,
+      "message": "don\u0027t cast away the const, the caller can\u0027t change the interface\u0027s address.",
+      "revId": "2ecf67b347545b96851e1f0b943d78d7c87c0bb0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
