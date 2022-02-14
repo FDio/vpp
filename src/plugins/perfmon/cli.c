@@ -14,6 +14,7 @@
  */
 
 #include <vnet/vnet.h>
+#include <perfmon/perf_events.h>
 #include <perfmon/perfmon.h>
 #include <vppinfra/format_table.h>
 
@@ -71,26 +72,6 @@ unformat_perfmon_active_type (unformat_input_t *input, va_list *args)
   return bundle_type ? 1 : 0;
 }
 
-uword
-unformat_perfmon_source_name (unformat_input_t *input, va_list *args)
-{
-  perfmon_main_t *pm = &perfmon_main;
-  perfmon_source_t **b = va_arg (*args, perfmon_source_t **);
-  uword *p;
-  u8 *str = 0;
-
-  if (unformat (input, "%s", &str) == 0)
-    return 0;
-
-  p = hash_get_mem (pm->source_by_name, str);
-
-  if (p)
-    b[0] = (perfmon_source_t *) p[0];
-
-  vec_free (str);
-  return p ? 1 : 0;
-}
-
 typedef enum
 {
   FORMAT_PERFMON_BUNDLE_NONE = 0,
@@ -104,6 +85,7 @@ format_perfmon_bundle (u8 *s, va_list *args)
   perfmon_bundle_t *b = va_arg (*args, perfmon_bundle_t *);
   format_perfmon_bundle_args_t cfg =
     va_arg (*args, format_perfmon_bundle_args_t);
+  perf_event_t *e = 0;
 
   int vl = 0;
 
@@ -117,20 +99,24 @@ format_perfmon_bundle (u8 *s, va_list *args)
     if (b == 0) return format (s, "%-20s%-20s%-20s%s", "Name", "Type(s)",
 			       "Source", "Description");
 
+  e = perf_query_event (b->events[0]);
+
   if (cfg != FORMAT_PERFMON_BUNDLE_NONE)
     {
       s = format (s, "name: %s\n", b->name);
       s = format (s, "description: %s\n", b->description);
-      s = format (s, "source: %s\n", b->src->name);
+
+      s = format (s, "source: %s\n", e->source_name);
       for (int i = 0; i < b->n_events; i++)
 	{
-	  perfmon_event_t *e = b->src->events + b->events[i];
-	  s = format (s, "event %u: %s", i, e->name);
+	  s = format (s, "event %u: %s", i, b->events[i]);
 
-	  format_function_t *format_config = b->src->format_config;
-
-	  if (format_config && cfg == FORMAT_PERFMON_BUNDLE_SHOW_CONFIG)
-	    s = format (s, " (%U)", format_config, e->config);
+	  if (cfg == FORMAT_PERFMON_BUNDLE_SHOW_CONFIG)
+	    {
+	      e = perf_query_event (b->events[i]);
+	      if (e->format_config)
+		s = format (s, " (%U)", e->format_config, e->config);
+	    }
 
 	  s = format (s, "\n");
 	}
@@ -148,8 +134,8 @@ format_perfmon_bundle (u8 *s, va_list *args)
       if ((vl = vec_len (_bundle_type)))
 	_bundle_type[vl - 1] = 0;
 
-      s =
-	format (s, "%-20s%-20s%s", _bundle_type, b->src->name, b->description);
+      s = format (s, "%-20s%-20s%s", _bundle_type, e->source_name,
+		  b->description);
     }
 
   vec_free (_bundle_type);
@@ -229,107 +215,6 @@ VLIB_CLI_COMMAND (show_perfmon_bundle_command, static) = {
   .is_mp_safe = 1,
 };
 
-u8 *
-format_perfmon_source (u8 *s, va_list *args)
-{
-  perfmon_source_t *src = va_arg (*args, perfmon_source_t *);
-  int verbose = va_arg (*args, int);
-
-  if (src == 0)
-    return format (s, "%-20s%-9s %s", "Name", "NumEvents", "Description");
-
-  if (verbose)
-    {
-      s = format (s, "name:        %s\n", src->name);
-      s = format (s, "description: %s\n", src->description);
-      s = format (s, "Events:\n");
-      for (int i = 0; i < src->n_events; i++)
-	{
-	  perfmon_event_t *e = src->events + i;
-	  s = format (s, "  %s", e->name);
-	  if (src->format_config)
-	    s = format (s, " (%U)\n", src->format_config, e->config);
-	  else
-	    s = format (s, " (0x%x)\n", e->config);
-	  if (e->description)
-	    s = format (s, "    %s\n", e->description);
-	}
-
-      if (src->instances_by_type)
-	{
-	  s = format (s, "Instances:\n");
-	  for (int i = 0; i < vec_len (src->instances_by_type); i++)
-	    {
-	      perfmon_instance_type_t *it;
-	      it = vec_elt_at_index (src->instances_by_type, i);
-	      if (vec_len (it->instances) == 0)
-		continue;
-	      s = format (s, "  %s:\n   ", it->name);
-	      for (int j = 0; j < vec_len (it->instances); j++)
-		{
-		  perfmon_instance_t *in = vec_elt_at_index (it->instances, j);
-		  s = format (s, " %s", in->name);
-		}
-	      s = format (s, "\n");
-	    }
-	}
-    }
-  else
-    s = format (s, "%-20s%9u %s", src->name, src->n_events, src->description);
-
-  return s;
-}
-
-static clib_error_t *
-show_perfmon_source_command_fn (vlib_main_t *vm, unformat_input_t *input,
-				vlib_cli_command_t *cmd)
-{
-  perfmon_main_t *pm = &perfmon_main;
-  unformat_input_t _line_input, *line_input = &_line_input;
-  perfmon_source_t *s = 0, **vs = 0;
-  int verbose = 0;
-
-  if (unformat_user (input, unformat_line_input, line_input))
-    {
-      while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-	{
-	  if (unformat (line_input, "verbose"))
-	    verbose = 1;
-	  else if (unformat (line_input, "%U", unformat_perfmon_source_name,
-			     &s))
-	    vec_add (vs, &s, 1);
-	  else
-	    return clib_error_return (0, "unknown input `%U'",
-				      format_unformat_error, line_input);
-	}
-      unformat_free (line_input);
-    }
-
-  if (vs == 0)
-    {
-      char *key;
-      hash_foreach_mem (key, s, pm->source_by_name, vec_add (vs, &s, 1););
-    }
-  else
-    verbose = 1;
-
-  if (verbose == 0)
-    vlib_cli_output (vm, "%U\n", format_perfmon_source, 0, 0);
-
-  for (int i = 0; i < vec_len (vs); i++)
-    vlib_cli_output (vm, "%U\n", format_perfmon_source, vs[i], verbose);
-
-  vec_free (vs);
-  return 0;
-}
-
-VLIB_CLI_COMMAND (show_perfmon_source_command, static) = {
-  .path = "show perfmon source",
-  .short_help = "show perfmon source [<source-name>] [verbose]",
-  .function = show_perfmon_source_command_fn,
-  .is_mp_safe = 1,
-};
-
 static clib_error_t *
 show_perfmon_active_bundle_command_fn (vlib_main_t *vm,
 				       unformat_input_t *input,
@@ -358,22 +243,20 @@ show_perfmon_stats_command_fn (vlib_main_t *vm, unformat_input_t *input,
   table_t table = {}, *t = &table;
   u32 n_instances;
   perfmon_reading_t *r, *readings = 0;
-  perfmon_instance_type_t *it = pm->active_instance_type;
-  perfmon_instance_t *in;
+  perf_event_source_t *source, *sources = pm->active_sources;
   u8 *s = 0;
   int n_row = 0;
 
   if (b == 0)
     return clib_error_return (0, "no bundle selected");
 
-  n_instances = vec_len (it->instances);
+  n_instances = vec_len (sources);
   vec_validate (readings, n_instances - 1);
 
   /*Only perform read() for THREAD or SYSTEM bundles*/
   for (int i = 0;
        i < n_instances && b->active_type != PERFMON_BUNDLE_TYPE_NODE; i++)
     {
-      in = vec_elt_at_index (it->instances, i);
       r = vec_elt_at_index (readings, i);
 
       if (read (pm->group_fds[i], r, (b->n_events + 3) * sizeof (u64)) == -1)
@@ -398,9 +281,9 @@ show_perfmon_stats_command_fn (vlib_main_t *vm, unformat_input_t *input,
   int col = 0;
   for (int i = 0; i < n_instances; i++)
     {
-      in = vec_elt_at_index (it->instances, i);
+      source = vec_elt_at_index (sources, i);
       r = vec_elt_at_index (readings, i);
-      table_format_cell (t, col, -1, "%s", in->name, b->active_type);
+      table_format_cell (t, col, -1, "%s", source->name, b->active_type);
       if (b->active_type == PERFMON_BUNDLE_TYPE_NODE)
 	{
 	  perfmon_thread_runtime_t *tr;
