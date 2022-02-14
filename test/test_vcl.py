@@ -7,7 +7,7 @@ import subprocess
 import signal
 import glob
 from config import config
-from framework import VppTestCase, VppTestRunner, Worker
+from framework import VppTestCase, VppTestRunner, Worker, tag_fixme_asan
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath, FibPathProto
 
 iperf3 = '/usr/bin/iperf3'
@@ -280,6 +280,7 @@ class VCLTestCase(VppTestCase):
         self.assert_equal(worker_client.result, 0, "Binary test return code")
 
 
+@tag_fixme_asan
 class LDPCutThruTestCase(VCLTestCase):
     """ LDP Cut Thru Tests """
 
@@ -356,6 +357,7 @@ class LDPCutThruTestCase(VCLTestCase):
                            self.client_bi_dir_nsock_test_args)
 
 
+@tag_fixme_asan
 class VCLCutThruTestCase(VCLTestCase):
     """ VCL Cut Thru Tests """
 
@@ -415,6 +417,7 @@ class VCLCutThruTestCase(VCLTestCase):
                            self.client_bi_dir_nsock_test_args)
 
 
+@tag_fixme_asan
 class VCLThruHostStackEcho(VCLTestCase):
     """ VCL Thru Host Stack Echo """
 
@@ -499,6 +502,7 @@ class VCLThruHostStackTLS(VCLTestCase):
         self.logger.debug(self.vapi.cli("show app mq"))
 
 
+@tag_fixme_asan
 class VCLThruHostStackDTLS(VCLTestCase):
     """ VCL Thru Host Stack DTLS """
 
@@ -581,6 +585,7 @@ class VCLThruHostStackQUIC(VCLTestCase):
         self.logger.debug(self.vapi.cli("show app mq"))
 
 
+@tag_fixme_asan
 class VCLThruHostStackBidirNsock(VCLTestCase):
     """ VCL Thru Host Stack Bidir Nsock """
 
@@ -622,6 +627,7 @@ class VCLThruHostStackBidirNsock(VCLTestCase):
                                   self.client_bi_dir_nsock_test_args)
 
 
+@tag_fixme_asan
 class LDPThruHostStackBidirNsock(VCLTestCase):
     """ LDP Thru Host Stack Bidir Nsock """
 
@@ -664,6 +670,7 @@ class LDPThruHostStackBidirNsock(VCLTestCase):
                                   self.client_bi_dir_nsock_test_args)
 
 
+@tag_fixme_asan
 class LDPThruHostStackNsock(VCLTestCase):
     """ LDP Thru Host Stack Nsock """
 
@@ -704,6 +711,7 @@ class LDPThruHostStackNsock(VCLTestCase):
                                   self.client_uni_dir_nsock_test_args)
 
 
+@tag_fixme_asan
 class VCLThruHostStackNsock(VCLTestCase):
     """ VCL Thru Host Stack Nsock """
 
@@ -744,6 +752,7 @@ class VCLThruHostStackNsock(VCLTestCase):
                                   self.client_uni_dir_nsock_test_args)
 
 
+@tag_fixme_asan
 class LDPThruHostStackIperf(VCLTestCase):
     """ LDP Thru Host Stack Iperf  """
 
@@ -780,6 +789,7 @@ class LDPThruHostStackIperf(VCLTestCase):
                                   iperf3, self.client_iperf3_args)
 
 
+@tag_fixme_asan
 class LDPThruHostStackIperfUdp(VCLTestCase):
     """ LDP Thru Host Stack Iperf UDP """
 
@@ -817,6 +827,7 @@ class LDPThruHostStackIperfUdp(VCLTestCase):
                                   iperf3, self.client_iperf3_args)
 
 
+@tag_fixme_asan
 class LDPIpv6CutThruTestCase(VCLTestCase):
     """ LDP IPv6 Cut Thru Tests """
 
@@ -897,6 +908,7 @@ class LDPIpv6CutThruTestCase(VCLTestCase):
                            self.client_ipv6_bi_dir_nsock_test_args)
 
 
+@tag_fixme_asan
 class VCLIpv6CutThruTestCase(VCLTestCase):
     """ VCL IPv6 Cut Thru Tests """
 
@@ -967,6 +979,7 @@ class VCLIpv6CutThruTestCase(VCLTestCase):
                            self.client_ipv6_bi_dir_nsock_test_args)
 
 
+@tag_fixme_asan
 class VCLIpv6ThruHostStackEcho(VCLTestCase):
     """ VCL IPv6 Thru Host Stack Echo """
 

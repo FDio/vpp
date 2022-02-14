@@ -2,7 +2,7 @@
 
 import unittest
 
-from framework import tag_fixme_vpp_workers
+from framework import tag_fixme_vpp_workers, tag_fixme_asan
 from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpMRoute, VppMRoutePath, VppMFibSignal, \
@@ -39,6 +39,7 @@ class TestMFIB(VppTestCase):
     def setUp(self):
         super(TestMFIB, self).setUp()
 
+    @tag_fixme_asan
     def test_mfib(self):
         """ MFIB Unit Tests """
         error = self.vapi.cli("test mfib")

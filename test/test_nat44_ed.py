@@ -5,7 +5,7 @@ from io import BytesIO
 from random import randint, choice
 
 import scapy.compat
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, tag_fixme_asan
 from scapy.data import IP_PROTOS
 from scapy.layers.inet import IP, TCP, UDP, ICMP, GRE
 from scapy.layers.inet import IPerror, TCPerror
@@ -2172,6 +2172,7 @@ class TestNAT44ED(VppTestCase):
                 % (p_sent[IP].src, p_recvd[IP].src, a))
 
 
+@tag_fixme_asan
 class TestNAT44EDMW(TestNAT44ED):
     """ NAT44ED MW Test Case """
     vpp_worker_count = 4
@@ -3245,6 +3246,7 @@ class TestNAT44EDMW(TestNAT44ED):
         self.verify_capture_in(capture, self.pg0)
         self.logger.info(self.vapi.cli("show trace"))
 
+    @tag_fixme_asan
     def test_tcp_close(self):
         """ NAT44ED Close TCP session from inside network - output feature """
         old_timeouts = self.vapi.nat_get_timeouts()
@@ -3425,6 +3427,7 @@ class TestNAT44EDMW(TestNAT44ED):
         sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
         self.assertEqual(len(sessions) - session_n, 0)
 
+    @tag_fixme_asan
     def test_tcp_session_close_out(self):
         """ NAT44ED Close TCP session from outside network """
 
@@ -3505,6 +3508,7 @@ class TestNAT44EDMW(TestNAT44ED):
         sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
         self.assertEqual(len(sessions) - session_n, 0)
 
+    @tag_fixme_asan
     def test_tcp_session_close_simultaneous(self):
         """ Simultaneous TCP close from both sides """
 
@@ -3636,6 +3640,7 @@ class TestNAT44EDMW(TestNAT44ED):
         sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
         self.assertEqual(len(sessions) - session_n, 0)
 
+    @tag_fixme_asan
     def test_tcp_session_half_reopen_outside(self):
         """ TCP session in FIN/FIN state not reopened by out2in SYN only """
         in_port = self.tcp_port_in
@@ -3690,6 +3695,7 @@ class TestNAT44EDMW(TestNAT44ED):
         sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
         self.assertEqual(len(sessions) - session_n, 0)
 
+    @tag_fixme_asan
     def test_tcp_session_reopen(self):
         """ TCP session in FIN/FIN state reopened by SYN from both sides """
         in_port = self.tcp_port_in

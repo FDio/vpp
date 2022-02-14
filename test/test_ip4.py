@@ -11,7 +11,7 @@ from scapy.layers.l2 import Ether, Dot1Q, ARP
 from scapy.packet import Raw
 from six import moves
 
-from framework import tag_fixme_vpp_workers
+from framework import tag_fixme_vpp_workers, tag_fixme_asan
 from framework import VppTestCase, VppTestRunner
 from util import ppp
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpMRoute, \
@@ -1483,6 +1483,9 @@ class TestIPPunt(IPPuntSetup, VppTestCase):
         super().punt_teardown()
         super().tearDown()
 
+    # FIXME: this is not an ASAN failure but it fails in debug mode because
+    # test_ip_punt_api_validation triggers an ASSERT
+    @tag_fixme_asan
     def test_ip_punt_api_validation(self):
         """ IP punt API parameter validation """
 
