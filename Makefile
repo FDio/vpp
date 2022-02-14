@@ -11,6 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+export VPP_EXTRA_CMAKE_ARGS+=-DVPP_ENABLE_SANITIZE_ADDR=ON
+
 export WS_ROOT=$(CURDIR)
 export BR=$(WS_ROOT)/build-root
 CCACHE_DIR?=$(BR)/.ccache
@@ -425,7 +427,7 @@ endef
 
 .PHONY: test
 test:
-	$(call test,vpp,test)
+	$(call test,vpp_debug,test)
 
 .PHONY: test-debug
 test-debug:
