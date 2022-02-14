@@ -22,34 +22,7 @@
 #include <sys/ioctl.h>
 
 #include <perfmon/perfmon.h>
-
 #include <linux/perf_event.h>
-
-#define foreach_perf_sw_counter                                               \
-  _ (CONTEXT_SWITCHES, "context-switches")                                    \
-  _ (PAGE_FAULTS_MIN, "page-faults-minor")                                    \
-  _ (PAGE_FAULTS_MAJ, "page-faults-major")
-
-typedef enum
-{
-#define _(n, s) n,
-  foreach_perf_sw_counter
-#undef _
-} linux_sw_events;
-
-static perfmon_event_t events[] = {
-#define _(n, s)                                                               \
-  [n] = { .type = PERF_TYPE_SOFTWARE, .config = PERF_COUNT_SW_##n, .name = s },
-  foreach_perf_sw_counter
-#undef _
-};
-
-PERFMON_REGISTER_SOURCE (linux) = {
-  .name = "linux",
-  .description = "Linux kernel performance counters",
-  .events = events,
-  .n_events = ARRAY_LEN (events),
-};
 
 static u8 *
 format_context_switches (u8 *s, va_list *args)
@@ -76,7 +49,7 @@ PERFMON_REGISTER_BUNDLE (context_switches) = {
   .description = "per-thread context switches",
   .source = "linux",
   .type = PERFMON_BUNDLE_TYPE_THREAD,
-  .events[0] = CONTEXT_SWITCHES,
+  .events[0] = "context-switches",
   .n_events = 1,
   .format_fn = format_context_switches,
   .column_headers = PERFMON_STRINGS ("RunTime", "ContextSwitches/Sec"),
@@ -111,8 +84,8 @@ PERFMON_REGISTER_BUNDLE (page_faults) = {
   .description = "per-thread page faults",
   .source = "linux",
   .type = PERFMON_BUNDLE_TYPE_THREAD,
-  .events[0] = PAGE_FAULTS_MIN,
-  .events[1] = PAGE_FAULTS_MAJ,
+  .events[0] = "page-faults-min",
+  .events[1] = "page-faults-maj",
   .n_events = 2,
   .format_fn = format_page_faults,
   .column_headers = PERFMON_STRINGS ("RunTime", "MinorPageFaults/Sec",

@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "vppinfra/clib_error.h"
 #include <vnet/vnet.h>
 
 #include <vlibapi/api.h>
@@ -23,6 +24,7 @@
 #include <sys/ioctl.h>
 
 #include <perfmon/perfmon.h>
+#include <perfmon/perf_events.h>
 
 perfmon_main_t perfmon_main;
 
@@ -55,14 +57,6 @@ perfmon_reset (vlib_main_t *vm)
     close (pm->fds_to_close[i]);
   vec_free (pm->fds_to_close);
   vec_free (pm->group_fds);
-  if (pm->default_instance_type)
-    {
-      perfmon_instance_type_t *it = pm->default_instance_type;
-      for (int i = 0; i < vec_len (it->instances); i++)
-	vec_free (it->instances[i].name);
-      vec_free (it->instances);
-      vec_free (pm->default_instance_type);
-    }
 
   for (int i = 0; i < vec_len (pm->thread_runtimes); i++)
     {
@@ -75,7 +69,7 @@ perfmon_reset (vlib_main_t *vm)
   vec_free (pm->thread_runtimes);
 
   pm->is_running = 0;
-  pm->active_instance_type = 0;
+  pm->active_sources = 0;
   pm->active_bundle = 0;
 }
 
@@ -84,71 +78,60 @@ perfmon_set (vlib_main_t *vm, perfmon_bundle_t *b)
 {
   clib_error_t *err = 0;
   perfmon_main_t *pm = &perfmon_main;
-  perfmon_source_t *s;
   int is_node = 0;
   int n_nodes = vec_len (vm->node_main.nodes);
   uword page_size = clib_mem_get_page_size ();
-  u32 instance_type = 0;
-  perfmon_event_t *e;
-  perfmon_instance_type_t *it = 0;
+  perf_event_t *e;
+  perf_event_source_t *s;
 
   perfmon_reset (vm);
 
-  s = b->src;
   ASSERT (b->n_events);
 
   if (b->active_type == PERFMON_BUNDLE_TYPE_NODE)
     is_node = 1;
 
-  if (s->instances_by_type == 0)
-    {
-      vec_add2 (pm->default_instance_type, it, 1);
-      it->name = is_node ? "Thread/Node" : "Thread";
-      for (int i = 0; i < vlib_get_n_threads (); i++)
-	{
-	  vlib_worker_thread_t *w = vlib_worker_threads + i;
-	  perfmon_instance_t *in;
-	  vec_add2 (it->instances, in, 1);
-	  in->cpu = w->cpu_id;
-	  in->pid = w->lwp;
-	  in->name = (char *) format (0, "%s (%u)%c", w->name, i, 0);
-	}
-      if (is_node)
-	vec_validate (pm->thread_runtimes, vlib_get_n_threads () - 1);
-    }
-  else
-    {
-      e = s->events + b->events[0];
+  e = perf_query_event (b->events[0]);
+  s = perf_query_event_sources (e);
 
-      if (e->type_from_instance)
-	{
-	  instance_type = e->instance_type;
-	  for (int i = 1; i < b->n_events; i++)
-	    {
-	      e = s->events + b->events[i];
-	      ASSERT (e->type_from_instance == 1 &&
-		      e->instance_type == instance_type);
-	    }
-	}
-      it = vec_elt_at_index (s->instances_by_type, instance_type);
+  if (!s)
+    {
+      err = clib_error_return (0, "could not find event source %s for %s",
+			       e->source_name, e->name);
+      goto error;
     }
 
-  pm->active_instance_type = it;
+  pm->active_sources = s;
 
-  for (int i = 0; i < vec_len (it->instances); i++)
+  for (int i = 1; i < b->n_events; i++)
     {
-      perfmon_instance_t *in = vec_elt_at_index (it->instances, i);
+      perf_event_t *p = perf_query_event (b->events[i]);
+      if (e->source != p->source ||
+	  clib_strcmp (e->source_name, p->source_name) != 0)
+	{
+	  err = clib_error_return (
+	    0, "cannot have multiple event sources in a bundle %s", b->name);
+	  goto error;
+	}
+    }
 
+  if (is_node)
+    vec_validate (pm->thread_runtimes, vec_len (s) - 1);
+
+  /* for each event source */
+  for (int i = 0; i < vec_len (s); i++)
+    {
       vec_validate (pm->group_fds, i);
       pm->group_fds[i] = -1;
 
+      /* for each event */
       for (int j = 0; j < b->n_events; j++)
 	{
 	  int fd;
-	  perfmon_event_t *e = s->events + b->events[j];
+	  perf_event_t *e = perf_query_event (b->events[j]);
 	  struct perf_event_attr pe = {
 	    .size = sizeof (struct perf_event_attr),
-	    .type = e->type_from_instance ? in->type : e->type,
+	    .type = e->source,
 	    .config = e->config,
 	    .exclude_kernel = e->exclude_kernel,
 	    .read_format =
@@ -159,8 +142,8 @@ perfmon_set (vlib_main_t *vm, perfmon_bundle_t *b)
 
 	  log_debug ("perf_event_open pe.type=%u pe.config=0x%x pid=%d "
 		     "cpu=%d group_fd=%d",
-		     pe.type, pe.config, in->pid, in->cpu, pm->group_fds[i]);
-	  fd = syscall (__NR_perf_event_open, &pe, in->pid, in->cpu,
+		     pe.type, pe.config, s[i].pid, s[i].cpu, pm->group_fds[i]);
+	  fd = syscall (__NR_perf_event_open, &pe, s[i].pid, s[i].cpu,
 			pm->group_fds[i], 0);
 
 	  if (fd == -1)
@@ -325,38 +308,52 @@ perfmon_stop (vlib_main_t *vm)
 }
 
 static_always_inline u8
+do_events_exist (perfmon_bundle_t *b)
+{
+  /* how many does the bundle require */
+  for (u16 i = 0; i < b->n_events; i++)
+    {
+      perf_event_t *e = perf_query_event (b->events[i]);
+      if (!e)
+	return 0;
+    }
+
+  return 1;
+}
+
+static_always_inline u8
 is_enough_counters (perfmon_bundle_t *b)
 {
-  u8 bl[PERFMON_EVENT_TYPE_MAX];
-  u8 cpu[PERFMON_EVENT_TYPE_MAX];
+  u8 bl[PERF_COUNTER_TYPE_MAX];
+  u8 cpu[PERF_COUNTER_TYPE_MAX];
 
   clib_memset (&bl, 0, sizeof (bl));
   clib_memset (&cpu, 0, sizeof (cpu));
 
   /* how many does this uarch support */
-  if (!clib_get_pmu_counter_count (&cpu[PERFMON_EVENT_TYPE_FIXED],
-				   &cpu[PERFMON_EVENT_TYPE_GENERAL]))
+  if (!clib_get_pmu_counter_count (&cpu[PERF_COUNTER_TYPE_FIXED],
+				   &cpu[PERF_COUNTER_TYPE_GENERAL]))
     return 0;
 
   /* how many does the bundle require */
   for (u16 i = 0; i < b->n_events; i++)
     {
-      /* if source allows us to identify events, otherwise assume general */
-      if (b->src->get_event_type)
-	bl[b->src->get_event_type (b->events[i])]++;
-      else
-	bl[PERFMON_EVENT_TYPE_GENERAL]++;
+      perf_event_t *e = perf_query_event (b->events[i]);
+      bl[e->counter_type]++;
     }
 
   /* consciously ignoring pseudo events here */
-  return cpu[PERFMON_EVENT_TYPE_GENERAL] >= bl[PERFMON_EVENT_TYPE_GENERAL] &&
-	 cpu[PERFMON_EVENT_TYPE_FIXED] >= bl[PERFMON_EVENT_TYPE_FIXED];
+  return cpu[PERF_COUNTER_TYPE_GENERAL] >= bl[PERF_COUNTER_TYPE_GENERAL] &&
+	 cpu[PERF_COUNTER_TYPE_FIXED] >= bl[PERF_COUNTER_TYPE_FIXED];
 }
 
 static_always_inline u8
 is_bundle_supported (perfmon_bundle_t *b)
 {
   perfmon_cpu_supports_t *supports = b->cpu_supports;
+
+  if (!do_events_exist (b))
+    return 0;
 
   if (!is_enough_counters (b))
     return 0;
@@ -375,44 +372,17 @@ static clib_error_t *
 perfmon_init (vlib_main_t *vm)
 {
   perfmon_main_t *pm = &perfmon_main;
-  perfmon_source_t *s = pm->sources;
   perfmon_bundle_t *b = pm->bundles;
+  clib_error_t *err;
 
-  pm->source_by_name = hash_create_string (0, sizeof (uword));
-  while (s)
-    {
-      clib_error_t *err;
-      if (hash_get_mem (pm->source_by_name, s->name) != 0)
-	clib_panic ("duplicate source name '%s'", s->name);
-      if (s->init_fn && ((err = (s->init_fn) (vm, s))))
-	{
-	  log_warn ("skipping source '%s' - %U", s->name, format_clib_error,
-		    err);
-	  clib_error_free (err);
-	  s = s->next;
-	  continue;
-	}
-
-      hash_set_mem (pm->source_by_name, s->name, s);
-      log_debug ("source '%s' registered", s->name);
-      s = s->next;
-    }
+  if ((err = perf_event_init (vm)))
+    return err;
 
   pm->bundle_by_name = hash_create_string (0, sizeof (uword));
   while (b)
     {
       clib_error_t *err;
-      uword *p;
 
-      if ((p = hash_get_mem (pm->source_by_name, b->source)) == 0)
-	{
-	  log_debug ("missing source '%s', skipping bundle '%s'", b->source,
-		     b->name);
-	  b = b->next;
-	  continue;
-	}
-
-      b->src = (perfmon_source_t *) p[0];
       if (!is_bundle_supported (b))
 	{
 	  log_debug ("skipping bundle '%s' - not supported", b->name);
