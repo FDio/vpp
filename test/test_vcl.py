@@ -594,6 +594,15 @@ class VCLThruHostStackTLS(VCLTestCase):
         self.logger.debug(self.vapi.cli("show app mq"))
 
 
+class VCLThruHostStackTLSInterruptMode(VCLThruHostStackTLS):
+    """VCL Thru Host Stack TLS interrupt mode"""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.session_startup = ["poll-main", "use-app-socket-api", "use-private-rx-mqs"]
+        super(VCLThruHostStackTLS, cls).setUpClass()
+
+
 class VCLThruHostStackDTLS(VCLTestCase):
     """VCL Thru Host Stack DTLS"""
 
