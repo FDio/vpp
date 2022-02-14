@@ -258,7 +258,7 @@ typedef enum
 } bfd_listen_event_e;
 
 /**
- * session nitification call back function type
+ * session notification call back function type
  */
 typedef void (*bfd_notify_fn_t) (bfd_listen_event_e, const bfd_session_t *);
 
@@ -322,6 +322,11 @@ typedef struct
   vlib_log_class_t log_class;
 
   u16 msg_id_base;
+
+  vlib_combined_counter_main_t rx_counter;
+  vlib_combined_counter_main_t rx_echo_counter;
+  vlib_combined_counter_main_t tx_counter;
+  vlib_combined_counter_main_t tx_echo_counter;
 } bfd_main_t;
 
 extern bfd_main_t bfd_main;
@@ -412,10 +417,11 @@ void bfd_put_session (bfd_main_t * bm, bfd_session_t * bs);
 bfd_session_t *bfd_find_session_by_idx (bfd_main_t * bm, uword bs_idx);
 bfd_session_t *bfd_find_session_by_disc (bfd_main_t * bm, u32 disc);
 void bfd_session_start (bfd_main_t * bm, bfd_session_t * bs);
+void bfd_session_stop (bfd_main_t *bm, bfd_session_t *bs);
 void bfd_consume_pkt (vlib_main_t * vm, bfd_main_t * bm,
 		      const bfd_pkt_t * bfd, u32 bs_idx);
-int bfd_consume_echo_pkt (vlib_main_t * vm, bfd_main_t * bm,
-			  vlib_buffer_t * b);
+bfd_session_t *bfd_consume_echo_pkt (vlib_main_t *vm, bfd_main_t *bm,
+				     vlib_buffer_t *b);
 int bfd_verify_pkt_common (const bfd_pkt_t * pkt);
 int bfd_verify_pkt_auth (vlib_main_t * vm, const bfd_pkt_t * pkt,
 			 u16 pkt_size, bfd_session_t * bs);

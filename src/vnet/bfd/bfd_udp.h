@@ -24,7 +24,6 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/bfd/bfd_api.h>
 
-/* *INDENT-OFF* */
 /** identifier of BFD session based on UDP transport only */
 typedef CLIB_PACKED (struct {
   union {
@@ -38,7 +37,6 @@ typedef CLIB_PACKED (struct {
   /** peer address */
   ip46_address_t peer_addr;
 }) bfd_udp_key_t;
-/* *INDENT-ON* */
 
 /** UDP transport specific data embedded in bfd_session's union */
 typedef struct
@@ -82,22 +80,18 @@ int bfd_add_udp6_transport (vlib_main_t * vm, u32 bi,
 /**
  * @brief transport packet over udpv4
  *
- * @param is_echo 1 if this is echo packet, 0 if control frame
- *
  * @return 1 on success, 0 on failure
  */
-int bfd_transport_udp4 (vlib_main_t * vm, u32 bi,
-			const struct bfd_session_s *bs);
+int bfd_transport_udp4 (vlib_main_t *vm, u32 bi,
+			const struct bfd_session_s *bs, int is_echo);
 
 /**
  * @brief transport packet over udpv6
  *
- * @param is_echo 1 if this is echo packet, 0 if control frame
- *
  * @return 1 on success, 0 on failure
  */
-int bfd_transport_udp6 (vlib_main_t * vm, u32 bi,
-			const struct bfd_session_s *bs);
+int bfd_transport_udp6 (vlib_main_t *vm, u32 bi,
+			const struct bfd_session_s *bs, int is_echo);
 
 /**
  * @brief check if the bfd udp layer is echo-capable at this time

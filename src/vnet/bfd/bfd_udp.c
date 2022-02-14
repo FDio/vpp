@@ -35,6 +35,7 @@
 #include <vnet/dpo/receive_dpo.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
+#include <vpp/stats/stat_segment.h>
 #include <vnet/bfd/bfd_debug.h>
 #include <vnet/bfd/bfd_udp.h>
 #include <vnet/bfd/bfd_main.h>
@@ -68,8 +69,10 @@ typedef struct
   vlib_log_class_t log_class;
   /* number of active udp4 sessions */
   u32 udp4_sessions_count;
+  u32 udp4_sessions_count_stat_seg_entry;
   /* number of active udp6 sessions */
   u32 udp6_sessions_count;
+  u32 udp6_sessions_count_stat_seg_entry;
 } bfd_udp_main_t;
 
 static vlib_node_registration_t bfd_udp4_input_node;
@@ -78,6 +81,14 @@ static vlib_node_registration_t bfd_udp_echo4_input_node;
 static vlib_node_registration_t bfd_udp_echo6_input_node;
 
 bfd_udp_main_t bfd_udp_main;
+
+void
+bfd_udp_update_stat_segment_entry (u32 entry, u64 value)
+{
+  vlib_stat_segment_lock ();
+  stat_segment_set_state_counter (entry, value);
+  vlib_stat_segment_unlock ();
+}
 
 vnet_api_error_t
 bfd_udp_set_echo_source (u32 sw_if_index)
@@ -94,7 +105,7 @@ bfd_udp_set_echo_source (u32 sw_if_index)
 }
 
 vnet_api_error_t
-bfd_udp_del_echo_source (u32 sw_if_index)
+bfd_udp_del_echo_source ()
 {
   bfd_udp_main.echo_source_sw_if_index = ~0;
   bfd_udp_main.echo_source_is_set = 0;
@@ -372,13 +383,18 @@ bfd_add_udp6_transport (vlib_main_t * vm, u32 bi, const bfd_session_t * bs,
 }
 
 static void
-bfd_create_frame_to_next_node (vlib_main_t * vm, u32 bi, u32 next_node)
+bfd_create_frame_to_next_node (vlib_main_t *vm, bfd_main_t *bm,
+			       const bfd_session_t *bs, u32 bi, u32 next_node,
+			       vlib_combined_counter_main_t *tx_counter)
 {
   vlib_frame_t *f = vlib_get_frame_to_node (vm, next_node);
   u32 *to_next = vlib_frame_vector_args (f);
   to_next[0] = bi;
   f->n_vectors = 1;
   vlib_put_frame_to_node (vm, next_node, f);
+  vlib_buffer_t *b = vlib_get_buffer (vm, bi);
+  vlib_increment_combined_counter (tx_counter, vm->thread_index, bs->bs_idx, 1,
+				   vlib_buffer_length_in_chain (vm, b));
 }
 
 int
@@ -435,25 +451,33 @@ bfd_udp_calc_next_node (const struct bfd_session_s *bs, u32 * next_node)
 }
 
 int
-bfd_transport_udp4 (vlib_main_t * vm, u32 bi, const struct bfd_session_s *bs)
+bfd_transport_udp4 (vlib_main_t *vm, u32 bi, const struct bfd_session_s *bs,
+		    int is_echo)
 {
   u32 next_node;
   int rv = bfd_udp_calc_next_node (bs, &next_node);
+  bfd_main_t *bm = bfd_udp_main.bfd_main;
   if (rv)
     {
-      bfd_create_frame_to_next_node (vm, bi, next_node);
+      bfd_create_frame_to_next_node (vm, bm, bs, bi, next_node,
+				     is_echo ? &bm->tx_echo_counter :
+					       &bm->tx_counter);
     }
   return rv;
 }
 
 int
-bfd_transport_udp6 (vlib_main_t * vm, u32 bi, const struct bfd_session_s *bs)
+bfd_transport_udp6 (vlib_main_t *vm, u32 bi, const struct bfd_session_s *bs,
+		    int is_echo)
 {
   u32 next_node;
   int rv = bfd_udp_calc_next_node (bs, &next_node);
+  bfd_main_t *bm = bfd_udp_main.bfd_main;
   if (rv)
     {
-      bfd_create_frame_to_next_node (vm, bi, next_node);
+      bfd_create_frame_to_next_node (
+	vm, bfd_udp_main.bfd_main, bs, bi, next_node,
+	is_echo ? &bm->tx_echo_counter : &bm->tx_counter);
     }
   return 1;
 }
@@ -530,6 +554,8 @@ bfd_udp_add_session_internal (vlib_main_t * vm, bfd_udp_main_t * bum,
 	       "returns %d", format_ip46_address, &key->peer_addr,
 	       IP46_TYPE_ANY, key->sw_if_index, bus->adj_index);
       ++bum->udp4_sessions_count;
+      bfd_udp_update_stat_segment_entry (
+	bum->udp4_sessions_count_stat_seg_entry, bum->udp4_sessions_count);
       if (1 == bum->udp4_sessions_count)
 	{
 	  udp_register_dst_port (vm, UDP_DST_PORT_bfd4,
@@ -547,6 +573,8 @@ bfd_udp_add_session_internal (vlib_main_t * vm, bfd_udp_main_t * bum,
 	       "returns %d", format_ip46_address, &key->peer_addr,
 	       IP46_TYPE_ANY, key->sw_if_index, bus->adj_index);
       ++bum->udp6_sessions_count;
+      bfd_udp_update_stat_segment_entry (
+	bum->udp6_sessions_count_stat_seg_entry, bum->udp6_sessions_count);
       if (1 == bum->udp6_sessions_count)
 	{
 	  udp_register_dst_port (vm, UDP_DST_PORT_bfd6,
@@ -719,6 +747,8 @@ bfd_udp_del_session_internal (vlib_main_t * vm, bfd_session_t * bs)
     {
     case BFD_TRANSPORT_UDP4:
       --bum->udp4_sessions_count;
+      bfd_udp_update_stat_segment_entry (
+	bum->udp4_sessions_count_stat_seg_entry, bum->udp4_sessions_count);
       if (!bum->udp4_sessions_count)
 	{
 	  udp_unregister_dst_port (vm, UDP_DST_PORT_bfd4, 1);
@@ -727,6 +757,8 @@ bfd_udp_del_session_internal (vlib_main_t * vm, bfd_session_t * bs)
       break;
     case BFD_TRANSPORT_UDP6:
       --bum->udp6_sessions_count;
+      bfd_udp_update_stat_segment_entry (
+	bum->udp6_sessions_count_stat_seg_entry, bum->udp6_sessions_count);
       if (!bum->udp6_sessions_count)
 	{
 	  udp_unregister_dst_port (vm, UDP_DST_PORT_bfd6, 0);
@@ -1342,6 +1374,9 @@ bfd_udp_input (vlib_main_t * vm, vlib_node_runtime_t * rt,
       next0 = BFD_UDP_INPUT_NEXT_NORMAL;
       if (BFD_UDP_ERROR_NONE == error0)
 	{
+	  vlib_increment_combined_counter (
+	    &bm->rx_counter, vm->thread_index, bs->bs_idx, 1,
+	    vlib_buffer_length_in_chain (vm, b0));
 	  /*
 	   *  if everything went fine, check for poll bit, if present, re-use
 	   *  the buffer and based on (now updated) session parameters, send
@@ -1488,8 +1523,9 @@ bfd_udp_echo_input (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	  clib_memcpy_fast (t0->data, vlib_buffer_get_current (b0), len);
 	}
 
+      bfd_session_t *bs = NULL;
       bfd_lock (bm);
-      if (bfd_consume_echo_pkt (vm, bfd_udp_main.bfd_main, b0))
+      if ((bs = bfd_consume_echo_pkt (vm, bfd_udp_main.bfd_main, b0)))
 	{
 	  b0->error = rt->errors[BFD_UDP_ERROR_NONE];
 	  next0 = BFD_UDP_ECHO_INPUT_NEXT_NORMAL;
@@ -1512,6 +1548,14 @@ bfd_udp_echo_input (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	}
 
       bfd_unlock (bm);
+
+      if (bs)
+	{
+	  vlib_increment_combined_counter (
+	    &bm->rx_echo_counter, vm->thread_index, bs->bs_idx, 1,
+	    vlib_buffer_length_in_chain (vm, b0));
+	}
+
       vlib_set_next_frame_buffer (vm, rt, next0, bi0);
 
       from += 1;
@@ -1640,6 +1684,32 @@ bfd_udp_sw_if_add_del (CLIB_UNUSED (vnet_main_t *vnm), u32 sw_if_index,
 
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (bfd_udp_sw_if_add_del);
 
+clib_error_t *
+bfd_udp_stats_init (bfd_udp_main_t *bum)
+{
+  const char *name4 = "/bfd/udp4/sessions";
+  bum->udp4_sessions_count_stat_seg_entry =
+    stat_segment_new_entry ((u8 *) name4, STAT_DIR_TYPE_SCALAR_INDEX);
+
+  stat_segment_set_state_counter (bum->udp4_sessions_count_stat_seg_entry, 0);
+  if (~0 == bum->udp4_sessions_count_stat_seg_entry)
+    {
+      return clib_error_return (
+	0, "Could not create stat segment entry for %s", name4);
+    }
+  const char *name6 = "/bfd/udp6/sessions";
+  bum->udp6_sessions_count_stat_seg_entry =
+    stat_segment_new_entry ((u8 *) name6, STAT_DIR_TYPE_SCALAR_INDEX);
+
+  if (~0 == bum->udp6_sessions_count_stat_seg_entry)
+    {
+      return clib_error_return (
+	0, "Could not create stat segment entry for %s", name6);
+    }
+
+  return 0;
+}
+
 /*
  * setup function
  */
@@ -1670,6 +1740,8 @@ bfd_udp_init (vlib_main_t * vm)
   node = vlib_get_node_by_name (vm, (u8 *) "ip6-midchain");
   ASSERT (node);
   bfd_udp_main.ip6_midchain_idx = node->index;
+
+  bfd_udp_stats_init (&bfd_udp_main);
 
   bfd_udp_main.log_class = vlib_log_register_class ("bfd", "udp");
   vlib_log_debug (bfd_udp_main.log_class, "initialized");

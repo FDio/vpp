@@ -30,6 +30,17 @@
 #include <vlib/log.h>
 #include <vnet/crypto/crypto.h>
 
+static void
+bfd_validate_counters (bfd_main_t *bm)
+{
+  vlib_validate_combined_counter (&bm->rx_counter, pool_elts (bm->sessions));
+  vlib_validate_combined_counter (&bm->rx_echo_counter,
+				  pool_elts (bm->sessions));
+  vlib_validate_combined_counter (&bm->tx_counter, pool_elts (bm->sessions));
+  vlib_validate_combined_counter (&bm->tx_echo_counter,
+				  pool_elts (bm->sessions));
+}
+
 static u64
 bfd_calc_echo_checksum (u32 discriminator, u64 expire_time, u32 secret)
 {
@@ -727,11 +738,11 @@ bfd_transport_control_frame (vlib_main_t * vm, u32 bi, bfd_session_t * bs)
     {
     case BFD_TRANSPORT_UDP4:
       BFD_DBG ("Transport bfd via udp4, bs_idx=%u", bs->bs_idx);
-      return bfd_transport_udp4 (vm, bi, bs);
+      return bfd_transport_udp4 (vm, bi, bs, 0 /* is_echo */);
       break;
     case BFD_TRANSPORT_UDP6:
       BFD_DBG ("Transport bfd via udp6, bs_idx=%u", bs->bs_idx);
-      return bfd_transport_udp6 (vm, bi, bs);
+      return bfd_transport_udp6 (vm, bi, bs, 0 /* is_echo */);
       break;
     }
   return 0;
@@ -761,11 +772,11 @@ bfd_transport_echo (vlib_main_t * vm, u32 bi, bfd_session_t * bs)
     {
     case BFD_TRANSPORT_UDP4:
       BFD_DBG ("Transport bfd echo via udp4, bs_idx=%u", bs->bs_idx);
-      return bfd_transport_udp4 (vm, bi, bs);
+      return bfd_transport_udp4 (vm, bi, bs, 1 /* is_echo */);
       break;
     case BFD_TRANSPORT_UDP6:
       BFD_DBG ("Transport bfd echo via udp6, bs_idx=%u", bs->bs_idx);
-      return bfd_transport_udp6 (vm, bi, bs);
+      return bfd_transport_udp6 (vm, bi, bs, 1 /* is_echo */);
       break;
     }
   return 0;
@@ -1336,6 +1347,14 @@ bfd_main_init (vlib_main_t * vm)
   bm->owner_thread_index = ~0;
   if (n_vlib_mains > 1)
     clib_spinlock_init (&bm->lock);
+  bm->rx_counter.name = "bfd rx session counters";
+  bm->rx_counter.stat_segment_name = "/bfd/rx-session-counters";
+  bm->rx_echo_counter.name = "bfd rx session echo counters";
+  bm->rx_echo_counter.stat_segment_name = "/bfd/rx-session-echo-counters";
+  bm->tx_counter.name = "bfd tx session counters";
+  bm->tx_counter.stat_segment_name = "/bfd/tx-session-counters";
+  bm->tx_echo_counter.name = "bfd tx session echo counters";
+  bm->tx_echo_counter.stat_segment_name = "/bfd/tx-session-echo-counters";
   return 0;
 }
 
@@ -1371,6 +1390,11 @@ bfd_get_session (bfd_main_t * bm, bfd_transport_e t)
   while (hash_get (bm->session_by_disc, result->local_discr));
   bfd_set_defaults (bm, result);
   hash_set (bm->session_by_disc, result->local_discr, result->bs_idx);
+  bfd_validate_counters (bm);
+  vlib_zero_combined_counter (&bm->rx_counter, result->bs_idx);
+  vlib_zero_combined_counter (&bm->rx_echo_counter, result->bs_idx);
+  vlib_zero_combined_counter (&bm->tx_counter, result->bs_idx);
+  vlib_zero_combined_counter (&bm->tx_echo_counter, result->bs_idx);
   bfd_unlock (bm);
   return result;
 }
@@ -1392,6 +1416,10 @@ bfd_put_session (bfd_main_t * bm, bfd_session_t * bs)
       --bs->auth.next_key->use_count;
     }
   hash_unset (bm->session_by_disc, bs->local_discr);
+  vlib_zero_combined_counter (&bm->rx_counter, bs->bs_idx);
+  vlib_zero_combined_counter (&bm->rx_echo_counter, bs->bs_idx);
+  vlib_zero_combined_counter (&bm->tx_counter, bs->bs_idx);
+  vlib_zero_combined_counter (&bm->tx_echo_counter, bs->bs_idx);
   pool_put (bm->sessions, bs);
   bfd_unlock (bm);
 }
@@ -1905,8 +1933,8 @@ bfd_consume_pkt (vlib_main_t * vm, bfd_main_t * bm, const bfd_pkt_t * pkt,
     }
 }
 
-int
-bfd_consume_echo_pkt (vlib_main_t * vm, bfd_main_t * bm, vlib_buffer_t * b)
+bfd_session_t *
+bfd_consume_echo_pkt (vlib_main_t *vm, bfd_main_t *bm, vlib_buffer_t *b)
 {
   bfd_echo_pkt_t *pkt = NULL;
   if (b->current_length != sizeof (*pkt))
@@ -1926,7 +1954,7 @@ bfd_consume_echo_pkt (vlib_main_t * vm, bfd_main_t * bm, vlib_buffer_t * b)
   if (checksum != pkt->checksum)
     {
       BFD_DBG ("Invalid echo packet, checksum mismatch");
-      return 1;
+      return 0;
     }
   u64 now = bfd_time_now_nsec (vm, NULL);
   if (pkt->expire_time_nsec < now)
@@ -1938,7 +1966,7 @@ bfd_consume_echo_pkt (vlib_main_t * vm, bfd_main_t * bm, vlib_buffer_t * b)
     {
       bs->echo_last_rx_nsec = now;
     }
-  return 1;
+  return bs;
 }
 
 u8 *
