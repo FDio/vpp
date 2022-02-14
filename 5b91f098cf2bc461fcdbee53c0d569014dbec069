@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a31015c4_1d60fa1b",
+        "filename": "src/vnet/ip/ip6_link.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 324,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-02-14T08:21:29Z",
+      "side": 1,
+      "message": "use ip6_get_link_local_address",
+      "revId": "5b91f098cf2bc461fcdbee53c0d569014dbec069",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
