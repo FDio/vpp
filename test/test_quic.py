@@ -5,7 +5,7 @@ import unittest
 import os
 import subprocess
 import signal
-from framework import tag_fixme_vpp_workers
+from framework import tag_fixme_vpp_workers, tag_fixme_asan
 from framework import VppTestCase, VppTestRunner, running_extended_tests, \
     Worker
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
@@ -273,6 +273,7 @@ class QUICEchoExtTestCase(QUICTestCase):
         self.assertFalse(server_kill_error, "Server kill errored")
 
 
+@tag_fixme_asan
 class QUICEchoExtTransferTestCase(QUICEchoExtTestCase):
     """QUIC Echo External Transfer Test Case"""
     timeout = 60
@@ -400,6 +401,7 @@ class QUICEchoExtEarlyScloseTxTestCase(QUICEchoExtTestCase):
         self.validate_ext_test_results()
 
 
+@tag_fixme_asan
 class QUICEchoExtServerStreamTestCase(QUICEchoExtTestCase):
     """QUIC Echo External Transfer Server Stream Test Case"""
     quic_setup = "serverstream"

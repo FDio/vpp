@@ -5,7 +5,7 @@ from io import BytesIO
 from random import randint, shuffle, choice
 
 import scapy.compat
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, tag_fixme_asan
 from scapy.data import IP_PROTOS
 from scapy.layers.inet import IP, TCP, UDP, ICMP, GRE
 from scapy.layers.inet import IPerror, TCPerror
@@ -19,6 +19,7 @@ from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_papi import VppEnum
 
 
+@tag_fixme_asan
 class TestNAT44ED(VppTestCase):
     """ NAT44ED Test Case """
 
@@ -2152,6 +2153,7 @@ class TestNAT44ED(VppTestCase):
                 % (p_sent[IP].src, p_recvd[IP].src, a))
 
 
+@tag_fixme_asan
 class TestNAT44EDMW(TestNAT44ED):
     """ NAT44ED MW Test Case """
     vpp_worker_count = 4

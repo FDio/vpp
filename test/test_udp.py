@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import unittest
-from framework import tag_fixme_vpp_workers
+from framework import tag_fixme_vpp_workers, tag_fixme_asan
 from framework import VppTestCase, VppTestRunner
 
 from vpp_udp_encap import find_udp_encap, VppUdpEncap
@@ -390,6 +390,7 @@ class TestUdpEncap(VppTestCase):
 
 
 @tag_fixme_vpp_workers
+@tag_fixme_asan
 class TestUDP(VppTestCase):
     """ UDP Test Case """
 

@@ -7,7 +7,7 @@ import subprocess
 import signal
 import glob
 from framework import VppTestCase, VppTestRunner, running_extended_tests, \
-    Worker
+    Worker, tag_fixme_asan
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath, FibPathProto
 
 iperf3 = '/usr/bin/iperf3'
@@ -363,6 +363,7 @@ class LDPCutThruTestCase(VCLTestCase):
                            self.client_bi_dir_nsock_test_args)
 
 
+@tag_fixme_asan
 class VCLCutThruTestCase(VCLTestCase):
     """ VCL Cut Thru Tests """
 
@@ -824,6 +825,7 @@ class LDPThruHostStackIperfUdp(VCLTestCase):
                                   iperf3, self.client_iperf3_args)
 
 
+@tag_fixme_asan
 class LDPIpv6CutThruTestCase(VCLTestCase):
     """ LDP IPv6 Cut Thru Tests """
 
@@ -904,6 +906,7 @@ class LDPIpv6CutThruTestCase(VCLTestCase):
                            self.client_ipv6_bi_dir_nsock_test_args)
 
 
+@tag_fixme_asan
 class VCLIpv6CutThruTestCase(VCLTestCase):
     """ VCL IPv6 Cut Thru Tests """
 

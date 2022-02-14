@@ -6,7 +6,7 @@ import unittest
 from scapy.layers.inet import ICMP, Ether, IP, TCP
 from scapy.packet import Raw
 from scapy.data import IP_PROTOS
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, tag_fixme_asan
 from vpp_papi import VppEnum
 
 
@@ -20,6 +20,7 @@ def get_nat44_ed_in2out_worker_index(ip, vpp_worker_count):
     return 1 + h % vpp_worker_count
 
 
+@tag_fixme_asan
 class TestNAT44EDOutput(VppTestCase):
     """ NAT44 ED output feature Test Case """
     max_sessions = 1024

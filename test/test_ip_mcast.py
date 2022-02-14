@@ -2,7 +2,7 @@
 
 import unittest
 
-from framework import tag_fixme_vpp_workers
+from framework import tag_fixme_vpp_workers, tag_fixme_asan
 from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpMRoute, VppMRoutePath, VppMFibSignal, \
@@ -25,6 +25,7 @@ from scapy.layers.inet6 import IPv6, getmacbyip6
 N_PKTS_IN_STREAM = 91
 
 
+@tag_fixme_asan
 class TestMFIB(VppTestCase):
     """ MFIB Test Case """
 

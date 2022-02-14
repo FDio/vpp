@@ -8,7 +8,7 @@ from scapy.layers.l2 import Ether, ARP, Dot1Q
 
 from util import reassemble4
 from vpp_object import VppObject
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, tag_fixme_asan
 from vpp_ipip_tun_interface import VppIpIpTunInterface
 from template_ipsec import TemplateIpsec, IpsecTun4Tests, \
     IpsecTun4, mk_scapy_crypt_key, config_tun_params
@@ -49,6 +49,7 @@ class VppLcpPair(VppObject):
         return False
 
 
+@tag_fixme_asan
 class TestLinuxCP(VppTestCase):
     """ Linux Control Plane """
 
@@ -290,6 +291,7 @@ class TestLinuxCP(VppTestCase):
         tun6.unconfig_ip6()
 
 
+@tag_fixme_asan
 class TestLinuxCPIpsec(TemplateIpsec,
                        TemplateIpsecItf4,
                        IpsecTun4):
