@@ -14,7 +14,6 @@
  */
 
 #include <perfmon/perfmon.h>
-#include <perfmon/intel/core.h>
 
 enum
 {
@@ -84,14 +83,14 @@ PERFMON_REGISTER_BUNDLE (intel_core_backend_bound_mem) = {
   .description = "Topdown BackEnd-bound Memory - % cycles not retiring "
 		 "instructions due to memory stalls",
   .source = "intel-core",
-  .events[0] = INTEL_CORE_E_CYCLE_ACTIVITY_STALLS_L1D_MISS, /* 0x0F */
-  .events[1] = INTEL_CORE_E_CYCLE_ACTIVITY_STALLS_L2_MISS,  /* 0x0F */
-  .events[2] = INTEL_CORE_E_CYCLE_ACTIVITY_STALLS_L3_MISS,  /* 0x0F */
-  .events[3] = INTEL_CORE_E_CYCLE_ACTIVITY_STALLS_MEM_ANY,  /* 0xFF */
-  .events[4] = INTEL_CORE_E_CYCLE_ACTIVITY_STALLS_TOTAL,    /* 0xFF */
-  .events[5] = INTEL_CORE_E_EXE_ACTIVITY_BOUND_ON_STORES,   /* 0xFF */
-  .events[6] = INTEL_CORE_E_L1D_PEND_MISS_FB_FULL,	    /* 0x0F */
-  .events[7] = INTEL_CORE_E_CPU_CLK_UNHALTED_THREAD_P,	    /* 0xFF */
+  .events[0] = "CYCLE_ACTIVITY.STALLS_L1D_MISS", /* 0x0F */
+  .events[1] = "CYCLE_ACTIVITY.STALLS_L2_MISS",	 /* 0x0F */
+  .events[2] = "CYCLE_ACTIVITY.STALLS_L3_MISS",	 /* 0x0F */
+  .events[3] = "CYCLE_ACTIVITY.STALLS_MEM_ANY",	 /* 0xFF */
+  .events[4] = "CYCLE_ACTIVITY.STALLS_TOTAL",	 /* 0xFF */
+  .events[5] = "EXE_ACTIVITY.BOUND_ON_STORES",	 /* 0xFF */
+  .events[6] = "L1D_PEND_MISS.FB_FULL",		 /* 0x0F */
+  .events[7] = "CPU_CLK_UNHALTED.THREAD_P",	 /* 0xFF */
   .n_events = 8,
   .format_fn = format_intel_backend_bound_mem,
   .cpu_supports = backend_bound_mem_cpu_supports,
