@@ -14,7 +14,6 @@
  */
 
 #include <perfmon/perfmon.h>
-#include <perfmon/intel/core.h>
 
 enum
 {
@@ -74,10 +73,10 @@ PERFMON_REGISTER_BUNDLE (intel_core_frontend_bound_bw) = {
   .description =
     "Topdown FrontEnd-bound BandWidth - % uops from each uop fetch source",
   .source = "intel-core",
-  .events[0] = INTEL_CORE_E_IDQ_DSB_UOPS,  /* 0x0F */
-  .events[1] = INTEL_CORE_E_IDQ_MS_UOPS,   /* 0x0F */
-  .events[2] = INTEL_CORE_E_IDQ_MITE_UOPS, /* 0x0F */
-  .events[3] = INTEL_CORE_E_LSD_UOPS,	   /* 0x0F */
+  .events[0] = "IDQ.DSB_UOPS",	/* 0x0F */
+  .events[1] = "IDQ.MS_UOPS",	/* 0x0F */
+  .events[2] = "IDQ.MITE_UOPS", /* 0x0F */
+  .events[3] = "LSD.UOPS",	/* 0x0F */
   .n_events = 4,
   .format_fn = format_intel_frontend_bound_bw,
   .cpu_supports = frontend_bound_bw_cpu_supports,
