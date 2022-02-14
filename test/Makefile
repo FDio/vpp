@@ -1,4 +1,5 @@
 ASAN_OPTIONS?=verify_asan_link_order=0:detect_leaks=0:abort_on_error=1:unmap_shadow_on_exit=1:disable_coredump=0
+ASAN_OPTIONS+=detect_odr_violation=0
 export ASAN_OPTIONS
 
 .PHONY: verify-env
