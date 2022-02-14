@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import unittest
-from framework import tag_fixme_vpp_workers
+from framework import tag_fixme_vpp_workers, tag_fixme_asan
 from framework import VppTestCase, VppTestRunner
 
 from vpp_udp_encap import find_udp_encap, VppUdpEncap
@@ -433,6 +433,7 @@ class TestUDP(VppTestCase):
         self.vapi.session_enable_disable(is_enable=0)
         super(TestUDP, self).tearDown()
 
+    @tag_fixme_asan
     def test_udp_transfer(self):
         """ UDP echo client/server transfer """
 

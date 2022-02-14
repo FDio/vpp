@@ -8,7 +8,7 @@ from scapy.layers.l2 import Ether, ARP, Dot1Q
 
 from util import reassemble4
 from vpp_object import VppObject
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, tag_fixme_asan
 from vpp_ipip_tun_interface import VppIpIpTunInterface
 from template_ipsec import TemplateIpsec, IpsecTun4Tests, \
     IpsecTun4, mk_scapy_crypt_key, config_tun_params
@@ -180,6 +180,7 @@ class TestLinuxCP(VppTestCase):
         for phy in phys:
             phy.unconfig_ip4()
 
+    @tag_fixme_asan
     def test_linux_cp_tun(self):
         """ Linux CP TUN """
 
@@ -355,6 +356,7 @@ class TestLinuxCPIpsec(TemplateIpsec,
                            Raw(b'X' * payload_size))
                 for i in range(count)]
 
+    @tag_fixme_asan
     def test_linux_cp_ipsec4_tun(self):
         """ Linux CP Ipsec TUN """
 

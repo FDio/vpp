@@ -6,7 +6,7 @@ import os
 import subprocess
 import signal
 from config import config
-from framework import tag_fixme_vpp_workers
+from framework import tag_fixme_vpp_workers, tag_fixme_asan
 from framework import VppTestCase, VppTestRunner, Worker
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
@@ -271,6 +271,7 @@ class QUICEchoExtTransferTestCase(QUICEchoExtTestCase):
     """QUIC Echo External Transfer Test Case"""
     timeout = 60
 
+    @tag_fixme_asan
     def test_quic_ext_transfer(self):
         """QUIC external transfer"""
         self.server()
@@ -399,6 +400,7 @@ class QUICEchoExtServerStreamTestCase(QUICEchoExtTestCase):
     quic_setup = "serverstream"
     timeout = 60
 
+    @tag_fixme_asan
     def test_quic_ext_transfer_server_stream(self):
         """QUIC external server transfer"""
         self.server("TX=10M", "RX=0")
