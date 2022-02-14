@@ -19,10 +19,18 @@ add_vpp_plugin(perfmon
   SOURCES
   cli.c
   dispatch_wrapper.c
-  linux.c
   perfmon.c
-  intel/core.c
-  intel/uncore.c
+  perf_events.c
+  linux/events/events.c
+  intel/events/intel.c
+  intel/events/cascadelakex.c
+  intel/events/goldmont.c
+  intel/events/icelakex.c
+  intel/events/sandybridge.c
+  intel/events/skylakex.c
+  intel/events/snowridgex.c
+  intel/events/pseudo.c
+  linux/bundle/bundle.c
   intel/bundle/backend_bound_mem.c
   intel/bundle/backend_bound_core.c
   intel/bundle/inst_and_clock.c
