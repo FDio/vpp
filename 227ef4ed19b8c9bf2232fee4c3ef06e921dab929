@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a6fd213_c2b5a261",
+        "filename": "src/vcl/vcl_private.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-02-14T15:37:37Z",
+      "side": 1,
+      "message": "Let\u0027s add it to vcl_private.h under vcl_segment_detach",
+      "range": {
+        "startLine": 20,
+        "startChar": 12,
+        "endLine": 20,
+        "endChar": 34
+      },
+      "revId": "227ef4ed19b8c9bf2232fee4c3ef06e921dab929",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d4b0faef_d739ce60",
+        "filename": "src/vcl/vcl_private.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-02-14T15:37:37Z",
+      "side": 1,
+      "message": "Reformat comment. If it ends up multiline, have each new line start with \"*\"\n\nAlso, if we keep going with this approach, as opposed to waiting for HUP/ERR on the eventfd, we should probably move this to a separate function, since it\u0027s not related to vcl_mq_epoll_add_evfd. Something like vcl_mq_epoll_add_sapi.\n\nCan you try catching EPOLLHUP on the mq?",
+      "range": {
+        "startLine": 70,
+        "startChar": 2,
+        "endLine": 71,
+        "endChar": 54
+      },
+      "revId": "227ef4ed19b8c9bf2232fee4c3ef06e921dab929",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "43ce6361_ae392634",
+        "filename": "src/vcl/vcl_private.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 460,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-02-14T15:37:37Z",
+      "side": 1,
+      "message": "I guess reader lock is enough? Not that it matters much but you\u0027re only reading the hash table, not writing to it.",
+      "range": {
+        "startLine": 460,
+        "startChar": 2,
+        "endLine": 460,
+        "endChar": 25
+      },
+      "revId": "227ef4ed19b8c9bf2232fee4c3ef06e921dab929",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
