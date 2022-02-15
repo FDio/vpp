@@ -527,6 +527,7 @@ bfd_udp_add_session_internal (vlib_main_t * vm, bfd_udp_main_t * bum,
     }
   bfd_udp_session_t *bus = &bs->udp;
   clib_memset (bus, 0, sizeof (*bus));
+  bus->adj_index = ADJ_INDEX_INVALID;
   bfd_udp_key_t *key = &bus->key;
   bfd_udp_key_init (key, sw_if_index, local_addr, peer_addr);
   const bfd_session_t *tmp = bfd_lookup_session (bum, key);
@@ -745,6 +746,7 @@ bfd_udp_del_session_internal (vlib_main_t * vm, bfd_session_t * bs)
 {
   bfd_udp_main_t *bum = &bfd_udp_main;
   BFD_DBG ("free bfd-udp session, bs_idx=%d", bs->bs_idx);
+  bfd_session_stop (bum->bfd_main, bs);
   mhash_unset (&bum->bfd_session_idx_by_bfd_key, &bs->udp.key, NULL);
   adj_unlock (bs->udp.adj_index);
   switch (bs->transport)

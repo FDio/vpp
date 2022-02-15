@@ -114,9 +114,7 @@ void
 adj_bfd_notify (bfd_listen_event_e event,
                 const bfd_session_t *session)
 {
-    const bfd_udp_key_t *key;
     adj_bfd_delegate_t *abd;
-    fib_protocol_t fproto;
     adj_delegate_t *aed;
     adj_index_t ai;
 
@@ -129,19 +127,28 @@ adj_bfd_notify (bfd_listen_event_e event,
         return;
     }
 
-    key = &session->udp.key;
+    switch (session->transport)
+    {
+    case BFD_TRANSPORT_UDP4:
+    case BFD_TRANSPORT_UDP6:
+        /*
+         * pick up the same adjacency that the BFD session is using
+         * to send. The BFD session is holding a lock on this adj.
+         */
+        ai = session->udp.adj_index;
+        break;
+    default:
+        /*
+         * Don't know what adj this session uses
+         */
+        return;
+    }
 
-    fproto = (ip46_address_is_ip4 (&key->peer_addr) ?
-              FIB_PROTOCOL_IP4:
-              FIB_PROTOCOL_IP6);
-
-    /*
-     * find the adj that corresponds to the BFD session.
-     */
-    ai = adj_nbr_add_or_lock(fproto,
-                             fib_proto_to_link(fproto),
-                             &key->peer_addr,
-                             key->sw_if_index);
+    if (INDEX_INVALID == ai)
+    {
+        /* No associated Adjacency with the session */
+        return;
+    }
 
     switch (event)
     {
@@ -159,13 +166,6 @@ adj_bfd_notify (bfd_listen_event_e event,
         }
         else
         {
-            /*
-             * lock the adj. add the delegate.
-             * Locking the adj prevents it being removed and thus maintains
-             * the BFD derived states
-             */
-            adj_lock(ai);
-
             /*
              * allocate and init a new delegate struct
              */
@@ -213,14 +213,12 @@ adj_bfd_notify (bfd_listen_event_e event,
         {
             /*
              * has an associated BFD tracking delegate
-             * remove the BFD tracking delegate, update children, then
-             * unlock the adj
+             * remove the BFD tracking delegate, update children
              */
             adj_delegate_remove(ai, ADJ_DELEGATE_BFD);
             pool_put(abd_pool, abd);
 
             adj_bfd_update_walk(ai);
-            adj_unlock(ai);
         }
         /*
          * else
@@ -228,11 +226,6 @@ adj_bfd_notify (bfd_listen_event_e event,
          */
         break;
     }
-
-    /*
-     * unlock match of the add-or-lock at the start
-     */
-    adj_unlock(ai);
 }
 
 int

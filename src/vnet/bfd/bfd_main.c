@@ -466,6 +466,13 @@ bfd_session_start (bfd_main_t * bm, bfd_session_t * bs)
 }
 
 void
+bfd_session_stop (bfd_main_t *bm, bfd_session_t *bs)
+{
+  BFD_DBG ("\nStopping session: %U", format_bfd_session, bs);
+  bfd_notify_listeners (bm, BFD_LISTEN_EVENT_DELETE, bs);
+}
+
+void
 bfd_session_set_flags (vlib_main_t * vm, bfd_session_t * bs, u8 admin_up_down)
 {
   bfd_main_t *bm = &bfd_main;
@@ -1406,7 +1413,6 @@ bfd_put_session (bfd_main_t * bm, bfd_session_t * bs)
 
   vlib_log_info (bm->log_class, "delete session: %U",
 		 format_bfd_session_brief, bs);
-  bfd_notify_listeners (bm, BFD_LISTEN_EVENT_DELETE, bs);
   if (bs->auth.curr_key)
     {
       --bs->auth.curr_key->use_count;
