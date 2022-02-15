@@ -545,14 +545,18 @@ bfd_udp_add_session_internal (vlib_main_t * vm, bfd_udp_main_t * bum,
 	   &key->peer_addr, IP46_TYPE_ANY);
   vlib_log_info (bum->log_class, "create BFD session: %U",
 		 format_bfd_session, bs);
+  const ip46_address_t *peer =
+    (vnet_sw_interface_is_p2p (vnet_get_main (), key->sw_if_index) ?
+       &zero_addr :
+       &key->peer_addr);
   if (BFD_TRANSPORT_UDP4 == t)
     {
       bus->adj_index = adj_nbr_add_or_lock (FIB_PROTOCOL_IP4, VNET_LINK_IP4,
-					    &key->peer_addr,
-					    key->sw_if_index);
+					    peer, key->sw_if_index);
       BFD_DBG ("adj_nbr_add_or_lock(FIB_PROTOCOL_IP4, VNET_LINK_IP4, %U, %d) "
-	       "returns %d", format_ip46_address, &key->peer_addr,
-	       IP46_TYPE_ANY, key->sw_if_index, bus->adj_index);
+	       "returns %d",
+	       format_ip46_address, peer, IP46_TYPE_ANY, key->sw_if_index,
+	       bus->adj_index);
       ++bum->udp4_sessions_count;
       bfd_udp_update_stat_segment_entry (
 	bum->udp4_sessions_count_stat_seg_entry, bum->udp4_sessions_count);
@@ -567,11 +571,11 @@ bfd_udp_add_session_internal (vlib_main_t * vm, bfd_udp_main_t * bum,
   else
     {
       bus->adj_index = adj_nbr_add_or_lock (FIB_PROTOCOL_IP6, VNET_LINK_IP6,
-					    &key->peer_addr,
-					    key->sw_if_index);
+					    peer, key->sw_if_index);
       BFD_DBG ("adj_nbr_add_or_lock(FIB_PROTOCOL_IP6, VNET_LINK_IP6, %U, %d) "
-	       "returns %d", format_ip46_address, &key->peer_addr,
-	       IP46_TYPE_ANY, key->sw_if_index, bus->adj_index);
+	       "returns %d",
+	       format_ip46_address, peer, IP46_TYPE_ANY, key->sw_if_index,
+	       bus->adj_index);
       ++bum->udp6_sessions_count;
       bfd_udp_update_stat_segment_entry (
 	bum->udp6_sessions_count_stat_seg_entry, bum->udp6_sessions_count);
