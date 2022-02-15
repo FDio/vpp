@@ -12,30 +12,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * @file
- * @brief NAT formatting
- */
 
 #include <nat/nat44-ed/nat44_ed.h>
 #include <nat/nat44-ed/nat44_ed_inlines.h>
 
 u8 *
-format_nat_addr_and_port_alloc_alg (u8 * s, va_list * args)
+format_ed_session_kvp (u8 *s, va_list *args)
 {
-  u32 i = va_arg (*args, u32);
-  u8 *t = 0;
+  clib_bihash_kv_16_8_t *v = va_arg (*args, clib_bihash_kv_16_8_t *);
 
-  switch (i)
-    {
-#define _(v, N, s) case NAT_ADDR_AND_PORT_ALLOC_ALG_##N: t = (u8 *) s; break;
-      foreach_nat_addr_and_port_alloc_alg
-#undef _
-    default:
-      s = format (s, "unknown");
-      return s;
-    }
-  s = format (s, "%s", t);
+  u8 proto;
+  u16 r_port, l_port;
+  ip4_address_t l_addr, r_addr;
+  u32 fib_index;
+
+  split_ed_kv (v, &l_addr, &r_addr, &proto, &fib_index, &l_port, &r_port);
+  s = format (s,
+	      "local %U:%d remote %U:%d proto %U fib %d thread-index %u "
+	      "session-index %u",
+	      format_ip4_address, &l_addr, clib_net_to_host_u16 (l_port),
+	      format_ip4_address, &r_addr, clib_net_to_host_u16 (r_port),
+	      format_ip_protocol, proto, fib_index,
+	      ed_value_get_thread_index (v), ed_value_get_session_index (v));
+
   return s;
 }
 
@@ -189,6 +188,154 @@ format_snat_static_map_to_resolve (u8 * s, va_list * args)
 		vnm, m->sw_if_index, clib_net_to_host_u16 (m->e_port),
 		m->vrf_id);
 
+  return s;
+}
+
+u8 *
+format_nat_ed_translation_error (u8 *s, va_list *args)
+{
+  nat_translation_error_e e = va_arg (*args, nat_translation_error_e);
+
+  switch (e)
+    {
+    case NAT_ED_TRNSL_ERR_SUCCESS:
+      s = format (s, "success");
+      break;
+    case NAT_ED_TRNSL_ERR_TRANSLATION_FAILED:
+      s = format (s, "translation-failed");
+      break;
+    case NAT_ED_TRNSL_ERR_FLOW_MISMATCH:
+      s = format (s, "flow-mismatch");
+      break;
+    case NAT_ED_TRNSL_ERR_PACKET_TRUNCATED:
+      s = format (s, "packet-truncated");
+      break;
+    case NAT_ED_TRNSL_ERR_INNER_IP_CORRUPT:
+      s = format (s, "inner-ip-corrupted");
+      break;
+    case NAT_ED_TRNSL_ERR_INVALID_CSUM:
+      s = format (s, "invalid-checksum");
+      break;
+    }
+  return s;
+}
+
+u8 *
+format_nat_6t_flow (u8 *s, va_list *args)
+{
+  nat_6t_flow_t *f = va_arg (*args, nat_6t_flow_t *);
+
+  s = format (s, "match: %U ", format_nat_6t, &f->match);
+  int r = 0;
+  if (f->ops & NAT_FLOW_OP_SADDR_REWRITE)
+    {
+      s = format (s, "rewrite: saddr %U ", format_ip4_address,
+		  f->rewrite.saddr.as_u8);
+      r = 1;
+    }
+  if (f->ops & NAT_FLOW_OP_SPORT_REWRITE)
+    {
+      if (!r)
+	{
+	  s = format (s, "rewrite: ");
+	  r = 1;
+	}
+      s = format (s, "sport %u ", clib_net_to_host_u16 (f->rewrite.sport));
+    }
+  if (f->ops & NAT_FLOW_OP_DADDR_REWRITE)
+    {
+      if (!r)
+	{
+	  s = format (s, "rewrite: ");
+	  r = 1;
+	}
+      s = format (s, "daddr %U ", format_ip4_address, f->rewrite.daddr.as_u8);
+    }
+  if (f->ops & NAT_FLOW_OP_DPORT_REWRITE)
+    {
+      if (!r)
+	{
+	  s = format (s, "rewrite: ");
+	  r = 1;
+	}
+      s = format (s, "dport %u ", clib_net_to_host_u16 (f->rewrite.dport));
+    }
+  if (f->ops & NAT_FLOW_OP_ICMP_ID_REWRITE)
+    {
+      if (!r)
+	{
+	  s = format (s, "rewrite: ");
+	  r = 1;
+	}
+      s = format (s, "icmp-id %u ", clib_net_to_host_u16 (f->rewrite.icmp_id));
+    }
+  if (f->ops & NAT_FLOW_OP_TXFIB_REWRITE)
+    {
+      if (!r)
+	{
+	  s = format (s, "rewrite: ");
+	  r = 1;
+	}
+      s = format (s, "txfib %u ", f->rewrite.fib_index);
+    }
+  return s;
+}
+
+u8 *
+format_nat_6t (u8 *s, va_list *args)
+{
+  nat_6t_t *t = va_arg (*args, nat_6t_t *);
+
+  s = format (s, "saddr %U sport %u daddr %U dport %u proto %U fib_idx %u",
+	      format_ip4_address, t->saddr.as_u8,
+	      clib_net_to_host_u16 (t->sport), format_ip4_address,
+	      t->daddr.as_u8, clib_net_to_host_u16 (t->dport),
+	      format_ip_protocol, t->proto, t->fib_index);
+  return s;
+}
+
+u8 *
+format_nat44_ed_tcp_state (u8 *s, va_list *args)
+{
+  nat44_ed_tcp_state_e e = va_arg (*args, nat44_ed_tcp_state_e);
+  switch (e)
+    {
+    case NAT44_ED_TCP_STATE_CLOSED:
+      s = format (s, "closed");
+      break;
+    case NAT44_ED_TCP_STATE_SYN_I2O:
+      s = format (s, "SYN seen in in2out direction");
+      break;
+    case NAT44_ED_TCP_STATE_SYN_O2I:
+      s = format (s, "SYN seen in out2in direction");
+      break;
+    case NAT44_ED_TCP_STATE_ESTABLISHED:
+      s = format (s, "SYN seen in both directions/established");
+      break;
+    case NAT44_ED_TCP_STATE_FIN_I2O:
+      s = format (s, "FIN seen in in2out direction");
+      break;
+    case NAT44_ED_TCP_STATE_FIN_O2I:
+      s = format (s, "FIN seen in out2in direction");
+      break;
+    case NAT44_ED_TCP_STATE_RST_TRANS:
+      s = format (s, "RST seen/transitory timeout");
+      break;
+    case NAT44_ED_TCP_STATE_FIN_TRANS:
+      s = format (s, "FIN seen in both directions/transitory timeout");
+      break;
+    case NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_O2I:
+      s = format (s, "FIN seen in both directions/transitory timeout/session "
+		     "reopening in out2in direction");
+      break;
+    case NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_I2O:
+      s = format (s, "FIN seen in both directions/transitory timeout/session "
+		     "reopening in in2out direction");
+      break;
+    case NAT44_ED_TCP_N_STATE:
+      s = format (s, "BUG! unexpected N_STATE! BUG!");
+      break;
+    }
   return s;
 }
 
