@@ -8408,12 +8408,14 @@ fib_test_bfd (void)
     bfd_10_10_10_1.hop_type = BFD_HOP_TYPE_SINGLE;
     bfd_10_10_10_1.udp.key.sw_if_index = tm->hw[0]->sw_if_index;
 
-    adj_bfd_notify(BFD_LISTEN_EVENT_CREATE, &bfd_10_10_10_1);
-
     ai_10_10_10_1 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
                                         VNET_LINK_IP4,
                                         &nh_10_10_10_1,
                                         tm->hw[0]->sw_if_index);
+    bfd_10_10_10_1.udp.adj_index = ai_10_10_10_1;
+
+    adj_bfd_notify(BFD_LISTEN_EVENT_CREATE, &bfd_10_10_10_1);
+
     /*
      * whilst the BFD session is not signalled, the adj is up
      */
