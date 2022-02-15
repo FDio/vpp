@@ -119,6 +119,9 @@ endif()
 if(VPP_USE_LTO)
   check_c_compiler_flag("-Wno-stringop-overflow"
 		        compiler_flag_no_stringop_overflow)
+  if (compiler_flag_no_stringop_overflow)
+    add_compile_options(-Wno-stringop-overflow)
+  endif()
 endif()
 ##############################################################################
 # sanitizers
