@@ -23,6 +23,7 @@
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/ip6_hop_by_hop_packet.h>
+#include <vnet/tcp/tcp_packet.h>
 #include <vppinfra/lb_hash_hash.h>
 #include <vnet/hash/hash.h>
 

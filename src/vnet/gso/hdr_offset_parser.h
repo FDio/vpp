@@ -21,6 +21,7 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/udp/udp_local.h>
 #include <vnet/udp/udp_packet.h>
+#include <vnet/tcp/tcp_packet.h>
 #include <vnet/vnet.h>
 #include <vnet/vxlan/vxlan_packet.h>
 

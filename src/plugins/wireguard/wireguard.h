@@ -18,6 +18,7 @@
 #include <wireguard/wireguard_index_table.h>
 #include <wireguard/wireguard_messages.h>
 #include <wireguard/wireguard_timer.h>
+#include <vnet/buffer.h>
 
 #define WG_DEFAULT_DATA_SIZE 2048
 

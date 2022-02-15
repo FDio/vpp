@@ -37,6 +37,7 @@
 #include <vnet/devices/devices.h>
 #include <vnet/feature/feature.h>
 #include <vnet/udp/udp_packet.h>
+#include <vnet/tcp/tcp_packet.h>
 #include <vnet/interface/rx_queue_funcs.h>
 
 #include <vnet/devices/virtio/vhost_user.h>

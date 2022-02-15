@@ -18,6 +18,7 @@
 
 #include <vppinfra/clib.h>
 #include <vppinfra/pcap.h>
+#include <vnet/vnet.h>
 #include <vnet/l3_types.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>

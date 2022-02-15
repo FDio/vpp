@@ -24,6 +24,7 @@
 #include <vnet/feature/feature.h>
 #include <vnet/ip/ip4.h>
 #include <vnet/ip/ip6.h>
+#include <vnet/tcp/tcp_packet.h>
 
 extern vlib_node_registration_t mssc_ip4_in_node, mssc_ip4_out_node;
 extern vlib_node_registration_t mssc_ip6_in_node, mssc_ip6_out_node;

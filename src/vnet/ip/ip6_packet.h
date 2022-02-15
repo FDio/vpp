@@ -40,7 +40,7 @@
 #ifndef included_ip6_packet_h
 #define included_ip6_packet_h
 
-#include <vnet/tcp/tcp_packet.h>
+#include <vlib/vlib.h>
 #include <vnet/ip/ip4_packet.h>
 #include <stdbool.h>
 
@@ -421,59 +421,6 @@ ip6_copy_header (ip6_header_t * dst, const ip6_header_t * src)
   dst->src_address.as_uword[1] = src->src_address.as_uword[1];
   dst->dst_address.as_uword[0] = src->dst_address.as_uword[0];
   dst->dst_address.as_uword[1] = src->dst_address.as_uword[1];
-}
-
-always_inline void
-ip6_tcp_reply_x1 (ip6_header_t * ip0, tcp_header_t * tcp0)
-{
-  {
-    ip6_address_t src0, dst0;
-
-    src0 = ip0->src_address;
-    dst0 = ip0->dst_address;
-    ip0->src_address = dst0;
-    ip0->dst_address = src0;
-  }
-
-  {
-    u16 src0, dst0;
-
-    src0 = tcp0->src;
-    dst0 = tcp0->dst;
-    tcp0->src = dst0;
-    tcp0->dst = src0;
-  }
-}
-
-always_inline void
-ip6_tcp_reply_x2 (ip6_header_t * ip0, ip6_header_t * ip1,
-		  tcp_header_t * tcp0, tcp_header_t * tcp1)
-{
-  {
-    ip6_address_t src0, dst0, src1, dst1;
-
-    src0 = ip0->src_address;
-    src1 = ip1->src_address;
-    dst0 = ip0->dst_address;
-    dst1 = ip1->dst_address;
-    ip0->src_address = dst0;
-    ip1->src_address = dst1;
-    ip0->dst_address = src0;
-    ip1->dst_address = src1;
-  }
-
-  {
-    u16 src0, dst0, src1, dst1;
-
-    src0 = tcp0->src;
-    src1 = tcp1->src;
-    dst0 = tcp0->dst;
-    dst1 = tcp1->dst;
-    tcp0->src = dst0;
-    tcp1->src = dst1;
-    tcp0->dst = src0;
-    tcp1->dst = src1;
-  }
 }
 
 typedef CLIB_PACKED (struct {

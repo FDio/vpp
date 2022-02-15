@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include "pnat.h"
+#include <vnet/vnet.h>
 #include <pnat/pnat.api_enum.h>
 #include <pnat/pnat.api_types.h>
 #include <vlibmemory/api.h>

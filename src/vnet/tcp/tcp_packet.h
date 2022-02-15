@@ -16,7 +16,8 @@
 #ifndef included_tcp_packet_h
 #define included_tcp_packet_h
 
-#include <vnet/vnet.h>
+#include <vnet/ip/ip4_packet.h>
+#include <vnet/ip/ip6_packet.h>
 
 /* TCP flags bit 0 first. */
 #define foreach_tcp_flag                                \
@@ -184,6 +185,100 @@ typedef struct
 /* Modulo arithmetic for timestamps */
 #define timestamp_lt(_t1, _t2) ((i32)((_t1)-(_t2)) < 0)
 #define timestamp_leq(_t1, _t2) ((i32)((_t1)-(_t2)) <= 0)
+
+always_inline void
+ip4_tcp_reply_x1 (ip4_header_t *ip0, tcp_header_t *tcp0)
+{
+  u32 src0, dst0;
+
+  src0 = ip0->src_address.data_u32;
+  dst0 = ip0->dst_address.data_u32;
+  ip0->src_address.data_u32 = dst0;
+  ip0->dst_address.data_u32 = src0;
+
+  src0 = tcp0->src;
+  dst0 = tcp0->dst;
+  tcp0->src = dst0;
+  tcp0->dst = src0;
+}
+
+always_inline void
+ip4_tcp_reply_x2 (ip4_header_t *ip0, ip4_header_t *ip1, tcp_header_t *tcp0,
+		  tcp_header_t *tcp1)
+{
+  u32 src0, dst0, src1, dst1;
+
+  src0 = ip0->src_address.data_u32;
+  src1 = ip1->src_address.data_u32;
+  dst0 = ip0->dst_address.data_u32;
+  dst1 = ip1->dst_address.data_u32;
+  ip0->src_address.data_u32 = dst0;
+  ip1->src_address.data_u32 = dst1;
+  ip0->dst_address.data_u32 = src0;
+  ip1->dst_address.data_u32 = src1;
+
+  src0 = tcp0->src;
+  src1 = tcp1->src;
+  dst0 = tcp0->dst;
+  dst1 = tcp1->dst;
+  tcp0->src = dst0;
+  tcp1->src = dst1;
+  tcp0->dst = src0;
+  tcp1->dst = src1;
+}
+
+always_inline void
+ip6_tcp_reply_x1 (ip6_header_t *ip0, tcp_header_t *tcp0)
+{
+  {
+    ip6_address_t src0, dst0;
+
+    src0 = ip0->src_address;
+    dst0 = ip0->dst_address;
+    ip0->src_address = dst0;
+    ip0->dst_address = src0;
+  }
+
+  {
+    u16 src0, dst0;
+
+    src0 = tcp0->src;
+    dst0 = tcp0->dst;
+    tcp0->src = dst0;
+    tcp0->dst = src0;
+  }
+}
+
+always_inline void
+ip6_tcp_reply_x2 (ip6_header_t *ip0, ip6_header_t *ip1, tcp_header_t *tcp0,
+		  tcp_header_t *tcp1)
+{
+  {
+    ip6_address_t src0, dst0, src1, dst1;
+
+    src0 = ip0->src_address;
+    src1 = ip1->src_address;
+    dst0 = ip0->dst_address;
+    dst1 = ip1->dst_address;
+    ip0->src_address = dst0;
+    ip1->src_address = dst1;
+    ip0->dst_address = src0;
+    ip1->dst_address = src1;
+  }
+
+  {
+    u16 src0, dst0, src1, dst1;
+
+    src0 = tcp0->src;
+    src1 = tcp1->src;
+    dst0 = tcp0->dst;
+    dst1 = tcp1->dst;
+    tcp0->src = dst0;
+    tcp1->src = dst1;
+    tcp0->dst = src0;
+    tcp1->dst = src1;
+  }
+}
 
 /**
  * Parse TCP header options.

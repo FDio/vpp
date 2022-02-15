@@ -20,6 +20,7 @@
 #include <pnat/pnat.api_enum.h>
 #include <vnet/feature/feature.h>
 #include <vnet/udp/udp_packet.h>
+#include <vnet/tcp/tcp_packet.h>
 #include <vnet/ip/format.h>
 
 /* PNAT next-nodes */

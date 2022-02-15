@@ -42,6 +42,7 @@
 
 #include <vnet/ip/ip_flow_hash.h>
 #include <vnet/ip/ip4_packet.h>
+#include <vnet/tcp/tcp_packet.h>
 
 #define IP_DF 0x4000		/* don't fragment */
 

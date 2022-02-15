@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <vnet/vnet.h>
 #include <vnet/ip6-nd/rd_cp.h>
 
 #include <vlibapi/api.h>

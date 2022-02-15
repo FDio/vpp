@@ -22,6 +22,7 @@
 #include <vnet/devices/virtio/vhost_std.h>
 #include <vnet/devices/virtio/virtio_buffering.h>
 #include <vnet/gso/gro.h>
+#include <vnet/interface.h>
 
 #define foreach_virtio_if_flag		\
   _(0, ADMIN_UP, "admin-up")		\

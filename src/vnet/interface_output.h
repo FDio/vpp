@@ -41,6 +41,7 @@
 #define __INTERFACE_INLINES_H__
 
 #include <vnet/vnet.h>
+#include <vnet/tcp/tcp_packet.h>
 
 static_always_inline void
 vnet_calc_ip4_checksums (vlib_main_t *vm, vlib_buffer_t *b, ip4_header_t *ip4,

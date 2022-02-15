@@ -31,6 +31,7 @@
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/udp/udp_packet.h>
+#include <vnet/tcp/tcp_packet.h>
 #include <vnet/devices/virtio/virtio.h>
 #include <vnet/devices/virtio/virtio_inline.h>
 
