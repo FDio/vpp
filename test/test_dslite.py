@@ -90,9 +90,6 @@ class TestDSlite(VppTestCase):
 
     def test_dslite(self):
         """ Test DS-Lite """
-        nat_config = self.vapi.nat_show_config()
-        self.assertEqual(0, nat_config.dslite_ce)
-
         self.vapi.dslite_add_del_pool_addr_range(start_addr=self.nat_addr,
                                                  end_addr=self.nat_addr,
                                                  is_add=1)
@@ -265,11 +262,6 @@ class TestDSliteCE(VppTestCase):
 
     def test_dslite_ce(self):
         """ Test DS-Lite CE """
-
-        # TODO: add message to retrieve dslite config
-        # nat_config = self.vapi.nat_show_config()
-        # self.assertEqual(1, nat_config.dslite_ce)
-
         b4_ip4 = '192.0.0.2'
         b4_ip6 = '2001:db8:62aa::375e:f4c1:1'
         self.vapi.dslite_set_b4_addr(ip4_addr=b4_ip4, ip6_addr=b4_ip6)

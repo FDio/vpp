@@ -56,7 +56,8 @@ class TestNAT44EDOutput(VppTestCase):
     def test_static_dynamic(self):
         """ Create static mapping which matches existing dynamic mapping """
 
-        old_timeouts = self.vapi.nat_get_timeouts()
+        config = self.vapi.nat44_show_running_config()
+        old_timeouts = config.timeouts
         new_transitory = 2
         self.vapi.nat_set_timeouts(
             udp=old_timeouts.udp,
@@ -80,9 +81,9 @@ class TestNAT44EDOutput(VppTestCase):
         self.vapi.nat44_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=VppEnum.vl_api_nat_config_flags_t.NAT_IS_INSIDE, is_add=1)
-        self.vapi.nat44_interface_add_del_output_feature(
-            is_add=1,
-            sw_if_index=self.pg1.sw_if_index)
+        self.vapi.nat44_ed_add_del_output_interface(
+            sw_if_index=self.pg1.sw_if_index,
+            is_add=1)
 
         thread_index = get_nat44_ed_in2out_worker_index(
             local_host, self.vpp_worker_count)
