@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "43c73901_8473509a",
+        "filename": "src/vcl/vcl_private.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-02-15T19:58:41Z",
+      "side": 1,
+      "message": "_api_sock",
+      "range": {
+        "startLine": 46,
+        "startChar": 0,
+        "endLine": 46,
+        "endChar": 21
+      },
+      "revId": "bd857424f8e24e220251067701189915e28b78a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ce52e7c5_38b8a0a1",
+        "filename": "src/vcl/vcl_private.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-02-15T19:58:41Z",
+      "side": 1,
+      "message": "Was about to suggest to call this from the caller of vcl_mq_epoll_add_evfd but for now we can leave it here.",
+      "range": {
+        "startLine": 86,
+        "startChar": 6,
+        "endLine": 86,
+        "endChar": 27
+      },
+      "revId": "bd857424f8e24e220251067701189915e28b78a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
