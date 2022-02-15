@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 /**
  * @brief The NAT inline functions
  */
@@ -124,13 +125,13 @@ nat_get_icmp_session_lookup_values (vlib_buffer_t *b, ip4_header_t *ip0,
 				    u16 *lookup_dport, u8 *lookup_protocol)
 {
   icmp46_header_t *icmp0;
-  icmp_echo_header_t *echo0, *inner_echo0 = 0;
+  nat_icmp_echo_header_t *echo0, *inner_echo0 = 0;
   ip4_header_t *inner_ip0 = 0;
   void *l4_header = 0;
   icmp46_header_t *inner_icmp0;
 
   icmp0 = (icmp46_header_t *) ip4_next_header (ip0);
-  echo0 = (icmp_echo_header_t *) (icmp0 + 1);
+  echo0 = (nat_icmp_echo_header_t *) (icmp0 + 1);
 
   // avoid warning about unused variables in caller by setting to bogus values
   *lookup_sport = 0;
@@ -156,14 +157,14 @@ nat_get_icmp_session_lookup_values (vlib_buffer_t *b, ip4_header_t *ip0,
 	{
 	case IP_PROTOCOL_ICMP:
 	  inner_icmp0 = (icmp46_header_t *) l4_header;
-	  inner_echo0 = (icmp_echo_header_t *) (inner_icmp0 + 1);
+	  inner_echo0 = (nat_icmp_echo_header_t *) (inner_icmp0 + 1);
 	  *lookup_sport = inner_echo0->identifier;
 	  *lookup_dport = inner_echo0->identifier;
 	  break;
 	case IP_PROTOCOL_UDP:
 	case IP_PROTOCOL_TCP:
-	  *lookup_sport = ((tcp_udp_header_t *) l4_header)->dst_port;
-	  *lookup_dport = ((tcp_udp_header_t *) l4_header)->src_port;
+	  *lookup_sport = ((nat_tcp_udp_header_t *) l4_header)->dst_port;
+	  *lookup_dport = ((nat_tcp_udp_header_t *) l4_header)->src_port;
 	  break;
 	default:
 	  return NAT_IN2OUT_ED_ERROR_UNSUPPORTED_PROTOCOL;

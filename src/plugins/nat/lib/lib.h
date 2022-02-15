@@ -21,6 +21,17 @@
 
 #include <vlibapi/api.h>
 
+typedef struct
+{
+  u16 identifier;
+  u16 sequence;
+} nat_icmp_echo_header_t;
+
+typedef struct
+{
+  u16 src_port, dst_port;
+} nat_tcp_udp_header_t;
+
 /* NAT API Configuration flags */
 #define foreach_nat_config_flag \
   _(0x01, IS_TWICE_NAT)         \

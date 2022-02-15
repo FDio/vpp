@@ -1201,8 +1201,9 @@ class TestNAT44ED(VppTestCase):
         self.vapi.nat44_forwarding_enable_disable(enable=1)
         self.nat_add_address(self.nat_addr)
 
-        self.vapi.nat44_interface_add_del_output_feature(
-            sw_if_index=self.pg1.sw_if_index, is_add=1,)
+        self.vapi.nat44_ed_add_del_output_interface(
+            sw_if_index=self.pg1.sw_if_index,
+            is_add=1)
 
         # session initiated from service host - translate
         pkts = self.create_stream_in(self.pg0, self.pg1)
@@ -1274,8 +1275,9 @@ class TestNAT44ED(VppTestCase):
         self.nat_add_address(self.nat_addr)
 
         self.nat_add_outside_interface(self.pg0)
-        self.vapi.nat44_interface_add_del_output_feature(
-            sw_if_index=self.pg1.sw_if_index, is_add=1)
+        self.vapi.nat44_ed_add_del_output_interface(
+            sw_if_index=self.pg1.sw_if_index,
+            is_add=1)
 
         # in2out
         pkts = self.create_stream_in(self.pg0, self.pg1)
@@ -1790,7 +1792,7 @@ class TestNAT44ED(VppTestCase):
 
         self.nat_add_address(self.nat_addr)
         flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_output_feature(
+        self.vapi.nat44_ed_add_del_output_interface(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
         self.vapi.nat44_interface_add_del_feature(
@@ -2519,9 +2521,9 @@ class TestNAT44EDMW(TestNAT44ED):
 
     def test_show_max_translations(self):
         """ NAT44ED API test - max translations per thread """
-        nat_config = self.vapi.nat_show_config_2()
+        config = self.vapi.nat44_show_running_config()
         self.assertEqual(self.max_sessions,
-                         nat_config.max_translations_per_thread)
+                         config.sessions)
 
     def test_lru_cleanup(self):
         """ NAT44ED LRU cleanup algorithm """
@@ -3252,7 +3254,8 @@ class TestNAT44EDMW(TestNAT44ED):
 
     def test_tcp_close(self):
         """ NAT44ED Close TCP session from inside network - output feature """
-        old_timeouts = self.vapi.nat_get_timeouts()
+        config = self.vapi.nat44_show_running_config()
+        old_timeouts = config.timeouts
         new_transitory = 2
         self.vapi.nat_set_timeouts(
             udp=old_timeouts.udp,
@@ -3802,9 +3805,9 @@ class TestNAT44EDMW(TestNAT44ED):
         new_vrf_id = 22
 
         self.nat_add_address(self.nat_addr)
-        self.vapi.nat44_interface_add_del_output_feature(
-            sw_if_index=self.pg8.sw_if_index, is_add=1)
-
+        self.vapi.nat44_ed_add_del_output_interface(
+            sw_if_index=self.pg8.sw_if_index,
+            is_add=1)
         try:
             self.configure_ip4_interface(self.pg7, table_id=new_vrf_id)
             self.configure_ip4_interface(self.pg8, table_id=new_vrf_id)

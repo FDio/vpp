@@ -12,10 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * @file nat.c
- * NAT plugin global declarations
- */
+
 #ifndef __included_nat44_ed_h__
 #define __included_nat44_ed_h__
 
@@ -65,10 +62,7 @@ typedef struct
 {
   u32 inside_vrf;
   u32 outside_vrf;
-
-  /* maximum number of sessions */
   u32 sessions;
-
 } nat44_config_t;
 
 typedef enum
@@ -91,19 +85,6 @@ typedef struct
   u32 next_index;
   u32 arc_next_index;
 } nat_pre_trace_t;
-
-/* External address and port allocation modes */
-#define foreach_nat_addr_and_port_alloc_alg \
-  _(0, DEFAULT, "default")         \
-  _(1, MAPE, "map-e")              \
-  _(2, RANGE, "port-range")
-
-typedef enum
-{
-#define _(v, N, s) NAT_ADDR_AND_PORT_ALLOC_ALG_##N = v,
-  foreach_nat_addr_and_port_alloc_alg
-#undef _
-} nat_addr_and_port_alloc_alg_t;
 
 #define foreach_nat_in2out_ed_error                                           \
   _ (UNSUPPORTED_PROTOCOL, "unsupported protocol")                            \
@@ -176,6 +157,13 @@ typedef enum
   NAT44_ED_TCP_N_STATE,
 } nat44_ed_tcp_state_e;
 
+format_function_t format_ed_session_kvp;
+format_function_t format_snat_session;
+format_function_t format_snat_static_mapping;
+format_function_t format_snat_static_map_to_resolve;
+format_function_t format_nat_ed_translation_error;
+format_function_t format_nat_6t_flow;
+format_function_t format_nat_6t;
 format_function_t format_nat44_ed_tcp_state;
 
 /* Session flags */
@@ -551,18 +539,6 @@ typedef struct snat_main_s
   /* first interface address should be auto-added */
   snat_address_resolve_t *addr_to_resolve;
 
-  /* Address and port allocation function */
-  nat_alloc_out_addr_and_port_function_t *alloc_addr_and_port;
-  /* Address and port allocation type */
-  nat_addr_and_port_alloc_alg_t addr_and_port_alloc_alg;
-  /* Port set parameters (MAP-E) */
-  u8 psid_offset;
-  u8 psid_length;
-  u16 psid;
-  /* Port range parameters */
-  u16 start_port;
-  u16 end_port;
-
   /* vector of fibs */
   nat_fib_t *fibs;
 
@@ -583,12 +559,7 @@ typedef struct snat_main_s
   u32 fq_in2out_output_index;
   u32 fq_out2in_index;
 
-  u32 out2in_node_index;
-  u32 in2out_node_index;
-  u32 in2out_output_node_index;
-
   nat44_config_t rconfig;
-  //nat44_config_t cconfig;
 
   /* If forwarding is enabled */
   u8 forwarding_enabled;
@@ -657,9 +628,7 @@ typedef struct snat_main_s
   u8 log_level;
 
   /* convenience */
-  api_main_t *api_main;
   ip4_main_t *ip4_main;
-  ip_lookup_main_t *ip4_lookup_main;
 
   fib_source_t fib_src_hi;
   fib_source_t fib_src_low;
@@ -696,32 +665,25 @@ typedef struct
   uword *cached_presence_by_ip4_address;
 } snat_runtime_t;
 
+/*
+ * Why is this here? Because we don't need to touch this layer to
+ * simply reply to an icmp. We need to change id to a unique
+ * value to NAT an echo request/reply.
+ */
+
 extern snat_main_t snat_main;
 
-// nat pre ed next_node feature classification
 extern vlib_node_registration_t nat_default_node;
 extern vlib_node_registration_t nat_pre_in2out_node;
 extern vlib_node_registration_t nat_pre_out2in_node;
 
-extern vlib_node_registration_t snat_in2out_node;
-extern vlib_node_registration_t snat_in2out_output_node;
-extern vlib_node_registration_t snat_out2in_node;
-extern vlib_node_registration_t snat_in2out_worker_handoff_node;
-extern vlib_node_registration_t snat_in2out_output_worker_handoff_node;
-extern vlib_node_registration_t snat_out2in_worker_handoff_node;
 extern vlib_node_registration_t nat44_ed_in2out_node;
 extern vlib_node_registration_t nat44_ed_in2out_output_node;
 extern vlib_node_registration_t nat44_ed_out2in_node;
 
-extern fib_source_t nat_fib_src_hi;
-extern fib_source_t nat_fib_src_low;
-
-/* format functions */
-format_function_t format_snat_static_mapping;
-format_function_t format_snat_static_map_to_resolve;
-format_function_t format_snat_session;
-format_function_t format_static_mapping_key;
-format_function_t format_nat_addr_and_port_alloc_alg;
+extern vlib_node_registration_t snat_in2out_worker_handoff_node;
+extern vlib_node_registration_t snat_in2out_output_worker_handoff_node;
+extern vlib_node_registration_t snat_out2in_worker_handoff_node;
 
 /** \brief Check if SNAT session is created from static mapping.
     @param s SNAT session
@@ -861,13 +823,10 @@ is_sm_switch_address (u32 f)
   return (f & NAT_SM_FLAG_SWITCH_ADDRESS);
 }
 
-/* logging */
 #define nat_log_err(...) \
   vlib_log(VLIB_LOG_LEVEL_ERR, snat_main.log_class, __VA_ARGS__)
 #define nat_log_warn(...) \
   vlib_log(VLIB_LOG_LEVEL_WARNING, snat_main.log_class, __VA_ARGS__)
-#define nat_log_notice(...) \
-  vlib_log(VLIB_LOG_LEVEL_NOTICE, snat_main.log_class, __VA_ARGS__)
 #define nat_log_info(...) \
   vlib_log(VLIB_LOG_LEVEL_INFO, snat_main.log_class, __VA_ARGS__)
 #define nat_log_debug(...)\
@@ -977,28 +936,7 @@ int snat_static_mapping_match (
   lb_nat_type_t *lb, ip4_address_t *ext_host_addr, u8 *is_identity_nat,
   snat_static_mapping_t **out);
 
-/*
- * Why is this here? Because we don't need to touch this layer to
- * simply reply to an icmp. We need to change id to a unique
- * value to NAT an echo request/reply.
- */
-
-typedef struct
-{
-  u16 identifier;
-  u16 sequence;
-} icmp_echo_header_t;
-
-typedef struct
-{
-  u16 src_port, dst_port;
-} tcp_udp_header_t;
-
 u32 get_thread_idx_by_port (u16 e_port);
-
-u8 *format_static_mapping_kvp (u8 *s, va_list *args);
-
-u8 *format_session_kvp (u8 *s, va_list *args);
 
 u32 nat_calc_bihash_buckets (u32 n_elts);
 
@@ -1008,29 +946,7 @@ void nat44_ed_sessions_clear ();
 
 int nat44_ed_set_frame_queue_nelts (u32 frame_queue_nelts);
 
-typedef enum
-{
-  NAT_ED_TRNSL_ERR_SUCCESS = 0,
-  NAT_ED_TRNSL_ERR_TRANSLATION_FAILED = 1,
-  NAT_ED_TRNSL_ERR_FLOW_MISMATCH = 2,
-  NAT_ED_TRNSL_ERR_PACKET_TRUNCATED = 3,
-  NAT_ED_TRNSL_ERR_INNER_IP_CORRUPT = 4,
-  NAT_ED_TRNSL_ERR_INVALID_CSUM = 5,
-} nat_translation_error_e;
-
-nat_translation_error_e nat_6t_flow_buf_translate_i2o (
-  vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
-  nat_6t_flow_t *f, ip_protocol_t proto, int is_output_feature);
-
-nat_translation_error_e nat_6t_flow_buf_translate_o2i (
-  vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
-  nat_6t_flow_t *f, ip_protocol_t proto, int is_output_feature);
-
 void nat_6t_l3_l4_csum_calc (nat_6t_flow_t *f);
-
-format_function_t format_nat_ed_translation_error;
-format_function_t format_nat_6t_flow;
-format_function_t format_ed_session_kvp;
 
 snat_static_mapping_t *nat44_ed_sm_i2o_lookup (snat_main_t *sm,
 					       ip4_address_t addr, u16 port,
@@ -1051,6 +967,24 @@ void nat_syslog_nat44_sdel (u32 ssubix, u32 sfibix, ip4_address_t *isaddr,
 			    ip4_address_t *xsaddr, u16 xsport,
 			    ip4_address_t *xdaddr, u16 xdport, u8 proto,
 			    u8 is_twicenat);
+
+typedef enum
+{
+  NAT_ED_TRNSL_ERR_SUCCESS = 0,
+  NAT_ED_TRNSL_ERR_TRANSLATION_FAILED = 1,
+  NAT_ED_TRNSL_ERR_FLOW_MISMATCH = 2,
+  NAT_ED_TRNSL_ERR_PACKET_TRUNCATED = 3,
+  NAT_ED_TRNSL_ERR_INNER_IP_CORRUPT = 4,
+  NAT_ED_TRNSL_ERR_INVALID_CSUM = 5,
+} nat_translation_error_e;
+
+nat_translation_error_e nat_6t_flow_buf_translate_i2o (
+  vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
+  nat_6t_flow_t *f, ip_protocol_t proto, int is_output_feature);
+
+nat_translation_error_e nat_6t_flow_buf_translate_o2i (
+  vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
+  nat_6t_flow_t *f, ip_protocol_t proto, int is_output_feature);
 
 #endif /* __included_nat44_ed_h__ */
 /*

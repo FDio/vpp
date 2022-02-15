@@ -1,6 +1,4 @@
 /*
- * snat.c - simple nat plugin
- *
  * Copyright (c) 2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -78,7 +76,6 @@ static_always_inline void nat_validate_interface_counters (snat_main_t *sm,
     }                                                                         \
   while (0)
 
-/* Hook up input features */
 VNET_FEATURE_INIT (nat_pre_in2out, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat-pre-in2out",
@@ -92,6 +89,18 @@ VNET_FEATURE_INIT (nat_pre_out2in, static) = {
                                "ip4-dhcp-client-detect",
 			       "ip4-sv-reassembly-feature"),
 };
+VNET_FEATURE_INIT (ip4_nat44_ed_classify, static) = {
+  .arc_name = "ip4-unicast",
+  .node_name = "nat44-ed-classify",
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa",
+			       "ip4-sv-reassembly-feature"),
+};
+VNET_FEATURE_INIT (ip4_nat_handoff_classify, static) = {
+  .arc_name = "ip4-unicast",
+  .node_name = "nat44-handoff-classify",
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa",
+			       "ip4-sv-reassembly-feature"),
+};
 VNET_FEATURE_INIT (snat_in2out_worker_handoff, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-in2out-worker-handoff",
@@ -101,17 +110,6 @@ VNET_FEATURE_INIT (snat_out2in_worker_handoff, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-out2in-worker-handoff",
   .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa",
-                               "ip4-dhcp-client-detect"),
-};
-VNET_FEATURE_INIT (ip4_snat_in2out, static) = {
-  .arc_name = "ip4-unicast",
-  .node_name = "nat44-in2out",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa","ip4-sv-reassembly-feature"),
-};
-VNET_FEATURE_INIT (ip4_snat_out2in, static) = {
-  .arc_name = "ip4-unicast",
-  .node_name = "nat44-out2in",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa","ip4-sv-reassembly-feature",
                                "ip4-dhcp-client-detect"),
 };
 VNET_FEATURE_INIT (ip4_nat44_ed_in2out, static) = {
@@ -125,44 +123,15 @@ VNET_FEATURE_INIT (ip4_nat44_ed_out2in, static) = {
   .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa","ip4-sv-reassembly-feature",
                                "ip4-dhcp-client-detect"),
 };
-VNET_FEATURE_INIT (ip4_nat44_ed_classify, static) = {
-  .arc_name = "ip4-unicast",
-  .node_name = "nat44-ed-classify",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa","ip4-sv-reassembly-feature"),
-};
-VNET_FEATURE_INIT (ip4_nat_handoff_classify, static) = {
-  .arc_name = "ip4-unicast",
-  .node_name = "nat44-handoff-classify",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa","ip4-sv-reassembly-feature"),
-};
-VNET_FEATURE_INIT (ip4_snat_in2out_fast, static) = {
-  .arc_name = "ip4-unicast",
-  .node_name = "nat44-in2out-fast",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa","ip4-sv-reassembly-feature"),
-};
-VNET_FEATURE_INIT (ip4_snat_out2in_fast, static) = {
-  .arc_name = "ip4-unicast",
-  .node_name = "nat44-out2in-fast",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa","ip4-sv-reassembly-feature",
-                               "ip4-dhcp-client-detect"),
-};
-
-/* Hook up output features */
-VNET_FEATURE_INIT (ip4_snat_in2out_output, static) = {
+VNET_FEATURE_INIT (nat_pre_in2out_output, static) = {
   .arc_name = "ip4-output",
-  .node_name = "nat44-in2out-output",
+  .node_name = "nat-pre-in2out-output",
   .runs_after = VNET_FEATURES ("ip4-sv-reassembly-output-feature"),
   .runs_before = VNET_FEATURES ("acl-plugin-out-ip4-fa"),
 };
 VNET_FEATURE_INIT (ip4_snat_in2out_output_worker_handoff, static) = {
   .arc_name = "ip4-output",
   .node_name = "nat44-in2out-output-worker-handoff",
-  .runs_after = VNET_FEATURES ("ip4-sv-reassembly-output-feature"),
-  .runs_before = VNET_FEATURES ("acl-plugin-out-ip4-fa"),
-};
-VNET_FEATURE_INIT (nat_pre_in2out_output, static) = {
-  .arc_name = "ip4-output",
-  .node_name = "nat-pre-in2out-output",
   .runs_after = VNET_FEATURES ("ip4-sv-reassembly-output-feature"),
   .runs_before = VNET_FEATURES ("acl-plugin-out-ip4-fa"),
 };
@@ -192,28 +161,6 @@ static int nat44_ed_del_static_mapping_internal (ip4_address_t l_addr,
 						 u32 vrf_id, u32 flags);
 
 u32 nat_calc_bihash_buckets (u32 n_elts);
-
-u8 *
-format_ed_session_kvp (u8 * s, va_list * args)
-{
-  clib_bihash_kv_16_8_t *v = va_arg (*args, clib_bihash_kv_16_8_t *);
-
-  u8 proto;
-  u16 r_port, l_port;
-  ip4_address_t l_addr, r_addr;
-  u32 fib_index;
-
-  split_ed_kv (v, &l_addr, &r_addr, &proto, &fib_index, &l_port, &r_port);
-  s = format (s,
-	      "local %U:%d remote %U:%d proto %U fib %d thread-index %u "
-	      "session-index %u",
-	      format_ip4_address, &l_addr, clib_net_to_host_u16 (l_port),
-	      format_ip4_address, &r_addr, clib_net_to_host_u16 (r_port),
-	      format_ip_protocol, proto, fib_index,
-	      ed_value_get_thread_index (v), ed_value_get_session_index (v));
-
-  return s;
-}
 
 static_always_inline int
 nat44_ed_sm_i2o_add (snat_main_t *sm, snat_static_mapping_t *m,
@@ -2068,6 +2015,18 @@ nat44_ed_set_frame_queue_nelts (u32 frame_queue_nelts)
 {
   fail_if_enabled ();
   snat_main_t *sm = &snat_main;
+
+  if ((sm->fq_in2out_index != ~0) || (sm->fq_out2in_index != ~0) ||
+      (sm->fq_in2out_output_index != ~0))
+    {
+      // frame queu nelts can be set only before first
+      // call to nat44_plugin_enable after that it
+      // doesn't make sense
+      nat_log_err ("Frame queue was already initialized. "
+		   "Change is not possible");
+      return 1;
+    }
+
   sm->frame_queue_nelts = frame_queue_nelts;
   return 0;
 }
@@ -2211,21 +2170,6 @@ nat_ip_table_add_del (vnet_main_t * vnm, u32 table_id, u32 is_add)
 
 VNET_IP_TABLE_ADD_DEL_FUNCTION (nat_ip_table_add_del);
 
-void
-nat44_set_node_indexes (snat_main_t * sm, vlib_main_t * vm)
-{
-  vlib_node_t *node;
-
-  node = vlib_get_node_by_name (vm, (u8 *) "nat44-ed-out2in");
-  sm->out2in_node_index = node->index;
-
-  node = vlib_get_node_by_name (vm, (u8 *) "nat44-ed-in2out");
-  sm->in2out_node_index = node->index;
-
-  node = vlib_get_node_by_name (vm, (u8 *) "nat44-ed-in2out-output");
-  sm->in2out_output_node_index = node->index;
-}
-
 #define nat_validate_simple_counter(c, i)                                     \
   do                                                                          \
     {                                                                         \
@@ -2273,8 +2217,6 @@ nat_init (vlib_main_t * vm)
   sm->vnet_main = vnet_get_main ();
   // convenience
   sm->ip4_main = &ip4_main;
-  sm->api_main = vlibapi_get_main ();
-  sm->ip4_lookup_main = &ip4_main.lookup_main;
 
   // frame queue indices used for handoff
   sm->fq_out2in_index = ~0;
@@ -2282,8 +2224,6 @@ nat_init (vlib_main_t * vm)
   sm->fq_in2out_output_index = ~0;
 
   sm->log_level = NAT_LOG_ERROR;
-
-  nat44_set_node_indexes (sm, vm);
 
   sm->log_class = vlib_log_register_class ("nat", 0);
   nat_ipfix_logging_init (vm);
@@ -2405,20 +2345,26 @@ nat44_plugin_enable (nat44_config_t c)
 
   if (sm->num_workers > 1)
     {
+      vlib_main_t *vm = vlib_get_main ();
+      vlib_node_t *node;
+
       if (sm->fq_in2out_index == ~0)
 	{
-	  sm->fq_in2out_index = vlib_frame_queue_main_init (
-	    sm->in2out_node_index, sm->frame_queue_nelts);
+	  node = vlib_get_node_by_name (vm, (u8 *) "nat44-ed-in2out");
+	  sm->fq_in2out_index =
+	    vlib_frame_queue_main_init (node->index, sm->frame_queue_nelts);
 	}
       if (sm->fq_out2in_index == ~0)
 	{
-	  sm->fq_out2in_index = vlib_frame_queue_main_init (
-	    sm->out2in_node_index, sm->frame_queue_nelts);
+	  node = vlib_get_node_by_name (vm, (u8 *) "nat44-ed-out2in");
+	  sm->fq_out2in_index =
+	    vlib_frame_queue_main_init (node->index, sm->frame_queue_nelts);
 	}
       if (sm->fq_in2out_output_index == ~0)
 	{
-	  sm->fq_in2out_output_index = vlib_frame_queue_main_init (
-	    sm->in2out_output_node_index, sm->frame_queue_nelts);
+	  node = vlib_get_node_by_name (vm, (u8 *) "nat44-ed-in2out-output");
+	  sm->fq_in2out_output_index =
+	    vlib_frame_queue_main_init (node->index, sm->frame_queue_nelts);
 	}
     }
 
@@ -3037,7 +2983,7 @@ nat44_ed_get_out2in_worker_index (vlib_buffer_t *b, ip4_header_t *ip,
     {
       udp_header_t *udp = ip4_next_header (ip);
       icmp46_header_t *icmp = (icmp46_header_t *) udp;
-      icmp_echo_header_t *echo = (icmp_echo_header_t *) (icmp + 1);
+      nat_icmp_echo_header_t *echo = (nat_icmp_echo_header_t *) (icmp + 1);
       if (!icmp_type_is_error_message
 	  (vnet_buffer (b)->ip.reass.icmp_type_or_tcp_flags))
 	port = vnet_buffer (b)->ip.reass.l4_src_port;
@@ -3051,13 +2997,13 @@ nat44_ed_get_out2in_worker_index (vlib_buffer_t *b, ip4_header_t *ip,
 	    {
 	    case IP_PROTOCOL_ICMP:
 	      icmp = (icmp46_header_t *) l4_header;
-	      echo = (icmp_echo_header_t *) (icmp + 1);
+	      echo = (nat_icmp_echo_header_t *) (icmp + 1);
 	      port = echo->identifier;
 	      break;
 	    case IP_PROTOCOL_UDP:
 	      /* breakthrough */
 	    case IP_PROTOCOL_TCP:
-	      port = ((tcp_udp_header_t *) l4_header)->src_port;
+	      port = ((nat_tcp_udp_header_t *) l4_header)->src_port;
 	      break;
 	    default:
 	      next_worker_index = vlib_get_thread_index ();
@@ -3705,7 +3651,7 @@ nat_6t_flow_icmp_translate (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
     return NAT_ED_TRNSL_ERR_TRANSLATION_FAILED;
 
   icmp46_header_t *icmp = ip4_next_header (ip);
-  icmp_echo_header_t *echo = (icmp_echo_header_t *) (icmp + 1);
+  nat_icmp_echo_header_t *echo = (nat_icmp_echo_header_t *) (icmp + 1);
 
   if ((!vnet_buffer (b)->ip.reass.is_non_first_fragment))
     {
@@ -3721,7 +3667,7 @@ nat_6t_flow_icmp_translate (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
 	    {
 	      ip_csum_t sum = icmp->checksum;
 	      sum = ip_csum_update (sum, echo->identifier, f->rewrite.icmp_id,
-				    icmp_echo_header_t,
+				    nat_icmp_echo_header_t,
 				    identifier /* changed member */);
 	      echo->identifier = f->rewrite.icmp_id;
 	      icmp->checksum = ip_csum_fold (sum);
@@ -3811,19 +3757,21 @@ nat_6t_flow_icmp_translate (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
 		    {
 		      return NAT_ED_TRNSL_ERR_PACKET_TRUNCATED;
 		    }
-		  icmp_echo_header_t *inner_echo =
-		    (icmp_echo_header_t *) (inner_icmp + 1);
+		  nat_icmp_echo_header_t *inner_echo =
+		    (nat_icmp_echo_header_t *) (inner_icmp + 1);
 		  if (f->rewrite.icmp_id != inner_echo->identifier)
 		    {
 		      ip_csum_t sum = icmp->checksum;
-		      sum = ip_csum_update (
-			sum, inner_echo->identifier, f->rewrite.icmp_id,
-			icmp_echo_header_t, identifier /* changed member */);
+		      sum = ip_csum_update (sum, inner_echo->identifier,
+					    f->rewrite.icmp_id,
+					    nat_icmp_echo_header_t,
+					    identifier /* changed member */);
 		      icmp->checksum = ip_csum_fold (sum);
 		      ip_csum_t inner_sum = inner_icmp->checksum;
 		      inner_sum = ip_csum_update (
 			sum, inner_echo->identifier, f->rewrite.icmp_id,
-			icmp_echo_header_t, identifier /* changed member */);
+			nat_icmp_echo_header_t,
+			identifier /* changed member */);
 		      inner_icmp->checksum = ip_csum_fold (inner_sum);
 		      inner_echo->identifier = f->rewrite.icmp_id;
 		    }
@@ -3895,110 +3843,7 @@ nat_6t_flow_buf_translate_o2i (vlib_main_t *vm, snat_main_t *sm,
 				    0 /* is_i2o */);
 }
 
-u8 *
-format_nat_6t (u8 *s, va_list *args)
-{
-  nat_6t_t *t = va_arg (*args, nat_6t_t *);
-
-  s = format (s, "saddr %U sport %u daddr %U dport %u proto %U fib_idx %u",
-	      format_ip4_address, t->saddr.as_u8,
-	      clib_net_to_host_u16 (t->sport), format_ip4_address,
-	      t->daddr.as_u8, clib_net_to_host_u16 (t->dport),
-	      format_ip_protocol, t->proto, t->fib_index);
-  return s;
-}
-
-u8 *
-format_nat_ed_translation_error (u8 *s, va_list *args)
-{
-  nat_translation_error_e e = va_arg (*args, nat_translation_error_e);
-
-  switch (e)
-    {
-    case NAT_ED_TRNSL_ERR_SUCCESS:
-      s = format (s, "success");
-      break;
-    case NAT_ED_TRNSL_ERR_TRANSLATION_FAILED:
-      s = format (s, "translation-failed");
-      break;
-    case NAT_ED_TRNSL_ERR_FLOW_MISMATCH:
-      s = format (s, "flow-mismatch");
-      break;
-    case NAT_ED_TRNSL_ERR_PACKET_TRUNCATED:
-      s = format (s, "packet-truncated");
-      break;
-    case NAT_ED_TRNSL_ERR_INNER_IP_CORRUPT:
-      s = format (s, "inner-ip-corrupted");
-      break;
-    case NAT_ED_TRNSL_ERR_INVALID_CSUM:
-      s = format (s, "invalid-checksum");
-      break;
-    }
-  return s;
-}
-
-u8 *
-format_nat_6t_flow (u8 *s, va_list *args)
-{
-  nat_6t_flow_t *f = va_arg (*args, nat_6t_flow_t *);
-
-  s = format (s, "match: %U ", format_nat_6t, &f->match);
-  int r = 0;
-  if (f->ops & NAT_FLOW_OP_SADDR_REWRITE)
-    {
-      s = format (s, "rewrite: saddr %U ", format_ip4_address,
-		  f->rewrite.saddr.as_u8);
-      r = 1;
-    }
-  if (f->ops & NAT_FLOW_OP_SPORT_REWRITE)
-    {
-      if (!r)
-	{
-	  s = format (s, "rewrite: ");
-	  r = 1;
-	}
-      s = format (s, "sport %u ", clib_net_to_host_u16 (f->rewrite.sport));
-    }
-  if (f->ops & NAT_FLOW_OP_DADDR_REWRITE)
-    {
-      if (!r)
-	{
-	  s = format (s, "rewrite: ");
-	  r = 1;
-	}
-      s = format (s, "daddr %U ", format_ip4_address, f->rewrite.daddr.as_u8);
-    }
-  if (f->ops & NAT_FLOW_OP_DPORT_REWRITE)
-    {
-      if (!r)
-	{
-	  s = format (s, "rewrite: ");
-	  r = 1;
-	}
-      s = format (s, "dport %u ", clib_net_to_host_u16 (f->rewrite.dport));
-    }
-  if (f->ops & NAT_FLOW_OP_ICMP_ID_REWRITE)
-    {
-      if (!r)
-	{
-	  s = format (s, "rewrite: ");
-	  r = 1;
-	}
-      s = format (s, "icmp-id %u ", clib_net_to_host_u16 (f->rewrite.icmp_id));
-    }
-  if (f->ops & NAT_FLOW_OP_TXFIB_REWRITE)
-    {
-      if (!r)
-	{
-	  s = format (s, "rewrite: ");
-	  r = 1;
-	}
-      s = format (s, "txfib %u ", f->rewrite.fib_index);
-    }
-  return s;
-}
-
-static inline void
+static_always_inline void
 nat_syslog_nat44_sess (u32 ssubix, u32 sfibix, ip4_address_t *isaddr,
 		       u16 isport, ip4_address_t *xsaddr, u16 xsport,
 		       ip4_address_t *idaddr, u16 idport,
@@ -4071,51 +3916,6 @@ nat_syslog_nat44_sdel (u32 ssubix, u32 sfibix, ip4_address_t *isaddr,
   nat_syslog_nat44_sess (ssubix, sfibix, isaddr, isport, xsaddr, xsport,
 			 idaddr, idport, xdaddr, xdport, proto, 0,
 			 is_twicenat);
-}
-
-u8 *
-format_nat44_ed_tcp_state (u8 *s, va_list *args)
-{
-  nat44_ed_tcp_state_e e = va_arg (*args, nat44_ed_tcp_state_e);
-  switch (e)
-    {
-    case NAT44_ED_TCP_STATE_CLOSED:
-      s = format (s, "closed");
-      break;
-    case NAT44_ED_TCP_STATE_SYN_I2O:
-      s = format (s, "SYN seen in in2out direction");
-      break;
-    case NAT44_ED_TCP_STATE_SYN_O2I:
-      s = format (s, "SYN seen in out2in direction");
-      break;
-    case NAT44_ED_TCP_STATE_ESTABLISHED:
-      s = format (s, "SYN seen in both directions/established");
-      break;
-    case NAT44_ED_TCP_STATE_FIN_I2O:
-      s = format (s, "FIN seen in in2out direction");
-      break;
-    case NAT44_ED_TCP_STATE_FIN_O2I:
-      s = format (s, "FIN seen in out2in direction");
-      break;
-    case NAT44_ED_TCP_STATE_RST_TRANS:
-      s = format (s, "RST seen/transitory timeout");
-      break;
-    case NAT44_ED_TCP_STATE_FIN_TRANS:
-      s = format (s, "FIN seen in both directions/transitory timeout");
-      break;
-    case NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_O2I:
-      s = format (s, "FIN seen in both directions/transitory timeout/session "
-		     "reopening in out2in direction");
-      break;
-    case NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_I2O:
-      s = format (s, "FIN seen in both directions/transitory timeout/session "
-		     "reopening in in2out direction");
-      break;
-    case NAT44_ED_TCP_N_STATE:
-      s = format (s, "BUG! unexpected N_STATE! BUG!");
-      break;
-    }
-  return s;
 }
 
 /*
