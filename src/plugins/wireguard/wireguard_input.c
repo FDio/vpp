@@ -902,6 +902,7 @@ wg_input_post (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 	  last_rec_idx = data->receiver_index;
 	}
 
+      ASSERT (peer != NULL); /* this pointer never should be NULL */
       if (PREDICT_FALSE (wg_input_post_process (vm, b[0], next, peer, data,
 						&is_keepalive) < 0))
 	goto trace;
