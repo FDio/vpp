@@ -25,7 +25,7 @@ wg_if_create_cli (vlib_main_t * vm,
 {
   wg_main_t *wmp = &wg_main;
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 private_key[NOISE_PUBLIC_KEY_LEN];
+  u8 private_key[NOISE_PUBLIC_KEY_LEN + 1];
   u32 instance, sw_if_index;
   ip_address_t src_ip;
   clib_error_t *error;
