@@ -333,6 +333,8 @@ vnet_crypto_update_cm_dequeue_handlers (void)
   for (i = 0; i < VNET_CRYPTO_ASYNC_OP_N_IDS; i++)
     {
       otd = cm->async_opt_data + i;
+      if (otd->active_engine_index_async == ~0)
+	continue;
       e = cm->engines + otd->active_engine_index_async;
       if (!e->dequeue_handler)
 	continue;
@@ -344,6 +346,8 @@ vnet_crypto_update_cm_dequeue_handlers (void)
   vec_foreach (ei, active_engines)
     {
       if (ei[0] == last_ei)
+	continue;
+      if (ei[0] == ~0)
 	continue;
 
       e = cm->engines + ei[0];
