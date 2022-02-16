@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "8f9fb03e_e7c43ee8",
+        "filename": "src/vcl/vcl_private.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2022-02-16T07:11:07Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "43c73901_8473509a",
+      "range": {
+        "startLine": 46,
+        "startChar": 0,
+        "endLine": 46,
+        "endChar": 21
+      },
+      "revId": "bd857424f8e24e220251067701189915e28b78a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ce52e7c5_38b8a0a1",
         "filename": "src/vcl/vcl_private.c",
         "patchSetId": 7
@@ -45,6 +69,30 @@
       "revId": "bd857424f8e24e220251067701189915e28b78a6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "96e4757a_2694bcb3",
+        "filename": "src/vcl/vcl_private.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2022-02-16T07:11:07Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "ce52e7c5_38b8a0a1",
+      "range": {
+        "startLine": 86,
+        "startChar": 6,
+        "endLine": 86,
+        "endChar": 27
+      },
+      "revId": "bd857424f8e24e220251067701189915e28b78a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
