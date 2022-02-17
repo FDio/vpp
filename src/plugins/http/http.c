@@ -90,6 +90,16 @@ http_listener_get (u32 ctx_index)
 }
 
 void
+http_listener_free (http_conn_t *lhc)
+{
+  http_main_t *hm = &http_main;
+
+  if (CLIB_DEBUG)
+    memset (lhc, 0xfc, sizeof (*lhc));
+  pool_put (hm->listener_ctx_pool, lhc);
+}
+
+void
 http_disconnect_transport (http_conn_t *hc)
 {
   vnet_disconnect_args_t a = {
@@ -775,6 +785,28 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
   return lhc_index;
 }
 
+static u32
+http_stop_listen (u32 listener_index)
+{
+  http_conn_t *lhc;
+  int rv;
+
+  lhc = http_listener_get (listener_index);
+
+  vnet_unlisten_args_t a = {
+    .handle = lhc->h_tc_session_handle,
+    .app_index = http_main.app_index,
+    .wrk_map_index = 0 /* default wrk */
+  };
+
+  if ((rv = vnet_unlisten (&a)))
+    clib_warning ("unlisten returned %d", rv);
+
+  http_listener_free (lhc);
+
+  return 0;
+}
+
 static void
 http_transport_close (u32 hc_index, u32 thread_index)
 {
@@ -955,6 +987,7 @@ static const transport_proto_vft_t http_proto = {
   .enable = http_transport_enable,
   .connect = http_transport_connect,
   .start_listen = http_start_listen,
+  .stop_listen = http_stop_listen,
   .close = http_transport_close,
   .custom_tx = http_app_tx_callback,
   .get_connection = http_transport_get_connection,
