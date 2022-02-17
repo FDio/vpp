@@ -1275,6 +1275,18 @@ class VppTestCase(CPUInterface, unittest.TestCase):
             self.logger.debug(self.vapi.cli("show trace"))
         return rx
 
+    def send_and_expect_load_balancing(self, input, pkts, outputs,
+                                       worker=None, trace=True):
+        self.pg_send(input, pkts, worker=worker, trace=trace)
+        rxs = []
+        for oo in outputs:
+            rx = oo._get_capture(1)
+            self.assertNotEqual(0, len(rx))
+            rxs.append(rx)
+        if trace:
+            self.logger.debug(self.vapi.cli("show trace"))
+        return rxs
+
     def send_and_expect_only(self, intf, pkts, output, timeout=None):
         self.pg_send(intf, pkts)
         rx = output.get_capture(len(pkts))

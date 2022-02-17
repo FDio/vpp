@@ -1965,25 +1965,6 @@ class TestIP6LoadBalance(VppTestCase):
             i.disable_mpls()
         super(TestIP6LoadBalance, self).tearDown()
 
-    def pg_send(self, input, pkts):
-        self.vapi.cli("clear trace")
-        input.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-
-    def send_and_expect_load_balancing(self, input, pkts, outputs):
-        self.pg_send(input, pkts)
-        rxs = []
-        for oo in outputs:
-            rx = oo._get_capture(1)
-            self.assertNotEqual(0, len(rx))
-            rxs.append(rx)
-        return rxs
-
-    def send_and_expect_one_itf(self, input, pkts, itf):
-        self.pg_send(input, pkts)
-        rx = itf.get_capture(len(pkts))
-
     def test_ip6_load_balance(self):
         """ IPv6 Load-Balancing """
 
@@ -2107,7 +2088,7 @@ class TestIP6LoadBalance(VppTestCase):
         # The packets with Entropy label in should not load-balance,
         # since the Entropy value is fixed.
         #
-        self.send_and_expect_one_itf(self.pg0, port_ent_pkts, self.pg1)
+        self.send_and_expect_only(self.pg0, port_ent_pkts, self.pg1)
 
         #
         # change the flow hash config so it's only IP src,dst
@@ -2121,7 +2102,7 @@ class TestIP6LoadBalance(VppTestCase):
                                             [self.pg1, self.pg2])
         self.send_and_expect_load_balancing(self.pg0, src_mpls_pkts,
                                             [self.pg1, self.pg2])
-        self.send_and_expect_one_itf(self.pg0, port_ip_pkts, self.pg2)
+        self.send_and_expect_only(self.pg0, port_ip_pkts, self.pg2)
 
         #
         # change the flow hash config back to defaults
@@ -2206,7 +2187,7 @@ class TestIP6LoadBalance(VppTestCase):
         # inject the packet on pg0 - expect load-balancing across all 4 paths
         #
         self.vapi.cli("clear trace")
-        self.send_and_expect_one_itf(self.pg0, port_pkts, self.pg3)
+        self.send_and_expect_only(self.pg0, port_pkts, self.pg3)
 
 
 class IP6PuntSetup(object):
