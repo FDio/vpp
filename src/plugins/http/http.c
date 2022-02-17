@@ -733,7 +733,7 @@ static u32
 http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
 {
   vnet_listen_args_t _args = {}, *args = &_args;
-  session_t *tc_listener, *app_listener;
+  session_t *ts_listener, *app_listener;
   http_main_t *hm = &http_main;
   session_endpoint_cfg_t *sep;
   app_worker_t *app_wrk;
@@ -763,13 +763,14 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
   /* Grab transport connection listener and link to http listener */
   lhc->h_tc_session_handle = args->handle;
   al = app_listener_get_w_handle (lhc->h_tc_session_handle);
-  tc_listener = app_listener_get_session (al);
-  tc_listener->opaque = lhc_index;
+  ts_listener = app_listener_get_session (al);
+  ts_listener->opaque = lhc_index;
 
   /* Grab application listener and link to http listener */
   app_listener = listen_session_get (app_listener_index);
   lhc->h_pa_wrk_index = sep->app_wrk_index;
   lhc->h_pa_session_handle = listen_session_get_handle (app_listener);
+  lhc->c_s_index = app_listener_index;
   lhc->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
 
   return lhc_index;
