@@ -165,7 +165,7 @@ typedef struct http_worker_
 typedef struct http_main_
 {
   http_worker_t *wrk;
-  http_conn_t *listener_ctx_pool;
+  http_conn_t *listener_pool;
   u32 app_index;
 
   clib_timebase_t timebase;
