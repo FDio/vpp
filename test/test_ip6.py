@@ -2599,12 +2599,14 @@ class TestIP6Input(VppTestCase):
                      inet6.UDP(sport=1234, dport=1234) /
                      Raw(b'\xa5' * 100))
 
-        rx = self.send_and_expect(self.pg0, p_version * NUM_PKTS, self.pg0)
-        rx = rx[0]
-        icmp = rx[ICMPv6TimeExceeded]
+        rxs = self.send_and_expect_some(self.pg0,
+                                        p_version * NUM_PKTS,
+                                        self.pg0)
 
-        # 0: "hop limit exceeded in transit",
-        self.assertEqual((icmp.type, icmp.code), (3, 0))
+        for rx in rxs:
+            icmp = rx[ICMPv6TimeExceeded]
+            # 0: "hop limit exceeded in transit",
+            self.assertEqual((icmp.type, icmp.code), (3, 0))
 
     icmpv6_data = '\x0a' * 18
     all_0s = "::"
