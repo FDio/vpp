@@ -156,7 +156,7 @@ clear_cli_process_id_by_icmp_id_mt (vlib_main_t * vm, u16 icmp_id)
   {
     if (pr->icmp_id == icmp_id)
       {
-	vec_del1 (pm->active_ping_runs, pm->active_ping_runs - pr);
+	vec_del1 (pm->active_ping_runs, pr - pm->active_ping_runs);
 	break;
       }
   }
