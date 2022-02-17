@@ -879,6 +879,17 @@ ip4_directed_broadcast (u32 sw_if_index, u8 enable)
      }));
   /* *INDENT-ON* */
 }
+
+u8
+ip4_sw_interface_is_enabled (u32 sw_if_index)
+{
+  ip4_main_t *im = &ip4_main;
+
+  if (vec_len (im->ip_enabled_by_sw_if_index) < sw_if_index)
+    return 0;
+
+  return (im->ip_enabled_by_sw_if_index[sw_if_index]);
+}
 #endif
 
 static clib_error_t *
