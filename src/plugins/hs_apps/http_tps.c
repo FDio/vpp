@@ -419,7 +419,7 @@ hts_transport_needs_crypto (transport_proto_t proto)
 }
 
 static int
-hts_listen (hts_main_t *htm)
+hts_listen (hts_main_t *htm, u8 *listen_uri, u8 is_del)
 {
   session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   vnet_listen_args_t _a, *a = &_a;
@@ -430,8 +430,8 @@ hts_listen (hts_main_t *htm)
   clib_memset (a, 0, sizeof (*a));
   a->app_index = htm->app_index;
 
-  if (htm->uri)
-    uri = (char *) htm->uri;
+  if (listen_uri)
+    uri = (char *) listen_uri;
 
   if (parse_uri (uri, &sep))
     return -1;
@@ -474,11 +474,6 @@ hts_create (vlib_main_t *vm)
       clib_warning ("failed to attach server");
       return -1;
     }
-  if (hts_listen (htm))
-    {
-      clib_warning ("failed to start listening");
-      return -1;
-    }
 
   return 0;
 }
@@ -490,7 +485,9 @@ hts_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
   unformat_input_t _line_input, *line_input = &_line_input;
   hts_main_t *htm = &hts_main;
   clib_error_t *error = 0;
+  u8 is_del = 0;
   u64 mem_size;
+  u8 *uri = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -504,12 +501,14 @@ hts_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
       else if (unformat (line_input, "fifo-size %U", unformat_memory_size,
 			 &mem_size))
 	htm->fifo_size = mem_size;
-      else if (unformat (line_input, "uri %s", &htm->uri))
+      else if (unformat (line_input, "uri %s", &uri))
 	;
       else if (unformat (line_input, "no-zc"))
 	htm->no_zc = 1;
       else if (unformat (line_input, "debug"))
 	htm->debug_level = 1;
+      else if (unformat (line_input, "del"))
+	is_del = 1;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -521,25 +520,39 @@ hts_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
   unformat_free (line_input);
 
   if (error)
-    return error;
+    goto done;
 
 start_server:
 
-  if (htm->app_index != (u32) ~0)
-    return clib_error_return (0, "http tps is already running");
+  if (htm->app_index == (u32) ~0)
+    {
+      vnet_session_enable_disable (vm, 1 /* is_enable */);
 
-  vnet_session_enable_disable (vm, 1 /* is_enable */);
+      if (hts_create (vm))
+	{
+	  error = clib_error_return (0, "http tps create failed");
+	  goto done;
+	}
+    }
 
-  if (hts_create (vm))
-    return clib_error_return (0, "http tps create failed");
+  if (hts_listen (htm, uri, is_del))
+    {
+      error = clib_error_return (0, "failed %slisten on %v",
+				 is_del ? "un" : "", uri);
+      goto done;
+    }
 
-  return 0;
+done:
+
+  vec_free (uri);
+  return error;
 }
 
 VLIB_CLI_COMMAND (http_tps_command, static) = {
   .path = "http tps",
   .short_help = "http tps [uri <uri>] [fifo-size <nbytes>] "
-		"[segment-size <nMG>] [prealloc-fifos <n>] [debug] [no-zc]",
+		"[segment-size <nMG>] [prealloc-fifos <n>] [debug] [no-zc] "
+		"[del]",
   .function = hts_create_command_fn,
 };
 
