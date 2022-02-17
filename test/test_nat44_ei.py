@@ -1056,12 +1056,9 @@ class TestNAT44EI(MethodHolder):
 
         # Client side - generate traffic
         pkts = self.create_stream_in(self.pg0, self.pg1, ttl=1)
-        self.pg0.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
+        capture = self.send_and_expect_some(self.pg0, pkts, self.pg0)
 
         # Client side - verify ICMP type 11 packets
-        capture = self.pg0.get_capture(len(pkts))
         self.verify_capture_in_with_icmp_errors(capture, self.pg0)
 
     def test_dynamic_icmp_errors_out2in_ttl_1(self):
@@ -1086,12 +1083,9 @@ class TestNAT44EI(MethodHolder):
         capture = self.pg1.get_capture(len(pkts))
         self.verify_capture_out(capture)
         pkts = self.create_stream_out(self.pg1, ttl=1)
-        self.pg1.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
+        capture = self.send_and_expect_some(self.pg1, pkts, self.pg1)
 
         # Server side - verify ICMP type 11 packets
-        capture = self.pg1.get_capture(len(pkts))
         self.verify_capture_out_with_icmp_errors(capture,
                                                  src_ip=self.pg1.local_ip4)
 

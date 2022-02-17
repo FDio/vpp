@@ -104,7 +104,7 @@ class TestMTU(VppTestCase):
         n = icmp4_reply.__class__(icmp4_reply)
         s = bytes(icmp4_reply)
         icmp4_reply = s[0:576]
-        rx = self.send_and_expect(self.pg0, p4*11, self.pg0)
+        rx = self.send_and_expect_some(self.pg0, p4*11, self.pg0)
         for p in rx:
             # p.show2()
             # n.show2()
@@ -185,7 +185,7 @@ class TestMTU(VppTestCase):
         s = bytes(icmp6_reply)
         icmp6_reply_str = s[0:1280]
 
-        rx = self.send_and_expect(self.pg0, p6*9, self.pg0)
+        rx = self.send_and_expect_some(self.pg0, p6*9, self.pg0)
         for p in rx:
             self.validate_bytes(bytes(p[1]), icmp6_reply_str)
 
