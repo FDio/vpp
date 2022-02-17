@@ -26,6 +26,7 @@ typedef struct
   u64 data_len;
   u64 data_offset;
   u32 vpp_session_index;
+  u8 *uri;
 } hts_session_t;
 
 typedef struct hs_main_
@@ -36,6 +37,9 @@ typedef struct hs_main_
   u32 ckpair_index;
   u8 *test_data;
 
+  /** Hash table of listener uris to handles */
+  uword *uri_to_handle;
+
   /*
    * Configs
    */
@@ -44,6 +48,7 @@ typedef struct hs_main_
   u64 segment_size;
   u8 debug_level;
   u8 no_zc;
+  u8 *default_uri;
 } hts_main_t;
 
 static hts_main_t hts_main;
@@ -418,23 +423,53 @@ hts_transport_needs_crypto (transport_proto_t proto)
 	 proto == TRANSPORT_PROTO_QUIC;
 }
 
-static int
-hts_listen (hts_main_t *htm)
+static clib_error_t *
+hts_listen (hts_main_t *htm, u8 *listen_uri, u8 is_del)
 {
   session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   vnet_listen_args_t _a, *a = &_a;
-  char *uri = "tcp://0.0.0.0/80";
-  u8 need_crypto;
+  u8 need_crypto, *uri;
+  hts_session_t *hls;
+  session_t *ls;
+  uword *p;
   int rv;
+
+  uri = listen_uri ? listen_uri : htm->default_uri;
+  p = hash_get_mem (htm->uri_to_handle, uri);
+
+  if (is_del)
+    {
+      if (!p)
+	return clib_error_return (0, "not listening on %v", uri);
+
+      hls = hts_session_get (0, *p);
+      ls = listen_session_get (hls->vpp_session_index);
+
+      vnet_unlisten_args_t ua = {
+	.handle = listen_session_get_handle (ls),
+	.app_index = htm->app_index,
+	.wrk_map_index = 0 /* default wrk */
+      };
+
+      hash_unset_mem (htm->uri_to_handle, uri);
+
+      if (vnet_unlisten (&ua))
+	return clib_error_return (0, "failed to unlisten");
+
+      vec_free (hls->uri);
+      hts_session_free (hls);
+
+      return 0;
+    }
+
+  if (p)
+    return clib_error_return (0, "already listening %v", uri);
+
+  if (parse_uri ((char *) uri, &sep))
+    return clib_error_return (0, "failed to parse uri %v", uri);
 
   clib_memset (a, 0, sizeof (*a));
   a->app_index = htm->app_index;
-
-  if (htm->uri)
-    uri = (char *) htm->uri;
-
-  if (parse_uri (uri, &sep))
-    return -1;
 
   need_crypto = hts_transport_needs_crypto (sep.transport_proto);
 
@@ -453,7 +488,16 @@ hts_listen (hts_main_t *htm)
   if (need_crypto)
     clib_mem_free (a->sep_ext.ext_cfg);
 
-  return rv;
+  if (rv)
+    return clib_error_return (0, "failed to listen on %v", uri);
+
+  hls = hts_session_alloc (0);
+  hls->uri = vec_dup (uri);
+  ls = listen_session_get_from_handle (a->handle);
+  hls->vpp_session_index = ls->session_index;
+  hash_set_mem (htm->uri_to_handle, hls->uri, hls->session_index);
+
+  return 0;
 }
 
 static int
@@ -474,11 +518,9 @@ hts_create (vlib_main_t *vm)
       clib_warning ("failed to attach server");
       return -1;
     }
-  if (hts_listen (htm))
-    {
-      clib_warning ("failed to start listening");
-      return -1;
-    }
+
+  htm->default_uri = format (0, "tcp://0.0.0.0/80%c", 0);
+  htm->uri_to_handle = hash_create_vec (0, sizeof (u8), sizeof (uword));
 
   return 0;
 }
@@ -490,7 +532,9 @@ hts_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
   unformat_input_t _line_input, *line_input = &_line_input;
   hts_main_t *htm = &hts_main;
   clib_error_t *error = 0;
+  u8 is_del = 0;
   u64 mem_size;
+  u8 *uri = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -504,12 +548,14 @@ hts_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
       else if (unformat (line_input, "fifo-size %U", unformat_memory_size,
 			 &mem_size))
 	htm->fifo_size = mem_size;
-      else if (unformat (line_input, "uri %s", &htm->uri))
+      else if (unformat (line_input, "uri %s", &uri))
 	;
       else if (unformat (line_input, "no-zc"))
 	htm->no_zc = 1;
       else if (unformat (line_input, "debug"))
 	htm->debug_level = 1;
+      else if (unformat (line_input, "del"))
+	is_del = 1;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -521,26 +567,109 @@ hts_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
   unformat_free (line_input);
 
   if (error)
-    return error;
+    goto done;
 
 start_server:
 
-  if (htm->app_index != (u32) ~0)
-    return clib_error_return (0, "http tps is already running");
+  if (htm->app_index == (u32) ~0)
+    {
+      vnet_session_enable_disable (vm, 1 /* is_enable */);
 
-  vnet_session_enable_disable (vm, 1 /* is_enable */);
+      if (hts_create (vm))
+	{
+	  error = clib_error_return (0, "http tps create failed");
+	  goto done;
+	}
+    }
 
-  if (hts_create (vm))
-    return clib_error_return (0, "http tps create failed");
+  error = hts_listen (htm, uri, is_del);
 
-  return 0;
+done:
+
+  vec_free (uri);
+  return error;
 }
 
 VLIB_CLI_COMMAND (http_tps_command, static) = {
   .path = "http tps",
   .short_help = "http tps [uri <uri>] [fifo-size <nbytes>] "
-		"[segment-size <nMG>] [prealloc-fifos <n>] [debug] [no-zc]",
+		"[segment-size <nMG>] [prealloc-fifos <n>] [debug] [no-zc] "
+		"[del]",
   .function = hts_create_command_fn,
+};
+
+static clib_error_t *
+hts_show_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		     vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  hts_main_t *htm = &hts_main;
+  clib_error_t *error = 0;
+  u8 do_listeners = 0;
+  hts_session_t **sessions;
+  u32 n_listeners = 0, n_sessions = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    goto no_input;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "listeners"))
+	do_listeners = 1;
+      else
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  break;
+	}
+    }
+
+  if (error)
+    return error;
+
+no_input:
+
+  if (htm->app_index == ~0)
+    {
+      vlib_cli_output (vm, "http tps not enabled");
+      goto done;
+    }
+
+  if (do_listeners)
+    {
+      uword handle;
+      u8 *s = 0, *uri;
+
+      /* clang-format off */
+      hash_foreach (uri, handle, htm->uri_to_handle, ({
+	s = format (s, "%-30v%lx\n", uri, handle);
+      }));
+      /* clang-format on */
+
+      if (s)
+	{
+	  vlib_cli_output (vm, "%-29s%s", "URI", "Index");
+	  vlib_cli_output (vm, "%v", s);
+	  vec_free (s);
+	}
+      goto done;
+    }
+
+  n_listeners = hash_elts (htm->uri_to_handle);
+  vec_foreach (sessions, htm->sessions)
+    n_sessions += pool_elts (*sessions);
+
+  vlib_cli_output (vm, " app index: %u\n listeners: %u\n sesions: %u",
+		   htm->app_index, n_listeners, n_sessions - n_listeners);
+
+done:
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_http_tps_command, static) = {
+  .path = "show http tps",
+  .short_help = "http tps [listeners]",
+  .function = hts_show_command_fn,
 };
 
 static clib_error_t *
