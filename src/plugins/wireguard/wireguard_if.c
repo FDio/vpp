@@ -38,7 +38,8 @@ static u8 *
 format_wg_if_name (u8 * s, va_list * args)
 {
   u32 dev_instance = va_arg (*args, u32);
-  return format (s, "wg%d", dev_instance);
+  wg_if_t *wgi = wg_if_get (dev_instance);
+  return format (s, "wg%d", wgi->user_instance);
 }
 
 u8 *
