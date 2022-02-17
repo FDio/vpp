@@ -662,15 +662,20 @@ ip6_icmp_echo_request (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  ip0->hop_limit = im->host_config.ttl;
 	  ip1->hop_limit = im->host_config.ttl;
 
-	  /* Determine the correct lookup fib indices... */
-	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index,
-				vnet_buffer (p0)->sw_if_index[VLIB_RX]);
-	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = fib_index0;
-	  /* Determine the correct lookup fib indices... */
-	  fib_index1 = vec_elt (im->fib_index_by_sw_if_index,
-				vnet_buffer (p1)->sw_if_index[VLIB_RX]);
-	  vnet_buffer (p1)->sw_if_index[VLIB_TX] = fib_index1;
-
+	  if (ip6_address_is_link_local_unicast (&ip0->src_address) &&
+	      !ip6_address_is_link_local_unicast (&ip0->dst_address))
+	    {
+	      fib_index0 = vec_elt (im->fib_index_by_sw_if_index,
+				    vnet_buffer (p0)->sw_if_index[VLIB_RX]);
+	      vnet_buffer (p0)->sw_if_index[VLIB_TX] = fib_index0;
+	    }
+	  if (ip6_address_is_link_local_unicast (&ip1->src_address) &&
+	      !ip6_address_is_link_local_unicast (&ip1->dst_address))
+	    {
+	      fib_index1 = vec_elt (im->fib_index_by_sw_if_index,
+				    vnet_buffer (p1)->sw_if_index[VLIB_RX]);
+	      vnet_buffer (p1)->sw_if_index[VLIB_TX] = fib_index1;
+	    }
 	  p0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	  p1->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 
@@ -722,12 +727,19 @@ ip6_icmp_echo_request (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  ip0->hop_limit = im->host_config.ttl;
 
-	  /* if the packet is link local, we'll bounce through the link-local
-	   * table with the RX interface correctly set */
-	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index,
-				vnet_buffer (p0)->sw_if_index[VLIB_RX]);
-	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = fib_index0;
-
+	  if (ip6_address_is_link_local_unicast (&ip0->src_address) &&
+	      !ip6_address_is_link_local_unicast (&ip0->dst_address))
+	    {
+	      /* if original packet was to the link local, then the
+	       * fib index is that of the LL table, we can't use that
+	       * to foward the response if the new destination
+	       * is global, so reset to the fib index of the link.
+	       * In other case, the fib index we need has been written
+	       * to the buffer already. */
+	      fib_index0 = vec_elt (im->fib_index_by_sw_if_index,
+				    vnet_buffer (p0)->sw_if_index[VLIB_RX]);
+	      vnet_buffer (p0)->sw_if_index[VLIB_TX] = fib_index0;
+	    }
 	  p0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	  /* Verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,

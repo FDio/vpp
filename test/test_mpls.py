@@ -18,7 +18,7 @@ import scapy.compat
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP
 from scapy.layers.inet import IP, UDP, ICMP
-from scapy.layers.inet6 import IPv6, ICMPv6TimeExceeded
+from scapy.layers.inet6 import IPv6, ICMPv6TimeExceeded, ICMPv6EchoRequest
 from scapy.contrib.mpls import MPLS
 
 NUM_PKTS = 67
@@ -196,7 +196,8 @@ class TestMPLS(VppTestCase):
         return pkts
 
     def create_stream_labelled_ip6(self, src_if, mpls_labels,
-                                   hlim=64, dst_ip=None):
+                                   hlim=64, dst_ip=None,
+                                   ping=0, ip_itf=None):
         if dst_ip is None:
             dst_ip = src_if.remote_ip6
         self.reset_packet_infos()
@@ -208,9 +209,14 @@ class TestMPLS(VppTestCase):
             for l in mpls_labels:
                 p = p / MPLS(label=l.value, ttl=l.ttl, cos=l.exp)
 
-            p = p / (IPv6(src=src_if.remote_ip6, dst=dst_ip, hlim=hlim) /
-                     UDP(sport=1234, dport=1234) /
-                     Raw(payload))
+            if ping:
+                p = p / (IPv6(src=ip_itf.remote_ip6,
+                              dst=ip_itf.local_ip6) /
+                         ICMPv6EchoRequest())
+            else:
+                p = p / (IPv6(src=src_if.remote_ip6, dst=dst_ip, hlim=hlim) /
+                         UDP(sport=1234, dport=1234) /
+                         Raw(payload))
             info.data = p.copy()
             pkts.append(p)
         return pkts
@@ -337,7 +343,8 @@ class TestMPLS(VppTestCase):
             raise
 
     def verify_capture_ip6(self, src_if, capture, sent,
-                           ip_hlim=None, ip_dscp=0):
+                           ip_hlim=None, ip_dscp=0,
+                           ping_resp=0):
         try:
             self.assertEqual(len(capture), len(sent))
 
@@ -352,15 +359,18 @@ class TestMPLS(VppTestCase):
                 tx_ip = tx[IPv6]
                 rx_ip = rx[IPv6]
 
-                self.assertEqual(rx_ip.src, tx_ip.src)
-                self.assertEqual(rx_ip.dst, tx_ip.dst)
-                self.assertEqual(rx_ip.tc,  ip_dscp)
-                # IP processing post pop has decremented the TTL
-                if not ip_hlim:
-                    self.assertEqual(rx_ip.hlim + 1, tx_ip.hlim)
+                if not ping_resp:
+                    self.assertEqual(rx_ip.src, tx_ip.src)
+                    self.assertEqual(rx_ip.dst, tx_ip.dst)
+                    self.assertEqual(rx_ip.tc,  ip_dscp)
+                    # IP processing post pop has decremented the TTL
+                    if not ip_hlim:
+                        self.assertEqual(rx_ip.hlim + 1, tx_ip.hlim)
+                    else:
+                        self.assertEqual(rx_ip.hlim, ip_hlim)
                 else:
-                    self.assertEqual(rx_ip.hlim, ip_hlim)
-
+                    self.assertEqual(rx_ip.src, tx_ip.dst)
+                    self.assertEqual(rx_ip.dst, tx_ip.src)
         except:
             raise
 
@@ -1170,6 +1180,13 @@ class TestMPLS(VppTestCase):
                                                   0xffffffff,
                                                   nh_table_id=1)])
         route_35_eos.add_vpp_config()
+        route_356_eos = VppMplsRoute(
+            self, 356, 1,
+            [VppRoutePath("0::0",
+                          0xffffffff,
+                          nh_table_id=1)],
+            eos_proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)
+        route_356_eos.add_vpp_config()
 
         #
         # ping an interface in the non-default table
@@ -1180,6 +1197,10 @@ class TestMPLS(VppTestCase):
             self.pg0, [VppMplsLabel(35)], ping=1, ip_itf=self.pg1)
         rx = self.send_and_expect(self.pg0, tx, self.pg1)
         self.verify_capture_ip4(self.pg1, rx, tx, ping_resp=1)
+        tx = self.create_stream_labelled_ip6(
+            self.pg0, [VppMplsLabel(356)], ping=1, ip_itf=self.pg1)
+        rx = self.send_and_expect(self.pg0, tx, self.pg1)
+        self.verify_capture_ip6(self.pg1, rx, tx, ping_resp=1)
 
         #
         # Double pop
