@@ -90,16 +90,6 @@ class TestL3xc(VppTestCase):
             i.admin_down()
         super(TestL3xc, self).tearDown()
 
-    def send_and_expect_load_balancing(self, input, pkts, outputs):
-        self.pg_send(input, pkts)
-        rxs = []
-        for oo in outputs:
-            rx = oo._get_capture(1)
-            self.assertNotEqual(0, len(rx))
-            for r in rx:
-                rxs.append(r)
-        return rxs
-
     def test_l3xc4(self):
         """ IPv4 X-Connect """
 

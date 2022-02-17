@@ -1118,24 +1118,6 @@ class TestIPLoadBalance(VppTestCase):
             i.admin_down()
         super(TestIPLoadBalance, self).tearDown()
 
-    def send_and_expect_load_balancing(self, input, pkts, outputs):
-        self.vapi.cli("clear trace")
-        input.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        rxs = []
-        for oo in outputs:
-            rx = oo._get_capture(1)
-            self.assertNotEqual(0, len(rx))
-            rxs.append(rx)
-        return rxs
-
-    def send_and_expect_one_itf(self, input, pkts, itf):
-        input.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        rx = itf.get_capture(len(pkts))
-
     def total_len(self, rxs):
         n = 0
         for rx in rxs:
@@ -1243,7 +1225,7 @@ class TestIPLoadBalance(VppTestCase):
         self.send_and_expect_load_balancing(self.pg0, src_mpls_pkts,
                                             [self.pg1, self.pg2])
 
-        self.send_and_expect_one_itf(self.pg0, port_ip_pkts, self.pg2)
+        self.send_and_expect_only(self.pg0, port_ip_pkts, self.pg2)
 
         #
         # change the flow hash config back to defaults
@@ -1367,7 +1349,7 @@ class TestIPLoadBalance(VppTestCase):
         # inject the packet on pg0 - rx only on via routes output interface
         #
         self.vapi.cli("clear trace")
-        self.send_and_expect_one_itf(self.pg0, port_pkts, self.pg3)
+        self.send_and_expect_only(self.pg0, port_pkts, self.pg3)
 
         #
         # Add a LB route in the presence of a down link - expect no
@@ -1390,7 +1372,7 @@ class TestIPLoadBalance(VppTestCase):
                              UDP(sport=1234, dport=1234 + ii) /
                              Raw(b'\xa5' * 100))
 
-        self.send_and_expect_one_itf(self.pg0, port_pkts, self.pg4)
+        self.send_and_expect_only(self.pg0, port_pkts, self.pg4)
 
         # bring the link back up
         self.pg3.link_up()
