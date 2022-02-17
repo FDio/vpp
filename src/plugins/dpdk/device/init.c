@@ -969,6 +969,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   u8 *socket_mem = 0;
   u8 *huge_dir_path = 0;
   u32 vendor, device, domain, bus, func;
+  void *fmt_func;
+  void *fmt_addr;
 
   huge_dir_path =
     format (0, "%s/hugepages%c", vlib_unix_get_runtime_dir (), 0);
@@ -1216,31 +1218,39 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
       /* copy rss_queues config from default device */
       _ (rss_queues)
 
-      /* add DPDK EAL whitelist/blacklist entry */
-      if (num_whitelisted > 0 && devconf->is_blacklisted == 0 &&
-	  devconf->dev_addr_type == VNET_DEV_ADDR_PCI)
-    {
-	  tmp = format (0, "-a%c", 0);
-	  vec_add1 (conf->eal_init_args, tmp);
-	  if (devconf->devargs)
+      /* assume that default is PCI */
+      fmt_func = format_vlib_pci_addr;
+    fmt_addr = &devconf->pci_addr;
+
+    if (devconf->dev_addr_type == VNET_DEV_ADDR_VMBUS)
+      {
+	fmt_func = format_vlib_vmbus_addr;
+	fmt_addr = &devconf->vmbus_addr;
+      }
+
+    /* add DPDK EAL whitelist/blacklist entry */
+    if (num_whitelisted > 0 && devconf->is_blacklisted == 0)
+      {
+	tmp = format (0, "-a%c", 0);
+	vec_add1 (conf->eal_init_args, tmp);
+	if (devconf->devargs)
 	  {
-	    tmp = format (0, "%U,%s%c", format_vlib_pci_addr,
-			  &devconf->pci_addr, devconf->devargs, 0);
+	    tmp =
+	      format (0, "%U,%s%c", fmt_func, fmt_addr, devconf->devargs, 0);
 	  }
 	  else
 	  {
-	    tmp = format (0, "%U%c", format_vlib_pci_addr, &devconf->pci_addr, 0);
+	    tmp = format (0, "%U%c", fmt_func, fmt_addr, 0);
 	  }
 	  vec_add1 (conf->eal_init_args, tmp);
-    }
-    else if (num_whitelisted == 0 && devconf->is_blacklisted != 0 &&
-	     devconf->dev_addr_type == VNET_DEV_ADDR_PCI)
-    {
-	  tmp = format (0, "-b%c", 0);
-	  vec_add1 (conf->eal_init_args, tmp);
-	  tmp = format (0, "%U%c", format_vlib_pci_addr, &devconf->pci_addr, 0);
-	  vec_add1 (conf->eal_init_args, tmp);
-    }
+      }
+    else if (num_whitelisted == 0 && devconf->is_blacklisted != 0)
+      {
+	tmp = format (0, "-b%c", 0);
+	vec_add1 (conf->eal_init_args, tmp);
+	tmp = format (0, "%U%c", fmt_func, fmt_addr, 0);
+	vec_add1 (conf->eal_init_args, tmp);
+      }
   }
 
 #undef _
