@@ -1310,10 +1310,7 @@ class TestNAT44ED(VppTestCase):
 
         # in2out
         pkts = self.create_stream_in(self.pg0, self.pg1, ttl=1)
-        self.pg0.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        capture = self.pg0.get_capture(len(pkts))
+        capture = self.send_and_expect_some(self.pg0, pkts, self.pg0)
         for p in capture:
             self.assertIn(ICMP, p)
             self.assertEqual(p[ICMP].type, 11)  # 11 == time-exceeded

@@ -366,7 +366,8 @@ class TestMPLS(VppTestCase):
 
     def verify_capture_ip6_icmp(self, src_if, capture, sent):
         try:
-            self.assertEqual(len(capture), len(sent))
+            # rate limited ICMP
+            self.assertTrue(len(capture) <= len(sent))
 
             for i in range(len(capture)):
                 tx = sent[i]
@@ -549,7 +550,7 @@ class TestMPLS(VppTestCase):
                                              [VppMplsLabel(333, ttl=64)],
                                              dst_ip=self.pg1.remote_ip6,
                                              hlim=1)
-        rx = self.send_and_expect(self.pg0, tx, self.pg0)
+        rx = self.send_and_expect_some(self.pg0, tx, self.pg0)
         self.verify_capture_ip6_icmp(self.pg0, rx, tx)
 
         #
@@ -591,7 +592,7 @@ class TestMPLS(VppTestCase):
         tx = self.create_stream_labelled_ip6(self.pg0, [VppMplsLabel(334)],
                                              dst_ip=self.pg1.remote_ip6,
                                              hlim=0)
-        rx = self.send_and_expect(self.pg0, tx, self.pg0)
+        rx = self.send_and_expect_some(self.pg0, tx, self.pg0)
         self.verify_capture_ip6_icmp(self.pg0, rx, tx)
 
         #
@@ -1500,7 +1501,7 @@ class TestMPLS(VppTestCase):
                                              [VppMplsLabel(34)],
                                              dst_ip="ff01::1",
                                              hlim=1)
-        rx = self.send_and_expect(self.pg0, tx, self.pg0)
+        rx = self.send_and_expect_some(self.pg0, tx, self.pg0)
         self.verify_capture_ip6_icmp(self.pg0, rx, tx)
 
         #
