@@ -305,7 +305,7 @@ class TestIP4PuntSocket(TestPuntSocket):
         #
         # expect ICMP - port unreachable for all packets
         #
-        rx = self.send_and_expect(self.pg0, pkts, self.pg0)
+        rx = self.send_and_expect_some(self.pg0, pkts, self.pg0)
 
         for p in rx:
             self.assertEqual(int(p[IP].proto), 1)   # ICMP
@@ -334,7 +334,7 @@ class TestIP4PuntSocket(TestPuntSocket):
         punts = self.vapi.punt_socket_dump(type=pt_l4)
         self.assertEqual(len(punts), 0)
 
-        rx = self.send_and_expect(self.pg0, pkts, self.pg0)
+        rx = self.send_and_expect_some(self.pg0, pkts, self.pg0)
         for p in rx:
             self.assertEqual(int(p[IP].proto), 1)   # ICMP
             self.assertEqual(int(p[ICMP].code), 3)  # unreachable

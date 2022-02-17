@@ -279,7 +279,7 @@ class TestGSO(VppTestCase):
                TCP(sport=1234, dport=1234) /
                Raw(b'\xa5' * 65200))
 
-        rxs = self.send_and_expect(self.pg2, 5*[p63], self.pg2, 5)
+        rxs = self.send_and_expect_some(self.pg2, 5*[p63], self.pg2, 5)
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg2.local_mac)
             self.assertEqual(rx[Ether].dst, self.pg2.remote_mac)

@@ -1947,16 +1947,15 @@ class TestIPInput(VppTestCase):
                  UDP(sport=1234, dport=1234) /
                  Raw(b'\xa5' * 100))
 
-        rx = self.send_and_expect(self.pg0, p_ttl * NUM_PKTS, self.pg0)
+        rxs = self.send_and_expect_some(self.pg0, p_ttl * NUM_PKTS, self.pg0)
 
-        rx = rx[0]
-        icmp = rx[ICMP]
-
-        self.assertEqual(icmptypes[icmp.type], "time-exceeded")
-        self.assertEqual(icmpcodes[icmp.type][icmp.code],
-                         "ttl-zero-during-transit")
-        self.assertEqual(icmp.src, self.pg0.remote_ip4)
-        self.assertEqual(icmp.dst, self.pg1.remote_ip4)
+        for rx in rxs:
+            icmp = rx[ICMP]
+            self.assertEqual(icmptypes[icmp.type], "time-exceeded")
+            self.assertEqual(icmpcodes[icmp.type][icmp.code],
+                             "ttl-zero-during-transit")
+            self.assertEqual(icmp.src, self.pg0.remote_ip4)
+            self.assertEqual(icmp.dst, self.pg1.remote_ip4)
 
         #
         # MTU exceeded
@@ -1971,15 +1970,15 @@ class TestIPInput(VppTestCase):
 
         self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, [1500, 0, 0, 0])
 
-        rx = self.send_and_expect(self.pg0, p_mtu * NUM_PKTS, self.pg0)
-        rx = rx[0]
-        icmp = rx[ICMP]
+        rxs = self.send_and_expect_some(self.pg0, p_mtu * NUM_PKTS, self.pg0)
 
-        self.assertEqual(icmptypes[icmp.type], "dest-unreach")
-        self.assertEqual(icmpcodes[icmp.type][icmp.code],
-                         "fragmentation-needed")
-        self.assertEqual(icmp.src, self.pg0.remote_ip4)
-        self.assertEqual(icmp.dst, self.pg1.remote_ip4)
+        for rx in rxs:
+            icmp = rx[ICMP]
+            self.assertEqual(icmptypes[icmp.type], "dest-unreach")
+            self.assertEqual(icmpcodes[icmp.type][icmp.code],
+                             "fragmentation-needed")
+            self.assertEqual(icmp.src, self.pg0.remote_ip4)
+            self.assertEqual(icmp.dst, self.pg1.remote_ip4)
 
         self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, [2500, 0, 0, 0])
         rx = self.send_and_expect(self.pg0, p_mtu * NUM_PKTS, self.pg1)

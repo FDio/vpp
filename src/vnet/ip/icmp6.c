@@ -41,6 +41,10 @@
 #include <vnet/ip/ip.h>
 #include <vnet/pg/pg.h>
 #include <vnet/ip/ip_sas.h>
+#include <vnet/util/throttle.h>
+
+/** ICMP throttling */
+static throttle_t icmp_throttle;
 
 static u8 *
 format_ip6_icmp_type_and_code (u8 * s, va_list * args)
@@ -296,10 +300,13 @@ ip6_icmp_error (vlib_main_t * vm,
   u32 *from, *to_next;
   uword n_left_from, n_left_to_next;
   ip6_icmp_error_next_t next_index;
+  u32 thread_index = vm->thread_index;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
+
+  u64 seed = throttle_seed (&icmp_throttle, thread_index, vlib_time_now (vm));
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     vlib_trace_frame_buffers_only (vm, node, from, frame->n_vectors,
@@ -330,6 +337,21 @@ ip6_icmp_error (vlib_main_t * vm,
 	  int bogus_length;
 
 	  org_p0 = vlib_get_buffer (vm, org_pi0);
+	  ip0 = vlib_buffer_get_current (org_p0);
+
+	  /* Rate limit based on the src,dst addresses in the original packet
+	   */
+	  u64 r0 = (ip6_address_hash_to_u64 (&ip0->dst_address) ^
+		    ip6_address_hash_to_u64 (&ip0->src_address));
+
+	  if (throttle_check (&icmp_throttle, thread_index, r0, seed))
+	    {
+	      vlib_error_count (vm, node->node_index, ICMP4_ERROR_DROP, 1);
+	      from += 1;
+	      n_left_from -= 1;
+	      continue;
+	    }
+
 	  p0 = vlib_buffer_copy_no_chain (vm, org_p0, &pi0);
 	  if (!p0 || pi0 == ~0)	/* Out of buffers */
 	    continue;
@@ -341,8 +363,9 @@ ip6_icmp_error (vlib_main_t * vm,
 	  n_left_from -= 1;
 	  n_left_to_next -= 1;
 
-	  ip0 = vlib_buffer_get_current (p0);
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
+
+	  vlib_buffer_copy_trace_flag (vm, p0, pi0);
 
 	  /* Add IP header and ICMPv6 header including a 4 byte data field */
 	  vlib_buffer_advance (p0,
@@ -623,6 +646,11 @@ icmp6_init (vlib_main_t * vm)
     sizeof (icmp6_neighbor_solicitation_or_advertisement_header_t);
   cm->min_valid_length_by_type[ICMP6_redirect] =
     sizeof (icmp6_redirect_header_t);
+
+  vlib_thread_main_t *tm = &vlib_thread_main;
+  u32 n_vlib_mains = tm->n_vlib_mains;
+
+  throttle_init (&icmp_throttle, n_vlib_mains, 1e-3);
 
   return (NULL);
 }
