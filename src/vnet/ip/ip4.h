@@ -287,6 +287,7 @@ vlib_buffer_get_ip4_fib_index (vlib_buffer_t * b)
     vec_elt (ip4_main.fib_index_by_sw_if_index, sw_if_index) : fib_index;
 }
 
+u8 ip4_sw_interface_is_enabled (u32 sw_if_index);
 #endif /* included_ip_ip4_h */
 
 /*

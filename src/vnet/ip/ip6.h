@@ -328,6 +328,8 @@ vlib_buffer_get_ip6_fib_index (vlib_buffer_t * b)
   return (fib_index == (u32) ~ 0) ?
     vec_elt (ip6_main.fib_index_by_sw_if_index, sw_if_index) : fib_index;
 }
+
+u8 ip6_sw_interface_is_enabled (u32 sw_if_index);
 #endif /* included_ip_ip6_h */
 
 /*

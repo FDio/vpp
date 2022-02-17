@@ -686,6 +686,11 @@ static u32
 ip46_fib_table_get_index_for_sw_if_index (u32 sw_if_index, int is_ip6,
 					  ip46_address_t *pa46)
 {
+  if (is_ip6 && ip6_sw_interface_is_enabled (sw_if_index) == 0)
+    return ~0;
+  if (!is_ip6 && ip4_sw_interface_is_enabled (sw_if_index) == 0)
+    return ~0;
+
   if (is_ip6)
     {
       if (ip6_address_is_link_local_unicast (&pa46->ip6))

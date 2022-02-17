@@ -519,6 +519,17 @@ done:
   return error;
 }
 
+u8
+ip6_sw_interface_is_enabled (u32 sw_if_index)
+{
+  ip6_main_t *im = &ip6_main;
+
+  if (vec_len (im->ip_enabled_by_sw_if_index) < sw_if_index)
+    return 0;
+
+  return (im->ip_enabled_by_sw_if_index[sw_if_index]);
+}
+
 #endif
 
 static clib_error_t *
