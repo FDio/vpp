@@ -719,6 +719,7 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
 				     format_unformat_error, line_input);
+	  break;
 	}
     }
 
