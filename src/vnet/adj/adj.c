@@ -34,6 +34,11 @@ vlib_combined_counter_main_t adjacency_counters = {
 ip_adjacency_t *adj_pool;
 
 /**
+ * The adjacency logger
+ */
+vlib_log_class_t adj_logger;
+
+/**
  * @brief Global Config for enabling per-adjacency counters.
  * By default these are disabled.
  */
@@ -350,7 +355,6 @@ adj_lock (adj_index_t adj_index)
     adj = adj_get(adj_index);
     ASSERT(adj);
 
-    ADJ_DBG(adj, "lock");
     fib_node_lock(&adj->ia_node);
 }
 
@@ -365,9 +369,6 @@ adj_unlock (adj_index_t adj_index)
     }
 
     adj = adj_get(adj_index);
-    ASSERT(adj);
-
-    ADJ_DBG(adj, "unlock");
     ASSERT(adj);
 
     fib_node_unlock(&adj->ia_node);
@@ -649,6 +650,8 @@ adj_module_init (vlib_main_t * vm)
     adj_mcast_module_init();
 
     vnet_feature_register(adj_feature_update, NULL);
+
+    adj_logger = vlib_log_register_class("adj", "adj");
 
     return (NULL);
 }

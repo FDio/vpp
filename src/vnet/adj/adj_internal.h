@@ -31,16 +31,13 @@
 /*
  * Debug macro
  */
-#ifdef ADJ_DEBUG
-#define ADJ_DBG(_adj, _fmt, _args...)		\
-{						\
-    clib_warning("adj:[%d:%p]:" _fmt,		\
-		 _adj - adj_pool, _adj,		\
-		 ##_args);			\
+extern vlib_log_class_t adj_logger;
+#define ADJ_DBG(_adj, _fmt, _args...)		        \
+{                                                       \
+    vlib_log_debug(adj_logger, "adj:[%d:%p]:" _fmt,     \
+                   _adj - adj_pool, _adj,		\
+                   ##_args);                            \
 }
-#else
-#define ADJ_DBG(_e, _fmt, _args...)
-#endif
 
 /*
  * Vlib nodes
