@@ -77,6 +77,14 @@ virtio_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi,
   return 0;
 }
 
+static clib_error_t *
+virtio_eth_set_max_frame_size (vnet_main_t *vnm, vnet_hw_interface_t *hi,
+			       u32 frame_size)
+{
+  /* nothing for now */
+  return 0;
+}
+
 #define TAP_MAX_INSTANCE 1024
 
 static void
@@ -650,6 +658,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
       eir.dev_instance = vif->dev_instance;
       eir.address = vif->mac_addr;
       eir.cb.flag_change = virtio_eth_flag_change;
+      eir.cb.set_max_frame_size = virtio_eth_set_max_frame_size;
       vif->hw_if_index = vnet_eth_register_interface (vnm, &eir);
     }
   else
