@@ -152,6 +152,17 @@
   _ (0x9C, 0x01, 0, 0, 0, 0x05, IDQ_UOPS_NOT_DELIVERED, CORE,                 \
      "Uops not delivered to Resource Allocation Table (RAT) per thread when " \
      "backend of the machine is not stalled")                                 \
+  _ (0x9C, 0x01, 0, 0, 1, 0x01, IDQ_UOPS_NOT_DELIVERED, CYCLES_FE_WAS_OK,     \
+     "Cycles with 4 uops delivered by the front end or Resource Allocation "  \
+     "Table (RAT) was stalling FE.x")                                         \
+  _ (0x9C, 0x01, 0, 0, 0, 0x01, IDQ_UOPS_NOT_DELIVERED_CYCLES_3_UOP_DELIV,    \
+     CORE, "Cycles with 3 uops delivered by the front end.")                  \
+  _ (0x9C, 0x01, 0, 0, 0, 0x02, IDQ_UOPS_NOT_DELIVERED_CYCLES_2_UOP_DELIV,    \
+     CORE, "Cycles with 2 uops delivered by the front end.")                  \
+  _ (0x9C, 0x01, 0, 0, 0, 0x03, IDQ_UOPS_NOT_DELIVERED_CYCLES_1_UOP_DELIV,    \
+     CORE, "Cycles with 1 uops delivered by the front end.")                  \
+  _ (0x9C, 0x01, 0, 0, 0, 0x04, IDQ_UOPS_NOT_DELIVERED_CYCLES_0_UOP_DELIV,    \
+     CORE, "Cycles with 0 uops delivered by the front end.")                  \
   _ (0xA1, 0x01, 0, 0, 0, 0x00, UOPS_DISPATCHED, PORT_0,                      \
      "Number of uops executed on port 0")                                     \
   _ (0xA1, 0x02, 0, 0, 0, 0x00, UOPS_DISPATCHED, PORT_1,                      \

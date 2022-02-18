@@ -34,7 +34,8 @@ add_vpp_plugin(perfmon
   intel/bundle/topdown_metrics.c
   intel/bundle/topdown_icelake.c
   intel/bundle/topdown_tremont.c
-  intel/bundle/frontend_bound_bw.c
+  intel/bundle/frontend_bound_bw_src.c
+  intel/bundle/frontend_bound_bw_uops.c
   intel/bundle/frontend_bound_lat.c
   intel/bundle/iio_bw.c
 
