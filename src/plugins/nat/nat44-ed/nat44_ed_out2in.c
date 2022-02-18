@@ -1135,8 +1135,12 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
 	      goto trace0;
 	    }
 
-	  vlib_increment_simple_counter (&sm->counters.slowpath.out2in.icmp,
-					 thread_index, sw_if_index0, 1);
+	  if (NAT_NEXT_DROP != next[0])
+	    {
+	      vlib_increment_simple_counter (
+		&sm->counters.slowpath.out2in.icmp, thread_index, sw_if_index0,
+		1);
+	    }
 	  goto trace0;
 	}
 
