@@ -62,7 +62,7 @@ then
     CLANG_FORMAT_DIFF=clang-format-diff${SUFFIX}
 elif command -v clang-format-diff &> /dev/null;
 then
-    CLANG_FORMAT=clang-format-diff
+    CLANG_FORMAT_DIFF=clang-format-diff
 elif [ ! -f $CLANG_FORMAT_DIFF ] ;
 then
     echo "*******************************************************************"
