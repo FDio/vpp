@@ -258,6 +258,7 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
   int host_if_index = -1;
   u32 rx_frames_per_block, tx_frames_per_block;
   u32 rx_frame_size, tx_frame_size;
+  u8 need_barrier_sync = 0;
 
   p = mhash_get (&apm->if_index_by_host_if_name, arg->host_if_name);
   if (p)
@@ -357,7 +358,20 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
     host_if_index = -1;
 
   /* So far everything looks good, let's create interface */
+  pool_get_will_expand (apm->interfaces, need_barrier_sync);
+
+  if (need_barrier_sync)
+    {
+      vlib_worker_thread_barrier_sync (vm);
+    }
+
   pool_get (apm->interfaces, apif);
+
+  if (need_barrier_sync)
+    {
+      vlib_worker_thread_barrier_release (vm);
+    }
+
   if_index = apif - apm->interfaces;
 
   apif->host_if_index = host_if_index;
@@ -371,6 +385,7 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
   apif->next_tx_frame = 0;
   apif->next_rx_frame = 0;
   apif->mode = arg->mode;
+  apif->clib_file_index = ~0;
 
   ret = af_packet_read_mtu (apif);
   if (ret != 0)
