@@ -702,6 +702,10 @@ vts_worker_loop (void *arg)
 	      vsm->ctrl = vts_accept_ctrl (wrk, vsm->ctrl_listen_fd);
 	      continue;
 	    }
+
+	  /* at this point ctrl session must be valid */
+	  ASSERT (vsm->ctrl);
+
 	  if (ep_evts[i].data.u32 == VCL_TEST_DATA_LISTENER)
 	    {
 	      conn = vts_accept_client (wrk, wrk->listener.fd);
