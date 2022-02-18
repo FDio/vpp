@@ -121,6 +121,7 @@ hash_memory64 (void *p, word n_bytes, u64 state)
     u8 as_u8[8];
     u64 as_u64;
   } tmp;
+  int l;
 
   /*
    * If the request crosses a 4k boundary, it's not OK to assume
@@ -145,59 +146,62 @@ hash_memory64 (void *p, word n_bytes, u64 state)
     }
 
   c += n_bytes;
+  l = n % sizeof (u64);
   switch (n / sizeof (u64))
     {
     case 2:
       a += clib_mem_unaligned (q + 0, u64);
       b += clib_mem_unaligned (q + 1, u64);
-      if (n % sizeof (u64))
+      if (l)
 	{
 	  if (PREDICT_TRUE (page_boundary_crossing == 0))
 	    {
-	      CLIB_MEM_OVERFLOW_PUSH (q + 2, sizeof (u64));
-	      c += zap64 (clib_mem_unaligned (q + 2, u64), n % sizeof (u64))
-		   << 8;
+	      CLIB_MEM_OVERFLOW_PUSH (q + 2, l);
+	      clib_memcpy_fast (tmp.as_u8, q + 2, l);
+	      c += zap64 (tmp.as_u64, l) << 8;
 	      CLIB_MEM_OVERFLOW_POP ();
 	    }
 	  else
 	    {
-	      clib_memcpy_fast (tmp.as_u8, q + 2, n % sizeof (u64));
-	      c += zap64 (tmp.as_u64, n % sizeof (u64)) << 8;
+	      clib_memcpy_fast (tmp.as_u8, q + 2, l);
+	      c += zap64 (tmp.as_u64, l) << 8;
 	    }
 	}
       break;
 
     case 1:
       a += clib_mem_unaligned (q + 0, u64);
-      if (n % sizeof (u64))
+      if (l)
 	{
 	  if (PREDICT_TRUE (page_boundary_crossing == 0))
 	    {
-	      CLIB_MEM_OVERFLOW_PUSH (q + 1, sizeof (u64));
-	      b += zap64 (clib_mem_unaligned (q + 1, u64), n % sizeof (u64));
+	      CLIB_MEM_OVERFLOW_PUSH (q + 1, l);
+	      clib_memcpy_fast (tmp.as_u8, q + 1, l);
+	      b += zap64 (tmp.as_u64, l);
 	      CLIB_MEM_OVERFLOW_POP ();
 	    }
 	  else
 	    {
-	      clib_memcpy_fast (tmp.as_u8, q + 1, n % sizeof (u64));
-	      b += zap64 (tmp.as_u64, n % sizeof (u64));
+	      clib_memcpy_fast (tmp.as_u8, q + 1, l);
+	      b += zap64 (tmp.as_u64, l);
 	    }
 	}
       break;
 
     case 0:
-      if (n % sizeof (u64))
+      if (l)
 	{
 	  if (PREDICT_TRUE (page_boundary_crossing == 0))
 	    {
-	      CLIB_MEM_OVERFLOW_PUSH (q + 0, sizeof (u64));
-	      a += zap64 (clib_mem_unaligned (q + 0, u64), n % sizeof (u64));
+	      CLIB_MEM_OVERFLOW_PUSH (q + 0, l);
+	      clib_memcpy_fast (tmp.as_u8, q, l);
+	      a += zap64 (tmp.as_u64, l);
 	      CLIB_MEM_OVERFLOW_POP ();
 	    }
 	  else
 	    {
-	      clib_memcpy_fast (tmp.as_u8, q, n % sizeof (u64));
-	      a += zap64 (tmp.as_u64, n % sizeof (u64));
+	      clib_memcpy_fast (tmp.as_u8, q, l);
+	      a += zap64 (tmp.as_u64, l);
 	    }
 	}
       break;
