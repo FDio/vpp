@@ -16,7 +16,7 @@ from scapy.layers.l2 import Ether, ARP
 from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_NA,\
     ICMPv6NDOptSrcLLAddr, ICMPv6NDOptDstLLAddr, ICMPv6ND_RA, RouterAlert, \
     IPv6ExtHdrHopByHop
-from util import ppp, ppc
+from util import ppp, ppc, UnexpectedPacketError
 from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ismaddr
 
 
@@ -287,6 +287,11 @@ class VppPGInterface(VppInterface):
             remaining_time -= elapsed_time
         if capture:
             self.generate_debug_aid("count-mismatch")
+            if len(capture) > 0 and 0 == expected_count:
+                rem = f"\n{remark}" if remark else ""
+                raise UnexpectedPacketError(
+                    capture[0],
+                    f"\n({len(capture)} packets captured in total){rem}")
             raise Exception("Captured packets mismatch, captured %s packets, "
                             "expected %s packets on %s" %
                             (len(capture.res), expected_count, name))
@@ -311,12 +316,12 @@ class VppPGInterface(VppInterface):
                 pass
             self.generate_debug_aid("empty-assert")
             if remark:
-                raise AssertionError(
-                    "Non-empty capture file present for interface %s (%s)" %
-                    (self.name, remark))
+                raise UnexpectedPacketError(
+                    capture[0],
+                    f" ({len(capture)} packets captured in total) ({remark})")
             else:
-                raise AssertionError("Capture file present for interface %s" %
-                                     self.name)
+                raise UnexpectedPacketError(
+                    capture[0], f" ({len(capture)} packets captured in total)")
 
     def wait_for_pg_stop(self):
         # wait till packet-generator is stopped

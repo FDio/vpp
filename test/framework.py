@@ -1311,7 +1311,6 @@ class VppTestCase(CPUInterface, unittest.TestCase):
                 timeout = 1
             for i in self.pg_interfaces:
                 i.get_capture(0, timeout=timeout)
-                i.assert_nothing_captured(remark=remark)
                 timeout = 0.1
         finally:
             if trace:
@@ -1366,7 +1365,6 @@ class VppTestCase(CPUInterface, unittest.TestCase):
         for i in self.pg_interfaces:
             if i not in outputs:
                 i.get_capture(0, timeout=timeout)
-                i.assert_nothing_captured()
                 timeout = 0.1
 
         if stats_diff:
