@@ -24,8 +24,12 @@ null_logger = logging.getLogger('VppTestCase.util')
 null_logger.addHandler(logging.NullHandler())
 
 
+def pr(packet):
+    return packet.__repr__()
+
+
 def ppp(headline, packet):
-    """ Return string containing the output of scapy packet.show() call. """
+    """ Return string containing headline and output of scapy packet.show() """
     return '%s\n%s\n\n%s\n' % (headline,
                                hexdump(packet, dump=True),
                                packet.show(dump=True))
@@ -452,6 +456,12 @@ def reassemble4_ether(listoffragments):
 def reassemble4(listoffragments):
     return reassemble4_core(listoffragments, True)
 
+class UnexpectedPacketError(Exception):
+    def __init__(self, packet):
+        self.packet = packet
+
+    def __str__(self):
+        return f"Unexpected packet: {pr(self.packet)}"
 
 def recursive_dict_merge(dict_base, dict_update):
     """Recursively merge base dict with update dict, return merged dict"""
