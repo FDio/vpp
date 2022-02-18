@@ -25,7 +25,7 @@ enum
 };
 
 static u8 *
-format_intel_frontend_bound_bw (u8 *s, va_list *args)
+format_intel_frontend_bound_bw_src (u8 *s, va_list *args)
 {
   perfmon_node_stats_t *ss = va_arg (*args, perfmon_node_stats_t *);
   int row = va_arg (*args, int);
@@ -65,12 +65,12 @@ format_intel_frontend_bound_bw (u8 *s, va_list *args)
   return s;
 }
 
-static perfmon_cpu_supports_t frontend_bound_bw_cpu_supports[] = {
+static perfmon_cpu_supports_t frontend_bound_bw_cpu_supports_src[] = {
   { clib_cpu_supports_avx512_bitalg, PERFMON_BUNDLE_TYPE_NODE },
 };
 
-PERFMON_REGISTER_BUNDLE (intel_core_frontend_bound_bw) = {
-  .name = "td-frontend-bw",
+PERFMON_REGISTER_BUNDLE (intel_core_frontend_bound_bw_src) = {
+  .name = "td-frontend-bw-src",
   .description =
     "Topdown FrontEnd-bound BandWidth - % uops from each uop fetch source",
   .source = "intel-core",
@@ -79,9 +79,9 @@ PERFMON_REGISTER_BUNDLE (intel_core_frontend_bound_bw) = {
   .events[2] = INTEL_CORE_E_IDQ_MITE_UOPS, /* 0x0F */
   .events[3] = INTEL_CORE_E_LSD_UOPS,	   /* 0x0F */
   .n_events = 4,
-  .format_fn = format_intel_frontend_bound_bw,
-  .cpu_supports = frontend_bound_bw_cpu_supports,
-  .n_cpu_supports = ARRAY_LEN (frontend_bound_bw_cpu_supports),
+  .format_fn = format_intel_frontend_bound_bw_src,
+  .cpu_supports = frontend_bound_bw_cpu_supports_src,
+  .n_cpu_supports = ARRAY_LEN (frontend_bound_bw_cpu_supports_src),
   .column_headers = PERFMON_STRINGS ("UOPs/PKT", "% DSB UOPS", "% MS UOPS",
 				     "% MITE UOPS", "% LSD UOPS"),
   .footer =
