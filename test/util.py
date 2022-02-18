@@ -6,6 +6,7 @@ import socket
 from socket import AF_INET6
 import os.path
 from copy import deepcopy
+from collections import UserDict
 
 import scapy.compat
 from scapy.layers.l2 import Ether
@@ -24,8 +25,12 @@ null_logger = logging.getLogger('VppTestCase.util')
 null_logger.addHandler(logging.NullHandler())
 
 
+def pr(packet):
+    return packet.__repr__()
+
+
 def ppp(headline, packet):
-    """ Return string containing the output of scapy packet.show() call. """
+    """ Return string containing headline and output of scapy packet.show() """
     return '%s\n%s\n\n%s\n' % (headline,
                                hexdump(packet, dump=True),
                                packet.show(dump=True))
@@ -453,6 +458,15 @@ def reassemble4(listoffragments):
     return reassemble4_core(listoffragments, True)
 
 
+class UnexpectedPacketError(Exception):
+    def __init__(self, packet, msg=""):
+        self.packet = packet
+        self.msg = msg
+
+    def __str__(self):
+        return f"\nUnexpected packet:\n{pr(self.packet)}{self.msg}"
+
+
 def recursive_dict_merge(dict_base, dict_update):
     """Recursively merge base dict with update dict, return merged dict"""
     for key in dict_update:
@@ -467,7 +481,7 @@ def recursive_dict_merge(dict_base, dict_update):
     return dict_base
 
 
-class StatsDiff:
+class StatsDiff(UserDict):
     """
     Diff dictionary is a dictionary of dictionaries of interesting stats:
 
@@ -487,14 +501,10 @@ class StatsDiff:
     sw-if-index.
     """
 
-    def __init__(self, stats_diff={}):
-        self.stats_diff = stats_diff
+    __slots__ = ()  # prevent setting properties to act like a dictionary
 
-    def update(self, sw_if_index, key, value):
-        if sw_if_index in self.stats_diff:
-            self.stats_diff[sw_if_index][key] = value
-        else:
-            self.stats_diff[sw_if_index] = {key: value}
+    def __init__(self, data):
+        super().__init__(data)
 
     def __or__(self, other):
-        return recursive_dict_merge(deepcopy(self.stats_diff), other)
+        return recursive_dict_merge(deepcopy(self.data), other)
