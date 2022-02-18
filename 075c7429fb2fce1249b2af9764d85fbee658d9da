@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ef808f15_169ed17b",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 626,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-02-18T19:02:18Z",
+      "side": 1,
+      "message": "Do we ever expect this to be called from main thread? If yes, won\u0027t it deadlock?",
+      "range": {
+        "startLine": 626,
+        "startChar": 6,
+        "endLine": 626,
+        "endChar": 25
+      },
+      "revId": "075c7429fb2fce1249b2af9764d85fbee658d9da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
