@@ -52,6 +52,14 @@ vxlan_eth_flag_change (vnet_main_t *vnm, vnet_hw_interface_t *hi, u32 flags)
   return 0;
 }
 
+static clib_error_t *
+vxlan_eth_set_max_frame_size (vnet_main_t *vnm, vnet_hw_interface_t *hw,
+			      u32 frame_size)
+{
+  /* nothing for now */
+  return 0;
+}
+
 static u8 *
 format_decap_next (u8 * s, va_list * args)
 {
@@ -470,6 +478,7 @@ int vnet_vxlan_add_del_tunnel
 	  eir.dev_instance = dev_instance;
 	  eir.address = hw_addr;
 	  eir.cb.flag_change = vxlan_eth_flag_change;
+	  eir.cb.set_max_frame_size = vxlan_eth_set_max_frame_size;
 	  t->hw_if_index = vnet_eth_register_interface (vnm, &eir);
 	}
 

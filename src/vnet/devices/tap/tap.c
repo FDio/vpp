@@ -77,6 +77,34 @@ virtio_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi,
   return 0;
 }
 
+static clib_error_t *
+virtio_eth_set_max_frame_size (vnet_main_t *vnm, vnet_hw_interface_t *hi,
+			       u32 frame_size)
+{
+  clib_error_t *error, *rv;
+
+  virtio_main_t *mm = &virtio_main;
+  virtio_if_t *vif;
+
+  vif = pool_elt_at_index (mm->interfaces, hi->dev_instance);
+
+  error =
+    vnet_netlink_set_link_mtu (vif->ifindex, frame_size + hi->frame_overhead);
+  if (error)
+    {
+      vlib_log_err (mm->log_default, "netlink failed to change MTU: %U",
+		    format_clib_error, error);
+      rv = vnet_error (VNET_ERR_SYSCALL_ERROR_1, "netlink error: %U",
+		       format_clib_error, error);
+      clib_error_free (error);
+      return rv;
+    }
+  else
+    vif->host_mtu_size = frame_size + hi->frame_overhead;
+
+  return 0;
+}
+
 #define TAP_MAX_INSTANCE 1024
 
 static void
@@ -650,6 +678,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
       eir.dev_instance = vif->dev_instance;
       eir.address = vif->mac_addr;
       eir.cb.flag_change = virtio_eth_flag_change;
+      eir.cb.set_max_frame_size = virtio_eth_set_max_frame_size;
       vif->hw_if_index = vnet_eth_register_interface (vnm, &eir);
     }
   else
