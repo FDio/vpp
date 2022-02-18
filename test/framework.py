@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 from __future__ import print_function
-import gc
 import logging
 import sys
 import os
@@ -1264,26 +1263,82 @@ class VppTestCase(CPUInterface, unittest.TestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start(trace=trace)
 
+    def snapshot_stats(self, stats_diff):
+        """Return snapshot of interesting stats based on diff dictionary."""
+        stats_snapshot = {}
+        for sw_if_index in stats_diff:
+            for counter in stats_diff[sw_if_index]:
+                stats_snapshot[counter] = self.statistics[counter]
+        self.logger.debug(f"Took statistics stats_snapshot: {stats_snapshot}")
+        return stats_snapshot
+
+    def compare_stats_with_snapshot(self, stats_diff, stats_snapshot):
+        """Assert appropriate difference between current stats and snapshot."""
+        for sw_if_index in stats_diff:
+            for cntr, diff in stats_diff[sw_if_index].items():
+                if sw_if_index == "err":
+                    self.assert_equal(
+                        self.statistics[cntr].sum(),
+                        stats_snapshot[cntr].sum() + diff,
+                        f"'{cntr}' counter value (previous value: "
+                        f"{stats_snapshot[cntr].sum()}, "
+                        f"expected diff: {diff})")
+                else:
+                    try:
+                        self.assert_equal(
+                            self.statistics[cntr][:, sw_if_index].sum(),
+                            stats_snapshot[cntr][:, sw_if_index].sum() + diff,
+                            f"'{cntr}' counter value (previous value: "
+                            f"{stats_snapshot[cntr][:, sw_if_index].sum()}, "
+                            f"expected diff: {diff})")
+                    except IndexError:
+                        # if diff is 0, then this most probably a case where
+                        # test declares multiple interfaces but traffic hasn't
+                        # passed through this one yet - which means the counter
+                        # value is 0 and can be ignored
+                        if 0 != diff:
+                            raise
+
     def send_and_assert_no_replies(self, intf, pkts, remark="", timeout=None,
-                                   trace=True):
+                                   stats_diff=None, trace=True, msg=None):
+        if stats_diff:
+            stats_snapshot = self.snapshot_stats(stats_diff)
+
         self.pg_send(intf, pkts)
-        if not timeout:
-            timeout = 1
-        for i in self.pg_interfaces:
-            i.get_capture(0, timeout=timeout)
-            i.assert_nothing_captured(remark=remark)
-            timeout = 0.1
-        if trace:
-            self.logger.debug(self.vapi.cli("show trace"))
+
+        try:
+            if not timeout:
+                timeout = 1
+            for i in self.pg_interfaces:
+                i.get_capture(0, timeout=timeout)
+                i.assert_nothing_captured(remark=remark)
+                timeout = 0.1
+        finally:
+            if trace:
+                if msg:
+                    self.logger.debug(f"send_and_assert_no_replies: {msg}")
+                self.logger.debug(self.vapi.cli("show trace"))
+
+        if stats_diff:
+            self.compare_stats_with_snapshot(stats_diff, stats_snapshot)
 
     def send_and_expect(self, intf, pkts, output, n_rx=None, worker=None,
-                        trace=True):
+                        trace=True, msg=None, stats_diff=None):
+        if stats_diff:
+            stats_snapshot = self.snapshot_stats(stats_diff)
+
         if not n_rx:
             n_rx = 1 if isinstance(pkts, Packet) else len(pkts)
         self.pg_send(intf, pkts, worker=worker, trace=trace)
         rx = output.get_capture(n_rx)
         if trace:
+            if msg:
+                self.logger.debug(f"send_and_expect: {msg}")
             self.logger.debug(self.vapi.cli("show trace"))
+
+        if stats_diff:
+            self.compare_stats_with_snapshot(stats_diff, stats_snapshot)
+
         return rx
 
     def send_and_expect_load_balancing(self, input, pkts, outputs,
@@ -1298,7 +1353,11 @@ class VppTestCase(CPUInterface, unittest.TestCase):
             self.logger.debug(self.vapi.cli("show trace"))
         return rxs
 
-    def send_and_expect_only(self, intf, pkts, output, timeout=None):
+    def send_and_expect_only(self, intf, pkts, output, timeout=None,
+                             stats_diff=None):
+        if stats_diff:
+            stats_snapshot = self.snapshot_stats(stats_diff)
+
         self.pg_send(intf, pkts)
         rx = output.get_capture(len(pkts))
         outputs = [output]
@@ -1309,6 +1368,9 @@ class VppTestCase(CPUInterface, unittest.TestCase):
                 i.get_capture(0, timeout=timeout)
                 i.assert_nothing_captured()
                 timeout = 0.1
+
+        if stats_diff:
+            self.compare_stats_with_snapshot(stats_diff, stats_snapshot)
 
         return rx
 
