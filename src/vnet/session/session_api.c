@@ -1372,6 +1372,31 @@ done:
   clib_socket_sendmsg (cs, &msg, sizeof (msg), fds, n_fds);
 }
 
+/* This is a workaround for the case when session layer starts reading
+ * the socket before the client actualy sends the data
+ */
+static clib_error_t *
+sapi_socket_receive_wait (clib_socket_t *cs, u8 *msg, u32 msg_len)
+{
+  clib_error_t *err;
+  int n_tries = 5;
+
+  while (1)
+    {
+      err = clib_socket_recvmsg (cs, msg, msg_len, 0, 0);
+      if (!err)
+	break;
+
+      if (!n_tries)
+	return err;
+
+      n_tries--;
+      usleep (1);
+    }
+
+  return err;
+}
+
 static void
 sapi_add_del_cert_key_handler (app_namespace_t *app_ns, clib_socket_t *cs,
 			       app_sapi_cert_key_add_del_msg_t *mp)
@@ -1395,11 +1420,11 @@ sapi_add_del_cert_key_handler (app_namespace_t *app_ns, clib_socket_t *cs,
 	}
 
       vec_validate (certkey, mp->certkey_len - 1);
-      err = clib_socket_recvmsg (cs, certkey, mp->certkey_len, 0, 0);
+
+      err = sapi_socket_receive_wait (cs, certkey, mp->certkey_len);
       if (err)
 	{
 	  clib_error_report (err);
-	  clib_error_free (err);
 	  rv = SESSION_E_INVALID;
 	  goto send_reply;
 	}

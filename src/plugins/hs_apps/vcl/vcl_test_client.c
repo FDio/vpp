@@ -1041,7 +1041,11 @@ main (int argc, char **argv)
 
   /* Protos like tls/dtls/quic need init */
   if (vt->protos[vcm->proto]->init)
-    vt->protos[vcm->proto]->init (&ctrl->cfg);
+    {
+      rv = vt->protos[vcm->proto]->init (&ctrl->cfg);
+      if (rv)
+	vtfail ("client init failed", rv);
+    }
 
   if ((rv = vtc_ctrl_session_init (vcm, ctrl)))
     vtfail ("vppcom_session_create() ctrl session", rv);
