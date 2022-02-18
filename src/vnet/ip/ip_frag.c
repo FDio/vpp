@@ -183,6 +183,10 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
 	  to_b->flags |= VNET_BUFFER_F_L4_HDR_OFFSET_VALID;
 	}
 
+      if (from_b->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED)
+	{
+	  to_b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
+	}
       /* Spin through from buffers filling up the to buffer */
       u16 left_in_to_buffer = len, to_ptr = 0;
       while (1)
