@@ -50,6 +50,14 @@ memif_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
   return 0;
 }
 
+static clib_error_t *
+memif_eth_set_max_frame_size (vnet_main_t *vnm, vnet_hw_interface_t *hi,
+			      u32 flags)
+{
+  /* nothing for now */
+  return 0;
+}
+
 static void
 memif_queue_intfd_close (memif_queue_t * mq)
 {
@@ -1018,6 +1026,7 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
       eir.dev_instance = mif->dev_instance;
       eir.address = args->hw_addr;
       eir.cb.flag_change = memif_eth_flag_change;
+      eir.cb.set_max_frame_size = memif_eth_set_max_frame_size;
       mif->hw_if_index = vnet_eth_register_interface (vnm, &eir);
     }
   else if (mif->mode == MEMIF_INTERFACE_MODE_IP)
