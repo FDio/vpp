@@ -90,8 +90,6 @@ format_vxlan_tunnel (u8 * s, va_list * args)
   if (PREDICT_FALSE (t->decap_next_index != VXLAN_INPUT_NEXT_L2_INPUT))
     s = format (s, "decap-next-%U ", format_decap_next, t->decap_next_index);
 
-  s = format (s, "l3 %u ", t->is_l3);
-
   if (PREDICT_FALSE (ip46_address_is_multicast (&t->dst)))
     s = format (s, "mcast-sw-if-idx %d ", t->mcast_sw_if_index);
 
@@ -255,8 +253,7 @@ const static fib_node_vft_t vxlan_vft = {
   _ (src)                                                                     \
   _ (dst)                                                                     \
   _ (src_port)                                                                \
-  _ (dst_port)                                                                \
-  _ (is_l3)
+  _ (dst_port)
 
 static void
 vxlan_rewrite (vxlan_tunnel_t * t, bool is_ip6)
@@ -459,7 +456,7 @@ int vnet_vxlan_add_del_tunnel
       t->user_instance = user_instance; /* name */
       t->flow_index = ~0;
 
-      if (a->is_l3 == 0)
+      if (a->is_l3)
 	t->hw_if_index =
 	  vnet_register_interface (vnm, vxlan_device_class.index, dev_instance,
 				   vxlan_hw_class.index, dev_instance);
@@ -513,7 +510,7 @@ int vnet_vxlan_add_del_tunnel
 
       if (add_failed)
 	{
-	  if (a->is_l3 == 0)
+	  if (a->is_l3)
 	    vnet_delete_hw_interface (vnm, t->hw_if_index);
 	  else
 	    ethernet_delete_interface (vnm, t->hw_if_index);
@@ -666,7 +663,8 @@ int vnet_vxlan_add_del_tunnel
 	  mcast_shared_remove (&t->dst);
 	}
 
-      if (t->is_l3 == 0)
+      vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, t->hw_if_index);
+      if (hw->dev_class_index == vxlan_device_class.index)
 	vnet_delete_hw_interface (vnm, t->hw_if_index);
       else
 	ethernet_delete_interface (vnm, t->hw_if_index);
@@ -853,6 +851,7 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
 
   vnet_vxlan_add_del_tunnel_args_t a = { .is_add = is_add,
 					 .is_ip6 = ipv6_set,
+					 .is_l3 = is_l3,
 					 .instance = instance,
 #define _(x) .x = x,
 					 foreach_copy_field
