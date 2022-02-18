@@ -284,6 +284,7 @@ class VppTestCase(CPUInterface, unittest.TestCase):
     extra_vpp_plugin_config = []
     logger = null_logger
     vapi_response_timeout = 5
+    remove_configured_vpp_objects_on_tear_down = True
 
     @property
     def packet_infos(self):
@@ -758,7 +759,8 @@ class VppTestCase(CPUInterface, unittest.TestCase):
                 self.logger.info(self.vapi.ppcli("show bihash"))
                 self.logger.info("Logging testcase specific show commands.")
                 self.show_commands_at_teardown()
-                self.registry.remove_vpp_config(self.logger)
+                if self.remove_configured_vpp_objects_on_tear_down:
+                    self.registry.remove_vpp_config(self.logger)
             # Save/Dump VPP api trace log
             m = self._testMethodName
             api_trace = "vpp_api_trace.%s.%d.log" % (m, self.vpp.pid)
