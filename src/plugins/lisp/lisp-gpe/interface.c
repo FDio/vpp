@@ -92,7 +92,6 @@ VLIB_NODE_FN (lisp_tunnel_output)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   u32 n_left_from, next_index, *from, *to_next;
-  lisp_gpe_main_t *lgm = &lisp_gpe_main;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -107,6 +106,7 @@ VLIB_NODE_FN (lisp_tunnel_output)
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
+	  i16 ip_hdr_off0, ip_hdr_len0;
 	  u32 bi0, adj_index0, next0;
 	  const ip_adjacency_t *adj0;
 	  const dpo_id_t *dpo0;
@@ -123,10 +123,19 @@ VLIB_NODE_FN (lisp_tunnel_output)
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 
-	  /* Fixup the checksum and len fields in the LISP tunnel encap
-	   * that was applied at the midchain node */
+	  /* Offload ip and udp csum */
 	  is_v4_0 = is_v4_packet (vlib_buffer_get_current (b0));
-	  ip_udp_fixup_one (lgm->vlib_main, b0, is_v4_0);
+
+	  ip_hdr_off0 = (u8 *) vlib_buffer_get_current (b0) - b0->data;
+	  vnet_buffer (b0)->l3_hdr_offset = ip_hdr_off0;
+	  b0->flags |=
+	    VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
+
+	  vnet_buffer_offload_flags_set (b0, VNET_BUFFER_OFFLOAD_F_UDP_CKSUM);
+	  ip_hdr_len0 =
+	    is_v4_0 ? sizeof (ip4_header_t) : sizeof (ip6_header_t);
+	  vnet_buffer (b0)->l4_hdr_offset = ip_hdr_off0 + ip_hdr_len0;
+	  b0->flags |= VNET_BUFFER_F_L4_HDR_OFFSET_VALID;
 
 	  /* Follow the DPO on which the midchain is stacked */
 	  adj_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
