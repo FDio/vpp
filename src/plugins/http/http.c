@@ -229,6 +229,7 @@ http_ts_disconnect_callback (session_t *ts)
   if (hc->state < HTTP_CONN_STATE_TRANSPORT_CLOSED)
     hc->state = HTTP_CONN_STATE_TRANSPORT_CLOSED;
 
+  /* Nothing more to rx, propagate to app */
   if (!svm_fifo_max_dequeue_cons (ts->rx_fifo))
     session_transport_closing_notify (&hc->connection);
 }
@@ -236,15 +237,16 @@ http_ts_disconnect_callback (session_t *ts)
 static void
 http_ts_reset_callback (session_t *ts)
 {
-  http_conn_t *ctx;
+  http_conn_t *hc;
 
-  ctx = http_conn_get_w_thread (ts->opaque, ts->thread_index);
+  hc = http_conn_get_w_thread (ts->opaque, ts->thread_index);
 
-  if (ctx->state < HTTP_CONN_STATE_TRANSPORT_CLOSED)
-    ctx->state = HTTP_CONN_STATE_TRANSPORT_CLOSED;
+  hc->state = HTTP_CONN_STATE_CLOSED;
+  http_buffer_free (&hc->tx_buf);
+  hc->req_state = HTTP_REQ_STATE_WAIT_METHOD;
+  session_transport_reset_notify (&hc->connection);
 
-  if (!svm_fifo_max_dequeue_cons (ts->rx_fifo))
-    session_transport_reset_notify (&ctx->connection);
+  http_disconnect_transport (hc);
 }
 
 /**
@@ -856,7 +858,10 @@ http_app_tx_callback (void *session, transport_send_params_t *sp)
   hc = http_conn_get_w_thread (as->connection_index, as->thread_index);
   if (hc->req_state < HTTP_REQ_STATE_WAIT_APP)
     {
-      clib_warning ("app data in req state %u", hc->req_state);
+      if (hc->state != HTTP_CONN_STATE_CLOSED)
+	clib_warning ("app data req state %u session state %u", hc->req_state,
+		      hc->state);
+      svm_fifo_dequeue_drop_all (as->tx_fifo);
       return 0;
     }
 
@@ -865,9 +870,9 @@ http_app_tx_callback (void *session, transport_send_params_t *sp)
 
   http_req_run_state_machine (hc, sp);
 
-  if (hc->state == HTTP_CONN_STATE_CLOSED)
+  if (hc->state == HTTP_CONN_STATE_APP_CLOSED)
     {
-      if (!svm_fifo_max_dequeue_cons (as->rx_fifo))
+      if (!svm_fifo_max_dequeue_cons (as->tx_fifo))
 	http_disconnect_transport (hc);
     }
 

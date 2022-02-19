@@ -83,6 +83,9 @@ hts_session_free (hts_session_t *hs)
   hts_main_t *htm = &hts_main;
   u32 thread = hs->thread_index;
 
+  if (htm->debug_level > 0)
+    clib_warning ("Freeing session %u", hs->session_index);
+
   if (CLIB_DEBUG)
     clib_memset (hs, 0xfa, sizeof (*hs));
 
@@ -296,6 +299,7 @@ hs_ts_tx_callback (session_t *ts)
 static int
 hts_ts_accept_callback (session_t *ts)
 {
+  hts_main_t *htm = &hts_main;
   hts_session_t *hs;
 
   hs = hts_session_alloc (ts->thread_index);
@@ -303,6 +307,9 @@ hts_ts_accept_callback (session_t *ts)
 
   ts->opaque = hs->session_index;
   ts->session_state = SESSION_STATE_READY;
+
+  if (htm->debug_level > 0)
+    clib_warning ("Accepted session %u", ts->opaque);
 
   return 0;
 }
@@ -316,23 +323,29 @@ hts_ts_connected_callback (u32 app_index, u32 api_context, session_t *s,
 }
 
 static void
-hts_ts_disconnect_callback (session_t *s)
+hts_ts_disconnect_callback (session_t *ts)
 {
   hts_main_t *htm = &hts_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
 
-  a->handle = session_handle (s);
+  if (htm->debug_level > 0)
+    clib_warning ("Closed session %u", ts->opaque);
+
+  a->handle = session_handle (ts);
   a->app_index = htm->app_index;
   vnet_disconnect_session (a);
 }
 
 static void
-hts_ts_reset_callback (session_t *s)
+hts_ts_reset_callback (session_t *ts)
 {
   hts_main_t *htm = &hts_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
 
-  a->handle = session_handle (s);
+  if (htm->debug_level > 0)
+    clib_warning ("Reset session %u", ts->opaque);
+
+  a->handle = session_handle (ts);
   a->app_index = htm->app_index;
   vnet_disconnect_session (a);
 }
