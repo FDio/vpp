@@ -219,22 +219,24 @@ http_ts_disconnect_callback (session_t *ts)
   if (hc->state < HTTP_CONN_STATE_TRANSPORT_CLOSED)
     hc->state = HTTP_CONN_STATE_TRANSPORT_CLOSED;
 
-  if (!svm_fifo_max_dequeue_cons (ts->rx_fifo))
+  /* Not doing tx work, propagate to app */
+  if (hc->req_state == HTTP_REQ_STATE_WAIT_METHOD)
     session_transport_closing_notify (&hc->connection);
 }
 
 static void
 http_ts_reset_callback (session_t *ts)
 {
-  http_conn_t *ctx;
+  http_conn_t *hc;
 
-  ctx = http_conn_get_w_thread (ts->opaque, ts->thread_index);
+  hc = http_conn_get_w_thread (ts->opaque, ts->thread_index);
 
-  if (ctx->state < HTTP_CONN_STATE_TRANSPORT_CLOSED)
-    ctx->state = HTTP_CONN_STATE_TRANSPORT_CLOSED;
+  hc->state = HTTP_CONN_STATE_CLOSED;
+  http_buffer_free (&hc->tx_buf);
+  hc->req_state = HTTP_REQ_STATE_WAIT_METHOD;
+  session_transport_reset_notify (&hc->connection);
 
-  if (!svm_fifo_max_dequeue_cons (ts->rx_fifo))
-    session_transport_reset_notify (&ctx->connection);
+  http_disconnect_transport (hc);
 }
 
 /**
@@ -832,7 +834,7 @@ http_app_tx_callback (void *session, transport_send_params_t *sp)
 
   http_req_run_state_machine (hc, sp);
 
-  if (hc->state == HTTP_CONN_STATE_CLOSED)
+  if (hc->state == HTTP_CONN_STATE_APP_CLOSED)
     {
       if (!svm_fifo_max_dequeue_cons (as->rx_fifo))
 	http_disconnect_transport (hc);
