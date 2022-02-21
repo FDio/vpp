@@ -7,6 +7,7 @@ from framework import VppTestCase, VppTestRunner
 from template_bd import BridgeDomain
 
 from scapy.layers.l2 import Ether
+from scapy.layers.l2 import ARP
 from scapy.packet import Raw, bind_layers
 from scapy.layers.inet import IP, UDP
 from scapy.layers.vxlan import VXLAN
@@ -15,6 +16,7 @@ import util
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_vxlan_tunnel import VppVxlanTunnel
 from vpp_ip import INVALID_INDEX
+from vpp_neighbor import VppNeighbor
 
 
 class TestVxlan(BridgeDomain, VppTestCase):
@@ -415,6 +417,63 @@ class TestVxlan2(VppTestCase):
              Raw(b'\xa5' * 1450))
 
         rx = self.send_and_assert_no_replies(self.pg1, [p])
+
+
+class TestVxlanL2Mode(VppTestCase):
+    """ VXLAN Test Case """
+    def setUp(self):
+        super(TestVxlanL2Mode, self).setUp()
+
+        # Create 2 pg interfaces.
+        self.create_pg_interfaces(range(2))
+        for pg in self.pg_interfaces:
+            pg.admin_up()
+
+        # Configure IPv4 addresses on VPP pg0.
+        self.pg0.config_ip4()
+        self.pg0.resolve_arp()
+
+        # Configure IPv4 addresses on VPP pg1.
+        self.pg1.config_ip4()
+
+    def tearDown(self):
+        super(TestVxlanL2Mode, self).tearDown()
+
+    def test_l2_mode(self):
+        """ VXLAN L2 mode """
+        t = VppVxlanTunnel(self,
+                           src=self.pg0.local_ip4,
+                           dst=self.pg0.remote_ip4,
+                           vni=1000, is_l3=False)
+        t.add_vpp_config()
+        t.config_ip4()
+        t.admin_up()
+
+        dstIP = t.local_ip4[:-1] + "2"
+
+        # Create a packet to send
+        p = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
+             IP(src=self.pg1.local_ip4, dst=dstIP) /
+             UDP(sport=555, dport=556) /
+             Raw(b'\x00' * 80))
+
+        # Expect ARP request
+        rx = self.send_and_expect(self.pg1, [p], self.pg0)
+        for p in rx:
+            self.assertEqual(p[Ether].dst, self.pg0.remote_mac)
+            self.assertEqual(p[Ether].src, self.pg0.local_mac)
+            self.assertEqual(p[ARP].op, 1)
+            self.assertEqual(p[ARP].pdst, dstIP)
+
+        # Resolve ARP
+        VppNeighbor(self, t.sw_if_index,
+                    self.pg1.remote_mac,
+                    dstIP).add_vpp_config()
+
+        # Send packets
+        NUM_PKTS = 128
+        rx = self.send_and_expect(self.pg1, p * NUM_PKTS, self.pg0)
+        self.assertEqual(NUM_PKTS, len(rx))
 
 
 if __name__ == '__main__':
