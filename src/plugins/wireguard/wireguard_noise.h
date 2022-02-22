@@ -199,22 +199,22 @@ noise_remote_encrypt (vlib_main_t * vm, noise_remote_t *,
 static_always_inline noise_keypair_t *
 wg_get_active_keypair (noise_remote_t *r, uint32_t r_idx)
 {
-  if (r->r_current != NULL)
+  if (r->r_current != NULL && r->r_current->kp_local_index == r_idx)
     {
-      if (r->r_current->kp_local_index == r_idx)
-	return r->r_current;
+      return r->r_current;
     }
-  if (r->r_previous != NULL)
+  else if (r->r_previous != NULL && r->r_previous->kp_local_index == r_idx)
     {
-      if (r->r_previous->kp_local_index == r_idx)
-	return r->r_previous;
+      return r->r_previous;
     }
-  if (r->r_next != NULL)
+  else if (r->r_next != NULL && r->r_next->kp_local_index == r_idx)
     {
-      if (r->r_next->kp_local_index == r_idx)
-	return r->r_next;
+      return r->r_next;
     }
-  return NULL;
+  else
+    {
+      return NULL;
+    }
 }
 
 inline bool
