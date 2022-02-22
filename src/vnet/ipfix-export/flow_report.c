@@ -349,8 +349,8 @@ vnet_ipfix_exp_send_buffer (vlib_main_t *vm, ipfix_exporter_t *exp,
   vlib_frame_t *f;
   ipfix_set_header_t *s;
   ipfix_message_header_t *h;
-  ip4_header_t *ip4;
-  ip6_header_t *ip6;
+  ip4_header_t *ip4 = 0;
+  ip6_header_t *ip6 = 0;
   void *ip;
   udp_header_t *udp;
   int ip_len;
