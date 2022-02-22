@@ -437,58 +437,22 @@ hts_transport_needs_crypto (transport_proto_t proto)
 	 proto == TRANSPORT_PROTO_QUIC;
 }
 
-static clib_error_t *
-hts_listen (hts_main_t *htm, u8 *listen_uri, u8 is_del)
+static int
+hts_start_listen (hts_main_t *htm, session_endpoint_cfg_t *sep, u8 *uri)
 {
-  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   vnet_listen_args_t _a, *a = &_a;
-  u8 need_crypto, *uri;
+  u8 need_crypto;
   hts_session_t *hls;
   session_t *ls;
-  uword *p;
   int rv;
-
-  uri = listen_uri ? listen_uri : htm->default_uri;
-  p = hash_get_mem (htm->uri_to_handle, uri);
-
-  if (is_del)
-    {
-      if (!p)
-	return clib_error_return (0, "not listening on %v", uri);
-
-      hls = hts_session_get (0, *p);
-      ls = listen_session_get (hls->vpp_session_index);
-
-      vnet_unlisten_args_t ua = {
-	.handle = listen_session_get_handle (ls),
-	.app_index = htm->app_index,
-	.wrk_map_index = 0 /* default wrk */
-      };
-
-      hash_unset_mem (htm->uri_to_handle, uri);
-
-      if (vnet_unlisten (&ua))
-	return clib_error_return (0, "failed to unlisten");
-
-      vec_free (hls->uri);
-      hts_session_free (hls);
-
-      return 0;
-    }
-
-  if (p)
-    return clib_error_return (0, "already listening %v", uri);
-
-  if (parse_uri ((char *) uri, &sep))
-    return clib_error_return (0, "failed to parse uri %v", uri);
 
   clib_memset (a, 0, sizeof (*a));
   a->app_index = htm->app_index;
 
-  need_crypto = hts_transport_needs_crypto (sep.transport_proto);
+  need_crypto = hts_transport_needs_crypto (sep->transport_proto);
 
-  sep.transport_proto = TRANSPORT_PROTO_HTTP;
-  clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
+  sep->transport_proto = TRANSPORT_PROTO_HTTP;
+  clib_memcpy (&a->sep_ext, sep, sizeof (*sep));
 
   if (need_crypto)
     {
@@ -503,7 +467,7 @@ hts_listen (hts_main_t *htm, u8 *listen_uri, u8 is_del)
     clib_mem_free (a->sep_ext.ext_cfg);
 
   if (rv)
-    return clib_error_return (0, "failed to listen on %v", uri);
+    return rv;
 
   hls = hts_session_alloc (0);
   hls->uri = vec_dup (uri);
@@ -512,6 +476,93 @@ hts_listen (hts_main_t *htm, u8 *listen_uri, u8 is_del)
   hash_set_mem (htm->uri_to_handle, hls->uri, hls->session_index);
 
   return 0;
+}
+
+static int
+hts_stop_listen (hts_main_t *htm, u32 hls_index)
+{
+  hts_session_t *hls;
+  session_t *ls;
+
+  hls = hts_session_get (0, hls_index);
+  ls = listen_session_get (hls->vpp_session_index);
+
+  vnet_unlisten_args_t ua = {
+    .handle = listen_session_get_handle (ls),
+    .app_index = htm->app_index,
+    .wrk_map_index = 0 /* default wrk */
+  };
+
+  hash_unset_mem (htm->uri_to_handle, hls->uri);
+
+  if (vnet_unlisten (&ua))
+    return -1;
+
+  vec_free (hls->uri);
+  hts_session_free (hls);
+
+  return 0;
+}
+
+static clib_error_t *
+hts_listen (hts_main_t *htm, u32 vrf, u8 *listen_uri, u8 is_del)
+{
+  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
+  clib_error_t *error = 0;
+  u8 *uri, *uri_key;
+  uword *p;
+  int rv;
+
+  uri = listen_uri ? listen_uri : htm->default_uri;
+  uri_key = format (0, "vrf%u-%s", vrf, uri);
+  p = hash_get_mem (htm->uri_to_handle, uri_key);
+
+  if (is_del)
+    {
+      if (!p)
+	error = clib_error_return (0, "not listening on %v", uri);
+      else if (hts_stop_listen (htm, p[0]))
+	error = clib_error_return (0, "failed to unlisten");
+      goto done;
+    }
+
+  if (p)
+    {
+      error = clib_error_return (0, "already listening %v", uri);
+      goto done;
+    }
+
+  if (parse_uri ((char *) uri, &sep))
+    {
+      error = clib_error_return (0, "failed to parse uri %v", uri);
+      goto done;
+    }
+
+  if (vrf)
+    {
+      fib_protocol_t fp;
+      u32 fib_index;
+
+      fp = sep.is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
+      fib_index = fib_table_find (fp, vrf);
+      if (fib_index == ~0)
+	{
+	  error = clib_error_return (0, "no such vrf %u", vrf);
+	  goto done;
+	}
+      sep.fib_index = fib_index;
+    }
+
+  if ((rv = hts_start_listen (htm, &sep, uri_key)))
+    {
+      error = clib_error_return (0, "failed to listen on %v: %U", uri,
+				 format_session_error, rv);
+    }
+
+done:
+
+  vec_free (uri_key);
+  return error;
 }
 
 static int
@@ -549,6 +600,7 @@ hts_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
   u8 is_del = 0;
   u64 mem_size;
   u8 *uri = 0;
+  u32 vrf = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -562,6 +614,8 @@ hts_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
       else if (unformat (line_input, "fifo-size %U", unformat_memory_size,
 			 &mem_size))
 	htm->fifo_size = mem_size;
+      else if (unformat (line_input, "vrf %u", &vrf))
+	;
       else if (unformat (line_input, "uri %s", &uri))
 	;
       else if (unformat (line_input, "no-zc"))
@@ -596,7 +650,7 @@ start_server:
 	}
     }
 
-  error = hts_listen (htm, uri, is_del);
+  error = hts_listen (htm, vrf, uri, is_del);
 
 done:
 
