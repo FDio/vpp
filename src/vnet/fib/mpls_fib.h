@@ -31,7 +31,7 @@
  * Type exposure is to allow the DP fast/inlined access
  */
 #define MPLS_FIB_KEY_SIZE 21
-#define MPLS_FIB_DB_SIZE (1 << (MPLS_FIB_KEY_SIZE-1))
+#define MPLS_FIB_DB_SIZE (1 << MPLS_FIB_KEY_SIZE)
 
 /**
  * There are no options for controlling the MPLS flow hash,
