@@ -22,6 +22,30 @@
       "revId": "075c7429fb2fce1249b2af9764d85fbee658d9da",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "dce7c495_395855c2",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 626,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2022-02-22T15:37:57Z",
+      "side": 1,
+      "message": "Yes, it will absolutely dead-lock. The client developer will figure that out quite quickly. :-)\nI am not quite sure of what assert to put in to help developer here?\nCan add a suitable comment to the call.",
+      "parentUuid": "ef808f15_169ed17b",
+      "range": {
+        "startLine": 626,
+        "startChar": 6,
+        "endLine": 626,
+        "endChar": 25
+      },
+      "revId": "075c7429fb2fce1249b2af9764d85fbee658d9da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
