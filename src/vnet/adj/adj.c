@@ -314,12 +314,12 @@ adj_last_lock_gone (ip_adjacency_t *adj)
 	break;
     }
 
-    vlib_worker_thread_barrier_release(vm);
 
     fib_node_deinit(&adj->ia_node);
     ASSERT(0 == vec_len(adj->ia_delegates));
     vec_free(adj->ia_delegates);
     pool_put(adj_pool, adj);
+    vlib_worker_thread_barrier_release(vm);
 }
 
 u32
