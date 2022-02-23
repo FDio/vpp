@@ -189,7 +189,7 @@ hts_start_send_data (hts_session_t *hs, http_status_code_t status)
 
   msg.type = HTTP_MSG_REPLY;
   msg.code = status;
-  msg.content_type = HTTP_CONTENT_TEXT_HTML;
+  msg.content_type = HTTP_CONTENT_APP_OCTET_STREAM;
   msg.data.type = HTTP_MSG_DATA_INLINE;
   msg.data.len = hs->data_len;
 
