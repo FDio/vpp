@@ -83,7 +83,8 @@ typedef enum http_msg_type_
   _ (TEXT_HTML, "text/html")                                                  \
   _ (TEXT_CSS, "text/css")                                                    \
   _ (TEXT_JS, "text/javascript")                                              \
-  _ (TEXT_JSON, "application/json")
+  _ (APP_JSON, "application/json")                                            \
+  _ (APP_OCTET_STREAM, "application/octet-stream")
 
 typedef enum http_content_type_
 {
