@@ -109,6 +109,7 @@ wireguard_if_send_details (index_t wgii, void *data)
 	       local->l_public, NOISE_PUBLIC_KEY_LEN);
   rmp->interface.sw_if_index = htonl (wgi->sw_if_index);
   rmp->interface.port = htons (wgi->port);
+  rmp->interface.user_instance = htonl (wgi->user_instance);
   ip_address_encode2 (&wgi->src_ip, &rmp->interface.src_ip);
 
   rmp->context = ctx->context;
@@ -137,7 +138,15 @@ vl_api_wireguard_interface_dump_t_handler (vl_api_wireguard_interface_dump_t *
     .show_private_key = mp->show_private_key,
   };
 
-  wg_if_walk (wireguard_if_send_details, &ctx);
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  if (sw_if_index == ~0)
+    wg_if_walk (wireguard_if_send_details, &ctx);
+  else
+    {
+      index_t wgii = wg_if_find_by_sw_if_index (sw_if_index);
+      if (wgii != INDEX_INVALID)
+	wireguard_if_send_details (wgii, &ctx);
+    }
 }
 
 static void
