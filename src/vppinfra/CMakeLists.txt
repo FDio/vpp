@@ -103,6 +103,8 @@ set(VPPINFRA_SRCS
   cJSON.c
 )
 
+set_source_files_properties(sanitizer.c PROPERTIES COMPILE_FLAGS -ffreestanding)
+
 set(VPPINFRA_HEADERS
   sanitizer.h
   bihash_12_4.h

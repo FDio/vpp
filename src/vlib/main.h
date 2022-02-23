@@ -267,10 +267,6 @@ typedef struct vlib_main_t
   u32 buffer_alloc_success_seed;
   f64 buffer_alloc_success_rate;
 
-#ifdef CLIB_SANITIZE_ADDR
-  /* address sanitizer stack save */
-  void *asan_stack_save;
-#endif
 } vlib_main_t;
 
 typedef struct vlib_global_main_t
@@ -375,11 +371,13 @@ do {						\
     __vlib_wait_with_timeout;						\
 })
 
+void vlib_main_loop_exit (vlib_main_t *vm, int id);
+
 always_inline void
 vlib_panic_with_error (vlib_main_t * vm, clib_error_t * error)
 {
   vm->main_loop_error = error;
-  clib_longjmp (&vm->main_loop_exit, VLIB_MAIN_LOOP_EXIT_PANIC);
+  vlib_main_loop_exit (vm, VLIB_MAIN_LOOP_EXIT_PANIC);
 }
 
 #define vlib_panic_with_msg(vm,args...) \
@@ -424,7 +422,7 @@ vlib_increment_main_loop_counter (vlib_main_t * vm)
   vm->internal_node_last_vectors_per_main_loop = 0;
 
   if (PREDICT_FALSE (vm->main_loop_exit_now))
-    clib_longjmp (&vm->main_loop_exit, VLIB_MAIN_LOOP_EXIT_CLI);
+    vlib_main_loop_exit (vm, VLIB_MAIN_LOOP_EXIT_CLI);
 }
 
 always_inline u32
