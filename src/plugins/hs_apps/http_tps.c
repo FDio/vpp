@@ -236,6 +236,7 @@ try_test_file (hts_session_t *hs, u8 *request)
     clib_warning ("Requested file size %U", format_memory_size, file_size);
 
   hs->data_len = file_size;
+  hs->data_offset = 0;
 
   hts_start_send_data (hs, HTTP_STATUS_OK);
 
