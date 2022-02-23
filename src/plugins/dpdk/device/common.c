@@ -117,9 +117,12 @@ dpdk_device_setup (dpdk_device_t * xd)
   if (xd->conf.enable_tso)
     txo |= DEV_TX_OFFLOAD_TCP_CKSUM | DEV_TX_OFFLOAD_TCP_TSO |
 	   DEV_TX_OFFLOAD_VXLAN_TNL_TSO;
-
+  /*
   if (xd->conf.disable_rx_scatter)
     rxo &= ~DEV_RX_OFFLOAD_SCATTER;
+  */
+  // VPP-1876 workaround: Enable scatter no matter what.
+  rxo |= DEV_RX_OFFLOAD_SCATTER;
 
   /* mask unsupported offloads */
   rxo &= dev_info.rx_offload_capa;
