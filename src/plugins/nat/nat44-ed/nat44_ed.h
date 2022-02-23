@@ -355,18 +355,6 @@ typedef struct
 
 typedef struct
 {
-  u32 fib_index;
-  u32 ref_count;
-} nat_fib_t;
-
-typedef struct
-{
-  u32 fib_index;
-  u32 refcount;
-} nat_outside_fib_t;
-
-typedef struct
-{
   /* backend IP address */
   ip4_address_t addr;
   /* backend port number */
@@ -504,6 +492,25 @@ typedef int (nat_alloc_out_addr_and_port_function_t) (
   ip_protocol_t proto, ip4_address_t *addr, u16 *port, u16 port_per_thread,
   u32 snat_thread_index);
 
+typedef struct nat_fib_s
+{
+  u32 fib_index;
+  u32 ref_count;
+} nat_fib_t;
+
+typedef struct vrf_route_s
+{
+  u32 vrf_id;
+  u32 fib_index;
+} vrf_route_t;
+
+typedef struct vrf_table_s
+{
+  u32 table_vrf_id;
+  u32 table_fib_index;
+  vrf_route_t *routes;
+} vrf_table_t;
+
 typedef struct snat_main_s
 {
   /* Thread settings */
@@ -525,6 +532,21 @@ typedef struct snat_main_s
   /* Endpoint dependent lookup table */
   clib_bihash_16_8_t flow_hash;
 
+  // vector of fibs
+  nat_fib_t *fibs;
+
+  u32 inside_vrf_id;
+  u32 inside_fib_index;
+
+  u32 outside_vrf_id;
+  u32 outside_fib_index;
+
+  // vector of outside fibs
+  nat_fib_t *outside_fibs;
+
+  // VRF routing table for dynamic sessions
+  vrf_table_t *vrf_tables;
+
   /* Interface pool */
   snat_interface_t *interfaces;
   snat_interface_t *output_feature_interfaces;
@@ -538,12 +560,6 @@ typedef struct snat_main_s
 
   /* first interface address should be auto-added */
   snat_address_resolve_t *addr_to_resolve;
-
-  /* vector of fibs */
-  nat_fib_t *fibs;
-
-  /* vector of outside fibs */
-  nat_outside_fib_t *outside_fibs;
 
   /* vector of fib entries */
   snat_fib_entry_reg_t *fib_entry_reg;
@@ -570,11 +586,6 @@ typedef struct snat_main_s
   u32 translation_buckets;
   u32 max_translations_per_thread;
   u32 *max_translations_per_fib;
-
-  u32 outside_vrf_id;
-  u32 outside_fib_index;
-  u32 inside_vrf_id;
-  u32 inside_fib_index;
 
   nat_timeouts_t timeouts;
 
@@ -849,6 +860,10 @@ int nat44_ed_del_address (ip4_address_t addr, u8 twice_nat);
 int nat44_ed_add_interface_address (u32 sw_if_index, u8 twice_nat);
 int nat44_ed_del_interface_address (u32 sw_if_index, u8 twice_nat);
 
+int nat44_ed_add_del_vrf_table (u32 table_vrf_id, bool is_add);
+int nat44_ed_add_del_vrf_route (u32 table_vrf_id, u32 vrf_id, bool is_add);
+void nat44_ed_del_vrf_tables ();
+
 int nat44_ed_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 				 u16 l_port, u16 e_port, ip_protocol_t proto,
 				 u32 vrf_id, u32 sw_if_index, u32 flags,
@@ -910,31 +925,15 @@ int nat44_update_session_limit (u32 session_limit, u32 vrf_id);
 
 void expire_per_vrf_sessions (u32 fib_index);
 
-/**
- * @brief Match NAT44 static mapping.
- *
- * @param key             address and port to match
- * @param addr            external/local address of the matched mapping
- * @param port            port of the matched mapping
- * @param fib_index       fib index of the matched mapping
- * @param by_external     if 0 match by local address otherwise match by external
- *                        address
- * @param is_addr_only    1 if matched mapping is address only
- * @param twice_nat       matched mapping is twice NAT type
- * @param lb              1 if matched mapping is load-balanced
- * @param ext_host_addr   external host address
- * @param is_identity_nat 1 if indentity mapping
- * @param out             if !=0 set to pointer of the mapping structure
- *
- * @returns 0 if match found otherwise 1.
- */
-int snat_static_mapping_match (
-  vlib_main_t *vm, snat_main_t *sm, ip4_address_t match_addr, u16 match_port,
-  u32 match_fib_index, ip_protocol_t match_protocol,
-  ip4_address_t *mapping_addr, u16 *mapping_port, u32 *mapping_fib_index,
-  int by_external, u8 *is_addr_only, twice_nat_type_t *twice_nat,
-  lb_nat_type_t *lb, ip4_address_t *ext_host_addr, u8 *is_identity_nat,
-  snat_static_mapping_t **out);
+int snat_static_mapping_match (vlib_main_t *vm, ip4_address_t match_addr,
+			       u16 match_port, u32 match_fib_index,
+			       ip_protocol_t match_protocol,
+			       ip4_address_t *mapping_addr, u16 *mapping_port,
+			       u32 *mapping_fib_index, int by_external,
+			       u8 *is_addr_only, twice_nat_type_t *twice_nat,
+			       lb_nat_type_t *lb, ip4_address_t *ext_host_addr,
+			       u8 *is_identity_nat,
+			       snat_static_mapping_t **out);
 
 u32 get_thread_idx_by_port (u16 e_port);
 
