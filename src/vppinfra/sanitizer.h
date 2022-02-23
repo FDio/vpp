@@ -1,94 +1,70 @@
 #ifndef _included_clib_sanitizer_h
 #define _included_clib_sanitizer_h
 
+typedef struct
+{
+  void *stack;
+} clib_sanitizer_stack_context_t;
+
 #ifdef CLIB_SANITIZE_ADDR
 
 #include <sanitizer/asan_interface.h>
 #include <vppinfra/clib.h>
 #include <vppinfra/error_bootstrap.h>
 
-typedef struct
-{
-  size_t shadow_scale;
-  size_t shadow_offset;
-} clib_sanitizer_main_t;
-
-extern clib_sanitizer_main_t sanitizer_main;
-
 #define CLIB_NOSANITIZE_ADDR    __attribute__((no_sanitize_address))
 #define CLIB_MEM_POISON(a, s)   ASAN_POISON_MEMORY_REGION((a), (s))
 #define CLIB_MEM_UNPOISON(a, s) ASAN_UNPOISON_MEMORY_REGION((a), (s))
 
-#define CLIB_MEM_OVERFLOW_MAX 64
+static_always_inline void
+clib_sanitizer_stack_suspend_and_switch (
+  clib_sanitizer_stack_context_t *cur_stack, const void *new_stack,
+  size_t new_stack_size)
+{
+  __sanitizer_start_switch_fiber (&cur_stack->stack, new_stack,
+				  new_stack_size);
+}
 
 static_always_inline void
-sanitizer_unpoison__ (u64 *restrict *shadow_ptr, size_t *shadow_len,
-		      const void *ptr, size_t len)
+clib_sanitizer_stack_free_and_switch (const void *new_stack,
+				      size_t new_stack_size)
 {
-  size_t scale, off;
-
-  if (PREDICT_FALSE (~0 == sanitizer_main.shadow_scale))
-    __asan_get_shadow_mapping (&sanitizer_main.shadow_scale,
-			       &sanitizer_main.shadow_offset);
-
-  scale = sanitizer_main.shadow_scale;
-  off = sanitizer_main.shadow_offset;
-
-  /* compute the shadow address and length */
-  *shadow_len = len >> scale;
-  ASSERT (*shadow_len <= CLIB_MEM_OVERFLOW_MAX);
-  *shadow_ptr = (void *) (((clib_address_t) ptr >> scale) + off);
+  __sanitizer_start_switch_fiber (0, new_stack, new_stack_size);
 }
 
-static_always_inline CLIB_NOSANITIZE_ADDR void
-sanitizer_unpoison_push__ (u64 *restrict shadow, const void *ptr, size_t len)
+static_always_inline void
+clib_sanitizer_stack_restore (clib_sanitizer_stack_context_t stack)
 {
-  u64 *restrict shadow_ptr;
-  size_t shadow_len;
-  int i;
-
-  sanitizer_unpoison__ (&shadow_ptr, &shadow_len, ptr, len);
-
-  /* save the shadow area */
-  for (i = 0; i < shadow_len; i++)
-    shadow[i] = shadow_ptr[i];
-
-  /* unpoison */
-  for (i = 0; i < shadow_len; i++)
-    shadow_ptr[i] = 0;
+  __sanitizer_finish_switch_fiber (stack.stack, 0, 0);
 }
 
-static_always_inline CLIB_NOSANITIZE_ADDR void
-sanitizer_unpoison_pop__ (const u64 *restrict shadow, const void *ptr,
-			  size_t len)
+static_always_inline void
+clib_sanitizer_stack_initialize (const void **prev_stack,
+				 size_t *prev_stack_size)
 {
-  u64 *restrict shadow_ptr;
-  size_t shadow_len;
-  int i;
-
-  sanitizer_unpoison__ (&shadow_ptr, &shadow_len, ptr, len);
-
-  /* restore the shadow area */
-  for (i = 0; i < shadow_len; i++)
-    {
-      ASSERT (0 == shadow_ptr[i]);
-      shadow_ptr[i] = shadow[i];
-    }
+  __sanitizer_finish_switch_fiber (0, prev_stack, prev_stack_size);
 }
+
+void clib_sanitizer_unpoison_push__ (u64 *shadow, u64 *shadow_mask,
+				     u64 **shadow_ptr, const void *ptr,
+				     size_t len);
+void clib_sanitizer_unpoison_pop__ (u64 shadow, u64 shadow_mask,
+				    u64 *shadow_ptr);
 
 #define CLIB_MEM_OVERFLOW_PUSH(src, n)                                        \
   do                                                                          \
     {                                                                         \
-      const void *clib_mem_overflow_src__ = (src);                            \
-      size_t clib_mem_overflow_n__ = (n);                                     \
       u64 clib_mem_overflow_shadow__;                                         \
-      sanitizer_unpoison_push__ (&clib_mem_overflow_shadow__,                 \
-				 clib_mem_overflow_src__,                     \
-				 clib_mem_overflow_n__)
+      u64 clib_mem_overflow_shadow_mask__;                                    \
+      u64 *clib_mem_overflow_shadow_ptr__;                                    \
+      clib_sanitizer_unpoison_push__ (                                        \
+	&clib_mem_overflow_shadow__, &clib_mem_overflow_shadow_mask__,        \
+	&clib_mem_overflow_shadow_ptr__, (src), (n))
 
 #define CLIB_MEM_OVERFLOW_POP()                                               \
-  sanitizer_unpoison_pop__ (&clib_mem_overflow_shadow__,                      \
-			    clib_mem_overflow_src__, clib_mem_overflow_n__);  \
+  clib_sanitizer_unpoison_pop__ (clib_mem_overflow_shadow__,                  \
+				 clib_mem_overflow_shadow_mask__,             \
+				 clib_mem_overflow_shadow_ptr__);             \
   }                                                                           \
   while (0)
 
@@ -117,6 +93,17 @@ CLIB_MEM_POISON_LEN (void *src, size_t oldlen, size_t newlen)
 #define CLIB_NOSANITIZE_ADDR
 #define CLIB_MEM_POISON(a, s)                   (void)(a)
 #define CLIB_MEM_UNPOISON(a, s)                 (void)(a)
+#define clib_sanitizer_stack_suspend_and_switch(a, b, c)                      \
+  (void) (a);                                                                 \
+  (void) (b);                                                                 \
+  (void) (c)
+#define clib_sanitizer_stack_free_and_switch(a, b)                            \
+  (void) (a);                                                                 \
+  (void) (b)
+#define clib_sanitizer_stack_restore(a) (void) (a)
+#define clib_sanitizer_stack_initialize(a, b)                                 \
+  (void) (a);                                                                 \
+  (void) (b)
 #define CLIB_MEM_OVERFLOW_PUSH(a, b)		(void) (a)
 #define CLIB_MEM_OVERFLOW_POP()
 #define CLIB_MEM_OVERFLOW_LOAD(src) (*(src))

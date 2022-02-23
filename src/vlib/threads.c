@@ -406,20 +406,21 @@ vlib_worker_thread_bootstrap_fn (void *arg)
 {
   void *rv;
   vlib_worker_thread_t *w = arg;
-  vlib_main_t *vm = 0;
+  clib_sanitizer_stack_context_t cur_stack;
 
   w->lwp = syscall (SYS_gettid);
   w->thread_id = pthread_self ();
 
   __os_thread_index = w - vlib_worker_threads;
 
-  vm = vlib_global_main.vlib_mains[__os_thread_index];
-
-  vlib_process_start_switch_stack (vm, 0);
+  clib_sanitizer_stack_suspend_and_switch (&cur_stack, w->thread_stack,
+					   VLIB_THREAD_STACK_SIZE);
   rv = (void *) clib_calljmp
     ((uword (*)(uword)) w->thread_function,
      (uword) arg, w->thread_stack + VLIB_THREAD_STACK_SIZE);
+
   /* NOTREACHED, we hope */
+  clib_sanitizer_stack_restore (cur_stack);
   return rv;
 }
 
@@ -1513,8 +1514,10 @@ vlib_worker_thread_fn (void *arg)
   vlib_worker_thread_t *w = (vlib_worker_thread_t *) arg;
   vlib_main_t *vm = vlib_get_main ();
   clib_error_t *e;
+  const void *prev_stack;
+  size_t prev_stack_size;
 
-  vlib_process_finish_switch_stack (vm);
+  clib_sanitizer_stack_initialize (&prev_stack, &prev_stack_size);
 
   ASSERT (vm->thread_index == vlib_get_thread_index ());
 
@@ -1531,6 +1534,8 @@ vlib_worker_thread_fn (void *arg)
     clib_error_report (e);
 
   vlib_worker_loop (vm);
+
+  clib_sanitizer_stack_free_and_switch (prev_stack, prev_stack_size);
 }
 
 /* *INDENT-OFF* */

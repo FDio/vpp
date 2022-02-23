@@ -649,13 +649,16 @@ thread0 (uword arg)
   vlib_main_t *vm = (vlib_main_t *) arg;
   unformat_input_t input;
   int i;
+  const void *prev_stack;
+  size_t prev_stack_size;
 
-  vlib_process_finish_switch_stack (vm);
+  clib_sanitizer_stack_initialize (&prev_stack, &prev_stack_size);
 
   unformat_init_command_line (&input, (char **) vm->argv);
   i = vlib_main (vm, &input);
   unformat_free (&input);
 
+  clib_sanitizer_stack_free_and_switch (prev_stack, prev_stack_size);
   return i;
 }
 
@@ -682,6 +685,7 @@ vlib_unix_main (int argc, char *argv[])
   vlib_main_t *vm = vlib_get_first_main (); /* one and only time for this! */
   unformat_input_t input;
   clib_error_t *e;
+  clib_sanitizer_stack_context_t cur_stack;
   int i;
 
   vec_validate_aligned (vgm->vlib_mains, 0, CLIB_CACHE_LINE_BYTES);
@@ -732,10 +736,12 @@ vlib_unix_main (int argc, char *argv[])
   __os_thread_index = 0;
   vm->thread_index = 0;
 
-  vlib_process_start_switch_stack (vm, 0);
+  clib_sanitizer_stack_suspend_and_switch (&cur_stack, vlib_thread_stacks[0],
+					   VLIB_THREAD_STACK_SIZE);
   i = clib_calljmp (thread0, (uword) vm,
 		    (void *) (vlib_thread_stacks[0] +
 			      VLIB_THREAD_STACK_SIZE));
+  clib_sanitizer_stack_restore (cur_stack);
   return i;
 }
 

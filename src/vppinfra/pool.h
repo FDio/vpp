@@ -352,6 +352,21 @@ do {									\
 /** Allocate N more free elements to pool (unspecified alignment). */
 #define pool_alloc(P,N) pool_alloc_aligned(P,N,0)
 
+#ifdef CLIB_SANITIZE_ADDR
+#define CLIB_MEM_POOL_POISON_FREE_ELTS(P)                                     \
+  do                                                                          \
+    {                                                                         \
+      typeof (P) p = (P);                                                     \
+      pool_header_t *ph = pool_header (p);                                    \
+      uword i;                                                                \
+      clib_bitmap_foreach (i, ph->free_bitmap)                                \
+	CLIB_MEM_POISON (&p[i], sizeof (p[0]));                               \
+    }                                                                         \
+  while (0)
+#else /* CLIB_SANITIZE_ADDR */
+#define CLIB_MEM_POOL_POISON_FREE_ELTS(P)
+#endif /* CLIB_SANITIZE_ADDR */
+
 /**
  * Return copy of pool with alignment
  *
@@ -369,14 +384,15 @@ do {									\
 	_pool_var (new) = _vec_resize (_pool_var (new), _pool_var (n),        \
 				       _pool_var (n) * sizeof ((P)[0]),       \
 				       pool_aligned_header_bytes, (A));       \
-	CLIB_MEM_OVERFLOW_PUSH ((P), _pool_var (n) * sizeof ((P)[0]));        \
+	CLIB_MEM_UNPOISON ((P), _pool_var (n) * sizeof ((P)[0]));             \
 	clib_memcpy_fast (_pool_var (new), (P),                               \
 			  _pool_var (n) * sizeof ((P)[0]));                   \
-	CLIB_MEM_OVERFLOW_POP ();                                             \
+	CLIB_MEM_POOL_POISON_FREE_ELTS (P);                                   \
 	_pool_var (ph) = pool_header (P);                                     \
 	_pool_var (new_ph) = pool_header (_pool_var (new));                   \
 	_pool_var (new_ph)->free_bitmap =                                     \
 	  clib_bitmap_dup (_pool_var (ph)->free_bitmap);                      \
+	CLIB_MEM_POOL_POISON_FREE_ELTS (_pool_var (new));                     \
 	_pool_var (new_ph)->free_indices =                                    \
 	  vec_dup (_pool_var (ph)->free_indices);                             \
 	_pool_var (new_ph)->max_elts = _pool_var (ph)->max_elts;              \

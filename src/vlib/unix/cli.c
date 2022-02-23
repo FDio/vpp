@@ -2707,7 +2707,7 @@ unix_cli_kill (unix_cli_main_t * cm, uword cli_file_index)
 
   /* Quit/EOF on stdin means quit program. */
   if (uf->file_descriptor == STDIN_FILENO)
-    clib_longjmp (&um->vlib_main->main_loop_exit, VLIB_MAIN_LOOP_EXIT_CLI);
+    vlib_main_loop_exit (um->vlib_main, VLIB_MAIN_LOOP_EXIT_CLI);
 
   vec_free (cf->current_command);
   vec_free (cf->search_key);

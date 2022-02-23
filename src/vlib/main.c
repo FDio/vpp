@@ -1207,12 +1207,15 @@ vlib_process_bootstrap (uword _a)
   vlib_frame_t *f;
   vlib_process_t *p;
   uword n;
+  const void *prev_stack;
+  size_t prev_stack_size;
+
+  clib_sanitizer_stack_initialize (&prev_stack, &prev_stack_size);
 
   a = uword_to_pointer (_a, vlib_process_bootstrap_args_t *);
 
   vm = a->vm;
   p = a->process;
-  vlib_process_finish_switch_stack (vm);
 
   f = a->frame;
   node = &p->node_runtime;
@@ -1221,7 +1224,7 @@ vlib_process_bootstrap (uword _a)
 
   ASSERT (vlib_process_stack_is_valid (p));
 
-  vlib_process_start_switch_stack (vm, 0);
+  clib_sanitizer_stack_free_and_switch (prev_stack, prev_stack_size);
   clib_longjmp (&p->return_longjmp, n);
 
   return n;
@@ -1231,6 +1234,7 @@ vlib_process_bootstrap (uword _a)
 static_always_inline uword
 vlib_process_startup (vlib_main_t * vm, vlib_process_t * p, vlib_frame_t * f)
 {
+  clib_sanitizer_stack_context_t cur_stack = {};
   vlib_process_bootstrap_args_t a;
   uword r;
 
@@ -1241,19 +1245,22 @@ vlib_process_startup (vlib_main_t * vm, vlib_process_t * p, vlib_frame_t * f)
   r = clib_setjmp (&p->return_longjmp, VLIB_PROCESS_RETURN_LONGJMP_RETURN);
   if (r == VLIB_PROCESS_RETURN_LONGJMP_RETURN)
     {
-      vlib_process_start_switch_stack (vm, p);
+      void *new_stack = p->stack;
+      size_t new_stack_size = 1 << p->log2_n_stack_bytes;
+      clib_sanitizer_stack_suspend_and_switch (&cur_stack, new_stack,
+					       new_stack_size);
       r = clib_calljmp (vlib_process_bootstrap, pointer_to_uword (&a),
-			(void *) p->stack + (1 << p->log2_n_stack_bytes));
+			new_stack + new_stack_size);
     }
-  else
-    vlib_process_finish_switch_stack (vm);
 
+  clib_sanitizer_stack_restore (cur_stack);
   return r;
 }
 
 static_always_inline uword
 vlib_process_resume (vlib_main_t * vm, vlib_process_t * p)
 {
+  clib_sanitizer_stack_context_t cur_stack = {};
   uword r;
   p->flags &= ~(VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK
 		| VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT
@@ -1261,11 +1268,14 @@ vlib_process_resume (vlib_main_t * vm, vlib_process_t * p)
   r = clib_setjmp (&p->return_longjmp, VLIB_PROCESS_RETURN_LONGJMP_RETURN);
   if (r == VLIB_PROCESS_RETURN_LONGJMP_RETURN)
     {
-      vlib_process_start_switch_stack (vm, p);
+      void *new_stack = p->stack;
+      size_t new_stack_size = 1 << p->log2_n_stack_bytes;
+      clib_sanitizer_stack_suspend_and_switch (&cur_stack, new_stack,
+					       new_stack_size);
       clib_longjmp (&p->resume_longjmp, VLIB_PROCESS_RESUME_LONGJMP_RESUME);
     }
-  else
-    vlib_process_finish_switch_stack (vm);
+
+  clib_sanitizer_stack_restore (cur_stack);
   return r;
 }
 
@@ -1996,11 +2006,10 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
       vm->main_loop_exit_set = 1;
       break;
 
-    case VLIB_MAIN_LOOP_EXIT_CLI:
-      goto done;
-
     default:
-      error = vm->main_loop_error;
+      error = vm->main_loop_error; /* fallthrough */
+    case VLIB_MAIN_LOOP_EXIT_CLI:
+      clib_sanitizer_stack_initialize (0, 0);
       goto done;
     }
 
@@ -2040,6 +2049,14 @@ vlib_exit_with_status (vlib_main_t *vm, int status)
 {
   vm->main_loop_exit_status = status;
   __atomic_store_n (&vm->main_loop_exit_now, 1, __ATOMIC_RELEASE);
+}
+
+void
+vlib_main_loop_exit (vlib_main_t *vm, int id)
+{
+  clib_sanitizer_stack_free_and_switch (vlib_thread_stacks[vm->thread_index],
+					VLIB_THREAD_STACK_SIZE);
+  clib_longjmp (&vm->main_loop_exit, id);
 }
 
 /*
