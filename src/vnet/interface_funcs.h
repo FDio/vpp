@@ -546,6 +546,7 @@ pcap_add_buffer (pcap_main_t *pm, struct vlib_main_t *vm, u32 buffer_index,
 
   if (PREDICT_TRUE (pm->n_packets_captured < pm->n_packets_to_capture))
     {
+      time_now += vm->clib_time.init_reference_time;
       clib_spinlock_lock_if_init (&pm->lock);
       d = pcap_add_packet (pm, time_now, n_left, n);
       while (1)
