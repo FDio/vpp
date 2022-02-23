@@ -916,8 +916,6 @@ add_static_mapping_command_fn (vlib_main_t * vm,
       e_port = clib_host_to_net_u16 (e_port);
     }
 
-  // TODO: specific pool_addr for both pool & twice nat pool ?
-
   if (is_add)
     {
       rv =
@@ -930,25 +928,17 @@ add_static_mapping_command_fn (vlib_main_t * vm,
 					vrf_id, sw_if_index, flags);
     }
 
-  // TODO: fix returns
-
   switch (rv)
     {
-    case VNET_API_ERROR_INVALID_VALUE:
-      error = clib_error_return (0, "External port already in use.");
-      goto done;
+    case VNET_API_ERROR_UNSUPPORTED:
+      error = clib_error_return (0, "Plugin disabled.");
+      break;
     case VNET_API_ERROR_NO_SUCH_ENTRY:
-      if (is_add)
-	error = clib_error_return (0, "External address must be allocated.");
-      else
-	error = clib_error_return (0, "Mapping not exist.");
-      goto done;
-    case VNET_API_ERROR_NO_SUCH_FIB:
-      error = clib_error_return (0, "No such VRF id.");
-      goto done;
+      error = clib_error_return (0, "Mapping not exist.");
+      break;
     case VNET_API_ERROR_VALUE_EXIST:
       error = clib_error_return (0, "Mapping already exist.");
-      goto done;
+      break;
     default:
       break;
     }
@@ -959,7 +949,6 @@ done:
   return error;
 }
 
-// TODO: either delete this bullshit or update it
 static clib_error_t *
 add_identity_mapping_command_fn (vlib_main_t * vm,
 				 unformat_input_t * input,
@@ -976,7 +965,6 @@ add_identity_mapping_command_fn (vlib_main_t * vm,
 
   flags = NAT_SM_FLAG_IDENTITY_NAT;
 
-  /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
     return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
 
@@ -1029,25 +1017,17 @@ add_identity_mapping_command_fn (vlib_main_t * vm,
 					sw_if_index, flags);
     }
 
-  // TODO: fix returns
-
   switch (rv)
     {
-    case VNET_API_ERROR_INVALID_VALUE:
-      error = clib_error_return (0, "External port already in use.");
-      goto done;
+    case VNET_API_ERROR_UNSUPPORTED:
+      error = clib_error_return (0, "Plugin disabled.");
+      break;
     case VNET_API_ERROR_NO_SUCH_ENTRY:
-      if (is_add)
-	error = clib_error_return (0, "External address must be allocated.");
-      else
-	error = clib_error_return (0, "Mapping not exist.");
-      goto done;
-    case VNET_API_ERROR_NO_SUCH_FIB:
-      error = clib_error_return (0, "No such VRF id.");
-      goto done;
+      error = clib_error_return (0, "Mapping not exist.");
+      break;
     case VNET_API_ERROR_VALUE_EXIST:
       error = clib_error_return (0, "Mapping already exist.");
-      goto done;
+      break;
     default:
       break;
     }
@@ -1073,7 +1053,6 @@ add_lb_static_mapping_command_fn (vlib_main_t * vm,
   int rv, is_add = 1;
   u32 flags = 0;
 
-  /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
     return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
 
@@ -1339,6 +1318,156 @@ done:
   unformat_free (line_input);
 
   return error;
+}
+
+static clib_error_t *
+nat44_ed_add_del_vrf_table_command_fn (vlib_main_t *vm,
+				       unformat_input_t *input,
+				       vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = 0;
+  bool is_add = true, not_set = true;
+  u32 vrf_id = ~0;
+  int rv;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%u", &vrf_id))
+	;
+      else if (not_set)
+	{
+	  if (unformat (line_input, "add"))
+	    {
+	      is_add = true;
+	    }
+	  else if (unformat (line_input, "del"))
+	    {
+	      is_add = false;
+	    }
+	  not_set = false;
+	}
+      else
+	{
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+  if (not_set)
+    {
+      error = clib_error_return (0, "missing required parameter");
+      goto done;
+    }
+
+  if (~0 == vrf_id)
+    {
+      error = clib_error_return (0, "missing vrf id");
+      goto done;
+    }
+
+  rv = nat44_ed_add_del_vrf_table (vrf_id, is_add);
+  if (rv)
+    {
+      error = clib_error_return (0, "%s vrf table returned %d",
+				 is_add ? "add" : "del", rv);
+    }
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
+static clib_error_t *
+nat44_ed_add_del_vrf_route_command_fn (vlib_main_t *vm,
+				       unformat_input_t *input,
+				       vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = 0;
+  bool is_add = true, not_set = true;
+  u32 vrf_id = ~0, table_vrf_id = ~0;
+  int rv;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "table %u", &table_vrf_id))
+	;
+      else if (unformat (line_input, "%u", &vrf_id))
+	;
+      else if (not_set)
+	{
+	  if (unformat (line_input, "add"))
+	    {
+	      is_add = true;
+	    }
+	  else if (unformat (line_input, "del"))
+	    {
+	      is_add = false;
+	    }
+	  not_set = false;
+	}
+      else
+	{
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+  if (not_set)
+    {
+      error = clib_error_return (0, "missing required parameter");
+      goto done;
+    }
+
+  if ((~0 == vrf_id) || (~0 == table_vrf_id))
+    {
+      error = clib_error_return (0, "missing vrf id");
+      goto done;
+    }
+
+  rv = nat44_ed_add_del_vrf_route (table_vrf_id, vrf_id, is_add);
+  if (rv)
+    {
+      error = clib_error_return (0, "%s vrf table returned %d",
+				 is_add ? "add" : "del", rv);
+    }
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
+static clib_error_t *
+nat44_ed_show_vrf_tables_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				     vlib_cli_command_t *cmd)
+{
+  snat_main_t *sm = &snat_main;
+  vrf_table_t *t;
+  vrf_route_t *r;
+  int i = 0;
+
+  pool_foreach (t, sm->vrf_tables)
+    {
+      vlib_cli_output (vm, "table %u:", t->table_vrf_id);
+      pool_foreach (r, t->routes)
+	{
+	  vlib_cli_output (vm, "[%u] vrf-id %u", i, r->vrf_id);
+	  i++;
+	}
+    }
+
+  return 0;
 }
 
 static clib_error_t *
@@ -2089,6 +2218,45 @@ VLIB_CLI_COMMAND (snat_add_interface_address_command, static) = {
     .path = "nat44 add interface address",
     .short_help = "nat44 add interface address <interface> [twice-nat] [del]",
     .function = snat_add_interface_address_command_fn,
+};
+
+/*?
+ * @cliexpar
+ * @cliexstart{nat44 vrf table}
+ * Add empty inter VRF routing table
+ *  vpp# nat44 vrf table add 10
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (nat44_ed_add_del_vrf_table_command, static) = {
+  .path = "nat44 vrf table",
+  .short_help = "nat44 vrf table [add|del] <vrf-id>",
+  .function = nat44_ed_add_del_vrf_table_command_fn,
+};
+
+/*?
+ * @cliexpar
+ * @cliexstart{nat44 vrf route}
+ * Add inter VRF route record to VRF routing table
+ *  vpp# nat44 vrf route add table 10 20
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (nat44_ed_add_del_vrf_route_command, static) = {
+  .path = "nat44 vrf route",
+  .short_help = "nat44 vrf route [add|del] table <vrf-id> <vrf-id>",
+  .function = nat44_ed_add_del_vrf_route_command_fn,
+};
+
+/*?
+ * @cliexpar
+ * @cliexstart{show nat44 vrf tables}
+ * Show inter VRF route tables
+ *  vpp# show nat44 vrf tables
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (nat44_ed_show_vrf_tables_command, static) = {
+  .path = "show nat44 vrf tables",
+  .short_help = "show nat44 vrf tables",
+  .function = nat44_ed_show_vrf_tables_command_fn,
 };
 
 /*?

@@ -198,6 +198,58 @@ define nat_worker_details {
   string name[64];
 };
 
+/** \brief Add/delete inter VRF NAT44-ED routing table
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param table_vrf_id - id of (rx) VRF used for resolving
+                          destination (tx) VRF during dynamic
+                          session creation
+    @param is_add - if true add else del
+*/
+autoreply define nat44_ed_add_del_vrf_table {
+  u32 client_index;
+  u32 context;
+  u32 table_vrf_id;
+  bool is_add;
+};
+
+/** \brief Add/del inter VRF NAT44-ED route record
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param table_vrf_id - id of the VRF NAT routing table
+    @param vrf_id - id of resolving destination (tx) VRF table
+    @param is_add - if true add else del
+*/
+autoreply define nat44_ed_add_del_vrf_route {
+  u32 client_index;
+  u32 context;
+  u32 table_vrf_id;
+  u32 vrf_id;
+  bool is_add;
+};
+
+/** \brief Dump NAT44-ED inter VRF NAT routing tables
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat44_ed_vrf_tables_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief NAT44-ED inter VRF NAT routing table details response
+    @param context - sender context, to match reply w/ request
+    @param table_vrf_id - id of the VRF NAT routing table
+    @param n_vrf_ids - number of vrf_ids
+    @param vrf_ids - ids of resolving destination (tx) VRFs
+*/
+define nat44_ed_vrf_tables_details {
+  u32 context;
+  u32 table_vrf_id;
+  u32 n_vrf_ids;
+  u32 vrf_ids[n_vrf_ids];
+};
+
 /** \brief Set TCP MSS rewriting configuration
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
