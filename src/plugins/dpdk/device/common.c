@@ -61,7 +61,6 @@ dpdk_device_setup (dpdk_device_t * xd)
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, xd->sw_if_index);
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, xd->hw_if_index);
-  u16 buf_sz = vlib_buffer_get_default_data_size (vm);
   vnet_hw_if_caps_change_t caps = {};
   struct rte_eth_dev_info dev_info;
   struct rte_eth_conf conf = {};
@@ -170,13 +169,17 @@ dpdk_device_setup (dpdk_device_t * xd)
   else
     {
       xd->max_supported_frame_size =
-	clib_min (1500 + xd->driver_frame_overhead, buf_sz);
+	clib_min (1500 + xd->driver_frame_overhead, vlib_buffer_get_default_data_size (vm));
     }
 #else
+  // Workaround for VPP-1876: Do not decrease max size for non-jumbo even if multi-seg is disabled.
+  xd->max_supported_frame_size = dev_info.max_rx_pktlen;
+  /*
   if (xd->conf.disable_multi_seg)
     xd->max_supported_frame_size = clib_min (dev_info.max_rx_pktlen, buf_sz);
   else
     xd->max_supported_frame_size = dev_info.max_rx_pktlen;
+  */
 #endif
 
   mtu = clib_min (xd->max_supported_frame_size - xd->driver_frame_overhead,
