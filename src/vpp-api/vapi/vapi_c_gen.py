@@ -746,6 +746,8 @@ def gen_json_unified_header(parser, logger, j, io, name):
         print("")
         print("static inline vapi_error_e vapi_send_with_control_ping "
               "(vapi_ctx_t ctx, void * msg, u32 context);")
+    elif name == "vlib.api.vapi.h":
+        print("#include <vapi/memclnt.api.vapi.h>")
     else:
         print("#include <vapi/vlib.api.vapi.h>")
     print("")
