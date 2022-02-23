@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "73bbd837_7177886f",
+        "filename": "src/vlibmemory/memory_api.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 222,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-02-23T01:28:59Z",
+      "side": 1,
+      "message": "What about using vl_api_memclnt_create_internal in combination with something that makes it more palatable for vapi? For instance change vapi_connect_from_vpp to \n1) initialize vapi_ctx_t ctx to point to the same svm queue passed to vl_api_memclnt_create_internal \n2) disable keepalive (or maybe that can be done in vl_api_memclnt_create_internal)\n\nThat should be enough to be able to pass messages from the thread that does vapi to vpp\u0027s main.  In fact, probably the two peers can run on the same thread as there\u0027s no async client registration.",
+      "range": {
+        "startLine": 222,
+        "startChar": 0,
+        "endLine": 222,
+        "endChar": 34
+      },
+      "revId": "dd371ed885d3eedb31b29d27a7c8b654ff7f32fe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
