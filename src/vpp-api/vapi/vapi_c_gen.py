@@ -648,22 +648,6 @@ class CMessage (Message):
         ])
 
 
-vapi_send_with_control_ping = """
-static inline vapi_error_e
-vapi_send_with_control_ping (vapi_ctx_t ctx, void *msg, u32 context)
-{
-  vapi_msg_control_ping *ping = vapi_alloc_control_ping (ctx);
-  if (!ping)
-    {
-      return VAPI_ENOMEM;
-    }
-  ping->header.context = context;
-  vapi_msg_control_ping_hton (ping);
-  return vapi_send2 (ctx, msg, ping);
-}
-"""
-
-
 def emit_definition(parser, json_file, emitted, o):
     if o in emitted:
         return
@@ -746,6 +730,8 @@ def gen_json_unified_header(parser, logger, j, io, name):
         print("")
         print("static inline vapi_error_e vapi_send_with_control_ping "
               "(vapi_ctx_t ctx, void * msg, u32 context);")
+    elif name == "vlib.api.vapi.h":
+        print("#include <vapi/memclnt.api.vapi.h>")
     else:
         print("#include <vapi/vlib.api.vapi.h>")
     print("")
@@ -775,7 +761,21 @@ def gen_json_unified_header(parser, logger, j, io, name):
     print("")
 
     if name == "vlib.api.vapi.h":
-        print("%s" % vapi_send_with_control_ping)
+        vapi_send_with_control_ping_function = """
+static inline vapi_error_e
+vapi_send_with_control_ping (vapi_ctx_t ctx, void *msg, u32 context)
+{
+  vapi_msg_control_ping *ping = vapi_alloc_control_ping (ctx);
+  if (!ping)
+    {
+      return VAPI_ENOMEM;
+    }
+  ping->header.context = context;
+  vapi_msg_control_ping_hton (ping);
+  return vapi_send2 (ctx, msg, ping);
+}
+"""
+        print("%s" % vapi_send_with_control_ping_function)
         print("")
 
     print("#ifdef __cplusplus")
