@@ -92,7 +92,7 @@ ethernet_init (vlib_main_t * vm)
    * System default ethernet interface MTU, configure via ethernet_config in
    * interface.c if desired.
    */
-  em->default_mtu = 9000;
+  em->default_mtu = 9300;
 
 #define ethernet_type(n,s) add_type (em, ETHERNET_TYPE_##s, #s);
 #include "types.def"
