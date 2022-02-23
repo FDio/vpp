@@ -173,10 +173,14 @@ dpdk_device_setup (dpdk_device_t * xd)
 	clib_min (1500 + xd->driver_frame_overhead, buf_sz);
     }
 #else
+  // Workaround for VPP-1876: Do not decrease max size for non-jumbo even if multi-seg is disabled.
+  xd->max_supported_frame_size = dev_info.max_rx_pktlen;
+  /*
   if (xd->conf.disable_multi_seg)
     xd->max_supported_frame_size = clib_min (dev_info.max_rx_pktlen, buf_sz);
   else
     xd->max_supported_frame_size = dev_info.max_rx_pktlen;
+  */
 #endif
 
   mtu = clib_min (xd->max_supported_frame_size - xd->driver_frame_overhead,
