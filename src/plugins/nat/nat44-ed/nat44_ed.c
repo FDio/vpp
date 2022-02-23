@@ -626,6 +626,134 @@ nat44_ed_del_address (ip4_address_t addr, u8 twice_nat)
   return 0;
 }
 
+vrf_table_t *
+nat44_ed_get_vrf_table (u32 table_vrf_id)
+{
+  snat_main_t *sm = &snat_main;
+  vrf_table_t *t;
+
+  pool_foreach (t, sm->vrf_tables)
+    {
+      if (table_vrf_id == t->table_vrf_id)
+	{
+	  return t;
+	}
+    }
+  return NULL;
+}
+
+vrf_route_t *
+nat44_ed_get_vrf_route (vrf_table_t *t, u32 vrf_id)
+{
+  vrf_route_t *r;
+
+  pool_foreach (r, t->routes)
+    {
+      if (vrf_id == r->vrf_id)
+	{
+	  return r;
+	}
+    }
+  return NULL;
+}
+
+int
+nat44_ed_add_del_vrf_table (u32 table_vrf_id, bool is_add)
+{
+  snat_main_t *sm = &snat_main;
+  vrf_table_t *t;
+  vrf_route_t *r;
+
+  t = nat44_ed_get_vrf_table (table_vrf_id);
+  if (t)
+    {
+      if (is_add)
+	{
+	  return VNET_API_ERROR_VALUE_EXIST;
+	}
+      pool_foreach (r, t->routes)
+	{
+	  fib_table_unlock (r->fib_index, FIB_PROTOCOL_IP4, sm->fib_src_low);
+	}
+      fib_table_unlock (t->table_fib_index, FIB_PROTOCOL_IP4, sm->fib_src_low);
+
+      pool_free (t->routes);
+      pool_put (sm->vrf_tables, t);
+    }
+  else
+    {
+      if (!is_add)
+	{
+	  return VNET_API_ERROR_NO_SUCH_ENTRY;
+	}
+      pool_get (sm->vrf_tables, t);
+      clib_memset (t, 0, sizeof (*t));
+      t->table_vrf_id = table_vrf_id;
+      t->table_fib_index = fib_table_find_or_create_and_lock (
+	FIB_PROTOCOL_IP4, table_vrf_id, sm->fib_src_low);
+    }
+
+  return 0;
+}
+
+void
+nat44_ed_del_vrf_tables ()
+{
+  snat_main_t *sm = &snat_main;
+  vrf_table_t *t;
+  vrf_route_t *r;
+
+  pool_foreach (t, sm->vrf_tables)
+    {
+      pool_foreach (r, t->routes)
+	{
+	  fib_table_unlock (r->fib_index, FIB_PROTOCOL_IP4, sm->fib_src_low);
+	}
+      fib_table_unlock (t->table_fib_index, FIB_PROTOCOL_IP4, sm->fib_src_low);
+      pool_free (t->routes);
+    }
+  pool_free (sm->vrf_tables);
+}
+
+int
+nat44_ed_add_del_vrf_route (u32 table_vrf_id, u32 vrf_id, bool is_add)
+{
+  snat_main_t *sm = &snat_main;
+  vrf_table_t *t;
+  vrf_route_t *r;
+
+  t = nat44_ed_get_vrf_table (table_vrf_id);
+  if (!t)
+    {
+      return VNET_API_ERROR_NO_SUCH_ENTRY;
+    }
+
+  r = nat44_ed_get_vrf_route (t, vrf_id);
+  if (r)
+    {
+      if (is_add)
+	{
+	  return VNET_API_ERROR_VALUE_EXIST;
+	}
+      fib_table_unlock (r->fib_index, FIB_PROTOCOL_IP4, sm->fib_src_low);
+      pool_put (t->routes, r);
+    }
+  else
+    {
+      if (!is_add)
+	{
+	  return VNET_API_ERROR_NO_SUCH_ENTRY;
+	}
+      pool_get (t->routes, r);
+      clib_memset (r, 0, sizeof (*r));
+      r->vrf_id = vrf_id;
+      r->fib_index = fib_table_find_or_create_and_lock (
+	FIB_PROTOCOL_IP4, vrf_id, sm->fib_src_low);
+    }
+
+  return 0;
+}
+
 u32
 get_thread_idx_by_port (u16 e_port)
 {
@@ -1555,10 +1683,10 @@ update_per_vrf_sessions_vec (u32 fib_index, int is_del)
     }
 }
 
-static_always_inline nat_outside_fib_t *
-nat44_ed_get_outside_fib (nat_outside_fib_t *outside_fibs, u32 fib_index)
+static_always_inline nat_fib_t *
+nat44_ed_get_outside_fib (nat_fib_t *outside_fibs, u32 fib_index)
 {
-  nat_outside_fib_t *f;
+  nat_fib_t *f;
   vec_foreach (f, outside_fibs)
     {
       if (f->fib_index == fib_index)
@@ -1589,7 +1717,7 @@ nat44_ed_add_interface (u32 sw_if_index, u8 is_inside)
   const char *del_feature_name, *feature_name;
   snat_main_t *sm = &snat_main;
 
-  nat_outside_fib_t *outside_fib;
+  nat_fib_t *outside_fib;
   snat_interface_t *i;
   u32 fib_index;
   int rv;
@@ -1671,13 +1799,13 @@ nat44_ed_add_interface (u32 sw_if_index, u8 is_inside)
       outside_fib = nat44_ed_get_outside_fib (sm->outside_fibs, fib_index);
       if (outside_fib)
 	{
-	  outside_fib->refcount++;
+	  outside_fib->ref_count++;
 	}
       else
 	{
 	  vec_add2 (sm->outside_fibs, outside_fib, 1);
 	  outside_fib->fib_index = fib_index;
-	  outside_fib->refcount = 1;
+	  outside_fib->ref_count = 1;
 	}
 
       nat44_ed_add_del_nat_addr_fib_reg_entries (sw_if_index, 1);
@@ -1699,7 +1827,7 @@ nat44_ed_del_interface (u32 sw_if_index, u8 is_inside)
   const char *del_feature_name, *feature_name;
   snat_main_t *sm = &snat_main;
 
-  nat_outside_fib_t *outside_fib;
+  nat_fib_t *outside_fib;
   snat_interface_t *i;
   u32 fib_index;
   int rv;
@@ -1784,8 +1912,8 @@ nat44_ed_del_interface (u32 sw_if_index, u8 is_inside)
       outside_fib = nat44_ed_get_outside_fib (sm->outside_fibs, fib_index);
       if (outside_fib)
 	{
-	  outside_fib->refcount--;
-	  if (!outside_fib->refcount)
+	  outside_fib->ref_count--;
+	  if (!outside_fib->ref_count)
 	    {
 	      vec_del1 (sm->outside_fibs, outside_fib - sm->outside_fibs);
 	    }
@@ -1803,7 +1931,7 @@ nat44_ed_add_output_interface (u32 sw_if_index)
 {
   snat_main_t *sm = &snat_main;
 
-  nat_outside_fib_t *outside_fib;
+  nat_fib_t *outside_fib;
   snat_interface_t *i;
   u32 fib_index;
   int rv;
@@ -1881,13 +2009,13 @@ nat44_ed_add_output_interface (u32 sw_if_index)
   outside_fib = nat44_ed_get_outside_fib (sm->outside_fibs, fib_index);
   if (outside_fib)
     {
-      outside_fib->refcount++;
+      outside_fib->ref_count++;
     }
   else
     {
       vec_add2 (sm->outside_fibs, outside_fib, 1);
       outside_fib->fib_index = fib_index;
-      outside_fib->refcount = 1;
+      outside_fib->ref_count = 1;
     }
 
   nat44_ed_add_del_nat_addr_fib_reg_entries (sw_if_index, 1);
@@ -1903,7 +2031,7 @@ nat44_ed_del_output_interface (u32 sw_if_index)
 {
   snat_main_t *sm = &snat_main;
 
-  nat_outside_fib_t *outside_fib;
+  nat_fib_t *outside_fib;
   snat_interface_t *i;
   u32 fib_index;
   int rv;
@@ -1971,8 +2099,8 @@ nat44_ed_del_output_interface (u32 sw_if_index)
   outside_fib = nat44_ed_get_outside_fib (sm->outside_fibs, fib_index);
   if (outside_fib)
     {
-      outside_fib->refcount--;
-      if (!outside_fib->refcount)
+      outside_fib->ref_count--;
+      if (!outside_fib->ref_count)
 	{
 	  vec_del1 (sm->outside_fibs, outside_fib - sm->outside_fibs);
 	}
@@ -2036,7 +2164,7 @@ nat44_ed_update_outside_fib_cb (ip4_main_t *im, uword opaque, u32 sw_if_index,
 				u32 new_fib_index, u32 old_fib_index)
 {
   snat_main_t *sm = &snat_main;
-  nat_outside_fib_t *outside_fib;
+  nat_fib_t *outside_fib;
   snat_interface_t *i;
   u8 is_add = 1;
   u8 match = 0;
@@ -2074,8 +2202,8 @@ nat44_ed_update_outside_fib_cb (ip4_main_t *im, uword opaque, u32 sw_if_index,
     {
       if (outside_fib->fib_index == old_fib_index)
 	{
-	  outside_fib->refcount--;
-	  if (!outside_fib->refcount)
+	  outside_fib->ref_count--;
+	  if (!outside_fib->ref_count)
 	    vec_del1 (sm->outside_fibs, outside_fib - sm->outside_fibs);
 	  break;
 	}
@@ -2085,7 +2213,7 @@ nat44_ed_update_outside_fib_cb (ip4_main_t *im, uword opaque, u32 sw_if_index,
     {
       if (outside_fib->fib_index == new_fib_index)
 	{
-	  outside_fib->refcount++;
+	  outside_fib->ref_count++;
 	  is_add = 0;
 	  break;
 	}
@@ -2094,7 +2222,7 @@ nat44_ed_update_outside_fib_cb (ip4_main_t *im, uword opaque, u32 sw_if_index,
   if (is_add)
     {
       vec_add2 (sm->outside_fibs, outside_fib, 1);
-      outside_fib->refcount = 1;
+      outside_fib->ref_count = 1;
       outside_fib->fib_index = new_fib_index;
     }
 }
@@ -2518,6 +2646,8 @@ nat44_plugin_disable ()
   if (rc)
     error = 1;
 
+  nat44_ed_del_vrf_tables ();
+
   vec_free (sm->max_translations_per_fib);
   sm->max_translations_per_fib = 0;
 
@@ -2587,11 +2717,12 @@ nat44_ed_sm_match (snat_main_t *sm, ip4_address_t match_addr, u16 match_port,
       if (m)
 	return m;
 
-      /* Try address only mapping */
+      // try address only mapping
       m = nat44_ed_sm_i2o_lookup (sm, match_addr, 0, match_fib_index, 0);
       if (m)
 	return m;
 
+      // default static mapping fib index (based on configuration)
       if (sm->inside_fib_index != match_fib_index)
 	{
 	  m = nat44_ed_sm_i2o_lookup (sm, match_addr, match_port,
@@ -2599,12 +2730,13 @@ nat44_ed_sm_match (snat_main_t *sm, ip4_address_t match_addr, u16 match_port,
 	  if (m)
 	    return m;
 
-	  /* Try address only mapping */
+	  // try address only mapping
 	  m = nat44_ed_sm_i2o_lookup (sm, match_addr, 0, sm->inside_fib_index,
 				      0);
 	  if (m)
 	    return m;
 	}
+      // TODO: this specific use case may be deprecated (needs testing)
       if (sm->outside_fib_index != match_fib_index)
 	{
 	  m = nat44_ed_sm_i2o_lookup (sm, match_addr, match_port,
@@ -2612,7 +2744,7 @@ nat44_ed_sm_match (snat_main_t *sm, ip4_address_t match_addr, u16 match_port,
 	  if (m)
 	    return m;
 
-	  /* Try address only mapping */
+	  // try address only mapping
 	  m = nat44_ed_sm_i2o_lookup (sm, match_addr, 0, sm->outside_fib_index,
 				      0);
 	  if (m)
@@ -2626,7 +2758,7 @@ nat44_ed_sm_match (snat_main_t *sm, ip4_address_t match_addr, u16 match_port,
       if (m)
 	return m;
 
-      /* Try address only mapping */
+      // try address only mapping
       m = nat44_ed_sm_o2i_lookup (sm, match_addr, 0, 0, 0);
       if (m)
 	return m;
@@ -2635,15 +2767,16 @@ nat44_ed_sm_match (snat_main_t *sm, ip4_address_t match_addr, u16 match_port,
 }
 
 int
-snat_static_mapping_match (vlib_main_t *vm, snat_main_t *sm,
-			   ip4_address_t match_addr, u16 match_port,
-			   u32 match_fib_index, ip_protocol_t match_protocol,
+snat_static_mapping_match (vlib_main_t *vm, ip4_address_t match_addr,
+			   u16 match_port, u32 match_fib_index,
+			   ip_protocol_t match_protocol,
 			   ip4_address_t *mapping_addr, u16 *mapping_port,
 			   u32 *mapping_fib_index, int by_external,
 			   u8 *is_addr_only, twice_nat_type_t *twice_nat,
 			   lb_nat_type_t *lb, ip4_address_t *ext_host_addr,
 			   u8 *is_identity_nat, snat_static_mapping_t **out)
 {
+  snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m;
   u32 rand, lo = 0, hi, mid, *tmp = 0, i;
   nat44_lb_addr_port_t *local;
@@ -2787,7 +2920,7 @@ nat44_ed_get_in2out_worker_index (vlib_buffer_t *b, ip4_header_t *ip,
       if (PREDICT_FALSE (is_output))
 	{
 	  fib_index = sm->outside_fib_index;
-	  nat_outside_fib_t *outside_fib;
+	  nat_fib_t *outside_fib;
 	  fib_node_index_t fei = FIB_NODE_INDEX_INVALID;
 	  fib_prefix_t pfx = {
 		  .fp_proto = FIB_PROTOCOL_IP4,
