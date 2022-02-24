@@ -46,122 +46,169 @@ format_qos_record_trace (u8 * s, va_list * args)
   return s;
 }
 
-static inline uword
-qos_record_inline (vlib_main_t * vm,
-		   vlib_node_runtime_t * node,
-		   vlib_frame_t * frame,
-		   qos_source_t qos_src, dpo_proto_t dproto, int is_l2)
+static_always_inline bool
+qos_record_get_bits (vlib_buffer_t *b, qos_source_t qos_src,
+		     dpo_proto_t dproto, int is_l2, qos_bits_t *qos0)
 {
-  u32 n_left_from, *from, *to_next, next_index;
+  const ip4_header_t *ip4_0;
+  const ip6_header_t *ip6_0;
 
-  next_index = 0;
-  n_left_from = frame->n_vectors;
-  from = vlib_frame_vector_args (frame);
-
-  while (n_left_from > 0)
+  if (is_l2)
     {
-      u32 n_left_to_next;
+      u8 *l3h;
+      u16 ethertype;
 
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+      l3h = (u8 *) vlib_buffer_get_current (b) + vnet_buffer (b)->l2.l2_len;
+      ethertype = clib_net_to_host_u16 (*(u16 *) (l3h - 2));
 
-      while (n_left_from > 0 && n_left_to_next > 0)
+      if (ethertype == ETHERNET_TYPE_IP4)
+	dproto = DPO_PROTO_IP4;
+      else if (ethertype == ETHERNET_TYPE_IP6)
+	dproto = DPO_PROTO_IP6;
+      else if (ethertype == ETHERNET_TYPE_MPLS)
+	dproto = DPO_PROTO_MPLS;
+      else
+	return false;
+    }
+
+  if (DPO_PROTO_IP6 == dproto)
+    {
+      ip6_0 = vlib_buffer_get_current (b);
+      *qos0 = ip6_traffic_class_network_order (ip6_0);
+      b->flags |= VNET_BUFFER_F_IS_IP6;
+    }
+  else if (DPO_PROTO_IP4 == dproto)
+    {
+      ip4_0 = vlib_buffer_get_current (b);
+      *qos0 = ip4_0->tos;
+      b->flags |= VNET_BUFFER_F_IS_IP4;
+    }
+  else if (DPO_PROTO_ETHERNET == dproto)
+    {
+      const ethernet_vlan_header_t *vlan0;
+
+      vlan0 = (vlib_buffer_get_current (b) - sizeof (ethernet_vlan_header_t));
+
+      *qos0 = ethernet_vlan_header_get_priority_net_order (vlan0);
+    }
+  else if (DPO_PROTO_MPLS)
+    {
+      const mpls_unicast_header_t *mh;
+
+      mh = vlib_buffer_get_current (b);
+      *qos0 = vnet_mpls_uc_get_exp (mh->label_exp_s_ttl);
+    }
+
+  return (true);
+}
+
+#define vlib_prefetch_buffer_header2(b, type)                                 \
+  CLIB_PREFETCH (b->second_half, 64, type)
+
+static inline uword
+qos_record_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_frame_t *frame, qos_source_t qos_src,
+		   dpo_proto_t dproto, int is_l2)
+{
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  u16 nexts[VLIB_FRAME_SIZE], *next;
+  u32 n_left, *from;
+
+  n_left = frame->n_vectors;
+  from = vlib_frame_vector_args (frame);
+  b = bufs;
+  next = nexts;
+
+  vlib_get_buffers (vm, from, bufs, n_left);
+
+  while (n_left > 2)
+    {
+      qos_bits_t qos0 = 0, qos1 = 0;
+
+      if (PREDICT_TRUE (n_left >= 4))
 	{
-	  ip4_header_t *ip4_0;
-	  ip6_header_t *ip6_0;
-	  vlib_buffer_t *b0;
-	  u32 next0, bi0;
-	  qos_bits_t qos0;
-	  u8 l2_len;
-
-	  next0 = 0;
-	  bi0 = from[0];
-	  to_next[0] = bi0;
-	  from += 1;
-	  to_next += 1;
-	  n_left_from -= 1;
-	  n_left_to_next -= 1;
-
-	  b0 = vlib_get_buffer (vm, bi0);
-
-	  if (is_l2)
-	    {
-	      l2_len = vnet_buffer (b0)->l2.l2_len;
-	      u8 *l3h;
-	      u16 ethertype;
-
-	      vlib_buffer_advance (b0, l2_len);
-
-	      l3h = vlib_buffer_get_current (b0);
-	      ethertype = clib_net_to_host_u16 (*(u16 *) (l3h - 2));
-
-	      if (ethertype == ETHERNET_TYPE_IP4)
-		dproto = DPO_PROTO_IP4;
-	      else if (ethertype == ETHERNET_TYPE_IP6)
-		dproto = DPO_PROTO_IP6;
-	      else if (ethertype == ETHERNET_TYPE_MPLS)
-		dproto = DPO_PROTO_MPLS;
-	      else
-		goto non_ip;
-	    }
-
-	  if (DPO_PROTO_IP6 == dproto)
-	    {
-	      ip6_0 = vlib_buffer_get_current (b0);
-	      qos0 = ip6_traffic_class_network_order (ip6_0);
-	    }
-	  else if (DPO_PROTO_IP4 == dproto)
-	    {
-	      ip4_0 = vlib_buffer_get_current (b0);
-	      qos0 = ip4_0->tos;
-	    }
-	  else if (DPO_PROTO_ETHERNET == dproto)
-	    {
-	      ethernet_vlan_header_t *vlan0;
-
-	      vlan0 = (vlib_buffer_get_current (b0) -
-		       sizeof (ethernet_vlan_header_t));
-
-	      qos0 = ethernet_vlan_header_get_priority_net_order (vlan0);
-	    }
-	  else if (DPO_PROTO_MPLS)
-	    {
-	      mpls_unicast_header_t *mh;
-
-	      mh = vlib_buffer_get_current (b0);
-	      qos0 = vnet_mpls_uc_get_exp (mh->label_exp_s_ttl);
-	    }
-
-	  vnet_buffer2 (b0)->qos.bits = qos0;
-	  vnet_buffer2 (b0)->qos.source = qos_src;
-	  b0->flags |= VNET_BUFFER_F_QOS_DATA_VALID;
-
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
-			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
-	    {
-	      qos_record_trace_t *t =
-		vlib_add_trace (vm, node, b0, sizeof (*t));
-	      t->bits = qos0;
-	    }
-
-	non_ip:
-	  if (is_l2)
-	    {
-	      vlib_buffer_advance (b0, -l2_len);
-	      next0 = vnet_l2_feature_next (b0,
-					    l2_qos_input_next[qos_src],
-					    L2INPUT_FEAT_L2_IP_QOS_RECORD);
-	    }
-	  else
-	    vnet_feature_next (&next0, b0);
-
-	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_prefetch_buffer_header (b[2], LOAD);
+	  vlib_prefetch_buffer_header2 (b[2], LOAD);
+	  vlib_prefetch_buffer_data (b[2], LOAD);
+	  vlib_prefetch_buffer_header (b[3], LOAD);
+	  vlib_prefetch_buffer_header2 (b[3], LOAD);
+	  vlib_prefetch_buffer_data (b[3], LOAD);
 	}
 
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+      if (qos_record_get_bits (b[0], qos_src, dproto, is_l2, &qos0))
+	b[0]->flags |= VNET_BUFFER_F_QOS_DATA_VALID;
+      if (qos_record_get_bits (b[1], qos_src, dproto, is_l2, &qos1))
+	b[1]->flags |= VNET_BUFFER_F_QOS_DATA_VALID;
+
+      vnet_buffer2 (b[0])->qos.bits = qos0;
+      vnet_buffer2 (b[0])->qos.source = qos_src;
+      vnet_buffer2 (b[1])->qos.bits = qos1;
+      vnet_buffer2 (b[1])->qos.source = qos_src;
+
+      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
+	{
+	  if (PREDICT_FALSE ((b[0]->flags & VLIB_BUFFER_IS_TRACED)))
+	    {
+	      qos_record_trace_t *t =
+		vlib_add_trace (vm, node, b[0], sizeof (*t));
+	      t->bits = qos0;
+	    }
+	  if (PREDICT_FALSE ((b[1]->flags & VLIB_BUFFER_IS_TRACED)))
+	    {
+	      qos_record_trace_t *t =
+		vlib_add_trace (vm, node, b[1], sizeof (*t));
+	      t->bits = qos1;
+	    }
+	}
+
+      if (is_l2)
+	{
+	  next[0] = vnet_l2_feature_next (b[0], l2_qos_input_next[qos_src],
+					  L2INPUT_FEAT_L2_IP_QOS_RECORD);
+	  next[1] = vnet_l2_feature_next (b[1], l2_qos_input_next[qos_src],
+					  L2INPUT_FEAT_L2_IP_QOS_RECORD);
+	}
+      else
+	{
+	  vnet_feature_next_u16 (&next[0], b[0]);
+	  vnet_feature_next_u16 (&next[1], b[1]);
+	}
+
+      next += 2;
+      b += 2;
+      n_left -= 2;
     }
+
+  while (n_left > 0)
+    {
+      qos_bits_t qos0 = 0;
+
+      if (qos_record_get_bits (b[0], qos_src, dproto, is_l2, &qos0))
+	b[0]->flags |= VNET_BUFFER_F_QOS_DATA_VALID;
+
+      vnet_buffer2 (b[0])->qos.bits = qos0;
+      vnet_buffer2 (b[0])->qos.source = qos_src;
+
+      if (PREDICT_FALSE ((b[0]->flags & VLIB_BUFFER_IS_TRACED)))
+	{
+	  qos_record_trace_t *t = vlib_add_trace (vm, node, b[0], sizeof (*t));
+	  t->bits = qos0;
+	}
+
+      if (is_l2)
+	{
+	  next[0] = vnet_l2_feature_next (b[0], l2_qos_input_next[qos_src],
+					  L2INPUT_FEAT_L2_IP_QOS_RECORD);
+	}
+      else
+	vnet_feature_next_u16 (&next[0], b[0]);
+
+      next += 1;
+      b += 1;
+      n_left -= 1;
+    }
+
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
 
   return frame->n_vectors;
 }

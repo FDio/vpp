@@ -147,7 +147,7 @@ ethernet_vlan_header_set_priority_net_order (ethernet_vlan_header_t * h,
 }
 
 always_inline u8
-ethernet_vlan_header_get_priority_net_order (ethernet_vlan_header_t * h)
+ethernet_vlan_header_get_priority_net_order (const ethernet_vlan_header_t *h)
 {
   u8 *bytes = (u8 *) (&h->priority_cfi_and_id);
 
