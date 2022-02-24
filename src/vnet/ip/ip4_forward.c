@@ -2055,7 +2055,9 @@ ip4_ttl_inc (vlib_buffer_t * b, ip4_header_t * ip)
   ttl += 1;
   ip->ttl = ttl;
 
-  ASSERT (ip4_header_checksum_is_valid (ip));
+  ASSERT (ip4_header_checksum_is_valid (ip) ||
+	  (vnet_buffer (b)->oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM) ||
+	  (vnet_buffer (b)->oflags & VNET_BUFFER_OFFLOAD_F_OUTER_IP_CKSUM));
 }
 
 /* Decrement TTL & update checksum.
