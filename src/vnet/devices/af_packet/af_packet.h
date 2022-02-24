@@ -94,6 +94,7 @@ typedef struct
   af_packet_if_mode_t mode;
   u8 is_admin_up;
   u8 is_cksum_gso_enabled;
+  u8 pending_kick;
 
   af_packet_queue_t *rx_queues;
   af_packet_queue_t *tx_queues;
