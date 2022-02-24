@@ -411,90 +411,86 @@ mpls_frag (vlib_main_t * vm,
             u32 pi0, adj_index0;
             ip_frag_error_t error0 = IP_FRAG_ERROR_NONE;
             i16 encap_size;
-            u8 is_ip4;
+	    u16 mtu;
+	    u8 is_ip4;
 
-            pi0 = to_next[0] = from[0];
-            p0 = vlib_get_buffer (vm, pi0);
-            from += 1;
-            n_left_from -= 1;
-            is_ip4 = vnet_buffer (p0)->mpls.pyld_proto == DPO_PROTO_IP4;
+	    pi0 = to_next[0] = from[0];
+	    p0 = vlib_get_buffer (vm, pi0);
+	    from += 1;
+	    n_left_from -= 1;
+	    is_ip4 = vnet_buffer (p0)->mpls.pyld_proto == DPO_PROTO_IP4;
 
-            adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
-            adj0 = adj_get(adj_index0);
+	    adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
+	    adj0 = adj_get (adj_index0);
+	    /* the size of the MPLS stack */
+	    encap_size = vnet_buffer (p0)->l3_hdr_offset - p0->current_data;
+	    mtu = adj0->rewrite_header.max_l3_packet_bytes - encap_size;
 
-            /* the size of the MPLS stack */
-            encap_size = vnet_buffer(p0)->l3_hdr_offset - p0->current_data;
+	    /* IP fragmentation */
+	    if (is_ip4)
+	      error0 = ip4_frag_do_fragment (vm, pi0, mtu, encap_size, &frags);
+	    else
+	      error0 = ip6_frag_do_fragment (vm, pi0, mtu, encap_size, &frags);
 
-            /* IP fragmentation */
-            if (is_ip4)
-                error0 = ip4_frag_do_fragment (vm, pi0,
-                                               adj0->rewrite_header.max_l3_packet_bytes,
-                                               encap_size, &frags);
-            else
-                error0 = ip6_frag_do_fragment (vm, pi0,
-                                               adj0->rewrite_header.max_l3_packet_bytes,
-                                               encap_size, &frags);
+	    if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
+	      {
+		mpls_frag_trace_t *tr =
+		  vlib_add_trace (vm, node, p0, sizeof (*tr));
+		tr->mtu = mtu;
+		tr->pkt_size = vlib_buffer_length_in_chain (vm, p0);
+	      }
 
-            if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
-	    {
-                mpls_frag_trace_t *tr =
-                    vlib_add_trace (vm, node, p0, sizeof (*tr));
-                 tr->mtu = adj0->rewrite_header.max_l3_packet_bytes;
-                 tr->pkt_size = vlib_buffer_length_in_chain(vm, p0);
-	    }
+	    if (PREDICT_TRUE (error0 == IP_FRAG_ERROR_NONE))
+	      {
+		/* Free original buffer chain */
+		vlib_buffer_free_one (vm, pi0); /* Free original packet */
+		next0 = (IP_LOOKUP_NEXT_MIDCHAIN == adj0->lookup_next_index ?
+			   MPLS_FRAG_NEXT_REWRITE_MIDCHAIN :
+			   MPLS_FRAG_NEXT_REWRITE);
+	      }
+	    else if (is_ip4 && error0 == IP_FRAG_ERROR_DONT_FRAGMENT_SET)
+	      {
+		icmp4_error_set_vnet_buffer (
+		  p0, ICMP4_destination_unreachable,
+		  ICMP4_destination_unreachable_fragmentation_needed_and_dont_fragment_set,
+		  vnet_buffer (p0)->ip_frag.mtu);
+		next0 = MPLS_FRAG_NEXT_ICMP_ERROR;
+	      }
+	    else
+	      {
+		vlib_error_count (vm, mpls_output_node.index, error0, 1);
+		vec_add1 (frags, pi0); /* Get rid of the original buffer */
+		next0 = MPLS_FRAG_NEXT_DROP;
+	      }
 
-            if (PREDICT_TRUE(error0 == IP_FRAG_ERROR_NONE))
-	    {
-                /* Free original buffer chain */
-                vlib_buffer_free_one (vm, pi0);	/* Free original packet */
-                next0 = (IP_LOOKUP_NEXT_MIDCHAIN == adj0->lookup_next_index ?
-                         MPLS_FRAG_NEXT_REWRITE_MIDCHAIN :
-                         MPLS_FRAG_NEXT_REWRITE);
-	    }
-            else if (is_ip4 && error0 == IP_FRAG_ERROR_DONT_FRAGMENT_SET)
-	    {
-                icmp4_error_set_vnet_buffer (
-                    p0, ICMP4_destination_unreachable,
-                    ICMP4_destination_unreachable_fragmentation_needed_and_dont_fragment_set,
-                    vnet_buffer (p0)->ip_frag.mtu);
-                next0 = MPLS_FRAG_NEXT_ICMP_ERROR;
-	    }
-            else
-	    {
-                vlib_error_count (vm, mpls_output_node.index, error0, 1);
-                vec_add1 (frags, pi0);	/* Get rid of the original buffer */
-                next0 = MPLS_FRAG_NEXT_DROP;
-	    }
+	    /* Send fragments that were added in the frame */
+	    u32 *frag_from, frag_left;
 
-            /* Send fragments that were added in the frame */
-            u32 *frag_from, frag_left;
+	    frag_from = frags;
+	    frag_left = vec_len (frags);
 
-            frag_from = frags;
-            frag_left = vec_len (frags);
+	    while (frag_left > 0)
+	      {
+		while (frag_left > 0 && n_left_to_next > 0)
+		  {
+		    u32 i;
+		    i = to_next[0] = frag_from[0];
+		    frag_from += 1;
+		    frag_left -= 1;
+		    to_next += 1;
+		    n_left_to_next -= 1;
 
-            while (frag_left > 0)
-            {
-                while (frag_left > 0 && n_left_to_next > 0)
-                {
-                    u32 i;
-                    i = to_next[0] = frag_from[0];
-                    frag_from += 1;
-                    frag_left -= 1;
-                    to_next += 1;
-                    n_left_to_next -= 1;
+		    p0 = vlib_get_buffer (vm, i);
+		    p0->error = error_node->errors[error0];
 
-                    p0 = vlib_get_buffer (vm, i);
-                    p0->error = error_node->errors[error0];
-
-                    vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-                                                     to_next, n_left_to_next, i,
-                                                     next0);
-                }
-                vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-                vlib_get_next_frame (vm, node, next_index, to_next,
-                                     n_left_to_next);
-            }
-            vec_reset_length (frags);
+		    vlib_validate_buffer_enqueue_x1 (
+		      vm, node, next_index, to_next, n_left_to_next, i, next0);
+		  }
+		vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+		vlib_get_next_frame (vm, node, next_index, to_next,
+				     n_left_to_next);
+	      }
+	    vec_reset_length (frags);
 	}
         vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
