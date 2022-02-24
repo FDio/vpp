@@ -52,6 +52,7 @@ typedef struct
 
   u32 per_interface_next_index;
   u8 is_admin_up;
+  u8 pending_kick;
   u32 queue_index;
   u32 host_mtu;
   af_packet_if_mode_t mode;
