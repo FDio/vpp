@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d5297b1c_ac97c116",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1394,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-02-24T16:00:29Z",
+      "side": 1,
+      "message": "let\u0027s make this usleep(1)",
+      "range": {
+        "startLine": 1394,
+        "startChar": 6,
+        "endLine": 1394,
+        "endChar": 16
+      },
+      "revId": "ed5a3100ce8423d28ce9f2e57f19be6844f650db",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
