@@ -69,7 +69,7 @@ typedef struct
 
 /** Align pool header so that pointers are naturally aligned. */
 #define pool_aligned_header_bytes \
-  vec_aligned_header_bytes (sizeof (pool_header_t), sizeof (void *))
+  round_pow2 (sizeof (pool_header_t), sizeof (void *))
 
 /** Get pool header from user pool pointer */
 always_inline pool_header_t *
