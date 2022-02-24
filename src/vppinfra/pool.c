@@ -55,7 +55,8 @@ _pool_init_fixed (void **pool_ptr, u32 elt_size, u32 max_elts)
   ASSERT (elt_size);
   ASSERT (max_elts);
 
-  vector_size = pool_aligned_header_bytes + (u64) elt_size *max_elts;
+  vector_size =
+    vec_header_bytes (pool_aligned_header_bytes) + (u64) elt_size * max_elts;
   free_index_size = vec_header_bytes (0) + sizeof (u32) * max_elts;
 
   /* Round up to a cache line boundary */
@@ -85,7 +86,7 @@ _pool_init_fixed (void **pool_ptr, u32 elt_size, u32 max_elts)
   /* First comes the pool header */
   fh = (pool_header_t *) mmap_base;
   /* Find the user vector pointer */
-  v = (u8 *) (mmap_base + pool_aligned_header_bytes);
+  v = (u8 *) (mmap_base + vec_header_bytes (pool_aligned_header_bytes));
   /* Finally, the vector header */
   vh = _vec_find (v);
 
