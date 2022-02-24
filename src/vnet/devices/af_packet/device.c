@@ -418,9 +418,10 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
 
   CLIB_MEMORY_BARRIER ();
 
-  if (PREDICT_TRUE (n_sent))
+  if (PREDICT_TRUE (n_sent || tx_queue->is_tx_pending))
     {
       tx_queue->next_tx_frame = tx_frame;
+      tx_queue->is_tx_pending = 0;
 
       if (PREDICT_FALSE (
 	    sendto (tx_queue->fd, NULL, 0, MSG_DONTWAIT, NULL, 0) == -1))
@@ -429,11 +430,26 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
 	   * Note that we have no reliable way to properly determine the
 	   * disposition of the packets we just enqueued for delivery.
 	   */
-	  vlib_error_count (vm, node->node_index,
-			    unix_error_is_fatal (errno) ?
-			      AF_PACKET_TX_ERROR_TXRING_FATAL :
-			      AF_PACKET_TX_ERROR_TXRING_EAGAIN,
-			    n_sent);
+	  uword counter;
+
+	  if (unix_error_is_fatal (errno))
+	    {
+	      counter = AF_PACKET_TX_ERROR_TXRING_FATAL;
+	    }
+	  else
+	    {
+	      counter = AF_PACKET_TX_ERROR_TXRING_EAGAIN;
+	      /* non-fatal error: kick again next time
+	       * note that you could still end up in a deadlock: if you do not
+	       * try to send new packets (ie reschedule this tx node), eg.
+	       * because your peer is waiting for the unsent packets to reply
+	       * to you but your waiting for its reply etc., you are not going
+	       * to kick again, and everybody is waiting for the other to talk
+	       * 1st... */
+	      tx_queue->is_tx_pending = 1;
+	    }
+
+	  vlib_error_count (vm, node->node_index, counter, 1);
 	}
     }
 

@@ -437,6 +437,7 @@ af_packet_queue_init (vlib_main_t *vm, af_packet_if_t *apif,
 
       tx_queue->next_tx_frame = 0;
       tx_queue->queue_id = queue_id;
+      tx_queue->is_tx_pending = 0;
       clib_spinlock_init (&tx_queue->lockp);
     }
 
