@@ -1,0 +1,32 @@
+commit 2e485f79f5d9be5a5b30e48f9b2d98f78ce7d983
+Author: Vratko Polak <vrpolak@cisco.com>
+Date:   Thu Feb 24 07:10:41 2022 +0100
+
+    WiP
+    
+    Signed-off-by: Vratko Polak <vrpolak@cisco.com>
+---
+ drivers/net/i40e/i40e_rxtx_vec_avx2.c | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/net/i40e/i40e_rxtx_vec_avx2.c b/drivers/net/i40e/i40e_rxtx_vec_avx2.c
+index c73b2a321b..600723d300 100644
+--- a/drivers/net/i40e/i40e_rxtx_vec_avx2.c
++++ b/drivers/net/i40e/i40e_rxtx_vec_avx2.c
+@@ -633,7 +633,15 @@ uint16_t
+ i40e_recv_pkts_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts,
+ 		   uint16_t nb_pkts)
+ {
+-	return _recv_raw_pkts_vec_avx2(rx_queue, rx_pkts, nb_pkts, NULL);
++	uint16_t nb_bufs = _recv_raw_pkts_vec_avx2(rx_queue, rx_pkts, nb_pkts, NULL);
++	if (nb_bufs > 0)
++		return nb_bufs;
++	/* Bug 487 workaround: Give hardware some time and retry once. */
++	for (int i = 0; i < 300; i++) nb_bufs += nb_pkts;
++	nb_bufs += _recv_raw_pkts_vec_avx2(rx_queue, rx_pkts, nb_pkts, NULL);
++	/* Wait again, so the next call is also delayed. */
++	for (int i = 0; i < 300; i++) nb_bufs -= nb_pkts;
++	return nb_bufs;
+ }
+ 
+ /*
