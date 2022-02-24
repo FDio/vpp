@@ -652,7 +652,7 @@ ip6_ext_header_walk (vlib_buffer_t *b, ip6_header_t *ip, int find_hdr_type,
       i++;
       if (last)
 	break;
-      if (i > IP6_EXT_HDR_MAX)
+      if (i >= IP6_EXT_HDR_MAX)
 	break;
       next_header = ip6_ext_next_header_s (next_proto, next_header, max_offset,
 					   &offset, &next_proto, &last);
