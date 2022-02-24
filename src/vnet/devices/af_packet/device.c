@@ -192,7 +192,7 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
 
   CLIB_MEMORY_BARRIER ();
 
-  if (PREDICT_TRUE (n_sent))
+  if (PREDICT_TRUE (n_sent || apif->pending_kick))
     {
       apif->next_tx_frame = tx_frame;
 
@@ -208,7 +208,10 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
 			      AF_PACKET_TX_ERROR_TXRING_FATAL :
 			      AF_PACKET_TX_ERROR_TXRING_EAGAIN,
 			    n_sent);
+	  apif->pending_kick = 1;
 	}
+      else
+	apif->pending_kick = 0;
     }
 
   clib_spinlock_unlock_if_init (&apif->lockp);
