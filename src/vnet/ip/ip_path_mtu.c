@@ -297,9 +297,20 @@ ip_ptmu_adj_walk_update (adj_index_t ai, void *ctx)
 static ip_pmtu_dpo_t *
 ip_pmtu_dpo_alloc (void)
 {
+  vlib_main_t *vm = vlib_get_main ();
+  u8 need_barrier_sync = 0;
   ip_pmtu_dpo_t *ipm;
 
+  pool_get_aligned_will_expand (ip_pmtu_dpo_pool, need_barrier_sync,
+				sizeof (ip_pmtu_dpo_t));
+
+  if (need_barrier_sync)
+    vlib_worker_thread_barrier_sync (vm);
+
   pool_get_aligned_zero (ip_pmtu_dpo_pool, ipm, sizeof (ip_pmtu_dpo_t));
+
+  if (need_barrier_sync)
+    vlib_worker_thread_barrier_release (vm);
 
   return (ipm);
 }
@@ -353,18 +364,16 @@ ip_pmtu_dpo_get_urpf (const dpo_id_t *dpo)
 }
 
 void
-ip_pmtu_dpo_add_or_lock (fib_protocol_t fproto, u16 pmtu, dpo_id_t *dpo)
+ip_pmtu_dpo_add_or_lock (u16 pmtu, const dpo_id_t *parent, dpo_id_t *dpo)
 {
   ip_pmtu_dpo_t *ipm;
-  dpo_id_t parent = DPO_INVALID;
 
   ipm = ip_pmtu_dpo_alloc ();
 
-  ipm->ipm_proto = fib_proto_to_dpo (fproto);
+  ipm->ipm_proto = parent->dpoi_proto;
   ipm->ipm_pmtu = pmtu;
 
-  dpo_copy (&parent, drop_dpo_get (ipm->ipm_proto));
-  dpo_stack (ip_pmtu_dpo_type, ipm->ipm_proto, &ipm->ipm_dpo, &parent);
+  dpo_stack (ip_pmtu_dpo_type, ipm->ipm_proto, &ipm->ipm_dpo, parent);
   dpo_set (dpo, ip_pmtu_dpo_type, ipm->ipm_proto, ip_pmtu_dpo_get_index (ipm));
 }
 
@@ -516,7 +525,9 @@ ip_pmtu_alloc (u32 fib_index, const fib_prefix_t *pfx,
       /*
        * interpose a policy DPO from the nh so that MTU is applied
        */
-      ip_pmtu_dpo_add_or_lock (pfx->fp_proto, ipt->ipt_oper_pmtu, &ip_dpo);
+      ip_pmtu_dpo_add_or_lock (ipt->ipt_oper_pmtu,
+			       drop_dpo_get (fib_proto_to_dpo (pfx->fp_proto)),
+			       &ip_dpo);
 
       fib_table_entry_special_dpo_add (fib_index, pfx, ip_pmtu_source,
 				       FIB_ENTRY_FLAG_INTERPOSE, &ip_dpo);
@@ -587,7 +598,9 @@ ip_pmtu_stack (ip_pmtu_t *ipt)
 	{
 	  dpo_id_t ip_dpo = DPO_INVALID;
 
-	  ip_pmtu_dpo_add_or_lock (pfx->fp_proto, ipt->ipt_oper_pmtu, &ip_dpo);
+	  ip_pmtu_dpo_add_or_lock (
+	    ipt->ipt_oper_pmtu,
+	    drop_dpo_get (fib_proto_to_dpo (pfx->fp_proto)), &ip_dpo);
 
 	  fib_table_entry_special_dpo_update (
 	    fib_index, pfx, ip_pmtu_source, FIB_ENTRY_FLAG_INTERPOSE, &ip_dpo);
