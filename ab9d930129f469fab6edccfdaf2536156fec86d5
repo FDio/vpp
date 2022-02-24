@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "de296912_e11ec919",
+        "filename": "src/vnet/devices/af_packet/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 211,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2022-02-24T14:52:45Z",
+      "side": 1,
+      "message": "Shouldn\u0027t af_packet kick again if returned error is \u0027EAGAIN\u0027? For other errors, it shouldn\u0027t kick again.",
+      "revId": "ab9d930129f469fab6edccfdaf2536156fec86d5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
