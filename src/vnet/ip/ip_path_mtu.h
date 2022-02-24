@@ -100,6 +100,9 @@ extern int ip_path_mtu_replace_end (void);
 extern u32 ip_pmtu_get_table_id (const ip_pmtu_t *ipt);
 extern void ip_pmtu_get_ip (const ip_pmtu_t *ipt, ip_address_t *ip);
 
+extern void ip_pmtu_dpo_add_or_lock (u16 pmtu, const dpo_id_t *parent,
+				     dpo_id_t *dpo);
+
 /**
  * Data-plane accessor functions
  */
