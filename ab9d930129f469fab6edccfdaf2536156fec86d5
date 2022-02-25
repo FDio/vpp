@@ -34,6 +34,24 @@
       "revId": "ab9d930129f469fab6edccfdaf2536156fec86d5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "03fa1a7c_ef839b18",
+        "filename": "src/vnet/devices/af_packet/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 211,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2022-02-25T11:46:45Z",
+      "side": 1,
+      "message": "Yes, that\u0027s why we shouldn\u0027t kick. Instead put the af_packet interface in VPP in error state.",
+      "parentUuid": "70c67e20_f26af602",
+      "revId": "ab9d930129f469fab6edccfdaf2536156fec86d5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
