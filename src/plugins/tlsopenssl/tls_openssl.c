@@ -155,6 +155,10 @@ openssl_lctx_get (u32 lctx_index)
   return pool_elt_at_index (openssl_main.lctx_pool, lctx_index);
 }
 
+#define ossl_check_err_is_fatal(_ssl, _rv)                                    \
+  if (PREDICT_FALSE (_rv < 0 && SSL_get_error (_ssl, _rv) == SSL_ERROR_SSL))  \
+    return -1;
+
 static int
 openssl_read_from_ssl_into_fifo (svm_fifo_t * f, SSL * ssl)
 {
@@ -174,7 +178,10 @@ openssl_read_from_ssl_into_fifo (svm_fifo_t * f, SSL * ssl)
   /* Return early if we can't read anything */
   read = SSL_read (ssl, fs[0].data, fs[0].len);
   if (read <= 0)
-    return 0;
+    {
+      ossl_check_err_is_fatal (ssl, read);
+      return 0;
+    }
 
   for (i = 1; i < n_fs; i++)
     {
@@ -182,7 +189,10 @@ openssl_read_from_ssl_into_fifo (svm_fifo_t * f, SSL * ssl)
       read += rv > 0 ? rv : 0;
 
       if (rv < (int) fs[i].len)
-	break;
+	{
+	  ossl_check_err_is_fatal (ssl, rv);
+	  break;
+	}
     }
 
   svm_fifo_enqueue_nocopy (f, read);
@@ -206,7 +216,10 @@ openssl_write_from_fifo_into_ssl (svm_fifo_t *f, SSL *ssl, u32 max_len)
       rv = SSL_write (ssl, fs[i].data, fs[i].len);
       wrote += (rv > 0) ? rv : 0;
       if (rv < (int) fs[i].len)
-	break;
+	{
+	  ossl_check_err_is_fatal (ssl, rv);
+	  break;
+	}
       i++;
     }
 
@@ -402,6 +415,14 @@ openssl_ctx_write_tls (tls_ctx_t *ctx, session_t *app_session,
     goto check_tls_fifo;
 
   wrote = openssl_write_from_fifo_into_ssl (f, oc->ssl, deq_max);
+
+  /* Unrecoverable protocol error. Reset connection */
+  if (PREDICT_FALSE (wrote < 0))
+    {
+      tls_notify_app_io_error (ctx);
+      return 0;
+    }
+
   if (!wrote)
     goto check_tls_fifo;
 
@@ -517,6 +538,13 @@ openssl_ctx_read_tls (tls_ctx_t *ctx, session_t *tls_session)
   f = app_session->rx_fifo;
 
   read = openssl_read_from_ssl_into_fifo (f, oc->ssl);
+
+  /* Unrecoverable protocol error. Reset connection */
+  if (PREDICT_FALSE (read < 0))
+    {
+      tls_notify_app_io_error (ctx);
+      return 0;
+    }
 
   /* If handshake just completed, session may still be in accepting state */
   if (read && app_session->session_state >= SESSION_STATE_READY)
