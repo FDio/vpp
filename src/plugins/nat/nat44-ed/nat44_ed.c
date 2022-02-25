@@ -1335,10 +1335,15 @@ nat44_ed_add_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
   m->flags |= NAT_SM_FLAG_LB;
 
   if (affinity)
-    m->affinity_per_service_list_head_index =
-      nat_affinity_get_per_service_list_head_index ();
+    {
+      m->flags |= NAT_SM_FLAG_AFFINITY;
+      m->affinity_per_service_list_head_index =
+	nat_affinity_get_per_service_list_head_index ();
+    }
   else
-    m->affinity_per_service_list_head_index = ~0;
+    {
+      m->affinity_per_service_list_head_index = ~0;
+    }
 
   if (nat44_ed_sm_o2i_add (sm, m, m->external_addr, m->external_port, 0,
 			   m->proto))
@@ -2704,16 +2709,18 @@ nat44_ed_forwarding_enable_disable (u8 is_enable)
     }
 }
 
-static_always_inline snat_static_mapping_t *
-nat44_ed_sm_match (snat_main_t *sm, ip4_address_t match_addr, u16 match_port,
-		   u32 match_fib_index, ip_protocol_t match_protocol,
+snat_static_mapping_t *
+nat44_ed_sm_match (ip4_address_t match_addr, u16 match_port,
+		   u32 match_fib_index, ip_protocol_t match_proto,
 		   int by_external)
 {
+  snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m;
+
   if (!by_external)
     {
       m = nat44_ed_sm_i2o_lookup (sm, match_addr, match_port, match_fib_index,
-				  match_protocol);
+				  match_proto);
       if (m)
 	return m;
 
@@ -2726,7 +2733,7 @@ nat44_ed_sm_match (snat_main_t *sm, ip4_address_t match_addr, u16 match_port,
       if (sm->inside_fib_index != match_fib_index)
 	{
 	  m = nat44_ed_sm_i2o_lookup (sm, match_addr, match_port,
-				      sm->inside_fib_index, match_protocol);
+				      sm->inside_fib_index, match_proto);
 	  if (m)
 	    return m;
 
@@ -2740,7 +2747,7 @@ nat44_ed_sm_match (snat_main_t *sm, ip4_address_t match_addr, u16 match_port,
       if (sm->outside_fib_index != match_fib_index)
 	{
 	  m = nat44_ed_sm_i2o_lookup (sm, match_addr, match_port,
-				      sm->outside_fib_index, match_protocol);
+				      sm->outside_fib_index, match_proto);
 	  if (m)
 	    return m;
 
@@ -2753,8 +2760,7 @@ nat44_ed_sm_match (snat_main_t *sm, ip4_address_t match_addr, u16 match_port,
     }
   else
     {
-      m =
-	nat44_ed_sm_o2i_lookup (sm, match_addr, match_port, 0, match_protocol);
+      m = nat44_ed_sm_o2i_lookup (sm, match_addr, match_port, 0, match_proto);
       if (m)
 	return m;
 
@@ -2763,143 +2769,6 @@ nat44_ed_sm_match (snat_main_t *sm, ip4_address_t match_addr, u16 match_port,
       if (m)
 	return m;
     }
-  return 0;
-}
-
-int
-snat_static_mapping_match (vlib_main_t *vm, ip4_address_t match_addr,
-			   u16 match_port, u32 match_fib_index,
-			   ip_protocol_t match_protocol,
-			   ip4_address_t *mapping_addr, u16 *mapping_port,
-			   u32 *mapping_fib_index, int by_external,
-			   u8 *is_addr_only, twice_nat_type_t *twice_nat,
-			   lb_nat_type_t *lb, ip4_address_t *ext_host_addr,
-			   u8 *is_identity_nat, snat_static_mapping_t **out)
-{
-  snat_main_t *sm = &snat_main;
-  snat_static_mapping_t *m;
-  u32 rand, lo = 0, hi, mid, *tmp = 0, i;
-  nat44_lb_addr_port_t *local;
-  u8 backend_index;
-
-  m = nat44_ed_sm_match (sm, match_addr, match_port, match_fib_index,
-			 match_protocol, by_external);
-  if (!m)
-    {
-      return 1;
-    }
-
-  if (by_external)
-    {
-      if (is_sm_lb (m->flags))
-	{
-	  if (PREDICT_FALSE (lb != 0))
-	    *lb = m->affinity ? AFFINITY_LB_NAT : LB_NAT;
-	  if (m->affinity && !nat_affinity_find_and_lock (
-			       vm, ext_host_addr[0], match_addr,
-			       match_protocol, match_port, &backend_index))
-	    {
-	      local = pool_elt_at_index (m->locals, backend_index);
-	      *mapping_addr = local->addr;
-	      *mapping_port = local->port;
-	      *mapping_fib_index = local->fib_index;
-	      goto end;
-	    }
-	  // pick locals matching this worker
-	  if (PREDICT_FALSE (sm->num_workers > 1))
-	    {
-	      u32 thread_index = vlib_get_thread_index ();
-              pool_foreach_index (i, m->locals)
-               {
-                local = pool_elt_at_index (m->locals, i);
-
-                ip4_header_t ip = {
-		  .src_address = local->addr,
-	        };
-
-		if (nat44_ed_get_in2out_worker_index (0, &ip, m->fib_index,
-						      0) == thread_index)
-		  {
-		    vec_add1 (tmp, i);
-		  }
-	       }
-	      ASSERT (vec_len (tmp) != 0);
-	    }
-	  else
-	    {
-              pool_foreach_index (i, m->locals)
-               {
-                vec_add1 (tmp, i);
-              }
-	    }
-	  hi = vec_len (tmp) - 1;
-	  local = pool_elt_at_index (m->locals, tmp[hi]);
-	  rand = 1 + (random_u32 (&sm->random_seed) % local->prefix);
-	  while (lo < hi)
-	    {
-	      mid = ((hi - lo) >> 1) + lo;
-	      local = pool_elt_at_index (m->locals, tmp[mid]);
-	      (rand > local->prefix) ? (lo = mid + 1) : (hi = mid);
-	    }
-	  local = pool_elt_at_index (m->locals, tmp[lo]);
-	  if (!(local->prefix >= rand))
-	    return 1;
-	  *mapping_addr = local->addr;
-	  *mapping_port = local->port;
-	  *mapping_fib_index = local->fib_index;
-	  if (m->affinity)
-	    {
-	      if (nat_affinity_create_and_lock (ext_host_addr[0], match_addr,
-						match_protocol, match_port,
-						tmp[lo], m->affinity,
-						m->affinity_per_service_list_head_index))
-		nat_elog_info (sm, "create affinity record failed");
-	    }
-	  vec_free (tmp);
-	}
-      else
-	{
-	  if (PREDICT_FALSE (lb != 0))
-	    *lb = NO_LB_NAT;
-	  *mapping_fib_index = m->fib_index;
-	  *mapping_addr = m->local_addr;
-	  /* Address only mapping doesn't change port */
-	  *mapping_port =
-	    is_sm_addr_only (m->flags) ? match_port : m->local_port;
-	}
-    }
-  else
-    {
-      *mapping_addr = m->external_addr;
-      /* Address only mapping doesn't change port */
-      *mapping_port =
-	is_sm_addr_only (m->flags) ? match_port : m->external_port;
-      *mapping_fib_index = sm->outside_fib_index;
-    }
-
-end:
-  if (PREDICT_FALSE (is_addr_only != 0))
-    *is_addr_only = is_sm_addr_only (m->flags);
-
-  if (PREDICT_FALSE (twice_nat != 0))
-    {
-      *twice_nat = TWICE_NAT_DISABLED;
-
-      if (is_sm_twice_nat (m->flags))
-	{
-	  *twice_nat = TWICE_NAT;
-	}
-      else if (is_sm_self_twice_nat (m->flags))
-	{
-	  *twice_nat = TWICE_NAT_SELF;
-	}
-    }
-
-  if (PREDICT_FALSE (is_identity_nat != 0))
-    *is_identity_nat = is_sm_identity_nat (m->flags);
-
-  if (out != 0)
-    *out = m;
 
   return 0;
 }
