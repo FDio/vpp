@@ -400,6 +400,16 @@ tls_ctx_handshake_is_over (tls_ctx_t * ctx)
 }
 
 void
+tls_notify_app_io_error (tls_ctx_t *ctx)
+{
+  ASSERT (tls_ctx_handshake_is_over (ctx));
+
+  session_transport_reset_notify (&ctx->connection);
+  session_transport_closed_notify (&ctx->connection);
+  tls_disconnect_transport (ctx);
+}
+
+void
 tls_session_reset_callback (session_t * s)
 {
   tls_ctx_t *ctx;
