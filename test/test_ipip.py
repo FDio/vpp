@@ -1222,21 +1222,21 @@ class TestIPIP6(VppTestCase):
         return 'x' * len
 
 
-class TestMPLS(VppTestCase):
+class TestIPIPMPLS(VppTestCase):
     """ MPLS Test Case """
 
     @classmethod
     def setUpClass(cls):
-        super(TestMPLS, cls).setUpClass()
+        super(TestIPIPMPLS, cls).setUpClass()
         cls.create_pg_interfaces(range(2))
         cls.interfaces = list(cls.pg_interfaces)
 
     @classmethod
     def tearDownClass(cls):
-        super(TestMPLS, cls).tearDownClass()
+        super(TestIPIPMPLS, cls).tearDownClass()
 
     def setUp(self):
-        super(TestMPLS, self).setUp()
+        super(TestIPIPMPLS, self).setUp()
         for i in self.interfaces:
             i.admin_up()
             i.config_ip4()
@@ -1246,7 +1246,7 @@ class TestMPLS(VppTestCase):
             i.resolve_ndp()
 
     def tearDown(self):
-        super(TestMPLS, self).tearDown()
+        super(TestIPIPMPLS, self).tearDown()
 
         for i in self.pg_interfaces:
             i.unconfig_ip4()

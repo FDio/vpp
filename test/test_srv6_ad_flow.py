@@ -17,21 +17,21 @@ from scapy.layers.inet import IP, UDP
 from util import ppp
 
 
-class TestSRv6(VppTestCase):
+class TestSRv6AdFlow(VppTestCase):
     """ SRv6 Flow-based Dynamic Proxy plugin Test Case """
 
     @classmethod
     def setUpClass(self):
-        super(TestSRv6, self).setUpClass()
+        super(TestSRv6AdFlow, self).setUpClass()
 
     @classmethod
     def tearDownClass(cls):
-        super(TestSRv6, cls).tearDownClass()
+        super(TestSRv6AdFlow, cls).tearDownClass()
 
     def setUp(self):
         """ Perform test setup before each test case.
         """
-        super(TestSRv6, self).setUp()
+        super(TestSRv6AdFlow, self).setUp()
 
         # packet sizes, inclusive L2 overhead
         self.pg_packet_sizes = [64, 512, 1518, 9018]
@@ -44,7 +44,7 @@ class TestSRv6(VppTestCase):
         """
         self.teardown_interfaces()
 
-        super(TestSRv6, self).tearDown()
+        super(TestSRv6AdFlow, self).tearDown()
 
     def configure_interface(self,
                             interface,

@@ -11,17 +11,17 @@ from framework import VppTestCase, VppTestRunner
 from util import Host, ppp
 
 
-class TestL2LearnLimit(VppTestCase):
+class TestL2LearnLimitBdEnable(VppTestCase):
     """ L2 Bridge Domain Learn limit Test Case """
 
     @classmethod
     def setUpClass(self):
-        super(TestL2LearnLimit, self).setUpClass()
+        super(TestL2LearnLimitBdEnable, self).setUpClass()
         self.create_pg_interfaces(range(3))
 
     @classmethod
     def tearDownClass(cls):
-        super(TestL2LearnLimit, cls).tearDownClass()
+        super(TestL2LearnLimitBdEnable, cls).tearDownClass()
 
     def create_hosts(self, pg_if, n_hosts_per_if, subnet):
         """
@@ -97,7 +97,7 @@ class TestL2LearnLimit(VppTestCase):
         self.vapi.bridge_domain_add_del(is_add=0, bd_id=3)
 
     def setUp(self):
-        super(TestL2LearnLimit, self).setUp()
+        super(TestL2LearnLimitBdEnable, self).setUp()
 
         self.vapi.bridge_domain_add_del(bd_id=1)
         self.vapi.bridge_domain_add_del(bd_id=2)
@@ -108,7 +108,7 @@ class TestL2LearnLimit(VppTestCase):
             self.pg_interfaces[1].sw_if_index, bd_id=2)
 
     def tearDown(self):
-        super(TestL2LearnLimit, self).tearDown()
+        super(TestL2LearnLimitBdEnable, self).tearDown()
         self.vapi.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.pg_interfaces[0].sw_if_index,
             bd_id=1, enable=0)

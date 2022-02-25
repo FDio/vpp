@@ -1754,19 +1754,19 @@ class IPv6NDProxyTest(TestIPv6ND):
         self.assertTrue(rx[0].haslayer(ICMPv6ND_NS))
 
 
-class TestIPNull(VppTestCase):
+class TestIP6Null(VppTestCase):
     """ IPv6 routes via NULL """
 
     @classmethod
     def setUpClass(cls):
-        super(TestIPNull, cls).setUpClass()
+        super(TestIP6Null, cls).setUpClass()
 
     @classmethod
     def tearDownClass(cls):
-        super(TestIPNull, cls).tearDownClass()
+        super(TestIP6Null, cls).tearDownClass()
 
     def setUp(self):
-        super(TestIPNull, self).setUp()
+        super(TestIP6Null, self).setUp()
 
         # create 2 pg interfaces
         self.create_pg_interfaces(range(1))
@@ -1777,7 +1777,7 @@ class TestIPNull(VppTestCase):
             i.resolve_ndp()
 
     def tearDown(self):
-        super(TestIPNull, self).tearDown()
+        super(TestIP6Null, self).tearDown()
         for i in self.pg_interfaces:
             i.unconfig_ip6()
             i.admin_down()
@@ -1835,19 +1835,19 @@ class TestIPNull(VppTestCase):
         self.assertEqual(icmp.code, 1)
 
 
-class TestIPDisabled(VppTestCase):
+class TestIP6Disabled(VppTestCase):
     """ IPv6 disabled """
 
     @classmethod
     def setUpClass(cls):
-        super(TestIPDisabled, cls).setUpClass()
+        super(TestIP6Disabled, cls).setUpClass()
 
     @classmethod
     def tearDownClass(cls):
-        super(TestIPDisabled, cls).tearDownClass()
+        super(TestIP6Disabled, cls).tearDownClass()
 
     def setUp(self):
-        super(TestIPDisabled, self).setUp()
+        super(TestIP6Disabled, self).setUp()
 
         # create 2 pg interfaces
         self.create_pg_interfaces(range(2))
@@ -1861,7 +1861,7 @@ class TestIPDisabled(VppTestCase):
         self.pg1.admin_up()
 
     def tearDown(self):
-        super(TestIPDisabled, self).tearDown()
+        super(TestIP6Disabled, self).tearDown()
         for i in self.pg_interfaces:
             i.unconfig_ip4()
             i.admin_down()
@@ -2440,19 +2440,19 @@ class TestIP6PuntHandoff(IP6PuntSetup, VppTestCase):
         ip_punt_redirect.remove_vpp_config()
 
 
-class TestIPDeag(VppTestCase):
+class TestIP6Deag(VppTestCase):
     """ IPv6 Deaggregate Routes """
 
     @classmethod
     def setUpClass(cls):
-        super(TestIPDeag, cls).setUpClass()
+        super(TestIP6Deag, cls).setUpClass()
 
     @classmethod
     def tearDownClass(cls):
-        super(TestIPDeag, cls).tearDownClass()
+        super(TestIP6Deag, cls).tearDownClass()
 
     def setUp(self):
-        super(TestIPDeag, self).setUp()
+        super(TestIP6Deag, self).setUp()
 
         self.create_pg_interfaces(range(3))
 
@@ -2462,7 +2462,7 @@ class TestIPDeag(VppTestCase):
             i.resolve_ndp()
 
     def tearDown(self):
-        super(TestIPDeag, self).tearDown()
+        super(TestIP6Deag, self).tearDown()
         for i in self.pg_interfaces:
             i.unconfig_ip6()
             i.admin_down()
@@ -2659,19 +2659,19 @@ class TestIP6Input(VppTestCase):
         self.pg_start()
 
 
-class TestIPReplace(VppTestCase):
+class TestIP6Replace(VppTestCase):
     """ IPv6 Table Replace """
 
     @classmethod
     def setUpClass(cls):
-        super(TestIPReplace, cls).setUpClass()
+        super(TestIP6Replace, cls).setUpClass()
 
     @classmethod
     def tearDownClass(cls):
-        super(TestIPReplace, cls).tearDownClass()
+        super(TestIP6Replace, cls).tearDownClass()
 
     def setUp(self):
-        super(TestIPReplace, self).setUp()
+        super(TestIP6Replace, self).setUp()
 
         self.create_pg_interfaces(range(4))
 
@@ -2687,7 +2687,7 @@ class TestIPReplace(VppTestCase):
             table_id += 1
 
     def tearDown(self):
-        super(TestIPReplace, self).tearDown()
+        super(TestIP6Replace, self).tearDown()
         for i in self.pg_interfaces:
             i.admin_down()
             i.unconfig_ip6()
@@ -2800,19 +2800,19 @@ class TestIPReplace(VppTestCase):
             self.assertEqual(len(t.mdump()), 5)
 
 
-class TestIP6Replace(VppTestCase):
-    """ IPv4 Interface Address Replace """
+class TestIP6AddrReplace(VppTestCase):
+    """ IPv6 Interface Address Replace """
 
     @classmethod
     def setUpClass(cls):
-        super(TestIP6Replace, cls).setUpClass()
+        super(TestIP6AddrReplace, cls).setUpClass()
 
     @classmethod
     def tearDownClass(cls):
-        super(TestIP6Replace, cls).tearDownClass()
+        super(TestIP6AddrReplace, cls).tearDownClass()
 
     def setUp(self):
-        super(TestIP6Replace, self).setUp()
+        super(TestIP6AddrReplace, self).setUp()
 
         self.create_pg_interfaces(range(4))
 
@@ -2820,7 +2820,7 @@ class TestIP6Replace(VppTestCase):
             i.admin_up()
 
     def tearDown(self):
-        super(TestIP6Replace, self).tearDown()
+        super(TestIP6AddrReplace, self).tearDown()
         for i in self.pg_interfaces:
             i.admin_down()
 
