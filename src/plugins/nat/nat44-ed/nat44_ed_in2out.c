@@ -378,7 +378,6 @@ is_destination_resolvable (u32 rx_fib_index, ip4_address_t addr)
 
   snat_main_t *sm = &snat_main;
   vrf_table_t *t = get_vrf_table_by_fib (rx_fib_index);
-  u32 ii;
 
   if (0 != t)
     {
@@ -388,7 +387,7 @@ is_destination_resolvable (u32 rx_fib_index, ip4_address_t addr)
 	{
 	  fei = fib_table_lookup (r->fib_index, &pfx);
 	  if ((FIB_NODE_INDEX_INVALID != fei) &&
-	      (~0 != (ii = fib_entry_get_resolving_interface (fei))))
+	      (~0 != fib_entry_get_resolving_interface (fei)))
 	    {
 	      return 1;
 	    }
@@ -397,6 +396,7 @@ is_destination_resolvable (u32 rx_fib_index, ip4_address_t addr)
   else
     {
       // default routes to other fibs
+      u32 ii;
       nat_fib_t *f;
       vec_foreach (f, sm->outside_fibs)
 	{
@@ -429,12 +429,11 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
 {
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   ip4_address_t outside_addr;
+  snat_static_mapping_t *m;
   u16 outside_port;
   u32 tx_fib_index;
-  u8 is_identity_nat = 0;
 
   snat_session_t *s = NULL;
-  lb_nat_type_t lb = 0;
   ip4_address_t daddr = r_addr;
   u16 dport = r_port;
 
@@ -451,21 +450,16 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
 	}
     }
 
-  ip4_address_t sm_addr;
-  u16 sm_port;
-  u32 sm_fib_index;
-  int is_sm = 0;
-  // First try to match static mapping by local address and port
-  if (!snat_static_mapping_match (vm, l_addr, l_port, rx_fib_index, proto,
-				  &sm_addr, &sm_port, &sm_fib_index, 0, 0, 0,
-				  &lb, 0, &is_identity_nat, 0))
+  // first try to match static mapping by local address and port
+  m = nat44_ed_sm_match (l_addr, l_port, rx_fib_index, proto, 0);
+
+  if (PREDICT_FALSE (0 != m))
     {
-      if (PREDICT_FALSE (is_identity_nat))
+      if (PREDICT_FALSE (is_sm_identity_nat (m->flags)))
 	{
 	  *sessionp = NULL;
 	  return next;
 	}
-      is_sm = 1;
     }
 
   if (PREDICT_TRUE (proto == IP_PROTOCOL_TCP))
@@ -479,20 +473,17 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
     }
 
   s = nat_ed_session_alloc (sm, thread_index, now, proto);
-  ASSERT (s);
 
   tx_fib_index = get_tx_fib_index (rx_fib_index, r_addr);
 
-  if (!is_sm)
+  if (PREDICT_TRUE (0 == m))
     {
+      // dynamic
       s->in2out.addr = l_addr;
       s->in2out.port = l_port;
       s->proto = proto;
       s->in2out.fib_index = rx_fib_index;
       s->out2in.fib_index = tx_fib_index;
-
-      // suggest using local port to allocation function
-      outside_port = l_port;
 
       if (PREDICT_FALSE (nat44_ed_external_sm_lookup (sm, r_addr, r_port,
 						      proto, &daddr, &dport)))
@@ -515,6 +506,9 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
 	}
       nat_6t_flow_txfib_rewrite_set (&s->o2i, rx_fib_index);
 
+      // suggest using local port to allocation function
+      outside_port = l_port;
+
       if (nat_ed_alloc_addr_and_port (
 	    sm, rx_fib_index, tx_sw_if_index, proto, thread_index, l_addr,
 	    r_addr, tsm->snat_thread_index, s, &outside_addr, &outside_port))
@@ -524,14 +518,19 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
 	  nat_ed_session_delete (sm, s, thread_index, 1);
 	  return NAT_NEXT_DROP;
 	}
+
       s->out2in.addr = outside_addr;
       s->out2in.port = outside_port;
     }
   else
     {
       // static mapping
-      s->out2in.addr = outside_addr = sm_addr;
-      s->out2in.port = outside_port = sm_port;
+      // address only mapping doesn't change port
+      outside_addr = m->external_addr;
+      outside_port = is_sm_addr_only (m->flags) ? l_port : m->external_port;
+
+      s->out2in.addr = outside_addr;
+      s->out2in.port = outside_port;
       s->in2out.addr = l_addr;
       s->in2out.port = l_port;
       s->proto = proto;
@@ -539,25 +538,35 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
       s->out2in.fib_index = tx_fib_index;
       s->flags |= SNAT_SESSION_FLAG_STATIC_MAPPING;
 
-      // hairpinning?
-      int is_hairpinning = nat44_ed_external_sm_lookup (sm, r_addr, r_port,
-							proto, &daddr, &dport);
-      s->flags |= is_hairpinning * SNAT_SESSION_FLAG_HAIRPINNING;
+      if (PREDICT_FALSE (nat44_ed_external_sm_lookup (sm, r_addr, r_port,
+						      proto, &daddr, &dport)))
+	{
+	  s->flags |= SNAT_SESSION_FLAG_HAIRPINNING;
+	}
+
+      if (is_sm_lb (m->flags))
+	{
+	  s->flags |= SNAT_SESSION_FLAG_LOAD_BALANCING;
+	}
 
       if (IP_PROTOCOL_ICMP == proto)
 	{
-	  nat_6t_o2i_flow_init (sm, thread_index, s, daddr, sm_port, sm_addr,
-				sm_port, s->out2in.fib_index, proto);
+	  nat_6t_o2i_flow_init (sm, thread_index, s, daddr, outside_port,
+				outside_addr, outside_port,
+				s->out2in.fib_index, proto);
 	  nat_6t_flow_icmp_id_rewrite_set (&s->o2i, l_port);
 	}
       else
 	{
-	  nat_6t_o2i_flow_init (sm, thread_index, s, daddr, dport, sm_addr,
-				sm_port, s->out2in.fib_index, proto);
+	  nat_6t_o2i_flow_init (sm, thread_index, s, daddr, dport,
+				outside_addr, outside_port,
+				s->out2in.fib_index, proto);
 	  nat_6t_flow_dport_rewrite_set (&s->o2i, l_port);
 	}
+
       nat_6t_flow_daddr_rewrite_set (&s->o2i, l_addr.as_u32);
       nat_6t_flow_txfib_rewrite_set (&s->o2i, rx_fib_index);
+
       if (nat_ed_ses_o2i_flow_hash_add_del (sm, thread_index, s, 2))
 	{
 	  nat_elog_notice (sm, "out2in key add failed");
@@ -565,8 +574,6 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
 	}
     }
 
-  if (lb)
-    s->flags |= SNAT_SESSION_FLAG_LOAD_BALANCING;
   s->ext_host_addr = r_addr;
   s->ext_host_port = r_port;
 
@@ -584,6 +591,7 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
       nat_6t_flow_sport_rewrite_set (&s->i2o, outside_port);
       nat_6t_flow_dport_rewrite_set (&s->i2o, dport);
     }
+
   nat_6t_flow_txfib_rewrite_set (&s->i2o, tx_fib_index);
 
   if (nat_ed_ses_i2o_flow_hash_add_del (sm, thread_index, s, 1))
@@ -616,28 +624,24 @@ error:
 }
 
 static_always_inline int
-nat44_ed_not_translate (vlib_main_t *vm, vlib_node_runtime_t *node,
-			u32 sw_if_index, vlib_buffer_t *b, ip4_header_t *ip,
-			u32 proto, u32 rx_fib_index)
+nat44_ed_not_translate (vlib_node_runtime_t *node, u32 sw_if_index,
+			vlib_buffer_t *b, ip4_header_t *ip, u32 proto,
+			u32 rx_fib_index)
 {
   snat_main_t *sm = &snat_main;
 
   clib_bihash_kv_16_8_t kv, value;
-  ip4_address_t placeholder_addr;
-  u32 placeholder_fib_index;
-  u16 placeholder_port;
 
   init_ed_k (&kv, ip->dst_address.as_u32,
 	     vnet_buffer (b)->ip.reass.l4_dst_port, ip->src_address.as_u32,
 	     vnet_buffer (b)->ip.reass.l4_src_port, sm->outside_fib_index,
 	     ip->protocol);
 
-  // do nat if active session or is static mapping
+  // do nat if active session or is static mapping (by_external)
   if (!clib_bihash_search_16_8 (&sm->flow_hash, &kv, &value) ||
-      !snat_static_mapping_match (
-	vm, ip->dst_address, vnet_buffer (b)->ip.reass.l4_dst_port,
-	sm->outside_fib_index, proto, &placeholder_addr, &placeholder_port,
-	&placeholder_fib_index, 1, 0, 0, 0, 0, 0, 0))
+      (0 != nat44_ed_sm_match (ip->dst_address,
+			       vnet_buffer (b)->ip.reass.l4_dst_port,
+			       sm->outside_fib_index, proto, 1)))
     {
       return 0;
     }
@@ -843,7 +847,7 @@ icmp_in2out_ed_slow_path (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
   else
     {
       if (PREDICT_FALSE (nat44_ed_not_translate (
-	    vm, node, sw_if_index, b, ip, IP_PROTOCOL_ICMP, rx_fib_index)))
+	    node, sw_if_index, b, ip, IP_PROTOCOL_ICMP, rx_fib_index)))
 	{
 	  return next;
 	}
@@ -964,12 +968,6 @@ nat44_ed_in2out_slowpath_unknown_proto (snat_main_t *sm, vlib_buffer_t *b,
     }
 
   s = nat_ed_session_alloc (sm, thread_index, now, ip->protocol);
-  if (!s)
-    {
-      b->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_SESSIONS_EXCEEDED];
-      nat_elog_warn (sm, "create NAT session failed");
-      return 0;
-    }
 
   nat_6t_i2o_flow_init (sm, thread_index, s, ip->src_address, 0,
 			ip->dst_address, 0, rx_fib_index, ip->protocol);
@@ -1466,9 +1464,8 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
 	    }
 	  else
 	    {
-	      if (PREDICT_FALSE (
-		    nat44_ed_not_translate (vm, node, rx_sw_if_index0, b0, ip0,
-					    proto0, rx_fib_index0)))
+	      if (PREDICT_FALSE (nat44_ed_not_translate (
+		    node, rx_sw_if_index0, b0, ip0, proto0, rx_fib_index0)))
 		goto trace0;
 	    }
 

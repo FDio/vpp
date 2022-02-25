@@ -189,6 +189,7 @@ format_function_t format_nat44_ed_tcp_state;
 #define NAT_SM_FLAG_OUT2IN_ONLY	   (1 << 6)
 #define NAT_SM_FLAG_LB		   (1 << 7)
 #define NAT_SM_FLAG_SWITCH_ADDRESS (1 << 8)
+#define NAT_SM_FLAG_AFFINITY	   (1 << 9)
 
 typedef CLIB_PACKED(struct
 {
@@ -834,6 +835,12 @@ is_sm_switch_address (u32 f)
   return (f & NAT_SM_FLAG_SWITCH_ADDRESS);
 }
 
+always_inline bool
+is_sm_affinity (u32 f)
+{
+  return (f & NAT_SM_FLAG_AFFINITY);
+}
+
 #define nat_log_err(...) \
   vlib_log(VLIB_LOG_LEVEL_ERR, snat_main.log_class, __VA_ARGS__)
 #define nat_log_warn(...) \
@@ -925,15 +932,10 @@ int nat44_update_session_limit (u32 session_limit, u32 vrf_id);
 
 void expire_per_vrf_sessions (u32 fib_index);
 
-int snat_static_mapping_match (vlib_main_t *vm, ip4_address_t match_addr,
-			       u16 match_port, u32 match_fib_index,
-			       ip_protocol_t match_protocol,
-			       ip4_address_t *mapping_addr, u16 *mapping_port,
-			       u32 *mapping_fib_index, int by_external,
-			       u8 *is_addr_only, twice_nat_type_t *twice_nat,
-			       lb_nat_type_t *lb, ip4_address_t *ext_host_addr,
-			       u8 *is_identity_nat,
-			       snat_static_mapping_t **out);
+snat_static_mapping_t *nat44_ed_sm_match (ip4_address_t match_addr,
+					  u16 match_port, u32 match_fib_index,
+					  ip_protocol_t match_proto,
+					  int by_external);
 
 u32 get_thread_idx_by_port (u16 e_port);
 
