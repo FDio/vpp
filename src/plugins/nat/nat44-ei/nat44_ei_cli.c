@@ -1142,6 +1142,7 @@ static clib_error_t *
 add_identity_mapping_command_fn (vlib_main_t *vm, unformat_input_t *input,
 				 vlib_cli_command_t *cmd)
 {
+  nat44_ei_main_t *nm = &nat44_ei_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
   clib_error_t *error = 0;
@@ -1152,6 +1153,9 @@ add_identity_mapping_command_fn (vlib_main_t *vm, unformat_input_t *input,
   ip4_address_t addr;
 
   flags = NAT44_EI_SM_FLAG_IDENTITY_NAT;
+
+  if (!nm->enabled)
+    return clib_error_return (0, "nat44 plugins is disabled.");
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return clib_error_return (0, NAT44_EI_EXPECTED_ARGUMENT);
