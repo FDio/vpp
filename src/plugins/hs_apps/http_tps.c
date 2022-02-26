@@ -26,8 +26,23 @@ typedef struct
   u64 data_len;
   u64 data_offset;
   u32 vpp_session_index;
+  union
+  {
+    /** threshold after which connection is closed */
+    f64 close_threshold;
+    /** rate at which accepted sessions are marked for random close */
+    u32 close_rate;
+  };
   u8 *uri;
 } hts_session_t;
+
+typedef struct hts_listen_cfg_
+{
+  u8 *uri;
+  u32 vrf;
+  f64 rnd_close;
+  u8 is_del;
+} hts_listen_cfg_t;
 
 typedef struct hs_main_
 {
@@ -49,6 +64,7 @@ typedef struct hs_main_
   u8 debug_level;
   u8 no_zc;
   u8 *default_uri;
+  u32 seed;
 } hts_main_t;
 
 static hts_main_t hts_main;
@@ -90,6 +106,22 @@ hts_session_free (hts_session_t *hs)
     clib_memset (hs, 0xfa, sizeof (*hs));
 
   pool_put (htm->sessions[thread], hs);
+}
+
+static void
+hts_disconnect_transport (hts_session_t *hs)
+{
+  vnet_disconnect_args_t _a = { 0 }, *a = &_a;
+  hts_main_t *htm = &hts_main;
+  session_t *ts;
+
+  if (htm->debug_level > 0)
+    clib_warning ("Actively closing session %u", hs->session_index);
+
+  ts = session_get (hs->vpp_session_index, hs->thread_index);
+  a->handle = session_handle (ts);
+  a->app_index = htm->app_index;
+  vnet_disconnect_session (a);
 }
 
 static void
@@ -178,6 +210,12 @@ hts_session_tx (hts_session_t *hs, session_t *ts)
     hts_session_tx_zc (hs, ts);
   else
     hts_session_tx_no_zc (hs, ts);
+
+  if (hs->close_threshold > 0)
+    {
+      if ((f64) hs->data_offset / hs->data_len > hs->close_threshold)
+	hts_disconnect_transport (hs);
+    }
 }
 
 static void
@@ -237,6 +275,16 @@ try_test_file (hts_session_t *hs, u8 *request)
 
   hs->data_len = file_size;
   hs->data_offset = 0;
+
+  if (hs->close_threshold > 0)
+    {
+      /* Disconnect if the header is already enough to fill the quota */
+      if ((f64) 30 / hs->data_len > hs->close_threshold)
+	{
+	  hts_disconnect_transport (hs);
+	  goto done;
+	}
+    }
 
   hts_start_send_data (hs, HTTP_STATUS_OK);
 
@@ -301,7 +349,8 @@ static int
 hts_ts_accept_callback (session_t *ts)
 {
   hts_main_t *htm = &hts_main;
-  hts_session_t *hs;
+  hts_session_t *hs, *lhs;
+  session_t *ls;
 
   hs = hts_session_alloc (ts->thread_index);
   hs->vpp_session_index = ts->session_index;
@@ -309,8 +358,21 @@ hts_ts_accept_callback (session_t *ts)
   ts->opaque = hs->session_index;
   ts->session_state = SESSION_STATE_READY;
 
+  /* Check if listener configured for random closes */
+  ls = listen_session_get_from_handle (ts->listener_handle);
+  lhs = hts_session_get (0, ls->opaque);
+
+  if (lhs->close_rate)
+    {
+      /* overload listener's data_offset as session counter */
+      u32 cnt = __atomic_add_fetch (&lhs->data_offset, 1, __ATOMIC_RELEASE);
+      if ((cnt % lhs->close_rate) == 0)
+	hs->close_threshold = random_f64 (&htm->seed);
+    }
+
   if (htm->debug_level > 0)
-    clib_warning ("Accepted session %u", ts->opaque);
+    clib_warning ("Accepted session %u close threshold %.2f", ts->opaque,
+		  hs->close_threshold);
 
   return 0;
 }
@@ -330,7 +392,7 @@ hts_ts_disconnect_callback (session_t *ts)
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
 
   if (htm->debug_level > 0)
-    clib_warning ("Closed session %u", ts->opaque);
+    clib_warning ("Transport closing session %u", ts->opaque);
 
   a->handle = session_handle (ts);
   a->app_index = htm->app_index;
@@ -344,7 +406,7 @@ hts_ts_reset_callback (session_t *ts)
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
 
   if (htm->debug_level > 0)
-    clib_warning ("Reset session %u", ts->opaque);
+    clib_warning ("Transport reset session %u", ts->opaque);
 
   a->handle = session_handle (ts);
   a->app_index = htm->app_index;
@@ -438,7 +500,8 @@ hts_transport_needs_crypto (transport_proto_t proto)
 }
 
 static int
-hts_start_listen (hts_main_t *htm, session_endpoint_cfg_t *sep, u8 *uri)
+hts_start_listen (hts_main_t *htm, session_endpoint_cfg_t *sep, u8 *uri,
+		  f64 rnd_close)
 {
   vnet_listen_args_t _a, *a = &_a;
   u8 need_crypto;
@@ -471,6 +534,7 @@ hts_start_listen (hts_main_t *htm, session_endpoint_cfg_t *sep, u8 *uri)
 
   hls = hts_session_alloc (0);
   hls->uri = vec_dup (uri);
+  hls->close_rate = (f64) 1 / rnd_close;
   ls = listen_session_get_from_handle (a->handle);
   hls->vpp_session_index = ls->session_index;
   hash_set_mem (htm->uri_to_handle, hls->uri, hls->session_index);
@@ -505,7 +569,7 @@ hts_stop_listen (hts_main_t *htm, u32 hls_index)
 }
 
 static clib_error_t *
-hts_listen (hts_main_t *htm, u32 vrf, u8 *listen_uri, u8 is_del)
+hts_listen (hts_main_t *htm, hts_listen_cfg_t *lcfg)
 {
   session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   clib_error_t *error = 0;
@@ -513,11 +577,11 @@ hts_listen (hts_main_t *htm, u32 vrf, u8 *listen_uri, u8 is_del)
   uword *p;
   int rv;
 
-  uri = listen_uri ? listen_uri : htm->default_uri;
-  uri_key = format (0, "vrf%u-%s", vrf, uri);
+  uri = lcfg->uri ? lcfg->uri : htm->default_uri;
+  uri_key = format (0, "vrf%u-%s", lcfg->vrf, uri);
   p = hash_get_mem (htm->uri_to_handle, uri_key);
 
-  if (is_del)
+  if (lcfg->is_del)
     {
       if (!p)
 	error = clib_error_return (0, "not listening on %v", uri);
@@ -538,22 +602,22 @@ hts_listen (hts_main_t *htm, u32 vrf, u8 *listen_uri, u8 is_del)
       goto done;
     }
 
-  if (vrf)
+  if (lcfg->vrf)
     {
       fib_protocol_t fp;
       u32 fib_index;
 
       fp = sep.is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
-      fib_index = fib_table_find (fp, vrf);
+      fib_index = fib_table_find (fp, lcfg->vrf);
       if (fib_index == ~0)
 	{
-	  error = clib_error_return (0, "no such vrf %u", vrf);
+	  error = clib_error_return (0, "no such vrf %u", lcfg->vrf);
 	  goto done;
 	}
       sep.fib_index = fib_index;
     }
 
-  if ((rv = hts_start_listen (htm, &sep, uri_key)))
+  if ((rv = hts_start_listen (htm, &sep, uri_key, lcfg->rnd_close)))
     {
       error = clib_error_return (0, "failed to listen on %v: %U", uri,
 				 format_session_error, rv);
@@ -596,11 +660,9 @@ hts_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   hts_main_t *htm = &hts_main;
+  hts_listen_cfg_t lcfg = {};
   clib_error_t *error = 0;
-  u8 is_del = 0;
   u64 mem_size;
-  u8 *uri = 0;
-  u32 vrf = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -614,16 +676,25 @@ hts_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
       else if (unformat (line_input, "fifo-size %U", unformat_memory_size,
 			 &mem_size))
 	htm->fifo_size = mem_size;
-      else if (unformat (line_input, "vrf %u", &vrf))
-	;
-      else if (unformat (line_input, "uri %s", &uri))
-	;
       else if (unformat (line_input, "no-zc"))
 	htm->no_zc = 1;
       else if (unformat (line_input, "debug"))
 	htm->debug_level = 1;
+      else if (unformat (line_input, "vrf %u", &lcfg.vrf))
+	;
+      else if (unformat (line_input, "uri %s", &lcfg.uri))
+	;
+      else if (unformat (line_input, "rnd-close %f", &lcfg.rnd_close))
+	{
+	  if (lcfg.rnd_close > 1.0)
+	    {
+	      error = clib_error_return (0, "invalid rnd close value %f",
+					 lcfg.rnd_close);
+	      break;
+	    }
+	}
       else if (unformat (line_input, "del"))
-	is_del = 1;
+	lcfg.is_del = 1;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -650,11 +721,11 @@ start_server:
 	}
     }
 
-  error = hts_listen (htm, vrf, uri, is_del);
+  error = hts_listen (htm, &lcfg);
 
 done:
 
-  vec_free (uri);
+  vec_free (lcfg.uri);
   return error;
 }
 
