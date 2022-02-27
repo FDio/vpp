@@ -1,0 +1,12 @@
+lcp default netns dataplane
+lcp lcp-sync on
+lcp lcp-auto-subint off
+
+set interface state GigabitEthernet5/0/0 up
+lcp create GigabitEthernet5/0/0 host-if e0
+
+create sub GigabitEthernet5/0/0 3102
+lcp create GigabitEthernet5/0/0.3102 host-if e0.3102
+
+create sub GigabitEthernet5/0/0 310211 dot1q 3102 inner-dot1q 11 exact-match
+lcp create GigabitEthernet5/0/0.310211 host-if e0.3102.11
