@@ -136,9 +136,9 @@ send_lcp_itf_pair_details (index_t lipi, vl_api_registration_t *rp,
 
   REPLY_MACRO_DETAILS4 (
     VL_API_LCP_ITF_PAIR_DETAILS, rp, context, ({
-      rmp->phy_sw_if_index = lcp_pair->lip_phy_sw_if_index;
-      rmp->host_sw_if_index = lcp_pair->lip_host_sw_if_index;
-      rmp->vif_index = lcp_pair->lip_vif_index;
+      rmp->phy_sw_if_index = ntohl(lcp_pair->lip_phy_sw_if_index);
+      rmp->host_sw_if_index = ntohl(lcp_pair->lip_host_sw_if_index);
+      rmp->vif_index = ntohl(lcp_pair->lip_vif_index);
       rmp->host_if_type = api_encode_host_type (lcp_pair->lip_host_type);
 
       memcpy_s (rmp->host_if_name, sizeof (rmp->host_if_name),
