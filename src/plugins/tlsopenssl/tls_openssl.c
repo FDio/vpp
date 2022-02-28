@@ -30,6 +30,8 @@
 
 #define MAX_CRYPTO_LEN 64
 
+int tls_retry_init_ca_chain (void);
+
 openssl_main_t openssl_main;
 
 static u32
@@ -1007,7 +1009,27 @@ tls_init_ca_chain (void)
       X509_STORE_add_cert (om->cert_store, testcert);
       rv = 0;
     }
+
+  tm->ca_chain_init_done = 1;
+
   return (rv < 0 ? -1 : 0);
+}
+
+int
+tls_retry_init_ca_chain (void)
+{
+  openssl_main_t *om = &openssl_main;
+  tls_main_t *tm = vnet_tls_get_main ();
+
+  /* Remove/free existing x509_store */
+  if (om->cert_store)
+    {
+      X509_VERIFY_PARAM_free (om->cert_store->param);
+      sk_X509_OBJECT_free (om->cert_store->objs);
+      sk_X509_LOOKUP_free (om->cert_store->get_cert_methods);
+      OPENSSL_free (om->cert_store);
+    }
+  return tls_init_ca_chain ();
 }
 
 int
