@@ -104,6 +104,7 @@ typedef struct tls_main_
   u64 first_seg_size;
   u64 add_seg_size;
   u32 fifo_size;
+  u8 ca_chain_init_done;
 } tls_main_t;
 
 typedef struct tls_engine_vft_
