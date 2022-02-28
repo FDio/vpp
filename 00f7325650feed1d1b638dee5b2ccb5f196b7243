@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d7e07634_a5d29f39",
+        "filename": "src/plugins/linux-cp/lcp_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2022-02-28T09:56:20Z",
+      "side": 1,
+      "message": "This message is defined as \"autoendian\", so I believe the correct fix should be to use REPLY_MACRO_DETAILS4_END instead of manually calling endian functions.",
+      "revId": "00f7325650feed1d1b638dee5b2ccb5f196b7243",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
