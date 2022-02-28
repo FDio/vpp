@@ -125,6 +125,7 @@ typedef struct tls_engine_vft_
   int (*ctx_stop_listen) (tls_ctx_t * ctx);
   int (*ctx_transport_close) (tls_ctx_t * ctx);
   int (*ctx_app_close) (tls_ctx_t * ctx);
+  int (*ctx_reinit_cachain) (void);
 } tls_engine_vft_t;
 
 tls_main_t *vnet_tls_get_main (void);
@@ -138,6 +139,7 @@ int tls_notify_app_accept (tls_ctx_t * ctx);
 int tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err);
 void tls_notify_app_enqueue (tls_ctx_t * ctx, session_t * app_session);
 void tls_disconnect_transport (tls_ctx_t * ctx);
+int tls_reinit_ca_chain (crypto_engine_type_t tls_engine_id);
 #endif /* SRC_VNET_TLS_TLS_H_ */
 
 /*
