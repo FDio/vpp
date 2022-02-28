@@ -398,6 +398,12 @@ tls_ctx_handshake_is_over (tls_ctx_t * ctx)
   return tls_vfts[ctx->tls_ctx_engine].ctx_handshake_is_over (ctx);
 }
 
+int
+tls_reinit_ca_chain (crypto_engine_type_t tls_engine_id)
+{
+  return tls_vfts[tls_engine_id].ctx_reinit_cachain ();
+}
+
 void
 tls_notify_app_io_error (tls_ctx_t *ctx)
 {

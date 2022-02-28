@@ -558,6 +558,13 @@ mbedtls_app_close (tls_ctx_t * ctx)
   return 0;
 }
 
+static int
+mbedtls_reinit_ca_chain (void)
+{
+  /* Not supported Yet */
+  return 0;
+}
+
 const static tls_engine_vft_t mbedtls_engine = {
   .ctx_alloc = mbedtls_ctx_alloc,
   .ctx_free = mbedtls_ctx_free,
@@ -572,6 +579,7 @@ const static tls_engine_vft_t mbedtls_engine = {
   .ctx_stop_listen = mbedtls_stop_listen,
   .ctx_transport_close = mbedtls_transport_close,
   .ctx_app_close = mbedtls_app_close,
+  .ctx_reinit_cachain = mbedtls_reinit_ca_chain,
 };
 
 int

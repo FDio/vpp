@@ -722,6 +722,13 @@ picotls_init_client_ptls_ctx (ptls_context_t **client_ptls_ctx)
   return 0;
 }
 
+int
+picotls_reinit_ca_chain (void)
+{
+  /* Not supported yet */
+  return 0;
+}
+
 const static tls_engine_vft_t picotls_engine = {
   .ctx_alloc = picotls_ctx_alloc,
   .ctx_free = picotls_ctx_free,
@@ -736,6 +743,7 @@ const static tls_engine_vft_t picotls_engine = {
   .ctx_write = picotls_ctx_write,
   .ctx_transport_close = picotls_transport_close,
   .ctx_app_close = picotls_app_close,
+  .ctx_reinit_cachain = picotls_reinit_ca_chain,
 };
 
 static clib_error_t *
