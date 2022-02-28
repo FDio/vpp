@@ -27,8 +27,11 @@
 #include <ctype.h>
 #include <tlsopenssl/tls_openssl.h>
 #include <tlsopenssl/tls_bios.h>
+#include <openssl/x509_vfy.h>
 
 #define MAX_CRYPTO_LEN 64
+
+int tls_retry_init_ca_chain (void);
 
 openssl_main_t openssl_main;
 
@@ -943,25 +946,6 @@ openssl_app_close (tls_ctx_t * ctx)
   return 0;
 }
 
-const static tls_engine_vft_t openssl_engine = {
-  .ctx_alloc = openssl_ctx_alloc,
-  .ctx_alloc_w_thread = openssl_ctx_alloc_w_thread,
-  .ctx_free = openssl_ctx_free,
-  .ctx_attach = openssl_ctx_attach,
-  .ctx_detach = openssl_ctx_detach,
-  .ctx_get = openssl_ctx_get,
-  .ctx_get_w_thread = openssl_ctx_get_w_thread,
-  .ctx_init_server = openssl_ctx_init_server,
-  .ctx_init_client = openssl_ctx_init_client,
-  .ctx_write = openssl_ctx_write,
-  .ctx_read = openssl_ctx_read,
-  .ctx_handshake_is_over = openssl_handshake_is_over,
-  .ctx_start_listen = openssl_start_listen,
-  .ctx_stop_listen = openssl_stop_listen,
-  .ctx_transport_close = openssl_transport_close,
-  .ctx_app_close = openssl_app_close,
-};
-
 int
 tls_init_ca_chain (void)
 {
@@ -1007,8 +991,45 @@ tls_init_ca_chain (void)
       X509_STORE_add_cert (om->cert_store, testcert);
       rv = 0;
     }
+
+  if (rv >= 0)
+    tm->ca_chain_init_done = 1;
+
   return (rv < 0 ? -1 : 0);
 }
+
+int
+tls_reinit_ca_chain (void)
+{
+  openssl_main_t *om = &openssl_main;
+
+  /* Remove/free existing x509_store */
+  if (om->cert_store)
+    {
+      X509_STORE_free (om->cert_store);
+    }
+  return tls_init_ca_chain ();
+}
+
+const static tls_engine_vft_t openssl_engine = {
+  .ctx_alloc = openssl_ctx_alloc,
+  .ctx_alloc_w_thread = openssl_ctx_alloc_w_thread,
+  .ctx_free = openssl_ctx_free,
+  .ctx_attach = openssl_ctx_attach,
+  .ctx_detach = openssl_ctx_detach,
+  .ctx_get = openssl_ctx_get,
+  .ctx_get_w_thread = openssl_ctx_get_w_thread,
+  .ctx_init_server = openssl_ctx_init_server,
+  .ctx_init_client = openssl_ctx_init_client,
+  .ctx_write = openssl_ctx_write,
+  .ctx_read = openssl_ctx_read,
+  .ctx_handshake_is_over = openssl_handshake_is_over,
+  .ctx_start_listen = openssl_start_listen,
+  .ctx_stop_listen = openssl_stop_listen,
+  .ctx_transport_close = openssl_transport_close,
+  .ctx_app_close = openssl_app_close,
+  .ctx_reinit_cachain = tls_reinit_ca_chain,
+};
 
 int
 tls_openssl_set_ciphers (char *ciphers)
@@ -1045,12 +1066,6 @@ tls_openssl_init (vlib_main_t * vm)
   SSL_library_init ();
   SSL_load_error_strings ();
 
-  if (tls_init_ca_chain ())
-    {
-      clib_warning ("failed to initialize TLS CA chain");
-      return 0;
-    }
-
   vec_validate (om->ctx_pool, num_threads - 1);
   vec_validate (om->rx_bufs, num_threads - 1);
   vec_validate (om->tx_bufs, num_threads - 1);
@@ -1066,6 +1081,12 @@ tls_openssl_init (vlib_main_t * vm)
   /* default ciphers */
   tls_openssl_set_ciphers
     ("ALL:!ADH:!LOW:!EXP:!MD5:!RC4-SHA:!DES-CBC3-SHA:@STRENGTH");
+
+  if (tls_init_ca_chain ())
+    {
+      clib_warning ("failed to initialize TLS CA chain");
+      return 0;
+    }
 
   return error;
 }
