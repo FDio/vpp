@@ -742,6 +742,14 @@ tls_connect (transport_endpoint_cfg_t * tep)
       clib_warning ("No tls engine_type available");
       return SESSION_E_NOCRYPTOENG;
     }
+  if (!tm->ca_chain_init_done)
+    {
+      if (tls_vfts[engine_type].ctx_reinit_cachain ())
+	{
+	  TLS_DBG (1, "Unable to initialise CA Chain");
+	  return SESSION_E_NOCRYPTOCKP;
+	}
+    }
 
   ctx_index = tls_ctx_half_open_alloc ();
   ctx = tls_ctx_half_open_get (ctx_index);
@@ -818,6 +826,14 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
     {
       clib_warning ("No tls engine_type available");
       return SESSION_E_NOCRYPTOENG;
+    }
+  if (!tm->ca_chain_init_done)
+    {
+      if (tls_vfts[engine_type].ctx_reinit_cachain ())
+	{
+	  TLS_DBG (1, "Unable to initialise CA Chain");
+	  return SESSION_E_NOCRYPTOCKP;
+	}
     }
 
   clib_memset (args, 0, sizeof (*args));

@@ -104,6 +104,7 @@ typedef struct tls_main_
   u64 first_seg_size;
   u64 add_seg_size;
   u32 fifo_size;
+  u8 ca_chain_init_done;
 } tls_main_t;
 
 typedef struct tls_engine_vft_
@@ -125,6 +126,7 @@ typedef struct tls_engine_vft_
   int (*ctx_stop_listen) (tls_ctx_t * ctx);
   int (*ctx_transport_close) (tls_ctx_t * ctx);
   int (*ctx_app_close) (tls_ctx_t * ctx);
+  int (*ctx_reinit_cachain) (void);
 } tls_engine_vft_t;
 
 tls_main_t *vnet_tls_get_main (void);
