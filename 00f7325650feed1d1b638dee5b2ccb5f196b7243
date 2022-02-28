@@ -16,6 +16,24 @@
       "revId": "00f7325650feed1d1b638dee5b2ccb5f196b7243",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ea20acbc_9d8770dd",
+        "filename": "src/plugins/linux-cp/lcp_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2022-02-28T13:23:10Z",
+      "side": 1,
+      "message": "I took a look and got a bit lost in this macro. It calls _NATIVE_TO_NETWORK which corrupts the stack and crashes, the call frame until #1 is fine (ie. lcp_pair is valid when being passed into the macro:\n\n#0  0x0000000000000000 in ?? ()                                                                                                                       \n#1  0x00007fff92cb7c99 in send_lcp_itf_pair_details (lipi\u003d0, rp\u003d0x7fffa07b3998, context\u003d50331648)\n    at /home/pim/src/vpp/src/plugins/lcpng/lcpng_if_api.c:145\n#2  0x00007fff92cb39e5 in vl_api_lcp_itf_pair_get_t_handler (mp\u003d0x7fffa0ac2610) at /home/pim/src/vpp/src/plugins/lcpng/lcpng_if_api.c:166\n#3  0x00007ffff7fac0f2 in msg_handler_internal (am\u003d0x7ffff7fc5e28 \u003capi_global_main\u003e, the_msg\u003d0x7fffa0ac2610, msg_len\u003d14, trace_it\u003d1, do_it\u003d1, \n    free_it\u003d0) at /home/pim/src/vpp/src/vlibapi/api_shared.c:594\n#4  0x00007ffff7fac792 in vl_msg_api_socket_handler (the_msg\u003d0x7fffa0ac2610, msg_len\u003d14) at /home/pim/src/vpp/src/vlibapi/api_shared.c:895\n#5  0x00007ffff7f82919 in vl_socket_process_api_msg (rp\u003d0x7fffa07b3998, input_v\u003d0x7fffa0ac2600 \"\")\n    at /home/pim/src/vpp/src/vlibmemory/socket_api.c:208\n\nI tried to autodidact this, but there are no existing call sites of REPLY_MACRO_DETAILS4_END in the codebase - can you help me understand if I should somehow be supplying a msg_endian_handlers entry for this?\n\nOr how is the macro supposed to work .. ?",
+      "parentUuid": "d7e07634_a5d29f39",
+      "revId": "00f7325650feed1d1b638dee5b2ccb5f196b7243",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
