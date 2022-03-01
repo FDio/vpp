@@ -42,6 +42,7 @@
 #include <fcntl.h>
 #include <vlib/vlib.h>
 #include <vlib/threads.h>
+#include <vlib/stats/stats.h>
 #include <math.h>
 
 static int
@@ -465,13 +466,6 @@ format_vlib_node_stats (u8 * s, va_list * va)
   return s;
 }
 
-f64 vlib_get_stat_segment_update_rate (void) __attribute__ ((weak));
-f64
-vlib_get_stat_segment_update_rate (void)
-{
-  return 1e70;
-}
-
 static clib_error_t *
 show_node_runtime (vlib_main_t * vm,
 		   unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -598,16 +592,14 @@ show_node_runtime (vlib_main_t * vm,
 	    }
 
 	  dt = time_now - nm->time_last_runtime_stats_clear;
-	  vlib_cli_output
-	    (vm,
-	     "Time %.1f, %f sec internal node vector rate %.2f loops/sec %.2f\n"
-	     "  vector rates in %.4e, out %.4e, drop %.4e, punt %.4e",
-	     dt,
-	     vlib_get_stat_segment_update_rate (),
-	     internal_node_vector_rates[j],
-	     stat_vm->loops_per_second,
-	     (f64) n_input / dt,
-	     (f64) n_output / dt, (f64) n_drop / dt, (f64) n_punt / dt);
+	  vlib_cli_output (
+	    vm,
+	    "Time %.1f, %f sec internal node vector rate %.2f loops/sec %.2f\n"
+	    "  vector rates in %.4e, out %.4e, drop %.4e, punt %.4e",
+	    dt, vlib_stats_get_segment_update_rate (),
+	    internal_node_vector_rates[j], stat_vm->loops_per_second,
+	    (f64) n_input / dt, (f64) n_output / dt, (f64) n_drop / dt,
+	    (f64) n_punt / dt);
 
 	  if (summary == 0)
 	    {
@@ -684,6 +676,8 @@ clear_node_runtime (vlib_main_t * vm,
       nm->time_last_runtime_stats_clear = vlib_time_now (vm);
     }
 
+  vlib_stats_set_timestamp (STAT_COUNTER_LAST_STATS_CLEAR,
+			    vm->node_main.time_last_runtime_stats_clear);
   vlib_worker_thread_barrier_release (vm);
 
   vec_free (stat_vms);
