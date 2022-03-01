@@ -694,7 +694,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
     {
       hw->min_frame_size = TUN_MIN_PACKET_BYTES;
       vnet_hw_interface_set_mtu (
-	vnm, hw->sw_if_index,
+	vnm, hw->hw_if_index,
 	args->host_mtu_size ? args->host_mtu_size : TUN_DEFAULT_PACKET_BYTES);
     }
 
