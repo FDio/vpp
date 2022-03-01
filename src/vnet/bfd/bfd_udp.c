@@ -35,7 +35,7 @@
 #include <vnet/dpo/receive_dpo.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
-#include <vpp/stats/stat_segment.h>
+#include <vlib/stats/stats.h>
 #include <vnet/bfd/bfd_debug.h>
 #include <vnet/bfd/bfd_udp.h>
 #include <vnet/bfd/bfd_main.h>
@@ -85,9 +85,9 @@ bfd_udp_main_t bfd_udp_main;
 void
 bfd_udp_update_stat_segment_entry (u32 entry, u64 value)
 {
-  vlib_stat_segment_lock ();
-  stat_segment_set_state_counter (entry, value);
-  vlib_stat_segment_unlock ();
+  vlib_stats_segment_lock ();
+  vlib_stats_set_gauge (entry, value);
+  vlib_stats_segment_unlock ();
 }
 
 vnet_api_error_t
@@ -1694,19 +1694,18 @@ clib_error_t *
 bfd_udp_stats_init (bfd_udp_main_t *bum)
 {
   const char *name4 = "/bfd/udp4/sessions";
-  bum->udp4_sessions_count_stat_seg_entry =
-    stat_segment_new_entry ((u8 *) name4, STAT_DIR_TYPE_SCALAR_INDEX);
+  bum->udp4_sessions_count_stat_seg_entry = vlib_stats_add_gauge ("%s", name4);
 
-  stat_segment_set_state_counter (bum->udp4_sessions_count_stat_seg_entry, 0);
+  vlib_stats_set_gauge (bum->udp4_sessions_count_stat_seg_entry, 0);
   if (~0 == bum->udp4_sessions_count_stat_seg_entry)
     {
       return clib_error_return (
 	0, "Could not create stat segment entry for %s", name4);
     }
   const char *name6 = "/bfd/udp6/sessions";
-  bum->udp6_sessions_count_stat_seg_entry =
-    stat_segment_new_entry ((u8 *) name6, STAT_DIR_TYPE_SCALAR_INDEX);
+  bum->udp6_sessions_count_stat_seg_entry = vlib_stats_add_gauge ("%s", name6);
 
+  vlib_stats_set_gauge (bum->udp6_sessions_count_stat_seg_entry, 0);
   if (~0 == bum->udp6_sessions_count_stat_seg_entry)
     {
       return clib_error_return (

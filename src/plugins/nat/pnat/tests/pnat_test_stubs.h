@@ -19,12 +19,6 @@
 void os_panic(void) {}
 void os_exit(int code) {}
 u32 ip4_fib_table_get_index_for_sw_if_index(u32 sw_if_index) { return 0; }
-#include <vpp/stats/stat_segment.h>
-clib_error_t *stat_segment_register_gauge(u8 *names,
-                                          stat_segment_update_fn update_fn,
-                                          u32 index) {
-    return 0;
-};
 #include <vnet/feature/feature.h>
 vnet_feature_main_t feature_main;
 void classify_get_trace_chain(void){};

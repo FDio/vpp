@@ -19,7 +19,7 @@
 #include <vppinfra/error.h>
 
 #include <vlib/counter.h>
-#include <vpp/stats/stat_segment.h>
+#include <vlib/stats/stats.h>
 
 enum
 {
@@ -38,7 +38,7 @@ enum
 static uint64_t
 get_stats_epoch ()
 {
-  stat_segment_main_t *sm = &stat_segment_main;
+  vlib_stats_segment_t *sm = vlib_stats_get_segment ();
   return sm->shared_header->epoch;
 }
 
@@ -49,7 +49,7 @@ get_stats_epoch ()
 static int
 get_vec_mem_size (void *v, uword data_size)
 {
-  stat_segment_main_t *sm = &stat_segment_main;
+  vlib_stats_segment_t *sm = vlib_stats_get_segment ();
 
   if (v == 0)
     return 0;
