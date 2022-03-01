@@ -48,12 +48,36 @@ span_dst_set (span_mirror_t * sm, u32 dst_sw_if_index, int enable)
   return last;
 }
 
+static int
+span_enable_disable_feature (u32 sw_if_index, const char *in_arc,
+			     const char *in_feat, int update_rx, int rx,
+			     const char *out_arc, const char *out_feat,
+			     int update_tx, int tx)
+{
+  int err;
+
+  if (update_rx && (err = vnet_feature_enable_disable (in_arc, in_feat,
+						       sw_if_index, rx, 0, 0)))
+    return err;
+
+  if (update_tx && (err = vnet_feature_enable_disable (out_arc, out_feat,
+						       sw_if_index, tx, 0, 0)))
+    {
+      if (update_rx)
+	vnet_feature_enable_disable (in_arc, in_feat, sw_if_index, !rx, 0, 0);
+      return err;
+    }
+
+  return 0;
+}
+
 int
 span_add_delete_entry (vlib_main_t * vm,
 		       u32 src_sw_if_index, u32 dst_sw_if_index, u8 state,
 		       span_feat_t sf)
 {
   span_main_t *sm = &span_main;
+  int err = 0;
 
   if (state > SPAN_BOTH)
     return VNET_API_ERROR_UNIMPLEMENTED;
@@ -80,26 +104,38 @@ span_add_delete_entry (vlib_main_t * vm,
   int disable_rx = last_rx_ports_count > 0 && rxm->num_mirror_ports == 0;
   int enable_tx = last_tx_ports_count == 0 && txm->num_mirror_ports == 1;
   int disable_tx = last_tx_ports_count > 0 && txm->num_mirror_ports == 0;
+  int update_rx = enable_rx || disable_rx;
+  int update_tx = enable_tx || disable_tx;
 
   switch (sf)
     {
     case SPAN_FEAT_DEVICE:
-      if (enable_rx || disable_rx)
-	vnet_feature_enable_disable ("device-input", "span-input",
-				     src_sw_if_index, rx, 0, 0);
-      if (enable_tx || disable_tx)
-	vnet_feature_enable_disable ("interface-output", "span-output",
-				     src_sw_if_index, tx, 0, 0);
+      err = span_enable_disable_feature (
+	src_sw_if_index, "device-input", "span-input", update_rx, rx,
+	"interface-output", "span-output", update_tx, tx);
+      break;
+    case SPAN_FEAT_IP4:
+      err = span_enable_disable_feature (
+	src_sw_if_index, "ip4-unicast", "span-ip4-input", update_rx, rx,
+	"ip4-output", "span-ip4-output", update_tx, tx);
+      break;
+    case SPAN_FEAT_IP6:
+      err = span_enable_disable_feature (
+	src_sw_if_index, "ip6-unicast", "span-ip6-input", update_rx, rx,
+	"ip6-output", "span-ip6-output", update_tx, tx);
       break;
     case SPAN_FEAT_L2:
-      if (enable_rx || disable_rx)
+      if (update_rx)
 	l2input_intf_bitmap_enable (src_sw_if_index, L2INPUT_FEAT_SPAN, rx);
-      if (enable_tx || disable_tx)
+      if (update_tx)
 	l2output_intf_bitmap_enable (src_sw_if_index, L2OUTPUT_FEAT_SPAN, tx);
       break;
     default:
       return VNET_API_ERROR_UNIMPLEMENTED;
     }
+
+  if (err)
+    return err;
 
   if (dst_sw_if_index != ~0 && dst_sw_if_index > sm->max_sw_if_index)
     sm->max_sw_if_index = dst_sw_if_index;
@@ -152,6 +188,10 @@ set_interface_span_command_fn (vlib_main_t * vm,
 	}
       else if (unformat (input, "l2"))
 	sf = SPAN_FEAT_L2;
+      else if (unformat (input, "ip4"))
+	sf = SPAN_FEAT_IP4;
+      else if (unformat (input, "ip6"))
+	sf = SPAN_FEAT_IP6;
       else
 	return clib_error_return (0, "Invalid input");
     }
@@ -166,7 +206,8 @@ set_interface_span_command_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_span_command, static) = {
   .path = "set interface span",
-  .short_help = "set interface span <if-name> [l2] {disable | destination <if-name> [both|rx|tx]}",
+  .short_help = "set interface span <if-name> [l2|ip4|ip6] {disable | "
+		"destination <if-name> [both|rx|tx]}",
   .function = set_interface_span_command_fn,
 };
 /* *INDENT-ON* */

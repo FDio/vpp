@@ -102,15 +102,32 @@ span_mirror (vlib_main_t * vm, vlib_node_runtime_t * node, u32 sw_if_index0,
         {
           vnet_buffer (c0)->sw_if_index[VLIB_TX] = i;
           c0->flags |= VNET_BUFFER_F_SPAN_CLONE;
-          if (sf == SPAN_FEAT_L2)
-	    vnet_buffer (c0)->l2.feature_bitmap = L2OUTPUT_FEAT_OUTPUT;
-          to_mirror_next[0] = vlib_get_buffer_index (vm, c0);
-          mirror_frames[i]->n_vectors++;
-          if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
-            {
-              span_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
-              t->src_sw_if_index = sw_if_index0;
-              t->mirror_sw_if_index = i;
+	  switch (sf)
+	    {
+	    case SPAN_FEAT_IP4: /* fallthrough */
+	    case SPAN_FEAT_IP6:
+	      if (VLIB_TX == rxtx)
+		{
+		  /* set data pointer to IP */
+		  i16 adjust =
+		    vnet_buffer (c0)->l3_hdr_offset - c0->current_data;
+		  c0->current_data += adjust;
+		  c0->current_length -= adjust;
+		}
+	      break;
+	    case SPAN_FEAT_L2:
+	      vnet_buffer (c0)->l2.feature_bitmap = L2OUTPUT_FEAT_OUTPUT;
+	      break;
+	    default:
+	      break;
+	    }
+	  to_mirror_next[0] = vlib_get_buffer_index (vm, c0);
+	  mirror_frames[i]->n_vectors++;
+	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      span_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
+	      t->src_sw_if_index = sw_if_index0;
+	      t->mirror_sw_if_index = i;
 #if 0
 	      /* Enable this path to allow packet trace of SPAN packets.
 	         Note that all SPAN packets will show up on the trace output
@@ -293,6 +310,30 @@ VLIB_NODE_FN (span_l2_output_node) (vlib_main_t * vm,
   return span_node_inline_fn (vm, node, frame, VLIB_TX, SPAN_FEAT_L2);
 }
 
+VLIB_NODE_FN (span_ip4_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return span_node_inline_fn (vm, node, frame, VLIB_RX, SPAN_FEAT_IP4);
+}
+
+VLIB_NODE_FN (span_ip4_output_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return span_node_inline_fn (vm, node, frame, VLIB_TX, SPAN_FEAT_IP4);
+}
+
+VLIB_NODE_FN (span_ip6_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return span_node_inline_fn (vm, node, frame, VLIB_RX, SPAN_FEAT_IP6);
+}
+
+VLIB_NODE_FN (span_ip6_output_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return span_node_inline_fn (vm, node, frame, VLIB_TX, SPAN_FEAT_IP6);
+}
+
 #define span_node_defs                           \
   .vector_size = sizeof (u32),                   \
   .format_trace = format_span_trace,             \
@@ -304,7 +345,6 @@ VLIB_NODE_FN (span_l2_output_node) (vlib_main_t * vm,
     [0] = "error-drop"                           \
   }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (span_input_node) = {
   span_node_defs,
   .name = "span-input",
@@ -323,6 +363,46 @@ VLIB_REGISTER_NODE (span_l2_input_node) = {
 VLIB_REGISTER_NODE (span_l2_output_node) = {
   span_node_defs,
   .name = "span-l2-output",
+};
+
+VLIB_REGISTER_NODE (span_ip4_input_node) = {
+  span_node_defs,
+  .name = "span-ip4-input",
+};
+
+VLIB_REGISTER_NODE (span_ip4_output_node) = {
+  span_node_defs,
+  .name = "span-ip4-output",
+};
+
+VLIB_REGISTER_NODE (span_ip6_input_node) = {
+  span_node_defs,
+  .name = "span-ip6-input",
+};
+
+VLIB_REGISTER_NODE (span_ip6_output_node) = {
+  span_node_defs,
+  .name = "span-ip6-output",
+};
+
+VNET_FEATURE_INIT (span_ip4_unicast, static) = {
+  .arc_name = "ip4-unicast",
+  .node_name = "span-ip4-input",
+};
+
+VNET_FEATURE_INIT (span_ip4_output, static) = {
+  .arc_name = "ip4-output",
+  .node_name = "span-ip4-output",
+};
+
+VNET_FEATURE_INIT (span_ip6_unicast, static) = {
+  .arc_name = "ip6-unicast",
+  .node_name = "span-ip6-input",
+};
+
+VNET_FEATURE_INIT (span_ip6_output, static) = {
+  .arc_name = "ip6-output",
+  .node_name = "span-ip6-output",
 };
 
 #ifndef CLIB_MARCH_VARIANT
@@ -349,7 +429,6 @@ clib_error_t *span_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (span_init);
-/* *INDENT-ON* */
 #endif /* CLIB_MARCH_VARIANT */
 
 #undef span_node_defs
