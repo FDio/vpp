@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "2.0.0";
+option version = "3.0.0";
 
 import "vnet/interface_types.api";
 
@@ -67,4 +67,55 @@ define sw_interface_span_details {
     vl_api_interface_index_t sw_if_index_to;
     vl_api_span_state_t state;
     bool is_l2;
+};
+
+enum span_type
+{
+	SPAN_TYPE_API_DEVICE = 0,
+	SPAN_TYPE_API_L2 = 1,
+	SPAN_TYPE_API_IP4 = 2,
+	SPAN_TYPE_API_IP6 = 3,
+};
+
+/** \brief Enable/Disable span to mirror traffic from one interface to another
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context which was passed in the request
+    @param sw_if_index_from - interface to be mirrored
+    @param sw_if_index_to - interface where the traffic is mirrored
+    @param state - 0 = disabled, 1 = rx enabled, 2 = tx enabled, 3 tx & rx enabled
+    @param type - 0 = hw device level, 1 = L2, 2 = IPv4, 3 = IPv6
+*/
+autoreply define sw_interface_span_v2_enable_disable {
+    u32 client_index;
+    u32 context;
+    vl_api_interface_index_t sw_if_index_from;
+    vl_api_interface_index_t sw_if_index_to;
+    vl_api_span_state_t state;
+    vl_api_span_type_t type;
+};
+
+/** \brief SPAN dump request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param type - 0 = hw device level, 1 = L2, 2 = IPv4, 3 = IPv6
+*/
+define sw_interface_span_v2_dump {
+    u32 client_index;
+    u32 context;
+    vl_api_span_type_t type;
+};
+
+/** \brief Reply to SPAN dump request
+    @param context - sender context which was passed in the request
+    @param sw_if_index_from - mirrored interface
+    @param sw_if_index_to - interface where the traffic is mirrored
+    @param state - 0 = disabled, 1 = rx enabled, 2 = tx enabled, 3 tx & rx enabled
+    @param type - 0 = 0 = hw device level, 1 = L2, 2 = IPv4, 3 = IPv6
+*/
+define sw_interface_span_v2_details {
+    u32 context;
+    vl_api_interface_index_t sw_if_index_from;
+    vl_api_interface_index_t sw_if_index_to;
+    vl_api_span_state_t state;
+    vl_api_span_type_t type;
 };
