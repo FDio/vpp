@@ -90,11 +90,6 @@ add_vpp_executable(vpp
   DEPENDS vpp_version_h api_headers
 )
 
-add_vpp_headers(vpp
-  stats/stat_segment.h
-  stats/stat_segment_shared.h
-)
-
 ##############################################################################
 # vppctl binary
 ##############################################################################

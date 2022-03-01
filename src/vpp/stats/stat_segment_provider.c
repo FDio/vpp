@@ -66,7 +66,7 @@ stat_provider_mem_usage_update_fn (stat_segment_directory_entry_t *e,
 static counter_t **
 stat_validate_counter_vector3 (counter_t **counters, u32 max1, u32 max2)
 {
-  stat_segment_main_t *sm = &stat_segment_main;
+  vlib_stats_segment_t *sm = &stat_segment_main;
   int i;
   void *oldheap = clib_mem_set_heap (sm->heap);
   vec_validate_aligned (counters, max1, CLIB_CACHE_LINE_BYTES);
@@ -83,7 +83,7 @@ stat_validate_counter_vector3 (counter_t **counters, u32 max1, u32 max2)
 void
 vlib_stats_register_mem_heap (clib_mem_heap_t *heap)
 {
-  stat_segment_main_t *sm = &stat_segment_main;
+  vlib_stats_segment_t *sm = &stat_segment_main;
   vec_add1 (memory_heaps_vec, heap);
   u32 heap_index = vec_len (memory_heaps_vec) - 1;
 
@@ -93,12 +93,12 @@ vlib_stats_register_mem_heap (clib_mem_heap_t *heap)
   u8 *s_total = format (0, "/mem/%s/total%c", heap->name, 0);
   u8 *s_free = format (0, "/mem/%s/free%c", heap->name, 0);
   mem_vector_index =
-    stat_segment_new_entry (s, STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE);
+    vlib_stats_new_entry (s, STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE);
   vec_free (s);
   if (mem_vector_index == ~0)
     ASSERT (0);
 
-  vlib_stat_segment_lock ();
+  vlib_stats_segment_lock ();
   stat_segment_directory_entry_t *ep = &sm->directory_vector[mem_vector_index];
   ep->data = stat_validate_counter_vector3 (ep->data, 0, STAT_MEM_RELEASABLE);
 
@@ -110,7 +110,7 @@ vlib_stats_register_mem_heap (clib_mem_heap_t *heap)
 			       STAT_MEM_USED, 0);
   vlib_stats_register_symlink (oldheap, s_free, mem_vector_index,
 			       STAT_MEM_FREE, 0);
-  vlib_stat_segment_unlock ();
+  vlib_stats_segment_unlock ();
   clib_mem_set_heap (oldheap);
   vec_free (s_used);
   vec_free (s_total);
@@ -176,23 +176,23 @@ stat_provider_register_vector_rate (u32 num_workers)
 
   u8 *s = format (0, "/sys/vector_rate%c", 0);
 
-  i = stat_segment_new_entry (s, STAT_DIR_TYPE_SCALAR_INDEX);
+  i = vlib_stats_new_entry (s, STAT_DIR_TYPE_SCALAR_INDEX);
   if (i == ~0)
     ASSERT (0);
   vec_free (s);
   stat_segment_poll_add (i, stat_provider_vector_rate_update_fn, ~0, 10);
 
   s = format (0, "/sys/vector_rate_per_worker%c", 0);
-  i = stat_segment_new_entry (s, STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE);
+  i = vlib_stats_new_entry (s, STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE);
   if (i == ~0)
     ASSERT (0);
   vec_free (s);
   stat_segment_poll_add (i, stat_provider_vector_rate_per_thread_update_fn, ~0,
 			 10);
 
-  stat_segment_main_t *sm = &stat_segment_main;
-  vlib_stat_segment_lock ();
+  vlib_stats_segment_t *sm = &stat_segment_main;
+  vlib_stats_segment_lock ();
   stat_segment_directory_entry_t *ep = &sm->directory_vector[i];
   ep->data = stat_validate_counter_vector3 (ep->data, num_workers, 0);
-  vlib_stat_segment_unlock ();
+  vlib_stats_segment_unlock ();
 }

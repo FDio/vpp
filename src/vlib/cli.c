@@ -38,6 +38,7 @@
  */
 
 #include <vlib/vlib.h>
+#include <vlib/stats/stats.h>
 #include <vlib/unix/unix.h>
 #include <vppinfra/callback.h>
 #include <vppinfra/cpu.h>
@@ -751,13 +752,6 @@ void vl_msg_pop_heap (void *oldheap) __attribute__ ((weak));
 void
 vl_msg_pop_heap (void *oldheap)
 {
-}
-
-void *vlib_stats_push_heap (void *) __attribute__ ((weak));
-void *
-vlib_stats_push_heap (void *notused)
-{
-  return 0;
 }
 
 static clib_error_t *

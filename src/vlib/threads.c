@@ -24,7 +24,7 @@
 
 #include <vlib/threads.h>
 
-#include <vlib/stat_weak_inlines.h>
+#include <vlib/stats/stats.h>
 
 u32
 vl (void *p)
@@ -1392,7 +1392,7 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
        * rebuilding the stat segment node clones from the
        * stat thread...
        */
-      vlib_stat_segment_lock ();
+      vlib_stats_segment_lock ();
 
       /* Do stats elements on main thread */
       worker_thread_node_runtime_update_internal ();
@@ -1443,7 +1443,7 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
 	      os_panic ();
 	    }
 	}
-      vlib_stat_segment_unlock ();
+      vlib_stats_segment_unlock ();
     }
 
   t_closed_total = now - vm->barrier_epoch;
