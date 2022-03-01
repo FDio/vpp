@@ -38,7 +38,7 @@
  */
 
 #include <vlib/vlib.h>
-#include <vlib/stat_weak_inlines.h>
+#include <vlib/stats/stats.h>
 
 void
 vlib_clear_simple_counters (vlib_simple_counter_main_t * cm)

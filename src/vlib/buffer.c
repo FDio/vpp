@@ -46,7 +46,7 @@
 #include <vppinfra/linux/sysfs.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
-#include <vpp/stats/stat_segment.h>
+#include <vlib/stats/stats.h>
 
 #define VLIB_BUFFER_DEFAULT_BUFFERS_PER_NUMA 16384
 #define VLIB_BUFFER_DEFAULT_BUFFERS_PER_NUMA_UNPRIV 8192
@@ -907,18 +907,18 @@ vlib_buffer_main_init (struct vlib_main_t * vm)
 
     vec_reset_length (name);
     name = format (name, "/buffer-pools/%s/cached%c", bp->name, 0);
-    stat_segment_register_gauge (name, buffer_gauges_update_cached_fn,
-				 bp - bm->buffer_pools);
+    vlib_stats_register_gauge (name, buffer_gauges_update_cached_fn,
+			       bp - bm->buffer_pools);
 
     vec_reset_length (name);
     name = format (name, "/buffer-pools/%s/used%c", bp->name, 0);
-    stat_segment_register_gauge (name, buffer_gauges_update_used_fn,
-				 bp - bm->buffer_pools);
+    vlib_stats_register_gauge (name, buffer_gauges_update_used_fn,
+			       bp - bm->buffer_pools);
 
     vec_reset_length (name);
     name = format (name, "/buffer-pools/%s/available%c", bp->name, 0);
-    stat_segment_register_gauge (name, buffer_gauges_update_available_fn,
-				 bp - bm->buffer_pools);
+    vlib_stats_register_gauge (name, buffer_gauges_update_available_fn,
+			       bp - bm->buffer_pools);
   }
 
 done:

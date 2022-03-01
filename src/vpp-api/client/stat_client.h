@@ -25,7 +25,7 @@
 #include <vlib/counter_types.h>
 #include <time.h>
 #include <stdbool.h>
-#include <vpp/stats/stat_segment_shared.h>
+#include <vlib/stats/shared.h>
 
 /* Default socket to exchange segment fd */
 /* TODO: Get from runtime directory */

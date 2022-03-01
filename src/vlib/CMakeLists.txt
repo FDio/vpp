@@ -88,6 +88,10 @@ add_vpp_library(vlib
   physmem.c
   punt.c
   punt_node.c
+  stats/cli.c
+  stats/format.c
+  stats/init.c
+  stats/stats.c
   threads.c
   threads_cli.c
   time.c
@@ -130,6 +134,8 @@ add_vpp_library(vlib
   physmem_funcs.h
   physmem.h
   punt.h
+  stats/shared.h
+  stats/stats.h
   threads.h
   time.h
   trace_funcs.h
