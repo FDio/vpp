@@ -24,7 +24,9 @@ typedef enum
 {
   SPAN_FEAT_DEVICE,
   SPAN_FEAT_L2,
-  SPAN_FEAT_N
+  SPAN_FEAT_IP4,
+  SPAN_FEAT_IP6,
+  SPAN_FEAT_N,
 } span_feat_t;
 
 typedef struct

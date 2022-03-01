@@ -5,6 +5,7 @@ import unittest
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q, GRE, ERSPAN
 from scapy.layers.inet import IP, UDP
+from scapy.layers.inet6 import IPv6
 from scapy.layers.vxlan import VXLAN
 
 from framework import VppTestCase, VppTestRunner
@@ -14,7 +15,8 @@ from vpp_gre_interface import VppGreInterface
 from vpp_vxlan_tunnel import VppVxlanTunnel
 from collections import namedtuple
 from vpp_papi import VppEnum
-
+from vpp_ip_route import VppRoutePath
+from test_l3xc import VppL3xc
 
 Tag = namedtuple('Tag', ['dot1', 'vlan'])
 DOT1AD = 0x88A8
@@ -29,8 +31,8 @@ class TestSpan(VppTestCase):
         super(TestSpan, cls).setUpClass()
         # Test variables
         cls.pkts_per_burst = 257    # Number of packets per burst
-        # create 3 pg interfaces
-        cls.create_pg_interfaces(range(3))
+        # create 4 pg interfaces
+        cls.create_pg_interfaces(range(4))
 
         cls.bd_id = 55
         cls.sub_if = VppDot1QSubint(cls, cls.pg0, 100)
@@ -53,6 +55,8 @@ class TestSpan(VppTestCase):
             i.admin_up()
             i.config_ip4()
             i.resolve_arp()
+            i.config_ip6()
+            i.resolve_ndp()
 
     def setUp(self):
         super(TestSpan, self).setUp()
@@ -135,18 +139,23 @@ class TestSpan(VppTestCase):
 
         return pkt[VXLAN].payload
 
-    def create_stream(self, src_if, packet_sizes, do_dot1=False, bcast=False):
+    def create_stream(self, src_if, packet_sizes, do_dot1=False, bcast=False,
+                      is_ip6=False):
         pkts = []
         dst_if = self.flows[src_if][0]
         dst_mac = src_if.remote_mac
         if bcast:
             dst_mac = "ff:ff:ff:ff:ff:ff"
 
+        if is_ip6:
+            ip = IPv6(src=src_if.remote_ip6, dst=dst_if.remote_ip6)
+        else:
+            ip = IP(src=src_if.remote_ip4, dst=dst_if.remote_ip4)
+
         for i in range(0, self.pkts_per_burst):
             payload = "span test"
             size = packet_sizes[int((i / 2) % len(packet_sizes))]
-            p = (Ether(src=src_if.local_mac, dst=dst_mac) /
-                 IP(src=src_if.remote_ip4, dst=dst_if.remote_ip4) /
+            p = (Ether(src=src_if.local_mac, dst=dst_mac) / ip /
                  UDP(sport=10000 + src_if.sw_if_index * 1000 + i, dport=1234) /
                  Raw(payload))
             if do_dot1:
@@ -568,6 +577,98 @@ class TestSpan(VppTestCase):
             self.sub_if.sw_if_index, self.pg2.sw_if_index, state=0, is_l2=1)
 
         self.verify_capture(pg0_pkts + pg1_pkts, pg2_pkts)
+
+    def __test_ip_span(self, is_ip6):
+        # test IP span:
+        #  - traffic is forwarded between pg0 and pg1 via a l3xc
+        #  - pg0 is spanned for both rx and tx to pg2. As there is no traffic
+        #  sent through pg0, we are only going through the span-ipX-input (ie
+        #  span rx) node
+        #  - pg1 is spanned for both rx and tx to pg3. As there is no traffic
+        #  received by pg1, we are only going through the span-ipX-output (ie
+        #  span tx) node
+
+        span_state = VppEnum.vl_api_span_state_t.SPAN_STATE_API_RX_TX
+        if is_ip6:
+            span_type = VppEnum.vl_api_span_type_t.SPAN_TYPE_API_IP6
+            l3xc_rip = self.pg1.remote_ip6
+            ip_layer = IPv6
+        else:
+            span_type = VppEnum.vl_api_span_type_t.SPAN_TYPE_API_IP4
+            l3xc_rip = self.pg1.remote_ip4
+            ip_layer = IP
+
+        # Create l3xc pg0 -> pg1
+        l3xc = VppL3xc(
+            self, self.pg0, [
+                VppRoutePath(
+                    l3xc_rip, self.pg1.sw_if_index)])
+        l3xc.add_vpp_config()
+
+        # Create incoming packet streams for packet-generator interfaces
+        pkts = self.create_stream(self.pg0, self.pg_if_packet_sizes,
+                                  is_ip6=is_ip6)
+        self.pg0.add_stream(pkts)
+
+        # Enable SPAN on pg0 (mirrored to pg2)
+        self.vapi.sw_interface_span_v2_enable_disable(
+            self.pg0.sw_if_index, self.pg2.sw_if_index, span_state, span_type)
+
+        # Enable SPAN on pg1 (mirrored to pg3)
+        self.vapi.sw_interface_span_v2_enable_disable(
+            self.pg1.sw_if_index, self.pg3.sw_if_index, span_state, span_type)
+
+        # Enable packet capturing and start packet sending
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # Verify packets outgoing packet streams on mirrored interfaces
+        n_pkts = len(pkts)
+        pg1_pkts = self.pg1.get_capture(n_pkts)
+        pg2_pkts = self.pg2.get_capture(n_pkts)
+        pg3_pkts = self.pg3.get_capture(n_pkts)
+
+        # Disable SPAN and l3xc
+        self.vapi.sw_interface_span_v2_enable_disable(
+            self.pg0.sw_if_index, self.pg2.sw_if_index, 0, span_type)
+        self.vapi.sw_interface_span_v2_enable_disable(
+            self.pg1.sw_if_index, self.pg3.sw_if_index, 0, span_type)
+        l3xc.remove_vpp_config()
+
+        # compare outputs from pg1, pg2, pg3
+        # we are capturing ip traffic on pg2 and pg3, but scapy thinks it is
+        # ethernet
+        self.assertEqual(len(pg1_pkts), len(pkts))
+        self.assertEqual(len(pg1_pkts), len(pg2_pkts))
+        self.assertEqual(len(pg1_pkts), len(pg3_pkts))
+        for p1, p2, p3 in zip(pg1_pkts, pg2_pkts, pg3_pkts):
+            # span happens at the IP layer, drop Ethernet
+            p1 = p1[ip_layer]
+            # cast p3 from Ethernet to IP
+            p3 = ip_layer(bytes(p3))
+            # span on pg3 happens after forwarding (pg1 tx) so the packets
+            # should be identical on pg1 and pg3
+            self.assertEqual(p1, p3)
+            # span on pg2 happens before forwarding (pg0 rx) but the packet ttl
+            # was decremented during forwarding, fix it
+            if is_ip6:
+                p1.hlim += 1
+            else:
+                p1.ttl += 1
+                # force checksum update
+                del p1.chksum
+                p1 = ip_layer(p1.build())
+            # cast p2 from Ethernet to IP
+            p2 = ip_layer(bytes(p2))
+            self.assertEqual(p1, p2)
+
+    def test_ip4_span(self):
+        """ SPAN IPv4 rx tx mirror """
+        return self.__test_ip_span(is_ip6=False)
+
+    def test_ip6_span(self):
+        """ SPAN IPv6 rx tx mirror """
+        return self.__test_ip_span(is_ip6=True)
 
 
 if __name__ == '__main__':
