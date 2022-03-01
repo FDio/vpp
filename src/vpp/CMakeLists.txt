@@ -66,8 +66,6 @@ set(VPP_SOURCES
   vnet/main.c
   app/vpe_cli.c
   app/version.c
-  stats/stat_segment.c
-  stats/stat_segment_provider.c
   api/api.c
   api/json_format.c
   api/types.c
@@ -88,11 +86,6 @@ add_vpp_executable(vpp
   SOURCES ${VPP_SOURCES}
   LINK_LIBRARIES svm vlib vppinfra vlibmemory vnet Threads::Threads ${CMAKE_DL_LIBS}
   DEPENDS vpp_version_h api_headers
-)
-
-add_vpp_headers(vpp
-  stats/stat_segment.h
-  stats/stat_segment_shared.h
 )
 
 ##############################################################################

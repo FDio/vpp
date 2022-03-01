@@ -46,7 +46,7 @@
 #include <vppinfra/linux/sysfs.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
-#include <vpp/stats/stat_segment.h>
+#include <vlib/stats/stats.h>
 
 #define VLIB_BUFFER_DEFAULT_BUFFERS_PER_NUMA 16384
 #define VLIB_BUFFER_DEFAULT_BUFFERS_PER_NUMA_UNPRIV 8192
@@ -62,17 +62,6 @@ STATIC_ASSERT_FITS_IN (vlib_buffer_t, buffer_pool_index, 16);
 STATIC_ASSERT_OFFSET_OF (vlib_buffer_t, template_end, 64);
 
 u16 __vlib_buffer_external_hdr_size = 0;
-
-static void
-buffer_gauges_update_cached_fn (stat_segment_directory_entry_t * e,
-				u32 index);
-
-static void
-buffer_gauges_update_available_fn (stat_segment_directory_entry_t * e,
-				   u32 index);
-
-static void
-buffer_gauges_update_used_fn (stat_segment_directory_entry_t * e, u32 index);
 
 uword
 vlib_buffer_length_in_chain_slow_path (vlib_main_t * vm,
@@ -798,37 +787,39 @@ buffer_get_by_index (vlib_buffer_main_t * bm, u32 index)
 }
 
 static void
-buffer_gauges_update_used_fn (stat_segment_directory_entry_t * e, u32 index)
+buffer_gauges_collect_used_fn (vlib_stats_collector_data_t *d)
 {
   vlib_main_t *vm = vlib_get_main ();
-  vlib_buffer_pool_t *bp = buffer_get_by_index (vm->buffer_main, index);
+  vlib_buffer_pool_t *bp =
+    buffer_get_by_index (vm->buffer_main, d->private_data);
   if (!bp)
     return;
 
-  e->value = bp->n_buffers - bp->n_avail - buffer_get_cached (bp);
+  d->entry->value = bp->n_buffers - bp->n_avail - buffer_get_cached (bp);
 }
 
 static void
-buffer_gauges_update_available_fn (stat_segment_directory_entry_t * e,
-				   u32 index)
+buffer_gauges_collect_available_fn (vlib_stats_collector_data_t *d)
 {
   vlib_main_t *vm = vlib_get_main ();
-  vlib_buffer_pool_t *bp = buffer_get_by_index (vm->buffer_main, index);
+  vlib_buffer_pool_t *bp =
+    buffer_get_by_index (vm->buffer_main, d->private_data);
   if (!bp)
     return;
 
-  e->value = bp->n_avail;
+  d->entry->value = bp->n_avail;
 }
 
 static void
-buffer_gauges_update_cached_fn (stat_segment_directory_entry_t * e, u32 index)
+buffer_gauges_collect_cached_fn (vlib_stats_collector_data_t *d)
 {
   vlib_main_t *vm = vlib_get_main ();
-  vlib_buffer_pool_t *bp = buffer_get_by_index (vm->buffer_main, index);
+  vlib_buffer_pool_t *bp =
+    buffer_get_by_index (vm->buffer_main, d->private_data);
   if (!bp)
     return;
 
-  e->value = buffer_get_cached (bp);
+  d->entry->value = buffer_get_cached (bp);
 }
 
 clib_error_t *
@@ -902,23 +893,23 @@ vlib_buffer_main_init (struct vlib_main_t * vm)
 
   vec_foreach (bp, bm->buffer_pools)
   {
+    vlib_stats_collector_reg_t reg = { .private_data = bp - bm->buffer_pools };
     if (bp->n_buffers == 0)
       continue;
 
-    vec_reset_length (name);
-    name = format (name, "/buffer-pools/%s/cached%c", bp->name, 0);
-    stat_segment_register_gauge (name, buffer_gauges_update_cached_fn,
-				 bp - bm->buffer_pools);
+    reg.entry_index =
+      vlib_stats_add_gauge ("/buffer-pools/%s/cached", bp->name);
+    reg.collect_fn = buffer_gauges_collect_cached_fn;
+    vlib_stats_register_collector_fn (&reg);
 
-    vec_reset_length (name);
-    name = format (name, "/buffer-pools/%s/used%c", bp->name, 0);
-    stat_segment_register_gauge (name, buffer_gauges_update_used_fn,
-				 bp - bm->buffer_pools);
+    reg.entry_index = vlib_stats_add_gauge ("/buffer-pools/%s/used", bp->name);
+    reg.collect_fn = buffer_gauges_collect_used_fn;
+    vlib_stats_register_collector_fn (&reg);
 
-    vec_reset_length (name);
-    name = format (name, "/buffer-pools/%s/available%c", bp->name, 0);
-    stat_segment_register_gauge (name, buffer_gauges_update_available_fn,
-				 bp - bm->buffer_pools);
+    reg.entry_index =
+      vlib_stats_add_gauge ("/buffer-pools/%s/available", bp->name);
+    reg.collect_fn = buffer_gauges_collect_available_fn;
+    vlib_stats_register_collector_fn (&reg);
   }
 
 done:
