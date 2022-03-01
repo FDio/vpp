@@ -232,18 +232,16 @@ VLIB_REGISTER_NODE (l3xc_ip6_node) =
   }
 };
 
-VNET_FEATURE_INIT (l3xc_ip4_feat, static) =
-{
+VNET_FEATURE_INIT (l3xc_ip4_feat, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "l3xc-input-ip4",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
+  .runs_after = VNET_FEATURES ("span-ip4-input", "acl-plugin-in-ip4-fa"),
 };
 
-VNET_FEATURE_INIT (l3xc_ip6_feat, static) =
-{
+VNET_FEATURE_INIT (l3xc_ip6_feat, static) = {
   .arc_name = "ip6-unicast",
   .node_name = "l3xc-input-ip6",
-  .runs_after = VNET_FEATURES ("acl-plugin-in-ip6-fa"),
+  .runs_after = VNET_FEATURES ("span-ip6-input", "acl-plugin-in-ip6-fa"),
 };
 /* *INDENT-ON* */
 
