@@ -1,16 +1,5 @@
-/*
- * Copyright (c) 2018 Cisco and/or its affiliates.
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at:
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright(c) 2022 Cisco Systems, Inc.
  */
 
 #ifndef included_stat_segment_shared_h
@@ -40,9 +29,10 @@ typedef struct
     uint64_t index;
     uint64_t value;
     void *data;
+    uint8_t **string_vector;
   };
   char name[128]; // TODO change this to pointer to "somewhere"
-} stat_segment_directory_entry_t;
+} vlib_stats_entry_t;
 
 /*
  * Shared header first in the shared memory segment.
@@ -53,14 +43,8 @@ typedef struct
   void *base;
   volatile uint64_t epoch;
   volatile uint64_t in_progress;
-  volatile stat_segment_directory_entry_t *directory_vector;
+  volatile vlib_stats_entry_t *directory_vector;
   volatile uint64_t **error_vector;
-} stat_segment_shared_header_t;
-
-static inline void *
-stat_segment_pointer (void *start, uint64_t offset)
-{
-  return ((char *) start + offset);
-}
+} vlib_stats_shared_header_t;
 
 #endif /* included_stat_segment_shared_h */
