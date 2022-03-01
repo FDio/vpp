@@ -18,20 +18,25 @@ set int state pg0 up
 set int state pg1 up
 set int state pipe0 up
 
-create ipsec tunnel local-ip 10.0.0.1 remote-ip 10.0.0.2 local-spi 100 remote-spi 101 local-crypto-key 6541686776336961656264656f6f6579 remote-crypto-key 6541686776336961656264656f6f6579 crypto-alg aes-cbc-128
+ipsec sa add 20 spi 200 crypto-key 6541686776336961656264656f6f6579 crypto-alg aes-cbc-128
+ipsec sa add 30 spi 300 crypto-key 6541686776336961656264656f6f6579 crypto-alg aes-cbc-128
 
-set int state ipsec0 up
-set int unnum ipsec0 use pg0
+create ipip tunnel src 10.0.0.1 dst 10.0.0.2
+create ipip tunnel src 10.0.0.2 dst 10.0.0.1 outer-table-id 1
 
-create ipsec tunnel local-ip 10.0.0.2 remote-ip 10.0.0.1 local-spi 101 remote-spi 100 tx-table 1 local-crypto-key 6541686776336961656264656f6f6579 remote-crypto-key 6541686776336961656264656f6f6579 crypto-alg aes-cbc-128
+ipsec tunnel protect ipip0 sa-in 20 sa-out 30
+ipsec tunnel protect ipip1 sa-in 30 sa-out 20
 
-set int state ipsec1 up
-set int ip table ipsec1 1
-set int unnum ipsec1 use pg1
+set int state ipip0 up
+set int unnum ipip0 use pg0
 
-ip route add 192.168.1.0/24 via ipsec0
+set int state ipip1 up
+set int ip table ipip1 1
+set int unnum ipip1 use pg1
+
+ip route add 192.168.1.0/24 via ipip0
 set ip neighbor pg1 192.168.1.2 00:11:22:33:44:55
-ip route add table 1 192.168.0.0/24 via ipsec1
+ip route add table 1 192.168.0.0/24 via ipip1
 set ip neighbor pg0 192.168.0.2 00:11:22:33:44:66
 
 trace add pg-input 100
