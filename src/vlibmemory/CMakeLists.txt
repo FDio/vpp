@@ -63,3 +63,6 @@ add_vat_test_library(vlib
 add_vpp_test_library(vlibmemoryclient
   memclnt.api
 )
+add_vpp_test_library(vlibmemory
+    vlib.api
+)
