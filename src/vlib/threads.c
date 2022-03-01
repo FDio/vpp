@@ -24,7 +24,7 @@
 
 #include <vlib/threads.h>
 
-#include <vlib/stat_weak_inlines.h>
+#include <vlib/stats/stats.h>
 
 u32
 vl (void *p)
@@ -729,7 +729,7 @@ start_workers (vlib_main_t * vm)
 				CLIB_CACHE_LINE_BYTES);
 
 	      /* Switch to the stats segment ... */
-	      void *oldheap = vlib_stats_push_heap (0);
+	      void *oldheap = vlib_stats_set_heap ();
 	      vm_clone->error_main.counters =
 		vec_dup_aligned (vlib_get_first_main ()->error_main.counters,
 				 CLIB_CACHE_LINE_BYTES);
@@ -892,7 +892,7 @@ vlib_worker_thread_node_refork (void)
   j = vec_len (vm->error_main.counters) - 1;
 
   /* Switch to the stats segment ... */
-  void *oldheap = vlib_stats_push_heap (0);
+  void *oldheap = vlib_stats_set_heap ();
   vec_validate_aligned (old_counters, j, CLIB_CACHE_LINE_BYTES);
   vm_clone->error_main.counters = old_counters;
   vlib_stats_pop_heap2 (vm_clone->error_main.counters, vm_clone->thread_index,
@@ -1392,7 +1392,7 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
        * rebuilding the stat segment node clones from the
        * stat thread...
        */
-      vlib_stat_segment_lock ();
+      vlib_stats_segment_lock ();
 
       /* Do stats elements on main thread */
       worker_thread_node_runtime_update_internal ();
@@ -1443,7 +1443,7 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
 	      os_panic ();
 	    }
 	}
-      vlib_stat_segment_unlock ();
+      vlib_stats_segment_unlock ();
     }
 
   t_closed_total = now - vm->barrier_epoch;

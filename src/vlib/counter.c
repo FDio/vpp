@@ -38,7 +38,7 @@
  */
 
 #include <vlib/vlib.h>
-#include <vlib/stat_weak_inlines.h>
+#include <vlib/stats/stats.h>
 
 void
 vlib_clear_simple_counters (vlib_simple_counter_main_t * cm)
@@ -80,7 +80,7 @@ vlib_validate_simple_counter (vlib_simple_counter_main_t * cm, u32 index)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   int i, resized = 0;
-  void *oldheap = vlib_stats_push_heap (cm->counters);
+  void *oldheap = vlib_stats_set_heap ();
 
   vec_validate (cm->counters, tm->n_vlib_mains - 1);
   for (i = 0; i < tm->n_vlib_mains; i++)
@@ -108,7 +108,7 @@ vlib_free_simple_counter (vlib_simple_counter_main_t * cm)
 
   vlib_stats_delete_cm (cm);
 
-  void *oldheap = vlib_stats_push_heap (cm->counters);
+  void *oldheap = vlib_stats_set_heap ();
   for (i = 0; i < vec_len (cm->counters); i++)
     vec_free (cm->counters[i]);
   vec_free (cm->counters);
@@ -120,7 +120,7 @@ vlib_validate_combined_counter (vlib_combined_counter_main_t * cm, u32 index)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   int i, resized = 0;
-  void *oldheap = vlib_stats_push_heap (cm->counters);
+  void *oldheap = vlib_stats_set_heap ();
 
   vec_validate (cm->counters, tm->n_vlib_mains - 1);
   for (i = 0; i < tm->n_vlib_mains; i++)
@@ -147,7 +147,7 @@ int
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   int i;
-  void *oldheap = vlib_stats_push_heap (cm->counters);
+  void *oldheap = vlib_stats_set_heap ();
 
   /* Possibly once in recorded history */
   if (PREDICT_FALSE (vec_len (cm->counters) == 0))
@@ -180,7 +180,7 @@ vlib_free_combined_counter (vlib_combined_counter_main_t * cm)
 
   vlib_stats_delete_cm (cm);
 
-  void *oldheap = vlib_stats_push_heap (cm->counters);
+  void *oldheap = vlib_stats_set_heap ();
   for (i = 0; i < vec_len (cm->counters); i++)
     vec_free (cm->counters[i]);
   vec_free (cm->counters);

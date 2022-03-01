@@ -39,7 +39,7 @@
 
 #include <vlib/vlib.h>
 #include <vppinfra/heap.h>
-#include <vlib/stat_weak_inlines.h>
+#include <vlib/stats/stats.h>
 
 uword
 vlib_error_drop_buffers (vlib_main_t * vm,
@@ -158,7 +158,7 @@ vlib_register_errors (vlib_main_t *vm, u32 node_index, u32 n_errors,
   vec_validate (vm->error_elog_event_types, l - 1);
 
   /* Switch to the stats segment ... */
-  oldheap = vlib_stats_push_heap (0);
+  oldheap = vlib_stats_set_heap ();
 
   /* Allocate a counter/elog type for each error. */
   vec_validate (em->counters, l - 1);
