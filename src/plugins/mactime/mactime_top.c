@@ -187,7 +187,7 @@ scrape_stats_segment (mt_main_t * mm)
   mactime_device_t *dev;
   stat_segment_access_t sa;
   stat_client_main_t *sm = mm->stat_client_main;
-  stat_segment_directory_entry_t *ep;
+  vlib_stats_entry_t *ep;
   int need_update2 = 0;
   static u32 *pool_indices;
   int i, j;
