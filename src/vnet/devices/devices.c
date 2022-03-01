@@ -18,6 +18,7 @@
 #include <vnet/feature/feature.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vlib/stats/stats.h>
 
 vnet_device_main_t vnet_device_main;
 
@@ -101,6 +102,26 @@ VNET_FEATURE_INIT (ethernet_input, static) = {
 };
 /* *INDENT-ON* */
 
+static u32 last_update_stats_dir_index;
+
+static void
+input_rate_update_fn (vlib_stats_directory_entry_t *e, u32 index)
+{
+  vlib_stats_segment_t *sm = vlib_stats_get_segment (0);
+  vlib_stats_directory_entry_t *e2 =
+    sm->directory_vector + last_update_stats_dir_index;
+  static u64 last_input_packets = 0;
+  f64 dt, now;
+
+  now = vlib_time_now (vlib_get_main ());
+  u64 input_packets = vnet_get_aggregate_rx_packets ();
+
+  dt = now - e2->value;
+  e->value = (f64) (input_packets - last_input_packets) / dt;
+  last_input_packets = input_packets;
+  e2->value = now;
+}
+
 static clib_error_t *
 vnet_device_init (vlib_main_t * vm)
 {
@@ -108,6 +129,7 @@ vnet_device_init (vlib_main_t * vm)
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vlib_thread_registration_t *tr;
   uword *p;
+  u32 idx;
 
   vec_validate_aligned (vdm->workers, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
@@ -120,6 +142,12 @@ vnet_device_init (vlib_main_t * vm)
       vdm->next_worker_thread_index = tr->first_index;
       vdm->last_worker_thread_index = tr->first_index + tr->count - 1;
     }
+
+  last_update_stats_dir_index =
+    vlib_stats_new_entry (STAT_DIR_TYPE_SCALAR_INDEX, "/sys/last_update");
+  idx = vlib_stats_new_entry (STAT_DIR_TYPE_SCALAR_INDEX, "/sys/input_rate");
+  vlib_stats_register_update_fn (idx, input_rate_update_fn, 0);
+
   return 0;
 }
 

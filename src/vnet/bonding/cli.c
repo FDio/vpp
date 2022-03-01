@@ -20,7 +20,7 @@
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/bonding/node.h>
-#include <vpp/stats/stat_segment.h>
+#include <vlib/stats/stats.h>
 
 void
 bond_disable_collecting_distributing (vlib_main_t * vm, member_if_t * mif)
@@ -323,10 +323,10 @@ bond_delete_neighbor (vlib_main_t * vm, bond_if_t * bif, member_if_t * mif)
 
   if (bif->mode == BOND_MODE_LACP)
     {
-      stat_segment_deregister_state_counter
-	(bm->stats[bif->sw_if_index][mif->sw_if_index].actor_state);
-      stat_segment_deregister_state_counter
-	(bm->stats[bif->sw_if_index][mif->sw_if_index].partner_state);
+      vlib_stats_unregister_state_counter (
+	bm->stats[bif->sw_if_index][mif->sw_if_index].actor_state);
+      vlib_stats_unregister_state_counter (
+	bm->stats[bif->sw_if_index][mif->sw_if_index].partner_state);
     }
 
   pool_put (bm->neighbors, mif);
@@ -656,8 +656,8 @@ bond_add_member (vlib_main_t * vm, bond_add_member_args_t * args)
       vec_validate (bm->stats, bif->sw_if_index);
       vec_validate (bm->stats[bif->sw_if_index], args->member);
 
-      args->error = stat_segment_register_state_counter
-	(name, &bm->stats[bif->sw_if_index][args->member].actor_state);
+      args->error = vlib_stats_register_state_counter (
+	name, &bm->stats[bif->sw_if_index][args->member].actor_state);
       if (args->error != 0)
 	{
 	  args->rv = VNET_API_ERROR_INVALID_INTERFACE;
@@ -668,8 +668,8 @@ bond_add_member (vlib_main_t * vm, bond_add_member_args_t * args)
       vec_reset_length (name);
       name = format (0, "/if/lacp/%u/%u/partner-state%c", bif->sw_if_index,
 		     args->member, 0);
-      args->error = stat_segment_register_state_counter
-	(name, &bm->stats[bif->sw_if_index][args->member].partner_state);
+      args->error = vlib_stats_register_state_counter (
+	name, &bm->stats[bif->sw_if_index][args->member].partner_state);
       vec_free (name);
       if (args->error != 0)
 	{
