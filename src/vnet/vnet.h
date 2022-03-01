@@ -110,6 +110,9 @@ typedef struct vnet_main_t
     vnet_api_error_t api_errno;
 
     vlib_main_t *vlib_main;
+
+    /* stats */
+    u32 interface_names_stats_dir_index;
 } vnet_main_t;
 
 extern vnet_main_t vnet_main;

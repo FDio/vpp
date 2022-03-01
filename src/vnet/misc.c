@@ -39,6 +39,7 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
+#include <vlib/stats/stats.h>
 
 vnet_main_t vnet_main;
 
@@ -77,6 +78,8 @@ vnet_main_init (vlib_main_t * vm)
   vnet_hw_interface_t *hw;
 
   vnm->vlib_main = vm;
+  vnm->interface_names_stats_dir_index =
+    vlib_stats_new_entry (STAT_DIR_TYPE_NAME_VECTOR, "/if/names");
 
   hw_if_index = vnet_register_interface
     (vnm, vnet_local_interface_device_class.index, /* instance */ 0,
