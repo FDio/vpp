@@ -41,6 +41,7 @@
 #include <vppinfra/format.h>
 #include <vlib/vlib.h>
 #include <vlib/threads.h>
+#include <vlib/stats/stats.h>
 #include <vppinfra/tw_timer_1t_3w_1024sl_ov.h>
 
 #include <vlib/unix/unix.h>
@@ -1826,7 +1827,6 @@ placeholder_queue_signal_callback (vlib_main_t * vm)
 }
 
 #define foreach_weak_reference_stub             \
-_(vlib_map_stat_segment_init)                   \
 _(vpe_api_init)                                 \
 _(vlibmemory_init)                              \
 _(map_api_segment_init)
@@ -1887,7 +1887,7 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
       goto done;
     }
 
-  if ((error = vlib_map_stat_segment_init (vm)))
+  if ((error = vlib_stats_init (vm)))
     {
       clib_error_report (error);
       goto done;

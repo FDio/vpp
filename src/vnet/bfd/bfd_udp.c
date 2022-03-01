@@ -35,7 +35,7 @@
 #include <vnet/dpo/receive_dpo.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
-#include <vpp/stats/stat_segment.h>
+#include <vlib/stats/stats.h>
 #include <vnet/bfd/bfd_debug.h>
 #include <vnet/bfd/bfd_udp.h>
 #include <vnet/bfd/bfd_main.h>
@@ -81,14 +81,6 @@ static vlib_node_registration_t bfd_udp_echo4_input_node;
 static vlib_node_registration_t bfd_udp_echo6_input_node;
 
 bfd_udp_main_t bfd_udp_main;
-
-void
-bfd_udp_update_stat_segment_entry (u32 entry, u64 value)
-{
-  vlib_stat_segment_lock ();
-  stat_segment_set_state_counter (entry, value);
-  vlib_stat_segment_unlock ();
-}
 
 vnet_api_error_t
 bfd_udp_set_echo_source (u32 sw_if_index)
@@ -559,8 +551,8 @@ bfd_udp_add_session_internal (vlib_main_t * vm, bfd_udp_main_t * bum,
 	       format_ip46_address, peer, IP46_TYPE_ANY, key->sw_if_index,
 	       bus->adj_index);
       ++bum->udp4_sessions_count;
-      bfd_udp_update_stat_segment_entry (
-	bum->udp4_sessions_count_stat_seg_entry, bum->udp4_sessions_count);
+      vlib_stats_set_gauge (bum->udp4_sessions_count_stat_seg_entry,
+			    bum->udp4_sessions_count);
       if (1 == bum->udp4_sessions_count)
 	{
 	  udp_register_dst_port (vm, UDP_DST_PORT_bfd4,
@@ -578,8 +570,8 @@ bfd_udp_add_session_internal (vlib_main_t * vm, bfd_udp_main_t * bum,
 	       format_ip46_address, peer, IP46_TYPE_ANY, key->sw_if_index,
 	       bus->adj_index);
       ++bum->udp6_sessions_count;
-      bfd_udp_update_stat_segment_entry (
-	bum->udp6_sessions_count_stat_seg_entry, bum->udp6_sessions_count);
+      vlib_stats_set_gauge (bum->udp6_sessions_count_stat_seg_entry,
+			    bum->udp6_sessions_count);
       if (1 == bum->udp6_sessions_count)
 	{
 	  udp_register_dst_port (vm, UDP_DST_PORT_bfd6,
@@ -753,8 +745,8 @@ bfd_udp_del_session_internal (vlib_main_t * vm, bfd_session_t * bs)
     {
     case BFD_TRANSPORT_UDP4:
       --bum->udp4_sessions_count;
-      bfd_udp_update_stat_segment_entry (
-	bum->udp4_sessions_count_stat_seg_entry, bum->udp4_sessions_count);
+      vlib_stats_set_gauge (bum->udp4_sessions_count_stat_seg_entry,
+			    bum->udp4_sessions_count);
       if (!bum->udp4_sessions_count)
 	{
 	  udp_unregister_dst_port (vm, UDP_DST_PORT_bfd4, 1);
@@ -763,8 +755,8 @@ bfd_udp_del_session_internal (vlib_main_t * vm, bfd_session_t * bs)
       break;
     case BFD_TRANSPORT_UDP6:
       --bum->udp6_sessions_count;
-      bfd_udp_update_stat_segment_entry (
-	bum->udp6_sessions_count_stat_seg_entry, bum->udp6_sessions_count);
+      vlib_stats_set_gauge (bum->udp6_sessions_count_stat_seg_entry,
+			    bum->udp6_sessions_count);
       if (!bum->udp6_sessions_count)
 	{
 	  udp_unregister_dst_port (vm, UDP_DST_PORT_bfd6, 0);
@@ -1694,18 +1686,16 @@ clib_error_t *
 bfd_udp_stats_init (bfd_udp_main_t *bum)
 {
   const char *name4 = "/bfd/udp4/sessions";
-  bum->udp4_sessions_count_stat_seg_entry =
-    stat_segment_new_entry ((u8 *) name4, STAT_DIR_TYPE_SCALAR_INDEX);
+  bum->udp4_sessions_count_stat_seg_entry = vlib_stats_add_gauge ("%s", name4);
 
-  stat_segment_set_state_counter (bum->udp4_sessions_count_stat_seg_entry, 0);
+  vlib_stats_set_gauge (bum->udp4_sessions_count_stat_seg_entry, 0);
   if (~0 == bum->udp4_sessions_count_stat_seg_entry)
     {
       return clib_error_return (
 	0, "Could not create stat segment entry for %s", name4);
     }
   const char *name6 = "/bfd/udp6/sessions";
-  bum->udp6_sessions_count_stat_seg_entry =
-    stat_segment_new_entry ((u8 *) name6, STAT_DIR_TYPE_SCALAR_INDEX);
+  bum->udp6_sessions_count_stat_seg_entry = vlib_stats_add_gauge ("%s", name6);
 
   if (~0 == bum->udp6_sessions_count_stat_seg_entry)
     {

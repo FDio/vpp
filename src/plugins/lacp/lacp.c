@@ -21,7 +21,7 @@
 #include <vppinfra/hash.h>
 #include <vnet/bonding/node.h>
 #include <lacp/node.h>
-#include <vpp/stats/stat_segment.h>
+#include <vlib/stats/stats.h>
 
 lacp_main_t lacp_main;
 
@@ -173,16 +173,16 @@ lacp_periodic (vlib_main_t * vm)
     if (actor_state != mif->actor.state)
       {
 	bif = bond_get_bond_if_by_dev_instance (mif->bif_dev_instance);
-	stat_segment_set_state_counter (bm->stats[bif->sw_if_index]
-					[mif->sw_if_index].actor_state,
-					mif->actor.state);
+	vlib_stats_set_gauge (
+	  bm->stats[bif->sw_if_index][mif->sw_if_index].actor_state,
+	  mif->actor.state);
       }
     if (partner_state != mif->partner.state)
       {
 	bif = bond_get_bond_if_by_dev_instance (mif->bif_dev_instance);
-	stat_segment_set_state_counter (bm->stats[bif->sw_if_index]
-					[mif->sw_if_index].partner_state,
-					mif->partner.state);
+	vlib_stats_set_gauge (
+	  bm->stats[bif->sw_if_index][mif->sw_if_index].partner_state,
+	  mif->partner.state);
       }
   }
   /* *INDENT-ON* */
@@ -380,12 +380,12 @@ lacp_init_state_machines (vlib_main_t * vm, member_if_t * mif)
   lacp_init_mux_machine (vm, mif);
   lacp_init_ptx_machine (vm, mif);
   lacp_init_rx_machine (vm, mif);
-  stat_segment_set_state_counter (bm->stats[bif->sw_if_index]
-				  [mif->sw_if_index].actor_state,
-				  mif->actor.state);
-  stat_segment_set_state_counter (bm->stats[bif->sw_if_index]
-				  [mif->sw_if_index].partner_state,
-				  mif->partner.state);
+  vlib_stats_set_gauge (
+    bm->stats[bif->sw_if_index][mif->sw_if_index].actor_state,
+    mif->actor.state);
+  vlib_stats_set_gauge (
+    bm->stats[bif->sw_if_index][mif->sw_if_index].partner_state,
+    mif->partner.state);
 }
 
 VLIB_INIT_FUNCTION (lacp_periodic_init);
