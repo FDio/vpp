@@ -25,7 +25,7 @@
 #include <vlib/counter_types.h>
 #include <time.h>
 #include <stdbool.h>
-#include <vpp/stats/stat_segment_shared.h>
+#include <vlib/stats/shared.h>
 
 /* Default socket to exchange segment fd */
 /* TODO: Get from runtime directory */
@@ -49,8 +49,8 @@ typedef struct
 typedef struct
 {
   uint64_t current_epoch;
-  stat_segment_shared_header_t *shared_header;
-  stat_segment_directory_entry_t *directory_vector;
+  vlib_stats_shared_header_t *shared_header;
+  vlib_stats_entry_t *directory_vector;
   ssize_t memory_size;
   uint64_t timeout;
 } stat_client_main_t;
@@ -115,7 +115,7 @@ static inline int
 stat_segment_access_start (stat_segment_access_t * sa,
 			   stat_client_main_t * sm)
 {
-  stat_segment_shared_header_t *shared_header = sm->shared_header;
+  vlib_stats_shared_header_t *shared_header = sm->shared_header;
   uint64_t max_time;
 
   sa->epoch = shared_header->epoch;
@@ -130,10 +130,8 @@ stat_segment_access_start (stat_segment_access_t * sa,
       while (shared_header->in_progress != 0)
 	;
     }
-  sm->directory_vector =
-    (stat_segment_directory_entry_t *) stat_segment_adjust (sm,
-							    (void *)
-							    sm->shared_header->directory_vector);
+  sm->directory_vector = (vlib_stats_entry_t *) stat_segment_adjust (
+    sm, (void *) sm->shared_header->directory_vector);
   if (sm->timeout)
     return _time_now_nsec () < max_time ? 0 : -1;
   return 0;
@@ -164,7 +162,7 @@ stat_segment_set_timeout (uint64_t timeout)
 static inline bool
 stat_segment_access_end (stat_segment_access_t * sa, stat_client_main_t * sm)
 {
-  stat_segment_shared_header_t *shared_header = sm->shared_header;
+  vlib_stats_shared_header_t *shared_header = sm->shared_header;
 
   if (shared_header->epoch != sa->epoch || shared_header->in_progress)
     return false;

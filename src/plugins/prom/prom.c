@@ -17,7 +17,7 @@
 
 #include <prom/prom.h>
 #include <vpp-api/client/stat_client.h>
-#include <vpp/stats/stat_segment.h>
+#include <vlib/stats/stats.h>
 #include <ctype.h>
 
 static prom_main_t prom_main;
@@ -388,7 +388,7 @@ static void
 prom_stat_segment_client_init (void)
 {
   stat_client_main_t *scm = &stat_client_main;
-  stat_segment_main_t *sm = &stat_segment_main;
+  vlib_stats_segment_t *sm = vlib_stats_get_segment ();
   uword size;
 
   size = sm->memory_size ? sm->memory_size : STAT_SEGMENT_DEFAULT_SIZE;
