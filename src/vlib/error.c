@@ -39,7 +39,7 @@
 
 #include <vlib/vlib.h>
 #include <vppinfra/heap.h>
-#include <vlib/stat_weak_inlines.h>
+#include <vlib/stats/stats.h>
 
 uword
 vlib_error_drop_buffers (vlib_main_t * vm,
@@ -158,7 +158,7 @@ vlib_register_errors (vlib_main_t *vm, u32 node_index, u32 n_errors,
   vec_validate (vm->error_elog_event_types, l - 1);
 
   /* Switch to the stats segment ... */
-  oldheap = vlib_stats_push_heap (0);
+  oldheap = vlib_stats_set_heap ();
 
   /* Allocate a counter/elog type for each error. */
   vec_validate (em->counters, l - 1);
@@ -172,25 +172,23 @@ vlib_register_errors (vlib_main_t *vm, u32 node_index, u32 n_errors,
     clib_memset (em->counters + n->error_heap_index,
 		 0, n_errors * sizeof (em->counters[0]));
 
+  oldheap = clib_mem_set_heap (oldheap);
+
   /* Register counter indices in the stat segment directory */
   {
     int i;
-    u8 *error_name = 0;
 
     for (i = 0; i < n_errors; i++)
       {
-	vec_reset_length (error_name);
-	error_name =
-	  format (error_name, "/err/%v/%s%c", n->name, counters[i].name, 0);
-	vlib_stats_register_error_index (oldheap, error_name, em->counters,
-					 n->error_heap_index + i);
+	vlib_stats_register_error_index (em->counters, n->error_heap_index + i,
+					 "/err/%v/%s", n->name,
+					 counters[i].name);
       }
 
-    vec_free (error_name);
   }
 
   /* (re)register the em->counters base address, switch back to main heap */
-  vlib_stats_pop_heap2 (em->counters, vm->thread_index, oldheap, 1);
+  vlib_stats_update_error_vector (em->counters, vm->thread_index, 1);
 
   {
     elog_event_type_t t;

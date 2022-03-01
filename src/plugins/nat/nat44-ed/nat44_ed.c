@@ -38,7 +38,7 @@
 #include <nat/nat44-ed/nat44_ed_affinity.h>
 #include <nat/nat44-ed/nat44_ed_inlines.h>
 
-#include <vpp/stats/stat_segment.h>
+#include <vlib/stats/stats.h>
 
 snat_main_t snat_main;
 
@@ -2290,8 +2290,8 @@ nat_init (vlib_main_t * vm)
 
   nat_init_simple_counter (sm->total_sessions, "total-sessions",
 			   "/nat44-ed/total-sessions");
-  sm->max_cfg_sessions_gauge = stat_segment_new_entry (
-    (u8 *) "/nat44-ed/max-cfg-sessions", STAT_DIR_TYPE_SCALAR_INDEX);
+  sm->max_cfg_sessions_gauge =
+    vlib_stats_add_gauge ("/nat44-ed/max-cfg-sessions");
 
 #define _(x)                                                                  \
   nat_init_simple_counter (sm->counters.fastpath.in2out.x, #x,                \
@@ -2373,8 +2373,8 @@ nat44_plugin_enable (nat44_config_t c)
     c.sessions = 63 * 1024;
 
   sm->max_translations_per_thread = c.sessions;
-  stat_segment_set_state_counter (sm->max_cfg_sessions_gauge,
-				  sm->max_translations_per_thread);
+  vlib_stats_set_gauge (sm->max_cfg_sessions_gauge,
+			sm->max_translations_per_thread);
   sm->translation_buckets = nat_calc_bihash_buckets (c.sessions);
 
   vec_add1 (sm->max_translations_per_fib, sm->max_translations_per_thread);
@@ -3145,8 +3145,8 @@ nat44_update_session_limit (u32 session_limit, u32 vrf_id)
     return 1;
   sm->max_translations_per_thread = nat44_get_max_session_limit ();
 
-  stat_segment_set_state_counter (sm->max_cfg_sessions_gauge,
-				  sm->max_translations_per_thread);
+  vlib_stats_set_gauge (sm->max_cfg_sessions_gauge,
+			sm->max_translations_per_thread);
 
   sm->translation_buckets =
     nat_calc_bihash_buckets (sm->max_translations_per_thread);

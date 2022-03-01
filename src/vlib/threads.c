@@ -24,7 +24,7 @@
 
 #include <vlib/threads.h>
 
-#include <vlib/stat_weak_inlines.h>
+#include <vlib/stats/stats.h>
 
 u32
 vl (void *p)
@@ -180,6 +180,11 @@ vlib_thread_init (vlib_main_t * vm)
   u32 first_index = 1;
   u32 i;
   uword *avail_cpu;
+  u32 stats_num_worker_threads_dir_index;
+
+  stats_num_worker_threads_dir_index =
+    vlib_stats_add_gauge ("/sys/num_worker_threads");
+  ASSERT (stats_num_worker_threads_dir_index != ~0);
 
   /* get bitmaps of active cpu cores and sockets */
   tm->cpu_core_bitmap =
@@ -319,6 +324,7 @@ vlib_thread_init (vlib_main_t * vm)
   clib_bitmap_free (avail_cpu);
 
   tm->n_vlib_mains = n_vlib_mains;
+  vlib_stats_set_gauge (stats_num_worker_threads_dir_index, n_vlib_mains - 1);
 
   /*
    * Allocate the remaining worker threads, and thread stack vector slots
@@ -729,12 +735,13 @@ start_workers (vlib_main_t * vm)
 				CLIB_CACHE_LINE_BYTES);
 
 	      /* Switch to the stats segment ... */
-	      void *oldheap = vlib_stats_push_heap (0);
+	      void *oldheap = vlib_stats_set_heap ();
 	      vm_clone->error_main.counters =
 		vec_dup_aligned (vlib_get_first_main ()->error_main.counters,
 				 CLIB_CACHE_LINE_BYTES);
-	      vlib_stats_pop_heap2 (vm_clone->error_main.counters,
-				    worker_thread_index, oldheap, 1);
+	      clib_mem_set_heap (oldheap);
+	      vlib_stats_update_error_vector (vm_clone->error_main.counters,
+					      worker_thread_index, 1);
 
 	      vm_clone->error_main.counters_last_clear = vec_dup_aligned (
 		vlib_get_first_main ()->error_main.counters_last_clear,
@@ -892,11 +899,12 @@ vlib_worker_thread_node_refork (void)
   j = vec_len (vm->error_main.counters) - 1;
 
   /* Switch to the stats segment ... */
-  void *oldheap = vlib_stats_push_heap (0);
+  void *oldheap = vlib_stats_set_heap ();
   vec_validate_aligned (old_counters, j, CLIB_CACHE_LINE_BYTES);
+  clib_mem_set_heap (oldheap);
   vm_clone->error_main.counters = old_counters;
-  vlib_stats_pop_heap2 (vm_clone->error_main.counters, vm_clone->thread_index,
-			oldheap, 0);
+  vlib_stats_update_error_vector (vm_clone->error_main.counters,
+				  vm_clone->thread_index, 0);
 
   vec_validate_aligned (old_counters_all_clear, j, CLIB_CACHE_LINE_BYTES);
   vm_clone->error_main.counters_last_clear = old_counters_all_clear;
@@ -1392,7 +1400,7 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
        * rebuilding the stat segment node clones from the
        * stat thread...
        */
-      vlib_stat_segment_lock ();
+      vlib_stats_segment_lock ();
 
       /* Do stats elements on main thread */
       worker_thread_node_runtime_update_internal ();
@@ -1443,7 +1451,7 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
 	      os_panic ();
 	    }
 	}
-      vlib_stat_segment_unlock ();
+      vlib_stats_segment_unlock ();
     }
 
   t_closed_total = now - vm->barrier_epoch;
