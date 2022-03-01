@@ -39,7 +39,7 @@
 
 #include <vlib/vlib.h>
 #include <vppinfra/heap.h>
-#include <vlib/stat_weak_inlines.h>
+#include <vlib/stats/stats.h>
 
 uword
 vlib_error_drop_buffers (vlib_main_t * vm,
