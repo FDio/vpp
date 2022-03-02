@@ -822,24 +822,24 @@ enum
 };
 
 static void
-session_tx_trace_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
-			u32 next_index, u32 * to_next, u16 n_segs,
-			session_t * s, u32 n_trace)
+session_tx_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
+			u32 next_index, vlib_buffer_t **bufs, u16 n_segs,
+			session_t *s, u32 n_trace)
 {
+  vlib_buffer_t **b = bufs;
+
   while (n_trace && n_segs)
     {
-      vlib_buffer_t *b = vlib_get_buffer (vm, to_next[0]);
-      if (PREDICT_TRUE
-	  (vlib_trace_buffer
-	   (vm, node, next_index, b, 1 /* follow_chain */ )))
+      if (PREDICT_TRUE (vlib_trace_buffer (vm, node, next_index, b[0],
+					   1 /* follow_chain */)))
 	{
 	  session_queue_trace_t *t =
-	    vlib_add_trace (vm, node, b, sizeof (*t));
+	    vlib_add_trace (vm, node, b[0], sizeof (*t));
 	  t->session_index = s->session_index;
 	  t->server_thread_index = s->thread_index;
 	  n_trace--;
 	}
-      to_next++;
+      b++;
       n_segs--;
     }
   vlib_set_trace_count (vm, node, n_trace);
@@ -1379,7 +1379,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 				   ctx->n_segs_per_evt);
 
   if (PREDICT_FALSE ((n_trace = vlib_get_trace_count (vm, node)) > 0))
-    session_tx_trace_frame (vm, node, next_index, wrk->pending_tx_buffers,
+    session_tx_trace_frame (vm, node, next_index, ctx->transport_pending_bufs,
 			    ctx->n_segs_per_evt, ctx->s, n_trace);
 
   if (PREDICT_FALSE (n_bufs))
