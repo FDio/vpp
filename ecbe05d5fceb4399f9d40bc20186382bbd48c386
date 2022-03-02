@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0861ab1a_9ab8f6c3",
+        "filename": "src/plugins/wireguard/wireguard_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 146,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2022-03-02T17:07:32Z",
+      "side": 1,
+      "message": "It seems like VPP might crash if mp-\u003esw_if_index contains a value that is not ~0 and is not the sw_if_index of a wireguard tunnel interface. It would be good to check that wgii !\u003d INDEX_INVALID before calling wireguard_if_send_details().",
+      "revId": "ecbe05d5fceb4399f9d40bc20186382bbd48c386",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
