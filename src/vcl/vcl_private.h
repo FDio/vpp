@@ -716,7 +716,7 @@ int vcl_send_worker_rpc (u32 dst_wrk_index, void *data, u32 data_len);
 int vcl_segment_attach (u64 segment_handle, char *name,
 			ssvm_segment_type_t type, int fd);
 void vcl_segment_detach (u64 segment_handle);
-void vcl_segment_detach_all ();
+void vcl_segment_detach_segments (u32 *seg_indices);
 void vcl_send_session_unlisten (vcl_worker_t * wrk, vcl_session_t * s);
 
 int vcl_segment_attach_session (uword segment_handle, uword rxf_offset,
