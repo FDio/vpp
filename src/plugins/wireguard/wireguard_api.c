@@ -228,6 +228,7 @@ wg_api_send_peers_details (index_t peeri, void *data)
   rmp->_vl_msg_id = htons (VL_API_WIREGUARD_PEERS_DETAILS +
 			   wg_main.msg_id_base);
 
+  rmp->peer.peer_index = htonl (peeri);
   rmp->peer.flags = peer->flags;
   clib_memcpy (rmp->peer.public_key,
 	       peer->remote.r_public, NOISE_PUBLIC_KEY_LEN);
@@ -236,6 +237,8 @@ wg_api_send_peers_details (index_t peeri, void *data)
   rmp->peer.port = htons (peer->dst.port);
   rmp->peer.n_allowed_ips = n_allowed_ips;
   rmp->peer.sw_if_index = htonl (peer->wg_sw_if_index);
+  rmp->peer.persistent_keepalive = htons (peer->persistent_keepalive_interval);
+  rmp->peer.table_id = htonl (peer->table_id);
 
   int ii;
   for (ii = 0; ii < n_allowed_ips; ii++)
