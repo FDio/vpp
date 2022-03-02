@@ -468,6 +468,61 @@ lcp_router_link_sync_end (void)
   LCP_ROUTER_INFO ("End synchronization of interface configurations");
 }
 
+static clib_error_t *
+lcp_router_link_up_down (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
+{
+  vnet_hw_interface_t *hi;
+  index_t lipi;
+
+  hi = vnet_get_hw_interface_or_null (vnm, hw_if_index);
+  if (!hi)
+    return 0;
+
+  lipi = lcp_itf_pair_find_by_phy (hi->sw_if_index);
+  if (lipi == INDEX_INVALID)
+    return 0;
+
+  /* When the link goes down on an interface, the kernel processes routes which
+   * resolve through that interface depending on how they were created:
+   *   - Legacy Route API: the kernel retains the routes and marks them as
+   *     "linkdown";
+   *   - Nexthop API: the kernel removes the next-hop objects and the routes
+   *     which reference them.
+   *
+   * For IPv4 routes created with Nexthop API, the kernel will not send any
+   * explicit RTM_DELROUTE messages about removing them. In order to
+   * synchronize with the kernel, affected routes need to be manually removed
+   * from the FIB.
+   *
+   * The behavior is different for IPv6 routes created with Nexthop API. The
+   * kernel will send explicit RTM_DELROUTE messages about IPv6 routes being
+   * removed.
+   */
+  if (!(flags & VNET_HW_INTERFACE_FLAG_LINK_UP))
+    {
+      u32 fib_index;
+      lcp_router_table_t *nlt;
+
+      fib_index = fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
+						       hi->sw_if_index);
+
+      pool_foreach (nlt, lcp_router_table_pool)
+	{
+	  if (fib_index == nlt->nlt_fib_index &&
+	      FIB_PROTOCOL_IP4 == nlt->nlt_proto)
+	    {
+	      lcp_router_table_flush (nlt, hi->sw_if_index,
+				      lcp_rt_fib_src_dynamic);
+	      break;
+	    }
+	}
+    }
+
+  return 0;
+}
+
+VNET_HW_INTERFACE_LINK_UP_DOWN_FUNCTION (lcp_router_link_up_down);
+
 static fib_protocol_t
 lcp_router_proto_k2f (uint32_t k)
 {
