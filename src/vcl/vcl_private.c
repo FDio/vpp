@@ -188,6 +188,8 @@ vcl_worker_detach_sessions (vcl_worker_t *wrk)
 {
   session_event_t *e;
   vcl_session_t *s;
+  uword *seg_indices_map = 0;
+  u32 seg_index, val, *seg_indices = 0;
 
   close (wrk->app_api_sock.fd);
   pool_foreach (s, wrk->sessions)
@@ -197,8 +199,12 @@ vcl_worker_detach_sessions (vcl_worker_t *wrk)
 	  s->session_state = VCL_STATE_LISTEN_NO_MQ;
 	  continue;
 	}
-      if (s->flags & VCL_SESSION_F_IS_VEP)
+      if ((s->flags & VCL_SESSION_F_IS_VEP) ||
+	  s->session_state == VCL_STATE_LISTEN_NO_MQ ||
+	  s->session_state == VCL_STATE_CLOSED)
 	continue;
+
+      hash_set (seg_indices_map, s->tx_fifo->segment_index, 1);
 
       s->session_state = VCL_STATE_DETACHED;
       vec_add2 (wrk->unhandled_evts_vector, e, 1);
@@ -207,7 +213,16 @@ vcl_worker_detach_sessions (vcl_worker_t *wrk)
       e->postponed = 1;
     }
 
-  vcl_segment_detach_all ();
+  hash_foreach (seg_index, val, seg_indices_map,
+		({ vec_add1 (seg_indices, seg_index); }));
+
+  vcl_segment_detach_segments (seg_indices);
+
+  /* Detach worker's mqs segment */
+  vcl_segment_detach (vcl_vpp_worker_segment_handle (wrk->wrk_index));
+
+  vec_free (seg_indices);
+  hash_free (seg_indices_map);
 }
 
 vcl_worker_t *
@@ -463,21 +478,33 @@ vcl_segment_detach (u64 segment_handle)
 }
 
 void
-vcl_segment_detach_all ()
+vcl_segment_detach_segments (u32 *seg_indices)
 {
-  u64 *segs = 0, *seg, key;
+  u64 *seg_handles = 0, *seg_handle, key;
+  u32 *seg_index;
   u32 val;
 
   clib_rwlock_reader_lock (&vcm->segment_table_lock);
 
-  hash_foreach (key, val, vcm->segment_table, ({ vec_add1 (segs, key); }));
+  vec_foreach (seg_index, seg_indices)
+    {
+      /* clang-format off */
+      hash_foreach (key, val, vcm->segment_table, ({
+        if (val == *seg_index)
+          {
+            vec_add1 (seg_handles, key);
+            break;
+          }
+      }));
+      /* clang-format on */
+    }
 
   clib_rwlock_reader_unlock (&vcm->segment_table_lock);
 
-  vec_foreach (seg, segs)
-    vcl_segment_detach (seg[0]);
+  vec_foreach (seg_handle, seg_handles)
+    vcl_segment_detach (seg_handle[0]);
 
-  vec_free (segs);
+  vec_free (seg_handles);
 }
 
 int
