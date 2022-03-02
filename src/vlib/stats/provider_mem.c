@@ -68,13 +68,9 @@ vlib_stats_register_mem_heap (clib_mem_heap_t *heap)
   u32 heap_index = vec_len (memory_heaps_vec) - 1;
 
   /* Memory counters provider */
-  u8 *s = format (0, "/mem/%s%c", heap->name, 0);
-  u8 *s_used = format (0, "/mem/%s/used%c", heap->name, 0);
-  u8 *s_total = format (0, "/mem/%s/total%c", heap->name, 0);
-  u8 *s_free = format (0, "/mem/%s/free%c", heap->name, 0);
-  mem_vector_index =
-    vlib_stats_new_entry (s, STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE);
-  vec_free (s);
+  mem_vector_index = vlib_stats_new_entry (STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE,
+					   "/mem/%s%c", heap->name, 0);
+
   if (mem_vector_index == ~0)
     ASSERT (0);
 
@@ -83,18 +79,13 @@ vlib_stats_register_mem_heap (clib_mem_heap_t *heap)
   ep->data = stat_validate_counter_vector3 (ep->data, 0, STAT_MEM_RELEASABLE);
 
   /* Create symlink */
-  void *oldheap = clib_mem_set_heap (sm->heap);
-  vlib_stats_register_symlink (oldheap, s_total, mem_vector_index,
-			       STAT_MEM_TOTAL, 0);
-  vlib_stats_register_symlink (oldheap, s_used, mem_vector_index,
-			       STAT_MEM_USED, 0);
-  vlib_stats_register_symlink (oldheap, s_free, mem_vector_index,
-			       STAT_MEM_FREE, 0);
+  vlib_stats_register_symlink (mem_vector_index, STAT_MEM_TOTAL,
+			       "/mem/%s/used", heap->name);
+  vlib_stats_register_symlink (mem_vector_index, STAT_MEM_USED,
+			       "/mem/%s/total", heap->name);
+  vlib_stats_register_symlink (mem_vector_index, STAT_MEM_FREE, "/mem/%s/free",
+			       heap->name);
   vlib_stats_segment_unlock ();
-  clib_mem_set_heap (oldheap);
-  vec_free (s_used);
-  vec_free (s_total);
-  vec_free (s_free);
 
   vlib_stats_register_update_fn (
     mem_vector_index, stat_provider_mem_usage_update_fn, heap_index, 10);

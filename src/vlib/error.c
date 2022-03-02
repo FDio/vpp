@@ -172,6 +172,8 @@ vlib_register_errors (vlib_main_t *vm, u32 node_index, u32 n_errors,
     clib_memset (em->counters + n->error_heap_index,
 		 0, n_errors * sizeof (em->counters[0]));
 
+  oldheap = clib_mem_set_heap (oldheap);
+
   /* Register counter indices in the stat segment directory */
   {
     int i;
@@ -182,7 +184,7 @@ vlib_register_errors (vlib_main_t *vm, u32 node_index, u32 n_errors,
 	vec_reset_length (error_name);
 	error_name =
 	  format (error_name, "/err/%v/%s%c", n->name, counters[i].name, 0);
-	vlib_stats_register_error_index (oldheap, error_name, em->counters,
+	vlib_stats_register_error_index (error_name, em->counters,
 					 n->error_heap_index + i);
       }
 
@@ -190,7 +192,7 @@ vlib_register_errors (vlib_main_t *vm, u32 node_index, u32 n_errors,
   }
 
   /* (re)register the em->counters base address, switch back to main heap */
-  vlib_stats_pop_heap2 (em->counters, vm->thread_index, oldheap, 1);
+  vlib_stats_update_error_vector (em->counters, vm->thread_index, 1);
 
   {
     elog_event_type_t t;

@@ -733,8 +733,9 @@ start_workers (vlib_main_t * vm)
 	      vm_clone->error_main.counters =
 		vec_dup_aligned (vlib_get_first_main ()->error_main.counters,
 				 CLIB_CACHE_LINE_BYTES);
-	      vlib_stats_pop_heap2 (vm_clone->error_main.counters,
-				    worker_thread_index, oldheap, 1);
+	      clib_mem_set_heap (oldheap);
+	      vlib_stats_update_error_vector (vm_clone->error_main.counters,
+					      worker_thread_index, 1);
 
 	      vm_clone->error_main.counters_last_clear = vec_dup_aligned (
 		vlib_get_first_main ()->error_main.counters_last_clear,
@@ -894,9 +895,10 @@ vlib_worker_thread_node_refork (void)
   /* Switch to the stats segment ... */
   void *oldheap = vlib_stats_set_heap ();
   vec_validate_aligned (old_counters, j, CLIB_CACHE_LINE_BYTES);
+  clib_mem_set_heap (oldheap);
   vm_clone->error_main.counters = old_counters;
-  vlib_stats_pop_heap2 (vm_clone->error_main.counters, vm_clone->thread_index,
-			oldheap, 0);
+  vlib_stats_update_error_vector (vm_clone->error_main.counters,
+				  vm_clone->thread_index, 0);
 
   vec_validate_aligned (old_counters_all_clear, j, CLIB_CACHE_LINE_BYTES);
   vm_clone->error_main.counters_last_clear = old_counters_all_clear;

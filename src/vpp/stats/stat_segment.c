@@ -105,7 +105,7 @@ vlib_map_stat_segment_init (void)
   sm->stat_segment_lockp = clib_mem_alloc (sizeof (clib_spinlock_t));
   clib_spinlock_init (sm->stat_segment_lockp);
 
-  oldheap = clib_mem_set_heap (sm->heap);
+  sm->hash_heap = oldheap = clib_mem_set_heap (sm->heap);
 
   /* Set up the name to counter-vector hash table */
   sm->directory_vector = 0;
@@ -186,16 +186,13 @@ update_node_counters (vlib_stats_segment_t *sm)
 	  sm->nodes[n->index] = s;
 
 #define _(E, t, name, p)                                                      \
-  vec_reset_length (symlink_name);                                            \
-  symlink_name = format (symlink_name, "/nodes/%U/" #name "%c",               \
-			 format_vlib_stats_symlink, s, 0);                    \
-  vlib_stats_register_symlink (oldheap, symlink_name, STAT_COUNTER_##E,       \
-			       n->index, 0 /* don't lock */);
+  vlib_stats_register_symlink (STAT_COUNTER_##E, n->index,                    \
+			       "/nodes/%U/" #name, format_vlib_stats_symlink, \
+			       s);
 	  foreach_stat_segment_node_counter_name
 #undef _
 	}
 
-      vec_free (symlink_name);
       vlib_stats_segment_unlock ();
       clib_mem_set_heap (oldheap);
       no_max_nodes = l;
@@ -217,7 +214,6 @@ update_node_counters (vlib_stats_segment_t *sm)
 			   strlen ((char *) sm->nodes[n->index])))
 		{
 		  u32 vector_index;
-		  u8 *symlink_new_name = 0;
 		  void *oldheap = clib_mem_set_heap (sm->heap);
 		  vlib_stats_segment_lock ();
 		  u8 *s = format (0, "%v%c", n->name, 0);
@@ -229,14 +225,11 @@ update_node_counters (vlib_stats_segment_t *sm)
   vector_index = vlib_stats_find_directory_index ((u8 *) symlink_name);       \
   ASSERT (vector_index != -1);                                                \
   clib_mem_set_heap (sm->heap); /* Re-enter stat segment */                   \
-  vec_reset_length (symlink_new_name);                                        \
-  symlink_new_name = format (symlink_new_name, "/nodes/%U/" #name "%c",       \
-			     format_vlib_stats_symlink, s, 0);                \
-  vlib_stats_rename_symlink (oldheap, vector_index, symlink_new_name);
+  vlib_stats_rename_symlink (vector_index, "/nodes/%U/" #name,                \
+			     format_vlib_stats_symlink, s);
 		  foreach_stat_segment_node_counter_name
 #undef _
 		    vec_free (symlink_name);
-		  vec_free (symlink_new_name);
 		  vec_free (sm->nodes[n->index]);
 		  sm->nodes[n->index] = s;
 		  vlib_stats_segment_unlock ();
