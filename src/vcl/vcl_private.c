@@ -188,6 +188,8 @@ vcl_worker_detach_sessions (vcl_worker_t *wrk)
 {
   session_event_t *e;
   vcl_session_t *s;
+  uword *seg_indices_map = 0;
+  u32 seg_index, val, *seg_indices = 0;
 
   close (wrk->app_api_sock.fd);
   pool_foreach (s, wrk->sessions)
@@ -205,9 +207,20 @@ vcl_worker_detach_sessions (vcl_worker_t *wrk)
       e->event_type = SESSION_CTRL_EVT_DISCONNECTED;
       e->session_index = s->session_index;
       e->postponed = 1;
+
+      hash_set (seg_indices_map, s->tx_fifo->segment_index, 1);
     }
 
-  vcl_segment_detach_all ();
+  hash_foreach (seg_index, val, seg_indices_map,
+		({ vec_add1 (seg_indices, seg_index); }));
+
+  vcl_segment_detach_segments (seg_indices);
+
+  /* Detach worker's mqs segment */
+  vcl_segment_detach (vcl_vpp_worker_segment_handle (wrk->wrk_index));
+
+  vec_free (seg_indices);
+  hash_free (seg_indices_map);
 }
 
 vcl_worker_t *
@@ -477,7 +490,38 @@ vcl_segment_detach_all ()
   vec_foreach (seg, segs)
     vcl_segment_detach (seg[0]);
 
+  hash_free (vcm->segment_table);
   vec_free (segs);
+}
+
+void
+vcl_segment_detach_segments (u32 *seg_indices)
+{
+  u64 *seg_handles = 0, *seg_handle, key;
+  u32 *seg_index;
+  u32 val;
+
+  clib_rwlock_reader_lock (&vcm->segment_table_lock);
+
+  vec_foreach (seg_index, seg_indices)
+    {
+      /* clang-format off */
+      hash_foreach (key, val, vcm->segment_table, ({
+        if (val == *seg_index)
+          {
+            vec_add1 (seg_handles, key);
+            break;
+          }
+      }));
+      /* clang-format on */
+    }
+
+  clib_rwlock_reader_unlock (&vcm->segment_table_lock);
+
+  vec_foreach (seg_handle, seg_handles)
+    vcl_segment_detach (seg_handle[0]);
+
+  vec_free (seg_handles);
 }
 
 int
