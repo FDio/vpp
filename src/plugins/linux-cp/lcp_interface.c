@@ -134,6 +134,10 @@ lcp_itf_pair_show (u32 phy_sw_if_index)
   vlib_cli_output (vm, "lcp lcp-auto-subint %s\n",
 		   lcp_auto_subint () ? "on" : "off");
   vlib_cli_output (vm, "lcp lcp-sync %s\n", lcp_sync () ? "on" : "off");
+  vlib_cli_output (vm, "lcp del-static-on-link-down %s\n",
+		   lcp_get_del_static_on_link_down () ? "on" : "off");
+  vlib_cli_output (vm, "lcp del-dynamic-on-link-down %s\n",
+		   lcp_get_del_dynamic_on_link_down () ? "on" : "off");
 
   if (phy_sw_if_index == ~0)
     {
@@ -571,6 +575,10 @@ lcp_itf_pair_config (vlib_main_t *vm, unformat_input_t *input)
 	lcp_set_auto_subint (1 /* is_auto */);
       else if (unformat (input, "lcp-sync"))
 	lcp_set_sync (1 /* is_auto */);
+      else if (unformat (input, "del-static-on-link-down"))
+	lcp_set_del_static_on_link_down (1 /* is_del */);
+      else if (unformat (input, "del-dynamic-on-link-down"))
+	lcp_set_del_dynamic_on_link_down (1 /* is_del */);
       else
 	return clib_error_return (0, "interfaces not found");
     }
