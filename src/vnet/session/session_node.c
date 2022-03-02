@@ -845,6 +845,22 @@ session_tx_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
   vlib_set_trace_count (vm, node, n_trace);
 }
 
+void
+session_tx_trace_buffer (vlib_main_t *vm, vlib_node_runtime_t *node,
+			 u32 next_index, u32 bi)
+{
+  vlib_buffer_t *b;
+
+  b = vlib_get_buffer (vm, bi);
+  if (PREDICT_TRUE (
+	vlib_trace_buffer (vm, node, next_index, b, 1 /* follow_chain */)))
+    {
+      session_queue_trace_t *t = vlib_add_trace (vm, node, b, sizeof (*t));
+      t->session_index = ~0;
+      t->server_thread_index = vm->thread_index;
+    }
+}
+
 always_inline void
 session_tx_fifo_chain_tail (vlib_main_t * vm, session_tx_context_t * ctx,
 			    vlib_buffer_t * b, u16 * n_bufs, u8 peek_data)

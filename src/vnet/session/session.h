@@ -750,7 +750,8 @@ do {									\
 int session_main_flush_enqueue_events (u8 proto, u32 thread_index);
 int session_main_flush_all_enqueue_events (u8 transport_proto);
 void session_queue_run_on_main_thread (vlib_main_t * vm);
-
+void session_tx_trace_buffer (vlib_main_t *vm, vlib_node_runtime_t *node,
+			      u32 next_index, u32 bi);
 /**
  * Add session node pending buffer with custom node
  *
@@ -763,6 +764,17 @@ always_inline void
 session_add_pending_tx_buffer (u32 thread_index, u32 bi, u32 next_node)
 {
   session_worker_t *wrk = session_main_get_worker (thread_index);
+  u32 n_trace;
+
+  vlib_node_runtime_t *node;
+  node = vlib_node_get_runtime (wrk->vm, session_queue_node.index);
+  if (PREDICT_FALSE ((n_trace = vlib_get_trace_count (wrk->vm, node)) > 0))
+    {
+      session_tx_trace_buffer (wrk->vm, node, next_node, bi);
+      n_trace--;
+      vlib_set_trace_count (wrk->vm, node, n_trace);
+    }
+
   vec_add1 (wrk->pending_tx_buffers, bi);
   vec_add1 (wrk->pending_tx_nexts, next_node);
   if (PREDICT_FALSE (wrk->state == SESSION_WRK_INTERRUPT))
