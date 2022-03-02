@@ -93,12 +93,10 @@ vlib_validate_simple_counter (vlib_simple_counter_main_t * cm, u32 index)
 	vec_validate_aligned (cm->counters[i], index, CLIB_CACHE_LINE_BYTES);
       }
 
+  clib_mem_set_heap (oldheap);
   /* Avoid the epoch increase when there was no counter vector resize. */
   if (resized)
-    vlib_stats_pop_heap (cm, oldheap, index,
-			 2 /* STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE */);
-  else
-    clib_mem_set_heap (oldheap);
+    vlib_stats_update_counter (cm, index, STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE);
 }
 
 void
@@ -133,12 +131,11 @@ vlib_validate_combined_counter (vlib_combined_counter_main_t * cm, u32 index)
 	vec_validate_aligned (cm->counters[i], index, CLIB_CACHE_LINE_BYTES);
       }
 
+  clib_mem_set_heap (oldheap);
   /* Avoid the epoch increase when there was no counter vector resize. */
   if (resized)
-    vlib_stats_pop_heap (cm, oldheap, index,
-			 3 /*STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED */);
-  else
-    clib_mem_set_heap (oldheap);
+    vlib_stats_update_counter (cm, index,
+			       STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED);
 }
 
 int

@@ -41,15 +41,12 @@ statseg_sw_interface_add_del (vnet_main_t *vnm, u32 sw_if_index, u32 is_add)
   clib_mem_set_heap (oldheap); /* Exit stats segment */                       \
   vector_index = vlib_stats_find_directory_index ((u8 *) "/" #p "/" #n);      \
   clib_mem_set_heap (sm->heap); /* Re-enter stat segment */                   \
-  vec_reset_length (symlink_name);                                            \
-  symlink_name = format (symlink_name, "/interfaces/%U/" #n "%c",             \
-			 format_vlib_stats_symlink, s, 0);                    \
-  vlib_stats_register_symlink (oldheap, symlink_name, vector_index,           \
-			       sw_if_index, 0 /* don't lock */);
+  vlib_stats_register_symlink (vector_index, sw_if_index,                     \
+			       "/interfaces/%U/" #n,                          \
+			       format_vlib_stats_symlink, s);
       foreach_simple_interface_counter_name
 	foreach_combined_interface_counter_name
 #undef _
-	  vec_free (symlink_name);
     }
   else
     {
@@ -62,7 +59,7 @@ statseg_sw_interface_add_del (vnet_main_t *vnm, u32 sw_if_index, u32 is_add)
   clib_mem_set_heap (oldheap); /* Exit stats segment */                       \
   vector_index = vlib_stats_find_directory_index ((u8 *) symlink_name);       \
   clib_mem_set_heap (sm->heap); /* Re-enter stat segment */                   \
-  vlib_stats_delete_counter (vector_index, oldheap);
+  vlib_stats_delete_counter (vector_index);
       foreach_simple_interface_counter_name
 	foreach_combined_interface_counter_name
 #undef _
@@ -72,7 +69,7 @@ statseg_sw_interface_add_del (vnet_main_t *vnm, u32 sw_if_index, u32 is_add)
     }
 
   vlib_stats_directory_entry_t *ep;
-  ep = &sm->directory_vector[STAT_COUNTER_INTERFACE_NAMES];
+  ep = &sm->directory_vector[vnm->interface_names_stats_dir_index];
   ep->data = sm->interfaces;
 
   vlib_stats_segment_unlock ();

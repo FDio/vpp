@@ -29,18 +29,15 @@
 
 #define foreach_stat_segment_counter_name                                     \
   _ (NUM_WORKER_THREADS, SCALAR_INDEX, num_worker_threads, /sys)              \
-  _ (INPUT_RATE, SCALAR_INDEX, input_rate, /sys)                              \
-  _ (LAST_UPDATE, SCALAR_INDEX, last_update, /sys)                            \
   _ (LAST_STATS_CLEAR, SCALAR_INDEX, last_stats_clear, /sys)                  \
   _ (HEARTBEAT, SCALAR_INDEX, heartbeat, /sys)                                \
-  _ (INTERFACE_NAMES, NAME_VECTOR, names, /if)                                \
   _ (NODE_NAMES, NAME_VECTOR, names, /sys/node)                               \
   foreach_stat_segment_node_counter_name
 /* clang-format on */
 
 void vlib_stats_register_update_fn (u32 vector_index,
 				    vlib_stats_update_fn update_fn,
-				    u32 caller_index, u32 interval);
+				    u32 caller_index);
 
 void vlib_stats_register_mem_heap (clib_mem_heap_t *heap);
 void stat_provider_register_vector_rate (u32 num_workers);

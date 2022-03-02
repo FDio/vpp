@@ -20,15 +20,12 @@
 typedef enum
 {
   STAT_COUNTER_NUM_WORKER_THREADS = 0,
-  STAT_COUNTER_INPUT_RATE,
-  STAT_COUNTER_LAST_UPDATE,
   STAT_COUNTER_LAST_STATS_CLEAR,
   STAT_COUNTER_HEARTBEAT,
   STAT_COUNTER_NODE_CLOCKS,
   STAT_COUNTER_NODE_VECTORS,
   STAT_COUNTER_NODE_CALLS,
   STAT_COUNTER_NODE_SUSPENDS,
-  STAT_COUNTER_INTERFACE_NAMES,
   STAT_COUNTER_NODE_NAMES,
   STAT_COUNTERS
 } stat_segment_counter_t;
@@ -63,12 +60,12 @@ typedef struct
   ssize_t memory_size;
   clib_mem_page_sz_t log2_page_sz;
   u8 node_counters_enabled;
+  void *hash_heap;
   void *heap;
   vlib_stats_shared_header_t
     *shared_header; /* pointer to shared memory segment */
   int memfd;
 
-  u64 last_input_packets; // OLE REMOVE?
 } vlib_stats_segment_t;
 
 extern vlib_stats_segment_t stat_segment_main;
@@ -79,31 +76,31 @@ vlib_stats_get_segment (u32 index)
   return &stat_segment_main;
 }
 
-void vlib_stats_pop_heap (void *, void *, u32, stat_directory_type_t);
-void vlib_stats_register_error_index (void *, u8 *, u64 *, u64);
-void vlib_stats_pop_heap2 (u64 *, u32, void *, int);
 void *vlib_stats_set_heap ();
+void vlib_stats_update_counter (void *, u32, stat_directory_type_t);
+void vlib_stats_register_error_index (u8 *, u64 *, u64);
+void vlib_stats_update_error_vector (u64 *error_vector, u32 thread_index,
+				     int lock);
 void vlib_stats_segment_lock (void);
 void vlib_stats_segment_unlock (void);
 void vlib_stats_delete_cm (void *);
 void vlib_stats_register_mem_heap (clib_mem_heap_t *);
 void vlib_stats_set_state_counter (u32 index, u64 value);
-u32 vlib_stats_new_entry (u8 *name, stat_directory_type_t t);
+u32 vlib_stats_new_entry (stat_directory_type_t t, char *fmt, ...);
 clib_error_t *vlib_stats_register_gauge (u8 *names,
 					 vlib_stats_update_fn update_fn,
 					 u32 index);
-u32 vlib_stats_create_counter (vlib_stats_directory_entry_t *e, void *oldheap);
-void vlib_stats_delete_counter (u32 index, void *oldheap);
+u32 vlib_stats_create_counter (vlib_stats_directory_entry_t *e);
+void vlib_stats_delete_counter (u32 index);
 clib_error_t *vlib_stats_register_state_counter (u8 *name, u32 *index);
 clib_error_t *vlib_stats_unregister_state_counter (u32 index);
-void vlib_stats_register_symlink (void *oldheap, u8 *name, u32 index1,
-				  u32 index2, u8 lock);
-void vlib_stats_rename_symlink (void *oldheap, u64 index, u8 *new_name);
+void vlib_stats_register_symlink (u32 index1, u32 index2, char *fmt, ...);
+void vlib_stats_rename_symlink (u64 index, char *fmt, ...);
 f64 vlib_stats_get_segment_update_rate (void);
 u32 vlib_stats_find_directory_index (u8 *name);
 void vlib_stats_register_update_fn (u32 vector_index,
 				    vlib_stats_update_fn update_fn,
-				    u32 caller_index, u32 interval);
+				    u32 caller_index);
 
 format_function_t format_vlib_stats_symlink;
 

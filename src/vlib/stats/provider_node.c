@@ -73,22 +73,17 @@ stat_provider_register_vector_rate (u32 num_workers)
 {
   int i;
 
-  u8 *s = format (0, "/sys/vector_rate%c", 0);
-
-  i = vlib_stats_new_entry (s, STAT_DIR_TYPE_SCALAR_INDEX);
+  i = vlib_stats_new_entry (STAT_DIR_TYPE_SCALAR_INDEX, "/sys/vector_rate");
   if (i == ~0)
     ASSERT (0);
-  vec_free (s);
-  vlib_stats_register_update_fn (i, stat_provider_vector_rate_update_fn, ~0,
-				 10);
+  vlib_stats_register_update_fn (i, stat_provider_vector_rate_update_fn, ~0);
 
-  s = format (0, "/sys/vector_rate_per_worker%c", 0);
-  i = vlib_stats_new_entry (s, STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE);
+  i = vlib_stats_new_entry (STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE,
+			    "/sys/vector_rate_per_worker");
   if (i == ~0)
     ASSERT (0);
-  vec_free (s);
   vlib_stats_register_update_fn (
-    i, stat_provider_vector_rate_per_thread_update_fn, ~0, 10);
+    i, stat_provider_vector_rate_per_thread_update_fn, ~0);
 
   vlib_stats_segment_t *sm = &stat_segment_main;
   vlib_stats_segment_lock ();

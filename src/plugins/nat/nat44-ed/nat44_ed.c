@@ -2291,7 +2291,7 @@ nat_init (vlib_main_t * vm)
   nat_init_simple_counter (sm->total_sessions, "total-sessions",
 			   "/nat44-ed/total-sessions");
   sm->max_cfg_sessions_gauge = vlib_stats_new_entry (
-    (u8 *) "/nat44-ed/max-cfg-sessions", STAT_DIR_TYPE_SCALAR_INDEX);
+    STAT_DIR_TYPE_SCALAR_INDEX, "/nat44-ed/max-cfg-sessions");
 
 #define _(x)                                                                  \
   nat_init_simple_counter (sm->counters.fastpath.in2out.x, #x,                \

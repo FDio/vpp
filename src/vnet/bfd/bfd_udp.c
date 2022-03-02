@@ -1695,7 +1695,7 @@ bfd_udp_stats_init (bfd_udp_main_t *bum)
 {
   const char *name4 = "/bfd/udp4/sessions";
   bum->udp4_sessions_count_stat_seg_entry =
-    vlib_stats_new_entry ((u8 *) name4, STAT_DIR_TYPE_SCALAR_INDEX);
+    vlib_stats_new_entry (STAT_DIR_TYPE_SCALAR_INDEX, "%s", name4);
 
   vlib_stats_set_state_counter (bum->udp4_sessions_count_stat_seg_entry, 0);
   if (~0 == bum->udp4_sessions_count_stat_seg_entry)
@@ -1705,7 +1705,7 @@ bfd_udp_stats_init (bfd_udp_main_t *bum)
     }
   const char *name6 = "/bfd/udp6/sessions";
   bum->udp6_sessions_count_stat_seg_entry =
-    vlib_stats_new_entry ((u8 *) name6, STAT_DIR_TYPE_SCALAR_INDEX);
+    vlib_stats_new_entry (STAT_DIR_TYPE_SCALAR_INDEX, "%s", name6);
 
   if (~0 == bum->udp6_sessions_count_stat_seg_entry)
     {
