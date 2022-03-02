@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "0.2.0";
+option version = "0.3.0";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
@@ -86,17 +86,21 @@ enum wireguard_peer_flags : u8
   WIREGUARD_PEER_ESTABLISHED = 0x2,
 };
 
-/** \brief Create new peer
+/** \brief Peer structure
+    @param peer_index - peer pool index
     @param public_key - public key (in binary format) of destination peer
     @param port - destination port
+    @param persistent_keepalive - keepalive packet timeout
     @param table_id - The IP table in which 'endpoint' is reachable
     @param endpoint - destination ip
-    @param allowed_ip - allowed incoming ip tunnel
-    @param tun_sw_if_index - tunnel interface
-    @param persistent_keepalive - keepalive packet timeout
+    @param sw_if_index - tunnel SW interface
+    @param flags - peer status flags
+    @param n_allowed_ips - number of prefixes in allowed_ips
+    @param allowed_ips - allowed incoming tunnel prefixes
 */
 typedef wireguard_peer
 {
+  u32 peer_index;
   u8 public_key[32];
   u16 port;
   u16 persistent_keepalive;
@@ -154,6 +158,12 @@ define wireguard_peer_add
   u32 context;
   vl_api_wireguard_peer_t peer;
 };
+
+/** \brief Create new peer
+    @param context - sender context, to match reply w/ request
+    @param retval - return status
+    @param peer_index - Created or existing peer pool index
+*/
 define wireguard_peer_add_reply
 {
   u32 context;
@@ -161,10 +171,10 @@ define wireguard_peer_add_reply
   u32 peer_index;
 };
 
-/** \brief Remove peer by public_key
+/** \brief Remove peer
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param public_key
+    @param peer_index - peer to be removed
 */
 autoreply define wireguard_peer_remove
 {
@@ -184,11 +194,9 @@ define wireguard_peers_dump {
   u32 peer_index [default=0xFFFFFFFF];
 };
 
-/** \brief Dump peers response
+/** \brief Dump peer details
     @param context - sender context, to match reply w/ request
-    @param is_dead - is peer valid yet
-    @param public_key - peer public_key
-    @param ip4_address - ip4 endpoint address
+    @param peer - peer details
 */
 define wireguard_peers_details {
   u32 context;
