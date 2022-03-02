@@ -1120,7 +1120,7 @@ ip6_full_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  b0 = vlib_get_buffer (vm, bi0);
 
 	  ip6_header_t *ip0 = vlib_buffer_get_current (b0);
-	  ip6_frag_hdr_t *frag_hdr;
+	  ip6_frag_hdr_t *frag_hdr = 0;
 	  ip6_ext_hdr_chain_t hdr_chain;
 	  int res = ip6_ext_header_walk (
 	    b0, ip0, IP_PROTOCOL_IPV6_FRAGMENTATION, &hdr_chain);
