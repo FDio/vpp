@@ -113,6 +113,38 @@ lcp_auto_subint (void)
   return lcpm->lcp_auto_subint;
 }
 
+void
+lcp_set_del_static_on_link_down (u8 is_del)
+{
+  lcp_main_t *lcpm = &lcp_main;
+
+  lcpm->del_static_on_link_down = (is_del != 0);
+}
+
+u8
+lcp_get_del_static_on_link_down (void)
+{
+  lcp_main_t *lcpm = &lcp_main;
+
+  return lcpm->del_static_on_link_down;
+}
+
+void
+lcp_set_del_dynamic_on_link_down (u8 is_del)
+{
+  lcp_main_t *lcpm = &lcp_main;
+
+  lcpm->del_dynamic_on_link_down = (is_del != 0);
+}
+
+u8
+lcp_get_del_dynamic_on_link_down (void)
+{
+  lcp_main_t *lcpm = &lcp_main;
+
+  return lcpm->del_dynamic_on_link_down;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

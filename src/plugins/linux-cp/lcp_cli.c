@@ -174,6 +174,55 @@ VLIB_CLI_COMMAND (lcp_auto_subint_command, static) = {
 };
 
 static clib_error_t *
+lcp_param_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		      vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "del-static-on-link-down"))
+	{
+	  if (unformat (line_input, "on") || unformat (line_input, "enable"))
+	    lcp_set_del_static_on_link_down (1 /* is_del */);
+	  else if (unformat (line_input, "off") ||
+		   unformat (line_input, "disable"))
+	    lcp_set_del_static_on_link_down (0 /* is_del */);
+	  else
+	    return clib_error_return (0, "unknown input `%U'",
+				      format_unformat_error, line_input);
+	}
+      else if (unformat (line_input, "del-dynamic-on-link-down"))
+	{
+	  if (unformat (line_input, "on") || unformat (line_input, "enable"))
+	    lcp_set_del_dynamic_on_link_down (1 /* is_del */);
+	  else if (unformat (line_input, "off") ||
+		   unformat (line_input, "disable"))
+	    lcp_set_del_dynamic_on_link_down (0 /* is_del */);
+	  else
+	    return clib_error_return (0, "unknown input `%U'",
+				      format_unformat_error, line_input);
+	}
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, line_input);
+    }
+
+  unformat_free (line_input);
+  return 0;
+}
+
+VLIB_CLI_COMMAND (lcp_param_command, static) = {
+  .path = "lcp param",
+  .short_help = "lcp param [del-static-on-link-down (on|enable|off|disable)] "
+		"[del-dynamic-on-link-down (on|enable|off|disable)]",
+  .function = lcp_param_command_fn,
+};
+
+static clib_error_t *
 lcp_default_netns_command_fn (vlib_main_t *vm, unformat_input_t *input,
 			      vlib_cli_command_t *cmd)
 {
