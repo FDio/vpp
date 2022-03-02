@@ -80,8 +80,8 @@ vl_api_get_first_msg_id_t_handler (vl_api_get_first_msg_id_t *mp)
 
   if (am->msg_range_by_name == 0)
     goto out;
-  strncpy ((char *) name, (char *) mp->name, ARRAY_LEN (name));
-  name[ARRAY_LEN (name) - 1] = '\0';
+  if (strcpy_s ((char *) name, ARRAY_LEN (name), (char *) mp->name) != EOK)
+    goto out;
   p = hash_get_mem (am->msg_range_by_name, name);
   if (p == 0)
     goto out;

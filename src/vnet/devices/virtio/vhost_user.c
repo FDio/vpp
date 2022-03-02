@@ -1320,6 +1320,11 @@ vhost_user_process (vlib_main_t * vm,
 	  if (vui->unix_server_index == ~0) { //Nothing to do for server sockets
 	      if (vui->clib_file_index == ~0)
 		{
+		  /* try to connect */
+		  if (strcpy_s (sun.sun_path, sizeof (sun.sun_path),
+				(char *) vui->sock_filename) != EOF)
+		    continue;
+
 		  if ((sockfd < 0) &&
 		      ((sockfd = socket (AF_UNIX, SOCK_STREAM, 0)) < 0))
 		    {
@@ -1336,11 +1341,6 @@ vhost_user_process (vlib_main_t * vm,
 			}
 		      continue;
 		    }
-
-		  /* try to connect */
-		  strncpy (sun.sun_path, (char *) vui->sock_filename,
-			   sizeof (sun.sun_path) - 1);
-		  sun.sun_path[sizeof (sun.sun_path) - 1] = 0;
 
 		  /* Avoid hanging VPP if the other end does not accept */
 		  if (fcntl(sockfd, F_SETFL, O_NONBLOCK) < 0)

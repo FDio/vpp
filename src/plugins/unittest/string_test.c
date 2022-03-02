@@ -317,6 +317,7 @@ test_strcmp_s (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+WARN_OFF (stringop - overread)
 static int
 test_clib_strcmp (vlib_main_t * vm, unformat_input_t * input)
 {
@@ -522,6 +523,7 @@ test_clib_strncmp (vlib_main_t * vm, unformat_input_t * input)
   /* OK, seems to work */
   return 0;
 }
+WARN_ON (stringop - overread)
 
 static int
 test_strcpy_s (vlib_main_t * vm, unformat_input_t * input)
