@@ -941,10 +941,12 @@ lcp_router_route_add (struct rtnl_route *rr)
   lcp_router_route_mk_prefix (rr, &pfx);
   entry_flags = lcp_router_route_mk_entry_flags (rtype, table_id, rproto);
 
-  /* link local IPv6 */
-  if (FIB_PROTOCOL_IP6 == pfx.fp_proto &&
-      (ip6_address_is_multicast (&pfx.fp_addr.ip6) ||
-       ip6_address_is_link_local_unicast (&pfx.fp_addr.ip6)))
+  nlt = lcp_router_table_add_or_lock (table_id, pfx.fp_proto);
+  /* Skip any kernel routes and IPv6 LL or multicast routes */
+  if (rproto == RTPROT_KERNEL ||
+      (FIB_PROTOCOL_IP6 == pfx.fp_proto &&
+       (ip6_address_is_multicast (&pfx.fp_addr.ip6) ||
+	ip6_address_is_link_local_unicast (&pfx.fp_addr.ip6))))
     {
       LCP_ROUTER_DBG ("route skip: %d:%U %U", rtnl_route_get_table (rr),
 		      format_fib_prefix, &pfx, format_fib_entry_flags,
@@ -968,7 +970,6 @@ lcp_router_route_add (struct rtnl_route *rr)
 
       if (0 != vec_len (np.paths))
 	{
-	  nlt = lcp_router_table_add_or_lock (table_id, pfx.fp_proto);
 	  if (rtype == RTN_MULTICAST)
 	    {
 	      /* it's not clear to me how linux expresses the RPF paramters
