@@ -1481,17 +1481,33 @@ vls_epoll_ctl (vls_handle_t ep_vlsh, int op, vls_handle_t vlsh,
 
   vls_mt_detect ();
   vls_mt_pool_rlock ();
+
   ep_vls = vls_get_and_lock (ep_vlsh);
+  if (PREDICT_FALSE (!ep_vls))
+    {
+      vls_mt_pool_runlock ();
+      return VPPCOM_EBADFD;
+    }
 
   if (vls_mt_session_should_migrate (ep_vls))
     {
       ep_vls = vls_mt_session_migrate (ep_vls);
       if (PREDICT_FALSE (!ep_vls))
-	return VPPCOM_EBADFD;
+	{
+	  vls_mt_pool_runlock ();
+	  return VPPCOM_EBADFD;
+	}
+    }
+
+  vls = vls_get_and_lock (vlsh);
+  if (PREDICT_FALSE (!vls))
+    {
+      vls_unlock (ep_vls);
+      vls_mt_pool_runlock ();
+      return VPPCOM_EBADFD;
     }
 
   ep_sh = vls_to_sh (ep_vls);
-  vls = vls_get_and_lock (vlsh);
   sh = vls_to_sh (vls);
 
   vls_epoll_ctl_mp_checks (vls, op);
