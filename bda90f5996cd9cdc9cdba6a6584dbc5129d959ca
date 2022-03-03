@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1b31ed84_a3476c29",
+        "filename": "src/vnet/classify/vnet_classify.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1266,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-03-03T17:38:47Z",
+      "side": 1,
+      "message": "I think we should just reject the command if l2 and add_l2 are contradictory",
+      "revId": "bda90f5996cd9cdc9cdba6a6584dbc5129d959ca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
