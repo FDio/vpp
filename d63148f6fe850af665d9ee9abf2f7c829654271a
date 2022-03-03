@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2ef2c2d5_d5f60809",
+        "filename": "src/vnet/tls/tls.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 730,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-03-03T21:15:55Z",
+      "side": 1,
+      "message": "I\u0027d rather we:\n- did these inits when engines are registered (or assume they\u0027re done already) and\n- add tls api to force reinit for all engines \n\nWould that work?",
+      "range": {
+        "startLine": 730,
+        "startChar": 1,
+        "endLine": 730,
+        "endChar": 30
+      },
+      "revId": "d63148f6fe850af665d9ee9abf2f7c829654271a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
