@@ -1233,12 +1233,16 @@ unformat_classify_mask (unformat_input_t * input, va_list * args)
   u8 *l2 = 0;
   u8 *l3 = 0;
   u8 *l4 = 0;
+  u8 add_l2 = 1;
   int i;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "hex %U", unformat_hex_string, &mask))
 	;
+      else if (unformat (input, "l2 none"))
+	/* Don't add the l2 header in the mask */
+	add_l2 = 0;
       else if (unformat (input, "l2 %U", unformat_l2_mask, &l2))
 	;
       else if (unformat (input, "l3 %U", unformat_l3_mask, &l3))
@@ -1247,6 +1251,15 @@ unformat_classify_mask (unformat_input_t * input, va_list * args)
 	;
       else
 	break;
+    }
+
+  if (l2 && !add_l2)
+    {
+      vec_free (mask);
+      vec_free (l2);
+      vec_free (l3);
+      vec_free (l4);
+      return 0;
     }
 
   if (l4 && !l3)
@@ -1261,15 +1274,20 @@ unformat_classify_mask (unformat_input_t * input, va_list * args)
     {
       if (l2 || l3 || l4)
 	{
-	  /* "With a free Ethernet header in every package" */
-	  if (l2 == 0)
-	    vec_validate (l2, 13);
-	  mask = l2;
-	  if (l3)
+	  if (add_l2)
 	    {
-	      vec_append (mask, l3);
-	      vec_free (l3);
+	      /* "With a free Ethernet header in every package" */
+	      if (l2 == 0)
+		vec_validate (l2, 13);
+	      mask = l2;
+	      if (l3)
+		{
+		  vec_append (mask, l3);
+		  vec_free (l3);
+		}
 	    }
+	  else
+	    mask = l3;
 	  if (l4)
 	    {
 	      vec_append (mask, l4);
@@ -2679,6 +2697,7 @@ unformat_classify_match (unformat_input_t * input, va_list * args)
   u8 *l2 = 0;
   u8 *l3 = 0;
   u8 *l4 = 0;
+  u8 add_l2 = 1;
 
   if (pool_is_free_index (cm->tables, table_index))
     return 0;
@@ -2689,6 +2708,9 @@ unformat_classify_match (unformat_input_t * input, va_list * args)
     {
       if (unformat (input, "hex %U", unformat_hex_string, &match))
 	;
+      else if (unformat (input, "l2 none"))
+	/* Don't add the l2 header in the mask */
+	add_l2 = 0;
       else if (unformat (input, "l2 %U", unformat_l2_match, &l2))
 	;
       else if (unformat (input, "l3 %U", unformat_l3_match, &l3))
@@ -2697,6 +2719,15 @@ unformat_classify_match (unformat_input_t * input, va_list * args)
 	;
       else
 	break;
+    }
+
+  if (l2 && !add_l2)
+    {
+      vec_free (match);
+      vec_free (l2);
+      vec_free (l3);
+      vec_free (l4);
+      return 0;
     }
 
   if (l4 && !l3)
@@ -2711,15 +2742,20 @@ unformat_classify_match (unformat_input_t * input, va_list * args)
     {
       if (l2 || l3 || l4)
 	{
-	  /* "Win a free Ethernet header in every packet" */
-	  if (l2 == 0)
-	    vec_validate_aligned (l2, 13, sizeof (u32x4));
-	  match = l2;
-	  if (l3)
+	  if (add_l2)
 	    {
-	      vec_append_aligned (match, l3, sizeof (u32x4));
-	      vec_free (l3);
+	      /* "Win a free Ethernet header in every packet" */
+	      if (l2 == 0)
+		vec_validate_aligned (l2, 13, sizeof (u32x4));
+	      match = l2;
+	      if (l3)
+		{
+		  vec_append_aligned (match, l3, sizeof (u32x4));
+		  vec_free (l3);
+		}
 	    }
+	  else
+	    match = l3;
 	  if (l4)
 	    {
 	      vec_append_aligned (match, l4, sizeof (u32x4));
