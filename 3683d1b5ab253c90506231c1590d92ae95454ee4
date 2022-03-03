@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "af60fd50_d9c0fb8a",
+        "filename": "src/vnet/pg/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 384,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-03-03T16:23:37Z",
+      "side": 0,
+      "message": "why remove this option? (not that I think it is widely used, but still...)",
+      "revId": "3683d1b5ab253c90506231c1590d92ae95454ee4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
