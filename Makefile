@@ -324,7 +324,7 @@ ifeq ($(OS_ID),rhel)
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),centos-8)
 	@sudo -E dnf install $(CONFIRM) dnf-plugins-core epel-release
 	@sudo -E dnf config-manager --set-enabled \
-          $(shell dnf repolist all 2>/dev/null|grep -i powertools|cut -d' ' -f1)
+          $(shell dnf repolist all 2>/dev/null|grep -i powertools|cut -d' ' -f1|grep -v source)
 	@sudo -E dnf groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
 	@sudo -E dnf install --skip-broken $(CONFIRM) $(RPM_DEPENDS)
 else ifeq ($(OS_ID),centos)
