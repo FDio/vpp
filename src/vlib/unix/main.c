@@ -40,6 +40,7 @@
 #include <vlib/unix/unix.h>
 #include <vlib/unix/plugin.h>
 
+#include <limits.h>
 #include <signal.h>
 #include <sys/ucontext.h>
 #include <syslog.h>
@@ -247,14 +248,7 @@ unix_error_handler (void *arg, u8 * msg, int msg_len)
     }
   else
     {
-      char save = msg[msg_len - 1];
-
-      /* Null Terminate. */
-      msg[msg_len - 1] = 0;
-
-      syslog (LOG_ERR | LOG_DAEMON, "%s", msg);
-
-      msg[msg_len - 1] = save;
+      syslog (LOG_ERR | LOG_DAEMON, "%.*s", msg_len, msg);
     }
 }
 
@@ -267,20 +261,10 @@ vlib_unix_error_report (vlib_main_t * vm, clib_error_t * error)
     return;
 
   {
-    char save;
-    u8 *msg;
-    u32 msg_len;
-
-    msg = error->what;
-    msg_len = vec_len (msg);
-
-    /* Null Terminate. */
-    save = msg[msg_len - 1];
-    msg[msg_len - 1] = 0;
-
-    syslog (LOG_ERR | LOG_DAEMON, "%s", msg);
-
-    msg[msg_len - 1] = save;
+    u8 *msg = error->what;
+    u32 len = vec_len (msg);
+    int msg_len = (len > INT_MAX) ? INT_MAX : len;
+    syslog (LOG_ERR | LOG_DAEMON, "%.*s", msg_len, msg);
   }
 }
 
