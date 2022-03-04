@@ -18,7 +18,8 @@ import scapy.compat
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP
 from scapy.layers.inet import IP, UDP, ICMP
-from scapy.layers.inet6 import IPv6, ICMPv6TimeExceeded, ICMPv6EchoRequest
+from scapy.layers.inet6 import IPv6, ICMPv6TimeExceeded, ICMPv6EchoRequest, \
+    ICMPv6PacketTooBig
 from scapy.contrib.mpls import MPLS
 
 NUM_PKTS = 67
@@ -422,6 +423,31 @@ class TestMPLS(VppTestCase):
                 else:
                     self.assertEqual(rx_ip.ttl, ip_ttl)
 
+        except:
+            raise
+
+    def verify_capture_fragmented_labelled_ip6(self, src_if, capture, sent,
+                                               mpls_labels, ip_ttl=None):
+        try:
+            capture = verify_filter(capture, sent)
+
+            for i in range(len(capture)):
+                tx = sent[0]
+                rx = capture[i]
+                tx_ip = tx[IPv6]
+                rx.show()
+                rx_ip = IPv6(rx[MPLS].payload)
+                rx_ip.show()
+
+                verify_mpls_stack(self, rx, mpls_labels)
+
+                self.assertEqual(rx_ip.src, tx_ip.src)
+                self.assertEqual(rx_ip.dst, tx_ip.dst)
+                if not ip_ttl:
+                    # IP processing post pop has decremented the hop-limit
+                    self.assertEqual(rx_ip.hlim + 1, tx_ip.hlim)
+                else:
+                    self.assertEqual(rx_ip.hlim, ip_ttl)
         except:
             raise
 
@@ -908,6 +934,11 @@ class TestMPLS(VppTestCase):
                                                   self.pg0.sw_if_index,
                                                   labels=[VppMplsLabel(32)])])
         route_10_0_0_1.add_vpp_config()
+        route_1000_1 = VppIpRoute(self, "1000::1", 128,
+                                  [VppRoutePath(self.pg0.remote_ip6,
+                                                self.pg0.sw_if_index,
+                                                labels=[VppMplsLabel(32)])])
+        route_1000_1.add_vpp_config()
 
         #
         # a stream that matches the route for 10.0.0.1
@@ -923,6 +954,29 @@ class TestMPLS(VppTestCase):
         rx = self.send_and_expect(self.pg0, tx, self.pg0, 1285)
         self.verify_capture_fragmented_labelled_ip4(self.pg0, rx, tx,
                                                     [VppMplsLabel(32)])
+
+        # packets with DF bit set generate ICMP
+        for t in tx:
+            t[IP].flags = 'DF'
+        rxs = self.send_and_expect_some(self.pg0, tx, self.pg0)
+
+        for rx in rxs:
+            rx[ICMP].code = "fragmentation-needed"
+
+        self.assertEqual(self.statistics.get_err_counter(
+            "/err/mpls-frag/can't fragment this packet"),
+                         len(tx))
+        #
+        # a stream that matches the route for 1000::1/128
+        # PG0 is in the default table
+        #
+        tx = self.create_stream_ip6(self.pg0, "1000::1")
+        for i in range(0, 257):
+            self.extend_packet(tx[i], 10000)
+
+        rxs = self.send_and_expect_some(self.pg0, tx, self.pg0)
+        for rx in rxs:
+            rx[ICMPv6PacketTooBig].mtu = 9000
 
         #
         # cleanup
