@@ -33,12 +33,11 @@
 #include <vppinfra/callback.h>
 
 /* *INDENT-OFF* */
-api_main_t api_global_main =
-  {
-    .region_name = "/unset",
-    .api_uid = -1,
-    .api_gid = -1,
-  };
+static api_main_t api_global_main = {
+  .region_name = "/unset",
+  .api_uid = -1,
+  .api_gid = -1,
+};
 /* *INDENT-ON* */
 
 /* Please use vlibapi_get_main() to access my_api_main */
@@ -641,156 +640,6 @@ msg_handler_internal (api_main_t *am, void *the_msg, uword msg_len,
 	  ed->c = elog_string (am->elog_main, "BOGUS");
 	  ed->barrier = 0;
 	}
-    }
-}
-
-void (*vl_msg_api_fuzz_hook) (u16, void *);
-
-/* This is only to be called from a vlib/vnet app */
-void
-vl_msg_api_handler_with_vm_node (api_main_t * am, svm_region_t * vlib_rp,
-				 void *the_msg, vlib_main_t * vm,
-				 vlib_node_runtime_t * node, u8 is_private)
-{
-  u16 id = clib_net_to_host_u16 (*((u16 *) the_msg));
-  u8 *(*handler) (void *, void *, void *);
-  u8 *(*print_fp) (void *, void *);
-  svm_region_t *old_vlib_rp;
-  void *save_shmem_hdr;
-  int is_mp_safe = 1;
-
-  if (PREDICT_FALSE (am->elog_trace_api_messages))
-    {
-      /* *INDENT-OFF* */
-      ELOG_TYPE_DECLARE (e) =
-        {
-          .format = "api-msg: %s",
-          .format_args = "T4",
-        };
-      /* *INDENT-ON* */
-      struct
-      {
-	u32 c;
-      } *ed;
-      ed = ELOG_DATA (am->elog_main, e);
-      if (id < vec_len (am->msg_names) && am->msg_names[id])
-	ed->c = elog_string (am->elog_main, (char *) am->msg_names[id]);
-      else
-	ed->c = elog_string (am->elog_main, "BOGUS");
-    }
-
-  if (id < vec_len (am->msg_handlers) && am->msg_handlers[id])
-    {
-      handler = (void *) am->msg_handlers[id];
-
-      if (PREDICT_FALSE (am->rx_trace && am->rx_trace->enabled))
-	vl_msg_api_trace (am, am->rx_trace, the_msg);
-
-      if (PREDICT_FALSE (am->msg_print_flag))
-	{
-	  fformat (stdout, "[%d]: %s\n", id, am->msg_names[id]);
-	  print_fp = (void *) am->msg_print_handlers[id];
-	  if (print_fp == 0)
-	    {
-	      fformat (stdout, "  [no registered print fn for msg %d]\n", id);
-	    }
-	  else
-	    {
-	      (*print_fp) (the_msg, vm);
-	    }
-	}
-      is_mp_safe = am->is_mp_safe[id];
-
-      if (!is_mp_safe)
-	{
-	  vl_msg_api_barrier_trace_context (am->msg_names[id]);
-	  vl_msg_api_barrier_sync ();
-	}
-      if (is_private)
-	{
-	  old_vlib_rp = am->vlib_rp;
-	  save_shmem_hdr = am->shmem_hdr;
-	  am->vlib_rp = vlib_rp;
-	  am->shmem_hdr = (void *) vlib_rp->user_ctx;
-	}
-
-      if (PREDICT_FALSE (vl_msg_api_fuzz_hook != 0))
-	(*vl_msg_api_fuzz_hook) (id, the_msg);
-
-      if (am->is_autoendian[id])
-	{
-	  void (*endian_fp) (void *);
-	  endian_fp = am->msg_endian_handlers[id];
-	  (*endian_fp) (the_msg);
-	}
-      if (PREDICT_FALSE (vec_len (am->perf_counter_cbs) != 0))
-	clib_call_callbacks (am->perf_counter_cbs, am, id, 0 /* before */ );
-
-      (*handler) (the_msg, vm, node);
-
-      if (PREDICT_FALSE (vec_len (am->perf_counter_cbs) != 0))
-	clib_call_callbacks (am->perf_counter_cbs, am, id, 1 /* after */ );
-      if (is_private)
-	{
-	  am->vlib_rp = old_vlib_rp;
-	  am->shmem_hdr = save_shmem_hdr;
-	}
-      if (!is_mp_safe)
-	vl_msg_api_barrier_release ();
-    }
-  else
-    {
-      clib_warning ("no handler for msg id %d", id);
-    }
-
-  /*
-   * Special-case, so we can e.g. bounce messages off the vnet
-   * main thread without copying them...
-   */
-  if (id >= vec_len (am->message_bounce) || !(am->message_bounce[id]))
-    {
-      if (is_private)
-	{
-	  old_vlib_rp = am->vlib_rp;
-	  save_shmem_hdr = am->shmem_hdr;
-	  am->vlib_rp = vlib_rp;
-	  am->shmem_hdr = (void *) vlib_rp->user_ctx;
-	}
-      vl_msg_api_free (the_msg);
-      if (is_private)
-	{
-	  am->vlib_rp = old_vlib_rp;
-	  am->shmem_hdr = save_shmem_hdr;
-	}
-    }
-
-  if (PREDICT_FALSE (am->elog_trace_api_messages))
-    {
-      /* *INDENT-OFF* */
-      ELOG_TYPE_DECLARE (e) =
-        {
-          .format = "api-msg-done(%s): %s",
-          .format_args = "t4T4",
-          .n_enum_strings = 2,
-          .enum_strings =
-          {
-            "barrier",
-            "mp-safe",
-          }
-        };
-      /* *INDENT-ON* */
-
-      struct
-      {
-	u32 barrier;
-	u32 c;
-      } *ed;
-      ed = ELOG_DATA (am->elog_main, e);
-      if (id < vec_len (am->msg_names) && am->msg_names[id])
-	ed->c = elog_string (am->elog_main, (char *) am->msg_names[id]);
-      else
-	ed->c = elog_string (am->elog_main, "BOGUS");
-      ed->barrier = is_mp_safe;
     }
 }
 
