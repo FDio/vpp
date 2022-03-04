@@ -66,16 +66,19 @@ unformat_tunnel_mode (unformat_input_t * input, va_list * args)
 u8 *
 format_tunnel_encap_decap_flags (u8 * s, va_list * args)
 {
-  tunnel_encap_decap_flags_t f = va_arg (*args, int);
+  tunnel_encap_decap_flags_t f = va_arg (*args, u32);
 
   if (f == TUNNEL_ENCAP_DECAP_FLAG_NONE)
     s = format (s, "none");
-
+  else
+    {
 #define _(a, b, c)                                                            \
-  else if (f & TUNNEL_ENCAP_DECAP_FLAG_##a) s = format (s, "%s ", b);
-  foreach_tunnel_encap_decap_flag
+  if (f & TUNNEL_ENCAP_DECAP_FLAG_##a)                                        \
+    s = format (s, "%s ", b);
+      foreach_tunnel_encap_decap_flag
 #undef _
-    return (s);
+    }
+  return (s);
 }
 
 uword
@@ -95,15 +98,19 @@ unformat_tunnel_encap_decap_flags (unformat_input_t * input, va_list * args)
 u8 *
 format_tunnel_flags (u8 *s, va_list *args)
 {
-  tunnel_flags_t f = va_arg (*args, int);
+  tunnel_flags_t f = va_arg (*args, u32);
 
   if (f == TUNNEL_FLAG_NONE)
     s = format (s, "none");
-
-#define _(a, b, c) else if (f & TUNNEL_FLAG_##a) s = format (s, "%s ", c);
-  foreach_tunnel_flag
+  else
+    {
+#define _(a, b, c)                                                            \
+  if (f & TUNNEL_FLAG_##a)                                                    \
+    s = format (s, "%s ", c);
+      foreach_tunnel_flag
 #undef _
-    return (s);
+    }
+  return (s);
 }
 
 uword
