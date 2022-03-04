@@ -18,7 +18,7 @@ import framework
 from config import config, num_cpus, available_cpus, max_vpp_cpus
 from framework import VppTestRunner, VppTestCase, \
     get_testcase_doc_name, get_test_description, PASS, FAIL, ERROR, SKIP, \
-    TEST_RUN, SKIP_CPU_SHORTAGE
+    TEST_RUN, SKIP_CPU_SHORTAGE, SKIP_ASAN
 from debug import spawn_gdb, start_vpp_in_gdb
 from log import get_parallel_logger, double_line_delim, RED, YELLOW, GREEN, \
     colorize, single_line_delim
@@ -61,6 +61,7 @@ class TestResult(dict):
         self[ERROR] = []
         self[SKIP] = []
         self[SKIP_CPU_SHORTAGE] = []
+        self[SKIP_ASAN] = []
         self[TEST_RUN] = []
         self.crashed = False
         self.testcase_suite = testcase_suite
@@ -68,9 +69,13 @@ class TestResult(dict):
         self.testcases_by_id = testcases_by_id
 
     def was_successful(self):
-        return 0 == len(self[FAIL]) == len(self[ERROR]) \
-            and len(self[PASS] + self[SKIP] + self[SKIP_CPU_SHORTAGE]) \
-            == self.testcase_suite.countTestCases()
+        return 0 == len(
+            self[FAIL]) == len(
+            self[ERROR]) and len(
+            self[PASS] +
+            self[SKIP] +
+            self[SKIP_CPU_SHORTAGE] +
+            self[SKIP_ASAN]) == self.testcase_suite.countTestCases()
 
     def no_tests_run(self):
         return 0 == len(self[TEST_RUN])
@@ -82,7 +87,8 @@ class TestResult(dict):
         rerun_ids = set([])
         for testcase in self.testcase_suite:
             tc_id = testcase.id()
-            if tc_id not in self[PASS] + self[SKIP] + self[SKIP_CPU_SHORTAGE]:
+            if tc_id not in self[PASS] + self[SKIP] + \
+                    self[SKIP_CPU_SHORTAGE] + self[SKIP_ASAN]:
                 rerun_ids.add(tc_id)
         if rerun_ids:
             return suite_from_failed(self.testcase_suite, rerun_ids)
@@ -664,13 +670,21 @@ class AllResults(dict):
         self[ERROR] = 0
         self[SKIP] = 0
         self[SKIP_CPU_SHORTAGE] = 0
+        self[SKIP_ASAN] = 0
         self[TEST_RUN] = 0
         self.rerun = []
         self.testsuites_no_tests_run = []
 
     def add_results(self, result):
         self.results_per_suite.append(result)
-        result_types = [PASS, FAIL, ERROR, SKIP, TEST_RUN, SKIP_CPU_SHORTAGE]
+        result_types = [
+            PASS,
+            FAIL,
+            ERROR,
+            SKIP,
+            TEST_RUN,
+            SKIP_CPU_SHORTAGE,
+            SKIP_ASAN]
         for result_type in result_types:
             self[result_type] += len(result[result_type])
 
@@ -718,7 +732,10 @@ class AllResults(dict):
             f'Errors: {colorize(self[ERROR], RED)}' if self[ERROR] else None,
             'Tests skipped due to lack of CPUS: '
             f'{colorize(self[SKIP_CPU_SHORTAGE], YELLOW)}'
-            if self[SKIP_CPU_SHORTAGE] else None
+            if self[SKIP_CPU_SHORTAGE] else None,
+            'Need to be fixed with ASAN: '
+            f'{colorize(self[SKIP_ASAN], RED)}'
+            if self[SKIP_ASAN] else None,
         ])
 
         if self.all_failed > 0:
@@ -760,6 +777,12 @@ class AllResults(dict):
             print()
             print(colorize('     SOME TESTS WERE SKIPPED BECAUSE THERE ARE NOT'
                            ' ENOUGH CPUS AVAILABLE', YELLOW))
+
+        if self[SKIP_ASAN]:
+            print()
+            print(colorize('SOME TESTS WERE SKIPPED BECAUSE THEY NEED TO BE '
+                           'FIXED WITH ASAN', RED))
+
         print(double_line_delim)
         print('')
 

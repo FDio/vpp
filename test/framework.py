@@ -58,6 +58,7 @@ ERROR = 2
 SKIP = 3
 TEST_RUN = 4
 SKIP_CPU_SHORTAGE = 5
+SKIP_ASAN = 6
 
 
 if config.debug_framework:
@@ -229,8 +230,6 @@ class TestCaseTag(Enum):
     RUN_SOLO = 1
     # marks the suites broken on VPP multi-worker
     FIXME_VPP_WORKERS = 2
-    # marks the suites broken when ASan is enabled
-    FIXME_ASAN = 3
 
 
 def create_tag_decorator(e):
@@ -245,7 +244,13 @@ def create_tag_decorator(e):
 
 tag_run_solo = create_tag_decorator(TestCaseTag.RUN_SOLO)
 tag_fixme_vpp_workers = create_tag_decorator(TestCaseTag.FIXME_VPP_WORKERS)
-tag_fixme_asan = create_tag_decorator(TestCaseTag.FIXME_ASAN)
+
+# if @tag_fixme_asan & ASan is enabled - mark for skip
+tag_fixme_asan = unittest.skipIf(
+    "DVPP_ENABLE_SANITIZE_ADDR=ON" in os.environ.get(
+        "VPP_EXTRA_CMAKE_ARGS",
+        ""),
+    "Skipping @tag_fixme_asan tests")
 
 
 class DummyVpp:
@@ -311,14 +316,6 @@ class VppTestCase(CPUInterface, unittest.TestCase):
     def is_tagged_run_solo(cls):
         """ if the test case class is timing-sensitive - return true """
         return cls.has_tag(TestCaseTag.RUN_SOLO)
-
-    @classmethod
-    def skip_fixme_asan(cls):
-        """ if @tag_fixme_asan & ASan is enabled - mark for skip """
-        if cls.has_tag(TestCaseTag.FIXME_ASAN):
-            vpp_extra_cmake_args = os.environ.get('VPP_EXTRA_CMAKE_ARGS', '')
-            if 'DVPP_ENABLE_SANITIZE_ADDR=ON' in vpp_extra_cmake_args:
-                cls = unittest.skip("Skipping @tag_fixme_asan tests")(cls)
 
     @classmethod
     def instance(cls):
@@ -1476,6 +1473,9 @@ class VppTestResult(unittest.TestResult):
 
         if reason == "not enough cpus":
             self.send_result_through_pipe(test, SKIP_CPU_SHORTAGE)
+        elif reason == "Skipping @tag_fixme_asan tests":
+            self.send_result_through_pipe(test, SKIP_ASAN)
+            self.result_string = colorize("FIXME WITH ASAN (SKIPPED)", RED)
         else:
             self.send_result_through_pipe(test, SKIP)
 
@@ -1612,11 +1612,6 @@ class VppTestResult(unittest.TestResult):
             if test.has_tag(TestCaseTag.FIXME_VPP_WORKERS):
                 test_title = colorize(
                     f"FIXME with VPP workers: {test_title}", RED)
-
-            if test.has_tag(TestCaseTag.FIXME_ASAN):
-                test_title = colorize(
-                    f"FIXME with ASAN: {test_title}", RED)
-                test.skip_fixme_asan()
 
             if hasattr(test, 'vpp_worker_count'):
                 if test.vpp_worker_count == 0:
