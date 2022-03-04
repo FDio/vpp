@@ -25,10 +25,10 @@
 
 typedef struct
 {
-  u8 ipv6;
   u16 mtu;
   u8 next;
   u16 n_fragments;
+  u16 pkt_size;
 } ip_frag_trace_t;
 
 static u8 *
@@ -37,8 +37,8 @@ format_ip_frag_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ip_frag_trace_t *t = va_arg (*args, ip_frag_trace_t *);
-  s = format (s, "IPv%s mtu: %u fragments: %u next: %d",
-	      t->ipv6 ? "6" : "4", t->mtu, t->n_fragments, t->next);
+  s = format (s, "mtu: %u pkt-size: %u fragments: %u next: %d", t->mtu,
+	      t->pkt_size, t->n_fragments, t->next);
   return s;
 }
 
@@ -286,7 +286,7 @@ frag_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      ip_frag_trace_t *tr =
 		vlib_add_trace (vm, node, p0, sizeof (*tr));
 	      tr->mtu = mtu;
-	      tr->ipv6 = is_ip6 ? 1 : 0;
+	      tr->pkt_size = vlib_buffer_length_in_chain (vm, p0);
 	      tr->n_fragments = vec_len (buffer);
 	      tr->next = vnet_buffer (p0)->ip_frag.next_index;
 	    }
@@ -385,13 +385,17 @@ ip6_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
   ip6_header_t *ip6;
   u16 len, max, rem, ip_frag_id;
   u8 *org_from_packet;
+  u16 head_bytes;
 
   from_b = vlib_get_buffer (vm, from_bi);
   org_from_packet = vlib_buffer_get_current (from_b);
   ip6 = vlib_buffer_get_current (from_b) + l2unfragmentablesize;
 
+  head_bytes =
+    (sizeof (ip6_header_t) + sizeof (ip6_frag_hdr_t) + l2unfragmentablesize);
   rem = clib_net_to_host_u16 (ip6->payload_length);
-  max = (mtu - sizeof (ip6_header_t) - sizeof (ip6_frag_hdr_t)) & ~0x7;	// TODO: Is max correct??
+  max = (clib_min (mtu, vlib_buffer_get_default_data_size (vm)) - head_bytes) &
+	~0x7;
 
   if (rem >
       (vlib_buffer_length_in_chain (vm, from_b) - sizeof (ip6_header_t)))
@@ -423,9 +427,7 @@ ip6_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
       ip6_frag_hdr_t *to_frag_hdr;
       u8 *to_data;
 
-      len =
-	(rem >
-	 (mtu - sizeof (ip6_header_t) - sizeof (ip6_frag_hdr_t)) ? max : rem);
+      len = (rem > max ? max : rem);
       if (len != rem)		/* Last fragment does not need to divisible by 8 */
 	len &= ~0x7;
       if ((to_b = frag_buffer_alloc (org_from_b, &to_bi)) == 0)
@@ -438,7 +440,7 @@ ip6_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
       /* Copy ip6 header */
       clib_memcpy_fast (to_b->data, org_from_packet,
 			l2unfragmentablesize + sizeof (ip6_header_t));
-      to_ip6 = vlib_buffer_get_current (to_b);
+      to_ip6 = vlib_buffer_get_current (to_b) + l2unfragmentablesize;
       to_frag_hdr = (ip6_frag_hdr_t *) (to_ip6 + 1);
       to_data = (void *) (to_frag_hdr + 1);
 
@@ -484,8 +486,7 @@ ip6_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
 	  to_ptr += bytes_to_copy;
 	}
 
-      to_b->current_length =
-	len + sizeof (ip6_header_t) + sizeof (ip6_frag_hdr_t);
+      to_b->current_length = len + head_bytes;
       to_ip6->payload_length =
 	clib_host_to_net_u16 (len + sizeof (ip6_frag_hdr_t));
       to_ip6->protocol = IP_PROTOCOL_IPV6_FRAGMENTATION;
