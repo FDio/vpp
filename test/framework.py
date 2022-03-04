@@ -318,7 +318,9 @@ class VppTestCase(CPUInterface, unittest.TestCase):
         if cls.has_tag(TestCaseTag.FIXME_ASAN):
             vpp_extra_cmake_args = os.environ.get('VPP_EXTRA_CMAKE_ARGS', '')
             if 'DVPP_ENABLE_SANITIZE_ADDR=ON' in vpp_extra_cmake_args:
-                cls = unittest.skip("Skipping @tag_fixme_asan tests")(cls)
+                unittest.skip("Skipping @tag_fixme_asan tests")(cls)
+                return True
+        return False
 
     @classmethod
     def instance(cls):
@@ -548,6 +550,8 @@ class VppTestCase(CPUInterface, unittest.TestCase):
         Perform class setup before running the testcase
         Remove shared memory files, start vpp and connect the vpp-api
         """
+        if cls.skip_fixme_asan():
+            return
         super(VppTestCase, cls).setUpClass()
         cls.logger = get_logger(cls.__name__)
         random.seed(config.rnd_seed)
@@ -1616,7 +1620,6 @@ class VppTestResult(unittest.TestResult):
             if test.has_tag(TestCaseTag.FIXME_ASAN):
                 test_title = colorize(
                     f"FIXME with ASAN: {test_title}", RED)
-                test.skip_fixme_asan()
 
             if hasattr(test, 'vpp_worker_count'):
                 if test.vpp_worker_count == 0:
