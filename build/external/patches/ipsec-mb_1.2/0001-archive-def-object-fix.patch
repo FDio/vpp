@@ -1,0 +1,13 @@
+diff --git a/lib/Makefile b/lib/Makefile
+index 22890878..6ce90697 100644
+--- a/lib/Makefile
++++ b/lib/Makefile
+@@ -694,7 +694,7 @@ else
+ 	cp -f $(LIB).def $(LIB)_lnk.def
+ endif
+ 
+-$(LIB_DIR)/$(LIBNAME): $(target_obj_files) $(LIB)_lnk.def
++$(LIB_DIR)/$(LIBNAME): $(target_obj_files)
+ ifeq ($(SHARED),y)
+ ifneq ($(MINGW),0)
+ 	$(CC) -shared $(LDFLAGS) -o $(LIBNAME) $^
