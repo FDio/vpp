@@ -446,8 +446,6 @@ new_stream (vlib_main_t * vm,
 	{
 	  vlib_node_t *n;
 
-	  ASSERT (s.if_id != ~0);
-
 	  if (s.if_id != ~0)
 	    n = vlib_get_node_by_name (vm, (u8 *) pg_interface_get_input_node (
 					     &pg->interfaces[s.if_id]));
