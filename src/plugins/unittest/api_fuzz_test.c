@@ -27,7 +27,7 @@ static u32 fuzz_seed = 0xdeaddabe;
 static u16 fuzz_first;
 static u16 fuzz_cli_first, fuzz_cli_last;
 
-extern void (*vl_msg_api_fuzz_hook) (u16, void *);
+extern void (*vl_mem_api_fuzz_hook) (u16, void *);
 
 static void
 fuzz_hook (u16 id, void *the_msg)
@@ -114,10 +114,10 @@ test_api_fuzz_command_fn (vlib_main_t * vm,
 
   if (fuzz_first == 0xFFFF)
     {
-      vl_msg_api_fuzz_hook = 0;
+      vl_mem_api_fuzz_hook = 0;
       return clib_error_return (0, "fuzz_first is ~0, fuzzing disabled");
     }
-  vl_msg_api_fuzz_hook = fuzz_hook;
+  vl_mem_api_fuzz_hook = fuzz_hook;
 
   vlib_cli_output (vm, "Fuzzing enabled: first %d, skip cli range %d - %d",
 		   (u32) fuzz_first, (u32) fuzz_cli_first,
@@ -172,7 +172,7 @@ api_fuzz_api_init (vlib_main_t * vm)
 	(0, "Couldn't find 'memclnt_keepalive_reply' ID");
     }
   /* Turn on fuzzing */
-  vl_msg_api_fuzz_hook = fuzz_hook;
+  vl_mem_api_fuzz_hook = fuzz_hook;
   return 0;
 }
 
