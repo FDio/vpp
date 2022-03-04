@@ -3168,6 +3168,12 @@ class TestIPv6PathMTU(VppTestCase):
         self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index,
                                        [2800, 0, 0, 0])
 
+        p_6k = (Ether(dst=self.pg0.local_mac,
+                      src=self.pg0.remote_mac) /
+                IPv6(src=self.pg0.remote_ip6,
+                     dst=tun.remote_ip6) /
+                UDP(sport=1234, dport=5678) /
+                Raw(b'0xa' * 2000))
         p_2k = (Ether(dst=self.pg0.local_mac,
                       src=self.pg0.remote_mac) /
                 IPv6(src=self.pg0.remote_ip6,
@@ -3187,6 +3193,7 @@ class TestIPv6PathMTU(VppTestCase):
                           self.pg1.remote_ip6).add_vpp_config()
 
         # this is now the interface MTU frags
+        self.send_and_expect(self.pg0, [p_6k], self.pg1, n_rx=4)
         self.send_and_expect(self.pg0, [p_2k], self.pg1, n_rx=2)
         self.send_and_expect(self.pg0, [p_1k], self.pg1)
 
