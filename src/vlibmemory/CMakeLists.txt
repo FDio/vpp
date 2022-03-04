@@ -15,8 +15,6 @@ add_vpp_library (vlibmemory
   SOURCES
   memory_api.c
   memory_shared.c
-  memory_client.c
-  socket_client.c
   socket_api.c
   memclnt_api.c
   vlib_api_cli.c
@@ -28,10 +26,8 @@ add_vpp_library (vlibmemory
   vl_memory_msg_enum.h
   memory_shared.h
   vl_memory_api_h.h
-  socket_client.h
   memory_api.h
   api.h
-  memory_client.h
   socket_api.h
 
   API_FILES
@@ -49,6 +45,10 @@ add_vpp_library (vlibmemoryclient
   socket_client.c
   ../vlibapi/api_shared.c
   ../vlibapi/node_serialize.c
+
+  INSTALL_HEADERS
+  memory_client.h
+  socket_client.h
 
   LINK_LIBRARIES vppinfra svm
 )

@@ -105,10 +105,6 @@ int vl_msg_api_trace_onoff (api_main_t * am, vl_api_trace_which_t which,
 int vl_msg_api_trace_free (api_main_t * am, vl_api_trace_which_t which);
 int vl_msg_api_trace_configure (api_main_t * am, vl_api_trace_which_t which,
 				u32 nitems);
-void vl_msg_api_handler_with_vm_node (api_main_t * am, svm_region_t * vlib_rp,
-				      void *the_msg, vlib_main_t * vm,
-				      vlib_node_runtime_t * node,
-				      u8 is_private);
 u32 vl_msg_api_max_length (void *mp);
 vl_api_trace_t *vl_msg_api_trace_get (api_main_t * am,
 				      vl_api_trace_which_t which);
