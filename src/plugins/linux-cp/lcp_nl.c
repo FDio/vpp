@@ -940,18 +940,27 @@ lcp_nl_open_sync_socket (nl_sock_type_t sock_type)
   nm->sk_route_sync[sock_type] = sk_route = nl_socket_alloc ();
 
   dest_ns_fd = lcp_get_default_ns_fd ();
-  if (dest_ns_fd)
+  if (dest_ns_fd > 0)
     {
       curr_ns_fd = clib_netns_open (NULL /* self */);
-      clib_setns (dest_ns_fd);
+      if (clib_setns (dest_ns_fd) == -1)
+	NL_ERROR ("Cannot set destination ns");
     }
 
   nl_connect (sk_route, NETLINK_ROUTE);
 
-  if (dest_ns_fd)
+  if (dest_ns_fd > 0)
     {
-      clib_setns (curr_ns_fd);
-      close (curr_ns_fd);
+      if (curr_ns_fd == -1)
+	{
+	  NL_ERROR ("No previous ns to set");
+	}
+      else
+	{
+	  if (clib_setns (curr_ns_fd) == -1)
+	    NL_ERROR ("Cannot set previous ns");
+	  close (curr_ns_fd);
+	}
     }
 
   NL_INFO ("Opened netlink synchronization socket %d of type %d",
