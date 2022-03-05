@@ -134,6 +134,9 @@ typedef struct session_worker_
   /** Head of list of pending events */
   clib_llist_index_t old_head;
 
+  session_t *sessions_expand;
+  u8 session_expand_pending;
+
   /** Peekers rw lock */
   clib_rwlock_t peekers_rw_locks;
 
@@ -338,32 +341,65 @@ void session_cleanup_half_open (session_handle_t ho_handle);
 u8 session_is_valid (u32 si, u8 thread_index);
 
 always_inline session_t *
+session_worker_get_session (session_worker_t *wrk, u32 si)
+{
+  ASSERT (session_is_valid (si, wrk - session_main.wrk));
+
+  if (PREDICT_FALSE (wrk->session_expand_pending))
+    {
+      u32 len = pool_len (wrk->sessions);
+
+      if (si < len)
+	return wrk->sessions + si;
+      else
+	return wrk->sessions_expand + (si - len);
+    }
+
+  return wrk->sessions + si;
+}
+
+always_inline session_t *
 session_get (u32 si, u32 thread_index)
 {
-  ASSERT (session_is_valid (si, thread_index));
-  return pool_elt_at_index (session_main.wrk[thread_index].sessions, si);
+  //  return pool_elt_at_index (session_main.wrk[thread_index].sessions, si);
+  return session_worker_get_session (&session_main.wrk[thread_index], si);
 }
 
 always_inline session_t *
 session_get_if_valid (u64 si, u32 thread_index)
 {
-  if (thread_index >= vec_len (session_main.wrk))
+  session_worker_t *wrk;
+
+  if (PREDICT_FALSE (thread_index >= vec_len (session_main.wrk)))
     return 0;
 
-  if (pool_is_free_index (session_main.wrk[thread_index].sessions, si))
+  wrk = &session_main.wrk[thread_index];
+
+  if (PREDICT_FALSE (wrk->session_expand_pending))
+    {
+      u32 len = pool_len (wrk->sessions);
+      if (si < len && pool_is_free_index (wrk->sessions, si))
+	return 0;
+      else if (si > len && si >= vec_len (wrk->sessions_expand))
+	return 0;
+    }
+  else if (pool_is_free_index (wrk->sessions, si))
     return 0;
 
-  ASSERT (session_is_valid (si, thread_index));
-  return pool_elt_at_index (session_main.wrk[thread_index].sessions, si);
+  return session_get (si, thread_index);
+  //  ASSERT (session_is_valid (si, thread_index));
+  //  return pool_elt_at_index (session_main.wrk[thread_index].sessions, si);
 }
 
 always_inline session_t *
 session_get_from_handle (session_handle_t handle)
 {
-  session_main_t *smm = &session_main;
+  //  session_main_t *smm = &session_main;
   u32 session_index, thread_index;
   session_parse_handle (handle, &session_index, &thread_index);
-  return pool_elt_at_index (smm->wrk[thread_index].sessions, session_index);
+  //  return pool_elt_at_index (smm->wrk[thread_index].sessions,
+  //  session_index);
+  return session_get (session_index, thread_index);
 }
 
 always_inline session_t *
@@ -386,22 +422,22 @@ u64 session_segment_handle (session_t * s);
  * NOTE: Avoid using pool_elt_at_index while the lock is held because
  * it may lead to free elt bitmap expansion/contraction!
  */
-always_inline void
-session_pool_add_peeker (u32 thread_index)
-{
-  session_worker_t *wrk = &session_main.wrk[thread_index];
-  if (thread_index == vlib_get_thread_index ())
-    return;
-  clib_rwlock_reader_lock (&wrk->peekers_rw_locks);
-}
+// always_inline void
+// session_pool_add_peeker (u32 thread_index)
+//{
+//  session_worker_t *wrk = &session_main.wrk[thread_index];
+//  if (thread_index == vlib_get_thread_index ())
+//    return;
+//  clib_rwlock_reader_lock (&wrk->peekers_rw_locks);
+//}
 
 always_inline void
 session_pool_remove_peeker (u32 thread_index)
 {
-  session_worker_t *wrk = &session_main.wrk[thread_index];
-  if (thread_index == vlib_get_thread_index ())
-    return;
-  clib_rwlock_reader_unlock (&wrk->peekers_rw_locks);
+  //  session_worker_t *wrk = &session_main.wrk[thread_index];
+  //  if (thread_index == vlib_get_thread_index ())
+  //    return;
+  //  clib_rwlock_reader_unlock (&wrk->peekers_rw_locks);
 }
 
 /**
@@ -412,20 +448,21 @@ session_pool_remove_peeker (u32 thread_index)
 always_inline session_t *
 session_get_from_handle_safe (u64 handle)
 {
-  u32 thread_index = session_thread_from_handle (handle);
-  session_worker_t *wrk = &session_main.wrk[thread_index];
-
-  if (thread_index == vlib_get_thread_index ())
-    {
-      return pool_elt_at_index (wrk->sessions,
-				session_index_from_handle (handle));
-    }
-  else
-    {
-      session_pool_add_peeker (thread_index);
-      /* Don't use pool_elt_at index. See @ref session_pool_add_peeker */
-      return wrk->sessions + session_index_from_handle (handle);
-    }
+  return session_get_from_handle (handle);
+  //  u32 thread_index = session_thread_from_handle (handle);
+  //  session_worker_t *wrk = &session_main.wrk[thread_index];
+  //
+  //  if (thread_index == vlib_get_thread_index ())
+  //    {
+  //      return pool_elt_at_index (wrk->sessions,
+  //				session_index_from_handle (handle));
+  //    }
+  //  else
+  //    {
+  //      session_pool_add_peeker (thread_index);
+  //      /* Don't use pool_elt_at index. See @ref session_pool_add_peeker */
+  //      return wrk->sessions + session_index_from_handle (handle);
+  //    }
 }
 
 always_inline u32
@@ -437,21 +474,23 @@ session_get_index (session_t * s)
 always_inline session_t *
 session_clone_safe (u32 session_index, u32 thread_index)
 {
+  u32 current_thread_index = vlib_get_thread_index (), new_index;
   session_t *old_s, *new_s;
-  u32 current_thread_index = vlib_get_thread_index ();
 
   /* If during the memcpy pool is reallocated AND the memory allocator
    * decides to give the old chunk of memory to somebody in a hurry to
    * scribble something on it, we have a problem. So add this thread as
    * a session pool peeker.
    */
-  session_pool_add_peeker (thread_index);
+  //  session_pool_add_peeker (thread_index);
   new_s = session_alloc (current_thread_index);
+  new_index = new_s->session_index;
   old_s = session_main.wrk[thread_index].sessions + session_index;
   clib_memcpy_fast (new_s, old_s, sizeof (*new_s));
   session_pool_remove_peeker (thread_index);
   new_s->thread_index = current_thread_index;
-  new_s->session_index = session_get_index (new_s);
+  //  new_s->session_index = session_get_index (new_s);
+  new_s->session_index = new_index;
   return new_s;
 }
 
@@ -682,11 +721,12 @@ ho_session_alloc (void)
    * the sessions pool, e.g., session_half_open_migrate_notify, and as a
    * result crash while validating the session. To avoid this, grow the bitmap
    * now. */
-  if (CLIB_DEBUG)
-    {
-      session_t *sp = session_main.wrk[0].sessions;
-      clib_bitmap_validate (pool_header (sp)->free_bitmap, s->session_index);
-    }
+  //  if (CLIB_DEBUG)
+  //    {
+  //      session_t *sp = session_main.wrk[0].sessions;
+  //      clib_bitmap_validate (pool_header (sp)->free_bitmap,
+  //      s->session_index);
+  //    }
   return s;
 }
 
