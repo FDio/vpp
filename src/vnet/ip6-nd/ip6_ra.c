@@ -1391,9 +1391,6 @@ ip6_ra_link_enable (u32 sw_if_index)
   radv_info->initial_adverts_sent = radv_info->initial_adverts_count - 1;
   radv_info->initial_adverts_interval = MAX_INITIAL_RTR_ADVERT_INTERVAL;
 
-  /* deafult is to send */
-  radv_info->send_radv = 1;
-
   /* fill in delegate for this interface that will be needed later */
   radv_info->adv_link_mtu =
     vnet_sw_interface_get_mtu (vnet_get_main (), sw_if_index, VNET_MTU_IP6);

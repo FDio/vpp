@@ -676,6 +676,8 @@ class TestIPv6(TestIPv6ND):
         Test scenario:
         """
 
+        self.pg0.ip6_ra_config(no=1, suppress=1)
+
         #
         # Before we begin change the IPv6 RA responses to use the unicast
         # address - that way we will not confuse them with the periodic
@@ -771,7 +773,7 @@ class TestIPv6(TestIPv6ND):
         # If we happen to pick up the periodic RA at this point then so be it,
         # it's not an error.
         #
-        self.pg0.ip6_ra_config(send_unicast=1, suppress=0)
+        self.pg0.ip6_ra_config(send_unicast=1)
         p = (Ether(dst=dmac, src=self.pg0.remote_mac) /
              IPv6(dst="ff02::2", src="::") /
              ICMPv6ND_RS())
@@ -979,7 +981,8 @@ class TestIPv6(TestIPv6ND):
         #
         # Reset the periodic advertisements back to default values
         #
-        self.pg0.ip6_ra_config(no=1, suppress=1, send_unicast=0)
+        self.pg0.ip6_ra_config(suppress=1)
+        self.pg0.ip6_ra_config(no=1, send_unicast=1)
 
     def test_mld(self):
         """ MLD Report """
