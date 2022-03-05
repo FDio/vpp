@@ -1471,11 +1471,12 @@ session_tx_fifo_dequeue_internal (session_worker_t * wrk,
 always_inline session_t *
 session_event_get_session (session_worker_t * wrk, session_event_t * e)
 {
-  if (PREDICT_FALSE (pool_is_free_index (wrk->sessions, e->session_index)))
-    return 0;
-
-  ASSERT (session_is_valid (e->session_index, wrk->vm->thread_index));
-  return pool_elt_at_index (wrk->sessions, e->session_index);
+  return session_worker_get_session (wrk, e->session_index);
+//  if (PREDICT_FALSE (pool_is_free_index (wrk->sessions, e->session_index)))
+//    return 0;
+//
+//  ASSERT (session_is_valid (e->session_index, wrk->vm->thread_index));
+//  return pool_elt_at_index (wrk->sessions, e->session_index);
 }
 
 always_inline void

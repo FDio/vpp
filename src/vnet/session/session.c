@@ -197,27 +197,76 @@ session_program_transport_ctrl_evt (session_t * s, session_evt_type_t evt)
     session_send_ctrl_evt_to_thread (s, evt);
 }
 
+static void
+session_realloc_pool (void *rpc_args)
+{
+  u32 thread_index, len, pending_len;
+  session_worker_t *wrk;
+  vlib_main_t *vm;
+  session_t *s;
+
+  thread_index = pointer_to_uword (rpc_args);
+  wrk = &session_main.wrk[thread_index];
+  vm = wrk->vm;
+
+  vlib_worker_thread_barrier_sync (vm);
+
+  len = pool_len (wrk->sessions);
+  pending_len = vec_len (wrk->sessions_expand);
+
+  /* Grow pool to at least double the previous size */
+  pool_alloc (wrk->sessions, clib_min (len, 2 * pending_len));
+
+  /* Copy pending elements and make sure indices are marked as not free */
+  clib_memcpy_fast (&wrk->sessions[len], wrk->sessions_expand, pending_len);
+
+  pool_header_t *ph = pool_header (wrk->sessions);
+  vec_foreach (s, wrk->sessions_expand)
+    ph->free_bitmap = clib_bitmap_andnoti_notrim (ph->free_bitmap,
+	                                          s->session_index);
+
+  wrk->session_expand_pending = 0;
+  vec_reset_length (wrk->sessions_expand);
+
+  vlib_worker_thread_barrier_release (vm);
+}
+
 session_t *
 session_alloc (u32 thread_index)
 {
   session_worker_t *wrk = &session_main.wrk[thread_index];
   session_t *s;
   u8 will_expand = 0;
+
   pool_get_aligned_will_expand (wrk->sessions, will_expand,
 				CLIB_CACHE_LINE_BYTES);
-  /* If we have peekers, let them finish */
-  if (PREDICT_FALSE (will_expand && vlib_num_workers ()))
+
+  /* If about to realloc, allocate session in vector and ask main
+   * to do the reallocation with a worker barrier */
+  if (PREDICT_FALSE (will_expand))
     {
-      clib_rwlock_writer_lock (&wrk->peekers_rw_locks);
-      pool_get_aligned (wrk->sessions, s, CLIB_CACHE_LINE_BYTES);
-      clib_rwlock_writer_unlock (&wrk->peekers_rw_locks);
+      vec_add2 (wrk->sessions_expand, s, 1);
+      clib_memset (s, 0, sizeof (*s));
+      s->session_index = pool_len (wrk->sessions) + (s - wrk->sessions_expand);
+
+      wrk->session_expand_pending = 1;
+      session_send_rpc_evt_to_thread_force (
+	0 /* thread index */, session_realloc_pool,
+	uword_to_pointer (thread_index, void *));
     }
+//  /* If we have peekers, let them finish */
+//  if (PREDICT_FALSE (will_expand && vlib_num_workers ()))
+//    {
+//      clib_rwlock_writer_lock (&wrk->peekers_rw_locks);
+//      pool_get_aligned (wrk->sessions, s, CLIB_CACHE_LINE_BYTES);
+//      clib_rwlock_writer_unlock (&wrk->peekers_rw_locks);
+//    }
   else
     {
       pool_get_aligned (wrk->sessions, s, CLIB_CACHE_LINE_BYTES);
+      clib_memset (s, 0, sizeof (*s));
+      s->session_index = s - wrk->sessions;
     }
-  clib_memset (s, 0, sizeof (*s));
-  s->session_index = s - wrk->sessions;
   s->thread_index = thread_index;
   s->app_index = APP_INVALID_INDEX;
   return s;
@@ -226,6 +275,9 @@ session_alloc (u32 thread_index)
 void
 session_free (session_t * s)
 {
+  if (session_main.wrk[s->thread_index].session_expand_pending)
+    os_panic ();
+
   if (CLIB_DEBUG)
     {
       u8 thread_index = s->thread_index;
@@ -240,10 +292,26 @@ session_free (session_t * s)
 u8
 session_is_valid (u32 si, u8 thread_index)
 {
-  session_t *s;
+  session_worker_t *wrk = session_main_get_worker (thread_index);
   transport_connection_t *tc;
+  session_t *s;
 
-  s = pool_elt_at_index (session_main.wrk[thread_index].sessions, si);
+  /* If peeking from another thread, do not check pool bitmap */
+  if (vlib_get_thread_index () == thread_index)
+    {
+      if (wrk->session_expand_pending)
+	{
+	  u32 len = pool_len (wrk->sessions);
+	  if (si < len)
+	    s = pool_elt_at_index (wrk->sessions, si);
+	  else
+	    s = vec_elt_at_index (wrk->sessions_expand, si - len);
+	}
+      else
+	s = pool_elt_at_index (wrk->sessions, si);
+    }
+  else
+    s = session_main.wrk[thread_index].sessions + si;
 
   if (s->thread_index != thread_index || s->session_index != si)
     return 0;
@@ -1902,8 +1970,8 @@ session_manager_main_enable (vlib_main_t * vm)
       wrk->timerfd = -1;
       vec_validate (wrk->session_to_enqueue, smm->last_transport_proto_type);
 
-      if (num_threads > 1)
-	clib_rwlock_init (&smm->wrk[i].peekers_rw_locks);
+//      if (num_threads > 1)
+//	clib_rwlock_init (&smm->wrk[i].peekers_rw_locks);
 
       if (!smm->no_adaptive && smm->use_private_rx_mqs)
 	session_wrk_enable_adaptive_mode (wrk);
