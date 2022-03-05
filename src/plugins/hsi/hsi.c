@@ -87,7 +87,7 @@ hsi_udp_lookup (vlib_buffer_t *b, void *ip_hdr, u8 is_ip4)
 
   if (s)
     {
-      session_pool_remove_peeker (s->thread_index);
+      //      session_pool_remove_peeker (s->thread_index);
       return 1;
     }
 
