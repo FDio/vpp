@@ -536,24 +536,20 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 						   payload, payload_len, 0);
     }
 
-  if (sa->integ_op_id)
-    {
-      integ_start_offset = crypto_start_offset - iv_sz - sizeof (esp_header_t);
-      integ_total_len += iv_sz + sizeof (esp_header_t);
+  integ_start_offset = crypto_start_offset - iv_sz - sizeof (esp_header_t);
+  integ_total_len += iv_sz + sizeof (esp_header_t);
 
-      if (b != lb)
-	{
-	  integ_total_len = esp_encrypt_chain_integ (
-	    vm, ptd, sa, b, lb, icv_sz,
-	    payload - iv_sz - sizeof (esp_header_t),
-	    payload_len + iv_sz + sizeof (esp_header_t), tag, 0);
-	}
+  if (b != lb)
+    {
+      integ_total_len = esp_encrypt_chain_integ (
+	vm, ptd, sa, b, lb, icv_sz, payload - iv_sz - sizeof (esp_header_t),
+	payload_len + iv_sz + sizeof (esp_header_t), tag, 0);
+    }
       else if (ipsec_sa_is_set_USE_ESN (sa))
 	{
 	  u32 seq_hi = clib_net_to_host_u32 (sa->seq_hi);
 	  clib_memcpy_fast (tag, &seq_hi, sizeof (seq_hi));
 	  integ_total_len += sizeof (seq_hi);
-	}
     }
 
   /* this always succeeds because we know the frame is not full */
