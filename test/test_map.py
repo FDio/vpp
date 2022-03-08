@@ -388,7 +388,8 @@ class TestMAP(VppTestCase):
         self.pg_send(self.pg0, v4*1)
         rx = self.pg1.get_capture(2)
 
-        frags = fragment_rfc791(v4[1], 1000)
+        # 1000-sizeof(ip6_header_t) = 960.
+        frags = fragment_rfc791(v4[1], 960)
         frags[0].id = 0
         frags[1].id = 0
         frags[0].ttl -= 1
