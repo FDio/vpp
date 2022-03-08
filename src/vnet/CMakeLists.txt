@@ -1089,6 +1089,7 @@ list(APPEND VNET_HEADERS
   session/mma_template.c
   session/mma_16.h
   session/mma_40.h
+  session/mrpool.h
 )
 
 list(APPEND VNET_API_FILES session/session.api)
