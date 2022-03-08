@@ -95,7 +95,7 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
 {
   vlib_buffer_t *from_b;
   ip4_header_t *ip4;
-  u16 len, max, rem, ip_frag_id, ip_frag_offset;
+  u16 len, max, rem, ip_frag_id, ip_frag_offset, head_bytes;
   u8 *org_from_packet, more;
 
   from_b = vlib_get_buffer (vm, from_bi);
@@ -103,9 +103,9 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
   ip4 = vlib_buffer_get_current (from_b) + l2unfragmentablesize;
 
   rem = clib_net_to_host_u16 (ip4->length) - sizeof (ip4_header_t);
-  max =
-    (clib_min (mtu, vlib_buffer_get_default_data_size (vm)) -
-     sizeof (ip4_header_t)) & ~0x7;
+  head_bytes = sizeof (ip4_header_t) + l2unfragmentablesize;
+  max = (clib_min (mtu, vlib_buffer_get_default_data_size (vm)) - head_bytes) &
+	~0x7;
 
   if (rem >
       (vlib_buffer_length_in_chain (vm, from_b) - sizeof (ip4_header_t)))
@@ -142,8 +142,7 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
   u8 *from_data = (void *) (ip4 + 1);
   vlib_buffer_t *org_from_b = from_b;
   u16 fo = 0;
-  u16 left_in_from_buffer =
-    from_b->current_length - (l2unfragmentablesize + sizeof (ip4_header_t));
+  u16 left_in_from_buffer = from_b->current_length - head_bytes;
   u16 ptr = 0;
 
   /* Do the actual fragmentation */
@@ -166,8 +165,7 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
 
       /* Copy ip4 header */
       to_data = vlib_buffer_get_current (to_b);
-      clib_memcpy_fast (to_data, org_from_packet,
-			l2unfragmentablesize + sizeof (ip4_header_t));
+      clib_memcpy_fast (to_data, org_from_packet, head_bytes);
       to_ip4 = (ip4_header_t *) (to_data + l2unfragmentablesize);
       to_data = (void *) (to_ip4 + 1);
       vnet_buffer (to_b)->l3_hdr_offset = to_b->current_data;
@@ -213,8 +211,7 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
 	}
 
       to_b->flags |= VNET_BUFFER_F_IS_IP4;
-      to_b->current_length =
-	len + sizeof (ip4_header_t) + l2unfragmentablesize;
+      to_b->current_length = len + head_bytes;
 
       to_ip4->fragment_id = ip_frag_id;
       to_ip4->flags_and_fragment_offset =
