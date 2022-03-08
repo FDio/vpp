@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "0.0.2";
+option version = "0.0.3";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
@@ -29,7 +29,7 @@ define flow_add
   u32 client_index;
   u32 context;
   vl_api_flow_rule_t flow;
-  option vat_help = "test flow add [src-ip <ip-addr/mask>] [dst-ip <ip-addr/mask>] [src-port <port/mask>] [dst-port <port/mask>] [proto <ip-proto>]";
+  option vat_help = "test flow add [src-ip <ip-addr/mask>] [dst-ip <ip-addr/mask>] [src-port <port/mask>] [dst-port <port/mask>] [proto <ip-proto>] [spec <spec-string>] [mask <mask-string>]";
 };
 
 /** \brief reply for adding flow
