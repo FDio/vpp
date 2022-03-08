@@ -13,7 +13,7 @@ from scapy.layers.l2 import Ether
 from scapy.packet import Raw
 from syslog_rfc5424_parser import SyslogMessage, ParseError
 from syslog_rfc5424_parser.constants import SyslogSeverity
-from util import ppp, ip4_range
+from util import ppp, pr, ip4_range
 from vpp_acl import AclRule, VppAcl, VppAclInterface
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_papi import VppEnum
@@ -944,30 +944,35 @@ class TestNAT44ED(VppTestCase):
         self.nat_add_outside_interface(self.pg1)
 
         # in2out (initiate connection)
-        p1 = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+        p1 = [Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
               IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
-              UDP(sport=21, dport=20) / payload)
+              UDP(sport=21, dport=20) / payload,
+              Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+              TCP(sport=21, dport=20, flags="S") / payload,
+              Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+              ICMP(type='echo-request', id=7777) / payload,
+              ]
 
-        self.pg0.add_stream(p1)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        capture = self.pg1.get_capture(1)[0]
+        capture = self.send_and_expect(self.pg0, p1, self.pg1)
 
         # out2in (send error message)
-        p2 = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+        p2 = [Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
               IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
               ICMP(type='dest-unreach', code='port-unreachable') /
-              capture[IP:])
+              c[IP:]
+              for c in capture]
 
-        self.pg1.add_stream(p2)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
+        capture = self.send_and_expect(self.pg1, p2, self.pg0)
 
-        capture = self.pg0.get_capture(1)[0]
-
-        self.logger.info(ppp("p1 packet:", p1))
-        self.logger.info(ppp("p2 packet:", p2))
-        self.logger.info(ppp("capture packet:", capture))
+        for c in capture:
+            try:
+                assert c[IP].dst == self.pg0.remote_ip4
+                assert c[IPerror].src == self.pg0.remote_ip4
+            except AssertionError as a:
+                raise AssertionError(
+                    f"Packet {pr(c)} not translated properly") from a
 
     def test_icmp_echo_reply_trailer(self):
         """ ICMP echo reply with ethernet trailer"""
