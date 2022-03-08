@@ -34,6 +34,7 @@ enum flow_type
   FLOW_TYPE_IP6_VXLAN,
   FLOW_TYPE_IP4_GTPC,
   FLOW_TYPE_IP4_GTPU,
+  FLOW_TYPE_GENERIC,
 };
 
 enum flow_action
@@ -43,7 +44,14 @@ enum flow_action
   FLOW_ACTION_BUFFER_ADVANCE = 4,
   FLOW_ACTION_REDIRECT_TO_NODE = 8,
   FLOW_ACTION_REDIRECT_TO_QUEUE = 16,
+  FLOW_ACTION_REDIRECT_RSS = 32,
   FLOW_ACTION_DROP = 64,
+};
+
+typedef generic_pattern
+{
+  u8 spec[1024];
+  u8 mask[1024];
 };
 
 typedef ip_port_and_mask
@@ -193,6 +201,12 @@ typedef flow_ip4_gtpu
   u32 teid;
 };
 
+typedef flow_generic
+{
+  i32 foo;
+  vl_api_generic_pattern_t pattern;
+};
+
 union flow
 {
   vl_api_flow_ethernet_t ethernet;
@@ -209,6 +223,25 @@ union flow
   vl_api_flow_ip6_vxlan_t ip6_vxlan;
   vl_api_flow_ip4_gtpc_t ip4_gtpc;
   vl_api_flow_ip4_gtpu_t ip4_gtpu;
+};
+
+union flow_v2
+{
+  vl_api_flow_ethernet_t ethernet;
+  vl_api_flow_ip4_t ip4;
+  vl_api_flow_ip6_t ip6;
+  vl_api_flow_ip4_l2tpv3oip_t ip4_l2tpv3oip;
+  vl_api_flow_ip4_ipsec_esp_t ip4_ipsec_esp;
+  vl_api_flow_ip4_ipsec_ah_t ip4_ipsec_ah;
+  vl_api_flow_ip4_n_tuple_t ip4_n_tuple;
+  vl_api_flow_ip6_n_tuple_t ip6_n_tuple;
+  vl_api_flow_ip4_n_tuple_tagged_t ip4_n_tuple_tagged;
+  vl_api_flow_ip6_n_tuple_tagged_t ip6_n_tuple_tagged;
+  vl_api_flow_ip4_vxlan_t ip4_vxlan;
+  vl_api_flow_ip6_vxlan_t ip6_vxlan;
+  vl_api_flow_ip4_gtpc_t ip4_gtpc;
+  vl_api_flow_ip4_gtpu_t ip4_gtpu;
+  vl_api_flow_generic_t generic;
 };
 
 /* main flow struct */
@@ -240,3 +273,31 @@ typedef flow_rule
   vl_api_flow_t flow;
 };
 
+/* main flow struct */
+typedef flow_rule_v2
+{
+  /* flow type */
+  vl_api_flow_type_t type;
+
+  /* flow index */
+  u32 index;
+
+  /* bitmap of flow actions (FLOW_ACTION_*) */
+  vl_api_flow_action_t actions;
+
+  /* flow id for VNET_FLOW_ACTION_MARK */
+  u32 mark_flow_id;
+
+  /* node index and next index for FLOW_ACTION_REDIRECT_TO_NODE */
+  u32 redirect_node_index;
+  u32 redirect_device_input_next_index;
+
+  /* queue for FLOW_ACTION_REDIRECT_TO_QUEUE */
+  u32 redirect_queue;
+
+  /* buffer offset for FLOW_ACTION_BUFFER_ADVANCE */
+  i32 buffer_advance;
+
+  /* flow enum */
+  vl_api_flow_v2_t flow;
+};
