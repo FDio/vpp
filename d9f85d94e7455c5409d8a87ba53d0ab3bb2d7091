@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "65571dd3_c2cbb1ec",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 539,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-03-08T11:01:41Z",
+      "side": 1,
+      "message": "For AEAD algorithm removing this check will result integ_start_offset always invalid. You may argue the crypto engine shall take care of that but let\u0027s keep the check for sanity reason.",
+      "revId": "d9f85d94e7455c5409d8a87ba53d0ab3bb2d7091",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
