@@ -215,6 +215,16 @@ ipv4_gtpc_flow_convert (vl_api_flow_ip4_gtpc_t * vl_api_flow,
   f->teid = ntohl (vl_api_flow->teid);
 }
 
+static inline void
+generic_flow_convert (vl_api_flow_generic_t *vl_api_flow,
+		      vnet_flow_generic_t *f)
+{
+  clib_memcpy (f->pattern.spec, vl_api_flow->pattern.spec,
+	       sizeof (vl_api_flow->pattern.spec));
+  clib_memcpy (f->pattern.mask, vl_api_flow->pattern.mask,
+	       sizeof (vl_api_flow->pattern.mask));
+}
+
 static void
 vl_api_flow_add_t_handler (vl_api_flow_add_t * mp)
 {
@@ -234,6 +244,10 @@ vl_api_flow_add_t_handler (vl_api_flow_add_t * mp)
     ntohl (f->redirect_device_input_next_index);
   flow.redirect_queue = ntohl (f->redirect_queue);
   flow.buffer_advance = ntohl (f->buffer_advance);
+  flow.queue_index = ntohl (f->queue_index);
+  flow.queue_num = ntohl (f->queue_num);
+  flow.rss_types = ntohl (f->rss_types);
+  flow.rss_fun = ntohl (f->rss_fun);
 
   switch (flow.type)
     {
@@ -279,6 +293,9 @@ vl_api_flow_add_t_handler (vl_api_flow_add_t * mp)
       break;
     case VNET_FLOW_TYPE_IP4_GTPC:
       ipv4_gtpc_flow_convert (&f->flow.ip4_gtpc, &flow.ip4_gtpc);
+      break;
+    case VNET_FLOW_TYPE_GENERIC:
+      generic_flow_convert (&f->flow.generic, &flow.generic);
       break;
     default:
       rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
