@@ -601,8 +601,6 @@ bfd_udp_validate_api_input (u32 sw_if_index,
   bfd_udp_main_t *bum = &bfd_udp_main;
   vnet_sw_interface_t *sw_if =
     vnet_get_sw_interface_or_null (bfd_udp_main.vnet_main, sw_if_index);
-  u8 local_ip_valid = 0;
-  ip_interface_address_t *ia = NULL;
   if (!sw_if)
     {
       vlib_log_err (bum->log_class,
@@ -618,21 +616,6 @@ bfd_udp_validate_api_input (u32 sw_if_index,
 			"IP family mismatch (local is ipv4, peer is ipv6)");
 	  return VNET_API_ERROR_INVALID_ARGUMENT;
 	}
-      ip4_main_t *im = &ip4_main;
-
-      /* *INDENT-OFF* */
-      foreach_ip_interface_address (
-          &im->lookup_main, ia, sw_if_index, 0 /* honor unnumbered */, ({
-            ip4_address_t *x =
-                ip_interface_address_get_address (&im->lookup_main, ia);
-            if (x->as_u32 == local_addr->ip4.as_u32)
-              {
-                /* valid address for this interface */
-                local_ip_valid = 1;
-                break;
-              }
-          }));
-      /* *INDENT-ON* */
     }
   else
     {
@@ -642,44 +625,6 @@ bfd_udp_validate_api_input (u32 sw_if_index,
 			"IP family mismatch (local is ipv6, peer is ipv4)");
 	  return VNET_API_ERROR_INVALID_ARGUMENT;
 	}
-
-      if (ip6_address_is_link_local_unicast (&local_addr->ip6))
-	{
-	  const ip6_address_t *ll_addr;
-	  ll_addr = ip6_get_link_local_address (sw_if_index);
-	  if (ll_addr && ip6_address_is_equal (ll_addr, &local_addr->ip6))
-	    {
-	      /* valid address for this interface */
-	      local_ip_valid = 1;
-	    }
-	}
-      else
-	{
-	  ip6_main_t *im = &ip6_main;
-	  /* *INDENT-OFF* */
-	  foreach_ip_interface_address (
-	      &im->lookup_main, ia, sw_if_index, 0 /* honor unnumbered */, ({
-	        ip6_address_t *x =
-	            ip_interface_address_get_address (&im->lookup_main, ia);
-	        if (local_addr->ip6.as_u64[0] == x->as_u64[0] &&
-	            local_addr->ip6.as_u64[1] == x->as_u64[1])
-	          {
-	            /* valid address for this interface */
-	            local_ip_valid = 1;
-	            break;
-	          }
-	      }));
-	  /* *INDENT-ON* */
-	}
-    }
-
-  if (!local_ip_valid)
-    {
-      vlib_log_err (bum->log_class,
-		    "local address %U not found on interface with index %u",
-		    format_ip46_address, local_addr, IP46_TYPE_ANY,
-		    sw_if_index);
-      return VNET_API_ERROR_ADDRESS_NOT_FOUND_FOR_INTERFACE;
     }
 
   return 0;
