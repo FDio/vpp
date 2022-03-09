@@ -34,6 +34,24 @@
       "revId": "c88dbf18eb7f7d63ff52aa753d07e26c89128f4b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f39fdd00_3053f758",
+        "filename": "src/vlibmemory/memclnt_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2022-03-09T11:51:32Z",
+      "side": 1,
+      "message": "That\u0027s not quite how I read:\nhttps://en.cppreference.com/w/c/string/byte/strcpy\n\nWouldn\u0027t the constraints handler be called?\n\"destsz is less or equal strnlen_s(src, destsz); in other words, truncation would occur\"",
+      "parentUuid": "85057bc5_dd3e943e",
+      "revId": "c88dbf18eb7f7d63ff52aa753d07e26c89128f4b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
