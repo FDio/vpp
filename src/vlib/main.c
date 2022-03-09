@@ -1887,6 +1887,12 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
       goto done;
     }
 
+  if ((error = vlib_log_init (vm)))
+    {
+      clib_error_report (error);
+      goto done;
+    }
+
   if ((error = vlib_stats_init (vm)))
     {
       clib_error_report (error);

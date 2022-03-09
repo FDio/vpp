@@ -117,6 +117,7 @@ typedef struct
 
 extern vlib_log_main_t log_main;
 
+clib_error_t *vlib_log_init (struct vlib_main_t *vm);
 vlib_log_class_t vlib_log_register_class (char *vlass, char *subclass);
 vlib_log_class_t
 vlib_log_register_class_rate_limit (char *class, char *subclass,
