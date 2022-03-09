@@ -22,6 +22,7 @@
 
 static prom_main_t prom_main;
 
+#if 0
 static u8 *
 make_stat_name (char *name)
 {
@@ -148,13 +149,13 @@ dump_name_vector (stat_segment_data_t *res, u8 *s, u8 used_only)
 
   return s;
 }
+#endif
 
 static u8 *
 scrape_stats_segment (u8 *s, u8 **patterns, u8 used_only)
 {
   stat_segment_data_t *res;
   static u32 *stats = 0;
-  int i;
 
   stats = stat_segment_ls (patterns);
 
@@ -168,7 +169,8 @@ retry:
       goto retry;
     }
 
-  for (i = 0; i < vec_len (res); i++)
+#if 0
+  for (int i = 0; i < vec_len (res); i++)
     {
       switch (res[i].type)
 	{
@@ -200,6 +202,7 @@ retry:
 	}
     }
   stat_segment_data_free (res);
+#endif
 
   return s;
 }

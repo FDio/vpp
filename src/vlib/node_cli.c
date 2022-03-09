@@ -676,8 +676,9 @@ clear_node_runtime (vlib_main_t * vm,
       nm->time_last_runtime_stats_clear = vlib_time_now (vm);
     }
 
-  vlib_stats_set_timestamp (STAT_COUNTER_LAST_STATS_CLEAR,
-			    vm->node_main.time_last_runtime_stats_clear);
+  vlib_stats_set_epoch (STAT_COUNTER_LAST_STATS_CLEAR,
+			vm->node_main.time_last_runtime_stats_clear +
+			  vm->clib_time.init_reference_time);
   vlib_worker_thread_barrier_release (vm);
 
   vec_free (stat_vms);

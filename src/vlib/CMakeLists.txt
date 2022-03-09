@@ -90,6 +90,7 @@ add_vpp_library(vlib
   punt_node.c
   stats/cli.c
   stats/collector.c
+  stats/data_types.c
   stats/format.c
   stats/init.c
   stats/provider_mem.c
