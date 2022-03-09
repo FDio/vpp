@@ -16,6 +16,24 @@
       "revId": "9b3a9064eacf43d165e7f97978318b0e04d56eab",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3fce4d7e_8a29ca77",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1368,
+      "author": {
+        "id": 1737
+      },
+      "writtenOn": "2022-03-09T01:41:22Z",
+      "side": 1,
+      "message": "5: /home/dev/code/net-base/.vpp-22.02-rc0/src/vnet/ipsec/ipsec_sa.h:648 (ipsec_sa_get) assertion `! pool_is_free (ipsec_sa_pool, _e)\u0027 fails\n\nProgram received signal SIGABRT, Aborted.\n[Switching to Thread 0x7ff27dde1700 (LWP 799)]\n0x00007ffff38431f7 in raise () from /lib64/libc.so.6\nMissing separate debuginfos, use: debuginfo-install glibc-2.17-196.el7.x86_64 libgcc-4.8.5-16.el7.x86_64 libstdc++-4.8.5-16.el7.x86_64 libuuid-2.23.2-43.el7.x86_64\n(gdb) bt\n#0  0x00007ffff38431f7 in raise () from /lib64/libc.so.6\n#1  0x00007ffff38448e8 in abort () from /lib64/libc.so.6\n#2  0x000000000040b31b in os_panic () at /home/dev/code/net-base/.vpp-22.02-rc0/src/vpp/vnet/main.c:413\n#3  0x00007ffff3f491fb in debugger () at /home/dev/code/net-base/.vpp-22.02-rc0/src/vppinfra/error.c:84\n#4  0x00007ffff3f498d1 in _clib_error (how_to_die\u003d2, function_name\u003d0x0, line_number\u003d0, fmt\u003d0x7ffff6a391c0 \"%s:%d (%s) assertion `%s\u0027 fails\") at /home/dev/code/net-base/.vpp-22.02-rc0/src/vppinfra/error.c:143\n#5  0x00007ffff57a6500 in ipsec_sa_get (sa_index\u003d17096) at /home/dev/code/net-base/.vpp-22.02-rc0/src/vnet/ipsec/ipsec_sa.h:648\n#6  0x00007ffff57ad0af in esp_decrypt_post_crypto (vm\u003d0x7fff3c984dc0, node\u003d0x7fff407d8780, pd\u003d0x7ffe8c832068, pd2\u003d0x0, b\u003d0x7ffe8c832040, next\u003d0x7ff27cc80050, is_ip6\u003d0, is_tun\u003d0, is_async\u003d1) at /home/dev/code/net-base/.vpp-22.02-rc0/src/vnet/ipsec/esp_decrypt.c:757\n#7  0x00007ffff57b2e5b in esp_decrypt_post_inline (vm\u003d0x7fff3c984dc0, node\u003d0x7fff407d8780, from_frame\u003d0x7fff406b9f00, is_ip6\u003d0, is_tun\u003d0) at /home/dev/code/net-base/.vpp-22.02-rc0/src/vnet/ipsec/esp_decrypt.c:1369\n#8  0x00007ffff57b3680 in esp4_decrypt_post_node_fn (vm\u003d0x7fff3c984dc0, node\u003d0x7fff407d8780, from_frame\u003d0x7fff406b9f00) at /home/dev/code/net-base/.vpp-22.02-rc0/src/vnet/ipsec/esp_decrypt.c:1421\n#9  0x00007ffff4799935 in dispatch_node (vm\u003d0x7fff3c984dc0, node\u003d0x7fff407d8780, type\u003dVLIB_NODE_TYPE_INTERNAL, dispatch_state\u003dVLIB_NODE_STATE_POLLING, frame\u003d0x7fff406b9f00, last_time_stamp\u003d439961428383198) at /home/dev/code/net-base/.vpp-22.02-rc0/src/vlib/main.c:1024\n#10 0x00007ffff479ad9f in dispatch_pending_node (vm\u003d0x7fff3c984dc0, pending_frame_index\u003d2, last_time_stamp\u003d439961428383198) at /home/dev/code/net-base/.vpp-22.02-rc0/src/vlib/main.c:1183\n#11 0x00007ffff479ec7c in vlib_main_or_worker_loop (vm\u003d0x7fff3c984dc0, is_main\u003d0) at /home/dev/code/net-base/.vpp-22.02-rc0/src/vlib/main.c:1649\n#12 0x00007ffff47a0444 in vlib_worker_loop (vm\u003d0x7fff3c984dc0) at /home/dev/code/net-base/.vpp-22.02-rc0/src/vlib/main.c:1783\n#13 0x00007ffff47f45fe in vlib_worker_thread_fn (arg\u003d0x7fff30f40640) at /home/dev/code/net-base/.vpp-22.02-rc0/src/vlib/threads.c:1551\n#14 0x00007ffff3f7378c in clib_calljmp () at /home/dev/code/net-base/.vpp-22.02-rc0/src/vppinfra/longjmp.S:123\n#15 0x00007ff27dde0c20 in ?? ()\n#16 0x00007ffff47e7ded in vlib_worker_thread_bootstrap_fn (arg\u003d0x7fff30f40640) at /home/dev/code/net-base/.vpp-22.02-rc0/src/vlib/threads.c:420\n#17 0x00007fff29958333 in eal_thread_loop (arg\u003d0x0) at ../src-dpdk/lib/eal/linux/eal_thread.c:127\n#18 0x00007ffff42ace25 in start_thread () from /lib64/libpthread.so.0\n#19 0x00007ffff390634d in clone () from /lib64/libc.so.6\n(gdb)",
+      "parentUuid": "26595540_8c002c37",
+      "revId": "9b3a9064eacf43d165e7f97978318b0e04d56eab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
