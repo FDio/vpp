@@ -16,6 +16,24 @@
       "revId": "c88dbf18eb7f7d63ff52aa753d07e26c89128f4b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "85057bc5_dd3e943e",
+        "filename": "src/vlibmemory/memclnt_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-03-09T11:00:11Z",
+      "side": 1,
+      "message": "strcpy_s will return EINVAL if there is no nul in mp-\u003ename[0..ARRAY_LEN(name)]",
+      "parentUuid": "a1327ff4_d36a92e2",
+      "revId": "c88dbf18eb7f7d63ff52aa753d07e26c89128f4b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
