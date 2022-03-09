@@ -7,39 +7,27 @@
 
 #include <vppinfra/socket.h>
 #include <vppinfra/lock.h>
+#include <vlib/log.h>
 #include <vlib/stats/shared.h>
 
 /* Default stat segment 32m */
 #define STAT_SEGMENT_DEFAULT_SIZE (32 << 20)
 
 /* Shared segment memory layout version */
-#define STAT_SEGMENT_VERSION 2
+#define STAT_SEGMENT_VERSION 3
 
-#define STAT_SEGMENT_INDEX_INVALID UINT32_MAX
+#define VLIB_STATS_INVALID_INDEX UINT32_MAX
 
 typedef enum
 {
   STAT_COUNTER_HEARTBEAT = 0,
   STAT_COUNTER_LAST_STATS_CLEAR,
-  STAT_COUNTER_NODE_CLOCKS,
-  STAT_COUNTER_NODE_VECTORS,
-  STAT_COUNTER_NODE_CALLS,
-  STAT_COUNTER_NODE_SUSPENDS,
-  STAT_COUNTER_NODE_NAMES,
   STAT_COUNTERS
 } stat_segment_counter_t;
 
-#define foreach_stat_segment_node_counter_name                                \
-  _ (NODE_CLOCKS, COUNTER_VECTOR_SIMPLE, clocks, "/sys/node")                 \
-  _ (NODE_VECTORS, COUNTER_VECTOR_SIMPLE, vectors, "/sys/node")               \
-  _ (NODE_CALLS, COUNTER_VECTOR_SIMPLE, calls, "/sys/node")                   \
-  _ (NODE_SUSPENDS, COUNTER_VECTOR_SIMPLE, suspends, "/sys/node")
-
 #define foreach_stat_segment_counter_name                                     \
-  _ (LAST_STATS_CLEAR, SCALAR_INDEX, last_stats_clear, "/sys")                \
-  _ (HEARTBEAT, SCALAR_INDEX, heartbeat, "/sys")                              \
-  _ (NODE_NAMES, NAME_VECTOR, names, "/sys/node")                             \
-  foreach_stat_segment_node_counter_name
+  _ (LAST_STATS_CLEAR, UINT64, 0, last_stats_clear, "/sys")                   \
+  _ (HEARTBEAT, UINT64, 0, heartbeat, "/sys")
 
 typedef struct
 {
@@ -69,14 +57,24 @@ typedef struct
 
 typedef struct
 {
+  char *name;
+  u32 size;
+  format_function_t *format_fn;
+} vlib_stats_data_type_info_t;
+
+extern vlib_stats_data_type_info_t
+  vlib_stats_data_types[VLIB_STATS_N_DATA_TYPES];
+
+typedef struct
+{
   /* internal, does not point to shared memory */
   vlib_stats_collector_t *collectors;
 
   /* statistics segment */
   uword *directory_vector_by_name;
   vlib_stats_entry_t *directory_vector;
+  clib_bitmap_t *used_indices;
   volatile u64 **error_vector;
-  u8 **nodes;
 
   /* Update interval */
   f64 update_interval;
@@ -88,8 +86,8 @@ typedef struct
   clib_mem_page_sz_t log2_page_sz;
   u8 node_counters_enabled;
   void *heap;
-  vlib_stats_shared_header_t
-    *shared_header; /* pointer to shared memory segment */
+  /* pointer to shared memory segment */
+  vlib_stats_shared_header_t *shared_header;
   int memfd;
 
 } vlib_stats_segment_t;
@@ -107,25 +105,35 @@ vlib_stats_get_segment ()
   return &vlib_stats_main.segment;
 }
 
+static_always_inline int
+vlib_stats_segment_is_locked ()
+{
+  vlib_stats_segment_t *sm = vlib_stats_get_segment ();
+  return sm->shared_header->in_progress != 0;
+}
+
 static_always_inline vlib_stats_entry_t *
 vlib_stats_get_entry (vlib_stats_segment_t *sm, u32 entry_index)
 {
   vlib_stats_entry_t *e;
   ASSERT (entry_index < vec_len (sm->directory_vector));
   e = sm->directory_vector + entry_index;
-  ASSERT (e->type != STAT_DIR_TYPE_EMPTY && e->type != STAT_DIR_TYPE_ILLEGAL);
+  ASSERT (e->in_use == 1);
   return e;
+}
+
+static_always_inline void *
+vlib_stats_get_entry_data_pointer (u32 entry_index)
+{
+  vlib_stats_segment_t *sm = vlib_stats_get_segment ();
+  vlib_stats_entry_t *e = vlib_stats_get_entry (sm, entry_index);
+  return e->data;
 }
 
 clib_error_t *vlib_stats_init (vlib_main_t *vm);
 void *vlib_stats_set_heap ();
-void vlib_stats_update_counter (void *, u32, stat_directory_type_t);
-void vlib_stats_register_error_index (u64 *em_vec, u64 index, char *fmt, ...);
-void vlib_stats_update_error_vector (u64 *error_vector, u32 thread_index,
-				     int lock);
 void vlib_stats_segment_lock (void);
 void vlib_stats_segment_unlock (void);
-void vlib_stats_delete_cm (void *);
 void vlib_stats_register_mem_heap (clib_mem_heap_t *);
 f64 vlib_stats_get_segment_update_rate (void);
 
@@ -133,13 +141,15 @@ f64 vlib_stats_get_segment_update_rate (void);
 u32 vlib_stats_add_gauge (char *fmt, ...);
 void vlib_stats_set_gauge (u32 entry_index, u64 value);
 
-/* timestamp */
-u32 vlib_stats_add_timestamp (char *fmt, ...);
-void vlib_stats_set_timestamp (u32 entry_index, f64 value);
+/* epoch */
+u32 vlib_stats_add_epoch (char *fmt, ...);
+void vlib_stats_set_epoch (u32 entry_index, f64 value);
+f64 vlib_stats_get_epoch (u32 entry_index);
 
 /* vector */
 u32 vlib_stats_add_counter_vector (char *fmt, ...);
-void vlib_stats_validate_counter_vector (u32 entry_index, u32 vector_index);
+void vlib_stats_validate (u32 entry_index, ...);
+void *vlib_stats_get_data_ptr (u32 entry_index, ...);
 
 /* string vector */
 u32 vlib_stats_add_string_vector (char *fmt, ...);
@@ -148,13 +158,16 @@ void vlib_stats_set_string_vector (u32 entry_index, u32 vector_index,
 
 /* symlink */
 u32 vlib_stats_add_symlink (u32 entry_index, u32 vector_index, char *fmt, ...);
-void vlib_stats_rename_symlink (u64 entry_index, char *fmt, ...);
 
 /* common to all types */
+u32 vlib_stats_add (vlib_stats_data_type_t dt, u8 dim, char *fmt, ...);
 void vlib_stats_remove_entry (u32 entry_index);
 u32 vlib_stats_find_entry_index (char *fmt, ...);
 void vlib_stats_register_collector_fn (vlib_stats_collector_reg_t *r);
 
-format_function_t format_vlib_stats_symlink;
+format_function_t format_vlib_stats_symlink_name;
+format_function_t format_vlib_stats_entry_value;
+format_function_t format_vlib_stats_entry_dim;
+unformat_function_t unformat_vlib_stats_entry_name;
 
 #endif

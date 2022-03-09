@@ -8,16 +8,25 @@
 
 #define STAT_SEGMENT_SOCKET_FILENAME "stats.sock"
 
+VLIB_REGISTER_LOG_CLASS (stats_log, static) = {
+  .class_name = "stats",
+  .subclass_name = "init",
+};
+
+#define log_debug(fmt, ...)                                                   \
+  vlib_log_debug (stats_log.class, "%s: " fmt, __func__, __VA_ARGS__)
+#define log_err(fmt, ...)  vlib_log_err (stats_log.class, fmt, __VA_ARGS__)
+#define log_warn(fmt, ...) vlib_log_warn (stats_log.class, fmt, __VA_ARGS__)
+
 static void
 vector_rate_collector_fn (vlib_stats_collector_data_t *d)
 {
   vlib_main_t *this_vlib_main;
-  counter_t **counters = d->entry->data;
-  counter_t *cb = counters[0];
+  counter_t *cb = d->entry->data;
   f64 vector_rate = 0.0;
   u32 i, n_threads = vlib_get_n_threads ();
 
-  vlib_stats_validate_counter_vector (d->entry_index, n_threads - 1);
+  vlib_stats_validate (d->entry_index, n_threads - 1);
 
   for (i = 0; i < n_threads; i++)
     {
@@ -27,6 +36,7 @@ vector_rate_collector_fn (vlib_stats_collector_data_t *d)
       this_vector_rate = vlib_internal_node_vector_rate (this_vlib_main);
       vlib_clear_internal_node_vector_rate (this_vlib_main);
 
+      this_vector_rate = 11 * (i + 1);
       cb[i] = this_vector_rate;
       vector_rate += this_vector_rate;
     }
@@ -99,15 +109,37 @@ vlib_stats_init (vlib_main_t *vm)
 
   /* Scalar stats and node counters */
   vec_validate (sm->directory_vector, STAT_COUNTERS - 1);
-#define _(E, t, n, p)                                                         \
+#define _(E, t, d, n, p)                                                      \
   strcpy (sm->directory_vector[STAT_COUNTER_##E].name, p "/" #n);             \
-  sm->directory_vector[STAT_COUNTER_##E].type = STAT_DIR_TYPE_##t;
+  sm->directory_vector[STAT_COUNTER_##E].data_type = VLIB_STATS_TYPE_##t;     \
+  sm->directory_vector[STAT_COUNTER_##E].n_dimensions = d;                    \
+  sm->directory_vector[STAT_COUNTER_##E].in_use = 1;                          \
   foreach_stat_segment_counter_name
 #undef _
     /* Save the vector in the shared segment, for clients */
     shared_header->directory_vector = sm->directory_vector;
 
   clib_mem_set_heap (oldheap);
+
+#if 0
+  for (int i = 0; i < ARRAY_LEN (vlib_stats_generic_types); i++)
+    {
+      pool_get_zero (sm->types, tp);
+      tp[0] = t = vlib_stats_generic_types + i;
+      ASSERT (t->index == i);
+      log_debug ("generic type '%s' added with index %u", t->name, t->index);
+    }
+
+  t = sm->type_registrations;
+  while (t)
+    {
+      pool_get_zero (sm->types, tp);
+      tp[0] = t;
+      t->index = tp - sm->types;
+      log_debug ("type '%s' added with index %u", t->name, t->index);
+      t = t->next;
+    }
+#endif
 
   vlib_stats_register_mem_heap (heap);
 
@@ -116,7 +148,7 @@ vlib_stats_init (vlib_main_t *vm)
   reg.entry_index =
     vlib_stats_add_counter_vector ("/sys/vector_rate_per_worker");
   vlib_stats_register_collector_fn (&reg);
-  vlib_stats_validate_counter_vector (reg.entry_index, vlib_get_n_threads ());
+  vlib_stats_validate (reg.entry_index, vlib_get_n_threads ());
 
   return 0;
 }

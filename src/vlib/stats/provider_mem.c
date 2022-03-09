@@ -27,12 +27,10 @@ stat_provider_mem_usage_update_fn (vlib_stats_collector_data_t *d)
 {
   clib_mem_usage_t usage;
   clib_mem_heap_t *heap;
-  counter_t **counters = d->entry->data;
-  counter_t *cb;
+  counter_t *cb = d->entry->data;
 
   heap = vec_elt (memory_heaps_vec, d->private_data);
   clib_mem_get_heap_usage (heap, &usage);
-  cb = counters[0];
   cb[STAT_MEM_TOTAL] = usage.bytes_total;
   cb[STAT_MEM_USED] = usage.bytes_used;
   cb[STAT_MEM_FREE] = usage.bytes_free;
@@ -55,7 +53,7 @@ vlib_stats_register_mem_heap (clib_mem_heap_t *heap)
   vec_add1 (memory_heaps_vec, heap);
 
   r.entry_index = idx = vlib_stats_add_counter_vector ("/mem/%s", heap->name);
-  vlib_stats_validate_counter_vector (idx, STAT_MEM_RELEASABLE);
+  vlib_stats_validate (idx, STAT_MEM_RELEASABLE);
 
   /* Create symlink */
   vlib_stats_add_symlink (idx, STAT_MEM_TOTAL, "/mem/%s/used", heap->name);

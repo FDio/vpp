@@ -7,19 +7,25 @@
 
 typedef enum
 {
-  STAT_DIR_TYPE_ILLEGAL = 0,
-  STAT_DIR_TYPE_SCALAR_INDEX,
-  STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE,
-  STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED,
-  STAT_DIR_TYPE_ERROR_INDEX,
-  STAT_DIR_TYPE_NAME_VECTOR,
-  STAT_DIR_TYPE_EMPTY,
-  STAT_DIR_TYPE_SYMLINK,
-} stat_directory_type_t;
+  VLIB_STATS_TYPE_UINT64 = 0,
+  VLIB_STATS_TYPE_UINT64_PAIR,
+  VLIB_STATS_TYPE_UINT32 = 0,
+  VLIB_STATS_TYPE_UINT32_PAIR,
+  VLIB_STATS_TYPE_FLOAT64,
+  VLIB_STATS_TYPE_FLOAT64_PAIR,
+  VLIB_STATS_TYPE_DURATION,
+  VLIB_STATS_TYPE_EPOCH,
+  VLIB_STATS_TYPE_STRING,
+  VLIB_STATS_TYPE_BLOB,
+  VLIB_STATS_TYPE_SYMLINK,
+  VLIB_STATS_N_DATA_TYPES,
+} vlib_stats_data_type_t;
 
 typedef struct
 {
-  stat_directory_type_t type;
+  uint8_t in_use : 1;
+  vlib_stats_data_type_t data_type : 8;
+  uint8_t n_dimensions;
   union
   {
     struct
@@ -29,6 +35,7 @@ typedef struct
     };
     uint64_t index;
     uint64_t value;
+    double value_as_float64;
     void *data;
     uint8_t **string_vector;
   };
@@ -46,7 +53,6 @@ typedef struct
   volatile uint64_t epoch;
   volatile uint64_t in_progress;
   volatile vlib_stats_entry_t *directory_vector;
-  volatile uint64_t **error_vector;
 } vlib_stats_shared_header_t;
 
 #endif /* included_stat_segment_shared_h */

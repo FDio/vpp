@@ -122,7 +122,6 @@ vlib_register_errors (vlib_main_t *vm, u32 node_index, u32 n_errors,
 
   vlib_node_t *n = vlib_get_node (vm, node_index);
   uword l;
-  void *oldheap;
 
   ASSERT (vlib_get_thread_index () == 0);
 
@@ -157,38 +156,36 @@ vlib_register_errors (vlib_main_t *vm, u32 node_index, u32 n_errors,
 
   vec_validate (vm->error_elog_event_types, l - 1);
 
-  /* Switch to the stats segment ... */
-  oldheap = vlib_stats_set_heap ();
+  if (em->stats_err_entry_index == 0)
+    em->stats_err_entry_index =
+      vlib_stats_add (VLIB_STATS_TYPE_UINT64, 2, "/sys/errors");
 
-  /* Allocate a counter/elog type for each error. */
-  vec_validate (em->counters, l - 1);
+  ASSERT (em->stats_err_entry_index != 0 && em->stats_err_entry_index != ~0);
 
-  /* Zero counters for re-registrations of errors. */
-  if (n->error_heap_index + n_errors <= vec_len (em->counters_last_clear))
-    clib_memcpy (em->counters + n->error_heap_index,
-		 em->counters_last_clear + n->error_heap_index,
-		 n_errors * sizeof (em->counters[0]));
-  else
-    clib_memset (em->counters + n->error_heap_index,
-		 0, n_errors * sizeof (em->counters[0]));
+  vlib_stats_validate (em->stats_err_entry_index, vlib_get_n_threads () - 1,
+		       l - 1);
+  u64 **ccc = vlib_stats_get_entry_data_pointer (em->stats_err_entry_index);
 
-  oldheap = clib_mem_set_heap (oldheap);
+  for (int i = 0; i < vlib_get_n_threads (); i++)
+    {
+      vlib_main_t *tvm = vlib_get_main_by_index (i);
+      vlib_error_main_t *tem = &tvm->error_main;
+      tem->counters = ccc[i];
+
+      /* Zero counters for re-registrations of errors. */
+      if (n->error_heap_index + n_errors <= vec_len (tem->counters_last_clear))
+	clib_memcpy (tem->counters + n->error_heap_index,
+		     tem->counters_last_clear + n->error_heap_index,
+		     n_errors * sizeof (tem->counters[0]));
+      else
+	clib_memset (tem->counters + n->error_heap_index, 0,
+		     n_errors * sizeof (tem->counters[0]));
+    }
 
   /* Register counter indices in the stat segment directory */
-  {
-    int i;
-
-    for (i = 0; i < n_errors; i++)
-      {
-	vlib_stats_register_error_index (em->counters, n->error_heap_index + i,
-					 "/err/%v/%s", n->name,
-					 counters[i].name);
-      }
-
-  }
-
-  /* (re)register the em->counters base address, switch back to main heap */
-  vlib_stats_update_error_vector (em->counters, vm->thread_index, 1);
+  for (int i = 0; i < n_errors; i++)
+    vlib_stats_add_symlink (em->stats_err_entry_index, n->error_heap_index + i,
+			    "/err/%v/%s", n->name, counters[i].name);
 
   {
     elog_event_type_t t;
