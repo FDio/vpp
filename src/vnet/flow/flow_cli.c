@@ -223,6 +223,11 @@ show_flow_entry (vlib_main_t * vm, unformat_input_t * input,
       vlib_cli_output (vm, "%-10s: %u", "index", f->index);
       vlib_cli_output (vm, "%-10s: %s", "type", flow_type_strings[f->type]);
       vlib_cli_output (vm, "%-10s: %U", "match", format_flow, f);
+      if (f->type == VNET_FLOW_TYPE_GENERIC)
+	{
+	  vlib_cli_output (vm, "%s: %s", "spec", f->generic.pattern.spec);
+	  vlib_cli_output (vm, "%s: %s", "mask", f->generic.pattern.mask);
+	}
       /* *INDENT-OFF* */
       hash_foreach (hw_if_index, private_data, f->private_data,
         ({
@@ -243,6 +248,11 @@ no_args:
   pool_foreach (f, fm->global_flow_pool)
     {
       vlib_cli_output (vm, "%U\n", format_flow, f);
+      if (f->type == VNET_FLOW_TYPE_GENERIC)
+	{
+	  vlib_cli_output (vm, "%s: %s", "spec", f->generic.pattern.spec);
+	  vlib_cli_output (vm, "%s: %s", "mask", f->generic.pattern.mask);
+	}
     }
   /* *INDENT-ON* */
 
@@ -371,6 +381,8 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
   bool ipsec_esp_set = false, ipsec_ah_set = false;
   u8 *rss_type[3] = { };
   u8 *type_str = NULL;
+  u8 *spec = NULL;
+  u8 *mask = NULL;
 
   clib_memset (&flow, 0, sizeof (vnet_flow_t));
   flow.index = ~0;
@@ -389,6 +401,10 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 	action = FLOW_ENABLE;
       else if (unformat (line_input, "disable"))
 	action = FLOW_DISABLE;
+      else if (unformat (line_input, "spec %s", &spec))
+	;
+      else if (unformat (line_input, "mask %s", &mask))
+	;
       else if (unformat (line_input, "eth-type %U",
 			 unformat_ethernet_type_host_byte_order, &eth_type))
 	flow_class = FLOW_ETHERNET_CLASS;
@@ -573,6 +589,11 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 	  break;
 
 	default:
+	  if (spec && mask)
+	    {
+	      type = VNET_FLOW_TYPE_GENERIC;
+	      break;
+	    }
 	  return clib_error_return (0,
 				    "Please specify a supported flow type");
 	}
@@ -660,6 +681,13 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 	      break;
 	    }
 	}
+      if (type == VNET_FLOW_TYPE_GENERIC)
+	{
+	  clib_memcpy (flow.generic.pattern.spec, spec,
+		       sizeof (flow.generic.pattern.spec));
+	  clib_memcpy (flow.generic.pattern.mask, mask,
+		       sizeof (flow.generic.pattern.mask));
+	}
 
       flow.type = type;
       rv = vnet_flow_add (vnm, &flow, &flow_index);
@@ -689,18 +717,19 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_flow_command, static) = {
-    .path = "test flow",
-    .short_help = "test flow [add|del|enable|disable] [index <id>] "
-        "[src-ip <ip-addr/mask>] [dst-ip <ip-addr/mask>] "
-        "[ip6-src-ip <ip-addr/mask>] [ip6-dst-ip <ip-addr/mask>] "
-        "[src-port <port/mask>] [dst-port <port/mask>] "
-        "[proto <ip-proto>] "
-        "[gtpc teid <teid>] [gtpu teid <teid>] [vxlan <vni>] "
-        "[session id <session>] [spi <spi>]"
-        "[next-node <node>] [mark <id>] [buffer-advance <len>] "
-        "[redirect-to-queue <queue>] [drop] "
-        "[rss function <name>] [rss types <flow type>]",
-    .function = test_flow,
+  .path = "test flow",
+  .short_help = "test flow [add|del|enable|disable] [index <id>] "
+		"[src-ip <ip-addr/mask>] [dst-ip <ip-addr/mask>] "
+		"[ip6-src-ip <ip-addr/mask>] [ip6-dst-ip <ip-addr/mask>] "
+		"[src-port <port/mask>] [dst-port <port/mask>] "
+		"[proto <ip-proto>] "
+		"[gtpc teid <teid>] [gtpu teid <teid>] [vxlan <vni>] "
+		"[session id <session>] [spi <spi>]"
+		"[spec <spec string>] [mask <mask string>]"
+		"[next-node <node>] [mark <id>] [buffer-advance <len>] "
+		"[redirect-to-queue <queue>] [drop] "
+		"[rss function <name>] [rss types <flow type>]",
+  .function = test_flow,
 };
 /* *INDENT-ON* */
 
