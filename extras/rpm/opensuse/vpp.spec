@@ -46,7 +46,6 @@ BuildRequires:  libopenssl-devel
 BuildRequires:  libtool
 BuildRequires:  lsb-release
 BuildRequires:  make
-BuildRequires:  mbedtls-devel
 BuildRequires:  openssl-devel
 BuildRequires:  python-devel
 BuildRequires:  python-pip
