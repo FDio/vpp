@@ -1887,6 +1887,7 @@ session_manager_main_enable (vlib_main_t * vm)
 
   /* Allocate cache line aligned worker contexts */
   vec_validate_aligned (smm->wrk, num_threads - 1, CLIB_CACHE_LINE_BYTES);
+  clib_spinlock_init (&session_main.pool_realloc_lock);
 
   for (i = 0; i < num_threads; i++)
     {
