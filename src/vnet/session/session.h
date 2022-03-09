@@ -21,6 +21,7 @@
 #include <vnet/session/session_debug.h>
 #include <svm/message_queue.h>
 #include <svm/fifo_segment.h>
+#include <vnet/session/mrpool.h>
 
 #define foreach_session_input_error                                    	\
 _(NO_SESSION, "No session drops")                                       \
