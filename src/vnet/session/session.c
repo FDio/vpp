@@ -197,29 +197,99 @@ session_program_transport_ctrl_evt (session_t * s, session_evt_type_t evt)
     session_send_ctrl_evt_to_thread (s, evt);
 }
 
+typedef struct session_pool_realloc_args_
+{
+  u32 realloc_fn_index;
+  u32 thread_index;
+} session_pool_realloc_args_t;
+
+#define pool_realloc_safe(P)                                                  \
+  do                                                                          \
+    {                                                                         \
+      vlib_main_t *vm = vlib_get_main ();                                     \
+      ASSERT (vlib_get_thread_index () == 0);                                 \
+      vlib_worker_thread_barrier_sync (vm);                                   \
+      u32 free_elts, max_elts, n_alloc;                                       \
+      free_elts = pool_free_elts (P);                                         \
+      max_elts = pool_max_len (P);                                            \
+      n_alloc = clib_max (2 * max_elts, 32);                                  \
+      pool_alloc (P, free_elts + n_alloc);                                    \
+      pool_header_t *ph = pool_header (P);                                    \
+      clib_bitmap_validate (ph->free_bitmap, max_elts + n_alloc);             \
+      clib_warning ("pool free = %u pool capacity %u", pool_free_elts (P),    \
+		    pool_max_len (P));                                        \
+      pool_header (P)->mmap_size = 0;                                         \
+      vlib_worker_thread_barrier_release (vm);                                \
+    }                                                                         \
+  while (0)
+
+#define pool_get_aligned_safe(P, thread_index, rpc_fn, align)                 \
+  do                                                                          \
+    {                                                                         \
+      u8 will_expand = 0;                                                     \
+      pool_get_aligned_will_expand (P, will_expand, align);                   \
+      if (PREDICT_FALSE (will_expand))                                        \
+	{                                                                     \
+	  clib_warning ("will expand wait");                                  \
+	  if (P)                                                              \
+	    pool_header (P)->mmap_size = 1;                                   \
+	  if (thread_index)                                                   \
+	    clib_atomic_fetch_add (vlib_worker_threads->workers_at_barrier,   \
+				   1);                                        \
+	  session_send_rpc_evt_to_thread (                                    \
+	    0 /* thread index */, rpc_fn,                                     \
+	    uword_to_pointer (thread_index, void *));                         \
+	  while (!(P) || pool_header (P)->mmap_size == 1)                     \
+	    ;                                                                 \
+	  if (thread_index)                                                   \
+	    clib_atomic_fetch_add (vlib_worker_threads->workers_at_barrier,   \
+				   -1);                                       \
+	  clib_warning ("wait done");                                         \
+	}                                                                     \
+      else if (PREDICT_FALSE (pool_free_elts (P) < 32))                       \
+	{                                                                     \
+	  pool_header_t *_ph = pool_header (P);                               \
+	  if (!_ph->mmap_size)                                                \
+	    {                                                                 \
+	      clib_warning ("programmed realloc");                            \
+	      _ph->mmap_size = 1;                                             \
+	      session_send_rpc_evt_to_thread_force (                          \
+		0 /* thread index */, rpc_fn,                                 \
+		uword_to_pointer (thread_index, void *));                     \
+	    }                                                                 \
+	}                                                                     \
+      clib_warning ("pool free = %u", pool_free_elts (P));                    \
+      pool_get_aligned (wrk->sessions, s, align);                             \
+      clib_warning ("pool free = %u", pool_free_elts (P));                    \
+    }                                                                         \
+  while (0)
+
+static void
+session_realloc_pool (void *rpc_args)
+{
+  session_worker_t *wrk;
+  u32 thread_index;
+
+  thread_index = pointer_to_uword (rpc_args);
+  wrk = &session_main.wrk[thread_index];
+
+  pool_realloc_safe (wrk->sessions);
+}
+
 session_t *
 session_alloc (u32 thread_index)
 {
   session_worker_t *wrk = &session_main.wrk[thread_index];
   session_t *s;
-  u8 will_expand = 0;
-  pool_get_aligned_will_expand (wrk->sessions, will_expand,
-				CLIB_CACHE_LINE_BYTES);
-  /* If we have peekers, let them finish */
-  if (PREDICT_FALSE (will_expand && vlib_num_workers ()))
-    {
-      clib_rwlock_writer_lock (&wrk->peekers_rw_locks);
-      pool_get_aligned (wrk->sessions, s, CLIB_CACHE_LINE_BYTES);
-      clib_rwlock_writer_unlock (&wrk->peekers_rw_locks);
-    }
-  else
-    {
-      pool_get_aligned (wrk->sessions, s, CLIB_CACHE_LINE_BYTES);
-    }
+
+  pool_get_aligned_safe (wrk->sessions, thread_index, session_realloc_pool,
+			 CLIB_CACHE_LINE_BYTES);
+
   clib_memset (s, 0, sizeof (*s));
   s->session_index = s - wrk->sessions;
   s->thread_index = thread_index;
   s->app_index = APP_INVALID_INDEX;
+
   return s;
 }
 
