@@ -109,6 +109,12 @@
 #define __clib_section(s) __attribute__ ((section(s)))
 #define __clib_warn_unused_result __attribute__ ((warn_unused_result))
 #define __clib_export __attribute__ ((visibility("default")))
+#ifdef __clang__
+#define __clib_no_tail_calls __attribute__ ((disable_tail_calls))
+#else
+#define __clib_no_tail_calls                                                  \
+  __attribute__ ((optimize ("no-optimize-sibling-calls")))
+#endif
 
 #define never_inline __attribute__ ((__noinline__))
 

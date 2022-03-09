@@ -4,8 +4,8 @@
 
 vat_main_t vat_main;
 
-void
-vat_suspend (vlib_main_t * vm, f64 interval)
+void __clib_no_tail_calls
+vat_suspend (vlib_main_t *vm, f64 interval)
 {
   vlib_process_suspend (vm, interval);
 }
