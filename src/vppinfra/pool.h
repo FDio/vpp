@@ -61,6 +61,8 @@ typedef struct
   /** Maximum size of the pool, in elements */
   u32 max_elts;
 
+  /** Round up to 8B multiple */
+  u32 pad;
 } pool_header_t;
 
 /** Align pool header so that pointers are naturally aligned. */
