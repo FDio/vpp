@@ -203,7 +203,7 @@ stat_segment_heartbeat (void)
    _v(v);                                             \
 })
 
-static counter_t *
+static __clib_unused counter_t *
 stat_vec_simple_init (counter_t c)
 {
   counter_t *v = 0;
@@ -211,7 +211,7 @@ stat_vec_simple_init (counter_t c)
   return v;
 }
 
-static vlib_counter_t *
+static __clib_unused vlib_counter_t *
 stat_vec_combined_init (vlib_counter_t c)
 {
   vlib_counter_t *v = 0;
@@ -228,6 +228,7 @@ copy_data (vlib_stats_entry_t *ep, u32 index2, char *name,
 	   stat_client_main_t *sm)
 {
   stat_segment_data_t result = { 0 };
+#if 0
   int i;
   vlib_counter_t **combined_c;	/* Combined counter */
   counter_t **simple_c;		/* Simple counter */
@@ -309,15 +310,17 @@ copy_data (vlib_stats_entry_t *ep, u32 index2, char *name,
     default:
       fprintf (stderr, "Unknown type: %d\n", ep->type);
     }
+#endif
   return result;
 }
 
 void
 stat_segment_data_free (stat_segment_data_t * res)
 {
-  int i, j;
+  int i;
   for (i = 0; i < vec_len (res); i++)
     {
+#if 0
       switch (res[i].type)
 	{
 	case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
@@ -345,6 +348,7 @@ stat_segment_data_free (stat_segment_data_t * res)
 	  assert (0);
 	}
       free (res[i].name);
+#endif
     }
   vec_free (res);
 }

@@ -14,91 +14,76 @@ name_sort_cmp (void *a1, void *a2)
   return strcmp ((char *) n1->name, (char *) n2->name);
 }
 
-static u8 *
-format_stat_dir_entry (u8 *s, va_list *args)
-{
-  vlib_stats_entry_t *ep = va_arg (*args, vlib_stats_entry_t *);
-  char *type_name;
-  char *format_string;
-
-  format_string = "%-74s %-10s %10lld";
-
-  switch (ep->type)
-    {
-    case STAT_DIR_TYPE_SCALAR_INDEX:
-      type_name = "ScalarPtr";
-      break;
-
-    case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
-    case STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED:
-      type_name = "CMainPtr";
-      break;
-
-    case STAT_DIR_TYPE_ERROR_INDEX:
-      type_name = "ErrIndex";
-      break;
-
-    case STAT_DIR_TYPE_NAME_VECTOR:
-      type_name = "NameVector";
-      break;
-
-    case STAT_DIR_TYPE_EMPTY:
-      type_name = "empty";
-      break;
-
-    case STAT_DIR_TYPE_SYMLINK:
-      type_name = "Symlink";
-      break;
-
-    default:
-      type_name = "illegal!";
-      break;
-    }
-
-  return format (s, format_string, ep->name, type_name, 0);
-}
 static clib_error_t *
-show_stat_segment_command_fn (vlib_main_t *vm, unformat_input_t *input,
-			      vlib_cli_command_t *cmd)
+show_stat_directory_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				vlib_cli_command_t *cmd)
 {
+  unformat_input_t _line_input = {}, *line_input = &_line_input;
   vlib_stats_segment_t *sm = vlib_stats_get_segment ();
-  vlib_stats_entry_t *show_data;
-  int i;
+  vlib_stats_entry_t *show_data = 0, *e;
+  clib_error_t *err = 0;
+  char *match = 0;
+  u8 *fmt = 0;
+  u32 max_name_len = 0;
 
-  int verbose = 0;
-
-  if (unformat (input, "verbose"))
-    verbose = 1;
+  if (unformat_user (input, unformat_line_input, line_input))
+    {
+      while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+	{
+	  if (unformat (line_input, "%s", &match))
+	    ;
+	  else
+	    {
+	      err = clib_error_return (0, "parse error: '%U'",
+				       format_unformat_error, line_input);
+	      goto done;
+	    }
+	}
+    }
 
   /* Lock even as reader, as this command doesn't handle epoch changes */
   vlib_stats_segment_lock ();
-  show_data = vec_dup (sm->directory_vector);
+  vec_foreach (e, sm->directory_vector)
+    {
+      if (e->in_use == 0)
+	continue;
+
+      if (match && strstr (e->name, match) == 0)
+	continue;
+
+      max_name_len = clib_max (max_name_len, strlen (e->name));
+
+      vec_add1 (show_data, *e);
+    }
   vlib_stats_segment_unlock ();
 
   vec_sort_with_function (show_data, name_sort_cmp);
 
-  vlib_cli_output (vm, "%-74s %10s %10s", "Name", "Type", "Value");
+  max_name_len = clib_min (max_name_len, 74);
+  fmt = format (fmt, "%%-%us %%-10s %%s%c", max_name_len, 0);
+  vlib_cli_output (vm, (char *) fmt, "Name", "Type", "Dim");
 
-  for (i = 0; i < vec_len (show_data); i++)
+  vec_reset_length (fmt);
+  fmt = format (fmt, "%%-%us %%-10s %%U%c", max_name_len, 0);
+  vec_foreach (e, show_data)
     {
-      vlib_stats_entry_t *ep = vec_elt_at_index (show_data, i);
-
-      if (ep->type == STAT_DIR_TYPE_EMPTY)
-	continue;
-
-      vlib_cli_output (vm, "%-100U", format_stat_dir_entry,
-		       vec_elt_at_index (show_data, i));
+      vlib_stats_data_type_info_t *dti = vlib_stats_data_types + e->data_type;
+      vlib_cli_output (vm, (char *) fmt, e->name, dti->name,
+		       format_vlib_stats_entry_dim, e);
     }
 
-  if (verbose)
-    {
-      ASSERT (sm->heap);
-      vlib_cli_output (vm, "%U", format_clib_mem_heap, sm->heap,
-		       0 /* verbose */);
-    }
-
-  return 0;
+done:
+  vec_free (fmt);
+  vec_free (match);
+  vec_free (show_data);
+  return err;
 }
+
+VLIB_CLI_COMMAND (show_stat_directory_command, static) = {
+  .path = "show statistics directory",
+  .short_help = "show statistics directory [<match>]",
+  .function = show_stat_directory_command_fn,
+};
 
 static clib_error_t *
 show_stat_segment_hash_command_fn (vlib_main_t *vm, unformat_input_t *input,
@@ -118,8 +103,55 @@ VLIB_CLI_COMMAND (show_stat_segment_hash_command, static) = {
   .function = show_stat_segment_hash_command_fn,
 };
 
-VLIB_CLI_COMMAND (show_stat_segment_command, static) = {
-  .path = "show statistics segment",
-  .short_help = "show statistics segment [verbose]",
-  .function = show_stat_segment_command_fn,
+static clib_error_t *
+show_stat_entry_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			    vlib_cli_command_t *cmd)
+{
+  vlib_stats_segment_t *sm = vlib_stats_get_segment ();
+  vlib_stats_entry_t *e;
+  vlib_stats_data_type_info_t *dti;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *err = 0;
+  u32 entry_index = ~0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return clib_error_return (0, "please specify command line arguments");
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U", unformat_vlib_stats_entry_name,
+		    &entry_index))
+	;
+      else
+	{
+	  err = clib_error_return (0, "parse error: '%U'",
+				   format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+  if (entry_index == ~0)
+    {
+      err = clib_error_return (0, "entry not found");
+      goto done;
+    }
+
+  e = vlib_stats_get_entry (sm, entry_index);
+  dti = vlib_stats_data_types + e->data_type;
+  vlib_cli_output (vm, "Entry:      %s", e->name);
+  vlib_cli_output (vm, "Type:       %s", dti->name);
+  vlib_cli_output (vm, "Elt Size:   %u bytes", dti->size);
+  vlib_cli_output (vm, "Dimensions: %U", format_vlib_stats_entry_dim, e);
+  vlib_cli_output (vm, "Value:      %U", format_vlib_stats_entry_value, e);
+
+done:
+  unformat_free (line_input);
+  return err;
+}
+
+VLIB_CLI_COMMAND (show_stats_entry_command, static) = {
+  .path = "show statistics entry",
+  .short_help = "show statistics entry <entry-name>",
+  .function = show_stat_entry_command_fn,
 };

@@ -142,7 +142,6 @@ test_stats (void)
   assert(rv == 0);
 
   u32 *dir;
-  int i, j, k;
   stat_segment_data_t *res;
   u8 **pattern = 0;
   vec_add1(pattern, (u8 *)"/if/names");
@@ -151,6 +150,8 @@ test_stats (void)
   dir = stat_segment_ls ((u8 **)pattern);
 
   res = stat_segment_dump (dir);
+#if 0
+  int i, j, k;
   for (i = 0; i < vec_len (res); i++) {
     switch (res[i].type) {
     case STAT_DIR_TYPE_NAME_VECTOR:
@@ -170,6 +171,7 @@ test_stats (void)
       assert(0);
     }
   }
+#endif
   stat_segment_data_free (res);
   stat_segment_disconnect();
 

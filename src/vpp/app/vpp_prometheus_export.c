@@ -35,7 +35,7 @@
 /* https://github.com/prometheus/prometheus/wiki/Default-port-allocations */
 #define SERVER_PORT 9482
 
-static char *
+static __clib_unused char *
 prom_string (char *s)
 {
   char *p = s;
@@ -52,7 +52,7 @@ static void
 dump_metrics (FILE * stream, u8 ** patterns)
 {
   stat_segment_data_t *res;
-  int i, j, k;
+  int i;
   static u32 *stats = 0;
 
 retry:
@@ -67,6 +67,7 @@ retry:
 
   for (i = 0; i < vec_len (res); i++)
     {
+#if 0
       switch (res[i].type)
 	{
 	case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
@@ -128,6 +129,7 @@ retry:
 	  fformat (stderr, "Unknown value %d\n", res[i].type);
 	  ;
 	}
+#endif
     }
   stat_segment_data_free (res);
 

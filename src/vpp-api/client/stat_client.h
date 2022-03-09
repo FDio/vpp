@@ -35,7 +35,8 @@
 typedef struct
 {
   char *name;
-  stat_directory_type_t type;
+  vlib_stats_data_type_t data_type;
+  uint8_t n_dimensions;
   union
   {
     double scalar_value;

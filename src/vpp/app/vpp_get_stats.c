@@ -25,7 +25,7 @@ stat_poll_loop (u8 ** patterns)
 {
   struct timespec ts, tsrem;
   stat_segment_data_t *res;
-  int i, j, k, lost_connection = 0;
+  int i, lost_connection = 0;
   f64 heartbeat, prev_heartbeat = 0;
   u32 *stats = stat_segment_ls (patterns);
   if (!stats)
@@ -61,6 +61,8 @@ stat_poll_loop (u8 ** patterns)
 	}
       for (i = 0; i < vec_len (res); i++)
 	{
+#if 0
+	  // FIXME
 	  switch (res[i].type)
 	    {
 	    case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
@@ -96,6 +98,7 @@ stat_poll_loop (u8 ** patterns)
 	      printf ("Unknown value\n");
 	      ;
 	    }
+#endif
 	}
       stat_segment_data_free (res);
       /* Scrape stats every 5 seconds */
@@ -173,7 +176,7 @@ reconnect:
     }
 
   u32 *dir;
-  int i, j, k;
+  int i;
   stat_segment_data_t *res;
 
   dir = stat_segment_ls (patterns);
@@ -194,6 +197,7 @@ reconnect:
       res = stat_segment_dump (dir);
       for (i = 0; i < vec_len (res); i++)
 	{
+#if 0
 	  switch (res[i].type)
 	    {
 	    case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
@@ -242,6 +246,7 @@ reconnect:
 	    default:
 	      ;
 	    }
+#endif
 	}
       stat_segment_data_free (res);
       break;
