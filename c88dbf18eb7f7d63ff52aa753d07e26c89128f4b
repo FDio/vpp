@@ -52,6 +52,24 @@
       "revId": "c88dbf18eb7f7d63ff52aa753d07e26c89128f4b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "82dc01a1_7789729b",
+        "filename": "src/vlibmemory/memclnt_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-03-09T12:57:28Z",
+      "side": 1,
+      "message": "true, but :\n 1) if using the libc version, the default handler would crash VPP which is anyway better than just truncating silently I think\n 2) in the case of VPP, the implementation is here:\nhttps://git.fd.io/vpp/tree/src/vppinfra/string.c#n271\nhttps://git.fd.io/vpp/tree/src/vppinfra/string.h#n693\nThe VPP hander issues a warning, and then we get EINVAL.",
+      "parentUuid": "f39fdd00_3053f758",
+      "revId": "c88dbf18eb7f7d63ff52aa753d07e26c89128f4b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
