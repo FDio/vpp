@@ -366,8 +366,8 @@ format_vlib_log_level (u8 * s, va_list * args)
   return format (s, "%s", t);
 }
 
-static clib_error_t *
-vlib_log_init (vlib_main_t * vm)
+clib_error_t *
+vlib_log_init (vlib_main_t *vm)
 {
   vlib_log_main_t *lm = &log_main;
   vlib_log_class_registration_t *r = lm->registrations;
@@ -395,9 +395,6 @@ vlib_log_init (vlib_main_t * vm)
     }
   return 0;
 }
-
-VLIB_INIT_FUNCTION (vlib_log_init);
-
 
 static clib_error_t *
 show_log (vlib_main_t * vm,
