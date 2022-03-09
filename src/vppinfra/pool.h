@@ -162,27 +162,26 @@ pool_header_bytes (void *v)
 /** Local variable naming macro. */
 #define _pool_var(v) _pool_##v
 
-/** Queries whether pool has at least N_FREE free elements. */
-always_inline uword
-pool_free_elts (void *v)
-{
-  pool_header_t *p = pool_header (v);
-  uword n_free = 0;
+/** Number of bytes that can fit into pool with current allocation */
+#define pool_capacity(P) vec_capacity (P, pool_aligned_header_bytes)
 
-  if (v)
-    {
-      n_free += vec_len (p->free_indices);
+/** Number of elements that can fit into pool with current allocation */
+#define pool_max_len(P) (pool_capacity (P) / sizeof (P[0]))
 
-      /*
-       * Space left at end of vector?
-       * Fixed-size pools have max_elts set non-zero,
-       */
-      if (p->max_elts == 0)
-	n_free += vec_capacity (v, sizeof (p[0])) - vec_len (v);
-    }
-
-  return n_free;
-}
+/** Number of free elements in pool */
+#define pool_free_elts(P)                                                     \
+  ({                                                                          \
+    pool_header_t *_pool_var (p) = pool_header (P);                           \
+    uword n_free = 0;                                                         \
+    if (P)                                                                    \
+      {                                                                       \
+	n_free += vec_len (_pool_var (p)->free_indices);                      \
+	/* Fixed-size pools have max_elts set non-zero */                     \
+	if (_pool_var (p)->max_elts == 0)                                     \
+	  n_free += pool_max_len (P) - vec_len (P);                           \
+      }                                                                       \
+    n_free;                                                                   \
+  })
 
 /** Allocate an object E from a pool P (general version).
 
