@@ -197,29 +197,91 @@ session_program_transport_ctrl_evt (session_t * s, session_evt_type_t evt)
     session_send_ctrl_evt_to_thread (s, evt);
 }
 
+static void
+session_realloc_pool (void *rpc_args)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  session_worker_t *wrk;
+  u32 thread_index, n_growth, n_capacity;
+  uword n_bytes;
+
+  thread_index = pointer_to_uword (rpc_args);
+  wrk = &session_main.wrk[thread_index];
+
+  clib_warning ("executed pool free = %u", pool_free_elts (wrk->sessions));
+  vlib_worker_thread_barrier_sync (vm);
+
+  n_capacity = pool_max_len (wrk->sessions);
+  n_growth = clib_max (32, n_capacity);
+  //  pool_alloc (wrk->sessions, n_growth);
+
+  clib_warning ("capacity %u growth %u size %u", n_capacity, n_growth,
+		sizeof (wrk->sessions[0]));
+  n_bytes = (n_capacity + n_growth) * sizeof (wrk->sessions[0]);
+  wrk->sessions =
+    _vec_resize (wrk->sessions, 0, n_bytes, pool_aligned_header_bytes, 0);
+  pool_header_t *ph = pool_header (wrk->sessions);
+  vec_resize (ph->free_indices, n_growth);
+  _vec_len (ph->free_indices) -= n_growth;
+  clib_bitmap_validate (ph->free_bitmap, n_capacity + n_growth);
+
+  //  clib_warning ("hdr bytes %u estimate %u", pool_aligned_header_bytes,
+  //                sizeof (vec_header_t) + _vec_round_size (sizeof
+  //                (pool_header_t)));
+  clib_warning ("pool free = %u pool capacity %u",
+		pool_free_elts (wrk->sessions), pool_max_len (wrk->sessions));
+  vlib_worker_thread_barrier_release (vm);
+}
+
 session_t *
 session_alloc (u32 thread_index)
 {
   session_worker_t *wrk = &session_main.wrk[thread_index];
   session_t *s;
   u8 will_expand = 0;
+
   pool_get_aligned_will_expand (wrk->sessions, will_expand,
 				CLIB_CACHE_LINE_BYTES);
-  /* If we have peekers, let them finish */
-  if (PREDICT_FALSE (will_expand && vlib_num_workers ()))
+  if (PREDICT_FALSE (will_expand))
     {
-      clib_rwlock_writer_lock (&wrk->peekers_rw_locks);
-      pool_get_aligned (wrk->sessions, s, CLIB_CACHE_LINE_BYTES);
-      clib_rwlock_writer_unlock (&wrk->peekers_rw_locks);
+      if (thread_index)
+	clib_atomic_fetch_add (vlib_worker_threads->workers_at_barrier, 1);
+      session_send_rpc_evt_to_thread (0 /* thread index */,
+				      session_realloc_pool,
+				      uword_to_pointer (thread_index, void *));
+      while (will_expand)
+	pool_get_aligned_will_expand (wrk->sessions, will_expand,
+				      CLIB_CACHE_LINE_BYTES);
+      if (thread_index)
+	clib_atomic_fetch_add (vlib_worker_threads->workers_at_barrier, -1);
     }
-  else
-    {
-      pool_get_aligned (wrk->sessions, s, CLIB_CACHE_LINE_BYTES);
-    }
+  clib_warning ("pool free = %u", pool_free_elts (wrk->sessions));
+  //  /* If we have peekers, let them finish */
+  //  if (PREDICT_FALSE (will_expand && vlib_num_workers ()))
+  //    {
+  //      clib_rwlock_writer_lock (&wrk->peekers_rw_locks);
+  //      pool_get_aligned (wrk->sessions, s, CLIB_CACHE_LINE_BYTES);
+  //      clib_rwlock_writer_unlock (&wrk->peekers_rw_locks);
+  //    }
+  //  else
+  //    {
+  //      pool_get_aligned (wrk->sessions, s, CLIB_CACHE_LINE_BYTES);
+  //    }
+  pool_get_aligned (wrk->sessions, s, CLIB_CACHE_LINE_BYTES);
+  clib_warning ("pool free = %u", pool_free_elts (wrk->sessions));
+
   clib_memset (s, 0, sizeof (*s));
   s->session_index = s - wrk->sessions;
   s->thread_index = thread_index;
   s->app_index = APP_INVALID_INDEX;
+
+  if (pool_free_elts (wrk->sessions) < 32)
+    {
+      clib_warning ("programmed realloc");
+      session_send_rpc_evt_to_thread_force (
+	0 /* thread index */, session_realloc_pool,
+	uword_to_pointer (thread_index, void *));
+    }
   return s;
 }
 
