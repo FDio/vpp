@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a1327ff4_d36a92e2",
+        "filename": "src/vlibmemory/memclnt_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2022-03-09T10:34:15Z",
+      "side": 1,
+      "message": "Should you trust that mp-\u003ename is nul terminated?",
+      "revId": "c88dbf18eb7f7d63ff52aa753d07e26c89128f4b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
