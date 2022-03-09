@@ -1962,6 +1962,32 @@ session_queue_run_on_main_thread (vlib_main_t * vm)
   vlib_node_set_interrupt_pending (vm, session_queue_node.index);
 }
 
+static void
+session_realloc_pool1 (void *rpc_args)
+{
+  u32 thread_index;
+  vlib_main_t *vm = vlib_get_main ();
+  session_worker_t *wrk;
+
+  thread_index = pointer_to_uword (rpc_args);
+  wrk = &session_main.wrk[thread_index];
+
+  vlib_worker_thread_barrier_sync (vm);
+
+  mrpool_realloc (wrk->sessions);
+
+  vlib_worker_thread_barrier_release (vm);
+}
+
+static void
+session_pool_program_realloc (void *args)
+{
+  u32 thread_index = vlib_get_thread_index ();
+  session_send_rpc_evt_to_thread_force (
+    0 /* thread index */, session_realloc_pool1,
+    uword_to_pointer (thread_index, void *));
+}
+
 static clib_error_t *
 session_manager_main_enable (vlib_main_t * vm)
 {
@@ -1999,6 +2025,7 @@ session_manager_main_enable (vlib_main_t * vm)
       //      if (num_threads > 1)
       //	clib_rwlock_init (&smm->wrk[i].peekers_rw_locks);
 
+      mrpool_init (wrk->sessions, session_pool_program_realloc);
       if (!smm->no_adaptive && smm->use_private_rx_mqs)
 	session_wrk_enable_adaptive_mode (wrk);
     }
