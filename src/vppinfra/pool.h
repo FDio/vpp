@@ -163,7 +163,11 @@ pool_header_bytes (void *v)
 #define _pool_var(v) _pool_##v
 
 /** Number of bytes that can fit into pool with current allocation */
-#define pool_capacity(P) vec_capacity (P, pool_aligned_header_bytes)
+#define pool_capacity(P)                                                      \
+  ({                                                                          \
+    uword _pool_var (c) = vec_capacity (P, pool_aligned_header_bytes);        \
+    _pool_var (c) ? _pool_var (c) - pool_aligned_header_bytes : 0;            \
+  })
 
 /** Number of elements that can fit into pool with current allocation */
 #define pool_max_len(P) (pool_capacity (P) / sizeof (P[0]))
