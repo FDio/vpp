@@ -784,6 +784,99 @@ clib_error_t *vnet_session_enable_disable (vlib_main_t * vm, u8 is_en);
 session_t *session_alloc_for_connection (transport_connection_t * tc);
 session_t *session_alloc_for_half_open (transport_connection_t *tc);
 
+typedef void (pool_safe_realloc_rpc_fn) (void *rpc_args);
+
+#define POOL_REALLOC_SAFE_ELT_THRESH 64
+
+#define pool_realloc_safe(P)                                                  \
+  do                                                                          \
+    {                                                                         \
+      vlib_main_t *vm = vlib_get_main ();                                     \
+      u32 free_elts, max_elts, n_alloc;                                       \
+      typeof (P) _pool = (P);                                                 \
+      ASSERT (vlib_get_thread_index () == 0);                                 \
+      vlib_worker_thread_barrier_sync (vm);                                   \
+      free_elts = pool_free_elts (_pool);                                     \
+      max_elts = pool_max_len (_pool);                                        \
+      n_alloc = clib_max (2 * max_elts, POOL_REALLOC_SAFE_ELT_THRESH);        \
+      pool_alloc (_pool, free_elts + n_alloc);                                \
+      pool_header_t *ph = pool_header (_pool);                                \
+      clib_bitmap_validate (ph->free_bitmap, max_elts + n_alloc);             \
+      (P) = _pool;                                                            \
+      pool_header (P)->mmap_size = 0;                                         \
+      vlib_worker_thread_barrier_release (vm);                                \
+    }                                                                         \
+  while (0)
+
+always_inline void
+pool_program_safe_realloc (void *p, u32 thread_index,
+			   pool_safe_realloc_rpc_fn *rpc_fn)
+{
+  /* Reuse mmap_size as a realloc flag. No realloc for fixed pools */
+  if (p && pool_header (p)->mmap_size)
+    return;
+
+  if (p)
+    pool_header (p)->mmap_size = 1;
+  session_send_rpc_evt_to_thread (0 /* thread index */, rpc_fn,
+				  uword_to_pointer (thread_index, void *));
+}
+
+always_inline void
+pool_realloc_maybe_wait_at_barrier (void)
+{
+  if (!(*vlib_worker_threads->wait_at_barrier))
+    return;
+
+  /* Node refork required. Don't stop at the barrier from within a node */
+  if (*vlib_worker_threads->node_reforks_required)
+    return;
+
+  clib_atomic_fetch_add (vlib_worker_threads->workers_at_barrier, 1);
+
+  while (*vlib_worker_threads->wait_at_barrier)
+    ;
+
+  clib_atomic_fetch_add (vlib_worker_threads->workers_at_barrier, -1);
+}
+
+#define pool_get_aligned_safe(P, thread_index, rpc_fn, align)                 \
+  do                                                                          \
+    {                                                                         \
+      ASSERT (vlib_get_thread_index () == thread_index);                      \
+      if (PREDICT_FALSE (!(P)))                                               \
+	{                                                                     \
+	  /* No pool so we can't have any peekers */                          \
+	  pool_alloc_aligned ((P), POOL_REALLOC_SAFE_ELT_THRESH, align);      \
+	}                                                                     \
+      else if (PREDICT_FALSE (pool_free_elts (P) <                            \
+			      POOL_REALLOC_SAFE_ELT_THRESH / 2))              \
+	{                                                                     \
+	  volatile typeof (P) *PP = &(P);                                     \
+	  pool_program_safe_realloc (P, thread_index, rpc_fn);                \
+	  if (thread_index)                                                   \
+	    {                                                                 \
+	      while (!(*PP) || pool_header (*PP)->mmap_size)                  \
+		{                                                             \
+		  /* If refork required abort and consume existing elt */     \
+		  if (*vlib_worker_threads->node_reforks_required)            \
+		    break;                                                    \
+		  pool_realloc_maybe_wait_at_barrier ();                      \
+		}                                                             \
+	      /* Might be fine because all worker should be at barrier */     \
+	      ALWAYS_ASSERT (pool_free_elts (P) > 0);                         \
+	    }                                                                 \
+	  (P) = *PP;                                                          \
+	}                                                                     \
+      else if (PREDICT_FALSE (pool_free_elts (P) <                            \
+			      POOL_REALLOC_SAFE_ELT_THRESH))                  \
+	{                                                                     \
+	  pool_program_safe_realloc (P, thread_index, rpc_fn);                \
+	}                                                                     \
+      pool_get_aligned (P, s, align);                                         \
+    }                                                                         \
+  while (0)
+
 #endif /* __included_session_h__ */
 
 /*
