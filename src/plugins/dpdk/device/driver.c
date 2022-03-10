@@ -124,6 +124,7 @@ static dpdk_driver_t dpdk_drivers[] = {
     .n_rx_desc = 256,
     .n_tx_desc = 256,
     .mq_mode_none = 1,
+    .enable_rxq_int = 1,
   }
 };
 
