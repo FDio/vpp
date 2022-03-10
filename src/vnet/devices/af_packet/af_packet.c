@@ -105,9 +105,6 @@ af_packet_fd_read_ready (clib_file_t * uf)
   u32 idx = uf->private_data;
   af_packet_if_t *apif = pool_elt_at_index (apm->interfaces, idx);
 
-  apm->pending_input_bitmap =
-    clib_bitmap_set (apm->pending_input_bitmap, idx, 1);
-
   /* Schedule the rx node */
   vnet_hw_if_rx_queue_set_int_pending (vnm, apif->queue_index);
   return 0;
