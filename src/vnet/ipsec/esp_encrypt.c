@@ -1006,7 +1006,6 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    {
 	      tr->sa_index = sa_index0;
 	      tr->spi = sa0->spi;
-	      tr->spi = sa0->spi;
 	      tr->seq = sa0->seq;
 	      tr->sa_seq_hi = sa0->seq_hi;
 	      tr->udp_encap = ipsec_sa_is_set_UDP_ENCAP (sa0);
