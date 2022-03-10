@@ -524,10 +524,13 @@ class VppTestCase(CPUInterface, unittest.TestCase):
 
     @classmethod
     def get_tempdir(cls):
-        tmpdir = f"{config.tmp_dir}/vpp-unittest-{cls.__name__}"
-        if config.wipe_tmp_dir:
-            shutil.rmtree(tmpdir, ignore_errors=True)
-        os.mkdir(tmpdir)
+        if cls.debug_attach:
+            tmpdir = f"{config.tmp_dir}/unittest-attach-gdb"
+        else:
+            tmpdir = f"{config.tmp_dir}/vpp-unittest-{cls.__name__}"
+            if config.wipe_tmp_dir:
+                shutil.rmtree(tmpdir, ignore_errors=True)
+            os.mkdir(tmpdir)
         return tmpdir
 
     @classmethod
