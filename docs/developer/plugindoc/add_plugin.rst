@@ -317,7 +317,7 @@ so you will need to use :
 * ``u32 value = ntohl(mp->value);``
 * ``rmp->value = htonl(value);``
 
-You can now use this API with :ref:`GoLang bindings <add_plugin_goapi>`
+You can now use this API with :ref:`GoLang bindings <govpp>`
 
 myplugin_periodic.c
 -------------------
