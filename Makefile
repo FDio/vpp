@@ -639,7 +639,7 @@ json-api-files-debug:
 
 .PHONY: go-api-files
 go-api-files: json-api-files
-	$(WS_ROOT)/src/tools/vppapigen/generate_go.py
+	$(WS_ROOT)/src/tools/vppapigen/generate_go.py $(ARGS)
 
 .PHONY: ctags
 ctags: ctags.files
