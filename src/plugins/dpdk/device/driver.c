@@ -55,10 +55,15 @@ static dpdk_driver_t dpdk_drivers[] = {
     .int_unmaskable = 1,
   },
   {
-    .drivers = DPDK_DRIVERS ({ "net_e1000_igb_vf", "Intel e1000 VF" },
-			     { "net_ixgbe_vf", "Intel 82599 VF" }),
+    .drivers = DPDK_DRIVERS ({ "net_e1000_igb_vf", "Intel e1000 VF" }),
     .interface_name_prefix = "VirtualFunctionEthernet",
     .use_intel_phdr_cksum = 1,
+  },
+  {
+    .drivers = DPDK_DRIVERS ({ "net_ixgbe_vf", "Intel 82599 VF" }),
+    .interface_name_prefix = "VirtualFunctionEthernet",
+    .use_intel_phdr_cksum = 1,
+    .program_vlans = 1,
   },
   {
     .drivers = DPDK_DRIVERS ({ "net_dpaa2", "NXP DPAA2 Mac" }),
