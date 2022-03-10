@@ -305,6 +305,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  xd->supported_flow_actions = dr->supported_flow_actions;
 	  xd->conf.disable_rss = dr->mq_mode_none;
 	  xd->conf.disable_rx_scatter = dr->disable_rx_scatter;
+	  xd->conf.enable_rxq_int = dr->enable_rxq_int;
 	  if (dr->use_intel_phdr_cksum)
 	    dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM, 1);
 	  if (dr->int_unmaskable)
