@@ -62,9 +62,6 @@ typedef struct
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   af_packet_if_t *interfaces;
 
-  /* bitmap of pending rx interfaces */
-  uword *pending_input_bitmap;
-
   /* rx buffer cache */
   u32 **rx_buffers;
 
