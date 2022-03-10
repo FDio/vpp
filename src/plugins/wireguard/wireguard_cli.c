@@ -162,7 +162,7 @@ wg_peer_add_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
 
   u8 *public_key_64 = 0;
-  u8 public_key[NOISE_PUBLIC_KEY_LEN];
+  u8 public_key[NOISE_PUBLIC_KEY_LEN + 1];
   fib_prefix_t allowed_ip, *allowed_ips = NULL;
   ip_prefix_t pfx;
   ip_address_t ip;
