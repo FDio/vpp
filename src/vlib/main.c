@@ -477,12 +477,8 @@ vlib_put_next_frame (vlib_main_t * vm,
       if (!(f->frame_flags & VLIB_FRAME_PENDING))
 	{
 	  __attribute__ ((unused)) vlib_node_t *node;
-	  vlib_node_t *next_node;
-	  vlib_node_runtime_t *next_runtime;
 
 	  node = vlib_get_node (vm, r->node_index);
-	  next_node = vlib_get_next_node (vm, r->node_index, next_index);
-	  next_runtime = vlib_node_get_runtime (vm, next_node->index);
 
 	  vec_add2 (nm->pending_frames, p, 1);
 
@@ -491,18 +487,6 @@ vlib_put_next_frame (vlib_main_t * vm,
 	  p->next_frame_index = nf - nm->next_frames;
 	  nf->flags |= VLIB_FRAME_PENDING;
 	  f->frame_flags |= VLIB_FRAME_PENDING;
-
-	  /*
-	   * If we're going to dispatch this frame on another thread,
-	   * force allocation of a new frame. Otherwise, we create
-	   * a dangling frame reference. Each thread has its own copy of
-	   * the next_frames vector.
-	   */
-	  if (0 && r->thread_index != next_runtime->thread_index)
-	    {
-	      nf->frame = NULL;
-	      nf->flags &= ~(VLIB_FRAME_PENDING | VLIB_FRAME_IS_ALLOCATED);
-	    }
 	}
 
       /* Copy trace flag from next_frame and from runtime. */

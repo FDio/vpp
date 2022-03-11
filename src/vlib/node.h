@@ -503,8 +503,6 @@ typedef struct vlib_node_runtime_t
 					  zero before first run of this
 					  node. */
 
-  u16 thread_index;			/**< thread this node runs on */
-
   u8 runtime_data[0];			/**< Function dependent
 					  node-runtime data. This data is
 					  thread local, and it is not

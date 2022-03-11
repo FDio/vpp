@@ -542,7 +542,7 @@ VLIB_NODE_FN (dpdk_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
   dpdk_device_t *xd;
   uword n_rx_packets = 0;
   vnet_hw_if_rxq_poll_vector_t *pv;
-  u32 thread_index = node->thread_index;
+  u32 thread_index = vm->thread_index;
 
   /*
    * Poll all devices on this cpu for input/interrupts.
