@@ -162,11 +162,8 @@ pool_header_bytes (void *v)
 /** Local variable naming macro. */
 #define _pool_var(v) _pool_##v
 
-/** Number of bytes that can fit into pool with current allocation */
-#define pool_capacity(P) vec_capacity (P, pool_aligned_header_bytes)
-
 /** Number of elements that can fit into pool with current allocation */
-#define pool_max_len(P) (pool_capacity (P) / sizeof (P[0]))
+#define pool_max_len(P) vec_max_elts (P, pool_aligned_header_bytes)
 
 /** Number of free elements in pool */
 #define pool_free_elts(P)                                                     \
