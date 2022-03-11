@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "b26edea5_7763837b",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 1541
+      },
+      "writtenOn": "2022-03-11T22:17:51Z",
+      "side": 1,
+      "message": "editor plugin. auto updates.",
+      "parentUuid": "d2ff3d3d_82ebf587",
+      "revId": "24254ddb161c980dd4111aa1522d37b90354feff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "8f33b3b0_23d064e6",
         "filename": "src/plugins/nat/nat44-ed/nat44_ed.h",
         "patchSetId": 4
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "62b6cce7_e07b19fe",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 1541
+      },
+      "writtenOn": "2022-03-11T22:17:51Z",
+      "side": 1,
+      "message": "removing the comment.",
+      "parentUuid": "8f33b3b0_23d064e6",
+      "revId": "24254ddb161c980dd4111aa1522d37b90354feff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "88cda630_01a0642e",
         "filename": "src/plugins/nat/nat44-ed/nat44_ed.h",
         "patchSetId": 4
@@ -47,6 +83,24 @@
       "writtenOn": "2022-02-28T09:40:51Z",
       "side": 1,
       "message": "Able to resolve this?\nI.e. remote it from NAT?",
+      "revId": "24254ddb161c980dd4111aa1522d37b90354feff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7194291d_96210cd7",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 670,
+      "author": {
+        "id": 1541
+      },
+      "writtenOn": "2022-03-11T22:17:51Z",
+      "side": 1,
+      "message": "i will put it in nat/lib.",
+      "parentUuid": "88cda630_01a0642e",
       "revId": "24254ddb161c980dd4111aa1522d37b90354feff",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
