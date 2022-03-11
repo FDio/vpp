@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f77b511f_0a471a6f",
+        "filename": "src/plugins/wireguard/wireguard.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 2280
+      },
+      "writtenOn": "2022-03-11T06:18:42Z",
+      "side": 1,
+      "message": "typos?\n@params flags -\u003e @param flags\n@packet -\u003e @param",
+      "revId": "ed115edbf710bbf88008a52711b642f24e69caa4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "907e714d_5bdb661a",
+        "filename": "src/plugins/wireguard/wireguard.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 2280
+      },
+      "writtenOn": "2022-03-11T06:18:42Z",
+      "side": 1,
+      "message": "typo\n@param context - sender context, to match reply w/ request\n@param retval - return status",
+      "revId": "ed115edbf710bbf88008a52711b642f24e69caa4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
