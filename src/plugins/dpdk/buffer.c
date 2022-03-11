@@ -19,6 +19,7 @@
 #include <rte_config.h>
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
+#include <rte_cryptodev.h>
 #include <rte_vfio.h>
 #include <rte_version.h>
 
@@ -135,7 +136,7 @@ dpdk_buffer_pool_init (vlib_main_t * vm, vlib_buffer_pool_t * bp)
     }
 
   /* map DMA pages if at least one physical device exists */
-  if (rte_eth_dev_count_avail ())
+  if (rte_eth_dev_count_avail () || rte_cryptodev_count ())
     {
       uword i;
       size_t page_sz;
