@@ -640,10 +640,10 @@ heap_bytes (void *v)
   bytes = sizeof (h[0]);
   bytes += vec_len (v) * sizeof (h->elt_bytes);
   for (b = 0; b < vec_len (h->free_lists); b++)
-    bytes += vec_capacity (h->free_lists[b], 0);
+    bytes += vec_mem_size (h->free_lists[b], 0);
   bytes += vec_bytes (h->free_lists);
-  bytes += vec_capacity (h->elts, 0);
-  bytes += vec_capacity (h->free_elts, 0);
+  bytes += vec_mem_size (h->elts, 0);
+  bytes += vec_mem_size (h->free_elts, 0);
   bytes += vec_bytes (h->used_elt_bitmap);
 
   return bytes;
