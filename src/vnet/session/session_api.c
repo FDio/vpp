@@ -1485,7 +1485,9 @@ sapi_socket_detach (app_namespace_t * app_ns, clib_socket_t * cs)
 
   /* Cleanup everything because app worker closed socket or crashed */
   handle = (app_ns_api_handle_t *) & cs->private_data;
-  app_wrk = app_worker_get (handle->aah_app_wrk_index);
+  app_wrk = app_worker_get_if_valid (handle->aah_app_wrk_index);
+  if (!app_wrk)
+    return;
 
   vnet_app_worker_add_del_args_t args = {
     .app_index = app_wrk->app_index,
