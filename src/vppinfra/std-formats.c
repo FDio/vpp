@@ -250,7 +250,7 @@ format_time_interval (u8 * s, va_list * args)
   return s;
 }
 
-/* Format base 10 e.g. 100, 100K, 100M, 100G */
+/* Format base 10 e.g. 100, 100K, 100M, 100G, 100T */
 __clib_export u8 *
 format_base10 (u8 *s, va_list *va)
 {
@@ -262,13 +262,15 @@ format_base10 (u8 *s, va_list *va)
     s = format (s, "%.2fK", (f64) size / 1000.);
   else if (size < 1000000000)
     s = format (s, "%.2fM", (f64) size / 1000000.);
-  else
+  else if (size < 1000000000000)
     s = format (s, "%.2fG", (f64) size / 1000000000.);
+  else
+    s = format (s, "%.2fT", (f64) size / 1000000000000.);
 
   return s;
 }
 
-/* Unparse memory size e.g. 100, 100k, 100m, 100g. */
+/* Unparse memory size e.g. 100, 100k, 100m, 100g, 100t. */
 __clib_export u8 *
 format_memory_size (u8 * s, va_list * va)
 {
@@ -282,8 +284,10 @@ format_memory_size (u8 * s, va_list * va)
     log_u = 10;
   else if (l < 30)
     log_u = 20;
-  else
+  else if (l < 40)
     log_u = 30;
+  else
+    log_u = 40;
 
   u = (uword) 1 << log_u;
   if (size & (u - 1))
@@ -292,7 +296,7 @@ format_memory_size (u8 * s, va_list * va)
     s = format (s, "%d", size >> log_u);
 
   if (log_u != 0)
-    s = format (s, "%c", " kmg"[log_u / 10]);
+    s = format (s, "%c", " kmgt"[log_u / 10]);
 
   return s;
 }
@@ -321,6 +325,10 @@ unformat_memory_size (unformat_input_t * input, va_list * va)
     case 'g':
     case 'G':
       shift = 30;
+      break;
+    case 't':
+    case 'T':
+      shift = 40;
       break;
     default:
       shift = 0;
