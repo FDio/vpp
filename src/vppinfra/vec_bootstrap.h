@@ -160,19 +160,33 @@ u32 vec_len_not_inline (void *v);
 
 #define vec_bytes(v) (vec_len (v) * sizeof (v[0]))
 
-/** \brief Total number of bytes that can fit in vector with current allocation. */
+/**
+ * Return size of memory allocated for the vector
+ *
+ * @param v vector
+ * @param b extra header bytes
+ * @return memory size allocated for the vector
+ */
+#define vec_mem_size(v, b)                                                    \
+  ({                                                                          \
+    void *_vec_mem_v = (void *) (v);                                          \
+    uword _vec_mem_b = (b);                                                   \
+    _vec_mem_b = sizeof (vec_header_t) + _vec_round_size (_vec_mem_b);        \
+    _vec_mem_v ? clib_mem_size (_vec_mem_v - _vec_mem_b) : 0;                 \
+  })
 
-#define vec_capacity(v,b)							\
-({										\
-  void * _vec_capacity_v = (void *) (v);					\
-  uword _vec_capacity_b = (b);							\
-  _vec_capacity_b = sizeof (vec_header_t) + _vec_round_size (_vec_capacity_b);	\
-  _vec_capacity_v ? clib_mem_size (_vec_capacity_v - _vec_capacity_b) : 0;	\
-})
+/**
+ * Number of elements that can fit into generic vector
+ *
+ * @param v vector
+ * @param b extra header bytes
+ * @return number of elements that can fit into vector
+ */
+#define vec_max_elts(v, b)                                                    \
+  (v ? (vec_mem_size (v, b) - vec_header_bytes (b)) / sizeof (v[0]) : 0)
 
 /** \brief Total number of elements that can fit into vector. */
-#define vec_max_len(v) 								\
-  ((v) ? (vec_capacity (v,0) - vec_header_bytes (0)) / sizeof (v[0]) : 0)
+#define vec_max_len(v) vec_max_elts (v, 0)
 
 /** \brief Set vector length to a user-defined value */
 #ifndef __COVERITY__		/* Coverity gets confused by ASSERT() */
