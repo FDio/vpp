@@ -55,6 +55,7 @@ VNET_HW_INTERFACE_CLASS (af_packet_ip_device_hw_interface_class, static) = {
 unsigned int if_nametoindex (const char *ifname);
 
 typedef struct tpacket_req tpacket_req_t;
+typedef struct tpacket_req3 tpacket_req3_t;
 
 static clib_error_t *
 af_packet_eth_set_max_frame_size (vnet_main_t *vnm, vnet_hw_interface_t *hi,
@@ -130,22 +131,22 @@ is_bridge (const u8 * host_if_name)
 }
 
 static int
-create_packet_v2_sock (int host_if_index, tpacket_req_t * rx_req,
-		       tpacket_req_t * tx_req, int *fd, u8 ** ring)
+create_packet_v3_sock (int host_if_index, tpacket_req3_t * rx_req,
+                       tpacket_req3_t * tx_req, int *fd, u8 ** ring, u32 *hdrlen_ptr)
 {
   af_packet_main_t *apm = &af_packet_main;
   int ret;
   struct sockaddr_ll sll;
-  int ver = TPACKET_V2;
-  socklen_t req_sz = sizeof (struct tpacket_req);
+  int ver = TPACKET_V3;
+  socklen_t req_sz = sizeof (struct tpacket_req3);
   u32 ring_sz = rx_req->tp_block_size * rx_req->tp_block_nr +
     tx_req->tp_block_size * tx_req->tp_block_nr;
 
   if ((*fd = socket (AF_PACKET, SOCK_RAW, htons (ETH_P_ALL))) < 0)
     {
       vlib_log_debug (apm->log_class,
-		      "Failed to create AF_PACKET socket: %s (errno %d)",
-		      strerror (errno), errno);
+                      "Failed to create AF_PACKET socket: %s (errno %d)",
+                      strerror (errno), errno);
       ret = VNET_API_ERROR_SYSCALL_ERROR_1;
       goto error;
     }
@@ -158,8 +159,8 @@ create_packet_v2_sock (int host_if_index, tpacket_req_t * rx_req,
   if (bind (*fd, (struct sockaddr *) &sll, sizeof (sll)) < 0)
     {
       vlib_log_debug (apm->log_class,
-		      "Failed to bind rx packet socket: %s (errno %d)",
-		      strerror (errno), errno);
+                      "Failed to bind rx packet socket: %s (errno %d)",
+                      strerror (errno), errno);
       ret = VNET_API_ERROR_SYSCALL_ERROR_1;
       goto error;
     }
@@ -167,18 +168,31 @@ create_packet_v2_sock (int host_if_index, tpacket_req_t * rx_req,
   if (setsockopt (*fd, SOL_PACKET, PACKET_VERSION, &ver, sizeof (ver)) < 0)
     {
       vlib_log_debug (apm->log_class,
-		      "Failed to set rx packet interface version: %s (errno %d)",
-		      strerror (errno), errno);
+                      "Failed to set rx packet interface version: %s (errno %d)",
+                      strerror (errno), errno);
       ret = VNET_API_ERROR_SYSCALL_ERROR_1;
       goto error;
     }
+
+  u32 hdrlen = 0;
+  u32 len = sizeof (hdrlen);
+  if (getsockopt (*fd, SOL_PACKET, PACKET_HDRLEN, &hdrlen, &len) < 0)
+    {
+      vlib_log_debug (apm->log_class,
+                      "Failed to get packet hdr len error handling option: %s (errno %d)",
+                      strerror (errno), errno);
+      ret = VNET_API_ERROR_SYSCALL_ERROR_1;
+      goto error;
+    }
+  else
+    *hdrlen_ptr = hdrlen;
 
   int opt = 1;
   if (setsockopt (*fd, SOL_PACKET, PACKET_LOSS, &opt, sizeof (opt)) < 0)
     {
       vlib_log_debug (apm->log_class,
-		      "Failed to set packet tx ring error handling option: %s (errno %d)",
-		      strerror (errno), errno);
+                      "Failed to set packet tx ring error handling option: %s (errno %d)",
+                      strerror (errno), errno);
       ret = VNET_API_ERROR_SYSCALL_ERROR_1;
       goto error;
     }
@@ -189,17 +203,17 @@ create_packet_v2_sock (int host_if_index, tpacket_req_t * rx_req,
       0)
     {
       vlib_log_debug (apm->log_class,
-		      "Failed to set qdisc bypass error "
-		      "handling option: %s (errno %d)",
-		      strerror (errno), errno);
+                      "Failed to set qdisc bypass error "
+                      "handling option: %s (errno %d)",
+                      strerror (errno), errno);
     }
 #endif
 
   if (setsockopt (*fd, SOL_PACKET, PACKET_RX_RING, rx_req, req_sz) < 0)
     {
       vlib_log_debug (apm->log_class,
-		      "Failed to set packet rx ring options: %s (errno %d)",
-		      strerror (errno), errno);
+                      "Failed to set packet rx ring options: %s (errno %d)",
+                      strerror (errno), errno);
       ret = VNET_API_ERROR_SYSCALL_ERROR_1;
       goto error;
     }
@@ -207,19 +221,19 @@ create_packet_v2_sock (int host_if_index, tpacket_req_t * rx_req,
   if (setsockopt (*fd, SOL_PACKET, PACKET_TX_RING, tx_req, req_sz) < 0)
     {
       vlib_log_debug (apm->log_class,
-		      "Failed to set packet tx ring options: %s (errno %d)",
-		      strerror (errno), errno);
+                      "Failed to set packet tx ring options: %s (errno %d)",
+                      strerror (errno), errno);
       ret = VNET_API_ERROR_SYSCALL_ERROR_1;
       goto error;
     }
 
   *ring =
     mmap (NULL, ring_sz, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_LOCKED, *fd,
-	  0);
+          0);
   if (*ring == MAP_FAILED)
     {
       vlib_log_debug (apm->log_class, "mmap failure: %s (errno %d)",
-		      strerror (errno), errno);
+                      strerror (errno), errno);
       ret = VNET_API_ERROR_SYSCALL_ERROR_1;
       goto error;
     }
@@ -234,14 +248,119 @@ error:
   return ret;
 }
 
+//static int
+//create_packet_v2_sock (int host_if_index, tpacket_req_t * rx_req,
+//		       tpacket_req_t * tx_req, int *fd, u8 ** ring)
+//{
+//  af_packet_main_t *apm = &af_packet_main;
+//  int ret;
+//  struct sockaddr_ll sll;
+//  int ver = TPACKET_V2;
+//  socklen_t req_sz = sizeof (struct tpacket_req);
+//  u32 ring_sz = rx_req->tp_block_size * rx_req->tp_block_nr +
+//    tx_req->tp_block_size * tx_req->tp_block_nr;
+//
+//  if ((*fd = socket (AF_PACKET, SOCK_RAW, htons (ETH_P_ALL))) < 0)
+//    {
+//      vlib_log_debug (apm->log_class,
+//		      "Failed to create AF_PACKET socket: %s (errno %d)",
+//		      strerror (errno), errno);
+//      ret = VNET_API_ERROR_SYSCALL_ERROR_1;
+//      goto error;
+//    }
+//
+//  /* bind before rx ring is cfged so we don't receive packets from other interfaces */
+//  clib_memset (&sll, 0, sizeof (sll));
+//  sll.sll_family = PF_PACKET;
+//  sll.sll_protocol = htons (ETH_P_ALL);
+//  sll.sll_ifindex = host_if_index;
+//  if (bind (*fd, (struct sockaddr *) &sll, sizeof (sll)) < 0)
+//    {
+//      vlib_log_debug (apm->log_class,
+//		      "Failed to bind rx packet socket: %s (errno %d)",
+//		      strerror (errno), errno);
+//      ret = VNET_API_ERROR_SYSCALL_ERROR_1;
+//      goto error;
+//    }
+//
+//  if (setsockopt (*fd, SOL_PACKET, PACKET_VERSION, &ver, sizeof (ver)) < 0)
+//    {
+//      vlib_log_debug (apm->log_class,
+//		      "Failed to set rx packet interface version: %s (errno %d)",
+//		      strerror (errno), errno);
+//      ret = VNET_API_ERROR_SYSCALL_ERROR_1;
+//      goto error;
+//    }
+//
+//  int opt = 1;
+//  if (setsockopt (*fd, SOL_PACKET, PACKET_LOSS, &opt, sizeof (opt)) < 0)
+//    {
+//      vlib_log_debug (apm->log_class,
+//		      "Failed to set packet tx ring error handling option: %s (errno %d)",
+//		      strerror (errno), errno);
+//      ret = VNET_API_ERROR_SYSCALL_ERROR_1;
+//      goto error;
+//    }
+//
+//#if defined(PACKET_QDISC_BYPASS)
+//  /* Introduced with Linux 3.14 so the ifdef should eventually be removed  */
+//  if (setsockopt (*fd, SOL_PACKET, PACKET_QDISC_BYPASS, &opt, sizeof (opt)) <
+//      0)
+//    {
+//      vlib_log_debug (apm->log_class,
+//		      "Failed to set qdisc bypass error "
+//		      "handling option: %s (errno %d)",
+//		      strerror (errno), errno);
+//    }
+//#endif
+//
+//  if (setsockopt (*fd, SOL_PACKET, PACKET_RX_RING, rx_req, req_sz) < 0)
+//    {
+//      vlib_log_debug (apm->log_class,
+//		      "Failed to set packet rx ring options: %s (errno %d)",
+//		      strerror (errno), errno);
+//      ret = VNET_API_ERROR_SYSCALL_ERROR_1;
+//      goto error;
+//    }
+//
+//  if (setsockopt (*fd, SOL_PACKET, PACKET_TX_RING, tx_req, req_sz) < 0)
+//    {
+//      vlib_log_debug (apm->log_class,
+//		      "Failed to set packet tx ring options: %s (errno %d)",
+//		      strerror (errno), errno);
+//      ret = VNET_API_ERROR_SYSCALL_ERROR_1;
+//      goto error;
+//    }
+//
+//  *ring =
+//    mmap (NULL, ring_sz, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_LOCKED, *fd,
+//	  0);
+//  if (*ring == MAP_FAILED)
+//    {
+//      vlib_log_debug (apm->log_class, "mmap failure: %s (errno %d)",
+//		      strerror (errno), errno);
+//      ret = VNET_API_ERROR_SYSCALL_ERROR_1;
+//      goto error;
+//    }
+//
+//  return 0;
+//error:
+//  if (*fd >= 0)
+//    {
+//      close (*fd);
+//      *fd = -1;
+//    }
+//  return ret;
+//}
+
 int
 af_packet_create_if (af_packet_create_if_arg_t *arg)
 {
   af_packet_main_t *apm = &af_packet_main;
   vlib_main_t *vm = vlib_get_main ();
   int ret, fd = -1, fd2 = -1;
-  struct tpacket_req *rx_req = 0;
-  struct tpacket_req *tx_req = 0;
+  struct tpacket_req3 *rx_req = 0;
+  struct tpacket_req3 *tx_req = 0;
   struct ifreq ifr;
   u8 *ring = 0;
   af_packet_if_t *apif = 0;
@@ -282,12 +401,18 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
   rx_req->tp_frame_size = rx_frame_size;
   rx_req->tp_block_nr = AF_PACKET_RX_BLOCK_NR;
   rx_req->tp_frame_nr = AF_PACKET_RX_BLOCK_NR * rx_frames_per_block;
+  rx_req->tp_retire_blk_tov = 0;
+  rx_req->tp_feature_req_word = 0;//TP_FT_REQ_FILL_RXHASH;
+  rx_req->tp_sizeof_priv = 0;
 
   vec_validate (tx_req, 0);
   tx_req->tp_block_size = tx_frame_size * tx_frames_per_block;
   tx_req->tp_frame_size = tx_frame_size;
   tx_req->tp_block_nr = AF_PACKET_TX_BLOCK_NR;
   tx_req->tp_frame_nr = AF_PACKET_TX_BLOCK_NR * tx_frames_per_block;
+  tx_req->tp_retire_blk_tov = 0;
+  tx_req->tp_sizeof_priv = 0;
+  tx_req->tp_feature_req_word = 0;
 
   /*
    * make sure host side of interface is 'UP' before binding AF_PACKET
@@ -343,7 +468,8 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
       fd2 = -1;
     }
 
-  ret = create_packet_v2_sock (host_if_index, rx_req, tx_req, &fd, &ring);
+  u32 hdrlen = 0;
+  ret = create_packet_v3_sock (host_if_index, rx_req, tx_req, &fd, &ring, &hdrlen);
 
   if (ret != 0)
     goto error;
@@ -368,6 +494,7 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
   apif->next_tx_frame = 0;
   apif->next_rx_frame = 0;
   apif->mode = arg->mode;
+  apif->hdrlen = hdrlen;
 
   ret = af_packet_read_mtu (apif);
   if (ret != 0)
@@ -418,7 +545,7 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
 			       VNET_HW_INTERFACE_FLAG_LINK_UP);
 
   vnet_hw_if_set_rx_queue_mode (vnm, apif->queue_index,
-				VNET_HW_IF_RX_MODE_INTERRUPT);
+				VNET_HW_IF_RX_MODE_POLLING);
   vnet_hw_if_update_runtime_data (vnm, apif->hw_if_index);
   {
     clib_file_t template = { 0 };

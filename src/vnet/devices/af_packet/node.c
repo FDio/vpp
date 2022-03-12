@@ -29,6 +29,12 @@
 
 #include <vnet/devices/af_packet/af_packet.h>
 
+typedef struct block_desc {
+  u32 version;
+  u32 offset_to_priv;
+  struct tpacket_hdr_v1 h1;
+} block_desc_t;
+
 #define foreach_af_packet_input_error \
   _(PARTIAL_PKT, "partial packet")
 
@@ -51,7 +57,7 @@ typedef struct
   u32 next_index;
   u32 hw_if_index;
   int block;
-  struct tpacket2_hdr tph;
+  struct tpacket3_hdr tph;
 } af_packet_input_trace_t;
 
 static u8 *
@@ -67,7 +73,7 @@ format_af_packet_input_trace (u8 * s, va_list * args)
 
   s =
     format (s,
-	    "\n%Utpacket2_hdr:\n%Ustatus 0x%x len %u snaplen %u mac %u net %u"
+	    "\n%Utpacket3_hdr:\n%Ustatus 0x%x len %u snaplen %u mac %u net %u"
 	    "\n%Usec 0x%x nsec 0x%x vlan %U"
 #ifdef TP_STATUS_VLAN_TPID_VALID
 	    " vlan_tpid %u"
@@ -82,9 +88,9 @@ format_af_packet_input_trace (u8 * s, va_list * args)
 	    t->tph.tp_net,
 	    format_white_space, indent + 4,
 	    t->tph.tp_sec,
-	    t->tph.tp_nsec, format_ethernet_vlan_tci, t->tph.tp_vlan_tci
+	    t->tph.tp_nsec, format_ethernet_vlan_tci, t->tph.hv1.tp_vlan_tci
 #ifdef TP_STATUS_VLAN_TPID_VALID
-	    , t->tph.tp_vlan_tpid
+	    , t->tph.hv1.tp_vlan_tpid
 #endif
     );
   return s;
@@ -193,7 +199,7 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 			   vlib_frame_t * frame, af_packet_if_t * apif)
 {
   af_packet_main_t *apm = &af_packet_main;
-  struct tpacket2_hdr *tph;
+  struct tpacket3_hdr *tph;
   u32 next_index;
   u32 block = 0;
   u32 rx_frame;
@@ -202,14 +208,15 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_rx_bytes = 0;
   u32 *to_next = 0;
   u32 block_size = apif->rx_req->tp_block_size;
-  u32 frame_size = apif->rx_req->tp_frame_size;
-  u32 frame_num = apif->rx_req->tp_frame_nr;
+  //u32 frame_size = apif->rx_req->tp_frame_size;
+  //u32 frame_num = apif->rx_req->tp_frame_nr;
   u8 *block_start = apif->rx_ring + block * block_size;
   uword n_trace = vlib_get_trace_count (vm, node);
   u32 thread_index = vm->thread_index;
   u32 n_buffer_bytes = vlib_buffer_get_default_data_size (vm);
   u32 min_bufs = apif->rx_req->tp_frame_size / n_buffer_bytes;
   u32 eth_header_size = 0;
+  
   vlib_buffer_t bt;
 
   if (apif->mode == AF_PACKET_IF_MODE_IP)
@@ -239,16 +246,27 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   rx_frame = apif->next_rx_frame;
-  tph = (struct tpacket2_hdr *) (block_start + rx_frame * frame_size);
-  while ((tph->tp_status & TP_STATUS_USER) && (n_free_bufs > min_bufs))
-    {
+  //if (rx_frame == 0)
+//	  rx_frame = sizeof (block_desc_t);
+  block_desc_t *bd = (block_desc_t *) block_start;
+  if ((bd->h1.block_status & TP_STATUS_USER) == 0)
+    return 0;
+  int num_pkts = bd->h1.num_pkts;
+  u32 rx_frame_offset = sizeof (block_desc_t);
+  tph = (struct tpacket3_hdr *) (block_start + sizeof (block_desc_t));// + rx_frame * frame_size);//bd->h1.offset_to_first_pkt);
+
+  //tph = (struct tpacket3_hdr *) (block_start + rx_frame * frame_size);
+  //while ((tph->tp_status & TP_STATUS_USER) && (n_free_bufs > min_bufs))
+  while (num_pkts && (n_free_bufs > min_bufs))// && (tph->tp_status & TP_STATUS_USER))
+   {
       vlib_buffer_t *b0 = 0, *first_b0 = 0;
       u32 next0 = next_index;
 
       u32 n_left_to_next;
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
-      while ((tph->tp_status & TP_STATUS_USER) && (n_free_bufs > min_bufs) &&
-	     n_left_to_next)
+      while (num_pkts && n_left_to_next && (n_free_bufs > min_bufs))
+      //while ((tph->tp_status & TP_STATUS_USER) && (n_free_bufs > min_bufs) &&
+      //	     n_left_to_next)
 	{
 	  u32 data_len = tph->tp_snaplen;
 	  u32 offset = 0;
@@ -284,7 +302,7 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      ethernet_vlan_header_t *vlan =
 			(ethernet_vlan_header_t *) (eth + 1);
 		      vlan->priority_cfi_and_id =
-			clib_host_to_net_u16 (tph->tp_vlan_tci);
+			clib_host_to_net_u16 (tph->hv1.tp_vlan_tci);
 		      vlan->type = eth->type;
 		      eth->type = clib_host_to_net_u16 (ETHERNET_TYPE_VLAN);
 		      vlan_len = sizeof (ethernet_vlan_header_t);
@@ -373,22 +391,28 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr = vlib_add_trace (vm, node, first_b0, sizeof (*tr));
 	      tr->next_index = next0;
 	      tr->hw_if_index = apif->hw_if_index;
-	      clib_memcpy_fast (&tr->tph, tph, sizeof (struct tpacket2_hdr));
+	      clib_memcpy_fast (&tr->tph, tph, sizeof (struct tpacket3_hdr));
 	    }
 
 	  /* enque and take next packet */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, first_bi0, next0);
 
+	  num_pkts--;
 	  /* next packet */
-	  tph->tp_status = TP_STATUS_KERNEL;
-	  rx_frame = (rx_frame + 1) % frame_num;
-	  tph = (struct tpacket2_hdr *) (block_start + rx_frame * frame_size);
+//	  tph->tp_status = TP_STATUS_KERNEL;
+	 // rx_frame = (rx_frame + 1) % frame_num;
+	 // tph = (struct tpacket3_hdr *) (block_start + sizeof (block_desc_t) + rx_frame * frame_size);
+          //rx_frame = tph->tp_next_offset;
+	  rx_frame_offset += tph->tp_next_offset;
+          //tph = tph->tp_next_offset;
+	  tph = (struct tpacket3_hdr *) (block_start + rx_frame_offset);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
+  bd->h1.block_status = TP_STATUS_KERNEL;
   apif->next_rx_frame = rx_frame;
 
   vlib_increment_combined_counter

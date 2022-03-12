@@ -146,7 +146,7 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
   u32 frame_num = apif->tx_req->tp_frame_nr;
   u8 *block_start = apif->tx_ring + block * block_size;
   u32 tx_frame = apif->next_tx_frame;
-  struct tpacket2_hdr *tph;
+  struct tpacket3_hdr *tph;
   u32 frame_not_ready = 0;
 
   while (n_left)
@@ -158,7 +158,7 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
       u32 bi = buffers[0];
       buffers++;
 
-      tph = (struct tpacket2_hdr *) (block_start + tx_frame * frame_size);
+      tph = (struct tpacket3_hdr *) (block_start + tx_frame * frame_size);
       if (PREDICT_FALSE (tph->tp_status &
 			 (TP_STATUS_SEND_REQUEST | TP_STATUS_SENDING)))
 	{
@@ -171,7 +171,7 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi);
 	  len = b0->current_length;
 	  clib_memcpy_fast ((u8 *) tph +
-			    TPACKET_ALIGN (sizeof (struct tpacket2_hdr)) +
+			    TPACKET_ALIGN (sizeof (struct tpacket3_hdr)) +
 			    offset, vlib_buffer_get_current (b0), len);
 	  offset += len;
 	}

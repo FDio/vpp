@@ -39,10 +39,11 @@ typedef struct
   u8 *host_if_name;
   int host_if_index;
   int fd;
-  struct tpacket_req *rx_req;
-  struct tpacket_req *tx_req;
+  struct tpacket_req3 *rx_req;
+  struct tpacket_req3 *tx_req;
   u8 *rx_ring;
   u8 *tx_ring;
+  u32 hdrlen;
   u32 hw_if_index;
   u32 sw_if_index;
   u32 clib_file_index;
