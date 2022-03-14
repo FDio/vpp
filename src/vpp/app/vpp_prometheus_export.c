@@ -96,16 +96,6 @@ retry:
 			 res[i].combined_counter_vec[k][j].bytes);
 	      }
 	  break;
-	case STAT_DIR_TYPE_ERROR_INDEX:
-	  for (j = 0; j < vec_len (res[i].error_vector); j++)
-	    {
-	      fformat (stream, "# TYPE %s counter\n",
-		       prom_string (res[i].name));
-	      fformat (stream, "%s{thread=\"%d\"} %lld\n",
-		       prom_string (res[i].name), j, res[i].error_vector[j]);
-	    }
-	  break;
-
 	case STAT_DIR_TYPE_SCALAR_INDEX:
 	  fformat (stream, "# TYPE %s counter\n", prom_string (res[i].name));
 	  fformat (stream, "%s %.2f\n", prom_string (res[i].name),

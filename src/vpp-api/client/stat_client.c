@@ -231,7 +231,6 @@ copy_data (vlib_stats_entry_t *ep, u32 index2, char *name,
   int i;
   vlib_counter_t **combined_c;	/* Combined counter */
   counter_t **simple_c;		/* Simple counter */
-  uint64_t *error_vector;
 
   assert (sm->shared_header);
 
@@ -268,18 +267,6 @@ copy_data (vlib_stats_entry_t *ep, u32 index2, char *name,
 	      stat_vec_combined_init (cb[index2]);
 	  else
 	    result.combined_counter_vec[i] = stat_vec_dup (sm, cb);
-	}
-      break;
-
-    case STAT_DIR_TYPE_ERROR_INDEX:
-      /* Gather errors from all threads into a vector */
-      error_vector =
-	stat_segment_adjust (sm, (void *) sm->shared_header->error_vector);
-      vec_validate (result.error_vector, vec_len (error_vector) - 1);
-      for (i = 0; i < vec_len (error_vector); i++)
-	{
-	  counter_t *cb = stat_segment_adjust (sm, (void *) error_vector[i]);
-	  result.error_vector[i] = cb[ep->index];
 	}
       break;
 
@@ -334,9 +321,6 @@ stat_segment_data_free (stat_segment_data_t * res)
 	  for (j = 0; j < vec_len (res[i].name_vector); j++)
 	    vec_free (res[i].name_vector[j]);
 	  vec_free (res[i].name_vector);
-	  break;
-	case STAT_DIR_TYPE_ERROR_INDEX:
-	  vec_free (res[i].error_vector);
 	  break;
 	case STAT_DIR_TYPE_SCALAR_INDEX:
 	case STAT_DIR_TYPE_EMPTY:

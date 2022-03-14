@@ -142,7 +142,7 @@ test_stats (void)
   assert(rv == 0);
 
   u32 *dir;
-  int i, j, k;
+  int i, k;
   stat_segment_data_t *res;
   u8 **pattern = 0;
   vec_add1(pattern, (u8 *)"/if/names");
@@ -160,11 +160,6 @@ test_stats (void)
 	if (res[i].name_vector[k])
 	  fformat (stdout, "[%d]: %s %s\n", k, res[i].name_vector[k],
 		   res[i].name);
-      break;
-    case STAT_DIR_TYPE_ERROR_INDEX:
-      for (j = 0; j < vec_len (res[i].error_vector); j++)
-	fformat (stdout, "%llu %s\n", res[i].error_vector[j],
-		 res[i].name);
       break;
     default:
       assert(0);

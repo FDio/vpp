@@ -34,10 +34,6 @@ format_stat_dir_entry (u8 *s, va_list *args)
       type_name = "CMainPtr";
       break;
 
-    case STAT_DIR_TYPE_ERROR_INDEX:
-      type_name = "ErrIndex";
-      break;
-
     case STAT_DIR_TYPE_NAME_VECTOR:
       type_name = "NameVector";
       break;
