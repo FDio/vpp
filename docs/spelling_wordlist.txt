@@ -347,6 +347,7 @@ extranet
 Extranets
 failover
 fallback
+fateshare
 favour
 favoured
 favours
