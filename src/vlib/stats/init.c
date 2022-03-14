@@ -17,7 +17,7 @@ vector_rate_collector_fn (vlib_stats_collector_data_t *d)
   f64 vector_rate = 0.0;
   u32 i, n_threads = vlib_get_n_threads ();
 
-  vlib_stats_validate_counter_vector (d->entry_index, n_threads - 1);
+  vlib_stats_validate (d->entry_index, 0, n_threads - 1);
 
   for (i = 0; i < n_threads; i++)
     {
@@ -118,7 +118,7 @@ vlib_stats_init (vlib_main_t *vm)
   reg.entry_index =
     vlib_stats_add_counter_vector ("/sys/vector_rate_per_worker");
   vlib_stats_register_collector_fn (&reg);
-  vlib_stats_validate_counter_vector (reg.entry_index, vlib_get_n_threads ());
+  vlib_stats_validate (reg.entry_index, 0, vlib_get_n_threads ());
 
   return 0;
 }
