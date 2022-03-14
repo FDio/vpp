@@ -59,6 +59,7 @@ typedef struct
   counter_t **counters;	 /**< Per-thread u64 non-atomic counters */
   char *name;			/**< The counter collection's name. */
   char *stat_segment_name;    /**< Name in stat segment directory */
+  u32 stats_entry_index;
 } vlib_simple_counter_main_t;
 
 /** The number of counters (not the number of per-thread counters) */
@@ -219,6 +220,7 @@ typedef struct
   vlib_counter_t **counters;	/**< Per-thread u64 non-atomic counter pairs */
   char *name; /**< The counter collection's name. */
   char *stat_segment_name;	/**< Name in stat segment directory */
+  u32 stats_entry_index;
 } vlib_combined_counter_main_t;
 
 /** The number of counters (not the number of per-thread counters) */
