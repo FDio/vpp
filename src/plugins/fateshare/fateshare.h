@@ -1,7 +1,8 @@
+
 /*
- * unittest.c - vpp unit-test plugin
+ * fateshare.h - skeleton vpp engine plug-in header file
  *
- * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Copyright (c) <current-year> <your-organization>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -14,18 +15,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef __included_fateshare_h__
+#define __included_fateshare_h__
 
 #include <vnet/vnet.h>
-#include <vnet/plugin/plugin.h>
-#include <vpp/app/version.h>
+#include <vnet/ip/ip.h>
+#include <vnet/ethernet/ethernet.h>
 
-/* *INDENT-OFF* */
-VLIB_PLUGIN_REGISTER () = {
-  .version = VPP_BUILD_VER,
-  .description = "C unit tests",
-  .default_disabled = 1,
-};
-/* *INDENT-ON* */
+#include <vppinfra/hash.h>
+#include <vppinfra/error.h>
+
+typedef struct
+{
+  /* convenience */
+  vlib_main_t *vlib_main;
+  vnet_main_t *vnet_main;
+  ethernet_main_t *ethernet_main;
+
+  u8 *monitor_cmd;
+  pid_t monitor_pid;
+  u8 **commands;
+} fateshare_main_t;
+
+extern fateshare_main_t fateshare_main;
+
+#endif /* __included_fateshare_h__ */
 
 /*
  * fd.io coding-style-patch-verification: ON
