@@ -117,7 +117,6 @@ class VPPStats():
         self.connected = False
         self.size = 0
         self.last_epoch = 0
-        self.error_vectors = 0
         self.statseg = 0
 
     def connect(self):
@@ -173,11 +172,6 @@ class VPPStats():
         '''Get pointer of directory vector'''
         return self.shared_headerfmt.unpack_from(self.statseg)[4]
 
-    @property
-    def error_vector(self):
-        '''Get pointer of error vector'''
-        return self.shared_headerfmt.unpack_from(self.statseg)[5]
-
     elementfmt = 'IQ128s'
 
     def refresh(self, blocking=True):
@@ -195,11 +189,6 @@ class VPPStats():
                         directory_by_idx[i] = path
                     self.directory = directory
                     self.directory_by_idx = directory_by_idx
-
-                    # Cache the error index vectors
-                    self.error_vectors = []
-                    for threads in StatsVector(self, self.error_vector, 'P'):
-                        self.error_vectors.append(StatsVector(self, threads[0], 'Q'))
                     return
             except IOError:
                 if not blocking:
@@ -221,29 +210,23 @@ class VPPStats():
     def __iter__(self):
         return iter(self.directory.items())
 
+
     def set_errors(self, blocking=True):
         '''Return dictionary of error counters > 0'''
         if not self.connected:
             self.connect()
 
-        errors = {k:v for k, v in self.directory.items() if k.startswith("/err/")}
+        errors = {k: v for k, v in self.directory.items()
+                  if k.startswith("/err/")}
         result = {}
-        while True:
+        for k in errors:
             try:
-                if self.last_epoch != self.epoch:
-                    self.refresh(blocking)
-                with self.lock:
-                    for k, entry in errors.items():
-                        total = 0
-                        i = entry.value
-                        for per_thread in self.error_vectors:
-                            total += per_thread[i]
-                        if total:
-                            result[k] = total
-                    return result
-            except IOError:
-                if not blocking:
-                    raise
+                total = self[k].sum()
+                if total:
+                    result[k] = total
+            except KeyError:
+                pass
+        return result
 
     def set_errors_str(self, blocking=True):
         '''Return all errors counters > 0 pretty printed'''
@@ -258,19 +241,8 @@ class VPPStats():
         return self.__getitem__(name, blocking)
 
     def get_err_counter(self, name, blocking=True):
-        '''Return a single value (sum of all threads)'''
-        if not self.connected:
-            self.connect()
-        if name.startswith("/err/"):
-            while True:
-                try:
-                    if self.last_epoch != self.epoch:
-                        self.refresh(blocking)
-                    with self.lock:
-                        return sum(self.directory[name].get_counter(self))
-                except IOError:
-                    if not blocking:
-                        raise
+        '''Alternative call to __getitem__'''
+        return self.__getitem__(name, blocking).sum()
 
     def ls(self, patterns):
         '''Returns list of counters matching pattern'''
@@ -407,10 +379,8 @@ class StatsEntry():
         elif stattype == 3:
             self.function = self.combined
         elif stattype == 4:
-            self.function = self.error
-        elif stattype == 5:
             self.function = self.name
-        elif stattype == 7:
+        elif stattype == 6:
             self.function = self.symlink
         else:
             self.function = self.illegal
@@ -437,13 +407,6 @@ class StatsEntry():
         for threads in StatsVector(stats, self.value, 'P'):
             clist = [StatsTuple(cnt) for cnt in StatsVector(stats, threads[0], 'QQ')]
             counter.append(clist)
-        return counter
-
-    def error(self, stats):
-        '''Error counter'''
-        counter = SimpleList()
-        for clist in stats.error_vectors:
-            counter.append(clist[self.value])
         return counter
 
     def name(self, stats):
@@ -496,12 +459,11 @@ class TestStats(unittest.TestCase):
         print('/if/rx-miss', self.stat['/if/rx-miss'])
         print('/if/rx-miss', self.stat['/if/rx-miss'][1])
         print('/nat44-ed/out2in/slowpath/drops', self.stat['/nat44-ed/out2in/slowpath/drops'])
-        print('Set Errors', self.stat.set_errors())
         with self.assertRaises(KeyError):
             print('NO SUCH COUNTER', self.stat['foobar'])
         print('/if/rx', self.stat.get_counter('/if/rx'))
-        print('/err/ethernet-input/no error',
-              self.stat.get_err_counter('/err/ethernet-input/no error'))
+        print('/err/ethernet-input/no_error',
+              self.stat.get_counter('/err/ethernet-input/no_error'))
 
     def test_column(self):
         '''Test column slicing'''
@@ -518,14 +480,6 @@ class TestStats(unittest.TestCase):
         print('/if/rx-miss', self.stat['/if/rx-miss'])
         print('/if/rx-miss if_index #1 packets', self.stat['/if/rx-miss'][:, 1].sum())
         print('/if/rx if_index #1 packets', self.stat['/if/rx'][0][1]['packets'])
-
-    def test_error(self):
-        '''Test the error vector'''
-
-        print('/err/ethernet-input', self.stat['/err/ethernet-input/no error'])
-        print('/err/nat44-ei-ha/pkts-processed', self.stat['/err/nat44-ei-ha/pkts-processed'])
-        print('/err/ethernet-input', self.stat.get_err_counter('/err/ethernet-input/no error'))
-        print('/err/ethernet-input', self.stat['/err/ethernet-input/no error'].sum())
 
     def test_nat44(self):
         '''Test the nat counters'''
