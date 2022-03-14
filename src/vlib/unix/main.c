@@ -389,6 +389,7 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
   /* Defaults */
   um->cli_pager_buffer_limit = UNIX_CLI_DEFAULT_PAGER_LIMIT;
   um->cli_history_limit = UNIX_CLI_DEFAULT_HISTORY;
+  clib_warning ("Start unix config");
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -535,6 +536,7 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
     {
       openlog (vgm->name, LOG_CONS | LOG_PERROR | LOG_PID, LOG_DAEMON);
       clib_error_register_handler (unix_error_handler, um);
+      clib_warning ("unix config calling daemon()");
 
       if (!(um->flags & UNIX_FLAG_NODAEMON) && daemon ( /* chdir to / */ 0,
 						       /* stdin/stdout/stderr -> /dev/null */
@@ -555,6 +557,7 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
       close (pidfd);
     }
 
+  clib_warning ("End unix config");
   um->unix_config_complete = 1;
 
   return 0;
