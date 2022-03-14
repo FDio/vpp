@@ -40,6 +40,7 @@ unix { 									\
 	$(if $(wildcard startup.vpp),"exec startup.vpp",)		\
 }									\
 $(if $(DPDK_CONFIG), "dpdk { $(DPDK_CONFIG) }",)			\
+$(if $(EXTRA_VPP_CONFIG), "$(EXTRA_VPP_CONFIG)",)			\
 $(call disable_plugins,$(DISABLED_PLUGINS))				\
 "
 
