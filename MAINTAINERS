@@ -423,6 +423,11 @@ Y:	src/plugins/flowprobe/FEATURE.yaml
 M:	Ole Troan <otroan@employees.org>
 F:	src/plugins/flowprobe/
 
+Plugin - fateshare
+I:	fateshare
+M:	Andrew Yourtchenko <ayourtch@gmail.com>
+F:	src/plugins/fateshare/
+
 Plugin - http_static
 I:	http_static
 M:	Dave Barach <vpp@barachs.net>
