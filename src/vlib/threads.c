@@ -506,6 +506,7 @@ static clib_error_t *
 start_workers (vlib_main_t * vm)
 {
   vlib_global_main_t *vgm = vlib_get_global_main ();
+  vlib_main_t *fvm = vlib_get_first_main ();
   int i, j;
   vlib_worker_thread_t *w;
   vlib_main_t *vm_clone;
@@ -515,6 +516,7 @@ start_workers (vlib_main_t * vm)
   vlib_node_runtime_t *rt;
   u32 n_vlib_mains = tm->n_vlib_mains;
   u32 worker_thread_index;
+  u32 stats_err_entry_index = fvm->error_main.stats_err_entry_index;
   clib_mem_heap_t *main_heap = clib_mem_get_per_cpu_heap ();
   vlib_stats_register_mem_heap (main_heap);
 
@@ -584,6 +586,7 @@ start_workers (vlib_main_t * vm)
 	  for (k = 0; k < tr->count; k++)
 	    {
 	      vlib_node_t *n;
+	      u64 **c;
 
 	      vec_add2 (vlib_worker_threads, w, 1);
 	      /* Currently unused, may not really work */
@@ -732,13 +735,10 @@ start_workers (vlib_main_t * vm)
 				CLIB_CACHE_LINE_BYTES);
 
 	      /* Switch to the stats segment ... */
-	      void *oldheap = vlib_stats_set_heap ();
-	      vm_clone->error_main.counters =
-		vec_dup_aligned (vlib_get_first_main ()->error_main.counters,
-				 CLIB_CACHE_LINE_BYTES);
-	      clib_mem_set_heap (oldheap);
-	      vlib_stats_update_error_vector (vm_clone->error_main.counters,
-					      worker_thread_index, 1);
+	      vlib_stats_validate (stats_err_entry_index, worker_thread_index,
+				   vec_len (fvm->error_main.counters) - 1);
+	      c = vlib_stats_get_entry_data_pointer (stats_err_entry_index);
+	      vm_clone->error_main.counters = c[worker_thread_index];
 
 	      vm_clone->error_main.counters_last_clear = vec_dup_aligned (
 		vlib_get_first_main ()->error_main.counters_last_clear,
@@ -877,6 +877,7 @@ vlib_worker_thread_node_refork (void)
   vlib_node_main_t *nm, *nm_clone;
   vlib_node_t **old_nodes_clone;
   vlib_node_runtime_t *rt, *old_rt;
+  u64 **c;
 
   vlib_node_t *new_n_clone;
 
@@ -888,25 +889,18 @@ vlib_worker_thread_node_refork (void)
   nm_clone = &vm_clone->node_main;
 
   /* Re-clone error heap */
-  u64 *old_counters = vm_clone->error_main.counters;
   u64 *old_counters_all_clear = vm_clone->error_main.counters_last_clear;
 
   clib_memcpy_fast (&vm_clone->error_main, &vm->error_main,
 		    sizeof (vm->error_main));
   j = vec_len (vm->error_main.counters) - 1;
 
-  /* Switch to the stats segment ... */
-  void *oldheap = vlib_stats_set_heap ();
-  vec_validate_aligned (old_counters, j, CLIB_CACHE_LINE_BYTES);
-  clib_mem_set_heap (oldheap);
-  vm_clone->error_main.counters = old_counters;
-  vlib_stats_update_error_vector (vm_clone->error_main.counters,
-				  vm_clone->thread_index, 0);
+  c = vlib_stats_get_entry_data_pointer (vm->error_main.stats_err_entry_index);
+  vm_clone->error_main.counters = c[vm_clone->thread_index];
 
   vec_validate_aligned (old_counters_all_clear, j, CLIB_CACHE_LINE_BYTES);
   vm_clone->error_main.counters_last_clear = old_counters_all_clear;
 
-  nm_clone = &vm_clone->node_main;
   vec_free (nm_clone->next_frames);
   nm_clone->next_frames = vec_dup_aligned (nm->next_frames,
 					   CLIB_CACHE_LINE_BYTES);
