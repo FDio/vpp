@@ -79,63 +79,59 @@ void
 vlib_validate_simple_counter (vlib_simple_counter_main_t * cm, u32 index)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
-  int i, resized = 0;
-  void *oldheap = vlib_stats_set_heap ();
+  char *name = cm->stat_segment_name ? cm->stat_segment_name : cm->name;
 
-  vec_validate (cm->counters, tm->n_vlib_mains - 1);
-  for (i = 0; i < tm->n_vlib_mains; i++)
-    if (index >= vec_len (cm->counters[i]))
-      {
-	if (vec_resize_will_expand (cm->counters[i],
-				    index - vec_len (cm->counters[i]) +
-				      1 /* length_increment */))
-	  resized++;
+  if (name == 0)
+    {
+      if (cm->counters == 0)
+	cm->stats_entry_index = ~0;
+      vec_validate (cm->counters, tm->n_vlib_mains - 1);
+      for (int i = 0; i < tm->n_vlib_mains; i++)
 	vec_validate_aligned (cm->counters[i], index, CLIB_CACHE_LINE_BYTES);
-      }
+      return;
+    }
 
-  clib_mem_set_heap (oldheap);
-  /* Avoid the epoch increase when there was no counter vector resize. */
-  if (resized)
-    vlib_stats_update_counter (cm, index, STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE);
+  if (cm->counters == 0)
+    cm->stats_entry_index = vlib_stats_add_counter_vector ("%s", name);
+
+  vlib_stats_validate (cm->stats_entry_index, tm->n_vlib_mains - 1, index);
+  cm->counters = vlib_stats_get_entry_data_pointer (cm->stats_entry_index);
 }
 
 void
 vlib_free_simple_counter (vlib_simple_counter_main_t * cm)
 {
-  int i;
-
-  vlib_stats_delete_cm (cm);
-
-  void *oldheap = vlib_stats_set_heap ();
-  for (i = 0; i < vec_len (cm->counters); i++)
-    vec_free (cm->counters[i]);
-  vec_free (cm->counters);
-  clib_mem_set_heap (oldheap);
+  if (cm->stats_entry_index == ~0)
+    {
+      for (int i = 0; i < vec_len (cm->counters); i++)
+	vec_free (cm->counters[i]);
+      vec_free (cm->counters);
+    }
+  else
+    vlib_stats_remove_entry (cm->stats_entry_index);
 }
 
 void
 vlib_validate_combined_counter (vlib_combined_counter_main_t * cm, u32 index)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
-  int i, resized = 0;
-  void *oldheap = vlib_stats_set_heap ();
+  char *name = cm->stat_segment_name ? cm->stat_segment_name : cm->name;
 
-  vec_validate (cm->counters, tm->n_vlib_mains - 1);
-  for (i = 0; i < tm->n_vlib_mains; i++)
-    if (index >= vec_len (cm->counters[i]))
-      {
-	if (vec_resize_will_expand (cm->counters[i],
-				    index - vec_len (cm->counters[i]) +
-				      1 /* length_increment */))
-	  resized++;
+  if (name == 0)
+    {
+      if (cm->counters == 0)
+	cm->stats_entry_index = ~0;
+      vec_validate (cm->counters, tm->n_vlib_mains - 1);
+      for (int i = 0; i < tm->n_vlib_mains; i++)
 	vec_validate_aligned (cm->counters[i], index, CLIB_CACHE_LINE_BYTES);
-      }
+      return;
+    }
 
-  clib_mem_set_heap (oldheap);
-  /* Avoid the epoch increase when there was no counter vector resize. */
-  if (resized)
-    vlib_stats_update_counter (cm, index,
-			       STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED);
+  if (cm->counters == 0)
+    cm->stats_entry_index = vlib_stats_add_counter_pair_vector ("%s", name);
+
+  vlib_stats_validate (cm->stats_entry_index, tm->n_vlib_mains - 1, index);
+  cm->counters = vlib_stats_get_entry_data_pointer (cm->stats_entry_index);
 }
 
 int
@@ -173,15 +169,14 @@ int
 void
 vlib_free_combined_counter (vlib_combined_counter_main_t * cm)
 {
-  int i;
-
-  vlib_stats_delete_cm (cm);
-
-  void *oldheap = vlib_stats_set_heap ();
-  for (i = 0; i < vec_len (cm->counters); i++)
-    vec_free (cm->counters[i]);
-  vec_free (cm->counters);
-  clib_mem_set_heap (oldheap);
+  if (cm->stats_entry_index == ~0)
+    {
+      for (int i = 0; i < vec_len (cm->counters); i++)
+	vec_free (cm->counters[i]);
+      vec_free (cm->counters);
+    }
+  else
+    vlib_stats_remove_entry (cm->stats_entry_index);
 }
 
 u32
