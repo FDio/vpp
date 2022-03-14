@@ -629,11 +629,15 @@ tcp_update_snd_wnd (tcp_connection_t * tc, u32 seq, u32 ack, u32 snd_wnd)
 
       if (PREDICT_FALSE (tc->snd_wnd < tc->snd_mss))
 	{
-	  /* Set persist timer if not set and we just got 0 wnd */
-	  if (!tcp_timer_is_active (tc, TCP_TIMER_PERSIST)
-	      && !tcp_timer_is_active (tc, TCP_TIMER_RETRANSMIT))
+	  if (!tcp_timer_is_active (tc, TCP_TIMER_RETRANSMIT))
 	    {
 	      tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
+
+	      /* Set persist timer if we just got 0 wnd. If already set,
+	       * update it because some data sent with snd_wnd < snd_mss was
+	       * acked. */
+	      if (tcp_timer_is_active (tc, TCP_TIMER_PERSIST))
+		tcp_persist_timer_reset (&wrk->timer_wheel, tc);
 	      tcp_persist_timer_set (&wrk->timer_wheel, tc);
 	    }
 	}
