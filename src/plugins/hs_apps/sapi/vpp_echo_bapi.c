@@ -265,11 +265,11 @@ echo_segment_lookup (u64 segment_handle)
   clib_spinlock_lock (&em->segment_handles_lock);
   segment_idxp = hash_get (em->shared_segment_handles, segment_handle);
   clib_spinlock_unlock (&em->segment_handles_lock);
-  if (!segment_idxp)
-    return ~0;
+  if (segment_idxp)
+    return ((u32) *segment_idxp);
 
   ECHO_LOG (2, "Segment not mapped (0x%lx)", segment_handle);
-  return ((u32) *segment_idxp);
+  return ~0;
 }
 
 void
