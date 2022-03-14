@@ -247,7 +247,7 @@ memif_process_desc (vlib_main_t *vm, vlib_node_runtime_t *node,
   u32 n_buffers = 0;
   u32 n_left = ptd->n_packets;
   u32 packet_len;
-  int i = 0;
+  int i = -1;
 
   /* construct copy and packet vector out of ring slots */
   while (n_left)
@@ -261,6 +261,7 @@ memif_process_desc (vlib_main_t *vm, vlib_node_runtime_t *node,
       dst_off = start_offset;
 
     next_slot:
+      i++; /* next descriptor */
       n_bytes_left = desc_len[i];
 
       packet_len += n_bytes_left;
@@ -286,9 +287,6 @@ memif_process_desc (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    dst_off += bytes_to_copy;
 	  }
 	while (PREDICT_FALSE (n_bytes_left));
-
-      /* next descriptor */
-      i++;
 
       if (desc_status[i].next)
 	{
