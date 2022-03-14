@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "8398c3c4_fe440e36",
+        "filename": "src/tools/vppapigen/generate_go.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2022-03-14T18:49:10Z",
+      "side": 1,
+      "message": "I think that\u0027s pep8, anyway I embed the comment 😊",
+      "parentUuid": "6fcd6095_3efbd36c",
+      "revId": "139fbf1070ac8326dc39e88c218e6f19d5518058",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c91c8bd3_a9b582ea",
         "filename": "src/tools/vppapigen/generate_go.py",
         "patchSetId": 1
@@ -33,6 +51,24 @@
       "revId": "139fbf1070ac8326dc39e88c218e6f19d5518058",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e38ed621_4fe906c6",
+        "filename": "src/tools/vppapigen/generate_go.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2022-03-14T18:49:10Z",
+      "side": 1,
+      "message": "Good catch, replaced with `if import_prefix:` and added `default\u003d\"\"` for extra safety",
+      "parentUuid": "c91c8bd3_a9b582ea",
+      "revId": "139fbf1070ac8326dc39e88c218e6f19d5518058",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
