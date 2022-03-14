@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6fcd6095_3efbd36c",
+        "filename": "src/tools/vppapigen/generate_go.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 1360
+      },
+      "writtenOn": "2022-03-14T14:20:24Z",
+      "side": 1,
+      "message": "Some unnecessary empty lines",
+      "revId": "139fbf1070ac8326dc39e88c218e6f19d5518058",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c91c8bd3_a9b582ea",
+        "filename": "src/tools/vppapigen/generate_go.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 1360
+      },
+      "writtenOn": "2022-03-14T14:20:24Z",
+      "side": 1,
+      "message": "I hit `TypeError: can only concatenate str (not \"NoneType\") to str` on this line, can be fixed with `str(import_prefix)`",
+      "revId": "139fbf1070ac8326dc39e88c218e6f19d5518058",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
