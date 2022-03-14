@@ -119,15 +119,21 @@ vlib_stats_get_entry (vlib_stats_segment_t *sm, u32 entry_index)
   return e;
 }
 
+static_always_inline void *
+vlib_stats_get_entry_data_pointer (u32 entry_index)
+{
+  vlib_stats_segment_t *sm = vlib_stats_get_segment ();
+  vlib_stats_entry_t *e = vlib_stats_get_entry (sm, entry_index);
+  return e->data;
+}
+
 clib_error_t *vlib_stats_init (vlib_main_t *vm);
 void *vlib_stats_set_heap ();
-void vlib_stats_update_counter (void *, u32, stat_directory_type_t);
 void vlib_stats_register_error_index (u64 *em_vec, u64 index, char *fmt, ...);
 void vlib_stats_update_error_vector (u64 *error_vector, u32 thread_index,
 				     int lock);
 void vlib_stats_segment_lock (void);
 void vlib_stats_segment_unlock (void);
-void vlib_stats_delete_cm (void *);
 void vlib_stats_register_mem_heap (clib_mem_heap_t *);
 f64 vlib_stats_get_segment_update_rate (void);
 
@@ -139,9 +145,11 @@ void vlib_stats_set_gauge (u32 entry_index, u64 value);
 u32 vlib_stats_add_timestamp (char *fmt, ...);
 void vlib_stats_set_timestamp (u32 entry_index, f64 value);
 
-/* vector */
+/* counter vector */
 u32 vlib_stats_add_counter_vector (char *fmt, ...);
-void vlib_stats_validate_counter_vector (u32 entry_index, u32 vector_index);
+
+/* counter pair vector */
+u32 vlib_stats_add_counter_pair_vector (char *fmt, ...);
 
 /* string vector */
 u32 vlib_stats_add_string_vector (char *fmt, ...);
@@ -153,6 +161,8 @@ u32 vlib_stats_add_symlink (u32 entry_index, u32 vector_index, char *fmt, ...);
 void vlib_stats_rename_symlink (u64 entry_index, char *fmt, ...);
 
 /* common to all types */
+void vlib_stats_validate (u32 entry_index, ...);
+int vlib_stats_validate_will_expand (u32 entry_index, ...);
 void vlib_stats_remove_entry (u32 entry_index);
 u32 vlib_stats_find_entry_index (char *fmt, ...);
 void vlib_stats_register_collector_fn (vlib_stats_collector_reg_t *r);
