@@ -98,26 +98,6 @@ dump_counter_vector_combined (stat_segment_data_t *res, u8 *s, u8 used_only)
 }
 
 static u8 *
-dump_error_index (stat_segment_data_t *res, u8 *s, u8 used_only)
-{
-  u8 *name;
-  int j;
-
-  name = make_stat_name (res->name);
-
-  for (j = 0; j < vec_len (res->error_vector); j++)
-    {
-      if (used_only && !res->error_vector[j])
-	continue;
-      s = format (s, "# TYPE %v counter\n", name);
-      s =
-	format (s, "%v{thread=\"%d\"} %lld\n", name, j, res->error_vector[j]);
-    }
-
-  return s;
-}
-
-static u8 *
 dump_scalar_index (stat_segment_data_t *res, u8 *s, u8 used_only)
 {
   u8 *name;
@@ -178,9 +158,6 @@ retry:
 
 	case STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED:
 	  s = dump_counter_vector_combined (&res[i], s, used_only);
-	  break;
-	case STAT_DIR_TYPE_ERROR_INDEX:
-	  s = dump_error_index (&res[i], s, used_only);
 	  break;
 
 	case STAT_DIR_TYPE_SCALAR_INDEX:

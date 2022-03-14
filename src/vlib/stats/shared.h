@@ -11,7 +11,6 @@ typedef enum
   STAT_DIR_TYPE_SCALAR_INDEX,
   STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE,
   STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED,
-  STAT_DIR_TYPE_ERROR_INDEX,
   STAT_DIR_TYPE_NAME_VECTOR,
   STAT_DIR_TYPE_EMPTY,
   STAT_DIR_TYPE_SYMLINK,
@@ -46,7 +45,6 @@ typedef struct
   volatile uint64_t epoch;
   volatile uint64_t in_progress;
   volatile vlib_stats_entry_t *directory_vector;
-  volatile uint64_t **error_vector;
 } vlib_stats_shared_header_t;
 
 #endif /* included_stat_segment_shared_h */

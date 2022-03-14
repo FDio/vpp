@@ -75,7 +75,6 @@ typedef struct
   /* statistics segment */
   uword *directory_vector_by_name;
   vlib_stats_entry_t *directory_vector;
-  volatile u64 **error_vector;
   u8 **nodes;
 
   /* Update interval */
@@ -129,9 +128,6 @@ vlib_stats_get_entry_data_pointer (u32 entry_index)
 
 clib_error_t *vlib_stats_init (vlib_main_t *vm);
 void *vlib_stats_set_heap ();
-void vlib_stats_register_error_index (u64 *em_vec, u64 index, char *fmt, ...);
-void vlib_stats_update_error_vector (u64 *error_vector, u32 thread_index,
-				     int lock);
 void vlib_stats_segment_lock (void);
 void vlib_stats_segment_unlock (void);
 void vlib_stats_register_mem_heap (clib_mem_heap_t *);
