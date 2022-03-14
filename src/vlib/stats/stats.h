@@ -82,6 +82,8 @@ typedef struct
   f64 update_interval;
 
   clib_spinlock_t *stat_segment_lockp;
+  u32 locking_thread_index;
+  u32 n_locks;
   clib_socket_t *socket;
   u8 *socket_name;
   ssize_t memory_size;
