@@ -228,64 +228,6 @@ vlib_stats_update_counter (void *cm_arg, u32 cindex,
 }
 
 void
-vlib_stats_register_error_index (u64 *em_vec, u64 index, char *fmt, ...)
-{
-  vlib_stats_segment_t *sm = vlib_stats_get_segment ();
-  vlib_stats_shared_header_t *shared_header = sm->shared_header;
-  vlib_stats_entry_t e = {};
-  va_list va;
-  u8 *name;
-
-  va_start (va, fmt);
-  name = va_format (0, fmt, &va);
-  va_end (va);
-
-  ASSERT (shared_header);
-
-  vlib_stats_segment_lock ();
-  u32 vector_index = vlib_stats_find_entry_index ("%v", name);
-
-  if (vector_index == STAT_SEGMENT_INDEX_INVALID)
-    {
-      vec_add1 (name, 0);
-      vlib_stats_set_entry_name (&e, (char *) name);
-      e.type = STAT_DIR_TYPE_ERROR_INDEX;
-      e.index = index;
-      vector_index = vlib_stats_create_counter (&e);
-
-      /* Warn clients to refresh any pointers they might be holding */
-      shared_header->directory_vector = sm->directory_vector;
-    }
-
-  vlib_stats_segment_unlock ();
-  vec_free (name);
-}
-
-void
-vlib_stats_update_error_vector (u64 *error_vector, u32 thread_index, int lock)
-{
-  vlib_stats_segment_t *sm = vlib_stats_get_segment ();
-  vlib_stats_shared_header_t *shared_header = sm->shared_header;
-  void *oldheap = clib_mem_set_heap (sm->heap);
-
-  ASSERT (shared_header);
-
-  if (lock)
-    vlib_stats_segment_lock ();
-
-  /* Reset the client hash table pointer, since it WILL change! */
-  vec_validate (sm->error_vector, thread_index);
-  sm->error_vector[thread_index] = error_vector;
-
-  shared_header->error_vector = sm->error_vector;
-  shared_header->directory_vector = sm->directory_vector;
-
-  if (lock)
-    vlib_stats_segment_unlock ();
-  clib_mem_set_heap (oldheap);
-}
-
-void
 vlib_stats_delete_cm (void *cm_arg)
 {
   vlib_simple_counter_main_t *cm = (vlib_simple_counter_main_t *) cm_arg;
@@ -436,23 +378,34 @@ vlib_stats_add_counter_vector (char *fmt, ...)
 }
 
 void
-vlib_stats_validate_counter_vector (u32 entry_index, u32 vector_index)
+vlib_stats_validate (u32 entry_index, ...)
 {
   vlib_stats_segment_t *sm = vlib_stats_get_segment ();
   vlib_stats_entry_t *e = vlib_stats_get_entry (sm, entry_index);
   void *oldheap;
-  counter_t **c = e->data;
+  va_list va;
 
-  if (vec_len (c) > 0 && vec_len (c[0]) > vector_index)
-    return;
+  va_start (va, entry_index);
 
   oldheap = clib_mem_set_heap (sm->heap);
   vlib_stats_segment_lock ();
 
-  vec_validate_aligned (c, 0, CLIB_CACHE_LINE_BYTES);
-  vec_validate_aligned (c[0], vector_index, CLIB_CACHE_LINE_BYTES);
-  e->data = c;
+  if (e->type == STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE)
+    {
+      u32 idx0 = va_arg (va, u32);
+      u32 idx1 = va_arg (va, u32);
+      u64 **data = e->data;
 
+      vec_validate_aligned (data, idx0, CLIB_CACHE_LINE_BYTES);
+
+      for (u32 i = 0; i <= idx0; i++)
+	vec_validate_aligned (data[i], idx1, CLIB_CACHE_LINE_BYTES);
+      e->data = data;
+    }
+  else
+    ASSERT (0);
+
+  va_end (va);
   vlib_stats_segment_unlock ();
   clib_mem_set_heap (oldheap);
 }
