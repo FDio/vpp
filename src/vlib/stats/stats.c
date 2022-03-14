@@ -7,24 +7,47 @@
 
 vlib_stats_main_t vlib_stats_main;
 
-/*
- *  Used only by VPP writers
- */
-
 void
 vlib_stats_segment_lock (void)
 {
+  vlib_main_t *vm = vlib_get_main ();
   vlib_stats_segment_t *sm = vlib_stats_get_segment ();
+
+  /* already locked by us */
+  if (sm->shared_header->in_progress &&
+      vm->thread_index == sm->locking_thread_index)
+    goto done;
+
+  ASSERT (sm->locking_thread_index == ~0);
+  ASSERT (sm->shared_header->in_progress == 0);
+  ASSERT (sm->n_locks == 0);
+
   clib_spinlock_lock (sm->stat_segment_lockp);
+
   sm->shared_header->in_progress = 1;
+  sm->locking_thread_index = vm->thread_index;
+done:
+  sm->n_locks++;
 }
 
 void
 vlib_stats_segment_unlock (void)
 {
+  vlib_main_t *vm = vlib_get_main ();
   vlib_stats_segment_t *sm = vlib_stats_get_segment ();
+
+  ASSERT (sm->shared_header->in_progress == 1);
+  ASSERT (sm->locking_thread_index == vm->thread_index);
+  ASSERT (sm->n_locks > 0);
+
+  sm->n_locks--;
+
+  if (sm->n_locks > 0)
+    return;
+
   sm->shared_header->epoch++;
-  sm->shared_header->in_progress = 0;
+  __atomic_store_n (&sm->shared_header->in_progress, 0, __ATOMIC_RELEASE);
+  sm->locking_thread_index = ~0;
   clib_spinlock_unlock (sm->stat_segment_lockp);
 }
 

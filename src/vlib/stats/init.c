@@ -88,6 +88,8 @@ vlib_stats_init (vlib_main_t *vm)
   shared_header->base = memaddr;
 
   sm->stat_segment_lockp = clib_mem_alloc (sizeof (clib_spinlock_t));
+  sm->locking_thread_index = ~0;
+  sm->n_locks = 0;
   clib_spinlock_init (sm->stat_segment_lockp);
 
   oldheap = clib_mem_set_heap (sm->heap);
