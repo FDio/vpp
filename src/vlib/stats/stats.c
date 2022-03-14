@@ -135,12 +135,15 @@ vlib_stats_remove_entry (u32 entry_index)
   vlib_stats_entry_t *e = vlib_stats_get_entry (sm, entry_index);
   void *oldheap;
   counter_t **c;
+  vlib_counter_t **vc;
   u32 i;
 
   if (entry_index >= vec_len (sm->directory_vector))
     return;
 
   oldheap = clib_mem_set_heap (sm->heap);
+
+  vlib_stats_segment_lock ();
 
   switch (e->type)
     {
@@ -158,12 +161,22 @@ vlib_stats_remove_entry (u32 entry_index)
       vec_free (c);
       break;
 
+    case STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED:
+      vc = e->data;
+      e->data = 0;
+      for (i = 0; i < vec_len (vc); i++)
+	vec_free (vc[i]);
+      vec_free (vc);
+      break;
+
     case STAT_DIR_TYPE_SCALAR_INDEX:
     case STAT_DIR_TYPE_SYMLINK:
       break;
     default:
       ASSERT (0);
     }
+
+  vlib_stats_segment_unlock ();
 
   clib_mem_set_heap (oldheap);
   hash_unset_str_key_free (&sm->directory_vector_by_name, e->name);
@@ -187,44 +200,47 @@ vlib_stats_set_entry_name (vlib_stats_entry_t *e, char *s)
   s[i] = 0;
 }
 
-void
-vlib_stats_update_counter (void *cm_arg, u32 cindex,
-			   stat_directory_type_t type)
+static u32
+vlib_stats_new_entry_internal (stat_directory_type_t t, u8 *name)
 {
-  vlib_simple_counter_main_t *cm = (vlib_simple_counter_main_t *) cm_arg;
   vlib_stats_segment_t *sm = vlib_stats_get_segment ();
   vlib_stats_shared_header_t *shared_header = sm->shared_header;
-  char *stat_segment_name;
-  vlib_stats_entry_t e = { 0 };
-
-  /* Not all counters have names / hash-table entries */
-  if (!cm->name && !cm->stat_segment_name)
-    return;
+  vlib_stats_entry_t e = { .type = t };
 
   ASSERT (shared_header);
 
-  vlib_stats_segment_lock ();
-
-  /* Lookup hash-table is on the main heap */
-  stat_segment_name = cm->stat_segment_name ? cm->stat_segment_name : cm->name;
-
-  u32 vector_index = vlib_stats_find_entry_index ("%s", stat_segment_name);
-
-  /* Update the vector */
-  if (vector_index == STAT_SEGMENT_INDEX_INVALID)
+  u32 vector_index = vlib_stats_find_entry_index ("%v", name);
+  if (vector_index != STAT_SEGMENT_INDEX_INVALID) /* Already registered */
     {
-      vlib_stats_set_entry_name (&e, stat_segment_name);
-      e.type = type;
-      vector_index = vlib_stats_create_counter (&e);
+      vector_index = ~0;
+      goto done;
     }
 
-  vlib_stats_entry_t *ep = &sm->directory_vector[vector_index];
-  ep->data = cm->counters;
+  vec_add1 (name, 0);
+  vlib_stats_set_entry_name (&e, (char *) name);
 
-  /* Reset the client hash table pointer, since it WILL change! */
+  vlib_stats_segment_lock ();
+  vector_index = vlib_stats_create_counter (&e);
+
   shared_header->directory_vector = sm->directory_vector;
 
   vlib_stats_segment_unlock ();
+
+done:
+  vec_free (name);
+  return vector_index;
+}
+
+u32
+vlib_stats_add_gauge (char *fmt, ...)
+{
+  va_list va;
+  u8 *name;
+
+  va_start (va, fmt);
+  name = va_format (0, fmt, &va);
+  va_end (va);
+  return vlib_stats_new_entry_internal (STAT_DIR_TYPE_SCALAR_INDEX, name);
 }
 
 void
@@ -283,77 +299,6 @@ vlib_stats_update_error_vector (u64 *error_vector, u32 thread_index, int lock)
   if (lock)
     vlib_stats_segment_unlock ();
   clib_mem_set_heap (oldheap);
-}
-
-void
-vlib_stats_delete_cm (void *cm_arg)
-{
-  vlib_simple_counter_main_t *cm = (vlib_simple_counter_main_t *) cm_arg;
-  vlib_stats_segment_t *sm = vlib_stats_get_segment ();
-  vlib_stats_entry_t *e;
-
-  /* Not all counters have names / hash-table entries */
-  if (!cm->name && !cm->stat_segment_name)
-    return;
-
-  vlib_stats_segment_lock ();
-
-  /* Lookup hash-table is on the main heap */
-  char *stat_segment_name =
-    cm->stat_segment_name ? cm->stat_segment_name : cm->name;
-  u32 index = vlib_stats_find_entry_index ("%s", stat_segment_name);
-
-  e = &sm->directory_vector[index];
-
-  hash_unset_str_key_free (&sm->directory_vector_by_name, e->name);
-
-  memset (e, 0, sizeof (*e));
-  e->type = STAT_DIR_TYPE_EMPTY;
-
-  vlib_stats_segment_unlock ();
-}
-
-static u32
-vlib_stats_new_entry_internal (stat_directory_type_t t, u8 *name)
-{
-  vlib_stats_segment_t *sm = vlib_stats_get_segment ();
-  vlib_stats_shared_header_t *shared_header = sm->shared_header;
-  vlib_stats_entry_t e = { .type = t };
-
-  ASSERT (shared_header);
-
-  u32 vector_index = vlib_stats_find_entry_index ("%v", name);
-  if (vector_index != STAT_SEGMENT_INDEX_INVALID) /* Already registered */
-    {
-      vector_index = ~0;
-      goto done;
-    }
-
-  vec_add1 (name, 0);
-  vlib_stats_set_entry_name (&e, (char *) name);
-
-  vlib_stats_segment_lock ();
-  vector_index = vlib_stats_create_counter (&e);
-
-  shared_header->directory_vector = sm->directory_vector;
-
-  vlib_stats_segment_unlock ();
-
-done:
-  vec_free (name);
-  return vector_index;
-}
-
-u32
-vlib_stats_add_gauge (char *fmt, ...)
-{
-  va_list va;
-  u8 *name;
-
-  va_start (va, fmt);
-  name = va_format (0, fmt, &va);
-  va_end (va);
-  return vlib_stats_new_entry_internal (STAT_DIR_TYPE_SCALAR_INDEX, name);
 }
 
 void
@@ -435,26 +380,130 @@ vlib_stats_add_counter_vector (char *fmt, ...)
 					name);
 }
 
-void
-vlib_stats_validate_counter_vector (u32 entry_index, u32 vector_index)
+u32
+vlib_stats_add_counter_pair_vector (char *fmt, ...)
+{
+  va_list va;
+  u8 *name;
+
+  va_start (va, fmt);
+  name = va_format (0, fmt, &va);
+  va_end (va);
+  return vlib_stats_new_entry_internal (STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED,
+					name);
+}
+
+static int
+vlib_stats_validate_will_expand_internal (u32 entry_index, va_list *va)
 {
   vlib_stats_segment_t *sm = vlib_stats_get_segment ();
   vlib_stats_entry_t *e = vlib_stats_get_entry (sm, entry_index);
   void *oldheap;
-  counter_t **c = e->data;
-
-  if (vec_len (c) > 0 && vec_len (c[0]) > vector_index)
-    return;
+  int rv = 1;
 
   oldheap = clib_mem_set_heap (sm->heap);
-  vlib_stats_segment_lock ();
+  if (e->type == STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE)
+    {
+      u32 idx0 = va_arg (*va, u32);
+      u32 idx1 = va_arg (*va, u32);
+      u64 **data = e->data;
 
-  vec_validate_aligned (c, 0, CLIB_CACHE_LINE_BYTES);
-  vec_validate_aligned (c[0], vector_index, CLIB_CACHE_LINE_BYTES);
-  e->data = c;
+      if (idx0 >= vec_max_len (data))
+	goto done;
 
-  vlib_stats_segment_unlock ();
+      for (u32 i = 0; i <= idx0; i++)
+	if (idx1 >= vec_max_len (data[idx0]))
+	  goto done;
+    }
+  else if (e->type == STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED)
+    {
+      u32 idx0 = va_arg (*va, u32);
+      u32 idx1 = va_arg (*va, u32);
+      vlib_counter_t **data = e->data;
+
+      va_end (*va);
+
+      if (idx0 >= vec_max_len (data))
+	goto done;
+
+      for (u32 i = 0; i <= idx0; i++)
+	if (idx1 >= vec_max_len (data[idx0]))
+	  goto done;
+    }
+  else
+    ASSERT (0);
+
+  rv = 0;
+done:
   clib_mem_set_heap (oldheap);
+  return rv;
+}
+
+int
+vlib_stats_validate_will_expand (u32 entry_index, ...)
+{
+  va_list va;
+  int rv;
+
+  va_start (va, entry_index);
+  rv = vlib_stats_validate_will_expand_internal (entry_index, &va);
+  va_end (va);
+  return rv;
+}
+
+void
+vlib_stats_validate (u32 entry_index, ...)
+{
+  vlib_stats_segment_t *sm = vlib_stats_get_segment ();
+  vlib_stats_entry_t *e = vlib_stats_get_entry (sm, entry_index);
+  void *oldheap;
+  va_list va;
+  int will_expand;
+
+  va_start (va, entry_index);
+  will_expand = vlib_stats_validate_will_expand_internal (entry_index, &va);
+  va_end (va);
+
+  if (will_expand)
+    vlib_stats_segment_lock ();
+
+  oldheap = clib_mem_set_heap (sm->heap);
+
+  va_start (va, entry_index);
+
+  if (e->type == STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE)
+    {
+      u32 idx0 = va_arg (va, u32);
+      u32 idx1 = va_arg (va, u32);
+      u64 **data = e->data;
+
+      vec_validate_aligned (data, idx0, CLIB_CACHE_LINE_BYTES);
+
+      for (u32 i = 0; i <= idx0; i++)
+	vec_validate_aligned (data[i], idx1, CLIB_CACHE_LINE_BYTES);
+      e->data = data;
+    }
+  else if (e->type == STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED)
+    {
+      u32 idx0 = va_arg (va, u32);
+      u32 idx1 = va_arg (va, u32);
+      vlib_counter_t **data = e->data;
+
+      vec_validate_aligned (data, idx0, CLIB_CACHE_LINE_BYTES);
+
+      for (u32 i = 0; i <= idx0; i++)
+	vec_validate_aligned (data[i], idx1, CLIB_CACHE_LINE_BYTES);
+      e->data = data;
+    }
+  else
+    ASSERT (0);
+
+  va_end (va);
+
+  clib_mem_set_heap (oldheap);
+
+  if (will_expand)
+    vlib_stats_segment_unlock ();
 }
 
 u32
