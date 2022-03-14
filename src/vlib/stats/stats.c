@@ -244,64 +244,6 @@ vlib_stats_add_gauge (char *fmt, ...)
 }
 
 void
-vlib_stats_register_error_index (u64 *em_vec, u64 index, char *fmt, ...)
-{
-  vlib_stats_segment_t *sm = vlib_stats_get_segment ();
-  vlib_stats_shared_header_t *shared_header = sm->shared_header;
-  vlib_stats_entry_t e = {};
-  va_list va;
-  u8 *name;
-
-  va_start (va, fmt);
-  name = va_format (0, fmt, &va);
-  va_end (va);
-
-  ASSERT (shared_header);
-
-  vlib_stats_segment_lock ();
-  u32 vector_index = vlib_stats_find_entry_index ("%v", name);
-
-  if (vector_index == STAT_SEGMENT_INDEX_INVALID)
-    {
-      vec_add1 (name, 0);
-      vlib_stats_set_entry_name (&e, (char *) name);
-      e.type = STAT_DIR_TYPE_ERROR_INDEX;
-      e.index = index;
-      vector_index = vlib_stats_create_counter (&e);
-
-      /* Warn clients to refresh any pointers they might be holding */
-      shared_header->directory_vector = sm->directory_vector;
-    }
-
-  vlib_stats_segment_unlock ();
-  vec_free (name);
-}
-
-void
-vlib_stats_update_error_vector (u64 *error_vector, u32 thread_index, int lock)
-{
-  vlib_stats_segment_t *sm = vlib_stats_get_segment ();
-  vlib_stats_shared_header_t *shared_header = sm->shared_header;
-  void *oldheap = clib_mem_set_heap (sm->heap);
-
-  ASSERT (shared_header);
-
-  if (lock)
-    vlib_stats_segment_lock ();
-
-  /* Reset the client hash table pointer, since it WILL change! */
-  vec_validate (sm->error_vector, thread_index);
-  sm->error_vector[thread_index] = error_vector;
-
-  shared_header->error_vector = sm->error_vector;
-  shared_header->directory_vector = sm->directory_vector;
-
-  if (lock)
-    vlib_stats_segment_unlock ();
-  clib_mem_set_heap (oldheap);
-}
-
-void
 vlib_stats_set_gauge (u32 index, u64 value)
 {
   vlib_stats_segment_t *sm = vlib_stats_get_segment ();
