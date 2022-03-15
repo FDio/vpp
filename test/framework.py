@@ -1194,9 +1194,13 @@ class VppTestCase(CPUInterface, unittest.TestCase):
         if pkt.haslayer(ICMPv6EchoReply):
             self.assert_checksum_valid(pkt, 'ICMPv6EchoReply', 'cksum')
 
-    def get_counter(self, counter):
+    def get_counter(self, counter, thread=None, index=0):
         if counter.startswith("/"):
             counter_value = self.statistics.get_counter(counter)
+            if thread is not None:
+                counter_value = counter_value[thread][index]
+            else:
+                counter_value = sum(x[index] for x in counter_value)
         else:
             counters = self.vapi.cli("sh errors").split('\n')
             counter_value = 0
@@ -1209,11 +1213,7 @@ class VppTestCase(CPUInterface, unittest.TestCase):
 
     def assert_counter_equal(self, counter, expected_value,
                              thread=None, index=0):
-        c = self.get_counter(counter)
-        if thread is not None:
-            c = c[thread][index]
-        else:
-            c = sum(x[index] for x in c)
+        c = self.get_counter(counter, thread, index)
         self.assert_equal(c, expected_value, "counter `%s'" % counter)
 
     def assert_packet_counter_equal(self, counter, expected_value):
