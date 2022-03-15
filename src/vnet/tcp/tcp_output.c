@@ -1565,8 +1565,10 @@ tcp_timer_persist_handler (tcp_connection_t * tc)
 
   tcp_validate_txf_size (tc, offset);
   tc->snd_opts_len = tcp_make_options (tc, &tc->snd_opts, tc->state);
-  max_snd_bytes = clib_min (tc->snd_mss,
+  max_snd_bytes = clib_min (clib_min (tc->snd_mss, available_bytes),
 			    tm->bytes_per_buffer - TRANSPORT_MAX_HDRS_LEN);
+  if (tc->snd_wnd > 0)
+    max_snd_bytes = clib_min (tc->snd_wnd, max_snd_bytes);
   n_bytes = session_tx_fifo_peek_bytes (&tc->connection, data, offset,
 					max_snd_bytes);
   b->current_length = n_bytes;
