@@ -424,7 +424,7 @@ session_get_from_handle_safe (u64 handle)
     }
   else
     {
-      session_pool_add_peeker (thread_index);
+      //      session_pool_add_peeker (thread_index);
       /* Don't use pool_elt_at index. See @ref session_pool_add_peeker */
       return wrk->sessions + session_index_from_handle (handle);
     }
@@ -447,11 +447,11 @@ session_clone_safe (u32 session_index, u32 thread_index)
    * scribble something on it, we have a problem. So add this thread as
    * a session pool peeker.
    */
-  session_pool_add_peeker (thread_index);
+  //  session_pool_add_peeker (thread_index);
   new_s = session_alloc (current_thread_index);
   old_s = session_main.wrk[thread_index].sessions + session_index;
   clib_memcpy_fast (new_s, old_s, sizeof (*new_s));
-  session_pool_remove_peeker (thread_index);
+  //  session_pool_remove_peeker (thread_index);
   new_s->thread_index = current_thread_index;
   new_s->session_index = session_get_index (new_s);
   return new_s;
