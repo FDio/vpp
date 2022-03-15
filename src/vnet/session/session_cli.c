@@ -259,7 +259,6 @@ unformat_session (unformat_input_t * input, va_list * args)
   if (s)
     {
       *result = s;
-      session_pool_remove_peeker (s->thread_index);
       return 1;
     }
   return 0;

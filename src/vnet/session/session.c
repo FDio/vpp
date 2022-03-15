@@ -197,28 +197,31 @@ session_program_transport_ctrl_evt (session_t * s, session_evt_type_t evt)
     session_send_ctrl_evt_to_thread (s, evt);
 }
 
+static void
+session_pool_realloc_rpc (void *rpc_args)
+{
+  session_worker_t *wrk;
+  u32 thread_index;
+
+  thread_index = pointer_to_uword (rpc_args);
+  wrk = &session_main.wrk[thread_index];
+
+  pool_realloc_safe_aligned (wrk->sessions, CLIB_CACHE_LINE_BYTES);
+}
+
 session_t *
 session_alloc (u32 thread_index)
 {
   session_worker_t *wrk = &session_main.wrk[thread_index];
   session_t *s;
-  u8 will_expand = pool_get_will_expand (wrk->sessions);
 
-  /* If we have peekers, let them finish */
-  if (PREDICT_FALSE (will_expand && vlib_num_workers ()))
-    {
-      clib_rwlock_writer_lock (&wrk->peekers_rw_locks);
-      pool_get_aligned (wrk->sessions, s, CLIB_CACHE_LINE_BYTES);
-      clib_rwlock_writer_unlock (&wrk->peekers_rw_locks);
-    }
-  else
-    {
-      pool_get_aligned (wrk->sessions, s, CLIB_CACHE_LINE_BYTES);
-    }
+  pool_get_aligned_safe (wrk->sessions, s, thread_index,
+			 session_pool_realloc_rpc, CLIB_CACHE_LINE_BYTES);
   clib_memset (s, 0, sizeof (*s));
   s->session_index = s - wrk->sessions;
   s->thread_index = thread_index;
   s->app_index = APP_INVALID_INDEX;
+
   return s;
 }
 
@@ -1903,9 +1906,6 @@ session_manager_main_enable (vlib_main_t * vm)
       wrk->last_vlib_us_time = wrk->last_vlib_time * CLIB_US_TIME_FREQ;
       wrk->timerfd = -1;
       vec_validate (wrk->session_to_enqueue, smm->last_transport_proto_type);
-
-      if (num_threads > 1)
-	clib_rwlock_init (&smm->wrk[i].peekers_rw_locks);
 
       if (!smm->no_adaptive && smm->use_private_rx_mqs)
 	session_wrk_enable_adaptive_mode (wrk);
