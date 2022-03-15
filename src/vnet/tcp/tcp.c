@@ -293,7 +293,7 @@ tcp_connection_alloc (u8 thread_index)
   tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
   tcp_connection_t *tc;
 
-  pool_get (wrk->connections, tc);
+  pool_get_aligned_safe (wrk->connections, tc, CLIB_CACHE_LINE_BYTES);
   clib_memset (tc, 0, sizeof (*tc));
   tc->c_c_index = tc - wrk->connections;
   tc->c_thread_index = thread_index;
@@ -310,12 +310,12 @@ tcp_connection_alloc_w_base (u8 thread_index, tcp_connection_t **base)
   if ((*base)->c_thread_index == thread_index)
     {
       u32 base_index = (*base)->c_c_index;
-      pool_get (wrk->connections, tc);
+      pool_get_aligned_safe (wrk->connections, tc, CLIB_CACHE_LINE_BYTES);
       *base = tcp_connection_get (base_index, thread_index);
     }
   else
     {
-      pool_get (wrk->connections, tc);
+      pool_get_aligned_safe (wrk->connections, tc, CLIB_CACHE_LINE_BYTES);
     }
   clib_memcpy_fast (tc, *base, sizeof (*tc));
   tc->c_c_index = tc - wrk->connections;
