@@ -287,13 +287,26 @@ tcp_connection_del (tcp_connection_t * tc)
   tcp_connection_cleanup (tc);
 }
 
+static void
+tcp_pool_realloc_rpc (void *rpc_args)
+{
+  tcp_worker_ctx_t *wrk;
+  u32 thread_index;
+
+  thread_index = pointer_to_uword (rpc_args);
+  wrk = tcp_get_worker (thread_index);
+
+  pool_realloc_safe_aligned (wrk->connections, CLIB_CACHE_LINE_BYTES);
+}
+
 tcp_connection_t *
 tcp_connection_alloc (u8 thread_index)
 {
   tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
   tcp_connection_t *tc;
 
-  pool_get (wrk->connections, tc);
+  pool_get_aligned_safe (wrk->connections, tc, thread_index,
+			 tcp_pool_realloc_rpc, CLIB_CACHE_LINE_BYTES);
   clib_memset (tc, 0, sizeof (*tc));
   tc->c_c_index = tc - wrk->connections;
   tc->c_thread_index = thread_index;
@@ -303,22 +316,25 @@ tcp_connection_alloc (u8 thread_index)
 tcp_connection_t *
 tcp_connection_alloc_w_base (u8 thread_index, tcp_connection_t **base)
 {
-  tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
+  //  tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
   tcp_connection_t *tc;
+  u32 tc_index;
 
-  /* Make sure connection is still valid if pool moves */
-  if ((*base)->c_thread_index == thread_index)
-    {
-      u32 base_index = (*base)->c_c_index;
-      pool_get (wrk->connections, tc);
-      *base = tcp_connection_get (base_index, thread_index);
-    }
-  else
-    {
-      pool_get (wrk->connections, tc);
-    }
+  tc = tcp_connection_alloc (thread_index);
+  tc_index = tc->c_c_index;
+  //  /* Make sure connection is still valid if pool moves */
+  //  if ((*base)->c_thread_index == thread_index)
+  //    {
+  //      u32 base_index = (*base)->c_c_index;
+  //      pool_get (wrk->connections, tc);
+  //      *base = tcp_connection_get (base_index, thread_index);
+  //    }
+  //  else
+  //    {
+  //      pool_get (wrk->connections, tc);
+  //    }
   clib_memcpy_fast (tc, *base, sizeof (*tc));
-  tc->c_c_index = tc - wrk->connections;
+  tc->c_c_index = tc_index;
   tc->c_thread_index = thread_index;
   return tc;
 }
