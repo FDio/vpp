@@ -1333,6 +1333,14 @@ vlib_frame_bitmap_or (uword *bmp, uword *bmp2)
     bmp++[0] |= bmp2++[0];
 }
 
+static_always_inline void
+vlib_frame_bitmap_and (uword *bmp, uword *bmp2)
+{
+  u32 n_left = VLIB_FRAME_BITMAP_N_UWORDS;
+  while (n_left--)
+    bmp++[0] &= bmp2++[0];
+}
+
 static_always_inline u32
 vlib_frame_bitmap_count_set_bits (uword *bmp)
 {
