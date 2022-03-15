@@ -200,7 +200,7 @@ exec (vat_main_t *vam)
 static int
 api_cli (vat_main_t *vam)
 {
-  return exec (vam);
+  return exec_inband (vam);
 }
 
 static int
