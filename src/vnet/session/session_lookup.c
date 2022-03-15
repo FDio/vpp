@@ -1046,9 +1046,7 @@ session_lookup_connection4 (u32 fib_index, ip4_address_t * lcl,
 /**
  * Lookup session with ip4 and transport layer information
  *
- * Important note: this may look into another thread's pool table and
- * register as 'peeker'. Caller should call @ref session_pool_remove_peeker as
- * if needed as soon as possible.
+ * Important note: this may look into another thread's pool table
  *
  * Lookup logic is similar to that of @ref session_lookup_connection_wt4 but
  * this returns a session as opposed to a transport connection and it does not
