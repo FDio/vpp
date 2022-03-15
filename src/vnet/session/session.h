@@ -134,9 +134,6 @@ typedef struct session_worker_
   /** Head of list of pending events */
   clib_llist_index_t old_head;
 
-  /** Peekers rw lock */
-  clib_rwlock_t peekers_rw_locks;
-
   /** Vector of buffers to be sent */
   u32 *pending_tx_buffers;
 
@@ -379,37 +376,9 @@ session_get_from_handle_if_valid (session_handle_t handle)
 u64 session_segment_handle (session_t * s);
 
 /**
- * Acquires a lock that blocks a session pool from expanding.
+ * Get session from handle and avoid pool validation if no same thread
  *
- * This is typically used for safely peeking into other threads'
- * pools in order to clone elements. Lock should be dropped as soon
- * as possible by calling @ref session_pool_remove_peeker.
- *
- * NOTE: Avoid using pool_elt_at_index while the lock is held because
- * it may lead to free elt bitmap expansion/contraction!
- */
-always_inline void
-session_pool_add_peeker (u32 thread_index)
-{
-  session_worker_t *wrk = &session_main.wrk[thread_index];
-  if (thread_index == vlib_get_thread_index ())
-    return;
-  clib_rwlock_reader_lock (&wrk->peekers_rw_locks);
-}
-
-always_inline void
-session_pool_remove_peeker (u32 thread_index)
-{
-  session_worker_t *wrk = &session_main.wrk[thread_index];
-  if (thread_index == vlib_get_thread_index ())
-    return;
-  clib_rwlock_reader_unlock (&wrk->peekers_rw_locks);
-}
-
-/**
- * Get session from handle and 'lock' pool resize if not in same thread
- *
- * Caller should drop the peek 'lock' as soon as possible.
+ * Peekers are fine because pool grows with barrier (see @ref session_alloc)
  */
 always_inline session_t *
 session_get_from_handle_safe (u64 handle)
@@ -424,36 +393,24 @@ session_get_from_handle_safe (u64 handle)
     }
   else
     {
-      session_pool_add_peeker (thread_index);
-      /* Don't use pool_elt_at index. See @ref session_pool_add_peeker */
+      /* Don't use pool_elt_at index to avoid pool bitmap reallocs */
       return wrk->sessions + session_index_from_handle (handle);
     }
-}
-
-always_inline u32
-session_get_index (session_t * s)
-{
-  return (s - session_main.wrk[s->thread_index].sessions);
 }
 
 always_inline session_t *
 session_clone_safe (u32 session_index, u32 thread_index)
 {
+  u32 current_thread_index = vlib_get_thread_index (), new_index;
   session_t *old_s, *new_s;
-  u32 current_thread_index = vlib_get_thread_index ();
 
-  /* If during the memcpy pool is reallocated AND the memory allocator
-   * decides to give the old chunk of memory to somebody in a hurry to
-   * scribble something on it, we have a problem. So add this thread as
-   * a session pool peeker.
-   */
-  session_pool_add_peeker (thread_index);
   new_s = session_alloc (current_thread_index);
+  new_index = new_s->session_index;
+  /* Session pools are reallocated with barrier (see @ref session_alloc) */
   old_s = session_main.wrk[thread_index].sessions + session_index;
   clib_memcpy_fast (new_s, old_s, sizeof (*new_s));
-  session_pool_remove_peeker (thread_index);
   new_s->thread_index = current_thread_index;
-  new_s->session_index = session_get_index (new_s);
+  new_s->session_index = new_index;
   return new_s;
 }
 

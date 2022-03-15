@@ -85,13 +85,7 @@ hsi_udp_lookup (vlib_buffer_t *b, void *ip_hdr, u8 is_ip4)
 	hdr->dst_port, hdr->src_port, TRANSPORT_PROTO_UDP);
     }
 
-  if (s)
-    {
-      session_pool_remove_peeker (s->thread_index);
-      return 1;
-    }
-
-  return 0;
+  return s ? 1 : 0;
 }
 
 always_inline transport_connection_t *
