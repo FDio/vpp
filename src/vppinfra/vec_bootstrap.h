@@ -56,11 +56,14 @@ typedef struct
 {
   u32 len; /**< Number of elements in vector (NOT its allocated length). */
   u8 numa_id; /**< NUMA id */
-  u8 vpad[3]; /**< pad to 8 bytes */
+  u8 hdr_size;	      /**< header size divided by VEC_HEADER_ROUND */
+  u8 vpad[2];	      /**< pad to 8 bytes */
   u8 vector_data[0];  /**< Vector data . */
 } vec_header_t;
 
 #define VEC_NUMA_UNSPECIFIED (0xFF)
+
+#define VEC_HEADER_ROUND 8
 
 /** \brief Find the vector header
 
@@ -78,8 +81,7 @@ typedef struct
 always_inline uword
 vec_header_bytes (uword header_bytes)
 {
-  return round_pow2 (header_bytes + sizeof (vec_header_t),
-		     sizeof (vec_header_t));
+  return round_pow2 (header_bytes + sizeof (vec_header_t), VEC_HEADER_ROUND);
 }
 
 /** \brief Find a user vector header

@@ -77,10 +77,14 @@ vec_resize_allocate_memory (void *v,
       v = new + header_bytes;
       _vec_len (v) = length_increment;
       _vec_numa (v) = numa_id;
+      _vec_find (v)->hdr_size = header_bytes / VEC_HEADER_ROUND;
       if (PREDICT_FALSE (numa_id != VEC_NUMA_UNSPECIFIED))
 	clib_mem_set_per_cpu_heap (oldheap);
       return v;
     }
+
+  ASSERT (_vec_find (v)->hdr_size * VEC_HEADER_ROUND == header_bytes);
+  header_bytes = _vec_find (v)->hdr_size * VEC_HEADER_ROUND;
 
   vh->len += length_increment;
   old = v - header_bytes;
