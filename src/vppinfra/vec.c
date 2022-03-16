@@ -57,6 +57,7 @@ vec_resize_allocate_memory (void *v,
   void *oldheap;
 
   header_bytes = vec_header_bytes (header_bytes);
+  data_align = data_align == 0 ? 1 : data_align;
 
   data_bytes += header_bytes;
 
@@ -65,6 +66,9 @@ vec_resize_allocate_memory (void *v,
       oldheap = clib_mem_get_per_cpu_heap ();
       clib_mem_set_per_cpu_heap (clib_mem_get_per_numa_heap (numa_id));
     }
+
+  /* alignment must be power of 2 */
+  ASSERT (count_set_bits (data_align) == 1);
 
   if (!v)
     {
@@ -77,10 +81,19 @@ vec_resize_allocate_memory (void *v,
       v = new + header_bytes;
       _vec_len (v) = length_increment;
       _vec_numa (v) = numa_id;
+      ASSERT (header_bytes / VEC_HEADER_ROUND <= 255);
+      _vec_find (v)->hdr_size = header_bytes / VEC_HEADER_ROUND;
+      _vec_find (v)->log2_align = min_log2 (data_align);
       if (PREDICT_FALSE (numa_id != VEC_NUMA_UNSPECIFIED))
 	clib_mem_set_per_cpu_heap (oldheap);
       return v;
     }
+
+  ASSERT (_vec_find (v)->hdr_size * VEC_HEADER_ROUND == header_bytes);
+  header_bytes = _vec_find (v)->hdr_size * VEC_HEADER_ROUND;
+
+  ASSERT (data_align == (1 << _vec_find (v)->log2_align));
+  data_align = 1 << _vec_find (v)->log2_align;
 
   vh->len += length_increment;
   old = v - header_bytes;
