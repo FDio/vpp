@@ -2653,7 +2653,6 @@ tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   while (n_left_from > 0)
     {
-      u32 error = TCP_ERROR_NONE;
       tcp_connection_t *lc, *child;
 
       /* Flags initialized with connection state after lookup */
@@ -2668,14 +2667,14 @@ tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 				   thread_index);
 	  if (tc->state != TCP_STATE_TIME_WAIT)
 	    {
-	      error = TCP_ERROR_CREATE_EXISTS;
+	      tcp_inc_counter (listen, TCP_ERROR_CREATE_EXISTS, 1);
 	      goto done;
 	    }
 
 	  if (PREDICT_FALSE (!syn_during_timewait (tc, b[0], &tw_iss)))
 	    {
 	      /* This SYN can't be accepted */
-	      error = TCP_ERROR_CREATE_EXISTS;
+	      tcp_inc_counter (listen, TCP_ERROR_CREATE_EXISTS, 1);
 	      goto done;
 	    }
 
@@ -2685,7 +2684,7 @@ tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  /* listener was cleaned up */
 	  if (!lc)
 	    {
-	      error = TCP_ERROR_NO_LISTENER;
+	      tcp_inc_counter (listen, TCP_ERROR_NO_LISTENER, 1);
 	      goto done;
 	    }
 	}
@@ -2695,7 +2694,7 @@ tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	tcp_lookup_connection (lc->c_fib_index, b[0], thread_index, is_ip4);
       if (PREDICT_FALSE (child->state != TCP_STATE_LISTEN))
 	{
-	  error = TCP_ERROR_CREATE_EXISTS;
+	  tcp_inc_counter (listen, TCP_ERROR_CREATE_EXISTS, 1);
 	  goto done;
 	}
 
@@ -2712,7 +2711,7 @@ tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       if (tcp_options_parse (tcp_buffer_hdr (b[0]), &child->rcv_opts, 1))
 	{
-	  error = TCP_ERROR_OPTIONS;
+	  tcp_inc_counter (listen, TCP_ERROR_OPTIONS, 1);
 	  tcp_connection_free (child);
 	  goto done;
 	}
@@ -2742,7 +2741,7 @@ tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 				 lc->c_thread_index, 0 /* notify */ ))
 	{
 	  tcp_connection_cleanup (child);
-	  error = TCP_ERROR_CREATE_SESSION_FAIL;
+	  tcp_inc_counter (listen, TCP_ERROR_CREATE_SESSION_FAIL, 1);
 	  goto done;
 	}
 
@@ -2750,12 +2749,11 @@ tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       child->tx_fifo_size = transport_tx_fifo_size (&child->connection);
 
       tcp_send_synack (child);
+      n_syns += 1;
 
     done:
-
       b += 1;
       n_left_from -= 1;
-      n_syns += (error == TCP_ERROR_NONE);
     }
 
   tcp_inc_counter (listen, TCP_ERROR_SYNS_RCVD, n_syns);
