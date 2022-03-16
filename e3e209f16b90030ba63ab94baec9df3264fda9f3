@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "583b630d_ee309421",
+        "filename": "test/test_ip6.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 985,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2022-03-16T13:50:18Z",
+      "side": 1,
+      "message": "Why call ip6_ra_config() twice here? Since the default value of suppress is 0, will the second call nullify the effect of the first?",
+      "revId": "e3e209f16b90030ba63ab94baec9df3264fda9f3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
