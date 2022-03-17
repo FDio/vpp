@@ -364,7 +364,7 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
   vec_add1 (nm->nodes, n);
 
   /* Name is always a vector so it can be formatted with %v. */
-  if (clib_mem_is_heap_object (vec_header (r->name, 0)))
+  if (clib_mem_is_heap_object (vec_header (r->name)))
     n->name = vec_dup ((u8 *) r->name);
   else
     n->name = format (0, "%s", r->name);

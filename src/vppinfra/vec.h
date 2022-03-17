@@ -379,14 +379,16 @@ do {						\
     @param H size of header in bytes
     @return V (value-result parameter, V=0)
 */
-#define vec_free_h(V,H)				\
-do {						\
-  if (V)					\
-    {						\
-      clib_mem_free (vec_header ((V), (H)));	\
-      V = 0;					\
-    }						\
-} while (0)
+#define vec_free_h(V, H)                                                      \
+  do                                                                          \
+    {                                                                         \
+      if (V)                                                                  \
+	{                                                                     \
+	  clib_mem_free (vec_header ((V)));                                   \
+	  V = 0;                                                              \
+	}                                                                     \
+    }                                                                         \
+  while (0)
 
 /** \brief Free vector's memory (no header).
     @param V pointer to a vector

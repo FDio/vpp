@@ -71,7 +71,7 @@ typedef struct
 always_inline pool_header_t *
 pool_header (void *v)
 {
-  return vec_aligned_header (v, sizeof (pool_header_t), sizeof (void *));
+  return vec_header (v);
 }
 
 extern void _pool_init_fixed (void **, u32, u32);

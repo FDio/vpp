@@ -59,7 +59,7 @@ typedef struct
 always_inline sparse_vec_header_t *
 sparse_vec_header (void *v)
 {
-  return vec_header (v, sizeof (sparse_vec_header_t));
+  return vec_header (v);
 }
 
 /* Index 0 is always used to mark indices that are not valid in

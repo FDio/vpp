@@ -29,7 +29,7 @@ typedef struct
 always_inline clib_ring_header_t *
 clib_ring_header (void *v)
 {
-  return vec_aligned_header (v, sizeof (clib_ring_header_t), sizeof (void *));
+  return vec_header (v);
 }
 
 always_inline void

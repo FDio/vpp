@@ -207,33 +207,34 @@ dump_call_stats (uword * stats)
    more sensible value later. */
 #define MAX_VEC_LEN 10
 
-#define create_random_vec_wh(elt_type, len, hdr_bytes, seed)			\
-({										\
-  elt_type * _v(v) = NULL;							\
-  uword _v(l) = (len);								\
-  uword _v(h) = (hdr_bytes);							\
-  u8 * _v(hdr);									\
-										\
-  if (_v(l) == 0)								\
-    goto __done__;								\
-										\
-  /* ~0 means select random length between 0 and MAX_VEC_LEN. */		\
-  if (_v(l) == ~0)								\
-    _v(l) = bounded_random_u32 (&(seed), 0, MAX_VEC_LEN);			\
-										\
-  _v(v) = _vec_resize (NULL, _v(l), _v(l) * sizeof (elt_type), _v(h), 0);	\
-  fill_with_random_data (_v(v), vec_bytes (_v(v)), (seed));			\
-										\
-  /* Fill header with random data as well. */					\
-  if (_v(h) > 0)								\
-    {										\
-      _v(hdr) = vec_header (_v(v), _v(h));					\
-      fill_with_random_data (_v(hdr), _v(h), (seed));				\
-    }										\
-										\
-__done__:									\
-  _v(v);									\
-})
+#define create_random_vec_wh(elt_type, len, hdr_bytes, seed)                  \
+  ({                                                                          \
+    elt_type *_v (v) = NULL;                                                  \
+    uword _v (l) = (len);                                                     \
+    uword _v (h) = (hdr_bytes);                                               \
+    u8 *_v (hdr);                                                             \
+                                                                              \
+    if (_v (l) == 0)                                                          \
+      goto __done__;                                                          \
+                                                                              \
+    /* ~0 means select random length between 0 and MAX_VEC_LEN. */            \
+    if (_v (l) == ~0)                                                         \
+      _v (l) = bounded_random_u32 (&(seed), 0, MAX_VEC_LEN);                  \
+                                                                              \
+    _v (v) =                                                                  \
+      _vec_resize (NULL, _v (l), _v (l) * sizeof (elt_type), _v (h), 0);      \
+    fill_with_random_data (_v (v), vec_bytes (_v (v)), (seed));               \
+                                                                              \
+    /* Fill header with random data as well. */                               \
+    if (_v (h) > 0)                                                           \
+      {                                                                       \
+	_v (hdr) = vec_header (_v (v));                                       \
+	fill_with_random_data (_v (hdr), _v (h), (seed));                     \
+      }                                                                       \
+                                                                              \
+  __done__:                                                                   \
+    _v (v);                                                                   \
+  })
 
 #define create_random_vec(elt_type, len, seed) \
 create_random_vec_wh (elt_type, len, 0, seed)
@@ -274,8 +275,8 @@ validate_vec_hdr (elt_t * vec, uword hdr_bytes)
     return;
 
   vh = _vec_find (vec);
-  hdr = vec_header (vec, hdr_bytes);
-  hdr_end = vec_header_end (hdr, hdr_bytes);
+  hdr = vec_header (vec);
+  hdr_end = vec_header_end (hdr);
 
   ASSERT (hdr_end == (u8 *) vec);
   ASSERT ((u8 *) vh - (u8 *) hdr >= hdr_bytes);
@@ -335,8 +336,7 @@ validate_vec (elt_t * vec, uword hdr_bytes)
   else
     {
       if (hdr_bytes > 0)
-	VERBOSE3 ("Header: %U\n",
-		  format_hex_bytes, vec_header (vec, sizeof (vec[0])),
+	VERBOSE3 ("Header: %U\n", format_hex_bytes, vec_header (vec),
 		  sizeof (vec[0]));
 
       VERBOSE3 ("%U\n\n",
@@ -371,7 +371,7 @@ validate_vec_resize_h (elt_t * vec, uword num_elts, uword hdr_bytes)
   len1 = vec_len (vec);
 
   if (vec)
-    hdr = vec_header (vec, hdr_bytes);
+    hdr = vec_header (vec);
 
   hash = compute_vec_hash (0, vec);
   hdr_hash = compute_mem_hash (0, hdr, hdr_bytes);
@@ -391,7 +391,7 @@ validate_vec_resize_h (elt_t * vec, uword num_elts, uword hdr_bytes)
     }
 
   if (vec)
-    hdr = vec_header (vec, hdr_bytes);
+    hdr = vec_header (vec);
 
   ASSERT (compute_vec_hash (hash, vec) == 0);
   ASSERT (compute_mem_hash (hdr_hash, hdr, hdr_bytes) == 0);
@@ -687,7 +687,7 @@ validate_vec_init_h (uword num_elts, uword hdr_bytes)
     {
       if (i == 0)
 	{
-	  ptr = (u8 *) vec_header (new, hdr_bytes);
+	  ptr = (u8 *) vec_header (new);
 	  end = ptr + hdr_bytes;
 	}
       else
