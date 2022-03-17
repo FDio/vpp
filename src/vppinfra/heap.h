@@ -160,7 +160,7 @@ typedef struct
 always_inline heap_header_t *
 heap_header (void *v)
 {
-  return vec_header (v, sizeof (heap_header_t));
+  return vec_header (v);
 }
 
 always_inline uword
