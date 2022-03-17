@@ -189,7 +189,7 @@ main (int argc, char *argv[])
   vec_free (handles);
 
   if (fixed_size)
-    vec_free_h (h, sizeof (heap_header_t));
+    vec_free (h);
 
   if (verbose)
     fformat (stderr, "%U\n", format_clib_mem_usage, /* verbose */ 0);

@@ -427,7 +427,7 @@ _pool_free (void *v)
   clib_bitmap_free (p->free_bitmap);
 
   vec_free (p->free_indices);
-  vec_free_h (v, pool_aligned_header_bytes);
+  vec_free (v);
   return 0;
 }
 

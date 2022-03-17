@@ -259,7 +259,7 @@ validate_vec_free (elt_t * vec)
 static elt_t *
 validate_vec_free_h (elt_t * vec, uword hdr_bytes)
 {
-  vec_free_h (vec, hdr_bytes);
+  vec_free (vec);
   ASSERT (vec == NULL);
   return vec;
 }
@@ -799,7 +799,7 @@ run_validator_wh (uword iter)
 	{
 	case OP_IS_VEC_INIT_H:
 	  num_elts = bounded_random_u32 (&g_seed, 0, MAX_CHANGE);
-	  vec_free_h (vec, sizeof (hdr_t));
+	  vec_free (vec);
 	  VERBOSE2 ("vec_init_h(), new elts %d\n", num_elts);
 	  vec = validate_vec_init_h (num_elts, sizeof (hdr_t));
 	  break;
@@ -840,7 +840,7 @@ run_validator_wh (uword iter)
     }
 
   validate_vec (vec, sizeof (hdr_t));
-  vec_free_h (vec, sizeof (hdr_t));
+  vec_free (vec);
 }
 
 static void

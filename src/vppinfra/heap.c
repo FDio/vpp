@@ -624,7 +624,7 @@ _heap_free (void *v)
   vec_free (h->free_elts);
   vec_free (h->small_free_elt_free_index);
   if (!(h->flags & HEAP_IS_STATIC))
-    vec_free_h (v, sizeof (h[0]));
+    vec_free (v);
   return v;
 }
 
