@@ -1232,7 +1232,8 @@ send_interface_tx_placement_details (vnet_hw_if_tx_queue_t **all_queues,
    * and available.
    */
   REPLY_MACRO_DETAILS5 (
-    VL_API_SW_INTERFACE_TX_PLACEMENT_DETAILS, n, rp, context, ({
+    VL_API_SW_INTERFACE_TX_PLACEMENT_DETAILS, n, rp,
+    clib_host_to_net_u32(context), ({
       rmp->sw_if_index = clib_host_to_net_u32 (hw_if->sw_if_index);
       rmp->queue_id = clib_host_to_net_u32 (q[0]->queue_id);
       rmp->shared = q[0]->shared_queue;
