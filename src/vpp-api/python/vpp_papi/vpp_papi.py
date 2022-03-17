@@ -756,14 +756,17 @@ class VPPApiClient:
             if r is None:
                 raise VPPIOError(2, 'VPP API client: read failed')
             msgname = type(r).__name__
+            self.logger.debug(f"Got message name {msgname} content {r!r}")
             if context not in r or r.context == 0 or context != r.context:
                 # Message being queued
                 self.message_queue.put_nowait(r)
+                self.logger.debug(f"Queued {msgname}")
                 continue
             if msgname != msgreply and (stream and (msgname != stream_message)):
-                print('REPLY MISMATCH', msgreply, msgname, stream_message, stream)
+                self.logger.debug(f'REPLY MISMATCH {msgreply} {msgname} {stream_message} {stream}')
             if not stream:
                 rl = r
+                self.logger.debug(f"No-stream return {msgname}")
                 break
             if msgname == msgreply:
                 if modern: # Return both reply and list
@@ -771,12 +774,13 @@ class VPPApiClient:
                 break
 
             rl.append(r)
+            self.logger.debug(f"appended {msgname}")
 
         self.transport.resume()
 
         s = 'Return value: {!r}'.format(r)
-        if len(s) > 80:
-            s = s[:80] + "..."
+        if len(s) > 800:
+            s = s[:800] + "..."
         self.logger.debug(s)
         te = time.time()
         self._add_stat(msgdef.name, (te - ts) * 1000)
