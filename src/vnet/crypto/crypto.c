@@ -431,8 +431,7 @@ vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_alg_t alg, u8 * data,
   if (!vnet_crypto_key_len_check (alg, length))
     return ~0;
 
-  pool_get_aligned_will_expand (cm->keys, need_barrier_sync,
-				CLIB_CACHE_LINE_BYTES);
+  need_barrier_sync = pool_get_will_expand (cm->keys);
   /* If the cm->keys will expand, stop the parade. */
   if (need_barrier_sync)
     vlib_worker_thread_barrier_sync (vm);

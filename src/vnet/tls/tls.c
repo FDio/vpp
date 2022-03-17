@@ -115,11 +115,10 @@ u32
 tls_ctx_half_open_alloc (void)
 {
   tls_main_t *tm = &tls_main;
-  u8 will_expand = 0;
+  u8 will_expand = pool_get_will_expand (tm->half_open_ctx_pool);
   tls_ctx_t *ctx;
   u32 ctx_index;
 
-  pool_get_aligned_will_expand (tm->half_open_ctx_pool, will_expand, 0);
   if (PREDICT_FALSE (will_expand && vlib_num_workers ()))
     {
       clib_rwlock_writer_lock (&tm->half_open_rwlock);
