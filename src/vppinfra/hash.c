@@ -1009,7 +1009,7 @@ hash_bytes (void *v)
   if (!v)
     return 0;
 
-  bytes = vec_mem_size (v, hash_header_bytes (v));
+  bytes = vec_mem_size (v);
 
   for (i = 0; i < hash_capacity (v); i++)
     {
@@ -1019,7 +1019,7 @@ hash_bytes (void *v)
 	  if (h->log2_pair_size > 0)
 	    bytes += 1 << indirect_pair_get_log2_bytes (&p->indirect);
 	  else
-	    bytes += vec_mem_size (p->indirect.pairs, 0);
+	    bytes += vec_mem_size (p->indirect.pairs);
 	}
     }
   return bytes;
