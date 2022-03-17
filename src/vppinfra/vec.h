@@ -373,13 +373,11 @@ do {						\
 */
 #define vec_new_aligned(T,N,A) vec_new_ha(T,N,0,A)
 
-/** \brief Free vector's memory (general version)
-
+/** \brief Free vector's memory (no header).
     @param V pointer to a vector
-    @param H size of header in bytes
     @return V (value-result parameter, V=0)
 */
-#define vec_free_h(V, H)                                                      \
+#define vec_free(V)                                                           \
   do                                                                          \
     {                                                                         \
       if (V)                                                                  \
@@ -389,12 +387,6 @@ do {						\
 	}                                                                     \
     }                                                                         \
   while (0)
-
-/** \brief Free vector's memory (no header).
-    @param V pointer to a vector
-    @return V (value-result parameter, V=0)
-*/
-#define vec_free(V) vec_free_h(V,0)
 
 void vec_free_not_inline (void *v);
 

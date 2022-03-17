@@ -56,7 +56,7 @@ clib_ring_new_inline (void **p, u32 elt_bytes, u32 size, u32 align)
 #define clib_ring_new(ring, size) \
 { clib_ring_new_inline ((void **)&(ring), sizeof(ring[0]), size, 0);}
 
-#define clib_ring_free(f) vec_free_h((f), sizeof(clib_ring_header_t))
+#define clib_ring_free(f) vec_free ((f))
 
 always_inline u32
 clib_ring_n_enq (void *v)
