@@ -69,14 +69,12 @@ ip_adjacency_t *
 adj_alloc (fib_protocol_t proto)
 {
     ip_adjacency_t *adj;
-    u8 need_barrier_sync = 0;
+    u8 need_barrier_sync = pool_get_will_expand (adj_pool);
     vlib_main_t *vm;
     vm = vlib_get_main();
 
     ASSERT (vm->thread_index == 0);
 
-    pool_get_aligned_will_expand (adj_pool, need_barrier_sync,
-                                  CLIB_CACHE_LINE_BYTES);
     /* If the adj_pool will expand, stop the parade. */
     if (need_barrier_sync)
         vlib_worker_thread_barrier_sync (vm);

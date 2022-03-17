@@ -94,9 +94,7 @@ udp_connection_alloc (u32 thread_index)
 {
   udp_main_t *um = &udp_main;
   udp_connection_t *uc;
-  u32 will_expand = 0;
-  pool_get_aligned_will_expand (um->connections[thread_index], will_expand,
-				CLIB_CACHE_LINE_BYTES);
+  u32 will_expand = pool_get_will_expand (um->connections[thread_index]);
 
   if (PREDICT_FALSE (will_expand))
     {

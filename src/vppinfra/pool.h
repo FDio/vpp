@@ -249,57 +249,46 @@ do {                                                                    \
 /** Allocate an object E from a pool P and zero it */
 #define pool_get_zero(P,E) pool_get_aligned_zero(P,E,0)
 
-/** See if pool_get will expand the pool or not */
-#define pool_get_aligned_will_expand(P,YESNO,A)                         \
-do {                                                                    \
-  pool_header_t * _pool_var (p) = pool_header (P);                      \
-  uword _pool_var (l);                                                  \
-                                                                        \
-  _pool_var (l) = 0;                                                    \
-  if (P)                                                                \
-    {                                                                   \
-      if (_pool_var (p)->max_elts)                                      \
-        _pool_var (l) = _pool_var (p)->max_elts;			\
-      else								\
-        _pool_var (l) = vec_len (_pool_var (p)->free_indices);          \
-    }                                                                   \
-                                                                        \
-  /* Free elements, certainly won't expand */                           \
-  if (_pool_var (l) > 0)                                                \
-      YESNO=0;                                                          \
-  else                                                                  \
-    {                                                                   \
-      /* Nothing on free list, make a new element and return it. */     \
-      YESNO = _vec_resize_will_expand                                   \
-        (P,                                                             \
-         /* length_increment */ 1,                                      \
-         /* new size */ (vec_len (P) + 1) * sizeof (P[0]),              \
-         pool_aligned_header_bytes,                                     \
-         /* align */ (A));                                              \
-    }                                                                   \
-} while (0)
+always_inline int
+_pool_get_will_expand (void *p, uword elt_size)
+{
+  pool_header_t *ph;
+  uword len;
 
-/** See if pool_put will expand free_bitmap or free_indices or not */
-#define pool_put_will_expand(P, E, YESNO)                                     \
-  do                                                                          \
-    {                                                                         \
-      pool_header_t *_pool_var (p) = pool_header (P);                         \
-                                                                              \
-      uword _pool_var (i) = (E) - (P);                                        \
-      /* free_bitmap or free_indices may expand. */                           \
-      YESNO =                                                                 \
-	clib_bitmap_will_expand (_pool_var (p)->free_bitmap, _pool_var (i));  \
-                                                                              \
-      YESNO += _vec_resize_will_expand (                                      \
-	_pool_var (p)->free_indices, 1,                                       \
-	(vec_len (_pool_var (p)->free_indices) + 1) *                         \
-	  sizeof (_pool_var (p)->free_indices[0]),                            \
-	0, 0);                                                                \
-    }                                                                         \
-  while (0)
+  if (p == 0)
+    return 1;
 
-/** Tell the caller if pool get will expand the pool */
-#define pool_get_will_expand(P,YESNO) pool_get_aligned_will_expand(P,YESNO,0)
+  ph = pool_header (p);
+
+  if (ph->max_elts)
+    len = ph->max_elts;
+  else
+    len = vec_len (ph->free_indices);
+
+  /* Free elements, certainly won't expand */
+  if (len > 0)
+    return 0;
+
+  return _vec_resize_will_expand (p, 1, elt_size);
+}
+
+#define pool_get_will_expand(P) _pool_get_will_expand (P, sizeof ((P)[0]))
+
+always_inline int
+_pool_put_will_expand (void *p, uword index, uword elt_size)
+{
+  pool_header_t *ph = pool_header (p);
+
+  if (clib_bitmap_will_expand (ph->free_bitmap, index))
+    return 1;
+
+  if (vec_resize_will_expand (ph->free_indices, 1))
+    return 1;
+
+  return 0;
+}
+
+#define pool_put_will_expand(P, E) _pool_put_will_expand (P, (E) - (P), sizeof ((P)[0])
 
 /** Use free bitmap to query whether given element is free. */
 #define pool_is_free(P,E)						\
