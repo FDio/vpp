@@ -54,7 +54,7 @@ typedef struct
 always_inline clib_fifo_header_t *
 clib_fifo_header (void *f)
 {
-  return vec_header (f, sizeof (clib_fifo_header_t));
+  return vec_header (f);
 }
 
 /* Aliases. */

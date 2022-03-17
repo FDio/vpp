@@ -96,18 +96,11 @@ typedef struct hash_header
   uword *is_user;
 } hash_t;
 
-/* Hash header size in bytes */
-always_inline uword
-hash_header_bytes (void *v)
-{
-  return sizeof (hash_t);
-}
-
 /* Returns a pointer to the hash header given the vector pointer */
 always_inline hash_t *
 hash_header (void *v)
 {
-  return vec_header (v, hash_header_bytes (v));
+  return vec_header (v);
 }
 
 /* Number of elements in the hash table */

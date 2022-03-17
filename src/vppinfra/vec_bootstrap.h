@@ -89,7 +89,6 @@ always_inline uword
 vec_get_header_size (void *v)
 {
   uword header_size = _vec_find (v)->hdr_size * VEC_HEADER_ROUND;
-  ASSERT (header_size >= vec_header_bytes (0));
   return header_size;
 }
 
@@ -100,9 +99,9 @@ vec_get_header_size (void *v)
 */
 
 always_inline void *
-vec_header (void *v, uword header_bytes)
+vec_header (void *v)
 {
-  return v - vec_header_bytes (header_bytes);
+  return v ? v - vec_get_header_size (v) : 0;
 }
 
 /** \brief Find the end of user vector header
@@ -112,29 +111,10 @@ vec_header (void *v, uword header_bytes)
 */
 
 always_inline void *
-vec_header_end (void *v, uword header_bytes)
+vec_header_end (void *v)
 {
-  return v + vec_header_bytes (header_bytes);
+  return v + vec_get_header_size (v);
 }
-
-always_inline uword
-vec_aligned_header_bytes (uword header_bytes, uword align)
-{
-  return round_pow2 (header_bytes + sizeof (vec_header_t), align);
-}
-
-always_inline void *
-vec_aligned_header (void *v, uword header_bytes, uword align)
-{
-  return v - vec_aligned_header_bytes (header_bytes, align);
-}
-
-always_inline void *
-vec_aligned_header_end (void *v, uword header_bytes, uword align)
-{
-  return v + vec_aligned_header_bytes (header_bytes, align);
-}
-
 
 /** \brief Number of elements in vector (lvalue-capable)
 
