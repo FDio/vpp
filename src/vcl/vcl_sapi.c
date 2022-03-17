@@ -438,7 +438,7 @@ vcl_sapi_del_cert_key_pair (u32 ckpair_index)
   mp->index = ckpair_index;
 
   cs = &wrk->app_api_sock;
-  err = clib_socket_sendmsg (cs, &msg, sizeof (msg), 0, 0);
+  err = clib_socket_sendmsg (cs, msg, sizeof (*msg), 0, 0);
   if (err)
     {
       clib_error_report (err);
