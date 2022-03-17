@@ -85,6 +85,14 @@ vec_header_bytes (uword header_bytes)
   return round_pow2 (header_bytes + sizeof (vec_header_t), VEC_HEADER_ROUND);
 }
 
+always_inline uword
+vec_get_header_size (void *v)
+{
+  uword header_size = _vec_find (v)->hdr_size * VEC_HEADER_ROUND;
+  ASSERT (header_size >= vec_header_bytes (0));
+  return header_size;
+}
+
 /** \brief Find a user vector header
 
     Finds the user header of a vector with unspecified alignment given
@@ -167,16 +175,14 @@ u32 vec_len_not_inline (void *v);
  * Return size of memory allocated for the vector
  *
  * @param v vector
- * @param b extra header bytes
  * @return memory size allocated for the vector
  */
-#define vec_mem_size(v, b)                                                    \
-  ({                                                                          \
-    void *_vec_mem_v = (void *) (v);                                          \
-    uword _vec_mem_b = (b);                                                   \
-    _vec_mem_b = sizeof (vec_header_t) + _vec_round_size (_vec_mem_b);        \
-    _vec_mem_v ? clib_mem_size (_vec_mem_v - _vec_mem_b) : 0;                 \
-  })
+
+always_inline uword
+vec_mem_size (void *v)
+{
+  return v ? clib_mem_size (v - vec_get_header_size (v)) : 0;
+}
 
 /**
  * Number of elements that can fit into generic vector
@@ -185,25 +191,26 @@ u32 vec_len_not_inline (void *v);
  * @param b extra header bytes
  * @return number of elements that can fit into vector
  */
-#define vec_max_elts(v, b)                                                    \
-  (v ? (vec_mem_size (v, b) - vec_header_bytes (b)) / sizeof (v[0]) : 0)
 
-/** \brief Total number of elements that can fit into vector. */
-#define vec_max_len(v) vec_max_elts (v, 0)
+always_inline uword
+_vec_max_len (void *v, uword elt_size)
+{
+  return v ? vec_mem_size (v) / elt_size : 0;
+}
 
-/** \brief Set vector length to a user-defined value */
-#ifndef __COVERITY__		/* Coverity gets confused by ASSERT() */
-#define vec_set_len(v, l) do {     \
-    ASSERT(v);                     \
-    ASSERT((l) <= vec_max_len(v)); \
-    CLIB_MEM_POISON_LEN((void *)(v), _vec_len(v) * sizeof((v)[0]), (l) * sizeof((v)[0])); \
-    _vec_len(v) = (l);             \
-} while (0)
-#else /* __COVERITY__ */
-#define vec_set_len(v, l) do {     \
-    _vec_len(v) = (l);             \
-} while (0)
-#endif /* __COVERITY__ */
+#define vec_max_len(v) _vec_max_len (v, sizeof ((v)[0]))
+
+always_inline void
+_vec_set_len (void *v, uword len, uword elt_size)
+{
+  ASSERT (v);
+  ASSERT (len <= vec_max_len (v));
+
+  CLIB_MEM_POISON_LEN (v, _vec_len (v) * elt_size, len * elt_size);
+  _vec_len (v) = len;
+}
+
+#define vec_set_len(v, l) _vec_set_len ((void *) v, l, sizeof ((v)[0]))
 
 /** \brief Reset vector length to zero
     NULL-pointer tolerant

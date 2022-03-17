@@ -163,7 +163,7 @@ pool_header_bytes (void *v)
 #define _pool_var(v) _pool_##v
 
 /** Number of elements that can fit into pool with current allocation */
-#define pool_max_len(P) vec_max_elts (P, pool_aligned_header_bytes)
+#define pool_max_len(P) vec_max_len (P)
 
 /** Number of free elements in pool */
 #define pool_free_elts(P)                                                     \
