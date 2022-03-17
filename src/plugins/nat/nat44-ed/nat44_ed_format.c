@@ -303,34 +303,11 @@ format_nat44_ed_tcp_state (u8 *s, va_list *args)
     case NAT44_ED_TCP_STATE_CLOSED:
       s = format (s, "closed");
       break;
-    case NAT44_ED_TCP_STATE_SYN_I2O:
-      s = format (s, "SYN seen in in2out direction");
-      break;
-    case NAT44_ED_TCP_STATE_SYN_O2I:
-      s = format (s, "SYN seen in out2in direction");
-      break;
     case NAT44_ED_TCP_STATE_ESTABLISHED:
-      s = format (s, "SYN seen in both directions/established");
+      s = format (s, "established");
       break;
-    case NAT44_ED_TCP_STATE_FIN_I2O:
-      s = format (s, "FIN seen in in2out direction");
-      break;
-    case NAT44_ED_TCP_STATE_FIN_O2I:
-      s = format (s, "FIN seen in out2in direction");
-      break;
-    case NAT44_ED_TCP_STATE_RST_TRANS:
-      s = format (s, "RST seen/transitory timeout");
-      break;
-    case NAT44_ED_TCP_STATE_FIN_TRANS:
-      s = format (s, "FIN seen in both directions/transitory timeout");
-      break;
-    case NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_O2I:
-      s = format (s, "FIN seen in both directions/transitory timeout/session "
-		     "reopening in out2in direction");
-      break;
-    case NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_I2O:
-      s = format (s, "FIN seen in both directions/transitory timeout/session "
-		     "reopening in in2out direction");
+    case NAT44_ED_TCP_STATE_CLOSING:
+      s = format (s, "closing");
       break;
     case NAT44_ED_TCP_N_STATE:
       s = format (s, "BUG! unexpected N_STATE! BUG!");
