@@ -2456,8 +2456,6 @@ nat44_plugin_enable (nat44_config_t c)
 
   nat44_ed_db_init (sm->max_translations_per_thread, sm->translation_buckets);
 
-  nat44_ed_init_tcp_state_stable (sm);
-
   nat_affinity_enable ();
 
   nat_reset_timeouts (&sm->timeouts);

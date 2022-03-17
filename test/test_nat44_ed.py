@@ -2609,8 +2609,8 @@ class TestNAT44EDMW(TestNAT44ED):
                               self.tcp_external_port)
 
         # Wait at least the transitory time, the session is in established
-        # state anyway. RST followed by a data packet should keep it
-        # established.
+        # state anyway. RST followed by a data packet should move it to
+        # transitory state.
         self.virtual_sleep(6)
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
@@ -2622,15 +2622,6 @@ class TestNAT44EDMW(TestNAT44ED):
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
              TCP(sport=self.tcp_port_in, dport=self.tcp_external_port,
                  flags="P"))
-        self.send_and_expect(self.pg0, p, self.pg1)
-
-        # State is established, session should be still open after 6 seconds
-        self.virtual_sleep(6)
-
-        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
-             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
-             TCP(sport=self.tcp_port_in, dport=self.tcp_external_port,
-                 flags="R"))
         self.send_and_expect(self.pg0, p, self.pg1)
 
         # State is transitory, session should be closed after 6 seconds
@@ -3135,8 +3126,15 @@ class TestNAT44EDMW(TestNAT44ED):
         # SYN out2in
         p = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
              IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
-             TCP(sport=self.tcp_external_port, dport=self.tcp_port_out))
+             TCP(sport=self.tcp_external_port, dport=self.tcp_port_out,
+                 flags='SA'))
         self.send_and_expect(self.pg1, p, self.pg0)
+
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=self.tcp_port_in, dport=self.tcp_external_port,
+                 flags="A"))
+        self.send_and_expect(self.pg0, p, self.pg1)
 
         # FIN in2out
         p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
@@ -3152,17 +3150,8 @@ class TestNAT44EDMW(TestNAT44ED):
                  flags="F"))
         self.send_and_expect(self.pg1, p, self.pg0)
 
-        # SYN in2out
-        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
-             TCP(sport=self.tcp_port_in, dport=self.tcp_external_port))
-        self.send_and_expect(self.pg0, p, self.pg1)
-
-        # SYN out2in
-        p = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
-             IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
-             TCP(sport=self.tcp_external_port, dport=self.tcp_port_out))
-        self.send_and_expect(self.pg1, p, self.pg0)
+        self.init_tcp_session(self.pg0, self.pg1, self.tcp_port_in,
+                              self.tcp_external_port)
 
         # 2 records should be produced - first one del & add
         capture = self.pg3.get_capture(2)
@@ -3746,8 +3735,15 @@ class TestNAT44EDMW(TestNAT44ED):
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
              TCP(sport=in_port, dport=ext_port,
-                 flags="S", seq=101, ack=301))
+                 flags="SA", seq=101, ack=301))
         self.send_and_expect(self.pg0, p, self.pg1)
+
+        # send ACK packet out -> in
+        p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
+             TCP(sport=ext_port, dport=out_port,
+                 flags="A", seq=300, ack=101))
+        self.send_and_expect(self.pg1, p, self.pg0)
 
         self.virtual_sleep(3)
         # send ACK packet in -> out - should be forwarded and session alive

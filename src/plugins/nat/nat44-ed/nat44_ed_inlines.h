@@ -176,21 +176,7 @@ nat_get_icmp_session_lookup_values (vlib_buffer_t *b, ip4_header_t *ip0,
 always_inline int
 nat44_ed_tcp_is_established (nat44_ed_tcp_state_e state)
 {
-  static int lookup[] = {
-    [NAT44_ED_TCP_STATE_CLOSED] = 0,
-    [NAT44_ED_TCP_STATE_SYN_I2O] = 0,
-    [NAT44_ED_TCP_STATE_SYN_O2I] = 0,
-    [NAT44_ED_TCP_STATE_ESTABLISHED] = 1,
-    [NAT44_ED_TCP_STATE_FIN_I2O] = 1,
-    [NAT44_ED_TCP_STATE_FIN_O2I] = 1,
-    [NAT44_ED_TCP_STATE_RST_TRANS] = 0,
-    [NAT44_ED_TCP_STATE_FIN_TRANS] = 0,
-    [NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_I2O] = 0,
-    [NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_O2I] = 0,
-    [NAT44_ED_TCP_N_STATE] = 0,
-  };
-  ASSERT (state <= ARRAY_LEN (lookup));
-  return lookup[state];
+  return state == NAT44_ED_TCP_STATE_ESTABLISHED ? 1 : 0;
 }
 
 always_inline u32
@@ -745,251 +731,74 @@ nat44_ed_session_reopen (u32 thread_index, snat_session_t *s)
   s->total_bytes = 0;
 }
 
-always_inline void
-nat44_ed_init_tcp_state_stable (snat_main_t *sm)
-{
-  /* first make sure whole table is initialised in a way where state
-   * is not changed, then define special cases */
-  nat44_ed_tcp_state_e s;
-  for (s = 0; s < NAT44_ED_TCP_N_STATE; ++s)
-    {
-      int i;
-      for (i = 0; i < NAT44_ED_N_DIR; ++i)
-	{
-	  int j = 0;
-	  for (j = 0; j < NAT44_ED_TCP_N_FLAG; ++j)
-	    {
-	      sm->tcp_state_change_table[s][i][j] = s;
-	    }
-	}
-    }
-
-  /* CLOSED and any kind of SYN -> HALF-OPEN */
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_CLOSED][NAT44_ED_DIR_I2O]
-			    [NAT44_ED_TCP_FLAG_SYN] =
-    NAT44_ED_TCP_STATE_SYN_I2O;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_CLOSED][NAT44_ED_DIR_O2I]
-			    [NAT44_ED_TCP_FLAG_SYN] =
-    NAT44_ED_TCP_STATE_SYN_O2I;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_CLOSED][NAT44_ED_DIR_I2O]
-			    [NAT44_ED_TCP_FLAG_SYNFIN] =
-    NAT44_ED_TCP_STATE_SYN_I2O;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_CLOSED][NAT44_ED_DIR_O2I]
-			    [NAT44_ED_TCP_FLAG_SYNFIN] =
-    NAT44_ED_TCP_STATE_SYN_O2I;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_CLOSED][NAT44_ED_DIR_I2O]
-			    [NAT44_ED_TCP_FLAG_SYNFINRST] =
-    NAT44_ED_TCP_STATE_SYN_I2O;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_CLOSED][NAT44_ED_DIR_O2I]
-			    [NAT44_ED_TCP_FLAG_SYNFINRST] =
-    NAT44_ED_TCP_STATE_SYN_O2I;
-
-  /* HALF-OPEN and any kind of SYN in right direction -> ESTABLISHED */
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_SYN_I2O][NAT44_ED_DIR_O2I]
-			    [NAT44_ED_TCP_FLAG_SYN] =
-    NAT44_ED_TCP_STATE_ESTABLISHED;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_SYN_O2I][NAT44_ED_DIR_I2O]
-			    [NAT44_ED_TCP_FLAG_SYN] =
-    NAT44_ED_TCP_STATE_ESTABLISHED;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_SYN_I2O][NAT44_ED_DIR_O2I]
-			    [NAT44_ED_TCP_FLAG_SYNFIN] =
-    NAT44_ED_TCP_STATE_ESTABLISHED;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_SYN_O2I][NAT44_ED_DIR_I2O]
-			    [NAT44_ED_TCP_FLAG_SYNFIN] =
-    NAT44_ED_TCP_STATE_ESTABLISHED;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_SYN_I2O][NAT44_ED_DIR_O2I]
-			    [NAT44_ED_TCP_FLAG_SYNFINRST] =
-    NAT44_ED_TCP_STATE_ESTABLISHED;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_SYN_O2I][NAT44_ED_DIR_I2O]
-			    [NAT44_ED_TCP_FLAG_SYNFINRST] =
-    NAT44_ED_TCP_STATE_ESTABLISHED;
-
-  /* ESTABLISHED and any kind of RST -> RST_TRANS */
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_ESTABLISHED][NAT44_ED_DIR_I2O]
-			    [NAT44_ED_TCP_FLAG_RST] =
-    NAT44_ED_TCP_STATE_RST_TRANS;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_ESTABLISHED][NAT44_ED_DIR_O2I]
-			    [NAT44_ED_TCP_FLAG_RST] =
-    NAT44_ED_TCP_STATE_RST_TRANS;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_ESTABLISHED][NAT44_ED_DIR_I2O]
-			    [NAT44_ED_TCP_FLAG_SYNRST] =
-    NAT44_ED_TCP_STATE_RST_TRANS;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_ESTABLISHED][NAT44_ED_DIR_O2I]
-			    [NAT44_ED_TCP_FLAG_SYNRST] =
-    NAT44_ED_TCP_STATE_RST_TRANS;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_ESTABLISHED][NAT44_ED_DIR_I2O]
-			    [NAT44_ED_TCP_FLAG_FINRST] =
-    NAT44_ED_TCP_STATE_RST_TRANS;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_ESTABLISHED][NAT44_ED_DIR_O2I]
-			    [NAT44_ED_TCP_FLAG_FINRST] =
-    NAT44_ED_TCP_STATE_RST_TRANS;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_ESTABLISHED][NAT44_ED_DIR_I2O]
-			    [NAT44_ED_TCP_FLAG_SYNFINRST] =
-    NAT44_ED_TCP_STATE_RST_TRANS;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_ESTABLISHED][NAT44_ED_DIR_O2I]
-			    [NAT44_ED_TCP_FLAG_SYNFINRST] =
-    NAT44_ED_TCP_STATE_RST_TRANS;
-
-  /* ESTABLISHED and any kind of FIN without RST -> HALF-CLOSED */
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_ESTABLISHED][NAT44_ED_DIR_I2O]
-			    [NAT44_ED_TCP_FLAG_FIN] =
-    NAT44_ED_TCP_STATE_FIN_I2O;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_ESTABLISHED][NAT44_ED_DIR_O2I]
-			    [NAT44_ED_TCP_FLAG_FIN] =
-    NAT44_ED_TCP_STATE_FIN_O2I;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_ESTABLISHED][NAT44_ED_DIR_I2O]
-			    [NAT44_ED_TCP_FLAG_SYNFIN] =
-    NAT44_ED_TCP_STATE_FIN_I2O;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_ESTABLISHED][NAT44_ED_DIR_O2I]
-			    [NAT44_ED_TCP_FLAG_SYNFIN] =
-    NAT44_ED_TCP_STATE_FIN_O2I;
-
-  /* HALF-CLOSED and any kind of FIN -> FIN_TRANS */
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_FIN_I2O][NAT44_ED_DIR_O2I]
-			    [NAT44_ED_TCP_FLAG_FIN] =
-    NAT44_ED_TCP_STATE_FIN_TRANS;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_FIN_O2I][NAT44_ED_DIR_I2O]
-			    [NAT44_ED_TCP_FLAG_FIN] =
-    NAT44_ED_TCP_STATE_FIN_TRANS;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_FIN_I2O][NAT44_ED_DIR_O2I]
-			    [NAT44_ED_TCP_FLAG_SYNFIN] =
-    NAT44_ED_TCP_STATE_FIN_TRANS;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_FIN_O2I][NAT44_ED_DIR_I2O]
-			    [NAT44_ED_TCP_FLAG_SYNFIN] =
-    NAT44_ED_TCP_STATE_FIN_TRANS;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_FIN_I2O][NAT44_ED_DIR_O2I]
-			    [NAT44_ED_TCP_FLAG_FINRST] =
-    NAT44_ED_TCP_STATE_FIN_TRANS;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_FIN_O2I][NAT44_ED_DIR_I2O]
-			    [NAT44_ED_TCP_FLAG_FINRST] =
-    NAT44_ED_TCP_STATE_FIN_TRANS;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_FIN_I2O][NAT44_ED_DIR_O2I]
-			    [NAT44_ED_TCP_FLAG_SYNFINRST] =
-    NAT44_ED_TCP_STATE_FIN_TRANS;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_FIN_O2I][NAT44_ED_DIR_I2O]
-			    [NAT44_ED_TCP_FLAG_SYNFINRST] =
-    NAT44_ED_TCP_STATE_FIN_TRANS;
-
-  /* RST_TRANS and anything non-RST -> ESTABLISHED */
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_RST_TRANS][NAT44_ED_DIR_O2I]
-			    [NAT44_ED_TCP_FLAG_NONE] =
-    NAT44_ED_TCP_STATE_ESTABLISHED;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_RST_TRANS][NAT44_ED_DIR_I2O]
-			    [NAT44_ED_TCP_FLAG_NONE] =
-    NAT44_ED_TCP_STATE_ESTABLISHED;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_RST_TRANS][NAT44_ED_DIR_O2I]
-			    [NAT44_ED_TCP_FLAG_SYN] =
-    NAT44_ED_TCP_STATE_ESTABLISHED;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_RST_TRANS][NAT44_ED_DIR_I2O]
-			    [NAT44_ED_TCP_FLAG_SYN] =
-    NAT44_ED_TCP_STATE_ESTABLISHED;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_RST_TRANS][NAT44_ED_DIR_O2I]
-			    [NAT44_ED_TCP_FLAG_FIN] =
-    NAT44_ED_TCP_STATE_ESTABLISHED;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_RST_TRANS][NAT44_ED_DIR_I2O]
-			    [NAT44_ED_TCP_FLAG_FIN] =
-    NAT44_ED_TCP_STATE_ESTABLISHED;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_RST_TRANS][NAT44_ED_DIR_O2I]
-			    [NAT44_ED_TCP_FLAG_SYNFIN] =
-    NAT44_ED_TCP_STATE_ESTABLISHED;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_RST_TRANS][NAT44_ED_DIR_I2O]
-			    [NAT44_ED_TCP_FLAG_SYNFIN] =
-    NAT44_ED_TCP_STATE_ESTABLISHED;
-
-  /* FIN_TRANS and any kind of SYN -> HALF-REOPEN */
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_FIN_TRANS][NAT44_ED_DIR_I2O]
-			    [NAT44_ED_TCP_FLAG_SYN] =
-    NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_I2O;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_FIN_TRANS][NAT44_ED_DIR_O2I]
-			    [NAT44_ED_TCP_FLAG_SYN] =
-    NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_O2I;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_FIN_TRANS][NAT44_ED_DIR_I2O]
-			    [NAT44_ED_TCP_FLAG_SYNRST] =
-    NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_I2O;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_FIN_TRANS][NAT44_ED_DIR_O2I]
-			    [NAT44_ED_TCP_FLAG_SYNRST] =
-    NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_O2I;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_FIN_TRANS][NAT44_ED_DIR_I2O]
-			    [NAT44_ED_TCP_FLAG_SYNFIN] =
-    NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_I2O;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_FIN_TRANS][NAT44_ED_DIR_O2I]
-			    [NAT44_ED_TCP_FLAG_SYNFIN] =
-    NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_O2I;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_FIN_TRANS][NAT44_ED_DIR_I2O]
-			    [NAT44_ED_TCP_FLAG_SYNFINRST] =
-    NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_I2O;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_FIN_TRANS][NAT44_ED_DIR_O2I]
-			    [NAT44_ED_TCP_FLAG_SYNFINRST] =
-    NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_O2I;
-
-  /* HALF-REOPEN and any kind of SYN in right direction -> ESTABLISHED */
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_I2O]
-			    [NAT44_ED_DIR_O2I][NAT44_ED_TCP_FLAG_SYN] =
-    NAT44_ED_TCP_STATE_ESTABLISHED;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_O2I]
-			    [NAT44_ED_DIR_I2O][NAT44_ED_TCP_FLAG_SYN] =
-    NAT44_ED_TCP_STATE_ESTABLISHED;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_I2O]
-			    [NAT44_ED_DIR_O2I][NAT44_ED_TCP_FLAG_SYNRST] =
-    NAT44_ED_TCP_STATE_ESTABLISHED;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_O2I]
-			    [NAT44_ED_DIR_I2O][NAT44_ED_TCP_FLAG_SYNRST] =
-    NAT44_ED_TCP_STATE_ESTABLISHED;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_I2O]
-			    [NAT44_ED_DIR_O2I][NAT44_ED_TCP_FLAG_SYNFIN] =
-    NAT44_ED_TCP_STATE_ESTABLISHED;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_O2I]
-			    [NAT44_ED_DIR_I2O][NAT44_ED_TCP_FLAG_SYNFIN] =
-    NAT44_ED_TCP_STATE_ESTABLISHED;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_I2O]
-			    [NAT44_ED_DIR_O2I][NAT44_ED_TCP_FLAG_SYNFINRST] =
-    NAT44_ED_TCP_STATE_ESTABLISHED;
-  sm->tcp_state_change_table[NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_O2I]
-			    [NAT44_ED_DIR_I2O][NAT44_ED_TCP_FLAG_SYNFINRST] =
-    NAT44_ED_TCP_STATE_ESTABLISHED;
-}
-
-/* TCP state tracking according to RFC 7857 (and RFC 6146, which is referenced
- * by RFC 7857). Our implementation also goes beyond by supporting creation of
- * a new session while old session is in transitory timeout after seeing FIN
- * packets from both sides. */
+/*
+ * "Some rise by SYN, and some by virtue FIN" - William Shakespeare
+ * TCP state tracking patterned after RFC 7857 (and RFC 6146, which is
+ * referenced by RFC 7857). In contrast to the state machine in RFC7857 we only
+ * transition to ESTABLISHED state after seeing a full 3-way handshake (SYNs
+ * and ACKs in both directions). RFC7857 as a means of protecting against
+ * spurious RSTs closing a session, goes back to ESTABLISHED if a data packet
+ * is received after the RST. This state machine will leave the state in
+ * transitory if RST is seen. Our implementation also goes beyond by supporting
+ * creation of a new session while old session is in transitory timeout after
+ * seeing FIN packets from both sides.
+ */
 always_inline void
 nat44_set_tcp_session_state (snat_main_t *sm, f64 now, snat_session_t *ses,
 			     u8 tcp_flags, u32 thread_index,
 			     nat44_ed_dir_e dir)
 {
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
-  nat44_ed_tcp_flag_e flags =
-    tcp_flags & (TCP_FLAG_SYN | TCP_FLAG_FIN | TCP_FLAG_RST);
+  u8 old_flags = ses->tcp_flags[dir];
+  ses->tcp_flags[dir] |=
+    tcp_flags & (TCP_FLAG_FIN | TCP_FLAG_SYN | TCP_FLAG_RST | TCP_FLAG_ACK);
+  if (old_flags == ses->tcp_flags[dir])
+    return;
 
   u8 old_state = ses->tcp_state;
-  ses->tcp_state = sm->tcp_state_change_table[ses->tcp_state][dir][flags];
 
-  if (old_state != ses->tcp_state)
+  switch (old_state)
     {
-      if (nat44_ed_tcp_is_established (ses->tcp_state))
+    case NAT44_ED_TCP_STATE_CLOSED:
+      // ESTABLISHED when a SYN and ACK is seen from both sides
+      if ((ses->tcp_flags[NAT44_ED_DIR_I2O] &
+	   ses->tcp_flags[NAT44_ED_DIR_O2I]) == (TCP_FLAG_SYN | TCP_FLAG_ACK))
 	{
-	  if (NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_I2O == old_state ||
-	      NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_O2I == old_state)
-	    {
-	      nat44_ed_session_reopen (thread_index, ses);
-	    }
+	  ses->tcp_state = NAT44_ED_TCP_STATE_ESTABLISHED;
 	  ses->lru_head_index = tsm->tcp_estab_lru_head_index;
 	}
-      else
+      break;
+    case NAT44_ED_TCP_STATE_ESTABLISHED:
+      // CLOSING when a FIN is seen from either side or session has been RST
+      if ((ses->tcp_flags[dir] & TCP_FLAG_FIN) ||
+	  (ses->tcp_flags[dir] & TCP_FLAG_RST))
 	{
-	  if (NAT44_ED_TCP_STATE_ESTABLISHED == old_state)
-	    { // need to update last heard otherwise session might get
-	      // immediately timed out if it has been idle longer than
-	      // transitory timeout
-	      ses->last_heard = now;
-	    }
+	  ses->tcp_state = NAT44_ED_TCP_STATE_CLOSING;
+	  ses->tcp_flags[NAT44_ED_DIR_I2O] = 0;
+	  ses->tcp_flags[NAT44_ED_DIR_O2I] = 0;
+	  // need to update last heard otherwise session might get
+	  // immediately timed out if it has been idle longer than
+	  // transitory timeout
+	  ses->last_heard = now;
 	  ses->lru_head_index = tsm->tcp_trans_lru_head_index;
 	}
-      ses->last_lru_update = now;
-      clib_dlist_remove (tsm->lru_pool, ses->lru_index);
-      clib_dlist_addtail (tsm->lru_pool, ses->lru_head_index, ses->lru_index);
+      break;
+    case NAT44_ED_TCP_STATE_CLOSING:
+      // Allow a transitory session to reopen
+      if ((ses->tcp_flags[NAT44_ED_DIR_I2O] &
+	   ses->tcp_flags[NAT44_ED_DIR_O2I]) == (TCP_FLAG_SYN | TCP_FLAG_ACK))
+	{
+	  nat44_ed_session_reopen (thread_index, ses);
+	  ses->tcp_state = NAT44_ED_TCP_STATE_ESTABLISHED;
+	  ses->lru_head_index = tsm->tcp_estab_lru_head_index;
+	}
+      break;
     }
+  if (old_state == ses->tcp_state)
+    return;
+  ses->last_lru_update = now;
+  clib_dlist_remove (tsm->lru_pool, ses->lru_index);
+  clib_dlist_addtail (tsm->lru_pool, ses->lru_head_index, ses->lru_index);
 }
 
 always_inline void
@@ -1012,13 +821,8 @@ always_inline void
 nat44_session_update_counters (snat_session_t *s, f64 now, uword bytes,
 			       u32 thread_index)
 {
-  if (NAT44_ED_TCP_STATE_RST_TRANS != s->tcp_state &&
-      NAT44_ED_TCP_STATE_FIN_TRANS != s->tcp_state &&
-      NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_I2O != s->tcp_state &&
-      NAT44_ED_TCP_STATE_FIN_REOPEN_SYN_O2I != s->tcp_state)
-    {
-      s->last_heard = now;
-    }
+  // regardless of TCP state, reset the timer if data packet is seen.
+  s->last_heard = now;
   s->total_pkts++;
   s->total_bytes += bytes;
 }
