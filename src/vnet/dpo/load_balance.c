@@ -100,8 +100,8 @@ load_balance_alloc_i (void)
     vlib_main_t *vm = vlib_get_main();
     ASSERT (vm->thread_index == 0);
 
-    pool_get_aligned_will_expand (load_balance_pool, need_barrier_sync,
-                                  CLIB_CACHE_LINE_BYTES);
+    need_barrier_sync = pool_get_will_expand (load_balance_pool);
+
     if (need_barrier_sync)
         vlib_worker_thread_barrier_sync (vm);
 

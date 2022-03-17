@@ -543,7 +543,7 @@ dpo_get_next_node_by_type_and_proto (dpo_type_t   child_type,
 
 #define dpo_pool_barrier_sync(VM,P,YESNO)                               \
 do {                                                                    \
-    pool_get_aligned_will_expand ((P), YESNO, CLIB_CACHE_LINE_BYTES);   \
+    YESNO = pool_get_will_expand (P);                                   \
                                                                         \
     if (YESNO)                                                          \
     {                                                                   \
