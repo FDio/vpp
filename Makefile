@@ -84,15 +84,11 @@ ifeq ($(OS_VERSION_ID),20.04)
 	DEB_DEPENDS += python3-virtualenv
 	DEB_DEPENDS += libssl-dev
 	DEB_DEPENDS += libelf-dev # for libbpf (af_xdp)
-	# TODO: change CLANG_FORMAT_VER default in extras/scripts/checkstyle.sh
-	#       when clang-format-10 is removed
-	DEB_DEPENDS += clang-11 clang-format-11 clang-format-10
+	DEB_DEPENDS += clang-11 clang-format-11
 	LIBFFI=libffi7
 	DEB_DEPENDS += enchant-2  # for docs
 else ifeq ($(OS_VERSION_ID),20.10)
-	# TODO: change CLANG_FORMAT_VER default in extras/scripts/checkstyle.sh
-	#       when clang-format-10 is removed
-	DEB_DEPENDS += clang-11 clang-format-11 clang-format-10
+	DEB_DEPENDS += clang-11 clang-format-11
 	LIBFFI=libffi8ubuntu1
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-10)
 	DEB_DEPENDS += virtualenv
@@ -101,9 +97,7 @@ else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-11)
 	DEB_DEPENDS += clang-11 clang-format-11
 	LIBFFI=libffi7
 else
-	# TODO: change CLANG_FORMAT_VER default in extras/scripts/checkstyle.sh
-	#       when clang-format-10 is removed
-	DEB_DEPENDS += clang-11 clang-format-11 clang-format-10
+	DEB_DEPENDS += clang-11 clang-format-11
 	LIBFFI=libffi7
 	DEB_DEPENDS += enchant-2  # for docs
 endif
