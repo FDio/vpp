@@ -184,26 +184,14 @@ _vec_resize_inline (void *v,
 */
 
 always_inline int
-_vec_resize_will_expand (void *v,
-			 word length_increment,
-			 uword data_bytes, uword header_bytes,
-			 uword data_align)
+_vec_resize_will_expand (void *v, uword n_elts, uword elt_size)
 {
-  uword new_data_bytes, aligned_header_bytes;
-
-  aligned_header_bytes = vec_header_bytes (header_bytes);
-
-  new_data_bytes = data_bytes + aligned_header_bytes;
-
   if (PREDICT_TRUE (v != 0))
     {
-      void *p = v - aligned_header_bytes;
-
       /* Vector header must start heap object. */
-      ASSERT (clib_mem_is_heap_object (p));
+      ASSERT (clib_mem_is_heap_object (vec_header (v)));
 
-      /* Typically we'll not need to resize. */
-      if (new_data_bytes <= clib_mem_size (p))
+      if (vec_mem_size (v) >= ((_vec_len (v) + n_elts)) * elt_size)
 	return 0;
     }
   return 1;
@@ -217,22 +205,7 @@ _vec_resize_will_expand (void *v,
 */
 
 #define vec_resize_will_expand(V, N)                                          \
-  ({                                                                          \
-    word _v (n) = (N);                                                        \
-    word _v (l) = vec_len (V);                                                \
-    _vec_resize_will_expand ((V), _v (n),                                     \
-			     (_v (l) + _v (n)) * sizeof ((V)[0]), 0, 0);      \
-  })
-
-/** \brief Predicate function, says whether the supplied vector is a clib heap
-    object (general version).
-
-    @param v pointer to a vector
-    @param header_bytes vector header size in bytes (may be zero)
-    @return 0 or 1
-*/
-uword clib_mem_is_vec_h (void *v, uword header_bytes);
-
+  _vec_resize_will_expand (V, N, sizeof ((V)[0]))
 
 /** \brief Predicate function, says whether the supplied vector is a clib heap
     object
@@ -243,7 +216,7 @@ uword clib_mem_is_vec_h (void *v, uword header_bytes);
 always_inline uword
 clib_mem_is_vec (void *v)
 {
-  return clib_mem_is_vec_h (v, 0);
+  return clib_mem_is_heap_object (vec_header (v));
 }
 
 /* Local variable naming macro (prevents collisions with other macro naming). */

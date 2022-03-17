@@ -298,11 +298,9 @@ static ip_pmtu_dpo_t *
 ip_pmtu_dpo_alloc (void)
 {
   vlib_main_t *vm = vlib_get_main ();
-  u8 need_barrier_sync = 0;
+  u8 need_barrier_sync = pool_get_will_expand (ip_pmtu_dpo_pool);
   ip_pmtu_dpo_t *ipm;
 
-  pool_get_aligned_will_expand (ip_pmtu_dpo_pool, need_barrier_sync,
-				sizeof (ip_pmtu_dpo_t));
 
   if (need_barrier_sync)
     vlib_worker_thread_barrier_sync (vm);

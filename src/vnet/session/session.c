@@ -202,9 +202,8 @@ session_alloc (u32 thread_index)
 {
   session_worker_t *wrk = &session_main.wrk[thread_index];
   session_t *s;
-  u8 will_expand = 0;
-  pool_get_aligned_will_expand (wrk->sessions, will_expand,
-				CLIB_CACHE_LINE_BYTES);
+  u8 will_expand = pool_get_will_expand (wrk->sessions);
+
   /* If we have peekers, let them finish */
   if (PREDICT_FALSE (will_expand && vlib_num_workers ()))
     {
