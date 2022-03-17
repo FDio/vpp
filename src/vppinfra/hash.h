@@ -93,17 +93,14 @@ typedef struct hash_header
 
   /* Bit i is set if pair i is a user object (as opposed to being
      either zero or an indirect array of pairs). */
-  uword is_user[0];
+  uword *is_user;
 } hash_t;
 
 /* Hash header size in bytes */
 always_inline uword
 hash_header_bytes (void *v)
 {
-  hash_t *h;
-  uword is_user_bytes =
-    (sizeof (h->is_user[0]) * vec_len (v)) / BITS (h->is_user[0]);
-  return sizeof (h[0]) + is_user_bytes;
+  return sizeof (hash_t);
 }
 
 /* Returns a pointer to the hash header given the vector pointer */

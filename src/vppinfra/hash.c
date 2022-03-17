@@ -753,14 +753,19 @@ _hash_create (uword elts, hash_t * h_user)
 		   /* data bytes: */
 		   (elts << log2_pair_size) * sizeof (hash_pair_t),
 		   /* header bytes: */
-		   sizeof (h[0]) +
-		   (elts / BITS (h->is_user[0])) * sizeof (h->is_user[0]),
+		   sizeof (h[0]),
 		   /* alignment */ sizeof (hash_pair_t));
   h = hash_header (v);
 
   if (h_user)
-    h[0] = h_user[0];
+    {
+      h[0] = h_user[0];
+      h->is_user = 0;
+    }
 
+  vec_validate_aligned (
+    h->is_user, ((elts / BITS (h->is_user[0])) * sizeof (h->is_user[0])) - 1,
+    CLIB_CACHE_LINE_BYTES);
   h->log2_pair_size = log2_pair_size;
   h->elts = 0;
 
@@ -800,6 +805,7 @@ _hash_free (void *v)
 	clib_mem_free (p->indirect.pairs);
     }
 
+  vec_free (h->is_user);
   vec_free_header (h);
 
   return 0;
