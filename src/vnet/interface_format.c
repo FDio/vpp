@@ -701,9 +701,6 @@ format_vnet_buffer_opaque2 (u8 * s, va_list * args)
 	      (u32) (o->gso_size), (u32) (o->gso_l4_hdr_sz));
   vec_add1 (s, '\n');
 
-  s = format (s, "pg_replay_timestamp: %llu", (u32) (o->pg_replay_timestamp));
-  vec_add1 (s, '\n');
-
   for (i = 0; i < vec_len (im->buffer_opaque2_format_helpers); i++)
     {
       helper_fp = im->buffer_opaque2_format_helpers[i];

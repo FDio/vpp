@@ -495,15 +495,7 @@ typedef struct
     };
   } nat;
 
-  union
-  {
-    struct
-    {
-      u64 pad[1];
-      u64 pg_replay_timestamp;
-    };
-    u32 unused[8];
-  };
+  u32 unused[8];
 } vnet_buffer_opaque2_t;
 
 #define vnet_buffer2(b) ((vnet_buffer_opaque2_t *) (b)->opaque2)
@@ -512,8 +504,8 @@ typedef struct
  * The opaque2 field of the vlib_buffer_t is interpreted as a
  * vnet_buffer_opaque2_t. Hence it should be big enough to accommodate one.
  */
-STATIC_ASSERT (sizeof (vnet_buffer_opaque2_t) <=
-	       STRUCT_SIZE_OF (vlib_buffer_t, opaque2),
+STATIC_ASSERT (sizeof (vnet_buffer_opaque2_t) ==
+		 STRUCT_SIZE_OF (vlib_buffer_t, opaque2),
 	       "VNET buffer opaque2 meta-data too large for vlib_buffer");
 
 #define gso_mtu_sz(b) (vnet_buffer2(b)->gso_size + \

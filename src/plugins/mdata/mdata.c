@@ -350,13 +350,12 @@ _(tcp.data_len)                                 \
 _(tcp.flags)                                    \
 _(snat.flags)
 
-#define foreach_opaque2_metadata_field          \
-_(qos.bits)                                     \
-_(qos.source)                                   \
-_(loop_counter)                                 \
-_(gso_size)                                     \
-_(gso_l4_hdr_sz)                                \
-_(pg_replay_timestamp)
+#define foreach_opaque2_metadata_field                                        \
+  _ (qos.bits)                                                                \
+  _ (qos.source)                                                              \
+  _ (loop_counter)                                                            \
+  _ (gso_size)                                                                \
+  _ (gso_l4_hdr_sz)
 
 static u8 *
 format_buffer_metadata_changes (u8 * s, va_list * args)
