@@ -469,7 +469,7 @@ vlib_main_init ()
   vgm->init_functions_called = hash_create (0, /* value bytes */ 0);
 
   vm = clib_mem_alloc_aligned (sizeof (*vm), CLIB_CACHE_LINE_BYTES);
-  vec_add1 (vgm->vlib_mains, vm);
+  vec_add1_ha (vgm->vlib_mains, vm, 0, CLIB_CACHE_LINE_BYTES);
 }
 
 /* Main routine. */
