@@ -404,14 +404,6 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
   SESSION_TEST ((tc->lcl_port == placeholder_client_port),
 		"ports should be equal");
 
-  /* These sessions, because of the way they're established are pinned to
-   * main thread, even when we have workers and we avoid polling main thread,
-   * i.e., we can't cleanup pending disconnects, so force cleanup for both
-   */
-  session_transport_cleanup (s);
-  s = session_get (accepted_session_index, accepted_session_thread);
-  session_transport_cleanup (s);
-
   vnet_app_detach_args_t detach_args = {
     .app_index = server_index,
     .api_client_index = ~0,

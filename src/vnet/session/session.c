@@ -334,15 +334,15 @@ void
 session_half_open_delete_notify (transport_connection_t *tc)
 {
   /* Notification from ctrl thread accepted without rpc */
-  if (!tc->thread_index)
+  if (tc->thread_index == transport_cl_thread ())
     {
       session_half_open_free (ho_session_get (tc->s_index));
     }
   else
     {
       void *args = uword_to_pointer ((uword) tc->s_index, void *);
-      session_send_rpc_evt_to_thread_force (0, session_half_open_free_rpc,
-					    args);
+      session_send_rpc_evt_to_thread_force (transport_cl_thread (),
+					    session_half_open_free_rpc, args);
     }
 }
 
