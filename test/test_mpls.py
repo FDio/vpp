@@ -17,7 +17,7 @@ from vpp_papi import VppEnum
 import scapy.compat
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP
-from scapy.layers.inet import IP, UDP, ICMP
+from scapy.layers.inet import IP, UDP, ICMP, icmptypes, icmpcodes
 from scapy.layers.inet6 import IPv6, ICMPv6TimeExceeded, ICMPv6EchoRequest, \
     ICMPv6PacketTooBig
 from scapy.contrib.mpls import MPLS
@@ -961,7 +961,11 @@ class TestMPLS(VppTestCase):
         rxs = self.send_and_expect_some(self.pg0, tx, self.pg0)
 
         for rx in rxs:
-            rx[ICMP].code = "fragmentation-needed"
+            self.assertEqual(icmptypes[rx[ICMP].type], "dest-unreach")
+            self.assertEqual(icmpcodes[rx[ICMP].type][rx[ICMP].code],
+                             "fragmentation-needed")
+            # the link MTU is 9000, the MPLS over head is 4 bytes
+            self.assertEqual(rx[ICMP].nexthopmtu, 9000 - 4)
 
         self.assertEqual(self.statistics.get_err_counter(
             "/err/mpls-frag/can't fragment this packet"),
@@ -976,7 +980,7 @@ class TestMPLS(VppTestCase):
 
         rxs = self.send_and_expect_some(self.pg0, tx, self.pg0)
         for rx in rxs:
-            rx[ICMPv6PacketTooBig].mtu = 9000
+            self.assertEqual(rx[ICMPv6PacketTooBig].mtu, 9000 - 4)
 
         #
         # cleanup
