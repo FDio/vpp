@@ -1447,6 +1447,8 @@ DLMALLOC_EXPORT int mspace_trim(mspace msp, size_t pad);
 */
 DLMALLOC_EXPORT int mspace_mallopt(int, int);
 
+DLMALLOC_EXPORT void* mspace_realloc_in_place (mspace msp, void *oldmem, size_t bytes);
+
 DLMALLOC_EXPORT void* mspace_get_aligned (mspace msp,
                                           unsigned long n_user_data_bytes,
                                           unsigned long align,

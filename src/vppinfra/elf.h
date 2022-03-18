@@ -967,11 +967,9 @@ elf_get_section_contents (elf_main_t * em,
   if (vec_len (s->contents) > 0)
     {
       /* Make vector copy of contents with given element size. */
-      result = _vec_resize (result,
-			    vec_len (s->contents) / elt_size,
-			    vec_len (s->contents),
-			    /* header_bytes */ 0,
-			    /* align */ 0);
+      result =
+	_vec_realloc (result, vec_len (s->contents) / elt_size, elt_size,
+		      /* header_bytes */ 0, /* align */ 0, 0);
       clib_memcpy (result, s->contents, vec_len (s->contents));
     }
 
