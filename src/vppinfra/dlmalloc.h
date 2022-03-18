@@ -1365,7 +1365,7 @@ DLMALLOC_EXPORT void* mspace_malloc(mspace msp, size_t bytes);
   free may be called instead of mspace_free because freed chunks from
   any space are handled by their originating spaces.
 */
-DLMALLOC_EXPORT void mspace_free(mspace msp, void* mem);
+DLMALLOC_EXPORT __clib_export void mspace_free (mspace msp, void *mem);
 
 /*
   mspace_realloc behaves as realloc, but operates within
@@ -1388,7 +1388,8 @@ DLMALLOC_EXPORT void* mspace_calloc(mspace msp, size_t n_elements, size_t elem_s
   mspace_memalign behaves as memalign, but operates within
   the given space.
 */
-DLMALLOC_EXPORT void* mspace_memalign(mspace msp, size_t alignment, size_t bytes);
+DLMALLOC_EXPORT __clib_export void *
+mspace_memalign (mspace msp, size_t alignment, size_t bytes);
 
 /*
   mspace_independent_calloc behaves as independent_calloc, but
