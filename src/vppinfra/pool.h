@@ -63,10 +63,6 @@ typedef struct
 
 } pool_header_t;
 
-/** Align pool header so that pointers are naturally aligned. */
-#define pool_aligned_header_bytes                                             \
-  round_pow2 (sizeof (pool_header_t), sizeof (void *))
-
 /** Get pool header from user pool pointer */
 always_inline pool_header_t *
 pool_header (void *v)
@@ -112,7 +108,7 @@ pool_header_validate_index (void *v, uword index)
 do {								\
   uword __pool_validate_index = (i);				\
   vec_validate_ha ((v), __pool_validate_index,			\
-		   pool_aligned_header_bytes, /* align */ 0);   \
+		   sizeof (pool_header_t), /* align */ 0);   \
   pool_header_validate_index ((v), __pool_validate_index);	\
 } while (0)
 
@@ -213,9 +209,8 @@ pool_header_bytes (void *v)
 	      os_out_of_memory ();                                            \
 	    }                                                                 \
 	  /* Nothing on free list, make a new element and return it. */       \
-	  P = _vec_resize (P, /* length_increment */ 1,                       \
-			   /* new size */ (vec_len (P) + 1) * sizeof (P[0]),  \
-			   pool_aligned_header_bytes, /* align */ (A));       \
+	  P = _vec_resize (P, /* new size */ (vec_len (P) + 1),               \
+			   sizeof (pool_header_t), /* align */ (A));       \
 	  E = vec_end (P) - 1;                                                \
 	}                                                                     \
       if (Z)                                                                  \
@@ -327,27 +322,29 @@ do {						\
 } while (0)
 
 /** Allocate N more free elements to pool (general version). */
-#define pool_alloc_aligned(P,N,A)					\
-do {									\
-  pool_header_t * _p;							\
-                                                                        \
-  if ((P))                                                              \
-    {                                                                   \
-      _p = pool_header (P);                                             \
-      if (_p->max_elts)                                                 \
-        {                                                               \
-           clib_warning ("Can't expand fixed-size pool");		\
-           os_out_of_memory();                                          \
-        }                                                               \
-    }                                                                   \
-                                                                        \
-  (P) = _vec_resize ((P), 0, (vec_len (P) + (N)) * sizeof (P[0]),	\
-		     pool_aligned_header_bytes,				\
-		     (A));						\
-  _p = pool_header (P);							\
-  vec_resize (_p->free_indices, (N));					\
-  _vec_len (_p->free_indices) -= (N);					\
-} while (0)
+#define pool_alloc_aligned(P, N, A)                                           \
+  do                                                                          \
+    {                                                                         \
+      pool_header_t *_p;                                                      \
+                                                                              \
+      if ((P))                                                                \
+	{                                                                     \
+	  _p = pool_header (P);                                               \
+	  if (_p->max_elts)                                                   \
+	    {                                                                 \
+	      clib_warning ("Can't expand fixed-size pool");                  \
+	      os_out_of_memory ();                                            \
+	    }                                                                 \
+	}                                                                     \
+                                                                              \
+      (P) = _vec_resize ((P), (vec_len (P) + (N)), sizeof (pool_header_t), \
+			 (A));                                                \
+      _vec_len (P) = 0;                                                       \
+      _p = pool_header (P);                                                   \
+      vec_resize (_p->free_indices, (N));                                     \
+      _vec_len (_p->free_indices) -= (N);                                     \
+    }                                                                         \
+  while (0)
 
 /** Allocate N more free elements to pool (unspecified alignment). */
 #define pool_alloc(P,N) pool_alloc_aligned(P,N,0)
@@ -367,8 +364,7 @@ do {									\
     if ((P))                                                                  \
       {                                                                       \
 	_pool_var (new) = _vec_resize (_pool_var (new), _pool_var (n),        \
-				       _pool_var (n) * sizeof ((P)[0]),       \
-				       pool_aligned_header_bytes, (A));       \
+				       sizeof (pool_header_t), (A));       \
 	CLIB_MEM_OVERFLOW_PUSH ((P), _pool_var (n) * sizeof ((P)[0]));        \
 	clib_memcpy_fast (_pool_var (new), (P),                               \
 			  _pool_var (n) * sizeof ((P)[0]));                   \

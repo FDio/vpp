@@ -55,13 +55,13 @@
 typedef struct
 {
   u32 len; /**< Number of elements in vector (NOT its allocated length). */
-  u8 hdr_size;	      /**< header size divided by VEC_HEADER_ROUND */
+  u8 hdr_size;	      /**< header size divided by VEC_MIN_ALIGN */
   u8 log2_align;      /**< data alignment */
   u8 vpad[2];	      /**< pad to 8 bytes */
   u8 vector_data[0];  /**< Vector data . */
 } vec_header_t;
 
-#define VEC_HEADER_ROUND 8
+#define VEC_MIN_ALIGN 8
 
 /** \brief Find the vector header
 
@@ -76,16 +76,10 @@ typedef struct
 #define _vec_round_size(s) \
   (((s) + sizeof (uword) - 1) &~ (sizeof (uword) - 1))
 
-always_inline uword
-vec_header_bytes (uword header_bytes)
-{
-  return round_pow2 (header_bytes + sizeof (vec_header_t), VEC_HEADER_ROUND);
-}
-
-always_inline uword
+always_inline CLIB_NOSANITIZE_ADDR uword
 vec_get_header_size (void *v)
 {
-  uword header_size = _vec_find (v)->hdr_size * VEC_HEADER_ROUND;
+  uword header_size = _vec_find (v)->hdr_size * VEC_MIN_ALIGN;
   return header_size;
 }
 
@@ -141,11 +135,7 @@ u32 vec_len_not_inline (void *v);
  * @return memory size allocated for the vector
  */
 
-always_inline uword
-vec_mem_size (void *v)
-{
-  return v ? clib_mem_size (v - vec_get_header_size (v)) : 0;
-}
+uword vec_mem_size (void *v);
 
 /**
  * Number of elements that can fit into generic vector
@@ -156,9 +146,15 @@ vec_mem_size (void *v)
  */
 
 always_inline uword
+vec_max_bytes (void *v)
+{
+  return v ? vec_mem_size (v) - vec_get_header_size (v) : 0;
+}
+
+always_inline uword
 _vec_max_len (void *v, uword elt_size)
 {
-  return v ? vec_mem_size (v) / elt_size : 0;
+  return vec_max_bytes (v) / elt_size;
 }
 
 #define vec_max_len(v) _vec_max_len (v, sizeof ((v)[0]))

@@ -69,7 +69,7 @@ realloc(void *p, size_t size)
   if (!check_vpp_heap ())
     return __libc_realloc (p, size);
 
-  return clib_mem_realloc (p, size, clib_mem_size (p));
+  return clib_mem_realloc (p, size);
 }
 
 int
