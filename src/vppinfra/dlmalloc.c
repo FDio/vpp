@@ -4,6 +4,7 @@
   http://creativecommons.org/publicdomain/zero/1.0/ Send questions,
   comments, complaints, performance data, etc to dl@cs.oswego.edu
 */
+/* clang-format off */
 
 #include <vppinfra/dlmalloc.h>
 #include <vppinfra/sanitizer.h>
@@ -3420,7 +3421,7 @@ void* dlcalloc(size_t n_elements, size_t elem_size) {
 /* ------------ Internal support for realloc, memalign, etc -------------- */
 
 /* Try to realloc; only in-place unless can_move true */
-static mchunkptr try_realloc_chunk(mstate m, mchunkptr p, size_t nb,
+static CLIB_NOSANITIZE_ADDR mchunkptr try_realloc_chunk(mstate m, mchunkptr p, size_t nb,
                                    int can_move) {
   mchunkptr newp = 0;
   size_t oldsize = chunksize(p);
