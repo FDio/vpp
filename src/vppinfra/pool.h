@@ -180,62 +180,48 @@ pool_header_bytes (void *v)
 
    First search free list.  If nothing is free extend vector of objects.
 */
-#define _pool_get_aligned_internal_numa(P,E,A,Z,N)                      \
-do {                                                                    \
-  pool_header_t * _pool_var (p) = pool_header (P);                      \
-  uword _pool_var (l);                                                  \
-                                                                        \
-  STATIC_ASSERT(A==0 || ((A % sizeof(P[0]))==0)                         \
-                || ((sizeof(P[0]) % A) == 0),                           \
-                "Pool aligned alloc of incorrectly sized object");      \
-  _pool_var (l) = 0;                                                    \
-  if (P)                                                                \
-    _pool_var (l) = vec_len (_pool_var (p)->free_indices);              \
-                                                                        \
-  if (_pool_var (l) > 0)                                                \
-    {                                                                   \
-      /* Return free element from free list. */                         \
-      uword _pool_var (i) =                                             \
-        _pool_var (p)->free_indices[_pool_var (l) - 1];                 \
-      (E) = (P) + _pool_var (i);                                        \
-      _pool_var (p)->free_bitmap =                                      \
-	clib_bitmap_andnoti_notrim (_pool_var (p)->free_bitmap,         \
-	                             _pool_var (i));                    \
-      _vec_len (_pool_var (p)->free_indices) = _pool_var (l) - 1;       \
-      CLIB_MEM_UNPOISON((E), sizeof((E)[0]));                           \
-    }                                                                   \
-  else                                                                  \
-    {                                                                   \
-      /* fixed-size, preallocated pools cannot expand */                \
-      if ((P) && _pool_var(p)->max_elts)                                \
-        {                                                               \
-          clib_warning ("can't expand fixed-size pool");                \
-          os_out_of_memory();                                           \
-        }                                                               \
-      /* Nothing on free list, make a new element and return it. */     \
-      P = _vec_resize_numa (P,                                          \
-		       /* length_increment */ 1,                        \
-		       /* new size */ (vec_len (P) + 1) * sizeof (P[0]), \
-		       pool_aligned_header_bytes,                       \
-                       /* align */ (A),                                 \
-                       /* numa */ (N));                                 \
-      E = vec_end (P) - 1;                                              \
-    }                                                                   \
-  if (Z)                                                                \
-    memset(E, 0, sizeof(*E));                                           \
-} while (0)
-
-#define pool_get_aligned_zero_numa(P,E,A,Z,S) \
-  _pool_get_aligned_internal_numa(P,E,A,Z,S)
-
-#define pool_get_aligned_numa(P,E,A,S) \
-  _pool_get_aligned_internal_numa(P,E,A,0/*zero*/,S)
-
-#define pool_get_numa(P,E,S) \
-  _pool_get_aligned_internal_numa(P,E,0/*align*/,0/*zero*/,S)
-
-#define _pool_get_aligned_internal(P,E,A,Z) \
-  _pool_get_aligned_internal_numa(P,E,A,Z,VEC_NUMA_UNSPECIFIED)
+#define _pool_get_aligned_internal(P, E, A, Z)                                \
+  do                                                                          \
+    {                                                                         \
+      pool_header_t *_pool_var (p) = pool_header (P);                         \
+      uword _pool_var (l);                                                    \
+                                                                              \
+      STATIC_ASSERT (A == 0 || ((A % sizeof (P[0])) == 0) ||                  \
+		       ((sizeof (P[0]) % A) == 0),                            \
+		     "Pool aligned alloc of incorrectly sized object");       \
+      _pool_var (l) = 0;                                                      \
+      if (P)                                                                  \
+	_pool_var (l) = vec_len (_pool_var (p)->free_indices);                \
+                                                                              \
+      if (_pool_var (l) > 0)                                                  \
+	{                                                                     \
+	  /* Return free element from free list. */                           \
+	  uword _pool_var (i) =                                               \
+	    _pool_var (p)->free_indices[_pool_var (l) - 1];                   \
+	  (E) = (P) + _pool_var (i);                                          \
+	  _pool_var (p)->free_bitmap = clib_bitmap_andnoti_notrim (           \
+	    _pool_var (p)->free_bitmap, _pool_var (i));                       \
+	  _vec_len (_pool_var (p)->free_indices) = _pool_var (l) - 1;         \
+	  CLIB_MEM_UNPOISON ((E), sizeof ((E)[0]));                           \
+	}                                                                     \
+      else                                                                    \
+	{                                                                     \
+	  /* fixed-size, preallocated pools cannot expand */                  \
+	  if ((P) && _pool_var (p)->max_elts)                                 \
+	    {                                                                 \
+	      clib_warning ("can't expand fixed-size pool");                  \
+	      os_out_of_memory ();                                            \
+	    }                                                                 \
+	  /* Nothing on free list, make a new element and return it. */       \
+	  P = _vec_resize (P, /* length_increment */ 1,                       \
+			   /* new size */ (vec_len (P) + 1) * sizeof (P[0]),  \
+			   pool_aligned_header_bytes, /* align */ (A));       \
+	  E = vec_end (P) - 1;                                                \
+	}                                                                     \
+      if (Z)                                                                  \
+	memset (E, 0, sizeof (*E));                                           \
+    }                                                                         \
+  while (0)
 
 /** Allocate an object E from a pool P with alignment A */
 #define pool_get_aligned(P,E,A) _pool_get_aligned_internal(P,E,A,0)
