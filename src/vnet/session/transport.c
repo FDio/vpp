@@ -486,7 +486,8 @@ transport_program_endpoint_cleanup (u32 lepi)
   clib_spinlock_unlock (&tm->local_endpoints_lock);
 
   if (flush_fl)
-    session_send_rpc_evt_to_thread_force (0, transport_cleanup_freelist, 0);
+    session_send_rpc_evt_to_thread_force (transport_cl_thread (),
+					  transport_cleanup_freelist, 0);
 }
 
 int
