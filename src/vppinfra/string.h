@@ -85,6 +85,12 @@ clib_memcpy_fast (void *restrict dst, const void *restrict src, size_t n)
 #endif
 }
 
+static_always_inline void *
+clib_memmove (void *restrict dst, const void *restrict src, size_t n)
+{
+  return __builtin_memmove (dst, src, n);
+}
+
 #include <vppinfra/memcpy.h>
 
 /* c-11 string manipulation variants */
