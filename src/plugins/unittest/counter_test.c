@@ -42,27 +42,6 @@ get_stats_epoch ()
   return sm->shared_header->epoch;
 }
 
-/*
- * Return the maximum element count of the vector based on its allocated
- * memory.
- */
-static int
-get_vec_mem_size (void *v, uword data_size)
-{
-  vlib_stats_segment_t *sm = vlib_stats_get_segment ();
-
-  if (v == 0)
-    return 0;
-
-  uword aligned_header_bytes = vec_header_bytes (0);
-  void *p = v - aligned_header_bytes;
-  void *oldheap = clib_mem_set_heap (sm->heap);
-  int mem_size = (clib_mem_size (p) - aligned_header_bytes) / data_size;
-  clib_mem_set_heap (oldheap);
-
-  return mem_size;
-}
-
 /* number of times to repeat the counter expand tests */
 #define EXPAND_TEST_ROUNDS 3
 
@@ -90,8 +69,7 @@ test_simple_counter_expand (vlib_main_t *vm)
       // Check how many elements fit into the counter vector without expanding
       // that. The next validate calls should not increase the stats segment
       // epoch.
-      int mem_size = get_vec_mem_size (counter.counters[0],
-				       sizeof ((counter.counters[0])[0]));
+      int mem_size = vec_max_len (counter.counters[0]);
       for (index = 1; index <= mem_size - 1; index++)
 	{
 	  vlib_validate_simple_counter (&counter, index);
@@ -138,8 +116,7 @@ test_combined_counter_expand (vlib_main_t *vm)
       // Check how many elements fit into the counter vector without expanding
       // that. The next validate calls should not increase the stats segment
       // epoch.
-      int mem_size = get_vec_mem_size (counter.counters[0],
-				       sizeof ((counter.counters[0])[0]));
+      int mem_size = vec_max_len (counter.counters[0]);
       for (index = 1; index <= mem_size - 1; index++)
 	{
 	  vlib_validate_combined_counter (&counter, index);
