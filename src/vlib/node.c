@@ -469,7 +469,9 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
   _(runtime_data_bytes);
   if (r->runtime_data_bytes > 0)
     {
-      vec_resize (n->runtime_data, r->runtime_data_bytes);
+      u8 *tmp = n->runtime_data;
+      vec_resize (tmp, r->runtime_data_bytes);
+      n->runtime_data = tmp;
       if (r->runtime_data)
 	clib_memcpy (n->runtime_data, r->runtime_data, r->runtime_data_bytes);
     }
