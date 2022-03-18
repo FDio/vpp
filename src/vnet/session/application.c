@@ -1357,7 +1357,7 @@ vnet_connect (vnet_connect_args_t * a)
   app_worker_t *client_wrk;
   application_t *client;
 
-  ASSERT (vlib_thread_is_main_w_barrier ());
+  //  ASSERT (vlib_thread_is_main_w_barrier ());
 
   if (session_endpoint_is_zero (&a->sep))
     return SESSION_E_INVALID_RMT_IP;
