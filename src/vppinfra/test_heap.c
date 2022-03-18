@@ -61,14 +61,13 @@ main (int argc, char *argv[])
   uword *objects = 0;
   uword *handles = 0;
   uword objects_used;
-  uword align, fixed_size;
+  uword align;
 
   clib_mem_init (0, 10 << 20);
 
   n = 10;
   seed = (u32) getpid ();
   check_mask = 0;
-  fixed_size = 0;
 
   if (argc > 1)
     {
@@ -99,13 +98,6 @@ main (int argc, char *argv[])
   vec_resize (handles, vec_len (objects));
 
   objects_used = 0;
-
-  if (fixed_size)
-    {
-      uword max_len = 1024 * 1024;
-      void *memory = clib_mem_alloc (max_len * sizeof (h[0]));
-      h = heap_create_from_memory (memory, max_len, sizeof (h[0]));
-    }
 
   for (i = 0; i < n; i++)
     {
@@ -187,9 +179,6 @@ main (int argc, char *argv[])
 
   vec_free (objects);
   vec_free (handles);
-
-  if (fixed_size)
-    vec_free (h);
 
   if (verbose)
     fformat (stderr, "%U\n", format_clib_mem_usage, /* verbose */ 0);
