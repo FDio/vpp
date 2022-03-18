@@ -55,14 +55,11 @@
 typedef struct
 {
   u32 len; /**< Number of elements in vector (NOT its allocated length). */
-  u8 numa_id; /**< NUMA id */
   u8 hdr_size;	      /**< header size divided by VEC_HEADER_ROUND */
   u8 log2_align;      /**< data alignment */
-  u8 vpad[1];	      /**< pad to 8 bytes */
+  u8 vpad[2];	      /**< pad to 8 bytes */
   u8 vector_data[0];  /**< Vector data . */
 } vec_header_t;
-
-#define VEC_NUMA_UNSPECIFIED (0xFF)
 
 #define VEC_HEADER_ROUND 8
 
@@ -132,20 +129,6 @@ vec_header_end (void *v)
 
 #define vec_len(v)	((v) ? _vec_len(v) : 0)
 u32 vec_len_not_inline (void *v);
-
-/** \brief Vector's NUMA id (lvalue-capable)
-
-    _vec_numa(v) does not check for null, but can be used as an lvalue
-    (e.g. _vec_numa(v) = 1).
-*/
-
-#define _vec_numa(v) (_vec_find(v)->numa_id)
-
-/** \brief Return vector's NUMA ID (rvalue-only, NULL tolerant)
-    vec_numa(v) checks for NULL, but cannot be used as an lvalue.
-*/
-#define vec_numa(v) ((v) ? _vec_numa(v) : 0)
-
 
 /** \brief Number of data bytes in vector. */
 
@@ -228,17 +211,6 @@ _vec_set_len (void *v, uword len, uword elt_size)
 #define vec_foreach_index_backwards(var, v)                                   \
   if (v)                                                                      \
     for ((var) = vec_len ((v)) - 1; (var) >= 0; (var)--)
-
-/** \brief return the NUMA index for a vector */
-always_inline uword
-vec_get_numa (void *v)
-{
-  vec_header_t *vh;
-  if (v == 0)
-    return 0;
-  vh = _vec_find (v);
-  return vh->numa_id;
-}
 
 #endif /* included_clib_vec_bootstrap_h */
 
