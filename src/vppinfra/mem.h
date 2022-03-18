@@ -216,29 +216,20 @@ clib_mem_set_thread_index (void)
 always_inline uword
 clib_mem_size_nocheck (void *p)
 {
-  size_t mspace_usable_size_with_delta (const void *p);
-  return mspace_usable_size_with_delta (p);
+  size_t mspace_usable_size (const void *p);
+  return mspace_usable_size (p);
 }
 
 /* Memory allocator which may call os_out_of_memory() if it fails */
 always_inline void *
-clib_mem_alloc_aligned_at_offset (uword size, uword align, uword align_offset,
-				  int os_out_of_memory_on_failure)
+clib_mem_alloc_inline (uword size, uword align,
+		       int os_out_of_memory_on_failure)
 {
-  void *mspace_get_aligned (void *msp, unsigned long n_user_data_bytes,
-			    unsigned long align, unsigned long align_offset);
+  void *mspace_memalign (void *msp, size_t alignment, size_t bytes);
   clib_mem_heap_t *h = clib_mem_get_per_cpu_heap ();
   void *p;
 
-  if (align_offset > align)
-    {
-      if (align > 0)
-	align_offset %= align;
-      else
-	align_offset = align;
-    }
-
-  p = mspace_get_aligned (h->mspace, size, align, align_offset);
+  p = mspace_memalign (h->mspace, align, size);
 
   if (PREDICT_FALSE (0 == p))
     {
@@ -255,32 +246,30 @@ clib_mem_alloc_aligned_at_offset (uword size, uword align, uword align_offset,
 always_inline void *
 clib_mem_alloc (uword size)
 {
-  return clib_mem_alloc_aligned_at_offset (size, /* align */ 1,
-					   /* align_offset */ 0,
-					   /* os_out_of_memory */ 1);
+  return clib_mem_alloc_inline (size, /* align */ 1,
+				/* os_out_of_memory */ 1);
 }
 
 always_inline void *
 clib_mem_alloc_aligned (uword size, uword align)
 {
-  return clib_mem_alloc_aligned_at_offset (size, align, /* align_offset */ 0,
-					   /* os_out_of_memory */ 1);
+  return clib_mem_alloc_inline (size, align,
+				/* os_out_of_memory */ 1);
 }
 
 /* Memory allocator which calls os_out_of_memory() when it fails */
 always_inline void *
 clib_mem_alloc_or_null (uword size)
 {
-  return clib_mem_alloc_aligned_at_offset (size, /* align */ 1,
-					   /* align_offset */ 0,
-					   /* os_out_of_memory */ 0);
+  return clib_mem_alloc_inline (size, /* align */ 1,
+				/* os_out_of_memory */ 0);
 }
 
 always_inline void *
 clib_mem_alloc_aligned_or_null (uword size, uword align)
 {
-  return clib_mem_alloc_aligned_at_offset (size, align, /* align_offset */ 0,
-					   /* os_out_of_memory */ 0);
+  return clib_mem_alloc_inline (size, align,
+				/* os_out_of_memory */ 0);
 }
 
 
@@ -313,7 +302,7 @@ clib_mem_is_heap_object (void *p)
 always_inline void
 clib_mem_free (void *p)
 {
-  void mspace_put (void *msp, void *p_arg);
+  void mspace_free (void *msp, void *mem);
   clib_mem_heap_t *h = clib_mem_get_per_cpu_heap ();
 
   /* Make sure object is in the correct heap. */
@@ -321,7 +310,7 @@ clib_mem_free (void *p)
 
   CLIB_MEM_POISON (p, clib_mem_size_nocheck (p));
 
-  mspace_put (h->mspace, p);
+  mspace_free (h->mspace, p);
 }
 
 always_inline void *

@@ -91,8 +91,7 @@ unformat_srv6_localsid_sample (unformat_input_t * input, va_list * args)
   if (unformat (input, "new_srv6_localsid %u", &table_id))
     {
       /* Allocate a portion of memory */
-      ls_mem = clib_mem_alloc_aligned_at_offset (
-        sizeof(srv6_localsid_sample_per_sid_memory_t), 0, 0, 1);
+      ls_mem = clib_mem_alloc (sizeof (srv6_localsid_sample_per_sid_memory_t));
 
       /* Set to zero the memory */
       clib_memset (ls_mem, 0, sizeof(srv6_localsid_sample_per_sid_memory_t));
