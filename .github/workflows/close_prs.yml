@@ -1,0 +1,21 @@
+---
+name: Close Pull Request
+
+on:
+  pull_request_target:
+    types: [opened]
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: superbrothers/close-pull-request@v3
+      with:
+        # Optional. Post a issue comment just before closing a pull request.
+        comment: "Thank you so much for your interest!  VPP takes patches at https://gerrit.fd.io/
+
+```
+git clone https://gerrit.fd.io/r/vpp
+```
+
+Using [git review](https://www.mediawiki.org/wiki/Gerrit/git-review) to contribute patches is recommended"
