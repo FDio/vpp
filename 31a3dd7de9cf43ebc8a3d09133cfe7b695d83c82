@@ -16,6 +16,24 @@
       "revId": "31a3dd7de9cf43ebc8a3d09133cfe7b695d83c82",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5e7f218a_b71a7ced",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_inlines.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 823,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2022-03-18T10:15:38Z",
+      "side": 1,
+      "message": "Yes, indeed. But it would keep the session in transitory.\nIf you are concerned about the session being kept alive with RST, it would also be by any other data packet. (The RFC suggests any data packet after RST should move it to established).\nAny other concerns than that?\nWe could possibly do better by validating RST, but apart from building a complete TCP proxy that\u0027s not so easy.",
+      "parentUuid": "f1f3403d_17a83442",
+      "revId": "31a3dd7de9cf43ebc8a3d09133cfe7b695d83c82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
