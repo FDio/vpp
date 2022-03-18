@@ -83,9 +83,9 @@ format_af_packet_device (u8 * s, va_list * args)
   u32 rx_frame_nr = apif->rx_req->tp_frame_nr;
   u32 rx_block_nr = apif->rx_req->tp_block_nr;
   int block = 0;
-  u8 *tx_block_start = apif->tx_ring + block * tx_block_sz;
+  u8 *tx_block_start = apif->tx_ring[block];
   u32 tx_frame = apif->next_tx_frame;
-  struct tpacket2_hdr *tph;
+  tpacket3_hdr_t *tph;
 
   s = format (s, "Linux PACKET socket interface\n");
   s = format (s, "%UTX block size:%d nr:%d  TX frame size:%d nr:%d\n",
@@ -100,7 +100,7 @@ format_af_packet_device (u8 * s, va_list * args)
   int n_send_req = 0, n_avail = 0, n_sending = 0, n_tot = 0, n_wrong = 0;
   do
     {
-      tph = (struct tpacket2_hdr *) (tx_block_start + tx_frame * tx_frame_sz);
+      tph = (struct tpacket3_hdr *) (tx_block_start + tx_frame * tx_frame_sz);
       tx_frame = (tx_frame + 1) % tx_frame_nr;
       if (tph->tp_status == 0)
 	n_avail++;
@@ -140,13 +140,12 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
   af_packet_if_t *apif =
     pool_elt_at_index (apm->interfaces, rd->dev_instance);
   clib_spinlock_lock_if_init (&apif->lockp);
-  int block = 0;
-  u32 block_size = apif->tx_req->tp_block_size;
+  u32 block = 0;
   u32 frame_size = apif->tx_req->tp_frame_size;
   u32 frame_num = apif->tx_req->tp_frame_nr;
-  u8 *block_start = apif->tx_ring + block * block_size;
+  u8 *block_start = apif->tx_ring[block];
   u32 tx_frame = apif->next_tx_frame;
-  struct tpacket2_hdr *tph;
+  tpacket3_hdr_t *tph;
   u32 frame_not_ready = 0;
 
   while (n_left)
@@ -158,7 +157,7 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
       u32 bi = buffers[0];
       buffers++;
 
-      tph = (struct tpacket2_hdr *) (block_start + tx_frame * frame_size);
+      tph = (struct tpacket3_hdr *) (block_start + tx_frame * frame_size);
       if (PREDICT_FALSE (tph->tp_status &
 			 (TP_STATUS_SEND_REQUEST | TP_STATUS_SENDING)))
 	{
@@ -170,9 +169,9 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
 	{
 	  b0 = vlib_get_buffer (vm, bi);
 	  len = b0->current_length;
-	  clib_memcpy_fast ((u8 *) tph +
-			    TPACKET_ALIGN (sizeof (struct tpacket2_hdr)) +
-			    offset, vlib_buffer_get_current (b0), len);
+	  clib_memcpy_fast (
+	    (u8 *) tph + TPACKET_ALIGN (sizeof (struct tpacket3_hdr)) + offset,
+	    vlib_buffer_get_current (b0), len);
 	  offset += len;
 	}
       while ((bi =

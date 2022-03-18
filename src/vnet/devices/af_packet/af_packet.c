@@ -47,14 +47,12 @@ VNET_HW_INTERFACE_CLASS (af_packet_ip_device_hw_interface_class, static) = {
 #define AF_PACKET_DEFAULT_TX_FRAME_SIZE	      (2048 * 5)
 #define AF_PACKET_TX_BLOCK_NR		1
 
-#define AF_PACKET_DEFAULT_RX_FRAMES_PER_BLOCK 1024
-#define AF_PACKET_DEFAULT_RX_FRAME_SIZE	      (2048 * 5)
-#define AF_PACKET_RX_BLOCK_NR		1
+#define AF_PACKET_DEFAULT_RX_FRAMES_PER_BLOCK 256
+#define AF_PACKET_DEFAULT_RX_FRAME_SIZE	      2048
+#define AF_PACKET_RX_BLOCK_NR		      20
 
 /*defined in net/if.h but clashes with dpdk headers */
 unsigned int if_nametoindex (const char *ifname);
-
-typedef struct tpacket_req tpacket_req_t;
 
 static clib_error_t *
 af_packet_eth_set_max_frame_size (vnet_main_t *vnm, vnet_hw_interface_t *hi,
@@ -130,14 +128,17 @@ is_bridge (const u8 * host_if_name)
 }
 
 static int
-create_packet_v2_sock (int host_if_index, tpacket_req_t * rx_req,
-		       tpacket_req_t * tx_req, int *fd, u8 ** ring)
+create_packet_v3_sock (int host_if_index, tpacket_req3_t *rx_req,
+		       tpacket_req3_t *tx_req, int *fd, u8 **ring,
+		       u32 *hdrlen_ptr)
 {
   af_packet_main_t *apm = &af_packet_main;
-  int ret;
   struct sockaddr_ll sll;
-  int ver = TPACKET_V2;
-  socklen_t req_sz = sizeof (struct tpacket_req);
+  socklen_t req_sz = sizeof (tpacket_req3_t);
+  int ret;
+  int ver = TPACKET_V3;
+  u32 hdrlen = 0;
+  u32 len = sizeof (hdrlen);
   u32 ring_sz = rx_req->tp_block_size * rx_req->tp_block_nr +
     tx_req->tp_block_size * tx_req->tp_block_nr;
 
@@ -166,19 +167,33 @@ create_packet_v2_sock (int host_if_index, tpacket_req_t * rx_req,
 
   if (setsockopt (*fd, SOL_PACKET, PACKET_VERSION, &ver, sizeof (ver)) < 0)
     {
-      vlib_log_debug (apm->log_class,
-		      "Failed to set rx packet interface version: %s (errno %d)",
-		      strerror (errno), errno);
+      vlib_log_debug (
+	apm->log_class,
+	"Failed to set rx packet interface version: %s (errno %d)",
+	strerror (errno), errno);
       ret = VNET_API_ERROR_SYSCALL_ERROR_1;
       goto error;
     }
 
+  if (getsockopt (*fd, SOL_PACKET, PACKET_HDRLEN, &hdrlen, &len) < 0)
+    {
+      vlib_log_debug (
+	apm->log_class,
+	"Failed to get packet hdr len error handling option: %s (errno %d)",
+	strerror (errno), errno);
+      ret = VNET_API_ERROR_SYSCALL_ERROR_1;
+      goto error;
+    }
+  else
+    *hdrlen_ptr = hdrlen;
+
   int opt = 1;
   if (setsockopt (*fd, SOL_PACKET, PACKET_LOSS, &opt, sizeof (opt)) < 0)
     {
-      vlib_log_debug (apm->log_class,
-		      "Failed to set packet tx ring error handling option: %s (errno %d)",
-		      strerror (errno), errno);
+      vlib_log_debug (
+	apm->log_class,
+	"Failed to set packet tx ring error handling option: %s (errno %d)",
+	strerror (errno), errno);
       ret = VNET_API_ERROR_SYSCALL_ERROR_1;
       goto error;
     }
@@ -213,9 +228,8 @@ create_packet_v2_sock (int host_if_index, tpacket_req_t * rx_req,
       goto error;
     }
 
-  *ring =
-    mmap (NULL, ring_sz, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_LOCKED, *fd,
-	  0);
+  *ring = mmap (NULL, ring_sz, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_LOCKED,
+		*fd, 0);
   if (*ring == MAP_FAILED)
     {
       vlib_log_debug (apm->log_class, "mmap failure: %s (errno %d)",
@@ -240,8 +254,8 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
   af_packet_main_t *apm = &af_packet_main;
   vlib_main_t *vm = vlib_get_main ();
   int ret, fd = -1, fd2 = -1;
-  struct tpacket_req *rx_req = 0;
-  struct tpacket_req *tx_req = 0;
+  tpacket_req3_t *rx_req = 0;
+  tpacket_req3_t *tx_req = 0;
   struct ifreq ifr;
   u8 *ring = 0;
   af_packet_if_t *apif = 0;
@@ -255,6 +269,8 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
   int host_if_index = -1;
   u32 rx_frames_per_block, tx_frames_per_block;
   u32 rx_frame_size, tx_frame_size;
+  u32 hdrlen = 0;
+  u32 i = 0;
 
   p = mhash_get (&apm->if_index_by_host_if_name, arg->host_if_name);
   if (p)
@@ -282,12 +298,18 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
   rx_req->tp_frame_size = rx_frame_size;
   rx_req->tp_block_nr = AF_PACKET_RX_BLOCK_NR;
   rx_req->tp_frame_nr = AF_PACKET_RX_BLOCK_NR * rx_frames_per_block;
+  rx_req->tp_retire_blk_tov = 0;
+  rx_req->tp_feature_req_word = 0;
+  rx_req->tp_sizeof_priv = 0;
 
   vec_validate (tx_req, 0);
   tx_req->tp_block_size = tx_frame_size * tx_frames_per_block;
   tx_req->tp_frame_size = tx_frame_size;
   tx_req->tp_block_nr = AF_PACKET_TX_BLOCK_NR;
   tx_req->tp_frame_nr = AF_PACKET_TX_BLOCK_NR * tx_frames_per_block;
+  tx_req->tp_retire_blk_tov = 0;
+  tx_req->tp_sizeof_priv = 0;
+  tx_req->tp_feature_req_word = 0;
 
   /*
    * make sure host side of interface is 'UP' before binding AF_PACKET
@@ -343,7 +365,8 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
       fd2 = -1;
     }
 
-  ret = create_packet_v2_sock (host_if_index, rx_req, tx_req, &fd, &ring);
+  ret =
+    create_packet_v3_sock (host_if_index, rx_req, tx_req, &fd, &ring, &hdrlen);
 
   if (ret != 0)
     goto error;
@@ -359,15 +382,29 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
 
   apif->host_if_index = host_if_index;
   apif->fd = fd;
-  apif->rx_ring = ring;
-  apif->tx_ring = ring + rx_req->tp_block_size * rx_req->tp_block_nr;
+
+  vec_validate (apif->rx_ring, rx_req->tp_block_nr - 1);
+  vec_foreach_index (i, apif->rx_ring)
+    {
+      apif->rx_ring[i] = ring + i * rx_req->tp_block_size;
+    }
+
+  ring = ring + rx_req->tp_block_size * rx_req->tp_block_nr;
+
+  vec_validate (apif->tx_ring, tx_req->tp_block_nr - 1);
+  vec_foreach_index (i, apif->tx_ring)
+    {
+      apif->tx_ring[i] = ring + i * tx_req->tp_block_size;
+    }
+
   apif->rx_req = rx_req;
   apif->tx_req = tx_req;
   apif->host_if_name = host_if_name_dup;
   apif->per_interface_next_index = ~0;
   apif->next_tx_frame = 0;
-  apif->next_rx_frame = 0;
+  apif->next_rx_block = 0;
   apif->mode = arg->mode;
+  apif->hdrlen = hdrlen;
 
   ret = af_packet_read_mtu (apif);
   if (ret != 0)
