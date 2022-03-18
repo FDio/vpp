@@ -135,6 +135,14 @@ pointer_to_uword (const void *p)
   return (uword) (clib_address_t) p;
 }
 
+static inline __attribute__ ((always_inline)) uword
+pointer_is_aligned (void *p, uword align)
+{
+  if ((pointer_to_uword (p) & (align - 1)) == 0)
+    return 1;
+  return 0;
+}
+
 #define uword_to_pointer(u,type) ((type) (clib_address_t) (u))
 
 /* Any type: can be either word or pointer. */
