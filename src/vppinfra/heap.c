@@ -422,10 +422,15 @@ _heap_alloc (void *v,
 
       h = heap_header (v);
       if (!v || !(h->flags & HEAP_IS_STATIC))
+#if 1
+	v = _vec_realloc (v, (offset + align_size), elt_bytes, sizeof (h[0]),
+			  HEAP_DATA_ALIGN, 0);
+#else
 	v = _vec_resize (v,
 			 align_size,
 			 (offset + align_size) * elt_bytes,
 			 sizeof (h[0]), HEAP_DATA_ALIGN);
+#endif
       else
 	_vec_len (v) += align_size;
 

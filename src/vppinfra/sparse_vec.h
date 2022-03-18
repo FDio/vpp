@@ -76,11 +76,18 @@ sparse_vec_new (uword elt_bytes, uword sparse_index_bits)
 
   ASSERT (sparse_index_bits <= 16);
 
+#if 1
+  v = _vec_realloc ((void *) 0,
+		    /* data bytes */ 8, elt_bytes,
+		    /* header bytes */ sizeof (h[0]),
+		    /* data align */ 0, 0);
+#else
   v = _vec_resize ((void *) 0,
 		   /* length increment */ 8,
 		   /* data bytes */ 8 * elt_bytes,
 		   /* header bytes */ sizeof (h[0]),
 		   /* data align */ 0);
+#endif
 
   /* Make space for invalid entry (entry 0). */
   _vec_len (v) = 1;
