@@ -473,9 +473,7 @@ set_indirect (void *v, hash_pair_indirect_t * pi, uword key,
       new_len = len + 1;
       if (new_len * hash_pair_bytes (h) > (1ULL << log2_bytes))
 	{
-	  pi->pairs = clib_mem_realloc (pi->pairs,
-					1ULL << (log2_bytes + 1),
-					1ULL << log2_bytes);
+	  pi->pairs = clib_mem_realloc (pi->pairs, 1ULL << (log2_bytes + 1));
 	  log2_bytes++;
 	}
 
@@ -748,13 +746,8 @@ _hash_create (uword elts, hash_t * h_user)
   if (h_user)
     log2_pair_size = h_user->log2_pair_size;
 
-  v = _vec_resize ((void *) 0,
-		   /* vec len: */ elts,
-		   /* data bytes: */
-		   (elts << log2_pair_size) * sizeof (hash_pair_t),
-		   /* header bytes: */
-		   sizeof (h[0]),
-		   /* alignment */ sizeof (hash_pair_t));
+  v = _vec_realloc (0, elts, (1 << log2_pair_size) * sizeof (hash_pair_t),
+		    sizeof (h[0]), sizeof (hash_pair_t), 0);
   h = hash_header (v);
 
   if (h_user)
