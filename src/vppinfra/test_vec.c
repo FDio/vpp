@@ -221,8 +221,7 @@ dump_call_stats (uword * stats)
     if (_v (l) == ~0)                                                         \
       _v (l) = bounded_random_u32 (&(seed), 0, MAX_VEC_LEN);                  \
                                                                               \
-    _v (v) =                                                                  \
-      _vec_resize (NULL, _v (l), _v (l) * sizeof (elt_type), _v (h), 0);      \
+    _v (v) = _vec_realloc (NULL, _v (l), sizeof (elt_type), _v (h), 0, 0);    \
     fill_with_random_data (_v (v), vec_bytes (_v (v)), (seed));               \
                                                                               \
     /* Fill header with random data as well. */                               \
