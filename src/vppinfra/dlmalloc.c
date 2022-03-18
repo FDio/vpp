@@ -3420,7 +3420,7 @@ void* dlcalloc(size_t n_elements, size_t elem_size) {
 /* ------------ Internal support for realloc, memalign, etc -------------- */
 
 /* Try to realloc; only in-place unless can_move true */
-static mchunkptr try_realloc_chunk(mstate m, mchunkptr p, size_t nb,
+static CLIB_NOSANITIZE_ADDR mchunkptr try_realloc_chunk(mstate m, mchunkptr p, size_t nb,
                                    int can_move) {
   mchunkptr newp = 0;
   size_t oldsize = chunksize(p);
@@ -4118,7 +4118,7 @@ void mspace_get_address_and_size (mspace msp, char **addrp, size_t *sizep)
   *sizep = this_seg->size;
 }
 
-CLIB_NOSANITIZE_ADDR __clib_export
+CLIB_NOSANITIZE_ADDR
 int mspace_is_heap_object (mspace msp, void *p)
 {
   msegment *this_seg;
@@ -4185,7 +4185,7 @@ int mspace_is_traced (mspace msp)
   return 0;
 }
 
-CLIB_NOSANITIZE_ADDR __clib_export
+CLIB_NOSANITIZE_ADDR
 void* mspace_get_aligned (mspace msp,
                           unsigned long n_user_data_bytes,
                           unsigned long align,
@@ -4265,7 +4265,7 @@ void* mspace_get_aligned (mspace msp,
   return (void *) searchp;
 }
 
-CLIB_NOSANITIZE_ADDR __clib_export
+CLIB_NOSANITIZE_ADDR
 void mspace_put (mspace msp, void *p_arg)
 {
   char *object_header;
@@ -4315,7 +4315,7 @@ void mspace_put_no_offset (mspace msp, void *p_arg)
   mspace_free (msp, p_arg);
 }
 
-CLIB_NOSANITIZE_ADDR __clib_export
+CLIB_NOSANITIZE_ADDR
 size_t mspace_usable_size_with_delta (const void *p)
 {
   size_t usable_size;
@@ -4623,6 +4623,7 @@ void* mspace_realloc(mspace msp, void* oldmem, size_t bytes) {
   return mem;
 }
 
+CLIB_NOSANITIZE_ADDR
 void* mspace_realloc_in_place(mspace msp, void* oldmem, size_t bytes) {
   void* mem = 0;
   if (oldmem != 0) {
@@ -4655,6 +4656,7 @@ void* mspace_realloc_in_place(mspace msp, void* oldmem, size_t bytes) {
   return mem;
 }
 
+CLIB_NOSANITIZE_ADDR
 void* mspace_memalign(mspace msp, size_t alignment, size_t bytes) {
   mstate ms = (mstate)msp;
   if (!ok_magic(ms)) {
