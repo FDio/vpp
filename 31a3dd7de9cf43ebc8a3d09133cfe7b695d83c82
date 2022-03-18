@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f1f3403d_17a83442",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_inlines.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 823,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-03-18T09:50:36Z",
+      "side": 1,
+      "message": "this function is called for all packets, not only data packets\n\nconsequence is that e.g. RST packets could keep a session up (which goes directly against RFC)",
+      "revId": "31a3dd7de9cf43ebc8a3d09133cfe7b695d83c82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
