@@ -1,6 +1,7 @@
 Vector Packet Processing
 ========================
 
+
 ## Introduction
 
 The VPP platform is an extensible framework that provides out-of-the-box
