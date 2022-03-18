@@ -274,7 +274,7 @@ typedef struct vlib_node_t
   u32 runtime_index;
 
   /* Runtime data for this node. */
-  void *runtime_data;
+  u8 *runtime_data;
 
   /* Node flags. */
   u16 flags;

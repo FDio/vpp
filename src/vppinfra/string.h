@@ -85,6 +85,25 @@ clib_memcpy_fast (void *restrict dst, const void *restrict src, size_t n)
 #endif
 }
 
+static_always_inline void *
+clib_memmove (void *restrict dst, const void *restrict src, size_t n)
+{
+  u8 *d = (u8 *) dst;
+  u8 *s = (u8 *) src;
+
+  if (s == d)
+    return d;
+
+  if (d > s)
+    for (uword i = n - 1; (i + 1) > 0; i--)
+      d[i] = s[i];
+  else
+    for (uword i = 0; i < n; i++)
+      d[i] = s[i];
+
+  return d;
+}
+
 #include <vppinfra/memcpy.h>
 
 /* c-11 string manipulation variants */
