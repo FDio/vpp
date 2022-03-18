@@ -94,22 +94,10 @@ udp_connection_alloc (u32 thread_index)
 {
   udp_main_t *um = &udp_main;
   udp_connection_t *uc;
-  u32 will_expand = pool_get_will_expand (um->connections[thread_index]);
 
-  if (PREDICT_FALSE (will_expand))
-    {
-      clib_spinlock_lock_if_init (&udp_main.peekers_write_locks
-				  [thread_index]);
-      pool_get_aligned (udp_main.connections[thread_index], uc,
-			CLIB_CACHE_LINE_BYTES);
-      clib_spinlock_unlock_if_init (&udp_main.peekers_write_locks
-				    [thread_index]);
-    }
-  else
-    {
-      pool_get_aligned (um->connections[thread_index], uc,
-			CLIB_CACHE_LINE_BYTES);
-    }
+  pool_get_aligned_safe (um->connections[thread_index], uc,
+			 CLIB_CACHE_LINE_BYTES);
+
   clib_memset (uc, 0, sizeof (*uc));
   uc->c_c_index = uc - um->connections[thread_index];
   uc->c_thread_index = thread_index;
@@ -502,7 +490,7 @@ udp_init (vlib_main_t * vm)
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   u32 num_threads;
   ip_protocol_info_t *pi;
-  int i;
+  //  int i;
 
   /*
    * Registrations
@@ -527,16 +515,16 @@ udp_init (vlib_main_t * vm)
 
   num_threads = 1 /* main thread */  + tm->n_threads;
   vec_validate (um->connections, num_threads - 1);
-  vec_validate (um->connection_peekers, num_threads - 1);
-  vec_validate (um->peekers_readers_locks, num_threads - 1);
-  vec_validate (um->peekers_write_locks, num_threads - 1);
+  //  vec_validate (um->connection_peekers, num_threads - 1);
+  //  vec_validate (um->peekers_readers_locks, num_threads - 1);
+  //  vec_validate (um->peekers_write_locks, num_threads - 1);
 
-  if (num_threads > 1)
-    for (i = 0; i < num_threads; i++)
-      {
-	clib_spinlock_init (&um->peekers_readers_locks[i]);
-	clib_spinlock_init (&um->peekers_write_locks[i]);
-      }
+  //  if (num_threads > 1)
+  //    for (i = 0; i < num_threads; i++)
+  //      {
+  //	clib_spinlock_init (&um->peekers_readers_locks[i]);
+  //	clib_spinlock_init (&um->peekers_write_locks[i]);
+  //      }
 
   um->local_to_input_edge[UDP_IP4] =
     vlib_node_add_next (vm, udp4_local_node.index, udp4_input_node.index);
