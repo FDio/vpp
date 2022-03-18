@@ -470,14 +470,13 @@ mpls_frag (vlib_main_t * vm,
 			icmp4_error_set_vnet_buffer (
 			  p0, ICMP4_destination_unreachable,
 			  ICMP4_destination_unreachable_fragmentation_needed_and_dont_fragment_set,
-			  vnet_buffer (p0)->ip_frag.mtu);
+			  mtu);
 			next0 = MPLS_FRAG_NEXT_ICMP4_ERROR;
 		      }
 		    else
 		      {
-			icmp6_error_set_vnet_buffer (
-			  p0, ICMP6_packet_too_big, 0,
-			  adj0->rewrite_header.max_l3_packet_bytes);
+			icmp6_error_set_vnet_buffer (p0, ICMP6_packet_too_big,
+						     0, mtu);
 			next0 = MPLS_FRAG_NEXT_ICMP6_ERROR;
 		      }
 		  }

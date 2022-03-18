@@ -1977,6 +1977,7 @@ class TestIPInput(VppTestCase):
             self.assertEqual(icmptypes[icmp.type], "dest-unreach")
             self.assertEqual(icmpcodes[icmp.type][icmp.code],
                              "fragmentation-needed")
+            self.assertEqual(icmp.nexthopmtu, 1500)
             self.assertEqual(icmp.src, self.pg0.remote_ip4)
             self.assertEqual(icmp.dst, self.pg1.remote_ip4)
 
