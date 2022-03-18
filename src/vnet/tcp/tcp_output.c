@@ -526,6 +526,8 @@ tcp_enqueue_half_open (tcp_worker_ctx_t *wrk, tcp_connection_t *tc,
 {
   vlib_main_t *vm = wrk->vm;
 
+  if (vm->thread_index == 0)
+    clib_warning ("this");
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
   b->error = 0;
 

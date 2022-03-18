@@ -668,8 +668,8 @@ always_inline session_t *
 ho_session_alloc (void)
 {
   session_t *s;
-  ASSERT (vlib_get_thread_index () == 0);
-  s = session_alloc (0);
+  ASSERT (vlib_get_thread_index () <= transport_cl_thread ());
+  s = session_alloc (transport_cl_thread ());
   s->session_state = SESSION_STATE_CONNECTING;
   s->flags |= SESSION_F_HALF_OPEN;
   /* Not ideal. Half-opens are only allocated from main with worker barrier
@@ -678,19 +678,19 @@ ho_session_alloc (void)
    * the sessions pool, e.g., session_half_open_migrate_notify, and as a
    * result crash while validating the session. To avoid this, grow the bitmap
    * now. */
-  if (CLIB_DEBUG)
-    {
-      session_t *sp = session_main.wrk[0].sessions;
-      clib_bitmap_validate (pool_header (sp)->free_bitmap,
-			    s->session_index + 1);
-    }
+  //   if (CLIB_DEBUG)
+  //     {
+  //       session_t *sp = session_main.wrk[0].sessions;
+  //       clib_bitmap_validate (pool_header (sp)->free_bitmap,
+  // 			    s->session_index + 1);
+  //     }
   return s;
 }
 
 always_inline session_t *
 ho_session_get (u32 ho_index)
 {
-  return session_get (ho_index, 0 /* half-open thread */);
+  return session_get (ho_index, transport_cl_thread ());
 }
 
 always_inline void
