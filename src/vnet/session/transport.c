@@ -499,7 +499,7 @@ transport_alloc_local_port (u8 proto, ip46_address_t * ip)
   limit = max - min;
 
   /* Only support active opens from thread 0 */
-  ASSERT (vlib_get_thread_index () == 0);
+  ASSERT (vlib_get_thread_index () <= 1);
 
   /* Search for first free slot */
   for (tries = 0; tries < limit; tries++)

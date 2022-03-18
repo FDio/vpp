@@ -66,7 +66,8 @@ tcp_listener_get (u32 tli)
 always_inline tcp_connection_t *
 tcp_half_open_connection_get (u32 conn_index)
 {
-  return tcp_connection_get (conn_index, 0);
+  u32 thread_index = vlib_num_workers () ? 1 : 0;
+  return tcp_connection_get (conn_index, thread_index);
 }
 
 /**
