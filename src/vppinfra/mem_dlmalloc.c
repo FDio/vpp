@@ -594,10 +594,134 @@ clib_mem_get_heap_size (clib_mem_heap_t * heap)
   return heap->size;
 }
 
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+/* Memory allocator which may call os_out_of_memory() if it fails */
+static void *
+clib_mem_alloc_inline (uword size, uword align,
+		       int os_out_of_memory_on_failure)
+{
+  clib_mem_heap_t *h = clib_mem_get_per_cpu_heap ();
+  void *p;
+
+  align = clib_max (CLIB_MEM_MIN_ALIGN, align);
+
+  p = mspace_memalign (h->mspace, align, size);
+
+  if (PREDICT_FALSE (0 == p))
+    {
+      if (os_out_of_memory_on_failure)
+	os_out_of_memory ();
+      return 0;
+    }
+
+  CLIB_MEM_UNPOISON (p, size);
+  return p;
+}
+
+/* Memory allocator which calls os_out_of_memory() when it fails */
+__clib_export void *
+clib_mem_alloc (uword size)
+{
+  return clib_mem_alloc_inline (size, CLIB_MEM_MIN_ALIGN,
+				/* os_out_of_memory */ 1);
+}
+
+__clib_export void *
+clib_mem_alloc_aligned (uword size, uword align)
+{
+  return clib_mem_alloc_inline (size, align,
+				/* os_out_of_memory */ 1);
+}
+
+/* Memory allocator which calls os_out_of_memory() when it fails */
+__clib_export void *
+clib_mem_alloc_or_null (uword size)
+{
+  return clib_mem_alloc_inline (size, CLIB_MEM_MIN_ALIGN,
+				/* os_out_of_memory */ 0);
+}
+
+__clib_export void *
+clib_mem_alloc_aligned_or_null (uword size, uword align)
+{
+  return clib_mem_alloc_inline (size, align,
+				/* os_out_of_memory */ 0);
+}
+
+__clib_export void *
+clib_mem_realloc_aligned (void *p, uword new_size, uword align)
+{
+  uword old_alloc_size;
+  clib_mem_heap_t *h = clib_mem_get_per_cpu_heap ();
+  void *new;
+
+  ASSERT (count_set_bits (align) == 1);
+
+  old_alloc_size = p ? mspace_usable_size (p) : 0;
+
+  if (new_size <= old_alloc_size)
+    goto no_copy;
+
+  if (p && pointer_is_aligned (p, align) &&
+      mspace_realloc_in_place (h->mspace, p, new_size))
+    goto no_copy;
+
+  if (((new = mspace_memalign (h->mspace, align, new_size)) == 0))
+    os_out_of_memory ();
+
+  CLIB_MEM_UNPOISON (new, new_size);
+
+  if (old_alloc_size)
+    {
+      CLIB_MEM_UNPOISON (p, old_alloc_size);
+      clib_memcpy_fast (new, p, clib_min (new_size, old_alloc_size));
+      clib_mem_free (p);
+    }
+  return new;
+
+no_copy:
+  CLIB_MEM_UNPOISON (p, new_size);
+  CLIB_MEM_POISON (p + new_size, mspace_usable_size (p) - new_size);
+  return p;
+}
+
+__clib_export void *
+clib_mem_realloc (void *p, uword new_size)
+{
+  return clib_mem_realloc_aligned (p, new_size, CLIB_MEM_MIN_ALIGN);
+}
+
+__clib_export uword
+clib_mem_is_heap_object (void *p)
+{
+  int mspace_is_heap_object (void *msp, void *p);
+  clib_mem_heap_t *h = clib_mem_get_per_cpu_heap ();
+  return mspace_is_heap_object (h->mspace, p);
+}
+
+__clib_export void
+clib_mem_free (void *p)
+{
+  clib_mem_heap_t *h = clib_mem_get_per_cpu_heap ();
+
+  /* Make sure object is in the correct heap. */
+  ASSERT (clib_mem_is_heap_object (p));
+
+  CLIB_MEM_POISON (p, clib_mem_size (p));
+
+  mspace_free (h->mspace, p);
+}
+
+__clib_export uword
+clib_mem_size (void *p)
+{
+  return mspace_usable_size (p);
+}
+
+__clib_export void
+clib_mem_free_s (void *p)
+{
+  uword size = clib_mem_size (p);
+  CLIB_MEM_UNPOISON (p, size);
+  memset_s_inline (p, size, 0, size);
+  clib_mem_free (p);
+}

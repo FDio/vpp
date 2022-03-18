@@ -43,23 +43,6 @@ svm_mem_alloc (svm_region_t * rp, uword size)
   return (rv);
 }
 
-static inline void *
-svm_mem_alloc_aligned_at_offset (svm_region_t * rp,
-				 uword size, uword align, uword offset)
-{
-  clib_mem_heap_t *oldheap;
-  ASSERT (rp->flags & SVM_FLAGS_MHEAP);
-  u8 *rv;
-
-  pthread_mutex_lock (&rp->mutex);
-  oldheap = clib_mem_set_heap (rp->data_heap);
-  rv = clib_mem_alloc_aligned_at_offset (size, align, offset,
-					 1 /* yes, call os_out_of_memory */ );
-  clib_mem_set_heap (oldheap);
-  pthread_mutex_unlock (&rp->mutex);
-  return (rv);
-}
-
 static inline void
 svm_mem_free (svm_region_t * rp, void *ptr)
 {
