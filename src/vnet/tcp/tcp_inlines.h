@@ -66,7 +66,7 @@ tcp_listener_get (u32 tli)
 always_inline tcp_connection_t *
 tcp_half_open_connection_get (u32 conn_index)
 {
-  return tcp_connection_get (conn_index, 0);
+  return tcp_connection_get (conn_index, transport_cl_thread ());
 }
 
 /**
