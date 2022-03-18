@@ -1336,7 +1336,7 @@ quic_connect_connection (session_endpoint_cfg_t * sep)
     return SESSION_E_NOEXTCFG;
 
   /* Use pool on thread 1 if we have workers because of UDP */
-  thread_index = transport_cl_thread ();
+  thread_index = transport_ctrl_thread ();
   ccfg = &sep->ext_cfg->crypto;
 
   clib_memset (cargs, 0, sizeof (*cargs));

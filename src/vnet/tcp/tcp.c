@@ -188,8 +188,7 @@ tcp_session_get_listener (u32 listener_index)
 static tcp_connection_t *
 tcp_half_open_connection_alloc (void)
 {
-  ASSERT (vlib_get_thread_index () == 0);
-  return tcp_connection_alloc (0);
+  return tcp_connection_alloc (transport_ctrl_thread ());
 }
 
 /**
@@ -199,7 +198,8 @@ tcp_half_open_connection_alloc (void)
 static void
 tcp_half_open_connection_free (tcp_connection_t * tc)
 {
-  ASSERT (vlib_get_thread_index () == 0);
+  ASSERT (vlib_get_thread_index () == tc->c_thread_index ||
+	  vlib_thread_is_main_w_barrier ());
   return tcp_connection_free (tc);
 }
 

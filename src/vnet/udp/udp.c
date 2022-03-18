@@ -381,7 +381,7 @@ conn_alloc:
   udp_connection_register_port (lcl_port, rmt->is_ip4);
 
   /* We don't poll main thread if we have workers */
-  thread_index = transport_cl_thread ();
+  thread_index = transport_ctrl_thread ();
 
   uc = udp_connection_alloc (thread_index);
   ip_copy (&uc->c_rmt_ip, &rmt->ip, rmt->is_ip4);
@@ -420,7 +420,7 @@ udp_session_get_half_open (u32 conn_index)
   u32 thread_index;
 
   /* We don't poll main thread if we have workers */
-  thread_index = transport_cl_thread ();
+  thread_index = transport_ctrl_thread ();
   uc = udp_connection_get (conn_index, thread_index);
   if (!uc)
     return 0;

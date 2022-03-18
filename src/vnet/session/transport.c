@@ -429,7 +429,7 @@ transport_endpoint_alloc (void)
   transport_main_t *tm = &tp_main;
   local_endpoint_t *lep;
 
-  ASSERT (vlib_get_thread_index () <= transport_cl_thread ());
+  ASSERT (vlib_get_thread_index () <= transport_ctrl_thread ());
 
   pool_get_aligned_safe (tm->local_endpoints, lep, 0);
   return lep;
@@ -486,7 +486,8 @@ transport_program_endpoint_cleanup (u32 lepi)
   clib_spinlock_unlock (&tm->local_endpoints_lock);
 
   if (flush_fl)
-    session_send_rpc_evt_to_thread_force (0, transport_cleanup_freelist, 0);
+    session_send_rpc_evt_to_thread_force (transport_ctrl_thread (),
+					  transport_cleanup_freelist, 0);
 }
 
 int
@@ -521,7 +522,7 @@ transport_endpoint_mark_used (u8 proto, ip46_address_t *ip, u16 port)
   local_endpoint_t *lep;
   u32 tei;
 
-  ASSERT (vlib_get_thread_index () <= transport_cl_thread ());
+  ASSERT (vlib_get_thread_index () <= transport_ctrl_thread ());
 
   tei =
     transport_endpoint_lookup (&tm->local_endpoints_table, proto, ip, port);
@@ -574,7 +575,7 @@ transport_alloc_local_port (u8 proto, ip46_address_t * ip)
   limit = max - min;
 
   /* Only support active opens from one of ctrl threads */
-  ASSERT (vlib_get_thread_index () <= transport_cl_thread ());
+  ASSERT (vlib_get_thread_index () <= transport_ctrl_thread ());
 
   /* Cleanup freelist if need be */
   if (vec_len (tm->lcl_endpts_freelist))
@@ -929,7 +930,7 @@ transport_init (void)
   if (num_threads > 1)
     {
       /* Main not polled if there are workers */
-      smm->transport_cl_thread = 1;
+      smm->transport_ctrl_thread = 1;
     }
 }
 
