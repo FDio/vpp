@@ -251,10 +251,11 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  goto done;
 	}
 
-      /*
-       * If session exists pool peeker lock is taken at this point unless
-       * the session is already on the right thread or is a listener
-       */
+      //      /*
+      //       * If session exists pool peeker lock is taken at this point
+      //       unless
+      //       * the session is already on the right thread or is a listener
+      //       */
 
       if (s0->session_state == SESSION_STATE_OPENED)
 	{
