@@ -34,6 +34,7 @@ if(VPP_BUILD_HS_SAPI_APPS)
     sapi/vpp_echo.c
     sapi/vpp_echo_common.c
     sapi/vpp_echo_bapi.c
+    sapi/vpp_echo_sapi.c
     sapi/vpp_echo_proto_quic.c
     sapi/vpp_echo_proto_tcp.c
     sapi/vpp_echo_proto_udp.c

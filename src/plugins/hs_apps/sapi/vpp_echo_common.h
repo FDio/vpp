@@ -26,6 +26,9 @@
 #define LOG_EVERY_N_IDLE_CYCLES (1e8)
 #define ECHO_MQ_SEG_HANDLE	((u64) ~0 - 1)
 
+#define ECHO_INVALID_SEGMENT_INDEX  ((u32) ~0)
+#define ECHO_INVALID_SEGMENT_HANDLE ((u64) ~0)
+
 #define foreach_echo_fail_code                                          \
   _(ECHO_FAIL_NONE, "ECHO_FAIL_NONE")                                   \
   _(ECHO_FAIL_USAGE, "ECHO_FAIL_USAGE")                                 \
@@ -269,6 +272,7 @@ typedef struct
   svm_queue_t *vl_input_queue;	/* vpe input queue */
   u32 my_client_index;		/* API client handle */
   u8 *uri;			/* The URI we're playing with */
+  u8 *app_name;
   u32 n_uris;			/* Cycle through adjacent ips */
   ip46_address_t lcl_ip;	/* Local ip for client */
   u8 lcl_ip_set;
@@ -277,6 +281,8 @@ typedef struct
   svm_msg_q_t *ctrl_mq;		/* Our control queue (towards vpp) */
   clib_time_t clib_time;	/* For deadman timers */
   u8 *socket_name;
+  u8 use_app_socket_api;
+  clib_socket_t app_api_sock;
   int i_am_master;
   u32 *listen_session_indexes;	/* vec of vpp listener sessions */
   volatile u32 listen_session_cnt;
@@ -449,6 +455,15 @@ void echo_send_disconnect_session (echo_main_t * em, void *args);
 void echo_api_hookup (echo_main_t * em);
 void echo_send_add_cert_key (echo_main_t * em);
 void echo_send_del_cert_key (echo_main_t * em);
+int echo_bapi_recv_fd (echo_main_t *em, int *fds, int n_fds);
+
+/* Session socket API */
+int echo_sapi_attach (echo_main_t *em);
+int echo_sapi_add_cert_key (echo_main_t *em);
+int echo_sapi_del_cert_key (echo_main_t *em);
+int echo_api_connect_app_socket (echo_main_t *em);
+void echo_sapi_detach (echo_main_t *em);
+int echo_sapi_recv_fd (echo_main_t *em, int *fds, int n_fds);
 
 #endif /* __included_vpp_echo_common_h__ */
 

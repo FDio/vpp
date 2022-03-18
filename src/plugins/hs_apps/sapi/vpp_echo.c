@@ -84,16 +84,19 @@ stop_signal (int signum)
   em->time_to_stop = 1;
 }
 
-int
-connect_to_vpp (char *name)
+static int
+connect_to_vpp (echo_main_t *em)
 {
-  echo_main_t *em = &echo_main;
   api_main_t *am = vlibapi_get_main ();
+
+  if (em->use_app_socket_api)
+    return echo_api_connect_app_socket (em);
 
   if (em->use_sock_api)
     {
-      if (vl_socket_client_connect ((char *) em->socket_name, name,
-				    0 /* default rx, tx buffer */ ))
+      if (vl_socket_client_connect ((char *) em->socket_name,
+				    (char *) em->app_name,
+				    0 /* default rx, tx buffer */))
 	{
 	  ECHO_FAIL (ECHO_FAIL_SOCKET_CONNECT, "socket connect failed");
 	  return -1;
@@ -107,7 +110,8 @@ connect_to_vpp (char *name)
     }
   else
     {
-      if (vl_client_connect_to_vlib ("/vpe-api", name, 32) < 0)
+      if (vl_client_connect_to_vlib ("/vpe-api", (char *) em->app_name, 32) <
+	  0)
 	{
 	  ECHO_FAIL (ECHO_FAIL_SHMEM_CONNECT, "shmem connect failed");
 	  return -1;
@@ -725,9 +729,18 @@ session_reset_handler (session_reset_msg_t * mp)
   app_send_ctrl_evt_to_vpp (s->vpp_evt_q, app_evt);
 }
 
+static int
+echo_recv_fd (echo_main_t *em, int *fds, int n_fds)
+{
+  if (em->use_app_socket_api)
+    return echo_sapi_recv_fd (em, fds, n_fds);
+  return echo_bapi_recv_fd (em, fds, n_fds);
+}
+
 static void
 add_segment_handler (session_app_add_segment_msg_t * mp)
 {
+  echo_main_t *em = &echo_main;
   fifo_segment_main_t *sm = &echo_main.segment_main;
   fifo_segment_create_args_t _a, *a = &_a;
   int *fds = 0, i;
@@ -737,10 +750,10 @@ add_segment_handler (session_app_add_segment_msg_t * mp)
   if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
     {
       vec_validate (fds, 1);
-      if (vl_socket_client_recv_fd_msg (fds, 1, 5))
+      if (echo_recv_fd (em, fds, 1))
 	{
-	  ECHO_FAIL (ECHO_FAIL_VL_API_RECV_FD_MSG,
-		     "vl_socket_client_recv_fd_msg failed");
+	  ECHO_LOG (0, "echo_recv_fd failed");
+	  em->time_to_stop = 1;
 	  goto failed;
 	}
 
@@ -1112,6 +1125,8 @@ echo_process_opts (int argc, char **argv)
 	em->test_return_packets = RETURN_PACKETS_LOG_WRONG;
       else if (unformat (a, "socket-name %s", &em->socket_name))
 	;
+      else if (unformat (a, "use-app-socket-api"))
+	em->use_app_socket_api = 1;
       else if (unformat (a, "use-svm-api"))
 	em->use_sock_api = 0;
       else if (unformat (a, "fifo-size %U", unformat_memory_size, &tmp))
@@ -1228,6 +1243,15 @@ echo_process_opts (int argc, char **argv)
     }
 }
 
+static int
+echo_needs_crypto (echo_main_t *em)
+{
+  u8 tr = em->uri_elts.transport_proto;
+  if (tr == TRANSPORT_PROTO_QUIC || tr == TRANSPORT_PROTO_TLS)
+    return 1;
+  return 0;
+}
+
 void
 echo_process_uri (echo_main_t * em)
 {
@@ -1260,13 +1284,52 @@ vpp_echo_init ()
   clib_memset (em, 0, sizeof (*em));
 }
 
+static void
+echo_detach (echo_main_t *em)
+{
+  if (em->use_app_socket_api)
+    echo_sapi_detach (em);
+  else
+    echo_send_detach (em);
+}
+
+static void
+echo_add_cert_key (echo_main_t *em)
+{
+  if (em->use_app_socket_api)
+    echo_sapi_add_cert_key (em);
+  else
+    echo_send_add_cert_key (em);
+}
+
+static void
+echo_del_cert_key (echo_main_t *em)
+{
+  if (em->use_app_socket_api)
+    echo_sapi_del_cert_key (em);
+  else
+    echo_send_del_cert_key (em);
+}
+
+static void
+echo_disconnect (echo_main_t *em)
+{
+  if (em->use_app_socket_api)
+    return;
+
+  if (em->use_sock_api)
+    vl_socket_client_disconnect ();
+  else
+    vl_client_disconnect_from_vlib ();
+}
+
 int
 main (int argc, char **argv)
 {
   echo_main_t *em = &echo_main;
   fifo_segment_main_t *sm = &em->segment_main;
-  char *app_name;
   u64 i;
+  int *rv;
   svm_msg_q_cfg_t _cfg, *cfg = &_cfg;
   u32 rpc_queue_size = 256 << 10;
 
@@ -1344,8 +1407,10 @@ main (int argc, char **argv)
   signal (SIGQUIT, stop_signal);
   signal (SIGTERM, stop_signal);
 
-  app_name = em->i_am_master ? "echo_server" : "echo_client";
-  if (connect_to_vpp (app_name))
+  em->app_name =
+    format (0, "%s%c", em->i_am_master ? "echo_server" : "echo_client", 0);
+
+  if (connect_to_vpp (em))
     {
       svm_region_exit ();
       ECHO_FAIL (ECHO_FAIL_CONNECT_TO_VPP, "Couldn't connect to vpp");
@@ -1355,9 +1420,14 @@ main (int argc, char **argv)
   echo_session_prealloc (em);
   echo_notify_event (em, ECHO_EVT_START);
 
-  echo_api_hookup (em);
+  if (em->use_app_socket_api)
+    echo_sapi_attach (em);
+  else
+    {
+      echo_api_hookup (em);
+      echo_send_attach (em);
+    }
 
-  echo_send_attach (em);
   if (wait_for_state_change (em, STATE_ATTACHED_NO_CERT, TIMEOUT))
     {
       ECHO_FAIL (ECHO_FAIL_ATTACH_TO_VPP,
@@ -1365,14 +1435,11 @@ main (int argc, char **argv)
       goto exit_on_error;
     }
 
-  if (em->uri_elts.transport_proto != TRANSPORT_PROTO_QUIC
-      && em->uri_elts.transport_proto != TRANSPORT_PROTO_TLS)
-    em->state = STATE_ATTACHED;
-  else
+  if (echo_needs_crypto (em))
     {
       ECHO_LOG (2, "Adding crypto context %U", echo_format_crypto_engine,
 		em->crypto_engine);
-      echo_send_add_cert_key (em);
+      echo_add_cert_key (em);
       if (wait_for_state_change (em, STATE_ATTACHED, TIMEOUT))
 	{
 	  ECHO_FAIL (ECHO_FAIL_APP_ATTACH,
@@ -1380,6 +1447,8 @@ main (int argc, char **argv)
 	  exit (1);
 	}
     }
+  else
+    em->state = STATE_ATTACHED;
 
   if (pthread_create (&em->mq_thread_handle,
 		      NULL /*attr */ , echo_mq_thread_fn, 0))
@@ -1402,30 +1471,31 @@ main (int argc, char **argv)
     clients_run (em);
   echo_notify_event (em, ECHO_EVT_EXIT);
   echo_free_sessions (em);
-  echo_send_del_cert_key (em);
-  if (wait_for_state_change (em, STATE_CLEANED_CERT_KEY, TIMEOUT))
+  if (echo_needs_crypto (em))
     {
-      ECHO_FAIL (ECHO_FAIL_DEL_CERT_KEY, "Couldn't cleanup cert and key");
-      goto exit_on_error;
+      echo_del_cert_key (em);
+      if (wait_for_state_change (em, STATE_CLEANED_CERT_KEY, TIMEOUT))
+	{
+	  ECHO_FAIL (ECHO_FAIL_DEL_CERT_KEY, "Couldn't cleanup cert and key");
+	  goto exit_on_error;
+	}
     }
 
-  echo_send_detach (em);
+  echo_detach (em);
+
   if (wait_for_state_change (em, STATE_DETACHED, TIMEOUT))
     {
       ECHO_FAIL (ECHO_FAIL_DETACH, "Couldn't detach from vpp");
       goto exit_on_error;
     }
-  int *rv;
+
   pthread_join (em->mq_thread_handle, (void **) &rv);
   if (rv)
     {
       ECHO_FAIL (ECHO_FAIL_MQ_PTHREAD, "mq pthread errored %d", rv);
       goto exit_on_error;
     }
-  if (em->use_sock_api)
-    vl_socket_client_disconnect ();
-  else
-    vl_client_disconnect_from_vlib ();
+  echo_disconnect (em);
   echo_assert_test_suceeded (em);
 exit_on_error:
   ECHO_LOG (1, "Test complete !\n");

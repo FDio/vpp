@@ -103,6 +103,19 @@ echo_send_del_cert_key (echo_main_t * em)
   vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & bmp);
 }
 
+int
+echo_bapi_recv_fd (echo_main_t *em, int *fds, int n_fds)
+{
+  clib_error_t *err;
+  err = vl_socket_client_recv_fd_msg (fds, n_fds, 5);
+  if (err)
+    {
+      clib_error_report (err);
+      return -1;
+    }
+  return 0;
+}
+
 static u8
 echo_transport_needs_crypto (transport_proto_t proto)
 {
