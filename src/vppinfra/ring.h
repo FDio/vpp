@@ -38,11 +38,11 @@ clib_ring_new_inline (void **p, u32 elt_bytes, u32 size, u32 align)
   void *v;
   clib_ring_header_t *h;
 
-  v = _vec_resize ((void *) 0,
-		   /* length increment */ size,
-		   /* data bytes */ elt_bytes * size,
-		   /* header bytes */ sizeof (h[0]),
-		   /* data align */ align);
+  v = _vec_realloc (0,
+		    /* length increment */ size,
+		    /* data bytes */ elt_bytes,
+		    /* header bytes */ sizeof (h[0]),
+		    /* data align */ align, 0);
 
   h = clib_ring_header (v);
   h->next = 0;
