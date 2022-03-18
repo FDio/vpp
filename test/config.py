@@ -9,8 +9,20 @@ def positive_int_or_default(default):
     def positive_integer(v):
         if v is None or v == "":
             return default
+        if int(v) <= 0:
+            raise ValueError("value must be positive")
         return int(v)
     return positive_integer
+
+
+def positive_float_or_default(default):
+    def positive_float(v):
+        if v is None or v == "":
+            return default
+        if float(v) <= 0:
+            raise ValueError("value must be positive")
+        return float(v)
+    return positive_float
 
 
 def positive_int_or_auto(v):
@@ -160,7 +172,7 @@ parser.add_argument("--venv-dir", action="store",
 
 default_rnd_seed = time.time()
 parser.add_argument("--rnd-seed", action="store", default=default_rnd_seed,
-                    type=positive_int_or_default(default_rnd_seed),
+                    type=positive_float_or_default(default_rnd_seed),
                     help="random generator seed (default: current time)")
 
 parser.add_argument("--vpp-worker-count", action="store", type=worker_config,
