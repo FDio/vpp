@@ -61,10 +61,6 @@ typedef struct
   /** Maximum size of the pool, in elements */
   u32 max_elts;
 
-  /** mmap segment info: base + length */
-  u8 *mmap_base;
-  u64 mmap_size;
-
 } pool_header_t;
 
 /** Align pool header so that pointers are naturally aligned. */
@@ -430,19 +426,8 @@ _pool_free (void *v)
     return v;
   clib_bitmap_free (p->free_bitmap);
 
-  if (p->max_elts)
-    {
-      int rv;
-
-      rv = munmap (p->mmap_base, p->mmap_size);
-      if (rv)
-	clib_unix_warning ("munmap");
-    }
-  else
-    {
-      vec_free (p->free_indices);
-      vec_free_h (v, pool_aligned_header_bytes);
-    }
+  vec_free (p->free_indices);
+  vec_free_h (v, pool_aligned_header_bytes);
   return 0;
 }
 
