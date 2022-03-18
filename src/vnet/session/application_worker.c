@@ -393,7 +393,7 @@ app_worker_add_half_open (app_worker_t *app_wrk, session_handle_t sh)
 {
   session_handle_t *shp;
 
-  ASSERT (vlib_get_thread_index () == 0);
+  ASSERT (vlib_get_thread_index () <= transport_cl_thread ());
   pool_get (app_wrk->half_open_table, shp);
   *shp = sh;
 
