@@ -822,7 +822,6 @@ ec_connect_rpc (void *args)
 {
   ec_main_t *ecm = &ec_main;
   vnet_connect_args_t _a = {}, *a = &_a;
-  vlib_main_t *vm = vlib_get_main ();
   int rv, needs_crypto;
   u32 n_clients, ci;
 
@@ -832,8 +831,6 @@ ec_connect_rpc (void *args)
   a->app_index = ecm->app_index;
 
   ci = ecm->connect_conn_index;
-
-  vlib_worker_thread_barrier_sync (vm);
 
   while (ci < n_clients)
     {
@@ -868,8 +865,6 @@ ec_connect_rpc (void *args)
       ci += 1;
     }
 
-  vlib_worker_thread_barrier_release (vm);
-
   if (ci < ecm->expected_connections && ecm->run_test != EC_EXITING)
     ec_program_connects ();
 
@@ -879,7 +874,8 @@ ec_connect_rpc (void *args)
 void
 ec_program_connects (void)
 {
-  session_send_rpc_evt_to_thread_force (0, ec_connect_rpc, 0);
+  session_send_rpc_evt_to_thread_force (transport_cl_thread (), ec_connect_rpc,
+					0);
 }
 
 #define ec_cli(_fmt, _args...)                                                \
