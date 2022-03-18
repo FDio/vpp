@@ -748,13 +748,8 @@ _hash_create (uword elts, hash_t * h_user)
   if (h_user)
     log2_pair_size = h_user->log2_pair_size;
 
-  v = _vec_resize ((void *) 0,
-		   /* vec len: */ elts,
-		   /* data bytes: */
-		   (elts << log2_pair_size) * sizeof (hash_pair_t),
-		   /* header bytes: */
-		   sizeof (h[0]),
-		   /* alignment */ sizeof (hash_pair_t));
+  v = _vec_realloc (0, elts, (1 << log2_pair_size) * sizeof (hash_pair_t),
+		    sizeof (h[0]), sizeof (hash_pair_t), 0);
   h = hash_header (v);
 
   if (h_user)
