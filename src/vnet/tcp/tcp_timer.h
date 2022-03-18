@@ -17,11 +17,18 @@
 
 #include <vnet/tcp/tcp_types.h>
 
+static inline u8
+tcp_timer_thread_is_valid (tcp_connection_t *tc)
+{
+  return ((tc->c_thread_index == vlib_get_thread_index ()) ||
+	  vlib_thread_is_main_w_barrier ());
+}
+
 always_inline void
-tcp_timer_set (tcp_timer_wheel_t * tw, tcp_connection_t * tc, u8 timer_id,
+tcp_timer_set (tcp_timer_wheel_t *tw, tcp_connection_t *tc, u8 timer_id,
 	       u32 interval)
 {
-  ASSERT (tc->c_thread_index == vlib_get_thread_index ());
+  ASSERT (tcp_timer_thread_is_valid (tc));
   ASSERT (tc->timers[timer_id] == TCP_TIMER_HANDLE_INVALID);
   tc->timers[timer_id] = tw_timer_start_tcp_twsl (tw, tc->c_c_index,
 						  timer_id, interval);
@@ -30,7 +37,7 @@ tcp_timer_set (tcp_timer_wheel_t * tw, tcp_connection_t * tc, u8 timer_id,
 always_inline void
 tcp_timer_reset (tcp_timer_wheel_t * tw, tcp_connection_t * tc, u8 timer_id)
 {
-  ASSERT (tc->c_thread_index == vlib_get_thread_index ());
+  ASSERT (tcp_timer_thread_is_valid (tc));
   tc->pending_timers &= ~(1 << timer_id);
   if (tc->timers[timer_id] == TCP_TIMER_HANDLE_INVALID)
     return;
@@ -43,7 +50,7 @@ always_inline void
 tcp_timer_update (tcp_timer_wheel_t * tw, tcp_connection_t * tc, u8 timer_id,
 		  u32 interval)
 {
-  ASSERT (tc->c_thread_index == vlib_get_thread_index ());
+  ASSERT (tcp_timer_thread_is_valid (tc));
   if (tc->timers[timer_id] != TCP_TIMER_HANDLE_INVALID)
     tw_timer_update_tcp_twsl (tw, tc->timers[timer_id], interval);
   else
