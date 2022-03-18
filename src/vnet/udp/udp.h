@@ -115,9 +115,9 @@ typedef struct
    * Per-worker thread udp connection pools used with session layer
    */
   udp_connection_t **connections;
-  u32 *connection_peekers;
-  clib_spinlock_t *peekers_readers_locks;
-  clib_spinlock_t *peekers_write_locks;
+  //  u32 *connection_peekers;
+  //  clib_spinlock_t *peekers_readers_locks;
+  //  clib_spinlock_t *peekers_write_locks;
   udp_connection_t *listener_pool;
 
   u16 default_mtu;
@@ -161,65 +161,66 @@ udp_connection_from_transport (transport_connection_t * tc)
   return ((udp_connection_t *) tc);
 }
 
-always_inline u32
-udp_connection_index (udp_connection_t * uc)
-{
-  return (uc - udp_main.connections[uc->c_thread_index]);
-}
+// always_inline u32
+// udp_connection_index (udp_connection_t * uc)
+//{
+//  return (uc - udp_main.connections[uc->c_thread_index]);
+//}
 
 void udp_connection_free (udp_connection_t * uc);
 udp_connection_t *udp_connection_alloc (u32 thread_index);
 
-/**
- * Acquires a lock that blocks a connection pool from expanding.
- */
-always_inline void
-udp_pool_add_peeker (u32 thread_index)
-{
-  if (thread_index != vlib_get_thread_index ())
-    return;
-  clib_spinlock_lock_if_init (&udp_main.peekers_readers_locks[thread_index]);
-  udp_main.connection_peekers[thread_index] += 1;
-  if (udp_main.connection_peekers[thread_index] == 1)
-    clib_spinlock_lock_if_init (&udp_main.peekers_write_locks[thread_index]);
-  clib_spinlock_unlock_if_init (&udp_main.peekers_readers_locks
-				[thread_index]);
-}
-
-always_inline void
-udp_pool_remove_peeker (u32 thread_index)
-{
-  if (thread_index != vlib_get_thread_index ())
-    return;
-  ASSERT (udp_main.connection_peekers[thread_index] > 0);
-  clib_spinlock_lock_if_init (&udp_main.peekers_readers_locks[thread_index]);
-  udp_main.connection_peekers[thread_index] -= 1;
-  if (udp_main.connection_peekers[thread_index] == 0)
-    clib_spinlock_unlock_if_init (&udp_main.peekers_write_locks
-				  [thread_index]);
-  clib_spinlock_unlock_if_init (&udp_main.peekers_readers_locks
-				[thread_index]);
-}
+///**
+// * Acquires a lock that blocks a connection pool from expanding.
+// */
+// always_inline void
+// udp_pool_add_peeker (u32 thread_index)
+//{
+//  if (thread_index != vlib_get_thread_index ())
+//    return;
+//  clib_spinlock_lock_if_init (&udp_main.peekers_readers_locks[thread_index]);
+//  udp_main.connection_peekers[thread_index] += 1;
+//  if (udp_main.connection_peekers[thread_index] == 1)
+//    clib_spinlock_lock_if_init (&udp_main.peekers_write_locks[thread_index]);
+//  clib_spinlock_unlock_if_init (&udp_main.peekers_readers_locks
+//				[thread_index]);
+//}
+//
+// always_inline void
+// udp_pool_remove_peeker (u32 thread_index)
+//{
+//  if (thread_index != vlib_get_thread_index ())
+//    return;
+//  ASSERT (udp_main.connection_peekers[thread_index] > 0);
+//  clib_spinlock_lock_if_init (&udp_main.peekers_readers_locks[thread_index]);
+//  udp_main.connection_peekers[thread_index] -= 1;
+//  if (udp_main.connection_peekers[thread_index] == 0)
+//    clib_spinlock_unlock_if_init (&udp_main.peekers_write_locks
+//				  [thread_index]);
+//  clib_spinlock_unlock_if_init (&udp_main.peekers_readers_locks
+//				[thread_index]);
+//}
 
 always_inline udp_connection_t *
 udp_connection_clone_safe (u32 connection_index, u32 thread_index)
 {
+  u32 current_thread_index = vlib_get_thread_index (), new_index;
   udp_connection_t *old_c, *new_c;
-  u32 current_thread_index = vlib_get_thread_index ();
-  new_c = udp_connection_alloc (current_thread_index);
 
-  /* If during the memcpy pool is reallocated AND the memory allocator
-   * decides to give the old chunk of memory to somebody in a hurry to
-   * scribble something on it, we have a problem. So add this thread as
-   * a session pool peeker.
-   */
-  udp_pool_add_peeker (thread_index);
+  new_c = udp_connection_alloc (current_thread_index);
+  new_index = new_c->c_c_index;
+  //  /* If during the memcpy pool is reallocated AND the memory allocator
+  //   * decides to give the old chunk of memory to somebody in a hurry to
+  //   * scribble something on it, we have a problem. So add this thread as
+  //   * a session pool peeker.
+  //   */
+  //  udp_pool_add_peeker (thread_index);
   old_c = udp_main.connections[thread_index] + connection_index;
   clib_memcpy_fast (new_c, old_c, sizeof (*new_c));
   old_c->flags |= UDP_CONN_F_MIGRATED;
-  udp_pool_remove_peeker (thread_index);
+  //  udp_pool_remove_peeker (thread_index);
   new_c->c_thread_index = current_thread_index;
-  new_c->c_c_index = udp_connection_index (new_c);
+  new_c->c_c_index = new_index;
   new_c->c_fib_index = old_c->c_fib_index;
   /* Assume cloned sessions don't need lock */
   new_c->rx_lock = 0;
