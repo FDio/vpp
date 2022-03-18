@@ -121,6 +121,7 @@ tls_ctx_half_open_alloc (void)
 
   clib_memset (ctx, 0, sizeof (*ctx));
   ctx->c_c_index = ctx - tm->half_open_ctx_pool;
+  ctx->c_thread_index = transport_cl_thread ();
 
   return ctx->c_c_index;
 }
