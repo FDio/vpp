@@ -19,11 +19,6 @@
 #include <vppinfra/format.h>
 #include <vppinfra/clib_error.h>
 
-/* while usage of dlmalloc APIs is genrally discouraged, in this particular
- * case there is significant benefit of calling them directly due to
- * smaller memory consuption (no wwp and headroom space) */
-#include <vppinfra/dlmalloc.h>
-
 #define CLIB_MEM_BULK_DEFAULT_MIN_ELTS_PER_CHUNK 32
 
 typedef struct clib_mem_bulk_chunk_hdr
@@ -40,7 +35,6 @@ typedef struct
   u32 elts_per_chunk;
   u32 align;
   u32 chunk_align;
-  void *mspace;
   clib_mem_bulk_chunk_hdr_t *full_chunks, *avail_chunks;
 } clib_mem_bulk_t;
 
@@ -53,11 +47,11 @@ bulk_chunk_size (clib_mem_bulk_t *b)
 __clib_export clib_mem_bulk_handle_t
 clib_mem_bulk_init (u32 elt_sz, u32 align, u32 min_elts_per_chunk)
 {
-  clib_mem_heap_t *heap = clib_mem_get_heap ();
   clib_mem_bulk_t *b;
   uword sz;
 
-  if ((b = mspace_memalign (heap->mspace, 16, sizeof (clib_mem_bulk_t))) == 0)
+  if ((b = clib_mem_alloc_aligned (sizeof (clib_mem_bulk_t),
+				   __alignof__(clib_mem_bulk_t))) == 0)
     return 0;
 
   if (align < 16)
@@ -68,7 +62,6 @@ clib_mem_bulk_init (u32 elt_sz, u32 align, u32 min_elts_per_chunk)
 
   CLIB_MEM_UNPOISON (b, sizeof (clib_mem_bulk_t));
   clib_memset (b, 0, sizeof (clib_mem_bulk_t));
-  b->mspace = heap->mspace;
   b->align = align;
   b->elt_sz = round_pow2 (elt_sz, align);
   b->chunk_hdr_sz = round_pow2 (sizeof (clib_mem_bulk_chunk_hdr_t), align);
@@ -84,7 +77,6 @@ clib_mem_bulk_destroy (clib_mem_bulk_handle_t h)
 {
   clib_mem_bulk_t *b = h;
   clib_mem_bulk_chunk_hdr_t *c, *next;
-  void *ms = b->mspace;
 
   c = b->full_chunks;
 
@@ -92,8 +84,7 @@ again:
   while (c)
     {
       next = c->next;
-      CLIB_MEM_POISON (c, bulk_chunk_size (b));
-      mspace_free (ms, c);
+      clib_mem_free (c);
       c = next;
     }
 
@@ -104,8 +95,7 @@ again:
       goto again;
     }
 
-  CLIB_MEM_POISON (b, sizeof (clib_mem_bulk_t));
-  mspace_free (ms, b);
+  clib_mem_free (b);
 }
 
 static inline void *
@@ -147,8 +137,7 @@ clib_mem_bulk_alloc (clib_mem_bulk_handle_t h)
   if (b->avail_chunks == 0)
     {
       u32 i, sz = bulk_chunk_size (b);
-      c = mspace_memalign (b->mspace, b->chunk_align, sz);
-      CLIB_MEM_UNPOISON (c, sz);
+      clib_mem_alloc_aligned (sz, b->chunk_align);
       clib_memset (c, 0, sizeof (clib_mem_bulk_chunk_hdr_t));
       b->avail_chunks = c;
       c->n_free = b->elts_per_chunk;
@@ -192,8 +181,7 @@ clib_mem_bulk_free (clib_mem_bulk_handle_t h, void *p)
     {
       /* chunk is empty - give it back */
       remove_from_chunk_list (&b->avail_chunks, c);
-      CLIB_MEM_POISON (c, bulk_chunk_size (b));
-      mspace_free (b->mspace, c);
+      clib_mem_free (c);
       return;
     }
 
