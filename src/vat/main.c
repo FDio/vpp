@@ -267,6 +267,7 @@ setup_signal_handlers (void)
 	  /* these signals take the default action */
 	case SIGABRT:
 	case SIGKILL:
+	case SIGCONT:
 	case SIGSTOP:
 	case SIGUSR1:
 	case SIGUSR2:
