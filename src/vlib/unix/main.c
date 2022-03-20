@@ -210,6 +210,7 @@ setup_signal_handlers (unix_main_t * um)
 	{
 	  /* these signals take the default action */
 	case SIGKILL:
+	case SIGCONT:
 	case SIGSTOP:
 	case SIGUSR1:
 	case SIGUSR2:
