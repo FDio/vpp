@@ -412,7 +412,7 @@ vlib_stats_validate_will_expand_internal (u32 entry_index, va_list *va)
 	goto done;
 
       for (u32 i = 0; i <= idx0; i++)
-	if (idx1 >= vec_max_len (data[idx0]))
+	if (idx1 >= vec_max_len (data[i]))
 	  goto done;
     }
   else if (e->type == STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED)
@@ -427,7 +427,7 @@ vlib_stats_validate_will_expand_internal (u32 entry_index, va_list *va)
 	goto done;
 
       for (u32 i = 0; i <= idx0; i++)
-	if (idx1 >= vec_max_len (data[idx0]))
+	if (idx1 >= vec_max_len (data[i]))
 	  goto done;
     }
   else
