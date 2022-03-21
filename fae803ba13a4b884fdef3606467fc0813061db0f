@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "63eb7909_a53af797",
+        "filename": "src/vlib/error.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2022-03-21T16:19:11Z",
+      "side": 1,
+      "message": "stats/format.c in the new file structure might be a better place for such a function",
+      "revId": "fae803ba13a4b884fdef3606467fc0813061db0f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d229bc11_b231f3ec",
+        "filename": "src/vlib/error.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2022-03-21T16:19:11Z",
+      "side": 1,
+      "message": "I think you forgot the character to replace spaces with after the \u0027?\u0027",
+      "revId": "fae803ba13a4b884fdef3606467fc0813061db0f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a593cd66_cc6a7167",
+        "filename": "src/vlib/error.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 194,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2022-03-21T16:19:11Z",
+      "side": 1,
+      "message": "Wouldn\u0027t this condition have the same result for all the threads? If yes, you could move it outside the loop.",
+      "revId": "fae803ba13a4b884fdef3606467fc0813061db0f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "955e8203_767f81d9",
+        "filename": "src/vlib/error.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 195,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2022-03-21T16:19:11Z",
+      "side": 1,
+      "message": "what if we replace error counters by others for a given node during a re-registration? (e.g. we delete all the counters and create new ones)? Doing a copy could provide wrong info right?",
+      "revId": "fae803ba13a4b884fdef3606467fc0813061db0f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
