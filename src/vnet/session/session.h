@@ -155,6 +155,9 @@ typedef struct session_worker_
   /** Main thread loops in poll mode without a connect */
   u32 no_connect_loops;
 
+  /** List head for first worker messages pending handling on main */
+  clib_llist_index_t evts_pending_main;
+
 #if SESSION_DEBUG
   /** last event poll time by thread */
   clib_time_type_t last_event_poll;
@@ -786,6 +789,7 @@ void session_wrk_enable_adaptive_mode (session_worker_t *wrk);
 fifo_segment_t *session_main_get_wrk_mqs_segment (void);
 void session_node_enable_disable (u8 is_en);
 clib_error_t *vnet_session_enable_disable (vlib_main_t * vm, u8 is_en);
+void session_wrk_handle_evts_main_rpc ();
 
 session_t *session_alloc_for_connection (transport_connection_t * tc);
 session_t *session_alloc_for_half_open (transport_connection_t *tc);
