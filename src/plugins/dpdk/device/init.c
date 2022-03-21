@@ -971,6 +971,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   u32 vendor, device, domain, bus, func;
   void *fmt_func;
   void *fmt_addr;
+  bool ioat = true;
 
   huge_dir_path =
     format (0, "%s/hugepages%c", vlib_unix_get_runtime_dir (), 0);
@@ -1141,7 +1142,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 #undef _
 	else if (unformat (input, "default"))
 	;
-
+      else if (unformat (input, "no-ioat")) { ioat = false; }
       else if (unformat_skip_white_space (input))
 	;
       else
@@ -1287,6 +1288,14 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
     }
 
   vm = vlib_get_main ();
+
+  if (!ioat)
+    {
+      struct rte_bus *bus;
+      bus = rte_bus_find_by_name ("dsa");
+      if (bus)
+	rte_bus_unregister (bus);
+    }
 
   /* make copy of args as rte_eal_init tends to mess up with arg array */
   for (i = 1; i < vec_len (conf->eal_init_args); i++)
