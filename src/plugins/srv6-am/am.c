@@ -139,7 +139,7 @@ unformat_srv6_am_localsid (unformat_input_t * input, va_list * args)
 		unformat_vnet_sw_interface, vnm, &sw_if_index_in))
     {
       /* Allocate a portion of memory */
-      ls_mem = clib_mem_alloc_aligned_at_offset (sizeof *ls_mem, 0, 0, 1);
+      ls_mem = clib_mem_alloc (sizeof *ls_mem);
 
       /* Set to zero the memory */
       clib_memset (ls_mem, 0, sizeof *ls_mem);

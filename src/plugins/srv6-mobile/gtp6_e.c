@@ -86,7 +86,7 @@ clb_unformat_srv6_end_m_gtp6_e (unformat_input_t * input, va_list * args)
   if (!unformat (input, "end.m.gtp6.e fib-table %d", &fib_table))
     return 0;
 
-  ls_mem = clib_mem_alloc_aligned_at_offset (sizeof *ls_mem, 0, 0, 1);
+  ls_mem = clib_mem_alloc (sizeof *ls_mem);
   clib_memset (ls_mem, 0, sizeof *ls_mem);
   *plugin_mem_p = ls_mem;
 
