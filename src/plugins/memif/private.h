@@ -16,6 +16,7 @@
  */
 
 #include <vppinfra/lock.h>
+#include <vlib/dma/dma.h>
 #include <vlib/log.h>
 
 #define MEMIF_DEFAULT_SOCKET_FILENAME  "memif.sock"
@@ -130,6 +131,9 @@ typedef struct
   memif_region_index_t region;
   memif_region_offset_t offset;
 
+  uint16_t dma_head;
+  uint16_t dma_tail;
+
   u16 last_head;
   u16 last_tail;
   u32 *buffers;
@@ -145,14 +149,15 @@ typedef struct
   u32 queue_index;
 } memif_queue_t;
 
-#define foreach_memif_if_flag \
-  _(0, ADMIN_UP, "admin-up")		\
-  _(1, IS_SLAVE, "slave")		\
-  _(2, CONNECTING, "connecting")	\
-  _(3, CONNECTED, "connected")		\
-  _(4, DELETING, "deleting")		\
-  _(5, ZERO_COPY, "zero-copy")		\
-  _(6, ERROR, "error")
+#define foreach_memif_if_flag                                                 \
+  _ (0, ADMIN_UP, "admin-up")                                                 \
+  _ (1, IS_SLAVE, "slave")                                                    \
+  _ (2, CONNECTING, "connecting")                                             \
+  _ (3, CONNECTED, "connected")                                               \
+  _ (4, DELETING, "deleting")                                                 \
+  _ (5, ZERO_COPY, "zero-copy")                                               \
+  _ (6, ERROR, "error")                                                       \
+  _ (7, USE_DMA, "use_dma")
 
 typedef enum
 {
@@ -207,6 +212,9 @@ typedef struct
   /* disconnect strings */
   u8 *local_disc_string;
   u8 *remote_disc_string;
+
+  /* dma */
+  u32 config_index;
 } memif_if_t;
 
 typedef struct
@@ -251,6 +259,19 @@ STATIC_ASSERT_SIZEOF (memif_desc_status_t, 1);
 
 typedef struct
 {
+  u32 *buffers;
+  u16 desc_len[256];
+  vlib_buffer_t *buffer_ptrs[256];
+  vlib_dma_transfer_t iov[256];
+  u32 transfers;
+  memif_interface_mode_t mode;
+  vlib_node_runtime_t *node;
+  memif_ring_type_t type;
+  vlib_buffer_t buffer_template;
+} memif_dma_info_t;
+
+typedef struct
+{
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u16 n_packets;
   u16 max_desc_len;
@@ -265,6 +286,19 @@ typedef struct
   void **desc_data;
   u16 *desc_len;
   memif_desc_status_t *desc_status;
+
+  /* dma related */
+  int dma_config;
+  int tx_dma_config;
+  u16 completed_desc;
+  memif_dma_info_t *dma_info;
+  memif_dma_info_t *tx_dma_info;
+  u16 head;
+  u16 tail;
+  u16 size;
+  u16 tx_head;
+  u16 tx_tail;
+  u16 tx_size;
 
   /* buffer template */
   vlib_buffer_t buffer_template;
@@ -309,6 +343,7 @@ typedef struct
   u8 *secret;
   u8 is_master;
   u8 is_zero_copy;
+  u8 use_dma;
   memif_interface_mode_t mode:8;
   memif_log2_ring_size_t log2_ring_size;
   u16 buffer_size;
@@ -353,7 +388,8 @@ clib_error_t *memif_slave_conn_fd_error (clib_file_t * uf);
 clib_error_t *memif_msg_send_disconnect (memif_if_t * mif,
 					 clib_error_t * err);
 u8 *format_memif_device_name (u8 * s, va_list * args);
-
+void memif_dma_completion_cb (vlib_main_t *vm, u32 n_transfers, u32 cookie);
+void memif_tx_dma_completion_cb (vlib_main_t *vm, u32 n_transfers, u32 cookie);
 
 /*
  * fd.io coding-style-patch-verification: ON

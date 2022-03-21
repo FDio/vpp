@@ -19,6 +19,7 @@ add_vpp_plugin(memif
   node.c
   device.c
   socket.c
+  node.c
 
   API_FILES
   memif.api
