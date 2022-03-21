@@ -77,8 +77,8 @@ static inline int
 clib_bihash_key_compare_32_8 (u64 *a, u64 *b)
 {
 #if defined(CLIB_HAVE_VEC512)
-  u64x8 v = u64x8_load_unaligned (a) ^ u64x8_load_unaligned (b);
-  return (u64x8_is_zero_mask (v) & 0xf) == 0;
+  return u64x8_is_equal (u64x8_mask_load_zero (a, 0xf),
+			 u64x8_mask_load_zero (b, 0xf));
 #elif defined(CLIB_HAVE_VEC256)
   u64x4 v = u64x4_load_unaligned (a) ^ u64x4_load_unaligned (b);
   return u64x4_is_all_zero (v);
