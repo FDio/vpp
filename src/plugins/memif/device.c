@@ -22,6 +22,7 @@
 #include <sys/uio.h>
 
 #include <vlib/vlib.h>
+#include <vlib/dma/dma.h>
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
 
@@ -94,6 +95,240 @@ memif_add_copy_op (memif_per_thread_data_t * ptd, void *data, u32 len,
   co->data_len = len;
   co->buffer_offset = buffer_offset;
   co->buffer_vec_index = buffer_vec_index;
+}
+
+CLIB_MARCH_FN (memif_tx_dma_completion_cb, void, vlib_main_t *vm,
+	       u32 n_transfers, u32u cookie)
+{
+  memif_main_t *mm = &memif_main;
+  memif_if_t *mif = vec_elt_at_index (mm->interfaces, cookie >> 16);
+  memif_queue_t *mq;
+  memif_dma_info_t *tx_dma_info;
+  u32 thread_index = vm->thread_index;
+  memif_per_thread_data_t *ptd =
+    vec_elt_at_index (mm->per_thread_data, thread_index);
+  tx_dma_info = ptd->tx_dma_info + ptd->head;
+
+  mq = vec_elt_at_index (mif->tx_queues, cookie & 0xffff);
+  if (tx_dma_info->type == MEMIF_RING_S2M)
+    __atomic_store_n (&mq->ring->head, mq->dma_head, __ATOMIC_RELEASE);
+  else
+    __atomic_store_n (&mq->ring->tail, mq->dma_tail, __ATOMIC_RELEASE);
+
+  ptd->head++;
+  if (ptd->head == ptd->size)
+    ptd->head = 0;
+}
+
+#ifndef CLIB_MARCH_VARIANT
+void
+memif_tx_dma_completion_cb (vlib_main_t *vm, u32 n_transfers, u32 cookie)
+{
+  return CLIB_MARCH_FN_SELECT (memif_tx_dma_completion_cb) (vm, n_transfers,
+							    cookie);
+}
+#endif
+
+static_always_inline uword
+memif_interface_tx_inline_dma (vlib_main_t *vm, vlib_node_runtime_t *node,
+			       u32 *buffers, memif_if_t *mif,
+			       memif_ring_type_t type, memif_queue_t *mq,
+			       memif_per_thread_data_t *ptd, u32 n_left)
+{
+  memif_ring_t *ring;
+  u32 n_copy_op;
+  u16 ring_size, mask, slot, free_slots;
+  int n_retries = 5;
+  vlib_buffer_t *b0, *b1, *b2, *b3;
+  memif_copy_op_t *co;
+  memif_region_index_t last_region = ~0;
+  void *last_region_shm = 0;
+  u16 head, tail;
+  memif_main_t *mm = &memif_main;
+  u16 mif_id = mif - mm->interfaces;
+
+  ring = mq->ring;
+  ring_size = 1 << mq->log2_ring_size;
+  mask = ring_size - 1;
+
+  memif_dma_info_t *tx_dma_info;
+  tx_dma_info = ptd->tx_dma_info + ptd->tx_tail;
+  tx_dma_info->type = type;
+  tx_dma_info->transfers = 0;
+retry:
+
+  if (type == MEMIF_RING_S2M)
+    {
+      slot = head = mq->dma_head;
+      tail = __atomic_load_n (&ring->tail, __ATOMIC_ACQUIRE);
+      mq->last_tail += tail - mq->last_tail;
+      free_slots = ring_size - head + mq->last_tail;
+    }
+  else
+    {
+      slot = tail = mq->dma_tail;
+      head = __atomic_load_n (&ring->head, __ATOMIC_ACQUIRE);
+      mq->last_tail += tail - mq->last_tail;
+      free_slots = head - tail;
+    }
+
+  while (n_left && free_slots)
+    {
+      memif_desc_t *d0;
+      void *mb0;
+      i32 src_off;
+      u32 bi0, dst_off, src_left, dst_left, bytes_to_copy;
+      u32 saved_ptd_copy_ops_len = _vec_len (ptd->copy_ops);
+      u32 saved_ptd_buffers_len = _vec_len (ptd->buffers);
+      u16 saved_slot = slot;
+
+      clib_prefetch_load (&ring->desc[(slot + 8) & mask]);
+
+      d0 = &ring->desc[slot & mask];
+      if (PREDICT_FALSE (last_region != d0->region))
+	{
+	  last_region_shm = mif->regions[d0->region].shm;
+	  last_region = d0->region;
+	}
+      mb0 = last_region_shm + d0->offset;
+
+      dst_off = 0;
+
+      /* slave is the producer, so it should be able to reset buffer length */
+      dst_left = (type == MEMIF_RING_S2M) ? mif->run.buffer_size : d0->length;
+
+      if (PREDICT_TRUE (n_left >= 4))
+	vlib_prefetch_buffer_header (vlib_get_buffer (vm, buffers[3]), LOAD);
+      bi0 = buffers[0];
+
+    next_in_chain:
+
+      b0 = vlib_get_buffer (vm, bi0);
+      src_off = b0->current_data;
+      src_left = b0->current_length;
+
+      while (src_left)
+	{
+	  if (PREDICT_FALSE (dst_left == 0))
+	    {
+	      if (free_slots)
+		{
+		  slot++;
+		  free_slots--;
+		  d0->length = dst_off;
+		  d0->flags = MEMIF_DESC_FLAG_NEXT;
+		  d0 = &ring->desc[slot & mask];
+		  dst_off = 0;
+		  dst_left = (type == MEMIF_RING_S2M) ? mif->run.buffer_size :
+							d0->length;
+
+		  if (PREDICT_FALSE (last_region != d0->region))
+		    {
+		      last_region_shm = mif->regions[d0->region].shm;
+		      last_region = d0->region;
+		    }
+		  mb0 = last_region_shm + d0->offset;
+		}
+	      else
+		{
+		  /* we need to rollback vectors before bailing out */
+		  _vec_len (ptd->buffers) = saved_ptd_buffers_len;
+		  _vec_len (ptd->copy_ops) = saved_ptd_copy_ops_len;
+		  vlib_error_count (vm, node->node_index,
+				    MEMIF_TX_ERROR_ROLLBACK, 1);
+		  slot = saved_slot;
+		  goto no_free_slots;
+		}
+	    }
+	  bytes_to_copy = clib_min (src_left, dst_left);
+	  memif_add_copy_op (ptd, mb0 + dst_off, bytes_to_copy, src_off,
+			     vec_len (ptd->buffers));
+	  vec_add1_aligned (ptd->buffers, bi0, CLIB_CACHE_LINE_BYTES);
+	  src_off += bytes_to_copy;
+	  dst_off += bytes_to_copy;
+	  src_left -= bytes_to_copy;
+	  dst_left -= bytes_to_copy;
+	}
+
+      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_NEXT_PRESENT))
+	{
+	  bi0 = b0->next_buffer;
+	  goto next_in_chain;
+	}
+
+      d0->length = dst_off;
+      d0->flags = 0;
+
+      free_slots -= 1;
+      slot += 1;
+
+      buffers++;
+      n_left--;
+    }
+no_free_slots:
+
+  /* copy data */
+  n_copy_op = vec_len (ptd->copy_ops);
+  co = ptd->copy_ops;
+  while (n_copy_op >= 8)
+    {
+      b0 = vlib_get_buffer (vm, ptd->buffers[co[0].buffer_vec_index]);
+      b1 = vlib_get_buffer (vm, ptd->buffers[co[1].buffer_vec_index]);
+      b2 = vlib_get_buffer (vm, ptd->buffers[co[2].buffer_vec_index]);
+      b3 = vlib_get_buffer (vm, ptd->buffers[co[3].buffer_vec_index]);
+      tx_dma_info->iov[tx_dma_info->transfers].dst = co[0].data;
+      tx_dma_info->iov[tx_dma_info->transfers].src =
+	b0->data + co[0].buffer_offset;
+      tx_dma_info->iov[tx_dma_info->transfers].size = co[0].data_len;
+      tx_dma_info->iov[tx_dma_info->transfers + 1].dst = co[1].data;
+      tx_dma_info->iov[tx_dma_info->transfers + 1].src =
+	b1->data + co[1].buffer_offset;
+      tx_dma_info->iov[tx_dma_info->transfers + 1].size = co[1].data_len;
+      tx_dma_info->iov[tx_dma_info->transfers + 2].dst = co[2].data;
+      tx_dma_info->iov[tx_dma_info->transfers + 2].src =
+	b2->data + co[2].buffer_offset;
+      tx_dma_info->iov[tx_dma_info->transfers + 2].size = co[2].data_len;
+      tx_dma_info->iov[tx_dma_info->transfers + 3].dst = co[3].data;
+      tx_dma_info->iov[tx_dma_info->transfers + 3].src =
+	b3->data + co[3].buffer_offset;
+      tx_dma_info->iov[tx_dma_info->transfers + 3].size = co[3].data_len;
+      tx_dma_info->transfers += 4;
+      co += 4;
+      n_copy_op -= 4;
+    }
+  while (n_copy_op)
+    {
+      b0 = vlib_get_buffer (vm, ptd->buffers[co[0].buffer_vec_index]);
+
+      tx_dma_info->iov[tx_dma_info->transfers].dst = co[0].data;
+      tx_dma_info->iov[tx_dma_info->transfers].src =
+	b0->data + co[0].buffer_offset;
+      tx_dma_info->iov[tx_dma_info->transfers].size = co[0].data_len;
+
+      tx_dma_info->transfers += 1;
+      co += 1;
+      n_copy_op -= 1;
+    }
+
+  vlib_dma_transfer (vm, ptd->tx_dma_config, tx_dma_info->iov,
+		     tx_dma_info->transfers,
+		     (mif_id << 16) | (mq - mif->tx_queues));
+
+  ptd->tx_tail++;
+  if (ptd->tx_tail == ptd->tx_size)
+    ptd->tx_tail = 0;
+  vec_reset_length (ptd->copy_ops);
+  vec_reset_length (ptd->buffers);
+
+  if (type == MEMIF_RING_S2M)
+    mq->dma_head = slot;
+  else
+    mq->dma_tail = slot;
+
+  if (n_left && n_retries--)
+    goto retry;
+
+  return n_left;
 }
 
 static_always_inline uword
@@ -396,11 +631,23 @@ VNET_DEVICE_CLASS_TX_FN (memif_device_class) (vlib_main_t * vm,
     n_left =
       memif_interface_tx_zc_inline (vm, node, from, mif, mq, ptd, n_left);
   else if (mif->flags & MEMIF_IF_FLAG_IS_SLAVE)
-    n_left = memif_interface_tx_inline (vm, node, from, mif, MEMIF_RING_S2M,
-					mq, ptd, n_left);
+    {
+      if (mif->flags & MEMIF_IF_FLAG_USE_DMA)
+	n_left = memif_interface_tx_inline_dma (
+	  vm, node, from, mif, MEMIF_RING_S2M, mq, ptd, n_left);
+      else
+	n_left = memif_interface_tx_inline (vm, node, from, mif,
+					    MEMIF_RING_S2M, mq, ptd, n_left);
+    }
   else
-    n_left = memif_interface_tx_inline (vm, node, from, mif, MEMIF_RING_M2S,
-					mq, ptd, n_left);
+    {
+      if (mif->flags & MEMIF_IF_FLAG_USE_DMA)
+	n_left = memif_interface_tx_inline_dma (
+	  vm, node, from, mif, MEMIF_RING_M2S, mq, ptd, n_left);
+      else
+	n_left = memif_interface_tx_inline (vm, node, from, mif,
+					    MEMIF_RING_M2S, mq, ptd, n_left);
+    }
 
   if (tf->shared_queue)
     clib_spinlock_unlock (&mq->lockp);

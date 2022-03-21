@@ -167,6 +167,8 @@ typedef struct
   MEMIF_CACHELINE_ALIGN_MARK (cacheline0);
   uint32_t cookie;
   uint16_t flags;
+  uint16_t dma_head;
+  uint16_t dma_tail;
 #define MEMIF_RING_FLAG_MASK_INT 1
   volatile uint16_t head;
     MEMIF_CACHELINE_ALIGN_MARK (cacheline1);
