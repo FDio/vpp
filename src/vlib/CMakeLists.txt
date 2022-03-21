@@ -105,6 +105,9 @@ add_vpp_library(vlib
   unix/util.c
   vmbus/vmbus.c
   ${VMBUS_SOURCE}
+  dma/dma.c
+  dma/node.c
+  dma/cli.c
 
   MULTIARCH_SOURCES
   buffer_funcs.c
