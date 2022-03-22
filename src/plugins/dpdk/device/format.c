@@ -511,7 +511,7 @@ format_dpdk_device (u8 * s, va_list * args)
     }
 
   s = format (s, "%Utx burst function: %U\n", format_white_space, indent + 2,
-	      format_dpdk_burst_fn, xd, VLIB_RX);
+	      format_dpdk_burst_fn, xd, VLIB_TX);
 
   if (rte_eth_rx_burst_mode_get (xd->port_id, 0, &mode) == 0)
     {
@@ -522,7 +522,7 @@ format_dpdk_device (u8 * s, va_list * args)
     }
 
   s = format (s, "%Urx burst function: %U\n", format_white_space, indent + 2,
-	      format_dpdk_burst_fn, xd, VLIB_TX);
+	      format_dpdk_burst_fn, xd, VLIB_RX);
 
   /* $$$ MIB counters  */
   {
