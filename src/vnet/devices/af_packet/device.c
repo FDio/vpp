@@ -56,6 +56,14 @@ static char *af_packet_tx_func_error_strings[] = {
 #undef _
 };
 
+typedef struct
+{
+  u32 buffer_index;
+  u32 hw_if_index;
+  tpacket3_hdr_t tph;
+  vnet_virtio_net_hdr_t vnet_hdr;
+  vlib_buffer_t buffer;
+} af_packet_tx_trace_t;
 
 #ifndef CLIB_MARCH_VARIANT
 u8 *
@@ -128,10 +136,65 @@ format_af_packet_device (u8 * s, va_list * args)
 }
 
 static u8 *
-format_af_packet_tx_trace (u8 * s, va_list * args)
+format_af_packet_tx_trace (u8 *s, va_list *va)
 {
-  s = format (s, "Unimplemented...");
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
+  af_packet_tx_trace_t *t = va_arg (*va, af_packet_tx_trace_t *);
+  u32 indent = format_get_indent (s);
+
+  s = format (s, "af_packet: hw_if_index %u", t->hw_if_index);
+
+  s =
+    format (s,
+	    "\n%Utpacket3_hdr:\n%Ustatus 0x%x len %u snaplen %u mac %u net %u"
+	    "\n%Usec 0x%x nsec 0x%x vlan %U"
+#ifdef TP_STATUS_VLAN_TPID_VALID
+	    " vlan_tpid %u"
+#endif
+	    ,
+	    format_white_space, indent + 2, format_white_space, indent + 4,
+	    t->tph.tp_status, t->tph.tp_len, t->tph.tp_snaplen, t->tph.tp_mac,
+	    t->tph.tp_net, format_white_space, indent + 4, t->tph.tp_sec,
+	    t->tph.tp_nsec, format_ethernet_vlan_tci, t->tph.hv1.tp_vlan_tci
+#ifdef TP_STATUS_VLAN_TPID_VALID
+	    ,
+	    t->tph.hv1.tp_vlan_tpid
+#endif
+    );
+
+  s = format (s,
+	      "\n%Uvnet-hdr:\n%Uflags 0x%02x gso_type 0x%02x hdr_len %u"
+	      "\n%Ugso_size %u csum_start %u csum_offset %u",
+	      format_white_space, indent + 2, format_white_space, indent + 4,
+	      t->vnet_hdr.flags, t->vnet_hdr.gso_type, t->vnet_hdr.hdr_len,
+	      format_white_space, indent + 4, t->vnet_hdr.gso_size,
+	      t->vnet_hdr.csum_start, t->vnet_hdr.csum_offset);
+
+  s = format (s, "\n%Ubuffer 0x%x:\n%U%U", format_white_space, indent + 2,
+	      t->buffer_index, format_white_space, indent + 4,
+	      format_vnet_buffer_no_chain, &t->buffer);
+  s = format (s, "\n%U%U", format_white_space, indent + 2,
+	      format_ethernet_header_with_length, t->buffer.pre_data,
+	      sizeof (t->buffer.pre_data));
   return s;
+}
+
+static void
+af_packet_tx_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
+		    vlib_buffer_t *b0, u32 bi, tpacket3_hdr_t *tph,
+		    vnet_virtio_net_hdr_t *vnet_hdr, u32 hw_if_index)
+{
+  af_packet_tx_trace_t *t;
+  t = vlib_add_trace (vm, node, b0, sizeof (t[0]));
+  t->hw_if_index = hw_if_index;
+  t->buffer_index = bi;
+
+  clib_memcpy_fast (&t->tph, tph, sizeof (*tph));
+  clib_memcpy_fast (&t->vnet_hdr, vnet_hdr, sizeof (*vnet_hdr));
+  clib_memcpy_fast (&t->buffer, b0, sizeof (*b0) - sizeof (b0->pre_data));
+  clib_memcpy_fast (t->buffer.pre_data, vlib_buffer_get_current (b0),
+		    sizeof (t->buffer.pre_data));
 }
 
 static_always_inline void
@@ -247,9 +310,10 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
       u32 len;
       vnet_virtio_net_hdr_t *vnet_hdr = 0;
       u32 offset = 0;
-      vlib_buffer_t *b0 = 0;
-      u32 bi = buffers[0];
+      vlib_buffer_t *b0 = 0, *b0_first = 0;
+      u32 bi, bi_first;
 
+      bi = bi_first = buffers[0];
       n_left--;
       buffers++;
 
@@ -261,9 +325,9 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
 	  goto next;
 	}
 
-      b0 = vlib_get_buffer (vm, bi);
+      b0_first = b0 = vlib_get_buffer (vm, bi);
 
-      if (is_cksum_gso_enabled)
+      if (PREDICT_TRUE (is_cksum_gso_enabled))
 	{
 	  vnet_hdr =
 	    (vnet_virtio_net_hdr_t *) ((u8 *) tph + TPACKET_ALIGN (sizeof (
@@ -298,6 +362,18 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
       tph->tp_status = TP_STATUS_SEND_REQUEST;
       n_sent++;
 
+      if (PREDICT_FALSE (b0_first->flags & VLIB_BUFFER_IS_TRACED))
+	{
+	  if (PREDICT_TRUE (is_cksum_gso_enabled))
+	    af_packet_tx_trace (vm, node, b0_first, bi_first, tph, vnet_hdr,
+				apif->hw_if_index);
+	  else
+	    {
+	      vnet_virtio_net_hdr_t vnet_hdr2 = {};
+	      af_packet_tx_trace (vm, node, b0_first, bi_first, tph,
+				  &vnet_hdr2, apif->hw_if_index);
+	    }
+	}
       tx_frame = (tx_frame + 1) % frame_num;
 
     next:
