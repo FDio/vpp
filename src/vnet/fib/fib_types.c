@@ -20,6 +20,7 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/mfib/mfib_types.h>
 #include <vnet/mpls/mpls.h>
+#include <vnet/udp/udp_encap.h>
 
 /*
  * arrays of protocol and link names
@@ -542,6 +543,7 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
     fib_route_path_t *rpath = va_arg (*args, fib_route_path_t *);
     dpo_proto_t *payload_proto = va_arg (*args, void*);
     u32 weight, preference, udp_encap_id, fi;
+    udp_encap_t *encap = NULL;
     mpls_label_t out_label;
     vnet_main_t *vnm;
 
@@ -627,7 +629,11 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
         {
             rpath->frp_udp_encap_id = udp_encap_id;
             rpath->frp_flags |= FIB_ROUTE_PATH_UDP_ENCAP;
-            rpath->frp_proto = *payload_proto;
+            
+            // ensure udp encap exists
+            encap = udp_encap_get_safe(udp_encap_id);
+            if (encap == NULL) return 0;
+            rpath->frp_proto = encap->ue_dpo.dpoi_proto;
         }
         else if (unformat (input, "lookup in table %d", &rpath->frp_fib_index))
         {
