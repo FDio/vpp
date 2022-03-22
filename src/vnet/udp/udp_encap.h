@@ -143,6 +143,15 @@ udp_encap_get (index_t uei)
   return (pool_elt_at_index (udp_encap_pool, uei));
 }
 
+static inline udp_encap_t *
+udp_encap_get_safe (index_t uei)
+{
+  if (!pool_is_free_index (udp_encap_pool, uei))
+    return (pool_elt_at_index (udp_encap_pool, uei));
+
+  return NULL;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
