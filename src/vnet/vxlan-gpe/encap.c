@@ -94,7 +94,10 @@ vxlan_gpe_encap_one_inline (vxlan_gpe_main_t * ngm, vlib_buffer_t * b0,
   ASSERT (sizeof (ip4_vxlan_gpe_header_t) == 36);
   ASSERT (sizeof (ip6_vxlan_gpe_header_t) == 56);
 
-  ip_udp_encap_one (ngm->vlib_main, b0, t0->rewrite, t0->rewrite_size, is_v4);
+  ip_address_family_t af = is_v4 * AF_IP4 + (!is_ip4) * AF_IP6;
+
+  ip_udp_encap_one_generic (ngm->vlib_main, b0, t0->rewrite, t0->rewrite_size,
+			    af);
   next0[0] = t0->encap_next_node;
 }
 
@@ -120,8 +123,12 @@ vxlan_gpe_encap_two_inline (vxlan_gpe_main_t * ngm, vlib_buffer_t * b0,
   ASSERT (sizeof (ip4_vxlan_gpe_header_t) == 36);
   ASSERT (sizeof (ip6_vxlan_gpe_header_t) == 56);
 
-  ip_udp_encap_one (ngm->vlib_main, b0, t0->rewrite, t0->rewrite_size, is_v4);
-  ip_udp_encap_one (ngm->vlib_main, b1, t1->rewrite, t1->rewrite_size, is_v4);
+  ip_address_family_t af = is_v4 * AF_IP4 + (!is_ip4) * AF_IP6;
+
+  ip_udp_encap_one_generic (ngm->vlib_main, b0, t0->rewrite, t0->rewrite_size,
+			    af);
+  ip_udp_encap_one_generic (ngm->vlib_main, b1, t1->rewrite, t1->rewrite_size,
+			    af);
   next0[0] = next1[0] = t0->encap_next_node;
 }
 

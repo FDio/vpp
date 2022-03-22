@@ -97,14 +97,14 @@ ip_udp_fixup_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 is_ip4)
 }
 
 always_inline void
-ip_udp_encap_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 * ec0, word ec_len,
-		  u8 is_ip4)
+ip_udp_encap_one_generic (vlib_main_t *vm, vlib_buffer_t *b0, u8 *ec0,
+			  word ec_len, ip_address_family_t encap_family)
 {
-  vnet_calc_checksums_inline (vm, b0, is_ip4, !is_ip4);
+  ASSERT (encap_family < N_AF);
 
   vlib_buffer_advance (b0, -ec_len);
 
-  if (is_ip4)
+  if (encap_family == AF_IP4)
     {
       ip4_header_t *ip0;
 
@@ -127,21 +127,19 @@ ip_udp_encap_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 * ec0, word ec_len,
 }
 
 always_inline void
-ip_udp_encap_two (vlib_main_t * vm, vlib_buffer_t * b0, vlib_buffer_t * b1,
-		  u8 * ec0, u8 * ec1, word ec_len, u8 is_v4)
+ip_udp_encap_two_generic (vlib_main_t *vm, vlib_buffer_t *b0,
+			  vlib_buffer_t *b1, u8 *ec0, u8 *ec1, word ec_len,
+			  ip_address_family_t encap_family)
 {
   u16 new_l0, new_l1;
   udp_header_t *udp0, *udp1;
 
-  ASSERT (_vec_len (ec0) == _vec_len (ec1));
-
-  vnet_calc_checksums_inline (vm, b0, is_v4, !is_v4);
-  vnet_calc_checksums_inline (vm, b1, is_v4, !is_v4);
+  ASSERT (encap_family < N_AF);
 
   vlib_buffer_advance (b0, -ec_len);
   vlib_buffer_advance (b1, -ec_len);
 
-  if (is_v4)
+  if (encap_family == AF_IP4)
     {
       ip4_header_t *ip0, *ip1;
       ip_csum_t sum0, sum1;
@@ -224,6 +222,38 @@ ip_udp_encap_two (vlib_main_t * vm, vlib_buffer_t * b0, vlib_buffer_t * b1,
       if (udp1->checksum == 0)
 	udp1->checksum = 0xffff;
     }
+}
+
+always_inline void
+ip_udp_encap_one_ip (vlib_main_t *vm, vlib_buffer_t *b0, u8 *ec0, word ec_len,
+		     ip_address_family_t encap_family,
+		     ip_address_family_t payload_family)
+{
+  ASSERT (payload_family < N_AF);
+
+  vnet_calc_checksums_inline (vm, b0, payload_family == 4,
+			      payload_family == 6);
+
+  ip_udp_encap_one_generic (vm, b0, ec0, ec_len, encap_family);
+}
+
+always_inline void
+ip_udp_encap_two_ip (vlib_main_t *vm, vlib_buffer_t *b0, vlib_buffer_t *b1,
+		     u8 *ec0, u8 *ec1, word ec_len,
+		     ip_address_family_t encap_family,
+		     ip_address_family_t payload_family0,
+		     ip_address_family_t payload_family1)
+{
+  ASSERT (_vec_len (ec0) == _vec_len (ec1));
+  ASSERT (payload_family0 < N_AF);
+  ASSERT (payload_family1 < N_AF);
+
+  vnet_calc_checksums_inline (vm, b0, payload_family0 == AF_IP4,
+			      payload_family0 == AF_IP6);
+  vnet_calc_checksums_inline (vm, b1, payload_family1 == AF_IP4,
+			      payload_family1 == AF_IP6);
+
+  ip_udp_encap_two_generic (vm, b0, b1, ec0, ec1, ec_len, encap_family);
 }
 
 #endif /* SRC_VNET_UDP_UDP_INLINES_H_ */

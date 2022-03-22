@@ -83,6 +83,9 @@ udp_encap_inline (vlib_main_t * vm,
 	  udp_encap_t *ue0, *ue1;
 	  u32 bi0, next0, uei0;
 	  u32 bi1, next1, uei1;
+	  ip4_header_t *iph0, *iph1;
+	  int ipv0, ipv1;
+	  ip_address_family_t af0, af1;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -120,13 +123,30 @@ udp_encap_inline (vlib_main_t * vm,
 	  ue0 = udp_encap_get (uei0);
 	  ue1 = udp_encap_get (uei1);
 
+	  // Inner IP header checksum. Is is perfectly possible to encapsulate
+	  // v6 packets into v4 and viceversa, so we need to know the IP
+	  // format of the inner header
+	  iph0 = (ip4_header_t *) vlib_buffer_get_current (b0);
+	  ipv0 = (iph0->ip_version_and_header_length & 0xF0) >> 4;
+	  iph1 = (ip4_header_t *) vlib_buffer_get_current (b1);
+	  ipv1 = (iph1->ip_version_and_header_length & 0xF0) >> 4;
+	  ASSERT (ipv0 == 6 || ipv0 == 4);
+	  ASSERT (ipv1 == 6 || ipv1 == 4);
+
+	  af0 = AF_IP4 * (ipv0 == 4) + AF_IP6 * (ipv0 == 6);
+	  af1 = AF_IP4 * (ipv1 == 4) + AF_IP6 * (ipv1 == 6);
+
+	  ASSERT (af0 < N_AF);
+	  ASSERT (af1 < N_AF);
+
 	  /* Paint */
 	  if (is_encap_v6)
 	    {
 	      const u8 n_bytes =
 		sizeof (udp_header_t) + sizeof (ip6_header_t);
-	      ip_udp_encap_two (vm, b0, b1, (u8 *) & ue0->ue_hdrs,
-				(u8 *) & ue1->ue_hdrs, n_bytes, 0);
+	      ip_udp_encap_two_ip (vm, b0, b1, (u8 *) &ue0->ue_hdrs,
+				   (u8 *) &ue1->ue_hdrs, n_bytes, AF_IP6, af0,
+				   af1);
 	      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 		{
 		  udp6_encap_trace_t *tr =
@@ -147,9 +167,9 @@ udp_encap_inline (vlib_main_t * vm,
 	      const u8 n_bytes =
 		sizeof (udp_header_t) + sizeof (ip4_header_t);
 
-	      ip_udp_encap_two (vm, b0, b1,
-				(u8 *) & ue0->ue_hdrs,
-				(u8 *) & ue1->ue_hdrs, n_bytes, 1);
+	      ip_udp_encap_two_ip (vm, b0, b1, (u8 *) &ue0->ue_hdrs,
+				   (u8 *) &ue1->ue_hdrs, n_bytes, AF_IP4, af0,
+				   af1);
 
 	      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 		{
@@ -182,6 +202,9 @@ udp_encap_inline (vlib_main_t * vm,
 	  u32 bi0, next0, uei0;
 	  vlib_buffer_t *b0;
 	  udp_encap_t *ue0;
+	  ip4_header_t *iph0;
+	  int ipv0;
+	  ip_address_family_t af0;
 
 	  bi0 = to_next[0] = from[0];
 
@@ -197,6 +220,17 @@ udp_encap_inline (vlib_main_t * vm,
 	  /* Rewrite packet header and updates lengths. */
 	  ue0 = udp_encap_get (uei0);
 
+	  // Inner IP header checksum. Is is perfectly possible to encapsulate
+	  // v6 packets into v4 and viceversa, so we need to know the IP
+	  // format of the inner header
+	  iph0 = (ip4_header_t *) vlib_buffer_get_current (b0);
+	  ipv0 = (iph0->ip_version_and_header_length & 0xF0) >> 4;
+	  ASSERT (ipv0 == 6 || ipv0 == 4);
+
+	  af0 = AF_IP4 * (ipv0 == 4) + AF_IP6 * (ipv0 == 6);
+
+	  ASSERT (af0 < N_AF);
+
 	  vlib_increment_combined_counter (cm, thread_index, uei0, 1,
 					   vlib_buffer_length_in_chain (vm,
 									b0));
@@ -206,8 +240,8 @@ udp_encap_inline (vlib_main_t * vm,
 	    {
 	      const u8 n_bytes =
 		sizeof (udp_header_t) + sizeof (ip6_header_t);
-	      ip_udp_encap_one (vm, b0, (u8 *) & ue0->ue_hdrs.ip6, n_bytes,
-				0);
+	      ip_udp_encap_one_ip (vm, b0, (u8 *) &ue0->ue_hdrs.ip6, n_bytes,
+				   AF_IP6, af0);
 
 	      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 		{
@@ -222,8 +256,8 @@ udp_encap_inline (vlib_main_t * vm,
 	      const u8 n_bytes =
 		sizeof (udp_header_t) + sizeof (ip4_header_t);
 
-	      ip_udp_encap_one (vm, b0, (u8 *) & ue0->ue_hdrs.ip4, n_bytes,
-				1);
+	      ip_udp_encap_one_ip (vm, b0, (u8 *) &ue0->ue_hdrs.ip4, n_bytes,
+				   AF_IP4, af0);
 
 	      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 		{
