@@ -27,8 +27,14 @@
 #include <vlib/unix/unix.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/ip/ip4_packet.h>
+#include <vnet/ip/ip6_packet.h>
+#include <vnet/ip/ip_psh_cksum.h>
+#include <vnet/tcp/tcp_packet.h>
+#include <vnet/udp/udp_packet.h>
 
 #include <vnet/devices/af_packet/af_packet.h>
+#include <vnet/devices/virtio/virtio_std.h>
 
 #define foreach_af_packet_tx_func_error               \
 _(FRAME_NOT_READY, "tx frame not ready")              \
@@ -100,7 +106,7 @@ format_af_packet_device (u8 * s, va_list * args)
   int n_send_req = 0, n_avail = 0, n_sending = 0, n_tot = 0, n_wrong = 0;
   do
     {
-      tph = (struct tpacket3_hdr *) (tx_block_start + tx_frame * tx_frame_sz);
+      tph = (tpacket3_hdr_t *) (tx_block_start + tx_frame * tx_frame_sz);
       tx_frame = (tx_frame + 1) % tx_frame_nr;
       if (tph->tp_status == 0)
 	n_avail++;
@@ -128,6 +134,93 @@ format_af_packet_tx_trace (u8 * s, va_list * args)
   return s;
 }
 
+static_always_inline void
+fill_gso_offload (vlib_buffer_t *b0, vnet_virtio_net_hdr_t *vnet_hdr)
+{
+  vnet_buffer_oflags_t oflags = vnet_buffer (b0)->oflags;
+  if (b0->flags & VNET_BUFFER_F_IS_IP4)
+    {
+      ip4_header_t *ip4;
+      vnet_hdr->gso_type = VIRTIO_NET_HDR_GSO_TCPV4;
+      vnet_hdr->gso_size = vnet_buffer2 (b0)->gso_size;
+      vnet_hdr->hdr_len =
+	vnet_buffer (b0)->l4_hdr_offset + vnet_buffer2 (b0)->gso_l4_hdr_sz;
+      vnet_hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
+      vnet_hdr->csum_start = vnet_buffer (b0)->l4_hdr_offset; // 0x22;
+      vnet_hdr->csum_offset = STRUCT_OFFSET_OF (tcp_header_t, checksum);
+      ip4 = (ip4_header_t *) (vlib_buffer_get_current (b0) +
+			      vnet_buffer (b0)->l3_hdr_offset);
+      if (oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM)
+	ip4->checksum = ip4_header_checksum (ip4);
+    }
+  else if (b0->flags & VNET_BUFFER_F_IS_IP6)
+    {
+      vnet_hdr->gso_type = VIRTIO_NET_HDR_GSO_TCPV6;
+      vnet_hdr->gso_size = vnet_buffer2 (b0)->gso_size;
+      vnet_hdr->hdr_len =
+	vnet_buffer (b0)->l4_hdr_offset + vnet_buffer2 (b0)->gso_l4_hdr_sz;
+      vnet_hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
+      vnet_hdr->csum_start = vnet_buffer (b0)->l4_hdr_offset; // 0x36;
+      vnet_hdr->csum_offset = STRUCT_OFFSET_OF (tcp_header_t, checksum);
+    }
+}
+
+static_always_inline void
+fill_cksum_offload (vlib_buffer_t *b0, vnet_virtio_net_hdr_t *vnet_hdr)
+{
+  vnet_buffer_oflags_t oflags = vnet_buffer (b0)->oflags;
+  if (b0->flags & VNET_BUFFER_F_IS_IP4)
+    {
+      ip4_header_t *ip4;
+      ip4 = (ip4_header_t *) (vlib_buffer_get_current (b0) +
+			      vnet_buffer (b0)->l3_hdr_offset);
+      if (oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM)
+	ip4->checksum = ip4_header_checksum (ip4);
+      vnet_hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
+      vnet_hdr->csum_start = 0x22;
+      if (oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM)
+	{
+	  tcp_header_t *tcp =
+	    (tcp_header_t *) (vlib_buffer_get_current (b0) +
+			      vnet_buffer (b0)->l4_hdr_offset);
+	  tcp->checksum = ip4_pseudo_header_cksum (ip4);
+	  vnet_hdr->csum_offset = STRUCT_OFFSET_OF (tcp_header_t, checksum);
+	}
+      else if (oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM)
+	{
+	  udp_header_t *udp =
+	    (udp_header_t *) (vlib_buffer_get_current (b0) +
+			      vnet_buffer (b0)->l4_hdr_offset);
+	  udp->checksum = ip4_pseudo_header_cksum (ip4);
+	  vnet_hdr->csum_offset = STRUCT_OFFSET_OF (udp_header_t, checksum);
+	}
+    }
+  else if (b0->flags & VNET_BUFFER_F_IS_IP6)
+    {
+      ip6_header_t *ip6;
+      vnet_hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
+      vnet_hdr->csum_start = 0x36;
+      ip6 = (ip6_header_t *) (vlib_buffer_get_current (b0) +
+			      vnet_buffer (b0)->l3_hdr_offset);
+      if (oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM)
+	{
+	  tcp_header_t *tcp =
+	    (tcp_header_t *) (vlib_buffer_get_current (b0) +
+			      vnet_buffer (b0)->l4_hdr_offset);
+	  tcp->checksum = ip6_pseudo_header_cksum (ip6);
+	  vnet_hdr->csum_offset = STRUCT_OFFSET_OF (tcp_header_t, checksum);
+	}
+      else if (oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM)
+	{
+	  udp_header_t *udp =
+	    (udp_header_t *) (vlib_buffer_get_current (b0) +
+			      vnet_buffer (b0)->l4_hdr_offset);
+	  udp->checksum = ip6_pseudo_header_cksum (ip6);
+	  vnet_hdr->csum_offset = STRUCT_OFFSET_OF (udp_header_t, checksum);
+	}
+    }
+}
+
 VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
 						  vlib_node_runtime_t * node,
 						  vlib_frame_t * frame)
@@ -147,17 +240,20 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
   u32 tx_frame = apif->next_tx_frame;
   tpacket3_hdr_t *tph;
   u32 frame_not_ready = 0;
+  u8 is_cksum_gso_enabled = (apif->is_cksum_gso_enabled == 1) ? 1 : 0;
 
   while (n_left)
     {
       u32 len;
+      vnet_virtio_net_hdr_t *vnet_hdr = 0;
       u32 offset = 0;
-      vlib_buffer_t *b0;
-      n_left--;
+      vlib_buffer_t *b0 = 0;
       u32 bi = buffers[0];
+
+      n_left--;
       buffers++;
 
-      tph = (struct tpacket3_hdr *) (block_start + tx_frame * frame_size);
+      tph = (tpacket3_hdr_t *) (block_start + tx_frame * frame_size);
       if (PREDICT_FALSE (tph->tp_status &
 			 (TP_STATUS_SEND_REQUEST | TP_STATUS_SENDING)))
 	{
@@ -165,17 +261,38 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
 	  goto next;
 	}
 
-      do
+      b0 = vlib_get_buffer (vm, bi);
+
+      if (is_cksum_gso_enabled)
 	{
-	  b0 = vlib_get_buffer (vm, bi);
+	  vnet_hdr =
+	    (vnet_virtio_net_hdr_t *) ((u8 *) tph + TPACKET_ALIGN (sizeof (
+						      tpacket3_hdr_t)));
+
+	  clib_memset_u8 (vnet_hdr, 0, sizeof (vnet_virtio_net_hdr_t));
+	  offset = sizeof (vnet_virtio_net_hdr_t);
+
+	  if (b0->flags & VNET_BUFFER_F_GSO)
+	    fill_gso_offload (b0, vnet_hdr);
+	  else if (b0->flags & VNET_BUFFER_F_OFFLOAD)
+	    fill_cksum_offload (b0, vnet_hdr);
+	}
+
+      len = b0->current_length;
+      clib_memcpy_fast ((u8 *) tph + TPACKET_ALIGN (sizeof (tpacket3_hdr_t)) +
+			  offset,
+			vlib_buffer_get_current (b0), len);
+      offset += len;
+
+      while (b0->flags & VLIB_BUFFER_NEXT_PRESENT)
+	{
+	  b0 = vlib_get_buffer (vm, b0->next_buffer);
 	  len = b0->current_length;
-	  clib_memcpy_fast (
-	    (u8 *) tph + TPACKET_ALIGN (sizeof (struct tpacket3_hdr)) + offset,
-	    vlib_buffer_get_current (b0), len);
+	  clib_memcpy_fast ((u8 *) tph +
+			      TPACKET_ALIGN (sizeof (tpacket3_hdr_t)) + offset,
+			    vlib_buffer_get_current (b0), len);
 	  offset += len;
 	}
-      while ((bi =
-	      (b0->flags & VLIB_BUFFER_NEXT_PRESENT) ? b0->next_buffer : 0));
 
       tph->tp_len = tph->tp_snaplen = offset;
       tph->tp_status = TP_STATUS_SEND_REQUEST;
