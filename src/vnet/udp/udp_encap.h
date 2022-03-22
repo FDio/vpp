@@ -70,7 +70,9 @@ typedef struct udp_encap_t_
   /**
    * The DPO used to forward to the next node in the VLIB graph
    */
-  dpo_id_t ue_dpo;
+  dpo_id_t ue_dpo[N_AF];
+
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
   /**
    * Flags controlling fixup behaviour
@@ -81,11 +83,6 @@ typedef struct udp_encap_t_
    * the protocol of the IP header imposed
    */
   fib_protocol_t ue_ip_proto;
-
-  /**
-   * The second cacheline contains control-plane data
-   */
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
   /**
    * linkage into the FIB graph
@@ -141,6 +138,15 @@ static inline udp_encap_t *
 udp_encap_get (index_t uei)
 {
   return (pool_elt_at_index (udp_encap_pool, uei));
+}
+
+static inline udp_encap_t *
+udp_encap_get_safe (index_t uei)
+{
+  if (!pool_is_free_index (udp_encap_pool, uei))
+    return (pool_elt_at_index (udp_encap_pool, uei));
+
+  return NULL;
 }
 
 /*
