@@ -49,6 +49,7 @@ typedef struct
   tpacket_req3_t *tx_req;
   u8 **rx_ring;
   u8 **tx_ring;
+  u8 is_cksum_gso_enabled;
   u32 hdrlen;
   u32 hw_if_index;
   u32 sw_if_index;

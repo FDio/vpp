@@ -3,6 +3,7 @@ name: host-interface Device AF_PACKET
 maintainer: Damjan Marion <damarion@cisco.com>
 features:
   - L4 checksum offload
+  - GSO offload
 description: "Create a host interface that will attach to a linux AF_PACKET
               interface, one side of a veth pair. The veth pair must
               already exist. Once created, a new host interface will
