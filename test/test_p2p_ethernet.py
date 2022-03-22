@@ -222,7 +222,7 @@ class P2PEthernetIPV6(VppTestCase):
                                dst_ip="9001::100"))
 
         self.send_packets(self.pg0, self.pg1, self.packets)
-        self.assert_packet_counter_equal('p2p-ethernet-input', 1)
+        self.assert_counter_equal('p2p-ethernet-input', 1)
 
         route_9001.remove_vpp_config()
         self.logger.info("FFP_TEST_FINISH_0002")
@@ -423,7 +423,7 @@ class P2PEthernetIPV4(VppTestCase):
 
         self.send_packets(self.pg0, self.pg1, self.packets)
 
-        self.assert_packet_counter_equal('p2p-ethernet-input', 1)
+        self.assert_counter_equal('p2p-ethernet-input', 1)
 
         route_9000.remove_vpp_config()
         self.logger.info("FFP_TEST_FINISH_0002")

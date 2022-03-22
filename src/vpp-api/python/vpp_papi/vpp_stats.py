@@ -50,19 +50,25 @@ import time
 import unittest
 import re
 
+
 def recv_fd(sock):
     '''Get file descriptor for memory map'''
     fds = array.array("i")   # Array of ints
     _, ancdata, _, _ = sock.recvmsg(0, socket.CMSG_LEN(4))
     for cmsg_level, cmsg_type, cmsg_data in ancdata:
         if cmsg_level == socket.SOL_SOCKET and cmsg_type == socket.SCM_RIGHTS:
-            fds.frombytes(cmsg_data[:len(cmsg_data) - (len(cmsg_data) % fds.itemsize)])
+            fds.frombytes(cmsg_data[:len(cmsg_data) -
+                          (len(cmsg_data) % fds.itemsize)])
     return list(fds)[0]
 
+
 VEC_LEN_FMT = Struct('I')
+
+
 def get_vec_len(stats, vector_offset):
     '''Equivalent to VPP vec_len()'''
     return VEC_LEN_FMT.unpack_from(stats.statseg, vector_offset - 8)[0]
+
 
 def get_string(stats, ptr):
     '''Get a string from a VPP vector'''
@@ -103,6 +109,7 @@ class StatsVector:
             return self.struct.unpack_from(self.statseg, self.vec_start +
                                            (index * self.elementsize))
 
+
 class VPPStats():
     '''Main class implementing Python access to the VPP statistics segment'''
     # pylint: disable=too-many-instance-attributes
@@ -131,7 +138,8 @@ class VPPStats():
         sock.close()
 
         stat_result = os.fstat(mfd)
-        self.statseg = mmap.mmap(mfd, stat_result.st_size, mmap.PROT_READ, mmap.MAP_SHARED)
+        self.statseg = mmap.mmap(
+            mfd, stat_result.st_size, mmap.PROT_READ, mmap.MAP_SHARED)
         os.close(mfd)
 
         self.size = stat_result.st_size
@@ -199,7 +207,8 @@ class VPPStats():
                     # Cache the error index vectors
                     self.error_vectors = []
                     for threads in StatsVector(self, self.error_vector, 'P'):
-                        self.error_vectors.append(StatsVector(self, threads[0], 'Q'))
+                        self.error_vectors.append(
+                            StatsVector(self, threads[0], 'Q'))
                     return
             except IOError:
                 if not blocking:
@@ -226,7 +235,8 @@ class VPPStats():
         if not self.connected:
             self.connect()
 
-        errors = {k:v for k, v in self.directory.items() if k.startswith("/err/")}
+        errors = {k: v for k, v in self.directory.items()
+                  if k.startswith("/err/")}
         result = {}
         while True:
             try:
@@ -292,8 +302,9 @@ class VPPStats():
             self.connect()
         result = {}
         for cnt in counters:
-            result[cnt] = self.__getitem__(cnt,blocking)
+            result[cnt] = self.__getitem__(cnt, blocking)
         return result
+
 
 class StatsLock():
     '''Stat segment optimistic locking'''
@@ -341,6 +352,7 @@ class StatsCombinedList(list):
             return list.__getitem__(self, item)
         return CombinedList([row[item[1]] for row in self])
 
+
 class CombinedList(list):
     '''Combined Counters 2-dimensional by thread by index of packets/octets'''
 
@@ -360,8 +372,10 @@ class CombinedList(list):
         '''Return column (2nd dimension). Sum of all octets for all threads'''
         return sum(self.octets())
 
+
 class StatsTuple(tuple):
     '''A Combined vector tuple (packets, octets)'''
+
     def __init__(self, data):
         self.dictionary = {'packets': data[0], 'bytes': data[1]}
         super().__init__()
@@ -376,6 +390,7 @@ class StatsTuple(tuple):
             return tuple.__getitem__(self, 0)
         return tuple.__getitem__(self, 1)
 
+
 class StatsSimpleList(list):
     '''Simple Counters 2-dimensional by thread by index of packets'''
 
@@ -385,12 +400,24 @@ class StatsSimpleList(list):
             return list.__getitem__(self, item)
         return SimpleList([row[item[1]] for row in self])
 
+    def sum(self, thread=None, index=None):
+        if thread is None and index is None:
+            return sum(sum(row) for row in self)
+        elif thread is None:
+            return sum(self[:, index])
+        elif index is None:
+            return sum(self[thread])
+        else:
+            return self[thread][index]
+
+
 class SimpleList(list):
     '''Simple counter'''
 
-    def sum(self):
+    def sum(self, thread=None, index=None):
         '''Sum the vector'''
         return sum(self)
+
 
 class StatsEntry():
     '''An individual stats entry'''
@@ -435,7 +462,8 @@ class StatsEntry():
         '''Combined counter'''
         counter = StatsCombinedList()
         for threads in StatsVector(stats, self.value, 'P'):
-            clist = [StatsTuple(cnt) for cnt in StatsVector(stats, threads[0], 'QQ')]
+            clist = [StatsTuple(cnt)
+                     for cnt in StatsVector(stats, threads[0], 'QQ')]
             counter.append(clist)
         return counter
 
@@ -456,17 +484,19 @@ class StatsEntry():
 
     SYMLINK_FMT1 = Struct('II')
     SYMLINK_FMT2 = Struct('Q')
+
     def symlink(self, stats):
         '''Symlink counter'''
         b = self.SYMLINK_FMT2.pack(self.value)
         index1, index2 = self.SYMLINK_FMT1.unpack(b)
         name = stats.directory_by_idx[index1]
-        return stats[name][:,index2]
+        return stats[name][:, index2]
 
     def get_counter(self, stats):
         '''Return a list of counters'''
         if stats:
             return self.function(stats)
+
 
 class TestStats(unittest.TestCase):
     '''Basic statseg tests'''
@@ -490,12 +520,14 @@ class TestStats(unittest.TestCase):
     def test_counters(self):
         '''Test access to statseg'''
 
-        print('/err/abf-input-ip4/missed', self.stat['/err/abf-input-ip4/missed'])
+        print('/err/abf-input-ip4/missed',
+              self.stat['/err/abf-input-ip4/missed'])
         print('/sys/heartbeat', self.stat['/sys/heartbeat'])
         print('/if/names', self.stat['/if/names'])
         print('/if/rx-miss', self.stat['/if/rx-miss'])
         print('/if/rx-miss', self.stat['/if/rx-miss'][1])
-        print('/nat44-ed/out2in/slowpath/drops', self.stat['/nat44-ed/out2in/slowpath/drops'])
+        print('/nat44-ed/out2in/slowpath/drops',
+              self.stat['/nat44-ed/out2in/slowpath/drops'])
         print('Set Errors', self.stat.set_errors())
         with self.assertRaises(KeyError):
             print('NO SUCH COUNTER', self.stat['foobar'])
@@ -508,34 +540,45 @@ class TestStats(unittest.TestCase):
 
         print('/if/rx-miss', self.stat['/if/rx-miss'])
         print('/if/rx', self.stat['/if/rx'])  # All interfaces for thread #1
-        print('/if/rx thread #1', self.stat['/if/rx'][0])  # All interfaces for thread #1
+        # All interfaces for thread #1
+        print('/if/rx thread #1', self.stat['/if/rx'][0])
         print('/if/rx thread #1, interface #1',
               self.stat['/if/rx'][0][1])  # All interfaces for thread #1
         print('/if/rx if_index #1', self.stat['/if/rx'][:, 1])
-        print('/if/rx if_index #1 packets', self.stat['/if/rx'][:, 1].packets())
-        print('/if/rx if_index #1 packets', self.stat['/if/rx'][:, 1].sum_packets())
+        print('/if/rx if_index #1 packets',
+              self.stat['/if/rx'][:, 1].packets())
+        print('/if/rx if_index #1 packets',
+              self.stat['/if/rx'][:, 1].sum_packets())
         print('/if/rx if_index #1 packets', self.stat['/if/rx'][:, 1].octets())
         print('/if/rx-miss', self.stat['/if/rx-miss'])
-        print('/if/rx-miss if_index #1 packets', self.stat['/if/rx-miss'][:, 1].sum())
-        print('/if/rx if_index #1 packets', self.stat['/if/rx'][0][1]['packets'])
+        print('/if/rx-miss if_index #1 packets',
+              self.stat['/if/rx-miss'][:, 1].sum())
+        print('/if/rx if_index #1 packets',
+              self.stat['/if/rx'][0][1]['packets'])
 
     def test_error(self):
         '''Test the error vector'''
 
         print('/err/ethernet-input', self.stat['/err/ethernet-input/no error'])
-        print('/err/nat44-ei-ha/pkts-processed', self.stat['/err/nat44-ei-ha/pkts-processed'])
-        print('/err/ethernet-input', self.stat.get_err_counter('/err/ethernet-input/no error'))
-        print('/err/ethernet-input', self.stat['/err/ethernet-input/no error'].sum())
+        print('/err/nat44-ei-ha/pkts-processed',
+              self.stat['/err/nat44-ei-ha/pkts-processed'])
+        print('/err/ethernet-input',
+              self.stat.get_err_counter('/err/ethernet-input/no error'))
+        print('/err/ethernet-input',
+              self.stat['/err/ethernet-input/no error'].sum())
 
     def test_nat44(self):
         '''Test the nat counters'''
 
-        print('/nat44-ei/ha/del-event-recv', self.stat['/nat44-ei/ha/del-event-recv'])
-        print('/err/nat44-ei-ha/pkts-processed', self.stat['/err/nat44-ei-ha/pkts-processed'].sum())
+        print('/nat44-ei/ha/del-event-recv',
+              self.stat['/nat44-ei/ha/del-event-recv'])
+        print('/err/nat44-ei-ha/pkts-processed',
+              self.stat['/err/nat44-ei-ha/pkts-processed'].sum())
 
     def test_legacy(self):
         '''Legacy interface'''
-        directory = self.stat.ls(["^/if", "/err/ip4-input", "/sys/node/ip4-input"])
+        directory = self.stat.ls(
+            ["^/if", "/err/ip4-input", "/sys/node/ip4-input"])
         data = self.stat.dump(directory)
         print(data)
         print('Looking up sys node')
@@ -557,7 +600,9 @@ class TestStats(unittest.TestCase):
     def test_symlink(self):
         '''Symbolic links'''
         print('/interface/local0/rx', self.stat['/interfaces/local0/rx'])
-        print('/sys/nodes/unix-epoll-input', self.stat['/nodes/unix-epoll-input/calls'])
+        print('/sys/nodes/unix-epoll-input',
+              self.stat['/nodes/unix-epoll-input/calls'])
+
 
 if __name__ == '__main__':
     import cProfile

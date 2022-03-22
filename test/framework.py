@@ -1197,37 +1197,27 @@ class VppTestCase(CPUInterface, unittest.TestCase):
         if pkt.haslayer(ICMPv6EchoReply):
             self.assert_checksum_valid(pkt, 'ICMPv6EchoReply', 'cksum')
 
-    def get_counter(self, counter):
+    def get_counter(self, counter, thread=None, index=None):
         if counter.startswith("/"):
-            counter_value = self.statistics.get_counter(counter)
+            c = self.statistics.get_counter(counter).sum(thread, index)
         else:
+            if thread or index:
+                raise NotImplementedError(
+                    "specifying thread or index not possible for "
+                    "screen-scraping counters")
             counters = self.vapi.cli("sh errors").split('\n')
-            counter_value = 0
+            c = 0
             for i in range(1, len(counters) - 1):
                 results = counters[i].split()
                 if results[1] == counter:
-                    counter_value = int(results[0])
+                    c = int(results[0])
                     break
-        return counter_value
+        return c
 
     def assert_counter_equal(self, counter, expected_value,
-                             thread=None, index=0):
-        c = self.get_counter(counter)
-        if thread is not None:
-            c = c[thread][index]
-        else:
-            c = sum(x[index] for x in c)
+                             thread=None, index=None):
+        c = self.get_counter(counter, thread, index)
         self.assert_equal(c, expected_value, "counter `%s'" % counter)
-
-    def assert_packet_counter_equal(self, counter, expected_value):
-        counter_value = self.get_counter(counter)
-        self.assert_equal(counter_value, expected_value,
-                          "packet counter `%s'" % counter)
-
-    def assert_error_counter_equal(self, counter, expected_value):
-        counter_value = self.statistics[counter].sum()
-        self.assert_equal(counter_value, expected_value,
-                          "error counter `%s'" % counter)
 
     @classmethod
     def sleep(cls, timeout, remark=None):

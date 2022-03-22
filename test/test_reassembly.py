@@ -238,7 +238,7 @@ class TestIPv4Reassembly(VppTestCase):
         self.pg_start()
 
         self.dst_if.get_capture(1)
-        self.assert_error_counter_equal(error_cnt_str, error_cnt + 1)
+        self.assert_counter_equal(error_cnt_str, error_cnt + 1)
 
     def test_5737(self):
         """ fragment length + ip header size > 65535 """
@@ -328,10 +328,10 @@ Ethernet-Payload.IPv4-Packet.IPv4-Header.Fragment-Offset; Test-case: 5737'''
 
         self.dst_if.get_capture(1)
 
-        self.assert_packet_counter_equal("ip4-full-reassembly-feature", 1)
+        self.assert_counter_equal("ip4-full-reassembly-feature", 1)
         # TODO remove above, uncomment below once clearing of counters
         # is supported
-        # self.assert_packet_counter_equal(
+        # self.assert_counter_equal(
         #     "/err/ip4-full-reassembly-feature/malformed packets", 1)
 
     def test_random(self):
@@ -1250,7 +1250,7 @@ class TestIPv6Reassembly(VppTestCase):
         self.pg_start()
 
         self.dst_if.get_capture(1)
-        self.assert_error_counter_equal(error_cnt_str, error_cnt + 1)
+        self.assert_counter_equal(error_cnt_str, error_cnt + 1)
 
     def test_overlap1(self):
         """ overlapping fragments case #1 """
