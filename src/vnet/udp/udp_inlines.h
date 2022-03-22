@@ -100,7 +100,17 @@ always_inline void
 ip_udp_encap_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 * ec0, word ec_len,
 		  u8 is_ip4)
 {
-  vnet_calc_checksums_inline (vm, b0, is_ip4, !is_ip4);
+  ip4_header_t *ip0;
+  u8 ipversion0;
+
+  // Inner IP header checksum. Is is perfectly possible to encapsulate v6
+  // packets into v4 and viceversa, so we need to check the IP format of the
+  // inner header before calling vnet_calc_checksums_inline
+  ip0 = (ip4_header_t *) vlib_buffer_get_current (b0);
+  ipversion0 = (ip0->ip_version_and_header_length & 0xF0) >> 4;
+  ASSERT (ipversion0 == 6 || ipversion0 == 4);
+
+  vnet_calc_checksums_inline (vm, b0, ipversion0 == 4, ipversion0 == 6);
 
   vlib_buffer_advance (b0, -ec_len);
 
@@ -133,10 +143,23 @@ ip_udp_encap_two (vlib_main_t * vm, vlib_buffer_t * b0, vlib_buffer_t * b1,
   u16 new_l0, new_l1;
   udp_header_t *udp0, *udp1;
 
+  ip4_header_t *ip0, *ip1;
+  u8 ipversion0, ipversion1;
+
   ASSERT (_vec_len (ec0) == _vec_len (ec1));
 
-  vnet_calc_checksums_inline (vm, b0, is_v4, !is_v4);
-  vnet_calc_checksums_inline (vm, b1, is_v4, !is_v4);
+  // Inner IP header checksum. Is is perfectly possible to encapsulate v6
+  // packets into v4 and viceversa, so we need to check the IP format of the
+  // inner header before calling vnet_calc_checksums_inline
+  ip0 = (ip4_header_t *) vlib_buffer_get_current (b0);
+  ip1 = (ip4_header_t *) vlib_buffer_get_current (b1);
+  ipversion0 = (ip0->ip_version_and_header_length & 0xF0) >> 4;
+  ipversion1 = (ip1->ip_version_and_header_length & 0xF0) >> 4;
+  ASSERT (ipversion0 == 6 || ipversion0 == 4);
+  ASSERT (ipversion1 == 6 || ipversion1 == 4);
+
+  vnet_calc_checksums_inline (vm, b0, ipversion0 == 4, ipversion0 == 6);
+  vnet_calc_checksums_inline (vm, b1, ipversion1 == 4, ipversion1 == 6);
 
   vlib_buffer_advance (b0, -ec_len);
   vlib_buffer_advance (b1, -ec_len);
