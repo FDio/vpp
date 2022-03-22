@@ -85,7 +85,7 @@ typedef struct udp_encap_t_
   /**
    * The second cacheline contains control-plane data
    */
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
   /**
    * linkage into the FIB graph
