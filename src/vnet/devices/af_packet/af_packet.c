@@ -44,7 +44,7 @@ VNET_HW_INTERFACE_CLASS (af_packet_ip_device_hw_interface_class, static) = {
 };
 
 #define AF_PACKET_DEFAULT_TX_FRAMES_PER_BLOCK 1024
-#define AF_PACKET_DEFAULT_TX_FRAME_SIZE	      (2048 * 5)
+#define AF_PACKET_DEFAULT_TX_FRAME_SIZE	      (2048 * 33) // GSO packet of 64KB
 #define AF_PACKET_TX_BLOCK_NR		1
 
 #define AF_PACKET_DEFAULT_RX_FRAMES_PER_BLOCK 256
@@ -130,7 +130,7 @@ is_bridge (const u8 * host_if_name)
 static int
 create_packet_v3_sock (int host_if_index, tpacket_req3_t *rx_req,
 		       tpacket_req3_t *tx_req, int *fd, u8 **ring,
-		       u32 *hdrlen_ptr)
+		       u32 *hdrlen_ptr, u8 *is_cksum_gso_enabled)
 {
   af_packet_main_t *apm = &af_packet_main;
   struct sockaddr_ll sll;
@@ -198,6 +198,17 @@ create_packet_v3_sock (int host_if_index, tpacket_req3_t *rx_req,
       goto error;
     }
 
+  int opt2 = 1;
+  if (setsockopt (*fd, SOL_PACKET, PACKET_VNET_HDR, &opt2, sizeof (opt2)) < 0)
+    {
+      vlib_log_debug (
+	apm->log_class,
+	"Failed to set packet vnet hdr error handling option: %s (errno %d)",
+	strerror (errno), errno);
+    }
+  else
+    *is_cksum_gso_enabled = 1;
+
 #if defined(PACKET_QDISC_BYPASS)
   /* Introduced with Linux 3.14 so the ifdef should eventually be removed  */
   if (setsockopt (*fd, SOL_PACKET, PACKET_QDISC_BYPASS, &opt, sizeof (opt)) <
@@ -263,6 +274,7 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
   vnet_sw_interface_t *sw;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_if_caps_t caps = VNET_HW_IF_CAP_INT_MODE;
   uword *p;
   uword if_index;
   u8 *host_if_name_dup = 0;
@@ -271,6 +283,7 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
   u32 rx_frame_size, tx_frame_size;
   u32 hdrlen = 0;
   u32 i = 0;
+  u8 is_cksum_gso_enabled = 0;
 
   p = mhash_get (&apm->if_index_by_host_if_name, arg->host_if_name);
   if (p)
@@ -365,8 +378,8 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
       fd2 = -1;
     }
 
-  ret =
-    create_packet_v3_sock (host_if_index, rx_req, tx_req, &fd, &ring, &hdrlen);
+  ret = create_packet_v3_sock (host_if_index, rx_req, tx_req, &fd, &ring,
+			       &hdrlen, &is_cksum_gso_enabled);
 
   if (ret != 0)
     goto error;
@@ -405,6 +418,7 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
   apif->next_rx_block = 0;
   apif->mode = arg->mode;
   apif->hdrlen = hdrlen;
+  apif->is_cksum_gso_enabled = is_cksum_gso_enabled;
 
   ret = af_packet_read_mtu (apif);
   if (ret != 0)
@@ -450,7 +464,11 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
   apif->queue_index = vnet_hw_if_register_rx_queue (vnm, apif->hw_if_index, 0,
 						    VNET_HW_IF_RXQ_THREAD_ANY);
 
-  vnet_hw_if_set_caps (vnm, apif->hw_if_index, VNET_HW_IF_CAP_INT_MODE);
+  if (apif->is_cksum_gso_enabled)
+    caps |= VNET_HW_IF_CAP_TCP_GSO | VNET_HW_IF_CAP_TX_IP4_CKSUM |
+	    VNET_HW_IF_CAP_TX_TCP_CKSUM | VNET_HW_IF_CAP_TX_UDP_CKSUM;
+
+  vnet_hw_if_set_caps (vnm, apif->hw_if_index, caps);
   vnet_hw_interface_set_flags (vnm, apif->hw_if_index,
 			       VNET_HW_INTERFACE_FLAG_LINK_UP);
 
@@ -554,20 +572,7 @@ af_packet_delete_if (u8 *host_if_name)
 int
 af_packet_set_l4_cksum_offload (u32 sw_if_index, u8 set)
 {
-  vnet_main_t *vnm = vnet_get_main ();
-  vnet_hw_interface_t *hw;
-  vnet_hw_if_caps_t caps =
-    VNET_HW_IF_CAP_TX_TCP_CKSUM | VNET_HW_IF_CAP_TX_UDP_CKSUM;
-  hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
-
-  if (hw->dev_class_index != af_packet_device_class.index)
-    return VNET_API_ERROR_INVALID_INTERFACE;
-
-  if (set)
-    vnet_hw_if_set_caps (vnm, hw->hw_if_index, caps);
-  else
-    vnet_hw_if_unset_caps (vnm, hw->hw_if_index, caps);
-
+  // deprecated ...
   return 0;
 }
 
