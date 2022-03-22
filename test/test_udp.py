@@ -145,25 +145,30 @@ class TestUdpEncap(VppTestCase):
             [VppRoutePath("0.0.0.0",
                           0xFFFFFFFF,
                           type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
-                          next_hop_id=udp_encap_0.id)], table_id=1)
+                          next_hop_id=udp_encap_0.id,
+                          proto=FibPathProto.FIB_PATH_NH_PROTO_IP4)],
+            table_id=1)
         route_4o6 = VppIpRoute(
             self, "1.1.2.1", 32,
             [VppRoutePath("0.0.0.0",
                           0xFFFFFFFF,
                           type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
-                          next_hop_id=udp_encap_2.id)])
+                          next_hop_id=udp_encap_2.id,
+                          proto=FibPathProto.FIB_PATH_NH_PROTO_IP4)])
         route_6o4 = VppIpRoute(
             self, "2001::1", 128,
             [VppRoutePath("0.0.0.0",
                           0xFFFFFFFF,
                           type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
-                          next_hop_id=udp_encap_1.id)])
+                          next_hop_id=udp_encap_1.id,
+                          proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)])
         route_6o6 = VppIpRoute(
             self, "2001::3", 128,
             [VppRoutePath("0.0.0.0",
                           0xFFFFFFFF,
                           type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
-                          next_hop_id=udp_encap_3.id)])
+                          next_hop_id=udp_encap_3.id,
+                          proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)])
         route_4o6.add_vpp_config()
         route_6o6.add_vpp_config()
         route_6o4.add_vpp_config()

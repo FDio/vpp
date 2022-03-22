@@ -88,13 +88,15 @@ format_vxlan_gpe_encap_trace (u8 * s, va_list * args)
  *
  */
 always_inline void
-vxlan_gpe_encap_one_inline (vxlan_gpe_main_t * ngm, vlib_buffer_t * b0,
-			    vxlan_gpe_tunnel_t * t0, u32 * next0, u8 is_v4)
+vxlan_gpe_encap_one_inline (vxlan_gpe_main_t *ngm, vlib_buffer_t *b0,
+			    vxlan_gpe_tunnel_t *t0, u32 *next0,
+			    ip_address_family_t af)
 {
   ASSERT (sizeof (ip4_vxlan_gpe_header_t) == 36);
   ASSERT (sizeof (ip6_vxlan_gpe_header_t) == 56);
 
-  ip_udp_encap_one (ngm->vlib_main, b0, t0->rewrite, t0->rewrite_size, is_v4);
+  ip_udp_encap_one (ngm->vlib_main, b0, t0->rewrite, t0->rewrite_size, af,
+		    N_AF);
   next0[0] = t0->encap_next_node;
 }
 
@@ -112,16 +114,18 @@ vxlan_gpe_encap_one_inline (vxlan_gpe_main_t * ngm, vlib_buffer_t * b0,
  *
  */
 always_inline void
-vxlan_gpe_encap_two_inline (vxlan_gpe_main_t * ngm, vlib_buffer_t * b0,
-			    vlib_buffer_t * b1, vxlan_gpe_tunnel_t * t0,
-			    vxlan_gpe_tunnel_t * t1, u32 * next0,
-			    u32 * next1, u8 is_v4)
+vxlan_gpe_encap_two_inline (vxlan_gpe_main_t *ngm, vlib_buffer_t *b0,
+			    vlib_buffer_t *b1, vxlan_gpe_tunnel_t *t0,
+			    vxlan_gpe_tunnel_t *t1, u32 *next0, u32 *next1,
+			    ip_address_family_t af)
 {
   ASSERT (sizeof (ip4_vxlan_gpe_header_t) == 36);
   ASSERT (sizeof (ip6_vxlan_gpe_header_t) == 56);
 
-  ip_udp_encap_one (ngm->vlib_main, b0, t0->rewrite, t0->rewrite_size, is_v4);
-  ip_udp_encap_one (ngm->vlib_main, b1, t1->rewrite, t1->rewrite_size, is_v4);
+  ip_udp_encap_one (ngm->vlib_main, b0, t0->rewrite, t0->rewrite_size, af,
+		    N_AF);
+  ip_udp_encap_one (ngm->vlib_main, b1, t1->rewrite, t1->rewrite_size, af,
+		    N_AF);
   next0[0] = next1[0] = t0->encap_next_node;
 }
 
@@ -171,6 +175,7 @@ vxlan_gpe_encap (vlib_main_t * vm,
       vnet_hw_interface_t *hi0, *hi1;
       vxlan_gpe_tunnel_t *t0 = NULL, *t1 = NULL;
       u8 is_ip4_0 = 0, is_ip4_1 = 0;
+      ip_address_family_t af_0 = AF_IP4, af_1 = AF_IP4;
 
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
@@ -210,7 +215,8 @@ vxlan_gpe_encap (vlib_main_t * vm,
 					   vnet_buffer (b[0])->sw_if_index
 					   [VLIB_TX]);
 	      t0 = pool_elt_at_index (ngm->tunnels, hi0->dev_instance);
-	      is_ip4_0 = (t0->flags & VXLAN_GPE_TUNNEL_IS_IPV4);
+	      is_ip4_0 = (t0->flags & VXLAN_GPE_TUNNEL_IS_IPV4) > 0;
+	      af_0 = is_ip4_0 * AF_IP4 + (!is_ip4_0) * AF_IP6;
 	    }
 
 	  /* get the flag "is_ip4" */
@@ -222,6 +228,7 @@ vxlan_gpe_encap (vlib_main_t * vm,
 		  hi1 = hi0;
 		  t1 = t0;
 		  is_ip4_1 = is_ip4_0;
+		  af_1 = af_0;
 		}
 	      else
 		{
@@ -231,19 +238,20 @@ vxlan_gpe_encap (vlib_main_t * vm,
 					       vnet_buffer (b[1])->sw_if_index
 					       [VLIB_TX]);
 		  t1 = pool_elt_at_index (ngm->tunnels, hi1->dev_instance);
-		  is_ip4_1 = (t1->flags & VXLAN_GPE_TUNNEL_IS_IPV4);
+		  is_ip4_1 = (t1->flags & VXLAN_GPE_TUNNEL_IS_IPV4) > 0;
+		  af_1 = is_ip4_1 * AF_IP4 + (!is_ip4_1) * AF_IP6;
 		}
 	    }
 
-	  if (PREDICT_TRUE (is_ip4_0 == is_ip4_1))
+	  if (PREDICT_TRUE (af_0 == af_1))
 	    {
 	      vxlan_gpe_encap_two_inline (ngm, b[0], b[1], t0, t1, &next0,
-					  &next1, is_ip4_0);
+					  &next1, af_0);
 	    }
 	  else
 	    {
-	      vxlan_gpe_encap_one_inline (ngm, b[0], t0, &next0, is_ip4_0);
-	      vxlan_gpe_encap_one_inline (ngm, b[1], t1, &next1, is_ip4_1);
+	      vxlan_gpe_encap_one_inline (ngm, b[0], t0, &next0, af_0);
+	      vxlan_gpe_encap_one_inline (ngm, b[1], t1, &next1, af_1);
 	    }
 
 	  /* Reset to look up tunnel partner in the configured FIB */
