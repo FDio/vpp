@@ -325,12 +325,12 @@ udp_encap_fib_last_lock_gone (fib_node_t * node)
 }
 
 const static char *const udp4_encap_ip4_nodes[] = {
-  "udp4-encap",
+  "udp44-encap",
   NULL,
 };
 
 const static char *const udp4_encap_ip6_nodes[] = {
-  "udp4-encap",
+  "udp46-encap",
   NULL,
 };
 
@@ -345,12 +345,12 @@ const static char *const udp4_encap_bier_nodes[] = {
 };
 
 const static char *const udp6_encap_ip4_nodes[] = {
-  "udp6-encap",
+  "udp64-encap",
   NULL,
 };
 
 const static char *const udp6_encap_ip6_nodes[] = {
-  "udp6-encap",
+  "udp66-encap",
   NULL,
 };
 
