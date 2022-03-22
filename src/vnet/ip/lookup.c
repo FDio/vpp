@@ -588,7 +588,13 @@ VLIB_CLI_COMMAND (vlib_cli_show_ip6_command, static) = {
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip_route_command, static) = {
   .path = "ip route",
-  .short_help = "ip route [add|del] [count <n>] <dst-ip-addr>/<width> [table <table-id>] via [next-hop-address] [next-hop-interface] [next-hop-table <value>] [weight <value>] [preference <value>] [udp-encap-id <value>] [ip4-lookup-in-table <value>] [ip6-lookup-in-table <value>] [mpls-lookup-in-table <value>] [resolve-via-host] [resolve-via-connected] [rx-ip4 <interface>] [out-labels <value value value>]",
+  .short_help = "ip route [add|del] [count <n>] <dst-ip-addr>/<width> [table "
+		"<table-id>] via [next-hop-address] [next-hop-interface] "
+		"[next-hop-table <value>] [weight <value>] [preference "
+		"<value>] [udp-encap <value>] [ip4-lookup-in-table <value>] "
+		"[ip6-lookup-in-table <value>] [mpls-lookup-in-table <value>] "
+		"[resolve-via-host] [resolve-via-connected] [rx-ip4 "
+		"<interface>] [out-labels <value value value>]",
   .function = vnet_ip_route_cmd,
   .is_mp_safe = 1,
 };

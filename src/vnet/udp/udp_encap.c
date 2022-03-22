@@ -46,9 +46,12 @@ vlib_combined_counter_main_t udp_encap_counters = {
 static void
 udp_encap_restack (udp_encap_t * ue)
 {
-  dpo_stack (udp_encap_dpo_types[ue->ue_ip_proto],
-	     fib_proto_to_dpo (ue->ue_ip_proto),
-	     &ue->ue_dpo,
+  dpo_stack (udp_encap_dpo_types[ue->ue_ip_proto], DPO_PROTO_IP4,
+	     &ue->ue_dpo[AF_IP4],
+	     fib_entry_contribute_ip_forwarding (ue->ue_fib_entry_index));
+
+  dpo_stack (udp_encap_dpo_types[ue->ue_ip_proto], DPO_PROTO_IP6,
+	     &ue->ue_dpo[AF_IP6],
 	     fib_entry_contribute_ip_forwarding (ue->ue_fib_entry_index));
 }
 
@@ -317,7 +320,8 @@ udp_encap_fib_last_lock_gone (fib_node_t * node)
     /**
      * reset the stacked DPO to unlock it
      */
-  dpo_reset (&ue->ue_dpo);
+  ip_address_family_t af;
+  FOR_EACH_IP_ADDRESS_FAMILY (af) { dpo_reset (&ue->ue_dpo[af]); }
 
   fib_entry_untrack (ue->ue_fib_entry_index, ue->ue_fib_sibling);
 
@@ -325,12 +329,12 @@ udp_encap_fib_last_lock_gone (fib_node_t * node)
 }
 
 const static char *const udp4_encap_ip4_nodes[] = {
-  "udp4-encap",
+  "udp44-encap",
   NULL,
 };
 
 const static char *const udp4_encap_ip6_nodes[] = {
-  "udp4-encap",
+  "udp46-encap",
   NULL,
 };
 
@@ -345,12 +349,12 @@ const static char *const udp4_encap_bier_nodes[] = {
 };
 
 const static char *const udp6_encap_ip4_nodes[] = {
-  "udp6-encap",
+  "udp64-encap",
   NULL,
 };
 
 const static char *const udp6_encap_ip6_nodes[] = {
-  "udp6-encap",
+  "udp66-encap",
   NULL,
 };
 
