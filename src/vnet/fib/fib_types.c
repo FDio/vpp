@@ -20,6 +20,7 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/mfib/mfib_types.h>
 #include <vnet/mpls/mpls.h>
+#include <vnet/udp/udp_encap.h>
 
 /*
  * arrays of protocol and link names
