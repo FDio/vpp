@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a1a4b233_17af910d",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-03-22T14:09:00Z",
+      "side": 1,
+      "message": "Can you elaborate why we need protocol as a param?",
+      "revId": "eaaf53263caec613cd9887e283d0796d9cc6da25",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
