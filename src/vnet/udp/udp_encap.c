@@ -47,8 +47,7 @@ static void
 udp_encap_restack (udp_encap_t * ue)
 {
   dpo_stack (udp_encap_dpo_types[ue->ue_ip_proto],
-	     fib_proto_to_dpo (ue->ue_ip_proto),
-	     &ue->ue_dpo,
+	     fib_proto_to_dpo (ue->ue_ip_proto), &ue->ue_dpo,
 	     fib_entry_contribute_ip_forwarding (ue->ue_fib_entry_index));
 }
 
@@ -325,12 +324,12 @@ udp_encap_fib_last_lock_gone (fib_node_t * node)
 }
 
 const static char *const udp4_encap_ip4_nodes[] = {
-  "udp4-encap",
+  "udp4o4-encap",
   NULL,
 };
 
 const static char *const udp4_encap_ip6_nodes[] = {
-  "udp4-encap",
+  "udp6o4-encap",
   NULL,
 };
 
@@ -345,12 +344,12 @@ const static char *const udp4_encap_bier_nodes[] = {
 };
 
 const static char *const udp6_encap_ip4_nodes[] = {
-  "udp6-encap",
+  "udp4o6-encap",
   NULL,
 };
 
 const static char *const udp6_encap_ip6_nodes[] = {
-  "udp6-encap",
+  "udp6o6-encap",
   NULL,
 };
 
