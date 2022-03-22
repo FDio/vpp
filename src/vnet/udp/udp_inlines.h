@@ -97,14 +97,20 @@ ip_udp_fixup_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 is_ip4)
 }
 
 always_inline void
-ip_udp_encap_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 * ec0, word ec_len,
-		  u8 is_ip4)
+ip_udp_encap_one (vlib_main_t *vm, vlib_buffer_t *b0, u8 *ec0, word ec_len,
+		  ip_address_family_t encap_family,
+		  ip_address_family_t payload_family)
 {
-  vnet_calc_checksums_inline (vm, b0, is_ip4, !is_ip4);
+
+  if (payload_family < N_AF)
+    {
+      vnet_calc_checksums_inline (vm, b0, payload_family == AF_IP4,
+				  payload_family == AF_IP6);
+    }
 
   vlib_buffer_advance (b0, -ec_len);
 
-  if (is_ip4)
+  if (encap_family == AF_IP4)
     {
       ip4_header_t *ip0;
 
@@ -127,21 +133,27 @@ ip_udp_encap_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 * ec0, word ec_len,
 }
 
 always_inline void
-ip_udp_encap_two (vlib_main_t * vm, vlib_buffer_t * b0, vlib_buffer_t * b1,
-		  u8 * ec0, u8 * ec1, word ec_len, u8 is_v4)
+ip_udp_encap_two (vlib_main_t *vm, vlib_buffer_t *b0, vlib_buffer_t *b1,
+		  u8 *ec0, u8 *ec1, word ec_len,
+		  ip_address_family_t encap_family,
+		  ip_address_family_t payload_family)
 {
   u16 new_l0, new_l1;
   udp_header_t *udp0, *udp1;
+  int payload_ip4 = (payload_family == AF_IP4);
 
   ASSERT (_vec_len (ec0) == _vec_len (ec1));
 
-  vnet_calc_checksums_inline (vm, b0, is_v4, !is_v4);
-  vnet_calc_checksums_inline (vm, b1, is_v4, !is_v4);
+  if (payload_family < N_AF)
+    {
+      vnet_calc_checksums_inline (vm, b0, payload_ip4, !payload_ip4);
+      vnet_calc_checksums_inline (vm, b1, payload_ip4, !payload_ip4);
+    }
 
   vlib_buffer_advance (b0, -ec_len);
   vlib_buffer_advance (b1, -ec_len);
 
-  if (is_v4)
+  if (encap_family == AF_IP4)
     {
       ip4_header_t *ip0, *ip1;
       ip_csum_t sum0, sum1;
