@@ -187,7 +187,7 @@ vaes_cbc_dec (u8x64 *k, u8x64u *src, u8x64u *dst, u8x16u *iv, int count,
       dst[0] = r[0] ^= aes_cbc_dec_permute (f, c[0]);
       dst[1] = r[1] ^= aes_cbc_dec_permute (c[0], c[1]);
       dst[2] = r[2] ^= aes_cbc_dec_permute (c[1], c[2]);
-      dst[4] = r[3] ^= aes_cbc_dec_permute (c[2], c[3]);
+      dst[3] = r[3] ^= aes_cbc_dec_permute (c[2], c[3]);
       f = c[3];
 
       n_blocks -= 16;
