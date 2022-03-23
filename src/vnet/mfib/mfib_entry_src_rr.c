@@ -20,8 +20,8 @@
 #include <vnet/fib/fib_path_list.h>
 
 static void
-mfib_entry_src_rr_deactiviate (mfib_entry_t *mfib_entry,
-                               mfib_entry_src_t *msrc)
+mfib_entry_src_rr_deactivate (mfib_entry_t *mfib_entry,
+                              mfib_entry_src_t *msrc)
 {
     mfib_entry_t *cover;
 
@@ -42,8 +42,8 @@ mfib_entry_src_rr_deactiviate (mfib_entry_t *mfib_entry,
 }
 
 static void
-mfib_entry_src_rr_activiate (mfib_entry_t *mfib_entry,
-                             mfib_entry_src_t *msrc)
+mfib_entry_src_rr_activate (mfib_entry_t *mfib_entry,
+                            mfib_entry_src_t *msrc)
 {
     mfib_entry_src_t *csrc;
     mfib_entry_t *cover;
@@ -72,8 +72,8 @@ static mfib_src_res_t
 mfib_entry_src_rr_cover_change (mfib_entry_t *mfib_entry,
                                 mfib_entry_src_t *msrc)
 {
-    mfib_entry_src_rr_deactiviate(mfib_entry, msrc);
-    mfib_entry_src_rr_activiate(mfib_entry, msrc);
+    mfib_entry_src_rr_deactivate(mfib_entry, msrc);
+    mfib_entry_src_rr_activate(mfib_entry, msrc);
 
     return (MFIB_SRC_REEVALUATE);
 }
@@ -87,6 +87,7 @@ mfib_entry_src_rr_cover_update (mfib_entry_t *mfib_entry,
      * so there's no need to check for a new one. but we do need to
      * copy down any new flags and input interfaces
      */
+    mfib_entry_src_t *csrc;
     mfib_entry_t *cover;
 
     cover = mfib_entry_get(msrc->mfes_cover);
@@ -95,6 +96,13 @@ mfib_entry_src_rr_cover_update (mfib_entry_t *mfib_entry,
     msrc->mfes_itfs = cover->mfe_itfs;
     msrc->mfes_rpf_id = cover->mfe_rpf_id;
 
+    /* The update to the cover could have removed the extensions.
+     * When a cover is removed from the table, the covereds see it first
+     * updated (to have no forwarding) and then changed
+     */
+    csrc = mfib_entry_get_best_src(cover);
+    msrc->mfes_exts = (csrc ? csrc->mfes_exts : NULL);
+
     return (MFIB_SRC_REEVALUATE);
 }
 
@@ -102,8 +110,8 @@ void
 mfib_entry_src_rr_module_init (void)
 {
     mfib_entry_src_vft mvft = {
-        .mev_activate = mfib_entry_src_rr_activiate,
-        .mev_deactivate = mfib_entry_src_rr_deactiviate,
+        .mev_activate = mfib_entry_src_rr_activate,
+        .mev_deactivate = mfib_entry_src_rr_deactivate,
         .mev_cover_change = mfib_entry_src_rr_cover_change,
         .mev_cover_update = mfib_entry_src_rr_cover_update,
     };

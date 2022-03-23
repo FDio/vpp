@@ -499,7 +499,7 @@ mfib_entry_alloc (u32 fib_index,
 }
 
 static inline mfib_path_ext_t *
-mfib_entry_path_ext_find (mfib_path_ext_t *exts,
+mfib_entry_path_ext_find (uword *exts,
                           fib_node_index_t path_index)
 {
     uword *p;
