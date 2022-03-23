@@ -835,7 +835,7 @@ vlib_process_signal_event_helper (vlib_node_main_t * nm,
 				  uword n_data_elts, uword n_data_elt_bytes)
 {
   uword p_flags, add_to_pending, delete_from_wheel;
-  void *data_to_be_written_by_caller;
+  u8 *data_to_be_written_by_caller;
 
   ASSERT (n->type == VLIB_NODE_TYPE_PROCESS);
 
@@ -845,7 +845,7 @@ vlib_process_signal_event_helper (vlib_node_main_t * nm,
 
   /* Resize data vector and return caller's data to be written. */
   {
-    void *data_vec = p->pending_event_data_by_type_index[t];
+    u8 *data_vec = p->pending_event_data_by_type_index[t];
     uword l;
 
     if (!data_vec && vec_len (nm->recycled_event_data_vectors))
