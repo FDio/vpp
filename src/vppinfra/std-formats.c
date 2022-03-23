@@ -396,8 +396,6 @@ format_c_identifier (u8 * s, va_list * va)
   uword i, l;
 
   l = ~0;
-  if (clib_mem_is_vec (id))
-    l = vec_len (id);
 
   if (id)
     for (i = 0; i < l && id[i] != 0; i++)
