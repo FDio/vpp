@@ -49,28 +49,33 @@
 #endif
 
 #define foreach_dpdk_pkt_rx_offload_flag                                      \
-  _ (RX_FDIR, "RX packet with FDIR infos")                                    \
-  _ (RX_FDIR_FLX, "RX packet with FDIR_FLX info")                             \
-  _ (RX_FDIR_ID, "RX packet with FDIR_ID info")                               \
-  _ (RX_IEEE1588_PTP, "RX IEEE1588 L2 Ethernet PT Packet")                    \
-  _ (RX_IEEE1588_TMST, "RX IEEE1588 L2/L4 timestamped packet")                \
-  _ (RX_IP_CKSUM_BAD, "IP cksum of RX pkt. is not OK")                        \
-  _ (RX_IP_CKSUM_GOOD, "IP cksum of RX pkt. is valid")                        \
-  _ (RX_IP_CKSUM_NONE, "no IP cksum of RX pkt.")                              \
-  _ (RX_L4_CKSUM_BAD, "L4 cksum of RX pkt. is not OK")                        \
-  _ (RX_L4_CKSUM_GOOD, "L4 cksum of RX pkt. is valid")                        \
-  _ (RX_L4_CKSUM_NONE, "no L4 cksum of RX pkt.")                              \
-  _ (RX_LRO, "LRO packet")                                                    \
-  _ (RX_OUTER_IP_CKSUM_BAD, "External IP header checksum error")              \
-  _ (RX_OUTER_L4_CKSUM_BAD, "External L4 header checksum error")              \
-  _ (RX_OUTER_L4_CKSUM_GOOD, "External L4 header checksum OK")                \
-  _ (RX_QINQ, "RX packet with QinQ tags")                                     \
-  _ (RX_QINQ_STRIPPED, "RX packet QinQ tags stripped")                        \
-  _ (RX_RSS_HASH, "RX packet with RSS hash result")                           \
-  _ (RX_SEC_OFFLOAD, "RX packet with security offload")                       \
-  _ (RX_SEC_OFFLOAD_FAILED, "RX packet with security offload failed")         \
-  _ (RX_VLAN, "RX packet is a 802.1q VLAN packet")                            \
-  _ (RX_VLAN_STRIPPED, "RX packet VLAN tag stripped")
+  _ (RX_FDIR, RX_FDIR, "RX packet with FDIR infos")                           \
+  _ (RX_FDIR_FLX, RX_FDIR_FLX, "RX packet with FDIR_FLX info")                \
+  _ (RX_FDIR_ID, RX_FDIR_ID, "RX packet with FDIR_ID info")                   \
+  _ (RX_IEEE1588_PTP, RX_IEEE1588_PTP, "RX IEEE1588 L2 Ethernet PT Packet")   \
+  _ (RX_IEEE1588_TMST, RX_IEEE1588_TMST,                                      \
+     "RX IEEE1588 L2/L4 timestamped packet")                                  \
+  _ (RX_IP_CKSUM_BAD, RX_IP_CKSUM_BAD, "IP cksum of RX pkt. is not OK")       \
+  _ (RX_IP_CKSUM_GOOD, RX_IP_CKSUM_GOOD, "IP cksum of RX pkt. is valid")      \
+  _ (RX_IP_CKSUM_NONE, RX_IP_CKSUM_NONE, "no IP cksum of RX pkt.")            \
+  _ (RX_L4_CKSUM_BAD, RX_L4_CKSUM_BAD, "L4 cksum of RX pkt. is not OK")       \
+  _ (RX_L4_CKSUM_GOOD, RX_L4_CKSUM_GOOD, "L4 cksum of RX pkt. is valid")      \
+  _ (RX_L4_CKSUM_NONE, RX_L4_CKSUM_NONE, "no L4 cksum of RX pkt.")            \
+  _ (RX_LRO, RX_LRO, "LRO packet")                                            \
+  _ (RX_OUTER_IP_CKSUM_BAD, RX_OUTER_IP_CKSUM_BAD,                            \
+     "External IP header checksum error")                                     \
+  _ (RX_OUTER_L4_CKSUM_BAD, RX_OUTER_L4_CKSUM_BAD,                            \
+     "External L4 header checksum error")                                     \
+  _ (RX_OUTER_L4_CKSUM_GOOD, RX_OUTER_L4_CKSUM_GOOD,                          \
+     "External L4 header checksum OK")                                        \
+  _ (RX_QINQ, RX_QINQ, "RX packet with QinQ tags")                            \
+  _ (RX_QINQ_STRIPPED, RX_QINQ_STRIPPED, "RX packet QinQ tags stripped")      \
+  _ (RX_RSS_HASH, RX_RSS_HASH, "RX packet with RSS hash result")              \
+  _ (RX_SEC_OFFLOAD, RX_SEC_OFFLOAD, "RX packet with security offload")       \
+  _ (RX_SEC_OFFLOAD_FAILED, RX_SEC_OFFLOAD_FAILED,                            \
+     "RX packet with security offload failed")                                \
+  _ (RX_VLAN, RX_VLAN, "RX packet is a 802.1q VLAN packet")                   \
+  _ (RX_VLAN_STRIPPED, RX_VLAN_STRIPPED, "RX packet VLAN tag stripped")
 
 #define foreach_dpdk_pkt_type                                           \
   _ (L2, ETHER, "Ethernet packet")                                      \
@@ -113,32 +118,33 @@
   _ (INNER_L4, NONFRAG, "Inner non-fragmented IP packet")
 
 #define foreach_dpdk_pkt_tx_offload_flag                                      \
-  _ (TX_IEEE1588_TMST, "TX IEEE1588 packet to timestamp")                     \
-  _ (TX_IPV4, "TX IPV4")                                                      \
-  _ (TX_IPV6, "TX IPV6")                                                      \
-  _ (TX_IP_CKSUM, "IP cksum of TX pkt. computed by NIC")                      \
-  _ (TX_MACSEC, "TX MACSEC")                                                  \
-  _ (TX_OUTER_IPV4, "TX outer IPV4")                                          \
-  _ (TX_OUTER_IPV6, "TX outer IPV6")                                          \
-  _ (TX_OUTER_IP_CKSUM, "Outer IP cksum of Tx pkt. computed by NIC")          \
-  _ (TX_OUTER_UDP_CKSUM, "TX outer UDP cksum")                                \
-  _ (TX_QINQ, "TX QINQ")                                                      \
-  _ (TX_SCTP_CKSUM, "SCTP cksum of TX pkt. computed by NIC")                  \
-  _ (TX_SEC_OFFLOAD, "TX SEC OFFLOAD")                                        \
-  _ (TX_TCP_CKSUM, "TCP cksum of TX pkt. computed by NIC")                    \
-  _ (TX_TCP_SEG, "TSO of TX pkt. done by NIC")                                \
-  _ (TX_TUNNEL_GENEVE, "TX tunnel GENEVE")                                    \
-  _ (TX_TUNNEL_GRE, "TX tunnel GRE")                                          \
-  _ (TX_TUNNEL_GTP, "TX tunnel GTP")                                          \
-  _ (TX_TUNNEL_IP, "TX tunnel IP")                                            \
-  _ (TX_TUNNEL_IPIP, "TX tunnel IPIP")                                        \
-  _ (TX_TUNNEL_MPLSINUDP, "TX tunnel MPLSinUDP")                              \
-  _ (TX_TUNNEL_UDP, "TX tunnel UDP")                                          \
-  _ (TX_TUNNEL_VXLAN, "TX packet is a VXLAN packet")                          \
-  _ (TX_TUNNEL_VXLAN_GPE, "TX tunnel VXLAN GPE")                              \
-  _ (TX_UDP_CKSUM, "TX UDP cksum")                                            \
-  _ (TX_UDP_SEG, "TX UDP SEG")                                                \
-  _ (TX_VLAN, "TX packet is a 802.1q VLAN packet")
+  _ (TX_IEEE1588_TMST, TX_IEEE1588_TMST, "TX IEEE1588 packet to timestamp")   \
+  _ (TX_IPV4, TX_IPV4, "TX IPV4")                                             \
+  _ (TX_IPV6, TX_IPV6, "TX IPV6")                                             \
+  _ (TX_IP_CKSUM, TX_IP_CKSUM, "IP cksum of TX pkt. computed by NIC")         \
+  _ (TX_MACSEC, TX_MACSEC, "TX MACSEC")                                       \
+  _ (TX_OUTER_IPV4, TX_OUTER_IPV4, "TX outer IPV4")                           \
+  _ (TX_OUTER_IPV6, TX_OUTER_IPV6, "TX outer IPV6")                           \
+  _ (TX_OUTER_IP_CKSUM, TX_OUTER_IP_CKSUM,                                    \
+     "Outer IP cksum of Tx pkt. computed by NIC")                             \
+  _ (TX_OUTER_UDP_CKSUM, TX_OUTER_UDP_CKSUM, "TX outer UDP cksum")            \
+  _ (TX_QINQ, TX_QINQ, "TX QINQ")                                             \
+  _ (TX_SCTP_CKSUM, TX_SCTP_CKSUM, "SCTP cksum of TX pkt. computed by NIC")   \
+  _ (TX_SEC_OFFLOAD, TX_SEC_OFFLOAD, "TX SEC OFFLOAD")                        \
+  _ (TX_TCP_CKSUM, TX_TCP_CKSUM, "TCP cksum of TX pkt. computed by NIC")      \
+  _ (TX_TCP_SEG, TX_TCP_SEG, "TSO of TX pkt. done by NIC")                    \
+  _ (TX_TUNNEL_GENEVE, TX_TUNNEL_GENEVE, "TX tunnel GENEVE")                  \
+  _ (TX_TUNNEL_GRE, TX_TUNNEL_GRE, "TX tunnel GRE")                           \
+  _ (TX_TUNNEL_GTP, TX_TUNNEL_GTP, "TX tunnel GTP")                           \
+  _ (TX_TUNNEL_IP, TX_TUNNEL_IP, "TX tunnel IP")                              \
+  _ (TX_TUNNEL_IPIP, TX_TUNNEL_IPIP, "TX tunnel IPIP")                        \
+  _ (TX_TUNNEL_MPLSINUDP, TX_TUNNEL_MPLSINUDP, "TX tunnel MPLSinUDP")         \
+  _ (TX_TUNNEL_UDP, TX_TUNNEL_UDP, "TX tunnel UDP")                           \
+  _ (TX_TUNNEL_VXLAN, TX_TUNNEL_VXLAN, "TX packet is a VXLAN packet")         \
+  _ (TX_TUNNEL_VXLAN_GPE, TX_TUNNEL_VXLAN_GPE, "TX tunnel VXLAN GPE")         \
+  _ (TX_UDP_CKSUM, TX_UDP_CKSUM, "TX UDP cksum")                              \
+  _ (TX_UDP_SEG, TX_UDP_SEG, "TX UDP SEG")                                    \
+  _ (TX_VLAN, TX_VLAN, "TX packet is a 802.1q VLAN packet")
 
 #define foreach_dpdk_pkt_offload_flag           \
   foreach_dpdk_pkt_rx_offload_flag              \
@@ -688,15 +694,27 @@ format_dpdk_pkt_offload_flags (u8 * s, va_list * va)
 
   s = format (s, "Packet Offload Flags");
 
-#define _(F, S)                                                               \
-  if (*ol_flags & RTE_MBUF_F_##F)                                             \
+#if RTE_VERSION < RTE_VERSION_NUM(21, 11, 0, 0)
+#define _(F, V, S)                                                            \
+  if (*ol_flags & PKT_##F)                                                    \
     {                                                                         \
-      s = format (s, "\n%U%s (0x%04x) %s", format_white_space, indent,        \
-		  "PKT_" #F, RTE_MBUF_F_##F, S);                              \
+      s = format (s, "\n%U%s (0x%04x) %s", format_white_space, indent, #V,    \
+		  PKT_##F, S);                                                \
     }
-
   foreach_dpdk_pkt_offload_flag
 #undef _
+
+#else
+#define _(F, V, S)                                                            \
+  if (*ol_flags & RTE_MBUF_F_##F)                                             \
+    {                                                                         \
+      s = format (s, "\n%U%s (0x%04x) %s", format_white_space, indent, #V,    \
+		  RTE_MBUF_F_##F, S);                                         \
+    }
+  foreach_dpdk_pkt_offload_flag
+#undef _
+#endif
+
 #define _(F, P, S)							\
   {									\
     rx_dynflag_offset = rte_mbuf_dynflag_lookup(RTE_MBUF_DYNFLAG_##F##_NAME, \
