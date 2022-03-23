@@ -569,7 +569,8 @@ int main(int argc, char **argv) {
 
     ip_checksum_init(vm);
 
-    u32 node_index = vlib_register_node(vm, &pnat_input_node);
+    u32 node_index =
+        vlib_register_node(vm, &pnat_input_node, "%s", pnat_input_node.name);
     node = vlib_node_get_runtime(vm, node_index);
     assert(node);
 

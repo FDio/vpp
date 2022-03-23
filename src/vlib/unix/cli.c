@@ -2924,11 +2924,9 @@ unix_cli_file_add (unix_cli_main_t * cm, char *name, int fd)
 	.process_log2_n_stack_bytes = 18,
       };
 
-      r.name = name;
-
       vlib_worker_thread_barrier_sync (vm);
 
-      vlib_register_node (vm, &r);
+      vlib_register_node (vm, &r, "%v", name);
       vec_free (name);
 
       n = vlib_get_node (vm, r.index);
