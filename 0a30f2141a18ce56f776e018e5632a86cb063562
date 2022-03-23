@@ -22,6 +22,30 @@
       "revId": "0a30f2141a18ce56f776e018e5632a86cb063562",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "52127c41_ea85bdc6",
+        "filename": "src/vnet/udp/udp_inlines.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 794
+      },
+      "writtenOn": "2022-03-23T13:01:30Z",
+      "side": 1,
+      "message": "Hello Neale:) I checked in udp_encap_node.c and I did not found info about the inner packet :( Where should I check for them? Maybe I can remove the ip version checks here and do them at the caller.",
+      "parentUuid": "e0ee0e23_169562a3",
+      "range": {
+        "startLine": 100,
+        "startChar": 0,
+        "endLine": 100,
+        "endChar": 16
+      },
+      "revId": "0a30f2141a18ce56f776e018e5632a86cb063562",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
