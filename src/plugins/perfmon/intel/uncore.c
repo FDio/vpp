@@ -78,7 +78,7 @@ format_instance_name (intel_uncore_unit_type_t u, char *unit_fmt, u8 socket_id,
 	{
 	  u8 *fmt = 0;
 
-	  fmt = format (0, "%s (%s)", unit_fmt, (n->unit_names[ubox]));
+	  fmt = format (0, "%s (%s)%c", unit_fmt, (n->unit_names[ubox]), 0);
 	  s = format (0, (char *) fmt, socket_id, ubox);
 	  vec_free (fmt);
 
