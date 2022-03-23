@@ -878,9 +878,11 @@ static clib_error_t * srp_init (vlib_main_t * vm)
 
   sm->default_data_ttl = 255;
   sm->vlib_main = vm;
-  vlib_register_node (vm, &srp_ips_process_node);
-  vlib_register_node (vm, &srp_input_node);
-  vlib_register_node (vm, &srp_control_input_node);
+  vlib_register_node (vm, &srp_ips_process_node, "%s",
+		      srp_ips_process_node.name);
+  vlib_register_node (vm, &srp_input_node, "%s", srp_input_node.name);
+  vlib_register_node (vm, &srp_control_input_node, "%s",
+		      srp_control_input_node.name);
   srp_setup_node (vm, srp_input_node.index);
 
   return 0;

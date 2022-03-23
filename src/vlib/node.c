@@ -328,11 +328,13 @@ vlib_node_get_preferred_node_fn_variant (vlib_main_t *vm,
   return fn;
 }
 
-static void
-register_node (vlib_main_t * vm, vlib_node_registration_t * r)
+u32
+vlib_register_node (vlib_main_t *vm, vlib_node_registration_t *r, char *fmt,
+		    ...)
 {
   vlib_node_main_t *nm = &vm->node_main;
   vlib_node_t *n;
+  va_list va;
   u32 size;
   int i;
 
@@ -363,11 +365,9 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
 
   vec_add1 (nm->nodes, n);
 
-  /* Name is always a vector so it can be formatted with %v. */
-  if (clib_mem_is_heap_object (vec_header (r->name)))
-    n->name = vec_dup ((u8 *) r->name);
-  else
-    n->name = format (0, "%s", r->name);
+  va_start (va, fmt);
+  n->name = va_format (0, fmt, &va);
+  va_end (va);
 
   if (!nm->node_by_name)
     nm->node_by_name = hash_create_vec ( /* size */ 32,
@@ -566,13 +566,6 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
     vec_free (n->runtime_data);
   }
 #undef _
-}
-
-/* Register new packet processing node. */
-u32
-vlib_register_node (vlib_main_t * vm, vlib_node_registration_t * r)
-{
-  register_node (vm, r);
   return r->index;
 }
 
@@ -636,19 +629,18 @@ vlib_register_all_static_nodes (vlib_main_t * vm)
   static vlib_node_registration_t null_node_reg = {
     .function = null_node_fn,
     .vector_size = sizeof (u32),
-    .name = "null-node",
     .n_errors = 1,
     .error_strings = null_node_error_strings,
   };
 
   /* make sure that node index 0 is not used by
      real node */
-  register_node (vm, &null_node_reg);
+  vlib_register_node (vm, &null_node_reg, "null-node");
 
   r = vgm->node_registrations;
   while (r)
     {
-      register_node (vm, r);
+      vlib_register_node (vm, r, "%s", r->name);
       r = r->next_registration;
     }
 }
@@ -850,14 +842,13 @@ vlib_process_create (vlib_main_t * vm, char *name,
 
   memset (&r, 0, sizeof (r));
 
-  r.name = (char *) format (0, "%s", name, 0);
   r.function = f;
   r.process_log2_n_stack_bytes = log2_n_stack_bytes;
   r.type = VLIB_NODE_TYPE_PROCESS;
 
   vlib_worker_thread_barrier_sync (vm);
 
-  vlib_register_node (vm, &r);
+  vlib_register_node (vm, &r, "%s", name);
   vec_free (r.name);
 
   vlib_worker_thread_node_runtime_update ();

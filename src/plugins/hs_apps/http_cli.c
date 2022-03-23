@@ -262,7 +262,6 @@ alloc_cli_process (hcs_cli_args_t *args)
   vlib_main_t *vm = hcm->vlib_main;
   hcs_cli_args_t **save_args;
   vlib_node_t *n;
-  char *name;
   uword l;
 
   l = vec_len (hcm->free_http_cli_process_node_indices);
@@ -281,10 +280,7 @@ alloc_cli_process (hcs_cli_args_t *args)
 	.runtime_data_bytes = sizeof (void *),
       };
 
-      name = (char *) format (0, "http-cli-%d", l);
-      r.name = name;
-      vlib_register_node (vm, &r);
-      vec_free (name);
+      vlib_register_node (vm, &r, "http-cli-%d", l);
 
       n = vlib_get_node (vm, r.index);
     }
