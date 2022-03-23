@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e0ee0e23_169562a3",
+        "filename": "src/vnet/udp/udp_inlines.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-03-23T12:40:14Z",
+      "side": 1,
+      "message": "the caller should know the payload type. i\u0027d suggest you have two arguments, one for the encap proto and one for the payload proto. it\u0027s ip_address_Family_t for the encap, and i assume also for the payload, unless vxlan-gpe can pass l2.",
+      "range": {
+        "startLine": 100,
+        "startChar": 0,
+        "endLine": 100,
+        "endChar": 16
+      },
+      "revId": "0a30f2141a18ce56f776e018e5632a86cb063562",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
