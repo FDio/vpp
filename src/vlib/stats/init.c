@@ -12,12 +12,14 @@ static void
 vector_rate_collector_fn (vlib_stats_collector_data_t *d)
 {
   vlib_main_t *this_vlib_main;
-  counter_t **counters = d->entry->data;
-  counter_t *cb = counters[0];
+  counter_t **counters;
+  counter_t *cb;
   f64 vector_rate = 0.0;
   u32 i, n_threads = vlib_get_n_threads ();
 
   vlib_stats_validate (d->entry_index, 0, n_threads - 1);
+  counters = d->entry->data;
+  cb = counters[0];
 
   for (i = 0; i < n_threads; i++)
     {
