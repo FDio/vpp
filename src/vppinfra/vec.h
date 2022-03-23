@@ -187,18 +187,6 @@ _vec_resize_will_expand (void *v, uword n_elts, uword elt_size)
 #define vec_resize_will_expand(V, N)                                          \
   _vec_resize_will_expand (V, N, sizeof ((V)[0]))
 
-/** \brief Predicate function, says whether the supplied vector is a clib heap
-    object
-
-    @param v pointer to a vector
-    @return 0 or 1
-*/
-always_inline uword
-clib_mem_is_vec (void *v)
-{
-  return clib_mem_is_heap_object (vec_header (v));
-}
-
 /* Local variable naming macro (prevents collisions with other macro naming). */
 #define _v(var) _vec_##var
 
