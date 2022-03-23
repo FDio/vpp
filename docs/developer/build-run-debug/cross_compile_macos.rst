@@ -15,7 +15,7 @@ This is a first attempt to support Cross compilation of VPP on MacOS for develop
   $ pip3 install ply pyyaml jsonschema
   $ brew install gnu-sed pkg-config ninja crosstool-ng
 
-* You'll also need to install ``clang-format 10.0.0`` to be able to ``make checkstyle``. This can be done with :ref:`this doc<install_clang_format_10_0_0>`
+* You'll also need to install ``clang-format 11.0.0`` to be able to ``make checkstyle``. This can be done with :ref:`this doc<install_clang_format_11_0_0>`
 * You should link the binaries to make them available in your path with their original names e.g. :
 
 .. code-block:: console
@@ -51,20 +51,21 @@ This should build vpp on MacOS
 
 Good luck :)
 
-.. _install_clang_format_10_0_0 :
+.. _install_clang_format_11_0_0 :
 
-Installing clang-format 10.0.0
+Installing clang-format 11.0.0
 ------------------------------
 
 In order to install clang-format on macos :
 
 .. code-block:: bash
 
-    $ wget https://github.com/llvm/llvm-project/releases/download/llvmorg-10.0.0/clang-10.0.0.src.tar.xz
-    $ tar -xvf clang+llvm-10.0.0-x86_64-apple-darwin.tar.xz
-    $ mv clang+llvm-10.0.0-x86_64-apple-darwin /usr/local/Cellar/
-    $ sudo ln -s ../Cellar/clang+llvm-10.0.0-x86_64-apple-darwin/bin/clang-format /usr/local/bin/clang-format
-    $ sudo ln -s ../Cellar/clang+llvm-10.0.0-x86_64-apple-darwin/bin/clang-format /usr/local/bin/clang-format-10
-    $ sudo ln -s ../Cellar/clang+llvm-10.0.0-x86_64-apple-darwin/share/clang/clang-format-diff.py /usr/local/bin/clang-format-diff-10
+    brew install clang-format@11
+    wget https://raw.githubusercontent.com/llvm/llvm-project/llvmorg-11.0.0/clang/tools/clang-format/clang-format-diff.py \
+        -O /usr/local/Cellar/clang-format@11/11.1.0/bin/clang-format-diff.py
+    chmod +x /usr/local/Cellar/clang-format@11/11.1.0/bin/clang-format-diff.py
+    ln -s /usr/local/Cellar/clang-format@11/11.1.0/bin/clang-format-diff.py /usr/local/bin/clang-format-diff-11
+    ln -s /usr/local/Cellar/clang-format@11/11.1.0/bin/clang-format-11 /usr/local/bin/clang-format
+
 
 Source `Clang website <https://releases.llvm.org/download.html#git>`_
