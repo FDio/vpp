@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "32e03865_5687e8f7",
+        "filename": "src/vppinfra/bihash_24_8.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-03-23T15:16:07Z",
+      "side": 1,
+      "message": "We have u64x8_mask_load_zero for this purpose.\n\nThanks for fixing this...",
+      "revId": "b0948b500c7221f012b6874365f0cf66f57a3430",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
