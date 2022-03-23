@@ -222,7 +222,7 @@ cnat_translation_stack (cnat_translation_t * ct)
       vec_add1 (ct->ct_active_paths, *trk);
 
   lbi = load_balance_create (vec_len (ct->ct_active_paths),
-			     fib_proto_to_dpo (fproto), IP_FLOW_HASH_DEFAULT);
+			     fib_proto_to_dpo (fproto), ct->ct_lb_hash_config);
 
   ep_idx = 0;
   vec_foreach (trk, ct->ct_active_paths)
@@ -263,7 +263,8 @@ cnat_translation_delete (u32 id)
 u32
 cnat_translation_update (cnat_endpoint_t *vip, ip_protocol_t proto,
 			 cnat_endpoint_tuple_t *paths, u8 flags,
-			 cnat_lb_type_t lb_type)
+			 cnat_lb_type_t lb_type,
+			 flow_hash_config_t lb_hash_config)
 {
   cnat_endpoint_tuple_t *path;
   const cnat_client_t *cc;
@@ -304,6 +305,7 @@ cnat_translation_update (cnat_endpoint_t *vip, ip_protocol_t proto,
       vlib_zero_combined_counter (&cnat_translation_counters, ct->index);
     }
   ct->flags = flags;
+  ct->ct_lb_hash_config = lb_hash_config;
 
   cnat_translation_unwatch_addr (ct->index, CNAT_RESOLV_ADDR_ANY);
   cnat_translation_watch_addr (ct->index, 0, vip,
@@ -383,6 +385,8 @@ format_cnat_translation (u8 * s, va_list * args)
   s = format (s, "%U %U ", format_cnat_endpoint, &ct->ct_vip,
 	      format_ip_protocol, ct->ct_proto);
   s = format (s, "lb:%U ", format_cnat_lb_type, ct->lb_type);
+  s = format (s, "hash:[%U] ", format_ip_flow_hash_config,
+	      ct->ct_lb_hash_config);
 
   vec_foreach (ck, ct->ct_paths)
     s = format (s, "\n%U", format_cnat_ep_trk, ck, 2);
@@ -535,14 +539,15 @@ cnat_translation_cli_add_del (vlib_main_t * vm,
 			      unformat_input_t * input,
 			      vlib_cli_command_t * cmd)
 {
-  u32 del_index = INDEX_INVALID;
-  ip_protocol_t proto = IP_PROTOCOL_TCP;
-  cnat_endpoint_t vip;
-  u8 flags = CNAT_FLAG_EXCLUSIVE;
-  cnat_endpoint_tuple_t tmp, *paths = NULL, *path;
+  flow_hash_config_t lb_flow_hash = 0;
   unformat_input_t _line_input, *line_input = &_line_input;
-  clib_error_t *e = 0;
+  cnat_endpoint_tuple_t tmp, *paths = NULL, *path;
+  ip_protocol_t proto = IP_PROTOCOL_TCP;
+  u8 flags = CNAT_FLAG_EXCLUSIVE;
+  u32 del_index = INDEX_INVALID;
   cnat_lb_type_t lb_type;
+  cnat_endpoint_t vip;
+  clib_error_t *e = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -561,6 +566,9 @@ cnat_translation_cli_add_del (vlib_main_t * vm,
 	flags = CNAT_FLAG_EXCLUSIVE;
       else if (unformat (line_input, "real %U", unformat_cnat_ep, &vip))
 	flags = 0;
+      else if (unformat (line_input, "hash %U", unformat_ip_flow_hash_config,
+			 &lb_flow_hash))
+	;
       else if (unformat (line_input, "to %U", unformat_cnat_ep_tuple, &tmp))
 	{
 	  vec_add2 (paths, path, 1);
@@ -576,8 +584,11 @@ cnat_translation_cli_add_del (vlib_main_t * vm,
 	}
     }
 
+  if (lb_flow_hash == 0)
+    lb_flow_hash = IP_FLOW_HASH_DEFAULT;
+
   if (INDEX_INVALID == del_index)
-    cnat_translation_update (&vip, proto, paths, flags, lb_type);
+    cnat_translation_update (&vip, proto, paths, flags, lb_type, lb_flow_hash);
   else
     cnat_translation_delete (del_index);
 

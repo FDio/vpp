@@ -89,8 +89,9 @@ vl_api_cnat_translation_update_t_handler (vl_api_cnat_translation_update_t
 					  * mp)
 {
   vl_api_cnat_translation_update_reply_t *rmp;
-  cnat_endpoint_t vip;
   cnat_endpoint_tuple_t *paths = NULL, *path;
+  flow_hash_config_t lb_flow_hash = 0;
+  cnat_endpoint_t vip;
   ip_protocol_t ip_proto;
   u32 id = ~0;
   u8 flags;
@@ -123,7 +124,9 @@ vl_api_cnat_translation_update_t_handler (vl_api_cnat_translation_update_t
     flags |= CNAT_FLAG_EXCLUSIVE;
 
   lb_type = (cnat_lb_type_t) mp->translation.lb_type;
-  id = cnat_translation_update (&vip, ip_proto, paths, flags, lb_type);
+  lb_flow_hash = (flow_hash_config_t) mp->translation.lb_flow_hash;
+  id = cnat_translation_update (&vip, ip_proto, paths, flags, lb_type,
+				lb_flow_hash);
 
   vec_free (paths);
 
