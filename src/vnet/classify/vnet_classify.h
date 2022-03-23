@@ -430,7 +430,7 @@ vnet_classify_entry_is_equal (vnet_classify_entry_t *v, const u8 *d, u8 *m,
 #if defined(CLIB_HAVE_VEC512) && defined(CLIB_HAVE_VEC512_MASK_LOAD_STORE)
   u64x8 r, *mask = (u64x8 *) m;
   u64x8u *data = (u64x8u *) d;
-  u64x4 *key = (u64x4 *) v->key;
+  u64x8 *key = (u64x8 *) v->key;
 
   r = (u64x8_mask_load_zero (data, load_mask) & mask[0]) ^
       u64x8_mask_load_zero (key, load_mask);
