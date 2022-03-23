@@ -420,17 +420,28 @@ transport_connection_attribute (transport_proto_t tp, u32 conn_index,
 #define PORT_MASK ((1 << 16)- 1)
 
 void
-transport_endpoint_del (u32 tepi)
+transport_endpoint_free (u32 tepi)
 {
-  clib_spinlock_lock_if_init (&local_endpoints_lock);
+  /* All workers can free connections. Synchronize access to pool */
+  clib_spinlock_lock (&local_endpoints_lock);
   pool_put_index (local_endpoints, tepi);
-  clib_spinlock_unlock_if_init (&local_endpoints_lock);
+  clib_spinlock_unlock (&local_endpoints_lock);
+}
+
+static void
+transport_endpoint_pool_realloc_rpc (void *rpc_args)
+{
+  pool_realloc_safe_aligned (local_endpoints, 0);
 }
 
 always_inline local_endpoint_t *
-transport_endpoint_new (void)
+transport_endpoint_alloc (void)
 {
   local_endpoint_t *lep;
+
+  ASSERT (vlib_get_thread_index () <= transport_cl_thread ());
+  pool_get_aligned_safe (local_endpoints, lep, transport_cl_thread (),
+			 transport_endpoint_pool_realloc_rpc, 0);
   pool_get_zero (local_endpoints, lep);
   return lep;
 }
@@ -451,7 +462,7 @@ transport_endpoint_cleanup (u8 proto, ip46_address_t * lcl_ip, u16 port)
 	{
 	  transport_endpoint_table_del (&local_endpoints_table, proto,
 					&lep->ep);
-	  transport_endpoint_del (lepi);
+	  transport_endpoint_free (lepi);
 	}
     }
 }
@@ -460,14 +471,16 @@ static void
 transport_endpoint_mark_used (u8 proto, ip46_address_t * ip, u16 port)
 {
   local_endpoint_t *lep;
-  clib_spinlock_lock_if_init (&local_endpoints_lock);
-  lep = transport_endpoint_new ();
+
+  ASSERT (vlib_get_thread_index () <= transport_cl_thread ());
+
+  /* Pool reallocs with worker barrier */
+  lep = transport_endpoint_alloc ();
   clib_memcpy_fast (&lep->ep.ip, ip, sizeof (*ip));
   lep->ep.port = port;
   lep->refcnt = 1;
   transport_endpoint_table_add (&local_endpoints_table, proto, &lep->ep,
 				lep - local_endpoints);
-  clib_spinlock_unlock_if_init (&local_endpoints_lock);
 }
 
 void
@@ -498,8 +511,8 @@ transport_alloc_local_port (u8 proto, ip46_address_t * ip)
 
   limit = max - min;
 
-  /* Only support active opens from thread 0 */
-  ASSERT (vlib_get_thread_index () == 0);
+  /* Only support active opens from one of ctrl threads */
+  ASSERT (vlib_get_thread_index () <= transport_cl_thread ());
 
   /* Search for first free slot */
   for (tries = 0; tries < limit; tries++)
@@ -854,10 +867,11 @@ transport_init (void)
   clib_bihash_init_24_8 (&local_endpoints_table, "local endpoints table",
 			 smm->local_endpoints_table_buckets,
 			 smm->local_endpoints_table_memory);
+  clib_spinlock_init (&local_endpoints_lock);
+
   num_threads = 1 /* main thread */  + vtm->n_threads;
   if (num_threads > 1)
     {
-      clib_spinlock_init (&local_endpoints_lock);
       /* Main not polled if there are workers */
       smm->transport_cl_thread = 1;
     }
