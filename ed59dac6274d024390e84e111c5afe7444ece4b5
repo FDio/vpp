@@ -16,6 +16,24 @@
       "revId": "ed59dac6274d024390e84e111c5afe7444ece4b5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5febbdca_a9f29898",
+        "filename": "src/plugins/crypto_native/aes_cbc.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 190,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-03-23T14:00:08Z",
+      "side": 1,
+      "message": "it did not on my new system which supports VAES, but our CI/CD has Skylake which does not... Hence it was not tested I guess",
+      "parentUuid": "ae2501a7_ba40b6b2",
+      "revId": "ed59dac6274d024390e84e111c5afe7444ece4b5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
