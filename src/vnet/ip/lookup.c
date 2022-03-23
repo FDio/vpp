@@ -128,6 +128,42 @@ format_ip_flow_hash_config (u8 * s, va_list * args)
   return s;
 }
 
+uword
+unformat_ip_flow_hash_config (unformat_input_t *input, va_list *args)
+{
+  flow_hash_config_t *flow_hash_config = va_arg (*args, flow_hash_config_t *);
+  uword start_index = unformat_check_input (input);
+  int matched_once = 0;
+
+  if (unformat (input, "default"))
+    {
+      *flow_hash_config = IP_FLOW_HASH_DEFAULT;
+      return 1;
+    }
+  while (!unformat_is_eof (input) &&
+	 !is_white_space (unformat_peek_input (input)))
+    {
+      if (unformat (input, "%_,"))
+	;
+#define _(a, b)                                                               \
+  else if (unformat (input, "%_" #a))                                         \
+  {                                                                           \
+    *flow_hash_config |= b;                                                   \
+    matched_once = 1;                                                         \
+  }
+      foreach_flow_hash_bit_v1
+#undef _
+	else
+      {
+	/* Roll back to our start */
+	input->index = start_index;
+	return 0;
+      }
+    }
+
+  return matched_once;
+}
+
 u8 *
 format_ip_adjacency_packet_data (u8 * s, va_list * args)
 {

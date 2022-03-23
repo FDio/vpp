@@ -162,7 +162,7 @@ typedef struct ip_lookup_main_t
 } ip_lookup_main_t;
 
 u8 *format_ip_flow_hash_config (u8 * s, va_list * args);
-
+uword unformat_ip_flow_hash_config (unformat_input_t *input, va_list *args);
 
 always_inline void
 ip_lookup_set_buffer_fib_index (u32 * fib_index_by_sw_if_index,

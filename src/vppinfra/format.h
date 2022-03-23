@@ -200,6 +200,22 @@ unformat_put_input (unformat_input_t * input)
   input->index -= 1;
 }
 
+always_inline uword
+is_white_space (uword c)
+{
+  switch (c)
+    {
+    case ' ':
+    case '\t':
+    case '\n':
+    case '\r':
+      return 1;
+
+    default:
+      return 0;
+    }
+}
+
 /* Peek current input character without advancing. */
 always_inline uword
 unformat_peek_input (unformat_input_t * input)

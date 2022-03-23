@@ -70,22 +70,6 @@ _unformat_fill_input (unformat_input_t * i)
   return i->index;
 }
 
-always_inline uword
-is_white_space (uword c)
-{
-  switch (c)
-    {
-    case ' ':
-    case '\t':
-    case '\n':
-    case '\r':
-      return 1;
-
-    default:
-      return 0;
-    }
-}
-
 /* Format function for dumping input stream. */
 __clib_export u8 *
 format_unformat_error (u8 * s, va_list * va)
