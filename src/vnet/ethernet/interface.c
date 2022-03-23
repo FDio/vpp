@@ -384,7 +384,7 @@ vnet_eth_register_interface (vnet_main_t *vnm,
   hi->min_frame_size = ETHERNET_MIN_PACKET_BYTES;
   hi->frame_overhead =
     r->frame_overhead ?
-      r->max_frame_size :
+      r->frame_overhead :
       sizeof (ethernet_header_t) + 2 * sizeof (ethernet_vlan_header_t);
   hi->max_frame_size = r->max_frame_size ?
 			 r->max_frame_size :

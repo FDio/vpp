@@ -436,6 +436,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       eir.address = addr;
       eir.cb.flag_change = dpdk_flag_change;
       eir.cb.set_max_frame_size = dpdk_set_max_frame_size;
+      eir.frame_overhead = xd->driver_frame_overhead;
       xd->hw_if_index = vnet_eth_register_interface (vnm, &eir);
       hi = vnet_get_hw_interface (vnm, xd->hw_if_index);
       hi->numa_node = xd->cpu_socket = (i8) rte_eth_dev_socket_id (port_id);
