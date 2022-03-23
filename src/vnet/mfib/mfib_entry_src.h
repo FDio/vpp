@@ -109,7 +109,7 @@ typedef struct mfib_entry_src_t_
     /**
      * Hash table of path extensions
      */
-    mfib_path_ext_t *mfes_exts;
+    uword *mfes_exts;
 
     /**
      * Covering entry (if needed)
