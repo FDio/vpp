@@ -52,6 +52,24 @@
       "revId": "eaaf53263caec613cd9887e283d0796d9cc6da25",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6c241724_3aa62804",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-03-24T10:00:07Z",
+      "side": 1,
+      "message": "That was the idea, but there\u0027s no point having it in the flow cache now if it\u0027s not supported in the linear search at the moment. If I open another PR later to add the 5-tuple support then we can add this back into the flow cache as well (along with source/dest ports).",
+      "parentUuid": "1d051925_22b998f9",
+      "revId": "eaaf53263caec613cd9887e283d0796d9cc6da25",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
