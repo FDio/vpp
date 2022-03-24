@@ -51,6 +51,7 @@ typedef struct
 {
   u32 next_index;
   u32 hw_if_index;
+  u16 queue_id;
   int block;
   u32 pkt_num;
   void *block_start;
@@ -67,8 +68,8 @@ format_af_packet_input_trace (u8 * s, va_list * args)
   af_packet_input_trace_t *t = va_arg (*args, af_packet_input_trace_t *);
   u32 indent = format_get_indent (s);
 
-  s = format (s, "af_packet: hw_if_index %d next-index %d",
-	      t->hw_if_index, t->next_index);
+  s = format (s, "af_packet: hw_if_index %d rx-queue %u next-index %d",
+	      t->hw_if_index, t->queue_id, t->next_index);
 
   s = format (
     s, "\n%Ublock %u:\n%Uaddress %p version %u seq_num %lu pkt_num %u",
@@ -222,22 +223,23 @@ fill_cksum_offload (vlib_buffer_t *b, u8 *l4_hdr_sz, u8 is_ip)
 always_inline uword
 af_packet_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 			   vlib_frame_t *frame, af_packet_if_t *apif,
-			   u8 is_cksum_gso_enabled)
+			   u16 queue_id, u8 is_cksum_gso_enabled)
 {
   af_packet_main_t *apm = &af_packet_main;
+  af_packet_queue_t *rx_queue = vec_elt_at_index (apif->rx_queues, queue_id);
   tpacket3_hdr_t *tph;
   u32 next_index;
   u32 n_free_bufs;
   u32 n_rx_packets = 0;
   u32 n_rx_bytes = 0;
   u32 *to_next = 0;
-  u32 block = apif->next_rx_block;
-  u32 block_nr = apif->rx_req->tp_block_nr;
+  u32 block = rx_queue->next_rx_block;
+  u32 block_nr = rx_queue->rx_req->tp_block_nr;
   u8 *block_start = 0;
   uword n_trace = vlib_get_trace_count (vm, node);
   u32 thread_index = vm->thread_index;
   u32 n_buffer_bytes = vlib_buffer_get_default_data_size (vm);
-  u32 min_bufs = apif->rx_req->tp_frame_size / n_buffer_bytes;
+  u32 min_bufs = rx_queue->rx_req->tp_frame_size / n_buffer_bytes;
   u32 num_pkts = 0;
   u32 rx_frame_offset = 0;
   block_desc_t *bd = 0;
@@ -256,7 +258,7 @@ af_packet_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
       vnet_feature_start_device_input_x1 (apif->sw_if_index, &next_index, &bt);
     }
 
-  while ((((block_desc_t *) (block_start = apif->rx_ring[block]))
+  while ((((block_desc_t *) (block_start = rx_queue->rx_ring[block]))
 	    ->hdr.bh1.block_status &
 	  TP_STATUS_USER) != 0)
     {
@@ -444,6 +446,7 @@ af_packet_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 		  tr = vlib_add_trace (vm, node, first_b0, sizeof (*tr));
 		  tr->next_index = next0;
 		  tr->hw_if_index = apif->hw_if_index;
+		  tr->queue_id = queue_id;
 		  tr->block = block;
 		  tr->block_start = bd;
 		  tr->pkt_num = bd->hdr.bh1.num_pkts - num_pkts;
@@ -477,7 +480,7 @@ af_packet_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
     }
 
-  apif->next_rx_block = block;
+  rx_queue->next_rx_block = block;
   vlib_increment_combined_counter
     (vnet_get_main ()->interface_main.combined_sw_if_counters
      + VNET_INTERFACE_COUNTER_RX,
@@ -502,11 +505,11 @@ VLIB_NODE_FN (af_packet_input_node) (vlib_main_t * vm,
       if (apif->is_admin_up)
 	{
 	  if (apif->is_cksum_gso_enabled)
-	    n_rx_packets +=
-	      af_packet_device_input_fn (vm, node, frame, apif, 1);
+	    n_rx_packets += af_packet_device_input_fn (vm, node, frame, apif,
+						       pv[i].queue_id, 1);
 	  else
-	    n_rx_packets +=
-	      af_packet_device_input_fn (vm, node, frame, apif, 0);
+	    n_rx_packets += af_packet_device_input_fn (vm, node, frame, apif,
+						       pv[i].queue_id, 0);
 	}
     }
   return n_rx_packets;
