@@ -16,6 +16,24 @@
       "revId": "eaaf53263caec613cd9887e283d0796d9cc6da25",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e78dfdf6_4900649c",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-03-24T07:59:33Z",
+      "side": 1,
+      "message": "Hi Fan,\n\nSorry for the delay. Good catch. This was an intended upgrade of the input side capability but it\u0027s incomplete as it stands and would require another PR. I have removed the protocol field from the flow cache for now.\n\nWe currently only check the source/dest IPs in the linear policy search for inbound. So we cannot match any rules or traffic based on protocol (or source/dest ports).\n\nIn contrast, ipsec_output.c matches policies based on the usual 5-tuple (source/dest IP, source/dest ports, protocol).\n\nI have future plans to make input side also support the 5-tuple, and also fix some of the other issues with policy matching we\u0027ve come across (i.e. make it more like outbound) but I\u0027m not able to say when this will be at the moment.\n\nBest,\n\nZach",
+      "parentUuid": "a1a4b233_17af910d",
+      "revId": "eaaf53263caec613cd9887e283d0796d9cc6da25",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
