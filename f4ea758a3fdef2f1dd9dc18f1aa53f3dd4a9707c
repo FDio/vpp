@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3793dcf9_f47f8560",
+        "filename": "src/vnet/dpo/ip6_ll_dpo.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-03-24T17:46:47Z",
+      "side": 1,
+      "message": "then (~0 !\u003d fib_index0) here",
+      "revId": "f4ea758a3fdef2f1dd9dc18f1aa53f3dd4a9707c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3d90ec30_8bea87ca",
+        "filename": "src/vnet/ip/ip6_ll_table.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 360,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-03-24T17:46:47Z",
+      "side": 1,
+      "message": "i appreciate 0 is an invalid value for a IPv6 LL Table, but ~0 is more VPP idomatic. so a vec_validate_init_empty(.., .., ~0)",
+      "revId": "f4ea758a3fdef2f1dd9dc18f1aa53f3dd4a9707c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
