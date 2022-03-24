@@ -34,6 +34,24 @@
       "revId": "e3e209f16b90030ba63ab94baec9df3264fda9f3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c99aca66_05fa3fd3",
+        "filename": "test/test_ip6.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 985,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2022-03-24T14:26:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "dcd1b932_3ee714bc",
+      "revId": "e3e209f16b90030ba63ab94baec9df3264fda9f3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
