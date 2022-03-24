@@ -233,12 +233,12 @@ af_packet_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
   u32 *to_next = 0;
   u32 block = apif->next_rx_block;
   u32 block_nr = apif->rx_req->tp_block_nr;
-  u8 *block_start = 0;
+  u8 *block_start = 0, have_alloced = 0;
   uword n_trace = vlib_get_trace_count (vm, node);
   u32 thread_index = vm->thread_index;
   u32 n_buffer_bytes = vlib_buffer_get_default_data_size (vm);
   u32 min_bufs = apif->rx_req->tp_frame_size / n_buffer_bytes;
-  u32 num_pkts = 0;
+  u32 num_pkts = 0, n_required;
   u32 rx_frame_offset = 0;
   block_desc_t *bd = 0;
   vlib_buffer_t bt;
@@ -260,8 +260,6 @@ af_packet_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    ->hdr.bh1.block_status &
 	  TP_STATUS_USER) != 0)
     {
-      u32 n_required = 0;
-
       if (PREDICT_FALSE (num_pkts == 0))
 	{
 	  bd = (block_desc_t *) block_start;
@@ -269,10 +267,13 @@ af_packet_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  rx_frame_offset = sizeof (block_desc_t);
 	}
 
-      n_required = clib_max (num_pkts, VLIB_FRAME_SIZE);
       n_free_bufs = vec_len (apm->rx_buffers[thread_index]);
-      if (PREDICT_FALSE (n_free_bufs < n_required))
+      if (PREDICT_FALSE (n_free_bufs < clib_max (num_pkts, min_bufs)))
 	{
+	  /* Allocate buffers only once per dispatch */
+	  if (have_alloced++)
+	    break;
+	  n_required = clib_max (num_pkts, VLIB_FRAME_SIZE);
 	  vec_validate (apm->rx_buffers[thread_index],
 			n_required + n_free_bufs - 1);
 	  n_free_bufs += vlib_buffer_alloc (
