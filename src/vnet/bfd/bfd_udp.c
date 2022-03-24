@@ -1342,12 +1342,12 @@ bfd_udp_input (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	      if (is_ipv6)
 		{
 		  vlib_node_increment_counter (vm, bfd_udp6_input_node.index,
-					       b0->error, 1);
+					       error0, 1);
 		}
 	      else
 		{
 		  vlib_node_increment_counter (vm, bfd_udp4_input_node.index,
-					       b0->error, 1);
+					       error0, 1);
 		}
 	      const bfd_udp_session_t *bus = &bs->udp;
 	      ip_adjacency_t *adj = adj_get (bus->adj_index);
@@ -1488,12 +1488,12 @@ bfd_udp_echo_input (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	  if (is_ipv6)
 	    {
 	      vlib_node_increment_counter (vm, bfd_udp_echo6_input_node.index,
-					   b0->error, 1);
+					   BFD_UDP_ERROR_NONE, 1);
 	    }
 	  else
 	    {
 	      vlib_node_increment_counter (vm, bfd_udp_echo4_input_node.index,
-					   b0->error, 1);
+					   BFD_UDP_ERROR_NONE, 1);
 	    }
 	  next0 = BFD_UDP_ECHO_INPUT_NEXT_REPLY_REWRITE;
 	}
