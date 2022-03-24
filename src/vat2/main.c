@@ -29,6 +29,7 @@
 
 #include <limits.h>
 #include "vat2.h"
+// DAW-CHECKSTYLE-TEST vat2/main.c  DO NOT COMMIT
 
 /*
  * Filter these messages as they are used to manage the API connection to VPP

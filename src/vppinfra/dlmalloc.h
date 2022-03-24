@@ -523,6 +523,7 @@ MAX_RELEASE_CHECK_RATE   default: 4095 unless not HAVE_MMAP
 
 #include <vppinfra/clib.h>
 #include <vppinfra/cache.h>
+// DAW-CHECKSTYLE-TEST: dlmalloc.h  DO NOT COMMIT
 
 /* --- begin vpp customizations --- */
 

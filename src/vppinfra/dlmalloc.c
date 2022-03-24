@@ -5,6 +5,7 @@
   comments, complaints, performance data, etc to dl@cs.oswego.edu
 */
 
+// DAW-CHECKSTYLE-TEST: dlmalloc.c  DO NOT COMMIT
 #include <vppinfra/dlmalloc.h>
 #include <vppinfra/sanitizer.h>
 
