@@ -197,8 +197,9 @@ format_dpdk_link_status (u8 * s, va_list * args)
     {
       u32 promisc = rte_eth_promiscuous_get (xd->port_id);
 
-      s = format (s, "%s duplex ", (l->link_duplex == ETH_LINK_FULL_DUPLEX) ?
-		  "full" : "half");
+      s = format (s, "%s duplex ",
+		  (l->link_duplex == RTE_ETH_LINK_FULL_DUPLEX) ? "full" :
+								 "half");
       s = format (s, "max-frame-size %d %s\n", hi->max_frame_size,
 		  promisc ? " promisc" : "");
     }
@@ -482,9 +483,9 @@ format_dpdk_device (u8 * s, va_list * args)
   vlan_off = rte_eth_dev_get_vlan_offload (xd->port_id);
   s = format (s, "%Uvlan offload: strip %s filter %s qinq %s\n",
 	      format_white_space, indent + 2,
-	      vlan_off & ETH_VLAN_STRIP_OFFLOAD ? "on" : "off",
-	      vlan_off & ETH_VLAN_FILTER_OFFLOAD ? "on" : "off",
-	      vlan_off & ETH_VLAN_EXTEND_OFFLOAD ? "on" : "off");
+	      vlan_off & RTE_ETH_VLAN_STRIP_OFFLOAD ? "on" : "off",
+	      vlan_off & RTE_ETH_VLAN_FILTER_OFFLOAD ? "on" : "off",
+	      vlan_off & RTE_ETH_VLAN_EXTEND_OFFLOAD ? "on" : "off");
   s = format (s, "%Urx offload avail:  %U\n", format_white_space, indent + 2,
 	      format_dpdk_rx_offload_caps, di.rx_offload_capa);
   s = format (s, "%Urx offload active: %U\n", format_white_space, indent + 2,
