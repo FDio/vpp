@@ -22,6 +22,10 @@ CLANG_FORMAT_DIFF="/usr/share/clang/clang-format-diff.py"
 #       CLANG_FORMAT_VER default value is upgraded
 CLANG_FORMAT_VER=${CLANG_FORMAT_VER:-11}
 GIT_DIFF_ARGS="-U0 --no-color --relative HEAD~1"
+GIT_DIFF_EXCLUDE_LIST=(
+    ':!*.patch'
+    ':(exclude)*src/vppinfra/dlmalloc.*'
+)
 CLANG_FORMAT_DIFF_ARGS="-style file -p1"
 SUFFIX="-${CLANG_FORMAT_VER}"
 
@@ -76,7 +80,7 @@ then
 fi
 
 in=$(mktemp)
-git diff ${GIT_DIFF_ARGS} ':!*.patch' > ${in}
+git diff ${GIT_DIFF_ARGS} ${GIT_DIFF_EXCLUDE_LIST[@]} > ${in}
 
 line_count=$(sed -n '/^+.*\*INDENT-O[NF][F]\{0,1\}\*/p' ${in} | wc -l)
 if [ ${line_count} -gt 0 ] ; then
