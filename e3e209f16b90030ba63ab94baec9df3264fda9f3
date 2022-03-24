@@ -16,6 +16,24 @@
       "revId": "e3e209f16b90030ba63ab94baec9df3264fda9f3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "dcd1b932_3ee714bc",
+        "filename": "test/test_ip6.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 985,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2022-03-24T11:03:47Z",
+      "side": 1,
+      "message": "\u003e Why call ip6_ra_config() twice here?\n\nThe reason is that the first call is to turn on options (no\u003d0), while the second call is to turn off options (no\u003d1).\n\n\u003e Since the default value of suppress is 0, will the second call nullify the effect of the first?\n\nNo, only options that have value of 1 are involved in the change. \"suppress\u003d0\" will not take any effect.",
+      "parentUuid": "583b630d_ee309421",
+      "revId": "e3e209f16b90030ba63ab94baec9df3264fda9f3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
