@@ -84,7 +84,7 @@ F:	src/vlibmemory/
 
 VNET Bidirectional Forwarding Detection (BFD)
 I:	bfd
-M:	Klement Sekera <ksekera@cisco.com>
+M:	Klement Sekera <klement.sekera@gmail.com>
 F:	src/vnet/bfd/
 
 VNET Classifier
@@ -384,7 +384,7 @@ Plugin - NAT
 I:	nat
 M:	Ole Troan <ot@cisco.com>
 M:  Filip Varga <fivarga@cisco.com>
-M:  Klement Sekera <ksekera@cisco.com>
+M:  Klement Sekera <klement.sekera@gmail.com>
 F:	src/plugins/nat/
 
 Plugin - PNAT Static match and rewrite engine
@@ -464,7 +464,7 @@ F:	src/plugins/lisp/
 
 Plugin - Link Layer Discovery Protocol (LLDP)
 I:	lldp
-M:	Klement Sekera <ksekera@cisco.com>
+M:	Klement Sekera <klement.sekera@gmail.com>
 F:	src/plugins/lldp/
 
 Plugin - memif device driver
@@ -566,7 +566,7 @@ F:	src/plugins/unittest/
 
 Test Infrastructure
 I:	tests
-M:	Klement Sekera <ksekera@cisco.com>
+M:	Klement Sekera <klement.sekera@gmail.com>
 M:	Paul Vinciguerra <pvinci@vinciconsulting.com>
 F:	test/
 
