@@ -168,6 +168,7 @@ class VppIpPuntRedirect(VppObject):
     def add_vpp_config(self):
         self._test.vapi.ip_punt_redirect(punt=self.encode(), is_add=True)
         self._test.registry.register(self, self._test.logger)
+        return self
 
     def remove_vpp_config(self):
         self._test.vapi.ip_punt_redirect(punt=self.encode(), is_add=False)

@@ -1517,7 +1517,9 @@ ip4_local_set_next_and_error (vlib_node_runtime_t * error_node,
 
 typedef struct
 {
+  /* The src and fib-index together determine if packet n is the same as n-1 */
   ip4_address_t src;
+  u32 fib_index;
   u32 lbi;
   u8 error;
   u8 first;
@@ -1551,7 +1553,8 @@ ip4_local_check_src (vlib_buffer_t *b, ip4_header_t *ip0,
    * vnet_buffer()->ip.adj_index[VLIB_TX] will be set to the index of the
    *  adjacency for the source address (the remote sender's address)
    */
-  if (PREDICT_TRUE (last_check->src.as_u32 != ip0->src_address.as_u32) ||
+  if (PREDICT_TRUE ((last_check->src.as_u32 != ip0->src_address.as_u32)) ||
+      (last_check->fib_index != vnet_buffer (b)->ip.fib_index) ||
       last_check->first)
     {
       lbi0 = ip4_fib_forwarding_lookup (vnet_buffer (b)->ip.fib_index,
@@ -1587,6 +1590,7 @@ ip4_local_check_src (vlib_buffer_t *b, ip4_header_t *ip0,
       last_check->lbi = lbi0;
       last_check->error = *error0;
       last_check->first = 0;
+      last_check->fib_index = vnet_buffer (b)->ip.fib_index;
     }
   else
     {
@@ -1620,6 +1624,9 @@ ip4_local_check_src_x2 (vlib_buffer_t **b, ip4_header_t **ip,
     vnet_buffer (b[1])->sw_if_index[VLIB_TX] != ~0 ?
     vnet_buffer (b[1])->sw_if_index[VLIB_TX] :
     vnet_buffer (b[1])->ip.fib_index;
+
+  not_last_hit |= vnet_buffer (b[0])->ip.fib_index ^ last_check->fib_index;
+  not_last_hit |= vnet_buffer (b[1])->ip.fib_index ^ last_check->fib_index;
 
   if (is_receive_dpo)
     {
@@ -1683,6 +1690,7 @@ ip4_local_check_src_x2 (vlib_buffer_t **b, ip4_header_t **ip,
       last_check->lbi = lbi[1];
       last_check->error = error[1];
       last_check->first = 0;
+      last_check->fib_index = vnet_buffer (b[1])->ip.fib_index;
     }
   else
     {
@@ -1752,10 +1760,11 @@ ip4_local_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
      * member to make sure the .lbi is initialised for the first
      * packet.
      */
-    .src = {.as_u32 = 0},
+    .src = { .as_u32 = 0 },
     .lbi = ~0,
     .error = IP4_ERROR_UNKNOWN_PROTOCOL,
     .first = 1,
+    .fib_index = 0,
   };
 
   from = vlib_frame_vector_args (frame);
