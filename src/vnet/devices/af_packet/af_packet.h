@@ -40,37 +40,60 @@ typedef struct
 
 typedef struct
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  clib_spinlock_t lockp;
+  int fd;
+  union
+  {
+    tpacket_req3_t *rx_req;
+    tpacket_req3_t *tx_req;
+  };
+
+  union
+  {
+    u8 **rx_ring;
+    u8 **tx_ring;
+  };
+
+  union
+  {
+    u32 next_rx_block;
+    u32 next_tx_frame;
+  };
+
+  u16 queue_id;
+  u32 queue_index;
+
+  u32 clib_file_index;
+
   u32 rx_frame_offset;
-  u32 num_pkts;
-  u8 is_save;
-} save_state_t;
+  u16 num_rx_pkts;
+  u8 is_rx_pending;
+  vnet_hw_if_rx_mode mode;
+} af_packet_queue_t;
 
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  clib_spinlock_t lockp;
-  u8 *host_if_name;
-  int host_if_index;
-  int fd;
-  tpacket_req3_t *rx_req;
-  tpacket_req3_t *tx_req;
-  u8 **rx_ring;
-  u8 **tx_ring;
-  u8 is_cksum_gso_enabled;
-  u32 hdrlen;
   u32 hw_if_index;
   u32 sw_if_index;
-  u32 clib_file_index;
-
-  u32 next_rx_block;
-  u32 next_tx_frame;
-
   u32 per_interface_next_index;
-  u8 is_admin_up;
-  u32 queue_index;
-  u32 host_mtu;
   af_packet_if_mode_t mode;
-  save_state_t ss;
+  u8 is_admin_up;
+  u8 is_cksum_gso_enabled;
+
+  af_packet_queue_t *rx_queues;
+  af_packet_queue_t *tx_queues;
+
+  u8 num_rxqs;
+  u8 num_txqs;
+
+  u8 *host_if_name;
+  int host_if_index;
+  u32 hdrlen;
+
+  u32 host_mtu;
+  u32 dev_instance;
 } af_packet_if_t;
 
 typedef struct
@@ -96,6 +119,8 @@ typedef struct
   u32 tx_frame_size;
   u32 rx_frames_per_block;
   u32 tx_frames_per_block;
+  u8 num_rxqs;
+  u8 num_txqs;
   af_packet_if_mode_t mode;
 
   /* return */
