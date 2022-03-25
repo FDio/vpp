@@ -215,7 +215,7 @@ define get_f64_endian_value
 define get_f64_endian_value_reply
 {
   u32 context;
-  u32 retval;
+  i32 retval;
   f64 f64_one_result;
 };
 
@@ -239,7 +239,7 @@ define get_f64_increment_by_one
 define get_f64_increment_by_one_reply
 {
   u32 context;
-  u32 retval;
+  i32 retval;
   f64 f64_value;
 };
 
