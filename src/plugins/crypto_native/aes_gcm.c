@@ -1018,17 +1018,17 @@ aes_gcm_dec (u8x16 T, aes_gcm_key_data_t * kd, aes_gcm_counter_t * ctr,
 }
 
 static_always_inline int
-aes_gcm (u8x16u * in, u8x16u * out, u8x16u * addt, u8x16u * iv, u8x16u * tag,
-	 u32 data_bytes, u32 aad_bytes, u8 tag_len, aes_gcm_key_data_t * kd,
+aes_gcm (u8x16u *in, u8x16u *out, u8x16u *addt, u8 *ivp, u8x16u *tag,
+	 u32 data_bytes, u32 aad_bytes, u8 tag_len, aes_gcm_key_data_t *kd,
 	 int aes_rounds, int is_encrypt)
 {
   int i;
   u8x16 r, T = { };
-  u32x4 Y0;
+  vec128_t Y0 = {};
   ghash_data_t _gd, *gd = &_gd;
   aes_gcm_counter_t _ctr, *ctr = &_ctr;
 
-  clib_prefetch_load (iv);
+  clib_prefetch_load (ivp);
   clib_prefetch_load (in);
   clib_prefetch_load (in + 4);
 
@@ -1042,11 +1042,13 @@ aes_gcm (u8x16u * in, u8x16u * out, u8x16u * addt, u8x16u * iv, u8x16u * tag,
 
   /* initalize counter */
   ctr->counter = 1;
-  Y0 = (u32x4) aes_load_partial (iv, 12) + ctr_inv_1;
+  Y0.as_u64x2[0] = *(u64u *) ivp;
+  Y0.as_u32x4[2] = *(u32u *) (ivp + 8);
+  Y0.as_u32x4 += ctr_inv_1;
 #ifdef __VAES__
-  ctr->Y4 = u32x16_splat_u32x4 (Y0) + ctr_inv_1234;
+  ctr->Y4 = u32x16_splat_u32x4 (Y0.as_u32x4) + ctr_inv_1234;
 #else
-  ctr->Y = Y0 + ctr_inv_1;
+  ctr->Y = Y0.as_u32x4 + ctr_inv_1;
 #endif
 
   /* ghash and encrypt/edcrypt  */
@@ -1064,7 +1066,7 @@ aes_gcm (u8x16u * in, u8x16u * out, u8x16u * addt, u8x16u * iv, u8x16u * tag,
 
   /* interleaved computation of final ghash and E(Y0, k) */
   ghash_mul_first (gd, r ^ T, kd->Hi[NUM_HI - 1]);
-  r = kd->Ke[0] ^ (u8x16) Y0;
+  r = kd->Ke[0] ^ Y0.as_u8x16;
   for (i = 1; i < 5; i += 1)
     r = aes_enc_round (r, kd->Ke[i]);
   ghash_reduce (gd);
@@ -1111,7 +1113,7 @@ aes_ops_enc_aes_gcm (vlib_main_t * vm, vnet_crypto_op_t * ops[],
 next:
   kd = (aes_gcm_key_data_t *) cm->key_data[op->key_index];
   aes_gcm ((u8x16u *) op->src, (u8x16u *) op->dst, (u8x16u *) op->aad,
-	   (u8x16u *) op->iv, (u8x16u *) op->tag, op->len, op->aad_len,
+	   (u8 *) op->iv, (u8x16u *) op->tag, op->len, op->aad_len,
 	   op->tag_len, kd, AES_KEY_ROUNDS (ks), /* is_encrypt */ 1);
   op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
 
@@ -1137,8 +1139,8 @@ aes_ops_dec_aes_gcm (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
 next:
   kd = (aes_gcm_key_data_t *) cm->key_data[op->key_index];
   rv = aes_gcm ((u8x16u *) op->src, (u8x16u *) op->dst, (u8x16u *) op->aad,
-		(u8x16u *) op->iv, (u8x16u *) op->tag, op->len,
-		op->aad_len, op->tag_len, kd, AES_KEY_ROUNDS (ks),
+		(u8 *) op->iv, (u8x16u *) op->tag, op->len, op->aad_len,
+		op->tag_len, kd, AES_KEY_ROUNDS (ks),
 		/* is_encrypt */ 0);
 
   if (rv)
