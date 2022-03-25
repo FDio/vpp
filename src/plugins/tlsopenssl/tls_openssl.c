@@ -27,6 +27,7 @@
 #include <ctype.h>
 #include <tlsopenssl/tls_openssl.h>
 #include <tlsopenssl/tls_bios.h>
+#include <openssl/x509v3.h>
 
 #define MAX_CRYPTO_LEN 64
 
@@ -625,6 +626,41 @@ openssl_ctx_read (tls_ctx_t *ctx, session_t *ts)
     return openssl_ctx_read_tls (ctx, ts);
   else
     return openssl_ctx_read_dtls (ctx, ts);
+}
+
+int
+openssl_ctx_init_hostname (bool set_hostname_varification,
+			   bool set_hostname_strict_check, SSL *ssl,
+			   tls_ctx_t *ctx)
+{
+
+  if (set_hostname_varification)
+    {
+      X509_VERIFY_PARAM *param = SSL_get0_param (ssl);
+      if (!param)
+	{
+	  TLS_DBG (1, "Couldn't fetch SSL param");
+	  return -1;
+	}
+
+      if (set_hostname_strict_check)
+	X509_VERIFY_PARAM_set_hostflags (param,
+					 X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS);
+
+      if (!X509_VERIFY_PARAM_set1_host (param,
+					(const char *) ctx->srv_hostname, 0))
+	{
+	  TLS_DBG (1, "Couldn't set hostname for verification");
+	  return -1;
+	}
+    }
+  SSL_set_verify (ssl, SSL_VERIFY_PEER, 0);
+  if (!SSL_set_tlsext_host_name (ssl, ctx->srv_hostname))
+    {
+      TLS_DBG (1, "Couldn't set hostname");
+      return -1;
+    }
+  return 1;
 }
 
 static int
