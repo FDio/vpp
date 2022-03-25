@@ -21,8 +21,11 @@
 all: siphon
 
 # These should be passed in by the root Makefile
-WS_ROOT ?= $(CURDIR)/../..
-BR ?= $(WS_ROOT)/build-root
+WS_ROOT           ?= $(CURDIR)/../..
+BR                ?= $(WS_ROOT)/build-root
+BUILDDIR          ?= ${BR}/docs
+BUILDDIR_SRC      ?= ${BUILDDIR}/src
+DOCS_DIR          ?= ${WS_ROOT}/docs
 
 # Tag used in github repository path.
 # Change this when genearting for a release
@@ -34,12 +37,11 @@ REPOSITORY_URL ?= https://github.com/FDio/vpp/blob/$(VPP_TAG)/
 SCRIPTS_DIR ?= $(WS_ROOT)/docs/_scripts
 
 # docs root directory
-DOCS_DIR ?= ${BR}/docs/src
 
-FEATURE_LIST_FILE = ${DOCS_DIR}/aboutvpp/featurelist.md
+FEATURE_LIST_FILE = ${BUILDDIR_SRC}/aboutvpp/featurelist.md
 
 # Siphoned fragements are processed into here
-DOCS_GENERATED_DIR ?= $(DOCS_DIR)/_generated
+DOCS_GENERATED_DIR ?= $(BUILDDIR_SRC)/_generated
 
 # Siphoned fragments end up in here
 SIPHON_INPUT_DIR ?= $(DOCS_GENERATED_DIR)/fragments
@@ -118,8 +120,7 @@ SIPHON_DOCS = $(addprefix $(DOCS_GENERATED_DIR)/,$(addsuffix .rst,$(SIPHONS)))
 BUILT_ON = $(shell date '+%d %B %Y')
 VPP_VERSION = $(shell ${WS_ROOT}/src/scripts/version)
 
-.PHONY: featurelist
-featurelist:
+$(DOCS_GENERATED_DIR)/.featurelist.done:
 	@( \
 	  cd $(WS_ROOT) && \
 	  find . -name FEATURE.yaml | \
@@ -128,19 +129,19 @@ featurelist:
 	      --repolink $(REPOSITORY_URL) > \
 	    $(FEATURE_LIST_FILE) ; \
 	)
+	@touch $(DOCS_GENERATED_DIR)/.featurelist.done
 
 
-.PHONY: includes-render
-includes-render:
+$(DOCS_GENERATED_DIR)/.includes-render.done:
 	@mkdir -p "$(DYNAMIC_RENDER_DIR)"
 	@python3 $(SCRIPTS_DIR)/includes_renderer.py ${WS_ROOT} ${DYNAMIC_RENDER_DIR}
+	@touch $(DOCS_GENERATED_DIR)/.includes-render.done
 
-.PHONY: template-index
-template-index:
-	@sed -ie "s/__VPP_VERSION__/${VPP_VERSION}/g" ${DOCS_DIR}/index.rst
-	@sed -ie "s/__BUILT_ON__/${BUILT_ON}/g" ${DOCS_DIR}/index.rst
+$(DOCS_GENERATED_DIR)/.template-index.done:
+	@sed -ie "s/__VPP_VERSION__/${VPP_VERSION}/g" ${BUILDDIR_SRC}/index.rst
+	@sed -ie "s/__BUILT_ON__/${BUILT_ON}/g" ${BUILDDIR_SRC}/index.rst
 	@( \
-	  for f in $$(grep -l -R __REPOSITORY_URL__ ${DOCS_DIR} | grep -e '\.rst$$' -e '\.md$$' ) ;\
+	  for f in $$(grep -l -R __REPOSITORY_URL__ ${BUILDDIR_SRC} | grep -e '\.rst$$' -e '\.md$$' ) ;\
 	  do \
 	    if [ ! -z $${f} ]; then \
 		echo "TEMPLATING $${f}" ;\
@@ -148,6 +149,7 @@ template-index:
 	    fi ;\
 	  done ; \
 	)
+	@touch $(DOCS_GENERATED_DIR)/.template-index.done
 
 .NOTPARALLEL: $(SIPHON_FILES)
 $(SIPHON_FILES): $(SCRIPTS_DIR)/siphon-generate \
@@ -207,15 +209,45 @@ $(eval $(call siphon-process,rst,markdown))
 
 # This target can be used just to generate the siphoned things
 .PHONY: siphon
-siphon: $(SIPHON_DOCS)
-	@cp $(DOCS_GENERATED_DIR)/clicmd.rst $(DOCS_DIR)/cli-reference/index.rst
-	@cp -r $(DOCS_GENERATED_DIR)/clicmd.rst.dir $(DOCS_DIR)/cli-reference/clis
+$(DOCS_GENERATED_DIR)/.siphon.done: $(SIPHON_DOCS)
+	@cp $(DOCS_GENERATED_DIR)/clicmd.rst $(BUILDDIR_SRC)/cli-reference/index.rst
+	@mkdir -p $(BUILDDIR_SRC)/cli-reference/clis
+	@cp -r $(DOCS_GENERATED_DIR)/clicmd.rst.dir/* $(BUILDDIR_SRC)/cli-reference/clis
+	@touch $(DOCS_GENERATED_DIR)/.siphon.done
+
+.PHONY: clean-siphons
+clean-siphons:
+	@( \
+	    echo "find $(SIPHON_INPUT) -newer $(DOCS_GENERATED_DIR)/.siphon.done" ; \
+	    cd $(WS_ROOT); \
+	    if [ -f $(DOCS_GENERATED_DIR)/.siphon.done ] && \
+	       [ $$(find $(SIPHON_INPUT) -type f -newer $(DOCS_GENERATED_DIR)/.siphon.done \
+	        			 -not -name '*.md' \
+	        			 -not -name '*.rst' | wc -l) -gt 0  ]; then \
+	      rm -r $(DOCS_GENERATED_DIR); \
+	      echo "removing... $(DOCS_GENERATED_DIR)"; \
+	    fi; \
+	)
+
+${BUILDDIR}/.docsrc.sync.ok:
+	@echo "Copying docs files..."
+	@cp -r $(DOCS_DIR) ${BUILDDIR_SRC}
+	@cd ${BUILDDIR_SRC} && find . -type l -exec cp --remove-destination -L ${DOCS_DIR}/{} {} \;
+	@touch $(BUILDDIR)/.docsrc.sync.ok
+
+.PHONY: copy-src
+copy-src: ${BUILDDIR}/.docsrc.sync.ok
+	@echo "Syncing changed files..."
+	@cd $(DOCS_DIR) && find . -type f -not -path '*/_scripts/*' -newer $(BUILDDIR)/.docsrc.sync.ok -exec cp {} ${BUILDDIR_SRC}/{} \;
+	@cd ${DOCS_DIR} && find . -type l -not -path '*/_scripts/*' -newer $(BUILDDIR)/.docsrc.sync.ok -exec cp --remove-destination -L ${DOCS_DIR}/{} ${BUILDDIR_SRC}/{} \;
+	@cd ${DOCS_DIR} && find -L . -type f -not -path '*/_scripts/*' -newer $(BUILDDIR)/.docsrc.sync.ok -exec cp --remove-destination -L ${DOCS_DIR}/{} ${BUILDDIR_SRC}/{} \;
+	@touch $(BUILDDIR)/.docsrc.sync.ok
 
 .PHONY: generate
-generate: siphon includes-render template-index featurelist
+generate: copy-src clean-siphons $(DOCS_GENERATED_DIR)/.siphon.done $(DOCS_GENERATED_DIR)/.includes-render.done $(DOCS_GENERATED_DIR)/.template-index.done $(DOCS_GENERATED_DIR)/.featurelist.done
 
 .PHONY: clean
 clean:
-	@rm -rf $(BR)/.siphon.dep
+	@rm -rf $(BUILDDIR)
 	@rm -rf $(SCRIPTS_DIR)/siphon/__pycache__
 

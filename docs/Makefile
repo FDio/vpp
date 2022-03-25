@@ -21,7 +21,6 @@ WS_ROOT ?= $(CURDIR)/..
 BR ?= $(WS_ROOT)/build-root
 DOCS_DIR ?= $(WS_ROOT)/docs
 
-VENV_DIR ?= $(DOCS_DIR)/venv
 SPHINX_SCRIPTS_DIR ?= $(WS_ROOT)/docs/scripts
 
 # Work out the OS if we haven't already
@@ -40,11 +39,11 @@ endif
 SPHINXOPTS        = --keep-going -n -W
 SPHINXBUILD       = sphinx-build
 SPHINXPROJ        = fdio-vpp
-SOURCEDIR         = .
 BUILDDIR          = ${BR}/docs
 BUILDDIR_SRC      = ${BUILDDIR}/src
 BUILDDIR_OUT      = ${BUILDDIR}/html
 SCRIPTS_DIR       = _scripts
+VENV_DIR          ?= $(BUILDDIR)/venv
 
 
 # Put it first so that "make" without argument is like "make help".
@@ -53,30 +52,6 @@ help:
 	@( \
 	  . ${VENV_DIR}/bin/activate; \
 	  $(SPHINXBUILD) --help ;\
-	)
-
-.PHONY: checkdeps
-checkdeps:
-	@echo "Checking whether dependencies for Docs are installed..."
-ifeq ($(OS_ID),ubuntu)
-	@set -e; inst=; \
-		for i in $(DOC_DEB_DEPENDS); do \
-			dpkg-query --show $$i >/dev/null 2>&1 || inst="$$inst $$i"; \
-		done; \
-		if [ "$$inst" ]; then \
-			sudo apt-get update; \
-			sudo apt-get $(CONFIRM) $(FORCE) install $$inst; \
-		fi
-else ifneq ("$(wildcard /etc/redhat-release)","")
-	@sudo yum install $(CONFIRM) $(DOC_RPM_DEPENDS)
-endif
-
-.PHONY: spell
-spell: clean checkdeps venv ${BUILDDIR_SRC}
-	@( \
-	  . ${VENV_DIR}/bin/activate; \
-	  make -C ${SCRIPTS_DIR} generate && \
-	  $(SPHINXBUILD) -b spelling $(SPHINXOPTS) $(BUILDDIR_SRC) $(BUILDDIR_OUT); \
 	)
 
 .PHONY: venv
@@ -91,22 +66,30 @@ venv:
 	    fi; \
 	)
 
-${BUILDDIR_SRC}:
-	@mkdir -p ${BUILDDIR_SRC}
-	@cp -r $(SOURCEDIR) ${BUILDDIR_SRC}
-	@cd ${BUILDDIR_SRC} && find . -type l -exec cp --remove-destination -L ${DOCS_DIR}/{} {} \;
+.PHONY: spell
+spell: venv
+	@( \
+	  . ${VENV_DIR}/bin/activate; \
+	  make -C ${SCRIPTS_DIR} generate && \
+	  $(SPHINXBUILD) -b spelling $(SPHINXOPTS) $(BUILDDIR_SRC) $(BUILDDIR_OUT); \
+	)
+
+.PHONY: rebuild-spell
+rebuild-spell: clean spell
 
 .PHONY: docs
-docs: clean venv ${BUILDDIR_SRC}
+docs: venv
 	@( \
 	  . ${VENV_DIR}/bin/activate; \
 	  make -C ${SCRIPTS_DIR} generate && \
 	  $(SPHINXBUILD) $(SPHINXOPTS) -b html $(BUILDDIR_SRC) $(BUILDDIR_OUT); \
 	)
 
+.PHONY: rebuild-docs
+rebuild-docs: clean docs
+
 .PHONY: clean
 clean:
-	@rm -rf $(BUILDDIR) ${VENV_DIR}
 	@make -C ${SCRIPTS_DIR} clean
 
 .PHONY: build
