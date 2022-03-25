@@ -118,8 +118,7 @@ SIPHON_DOCS = $(addprefix $(DOCS_GENERATED_DIR)/,$(addsuffix .rst,$(SIPHONS)))
 BUILT_ON = $(shell date '+%d %B %Y')
 VPP_VERSION = $(shell ${WS_ROOT}/src/scripts/version)
 
-.PHONY: featurelist
-featurelist:
+$(DOCS_GENERATED_DIR)/.featurelist.done:
 	@( \
 	  cd $(WS_ROOT) && \
 	  find . -name FEATURE.yaml | \
@@ -128,15 +127,15 @@ featurelist:
 	      --repolink $(REPOSITORY_URL) > \
 	    $(FEATURE_LIST_FILE) ; \
 	)
+	@touch $(DOCS_GENERATED_DIR)/.featurelist.done
 
 
-.PHONY: includes-render
-includes-render:
+$(DOCS_GENERATED_DIR)/.includes-render.done:
 	@mkdir -p "$(DYNAMIC_RENDER_DIR)"
 	@python3 $(SCRIPTS_DIR)/includes_renderer.py ${WS_ROOT} ${DYNAMIC_RENDER_DIR}
+	@touch $(DOCS_GENERATED_DIR)/.includes-render.done
 
-.PHONY: template-index
-template-index:
+$(DOCS_GENERATED_DIR)/.template-index.done:
 	@sed -ie "s/__VPP_VERSION__/${VPP_VERSION}/g" ${DOCS_DIR}/index.rst
 	@sed -ie "s/__BUILT_ON__/${BUILT_ON}/g" ${DOCS_DIR}/index.rst
 	@( \
@@ -148,6 +147,7 @@ template-index:
 	    fi ;\
 	  done ; \
 	)
+	@touch $(DOCS_GENERATED_DIR)/.template-index.done
 
 .NOTPARALLEL: $(SIPHON_FILES)
 $(SIPHON_FILES): $(SCRIPTS_DIR)/siphon-generate \
@@ -207,12 +207,24 @@ $(eval $(call siphon-process,rst,markdown))
 
 # This target can be used just to generate the siphoned things
 .PHONY: siphon
-siphon: $(SIPHON_DOCS)
+$(DOCS_GENERATED_DIR)/.siphon.done: $(SIPHON_DOCS)
 	@cp $(DOCS_GENERATED_DIR)/clicmd.rst $(DOCS_DIR)/cli-reference/index.rst
-	@cp -r $(DOCS_GENERATED_DIR)/clicmd.rst.dir $(DOCS_DIR)/cli-reference/clis
+	@mkdir -p $(DOCS_DIR)/cli-reference/clis
+	@cp -r $(DOCS_GENERATED_DIR)/clicmd.rst.dir/* $(DOCS_DIR)/cli-reference/clis
+	@touch $(DOCS_GENERATED_DIR)/.siphon.done
+
+.PHONY: clean-siphons
+clean-siphons:
+	@( \
+	    cd $(WS_ROOT); \
+	    if [ -f $(DOCS_GENERATED_DIR)/.done ] && [ $$(find $(SIPHON_INPUT) -newer $(DOCS_GENERATED_DIR)/.done | wc -l) -gt 0  ]; then \
+	      rm -r $(DOCS_GENERATED_DIR); \
+	      echo "removing... $(DOCS_GENERATED_DIR)"; \
+	    fi; \
+	)
 
 .PHONY: generate
-generate: siphon includes-render template-index featurelist
+generate: clean-siphons $(DOCS_GENERATED_DIR)/.siphon.done $(DOCS_GENERATED_DIR)/.includes-render.done $(DOCS_GENERATED_DIR)/.template-index.done $(DOCS_GENERATED_DIR)/.featurelist.done
 
 .PHONY: clean
 clean:

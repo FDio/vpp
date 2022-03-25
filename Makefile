@@ -720,6 +720,10 @@ docs-%:
 docs:
 	@make -C $(WS_ROOT)/docs docs
 
+.PHONY: rebuild-docs
+rebuild-docs:
+	@make -C $(WS_ROOT)/docs rebuild-docs
+
 .PHONY: pkg-verify
 pkg-verify: install-dep $(BR)/.deps.ok install-ext-deps
 	$(call banner,"Building for PLATFORM=vpp using gcc")

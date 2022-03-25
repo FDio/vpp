@@ -21,7 +21,6 @@ WS_ROOT ?= $(CURDIR)/..
 BR ?= $(WS_ROOT)/build-root
 DOCS_DIR ?= $(WS_ROOT)/docs
 
-VENV_DIR ?= $(DOCS_DIR)/venv
 SPHINX_SCRIPTS_DIR ?= $(WS_ROOT)/docs/scripts
 
 # Work out the OS if we haven't already
@@ -45,6 +44,7 @@ BUILDDIR          = ${BR}/docs
 BUILDDIR_SRC      = ${BUILDDIR}/src
 BUILDDIR_OUT      = ${BUILDDIR}/html
 SCRIPTS_DIR       = _scripts
+VENV_DIR          ?= $(BUILDDIR)/venv
 
 
 # Put it first so that "make" without argument is like "make help".
@@ -91,22 +91,23 @@ venv:
 	    fi; \
 	)
 
-${BUILDDIR_SRC}:
-	@mkdir -p ${BUILDDIR_SRC}
-	@cp -r $(SOURCEDIR) ${BUILDDIR_SRC}
-	@cd ${BUILDDIR_SRC} && find . -type l -exec cp --remove-destination -L ${DOCS_DIR}/{} {} \;
-
 .PHONY: docs
-docs: clean venv ${BUILDDIR_SRC}
+docs: venv
+	@mkdir -p ${BUILDDIR_SRC}
+	@rsync -delete -rlc $(SOURCEDIR) ${BUILDDIR_SRC}
+	@cd ${BUILDDIR_SRC} && find . -type l -exec cp --remove-destination -L ${DOCS_DIR}/{} {} \;
 	@( \
 	  . ${VENV_DIR}/bin/activate; \
 	  make -C ${SCRIPTS_DIR} generate && \
 	  $(SPHINXBUILD) $(SPHINXOPTS) -b html $(BUILDDIR_SRC) $(BUILDDIR_OUT); \
 	)
 
+.PHONY: rebuild-docs
+rebuild-docs: clean docs
+
 .PHONY: clean
 clean:
-	@rm -rf $(BUILDDIR) ${VENV_DIR}
+	@rm -rf $(BUILDDIR)
 	@make -C ${SCRIPTS_DIR} clean
 
 .PHONY: build
