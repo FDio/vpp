@@ -240,29 +240,9 @@ l2fib_compute_hash_bucket (l2fib_entry_key_t * key)
 always_inline u64
 l2fib_make_key (const u8 * mac_address, u16 bd_index)
 {
-  u64 temp;
-
-  /*
-   * The mac address in memory is A:B:C:D:E:F
-   * The bd id in register is H:L
-   */
-#if CLIB_ARCH_IS_LITTLE_ENDIAN
-  /*
-   * Create the in-register key as F:E:D:C:B:A:H:L
-   * In memory the key is L:H:A:B:C:D:E:F
-   */
-  temp = CLIB_MEM_OVERFLOW_LOAD ((u64 *) mac_address) << 16;
-  temp = (temp & ~0xffff) | (u64) (bd_index);
-#else
-  /*
-   * Create the in-register key as H:L:A:B:C:D:E:F
-   * In memory the key is H:L:A:B:C:D:E:F
-   */
-  temp = CLIB_MEM_OVERFLOW_LOAD ((u64 *) mac_address) >> 16;
-  temp = temp | (((u64) bd_index) << 48);
-#endif
-
-  return temp;
+  l2fib_entry_key_t key = { .fields.bd_index = bd_index };
+  clib_memcpy_fast (&key.fields.mac, mac_address, sizeof (key.fields.mac));
+  return key.raw;
 }
 
 
