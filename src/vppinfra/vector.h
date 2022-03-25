@@ -98,22 +98,53 @@
 
 #define foreach_vec foreach_int_vec foreach_uint_vec foreach_float_vec
 
-/* *INDENT-OFF* */
-
 /* Type Definitions */
-#define _(t,s,c) \
-typedef t##s t##s##x##c _vector_size (s/8*c);	\
-typedef t##s t##s##x##c##u _vector_size_unaligned (s/8*c);	\
-typedef union {	  \
-  t##s##x##c as_##t##s##x##c;	\
-  t##s as_##t##s[c];	  \
-} t##s##x##c##_union_t;
+#define _(t, s, c)                                                            \
+  typedef t##s t##s##x##c _vector_size (s / 8 * c);                           \
+  typedef t##s t##s##x##c##u _vector_size_unaligned (s / 8 * c);              \
+  typedef union                                                               \
+  {                                                                           \
+    t##s##x##c as_##t##s##x##c;                                               \
+    t##s as_##t##s[c];                                                        \
+  } t##s##x##c##_union_t;
 
+/* clang-format off */
   foreach_vec64i foreach_vec64u foreach_vec64f
   foreach_vec128i foreach_vec128u foreach_vec128f
   foreach_vec256i foreach_vec256u foreach_vec256f
   foreach_vec512i foreach_vec512u foreach_vec512f
+/* clang-format on */
 #undef _
+
+  typedef union
+{
+#define _(t, s, c) t##s##x##c as_##t##s##x##c;
+  foreach_vec128i foreach_vec128u foreach_vec128f
+#undef _
+} vec128_t;
+
+typedef union
+{
+#define _(t, s, c) t##s##x##c as_##t##s##x##c;
+  foreach_vec256i foreach_vec256u foreach_vec256f
+#undef _
+#define _(t, s, c) t##s##x##c as_##t##s##x##c[2];
+    foreach_vec128i foreach_vec128u foreach_vec128f
+#undef _
+} vec256_t;
+
+typedef union
+{
+#define _(t, s, c) t##s##x##c as_##t##s##x##c;
+  foreach_vec512i foreach_vec512u foreach_vec512f
+#undef _
+#define _(t, s, c) t##s##x##c as_##t##s##x##c[2];
+    foreach_vec256i foreach_vec256u foreach_vec256f
+#undef _
+#define _(t, s, c) t##s##x##c as_##t##s##x##c[4];
+      foreach_vec128i foreach_vec128u foreach_vec128f
+#undef _
+} vec512_t;
 
 /* universal inlines */
 #define _(t, s, c) \
@@ -229,13 +260,4 @@ t##s##x##c##_splat (t##s x)				\
 #undef _
 #endif
 
-/* *INDENT-ON* */
-
 #endif /* included_clib_vector_h */
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
