@@ -527,6 +527,12 @@ do {						\
 #define hash_mix64_step_3(a,b,c) hash_mix_step(a,b,c,35,49,11)
 #define hash_mix64_step_4(a,b,c) hash_mix_step(a,b,c,12,18,22)
 
+#if uword_bits == 64
+#define hash_mix(a, b, c) hash_mix64 (a, b, c)
+#else
+#define hash_mix(a, b, c) hash_mix32 (a, b, c)
+#endif
+
 /* Hash function based on that of Bob Jenkins (bob_jenkins@compuserve.com).
    Thanks, Bob. */
 #define hash_mix64(a0,b0,c0)			\
