@@ -77,241 +77,53 @@ set_is_user (void *v, uword i, uword is_user)
 
 static u8 *hash_format_pair_default (u8 * s, va_list * args);
 
-#if uword_bits == 64
-
-static inline u64
-zap64 (u64 x, word n)
-{
-#define _(n) (((u64) 1 << (u64) (8*(n))) - (u64) 1)
-  static u64 masks_little_endian[] = {
-    0, _(1), _(2), _(3), _(4), _(5), _(6), _(7),
-  };
-  static u64 masks_big_endian[] = {
-    0, ~_(7), ~_(6), ~_(5), ~_(4), ~_(3), ~_(2), ~_(1),
-  };
-#undef _
-  if (clib_arch_is_big_endian)
-    return x & masks_big_endian[n];
-  else
-    return x & masks_little_endian[n];
-}
-
-/**
- * make address-sanitizer skip this:
- * clib_mem_unaligned + zap64 casts its input as u64, computes a mask
- * according to the input length, and returns the casted maked value.
- * Therefore all the 8 Bytes of the u64 are systematically read, which
- * rightfully causes address-sanitizer to raise an error on smaller inputs.
- *
- * However the invalid Bytes are discarded within zap64(), which is why
- * this can be silenced safely.
- *
- * The above is true *unless* the extra bytes cross a page boundary
- * into unmapped or no-access space, hence the boundary crossing check.
- */
-static inline u64
-hash_memory64 (void *p, word n_bytes, u64 state)
-{
-  u64 *q = p;
-  u64 a, b, c, n;
-  int page_boundary_crossing;
-  u64 start_addr, end_addr;
-  union
-  {
-    u8 as_u8[8];
-    u64 as_u64;
-  } tmp;
-
-  /*
-   * If the request crosses a 4k boundary, it's not OK to assume
-   * that the zap64 game is safe. 4k is the minimum known page size.
-   */
-  start_addr = (u64) p;
-  end_addr = start_addr + n_bytes + 7;
-  page_boundary_crossing = (start_addr >> 12) != (end_addr >> 12);
-
-  a = b = 0x9e3779b97f4a7c13LL;
-  c = state;
-  n = n_bytes;
-
-  while (n >= 3 * sizeof (u64))
-    {
-      a += clib_mem_unaligned (q + 0, u64);
-      b += clib_mem_unaligned (q + 1, u64);
-      c += clib_mem_unaligned (q + 2, u64);
-      hash_mix64 (a, b, c);
-      n -= 3 * sizeof (u64);
-      q += 3;
-    }
-
-  c += n_bytes;
-  switch (n / sizeof (u64))
-    {
-    case 2:
-      a += clib_mem_unaligned (q + 0, u64);
-      b += clib_mem_unaligned (q + 1, u64);
-      if (n % sizeof (u64))
-	{
-	  if (PREDICT_TRUE (page_boundary_crossing == 0))
-	    {
-	      CLIB_MEM_OVERFLOW_PUSH (q + 2, sizeof (u64));
-	      c += zap64 (clib_mem_unaligned (q + 2, u64), n % sizeof (u64))
-		   << 8;
-	      CLIB_MEM_OVERFLOW_POP ();
-	    }
-	  else
-	    {
-	      clib_memcpy_fast (tmp.as_u8, q + 2, n % sizeof (u64));
-	      c += zap64 (tmp.as_u64, n % sizeof (u64)) << 8;
-	    }
-	}
-      break;
-
-    case 1:
-      a += clib_mem_unaligned (q + 0, u64);
-      if (n % sizeof (u64))
-	{
-	  if (PREDICT_TRUE (page_boundary_crossing == 0))
-	    {
-	      CLIB_MEM_OVERFLOW_PUSH (q + 1, sizeof (u64));
-	      b += zap64 (clib_mem_unaligned (q + 1, u64), n % sizeof (u64));
-	      CLIB_MEM_OVERFLOW_POP ();
-	    }
-	  else
-	    {
-	      clib_memcpy_fast (tmp.as_u8, q + 1, n % sizeof (u64));
-	      b += zap64 (tmp.as_u64, n % sizeof (u64));
-	    }
-	}
-      break;
-
-    case 0:
-      if (n % sizeof (u64))
-	{
-	  if (PREDICT_TRUE (page_boundary_crossing == 0))
-	    {
-	      CLIB_MEM_OVERFLOW_PUSH (q + 0, sizeof (u64));
-	      a += zap64 (clib_mem_unaligned (q + 0, u64), n % sizeof (u64));
-	      CLIB_MEM_OVERFLOW_POP ();
-	    }
-	  else
-	    {
-	      clib_memcpy_fast (tmp.as_u8, q, n % sizeof (u64));
-	      a += zap64 (tmp.as_u64, n % sizeof (u64));
-	    }
-	}
-      break;
-    }
-
-  hash_mix64 (a, b, c);
-
-  return c;
-}
-
-#else /* if uword_bits == 64 */
-
-static inline u32
-zap32 (u32 x, word n)
-{
-#define _(n) (((u32) 1 << (u32) (8*(n))) - (u32) 1)
-  static u32 masks_little_endian[] = {
-    0, _(1), _(2), _(3),
-  };
-  static u32 masks_big_endian[] = {
-    0, ~_(3), ~_(2), ~_(1),
-  };
-#undef _
-  if (clib_arch_is_big_endian)
-    return x & masks_big_endian[n];
-  else
-    return x & masks_little_endian[n];
-}
-
-static inline u32
-hash_memory32 (void *p, word n_bytes, u32 state)
-{
-  u32 *q = p;
-  u32 a, b, c, n;
-
-  a = b = 0x9e3779b9;
-  c = state;
-  n = n_bytes;
-
-  while (n >= 3 * sizeof (u32))
-    {
-      a += clib_mem_unaligned (q + 0, u32);
-      b += clib_mem_unaligned (q + 1, u32);
-      c += clib_mem_unaligned (q + 2, u32);
-      hash_mix32 (a, b, c);
-      n -= 3 * sizeof (u32);
-      q += 3;
-    }
-
-  c += n_bytes;
-  switch (n / sizeof (u32))
-    {
-    case 2:
-      a += clib_mem_unaligned (q + 0, u32);
-      b += clib_mem_unaligned (q + 1, u32);
-      if (n % sizeof (u32))
-	c += zap32 (clib_mem_unaligned (q + 2, u32), n % sizeof (u32)) << 8;
-      break;
-
-    case 1:
-      a += clib_mem_unaligned (q + 0, u32);
-      if (n % sizeof (u32))
-	b += zap32 (clib_mem_unaligned (q + 1, u32), n % sizeof (u32));
-      break;
-
-    case 0:
-      if (n % sizeof (u32))
-	a += zap32 (clib_mem_unaligned (q + 0, u32), n % sizeof (u32));
-      break;
-    }
-
-  hash_mix32 (a, b, c);
-
-  return c;
-}
-#endif
-
 __clib_export uword
 hash_memory (void *p, word n_bytes, uword state)
 {
-  uword *q = p;
+  uword last[3] = {};
+  uwordu *q = p;
+  u64 a, b, c, n;
 
-#if uword_bits == 64
-  return hash_memory64 (q, n_bytes, state);
-#else
-  return hash_memory32 (q, n_bytes, state);
-#endif
+  a = b = (uword_bits == 64) ? 0x9e3779b97f4a7c13LL : 0x9e3779b9;
+  c = state;
+  n = n_bytes;
+
+  while (n >= 3 * sizeof (uword))
+    {
+      a += q[0];
+      b += q[1];
+      c += q[2];
+      hash_mix (a, b, c);
+      n -= 3 * sizeof (uword);
+      q += 3;
+    }
+
+  c += n_bytes;
+
+  if (n > 0)
+    {
+      clib_memcpy_fast (&last, q, n);
+      a += last[0];
+      b += last[1];
+      c += last[2];
+    }
+
+  hash_mix (a, b, c);
+
+  return c;
 }
 
-#if uword_bits == 64
 always_inline uword
 hash_uword (uword x)
 {
-  u64 a, b, c;
+  uword a, b, c;
 
-  a = b = 0x9e3779b97f4a7c13LL;
+  a = b = (uword_bits == 64) ? 0x9e3779b97f4a7c13LL : 0x9e3779b9;
   c = 0;
   a += x;
-  hash_mix64 (a, b, c);
+  hash_mix (a, b, c);
   return c;
 }
-#else
-always_inline uword
-hash_uword (uword x)
-{
-  u32 a, b, c;
-
-  a = b = 0x9e3779b9;
-  c = 0;
-  a += x;
-  hash_mix32 (a, b, c);
-  return c;
-}
-#endif
 
 /* Call sum function.  Hash code will be sum function value
    modulo the prime length of the hash table. */
