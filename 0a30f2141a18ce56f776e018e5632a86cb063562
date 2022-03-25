@@ -46,6 +46,30 @@
       "revId": "0a30f2141a18ce56f776e018e5632a86cb063562",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "708dc1e3_fc797619",
+        "filename": "src/vnet/udp/udp_inlines.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-03-25T11:56:10Z",
+      "side": 1,
+      "message": "they are not there 😊\nyou\u0027ll need new nodes udp_encapXY for all the combinations of 4 and 6. then choose them correctly in the udp[46]_encap_nodes. For example:\nconst static char *const *const udp6_encap_nodes[DPO_PROTO_NUM] \u003d {\n  [DPO_PROTO_IP4] \u003d udp6_encap_ip4_nodes,\n}\nis 6 over 4.\n\nplease add the 6o4 4o6 UT cases in test/test_udp.py ..... huh i see they are already covered...",
+      "parentUuid": "52127c41_ea85bdc6",
+      "range": {
+        "startLine": 100,
+        "startChar": 0,
+        "endLine": 100,
+        "endChar": 16
+      },
+      "revId": "0a30f2141a18ce56f776e018e5632a86cb063562",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
