@@ -419,6 +419,7 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
   apif->mode = arg->mode;
   apif->hdrlen = hdrlen;
   apif->is_cksum_gso_enabled = is_cksum_gso_enabled;
+  apif->ss.is_save = 0;
 
   ret = af_packet_read_mtu (apif);
   if (ret != 0)
