@@ -24,7 +24,7 @@ import os
 import siphon
 
 DEFAULT_LOGFILE = None
-DEFAULT_LOGLEVEL = "info"
+DEFAULT_LOGLEVEL = "warning"
 DEFAULT_OUTPUT = "build-root/docs/siphons"
 DEFAULT_PREFIX = os.getcwd()
 

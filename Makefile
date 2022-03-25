@@ -247,6 +247,7 @@ help:
 	@echo " docs                 - Build the Sphinx documentation"
 	@echo " docs-venv            - Build the virtual environment for the Sphinx docs"
 	@echo " docs-clean           - Remove the generated files from the Sphinx docs"
+	@echo " docs-rebuild         - Rebuild all of the Sphinx documentation"
 	@echo ""
 	@echo "Make Arguments:"
 	@echo " V=[0|1]                  - set build verbosity level"
