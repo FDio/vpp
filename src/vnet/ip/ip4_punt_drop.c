@@ -312,6 +312,8 @@ VLIB_CLI_COMMAND (ip4_punt_policer_command, static) =
 
 #ifndef CLIB_MARCH_VARIANT
 
+static u32 ip4_punt_redirect_enable_counts;
+
 void
 ip4_punt_redirect_add_paths (u32 rx_sw_if_index,
 			     const fib_route_path_t *rpaths)
@@ -320,13 +322,16 @@ ip4_punt_redirect_add_paths (u32 rx_sw_if_index,
 			rx_sw_if_index,
 			FIB_FORW_CHAIN_TYPE_UNICAST_IP4, rpaths);
 
-  vnet_feature_enable_disable ("ip4-punt", "ip4-punt-redirect", 0, 1, 0, 0);
+  if (1 == ++ip4_punt_redirect_enable_counts)
+    vnet_feature_enable_disable ("ip4-punt", "ip4-punt-redirect", 0, 1, 0, 0);
 }
 
 void
 ip4_punt_redirect_del (u32 rx_sw_if_index)
 {
-  vnet_feature_enable_disable ("ip4-punt", "ip4-punt-redirect", 0, 0, 0, 0);
+  ASSERT (ip4_punt_redirect_enable_counts);
+  if (0 == --ip4_punt_redirect_enable_counts)
+    vnet_feature_enable_disable ("ip4-punt", "ip4-punt-redirect", 0, 0, 0, 0);
 
   ip_punt_redirect_del (FIB_PROTOCOL_IP4, rx_sw_if_index);
 }
