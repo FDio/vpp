@@ -284,6 +284,8 @@ set(test_files
   vector/test/memcpy_x86_64.c
   vector/test/sha2.c
   vector/test/toeplitz.c
+  vector/test/xxhash.c
+  vector/test/xxh3.c
 )
 
 add_vpp_executable(test_vector_funcs
