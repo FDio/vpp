@@ -1,4 +1,4 @@
-# Minimal clang-format version is 8
+# Minimal clang-format version is 11
 
 BasedOnStyle: GNU
 UseTab: Always
@@ -28,3 +28,7 @@ StatementMacros:
   - 'VNET_DEVICE_CLASS_TX_FN'
   - '__clib_section'
   - '__clib_aligned'
+
+WhitespaceSensitiveMacros:
+  - 'WARN_ON'
+  - 'WARN_OFF'
