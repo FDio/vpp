@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "932db043_a4bb8ad1",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 634,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-03-25T15:28:03Z",
+      "side": 1,
+      "message": "Several comments here:\n- Given that the function is applied to a tls context, that should be the first argument in the list. \n- We use u8 or int for booleans instead of bool. \n- You should be able to retrieve the SSL pointer from ctx, so no need to pass it.",
+      "range": {
+        "startLine": 631,
+        "startChar": 0,
+        "endLine": 634,
+        "endChar": 21
+      },
+      "revId": "28e5ba6312acb4c732f5e90b09fa518b8ecff5f3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f6062fb8_04c41779",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 663,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-03-25T15:28:03Z",
+      "side": 1,
+      "message": "Did you mean to return 0 for \"no error\"?",
+      "range": {
+        "startLine": 663,
+        "startChar": 9,
+        "endLine": 663,
+        "endChar": 10
+      },
+      "revId": "28e5ba6312acb4c732f5e90b09fa518b8ecff5f3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
