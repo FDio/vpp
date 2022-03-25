@@ -171,6 +171,8 @@ typedef u64 u64u __attribute__ ((aligned (1), __may_alias__));
 typedef i16 i16u __attribute__ ((aligned (1), __may_alias__));
 typedef i32 i32u __attribute__ ((aligned (1), __may_alias__));
 typedef i64 i64u __attribute__ ((aligned (1), __may_alias__));
+typedef word wordu __attribute__ ((aligned (1), __may_alias__));
+typedef uword uwordu __attribute__ ((aligned (1), __may_alias__));
 
 #endif /* included_clib_types_h */
 
