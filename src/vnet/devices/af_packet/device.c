@@ -60,6 +60,7 @@ typedef struct
 {
   u32 buffer_index;
   u32 hw_if_index;
+  u16 queue_id;
   tpacket3_hdr_t tph;
   vnet_virtio_net_hdr_t vnet_hdr;
   vlib_buffer_t buffer;
@@ -87,51 +88,74 @@ format_af_packet_device (u8 * s, va_list * args)
 
   af_packet_main_t *apm = &af_packet_main;
   af_packet_if_t *apif = pool_elt_at_index (apm->interfaces, dev_instance);
-  clib_spinlock_lock_if_init (&apif->lockp);
-  u32 tx_block_sz = apif->tx_req->tp_block_size;
-  u32 tx_frame_sz = apif->tx_req->tp_frame_size;
-  u32 tx_frame_nr = apif->tx_req->tp_frame_nr;
-  u32 tx_block_nr = apif->tx_req->tp_block_nr;
-  u32 rx_block_size = apif->rx_req->tp_block_size;
-  u32 rx_frame_size = apif->rx_req->tp_frame_size;
-  u32 rx_frame_nr = apif->rx_req->tp_frame_nr;
-  u32 rx_block_nr = apif->rx_req->tp_block_nr;
-  int block = 0;
-  u8 *tx_block_start = apif->tx_ring[block];
-  u32 tx_frame = apif->next_tx_frame;
-  tpacket3_hdr_t *tph;
+  af_packet_queue_t *rx_queue = 0;
+  af_packet_queue_t *tx_queue = 0;
 
-  s = format (s, "Linux PACKET socket interface\n");
-  s = format (s, "%UTX block size:%d nr:%d  TX frame size:%d nr:%d\n",
-	      format_white_space, indent, tx_block_sz, tx_block_nr,
-	      tx_frame_sz, tx_frame_nr);
-  s = format (s, "%URX block size:%d nr:%d  RX frame size:%d nr:%d\n",
-	      format_white_space, indent, rx_block_size, rx_block_nr,
-	      rx_frame_size, rx_frame_nr);
-  s = format (s, "%Unext frame:%d\n", format_white_space, indent,
-	      apif->next_tx_frame);
+  s = format (s, "Linux PACKET socket interface");
 
-  int n_send_req = 0, n_avail = 0, n_sending = 0, n_tot = 0, n_wrong = 0;
-  do
+  vec_foreach (rx_queue, apif->rx_queues)
     {
-      tph = (tpacket3_hdr_t *) (tx_block_start + tx_frame * tx_frame_sz);
-      tx_frame = (tx_frame + 1) % tx_frame_nr;
-      if (tph->tp_status == 0)
-	n_avail++;
-      else if (tph->tp_status & TP_STATUS_SEND_REQUEST)
-	n_send_req++;
-      else if (tph->tp_status & TP_STATUS_SENDING)
-	n_sending++;
-      else
-	n_wrong++;
-      n_tot++;
-    }
-  while (tx_frame != apif->next_tx_frame);
-  s = format (s, "%Uavailable:%d request:%d sending:%d wrong:%d total:%d\n",
-	      format_white_space, indent, n_avail, n_send_req, n_sending,
-	      n_wrong, n_tot);
+      u32 rx_block_size = rx_queue->rx_req->tp_block_size;
+      u32 rx_frame_size = rx_queue->rx_req->tp_frame_size;
+      u32 rx_frame_nr = rx_queue->rx_req->tp_frame_nr;
+      u32 rx_block_nr = rx_queue->rx_req->tp_block_nr;
 
-  clib_spinlock_unlock_if_init (&apif->lockp);
+      s = format (s, "\n%URX Queue %u:", format_white_space, indent,
+		  rx_queue->queue_id);
+      s = format (s, "\n%Ublock size:%d nr:%d  frame size:%d nr:%d",
+		  format_white_space, indent + 2, rx_block_size, rx_block_nr,
+		  rx_frame_size, rx_frame_nr);
+      s = format (s, " next block:%d", rx_queue->next_rx_block);
+      if (rx_queue->is_rx_pending)
+	{
+	  s = format (
+	    s, "\n%UPending Request: num-rx-pkts:%d next-frame-offset:%d",
+	    format_white_space, indent + 2, rx_queue->num_rx_pkts,
+	    rx_queue->rx_frame_offset);
+	}
+    }
+
+  vec_foreach (tx_queue, apif->tx_queues)
+    {
+      clib_spinlock_lock (&tx_queue->lockp);
+      u32 tx_block_sz = tx_queue->tx_req->tp_block_size;
+      u32 tx_frame_sz = tx_queue->tx_req->tp_frame_size;
+      u32 tx_frame_nr = tx_queue->tx_req->tp_frame_nr;
+      u32 tx_block_nr = tx_queue->tx_req->tp_block_nr;
+      int block = 0;
+      int n_send_req = 0, n_avail = 0, n_sending = 0, n_tot = 0, n_wrong = 0;
+      u8 *tx_block_start = tx_queue->tx_ring[block];
+      u32 tx_frame = tx_queue->next_tx_frame;
+      tpacket3_hdr_t *tph;
+
+      s = format (s, "\n%UTX Queue %u:", format_white_space, indent,
+		  tx_queue->queue_id);
+      s = format (s, "\n%Ublock size:%d nr:%d  frame size:%d nr:%d",
+		  format_white_space, indent + 2, tx_block_sz, tx_block_nr,
+		  tx_frame_sz, tx_frame_nr);
+      s = format (s, " next frame:%d", tx_queue->next_tx_frame);
+
+      do
+	{
+	  tph = (tpacket3_hdr_t *) (tx_block_start + tx_frame * tx_frame_sz);
+	  tx_frame = (tx_frame + 1) % tx_frame_nr;
+	  if (tph->tp_status == 0)
+	    n_avail++;
+	  else if (tph->tp_status & TP_STATUS_SEND_REQUEST)
+	    n_send_req++;
+	  else if (tph->tp_status & TP_STATUS_SENDING)
+	    n_sending++;
+	  else
+	    n_wrong++;
+	  n_tot++;
+	}
+      while (tx_frame != tx_queue->next_tx_frame);
+      s =
+	format (s, "\n%Uavailable:%d request:%d sending:%d wrong:%d total:%d",
+		format_white_space, indent + 2, n_avail, n_send_req, n_sending,
+		n_wrong, n_tot);
+      clib_spinlock_unlock (&tx_queue->lockp);
+    }
   return s;
 }
 
@@ -143,7 +167,8 @@ format_af_packet_tx_trace (u8 *s, va_list *va)
   af_packet_tx_trace_t *t = va_arg (*va, af_packet_tx_trace_t *);
   u32 indent = format_get_indent (s);
 
-  s = format (s, "af_packet: hw_if_index %u", t->hw_if_index);
+  s = format (s, "af_packet: hw_if_index %u tx-queue %u", t->hw_if_index,
+	      t->queue_id);
 
   s =
     format (s,
@@ -183,11 +208,13 @@ format_af_packet_tx_trace (u8 *s, va_list *va)
 static void
 af_packet_tx_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
 		    vlib_buffer_t *b0, u32 bi, tpacket3_hdr_t *tph,
-		    vnet_virtio_net_hdr_t *vnet_hdr, u32 hw_if_index)
+		    vnet_virtio_net_hdr_t *vnet_hdr, u32 hw_if_index,
+		    u16 queue_id)
 {
   af_packet_tx_trace_t *t;
   t = vlib_add_trace (vm, node, b0, sizeof (t[0]));
   t->hw_if_index = hw_if_index;
+  t->queue_id = queue_id;
   t->buffer_index = bi;
 
   clib_memcpy_fast (&t->tph, tph, sizeof (*tph));
@@ -289,21 +316,28 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
 						  vlib_frame_t * frame)
 {
   af_packet_main_t *apm = &af_packet_main;
+  vnet_hw_if_tx_frame_t *tf = vlib_frame_scalar_args (frame);
   u32 *buffers = vlib_frame_vector_args (frame);
   u32 n_left = frame->n_vectors;
   u32 n_sent = 0;
   vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
   af_packet_if_t *apif =
     pool_elt_at_index (apm->interfaces, rd->dev_instance);
-  clib_spinlock_lock_if_init (&apif->lockp);
-  u32 block = 0;
-  u32 frame_size = apif->tx_req->tp_frame_size;
-  u32 frame_num = apif->tx_req->tp_frame_nr;
-  u8 *block_start = apif->tx_ring[block];
-  u32 tx_frame = apif->next_tx_frame;
-  tpacket3_hdr_t *tph;
+  u16 queue_id = tf->queue_id;
+  af_packet_queue_t *tx_queue = vec_elt_at_index (apif->tx_queues, queue_id);
+  u32 block = 0, frame_size = 0, frame_num = 0, tx_frame = 0;
+  u8 *block_start = 0;
+  tpacket3_hdr_t *tph = 0;
   u32 frame_not_ready = 0;
   u8 is_cksum_gso_enabled = (apif->is_cksum_gso_enabled == 1) ? 1 : 0;
+
+  if (tf->shared_queue)
+    clib_spinlock_lock (&tx_queue->lockp);
+
+  frame_size = tx_queue->tx_req->tp_frame_size;
+  frame_num = tx_queue->tx_req->tp_frame_nr;
+  block_start = tx_queue->tx_ring[block];
+  tx_frame = tx_queue->next_tx_frame;
 
   while (n_left)
     {
@@ -366,12 +400,12 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
 	{
 	  if (PREDICT_TRUE (is_cksum_gso_enabled))
 	    af_packet_tx_trace (vm, node, b0_first, bi_first, tph, vnet_hdr,
-				apif->hw_if_index);
+				apif->hw_if_index, queue_id);
 	  else
 	    {
 	      vnet_virtio_net_hdr_t vnet_hdr2 = {};
 	      af_packet_tx_trace (vm, node, b0_first, bi_first, tph,
-				  &vnet_hdr2, apif->hw_if_index);
+				  &vnet_hdr2, apif->hw_if_index, queue_id);
 	    }
 	}
       tx_frame = (tx_frame + 1) % frame_num;
@@ -386,10 +420,10 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
 
   if (PREDICT_TRUE (n_sent))
     {
-      apif->next_tx_frame = tx_frame;
+      tx_queue->next_tx_frame = tx_frame;
 
-      if (PREDICT_FALSE (sendto (apif->fd, NULL, 0, MSG_DONTWAIT, NULL, 0) ==
-			 -1))
+      if (PREDICT_FALSE (
+	    sendto (tx_queue->fd, NULL, 0, MSG_DONTWAIT, NULL, 0) == -1))
 	{
 	  /* Uh-oh, drop & move on, but count whether it was fatal or not.
 	   * Note that we have no reliable way to properly determine the
@@ -403,7 +437,8 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
 	}
     }
 
-  clib_spinlock_unlock_if_init (&apif->lockp);
+  if (tf->shared_queue)
+    clib_spinlock_unlock (&tx_queue->lockp);
 
   if (PREDICT_FALSE (frame_not_ready))
     vlib_error_count (vm, node->node_index,
