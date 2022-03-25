@@ -40,6 +40,13 @@ typedef struct
 
 typedef struct
 {
+  u32 rx_frame_offset;
+  u32 num_pkts;
+  u8 is_save;
+} save_state_t;
+
+typedef struct
+{
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   clib_spinlock_t lockp;
   u8 *host_if_name;
@@ -63,6 +70,7 @@ typedef struct
   u32 queue_index;
   u32 host_mtu;
   af_packet_if_mode_t mode;
+  save_state_t ss;
 } af_packet_if_t;
 
 typedef struct

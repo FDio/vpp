@@ -256,15 +256,21 @@ af_packet_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
       vnet_feature_start_device_input_x1 (apif->sw_if_index, &next_index, &bt);
     }
 
-  while ((((block_desc_t *) (block_start = apif->rx_ring[block]))
-	    ->hdr.bh1.block_status &
-	  TP_STATUS_USER) != 0)
+  if ((((block_desc_t *) (block_start = apif->rx_ring[block]))
+	 ->hdr.bh1.block_status &
+       TP_STATUS_USER) != 0)
     {
       u32 n_required = 0;
+      bd = (block_desc_t *) block_start;
 
-      if (PREDICT_FALSE (num_pkts == 0))
+      if (PREDICT_FALSE (apif->ss.is_save))
 	{
-	  bd = (block_desc_t *) block_start;
+	  num_pkts = apif->ss.num_pkts;
+	  rx_frame_offset = apif->ss.rx_frame_offset;
+	  apif->ss.is_save = 0;
+	}
+      else
+	{
 	  num_pkts = bd->hdr.bh1.num_pkts;
 	  rx_frame_offset = sizeof (block_desc_t);
 	}
@@ -280,14 +286,14 @@ af_packet_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  _vec_len (apm->rx_buffers[thread_index]) = n_free_bufs;
 	}
 
-      while (num_pkts && (n_free_bufs > min_bufs))
+      while (num_pkts && (n_free_bufs >= min_bufs))
 	{
 	  u32 next0 = next_index;
 	  u32 n_left_to_next;
 
 	  vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
-	  while (num_pkts && n_left_to_next && (n_free_bufs > min_bufs))
+	  while (num_pkts && n_left_to_next && (n_free_bufs >= min_bufs))
 	    {
 	      tph = (tpacket3_hdr_t *) (block_start + rx_frame_offset);
 
@@ -308,15 +314,15 @@ af_packet_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 		  (vnet_virtio_net_hdr_t *) ((u8 *) tph + tph->tp_mac -
 					     sizeof (vnet_virtio_net_hdr_t));
 
+	      // save current state and return
 	      if (PREDICT_FALSE (((data_len / n_buffer_bytes) + 1) >
 				 vec_len (apm->rx_buffers[thread_index])))
 		{
-		  vec_validate (apm->rx_buffers[thread_index],
-				VLIB_FRAME_SIZE + n_free_bufs - 1);
-		  n_free_bufs += vlib_buffer_alloc (
-		    vm, &apm->rx_buffers[thread_index][n_free_bufs],
-		    VLIB_FRAME_SIZE);
-		  _vec_len (apm->rx_buffers[thread_index]) = n_free_bufs;
+		  apif->ss.rx_frame_offset = rx_frame_offset;
+		  apif->ss.num_pkts = num_pkts;
+		  apif->ss.is_save = 1;
+		  vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+		  goto done;
 		}
 
 	      while (data_len)
@@ -475,9 +481,25 @@ af_packet_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  bd->hdr.bh1.block_status = TP_STATUS_KERNEL;
 	  block = (block + 1) % block_nr;
 	}
+      else
+	{
+	  apif->ss.rx_frame_offset = rx_frame_offset;
+	  apif->ss.num_pkts = num_pkts;
+	  apif->ss.is_save = 1;
+	}
     }
 
   apif->next_rx_block = block;
+
+done:
+
+  if ((((block_desc_t *) (block_start = apif->rx_ring[block]))
+	 ->hdr.bh1.block_status &
+       TP_STATUS_USER) != 0)
+    vlib_node_set_state (vm, node->node_index, VLIB_NODE_STATE_POLLING);
+  else
+    vlib_node_set_state (vm, node->node_index, VLIB_NODE_STATE_INTERRUPT);
+
   vlib_increment_combined_counter
     (vnet_get_main ()->interface_main.combined_sw_if_counters
      + VNET_INTERFACE_COUNTER_RX,
