@@ -252,6 +252,10 @@ typedef struct
   /* queue for VNET_FLOW_ACTION_REDIRECT_TO_QUEUE */
   u32 redirect_queue;
 
+  /* start queue index and queue numbers for RSS queue group */
+  u32 queue_index;
+  u32 queue_num;
+
   /* buffer offset for VNET_FLOW_ACTION_BUFFER_ADVANCE */
   i32 buffer_advance;
 
