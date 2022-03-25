@@ -103,6 +103,25 @@ dpdk_flow_convert_rss_types (u64 type, u64 * dpdk_rss_type)
     return;
 }
 
+/** Maximum number of queue indices in struct rte_flow_action_rss. */
+#define ACTION_RSS_QUEUE_NUM 128
+
+static inline void
+dpdk_flow_convert_rss_queues (u32 queue_index, u32 queue_num,
+			      struct rte_flow_action_rss *rss)
+{
+  u16 *queues = clib_mem_alloc (sizeof (*queues) * ACTION_RSS_QUEUE_NUM);
+  int i;
+
+  for (i = 0; i < queue_num; i++)
+    queues[i] = queue_index++;
+
+  rss->queue_num = queue_num;
+  rss->queue = queues;
+
+  return;
+}
+
 static inline enum rte_eth_hash_function
 dpdk_flow_convert_rss_func (vnet_rss_function_t func)
 {
@@ -504,6 +523,10 @@ pattern_end:
 
       /* convert types to DPDK rss bitmask */
       dpdk_flow_convert_rss_types (f->rss_types, &rss_type);
+
+      if (f->queue_num)
+	/* convert rss queues to array */
+	dpdk_flow_convert_rss_queues (f->queue_index, f->queue_num, &rss);
 
       rss.types = rss_type;
       if ((rss.func = dpdk_flow_convert_rss_func (f->rss_fun)) ==

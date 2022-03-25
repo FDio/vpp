@@ -364,6 +364,7 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
   int rv;
   u32 teid = 0, session_id = 0, spi = 0;
   u32 vni = 0;
+  u32 queue_start = 0, queue_end = 0;
   vnet_flow_type_t type = VNET_FLOW_TYPE_UNKNOWN;
   ip4_address_and_mask_t ip4s = { };
   ip4_address_and_mask_t ip4d = { };
@@ -521,6 +522,21 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 	    check_rss_types (rss_type[1]) check_rss_types (rss_type[2])
 #undef _
 	    flow.actions |= VNET_FLOW_ACTION_RSS;
+	}
+      else if (unformat (line_input, "rss queues"))
+	{
+	  if (unformat (line_input, "%d to %d", &queue_start, &queue_end))
+	    ;
+	  else
+	    {
+	      return clib_error_return (0, "unknown input `%U'",
+					format_unformat_error, line_input);
+	    }
+
+	  flow.queue_index = queue_start;
+	  flow.queue_num = queue_end - queue_start + 1;
+
+	  flow.actions |= VNET_FLOW_ACTION_RSS;
 	}
       else if (unformat (line_input, "%U", unformat_vnet_hw_interface, vnm,
 			 &hw_if_index))
@@ -728,7 +744,8 @@ VLIB_CLI_COMMAND (test_flow_command, static) = {
 		"[spec <spec string>] [mask <mask string>]"
 		"[next-node <node>] [mark <id>] [buffer-advance <len>] "
 		"[redirect-to-queue <queue>] [drop] "
-		"[rss function <name>] [rss types <flow type>]",
+		"[rss function <name>] [rss types <flow type>]"
+		"[rss queues <queue_start> to <queue_end>]",
   .function = test_flow,
 };
 /* *INDENT-ON* */
