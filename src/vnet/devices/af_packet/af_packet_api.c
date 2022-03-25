@@ -68,6 +68,9 @@ vl_api_af_packet_create_v2_t_handler (vl_api_af_packet_create_v2_t *mp)
   arg->host_if_name = format (0, "%s", mp->host_if_name);
   vec_add1 (arg->host_if_name, 0);
 
+  // Default number of rx/tx queue(s)
+  arg->num_rxqs = 1;
+  arg->num_txqs = 1;
   arg->rx_frame_size = clib_net_to_host_u32 (mp->rx_frame_size);
   arg->tx_frame_size = clib_net_to_host_u32 (mp->tx_frame_size);
   arg->rx_frames_per_block = clib_net_to_host_u32 (mp->rx_frames_per_block);
@@ -76,14 +79,10 @@ vl_api_af_packet_create_v2_t_handler (vl_api_af_packet_create_v2_t *mp)
   arg->mode = AF_PACKET_IF_MODE_ETHERNET;
 
   if (mp->num_rx_queues > 1)
-    {
-      rv = VNET_API_ERROR_INVALID_VALUE;
-      goto out;
-    }
+    arg->num_rxqs = clib_net_to_host_u16 (mp->num_rx_queues);
 
   rv = af_packet_create_if (arg);
 
-out:
   vec_free (arg->host_if_name);
   REPLY_MACRO2 (VL_API_AF_PACKET_CREATE_V2_REPLY, ({
 		  rmp->sw_if_index = clib_host_to_net_u32 (arg->sw_if_index);
