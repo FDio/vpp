@@ -201,7 +201,8 @@ typedef struct session_main_
   transport_proto_t last_transport_proto_type;
 
   /** Number of workers at pool realloc barrier */
-  u32 pool_realloc_at_barrier;
+  volatile u32 pool_realloc_at_barrier;
+  volatile u32 pool_realloc_doing_work;
 
   /** Lock to synchronize parallel forced reallocs */
   clib_spinlock_t pool_realloc_lock;
@@ -774,12 +775,15 @@ STATIC_ASSERT_SIZEOF (pool_safe_realloc_header_t, sizeof (pool_header_t));
       ASSERT (vlib_get_thread_index () == 0);                                 \
       vlib_worker_thread_barrier_sync (vm);                                   \
       free_elts = pool_free_elts (P);                                         \
-      max_elts = pool_max_len (P);                                            \
-      n_alloc = clib_max (2 * max_elts, POOL_REALLOC_SAFE_ELT_THRESH);        \
-      pool_alloc_aligned (P, free_elts + n_alloc, align);                     \
-      clib_bitmap_validate (pool_header (P)->free_bitmap,                     \
-			    max_elts + n_alloc);                              \
-      pool_realloc_flag (P) = 0;                                              \
+      if (free_elts < POOL_REALLOC_SAFE_ELT_THRESH)                           \
+	{                                                                     \
+	  max_elts = pool_max_len (P);                                        \
+	  n_alloc = clib_max (2 * max_elts, POOL_REALLOC_SAFE_ELT_THRESH);    \
+	  pool_alloc_aligned (P, free_elts + n_alloc, align);                 \
+	  clib_bitmap_validate (pool_header (P)->free_bitmap,                 \
+				max_elts + n_alloc);                          \
+	}                                                                     \
+	  pool_realloc_flag (P) = 0;                                          \
       vlib_worker_thread_barrier_release (vm);                                \
     }                                                                         \
   while (0)
@@ -797,49 +801,71 @@ pool_program_safe_realloc (void *p, u32 thread_index,
 				  uword_to_pointer (thread_index, void *));
 }
 
-always_inline void
-pool_realloc_maybe_wait_at_barrier (void)
-{
-  if (!(*vlib_worker_threads->wait_at_barrier))
-    return;
-
-  /* Node refork required. Don't stop at the barrier from within a node */
-  if (*vlib_worker_threads->node_reforks_required)
-    return;
-
-  clib_atomic_fetch_add (vlib_worker_threads->workers_at_barrier, 1);
-
-  while (*vlib_worker_threads->wait_at_barrier)
-    ;
-
-  clib_atomic_fetch_add (vlib_worker_threads->workers_at_barrier, -1);
-}
-
 #define pool_realloc_all_at_barrier(_not)                                     \
   (*vlib_worker_threads->workers_at_barrier >= (vlib_num_workers () - _not))
 
-#define pool_realloc_safe_force(P)                                            \
-  do                                                                          \
-    {                                                                         \
-      ALWAYS_ASSERT (*vlib_worker_threads->node_reforks_required);            \
-      if (pool_realloc_all_at_barrier (1))                                    \
-	{                                                                     \
-	  pool_alloc (P, pool_max_len (P));                                   \
-	}                                                                     \
-      else                                                                    \
-	{                                                                     \
-	  session_main_t *sm = &session_main;                                 \
-	  clib_warning ("forced pool realloc");                               \
-	  clib_atomic_fetch_add (&sm->pool_realloc_at_barrier, 1);            \
-	  while (!pool_realloc_all_at_barrier (sm->pool_realloc_at_barrier))  \
-	    ;                                                                 \
-	  clib_spinlock_lock (&sm->pool_realloc_lock);                        \
-	  pool_alloc (P, pool_max_len (P));                                   \
-	  clib_spinlock_unlock (&sm->pool_realloc_lock);                      \
-	  clib_atomic_fetch_add (&sm->pool_realloc_at_barrier, -1);           \
-	}                                                                     \
-    }                                                                         \
-  while (0)
+always_inline void
+pool_realloc_maybe_wait_at_barrier (void)
+{
+  session_main_t *sm = &session_main;
+
+  while (!(*vlib_worker_threads->wait_at_barrier))
+    ;
+
+  clib_atomic_fetch_add (&sm->pool_realloc_at_barrier, 1);
+  while (!pool_realloc_all_at_barrier (sm->pool_realloc_at_barrier))
+    ;
+
+  clib_atomic_fetch_add (&sm->pool_realloc_doing_work, 1);
+  //  if (!(*vlib_worker_threads->wait_at_barrier))
+  //    return;
+
+  //  /* Node refork required. Don't stop at the barrier from within a node */
+  //  if (*vlib_worker_threads->node_reforks_required)
+  //    return;
+  //
+  //  clib_atomic_fetch_add (vlib_worker_threads->workers_at_barrier, 1);
+  //
+  //  while (*vlib_worker_threads->wait_at_barrier)
+  //    ;
+  //
+  //  clib_atomic_fetch_add (vlib_worker_threads->workers_at_barrier, -1);
+}
+
+always_inline void
+pool_realloc_done_wait_at_barrier (void)
+{
+  session_main_t *sm = &session_main;
+
+  while (sm->pool_realloc_doing_work < sm->pool_realloc_at_barrier)
+    ;
+
+  clib_atomic_fetch_add (&sm->pool_realloc_doing_work, -1);
+  clib_atomic_fetch_add (&sm->pool_realloc_at_barrier, -1);
+}
+
+//#define pool_realloc_safe_force(P)                                            \
+//  do                                                                          \
+//    {                                                                         \
+//      ALWAYS_ASSERT (*vlib_worker_threads->node_reforks_required);            \
+//      if (pool_realloc_all_at_barrier (1))                                    \
+//	{                                                                     \
+//	  pool_alloc (P, pool_max_len (P));                                   \
+//	}                                                                     \
+//      else                                                                    \
+//	{                                                                     \
+//	  session_main_t *sm = &session_main;                                 \
+//	  clib_warning ("forced pool realloc");                               \
+//	  clib_atomic_fetch_add (&sm->pool_realloc_at_barrier, 1);            \
+//	  while (!pool_realloc_all_at_barrier (sm->pool_realloc_at_barrier))  \
+//	    ;                                                                 \
+//	  clib_spinlock_lock (&sm->pool_realloc_lock);                        \
+//	  pool_alloc (P, pool_max_len (P));                                   \
+//	  clib_spinlock_unlock (&sm->pool_realloc_lock);                      \
+//	  clib_atomic_fetch_add (&sm->pool_realloc_at_barrier, -1);           \
+//	}                                                                     \
+//    }                                                                         \
+//  while (0)
 
 #define pool_needs_realloc(P)                                                 \
   ((!P) ||                                                                    \
@@ -861,27 +887,10 @@ pool_realloc_maybe_wait_at_barrier (void)
 	  else if (PREDICT_FALSE (pool_free_elts (P) <                        \
 				  POOL_REALLOC_SAFE_ELT_THRESH / 2))          \
 	    {                                                                 \
-	      volatile typeof (P) *PP = &(P);                                 \
-	      pool_program_safe_realloc (P, thread_index, rpc_fn);            \
-	      if (thread_index)                                               \
-		{                                                             \
-		  while (pool_realloc_flag (P))                               \
-		    {                                                         \
-		      /* If refork required abort and consume existing elt */ \
-		      if (*vlib_worker_threads->node_reforks_required)        \
-			{                                                     \
-			  /* All workers at barrier realloc now */            \
-			  if (pool_realloc_all_at_barrier (1))                \
-			    pool_alloc_aligned (P, pool_max_len (P), align);  \
-			  break;                                              \
-			}                                                     \
-		      pool_realloc_maybe_wait_at_barrier ();                  \
-		    }                                                         \
-		  if (pool_free_elts (P) == 0)                                \
-		    pool_realloc_safe_force (P);                              \
-		  ALWAYS_ASSERT (pool_free_elts (P) > 0);                     \
-		}                                                             \
-	      (P) = *PP;                                                      \
+	      pool_realloc_maybe_wait_at_barrier ();                          \
+	      pool_alloc_aligned (P, pool_max_len (P), align);                \
+	      pool_realloc_done_wait_at_barrier ();                           \
+	      ALWAYS_ASSERT (pool_free_elts (P) > 0);                         \
 	    }                                                                 \
 	  else                                                                \
 	    {                                                                 \
