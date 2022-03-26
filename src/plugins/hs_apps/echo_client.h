@@ -64,6 +64,8 @@ typedef struct
   u32 prev_conns;
   u32 repeats;
 
+  u32 connect_conn_index; /**< Conencts attempted progress */
+
   /*
    * Application setup parameters
    */
@@ -122,9 +124,11 @@ enum
   ECHO_CLIENTS_RUNNING,
   ECHO_CLIENTS_EXITING
 } echo_clients_test_state_e;
-extern echo_client_main_t echo_client_main;
 
+extern echo_client_main_t echo_client_main;
 vlib_node_registration_t echo_clients_node;
+
+void echo_clients_program_connects (void);
 
 #endif /* __included_echo_client_h__ */
 
