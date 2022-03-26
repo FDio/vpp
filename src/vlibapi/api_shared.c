@@ -551,7 +551,6 @@ msg_handler_internal (api_main_t *am, void *the_msg, uword msg_len,
       if (calc_size_fp)
 	{
 	  calc_size = (*calc_size_fp) (the_msg);
-	  ASSERT (calc_size <= msg_len);
 	  if (calc_size > msg_len)
 	    {
 	      clib_warning (
