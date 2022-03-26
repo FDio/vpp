@@ -334,6 +334,7 @@ ec_reset_runtime_config (echo_client_main_t *ecm)
   ecm->no_copy = 0;
   ecm->run_test = ECHO_CLIENTS_STARTING;
   ecm->ready_connections = 0;
+  ecm->connect_conn_index = 0;
   ecm->rx_total = 0;
   ecm->tx_total = 0;
   ecm->barrier_acq_needed = 0;
@@ -816,24 +817,40 @@ ec_transport_needs_crypto (transport_proto_t proto)
 	 proto == TRANSPORT_PROTO_QUIC;
 }
 
-clib_error_t *
-echo_clients_connect (vlib_main_t *vm)
+int
+echo_clients_connect_rpc (void *args)
 {
   echo_client_main_t *ecm = &echo_client_main;
   vnet_connect_args_t _a = {}, *a = &_a;
-  int ci = 0, rv, needs_crypto;
-  clib_error_t *error = 0;
-  u32 n_clients;
+  vlib_main_t *vm = vlib_get_main ();
+  int rv, needs_crypto;
+  u32 n_clients, ci;
 
   n_clients = ecm->n_clients;
   needs_crypto = ec_transport_needs_crypto (ecm->transport_proto);
   clib_memcpy (&a->sep_ext, &ecm->connect_sep, sizeof (ecm->connect_sep));
   a->app_index = ecm->app_index;
 
+  ci = ecm->connect_conn_index;
+
   vlib_worker_thread_barrier_sync (vm);
 
   while (ci < n_clients)
     {
+      /* Crude pacing for call setups  */
+      if (ci - ecm->ready_connections > 128)
+	{
+	  ecm->connect_conn_index = ci;
+	  break;
+	}
+
+      /* Crude pacing for call setups  */
+      if (ci - ecm->ready_connections > 128)
+	{
+	  ecm->connect_conn_index = ci;
+	  break;
+	}
+
       a->api_context = ci;
       if (needs_crypto)
 	{
@@ -849,35 +866,26 @@ echo_clients_connect (vlib_main_t *vm)
 
       if (rv)
 	{
-	  error = clib_error_return (0, "connect returned: %d", rv);
+	  clib_warning ("connect returned: %U", format_session_error, rv);
+	  signal_evt_to_cli (2);
 	  break;
 	}
 
       ci += 1;
-
-      /* Crude pacing for call setups  */
-      if ((ci % 16) == 0)
-	{
-	  vlib_worker_thread_barrier_release (vm);
-
-	  ASSERT (ci >= ecm->ready_connections);
-	  if (ci - ecm->ready_connections > 128)
-	    {
-	      while (ci - ecm->ready_connections > 128)
-		vlib_process_suspend (vm, 100e-6);
-	    }
-	  else
-	    {
-	      vlib_process_suspend (vm, 50e-6);
-	    }
-
-	  vlib_worker_thread_barrier_sync (vm);
-	}
     }
 
   vlib_worker_thread_barrier_release (vm);
 
-  return error;
+  if (ci < ecm->expected_connections)
+    echo_clients_program_connects ();
+
+  return 0;
+}
+
+void
+echo_clients_program_connects (void)
+{
+  session_send_rpc_evt_to_thread_force (0, echo_clients_connect_rpc, 0);
 }
 
 #define ec_cli(_fmt, _args...)                                                \
@@ -1005,10 +1013,7 @@ parse_config:
    */
 
   ecm->syn_start_time = vlib_time_now (vm);
-  if ((error = echo_clients_connect (vm)))
-    {
-      goto cleanup;
-    }
+  echo_clients_program_connects ();
 
   /*
    * Park until the sessions come up, or syn_timeout seconds pass
@@ -1032,6 +1037,9 @@ parse_config:
 		ecm->n_clients, delta, ((f64) ecm->n_clients) / delta);
       break;
 
+    case 2:
+      error = clib_error_return (0, "failed: connect returned");
+      goto cleanup;
     default:
       ec_cli ("unexpected event(1): %d", event_type);
       error = clib_error_return (0, "failed: unexpected event(1): %d",
