@@ -239,7 +239,7 @@ def stdouterr_reader_wrapper(unread_testcases, finished_unread_testcases,
             read_testcase = None
 
 
-def handle_failed_suite(logger, last_test_temp_dir, vpp_pid):
+def handle_failed_suite(logger, last_test_temp_dir, vpp_pid, vpp_binary):
     if last_test_temp_dir:
         # Need to create link in case of a timeout or core dump without failure
         lttd = os.path.basename(last_test_temp_dir)
@@ -273,7 +273,7 @@ def handle_failed_suite(logger, last_test_temp_dir, vpp_pid):
             except Exception as e:
                 logger.exception("Unexpected error running `file' utility "
                                  "on core-file")
-            logger.error(f"gdb {config.vpp_bin} {core_path}")
+            logger.error(f"gdb {vpp_binary} {core_path}")
 
     if vpp_pid:
         # Copy api post mortem
@@ -319,7 +319,8 @@ def process_finished_testsuite(wrapped_testcase_suite,
         failed_wrapped_testcases.add(wrapped_testcase_suite)
         handle_failed_suite(wrapped_testcase_suite.logger,
                             wrapped_testcase_suite.last_test_temp_dir,
-                            wrapped_testcase_suite.vpp_pid)
+                            wrapped_testcase_suite.vpp_pid,
+                            wrapped_testcase_suite.last_test_vpp_binary,)
 
     return stop_run
 
