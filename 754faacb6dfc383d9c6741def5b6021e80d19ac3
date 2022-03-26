@@ -16,6 +16,24 @@
       "revId": "754faacb6dfc383d9c6741def5b6021e80d19ac3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9ea14334_5792fe00",
+        "filename": "src/vppinfra/pool.h",
+        "patchSetId": 35
+      },
+      "lineNbr": 182,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-03-26T10:30:19Z",
+      "side": 1,
+      "message": "Patch is clang-formatted, otherwise it will not pass checkstyle verify job.",
+      "parentUuid": "d2caeb75_6b4036d4",
+      "revId": "754faacb6dfc383d9c6741def5b6021e80d19ac3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
