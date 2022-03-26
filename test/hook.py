@@ -6,6 +6,7 @@ from subprocess import check_output, CalledProcessError
 
 import scapy.compat
 import framework
+from config import config
 from log import RED, single_line_delim, double_line_delim
 from util import check_core_path, get_core_path
 
@@ -79,7 +80,7 @@ class PollHook(Hook):
 
     def on_crash(self, core_path):
         self.logger.error("Core file present, debug with: gdb %s %s",
-                          self.test.vpp_bin, core_path)
+                          config.vpp, core_path)
         check_core_path(self.logger, core_path)
         self.logger.error("Running `file %s':", core_path)
         try:

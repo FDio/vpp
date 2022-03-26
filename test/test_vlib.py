@@ -187,7 +187,7 @@ class TestVlib(VppTestCase):
     def test_vlib_main_unittest(self):
         """ Private Binary API Segment Test (takes 70 seconds) """
 
-        vat_path = self.vpp_bin + '_api_test'
+        vat_path = config.vpp + '_api_test'
         vat = pexpect.spawn(vat_path, ['socket-name',
                                        self.get_api_sock_path()])
         vat.expect("vat# ", timeout=10)
