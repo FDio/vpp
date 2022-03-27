@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "83567d09_69c3a85e",
+        "filename": "src/vlib/node.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 508,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-03-27T17:37:24Z",
+      "side": 1,
+      "message": "Because we always cast, we can probably get away with making this a uword. However, I wonder if we have any data structure that\u0027s as large as current VLIB_NODE_RUNTIME_DATA_SIZE (60B). Quick search suggests they\u0027re all 24B or smaller ...",
+      "range": {
+        "startLine": 508,
+        "startChar": 4,
+        "endLine": 508,
+        "endChar": 6
+      },
+      "revId": "28415e87f1b23cb7c611beda11f5262a4bc3e52e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
