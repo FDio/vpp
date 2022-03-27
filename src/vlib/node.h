@@ -503,14 +503,18 @@ typedef struct vlib_node_runtime_t
 					  zero before first run of this
 					  node. */
 
-  u8 runtime_data[0];			/**< Function dependent
-					  node-runtime data. This data is
-					  thread local, and it is not
-					  cloned from main thread. It needs
-					  to be initialized for each thread
-					  before it is used unless
-					  runtime_data template exists in
-					  vlib_node_t. */
+  union
+  {
+    u8 runtime_data[0];	     /**< Function dependent
+			       node-runtime data. This data is
+			       thread local, and it is not
+			       cloned from main thread. It needs
+			       to be initialized for each thread
+			       before it is used unless
+			       runtime_data template exists in
+			       vlib_node_t. */
+    uword runtime_data_w[0]; /**< For proper alignment */
+  };
 }
 vlib_node_runtime_t;
 
