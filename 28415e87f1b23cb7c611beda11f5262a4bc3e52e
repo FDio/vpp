@@ -22,6 +22,30 @@
       "revId": "28415e87f1b23cb7c611beda11f5262a4bc3e52e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c38175c4_2e5abf4e",
+        "filename": "src/vlib/node.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 508,
+      "author": {
+        "id": 2558
+      },
+      "writtenOn": "2022-03-27T20:18:30Z",
+      "side": 1,
+      "message": "I did not manage to find any larger than 24B either. So making it uword should do.\nAnd in case some out-of-tree/proprietary plugins used all 60B, running debug VPP should catch it.",
+      "parentUuid": "83567d09_69c3a85e",
+      "range": {
+        "startLine": 508,
+        "startChar": 4,
+        "endLine": 508,
+        "endChar": 6
+      },
+      "revId": "28415e87f1b23cb7c611beda11f5262a4bc3e52e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
