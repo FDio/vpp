@@ -404,23 +404,28 @@ vlib_worker_thread_init (vlib_worker_thread_t * w)
 void *
 vlib_worker_thread_bootstrap_fn (void *arg)
 {
-  void *rv;
   vlib_worker_thread_t *w = arg;
-  vlib_main_t *vm = 0;
 
   w->lwp = syscall (SYS_gettid);
   w->thread_id = pthread_self ();
 
   __os_thread_index = w - vlib_worker_threads;
 
-  vm = vlib_global_main.vlib_mains[__os_thread_index];
+  if (CLIB_DEBUG > 0)
+    {
+      void *frame_addr = __builtin_frame_address (0);
+      if (frame_addr < (void *) w->thread_stack ||
+	  frame_addr > (void *) w->thread_stack + VLIB_THREAD_STACK_SIZE)
+	{
+	  /* heap is not set yet */
+	  fprintf (stderr, "thread stack is not set properly\n");
+	  exit (1);
+	}
+    }
 
-  vlib_process_start_switch_stack (vm, 0);
-  rv = (void *) clib_calljmp
-    ((uword (*)(uword)) w->thread_function,
-     (uword) arg, w->thread_stack + VLIB_THREAD_STACK_SIZE);
-  /* NOTREACHED, we hope */
-  return rv;
+  w->thread_function (arg);
+
+  return 0;
 }
 
 void
@@ -463,6 +468,7 @@ vlib_launch_thread_int (void *fp, vlib_worker_thread_t * w, unsigned cpu_id)
   clib_mem_main_t *mm = &clib_mem_main;
   vlib_thread_main_t *tm = &vlib_thread_main;
   pthread_t worker;
+  pthread_attr_t attr;
   cpu_set_t cpuset;
   void *(*fp_arg) (void *) = fp;
   void *numa_heap;
@@ -493,11 +499,21 @@ vlib_launch_thread_int (void *fp, vlib_worker_thread_t * w, unsigned cpu_id)
       CPU_ZERO (&cpuset);
       CPU_SET (cpu_id, &cpuset);
 
-      if (pthread_create (&worker, NULL /* attr */ , fp_arg, (void *) w))
+      if (pthread_attr_init (&attr))
+	return clib_error_return_unix (0, "pthread_attr_init");
+
+      if (pthread_attr_setstack (&attr, w->thread_stack,
+				 VLIB_THREAD_STACK_SIZE))
+	return clib_error_return_unix (0, "pthread_attr_setstack");
+
+      if (pthread_create (&worker, &attr, fp_arg, (void *) w))
 	return clib_error_return_unix (0, "pthread_create");
 
       if (pthread_setaffinity_np (worker, sizeof (cpu_set_t), &cpuset))
 	return clib_error_return_unix (0, "pthread_setaffinity_np");
+
+      if (pthread_attr_destroy (&attr))
+	return clib_error_return_unix (0, "pthread_attr_destroy");
 
       return 0;
 }
@@ -1513,8 +1529,6 @@ vlib_worker_thread_fn (void *arg)
   vlib_worker_thread_t *w = (vlib_worker_thread_t *) arg;
   vlib_main_t *vm = vlib_get_main ();
   clib_error_t *e;
-
-  vlib_process_finish_switch_stack (vm);
 
   ASSERT (vm->thread_index == vlib_get_thread_index ());
 
