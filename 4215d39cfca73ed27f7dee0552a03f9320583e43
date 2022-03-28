@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6246b928_d9ef2ea1",
+        "filename": "src/vnet/flow/flow_types.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-03-28T08:11:44Z",
+      "side": 1,
+      "message": "Suggest to use a struct to wrap spec and mask instead of hard-coded 1024 here.",
+      "revId": "4215d39cfca73ed27f7dee0552a03f9320583e43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
