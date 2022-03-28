@@ -243,6 +243,7 @@ typedef struct
   };
   dpdk_device_addr_type_t dev_addr_type;
   u8 *name;
+  u8 *tag;
   u8 is_blacklisted;
 
 #define _(x) uword x;
