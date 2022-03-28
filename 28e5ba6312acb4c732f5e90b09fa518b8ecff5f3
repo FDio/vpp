@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "e60ed31a_2e07d6a8",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 634,
+      "author": {
+        "id": 2538
+      },
+      "writtenOn": "2022-03-28T12:20:26Z",
+      "side": 1,
+      "message": "sure Falcon, will make the change and apply again.",
+      "parentUuid": "932db043_a4bb8ad1",
+      "range": {
+        "startLine": 631,
+        "startChar": 0,
+        "endLine": 634,
+        "endChar": 21
+      },
+      "revId": "28e5ba6312acb4c732f5e90b09fa518b8ecff5f3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "f6062fb8_04c41779",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 2
@@ -36,6 +60,30 @@
       "writtenOn": "2022-03-25T15:28:03Z",
       "side": 1,
       "message": "Did you mean to return 0 for \"no error\"?",
+      "range": {
+        "startLine": 663,
+        "startChar": 9,
+        "endLine": 663,
+        "endChar": 10
+      },
+      "revId": "28e5ba6312acb4c732f5e90b09fa518b8ecff5f3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3324cdea_4b3456f4",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 663,
+      "author": {
+        "id": 2538
+      },
+      "writtenOn": "2022-03-28T12:20:26Z",
+      "side": 1,
+      "message": "Yes, will make it 0;",
+      "parentUuid": "f6062fb8_04c41779",
       "range": {
         "startLine": 663,
         "startChar": 9,
