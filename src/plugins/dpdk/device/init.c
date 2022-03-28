@@ -449,6 +449,9 @@ dpdk_lib_init (dpdk_main_t * dm)
       xd->sw_if_index = sw->sw_if_index;
       dpdk_log_debug ("[%u] interface %s created", port_id, hi->name);
 
+      if (devconf->tag)
+	vnet_set_sw_interface_tag (vnm, devconf->tag, sw->sw_if_index);
+
       ethernet_set_flags (vnm, xd->hw_if_index,
 			  ETHERNET_INTERFACE_FLAG_DEFAULT_L3);
 
@@ -876,6 +879,8 @@ dpdk_device_config (dpdk_config_main_t *conf, void *addr,
       else if (unformat (input, "num-tx-desc %u", &devconf->num_tx_desc))
 	;
       else if (unformat (input, "name %v", &devconf->name))
+	;
+      else if (unformat (input, "tag %s", &devconf->tag))
 	;
       else if (unformat (input, "workers %U", unformat_bitmap_list,
 			 &devconf->workers))
