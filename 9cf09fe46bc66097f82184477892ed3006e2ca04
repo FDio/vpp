@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2704ae03_a07eb129",
+        "filename": "src/vlib/node.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 506,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-03-28T22:20:34Z",
+      "side": 1,
+      "message": "use CLIB_ALIGN_MARK (runtime_data_mark, 8);\ninstead of changing type",
+      "revId": "9cf09fe46bc66097f82184477892ed3006e2ca04",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
