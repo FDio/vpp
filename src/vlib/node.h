@@ -503,6 +503,8 @@ typedef struct vlib_node_runtime_t
 					  zero before first run of this
 					  node. */
 
+  CLIB_ALIGN_MARK (runtime_data_pad, 8);
+
   u8 runtime_data[0];			/**< Function dependent
 					  node-runtime data. This data is
 					  thread local, and it is not
