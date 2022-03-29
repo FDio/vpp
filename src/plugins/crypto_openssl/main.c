@@ -526,7 +526,7 @@ crypto_openssl_init (vlib_main_t * vm)
   pid = getpid ();
   vec_add (seed_data, &t, sizeof (t));
   vec_add (seed_data, &pid, sizeof (pid));
-  vec_add (seed_data, seed_data, sizeof (seed_data));
+  vec_add (seed_data, &seed_data, sizeof (seed_data));
 
   RAND_seed ((const void *) seed_data, vec_len (seed_data));
 
