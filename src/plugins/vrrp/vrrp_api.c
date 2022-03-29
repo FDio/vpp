@@ -25,6 +25,109 @@
 
 /* API message handlers */
 static void
+vl_api_vrrp_vr_update_t_handler (vl_api_vrrp_vr_update_t *mp)
+{
+  vl_api_vrrp_vr_update_reply_t *rmp;
+  vrrp_vr_config_t vr_conf;
+  u32 api_flags;
+  u32 vrrp_index = INDEX_INVALID;
+  ip46_address_t *addrs = 0;
+  int rv;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  api_flags = htonl (mp->flags);
+
+  clib_memset (&vr_conf, 0, sizeof (vr_conf));
+
+  vr_conf.sw_if_index = ntohl (mp->sw_if_index);
+  vr_conf.vr_id = mp->vr_id;
+  vr_conf.priority = mp->priority;
+  vr_conf.adv_interval = ntohs (mp->interval);
+
+  if (api_flags & VRRP_API_VR_PREEMPT)
+    vr_conf.flags |= VRRP_VR_PREEMPT;
+
+  if (api_flags & VRRP_API_VR_ACCEPT)
+    vr_conf.flags |= VRRP_VR_ACCEPT;
+
+  if (api_flags & VRRP_API_VR_UNICAST)
+    vr_conf.flags |= VRRP_VR_UNICAST;
+
+  if (api_flags & VRRP_API_VR_IPV6)
+    vr_conf.flags |= VRRP_VR_IPV6;
+
+  int i;
+  for (i = 0; i < mp->n_addrs; i++)
+    {
+      ip46_address_t *addr;
+      void *src, *dst;
+      int len;
+
+      vec_add2 (addrs, addr, 1);
+
+      if (ntohl (mp->addrs[i].af) == ADDRESS_IP4)
+	{
+	  src = &mp->addrs[i].un.ip4;
+	  dst = &addr->ip4;
+	  len = sizeof (addr->ip4);
+	}
+      else
+	{
+	  src = &mp->addrs[i].un.ip6;
+	  dst = &addr->ip6;
+	  len = sizeof (addr->ip6);
+	}
+
+      clib_memcpy (dst, src, len);
+    }
+
+  vr_conf.vr_addrs = addrs;
+
+  if (vr_conf.priority == 0)
+    {
+      clib_warning ("VR priority must be > 0");
+      rv = VNET_API_ERROR_INVALID_VALUE;
+    }
+  else if (vr_conf.adv_interval == 0)
+    {
+      clib_warning ("VR advertisement interval must be > 0");
+      rv = VNET_API_ERROR_INVALID_VALUE;
+    }
+  else if (vr_conf.vr_id == 0)
+    {
+      clib_warning ("VR ID must be > 0");
+      rv = VNET_API_ERROR_INVALID_VALUE;
+    }
+  else
+    {
+      vrrp_index = ntohl(mp->vrrp_index);
+      rv = vrrp_vr_update (&vrrp_index, &vr_conf);
+    }
+
+  vec_free (addrs);
+
+  BAD_SW_IF_INDEX_LABEL;
+  // clang-format off
+  REPLY_MACRO2 (VL_API_VRRP_VR_UPDATE_REPLY,
+  ({
+    rmp->vrrp_index = htonl (vrrp_index);
+  }));
+  // clang-format on
+}
+
+static void
+vl_api_vrrp_vr_del_t_handler (vl_api_vrrp_vr_del_t *mp)
+{
+  vl_api_vrrp_vr_del_reply_t *rmp;
+  int rv;
+
+  rv = vrrp_vr_del (ntohl(mp->vrrp_index));
+
+  REPLY_MACRO (VL_API_VRRP_VR_DEL_REPLY);
+}
+
+static void
 vl_api_vrrp_vr_add_del_t_handler (vl_api_vrrp_vr_add_del_t * mp)
 {
   vl_api_vrrp_vr_add_del_reply_t *rmp;
@@ -103,7 +206,7 @@ vl_api_vrrp_vr_add_del_t_handler (vl_api_vrrp_vr_add_del_t * mp)
       rv = VNET_API_ERROR_INVALID_VALUE;
     }
   else
-    rv = vrrp_vr_add_del (mp->is_add, &vr_conf);
+    rv = vrrp_vr_add_del (mp->is_add, &vr_conf, NULL);
 
   vec_free (addrs);
 
