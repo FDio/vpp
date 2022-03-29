@@ -18,42 +18,39 @@
 #ifndef __included_echo_client_h__
 #define __included_echo_client_h__
 
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/ethernet/ethernet.h>
-
-#include <vppinfra/hash.h>
-#include <vppinfra/error.h>
 #include <vnet/session/session.h>
 #include <vnet/session/application_interface.h>
 
-typedef struct
+typedef struct ec_session_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   app_session_t data;
+  u32 vpp_session_index;
+  u32 thread_index;
   u64 bytes_to_send;
   u64 bytes_sent;
   u64 bytes_to_receive;
   u64 bytes_received;
   u64 vpp_session_handle;
-  u8 thread_index;
-} eclient_session_t;
+} ec_session_t;
+
+typedef struct ec_worker_
+{
+  ec_session_t *sessions;	/**< session pool */
+  u8 *rx_buf;			/**< prealloced rx buffer */
+  u32 *conn_indices;		/**< sessions handled by worker */
+  u32 *conns_this_batch;	/**< sessions handled in batch */
+  svm_msg_q_t *vpp_event_queue; /**< session layer worker mq */
+  u32 thread_index;		/**< thread index for worker */
+  u32 *quic_session_indices;	/**< probably deprecated */
+} ec_worker_t;
 
 typedef struct
 {
-  /*
-   * Test state variables
-   */
-  eclient_session_t *sessions;	 /**< Session pool, shared */
-  clib_spinlock_t sessions_lock; /**< Session pool lock */
-  u8 **rx_buf;			 /**< intermediate rx buffers */
+  ec_worker_t *wrk;		 /**< Per-thread state */
   u8 *connect_test_data;	 /**< Pre-computed test data */
-  u32 **quic_session_index_by_thread;
-  u32 **connection_index_by_thread;
-  u32 **connections_this_batch_by_thread; /**< active connection batch */
 
   volatile u32 ready_connections;
-  volatile u32 finished_connections;
   volatile u64 rx_total;
   volatile u64 tx_total;
   volatile int run_test; /**< Signal start of test */
@@ -64,16 +61,14 @@ typedef struct
   u32 prev_conns;
   u32 repeats;
 
-  u32 connect_conn_index; /**< Conencts attempted progress */
+  u32 connect_conn_index; /**< Connects attempted progress */
 
   /*
    * Application setup parameters
    */
-  svm_msg_q_t **vpp_event_queue;
 
   u32 cli_node_index;			/**< cli process node index */
   u32 app_index;			/**< app index after attach */
-  pthread_t client_thread_handle;
 
   /*
    * Configuration params
@@ -116,19 +111,22 @@ typedef struct
   u8 barrier_acq_needed;
 
   vlib_main_t *vlib_main;
-} echo_client_main_t;
+} ec_main_t;
 
-enum
+typedef enum ec_state_
 {
-  ECHO_CLIENTS_STARTING,
-  ECHO_CLIENTS_RUNNING,
-  ECHO_CLIENTS_EXITING
-} echo_clients_test_state_e;
+  EC_STARTING,
+  EC_RUNNING,
+  EC_EXITING
+} ec_state_t;
 
-extern echo_client_main_t echo_client_main;
-vlib_node_registration_t echo_clients_node;
+typedef enum ec_cli_signal_
+{
+  EC_CLI_CONNECTS_DONE = 1,
+  EC_CLI_CONNECTS_FAILED
+} ec_cli_signal_t;
 
-void echo_clients_program_connects (void);
+void ec_program_connects (void);
 
 #endif /* __included_echo_client_h__ */
 
