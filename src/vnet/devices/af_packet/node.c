@@ -112,7 +112,10 @@ static_always_inline void
 fill_gso_buffer_flags (vlib_buffer_t *b, u32 gso_size, u8 l4_hdr_sz)
 {
   b->flags |= VNET_BUFFER_F_GSO;
-  vnet_buffer2 (b)->gso_size = gso_size;
+  u16 hdr_size =
+    (vnet_buffer (b)->l4_hdr_offset - vnet_buffer (b)->l2_hdr_offset) +
+    l4_hdr_sz;
+  vnet_buffer2 (b)->gso_size = gso_size - hdr_size;
   vnet_buffer2 (b)->gso_l4_hdr_sz = l4_hdr_sz;
 }
 
@@ -125,7 +128,9 @@ mark_tcp_udp_cksum_calc (vlib_buffer_t *b, u8 *l4_hdr_sz)
     {
       ip4_header_t *ip4 =
 	(vlib_buffer_get_current (b) + sizeof (ethernet_header_t));
-      b->flags |= VNET_BUFFER_F_IS_IP4;
+      b->flags |= (VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
+		   VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
+		   VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
       if (ip4->protocol == IP_PROTOCOL_TCP)
 	{
 	  oflags |= VNET_BUFFER_OFFLOAD_F_TCP_CKSUM;
@@ -152,7 +157,9 @@ mark_tcp_udp_cksum_calc (vlib_buffer_t *b, u8 *l4_hdr_sz)
     {
       ip6_header_t *ip6 =
 	(vlib_buffer_get_current (b) + sizeof (ethernet_header_t));
-      b->flags |= VNET_BUFFER_F_IS_IP6;
+      b->flags |= (VNET_BUFFER_F_IS_IP6 | VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
+		   VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
+		   VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
       u16 ip6_hdr_len = sizeof (ip6_header_t);
       if (ip6_ext_hdr (ip6->protocol))
 	{
@@ -313,8 +320,9 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		   * us the GSO state or size, we guess it by comparing it
 		   * to the host MTU of the interface */
 		  if (tph->tp_snaplen > (apif->host_mtu + eth_header_size))
-		    fill_gso_buffer_flags (first_b0, apif->host_mtu,
-					   l4_hdr_sz);
+		    fill_gso_buffer_flags (
+		      first_b0, apif->host_mtu + sizeof (ethernet_header_t),
+		      l4_hdr_sz);
 		}
 	      else
 		buffer_add_to_chain (vm, bi0, first_bi0, prev_bi0);

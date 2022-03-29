@@ -44,11 +44,11 @@ VNET_HW_INTERFACE_CLASS (af_packet_ip_device_hw_interface_class, static) = {
 };
 
 #define AF_PACKET_DEFAULT_TX_FRAMES_PER_BLOCK 1024
-#define AF_PACKET_DEFAULT_TX_FRAME_SIZE	      (2048 * 5)
+#define AF_PACKET_DEFAULT_TX_FRAME_SIZE	      (2048 * 33)
 #define AF_PACKET_TX_BLOCK_NR		1
 
 #define AF_PACKET_DEFAULT_RX_FRAMES_PER_BLOCK 1024
-#define AF_PACKET_DEFAULT_RX_FRAME_SIZE	      (2048 * 5)
+#define AF_PACKET_DEFAULT_RX_FRAME_SIZE	      (2048 * 33)
 #define AF_PACKET_RX_BLOCK_NR		1
 
 /*defined in net/if.h but clashes with dpdk headers */
