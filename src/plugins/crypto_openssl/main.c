@@ -15,6 +15,8 @@
  *------------------------------------------------------------------
  */
 
+#include <sys/random.h>
+
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
@@ -474,9 +476,12 @@ crypto_openssl_init (vlib_main_t * vm)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   openssl_per_thread_data_t *ptd;
-  u8 *seed_data = 0;
-  time_t t;
-  pid_t pid;
+  u8 seed[32];
+
+  if (getrandom (&seed, sizeof (seed), 0) != sizeof (seed))
+    return clib_error_return_unix (0, "getrandom() failed");
+
+  RAND_seed (seed, sizeof (seed));
 
   u32 eidx = vnet_crypto_register_engine (vm, "openssl", 50, "OpenSSL");
 
@@ -521,16 +526,6 @@ crypto_openssl_init (vlib_main_t * vm)
     ptd->hmac_ctx = &ptd->_hmac_ctx;
 #endif
   }
-
-  t = time (NULL);
-  pid = getpid ();
-  vec_add (seed_data, &t, sizeof (t));
-  vec_add (seed_data, &pid, sizeof (pid));
-  vec_add (seed_data, &seed_data, sizeof (seed_data));
-
-  RAND_seed ((const void *) seed_data, vec_len (seed_data));
-
-  vec_free (seed_data);
 
   return 0;
 }
