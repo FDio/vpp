@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "99c4ea1f_b0fb8403",
+        "filename": "src/vnet/vxlan-gpe/encap.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-03-29T14:51:07Z",
+      "side": 1,
+      "message": "do you still need the is_ip4_x?\n\naf_0 \u003d (t0-\u003eflags \u0026 VXLAN_GPE_TUNNEL_IS_IPV4 ? AF_IP4 : AF_IP6);",
+      "revId": "a6775961776312bfaae1fd14498c869429b76639",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bf16ba12_6b390c39",
+        "filename": "src/vnet/vxlan-gpe/encap.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 350,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-03-29T14:51:07Z",
+      "side": 1,
+      "message": "use the AF here too.",
+      "revId": "a6775961776312bfaae1fd14498c869429b76639",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
