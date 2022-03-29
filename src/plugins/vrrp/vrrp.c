@@ -32,6 +32,97 @@ static const mac_address_t ipv6_vmac = {
   .bytes = {0x00, 0x00, 0x5e, 0x00, 0x02, 0x00}
 };
 
+vlib_simple_counter_main_t vrrp_errs[] = {
+  /* Total number of VRRP packets received with invalid checksum */
+  {
+    .name = "CHKSUM_ERRS",
+    .stat_segment_name = "/net/vrrp/chksum-errs",
+  },
+  /* Total number of VRRP packets received with unknown or unsupported version
+   */
+  {
+    .name = "VERSION_ERRS",
+    .stat_segment_name = "/net/vrrp/version-errs",
+  },
+  /* Total number of VRRP packets received with invalid VRID */
+  {
+    .name = "VRID_ERRS",
+    .stat_segment_name = "/net/vrrp/vrid-errs",
+  },
+  /* Total number of VRRP packets received with TTL/Hop limit != 255 */
+  {
+    .name = "TTL_ERRS",
+    .stat_segment_name = "/net/vrrp/ttl-errs",
+  },
+  /* Number of packets received with an address list not matching the locally
+     configured one */
+  {
+    .name = "ADDR_LIST_ERRS",
+    .stat_segment_name = "/net/vrrp/addr-list-errs",
+  },
+  /* Number of packets received with a length less than the VRRP header */
+  {
+    .name = "PACKET_LEN_ERRS",
+    .stat_segment_name = "/net/vrrp/packet-len-errs",
+  },
+};
+
+void
+vrrp_incr_err_counter (vrrp_err_counter_t err_type)
+{
+  if (err_type >= VRRP_ERR_COUNTER_MAX)
+    {
+      clib_warning ("Attempt to increse error counter of unknown type %u",
+		    err_type);
+      return;
+    }
+  vlib_increment_simple_counter (&vrrp_errs[err_type],
+				 vrrp_main.vlib_main->thread_index, 0, 1);
+}
+
+// per-VRRP statistics
+
+/* Number of times a VRRP instance has transitioned to master */
+vlib_simple_counter_main_t vrrp_stats[] = {
+  {
+    .name = "MASTER_TRANS",
+    .stat_segment_name = "/net/vrrp/master-trans",
+  },
+  /* Number of VRRP advertisements sent by a VRRP instance */
+  {
+    .name = "ADV_SENT",
+    .stat_segment_name = "/net/vrrp/adv-sent",
+  },
+  /* Number of VRRP advertisements received by a VRRP instance */
+  {
+    .name = "ADV_RCVD",
+    .stat_segment_name = "/net/vrrp/adv-rcvd",
+  },
+  /* Number of VRRP priority-0 packets sent by a VRRP instance */
+  {
+    .name = "PRIO0_SENT",
+    .stat_segment_name = "/net/vrrp/prio0-sent",
+  },
+  /* Number of VRRP priority-0 packets received by a VRRP instance */
+  {
+    .name = "PRIO0_RCVD",
+    .stat_segment_name = "/net/vrrp/prio0-rcvd",
+  },
+};
+
+void
+vrrp_incr_stat_counter (vrrp_stat_counter_t stat_type, u32 stat_index)
+{
+  if (stat_type >= VRRP_STAT_COUNTER_MAX)
+    {
+      clib_warning ("Attempt to increse stat counter of unknown type %u",
+		    stat_type);
+      return;
+    }
+  vlib_increment_simple_counter (
+    &vrrp_stats[stat_type], vrrp_main.vlib_main->thread_index, stat_index, 1);
+}
+
 typedef struct
 {
   vrrp_vr_key_t key;
@@ -290,6 +381,7 @@ vrrp_vr_transition (vrrp_vr_t * vr, vrrp_vr_state_t new_state, void *data)
 
   if (new_state == VRRP_VR_STATE_MASTER)
     {
+      vrrp_incr_stat_counter (VRRP_STAT_COUNTER_MASTER_TRANS, vr->stat_index);
       /* RFC 5798 sec 6.4.1 (105) - startup event for VR with priority 255
        *          sec 6.4.2 (365) - master down timer fires on backup VR
        */
@@ -505,7 +597,7 @@ vrrp_vr_valid_addrs_owner (vrrp_vr_config_t * vr_conf)
 }
 
 static int
-vrrp_vr_valid_addrs_unused (vrrp_vr_config_t * vr_conf)
+vrrp_vr_valid_addrs_unused (vrrp_vr_config_t *vr_conf, index_t vrrp_index)
 {
   ip46_address_t *vr_addr;
   u8 is_ipv6 = (vr_conf->flags & VRRP_VR_IPV6) != 0;
@@ -517,7 +609,7 @@ vrrp_vr_valid_addrs_unused (vrrp_vr_config_t * vr_conf)
 
     addr = (is_ipv6) ? (void *) &vr_addr->ip6 : (void *) &vr_addr->ip4;
     vr_index = vrrp_vr_lookup_address (vr_conf->sw_if_index, is_ipv6, addr);
-    if (vr_index != ~0)
+    if (vr_index != ~0 && vrrp_index != vr_index)
       return VNET_API_ERROR_ADDRESS_IN_USE;
   }
 
@@ -525,7 +617,7 @@ vrrp_vr_valid_addrs_unused (vrrp_vr_config_t * vr_conf)
 }
 
 static int
-vrrp_vr_valid_addrs (vrrp_vr_config_t * vr_conf)
+vrrp_vr_valid_addrs (vrrp_vr_config_t *vr_conf, index_t vrrp_index)
 {
   int ret = 0;
 
@@ -535,7 +627,7 @@ vrrp_vr_valid_addrs (vrrp_vr_config_t * vr_conf)
     return ret;
 
   /* make sure no other VR has already configured any of the VR addresses */
-  ret = vrrp_vr_valid_addrs_unused (vr_conf);
+  ret = vrrp_vr_valid_addrs_unused (vr_conf, vrrp_index);
 
   return ret;
 }
@@ -613,9 +705,149 @@ vrrp_vr_addrs_add_del (vrrp_vr_t * vr, u8 is_add, ip46_address_t * vr_addrs)
   }
 }
 
+int
+vrrp_vr_update (index_t *vrrp_index, vrrp_vr_config_t *vr_conf)
+{
+  index_t index = *vrrp_index;
+  vrrp_main_t *vrm = &vrrp_main;
+  vrrp_vr_t *vr = NULL;
+  vrrp_vr_key_t key = { 0 };
+  uint8_t must_restart = 0;
+  int ret = 0;
+
+  /* no valid index -> create and return allocated index */
+  if (index == INDEX_INVALID)
+    {
+      return vrrp_vr_add_del (1, vr_conf, vrrp_index);
+    }
+  /* update: lookup vrrp instance */
+  if (pool_is_free_index (vrm->vrs, index))
+    return (VNET_API_ERROR_NO_SUCH_ENTRY);
+
+  /* fetch existing VR */
+  vr = pool_elt_at_index (vrm->vrs, index);
+
+  /* populate key */
+  key.vr_id = vr->config.vr_id;
+  key.is_ipv6 = !!(vr->config.flags & VRRP_VR_IPV6);
+  ;
+  key.sw_if_index = vr->config.sw_if_index;
+
+  /* Do not allow changes to the keys of the VRRP instance */
+  if (vr_conf->vr_id != key.vr_id || vr_conf->sw_if_index != key.sw_if_index ||
+      !!(vr_conf->flags & VRRP_VR_IPV6) != key.is_ipv6)
+    {
+      clib_warning ("Attempt to change VR ID, IP version or interface index "
+		    "for VRRP instance with index %u",
+		    index);
+      return VNET_API_ERROR_INVALID_ARGUMENT;
+    }
+
+  /* were IPvX addresses included ? */
+  if (!vec_len (vr_conf->vr_addrs))
+    {
+      clib_warning ("Conf of VR %u for IPv%d on sw_if_index %u "
+		    " does not contain IP addresses",
+		    key.vr_id, key.is_ipv6 ? 6 : 4, key.sw_if_index);
+      return VNET_API_ERROR_INVALID_SRC_ADDRESS;
+    }
+
+  /* Make sure the addresses are ok to use */
+  if ((ret = vrrp_vr_valid_addrs (vr_conf, index)) < 0)
+    return ret;
+
+  /* stop it if needed */
+  must_restart = (vr->runtime.state != VRRP_VR_STATE_INIT);
+  if (must_restart)
+    vrrp_vr_start_stop (0, &key);
+
+  /* overwrite new config */
+  vr->config.priority = vr_conf->priority;
+  vr->config.adv_interval = vr_conf->adv_interval;
+  vr->config.flags = vr_conf->flags;
+
+  /* check if any address has changed */
+  ip46_address_t *vr_addr, *conf_addr;
+  uint8_t found;
+  vec_foreach (vr_addr, vr->config.vr_addrs)
+    {
+      found = 0;
+      vec_foreach (conf_addr, vr_conf->vr_addrs)
+	{
+	  if (ip46_address_is_equal (vr_addr, conf_addr))
+	    {
+	      found = 1;
+	      break;
+	    }
+	}
+      if (!found)
+	{
+	  vrrp_vr_addr_add_del (vr, 0, vr_addr);
+	}
+    }
+  vec_foreach (conf_addr, vr_conf->vr_addrs)
+    {
+      found = 0;
+      vec_foreach (vr_addr, vr->config.vr_addrs)
+	{
+	  if (ip46_address_is_equal (vr_addr, conf_addr))
+	    {
+	      found = 1;
+	      break;
+	    }
+	}
+      if (!found)
+	{
+	  vrrp_vr_addr_add_del (vr, 1, conf_addr);
+	}
+    }
+
+  /* restart it if needed */
+  if (must_restart)
+    vrrp_vr_start_stop (1, &key);
+
+  return 0;
+}
+
+static void
+vrrp_vr_del_common (vrrp_vr_t *vr, vrrp_vr_key_t *key)
+{
+  vrrp_main_t *vrm = &vrrp_main;
+
+  vrrp_vr_tracking_ifs_add_del (vr, vr->tracking.interfaces, 0);
+  vrrp_vr_addrs_add_del (vr, 0, vr->config.vr_addrs);
+  mhash_unset (&vrm->vr_index_by_key, key, 0);
+  vec_free (vr->config.peer_addrs);
+  vec_free (vr->config.vr_addrs);
+  vec_free (vr->tracking.interfaces);
+  pool_put (vrm->vrs, vr);
+}
+
+int
+vrrp_vr_del (index_t vrrp_index)
+{
+  vrrp_main_t *vrm = &vrrp_main;
+  vrrp_vr_key_t key;
+  vrrp_vr_t *vr = 0;
+
+  if (pool_is_free_index (vrm->vrs, vrrp_index))
+    {
+      return (VNET_API_ERROR_NO_SUCH_ENTRY);
+    }
+  else
+    {
+      vr = pool_elt_at_index (vrm->vrs, vrrp_index);
+      key.sw_if_index = vr->config.sw_if_index;
+      key.vr_id = vr->config.vr_id;
+      key.is_ipv6 = vrrp_vr_is_ipv6 (vr);
+      vrrp_vr_del_common (vr, &key);
+      return 0;
+    }
+}
+
 /* Action function shared between message handler and debug CLI */
 int
-vrrp_vr_add_del (u8 is_add, vrrp_vr_config_t * vr_conf)
+vrrp_vr_add_del (u8 is_add, vrrp_vr_config_t *vr_conf, index_t *ret_index)
 {
   vrrp_main_t *vrm = &vrrp_main;
   vnet_main_t *vnm = vnet_get_main ();
@@ -657,7 +889,7 @@ vrrp_vr_add_del (u8 is_add, vrrp_vr_config_t * vr_conf)
 	}
 
       /* Make sure the addresses are ok to use */
-      if ((ret = vrrp_vr_valid_addrs (vr_conf)) < 0)
+      if ((ret = vrrp_vr_valid_addrs (vr_conf, INDEX_INVALID)) < 0)
 	return ret;
 
       pool_get_zero (vrm->vrs, vr);
@@ -675,6 +907,20 @@ vrrp_vr_add_del (u8 is_add, vrrp_vr_config_t * vr_conf)
       vr->runtime.mac = (key.is_ipv6) ? ipv6_vmac : ipv4_vmac;
       vr->runtime.mac.bytes[5] = vr_conf->vr_id;
 
+      /* recall pool index for stats */
+      vr->stat_index = vr_index;
+      /* and return it if we were asked to */
+      if (ret_index != NULL)
+	{
+	  *ret_index = vr_index;
+	}
+      /* allocate & reset stats */
+      for (int i = 0; i < VRRP_STAT_COUNTER_MAX; i++)
+	{
+	  vlib_validate_simple_counter (&vrrp_stats[i], vr_index);
+	  vlib_zero_simple_counter (&vrrp_stats[i], vr_index);
+	}
+
       mhash_set (&vrm->vr_index_by_key, &key, vr_index, 0);
     }
   else
@@ -688,14 +934,7 @@ vrrp_vr_add_del (u8 is_add, vrrp_vr_config_t * vr_conf)
 
       vr_index = p[0];
       vr = pool_elt_at_index (vrm->vrs, vr_index);
-
-      vrrp_vr_tracking_ifs_add_del (vr, vr->tracking.interfaces, is_add);
-      vrrp_vr_addrs_add_del (vr, is_add, vr->config.vr_addrs);
-      mhash_unset (&vrm->vr_index_by_key, &key, 0);
-      vec_free (vr->config.peer_addrs);
-      vec_free (vr->config.vr_addrs);
-      vec_free (vr->tracking.interfaces);
-      pool_put (vrm->vrs, vr);
+      vrrp_vr_del_common (vr, &key);
     }
 
   vrrp_intf_vr_add_del (is_add, vr_conf->sw_if_index, vr_index, key.is_ipv6);
@@ -1262,6 +1501,13 @@ vrrp_init (vlib_main_t * vm)
   vec_add1 (im4->add_del_interface_address_callbacks, cb4);
 
   vrrp_ip6_delegate_id = ip6_link_delegate_register (&vrrp_ip6_delegate_vft);
+
+  /* allocate & reset error counters */
+  for (int i = 0; i < VRRP_ERR_COUNTER_MAX; i++)
+    {
+      vlib_validate_simple_counter (&vrrp_errs[i], 0);
+      vlib_zero_simple_counter (&vrrp_errs[i], 0);
+    }
 
   return error;
 }
