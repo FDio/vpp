@@ -1268,7 +1268,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   int log_fds[2] = { 0 };
   if (pipe (log_fds) == 0)
     {
-      if (fcntl (log_fds[1], F_SETFL, O_NONBLOCK) == 0)
+      if (fcntl (log_fds[0], F_SETFL, O_NONBLOCK) == 0 &&
+	  fcntl (log_fds[1], F_SETFL, O_NONBLOCK) == 0)
 	{
 	  FILE *f = fdopen (log_fds[1], "a");
 	  if (f && rte_openlog_stream (f) == 0)
