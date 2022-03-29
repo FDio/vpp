@@ -1,0 +1,123 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cb351cdd_d7e5f9fe",
+        "filename": "src/vlib/dma/dma.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-03-29T16:49:16Z",
+      "side": 1,
+      "message": "SPDX",
+      "revId": "eef49e6b7c333ad4c958878536ccb9ef15a8849a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ba23bf28_d4c8a03a",
+        "filename": "src/vlib/dma/dma.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-03-29T16:49:16Z",
+      "side": 1,
+      "message": "clib_memcpy_fast",
+      "revId": "eef49e6b7c333ad4c958878536ccb9ef15a8849a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bc59a0fc_acfbf9b3",
+        "filename": "src/vlib/dma/dma.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 205,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-03-29T16:49:16Z",
+      "side": 1,
+      "message": "This looks way to heavy... This should be very simple inline function which just calls backend config_specific code....",
+      "revId": "eef49e6b7c333ad4c958878536ccb9ef15a8849a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ee8b5725_5b16fac6",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-03-29T16:49:16Z",
+      "side": 1,
+      "message": "Use new SPDX licence",
+      "revId": "eef49e6b7c333ad4c958878536ccb9ef15a8849a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b3c50243_6cdf878d",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 187,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-03-29T16:49:16Z",
+      "side": 1,
+      "message": "Why both here and in main?",
+      "revId": "eef49e6b7c333ad4c958878536ccb9ef15a8849a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "aff4e3dd_4f11b56c",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 215,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-03-29T16:49:16Z",
+      "side": 1,
+      "message": "Not needed anymore",
+      "revId": "eef49e6b7c333ad4c958878536ccb9ef15a8849a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6cbb9d2d_a0728f3f",
+        "filename": "src/vlib/dma/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-03-29T16:49:16Z",
+      "side": 1,
+      "message": "SPDX",
+      "revId": "eef49e6b7c333ad4c958878536ccb9ef15a8849a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
