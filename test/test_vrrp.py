@@ -37,6 +37,8 @@ VRRP_VR_STATE_BACKUP = 1
 VRRP_VR_STATE_MASTER = 2
 VRRP_VR_STATE_INTF_DOWN = 3
 
+VRRP_INDEX_INVALID = 0xffffffff
+
 
 def is_non_arp(p):
     """ Want to filter out advertisements, igmp, etc"""
@@ -95,6 +97,7 @@ class VppVRRPVirtualRouter(VppObject):
             self._adv_dest_ip = "224.0.0.18"
             self._vips = ([intf.local_ip4] if vips is None else vips)
         self._tracked_ifs = []
+        self._vrrp_index = VRRP_INDEX_INVALID
 
     def add_vpp_config(self):
         self._test.vapi.vrrp_vr_add_del(is_add=1,
@@ -105,6 +108,20 @@ class VppVRRPVirtualRouter(VppObject):
                                         flags=self._flags,
                                         n_addrs=len(self._vips),
                                         addrs=self._vips)
+
+    def update_vpp_config(self):
+        r = self._test.vapi.vrrp_vr_update(vrrp_index=self._vrrp_index,
+                                           sw_if_index=self._intf.sw_if_index,
+                                           vr_id=self._vr_id,
+                                           priority=self._prio,
+                                           interval=self._intvl,
+                                           flags=self._flags,
+                                           n_addrs=len(self._vips),
+                                           addrs=self._vips)
+        self._vrrp_index = r.vrrp_index
+
+    def delete_vpp_config(self):
+        self._test.vapi.vrrp_vr_del(vrrp_index=self._vrrp_index)
 
     def query_vpp_config(self):
         vrs = self._test.vapi.vrrp_vr_dump(sw_if_index=self._intf.sw_if_index)
@@ -340,6 +357,56 @@ class TestVRRP4(VppTestCase):
 
         vr.remove_vpp_config()
         self._vrs = []
+
+    # Same as above but with the update API, and add a change
+    # of parameters to test that too
+    def test_vrrp4_master_adv_update(self):
+        """ IPv4 Master VR adv + Update to Backup """
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        prio = 255
+        intvl = self._default_adv
+        vr = VppVRRPVirtualRouter(self, self.pg0, 100,
+                                  prio=prio, intvl=intvl,
+                                  flags=self._default_flags)
+
+        vr.update_vpp_config()
+        vr.start_stop(is_start=1)
+        self.logger.info(self.vapi.cli("show vrrp vr"))
+        # Update VR with lower prio and larger interval
+        # we need to keep old VR for the adv checks
+        upd_vr = VppVRRPVirtualRouter(self, self.pg0, 100,
+                                      prio=100, intvl=2*intvl,
+                                      flags=self._default_flags,
+                                      vips=[self.pg0.remote_ip4])
+        upd_vr._vrrp_index = vr._vrrp_index
+        upd_vr.update_vpp_config()
+        start_time = time.time()
+        self.logger.info(self.vapi.cli("show vrrp vr"))
+        upd_vr.assert_state_equals(VRRP_VR_STATE_BACKUP)
+        self._vrs = [upd_vr]
+
+        pkts = self.pg0.get_capture(5)
+        # Init -> Master: IGMP Join, VRRP adv, gratuitous ARP are sent
+        self.verify_vrrp4_igmp(pkts[0])
+        self.verify_vrrp4_adv(pkts[1], vr, prio=prio)
+        self.verify_vrrp4_garp(pkts[2], vr.virtual_ips()[0], vr.virtual_mac())
+        # Master -> Init: Adv with priority 0 sent to force an election
+        self.verify_vrrp4_adv(pkts[3], vr, prio=0)
+        # Init -> Backup: An IGMP join should be sent
+        self.verify_vrrp4_igmp(pkts[4])
+
+        # send higher prio advertisements, should not receive any
+        end_time = start_time + 2 * upd_vr.master_down_seconds()
+        src_ip = self.pg0.remote_ip4
+        pkts = [upd_vr.vrrp_adv_packet(prio=110, src_ip=src_ip)]
+        while time.time() < end_time:
+            self.send_and_assert_no_replies(self.pg0, pkts, timeout=intvl*0.01)
+            self.logger.info(self.vapi.cli("show trace"))
+
+        upd_vr.start_stop(is_start=0)
+        self.logger.info(self.vapi.cli("show vrrp vr"))
 
     # VR with priority < 255 enters backup state and does not advertise as
     # long as it receives higher priority advertisements
@@ -874,6 +941,59 @@ class TestVRRP6(VppTestCase):
 
         vr.remove_vpp_config()
         self._vrs = []
+
+    # Same as above but with the update API, and add a change
+    # of parameters to test that too
+    def test_vrrp6_master_adv_update(self):
+        """ IPv6 Master VR adv + Update to Backup """
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        prio = 255
+        intvl = self._default_adv
+        vr = VppVRRPVirtualRouter(self, self.pg0, 100,
+                                  prio=prio, intvl=intvl,
+                                  flags=self._default_flags)
+
+        vr.update_vpp_config()
+        vr.start_stop(is_start=1)
+        self.logger.info(self.vapi.cli("show vrrp vr"))
+        # Update VR with lower prio and larger interval
+        # we need to keep old VR for the adv checks
+        upd_vr = VppVRRPVirtualRouter(self, self.pg0, 100,
+                                      prio=100, intvl=2*intvl,
+                                      flags=self._default_flags,
+                                      vips=[self.pg0.remote_ip6])
+        upd_vr._vrrp_index = vr._vrrp_index
+        upd_vr.update_vpp_config()
+        start_time = time.time()
+        self.logger.info(self.vapi.cli("show vrrp vr"))
+        upd_vr.assert_state_equals(VRRP_VR_STATE_BACKUP)
+        self._vrs = [upd_vr]
+
+        pkts = self.pg0.get_capture(5, filter_out_fn=None)
+
+        # Init -> Master: Multicast group Join, VRRP adv, gratuitous NAs sent
+        self.verify_vrrp6_mlr(pkts[0], vr)
+        self.verify_vrrp6_adv(pkts[1], vr, prio=prio)
+        self.verify_vrrp6_gna(pkts[2], vr)
+        # Master -> Init: Adv with priority 0 sent to force an election
+        self.verify_vrrp6_adv(pkts[3], vr, prio=0)
+        # Init -> Backup: A multicast listener report should be sent
+        # not actually verified in the test below, where I took this from
+
+        # send higher prio advertisements, should not see VPP send any
+        src_ip = self.pg0.remote_ip6_ll
+        pkts = [upd_vr.vrrp_adv_packet(prio=110, src_ip=src_ip)]
+        self.logger.info(self.vapi.cli("show vlib graph"))
+        end_time = start_time + 2 * upd_vr.master_down_seconds()
+        while time.time() < end_time:
+            self.send_and_assert_no_replies(
+                self.pg0, pkts, timeout=0.01*upd_vr._intvl)
+            self.logger.info(self.vapi.cli("show trace"))
+
+        vr.start_stop(is_start=0)
+        self.logger.info(self.vapi.cli("show vrrp vr"))
 
     # VR with priority < 255 enters backup state and does not advertise as
     # long as it receives higher priority advertisements

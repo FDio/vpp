@@ -102,7 +102,7 @@ vrrp_vr_add_del_command_fn (vlib_main_t * vm,
   vr_conf.adv_interval = (u16) interval;
   vr_conf.vr_addrs = addrs;
 
-  rv = vrrp_vr_add_del (is_add, &vr_conf);
+  rv = vrrp_vr_add_del (is_add, &vr_conf, NULL);
 
   switch (rv)
     {

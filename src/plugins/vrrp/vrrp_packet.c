@@ -354,6 +354,12 @@ vrrp_adv_send (vrrp_vr_t * vr, int shutdown)
 
   vlib_put_frame_to_node (vm, node_index, to_frame);
 
+  vrrp_incr_stat_counter (VRRP_STAT_COUNTER_ADV_SENT, vr->stat_index);
+  if (shutdown)
+    {
+      vrrp_incr_stat_counter (VRRP_STAT_COUNTER_PRIO0_SENT, vr->stat_index);
+    }
+
   vec_free (bi);
 
   return 0;

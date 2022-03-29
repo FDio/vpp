@@ -108,6 +108,7 @@ typedef struct vrrp_vr
   vrrp_vr_config_t config;
   vrrp_vr_runtime_t runtime;
   vrrp_vr_tracking_t tracking;
+  u32 stat_index;
 } vrrp_vr_t;
 
 /* Timers */
@@ -185,9 +186,46 @@ extern vlib_node_registration_t vrrp_periodic_node;
 #define VRRP_EVENT_VR_STOP 2
 #define VRRP_EVENT_PERIODIC_ENABLE_DISABLE 3
 
+/* global error counter types */
+#define foreach_vrrp_err_counter                                              \
+  _ (CHKSUM, 0)                                                               \
+  _ (VERSION, 1)                                                              \
+  _ (VRID, 2)                                                                 \
+  _ (TTL, 3)                                                                  \
+  _ (ADDR_LIST, 4)                                                            \
+  _ (PKT_LEN, 5)
+
+typedef enum vrrp_err_counter_
+{
+#define _(sym, val) VRRP_ERR_COUNTER_##sym = val,
+  foreach_vrrp_err_counter
+#undef _
+} vrrp_err_counter_t;
+
+#define VRRP_ERR_COUNTER_MAX 6
+
+/* per-instance stats */
+#define foreach_vrrp_stat_counter                                             \
+  _ (MASTER_TRANS, 0)                                                         \
+  _ (ADV_SENT, 1)                                                             \
+  _ (ADV_RCVD, 2)                                                             \
+  _ (PRIO0_SENT, 3)                                                           \
+  _ (PRIO0_RCVD, 4)
+
+typedef enum vrrp_stat_counter_
+{
+#define _(sym, val) VRRP_STAT_COUNTER_##sym = val,
+  foreach_vrrp_stat_counter
+#undef _
+} vrrp_stat_counter_t;
+
+#define VRRP_STAT_COUNTER_MAX 5
+
 clib_error_t *vrrp_plugin_api_hookup (vlib_main_t * vm);
 
-int vrrp_vr_add_del (u8 is_add, vrrp_vr_config_t * conf);
+int vrrp_vr_add_del (u8 is_add, vrrp_vr_config_t *conf, index_t *ret_index);
+int vrrp_vr_update (index_t *vrrp_index, vrrp_vr_config_t *vr_conf);
+int vrrp_vr_del (index_t vrrp_index);
 int vrrp_vr_start_stop (u8 is_start, vrrp_vr_key_t * vr_key);
 extern u8 *format_vrrp_vr (u8 * s, va_list * args);
 extern u8 *format_vrrp_vr_key (u8 * s, va_list * args);
@@ -209,6 +247,9 @@ int vrrp_vr_tracking_ifs_add_del (vrrp_vr_t * vr,
 				  u8 is_add);
 void vrrp_vr_event (vrrp_vr_t * vr, vrrp_vr_state_t new_state);
 
+// stats
+void vrrp_incr_err_counter (vrrp_err_counter_t err_type);
+void vrrp_incr_stat_counter (vrrp_stat_counter_t stat_type, u32 stat_index);
 
 always_inline void
 vrrp_vr_skew_compute (vrrp_vr_t * vr)
