@@ -628,6 +628,52 @@ openssl_ctx_read (tls_ctx_t *ctx, session_t *ts)
 }
 
 static int
+openssl_set_ckpair (SSL *ssl_connection, u32 ckpair_index)
+{
+  app_cert_key_pair_t *ckpair;
+  BIO *cert_bio;
+  EVP_PKEY *pkey;
+  X509 *srvcert;
+
+  ckpair = app_cert_key_pair_get_if_valid (ckpair_index);
+  if (!ckpair)
+    return -1;
+
+  if (!ckpair->cert || !ckpair->key)
+    {
+      TLS_DBG (1, "tls cert and/or key not configured");
+      return -1;
+    }
+  /*
+   * Set the key and cert
+   */
+  cert_bio = BIO_new (BIO_s_mem ());
+  BIO_write (cert_bio, ckpair->cert, vec_len (ckpair->cert));
+  srvcert = PEM_read_bio_X509 (cert_bio, NULL, NULL, NULL);
+  if (!srvcert)
+    {
+      clib_warning ("unable to parse certificate");
+      return -1;
+    }
+  SSL_use_certificate (ssl_connection, srvcert);
+  BIO_free (cert_bio);
+
+  cert_bio = BIO_new (BIO_s_mem ());
+  BIO_write (cert_bio, ckpair->key, vec_len (ckpair->key));
+  pkey = PEM_read_bio_PrivateKey (cert_bio, NULL, NULL, NULL);
+  if (!pkey)
+    {
+      clib_warning ("unable to parse pkey");
+      return -1;
+    }
+  SSL_use_PrivateKey (ssl_connection, pkey);
+  BIO_free (cert_bio);
+  TLS_DBG (1, "TLS client using ckpair index: %d", ckpair_index);
+
+  return 0;
+}
+
+static int
 openssl_ctx_init_client (tls_ctx_t * ctx)
 {
   long flags = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION;
@@ -693,6 +739,10 @@ openssl_ctx_init_client (tls_ctx_t * ctx)
     {
       TLS_DBG (1, "Couldn't set hostname");
       return -1;
+    }
+  if (openssl_set_ckpair (oc->ssl, ctx->ckpair_index))
+    {
+      TLS_DBG (1, "Couldn't set client certificate-key pair");
     }
 
   /*
