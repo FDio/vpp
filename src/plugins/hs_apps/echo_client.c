@@ -15,9 +15,6 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-#include <vlibapi/api.h>
-#include <vlibmemory/api.h>
 #include <hs_apps/echo_client.h>
 
 echo_client_main_t echo_client_main;
@@ -45,8 +42,32 @@ signal_evt_to_cli (int code)
     signal_evt_to_cli_i (&code);
 }
 
+static inline ec_worker_t *
+ec_worker_get (u32 thread_index)
+{
+  return vec_elt_at_index (echo_client_main.wrk, thread_index);
+}
+
+static inline ec_session_t *
+ec_session_alloc (ec_worker_t *wrk)
+{
+  ec_session_t *ecs;
+
+  pool_get_zero (wrk->session, ecs);
+  ecs->data.session_index = ecs - wrk->session;
+  ecs->thread_index = wrk->thread_index;
+
+  return ecs;
+}
+
+static inline ec_session_t *
+ec_session_get (ec_worker_t *wrk, u32 ec_index)
+{
+  return pool_elt_at_index (wrk->session, ec_index);
+}
+
 static void
-send_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
+send_data_chunk (echo_client_main_t *ecm, ec_session_t *es)
 {
   u8 *test_data = ecm->connect_test_data;
   int test_buf_len, test_buf_offset, rv;
@@ -54,27 +75,28 @@ send_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
 
   test_buf_len = vec_len (test_data);
   ASSERT (test_buf_len > 0);
-  test_buf_offset = s->bytes_sent % test_buf_len;
-  bytes_this_chunk = clib_min (test_buf_len - test_buf_offset,
-			       s->bytes_to_send);
+  test_buf_offset = es->bytes_sent % test_buf_len;
+  bytes_this_chunk =
+    clib_min (test_buf_len - test_buf_offset, es->bytes_to_send);
 
   if (!ecm->is_dgram)
     {
       if (ecm->no_copy)
 	{
-	  svm_fifo_t *f = s->data.tx_fifo;
+	  svm_fifo_t *f = es->data.tx_fifo;
 	  rv = clib_min (svm_fifo_max_enqueue_prod (f), bytes_this_chunk);
 	  svm_fifo_enqueue_nocopy (f, rv);
-	  session_send_io_evt_to_thread_custom (
-	    &f->shr->master_session_index, s->thread_index, SESSION_IO_EVT_TX);
+	  session_send_io_evt_to_thread_custom (&f->shr->master_session_index,
+						es->thread_index,
+						SESSION_IO_EVT_TX);
 	}
       else
-	rv = app_send_stream (&s->data, test_data + test_buf_offset,
+	rv = app_send_stream (&es->data, test_data + test_buf_offset,
 			      bytes_this_chunk, 0);
     }
   else
     {
-      svm_fifo_t *f = s->data.tx_fifo;
+      svm_fifo_t *f = es->data.tx_fifo;
       u32 max_enqueue = svm_fifo_max_enqueue_prod (f);
 
       if (max_enqueue < sizeof (session_dgram_hdr_t))
@@ -85,7 +107,7 @@ send_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
       if (ecm->no_copy)
 	{
 	  session_dgram_hdr_t hdr;
-	  app_session_transport_t *at = &s->data.transport;
+	  app_session_transport_t *at = &es->data.transport;
 
 	  rv = clib_min (max_enqueue, bytes_this_chunk);
 
@@ -100,13 +122,14 @@ send_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
 	  hdr.lcl_port = at->lcl_port;
 	  svm_fifo_enqueue (f, sizeof (hdr), (u8 *) & hdr);
 	  svm_fifo_enqueue_nocopy (f, rv);
-	  session_send_io_evt_to_thread_custom (
-	    &f->shr->master_session_index, s->thread_index, SESSION_IO_EVT_TX);
+	  session_send_io_evt_to_thread_custom (&f->shr->master_session_index,
+						es->thread_index,
+						SESSION_IO_EVT_TX);
 	}
       else
 	{
 	  bytes_this_chunk = clib_min (bytes_this_chunk, max_enqueue);
-	  rv = app_send_dgram (&s->data, test_data + test_buf_offset,
+	  rv = app_send_dgram (&es->data, test_data + test_buf_offset,
 			       bytes_this_chunk, 0);
 	}
     }
@@ -115,8 +138,8 @@ send_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
   if (rv > 0)
     {
       /* Account for it... */
-      s->bytes_to_send -= rv;
-      s->bytes_sent += rv;
+      es->bytes_to_send -= rv;
+      es->bytes_sent += rv;
 
       if (ECHO_CLIENT_DBG)
 	{
@@ -133,27 +156,27 @@ send_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
 	  } *ed;
 	  ed = ELOG_DATA (&vlib_global_main.elog_main, e);
 	  ed->data[0] = rv;
-	  ed->data[1] = s->bytes_sent;
-	  ed->data[2] = s->bytes_to_send;
+	  ed->data[1] = es->bytes_sent;
+	  ed->data[2] = es->bytes_to_send;
 	}
     }
 }
 
 static void
-receive_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
+receive_data_chunk (ec_worker_t *wrk, ec_session_t *es)
 {
-  svm_fifo_t *rx_fifo = s->data.rx_fifo;
-  u32 thread_index = vlib_get_thread_index ();
+  echo_client_main_t *ecm = &echo_client_main;
+  svm_fifo_t *rx_fifo = es->data.rx_fifo;
   int n_read, i;
 
   if (ecm->test_bytes)
     {
       if (!ecm->is_dgram)
-	n_read = app_recv_stream (&s->data, ecm->rx_buf[thread_index],
-				  vec_len (ecm->rx_buf[thread_index]));
+	n_read =
+	  app_recv_stream (&es->data, wrk->rx_buf, vec_len (wrk->rx_buf));
       else
-	n_read = app_recv_dgram (&s->data, ecm->rx_buf[thread_index],
-				 vec_len (ecm->rx_buf[thread_index]));
+	n_read =
+	  app_recv_dgram (&es->data, wrk->rx_buf, vec_len (wrk->rx_buf));
     }
   else
     {
@@ -184,65 +207,64 @@ receive_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
 	{
 	  for (i = 0; i < n_read; i++)
 	    {
-	      if (ecm->rx_buf[thread_index][i]
-		  != ((s->bytes_received + i) & 0xff))
+	      if (wrk->rx_buf[i] != ((es->bytes_received + i) & 0xff))
 		{
 		  clib_warning ("read %d error at byte %lld, 0x%x not 0x%x",
-				n_read, s->bytes_received + i,
-				ecm->rx_buf[thread_index][i],
-				((s->bytes_received + i) & 0xff));
+				n_read, es->bytes_received + i, wrk->rx_buf[i],
+				((es->bytes_received + i) & 0xff));
 		  ecm->test_failed = 1;
 		}
 	    }
 	}
-      ASSERT (n_read <= s->bytes_to_receive);
-      s->bytes_to_receive -= n_read;
-      s->bytes_received += n_read;
+      ASSERT (n_read <= es->bytes_to_receive);
+      es->bytes_to_receive -= n_read;
+      es->bytes_received += n_read;
     }
 }
 
 static uword
-echo_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		     vlib_frame_t * frame)
+ec_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
+  u32 *conn_indices, *conns_this_batch, nconns_this_batch;
+  int thread_index = vm->thread_index, i, delete_session;
   echo_client_main_t *ecm = &echo_client_main;
-  int my_thread_index = vlib_get_thread_index ();
-  eclient_session_t *sp;
-  int i;
-  int delete_session;
-  u32 *connection_indices;
-  u32 *connections_this_batch;
-  u32 nconnections_this_batch;
+  ec_worker_t *wrk;
+  ec_session_t *sp;
+  session_t *s;
 
-  connection_indices = ecm->connection_index_by_thread[my_thread_index];
-  connections_this_batch =
-    ecm->connections_this_batch_by_thread[my_thread_index];
+  if (ecm->run_test != ECHO_CLIENTS_RUNNING)
+    return 0;
 
-  if ((ecm->run_test != ECHO_CLIENTS_RUNNING) ||
-      ((vec_len (connection_indices) == 0)
-       && vec_len (connections_this_batch) == 0))
+  wrk = ec_worker_get (thread_index);
+  conn_indices = wrk->conn_indices;
+  conns_this_batch = wrk->conns_this_batch;
+
+  if (((vec_len (conn_indices) == 0) && vec_len (conns_this_batch) == 0))
     return 0;
 
   /* Grab another pile of connections */
-  if (PREDICT_FALSE (vec_len (connections_this_batch) == 0))
+  if (PREDICT_FALSE (vec_len (conns_this_batch) == 0))
     {
-      nconnections_this_batch =
-	clib_min (ecm->connections_per_batch, vec_len (connection_indices));
+      nconns_this_batch =
+	clib_min (ecm->connections_per_batch, vec_len (conn_indices));
 
-      ASSERT (nconnections_this_batch > 0);
-      vec_validate (connections_this_batch, nconnections_this_batch - 1);
-      clib_memcpy_fast (connections_this_batch,
-			connection_indices + vec_len (connection_indices)
-			- nconnections_this_batch,
-			nconnections_this_batch * sizeof (u32));
-      _vec_len (connection_indices) -= nconnections_this_batch;
+      ASSERT (nconns_this_batch > 0);
+      vec_validate (conns_this_batch, nconns_this_batch - 1);
+      clib_memcpy_fast (conns_this_batch,
+			conn_indices + vec_len (conn_indices) -
+			  nconns_this_batch,
+			nconns_this_batch * sizeof (u32));
+      _vec_len (conn_indices) -= nconns_this_batch;
     }
 
-  if (PREDICT_FALSE (ecm->prev_conns != ecm->connections_per_batch
-		     && ecm->prev_conns == vec_len (connections_this_batch)))
+  /*
+   * Track progress
+   */
+  if (PREDICT_FALSE (ecm->prev_conns != ecm->connections_per_batch &&
+		     ecm->prev_conns == vec_len (conns_this_batch)))
     {
       ecm->repeats++;
-      ecm->prev_conns = vec_len (connections_this_batch);
+      ecm->prev_conns = vec_len (conns_this_batch);
       if (ecm->repeats == 500000)
 	{
 	  clib_warning ("stuck clients");
@@ -250,29 +272,32 @@ echo_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
   else
     {
-      ecm->prev_conns = vec_len (connections_this_batch);
+      ecm->prev_conns = vec_len (conns_this_batch);
       ecm->repeats = 0;
     }
 
-  for (i = 0; i < vec_len (connections_this_batch); i++)
+  /*
+   * Handle connections in this batch
+   */
+  for (i = 0; i < vec_len (conns_this_batch); i++)
     {
-      delete_session = 1;
+      sp = ec_session_get (wrk, conns_this_batch[i]);
 
-      sp = pool_elt_at_index (ecm->sessions, connections_this_batch[i]);
+      delete_session = 1;
 
       if (sp->bytes_to_send > 0)
 	{
 	  send_data_chunk (ecm, sp);
 	  delete_session = 0;
 	}
+
       if (sp->bytes_to_receive > 0)
 	{
 	  delete_session = 0;
 	}
+
       if (PREDICT_FALSE (delete_session == 1))
 	{
-	  session_t *s;
-
 	  clib_atomic_fetch_add (&ecm->tx_total, sp->bytes_sent);
 	  clib_atomic_fetch_add (&ecm->rx_total, sp->bytes_received);
 	  s = session_get_from_handle_if_valid (sp->vpp_session_handle);
@@ -284,14 +309,14 @@ echo_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      a->app_index = ecm->app_index;
 	      vnet_disconnect_session (a);
 
-	      vec_delete (connections_this_batch, 1, i);
+	      vec_delete (conns_this_batch, 1, i);
 	      i--;
 	      clib_atomic_fetch_add (&ecm->ready_connections, -1);
 	    }
 	  else
 	    {
 	      clib_warning ("session AWOL?");
-	      vec_delete (connections_this_batch, 1, i);
+	      vec_delete (conns_this_batch, 1, i);
 	    }
 
 	  /* Kick the debug CLI process */
@@ -302,15 +327,13 @@ echo_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
     }
 
-  ecm->connection_index_by_thread[my_thread_index] = connection_indices;
-  ecm->connections_this_batch_by_thread[my_thread_index] =
-    connections_this_batch;
+  wrk->conn_indices = conn_indices;
+  wrk->conns_this_batch = conns_this_batch;
   return 0;
 }
 
-VLIB_REGISTER_NODE (echo_clients_node) =
-{
-  .function = echo_client_node_fn,
+VLIB_REGISTER_NODE (echo_clients_node) = {
+  .function = ec_node_fn,
   .name = "echo-clients",
   .type = VLIB_NODE_TYPE_INPUT,
   .state = VLIB_NODE_STATE_DISABLED,
@@ -353,6 +376,7 @@ echo_clients_init (vlib_main_t * vm)
 {
   echo_client_main_t *ecm = &echo_client_main;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
+  ec_worker_t *wrk;
   u32 num_threads;
   int i;
 
@@ -380,31 +404,29 @@ echo_clients_init (vlib_main_t * vm)
        */
       vlib_node_set_state (vm, session_queue_node.index,
 			   VLIB_NODE_STATE_POLLING);
-
-      clib_spinlock_init (&ecm->sessions_lock);
     }
 
   /* App init done only once */
   if (ecm->app_is_init)
     return 0;
 
-  num_threads = 1 /* main thread */  + vtm->n_threads;
 
   /* Init test data. Big buffer */
   vec_validate (ecm->connect_test_data, 4 * 1024 * 1024 - 1);
   for (i = 0; i < vec_len (ecm->connect_test_data); i++)
     ecm->connect_test_data[i] = i & 0xff;
 
-  vec_validate (ecm->rx_buf, num_threads - 1);
-  for (i = 0; i < num_threads; i++)
-    vec_validate (ecm->rx_buf[i], vec_len (ecm->connect_test_data) - 1);
+  num_threads = 1 /* main thread */ + vtm->n_threads;
+  vec_validate (ecm->wrk, num_threads);
+  vec_foreach (wrk, ecm->wrk)
+    {
+      vec_validate (wrk->rx_buf, vec_len (ecm->connect_test_data) - 1);
+      wrk->thread_index = wrk - ecm->wrk;
+      wrk->vpp_event_queue =
+	session_main_get_vpp_event_queue (wrk->thread_index);
+    }
 
   ecm->app_is_init = 1;
-
-  vec_validate (ecm->connection_index_by_thread, vtm->n_vlib_mains);
-  vec_validate (ecm->connections_this_batch_by_thread, vtm->n_vlib_mains);
-  vec_validate (ecm->quic_session_index_by_thread, vtm->n_vlib_mains);
-  vec_validate (ecm->vpp_event_queue, vtm->n_vlib_mains);
 
   vlib_worker_thread_barrier_sync (vm);
   vnet_session_enable_disable (vm, 1 /* turn on session and transports */);
@@ -419,21 +441,37 @@ echo_clients_init (vlib_main_t * vm)
 }
 
 static void
+ec_prealloc_sessions (echo_client_main_t *ecm)
+{
+  u32 sessions_per_wrk, n_wrks;
+  ec_worker_t *wrk;
+
+  n_wrks = vlib_num_workers () ? vlib_num_workers () : 1;
+
+  sessions_per_wrk = ecm->n_clients / n_wrks;
+  vec_foreach (wrk, ecm->wrk)
+    pool_init_fixed (wrk->session, 1.1 * sessions_per_wrk);
+}
+
+static void
+ec_worker_cleanup (ec_worker_t *wrk)
+{
+  pool_free (wrk->session);
+  vec_reset_length (wrk->conn_indices);
+  vec_reset_length (wrk->conns_this_batch);
+  vec_reset_length (wrk->quic_session_index_by_thread);
+}
+
+static void
 echo_clients_cleanup (echo_client_main_t *ecm)
 {
-  int i;
+  ec_worker_t *wrk;
 
-  for (i = 0; i < vec_len (ecm->connection_index_by_thread); i++)
-    {
-      vec_reset_length (ecm->connection_index_by_thread[i]);
-      vec_reset_length (ecm->connections_this_batch_by_thread[i]);
-      vec_reset_length (ecm->quic_session_index_by_thread[i]);
-    }
+  vec_foreach (wrk, ecm->wrk)
+    ec_worker_cleanup (wrk);
 
-  pool_free (ecm->sessions);
   vec_free (ecm->connect_uri);
   vec_free (ecm->appns_id);
-  clib_spinlock_free (&ecm->sessions_lock);
 
   if (ecm->barrier_acq_needed)
     vlib_worker_thread_barrier_sync (ecm->vlib_main);
@@ -444,16 +482,17 @@ quic_echo_clients_qsession_connected_callback (u32 app_index, u32 api_context,
 					       session_t * s,
 					       session_error_t err)
 {
+  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   echo_client_main_t *ecm = &echo_client_main;
   vnet_connect_args_t *a = 0;
-  int rv;
-  u8 thread_index = vlib_get_thread_index ();
-  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
-  u32 stream_n;
   session_handle_t handle;
+  ec_worker_t *wrk;
+  u32 stream_n;
+  int rv;
 
   DBG ("QUIC Connection handle %d", session_handle (s));
 
+  wrk = ec_worker_get (s->thread_index);
   vec_validate (a, 1);
   a->uri = (char *) ecm->connect_uri;
   if (parse_uri (a->uri, &sep))
@@ -479,7 +518,7 @@ quic_echo_clients_qsession_connected_callback (u32 app_index, u32 api_context,
    * 's' is no longer valid, its underlying pool could have been moved in
    * vnet_connect()
    */
-  vec_add1 (ecm->quic_session_index_by_thread[thread_index], handle);
+  vec_add1 (wrk->quic_session_index_by_thread, handle);
   vec_free (a);
   return 0;
 }
@@ -490,9 +529,9 @@ quic_echo_clients_session_connected_callback (u32 app_index, u32 api_context,
 					      session_error_t err)
 {
   echo_client_main_t *ecm = &echo_client_main;
-  eclient_session_t *session;
-  u32 session_index;
-  u8 thread_index;
+  ec_session_t *es;
+  ec_worker_t *wrk;
+  u32 thread_index;
 
   if (PREDICT_FALSE (ecm->run_test != ECHO_CLIENTS_STARTING))
     return -1;
@@ -515,38 +554,32 @@ quic_echo_clients_session_connected_callback (u32 app_index, u32 api_context,
   ASSERT (thread_index == vlib_get_thread_index ()
 	  || session_transport_service_type (s) == TRANSPORT_SERVICE_CL);
 
-  if (!ecm->vpp_event_queue[thread_index])
-    ecm->vpp_event_queue[thread_index] =
-      session_main_get_vpp_event_queue (thread_index);
+  wrk = ec_worker_get (thread_index);
 
   /*
    * Setup session
    */
-  clib_spinlock_lock_if_init (&ecm->sessions_lock);
-  pool_get (ecm->sessions, session);
-  clib_spinlock_unlock_if_init (&ecm->sessions_lock);
+  es = ec_session_alloc (wrk);
 
-  clib_memset (session, 0, sizeof (*session));
-  session_index = session - ecm->sessions;
-  session->bytes_to_send = ecm->bytes_to_send;
-  session->bytes_to_receive = ecm->no_return ? 0ULL : ecm->bytes_to_send;
-  session->data.rx_fifo = s->rx_fifo;
-  session->data.rx_fifo->shr->client_session_index = session_index;
-  session->data.tx_fifo = s->tx_fifo;
-  session->data.tx_fifo->shr->client_session_index = session_index;
-  session->data.vpp_evt_q = ecm->vpp_event_queue[thread_index];
-  session->vpp_session_handle = session_handle (s);
+  es->bytes_to_send = ecm->bytes_to_send;
+  es->bytes_to_receive = ecm->no_return ? 0ULL : ecm->bytes_to_send;
+  es->data.rx_fifo = s->rx_fifo;
+  es->data.rx_fifo->shr->client_session_index = es->data.session_index;
+  es->data.tx_fifo = s->tx_fifo;
+  es->data.tx_fifo->shr->client_session_index = es->data.session_index;
+  es->data.vpp_evt_q = wrk->vpp_event_queue;
+  es->vpp_session_handle = session_handle (s);
+  s->opaque = es->data.session_index;
 
   if (ecm->is_dgram)
     {
       transport_connection_t *tc;
       tc = session_get_transport (s);
-      clib_memcpy_fast (&session->data.transport, tc,
-			sizeof (session->data.transport));
-      session->data.is_dgram = 1;
+      clib_memcpy_fast (&es->data.transport, tc, sizeof (es->data.transport));
+      es->data.is_dgram = 1;
     }
 
-  vec_add1 (ecm->connection_index_by_thread[thread_index], session_index);
+  vec_add1 (wrk->conn_indices, es->data.session_index);
   clib_atomic_fetch_add (&ecm->ready_connections, 1);
   if (ecm->ready_connections == ecm->expected_connections)
     {
@@ -563,9 +596,9 @@ echo_clients_session_connected_callback (u32 app_index, u32 api_context,
 					 session_t * s, session_error_t err)
 {
   echo_client_main_t *ecm = &echo_client_main;
-  eclient_session_t *session;
-  u32 session_index;
-  u8 thread_index;
+  ec_session_t *es;
+  u32 thread_index;
+  ec_worker_t *wrk;
 
   if (PREDICT_FALSE (ecm->run_test != ECHO_CLIENTS_STARTING))
     return -1;
@@ -582,38 +615,32 @@ echo_clients_session_connected_callback (u32 app_index, u32 api_context,
   ASSERT (thread_index == vlib_get_thread_index ()
 	  || session_transport_service_type (s) == TRANSPORT_SERVICE_CL);
 
-  if (!ecm->vpp_event_queue[thread_index])
-    ecm->vpp_event_queue[thread_index] =
-      session_main_get_vpp_event_queue (thread_index);
+  wrk = ec_worker_get (thread_index);
 
   /*
    * Setup session
    */
-  clib_spinlock_lock_if_init (&ecm->sessions_lock);
-  pool_get (ecm->sessions, session);
-  clib_spinlock_unlock_if_init (&ecm->sessions_lock);
+  es = ec_session_alloc (wrk);
 
-  clib_memset (session, 0, sizeof (*session));
-  session_index = session - ecm->sessions;
-  session->bytes_to_send = ecm->bytes_to_send;
-  session->bytes_to_receive = ecm->no_return ? 0ULL : ecm->bytes_to_send;
-  session->data.rx_fifo = s->rx_fifo;
-  session->data.rx_fifo->shr->client_session_index = session_index;
-  session->data.tx_fifo = s->tx_fifo;
-  session->data.tx_fifo->shr->client_session_index = session_index;
-  session->data.vpp_evt_q = ecm->vpp_event_queue[thread_index];
-  session->vpp_session_handle = session_handle (s);
+  es->bytes_to_send = ecm->bytes_to_send;
+  es->bytes_to_receive = ecm->no_return ? 0ULL : ecm->bytes_to_send;
+  es->data.rx_fifo = s->rx_fifo;
+  es->data.rx_fifo->shr->client_session_index = es->data.session_index;
+  es->data.tx_fifo = s->tx_fifo;
+  es->data.tx_fifo->shr->client_session_index = es->data.session_index;
+  es->data.vpp_evt_q = wrk->vpp_event_queue;
+  es->vpp_session_handle = session_handle (s);
+  s->opaque = es->data.session_index;
 
   if (ecm->is_dgram)
     {
       transport_connection_t *tc;
       tc = session_get_transport (s);
-      clib_memcpy_fast (&session->data.transport, tc,
-			sizeof (session->data.transport));
-      session->data.is_dgram = 1;
+      clib_memcpy_fast (&es->data.transport, tc, sizeof (es->data.transport));
+      es->data.is_dgram = 1;
     }
 
-  vec_add1 (ecm->connection_index_by_thread[thread_index], session_index);
+  vec_add1 (wrk->conn_indices, es->data.session_index);
   clib_atomic_fetch_add (&ecm->ready_connections, 1);
   if (ecm->ready_connections == ecm->expected_connections)
     {
@@ -671,7 +698,8 @@ static int
 echo_clients_rx_callback (session_t * s)
 {
   echo_client_main_t *ecm = &echo_client_main;
-  eclient_session_t *sp;
+  ec_worker_t *wrk;
+  ec_session_t *es;
 
   if (PREDICT_FALSE (ecm->run_test != ECHO_CLIENTS_RUNNING))
     {
@@ -679,9 +707,10 @@ echo_clients_rx_callback (session_t * s)
       return -1;
     }
 
-  sp =
-    pool_elt_at_index (ecm->sessions, s->rx_fifo->shr->client_session_index);
-  receive_data_chunk (ecm, sp);
+  wrk = ec_worker_get (s->thread_index);
+  es = ec_session_get (wrk, s->opaque);
+
+  receive_data_chunk (wrk, es);
 
   if (svm_fifo_max_dequeue_cons (s->rx_fifo))
     {
@@ -784,30 +813,6 @@ echo_clients_detach ()
   vnet_app_del_cert_key_pair (ecm->ckpair_index);
 
   return rv;
-}
-
-static void *
-echo_client_thread_fn (void *arg)
-{
-  return 0;
-}
-
-/** Start a transmit thread */
-int
-echo_clients_start_tx_pthread (echo_client_main_t * ecm)
-{
-  if (ecm->client_thread_handle == 0)
-    {
-      int rv = pthread_create (&ecm->client_thread_handle,
-			       NULL /*attr */ ,
-			       echo_client_thread_fn, 0);
-      if (rv)
-	{
-	  ecm->client_thread_handle = 0;
-	  return -1;
-	}
-    }
-  return 0;
 }
 
 static int
@@ -993,7 +998,7 @@ parse_config:
   ecm->is_dgram = (ecm->transport_proto == TRANSPORT_PROTO_UDP);
 
   if (ecm->prealloc_sessions)
-    pool_init_fixed (ecm->sessions, 1.1 * ecm->n_clients);
+    ec_prealloc_sessions (ecm);
 
   if ((error = echo_clients_attach ()))
     {

@@ -18,16 +18,10 @@
 #ifndef __included_echo_client_h__
 #define __included_echo_client_h__
 
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/ethernet/ethernet.h>
-
-#include <vppinfra/hash.h>
-#include <vppinfra/error.h>
 #include <vnet/session/session.h>
 #include <vnet/session/application_interface.h>
 
-typedef struct
+typedef struct ec_session_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   app_session_t data;
@@ -37,20 +31,23 @@ typedef struct
   u64 bytes_received;
   u64 vpp_session_handle;
   u8 thread_index;
-} eclient_session_t;
+} ec_session_t;
+
+typedef struct ec_worker_
+{
+  ec_session_t *session;
+  u8 *rx_buf;
+  u32 *conn_indices;
+  u32 *conns_this_batch;
+  u32 *quic_session_index_by_thread;
+  svm_msg_q_t *vpp_event_queue;
+  u32 thread_index;
+} ec_worker_t;
 
 typedef struct
 {
-  /*
-   * Test state variables
-   */
-  eclient_session_t *sessions;	 /**< Session pool, shared */
-  clib_spinlock_t sessions_lock; /**< Session pool lock */
-  u8 **rx_buf;			 /**< intermediate rx buffers */
+  ec_worker_t *wrk;		 /**< Per-thread state */
   u8 *connect_test_data;	 /**< Pre-computed test data */
-  u32 **quic_session_index_by_thread;
-  u32 **connection_index_by_thread;
-  u32 **connections_this_batch_by_thread; /**< active connection batch */
 
   volatile u32 ready_connections;
   volatile u32 finished_connections;
@@ -64,16 +61,14 @@ typedef struct
   u32 prev_conns;
   u32 repeats;
 
-  u32 connect_conn_index; /**< Conencts attempted progress */
+  u32 connect_conn_index; /**< Connects attempted progress */
 
   /*
    * Application setup parameters
    */
-  svm_msg_q_t **vpp_event_queue;
 
   u32 cli_node_index;			/**< cli process node index */
   u32 app_index;			/**< app index after attach */
-  pthread_t client_thread_handle;
 
   /*
    * Configuration params
