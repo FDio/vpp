@@ -1,0 +1,109 @@
+From patchwork Fri Mar 25 11:22:07 2022
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+X-Patchwork-Submitter: Kai Ji <kai.ji@intel.com>
+X-Patchwork-Id: 108865
+X-Patchwork-Delegate: gakhil@marvell.com
+Return-Path: <dev-bounces@dpdk.org>
+X-Original-To: patchwork@inbox.dpdk.org
+Delivered-To: patchwork@inbox.dpdk.org
+Received: from mails.dpdk.org (mails.dpdk.org [217.70.189.124])
+	by inbox.dpdk.org (Postfix) with ESMTP id E87EFA00C3;
+	Fri, 25 Mar 2022 12:22:13 +0100 (CET)
+Received: from [217.70.189.124] (localhost [127.0.0.1])
+	by mails.dpdk.org (Postfix) with ESMTP id 9387940687;
+	Fri, 25 Mar 2022 12:22:13 +0100 (CET)
+Received: from mga02.intel.com (mga02.intel.com [134.134.136.20])
+ by mails.dpdk.org (Postfix) with ESMTP id 9E53C40140
+ for <dev@dpdk.org>; Fri, 25 Mar 2022 12:22:11 +0100 (CET)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
+ d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
+ t=1648207331; x=1679743331;
+ h=from:to:cc:subject:date:message-id;
+ bh=185+HPJzia4S6Uqu9PHapRqvEX/QFTiTHzrf4CkXbJM=;
+ b=XC2JgyQGICyyWaymYrIH4Zjthb+COrNObPF/RdiGQgzsTbSbOt0ImYk8
+ lekNM0dIByIPFsIq+IaJl2Q1MDaqQKKja8wyqAS0PpNS4pqM6vCJOYdDJ
+ qujj08p0U0NIp7YTbRtpkNcVnIxDzl5c1MS9UmyHguPgElGBhPRZrnkvh
+ AeYz4SRnE5Ws1ROsX6ZJgnGqhSA5eL7ZLMLpZpmwdlH1pFpSTbzMwv8X3
+ J3XwL4aV9bUuC+CKTghsQo3aNjs+bU5gWhS0PRGNCJlfnKRmYrLUnEfua
+ 24Z6YIrCcwNGuLvyg4MUKZcfFzHQWB7MYvYeQ/qdf5uy6j5RrVHrX1/5u Q==;
+X-IronPort-AV: E=McAfee;i="6200,9189,10296"; a="246090286"
+X-IronPort-AV: E=Sophos;i="5.90,209,1643702400"; d="scan'208";a="246090286"
+Received: from orsmga003.jf.intel.com ([10.7.209.27])
+ by orsmga101.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384;
+ 25 Mar 2022 04:22:10 -0700
+X-ExtLoop1: 1
+X-IronPort-AV: E=Sophos;i="5.90,209,1643702400"; d="scan'208";a="501753923"
+Received: from silpixa00400465.ir.intel.com ([10.55.128.22])
+ by orsmga003.jf.intel.com with ESMTP; 25 Mar 2022 04:22:09 -0700
+From: Kai Ji <kai.ji@intel.com>
+To: dev@dpdk.org
+Cc: gakhil@marvell.com,
+	Kai Ji <kai.ji@intel.com>
+Subject: [dpdk-dev v1] crypto/qat: fix of cipher offset and length assignment
+Date: Fri, 25 Mar 2022 19:22:07 +0800
+Message-Id: <20220325112207.44344-1-kai.ji@intel.com>
+X-Mailer: git-send-email 2.17.1
+X-BeenThere: dev@dpdk.org
+X-Mailman-Version: 2.1.29
+Precedence: list
+List-Id: DPDK patches and discussions <dev.dpdk.org>
+List-Unsubscribe: <https://mails.dpdk.org/options/dev>,
+ <mailto:dev-request@dpdk.org?subject=unsubscribe>
+List-Archive: <http://mails.dpdk.org/archives/dev/>
+List-Post: <mailto:dev@dpdk.org>
+List-Help: <mailto:dev-request@dpdk.org?subject=help>
+List-Subscribe: <https://mails.dpdk.org/listinfo/dev>,
+ <mailto:dev-request@dpdk.org?subject=subscribe>
+Errors-To: dev-bounces@dpdk.org
+
+This patch fix the cipher offset and length values when convert
+mbuf to vector chain for QAT build op.
+
+Fixes: a815a04cea05 ("crypto/qat: support symmetric build op request")
+
+Signed-off-by: Kai Ji <kai.ji@intel.com>
+---
+ drivers/crypto/qat/dev/qat_crypto_pmd_gens.h | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/crypto/qat/dev/qat_crypto_pmd_gens.h b/drivers/crypto/qat/dev/qat_crypto_pmd_gens.h
+index 50a9c5ad5b..dc473e0624 100644
+--- a/drivers/crypto/qat/dev/qat_crypto_pmd_gens.h
++++ b/drivers/crypto/qat/dev/qat_crypto_pmd_gens.h
+@@ -395,12 +395,12 @@ qat_sym_convert_op_to_vec_chain(struct rte_crypto_op *op,
+ 	ret = qat_cipher_is_len_in_bits(ctx, op);
+ 	switch (ret) {
+ 	case 1:
+-		cipher_len = op->sym->aead.data.length >> 3;
+-		cipher_ofs = op->sym->aead.data.offset >> 3;
++		cipher_len = op->sym->cipher.data.length >> 3;
++		cipher_ofs = op->sym->cipher.data.offset >> 3;
+ 		break;
+ 	case 0:
+-		cipher_len = op->sym->aead.data.length;
+-		cipher_ofs = op->sym->aead.data.offset;
++		cipher_len = op->sym->cipher.data.length;
++		cipher_ofs = op->sym->cipher.data.offset;
+ 		break;
+ 	default:
+ 		QAT_DP_LOG(ERR,
+@@ -426,7 +426,6 @@ qat_sym_convert_op_to_vec_chain(struct rte_crypto_op *op,
+ 		return -EINVAL;
+ 	}
+ 
+-	min_ofs = cipher_ofs < auth_ofs ? cipher_ofs : auth_ofs;
+ 	max_len = RTE_MAX(cipher_ofs + cipher_len, auth_ofs + auth_len);
+ 
+ 	/* digest in buffer check. Needed only for wireless algos */
+@@ -463,7 +462,8 @@ qat_sym_convert_op_to_vec_chain(struct rte_crypto_op *op,
+ 					ctx->digest_length);
+ 	}
+ 
+-	n_src = rte_crypto_mbuf_to_vec(op->sym->m_src, min_ofs, max_len,
++	/* Passing 0 as cipher & auth offsets are assigned into ofs later */
++	n_src = rte_crypto_mbuf_to_vec(op->sym->m_src, 0, max_len,
+ 			in_sgl->vec, QAT_SYM_SGL_MAX_NUMBER);
+ 	if (unlikely(n_src < 0 || n_src > op->sym->m_src->nb_segs)) {
+ 		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
