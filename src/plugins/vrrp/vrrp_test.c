@@ -35,6 +35,176 @@ vrrp_test_main_t vrrp_test_main;
 #include <vlibapi/vat_helper_macros.h>
 
 static int
+api_vrrp_vr_update (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  u32 sw_if_index = ~0;
+  u32 vr_id, priority, interval, vrrp_index;
+  u8 is_ipv6, no_preempt, accept_mode, vr_unicast;
+  u8 n_addrs4, n_addrs6;
+  vl_api_vrrp_vr_update_t *mp;
+  vl_api_address_t *api_addr;
+  ip46_address_t *ip_addr, *ip_addrs = 0;
+  ip46_address_t addr;
+  int ret = 0;
+
+  interval = priority = 100;
+  n_addrs4 = n_addrs6 = 0;
+  vr_id = is_ipv6 = no_preempt = accept_mode = vr_unicast = 0;
+  vrrp_index = INDEX_INVALID;
+
+  clib_memset (&addr, 0, sizeof (addr));
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+	;
+      else if (unformat (i, "sw_if_index %u", &sw_if_index))
+	;
+      else if (unformat (i, "vr_id %u", &vr_id))
+	;
+      else if (unformat (i, "vrrp_index %u", &vrrp_index))
+	;
+      else if (unformat (i, "ipv6"))
+	is_ipv6 = 1;
+      else if (unformat (i, "priority %u", &priority))
+	;
+      else if (unformat (i, "interval %u", &interval))
+	;
+      else if (unformat (i, "no_preempt"))
+	no_preempt = 1;
+      else if (unformat (i, "accept_mode"))
+	accept_mode = 1;
+      else if (unformat (i, "unicast"))
+	vr_unicast = 1;
+      else if (unformat (i, "%U", unformat_ip4_address, &addr.ip4))
+	{
+	  vec_add1 (ip_addrs, addr);
+	  n_addrs4++;
+	  clib_memset (&addr, 0, sizeof (addr));
+	}
+      else if (unformat (i, "%U", unformat_ip6_address, &addr.ip6))
+	{
+	  vec_add1 (ip_addrs, addr);
+	  n_addrs6++;
+	  clib_memset (&addr, 0, sizeof (addr));
+	}
+      else
+	break;
+    }
+
+  if (sw_if_index == ~0)
+    {
+      errmsg ("Interface not set\n");
+      ret = -99;
+    }
+  else if (n_addrs4 && (n_addrs6 || is_ipv6))
+    {
+      errmsg ("Address family mismatch\n");
+      ret = -99;
+    }
+
+  if (ret)
+    goto done;
+
+  /* Construct the API message */
+  M2 (VRRP_VR_UPDATE, mp, vec_len (ip_addrs) * sizeof (*api_addr));
+
+  mp->vrrp_index = htonl (vrrp_index);
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->vr_id = vr_id;
+  mp->priority = priority;
+  mp->interval = htons (interval);
+  mp->flags = VRRP_API_VR_PREEMPT; /* preempt by default */
+
+  if (no_preempt)
+    mp->flags &= ~VRRP_API_VR_PREEMPT;
+
+  if (accept_mode)
+    mp->flags |= VRRP_API_VR_ACCEPT;
+
+  if (vr_unicast)
+    mp->flags |= VRRP_API_VR_UNICAST;
+
+  if (is_ipv6)
+    mp->flags |= VRRP_API_VR_IPV6;
+
+  mp->flags = htonl (mp->flags);
+
+  mp->n_addrs = n_addrs4 + n_addrs6;
+  api_addr = mp->addrs;
+
+  vec_foreach (ip_addr, ip_addrs)
+    {
+      void *src, *dst;
+      int len;
+
+      if (is_ipv6)
+	{
+	  api_addr->af = ADDRESS_IP6;
+	  src = &ip_addr->ip6;
+	  dst = &api_addr->un.ip6;
+	  len = sizeof (api_addr->un.ip6);
+	}
+      else
+	{
+	  api_addr->af = ADDRESS_IP4;
+	  src = &ip_addr->ip4;
+	  dst = &api_addr->un.ip4;
+	  len = sizeof (api_addr->un.ip4);
+	}
+      clib_memcpy (dst, src, len);
+      api_addr++;
+    }
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+
+done:
+  vec_free (ip_addrs);
+
+  return ret;
+}
+
+static void
+vl_api_vrrp_vr_update_reply_t_handler (vl_api_vrrp_vr_update_reply_t *mp)
+{
+}
+
+static int
+api_vrrp_vr_del (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_vrrp_vr_del_t *mp;
+  u32 vrrp_index = INDEX_INVALID;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "vrrp_index %u", &vrrp_index))
+	;
+      else
+	break;
+    }
+
+  /* Construct the API message */
+  M (VRRP_VR_DEL, mp);
+  mp->vrrp_index = htonl (vrrp_index);
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+
+  return ret;
+}
+
+static int
 api_vrrp_vr_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;

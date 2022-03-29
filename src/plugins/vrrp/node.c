@@ -130,6 +130,7 @@ vrrp_input_process_master (vrrp_vr_t *vr, vrrp_input_process_args_t *args)
     {
       clib_warning ("Received shutdown message from a peer on VR %U",
 		    format_vrrp_vr_key, vr);
+      vrrp_incr_stat_counter (VRRP_STAT_COUNTER_PRIO0_RCVD, vr->stat_index);
       vrrp_adv_send (vr, 0);
       vrrp_vr_timer_set (vr, VRRP_VR_TIMER_ADV);
       return;
@@ -167,6 +168,7 @@ vrrp_input_process_backup (vrrp_vr_t *vr, vrrp_input_process_args_t *args)
     {
       clib_warning ("Master for VR %U is shutting down", format_vrrp_vr_key,
 		    vr);
+      vrrp_incr_stat_counter (VRRP_STAT_COUNTER_PRIO0_RCVD, vr->stat_index);
       vrt->master_down_int = vrt->skew;
       vrrp_vr_timer_set (vr, VRRP_VR_TIMER_MASTER_DOWN);
       return;
@@ -200,6 +202,8 @@ vrrp_input_process (vrrp_input_process_args_t * args)
       clib_warning ("Error retrieving VR with index %u", args->vr_index);
       return;
     }
+
+  vrrp_incr_stat_counter (VRRP_STAT_COUNTER_ADV_RCVD, vr->stat_index);
 
   switch (vr->runtime.state)
     {
@@ -607,6 +611,7 @@ vrrp_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (*ttl0 != 255)
 	{
 	  error0 = VRRP_ERROR_BAD_TTL;
+	  vrrp_incr_err_counter (VRRP_ERR_COUNTER_TTL);
 	  goto trace;
 	}
 
@@ -614,6 +619,7 @@ vrrp_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       if ((vrrp0->vrrp_version_and_type >> 4) != 3)
 	{
 	  error0 = VRRP_ERROR_NOT_VERSION_3;
+	  vrrp_incr_err_counter (VRRP_ERR_COUNTER_VERSION);
 	  goto trace;
 	}
 
@@ -622,6 +628,7 @@ vrrp_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
           ((u32) vrrp0->n_addrs) * addr_len)
 	{
 	  error0 = VRRP_ERROR_INCOMPLETE_PKT;
+	  vrrp_incr_err_counter (VRRP_ERR_COUNTER_PKT_LEN);
 	  goto trace;
 	}
 
@@ -629,6 +636,7 @@ vrrp_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (rx_csum0 != vrrp_adv_csum (ip0, vrrp0, is_ipv6, payload_len0))
 	{
 	  error0 = VRRP_ERROR_BAD_CHECKSUM;
+	  vrrp_incr_err_counter (VRRP_ERR_COUNTER_CHKSUM);
 	  goto trace;
 	}
 
@@ -638,6 +646,7 @@ vrrp_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			      vrrp0->vr_id, is_ipv6)))
 	{
 	  error0 = VRRP_ERROR_UNKNOWN_VR;
+	  vrrp_incr_err_counter (VRRP_ERR_COUNTER_VRID);
 	  goto trace;
 	}
 
@@ -646,6 +655,7 @@ vrrp_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (vrrp0->n_addrs != vec_len (vr0->config.vr_addrs))
 	{
 	  error0 = VRRP_ERROR_ADDR_MISMATCH;
+	  vrrp_incr_err_counter (VRRP_ERR_COUNTER_ADDR_LIST);
 	  goto trace;
 	}
 
