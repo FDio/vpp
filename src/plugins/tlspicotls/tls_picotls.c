@@ -24,14 +24,26 @@ static ptls_key_exchange_algorithm_t *default_key_exchange[] = {
 #endif
 };
 
+static void
+picotls_pool_realloc_rpc (void *rpc_args)
+{
+  picotls_main_t *pm = &picotls_main;
+  u32 thread_index;
+
+  thread_index = pointer_to_uword (rpc_args);
+  pool_realloc_safe_aligned (pm->ctx_pool[thread_index],
+			     CLIB_CACHE_LINE_BYTES);
+}
+
 static u32
 picotls_ctx_alloc (void)
 {
-  u8 thread_id = vlib_get_thread_index ();
+  u32 thread_id = vlib_get_thread_index ();
   picotls_main_t *pm = &picotls_main;
   picotls_ctx_t **ctx;
 
-  pool_get (pm->ctx_pool[thread_id], ctx);
+  pool_get_aligned_safe (pm->ctx_pool[thread_id], ctx, thread_id,
+			 picotls_pool_realloc_rpc, CLIB_CACHE_LINE_BYTES);
   if (!(*ctx))
     *ctx = clib_mem_alloc (sizeof (picotls_ctx_t));
 
