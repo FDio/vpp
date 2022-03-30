@@ -56,17 +56,17 @@ const struct
   const char *pfx;
 } if_name_prefixes[] = {
   /* sorted, higher speed first */
-  { ETH_LINK_SPEED_200G, "TwoHundredGigabitEthernet" },
-  { ETH_LINK_SPEED_100G, "HundredGigabitEthernet" },
-  { ETH_LINK_SPEED_56G, "FiftySixGigabitEthernet" },
-  { ETH_LINK_SPEED_50G, "FiftyGigabitEthernet" },
-  { ETH_LINK_SPEED_40G, "FortyGigabitEthernet" },
-  { ETH_LINK_SPEED_25G, "TwentyFiveGigabitEthernet" },
-  { ETH_LINK_SPEED_20G, "TwentyGigabitEthernet" },
-  { ETH_LINK_SPEED_10G, "TenGigabitEthernet" },
-  { ETH_LINK_SPEED_5G, "FiveGigabitEthernet" },
-  { ETH_LINK_SPEED_2_5G, "TwoDotFiveGigabitEthernet" },
-  { ETH_LINK_SPEED_1G, "GigabitEthernet" },
+  { RTE_ETH_LINK_SPEED_200G, "TwoHundredGigabitEthernet" },
+  { RTE_ETH_LINK_SPEED_100G, "HundredGigabitEthernet" },
+  { RTE_ETH_LINK_SPEED_56G, "FiftySixGigabitEthernet" },
+  { RTE_ETH_LINK_SPEED_50G, "FiftyGigabitEthernet" },
+  { RTE_ETH_LINK_SPEED_40G, "FortyGigabitEthernet" },
+  { RTE_ETH_LINK_SPEED_25G, "TwentyFiveGigabitEthernet" },
+  { RTE_ETH_LINK_SPEED_20G, "TwentyGigabitEthernet" },
+  { RTE_ETH_LINK_SPEED_10G, "TenGigabitEthernet" },
+  { RTE_ETH_LINK_SPEED_5G, "FiveGigabitEthernet" },
+  { RTE_ETH_LINK_SPEED_2_5G, "TwoDotFiveGigabitEthernet" },
+  { RTE_ETH_LINK_SPEED_1G, "GigabitEthernet" },
 };
 
 static clib_error_t *
@@ -247,7 +247,8 @@ dpdk_lib_init (dpdk_main_t * dm)
   dm->default_port_conf.n_tx_desc = DPDK_NB_TX_DESC_DEFAULT;
   dm->default_port_conf.n_rx_queues = 1;
   dm->default_port_conf.n_tx_queues = tm->n_vlib_mains;
-  dm->default_port_conf.rss_hf = ETH_RSS_IP | ETH_RSS_UDP | ETH_RSS_TCP;
+  dm->default_port_conf.rss_hf =
+    RTE_ETH_RSS_IP | RTE_ETH_RSS_UDP | RTE_ETH_RSS_TCP;
   dm->default_port_conf.max_lro_pkt_size = DPDK_MAX_LRO_SIZE_DEFAULT;
 
   if ((clib_mem_get_default_hugepage_size () == 2 << 20) &&
@@ -473,7 +474,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  if (xd->conf.enable_tcp_udp_checksum == 0)
 	    dpdk_log_warn ("[%u] TCP/UDP checksum offload must be enabled",
 			   xd->port_id);
-	  else if ((di.tx_offload_capa & DEV_TX_OFFLOAD_TCP_TSO) == 0)
+	  else if ((di.tx_offload_capa & RTE_ETH_TX_OFFLOAD_TCP_TSO) == 0)
 	    dpdk_log_warn ("[%u] TSO not supported by device", xd->port_id);
 	  else
 	    xd->conf.enable_tso = 1;
@@ -1369,10 +1370,10 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
       hw_flags_chg = 1;
       switch (xd->link.link_duplex)
 	{
-	case ETH_LINK_HALF_DUPLEX:
+	case RTE_ETH_LINK_HALF_DUPLEX:
 	  hw_flags |= VNET_HW_INTERFACE_FLAG_HALF_DUPLEX;
 	  break;
-	case ETH_LINK_FULL_DUPLEX:
+	case RTE_ETH_LINK_FULL_DUPLEX:
 	  hw_flags |= VNET_HW_INTERFACE_FLAG_FULL_DUPLEX;
 	  break;
 	default:
