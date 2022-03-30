@@ -803,41 +803,6 @@ pool_program_safe_realloc (void *p, u32 thread_index,
 				  uword_to_pointer (thread_index, void *));
 }
 
-#define pool_realloc_all_at_barrier(_not)                                     \
-  (*vlib_worker_threads->workers_at_barrier >= (vlib_num_workers () - _not))
-
-always_inline void
-pool_realloc_wait_at_barrier (void)
-{
-  session_main_t *sm = &session_main;
-
-  /* Wait until main thread asks for barrier */
-  while (!(*vlib_worker_threads->wait_at_barrier))
-    ;
-
-  /* Stop at realloc barrier and make sure all threads are either
-   * at worker barrier or at pool realloc barrier */
-  clib_atomic_fetch_add (&sm->pool_realloc_at_barrier, 1);
-  while (!pool_realloc_all_at_barrier (sm->pool_realloc_at_barrier))
-    ;
-
-  /* Track all workers that are doing work */
-  clib_atomic_fetch_add (&sm->pool_realloc_doing_work, 1);
-}
-
-always_inline void
-pool_realloc_done_wait_at_barrier (void)
-{
-  session_main_t *sm = &session_main;
-
-  /* Wait until all workers at pool realloc barrier have started reallocs */
-  while (sm->pool_realloc_doing_work < sm->pool_realloc_at_barrier)
-    ;
-
-  clib_atomic_fetch_add (&sm->pool_realloc_doing_work, -1);
-  clib_atomic_fetch_add (&sm->pool_realloc_at_barrier, -1);
-}
-
 #define pool_needs_realloc(P)                                                 \
   ((!P) ||                                                                    \
    (vec_len (pool_header (P)->free_indices) < POOL_REALLOC_SAFE_ELT_THRESH && \
@@ -857,10 +822,9 @@ pool_realloc_done_wait_at_barrier (void)
 	    }                                                                 \
 	  else if (PREDICT_FALSE (!pool_free_elts (P)))                       \
 	    {                                                                 \
-	      pool_program_safe_realloc (P, thread_index, rpc_fn);            \
-	      pool_realloc_wait_at_barrier ();                                \
+	      vlib_workers_sync ();                                           \
 	      pool_alloc_aligned (P, pool_max_len (P), align);                \
-	      pool_realloc_done_wait_at_barrier ();                           \
+	      vlib_workers_continue ();                                       \
 	      ALWAYS_ASSERT (pool_free_elts (P) > 0);                         \
 	    }                                                                 \
 	  else                                                                \
