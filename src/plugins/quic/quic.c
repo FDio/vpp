@@ -382,13 +382,25 @@ error:
 
 /*  Helper functions */
 
+static void
+quic_pool_realloc_rpc (void *rpc_args)
+{
+  quic_main_t *qm = &quic_main;
+  u32 thread_index;
+
+  thread_index = pointer_to_uword (rpc_args);
+  pool_realloc_safe_aligned (qm->ctx_pool[thread_index],
+			     CLIB_CACHE_LINE_BYTES);
+}
+
 static u32
 quic_ctx_alloc (u32 thread_index)
 {
   quic_main_t *qm = &quic_main;
   quic_ctx_t *ctx;
 
-  pool_get (qm->ctx_pool[thread_index], ctx);
+  pool_get_aligned_safe (qm->ctx_pool[thread_index], ctx, thread_index,
+			 quic_pool_realloc_rpc, CLIB_CACHE_LINE_BYTES);
 
   clib_memset (ctx, 0, sizeof (quic_ctx_t));
   ctx->c_thread_index = thread_index;
