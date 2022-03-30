@@ -1,0 +1,57 @@
+From 013a095d6b348afddceaa5ea710ef6309566dc85 Mon Sep 17 00:00:00 2001
+From: Kai Ji <kai.ji@intel.com>
+Date: Fri, 25 Mar 2022 19:22:07 +0800
+Subject: [PATCH] crypto/qat: fix of cipher offset and length assignment
+
+This patch fix the cipher offset and length values when convert
+mbuf to vector chain for QAT build op.
+
+Fixes: a815a04cea05 ("crypto/qat: support symmetric build op request")
+
+Signed-off-by: Kai Ji <kai.ji@intel.com>
+---
+ drivers/crypto/qat/dev/qat_crypto_pmd_gens.h | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/crypto/qat/dev/qat_crypto_pmd_gens.h b/drivers/crypto/qat/dev/qat_crypto_pmd_gens.h
+index 50a9c5ad5b..dc473e0624 100644
+--- a/drivers/crypto/qat/dev/qat_crypto_pmd_gens.h
++++ b/drivers/crypto/qat/dev/qat_crypto_pmd_gens.h
+@@ -395,12 +395,12 @@ qat_sym_convert_op_to_vec_chain(struct rte_crypto_op *op,
+ 	ret = qat_cipher_is_len_in_bits(ctx, op);
+ 	switch (ret) {
+ 	case 1:
+-		cipher_len = op->sym->aead.data.length >> 3;
+-		cipher_ofs = op->sym->aead.data.offset >> 3;
++		cipher_len = op->sym->cipher.data.length >> 3;
++		cipher_ofs = op->sym->cipher.data.offset >> 3;
+ 		break;
+ 	case 0:
+-		cipher_len = op->sym->aead.data.length;
+-		cipher_ofs = op->sym->aead.data.offset;
++		cipher_len = op->sym->cipher.data.length;
++		cipher_ofs = op->sym->cipher.data.offset;
+ 		break;
+ 	default:
+ 		QAT_DP_LOG(ERR,
+@@ -426,7 +426,6 @@ qat_sym_convert_op_to_vec_chain(struct rte_crypto_op *op,
+ 		return -EINVAL;
+ 	}
+ 
+-	min_ofs = cipher_ofs < auth_ofs ? cipher_ofs : auth_ofs;
+ 	max_len = RTE_MAX(cipher_ofs + cipher_len, auth_ofs + auth_len);
+ 
+ 	/* digest in buffer check. Needed only for wireless algos */
+@@ -463,7 +462,8 @@ qat_sym_convert_op_to_vec_chain(struct rte_crypto_op *op,
+ 					ctx->digest_length);
+ 	}
+ 
+-	n_src = rte_crypto_mbuf_to_vec(op->sym->m_src, min_ofs, max_len,
++	/* Passing 0 as cipher & auth offsets are assigned into ofs later */
++	n_src = rte_crypto_mbuf_to_vec(op->sym->m_src, 0, max_len,
+ 			in_sgl->vec, QAT_SYM_SGL_MAX_NUMBER);
+ 	if (unlikely(n_src < 0 || n_src > op->sym->m_src->nb_segs)) {
+ 		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+-- 
+2.25.1
+
