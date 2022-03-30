@@ -40,7 +40,8 @@ openssl_ctx_alloc_w_thread (u32 thread_index)
   openssl_main_t *om = &openssl_main;
   openssl_ctx_t **ctx;
 
-  pool_get (om->ctx_pool[thread_index], ctx);
+  pool_get_aligned_safe (om->ctx_pool[thread_index], ctx, 0);
+
   if (!(*ctx))
     *ctx = clib_mem_alloc (sizeof (openssl_ctx_t));
 
@@ -99,7 +100,7 @@ openssl_ctx_attach (u32 thread_index, void *ctx_ptr)
   session_handle_t sh;
   openssl_ctx_t **oc;
 
-  pool_get (om->ctx_pool[thread_index], oc);
+  pool_get_aligned_safe (om->ctx_pool[thread_index], oc, 0);
   /* Free the old instance instead of looking for an empty spot */
   if (*oc)
     clib_mem_free (*oc);

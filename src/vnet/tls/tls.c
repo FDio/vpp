@@ -115,57 +115,27 @@ u32
 tls_ctx_half_open_alloc (void)
 {
   tls_main_t *tm = &tls_main;
-  u8 will_expand = pool_get_will_expand (tm->half_open_ctx_pool);
   tls_ctx_t *ctx;
-  u32 ctx_index;
 
-  if (PREDICT_FALSE (will_expand && vlib_num_workers ()))
-    {
-      clib_rwlock_writer_lock (&tm->half_open_rwlock);
-      pool_get_zero (tm->half_open_ctx_pool, ctx);
-      ctx->c_c_index = ctx - tm->half_open_ctx_pool;
-      ctx_index = ctx->c_c_index;
-      clib_rwlock_writer_unlock (&tm->half_open_rwlock);
-    }
-  else
-    {
-      /* reader lock assumption: only main thread will call pool_get */
-      clib_rwlock_reader_lock (&tm->half_open_rwlock);
-      pool_get_zero (tm->half_open_ctx_pool, ctx);
-      ctx->c_c_index = ctx - tm->half_open_ctx_pool;
-      ctx_index = ctx->c_c_index;
-      clib_rwlock_reader_unlock (&tm->half_open_rwlock);
-    }
-  return ctx_index;
+  pool_get_aligned_safe (tm->half_open_ctx_pool, ctx, CLIB_CACHE_LINE_BYTES);
+
+  clib_memset (ctx, 0, sizeof (*ctx));
+  ctx->c_c_index = ctx - tm->half_open_ctx_pool;
+
+  return ctx->c_c_index;
 }
 
 void
 tls_ctx_half_open_free (u32 ho_index)
 {
-  tls_main_t *tm = &tls_main;
-  clib_rwlock_writer_lock (&tm->half_open_rwlock);
   pool_put_index (tls_main.half_open_ctx_pool, ho_index);
-  clib_rwlock_writer_unlock (&tm->half_open_rwlock);
 }
 
 tls_ctx_t *
 tls_ctx_half_open_get (u32 ctx_index)
 {
   tls_main_t *tm = &tls_main;
-  clib_rwlock_reader_lock (&tm->half_open_rwlock);
   return pool_elt_at_index (tm->half_open_ctx_pool, ctx_index);
-}
-
-void
-tls_ctx_half_open_reader_unlock ()
-{
-  clib_rwlock_reader_unlock (&tls_main.half_open_rwlock);
-}
-
-u32
-tls_ctx_half_open_index (tls_ctx_t * ctx)
-{
-  return (ctx - tls_main.half_open_ctx_pool);
 }
 
 void
@@ -454,7 +424,6 @@ tls_session_cleanup_ho (session_t *s)
   ho_index = s->opaque;
   ctx = tls_ctx_half_open_get (ho_index);
   session_half_open_delete_notify (&ctx->connection);
-  tls_ctx_half_open_reader_unlock ();
   tls_ctx_half_open_free (ho_index);
 }
 
@@ -567,7 +536,6 @@ tls_session_connected_cb (u32 tls_app_index, u32 ho_ctx_index,
   ctx = tls_ctx_get (ctx_handle);
   clib_memcpy_fast (ctx, ho_ctx, sizeof (*ctx));
   /* Half-open freed on tcp half-open cleanup notification */
-  tls_ctx_half_open_reader_unlock ();
 
   ctx->c_thread_index = vlib_get_thread_index ();
   ctx->tls_ctx_handle = ctx_handle;
@@ -628,7 +596,6 @@ tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
 	  api_context = ho_ctx->parent_app_api_context;
 	  app_worker_connect_notify (app_wrk, 0, err, api_context);
 	}
-      tls_ctx_half_open_reader_unlock ();
 
       return 0;
     }
@@ -766,7 +733,6 @@ tls_connect (transport_endpoint_cfg_t * tep)
       ctx->srv_hostname = format (0, "%s", ccfg->hostname);
       vec_terminate_c_string (ctx->srv_hostname);
     }
-  tls_ctx_half_open_reader_unlock ();
 
   ctx->tls_ctx_engine = engine_type;
 
@@ -936,24 +902,18 @@ tls_listener_get (u32 listener_index)
 static transport_connection_t *
 tls_half_open_get (u32 ho_index)
 {
-  tls_main_t *tm = &tls_main;
   tls_ctx_t *ctx;
   ctx = tls_ctx_half_open_get (ho_index);
-  clib_rwlock_reader_unlock (&tm->half_open_rwlock);
   return &ctx->connection;
 }
 
 static void
 tls_cleanup_ho (u32 ho_index)
 {
-  tls_main_t *tm = &tls_main;
-  session_handle_t tcp_sh;
   tls_ctx_t *ctx;
 
   ctx = tls_ctx_half_open_get (ho_index);
-  tcp_sh = ctx->tls_session_handle;
-  clib_rwlock_reader_unlock (&tm->half_open_rwlock);
-  session_cleanup_half_open (tcp_sh);
+  session_cleanup_half_open (ctx->tls_session_handle);
   tls_ctx_half_open_free (ho_index);
 }
 
@@ -1090,7 +1050,6 @@ format_tls_half_open (u8 * s, va_list * args)
 	      ho_ctx->parent_app_wrk_index, ho_ctx->tls_ctx_engine,
 	      tcp_ho->thread_index, tcp_ho->session_index);
 
-  tls_ctx_half_open_reader_unlock ();
   return s;
 }
 
@@ -1333,8 +1292,6 @@ tls_init (vlib_main_t * vm)
 
   if (!tm->ca_cert_path)
     tm->ca_cert_path = TLS_CA_CERT_PATH;
-
-  clib_rwlock_init (&tm->half_open_rwlock);
 
   vec_validate (tm->rx_bufs, num_threads - 1);
   vec_validate (tm->tx_bufs, num_threads - 1);
