@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f1db6c85_a0edb58a",
+        "filename": "src/vnet/tls/tls.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-03-30T15:56:39Z",
+      "side": 1,
+      "message": "Make it an int because in openssl ca init we can return negative values.",
+      "range": {
+        "startLine": 142,
+        "startChar": 0,
+        "endLine": 142,
+        "endChar": 2
+      },
+      "revId": "1cce0b88378f988d4fcf4b2b487e69510206a4c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
