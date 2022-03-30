@@ -1486,6 +1486,56 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
 			 vm->clib_time.last_cpu_time, 1 /* leave */ );
 }
 
+static void
+vlib_worker_sync_rpc (void *args)
+{
+  ASSERT (vlib_thread_is_main_w_barrier ());
+  vlib_worker_threads->wait_before_barrier = 0;
+}
+
+void
+vlib_workers_sync (void)
+{
+  if (PREDICT_FALSE (!vlib_num_workers ()))
+    return;
+
+  if (!(*vlib_worker_threads->wait_at_barrier) &&
+      !clib_atomic_swap_rel_n (&vlib_worker_threads->wait_before_barrier, 1))
+    {
+      u32 thread_index = vlib_get_thread_index ();
+      vlib_rpc_call_main_thread (vlib_worker_sync_rpc, (u8 *) &thread_index,
+				 sizeof (thread_index));
+    }
+
+  /* Wait until main thread asks for barrier */
+  while (!(*vlib_worker_threads->wait_at_barrier))
+    ;
+
+  /* Stop before barrier and make sure all threads are either
+   * at worker barrier or the barrier before it */
+  clib_atomic_fetch_add (&vlib_worker_threads->workers_before_barrier, 1);
+  while (vlib_num_workers () > (*vlib_worker_threads->workers_at_barrier +
+				vlib_worker_threads->workers_before_barrier))
+    ;
+}
+
+void
+vlib_workers_continue (void)
+{
+  if (PREDICT_FALSE (!vlib_num_workers ()))
+    return;
+
+  clib_atomic_fetch_add (&vlib_worker_threads->done_work_before_barrier, 1);
+
+  /* Wait until all workers are done with work before barrier */
+  while (vlib_worker_threads->done_work_before_barrier <
+	 vlib_worker_threads->workers_before_barrier)
+    ;
+
+  clib_atomic_fetch_add (&vlib_worker_threads->done_work_before_barrier, -1);
+  clib_atomic_fetch_add (&vlib_worker_threads->workers_before_barrier, -1);
+}
+
 /**
  * Wait until each of the workers has been once around the track
  */
