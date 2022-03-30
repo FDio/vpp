@@ -16,6 +16,24 @@
       "revId": "ab26b7f040c04e3c05cde1f9fa2ce1527c2b17c4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f186257b_fda17bbc",
+        "filename": "src/vnet/udp/udp_encap.h",
+        "patchSetId": 23
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 794
+      },
+      "writtenOn": "2022-03-30T13:51:26Z",
+      "side": 1,
+      "message": "Yup, this part is not 100% clear to me. So using one single DPO in this way:\n\n```\n  dpo_stack (udp_encap_dpo_types[ue-\u003eue_ip_proto],\n\t     fib_proto_to_dpo (ue-\u003eue_ip_proto),\n\t     \u0026ue-\u003eue_dpo,\n\t     fib_entry_contribute_ip_forwarding (ue-\u003eue_fib_entry_index));\n```\n\nI was hitting the assertion `ASSERT (next_index \u003c n-\u003en_next_nodes);` in vlib_node_runtime_get_next_frame for the combinations 6 over 4 and 4 over 6.\n\n```\n/home/ubuntu/maqy/vpp/src/vlib/node_funcs.h:330 (vlib_node_runtime_get_next_frame) assertion `next_index \u003c n-\u003en_next_nodes\u0027 fails\n\nProgram received signal SIGABRT, Aborted.\n__GI_raise (sig\u003dsig@entry\u003d6) at ../sysdeps/unix/sysv/linux/raise.c:50\n50      ../sysdeps/unix/sysv/linux/raise.c: No such file or directory.\n(gdb) bt\n#0  __GI_raise (sig\u003dsig@entry\u003d6) at ../sysdeps/unix/sysv/linux/raise.c:50\n#1  0x00007ffff6a40859 in __GI_abort () at abort.c:79\n#2  0x0000000000407643 in os_panic ()\n    at /home/ubuntu/maqy/vpp/src/vpp/vnet/main.c:413\n#3  0x00007ffff6d8fbe9 in debugger ()\n    at /home/ubuntu/maqy/vpp/src/vppinfra/error.c:84\n#4  0x00007ffff6d8f96c in _clib_error (how_to_die\u003d2, function_name\u003d0x0, \n    line_number\u003d0, fmt\u003d0x7ffff6f8f19c \"%s:%d (%s) assertion `%s\u0027 fails\")\n    at /home/ubuntu/maqy/vpp/src/vppinfra/error.c:143\n#5  0x00007ffff6ef9d65 in vlib_node_runtime_get_next_frame (vm\u003d0x7fffb6918680, \n    n\u003d0x7fffb7094bc0, next_index\u003d0)\n    at /home/ubuntu/maqy/vpp/src/vlib/node_funcs.h:330\n#6  0x00007ffff6ef9ae6 in vlib_get_next_frame_internal (vm\u003d0x7fffb6918680, \n    node\u003d0x7fffb7094bc0, next_index\u003d0, allocate_new_next_frame\u003d0)\n    at /home/ubuntu/maqy/vpp/src/vlib/main.c:343\n#7  0x00007ffff74b5cfc in udp_encap_inline (vm\u003d0x7fffb6918680, \n    node\u003d0x7fffb7094bc0, frame\u003d0x7fffb74ee300, encap_family\u003dAF_IP4, \n    payload_family\u003dAF_IP6)\n    at /home/ubuntu/maqy/vpp/src/vnet/udp/udp_encap_node.c:78\n#8  0x00007ffff74b696d in udp6o4_encap_node_fn (vm\u003d0x7fffb6918680, \n    node\u003d0x7fffb7094bc0, frame\u003d0x7fffb74ee300)\n    at /home/ubuntu/maqy/vpp/src/vnet/udp/udp_encap_node.c:284\n```\n\nSo I changed to:\n\n```\nstatic void\nudp_encap_restack (udp_encap_t * ue)\n{\n  dpo_stack (udp_encap_dpo_types[ue-\u003eue_ip_proto], DPO_PROTO_IP4,\n\t     \u0026ue-\u003eue_dpo[AF_IP4],\n\t     fib_entry_contribute_ip_forwarding (ue-\u003eue_fib_entry_index));\n\n  dpo_stack (udp_encap_dpo_types[ue-\u003eue_ip_proto], DPO_PROTO_IP6,\n\t     \u0026ue-\u003eue_dpo[AF_IP6],\n\t     fib_entry_contribute_ip_forwarding (ue-\u003eue_fib_entry_index));\n}\n```\n\nAnd in this way it worked. I agree this is not the best way to do it though. Am I missing anything? How can I set the next node for the combination 64 and 46?",
+      "parentUuid": "3877a78f_7b562179",
+      "revId": "ab26b7f040c04e3c05cde1f9fa2ce1527c2b17c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
