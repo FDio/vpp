@@ -92,7 +92,6 @@ typedef struct tls_main_
   u32 app_index;
   tls_ctx_t *listener_ctx_pool;
   tls_ctx_t *half_open_ctx_pool;
-  clib_rwlock_t half_open_rwlock;
   u8 **rx_bufs;
   u8 **tx_bufs;
 
