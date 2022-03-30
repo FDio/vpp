@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3877a78f_7b562179",
+        "filename": "src/vnet/udp/udp_encap.h",
+        "patchSetId": 23
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-03-30T12:29:24Z",
+      "side": 1,
+      "message": "a udp_encap_t object applies either a v4 or v6 header. so it only needs one forwarding chain of the appropriate family.\nwhat you\u0027re fixing is the support for a udp_encap_t to accept both payload address families.",
+      "revId": "ab26b7f040c04e3c05cde1f9fa2ce1527c2b17c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
