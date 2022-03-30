@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "638047d5_87180f82",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 776,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-03-30T15:07:47Z",
+      "side": 1,
+      "message": "Move this comment above the function call",
+      "range": {
+        "startLine": 775,
+        "startChar": 10,
+        "endLine": 776,
+        "endChar": 36
+      },
+      "revId": "c26ef0fce6f4ff7719c3aec54cb85be5a33d5ab2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
