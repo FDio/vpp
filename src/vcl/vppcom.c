@@ -1286,6 +1286,9 @@ vcl_api_handle_disconnect (vcl_worker_t *wrk)
 static void
 vcl_api_detach (vcl_worker_t * wrk)
 {
+  if (wrk->api_client_handle == ~0)
+    return;
+
   vcl_send_app_detach (wrk);
 
   if (vcm->cfg.vpp_app_socket_api)
@@ -1328,7 +1331,10 @@ vppcom_app_create (const char *app_name)
   vcl_worker_alloc_and_init ();
 
   if ((rv = vcl_api_attach ()))
-    return rv;
+    {
+      vppcom_app_destroy ();
+      return rv;
+    }
 
   VDBG (0, "app_name '%s', my_client_index %d (0x%x)", app_name,
 	vcm->workers[0].api_client_handle, vcm->workers[0].api_client_handle);
