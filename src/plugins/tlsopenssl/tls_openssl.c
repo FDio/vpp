@@ -32,13 +32,26 @@
 
 openssl_main_t openssl_main;
 
+static void
+openssl_pool_realloc_rpc (void *rpc_args)
+{
+  openssl_main_t *om = &openssl_main;
+  u32 thread_index;
+
+  thread_index = pointer_to_uword (rpc_args);
+  pool_realloc_safe_aligned (om->ctx_pool[thread_index],
+			     CLIB_CACHE_LINE_BYTES);
+}
+
 static u32
 openssl_ctx_alloc_w_thread (u32 thread_index)
 {
   openssl_main_t *om = &openssl_main;
   openssl_ctx_t **ctx;
 
-  pool_get (om->ctx_pool[thread_index], ctx);
+  pool_get_aligned_safe (om->ctx_pool[thread_index], ctx, thread_index,
+			 openssl_pool_realloc_rpc, CLIB_CACHE_LINE_BYTES);
+
   if (!(*ctx))
     *ctx = clib_mem_alloc (sizeof (openssl_ctx_t));
 

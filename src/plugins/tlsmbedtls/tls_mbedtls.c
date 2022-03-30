@@ -67,6 +67,17 @@ mbedtls_free_fn (void *ptr)
 }
 #endif
 
+static void
+mbedtls_pool_realloc_rpc (void *rpc_args)
+{
+  mbedtls_main_t *mm = &mbedtls_main;
+  u32 thread_index;
+
+  thread_index = pointer_to_uword (rpc_args);
+  pool_realloc_safe_aligned (mm->ctx_pool[thread_index],
+			     CLIB_CACHE_LINE_BYTES);
+}
+
 static u32
 mbedtls_ctx_alloc (void)
 {
@@ -74,7 +85,8 @@ mbedtls_ctx_alloc (void)
   mbedtls_main_t *tm = &mbedtls_main;
   mbedtls_ctx_t **ctx;
 
-  pool_get (tm->ctx_pool[thread_index], ctx);
+  pool_get_aligned_safe (tm->ctx_pool[thread_index], ctx, thread_index,
+			 mbedtls_pool_realloc_rpc, CLIB_CACHE_LINE_BYTES);
   if (!(*ctx))
     *ctx = clib_mem_alloc (sizeof (mbedtls_ctx_t));
 
