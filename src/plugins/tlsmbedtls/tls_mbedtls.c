@@ -74,7 +74,8 @@ mbedtls_ctx_alloc (void)
   mbedtls_main_t *tm = &mbedtls_main;
   mbedtls_ctx_t **ctx;
 
-  pool_get (tm->ctx_pool[thread_index], ctx);
+  pool_get_aligned_safe (tm->ctx_pool[thread_index], ctx,
+			 CLIB_CACHE_LINE_BYTES);
   if (!(*ctx))
     *ctx = clib_mem_alloc (sizeof (mbedtls_ctx_t));
 
