@@ -101,6 +101,9 @@ typedef struct
   const char *barrier_caller;
   const char *barrier_context;
   volatile u32 *node_reforks_required;
+  volatile u32 wait_before_barrier;
+  volatile u32 workers_before_barrier;
+  volatile u32 done_work_before_barrier;
 
   long lwp;
   int cpu_id;
@@ -483,6 +486,17 @@ vlib_process_signal_event_mt_helper (vlib_process_signal_event_mt_args_t *
 void vlib_rpc_call_main_thread (void *function, u8 * args, u32 size);
 void vlib_get_thread_core_numa (vlib_worker_thread_t * w, unsigned cpu_id);
 vlib_thread_main_t *vlib_get_thread_main_not_inline (void);
+
+/**
+ * Force workers sync from within worker
+ *
+ * Must be paired with @ref vlib_workers_continue
+ */
+void vlib_workers_sync (void);
+/**
+ * Release barrier after workers sync
+ */
+void vlib_workers_continue (void);
 
 #endif /* included_vlib_threads_h */
 
