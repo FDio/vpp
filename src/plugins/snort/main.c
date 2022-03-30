@@ -539,6 +539,29 @@ snort_init (vlib_main_t *vm)
 
 VLIB_INIT_FUNCTION (snort_init);
 
+static clib_error_t *
+snort_config_fn (vlib_main_t *vm, unformat_input_t *input)
+{
+  snort_main_t *sm = &snort_main;
+  clib_error_t *err = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "socket-name %s", &sm->socket_name))
+	;
+      else
+	{
+	  err = clib_error_return (0, "unknown input `%U'",
+				   format_unformat_error, input);
+	  break;
+	}
+    }
+
+  return err;
+}
+
+VLIB_EARLY_CONFIG_FUNCTION (snort_config_fn, "snort");
+
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "Snort",
