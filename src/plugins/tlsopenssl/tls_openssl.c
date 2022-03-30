@@ -39,7 +39,9 @@ openssl_ctx_alloc_w_thread (u32 thread_index)
   openssl_main_t *om = &openssl_main;
   openssl_ctx_t **ctx;
 
-  pool_get (om->ctx_pool[thread_index], ctx);
+  pool_get_aligned_safe (om->ctx_pool[thread_index], ctx,
+			 CLIB_CACHE_LINE_BYTES);
+
   if (!(*ctx))
     *ctx = clib_mem_alloc (sizeof (openssl_ctx_t));
 
