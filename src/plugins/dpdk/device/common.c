@@ -35,13 +35,13 @@ static struct
   u64 offload;
   vnet_hw_if_caps_t caps;
 } tx_off_caps_map[] = {
-  { DEV_TX_OFFLOAD_IPV4_CKSUM, VNET_HW_IF_CAP_TX_IP4_CKSUM },
-  { DEV_TX_OFFLOAD_TCP_CKSUM, VNET_HW_IF_CAP_TX_TCP_CKSUM },
-  { DEV_TX_OFFLOAD_UDP_CKSUM, VNET_HW_IF_CAP_TX_UDP_CKSUM },
-  { DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM, VNET_HW_IF_CAP_TX_IP4_OUTER_CKSUM },
-  { DEV_TX_OFFLOAD_OUTER_UDP_CKSUM, VNET_HW_IF_CAP_TX_UDP_OUTER_CKSUM },
-  { DEV_TX_OFFLOAD_TCP_TSO, VNET_HW_IF_CAP_TCP_GSO },
-  { DEV_TX_OFFLOAD_VXLAN_TNL_TSO, VNET_HW_IF_CAP_VXLAN_TNL_GSO }
+  { RTE_ETH_TX_OFFLOAD_IPV4_CKSUM, VNET_HW_IF_CAP_TX_IP4_CKSUM },
+  { RTE_ETH_TX_OFFLOAD_TCP_CKSUM, VNET_HW_IF_CAP_TX_TCP_CKSUM },
+  { RTE_ETH_TX_OFFLOAD_UDP_CKSUM, VNET_HW_IF_CAP_TX_UDP_CKSUM },
+  { RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM, VNET_HW_IF_CAP_TX_IP4_OUTER_CKSUM },
+  { RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM, VNET_HW_IF_CAP_TX_UDP_OUTER_CKSUM },
+  { RTE_ETH_TX_OFFLOAD_TCP_TSO, VNET_HW_IF_CAP_TCP_GSO },
+  { RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO, VNET_HW_IF_CAP_VXLAN_TNL_GSO }
 };
 
 void
@@ -87,39 +87,40 @@ dpdk_device_setup (dpdk_device_t * xd)
 		  format_dpdk_rte_device, dev_info.device);
 
   /* create rx and tx offload wishlist */
-  rxo = DEV_RX_OFFLOAD_IPV4_CKSUM;
+  rxo = RTE_ETH_RX_OFFLOAD_IPV4_CKSUM;
   txo = 0;
 
   if (xd->conf.enable_tcp_udp_checksum)
-    rxo |= DEV_RX_OFFLOAD_UDP_CKSUM | DEV_RX_OFFLOAD_TCP_CKSUM;
+    rxo |= RTE_ETH_RX_OFFLOAD_UDP_CKSUM | RTE_ETH_RX_OFFLOAD_TCP_CKSUM;
 
   if (xd->conf.disable_tx_checksum_offload == 0 &&
       xd->conf.enable_outer_checksum_offload)
-    txo |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM | DEV_TX_OFFLOAD_OUTER_UDP_CKSUM;
+    txo |=
+      RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM | RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM;
 
   if (xd->conf.disable_tx_checksum_offload == 0)
-    txo |= DEV_TX_OFFLOAD_IPV4_CKSUM | DEV_TX_OFFLOAD_TCP_CKSUM |
-	   DEV_TX_OFFLOAD_UDP_CKSUM;
+    txo |= RTE_ETH_TX_OFFLOAD_IPV4_CKSUM | RTE_ETH_TX_OFFLOAD_TCP_CKSUM |
+	   RTE_ETH_TX_OFFLOAD_UDP_CKSUM;
 
   if (xd->conf.disable_multi_seg == 0)
     {
-      txo |= DEV_TX_OFFLOAD_MULTI_SEGS;
-      rxo |= DEV_RX_OFFLOAD_SCATTER;
+      txo |= RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
+      rxo |= RTE_ETH_RX_OFFLOAD_SCATTER;
 #if RTE_VERSION < RTE_VERSION_NUM(21, 11, 0, 0)
       rxo |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 #endif
     }
 
   if (xd->conf.enable_lro)
-    rxo |= DEV_RX_OFFLOAD_TCP_LRO;
+    rxo |= RTE_ETH_RX_OFFLOAD_TCP_LRO;
 
   /* per-device offload config */
   if (xd->conf.enable_tso)
-    txo |= DEV_TX_OFFLOAD_TCP_CKSUM | DEV_TX_OFFLOAD_TCP_TSO |
-	   DEV_TX_OFFLOAD_VXLAN_TNL_TSO;
+    txo |= RTE_ETH_TX_OFFLOAD_TCP_CKSUM | RTE_ETH_TX_OFFLOAD_TCP_TSO |
+	   RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO;
 
   if (xd->conf.disable_rx_scatter)
-    rxo &= ~DEV_RX_OFFLOAD_SCATTER;
+    rxo &= ~RTE_ETH_RX_OFFLOAD_SCATTER;
 
   /* mask unsupported offloads */
   rxo &= dev_info.rx_offload_capa;
@@ -142,7 +143,7 @@ dpdk_device_setup (dpdk_device_t * xd)
   /* finalize configuration */
   conf.rxmode.offloads = rxo;
   conf.txmode.offloads = txo;
-  if (rxo & DEV_RX_OFFLOAD_TCP_LRO)
+  if (rxo & RTE_ETH_RX_OFFLOAD_TCP_LRO)
     conf.rxmode.max_lro_pkt_size = xd->conf.max_lro_pkt_size;
 
   if (xd->conf.enable_lsc_int)
@@ -150,12 +151,12 @@ dpdk_device_setup (dpdk_device_t * xd)
   if (xd->conf.enable_rxq_int)
     conf.intr_conf.rxq = 1;
 
-  conf.rxmode.mq_mode = ETH_MQ_RX_NONE;
+  conf.rxmode.mq_mode = RTE_ETH_MQ_RX_NONE;
   if (xd->conf.n_rx_queues > 1)
     {
       if (xd->conf.disable_rss == 0)
 	{
-	  conf.rxmode.mq_mode = ETH_MQ_RX_RSS;
+	  conf.rxmode.mq_mode = RTE_ETH_MQ_RX_RSS;
 	  conf.rx_adv_conf.rss_conf.rss_hf = xd->conf.rss_hf;
 	}
     }
@@ -257,19 +258,19 @@ retry:
   xd->buffer_flags =
     (VLIB_BUFFER_TOTAL_LENGTH_VALID | VLIB_BUFFER_EXT_HDR_VALID);
 
-  if ((rxo & (DEV_RX_OFFLOAD_TCP_CKSUM | DEV_RX_OFFLOAD_UDP_CKSUM)) ==
-      (DEV_RX_OFFLOAD_TCP_CKSUM | DEV_RX_OFFLOAD_UDP_CKSUM))
+  if ((rxo & (RTE_ETH_RX_OFFLOAD_TCP_CKSUM | RTE_ETH_RX_OFFLOAD_UDP_CKSUM)) ==
+      (RTE_ETH_RX_OFFLOAD_TCP_CKSUM | RTE_ETH_RX_OFFLOAD_UDP_CKSUM))
     xd->buffer_flags |=
       (VNET_BUFFER_F_L4_CHECKSUM_COMPUTED | VNET_BUFFER_F_L4_CHECKSUM_CORRECT);
 
   dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_RX_IP4_CKSUM,
-			rxo & DEV_RX_OFFLOAD_IPV4_CKSUM);
+			rxo & RTE_ETH_RX_OFFLOAD_IPV4_CKSUM);
   dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_MAYBE_MULTISEG,
-			rxo & DEV_RX_OFFLOAD_SCATTER);
+			rxo & RTE_ETH_RX_OFFLOAD_SCATTER);
   dpdk_device_flag_set (
     xd, DPDK_DEVICE_FLAG_TX_OFFLOAD,
-    (txo & (DEV_TX_OFFLOAD_TCP_CKSUM | DEV_TX_OFFLOAD_UDP_CKSUM)) ==
-      (DEV_TX_OFFLOAD_TCP_CKSUM | DEV_TX_OFFLOAD_UDP_CKSUM));
+    (txo & (RTE_ETH_TX_OFFLOAD_TCP_CKSUM | RTE_ETH_TX_OFFLOAD_UDP_CKSUM)) ==
+      (RTE_ETH_TX_OFFLOAD_TCP_CKSUM | RTE_ETH_TX_OFFLOAD_UDP_CKSUM));
 
   /* unconditionally set mac filtering cap */
   caps.val = caps.mask = VNET_HW_IF_CAP_MAC_FILTER;
@@ -462,10 +463,11 @@ dpdk_port_state_callback_inline (dpdk_portid_t port_id,
   rte_eth_link_get_nowait (port_id, &link);
   u8 link_up = link.link_status;
   if (link_up)
-    dpdk_log_info ("Port %d Link Up - speed %u Mbps - %s",
-		   port_id, (unsigned) link.link_speed,
-		   (link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
-		   "full-duplex" : "half-duplex");
+    dpdk_log_info ("Port %d Link Up - speed %u Mbps - %s", port_id,
+		   (unsigned) link.link_speed,
+		   (link.link_duplex == RTE_ETH_LINK_FULL_DUPLEX) ?
+			   "full-duplex" :
+			   "half-duplex");
   else
     dpdk_log_info ("Port %d Link Down\n\n", port_id);
 

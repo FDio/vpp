@@ -547,7 +547,7 @@ dpdk_subif_add_del_function (vnet_main_t * vnm,
     }
 
   vlan_offload = rte_eth_dev_get_vlan_offload (xd->port_id);
-  vlan_offload |= ETH_VLAN_FILTER_OFFLOAD;
+  vlan_offload |= RTE_ETH_VLAN_FILTER_OFFLOAD;
 
   if ((r = rte_eth_dev_set_vlan_offload (xd->port_id, vlan_offload)))
     {
@@ -647,10 +647,8 @@ dpdk_interface_set_rss_queues (struct vnet_main_t *vnm,
     }
 
   /* update reta table */
-  reta_conf =
-    (struct rte_eth_rss_reta_entry64 *) clib_mem_alloc (dev_info.reta_size /
-							RTE_RETA_GROUP_SIZE *
-							sizeof (*reta_conf));
+  reta_conf = (struct rte_eth_rss_reta_entry64 *) clib_mem_alloc (
+    dev_info.reta_size / RTE_ETH_RETA_GROUP_SIZE * sizeof (*reta_conf));
   if (reta_conf == NULL)
     {
       err = clib_error_return (0, "clib_mem_alloc failed");
@@ -658,13 +656,13 @@ dpdk_interface_set_rss_queues (struct vnet_main_t *vnm,
     }
 
   clib_memset (reta_conf, 0,
-	       dev_info.reta_size / RTE_RETA_GROUP_SIZE *
-	       sizeof (*reta_conf));
+	       dev_info.reta_size / RTE_ETH_RETA_GROUP_SIZE *
+		 sizeof (*reta_conf));
 
   for (i = 0; i < dev_info.reta_size; i++)
     {
-      uint32_t reta_id = i / RTE_RETA_GROUP_SIZE;
-      uint32_t reta_pos = i % RTE_RETA_GROUP_SIZE;
+      uint32_t reta_id = i / RTE_ETH_RETA_GROUP_SIZE;
+      uint32_t reta_pos = i % RTE_ETH_RETA_GROUP_SIZE;
 
       reta_conf[reta_id].mask = UINT64_MAX;
       reta_conf[reta_id].reta[reta_pos] = reta[i];
