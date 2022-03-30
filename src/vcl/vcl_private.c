@@ -138,6 +138,9 @@ vcl_api_app_worker_add (void)
 void
 vcl_api_app_worker_del (vcl_worker_t * wrk)
 {
+  if (wrk->api_client_handle == ~0)
+    return;
+
   if (vcm->cfg.vpp_app_socket_api)
     return vcl_sapi_app_worker_del (wrk);
 
@@ -249,6 +252,7 @@ vcl_worker_alloc_and_init ()
 
   wrk = vcl_worker_alloc ();
   vcl_set_worker_index (wrk->wrk_index);
+  wrk->api_client_handle = ~0;
   wrk->thread_id = pthread_self ();
   wrk->current_pid = getpid ();
 

@@ -1286,6 +1286,9 @@ vcl_api_handle_disconnect (vcl_worker_t *wrk)
 static void
 vcl_api_detach (vcl_worker_t * wrk)
 {
+  if (wrk->api_client_handle == ~0)
+    return;
+
   vcl_send_app_detach (wrk);
 
   if (vcm->cfg.vpp_app_socket_api)
