@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "e218f139_306f00d1",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_inlines.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 776,
+      "author": {
+        "id": 1961
+      },
+      "writtenOn": "2022-03-30T07:51:57Z",
+      "side": 1,
+      "message": "I think we cannot assume that ses-\u003etcp_flags stays 0 because of possible re-transmissions.\nFor example when the FIN is resent in NAT44_ED_TCP_STATE_CLOSING, tcp_flags will be again TCP_FLAG_FIN and the comparison during reopen can fail.\n\nOne approach would be not to set them to 0 here and mask them out later during reopen:\n\n    case NAT44_ED_TCP_STATE_CLOSING:\n      // Allow a transitory session to reopen\n      if ((ses-\u003etcp_flags[NAT44_ED_DIR_I2O] \u0026\n\t   ses-\u003etcp_flags[NAT44_ED_DIR_O2I] \u0026\n           (TCP_FLAG_SYN | TCP_FLAG_ACK) ) \u003d\u003d (TCP_FLAG_SYN | TCP_FLAG_ACK))\n      {\n         // Clean up any flag from the previous session\n         ses-\u003etcp_flags[NAT44_ED_DIR_O2I] \u003d ses-\u003etcp_flags[NAT44_ED_DIR_I2O] \u003d (TCP_FLAG_SYN | TCP_FLAG_ACK);",
+      "revId": "31a3dd7de9cf43ebc8a3d09133cfe7b695d83c82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "f1f3403d_17a83442",
         "filename": "src/plugins/nat/nat44-ed/nat44_ed_inlines.h",
         "patchSetId": 3
