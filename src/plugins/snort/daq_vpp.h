@@ -67,7 +67,7 @@ typedef enum
 
 typedef struct
 {
-  uint32_t offset;
+  uint64_t offset;
   uint16_t length;
   uint16_t address_space_id;
   uint8_t buffer_pool;
