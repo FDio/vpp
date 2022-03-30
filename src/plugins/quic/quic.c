@@ -388,7 +388,8 @@ quic_ctx_alloc (u32 thread_index)
   quic_main_t *qm = &quic_main;
   quic_ctx_t *ctx;
 
-  pool_get (qm->ctx_pool[thread_index], ctx);
+  pool_get_aligned_safe (qm->ctx_pool[thread_index], ctx,
+			 CLIB_CACHE_LINE_BYTES);
 
   clib_memset (ctx, 0, sizeof (quic_ctx_t));
   ctx->c_thread_index = thread_index;
