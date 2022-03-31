@@ -69,33 +69,37 @@ show_or_clear_hw_interfaces (vlib_main_t * vm,
 			     vlib_cli_command_t * cmd, int is_show)
 {
   clib_error_t *error = 0;
+  unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *im = &vnm->interface_main;
   vnet_hw_interface_t *hi;
   u32 hw_if_index, *hw_if_indices = 0;
   int i, verbose = -1, show_bond = 0;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       /* See if user wants to show a specific interface. */
       if (unformat
-	  (input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
+	  (line_input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
 	vec_add1 (hw_if_indices, hw_if_index);
 
       /* See if user wants to show an interface with a specific hw_if_index. */
-      else if (unformat (input, "%u", &hw_if_index))
+      else if (unformat (line_input, "%u", &hw_if_index))
 	vec_add1 (hw_if_indices, hw_if_index);
 
-      else if (unformat (input, "verbose"))
+      else if (unformat (line_input, "verbose"))
 	verbose = 1;		/* this is also the default */
 
-      else if (unformat (input, "detail"))
+      else if (unformat (line_input, "detail"))
 	verbose = 2;
 
-      else if (unformat (input, "brief"))
+      else if (unformat (line_input, "brief"))
 	verbose = 0;
 
-      else if (unformat (input, "bond"))
+      else if (unformat (line_input, "bond"))
 	{
 	  show_bond = 1;
 	  if (verbose < 0)
@@ -105,10 +109,13 @@ show_or_clear_hw_interfaces (vlib_main_t * vm,
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, input);
+				     format_unformat_error, line_input);
+	  unformat_free (line_input);
 	  goto done;
 	}
     }
+
+  unformat_free (line_input);
 
   /* Gather interfaces. */
   if (vec_len (hw_if_indices) == 0)
