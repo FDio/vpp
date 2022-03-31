@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "851a7656_bc0c65a9",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 4
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-03-31T06:51:44Z",
+      "side": 1,
+      "message": "Space after \":\"",
+      "range": {
+        "startLine": 7,
+        "startChar": 4,
+        "endLine": 7,
+        "endChar": 6
+      },
+      "revId": "8b6c2978d73acfe3e1a50ddc4f1476215b7637df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2ddd67c3_3c67c019",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 683,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-03-31T06:51:44Z",
+      "side": 1,
+      "message": "Space after variable declaration",
+      "range": {
+        "startLine": 683,
+        "startChar": 2,
+        "endLine": 683,
+        "endChar": 3
+      },
+      "revId": "8b6c2978d73acfe3e1a50ddc4f1476215b7637df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "72d28386_051a3d4c",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 773,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-03-31T06:51:44Z",
+      "side": 1,
+      "message": "Space after * and before */",
+      "range": {
+        "startLine": 773,
+        "startChar": 3,
+        "endLine": 773,
+        "endChar": 5
+      },
+      "revId": "8b6c2978d73acfe3e1a50ddc4f1476215b7637df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
