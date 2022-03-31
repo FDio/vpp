@@ -650,8 +650,6 @@ typedef struct snat_main_s
   /* nat44 plugin enabled */
   u8 enabled;
 
-  vnet_main_t *vnet_main;
-
   /* TCP session state machine table:
    *   first dimension is possible states
    *   second dimension is direction (in2out/out2in)
