@@ -425,20 +425,13 @@ transport_endpoint_free (u32 tepi)
   pool_put_index (local_endpoints, tepi);
 }
 
-static void
-transport_endpoint_pool_realloc_rpc (void *rpc_args)
-{
-  pool_realloc_safe_aligned (local_endpoints, 0);
-}
-
 always_inline local_endpoint_t *
 transport_endpoint_alloc (void)
 {
   local_endpoint_t *lep;
 
   ASSERT (vlib_get_thread_index () <= transport_cl_thread ());
-  pool_get_aligned_safe (local_endpoints, lep, transport_cl_thread (),
-			 transport_endpoint_pool_realloc_rpc, 0);
+  pool_get_aligned_safe (local_endpoints, lep, 0);
   return lep;
 }
 

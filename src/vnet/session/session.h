@@ -769,38 +769,56 @@ STATIC_ASSERT_SIZEOF (pool_safe_realloc_header_t, sizeof (pool_header_t));
 #define pool_realloc_flag(PH)                                                 \
   ((pool_safe_realloc_header_t *) pool_header (PH))->flag
 
-#define pool_realloc_safe_aligned(P, align)                                   \
-  do                                                                          \
-    {                                                                         \
-      vlib_main_t *vm = vlib_get_main ();                                     \
-      u32 free_elts, max_elts, n_alloc;                                       \
-      ASSERT (vlib_get_thread_index () == 0);                                 \
-      vlib_worker_thread_barrier_sync (vm);                                   \
-      free_elts = pool_free_elts (P);                                         \
-      if (free_elts < POOL_REALLOC_SAFE_ELT_THRESH)                           \
-	{                                                                     \
-	  max_elts = pool_max_len (P);                                        \
-	  n_alloc = clib_max (2 * max_elts, POOL_REALLOC_SAFE_ELT_THRESH);    \
-	  pool_alloc_aligned (P, free_elts + n_alloc, align);                 \
-	  clib_bitmap_validate (pool_header (P)->free_bitmap,                 \
-				max_elts + n_alloc);                          \
-	}                                                                     \
-      pool_realloc_flag (P) = 0;                                              \
-      vlib_worker_thread_barrier_release (vm);                                \
-    }                                                                         \
-  while (0)
+typedef struct pool_realloc_rpc_args_
+{
+  void **pool;
+  uword elt_size;
+  uword align;
+} pool_realloc_rpc_args_t;
 
 always_inline void
-pool_program_safe_realloc (void *p, u32 thread_index,
-			   pool_safe_realloc_rpc_fn *rpc_fn)
+pool_program_safe_realloc_rpc (void *args)
 {
+  vlib_main_t *vm = vlib_get_main ();
+  u32 free_elts, max_elts, n_alloc;
+  pool_realloc_rpc_args_t *pra;
+
+  ASSERT (vlib_get_thread_index () == 0);
+  pra = (pool_realloc_rpc_args_t *) args;
+
+  vlib_worker_thread_barrier_sync (vm);
+
+  free_elts = _pool_free_elts (*pra->pool, pra->elt_size);
+  if (free_elts < POOL_REALLOC_SAFE_ELT_THRESH)
+    {
+      max_elts = _vec_max_len (*pra->pool, pra->elt_size);
+      n_alloc = clib_max (2 * max_elts, POOL_REALLOC_SAFE_ELT_THRESH);
+      _pool_alloc (pra->pool, free_elts + n_alloc, pra->align, 0,
+		   pra->elt_size);
+    }
+  pool_realloc_flag (*pra->pool) = 0;
+  clib_mem_free (args);
+
+  vlib_worker_thread_barrier_release (vm);
+}
+
+always_inline void
+pool_program_safe_realloc (void **p, u32 elt_size, u32 align)
+{
+  pool_realloc_rpc_args_t *pra;
+
   /* Reuse pad as a realloc flag */
-  if (pool_realloc_flag (p))
+  if (pool_realloc_flag (*p))
     return;
 
-  pool_realloc_flag (p) = 1;
-  session_send_rpc_evt_to_thread (0 /* thread index */, rpc_fn,
-				  uword_to_pointer (thread_index, void *));
+  pra = clib_mem_alloc (sizeof (*pra));
+  pra->pool = p;
+  pra->elt_size = elt_size;
+  pra->align = align;
+  pool_realloc_flag (*p) = 1;
+
+  session_send_rpc_evt_to_thread (0 /* thread index */,
+				  pool_program_safe_realloc_rpc, pra);
 }
 
 #define pool_needs_realloc(P)                                                 \
@@ -808,17 +826,14 @@ pool_program_safe_realloc (void *p, u32 thread_index,
    (vec_len (pool_header (P)->free_indices) < POOL_REALLOC_SAFE_ELT_THRESH && \
     pool_free_elts (P) < POOL_REALLOC_SAFE_ELT_THRESH))
 
-#define pool_get_aligned_safe(P, E, thread_index, rpc_fn, align)              \
+#define pool_get_aligned_safe(P, E, align)                                    \
   do                                                                          \
     {                                                                         \
-      ASSERT (vlib_get_thread_index () == thread_index ||                     \
-	      vlib_thread_is_main_w_barrier ());                              \
       if (PREDICT_FALSE (pool_needs_realloc (P)))                             \
 	{                                                                     \
 	  if (PREDICT_FALSE (!(P)))                                           \
 	    {                                                                 \
-	      pool_alloc_aligned (P, 2 * POOL_REALLOC_SAFE_ELT_THRESH,        \
-				  align);                                     \
+	      pool_alloc_aligned (P, POOL_REALLOC_SAFE_ELT_THRESH, align);    \
 	    }                                                                 \
 	  else if (PREDICT_FALSE (!pool_free_elts (P)))                       \
 	    {                                                                 \
@@ -829,7 +844,8 @@ pool_program_safe_realloc (void *p, u32 thread_index,
 	    }                                                                 \
 	  else                                                                \
 	    {                                                                 \
-	      pool_program_safe_realloc (P, thread_index, rpc_fn);            \
+	      pool_program_safe_realloc ((void **) &(P), sizeof ((P)[0]),     \
+					 _vec_align (P, align));              \
 	    }                                                                 \
 	}                                                                     \
       pool_get_aligned (P, E, align);                                         \
