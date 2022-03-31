@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "29055016_97b0d3b0",
+        "filename": "src/vlib/error.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-03-31T15:47:49Z",
+      "side": 1,
+      "message": "no, it is used only in this file, so it is declared static...",
+      "parentUuid": "63eb7909_a53af797",
+      "revId": "fae803ba13a4b884fdef3606467fc0813061db0f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d229bc11_b231f3ec",
         "filename": "src/vlib/error.c",
         "patchSetId": 9
@@ -33,6 +51,24 @@
       "revId": "fae803ba13a4b884fdef3606467fc0813061db0f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5b602acb_8c1ccd0a",
+        "filename": "src/vlib/error.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-03-31T15:47:49Z",
+      "side": 1,
+      "message": "i didn\u0027t forgot, i left it for separate change...",
+      "parentUuid": "d229bc11_b231f3ec",
+      "revId": "fae803ba13a4b884fdef3606467fc0813061db0f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "1c3f0359_2ac68028",
+        "filename": "src/vlib/error.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 194,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-03-31T15:47:49Z",
+      "side": 1,
+      "message": "2 loops will produce probably more code than as it is today....",
+      "parentUuid": "a593cd66_cc6a7167",
+      "revId": "fae803ba13a4b884fdef3606467fc0813061db0f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "955e8203_767f81d9",
         "filename": "src/vlib/error.c",
         "patchSetId": 9
@@ -67,6 +121,24 @@
       "revId": "fae803ba13a4b884fdef3606467fc0813061db0f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "458398fd_ca7e1670",
+        "filename": "src/vlib/error.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 195,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-03-31T15:47:49Z",
+      "side": 1,
+      "message": "You will need to ask original author, this is just about preserving existing functionality.\nIf you think it is wrong please submit separate patch....",
+      "parentUuid": "955e8203_767f81d9",
+      "revId": "fae803ba13a4b884fdef3606467fc0813061db0f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
