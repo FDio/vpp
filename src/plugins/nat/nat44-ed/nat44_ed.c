@@ -2269,8 +2269,6 @@ nat_init (vlib_main_t * vm)
 
   clib_memset (sm, 0, sizeof (*sm));
 
-  // required
-  sm->vnet_main = vnet_get_main ();
   // convenience
   sm->ip4_main = &ip4_main;
   sm->api_main = vlibapi_get_main ();
@@ -3421,6 +3419,7 @@ nat44_ed_add_interface_address (u32 sw_if_index, u8 twice_nat)
 
   if (!sm->enabled)
     {
+      nat_log_err ("nat44 is disabled");
       return VNET_API_ERROR_UNSUPPORTED;
     }
 
@@ -3458,6 +3457,7 @@ nat44_ed_del_interface_address (u32 sw_if_index, u8 twice_nat)
 
   if (!sm->enabled)
     {
+      nat_log_err ("nat44 is disabled");
       return VNET_API_ERROR_UNSUPPORTED;
     }
 

@@ -27,8 +27,6 @@
 #include <nat/nat44-ed/nat44_ed_inlines.h>
 #include <nat/nat44-ed/nat44_ed_affinity.h>
 
-#define NAT44_ED_EXPECTED_ARGUMENT "expected required argument(s)"
-
 static clib_error_t *
 nat44_ed_enable_disable_command_fn (vlib_main_t *vm, unformat_input_t *input,
 				    vlib_cli_command_t *cmd)
@@ -41,7 +39,7 @@ nat44_ed_enable_disable_command_fn (vlib_main_t *vm, unformat_input_t *input,
   u8 enable_set = 0, enable = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
+    return 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -108,9 +106,8 @@ set_workers_command_fn (vlib_main_t * vm,
   int rv = 0;
   clib_error_t *error = 0;
 
-  /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
+    return 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -184,9 +181,8 @@ snat_set_log_level_command_fn (vlib_main_t * vm,
   u8 log_level = NAT_LOG_NONE;
   clib_error_t *error = 0;
 
-  /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
+    return 0;
 
   if (!unformat (line_input, "%d", &log_level))
     {
@@ -219,7 +215,7 @@ snat_ipfix_logging_enable_disable_command_fn (vlib_main_t * vm,
   u8 enable_set = 0, enable = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
+    return 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -299,9 +295,8 @@ nat_set_mss_clamping_command_fn (vlib_main_t * vm, unformat_input_t * input,
   clib_error_t *error = 0;
   u32 mss;
 
-  /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
+    return 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -351,9 +346,8 @@ add_address_command_fn (vlib_main_t * vm,
   clib_error_t *error = 0;
   u8 twice_nat = 0;
 
-  /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
+    return 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -662,9 +656,8 @@ snat_feature_command_fn (vlib_main_t * vm,
 
   sw_if_index = ~0;
 
-  /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
+    return 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -835,7 +828,7 @@ add_static_mapping_command_fn (vlib_main_t * vm,
   ip_protocol_t proto = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
+    return 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -976,9 +969,8 @@ add_identity_mapping_command_fn (vlib_main_t * vm,
 
   flags = NAT_SM_FLAG_IDENTITY_NAT;
 
-  /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
+    return 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1073,9 +1065,8 @@ add_lb_static_mapping_command_fn (vlib_main_t * vm,
   int rv, is_add = 1;
   u32 flags = 0;
 
-  /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
+    return 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1193,9 +1184,8 @@ add_lb_backend_command_fn (vlib_main_t * vm,
   ip_protocol_t proto;
   u8 proto_set = 0;
 
-  /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
+    return 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1288,19 +1278,21 @@ snat_add_interface_address_command_fn (vlib_main_t * vm,
 				       vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  snat_main_t *sm = &snat_main;
+  vnet_main_t *vnm = vnet_get_main ();
   clib_error_t *error = 0;
   int rv, is_del = 0;
   u8 twice_nat = 0;
   u32 sw_if_index;
 
+  sw_if_index = ~0;
+
   if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
+    return 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "%U", unformat_vnet_sw_interface,
-		    sm->vnet_main, &sw_if_index))
+      if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
 	;
       else if (unformat (line_input, "twice-nat"))
 	{
@@ -1318,21 +1310,21 @@ snat_add_interface_address_command_fn (vlib_main_t * vm,
 	}
     }
 
-  if (!is_del)
+  if (is_del)
     {
-      rv = nat44_ed_add_interface_address (sw_if_index, twice_nat);
-      if (rv)
-	{
-	  error = clib_error_return (0, "add address returned %d", rv);
-	}
+      rv = nat44_ed_del_interface_address (sw_if_index, twice_nat);
     }
   else
     {
-      rv = nat44_ed_del_interface_address (sw_if_index, twice_nat);
-      if (rv)
-	{
-	  error = clib_error_return (0, "del address returned %d", rv);
-	}
+      rv = nat44_ed_add_interface_address (sw_if_index, twice_nat);
+    }
+
+  if (0 != rv)
+    {
+      error =
+	clib_error_return (0, "%s %U address failed", is_del ? "del" : "add",
+			   format_vnet_sw_if_index_name, vnm, sw_if_index);
+      goto done;
     }
 
 done:
@@ -1492,7 +1484,7 @@ nat44_set_session_limit_command_fn (vlib_main_t * vm,
   u32 session_limit = 0, vrf_id = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
+    return 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1534,7 +1526,7 @@ nat44_del_session_command_fn (vlib_main_t * vm,
   int rv;
 
   if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
+    return 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1596,7 +1588,7 @@ snat_forwarding_set_command_fn (vlib_main_t * vm,
   u8 enable_set = 0, enable = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
+    return 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1635,7 +1627,7 @@ set_timeout_command_fn (vlib_main_t * vm,
   clib_error_t *error = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
+    return 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1685,7 +1677,7 @@ set_frame_queue_nelts_command_fn (vlib_main_t *vm, unformat_input_t *input,
   u32 frame_queue_nelts = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, NAT44_ED_EXPECTED_ARGUMENT);
+    return 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1726,10 +1718,11 @@ done:
  * @cliexend
 ?*/
 VLIB_CLI_COMMAND (nat44_ed_enable_disable_command, static) = {
-  .path = "nat44",
-  .short_help = "nat44 <enable [sessions <max-number>] [inside-vrf <vrf-id>] "
-		"[outside-vrf <vrf-id>]>|disable",
+  .path = "nat44 plugin",
   .function = nat44_ed_enable_disable_command_fn,
+  .short_help =
+    "nat44 plugin <enable [sessions <max-number>] [inside-vrf <vrf-id>] "
+    "[outside-vrf <vrf-id>]>|disable",
 };
 
 /*?
@@ -2086,9 +2079,9 @@ VLIB_CLI_COMMAND (nat44_show_static_mappings_command, static) = {
  * @cliexend
 ?*/
 VLIB_CLI_COMMAND (snat_add_interface_address_command, static) = {
-    .path = "nat44 add interface address",
-    .short_help = "nat44 add interface address <interface> [twice-nat] [del]",
-    .function = snat_add_interface_address_command_fn,
+  .path = "nat44 add interface address",
+  .function = snat_add_interface_address_command_fn,
+  .short_help = "nat44 add interface address <interface> [twice-nat] [del]",
 };
 
 /*?

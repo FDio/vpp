@@ -1775,7 +1775,8 @@ send_nat44_user_session_v2_details (snat_session_t *s,
 {
   vl_api_nat44_user_session_v2_details_t *rmp;
   snat_main_t *sm = &snat_main;
-  u64 now = vlib_time_now (sm->vnet_main->vlib_main);
+  vnet_main_t *vnm = vnet_get_main ();
+  u64 now = vlib_time_now (vnm->vlib_main);
   u64 sess_timeout_time = 0;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
