@@ -94,6 +94,7 @@ typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   clib_spinlock_t lock;
+  u32 queue_index;
 } dpdk_tx_queue_t;
 
 typedef struct
