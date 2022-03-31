@@ -189,7 +189,7 @@ _vec_set_len (void *v, uword len, uword elt_sz)
 #define vec_reset_length(v) do { if (v) vec_set_len (v, 0); } while (0)
 
 /** \brief End (last data address) of vector. */
-#define vec_end(v)	((v) + vec_len (v))
+#define vec_end(v) ((v) ? (v) + vec_len (v) : NULL)
 
 /** \brief True if given pointer is within given vector. */
 #define vec_is_member(v,e) ((e) >= (v) && (e) < vec_end (v))

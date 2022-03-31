@@ -403,7 +403,7 @@ BV (clib_bihash_get_bucket) (BVT (clib_bihash) * h, u64 hash)
 		     + (BIHASH_KVP_PER_PAGE * sizeof (BVT (clib_bihash_kv))));
   return ((BVT (clib_bihash_bucket) *) (((u8 *) h->buckets) + offset));
 #else
-  return h->buckets + (hash & (h->nbuckets - 1));
+  return h->buckets ? h->buckets + (hash & (h->nbuckets - 1)) : NULL;
 #endif
 }
 

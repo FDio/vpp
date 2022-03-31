@@ -344,14 +344,15 @@ hash_pair_bytes (hash_t * h)
 always_inline void *
 hash_forward1 (hash_t * h, void *v)
 {
-  return (u8 *) v + hash_pair_bytes (h);
+  return v ? (u8 *) v + hash_pair_bytes (h) : NULL;
 }
 
 /* Public inline function to advance a pointer past N (key,value) pairs */
 always_inline void *
 hash_forward (hash_t * h, void *v, uword n)
 {
-  return (u8 *) v + ((n * sizeof (hash_pair_t)) << h->log2_pair_size);
+  return v ? (u8 *) v + ((n * sizeof (hash_pair_t)) << h->log2_pair_size) :
+		   NULL;
 }
 
 /** Iterate over hash pairs.

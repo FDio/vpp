@@ -212,6 +212,9 @@ get_indirect (void *v, hash_pair_indirect_t * pi, uword key)
   hash_t *h = hash_header (v);
   hash_pair_t *p0, *p1;
 
+  if (!pi->pairs)
+    return NULL;
+
   p0 = p1 = pi->pairs;
   if (h->log2_pair_size > 0)
     p1 = hash_forward (h, p0, indirect_pair_get_len (pi));
