@@ -6,26 +6,6 @@
 #include <vlib/unix/unix.h>
 #include <vlib/stats/stats.h>
 
-static void
-stat_validate_counter_vector2 (vlib_stats_entry_t *ep, u32 max1, u32 max2)
-{
-  counter_t **counters = ep->data;
-  int i;
-  vec_validate_aligned (counters, max1, CLIB_CACHE_LINE_BYTES);
-  for (i = 0; i <= max1; i++)
-    vec_validate_aligned (counters[i], max2, CLIB_CACHE_LINE_BYTES);
-
-  ep->data = counters;
-}
-
-static void
-stat_validate_counter_vector (vlib_stats_entry_t *ep, u32 max)
-{
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-  ASSERT (tm->n_vlib_mains > 0);
-  stat_validate_counter_vector2 (ep, tm->n_vlib_mains, max);
-}
-
 static inline void
 update_node_counters (vlib_stats_segment_t *sm)
 {
@@ -46,17 +26,13 @@ update_node_counters (vlib_stats_segment_t *sm)
    */
   if (l > no_max_nodes)
     {
-      void *oldheap = clib_mem_set_heap (sm->heap);
+      u32 n = vlib_get_n_threads ();
       vlib_stats_segment_lock ();
 
-      stat_validate_counter_vector (
-	&sm->directory_vector[STAT_COUNTER_NODE_CLOCKS], l - 1);
-      stat_validate_counter_vector (
-	&sm->directory_vector[STAT_COUNTER_NODE_VECTORS], l - 1);
-      stat_validate_counter_vector (
-	&sm->directory_vector[STAT_COUNTER_NODE_CALLS], l - 1);
-      stat_validate_counter_vector (
-	&sm->directory_vector[STAT_COUNTER_NODE_SUSPENDS], l - 1);
+      vlib_stats_validate (STAT_COUNTER_NODE_CLOCKS, n, l - 1);
+      vlib_stats_validate (STAT_COUNTER_NODE_VECTORS, n, l - 1);
+      vlib_stats_validate (STAT_COUNTER_NODE_CALLS, n, l - 1);
+      vlib_stats_validate (STAT_COUNTER_NODE_SUSPENDS, n, l - 1);
 
       vec_validate (sm->nodes, l - 1);
       vlib_stats_entry_t *ep;
@@ -74,17 +50,14 @@ update_node_counters (vlib_stats_segment_t *sm)
 	    vec_free (sm->nodes[n->index]);
 	  sm->nodes[n->index] = s;
 
-	  oldheap = clib_mem_set_heap (oldheap);
 #define _(E, t, name, p)                                                      \
   vlib_stats_add_symlink (STAT_COUNTER_##E, n->index, "/nodes/%U/" #name,     \
 			  format_vlib_stats_symlink, s);
 	  foreach_stat_segment_node_counter_name
 #undef _
-	    oldheap = clib_mem_set_heap (oldheap);
 	}
 
       vlib_stats_segment_unlock ();
-      clib_mem_set_heap (oldheap);
       no_max_nodes = l;
     }
 
@@ -104,10 +77,10 @@ update_node_counters (vlib_stats_segment_t *sm)
 			   strlen ((char *) sm->nodes[n->index])))
 		{
 		  u32 vector_index;
-		  void *oldheap = clib_mem_set_heap (sm->heap);
 		  vlib_stats_segment_lock ();
-		  u8 *s = format (0, "%v%c", n->name, 0);
-		  clib_mem_set_heap (oldheap);
+		  u8 *s = 0;
+		  vec_prealloc_heap (s, vec_len (n->name) + 1, sm->heap);
+		  s = format (s, "%v%c", n->name, 0);
 #define _(E, t, name, p)                                                      \
   vec_reset_length (symlink_name);                                            \
   symlink_name = format (symlink_name, "/nodes/%U/" #name,                    \
@@ -119,11 +92,9 @@ update_node_counters (vlib_stats_segment_t *sm)
 		  foreach_stat_segment_node_counter_name
 #undef _
 		    vec_free (symlink_name);
-		  clib_mem_set_heap (sm->heap);
 		  vec_free (sm->nodes[n->index]);
 		  sm->nodes[n->index] = s;
 		  vlib_stats_segment_unlock ();
-		  clib_mem_set_heap (oldheap);
 		}
 	    }
 

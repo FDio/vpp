@@ -308,7 +308,7 @@ _pool_put_index (void *p, uword index, uword elt_sz)
 /** Allocate N more free elements to pool (general version). */
 
 static_always_inline void
-_pool_alloc (void **pp, uword n_elts, uword align, uword elt_sz)
+_pool_alloc (void **pp, uword n_elts, uword align, void *heap, uword elt_sz)
 {
   pool_header_t *ph = pool_header (pp[0]);
   uword len = vec_len (pp[0]);
@@ -320,7 +320,7 @@ _pool_alloc (void **pp, uword n_elts, uword align, uword elt_sz)
     }
 
   pp[0] = _vec_realloc_inline (pp[0], len + n_elts, elt_sz,
-			       sizeof (pool_header_t), align, 0);
+			       sizeof (pool_header_t), align, heap);
   _vec_len (pp[0]) = len;
   CLIB_MEM_POISON (pp[0] + len * elt_sz, n_elts * elt_sz);
 
@@ -330,11 +330,12 @@ _pool_alloc (void **pp, uword n_elts, uword align, uword elt_sz)
   clib_bitmap_vec_validate (ph->free_bitmap, len + n_elts - 1);
 }
 
-#define pool_alloc_aligned(P, N, A)                                           \
-  _pool_alloc ((void **) &(P), N, _vec_align (P, A), _vec_elt_sz (P))
+#define pool_alloc_aligned_heap(P, N, A, H)                                   \
+  _pool_alloc ((void **) &(P), N, _vec_align (P, A), H, _vec_elt_sz (P))
 
-/** Allocate N more free elements to pool (unspecified alignment). */
-#define pool_alloc(P,N) pool_alloc_aligned(P,N,0)
+#define pool_alloc_heap(P, N, H)    pool_alloc_aligned_heap (P, N, 0, H)
+#define pool_alloc_aligned(P, N, A) pool_alloc_aligned_heap (P, N, A, 0)
+#define pool_alloc(P, N)	    pool_alloc_aligned_heap (P, N, 0, 0)
 
 static_always_inline void *
 _pool_dup (void *p, uword align, uword elt_sz)
