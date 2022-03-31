@@ -1,0 +1,79 @@
+diff --git a/lib/ethdev/rte_ethdev.c b/lib/ethdev/rte_ethdev.c
+index a1d475a292..686a9ea793 100644
+--- a/lib/ethdev/rte_ethdev.c
++++ b/lib/ethdev/rte_ethdev.c
+@@ -2069,7 +2069,7 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
+ 
+ 	if (rx_queue_id >= dev->data->nb_rx_queues) {
+ 		RTE_ETHDEV_LOG(ERR, "Invalid Rx queue_id=%u\n", rx_queue_id);
+-		return -EINVAL;
++		return -101;
+ 	}
+ 
+ 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_setup, -ENOTSUP);
+@@ -2083,7 +2083,7 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
+ 		if (rx_conf != NULL && rx_conf->rx_nseg != 0) {
+ 			RTE_ETHDEV_LOG(ERR,
+ 				       "Ambiguous segment configuration\n");
+-			return -EINVAL;
++			return -102;
+ 		}
+ 		/*
+ 		 * Check the size of the mbuf data buffer, this value
+@@ -2108,7 +2108,7 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
+ 				       dev_info.min_rx_bufsize,
+ 				       RTE_PKTMBUF_HEADROOM,
+ 				       dev_info.min_rx_bufsize);
+-			return -EINVAL;
++			return -103;
+ 		}
+ 	} else {
+ 		const struct rte_eth_rxseg_split *rx_seg;
+@@ -2118,7 +2118,7 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
+ 		if (rx_conf == NULL || rx_conf->rx_seg == NULL || rx_conf->rx_nseg == 0) {
+ 			RTE_ETHDEV_LOG(ERR,
+ 				       "Memory pool is null and no extended configuration provided\n");
+-			return -EINVAL;
++			return -104;
+ 		}
+ 
+ 		rx_seg = (const struct rte_eth_rxseg_split *)rx_conf->rx_seg;
+@@ -2132,7 +2132,7 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
+ 				return ret;
+ 		} else {
+ 			RTE_ETHDEV_LOG(ERR, "No Rx segmentation offload configured\n");
+-			return -EINVAL;
++			return -105;
+ 		}
+ 	}
+ 
+@@ -2153,7 +2153,7 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
+ 			nb_rx_desc, dev_info.rx_desc_lim.nb_max,
+ 			dev_info.rx_desc_lim.nb_min,
+ 			dev_info.rx_desc_lim.nb_align);
+-		return -EINVAL;
++		return -106;
+ 	}
+ 
+ 	if (dev->data->dev_started &&
+@@ -2199,7 +2199,7 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
+ 			port_id, rx_queue_id, local_conf.offloads,
+ 			dev_info.rx_queue_offload_capa,
+ 			__func__);
+-		return -EINVAL;
++		return -107;
+ 	}
+ 
+ 	if (local_conf.share_group > 0 &&
+@@ -2207,7 +2207,7 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
+ 		RTE_ETHDEV_LOG(ERR,
+ 			"Ethdev port_id=%d rx_queue_id=%d, enabled share_group=%hu while device doesn't support Rx queue share\n",
+ 			port_id, rx_queue_id, local_conf.share_group);
+-		return -EINVAL;
++		return -108;
+ 	}
+ 
+ 	/*
+-- 
+2.25.1
+
