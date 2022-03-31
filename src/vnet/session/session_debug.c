@@ -144,17 +144,23 @@ dump_thread_0_event_queue (void)
 	{
 	case SESSION_IO_EVT_TX:
 	  s0 = session_get_if_valid (e->session_index, my_thread_index);
+	  if (!s0)
+	    break;
 	  fformat (stdout, "[%04d] TX session %d\n", i, s0->session_index);
 	  break;
 
 	case SESSION_CTRL_EVT_CLOSE:
 	  s0 = session_get_from_handle (e->session_handle);
+	  if (!s0)
+	    break;
 	  fformat (stdout, "[%04d] disconnect session %d\n", i,
 		   s0->session_index);
 	  break;
 
 	case SESSION_IO_EVT_BUILTIN_RX:
 	  s0 = session_get_if_valid (e->session_index, my_thread_index);
+	  if (!s0)
+	    break;
 	  fformat (stdout, "[%04d] builtin_rx %d\n", i, s0->session_index);
 	  break;
 
