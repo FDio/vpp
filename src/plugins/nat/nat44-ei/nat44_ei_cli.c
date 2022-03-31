@@ -1589,23 +1589,23 @@ nat_show_timeouts_command_fn (vlib_main_t *vm, unformat_input_t *input,
  * @cliexstart{nat44 ei}
  * Enable nat44 ei plugin
  * To enable nat44-ei, use:
- *  vpp# nat44 ei enable
+ *  vpp# nat44 ei plugin enable
  * To disable nat44-ei, use:
- *  vpp# nat44 ei disable
+ *  vpp# nat44 ei plugin disable
  * To enable nat44 ei static mapping only, use:
- *  vpp# nat44 ei enable static-mapping
+ *  vpp# nat44 ei plugin enable static-mapping
  * To enable nat44 ei static mapping with connection tracking, use:
- *  vpp# nat44 ei enable static-mapping connection-tracking
+ *  vpp# nat44 ei plugin enable static-mapping connection-tracking
  * To enable nat44 ei out2in dpo, use:
- *  vpp# nat44 ei enable out2in-dpo
+ *  vpp# nat44 ei plugin enable out2in-dpo
  * To set inside-vrf outside-vrf, use:
- *  vpp# nat44 ei enable inside-vrf <id> outside-vrf <id>
+ *  vpp# nat44 ei plugin enable inside-vrf <id> outside-vrf <id>
  * @cliexend
 ?*/
 VLIB_CLI_COMMAND (nat44_ei_enable_disable_command, static) = {
-  .path = "nat44 ei",
+  .path = "nat44 ei plugin",
   .short_help =
-    "nat44 ei <enable [sessions <max-number>] [users <max-number>] "
+    "nat44 ei plugin <enable [sessions <max-number>] [users <max-number>] "
     "[static-mappig-only [connection-tracking]|out2in-dpo] [inside-vrf "
     "<vrf-id>] [outside-vrf <vrf-id>] [user-sessions <max-number>]>|disable",
   .function = nat44_ei_enable_disable_command_fn,
