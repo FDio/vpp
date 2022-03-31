@@ -26,7 +26,7 @@ vlib_log_main_t log_main = {
   .unthrottle_time = 3,
   .size = 512,
   .add_to_elog = 1,
-  .default_rate_limit = 50,
+  .default_rate_limit = 50000,
 };
 
 /* *INDENT-OFF* */
