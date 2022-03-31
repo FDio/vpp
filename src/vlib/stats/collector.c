@@ -6,26 +6,6 @@
 #include <vlib/unix/unix.h>
 #include <vlib/stats/stats.h>
 
-static void
-stat_validate_counter_vector2 (vlib_stats_entry_t *ep, u32 max1, u32 max2)
-{
-  counter_t **counters = ep->data;
-  int i;
-  vec_validate_aligned (counters, max1, CLIB_CACHE_LINE_BYTES);
-  for (i = 0; i <= max1; i++)
-    vec_validate_aligned (counters[i], max2, CLIB_CACHE_LINE_BYTES);
-
-  ep->data = counters;
-}
-
-static void
-stat_validate_counter_vector (vlib_stats_entry_t *ep, u32 max)
-{
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-  ASSERT (tm->n_vlib_mains > 0);
-  stat_validate_counter_vector2 (ep, tm->n_vlib_mains, max);
-}
-
 static inline void
 update_node_counters (vlib_stats_segment_t *sm)
 {
@@ -46,17 +26,14 @@ update_node_counters (vlib_stats_segment_t *sm)
    */
   if (l > no_max_nodes)
     {
+      u32 last_thread = vlib_get_n_threads ();
       void *oldheap = clib_mem_set_heap (sm->heap);
       vlib_stats_segment_lock ();
 
-      stat_validate_counter_vector (
-	&sm->directory_vector[STAT_COUNTER_NODE_CLOCKS], l - 1);
-      stat_validate_counter_vector (
-	&sm->directory_vector[STAT_COUNTER_NODE_VECTORS], l - 1);
-      stat_validate_counter_vector (
-	&sm->directory_vector[STAT_COUNTER_NODE_CALLS], l - 1);
-      stat_validate_counter_vector (
-	&sm->directory_vector[STAT_COUNTER_NODE_SUSPENDS], l - 1);
+      vlib_stats_validate (STAT_COUNTER_NODE_CLOCKS, last_thread, l - 1);
+      vlib_stats_validate (STAT_COUNTER_NODE_VECTORS, last_thread, l - 1);
+      vlib_stats_validate (STAT_COUNTER_NODE_CALLS, last_thread, l - 1);
+      vlib_stats_validate (STAT_COUNTER_NODE_SUSPENDS, last_thread, l - 1);
 
       vec_validate (sm->nodes, l - 1);
       vlib_stats_entry_t *ep;
