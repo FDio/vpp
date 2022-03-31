@@ -54,6 +54,7 @@
 ~~~~~~~~
 		    user header (start of memory allocation)
 		    padding
+		    heap pointer (optional, only if default_heap == 0)
 		    vector header: number of elements, header size
    user's pointer-> vector element #0
 		    vector element #1
@@ -130,14 +131,22 @@ _vec_update_pointer (void **vp, void *v)
     vp[0] = v;
 }
 
-always_inline void *
+static_always_inline void *
+vec_get_heap (void *v)
+{
+  if (v == 0 || _vec_find (v)->default_heap == 1)
+    return 0;
+  return _vec_heap (v);
+}
+
+static_always_inline void *
 _vec_realloc_inline (void *v, uword n_elts, uword elt_sz, uword hdr_sz,
 		     uword align, void *heap)
 {
   if (PREDICT_TRUE (v != 0))
     {
       /* Vector header must start heap object. */
-      ASSERT (clib_mem_is_heap_object (vec_header (v)));
+      ASSERT (clib_mem_heap_is_heap_object (vec_get_heap (v), vec_header (v)));
 
       /* Typically we'll not need to resize. */
       if ((n_elts * elt_sz) <= vec_max_bytes (v))
@@ -151,6 +160,49 @@ _vec_realloc_inline (void *v, uword n_elts, uword elt_sz, uword hdr_sz,
   return _vec_realloc (v, n_elts, elt_sz, hdr_sz, align, heap);
 }
 
+static_always_inline void
+_vec_prealloc (void **vp, uword n_elts, uword hdr_sz, uword align, void *heap,
+	       uword elt_sz)
+{
+  void *v;
+
+  ASSERT (vp[0] == 0);
+
+  v = _vec_realloc (0, n_elts, elt_sz, hdr_sz, align, heap);
+  _vec_set_len (v, 0, elt_sz);
+  _vec_update_pointer (vp, v);
+}
+
+/** \brief Pre-allocate a vector (generic version)
+
+    @param V pointer to a vector
+    @param N number of elements to pre-allocate
+    @param H header size in bytes (may be zero)
+    @param A alignment (zero means default alignment of the data structure)
+    @param P heap (zero means default heap)
+    @return V (value-result macro parameter)
+*/
+
+#define vec_prealloc_hap(V, N, H, A, P)                                       \
+  _vec_prealloc ((void **) &(V), N, H, _vec_align (V, A), P, _vec_elt_sz (V))
+
+/** \brief Pre-allocate a vector (simple version)
+
+    @param V pointer to a vector
+    @param N number of elements to pre-allocate
+    @return V (value-result macro parameter)
+*/
+#define vec_prealloc(V, N) vec_prealloc_hap (V, N, 0, 0, 0)
+
+/** \brief Pre-allocate a vector (heap version)
+
+    @param V pointer to a vector
+    @param N number of elements to pre-allocate
+    @param P heap (zero means default heap)
+    @return V (value-result macro parameter)
+*/
+#define vec_prealloc_heap(V, N, P) vec_prealloc_hap (V, N, 0, 0, P)
+
 always_inline int
 _vec_resize_will_expand (void *v, uword n_elts, uword elt_sz)
 {
@@ -158,7 +210,7 @@ _vec_resize_will_expand (void *v, uword n_elts, uword elt_sz)
     return 1;
 
   /* Vector header must start heap object. */
-  ASSERT (clib_mem_is_heap_object (vec_header (v)));
+  ASSERT (clib_mem_heap_is_heap_object (vec_get_heap (v), vec_header (v)));
 
   n_elts += _vec_len (v);
   if ((n_elts * elt_sz) <= vec_max_bytes (v))
@@ -398,22 +450,22 @@ _vec_zero_elts (void *v, uword first, uword count, uword elt_sz)
 }
 #define vec_zero_elts(V, F, C) _vec_zero_elts (V, F, C, sizeof ((V)[0]))
 
-static_always_inline void *
-_vec_validate_ha (void *v, uword index, uword header_size, uword align,
-		  uword elt_sz)
+static_always_inline void
+_vec_validate (void **vp, uword index, uword header_size, uword align,
+	       void *heap, uword elt_sz)
 {
+  void *v = vp[0];
   uword vl = vec_len (v);
   if (index >= vl)
     {
-      v = _vec_realloc_inline (v, index + 1, elt_sz, header_size, align, 0);
+      v = _vec_realloc_inline (v, index + 1, elt_sz, header_size, align, heap);
       _vec_zero_elts (v, vl, index - vl + 1, elt_sz);
+      _vec_update_pointer (vp, v);
     }
-  return v;
 }
 
-#define vec_validate_ha(V, I, H, A)                                           \
-  (V) =                                                                       \
-    _vec_validate_ha ((void *) (V), I, H, _vec_align (V, A), sizeof ((V)[0]))
+#define vec_validate_hap(V, I, H, A, P)                                       \
+  _vec_validate ((void **) &(V), I, H, _vec_align (V, A), 0, sizeof ((V)[0]))
 
 /** \brief Make sure vector is long enough for given index
     (no header, unspecified alignment)
@@ -422,7 +474,7 @@ _vec_validate_ha (void *v, uword index, uword header_size, uword align,
     @param I vector index which will be valid upon return
     @return V (value-result macro parameter)
 */
-#define vec_validate(V,I)           vec_validate_ha(V,I,0,0)
+#define vec_validate(V, I) vec_validate_hap (V, I, 0, 0, 0)
 
 /** \brief Make sure vector is long enough for given index
     (no header, specified alignment)
@@ -433,7 +485,18 @@ _vec_validate_ha (void *v, uword index, uword header_size, uword align,
     @return V (value-result macro parameter)
 */
 
-#define vec_validate_aligned(V,I,A) vec_validate_ha(V,I,0,A)
+#define vec_validate_aligned(V, I, A) vec_validate_hap (V, I, 0, A, 0)
+
+/** \brief Make sure vector is long enough for given index
+    (no header, specified heap)
+
+    @param V (possibly NULL) pointer to a vector.
+    @param I vector index which will be valid upon return
+    @param H heap (may be zero)
+    @return V (value-result macro parameter)
+*/
+
+#define vec_validate_heap(V, I, P) vec_validate_hap (V, I, 0, 0, P)
 
 /** \brief Make sure vector is long enough for given index
     and initialize empty space (general version)

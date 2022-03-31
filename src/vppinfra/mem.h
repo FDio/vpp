@@ -223,6 +223,22 @@ void *clib_mem_alloc_or_null (uword size);
 void *clib_mem_alloc_aligned_or_null (uword size, uword align);
 void *clib_mem_realloc (void *p, uword new_size);
 void *clib_mem_realloc_aligned (void *p, uword new_size, uword align);
+uword clib_mem_is_heap_object (void *p);
+void clib_mem_free (void *p);
+
+void *clib_mem_heap_alloc (void *heap, uword size);
+void *clib_mem_heap_alloc_aligned (void *heap, uword size, uword align);
+void *clib_mem_heap_alloc_or_null (void *heap, uword size);
+void *clib_mem_heap_alloc_aligned_or_null (void *heap, uword size,
+					   uword align);
+void *clib_mem_heap_realloc (void *heap, void *p, uword new_size);
+void *clib_mem_heap_realloc_aligned (void *heap, void *p, uword new_size,
+				     uword align);
+uword clib_mem_heap_is_heap_object (void *heap, void *p);
+void clib_mem_heap_free (void *heap, void *p);
+
+uword clib_mem_size (void *p);
+void clib_mem_free_s (void *p);
 
 /* Memory allocator which panics when it fails.
    Use macro so that clib_panic macro can expand __FUNCTION__ and __LINE__. */
@@ -240,11 +256,6 @@ void *clib_mem_realloc_aligned (void *p, uword new_size, uword align);
 
 /* Alias to stack allocator for naming consistency. */
 #define clib_mem_alloc_stack(bytes) __builtin_alloca(bytes)
-
-uword clib_mem_is_heap_object (void *p);
-void clib_mem_free (void *p);
-uword clib_mem_size (void *p);
-void clib_mem_free_s (void *p);
 
 always_inline clib_mem_heap_t *
 clib_mem_get_heap (void)
