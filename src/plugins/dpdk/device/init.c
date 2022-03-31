@@ -1145,12 +1145,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
       else if (unformat_skip_white_space (input))
 	;
-      else
-	{
-	  error = clib_error_return (0, "unknown input `%U'",
+      else return clib_error_return (0, "unknown input `%U'",
 				     format_unformat_error, input);
-	  goto done;
-	}
     }
 
   if (!conf->uio_driver_name)
@@ -1191,9 +1187,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
       tmp = format (0, "vpp%c", 0);
       vec_add1 (conf->eal_init_args, tmp);
     }
-
-  if (error)
-    return error;
 
   if (no_pci == 0 && geteuid () == 0)
     dpdk_bind_devices_to_uio (conf);
@@ -1300,6 +1293,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   dpdk_log_notice ("EAL init args: %s", conf->eal_init_args_str);
   ret = rte_eal_init (vec_len (conf->eal_init_args),
 		      (char **) conf->eal_init_args);
+  if (ret < 0)
+    return clib_error_return (0, "rte_eal_init returned %d", ret);
 
   /* enable the AVX-512 vPMDs in DPDK */
   if (clib_cpu_supports_avx512_bitalg () &&
@@ -1316,15 +1311,11 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   rmdir ((char *) huge_dir_path);
   vec_free (huge_dir_path);
 
-  if (ret < 0)
-    return clib_error_return (0, "rte_eal_init returned %d", ret);
-
   /* main thread 1st */
   if ((error = dpdk_buffer_pools_create (vm)))
     return error;
 
-done:
-  return error;
+  return 0;
 }
 
 VLIB_CONFIG_FUNCTION (dpdk_config, "dpdk");
