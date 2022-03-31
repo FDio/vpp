@@ -105,11 +105,9 @@ u32
 vlib_stats_create_counter (vlib_stats_entry_t *e)
 {
   vlib_stats_segment_t *sm = vlib_stats_get_segment ();
-  void *oldheap;
   u32 index = ~0;
   int i;
 
-  oldheap = clib_mem_set_heap (sm->heap);
   vec_foreach_index_backwards (i, sm->directory_vector)
     if (sm->directory_vector[i].type == STAT_DIR_TYPE_EMPTY)
       {
@@ -122,7 +120,6 @@ vlib_stats_create_counter (vlib_stats_entry_t *e)
   vec_validate (sm->directory_vector, index);
   sm->directory_vector[index] = *e;
 
-  clib_mem_set_heap (oldheap);
   hash_set_str_key_alloc (&sm->directory_vector_by_name, e->name, index);
 
   return index;
@@ -133,15 +130,12 @@ vlib_stats_remove_entry (u32 entry_index)
 {
   vlib_stats_segment_t *sm = vlib_stats_get_segment ();
   vlib_stats_entry_t *e = vlib_stats_get_entry (sm, entry_index);
-  void *oldheap;
   counter_t **c;
   vlib_counter_t **vc;
   u32 i;
 
   if (entry_index >= vec_len (sm->directory_vector))
     return;
-
-  oldheap = clib_mem_set_heap (sm->heap);
 
   vlib_stats_segment_lock ();
 
@@ -178,7 +172,6 @@ vlib_stats_remove_entry (u32 entry_index)
 
   vlib_stats_segment_unlock ();
 
-  clib_mem_set_heap (oldheap);
   hash_unset_str_key_free (&sm->directory_vector_by_name, e->name);
 
   memset (e, 0, sizeof (*e));
@@ -350,21 +343,23 @@ vlib_stats_set_string_vector (u32 entry_index, u32 vector_index, char *fmt,
   vlib_stats_segment_t *sm = vlib_stats_get_segment ();
   vlib_stats_entry_t *e = vlib_stats_get_entry (sm, entry_index);
   va_list va;
-  void *oldheap;
+  u8 *s;
 
-  oldheap = clib_mem_set_heap (sm->heap);
   vlib_stats_segment_lock ();
 
-  vec_validate (e->string_vector, vector_index);
-  vec_reset_length (e->string_vector[vector_index]);
+  vec_validate_heap (e->string_vector, vector_index, sm->heap);
+
+  s = e->string_vector[vector_index];
+  vec_validate_heap (s, 0, sm->heap);
+  vec_reset_length (s);
 
   va_start (va, fmt);
-  e->string_vector[vector_index] =
-    va_format (e->string_vector[vector_index], fmt, &va);
+  s = va_format (s, fmt, &va);
   va_end (va);
 
+  e->string_vector[vector_index] = s;
+
   vlib_stats_segment_unlock ();
-  clib_mem_set_heap (oldheap);
 }
 
 u32
@@ -398,10 +393,8 @@ vlib_stats_validate_will_expand_internal (u32 entry_index, va_list *va)
 {
   vlib_stats_segment_t *sm = vlib_stats_get_segment ();
   vlib_stats_entry_t *e = vlib_stats_get_entry (sm, entry_index);
-  void *oldheap;
   int rv = 1;
 
-  oldheap = clib_mem_set_heap (sm->heap);
   if (e->type == STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE)
     {
       u32 idx0 = va_arg (*va, u32);
@@ -435,7 +428,6 @@ vlib_stats_validate_will_expand_internal (u32 entry_index, va_list *va)
 
   rv = 0;
 done:
-  clib_mem_set_heap (oldheap);
   return rv;
 }
 
@@ -477,10 +469,10 @@ vlib_stats_validate (u32 entry_index, ...)
       u32 idx1 = va_arg (va, u32);
       u64 **data = e->data;
 
-      vec_validate_aligned (data, idx0, CLIB_CACHE_LINE_BYTES);
+      vec_validate_heap (data, idx0, sm->heap);
 
       for (u32 i = 0; i <= idx0; i++)
-	vec_validate_aligned (data[i], idx1, CLIB_CACHE_LINE_BYTES);
+	vec_validate_heap (data[i], idx1, sm->heap);
       e->data = data;
     }
   else if (e->type == STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED)
@@ -489,10 +481,10 @@ vlib_stats_validate (u32 entry_index, ...)
       u32 idx1 = va_arg (va, u32);
       vlib_counter_t **data = e->data;
 
-      vec_validate_aligned (data, idx0, CLIB_CACHE_LINE_BYTES);
+      vec_validate_heap (data, idx0, sm->heap);
 
       for (u32 i = 0; i <= idx0; i++)
-	vec_validate_aligned (data[i], idx1, CLIB_CACHE_LINE_BYTES);
+	vec_validate_heap (data[i], idx1, sm->heap);
       e->data = data;
     }
   else
