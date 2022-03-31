@@ -599,6 +599,12 @@ vnet_crypto_async_submit_open_frame (vlib_main_t * vm,
   frame->state = VNET_CRYPTO_FRAME_STATE_PENDING;
   frame->enqueue_thread_index = vm->thread_index;
 
+  if (PREDICT_FALSE (cm->enqueue_handlers == NULL))
+    {
+      frame->state = VNET_CRYPTO_FRAME_STATE_ELT_ERROR;
+      return -1;
+    }
+
   int ret = (cm->enqueue_handlers[frame->op]) (vm, frame);
 
   if (PREDICT_TRUE (ret == 0))
