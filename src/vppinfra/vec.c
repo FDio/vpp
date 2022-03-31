@@ -19,26 +19,22 @@ __clib_export void *
 _vec_realloc (void *v, uword n_elts, uword elt_sz, uword hdr_sz, uword align,
 	      void *heap)
 {
-  uword n_data_bytes, data_offset, new_data_size, alloc_size;
+  uword n_data_bytes, alloc_size, new_data_size;
   void *p;
 
   /* alignment must be power of 2 */
   align = clib_max (align, VEC_MIN_ALIGN);
   ASSERT (count_set_bits (align) == 1);
 
-  /* number of bytes needed to store both vector header and optional user
-   * header */
-  data_offset = round_pow2 (hdr_sz + sizeof (vec_header_t), align);
-
   /* mumber of bytes needed to store vector data */
   n_data_bytes = n_elts * elt_sz;
 
-  /* minimal allocation needed to store data and headers */
-  new_data_size = data_offset + n_data_bytes;
-
   if (v)
     {
+      uword data_offset = vec_get_header_size (v);
       uword old_data_size = data_offset + _vec_len (v) * elt_sz;
+      new_data_size = data_offset + n_data_bytes;
+      heap = _vec_find (v)->default_heap ? 0 : _vec_heap (v);
       p = vec_header (v);
       alloc_size = clib_mem_size (p);
 
@@ -54,7 +50,7 @@ _vec_realloc (void *v, uword n_elts, uword elt_sz, uword hdr_sz, uword align,
 	  else
 	    alloc_size = (n_data_bytes * 3) / 2 + data_offset;
 
-	  p = clib_mem_realloc_aligned (p, alloc_size, align);
+	  p = clib_mem_heap_realloc_aligned (heap, p, alloc_size, align);
 	  alloc_size = clib_mem_size (p);
 	  v = p + data_offset;
 	}
@@ -65,13 +61,25 @@ _vec_realloc (void *v, uword n_elts, uword elt_sz, uword hdr_sz, uword align,
   else
     {
       /* new allocation */
-      p = clib_mem_alloc_aligned (new_data_size, align);
+      uword data_offset = hdr_sz + sizeof (vec_header_t);
+      data_offset += heap ? sizeof (void *) : 0;
+      data_offset = round_pow2 (data_offset, align);
+
+      new_data_size = data_offset + n_data_bytes;
+      p = clib_mem_heap_alloc_aligned (heap, new_data_size, align);
       alloc_size = clib_mem_size (p);
       CLIB_MEM_UNPOISON (p, alloc_size);
       clib_memset_u8 (p, 0, alloc_size);
       v = p + data_offset;
       _vec_find (v)->hdr_size = data_offset / VEC_MIN_ALIGN;
       _vec_find (v)->log2_align = min_log2 (align);
+      if (heap)
+	{
+	  _vec_find (v)->default_heap = 0;
+	  _vec_heap (v) = heap;
+	}
+      else
+	_vec_find (v)->default_heap = 1;
     }
 
   CLIB_MEM_POISON (p + new_data_size, alloc_size - new_data_size);

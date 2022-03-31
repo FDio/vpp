@@ -56,7 +56,8 @@ typedef struct
 {
   u32 len; /**< Number of elements in vector (NOT its allocated length). */
   u8 hdr_size;	      /**< header size divided by VEC_MIN_ALIGN */
-  u8 log2_align;      /**< data alignment */
+  u8 log2_align : 7;  /**< data alignment */
+  u8 default_heap : 1; /**< vector uses default heap */
   u8 vpad[2];	      /**< pad to 8 bytes */
   u8 vector_data[0];  /**< Vector data . */
 } vec_header_t;
@@ -72,6 +73,7 @@ typedef struct
     @return pointer to the vector's vector_header_t
 */
 #define _vec_find(v)	((vec_header_t *) (v) - 1)
+#define _vec_heap(v)	(((void **) (_vec_find (v)))[-1])
 
 always_inline uword __vec_align (uword data_align, uword configuered_align);
 always_inline uword __vec_elt_sz (uword elt_sz, int is_void);
