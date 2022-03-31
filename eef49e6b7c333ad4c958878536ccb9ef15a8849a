@@ -53,6 +53,24 @@
     },
     {
       "key": {
+        "uuid": "326cea06_9b3a2c6f",
+        "filename": "src/vlib/dma/dma.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 205,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2022-03-31T09:03:24Z",
+      "side": 1,
+      "message": "Queue logic added here is to garantee that app can got callback in the order of submission in case that backend can\u0027t support order.\nThis logic can be removed as backend can garantee the completion order from driver level.",
+      "parentUuid": "bc59a0fc_acfbf9b3",
+      "revId": "eef49e6b7c333ad4c958878536ccb9ef15a8849a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "ee8b5725_5b16fac6",
         "filename": "src/vlib/dma/dma.h",
         "patchSetId": 2
@@ -81,6 +99,24 @@
       "writtenOn": "2022-03-29T16:49:16Z",
       "side": 1,
       "message": "Why both here and in main?",
+      "revId": "eef49e6b7c333ad4c958878536ccb9ef15a8849a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "308eba66_b29abd5c",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 187,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2022-03-31T09:03:24Z",
+      "side": 1,
+      "message": "Backend here is the assigned one of working thread.  It will be straightforward for dma node to find the backend.",
+      "parentUuid": "b3c50243_6cdf878d",
       "revId": "eef49e6b7c333ad4c958878536ccb9ef15a8849a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
