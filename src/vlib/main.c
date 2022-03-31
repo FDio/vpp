@@ -208,6 +208,7 @@ vlib_frame_free (vlib_main_t * vm, vlib_node_runtime_t * r, vlib_frame_t * f)
     }
 
   f->frame_flags &= ~(VLIB_FRAME_IS_ALLOCATED | VLIB_FRAME_NO_APPEND);
+  f->flags = 0;
 
   vec_add1 (fs->free_frames, f);
   ASSERT (fs->n_alloc_frames > 0);
@@ -1163,6 +1164,7 @@ dispatch_pending_node (vlib_main_t * vm, uword pending_frame_index,
 	  /* no new frame has been assigned to this node, use the saved one */
 	  nf->frame = restore_frame;
 	  f->n_vectors = 0;
+	  f->flags = 0;
 	}
       else
 	{
