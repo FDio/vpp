@@ -152,28 +152,28 @@ dpdk_validate_rte_mbuf (vlib_main_t * vm, vlib_buffer_t * b,
  * support multiple queues. It returns the number of packets untransmitted
  * If all packets are transmitted (the normal case), the function returns 0.
  */
-static_always_inline
-  u32 tx_burst_vector_internal (vlib_main_t * vm,
-				dpdk_device_t * xd,
-				struct rte_mbuf **mb, u32 n_left)
+static_always_inline u32
+tx_burst_vector_internal (vlib_main_t *vm, dpdk_device_t *xd,
+			  struct rte_mbuf **mb, u32 n_left, int queue_id,
+			  u8 is_shared)
 {
   dpdk_tx_queue_t *txq;
   u32 n_retry;
   int n_sent = 0;
-  int queue_id;
 
   n_retry = 16;
-  queue_id = vm->thread_index % xd->conf.n_tx_queues;
   txq = vec_elt_at_index (xd->tx_queues, queue_id);
 
   do
     {
-      clib_spinlock_lock_if_init (&txq->lock);
+      if (is_shared)
+	clib_spinlock_lock (&txq->lock);
 
       /* no wrap, transmit in one burst */
       n_sent = rte_eth_tx_burst (xd->port_id, queue_id, mb, n_left);
 
-      clib_spinlock_unlock_if_init (&txq->lock);
+      if (is_shared)
+	clib_spinlock_unlock (&txq->lock);
 
       n_retry--;
       n_left -= n_sent;
@@ -276,10 +276,12 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
   dpdk_main_t *dm = &dpdk_main;
   vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, rd->dev_instance);
+  vnet_hw_if_tx_frame_t *tf = vlib_frame_scalar_args (f);
   u32 n_packets = f->n_vectors;
   u32 n_left;
   u32 thread_index = vm->thread_index;
-  int queue_id = thread_index;
+  int queue_id = tf->queue_id;
+  u8 is_shared = tf->shared_queue;
   u32 tx_pkts = 0;
   dpdk_per_thread_data_t *ptd = vec_elt_at_index (dm->per_thread_data,
 						  thread_index);
@@ -418,7 +420,8 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
 
   /* transmit as many packets as possible */
   tx_pkts = n_packets = mb - ptd->mbufs;
-  n_left = tx_burst_vector_internal (vm, xd, ptd->mbufs, n_packets);
+  n_left = tx_burst_vector_internal (vm, xd, ptd->mbufs, n_packets, queue_id,
+				     is_shared);
 
   {
     /* If there is no callback then drop any non-transmitted packets */

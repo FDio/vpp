@@ -24,6 +24,7 @@
 #include <vnet/vnet.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/interface/rx_queue_funcs.h>
+#include <vnet/interface/tx_queue_funcs.h>
 #include <dpdk/buffer.h>
 #include <dpdk/device/dpdk.h>
 #include <dpdk/cryptodev/cryptodev.h>
@@ -427,6 +428,8 @@ dpdk_lib_init (dpdk_main_t * dm)
 
       vec_validate_aligned (xd->rx_queues, xd->conf.n_rx_queues - 1,
 			    CLIB_CACHE_LINE_BYTES);
+      vec_validate_aligned (xd->tx_queues, xd->conf.n_tx_queues - 1,
+			    CLIB_CACHE_LINE_BYTES);
 
       rte_eth_macaddr_get (port_id, (void *) addr);
 
@@ -466,6 +469,19 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    rxq->queue_index = vnet_hw_if_register_rx_queue (
 	      vnm, xd->hw_if_index, q, VNET_HW_IF_RXQ_THREAD_ANY);
 	  }
+
+      for (q = 0; q < xd->conf.n_tx_queues; q++)
+	{
+	  dpdk_tx_queue_t *txq = vec_elt_at_index (xd->tx_queues, q);
+	  txq->queue_index =
+	    vnet_hw_if_register_tx_queue (vnm, xd->hw_if_index, q);
+	}
+
+      for (q = 0; q < tm->n_vlib_mains; q++)
+	{
+	  u32 qi = xd->tx_queues[q % xd->conf.n_tx_queues].queue_index;
+	  vnet_hw_if_tx_queue_assign_thread (vnm, qi, q);
+	}
 
       if (devconf->tso == DPDK_DEVICE_TSO_ON)
 	{
