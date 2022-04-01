@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b31227eb_d035742a",
+        "filename": "src/plugins/dpdk/device/common.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 200,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-04-01T14:50:34Z",
+      "side": 1,
+      "message": "The device job is failing, due to a test that has VPP running inside a VM, using dpdk_plugin to handle the virtio device, because virtio dpdk driver computes [0] the difference between MTU and frame size differently than VPP.\n\n[0] https://github.com/DPDK/dpdk/blob/v21.11/drivers/net/virtio/virtio_ethdev.c#L976-L977",
+      "range": {
+        "startLine": 200,
+        "startChar": 26,
+        "endLine": 200,
+        "endChar": 51
+      },
+      "revId": "257d6f72e4315a293c3b174afbdb75e963537f7b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
