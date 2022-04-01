@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "62b5a262_fc9e2811",
+        "filename": "src/plugins/vrrp/vrrp.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2022-04-01T14:27:33Z",
+      "side": 1,
+      "message": "It seems like you should use vlib_get_main() instead of vrrp_main.vlib_main. vrrp_main.vlib_main will point to the vlib_main for the main thread. Since vrrp_incr_err_counter() can be called in vrrp4-input and vrrp6-input from worker threads, you could have multiple threads trying to update the same counter for the main thread.",
+      "revId": "88641c31eea322511e0138e4fd23622475e4b5ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "25367b24_1ef8f10b",
+        "filename": "src/plugins/vrrp/vrrp.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2022-04-01T14:27:33Z",
+      "side": 1,
+      "message": "It looks like vrrp_incr_stat_counter() only gets called from the main thread, so it\u0027s probably technically ok to use vrrp_main.vlib_main here. But I think it might be better to use vlib_get_main() anyway just in case this function needs to be called from a worker at some point in the future.",
+      "revId": "88641c31eea322511e0138e4fd23622475e4b5ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
