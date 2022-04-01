@@ -183,6 +183,7 @@ re_map_it:
       return SSVM_API_ERROR_MMAP;
     }
   sh->client_pid = getpid ();
+  close (ssvm_fd);
   return 0;
 }
 
