@@ -170,6 +170,8 @@ vnet_interface_output_trace (vlib_main_t * vm,
 static_always_inline void
 vnet_interface_output_handle_offload (vlib_main_t *vm, vlib_buffer_t *b)
 {
+  if (b->flags & VNET_BUFFER_F_GSO)
+    return;
   vnet_calc_checksums_inline (vm, b, b->flags & VNET_BUFFER_F_IS_IP4,
 			      b->flags & VNET_BUFFER_F_IS_IP6);
   vnet_calc_outer_checksums_inline (vm, b);
