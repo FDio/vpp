@@ -16,6 +16,24 @@
       "revId": "4215d39cfca73ed27f7dee0552a03f9320583e43",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3081ad1f_2fc36638",
+        "filename": "src/vnet/flow/flow_types.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 2529
+      },
+      "writtenOn": "2022-04-02T06:58:51Z",
+      "side": 1,
+      "message": "Hi, Fan, sorry for replying late. I am not quite clear about your point. It is the basic structure of the following flow_generic type. In those .api files in other components, like qos.api, session.api, I see that the length like this is provided as a number. Shall I add an annotation to explain \"1024\" or need to use a macro? Thanks!",
+      "parentUuid": "6246b928_d9ef2ea1",
+      "revId": "4215d39cfca73ed27f7dee0552a03f9320583e43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
