@@ -2610,14 +2610,6 @@ nat44_ei_del_static_mapping_internal (ip4_address_t l_addr,
       fib_index = m->fib_index;
     }
 
-  if (!(is_sm_addr_only (flags) || nm->static_mapping_only))
-    {
-      if (nat44_ei_free_port (e_addr, e_port, proto))
-	{
-	  return VNET_API_ERROR_INVALID_VALUE;
-	}
-    }
-
   init_nat_k (&kv, l_addr, l_port, fib_index, proto);
   clib_bihash_add_del_8_8 (&nm->static_mapping_by_local, &kv, 0);
 
