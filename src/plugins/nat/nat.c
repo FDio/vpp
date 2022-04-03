@@ -942,6 +942,11 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
   nat44_lb_addr_port_t *local;
   u32 find = ~0;
 
+  if (!sm->enabled)
+    {
+      nat_log_err ("nat44 is disabled.");
+      return VNET_API_ERROR_UNSUPPORTED;
+    }
   if (!sm->endpoint_dependent)
     {
       if (twice_nat || out2in_only)
