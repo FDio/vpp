@@ -1152,8 +1152,8 @@ tls_openssl_set_ciphers (char *ciphers)
       return -1;
     }
 
-  vec_validate (om->ciphers, strlen (ciphers) - 1);
-  for (i = 0; i < vec_len (om->ciphers); i++)
+  vec_validate (om->ciphers, strlen (ciphers));
+  for (i = 0; i < vec_len (om->ciphers) - 1; i++)
     {
       om->ciphers[i] = toupper (ciphers[i]);
     }
