@@ -38,8 +38,11 @@ session_wrk_send_evt_to_main (session_worker_t *wrk, session_evt_elt_t *elt)
   is_empty = clib_llist_is_empty (wrk->event_elts, evt_list, he);
   clib_llist_add_tail (wrk->event_elts, evt_list, elt, he);
   if (is_empty)
-    vlib_rpc_call_main_thread (session_wrk_handle_evts_main_rpc,
-			       (u8 *) &thread_index, sizeof (thread_index));
+    {
+      vlib_node_set_interrupt_pending (vlib_get_main_by_index (0),
+				       session_queue_node.index);
+      session_send_rpc_evt_to_thread (0, session_wrk_handle_evts_main_rpc, 0);
+    }
 }
 
 #define app_check_thread_and_barrier(_wrk, _elt)                              \
