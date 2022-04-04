@@ -296,7 +296,7 @@ pg_free_edit_group (pg_stream_t * s)
 
   pg_edit_group_free (g);
   clib_memset (g, 0, sizeof (g[0]));
-  _vec_len (s->edit_groups) = i;
+  vec_set_len (s->edit_groups, i);
 }
 
 typedef enum pg_interface_mode_t_

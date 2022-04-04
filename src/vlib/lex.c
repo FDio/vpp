@@ -113,7 +113,7 @@ vlib_lex_get_token (vlib_lex_main_t * lm, vlib_lex_token_t * rv)
 				lm->lex_token_names[VLIB_LEX_word],
 				rv->value.as_pointer);
 	      }
-	    _vec_len (lm->token_buffer) = 0;
+	    vec_set_len (lm->token_buffer, 0);
 
 	    /* Rescan the character which terminated the keyword/word. */
 	    lm->current_index--;
@@ -233,7 +233,7 @@ void
 vlib_lex_reset (vlib_lex_main_t * lm, u8 * input_vector)
 {
   if (lm->pushback_vector)
-    _vec_len (lm->pushback_vector) = 0;
+    vec_set_len (lm->pushback_vector, 0);
   lm->pushback_sp = -1;
 
   lm->input_vector = input_vector;
@@ -255,7 +255,7 @@ lex_onetime_init (vlib_main_t * vm)
 #undef _
 
   vec_validate (lm->token_buffer, 127);
-  _vec_len (lm->token_buffer) = 0;
+  vec_set_len (lm->token_buffer, 0);
 
   return 0;
 }

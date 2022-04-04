@@ -235,7 +235,7 @@ vlib_thread_init (vlib_main_t * vm)
 
   /* Set up thread 0 */
   vec_validate_aligned (vlib_worker_threads, 0, CLIB_CACHE_LINE_BYTES);
-  _vec_len (vlib_worker_threads) = 1;
+  vec_set_len (vlib_worker_threads, 1);
   w = vlib_worker_threads;
   w->thread_mheap = clib_mem_get_heap ();
   w->thread_stack = vlib_thread_stacks[0];
@@ -558,7 +558,7 @@ start_workers (vlib_main_t * vm)
 
   vec_validate_aligned (vgm->vlib_mains, n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
-  _vec_len (vgm->vlib_mains) = 0;
+  vec_set_len (vgm->vlib_mains, 0);
   vec_add1_aligned (vgm->vlib_mains, vm, CLIB_CACHE_LINE_BYTES);
 
   if (n_vlib_mains > 1)
@@ -640,7 +640,7 @@ start_workers (vlib_main_t * vm)
 	      vm_clone->thread_index = worker_thread_index;
 	      vm_clone->pending_rpc_requests = 0;
 	      vec_validate (vm_clone->pending_rpc_requests, 0);
-	      _vec_len (vm_clone->pending_rpc_requests) = 0;
+	      vec_set_len (vm_clone->pending_rpc_requests, 0);
 	      clib_memset (&vm_clone->random_buffer, 0,
 			   sizeof (vm_clone->random_buffer));
 	      clib_spinlock_init
@@ -670,7 +670,7 @@ start_workers (vlib_main_t * vm)
 	      /* fork the frame dispatch queue */
 	      nm_clone->pending_frames = 0;
 	      vec_validate (nm_clone->pending_frames, 10);
-	      _vec_len (nm_clone->pending_frames) = 0;
+	      vec_set_len (nm_clone->pending_frames, 0);
 
 	      /* fork nodes */
 	      nm_clone->nodes = 0;
@@ -1616,7 +1616,7 @@ vlib_frame_queue_main_init (u32 node_index, u32 frame_queue_nelts)
   fqm->frame_queue_nelts = frame_queue_nelts;
 
   vec_validate (fqm->vlib_frame_queues, tm->n_vlib_mains - 1);
-  _vec_len (fqm->vlib_frame_queues) = 0;
+  vec_set_len (fqm->vlib_frame_queues, 0);
   for (i = 0; i < tm->n_vlib_mains; i++)
     {
       fq = vlib_frame_queue_alloc (frame_queue_nelts);

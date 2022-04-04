@@ -394,9 +394,9 @@ cdp_periodic (vlib_main_t * vm)
       delete_neighbor (cm, n, 1);
     }
   if (delete_list)
-    _vec_len (delete_list) = 0;
+    vec_set_len (delete_list, 0);
   if (n_list)
-    _vec_len (n_list) = 0;
+    vec_set_len (n_list, 0);
 }
 
 static clib_error_t *

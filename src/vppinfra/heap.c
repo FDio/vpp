@@ -139,7 +139,7 @@ elt_delete (heap_header_t * h, heap_elt_t * e)
   if (e < l)
     vec_add1 (h->free_elts, e - h->elts);
   else
-    _vec_len (h->elts)--;
+    vec_dec_len (h->elts, 1);
 }
 
 /*
@@ -200,7 +200,7 @@ elt_new (heap_header_t * h)
   if ((l = vec_len (h->free_elts)) > 0)
     {
       e = elt_at (h, h->free_elts[l - 1]);
-      _vec_len (h->free_elts) -= 1;
+      vec_dec_len (h->free_elts, 1);
     }
   else
     vec_add2 (h->elts, e, 1);
@@ -276,7 +276,7 @@ remove_free_block (void *v, uword b, uword i)
       h->free_lists[b][i] = t;
       set_free_elt (v, elt_at (h, t), i);
     }
-  _vec_len (h->free_lists[b]) = l - 1;
+  vec_set_len (h->free_lists[b], l - 1);
 }
 
 static heap_elt_t *
@@ -425,7 +425,7 @@ _heap_alloc (void *v,
 	v = _vec_realloc (v, offset + align_size, elt_bytes, sizeof (h[0]),
 			  HEAP_DATA_ALIGN, 0);
       else
-	_vec_len (v) += align_size;
+	vec_inc_len (v, align_size);
 
       if (offset == 0)
 	{

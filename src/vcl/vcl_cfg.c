@@ -431,7 +431,7 @@ vppcom_cfg_read_file (char *conf_fname)
 	      u32 nsid_vec_len = vec_len (vcl_cfg->namespace_id);
 	      if (nsid_vec_len > max_nsid_vec_len)
 		{
-		  _vec_len (vcl_cfg->namespace_id) = max_nsid_vec_len;
+		  vec_set_len (vcl_cfg->namespace_id, max_nsid_vec_len);
 		  VCFG_DBG (0, "VCL<%d>: configured namespace_id is too long,"
 			    " truncated to %d characters!",
 			    getpid (), max_nsid_vec_len);

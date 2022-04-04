@@ -167,25 +167,24 @@ _(version,DEBUG_TLV_DUMP)                       \
 _(platform,DEBUG_TLV_DUMP)                      \
 _(port_id,DEBUG_TLV_DUMP)
 
-#define _(z,dbg)                                                        \
-static                                                                  \
-cdp_error_t process_##z##_tlv (cdp_main_t *cm, cdp_neighbor_t *n,       \
-                                  cdp_tlv_t *t)                         \
-{                                                                       \
-    int i;                                                              \
-    if (dbg)                                                            \
-       fformat(stdout, "%U\n", format_text_tlv, t);                     \
-                                                                        \
-    if (n->z)                                                           \
-        _vec_len(n->z) = 0;                                             \
-                                                                        \
-    for (i = 0; i < (t->l - sizeof (*t)); i++)                          \
-        vec_add1(n->z, t->v[i]);                                        \
-                                                                        \
-    vec_add1(n->z, 0);                                                  \
-                                                                        \
-    return CDP_ERROR_NONE;                                              \
-}
+#define _(z, dbg)                                                             \
+  static cdp_error_t process_##z##_tlv (cdp_main_t *cm, cdp_neighbor_t *n,    \
+					cdp_tlv_t *t)                         \
+  {                                                                           \
+    int i;                                                                    \
+    if (dbg)                                                                  \
+      fformat (stdout, "%U\n", format_text_tlv, t);                           \
+                                                                              \
+    if (n->z)                                                                 \
+      vec_set_len (n->z, 0);                                                  \
+                                                                              \
+    for (i = 0; i < (t->l - sizeof (*t)); i++)                                \
+      vec_add1 (n->z, t->v[i]);                                               \
+                                                                              \
+    vec_add1 (n->z, 0);                                                       \
+                                                                              \
+    return CDP_ERROR_NONE;                                                    \
+  }
 
 foreach_text_to_struct_tlv
 #undef _
@@ -354,7 +353,7 @@ cdp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
    */
 
   if (n->last_rx_pkt)
-    _vec_len (n->last_rx_pkt) = 0;
+    vec_set_len (n->last_rx_pkt, 0);
 
   /* cdp disabled on this interface, we're done */
   if (n->disabled)

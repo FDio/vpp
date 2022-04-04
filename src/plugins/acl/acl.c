@@ -3736,7 +3736,7 @@ acl_init (vlib_main_t * vm)
 	vec_validate (pw->expired,
 		      ACL_N_TIMEOUTS *
 		      am->fa_max_deleted_sessions_per_interval);
-	_vec_len (pw->expired) = 0;
+	vec_set_len (pw->expired, 0);
 	vec_validate_init_empty (pw->fa_conn_list_head, ACL_N_TIMEOUTS - 1,
 				 FA_SESSION_BOGUS_INDEX);
 	vec_validate_init_empty (pw->fa_conn_list_tail, ACL_N_TIMEOUTS - 1,

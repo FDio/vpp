@@ -682,7 +682,7 @@ hash_acl_apply(acl_main_t *am, u32 lc_index, int acl_index, u32 acl_position)
   if (vec_len(ha->rules) > 0) {
     int old_vec_len = vec_len(*applied_hash_aces);
     vec_validate((*applied_hash_aces), old_vec_len + vec_len(ha->rules) - 1);
-    _vec_len((*applied_hash_aces)) = old_vec_len;
+    vec_set_len ((*applied_hash_aces), old_vec_len);
   }
 
   /* add the rules from the ACL to the hash table for lookup and append to the vector*/
@@ -903,7 +903,7 @@ hash_acl_unapply(acl_main_t *am, u32 lc_index, int acl_index)
     move_applied_ace_hash_entry(am, lc_index, applied_hash_aces, tail_offset + i, base_offset + i);
   }
   /* trim the end of the vector */
-  _vec_len((*applied_hash_aces)) -= vec_len(ha->rules);
+  vec_dec_len ((*applied_hash_aces), vec_len (ha->rules));
 
   remake_hash_applied_mask_info_vec(am, applied_hash_aces, lc_index);
 

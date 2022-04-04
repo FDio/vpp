@@ -809,7 +809,7 @@ show_int_mode (vlib_main_t * vm,
     {
       /* Gather interfaces. */
       sis = vec_new (vnet_sw_interface_t, pool_elts (im->sw_interfaces));
-      _vec_len (sis) = 0;
+      vec_set_len (sis, 0);
       /* *INDENT-OFF* */
       pool_foreach (si, im->sw_interfaces) { vec_add1 (sis, si[0]); }
       /* *INDENT-ON* */

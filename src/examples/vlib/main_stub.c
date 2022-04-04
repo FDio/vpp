@@ -181,7 +181,7 @@ my_proc (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	  vlib_cli_output (vm, "%U %v: completion #%d type %d data 0x%wx",
 			   format_time_interval, "h:m:s:u",
 			   vlib_time_now (vm), node->name, i, type, data[0]);
-	  _vec_len (data) = 0;
+	  vec_set_len (data, 0);
 	}
 
       vec_free (data);

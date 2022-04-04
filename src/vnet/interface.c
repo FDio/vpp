@@ -163,7 +163,7 @@ serialize_vnet_interface_state (serialize_main_t * m, va_list * va)
   vec_serialize (m, sts, serialize_vec_vnet_sw_hw_interface_state);
 
   if (sts)
-    _vec_len (sts) = 0;
+    vec_set_len (sts, 0);
 
   /* *INDENT-OFF* */
   pool_foreach (hif, im->hw_interfaces)  {
@@ -992,7 +992,7 @@ vnet_register_interface (vnet_main_t * vnm,
 					  VLIB_NODE_RUNTIME_PERF_RESET);
 	}
 
-      _vec_len (im->deleted_hw_interface_nodes) -= 1;
+      vec_dec_len (im->deleted_hw_interface_nodes, 1);
     }
   else
     {

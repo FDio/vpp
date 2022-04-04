@@ -369,11 +369,11 @@ format_vnet_sw_interface_cntrs (u8 * s, vnet_interface_main_t * im,
       n_printed += 2;
 
       if (n)
-	_vec_len (n) = 0;
+	vec_set_len (n, 0);
       n = format (n, "%s packets", cm->name);
       s = format (s, "%-16v%16Ld", n, vtotal.packets);
 
-      _vec_len (n) = 0;
+      vec_set_len (n, 0);
       n = format (n, "%s bytes", cm->name);
       s = format (s, "\n%U%-16v%16Ld",
 		  format_white_space, indent, n, vtotal.bytes);

@@ -224,7 +224,7 @@ try_index_file (hss_main_t *hsm, hss_session_t *hs, u8 *path)
   u32 plen;
 
   /* Remove the trailing space */
-  _vec_len (path) -= 1;
+  vec_dec_len (path, 1);
   plen = vec_len (path);
 
   /* Append "index.html" */

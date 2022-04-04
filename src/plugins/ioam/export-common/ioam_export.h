@@ -287,7 +287,7 @@ ioam_export_header_create (ioam_export_main_t * em,
 				     (DEFAULT_EXPORT_RECORDS *
 				      DEFAULT_EXPORT_SIZE));
   ip->checksum = ip4_header_checksum (ip);
-  _vec_len (rewrite) = sizeof (ip4_ipfix_data_packet_t);
+  vec_set_len (rewrite, sizeof (ip4_ipfix_data_packet_t));
   em->record_header = rewrite;
   return (1);
 }

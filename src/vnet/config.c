@@ -97,7 +97,7 @@ find_config_with_features (vlib_main_t * vm,
   config_string = cm->config_string_temp;
   cm->config_string_temp = 0;
   if (config_string)
-    _vec_len (config_string) = 0;
+    vec_set_len (config_string, 0);
 
   vec_foreach (f, feature_vector)
   {
@@ -296,7 +296,7 @@ vnet_config_modify_end_node (vlib_main_t * vm,
       if (new_features[last].node_index == cm->default_end_node_index)
 	{
 	  vec_free (new_features->feature_config);
-	  _vec_len (new_features) = last;
+	  vec_set_len (new_features, last);
 	}
     }
 

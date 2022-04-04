@@ -1610,7 +1610,7 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 
       /* Delete the desired text from the command */
       memmove (cf->current_command, cf->current_command + j, delta);
-      _vec_len (cf->current_command) = delta;
+      vec_set_len (cf->current_command, delta);
 
       /* Print the new contents */
       unix_vlib_cli_output_cooked (cf, uf, cf->current_command, delta);
@@ -1635,7 +1635,7 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	unix_vlib_cli_output_cursor_left (cf, uf);
 
       /* Truncate the line at the cursor */
-      _vec_len (cf->current_command) = cf->cursor;
+      vec_set_len (cf->current_command, cf->cursor);
 
       cf->search_mode = 0;
       break;
@@ -1677,7 +1677,7 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 		unix_vlib_cli_output_cooked (cf, uf, (u8 *) " ", 1);
 	      for (; (cf->current_command + cf->cursor) > save; cf->cursor--)
 		unix_vlib_cli_output_cursor_left (cf, uf);
-	      _vec_len (cf->current_command) -= delta;
+	      vec_dec_len (cf->current_command, delta);
 	    }
 	}
       cf->search_mode = 0;
@@ -1734,13 +1734,13 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	  if (cf->excursion == vec_len (cf->command_history))
 	    {
 	      /* down-arrowed to last entry - want a blank line */
-	      _vec_len (cf->current_command) = 0;
+	      vec_set_len (cf->current_command, 0);
 	    }
 	  else if (cf->excursion < 0)
 	    {
 	      /* up-arrowed over the start to the end, want a blank line */
 	      cf->excursion = vec_len (cf->command_history);
-	      _vec_len (cf->current_command) = 0;
+	      vec_set_len (cf->current_command, 0);
 	    }
 	  else
 	    {
@@ -1753,7 +1753,7 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	      vec_validate (cf->current_command, vec_len (prev) - 1);
 
 	      clib_memcpy (cf->current_command, prev, vec_len (prev));
-	      _vec_len (cf->current_command) = vec_len (prev);
+	      vec_set_len (cf->current_command, vec_len (prev));
 	      unix_vlib_cli_output_cooked (cf, uf, cf->current_command,
 					   vec_len (cf->current_command));
 	    }
@@ -1840,7 +1840,7 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	      cf->cursor++;
 	      unix_vlib_cli_output_cursor_left (cf, uf);
 	      cf->cursor--;
-	      _vec_len (cf->current_command)--;
+	      vec_dec_len (cf->current_command, 1);
 	    }
 	  else if (cf->cursor > 0)
 	    {
@@ -1848,7 +1848,7 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	      j = vec_len (cf->current_command) - cf->cursor;
 	      memmove (cf->current_command + cf->cursor - 1,
 		       cf->current_command + cf->cursor, j);
-	      _vec_len (cf->current_command)--;
+	      vec_dec_len (cf->current_command, 1);
 
 	      /* redraw the rest of the line */
 	      unix_vlib_cli_output_cursor_left (cf, uf);
@@ -1884,7 +1884,7 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	      j = vec_len (cf->current_command) - cf->cursor - 1;
 	      memmove (cf->current_command + cf->cursor,
 		       cf->current_command + cf->cursor + 1, j);
-	      _vec_len (cf->current_command)--;
+	      vec_dec_len (cf->current_command, 1);
 	      /* redraw the rest of the line */
 	      unix_vlib_cli_output_cooked (cf, uf,
 					   cf->current_command + cf->cursor,
@@ -1956,7 +1956,7 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	      vec_resize (save, vec_len (cf->current_command) - cf->cursor);
 	      clib_memcpy (save, cf->current_command + cf->cursor,
 			   vec_len (cf->current_command) - cf->cursor);
-	      _vec_len (cf->current_command) = cf->cursor;
+	      vec_set_len (cf->current_command, cf->cursor);
 	    }
 	  else
 	    {
@@ -1978,7 +1978,7 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	      cf->cursor--;
 	      j--;
 	    }
-	  _vec_len (cf->current_command) = j;
+	  vec_set_len (cf->current_command, j);
 
 	  /* replace it with the newly expanded command */
 	  vec_append (cf->current_command, completed);
@@ -2385,7 +2385,7 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 
 	      vec_validate (cf->current_command, vec_len (item) - 1);
 	      clib_memcpy (cf->current_command, item, vec_len (item));
-	      _vec_len (cf->current_command) = vec_len (item);
+	      vec_set_len (cf->current_command, vec_len (item));
 
 	      unix_vlib_cli_output_cooked (cf, uf, cf->current_command,
 					   vec_len (cf->current_command));
@@ -2599,7 +2599,7 @@ more:
 					 0 /* level */ ,
 					 8 /* max_level */ );
       /* Macro processor NULL terminates the return */
-      _vec_len (expanded) -= 1;
+      vec_dec_len (expanded, 1);
       vec_reset_length (cf->current_command);
       vec_append (cf->current_command, expanded);
       vec_free (expanded);
@@ -2754,7 +2754,7 @@ unix_cli_process (vlib_main_t * vm,
 	}
 
       if (data)
-	_vec_len (data) = 0;
+	vec_set_len (data, 0);
     }
 
 done:
@@ -2836,7 +2836,7 @@ unix_cli_read_ready (clib_file_t * uf)
 	return clib_error_return_unix (0, "read");
 
       n_read = n < 0 ? 0 : n;
-      _vec_len (cf->input_vector) = l + n_read;
+      vec_set_len (cf->input_vector, l + n_read);
     }
 
   if (!(n < 0))
@@ -2918,7 +2918,7 @@ unix_cli_file_add (unix_cli_main_t * cm, char *name, int fd)
       vec_free (old_name);
 
       vlib_node_set_state (vm, n->index, VLIB_NODE_STATE_POLLING);
-      _vec_len (cm->unused_cli_process_node_indices) = l - 1;
+      vec_set_len (cm->unused_cli_process_node_indices, l - 1);
     }
   else
     {
@@ -2954,7 +2954,7 @@ unix_cli_file_add (unix_cli_main_t * cm, char *name, int fd)
   cf->output_vector = 0;
   cf->input_vector = 0;
   vec_validate (cf->current_command, 0);
-  _vec_len (cf->current_command) = 0;
+  vec_set_len (cf->current_command, 0);
 
   vlib_start_process (vm, n->runtime_index);
 
@@ -3445,7 +3445,7 @@ unix_cli_exec (vlib_main_t * vm,
 					 0 /* level */ ,
 					 8 /* max_level */ );
       /* Macro processor NULL terminates the return */
-      _vec_len (expanded) -= 1;
+      vec_dec_len (expanded, 1);
       vec_reset_length (sub_input.buffer);
       vec_append (sub_input.buffer, expanded);
       vec_free (expanded);

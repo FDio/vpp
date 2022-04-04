@@ -90,7 +90,7 @@ sendmsg_helper (mc_socket_main_t * msm,
   h.msg_namelen = sizeof (tx_addr[0]);
 
   if (msm->iovecs)
-    _vec_len (msm->iovecs) = 0;
+    vec_set_len (msm->iovecs, 0);
 
   n_bytes = append_buffer_index_to_iovec (vm, buffer_index, &msm->iovecs);
   ASSERT (n_bytes <= msm->mc_main.transport.max_packet_size);
@@ -177,7 +177,7 @@ recvmsg_helper (mc_socket_main_t * msm,
       vec_validate (msm->rx_buffers, max_alloc - 1);
       n_alloc =
 	vlib_buffer_alloc (vm, msm->rx_buffers + n_left, max_alloc - n_left);
-      _vec_len (msm->rx_buffers) = n_left + n_alloc;
+      vec_set_len (msm->rx_buffers, n_left + n_alloc);
     }
 
   ASSERT (vec_len (msm->rx_buffers) >= n_mtu);
@@ -192,7 +192,7 @@ recvmsg_helper (mc_socket_main_t * msm,
       msm->iovecs[i].iov_base = b->data;
       msm->iovecs[i].iov_len = buffer_size;
     }
-  _vec_len (msm->iovecs) = n_mtu;
+  vec_set_len (msm->iovecs, n_mtu);
 
   {
     struct msghdr h;
@@ -237,7 +237,7 @@ recvmsg_helper (mc_socket_main_t * msm,
       b->next_buffer = msm->rx_buffers[i_rx];
     }
 
-  _vec_len (msm->rx_buffers) = i_rx;
+  vec_set_len (msm->rx_buffers, i_rx);
 
   return 0 /* no error */ ;
 }
@@ -418,7 +418,7 @@ catchup_socket_read_ready (clib_file_t * uf, int is_server)
 	}
     }
 
-  _vec_len (c->input_vector) = l + n;
+  vec_set_len (c->input_vector, l + n);
 
   if (is_eof && vec_len (c->input_vector) > 0)
     {
@@ -426,7 +426,7 @@ catchup_socket_read_ready (clib_file_t * uf, int is_server)
 	{
 	  mc_msg_catchup_request_handler (mcm, (void *) c->input_vector,
 					  c - msm->catchups);
-	  _vec_len (c->input_vector) = 0;
+	  vec_set_len (c->input_vector, 0);
 	}
       else
 	{

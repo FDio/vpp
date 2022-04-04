@@ -422,7 +422,7 @@ out:
       sort_arr[i].as_index = as - lbm->ass;
       i++;
   }
-  _vec_len(sort_arr) = i;
+  vec_set_len (sort_arr, i);
 
   vec_sort_with_function(sort_arr, lb_pseudorand_compare);
 

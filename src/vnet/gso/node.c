@@ -759,7 +759,7 @@ vnet_gso_node_inline (vlib_main_t * vm,
 					     to_next, n_left_to_next);
 		    }
 		  /* The buffers were enqueued. Reset the length */
-		  _vec_len (ptd->split_buffers) = 0;
+		  vec_set_len (ptd->split_buffers, 0);
 		  /* Free the now segmented buffer */
 		  vlib_buffer_free_one (vm, bi0);
 		  b += 1;

@@ -316,7 +316,7 @@ startup_config_process (vlib_main_t * vm,
 	  n = read (fd, buf + l, 4096);
 	  if (n > 0)
 	    {
-	      _vec_len (buf) = l + n;
+	      vec_set_len (buf, l + n);
 	      if (n < 4096)
 		break;
 	    }

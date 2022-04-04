@@ -185,7 +185,7 @@ free_elt_vector (timing_wheel_t * w, timing_wheel_elt_t * ev)
   /* Poison free elements so we never use them by mistake. */
   if (CLIB_DEBUG > 0)
     clib_memset (ev, ~0, vec_len (ev) * sizeof (ev[0]));
-  _vec_len (ev) = 0;
+  vec_set_len (ev, 0);
   vec_add1 (w->free_elt_vectors, ev);
 }
 
@@ -459,7 +459,7 @@ expire_bin (timing_wheel_t * w,
 
   /* Adjust for deleted elts. */
   if (j < e_len)
-    _vec_len (expired_user_data) -= e_len - j;
+    vec_dec_len (expired_user_data, e_len - j);
 
   free_elt_vector (w, e);
 
@@ -613,7 +613,7 @@ timing_wheel_advance (timing_wheel_t * w, u64 advance_cpu_time,
     if (PREDICT_FALSE (current_ti != advance_ti))
       {
 	if (w->unexpired_elts_pending_insert)
-	  _vec_len (w->unexpired_elts_pending_insert) = 0;
+	  vec_set_len (w->unexpired_elts_pending_insert, 0);
 
 	level_index = 0;
 	while (current_ti != advance_ti)
@@ -684,7 +684,7 @@ timing_wheel_advance (timing_wheel_t * w, u64 advance_cpu_time,
     {
       timing_wheel_elt_t *e;
       vec_foreach (e, w->unexpired_elts_pending_insert) insert_elt (w, e);
-      _vec_len (w->unexpired_elts_pending_insert) = 0;
+      vec_set_len (w->unexpired_elts_pending_insert, 0);
     }
 
   /* Don't advance until necessary. */

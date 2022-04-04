@@ -4830,7 +4830,7 @@ send_map_resolver_service (vlib_main_t * vm,
 	  {
 	    process_expired_mapping (lcm, mi[0]);
 	  }
-	  _vec_len (expired) = 0;
+	  vec_set_len (expired, 0);
 	}
     }
 

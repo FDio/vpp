@@ -176,7 +176,7 @@ vlib_node_unserialize (u8 * vector)
   nstat_vms = unserialize_likely_small_unsigned_integer (sm);
 
   vec_validate (nodes_by_thread, nstat_vms - 1);
-  _vec_len (nodes_by_thread) = 0;
+  vec_set_len (nodes_by_thread, 0);
 
   for (i = 0; i < nstat_vms; i++)
     {

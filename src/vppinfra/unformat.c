@@ -952,7 +952,7 @@ parse_fail:
     if (!input_matches_format)
       input->index = input->buffer_marks[l - 1];
 
-    _vec_len (input->buffer_marks) = l - 1;
+    vec_set_len (input->buffer_marks, l - 1);
   }
 
   return input_matches_format;
@@ -987,7 +987,7 @@ unformat_user (unformat_input_t * input, unformat_function_t * func, ...)
   if (!result && input->index != UNFORMAT_END_OF_INPUT)
     input->index = input->buffer_marks[l];
 
-  _vec_len (input->buffer_marks) = l;
+  vec_set_len (input->buffer_marks, l);
 
   return result;
 }
@@ -1037,7 +1037,7 @@ clib_file_fill_buffer (unformat_input_t * input)
   vec_resize (input->buffer, 4096);
   n = read (fd, input->buffer + l, 4096);
   if (n > 0)
-    _vec_len (input->buffer) = l + n;
+    vec_set_len (input->buffer, l + n);
 
   if (n <= 0)
     return UNFORMAT_END_OF_INPUT;

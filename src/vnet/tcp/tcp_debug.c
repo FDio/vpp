@@ -26,7 +26,7 @@ tcp_evt_track_register (elog_track_t * et)
   if (fl_len)
     {
       track_index = tdm->free_track_indices[fl_len - 1];
-      _vec_len (tdm->free_track_indices) -= 1;
+      vec_dec_len (tdm->free_track_indices, 1);
       et->track_index_plus_one = track_index + 1;
     }
   else

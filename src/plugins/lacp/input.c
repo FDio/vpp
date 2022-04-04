@@ -155,7 +155,7 @@ lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
     {
       mif->last_marker_pdu_recd_time = vlib_time_now (vm);
       if (mif->last_marker_pkt)
-	_vec_len (mif->last_marker_pkt) = 0;
+	vec_set_len (mif->last_marker_pkt, 0);
       vec_validate (mif->last_marker_pkt,
 		    vlib_buffer_length_in_chain (vm, b0) - 1);
       nbytes = vlib_buffer_contents (vm, bi0, mif->last_marker_pkt);
@@ -176,7 +176,7 @@ lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
    * and reuse it.
    */
   if (mif->last_rx_pkt)
-    _vec_len (mif->last_rx_pkt) = 0;
+    vec_set_len (mif->last_rx_pkt, 0);
 
   /*
    * Make sure the per-neighbor rx buffer is big enough to hold
@@ -225,7 +225,7 @@ lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
   mif->pdu_received++;
 
   if (mif->last_rx_pkt)
-    _vec_len (mif->last_rx_pkt) = 0;
+    vec_set_len (mif->last_rx_pkt, 0);
 
   return e;
 }

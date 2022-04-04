@@ -293,7 +293,7 @@ af_packet_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 			n_required + n_free_bufs - 1);
 	  n_free_bufs += vlib_buffer_alloc (
 	    vm, &apm->rx_buffers[thread_index][n_free_bufs], n_required);
-	  _vec_len (apm->rx_buffers[thread_index]) = n_free_bufs;
+	  vec_set_len (apm->rx_buffers[thread_index], n_free_bufs);
 	}
 
       while (num_pkts && (n_free_bufs >= min_bufs))
@@ -341,7 +341,8 @@ af_packet_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 		  u32 last_empty_buffer =
 		    vec_len (apm->rx_buffers[thread_index]) - 1;
 		  bi0 = apm->rx_buffers[thread_index][last_empty_buffer];
-		  _vec_len (apm->rx_buffers[thread_index]) = last_empty_buffer;
+		  vec_set_len (apm->rx_buffers[thread_index],
+			       last_empty_buffer);
 		  n_free_bufs--;
 
 		  /* copy data */

@@ -714,7 +714,7 @@ serialize_write_not_inline (serialize_main_header_t * m,
 	  n_left_b -= n;
 	  n_left_o -= n;
 	  if (n_left_o == 0)
-	    _vec_len (s->overflow_buffer) = 0;
+	    vec_set_len (s->overflow_buffer, 0);
 	  else
 	    vec_delete (s->overflow_buffer, n, 0);
 	}
@@ -771,7 +771,7 @@ serialize_read_not_inline (serialize_main_header_t * m,
   if (n_left_o == 0 && s->overflow_buffer)
     {
       s->current_overflow_index = 0;
-      _vec_len (s->overflow_buffer) = 0;
+      vec_set_len (s->overflow_buffer, 0);
     }
 
   n_left_to_read = n_bytes_to_read;
@@ -923,7 +923,7 @@ serialize_close_vector (serialize_main_t * m)
   serialize_close (m);		/* frees overflow buffer */
 
   if (s->buffer)
-    _vec_len (s->buffer) = s->current_buffer_index;
+    vec_set_len (s->buffer, s->current_buffer_index);
   result = s->buffer;
   clib_memset (m, 0, sizeof (m[0]));
   return result;
@@ -1161,7 +1161,7 @@ clib_file_write (serialize_main_header_t * m, serialize_stream_t * s)
 	serialize_error (m, clib_error_return_unix (0, "write"));
     }
   if (n == s->current_buffer_index)
-    _vec_len (s->buffer) = 0;
+    vec_set_len (s->buffer, 0);
   else
     vec_delete (s->buffer, n, 0);
   s->current_buffer_index = vec_len (s->buffer);
@@ -1197,7 +1197,7 @@ serialize_open_clib_file_descriptor_helper (serialize_main_t * m, int fd,
   if (!is_read)
     {
       m->stream.n_buffer_bytes = vec_len (m->stream.buffer);
-      _vec_len (m->stream.buffer) = 0;
+      vec_set_len (m->stream.buffer, 0);
     }
 
   m->header.data_function = is_read ? clib_file_read : clib_file_write;

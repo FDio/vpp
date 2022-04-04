@@ -230,7 +230,7 @@ default_socket_write (clib_socket_t * s)
   else if (written > 0)
     {
       if (written == tx_len)
-	_vec_len (s->tx_buffer) = 0;
+	vec_set_len (s->tx_buffer, 0);
       else
 	vec_delete (s->tx_buffer, written, 0);
     }
@@ -278,7 +278,7 @@ default_socket_read (clib_socket_t * sock, int n_bytes)
     sock->flags |= CLIB_SOCKET_F_RX_END_OF_FILE;
 
 non_fatal:
-  _vec_len (sock->rx_buffer) += n_read - n_bytes;
+  vec_inc_len (sock->rx_buffer, n_read - n_bytes);
 
   return 0;
 }

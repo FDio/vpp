@@ -173,7 +173,7 @@ fib_urpf_list_bake (index_t ui)
           if (urpf->furpf_itfs[i] != urpf->furpf_itfs[j])
             urpf->furpf_itfs[++i] = urpf->furpf_itfs[j];
         /* set the length of the vector to the number of unique itfs */
-        _vec_len(urpf->furpf_itfs) = i+1;
+        vec_set_len (urpf->furpf_itfs, i+1);
       }
 
     urpf->furpf_flags |= FIB_URPF_LIST_BAKED;

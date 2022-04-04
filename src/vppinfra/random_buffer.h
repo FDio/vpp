@@ -100,7 +100,7 @@ clib_random_buffer_get_data (clib_random_buffer_t * b, uword n_bytes)
     clib_random_buffer_fill (b, n_words);
 
   i = vec_len (b->buffer) - n_words;
-  _vec_len (b->buffer) = i;
+  vec_set_len (b->buffer, i);
 
   if (n_bytes < sizeof (uword))
     {

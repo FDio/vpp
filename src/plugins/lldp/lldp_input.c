@@ -48,13 +48,13 @@ lldp_rpc_update_peer_cb (const lldp_intf_update_t * a)
 
   if (n->chassis_id)
     {
-      _vec_len (n->chassis_id) = 0;
+      vec_set_len (n->chassis_id, 0);
     }
   vec_add (n->chassis_id, chassis_id, a->chassis_id_len);
   n->chassis_id_subtype = a->chassis_id_subtype;
   if (n->port_id)
     {
-      _vec_len (n->port_id) = 0;
+      vec_set_len (n->port_id, 0);
     }
   vec_add (n->port_id, portid, a->portid_len);
   n->port_id_subtype = a->portid_subtype;

@@ -295,7 +295,7 @@ mhash_set_mem (mhash_t * h, void *key, uword * new_value, uword * old_value)
 	{
 	  i = h->key_vector_free_indices[l - 1];
 	  k = vec_elt_at_index (h->key_vector_or_heap, i);
-	  _vec_len (h->key_vector_free_indices) = l - 1;
+	  vec_set_len (h->key_vector_free_indices, l - 1);
 	}
       else
 	{
@@ -332,10 +332,10 @@ mhash_set_mem (mhash_t * h, void *key, uword * new_value, uword * old_value)
 	  if (key_alloc_from_free_list)
 	    {
 	      h->key_vector_free_indices[l] = i;
-	      _vec_len (h->key_vector_free_indices) = l + 1;
+	      vec_set_len (h->key_vector_free_indices, l + 1);
 	    }
 	  else
-	    _vec_len (h->key_vector_or_heap) -= h->n_key_bytes;
+	    vec_dec_len (h->key_vector_or_heap, h->n_key_bytes);
 	}
     }
 

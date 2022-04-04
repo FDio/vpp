@@ -114,7 +114,7 @@ justify (u8 * s, format_info_t * fi, uword s_len_orig)
     l0 = l1;
 
   if (l1 > l0)
-    _vec_len (s) = l0;
+    vec_set_len (s, l0);
   else if (l0 > l1)
     {
       uword n = l0 - l1;

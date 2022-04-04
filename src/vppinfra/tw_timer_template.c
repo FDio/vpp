@@ -424,7 +424,7 @@ TW (tw_timer_wheel_init) (TWT (tw_timer_wheel) * tw,
   tw->ticks_per_second = 1.0 / timer_interval_in_seconds;
 
   vec_validate (tw->expired_timer_handles, 0);
-  _vec_len (tw->expired_timer_handles) = 0;
+  vec_set_len (tw->expired_timer_handles, 0);
 
   for (ring = 0; ring < TW_TIMER_WHEELS; ring++)
     {
@@ -536,7 +536,7 @@ static inline
 
   if (callback_vector_arg == 0)
     {
-      _vec_len (tw->expired_timer_handles) = 0;
+      vec_set_len (tw->expired_timer_handles, 0);
       callback_vector = tw->expired_timer_handles;
     }
   else

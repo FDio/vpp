@@ -289,7 +289,7 @@ vl_api_memif_dump_t_handler (vl_api_memif_dump_t * mp)
 			vnm, swif, 0);
 
       send_memif_details (reg, mif, swif, if_name, mp->context);
-      _vec_len (if_name) = 0;
+      vec_set_len (if_name, 0);
     }
   /* *INDENT-ON* */
 

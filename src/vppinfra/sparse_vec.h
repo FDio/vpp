@@ -81,7 +81,7 @@ sparse_vec_new (uword elt_bytes, uword sparse_index_bits)
 		    /* heap */ 0);
 
   /* Make space for invalid entry (entry 0). */
-  _vec_len (v) = 1;
+  _vec_find (v)->len = 1;
 
   h = sparse_vec_header (v);
 

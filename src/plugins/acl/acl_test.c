@@ -493,10 +493,10 @@ static int api_acl_add_replace (vat_main_t * vam)
         if (vec_len(tag) >= sizeof(mp->tag))
           {
             tag[sizeof(mp->tag)-1] = 0;
-            _vec_len(tag) = sizeof(mp->tag);
-          }
-        clib_memcpy(mp->tag, tag, vec_len(tag));
-        vec_free(tag);
+	    vec_set_len (tag, sizeof (mp->tag));
+	  }
+	clib_memcpy (mp->tag, tag, vec_len (tag));
+	vec_free (tag);
       }
     mp->acl_index = ntohl(acl_index);
     mp->count = htonl(n_rules);
@@ -1333,10 +1333,10 @@ static int api_macip_acl_add (vat_main_t * vam)
         if (vec_len(tag) >= sizeof(mp->tag))
           {
             tag[sizeof(mp->tag)-1] = 0;
-            _vec_len(tag) = sizeof(mp->tag);
-          }
-        clib_memcpy(mp->tag, tag, vec_len(tag));
-        vec_free(tag);
+	    vec_set_len (tag, sizeof (mp->tag));
+	  }
+	clib_memcpy (mp->tag, tag, vec_len (tag));
+	vec_free (tag);
       }
 
     mp->count = htonl(n_rules);
@@ -1475,10 +1475,10 @@ static int api_macip_acl_add_replace (vat_main_t * vam)
         if (vec_len(tag) >= sizeof(mp->tag))
           {
             tag[sizeof(mp->tag)-1] = 0;
-            _vec_len(tag) = sizeof(mp->tag);
-          }
-        clib_memcpy(mp->tag, tag, vec_len(tag));
-        vec_free(tag);
+	    vec_set_len (tag, sizeof (mp->tag));
+	  }
+	clib_memcpy (mp->tag, tag, vec_len (tag));
+	vec_free (tag);
       }
 
     mp->acl_index = ntohl(acl_index);

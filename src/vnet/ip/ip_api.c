@@ -1237,7 +1237,7 @@ vl_api_ip_dump_t_handler (vl_api_ip_dump_t * mp)
 
   /* Gather interfaces. */
   sorted_sis = vec_new (vnet_sw_interface_t, pool_elts (im->sw_interfaces));
-  _vec_len (sorted_sis) = 0;
+  vec_set_len (sorted_sis, 0);
   /* *INDENT-OFF* */
   pool_foreach (si, im->sw_interfaces)
    {

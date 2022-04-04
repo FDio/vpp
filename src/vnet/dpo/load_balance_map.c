@@ -317,7 +317,7 @@ load_balance_map_fill (load_balance_map_t *lbm)
             bucket += lbmp->lbmp_weight;
         }
     }
-    _vec_len(tmp_buckets) = jj;
+    vec_set_len (tmp_buckets, jj);
 
     /*
      * If the number of temporaries written is as many as we need, implying

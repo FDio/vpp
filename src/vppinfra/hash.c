@@ -342,7 +342,7 @@ unset_indirect (void *v, uword i, hash_pair_t * q)
       else
 	zero_pair (h, q);
       if (is_vec)
-	_vec_len (pi->pairs) -= 1;
+	vec_dec_len (pi->pairs, 1);
       else
 	indirect_pair_set (pi, indirect_pair_get_log2_bytes (pi), len - 1);
     }

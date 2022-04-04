@@ -179,7 +179,7 @@ vl_api_vmxnet3_dump_t_handler (vl_api_vmxnet3_dump_t * mp)
       if_name = format (if_name, "%U%c", format_vnet_sw_interface_name, vnm,
 			swif, 0);
       send_vmxnet3_details (reg, vd, swif, if_name, mp->context);
-      _vec_len (if_name) = 0;
+      vec_set_len (if_name, 0);
     }
   /* *INDENT-ON* */
 
@@ -220,7 +220,7 @@ static void vl_api_sw_vmxnet3_interface_dump_t_handler
 	  if_name = format (if_name, "%U%c", format_vnet_sw_interface_name, vnm,
 			    swif, 0);
 	  send_vmxnet3_details (reg, vd, swif, if_name, mp->context);
-	  _vec_len (if_name) = 0;
+	  vec_set_len (if_name, 0);
 	}
     }
   /* *INDENT-ON* */

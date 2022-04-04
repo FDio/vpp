@@ -545,8 +545,8 @@ vl_map_shmem (const char *region_name, int is_vlib)
   if (strstr (region_name, vpe_api_region_suffix))
     {
       u8 *root_path = format (0, "%s", region_name);
-      _vec_len (root_path) = (vec_len (root_path) -
-			      strlen (vpe_api_region_suffix));
+      vec_set_len (root_path,
+		   vec_len (root_path) - strlen (vpe_api_region_suffix));
       vec_terminate_c_string (root_path);
       a->root_path = (const char *) root_path;
       am->root_path = (const char *) root_path;

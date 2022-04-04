@@ -142,7 +142,7 @@ show_dpdk_physmem (vlib_main_t * vm, unformat_input_t * input,
 	  err = clib_error_return_unix (0, "read");
 	  goto error;
 	}
-      _vec_len (s) = len + (n < 0 ? 0 : n);
+      vec_set_len (s, len + (n < 0 ? 0 : n));
     }
 
   vlib_cli_output (vm, "%v", s);
@@ -198,7 +198,7 @@ test_dpdk_buffer (vlib_main_t * vm, unformat_input_t * input,
 
       first = vec_len (allocated_buffers) - n_free;
       vlib_buffer_free (vm, allocated_buffers + first, n_free);
-      _vec_len (allocated_buffers) = first;
+      vec_set_len (allocated_buffers, first);
     }
   if (n_alloc)
     {
@@ -208,7 +208,7 @@ test_dpdk_buffer (vlib_main_t * vm, unformat_input_t * input,
 
       actual_alloc = vlib_buffer_alloc (vm, allocated_buffers + first,
 					n_alloc);
-      _vec_len (allocated_buffers) = first + actual_alloc;
+      vec_set_len (allocated_buffers, first + actual_alloc);
 
       if (actual_alloc < n_alloc)
 	vlib_cli_output (vm, "WARNING: only allocated %d buffers",

@@ -829,7 +829,7 @@ re_resolve:
   clib_memset (ep, 0, sizeof (*ep));
 
   ep->name = format (0, "%s%c", name, 0);
-  _vec_len (ep->name) = vec_len (ep->name) - 1;
+  vec_set_len (ep->name, vec_len (ep->name) - 1);
 
   hash_set_mem (dm->cache_entry_by_name, ep->name, ep - dm->entries);
 
@@ -988,7 +988,7 @@ found_last_request:
   cname = vnet_dns_labels_to_name (rr->rdata, reply, &pos2);
   /* Save the cname */
   vec_add1 (cname, 0);
-  _vec_len (cname) -= 1;
+  vec_dec_len (cname, 1);
   ep = pool_elt_at_index (dm->entries, ep_index);
   ep->cname = cname;
   ep->flags |= (DNS_CACHE_ENTRY_FLAG_CNAME | DNS_CACHE_ENTRY_FLAG_VALID);
@@ -1007,7 +1007,7 @@ found_last_request:
   clib_memset (next_ep, 0, sizeof (*next_ep));
   next_ep->name = vec_dup (cname);
   vec_add1 (next_ep->name, 0);
-  _vec_len (next_ep->name) -= 1;
+  vec_dec_len (next_ep->name, 1);
 
   hash_set_mem (dm->cache_entry_by_name, next_ep->name,
 		next_ep - dm->entries);
@@ -2611,7 +2611,7 @@ test_dns_expire_command_fn (vlib_main_t * vm,
   if (unformat (input, "%v", &name))
     {
       vec_add1 (name, 0);
-      _vec_len (name) -= 1;
+      vec_dec_len (name, 1);
     }
   else
     return clib_error_return (0, "no name provided");

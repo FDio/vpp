@@ -172,7 +172,7 @@ tuntap_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
       /* Re-set iovecs if present. */
       if (tm->threads[thread_index].iovecs)
-	_vec_len (tm->threads[thread_index].iovecs) = 0;
+	vec_set_len (tm->threads[thread_index].iovecs, 0);
 
       /** VLIB buffer chain -> Unix iovec(s). */
       vec_add2 (tm->threads[thread_index].iovecs, iov, 1);
@@ -260,7 +260,7 @@ tuntap_rx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  vlib_buffer_alloc (vm,
 			     tm->threads[thread_index].rx_buffers + n_left,
 			     VLIB_FRAME_SIZE - n_left);
-	_vec_len (tm->threads[thread_index].rx_buffers) = n_left + n_alloc;
+	vec_set_len (tm->threads[thread_index].rx_buffers, n_left + n_alloc);
       }
   }
 
@@ -324,7 +324,7 @@ tuntap_rx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
        + VNET_INTERFACE_COUNTER_RX,
        thread_index, tm->sw_if_index, 1, n_bytes_in_packet);
 
-    _vec_len (tm->threads[thread_index].rx_buffers) = i_rx;
+    vec_set_len (tm->threads[thread_index].rx_buffers, i_rx);
   }
 
   b = vlib_get_buffer (vm, bi);

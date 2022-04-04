@@ -101,7 +101,7 @@ mheap_get_trace (uword offset, uword size)
       if (i > 0)
 	{
 	  trace_index = tm->trace_free_list[i - 1];
-	  _vec_len (tm->trace_free_list) = i - 1;
+	  vec_set_len (tm->trace_free_list, i - 1);
 	}
       else
 	{
