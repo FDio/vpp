@@ -154,15 +154,6 @@ typedef struct vlib_main_t
   /* Error marker to use when exiting main loop. */
   clib_error_t *main_loop_error;
 
-  /* Start of the heap. */
-  void *heap_base;
-
-  /* Truncated version, to create frame indices */
-  void *heap_aligned_base;
-
-  /* Size of the heap */
-  uword heap_size;
-
   /* buffer main structure. */
   vlib_buffer_main_t *buffer_main;
 
