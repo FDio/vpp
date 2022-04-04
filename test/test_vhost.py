@@ -119,5 +119,33 @@ class TesVhostInterface(VppTestCase):
         events = self.vapi.collect_events()
         self.assert_equal(len(events), 0, "number of events")
 
+    def test_vhost_interface_custom_mac_addr(self):
+        """ Vhost User interface custom mac address test """
+
+        mac_addr = "aa:bb:cc:dd:ee:ff"
+        vhost_if = VppVhostInterface(self,
+                                     sock_filename='/tmp/sock1',
+                                     use_custom_mac=1,
+                                     mac_address=mac_addr)
+
+        # create vhost interface
+        vhost_if.add_vpp_config()
+        self.sleep(0.1)
+
+        # verify mac in the dump
+        if_dump_list = self.vapi.sw_interface_dump(
+            sw_if_index=vhost_if.sw_if_index
+        )
+        self.assert_equal(len(if_dump_list), 1, "if dump length")
+
+        [if_dump] = if_dump_list
+        self.assert_equal(
+            if_dump.l2_address.mac_string, mac_addr, "MAC Address"
+        )
+
+        # delete VirtualEthernet
+        self.logger.info("Deleting VirtualEthernet")
+        vhost_if.remove_vpp_config()
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
