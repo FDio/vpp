@@ -194,6 +194,8 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
       reread_reg = 0;
       goto process_reg;
     }
+  else
+    clib_error_free (error);
 
   error = elf_get_section_by_name (&em, ".vlib_plugin_registration",
 				   &section);
