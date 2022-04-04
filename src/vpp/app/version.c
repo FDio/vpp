@@ -59,7 +59,8 @@ show_vpe_version_command_fn (vlib_main_t * vm,
   int verbose = 0;
   int cmdline = 0;
   int indent = 2;
-  char **argv = (char **) vm->argv;
+  vlib_global_main_t *vgm = vlib_get_global_main ();
+  char **argv = (char **) vgm->argv;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
