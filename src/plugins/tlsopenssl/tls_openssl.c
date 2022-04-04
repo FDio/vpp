@@ -630,12 +630,16 @@ openssl_ctx_read (tls_ctx_t *ctx, session_t *ts)
 }
 
 static int
-openssl_set_ckpair (SSL *ssl_connection, u32 ckpair_index)
+openssl_set_ckpair (SSL *ssl, u32 ckpair_index)
 {
   app_cert_key_pair_t *ckpair;
   BIO *cert_bio;
   EVP_PKEY *pkey;
   X509 *srvcert;
+
+  /* Configure a ckpair index only if non-default/test provided */
+  if (ckpair_index == 0)
+    return 0;
 
   ckpair = app_cert_key_pair_get_if_valid (ckpair_index);
   if (!ckpair)
@@ -657,7 +661,7 @@ openssl_set_ckpair (SSL *ssl_connection, u32 ckpair_index)
       clib_warning ("unable to parse certificate");
       return -1;
     }
-  SSL_use_certificate (ssl_connection, srvcert);
+  SSL_use_certificate (ssl, srvcert);
   BIO_free (cert_bio);
 
   cert_bio = BIO_new (BIO_s_mem ());
@@ -668,19 +672,17 @@ openssl_set_ckpair (SSL *ssl_connection, u32 ckpair_index)
       clib_warning ("unable to parse pkey");
       return -1;
     }
-  SSL_use_PrivateKey (ssl_connection, pkey);
+  SSL_use_PrivateKey (ssl, pkey);
   BIO_free (cert_bio);
   TLS_DBG (1, "TLS client using ckpair index: %d", ckpair_index);
   return 0;
 }
 
 static int
-openssl_ctx_init_verify (tls_ctx_t *ctx, int set_hostname_verification,
-			 int set_hostname_strict_check)
+openssl_client_init_verify (SSL *ssl, const char *srv_hostname,
+			    int set_hostname_verification,
+			    int set_hostname_strict_check)
 {
-  openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
-  SSL *ssl = oc->ssl;
-
   if (set_hostname_verification)
     {
       X509_VERIFY_PARAM *param = SSL_get0_param (ssl);
@@ -694,15 +696,14 @@ openssl_ctx_init_verify (tls_ctx_t *ctx, int set_hostname_verification,
 	X509_VERIFY_PARAM_set_hostflags (param,
 					 X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS);
 
-      if (!X509_VERIFY_PARAM_set1_host (param,
-					(const char *) ctx->srv_hostname, 0))
+      if (!X509_VERIFY_PARAM_set1_host (param, srv_hostname, 0))
 	{
 	  TLS_DBG (1, "Couldn't set hostname for verification");
 	  return -1;
 	}
       SSL_set_verify (ssl, SSL_VERIFY_PEER, 0);
     }
-  if (!SSL_set_tlsext_host_name (ssl, ctx->srv_hostname))
+  if (!SSL_set_tlsext_host_name (ssl, srv_hostname))
     {
       TLS_DBG (1, "Couldn't set hostname");
       return -1;
@@ -771,8 +772,9 @@ openssl_ctx_init_client (tls_ctx_t * ctx)
   SSL_set_bio (oc->ssl, oc->wbio, oc->rbio);
   SSL_set_connect_state (oc->ssl);
 
-  /* Hostname validation and strict check by name, are disable by default */
-  rv = openssl_ctx_init_verify (ctx, 0, 0);
+  /* Hostname validation and strict check by name are disabled by default */
+  rv = openssl_client_init_verify (oc->ssl, (const char *) ctx->srv_hostname,
+				   0, 0);
   if (rv)
     {
       TLS_DBG (1, "ERROR:verify init failed:%d", rv);
