@@ -96,26 +96,26 @@ clib_fifo_reset (void *v)
 }
 
 /* External resize function. */
-void *_clib_fifo_resize (void *v, uword n_elts, uword elt_bytes);
+void *_clib_fifo_resize (void *v, uword n_elts, uword align, uword elt_bytes);
 
-#define clib_fifo_resize(f,n_elts) \
-  f = _clib_fifo_resize ((f), (n_elts), sizeof ((f)[0]))
+#define clib_fifo_resize(f, n_elts)                                           \
+  f = _clib_fifo_resize ((f), (n_elts), _vec_align (f, 0), _vec_elt_sz (f))
 
 always_inline void *
-_clib_fifo_validate (void *v, uword n_elts, uword elt_bytes)
+_clib_fifo_validate (void *v, uword n_elts, uword align, uword elt_bytes)
 {
   if (clib_fifo_free_elts (v) < n_elts)
-    v = _clib_fifo_resize (v, n_elts, elt_bytes);
+    v = _clib_fifo_resize (v, n_elts, align, elt_bytes);
   return v;
 }
 
-#define clib_fifo_validate(f,n_elts) \
-  f = _clib_fifo_validate ((f), (n_elts), sizeof (f[0]))
+#define clib_fifo_validate(f, n_elts)                                         \
+  f = _clib_fifo_validate ((f), (n_elts), _vec_align (f, 0), _vec_elt_sz (f))
 
 /* Advance tail pointer by N_ELTS which can be either positive or negative. */
 always_inline void *
-_clib_fifo_advance_tail (void *v, word n_elts, uword elt_bytes,
-			 uword * tail_return)
+_clib_fifo_advance_tail (void *v, word n_elts, uword align, uword elt_bytes,
+			 uword *tail_return)
 {
   word i, l, n_free;
   clib_fifo_header_t *f;
@@ -123,7 +123,7 @@ _clib_fifo_advance_tail (void *v, word n_elts, uword elt_bytes,
   n_free = clib_fifo_free_elts (v);
   if (n_free < n_elts)
     {
-      v = _clib_fifo_resize (v, n_elts, elt_bytes);
+      v = _clib_fifo_resize (v, n_elts, align, elt_bytes);
       n_free = clib_fifo_free_elts (v);
     }
 
@@ -158,12 +158,13 @@ _clib_fifo_advance_tail (void *v, word n_elts, uword elt_bytes,
   return v;
 }
 
-#define clib_fifo_advance_tail(f,n_elts)				\
-({									\
-  uword _i;								\
-  (f) = _clib_fifo_advance_tail ((f), (n_elts), sizeof ((f)[0]), &_i);	\
-  (f) + _i;								\
-})
+#define clib_fifo_advance_tail(f, n_elts)                                     \
+  ({                                                                          \
+    uword _i;                                                                 \
+    (f) = _clib_fifo_advance_tail ((f), (n_elts), _vec_align (f, 0),          \
+				   _vec_elt_sz (f), &_i);                     \
+    (f) + _i;                                                                 \
+  })
 
 always_inline uword
 clib_fifo_advance_head (void *v, uword n_elts)
@@ -189,36 +190,46 @@ clib_fifo_advance_head (void *v, uword n_elts)
 }
 
 /* Add given element to fifo. */
-#define clib_fifo_add1(f,e)					\
-do {								\
-  uword _i;							\
-  (f) = _clib_fifo_advance_tail ((f), 1, sizeof ((f)[0]), &_i);	\
-  (f)[_i] = (e);						\
-} while (0)
+#define clib_fifo_add1(f, e)                                                  \
+  do                                                                          \
+    {                                                                         \
+      uword _i;                                                               \
+      (f) = _clib_fifo_advance_tail ((f), 1, _vec_align (f, 0),               \
+				     _vec_elt_sz (f), &_i);                   \
+      (f)[_i] = (e);                                                          \
+    }                                                                         \
+  while (0)
 
 /* Add element to fifo; return pointer to new element. */
-#define clib_fifo_add2(f,p)					\
-do {								\
-  uword _i;							\
-  (f) = _clib_fifo_advance_tail ((f), 1, sizeof ((f)[0]), &_i);	\
-  (p) = (f) + _i;						\
-} while (0)
+#define clib_fifo_add2(f, p)                                                  \
+  do                                                                          \
+    {                                                                         \
+      uword _i;                                                               \
+      (f) = _clib_fifo_advance_tail ((f), 1, _vec_align (f, 0),               \
+				     _vec_elt_sz (f), &_i);                   \
+      (p) = (f) + _i;                                                         \
+    }                                                                         \
+  while (0)
 
 /* Add several elements to fifo. */
-#define clib_fifo_add(f,e,n)						\
-do {									\
-  uword _i, _l; word _n0, _n1;						\
-									\
-  _n0 = (n);								\
-  (f) = _clib_fifo_advance_tail ((f), _n0, sizeof ((f)[0]), &_i);	\
-  _l = clib_fifo_len (f);						\
-  _n1 = _i + _n0 - _l;							\
-  _n1 = _n1 < 0 ? 0 : _n1;						\
-  _n0 -= _n1;								\
-  clib_memcpy_fast ((f) + _i, (e), _n0 * sizeof ((f)[0]));		\
-  if (_n1)								\
-    clib_memcpy_fast ((f) + 0, (e) + _n0, _n1 * sizeof ((f)[0]));	\
-} while (0)
+#define clib_fifo_add(f, e, n)                                                \
+  do                                                                          \
+    {                                                                         \
+      uword _i, _l;                                                           \
+      word _n0, _n1;                                                          \
+                                                                              \
+      _n0 = (n);                                                              \
+      (f) = _clib_fifo_advance_tail ((f), _n0, _vec_align (f, 0),             \
+				     _vec_elt_sz (f), &_i);                   \
+      _l = clib_fifo_len (f);                                                 \
+      _n1 = _i + _n0 - _l;                                                    \
+      _n1 = _n1 < 0 ? 0 : _n1;                                                \
+      _n0 -= _n1;                                                             \
+      clib_memcpy_fast ((f) + _i, (e), _n0 * sizeof ((f)[0]));                \
+      if (_n1)                                                                \
+	clib_memcpy_fast ((f) + 0, (e) + _n0, _n1 * sizeof ((f)[0]));         \
+    }                                                                         \
+  while (0)
 
 /* Subtract element from fifo. */
 #define clib_fifo_sub1(f,e)			\

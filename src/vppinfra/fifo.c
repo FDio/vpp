@@ -77,7 +77,7 @@
 */
 
 __clib_export void *
-_clib_fifo_resize (void *v_old, uword n_new_elts, uword elt_bytes)
+_clib_fifo_resize (void *v_old, uword n_new_elts, uword align, uword elt_bytes)
 {
   void *end, *head;
   u8 *v_new = 0;
@@ -92,8 +92,8 @@ _clib_fifo_resize (void *v_old, uword n_new_elts, uword elt_bytes)
   else
     n_new_elts = max_pow2 (n_new_elts);
 
-  vec_alloc_ha (v_new, n_new_elts * elt_bytes, sizeof (clib_fifo_header_t), 0);
-  _vec_len (v_new) = n_new_elts;
+  v_new = _vec_realloc (0, n_new_elts, elt_bytes, sizeof (clib_fifo_header_t),
+			align, 0);
 
   f_new = clib_fifo_header (v_new);
   f_new->head_index = 0;
