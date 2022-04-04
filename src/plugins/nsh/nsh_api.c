@@ -346,7 +346,7 @@ nsh_add_del_map (nsh_add_del_map_args_t * a, u32 * map_indexp)
 	{
 	  nsh_hw_if = nm->free_nsh_tunnel_hw_if_indices
 	    [vec_len (nm->free_nsh_tunnel_hw_if_indices) - 1];
-	  _vec_len (nm->free_nsh_tunnel_hw_if_indices) -= 1;
+	  vec_dec_len (nm->free_nsh_tunnel_hw_if_indices, 1);
 
 	  hi = vnet_get_hw_interface (vnm, nsh_hw_if);
 	  hi->dev_instance = map_index;

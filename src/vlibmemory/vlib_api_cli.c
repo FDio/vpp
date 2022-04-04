@@ -673,7 +673,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	  break;
 	}
 
-      _vec_len (tmpbuf) = 0;
+      vec_set_len (tmpbuf, 0);
       msg += size;
     }
 
@@ -1285,7 +1285,7 @@ extract_name (u8 * s)
   rv = vec_dup (s);
 
   while (vec_len (rv) && rv[vec_len (rv)] != '_')
-    _vec_len (rv)--;
+    vec_dec_len (rv, 0);
 
   rv[vec_len (rv)] = 0;
 

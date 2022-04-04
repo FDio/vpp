@@ -194,8 +194,8 @@ retry:
 	      else
 		{
 		  /* we need to rollback vectors before bailing out */
-		  _vec_len (ptd->buffers) = saved_ptd_buffers_len;
-		  _vec_len (ptd->copy_ops) = saved_ptd_copy_ops_len;
+		  vec_set_len (ptd->buffers, saved_ptd_buffers_len);
+		  vec_set_len (ptd->copy_ops, saved_ptd_copy_ops_len);
 		  vlib_error_count (vm, node->node_index,
 				    MEMIF_TX_ERROR_ROLLBACK, 1);
 		  slot = saved_slot;

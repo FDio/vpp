@@ -125,7 +125,7 @@ vlib_free_trace (vlib_main_t * vm, vlib_buffer_t * b)
   vlib_trace_main_t *tm = &vm->trace_main;
   u32 trace_index = vlib_buffer_get_trace_index (b);
   vlib_validate_trace (tm, b);
-  _vec_len (tm->trace_buffer_pool[trace_index]) = 0;
+  vec_set_len (tm->trace_buffer_pool[trace_index], 0);
   pool_put_index (tm->trace_buffer_pool, trace_index);
 }
 

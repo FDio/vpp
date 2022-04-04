@@ -992,7 +992,7 @@ dhcp6_cp_ip6_address_add_del (u32 sw_if_index, const u8 * prefix_group,
 	  return VNET_API_ERROR_DUPLICATE_IF_ADDRESS;
 	cp_ip6_address_add_del_now (address_info, 0 /* del */ );
 	*address_info = apm->addresses[n - 1];
-	_vec_len (apm->addresses) = n - 1;
+	vec_set_len (apm->addresses, n - 1);
 	return 0;
       }
   }

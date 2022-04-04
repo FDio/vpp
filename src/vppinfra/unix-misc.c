@@ -158,7 +158,7 @@ unix_proc_file_contents (char *file, u8 ** result)
 
       if (bytes == 0)
 	{
-	  _vec_len (rv) = pos;
+	  vec_set_len (rv, pos);
 	  break;
 	}
       pos += bytes;

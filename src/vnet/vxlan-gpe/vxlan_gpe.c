@@ -544,7 +544,7 @@ int vnet_vxlan_gpe_add_del_tunnel
 	  vnet_interface_main_t *im = &vnm->interface_main;
 	  hw_if_index = ngm->free_vxlan_gpe_tunnel_hw_if_indices
 	    [vec_len (ngm->free_vxlan_gpe_tunnel_hw_if_indices) - 1];
-	  _vec_len (ngm->free_vxlan_gpe_tunnel_hw_if_indices) -= 1;
+	  vec_dec_len (ngm->free_vxlan_gpe_tunnel_hw_if_indices, 1);
 
 	  hi = vnet_get_hw_interface (vnm, hw_if_index);
 	  hi->dev_instance = t - ngm->tunnels;

@@ -292,7 +292,7 @@ ip_udp_gtpu_rewrite (gtpu_tunnel_t * t, bool is_ip6)
 
   t->rewrite = r.rw;
   /* Now only support 8-byte gtpu header. TBD */
-  _vec_len (t->rewrite) = sizeof (ip4_gtpu_header_t) - 4;
+  vec_set_len (t->rewrite, sizeof (ip4_gtpu_header_t) - 4);
 
   return;
 }
@@ -419,7 +419,7 @@ int vnet_gtpu_add_mod_del_tunnel
 	  vnet_interface_main_t *im = &vnm->interface_main;
 	  hw_if_index = gtm->free_gtpu_tunnel_hw_if_indices
 	    [vec_len (gtm->free_gtpu_tunnel_hw_if_indices) - 1];
-	  _vec_len (gtm->free_gtpu_tunnel_hw_if_indices) -= 1;
+	  vec_dec_len (gtm->free_gtpu_tunnel_hw_if_indices, 1);
 
 	  hi = vnet_get_hw_interface (vnm, hw_if_index);
 	  hi->dev_instance = t - gtm->tunnels;

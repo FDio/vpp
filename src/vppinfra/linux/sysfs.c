@@ -70,7 +70,7 @@ clib_sysfs_read (char *file_name, char *fmt, ...)
       return clib_error_return_unix (0, "read `%s'", file_name);
     }
 
-  _vec_len (s) = sz;
+  vec_set_len (s, sz);
   unformat_init_vector (&input, s);
 
   va_list va;
@@ -154,7 +154,7 @@ clib_sysfs_set_nr_hugepages (int numa_node, int log2_page_size, int nr)
       goto done;
     }
 
-  _vec_len (p) -= 1;
+  vec_dec_len (p, 1);
   p = format (p, "/hugepages/hugepages-%ukB/nr_hugepages%c", page_size, 0);
   clib_sysfs_write ((char *) p, "%d", nr);
 
@@ -207,7 +207,7 @@ clib_sysfs_get_xxx_hugepages (char *type, int numa_node,
       goto done;
     }
 
-  _vec_len (p) -= 1;
+  vec_dec_len (p, 1);
   p = format (p, "/hugepages/hugepages-%ukB/%s_hugepages%c", page_size,
 	      type, 0);
   error = clib_sysfs_read ((char *) p, "%d", val);

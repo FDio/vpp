@@ -1615,7 +1615,7 @@ ip4_full_reass_walk_expired (vlib_main_t *vm, vlib_node_runtime_t *node,
       vec_free (pool_indexes_to_free);
       if (event_data)
 	{
-	  _vec_len (event_data) = 0;
+	  vec_set_len (event_data, 0);
 	}
     }
 

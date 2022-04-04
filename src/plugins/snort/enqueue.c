@@ -197,7 +197,7 @@ snort_enq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
 
       __atomic_store_n (qp->enq_head, head, __ATOMIC_RELEASE);
-      _vec_len (qp->freelist) = freelist_len;
+      vec_set_len (qp->freelist, freelist_len);
       if (sm->input_mode == VLIB_NODE_STATE_INTERRUPT)
 	{
 	  if (write (qp->enq_fd, &ctr, sizeof (ctr)) < 0)

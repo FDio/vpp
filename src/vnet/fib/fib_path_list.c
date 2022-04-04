@@ -964,8 +964,7 @@ fib_path_list_copy_and_path_add (fib_node_index_t orig_path_list_index,
         }
         if (duplicate)
         {
-            _vec_len(path_list->fpl_paths) =
-                vec_len(path_list->fpl_paths) - 1;
+            vec_set_len(path_list->fpl_paths, vec_len(path_list->fpl_paths) - 1);
             fib_path_destroy(new_path_index);
         }
         else

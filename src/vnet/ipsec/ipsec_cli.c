@@ -652,7 +652,7 @@ ipsec_show_backends_command_fn (vlib_main_t * vm,
   }
   /* *INDENT-ON* */
   vlib_cli_output (vm, "%v", s);
-  _vec_len (s) = 0;
+  vec_set_len (s, 0);
   vlib_cli_output (vm, "IPsec ESP backends available:");
   s = format (s, "%=25s %=25s %=10s\n", "Name", "Index", "Active");
   ipsec_esp_backend_t *eb;

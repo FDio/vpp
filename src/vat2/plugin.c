@@ -165,7 +165,7 @@ vat2_load_plugins (char *path, char *filter, int *loaded)
 		{
 		  res = -1;
 		  vec_free (plugin_name);
-		  _vec_len (plugin_info) = vec_len (plugin_info) - 1;
+		  vec_set_len (plugin_info, vec_len (plugin_info) - 1);
 		  continue;
 		}
 	      clib_memset (pi, 0, sizeof (*pi));

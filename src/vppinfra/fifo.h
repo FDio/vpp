@@ -91,7 +91,7 @@ clib_fifo_reset (void *v)
   if (v)
     {
       f->head_index = f->tail_index = 0;
-      _vec_len (v) = 0;
+      vec_set_len (v, 0);
     }
 }
 

@@ -281,7 +281,7 @@ local_unset_variable_nolock (svmdb_client_t * client,
       if (vec_len (oldvalue->notifications))
 	notify_value (oldvalue, SVMDB_ACTION_UNSET);
       /* zero length value means unset */
-      _vec_len (oldvalue->value) = 0;
+      vec_set_len (oldvalue->value, 0);
     }
   client->shm->namespaces[namespace] = h;
 }
@@ -317,7 +317,7 @@ local_set_variable_nolock (svmdb_client_t * client,
       oldvalue = pool_elt_at_index (client->shm->values, hp->value[0]);
       vec_alloc (oldvalue->value, vec_len (val) * elsize);
       clib_memcpy (oldvalue->value, val, vec_len (val) * elsize);
-      _vec_len (oldvalue->value) = vec_len (val);
+      vec_set_len (oldvalue->value, vec_len (val));
       notify_value (oldvalue, SVMDB_ACTION_SET);
     }
   else
@@ -328,7 +328,7 @@ local_set_variable_nolock (svmdb_client_t * client,
       newvalue->elsize = elsize;
       vec_alloc (newvalue->value, vec_len (val) * elsize);
       clib_memcpy (newvalue->value, val, vec_len (val) * elsize);
-      _vec_len (newvalue->value) = vec_len (val);
+      vec_set_len (newvalue->value, vec_len (val));
       name = format (0, "%s%c", var, 0);
       hash_set_mem (h, name, newvalue - shm->values);
     }
@@ -589,7 +589,7 @@ svmdb_local_get_vec_variable (svmdb_client_t * client, char *var, u32 elsize)
       /* Make a copy in process-local memory */
       vec_alloc (copy, vec_len (rv) * elsize);
       clib_memcpy (copy, rv, vec_len (rv) * elsize);
-      _vec_len (copy) = vec_len (rv);
+      vec_set_len (copy, vec_len (rv));
       region_unlock (client->db_rp);
       return (copy);
     }
@@ -653,7 +653,7 @@ svmdb_local_find_or_add_vec_variable (svmdb_client_t * client,
       clib_memset (newvalue, 0, sizeof (*newvalue));
       newvalue->elsize = 1;
       vec_alloc (newvalue->value, nbytes);
-      _vec_len (newvalue->value) = nbytes;
+      vec_set_len (newvalue->value, nbytes);
       name = format (0, "%s%c", var, 0);
       hash_set_mem (h, name, newvalue - shm->values);
       shm->namespaces[SVMDB_NAMESPACE_VEC] = h;

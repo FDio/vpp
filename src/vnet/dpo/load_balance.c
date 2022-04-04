@@ -408,7 +408,7 @@ ip_multipath_normalize_next_hops (const load_balance_path_t * raw_next_hops,
     {
         nhs[0] = raw_next_hops[0];
         nhs[0].path_weight = 1;
-        _vec_len (nhs) = 1;
+        vec_set_len (nhs, 1);
         sum_weight = 1;
         goto done;
     }
@@ -425,7 +425,7 @@ ip_multipath_normalize_next_hops (const load_balance_path_t * raw_next_hops,
         if (nhs[0].path_weight == nhs[1].path_weight)
         {
             nhs[0].path_weight = nhs[1].path_weight = 1;
-            _vec_len (nhs) = 2;
+            vec_set_len (nhs, 2);
             sum_weight = 2;
             goto done;
         }
@@ -491,7 +491,7 @@ ip_multipath_normalize_next_hops (const load_balance_path_t * raw_next_hops,
         if (error <= multipath_next_hop_error_tolerance*n_adj)
         {
             /* Truncate any next hops with zero weight. */
-            _vec_len (nhs) = i;
+            vec_set_len (nhs, i);
             break;
         }
     }

@@ -248,7 +248,7 @@ ec_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 			conn_indices + vec_len (conn_indices) -
 			  nconns_this_batch,
 			nconns_this_batch * sizeof (u32));
-      _vec_len (conn_indices) -= nconns_this_batch;
+      vec_dec_len (conn_indices, nconns_this_batch);
     }
 
   /*

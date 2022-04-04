@@ -494,7 +494,7 @@ elog_alloc_internal (elog_main_t * em, u32 n_events, int free_ring)
   em->event_ring_size = n_events = max_pow2 (n_events);
 
   vec_validate_aligned (em->event_ring, n_events, CLIB_CACHE_LINE_BYTES);
-  _vec_len (em->event_ring) = n_events;
+  vec_set_len (em->event_ring, n_events);
 }
 
 __clib_export void

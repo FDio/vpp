@@ -176,7 +176,7 @@ api_command_fn (vlib_main_t * vm,
   maybe_register_api_client (vam);
 
   /* vec_validated in the init routine */
-  _vec_len (vam->inbuf) = 0;
+  vec_set_len (vam->inbuf, 0);
 
   vam->input = &_input;
 

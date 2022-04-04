@@ -377,7 +377,7 @@ create_l2tpv3_ipv6_tunnel (l2t_main_t * lm,
     {
       hw_if_index = lm->free_l2tpv3_tunnel_hw_if_indices
 	[vec_len (lm->free_l2tpv3_tunnel_hw_if_indices) - 1];
-      _vec_len (lm->free_l2tpv3_tunnel_hw_if_indices) -= 1;
+      vec_dec_len (lm->free_l2tpv3_tunnel_hw_if_indices, 1);
 
       hi = vnet_get_hw_interface (vnm, hw_if_index);
       hi->dev_instance = s - lm->sessions;

@@ -2519,7 +2519,7 @@ sfifo_test_fifo_segment_mempig (int verbose)
       fifo_segment_free_fifo (sp, f);
     }
 
-  _vec_len (flist) = 0;
+  vec_set_len (flist, 0);
 
   for (i = 0; i < 1000; i++)
     {

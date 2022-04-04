@@ -10628,7 +10628,7 @@ fib_test_sticky (void)
     fib_route_path_t *r_paths2 = NULL;
 
     r_paths2 = vec_dup(r_paths);
-    _vec_len(r_paths2) = 3;
+    vec_set_len (r_paths2, 3);
 
     pl_index = fib_path_list_create(FIB_PATH_LIST_FLAG_SHARED, r_paths2);
     fib_path_list_lock(pl_index);
@@ -10699,7 +10699,7 @@ fib_test_sticky (void)
     fib_route_path_t *r_paths3 = NULL;
 
     r_paths3 = vec_dup(r_paths);
-    _vec_len(r_paths3) = 3;
+    vec_set_len (r_paths3, 3);
 
     r_paths3[0].frp_weight = 3;
 

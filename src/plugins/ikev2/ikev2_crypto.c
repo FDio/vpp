@@ -488,7 +488,7 @@ BN_bn2binpad (const BIGNUM * a, unsigned char *to, int tolen)
     {
       vec_insert (to, pad, 0);
       clib_memset (to, 0, pad);
-      _vec_len (to) -= pad;
+      vec_dec_len (to, pad);
     }
   return tolen;
 }
@@ -553,7 +553,7 @@ ikev2_generate_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
 	    {
 	      vec_insert (sa->dh_shared_key, pad, 0);
 	      clib_memset (sa->dh_shared_key, 0, pad);
-	      _vec_len (sa->dh_shared_key) -= pad;
+	      vec_dec_len (sa->dh_shared_key, pad);
 	    }
 	  BN_clear_free (ex);
 	}
@@ -679,7 +679,7 @@ ikev2_complete_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
 	{
 	  vec_insert (sa->dh_shared_key, pad, 0);
 	  clib_memset (sa->dh_shared_key, 0, pad);
-	  _vec_len (sa->dh_shared_key) -= pad;
+	  vec_dec_len (sa->dh_shared_key, pad);
 	}
       BN_clear_free (ex);
       DH_free (dh);

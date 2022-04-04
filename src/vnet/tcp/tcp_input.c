@@ -594,7 +594,7 @@ tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
 
       tc->burst_acked = 0;
     }
-  _vec_len (wrk->pending_deq_acked) = 0;
+  vec_set_len (wrk->pending_deq_acked, 0);
 }
 
 static void
@@ -1099,7 +1099,7 @@ tcp_handle_disconnects (tcp_worker_ctx_t * wrk)
 	  tcp_disconnect_pending_off (tc);
 	  session_transport_closing_notify (&tc->connection);
 	}
-      _vec_len (wrk->pending_disconnects) = 0;
+      vec_set_len (wrk->pending_disconnects, 0);
     }
 
   if (vec_len (wrk->pending_resets))
@@ -1112,7 +1112,7 @@ tcp_handle_disconnects (tcp_worker_ctx_t * wrk)
 	  tcp_disconnect_pending_off (tc);
 	  tcp_handle_rst (tc);
 	}
-      _vec_len (wrk->pending_resets) = 0;
+      vec_set_len (wrk->pending_resets, 0);
     }
 }
 

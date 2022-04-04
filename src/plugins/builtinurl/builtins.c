@@ -54,7 +54,7 @@ trim_path_from_request (u8 * s, char *path)
 	   * like a c-string.
 	   */
 	  *cp = 0;
-	  _vec_len (s) = cp - s;
+	  vec_set_len (s, cp - s);
 	  break;
 	}
       cp++;

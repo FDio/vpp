@@ -175,7 +175,7 @@ clib_macro_eval (clib_macro_main_t * mm, i8 * s, i32 complain, u16 level,
 	      /* add results to answer */
 	      vec_append (rv, ts);
 	      /* Remove NULL termination or the results are sad */
-	      _vec_len (rv) = vec_len (rv) - 1;
+	      vec_set_len (rv, vec_len (rv) - 1);
 	      vec_free (ts);
 	    }
 	  else
@@ -183,8 +183,7 @@ clib_macro_eval (clib_macro_main_t * mm, i8 * s, i32 complain, u16 level,
 	      if (complain)
 		clib_warning ("Undefined Variable Reference: %s\n", varname);
 	      vec_append (rv, format (0, "UNSET "));
-	      _vec_len (rv) = vec_len (rv) - 1;
-
+	      vec_set_len (rv, vec_len (rv) - 1);
 	    }
 	  vec_free (varname);
 	}

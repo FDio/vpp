@@ -184,7 +184,7 @@ _pool_get (void **pp, void **ep, uword align, int zero, uword elt_sz)
 	  e = p + index * elt_sz;
 	  ph->free_bitmap =
 	    clib_bitmap_andnoti_notrim (ph->free_bitmap, index);
-	  _vec_len (ph->free_indices) = n_free - 1;
+	  vec_set_len (ph->free_indices, n_free - 1);
 	  CLIB_MEM_UNPOISON (e, elt_sz);
 	  goto done;
 	}
@@ -294,7 +294,7 @@ _pool_put_index (void *p, uword index, uword elt_sz)
   if (ph->max_elts)
     {
       ph->free_indices[_vec_len (ph->free_indices)] = index;
-      _vec_len (ph->free_indices) += 1;
+      vec_inc_len (ph->free_indices, 1);
     }
   else
     vec_add1 (ph->free_indices, index);
@@ -321,12 +321,12 @@ _pool_alloc (void **pp, uword n_elts, uword align, void *heap, uword elt_sz)
 
   pp[0] = _vec_realloc_inline (pp[0], len + n_elts, elt_sz,
 			       sizeof (pool_header_t), align, heap);
-  _vec_len (pp[0]) = len;
+  _vec_set_len (pp[0], len, elt_sz);
   CLIB_MEM_POISON (pp[0] + len * elt_sz, n_elts * elt_sz);
 
   ph = pool_header (pp[0]);
   vec_resize (ph->free_indices, n_elts);
-  _vec_len (ph->free_indices) -= n_elts;
+  vec_dec_len (ph->free_indices, n_elts);
   clib_bitmap_vec_validate (ph->free_bitmap, len + n_elts - 1);
 }
 

@@ -272,7 +272,7 @@ trace_apply_filter (vlib_main_t * vm)
   for (index = 0; index < vec_len (traces_to_remove); index++)
     {
       trace_index = traces_to_remove[index] - tm->trace_buffer_pool;
-      _vec_len (tm->trace_buffer_pool[trace_index]) = 0;
+      vec_set_len (tm->trace_buffer_pool[trace_index], 0);
       pool_put_index (tm->trace_buffer_pool, trace_index);
     }
 

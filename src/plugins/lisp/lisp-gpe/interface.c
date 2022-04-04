@@ -429,7 +429,7 @@ lisp_gpe_create_iface (lisp_gpe_main_t * lgm, u32 vni, u32 dp_table,
   if (flen > 0)
     {
       hw_if_index = lgm->free_tunnel_hw_if_indices[flen - 1];
-      _vec_len (lgm->free_tunnel_hw_if_indices) -= 1;
+      vec_dec_len (lgm->free_tunnel_hw_if_indices, 1);
 
       hi = vnet_get_hw_interface (vnm, hw_if_index);
 

@@ -116,21 +116,21 @@ vec_header_end (void *v)
   return v + vec_get_header_size (v);
 }
 
-/** \brief Number of elements in vector (lvalue-capable)
-
-   _vec_len (v) does not check for null, but can be used as an lvalue
-   (e.g. _vec_len (v) = 99).
-*/
-
-#define _vec_len(v)	(_vec_find(v)->len)
-
 /** \brief Number of elements in vector (rvalue-only, NULL tolerant)
 
     vec_len (v) checks for NULL, but cannot be used as an lvalue.
     If in doubt, use vec_len...
 */
 
+static_always_inline u32
+__vec_len (void *v)
+{
+  return _vec_find (v)->len;
+}
+
+#define _vec_len(v)	__vec_len ((void *) (v))
 #define vec_len(v)	((v) ? _vec_len(v) : 0)
+
 u32 vec_len_not_inline (void *v);
 
 /** \brief Number of data bytes in vector. */
@@ -180,10 +180,12 @@ _vec_set_len (void *v, uword len, uword elt_sz)
   else if (len > old_len)
     CLIB_MEM_POISON (v + len * elt_sz, (old_len - len) * elt_sz);
 
-  _vec_len (v) = len;
+  _vec_find (v)->len = len;
 }
 
 #define vec_set_len(v, l) _vec_set_len ((void *) v, l, _vec_elt_sz (v))
+#define vec_inc_len(v, l) vec_set_len (v, _vec_len (v) + (l))
+#define vec_dec_len(v, l) vec_set_len (v, _vec_len (v) - (l))
 
 /** \brief Reset vector length to zero
     NULL-pointer tolerant

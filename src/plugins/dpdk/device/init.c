@@ -921,7 +921,7 @@ dpdk_log_read_ready (clib_file_t * uf)
       n = read (uf->file_descriptor, s + len, n_try);
       if (n < 0 && errno != EAGAIN)
 	return clib_error_return_unix (0, "read");
-      _vec_len (s) = len + (n < 0 ? 0 : n);
+      vec_set_len (s, len + (n < 0 ? 0 : n));
     }
 
   unformat_init_vector (&input, s);
@@ -1254,7 +1254,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
   /* NULL terminate the "argv" vector, in case of stupidity */
   vec_add1 (conf->eal_init_args, 0);
-  _vec_len (conf->eal_init_args) -= 1;
+  vec_dec_len (conf->eal_init_args, 1);
 
   /* Set up DPDK eal and packet mbuf pool early. */
 

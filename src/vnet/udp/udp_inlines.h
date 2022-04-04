@@ -142,7 +142,7 @@ ip_udp_encap_two (vlib_main_t *vm, vlib_buffer_t *b0, vlib_buffer_t *b1,
   udp_header_t *udp0, *udp1;
   int payload_ip4 = (payload_family == AF_IP4);
 
-  ASSERT (_vec_len (ec0) == _vec_len (ec1));
+  ASSERT (vec_len (ec0) == vec_len (ec1));
 
   if (payload_family < N_AF)
     {

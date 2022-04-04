@@ -99,7 +99,7 @@ test_socket_main (unformat_input_t * input)
 	break;
 
       if_verbose ("%v", s->rx_buffer);
-      _vec_len (s->rx_buffer) = 0;
+      vec_set_len (s->rx_buffer, 0);
     }
 
   error = clib_socket_close (s);

@@ -30,7 +30,7 @@ test_bitmap_command_fn (vlib_main_t * vm,
   junk = clib_bitmap_next_clear (bm, 65);
 
   bm2 = clib_bitmap_set_multiple (bm2, 0, ~0ULL, BITS (uword));
-  _vec_len (bm2) = 1;
+  vec_set_len (bm2, 1);
   junk = clib_bitmap_next_clear (bm2, 0);
 
 

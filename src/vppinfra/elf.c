@@ -1975,7 +1975,7 @@ elf_create_section_with_contents (elf_main_t * em,
   if ((p = hash_get_mem (em->section_by_name, section_name)))
     {
       s = vec_elt_at_index (em->sections, p[0]);
-      _vec_len (s->contents) = 0;
+      vec_set_len (s->contents, 0);
       c = s->contents;
     }
   else

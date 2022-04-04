@@ -924,7 +924,8 @@ slow_path:
 						 to_next, n_left_to_next, bi0,
 						 next0);
 	      }
-	      _vec_len (reass->cached_buffers) = 0;	// buffers are owned by frame now
+	      vec_set_len (reass->cached_buffers,
+			   0); // buffers are owned by frame now
 	    }
 	  goto next_packet;
 
@@ -1303,7 +1304,7 @@ ip4_sv_reass_walk_expired (vlib_main_t *vm,
       vec_free (pool_indexes_to_free);
       if (event_data)
 	{
-	  _vec_len (event_data) = 0;
+	  vec_set_len (event_data, 0);
 	}
     }
 

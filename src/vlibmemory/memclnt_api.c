@@ -500,7 +500,7 @@ api_rx_from_node (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (b0->flags & VLIB_BUFFER_NEXT_PRESENT)
 	{
 	  ASSERT (long_msg != 0);
-	  _vec_len (long_msg) = 0;
+	  vec_set_len (long_msg, 0);
 	  vec_add (long_msg, msg, msg_len);
 	  while (b0->flags & VLIB_BUFFER_NEXT_PRESENT)
 	    {

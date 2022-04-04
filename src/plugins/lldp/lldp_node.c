@@ -220,7 +220,7 @@ lldp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 #endif
       if (event_data)
 	{
-	  _vec_len (event_data) = 0;
+	  vec_set_len (event_data, 0);
 	}
     }
 

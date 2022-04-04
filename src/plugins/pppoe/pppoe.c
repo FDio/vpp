@@ -374,7 +374,7 @@ int vnet_pppoe_add_del_session
 	  vnet_interface_main_t *im = &vnm->interface_main;
 	  hw_if_index = pem->free_pppoe_session_hw_if_indices
 	    [vec_len (pem->free_pppoe_session_hw_if_indices) - 1];
-	  _vec_len (pem->free_pppoe_session_hw_if_indices) -= 1;
+	  vec_dec_len (pem->free_pppoe_session_hw_if_indices, 1);
 
 	  hi = vnet_get_hw_interface (vnm, hw_if_index);
 	  hi->dev_instance = t - pem->sessions;

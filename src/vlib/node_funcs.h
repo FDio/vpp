@@ -604,7 +604,7 @@ vlib_process_get_events (vlib_main_t * vm, uword ** data_vector)
   l = _vec_len (p->pending_event_data_by_type_index[t]);
   if (data_vector)
     vec_add (*data_vector, p->pending_event_data_by_type_index[t], l);
-  _vec_len (p->pending_event_data_by_type_index[t]) = 0;
+  vec_set_len (p->pending_event_data_by_type_index[t], 0);
 
   et = pool_elt_at_index (p->event_type_pool, t);
 
@@ -628,7 +628,7 @@ vlib_process_get_events_helper (vlib_process_t * p, uword t,
   l = _vec_len (p->pending_event_data_by_type_index[t]);
   if (data_vector)
     vec_add (*data_vector, p->pending_event_data_by_type_index[t], l);
-  _vec_len (p->pending_event_data_by_type_index[t]) = 0;
+  vec_set_len (p->pending_event_data_by_type_index[t], 0);
 
   vlib_process_maybe_free_event_type (p, t);
 

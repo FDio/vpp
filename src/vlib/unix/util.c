@@ -86,8 +86,8 @@ foreach_directory_file (char *dir_name,
       s = format (s, "%s/%s", dir_name, e->d_name);
       t = format (t, "%s", e->d_name);
       error = f (arg, s, t);
-      _vec_len (s) = 0;
-      _vec_len (t) = 0;
+      vec_set_len (s, 0);
+      vec_set_len (t, 0);
 
       if (error)
 	break;
@@ -116,7 +116,7 @@ vlib_unix_recursive_mkdir (char *path)
 	      error = clib_error_return_unix (0, "mkdir '%s'", c);
 	      goto done;
 	    }
-	  _vec_len (c)--;
+	  vec_dec_len (c, 1);
 	}
       vec_add1 (c, path[i]);
       i++;

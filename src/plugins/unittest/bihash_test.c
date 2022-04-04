@@ -512,7 +512,7 @@ test_bihash_command_fn (vlib_main_t * vm,
   /* Preallocate hash table, key vector */
   tm->key_hash = hash_create (tm->nitems, sizeof (uword));
   vec_validate (tm->keys, tm->nitems - 1);
-  _vec_len (tm->keys) = 0;
+  vec_set_len (tm->keys, 0);
 
   switch (which)
     {

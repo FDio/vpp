@@ -30,7 +30,7 @@ main (int argc, char *argv[])
   clib_mem_init (0, 3ULL << 30);
 
   vec_validate (indices, NELTS - 1);
-  _vec_len (indices) = 0;
+  vec_set_len (indices, 0);
 
   pool_init_fixed (tp, NELTS);
 

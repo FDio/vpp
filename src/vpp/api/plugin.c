@@ -170,7 +170,7 @@ vat_load_new_plugins (plugin_main_t * pm)
 		{
 		  vec_free (file_name);
 		  vec_free (plugin_name);
-		  _vec_len (pm->plugin_info) = vec_len (pm->plugin_info) - 1;
+		  vec_set_len (pm->plugin_info, vec_len (pm->plugin_info) - 1);
 		  continue;
 		}
 	      hash_set_mem (pm->plugin_by_name_hash, plugin_name,

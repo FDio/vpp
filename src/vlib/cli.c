@@ -617,7 +617,7 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 		      vec_add1 (c_error->what, 0);
 		      ed->err = elog_string (vlib_get_elog_main (),
 					     (char *) c_error->what);
-		      _vec_len (c_error->what) -= 1;
+		      vec_dec_len (c_error->what, 1);
 		    }
 		  else
 		    ed->err = elog_string (vlib_get_elog_main (), "OK");
@@ -1179,7 +1179,7 @@ vlib_cli_normalize_path (char *input, char **result)
 
   /* Remove any extra space at end. */
   if (l > 0 && s[l - 1] == ' ')
-    _vec_len (s) -= 1;
+    vec_dec_len (s, 1);
 
   *result = s;
   return index_of_last_space;

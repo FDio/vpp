@@ -188,8 +188,7 @@ acl_fa_check_idle_sessions (acl_main_t * am, u16 thread_index, u64 now)
       }
   }
   if (pw->wip_session_change_requests)
-    _vec_len (pw->wip_session_change_requests) = 0;
-
+    vec_set_len (pw->wip_session_change_requests, 0);
 
   {
     u8 tt = 0;
@@ -309,7 +308,7 @@ acl_fa_check_idle_sessions (acl_main_t * am, u16 thread_index, u64 now)
   total_expired = vec_len (pw->expired);
   /* zero out the vector which we have acted on */
   if (pw->expired)
-    _vec_len (pw->expired) = 0;
+    vec_set_len (pw->expired, 0);
   /* if we were advancing and reached the end
    * (no more sessions to recycle), reset the fast-forward timestamp */
 
@@ -788,7 +787,7 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
       send_interrupts_to_workers (vm, am);
 
       if (event_data)
-	_vec_len (event_data) = 0;
+	vec_set_len (event_data, 0);
 
       /*
        * If the interrupts were not processed yet, ensure we wait a bit,

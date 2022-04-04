@@ -1427,7 +1427,7 @@ unformat_classify_mask (unformat_input_t * input, va_list * args)
       if (match == 0)
 	clib_warning ("BUG: match 0");
 
-      _vec_len (mask) = match * sizeof (u32x4);
+      vec_set_len (mask, match * sizeof (u32x4));
 
       *matchp = match;
       *maskp = mask;
@@ -1994,7 +1994,7 @@ api_unformat_classify_match (unformat_input_t * input, va_list * args)
 	 sizeof (u32x4));
 
       /* Set size, include skipped vectors */
-      _vec_len (match) = (match_n_vectors + skip_n_vectors) * sizeof (u32x4);
+      vec_set_len (match, (match_n_vectors + skip_n_vectors) * sizeof (u32x4));
 
       *matchp = match;
 
