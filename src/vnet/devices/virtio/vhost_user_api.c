@@ -168,6 +168,7 @@ vl_api_create_vhost_user_if_v2_t_handler (vl_api_create_vhost_user_if_v2_t *
   if (mp->use_custom_mac)
     mac_address_decode (mp->mac_address, (mac_address_t *) args.hwaddr);
 
+  args.use_custom_mac = mp->use_custom_mac;
   args.is_server = mp->is_server;
   args.sock_filename = (char *) mp->sock_filename;
   args.renumber = mp->renumber;
