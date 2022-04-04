@@ -30,7 +30,7 @@ static inline void
 session_wrk_send_evt_to_main (session_worker_t *wrk, session_evt_elt_t *elt)
 {
   session_evt_elt_t *he;
-  u32 thread_index;
+  uword thread_index;
   u8 is_empty;
 
   thread_index = wrk->vm->thread_index;
@@ -38,8 +38,8 @@ session_wrk_send_evt_to_main (session_worker_t *wrk, session_evt_elt_t *elt)
   is_empty = clib_llist_is_empty (wrk->event_elts, evt_list, he);
   clib_llist_add_tail (wrk->event_elts, evt_list, elt, he);
   if (is_empty)
-    vlib_rpc_call_main_thread (session_wrk_handle_evts_main_rpc,
-			       (u8 *) &thread_index, sizeof (thread_index));
+    session_send_rpc_evt_to_thread (0, session_wrk_handle_evts_main_rpc,
+				    uword_to_pointer (thread_index, void *));
 }
 
 #define app_check_thread_and_barrier(_wrk, _elt)                              \
@@ -777,11 +777,13 @@ void
 session_wrk_handle_evts_main_rpc (void *args)
 {
   session_evt_elt_t *he, *elt, *next;
+  vlib_main_t *vm = vlib_get_main ();
   session_worker_t *fwrk;
   u32 thread_index;
 
-  ASSERT (vlib_thread_is_main_w_barrier ());
-  thread_index = *(u32 *) args;
+  vlib_worker_thread_barrier_sync (vm);
+
+  thread_index = pointer_to_uword (args);
   fwrk = session_main_get_worker (thread_index);
 
   he = clib_llist_elt (fwrk->event_elts, fwrk->evts_pending_main);
@@ -817,6 +819,8 @@ session_wrk_handle_evts_main_rpc (void *args)
       clib_llist_put (fwrk->event_elts, elt);
       elt = next;
     }
+
+  vlib_worker_thread_barrier_release (vm);
 }
 
 vlib_node_registration_t session_queue_node;
