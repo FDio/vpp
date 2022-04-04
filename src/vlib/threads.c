@@ -638,10 +638,6 @@ start_workers (vlib_main_t * vm)
 			   sizeof (*vm_clone));
 
 	      vm_clone->thread_index = worker_thread_index;
-	      vm_clone->heap_base = w->thread_mheap;
-	      vm_clone->heap_aligned_base =
-		(void *) (((uword) w->thread_mheap) &
-			  ~(CLIB_CACHE_LINE_BYTES - 1));
 	      vm_clone->pending_rpc_requests = 0;
 	      vec_validate (vm_clone->pending_rpc_requests, 0);
 	      _vec_len (vm_clone->pending_rpc_requests) = 0;

@@ -708,10 +708,6 @@ vlib_unix_main (int argc, char *argv[])
     vgm->exec_path = vgm->name = argv[0];
 
   vgm->argv = (u8 **) argv;
-  vm->heap_base = clib_mem_get_heap ();
-  vm->heap_aligned_base =
-    (void *) (((uword) vm->heap_base) & ~(CLIB_CACHE_LINE_BYTES - 1));
-  ASSERT (vm->heap_base);
 
   clib_time_init (&vm->clib_time);
 
