@@ -1097,7 +1097,7 @@ restart_cmd_fn (vlib_main_t * vm, unformat_input_t * input,
   /* *INDENT-ON* */
 
   /* Exec ourself */
-  execve (vgm->name, (char **) vm->argv, environ);
+  execve (vgm->name, (char **) vgm->argv, environ);
 
   return 0;
 }

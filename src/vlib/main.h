@@ -220,7 +220,6 @@ typedef struct vlib_main_t
   volatile u32 queue_signal_pending;
   volatile u32 api_queue_nonempty;
   void (*queue_signal_callback) (struct vlib_main_t *);
-  u8 **argv;
 
   /* Top of (worker) dispatch loop callback */
   void (**volatile worker_thread_main_loop_callbacks)
@@ -282,6 +281,12 @@ typedef struct vlib_global_main_t
 
   /* Name for e.g. syslog. */
   char *name;
+
+  /* full path to main executable */
+  char *exec_path;
+
+  /* command line arguments */
+  u8 **argv;
 
   /* post-mortem callbacks */
   void (**post_mortem_callbacks) (void);
