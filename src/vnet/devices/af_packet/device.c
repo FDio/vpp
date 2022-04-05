@@ -95,6 +95,8 @@ format_af_packet_device (u8 * s, va_list * args)
   s = format (s, "\n%UFEATURES:", format_white_space, indent);
   if (apif->is_qdisc_bypass_enabled)
     s = format (s, "\n%Uqdisc-bpass-enabled", format_white_space, indent + 2);
+  if (apif->is_cksum_gso_enabled)
+    s = format (s, "\n%Ucksum-gso-enabled", format_white_space, indent + 2);
 
   vec_foreach (rx_queue, apif->rx_queues)
     {
