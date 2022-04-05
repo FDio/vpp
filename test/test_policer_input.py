@@ -3,6 +3,7 @@
 
 import unittest
 import scapy.compat
+from enum import Enum
 from scapy.layers.inet import IP, UDP
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
@@ -12,9 +13,12 @@ from vpp_policer import VppPolicer, PolicerAction
 
 NUM_PKTS = 67
 
+class Dir(Enum):
+    RX = 0
+    TX = 1
 
 class TestPolicerInput(VppTestCase):
-    """ Policer on an input interface """
+    """ Policer on an interface """
     vpp_worker_count = 2
 
     def setUp(self):
@@ -38,8 +42,7 @@ class TestPolicerInput(VppTestCase):
             i.admin_down()
         super(TestPolicerInput, self).tearDown()
 
-    def test_policer_input(self):
-        """ Input Policing """
+    def policer_interface_test(self, dir: Dir):
         pkts = self.pkt * NUM_PKTS
 
         action_tx = PolicerAction(
@@ -52,7 +55,10 @@ class TestPolicerInput(VppTestCase):
         policer.add_vpp_config()
 
         # Start policing on pg0
-        policer.apply_vpp_config(self.pg0.sw_if_index, True)
+        if dir == Dir.RX:
+            policer.apply_vpp_config_input(self.pg0.sw_if_index, True)
+        else:
+            policer.apply_vpp_config_output(self.pg1.sw_if_index, True)
 
         rx = self.send_and_expect(self.pg0, pkts, self.pg1, worker=0)
         stats = policer.get_stats()
@@ -63,7 +69,10 @@ class TestPolicerInput(VppTestCase):
         self.assertGreater(stats['violate_packets'], 0)
 
         # Stop policing on pg0
-        policer.apply_vpp_config(self.pg0.sw_if_index, False)
+        if dir == Dir.RX:
+            policer.apply_vpp_config_input(self.pg0.sw_if_index, False)
+        else:
+            policer.apply_vpp_config_output(self.pg1.sw_if_index, False)
 
         rx = self.send_and_expect(self.pg0, pkts, self.pg1, worker=0)
 
@@ -74,8 +83,15 @@ class TestPolicerInput(VppTestCase):
 
         policer.remove_vpp_config()
 
-    def test_policer_handoff(self):
-        """ Worker thread handoff """
+    def test_policer_input(self):
+        """ Input Policing """
+        self.policer_interface_test(Dir.RX)
+
+    def test_policer_output(self):
+        """ Output Policing """
+        self.policer_interface_test(Dir.TX)
+
+    def policer_handoff_test(self, dir: Dir):
         pkts = self.pkt * NUM_PKTS
 
         action_tx = PolicerAction(
@@ -91,7 +107,10 @@ class TestPolicerInput(VppTestCase):
         policer.bind_vpp_config(1, True)
 
         # Start policing on pg0
-        policer.apply_vpp_config(self.pg0.sw_if_index, True)
+        if dir == Dir.RX:
+            policer.apply_vpp_config_input(self.pg0.sw_if_index, True)
+        else:
+            policer.apply_vpp_config_output(self.pg1.sw_if_index, True)
 
         for worker in [0, 1]:
             self.send_and_expect(self.pg0, pkts, self.pg1, worker=worker)
@@ -138,9 +157,20 @@ class TestPolicerInput(VppTestCase):
                          stats['violate_packets'])
 
         # Stop policing on pg0
-        policer.apply_vpp_config(self.pg0.sw_if_index, False)
+        if dir == Dir.RX:
+            policer.apply_vpp_config_input(self.pg0.sw_if_index, False)
+        else:
+            policer.apply_vpp_config_output(self.pg1.sw_if_index, False)
 
         policer.remove_vpp_config()
+
+    def test_policer_handoff_input(self):
+        """ Worker thread handoff policer input"""
+        self.policer_handoff_test(Dir.RX)
+
+    def test_policer_handoff_output(self):
+        """ Worker thread handoff policer output"""
+        self.policer_handoff_test(Dir.TX)
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

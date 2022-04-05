@@ -120,11 +120,35 @@ vl_api_policer_input_t_handler (vl_api_policer_input_t *mp)
   sw_if_index = ntohl (mp->sw_if_index);
   apply = mp->apply;
 
-  rv = policer_input (name, sw_if_index, apply);
+  rv = policer_input (name, sw_if_index, VLIB_RX, apply);
   vec_free (name);
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_POLICER_INPUT_REPLY);
+}
+
+static void
+vl_api_policer_output_t_handler (vl_api_policer_input_t *mp)
+{
+  vl_api_policer_bind_reply_t *rmp;
+  u8 *name;
+  u32 sw_if_index;
+  u8 apply;
+  int rv;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  name = format (0, "%s", mp->name);
+  vec_terminate_c_string (name);
+
+  sw_if_index = ntohl (mp->sw_if_index);
+  apply = mp->apply;
+
+  rv = policer_input (name, sw_if_index, VLIB_TX, apply);
+  vec_free (name);
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_POLICER_OUTPUT_REPLY);
 }
 
 static void
