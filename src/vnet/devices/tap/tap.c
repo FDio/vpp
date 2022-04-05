@@ -334,10 +334,10 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 	  args->error = clib_error_return_unix (0, "open '/dev/net/tun'");
 	  goto error;
 	}
+      vec_add1 (vif->tap_fds, qfd);
       _IOCTL (qfd, TUNSETIFF, (void *) &ifr);
       tap_log_dbg (vif, "TUNSETIFF fd %d name %s flags 0x%x", qfd,
 		   ifr.ifr_ifrn.ifrn_name, ifr.ifr_flags);
-      vec_add1 (vif->tap_fds, qfd);
     }
 
   for (i = 0; i < vif->num_rxqs; i++)
