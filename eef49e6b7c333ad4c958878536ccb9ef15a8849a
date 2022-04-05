@@ -125,6 +125,24 @@
     },
     {
       "key": {
+        "uuid": "bf15d7d2_256f5186",
+        "filename": "src/vlib/dma/dma.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 205,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-04-05T14:28:54Z",
+      "side": 1,
+      "message": "queue logic is device specific and it should not be here...",
+      "parentUuid": "3b5d8aba_2fc26ccc",
+      "revId": "eef49e6b7c333ad4c958878536ccb9ef15a8849a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ee8b5725_5b16fac6",
         "filename": "src/vlib/dma/dma.h",
         "patchSetId": 2
@@ -207,6 +225,24 @@
       "side": 1,
       "message": "Done",
       "parentUuid": "308eba66_b29abd5c",
+      "revId": "eef49e6b7c333ad4c958878536ccb9ef15a8849a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da7b30c9_618a6ebc",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 187,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-04-05T14:28:54Z",
+      "side": 1,
+      "message": "I don\u0027t understand this answer.",
+      "parentUuid": "a47c59e2_95e9573f",
       "revId": "eef49e6b7c333ad4c958878536ccb9ef15a8849a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
