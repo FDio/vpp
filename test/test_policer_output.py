@@ -13,12 +13,12 @@ from vpp_policer import VppPolicer, PolicerAction
 NUM_PKTS = 67
 
 
-class TestPolicerInput(VppTestCase):
-    """ Policer on an input interface """
+class TestPolicerOutput(VppTestCase):
+    """ Policer on an output interface """
     vpp_worker_count = 2
 
     def setUp(self):
-        super(TestPolicerInput, self).setUp()
+        super(TestPolicerOutput, self).setUp()
 
         self.create_pg_interfaces(range(2))
         for i in self.pg_interfaces:
@@ -36,10 +36,10 @@ class TestPolicerInput(VppTestCase):
         for i in self.pg_interfaces:
             i.unconfig_ip4()
             i.admin_down()
-        super(TestPolicerInput, self).tearDown()
+        super(TestPolicerOutput, self).tearDown()
 
-    def test_policer_input(self):
-        """ Input Policing """
+    def test_policer_output(self):
+        """ Output Policing """
         pkts = self.pkt * NUM_PKTS
 
         action_tx = PolicerAction(
@@ -52,7 +52,7 @@ class TestPolicerInput(VppTestCase):
         policer.add_vpp_config()
 
         # Start policing on pg0
-        policer.apply_vpp_config_input(self.pg0.sw_if_index, True)
+        policer.apply_vpp_config_output(self.pg1.sw_if_index, True)
 
         rx = self.send_and_expect(self.pg0, pkts, self.pg1, worker=0)
         stats = policer.get_stats()
@@ -63,7 +63,7 @@ class TestPolicerInput(VppTestCase):
         self.assertGreater(stats['violate_packets'], 0)
 
         # Stop policing on pg0
-        policer.apply_vpp_config_input(self.pg0.sw_if_index, False)
+        policer.apply_vpp_config_output(self.pg1.sw_if_index, False)
 
         rx = self.send_and_expect(self.pg0, pkts, self.pg1, worker=0)
 
@@ -91,7 +91,7 @@ class TestPolicerInput(VppTestCase):
         policer.bind_vpp_config(1, True)
 
         # Start policing on pg0
-        policer.apply_vpp_config_input(self.pg0.sw_if_index, True)
+        policer.apply_vpp_config_output(self.pg1.sw_if_index, True)
 
         for worker in [0, 1]:
             self.send_and_expect(self.pg0, pkts, self.pg1, worker=worker)
@@ -138,7 +138,7 @@ class TestPolicerInput(VppTestCase):
                          stats['violate_packets'])
 
         # Stop policing on pg0
-        policer.apply_vpp_config_input(self.pg0.sw_if_index, False)
+        policer.apply_vpp_config_output(self.pg1.sw_if_index, False)
 
         policer.remove_vpp_config()
 

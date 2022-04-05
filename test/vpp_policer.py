@@ -61,8 +61,12 @@ class VppPolicer(VppObject):
         self._test.vapi.policer_bind(name=self.name, worker_index=worker,
                                      bind_enable=bind)
 
-    def apply_vpp_config(self, if_index, apply):
+    def apply_vpp_config_input(self, if_index, apply):
         self._test.vapi.policer_input(name=self.name, sw_if_index=if_index,
+                                      apply=apply)
+
+    def apply_vpp_config_output(self, if_index, apply):
+        self._test.vapi.policer_output(name=self.name, sw_if_index=if_index,
                                       apply=apply)
 
     def query_vpp_config(self):

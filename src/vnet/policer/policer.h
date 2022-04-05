@@ -39,7 +39,8 @@ typedef struct
   uword *policer_index_by_name;
 
   /* Policer by sw_if_index vector */
-  u32 *policer_index_by_sw_if_index;
+  u32 *policer_index_by_sw_if_index_rx;
+  u32 *policer_index_by_sw_if_index_tx;
 
   /* convenience */
   vlib_main_t *vlib_main;
@@ -48,7 +49,8 @@ typedef struct
   vlib_log_class_t log_class;
 
   /* frame queue for thread handoff */
-  u32 fq_index;
+  u32 fq_index_rx;
+  u32 fq_index_tx;
 
   u16 msg_id_base;
 } vnet_policer_main_t;
@@ -58,6 +60,7 @@ extern vnet_policer_main_t vnet_policer_main;
 extern vlib_combined_counter_main_t policer_counters[];
 
 extern vlib_node_registration_t policer_input_node;
+extern vlib_node_registration_t policer_output_node;
 
 typedef enum
 {
@@ -71,7 +74,7 @@ clib_error_t *policer_add_del (vlib_main_t *vm, u8 *name,
 			       qos_pol_cfg_params_st *cfg, u32 *policer_index,
 			       u8 is_add);
 int policer_bind_worker (u8 *name, u32 worker, bool bind);
-int policer_input (u8 *name, u32 sw_if_index, bool apply);
+int policer_input (u8 *name, u32 sw_if_index, u8 is_output, bool apply);
 
 #endif /* __included_policer_h__ */
 
