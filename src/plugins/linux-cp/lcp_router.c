@@ -265,7 +265,7 @@ lcp_router_link_mtu (struct rtnl_link *rl, u32 sw_if_index)
   hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
 
   /* If HW interface, try to change hw link */
-  if ((sw->type == sw->sup_sw_if_index) &&
+  if ((sw->sw_if_index == sw->sup_sw_if_index) &&
       (hw->hw_class_index == ethernet_hw_interface_class.index))
     vnet_hw_interface_set_mtu (vnm, hw->hw_if_index, mtu);
   else
