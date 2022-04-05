@@ -149,7 +149,8 @@ _vec_realloc_inline (void *v, uword n_elts, uword elt_sz, uword hdr_sz,
       ASSERT (clib_mem_heap_is_heap_object (vec_get_heap (v), vec_header (v)));
 
       /* Typically we'll not need to resize. */
-      if ((n_elts * elt_sz) <= vec_max_bytes (v))
+      if (n_elts <= _vec_len (v) + _vec_find (v)->grow_elts ||
+	  (n_elts * elt_sz) <= vec_max_bytes (v))
 	{
 	  _vec_set_len (v, n_elts, elt_sz);
 	  return v;
