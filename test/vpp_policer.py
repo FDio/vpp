@@ -1,5 +1,11 @@
 from vpp_object import VppObject
 from vpp_ip import INVALID_INDEX
+from enum import Enum
+
+
+class Dir(Enum):
+    RX = 0
+    TX = 1
 
 
 class PolicerAction():
@@ -61,9 +67,13 @@ class VppPolicer(VppObject):
         self._test.vapi.policer_bind(name=self.name, worker_index=worker,
                                      bind_enable=bind)
 
-    def apply_vpp_config(self, if_index, apply):
-        self._test.vapi.policer_input(name=self.name, sw_if_index=if_index,
-                                      apply=apply)
+    def apply_vpp_config(self, if_index, dir: Dir, apply):
+        if dir == Dir.RX:
+            self._test.vapi.policer_input(name=self.name, sw_if_index=if_index,
+                                          apply=apply)
+        else:
+            self._test.vapi.policer_output(name=self.name, sw_if_index=if_index,
+                                           apply=apply)
 
     def query_vpp_config(self):
         dump = self._test.vapi.policer_dump(
