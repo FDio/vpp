@@ -32,6 +32,11 @@ typedef enum
   AF_PACKET_IF_MODE_IP = 2
 } af_packet_if_mode_t;
 
+typedef enum
+{
+  AF_PACKET_IF_FLAGS_QDISC_BYPASS = 1,
+} af_packet_if_flags_t;
+
 typedef struct
 {
   u32 sw_if_index;
@@ -101,6 +106,7 @@ typedef struct
   u32 dev_instance;
 
   af_packet_ring_t *rings;
+  u8 is_qdisc_bypass_enabled;
 } af_packet_if_t;
 
 typedef struct
@@ -129,6 +135,7 @@ typedef struct
   u8 num_rxqs;
   u8 num_txqs;
   af_packet_if_mode_t mode;
+  af_packet_if_flags_t flags;
 
   /* return */
   u32 sw_if_index;
