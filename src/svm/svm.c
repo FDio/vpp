@@ -327,7 +327,7 @@ svm_data_region_create (svm_map_region_args_t * a, svm_region_t * rp)
 	  return -3;
 	}
       close (fd);
-      CLIB_MEM_UNPOISON (rp->data_base, map_size);
+      clib_mem_unpoison (rp->data_base, map_size);
       rp->backing_file = (char *) format (0, "%s%c", a->backing_file, 0);
       rp->flags |= SVM_FLAGS_FILE;
     }
@@ -412,7 +412,7 @@ svm_data_region_map (svm_map_region_args_t * a, svm_region_t * rp)
 	  return -3;
 	}
       close (fd);
-      CLIB_MEM_UNPOISON (rp->data_base, map_size);
+      clib_mem_unpoison (rp->data_base, map_size);
     }
   return 0;
 }
@@ -605,7 +605,7 @@ svm_map_region (svm_map_region_args_t * a)
 	  return (0);
 	}
       close (svm_fd);
-      CLIB_MEM_UNPOISON (rp, a->size);
+      clib_mem_unpoison (rp, a->size);
 
       svm_region_init_mapped_region (a, rp);
 
@@ -663,7 +663,7 @@ svm_map_region (svm_map_region_args_t * a)
 	  return (0);
 	}
 
-      CLIB_MEM_UNPOISON (rp, MMAP_PAGESIZE);
+      clib_mem_unpoison (rp, MMAP_PAGESIZE);
 
       /*
        * We lost the footrace to create this region; make sure
@@ -701,7 +701,7 @@ svm_map_region (svm_map_region_args_t * a)
 
       close (svm_fd);
 
-      CLIB_MEM_UNPOISON (rp, a->size);
+      clib_mem_unpoison (rp, a->size);
 
       if ((uword) rp != rp->virtual_base)
 	{
@@ -1051,7 +1051,7 @@ svm_region_unmap_internal (void *rp_arg, u8 is_client)
   oldheap = svm_push_pvt_heap (rp);	/* nb vec_delete() in the loop */
 
   /* Remove the caller from the list of mappers */
-  CLIB_MEM_UNPOISON (rp->client_pids, vec_bytes (rp->client_pids));
+  clib_mem_unpoison (rp->client_pids, vec_bytes (rp->client_pids));
   for (i = 0; i < vec_len (rp->client_pids); i++)
     {
       if (rp->client_pids[i] == mypid)
@@ -1184,7 +1184,7 @@ svm_region_exit_internal (u8 is_client)
   virtual_base = root_rp->virtual_base;
   virtual_size = root_rp->virtual_size;
 
-  CLIB_MEM_UNPOISON (root_rp->client_pids, vec_bytes (root_rp->client_pids));
+  clib_mem_unpoison (root_rp->client_pids, vec_bytes (root_rp->client_pids));
   for (i = 0; i < vec_len (root_rp->client_pids); i++)
     {
       if (root_rp->client_pids[i] == mypid)

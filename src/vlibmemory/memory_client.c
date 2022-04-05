@@ -114,11 +114,11 @@ vl_api_name_and_crc_free (void)
   hash_free (am->msg_index_by_name_and_crc);
 }
 
-CLIB_NOSANITIZE_ADDR static void
+__clib_nosanitize_addr static void
 VL_API_VEC_UNPOISON (const void *v)
 {
   const vec_header_t *vh = &((vec_header_t *) v)[-1];
-  CLIB_MEM_UNPOISON (vh, sizeof (*vh) + vec_len (v));
+  clib_mem_unpoison (vh, sizeof (*vh) + vec_len (v));
 }
 
 static void
@@ -192,7 +192,7 @@ vl_client_connect (const char *name, int ctx_quota, int input_queue_size)
       return -1;
     }
 
-  CLIB_MEM_UNPOISON (shmem_hdr, sizeof (*shmem_hdr));
+  clib_mem_unpoison (shmem_hdr, sizeof (*shmem_hdr));
   VL_MSG_API_SVM_QUEUE_UNPOISON (shmem_hdr->vl_input_queue);
 
   oldheap = vl_msg_push_heap ();

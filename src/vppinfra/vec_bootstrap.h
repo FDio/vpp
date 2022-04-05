@@ -85,7 +85,7 @@ always_inline uword __vec_elt_sz (uword elt_sz, int is_void);
 #define _vec_elt_sz(V)	 __vec_elt_sz (sizeof ((V)[0]), _vec_is_void (V))
 #define _vec_align(V, A) __vec_align (__alignof__((V)[0]), A)
 
-always_inline CLIB_NOSANITIZE_ADDR uword
+always_inline __clib_nosanitize_addr uword
 vec_get_header_size (void *v)
 {
   uword header_size = _vec_find (v)->hdr_size * VEC_MIN_ALIGN;
@@ -176,9 +176,9 @@ _vec_set_len (void *v, uword len, uword elt_sz)
   uword old_len = _vec_len (v);
 
   if (len > old_len)
-    CLIB_MEM_UNPOISON (v + old_len * elt_sz, (len - old_len) * elt_sz);
+    clib_mem_unpoison (v + old_len * elt_sz, (len - old_len) * elt_sz);
   else if (len > old_len)
-    CLIB_MEM_POISON (v + len * elt_sz, (old_len - len) * elt_sz);
+    clib_mem_poison (v + len * elt_sz, (old_len - len) * elt_sz);
 
   _vec_find (v)->len = len;
 }

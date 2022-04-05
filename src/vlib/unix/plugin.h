@@ -58,6 +58,7 @@
 
 typedef struct
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u8 default_disabled : 1;
   u8 deep_bind : 1;
   const char version[32];
@@ -65,7 +66,7 @@ typedef struct
   const char overrides[256];
   const char *early_init;
   const char *description;
-} __clib_packed vlib_plugin_registration_t;
+} vlib_plugin_registration_t;
 
 /*
  * Plugins may also use this registration format, which is
@@ -150,7 +151,6 @@ u8 *vlib_get_vat_plugin_path (void);
 
 #define VLIB_PLUGIN_REGISTER() \
   vlib_plugin_registration_t vlib_plugin_registration \
-  CLIB_NOSANITIZE_PLUGIN_REG_SECTION \
   __clib_export __clib_section(".vlib_plugin_registration")
 
 /* Call a plugin init function: used for init function dependencies. */

@@ -47,7 +47,9 @@
 
 #include <vppinfra/os.h>
 #include <vppinfra/string.h>	/* memcpy, clib_memset */
-#include <vppinfra/sanitizer.h>
+#ifdef CLIB_SANITIZE_ADDR
+#include <sanitizer/asan_interface.h>
+#endif
 
 #define CLIB_MAX_MHEAPS 256
 #define CLIB_MAX_NUMAS 16
@@ -162,6 +164,22 @@ extern clib_mem_main_t clib_mem_main;
 
 /* Unspecified NUMA socket */
 #define VEC_NUMA_UNSPECIFIED (0xFF)
+
+static_always_inline void
+clib_mem_poison (const void volatile *p, uword s)
+{
+#ifdef CLIB_SANITIZE_ADDR
+  ASAN_POISON_MEMORY_REGION (p, s);
+#endif
+}
+
+static_always_inline void
+clib_mem_unpoison (const void volatile *p, uword s)
+{
+#ifdef CLIB_SANITIZE_ADDR
+  ASAN_UNPOISON_MEMORY_REGION (p, s);
+#endif
+}
 
 always_inline clib_mem_heap_t *
 clib_mem_get_per_cpu_heap (void)
@@ -336,7 +354,7 @@ clib_mem_vm_alloc (uword size)
   if (mmap_addr == (void *) -1)
     mmap_addr = 0;
   else
-    CLIB_MEM_UNPOISON (mmap_addr, size);
+    clib_mem_unpoison (mmap_addr, size);
 
   return mmap_addr;
 }

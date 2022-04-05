@@ -95,7 +95,7 @@ ssvm_server_init_shm (ssvm_private_t * ssvm)
 
   close (ssvm_fd);
 
-  CLIB_MEM_UNPOISON (sh, sizeof (*sh));
+  clib_mem_unpoison (sh, sizeof (*sh));
   sh->server_pid = ssvm->my_pid;
   sh->ssvm_size = ssvm->ssvm_size;
   sh->ssvm_va = pointer_to_uword (sh);

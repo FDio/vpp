@@ -95,6 +95,15 @@
 /* Make a string from the macro's argument */
 #define CLIB_STRING_MACRO(x) #x
 
+/* sanitizers */
+#ifdef __has_feature
+#if __has_feature(address_sanitizer)
+#define CLIB_SANITIZE_ADDR 1
+#endif
+#elif defined(__SANITIZE_ADDRESS__)
+#define CLIB_SANITIZE_ADDR 1
+#endif
+
 #define __clib_unused __attribute__ ((unused))
 #define __clib_weak __attribute__ ((weak))
 #define __clib_packed __attribute__ ((packed))
@@ -115,6 +124,12 @@
 #else
 #define __clib_no_tail_calls                                                  \
   __attribute__ ((optimize ("no-optimize-sibling-calls")))
+#endif
+
+#ifdef CLIB_SANITIZE_ADDR
+#define __clib_nosanitize_addr __attribute__ ((no_sanitize_address))
+#else
+#define __clib_nosanitize_addr
 #endif
 
 #define never_inline __attribute__ ((__noinline__))

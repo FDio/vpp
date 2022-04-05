@@ -185,7 +185,7 @@ _pool_get (void **pp, void **ep, uword align, int zero, uword elt_sz)
 	  ph->free_bitmap =
 	    clib_bitmap_andnoti_notrim (ph->free_bitmap, index);
 	  vec_set_len (ph->free_indices, n_free - 1);
-	  CLIB_MEM_UNPOISON (e, elt_sz);
+	  clib_mem_unpoison (e, elt_sz);
 	  goto done;
 	}
 
@@ -299,7 +299,7 @@ _pool_put_index (void *p, uword index, uword elt_sz)
   else
     vec_add1 (ph->free_indices, index);
 
-  CLIB_MEM_POISON (p + index * elt_sz, elt_sz);
+  clib_mem_poison (p + index * elt_sz, elt_sz);
 }
 
 #define pool_put_index(P, I) _pool_put_index ((void *) (P), I, _vec_elt_sz (P))
@@ -322,7 +322,7 @@ _pool_alloc (void **pp, uword n_elts, uword align, void *heap, uword elt_sz)
   pp[0] = _vec_realloc_inline (pp[0], len + n_elts, elt_sz,
 			       sizeof (pool_header_t), align, heap);
   _vec_set_len (pp[0], len, elt_sz);
-  CLIB_MEM_POISON (pp[0] + len * elt_sz, n_elts * elt_sz);
+  clib_mem_poison (pp[0] + len * elt_sz, n_elts * elt_sz);
 
   ph = pool_header (pp[0]);
   vec_resize (ph->free_indices, n_elts);
@@ -358,7 +358,7 @@ _pool_dup (void *p, uword align, uword elt_sz)
     {
       u32 *fi;
       vec_foreach (fi, ph->free_indices)
-	CLIB_MEM_UNPOISON (p + elt_sz * fi[0], elt_sz);
+	clib_mem_unpoison (p + elt_sz * fi[0], elt_sz);
 
       clib_memcpy_fast (n, p, len * elt_sz);
 
@@ -368,8 +368,8 @@ _pool_dup (void *p, uword align, uword elt_sz)
       vec_foreach (fi, ph->free_indices)
 	{
 	  uword offset = elt_sz * fi[0];
-	  CLIB_MEM_POISON (p + offset, elt_sz);
-	  CLIB_MEM_POISON (n + offset, elt_sz);
+	  clib_mem_poison (p + offset, elt_sz);
+	  clib_mem_poison (n + offset, elt_sz);
 	}
     }
 
