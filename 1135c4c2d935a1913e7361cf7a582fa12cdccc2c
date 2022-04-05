@@ -52,6 +52,24 @@
       "revId": "1135c4c2d935a1913e7361cf7a582fa12cdccc2c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1aaedeb0_06ffc20c",
+        "filename": "src/plugins/dpdk/device/dpdk.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 424,
+      "author": {
+        "id": 2589
+      },
+      "writtenOn": "2022-04-05T14:36:11Z",
+      "side": 1,
+      "message": "For dpdk 21.11 and 22.03 it will work fine BUT for versions below 21.11 (e.g 21.08) it will produce errors in abovementioned format.c functions as dpdk_ver \u003c 21.11 don\u0027t have macros starting with RTE_*\n\nIt is useful to take a look at /lib/ethdev/rte_ethdev.h in dpdk repository and compare macro definitions between 21.08, 21.11 and 22.03\n\n21.08 has old macros without RTE_*\n21.11 has both old and new macros and DOES NOT deprecates any\n22.03 has new macros and deprecates old\n\nAnd again translation in dpdk_priv.h doesn\u0027t help in this case as products of foreach_dpdk_rss_hf expansion become left side of _ (*) macro expansion and therefore macro redefinitions are not applied.",
+      "parentUuid": "0995e8e2_0316f9fd",
+      "revId": "1135c4c2d935a1913e7361cf7a582fa12cdccc2c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
