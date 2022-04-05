@@ -166,6 +166,8 @@ wg_peer_get (index_t peeri)
 static inline index_t
 wg_peer_get_by_adj_index (index_t ai)
 {
+  if (ai > vec_len (wg_peer_by_adj_index))
+    return INDEX_INVALID;
   return (wg_peer_by_adj_index[ai]);
 }
 

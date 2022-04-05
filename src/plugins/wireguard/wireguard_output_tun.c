@@ -371,6 +371,11 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (PREDICT_FALSE (last_adj_index != adj_index))
 	{
 	  peeri = wg_peer_get_by_adj_index (adj_index);
+	  if (peeri == INDEX_INVALID)
+	    {
+	      b[0]->error = node->errors[WG_OUTPUT_ERROR_PEER];
+	      goto out;
+	    }
 	  peer = wg_peer_get (peeri);
 	}
 
