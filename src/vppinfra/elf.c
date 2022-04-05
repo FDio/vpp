@@ -1357,7 +1357,7 @@ elf_read_file (elf_main_t * em, char *file_name)
       goto done;
     }
 
-  CLIB_MEM_UNPOISON (data, mmap_length);
+  clib_mem_unpoison (data, mmap_length);
 
   em->file_name = file_name;
 

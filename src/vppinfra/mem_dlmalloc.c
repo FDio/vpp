@@ -19,7 +19,6 @@
 #include <vppinfra/lock.h>
 #include <vppinfra/hash.h>
 #include <vppinfra/elf_clib.h>
-#include <vppinfra/sanitizer.h>
 
 typedef struct
 {
@@ -235,7 +234,7 @@ clib_mem_create_heap_internal (void *base, uword size,
 
   mspace_disable_expand (h->mspace);
 
-  CLIB_MEM_POISON (mspace_least_addr (h->mspace),
+  clib_mem_poison (mspace_least_addr (h->mspace),
 		   mspace_footprint (h->mspace));
 
   return h;
@@ -619,7 +618,7 @@ clib_mem_heap_alloc_inline (void *heap, uword size, uword align,
   if (PREDICT_FALSE (h->flags & CLIB_MEM_HEAP_F_TRACED))
     mheap_get_trace (pointer_to_uword (p), clib_mem_size (p));
 
-  CLIB_MEM_UNPOISON (p, size);
+  clib_mem_unpoison (p, size);
   return p;
 }
 
@@ -699,16 +698,16 @@ clib_mem_heap_realloc_aligned (void *heap, void *p, uword new_size,
   if (p && pointer_is_aligned (p, align) &&
       mspace_realloc_in_place (h->mspace, p, new_size))
     {
-      CLIB_MEM_UNPOISON (p, new_size);
+      clib_mem_unpoison (p, new_size);
     }
   else
     {
       new = clib_mem_heap_alloc_inline (h, new_size, align, 1);
 
-      CLIB_MEM_UNPOISON (new, new_size);
+      clib_mem_unpoison (new, new_size);
       if (old_alloc_size)
 	{
-	  CLIB_MEM_UNPOISON (p, old_alloc_size);
+	  clib_mem_unpoison (p, old_alloc_size);
 	  clib_memcpy_fast (new, p, clib_min (new_size, old_alloc_size));
 	  clib_mem_heap_free (h, p);
 	}
@@ -760,7 +759,7 @@ clib_mem_heap_free (void *heap, void *p)
 
   if (PREDICT_FALSE (h->flags & CLIB_MEM_HEAP_F_TRACED))
     mheap_put_trace (pointer_to_uword (p), size);
-  CLIB_MEM_POISON (p, clib_mem_size (p));
+  clib_mem_poison (p, clib_mem_size (p));
 
   mspace_free (h->mspace, p);
 }
@@ -781,7 +780,7 @@ __clib_export void
 clib_mem_free_s (void *p)
 {
   uword size = clib_mem_size (p);
-  CLIB_MEM_UNPOISON (p, size);
+  clib_mem_unpoison (p, size);
   memset_s_inline (p, size, 0, size);
   clib_mem_free (p);
 }

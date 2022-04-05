@@ -435,7 +435,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
     }
   close (fd);
 
-  CLIB_MEM_UNPOISON (hp, file_size);
+  clib_mem_unpoison (hp, file_size);
 
   nitems = ntohl (hp->nitems);
 

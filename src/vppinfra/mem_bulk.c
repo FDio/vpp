@@ -66,7 +66,7 @@ clib_mem_bulk_init (u32 elt_sz, u32 align, u32 min_elts_per_chunk)
   if (min_elts_per_chunk == 0)
     min_elts_per_chunk = CLIB_MEM_BULK_DEFAULT_MIN_ELTS_PER_CHUNK;
 
-  CLIB_MEM_UNPOISON (b, sizeof (clib_mem_bulk_t));
+  clib_mem_unpoison (b, sizeof (clib_mem_bulk_t));
   clib_memset (b, 0, sizeof (clib_mem_bulk_t));
   b->mspace = heap->mspace;
   b->align = align;
@@ -92,7 +92,7 @@ again:
   while (c)
     {
       next = c->next;
-      CLIB_MEM_POISON (c, bulk_chunk_size (b));
+      clib_mem_poison (c, bulk_chunk_size (b));
       mspace_free (ms, c);
       c = next;
     }
@@ -104,7 +104,7 @@ again:
       goto again;
     }
 
-  CLIB_MEM_POISON (b, sizeof (clib_mem_bulk_t));
+  clib_mem_poison (b, sizeof (clib_mem_bulk_t));
   mspace_free (ms, b);
 }
 
@@ -148,7 +148,7 @@ clib_mem_bulk_alloc (clib_mem_bulk_handle_t h)
     {
       u32 i, sz = bulk_chunk_size (b);
       c = mspace_memalign (b->mspace, b->chunk_align, sz);
-      CLIB_MEM_UNPOISON (c, sz);
+      clib_mem_unpoison (c, sz);
       clib_memset (c, 0, sizeof (clib_mem_bulk_chunk_hdr_t));
       b->avail_chunks = c;
       c->n_free = b->elts_per_chunk;
@@ -192,7 +192,7 @@ clib_mem_bulk_free (clib_mem_bulk_handle_t h, void *p)
     {
       /* chunk is empty - give it back */
       remove_from_chunk_list (&b->avail_chunks, c);
-      CLIB_MEM_POISON (c, bulk_chunk_size (b));
+      clib_mem_poison (c, bulk_chunk_size (b));
       mspace_free (b->mspace, c);
       return;
     }
