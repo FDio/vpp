@@ -55,7 +55,7 @@ _vec_realloc (void *v, uword n_elts, uword elt_sz, uword hdr_sz, uword align,
 	  v = p + data_offset;
 	}
 
-      CLIB_MEM_UNPOISON (p, alloc_size);
+      clib_mem_unpoison (p, alloc_size);
       clib_memset_u8 (p + old_data_size, 0, alloc_size - old_data_size);
     }
   else
@@ -68,7 +68,7 @@ _vec_realloc (void *v, uword n_elts, uword elt_sz, uword hdr_sz, uword align,
       new_data_size = data_offset + n_data_bytes;
       p = clib_mem_heap_alloc_aligned (heap, new_data_size, align);
       alloc_size = clib_mem_size (p);
-      CLIB_MEM_UNPOISON (p, alloc_size);
+      clib_mem_unpoison (p, alloc_size);
       clib_memset_u8 (p, 0, alloc_size);
       v = p + data_offset;
       _vec_find (v)->hdr_size = data_offset / VEC_MIN_ALIGN;
@@ -82,7 +82,7 @@ _vec_realloc (void *v, uword n_elts, uword elt_sz, uword hdr_sz, uword align,
 	_vec_find (v)->default_heap = 1;
     }
 
-  CLIB_MEM_POISON (p + new_data_size, alloc_size - new_data_size);
+  clib_mem_poison (p + new_data_size, alloc_size - new_data_size);
   _vec_find (v)->len = n_elts;
   return v;
 }

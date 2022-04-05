@@ -43,8 +43,8 @@
 
 #define DEBUG_MESSAGE_BUFFER_OVERRUN 0
 
-CLIB_NOSANITIZE_ADDR static inline void *
-vl_msg_api_alloc_internal (svm_region_t * vlib_rp, int nbytes, int pool,
+__clib_nosanitize_addr static inline void *
+vl_msg_api_alloc_internal (svm_region_t *vlib_rp, int nbytes, int pool,
 			   int may_return_null)
 {
   int i;
