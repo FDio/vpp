@@ -268,11 +268,6 @@ af_packet_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
       u32 n_required = 0;
       bd = (block_desc_t *) block_start;
 
-      total++;
-
-      if (TP_STATUS_BLK_TMO & bd->hdr.bh1.block_status)
-	timedout_blk++;
-
       if (PREDICT_FALSE (rx_queue->is_rx_pending))
 	{
 	  num_pkts = rx_queue->num_rx_pkts;
@@ -283,6 +278,10 @@ af_packet_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 	{
 	  num_pkts = bd->hdr.bh1.num_pkts;
 	  rx_frame_offset = sizeof (block_desc_t);
+	  total++;
+
+	  if (TP_STATUS_BLK_TMO & bd->hdr.bh1.block_status)
+	    timedout_blk++;
 	}
 
       n_required = clib_max (num_pkts, VLIB_FRAME_SIZE);
