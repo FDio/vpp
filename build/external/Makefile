@@ -36,7 +36,6 @@ endif
 ARCH_X86_64=$(filter x86_64,$(shell uname -m))
 
 include packages.mk
-include packages/nasm.mk
 include packages/ipsec-mb.mk
 include packages/quicly.mk
 include packages/dpdk.mk
@@ -48,10 +47,10 @@ clean:
 	@rm -rf $(B) $(I)
 
 .PHONY: install
-install: $(if $(ARCH_X86_64), nasm-install ipsec-mb-install) dpdk-install rdma-core-install quicly-install libbpf-install
+install: $(if $(ARCH_X86_64), ipsec-mb-install) dpdk-install rdma-core-install quicly-install libbpf-install
 
 .PHONY: config
-config: $(if $(ARCH_X86_64), nasm-config ipsec-mb-config) dpdk-config rdma-core-config quicly-build
+config: $(if $(ARCH_X86_64), ipsec-mb-config) dpdk-config rdma-core-config quicly-build
 
 ##############################################################################
 # .deb packaging

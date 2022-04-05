@@ -77,6 +77,7 @@ DEB_DEPENDS += python3-virtualenv
 DEB_DEPENDS += libssl-dev
 DEB_DEPENDS += libelf-dev # for libbpf (af_xdp)
 DEB_DEPENDS += iperf3 # for 'make test TEST=vcl'
+DEB_DEPENDS += nasm
 
 LIBFFI=libffi6 # works on all but 20.04 and debian-testing
 

@@ -22,7 +22,6 @@ ipsec-mb_tarball_md5sum_1.2  := f551d9c208893a436c1f5c146a615bd6
 ipsec-mb_tarball_md5sum      := $(ipsec-mb_tarball_md5sum_$(ipsec-mb_version))
 ipsec-mb_tarball_strip_dirs  := 1
 ipsec-mb_url                 := http://github.com/01org/intel-ipsec-mb/archive/$(ipsec-mb_tarball)
-ipsec-mb_depends             := nasm
 
 define  ipsec-mb_config_cmds
 	@true
@@ -35,7 +34,6 @@ define  ipsec-mb_build_cmds
 	  SAFE_LOOKUP=n \
 	  SAFE_DATA=n \
 	  PREFIX=$(ipsec-mb_install_dir) \
-	  NASM=$(ipsec-mb_install_dir)/bin/nasm \
 	  EXTRA_CFLAGS="-g -msse4.2" > $(ipsec-mb_build_log)
 endef
 
