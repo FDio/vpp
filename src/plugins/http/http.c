@@ -50,7 +50,8 @@ http_conn_alloc_w_thread (u32 thread_index)
   http_worker_t *wrk = http_worker_get (thread_index);
   http_conn_t *hc;
 
-  pool_get_zero (wrk->conn_pool, hc);
+  pool_get_aligned_safe (wrk->conn_pool, hc, CLIB_CACHE_LINE_BYTES);
+  clib_memset (hc, 0, sizeof (*hc));
   hc->c_thread_index = thread_index;
   hc->h_hc_index = hc - wrk->conn_pool;
   hc->h_pa_session_handle = SESSION_INVALID_HANDLE;
