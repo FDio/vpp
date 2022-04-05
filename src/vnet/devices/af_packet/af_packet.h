@@ -96,7 +96,6 @@ typedef struct
 
   u8 *host_if_name;
   int host_if_index;
-  u32 hdrlen;
 
   u32 host_mtu;
   u32 dev_instance;
