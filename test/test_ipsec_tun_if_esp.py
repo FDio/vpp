@@ -25,7 +25,7 @@ from util import ppp
 from vpp_papi import VppEnum
 from vpp_papi_provider import CliFailedCommandError
 from vpp_acl import AclRule, VppAcl, VppAclInterface
-from vpp_policer import PolicerAction, VppPolicer
+from vpp_policer import PolicerAction, VppPolicer, Dir
 
 
 def config_tun_params(p, encryption_type, tun_if, src=None, dst=None):
@@ -513,7 +513,7 @@ class TestIpsec6TunIfEspHandoff(TemplateIpsec6TunIfEsp,
         policer.add_vpp_config()
 
         # Start policing on tun
-        policer.apply_vpp_config(p.tun_if.sw_if_index, True)
+        policer.apply_vpp_config(p.tun_if.sw_if_index, Dir.RX, True)
 
         for pol_bind in [1, 0]:
             policer.bind_vpp_config(pol_bind, True)
@@ -557,7 +557,7 @@ class TestIpsec6TunIfEspHandoff(TemplateIpsec6TunIfEsp,
                                  stats1['conform_packets'] +
                                  stats1['violate_packets'])
 
-        policer.apply_vpp_config(p.tun_if.sw_if_index, False)
+        policer.apply_vpp_config(p.tun_if.sw_if_index, Dir.RX, False)
         policer.remove_vpp_config()
 
 
@@ -585,7 +585,7 @@ class TestIpsec4TunIfEspHandoff(TemplateIpsec4TunIfEsp,
         policer.add_vpp_config()
 
         # Start policing on tun
-        policer.apply_vpp_config(p.tun_if.sw_if_index, True)
+        policer.apply_vpp_config(p.tun_if.sw_if_index, Dir.RX, True)
 
         for pol_bind in [1, 0]:
             policer.bind_vpp_config(pol_bind, True)
@@ -629,7 +629,7 @@ class TestIpsec4TunIfEspHandoff(TemplateIpsec4TunIfEsp,
                                  stats1['conform_packets'] +
                                  stats1['violate_packets'])
 
-        policer.apply_vpp_config(p.tun_if.sw_if_index, False)
+        policer.apply_vpp_config(p.tun_if.sw_if_index, Dir.RX, False)
         policer.remove_vpp_config()
 
 
@@ -2726,7 +2726,7 @@ class TestIpsecItf4(TemplateIpsec,
         policer.add_vpp_config()
 
         # Start policing on tun
-        policer.apply_vpp_config(p.tun_if.sw_if_index, True)
+        policer.apply_vpp_config(p.tun_if.sw_if_index, Dir.RX, True)
 
         self.verify_tun_44(p, count=n_pkts)
         self.assertEqual(p.tun_if.get_rx_stats(), n_pkts)
@@ -2740,7 +2740,7 @@ class TestIpsecItf4(TemplateIpsec,
         self.assertGreater(stats['violate_packets'], 0)
 
         # Stop policing on tun
-        policer.apply_vpp_config(p.tun_if.sw_if_index, False)
+        policer.apply_vpp_config(p.tun_if.sw_if_index, Dir.RX, False)
         self.verify_tun_44(p, count=n_pkts)
 
         # No new policer stats
@@ -3017,7 +3017,7 @@ class TestIpsecItf6(TemplateIpsec,
         policer.add_vpp_config()
 
         # Start policing on tun
-        policer.apply_vpp_config(p.tun_if.sw_if_index, True)
+        policer.apply_vpp_config(p.tun_if.sw_if_index, Dir.RX, True)
 
         self.verify_tun_66(p, count=n_pkts)
         self.assertEqual(p.tun_if.get_rx_stats(), n_pkts)
@@ -3031,7 +3031,7 @@ class TestIpsecItf6(TemplateIpsec,
         self.assertGreater(stats['violate_packets'], 0)
 
         # Stop policing on tun
-        policer.apply_vpp_config(p.tun_if.sw_if_index, False)
+        policer.apply_vpp_config(p.tun_if.sw_if_index, Dir.RX, False)
         self.verify_tun_66(p, count=n_pkts)
 
         # No new policer stats

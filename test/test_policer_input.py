@@ -8,13 +8,13 @@ from scapy.layers.l2 import Ether
 from scapy.packet import Raw
 from framework import VppTestCase, VppTestRunner
 from vpp_papi import VppEnum
-from vpp_policer import VppPolicer, PolicerAction
+from vpp_policer import VppPolicer, PolicerAction, Dir
 
 NUM_PKTS = 67
 
 
 class TestPolicerInput(VppTestCase):
-    """ Policer on an input interface """
+    """ Policer on an interface """
     vpp_worker_count = 2
 
     def setUp(self):
@@ -38,8 +38,7 @@ class TestPolicerInput(VppTestCase):
             i.admin_down()
         super(TestPolicerInput, self).tearDown()
 
-    def test_policer_input(self):
-        """ Input Policing """
+    def policer_interface_test(self, dir: Dir):
         pkts = self.pkt * NUM_PKTS
 
         action_tx = PolicerAction(
@@ -51,8 +50,12 @@ class TestPolicerInput(VppTestCase):
                              violate_action=action_tx)
         policer.add_vpp_config()
 
+        sw_if_index = (self.pg0.sw_if_index
+                       if dir == Dir.RX
+                       else self.pg1.sw_if_index)
+
         # Start policing on pg0
-        policer.apply_vpp_config(self.pg0.sw_if_index, True)
+        policer.apply_vpp_config(sw_if_index, dir, True)
 
         rx = self.send_and_expect(self.pg0, pkts, self.pg1, worker=0)
         stats = policer.get_stats()
@@ -63,7 +66,7 @@ class TestPolicerInput(VppTestCase):
         self.assertGreater(stats['violate_packets'], 0)
 
         # Stop policing on pg0
-        policer.apply_vpp_config(self.pg0.sw_if_index, False)
+        policer.apply_vpp_config(sw_if_index, dir, False)
 
         rx = self.send_and_expect(self.pg0, pkts, self.pg1, worker=0)
 
@@ -74,8 +77,15 @@ class TestPolicerInput(VppTestCase):
 
         policer.remove_vpp_config()
 
-    def test_policer_handoff(self):
-        """ Worker thread handoff """
+    def test_policer_input(self):
+        """ Input Policing """
+        self.policer_interface_test(Dir.RX)
+
+    def test_policer_output(self):
+        """ Output Policing """
+        self.policer_interface_test(Dir.TX)
+
+    def policer_handoff_test(self, dir: Dir):
         pkts = self.pkt * NUM_PKTS
 
         action_tx = PolicerAction(
@@ -87,11 +97,15 @@ class TestPolicerInput(VppTestCase):
                              violate_action=action_tx)
         policer.add_vpp_config()
 
+        sw_if_index = (self.pg0.sw_if_index
+                       if dir == Dir.RX
+                       else self.pg1.sw_if_index)
+
         # Bind the policer to worker 1
         policer.bind_vpp_config(1, True)
 
         # Start policing on pg0
-        policer.apply_vpp_config(self.pg0.sw_if_index, True)
+        policer.apply_vpp_config(sw_if_index, dir, True)
 
         for worker in [0, 1]:
             self.send_and_expect(self.pg0, pkts, self.pg1, worker=worker)
@@ -138,9 +152,18 @@ class TestPolicerInput(VppTestCase):
                          stats['violate_packets'])
 
         # Stop policing on pg0
-        policer.apply_vpp_config(self.pg0.sw_if_index, False)
+        policer.apply_vpp_config(sw_if_index, dir, False)
 
         policer.remove_vpp_config()
+
+    def test_policer_handoff_input(self):
+        """ Worker thread handoff policer input"""
+        self.policer_handoff_test(Dir.RX)
+
+    def test_policer_handoff_output(self):
+        """ Worker thread handoff policer output"""
+        self.policer_handoff_test(Dir.TX)
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
