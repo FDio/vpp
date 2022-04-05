@@ -191,8 +191,7 @@ af_packet_set_tx_queues (vlib_main_t *vm, af_packet_if_t *apif)
 static int
 create_packet_v3_sock (int host_if_index, tpacket_req3_t *rx_req,
 		       tpacket_req3_t *tx_req, int *fd, af_packet_ring_t *ring,
-		       u32 fanout_id, u8 is_fanout,
-		       af_packet_if_flags_t *flags)
+		       u32 fanout_id, af_packet_if_flags_t *flags)
 {
   af_packet_main_t *apm = &af_packet_main;
   struct sockaddr_ll sll;
@@ -281,29 +280,33 @@ create_packet_v3_sock (int host_if_index, tpacket_req3_t *rx_req,
       }
 #endif
 
-  if (is_fanout)
+  if (rx_req)
     {
-      int fanout = ((fanout_id & 0xffff) | ((PACKET_FANOUT_HASH) << 16));
-      if (setsockopt (*fd, SOL_PACKET, PACKET_FANOUT, &fanout,
-		      sizeof (fanout)) < 0)
+      if (*flags & AF_PACKET_IF_FLAGS_FANOUT)
+	{
+	  int fanout = ((fanout_id & 0xffff) | ((PACKET_FANOUT_HASH) << 16));
+	  if (setsockopt (*fd, SOL_PACKET, PACKET_FANOUT, &fanout,
+			  sizeof (fanout)) < 0)
+	    {
+	      // remove the flag
+	      *flags &= ~AF_PACKET_IF_FLAGS_FANOUT;
+	      vlib_log_err (apm->log_class,
+			    "Failed to set fanout options: %s (errno %d)",
+			    strerror (errno), errno);
+	      ret = VNET_API_ERROR_SYSCALL_ERROR_1;
+	      goto error;
+	    }
+	}
+
+      if (setsockopt (*fd, SOL_PACKET, PACKET_RX_RING, rx_req, req_sz) < 0)
 	{
 	  vlib_log_err (apm->log_class,
-			"Failed to set fanout options: %s (errno %d)",
+			"Failed to set packet rx ring options: %s (errno %d)",
 			strerror (errno), errno);
 	  ret = VNET_API_ERROR_SYSCALL_ERROR_1;
 	  goto error;
 	}
     }
-
-  if (rx_req)
-    if (setsockopt (*fd, SOL_PACKET, PACKET_RX_RING, rx_req, req_sz) < 0)
-      {
-	vlib_log_err (apm->log_class,
-		      "Failed to set packet rx ring options: %s (errno %d)",
-		      strerror (errno), errno);
-	ret = VNET_API_ERROR_SYSCALL_ERROR_1;
-	goto error;
-      }
 
   if (tx_req)
     if (setsockopt (*fd, SOL_PACKET, PACKET_TX_RING, tx_req, req_sz) < 0)
@@ -341,7 +344,7 @@ int
 af_packet_queue_init (vlib_main_t *vm, af_packet_if_t *apif,
 		      af_packet_create_if_arg_t *arg,
 		      af_packet_queue_t *rx_queue, af_packet_queue_t *tx_queue,
-		      u8 queue_id, u8 is_fanout)
+		      u8 queue_id)
 {
   af_packet_main_t *apm = &af_packet_main;
   tpacket_req3_t *rx_req = 0;
@@ -395,9 +398,8 @@ af_packet_queue_init (vlib_main_t *vm, af_packet_if_t *apif,
 
   if (rx_queue || tx_queue)
     {
-      ret =
-	create_packet_v3_sock (apif->host_if_index, rx_req, tx_req, &fd, &ring,
-			       apif->dev_instance, is_fanout, &arg->flags);
+      ret = create_packet_v3_sock (apif->host_if_index, rx_req, tx_req, &fd,
+				   &ring, apif->dev_instance, &arg->flags);
 
       if (ret != 0)
 	goto error;
@@ -458,7 +460,10 @@ af_packet_device_init (vlib_main_t *vm, af_packet_if_t *apif,
   u16 nq = clib_min (args->num_rxqs, args->num_txqs);
   u16 i = 0;
   int ret = 0;
-  u8 is_fanout = (args->num_rxqs > 1) ? 1 : 0;
+
+  // enable fanout feature for multi-rxqs
+  if (args->num_rxqs > 1)
+    args->flags |= AF_PACKET_IF_FLAGS_FANOUT;
 
   vec_validate (apif->rx_queues, args->num_rxqs - 1);
   vec_validate (apif->tx_queues, args->num_txqs - 1);
@@ -467,8 +472,7 @@ af_packet_device_init (vlib_main_t *vm, af_packet_if_t *apif,
     {
       rx_queue = vec_elt_at_index (apif->rx_queues, i);
       tx_queue = vec_elt_at_index (apif->tx_queues, i);
-      ret = af_packet_queue_init (vm, apif, args, rx_queue, tx_queue, i,
-				  is_fanout);
+      ret = af_packet_queue_init (vm, apif, args, rx_queue, tx_queue, i);
       if (ret != 0)
 	goto error;
     }
@@ -478,8 +482,7 @@ af_packet_device_init (vlib_main_t *vm, af_packet_if_t *apif,
       for (; i < args->num_rxqs; i++)
 	{
 	  rx_queue = vec_elt_at_index (apif->rx_queues, i);
-	  ret =
-	    af_packet_queue_init (vm, apif, args, rx_queue, 0, i, is_fanout);
+	  ret = af_packet_queue_init (vm, apif, args, rx_queue, 0, i);
 	  if (ret != 0)
 	    goto error;
 	}
@@ -489,7 +492,7 @@ af_packet_device_init (vlib_main_t *vm, af_packet_if_t *apif,
       for (; i < args->num_txqs; i++)
 	{
 	  tx_queue = vec_elt_at_index (apif->tx_queues, i);
-	  ret = af_packet_queue_init (vm, apif, args, 0, tx_queue, i, 0);
+	  ret = af_packet_queue_init (vm, apif, args, 0, tx_queue, i);
 	  if (ret != 0)
 	    goto error;
 	}
@@ -646,6 +649,7 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
   af_packet_set_rx_queues (vm, apif);
   af_packet_set_tx_queues (vm, apif);
 
+  apif->is_fanout_enabled = (arg->flags & AF_PACKET_IF_FLAGS_FANOUT);
   apif->is_qdisc_bypass_enabled =
     (arg->flags & AF_PACKET_IF_FLAGS_QDISC_BYPASS);
 

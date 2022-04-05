@@ -36,6 +36,7 @@ typedef enum
 {
   AF_PACKET_IF_FLAGS_QDISC_BYPASS = 1,
   AF_PACKET_IF_FLAGS_CKSUM_GSO = 2,
+  AF_PACKET_IF_FLAGS_FANOUT = 4,
 } af_packet_if_flags_t;
 
 typedef struct
@@ -108,6 +109,7 @@ typedef struct
 
   af_packet_ring_t *rings;
   u8 is_qdisc_bypass_enabled;
+  u8 is_fanout_enabled;
 } af_packet_if_t;
 
 typedef struct
