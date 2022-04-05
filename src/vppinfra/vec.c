@@ -84,6 +84,7 @@ _vec_realloc (void *v, uword n_elts, uword elt_sz, uword hdr_sz, uword align,
 
   CLIB_MEM_POISON (p + new_data_size, alloc_size - new_data_size);
   _vec_find (v)->len = n_elts;
+  _vec_set_grow_elts (v, (alloc_size - new_data_size) / elt_sz);
   return v;
 }
 
