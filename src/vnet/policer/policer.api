@@ -52,6 +52,23 @@ autoreply define policer_input
   bool apply;
 };
 
+/** \brief policer output: Apply policer as an output feature.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param name - policer name
+    @param sw_if_index - interface to apply the policer
+    @param apply - Apply/remove
+*/
+autoreply define policer_output
+{
+  u32 client_index;
+  u32 context;
+
+  string name[64];
+  vl_api_interface_index_t sw_if_index;
+  bool apply;
+};
+
 /** \brief Add/del policer
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request

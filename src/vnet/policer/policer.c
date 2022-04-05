@@ -166,7 +166,7 @@ policer_bind_worker (u8 *name, u32 worker, bool bind)
 }
 
 int
-policer_input (u8 *name, u32 sw_if_index, bool apply)
+policer_input (u8 *name, u32 sw_if_index, vlib_dir_t dir, bool apply)
 {
   vnet_policer_main_t *pm = &vnet_policer_main;
   policer_t *policer;
@@ -184,16 +184,26 @@ policer_input (u8 *name, u32 sw_if_index, bool apply)
 
   if (apply)
     {
-      vec_validate (pm->policer_index_by_sw_if_index, sw_if_index);
-      pm->policer_index_by_sw_if_index[sw_if_index] = policer_index;
+      vec_validate (pm->policer_index_by_sw_if_index[dir], sw_if_index);
+      pm->policer_index_by_sw_if_index[dir][sw_if_index] = policer_index;
     }
   else
     {
-      pm->policer_index_by_sw_if_index[sw_if_index] = ~0;
+      pm->policer_index_by_sw_if_index[dir][sw_if_index] = ~0;
     }
 
-  vnet_feature_enable_disable ("device-input", "policer-input", sw_if_index,
-			       apply, 0, 0);
+  if (dir == VLIB_RX)
+    {
+      vnet_feature_enable_disable ("device-input", "policer-input",
+				   sw_if_index, apply, 0, 0);
+    }
+  else
+    {
+      vnet_feature_enable_disable ("ip4-output", "policer-output", sw_if_index,
+				   apply, 0, 0);
+      vnet_feature_enable_disable ("ip6-output", "policer-output", sw_if_index,
+				   apply, 0, 0);
+    }
   return 0;
 }
 
@@ -637,6 +647,7 @@ policer_input_command_fn (vlib_main_t *vm, unformat_input_t *input,
   u8 apply, *name = 0;
   u32 sw_if_index;
   int rv;
+  vlib_dir_t dir = cmd->function_arg;
 
   apply = 1;
   sw_if_index = ~0;
@@ -669,7 +680,7 @@ policer_input_command_fn (vlib_main_t *vm, unformat_input_t *input,
     }
   else
     {
-      rv = policer_input (name, sw_if_index, apply);
+      rv = policer_input (name, sw_if_index, dir, apply);
 
       if (rv)
 	error = clib_error_return (0, "failed: `%d'", rv);
@@ -681,33 +692,43 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (configure_policer_command, static) = {
   .path = "configure policer",
   .short_help = "configure policer name <name> <params> ",
   .function = policer_add_command_fn,
 };
+
 VLIB_CLI_COMMAND (policer_add_command, static) = {
   .path = "policer add",
   .short_help = "policer name <name> <params> ",
   .function = policer_add_command_fn,
 };
+
 VLIB_CLI_COMMAND (policer_del_command, static) = {
   .path = "policer del",
   .short_help = "policer del name <name> ",
   .function = policer_del_command_fn,
 };
+
 VLIB_CLI_COMMAND (policer_bind_command, static) = {
   .path = "policer bind",
   .short_help = "policer bind [unbind] name <name> <worker>",
   .function = policer_bind_command_fn,
 };
+
 VLIB_CLI_COMMAND (policer_input_command, static) = {
   .path = "policer input",
   .short_help = "policer input [unapply] name <name> <interfac>",
   .function = policer_input_command_fn,
+  .function_arg = VLIB_RX,
 };
-/* *INDENT-ON* */
+
+VLIB_CLI_COMMAND (policer_output_command, static) = {
+  .path = "policer output",
+  .short_help = "policer output [unapply] name <name> <interfac>",
+  .function = policer_input_command_fn,
+  .function_arg = VLIB_TX,
+};
 
 static clib_error_t *
 show_policer_command_fn (vlib_main_t * vm,
@@ -792,7 +813,10 @@ policer_init (vlib_main_t * vm)
   pm->vlib_main = vm;
   pm->vnet_main = vnet_get_main ();
   pm->log_class = vlib_log_register_class ("policer", 0);
-  pm->fq_index = vlib_frame_queue_main_init (policer_input_node.index, 0);
+  pm->fq_index[VLIB_RX] =
+    vlib_frame_queue_main_init (policer_input_node.index, 0);
+  pm->fq_index[VLIB_TX] =
+    vlib_frame_queue_main_init (policer_output_node.index, 0);
 
   pm->policer_config_by_name = hash_create_string (0, sizeof (uword));
   pm->policer_index_by_name = hash_create_string (0, sizeof (uword));
