@@ -68,7 +68,7 @@ static char *vnet_policer_error_strings[] = {
 
 static inline uword
 vnet_policer_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
-		     vlib_frame_t *frame)
+		     vlib_frame_t *frame, vlib_dir_t dir)
 {
   u32 n_left_from, *from, *to_next;
   vnet_policer_next_t next_index;
@@ -120,11 +120,11 @@ vnet_policer_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
 
-	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-	  sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
+	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[dir];
+	  sw_if_index1 = vnet_buffer (b1)->sw_if_index[dir];
 
-	  pi0 = pm->policer_index_by_sw_if_index[sw_if_index0];
-	  pi1 = pm->policer_index_by_sw_if_index[sw_if_index1];
+	  pi0 = pm->policer_index_by_sw_if_index[dir][sw_if_index0];
+	  pi1 = pm->policer_index_by_sw_if_index[dir][sw_if_index1];
 
 	  act0 = vnet_policer_police (vm, b0, pi0, time_in_policer_periods,
 				      POLICE_CONFORM /* no chaining */, true);
@@ -206,9 +206,8 @@ vnet_policer_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
-	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-
-	  pi0 = pm->policer_index_by_sw_if_index[sw_if_index0];
+	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[dir];
+	  pi0 = pm->policer_index_by_sw_if_index[dir][sw_if_index0];
 
 	  act0 = vnet_policer_police (vm, b0, pi0, time_in_policer_periods,
 				      POLICE_CONFORM /* no chaining */, true);
@@ -256,7 +255,7 @@ vnet_policer_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 VLIB_NODE_FN (policer_input_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return vnet_policer_inline (vm, node, frame);
+  return vnet_policer_inline (vm, node, frame, VLIB_RX);
 }
 
 VLIB_REGISTER_NODE (policer_input_node) = {
@@ -279,12 +278,43 @@ VNET_FEATURE_INIT (policer_input_node, static) = {
   .runs_before = VNET_FEATURES ("ethernet-input"),
 };
 
+VLIB_NODE_FN (policer_output_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return vnet_policer_inline (vm, node, frame, VLIB_TX);
+}
+
+VLIB_REGISTER_NODE (policer_output_node) = {
+  .name = "policer-output",
+  .vector_size = sizeof (u32),
+  .format_trace = format_policer_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN(vnet_policer_error_strings),
+  .error_strings = vnet_policer_error_strings,
+  .n_next_nodes = VNET_POLICER_N_NEXT,
+  .next_nodes = {
+		 [VNET_POLICER_NEXT_DROP] = "error-drop",
+		 [VNET_POLICER_NEXT_HANDOFF] = "policer-output-handoff",
+		 },
+};
+
+VNET_FEATURE_INIT (policer_output_node, static) = {
+  .arc_name = "ip4-output",
+  .node_name = "policer-output",
+};
+
+VNET_FEATURE_INIT (policer6_output_node, static) = {
+  .arc_name = "ip6-output",
+  .node_name = "policer-output",
+};
+
 static char *policer_input_handoff_error_strings[] = { "congestion drop" };
 
 VLIB_NODE_FN (policer_input_handoff_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return policer_handoff (vm, node, frame, vnet_policer_main.fq_index, ~0);
+  return policer_handoff (vm, node, frame, vnet_policer_main.fq_index[VLIB_RX],
+			  ~0);
 }
 
 VLIB_REGISTER_NODE (policer_input_handoff_node) = {
@@ -301,6 +331,26 @@ VLIB_REGISTER_NODE (policer_input_handoff_node) = {
   },
 };
 
+VLIB_NODE_FN (policer_output_handoff_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return policer_handoff (vm, node, frame, vnet_policer_main.fq_index[VLIB_TX],
+			  ~0);
+}
+
+VLIB_REGISTER_NODE (policer_output_handoff_node) = {
+  .name = "policer-output-handoff",
+  .vector_size = sizeof (u32),
+  .format_trace = format_policer_handoff_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN(policer_input_handoff_error_strings),
+  .error_strings = policer_input_handoff_error_strings,
+
+  .n_next_nodes = 1,
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
 typedef struct
 {
   u32 sw_if_index;
