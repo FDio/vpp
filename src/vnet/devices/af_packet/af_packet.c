@@ -401,15 +401,18 @@ af_packet_queue_init (vlib_main_t *vm, af_packet_if_t *apif,
       tx_req = tx_queue->tx_req;
     }
 
-  ret = create_packet_v3_sock (apif->host_if_index, rx_req, tx_req, &fd, &ring,
-			       &hdrlen, &is_cksum_gso_enabled,
-			       apif->dev_instance, is_fanout);
+  if (rx_queue || tx_queue)
+    {
+      ret = create_packet_v3_sock (apif->host_if_index, rx_req, tx_req, &fd,
+				   &ring, &hdrlen, &is_cksum_gso_enabled,
+				   apif->dev_instance, is_fanout);
 
-  if (ret != 0)
-    goto error;
+      if (ret != 0)
+	goto error;
 
-  vec_add1 (apif->rings, ring);
-  ring_addr = ring.ring_start_addr;
+      vec_add1 (apif->rings, ring);
+      ring_addr = ring.ring_start_addr;
+    }
 
   if (rx_queue)
     {
@@ -452,8 +455,10 @@ af_packet_queue_init (vlib_main_t *vm, af_packet_if_t *apif,
   return 0;
 error:
   vlib_log_err (apm->log_class, "Failed to set queue %u error", queue_id);
-  vec_free (rx_queue->rx_req);
-  vec_free (tx_queue->tx_req);
+  if (rx_queue)
+    vec_free (rx_queue->rx_req);
+  if (tx_queue)
+    vec_free (tx_queue->tx_req);
   return ret;
 }
 
