@@ -48,7 +48,7 @@ vl_api_af_packet_create_t_handler (vl_api_af_packet_create_t * mp)
   arg->hw_addr = mp->use_random_hw_addr ? 0 : mp->hw_addr;
   arg->mode = AF_PACKET_IF_MODE_ETHERNET;
   // Default flags
-  arg->flags = AF_PACKET_IF_FLAGS_QDISC_BYPASS;
+  arg->flags = AF_PACKET_IF_FLAGS_QDISC_BYPASS | AF_PACKET_IF_FLAGS_CKSUM_GSO;
   rv = af_packet_create_if (arg);
 
   vec_free (arg->host_if_name);
@@ -80,7 +80,7 @@ vl_api_af_packet_create_v2_t_handler (vl_api_af_packet_create_v2_t *mp)
   arg->hw_addr = mp->use_random_hw_addr ? 0 : mp->hw_addr;
   arg->mode = AF_PACKET_IF_MODE_ETHERNET;
   // Default flags
-  arg->flags = AF_PACKET_IF_FLAGS_QDISC_BYPASS;
+  arg->flags = AF_PACKET_IF_FLAGS_QDISC_BYPASS | AF_PACKET_IF_FLAGS_CKSUM_GSO;
 
   if (mp->num_rx_queues > 1)
     arg->num_rxqs = clib_net_to_host_u16 (mp->num_rx_queues);

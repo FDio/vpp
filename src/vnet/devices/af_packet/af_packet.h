@@ -35,6 +35,7 @@ typedef enum
 typedef enum
 {
   AF_PACKET_IF_FLAGS_QDISC_BYPASS = 1,
+  AF_PACKET_IF_FLAGS_CKSUM_GSO = 2,
 } af_packet_if_flags_t;
 
 typedef struct

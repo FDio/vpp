@@ -59,7 +59,7 @@ af_packet_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   arg->num_txqs = 1;
 
   // Default flags
-  arg->flags = AF_PACKET_IF_FLAGS_QDISC_BYPASS;
+  arg->flags = AF_PACKET_IF_FLAGS_QDISC_BYPASS | AF_PACKET_IF_FLAGS_CKSUM_GSO;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -85,6 +85,8 @@ af_packet_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else if (unformat (line_input, "qdisc-bypass-disable"))
 	arg->flags &= ~AF_PACKET_IF_FLAGS_QDISC_BYPASS;
+      else if (unformat (line_input, "cksum-gso-disable"))
+	arg->flags &= ~AF_PACKET_IF_FLAGS_CKSUM_GSO;
       else if (unformat (line_input, "mode ip"))
 	arg->mode = AF_PACKET_IF_MODE_IP;
       else if (unformat (line_input, "hw-addr %U", unformat_ethernet_address,
@@ -160,7 +162,7 @@ VLIB_CLI_COMMAND (af_packet_create_command, static) = {
   .path = "create host-interface",
   .short_help = "create host-interface name <ifname> [num-rx-queues <n>] "
 		"[num-tx-queues <n>] [hw-addr <mac-addr>] [mode ip] "
-		"[qdisc-bypass-disable]",
+		"[qdisc-bypass-disable] [cksum-gso-disable]",
   .function = af_packet_create_command_fn,
 };
 
