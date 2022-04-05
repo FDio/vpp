@@ -58,7 +58,8 @@ typedef struct
   u8 hdr_size;	      /**< header size divided by VEC_MIN_ALIGN */
   u8 log2_align : 7;  /**< data alignment */
   u8 default_heap : 1; /**< vector uses default heap */
-  u8 vpad[2];	      /**< pad to 8 bytes */
+  u8 grow_elts;	       /**< number of elts vector can grow without realloc */
+  u8 vpad[1];	       /**< pad to 8 bytes */
   u8 vector_data[0];  /**< Vector data . */
 } vec_header_t;
 
@@ -168,18 +169,31 @@ _vec_max_len (void *v, uword elt_sz)
 
 #define vec_max_len(v) _vec_max_len (v, _vec_elt_sz (v))
 
+static_always_inline void
+_vec_set_grow_elts (void *v, uword n_elts)
+{
+  uword max = pow2_mask (BITS (_vec_find (0)->grow_elts));
+
+  if (PREDICT_FALSE (n_elts > max))
+    n_elts = max;
+
+  _vec_find (v)->grow_elts = n_elts;
+}
+
 always_inline void
 _vec_set_len (void *v, uword len, uword elt_sz)
 {
   ASSERT (v);
   ASSERT (len <= _vec_max_len (v, elt_sz));
   uword old_len = _vec_len (v);
+  uword grow_elts = _vec_find (v)->grow_elts;
 
   if (len > old_len)
     clib_mem_unpoison (v + old_len * elt_sz, (len - old_len) * elt_sz);
   else if (len > old_len)
     clib_mem_poison (v + len * elt_sz, (old_len - len) * elt_sz);
 
+  _vec_set_grow_elts (v, old_len + grow_elts - len);
   _vec_find (v)->len = len;
 }
 
