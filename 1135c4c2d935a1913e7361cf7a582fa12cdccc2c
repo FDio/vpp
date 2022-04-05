@@ -70,6 +70,24 @@
       "revId": "1135c4c2d935a1913e7361cf7a582fa12cdccc2c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "45b49b79_8d72a35b",
+        "filename": "src/plugins/dpdk/device/dpdk.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 424,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-04-05T15:56:40Z",
+      "side": 1,
+      "message": "But we care only about last 2 versions, we don\u0027t maintain compatibility with every single version of dpdk.",
+      "parentUuid": "1aaedeb0_06ffc20c",
+      "revId": "1135c4c2d935a1913e7361cf7a582fa12cdccc2c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
