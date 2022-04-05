@@ -191,16 +191,13 @@ af_packet_set_tx_queues (vlib_main_t *vm, af_packet_if_t *apif)
 static int
 create_packet_v3_sock (int host_if_index, tpacket_req3_t *rx_req,
 		       tpacket_req3_t *tx_req, int *fd, af_packet_ring_t *ring,
-		       u32 *hdrlen_ptr, u8 *is_cksum_gso_enabled,
-		       u32 fanout_id, u8 is_fanout)
+		       u8 *is_cksum_gso_enabled, u32 fanout_id, u8 is_fanout)
 {
   af_packet_main_t *apm = &af_packet_main;
   struct sockaddr_ll sll;
   socklen_t req_sz = sizeof (tpacket_req3_t);
   int ret;
   int ver = TPACKET_V3;
-  u32 hdrlen = 0;
-  u32 len = sizeof (hdrlen);
   u32 ring_sz = 0;
 
   if (rx_req)
@@ -240,18 +237,6 @@ create_packet_v3_sock (int host_if_index, tpacket_req3_t *rx_req,
       ret = VNET_API_ERROR_SYSCALL_ERROR_1;
       goto error;
     }
-
-  if (getsockopt (*fd, SOL_PACKET, PACKET_HDRLEN, &hdrlen, &len) < 0)
-    {
-      vlib_log_err (
-	apm->log_class,
-	"Failed to get packet hdr len error handling option: %s (errno %d)",
-	strerror (errno), errno);
-      ret = VNET_API_ERROR_SYSCALL_ERROR_1;
-      goto error;
-    }
-  else
-    *hdrlen_ptr = hdrlen;
 
   int opt = 1;
   if (setsockopt (*fd, SOL_PACKET, PACKET_LOSS, &opt, sizeof (opt)) < 0)
@@ -357,7 +342,6 @@ af_packet_queue_init (vlib_main_t *vm, af_packet_if_t *apif,
   u8 *ring_addr = 0;
   u32 rx_frames_per_block, tx_frames_per_block;
   u32 rx_frame_size, tx_frame_size;
-  u32 hdrlen = 0;
   u32 i = 0;
   u8 is_cksum_gso_enabled = 0;
 
@@ -404,7 +388,7 @@ af_packet_queue_init (vlib_main_t *vm, af_packet_if_t *apif,
   if (rx_queue || tx_queue)
     {
       ret = create_packet_v3_sock (apif->host_if_index, rx_req, tx_req, &fd,
-				   &ring, &hdrlen, &is_cksum_gso_enabled,
+				   &ring, &is_cksum_gso_enabled,
 				   apif->dev_instance, is_fanout);
 
       if (ret != 0)
@@ -447,10 +431,7 @@ af_packet_queue_init (vlib_main_t *vm, af_packet_if_t *apif,
     }
 
   if (queue_id == 0)
-    {
-      apif->hdrlen = hdrlen;
-      apif->is_cksum_gso_enabled = is_cksum_gso_enabled;
-    }
+    apif->is_cksum_gso_enabled = is_cksum_gso_enabled;
 
   return 0;
 error:
