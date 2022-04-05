@@ -26,7 +26,9 @@ static inline u32
 srtp_ctx_alloc_w_thread (u32 thread_index)
 {
   srtp_tc_t *ctx;
-  pool_get_zero (srtp_main.ctx_pool[thread_index], ctx);
+  pool_get_aligned_safe (srtp_main.ctx_pool[thread_index], ctx,
+			 CLIB_CACHE_LINE_BYTES);
+  clib_memset (ctx, 0, sizeof (*ctx));
   ctx->c_thread_index = thread_index;
   ctx->srtp_ctx_handle = ctx - srtp_main.ctx_pool[thread_index];
   ctx->app_session_handle = SESSION_INVALID_HANDLE;
@@ -84,7 +86,8 @@ srtp_ctx_attach (u32 thread_index, void *ctx_ptr)
 {
   srtp_tc_t *ctx;
 
-  pool_get (srtp_main.ctx_pool[thread_index], ctx);
+  pool_get_aligned_safe (srtp_main.ctx_pool[thread_index], ctx,
+			 CLIB_CACHE_LINE_BYTES);
   clib_memcpy (ctx, ctx_ptr, sizeof (*ctx));
 
   ctx->c_thread_index = thread_index;
