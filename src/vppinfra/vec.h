@@ -320,10 +320,11 @@ _vec_resize (void **vp, uword n_add, uword hdr_sz, uword align, uword elt_sz)
     @param N number of elements to add
     @param H header size in bytes (may be zero)
     @param A alignment (may be zero)
+    @param P heap (may be zero)
     @return V new vector
 */
-#define vec_new_ha(T, N, H, A)                                                \
-  _vec_realloc (0, N, sizeof (T), H, _vec_align ((T *) 0, A), 0)
+#define vec_new_generic(T, N, H, A, P)                                        \
+  _vec_realloc (0, N, sizeof (T), H, _vec_align ((T *) 0, A), P)
 
 /** \brief Create new vector of given type and length
     (unspecified alignment, no header).
@@ -332,7 +333,7 @@ _vec_resize (void **vp, uword n_add, uword hdr_sz, uword align, uword elt_sz)
     @param N number of elements to add
     @return V new vector
 */
-#define vec_new(T,N)           vec_new_ha(T,N,0,0)
+#define vec_new(T, N) vec_new_generic (T, N, 0, 0, 0)
 /** \brief Create new vector of given type and length
     (alignment specified, no header).
 
@@ -341,7 +342,16 @@ _vec_resize (void **vp, uword n_add, uword hdr_sz, uword align, uword elt_sz)
     @param A alignment (may be zero)
     @return V new vector
 */
-#define vec_new_aligned(T,N,A) vec_new_ha(T,N,0,A)
+#define vec_new_aligned(T, N, A) vec_new_generic (T, N, 0, A, 0)
+/** \brief Create new vector of given type and length
+    (heap specified, no header).
+
+    @param T type of elements in new vector
+    @param N number of elements to add
+    @param P heap (may be zero)
+    @return V new vector
+*/
+#define vec_new_heap(T, N, P) vec_new_generic (T, N, 0, 0, P)
 
 /** \brief Free vector's memory (no header).
     @param V pointer to a vector
