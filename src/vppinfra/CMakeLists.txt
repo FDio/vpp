@@ -71,6 +71,9 @@ set(VPPINFRA_SRCS
   mhash.c
   mpcap.c
   pcap.c
+  perfmon/bundle_default.c
+  perfmon/bundle_core_power.c
+  perfmon/perfmon.c
   pmalloc.c
   pool.c
   ptclosure.c
@@ -155,6 +158,7 @@ set(VPPINFRA_HEADERS
   os.h
   pcap.h
   pcap_funcs.h
+  perfmon/perfmon.h
   pmalloc.h
   pool.h
   ptclosure.h

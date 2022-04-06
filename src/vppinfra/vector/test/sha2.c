@@ -293,7 +293,7 @@ check_digest (clib_error_t *err, int tc, u8 *calculated, const u8 *expected,
     return err;                                                               \
   }                                                                           \
                                                                               \
-  void __test_perf_fn perftest_sha##bits##_byte (int fd, test_perf_t *tp)     \
+  void __test_perf_fn perftest_sha##bits##_byte (test_perf_t *tp)             \
   {                                                                           \
     volatile uword *np = &tp->n_ops;                                          \
     volatile uword *kl = &tp->arg0;                                           \
@@ -302,9 +302,9 @@ check_digest (clib_error_t *err, int tc, u8 *calculated, const u8 *expected,
     u8 *data = test_mem_alloc_and_fill_inc_u8 (*np, 0, 0);                    \
     u8 *digest = test_mem_alloc (64);                                         \
                                                                               \
-    test_perf_event_enable (fd);                                              \
+    test_perf_event_enable (tp);                                              \
     clib_hmac_sha##bits (key, *kl, data, *np, digest);                        \
-    test_perf_event_disable (fd);                                             \
+    test_perf_event_disable (tp);                                             \
                                                                               \
     test_mem_free (key);                                                      \
     test_mem_free (data);                                                     \
@@ -314,7 +314,6 @@ check_digest (clib_error_t *err, int tc, u8 *calculated, const u8 *expected,
     .name = "clib_hmac_sha" #bits,                                            \
     .fn = test_clib_hmac_sha##bits,                                           \
     .perf_tests = PERF_TESTS ({ .name = "byte",                               \
-				.op_name = "Byte",                            \
 				.n_ops = 16384,                               \
 				.arg0 = 20,                                   \
 				.fn = perftest_sha##bits##_byte })            \

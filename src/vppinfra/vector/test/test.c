@@ -53,61 +53,7 @@ test_funct (test_main_t *tm)
   return 0;
 }
 
-#define TEST_PERF_MAX_EVENTS 7
-typedef struct
-{
-  char *name;
-  char *desc;
-  u64 config[TEST_PERF_MAX_EVENTS];
-  u32 type;
-  u8 n_events;
-  format_function_t *format_fn;
-} test_perf_event_bundle_t;
-
-static u8 *
-format_test_perf_bundle_default (u8 *s, va_list *args)
-{
-  test_main_t *tm = &test_main;
-  test_perf_event_bundle_t __clib_unused *b =
-    va_arg (*args, test_perf_event_bundle_t *);
-  test_perf_t *tp = va_arg (*args, test_perf_t *);
-  u64 *data = va_arg (*args, u64 *);
-
-  if (tm->ref_clock > 0)
-    {
-      if (data)
-	s = format (s, "%8.1f", tm->ref_clock * data[0] / data[1] / 1e9);
-      else
-	s = format (s, "%8s", "Freq");
-    }
-
-  if (data)
-    s = format (s, "%5.2f", (f64) data[2] / data[0]);
-  else
-    s = format (s, "%5s", "IPC");
-
-  if (data)
-    s = format (s, "%8.2f", (f64) data[0] / tp->n_ops);
-  else
-    s = format (s, "%8s", "Clks/Op");
-
-  if (data)
-    s = format (s, "%8.2f", (f64) data[2] / tp->n_ops);
-  else
-    s = format (s, "%8s", "Inst/Op");
-
-  if (data)
-    s = format (s, "%9.2f", (f64) data[3] / tp->n_ops);
-  else
-    s = format (s, "%9s", "Brnch/Op");
-
-  if (data)
-    s = format (s, "%10.2f", (f64) data[4] / tp->n_ops);
-  else
-    s = format (s, "%10s", "BrMiss/Op");
-  return s;
-}
-
+#if 0
 static u8 *
 format_test_perf_bundle_core_power (u8 *s, va_list *args)
 {
@@ -134,19 +80,6 @@ format_test_perf_bundle_core_power (u8 *s, va_list *args)
   return s;
 }
 
-test_perf_event_bundle_t perf_bundles[] = {
-  {
-    .name = "default",
-    .desc = "IPC, Clocks/Operatiom, Instr/Operation, Branch Total & Miss",
-    .type = PERF_TYPE_HARDWARE,
-    .config[0] = PERF_COUNT_HW_CPU_CYCLES,
-    .config[1] = PERF_COUNT_HW_REF_CPU_CYCLES,
-    .config[2] = PERF_COUNT_HW_INSTRUCTIONS,
-    .config[3] = PERF_COUNT_HW_BRANCH_INSTRUCTIONS,
-    .config[4] = PERF_COUNT_HW_BRANCH_MISSES,
-    .n_events = 5,
-    .format_fn = format_test_perf_bundle_default,
-  }
 #ifdef __x86_64__
 #define PERF_INTEL_CODE(event, umask) ((event) | (umask) << 8)
   ,
@@ -165,69 +98,21 @@ test_perf_event_bundle_t perf_bundles[] = {
   }
 #endif
 };
+#endif
 
 #ifdef __linux__
 clib_error_t *
 test_perf (test_main_t *tm)
 {
   clib_error_t *err = 0;
-  test_perf_event_bundle_t *b = 0;
-  int group_fd = -1, fds[TEST_PERF_MAX_EVENTS];
-  u64 count[TEST_PERF_MAX_EVENTS + 3] = {};
-  struct perf_event_attr pe = {
-    .size = sizeof (struct perf_event_attr),
-    .disabled = 1,
-    .exclude_kernel = 1,
-    .exclude_hv = 1,
-    .pinned = 1,
-    .exclusive = 1,
-    .read_format = (PERF_FORMAT_GROUP | PERF_FORMAT_TOTAL_TIME_ENABLED |
-		    PERF_FORMAT_TOTAL_TIME_RUNNING),
-  };
+  clib_perfmon_ctx_t _ctx, *ctx = &_ctx;
 
-  for (int i = 0; i < TEST_PERF_MAX_EVENTS; i++)
-    fds[i] = -1;
+  if ((err = clib_perfmon_init_by_bundle_name (
+	 ctx, "%s", tm->bundle ? (char *) tm->bundle : "default")))
+    return err;
 
-  tm->ref_clock = os_cpu_clock_frequency ();
-
-  if (tm->bundle)
-    {
-      for (int i = 0; i < ARRAY_LEN (perf_bundles); i++)
-	if (strncmp ((char *) tm->bundle, perf_bundles[i].name,
-		     vec_len (tm->bundle)) == 0)
-	  {
-	    b = perf_bundles + i;
-	    break;
-	  }
-      if (b == 0)
-	return clib_error_return (0, "Unknown bundle '%s'", tm->bundle);
-    }
-  else
-    b = perf_bundles;
-
-  for (int i = 0; i < b->n_events; i++)
-    {
-      pe.config = b->config[i];
-      pe.type = b->type;
-      int fd = syscall (__NR_perf_event_open, &pe, /* pid */ 0, /* cpu */ -1,
-			/* group_fd */ group_fd, /* flags */ 0);
-      if (fd < 0)
-	{
-	  err = clib_error_return_unix (0, "perf_event_open");
-	  goto done;
-	}
-
-      if (group_fd == -1)
-	{
-	  group_fd = fd;
-	  pe.pinned = 0;
-	  pe.exclusive = 0;
-	}
-      fds[i] = fd;
-    }
   fformat (stdout, "Warming up...\n");
-  for (u64 i = 0; i < (u64) tm->ref_clock; i++)
-    asm inline("" : : "r"(i * i) : "memory");
+  clib_perfmon_warmup (ctx);
 
   for (int i = 0; i < CLIB_MARCH_TYPE_N_VARIANTS; i++)
     {
@@ -246,31 +131,16 @@ test_perf (test_main_t *tm)
 	      test_perf_t *pt = r->perf_tests;
 	      if (tm->filter && strstr (r->name, (char *) tm->filter) == 0)
 		goto next;
-	      fformat (stdout, "%-22s%-12s%U\n", r->name, "OpType",
-		       b->format_fn, b, pt, 0UL);
+
+	      clib_perfmon_capture_group (ctx, "%s", r->name);
 	      do
 		{
-		  u32 read_size = (b->n_events + 3) * sizeof (u64);
 		  for (int i = 0; i < tm->repeat; i++)
 		    {
-		      test_perf_event_reset (group_fd);
-		      pt->fn (group_fd, pt);
-		      if ((read (group_fd, &count, read_size) != read_size))
-			{
-			  err = clib_error_return_unix (0, "read");
-			  goto done;
-			}
-		      if (count[1] != count[2])
-			clib_warning (
-			  "perf counters were not running all the time."
-#ifdef __x86_64__
-			  "\nConsider turning NMI watchdog off ('sysctl -w "
-			  "kernel.nmi_watchdog=0')."
-#endif
-			);
-		      fformat (stdout, "  %-20s%-12s%U\n", pt->name,
-			       pt->op_name ? pt->op_name : "", b->format_fn, b,
-			       pt, count + 3);
+		      pt->fd = ctx->group_fd;
+		      clib_perfmon_reset (ctx);
+		      pt->fn (pt);
+		      clib_perfmon_capture (ctx, pt->n_ops, "%0s", pt->name);
 		    }
 		}
 	      while ((++pt)->fn);
@@ -278,12 +148,11 @@ test_perf (test_main_t *tm)
 	next:
 	  r = r->next;
 	}
+      fformat (stdout, "%U\n", format_perfmon_bundle, ctx);
+      clib_perfmon_clear (ctx);
     }
 
-done:
-  for (int i = 0; i < TEST_PERF_MAX_EVENTS; i++)
-    if (fds[i] != -1)
-      close (fds[i]);
+  clib_perfmon_free (ctx);
   return err;
 }
 #endif
