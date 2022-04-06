@@ -125,6 +125,24 @@ typedef u64 clib_address_t;
 typedef u32 clib_address_t;
 #endif
 
+#define CLIB_I8_MAX  __INT8_MAX__
+#define CLIB_I16_MAX __INT16_MAX__
+#define CLIB_I32_MAX __INT32_MAX__
+#define CLIB_I64_MAX __INT64_MAX__
+
+#define CLIB_U8_MAX  __UINT8_MAX__
+#define CLIB_U16_MAX __UINT16_MAX__
+#define CLIB_U32_MAX __UINT32_MAX__
+#define CLIB_U64_MAX __UINT64_MAX__
+
+#if clib_address_bits == 64
+#define CLIB_WORD_MAX  CLIB_I64_MAX
+#define CLIB_UWORD_MAX CLIB_U64_MAX
+#else
+#define CLIB_WORD_MAX  CLIB_I32_MAX
+#define CLIB_UWORD_MAX CLIB_U32_MAX
+#endif
+
 /* These are needed to convert between pointers and machine words.
    MIPS is currently the only machine that can have different sized
    pointers and machine words (but only when compiling with 64 bit
