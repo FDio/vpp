@@ -676,7 +676,7 @@ validate_vec_init_h (uword num_elts, uword hdr_bytes)
   uword len;
   elt_t *new;
 
-  new = vec_new_ha (elt_t, num_elts, hdr_bytes, 0);
+  new = vec_new_generic (elt_t, num_elts, hdr_bytes, 0, 0);
   len = vec_len (new);
 
   ASSERT (len == num_elts);
