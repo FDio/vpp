@@ -6,6 +6,7 @@
 #define included_test_test_h
 
 #include <vppinfra/cpu.h>
+#include <vppinfra/perfmon/perfmon.h>
 #ifdef __linux__
 #include <sys/ioctl.h>
 #include <linux/perf_event.h>
@@ -14,10 +15,11 @@
 typedef clib_error_t *(test_fn_t) (clib_error_t *);
 
 struct test_perf_;
-typedef void (test_perf_fn_t) (int fd, struct test_perf_ *tp);
+typedef void (test_perf_fn_t) (struct test_perf_ *tp);
 
 typedef struct test_perf_
 {
+  int fd;
   u64 n_ops;
   union
   {
@@ -34,7 +36,6 @@ typedef struct test_perf_
     u64 arg2;
     void *ptr2;
   };
-  char *op_name;
   char *name;
   test_perf_fn_t *fn;
 } test_perf_t;
@@ -83,32 +84,19 @@ extern test_main_t test_main;
   }
 
 static_always_inline void
-test_perf_event_ioctl (int fd, u32 req)
+test_perf_event_reset (test_perf_t *t)
 {
-#ifdef __x86_64__
-  asm inline("syscall"
-	     :
-	     : "D"(fd), "S"(req), "a"(__NR_ioctl), "d"(PERF_IOC_FLAG_GROUP)
-	     : "rcx", "r11" /* registers modified by kernel */);
-#else
-  ioctl (fd, req, PERF_IOC_FLAG_GROUP);
-#endif
-}
-
-static_always_inline void
-test_perf_event_reset (int fd)
-{
-  test_perf_event_ioctl (fd, PERF_EVENT_IOC_RESET);
+  clib_perfmon_ioctl (t->fd, PERF_EVENT_IOC_RESET);
 }
 static_always_inline void
-test_perf_event_enable (int fd)
+test_perf_event_enable (test_perf_t *t)
 {
-  test_perf_event_ioctl (fd, PERF_EVENT_IOC_ENABLE);
+  clib_perfmon_ioctl (t->fd, PERF_EVENT_IOC_ENABLE);
 }
 static_always_inline void
-test_perf_event_disable (int fd)
+test_perf_event_disable (test_perf_t *t)
 {
-  test_perf_event_ioctl (fd, PERF_EVENT_IOC_DISABLE);
+  clib_perfmon_ioctl (t->fd, PERF_EVENT_IOC_DISABLE);
 }
 
 void *test_mem_alloc (uword size);

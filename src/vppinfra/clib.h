@@ -95,6 +95,9 @@
 /* Make a string from the macro's argument */
 #define CLIB_STRING_MACRO(x) #x
 
+#define CLIB_STRING_ARRAY(...)                                                \
+  (char *[]) { __VA_ARGS__, 0 }
+
 /* sanitizers */
 #ifdef __has_feature
 #if __has_feature(address_sanitizer)

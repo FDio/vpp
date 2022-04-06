@@ -259,17 +259,17 @@ done:
 }
 
 void __test_perf_fn
-perftest_fixed_12byte (int fd, test_perf_t *tp)
+perftest_fixed_12byte (test_perf_t *tp)
 {
   u32 n = tp->n_ops;
   u8 *data = test_mem_alloc_and_splat (12, n, (void *) &ip4_tests[0].key);
   u8 *res = test_mem_alloc (4 * n);
   clib_toeplitz_hash_key_t *k = clib_toeplitz_hash_key_init (0, 0);
 
-  test_perf_event_enable (fd);
+  test_perf_event_enable (tp);
   for (int i = 0; i < n; i++)
     ((u32 *) res)[i] = clib_toeplitz_hash (k, data + i * 12, 12);
-  test_perf_event_disable (fd);
+  test_perf_event_disable (tp);
 
   clib_toeplitz_hash_key_free (k);
   test_mem_free (data);
@@ -277,17 +277,17 @@ perftest_fixed_12byte (int fd, test_perf_t *tp)
 }
 
 void __test_perf_fn
-perftest_fixed_36byte (int fd, test_perf_t *tp)
+perftest_fixed_36byte (test_perf_t *tp)
 {
   u32 n = tp->n_ops;
   u8 *data = test_mem_alloc_and_splat (36, n, (void *) &ip6_tests[0].key);
   u8 *res = test_mem_alloc (4 * n);
   clib_toeplitz_hash_key_t *k = clib_toeplitz_hash_key_init (0, 0);
 
-  test_perf_event_enable (fd);
+  test_perf_event_enable (tp);
   for (int i = 0; i < n; i++)
     ((u32 *) res)[i] = clib_toeplitz_hash (k, data + i * 36, 36);
-  test_perf_event_disable (fd);
+  test_perf_event_disable (tp);
 
   clib_toeplitz_hash_key_free (k);
   test_mem_free (data);
@@ -295,7 +295,7 @@ perftest_fixed_36byte (int fd, test_perf_t *tp)
 }
 
 void __test_perf_fn
-perftest_variable_size (int fd, test_perf_t *tp)
+perftest_variable_size (test_perf_t *tp)
 {
   u32 key_len, n_keys, n = tp->n_ops;
   u8 *key, *data = test_mem_alloc (n);
@@ -309,9 +309,9 @@ perftest_variable_size (int fd, test_perf_t *tp)
   clib_toeplitz_hash_key_free (k);
   k = clib_toeplitz_hash_key_init (key, key_len * n_keys);
 
-  test_perf_event_enable (fd);
+  test_perf_event_enable (tp);
   res[0] = clib_toeplitz_hash (k, data, n);
-  test_perf_event_disable (fd);
+  test_perf_event_disable (tp);
 
   clib_toeplitz_hash_key_free (k);
   test_mem_free (data);
@@ -322,16 +322,13 @@ perftest_variable_size (int fd, test_perf_t *tp)
 REGISTER_TEST (clib_toeplitz_hash) = {
   .name = "clib_toeplitz_hash",
   .fn = test_clib_toeplitz_hash,
-  .perf_tests = PERF_TESTS ({ .name = "fixed_12",
-			      .op_name = "12B Tuple",
+  .perf_tests = PERF_TESTS ({ .name = "fixed (per 12 byte tuple)",
 			      .n_ops = 1024,
 			      .fn = perftest_fixed_12byte },
-			    { .name = "fixed_36",
-			      .op_name = "36B Tuple",
+			    { .name = "fixed (per 36 byte tuple)",
 			      .n_ops = 1024,
 			      .fn = perftest_fixed_36byte },
-			    { .name = "variable_size",
-			      .op_name = "Byte",
+			    { .name = "variable size (per byte)",
 			      .n_ops = 16384,
 			      .fn = perftest_variable_size }),
 };
@@ -442,7 +439,7 @@ done:
 }
 
 void __test_perf_fn
-perftest_fixed_12byte_x4 (int fd, test_perf_t *tp)
+perftest_fixed_12byte_x4 (test_perf_t *tp)
 {
   u32 n = tp->n_ops / 4;
   u8 *d0 = test_mem_alloc_and_splat (12, n, (void *) &ip4_tests[0].key);
@@ -455,11 +452,11 @@ perftest_fixed_12byte_x4 (int fd, test_perf_t *tp)
   u32 *h3 = test_mem_alloc (4 * n);
   clib_toeplitz_hash_key_t *k = clib_toeplitz_hash_key_init (0, 0);
 
-  test_perf_event_enable (fd);
+  test_perf_event_enable (tp);
   for (int i = 0; i < n; i++)
     clib_toeplitz_hash_x4 (k, d0 + i * 12, d1 + i * 12, d2 + i * 12,
 			   d3 + i * 12, h0 + i, h1 + i, h2 + i, h3 + i, 12);
-  test_perf_event_disable (fd);
+  test_perf_event_disable (tp);
 
   clib_toeplitz_hash_key_free (k);
   test_mem_free (d0);
@@ -473,7 +470,7 @@ perftest_fixed_12byte_x4 (int fd, test_perf_t *tp)
 }
 
 void __test_perf_fn
-perftest_fixed_36byte_x4 (int fd, test_perf_t *tp)
+perftest_fixed_36byte_x4 (test_perf_t *tp)
 {
   u32 n = tp->n_ops / 4;
   u8 *d0 = test_mem_alloc_and_splat (36, n, (void *) &ip4_tests[0].key);
@@ -486,11 +483,11 @@ perftest_fixed_36byte_x4 (int fd, test_perf_t *tp)
   u32 *h3 = test_mem_alloc (4 * n);
   clib_toeplitz_hash_key_t *k = clib_toeplitz_hash_key_init (0, 0);
 
-  test_perf_event_enable (fd);
+  test_perf_event_enable (tp);
   for (int i = 0; i < n; i++)
     clib_toeplitz_hash_x4 (k, d0 + i * 36, d1 + i * 36, d2 + i * 36,
 			   d3 + i * 36, h0 + i, h1 + i, h2 + i, h3 + i, 36);
-  test_perf_event_disable (fd);
+  test_perf_event_disable (tp);
 
   clib_toeplitz_hash_key_free (k);
   test_mem_free (d0);
@@ -504,7 +501,7 @@ perftest_fixed_36byte_x4 (int fd, test_perf_t *tp)
 }
 
 void __test_perf_fn
-perftest_variable_size_x4 (int fd, test_perf_t *tp)
+perftest_variable_size_x4 (test_perf_t *tp)
 {
   u32 key_len, n_keys, n = tp->n_ops / 4;
   u8 *key;
@@ -525,9 +522,9 @@ perftest_variable_size_x4 (int fd, test_perf_t *tp)
   clib_toeplitz_hash_key_free (k);
   k = clib_toeplitz_hash_key_init (key, key_len * n_keys);
 
-  test_perf_event_enable (fd);
+  test_perf_event_enable (tp);
   clib_toeplitz_hash_x4 (k, d0, d1, d2, d3, h0, h1, h2, h3, n);
-  test_perf_event_disable (fd);
+  test_perf_event_disable (tp);
 
   clib_toeplitz_hash_key_free (k);
   test_mem_free (key);
@@ -544,16 +541,13 @@ perftest_variable_size_x4 (int fd, test_perf_t *tp)
 REGISTER_TEST (clib_toeplitz_hash_x4) = {
   .name = "clib_toeplitz_hash_x4",
   .fn = test_clib_toeplitz_hash_x4,
-  .perf_tests = PERF_TESTS ({ .name = "fixed_12",
-			      .op_name = "12B Tuple",
+  .perf_tests = PERF_TESTS ({ .name = "fixed (per 12 byte tuple)",
 			      .n_ops = 1024,
 			      .fn = perftest_fixed_12byte_x4 },
-			    { .name = "fixed_36",
-			      .op_name = "36B Tuple",
+			    { .name = "fixed (per 36 byte tuple)",
 			      .n_ops = 1024,
 			      .fn = perftest_fixed_36byte_x4 },
-			    { .name = "variable_size",
-			      .op_name = "Byte",
+			    { .name = "variable size (per byte)",
 			      .n_ops = 16384,
 			      .fn = perftest_variable_size_x4 }),
 };
