@@ -1151,6 +1151,8 @@ vnet_delete_hw_interface (vnet_main_t * vnm, u32 hw_if_index)
 			"interface-%d-output-deleted", hw_if_index);
       vlib_node_rename (vm, hw->tx_node_index, "interface-%d-tx-deleted",
 			hw_if_index);
+      vlib_unregister_errors (vm, hw->output_node_index);
+      vlib_unregister_errors (vm, hw->tx_node_index);
       vec_add2 (im->deleted_hw_interface_nodes, dn, 1);
       dn->tx_node_index = hw->tx_node_index;
       dn->output_node_index = hw->output_node_index;

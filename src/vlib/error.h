@@ -79,6 +79,7 @@ typedef struct
 void vlib_register_errors (struct vlib_main_t *vm, u32 node_index,
 			   u32 n_errors, char *error_strings[],
 			   vlib_error_desc_t counters[]);
+void vlib_unregister_errors (struct vlib_main_t *vm, u32 node_index);
 
 unformat_function_t unformat_vlib_error;
 
