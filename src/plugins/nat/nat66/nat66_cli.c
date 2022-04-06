@@ -330,16 +330,16 @@ nat66_show_static_mappings_command_fn (vlib_main_t * vm,
  * @cliexpar
  * @cliexstart{nat66}
  * To enable NAT66 plugin
- *  vpp# nat66 enable
+ *  vpp# nat66 plugin enable
  * To disable NAT66 plugin
- *  vpp# nat66 disable
+ *  vpp# nat66 plugin disable
  * To enable NAT66 plugin with outside-vrf id 10
- *  vpp# nat66 enable outside-vrf 10
+ *  vpp# nat66 plugin enable outside-vrf 10
  * @cliexend
 ?*/
 VLIB_CLI_COMMAND (nat66_enable_disable_command, static) = {
-  .path = "nat66",
-  .short_help = "nat66 <enable [outside-vrf <vrf-id>]>|disable",
+  .path = "nat66 plugin",
+  .short_help = "nat66 plugin <enable [outside-vrf <vrf-id>]>|disable",
   .function = nat66_enable_disable_command_fn,
 };
 
