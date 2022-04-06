@@ -75,6 +75,7 @@ typedef struct
   /* statistics segment */
   uword *directory_vector_by_name;
   vlib_stats_entry_t *directory_vector;
+  u32 dir_vector_first_free_elt;
   u8 **nodes;
 
   /* Update interval */
