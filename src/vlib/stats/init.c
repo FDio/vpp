@@ -98,6 +98,7 @@ vlib_stats_init (vlib_main_t *vm)
 
   /* Set up the name to counter-vector hash table */
   sm->directory_vector = 0;
+  sm->dir_vector_first_free_elt = CLIB_U32_MAX;
 
   shared_header->epoch = 1;
 

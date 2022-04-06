@@ -106,20 +106,21 @@ vlib_stats_create_counter (vlib_stats_entry_t *e)
 {
   vlib_stats_segment_t *sm = vlib_stats_get_segment ();
   void *oldheap;
-  u32 index = ~0;
-  int i;
+  u32 index;
 
   oldheap = clib_mem_set_heap (sm->heap);
-  vec_foreach_index_backwards (i, sm->directory_vector)
-    if (sm->directory_vector[i].type == STAT_DIR_TYPE_EMPTY)
-      {
-	index = i;
-	break;
-      }
 
-  index = index == ~0 ? vec_len (sm->directory_vector) : index;
+  if (sm->dir_vector_first_free_elt != CLIB_U32_MAX)
+    {
+      index = sm->dir_vector_first_free_elt;
+      sm->dir_vector_first_free_elt = sm->directory_vector[index].index;
+    }
+  else
+    {
+      index = vec_len (sm->directory_vector);
+      vec_validate (sm->directory_vector, index);
+    }
 
-  vec_validate (sm->directory_vector, index);
   sm->directory_vector[index] = *e;
 
   clib_mem_set_heap (oldheap);
@@ -183,6 +184,9 @@ vlib_stats_remove_entry (u32 entry_index)
 
   memset (e, 0, sizeof (*e));
   e->type = STAT_DIR_TYPE_EMPTY;
+
+  e->value = sm->dir_vector_first_free_elt;
+  sm->dir_vector_first_free_elt = entry_index;
 }
 
 static void
