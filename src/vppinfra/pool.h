@@ -199,8 +199,7 @@ _pool_get (void **pp, void **ep, uword align, int zero, uword elt_sz)
   len = vec_len (p);
 
   /* Nothing on free list, make a new element and return it. */
-  p =
-    _vec_realloc_inline (p, len + 1, elt_sz, sizeof (pool_header_t), align, 0);
+  p = _vec_realloc (p, len + 1, elt_sz, sizeof (pool_header_t), align, 0);
   e = p + len * elt_sz;
 
   _vec_update_pointer (pp, p);
@@ -319,8 +318,8 @@ _pool_alloc (void **pp, uword n_elts, uword align, void *heap, uword elt_sz)
       os_out_of_memory ();
     }
 
-  pp[0] = _vec_realloc_inline (pp[0], len + n_elts, elt_sz,
-			       sizeof (pool_header_t), align, heap);
+  pp[0] = _vec_realloc (pp[0], len + n_elts, elt_sz, sizeof (pool_header_t),
+			align, heap);
   _vec_set_len (pp[0], len, elt_sz);
   clib_mem_poison (pp[0] + len * elt_sz, n_elts * elt_sz);
 
@@ -350,7 +349,7 @@ _pool_dup (void *p, uword align, uword elt_sz)
       os_out_of_memory ();
     }
 
-  n = _vec_realloc_inline (0, len, elt_sz, sizeof (pool_header_t), align, 0);
+  n = _vec_realloc (0, len, elt_sz, sizeof (pool_header_t), align, 0);
   nph = pool_header (n);
   clib_memset_u8 (nph, 0, sizeof (vec_header_t));
 

@@ -15,12 +15,15 @@ vec_mem_size (void *v)
   return v ? clib_mem_size (v - vec_get_header_size (v)) : 0;
 }
 
-__clib_export void *
-_vec_realloc (void *v, uword n_elts, uword elt_sz, uword hdr_sz, uword align,
-	      void *heap)
+static __clib_noinline void *
+_vec_realloc_internal (void *v, uword n_elts, const vec_attr_t *const attr)
 {
   uword n_data_bytes, alloc_size, new_data_size;
   void *p;
+  void *heap = attr->heap;
+  uword align = attr->align;
+  uword elt_sz = attr->elt_sz;
+  uword hdr_sz = attr->hdr_sz;
 
   /* alignment must be power of 2 */
   align = clib_max (align, VEC_MIN_ALIGN);
@@ -32,7 +35,7 @@ _vec_realloc (void *v, uword n_elts, uword elt_sz, uword hdr_sz, uword align,
   if (v)
     {
       uword data_offset = vec_get_header_size (v);
-      uword old_data_size = data_offset + _vec_len (v) * elt_sz;
+      uword old_data_size = data_offset + _vec_len (v) * attr->elt_sz;
       new_data_size = data_offset + n_data_bytes;
       heap = _vec_find (v)->default_heap ? 0 : _vec_heap (v);
       p = vec_header (v);
@@ -85,6 +88,28 @@ _vec_realloc (void *v, uword n_elts, uword elt_sz, uword hdr_sz, uword align,
   clib_mem_poison (p + new_data_size, alloc_size - new_data_size);
   _vec_find (v)->len = n_elts;
   return v;
+}
+
+__clib_export void *
+_vec_realloc_noinline (void *v, uword n_elts, const vec_attr_t *const attr)
+{
+  uword elt_sz = attr->elt_sz;
+  if (PREDICT_TRUE (v != 0))
+    {
+      uword hs = _vec_find (v)->hdr_size * VEC_MIN_ALIGN;
+      uword alloc_size = clib_mem_size (v - hs) - hs;
+
+      /* Typically we'll not need to resize. */
+      if (PREDICT_TRUE ((elt_sz * n_elts) <= alloc_size))
+	{
+	  _vec_set_len (v, n_elts, elt_sz);
+	  return v;
+	}
+    }
+
+  /* this shouled emit tail jump and likely avoid stack usasge inside this
+   * function */
+  return _vec_realloc_internal (v, n_elts, attr);
 }
 
 __clib_export u32
