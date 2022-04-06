@@ -157,7 +157,7 @@ RPM_DEPENDS_DEBUG += yum-plugin-auto-update-debug-info
 RPM_SUSE_BUILDTOOLS_DEPS = autoconf automake ccache check-devel chrpath
 RPM_SUSE_BUILDTOOLS_DEPS += clang cmake indent libtool make ninja python3-ply
 
-RPM_SUSE_DEVEL_DEPS = glibc-devel-static libnuma-devel libelf-devel
+RPM_SUSE_DEVEL_DEPS = glibc-devel-static libnuma-devel libelf-devel nasm
 RPM_SUSE_DEVEL_DEPS += libopenssl-devel openssl-devel mbedtls-devel libuuid-devel
 
 RPM_SUSE_PYTHON_DEPS = python-devel python3-devel python-pip python3-pip

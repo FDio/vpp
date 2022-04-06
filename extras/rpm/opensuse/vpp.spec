@@ -3,6 +3,8 @@
 #
 # Copyright (c) 2018 SUSE LINUX GmbH, Nuernberg, Germany.
 #
+# Copyright (c) 2022 Nordix Foundation.
+#
 # All modifications and additions to the file contributed by third parties
 # remain the property of their copyright owners, unless otherwise agreed
 # upon. The license for this file, and modifications and additions to the
@@ -11,10 +13,6 @@
 # case the license is the MIT License). An "Open Source License" is a
 # license that conforms to the Open Source Definition (Version 1.9)
 # published by the Open Source Initiative.
-
-# Please submit bugfixes or comments via http://bugs.opensuse.org/
-#
-
 
 %define _vpp_build_dir       %{buildroot}/../../BUILD/vpp-%{version}/build-root
 %define _vpp_install_dir     %{_vpp_build_dir}/install-vpp-native/
@@ -34,6 +32,7 @@ BuildRequires:  autoconf
 BuildRequires:  automake
 BuildRequires:  bison
 BuildRequires:  ccache
+BuildRequires:  clang
 BuildRequires:  check-devel
 BuildRequires:  chrpath
 BuildRequires:  distribution-release
@@ -141,7 +140,7 @@ This package contains the python bindings for the vpp api
 export VPP_BUILD_USER=suse
 export VPP_BUILD_HOST=SUSE
 
-make -C build-root V=1 CC=gcc-7 CXX=g++-7 PLATFORM=vpp TAG=vpp install-packages
+make -C build-root V=1 PLATFORM=vpp TAG=vpp install-packages
 
 cd %{_vpp_build_dir}/../src/vpp-api/python && %{py3_build}
 
