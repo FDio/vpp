@@ -1064,7 +1064,7 @@ http_config_fn (vlib_main_t *vm, unformat_input_t *input)
   return 0;
 }
 
-VLIB_EARLY_CONFIG_FUNCTION (http_config_fn, "http");
+VLIB_CONFIG_FUNCTION (http_config_fn, "http");
 
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
