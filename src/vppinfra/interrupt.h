@@ -110,6 +110,8 @@ clib_interrupt_get_next (void *in, int last)
   ASSERT (last >= -1 && last < h->n_int);
 
   off = (last + 1) >> log2_uword_bits;
+  if (off > h->n_int >> log2_uword_bits || off >= h->n_uword_alloc)
+    return -1;
 
   last -= off << log2_uword_bits;
   bmp[off] |= __atomic_exchange_n (abm + off, 0, __ATOMIC_SEQ_CST);
@@ -121,7 +123,7 @@ next:
 
   off++;
 
-  if (off > h->n_int >> log2_uword_bits)
+  if (off > h->n_int >> log2_uword_bits || off >= h->n_uword_alloc)
     return -1;
 
   bmp[off] |= __atomic_exchange_n (abm + off, 0, __ATOMIC_SEQ_CST);
