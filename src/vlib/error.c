@@ -123,6 +123,23 @@ format_stats_counter_name (u8 *s, va_list *va)
   return s;
 }
 
+void
+vlib_unregister_errors (vlib_main_t *vm, u32 node_index)
+{
+  vlib_error_main_t *em = &vm->error_main;
+  vlib_node_t *n = vlib_get_node (vm, node_index);
+  vlib_error_desc_t *cd;
+
+  if (n->n_errors > 0)
+    {
+      cd = vec_elt_at_index (em->counters_heap, n->error_heap_index);
+      for (u32 i = 0; i < n->n_errors; i++)
+	vlib_stats_remove_entry (cd[i].stats_entry_index);
+      heap_dealloc (em->counters_heap, n->error_heap_handle);
+      n->n_errors = 0;
+    }
+}
+
 /* Reserves given number of error codes for given node. */
 void
 vlib_register_errors (vlib_main_t *vm, u32 node_index, u32 n_errors,
@@ -142,13 +159,7 @@ vlib_register_errors (vlib_main_t *vm, u32 node_index, u32 n_errors,
   vlib_stats_segment_lock ();
 
   /* Free up any previous error strings. */
-  if (n->n_errors > 0)
-    {
-      cd = vec_elt_at_index (em->counters_heap, n->error_heap_index);
-      for (u32 i = 0; i < n->n_errors; i++)
-	vlib_stats_remove_entry (cd[i].stats_entry_index);
-      heap_dealloc (em->counters_heap, n->error_heap_handle);
-    }
+  vlib_unregister_errors (vm, node_index);
 
   n->n_errors = n_errors;
   n->error_counters = counters;
