@@ -101,8 +101,18 @@
     @param align alignment (may be zero)
     @return v_prime pointer to resized vector, may or may not equal v
 */
-void *_vec_realloc (void *v, uword n_elts, uword elt_sz, uword hdr_sz,
-		    uword align, void *heap);
+
+typedef struct
+{
+  void *heap;
+  u32 n_elts;
+  u32 elt_sz;
+  u16 hdr_sz;
+  u16 align;
+} vec_attr_t;
+
+void *_vec_realloc_noinline (void *v, uword n_elts,
+			     const vec_attr_t *const attr);
 
 /* calculate minimum alignment out of data natural alignment and provided
  * value, should not be < VEC_MIN_ALIGN */
@@ -140,9 +150,13 @@ vec_get_heap (void *v)
 }
 
 static_always_inline void *
-_vec_realloc_inline (void *v, uword n_elts, uword elt_sz, uword hdr_sz,
-		     uword align, void *heap)
+_vec_realloc (void *v, uword n_elts, uword elt_sz, uword hdr_sz, uword align,
+	      void *heap)
 {
+  const vec_attr_t attr = {
+    .elt_sz = elt_sz, .hdr_sz = hdr_sz, .align = align, .heap = heap
+  };
+#if 0
   if (PREDICT_TRUE (v != 0))
     {
       /* Vector header must start heap object. */
@@ -155,20 +169,24 @@ _vec_realloc_inline (void *v, uword n_elts, uword elt_sz, uword hdr_sz,
 	  return v;
 	}
     }
+#endif
 
   /* Slow path: call helper function. */
-  return _vec_realloc (v, n_elts, elt_sz, hdr_sz, align, heap);
+  return _vec_realloc_noinline (v, n_elts, &attr);
 }
 
 static_always_inline void
 _vec_prealloc (void **vp, uword n_elts, uword hdr_sz, uword align, void *heap,
 	       uword elt_sz)
 {
+  const vec_attr_t attr = {
+    .elt_sz = elt_sz, .hdr_sz = hdr_sz, .align = align, .heap = heap
+  };
   void *v;
 
   ASSERT (vp[0] == 0);
 
-  v = _vec_realloc (0, n_elts, elt_sz, hdr_sz, align, heap);
+  v = _vec_realloc_noinline (0, n_elts, &attr);
   _vec_set_len (v, 0, elt_sz);
   _vec_update_pointer (vp, v);
 }
@@ -248,7 +266,7 @@ static_always_inline void
 _vec_resize (void **vp, uword n_add, uword hdr_sz, uword align, uword elt_sz)
 {
   void *v = vp[0];
-  v = _vec_realloc_inline (v, vec_len (v) + n_add, elt_sz, hdr_sz, align, 0);
+  v = _vec_realloc (v, vec_len (v) + n_add, elt_sz, hdr_sz, align, 0);
   _vec_update_pointer (vp, v);
 }
 
@@ -468,7 +486,7 @@ _vec_validate (void **vp, uword index, uword header_size, uword align,
   uword vl = vec_len (v);
   if (index >= vl)
     {
-      v = _vec_realloc_inline (v, index + 1, elt_sz, header_size, align, heap);
+      v = _vec_realloc (v, index + 1, elt_sz, header_size, align, heap);
       _vec_zero_elts (v, vl, index - vl + 1, elt_sz);
       _vec_update_pointer (vp, v);
     }
@@ -573,7 +591,7 @@ _vec_add1 (void **vp, uword hdr_sz, uword align, uword elt_sz)
 {
   void *v = vp[0];
   uword len = vec_len (v);
-  v = _vec_realloc_inline (v, len + 1, elt_sz, hdr_sz, align, 0);
+  v = _vec_realloc (v, len + 1, elt_sz, hdr_sz, align, 0);
 
   _vec_update_pointer (vp, v);
 
@@ -618,7 +636,7 @@ _vec_add2 (void **vp, void **pp, uword n_add, uword hdr_sz, uword align,
 {
   void *v = vp[0];
   uword len = vec_len (vp[0]);
-  v = _vec_realloc_inline (v, len + n_add, elt_sz, hdr_sz, align, 0);
+  v = _vec_realloc (v, len + n_add, elt_sz, hdr_sz, align, 0);
   _vec_update_pointer (vp, v);
   pp[0] = v + len * elt_sz;
 }
@@ -671,7 +689,7 @@ _vec_add (void **vp, void *e, word n_add, uword hdr_sz, uword align,
   if (n_add < 1)
     return;
 
-  v = _vec_realloc_inline (v, len + n_add, elt_sz, hdr_sz, align, 0);
+  v = _vec_realloc (v, len + n_add, elt_sz, hdr_sz, align, 0);
   clib_memcpy_fast (v + len * elt_sz, e, n_add * elt_sz);
   _vec_update_pointer (vp, v);
 }
@@ -750,7 +768,7 @@ _vec_insert (void **vp, uword n_insert, uword ins_pt, u8 init, uword hdr_sz,
 
   ASSERT (ins_pt <= len);
 
-  v = _vec_realloc_inline (v, len + n_insert, elt_sz, hdr_sz, align, 0);
+  v = _vec_realloc (v, len + n_insert, elt_sz, hdr_sz, align, 0);
   clib_memmove (v + elt_sz * (ins_pt + n_insert), v + ins_pt * elt_sz,
 		(len - ins_pt) * elt_sz);
   _vec_zero_elts (v, ins_pt, n_insert, elt_sz);
@@ -842,7 +860,7 @@ _vec_insert_elts (void **vp, void *e, uword n_insert, uword ins_pt,
 
   ASSERT (ins_pt <= len);
 
-  v = _vec_realloc_inline (v, len + n_insert, elt_sz, hdr_sz, align, 0);
+  v = _vec_realloc (v, len + n_insert, elt_sz, hdr_sz, align, 0);
   clib_memmove (v + elt_sz * (ins_pt + n_insert), v + ins_pt * elt_sz,
 		(len - ins_pt) * elt_sz);
   _vec_zero_elts (v, ins_pt, n_insert, elt_sz);
@@ -938,7 +956,7 @@ _vec_append (void **v1p, void *v2, uword v1_elt_sz, uword v2_elt_sz,
 
   if (PREDICT_TRUE (len2 > 0))
     {
-      v1 = _vec_realloc_inline (v1, len1 + len2, v2_elt_sz, 0, align, 0);
+      v1 = _vec_realloc (v1, len1 + len2, v2_elt_sz, 0, align, 0);
       clib_memcpy_fast (v1 + len1 * v1_elt_sz, v2, len2 * v2_elt_sz);
       _vec_update_pointer (v1p, v1);
     }
@@ -971,7 +989,7 @@ _vec_prepend (void **v1p, void *v2, uword v1_elt_sz, uword v2_elt_sz,
 
   if (PREDICT_TRUE (len2 > 0))
     {
-      v1 = _vec_realloc_inline (v1, len1 + len2, v2_elt_sz, 0, align, 0);
+      v1 = _vec_realloc (v1, len1 + len2, v2_elt_sz, 0, align, 0);
       clib_memmove (v1 + len2 * v2_elt_sz, v1p[0], len1 * v1_elt_sz);
       clib_memcpy_fast (v1, v2, len2 * v2_elt_sz);
       _vec_update_pointer (v1p, v1);
