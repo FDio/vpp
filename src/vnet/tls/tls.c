@@ -1385,7 +1385,7 @@ tls_config_fn (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
-VLIB_EARLY_CONFIG_FUNCTION (tls_config_fn, "tls");
+VLIB_CONFIG_FUNCTION (tls_config_fn, "tls");
 
 tls_main_t *
 vnet_tls_get_main (void)
