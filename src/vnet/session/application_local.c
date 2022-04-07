@@ -81,7 +81,8 @@ ct_connection_alloc (u32 thread_index)
   ct_worker_t *wrk = ct_worker_get (thread_index);
   ct_connection_t *ct;
 
-  pool_get_zero (wrk->connections, ct);
+  pool_get_aligned_safe (wrk->connections, ct, CLIB_CACHE_LINE_BYTES);
+  clib_memset (ct, 0, sizeof (*ct));
   ct->c_c_index = ct - wrk->connections;
   ct->c_thread_index = thread_index;
   ct->client_wrk = ~0;
