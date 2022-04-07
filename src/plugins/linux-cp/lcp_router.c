@@ -308,8 +308,7 @@ lcp_router_link_addr (struct rtnl_link *rl, lcp_itf_pair_t *lip)
 }
 
 static void lcp_router_table_flush (lcp_router_table_t *nlt,
-				    u32 *sw_if_index_to_bool,
-				    fib_source_t source);
+				    uword *sw_if_bitmap, fib_source_t source);
 
 static void
 lcp_router_link_add (struct rtnl_link *rl, void *ctx)
@@ -367,18 +366,16 @@ lcp_router_link_add (struct rtnl_link *rl, void *ctx)
 	      if (fib_index == nlt->nlt_fib_index &&
 		  FIB_PROTOCOL_IP4 == nlt->nlt_proto)
 		{
-		  u32 *sw_if_index_to_bool = NULL;
+		  uword *sw_if_bitmap = NULL;
 
-		  vec_validate_init_empty (sw_if_index_to_bool,
-					   lip->lip_phy_sw_if_index, false);
-		  sw_if_index_to_bool[lip->lip_phy_sw_if_index] = true;
+		  sw_if_bitmap = clib_bitmap_set (sw_if_bitmap,
+						  lip->lip_phy_sw_if_index, 1);
 
-		  lcp_router_table_flush (nlt, sw_if_index_to_bool,
-					  lcp_rt_fib_src);
-		  lcp_router_table_flush (nlt, sw_if_index_to_bool,
+		  lcp_router_table_flush (nlt, sw_if_bitmap, lcp_rt_fib_src);
+		  lcp_router_table_flush (nlt, sw_if_bitmap,
 					  lcp_rt_fib_src_dynamic);
 
-		  vec_free (sw_if_index_to_bool);
+		  clib_bitmap_free (sw_if_bitmap);
 		  break;
 		}
 	    }
@@ -512,38 +509,33 @@ lcp_router_link_up_down (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
        lcp_get_del_dynamic_on_link_down ()))
     {
       u32 fib_index;
-      u32 **fib_index_to_sw_if_index_to_bool = NULL;
+      uword **fib_index_to_sw_if_bitmap = NULL;
       u32 id, sw_if_index;
       lcp_router_table_t *nlt;
 
       fib_index = fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
 						       hi->sw_if_index);
-
-      vec_validate_init_empty (fib_index_to_sw_if_index_to_bool, fib_index,
-			       NULL);
-      vec_validate_init_empty (fib_index_to_sw_if_index_to_bool[fib_index],
-			       hi->sw_if_index, false);
-      fib_index_to_sw_if_index_to_bool[fib_index][hi->sw_if_index] = true;
+      vec_validate_init_empty (fib_index_to_sw_if_bitmap, fib_index, NULL);
+      fib_index_to_sw_if_bitmap[fib_index] = clib_bitmap_set (
+	fib_index_to_sw_if_bitmap[fib_index], hi->sw_if_index, 1);
 
       /* clang-format off */
       hash_foreach (id, sw_if_index, hi->sub_interface_sw_if_index_by_id,
       ({
 	fib_index = fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
 							 sw_if_index);
-	vec_validate_init_empty (fib_index_to_sw_if_index_to_bool, fib_index,
-				 NULL);
-	vec_validate_init_empty (fib_index_to_sw_if_index_to_bool[fib_index],
-				 sw_if_index, false);
-	fib_index_to_sw_if_index_to_bool[fib_index][sw_if_index] = true;
+	vec_validate_init_empty (fib_index_to_sw_if_bitmap, fib_index, NULL);
+	fib_index_to_sw_if_bitmap[fib_index] = clib_bitmap_set (
+	  fib_index_to_sw_if_bitmap[fib_index], sw_if_index, 1);
       }));
       /* clang-format on */
 
-      vec_foreach_index (fib_index, fib_index_to_sw_if_index_to_bool)
+      vec_foreach_index (fib_index, fib_index_to_sw_if_bitmap)
 	{
-	  u32 *sw_if_index_to_bool;
+	  uword *sw_if_bitmap;
 
-	  sw_if_index_to_bool = fib_index_to_sw_if_index_to_bool[fib_index];
-	  if (NULL == sw_if_index_to_bool)
+	  sw_if_bitmap = fib_index_to_sw_if_bitmap[fib_index];
+	  if (NULL == sw_if_bitmap)
 	    continue;
 
 	  pool_foreach (nlt, lcp_router_table_pool)
@@ -552,19 +544,18 @@ lcp_router_link_up_down (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
 		  FIB_PROTOCOL_IP4 == nlt->nlt_proto)
 		{
 		  if (lcp_get_del_static_on_link_down ())
-		    lcp_router_table_flush (nlt, sw_if_index_to_bool,
-					    lcp_rt_fib_src);
+		    lcp_router_table_flush (nlt, sw_if_bitmap, lcp_rt_fib_src);
 		  if (lcp_get_del_dynamic_on_link_down ())
-		    lcp_router_table_flush (nlt, sw_if_index_to_bool,
+		    lcp_router_table_flush (nlt, sw_if_bitmap,
 					    lcp_rt_fib_src_dynamic);
 		  break;
 		}
 	    }
 
-	  vec_free (sw_if_index_to_bool);
+	  clib_bitmap_free (sw_if_bitmap);
 	}
 
-      vec_free (fib_index_to_sw_if_index_to_bool);
+      vec_free (fib_index_to_sw_if_bitmap);
     }
 
   return 0;
@@ -1279,7 +1270,7 @@ lcp_router_route_sync_end (void)
 typedef struct lcp_router_table_flush_ctx_t_
 {
   fib_node_index_t *lrtf_entries;
-  u32 *lrtf_sw_if_index_to_bool;
+  uword *lrtf_sw_if_bitmap;
   fib_source_t lrtf_source;
 } lcp_router_table_flush_ctx_t;
 
@@ -1292,8 +1283,7 @@ lcp_router_table_flush_cb (fib_node_index_t fib_entry_index, void *arg)
   sw_if_index = fib_entry_get_resolving_interface_for_source (
     fib_entry_index, ctx->lrtf_source);
 
-  if (sw_if_index < vec_len (ctx->lrtf_sw_if_index_to_bool) &&
-      ctx->lrtf_sw_if_index_to_bool[sw_if_index])
+  if (clib_bitmap_get (ctx->lrtf_sw_if_bitmap, sw_if_index))
     {
       vec_add1 (ctx->lrtf_entries, fib_entry_index);
     }
@@ -1301,20 +1291,20 @@ lcp_router_table_flush_cb (fib_node_index_t fib_entry_index, void *arg)
 }
 
 static void
-lcp_router_table_flush (lcp_router_table_t *nlt, u32 *sw_if_index_to_bool,
+lcp_router_table_flush (lcp_router_table_t *nlt, uword *sw_if_bitmap,
 			fib_source_t source)
 {
   fib_node_index_t *fib_entry_index;
   lcp_router_table_flush_ctx_t ctx = {
     .lrtf_entries = NULL,
-    .lrtf_sw_if_index_to_bool = sw_if_index_to_bool,
+    .lrtf_sw_if_bitmap = sw_if_bitmap,
     .lrtf_source = source,
   };
 
   LCP_ROUTER_DBG (
     "Flush table: proto %U, fib-index %u, max sw_if_index %u, source %U",
     format_fib_protocol, nlt->nlt_proto, nlt->nlt_fib_index,
-    vec_len (sw_if_index_to_bool) - 1, format_fib_source, source);
+    clib_bitmap_last_set (sw_if_bitmap), format_fib_source, source);
 
   fib_table_walk (nlt->nlt_fib_index, nlt->nlt_proto,
 		  lcp_router_table_flush_cb, &ctx);
