@@ -534,6 +534,9 @@ openssl_ctx_read_tls (tls_ctx_t *ctx, session_t *tls_session)
     {
       if (openssl_ctx_handshake_rx (ctx, tls_session) < 0)
 	return 0;
+
+      /* Application might force a session pool realloc on accept */
+      tls_session = session_get_from_handle (ctx->tls_session_handle);
     }
 
   app_session = session_get_from_handle (ctx->app_session_handle);
