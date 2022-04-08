@@ -354,7 +354,7 @@ vlib_stats_validate_will_expand_internal (u32 entry_index, va_list *va)
       u32 idx1 = va_arg (*va, u32);
       u64 **data = e->data;
 
-      if (idx0 >= vec_max_len (data))
+      if (idx0 >= vec_len (data))
 	goto done;
 
       for (u32 i = 0; i <= idx0; i++)
@@ -369,7 +369,7 @@ vlib_stats_validate_will_expand_internal (u32 entry_index, va_list *va)
 
       va_end (*va);
 
-      if (idx0 >= vec_max_len (data))
+      if (idx0 >= vec_len (data))
 	goto done;
 
       for (u32 i = 0; i <= idx0; i++)
