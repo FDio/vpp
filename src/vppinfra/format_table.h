@@ -38,14 +38,22 @@ typedef enum
 
 typedef enum
 {
-  TTAC_BLACK = 0,
-  TTAC_RED = 1,
-  TTAC_GREEN = 2,
-  TTAC_YELLOW = 3,
-  TTAC_BLUE = 4,
-  TTAC_MAGENTA = 5,
-  TTAC_CYAN = 6,
-  TTAC_WHITE = 7,
+  TTAC_BLACK = 0x00,
+  TTAC_RED = 0x01,
+  TTAC_GREEN = 0x02,
+  TTAC_YELLOW = 0x03,
+  TTAC_BLUE = 0x04,
+  TTAC_MAGENTA = 0x05,
+  TTAC_CYAN = 0x06,
+  TTAC_WHITE = 0x07,
+  TTAC_BRIGHT_BLACK = 0x10,
+  TTAC_BRIGHT_RED = 0x11,
+  TTAC_BRIGHT_GREEN = 0x12,
+  TTAC_BRIGHT_YELLOW = 0x13,
+  TTAC_BRIGHT_BLUE = 0x14,
+  TTAC_BRIGHT_MAGENTA = 0x15,
+  TTAC_BRIGHT_CYAN = 0x16,
+  TTAC_BRIGHT_WHITE = 0x17,
 } table_text_attr_color_t;
 
 typedef enum
