@@ -64,12 +64,14 @@ format_text_cell (table_t *t, u8 *s, table_cell_t *c, table_text_attr_t *def,
 	{
 	  a->fg_color = c->attr.fg_color;
 	  a->flags |= TTAF_FG_COLOR_SET;
+	  a->flags |= c->attr.flags & TTAF_FG_COLOR_BRIGHT;
 	}
 
       if (c->attr.flags & TTAF_BG_COLOR_SET)
 	{
 	  a->bg_color = c->attr.bg_color;
 	  a->flags |= TTAF_BG_COLOR_SET;
+	  a->flags |= c->attr.flags & TTAF_BG_COLOR_BRIGHT;
 	}
 
       if (a->flags & TTAF_RESET)
@@ -216,16 +218,24 @@ void
 table_set_cell_fg_color (table_t *t, int c, int r, table_text_attr_color_t v)
 {
   table_cell_t *cell = table_get_cell (t, c, r);
-  cell->attr.fg_color = v;
+  cell->attr.fg_color = v & 0x7;
   cell->attr.flags |= TTAF_FG_COLOR_SET;
+  if (v & 8)
+    cell->attr.flags |= TTAF_FG_COLOR_BRIGHT;
+  else
+    cell->attr.flags &= ~TTAF_FG_COLOR_BRIGHT;
 }
 
 void
 table_set_cell_bg_color (table_t *t, int c, int r, table_text_attr_color_t v)
 {
   table_cell_t *cell = table_get_cell (t, c, r);
-  cell->attr.bg_color = v;
+  cell->attr.bg_color = v & 0x7;
   cell->attr.flags |= TTAF_BG_COLOR_SET;
+  if (v & 8)
+    cell->attr.flags |= TTAF_BG_COLOR_BRIGHT;
+  else
+    cell->attr.flags &= ~TTAF_BG_COLOR_BRIGHT;
 }
 
 void

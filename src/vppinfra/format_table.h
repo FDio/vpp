@@ -46,6 +46,14 @@ typedef enum
   TTAC_MAGENTA = 5,
   TTAC_CYAN = 6,
   TTAC_WHITE = 7,
+  TTAC_BRIGHT_BLACK = 8,
+  TTAC_BRIGHT_RED = 9,
+  TTAC_BRIGHT_GREEN = 10,
+  TTAC_BRIGHT_YELLOW = 11,
+  TTAC_BRIGHT_BLUE = 12,
+  TTAC_BRIGHT_MAGENTA = 13,
+  TTAC_BRIGHT_CYAN = 14,
+  TTAC_BRIGHT_WHITE = 15,
 } table_text_attr_color_t;
 
 typedef enum
