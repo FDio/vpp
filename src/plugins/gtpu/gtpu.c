@@ -578,6 +578,7 @@ int vnet_gtpu_add_mod_del_tunnel
 	  if (a->tteid == 0)
 	    return VNET_API_ERROR_INVALID_VALUE;
 	  t->tteid = a->tteid;
+	  vec_free (t->rewrite);
 	  ip_udp_gtpu_rewrite (t, is_ip6);
 	  return 0;
 	}
