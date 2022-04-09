@@ -85,6 +85,14 @@ arp_proxy_enable (u32 sw_if_index)
   return (0);
 }
 
+int
+arp_proxy_is_enabled (u32 sw_if_index)
+{
+  arp_proxy_main_t *am = &arp_proxy_main;
+  vec_validate (am->enabled_by_sw_if_index, sw_if_index);
+  return am->enabled_by_sw_if_index[sw_if_index];
+}
+
 static int
 vnet_proxy_arp_add_del (const ip4_address_t * lo_addr,
 			const ip4_address_t * hi_addr,

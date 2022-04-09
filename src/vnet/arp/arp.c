@@ -562,7 +562,13 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	       * blow our ARP cache
 	       */
 	      if (conn_sw_if_index0 != sw_if_index0)
-		error0 = ETHERNET_ARP_ERROR_l3_dst_address_not_local;
+		{
+		  error0 = ETHERNET_ARP_ERROR_l3_dst_address_not_local;
+		  if (arp_proxy_is_enabled (sw_if_index0))
+		    goto next_feature;
+		  else
+		    goto drop;
+		}
 	      else if (arp0->ip4_over_ethernet[0].ip4.as_u32 ==
 		       arp0->ip4_over_ethernet[1].ip4.as_u32)
 		error0 = arp_learn (sw_if_index0,

@@ -55,6 +55,7 @@ extern int arp_proxy_del (u32 fib_index,
 
 extern int arp_proxy_enable (u32 sw_if_index);
 extern int arp_proxy_disable (u32 sw_if_index);
+extern int arp_proxy_is_enabled (u32 sw_if_index);
 
 /**
  * call back function when walking the DB of proxy ARPs
