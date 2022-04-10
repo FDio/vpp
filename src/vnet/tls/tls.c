@@ -187,6 +187,9 @@ tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
   if (!app_wrk)
     {
       tls_disconnect_transport (ctx);
+      if (ctx->tls_type == TRANSPORT_PROTO_TLS)
+	session_free (session_get (ctx->c_s_index, ctx->c_thread_index));
+      ctx->no_app_session = 1;
       return -1;
     }
 
@@ -225,6 +228,8 @@ tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
     goto failed;
 
   app_session->session_state = SESSION_STATE_READY;
+  ctx->app_session_handle = session_handle (app_session);
+
   if (app_worker_connect_notify (app_wrk, app_session,
 				 SESSION_E_NONE, ctx->parent_app_api_context))
     {
@@ -233,8 +238,6 @@ tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
       tls_disconnect (ctx->tls_ctx_handle, vlib_get_thread_index ());
       return -1;
     }
-
-  ctx->app_session_handle = session_handle (app_session);
 
   return 0;
 
@@ -550,6 +553,7 @@ tls_session_connected_cb (u32 tls_app_index, u32 ho_ctx_index,
   app_session = session_alloc (ctx->c_thread_index);
   app_session->session_state = SESSION_STATE_CREATED;
   ctx->c_s_index = app_session->session_index;
+  ctx->app_session_handle = session_handle (app_session);
   st = session_type_from_proto_and_ip (TRANSPORT_PROTO_TLS, ctx->tcp_is_ip4);
   app_session->session_type = st;
   app_session->connection_index = ctx->tls_ctx_handle;

@@ -352,7 +352,8 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
 	      return -1;
 	    }
 	}
-      tls_notify_app_connected (ctx, SESSION_E_NONE);
+      if (tls_notify_app_connected (ctx, SESSION_E_NONE))
+	return -1;
     }
   else
     {
