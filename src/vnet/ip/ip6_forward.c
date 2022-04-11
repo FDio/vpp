@@ -1475,6 +1475,11 @@ ip6_local_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    vnet_buffer (b[1])->sw_if_index[VLIB_TX] != ~0 ?
 	    vnet_buffer (b[1])->sw_if_index[VLIB_TX] :
 	    vnet_buffer (b[1])->ip.fib_index;
+
+	  vnet_buffer (b[0])->ip.rx_sw_if_index =
+	    vnet_buffer (b[0])->sw_if_index[VLIB_RX];
+	  vnet_buffer (b[1])->ip.rx_sw_if_index =
+	    vnet_buffer (b[1])->sw_if_index[VLIB_RX];
 	  if (is_receive_dpo)
 	    {
 	      const receive_dpo_t *rd0, *rd1;
@@ -1482,15 +1487,10 @@ ip6_local_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		receive_dpo_get (vnet_buffer (b[0])->ip.adj_index[VLIB_TX]);
 	      rd1 =
 		receive_dpo_get (vnet_buffer (b[1])->ip.adj_index[VLIB_TX]);
-	      vnet_buffer (b[0])->ip.rx_sw_if_index = rd0->rd_sw_if_index;
-	      vnet_buffer (b[1])->ip.rx_sw_if_index = rd1->rd_sw_if_index;
-	    }
-	  else
-	    {
-	      vnet_buffer (b[0])->ip.rx_sw_if_index =
-		vnet_buffer (b[0])->ip.adj_index[VLIB_RX];
-	      vnet_buffer (b[1])->ip.rx_sw_if_index =
-		vnet_buffer (b[1])->ip.adj_index[VLIB_RX];
+	      if (rd0->rd_sw_if_index != ~0)
+		vnet_buffer (b[0])->ip.rx_sw_if_index = rd0->rd_sw_if_index;
+	      if (rd1->rd_sw_if_index != ~0)
+		vnet_buffer (b[1])->ip.rx_sw_if_index = rd1->rd_sw_if_index;
 	    }
 	}			/* head_of_feature_arc */
 
@@ -1619,15 +1619,16 @@ ip6_local_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    vnet_buffer (b[0])->sw_if_index[VLIB_TX] != ~0 ?
 	    vnet_buffer (b[0])->sw_if_index[VLIB_TX] :
 	    vnet_buffer (b[0])->ip.fib_index;
+
+	  vnet_buffer (b[0])->ip.rx_sw_if_index =
+	    vnet_buffer (b[0])->sw_if_index[VLIB_RX];
 	  if (is_receive_dpo)
 	    {
 	      receive_dpo_t *rd;
 	      rd = receive_dpo_get (vnet_buffer (b[0])->ip.adj_index[VLIB_TX]);
-	      vnet_buffer (b[0])->ip.rx_sw_if_index = rd->rd_sw_if_index;
+	      if (rd->rd_sw_if_index != ~0)
+		vnet_buffer (b[0])->ip.rx_sw_if_index = rd->rd_sw_if_index;
 	    }
-	  else
-	    vnet_buffer (b[0])->ip.rx_sw_if_index =
-	      vnet_buffer (b[0])->ip.adj_index[VLIB_RX];
 	}			/* head_of_feature_arc */
 
       next[0] = lm->local_next_by_ip_protocol[ip->protocol];

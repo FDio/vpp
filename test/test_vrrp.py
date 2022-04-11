@@ -233,7 +233,6 @@ class VppVRRPVirtualRouter(VppObject):
         return pkt
 
 
-@unittest.skipUnless(config.extended, "part of extended tests")
 class TestVRRP4(VppTestCase):
     """ IPv4 VRRP Test Case """
 
@@ -329,6 +328,7 @@ class TestVRRP4(VppTestCase):
 
     # VR with priority 255 owns the virtual address and should
     # become master and start advertising immediately.
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_vrrp4_master_adv(self):
         """ IPv4 Master VR advertises """
         self.pg_enable_capture(self.pg_interfaces)
@@ -360,6 +360,7 @@ class TestVRRP4(VppTestCase):
 
     # Same as above but with the update API, and add a change
     # of parameters to test that too
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_vrrp4_master_adv_update(self):
         """ IPv4 Master VR adv + Update to Backup """
         self.pg_enable_capture(self.pg_interfaces)
@@ -410,6 +411,7 @@ class TestVRRP4(VppTestCase):
 
     # VR with priority < 255 enters backup state and does not advertise as
     # long as it receives higher priority advertisements
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_vrrp4_backup_noadv(self):
         """ IPv4 Backup VR does not advertise """
         self.pg_enable_capture(self.pg_interfaces)
@@ -480,6 +482,7 @@ class TestVRRP4(VppTestCase):
         vr.remove_vpp_config()
         self._vrs = []
 
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_vrrp4_backup_noarp(self):
         """ IPv4 Backup VR ignores ARP """
         # We need an address for a virtual IP that is not the IP that
@@ -515,6 +518,7 @@ class TestVRRP4(VppTestCase):
         vr.remove_vpp_config()
         self._vrs = []
 
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_vrrp4_election(self):
         """ IPv4 Backup VR becomes master if no advertisements received """
 
@@ -551,6 +555,7 @@ class TestVRRP4(VppTestCase):
         self.pg0.wait_for_packet(intvl_s, is_not_adv)
         vr.assert_state_equals(VRRP_VR_STATE_MASTER)
 
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_vrrp4_backup_preempts(self):
         """ IPv4 Backup VR preempts lower priority master """
 
@@ -588,6 +593,7 @@ class TestVRRP4(VppTestCase):
         self.pg0.wait_for_packet(timeout=intvl_s, filter_out_fn=is_not_adv)
         vr.assert_state_equals(VRRP_VR_STATE_MASTER)
 
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_vrrp4_master_preempted(self):
         """ IPv4 Master VR preempted by higher priority backup """
 
@@ -624,6 +630,7 @@ class TestVRRP4(VppTestCase):
         # VR should be in backup state again
         vr.assert_state_equals(VRRP_VR_STATE_BACKUP)
 
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_vrrp4_accept_mode_disabled(self):
         """ IPv4 Master VR does not reply for VIP w/ accept mode off """
 
@@ -663,6 +670,7 @@ class TestVRRP4(VppTestCase):
         time.sleep(1)
         self.pg0.assert_nothing_captured(filter_out_fn=is_not_echo_reply)
 
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_vrrp4_accept_mode_enabled(self):
         """ IPv4 Master VR replies for VIP w/ accept mode on """
 
@@ -710,6 +718,7 @@ class TestVRRP4(VppTestCase):
         self.assertEqual(rx_pkts[0][ICMP].seq, 1)
         self.assertEqual(rx_pkts[0][ICMP].id, self.pg0.sw_if_index)
 
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_vrrp4_intf_tracking(self):
         """ IPv4 Master VR adjusts priority based on tracked interface """
 
@@ -774,6 +783,7 @@ class TestVRRP4(VppTestCase):
                                       filter_out_fn=is_not_adv)
         self.assertEqual(rx, adv_configured)
 
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_vrrp4_master_adv_unicast(self):
         """ IPv4 Master VR advertises (unicast) """
 
@@ -816,7 +826,6 @@ class TestVRRP4(VppTestCase):
         self.assertEqual(rx[VRRPv3].addrlist, [vip])
 
 
-@unittest.skipUnless(config.extended, "part of extended tests")
 class TestVRRP6(VppTestCase):
     """ IPv6 VRRP Test Case """
 
@@ -911,6 +920,7 @@ class TestVRRP6(VppTestCase):
 
     # VR with priority 255 owns the virtual address and should
     # become master and start advertising immediately.
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_vrrp6_master_adv(self):
         """ IPv6 Master VR advertises """
         self.pg_enable_capture(self.pg_interfaces)
@@ -944,6 +954,7 @@ class TestVRRP6(VppTestCase):
 
     # Same as above but with the update API, and add a change
     # of parameters to test that too
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_vrrp6_master_adv_update(self):
         """ IPv6 Master VR adv + Update to Backup """
         self.pg_enable_capture(self.pg_interfaces)
@@ -997,6 +1008,7 @@ class TestVRRP6(VppTestCase):
 
     # VR with priority < 255 enters backup state and does not advertise as
     # long as it receives higher priority advertisements
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_vrrp6_backup_noadv(self):
         """ IPv6 Backup VR does not advertise """
         self.pg_enable_capture(self.pg_interfaces)
@@ -1068,6 +1080,7 @@ class TestVRRP6(VppTestCase):
         vr.remove_vpp_config()
         self._vrs = []
 
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_vrrp6_backup_nond(self):
         """ IPv6 Backup VR ignores NDP """
         # We need an address for a virtual IP that is not the IP that
@@ -1106,6 +1119,7 @@ class TestVRRP6(VppTestCase):
 
         vr.start_stop(is_start=0)
 
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_vrrp6_election(self):
         """ IPv6 Backup VR becomes master if no advertisements received """
 
@@ -1142,6 +1156,7 @@ class TestVRRP6(VppTestCase):
         self.pg0.wait_for_packet(intvl_s, is_not_adv)
         vr.assert_state_equals(VRRP_VR_STATE_MASTER)
 
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_vrrp6_backup_preempts(self):
         """ IPv6 Backup VR preempts lower priority master """
 
@@ -1179,6 +1194,7 @@ class TestVRRP6(VppTestCase):
         self.pg0.wait_for_packet(timeout=intvl_s, filter_out_fn=is_not_adv)
         vr.assert_state_equals(VRRP_VR_STATE_MASTER)
 
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_vrrp6_master_preempted(self):
         """ IPv6 Master VR preempted by higher priority backup """
 
@@ -1215,6 +1231,7 @@ class TestVRRP6(VppTestCase):
         # VR should be in backup state again
         vr.assert_state_equals(VRRP_VR_STATE_BACKUP)
 
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_vrrp6_accept_mode_disabled(self):
         """ IPv6 Master VR does not reply for VIP w/ accept mode off """
 
@@ -1254,6 +1271,7 @@ class TestVRRP6(VppTestCase):
         time.sleep(1)
         self.pg0.assert_nothing_captured(filter_out_fn=is_not_echo_reply)
 
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_vrrp6_accept_mode_enabled(self):
         """ IPv6 Master VR replies for VIP w/ accept mode on """
 
@@ -1300,6 +1318,7 @@ class TestVRRP6(VppTestCase):
         self.assertEqual(rx_pkts[0][ICMPv6EchoReply].seq, 1)
         self.assertEqual(rx_pkts[0][ICMPv6EchoReply].id, self.pg0.sw_if_index)
 
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_vrrp6_intf_tracking(self):
         """ IPv6 Master VR adjusts priority based on tracked interface """
 
@@ -1364,6 +1383,7 @@ class TestVRRP6(VppTestCase):
                                       filter_out_fn=is_not_adv)
         self.assertEqual(rx, adv_configured)
 
+    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_vrrp6_master_adv_unicast(self):
         """ IPv6 Master VR advertises (unicast) """
 
