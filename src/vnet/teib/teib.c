@@ -225,9 +225,6 @@ teib_entry_add (u32 sw_if_index,
 	.tk_sw_if_index = sw_if_index,
       };
       teib_entry_t *te;
-      u32 fib_index;
-
-      fib_index = fib_table_get_index_for_sw_if_index (nh_proto, sw_if_index);
 
       pool_get_zero (teib_pool, te);
 
