@@ -1221,6 +1221,43 @@ fib_table_create_and_lock (fib_protocol_t proto,
     return (fi);
 }
 
+u32
+fib_table_update_table_id (fib_protocol_t proto,
+                           u32 old_table_id,
+                           u32 new_table_id)
+{
+    fib_table_t *fib_table;
+    fib_node_index_t fi;
+
+    switch (proto)
+    {
+    case FIB_PROTOCOL_IP4:
+       fi = ip4_fib_table_update_table_id(old_table_id, new_table_id);
+        break;
+    case FIB_PROTOCOL_IP6:
+       fi = ip6_fib_table_update_table_id(old_table_id, new_table_id);
+        break;
+     case FIB_PROTOCOL_MPLS:
+       fi = mpls_fib_table_update_table_id(old_table_id, new_table_id);
+        break;
+   default:
+        return (~0);
+    }
+
+    fib_table = fib_table_get(fi, proto);
+
+    if (fib_table->ft_desc)
+    {
+        vec_free(fib_table->ft_desc);
+    }
+
+    fib_table->ft_desc = format(NULL, "%U-VRF:%d",
+                                format_fib_protocol, proto,
+                                new_table_id);
+
+    return (fi);
+}
+
 static void
 fib_table_destroy (fib_table_t *fib_table)
 {

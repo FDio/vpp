@@ -804,6 +804,26 @@ extern u32 fib_table_create_and_lock(fib_protocol_t proto,
 
 /**
  * @brief
+ *  Update the table_id of the fib table
+ *
+ * @paran proto
+ *  The protocol the fib table id to be changed.
+ *
+ * @param old_table_id
+ *  The old table_id of the fib table
+ *
+ * @param new_table_id
+ *  The new table_id of the fib table
+ *
+ * @return The fib index
+ */
+extern u32 fib_table_update_table_id(fib_protocol_t proto,
+                                                                u32 old_table_id,
+                                     u32 new_table_id);
+
+
+/**
+ * @brief
  *  Get the flow hash configured used by the table
  *
  * @param fib_index

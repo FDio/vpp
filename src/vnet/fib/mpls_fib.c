@@ -240,6 +240,28 @@ mpls_fib_table_create_and_lock (fib_source_t src)
     return (mpls_fib_create_with_table_id(~0, src));
 }
 
+u32
+mpls_fib_table_update_table_id (u32 old_table_id, u32 new_table_id)
+{
+    fib_node_index_t old_fib_index, new_fib_index;
+
+    new_fib_index = mpls_fib_index_from_table_id(new_table_id);
+    ASSERT(new_fib_index == ~0);
+
+    old_fib_index = mpls_fib_index_from_table_id(old_table_id);
+    ASSERT(old_fib_index != ~0);
+
+    fib_table_t *fib_table = fib_table_get(old_fib_index, FIB_PROTOCOL_MPLS);
+
+    hash_unset (mpls_main.fib_index_by_table_id, old_table_id);
+
+    hash_set (mpls_main.fib_index_by_table_id, new_table_id, fib_table->ft_index);
+
+    fib_table->ft_table_id = new_table_id;
+
+    return old_fib_index;
+}
+
 void
 mpls_fib_table_destroy (u32 fib_index)
 {

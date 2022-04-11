@@ -88,6 +88,9 @@ extern void ip6_fib_table_entry_insert(u32 fib_index,
 				       fib_node_index_t fib_entry_index);
 extern void ip6_fib_table_destroy(u32 fib_index);
 
+extern u32 ip6_fib_table_update_table_id(u32 old_table_id,
+                                         u32 new_table_id);
+
 extern void ip6_fib_table_fwding_dpo_update(u32 fib_index,
 					    const ip6_address_t *addr,
 					    u32 len,

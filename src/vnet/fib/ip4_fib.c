@@ -185,6 +185,31 @@ ip4_create_fib_with_table_id (u32 table_id,
     return (fib_table->ft_index);
 }
 
+u32
+ip4_fib_table_update_table_id (u32 old_table_id, u32 new_table_id)
+{
+    fib_node_index_t old_fib_index, new_fib_index;
+
+    new_fib_index = ip4_fib_index_from_table_id(new_table_id);
+    ASSERT(new_fib_index == ~0);
+
+    old_fib_index = ip4_fib_index_from_table_id(old_table_id);
+    ASSERT(old_fib_index != ~0);
+
+    fib_table_t *fib_table = fib_table_get(old_fib_index, FIB_PROTOCOL_IP4);
+    ip4_fib_t *v4_fib = pool_elt_at_index(ip4_fibs, fib_table->ft_index);
+
+    hash_unset (ip4_main.fib_index_by_table_id, old_table_id);
+
+    hash_set (ip4_main.fib_index_by_table_id, new_table_id, fib_table->ft_index);
+
+    fib_table->ft_table_id =
+       v4_fib->hash.table_id =
+           new_table_id;
+
+    return old_fib_index;
+}
+
 void
 ip4_fib_table_destroy (u32 fib_index)
 {
