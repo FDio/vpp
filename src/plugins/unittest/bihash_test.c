@@ -207,16 +207,16 @@ test_bihash_threads (bihash_test_main_t * tm)
   tm->thread_barrier = 1;
 
   /* Start the worker threads */
+  tm->threads_running = 0;
   for (i = 0; i < tm->nthreads; i++)
     {
       rv = pthread_create (&handle, NULL, test_bihash_thread_fn,
 			   (void *) (uword) i);
       if (rv)
-	{
-	  clib_unix_warning ("pthread_create returned %d", rv);
-	}
+	clib_unix_warning ("pthread_create return %d", rv);
+      else
+	tm->threads_running++;
     }
-  tm->threads_running = i;
   tm->sequence_number = 0;
   CLIB_MEMORY_BARRIER ();
 
