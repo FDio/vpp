@@ -1538,14 +1538,14 @@ ip4_local_check_src (vlib_buffer_t *b, ip4_header_t *ip0,
     vnet_buffer (b)->sw_if_index[VLIB_TX] != ~0 ?
     vnet_buffer (b)->sw_if_index[VLIB_TX] : vnet_buffer (b)->ip.fib_index;
 
+  vnet_buffer (b)->ip.rx_sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
   if (is_receive_dpo)
     {
       receive_dpo_t *rd;
       rd = receive_dpo_get (vnet_buffer (b)->ip.adj_index[VLIB_TX]);
-      vnet_buffer (b)->ip.rx_sw_if_index = rd->rd_sw_if_index;
+      if (rd->rd_sw_if_index != ~0)
+	vnet_buffer (b)->ip.rx_sw_if_index = rd->rd_sw_if_index;
     }
-  else
-    vnet_buffer (b)->ip.rx_sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
 
   /*
    * vnet_buffer()->ip.adj_index[VLIB_RX] will be set to the index of the
@@ -1628,20 +1628,19 @@ ip4_local_check_src_x2 (vlib_buffer_t **b, ip4_header_t **ip,
   not_last_hit |= vnet_buffer (b[0])->ip.fib_index ^ last_check->fib_index;
   not_last_hit |= vnet_buffer (b[1])->ip.fib_index ^ last_check->fib_index;
 
+  vnet_buffer (b[0])->ip.rx_sw_if_index =
+    vnet_buffer (b[0])->sw_if_index[VLIB_RX];
+  vnet_buffer (b[1])->ip.rx_sw_if_index =
+    vnet_buffer (b[1])->sw_if_index[VLIB_RX];
   if (is_receive_dpo)
     {
       const receive_dpo_t *rd0, *rd1;
       rd0 = receive_dpo_get (vnet_buffer (b[0])->ip.adj_index[VLIB_TX]);
       rd1 = receive_dpo_get (vnet_buffer (b[1])->ip.adj_index[VLIB_TX]);
-      vnet_buffer (b[0])->ip.rx_sw_if_index = rd0->rd_sw_if_index;
-      vnet_buffer (b[1])->ip.rx_sw_if_index = rd1->rd_sw_if_index;
-    }
-  else
-    {
-      vnet_buffer (b[0])->ip.rx_sw_if_index =
-	vnet_buffer (b[0])->sw_if_index[VLIB_RX];
-      vnet_buffer (b[1])->ip.rx_sw_if_index =
-	vnet_buffer (b[1])->sw_if_index[VLIB_RX];
+      if (rd0->rd_sw_if_index != ~0)
+	vnet_buffer (b[0])->ip.rx_sw_if_index = rd0->rd_sw_if_index;
+      if (rd1->rd_sw_if_index != ~0)
+	vnet_buffer (b[1])->ip.rx_sw_if_index = rd1->rd_sw_if_index;
     }
 
   /*
