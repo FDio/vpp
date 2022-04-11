@@ -548,6 +548,7 @@ _hash_create (uword elts, hash_t * h_user)
   hash_t *h;
   uword log2_pair_size;
   void *v;
+  vec_attr_t va = { .hdr_sz = sizeof (h[0]), .align = sizeof (hash_pair_t) };
 
   /* Size of hash is power of 2 >= ELTS and larger than
      number of bits in is_user bitmap elements. */
@@ -558,8 +559,8 @@ _hash_create (uword elts, hash_t * h_user)
   if (h_user)
     log2_pair_size = h_user->log2_pair_size;
 
-  v = _vec_realloc (0, elts, (1 << log2_pair_size) * sizeof (hash_pair_t),
-		    sizeof (h[0]), sizeof (hash_pair_t), 0);
+  va.elt_sz = (1 << log2_pair_size) * sizeof (hash_pair_t),
+  v = _vec_alloc_internal (elts, &va);
   h = hash_header (v);
 
   if (h_user)

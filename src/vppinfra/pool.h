@@ -172,6 +172,9 @@ _pool_get (void **pp, void **ep, uword align, int zero, uword elt_sz)
   uword len = 0;
   void *p = pp[0];
   void *e;
+  vec_attr_t va = { .hdr_sz = sizeof (pool_header_t),
+		    .elt_sz = elt_sz,
+		    .align = align };
 
   if (p)
     {
@@ -199,8 +202,7 @@ _pool_get (void **pp, void **ep, uword align, int zero, uword elt_sz)
   len = vec_len (p);
 
   /* Nothing on free list, make a new element and return it. */
-  p =
-    _vec_realloc_inline (p, len + 1, elt_sz, sizeof (pool_header_t), align, 0);
+  p = _vec_realloc_internal (p, len + 1, &va);
   e = p + len * elt_sz;
 
   _vec_update_pointer (pp, p);
@@ -312,6 +314,10 @@ _pool_alloc (void **pp, uword n_elts, uword align, void *heap, uword elt_sz)
 {
   pool_header_t *ph = pool_header (pp[0]);
   uword len = vec_len (pp[0]);
+  const vec_attr_t va = { .hdr_sz = sizeof (pool_header_t),
+			  .elt_sz = elt_sz,
+			  .align = align,
+			  .heap = heap };
 
   if (ph && ph->max_elts)
     {
@@ -319,8 +325,7 @@ _pool_alloc (void **pp, uword n_elts, uword align, void *heap, uword elt_sz)
       os_out_of_memory ();
     }
 
-  pp[0] = _vec_realloc_inline (pp[0], len + n_elts, elt_sz,
-			       sizeof (pool_header_t), align, heap);
+  pp[0] = _vec_resize_internal (pp[0], len + n_elts, &va);
   _vec_set_len (pp[0], len, elt_sz);
   clib_mem_poison (pp[0] + len * elt_sz, n_elts * elt_sz);
 
@@ -342,6 +347,9 @@ _pool_dup (void *p, uword align, uword elt_sz)
 {
   pool_header_t *nph, *ph = pool_header (p);
   uword len = vec_len (p);
+  const vec_attr_t va = { .hdr_sz = sizeof (pool_header_t),
+			  .elt_sz = elt_sz,
+			  .align = align };
   void *n;
 
   if (ph && ph->max_elts)
@@ -350,7 +358,7 @@ _pool_dup (void *p, uword align, uword elt_sz)
       os_out_of_memory ();
     }
 
-  n = _vec_realloc_inline (0, len, elt_sz, sizeof (pool_header_t), align, 0);
+  n = _vec_alloc_internal (len, &va);
   nph = pool_header (n);
   clib_memset_u8 (nph, 0, sizeof (vec_header_t));
 
