@@ -905,6 +905,7 @@ py
 pypi
 qemu
 Qemu
+qdisc
 qos
 QoS
 qs

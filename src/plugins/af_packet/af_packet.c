@@ -450,6 +450,7 @@ af_packet_queue_init (vlib_main_t *vm, af_packet_if_t *apif,
       if (ret != 0)
 	goto error;
 
+      vec_add1 (apif->fds, fd);
       vec_add1 (apif->rings, ring);
       ring_addr = ring.ring_start_addr;
     }
@@ -571,6 +572,7 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
   u8 *host_if_name_dup = 0;
   int host_if_index = -1;
   int ret = 0;
+  u32 i = 0;
 
   p = mhash_get (&apm->if_index_by_host_if_name, arg->host_if_name);
   if (p)
@@ -730,6 +732,10 @@ error:
       close (fd2);
       fd2 = -1;
     }
+  vec_foreach_index (i, apif->fds)
+    if (apif->fds[i] != -1)
+      close (apif->fds[i]);
+  vec_free (apif->fds);
   vec_free (host_if_name_dup);
   if (apif)
     {
@@ -743,7 +749,6 @@ static int
 af_packet_rx_queue_free (af_packet_if_t *apif, af_packet_queue_t *rx_queue)
 {
   clib_file_del_by_index (&file_main, rx_queue->clib_file_index);
-  close (rx_queue->fd);
   rx_queue->fd = -1;
   rx_queue->rx_ring = NULL;
   vec_free (rx_queue->rx_req);
@@ -754,7 +759,6 @@ af_packet_rx_queue_free (af_packet_if_t *apif, af_packet_queue_t *rx_queue)
 static int
 af_packet_tx_queue_free (af_packet_if_t *apif, af_packet_queue_t *tx_queue)
 {
-  close (tx_queue->fd);
   tx_queue->fd = -1;
   clib_spinlock_free (&tx_queue->lockp);
   tx_queue->tx_ring = NULL;
@@ -793,6 +797,7 @@ af_packet_delete_if (u8 *host_if_name)
   af_packet_queue_t *tx_queue;
   af_packet_ring_t *ring;
   uword *p;
+  u32 i = 0;
 
   p = mhash_get (&apm->if_index_by_host_if_name, host_if_name);
   if (p == NULL)
@@ -811,6 +816,9 @@ af_packet_delete_if (u8 *host_if_name)
     vnet_delete_hw_interface (vnm, apif->hw_if_index);
 
   /* clean up */
+  vec_foreach_index (i, apif->fds)
+    if (apif->fds[i] != -1)
+      close (apif->fds[i]);
   vec_foreach (rx_queue, apif->rx_queues)
     af_packet_rx_queue_free (apif, rx_queue);
   vec_foreach (tx_queue, apif->tx_queues)
@@ -818,6 +826,8 @@ af_packet_delete_if (u8 *host_if_name)
   vec_foreach (ring, apif->rings)
     af_packet_ring_free (apif, ring);
 
+  vec_free (apif->fds);
+  apif->fds = NULL;
   vec_free (apif->rx_queues);
   apif->rx_queues = NULL;
   vec_free (apif->tx_queues);
@@ -834,6 +844,60 @@ af_packet_delete_if (u8 *host_if_name)
   memset (apif, 0, sizeof (*apif));
   pool_put (apm->interfaces, apif);
 
+  return 0;
+}
+
+int
+af_packet_enable_disable_qdisc_bypass (u32 sw_if_index, u8 enable_disable)
+{
+  af_packet_main_t *apm = &af_packet_main;
+  af_packet_if_t *apif;
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_t *hw;
+  u32 i;
+
+  hw = vnet_get_sup_hw_interface_api_visible_or_null (vnm, sw_if_index);
+
+  if (hw->dev_class_index != af_packet_device_class.index)
+    return VNET_API_ERROR_INVALID_INTERFACE;
+
+  apif = pool_elt_at_index (apm->interfaces, hw->dev_instance);
+
+#if defined(PACKET_QDISC_BYPASS)
+  vec_foreach_index (i, apif->fds)
+    {
+      if (enable_disable)
+	{
+	  int opt = 1;
+
+	  /* Introduced with Linux 3.14 so the ifdef should eventually be
+	   * removed  */
+	  if (setsockopt (apif->fds[i], SOL_PACKET, PACKET_QDISC_BYPASS, &opt,
+			  sizeof (opt)) < 0)
+	    {
+	      vlib_log_err (apm->log_class,
+			    "Failed to enable qdisc bypass error "
+			    "handling option: %s (errno %d)",
+			    strerror (errno), errno);
+	    }
+	  apif->is_qdisc_bypass_enabled = 1;
+	}
+      else
+	{
+	  int opt = 0;
+	  if (setsockopt (apif->fds[i], SOL_PACKET, PACKET_QDISC_BYPASS, &opt,
+			  sizeof (opt)) < 0)
+	    {
+	      vlib_log_err (apm->log_class,
+			    "Failed to disable qdisc bypass error "
+			    "handling option: %s (errno %d)",
+			    strerror (errno), errno);
+	    }
+	  apif->is_qdisc_bypass_enabled = 0;
+	}
+    }
+
+#endif
   return 0;
 }
 

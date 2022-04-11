@@ -121,6 +121,7 @@ typedef struct
   af_packet_ring_t *rings;
   u8 is_qdisc_bypass_enabled;
   u8 is_fanout_enabled;
+  int *fds;
 } af_packet_if_t;
 
 typedef struct
@@ -164,6 +165,7 @@ extern vlib_node_registration_t af_packet_input_node;
 int af_packet_create_if (af_packet_create_if_arg_t *arg);
 int af_packet_delete_if (u8 *host_if_name);
 int af_packet_set_l4_cksum_offload (u32 sw_if_index, u8 set);
+int af_packet_enable_disable_qdisc_bypass (u32 sw_if_index, u8 enable_disable);
 int af_packet_dump_ifs (af_packet_if_detail_t ** out_af_packet_ifs);
 
 format_function_t format_af_packet_device_name;
