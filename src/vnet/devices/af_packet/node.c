@@ -149,7 +149,7 @@ fill_cksum_offload (vlib_buffer_t *b, u8 *l4_hdr_sz, u8 is_ip)
     }
   else
     {
-      ethernet_header_t *eth = vlib_buffer_get_current (b);
+      ethernet_header_t *eth = (ethernet_header_t *) b->data;
       ethertype = clib_net_to_host_u16 (eth->type);
       l2hdr_sz = sizeof (ethernet_header_t);
       if (ethernet_frame_is_tagged (ethertype))
@@ -172,7 +172,7 @@ fill_cksum_offload (vlib_buffer_t *b, u8 *l4_hdr_sz, u8 is_ip)
 
   if (ethertype == ETHERNET_TYPE_IP4)
     {
-      ip4_header_t *ip4 = (vlib_buffer_get_current (b) + l2hdr_sz);
+      ip4_header_t *ip4 = (ip4_header_t *)(b->data + l2hdr_sz);
       vnet_buffer (b)->l4_hdr_offset = l2hdr_sz + ip4_header_bytes (ip4);
       b->flags |= (VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
 		   VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
@@ -182,7 +182,7 @@ fill_cksum_offload (vlib_buffer_t *b, u8 *l4_hdr_sz, u8 is_ip)
     }
   else if (ethertype == ETHERNET_TYPE_IP6)
     {
-      ip6_header_t *ip6 = (vlib_buffer_get_current (b) + l2hdr_sz);
+      ip6_header_t *ip6 = (ip6_header_t *)(b->data + l2hdr_sz);
       b->flags |= (VNET_BUFFER_F_IS_IP6 | VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
 		   VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
 		   VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
@@ -207,8 +207,8 @@ fill_cksum_offload (vlib_buffer_t *b, u8 *l4_hdr_sz, u8 is_ip)
   if (l4_proto == IP_PROTOCOL_TCP)
     {
       oflags |= VNET_BUFFER_OFFLOAD_F_TCP_CKSUM;
-      tcp_header_t *tcp = (tcp_header_t *) (vlib_buffer_get_current (b) +
-					    vnet_buffer (b)->l4_hdr_offset);
+      tcp_header_t *tcp =
+	(tcp_header_t *) (b->data + vnet_buffer (b)->l4_hdr_offset);
       *l4_hdr_sz = tcp_header_bytes (tcp);
     }
   else if (l4_proto == IP_PROTOCOL_UDP)
