@@ -308,13 +308,16 @@ unserialize_vector_ha (serialize_main_t * m,
 {
   void *v, *p;
   u32 l;
+  vec_attr_t va = { .align = align,
+		    .elt_sz = elt_bytes,
+		    .hdr_sz = header_bytes };
 
   unserialize_integer (m, &l, sizeof (l));
   if (l > max_length)
     serialize_error (&m->header,
 		     clib_error_create ("bad vector length %d", l));
-  p = v = _vec_realloc ((void *) 0, l, elt_bytes, header_bytes,
-			/* align */ align, 0);
+
+  p = v = _vec_alloc_internal (l, &va);
 
   while (l != 0)
     {
@@ -437,6 +440,9 @@ unserialize_pool_helper (serialize_main_t * m,
   void *v;
   u32 i, l, lo, hi;
   pool_header_t *p;
+  vec_attr_t va = { .align = align,
+		    .elt_sz = elt_bytes,
+		    .hdr_sz = sizeof (pool_header_t) };
 
   unserialize_integer (m, &l, sizeof (l));
   if (l == 0)
@@ -444,7 +450,7 @@ unserialize_pool_helper (serialize_main_t * m,
       return 0;
     }
 
-  v = _vec_realloc ((void *) 0, l, elt_bytes, sizeof (p[0]), align, 0);
+  v = _vec_alloc_internal (l, &va);
   p = pool_header (v);
 
   vec_unserialize (m, &p->free_indices, unserialize_vec_32);

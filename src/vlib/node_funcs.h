@@ -836,6 +836,7 @@ vlib_process_signal_event_helper (vlib_node_main_t * nm,
 {
   uword p_flags, add_to_pending, delete_from_wheel;
   u8 *data_to_be_written_by_caller;
+  vec_attr_t va = { .elt_sz = n_data_elt_bytes };
 
   ASSERT (n->type == VLIB_NODE_TYPE_PROCESS);
 
@@ -856,9 +857,7 @@ vlib_process_signal_event_helper (vlib_node_main_t * nm,
 
     l = vec_len (data_vec);
 
-    data_vec =
-      _vec_realloc (data_vec, l + n_data_elts, n_data_elt_bytes,
-		    /* header_bytes */ 0, /* data_align */ 0, /* heap */ 0);
+    data_vec = _vec_realloc_internal (data_vec, l + n_data_elts, &va);
 
     p->pending_event_data_by_type_index[t] = data_vec;
     data_to_be_written_by_caller = data_vec + l * n_data_elt_bytes;
