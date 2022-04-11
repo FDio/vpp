@@ -278,6 +278,52 @@ VLIB_CLI_COMMAND (af_packet_set_l4_cksum_offload_command, static) = {
   .function = af_packet_set_l4_cksum_offload_command_fn,
 };
 
+static clib_error_t *
+af_packet_enable_disable_qdisc_bypass_command_fn (vlib_main_t *vm,
+						  unformat_input_t *input,
+						  vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u8 enable_disable = 0;
+  clib_error_t *error = NULL;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 sw_if_index;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
+	;
+      else if (unformat (line_input, "enable"))
+	enable_disable = 1;
+      else if (unformat (line_input, "disable"))
+	enable_disable = 0;
+      else
+	{
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+  if (af_packet_enable_disable_qdisc_bypass (sw_if_index, enable_disable) < 0)
+    error = clib_error_return (0, "not an af_packet interface");
+
+done:
+  unformat_free (line_input);
+  return error;
+}
+
+VLIB_CLI_COMMAND (af_packet_enable_disable_qdisc_bypass_command, static) = {
+  .path = " set host-interface qdisc-bypass",
+  .short_help =
+    "set host-interface qdisc-bypass <host-if-name> <enable | disable>",
+  .function = af_packet_enable_disable_qdisc_bypass_command_fn,
+};
+
 clib_error_t *
 af_packet_cli_init (vlib_main_t * vm)
 {
