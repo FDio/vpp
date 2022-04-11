@@ -44,11 +44,14 @@ _pool_init_fixed (void **pool_ptr, uword elt_size, uword max_elts, uword align)
   pool_header_t *ph;
   u8 *v;
   u32 i;
+  vec_attr_t va = { .elt_sz = elt_size,
+		    .align = align,
+		    .hdr_sz = sizeof (pool_header_t) };
 
   ASSERT (elt_size);
   ASSERT (max_elts);
 
-  v = _vec_realloc (0, max_elts, elt_size, sizeof (pool_header_t), align, 0);
+  v = _vec_alloc_internal (max_elts, &va);
 
   ph = pool_header (v);
   ph->max_elts = max_elts;

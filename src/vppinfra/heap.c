@@ -413,6 +413,9 @@ _heap_alloc (void *v,
   if (!e)
     {
       uword max_len;
+      vec_attr_t va = { .elt_sz = elt_bytes,
+			.hdr_sz = sizeof (h[0]),
+			.align = HEAP_DATA_ALIGN };
 
       offset = vec_len (v);
       max_len = heap_get_max_len (v);
@@ -422,8 +425,7 @@ _heap_alloc (void *v,
 
       h = heap_header (v);
       if (!v || !(h->flags & HEAP_IS_STATIC))
-	v = _vec_realloc (v, offset + align_size, elt_bytes, sizeof (h[0]),
-			  HEAP_DATA_ALIGN, 0);
+	v = _vec_realloc_internal (v, offset + align_size, &va);
       else
 	vec_inc_len (v, align_size);
 

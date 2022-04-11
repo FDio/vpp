@@ -73,15 +73,14 @@ sparse_vec_new (uword elt_bytes, uword sparse_index_bits)
   void *v;
   sparse_vec_header_t *h;
   word n;
+  vec_attr_t va = { .elt_sz = elt_bytes, .hdr_sz = sizeof (h[0]) };
 
   ASSERT (sparse_index_bits <= 16);
 
-  v = _vec_realloc (0, /* data bytes */ 8, elt_bytes,
-		    /* header bytes */ sizeof (h[0]), /* data align */ 0,
-		    /* heap */ 0);
+  v = _vec_alloc_internal (/* data bytes */ 8, &va);
 
   /* Make space for invalid entry (entry 0). */
-  _vec_find (v)->len = 1;
+  _vec_set_len (v, 1, elt_bytes);
 
   h = sparse_vec_header (v);
 

@@ -185,6 +185,9 @@ always_inline void *
 _heap_dup (void *v_old, uword v_bytes)
 {
   heap_header_t *h_old, *h_new;
+  vec_attr_t va = { .align = HEAP_DATA_ALIGN,
+		    .hdr_sz = sizeof (heap_header_t),
+		    .elt_sz = 1 };
   void *v_new;
 
   h_old = heap_header (v_old);
@@ -192,8 +195,7 @@ _heap_dup (void *v_old, uword v_bytes)
   if (!v_old)
     return v_old;
 
-  v_new = _vec_realloc (0, _vec_len (v_old), 1, sizeof (heap_header_t),
-			HEAP_DATA_ALIGN, 0);
+  v_new = _vec_alloc_internal (_vec_len (v_old), &va);
   h_new = heap_header (v_new);
   heap_dup_header (h_old, h_new);
   clib_memcpy_fast (v_new, v_old, v_bytes);
@@ -212,8 +214,10 @@ uword heap_bytes (void *v);
 always_inline void *
 _heap_new (u32 len, u32 n_elt_bytes)
 {
-  void *v = _vec_realloc ((void *) 0, len, n_elt_bytes, sizeof (heap_header_t),
-			  HEAP_DATA_ALIGN, 0);
+  vec_attr_t va = { .align = HEAP_DATA_ALIGN,
+		    .hdr_sz = sizeof (heap_header_t),
+		    .elt_sz = n_elt_bytes };
+  void *v = _vec_alloc_internal (len, &va);
   heap_header (v)->elt_bytes = n_elt_bytes;
   return v;
 }

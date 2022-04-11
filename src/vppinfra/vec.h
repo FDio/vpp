@@ -101,8 +101,26 @@
     @param align alignment (may be zero)
     @return v_prime pointer to resized vector, may or may not equal v
 */
-void *_vec_realloc (void *v, uword n_elts, uword elt_sz, uword hdr_sz,
-		    uword align, void *heap);
+
+typedef struct
+{
+  void *heap;
+  u32 elt_sz;
+  u16 hdr_sz;
+  u16 align;
+} vec_attr_t;
+
+#define _vec_attr(V, H, A, P)                                                 \
+  ((const vec_attr_t){ .hdr_sz = (H),                                         \
+		       .align = _vec_align (V, A),                            \
+		       .elt_sz = _vec_elt_sz (V),                             \
+		       .heap = (P) })
+
+void *_vec_alloc_internal (uword n_elts, const vec_attr_t *const attr);
+void *_vec_realloc_internal (void *v, uword n_elts,
+			     const vec_attr_t *const attr);
+void *_vec_resize_internal (void *v, uword n_elts,
+			    const vec_attr_t *const attr);
 
 /* calculate minimum alignment out of data natural alignment and provided
  * value, should not be < VEC_MIN_ALIGN */
@@ -139,36 +157,24 @@ vec_get_heap (void *v)
   return _vec_heap (v);
 }
 
-static_always_inline void *
-_vec_realloc_inline (void *v, uword n_elts, uword elt_sz, uword hdr_sz,
-		     uword align, void *heap)
+static_always_inline uword
+vec_get_align (void *v)
 {
-  if (PREDICT_TRUE (v != 0))
-    {
-      /* Vector header must start heap object. */
-      ASSERT (clib_mem_heap_is_heap_object (vec_get_heap (v), vec_header (v)));
-
-      /* Typically we'll not need to resize. */
-      if ((n_elts * elt_sz) <= vec_max_bytes (v))
-	{
-	  _vec_set_len (v, n_elts, elt_sz);
-	  return v;
-	}
-    }
-
-  /* Slow path: call helper function. */
-  return _vec_realloc (v, n_elts, elt_sz, hdr_sz, align, heap);
+  return 1ULL << _vec_find (v)->log2_align;
 }
 
 static_always_inline void
 _vec_prealloc (void **vp, uword n_elts, uword hdr_sz, uword align, void *heap,
 	       uword elt_sz)
 {
+  const vec_attr_t va = {
+    .elt_sz = elt_sz, .hdr_sz = hdr_sz, .align = align, .heap = heap
+  };
   void *v;
 
   ASSERT (vp[0] == 0);
 
-  v = _vec_realloc (0, n_elts, elt_sz, hdr_sz, align, heap);
+  v = _vec_alloc_internal (n_elts, &va);
   _vec_set_len (v, 0, elt_sz);
   _vec_update_pointer (vp, v);
 }
@@ -245,15 +251,28 @@ _vec_resize_will_expand (void *v, uword n_elts, uword elt_sz)
 */
 
 static_always_inline void
-_vec_resize (void **vp, uword n_add, uword hdr_sz, uword align, uword elt_sz)
+_vec_resize (void **vp, uword n_add, const vec_attr_t va)
 {
-  void *v = vp[0];
-  v = _vec_realloc_inline (v, vec_len (v) + n_add, elt_sz, hdr_sz, align, 0);
-  _vec_update_pointer (vp, v);
+  void *v = *vp;
+  if (PREDICT_FALSE (v == 0))
+    {
+      *vp = _vec_alloc_internal (n_add, &va);
+      return;
+    }
+
+  if (PREDICT_TRUE (_vec_find (v)->grow_elts >= n_add))
+    {
+      _vec_set_len (v, _vec_len (v) + n_add, va.elt_sz);
+    }
+  else
+    {
+      v = _vec_resize_internal (v, _vec_len (v) + n_add, &va);
+      _vec_update_pointer (vp, v);
+    }
 }
 
 #define vec_resize_ha(V, N, H, A)                                             \
-  _vec_resize ((void **) &(V), N, H, _vec_align (V, A), _vec_elt_sz (V))
+  _vec_resize ((void **) &(V), N, _vec_attr (V, H, A, 0))
 
 /** \brief Resize a vector (no header, unspecified alignment)
    Add N elements to end of given vector V, return pointer to start of vector.
@@ -324,7 +343,10 @@ _vec_resize (void **vp, uword n_add, uword hdr_sz, uword align, uword elt_sz)
     @return V new vector
 */
 #define vec_new_generic(T, N, H, A, P)                                        \
-  _vec_realloc (0, N, sizeof (T), H, _vec_align ((T *) 0, A), P)
+  _vec_alloc_internal (N, &((vec_attr_t){ .align = _vec_align ((T *) 0, A),   \
+					  .hdr_sz = (H),                      \
+					  .heap = (P),                        \
+					  .elt_sz = sizeof (T) }))
 
 /** \brief Create new vector of given type and length
     (unspecified alignment, no header).
@@ -390,11 +412,12 @@ static_always_inline void *
 _vec_dup (void *v, uword hdr_size, uword align, uword elt_sz)
 {
   uword len = vec_len (v);
+  const vec_attr_t va = { .elt_sz = elt_sz, .align = align };
   void *n = 0;
 
   if (len)
     {
-      n = _vec_realloc (0, len, elt_sz, hdr_size, align, 0);
+      n = _vec_alloc_internal (len, &va);
       clib_memcpy_fast (n, v, len * elt_sz);
     }
   return n;
@@ -438,7 +461,8 @@ _vec_dup (void *v, uword hdr_size, uword align, uword elt_sz)
 static_always_inline void
 _vec_clone (void **v1p, void *v2, uword align, uword elt_sz)
 {
-  v1p[0] = _vec_realloc (0, vec_len (v2), elt_sz, 0, align, 0);
+  const vec_attr_t va = { .elt_sz = elt_sz, .align = align };
+  v1p[0] = _vec_alloc_internal (vec_len (v2), &va);
 }
 #define vec_clone(NEW_V, OLD_V)                                               \
   _vec_clone ((void **) &(NEW_V), OLD_V, _vec_align (NEW_V, 0),               \
@@ -461,21 +485,39 @@ _vec_zero_elts (void *v, uword first, uword count, uword elt_sz)
 #define vec_zero_elts(V, F, C) _vec_zero_elts (V, F, C, sizeof ((V)[0]))
 
 static_always_inline void
-_vec_validate (void **vp, uword index, uword header_size, uword align,
-	       void *heap, uword elt_sz)
+_vec_validate (void **vp, uword index, const vec_attr_t va)
 {
-  void *v = vp[0];
-  uword vl = vec_len (v);
-  if (index >= vl)
+  void *v = *vp;
+  uword vl, n_elts = index + 1;
+
+  if (PREDICT_FALSE (v == 0))
     {
-      v = _vec_realloc_inline (v, index + 1, elt_sz, header_size, align, heap);
-      _vec_zero_elts (v, vl, index - vl + 1, elt_sz);
+      *vp = _vec_alloc_internal (n_elts, &va);
+      return;
+    }
+
+  vl = vec_len (v);
+
+  if (PREDICT_FALSE (index < vl))
+    return;
+
+  if (PREDICT_FALSE (index >= _vec_find (v)->grow_elts + vl))
+    {
+      v = _vec_resize_internal (v, n_elts, &va);
       _vec_update_pointer (vp, v);
     }
+  else
+    _vec_set_len (v, n_elts, va.elt_sz);
+
+  _vec_zero_elts (v, vl, n_elts - vl, va.elt_sz);
 }
 
 #define vec_validate_hap(V, I, H, A, P)                                       \
-  _vec_validate ((void **) &(V), I, H, _vec_align (V, A), 0, sizeof ((V)[0]))
+  _vec_validate ((void **) &(V), (I),                                         \
+		 (const vec_attr_t){ .hdr_sz = (H),                           \
+				     .align = _vec_align (V, A),              \
+				     .heap = (P),                             \
+				     .elt_sz = _vec_elt_sz (V) })
 
 /** \brief Make sure vector is long enough for given index
     (no header, unspecified alignment)
@@ -569,20 +611,32 @@ _vec_validate (void **vp, uword index, uword header_size, uword align,
 */
 
 static_always_inline void *
-_vec_add1 (void **vp, uword hdr_sz, uword align, uword elt_sz)
+_vec_add1 (void **vp, const vec_attr_t va)
 {
   void *v = vp[0];
-  uword len = vec_len (v);
-  v = _vec_realloc_inline (v, len + 1, elt_sz, hdr_sz, align, 0);
+  uword len;
 
-  _vec_update_pointer (vp, v);
+  if (PREDICT_FALSE (v == 0))
+    return *vp = _vec_alloc_internal (1, &va);
 
-  return v + len * elt_sz;
+  len = _vec_len (v);
+
+  if (PREDICT_TRUE (_vec_find (v)->grow_elts > 0))
+    {
+      _vec_set_len (v, len + 1, va.elt_sz);
+    }
+  else
+    {
+      v = _vec_resize_internal (v, len + 1, &va);
+      _vec_update_pointer (vp, v);
+    }
+
+  return v + len * va.elt_sz;
 }
 
 #define vec_add1_ha(V, E, H, A)                                               \
-  ((__typeof__ ((V)[0]) *) _vec_add1 ((void **) &(V), H, _vec_align (V, A),   \
-				      _vec_elt_sz (V)))[0] = (E)
+  ((__typeof__ ((V)[0]) *) _vec_add1 ((void **) &(V),                         \
+				      _vec_attr (V, H, A, 0)))[0] = (E)
 
 /** \brief Add 1 element to end of vector (unspecified alignment).
 
@@ -613,19 +667,33 @@ _vec_add1 (void **vp, uword hdr_sz, uword align, uword elt_sz)
 */
 
 static_always_inline void
-_vec_add2 (void **vp, void **pp, uword n_add, uword hdr_sz, uword align,
-	   uword elt_sz)
+_vec_add2 (void **vp, void **pp, uword n_add, const vec_attr_t va)
 {
-  void *v = vp[0];
-  uword len = vec_len (vp[0]);
-  v = _vec_realloc_inline (v, len + n_add, elt_sz, hdr_sz, align, 0);
-  _vec_update_pointer (vp, v);
-  pp[0] = v + len * elt_sz;
+  void *v = *vp;
+  uword len;
+
+  if (PREDICT_FALSE (v == 0))
+    {
+      *vp = *pp = _vec_alloc_internal (n_add, &va);
+      return;
+    }
+
+  len = _vec_len (v);
+  if (PREDICT_TRUE (_vec_find (v)->grow_elts >= n_add))
+    {
+      _vec_set_len (v, len + n_add, va.elt_sz);
+    }
+  else
+    {
+      v = _vec_resize_internal (v, len + n_add, &va);
+      _vec_update_pointer (vp, v);
+    }
+
+  *pp = v + len * va.elt_sz;
 }
 
 #define vec_add2_ha(V, P, N, H, A)                                            \
-  _vec_add2 ((void **) &(V), (void **) &(P), N, H, _vec_align (V, A),         \
-	     _vec_elt_sz (V))
+  _vec_add2 ((void **) &(V), (void **) &(P), N, _vec_attr (V, H, A, 0))
 
 /** \brief Add N elements to end of vector V,
     return pointer to new elements in P. (no header, unspecified alignment)
@@ -660,10 +728,9 @@ _vec_add2 (void **vp, void **pp, uword n_add, uword hdr_sz, uword align,
     @return V (value-result macro parameter)
 */
 static_always_inline void
-_vec_add (void **vp, void *e, word n_add, uword hdr_sz, uword align,
-	  uword elt_sz)
+_vec_add (void **vp, void *e, word n_add, const vec_attr_t va)
 {
-  void *v = vp[0];
+  void *v = *vp;
   uword len = vec_len (v);
 
   ASSERT (n_add >= 0);
@@ -671,14 +738,21 @@ _vec_add (void **vp, void *e, word n_add, uword hdr_sz, uword align,
   if (n_add < 1)
     return;
 
-  v = _vec_realloc_inline (v, len + n_add, elt_sz, hdr_sz, align, 0);
-  clib_memcpy_fast (v + len * elt_sz, e, n_add * elt_sz);
-  _vec_update_pointer (vp, v);
+  if (PREDICT_FALSE (v == 0))
+    {
+      *vp = v = _vec_alloc_internal (n_add, &va);
+      clib_memcpy_fast (v, e, n_add * va.elt_sz);
+    }
+  else
+    {
+      v = _vec_resize_internal (v, len + n_add, &va);
+      clib_memcpy_fast (v + len * va.elt_sz, e, n_add * va.elt_sz);
+      _vec_update_pointer (vp, v);
+    }
 }
 
 #define vec_add_ha(V, E, N, H, A)                                             \
-  _vec_add ((void **) &(V), (void *) (E), N, H, _vec_align (V, A),            \
-	    _vec_elt_sz (V))
+  _vec_add ((void **) &(V), (void *) (E), N, _vec_attr (V, H, A, 0))
 
 /** \brief Add N elements to end of vector V (no header, unspecified alignment)
 
@@ -742,24 +816,23 @@ _vec_add (void **vp, void *e, word n_add, uword hdr_sz, uword align,
 */
 
 static_always_inline void
-_vec_insert (void **vp, uword n_insert, uword ins_pt, u8 init, uword hdr_sz,
-	     uword align, uword elt_sz)
+_vec_insert (void **vp, uword n_insert, uword ins_pt, u8 init,
+	     const vec_attr_t va)
 {
   void *v = vp[0];
   uword len = vec_len (v);
 
   ASSERT (ins_pt <= len);
 
-  v = _vec_realloc_inline (v, len + n_insert, elt_sz, hdr_sz, align, 0);
-  clib_memmove (v + elt_sz * (ins_pt + n_insert), v + ins_pt * elt_sz,
-		(len - ins_pt) * elt_sz);
-  _vec_zero_elts (v, ins_pt, n_insert, elt_sz);
+  v = _vec_resize_internal (v, len + n_insert, &va);
+  clib_memmove (v + va.elt_sz * (ins_pt + n_insert), v + ins_pt * va.elt_sz,
+		(len - ins_pt) * va.elt_sz);
+  _vec_zero_elts (v, ins_pt, n_insert, va.elt_sz);
   _vec_update_pointer (vp, v);
 }
 
 #define vec_insert_init_empty_ha(V, N, M, INIT, H, A)                         \
-  _vec_insert ((void **) &(V), N, M, INIT, H, _vec_align (V, A),              \
-	       _vec_elt_sz (V))
+  _vec_insert ((void **) &(V), N, M, INIT, _vec_attr (V, H, A, 0))
 
 /** \brief Insert N vector elements starting at element M,
     initialize new elements to zero (general version)
@@ -835,14 +908,15 @@ _vec_insert (void **vp, uword n_insert, uword ins_pt, u8 init, uword hdr_sz,
 
 static_always_inline void
 _vec_insert_elts (void **vp, void *e, uword n_insert, uword ins_pt,
-		  uword hdr_sz, uword align, uword elt_sz)
+		  const vec_attr_t va)
 {
   void *v = vp[0];
   uword len = vec_len (v);
+  uword elt_sz = va.elt_sz;
 
   ASSERT (ins_pt <= len);
 
-  v = _vec_realloc_inline (v, len + n_insert, elt_sz, hdr_sz, align, 0);
+  v = _vec_resize_internal (v, len + n_insert, &va);
   clib_memmove (v + elt_sz * (ins_pt + n_insert), v + ins_pt * elt_sz,
 		(len - ins_pt) * elt_sz);
   _vec_zero_elts (v, ins_pt, n_insert, elt_sz);
@@ -851,8 +925,7 @@ _vec_insert_elts (void **vp, void *e, uword n_insert, uword ins_pt,
 }
 
 #define vec_insert_elts_ha(V, E, N, M, H, A)                                  \
-  _vec_insert_elts ((void **) &(V), E, N, M, H, _vec_align (V, A),            \
-		    _vec_elt_sz (V))
+  _vec_insert_elts ((void **) &(V), E, N, M, _vec_attr (V, H, A, 0))
 
 /** \brief Insert N vector elements starting at element M,
     insert given elements (no header, unspecified alignment)
@@ -938,7 +1011,8 @@ _vec_append (void **v1p, void *v2, uword v1_elt_sz, uword v2_elt_sz,
 
   if (PREDICT_TRUE (len2 > 0))
     {
-      v1 = _vec_realloc_inline (v1, len1 + len2, v2_elt_sz, 0, align, 0);
+      const vec_attr_t va = { .elt_sz = v2_elt_sz, .align = align };
+      v1 = _vec_resize_internal (v1, len1 + len2, &va);
       clib_memcpy_fast (v1 + len1 * v1_elt_sz, v2, len2 * v2_elt_sz);
       _vec_update_pointer (v1p, v1);
     }
@@ -971,7 +1045,8 @@ _vec_prepend (void **v1p, void *v2, uword v1_elt_sz, uword v2_elt_sz,
 
   if (PREDICT_TRUE (len2 > 0))
     {
-      v1 = _vec_realloc_inline (v1, len1 + len2, v2_elt_sz, 0, align, 0);
+      const vec_attr_t va = { .elt_sz = v2_elt_sz, .align = align };
+      v1 = _vec_resize_internal (v1, len1 + len2, &va);
       clib_memmove (v1 + len2 * v2_elt_sz, v1p[0], len1 * v1_elt_sz);
       clib_memcpy_fast (v1, v2, len2 * v2_elt_sz);
       _vec_update_pointer (v1p, v1);
