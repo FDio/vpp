@@ -149,6 +149,9 @@ typedef struct
 
   uword *tunnel_index_by_key;
 
+  /* next_header protocol registration */
+  u16 *next_header_registrations;
+
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
@@ -357,6 +360,10 @@ void ipsec_set_async_mode (u32 is_enabled);
 
 extern void ipsec_register_udp_port (u16 udp_port);
 extern void ipsec_unregister_udp_port (u16 udp_port);
+
+extern clib_error_t *ipsec_register_next_header (vlib_main_t *vm,
+						 u8 next_header,
+						 const char *next_node);
 
 #endif /* __IPSEC_H__ */
 

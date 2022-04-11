@@ -39,6 +39,52 @@ ipsec_main_t ipsec_main;
 esp_async_post_next_t esp_encrypt_async_next;
 esp_async_post_next_t esp_decrypt_async_next;
 
+clib_error_t *
+ipsec_register_next_header (vlib_main_t *vm, u8 next_header,
+			    const char *next_node)
+{
+  ipsec_main_t *im = &ipsec_main;
+  const vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) next_node);
+  /* -post nodes (eg. esp4-decrypt-post) are siblings of non-post nodes (eg.
+   * esp4-decrypt) and will therefore have the same next index */
+  const vlib_node_t *esp_decrypt_nodes[] = {
+    vlib_get_node (vm, im->esp4_decrypt_node_index),
+    vlib_get_node (vm, im->esp6_decrypt_node_index),
+    vlib_get_node (vm, im->esp4_decrypt_tun_node_index),
+    vlib_get_node (vm, im->esp6_decrypt_tun_node_index),
+  };
+  uword slot, max;
+  int i;
+
+  /* looks for a next_index value that we can use for all esp decrypt nodes to
+   * avoid maintaining different next index arrays... */
+
+  slot = vlib_node_get_next (vm, esp_decrypt_nodes[0]->index, node->index);
+  max = vec_len (esp_decrypt_nodes[0]->next_nodes);
+  for (i = 1; i < ARRAY_LEN (esp_decrypt_nodes); i++)
+    {
+      /* if next node already exists, check it shares the same next_index */
+      if (slot !=
+	  vlib_node_get_next (vm, esp_decrypt_nodes[i]->index, node->index))
+	return clib_error_return (
+	  0, "next node already exists with different next index");
+      /* compute a suitable slot from the max of all nodes next index */
+      max = clib_max (max, vec_len (esp_decrypt_nodes[i]->next_nodes));
+    }
+
+  if (~0 == slot)
+    {
+      /* next node not there yet, add it using the computed max */
+      slot = max;
+      for (i = 0; i < ARRAY_LEN (esp_decrypt_nodes); i++)
+	vlib_node_add_next_with_slot (vm, esp_decrypt_nodes[i]->index,
+				      node->index, slot);
+    }
+
+  im->next_header_registrations[next_header] = slot;
+  return 0;
+}
+
 static clib_error_t *
 ipsec_check_ah_support (ipsec_sa_t * sa)
 {
@@ -569,6 +615,9 @@ ipsec_init (vlib_main_t * vm)
   im->ipsec4_in_spd_flow_cache_entries = 0;
   im->input_epoch_count = 0;
   im->ipsec4_in_spd_hash_num_buckets = IPSEC4_SPD_DEFAULT_HASH_NUM_BUCKETS;
+
+  vec_validate_init_empty_aligned (im->next_header_registrations, 255, ~0,
+				   CLIB_CACHE_LINE_BYTES);
 
   return 0;
 }
