@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include <vnet/vnet.h>
 #include <vnet/api_errno.h>
 #include <vnet/ip/ip.h>
@@ -749,6 +748,7 @@ out:
 
 static_always_inline void
 esp_decrypt_post_crypto (vlib_main_t *vm, const vlib_node_runtime_t *node,
+			 const u16 *next_by_next_header,
 			 const esp_decrypt_packet_data_t *pd,
 			 const esp_decrypt_packet_data2_t *pd2,
 			 vlib_buffer_t *b, u16 *next, int is_ip6, int is_tun,
@@ -920,44 +920,49 @@ esp_decrypt_post_crypto (vlib_main_t *vm, const vlib_node_runtime_t *node,
 	  b->current_length = pd->current_length - adv;
 	  esp_remove_tail (vm, b, lb, tail);
 	}
-      else
+      else if (is_tun && next_header == IP_PROTOCOL_GRE)
 	{
-	  if (is_tun && next_header == IP_PROTOCOL_GRE)
+	  gre_header_t *gre;
+
+	  b->current_data = pd->current_data + adv;
+	  b->current_length = pd->current_length - adv - tail;
+
+	  gre = vlib_buffer_get_current (b);
+
+	  vlib_buffer_advance (b, sizeof (*gre));
+
+	  switch (clib_net_to_host_u16 (gre->protocol))
 	    {
-	      gre_header_t *gre;
-
-	      b->current_data = pd->current_data + adv;
-	      b->current_length = pd->current_length - adv - tail;
-
-	      gre = vlib_buffer_get_current (b);
-
-	      vlib_buffer_advance (b, sizeof (*gre));
-
-	      switch (clib_net_to_host_u16 (gre->protocol))
-		{
-		case GRE_PROTOCOL_teb:
-		  vnet_update_l2_len (b);
-		  next[0] = ESP_DECRYPT_NEXT_L2_INPUT;
-		  break;
-		case GRE_PROTOCOL_ip4:
-		  next[0] = ESP_DECRYPT_NEXT_IP4_INPUT;
-		  break;
-		case GRE_PROTOCOL_ip6:
-		  next[0] = ESP_DECRYPT_NEXT_IP6_INPUT;
-		  break;
-		default:
-		  b->error = node->errors[ESP_DECRYPT_ERROR_UNSUP_PAYLOAD];
-		  next[0] = ESP_DECRYPT_NEXT_DROP;
-		  break;
-		}
-	    }
-	  else
-	    {
-	      next[0] = ESP_DECRYPT_NEXT_DROP;
+	    case GRE_PROTOCOL_teb:
+	      vnet_update_l2_len (b);
+	      next[0] = ESP_DECRYPT_NEXT_L2_INPUT;
+	      break;
+	    case GRE_PROTOCOL_ip4:
+	      next[0] = ESP_DECRYPT_NEXT_IP4_INPUT;
+	      break;
+	    case GRE_PROTOCOL_ip6:
+	      next[0] = ESP_DECRYPT_NEXT_IP6_INPUT;
+	      break;
+	    default:
 	      b->error = node->errors[ESP_DECRYPT_ERROR_UNSUP_PAYLOAD];
-	      return;
+	      next[0] = ESP_DECRYPT_NEXT_DROP;
+	      break;
 	    }
 	}
+      else if ((next[0] = vec_elt (next_by_next_header, next_header)) !=
+	       (u16) ~0)
+	{
+	  b->current_data = pd->current_data + adv;
+	  b->current_length = pd->current_length - adv;
+	  esp_remove_tail (vm, b, lb, tail);
+	}
+      else
+	{
+	  next[0] = ESP_DECRYPT_NEXT_DROP;
+	  b->error = node->errors[ESP_DECRYPT_ERROR_UNSUP_PAYLOAD];
+	  return;
+	}
+
       if (is_tun)
 	{
 	  if (ipsec_sa_is_set_IS_PROTECT (sa0))
@@ -1028,6 +1033,7 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		    u16 async_next_node)
 {
   ipsec_main_t *im = &ipsec_main;
+  const u16 *next_by_next_header = im->next_header_registrations;
   u32 thread_index = vm->thread_index;
   u16 len;
   ipsec_per_thread_data_t *ptd = vec_elt_at_index (im->ptd, thread_index);
@@ -1307,8 +1313,8 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	current_sa_index = vnet_buffer (b[0])->ipsec.sad_index;
 
       if (sync_next[0] >= ESP_DECRYPT_N_NEXT)
-	esp_decrypt_post_crypto (vm, node, pd, pd2, b[0], sync_next, is_ip6,
-				 is_tun, 0);
+	esp_decrypt_post_crypto (vm, node, next_by_next_header, pd, pd2, b[0],
+				 sync_next, is_ip6, is_tun, 0);
 
       /* trace: */
       if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
@@ -1349,6 +1355,8 @@ esp_decrypt_post_inline (vlib_main_t * vm,
 			 vlib_node_runtime_t * node,
 			 vlib_frame_t * from_frame, int is_ip6, int is_tun)
 {
+  const ipsec_main_t *im = &ipsec_main;
+  const u16 *next_by_next_header = im->next_header_registrations;
   u32 *from = vlib_frame_vector_args (from_frame);
   u32 n_left = from_frame->n_vectors;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
@@ -1366,13 +1374,13 @@ esp_decrypt_post_inline (vlib_main_t * vm,
 	}
 
       if (!pd->is_chain)
-	esp_decrypt_post_crypto (vm, node, pd, 0, b[0], next, is_ip6, is_tun,
-				 1);
+	esp_decrypt_post_crypto (vm, node, next_by_next_header, pd, 0, b[0],
+				 next, is_ip6, is_tun, 1);
       else
 	{
 	  esp_decrypt_packet_data2_t *pd2 = esp_post_data2 (b[0]);
-	  esp_decrypt_post_crypto (vm, node, pd, pd2, b[0], next, is_ip6,
-				   is_tun, 1);
+	  esp_decrypt_post_crypto (vm, node, next_by_next_header, pd, pd2,
+				   b[0], next, is_ip6, is_tun, 1);
 	}
 
       /*trace: */
