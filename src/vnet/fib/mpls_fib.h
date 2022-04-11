@@ -70,6 +70,7 @@ extern u32 mpls_fib_table_find_or_create_and_lock(u32 table_id,
 extern u32 mpls_fib_table_create_and_lock(fib_source_t src);
 // extern mpls_fib_t * mpls_fib_find(u32 table_id);
 extern u32 mpls_fib_index_from_table_id(u32 table_id);
+extern u32 mpls_fib_table_update_table_id (u32 old_table_id, u32 new_table_id);
 
 extern u8 *format_mpls_fib_table_name(u8 * s, va_list * args);
 

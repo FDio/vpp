@@ -123,6 +123,31 @@ ip6_fib_table_create_and_lock (fib_source_t src,
     return (create_fib_with_table_id(~0, src, flags, desc));
 }
 
+u32
+ip6_fib_table_update_table_id (u32 old_table_id, u32 new_table_id)
+{
+    fib_node_index_t old_fib_index, new_fib_index;
+
+    new_fib_index = ip6_fib_index_from_table_id(new_table_id);
+    ASSERT(new_fib_index == ~0);
+
+    old_fib_index = ip6_fib_index_from_table_id(old_table_id);
+    ASSERT(old_fib_index != ~0);
+
+    fib_table_t *fib_table = fib_table_get(old_fib_index, FIB_PROTOCOL_IP6);
+    ip6_fib_t *v6_fib = pool_elt_at_index(ip6_main.v6_fibs, fib_table->ft_index);
+
+    hash_unset (ip6_main.fib_index_by_table_id, old_table_id);
+
+    hash_set (ip6_main.fib_index_by_table_id, new_table_id, fib_table->ft_index);
+
+    fib_table->ft_table_id =
+       v6_fib->table_id =
+        new_table_id;
+
+    return old_fib_index;
+}
+
 void
 ip6_fib_table_destroy (u32 fib_index)
 {
