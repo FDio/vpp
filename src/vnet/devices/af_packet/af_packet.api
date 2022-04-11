@@ -86,6 +86,60 @@ define af_packet_create_v2_reply
   vl_api_interface_index_t sw_if_index;
 };
 
+enum af_packet_mode {
+  AF_PACKET_API_MODE_ETHERNET = 1, /* mode ethernet */
+  AF_PACKET_API_MODE_IP = 2, /* mode ip */
+};
+
+enum af_packet_flags {
+  AF_PACKET_API_FLAG_QDISC_BYPASS = 1, /* enable the qdisc bypass */
+  AF_PACKET_API_FLAG_CKSUM_GSO = 2, /* enable checksum/gso */
+};
+
+/** \brief Create host-interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param mode - 1 - Ethernet, 2 - IP
+    @param hw_addr - interface MAC
+    @param use_random_hw_addr - use random generated MAC
+    @param host_if_name - interface name
+    @param rx_frame_size - frame size for RX
+    @param tx_frame_size - frame size for TX
+    @param rx_frames_per_block - frames per block for RX
+    @param tx_frames_per_block - frames per block for TX
+    @param flags - flags for the af_packet interface creation
+    @param num_rx_queues - number of rx queues
+    @param num_tx_queues - number of tx queues
+*/
+define af_packet_create_v3
+{
+  u32 client_index;
+  u32 context;
+
+  vl_api_af_packet_mode_t mode;
+  vl_api_mac_address_t hw_addr;
+  bool use_random_hw_addr;
+  string host_if_name[64];
+  u32 rx_frame_size;
+  u32 tx_frame_size;
+  u32 rx_frames_per_block;
+  u32 tx_frames_per_block;
+  vl_api_af_packet_flags_t flags;
+  u16 num_rx_queues [default=1];
+  u16 num_tx_queues [default=1];
+};
+
+/** \brief Create host-interface response
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+*/
+define af_packet_create_v3_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_interface_index_t sw_if_index;
+};
+
 /** \brief Delete host-interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
