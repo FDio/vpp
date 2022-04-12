@@ -179,7 +179,7 @@ __clib_export void
 clib_perfmon_warmup (clib_perfmon_ctx_t *ctx)
 {
   for (u64 i = 0; i < (u64) ctx->ref_clock; i++)
-    asm inline("" : : "r"(i * i) : "memory");
+    asm volatile("" : : "r"(i * i) : "memory");
 }
 
 __clib_export u8 *
