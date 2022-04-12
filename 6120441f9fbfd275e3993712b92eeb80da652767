@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f0f07419_5d77629d",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 267,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2022-04-12T13:16:29Z",
+      "side": 1,
+      "message": "I noticed that for some types of DPDK interfaces, changing hardware mtu fails if the device is up:\nDBGvpp# set interface mtu 9216 HundredGigabitEthernet12/0/0\nset interface mtu: Busy (port is running)\n\n\nDBGvpp# set interface state HundredGigabitEthernet12/0/0 down\nDBGvpp# set interface mtu 9216 HundredGigabitEthernet12/0/0  \nDBGvpp# set interface state HundredGigabitEthernet12/0/0 up  \n\nSomething to be aware of because the vnet_hw_interface_set_mtu() call below is not error checked.",
+      "revId": "6120441f9fbfd275e3993712b92eeb80da652767",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
