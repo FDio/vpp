@@ -206,12 +206,12 @@ define wireguard_peers_details {
 /** \brief Wireguard Set Async mode
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param async_enable - wireguard async mode on or off
+    @param async_enable - wireguard async mode on or off, default off
 */
 autoreply define wg_set_async_mode {
   u32 client_index;
   u32 context;
-  bool async_enable;
+  bool async_enable [default=false];
 };
 
 /*
