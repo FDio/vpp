@@ -363,6 +363,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	xd->name = format (xd->name, "/%d", di.switch_info.port_id);
 
       /* number of RX and TX queues */
+      xd->conf.n_tx_queues = clib_min (di.max_tx_queues, tm->n_vlib_mains);
       if (devconf->num_tx_queues > 0)
 	{
 	  if (di.max_tx_queues < devconf->num_tx_queues)
