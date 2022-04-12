@@ -761,6 +761,7 @@ vtc_process_opts (vcl_test_client_main_t * vcm, int argc, char **argv)
 
       case 'x':
 	vcm->post_test = VCL_TEST_TYPE_NONE;
+	break;
 
       case 'E':
 	if (strlen (optarg) > ctrl->txbuf_size)
