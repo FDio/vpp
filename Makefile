@@ -117,6 +117,7 @@ RPM_DEPENDS += ccache
 RPM_DEPENDS += xmlto
 RPM_DEPENDS += elfutils-libelf-devel
 RPM_DEPENDS += libnl3-devel libmnl-devel
+RPM_DEPENDS += nasm
 
 ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += dnf-utils
