@@ -80,6 +80,7 @@ typedef enum
   VCL_TEST_TYPE_UNI,
   VCL_TEST_TYPE_BI,
   VCL_TEST_TYPE_EXIT,
+  VCL_TEST_TYPE_EXIT_CLIENT,
 } vcl_test_t;
 
 typedef enum
@@ -201,7 +202,7 @@ static inline void
 vcl_test_cfg_init (vcl_test_cfg_t * cfg)
 {
   cfg->magic = VCL_TEST_CFG_CTRL_MAGIC;
-  cfg->test = VCL_TEST_TYPE_NONE;
+  cfg->test = VCL_TEST_TYPE_UNI;
   cfg->ctrl_handle = ~0;
   cfg->num_test_sessions = 1;
   cfg->num_test_sessions_perq = 1;
