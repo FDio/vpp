@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6660fd03_f9a2e7b3",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 268,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2022-04-12T13:21:01Z",
+      "side": 0,
+      "message": "The type is relevant here. Not all types support changing the packet size (ie type\u003dbond):\n\nDBGvpp# set interface mtu 9216 BondEthernet0\nset interface mtu: Unsupported (underlying driver doesn\u0027t support changing Max Frame Size)\n\nsw_interface_details(_0\u003d708, context\u003d3, sw_if_index\u003d18, sup_sw_if_index\u003d18, l2_address\u003dMACAddress(02:b0:b0:00:00:00), flags\u003d\u003cvl_api_if_status_flags_t.IF_STATUS_API_FLAG_LINK_UP|IF_STATUS_API_FLAG_ADMIN_UP: 3\u003e, type\u003d\u003cvl_api_if_type_t.IF_API_TYPE_HARDWARE: 0\u003e, link_duplex\u003d\u003cvl_api_link_duplex_t.LINK_DUPLEX_API_UNKNOWN: 0\u003e, link_speed\u003d0, link_mtu\u003d9000, mtu\u003d[9000, 0, 0, 0], sub_id\u003d0, sub_number_of_tags\u003d0, sub_outer_vlan_id\u003d0, sub_inner_vlan_id\u003d0, sub_if_flags\u003d\u003cvl_api_sub_if_flags_t.0: 0\u003e, vtr_op\u003d0, vtr_push_dot1q\u003d0, vtr_tag1\u003d0, vtr_tag2\u003d0, outer_tag\u003d0, b_dmac\u003dMACAddress(00:00:00:00:00:00), b_smac\u003dMACAddress(00:00:00:00:00:00), b_vlanid\u003d0, i_sid\u003d0, interface_name\u003d\u0027BondEthernet0\u0027, interface_dev_type\u003d\u0027bond\u0027, tag\u003d\u0027\u0027)",
+      "range": {
+        "startLine": 268,
+        "startChar": 11,
+        "endLine": 268,
+        "endChar": 15
+      },
+      "revId": "90998bc00253730fc640d51e9995e71c2abbd6d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
