@@ -701,7 +701,7 @@ vtc_process_opts (vcl_test_client_main_t * vcm, int argc, char **argv)
   int c, v;
 
   opterr = 0;
-  while ((c = getopt (argc, argv, "chnp:w:XE:I:N:R:T:UBV6DLs:q:S")) != -1)
+  while ((c = getopt (argc, argv, "chnp:w:xXE:I:N:R:T:UBV6DLs:q:S")) != -1)
     switch (c)
       {
       case 'c':
@@ -758,6 +758,9 @@ vtc_process_opts (vcl_test_client_main_t * vcm, int argc, char **argv)
       case 'X':
 	vcm->post_test = VCL_TEST_TYPE_EXIT;
 	break;
+
+      case 'x':
+	vcm->post_test = VCL_TEST_TYPE_NONE;
 
       case 'E':
 	if (strlen (optarg) > ctrl->txbuf_size)
@@ -947,6 +950,10 @@ vtc_ctrl_session_exit (void)
   vcl_test_session_t *ctrl = &vcm->ctrl_session;
   int verbose = ctrl->cfg.verbose;
 
+  /* Only clients exits, server can accept new connections */
+  if (vcm->post_test == VCL_TEST_TYPE_EXIT_CLIENT)
+    return;
+
   ctrl->cfg.test = VCL_TEST_TYPE_EXIT;
   vtinf ("(fd %d): Sending exit cfg to server...", ctrl->fd);
   if (verbose)
@@ -1027,6 +1034,7 @@ main (int argc, char **argv)
   int rv;
 
   vcm->n_workers = 1;
+  vcm->post_test = VCL_TEST_TYPE_EXIT_CLIENT;
   vcl_test_cfg_init (&ctrl->cfg);
   vcl_test_session_buf_alloc (ctrl);
   vtc_process_opts (vcm, argc, argv);
@@ -1082,6 +1090,7 @@ main (int argc, char **argv)
       switch (vcm->post_test)
 	{
 	case VCL_TEST_TYPE_EXIT:
+	case VCL_TEST_TYPE_EXIT_CLIENT:
 	  switch (ctrl->cfg.test)
 	    {
 	    case VCL_TEST_TYPE_EXIT:
