@@ -26,7 +26,10 @@
 #include <pthread.h>
 #include <signal.h>
 
-typedef struct
+typedef struct vtc_worker_ vcl_test_client_worker_t;
+typedef int (vtc_worker_run_fn) (vcl_test_client_worker_t *wrk);
+
+struct vtc_worker_
 {
   vcl_test_session_t *sessions;
   vcl_test_session_t *qsessions;
@@ -36,8 +39,9 @@ typedef struct
   fd_set rd_fdset;
   int max_fd_index;
   pthread_t thread_handle;
+  vtc_worker_run_fn *wrk_run_fn;
   vcl_test_cfg_t cfg;
-} vcl_test_client_worker_t;
+};
 
 typedef struct
 {
@@ -121,14 +125,15 @@ vtc_cfg_sync (vcl_test_session_t * ts)
 }
 
 static int
-vtc_connect_test_sessions (vcl_test_client_worker_t * wrk)
+vtc_worker_alloc_sessions (vcl_test_client_worker_t *wrk)
 {
   vcl_test_client_main_t *vcm = &vcl_client_main;
   vcl_test_main_t *vt = &vcl_test_main;
   const vcl_test_proto_vft_t *tp;
   vcl_test_session_t *ts;
   uint32_t n_test_sessions;
-  int i, rv;
+  struct timespec now;
+  int i, j;
 
   n_test_sessions = wrk->cfg.num_test_sessions;
   if (n_test_sessions < 1)
@@ -152,6 +157,8 @@ vtc_connect_test_sessions (vcl_test_client_worker_t * wrk)
       return errno;
     }
 
+  clock_gettime (CLOCK_REALTIME, &now);
+
   tp = vt->protos[vcm->proto];
 
   for (i = 0; i < n_test_sessions; i++)
@@ -159,39 +166,11 @@ vtc_connect_test_sessions (vcl_test_client_worker_t * wrk)
       ts = &wrk->sessions[i];
       memset (ts, 0, sizeof (*ts));
       ts->session_index = i;
+      ts->old_stats.stop = now;
       ts->cfg = wrk->cfg;
       vcl_test_session_buf_alloc (ts);
-      rv = tp->open (&wrk->sessions[i], &vcm->server_endpt);
-      if (rv < 0)
-	return rv;
-    }
-  wrk->n_sessions = n_test_sessions;
 
-done:
-  vtinf ("All test sessions (%d) connected!", n_test_sessions);
-  return 0;
-}
-
-static int
-vtc_worker_test_setup (vcl_test_client_worker_t * wrk)
-{
-  vcl_test_cfg_t *cfg = &wrk->cfg;
-  vcl_test_session_t *ts;
-  struct timespec now;
-  uint32_t sidx;
-  int i, j;
-
-  FD_ZERO (&wrk->wr_fdset);
-  FD_ZERO (&wrk->rd_fdset);
-
-  clock_gettime (CLOCK_REALTIME, &now);
-
-  for (i = 0; i < cfg->num_test_sessions; i++)
-    {
-      ts = &wrk->sessions[i];
-      ts->old_stats.stop = now;
-
-      switch (cfg->test)
+      switch (ts->cfg.test)
 	{
 	case VCL_TEST_TYPE_UNI:
 	case VCL_TEST_TYPE_BI:
@@ -201,13 +180,12 @@ vtc_worker_test_setup (vcl_test_client_worker_t * wrk)
 	default:
 	  break;
 	}
-
-      FD_SET (vppcom_session_index (ts->fd), &wrk->wr_fdset);
-      FD_SET (vppcom_session_index (ts->fd), &wrk->rd_fdset);
-      sidx = vppcom_session_index (ts->fd);
-      wrk->max_fd_index = vtc_max (sidx, wrk->max_fd_index);
     }
-  wrk->max_fd_index += 1;
+  wrk->n_sessions = n_test_sessions;
+
+done:
+
+  vtinf ("All test sessions (%d) initialized!", n_test_sessions);
 
   return 0;
 }
@@ -231,15 +209,12 @@ vtc_worker_init (vcl_test_client_worker_t * wrk)
 	}
       vt_atomic_add (&vcm->active_workers, 1);
     }
-  rv = vtc_connect_test_sessions (wrk);
+  rv = vtc_worker_alloc_sessions (wrk);
   if (rv)
     {
-      vterr ("vtc_connect_test_sessions ()", rv);
+      vterr ("vtc_worker_alloc_sessions ()", rv);
       return rv;
     }
-
-  if (vtc_worker_test_setup (wrk))
-    return -1;
 
   return 0;
 }
@@ -312,32 +287,77 @@ vtc_inc_stats_check (vcl_test_session_t *ts)
     }
 }
 
-static void *
-vtc_worker_loop (void *arg)
+static void
+vtc_worker_start_transfer (vcl_test_client_worker_t *wrk)
+{
+  vtinf ("Worker %u starting transfer ...", wrk->wrk_index);
+
+  if (wrk->wrk_index == 0)
+    {
+      vcl_test_client_main_t *vcm = &vcl_client_main;
+      vcl_test_session_t *ctrl = &vcm->ctrl_session;
+
+      clock_gettime (CLOCK_REALTIME, &ctrl->stats.start);
+    }
+}
+
+static int
+vtc_worker_connect_sessions_select (vcl_test_client_worker_t *wrk)
 {
   vcl_test_client_main_t *vcm = &vcl_client_main;
-  vcl_test_session_t *ctrl = &vcm->ctrl_session;
-  vcl_test_client_worker_t *wrk = arg;
-  uint32_t n_active_sessions;
+  vcl_test_main_t *vt = &vcl_test_main;
+  const vcl_test_proto_vft_t *tp;
+  vcl_test_session_t *ts;
+  uint32_t sidx;
+  int i, rv;
+
+  tp = vt->protos[vcm->proto];
+
+  FD_ZERO (&wrk->wr_fdset);
+  FD_ZERO (&wrk->rd_fdset);
+
+  for (i = 0; i < wrk->cfg.num_test_sessions; i++)
+    {
+      ts = &wrk->sessions[i];
+
+      rv = tp->open (&wrk->sessions[i], &vcm->server_endpt);
+      if (rv < 0)
+	return rv;
+
+      FD_SET (vppcom_session_index (ts->fd), &wrk->wr_fdset);
+      FD_SET (vppcom_session_index (ts->fd), &wrk->rd_fdset);
+      sidx = vppcom_session_index (ts->fd);
+      wrk->max_fd_index = vtc_max (sidx, wrk->max_fd_index);
+    }
+  wrk->max_fd_index += 1;
+
+  vtinf ("All test sessions (%d) connected!", wrk->cfg.num_test_sessions);
+
+  return 0;
+}
+
+static int
+vtc_worker_run_select (vcl_test_client_worker_t *wrk)
+{
+  vcl_test_client_main_t *vcm = &vcl_client_main;
   fd_set _wfdset, *wfdset = &_wfdset;
   fd_set _rfdset, *rfdset = &_rfdset;
+  uint32_t n_active_sessions;
   vcl_test_session_t *ts;
   int i, rv, check_rx = 0;
 
-  rv = vtc_worker_init (wrk);
+  rv = vtc_worker_connect_sessions_select (wrk);
   if (rv)
     {
-      vterr ("vtc_worker_init()", rv);
-      return 0;
+      vterr ("vtc_worker_connect_sessions()", rv);
+      return rv;
     }
-
-  vtinf ("Starting test ...");
-
-  if (wrk->wrk_index == 0)
-    clock_gettime (CLOCK_REALTIME, &ctrl->stats.start);
 
   check_rx = wrk->cfg.test != VCL_TEST_TYPE_UNI;
   n_active_sessions = wrk->cfg.num_test_sessions;
+
+  vtc_worker_start_transfer (wrk);
+
   while (n_active_sessions && vcm->test_running)
     {
       _wfdset = wrk->wr_fdset;
@@ -348,7 +368,7 @@ vtc_worker_loop (void *arg)
       if (rv < 0)
 	{
 	  vterr ("vppcom_select()", rv);
-	  goto exit;
+	  break;
 	}
       else if (rv == 0)
 	continue;
@@ -364,7 +384,7 @@ vtc_worker_loop (void *arg)
 	    {
 	      rv = ts->read (ts, ts->rxbuf, ts->rxbuf_size);
 	      if (rv < 0)
-		goto exit;
+		break;
 	    }
 
 	  if (FD_ISSET (vppcom_session_index (ts->fd), wfdset)
@@ -375,7 +395,7 @@ vtc_worker_loop (void *arg)
 		{
 		  vtwrn ("vppcom_test_write (%d) failed -- aborting test",
 			 ts->fd);
-		  goto exit;
+		  break;
 		}
 	      if (vcm->incremental_stats)
 		vtc_inc_stats_check (ts);
@@ -389,13 +409,46 @@ vtc_worker_loop (void *arg)
 	    }
 	}
     }
-exit:
+
+  return 0;
+}
+
+static inline int
+vtc_worker_run (vcl_test_client_worker_t *wrk)
+{
+  int rv;
+
+  vtinf ("Worker %u starting test ...", wrk->wrk_index);
+
+  rv = wrk->wrk_run_fn (wrk);
+
   vtinf ("Worker %d done ...", wrk->wrk_index);
+
+  return rv;
+}
+
+static void *
+vtc_worker_loop (void *arg)
+{
+  vcl_test_client_main_t *vcm = &vcl_client_main;
+  vcl_test_session_t *ctrl = &vcm->ctrl_session;
+  vcl_test_client_worker_t *wrk = arg;
+
+  if (vtc_worker_init (wrk))
+    goto done;
+
+  if (vtc_worker_run (wrk))
+    goto done;
+
   vtc_accumulate_stats (wrk, ctrl);
   sleep (VCL_TEST_DELAY_DISCONNECT);
   vtc_worker_sessions_exit (wrk);
+
+done:
+
   if (wrk->wrk_index)
     vt_atomic_add (&vcm->active_workers, -1);
+
   return 0;
 }
 
@@ -1026,6 +1079,17 @@ vt_incercept_sigs (void)
     }
 }
 
+static void
+vtc_alloc_workers (vcl_test_client_main_t *vcm)
+{
+  vcm->workers = calloc (vcm->n_workers, sizeof (vcl_test_client_worker_t));
+
+  for (int i = 0; i < vcm->n_workers; i++)
+    {
+      vcm->workers[i].wrk_run_fn = vtc_worker_run_select;
+    }
+}
+
 int
 main (int argc, char **argv)
 {
@@ -1036,13 +1100,13 @@ main (int argc, char **argv)
 
   vcm->n_workers = 1;
   vcm->post_test = VCL_TEST_TYPE_EXIT_CLIENT;
+
   vcl_test_cfg_init (&ctrl->cfg);
+  vt_incercept_sigs ();
   vcl_test_session_buf_alloc (ctrl);
   vtc_process_opts (vcm, argc, argv);
-  vt_incercept_sigs ();
 
-  vcm->workers = calloc (vcm->n_workers, sizeof (vcl_test_client_worker_t));
-  vt->wrk = calloc (vcm->n_workers, sizeof (vcl_test_wrk_t));
+  vtc_alloc_workers (vcm);
 
   rv = vppcom_app_create ("vcl_test_client");
   if (rv < 0)
