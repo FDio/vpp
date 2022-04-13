@@ -76,46 +76,47 @@ show_or_clear_hw_interfaces (vlib_main_t * vm,
   u32 hw_if_index, *hw_if_indices = 0;
   int i, verbose = -1, show_bond = 0;
 
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+  if (unformat_user (input, unformat_line_input, line_input))
     {
-      /* See if user wants to show a specific interface. */
-      if (unformat (line_input, "%U", unformat_vnet_hw_interface, vnm,
-		    &hw_if_index))
-	vec_add1 (hw_if_indices, hw_if_index);
-
-      /* See if user wants to show an interface with a specific hw_if_index. */
-      else if (unformat (line_input, "%u", &hw_if_index))
-	vec_add1 (hw_if_indices, hw_if_index);
-
-      else if (unformat (line_input, "verbose"))
-	verbose = 1;		/* this is also the default */
-
-      else if (unformat (line_input, "detail"))
-	verbose = 2;
-
-      else if (unformat (line_input, "brief"))
-	verbose = 0;
-
-      else if (unformat (line_input, "bond"))
+      while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
 	{
-	  show_bond = 1;
-	  if (verbose < 0)
-	    verbose = 0;	/* default to brief for link bonding */
+	  /* See if user wants to show a specific interface. */
+	  if (unformat (line_input, "%U", unformat_vnet_hw_interface, vnm,
+			&hw_if_index))
+	    vec_add1 (hw_if_indices, hw_if_index);
+
+	  /* See if user wants to show an interface with a specific
+	   * hw_if_index. */
+	  else if (unformat (line_input, "%u", &hw_if_index))
+	    vec_add1 (hw_if_indices, hw_if_index);
+
+	  else if (unformat (line_input, "verbose"))
+	    verbose = 1; /* this is also the default */
+
+	  else if (unformat (line_input, "detail"))
+	    verbose = 2;
+
+	  else if (unformat (line_input, "brief"))
+	    verbose = 0;
+
+	  else if (unformat (line_input, "bond"))
+	    {
+	      show_bond = 1;
+	      if (verbose < 0)
+		verbose = 0; /* default to brief for link bonding */
+	    }
+
+	  else
+	    {
+	      error = clib_error_return (0, "unknown input `%U'",
+					 format_unformat_error, line_input);
+	      unformat_free (line_input);
+	      goto done;
+	    }
 	}
 
-      else
-	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, line_input);
-	  unformat_free (line_input);
-	  goto done;
-	}
+      unformat_free (line_input);
     }
-
-  unformat_free (line_input);
 
   /* Gather interfaces. */
   if (vec_len (hw_if_indices) == 0)
