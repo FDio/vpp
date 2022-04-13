@@ -69,7 +69,7 @@ static_always_inline void
 clib_perfmon_ioctl (int fd, u32 req)
 {
 #ifdef __x86_64__
-  asm inline("syscall"
+  asm volatile("syscall"
 	     :
 	     : "D"(fd), "S"(req), "a"(__NR_ioctl), "d"(PERF_IOC_FLAG_GROUP)
 	     : "rcx", "r11" /* registers modified by kernel */);
