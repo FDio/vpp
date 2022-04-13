@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "11585450_60f7a8db",
+        "filename": "src/vlibmemory/api.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-04-13T16:25:43Z",
+      "side": 1,
+      "message": "This should not be null if the registration is valid (the check above), so probably rp is a dangling reference or something like that. That is, probably l2_fib should regrab rp or check that the queue is not null.",
+      "range": {
+        "startLine": 53,
+        "startChar": 12,
+        "endLine": 53,
+        "endChar": 30
+      },
+      "revId": "9506e2f09dc21d8e1ea44f393010c4336d841cf8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
