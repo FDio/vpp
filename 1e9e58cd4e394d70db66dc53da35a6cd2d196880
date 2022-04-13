@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a428cbf_0da4fd35",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 1667,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-04-13T14:05:06Z",
+      "side": 1,
+      "message": "as this is the default behavior now I think we should drop this warning",
+      "revId": "1e9e58cd4e394d70db66dc53da35a6cd2d196880",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8d2f7fbc_d83711ca",
+        "filename": "src/vlib/threads.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 297,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-04-13T14:05:06Z",
+      "side": 1,
+      "message": "maybe it\u0027s me but now that this is the default behavior, it seems weird to have this.\nCouldn\u0027t we use main_lcore \u003d\u003d ~0 instead?",
+      "revId": "1e9e58cd4e394d70db66dc53da35a6cd2d196880",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
