@@ -15,7 +15,7 @@
  *------------------------------------------------------------------
  */
 
-#include <sys/random.h>
+#include <sys/syscall.h>
 
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -478,7 +478,7 @@ crypto_openssl_init (vlib_main_t * vm)
   openssl_per_thread_data_t *ptd;
   u8 seed[32];
 
-  if (getrandom (&seed, sizeof (seed), 0) != sizeof (seed))
+  if (syscall (SYS_getrandom, &seed, sizeof (seed), 0) != sizeof (seed))
     return clib_error_return_unix (0, "getrandom() failed");
 
   RAND_seed (seed, sizeof (seed));
