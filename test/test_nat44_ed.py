@@ -146,6 +146,25 @@ class TestNAT44ED(VppTestCase):
             flags=flags,
             tag=tag)
 
+    def nat_set_timeouts(self, tcp_transitory=None, tcp_established=None,
+                         udp=None, icmp=None):
+
+        timeouts = self.vapi.nat44_ed_get_timeouts()
+
+        if udp is not None:
+            timeouts.udp = udp
+
+        if icmp is not None:
+            timeouts.icmp = icmp
+
+        if tcp_transitory is not None:
+            timeouts.tcp_transitory = tcp_transitory
+
+        if tcp_established is not None:
+            timeouts.tcp_established = tcp_established
+
+        self.vapi.nat44_ed_set_timeouts(timeouts=timeouts)
+
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -2532,8 +2551,7 @@ class TestNAT44EDMW(TestNAT44ED):
         self.nat_add_inside_interface(self.pg0)
         self.nat_add_outside_interface(self.pg1)
 
-        self.vapi.nat_set_timeouts(
-            udp=1, tcp_established=7440, tcp_transitory=30, icmp=1)
+        self.nat_set_timeouts(tcp_transitory=30, icmp=1, udp=1)
 
         tcp_port_out = self.init_tcp_session(self.pg0, self.pg1, 2000, 80)
         pkts = []
@@ -2568,8 +2586,7 @@ class TestNAT44EDMW(TestNAT44ED):
         self.nat_add_inside_interface(self.pg0)
         self.nat_add_outside_interface(self.pg1)
 
-        self.vapi.nat_set_timeouts(udp=300, tcp_established=7440,
-                                   tcp_transitory=5, icmp=60)
+        self.nat_set_timeouts(tcp_transitory=5)
 
         self.init_tcp_session(self.pg0, self.pg1, self.tcp_port_in,
                               self.tcp_external_port)
@@ -2602,8 +2619,7 @@ class TestNAT44EDMW(TestNAT44ED):
         self.nat_add_inside_interface(self.pg0)
         self.nat_add_outside_interface(self.pg1)
 
-        self.vapi.nat_set_timeouts(udp=300, tcp_established=7440,
-                                   tcp_transitory=5, icmp=60)
+        self.nat_set_timeouts(tcp_transitory=5)
 
         self.init_tcp_session(self.pg0, self.pg1, self.tcp_port_in,
                               self.tcp_external_port)
@@ -3254,14 +3270,8 @@ class TestNAT44EDMW(TestNAT44ED):
 
     def test_tcp_close(self):
         """ NAT44ED Close TCP session from inside network - output feature """
-        config = self.vapi.nat44_show_running_config()
-        old_timeouts = config.timeouts
-        new_transitory = 2
-        self.vapi.nat_set_timeouts(
-            udp=old_timeouts.udp,
-            tcp_established=old_timeouts.tcp_established,
-            icmp=old_timeouts.icmp,
-            tcp_transitory=new_transitory)
+        tcp_transitory=2
+        self.nat_set_timeouts(tcp_transitory=tcp_transitory)
 
         self.vapi.nat44_forwarding_enable_disable(enable=1)
         self.nat_add_address(self.pg1.local_ip4)
@@ -3336,7 +3346,7 @@ class TestNAT44EDMW(TestNAT44ED):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        self.virtual_sleep(new_transitory, "wait for transitory timeout")
+        self.virtual_sleep(tcp_transitory, "wait for transitory timeout")
         self.pg0.get_capture(1)
 
         # session should still exist
@@ -3369,8 +3379,7 @@ class TestNAT44EDMW(TestNAT44ED):
         sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
         session_n = len(sessions)
 
-        self.vapi.nat_set_timeouts(udp=300, tcp_established=7440,
-                                   tcp_transitory=2, icmp=5)
+        self.nat_set_timeouts(tcp_transitory=2, icmp=5)
 
         self.init_tcp_session(self.pg0, self.pg1, in_port, ext_port)
 
@@ -3450,8 +3459,7 @@ class TestNAT44EDMW(TestNAT44ED):
         sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
         session_n = len(sessions)
 
-        self.vapi.nat_set_timeouts(udp=300, tcp_established=7440,
-                                   tcp_transitory=2, icmp=5)
+        self.nat_set_timeouts(tcp_transitory=2, icmp=5)
 
         _ = self.init_tcp_session(self.pg0, self.pg1, in_port, ext_port)
 
@@ -3529,8 +3537,7 @@ class TestNAT44EDMW(TestNAT44ED):
         sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
         session_n = len(sessions)
 
-        self.vapi.nat_set_timeouts(udp=300, tcp_established=7440,
-                                   tcp_transitory=2, icmp=5)
+        self.nat_set_timeouts(tcp_transitory=2, icmp=5)
 
         out_port = self.init_tcp_session(self.pg0, self.pg1, in_port, ext_port)
 
@@ -3605,8 +3612,7 @@ class TestNAT44EDMW(TestNAT44ED):
         sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
         session_n = len(sessions)
 
-        self.vapi.nat_set_timeouts(udp=300, tcp_established=7440,
-                                   tcp_transitory=2, icmp=5)
+        self.nat_set_timeouts(tcp_transitory=2, icmp=5)
 
         out_port = self.init_tcp_session(self.pg0, self.pg1, in_port, ext_port)
 
@@ -3659,8 +3665,7 @@ class TestNAT44EDMW(TestNAT44ED):
         sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
         session_n = len(sessions)
 
-        self.vapi.nat_set_timeouts(udp=300, tcp_established=7440,
-                                   tcp_transitory=2, icmp=5)
+        self.nat_set_timeouts(tcp_transitory=2, icmp=5)
 
         out_port = self.init_tcp_session(self.pg0, self.pg1, in_port, ext_port)
 
@@ -3713,8 +3718,7 @@ class TestNAT44EDMW(TestNAT44ED):
         sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
         session_n = len(sessions)
 
-        self.vapi.nat_set_timeouts(udp=300, tcp_established=7440,
-                                   tcp_transitory=2, icmp=5)
+        self.nat_set_timeouts(tcp_transitory=2, icmp=5)
 
         out_port = self.init_tcp_session(self.pg0, self.pg1, in_port, ext_port)
 
@@ -4057,8 +4061,8 @@ class TestNAT44EDMW(TestNAT44ED):
         self.nat_add_inside_interface(self.pg0)
         self.nat_add_outside_interface(self.pg1)
 
-        self.vapi.nat_set_timeouts(udp=300, tcp_established=7440,
-                                   tcp_transitory=5, icmp=60)
+        self.nat_set_timeouts(tcp_transitory=5)
+
         # SYN packet in->out
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
@@ -4111,8 +4115,8 @@ class TestNAT44EDMW(TestNAT44ED):
         self.nat_add_inside_interface(self.pg0)
         self.nat_add_outside_interface(self.pg1)
 
-        self.vapi.nat_set_timeouts(udp=300, tcp_established=7440,
-                                   tcp_transitory=5, icmp=60)
+        self.nat_set_timeouts(tcp_transitory=5)
+
         # SYN packet in->out
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /

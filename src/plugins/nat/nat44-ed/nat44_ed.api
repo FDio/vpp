@@ -105,6 +105,39 @@ autoreply define nat_set_timeouts {
   u32 icmp;
 };
 
+/** \brief Get values of timeouts for NAT sessions (seconds)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat44_ed_get_timeouts
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Get values of timeouts for NAT sessions (seconds) reply
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param timeouts - UDP, ICMP, TCP (established/transitory) timeouts
+*/
+define nat44_ed_get_timeouts_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_nat_timeouts_t timeouts;
+};
+
+/** \brief Set values of timeouts for NAT sessions (seconds)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param timeouts - UDP, ICMP, TCP (established/transitory) timeouts
+*/
+autoreply define nat44_ed_set_timeouts {
+  u32 client_index;
+  u32 context;
+  vl_api_nat_timeouts_t timeouts;
+};
+
 /** \brief NAT44 set session limit
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
