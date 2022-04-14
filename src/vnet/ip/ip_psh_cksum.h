@@ -32,7 +32,7 @@ STATIC_ASSERT (sizeof (ip6_psh_t) == 40, "ipv6 pseudo header is 40B");
 static_always_inline u16
 ip4_pseudo_header_cksum (ip4_header_t *ip4)
 {
-  ip4_psh_t psh = { 0 };
+  ip4_psh_t psh = {};
   psh.src = ip4->src_address;
   psh.dst = ip4->dst_address;
   psh.proto = ip4->protocol;
@@ -45,7 +45,7 @@ ip4_pseudo_header_cksum (ip4_header_t *ip4)
 static_always_inline u16
 ip6_pseudo_header_cksum (ip6_header_t *ip6)
 {
-  ip6_psh_t psh = { 0 };
+  ip6_psh_t psh = {};
   psh.src = ip6->src_address;
   psh.dst = ip6->dst_address;
   psh.l4len = ip6->payload_length;
