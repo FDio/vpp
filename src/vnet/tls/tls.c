@@ -1315,8 +1315,11 @@ tls_init (vlib_main_t * vm)
   vec_validate (tm->rx_bufs, num_threads - 1);
   vec_validate (tm->tx_bufs, num_threads - 1);
 
-  tm->first_seg_size = 32 << 20;
-  tm->add_seg_size = 256 << 20;
+  if (!tm->first_seg_size)
+    tm->first_seg_size = 32 << 20;
+
+  if (!tm->add_seg_size)
+    tm->add_seg_size = 256 << 20;
 
   transport_register_protocol (TRANSPORT_PROTO_TLS, &tls_proto,
 			       FIB_PROTOCOL_IP4, ~0);
