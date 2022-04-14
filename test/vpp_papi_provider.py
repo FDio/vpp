@@ -7,13 +7,13 @@
 
 import os
 import time
-from collections import deque
 import queue
 from six import moves, iteritems
 from config import config
-from vpp_papi import VPPApiClient, mac_pton
+from vpp_papi import VPPApiClient
 from hook import Hook
-from vpp_ip_route import MPLS_IETF_MAX_LABEL, MPLS_LABEL_INVALID
+from vpp_papi_exceptions import CliFailedCommandError, CliSyntaxError,\
+    UnexpectedApiReturnValueError
 
 #
 # Dictionary keyed on message name to override default values for
@@ -104,19 +104,6 @@ defaultmapping = {
 
 def as_fn_signature(d):
     return ", ".join(f"{k}={v}" for k, v in d.items())
-
-
-class CliFailedCommandError(Exception):
-    """ cli command failed."""
-
-
-class CliSyntaxError(Exception):
-    """ cli command had a syntax error."""
-
-
-class UnexpectedApiReturnValueError(Exception):
-    """ exception raised when the API return value is unexpected """
-    pass
 
 
 class VppPapiProvider(object):
@@ -287,7 +274,7 @@ class VppPapiProvider(object):
                        reply.retval,
                        moves.reprlib.repr(reply))
                 self.test_class.logger.info(msg)
-                raise UnexpectedApiReturnValueError(msg)
+                raise UnexpectedApiReturnValueError(reply.retval, msg)
         elif self._expect_api_retval == self._zero:
             if hasattr(reply, 'retval') and reply.retval != expected_retval:
                 msg = "%s(%s) failed, expected %d return value instead " \
@@ -296,7 +283,7 @@ class VppPapiProvider(object):
                                        expected_retval, reply.retval,
                                        repr(reply))
                 self.test_class.logger.info(msg)
-                raise UnexpectedApiReturnValueError(msg)
+                raise UnexpectedApiReturnValueError(reply.retval, msg)
         else:
             raise Exception("Internal error, unexpected value for "
                             "self._expect_api_retval %s" %

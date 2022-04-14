@@ -5,10 +5,10 @@
 """
 
 from vpp_object import VppObject
-from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
 from vpp_ip import DpoProto, INVALID_INDEX, VppIpAddressUnion, \
     VppIpMPrefix
 from ipaddress import ip_network, ip_address, IPv4Network, IPv6Network
+from vpp_papi_exceptions import UnexpectedApiReturnValueError
 
 # from vnet/vnet/mpls/mpls_types.h
 MPLS_IETF_MAX_LABEL = 0xfffff
@@ -340,9 +340,14 @@ class VppIpInterfaceBind(VppObject):
     def query_vpp_config(self):
         if 0 == self.table.table_id:
             return False
-        return self._test.vapi.sw_interface_get_table(
-            self.intf.sw_if_index,
-            self.table.is_ip6).vrf_id == self.table.table_id
+        try:
+            return self._test.vapi.sw_interface_get_table(
+                self.intf.sw_if_index,
+                self.table.is_ip6).vrf_id == self.table.table_id
+        except UnexpectedApiReturnValueError as e:
+            if e.retval == -2:  # INVALID_SW_IF_INDEX
+                return False
+            raise
 
     def object_id(self):
         return "interface-bind-%s-%s" % (self.intf, self.table)
