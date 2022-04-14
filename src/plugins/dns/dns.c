@@ -2142,23 +2142,37 @@ show_dns_cache_command_fn (vlib_main_t * vm,
   int verbose = 0;
   u8 *name = 0;
   f64 now = vlib_time_now (vm);
+  clib_error_t *error = 0;
+  unformat_input_t _line_input, *line_input = &_line_input;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "verbose %d", &verbose))
+      if (unformat (line_input, "verbose %d", &verbose))
 	;
-      else if (unformat (input, "verbose"))
+      else if (unformat (line_input, "verbose"))
 	verbose = 1;
-      else if (unformat (input, "name %s", &name))
+      else if (unformat (line_input, "name %s", &name))
 	;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	error = clib_error_return (0, "unknown input `%U'",
+				   format_unformat_error, line_input);
+	goto done;
+	}
     }
 
   vlib_cli_output (vm, "%U", format_dns_cache, dm, now, verbose, name);
 
-  return 0;
+done:
+  if (name)
+    vec_free (name);
+  unformat_free (line_input);
+
+  return error;
 }
 
 /* *INDENT-OFF* */
@@ -2564,28 +2578,44 @@ test_dns_unfmt_command_fn (vlib_main_t * vm,
   u8 *dns_reply_data = 0;
   int verbose = 0;
   int reply_set = 0;
+  clib_error_t *error = 0;
+  unformat_input_t _line_input, *line_input = &_line_input;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "verbose %d", &verbose))
+      if (unformat (line_input, "verbose %d", &verbose))
 	;
-      else if (unformat (input, "verbose"))
+      else if (unformat (line_input, "verbose"))
 	verbose = 1;
-      else if (unformat (input, "%U", unformat_dns_reply, &dns_reply_data))
+      else if (unformat (line_input, "%U", unformat_dns_reply,
+			 &dns_reply_data))
 	reply_set = 1;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	error = clib_error_return (0, "unknown input `%U'",
+				   format_unformat_error, line_input);
+	goto done;
+	}
     }
 
   if (reply_set == 0)
-    return clib_error_return (0, "dns data not set...");
+    {
+      error = clib_error_return (0, "dns data not set...");
+      goto done;
+    }
 
   vlib_cli_output (vm, "%U", format_dns_reply, dns_reply_data, verbose);
 
-  vec_free (dns_reply_data);
+done:
+  if (dns_reply_data)
+    vec_free (dns_reply_data);
+  unformat_free (line_input);
 
-  return 0;
+  return error;
 }
 
 /* *INDENT-OFF* */
@@ -2604,17 +2634,25 @@ test_dns_expire_command_fn (vlib_main_t * vm,
 {
   dns_main_t *dm = &dns_main;
   u8 *name = 0;
-  uword *p;
-  clib_error_t *e;
-  dns_cache_entry_t *ep;
+  uword *p = 0;
+  clib_error_t *e = 0;
+  dns_cache_entry_t *ep = 0;
+  unformat_input_t _line_input, *line_input = &_line_input;
 
-  if (unformat (input, "%v", &name))
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  if (unformat (line_input, "%s", &name))
     {
       vec_add1 (name, 0);
       vec_dec_len (name, 1);
     }
   else
-    return clib_error_return (0, "no name provided");
+    {
+      e = clib_error_return (0, "no name provided");
+      goto done;
+    }
 
   dns_cache_lock (dm, 7);
 
@@ -2623,15 +2661,19 @@ test_dns_expire_command_fn (vlib_main_t * vm,
     {
       dns_cache_unlock (dm);
       e = clib_error_return (0, "%s is not in the cache...", name);
-      vec_free (name);
-      return e;
+      goto done;
     }
 
   ep = pool_elt_at_index (dm->entries, p[0]);
 
   ep->expiration_time = 0;
 
-  return 0;
+done:
+  if (name)
+    vec_free (name);
+  unformat_free (line_input);
+
+  return e;
 }
 
 /* *INDENT-OFF* */
