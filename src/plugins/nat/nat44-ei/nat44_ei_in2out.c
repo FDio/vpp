@@ -859,7 +859,7 @@ nat44_ei_icmp_in2out (vlib_buffer_t *b0, ip4_header_t *ip0,
   nat44_ei_main_t *nm = &nat44_ei_main;
   vlib_main_t *vm = vlib_get_main ();
   ip4_address_t addr;
-  u16 port;
+  u16 port = 0;
   u32 fib_index;
   nat_protocol_t proto;
   icmp_echo_header_t *echo0, *inner_echo0 = 0;
