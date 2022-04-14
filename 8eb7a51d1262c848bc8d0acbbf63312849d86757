@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "76c22e0f_fc183e6a",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 1654,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2022-04-14T11:40:52Z",
+      "side": 1,
+      "message": "I kept the warning but changed the phrasing a bit... I think it\u0027s ok to have a warning by default to prompt user that want performance to do the pinning (and not ask on the ML about a sudden performance degradation on the main branch)",
+      "revId": "8eb7a51d1262c848bc8d0acbbf63312849d86757",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
