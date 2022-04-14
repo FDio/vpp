@@ -56,14 +56,9 @@ class TestNAT44EDOutput(VppTestCase):
     def test_static_dynamic(self):
         """ Create static mapping which matches existing dynamic mapping """
 
-        config = self.vapi.nat44_show_running_config()
-        old_timeouts = config.timeouts
-        new_transitory = 2
-        self.vapi.nat_set_timeouts(
-            udp=old_timeouts.udp,
-            tcp_established=old_timeouts.tcp_established,
-            icmp=old_timeouts.icmp,
-            tcp_transitory=new_transitory)
+        timeouts = self.vapi.nat44_ed_get_timeouts()
+        timeouts.tcp_transitory = 2
+        self.vapi.nat44_ed_set_timeouts(timeouts=timeouts)
 
         local_host = self.pg0.remote_ip4
         remote_host = self.pg1.remote_ip4
@@ -183,7 +178,7 @@ class TestNAT44EDOutput(VppTestCase):
         self.pg_enable_capture()
         self.pg_start()
 
-        self.sleep(new_transitory, "wait for transitory timeout")
+        self.sleep(timeouts.tcp_transitory, "wait for transitory timeout")
         pg0.assert_nothing_captured(0)
 
         # session should still exist
