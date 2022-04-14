@@ -13,17 +13,7 @@
 
 cmake_minimum_required(VERSION 3.13)
 
-set(CMAKE_C_COMPILER_NAMES
-  clang-14
-  clang-13
-  clang-12
-  clang-11
-  clang-10
-  clang-9
-  gcc-10
-  gcc-9
-  cc
-)
+set(CMAKE_C_COMPILER_NAMES clang gcc cc)
 
 project(vpp C)
 
@@ -49,6 +39,39 @@ execute_process(
 )
 string(REPLACE "-" ";" VPP_LIB_VERSION ${VPP_VERSION})
 list(GET VPP_LIB_VERSION 0 VPP_LIB_VERSION)
+
+##############################################################################
+# compiler specifics
+##############################################################################
+
+set(MIN_SUPPORTED_CLANG_C_COMPILER_VERSION 9.0.0)
+set(MIN_SUPPORTED_GNU_C_COMPILER_VERSION 9.0.0)
+
+if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
+  if (CMAKE_C_COMPILER_VERSION VERSION_LESS MIN_SUPPORTED_CLANG_C_COMPILER_VERSION)
+    set(COMPILER_TOO_OLD TRUE)
+  endif()
+elseif(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+  if (CMAKE_C_COMPILER_VERSION VERSION_LESS MIN_SUPPORTED_GNU_C_COMPILER_VERSION)
+    set(COMPILER_TOO_OLD TRUE)
+  endif()
+else()
+  message(WARNING "WARNING: Unsupported C compiler `${CMAKE_C_COMPILER_ID}` is used")
+  set (PRINT_MIN_C_COMPILER_VER TRUE)
+endif()
+if (COMPILER_TOO_OLD)
+  message(WARNING "WARNING: C compiler version is too old and it's usage may result")
+  message(WARNING "         in sub-optimal binaries or lack of support for specific CPU types.")
+  set (PRINT_MIN_C_COMPILER_VER TRUE)
+endif()
+
+if (PRINT_MIN_C_COMPILER_VER)
+  string (APPEND _t "Supported C compilers are ")
+  string (APPEND _t "Clang ${MIN_SUPPORTED_CLANG_C_COMPILER_VERSION} or higher ")
+  string (APPEND _t "and GNU ${MIN_SUPPORTED_GNU_C_COMPILER_VERSION} or higher.")
+  message(WARNING "         ${_t}")
+  unset (_t)
+endif()
 
 ##############################################################################
 # cross compiling
