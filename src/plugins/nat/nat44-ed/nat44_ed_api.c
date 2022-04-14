@@ -208,6 +208,50 @@ vl_api_nat_set_timeouts_t_handler (vl_api_nat_set_timeouts_t * mp)
 }
 
 static void
+vl_api_nat44_ed_get_timeouts_t_handler (vl_api_nat44_ed_get_timeouts_t *mp)
+{
+  vl_api_nat44_ed_get_timeouts_reply_t *rmp;
+  snat_main_t *sm = &snat_main;
+  int rv = 0;
+
+  if (!sm->enabled)
+    {
+      rv = VNET_API_ERROR_UNSUPPORTED;
+    }
+
+  REPLY_MACRO2_ZERO (VL_API_NAT44_ED_GET_TIMEOUTS_REPLY, ({
+		       rmp->timeouts.udp = htonl (sm->timeouts.udp);
+		       rmp->timeouts.icmp = htonl (sm->timeouts.icmp);
+		       rmp->timeouts.tcp_transitory =
+			 htonl (sm->timeouts.tcp.transitory);
+		       rmp->timeouts.tcp_established =
+			 htonl (sm->timeouts.tcp.established);
+		     }));
+}
+
+static void
+vl_api_nat44_ed_set_timeouts_t_handler (vl_api_nat44_ed_set_timeouts_t *mp)
+{
+  vl_api_nat44_ed_set_timeouts_reply_t *rmp;
+  snat_main_t *sm = &snat_main;
+  int rv = 0;
+
+  if (!sm->enabled)
+    {
+      rv = VNET_API_ERROR_UNSUPPORTED;
+    }
+  else
+    {
+      sm->timeouts.udp = ntohl (mp->timeouts.udp);
+      sm->timeouts.icmp = ntohl (mp->timeouts.icmp);
+      sm->timeouts.tcp.transitory = ntohl (mp->timeouts.tcp_transitory);
+      sm->timeouts.tcp.established = ntohl (mp->timeouts.tcp_established);
+    }
+
+  REPLY_MACRO (VL_API_NAT44_ED_SET_TIMEOUTS_REPLY);
+}
+
+static void
 vl_api_nat_set_mss_clamping_t_handler (vl_api_nat_set_mss_clamping_t * mp)
 {
   snat_main_t *sm = &snat_main;
