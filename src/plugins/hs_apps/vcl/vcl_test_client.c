@@ -35,9 +35,20 @@ struct vtc_worker_
   vcl_test_session_t *qsessions;
   uint32_t n_sessions;
   uint32_t wrk_index;
-  fd_set wr_fdset;
-  fd_set rd_fdset;
-  int max_fd_index;
+  union
+  {
+    struct
+    {
+      fd_set wr_fdset;
+      fd_set rd_fdset;
+      int max_fd_index;
+    };
+    struct
+    {
+      uint32_t epoll_sh;
+      struct epoll_event ep_evts[VCL_TEST_CFG_MAX_EPOLL_EVENTS];
+    };
+  };
   pthread_t thread_handle;
   vtc_worker_run_fn *wrk_run_fn;
   vcl_test_cfg_t cfg;
@@ -374,22 +385,191 @@ vtc_worker_run_select (vcl_test_client_worker_t *wrk)
 	  if (ts->is_done)
 	    continue;
 
-	  if (FD_ISSET (vppcom_session_index (ts->fd), rfdset)
-	      && ts->stats.rx_bytes < ts->cfg.total_bytes)
+	  if (FD_ISSET (vppcom_session_index (ts->fd), rfdset) &&
+	      ts->stats.rx_bytes < ts->cfg.total_bytes)
 	    {
 	      rv = ts->read (ts, ts->rxbuf, ts->rxbuf_size);
 	      if (rv < 0)
 		break;
 	    }
 
-	  if (FD_ISSET (vppcom_session_index (ts->fd), wfdset)
-	      && ts->stats.tx_bytes < ts->cfg.total_bytes)
+	  if (FD_ISSET (vppcom_session_index (ts->fd), wfdset) &&
+	      ts->stats.tx_bytes < ts->cfg.total_bytes)
 	    {
 	      rv = ts->write (ts, ts->txbuf, ts->cfg.txbuf_size);
 	      if (rv < 0)
 		{
 		  vtwrn ("vppcom_test_write (%d) failed -- aborting test",
 			 ts->fd);
+		  break;
+		}
+	      if (vcm->incremental_stats)
+		vtc_inc_stats_check (ts);
+	    }
+	  if ((!check_rx && ts->stats.tx_bytes >= ts->cfg.total_bytes) ||
+	      (check_rx && ts->stats.rx_bytes >= ts->cfg.total_bytes))
+	    {
+	      clock_gettime (CLOCK_REALTIME, &ts->stats.stop);
+	      ts->is_done = 1;
+	      n_active_sessions--;
+	    }
+	}
+    }
+
+  return 0;
+}
+
+static int
+vtc_worker_connect_sessions_epoll (vcl_test_client_worker_t *wrk)
+{
+  vcl_test_client_main_t *vcm = &vcl_client_main;
+  vcl_test_main_t *vt = &vcl_test_main;
+  const vcl_test_proto_vft_t *tp;
+  struct timespec start, end;
+  uint32_t n_connected = 0;
+  vcl_test_session_t *ts;
+  struct epoll_event ev;
+  int i, rv, n_ev;
+  double diff;
+
+  tp = vt->protos[vcm->proto];
+  wrk->epoll_sh = vppcom_epoll_create ();
+
+  ev.events = EPOLLET | EPOLLOUT;
+
+  clock_gettime (CLOCK_REALTIME, &start);
+
+  for (i = 0; i < wrk->cfg.num_test_sessions; i++)
+    {
+      ts = &wrk->sessions[i];
+
+      rv = tp->open (&wrk->sessions[i], &vcm->server_endpt);
+      if (rv < 0)
+	return rv;
+
+      ev.data.u64 = i;
+      rv = vppcom_epoll_ctl (wrk->epoll_sh, EPOLL_CTL_ADD, ts->fd, &ev);
+      if (rv < 0)
+	{
+	  vtwrn ("vppcom_epoll_ctl: %d", rv);
+	  return rv;
+	}
+    }
+
+  ev.events = EPOLLET | EPOLLIN | EPOLLOUT;
+
+  while (n_connected < wrk->cfg.num_test_sessions)
+    {
+      n_ev =
+	vppcom_epoll_wait (wrk->epoll_sh, wrk->ep_evts,
+			   VCL_TEST_CFG_MAX_EPOLL_EVENTS, 0 /* timeout */);
+      if (n_ev < 0)
+	{
+	  vterr ("vppcom_epoll_wait() returned", n_ev);
+	  return -1;
+	}
+      else if (n_ev == 0)
+	{
+	  continue;
+	}
+
+      for (i = 0; i < n_ev; i++)
+	{
+	  ts = &wrk->sessions[wrk->ep_evts[i].data.u32];
+	  if (!(wrk->ep_evts[i].events & EPOLLOUT))
+	    {
+	      vtwrn ("connect failed");
+	      return -1;
+	    }
+	  if (ts->is_open)
+	    {
+	      vtwrn ("connection already open?");
+	      return -1;
+	    }
+	  ts->is_open = 1;
+
+	  ev.data.u64 = wrk->ep_evts[i].data.u32;
+	  rv = vppcom_epoll_ctl (wrk->epoll_sh, EPOLL_CTL_MOD, ts->fd, &ev);
+	  if (rv < 0)
+	    {
+	      vtwrn("vppcom_epoll_ctl: %d", rv);
+	      return rv;
+	    }
+	}
+    }
+
+  clock_gettime (CLOCK_REALTIME, &end);
+
+  diff = vcl_test_time_diff (&start, &end);
+  vtinf ("Connected (%u) connected in %.2f seconds (%u CPS)!",
+	 wrk->cfg.num_test_sessions, diff,
+	 (uint32_t)((double) wrk->cfg.num_test_sessions / diff));
+
+  return 0;
+}
+
+int
+vtc_worker_run_epoll (vcl_test_client_worker_t *wrk)
+{
+  vcl_test_client_main_t *vcm = &vcl_client_main;
+  uint32_t n_active_sessions;
+  vcl_test_session_t *ts;
+  int i, rv, check_rx = 0, n_ev;
+
+  rv = vtc_worker_connect_sessions_epoll (wrk);
+  if (rv)
+    {
+      vterr ("vtc_worker_connect_sessions()", rv);
+      return rv;
+    }
+
+  check_rx = wrk->cfg.test != VCL_TEST_TYPE_UNI;
+  n_active_sessions = wrk->cfg.num_test_sessions;
+
+  vtc_worker_start_transfer (wrk);
+
+  while (n_active_sessions && vcm->test_running)
+    {
+      n_ev =
+	vppcom_epoll_wait (wrk->epoll_sh, wrk->ep_evts,
+			   VCL_TEST_CFG_MAX_EPOLL_EVENTS, 0 /* timeout */);
+      if (n_ev < 0)
+	{
+	  vterr ("vppcom_epoll_wait()", n_ev);
+	  break;
+	}
+      else if (n_ev == 0)
+	{
+	  continue;
+	}
+
+      for (i = 0; i < n_ev; i++)
+	{
+	  ts = &wrk->sessions[wrk->ep_evts[i].data.u32];
+
+	  if (ts->is_done)
+	    continue;
+
+	  if (wrk->ep_evts[i].events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP))
+	    {
+	      vtinf ("%u finished before reading all data?", ts->fd);
+	      break;
+	    }
+	  if ((wrk->ep_evts[i].events & EPOLLIN)
+	      && ts->stats.rx_bytes < ts->cfg.total_bytes)
+	    {
+	      rv = ts->read (ts, ts->rxbuf, ts->rxbuf_size);
+	      if (rv < 0)
+		break;
+	    }
+	  if ((wrk->ep_evts[i].events & EPOLLOUT)
+	      && ts->stats.rx_bytes < ts->cfg.total_bytes)
+	    {
+	      rv = ts->write (ts, ts->txbuf, ts->cfg.txbuf_size);
+	      if (rv < 0)
+		{
+		  vtwrn("vppcom_test_write (%d) failed -- aborting test",
+			ts->fd);
 		  break;
 		}
 	      if (vcm->incremental_stats)
@@ -1078,14 +1258,18 @@ static void
 vtc_alloc_workers (vcl_test_client_main_t *vcm)
 {
   vcl_test_main_t *vt = &vcl_test_main;
+  vtc_worker_run_fn *fn;
 
   vcm->workers = calloc (vcm->n_workers, sizeof (vcl_test_client_worker_t));
   vt->wrk = calloc (vcm->n_workers, sizeof (vcl_test_wrk_t));
 
+  if (vcm->ctrl_session.cfg.num_test_sessions > 0)
+    fn = vtc_worker_run_select;
+  else
+    fn = vtc_worker_run_epoll;
+
   for (int i = 0; i < vcm->n_workers; i++)
-    {
-      vcm->workers[i].wrk_run_fn = vtc_worker_run_select;
-    }
+      vcm->workers[i].wrk_run_fn = fn;
 }
 
 int
