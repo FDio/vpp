@@ -35,9 +35,21 @@ struct vtc_worker_
   vcl_test_session_t *qsessions;
   uint32_t n_sessions;
   uint32_t wrk_index;
-  fd_set wr_fdset;
-  fd_set rd_fdset;
-  int max_fd_index;
+  union
+  {
+    struct
+    {
+      fd_set wr_fdset;
+      fd_set rd_fdset;
+      int max_fd_index;
+    };
+    struct
+    {
+      uint32_t epoll_sh;
+      struct epoll_event ep_evts[VCL_TEST_CFG_MAX_EPOLL_EVENTS];
+      vcl_test_session_t *next_to_send;
+    };
+  };
   pthread_t thread_handle;
   vtc_worker_run_fn *wrk_run_fn;
   vcl_test_cfg_t cfg;
@@ -374,16 +386,16 @@ vtc_worker_run_select (vcl_test_client_worker_t *wrk)
 	  if (ts->is_done)
 	    continue;
 
-	  if (FD_ISSET (vppcom_session_index (ts->fd), rfdset)
-	      && ts->stats.rx_bytes < ts->cfg.total_bytes)
+	  if (FD_ISSET (vppcom_session_index (ts->fd), rfdset) &&
+	      ts->stats.rx_bytes < ts->cfg.total_bytes)
 	    {
 	      rv = ts->read (ts, ts->rxbuf, ts->rxbuf_size);
 	      if (rv < 0)
 		break;
 	    }
 
-	  if (FD_ISSET (vppcom_session_index (ts->fd), wfdset)
-	      && ts->stats.tx_bytes < ts->cfg.total_bytes)
+	  if (FD_ISSET (vppcom_session_index (ts->fd), wfdset) &&
+	      ts->stats.tx_bytes < ts->cfg.total_bytes)
 	    {
 	      rv = ts->write (ts, ts->txbuf, ts->cfg.txbuf_size);
 	      if (rv < 0)
@@ -395,14 +407,267 @@ vtc_worker_run_select (vcl_test_client_worker_t *wrk)
 	      if (vcm->incremental_stats)
 		vtc_inc_stats_check (ts);
 	    }
-	  if ((!check_rx && ts->stats.tx_bytes >= ts->cfg.total_bytes)
-	      || (check_rx && ts->stats.rx_bytes >= ts->cfg.total_bytes))
+	  if ((!check_rx && ts->stats.tx_bytes >= ts->cfg.total_bytes) ||
+	      (check_rx && ts->stats.rx_bytes >= ts->cfg.total_bytes))
 	    {
 	      clock_gettime (CLOCK_REALTIME, &ts->stats.stop);
 	      ts->is_done = 1;
 	      n_active_sessions--;
 	    }
 	}
+    }
+
+  return 0;
+}
+
+static void
+vtc_worker_epoll_send_add (vcl_test_client_worker_t *wrk,
+			   vcl_test_session_t *ts)
+{
+  if (!wrk->next_to_send)
+    {
+      wrk->next_to_send = ts;
+    }
+  else
+    {
+      ts->next = wrk->next_to_send;
+      wrk->next_to_send = ts->next;
+    }
+}
+
+static void
+vtc_worker_epoll_send_del (vcl_test_client_worker_t *wrk,
+			   vcl_test_session_t *ts, vcl_test_session_t *prev)
+{
+  if (!prev)
+    {
+      wrk->next_to_send = ts->next;
+    }
+  else
+    {
+      prev->next = ts->next;
+    }
+}
+
+static int
+vtc_worker_connect_sessions_epoll (vcl_test_client_worker_t *wrk)
+{
+  vcl_test_client_main_t *vcm = &vcl_client_main;
+  vcl_test_main_t *vt = &vcl_test_main;
+  const vcl_test_proto_vft_t *tp;
+  struct timespec start, end;
+  uint32_t n_connected = 0;
+  vcl_test_session_t *ts;
+  struct epoll_event ev;
+  int i, ci = 0, rv, n_ev;
+  double diff;
+
+  tp = vt->protos[vcm->proto];
+  wrk->epoll_sh = vppcom_epoll_create ();
+
+  ev.events = EPOLLET | EPOLLOUT;
+
+  clock_gettime (CLOCK_REALTIME, &start);
+
+  while (n_connected < wrk->cfg.num_test_sessions)
+    {
+      /*
+       * Try to connect more sessions if under pending threshold
+       */
+      while ((ci - n_connected) < 16 && ci < wrk->cfg.num_test_sessions)
+	{
+	  ts = &wrk->sessions[ci];
+	  ts->noblk_connect = 1;
+	  rv = tp->open (&wrk->sessions[ci], &vcm->server_endpt);
+	  if (rv < 0)
+	    {
+	      vtwrn ("open: %d", rv);
+	      return rv;
+	    }
+
+	  ev.data.u64 = ci;
+	  rv = vppcom_epoll_ctl (wrk->epoll_sh, EPOLL_CTL_ADD, ts->fd, &ev);
+	  if (rv < 0)
+	    {
+	      vtwrn ("vppcom_epoll_ctl: %d", rv);
+	      return rv;
+	    }
+	  ci += 1;
+	}
+
+      /*
+       * Handle connected events
+       */
+      n_ev =
+	vppcom_epoll_wait (wrk->epoll_sh, wrk->ep_evts,
+			   VCL_TEST_CFG_MAX_EPOLL_EVENTS, 0 /* timeout */);
+      if (n_ev < 0)
+	{
+	  vterr ("vppcom_epoll_wait() returned", n_ev);
+	  return -1;
+	}
+      else if (n_ev == 0)
+	{
+	  continue;
+	}
+
+      for (i = 0; i < n_ev; i++)
+	{
+	  ts = &wrk->sessions[wrk->ep_evts[i].data.u32];
+	  if (!(wrk->ep_evts[i].events & EPOLLOUT))
+	    {
+	      vtwrn ("connect failed");
+	      return -1;
+	    }
+	  if (ts->is_open)
+	    {
+	      vtwrn ("connection already open?");
+	      return -1;
+	    }
+	  ts->is_open = 1;
+	  n_connected += 1;
+	}
+    }
+
+  clock_gettime (CLOCK_REALTIME, &end);
+
+  ev.events = EPOLLET | EPOLLIN | EPOLLOUT;
+
+  for (i = 0; i < n_connected; i++)
+    {
+      ts = &wrk->sessions[i];
+      ev.data.u64 = i;
+      rv = vppcom_epoll_ctl (wrk->epoll_sh, EPOLL_CTL_MOD, ts->fd, &ev);
+      if (rv < 0)
+	{
+	  vtwrn ("vppcom_epoll_ctl: %d", rv);
+	  return rv;
+	}
+      vtc_worker_epoll_send_add (wrk, ts);
+    }
+
+  diff = vcl_test_time_diff (&start, &end);
+  vtinf ("Connected (%u) connected in %.2f seconds (%u CPS)!",
+	 wrk->cfg.num_test_sessions, diff,
+	 (uint32_t) ((double) wrk->cfg.num_test_sessions / diff));
+
+  return 0;
+}
+
+static int
+vtc_session_check_is_done (vcl_test_session_t *ts, uint8_t check_rx)
+{
+  if ((!check_rx && ts->stats.tx_bytes >= ts->cfg.total_bytes) ||
+      (check_rx && ts->stats.rx_bytes >= ts->cfg.total_bytes))
+    {
+      clock_gettime (CLOCK_REALTIME, &ts->stats.stop);
+      ts->is_done = 1;
+      return 1;
+    }
+  return 0;
+}
+
+static int
+vtc_worker_run_epoll (vcl_test_client_worker_t *wrk)
+{
+  vcl_test_client_main_t *vcm = &vcl_client_main;
+  uint32_t n_active_sessions, max_writes = 16, n_writes = 0;
+  vcl_test_session_t *ts, *prev = 0;
+  int i, rv, check_rx = 0, n_ev;
+
+  rv = vtc_worker_connect_sessions_epoll (wrk);
+  if (rv)
+    {
+      vterr ("vtc_worker_connect_sessions()", rv);
+      return rv;
+    }
+
+  check_rx = wrk->cfg.test != VCL_TEST_TYPE_UNI;
+  n_active_sessions = wrk->cfg.num_test_sessions;
+
+  vtc_worker_start_transfer (wrk);
+  ts = wrk->next_to_send;
+
+  while (n_active_sessions && vcm->test_running)
+    {
+      /*
+       * Try to write
+       */
+      if (!ts)
+	ts = wrk->next_to_send;
+
+      if (ts)
+	{
+	  rv = ts->write (ts, ts->txbuf, ts->cfg.txbuf_size);
+	  if (rv > 0)
+	    {
+	      if (vcm->incremental_stats)
+		vtc_inc_stats_check (ts);
+	      if (vtc_session_check_is_done (ts, check_rx))
+		n_active_sessions -= 1;
+	    }
+	  else if (rv == 0)
+	    {
+	      vtc_worker_epoll_send_del (wrk, ts, prev);
+	    }
+	  else
+	    {
+	      vtwrn ("vppcom_test_write (%d) failed -- aborting test", ts->fd);
+	      return -1;
+	    }
+	  prev = ts;
+	  ts = ts->next;
+	  n_writes += 1;
+
+	  if (rv > 0 && n_writes < max_writes)
+	    continue;
+	}
+
+      /*
+       * Grab new events
+       */
+      n_ev =
+	vppcom_epoll_wait (wrk->epoll_sh, wrk->ep_evts,
+			   VCL_TEST_CFG_MAX_EPOLL_EVENTS, 0 /* timeout */);
+      if (n_ev < 0)
+	{
+	  vterr ("vppcom_epoll_wait()", n_ev);
+	  break;
+	}
+      else if (n_ev == 0)
+	{
+	  continue;
+	}
+
+      for (i = 0; i < n_ev; i++)
+	{
+	  ts = &wrk->sessions[wrk->ep_evts[i].data.u32];
+
+	  if (ts->is_done)
+	    continue;
+
+	  if (wrk->ep_evts[i].events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP))
+	    {
+	      vtinf ("%u finished before reading all data?", ts->fd);
+	      break;
+	    }
+	  if ((wrk->ep_evts[i].events & EPOLLIN) &&
+	      ts->stats.rx_bytes < ts->cfg.total_bytes)
+	    {
+	      rv = ts->read (ts, ts->rxbuf, ts->rxbuf_size);
+	      if (rv < 0)
+		break;
+	      if (vtc_session_check_is_done (ts, check_rx))
+		n_active_sessions -= 1;
+	    }
+	  if ((wrk->ep_evts[i].events & EPOLLOUT) &&
+	      ts->stats.tx_bytes < ts->cfg.total_bytes)
+	    {
+	      vtc_worker_epoll_send_add (wrk, ts);
+	    }
+	}
+
+      n_writes = 0;
     }
 
   return 0;
@@ -1078,14 +1343,18 @@ static void
 vtc_alloc_workers (vcl_test_client_main_t *vcm)
 {
   vcl_test_main_t *vt = &vcl_test_main;
+  vtc_worker_run_fn *run_fn;
 
   vcm->workers = calloc (vcm->n_workers, sizeof (vcl_test_client_worker_t));
   vt->wrk = calloc (vcm->n_workers, sizeof (vcl_test_wrk_t));
 
+  if (vcm->ctrl_session.cfg.num_test_sessions > VCL_TEST_CFG_MAX_SELECT_SESS)
+    run_fn = vtc_worker_run_epoll;
+  else
+    run_fn = vtc_worker_run_select;
+
   for (int i = 0; i < vcm->n_workers; i++)
-    {
-      vcm->workers[i].wrk_run_fn = vtc_worker_run_select;
-    }
+    vcm->workers[i].wrk_run_fn = run_fn;
 }
 
 int
