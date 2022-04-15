@@ -1229,11 +1229,15 @@ vnet_application_detach (vnet_app_detach_args_t * a)
   return 0;
 }
 
-
 static u8
-session_endpoint_in_ns (session_endpoint_t * sep)
+session_endpoint_in_ns (session_endpoint_cfg_t *sep)
 {
-  u8 is_lep = session_endpoint_is_local (sep);
+  u8 is_lep;
+
+  if (sep->flags & SESSION_ENDPT_CFG_F_PROXY_LISTEN)
+    return 1;
+
+  is_lep = session_endpoint_is_local ((session_endpoint_t *) sep);
   if (!is_lep && sep->sw_if_index != ENDPOINT_INVALID_INDEX
       && !ip_interface_has_address (sep->sw_if_index, &sep->ip, sep->is_ip4))
     {
@@ -1242,6 +1246,7 @@ session_endpoint_in_ns (session_endpoint_t * sep)
 		    sep->is_ip4);
       return 0;
     }
+
   return (is_lep || ip_is_local (sep->fib_index, &sep->ip, sep->is_ip4));
 }
 
@@ -1311,7 +1316,7 @@ vnet_listen (vnet_listen_args_t * a)
   a->sep_ext.app_wrk_index = app_wrk->wrk_index;
 
   session_endpoint_update_for_app (&a->sep_ext, app, 0 /* is_connect */ );
-  if (!session_endpoint_in_ns (&a->sep))
+  if (!session_endpoint_in_ns (&a->sep_ext))
     return SESSION_E_INVALID_NS;
 
   /*
