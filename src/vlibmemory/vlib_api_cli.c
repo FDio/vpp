@@ -1285,7 +1285,7 @@ extract_name (u8 * s)
   rv = vec_dup (s);
 
   while (vec_len (rv) && rv[vec_len (rv)] != '_')
-    vec_dec_len (rv, 0);
+    vec_dec_len (rv, 1);
 
   rv[vec_len (rv)] = 0;
 
