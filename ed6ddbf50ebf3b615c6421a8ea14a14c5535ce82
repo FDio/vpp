@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a73f62c4_6a81101d",
+        "filename": "src/vnet/policer/policer.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-04-15T19:32:10Z",
+      "side": 1,
+      "message": "i\u0027d make this:\n  u32 *policer_index_by_sw_if_index[VLIB_N_RX_TX]\nthen you can pass vlib_dir_t as an argument to all functions and use it as an array index.",
+      "revId": "ed6ddbf50ebf3b615c6421a8ea14a14c5535ce82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
