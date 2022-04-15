@@ -1064,8 +1064,8 @@ nat44_ei_del_output_interface (u32 sw_if_index)
 	}
     }
 
-  nat44_ei_add_del_addr_to_fib_foreach_addr (sw_if_index, 1);
-  nat44_ei_add_del_addr_to_fib_foreach_addr_only_sm (sw_if_index, 1);
+  nat44_ei_add_del_addr_to_fib_foreach_addr (sw_if_index, 0);
+  nat44_ei_add_del_addr_to_fib_foreach_addr_only_sm (sw_if_index, 0);
 
   return 0;
 }
