@@ -373,8 +373,9 @@ vts_accept_client (vcl_test_server_worker_t *wrk, int listen_fd)
   if (tp->accept (listen_fd, conn))
     return 0;
 
-  vtinf ("Got a connection -- fd = %d (0x%08x) on listener fd = %d (0x%08x)",
-	 conn->fd, conn->fd, listen_fd, listen_fd);
+  if (conn->cfg.num_test_sessions < VCL_TEST_CFG_MAX_SELECT_SESS)
+    vtinf ("Got a connection -- fd = %d (0x%08x) on listener fd = %d (0x%08x)",
+	   conn->fd, conn->fd, listen_fd, listen_fd);
 
   ev.events = EPOLLET | EPOLLIN;
   ev.data.u64 = conn - wrk->conn_pool;
