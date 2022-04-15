@@ -6,63 +6,84 @@
 #include <vlib/unix/unix.h>
 #include <vlib/stats/stats.h>
 
+enum
+{
+  NODE_CLOCKS,
+  NODE_VECTORS,
+  NODE_CALLS,
+  NODE_SUSPENDS,
+  N_NODE_COUNTERS
+};
+
+struct
+{
+  u32 entry_index;
+  char *name;
+} node_counters[] = {
+  [NODE_CLOCKS] = { .name = "clocks" },
+  [NODE_VECTORS] = { .name = "vectors" },
+  [NODE_CALLS] = { .name = "calls" },
+  [NODE_SUSPENDS] = { .name = "suspends" },
+};
+
+static struct
+{
+  u8 *name;
+  u32 symlinks[N_NODE_COUNTERS];
+} *node_data = 0;
+
+static vlib_stats_string_vector_t node_names = 0;
+
 static inline void
 update_node_counters (vlib_stats_segment_t *sm)
 {
+  clib_bitmap_t *bmp = 0;
   vlib_main_t **stat_vms = 0;
   vlib_node_t ***node_dups = 0;
+  u32 n_nodes;
   int i, j;
-  static u32 no_max_nodes = 0;
 
   vlib_node_get_nodes (0 /* vm, for barrier sync */,
 		       (u32) ~0 /* all threads */, 1 /* include stats */,
 		       0 /* barrier sync */, &node_dups, &stat_vms);
 
-  u32 l = vec_len (node_dups[0]);
-  u8 *symlink_name = 0;
+  n_nodes = vec_len (node_dups[0]);
 
-  /*
-   * Extend performance nodes if necessary
-   */
-  if (l > no_max_nodes)
+  vec_validate (node_data, n_nodes - 1);
+
+  for (i = 0; i < n_nodes; i++)
+    if (vec_is_equal (node_data[i].name, node_dups[0][i]) == 0)
+      bmp = clib_bitmap_set (bmp, i, 1);
+
+  if (bmp)
     {
       u32 last_thread = vlib_get_n_threads ();
-      void *oldheap = clib_mem_set_heap (sm->heap);
       vlib_stats_segment_lock ();
-
-      vlib_stats_validate (STAT_COUNTER_NODE_CLOCKS, last_thread, l - 1);
-      vlib_stats_validate (STAT_COUNTER_NODE_VECTORS, last_thread, l - 1);
-      vlib_stats_validate (STAT_COUNTER_NODE_CALLS, last_thread, l - 1);
-      vlib_stats_validate (STAT_COUNTER_NODE_SUSPENDS, last_thread, l - 1);
-
-      vec_validate (sm->nodes, l - 1);
-      vlib_stats_entry_t *ep;
-      ep = &sm->directory_vector[STAT_COUNTER_NODE_NAMES];
-      ep->data = sm->nodes;
-
-      /* Update names dictionary */
-      vlib_node_t **nodes = node_dups[0];
-      int i;
-      for (i = 0; i < vec_len (nodes); i++)
+      clib_bitmap_foreach (i, bmp)
 	{
-	  vlib_node_t *n = nodes[i];
-	  u8 *s = format (0, "%v%c", n->name, 0);
-	  if (sm->nodes[n->index])
-	    vec_free (sm->nodes[n->index]);
-	  sm->nodes[n->index] = s;
+	  vlib_node_t *n = node_dups[0][i];
+	  if (node_data[i].name)
+	    {
+	      vec_free (node_data[i].name);
+	      for (j = 0; j < ARRAY_LEN (node_data->symlinks); j++)
+		vlib_stats_remove_entry (node_data[i].symlinks[j]);
+	    }
 
-	  oldheap = clib_mem_set_heap (oldheap);
-#define _(E, t, name, p)                                                      \
-  vlib_stats_add_symlink (STAT_COUNTER_##E, n->index, "/nodes/%U/" #name,     \
-			  format_vlib_stats_symlink, s);
-	  foreach_stat_segment_node_counter_name
-#undef _
-	    oldheap = clib_mem_set_heap (oldheap);
+	  node_data[i].name = vec_dup (node_dups[0][i]->name);
+	  vlib_stats_set_string_vector (&node_names, n->index, "%v", n->name);
+
+	  for (int j = 0; j < ARRAY_LEN (node_counters); j++)
+	    {
+	      vlib_stats_validate (node_counters[j].entry_index, last_thread,
+				   n_nodes - 1);
+	      node_data[i].symlinks[j] = vlib_stats_add_symlink (
+		node_counters[j].entry_index, n->index, "/nodes/%U/%s",
+		format_vlib_stats_symlink, n->name, node_counters[j].name);
+	      ASSERT (node_data[i].symlinks[j] != CLIB_U32_MAX);
+	    }
 	}
-
       vlib_stats_segment_unlock ();
-      clib_mem_set_heap (oldheap);
-      no_max_nodes = l;
+      vec_free (bmp);
     }
 
   for (j = 0; j < vec_len (node_dups); j++)
@@ -75,48 +96,23 @@ update_node_counters (vlib_stats_segment_t *sm)
 	  counter_t *c;
 	  vlib_node_t *n = nodes[i];
 
-	  if (j == 0)
-	    {
-	      if (strncmp ((char *) sm->nodes[n->index], (char *) n->name,
-			   strlen ((char *) sm->nodes[n->index])))
-		{
-		  u32 vector_index;
-		  void *oldheap = clib_mem_set_heap (sm->heap);
-		  vlib_stats_segment_lock ();
-		  u8 *s = format (0, "%v%c", n->name, 0);
-		  clib_mem_set_heap (oldheap);
-#define _(E, t, name, p)                                                      \
-  vec_reset_length (symlink_name);                                            \
-  symlink_name = format (symlink_name, "/nodes/%U/" #name,                    \
-			 format_vlib_stats_symlink, sm->nodes[n->index]);     \
-  vector_index = vlib_stats_find_entry_index ("%v", symlink_name);            \
-  ASSERT (vector_index != -1);                                                \
-  vlib_stats_rename_symlink (vector_index, "/nodes/%U/" #name,                \
-			     format_vlib_stats_symlink, s);
-		  foreach_stat_segment_node_counter_name
-#undef _
-		    vec_free (symlink_name);
-		  clib_mem_set_heap (sm->heap);
-		  vec_free (sm->nodes[n->index]);
-		  sm->nodes[n->index] = s;
-		  vlib_stats_segment_unlock ();
-		  clib_mem_set_heap (oldheap);
-		}
-	    }
-
-	  counters = sm->directory_vector[STAT_COUNTER_NODE_CLOCKS].data;
+	  counters = vlib_stats_get_entry_data_pointer (
+	    node_counters[NODE_CLOCKS].entry_index);
 	  c = counters[j];
 	  c[n->index] = n->stats_total.clocks - n->stats_last_clear.clocks;
 
-	  counters = sm->directory_vector[STAT_COUNTER_NODE_VECTORS].data;
+	  counters = vlib_stats_get_entry_data_pointer (
+	    node_counters[NODE_VECTORS].entry_index);
 	  c = counters[j];
 	  c[n->index] = n->stats_total.vectors - n->stats_last_clear.vectors;
 
-	  counters = sm->directory_vector[STAT_COUNTER_NODE_CALLS].data;
+	  counters = vlib_stats_get_entry_data_pointer (
+	    node_counters[NODE_CALLS].entry_index);
 	  c = counters[j];
 	  c[n->index] = n->stats_total.calls - n->stats_last_clear.calls;
 
-	  counters = sm->directory_vector[STAT_COUNTER_NODE_SUSPENDS].data;
+	  counters = vlib_stats_get_entry_data_pointer (
+	    node_counters[NODE_SUSPENDS].entry_index);
 	  c = counters[j];
 	  c[n->index] = n->stats_total.suspends - n->stats_last_clear.suspends;
 	}
@@ -153,6 +149,19 @@ stat_segment_collector_process (vlib_main_t *vm, vlib_node_runtime_t *rt,
 				vlib_frame_t *f)
 {
   vlib_stats_segment_t *sm = vlib_stats_get_segment ();
+
+  if (sm->node_counters_enabled)
+    {
+      node_names = vlib_stats_add_string_vector ("/sys/node/names");
+      ASSERT (node_names);
+
+      for (int x = 0; x < ARRAY_LEN (node_counters); x++)
+	{
+	  node_counters[x].entry_index = vlib_stats_add_counter_vector (
+	    "/sys/node/%s", node_counters[x].name);
+	  ASSERT (node_counters[x].entry_index != CLIB_U32_MAX);
+	}
+    }
 
   while (1)
     {
