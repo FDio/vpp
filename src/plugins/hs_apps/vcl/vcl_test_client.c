@@ -1077,7 +1077,10 @@ vt_incercept_sigs (void)
 static void
 vtc_alloc_workers (vcl_test_client_main_t *vcm)
 {
+  vcl_test_main_t *vt = &vcl_test_main;
+
   vcm->workers = calloc (vcm->n_workers, sizeof (vcl_test_client_worker_t));
+  vt->wrk = calloc (vcm->n_workers, sizeof (vcl_test_wrk_t));
 
   for (int i = 0; i < vcm->n_workers; i++)
     {

@@ -125,9 +125,10 @@ typedef struct
 
 typedef struct vcl_test_session
 {
-  uint8_t is_alloc;
-  uint8_t is_open;
   uint8_t is_done;
+  uint8_t is_alloc : 1;
+  uint8_t is_open : 1;
+  uint8_t noblk_connect : 1;
   int fd;
   int (*read) (struct vcl_test_session *ts, void *buf, uint32_t buflen);
   int (*write) (struct vcl_test_session *ts, void *buf, uint32_t buflen);
