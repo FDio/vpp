@@ -35,9 +35,20 @@ struct vtc_worker_
   vcl_test_session_t *qsessions;
   uint32_t n_sessions;
   uint32_t wrk_index;
-  fd_set wr_fdset;
-  fd_set rd_fdset;
-  int max_fd_index;
+  union
+  {
+    struct
+    {
+      fd_set wr_fdset;
+      fd_set rd_fdset;
+      int max_fd_index;
+    };
+    struct
+    {
+      uint32_t epoll_sh;
+      struct epoll_event ep_evts[VCL_TEST_CFG_MAX_EPOLL_EVENTS];
+    };
+  };
   pthread_t thread_handle;
   vtc_worker_run_fn *wrk_run_fn;
   vcl_test_cfg_t cfg;
@@ -360,6 +371,154 @@ vtc_worker_run_select (vcl_test_client_worker_t *wrk)
 
       rv = vppcom_select (wrk->max_fd_index, (unsigned long *) rfdset,
 			  (unsigned long *) wfdset, NULL, 0);
+      if (rv < 0)
+	{
+	  vterr ("vppcom_select()", rv);
+	  break;
+	}
+      else if (rv == 0)
+	continue;
+
+      for (i = 0; i < wrk->cfg.num_test_sessions; i++)
+	{
+	  ts = &wrk->sessions[i];
+	  if (ts->is_done)
+	    continue;
+
+	  if (FD_ISSET (vppcom_session_index (ts->fd), rfdset) &&
+	      ts->stats.rx_bytes < ts->cfg.total_bytes)
+	    {
+	      rv = ts->read (ts, ts->rxbuf, ts->rxbuf_size);
+	      if (rv < 0)
+		break;
+	    }
+
+	  if (FD_ISSET (vppcom_session_index (ts->fd), wfdset) &&
+	      ts->stats.tx_bytes < ts->cfg.total_bytes)
+	    {
+	      rv = ts->write (ts, ts->txbuf, ts->cfg.txbuf_size);
+	      if (rv < 0)
+		{
+		  vtwrn ("vppcom_test_write (%d) failed -- aborting test",
+			 ts->fd);
+		  break;
+		}
+	      if (vcm->incremental_stats)
+		vtc_inc_stats_check (ts);
+	    }
+	  if ((!check_rx && ts->stats.tx_bytes >= ts->cfg.total_bytes) ||
+	      (check_rx && ts->stats.rx_bytes >= ts->cfg.total_bytes))
+	    {
+	      clock_gettime (CLOCK_REALTIME, &ts->stats.stop);
+	      ts->is_done = 1;
+	      n_active_sessions--;
+	    }
+	}
+    }
+
+  return 0;
+}
+
+static int
+vtc_worker_connect_sessions_epoll (vcl_test_client_worker_t *wrk)
+{
+  vcl_test_client_main_t *vcm = &vcl_client_main;
+  vcl_test_main_t *vt = &vcl_test_main;
+  const vcl_test_proto_vft_t *tp;
+  struct timespec start, end;
+  uint32_t n_connected = 0;
+  vcl_test_session_t *ts;
+  struct epoll_event ev;
+  int i, rv, n_ev;
+  double diff;
+
+  tp = vt->protos[vcm->proto];
+  wrk->epoll_sh = vppcom_epoll_create ();
+
+  ev.events = EPOLLET | EPOLLOUT;
+
+  clock_gettime (CLOCK_REALTIME, &start);
+
+  for (i = 0; i < wrk->cfg.num_test_sessions; i++)
+    {
+      ts = &wrk->sessions[i];
+
+      rv = tp->open (&wrk->sessions[i], &vcm->server_endpt);
+      if (rv < 0)
+	return rv;
+
+      ev.data.u64 = i;
+      rv = vppcom_epoll_ctl (wrk->epfd, EPOLL_CTL_ADD, ts->fd, &ev);
+    }
+
+  while (n_connected < wrk->cfg.num_test_sessions)
+    {
+      n_ev =
+	vppcom_epoll_wait (wrk->epoll_sh, wrk->ep_evts,
+			   VCL_TEST_CFG_MAX_EPOLL_EVENTS, 0 /* timeout */);
+      if (n_ev < 0)
+	{
+	  vterr ("vppcom_epoll_wait() returned", n_ev);
+	  return -1;
+	}
+      else if (n_ev == 0)
+	{
+	  continue;
+	}
+
+      for (i = 0; i < n_ev; i++)
+	{
+	  ts = &wrk->sessions[wrk->ep_evts[i].data.u32];
+	  if (!(wrk->ep_evts[i].events & EPOLLOUT))
+	    {
+	      vtwrn ("connect failed");
+	      return -1;
+	    }
+	  if (ts->is_open)
+	    {
+	      vtwrn ("connection already open?");
+	      return -1;
+	    }
+	  ts->is_open = 1;
+	}
+    }
+
+  clock_gettime (CLOCK_REALTIME, &end);
+
+  diff = vcl_test_time_diff (&start, &end);
+  vtinf ("Connected (%d) connected in %.2f seconds (%u CPS)!",
+	 wrk->cfg.num_test_sessions, diff,
+	 ((double) wrk->cfg.num_test_sessions / diff));
+
+  return 0;
+}
+
+static int
+vtc_worker_run_epoll (vcl_test_client_worker_t *wrk)
+{
+  vcl_test_client_main_t *vcm = &vcl_client_main;
+  fd_set _wfdset, *wfdset = &_wfdset;
+  fd_set _rfdset, *rfdset = &_rfdset;
+  uint32_t n_active_sessions;
+  vcl_test_session_t *ts;
+  int i, rv, check_rx = 0;
+
+  rv = vtc_worker_connect_sessions_epoll (wrk);
+  if (rv)
+    {
+      vterr ("vtc_worker_connect_sessions()", rv);
+      return rv;
+    }
+
+  check_rx = wrk->cfg.test != VCL_TEST_TYPE_UNI;
+  n_active_sessions = wrk->cfg.num_test_sessions;
+
+  vtc_worker_start_transfer (wrk);
+
+  while (n_active_sessions && vcm->test_running)
+    {
+      rv = vppcom_epoll_c (wrk->max_fd_index, (unsigned long *) rfdset,
+			   (unsigned long *) wfdset, NULL, 0);
       if (rv < 0)
 	{
 	  vterr ("vppcom_select()", rv);
