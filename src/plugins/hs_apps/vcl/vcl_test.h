@@ -140,6 +140,7 @@ typedef struct vcl_test_session
   vcl_test_stats_t stats;
   vcl_test_stats_t old_stats;
   int session_index;
+  struct vcl_test_session *next;
   vppcom_endpt_t endpt;
   uint8_t ip[16];
   vppcom_data_segment_t ds[2];
