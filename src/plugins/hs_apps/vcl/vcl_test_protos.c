@@ -21,16 +21,15 @@ vt_tcp_connect (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
   uint32_t flags, flen;
   int rv;
 
-  ts->fd = vppcom_session_create (VPPCOM_PROTO_TCP, 0 /* is_nonblocking */);
+  ts->fd = vppcom_session_create (VPPCOM_PROTO_TCP, ts->noblk_connect);
   if (ts->fd < 0)
     {
       vterr ("vppcom_session_create()", ts->fd);
       return ts->fd;
     }
 
-  /* Connect is blocking */
   rv = vppcom_session_connect (ts->fd, endpt);
-  if (rv < 0)
+  if (rv < 0 && rv != VPPCOM_EINPROGRESS)
     {
       vterr ("vppcom_session_connect()", rv);
       return rv;
@@ -108,16 +107,15 @@ vt_udp_connect (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
   uint32_t flags, flen;
   int rv;
 
-  ts->fd = vppcom_session_create (VPPCOM_PROTO_UDP, 0 /* is_nonblocking */);
+  ts->fd = vppcom_session_create (VPPCOM_PROTO_UDP, ts->noblk_connect);
   if (ts->fd < 0)
     {
       vterr ("vppcom_session_create()", ts->fd);
       return ts->fd;
     }
 
-  /* Connect is blocking */
   rv = vppcom_session_connect (ts->fd, endpt);
-  if (rv < 0)
+  if (rv < 0 && rv != VPPCOM_EINPROGRESS)
     {
       vterr ("vppcom_session_connect()", rv);
       return rv;
@@ -282,7 +280,7 @@ vt_tls_connect (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
   uint32_t flags, flen, ckp_len;
   int rv;
 
-  ts->fd = vppcom_session_create (VPPCOM_PROTO_TLS, 0 /* is_nonblocking */);
+  ts->fd = vppcom_session_create (VPPCOM_PROTO_TLS, ts->noblk_connect);
   if (ts->fd < 0)
     {
       vterr ("vppcom_session_create()", ts->fd);
@@ -293,9 +291,8 @@ vt_tls_connect (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
   vppcom_session_attr (ts->fd, VPPCOM_ATTR_SET_CKPAIR, &vt->ckpair_index,
 		       &ckp_len);
 
-  /* Connect is blocking */
   rv = vppcom_session_connect (ts->fd, endpt);
-  if (rv < 0)
+  if (rv < 0 && rv != VPPCOM_EINPROGRESS)
     {
       vterr ("vppcom_session_connect()", rv);
       return rv;
@@ -387,7 +384,7 @@ vt_dtls_connect (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
   uint32_t flags, flen, ckp_len;
   int rv;
 
-  ts->fd = vppcom_session_create (VPPCOM_PROTO_DTLS, 0 /* is_nonblocking */);
+  ts->fd = vppcom_session_create (VPPCOM_PROTO_DTLS, ts->noblk_connect);
   if (ts->fd < 0)
     {
       vterr ("vppcom_session_create()", ts->fd);
@@ -398,9 +395,8 @@ vt_dtls_connect (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
   vppcom_session_attr (ts->fd, VPPCOM_ATTR_SET_CKPAIR, &vt->ckpair_index,
 		       &ckp_len);
 
-  /* Connect is blocking */
   rv = vppcom_session_connect (ts->fd, endpt);
-  if (rv < 0)
+  if (rv < 0 && rv != VPPCOM_EINPROGRESS)
     {
       vterr ("vppcom_session_connect()", rv);
       return rv;
@@ -568,7 +564,7 @@ vt_quic_connect (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
   /* Make sure qsessions are initialized */
   vt_quic_maybe_init_wrk (vt, wrk, endpt);
 
-  ts->fd = vppcom_session_create (VPPCOM_PROTO_QUIC, 0 /* is_nonblocking */);
+  ts->fd = vppcom_session_create (VPPCOM_PROTO_QUIC, ts->noblk_connect);
   if (ts->fd < 0)
     {
       vterr ("vppcom_session_create()", ts->fd);
@@ -579,7 +575,7 @@ vt_quic_connect (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
   tq = &wrk->qsessions[ts->session_index / vt->cfg.num_test_sessions_perq];
 
   rv = vppcom_session_stream_connect (ts->fd, tq->fd);
-  if (rv < 0)
+  if (rv < 0 && rv != VPPCOM_EINPROGRESS)
     {
       vterr ("vppcom_session_stream_connect()", rv);
       return rv;
@@ -864,7 +860,7 @@ vt_srtp_connect (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
   uint32_t flags, flen;
   int rv;
 
-  ts->fd = vppcom_session_create (VPPCOM_PROTO_SRTP, 0 /* is_nonblocking */);
+  ts->fd = vppcom_session_create (VPPCOM_PROTO_SRTP, ts->noblk_connect);
   if (ts->fd < 0)
     {
       vterr ("vppcom_session_create()", ts->fd);
@@ -873,9 +869,8 @@ vt_srtp_connect (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
 
   vt_session_add_srtp_policy (ts, 1 /* is connect */);
 
-  /* Connect is blocking */
   rv = vppcom_session_connect (ts->fd, endpt);
-  if (rv < 0)
+  if (rv < 0 && rv != VPPCOM_EINPROGRESS)
     {
       vterr ("vppcom_session_connect()", rv);
       return rv;
