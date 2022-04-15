@@ -1311,7 +1311,8 @@ vnet_listen (vnet_listen_args_t * a)
   a->sep_ext.app_wrk_index = app_wrk->wrk_index;
 
   session_endpoint_update_for_app (&a->sep_ext, app, 0 /* is_connect */ );
-  if (!session_endpoint_in_ns (&a->sep))
+  if (!application_is_listener_proxy (app) &&
+      !session_endpoint_in_ns (&a->sep))
     return SESSION_E_INVALID_NS;
 
   /*
@@ -1494,6 +1495,12 @@ int
 application_is_proxy (application_t * app)
 {
   return (app->flags & APP_OPTIONS_FLAGS_IS_PROXY);
+}
+
+int
+application_is_listener_proxy (application_t *app)
+{
+  return (app->flags & APP_OPTIONS_FLAGS_IS_LISTENER_PROXY);
 }
 
 int

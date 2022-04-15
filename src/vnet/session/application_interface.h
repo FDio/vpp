@@ -232,7 +232,8 @@ typedef enum
   _ (USE_GLOBAL_SCOPE, "App can use global session scope")                    \
   _ (USE_LOCAL_SCOPE, "App can use local session scope")                      \
   _ (EVT_MQ_USE_EVENTFD, "Use eventfds for signaling")                        \
-  _ (MEMFD_FOR_BUILTIN, "Use memfd for builtin app segs")
+  _ (MEMFD_FOR_BUILTIN, "Use memfd for builtin app segs")                     \
+  _ (IS_LISTENER_PROXY, "Application is a listener proxy")
 
 typedef enum _app_options
 {

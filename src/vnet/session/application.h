@@ -290,6 +290,7 @@ app_worker_t *application_get_default_worker (application_t * app);
 app_worker_t *application_listener_select_worker (session_t * ls);
 int application_change_listener_owner (session_t * s, app_worker_t * app_wrk);
 int application_is_proxy (application_t * app);
+int application_is_listener_proxy (application_t *app);
 int application_is_builtin (application_t * app);
 int application_is_builtin_proxy (application_t * app);
 u32 application_session_table (application_t * app, u8 fib_proto);
