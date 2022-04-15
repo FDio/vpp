@@ -36,6 +36,15 @@ typedef struct _session_endpoint
 #undef _
 } session_endpoint_t;
 
+#define foreach_session_endpoint_cfg_flags _ (PROXY_LISTEN, "proxy listener")
+
+typedef enum session_endpoint_cfg_flags_
+{
+#define _(sym, str) SESSION_ENDPT_CFG_F_##sym,
+  foreach_session_endpoint_cfg_flags
+#undef _
+} __clib_packed session_endpoint_cfg_flags_t;
+
 typedef struct _session_endpoint_cfg
 {
 #define _(type, name) type name;
@@ -46,7 +55,7 @@ typedef struct _session_endpoint_cfg
   u32 ns_index;
   u8 original_tp;
   u64 parent_handle;
-  u8 flags;
+  session_endpoint_cfg_flags_t flags;
   transport_endpt_ext_cfg_t *ext_cfg;
 } session_endpoint_cfg_t;
 
