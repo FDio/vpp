@@ -37,11 +37,10 @@ Version: %{_version}
 Release: %{_release}
 BuildRequires: systemd, chrpath
 BuildRequires: check, check-devel
-BuildRequires: mbedtls-devel mbedtls
 %if 0%{?fedora}
 Requires: vpp-lib = %{_version}-%{_release}, vpp-selinux-policy = %{_version}-%{_release}, net-tools, pciutils
 Requires: compat-openssl10
-Requires: mbedtls libffi-devel
+Requires: libffi-devel
 BuildRequires: subunit, subunit-devel
 BuildRequires: compat-openssl10-devel
 BuildRequires: python, python-devel, python-virtualenv, python-ply
@@ -50,9 +49,8 @@ BuildRequires: cmake
 %else
 %if 0%{rhel} >= 7
 Requires: vpp-lib = %{_version}-%{_release}, vpp-selinux-policy = %{_version}-%{_release}, net-tools, pciutils, python36
-Requires: mbedtls libffi-devel
+Requires: libffi-devel
 BuildRequires: epel-release
-BuildRequires: mbedtls-devel mbedtls
 BuildREquires: openssl-devel
 BuildRequires: python36-devel
 %if 0%{rhel} == 7
