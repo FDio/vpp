@@ -328,6 +328,12 @@ svm_msg_q_ring_is_full (svm_msg_q_t * mq, u32 ring_index)
   return (clib_atomic_load_relax_n (&ring->shr->cursize) >= ring->nitems);
 }
 
+static inline u8
+svm_msg_q_or_ring_is_full (svm_msg_q_t *mq, u32 ring_index)
+{
+  return (svm_msg_q_is_full (mq) || svm_msg_q_ring_is_full (mq, ring_index));
+}
+
 /**
  * Check if message queue is empty
  */
@@ -416,6 +422,14 @@ int svm_msg_q_wait (svm_msg_q_t *mq, svm_msg_q_wait_type_t type);
  * be held. Should only be called by producers.
  */
 int svm_msg_q_wait_prod (svm_msg_q_t *mq);
+
+/**
+ * Wait for message queue or ring event as producer
+ *
+ * Similar to @ref svm_msg_q_wait but lock (mutex or spinlock) must
+ * be held. Should only be called by producers.
+ */
+int svm_msg_q_or_ring_wait_prod (svm_msg_q_t *mq, u32 ring_index);
 
 /**
  * Timed wait for message queue event
