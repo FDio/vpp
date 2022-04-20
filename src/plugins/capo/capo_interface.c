@@ -93,6 +93,8 @@ capo_configure_policies (u32 sw_if_index, u32 num_ingress, u32 num_egress,
     }
 
   capo_main.acl_plugin.wip_clear_sessions (sw_if_index);
+
+  capo_interface_print_current_state ();
   return 0;
 
 error:
@@ -100,6 +102,7 @@ error:
   vec_resize (conf->ingress_policies, 0);
   vec_resize (conf->egress_policies, 0);
   vec_resize (conf->profiles, 0);
+  capo_interface_print_current_state ();
   return 1;
 }
 
