@@ -45,6 +45,7 @@ vlib_stats_init (vlib_main_t *vm)
   vlib_stats_shared_header_t *shared_header;
   vlib_stats_collector_reg_t reg = {};
 
+  void *oldheap;
   uword memory_size, sys_page_sz;
   int mfd;
   char *mem_name = "stat segment";
@@ -93,14 +94,16 @@ vlib_stats_init (vlib_main_t *vm)
   sm->n_locks = 0;
   clib_spinlock_init (sm->stat_segment_lockp);
 
+  oldheap = clib_mem_set_heap (sm->heap);
+
   /* Set up the name to counter-vector hash table */
-  sm->directory_vector =
-    vec_new_heap (typeof (sm->directory_vector[0]), STAT_COUNTERS, heap);
+  sm->directory_vector = 0;
   sm->dir_vector_first_free_elt = CLIB_U32_MAX;
 
   shared_header->epoch = 1;
 
   /* Scalar stats and node counters */
+  vec_validate (sm->directory_vector, STAT_COUNTERS - 1);
 #define _(E, t, n, p)                                                         \
   strcpy (sm->directory_vector[STAT_COUNTER_##E].name, p "/" #n);             \
   sm->directory_vector[STAT_COUNTER_##E].type = STAT_DIR_TYPE_##t;
@@ -108,6 +111,8 @@ vlib_stats_init (vlib_main_t *vm)
 #undef _
     /* Save the vector in the shared segment, for clients */
     shared_header->directory_vector = sm->directory_vector;
+
+  clib_mem_set_heap (oldheap);
 
   vlib_stats_register_mem_heap (heap);
 

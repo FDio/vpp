@@ -105,7 +105,10 @@ u32
 vlib_stats_create_counter (vlib_stats_entry_t *e)
 {
   vlib_stats_segment_t *sm = vlib_stats_get_segment ();
+  void *oldheap;
   u32 index;
+
+  oldheap = clib_mem_set_heap (sm->heap);
 
   if (sm->dir_vector_first_free_elt != CLIB_U32_MAX)
     {
@@ -120,6 +123,7 @@ vlib_stats_create_counter (vlib_stats_entry_t *e)
 
   sm->directory_vector[index] = *e;
 
+  clib_mem_set_heap (oldheap);
   hash_set_str_key_alloc (&sm->directory_vector_by_name, e->name, index);
 
   return index;
@@ -130,12 +134,15 @@ vlib_stats_remove_entry (u32 entry_index)
 {
   vlib_stats_segment_t *sm = vlib_stats_get_segment ();
   vlib_stats_entry_t *e = vlib_stats_get_entry (sm, entry_index);
+  void *oldheap;
   counter_t **c;
   vlib_counter_t **vc;
   u32 i;
 
   if (entry_index >= vec_len (sm->directory_vector))
     return;
+
+  oldheap = clib_mem_set_heap (sm->heap);
 
   vlib_stats_segment_lock ();
 
@@ -172,6 +179,7 @@ vlib_stats_remove_entry (u32 entry_index)
 
   vlib_stats_segment_unlock ();
 
+  clib_mem_set_heap (oldheap);
   hash_unset_str_key_free (&sm->directory_vector_by_name, e->name);
 
   memset (e, 0, sizeof (*e));
