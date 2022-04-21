@@ -459,7 +459,7 @@ vtc_worker_connect_sessions_epoll (vcl_test_client_worker_t *wrk)
   uint32_t n_connected = 0;
   vcl_test_session_t *ts;
   struct epoll_event ev;
-  int i, rv, n_ev;
+  int i, ci = 0, rv, n_ev;
   double diff;
 
   tp = vt->protos[vcm->proto];
@@ -469,27 +469,36 @@ vtc_worker_connect_sessions_epoll (vcl_test_client_worker_t *wrk)
 
   clock_gettime (CLOCK_REALTIME, &start);
 
-  for (i = 0; i < wrk->cfg.num_test_sessions; i++)
-    {
-      ts = &wrk->sessions[i];
-      ts->noblk_connect = 1;
-      rv = tp->open (&wrk->sessions[i], &vcm->server_endpt);
-      if (rv < 0)
-	return rv;
-
-      ev.data.u64 = i;
-      rv = vppcom_epoll_ctl (wrk->epoll_sh, EPOLL_CTL_ADD, ts->fd, &ev);
-      if (rv < 0)
-	{
-	  vtwrn ("vppcom_epoll_ctl: %d", rv);
-	  return rv;
-	}
-    }
-
-  ev.events = EPOLLET | EPOLLIN | EPOLLOUT;
-
+//  for (i = 0; i < wrk->cfg.num_test_sessions; i++)
   while (n_connected < wrk->cfg.num_test_sessions)
     {
+      /*
+       * Try to connect more sessions if under pending threshold
+       */
+      while ((ci - n_connected) < 16 && ci < wrk->cfg.num_test_sessions)
+	{
+	  ts = &wrk->sessions[ci];
+	  ts->noblk_connect = 1;
+	  rv = tp->open (&wrk->sessions[ci], &vcm->server_endpt);
+	  if (rv < 0)
+	    {
+	      vtwrn("open: %d", rv);
+	      return rv;
+	    }
+
+	  ev.data.u64 = ci;
+	  rv = vppcom_epoll_ctl (wrk->epoll_sh, EPOLL_CTL_ADD, ts->fd, &ev);
+	  if (rv < 0)
+	    {
+	      vtwrn("vppcom_epoll_ctl: %d", rv);
+	      return rv;
+	    }
+	  ci += 1;
+	}
+
+      /*
+       * Handle connected events
+       */
       n_ev =
 	vppcom_epoll_wait (wrk->epoll_sh, wrk->ep_evts,
 			   VCL_TEST_CFG_MAX_EPOLL_EVENTS, 0 /* timeout */);
@@ -518,19 +527,25 @@ vtc_worker_connect_sessions_epoll (vcl_test_client_worker_t *wrk)
 	    }
 	  ts->is_open = 1;
 	  n_connected += 1;
-
-	  ev.data.u64 = wrk->ep_evts[i].data.u32;
-	  rv = vppcom_epoll_ctl (wrk->epoll_sh, EPOLL_CTL_MOD, ts->fd, &ev);
-	  if (rv < 0)
-	    {
-	      vtwrn ("vppcom_epoll_ctl: %d", rv);
-	      return rv;
-	    }
-	  vtc_worker_epoll_send_add (wrk, ts);
 	}
     }
 
   clock_gettime (CLOCK_REALTIME, &end);
+
+  ev.events = EPOLLET | EPOLLIN | EPOLLOUT;
+
+  for (i = 0; i < n_connected; i++)
+    {
+      ts = &wrk->sessions[i];
+      ev.data.u64 = i;
+      rv = vppcom_epoll_ctl (wrk->epoll_sh, EPOLL_CTL_MOD, ts->fd, &ev);
+      if (rv < 0)
+	{
+	  vtwrn("vppcom_epoll_ctl: %d", rv);
+	  return rv;
+	}
+      vtc_worker_epoll_send_add (wrk, ts);
+    }
 
   diff = vcl_test_time_diff (&start, &end);
   vtinf ("Connected (%u) connected in %.2f seconds (%u CPS)!",
