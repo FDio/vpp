@@ -17,6 +17,6 @@
 #define included_vpp_vnet_config_h
 
 #define VPP_SANITIZE_ADDR_OPTIONS "@VPP_SANITIZE_ADDR_OPTIONS@"
-#define VPP_IP_FIB_MTRIE_16 "@VPP_IP_FIB_MTRIE_16@"
+#cmakedefine VPP_IP_FIB_MTRIE_16
 
 #endif
