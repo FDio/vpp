@@ -409,6 +409,16 @@ memif_connect_handler (memif_fd_event_type_t type, void *private_ctx)
   memif_socket_t *ms = (memif_socket_t *) private_ctx;
   memif_connection_t *c;
 
+  if (ms->timer_fd >= 0)
+    {
+      uint64_t u64;
+      /*
+	Have to read the timer fd else it stays read-ready
+	and makes epoll_pwait() return without sleeping
+      */
+      read (ms->timer_fd, &u64, sizeof (u64));
+    }
+
   /* loop ms->slave_interfaces and request connection for disconnected ones */
   TAILQ_FOREACH (c, &ms->slave_interfaces, next)
   {
