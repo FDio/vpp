@@ -3714,12 +3714,26 @@ class TestNAT44EDMW(TestNAT44ED):
                  flags="FA", seq=100, ack=300))
         self.send_and_expect(self.pg0, p, self.pg1)
 
+        # resend FIN packet in -> out
+        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=in_port, dport=ext_port,
+                 flags="FA", seq=100, ack=300))
+        self.send_and_expect(self.pg0, p, self.pg1)
+
         # FIN packet out -> in
         p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
              IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
              TCP(sport=ext_port, dport=out_port,
                  flags="FA", seq=300, ack=100))
         self.send_and_expect(self.pg1, p, self.pg0)
+
+        # ACK packet in -> out
+        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=in_port, dport=ext_port,
+                 flags="A", seq=100, ack=300))
+        self.send_and_expect(self.pg0, p, self.pg1)
 
         sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
         self.assertEqual(len(sessions) - session_n, 1)

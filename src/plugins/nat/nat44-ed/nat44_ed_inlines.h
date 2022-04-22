@@ -792,6 +792,13 @@ nat44_set_tcp_session_state (snat_main_t *sm, f64 now, snat_session_t *ses,
 	  ses->tcp_state = NAT44_ED_TCP_STATE_ESTABLISHED;
 	  ses->lru_head_index = tsm->tcp_estab_lru_head_index;
 	}
+      else if (((ses->tcp_flags[NAT44_ED_DIR_I2O] |
+		 ses->tcp_flags[NAT44_ED_DIR_O2I]) &
+		TCP_FLAG_SYN) == 0)
+	{
+	  // keep resetting the flags until one side starts to reopen
+	  ses->tcp_flags[dir] = 0;
+	}
       break;
     }
   if (old_state == ses->tcp_state)
