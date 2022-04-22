@@ -776,8 +776,9 @@ session_mq_transport_attr_handler (void *data)
 void
 session_wrk_handle_evts_main_rpc (void *args)
 {
-  session_evt_elt_t *he, *elt, *next;
   vlib_main_t *vm = vlib_get_main ();
+  clib_llist_index_t ei, next_ei;
+  session_evt_elt_t *he, *elt;
   session_worker_t *fwrk;
   u32 thread_index;
 
@@ -787,11 +788,12 @@ session_wrk_handle_evts_main_rpc (void *args)
   fwrk = session_main_get_worker (thread_index);
 
   he = clib_llist_elt (fwrk->event_elts, fwrk->evts_pending_main);
-  elt = clib_llist_next (fwrk->event_elts, evt_list, he);
+  ei = clib_llist_next_index (he, evt_list);
 
-  while (elt != he)
+  while (ei != fwrk->evts_pending_main)
     {
-      next = clib_llist_next (fwrk->event_elts, evt_list, elt);
+      elt = clib_llist_elt (fwrk->event_elts, ei);
+      next_ei = clib_llist_next_index (elt, evt_list);
       clib_llist_remove (fwrk->event_elts, evt_list, elt);
       switch (elt->evt.event_type)
 	{
@@ -815,9 +817,12 @@ session_wrk_handle_evts_main_rpc (void *args)
 	  ALWAYS_ASSERT (0);
 	  break;
 	}
+
+      /* Regrab element in case pool moved */
+      elt = clib_llist_elt (fwrk->event_elts, ei);
       session_evt_ctrl_data_free (fwrk, elt);
       clib_llist_put (fwrk->event_elts, elt);
-      elt = next;
+      ei = next_ei;
     }
 
   vlib_worker_thread_barrier_release (vm);
