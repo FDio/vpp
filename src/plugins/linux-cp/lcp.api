@@ -21,19 +21,19 @@ option version = "1.0.0";
 
 import "vnet/interface_types.api";
 
-/** \brief Set the default Linux Control Plane namespace
+/** \brief Set the default Linux Control Plane netns
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param namespace - the new default namespace; namespace[0] == 0 iff none
+    @param netns - the new default netns; netns[0] == 0 if none
 */
 autoreply define lcp_default_ns_set
 {
   u32 client_index;
   u32 context;
-  string namespace[32];		/* LCP_NS_LEN */
+  string netns[32];		/* LCP_NS_LEN */
 };
 
-/** \brief get the default Linux Control Plane namespace
+/** \brief get the default Linux Control Plane netns
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
 */
@@ -43,15 +43,15 @@ define lcp_default_ns_get
   u32 context;
 };
 
-/** \brief get the default Linux Control Plane namespace
+/** \brief get the default Linux Control Plane netns
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param namespace - the default namespace; namespace[0] == 0 iff none
+    @param netns - the default netns; netns[0] == 0 if none
 */
 define lcp_default_ns_get_reply
 {
   u32 context;
-  string namespace[32];		/* LCP_NS_LEN */
+  string netns[32];		/* LCP_NS_LEN */
 };
 
 enum lcp_itf_host_type : u8
@@ -67,7 +67,7 @@ enum lcp_itf_host_type : u8
     @param sw_if_index - index of VPP PHY SW interface
     @param host_if_name - host tap interface name
     @param host_if_type - the type of host interface to create (tun, tap)
-    @param namespace - optional tap namespace; namespace[0] == 0 iff none
+    @param netns - optional tap netns; netns[0] == 0 if none
 */
 autoreply autoendian define lcp_itf_pair_add_del
 {
@@ -77,7 +77,7 @@ autoreply autoendian define lcp_itf_pair_add_del
   vl_api_interface_index_t sw_if_index;
   string host_if_name[16];		/* IFNAMSIZ */
   vl_api_lcp_itf_host_type_t host_if_type;
-  string namespace[32];			/* LCP_NS_LEN */
+  string netns[32];			/* LCP_NS_LEN */
 };
 autoendian define lcp_itf_pair_add_del_v2
 {
@@ -87,7 +87,7 @@ autoendian define lcp_itf_pair_add_del_v2
   vl_api_interface_index_t sw_if_index;
   string host_if_name[16];		/* IFNAMSIZ */
   vl_api_lcp_itf_host_type_t host_if_type;
-  string namespace[32];			/* LCP_NS_LEN */
+  string netns[32];			/* LCP_NS_LEN */
 };
 define lcp_itf_pair_add_del_v2_reply
 {
@@ -121,7 +121,7 @@ define lcp_itf_pair_get_reply
     @param vif_index - tap linux index
     @param host_if_name - host interface name
     @param host_if_type - host interface type (tun, tap)
-    @param namespace - host interface namespace
+    @param netns - host interface netns
 */
 autoendian define lcp_itf_pair_details
 {
@@ -131,7 +131,7 @@ autoendian define lcp_itf_pair_details
   u32 vif_index;
   string host_if_name[16];	/* IFNAMSIZ */
   vl_api_lcp_itf_host_type_t host_if_type;
-  string namespace[32];		/* LCP_NS_LEN */
+  string netns[32];		/* LCP_NS_LEN */
 };
 
 service {

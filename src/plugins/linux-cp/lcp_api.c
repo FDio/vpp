@@ -84,10 +84,9 @@ vl_api_lcp_itf_pair_add_del_t_handler (vl_api_lcp_itf_pair_add_del_t *mp)
   lip_host_type = api_decode_host_type (mp->host_if_type);
   if (mp->is_add)
     {
-      rv =
-	vl_api_lcp_itf_pair_add (phy_sw_if_index, lip_host_type,
-				 mp->host_if_name, sizeof (mp->host_if_name),
-				 mp->namespace, sizeof (mp->namespace), NULL);
+      rv = vl_api_lcp_itf_pair_add (
+	phy_sw_if_index, lip_host_type, mp->host_if_name,
+	sizeof (mp->host_if_name), mp->netns, sizeof (mp->netns), NULL);
     }
   else
     {
@@ -114,8 +113,8 @@ vl_api_lcp_itf_pair_add_del_v2_t_handler (vl_api_lcp_itf_pair_add_del_v2_t *mp)
     {
       rv = vl_api_lcp_itf_pair_add (phy_sw_if_index, lip_host_type,
 				    mp->host_if_name,
-				    sizeof (mp->host_if_name), mp->namespace,
-				    sizeof (mp->namespace), &host_sw_if_index);
+				    sizeof (mp->host_if_name), mp->netns,
+				    sizeof (mp->netns), &host_sw_if_index);
     }
   else
     {
@@ -145,9 +144,9 @@ send_lcp_itf_pair_details (index_t lipi, vl_api_registration_t *rp,
 		lcp_pair->lip_host_name, vec_len (lcp_pair->lip_host_name));
       rmp->host_if_name[vec_len (lcp_pair->lip_host_name)] = 0;
 
-      memcpy_s (rmp->namespace, sizeof (rmp->namespace),
-		lcp_pair->lip_namespace, vec_len (lcp_pair->lip_namespace));
-      rmp->namespace[vec_len (lcp_pair->lip_namespace)] = 0;
+      memcpy_s (rmp->netns, sizeof (rmp->netns), lcp_pair->lip_namespace,
+		vec_len (lcp_pair->lip_namespace));
+      rmp->netns[vec_len (lcp_pair->lip_namespace)] = 0;
     }));
 }
 
@@ -168,8 +167,8 @@ vl_api_lcp_default_ns_set_t_handler (vl_api_lcp_default_ns_set_t *mp)
   vl_api_lcp_default_ns_set_reply_t *rmp;
   int rv;
 
-  mp->namespace[LCP_NS_LEN - 1] = 0;
-  rv = lcp_set_default_ns (mp->namespace);
+  mp->netns[LCP_NS_LEN - 1] = 0;
+  rv = lcp_set_default_ns (mp->netns);
 
   REPLY_MACRO (VL_API_LCP_DEFAULT_NS_SET_REPLY);
 }
@@ -192,7 +191,7 @@ vl_api_lcp_default_ns_get_t_handler (vl_api_lcp_default_ns_get_t *mp)
 
   ns = (char *) lcp_get_default_ns ();
   if (ns)
-    clib_strncpy ((char *) rmp->namespace, ns, LCP_NS_LEN - 1);
+    clib_strncpy ((char *) rmp->netns, ns, LCP_NS_LEN - 1);
 
   vl_api_send_msg (reg, (u8 *) rmp);
 }
