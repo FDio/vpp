@@ -128,6 +128,59 @@ vl_api_lcp_itf_pair_add_del_v2_t_handler (vl_api_lcp_itf_pair_add_del_v2_t *mp)
 }
 
 static void
+vl_api_lcp_itf_pair_add_del_v3_t_handler (vl_api_lcp_itf_pair_add_del_v3_t *mp)
+{
+  u32 phy_sw_if_index, host_sw_if_index = ~0;
+  vl_api_lcp_itf_pair_add_del_v3_reply_t *rmp;
+  lip_host_type_t lip_host_type;
+  int rv;
+
+  VALIDATE_SW_IF_INDEX_END (mp);
+
+  phy_sw_if_index = mp->sw_if_index;
+  lip_host_type = api_decode_host_type (mp->host_if_type);
+  if (mp->is_add)
+    {
+      rv = vl_api_lcp_itf_pair_add (phy_sw_if_index, lip_host_type,
+				    mp->host_if_name,
+				    sizeof (mp->host_if_name), mp->netns,
+				    sizeof (mp->netns), &host_sw_if_index);
+    }
+  else
+    {
+      rv = lcp_itf_pair_delete (phy_sw_if_index);
+    }
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO2 (VL_API_LCP_ITF_PAIR_ADD_DEL_V3_REPLY,
+		{ rmp->host_sw_if_index = ntohl (host_sw_if_index); });
+}
+
+static void
+send_lcp_itf_pair_v2_details (index_t lipi, vl_api_registration_t *rp,
+			      u32 context)
+{
+  vl_api_lcp_itf_pair_v2_details_t *rmp;
+  lcp_itf_pair_t *lcp_pair = lcp_itf_pair_get (lipi);
+
+  REPLY_MACRO_DETAILS4 (
+    VL_API_LCP_ITF_PAIR_V2_DETAILS, rp, context, ({
+      rmp->phy_sw_if_index = ntohl (lcp_pair->lip_phy_sw_if_index);
+      rmp->host_sw_if_index = ntohl (lcp_pair->lip_host_sw_if_index);
+      rmp->vif_index = ntohl (lcp_pair->lip_vif_index);
+      rmp->host_if_type = api_encode_host_type (lcp_pair->lip_host_type);
+
+      memcpy_s (rmp->host_if_name, sizeof (rmp->host_if_name),
+		lcp_pair->lip_host_name, vec_len (lcp_pair->lip_host_name));
+      rmp->host_if_name[vec_len (lcp_pair->lip_host_name)] = 0;
+
+      memcpy_s (rmp->netns, sizeof (rmp->netns), lcp_pair->lip_namespace,
+		vec_len (lcp_pair->lip_namespace));
+      rmp->netns[vec_len (lcp_pair->lip_namespace)] = 0;
+    }));
+}
+
+static void
 send_lcp_itf_pair_details (index_t lipi, vl_api_registration_t *rp,
 			   u32 context)
 {
@@ -193,6 +246,52 @@ vl_api_lcp_default_ns_get_t_handler (vl_api_lcp_default_ns_get_t *mp)
   ns = (char *) lcp_get_default_ns ();
   if (ns)
     clib_strncpy ((char *) rmp->namespace, ns, LCP_NS_LEN - 1);
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+static void
+vl_api_lcp_itf_pair_v2_get_t_handler (vl_api_lcp_itf_pair_v2_get_t *mp)
+{
+  vl_api_lcp_itf_pair_v2_get_reply_t *rmp;
+  i32 rv = 0;
+
+  REPLY_AND_DETAILS_MACRO (
+    VL_API_LCP_ITF_PAIR_V2_GET_REPLY, lcp_itf_pair_pool,
+    ({ send_lcp_itf_pair_v2_details (cursor, rp, mp->context); }));
+}
+
+static void
+vl_api_lcp_default_ns_set_v2_t_handler (vl_api_lcp_default_ns_set_v2_t *mp)
+{
+  vl_api_lcp_default_ns_set_v2_reply_t *rmp;
+  int rv;
+
+  mp->netns[LCP_NS_LEN - 1] = 0;
+  rv = lcp_set_default_ns (mp->netns);
+
+  REPLY_MACRO (VL_API_LCP_DEFAULT_NS_SET_V2_REPLY);
+}
+
+static void
+vl_api_lcp_default_ns_get_v2_t_handler (vl_api_lcp_default_ns_get_v2_t *mp)
+{
+  vl_api_lcp_default_ns_get_v2_reply_t *rmp;
+  vl_api_registration_t *reg;
+  char *ns;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  clib_memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id = (VL_API_LCP_DEFAULT_NS_GET_REPLY);
+  rmp->context = mp->context;
+
+  ns = (char *) lcp_get_default_ns ();
+  if (ns)
+    clib_strncpy ((char *) rmp->netns, ns, LCP_NS_LEN - 1);
 
   vl_api_send_msg (reg, (u8 *) rmp);
 }
