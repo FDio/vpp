@@ -2056,8 +2056,8 @@ ip4_ttl_inc (vlib_buffer_t * b, ip4_header_t * ip)
 
   ttl = ip->ttl;
 
-  checksum = ip->checksum - clib_host_to_net_u16 (0x0100);
-  checksum += checksum >= 0xffff;
+  checksum = ip->checksum - (ip->checksum == 0);
+  checksum = checksum - clib_host_to_net_u16 (0x0100);
 
   ip->checksum = checksum;
   ttl += 1;
