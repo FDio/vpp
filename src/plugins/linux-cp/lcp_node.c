@@ -439,6 +439,7 @@ VNET_FEATURE_INIT (lcp_xc_ip6_mcast_node, static) = {
 typedef enum
 {
   LCP_XC_L3_NEXT_XC,
+  LCP_XC_L3_NEXT_LOOKUP,
   LCP_XC_L3_N_NEXT,
 } lcp_xc_l3_next_t;
 
@@ -453,6 +454,7 @@ lcp_xc_l3_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 {
   u32 n_left_from, *from, *to_next, n_left_to_next;
   lcp_xc_next_t next_index;
+  vnet_main_t *vnm = vnet_get_main ();
 
   next_index = 0;
   n_left_from = frame->n_vectors;
@@ -488,10 +490,24 @@ lcp_xc_l3_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    lcp_itf_pair_find_by_host (vnet_buffer (b0)->sw_if_index[VLIB_RX]);
 	  lip = lcp_itf_pair_get (lipi);
 
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = lip->lip_phy_sw_if_index;
-	  next0 = LCP_XC_L3_NEXT_XC;
-	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] =
-	    lip->lip_phy_adjs.adj_index[af];
+	  /* P2P tunnels can use generic adjacency */
+	  if (PREDICT_TRUE (
+		vnet_sw_interface_is_p2p (vnm, lip->lip_phy_sw_if_index)))
+	    {
+	      vnet_buffer (b0)->sw_if_index[VLIB_TX] =
+		lip->lip_phy_sw_if_index;
+	      vnet_buffer (b0)->ip.adj_index[VLIB_TX] =
+		lip->lip_phy_adjs.adj_index[af];
+	      next0 = LCP_XC_L3_NEXT_XC;
+	    }
+	  /* P2MP tunnels require a fib lookup to find the right adjacency */
+	  else
+	    {
+	      /* lookup should use FIB table associated with phy interface */
+	      vnet_buffer (b0)->sw_if_index[VLIB_RX] =
+		lip->lip_phy_sw_if_index;
+	      next0 = LCP_XC_L3_NEXT_LOOKUP;
+	    }
 
 	  if (PREDICT_FALSE ((b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
@@ -534,6 +550,7 @@ VLIB_REGISTER_NODE (lcp_xc_l3_ip4_node) = {
   .n_next_nodes = LCP_XC_L3_N_NEXT,
   .next_nodes = {
     [LCP_XC_L3_NEXT_XC] = "ip4-midchain",
+    [LCP_XC_L3_NEXT_LOOKUP] = "ip4-lookup",
   },
 };
 
@@ -556,6 +573,7 @@ VLIB_REGISTER_NODE (lcp_xc_l3_ip6_node) = {
   .n_next_nodes = LCP_XC_L3_N_NEXT,
   .next_nodes = {
     [LCP_XC_L3_NEXT_XC] = "ip6-midchain",
+    [LCP_XC_L3_NEXT_LOOKUP] = "ip6-lookup",
   },
 };
 
