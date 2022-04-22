@@ -121,7 +121,7 @@ class IPSec4SpdTestCaseDiscard(SpdFlowCacheInbound):
         self.verify_num_inbound_flow_cache_entries(1)
 
 
-class IPSec4SpdTestCaseRemove(SpdFlowCacheInbound):
+class IPSec4SpdTestCaseRemoveInbound(SpdFlowCacheInbound):
     """ IPSec/IPv4 inbound: Policy mode test case with flow cache \
         (remove bypass)"""
     def test_ipsec_spd_inbound_remove(self):
@@ -210,7 +210,7 @@ class IPSec4SpdTestCaseRemove(SpdFlowCacheInbound):
         self.verify_num_inbound_flow_cache_entries(1)
 
 
-class IPSec4SpdTestCaseReadd(SpdFlowCacheInbound):
+class IPSec4SpdTestCaseReaddInbound(SpdFlowCacheInbound):
     """ IPSec/IPv4 inbound: Policy mode test case with flow cache \
         (add, remove, re-add bypass)"""
     def test_ipsec_spd_inbound_readd(self):
@@ -333,7 +333,7 @@ class IPSec4SpdTestCaseReadd(SpdFlowCacheInbound):
         self.verify_num_inbound_flow_cache_entries(1)
 
 
-class IPSec4SpdTestCaseMultiple(SpdFlowCacheInbound):
+class IPSec4SpdTestCaseMultipleInbound(SpdFlowCacheInbound):
     """ IPSec/IPv4 inbound: Policy mode test case with flow cache \
         (multiple interfaces, multiple rules)"""
     def test_ipsec_spd_inbound_multiple(self):
@@ -413,7 +413,7 @@ class IPSec4SpdTestCaseMultiple(SpdFlowCacheInbound):
         self.verify_num_inbound_flow_cache_entries(3)
 
 
-class IPSec4SpdTestCaseOverwriteStale(SpdFlowCacheInbound):
+class IPSec4SpdTestCaseOverwriteStaleInbound(SpdFlowCacheInbound):
     """ IPSec/IPv4 inbound: Policy mode test case with flow cache \
         (overwrite stale entries)"""
     def test_ipsec_spd_inbound_overwrite(self):
@@ -550,7 +550,7 @@ class IPSec4SpdTestCaseOverwriteStale(SpdFlowCacheInbound):
         self.verify_num_inbound_flow_cache_entries(3)
 
 
-class IPSec4SpdTestCaseCollision(SpdFlowCacheInbound):
+class IPSec4SpdTestCaseCollisionInbound(SpdFlowCacheInbound):
     """ IPSec/IPv4 inbound: Policy mode test case with flow cache \
         (hash collision)"""
     # Override class setup to restrict hash table size to 16 buckets.

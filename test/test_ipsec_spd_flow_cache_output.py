@@ -72,7 +72,7 @@ class IPSec4SpdTestCaseAdd(SpdFlowCacheOutbound):
         self.verify_num_outbound_flow_cache_entries(1)
 
 
-class IPSec4SpdTestCaseRemove(SpdFlowCacheOutbound):
+class IPSec4SpdTestCaseRemoveOutbound(SpdFlowCacheOutbound):
     """ IPSec/IPv4 outbound: Policy mode test case with flow cache \
         (remove rule)"""
     def test_ipsec_spd_outbound_remove(self):
@@ -151,7 +151,7 @@ class IPSec4SpdTestCaseRemove(SpdFlowCacheOutbound):
         self.verify_num_outbound_flow_cache_entries(1)
 
 
-class IPSec4SpdTestCaseReadd(SpdFlowCacheOutbound):
+class IPSec4SpdTestCaseReaddOutbound(SpdFlowCacheOutbound):
     """ IPSec/IPv4 outbound: Policy mode test case with flow cache \
         (add, remove, re-add)"""
     def test_ipsec_spd_outbound_readd(self):
@@ -268,7 +268,7 @@ class IPSec4SpdTestCaseReadd(SpdFlowCacheOutbound):
         self.verify_num_outbound_flow_cache_entries(1)
 
 
-class IPSec4SpdTestCaseMultiple(SpdFlowCacheOutbound):
+class IPSec4SpdTestCaseMultipleOutbound(SpdFlowCacheOutbound):
     """ IPSec/IPv4 outbound: Policy mode test case with flow cache \
         (multiple interfaces, multiple rules)"""
     def test_ipsec_spd_outbound_multiple(self):
@@ -363,7 +363,7 @@ class IPSec4SpdTestCaseMultiple(SpdFlowCacheOutbound):
         self.verify_num_outbound_flow_cache_entries(3)
 
 
-class IPSec4SpdTestCaseOverwriteStale(SpdFlowCacheOutbound):
+class IPSec4SpdTestCaseOverwriteStaleOutbound(SpdFlowCacheOutbound):
     """ IPSec/IPv4 outbound: Policy mode test case with flow cache \
         (overwrite stale entries)"""
     def test_ipsec_spd_outbound_overwrite(self):
@@ -499,7 +499,7 @@ class IPSec4SpdTestCaseOverwriteStale(SpdFlowCacheOutbound):
         self.verify_num_outbound_flow_cache_entries(3)
 
 
-class IPSec4SpdTestCaseCollision(SpdFlowCacheOutbound):
+class IPSec4SpdTestCaseCollisionOutbound(SpdFlowCacheOutbound):
     """ IPSec/IPv4 outbound: Policy mode test case with flow cache \
         (hash collision)"""
     # Override class setup to restrict vector size to 16 elements.
