@@ -150,7 +150,7 @@ class IPSec4SpdTestCaseDiscard(SpdFlowCacheInbound):
         self.verify_num_inbound_flow_cache_entries(1)
 
 
-class IPSec4SpdTestCaseRemove(SpdFlowCacheInbound):
+class IPSec4SpdTestCaseRemoveInbound(SpdFlowCacheInbound):
     """ IPSec/IPv4 inbound: Policy mode test case with flow cache \
         (remove bypass)"""
 
@@ -264,7 +264,7 @@ class IPSec4SpdTestCaseRemove(SpdFlowCacheInbound):
         self.verify_num_inbound_flow_cache_entries(1)
 
 
-class IPSec4SpdTestCaseReadd(SpdFlowCacheInbound):
+class IPSec4SpdTestCaseReaddInbound(SpdFlowCacheInbound):
     """ IPSec/IPv4 inbound: Policy mode test case with flow cache \
         (add, remove, re-add bypass)"""
 
@@ -418,7 +418,7 @@ class IPSec4SpdTestCaseReadd(SpdFlowCacheInbound):
         self.verify_num_inbound_flow_cache_entries(1)
 
 
-class IPSec4SpdTestCaseMultiple(SpdFlowCacheInbound):
+class IPSec4SpdTestCaseMultipleInbound(SpdFlowCacheInbound):
     """ IPSec/IPv4 inbound: Policy mode test case with flow cache \
         (multiple interfaces, multiple rules)"""
 
@@ -522,7 +522,7 @@ class IPSec4SpdTestCaseMultiple(SpdFlowCacheInbound):
         self.verify_num_inbound_flow_cache_entries(3)
 
 
-class IPSec4SpdTestCaseOverwriteStale(SpdFlowCacheInbound):
+class IPSec4SpdTestCaseOverwriteStaleInbound(SpdFlowCacheInbound):
     """ IPSec/IPv4 inbound: Policy mode test case with flow cache \
         (overwrite stale entries)"""
 
@@ -700,7 +700,7 @@ class IPSec4SpdTestCaseOverwriteStale(SpdFlowCacheInbound):
         self.verify_num_inbound_flow_cache_entries(3)
 
 
-class IPSec4SpdTestCaseCollision(SpdFlowCacheInbound):
+class IPSec4SpdTestCaseCollisionInbound(SpdFlowCacheInbound):
     """ IPSec/IPv4 inbound: Policy mode test case with flow cache \
         (hash collision)"""
 
