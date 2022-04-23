@@ -699,7 +699,7 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_End)
 
         # assert nothing was received on the other interface (pg2)
-        self.pg2.assert_nothing_captured("mis-directed packet(s)")
+        self.pg2.assert_nothing_captured(remark="mis-directed packet(s)")
 
         # log the localsid counters
         self.logger.info(self.vapi.cli("show sr localsid"))
@@ -774,7 +774,7 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_End_PSP)
 
         # assert nothing was received on the other interface (pg2)
-        self.pg2.assert_nothing_captured("mis-directed packet(s)")
+        self.pg2.assert_nothing_captured(remark="mis-directed packet(s)")
 
         # log the localsid counters
         self.logger.info(self.vapi.cli("show sr localsid"))
@@ -922,7 +922,7 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_End_DX6)
 
         # assert nothing was received on the other interface (pg2)
-        self.pg1.assert_nothing_captured("mis-directed packet(s)")
+        self.pg1.assert_nothing_captured(remark="mis-directed packet(s)")
 
         # log the localsid counters
         self.logger.info(self.vapi.cli("show sr localsid"))
@@ -1073,7 +1073,7 @@ class TestSRv6(VppTestCase):
                                   self.compare_rx_tx_packet_End_DX4)
 
         # assert nothing was received on the other interface (pg2)
-        self.pg1.assert_nothing_captured("mis-directed packet(s)")
+        self.pg1.assert_nothing_captured(remark="mis-directed packet(s)")
 
         # log the localsid counters
         self.logger.info(self.vapi.cli("show sr localsid"))

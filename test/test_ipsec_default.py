@@ -34,6 +34,7 @@ packets are dropped as expected.
 
 class IPSecInboundDefaultDrop(IPSecIPv4Fwd):
     """ IPSec: inbound packets drop by default with no matching rule """
+
     def test_ipsec_inbound_default_drop(self):
         # configure two interfaces and bind the same SPD to both
         self.create_interfaces(2)
@@ -84,8 +85,8 @@ class IPSecInboundDefaultDrop(IPSecIPv4Fwd):
         self.pg_interfaces[1].enable_capture()
         self.pg_start()
         # confirm traffic has now been dropped
-        self.pg1.assert_nothing_captured("inbound pkts with no matching \
-            rules NOT dropped by default")
+        self.pg1.assert_nothing_captured(remark="inbound pkts with no matching"
+                                         "rules NOT dropped by default")
         # both policies should not have matched any further packets
         # since we've dropped at input stage
         self.verify_policy_match(pkt_count, outbound_policy)
@@ -94,6 +95,7 @@ class IPSecInboundDefaultDrop(IPSecIPv4Fwd):
 
 class IPSecOutboundDefaultDrop(IPSecIPv4Fwd):
     """ IPSec: outbound packets drop by default with no matching rule """
+
     def test_ipsec_inbound_default_drop(self):
         # configure two interfaces and bind the same SPD to both
         self.create_interfaces(2)
@@ -145,12 +147,14 @@ class IPSecOutboundDefaultDrop(IPSecIPv4Fwd):
         self.pg_interfaces[1].enable_capture()
         self.pg_start()
         # confirm traffic was dropped and not forwarded
-        self.pg1.assert_nothing_captured("outbound pkts with no matching \
-            rules NOT dropped by default")
+        self.pg1.assert_nothing_captured(
+            remark="outbound pkts with no matching rules NOT dropped "
+            "by default")
         # inbound rule should have matched twice the # of pkts now
         self.verify_policy_match(pkt_count*2, inbound_policy)
         # as dropped at outbound, outbound policy is the same
         self.verify_policy_match(pkt_count, outbound_policy)
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

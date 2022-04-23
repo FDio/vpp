@@ -363,7 +363,7 @@ class TestMAPBR(VppTestCase):
                          ICMPv6TimeExceeded().type)
         self.assertEqual(rx_pkt[ICMPv6TimeExceeded].code,
                          ICMPv6TimeExceeded(
-                            code="hop limit exceeded in transit").code)
+            code="hop limit exceeded in transit").code)
         self.assertEqual(rx_pkt[ICMPv6TimeExceeded].hlim, tx_pkt[IP][1].ttl)
         self.assertTrue(rx_pkt.haslayer(IPerror6))
         self.assertTrue(rx_pkt.haslayer(UDPerror))
@@ -528,7 +528,8 @@ class TestMAPBR(VppTestCase):
         self.pg_send(self.pg1, tx_pkt * 1)
 
         self.pg0.get_capture(0, timeout=1)
-        self.pg0.assert_nothing_captured("Should drop IPv4 spoof address")
+        self.pg0.assert_nothing_captured(
+            remark="Should drop IPv4 spoof address")
 
     #
     # Spoofed IPv4 Source Prefix v6 -> v4 direction
@@ -552,7 +553,8 @@ class TestMAPBR(VppTestCase):
         self.pg_send(self.pg1, tx_pkt * 1)
 
         self.pg0.get_capture(0, timeout=1)
-        self.pg0.assert_nothing_captured("Should drop IPv4 spoof prefix")
+        self.pg0.assert_nothing_captured(
+            remark="Should drop IPv4 spoof prefix")
 
     #
     # Spoofed IPv6 PSID v6 -> v4 direction
@@ -575,7 +577,8 @@ class TestMAPBR(VppTestCase):
         self.pg_send(self.pg1, tx_pkt * 1)
 
         self.pg0.get_capture(0, timeout=1)
-        self.pg0.assert_nothing_captured("Should drop IPv6 spoof PSID")
+        self.pg0.assert_nothing_captured(
+            remark="Should drop IPv6 spoof PSID")
 
     #
     # Spoofed IPv6 subnet field v6 -> v4 direction
@@ -598,7 +601,8 @@ class TestMAPBR(VppTestCase):
         self.pg_send(self.pg1, tx_pkt * 1)
 
         self.pg0.get_capture(0, timeout=1)
-        self.pg0.assert_nothing_captured("Should drop IPv6 spoof subnet")
+        self.pg0.assert_nothing_captured(
+            remark="Should drop IPv6 spoof subnet")
 
     #
     # Spoofed IPv6 port PSID v6 -> v4 direction
@@ -621,7 +625,8 @@ class TestMAPBR(VppTestCase):
         self.pg_send(self.pg1, tx_pkt * 1)
 
         self.pg0.get_capture(0, timeout=1)
-        self.pg0.assert_nothing_captured("Should drop IPv6 spoof port PSID")
+        self.pg0.assert_nothing_captured(
+            remark="Should drop IPv6 spoof port PSID")
 
     #
     # Spoofed IPv6 ICMP ID PSID v6 -> v4 direction
@@ -644,7 +649,8 @@ class TestMAPBR(VppTestCase):
         self.pg_send(self.pg1, tx_pkt * 1)
 
         self.pg0.get_capture(0, timeout=1)
-        self.pg0.assert_nothing_captured("Should drop IPv6 spoof port PSID")
+        self.pg0.assert_nothing_captured(
+            remark="Should drop IPv6 spoof port PSID")
 
     #
     # Map to Map - same rule, different address
@@ -689,6 +695,7 @@ class TestMAPBR(VppTestCase):
 
         rx_pkts = self.pg1.get_capture(1)
         rx_pkt = rx_pkts[0]
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
