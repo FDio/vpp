@@ -296,6 +296,8 @@ class VppPGInterface(VppInterface):
                             "expected %s packets on %s" %
                             (len(capture.res), expected_count, name))
         else:
+            if 0 == expected_count:
+                return
             raise Exception("No packets captured on %s" % name)
 
     def assert_nothing_captured(self, timeout=1, remark=None,
@@ -306,24 +308,11 @@ class VppPGInterface(VppInterface):
         :param filter_out_fn: filter applied to each packet, packets for which
                               the filter returns True are removed from capture
         """
-        if os.path.isfile(self.out_path):
-            try:
-                capture = self.get_capture(
-                    0, timeout=timeout, remark=remark,
-                    filter_out_fn=filter_out_fn)
-                if not capture or len(capture.res) == 0:
-                    # junk filtered out, we're good
-                    return
-            except:
-                pass
-            self.generate_debug_aid("empty-assert")
-            if remark:
-                raise UnexpectedPacketError(
-                    capture[0],
-                    f" ({len(capture)} packets captured in total) ({remark})")
-            else:
-                raise UnexpectedPacketError(
-                    capture[0], f" ({len(capture)} packets captured in total)")
+        capture = self.get_capture(0, timeout=timeout, remark=remark,
+                                   filter_out_fn=filter_out_fn)
+        if not capture or len(capture.res) == 0:
+            # junk filtered out, we're good
+            return
 
     def wait_for_pg_stop(self):
         # wait till packet-generator is stopped
