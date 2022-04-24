@@ -1,0 +1,26 @@
+{
+    "type" : "path",
+    "stack" : [
+        {
+            "header" : "mac"
+        },
+        {
+            "header" : "ipv6"
+        },
+        {
+            "header" : "udp"
+        },
+        {
+            "header" : "geneve",
+            "fields" : [
+                {
+                    "name" : "optlen",
+                    "value" : "1"
+                }
+            ]
+        },
+        {
+            "header" : "ipv4"
+        }
+    ]
+}

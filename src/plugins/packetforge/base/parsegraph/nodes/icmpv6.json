@@ -1,0 +1,18 @@
+{
+    "type" : "node",
+    "name" : "icmpv6",
+    "layout" : [
+        {
+            "name" : "type",
+            "size" : "8"
+        },
+        {
+            "name" : "code",
+            "size" : "8"
+        },
+        {
+            "name" : "checksum",
+            "size" : "16"
+        }
+    ]
+}

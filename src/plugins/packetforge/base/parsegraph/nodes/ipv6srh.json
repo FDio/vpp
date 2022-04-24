@@ -1,0 +1,40 @@
+{
+    "type" : "node",
+    "name" : "ipv6srh",
+    "layout" : [
+        {
+            "name" : "nextheader",
+            "size" : "8"
+        },
+        {
+            "name" : "headerextlength",
+            "size" : "8"
+        },
+        {
+            "name" : "routingtype",
+            "size" : "8",
+            "default" : "4",
+            "readonly" : "true"
+        },
+        {
+            "name" : "segmentleft",
+            "size" : "8"
+        },
+        {
+            "name" : "lastentry",
+            "size" : "8"
+        },
+        {
+            "name" : "flags",
+            "size" : "8"
+        },
+        {
+            "name" : "tag",
+            "size" : "16"
+        },
+        {
+            "name" : "addresses",
+            "size" : "headerextlength<<6"
+        }
+    ]
+}
