@@ -1,0 +1,58 @@
+{
+    "type" : "node",
+    "name" : "pfcp",
+    "layout" : [
+        {
+            "name" : "version",
+            "size" : "3",
+            "default" : "1",
+            "readonly" : "true"
+        },
+        {
+            "name" : "reserved",
+            "size" : "3"
+        },
+        {
+            "name" : "mp",
+            "size" : "1"
+        },
+        {
+            "name" : "s",
+            "size" : "1"
+        },
+        {
+            "name" : "messagetype",
+            "size" : "8"
+        },
+        {
+            "name" : "messagelength",
+            "size" : "16",
+            "default" : "8",
+            "autoincrease" : "true"
+        },
+        {
+            "name" : "seid",
+            "size" : "64",
+            "optional" : "s=1",
+            "increaselength" : "true"
+        },
+        {
+            "name" : "sequencenumber",
+            "size" : "24"
+        },
+        {
+            "name" : "messagepriority",
+            "size" : "4",
+            "optional" : "mp=1"
+        },
+        {
+            "name" : "reserved",
+            "size" : "4",
+            "optional" : "mp=0"
+        },
+        {
+            "name" : "reserved",
+            "size" : "4"
+        }
+    ]
+}

@@ -1,0 +1,36 @@
+{
+    "type" : "node",
+    "name" : "ipv6crh16",
+    "layout" : [
+      {
+          "name" : "nextheader",
+          "size" : "8"
+      },
+      {
+          "name" : "headerextlength",
+          "size" : "8"
+      },
+      {
+          "name" : "routingtype",
+          "size" : "8",
+          "default" : "5",
+          "readonly" : "true"
+      },
+      {
+          "name" : "segmentleft",
+          "size" : "8"
+      },
+      {
+          "name" : "sid0",
+          "size" : "16"
+      },
+      {
+          "name" : "sid1",
+          "size" : "16"
+      },
+      {
+          "name" : "sid16remains",
+          "size" : "headerextlength<<6"
+      }
+    ]
+}

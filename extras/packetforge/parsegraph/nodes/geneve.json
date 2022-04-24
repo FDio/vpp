@@ -1,0 +1,51 @@
+{
+    "type" : "node",
+    "name" : "geneve",
+    "layout" : [
+        {
+            "name" : "version",
+            "size" : "2",
+            "default" : "0",
+            "readonly" : "true"
+        },
+        {
+            "name" : "optlen",
+            "size" : "6"
+        },
+        {
+            "name" : "o",
+            "size" : "1"
+        },
+        {
+            "name" : "c",
+            "size" : "1"
+        },
+        {
+            "name" : "reserved",
+            "size" : "6"
+        },
+        {
+            "name" : "protocoltype",
+            "size" : "16"
+        },
+        {
+            "name" : "vni",
+            "size" : "24"
+        },
+        {
+            "name" : "reserved",
+            "size" : "8"
+        },
+        {
+            "name" : "options",
+            "size" : "optlen<<5"
+        }
+    ],
+    "attributes" : [
+        {
+            "name" : "udpport",
+            "size" : "16",
+            "default" : "6081"
+        }
+    ]
+}
