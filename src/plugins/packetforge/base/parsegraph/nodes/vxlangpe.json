@@ -1,0 +1,53 @@
+{
+    "type" : "node",
+    "name" : "vxlangpe",
+    "layout" : [
+        {
+            "name" : "reserved",
+            "size" : "2"
+        },
+        {
+            "name" : "version",
+            "size" : "2"
+        },
+        {
+            "name" : "i",
+            "size" : "1"
+        },
+        {
+            "name" : "p",
+            "size" : "1"
+        },
+        {
+            "name" : "b",
+            "size" : "1"
+        },
+        {
+            "name" : "o",
+            "size" : "1"
+        },
+        {
+            "name" : "reserved",
+            "size" : "16"
+        },
+        {
+            "name" : "nextprotocol",
+            "size" : "8"
+        },
+        {
+            "name" : "vni",
+            "size" : "24"
+        },
+        {
+            "name" : "reserved",
+            "size" : "8"
+        }
+    ],
+    "attributes" : [
+        {
+            "name" : "udpport",
+            "size" : "16",
+            "default" : "4790"
+        }
+    ]
+}
