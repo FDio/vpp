@@ -1,0 +1,5 @@
+{
+    "type" : "edge",
+    "start" : "vxlan",
+    "end" : "mac"
+}

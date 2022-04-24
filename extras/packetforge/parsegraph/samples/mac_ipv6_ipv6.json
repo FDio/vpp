@@ -1,0 +1,14 @@
+{
+    "type" : "path",
+    "stack" : [
+        {
+            "header" : "mac"
+        },
+        {
+            "header" : "ipv6"
+        },
+        {
+            "header" : "ipv4"
+        }
+    ]
+}
