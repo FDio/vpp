@@ -1,0 +1,11 @@
+{
+    "type" : "edge",
+    "start" : "mac,vlan",
+    "end" : "ipv6",
+    "actions" : [
+        {
+            "dst" : "start.ethertype",
+            "src" : "0x86dd"
+        }
+    ]
+}

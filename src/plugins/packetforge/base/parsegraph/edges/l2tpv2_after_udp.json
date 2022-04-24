@@ -1,0 +1,11 @@
+{
+    "type" : "edge",
+    "start" : "udp",
+    "end" : "l2tpv2ctl,l2tpv2data",
+    "actions" : [
+        {
+            "dst" : "start.dst",
+            "src" : "1701"
+        }
+    ]
+}

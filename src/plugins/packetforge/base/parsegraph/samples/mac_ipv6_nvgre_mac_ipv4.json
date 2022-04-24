@@ -1,0 +1,20 @@
+{
+    "type" : "path",
+    "stack" : [
+        {
+            "header" : "mac"
+        },
+        {
+            "header" : "ipv6"
+        },
+        {
+            "header" : "nvgre"
+        },
+        {
+            "header" : "mac"
+        },
+        {
+            "header" : "ipv4"
+        }
+    ]
+}

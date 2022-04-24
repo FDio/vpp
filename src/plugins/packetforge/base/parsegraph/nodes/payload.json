@@ -1,0 +1,18 @@
+{
+    "type" : "node",
+    "name" : "payload",
+    "layout" : [
+        {
+            "name" : "data",
+            "size" : "bytes<<3",
+            "format" : "bytearray"
+        }
+    ],
+    "attributes" : [
+        {
+            "name" : "bytes",
+            "size" : "16",
+            "default" : "16"
+        }
+    ]
+}

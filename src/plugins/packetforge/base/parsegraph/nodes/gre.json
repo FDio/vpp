@@ -1,0 +1,56 @@
+{
+    "type" : "node",
+    "name" : "gre",
+    "layout" : [
+        {
+            "name" : "c",
+            "size" : "1"
+        },
+        {
+            "name" : "reserved",
+            "size" : "1"
+        },
+        {
+            "name" : "k",
+            "size" : "1"
+        },
+        {
+            "name" : "s",
+            "size" : "1"
+        },
+        {
+            "name" : "reserved",
+            "size" : "9"
+        },
+        {
+            "name" : "version",
+            "size" : "3",
+            "default" : "0",
+            "readonly" : "true"
+        },
+        {
+            "name" : "protocoltype",
+            "size" : "16"
+        },
+        {
+            "name" : "checksum",
+            "size" : "16",
+            "optional" : "c=1"
+        },
+        {
+            "name" : "reserved",
+            "size" : "16",
+            "optional" : "c=1"
+        },
+        {
+            "name" : "key",
+            "size" : "32",
+            "optional" : "k=1"
+        },
+        {
+            "name" : "sequencenumber",
+            "size" : "32",
+            "optional" : "s=1"
+        }
+    ]
+}
