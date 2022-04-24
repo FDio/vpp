@@ -1,0 +1,11 @@
+{
+    "type" : "edge",
+    "start" : "udp",
+    "end" : "pfcp",
+    "actions" : [
+        {
+            "dst" : "start.dst",
+            "src" : "8805"
+        }
+    ]
+}

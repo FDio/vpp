@@ -1,0 +1,11 @@
+{
+    "type" : "edge",
+    "start" : "udp",
+    "end" : "gtpc",
+    "actions" : [
+        {
+            "dst" : "start.dst",
+            "src" : "2123"
+        }
+    ]
+}

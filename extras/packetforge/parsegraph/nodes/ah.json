@@ -1,0 +1,26 @@
+{
+    "type" : "node",
+    "name" : "ah",
+    "layout" : [
+        {
+            "name" : "nextheader",
+            "size" : "8"
+        },
+        {
+            "name" : "payloadlength",
+            "size" : "8"
+        },
+        {
+            "name" : "reserved",
+            "size" : "16"
+        },
+        {
+            "name" : "spi",
+            "size" : "32"
+        },
+        {
+            "name" : "sequencenumber",
+            "size" : "32"
+        }
+    ]
+}

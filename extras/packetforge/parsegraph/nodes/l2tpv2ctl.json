@@ -1,0 +1,74 @@
+{
+    "type" : "node",
+    "name" : "l2tpv2ctl",
+    "layout" : [
+        {
+            "name" : "t",
+            "size" : "1",
+            "default" : "1",
+            "readonly" : "true"
+        },
+        {
+            "name" : "l",
+            "size" : "1",
+            "default" : "1",
+            "readonly" : "true"
+        },
+        {
+            "name" : "reserved",
+            "size" : "2"
+        },
+        {
+            "name" : "s",
+            "size" : "1",
+            "default" : "1",
+            "readonly" : "true"
+        },
+        {
+            "name" : "reserved",
+            "size" : "1"
+        },
+        {
+            "name" : "o",
+            "size" : "1",
+            "default" : "0",
+            "readonly" : "true"
+        },
+        {
+            "name" : "p",
+            "size" : "1",
+            "default" : "0",
+            "readonly" : "true"
+        },
+        {
+            "name" : "reserved",
+            "size" : "4"
+        },
+        {
+            "name" : "version",
+            "size" : "4",
+            "default" : "2",
+            "readonly" : "true"
+        },
+        {
+            "name" : "length",
+            "size" : "16"
+        },
+        {
+            "name" : "tunnelid",
+            "size" : "16"
+        },
+        {
+            "name" : "sessionid",
+            "size" : "16"
+        },
+        {
+            "name" : "ns",
+            "size" : "16"
+        },
+        {
+            "name" : "nr",
+            "size" : "16"
+        }
+    ]
+}
