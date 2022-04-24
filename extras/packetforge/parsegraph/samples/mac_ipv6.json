@@ -1,0 +1,44 @@
+{
+    "type" : "path",
+    "stack" : [
+        {
+            "header" : "mac",
+            "fields" : [
+                {
+                    "name" : "src",
+                    "value" : "00:00:00:00:00:01",
+                    "mask" : "ff:ff:ff:ff:ff:ff"
+                },
+                {
+                    "name" : "dst",
+                    "value" : "00:00:00:00:00:02",
+                    "mask" : "ff:ff:ff:ff:ff:ff"
+                },
+                {
+                    "name" : "ethertype",
+                    "value" : "0x2345"
+                }
+            ]
+        },
+        {
+            "header" : "ipv6",
+            "fields" : [
+                {
+                    "name" : "flowlabel",
+                    "value" : "1"
+                },
+                {
+                    "name" : "src",
+                    "value" : "0001:0002:0003:0004:0005:0006:0007:0008",
+                    "mask" : "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff"
+                },
+                {
+                    "name" : "dst",
+                    "value" : "0001:0002:0003:0004:0005:0006:0007:0008",
+                    "mask" : "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff"
+                }
+            ]
+        }
+    ],
+    "actions" : "rss"
+}

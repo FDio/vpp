@@ -1,0 +1,43 @@
+{
+    "type" : "path",
+    "stack" : [
+        {
+            "header" : "mac"
+        },
+        {
+            "header" : "ipv4"
+        },
+        {
+            "header" : "udp"
+        },
+        {
+            "header" : "gtpu",
+            "fields" : [
+                {
+                    "name" : "teid",
+                    "value" : "32",
+                    "mask" : "0xffffffff"
+                }
+            ]
+        },
+        {
+            "header" : "gtppsc"
+        },
+        {
+            "header" : "ipv4",
+            "fields" : [
+                {
+                    "name" : "src",
+                    "value" : "1.1.1.1",
+                    "mask" : "255.255.255.255"
+                },
+                {
+                    "name" : "dst",
+                    "value" : "2.2.2.2",
+                    "mask" : "255.255.255.255"
+                }
+            ]
+        }
+    ],
+    "actions" : "rss"
+}
