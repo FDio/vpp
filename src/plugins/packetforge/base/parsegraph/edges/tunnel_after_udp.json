@@ -1,0 +1,11 @@
+{
+    "type" : "edge",
+    "start" : "udp",
+    "end" : "geneve,vxlan,vxlangpe",
+    "actions" : [
+        {
+            "dst" : "start.dst",
+            "src" : "end.udpport"
+        }
+    ]
+}
