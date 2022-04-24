@@ -1,0 +1,76 @@
+{
+    "type" : "node",
+    "name" : "ipv4",
+    "layout" : [
+        {
+            "name" : "version",
+            "size" : "4",
+            "default" : "4",
+            "readonly" : "true"
+        },
+        {
+            "name" : "ilh",
+            "size" : "4",
+            "default" : "5",
+            "readonly" : "true"
+        },
+        {
+            "name" : "dscp",
+            "size" : "6"
+        },
+        {
+            "name" : "ecn",
+            "size" : "2"
+        },
+        {
+            "name" : "totallength",
+            "size" : "16",
+            "default" : "20",
+            "autoincrease" : "true"
+        },
+        {
+            "name" : "identification",
+            "size" : "16"
+        },
+        {
+            "name" : "reserved",
+            "size" : "1"
+        },
+        {
+            "name" : "df",
+            "size" : "1"
+        },
+        {
+            "name" : "mf",
+            "size" : "1"
+        },
+        {
+            "name" : "fragmentoffset",
+            "size" : "13"
+        },
+        {
+            "name" : "ttl",
+            "size" : "8"
+        },
+        {
+            "name" : "protocol",
+            "size" : "8"
+        },
+        {
+            "name" : "checksum",
+            "size" : "16"
+        },
+        {
+            "name" : "src",
+            "size" : "32",
+            "format" : "ipv4",
+            "default" : "1.1.1.1"
+        },
+        {
+            "name" : "dst",
+            "size" : "32",
+            "format" : "ipv4",
+            "default" : "2.2.2.2"
+        }
+    ]
+}

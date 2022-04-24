@@ -1,0 +1,63 @@
+{
+    "type" : "node",
+    "name" : "gtpu",
+    "layout" : [
+        {
+            "name" : "version",
+            "size" : "3",
+            "default" : "1",
+            "readonly" : "true"
+        },
+        {
+            "name" : "pt",
+            "size" : "1"
+        },
+        {
+            "name" : "reserved",
+            "size" : "1"
+        },
+        {
+            "name" : "e",
+            "size" : "1"
+        },
+        {
+            "name" : "s",
+            "size" : "1"
+        },
+        {
+            "name" : "pn",
+            "size" : "1"
+        },
+        {
+            "name" : "messagetype",
+            "size" : "8"
+        },
+        {
+            "name" : "messagelength",
+            "size" : "16",
+            "autoincrease" : "true"
+        },
+        {
+            "name" : "teid",
+            "size" : "32"
+        },
+        {
+            "name" : "sequencenumber",
+            "size" : "16",
+            "optional" : "e=1|s=1|pn=1",
+            "increaselength" : "true"
+        },
+        {
+            "name" : "npdunumber",
+            "size" : "8",
+            "optional" : "e=1|s=1|pn=1",
+            "increaselength" : "true"
+        },
+        {
+            "name" : "nextextentionheadertype",
+            "size" : "8",
+            "optional" : "e=1|s=1|pn=1",
+            "increaselength" : "true"
+        }
+    ]
+}

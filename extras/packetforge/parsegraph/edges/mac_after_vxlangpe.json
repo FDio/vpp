@@ -1,0 +1,11 @@
+{
+    "type" : "edge",
+    "start" : "vxlangpe",
+    "end" : "mac",
+    "actions" : [
+        {
+            "dst" : "start.nextprotocol",
+            "src" : "3"
+        }
+    ]
+}
