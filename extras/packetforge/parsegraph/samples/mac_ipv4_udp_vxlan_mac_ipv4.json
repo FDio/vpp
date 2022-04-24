@@ -1,0 +1,23 @@
+{
+    "type" : "path",
+    "stack" : [
+        {
+            "header" : "mac"
+        },
+        {
+            "header" : "ipv4"
+        },
+        {
+            "header" : "udp"
+        },
+        {
+            "header" : "vxlan"
+        },
+        {
+            "header" : "mac"
+        },
+        {
+            "header" : "ipv4"
+        }
+    ]
+}

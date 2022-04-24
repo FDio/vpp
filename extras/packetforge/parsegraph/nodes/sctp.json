@@ -1,0 +1,22 @@
+{
+    "type" : "node",
+    "name" : "sctp",
+    "layout" : [
+        {
+            "name" : "src",
+            "size" : "16"
+        },
+        {
+            "name" : "dst",
+            "size" : "16"
+        },
+        {
+            "name" : "veificationtag",
+            "size" : "16"
+        },
+        {
+            "name" : "checksum",
+            "size" : "16"
+        }
+    ]
+}
