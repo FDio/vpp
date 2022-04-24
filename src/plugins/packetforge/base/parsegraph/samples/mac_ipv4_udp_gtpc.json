@@ -1,0 +1,23 @@
+{
+    "type" : "path",
+    "stack" : [
+        {
+            "header" : "mac"
+        },
+        {
+            "header" : "ipv4"
+        },
+        {
+            "header" : "udp"
+        },
+        {
+            "header" : "gtpc",
+            "fields" : [
+                {
+                    "name" : "t",
+                    "value" : "1"
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,11 @@
+{
+    "type" : "edge",
+    "start" : "ipv6",
+    "end" : "sctp",
+    "actions" : [
+        {
+            "dst" : "start.nextheader",
+            "src" : "132"
+        }
+    ]
+}

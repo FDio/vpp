@@ -1,0 +1,19 @@
+{
+    "type" : "edge",
+    "start" : "gtpu",
+    "end" : "gtppsc",
+    "actions" : [
+        {
+            "dst" : "start.e",
+            "src" : "1"
+        },
+        {
+            "dst" : "start.nextextentionheadertype",
+            "src" : "0x85"
+        },
+        {
+            "dst" : "start.messagetype",
+            "src" : "0xff"
+        }
+    ]
+}

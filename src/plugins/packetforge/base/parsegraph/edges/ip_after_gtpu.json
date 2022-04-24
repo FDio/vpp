@@ -1,0 +1,11 @@
+{
+    "type" : "edge",
+    "start" : "gtpu",
+    "end" : "ipv4,ipv6",
+    "actions" : [
+        {
+            "dst" : "start.messagetype",
+            "src" : "0xff"
+        }
+    ]
+}

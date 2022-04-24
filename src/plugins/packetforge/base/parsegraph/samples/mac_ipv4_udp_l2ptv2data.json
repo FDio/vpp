@@ -1,0 +1,17 @@
+{
+    "type" : "path",
+    "stack" : [
+        {
+            "header" : "mac"
+        },
+        {
+            "header" : "ipv4"
+        },
+        {
+            "header" : "udp"
+        },
+        {
+            "header" : "l2tpv2data"
+        }
+    ]
+}

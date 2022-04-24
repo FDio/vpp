@@ -1,0 +1,11 @@
+{
+    "type" : "edge",
+    "start" : "geneve",
+    "end" : "ipv4",
+    "actions" : [
+        {
+            "dst" : "start.protocoltype",
+            "src" : "0x0800"
+        }
+    ]
+}

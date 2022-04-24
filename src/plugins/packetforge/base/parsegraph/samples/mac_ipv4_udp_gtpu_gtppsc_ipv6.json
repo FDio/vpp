@@ -1,0 +1,23 @@
+{
+    "type" : "path",
+    "stack" : [
+        {
+            "header" : "mac"
+        },
+        {
+            "header" : "ipv4"
+        },
+        {
+            "header" : "udp"
+        },
+        {
+            "header" : "gtpu"
+        },
+        {
+            "header" : "gtppsc"
+        },
+        {
+            "header" : "ipv6"
+        }
+    ]
+}

@@ -1,0 +1,24 @@
+{
+    "type" : "node",
+    "name" : "udp",
+    "layout" : [
+        {
+            "name" : "src",
+            "size" : "16"
+        },
+        {
+            "name" : "dst",
+            "size" : "16"
+        },
+        {
+            "name" : "length",
+            "size" : "16",
+            "default" : "8",
+            "autoincrease" : "true"
+        },
+        {
+            "name" : "checksum",
+            "size" : "16"
+        }
+    ]
+}
