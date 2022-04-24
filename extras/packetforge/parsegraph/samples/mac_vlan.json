@@ -1,0 +1,38 @@
+{
+    "type" : "path",
+    "stack" : [
+        {
+            "header" : "mac",
+            "fields" : [
+                {
+                    "name" : "src",
+                    "value" : "00:00:00:00:00:01",
+                    "mask" : "ff:ff:ff:ff:ff:ff"
+                },
+                {
+                    "name" : "dst",
+                    "value" : "00:00:00:00:00:02",
+                    "mask" : "ff:ff:ff:ff:ff:ff"
+                },
+                {
+                    "name" : "ethertype",
+                    "value" : "0x2345"
+                }
+            ]
+        },
+        {
+            "header" : "vlan",
+            "fields" : [
+                {
+                    "name" : "tpid",
+                    "value" : "0x9100",
+                },
+                {
+                    "name" : "vid",
+                    "value" : "0x123",
+                    "mask" : "0xfff",
+                }
+            ]
+        }
+    ]
+}
