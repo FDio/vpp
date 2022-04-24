@@ -1,0 +1,11 @@
+{
+    "type" : "path",
+    "stack" : [
+        {
+            "header" : "mac"
+        },
+        {
+            "header" : "arpv4"
+        }
+    ]
+}

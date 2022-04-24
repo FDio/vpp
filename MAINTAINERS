@@ -710,6 +710,11 @@ I:	oddbuf
 M:	Dave Barach <vpp@barachs.net>
 F:	src/plugins/oddbuf
 
+Plugin - Packetforge
+I:	packetforge
+M:	Ting Xu <ting.xu@intel.com>
+F:	src/plugins/packetforge
+
 Plugin - VRRP
 I:	vrrp
 M:	Matthew Smith <mgsmith@netgate.com>

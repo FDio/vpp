@@ -1,0 +1,52 @@
+{
+    "type" : "node",
+    "name" : "nvgre",
+    "layout" : [
+        {
+            "name" : "c",
+            "size" : "1",
+            "default" : "0",
+            "readonly" : "true"
+        },
+        {
+            "name" : "reserved",
+            "size" : "1"
+        },
+        {
+            "name" : "k",
+            "size" : "1",
+            "default" : "1",
+            "readonly" : "true"
+        },
+        {
+            "name" : "s",
+            "size" : "1",
+            "default" : "0",
+            "readonly" : "true"
+        },
+        {
+            "name" : "reserved",
+            "size" : "9"
+        },
+        {
+            "name" : "version",
+            "size" : "3",
+            "default" : "0",
+            "readonly" : "true"
+        },
+        {
+            "name" : "protocoltype",
+            "size" : "16",
+            "default" : "0x6558",
+            "readonly" : "true"
+        },
+        {
+            "name" : "vsid",
+            "size" : "16"
+        },
+        {
+            "name" : "flowid",
+            "size" : "16"
+        }
+    ]
+}
