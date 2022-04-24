@@ -1,0 +1,33 @@
+{
+    "type" : "node",
+    "name" : "vxlan",
+    "layout" : [
+        {
+            "name" : "reserved",
+            "size" : "4"
+        },
+        {
+            "name" : "i",
+            "size" : "1"
+        },
+        {
+            "name" : "reserved",
+            "size" : "11"
+        },
+        {
+            "name" : "vni",
+            "size" : "24"
+        },
+        {
+            "name" : "reserved",
+            "size" : "8"
+        }
+    ],
+    "attributes" : [
+        {
+            "name" : "udpport",
+            "size" : "16",
+            "default" : "4789"
+        }
+    ]
+}

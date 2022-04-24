@@ -1,0 +1,32 @@
+{
+    "type" : "node",
+    "name" : "ipv6crh32",
+    "layout" : [
+        {
+            "name" : "nextheader",
+            "size" : "8"
+        },
+        {
+            "name" : "headerextlength",
+            "size" : "8"
+        },
+        {
+            "name" : "routingtype",
+            "size" : "8",
+            "default" : "6",
+            "readonly" : "true"
+        },
+        {
+            "name" : "segmentleft",
+            "size" : "8"
+        },
+        {
+            "name" : "sid0",
+            "size" : "32"
+        },
+        {
+            "name" : "sid32remains",
+            "size" : "headerextlength<<6"
+        }
+    ]
+}

@@ -1,0 +1,23 @@
+{
+    "type" : "path",
+    "stack" : [
+        {
+            "header" : "mac"
+        },
+        {
+            "header" : "ipv4"
+        },
+        {
+            "header" : "udp"
+        },
+        {
+            "header" : "payload",
+            "fields" : [
+                {
+                    "name" : "data",
+                    "value" : "1,2,3,4,5,6,7,8"
+                }
+            ]
+        }
+    ]
+}
