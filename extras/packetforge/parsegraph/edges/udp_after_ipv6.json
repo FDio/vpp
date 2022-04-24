@@ -1,0 +1,11 @@
+{
+    "type" : "edge",
+    "start" : "ipv6,ipv6srh,ipv6crh16,ipv6crh32",
+    "end" : "udp",
+    "actions" : [
+        {
+            "dst" : "start.nextheader",
+            "src" : "17"
+        }
+    ]
+}

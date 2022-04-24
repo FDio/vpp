@@ -1,0 +1,30 @@
+{
+    "type" : "path",
+    "stack" : [
+        {
+            "header" : "mac",
+            "fields" : [
+                {
+                    "name" : "src",
+                    "value" : "00:00:00:00:00:01",
+                    "mask" : "ff:ff:ff:ff:ff:ff"
+                },
+                {
+                    "name" : "dst",
+                    "value" : "00:00:00:00:00:02",
+                    "mask" : "ff:ff:ff:ff:ff:ff"
+                },
+                {
+                    "name" : "ethertype",
+                    "value" : "0x2345"
+                }
+            ]
+        },
+        {
+            "header" : "ipv6"
+        },
+        {
+            "header" : "sctp"
+        }
+    ]
+}

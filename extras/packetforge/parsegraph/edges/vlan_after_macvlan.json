@@ -1,0 +1,15 @@
+{
+    "type" : "edge",
+    "start" : "mac,vlan",
+    "end" : "vlan",
+    "actions" : [
+        {
+            "dst" : "start.ethertype",
+            "src" : "end.tpid"
+        },
+        {
+            "dst" : "end.ethertype",
+            "src" : "start.ethertype"
+        }
+    ]
+}

@@ -1,0 +1,24 @@
+{
+    "type" : "path",
+    "stack" : [
+        {
+            "header" : "mac"
+        },
+        {
+            "header" : "ipv4",
+            "fields" : [
+                {
+                    "name" : "src",
+                    "value" : "1.1.1.1",
+                    "mask" : "255.255.255.255"
+                },
+                {
+                    "name" : "dst",
+                    "value" : "2.2.2.2",
+                    "mask" : "255.255.255.255"
+                }
+            ]
+        }
+    ],
+    "actions" : "redirect-to-queue 3"
+}
