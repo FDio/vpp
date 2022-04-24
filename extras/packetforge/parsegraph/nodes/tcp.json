@@ -1,0 +1,79 @@
+{
+    "type" : "node",
+    "name" : "tcp",
+    "layout" : [
+        {
+            "name" : "src",
+            "size" : "16"
+        },
+        {
+            "name" : "dst",
+            "size" : "16"
+        },
+        {
+            "name" : "sequencenumber",
+            "size" : "32"
+        },
+        {
+            "name" : "acknowledgementnumber",
+            "size" : "32"
+        },
+        {
+            "name" : "dataoffset",
+            "size" : "4",
+            "default" : "5"
+        },
+        {
+            "name" : "reserved",
+            "size" : "3"
+        },
+        {
+            "name" : "ns",
+            "size" : "1"
+        },
+        {
+            "name" : "cwr",
+            "size" : "1"
+        },
+        {
+            "name" : "ece",
+            "size" : "1"
+        },
+        {
+            "name" : "urg",
+            "size" : "1"
+        },
+        {
+            "name" : "ack",
+            "size" : "1"
+        },
+        {
+            "name" : "psh",
+            "size" : "1"
+        },
+        {
+            "name" : "pst",
+            "size" : "1"
+        },
+        {
+            "name" : "syn",
+            "size" : "1"
+        },
+        {
+            "name" : "fin",
+            "size" : "1"
+        },
+        {
+            "name" : "windowsize",
+            "size" : "16"
+        },
+        {
+            "name" : "checksum",
+            "size" : "16"
+        },
+        {
+            "name" : "urgentpointer",
+            "size" : "16"
+        }
+    ]
+}

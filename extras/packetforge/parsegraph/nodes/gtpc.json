@@ -1,0 +1,48 @@
+{
+    "type" : "node",
+    "name" : "gtpc",
+    "layout" : [
+        {
+            "name" : "version",
+            "size" : "3",
+            "default" : "2",
+            "readonly" : "true"
+        },
+        {
+            "name" : "p",
+            "size" : "1"
+        },
+        {
+            "name" : "t",
+            "size" : "1"
+        },
+        {
+            "name" : "reserved",
+            "size" : "3"
+        },
+        {
+            "name" : "messagetype",
+            "size" : "8"
+        },
+        {
+            "name" : "messagelength",
+            "size" : "16",
+            "default" : "4",
+            "autoincrease" : "true"
+        },
+        {
+            "name" : "teid",
+            "size" : "32",
+            "optional" : "t=1",
+            "increaselength" : "true"
+        },
+        {
+            "name" : "sequencenumber",
+            "size" : "24"
+        },
+        {
+            "name" : "reserved",
+            "size" : "8"
+        }
+    ]
+}

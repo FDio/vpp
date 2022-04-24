@@ -1,0 +1,11 @@
+{
+    "type" : "edge",
+    "start" : "geneve",
+    "end" : "mac",
+    "actions" : [
+        {
+            "dst" : "start.protocoltype",
+            "src" : "0x6558"
+        }
+    ]
+}

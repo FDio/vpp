@@ -1,0 +1,54 @@
+{
+    "type" : "node",
+    "name" : "arpv4",
+    "layout" : [
+        {
+            "name" : "htype",
+            "size" : "16",
+            "default" : "1",
+            "readonly" : "true"
+        },
+        {
+            "name" : "ptype",
+            "size" : "16",
+            "default" : "0x0800",
+            "readonly" : "true"
+        },
+        {
+            "name" : "hlen",
+            "size" : "8",
+            "default" : "6",
+            "readonly" : "true"
+        },
+        {
+            "name" : "plen",
+            "size" : "8",
+            "default" : "4",
+            "readonly" : "true"
+        },
+        {
+            "name" : "operation",
+            "size" : "16"
+        },
+        {
+            "name" : "sha",
+            "size" : "48",
+            "format" : "mac"
+        },
+        {
+            "name" : "spa",
+            "size" : "32",
+            "format" : "ipv4"
+        },
+        {
+            "name" : "tha",
+            "size" : "48",
+            "format" : "mac"
+        },
+        {
+            "name" : "tpa",
+            "size" : "32",
+            "format" : "ipv4"
+        }
+    ]
+}

@@ -1,0 +1,30 @@
+{
+    "type" : "node",
+    "name" : "vlan",
+    "layout" : [
+        {
+            "name" : "pcp",
+            "size" : "3"
+        },
+        {
+            "name" : "dei",
+            "size" : "1"
+        },
+        {
+            "name" : "vid",
+            "size" : "12"
+        },
+        {
+            "name" : "ethertype",
+            "size" : "16",
+            "readonly" : "true"
+        }
+    ],
+    "attributes" : [
+        {
+            "name" : "tpid",
+            "size" : "16",
+            "default" : "0x8100"
+        }
+    ]
+}

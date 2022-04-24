@@ -1,0 +1,11 @@
+{
+    "type" : "edge",
+    "start" : "ipv4",
+    "end" : "ipv6",
+    "actions" : [
+        {
+            "dst" : "start.protocol",
+            "src" : "41"
+        }
+    ]
+}
