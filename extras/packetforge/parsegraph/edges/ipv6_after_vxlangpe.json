@@ -1,0 +1,11 @@
+{
+    "type" : "edge",
+    "start" : "vxlangpe",
+    "end" : "ipv6",
+    "actions" : [
+        {
+            "dst" : "start.nextprotocol",
+            "src" : "2"
+        }
+    ]
+}
