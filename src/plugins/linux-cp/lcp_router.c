@@ -662,10 +662,25 @@ lcp_router_link_addr_add (struct rtnl_addr *la)
   lcp_router_link_addr_add_del (la, 0);
 }
 
+static walk_rc_t
+lcp_router_address_mark (index_t index, void *ctx)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+
+  lcp_itf_pair_t *lip = lcp_itf_pair_get (index);
+  if (!lip)
+    return WALK_CONTINUE;
+
+  ip_interface_address_mark_one_interface (
+    vnm, vnet_get_sw_interface (vnm, lip->lip_phy_sw_if_index), 0);
+
+  return WALK_CONTINUE;
+}
+
 static void
 lcp_router_link_addr_sync_begin (void)
 {
-  ip_interface_address_mark ();
+  lcp_itf_pair_walk (lcp_router_address_mark, 0);
 
   LCP_ROUTER_INFO ("Begin synchronization of interface addresses");
 }
@@ -795,11 +810,23 @@ lcp_router_neigh_add (struct rtnl_neigh *rn)
 		     rtnl_neigh_get_ifindex (rn));
 }
 
+static walk_rc_t
+lcp_router_neighbor_mark (index_t index, void *ctx)
+{
+  lcp_itf_pair_t *lip = lcp_itf_pair_get (index);
+  if (!lip)
+    return WALK_CONTINUE;
+
+  ip_neighbor_walk (AF_IP4, lip->lip_phy_sw_if_index, ip_neighbor_mark_one, 0);
+  ip_neighbor_walk (AF_IP6, lip->lip_phy_sw_if_index, ip_neighbor_mark_one, 0);
+
+  return WALK_CONTINUE;
+}
+
 static void
 lcp_router_neigh_sync_begin (void)
 {
-  ip_neighbor_mark (AF_IP4);
-  ip_neighbor_mark (AF_IP6);
+  lcp_itf_pair_walk (lcp_router_neighbor_mark, 0);
 
   LCP_ROUTER_INFO ("Begin synchronization of neighbors");
 }

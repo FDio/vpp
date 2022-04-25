@@ -203,9 +203,9 @@ ip_interface_get_first_ip (u32 sw_if_index, u8 is_ip4)
   return 0;
 }
 
-static walk_rc_t
-ip_interface_address_mark_one_interface (vnet_main_t * vnm,
-					 vnet_sw_interface_t * si, void *ctx)
+walk_rc_t
+ip_interface_address_mark_one_interface (vnet_main_t *vnm,
+					 vnet_sw_interface_t *si, void *ctx)
 {
   ip_lookup_main_t *lm4 = &ip4_main.lookup_main;
   ip_lookup_main_t *lm6 = &ip6_main.lookup_main;

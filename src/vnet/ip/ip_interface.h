@@ -38,6 +38,9 @@ void ip_interface_address_sweep (void);
 u32 ip_interface_address_find (ip_lookup_main_t * lm,
 			       void *addr_fib, u32 address_length);
 u8 ip_interface_has_address (u32 sw_if_index, ip46_address_t * ip, u8 is_ip4);
+walk_rc_t ip_interface_address_mark_one_interface (vnet_main_t *vnm,
+						   vnet_sw_interface_t *si,
+						   void *ctx);
 
 always_inline void *
 ip_interface_address_get_address (ip_lookup_main_t * lm,
