@@ -21,6 +21,7 @@
 #include <vnet/session/application.h>
 #include <vnet/dpo/load_balance.h>
 #include <vnet/fib/ip4_fib.h>
+#include <vlib/stats/stats.h>
 
 session_main_t session_main;
 
@@ -1856,6 +1857,44 @@ session_queue_run_on_main_thread (vlib_main_t * vm)
   vlib_node_set_interrupt_pending (vm, session_queue_node.index);
 }
 
+static void
+session_stats_collector_fn (vlib_stats_collector_data_t *d)
+{
+  u32 i, n_workers, n_wrk_sessions, n_sessions = 0;
+  session_main_t *smm = &session_main;
+  session_worker_t *wrk;
+  counter_t **counters;
+  counter_t *cb;
+
+  n_workers = vec_len (smm->wrk);
+  vlib_stats_validate (d->entry_index, 0, n_workers - 1);
+  counters = d->entry->data;
+  cb = counters[0];
+
+  for (i = 0; i < vec_len (smm->wrk); i++)
+    {
+      wrk = session_main_get_worker (i);
+      n_wrk_sessions = pool_elts (wrk->sessions);
+      cb[i] = n_wrk_sessions;
+      n_sessions += n_wrk_sessions;
+    }
+
+  vlib_stats_set_gauge (d->private_data, n_sessions);
+}
+
+static void
+session_stats_collector_init (void)
+{
+  vlib_stats_collector_reg_t reg;
+
+  reg.entry_index =
+    vlib_stats_add_counter_vector ("/sys/session/sessions_per_worker");
+  reg.private_data = vlib_stats_add_gauge ("/sys/session/sessions_total");
+  reg.collect_fn = session_stats_collector_fn;
+  vlib_stats_register_collector_fn (&reg);
+  vlib_stats_validate (reg.entry_index, 0, vlib_get_n_threads ());
+}
+
 static clib_error_t *
 session_manager_main_enable (vlib_main_t * vm)
 {
@@ -1928,6 +1967,7 @@ session_manager_main_enable (vlib_main_t * vm)
   session_lookup_init ();
   app_namespaces_init ();
   transport_init ();
+  session_stats_collector_init ();
   smm->is_initialized = 1;
 
 done:
