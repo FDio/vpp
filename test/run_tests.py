@@ -922,7 +922,8 @@ if __name__ == '__main__':
             for test_case_info in result.failed_test_cases_info:
                 handle_failed_suite(test_case_info.logger,
                                     test_case_info.tempdir,
-                                    test_case_info.vpp_pid)
+                                    test_case_info.vpp_pid,
+                                    config.vpp)
                 if test_case_info in result.core_crash_test_cases_info:
                     check_and_handle_core(test_case_info.vpp_bin_path,
                                           test_case_info.tempdir,
