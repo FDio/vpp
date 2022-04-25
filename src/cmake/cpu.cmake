@@ -56,6 +56,12 @@ endif()
 ##############################################################################
 # CPU optimizations and multiarch support
 ##############################################################################
+
+check_c_compiler_flag("-march=native" compiler_flag_march_native)
+if(compiler_flag_march_native)
+  option(VPP_BUILD_NATIVE_ONLY "Build only for native CPU." OFF)
+endif()
+
 macro(add_vpp_march_variant v)
   cmake_parse_arguments(ARG
     "OFF"
@@ -93,6 +99,7 @@ macro(add_vpp_march_variant v)
       endif()
       if (VPP_MARCH_VARIANT_${uv})
         list(APPEND MARCH_VARIANTS "${v}\;${fs}")
+        list(APPEND MARCH_VARIANTS_NAMES "${v}")
       else()
         list(APPEND MARCH_VARIANTS_DISABLED "${v}\;${fs}")
       endif()
@@ -100,7 +107,10 @@ macro(add_vpp_march_variant v)
   endif()
 endmacro()
 
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
+if(VPP_BUILD_NATIVE_ONLY)
+  set(VPP_DEFAULT_MARCH_FLAGS -march=native)
+  set(MARCH_VARIANTS_NAMES "native-only")
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
   set(VPP_DEFAULT_MARCH_FLAGS -march=corei7 -mtune=corei7-avx)
 
   add_vpp_march_variant(hsw
