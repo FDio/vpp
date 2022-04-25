@@ -60,6 +60,7 @@ extern void ip_neighbor_probe_dst (u32 sw_if_index,
 
 extern void ip_neighbor_mark (ip_address_family_t af);
 extern void ip_neighbor_sweep (ip_address_family_t af);
+extern walk_rc_t ip_neighbor_mark_one (index_t ipni, void *ctx);
 
 /**
  * From the watcher to the API to publish a new neighbor

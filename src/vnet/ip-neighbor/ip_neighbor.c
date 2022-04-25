@@ -1204,7 +1204,7 @@ ip_neighbor_flush (ip_address_family_t af, u32 sw_if_index)
   vec_free (ipnis);
 }
 
-static walk_rc_t
+walk_rc_t
 ip_neighbor_mark_one (index_t ipni, void *ctx)
 {
   ip_neighbor_t *ipn;
