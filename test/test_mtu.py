@@ -24,7 +24,8 @@ from util import reassemble4
 
 
 class TestMTU(VppTestCase):
-    """ MTU Test Case """
+    """MTU Test Case"""
+
     maxDiff = None
 
     @classmethod
@@ -62,7 +63,7 @@ class TestMTU(VppTestCase):
         self.assertEqual(rx, expected)
 
     def payload(self, len):
-        return 'x' * len
+        return "x" * len
 
     def get_mtu(self, sw_if_index):
         rv = self.vapi.sw_interface_dump(sw_if_index=sw_if_index)
@@ -72,21 +73,19 @@ class TestMTU(VppTestCase):
         return 0
 
     def test_ip4_mtu(self):
-        """ IP4 MTU test """
+        """IP4 MTU test"""
 
         p_ether = Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
-        p_ip4 = IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4,
-                   flags='DF')
+        p_ip4 = IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4, flags="DF")
 
         current_mtu = self.get_mtu(self.pg1.sw_if_index)
 
-        p_payload = UDP(sport=1234, dport=1234) / self.payload(
-            current_mtu - 20 - 8)
+        p_payload = UDP(sport=1234, dport=1234) / self.payload(current_mtu - 20 - 8)
 
         p4 = p_ether / p_ip4 / p_payload
         p4_reply = p_ip4 / p_payload
         p4_reply.ttl -= 1
-        rx = self.send_and_expect(self.pg0, p4*11, self.pg1)
+        rx = self.send_and_expect(self.pg0, p4 * 11, self.pg1)
         for p in rx:
             self.validate(p[1], p4_reply)
 
@@ -95,16 +94,22 @@ class TestMTU(VppTestCase):
         self.assertEqual(576, self.get_mtu(self.pg1.sw_if_index))
 
         # Should fail. Too large MTU
-        p_icmp4 = ICMP(type='dest-unreach', code='fragmentation-needed',
-                       nexthopmtu=576, chksum=0x2dbb)
-        icmp4_reply = (IP(src=self.pg0.local_ip4,
-                          dst=self.pg0.remote_ip4,
-                          ttl=254, len=576, id=0) /
-                       p_icmp4 / p_ip4 / p_payload)
+        p_icmp4 = ICMP(
+            type="dest-unreach",
+            code="fragmentation-needed",
+            nexthopmtu=576,
+            chksum=0x2DBB,
+        )
+        icmp4_reply = (
+            IP(src=self.pg0.local_ip4, dst=self.pg0.remote_ip4, ttl=254, len=576, id=0)
+            / p_icmp4
+            / p_ip4
+            / p_payload
+        )
         n = icmp4_reply.__class__(icmp4_reply)
         s = bytes(icmp4_reply)
         icmp4_reply = s[0:576]
-        rx = self.send_and_expect_some(self.pg0, p4*11, self.pg0)
+        rx = self.send_and_expect_some(self.pg0, p4 * 11, self.pg0)
         for p in rx:
             # p.show2()
             # n.show2()
@@ -112,8 +117,7 @@ class TestMTU(VppTestCase):
 
         # Now with DF off. Expect fragments.
         # First go with 1500 byte packets.
-        p_payload = UDP(sport=1234, dport=1234) / self.payload(
-            1500 - 20 - 8)
+        p_payload = UDP(sport=1234, dport=1234) / self.payload(1500 - 20 - 8)
         p4 = p_ether / p_ip4 / p_payload
         p4.flags = 0
         p4_reply = p_ip4 / p_payload
@@ -121,13 +125,13 @@ class TestMTU(VppTestCase):
         p4_reply.flags = 0
         p4_reply.id = 256
         self.pg_enable_capture()
-        self.pg0.add_stream(p4*1)
+        self.pg0.add_stream(p4 * 1)
         self.pg_start()
         rx = self.pg1.get_capture(3)
         reass_pkt = reassemble4(rx)
         self.validate(reass_pkt, p4_reply)
 
-        '''
+        """
         # Now what happens with a 9K frame
         p_payload = UDP(sport=1234, dport=1234) / self.payload(
             current_mtu - 20 - 8)
@@ -146,27 +150,25 @@ class TestMTU(VppTestCase):
         reass_pkt.show2()
         p4_reply.show2()
         self.validate(reass_pkt, p4_reply)
-        '''
+        """
 
         # Reset MTU
-        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index,
-                                       [current_mtu, 0, 0, 0])
+        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, [current_mtu, 0, 0, 0])
 
     def test_ip6_mtu(self):
-        """ IP6 MTU test """
+        """IP6 MTU test"""
 
         current_mtu = self.get_mtu(self.pg1.sw_if_index)
 
         p_ether = Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
         p_ip6 = IPv6(src=self.pg0.remote_ip6, dst=self.pg1.remote_ip6)
 
-        p_payload = UDP(sport=1234, dport=1234) / self.payload(
-            current_mtu - 40 - 8)
+        p_payload = UDP(sport=1234, dport=1234) / self.payload(current_mtu - 40 - 8)
 
         p6 = p_ether / p_ip6 / p_payload
         p6_reply = p_ip6 / p_payload
         p6_reply.hlim -= 1
-        rx = self.send_and_expect(self.pg0, p6*9, self.pg1)
+        rx = self.send_and_expect(self.pg0, p6 * 9, self.pg1)
         for p in rx:
             self.validate(p[1], p6_reply)
 
@@ -175,24 +177,25 @@ class TestMTU(VppTestCase):
         self.assertEqual(1280, self.get_mtu(self.pg1.sw_if_index))
 
         # Should fail. Too large MTU
-        p_icmp6 = ICMPv6PacketTooBig(mtu=1280, cksum=0x4c7a)
-        icmp6_reply = (IPv6(src=self.pg0.local_ip6,
-                            dst=self.pg0.remote_ip6,
-                            hlim=255, plen=1240) /
-                       p_icmp6 / p_ip6 / p_payload)
+        p_icmp6 = ICMPv6PacketTooBig(mtu=1280, cksum=0x4C7A)
+        icmp6_reply = (
+            IPv6(src=self.pg0.local_ip6, dst=self.pg0.remote_ip6, hlim=255, plen=1240)
+            / p_icmp6
+            / p_ip6
+            / p_payload
+        )
         icmp6_reply[2].hlim -= 1
         n = icmp6_reply.__class__(icmp6_reply)
         s = bytes(icmp6_reply)
         icmp6_reply_str = s[0:1280]
 
-        rx = self.send_and_expect_some(self.pg0, p6*9, self.pg0)
+        rx = self.send_and_expect_some(self.pg0, p6 * 9, self.pg0)
         for p in rx:
             self.validate_bytes(bytes(p[1]), icmp6_reply_str)
 
         # Reset MTU
-        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index,
-                                       [current_mtu, 0, 0, 0])
+        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, [current_mtu, 0, 0, 0])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)

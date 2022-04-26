@@ -5,12 +5,27 @@ import unittest
 from config import config
 from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, \
-    VppMplsTable, VppIpMRoute, VppMRoutePath, VppIpTable, \
-    MPLS_LABEL_INVALID, \
-    VppMplsLabel, FibPathProto, FibPathType
-from vpp_bier import BIER_HDR_PAYLOAD, VppBierImp, VppBierDispEntry, \
-    VppBierDispTable, VppBierTable, VppBierTableID, VppBierRoute
+from vpp_ip_route import (
+    VppIpRoute,
+    VppRoutePath,
+    VppMplsTable,
+    VppIpMRoute,
+    VppMRoutePath,
+    VppIpTable,
+    MPLS_LABEL_INVALID,
+    VppMplsLabel,
+    FibPathProto,
+    FibPathType,
+)
+from vpp_bier import (
+    BIER_HDR_PAYLOAD,
+    VppBierImp,
+    VppBierDispEntry,
+    VppBierDispTable,
+    VppBierTable,
+    VppBierTableID,
+    VppBierRoute,
+)
 from vpp_udp_encap import VppUdpEncap
 from vpp_papi import VppEnum
 
@@ -26,10 +41,10 @@ NUM_PKTS = 67
 
 
 class TestBFIB(VppTestCase):
-    """ BIER FIB Test Case """
+    """BIER FIB Test Case"""
 
     def test_bfib(self):
-        """ BFIB Unit Tests """
+        """BFIB Unit Tests"""
         error = self.vapi.cli("test bier")
 
         if error:
@@ -38,7 +53,7 @@ class TestBFIB(VppTestCase):
 
 
 class TestBier(VppTestCase):
-    """ BIER Test Case """
+    """BIER Test Case"""
 
     def setUp(self):
         super(TestBier, self).setUp()
@@ -86,16 +101,17 @@ class TestBier(VppTestCase):
         #
         # A packet with no bits set gets dropped
         #
-        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-             MPLS(label=77, ttl=255) /
-             BIER(length=hdr_len_id) /
-             IPv6(src=self.pg0.remote_ip6, dst=self.pg0.remote_ip6) /
-             UDP(sport=1234, dport=1234) /
-             Raw())
+        p = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / MPLS(label=77, ttl=255)
+            / BIER(length=hdr_len_id)
+            / IPv6(src=self.pg0.remote_ip6, dst=self.pg0.remote_ip6)
+            / UDP(sport=1234, dport=1234)
+            / Raw()
+        )
         pkts = [p]
 
-        self.send_and_assert_no_replies(self.pg0, pkts,
-                                        "Empty Bit-String")
+        self.send_and_assert_no_replies(self.pg0, pkts, "Empty Bit-String")
 
         #
         # Add a BIER route for each bit-position in the table via a different
@@ -104,19 +120,32 @@ class TestBier(VppTestCase):
         #
         nh_routes = []
         bier_routes = []
-        for i in range(1, max_bp+1):
+        for i in range(1, max_bp + 1):
             nh = "10.0.%d.%d" % (i / 255, i % 255)
             nh_routes.append(
-                VppIpRoute(self, nh, 32,
-                           [VppRoutePath(self.pg1.remote_ip4,
-                                         self.pg1.sw_if_index,
-                                         labels=[VppMplsLabel(2000+i)])]))
+                VppIpRoute(
+                    self,
+                    nh,
+                    32,
+                    [
+                        VppRoutePath(
+                            self.pg1.remote_ip4,
+                            self.pg1.sw_if_index,
+                            labels=[VppMplsLabel(2000 + i)],
+                        )
+                    ],
+                )
+            )
             nh_routes[-1].add_vpp_config()
 
             bier_routes.append(
-                VppBierRoute(self, bti, i,
-                             [VppRoutePath(nh, 0xffffffff,
-                                           labels=[VppMplsLabel(100+i)])]))
+                VppBierRoute(
+                    self,
+                    bti,
+                    i,
+                    [VppRoutePath(nh, 0xFFFFFFFF, labels=[VppMplsLabel(100 + i)])],
+                )
+            )
             bier_routes[-1].add_vpp_config()
 
         #
@@ -125,13 +154,14 @@ class TestBier(VppTestCase):
         pkt_sizes = [64, 1400]
 
         for pkt_size in pkt_sizes:
-            p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-                 MPLS(label=77, ttl=255) /
-                 BIER(length=hdr_len_id,
-                      BitString=scapy.compat.chb(255)*n_bytes) /
-                 IPv6(src=self.pg0.remote_ip6, dst=self.pg0.remote_ip6) /
-                 UDP(sport=1234, dport=1234) /
-                 Raw(scapy.compat.chb(5) * pkt_size))
+            p = (
+                Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+                / MPLS(label=77, ttl=255)
+                / BIER(length=hdr_len_id, BitString=scapy.compat.chb(255) * n_bytes)
+                / IPv6(src=self.pg0.remote_ip6, dst=self.pg0.remote_ip6)
+                / UDP(sport=1234, dport=1234)
+                / Raw(scapy.compat.chb(5) * pkt_size)
+            )
             pkts = p
 
             self.pg0.add_stream(pkts)
@@ -150,7 +180,7 @@ class TestBier(VppTestCase):
                 bp = olabel.label - 2000
 
                 blabel = olabel[MPLS].payload
-                self.assertEqual(blabel.label, 100+bp)
+                self.assertEqual(blabel.label, 100 + bp)
                 self.assertEqual(blabel.ttl, 254)
 
                 bier_hdr = blabel[MPLS].payload
@@ -165,11 +195,11 @@ class TestBier(VppTestCase):
                 self.assertEqual(bier_hdr.Proto, 5)
 
                 # The bit-string should consist only of the BP given by i.
-                byte_array = [b'\0'] * (n_bytes)
+                byte_array = [b"\0"] * (n_bytes)
                 byte_val = scapy.compat.chb(1 << (bp - 1) % 8)
                 byte_pos = n_bytes - (((bp - 1) // 8) + 1)
                 byte_array[byte_pos] = byte_val
-                bitstring = b''.join(byte_array)
+                bitstring = b"".join(byte_array)
 
                 self.assertEqual(len(bitstring), len(bier_hdr.BitString))
                 self.assertEqual(bitstring, bier_hdr.BitString)
@@ -223,39 +253,55 @@ class TestBier(VppTestCase):
         #
         pkts = []
         for ii in range(257):
-            pkts.append((Ether(dst=self.pg0.local_mac,
-                               src=self.pg0.remote_mac) /
-                         MPLS(label=77, ttl=255) /
-                         BIER(length=BIERLength.BIER_LEN_64,
-                              entropy=ii,
-                              BitString=scapy.compat.chb(255)*16) /
-                         IPv6(src=self.pg0.remote_ip6,
-                              dst=self.pg0.remote_ip6) /
-                         UDP(sport=1234, dport=1234) /
-                         Raw()))
+            pkts.append(
+                (
+                    Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+                    / MPLS(label=77, ttl=255)
+                    / BIER(
+                        length=BIERLength.BIER_LEN_64,
+                        entropy=ii,
+                        BitString=scapy.compat.chb(255) * 16,
+                    )
+                    / IPv6(src=self.pg0.remote_ip6, dst=self.pg0.remote_ip6)
+                    / UDP(sport=1234, dport=1234)
+                    / Raw()
+                )
+            )
 
         #
         # 4 next hops
         #
-        nhs = [{'ip': "10.0.0.1", 'label': 201},
-               {'ip': "10.0.0.2", 'label': 202},
-               {'ip': "10.0.0.3", 'label': 203},
-               {'ip': "10.0.0.4", 'label': 204}]
+        nhs = [
+            {"ip": "10.0.0.1", "label": 201},
+            {"ip": "10.0.0.2", "label": 202},
+            {"ip": "10.0.0.3", "label": 203},
+            {"ip": "10.0.0.4", "label": 204},
+        ]
 
         for nh in nhs:
             ipr = VppIpRoute(
-                self, nh['ip'], 32,
-                [VppRoutePath(self.pg1.remote_ip4,
-                              self.pg1.sw_if_index,
-                              labels=[VppMplsLabel(nh['label'])])])
+                self,
+                nh["ip"],
+                32,
+                [
+                    VppRoutePath(
+                        self.pg1.remote_ip4,
+                        self.pg1.sw_if_index,
+                        labels=[VppMplsLabel(nh["label"])],
+                    )
+                ],
+            )
             ipr.add_vpp_config()
 
         bier_route = VppBierRoute(
-            self, bti, 1,
-            [VppRoutePath(nhs[0]['ip'], 0xffffffff,
-                          labels=[VppMplsLabel(101)]),
-             VppRoutePath(nhs[1]['ip'], 0xffffffff,
-                          labels=[VppMplsLabel(101)])])
+            self,
+            bti,
+            1,
+            [
+                VppRoutePath(nhs[0]["ip"], 0xFFFFFFFF, labels=[VppMplsLabel(101)]),
+                VppRoutePath(nhs[1]["ip"], 0xFFFFFFFF, labels=[VppMplsLabel(101)]),
+            ],
+        )
         bier_route.add_vpp_config()
 
         rx = self.send_and_expect(self.pg0, pkts, self.pg1)
@@ -264,37 +310,38 @@ class TestBier(VppTestCase):
         # we should have recieved a packet from each neighbor
         #
         for nh in nhs[:2]:
-            self.assertTrue(sum(p[MPLS].label == nh['label'] for p in rx))
+            self.assertTrue(sum(p[MPLS].label == nh["label"] for p in rx))
 
         #
         # add the other paths
         #
         bier_route.update_paths(
-            [VppRoutePath(nhs[0]['ip'], 0xffffffff,
-                          labels=[VppMplsLabel(101)]),
-             VppRoutePath(nhs[1]['ip'], 0xffffffff,
-                          labels=[VppMplsLabel(101)]),
-             VppRoutePath(nhs[2]['ip'], 0xffffffff,
-                          labels=[VppMplsLabel(101)]),
-             VppRoutePath(nhs[3]['ip'], 0xffffffff,
-                          labels=[VppMplsLabel(101)])])
+            [
+                VppRoutePath(nhs[0]["ip"], 0xFFFFFFFF, labels=[VppMplsLabel(101)]),
+                VppRoutePath(nhs[1]["ip"], 0xFFFFFFFF, labels=[VppMplsLabel(101)]),
+                VppRoutePath(nhs[2]["ip"], 0xFFFFFFFF, labels=[VppMplsLabel(101)]),
+                VppRoutePath(nhs[3]["ip"], 0xFFFFFFFF, labels=[VppMplsLabel(101)]),
+            ]
+        )
 
         rx = self.send_and_expect(self.pg0, pkts, self.pg1)
 
         for nh in nhs:
-            self.assertTrue(sum(p[MPLS].label == nh['label'] for p in rx))
+            self.assertTrue(sum(p[MPLS].label == nh["label"] for p in rx))
 
         #
         # remove first two paths
         #
-        bier_route.remove_path(VppRoutePath(nhs[0]['ip'], 0xffffffff,
-                                            labels=[VppMplsLabel(101)]))
-        bier_route.remove_path(VppRoutePath(nhs[1]['ip'], 0xffffffff,
-                                            labels=[VppMplsLabel(101)]))
+        bier_route.remove_path(
+            VppRoutePath(nhs[0]["ip"], 0xFFFFFFFF, labels=[VppMplsLabel(101)])
+        )
+        bier_route.remove_path(
+            VppRoutePath(nhs[1]["ip"], 0xFFFFFFFF, labels=[VppMplsLabel(101)])
+        )
 
         rx = self.send_and_expect(self.pg0, pkts, self.pg1)
         for nh in nhs[2:]:
-            self.assertTrue(sum(p[MPLS].label == nh['label'] for p in rx))
+            self.assertTrue(sum(p[MPLS].label == nh["label"] for p in rx))
 
         #
         # remove the last of the paths, deleteing the entry
@@ -321,23 +368,39 @@ class TestBier(VppTestCase):
         #
         nh1 = "10.0.0.1"
         nh2 = "10.0.0.2"
-        ip_route_1 = VppIpRoute(self, nh1, 32,
-                                [VppRoutePath(self.pg1.remote_ip4,
-                                              self.pg1.sw_if_index,
-                                              labels=[VppMplsLabel(2001)])])
-        ip_route_2 = VppIpRoute(self, nh2, 32,
-                                [VppRoutePath(self.pg1.remote_ip4,
-                                              self.pg1.sw_if_index,
-                                              labels=[VppMplsLabel(2002)])])
+        ip_route_1 = VppIpRoute(
+            self,
+            nh1,
+            32,
+            [
+                VppRoutePath(
+                    self.pg1.remote_ip4,
+                    self.pg1.sw_if_index,
+                    labels=[VppMplsLabel(2001)],
+                )
+            ],
+        )
+        ip_route_2 = VppIpRoute(
+            self,
+            nh2,
+            32,
+            [
+                VppRoutePath(
+                    self.pg1.remote_ip4,
+                    self.pg1.sw_if_index,
+                    labels=[VppMplsLabel(2002)],
+                )
+            ],
+        )
         ip_route_1.add_vpp_config()
         ip_route_2.add_vpp_config()
 
-        bier_route_1 = VppBierRoute(self, bti, 1,
-                                    [VppRoutePath(nh1, 0xffffffff,
-                                                  labels=[VppMplsLabel(101)])])
-        bier_route_2 = VppBierRoute(self, bti, 2,
-                                    [VppRoutePath(nh2, 0xffffffff,
-                                                  labels=[VppMplsLabel(102)])])
+        bier_route_1 = VppBierRoute(
+            self, bti, 1, [VppRoutePath(nh1, 0xFFFFFFFF, labels=[VppMplsLabel(101)])]
+        )
+        bier_route_2 = VppBierRoute(
+            self, bti, 2, [VppRoutePath(nh2, 0xFFFFFFFF, labels=[VppMplsLabel(102)])]
+        )
         bier_route_1.add_vpp_config()
         bier_route_2.add_vpp_config()
 
@@ -353,25 +416,33 @@ class TestBier(VppTestCase):
         route_ing_232_1_1_1 = VppIpMRoute(
             self,
             "0.0.0.0",
-            "232.1.1.1", 32,
+            "232.1.1.1",
+            32,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
-            paths=[VppMRoutePath(self.pg0.sw_if_index,
-                                 MRouteItfFlags.MFIB_API_ITF_FLAG_ACCEPT),
-                   VppMRoutePath(0xffffffff,
-                                 MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD,
-                                 proto=FibPathProto.FIB_PATH_NH_PROTO_BIER,
-                                 type=FibPathType.FIB_PATH_TYPE_BIER_IMP,
-                                 bier_imp=bi.bi_index)])
+            paths=[
+                VppMRoutePath(
+                    self.pg0.sw_if_index, MRouteItfFlags.MFIB_API_ITF_FLAG_ACCEPT
+                ),
+                VppMRoutePath(
+                    0xFFFFFFFF,
+                    MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_BIER,
+                    type=FibPathType.FIB_PATH_TYPE_BIER_IMP,
+                    bier_imp=bi.bi_index,
+                ),
+            ],
+        )
         route_ing_232_1_1_1.add_vpp_config()
 
         #
         # inject an IP packet. We expect it to be BIER encapped and
         # replicated.
         #
-        p = (Ether(dst=self.pg0.local_mac,
-                   src=self.pg0.remote_mac) /
-             IP(src="1.1.1.1", dst="232.1.1.1") /
-             UDP(sport=1234, dport=1234))
+        p = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IP(src="1.1.1.1", dst="232.1.1.1")
+            / UDP(sport=1234, dport=1234)
+        )
 
         self.pg0.add_stream([p])
         self.pg_enable_capture(self.pg_interfaces)
@@ -425,20 +496,33 @@ class TestBier(VppTestCase):
         # BIER route in table that's for-us
         #
         bier_route_1 = VppBierRoute(
-            self, bti, 1,
-            [VppRoutePath("0.0.0.0",
-                          0xffffffff,
-                          proto=FibPathProto.FIB_PATH_NH_PROTO_BIER,
-                          nh_table_id=8)])
+            self,
+            bti,
+            1,
+            [
+                VppRoutePath(
+                    "0.0.0.0",
+                    0xFFFFFFFF,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_BIER,
+                    nh_table_id=8,
+                )
+            ],
+        )
         bier_route_1.add_vpp_config()
 
         #
         # An entry in the disposition table
         #
-        bier_de_1 = VppBierDispEntry(self, bdt.id, 99,
-                                     BIER_HDR_PAYLOAD.BIER_HDR_PROTO_IPV4,
-                                     FibPathProto.FIB_PATH_NH_PROTO_BIER,
-                                     "0.0.0.0", 0, rpf_id=8192)
+        bier_de_1 = VppBierDispEntry(
+            self,
+            bdt.id,
+            99,
+            BIER_HDR_PAYLOAD.BIER_HDR_PROTO_IPV4,
+            FibPathProto.FIB_PATH_NH_PROTO_BIER,
+            "0.0.0.0",
+            0,
+            rpf_id=8192,
+        )
         bier_de_1.add_vpp_config()
 
         #
@@ -447,48 +531,68 @@ class TestBier(VppTestCase):
         route_eg_232_1_1_1 = VppIpMRoute(
             self,
             "0.0.0.0",
-            "232.1.1.1", 32,
+            "232.1.1.1",
+            32,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
-            paths=[VppMRoutePath(self.pg1.sw_if_index,
-                                 MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD)])
+            paths=[
+                VppMRoutePath(
+                    self.pg1.sw_if_index, MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD
+                )
+            ],
+        )
         route_eg_232_1_1_1.add_vpp_config()
         route_eg_232_1_1_1.update_rpf_id(8192)
 
         #
         # A packet with all bits set gets spat out to BP:1
         #
-        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-             MPLS(label=77, ttl=255) /
-             BIER(length=BIERLength.BIER_LEN_256,
-                  BitString=scapy.compat.chb(255)*32,
-                  BFRID=99) /
-             IP(src="1.1.1.1", dst="232.1.1.1") /
-             UDP(sport=1234, dport=1234) /
-             Raw())
+        p = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / MPLS(label=77, ttl=255)
+            / BIER(
+                length=BIERLength.BIER_LEN_256,
+                BitString=scapy.compat.chb(255) * 32,
+                BFRID=99,
+            )
+            / IP(src="1.1.1.1", dst="232.1.1.1")
+            / UDP(sport=1234, dport=1234)
+            / Raw()
+        )
 
         self.send_and_expect(self.pg0, [p], self.pg1)
 
         #
         # A packet that does not match the Disposition entry gets dropped
         #
-        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-             MPLS(label=77, ttl=255) /
-             BIER(length=BIERLength.BIER_LEN_256,
-                  BitString=scapy.compat.chb(255)*32,
-                  BFRID=77) /
-             IP(src="1.1.1.1", dst="232.1.1.1") /
-             UDP(sport=1234, dport=1234) /
-             Raw())
-        self.send_and_assert_no_replies(self.pg0, p*2,
-                                        "no matching disposition entry")
+        p = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / MPLS(label=77, ttl=255)
+            / BIER(
+                length=BIERLength.BIER_LEN_256,
+                BitString=scapy.compat.chb(255) * 32,
+                BFRID=77,
+            )
+            / IP(src="1.1.1.1", dst="232.1.1.1")
+            / UDP(sport=1234, dport=1234)
+            / Raw()
+        )
+        self.send_and_assert_no_replies(
+            self.pg0, p * 2, "no matching disposition entry"
+        )
 
         #
         # Add the default route to the disposition table
         #
-        bier_de_2 = VppBierDispEntry(self, bdt.id, 0,
-                                     BIER_HDR_PAYLOAD.BIER_HDR_PROTO_IPV4,
-                                     FibPathProto.FIB_PATH_NH_PROTO_BIER,
-                                     "0.0.0.0", 0, rpf_id=8192)
+        bier_de_2 = VppBierDispEntry(
+            self,
+            bdt.id,
+            0,
+            BIER_HDR_PAYLOAD.BIER_HDR_PROTO_IPV4,
+            FibPathProto.FIB_PATH_NH_PROTO_BIER,
+            "0.0.0.0",
+            0,
+            rpf_id=8192,
+        )
         bier_de_2.add_vpp_config()
 
         #
@@ -506,30 +610,41 @@ class TestBier(VppTestCase):
         route_eg_232_1_1_2 = VppIpMRoute(
             self,
             "0.0.0.0",
-            "232.1.1.2", 32,
+            "232.1.1.2",
+            32,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
-            paths=[VppMRoutePath(0xffffffff,
-                                 MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD,
-                                 proto=DpoProto.DPO_PROTO_BIER,
-                                 type=FibPathType.FIB_PATH_TYPE_BIER_IMP,
-                                 bier_imp=bi.bi_index),
-                   VppMRoutePath(self.pg1.sw_if_index,
-                                 MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD)])
+            paths=[
+                VppMRoutePath(
+                    0xFFFFFFFF,
+                    MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD,
+                    proto=DpoProto.DPO_PROTO_BIER,
+                    type=FibPathType.FIB_PATH_TYPE_BIER_IMP,
+                    bier_imp=bi.bi_index,
+                ),
+                VppMRoutePath(
+                    self.pg1.sw_if_index, MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD
+                ),
+            ],
+        )
         route_eg_232_1_1_2.add_vpp_config()
         route_eg_232_1_1_2.update_rpf_id(8192)
 
-        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-             MPLS(label=77, ttl=255) /
-             BIER(length=BIERLength.BIER_LEN_256,
-                  BitString=scapy.compat.chb(255)*32,
-                  BFRID=77) /
-             IP(src="1.1.1.1", dst="232.1.1.2") /
-             UDP(sport=1234, dport=1234) /
-             Raw())
+        p = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / MPLS(label=77, ttl=255)
+            / BIER(
+                length=BIERLength.BIER_LEN_256,
+                BitString=scapy.compat.chb(255) * 32,
+                BFRID=77,
+            )
+            / IP(src="1.1.1.1", dst="232.1.1.2")
+            / UDP(sport=1234, dport=1234)
+            / Raw()
+        )
         self.send_and_expect(self.pg0, [p], self.pg1)
 
     def bier_e2e(self, hdr_len_id, n_bytes, max_bp):
-        """ BIER end-to-end"""
+        """BIER end-to-end"""
 
         MRouteItfFlags = VppEnum.vl_api_mfib_itf_flags_t
         MRouteEntryFlags = VppEnum.vl_api_mfib_entry_flags_t
@@ -541,9 +656,9 @@ class TestBier(VppTestCase):
         bt = VppBierTable(self, bti, 77)
         bt.add_vpp_config()
 
-        lowest = [b'\0'] * (n_bytes)
+        lowest = [b"\0"] * (n_bytes)
         lowest[-1] = scapy.compat.chb(1)
-        highest = [b'\0'] * (n_bytes)
+        highest = [b"\0"] * (n_bytes)
         highest[0] = scapy.compat.chb(128)
 
         #
@@ -560,28 +675,42 @@ class TestBier(VppTestCase):
         route_ing_232_1_1_1 = VppIpMRoute(
             self,
             "0.0.0.0",
-            "232.1.1.1", 32,
+            "232.1.1.1",
+            32,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
-            paths=[VppMRoutePath(self.pg0.sw_if_index,
-                                 MRouteItfFlags.MFIB_API_ITF_FLAG_ACCEPT),
-                   VppMRoutePath(0xffffffff,
-                                 MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD,
-                                 proto=FibPathProto.FIB_PATH_NH_PROTO_BIER,
-                                 type=FibPathType.FIB_PATH_TYPE_BIER_IMP,
-                                 bier_imp=bi_low.bi_index)])
+            paths=[
+                VppMRoutePath(
+                    self.pg0.sw_if_index, MRouteItfFlags.MFIB_API_ITF_FLAG_ACCEPT
+                ),
+                VppMRoutePath(
+                    0xFFFFFFFF,
+                    MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_BIER,
+                    type=FibPathType.FIB_PATH_TYPE_BIER_IMP,
+                    bier_imp=bi_low.bi_index,
+                ),
+            ],
+        )
         route_ing_232_1_1_1.add_vpp_config()
         route_ing_232_1_1_2 = VppIpMRoute(
             self,
             "0.0.0.0",
-            "232.1.1.2", 32,
+            "232.1.1.2",
+            32,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
-            paths=[VppMRoutePath(self.pg0.sw_if_index,
-                                 MRouteItfFlags.MFIB_API_ITF_FLAG_ACCEPT),
-                   VppMRoutePath(0xffffffff,
-                                 MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD,
-                                 proto=FibPathProto.FIB_PATH_NH_PROTO_BIER,
-                                 type=FibPathType.FIB_PATH_TYPE_BIER_IMP,
-                                 bier_imp=bi_high.bi_index)])
+            paths=[
+                VppMRoutePath(
+                    self.pg0.sw_if_index, MRouteItfFlags.MFIB_API_ITF_FLAG_ACCEPT
+                ),
+                VppMRoutePath(
+                    0xFFFFFFFF,
+                    MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_BIER,
+                    type=FibPathType.FIB_PATH_TYPE_BIER_IMP,
+                    bier_imp=bi_high.bi_index,
+                ),
+            ],
+        )
         route_ing_232_1_1_2.add_vpp_config()
 
         #
@@ -595,33 +724,59 @@ class TestBier(VppTestCase):
         # disp table 8.
         #
         bier_route_1 = VppBierRoute(
-            self, bti, 1,
-            [VppRoutePath("0.0.0.0",
-                          0xffffffff,
-                          proto=FibPathProto.FIB_PATH_NH_PROTO_BIER,
-                          nh_table_id=8)])
+            self,
+            bti,
+            1,
+            [
+                VppRoutePath(
+                    "0.0.0.0",
+                    0xFFFFFFFF,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_BIER,
+                    nh_table_id=8,
+                )
+            ],
+        )
         bier_route_1.add_vpp_config()
         bier_route_max = VppBierRoute(
-            self, bti, max_bp,
-            [VppRoutePath("0.0.0.0",
-                          0xffffffff,
-                          proto=FibPathProto.FIB_PATH_NH_PROTO_BIER,
-                          nh_table_id=8)])
+            self,
+            bti,
+            max_bp,
+            [
+                VppRoutePath(
+                    "0.0.0.0",
+                    0xFFFFFFFF,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_BIER,
+                    nh_table_id=8,
+                )
+            ],
+        )
         bier_route_max.add_vpp_config()
 
         #
         # An entry in the disposition table for sender 333
         #  lookup in VRF 10
         #
-        bier_de_1 = VppBierDispEntry(self, bdt.id, 333,
-                                     BIER_HDR_PAYLOAD.BIER_HDR_PROTO_IPV4,
-                                     FibPathProto.FIB_PATH_NH_PROTO_BIER,
-                                     "0.0.0.0", 10, rpf_id=8192)
+        bier_de_1 = VppBierDispEntry(
+            self,
+            bdt.id,
+            333,
+            BIER_HDR_PAYLOAD.BIER_HDR_PROTO_IPV4,
+            FibPathProto.FIB_PATH_NH_PROTO_BIER,
+            "0.0.0.0",
+            10,
+            rpf_id=8192,
+        )
         bier_de_1.add_vpp_config()
-        bier_de_1 = VppBierDispEntry(self, bdt.id, 334,
-                                     BIER_HDR_PAYLOAD.BIER_HDR_PROTO_IPV4,
-                                     FibPathProto.FIB_PATH_NH_PROTO_BIER,
-                                     "0.0.0.0", 10, rpf_id=8193)
+        bier_de_1 = VppBierDispEntry(
+            self,
+            bdt.id,
+            334,
+            BIER_HDR_PAYLOAD.BIER_HDR_PROTO_IPV4,
+            FibPathProto.FIB_PATH_NH_PROTO_BIER,
+            "0.0.0.0",
+            10,
+            rpf_id=8193,
+        )
         bier_de_1.add_vpp_config()
 
         #
@@ -631,21 +786,31 @@ class TestBier(VppTestCase):
         route_eg_232_1_1_1 = VppIpMRoute(
             self,
             "0.0.0.0",
-            "232.1.1.1", 32,
+            "232.1.1.1",
+            32,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
             table_id=10,
-            paths=[VppMRoutePath(self.pg1.sw_if_index,
-                                 MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD)])
+            paths=[
+                VppMRoutePath(
+                    self.pg1.sw_if_index, MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD
+                )
+            ],
+        )
         route_eg_232_1_1_1.add_vpp_config()
         route_eg_232_1_1_1.update_rpf_id(8192)
         route_eg_232_1_1_2 = VppIpMRoute(
             self,
             "0.0.0.0",
-            "232.1.1.2", 32,
+            "232.1.1.2",
+            32,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
             table_id=10,
-            paths=[VppMRoutePath(self.pg1.sw_if_index,
-                                 MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD)])
+            paths=[
+                VppMRoutePath(
+                    self.pg1.sw_if_index, MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD
+                )
+            ],
+        )
         route_eg_232_1_1_2.add_vpp_config()
         route_eg_232_1_1_2.update_rpf_id(8193)
 
@@ -654,49 +819,51 @@ class TestBier(VppTestCase):
         # replicated, then hit the disposition and be forwarded
         # out of VRF 10, i.e. on pg1
         #
-        p = (Ether(dst=self.pg0.local_mac,
-                   src=self.pg0.remote_mac) /
-             IP(src="1.1.1.1", dst="232.1.1.1") /
-             UDP(sport=1234, dport=1234) /
-             Raw(scapy.compat.chb(5) * 32))
+        p = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IP(src="1.1.1.1", dst="232.1.1.1")
+            / UDP(sport=1234, dport=1234)
+            / Raw(scapy.compat.chb(5) * 32)
+        )
 
-        rx = self.send_and_expect(self.pg0, p*NUM_PKTS, self.pg1)
+        rx = self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg1)
 
         self.assertEqual(rx[0][IP].src, "1.1.1.1")
         self.assertEqual(rx[0][IP].dst, "232.1.1.1")
 
-        p = (Ether(dst=self.pg0.local_mac,
-                   src=self.pg0.remote_mac) /
-             IP(src="1.1.1.1", dst="232.1.1.2") /
-             UDP(sport=1234, dport=1234) /
-             Raw(scapy.compat.chb(5) * 512))
+        p = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IP(src="1.1.1.1", dst="232.1.1.2")
+            / UDP(sport=1234, dport=1234)
+            / Raw(scapy.compat.chb(5) * 512)
+        )
 
-        rx = self.send_and_expect(self.pg0, p*NUM_PKTS, self.pg1)
+        rx = self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg1)
         self.assertEqual(rx[0][IP].src, "1.1.1.1")
         self.assertEqual(rx[0][IP].dst, "232.1.1.2")
 
     @unittest.skipUnless(config.extended, "part of extended tests")
     def test_bier_e2e_1024(self):
-        """ BIER end-to-end BSL:1024"""
+        """BIER end-to-end BSL:1024"""
         self.bier_e2e(BIERLength.BIER_LEN_1024, 128, 1024)
 
     @unittest.skipUnless(config.extended, "part of extended tests")
     def test_bier_e2e_512(self):
-        """ BIER end-to-end BSL:512"""
+        """BIER end-to-end BSL:512"""
         self.bier_e2e(BIERLength.BIER_LEN_512, 64, 512)
 
     @unittest.skipUnless(config.extended, "part of extended tests")
     def test_bier_e2e_256(self):
-        """ BIER end-to-end BSL:256"""
+        """BIER end-to-end BSL:256"""
         self.bier_e2e(BIERLength.BIER_LEN_256, 32, 256)
 
     @unittest.skipUnless(config.extended, "part of extended tests")
     def test_bier_e2e_128(self):
-        """ BIER end-to-end BSL:128"""
+        """BIER end-to-end BSL:128"""
         self.bier_e2e(BIERLength.BIER_LEN_128, 16, 128)
 
     def test_bier_e2e_64(self):
-        """ BIER end-to-end BSL:64"""
+        """BIER end-to-end BSL:64"""
         self.bier_e2e(BIERLength.BIER_LEN_64, 8, 64)
 
     def test_bier_head_o_udp(self):
@@ -716,24 +883,36 @@ class TestBier(VppTestCase):
         # 1 bit positions via 1 next hops
         #
         nh1 = "10.0.0.1"
-        ip_route = VppIpRoute(self, nh1, 32,
-                              [VppRoutePath(self.pg1.remote_ip4,
-                                            self.pg1.sw_if_index,
-                                            labels=[VppMplsLabel(2001)])])
+        ip_route = VppIpRoute(
+            self,
+            nh1,
+            32,
+            [
+                VppRoutePath(
+                    self.pg1.remote_ip4,
+                    self.pg1.sw_if_index,
+                    labels=[VppMplsLabel(2001)],
+                )
+            ],
+        )
         ip_route.add_vpp_config()
 
-        udp_encap = VppUdpEncap(self,
-                                self.pg0.local_ip4,
-                                nh1,
-                                330, 8138)
+        udp_encap = VppUdpEncap(self, self.pg0.local_ip4, nh1, 330, 8138)
         udp_encap.add_vpp_config()
 
         bier_route = VppBierRoute(
-            self, bti, 1,
-            [VppRoutePath("0.0.0.0",
-                          0xFFFFFFFF,
-                          type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
-                          next_hop_id=udp_encap.id)])
+            self,
+            bti,
+            1,
+            [
+                VppRoutePath(
+                    "0.0.0.0",
+                    0xFFFFFFFF,
+                    type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
+                    next_hop_id=udp_encap.id,
+                )
+            ],
+        )
         bier_route.add_vpp_config()
 
         #
@@ -741,9 +920,9 @@ class TestBier(VppTestCase):
         # only use the second, but creating 2 tests with a non-zero
         # value index in the route add
         #
-        bi = VppBierImp(self, bti, 333, scapy.compat.chb(0xff) * 32)
+        bi = VppBierImp(self, bti, 333, scapy.compat.chb(0xFF) * 32)
         bi.add_vpp_config()
-        bi2 = VppBierImp(self, bti, 334, scapy.compat.chb(0xff) * 32)
+        bi2 = VppBierImp(self, bti, 334, scapy.compat.chb(0xFF) * 32)
         bi2.add_vpp_config()
 
         #
@@ -752,24 +931,32 @@ class TestBier(VppTestCase):
         route_ing_232_1_1_1 = VppIpMRoute(
             self,
             "0.0.0.0",
-            "232.1.1.1", 32,
+            "232.1.1.1",
+            32,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
-            paths=[VppMRoutePath(self.pg0.sw_if_index,
-                                 MRouteItfFlags.MFIB_API_ITF_FLAG_ACCEPT),
-                   VppMRoutePath(0xffffffff,
-                                 MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD,
-                                 proto=FibPathProto.FIB_PATH_NH_PROTO_BIER,
-                                 type=FibPathType.FIB_PATH_TYPE_BIER_IMP,
-                                 bier_imp=bi2.bi_index)])
+            paths=[
+                VppMRoutePath(
+                    self.pg0.sw_if_index, MRouteItfFlags.MFIB_API_ITF_FLAG_ACCEPT
+                ),
+                VppMRoutePath(
+                    0xFFFFFFFF,
+                    MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_BIER,
+                    type=FibPathType.FIB_PATH_TYPE_BIER_IMP,
+                    bier_imp=bi2.bi_index,
+                ),
+            ],
+        )
         route_ing_232_1_1_1.add_vpp_config()
 
         #
         # inject a packet an IP. We expect it to be BIER and UDP encapped,
         #
-        p = (Ether(dst=self.pg0.local_mac,
-                   src=self.pg0.remote_mac) /
-             IP(src="1.1.1.1", dst="232.1.1.1") /
-             UDP(sport=1234, dport=1234))
+        p = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IP(src="1.1.1.1", dst="232.1.1.1")
+            / UDP(sport=1234, dport=1234)
+        )
 
         self.pg0.add_stream([p])
         self.pg_enable_capture(self.pg_interfaces)
@@ -813,20 +1000,33 @@ class TestBier(VppTestCase):
         # BIER route in table that's for-us
         #
         bier_route_1 = VppBierRoute(
-            self, bti, 1,
-            [VppRoutePath("0.0.0.0",
-                          0xffffffff,
-                          proto=FibPathProto.FIB_PATH_NH_PROTO_BIER,
-                          nh_table_id=8)])
+            self,
+            bti,
+            1,
+            [
+                VppRoutePath(
+                    "0.0.0.0",
+                    0xFFFFFFFF,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_BIER,
+                    nh_table_id=8,
+                )
+            ],
+        )
         bier_route_1.add_vpp_config()
 
         #
         # An entry in the disposition table
         #
-        bier_de_1 = VppBierDispEntry(self, bdt.id, 99,
-                                     BIER_HDR_PAYLOAD.BIER_HDR_PROTO_IPV4,
-                                     FibPathProto.FIB_PATH_NH_PROTO_BIER,
-                                     "0.0.0.0", 0, rpf_id=8192)
+        bier_de_1 = VppBierDispEntry(
+            self,
+            bdt.id,
+            99,
+            BIER_HDR_PAYLOAD.BIER_HDR_PROTO_IPV4,
+            FibPathProto.FIB_PATH_NH_PROTO_BIER,
+            "0.0.0.0",
+            0,
+            rpf_id=8192,
+        )
         bier_de_1.add_vpp_config()
 
         #
@@ -835,29 +1035,38 @@ class TestBier(VppTestCase):
         route_eg_232_1_1_1 = VppIpMRoute(
             self,
             "0.0.0.0",
-            "232.1.1.1", 32,
+            "232.1.1.1",
+            32,
             MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
-            paths=[VppMRoutePath(self.pg1.sw_if_index,
-                                 MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD)])
+            paths=[
+                VppMRoutePath(
+                    self.pg1.sw_if_index, MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD
+                )
+            ],
+        )
         route_eg_232_1_1_1.add_vpp_config()
         route_eg_232_1_1_1.update_rpf_id(8192)
 
         #
         # A packet with all bits set gets spat out to BP:1
         #
-        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-             IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4) /
-             UDP(sport=333, dport=8138) /
-             BIFT(sd=1, set=0, bsl=2, ttl=255) /
-             BIER(length=BIERLength.BIER_LEN_256,
-                  BitString=scapy.compat.chb(255)*32,
-                  BFRID=99) /
-             IP(src="1.1.1.1", dst="232.1.1.1") /
-             UDP(sport=1234, dport=1234) /
-             Raw())
+        p = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4)
+            / UDP(sport=333, dport=8138)
+            / BIFT(sd=1, set=0, bsl=2, ttl=255)
+            / BIER(
+                length=BIERLength.BIER_LEN_256,
+                BitString=scapy.compat.chb(255) * 32,
+                BFRID=99,
+            )
+            / IP(src="1.1.1.1", dst="232.1.1.1")
+            / UDP(sport=1234, dport=1234)
+            / Raw()
+        )
 
         rx = self.send_and_expect(self.pg0, [p], self.pg1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)

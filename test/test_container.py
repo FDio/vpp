@@ -24,7 +24,7 @@ class Conn(L4_Conn):
 
 @unittest.skipUnless(config.extended, "part of extended tests")
 class ContainerIntegrationTestCase(VppTestCase):
-    """ Container integration extended testcases """
+    """Container integration extended testcases"""
 
     @classmethod
     def setUpClass(cls):
@@ -43,22 +43,21 @@ class ContainerIntegrationTestCase(VppTestCase):
         super(ContainerIntegrationTestCase, cls).tearDownClass()
 
     def tearDown(self):
-        """Run standard test teardown and log various show commands
-        """
+        """Run standard test teardown and log various show commands"""
         super(ContainerIntegrationTestCase, self).tearDown()
 
     def show_commands_at_teardown(self):
         self.logger.info(self.vapi.cli("show ip neighbors"))
 
     def run_basic_conn_test(self, af, acl_side):
-        """ Basic connectivity test """
+        """Basic connectivity test"""
         conn1 = Conn(self, self.pg0, self.pg1, af, UDP, 42001, 4242)
         conn1.send_through(0)
         # the return packets should pass
         conn1.send_through(1)
 
     def run_negative_conn_test(self, af, acl_side):
-        """ Packets with local spoofed address """
+        """Packets with local spoofed address"""
         conn1 = Conn(self, self.pg0, self.pg1, af, UDP, 42001, 4242)
         try:
             p2 = conn1.send_through(0).command()
@@ -69,15 +68,15 @@ class ContainerIntegrationTestCase(VppTestCase):
         self.assert_equal(p2, None, ": packet should have been dropped")
 
     def test_0010_basic_conn_test(self):
-        """ IPv4 basic connectivity test """
+        """IPv4 basic connectivity test"""
         self.run_basic_conn_test(AF_INET, 0)
 
     def test_0011_basic_conn_test(self):
-        """ IPv6 basic connectivity test """
+        """IPv6 basic connectivity test"""
         self.run_basic_conn_test(AF_INET6, 0)
 
     def test_0050_loopback_prepare_test(self):
-        """ Create loopbacks overlapping with remote addresses """
+        """Create loopbacks overlapping with remote addresses"""
         self.create_loopback_interfaces(2)
         for i in range(2):
             intf = self.lo_interfaces[i]
@@ -90,47 +89,60 @@ class ContainerIntegrationTestCase(VppTestCase):
             intf.config_ip6()
 
     def test_0110_basic_conn_test(self):
-        """ IPv4 local-spoof connectivity test """
+        """IPv4 local-spoof connectivity test"""
         self.run_negative_conn_test(AF_INET, 0)
 
     def test_0111_basic_conn_test(self):
-        """ IPv6 local-spoof connectivity test """
+        """IPv6 local-spoof connectivity test"""
         self.run_negative_conn_test(AF_INET, 1)
 
     def test_0200_basic_conn_test(self):
-        """ Configure container commands """
+        """Configure container commands"""
         for i in range(2):
-            for addr in [self.pg_interfaces[i].remote_ip4,
-                         self.pg_interfaces[i].remote_ip6]:
-                self.vapi.ppcli("ip container " + addr + " " +
-                                self.pg_interfaces[i].name)
-                self.vapi.ppcli("stn rule address " + addr +
-                                " interface " + self.pg_interfaces[i].name)
+            for addr in [
+                self.pg_interfaces[i].remote_ip4,
+                self.pg_interfaces[i].remote_ip6,
+            ]:
+                self.vapi.ppcli(
+                    "ip container " + addr + " " + self.pg_interfaces[i].name
+                )
+                self.vapi.ppcli(
+                    "stn rule address "
+                    + addr
+                    + " interface "
+                    + self.pg_interfaces[i].name
+                )
 
     def test_0210_basic_conn_test(self):
-        """ IPv4 test after configuring container """
+        """IPv4 test after configuring container"""
         self.run_basic_conn_test(AF_INET, 0)
 
     def test_0211_basic_conn_test(self):
-        """ IPv6 test after configuring container """
+        """IPv6 test after configuring container"""
         self.run_basic_conn_test(AF_INET, 1)
 
     def test_0300_unconfigure_commands(self):
-        """ Unconfigure container commands """
+        """Unconfigure container commands"""
         for i in range(2):
-            for addr in [self.pg_interfaces[i].remote_ip4,
-                         self.pg_interfaces[i].remote_ip6]:
-                self.vapi.ppcli("ip container " + addr + " " +
-                                self.pg_interfaces[i].name +
-                                " del")
-                self.vapi.ppcli("stn rule address " + addr +
-                                " interface " + self.pg_interfaces[i].name +
-                                " del")
+            for addr in [
+                self.pg_interfaces[i].remote_ip4,
+                self.pg_interfaces[i].remote_ip6,
+            ]:
+                self.vapi.ppcli(
+                    "ip container " + addr + " " + self.pg_interfaces[i].name + " del"
+                )
+                self.vapi.ppcli(
+                    "stn rule address "
+                    + addr
+                    + " interface "
+                    + self.pg_interfaces[i].name
+                    + " del"
+                )
 
     def test_0410_spoof_test(self):
-        """ IPv4 local-spoof after unconfig test """
+        """IPv4 local-spoof after unconfig test"""
         self.run_negative_conn_test(AF_INET, 0)
 
     def test_0411_spoof_test(self):
-        """ IPv6 local-spoof after unconfig test """
+        """IPv6 local-spoof after unconfig test"""
         self.run_negative_conn_test(AF_INET, 1)
