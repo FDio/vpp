@@ -18,20 +18,19 @@ import binascii
 
 
 def mac_pton(s):
-    '''Convert MAC address as text to binary'''
-    return binascii.unhexlify(s.replace(':', ''))
+    """Convert MAC address as text to binary"""
+    return binascii.unhexlify(s.replace(":", ""))
 
 
 def mac_ntop(binary):
-    '''Convert MAC address as binary to text'''
-    x = b':'.join(binascii.hexlify(binary)[i:i + 2]
-                  for i in range(0, 12, 2))
-    return str(x.decode('ascii'))
+    """Convert MAC address as binary to text"""
+    x = b":".join(binascii.hexlify(binary)[i : i + 2] for i in range(0, 12, 2))
+    return str(x.decode("ascii"))
 
 
-class MACAddress():
+class MACAddress:
     def __init__(self, mac):
-        '''MAC Address as a text-string (aa:bb:cc:dd:ee:ff) or 6 bytes'''
+        """MAC Address as a text-string (aa:bb:cc:dd:ee:ff) or 6 bytes"""
         # Of course Python 2 doesn't distinguish str from bytes
         if type(mac) is bytes and len(mac) == 6:
             self.mac_binary = mac
@@ -51,7 +50,7 @@ class MACAddress():
         return self.mac_string
 
     def __repr__(self):
-        return '%s(%s)' % (self.__class__.__name__, self.mac_string)
+        return "%s(%s)" % (self.__class__.__name__, self.mac_string)
 
     def __eq__(self, other):
 

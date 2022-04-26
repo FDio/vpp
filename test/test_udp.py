@@ -5,8 +5,16 @@ from framework import VppTestCase, VppTestRunner
 
 from vpp_udp_encap import find_udp_encap, VppUdpEncap
 from vpp_udp_decap import VppUdpDecap
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, VppMplsLabel, \
-    VppMplsTable, VppMplsRoute, FibPathType, FibPathProto
+from vpp_ip_route import (
+    VppIpRoute,
+    VppRoutePath,
+    VppIpTable,
+    VppMplsLabel,
+    VppMplsTable,
+    VppMplsRoute,
+    FibPathType,
+    FibPathProto,
+)
 from vpp_neighbor import VppNeighbor
 from vpp_papi import VppEnum
 
@@ -21,7 +29,7 @@ NUM_PKTS = 67
 
 @tag_fixme_vpp_workers
 class TestUdpEncap(VppTestCase):
-    """ UDP Encap Test Case """
+    """UDP Encap Test Case"""
 
     @classmethod
     def setUpClass(cls):
@@ -99,8 +107,7 @@ class TestUdpEncap(VppTestCase):
             self.assertEqual(rx.hlim, tx[IPv6].hlim)
 
     def test_udp_encap(self):
-        """ UDP Encap test
-        """
+        """UDP Encap test"""
 
         #
         # construct a UDP encap object through each of the peers
@@ -109,29 +116,21 @@ class TestUdpEncap(VppTestCase):
         # where 2 different udp encap objects are processed at the
         # same time
         #
-        udp_encap_0 = VppUdpEncap(self,
-                                  self.pg0.local_ip4,
-                                  self.pg0.remote_ip4,
-                                  330, 440)
-        udp_encap_1 = VppUdpEncap(self,
-                                  self.pg1.local_ip4,
-                                  self.pg1.remote_ip4,
-                                  331, 441,
-                                  table_id=1)
-        udp_encap_2 = VppUdpEncap(self,
-                                  self.pg2.local_ip6,
-                                  self.pg2.remote_ip6,
-                                  332, 442,
-                                  table_id=2)
-        udp_encap_3 = VppUdpEncap(self,
-                                  self.pg3.local_ip6,
-                                  self.pg3.remote_ip6,
-                                  333, 443,
-                                  table_id=3)
-        udp_encap_4 = VppUdpEncap(self,
-                                  self.pg0.local_ip4,
-                                  self.pg0.remote_ip4,
-                                  334, 444)
+        udp_encap_0 = VppUdpEncap(
+            self, self.pg0.local_ip4, self.pg0.remote_ip4, 330, 440
+        )
+        udp_encap_1 = VppUdpEncap(
+            self, self.pg1.local_ip4, self.pg1.remote_ip4, 331, 441, table_id=1
+        )
+        udp_encap_2 = VppUdpEncap(
+            self, self.pg2.local_ip6, self.pg2.remote_ip6, 332, 442, table_id=2
+        )
+        udp_encap_3 = VppUdpEncap(
+            self, self.pg3.local_ip6, self.pg3.remote_ip6, 333, 443, table_id=3
+        )
+        udp_encap_4 = VppUdpEncap(
+            self, self.pg0.local_ip4, self.pg0.remote_ip4, 334, 444
+        )
         udp_encap_0.add_vpp_config()
         udp_encap_1.add_vpp_config()
         udp_encap_2.add_vpp_config()
@@ -150,44 +149,79 @@ class TestUdpEncap(VppTestCase):
         # Routes via each UDP encap object - all combinations of v4 and v6.
         #
         route_4o4 = VppIpRoute(
-            self, "1.1.0.1", 24,
-            [VppRoutePath("0.0.0.0",
-                          0xFFFFFFFF,
-                          type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
-                          next_hop_id=udp_encap_0.id,
-                          proto=FibPathProto.FIB_PATH_NH_PROTO_IP4)],
-            table_id=1)
+            self,
+            "1.1.0.1",
+            24,
+            [
+                VppRoutePath(
+                    "0.0.0.0",
+                    0xFFFFFFFF,
+                    type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
+                    next_hop_id=udp_encap_0.id,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_IP4,
+                )
+            ],
+            table_id=1,
+        )
         # specific route to match encap4, to test encap of 2 packets using 2
         # different encap
         route_4o4_2 = VppIpRoute(
-            self, "1.1.0.2", 32,
-            [VppRoutePath("0.0.0.0",
-                          0xFFFFFFFF,
-                          type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
-                          next_hop_id=udp_encap_4.id,
-                          proto=FibPathProto.FIB_PATH_NH_PROTO_IP4)],
-            table_id=1)
+            self,
+            "1.1.0.2",
+            32,
+            [
+                VppRoutePath(
+                    "0.0.0.0",
+                    0xFFFFFFFF,
+                    type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
+                    next_hop_id=udp_encap_4.id,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_IP4,
+                )
+            ],
+            table_id=1,
+        )
         route_4o6 = VppIpRoute(
-            self, "1.1.2.1", 32,
-            [VppRoutePath("0.0.0.0",
-                          0xFFFFFFFF,
-                          type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
-                          next_hop_id=udp_encap_2.id,
-                          proto=FibPathProto.FIB_PATH_NH_PROTO_IP4)])
+            self,
+            "1.1.2.1",
+            32,
+            [
+                VppRoutePath(
+                    "0.0.0.0",
+                    0xFFFFFFFF,
+                    type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
+                    next_hop_id=udp_encap_2.id,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_IP4,
+                )
+            ],
+        )
         route_6o4 = VppIpRoute(
-            self, "2001::1", 128,
-            [VppRoutePath("0.0.0.0",
-                          0xFFFFFFFF,
-                          type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
-                          next_hop_id=udp_encap_1.id,
-                          proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)])
+            self,
+            "2001::1",
+            128,
+            [
+                VppRoutePath(
+                    "0.0.0.0",
+                    0xFFFFFFFF,
+                    type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
+                    next_hop_id=udp_encap_1.id,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_IP6,
+                )
+            ],
+        )
         route_6o6 = VppIpRoute(
-            self, "2001::3", 128,
-            [VppRoutePath("0.0.0.0",
-                          0xFFFFFFFF,
-                          type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
-                          next_hop_id=udp_encap_3.id,
-                          proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)])
+            self,
+            "2001::3",
+            128,
+            [
+                VppRoutePath(
+                    "0.0.0.0",
+                    0xFFFFFFFF,
+                    type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
+                    next_hop_id=udp_encap_3.id,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_IP6,
+                )
+            ],
+        )
         route_4o6.add_vpp_config()
         route_6o6.add_vpp_config()
         route_6o4.add_vpp_config()
@@ -200,104 +234,117 @@ class TestUdpEncap(VppTestCase):
         # the packet vector so that we encap 2 packets with different udp
         # encap object at the same time
         #
-        p_4o4 = (Ether(src=self.pg1.remote_mac,
-                       dst=self.pg1.local_mac) /
-                 IP(src="2.2.2.2", dst="1.1.0.1") /
-                 UDP(sport=1234, dport=1234) /
-                 Raw(b'\xa5' * 100))
-        p_4o4_2 = (Ether(src=self.pg1.remote_mac,
-                         dst=self.pg1.local_mac) /
-                   IP(src="2.2.2.2", dst="1.1.0.2") /
-                   UDP(sport=1234, dport=1234) /
-                   Raw(b'\xa5' * 100))
+        p_4o4 = (
+            Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
+            / IP(src="2.2.2.2", dst="1.1.0.1")
+            / UDP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 100)
+        )
+        p_4o4_2 = (
+            Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
+            / IP(src="2.2.2.2", dst="1.1.0.2")
+            / UDP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 100)
+        )
         rx = self.send_and_expect(
-            self.pg1, p_4o4_2 * 1 + p_4o4 * (NUM_PKTS - 1), self.pg0)
+            self.pg1, p_4o4_2 * 1 + p_4o4 * (NUM_PKTS - 1), self.pg0
+        )
         # checking encap4 magic packet
         p = rx.pop(0)
         self.validate_outer4(p, udp_encap_4)
         p = IP(p["UDP"].payload.load)
         self.validate_inner4(p, p_4o4_2)
-        self.assertEqual(udp_encap_4.get_stats()['packets'], 1)
+        self.assertEqual(udp_encap_4.get_stats()["packets"], 1)
         # checking remaining packets for encap0
         for p in rx:
             self.validate_outer4(p, udp_encap_0)
             p = IP(p["UDP"].payload.load)
             self.validate_inner4(p, p_4o4)
-        self.assertEqual(udp_encap_0.get_stats()['packets'], NUM_PKTS - 1)
+        self.assertEqual(udp_encap_0.get_stats()["packets"], NUM_PKTS - 1)
 
         #
         # 4o6 encap
         #
-        p_4o6 = (Ether(src=self.pg0.remote_mac,
-                       dst=self.pg0.local_mac) /
-                 IP(src="2.2.2.2", dst="1.1.2.1") /
-                 UDP(sport=1234, dport=1234) /
-                 Raw(b'\xa5' * 100))
-        rx = self.send_and_expect(self.pg0, p_4o6*NUM_PKTS, self.pg2)
+        p_4o6 = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IP(src="2.2.2.2", dst="1.1.2.1")
+            / UDP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 100)
+        )
+        rx = self.send_and_expect(self.pg0, p_4o6 * NUM_PKTS, self.pg2)
         for p in rx:
             self.validate_outer6(p, udp_encap_2)
             p = IP(p["UDP"].payload.load)
             self.validate_inner4(p, p_4o6)
-        self.assertEqual(udp_encap_2.get_stats()['packets'], NUM_PKTS)
+        self.assertEqual(udp_encap_2.get_stats()["packets"], NUM_PKTS)
 
         #
         # 6o4 encap
         #
-        p_6o4 = (Ether(src=self.pg0.remote_mac,
-                       dst=self.pg0.local_mac) /
-                 IPv6(src="2001::100", dst="2001::1") /
-                 UDP(sport=1234, dport=1234) /
-                 Raw(b'\xa5' * 100))
-        rx = self.send_and_expect(self.pg0, p_6o4*NUM_PKTS, self.pg1)
+        p_6o4 = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IPv6(src="2001::100", dst="2001::1")
+            / UDP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 100)
+        )
+        rx = self.send_and_expect(self.pg0, p_6o4 * NUM_PKTS, self.pg1)
         for p in rx:
             self.validate_outer4(p, udp_encap_1)
             p = IPv6(p["UDP"].payload.load)
             self.validate_inner6(p, p_6o4)
-        self.assertEqual(udp_encap_1.get_stats()['packets'], NUM_PKTS)
+        self.assertEqual(udp_encap_1.get_stats()["packets"], NUM_PKTS)
 
         #
         # 6o6 encap
         #
-        p_6o6 = (Ether(src=self.pg0.remote_mac,
-                       dst=self.pg0.local_mac) /
-                 IPv6(src="2001::100", dst="2001::3") /
-                 UDP(sport=1234, dport=1234) /
-                 Raw(b'\xa5' * 100))
-        rx = self.send_and_expect(self.pg0, p_6o6*NUM_PKTS, self.pg3)
+        p_6o6 = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IPv6(src="2001::100", dst="2001::3")
+            / UDP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 100)
+        )
+        rx = self.send_and_expect(self.pg0, p_6o6 * NUM_PKTS, self.pg3)
         for p in rx:
             self.validate_outer6(p, udp_encap_3)
             p = IPv6(p["UDP"].payload.load)
             self.validate_inner6(p, p_6o6)
-        self.assertEqual(udp_encap_3.get_stats()['packets'], NUM_PKTS)
+        self.assertEqual(udp_encap_3.get_stats()["packets"], NUM_PKTS)
 
         #
         # A route with an output label
         # the TTL of the inner packet is decremented on LSP ingress
         #
         route_4oMPLSo4 = VppIpRoute(
-            self, "1.1.2.22", 32,
-            [VppRoutePath("0.0.0.0",
-                          0xFFFFFFFF,
-                          type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
-                          next_hop_id=1,
-                          labels=[VppMplsLabel(66)])])
+            self,
+            "1.1.2.22",
+            32,
+            [
+                VppRoutePath(
+                    "0.0.0.0",
+                    0xFFFFFFFF,
+                    type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
+                    next_hop_id=1,
+                    labels=[VppMplsLabel(66)],
+                )
+            ],
+        )
         route_4oMPLSo4.add_vpp_config()
 
-        p_4omo4 = (Ether(src=self.pg0.remote_mac,
-                         dst=self.pg0.local_mac) /
-                   IP(src="2.2.2.2", dst="1.1.2.22") /
-                   UDP(sport=1234, dport=1234) /
-                   Raw(b'\xa5' * 100))
-        rx = self.send_and_expect(self.pg0, p_4omo4*NUM_PKTS, self.pg1)
+        p_4omo4 = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IP(src="2.2.2.2", dst="1.1.2.22")
+            / UDP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 100)
+        )
+        rx = self.send_and_expect(self.pg0, p_4omo4 * NUM_PKTS, self.pg1)
         for p in rx:
             self.validate_outer4(p, udp_encap_1)
             p = MPLS(p["UDP"].payload.load)
             self.validate_inner4(p, p_4omo4, ttl=63)
-        self.assertEqual(udp_encap_1.get_stats()['packets'], 2*NUM_PKTS)
+        self.assertEqual(udp_encap_1.get_stats()["packets"], 2 * NUM_PKTS)
 
     def test_udp_decap(self):
-        """ UDP Decap test
-        """
+        """UDP Decap test"""
         #
         # construct a UDP decap object for each type of protocol
         #
@@ -323,19 +370,24 @@ class TestUdpEncap(VppTestCase):
         # Routes via the corresponding pg after the UDP decap
         #
         route_4 = VppIpRoute(
-            self, "1.1.1.1", 32,
+            self,
+            "1.1.1.1",
+            32,
             [VppRoutePath("0.0.0.0", self.pg0.sw_if_index)],
-            table_id=0)
+            table_id=0,
+        )
 
         route_6 = VppIpRoute(
-            self, "2001::1", 128,
-            [VppRoutePath("::", self.pg1.sw_if_index)],
-            table_id=1)
+            self, "2001::1", 128, [VppRoutePath("::", self.pg1.sw_if_index)], table_id=1
+        )
 
         route_mo4 = VppIpRoute(
-            self, "3.3.3.3", 32,
+            self,
+            "3.3.3.3",
+            32,
             [VppRoutePath("0.0.0.0", self.pg2.sw_if_index)],
-            table_id=2)
+            table_id=2,
+        )
 
         route_4.add_vpp_config()
         route_6.add_vpp_config()
@@ -344,18 +396,9 @@ class TestUdpEncap(VppTestCase):
         #
         # Adding neighbors to route the packets
         #
-        n_4 = VppNeighbor(self,
-                          self.pg0.sw_if_index,
-                          "00:11:22:33:44:55",
-                          "1.1.1.1")
-        n_6 = VppNeighbor(self,
-                          self.pg1.sw_if_index,
-                          "11:22:33:44:55:66",
-                          "2001::1")
-        n_mo4 = VppNeighbor(self,
-                            self.pg2.sw_if_index,
-                            "22:33:44:55:66:77",
-                            "3.3.3.3")
+        n_4 = VppNeighbor(self, self.pg0.sw_if_index, "00:11:22:33:44:55", "1.1.1.1")
+        n_6 = VppNeighbor(self, self.pg1.sw_if_index, "11:22:33:44:55:66", "2001::1")
+        n_mo4 = VppNeighbor(self, self.pg2.sw_if_index, "22:33:44:55:66:77", "3.3.3.3")
 
         n_4.add_vpp_config()
         n_6.add_vpp_config()
@@ -367,25 +410,33 @@ class TestUdpEncap(VppTestCase):
         mpls_table = VppMplsTable(self, 0)
         mpls_table.add_vpp_config()
         mpls_route = VppMplsRoute(
-            self, 77, 1,
-            [VppRoutePath("0.0.0.0",
-                          0xFFFFFFFF,
-                          nh_table_id=2,
-                          proto=FibPathProto.FIB_PATH_NH_PROTO_IP4)])
+            self,
+            77,
+            1,
+            [
+                VppRoutePath(
+                    "0.0.0.0",
+                    0xFFFFFFFF,
+                    nh_table_id=2,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_IP4,
+                )
+            ],
+        )
         mpls_route.add_vpp_config()
 
         #
         # UDP over ipv4 decap
         #
-        p_4 = (Ether(src=self.pg0.remote_mac,
-                     dst=self.pg0.local_mac) /
-               IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4) /
-               UDP(sport=1111, dport=220) /
-               IP(src="2.2.2.2", dst="1.1.1.1") /
-               UDP(sport=1234, dport=4321) /
-               Raw(b'\xa5' * 100))
+        p_4 = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4)
+            / UDP(sport=1111, dport=220)
+            / IP(src="2.2.2.2", dst="1.1.1.1")
+            / UDP(sport=1234, dport=4321)
+            / Raw(b"\xa5" * 100)
+        )
 
-        rx = self.send_and_expect(self.pg0, p_4*NUM_PKTS, self.pg0)
+        rx = self.send_and_expect(self.pg0, p_4 * NUM_PKTS, self.pg0)
         p_4 = IP(p_4["UDP"].payload)
         for p in rx:
             p = IP(p["Ether"].payload)
@@ -394,15 +445,16 @@ class TestUdpEncap(VppTestCase):
         #
         # UDP over ipv6 decap
         #
-        p_6 = (Ether(src=self.pg1.remote_mac,
-                     dst=self.pg1.local_mac) /
-               IPv6(src=self.pg1.remote_ip6, dst=self.pg1.local_ip6) /
-               UDP(sport=2222, dport=221) /
-               IPv6(src="2001::100", dst="2001::1") /
-               UDP(sport=1234, dport=4321) /
-               Raw(b'\xa5' * 100))
+        p_6 = (
+            Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
+            / IPv6(src=self.pg1.remote_ip6, dst=self.pg1.local_ip6)
+            / UDP(sport=2222, dport=221)
+            / IPv6(src="2001::100", dst="2001::1")
+            / UDP(sport=1234, dport=4321)
+            / Raw(b"\xa5" * 100)
+        )
 
-        rx = self.send_and_expect(self.pg1, p_6*NUM_PKTS, self.pg1)
+        rx = self.send_and_expect(self.pg1, p_6 * NUM_PKTS, self.pg1)
         p_6 = IPv6(p_6["UDP"].payload)
         p = IPv6(rx[0]["Ether"].payload)
         for p in rx:
@@ -412,17 +464,18 @@ class TestUdpEncap(VppTestCase):
         #
         # UDP over mpls decap
         #
-        p_mo4 = (Ether(src=self.pg2.remote_mac,
-                       dst=self.pg2.local_mac) /
-                 IP(src=self.pg2.remote_ip4, dst=self.pg2.local_ip4) /
-                 UDP(sport=3333, dport=222) /
-                 MPLS(label=77, ttl=1) /
-                 IP(src="4.4.4.4", dst="3.3.3.3") /
-                 UDP(sport=1234, dport=4321) /
-                 Raw(b'\xa5' * 100))
+        p_mo4 = (
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
+            / IP(src=self.pg2.remote_ip4, dst=self.pg2.local_ip4)
+            / UDP(sport=3333, dport=222)
+            / MPLS(label=77, ttl=1)
+            / IP(src="4.4.4.4", dst="3.3.3.3")
+            / UDP(sport=1234, dport=4321)
+            / Raw(b"\xa5" * 100)
+        )
 
         self.pg2.enable_mpls()
-        rx = self.send_and_expect(self.pg2, p_mo4*NUM_PKTS, self.pg2)
+        rx = self.send_and_expect(self.pg2, p_mo4 * NUM_PKTS, self.pg2)
         self.pg2.disable_mpls()
         p_mo4 = IP(MPLS(p_mo4["UDP"].payload).payload)
         for p in rx:
@@ -432,7 +485,7 @@ class TestUdpEncap(VppTestCase):
 
 @tag_fixme_vpp_workers
 class TestUDP(VppTestCase):
-    """ UDP Test Case """
+    """UDP Test Case"""
 
     @classmethod
     def setUpClass(cls):
@@ -461,10 +514,12 @@ class TestUDP(VppTestCase):
             table_id += 1
 
         # Configure namespaces
-        self.vapi.app_namespace_add_del(namespace_id="0",
-                                        sw_if_index=self.loop0.sw_if_index)
-        self.vapi.app_namespace_add_del(namespace_id="1",
-                                        sw_if_index=self.loop1.sw_if_index)
+        self.vapi.app_namespace_add_del(
+            namespace_id="0", sw_if_index=self.loop0.sw_if_index
+        )
+        self.vapi.app_namespace_add_del(
+            namespace_id="1", sw_if_index=self.loop1.sw_if_index
+        )
 
     def tearDown(self):
         for i in self.lo_interfaces:
@@ -475,31 +530,40 @@ class TestUDP(VppTestCase):
         super(TestUDP, self).tearDown()
 
     def test_udp_transfer(self):
-        """ UDP echo client/server transfer """
+        """UDP echo client/server transfer"""
 
         # Add inter-table routes
-        ip_t01 = VppIpRoute(self, self.loop1.local_ip4, 32,
-                            [VppRoutePath("0.0.0.0",
-                                          0xffffffff,
-                                          nh_table_id=1)])
-        ip_t10 = VppIpRoute(self, self.loop0.local_ip4, 32,
-                            [VppRoutePath("0.0.0.0",
-                                          0xffffffff,
-                                          nh_table_id=0)], table_id=1)
+        ip_t01 = VppIpRoute(
+            self,
+            self.loop1.local_ip4,
+            32,
+            [VppRoutePath("0.0.0.0", 0xFFFFFFFF, nh_table_id=1)],
+        )
+        ip_t10 = VppIpRoute(
+            self,
+            self.loop0.local_ip4,
+            32,
+            [VppRoutePath("0.0.0.0", 0xFFFFFFFF, nh_table_id=0)],
+            table_id=1,
+        )
         ip_t01.add_vpp_config()
         ip_t10.add_vpp_config()
 
         # Start builtin server and client
         uri = "udp://" + self.loop0.local_ip4 + "/1234"
-        error = self.vapi.cli("test echo server appns 0 fifo-size 4 no-echo" +
-                              "uri " + uri)
+        error = self.vapi.cli(
+            "test echo server appns 0 fifo-size 4 no-echo" + "uri " + uri
+        )
         if error:
             self.logger.critical(error)
             self.assertNotIn("failed", error)
 
-        error = self.vapi.cli("test echo client mbytes 10 appns 1 " +
-                              "fifo-size 4 no-output test-bytes " +
-                              "syn-timeout 2 no-return uri " + uri)
+        error = self.vapi.cli(
+            "test echo client mbytes 10 appns 1 "
+            + "fifo-size 4 no-output test-bytes "
+            + "syn-timeout 2 no-return uri "
+            + uri
+        )
         if error:
             self.logger.critical(error)
             self.assertNotIn("failed", error)
@@ -511,5 +575,5 @@ class TestUDP(VppTestCase):
         ip_t10.remove_vpp_config()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)

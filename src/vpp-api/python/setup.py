@@ -21,15 +21,16 @@ except ImportError:
 requirements = []
 
 setup(
-    name='vpp_papi',
-    version='2.0.0',
-    description='VPP Python binding',
-    author='Ole Troan',
-    author_email='ot@cisco.com',
-    url='https://wiki.fd.io/view/VPP/Python_API',
-    license='Apache-2.0',
-    test_suite='vpp_papi.tests',
+    name="vpp_papi",
+    version="2.0.0",
+    description="VPP Python binding",
+    author="Ole Troan",
+    author_email="ot@cisco.com",
+    url="https://wiki.fd.io/view/VPP/Python_API",
+    license="Apache-2.0",
+    test_suite="vpp_papi.tests",
     install_requires=requirements,
     packages=find_packages(),
-    long_description='''VPP Python language binding.''',
-    zip_safe=True)
+    long_description="""VPP Python language binding.""",
+    zip_safe=True,
+)

@@ -4,8 +4,16 @@ import argparse
 import os
 import sys
 import logging
-from vapi_c_gen import CField, CEnum, CStruct, CSimpleType, CStructType,\
-    CMessage, json_to_c_header_name, CAlias
+from vapi_c_gen import (
+    CField,
+    CEnum,
+    CStruct,
+    CSimpleType,
+    CStructType,
+    CMessage,
+    json_to_c_header_name,
+    CAlias,
+)
 from vapi_json_parser import JsonParser
 
 
@@ -25,53 +33,64 @@ class CppAlias(CAlias):
     pass
 
 
-class CppSimpleType (CSimpleType):
+class CppSimpleType(CSimpleType):
     pass
 
 
-class CppStructType (CStructType, CppStruct):
+class CppStructType(CStructType, CppStruct):
     pass
 
 
-class CppMessage (CMessage):
+class CppMessage(CMessage):
     def get_swap_to_be_template_instantiation(self):
-        return "\n".join([
-            "template <> inline void vapi_swap_to_be<%s>(%s *msg)" %
-            (self.get_c_name(), self.get_c_name()),
-            "{",
-            "  %s(msg);" % self.get_swap_to_be_func_name(),
-            "}",
-        ])
+        return "\n".join(
+            [
+                "template <> inline void vapi_swap_to_be<%s>(%s *msg)"
+                % (self.get_c_name(), self.get_c_name()),
+                "{",
+                "  %s(msg);" % self.get_swap_to_be_func_name(),
+                "}",
+            ]
+        )
 
     def get_swap_to_host_template_instantiation(self):
-        return "\n".join([
-            "template <> inline void vapi_swap_to_host<%s>(%s *msg)" %
-            (self.get_c_name(), self.get_c_name()),
-            "{",
-            "  %s(msg);" % self.get_swap_to_host_func_name(),
-            "}",
-        ])
+        return "\n".join(
+            [
+                "template <> inline void vapi_swap_to_host<%s>(%s *msg)"
+                % (self.get_c_name(), self.get_c_name()),
+                "{",
+                "  %s(msg);" % self.get_swap_to_host_func_name(),
+                "}",
+            ]
+        )
 
     def get_alloc_template_instantiation(self):
-        return "\n".join([
-            "template <> inline %s* vapi_alloc<%s%s>"
-            "(Connection &con%s)" %
-            (self.get_c_name(), self.get_c_name(),
-                ", size_t" * len(self.get_alloc_vla_param_names()),
-                "".join([", size_t %s" % n for n in
-                         self.get_alloc_vla_param_names()])
-             ),
-            "{",
-            "  %s* result = %s(con.vapi_ctx%s);" %
-            (self.get_c_name(), self.get_alloc_func_name(),
-                "".join([", %s" % n
-                         for n in self.get_alloc_vla_param_names()])),
-            "#if VAPI_CPP_DEBUG_LEAKS",
-            "  con.on_shm_data_alloc(result);",
-            "#endif",
-            "  return result;",
-            "}",
-        ])
+        return "\n".join(
+            [
+                "template <> inline %s* vapi_alloc<%s%s>"
+                "(Connection &con%s)"
+                % (
+                    self.get_c_name(),
+                    self.get_c_name(),
+                    ", size_t" * len(self.get_alloc_vla_param_names()),
+                    "".join(
+                        [", size_t %s" % n for n in self.get_alloc_vla_param_names()]
+                    ),
+                ),
+                "{",
+                "  %s* result = %s(con.vapi_ctx%s);"
+                % (
+                    self.get_c_name(),
+                    self.get_alloc_func_name(),
+                    "".join([", %s" % n for n in self.get_alloc_vla_param_names()]),
+                ),
+                "#if VAPI_CPP_DEBUG_LEAKS",
+                "  con.on_shm_data_alloc(result);",
+                "#endif",
+                "  return result;",
+                "}",
+            ]
+        )
 
     def get_cpp_name(self):
         return "%s%s" % (self.name[0].upper(), self.name[1:])
@@ -86,51 +105,60 @@ class CppMessage (CMessage):
             template,
             self.get_c_name(),
             self.reply.get_c_name(),
-            "".join([", size_t"] * len(self.get_alloc_vla_param_names()))
+            "".join([", size_t"] * len(self.get_alloc_vla_param_names())),
         )
 
     def get_req_template_instantiation(self):
         return "template class %s;" % self.get_req_template_name()
 
     def get_type_alias(self):
-        return "using %s = %s;" % (
-            self.get_cpp_name(), self.get_req_template_name())
+        return "using %s = %s;" % (self.get_cpp_name(), self.get_req_template_name())
 
     def get_reply_template_name(self):
         return "Msg<%s>" % (self.get_c_name())
 
     def get_reply_type_alias(self):
-        return "using %s = %s;" % (
-            self.get_cpp_name(), self.get_reply_template_name())
+        return "using %s = %s;" % (self.get_cpp_name(), self.get_reply_template_name())
 
     def get_msg_class_instantiation(self):
         return "template class Msg<%s>;" % self.get_c_name()
 
     def get_get_msg_id_t_instantiation(self):
-        return "\n".join([
-            ("template <> inline vapi_msg_id_t vapi_get_msg_id_t<%s>()"
-                % self.get_c_name()),
-            "{",
-            "  return ::%s; " % self.get_msg_id_name(),
-            "}",
-            "",
-            ("template <> inline vapi_msg_id_t "
-             "vapi_get_msg_id_t<Msg<%s>>()" % self.get_c_name()),
-            "{",
-            "  return ::%s; " % self.get_msg_id_name(),
-            "}",
-        ])
+        return "\n".join(
+            [
+                (
+                    "template <> inline vapi_msg_id_t vapi_get_msg_id_t<%s>()"
+                    % self.get_c_name()
+                ),
+                "{",
+                "  return ::%s; " % self.get_msg_id_name(),
+                "}",
+                "",
+                (
+                    "template <> inline vapi_msg_id_t "
+                    "vapi_get_msg_id_t<Msg<%s>>()" % self.get_c_name()
+                ),
+                "{",
+                "  return ::%s; " % self.get_msg_id_name(),
+                "}",
+            ]
+        )
 
     def get_cpp_constructor(self):
-        return '\n'.join([
-            ('static void __attribute__((constructor)) '
-             '__vapi_cpp_constructor_%s()'
-             % self.name),
-            '{',
-            ('  vapi::vapi_msg_set_msg_id<%s>(%s);' % (
-                self.get_c_name(), self.get_msg_id_name())),
-            '}',
-        ])
+        return "\n".join(
+            [
+                (
+                    "static void __attribute__((constructor)) "
+                    "__vapi_cpp_constructor_%s()" % self.name
+                ),
+                "{",
+                (
+                    "  vapi::vapi_msg_set_msg_id<%s>(%s);"
+                    % (self.get_c_name(), self.get_msg_id_name())
+                ),
+                "}",
+            ]
+        )
 
 
 def gen_json_header(parser, logger, j, io, gen_h_prefix, add_debug_comments):
@@ -139,8 +167,8 @@ def gen_json_header(parser, logger, j, io, gen_h_prefix, add_debug_comments):
     sys.stdout = io
     d, f = os.path.split(j)
     include_guard = "__included_hpp_%s" % (
-        f.replace(".", "_").replace("/", "_").replace("-", "_").replace(
-            "@", "_"))
+        f.replace(".", "_").replace("/", "_").replace("-", "_").replace("@", "_")
+    )
     print("#ifndef %s" % include_guard)
     print("#define %s" % include_guard)
     print("")
@@ -202,8 +230,9 @@ def json_to_cpp_header_name(json_name):
     raise Exception("Unexpected json name `%s'!" % json_name)
 
 
-def gen_cpp_headers(parser, logger, prefix, gen_h_prefix, remove_path,
-                    add_debug_comments=False):
+def gen_cpp_headers(
+    parser, logger, prefix, gen_h_prefix, remove_path, add_debug_comments=False
+):
     if prefix == "" or prefix is None:
         prefix = ""
     else:
@@ -217,12 +246,11 @@ def gen_cpp_headers(parser, logger, prefix, gen_h_prefix, remove_path,
             d, f = os.path.split(j)
         else:
             f = j
-        with open('%s%s' % (prefix, json_to_cpp_header_name(f)), "w") as io:
-            gen_json_header(parser, logger, j, io,
-                            gen_h_prefix, add_debug_comments)
+        with open("%s%s" % (prefix, json_to_cpp_header_name(f)), "w") as io:
+            gen_json_header(parser, logger, j, io, gen_h_prefix, add_debug_comments)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         verbose = int(os.getenv("V", 0))
     except:
@@ -240,27 +268,36 @@ if __name__ == '__main__':
     logger.setLevel(log_level)
 
     argparser = argparse.ArgumentParser(description="VPP C++ API generator")
-    argparser.add_argument('files', metavar='api-file', action='append',
-                           type=str, help='json api file'
-                           '(may be specified multiple times)')
-    argparser.add_argument('--prefix', action='store', default=None,
-                           help='path prefix')
-    argparser.add_argument('--gen-h-prefix', action='store', default=None,
-                           help='generated C header prefix')
-    argparser.add_argument('--remove-path', action='store_true',
-                           help='remove path from filename')
+    argparser.add_argument(
+        "files",
+        metavar="api-file",
+        action="append",
+        type=str,
+        help="json api file" "(may be specified multiple times)",
+    )
+    argparser.add_argument("--prefix", action="store", default=None, help="path prefix")
+    argparser.add_argument(
+        "--gen-h-prefix", action="store", default=None, help="generated C header prefix"
+    )
+    argparser.add_argument(
+        "--remove-path", action="store_true", help="remove path from filename"
+    )
     args = argparser.parse_args()
 
-    jsonparser = JsonParser(logger, args.files,
-                            simple_type_class=CppSimpleType,
-                            struct_type_class=CppStructType,
-                            field_class=CppField,
-                            enum_class=CppEnum,
-                            message_class=CppMessage,
-                            alias_class=CppAlias)
+    jsonparser = JsonParser(
+        logger,
+        args.files,
+        simple_type_class=CppSimpleType,
+        struct_type_class=CppStructType,
+        field_class=CppField,
+        enum_class=CppEnum,
+        message_class=CppMessage,
+        alias_class=CppAlias,
+    )
 
-    gen_cpp_headers(jsonparser, logger, args.prefix, args.gen_h_prefix,
-                    args.remove_path)
+    gen_cpp_headers(
+        jsonparser, logger, args.prefix, args.gen_h_prefix, args.remove_path
+    )
 
     for e in jsonparser.exceptions:
         logger.warning(e)

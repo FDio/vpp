@@ -18,7 +18,6 @@ class L2_VTR_OP:
 
 
 class VppSubInterface(VppPGInterface, metaclass=abc.ABCMeta):
-
     @property
     def parent(self):
         """Parent interface for this sub-interface"""
@@ -117,26 +116,33 @@ class VppSubInterface(VppPGInterface, metaclass=abc.ABCMeta):
         self._tag2 = 0
         self._push1q = 0
 
-        if (vtr == L2_VTR_OP.L2_PUSH_1 or
-            vtr == L2_VTR_OP.L2_TRANSLATE_1_1 or
-                vtr == L2_VTR_OP.L2_TRANSLATE_2_1):
+        if (
+            vtr == L2_VTR_OP.L2_PUSH_1
+            or vtr == L2_VTR_OP.L2_TRANSLATE_1_1
+            or vtr == L2_VTR_OP.L2_TRANSLATE_2_1
+        ):
             self._tag1 = tag
             self._push1q = push1q
-        if (vtr == L2_VTR_OP.L2_PUSH_2 or
-            vtr == L2_VTR_OP.L2_TRANSLATE_1_2 or
-                vtr == L2_VTR_OP.L2_TRANSLATE_2_2):
+        if (
+            vtr == L2_VTR_OP.L2_PUSH_2
+            or vtr == L2_VTR_OP.L2_TRANSLATE_1_2
+            or vtr == L2_VTR_OP.L2_TRANSLATE_2_2
+        ):
             self._tag1 = outer
             self._tag2 = inner
             self._push1q = push1q
 
         self.test.vapi.l2_interface_vlan_tag_rewrite(
-            sw_if_index=self.sw_if_index, vtr_op=vtr, push_dot1q=self._push1q,
-            tag1=self._tag1, tag2=self._tag2)
+            sw_if_index=self.sw_if_index,
+            vtr_op=vtr,
+            push_dot1q=self._push1q,
+            tag1=self._tag1,
+            tag2=self._tag2,
+        )
         self._vtr = vtr
 
 
 class VppDot1QSubint(VppSubInterface):
-
     @property
     def vlan(self):
         """VLAN tag"""
@@ -168,7 +174,6 @@ class VppDot1QSubint(VppSubInterface):
 
 
 class VppDot1ADSubint(VppSubInterface):
-
     @property
     def outer_vlan(self):
         """Outer VLAN tag"""
@@ -181,13 +186,18 @@ class VppDot1ADSubint(VppSubInterface):
 
     def __init__(self, test, parent, sub_id, outer_vlan, inner_vlan):
         super(VppDot1ADSubint, self).__init__(test, parent, sub_id)
-        flags = (VppEnum.vl_api_sub_if_flags_t.SUB_IF_API_FLAG_DOT1AD |
-                 VppEnum.vl_api_sub_if_flags_t.SUB_IF_API_FLAG_TWO_TAGS |
-                 VppEnum.vl_api_sub_if_flags_t.SUB_IF_API_FLAG_EXACT_MATCH)
-        r = test.vapi.create_subif(sw_if_index=parent.sw_if_index,
-                                   sub_id=sub_id, outer_vlan_id=outer_vlan,
-                                   inner_vlan_id=inner_vlan,
-                                   sub_if_flags=flags)
+        flags = (
+            VppEnum.vl_api_sub_if_flags_t.SUB_IF_API_FLAG_DOT1AD
+            | VppEnum.vl_api_sub_if_flags_t.SUB_IF_API_FLAG_TWO_TAGS
+            | VppEnum.vl_api_sub_if_flags_t.SUB_IF_API_FLAG_EXACT_MATCH
+        )
+        r = test.vapi.create_subif(
+            sw_if_index=parent.sw_if_index,
+            sub_id=sub_id,
+            outer_vlan_id=outer_vlan,
+            inner_vlan_id=inner_vlan,
+            sub_if_flags=flags,
+        )
         self.set_sw_if_index(r.sw_if_index)
         self._outer_vlan = outer_vlan
         self._inner_vlan = inner_vlan
@@ -204,16 +214,13 @@ class VppDot1ADSubint(VppSubInterface):
         return self.add_dot1ad_layer(packet, self.outer_vlan, self.inner_vlan)
 
     def remove_dot1_layer(self, packet):
-        return self.remove_dot1ad_layer(packet, self.outer_vlan,
-                                        self.inner_vlan)
+        return self.remove_dot1ad_layer(packet, self.outer_vlan, self.inner_vlan)
 
 
 class VppP2PSubint(VppSubInterface):
-
     def __init__(self, test, parent, sub_id, remote_mac):
         super(VppP2PSubint, self).__init__(test, parent, sub_id)
-        r = test.vapi.p2p_ethernet_add(parent.sw_if_index,
-                                       remote_mac, sub_id)
+        r = test.vapi.p2p_ethernet_add(parent.sw_if_index, remote_mac, sub_id)
         self.set_sw_if_index(r.sw_if_index)
         self.parent_sw_if_index = parent.sw_if_index
         self.p2p_remote_mac = remote_mac

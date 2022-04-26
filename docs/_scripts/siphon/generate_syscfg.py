@@ -17,8 +17,12 @@ import re
 from . import generate
 
 # Register our regexp
-generate.siphon_patterns.append((
-    re.compile("(?P<m>VLIB_CONFIG_FUNCTION)\s*"
-        '[(](?P<fn>[a-zA-Z0-9_]+)\s*,\s*"(?P<name>[^"]*)"[)]'),
-    "syscfg"
-))
+generate.siphon_patterns.append(
+    (
+        re.compile(
+            "(?P<m>VLIB_CONFIG_FUNCTION)\s*"
+            '[(](?P<fn>[a-zA-Z0-9_]+)\s*,\s*"(?P<name>[^"]*)"[)]'
+        ),
+        "syscfg",
+    )
+)

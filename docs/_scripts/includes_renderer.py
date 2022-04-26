@@ -33,15 +33,14 @@ class ContentRenderer:
 
 
 class PluginRenderer(ContentRenderer):
-
     def _render_entry(self, output_file, entry):
         description = "<no-description-found>"
         # we use glob because a plugin can (ioam for now)
         # define the plugin definition in
         # a further subdirectory.
-        path = os.path.join(self.plugin_dir(), entry.name, '**')
+        path = os.path.join(self.plugin_dir(), entry.name, "**")
         for f in glob.iglob(path, recursive=True):
-            if not f.endswith('.c'):
+            if not f.endswith(".c"):
                 continue
             with open(f, "r", encoding="utf-8") as src:
                 for match in self.regex.finditer(src.read()):
@@ -56,7 +55,7 @@ class PluginRenderer(ContentRenderer):
         with open(fname, "w") as output_file:
             with os.scandir(self.plugin_dir()) as pdir:
                 for entry in sorted(pdir, key=lambda entry: entry.name):
-                    if not entry.name.startswith('.') and entry.is_dir():
+                    if not entry.name.startswith(".") and entry.is_dir():
                         self._render_entry(output_file, entry)
 
 

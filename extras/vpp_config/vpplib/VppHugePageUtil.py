@@ -33,6 +33,7 @@ class VppHugePageUtil(object):
     """
     Huge Page Utilities
     """
+
     def hugepages_dryrun_apply(self):
         """
         Apply the huge page configuration
@@ -40,23 +41,23 @@ class VppHugePageUtil(object):
         """
 
         node = self._node
-        hugepages = node['hugepages']
+        hugepages = node["hugepages"]
 
         vpp_hugepage_config = VPP_HUGEPAGE_CONFIG.format(
-            nr_hugepages=hugepages['total'],
-            max_map_count=hugepages['max_map_count'],
-            shmmax=hugepages['shmax'])
+            nr_hugepages=hugepages["total"],
+            max_map_count=hugepages["max_map_count"],
+            shmmax=hugepages["shmax"],
+        )
 
-        rootdir = node['rootdir']
-        filename = rootdir + node['hugepages']['hugepage_config_file']
+        rootdir = node["rootdir"]
+        filename = rootdir + node["hugepages"]["hugepage_config_file"]
 
-        cmd = 'echo "{0}" | sudo tee {1}'.\
-            format(vpp_hugepage_config, filename)
+        cmd = 'echo "{0}" | sudo tee {1}'.format(vpp_hugepage_config, filename)
         (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
         if ret != 0:
-            raise RuntimeError('{} failed on node {} {} {}'.
-                               format(cmd, node['host'],
-                                      stdout, stderr))
+            raise RuntimeError(
+                "{} failed on node {} {} {}".format(cmd, node["host"], stdout, stderr)
+            )
 
     def get_actual_huge_pages(self):
         """
@@ -68,25 +69,26 @@ class VppHugePageUtil(object):
         """
 
         # Get the memory information using /proc/meminfo
-        cmd = 'sudo cat /proc/meminfo'
+        cmd = "sudo cat /proc/meminfo"
         (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
         if ret != 0:
             raise RuntimeError(
-                '{} failed on node {} {} {}'.format(
-                    cmd, self._node['host'],
-                    stdout, stderr))
+                "{} failed on node {} {} {}".format(
+                    cmd, self._node["host"], stdout, stderr
+                )
+            )
 
-        total = re.findall(r'HugePages_Total:\s+\w+', stdout)
-        free = re.findall(r'HugePages_Free:\s+\w+', stdout)
-        size = re.findall(r'Hugepagesize:\s+\w+\s+\w+', stdout)
-        memtotal = re.findall(r'MemTotal:\s+\w+\s+\w+', stdout)
-        memfree = re.findall(r'MemFree:\s+\w+\s+\w+', stdout)
+        total = re.findall(r"HugePages_Total:\s+\w+", stdout)
+        free = re.findall(r"HugePages_Free:\s+\w+", stdout)
+        size = re.findall(r"Hugepagesize:\s+\w+\s+\w+", stdout)
+        memtotal = re.findall(r"MemTotal:\s+\w+\s+\w+", stdout)
+        memfree = re.findall(r"MemFree:\s+\w+\s+\w+", stdout)
 
-        total = total[0].split(':')[1].lstrip()
-        free = free[0].split(':')[1].lstrip()
-        size = size[0].split(':')[1].lstrip()
-        memtotal = memtotal[0].split(':')[1].lstrip()
-        memfree = memfree[0].split(':')[1].lstrip()
+        total = total[0].split(":")[1].lstrip()
+        free = free[0].split(":")[1].lstrip()
+        size = size[0].split(":")[1].lstrip()
+        memtotal = memtotal[0].split(":")[1].lstrip()
+        memfree = memfree[0].split(":")[1].lstrip()
         return total, free, size, memtotal, memfree
 
     def show_huge_pages(self):
@@ -96,17 +98,13 @@ class VppHugePageUtil(object):
         """
 
         node = self._node
-        hugepages = node['hugepages']
-        print ("  {:30}: {}".format("Total System Memory",
-                                   hugepages['memtotal']))
-        print ("  {:30}: {}".format("Total Free Memory",
-                                    hugepages['memfree']))
-        print ("  {:30}: {}".format("Actual Huge Page Total",
-                                    hugepages['actual_total']))
-        print ("  {:30}: {}".format("Configured Huge Page Total",
-                                    hugepages['total']))
-        print ("  {:30}: {}".format("Huge Pages Free", hugepages['free']))
-        print ("  {:30}: {}".format("Huge Page Size", hugepages['size']))
+        hugepages = node["hugepages"]
+        print("  {:30}: {}".format("Total System Memory", hugepages["memtotal"]))
+        print("  {:30}: {}".format("Total Free Memory", hugepages["memfree"]))
+        print("  {:30}: {}".format("Actual Huge Page Total", hugepages["actual_total"]))
+        print("  {:30}: {}".format("Configured Huge Page Total", hugepages["total"]))
+        print("  {:30}: {}".format("Huge Pages Free", hugepages["free"]))
+        print("  {:30}: {}".format("Huge Page Size", hugepages["size"]))
 
     def get_huge_page_config(self):
         """
@@ -115,7 +113,7 @@ class VppHugePageUtil(object):
         :returns: The map max count and shmmax
         """
 
-        total = self._node['hugepages']['total']
+        total = self._node["hugepages"]["total"]
         max_map_count = int(total) * 2 + 1024
         shmmax = int(total) * 2 * 1024 * 1024
         return max_map_count, shmmax

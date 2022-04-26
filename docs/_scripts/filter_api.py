@@ -24,9 +24,10 @@ if len(sys.argv) < 2:
 
 patterns = [
     # Search for "define" blocks and treat them as structs
-    (re.compile(r"^.*(manual_.[^\s]+\s+)?define\s+(?P<name>[^\s]+)"),
-     r"typedef struct vl_api_\g<name>_t"),
-
+    (
+        re.compile(r"^.*(manual_.[^\s]+\s+)?define\s+(?P<name>[^\s]+)"),
+        r"typedef struct vl_api_\g<name>_t",
+    ),
     # For every "brief" statement at the start of a comment block, add an
     # xref with whatever is on the same line. This gives us an index page
     # with all the API methods in one place.
@@ -36,14 +37,13 @@ patterns = [
     #  r'/** @xrefitem api "" "VPP API" \g<c> \g<b> \g<c>'),  # capture inline comment close
     # (re.compile(r"/\*\*\s*(?P<b>[\\@]brief)\s+(?P<c>.+)$"),
     #  r'/** @xrefitem api "" "VPP API" \g<c> \g<b> \g<c>'),
-
     # Since structs don't have params, replace @param with @tparam
-    ( re.compile("[\\@]param\\b"), "@tparam"),
+    (re.compile("[\\@]param\\b"), "@tparam"),
 ]
 
 with open(sys.argv[1]) as fd:
     for line in fd:
-        str = line[:-1] # strip \n
+        str = line[:-1]  # strip \n
         for p in patterns:
             str = p[0].sub(p[1], str)
-        sys.stdout.write(str+"\n")
+        sys.stdout.write(str + "\n")
