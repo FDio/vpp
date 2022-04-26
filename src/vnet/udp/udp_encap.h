@@ -104,13 +104,12 @@ typedef struct udp_encap_t_
   index_t ue_fib_index;
 } udp_encap_t;
 
-extern index_t udp_encap_add_and_lock (fib_protocol_t proto,
-				       index_t fib_index,
-				       const ip46_address_t * src_ip,
-				       const ip46_address_t * dst_ip,
-				       u16 src_port,
-				       u16 dst_port,
-				       udp_encap_fixup_flags_t flags);
+extern int udp_encap_add_and_lock (index_t *uei, fib_protocol_t proto,
+				   index_t fib_index,
+				   const ip46_address_t *src_ip,
+				   const ip46_address_t *dst_ip, u16 src_port,
+				   u16 dst_port,
+				   udp_encap_fixup_flags_t flags);
 
 extern void udp_encap_lock (index_t uei);
 extern void udp_encap_unlock (index_t uei);

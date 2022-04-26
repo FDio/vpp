@@ -235,6 +235,13 @@ class TestUdpEncap(VppTestCase):
         self.assertEqual(udp_encap_3.get_stats()['packets'], NUM_PKTS)
 
         #
+        # Check that udp encap update works...
+        # Update udp_encap_1
+        #
+        udp_encap_1.src_port = 6666
+        udp_encap_1.update_vpp_config()
+
+        #
         # A route with an output label
         # the TTL of the inner packet is decremented on LSP ingress
         #
@@ -243,7 +250,7 @@ class TestUdpEncap(VppTestCase):
             [VppRoutePath("0.0.0.0",
                           0xFFFFFFFF,
                           type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
-                          next_hop_id=1,
+                          next_hop_id=udp_encap_1.id,
                           labels=[VppMplsLabel(66)])])
         route_4oMPLSo4.add_vpp_config()
 
@@ -257,7 +264,9 @@ class TestUdpEncap(VppTestCase):
             self.validate_outer4(p, udp_encap_1)
             p = MPLS(p["UDP"].payload.load)
             self.validate_inner4(p, p_4omo4, ttl=63)
-        self.assertEqual(udp_encap_1.get_stats()['packets'], 2*NUM_PKTS)
+        # Note: udp encap stats are reset on update, we expect exactly
+        # NUM_PKTS
+        self.assertEqual(udp_encap_1.get_stats()['packets'], NUM_PKTS)
 
     def test_udp_decap(self):
         """ UDP Decap test

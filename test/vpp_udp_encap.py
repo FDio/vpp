@@ -48,6 +48,15 @@ class VppUdpEncap(VppObject):
         self.id = r.id
         self._test.registry.register(self, self._test.logger)
 
+    def update_vpp_config(self):
+        self._test.vapi.udp_encap_add(
+            self.src_ip,
+            self.dst_ip,
+            self.src_port,
+            self.dst_port,
+            self.table_id,
+            self.id)
+
     def remove_vpp_config(self):
         self._test.vapi.udp_encap_del(self.id)
 

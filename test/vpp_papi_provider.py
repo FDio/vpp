@@ -453,26 +453,31 @@ class VppPapiProvider(object):
                       dst_ip,
                       src_port,
                       dst_port,
-                      table_id=0):
+                      table_id=0,
+                      index=None):
         """ Add a GRE tunnel
         :param src_ip:
         :param dst_ip:
         :param src_port:
         :param dst_port:
         :param outer_fib_id:  (Default value = 0)
+        :param id: (Default value = None)
         """
 
-        return self.api(
-            self.papi.udp_encap_add,
-            {
-                'udp_encap': {
-                    'src_ip': src_ip,
-                    'dst_ip': dst_ip,
-                    'src_port': src_port,
-                    'dst_port': dst_port,
-                    'table_id': table_id
-                }
-            })
+        d = {
+            'udp_encap': {
+                'src_ip': src_ip,
+                'dst_ip': dst_ip,
+                'src_port': src_port,
+                'dst_port': dst_port,
+                'table_id': table_id
+            }
+        }
+
+        if index:
+            d['udp_encap']['id'] = index
+
+        return self.api(self.papi.udp_encap_add, d)
 
     def udp_encap_del(self, id):
         return self.api(self.papi.udp_encap_del, {'id': id})
