@@ -88,7 +88,8 @@ class Siphon(object):
             loader=loader,
             trim_blocks=True,
             autoescape=False,
-            keep_trailing_newline=True)
+            keep_trailing_newline=True,
+        )
 
         # Convenience, get a reference to the internal escape and
         # unescape methods in html.parser. These then become
@@ -103,32 +104,38 @@ class Siphon(object):
     # Output renderers
 
     """Returns an object to be used as the sorting key in the item index."""
+
     def index_sort_key(self, group):
         return group
 
     """Returns a string to use as the header at the top of the item index."""
+
     def index_header(self):
         return self.template("index_header")
 
     """Returns the string fragment to use for each section in the item
     index."""
+
     def index_section(self, group):
         return self.template("index_section", group=group)
 
     """Returns the string fragment to use for each entry in the item index."""
+
     def index_entry(self, meta, item):
         return self.template("index_entry", meta=meta, item=item)
 
     """Returns an object, typically a string, to be used as the sorting key
     for items within a section."""
+
     def item_sort_key(self, item):
-        return item['name']
+        return item["name"]
 
     """Returns a key for grouping items together."""
-    def group_key(self, directory, file, macro, name):
-        _global = self._cmds['_global']
 
-        if file in _global and 'group_label' in _global[file]:
+    def group_key(self, directory, file, macro, name):
+        _global = self._cmds["_global"]
+
+        if file in _global and "group_label" in _global[file]:
             self._group[file] = (directory, file)
             return file
 
@@ -136,60 +143,59 @@ class Siphon(object):
         return directory
 
     """Returns a key for identifying items within a grouping."""
+
     def item_key(self, directory, file, macro, name):
         return name
 
     """Returns a string to use as the header when rendering the item."""
+
     def item_header(self, group):
         return self.template("item_header", group=group)
 
     """Returns a string to use as the body when rendering the item."""
+
     def item_format(self, meta, item):
         return self.template("item_format", meta=meta, item=item)
 
     """Returns a string to use as the label for the page reference."""
+
     def page_label(self, group):
-        return "_".join((
-            self.name,
-            self.sanitize_label(group)
-        ))
+        return "_".join((self.name, self.sanitize_label(group)))
 
     """Returns a title to use for a page."""
+
     def page_title(self, group):
-        _global = self._cmds['_global']
+        _global = self._cmds["_global"]
         (directory, file) = self._group[group]
 
-        if file and file in _global and 'group_label' in _global[file]:
-            return _global[file]['group_label']
+        if file and file in _global and "group_label" in _global[file]:
+            return _global[file]["group_label"]
 
-        if directory in _global and 'group_label' in _global[directory]:
-            return _global[directory]['group_label']
+        if directory in _global and "group_label" in _global[directory]:
+            return _global[directory]["group_label"]
 
         return directory
 
     """Returns a string to use as the label for the section reference."""
+
     def item_label(self, group, item):
-        return "__".join((
-            self.name,
-            item
-        ))
+        return "__".join((self.name, item))
 
     """Label sanitizer; for creating Doxygen references"""
+
     def sanitize_label(self, value):
-        return value.replace(" ", "_") \
-                    .replace("/", "_") \
-                    .replace(".", "_")
+        return value.replace(" ", "_").replace("/", "_").replace(".", "_")
 
     """Template processor"""
+
     def template(self, name, **kwargs):
         tpl = self._tplenv.get_template(name + self._format.extension)
-        return tpl.render(
-            this=self,
-            **kwargs)
+        return tpl.render(this=self, **kwargs)
 
     # Processing methods
 
     """Parse the input file into a more usable dictionary structure."""
+
     def load_json(self, files):
         self._cmds = {}
         self._group = {}
@@ -198,34 +204,37 @@ class Siphon(object):
         line_start = 0
         for filename in files:
             filename = os.path.relpath(filename)
-            self.log.info("Parsing items in file \"%s\"." % filename)
+            self.log.info('Parsing items in file "%s".' % filename)
             data = None
             with open(filename, "r") as fd:
                 data = json.load(fd)
 
-            self._cmds['_global'] = data['global']
+            self._cmds["_global"] = data["global"]
 
             # iterate the items loaded and regroup it
             for item in data["items"]:
                 try:
-                    o = self._parser.parse(item['block'])
+                    o = self._parser.parse(item["block"])
                 except Exception:
-                    self.log.error("Exception parsing item: %s\n%s"
-                                   % (json.dumps(item, separators=(',', ': '),
-                                                 indent=4),
-                                      item['block']))
+                    self.log.error(
+                        "Exception parsing item: %s\n%s"
+                        % (
+                            json.dumps(item, separators=(",", ": "), indent=4),
+                            item["block"],
+                        )
+                    )
                     raise
 
                 # Augment the item with metadata
                 o["meta"] = {}
                 for key in item:
-                    if key == 'block':
+                    if key == "block":
                         continue
-                    o['meta'][key] = item[key]
+                    o["meta"][key] = item[key]
 
                 # Load some interesting fields
-                directory = item['directory']
-                file = item['file']
+                directory = item["directory"]
+                file = item["file"]
                 macro = o["macro"]
                 name = o["name"]
 
@@ -240,6 +249,7 @@ class Siphon(object):
 
     """Iterate over the input data, calling render methods to generate the
     output."""
+
     def process(self, out=None):
 
         if out is None:
@@ -257,11 +267,12 @@ class Siphon(object):
 
         # Iterate the dictionary and process it
         for group in sorted(self._cmds.keys(), key=group_sort_key):
-            if group.startswith('_'):
+            if group.startswith("_"):
                 continue
 
-            self.log.info("Processing items in group \"%s\" (%s)." %
-                          (group, group_sort_key(group)))
+            self.log.info(
+                'Processing items in group "%s" (%s).' % (group, group_sort_key(group))
+            )
 
             # Generate the section index entry (write it now)
             out.write(self.index_section(group))
@@ -273,15 +284,16 @@ class Siphon(object):
                 return self.item_sort_key(self._cmds[group][key])
 
             for key in sorted(self._cmds[group].keys(), key=item_sort_key):
-                self.log.debug("--- Processing key \"%s\" (%s)." %
-                               (key, item_sort_key(key)))
+                self.log.debug(
+                    '--- Processing key "%s" (%s).' % (key, item_sort_key(key))
+                )
 
                 o = self._cmds[group][key]
                 meta = {
-                    "directory": o['meta']['directory'],
-                    "file": o['meta']['file'],
-                    "macro": o['macro'],
-                    "name": o['name'],
+                    "directory": o["meta"]["directory"],
+                    "file": o["meta"]["file"],
+                    "macro": o["macro"],
+                    "name": o["name"],
                     "key": key,
                     "label": self.item_label(group, key),
                 }
@@ -304,7 +316,7 @@ class Siphon(object):
 
     def do_cliexstart(self, matchobj):
         title = matchobj.group(1)
-        title = ' '.join(title.splitlines())
+        title = " ".join(title.splitlines())
         content = matchobj.group(2)
         content = re.sub(r"\n", r"\n    ", content)
         return "\n\n.. code-block:: console\n\n    %s\n    %s\n\n" % (title, content)
@@ -316,7 +328,7 @@ class Siphon(object):
 
     def do_cliexcmd(self, matchobj):
         content = matchobj.group(1)
-        content = ' '.join(content.splitlines())
+        content = " ".join(content.splitlines())
         return "\n\n.. code-block:: console\n\n    %s\n\n" % content
 
     def process_list(self, matchobj):
@@ -351,7 +363,9 @@ class Siphon(object):
         s = re.sub(r"@TODO[^\n]*", "", s)
         # ----------- code blocks
         s = re.sub(r"@cliexcmd{(.+?)}", self.do_cliexcmd, s, flags=re.DOTALL)
-        s = re.sub(r"@cliexstart{(.+?)}(.+?)@cliexend", self.do_cliexstart, s, flags=re.DOTALL)
+        s = re.sub(
+            r"@cliexstart{(.+?)}(.+?)@cliexend", self.do_cliexstart, s, flags=re.DOTALL
+        )
         s = re.sub(r"@clistart(.+?)@cliend", self.do_clistart, s, flags=re.DOTALL)
         # ----------- lists
         s = re.sub(r"^\s*-", r"\n@@@@", s, flags=re.MULTILINE)
@@ -377,6 +391,7 @@ class Siphon(object):
         s = re.sub(r"\n[ \f\v\t]*", "\n", s)
         return s
 
+
 class Format(object):
     """Output format class"""
 
@@ -389,6 +404,7 @@ class Format(object):
 
 class FormatMarkdown(Format):
     """Markdown output format"""
+
     name = "markdown"
     extension = ".md"
 
@@ -399,6 +415,7 @@ formats["markdown"] = FormatMarkdown
 
 class FormatItemlist(Format):
     """Itemlist output format"""
+
     name = "itemlist"
     extension = ".itemlist"
 

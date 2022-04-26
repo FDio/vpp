@@ -18,31 +18,31 @@ class Constants(object):
     """Constants used in CSIT."""
 
     # OpenVPP testing directory location at topology nodes
-    REMOTE_FW_DIR = '/tmp/openvpp-testing'
+    REMOTE_FW_DIR = "/tmp/openvpp-testing"
 
     # shell scripts location
-    RESOURCES_LIB_SH = 'resources/libraries/bash'
+    RESOURCES_LIB_SH = "resources/libraries/bash"
 
     # vat templates location
-    RESOURCES_TPL_VAT = 'resources/templates/vat'
+    RESOURCES_TPL_VAT = "resources/templates/vat"
 
     # OpenVPP VAT binary name
-    VAT_BIN_NAME = 'vpp_api_test'
+    VAT_BIN_NAME = "vpp_api_test"
 
     # QEMU version to install
-    QEMU_INSTALL_VERSION = 'qemu-2.5.0'
+    QEMU_INSTALL_VERSION = "qemu-2.5.0"
 
     # QEMU install directory
-    QEMU_INSTALL_DIR = '/opt/qemu-2.5.0'
+    QEMU_INSTALL_DIR = "/opt/qemu-2.5.0"
 
     # Honeycomb directory location at topology nodes:
-    REMOTE_HC_DIR = '/opt/honeycomb'
+    REMOTE_HC_DIR = "/opt/honeycomb"
 
     # Honeycomb persistence files location
-    REMOTE_HC_PERSIST = '/var/lib/honeycomb/persist'
+    REMOTE_HC_PERSIST = "/var/lib/honeycomb/persist"
 
     # Honeycomb templates location
-    RESOURCES_TPL_HC = 'resources/templates/honeycomb'
+    RESOURCES_TPL_HC = "resources/templates/honeycomb"
 
     # ODL Client Restconf listener port
     ODL_PORT = 8181

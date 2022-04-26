@@ -232,10 +232,10 @@ help:
 	@echo " compdb               - (re)generate compile_commands.json"
 	@echo " checkstyle           - check coding style"
 	@echo " checkstyle-commit    - check commit message format"
-	@echo " checkstyle-test      - check test framework coding style"
-	@echo " checkstyle-test-diff - check test framework coding style (only changed files)"
+	@echo " checkstyle-python    - check python coding style using 'black' formatter"
 	@echo " checkstyle-api       - check api for incompatible changes"
 	@echo " fixstyle             - fix coding style"
+	@echo " fixstyle-python      - fix python coding style using 'black' formatter"
 	@echo " doxygen              - DEPRECATED - use 'make docs'"
 	@echo " bootstrap-doxygen    - DEPRECATED"
 	@echo " wipe-doxygen         - DEPRECATED"
@@ -501,13 +501,17 @@ test-wipe-cov:
 test-wipe-all:
 	@make -C test wipe-all
 
+# Note: All python venv consolidated in test/Makefile, test/requirements*.txt
 .PHONY: test-checkstyle
 test-checkstyle:
-	@make -C test checkstyle
+	$(warning test-checkstyle is deprecated. Running checkstyle-python.")
+	@make -C test checkstyle-python-all
 
+# Note: All python venv consolidated in test/Makefile, test/requirements*.txt
 .PHONY: test-checkstyle-diff
 test-checkstyle-diff:
-	@make -C test checkstyle-diff
+	$(warning test-checkstyle-diff is deprecated. Running checkstyle-python.")
+	@make -C test checkstyle-python-all
 
 .PHONY: test-refresh-deps
 test-refresh-deps:
@@ -664,14 +668,26 @@ checkstyle-commit:
 	@extras/scripts/check_commit_msg.sh
 
 .PHONY: checkstyle-test
-checkstyle-test: test-checkstyle
+checkstyle-test:
+	$(warning test-checkstyle is deprecated. Running checkstyle-python.")
+	@make -C test checkstyle-python-all
+
+# Note: All python venv consolidated in test/Makefile, test/requirements*.txt
+.PHONY: checkstyle-python
+checkstyle-python:
+	@make -C test checkstyle-python-all
 
 .PHONY: checkstyle-all
-checkstyle-all: checkstyle-commit checkstyle checkstyle-test
+checkstyle-all: checkstyle-commit checkstyle checkstyle-python
 
 .PHONY: fixstyle
 fixstyle:
 	@extras/scripts/checkstyle.sh --fix
+
+# Note: All python venv consolidated in test/Makefile, test/requirements*.txt
+.PHONY: fixstyle-python
+fixstyle-python:
+	@make -C test fixstyle-python-all
 
 .PHONY: checkstyle-api
 checkstyle-api:

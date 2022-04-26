@@ -23,7 +23,7 @@ from vpplib.VPPUtil import VPPUtil
 DPDK_SCRIPT = "/vpp/vpp-config/scripts/dpdk-devbind.py"
 
 # PCI Device id regular expresssion
-PCI_DEV_ID_REGEX = '[0-9A-Fa-f]+:[0-9A-Fa-f]+:[0-9A-Fa-f]+.[0-9A-Fa-f]+'
+PCI_DEV_ID_REGEX = "[0-9A-Fa-f]+:[0-9A-Fa-f]+:[0-9A-Fa-f]+.[0-9A-Fa-f]+"
 
 
 class VppPCIUtil(object):
@@ -45,51 +45,47 @@ class VppPCIUtil(object):
         devices = {}
 
         ids = re.findall(PCI_DEV_ID_REGEX, device_string)
-        descriptions = re.findall(r'\'([\s\S]*?)\'', device_string)
-        unused = re.findall(r'unused=\w+|unused=', device_string)
+        descriptions = re.findall(r"\'([\s\S]*?)\'", device_string)
+        unused = re.findall(r"unused=\w+|unused=", device_string)
 
         for i, j in enumerate(ids):
-            device = {'description': descriptions[i]}
+            device = {"description": descriptions[i]}
             if unused:
-                device['unused'] = unused[i].split('=')[1].split(',')
+                device["unused"] = unused[i].split("=")[1].split(",")
 
-            cmd = 'ls /sys/bus/pci/devices/{}/driver/module/drivers'. \
-                format(ids[i])
+            cmd = "ls /sys/bus/pci/devices/{}/driver/module/drivers".format(ids[i])
             (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
             if ret == 0:
-                device['driver'] = stdout.split(':')[1].rstrip('\n')
+                device["driver"] = stdout.split(":")[1].rstrip("\n")
 
-            cmd = 'cat /sys/bus/pci/devices/{}/numa_node'.format(ids[i])
+            cmd = "cat /sys/bus/pci/devices/{}/numa_node".format(ids[i])
             (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
             if ret != 0:
-                raise RuntimeError('{} failed {} {}'.
-                                   format(cmd, stderr, stdout))
-            numa_node = stdout.rstrip('\n')
-            if numa_node == '-1':
-                device['numa_node'] = '0'
+                raise RuntimeError("{} failed {} {}".format(cmd, stderr, stdout))
+            numa_node = stdout.rstrip("\n")
+            if numa_node == "-1":
+                device["numa_node"] = "0"
             else:
-                device['numa_node'] = numa_node
+                device["numa_node"] = numa_node
 
             interfaces = []
-            device['interfaces'] = []
-            cmd = 'ls /sys/bus/pci/devices/{}/net'.format(ids[i])
+            device["interfaces"] = []
+            cmd = "ls /sys/bus/pci/devices/{}/net".format(ids[i])
             (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
             if ret == 0:
-                interfaces = stdout.rstrip('\n').split()
-                device['interfaces'] = interfaces
+                interfaces = stdout.rstrip("\n").split()
+                device["interfaces"] = interfaces
 
             l2_addrs = []
             for intf in interfaces:
-                cmd = 'cat /sys/bus/pci/devices/{}/net/{}/address'.format(
-                    ids[i], intf)
+                cmd = "cat /sys/bus/pci/devices/{}/net/{}/address".format(ids[i], intf)
                 (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
                 if ret != 0:
-                    raise RuntimeError('{} failed {} {}'.
-                                       format(cmd, stderr, stdout))
+                    raise RuntimeError("{} failed {} {}".format(cmd, stderr, stdout))
 
-                l2_addrs.append(stdout.rstrip('\n'))
+                l2_addrs.append(stdout.rstrip("\n"))
 
-            device['l2addr'] = l2_addrs
+            device["l2addr"] = l2_addrs
 
             devices[ids[i]] = device
 
@@ -112,66 +108,62 @@ class VppPCIUtil(object):
         """
 
         node = self._node
-        rootdir = node['rootdir']
+        rootdir = node["rootdir"]
         dpdk_script = rootdir + DPDK_SCRIPT
-        cmd = dpdk_script + ' --status'
+        cmd = dpdk_script + " --status"
         (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
         if ret != 0:
-            raise RuntimeError('{} failed on node {} {}'.format(
-                cmd,
-                node['host'],
-                stderr))
+            raise RuntimeError(
+                "{} failed on node {} {}".format(cmd, node["host"], stderr)
+            )
 
         # Get the network devices using the DPDK
         # First get everything after using DPDK
-        stda = stdout.split('Network devices using DPDK-compatible driver')[1]
+        stda = stdout.split("Network devices using DPDK-compatible driver")[1]
         # Then get everything before using kernel driver
-        using_dpdk = stda.split('Network devices using kernel driver')[0]
+        using_dpdk = stda.split("Network devices using kernel driver")[0]
         self._dpdk_devices = self._create_device_list(using_dpdk)
 
         # Get the network devices using the kernel
-        stda = stdout.split('Network devices using kernel driver')[1]
-        using_kernel = stda.split('Other network devices')[0]
+        stda = stdout.split("Network devices using kernel driver")[1]
+        using_kernel = stda.split("Other network devices")[0]
         self._kernel_devices = self._create_device_list(using_kernel)
 
         # Get the other network devices
-        stda = stdout.split('Other network devices')[1]
-        other = stda.split('Crypto devices using DPDK-compatible driver')[0]
+        stda = stdout.split("Other network devices")[1]
+        other = stda.split("Crypto devices using DPDK-compatible driver")[0]
         self._other_devices = self._create_device_list(other)
 
         # Get the crypto devices using the DPDK
-        stda = stdout.split('Crypto devices using DPDK-compatible driver')[1]
-        crypto_using_dpdk = stda.split('Crypto devices using kernel driver')[0]
-        self._crypto_dpdk_devices = self._create_device_list(
-            crypto_using_dpdk)
+        stda = stdout.split("Crypto devices using DPDK-compatible driver")[1]
+        crypto_using_dpdk = stda.split("Crypto devices using kernel driver")[0]
+        self._crypto_dpdk_devices = self._create_device_list(crypto_using_dpdk)
 
         # Get the network devices using the kernel
-        stda = stdout.split('Crypto devices using kernel driver')[1]
-        crypto_using_kernel = stda.split('Other crypto devices')[0]
-        self._crypto_kernel_devices = self._create_device_list(
-            crypto_using_kernel)
+        stda = stdout.split("Crypto devices using kernel driver")[1]
+        crypto_using_kernel = stda.split("Other crypto devices")[0]
+        self._crypto_kernel_devices = self._create_device_list(crypto_using_kernel)
 
         # Get the other network devices
-        crypto_other = stdout.split('Other crypto devices')[1]
+        crypto_other = stdout.split("Other crypto devices")[1]
         self._crypto_other_devices = self._create_device_list(crypto_other)
 
         # Get the devices used by the kernel
         for devk in self._kernel_devices.items():
             dvid = devk[0]
             device = devk[1]
-            for i in device['interfaces']:
+            for i in device["interfaces"]:
                 cmd = "ip addr show " + i
                 (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
                 if ret != 0:
-                    raise RuntimeError('{} failed on node {} {}'.format(
-                        cmd,
-                        node['host'],
-                        stderr))
-                lstate = re.findall(r'state \w+', stdout)[0].split(' ')[1]
+                    raise RuntimeError(
+                        "{} failed on node {} {}".format(cmd, node["host"], stderr)
+                    )
+                lstate = re.findall(r"state \w+", stdout)[0].split(" ")[1]
 
                 # Take care of the links that are UP
-                if lstate == 'UP':
-                    device['linkup'] = True
+                if lstate == "UP":
+                    device["linkup"] = True
                     self._link_up_devices[dvid] = device
 
         for devl in self._link_up_devices.items():
@@ -234,18 +226,18 @@ class VppPCIUtil(object):
 
         """
 
-        name = 'port' + str(len(interfaces))
+        name = "port" + str(len(interfaces))
         interfaces[name] = {}
-        interfaces[name]['pci_address'] = device_id
-        interfaces[name]['numa_node'] = device['numa_node']
-        if 'l2addr' in device:
-            l2_addrs = device['l2addr']
+        interfaces[name]["pci_address"] = device_id
+        interfaces[name]["numa_node"] = device["numa_node"]
+        if "l2addr" in device:
+            l2_addrs = device["l2addr"]
             for i, j in enumerate(l2_addrs):
                 if i > 0:
-                    mname = 'mac_address' + str(i + 1)
+                    mname = "mac_address" + str(i + 1)
                     interfaces[name][mname] = l2_addrs[i]
                 else:
-                    interfaces[name]['mac_address'] = l2_addrs[i]
+                    interfaces[name]["mac_address"] = l2_addrs[i]
 
     @staticmethod
     def show_vpp_devices(devices, show_interfaces=True, show_header=True):
@@ -261,34 +253,33 @@ class VppPCIUtil(object):
         """
 
         if show_interfaces:
-            header = "{:15} {:25} {:50}".format("PCI ID",
-                                                "Kernel Interface(s)",
-                                                "Description")
+            header = "{:15} {:25} {:50}".format(
+                "PCI ID", "Kernel Interface(s)", "Description"
+            )
         else:
-            header = "{:15} {:50}".format("PCI ID",
-                                          "Description")
-        dashseparator = ("-" * (len(header) - 2))
+            header = "{:15} {:50}".format("PCI ID", "Description")
+        dashseparator = "-" * (len(header) - 2)
 
         if show_header is True:
-            print (header)
-            print (dashseparator)
+            print(header)
+            print(dashseparator)
         for dit in devices.items():
             dvid = dit[0]
             device = dit[1]
             if show_interfaces:
-                interfaces = device['interfaces']
-                interface = ''
+                interfaces = device["interfaces"]
+                interface = ""
                 for i, j in enumerate(interfaces):
                     if i > 0:
-                        interface += ',' + interfaces[i]
+                        interface += "," + interfaces[i]
                     else:
                         interface = interfaces[i]
 
-                print ("{:15} {:25} {:50}".format(
-                    dvid, interface, device['description']))
+                print(
+                    "{:15} {:25} {:50}".format(dvid, interface, device["description"])
+                )
             else:
-                print ("{:15} {:50}".format(
-                    dvid, device['description']))
+                print("{:15} {:50}".format(dvid, device["description"]))
 
     @staticmethod
     def unbind_vpp_device(node, device_id):
@@ -301,14 +292,14 @@ class VppPCIUtil(object):
         :type device_id: string
         """
 
-        rootdir = node['rootdir']
+        rootdir = node["rootdir"]
         dpdk_script = rootdir + DPDK_SCRIPT
-        cmd = dpdk_script + ' -u ' + ' ' + device_id
+        cmd = dpdk_script + " -u " + " " + device_id
         (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
         if ret != 0:
-            raise RuntimeError('{} failed on node {} {} {}'.format(
-                cmd, node['host'],
-                stdout, stderr))
+            raise RuntimeError(
+                "{} failed on node {} {} {}".format(cmd, node["host"], stdout, stderr)
+            )
 
     @staticmethod
     def bind_vpp_device(node, driver, device_id):
@@ -324,14 +315,14 @@ class VppPCIUtil(object):
         :returns ret: Command return code
         """
 
-        rootdir = node['rootdir']
+        rootdir = node["rootdir"]
         dpdk_script = rootdir + DPDK_SCRIPT
-        cmd = dpdk_script + ' -b ' + driver + ' ' + device_id
+        cmd = dpdk_script + " -b " + driver + " " + device_id
         (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
         if ret != 0:
-            logging.error('{} failed on node {}'.format(
-                cmd, node['host'], stdout, stderr))
-            logging.error('{} {}'.format(
-                stdout, stderr))
+            logging.error(
+                "{} failed on node {}".format(cmd, node["host"], stdout, stderr)
+            )
+            logging.error("{} {}".format(stdout, stderr))
 
         return ret

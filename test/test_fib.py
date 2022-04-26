@@ -8,7 +8,7 @@ from framework import VppTestCase, VppTestRunner
 
 @tag_fixme_vpp_workers
 class TestFIB(VppTestCase):
-    """ FIB Test Case """
+    """FIB Test Case"""
 
     @classmethod
     def setUpClass(cls):
@@ -19,7 +19,7 @@ class TestFIB(VppTestCase):
         super(TestFIB, cls).tearDownClass()
 
     def test_fib(self):
-        """ FIB Unit Tests """
+        """FIB Unit Tests"""
         error = self.vapi.cli("test fib")
 
         # shameless test of CLIs to bump lcov results...
@@ -44,5 +44,6 @@ class TestFIB(VppTestCase):
             self.logger.critical(error)
         self.assertNotIn("Failed", error)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)

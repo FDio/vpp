@@ -18,9 +18,10 @@ ident = pp.Word(pp.alphas + "_", pp.alphas + pp.nums + "_")
 intNum = pp.Word(pp.nums)
 hexNum = pp.Literal("0x") + pp.Word(pp.hexnums)
 octalNum = pp.Literal("0") + pp.Word("01234567")
-integer = (hexNum | octalNum | intNum) + \
-    pp.Optional(pp.Literal("ULL") | pp.Literal("LL") | pp.Literal("L"))
-floatNum = pp.Regex(r'\d+(\.\d*)?([eE]\d+)?') + pp.Optional(pp.Literal("f"))
+integer = (hexNum | octalNum | intNum) + pp.Optional(
+    pp.Literal("ULL") | pp.Literal("LL") | pp.Literal("L")
+)
+floatNum = pp.Regex(r"\d+(\.\d*)?([eE]\d+)?") + pp.Optional(pp.Literal("f"))
 char = pp.Literal("'") + pp.Word(pp.printables, exact=1) + pp.Literal("'")
 arrayIndex = integer | ident
 
@@ -36,23 +37,29 @@ semicolon = pp.Literal(";").suppress()
 # initializer := { [member = ] (variable | expression | { initializer } ) }
 typeName = ident
 varName = ident
-typeSpec = pp.Optional("unsigned") + \
-           pp.oneOf("int long short float double char u8 i8 void") + \
-           pp.Optional(pp.Word("*"), default="")
-typeCast = pp.Combine( "(" + ( typeSpec | typeName ) + ")" ).suppress()
+typeSpec = (
+    pp.Optional("unsigned")
+    + pp.oneOf("int long short float double char u8 i8 void")
+    + pp.Optional(pp.Word("*"), default="")
+)
+typeCast = pp.Combine("(" + (typeSpec | typeName) + ")").suppress()
 
-string = pp.Combine(pp.OneOrMore(pp.QuotedString(quoteChar='"',
-    escChar='\\', multiline=True)), adjacent=False)
+string = pp.Combine(
+    pp.OneOrMore(pp.QuotedString(quoteChar='"', escChar="\\", multiline=True)),
+    adjacent=False,
+)
 literal = pp.Optional(typeCast) + (integer | floatNum | char | string)
-var = pp.Combine(pp.Optional(typeCast) + varName +
-    pp.Optional("[" + arrayIndex + "]"))
+var = pp.Combine(pp.Optional(typeCast) + varName + pp.Optional("[" + arrayIndex + "]"))
 
 # This could be more complete, but suffices for our uses
-expr = (literal | var)
+expr = literal | var
 
 """Parse and render a block of text into a Python dictionary."""
+
+
 class Parser(object):
     """Compiled PyParsing BNF"""
+
     _parser = None
 
     def __init__(self):
@@ -71,6 +78,8 @@ class Parser(object):
 
 
 """Parser for function-like macros - without the closing semi-colon."""
+
+
 class ParserFunctionMacro(Parser):
     def BNF(self):
         # VLIB_CONFIG_FUNCTION (unix_config, "unix")
@@ -91,6 +100,8 @@ class ParserFunctionMacro(Parser):
 
 
 """Parser for function-like macros with a closing semi-colon."""
+
+
 class ParseFunctionMacroStmt(ParserFunctionMacro):
     def BNF(self):
         # VLIB_CONFIG_FUNCTION (unix_config, "unix");
@@ -106,6 +117,8 @@ Parser for our struct initializers which are composed from a
 function-like macro, equals sign, and then a normal C struct initializer
 block.
 """
+
+
 class MacroInitializer(ParserFunctionMacro):
     def BNF(self):
         # VLIB_CLI_COMMAND (show_sr_tunnel_command, static) = {
@@ -115,14 +128,15 @@ class MacroInitializer(ParserFunctionMacro):
         # };
         cs = pp.Forward()
 
-
-        member = pp.Combine(dot + varName + pp.Optional("[" + arrayIndex + "]"),
-            adjacent=False)
-        value = (expr | cs)
+        member = pp.Combine(
+            dot + varName + pp.Optional("[" + arrayIndex + "]"), adjacent=False
+        )
+        value = expr | cs
 
         entry = pp.Group(pp.Optional(member + equals, default="") + value)
-        entries = (pp.ZeroOrMore(entry + comma) + entry + pp.Optional(comma)) | \
-                  (pp.ZeroOrMore(entry + comma))
+        entries = (pp.ZeroOrMore(entry + comma) + entry + pp.Optional(comma)) | (
+            pp.ZeroOrMore(entry + comma)
+        )
 
         cs << (lbrace + entries + rbrace)
 
