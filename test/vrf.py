@@ -4,7 +4,8 @@ from util import NumericConstant
 
 
 class VRFState(NumericConstant):
-    """ VRF State """
+    """VRF State"""
+
     not_configured = 0
     configured = 1
     reset = 2

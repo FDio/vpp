@@ -21,7 +21,7 @@ from vpp_ip import INVALID_INDEX
 
 @tag_fixme_vpp_workers
 class TestGtpuUDP(VppTestCase):
-    """ GTPU UDP ports Test Case """
+    """GTPU UDP ports Test Case"""
 
     def setUp(self):
         super(TestGtpuUDP, self).setUp()
@@ -39,15 +39,16 @@ class TestGtpuUDP(VppTestCase):
 
     def _check_udp_port_ip4(self, enabled=True):
 
-        pkt = (Ether(src=self.pg0.local_mac, dst=self.pg0.remote_mac) /
-               IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4) /
-               UDP(sport=self.dport, dport=self.dport, chksum=0))
+        pkt = (
+            Ether(src=self.pg0.local_mac, dst=self.pg0.remote_mac)
+            / IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4)
+            / UDP(sport=self.dport, dport=self.dport, chksum=0)
+        )
 
         self.pg0.add_stream(pkt)
         self.pg_start()
 
-        err = self.statistics.get_counter(
-            '/err/ip4-udp-lookup/no_listener')[0]
+        err = self.statistics.get_counter("/err/ip4-udp-lookup/no_listener")[0]
 
         if enabled:
             self.assertEqual(err, self.ip4_err)
@@ -58,15 +59,16 @@ class TestGtpuUDP(VppTestCase):
 
     def _check_udp_port_ip6(self, enabled=True):
 
-        pkt = (Ether(src=self.pg0.local_mac, dst=self.pg0.remote_mac) /
-               IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6) /
-               UDP(sport=self.dport, dport=self.dport, chksum=0))
+        pkt = (
+            Ether(src=self.pg0.local_mac, dst=self.pg0.remote_mac)
+            / IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6)
+            / UDP(sport=self.dport, dport=self.dport, chksum=0)
+        )
 
         self.pg0.add_stream(pkt)
         self.pg_start()
 
-        err = self.statistics.get_counter(
-            '/err/ip6-udp-lookup/no_listener')[0]
+        err = self.statistics.get_counter("/err/ip6-udp-lookup/no_listener")[0]
 
         if enabled:
             self.assertEqual(err, self.ip6_err)
@@ -76,46 +78,54 @@ class TestGtpuUDP(VppTestCase):
         self.ip6_err = err
 
     def test_udp_port(self):
-        """ test UDP ports
+        """test UDP ports
         Check if there are no udp listeners before gtpu is enabled
         """
         # UDP ports should be disabled unless a tunnel is configured
         self._check_udp_port_ip4(False)
         self._check_udp_port_ip6(False)
 
-        r = self.vapi.gtpu_add_del_tunnel(is_add=True,
-                                          mcast_sw_if_index=0xFFFFFFFF,
-                                          decap_next_index=0xFFFFFFFF,
-                                          src_address=self.pg0.local_ip4,
-                                          dst_address=self.pg0.remote_ip4)
+        r = self.vapi.gtpu_add_del_tunnel(
+            is_add=True,
+            mcast_sw_if_index=0xFFFFFFFF,
+            decap_next_index=0xFFFFFFFF,
+            src_address=self.pg0.local_ip4,
+            dst_address=self.pg0.remote_ip4,
+        )
 
         # UDP port 2152 enabled for ip4
         self._check_udp_port_ip4()
 
-        r = self.vapi.gtpu_add_del_tunnel(is_add=True,
-                                          mcast_sw_if_index=0xFFFFFFFF,
-                                          decap_next_index=0xFFFFFFFF,
-                                          src_address=self.pg0.local_ip6,
-                                          dst_address=self.pg0.remote_ip6)
+        r = self.vapi.gtpu_add_del_tunnel(
+            is_add=True,
+            mcast_sw_if_index=0xFFFFFFFF,
+            decap_next_index=0xFFFFFFFF,
+            src_address=self.pg0.local_ip6,
+            dst_address=self.pg0.remote_ip6,
+        )
 
         # UDP port 2152 enabled for ip6
         self._check_udp_port_ip6()
 
-        r = self.vapi.gtpu_add_del_tunnel(is_add=False,
-                                          mcast_sw_if_index=0xFFFFFFFF,
-                                          decap_next_index=0xFFFFFFFF,
-                                          src_address=self.pg0.local_ip4,
-                                          dst_address=self.pg0.remote_ip4)
+        r = self.vapi.gtpu_add_del_tunnel(
+            is_add=False,
+            mcast_sw_if_index=0xFFFFFFFF,
+            decap_next_index=0xFFFFFFFF,
+            src_address=self.pg0.local_ip4,
+            dst_address=self.pg0.remote_ip4,
+        )
 
-        r = self.vapi.gtpu_add_del_tunnel(is_add=False,
-                                          mcast_sw_if_index=0xFFFFFFFF,
-                                          decap_next_index=0xFFFFFFFF,
-                                          src_address=self.pg0.local_ip6,
-                                          dst_address=self.pg0.remote_ip6)
+        r = self.vapi.gtpu_add_del_tunnel(
+            is_add=False,
+            mcast_sw_if_index=0xFFFFFFFF,
+            decap_next_index=0xFFFFFFFF,
+            src_address=self.pg0.local_ip6,
+            dst_address=self.pg0.remote_ip6,
+        )
 
 
 class TestGtpu(BridgeDomain, VppTestCase):
-    """ GTPU Test Case """
+    """GTPU Test Case"""
 
     def __init__(self, *args):
         BridgeDomain.__init__(self)
@@ -126,14 +136,16 @@ class TestGtpu(BridgeDomain, VppTestCase):
         Encapsulate the original payload frame by adding GTPU header with its
         UDP, IP and Ethernet fields
         """
-        return (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
-                IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4) /
-                UDP(sport=self.dport, dport=self.dport, chksum=0) /
-                GTP_U_Header(teid=vni, gtp_type=self.gtp_type, length=150) /
-                pkt)
+        return (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4)
+            / UDP(sport=self.dport, dport=self.dport, chksum=0)
+            / GTP_U_Header(teid=vni, gtp_type=self.gtp_type, length=150)
+            / pkt
+        )
 
     def ip_range(self, start, end):
-        """ range of remote ip's """
+        """range of remote ip's"""
         return ip4_range(self.pg0.remote_ip4, start, end)
 
     def encap_mcast(self, pkt, src_ip, src_mac, vni):
@@ -141,11 +153,13 @@ class TestGtpu(BridgeDomain, VppTestCase):
         Encapsulate the original payload frame by adding GTPU header with its
         UDP, IP and Ethernet fields
         """
-        return (Ether(src=src_mac, dst=self.mcast_mac) /
-                IP(src=src_ip, dst=self.mcast_ip4) /
-                UDP(sport=self.dport, dport=self.dport, chksum=0) /
-                GTP_U_Header(teid=vni, gtp_type=self.gtp_type, length=150) /
-                pkt)
+        return (
+            Ether(src=src_mac, dst=self.mcast_mac)
+            / IP(src=src_ip, dst=self.mcast_ip4)
+            / UDP(sport=self.dport, dport=self.dport, chksum=0)
+            / GTP_U_Header(teid=vni, gtp_type=self.gtp_type, length=150)
+            / pkt
+        )
 
     def decapsulate(self, pkt):
         """
@@ -178,7 +192,7 @@ class TestGtpu(BridgeDomain, VppTestCase):
         self.assertEqual(pkt[GTP_U_Header].teid, vni)
 
     def test_encap(self):
-        """ Encapsulation test
+        """Encapsulation test
         Send frames from pg1
         Verify receipt of encapsulated frames on pg0
         """
@@ -197,7 +211,7 @@ class TestGtpu(BridgeDomain, VppTestCase):
         # self.assert_eq_pkts(payload, self.frame_reply)
 
     def test_ucast_flood(self):
-        """ Unicast flood test
+        """Unicast flood test
         Send frames from pg3
         Verify receipt of encapsulated frames on pg0
         """
@@ -215,7 +229,7 @@ class TestGtpu(BridgeDomain, VppTestCase):
             # self.assert_eq_pkts(payload, self.frame_reply)
 
     def test_mcast_flood(self):
-        """ Multicast flood test
+        """Multicast flood test
         Send frames from pg2
         Verify receipt of encapsulated frames on pg0
         """
@@ -228,8 +242,9 @@ class TestGtpu(BridgeDomain, VppTestCase):
         # Pick first received frame and check if it's correctly encapsulated.
         out = self.pg0.get_capture(1)
         pkt = out[0]
-        self.check_encapsulation(pkt, self.mcast_flood_bd,
-                                 local_only=False, mcast_pkt=True)
+        self.check_encapsulation(
+            pkt, self.mcast_flood_bd, local_only=False, mcast_pkt=True
+        )
 
         # payload = self.decapsulate(pkt)
         # self.assert_eq_pkts(payload, self.frame_reply)
@@ -240,13 +255,15 @@ class TestGtpu(BridgeDomain, VppTestCase):
         ip_range_start = 10
         ip_range_end = ip_range_start + n_ucast_tunnels
         next_hop_address = cls.pg0.remote_ip4
-        for dest_ip4 in ip4_range(next_hop_address, ip_range_start,
-                                  ip_range_end):
+        for dest_ip4 in ip4_range(next_hop_address, ip_range_start, ip_range_end):
             # add host route so dest_ip4 will not be resolved
-            rip = VppIpRoute(cls, dest_ip4, 32,
-                             [VppRoutePath(next_hop_address,
-                                           INVALID_INDEX)],
-                             register=False)
+            rip = VppIpRoute(
+                cls,
+                dest_ip4,
+                32,
+                [VppRoutePath(next_hop_address, INVALID_INDEX)],
+                register=False,
+            )
             rip.add_vpp_config()
             r = cls.vapi.gtpu_add_del_tunnel(
                 is_add=True,
@@ -254,9 +271,11 @@ class TestGtpu(BridgeDomain, VppTestCase):
                 decap_next_index=0xFFFFFFFF,
                 src_address=cls.pg0.local_ip4,
                 dst_address=dest_ip4,
-                teid=teid)
-            cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
-                                                bd_id=teid)
+                teid=teid,
+            )
+            cls.vapi.sw_interface_set_l2_bridge(
+                rx_sw_if_index=r.sw_if_index, bd_id=teid
+            )
 
     @classmethod
     def add_del_shared_mcast_dst_load(cls, is_add):
@@ -274,8 +293,9 @@ class TestGtpu(BridgeDomain, VppTestCase):
                 dst_address=cls.mcast_ip4,
                 mcast_sw_if_index=1,
                 teid=teid,
-                is_add=is_add)
-            if r.sw_if_index == 0xffffffff:
+                is_add=is_add,
+            )
+            if r.sw_if_index == 0xFFFFFFFF:
                 raise ValueError("bad sw_if_index: ~0")
 
     @classmethod
@@ -294,16 +314,16 @@ class TestGtpu(BridgeDomain, VppTestCase):
         n_distinct_dst_tunnels = 20
         ip_range_start = 10
         ip_range_end = ip_range_start + n_distinct_dst_tunnels
-        for dest_ip4 in ip4_range(cls.mcast_ip4, ip_range_start,
-                                  ip_range_end):
-            teid = int(dest_ip4.split('.')[3])
+        for dest_ip4 in ip4_range(cls.mcast_ip4, ip_range_start, ip_range_end):
+            teid = int(dest_ip4.split(".")[3])
             cls.vapi.gtpu_add_del_tunnel(
                 decap_next_index=0xFFFFFFFF,
                 src_address=cls.pg0.local_ip4,
                 dst_address=dest_ip4,
                 mcast_sw_if_index=1,
                 teid=teid,
-                is_add=is_add)
+                is_add=is_add,
+            )
 
     @classmethod
     def add_mcast_tunnels_load(cls):
@@ -324,7 +344,7 @@ class TestGtpu(BridgeDomain, VppTestCase):
 
         try:
             cls.dport = 2152
-            cls.gtp_type = 0xff
+            cls.gtp_type = 0xFF
 
             # Create 2 pg interfaces.
             cls.create_pg_interfaces(range(4))
@@ -338,7 +358,7 @@ class TestGtpu(BridgeDomain, VppTestCase):
             cls.pg0.resolve_arp()
 
             # Our Multicast address
-            cls.mcast_ip4 = '239.1.1.1'
+            cls.mcast_ip4 = "239.1.1.1"
             cls.mcast_mac = util.mcast_ip_to_mac(cls.mcast_ip4)
 
             # Create GTPU VTEP on VPP pg0, and put gtpu_tunnel0 and pg1
@@ -351,28 +371,33 @@ class TestGtpu(BridgeDomain, VppTestCase):
                 decap_next_index=0xFFFFFFFF,
                 src_address=cls.pg0.local_ip4,
                 dst_address=cls.pg0.remote_ip4,
-                teid=cls.single_tunnel_vni)
-            cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
-                                                bd_id=cls.single_tunnel_bd)
+                teid=cls.single_tunnel_vni,
+            )
             cls.vapi.sw_interface_set_l2_bridge(
-                rx_sw_if_index=cls.pg1.sw_if_index, bd_id=cls.single_tunnel_bd)
+                rx_sw_if_index=r.sw_if_index, bd_id=cls.single_tunnel_bd
+            )
+            cls.vapi.sw_interface_set_l2_bridge(
+                rx_sw_if_index=cls.pg1.sw_if_index, bd_id=cls.single_tunnel_bd
+            )
 
             # Setup teid 2 to test multicast flooding
             cls.n_ucast_tunnels = 10
             cls.mcast_flood_bd = 12
-            cls.create_gtpu_flood_test_bd(cls.mcast_flood_bd,
-                                          cls.n_ucast_tunnels)
+            cls.create_gtpu_flood_test_bd(cls.mcast_flood_bd, cls.n_ucast_tunnels)
             r = cls.vapi.gtpu_add_del_tunnel(
                 is_add=True,
                 src_address=cls.pg0.local_ip4,
                 dst_address=cls.mcast_ip4,
                 mcast_sw_if_index=1,
                 decap_next_index=0xFFFFFFFF,
-                teid=cls.mcast_flood_bd)
-            cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
-                                                bd_id=cls.mcast_flood_bd)
+                teid=cls.mcast_flood_bd,
+            )
             cls.vapi.sw_interface_set_l2_bridge(
-                rx_sw_if_index=cls.pg2.sw_if_index, bd_id=cls.mcast_flood_bd)
+                rx_sw_if_index=r.sw_if_index, bd_id=cls.mcast_flood_bd
+            )
+            cls.vapi.sw_interface_set_l2_bridge(
+                rx_sw_if_index=cls.pg2.sw_if_index, bd_id=cls.mcast_flood_bd
+            )
 
             # Add and delete mcast tunnels to check stability
             cls.add_shared_mcast_dst_load()
@@ -382,10 +407,10 @@ class TestGtpu(BridgeDomain, VppTestCase):
 
             # Setup teid 3 to test unicast flooding
             cls.ucast_flood_bd = 13
-            cls.create_gtpu_flood_test_bd(cls.ucast_flood_bd,
-                                          cls.n_ucast_tunnels)
+            cls.create_gtpu_flood_test_bd(cls.ucast_flood_bd, cls.n_ucast_tunnels)
             cls.vapi.sw_interface_set_l2_bridge(
-                rx_sw_if_index=cls.pg3.sw_if_index, bd_id=cls.ucast_flood_bd)
+                rx_sw_if_index=cls.pg3.sw_if_index, bd_id=cls.ucast_flood_bd
+            )
         except Exception:
             super(TestGtpu, cls).tearDownClass()
             raise
@@ -409,5 +434,5 @@ class TestGtpu(BridgeDomain, VppTestCase):
         self.logger.info(self.vapi.cli("show trace"))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)
