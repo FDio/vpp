@@ -18,7 +18,7 @@ Basic test for sanity check of the ping.
 
 
 class TestPing(VppTestCase):
-    """ Ping Test Case """
+    """Ping Test Case"""
 
     @classmethod
     def setUpClass(cls):
@@ -64,7 +64,7 @@ class TestPing(VppTestCase):
         return icmp
 
     def test_ping_basic(self):
-        """ basic ping test """
+        """basic ping test"""
         try:
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
@@ -79,8 +79,9 @@ class TestPing(VppTestCase):
             icmp_id = None
             icmp_seq = 1
             for p in out:
-                icmp = self.verify_ping_request(p, self.pg1.local_ip4,
-                                                self.pg1.remote_ip4, icmp_seq)
+                icmp = self.verify_ping_request(
+                    p, self.pg1.local_ip4, self.pg1.remote_ip4, icmp_seq
+                )
                 icmp_seq = icmp_seq + 1
                 if icmp_id is None:
                     icmp_id = icmp.id
@@ -90,7 +91,7 @@ class TestPing(VppTestCase):
             self.vapi.cli("show error")
 
     def test_ping_burst(self):
-        """ burst ping test """
+        """burst ping test"""
         try:
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
@@ -100,13 +101,14 @@ class TestPing(VppTestCase):
             ping_cmd = "ping " + remote_ip4 + " interval 0.01 burst 3"
             ret = self.vapi.cli(ping_cmd)
             self.logger.info(ret)
-            out = self.pg1.get_capture(3*5)
+            out = self.pg1.get_capture(3 * 5)
             icmp_id = None
             icmp_seq = 1
             count = 0
             for p in out:
-                icmp = self.verify_ping_request(p, self.pg1.local_ip4,
-                                                self.pg1.remote_ip4, icmp_seq)
+                icmp = self.verify_ping_request(
+                    p, self.pg1.local_ip4, self.pg1.remote_ip4, icmp_seq
+                )
                 count = count + 1
                 if count >= 3:
                     icmp_seq = icmp_seq + 1
@@ -119,7 +121,7 @@ class TestPing(VppTestCase):
             self.vapi.cli("show error")
 
     def test_ping_src(self):
-        """ ping with source address set """
+        """ping with source address set"""
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -128,17 +130,18 @@ class TestPing(VppTestCase):
 
         nbr_addr = "10.0.0.2"
         VppIpInterfaceAddress(self, self.pg1, "10.0.0.1", 24).add_vpp_config()
-        VppNeighbor(self, self.pg1.sw_if_index,
-                    "00:11:22:33:44:55",
-                    nbr_addr).add_vpp_config()
+        VppNeighbor(
+            self, self.pg1.sw_if_index, "00:11:22:33:44:55", nbr_addr
+        ).add_vpp_config()
 
         ping_cmd = "ping %s interval 0.01 repeat 3" % self.pg1.remote_ip4
         ret = self.vapi.cli(ping_cmd)
         out = self.pg1.get_capture(3)
         icmp_seq = 1
         for p in out:
-            icmp = self.verify_ping_request(p, self.pg1.local_ip4,
-                                            self.pg1.remote_ip4, icmp_seq)
+            icmp = self.verify_ping_request(
+                p, self.pg1.local_ip4, self.pg1.remote_ip4, icmp_seq
+            )
             icmp_seq = icmp_seq + 1
 
         self.pg_enable_capture(self.pg_interfaces)
@@ -152,7 +155,7 @@ class TestPing(VppTestCase):
             icmp_seq = icmp_seq + 1
 
     def test_ping_fib_routed_dst(self):
-        """ ping destination routed according to FIB table """
+        """ping destination routed according to FIB table"""
 
         try:
             self.pg1.generate_remote_hosts(1)
@@ -160,17 +163,19 @@ class TestPing(VppTestCase):
             self.pg_start()
             routed_dst = "10.0.2.0"
             self.logger.info(self.vapi.cli("show ip4 neighbors"))
-            VppIpRoute(self, routed_dst, 24,
-                       [VppRoutePath(self.pg1.remote_hosts[0].ip4,
-                                     self.pg1.sw_if_index)]).add_vpp_config()
+            VppIpRoute(
+                self,
+                routed_dst,
+                24,
+                [VppRoutePath(self.pg1.remote_hosts[0].ip4, self.pg1.sw_if_index)],
+            ).add_vpp_config()
             ping_cmd = "ping %s interval 0.01 repeat 3" % routed_dst
             ret = self.vapi.cli(ping_cmd)
             self.logger.info(ret)
             out = self.pg1.get_capture(3)
             icmp_seq = 1
             for p in out:
-                self.verify_ping_request(p, self.pg1.local_ip4, routed_dst,
-                                         icmp_seq)
+                self.verify_ping_request(p, self.pg1.local_ip4, routed_dst, icmp_seq)
                 icmp_seq = icmp_seq + 1
         finally:
             self.vapi.cli("show error")

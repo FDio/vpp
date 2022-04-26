@@ -7,9 +7,9 @@ import logging
 from config import config
 
 """ @var formatting delimiter consisting of '=' characters """
-double_line_delim = '=' * 78
+double_line_delim = "=" * 78
 """ @var formatting delimiter consisting of '-' characters """
-single_line_delim = '-' * 78
+single_line_delim = "-" * 78
 
 
 def colorize(msg, color):
@@ -17,13 +17,12 @@ def colorize(msg, color):
 
 
 class ColorFormatter(logging.Formatter):
-
     def init(self, fmt=None, datefmt=None):
         super(ColorFormatter, self).__init__(fmt, datefmt)
 
     def format(self, record):
         message = super(ColorFormatter, self).format(record)
-        if hasattr(record, 'color'):
+        if hasattr(record, "color"):
             message = colorize(message, record.color)
         return message
 
@@ -37,8 +36,9 @@ else:
     log_level = 40
 
 handler = logging.StreamHandler(sys.stdout)
-color_formatter = ColorFormatter(fmt='%(asctime)s,%(msecs)03d %(message)s',
-                                 datefmt="%H:%M:%S")
+color_formatter = ColorFormatter(
+    fmt="%(asctime)s,%(msecs)03d %(message)s", datefmt="%H:%M:%S"
+)
 handler.setFormatter(color_formatter)
 handler.setLevel(log_level)
 
@@ -56,7 +56,7 @@ def get_logger(name):
 
 
 def get_parallel_logger(stream):
-    logger = logging.getLogger('parallel_logger_{!s}'.format(stream))
+    logger = logging.getLogger("parallel_logger_{!s}".format(stream))
     logger.propagate = False
     logger.setLevel(logging.DEBUG)
     handler = logging.StreamHandler(stream)
@@ -71,15 +71,15 @@ def get_parallel_logger(stream):
 # These variables (RED, GREEN, YELLOW and LPURPLE) are used to configure
 # the color of the text to be printed in the terminal. Variable COLOR_RESET
 # is used to revert the text color to the default one.
-if hasattr(sys.stdout, 'isatty') and sys.stdout.isatty():
-    RED = '\033[91m'
-    GREEN = '\033[92m'
-    YELLOW = '\033[93m'
-    LPURPLE = '\033[94m'
-    COLOR_RESET = '\033[0m'
+if hasattr(sys.stdout, "isatty") and sys.stdout.isatty():
+    RED = "\033[91m"
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    LPURPLE = "\033[94m"
+    COLOR_RESET = "\033[0m"
 else:
-    RED = ''
-    GREEN = ''
-    YELLOW = ''
-    LPURPLE = ''
-    COLOR_RESET = ''
+    RED = ""
+    GREEN = ""
+    YELLOW = ""
+    LPURPLE = ""
+    COLOR_RESET = ""

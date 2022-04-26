@@ -11,7 +11,7 @@ Basic test for sanity check of arping.
 
 
 class TestArping(VppTestCase):
-    """ Arping Test Case """
+    """Arping Test Case"""
 
     @classmethod
     def setUpClass(cls):
@@ -65,7 +65,7 @@ class TestArping(VppTestCase):
         self.assertEqual(src, ipv6.src)
 
     def test_arping_ip4_arp_request_cli(self):
-        """ arping IP4 arp request CLI test """
+        """arping IP4 arp request CLI test"""
         try:
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
@@ -81,19 +81,19 @@ class TestArping(VppTestCase):
 
             out = self.pg1.get_capture(6)
             for p in out:
-                self.verify_arping_request(p, self.pg1.local_ip4,
-                                           self.pg1.remote_ip4)
+                self.verify_arping_request(p, self.pg1.local_ip4, self.pg1.remote_ip4)
         finally:
             self.vapi.cli("show error")
 
     def test_arping_ip4_garp_cli(self):
-        """ arping ip4 gratuitous arp CLI test """
+        """arping ip4 gratuitous arp CLI test"""
         try:
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
 
-            ping_cmd = ("arping gratuitous" + self.pg1.local_ip4 +
-                        "pg1 repeat 5 interval 0.1")
+            ping_cmd = (
+                "arping gratuitous" + self.pg1.local_ip4 + "pg1 repeat 5 interval 0.1"
+            )
             ret = self.vapi.cli(ping_cmd)
             self.logger.info(ret)
 
@@ -103,60 +103,65 @@ class TestArping(VppTestCase):
 
             out = self.pg1.get_capture(6)
             for p in out:
-                self.verify_arping_request(p, self.pg1.local_ip4,
-                                           self.pg1.local_ip4)
+                self.verify_arping_request(p, self.pg1.local_ip4, self.pg1.local_ip4)
         finally:
             self.vapi.cli("show error")
 
     def test_arping_ip4_arp_request_api(self):
-        """ arping ip4 arp request API test """
+        """arping ip4 arp request API test"""
         try:
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
             remote_ip4 = self.pg1.remote_ip4
 
-            ret = self.vapi.arping(address=remote_ip4,
-                                   sw_if_index=self.pg1.sw_if_index,
-                                   is_garp=0, repeat=5, interval=0.1)
+            ret = self.vapi.arping(
+                address=remote_ip4,
+                sw_if_index=self.pg1.sw_if_index,
+                is_garp=0,
+                repeat=5,
+                interval=0.1,
+            )
             self.logger.info(ret)
 
-            ret = self.vapi.arping(address=remote_ip4,
-                                   sw_if_index=self.pg1.sw_if_index,
-                                   is_garp=0)
+            ret = self.vapi.arping(
+                address=remote_ip4, sw_if_index=self.pg1.sw_if_index, is_garp=0
+            )
             self.logger.info(ret)
 
             out = self.pg1.get_capture(6)
             for p in out:
-                self.verify_arping_request(p, self.pg1.local_ip4,
-                                           self.pg1.remote_ip4)
+                self.verify_arping_request(p, self.pg1.local_ip4, self.pg1.remote_ip4)
         finally:
             self.vapi.cli("show error")
 
     def test_arping_ip4_garp_api(self):
-        """ arping ip4 gratuitous arp API test """
+        """arping ip4 gratuitous arp API test"""
         try:
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
 
-            ret = self.vapi.arping(address=self.pg1.local_ip4,
-                                   sw_if_index=self.pg1.sw_if_index,
-                                   is_garp=1, repeat=5, interval=0.1)
+            ret = self.vapi.arping(
+                address=self.pg1.local_ip4,
+                sw_if_index=self.pg1.sw_if_index,
+                is_garp=1,
+                repeat=5,
+                interval=0.1,
+            )
             self.logger.info(ret)
 
-            ret = self.vapi.arping(address=self.pg1.local_ip4,
-                                   sw_if_index=self.pg1.sw_if_index,
-                                   is_garp=1)
+            ret = self.vapi.arping(
+                address=self.pg1.local_ip4, sw_if_index=self.pg1.sw_if_index, is_garp=1
+            )
             self.logger.info(ret)
 
             out = self.pg1.get_capture(6)
             for p in out:
-                self.verify_arping_request(p, self.pg1.local_ip4,
-                                           self.pg1.local_ip4)
+                self.verify_arping_request(p, self.pg1.local_ip4, self.pg1.local_ip4)
         finally:
             self.vapi.cli("show error")
 
     def test_arping_ip6_ns_cli(self):
-        """ arping IP6 neighbor solicitation CLI test """
+        """arping IP6 neighbor solicitation CLI test"""
         try:
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
@@ -172,43 +177,46 @@ class TestArping(VppTestCase):
 
             out = self.pg1.get_capture(6)
             for p in out:
-                self.verify_arping_ip6_ns(p, self.pg1.local_ip6,
-                                          self.pg1.remote_ip6)
+                self.verify_arping_ip6_ns(p, self.pg1.local_ip6, self.pg1.remote_ip6)
         finally:
             self.vapi.cli("show error")
 
     def test_arping_ip6_ns_api(self):
-        """ arping ip6 neighbor solicitation API test """
+        """arping ip6 neighbor solicitation API test"""
         try:
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
             remote_ip6 = self.pg1.remote_ip6
 
-            ret = self.vapi.arping(address=remote_ip6,
-                                   sw_if_index=self.pg1.sw_if_index,
-                                   is_garp=0, repeat=5, interval=0.1)
+            ret = self.vapi.arping(
+                address=remote_ip6,
+                sw_if_index=self.pg1.sw_if_index,
+                is_garp=0,
+                repeat=5,
+                interval=0.1,
+            )
             self.logger.info(ret)
 
-            ret = self.vapi.arping(address=remote_ip6,
-                                   sw_if_index=self.pg1.sw_if_index,
-                                   is_garp=0)
+            ret = self.vapi.arping(
+                address=remote_ip6, sw_if_index=self.pg1.sw_if_index, is_garp=0
+            )
             self.logger.info(ret)
 
             out = self.pg1.get_capture(6)
             for p in out:
-                self.verify_arping_ip6_ns(p, self.pg1.local_ip6,
-                                          self.pg1.remote_ip6)
+                self.verify_arping_ip6_ns(p, self.pg1.local_ip6, self.pg1.remote_ip6)
         finally:
             self.vapi.cli("show error")
 
     def test_arping_ip6_na_cli(self):
-        """ arping ip6 neighbor advertisement CLI test """
+        """arping ip6 neighbor advertisement CLI test"""
         try:
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
 
-            ping_cmd = ("arping gratuitous" + self.pg1.local_ip6 +
-                        "pg1 repeat 5 interval 0.1")
+            ping_cmd = (
+                "arping gratuitous" + self.pg1.local_ip6 + "pg1 repeat 5 interval 0.1"
+            )
             ret = self.vapi.cli(ping_cmd)
             self.logger.info(ret)
 
@@ -218,34 +226,36 @@ class TestArping(VppTestCase):
 
             out = self.pg1.get_capture(6)
             for p in out:
-                self.verify_arping_ip6_na(p, self.pg1.local_ip6,
-                                          self.pg1.local_ip6)
+                self.verify_arping_ip6_na(p, self.pg1.local_ip6, self.pg1.local_ip6)
         finally:
             self.vapi.cli("show error")
 
     def test_arping_ip6_na_api(self):
-        """ arping ip6 neighbor advertisement API test """
+        """arping ip6 neighbor advertisement API test"""
         try:
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
 
-            ret = self.vapi.arping(address=self.pg1.local_ip6,
-                                   sw_if_index=self.pg1.sw_if_index,
-                                   is_garp=1, repeat=5, interval=0.1)
+            ret = self.vapi.arping(
+                address=self.pg1.local_ip6,
+                sw_if_index=self.pg1.sw_if_index,
+                is_garp=1,
+                repeat=5,
+                interval=0.1,
+            )
             self.logger.info(ret)
 
-            ret = self.vapi.arping(address=self.pg1.local_ip6,
-                                   sw_if_index=self.pg1.sw_if_index,
-                                   is_garp=1)
+            ret = self.vapi.arping(
+                address=self.pg1.local_ip6, sw_if_index=self.pg1.sw_if_index, is_garp=1
+            )
             self.logger.info(ret)
 
             out = self.pg1.get_capture(6)
             for p in out:
-                self.verify_arping_ip6_na(p, self.pg1.local_ip6,
-                                          self.pg1.local_ip6)
+                self.verify_arping_ip6_na(p, self.pg1.local_ip6, self.pg1.local_ip6)
         finally:
             self.vapi.cli("show error")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)

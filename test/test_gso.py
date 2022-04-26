@@ -30,8 +30,12 @@ from socket import AF_INET, AF_INET6, inet_pton
 from util import reassemble4
 
 from vpp_ipsec import VppIpsecSA, VppIpsecTunProtect
-from template_ipsec import IPsecIPv4Params, IPsecIPv6Params, \
-    mk_scapy_crypt_key, config_tun_params
+from template_ipsec import (
+    IPsecIPv4Params,
+    IPsecIPv6Params,
+    mk_scapy_crypt_key,
+    config_tun_params,
+)
 
 """ Test_gso is a subclass of VPPTestCase classes.
     GSO tests.
@@ -39,7 +43,7 @@ from template_ipsec import IPsecIPv4Params, IPsecIPv6Params, \
 
 
 class TestGSO(VppTestCase):
-    """ GSO Test Case """
+    """GSO Test Case"""
 
     def __init__(self, *args):
         VppTestCase.__init__(self, *args)
@@ -70,18 +74,26 @@ class TestGSO(VppTestCase):
             i.resolve_ndp()
 
         self.single_tunnel_bd = 10
-        self.vxlan = VppVxlanTunnel(self, src=self.pg0.local_ip4,
-                                    dst=self.pg0.remote_ip4,
-                                    vni=self.single_tunnel_bd)
+        self.vxlan = VppVxlanTunnel(
+            self,
+            src=self.pg0.local_ip4,
+            dst=self.pg0.remote_ip4,
+            vni=self.single_tunnel_bd,
+        )
 
-        self.vxlan2 = VppVxlanTunnel(self, src=self.pg0.local_ip6,
-                                     dst=self.pg0.remote_ip6,
-                                     vni=self.single_tunnel_bd)
+        self.vxlan2 = VppVxlanTunnel(
+            self,
+            src=self.pg0.local_ip6,
+            dst=self.pg0.remote_ip6,
+            vni=self.single_tunnel_bd,
+        )
 
-        self.ipip4 = VppIpIpTunInterface(self, self.pg0, self.pg0.local_ip4,
-                                         self.pg0.remote_ip4)
-        self.ipip6 = VppIpIpTunInterface(self, self.pg0, self.pg0.local_ip6,
-                                         self.pg0.remote_ip6)
+        self.ipip4 = VppIpIpTunInterface(
+            self, self.pg0, self.pg0.local_ip4, self.pg0.remote_ip4
+        )
+        self.ipip6 = VppIpIpTunInterface(
+            self, self.pg0, self.pg0.local_ip6, self.pg0.remote_ip6
+        )
 
     def tearDown(self):
         super(TestGSO, self).tearDown()
@@ -92,15 +104,16 @@ class TestGSO(VppTestCase):
                 i.admin_down()
 
     def test_gso(self):
-        """ GSO test """
+        """GSO test"""
         #
         # Send jumbo frame with gso disabled and DF bit is set
         #
-        p4 = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
-              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4,
-                 flags='DF') /
-              TCP(sport=1234, dport=1234) /
-              Raw(b'\xa5' * 65200))
+        p4 = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4, flags="DF")
+            / TCP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 65200)
+        )
 
         rxs = self.send_and_expect(self.pg0, [p4], self.pg0)
 
@@ -115,13 +128,14 @@ class TestGSO(VppTestCase):
         #
         # Send checksum offload frames
         #
-        p40 = (Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac) /
-               IP(src=self.pg2.remote_ip4, dst=self.pg0.remote_ip4,
-                  flags='DF') /
-               TCP(sport=1234, dport=1234) /
-               Raw(b'\xa5' * 1460))
+        p40 = (
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
+            / IP(src=self.pg2.remote_ip4, dst=self.pg0.remote_ip4, flags="DF")
+            / TCP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 1460)
+        )
 
-        rxs = self.send_and_expect(self.pg2, 100*[p40], self.pg0)
+        rxs = self.send_and_expect(self.pg2, 100 * [p40], self.pg0)
 
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg0.local_mac)
@@ -133,12 +147,14 @@ class TestGSO(VppTestCase):
             self.assert_tcp_checksum_valid(rx)
             self.assertEqual(payload_len, len(rx[Raw]))
 
-        p60 = (Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac) /
-               IPv6(src=self.pg2.remote_ip6, dst=self.pg0.remote_ip6) /
-               TCP(sport=1234, dport=1234) /
-               Raw(b'\xa5' * 1440))
+        p60 = (
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
+            / IPv6(src=self.pg2.remote_ip6, dst=self.pg0.remote_ip6)
+            / TCP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 1440)
+        )
 
-        rxs = self.send_and_expect(self.pg2, 100*[p60], self.pg0)
+        rxs = self.send_and_expect(self.pg2, 100 * [p60], self.pg0)
 
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg0.local_mac)
@@ -153,15 +169,17 @@ class TestGSO(VppTestCase):
         # Send jumbo frame with gso enabled and DF bit is set
         # input and output interfaces support GSO
         #
-        self.vapi.feature_gso_enable_disable(sw_if_index=self.pg3.sw_if_index,
-                                             enable_disable=1)
-        p41 = (Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac) /
-               IP(src=self.pg2.remote_ip4, dst=self.pg3.remote_ip4,
-                  flags='DF') /
-               TCP(sport=1234, dport=1234) /
-               Raw(b'\xa5' * 65200))
+        self.vapi.feature_gso_enable_disable(
+            sw_if_index=self.pg3.sw_if_index, enable_disable=1
+        )
+        p41 = (
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
+            / IP(src=self.pg2.remote_ip4, dst=self.pg3.remote_ip4, flags="DF")
+            / TCP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 65200)
+        )
 
-        rxs = self.send_and_expect(self.pg2, 100*[p41], self.pg3, 100)
+        rxs = self.send_and_expect(self.pg2, 100 * [p41], self.pg3, 100)
 
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg3.local_mac)
@@ -175,12 +193,14 @@ class TestGSO(VppTestCase):
         #
         # ipv6
         #
-        p61 = (Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac) /
-               IPv6(src=self.pg2.remote_ip6, dst=self.pg3.remote_ip6) /
-               TCP(sport=1234, dport=1234) /
-               Raw(b'\xa5' * 65200))
+        p61 = (
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
+            / IPv6(src=self.pg2.remote_ip6, dst=self.pg3.remote_ip6)
+            / TCP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 65200)
+        )
 
-        rxs = self.send_and_expect(self.pg2, 100*[p61], self.pg3, 100)
+        rxs = self.send_and_expect(self.pg2, 100 * [p61], self.pg3, 100)
 
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg3.local_mac)
@@ -196,15 +216,17 @@ class TestGSO(VppTestCase):
         # and DF bit is set. GSO packet will be chunked into gso_size
         # data payload
         #
-        self.vapi.feature_gso_enable_disable(sw_if_index=self.pg0.sw_if_index,
-                                             enable_disable=1)
-        p42 = (Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac) /
-               IP(src=self.pg2.remote_ip4, dst=self.pg0.remote_ip4,
-                  flags='DF') /
-               TCP(sport=1234, dport=1234) /
-               Raw(b'\xa5' * 65200))
+        self.vapi.feature_gso_enable_disable(
+            sw_if_index=self.pg0.sw_if_index, enable_disable=1
+        )
+        p42 = (
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
+            / IP(src=self.pg2.remote_ip4, dst=self.pg0.remote_ip4, flags="DF")
+            / TCP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 65200)
+        )
 
-        rxs = self.send_and_expect(self.pg2, 5*[p42], self.pg0, 225)
+        rxs = self.send_and_expect(self.pg2, 5 * [p42], self.pg0, 225)
         size = 0
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg0.local_mac)
@@ -218,17 +240,19 @@ class TestGSO(VppTestCase):
             self.assertEqual(rx[TCP].dport, 1234)
             self.assertEqual(payload_len, len(rx[Raw]))
             size += payload_len
-        self.assertEqual(size, 65200*5)
+        self.assertEqual(size, 65200 * 5)
 
         #
         # ipv6
         #
-        p62 = (Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac) /
-               IPv6(src=self.pg2.remote_ip6, dst=self.pg0.remote_ip6) /
-               TCP(sport=1234, dport=1234) /
-               Raw(b'\xa5' * 65200))
+        p62 = (
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
+            / IPv6(src=self.pg2.remote_ip6, dst=self.pg0.remote_ip6)
+            / TCP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 65200)
+        )
 
-        rxs = self.send_and_expect(self.pg2, 5*[p62], self.pg0, 225)
+        rxs = self.send_and_expect(self.pg2, 5 * [p62], self.pg0, 225)
         size = 0
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg0.local_mac)
@@ -241,22 +265,25 @@ class TestGSO(VppTestCase):
             self.assertEqual(rx[TCP].dport, 1234)
             self.assertEqual(payload_len, len(rx[Raw]))
             size += payload_len
-        self.assertEqual(size, 65200*5)
+        self.assertEqual(size, 65200 * 5)
 
         #
         # Send jumbo frame with gso enabled only on input interface
         # and DF bit is unset. GSO packet will be fragmented.
         #
         self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, [576, 0, 0, 0])
-        self.vapi.feature_gso_enable_disable(sw_if_index=self.pg1.sw_if_index,
-                                             enable_disable=1)
+        self.vapi.feature_gso_enable_disable(
+            sw_if_index=self.pg1.sw_if_index, enable_disable=1
+        )
 
-        p43 = (Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac) /
-               IP(src=self.pg2.remote_ip4, dst=self.pg1.remote_ip4) /
-               TCP(sport=1234, dport=1234) /
-               Raw(b'\xa5' * 65200))
+        p43 = (
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
+            / IP(src=self.pg2.remote_ip4, dst=self.pg1.remote_ip4)
+            / TCP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 65200)
+        )
 
-        rxs = self.send_and_expect(self.pg2, 5*[p43], self.pg1, 5*119)
+        rxs = self.send_and_expect(self.pg2, 5 * [p43], self.pg1, 5 * 119)
         size = 0
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg1.local_mac)
@@ -265,8 +292,8 @@ class TestGSO(VppTestCase):
             self.assertEqual(rx[IP].dst, self.pg1.remote_ip4)
             self.assert_ip_checksum_valid(rx)
             size += rx[IP].len - 20
-        size -= 20*5  # TCP header
-        self.assertEqual(size, 65200*5)
+        size -= 20 * 5  # TCP header
+        self.assertEqual(size, 65200 * 5)
 
         #
         # IPv6
@@ -274,12 +301,14 @@ class TestGSO(VppTestCase):
         # ICMPv6 Packet Too Big will be sent back to sender.
         #
         self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, [1280, 0, 0, 0])
-        p63 = (Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac) /
-               IPv6(src=self.pg2.remote_ip6, dst=self.pg1.remote_ip6) /
-               TCP(sport=1234, dport=1234) /
-               Raw(b'\xa5' * 65200))
+        p63 = (
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
+            / IPv6(src=self.pg2.remote_ip6, dst=self.pg1.remote_ip6)
+            / TCP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 65200)
+        )
 
-        rxs = self.send_and_expect_some(self.pg2, 5*[p63], self.pg2, 5)
+        rxs = self.send_and_expect_some(self.pg2, 5 * [p63], self.pg2, 5)
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg2.local_mac)
             self.assertEqual(rx[Ether].dst, self.pg2.remote_mac)
@@ -299,12 +328,14 @@ class TestGSO(VppTestCase):
         #
         self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, [9000, 0, 0, 0])
         self.vapi.sw_interface_set_mtu(self.pg4.sw_if_index, [9000, 0, 0, 0])
-        p44 = (Ether(src=self.pg4.remote_mac, dst=self.pg4.local_mac) /
-               IP(src=self.pg4.remote_ip4, dst=self.pg1.remote_ip4) /
-               TCP(sport=1234, dport=1234) /
-               Raw(b'\xa5' * 65200))
+        p44 = (
+            Ether(src=self.pg4.remote_mac, dst=self.pg4.local_mac)
+            / IP(src=self.pg4.remote_ip4, dst=self.pg1.remote_ip4)
+            / TCP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 65200)
+        )
 
-        rxs = self.send_and_expect(self.pg4, 5*[p44], self.pg1, 165)
+        rxs = self.send_and_expect(self.pg4, 5 * [p44], self.pg1, 165)
         size = 0
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg1.local_mac)
@@ -316,17 +347,19 @@ class TestGSO(VppTestCase):
             self.assert_tcp_checksum_valid(rx)
             self.assertEqual(payload_len, len(rx[Raw]))
             size += payload_len
-        self.assertEqual(size, 65200*5)
+        self.assertEqual(size, 65200 * 5)
 
         #
         # IPv6
         #
-        p64 = (Ether(src=self.pg4.remote_mac, dst=self.pg4.local_mac) /
-               IPv6(src=self.pg4.remote_ip6, dst=self.pg1.remote_ip6) /
-               TCP(sport=1234, dport=1234) /
-               Raw(b'\xa5' * 65200))
+        p64 = (
+            Ether(src=self.pg4.remote_mac, dst=self.pg4.local_mac)
+            / IPv6(src=self.pg4.remote_ip6, dst=self.pg1.remote_ip6)
+            / TCP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 65200)
+        )
 
-        rxs = self.send_and_expect(self.pg4, 5*[p64], self.pg1, 170)
+        rxs = self.send_and_expect(self.pg4, 5 * [p64], self.pg1, 170)
         size = 0
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg1.local_mac)
@@ -337,15 +370,17 @@ class TestGSO(VppTestCase):
             self.assert_tcp_checksum_valid(rx)
             self.assertEqual(payload_len, len(rx[Raw]))
             size += payload_len
-        self.assertEqual(size, 65200*5)
+        self.assertEqual(size, 65200 * 5)
 
-        self.vapi.feature_gso_enable_disable(sw_if_index=self.pg0.sw_if_index,
-                                             enable_disable=0)
-        self.vapi.feature_gso_enable_disable(sw_if_index=self.pg1.sw_if_index,
-                                             enable_disable=0)
+        self.vapi.feature_gso_enable_disable(
+            sw_if_index=self.pg0.sw_if_index, enable_disable=0
+        )
+        self.vapi.feature_gso_enable_disable(
+            sw_if_index=self.pg1.sw_if_index, enable_disable=0
+        )
 
     def test_gso_vxlan(self):
-        """ GSO VXLAN test """
+        """GSO VXLAN test"""
         self.logger.info(self.vapi.cli("sh int addr"))
         #
         # Send jumbo frame with gso enabled only on input interface and
@@ -358,21 +393,26 @@ class TestGSO(VppTestCase):
         #
         self.vxlan.add_vpp_config()
         self.vapi.sw_interface_set_l2_bridge(
-            rx_sw_if_index=self.vxlan.sw_if_index, bd_id=self.single_tunnel_bd)
+            rx_sw_if_index=self.vxlan.sw_if_index, bd_id=self.single_tunnel_bd
+        )
         self.vapi.sw_interface_set_l2_bridge(
-            rx_sw_if_index=self.pg2.sw_if_index, bd_id=self.single_tunnel_bd)
-        self.vapi.feature_gso_enable_disable(sw_if_index=self.pg0.sw_if_index,
-                                             enable_disable=1)
+            rx_sw_if_index=self.pg2.sw_if_index, bd_id=self.single_tunnel_bd
+        )
+        self.vapi.feature_gso_enable_disable(
+            sw_if_index=self.pg0.sw_if_index, enable_disable=1
+        )
 
         #
         # IPv4/IPv4 - VXLAN
         #
-        p45 = (Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79") /
-               IP(src=self.pg2.remote_ip4, dst="172.16.3.3", flags='DF') /
-               TCP(sport=1234, dport=1234) /
-               Raw(b'\xa5' * 65200))
+        p45 = (
+            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            / IP(src=self.pg2.remote_ip4, dst="172.16.3.3", flags="DF")
+            / TCP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 65200)
+        )
 
-        rxs = self.send_and_expect(self.pg2, 5*[p45], self.pg0, 225)
+        rxs = self.send_and_expect(self.pg2, 5 * [p45], self.pg0, 225)
         size = 0
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg0.local_mac)
@@ -393,17 +433,19 @@ class TestGSO(VppTestCase):
             payload_len = inner[IP].len - 20 - 20
             self.assertEqual(payload_len, len(inner[Raw]))
             size += payload_len
-        self.assertEqual(size, 65200*5)
+        self.assertEqual(size, 65200 * 5)
 
         #
         # IPv4/IPv6 - VXLAN
         #
-        p65 = (Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79") /
-               IPv6(src=self.pg2.remote_ip6, dst="fd01:3::3") /
-               TCP(sport=1234, dport=1234) /
-               Raw(b'\xa5' * 65200))
+        p65 = (
+            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            / IPv6(src=self.pg2.remote_ip6, dst="fd01:3::3")
+            / TCP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 65200)
+        )
 
-        rxs = self.send_and_expect(self.pg2, 5*[p65], self.pg0, 225)
+        rxs = self.send_and_expect(self.pg2, 5 * [p65], self.pg0, 225)
         size = 0
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg0.local_mac)
@@ -423,7 +465,7 @@ class TestGSO(VppTestCase):
             payload_len = inner[IPv6].plen - 20
             self.assertEqual(payload_len, len(inner[Raw]))
             size += payload_len
-        self.assertEqual(size, 65200*5)
+        self.assertEqual(size, 65200 * 5)
 
         #
         # disable ipv4/vxlan
@@ -435,18 +477,20 @@ class TestGSO(VppTestCase):
         #
         self.vxlan2.add_vpp_config()
         self.vapi.sw_interface_set_l2_bridge(
-            rx_sw_if_index=self.vxlan2.sw_if_index,
-            bd_id=self.single_tunnel_bd)
+            rx_sw_if_index=self.vxlan2.sw_if_index, bd_id=self.single_tunnel_bd
+        )
 
         #
         # IPv6/IPv4 - VXLAN
         #
-        p46 = (Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79") /
-               IP(src=self.pg2.remote_ip4, dst="172.16.3.3", flags='DF') /
-               TCP(sport=1234, dport=1234) /
-               Raw(b'\xa5' * 65200))
+        p46 = (
+            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            / IP(src=self.pg2.remote_ip4, dst="172.16.3.3", flags="DF")
+            / TCP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 65200)
+        )
 
-        rxs = self.send_and_expect(self.pg2, 5*[p46], self.pg0, 225)
+        rxs = self.send_and_expect(self.pg2, 5 * [p46], self.pg0, 225)
         size = 0
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg0.local_mac)
@@ -466,17 +510,19 @@ class TestGSO(VppTestCase):
             payload_len = inner[IP].len - 20 - 20
             self.assertEqual(payload_len, len(inner[Raw]))
             size += payload_len
-        self.assertEqual(size, 65200*5)
+        self.assertEqual(size, 65200 * 5)
 
         #
         # IPv6/IPv6 - VXLAN
         #
-        p66 = (Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79") /
-               IPv6(src=self.pg2.remote_ip6, dst="fd01:3::3") /
-               TCP(sport=1234, dport=1234) /
-               Raw(b'\xa5' * 65200))
+        p66 = (
+            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            / IPv6(src=self.pg2.remote_ip6, dst="fd01:3::3")
+            / TCP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 65200)
+        )
 
-        rxs = self.send_and_expect(self.pg2, 5*[p66], self.pg0, 225)
+        rxs = self.send_and_expect(self.pg2, 5 * [p66], self.pg0, 225)
         size = 0
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg0.local_mac)
@@ -495,25 +541,27 @@ class TestGSO(VppTestCase):
             payload_len = inner[IPv6].plen - 20
             self.assertEqual(payload_len, len(inner[Raw]))
             size += payload_len
-        self.assertEqual(size, 65200*5)
+        self.assertEqual(size, 65200 * 5)
 
         #
         # disable ipv4/vxlan
         #
         self.vxlan2.remove_vpp_config()
 
-        self.vapi.feature_gso_enable_disable(sw_if_index=self.pg0.sw_if_index,
-                                             enable_disable=0)
+        self.vapi.feature_gso_enable_disable(
+            sw_if_index=self.pg0.sw_if_index, enable_disable=0
+        )
 
     def test_gso_ipip(self):
-        """ GSO IPIP test """
+        """GSO IPIP test"""
         self.logger.info(self.vapi.cli("sh int addr"))
         #
         # Send jumbo frame with gso enabled only on input interface and
         # create IPIP tunnel on VPP pg0.
         #
-        self.vapi.feature_gso_enable_disable(sw_if_index=self.pg0.sw_if_index,
-                                             enable_disable=1)
+        self.vapi.feature_gso_enable_disable(
+            sw_if_index=self.pg0.sw_if_index, enable_disable=1
+        )
 
         #
         # enable ipip4
@@ -526,21 +574,30 @@ class TestGSO(VppTestCase):
 
         # Add IPv4 routes via tunnel interface
         self.ip4_via_ip4_tunnel = VppIpRoute(
-                self, "172.16.10.0", 24,
-                [VppRoutePath("0.0.0.0",
-                              self.ipip4.sw_if_index,
-                              proto=FibPathProto.FIB_PATH_NH_PROTO_IP4)])
+            self,
+            "172.16.10.0",
+            24,
+            [
+                VppRoutePath(
+                    "0.0.0.0",
+                    self.ipip4.sw_if_index,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_IP4,
+                )
+            ],
+        )
         self.ip4_via_ip4_tunnel.add_vpp_config()
 
         #
         # IPv4/IPv4 - IPIP
         #
-        p47 = (Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79") /
-               IP(src=self.pg2.remote_ip4, dst="172.16.10.3", flags='DF') /
-               TCP(sport=1234, dport=1234) /
-               Raw(b'\xa5' * 65200))
+        p47 = (
+            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            / IP(src=self.pg2.remote_ip4, dst="172.16.10.3", flags="DF")
+            / TCP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 65200)
+        )
 
-        rxs = self.send_and_expect(self.pg2, 5*[p47], self.pg0, 225)
+        rxs = self.send_and_expect(self.pg2, 5 * [p47], self.pg0, 225)
         size = 0
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg0.local_mac)
@@ -558,23 +615,32 @@ class TestGSO(VppTestCase):
             payload_len = inner[IP].len - 20 - 20
             self.assertEqual(payload_len, len(inner[Raw]))
             size += payload_len
-        self.assertEqual(size, 65200*5)
+        self.assertEqual(size, 65200 * 5)
 
         self.ip6_via_ip4_tunnel = VppIpRoute(
-                self, "fd01:10::", 64,
-                [VppRoutePath("::",
-                              self.ipip4.sw_if_index,
-                              proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)])
+            self,
+            "fd01:10::",
+            64,
+            [
+                VppRoutePath(
+                    "::",
+                    self.ipip4.sw_if_index,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_IP6,
+                )
+            ],
+        )
         self.ip6_via_ip4_tunnel.add_vpp_config()
         #
         # IPv4/IPv6 - IPIP
         #
-        p67 = (Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79") /
-               IPv6(src=self.pg2.remote_ip6, dst="fd01:10::3") /
-               TCP(sport=1234, dport=1234) /
-               Raw(b'\xa5' * 65200))
+        p67 = (
+            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            / IPv6(src=self.pg2.remote_ip6, dst="fd01:10::3")
+            / TCP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 65200)
+        )
 
-        rxs = self.send_and_expect(self.pg2, 5*[p67], self.pg0, 225)
+        rxs = self.send_and_expect(self.pg2, 5 * [p67], self.pg0, 225)
         size = 0
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg0.local_mac)
@@ -591,20 +657,21 @@ class TestGSO(VppTestCase):
             payload_len = inner[IPv6].plen - 20
             self.assertEqual(payload_len, len(inner[Raw]))
             size += payload_len
-        self.assertEqual(size, 65200*5)
+        self.assertEqual(size, 65200 * 5)
 
         #
         # Send jumbo frame with gso enabled only on input interface and
         # create IPIP tunnel on VPP pg0. Enable gso feature node on ipip
         # tunnel - IPSec use case
         #
-        self.vapi.feature_gso_enable_disable(sw_if_index=self.pg0.sw_if_index,
-                                             enable_disable=0)
         self.vapi.feature_gso_enable_disable(
-            sw_if_index=self.ipip4.sw_if_index,
-            enable_disable=1)
+            sw_if_index=self.pg0.sw_if_index, enable_disable=0
+        )
+        self.vapi.feature_gso_enable_disable(
+            sw_if_index=self.ipip4.sw_if_index, enable_disable=1
+        )
 
-        rxs = self.send_and_expect(self.pg2, 5*[p47], self.pg0, 225)
+        rxs = self.send_and_expect(self.pg2, 5 * [p47], self.pg0, 225)
         size = 0
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg0.local_mac)
@@ -622,14 +689,14 @@ class TestGSO(VppTestCase):
             payload_len = inner[IP].len - 20 - 20
             self.assertEqual(payload_len, len(inner[Raw]))
             size += payload_len
-        self.assertEqual(size, 65200*5)
+        self.assertEqual(size, 65200 * 5)
 
         #
         # disable ipip4
         #
         self.vapi.feature_gso_enable_disable(
-            sw_if_index=self.ipip4.sw_if_index,
-            enable_disable=0)
+            sw_if_index=self.ipip4.sw_if_index, enable_disable=0
+        )
         self.ip4_via_ip4_tunnel.remove_vpp_config()
         self.ip6_via_ip4_tunnel.remove_vpp_config()
         self.ipip4.remove_vpp_config()
@@ -637,8 +704,9 @@ class TestGSO(VppTestCase):
         #
         # enable ipip6
         #
-        self.vapi.feature_gso_enable_disable(sw_if_index=self.pg0.sw_if_index,
-                                             enable_disable=1)
+        self.vapi.feature_gso_enable_disable(
+            sw_if_index=self.pg0.sw_if_index, enable_disable=1
+        )
         self.ipip6.add_vpp_config()
 
         # Set interface up and enable IP on it
@@ -647,21 +715,30 @@ class TestGSO(VppTestCase):
 
         # Add IPv4 routes via tunnel interface
         self.ip4_via_ip6_tunnel = VppIpRoute(
-                self, "172.16.10.0", 24,
-                [VppRoutePath("0.0.0.0",
-                              self.ipip6.sw_if_index,
-                              proto=FibPathProto.FIB_PATH_NH_PROTO_IP4)])
+            self,
+            "172.16.10.0",
+            24,
+            [
+                VppRoutePath(
+                    "0.0.0.0",
+                    self.ipip6.sw_if_index,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_IP4,
+                )
+            ],
+        )
         self.ip4_via_ip6_tunnel.add_vpp_config()
 
         #
         # IPv6/IPv4 - IPIP
         #
-        p48 = (Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79") /
-               IP(src=self.pg2.remote_ip4, dst="172.16.10.3", flags='DF') /
-               TCP(sport=1234, dport=1234) /
-               Raw(b'\xa5' * 65200))
+        p48 = (
+            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            / IP(src=self.pg2.remote_ip4, dst="172.16.10.3", flags="DF")
+            / TCP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 65200)
+        )
 
-        rxs = self.send_and_expect(self.pg2, 5*[p48], self.pg0, 225)
+        rxs = self.send_and_expect(self.pg2, 5 * [p48], self.pg0, 225)
         size = 0
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg0.local_mac)
@@ -678,24 +755,33 @@ class TestGSO(VppTestCase):
             payload_len = inner[IP].len - 20 - 20
             self.assertEqual(payload_len, len(inner[Raw]))
             size += payload_len
-        self.assertEqual(size, 65200*5)
+        self.assertEqual(size, 65200 * 5)
 
         self.ip6_via_ip6_tunnel = VppIpRoute(
-                self, "fd01:10::", 64,
-                [VppRoutePath("::",
-                              self.ipip6.sw_if_index,
-                              proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)])
+            self,
+            "fd01:10::",
+            64,
+            [
+                VppRoutePath(
+                    "::",
+                    self.ipip6.sw_if_index,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_IP6,
+                )
+            ],
+        )
         self.ip6_via_ip6_tunnel.add_vpp_config()
 
         #
         # IPv6/IPv6 - IPIP
         #
-        p68 = (Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79") /
-               IPv6(src=self.pg2.remote_ip6, dst="fd01:10::3") /
-               TCP(sport=1234, dport=1234) /
-               Raw(b'\xa5' * 65200))
+        p68 = (
+            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            / IPv6(src=self.pg2.remote_ip6, dst="fd01:10::3")
+            / TCP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 65200)
+        )
 
-        rxs = self.send_and_expect(self.pg2, 5*[p68], self.pg0, 225)
+        rxs = self.send_and_expect(self.pg2, 5 * [p68], self.pg0, 225)
         size = 0
         for rx in rxs:
             self.assertEqual(rx[Ether].src, self.pg0.local_mac)
@@ -711,7 +797,7 @@ class TestGSO(VppTestCase):
             payload_len = inner[IPv6].plen - 20
             self.assertEqual(payload_len, len(inner[Raw]))
             size += payload_len
-        self.assertEqual(size, 65200*5)
+        self.assertEqual(size, 65200 * 5)
 
         #
         # disable ipip6
@@ -720,11 +806,12 @@ class TestGSO(VppTestCase):
         self.ip6_via_ip6_tunnel.remove_vpp_config()
         self.ipip6.remove_vpp_config()
 
-        self.vapi.feature_gso_enable_disable(sw_if_index=self.pg0.sw_if_index,
-                                             enable_disable=0)
+        self.vapi.feature_gso_enable_disable(
+            sw_if_index=self.pg0.sw_if_index, enable_disable=0
+        )
 
     def test_gso_ipsec(self):
-        """ GSO IPSEC test """
+        """GSO IPSEC test"""
         #
         # Send jumbo frame with gso enabled only on input interface and
         # create IPIP tunnel on VPP pg0.
@@ -735,14 +822,22 @@ class TestGSO(VppTestCase):
         #
         self.ipip4.add_vpp_config()
         self.vapi.feature_gso_enable_disable(
-            sw_if_index=self.ipip4.sw_if_index, enable_disable=1)
+            sw_if_index=self.ipip4.sw_if_index, enable_disable=1
+        )
 
         # Add IPv4 routes via tunnel interface
         self.ip4_via_ip4_tunnel = VppIpRoute(
-                self, "172.16.10.0", 24,
-                [VppRoutePath("0.0.0.0",
-                              self.ipip4.sw_if_index,
-                              proto=FibPathProto.FIB_PATH_NH_PROTO_IP4)])
+            self,
+            "172.16.10.0",
+            24,
+            [
+                VppRoutePath(
+                    "0.0.0.0",
+                    self.ipip4.sw_if_index,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_IP4,
+                )
+            ],
+        )
         self.ip4_via_ip4_tunnel.add_vpp_config()
 
         # IPSec config
@@ -750,30 +845,33 @@ class TestGSO(VppTestCase):
         self.encryption_type = ESP
         config_tun_params(self.ipv4_params, self.encryption_type, self.ipip4)
 
-        self.tun_sa_in_v4 = VppIpsecSA(self, self.ipv4_params.vpp_tun_sa_id,
-                                       self.ipv4_params.vpp_tun_spi,
-                                       self.ipv4_params.auth_algo_vpp_id,
-                                       self.ipv4_params.auth_key,
-                                       self.ipv4_params.crypt_algo_vpp_id,
-                                       self.ipv4_params.crypt_key,
-                                       VppEnum.vl_api_ipsec_proto_t.
-                                       IPSEC_API_PROTO_ESP)
+        self.tun_sa_in_v4 = VppIpsecSA(
+            self,
+            self.ipv4_params.vpp_tun_sa_id,
+            self.ipv4_params.vpp_tun_spi,
+            self.ipv4_params.auth_algo_vpp_id,
+            self.ipv4_params.auth_key,
+            self.ipv4_params.crypt_algo_vpp_id,
+            self.ipv4_params.crypt_key,
+            VppEnum.vl_api_ipsec_proto_t.IPSEC_API_PROTO_ESP,
+        )
         self.tun_sa_in_v4.add_vpp_config()
 
-        self.tun_sa_out_v4 = VppIpsecSA(self, self.ipv4_params.scapy_tun_sa_id,
-                                        self.ipv4_params.scapy_tun_spi,
-                                        self.ipv4_params.auth_algo_vpp_id,
-                                        self.ipv4_params.auth_key,
-                                        self.ipv4_params.crypt_algo_vpp_id,
-                                        self.ipv4_params.crypt_key,
-                                        VppEnum.vl_api_ipsec_proto_t.
-                                        IPSEC_API_PROTO_ESP)
+        self.tun_sa_out_v4 = VppIpsecSA(
+            self,
+            self.ipv4_params.scapy_tun_sa_id,
+            self.ipv4_params.scapy_tun_spi,
+            self.ipv4_params.auth_algo_vpp_id,
+            self.ipv4_params.auth_key,
+            self.ipv4_params.crypt_algo_vpp_id,
+            self.ipv4_params.crypt_key,
+            VppEnum.vl_api_ipsec_proto_t.IPSEC_API_PROTO_ESP,
+        )
         self.tun_sa_out_v4.add_vpp_config()
 
-        self.tun_protect_v4 = VppIpsecTunProtect(self,
-                                                 self.ipip4,
-                                                 self.tun_sa_out_v4,
-                                                 [self.tun_sa_in_v4])
+        self.tun_protect_v4 = VppIpsecTunProtect(
+            self, self.ipip4, self.tun_sa_out_v4, [self.tun_sa_in_v4]
+        )
 
         self.tun_protect_v4.add_vpp_config()
 
@@ -784,10 +882,12 @@ class TestGSO(VppTestCase):
         #
         # IPv4/IPv4 - IPSEC
         #
-        ipsec44 = (Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79") /
-                   IP(src=self.pg2.remote_ip4, dst="172.16.10.3", flags='DF') /
-                   TCP(sport=1234, dport=1234) /
-                   Raw(b'\xa5' * 65200))
+        ipsec44 = (
+            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            / IP(src=self.pg2.remote_ip4, dst="172.16.10.3", flags="DF")
+            / TCP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 65200)
+        )
 
         rxs = self.send_and_expect(self.pg2, [ipsec44], self.pg0, 45)
         size = 0
@@ -805,18 +905,27 @@ class TestGSO(VppTestCase):
         self.assertEqual(size, 65200)
 
         self.ip6_via_ip4_tunnel = VppIpRoute(
-                self, "fd01:10::", 64,
-                [VppRoutePath("::",
-                              self.ipip4.sw_if_index,
-                              proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)])
+            self,
+            "fd01:10::",
+            64,
+            [
+                VppRoutePath(
+                    "::",
+                    self.ipip4.sw_if_index,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_IP6,
+                )
+            ],
+        )
         self.ip6_via_ip4_tunnel.add_vpp_config()
         #
         # IPv4/IPv6 - IPSEC
         #
-        ipsec46 = (Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79") /
-                   IPv6(src=self.pg2.remote_ip6, dst="fd01:10::3") /
-                   TCP(sport=1234, dport=1234) /
-                   Raw(b'\xa5' * 65200))
+        ipsec46 = (
+            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            / IPv6(src=self.pg2.remote_ip6, dst="fd01:10::3")
+            / TCP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 65200)
+        )
 
         rxs = self.send_and_expect(self.pg2, [ipsec46], self.pg0, 45)
         size = 0
@@ -841,8 +950,7 @@ class TestGSO(VppTestCase):
         #
         # disable ipip4
         #
-        self.vapi.feature_gso_enable_disable(self.ipip4.sw_if_index,
-                                             enable_disable=0)
+        self.vapi.feature_gso_enable_disable(self.ipip4.sw_if_index, enable_disable=0)
         self.ip4_via_ip4_tunnel.remove_vpp_config()
         self.ip6_via_ip4_tunnel.remove_vpp_config()
         self.ipip4.remove_vpp_config()
@@ -851,8 +959,7 @@ class TestGSO(VppTestCase):
         # enable ipip6
         #
         self.ipip6.add_vpp_config()
-        self.vapi.feature_gso_enable_disable(self.ipip6.sw_if_index,
-                                             enable_disable=1)
+        self.vapi.feature_gso_enable_disable(self.ipip6.sw_if_index, enable_disable=1)
 
         # Set interface up and enable IP on it
         self.ipip6.admin_up()
@@ -860,50 +967,62 @@ class TestGSO(VppTestCase):
 
         # Add IPv4 routes via tunnel interface
         self.ip4_via_ip6_tunnel = VppIpRoute(
-                self, "172.16.10.0", 24,
-                [VppRoutePath("0.0.0.0",
-                              self.ipip6.sw_if_index,
-                              proto=FibPathProto.FIB_PATH_NH_PROTO_IP4)])
+            self,
+            "172.16.10.0",
+            24,
+            [
+                VppRoutePath(
+                    "0.0.0.0",
+                    self.ipip6.sw_if_index,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_IP4,
+                )
+            ],
+        )
         self.ip4_via_ip6_tunnel.add_vpp_config()
 
         # IPSec config
         self.ipv6_params = IPsecIPv6Params()
         self.encryption_type = ESP
         config_tun_params(self.ipv6_params, self.encryption_type, self.ipip6)
-        self.tun_sa_in_v6 = VppIpsecSA(self, self.ipv6_params.vpp_tun_sa_id,
-                                       self.ipv6_params.vpp_tun_spi,
-                                       self.ipv6_params.auth_algo_vpp_id,
-                                       self.ipv6_params.auth_key,
-                                       self.ipv6_params.crypt_algo_vpp_id,
-                                       self.ipv6_params.crypt_key,
-                                       VppEnum.vl_api_ipsec_proto_t.
-                                       IPSEC_API_PROTO_ESP)
+        self.tun_sa_in_v6 = VppIpsecSA(
+            self,
+            self.ipv6_params.vpp_tun_sa_id,
+            self.ipv6_params.vpp_tun_spi,
+            self.ipv6_params.auth_algo_vpp_id,
+            self.ipv6_params.auth_key,
+            self.ipv6_params.crypt_algo_vpp_id,
+            self.ipv6_params.crypt_key,
+            VppEnum.vl_api_ipsec_proto_t.IPSEC_API_PROTO_ESP,
+        )
         self.tun_sa_in_v6.add_vpp_config()
 
-        self.tun_sa_out_v6 = VppIpsecSA(self, self.ipv6_params.scapy_tun_sa_id,
-                                        self.ipv6_params.scapy_tun_spi,
-                                        self.ipv6_params.auth_algo_vpp_id,
-                                        self.ipv6_params.auth_key,
-                                        self.ipv6_params.crypt_algo_vpp_id,
-                                        self.ipv6_params.crypt_key,
-                                        VppEnum.vl_api_ipsec_proto_t.
-                                        IPSEC_API_PROTO_ESP)
+        self.tun_sa_out_v6 = VppIpsecSA(
+            self,
+            self.ipv6_params.scapy_tun_sa_id,
+            self.ipv6_params.scapy_tun_spi,
+            self.ipv6_params.auth_algo_vpp_id,
+            self.ipv6_params.auth_key,
+            self.ipv6_params.crypt_algo_vpp_id,
+            self.ipv6_params.crypt_key,
+            VppEnum.vl_api_ipsec_proto_t.IPSEC_API_PROTO_ESP,
+        )
         self.tun_sa_out_v6.add_vpp_config()
 
-        self.tun_protect_v6 = VppIpsecTunProtect(self,
-                                                 self.ipip6,
-                                                 self.tun_sa_out_v6,
-                                                 [self.tun_sa_in_v6])
+        self.tun_protect_v6 = VppIpsecTunProtect(
+            self, self.ipip6, self.tun_sa_out_v6, [self.tun_sa_in_v6]
+        )
 
         self.tun_protect_v6.add_vpp_config()
 
         #
         # IPv6/IPv4 - IPSEC
         #
-        ipsec64 = (Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79") /
-                   IP(src=self.pg2.remote_ip4, dst="172.16.10.3", flags='DF') /
-                   TCP(sport=1234, dport=1234) /
-                   Raw(b'\xa5' * 65200))
+        ipsec64 = (
+            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            / IP(src=self.pg2.remote_ip4, dst="172.16.10.3", flags="DF")
+            / TCP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 65200)
+        )
 
         rxs = self.send_and_expect(self.pg2, [ipsec64], self.pg0, 45)
         size = 0
@@ -921,19 +1040,28 @@ class TestGSO(VppTestCase):
         self.assertEqual(size, 65200)
 
         self.ip6_via_ip6_tunnel = VppIpRoute(
-                self, "fd01:10::", 64,
-                [VppRoutePath("::",
-                              self.ipip6.sw_if_index,
-                              proto=FibPathProto.FIB_PATH_NH_PROTO_IP6)])
+            self,
+            "fd01:10::",
+            64,
+            [
+                VppRoutePath(
+                    "::",
+                    self.ipip6.sw_if_index,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_IP6,
+                )
+            ],
+        )
         self.ip6_via_ip6_tunnel.add_vpp_config()
 
         #
         # IPv6/IPv6 - IPSEC
         #
-        ipsec66 = (Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79") /
-                   IPv6(src=self.pg2.remote_ip6, dst="fd01:10::3") /
-                   TCP(sport=1234, dport=1234) /
-                   Raw(b'\xa5' * 65200))
+        ipsec66 = (
+            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            / IPv6(src=self.pg2.remote_ip6, dst="fd01:10::3")
+            / TCP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 65200)
+        )
 
         rxs = self.send_and_expect(self.pg2, [ipsec66], self.pg0, 45)
         size = 0
@@ -962,8 +1090,8 @@ class TestGSO(VppTestCase):
         self.ip6_via_ip6_tunnel.remove_vpp_config()
         self.ipip6.remove_vpp_config()
 
-        self.vapi.feature_gso_enable_disable(self.pg0.sw_if_index,
-                                             enable_disable=0)
+        self.vapi.feature_gso_enable_disable(self.pg0.sw_if_index, enable_disable=0)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)

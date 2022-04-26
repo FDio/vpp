@@ -17,7 +17,7 @@ NUM_PKTS = 67
 
 
 class TestDVR(VppTestCase):
-    """ Distributed Virtual Router """
+    """Distributed Virtual Router"""
 
     @classmethod
     def setUpClass(cls):
@@ -62,7 +62,7 @@ class TestDVR(VppTestCase):
             self.assertFalse(p.haslayer(Dot1Q))
 
     def test_dvr(self):
-        """ Distributed Virtual Router """
+        """Distributed Virtual Router"""
 
         #
         # A packet destined to an IP address that is L2 bridged via
@@ -72,18 +72,18 @@ class TestDVR(VppTestCase):
         ip_tag_bridged = "10.10.10.11"
         any_src_addr = "1.1.1.1"
 
-        pkt_no_tag = (Ether(src=self.pg0.remote_mac,
-                            dst=self.loop0.local_mac) /
-                      IP(src=any_src_addr,
-                         dst=ip_non_tag_bridged) /
-                      UDP(sport=1234, dport=1234) /
-                      Raw(b'\xa5' * 100))
-        pkt_tag = (Ether(src=self.pg0.remote_mac,
-                         dst=self.loop0.local_mac) /
-                   IP(src=any_src_addr,
-                      dst=ip_tag_bridged) /
-                   UDP(sport=1234, dport=1234) /
-                   Raw(b'\xa5' * 100))
+        pkt_no_tag = (
+            Ether(src=self.pg0.remote_mac, dst=self.loop0.local_mac)
+            / IP(src=any_src_addr, dst=ip_non_tag_bridged)
+            / UDP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 100)
+        )
+        pkt_tag = (
+            Ether(src=self.pg0.remote_mac, dst=self.loop0.local_mac)
+            / IP(src=any_src_addr, dst=ip_tag_bridged)
+            / UDP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 100)
+        )
 
         #
         # Two sub-interfaces so we can test VLAN tag push/pop
@@ -97,32 +97,45 @@ class TestDVR(VppTestCase):
         # Put all the interfaces into a new bridge domain
         #
         self.vapi.sw_interface_set_l2_bridge(
-            rx_sw_if_index=self.pg0.sw_if_index, bd_id=1)
+            rx_sw_if_index=self.pg0.sw_if_index, bd_id=1
+        )
         self.vapi.sw_interface_set_l2_bridge(
-            rx_sw_if_index=self.pg1.sw_if_index, bd_id=1)
+            rx_sw_if_index=self.pg1.sw_if_index, bd_id=1
+        )
         self.vapi.sw_interface_set_l2_bridge(
-            rx_sw_if_index=sub_if_on_pg2.sw_if_index, bd_id=1)
+            rx_sw_if_index=sub_if_on_pg2.sw_if_index, bd_id=1
+        )
         self.vapi.sw_interface_set_l2_bridge(
-            rx_sw_if_index=sub_if_on_pg3.sw_if_index, bd_id=1)
+            rx_sw_if_index=sub_if_on_pg3.sw_if_index, bd_id=1
+        )
         self.vapi.sw_interface_set_l2_bridge(
-            rx_sw_if_index=self.loop0.sw_if_index, bd_id=1,
-            port_type=L2_PORT_TYPE.BVI)
+            rx_sw_if_index=self.loop0.sw_if_index, bd_id=1, port_type=L2_PORT_TYPE.BVI
+        )
 
         self.vapi.l2_interface_vlan_tag_rewrite(
-            sw_if_index=sub_if_on_pg2.sw_if_index, vtr_op=L2_VTR_OP.L2_POP_1,
-            push_dot1q=92)
+            sw_if_index=sub_if_on_pg2.sw_if_index,
+            vtr_op=L2_VTR_OP.L2_POP_1,
+            push_dot1q=92,
+        )
         self.vapi.l2_interface_vlan_tag_rewrite(
-            sw_if_index=sub_if_on_pg3.sw_if_index, vtr_op=L2_VTR_OP.L2_POP_1,
-            push_dot1q=93)
+            sw_if_index=sub_if_on_pg3.sw_if_index,
+            vtr_op=L2_VTR_OP.L2_POP_1,
+            push_dot1q=93,
+        )
 
         #
         # Add routes to bridge the traffic via a tagged an nontagged interface
         #
         route_no_tag = VppIpRoute(
-            self, ip_non_tag_bridged, 32,
-            [VppRoutePath("0.0.0.0",
-                          self.pg1.sw_if_index,
-                          type=FibPathType.FIB_PATH_TYPE_DVR)])
+            self,
+            ip_non_tag_bridged,
+            32,
+            [
+                VppRoutePath(
+                    "0.0.0.0", self.pg1.sw_if_index, type=FibPathType.FIB_PATH_TYPE_DVR
+                )
+            ],
+        )
         route_no_tag.add_vpp_config()
 
         #
@@ -137,10 +150,17 @@ class TestDVR(VppTestCase):
         # Add routes to bridge the traffic via a tagged interface
         #
         route_with_tag = VppIpRoute(
-            self, ip_tag_bridged, 32,
-            [VppRoutePath("0.0.0.0",
-                          sub_if_on_pg3.sw_if_index,
-                          type=FibPathType.FIB_PATH_TYPE_DVR)])
+            self,
+            ip_tag_bridged,
+            32,
+            [
+                VppRoutePath(
+                    "0.0.0.0",
+                    sub_if_on_pg3.sw_if_index,
+                    type=FibPathType.FIB_PATH_TYPE_DVR,
+                )
+            ],
+        )
         route_with_tag.add_vpp_config()
 
         #
@@ -154,58 +174,58 @@ class TestDVR(VppTestCase):
         #
         # Tag to tag
         #
-        pkt_tag_to_tag = (Ether(src=self.pg2.remote_mac,
-                                dst=self.loop0.local_mac) /
-                          Dot1Q(vlan=92) /
-                          IP(src=any_src_addr,
-                             dst=ip_tag_bridged) /
-                          UDP(sport=1234, dport=1234) /
-                          Raw(b'\xa5' * 100))
+        pkt_tag_to_tag = (
+            Ether(src=self.pg2.remote_mac, dst=self.loop0.local_mac)
+            / Dot1Q(vlan=92)
+            / IP(src=any_src_addr, dst=ip_tag_bridged)
+            / UDP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 100)
+        )
 
-        rx = self.send_and_expect(self.pg2,
-                                  pkt_tag_to_tag * NUM_PKTS,
-                                  self.pg3)
+        rx = self.send_and_expect(self.pg2, pkt_tag_to_tag * NUM_PKTS, self.pg3)
         self.assert_same_mac_addr(pkt_tag_to_tag, rx)
         self.assert_has_vlan_tag(93, rx)
 
         #
         # Tag to non-Tag
         #
-        pkt_tag_to_non_tag = (Ether(src=self.pg2.remote_mac,
-                                    dst=self.loop0.local_mac) /
-                              Dot1Q(vlan=92) /
-                              IP(src=any_src_addr,
-                                 dst=ip_non_tag_bridged) /
-                              UDP(sport=1234, dport=1234) /
-                              Raw(b'\xa5' * 100))
+        pkt_tag_to_non_tag = (
+            Ether(src=self.pg2.remote_mac, dst=self.loop0.local_mac)
+            / Dot1Q(vlan=92)
+            / IP(src=any_src_addr, dst=ip_non_tag_bridged)
+            / UDP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 100)
+        )
 
-        rx = self.send_and_expect(self.pg2,
-                                  pkt_tag_to_non_tag * NUM_PKTS,
-                                  self.pg1)
+        rx = self.send_and_expect(self.pg2, pkt_tag_to_non_tag * NUM_PKTS, self.pg1)
         self.assert_same_mac_addr(pkt_tag_to_tag, rx)
         self.assert_has_no_tag(rx)
 
         #
         # Add an output L3 ACL that will block the traffic
         #
-        rule_1 = AclRule(is_permit=0, proto=17, ports=1234,
-                         src_prefix=IPv4Network((any_src_addr, 32)),
-                         dst_prefix=IPv4Network((ip_non_tag_bridged, 32)))
+        rule_1 = AclRule(
+            is_permit=0,
+            proto=17,
+            ports=1234,
+            src_prefix=IPv4Network((any_src_addr, 32)),
+            dst_prefix=IPv4Network((ip_non_tag_bridged, 32)),
+        )
         acl = VppAcl(self, rules=[rule_1])
         acl.add_vpp_config()
 
         #
         # Apply the ACL on the output interface
         #
-        acl_if1 = VppAclInterface(self, sw_if_index=self.pg1.sw_if_index,
-                                  n_input=0, acls=[acl])
+        acl_if1 = VppAclInterface(
+            self, sw_if_index=self.pg1.sw_if_index, n_input=0, acls=[acl]
+        )
         acl_if1.add_vpp_config()
 
         #
         # Send packet's that should match the ACL and be dropped
         #
-        rx = self.send_and_assert_no_replies(self.pg2,
-                                             pkt_tag_to_non_tag * NUM_PKTS)
+        rx = self.send_and_assert_no_replies(self.pg2, pkt_tag_to_non_tag * NUM_PKTS)
 
         #
         # cleanup
@@ -214,16 +234,23 @@ class TestDVR(VppTestCase):
         acl.remove_vpp_config()
 
         self.vapi.sw_interface_set_l2_bridge(
-            rx_sw_if_index=self.pg0.sw_if_index, bd_id=1, enable=0)
+            rx_sw_if_index=self.pg0.sw_if_index, bd_id=1, enable=0
+        )
         self.vapi.sw_interface_set_l2_bridge(
-            rx_sw_if_index=self.pg1.sw_if_index, bd_id=1, enable=0)
+            rx_sw_if_index=self.pg1.sw_if_index, bd_id=1, enable=0
+        )
         self.vapi.sw_interface_set_l2_bridge(
-            rx_sw_if_index=sub_if_on_pg2.sw_if_index, bd_id=1, enable=0)
+            rx_sw_if_index=sub_if_on_pg2.sw_if_index, bd_id=1, enable=0
+        )
         self.vapi.sw_interface_set_l2_bridge(
-            rx_sw_if_index=sub_if_on_pg3.sw_if_index, bd_id=1, enable=0)
+            rx_sw_if_index=sub_if_on_pg3.sw_if_index, bd_id=1, enable=0
+        )
         self.vapi.sw_interface_set_l2_bridge(
-            rx_sw_if_index=self.loop0.sw_if_index, bd_id=1,
-            port_type=L2_PORT_TYPE.BVI, enable=0)
+            rx_sw_if_index=self.loop0.sw_if_index,
+            bd_id=1,
+            port_type=L2_PORT_TYPE.BVI,
+            enable=0,
+        )
 
         #
         # Do a FIB dump to make sure the paths are correctly reported as DVR
@@ -231,16 +258,14 @@ class TestDVR(VppTestCase):
         routes = self.vapi.ip_route_dump(0)
 
         for r in routes:
-            if (ip_tag_bridged == str(r.route.prefix.network_address)):
-                self.assertEqual(r.route.paths[0].sw_if_index,
-                                 sub_if_on_pg3.sw_if_index)
-                self.assertEqual(r.route.paths[0].type,
-                                 FibPathType.FIB_PATH_TYPE_DVR)
-            if (ip_non_tag_bridged == str(r.route.prefix.network_address)):
-                self.assertEqual(r.route.paths[0].sw_if_index,
-                                 self.pg1.sw_if_index)
-                self.assertEqual(r.route.paths[0].type,
-                                 FibPathType.FIB_PATH_TYPE_DVR)
+            if ip_tag_bridged == str(r.route.prefix.network_address):
+                self.assertEqual(
+                    r.route.paths[0].sw_if_index, sub_if_on_pg3.sw_if_index
+                )
+                self.assertEqual(r.route.paths[0].type, FibPathType.FIB_PATH_TYPE_DVR)
+            if ip_non_tag_bridged == str(r.route.prefix.network_address):
+                self.assertEqual(r.route.paths[0].sw_if_index, self.pg1.sw_if_index)
+                self.assertEqual(r.route.paths[0].type, FibPathType.FIB_PATH_TYPE_DVR)
 
         #
         # the explicit route delete is require so it happens before
@@ -253,5 +278,5 @@ class TestDVR(VppTestCase):
         sub_if_on_pg2.remove_vpp_config()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)
