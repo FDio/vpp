@@ -24,7 +24,7 @@ from vpp_papi import vpp_transport_shmem
 
 class TestVppPapiVPPApiClient(unittest.TestCase):
     def test_getcontext(self):
-        vpp_papi.VPPApiClient.apidir = '.'
+        vpp_papi.VPPApiClient.apidir = "."
         c = vpp_papi.VPPApiClient(testmode=True, use_socket=True)
 
         # reset initialization at module load time.
@@ -39,7 +39,7 @@ class TestVppPapiVPPApiClientMp(unittest.TestCase):
     # run_tests.py (eg. make test TEST_JOBS=10)
 
     def test_get_context_mp(self):
-        vpp_papi.VPPApiClient.apidir = '.'
+        vpp_papi.VPPApiClient.apidir = "."
         c = vpp_papi.VPPApiClient(testmode=True, use_socket=True)
 
         # reset initialization at module load time.
@@ -243,11 +243,11 @@ class TestVppPapiLogging(unittest.TestCase):
                 pass
 
         client = Vpp
-        with self.assertLogs('vpp_papi', level='DEBUG') as cm:
+        with self.assertLogs("vpp_papi", level="DEBUG") as cm:
             vpp_papi.vpp_atexit(client)
-        self.assertEqual(cm.output, ['DEBUG:vpp_papi:Cleaning up VPP on exit'])
+        self.assertEqual(cm.output, ["DEBUG:vpp_papi:Cleaning up VPP on exit"])
 
         with self.assertRaises(AssertionError):
-            with self.assertLogs('vpp_papi.serializer', level='DEBUG') as cm:
+            with self.assertLogs("vpp_papi.serializer", level="DEBUG") as cm:
                 vpp_papi.vpp_atexit(client)
         self.assertEqual(cm.output, [])

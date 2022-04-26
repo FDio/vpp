@@ -26,17 +26,19 @@ if len(sys.argv) < 2:
 replace_patterns = [
     # Search for CLIB_PAD_FROM_TO(...); and replace with padding
     # #define CLIB_PAD_FROM_TO(from,to) u8 pad_##from[(to) - (from)]
-    (re.compile(r"(?P<m>CLIB_PAD_FROM_TO)\s*[(](?P<from>[^,]+),"
-                r"\s*(?P<to>[^)]+)[)]"),
-     r"/** Padding. */ u8 pad_\g<from>[(\g<to>) - (\g<from>)]"),
-
+    (
+        re.compile(
+            r"(?P<m>CLIB_PAD_FROM_TO)\s*[(](?P<from>[^,]+)," r"\s*(?P<to>[^)]+)[)]"
+        ),
+        r"/** Padding. */ u8 pad_\g<from>[(\g<to>) - (\g<from>)]",
+    ),
 ]
 
 
 filename = sys.argv[1]
 cwd = os.getcwd()
-if filename[0:len(cwd)] == cwd:
-    filename = filename[len(cwd):]
+if filename[0 : len(cwd)] == cwd:
+    filename = filename[len(cwd) :]
     if filename[0] == "/":
         filename = filename[1:]
 
@@ -51,6 +53,6 @@ with open(filename) as fd:
         for p in replace_patterns:
             str = p[0].sub(p[1], str)
 
-        sys.stdout.write(str+"\n")
+        sys.stdout.write(str + "\n")
 
 # All done

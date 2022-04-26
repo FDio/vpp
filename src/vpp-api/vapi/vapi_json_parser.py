@@ -3,7 +3,7 @@
 import json
 
 
-class ParseError (Exception):
+class ParseError(Exception):
     pass
 
 
@@ -13,14 +13,12 @@ magic_suffix = "_t"
 
 def remove_magic(what):
     if what.startswith(magic_prefix) and what.endswith(magic_suffix):
-        return what[len(magic_prefix): - len(magic_suffix)]
+        return what[len(magic_prefix) : -len(magic_suffix)]
     return what
 
 
 class Field(object):
-
-    def __init__(self, field_name, field_type, array_len=None,
-                 nelem_field=None):
+    def __init__(self, field_name, field_type, array_len=None, nelem_field=None):
         self.name = field_name
         self.type = field_type
         self.len = array_len
@@ -30,17 +28,23 @@ class Field(object):
         if self.len is None:
             return "Field(name: %s, type: %s)" % (self.name, self.type)
         elif type(self.len) == dict:
-            return "Field(name: %s, type: %s, length: %s)" % (self.name,
-                                                              self.type,
-                                                              self.len)
+            return "Field(name: %s, type: %s, length: %s)" % (
+                self.name,
+                self.type,
+                self.len,
+            )
         elif self.len > 0:
-            return "Field(name: %s, type: %s, length: %s)" % (self.name,
-                                                              self.type,
-                                                              self.len)
+            return "Field(name: %s, type: %s, length: %s)" % (
+                self.name,
+                self.type,
+                self.len,
+            )
         else:
-            return (
-                "Field(name: %s, type: %s, variable length stored in: %s)" %
-                (self.name, self.type, self.nelem_field))
+            return "Field(name: %s, type: %s, variable length stored in: %s)" % (
+                self.name,
+                self.type,
+                self.nelem_field,
+            )
 
     def is_vla(self):
         return self.nelem_field is not None
@@ -61,32 +65,38 @@ class Type(object):
         return self.name
 
 
-class SimpleType (Type):
-
+class SimpleType(Type):
     def has_vla(self):
         return False
 
 
 def get_msg_header_defs(struct_type_class, field_class, json_parser, logger):
     return [
-        struct_type_class(['msg_header1_t',
-                           ['u16', '_vl_msg_id'],
-                           ['u32', 'context'],
-                           ],
-                          json_parser, field_class, logger
-                          ),
-        struct_type_class(['msg_header2_t',
-                           ['u16', '_vl_msg_id'],
-                           ['u32', 'client_index'],
-                           ['u32', 'context'],
-                           ],
-                          json_parser, field_class, logger
-                          ),
+        struct_type_class(
+            [
+                "msg_header1_t",
+                ["u16", "_vl_msg_id"],
+                ["u32", "context"],
+            ],
+            json_parser,
+            field_class,
+            logger,
+        ),
+        struct_type_class(
+            [
+                "msg_header2_t",
+                ["u16", "_vl_msg_id"],
+                ["u32", "client_index"],
+                ["u32", "context"],
+            ],
+            json_parser,
+            field_class,
+            logger,
+        ),
     ]
 
 
 class Struct(object):
-
     def __init__(self, name, fields):
         self.name = name
         self.fields = fields
@@ -112,7 +122,7 @@ class Enum(SimpleType):
     def __str__(self):
         return "Enum(%s, [%s])" % (
             self.name,
-            "], [" .join(["%s => %s" % (i, j) for i, j in self.value_pairs])
+            "], [".join(["%s => %s" % (i, j) for i, j in self.value_pairs]),
         )
 
 
@@ -126,7 +136,7 @@ class Union(Type):
     def __str__(self):
         return "Union(%s, [%s])" % (
             self.name,
-            "], [" .join(["%s %s" % (i, j) for i, j in self.type_pairs])
+            "], [".join(["%s %s" % (i, j) for i, j in self.type_pairs]),
         )
 
     def has_vla(self):
@@ -134,7 +144,6 @@ class Union(Type):
 
 
 class Message(object):
-
     def __init__(self, logger, definition, json_parser):
         struct_type_class = json_parser.struct_type_class
         field_class = json_parser.field_class
@@ -150,22 +159,24 @@ class Message(object):
         self.is_reply = json_parser.is_reply(self.name)
         self.is_event = json_parser.is_event(self.name)
         fields = []
-        for header in get_msg_header_defs(struct_type_class, field_class,
-                                          json_parser, logger):
+        for header in get_msg_header_defs(
+            struct_type_class, field_class, json_parser, logger
+        ):
             logger.debug("Probing header `%s'" % header.name)
             if header.is_part_of_def(m[1:]):
                 self.header = header
                 logger.debug("Found header `%s'" % header.name)
-                fields.append(field_class(field_name='header',
-                                          field_type=self.header))
+                fields.append(field_class(field_name="header", field_type=self.header))
                 ignore = False
                 break
         if ignore and not self.is_event and not self.is_reply:
-            raise ParseError("While parsing message `%s': could not find all "
-                             "common header fields" % name)
+            raise ParseError(
+                "While parsing message `%s': could not find all "
+                "common header fields" % name
+            )
         for field in m[1:]:
-            if isinstance(field, dict) and 'crc' in field:
-                self.crc = field['crc']
+            if isinstance(field, dict) and "crc" in field:
+                self.crc = field["crc"]
                 logger.debug("Found CRC `%s'" % self.crc)
                 continue
             else:
@@ -175,25 +186,22 @@ class Message(object):
                 if any(type(n) is dict for n in field):
                     l -= 1
                 if l == 2:
-                    if self.header is not None and\
-                            self.header.has_field(field[1]):
+                    if self.header is not None and self.header.has_field(field[1]):
                         continue
-                    p = field_class(field_name=field[1],
-                                    field_type=field_type)
+                    p = field_class(field_name=field[1], field_type=field_type)
                 elif l == 3:
-                    if field[2] == 0 and field[0] != 'string':
+                    if field[2] == 0 and field[0] != "string":
                         raise ParseError(
                             "While parsing message `%s': variable length "
                             "array `%s' doesn't have reference to member "
-                            "containing the actual length" % (
-                                name, field[1]))
-                    if field[0] == 'string' and field[2] > 0:
-                        field_type = json_parser.lookup_type_like_id('u8')
+                            "containing the actual length" % (name, field[1])
+                        )
+                    if field[0] == "string" and field[2] > 0:
+                        field_type = json_parser.lookup_type_like_id("u8")
 
                     p = field_class(
-                        field_name=field[1],
-                        field_type=field_type,
-                        array_len=field[2])
+                        field_name=field[1], field_type=field_type, array_len=field[2]
+                    )
                 elif l == 4:
                     nelem_field = None
                     for f in fields:
@@ -203,17 +211,19 @@ class Message(object):
                         raise ParseError(
                             "While parsing message `%s': couldn't find "
                             "variable length array `%s' member containing "
-                            "the actual length `%s'" % (
-                                name, field[1], field[3]))
+                            "the actual length `%s'" % (name, field[1], field[3])
+                        )
                     p = field_class(
                         field_name=field[1],
                         field_type=field_type,
                         array_len=field[2],
-                        nelem_field=nelem_field)
+                        nelem_field=nelem_field,
+                    )
                 else:
-                    raise Exception("Don't know how to parse message "
-                                    "definition for message `%s': `%s'" %
-                                    (m, m[1:]))
+                    raise Exception(
+                        "Don't know how to parse message "
+                        "definition for message `%s': `%s'" % (m, m[1:])
+                    )
                 logger.debug("Parsed field `%s'" % p)
                 fields.append(p)
         self.fields = fields
@@ -221,35 +231,36 @@ class Message(object):
         logger.debug("Parsed message: %s" % self)
 
     def __str__(self):
-        return "Message(%s, [%s], {crc: %s}" % \
-            (self.name,
-             "], [".join([str(f) for f in self.fields]),
-             self.crc)
+        return "Message(%s, [%s], {crc: %s}" % (
+            self.name,
+            "], [".join([str(f) for f in self.fields]),
+            self.crc,
+        )
 
 
-class StructType (Type, Struct):
-
+class StructType(Type, Struct):
     def __init__(self, definition, json_parser, field_class, logger):
         t = definition
         logger.debug("Parsing struct definition `%s'" % t)
         name = t[0]
         fields = []
         for field in t[1:]:
-            if len(field) == 1 and 'crc' in field:
-                self.crc = field['crc']
+            if len(field) == 1 and "crc" in field:
+                self.crc = field["crc"]
                 continue
             field_type = json_parser.lookup_type_like_id(field[0])
             logger.debug("Parsing type field `%s'" % field)
             if len(field) == 2:
-                p = field_class(field_name=field[1],
-                                field_type=field_type)
+                p = field_class(field_name=field[1], field_type=field_type)
             elif len(field) == 3:
                 if field[2] == 0:
-                    raise ParseError("While parsing type `%s': array `%s' has "
-                                     "variable length" % (name, field[1]))
-                p = field_class(field_name=field[1],
-                                field_type=field_type,
-                                array_len=field[2])
+                    raise ParseError(
+                        "While parsing type `%s': array `%s' has "
+                        "variable length" % (name, field[1])
+                    )
+                p = field_class(
+                    field_name=field[1], field_type=field_type, array_len=field[2]
+                )
             elif len(field) == 4:
                 nelem_field = None
                 for f in fields:
@@ -259,23 +270,25 @@ class StructType (Type, Struct):
                     raise ParseError(
                         "While parsing message `%s': couldn't find "
                         "variable length array `%s' member containing "
-                        "the actual length `%s'" % (
-                            name, field[1], field[3]))
-                p = field_class(field_name=field[1],
-                                field_type=field_type,
-                                array_len=field[2],
-                                nelem_field=nelem_field)
+                        "the actual length `%s'" % (name, field[1], field[3])
+                    )
+                p = field_class(
+                    field_name=field[1],
+                    field_type=field_type,
+                    array_len=field[2],
+                    nelem_field=nelem_field,
+                )
             else:
                 raise ParseError(
                     "Don't know how to parse field `%s' of type definition "
-                    "for type `%s'" % (field, t))
+                    "for type `%s'" % (field, t)
+                )
             fields.append(p)
         Type.__init__(self, name)
         Struct.__init__(self, name, fields)
 
     def __str__(self):
-        return "StructType(%s, %s)" % (Type.__str__(self),
-                                       Struct.__str__(self))
+        return "StructType(%s, %s)" % (Type.__str__(self), Struct.__str__(self))
 
     def has_field(self, name):
         return name in self.field_names
@@ -289,30 +302,47 @@ class StructType (Type, Struct):
             if field[0] != p.type.name:
                 raise ParseError(
                     "Unexpected field type `%s' (should be `%s'), "
-                    "while parsing msg/def/field `%s/%s/%s'" %
-                    (field[0], p.type, p.name, definition, field))
+                    "while parsing msg/def/field `%s/%s/%s'"
+                    % (field[0], p.type, p.name, definition, field)
+                )
         return True
 
 
 class JsonParser(object):
-    def __init__(self, logger, files, simple_type_class=SimpleType,
-                 enum_class=Enum, union_class=Union,
-                 struct_type_class=StructType, field_class=Field,
-                 message_class=Message, alias_class=Alias):
+    def __init__(
+        self,
+        logger,
+        files,
+        simple_type_class=SimpleType,
+        enum_class=Enum,
+        union_class=Union,
+        struct_type_class=StructType,
+        field_class=Field,
+        message_class=Message,
+        alias_class=Alias,
+    ):
         self.services = {}
         self.messages = {}
         self.enums = {}
         self.unions = {}
         self.aliases = {}
         self.types = {
-            x: simple_type_class(x) for x in [
-                'i8', 'i16', 'i32', 'i64',
-                'u8', 'u16', 'u32', 'u64',
-                'f64', 'bool'
+            x: simple_type_class(x)
+            for x in [
+                "i8",
+                "i16",
+                "i32",
+                "i64",
+                "u8",
+                "u16",
+                "u32",
+                "u64",
+                "f64",
+                "bool",
             ]
         }
 
-        self.types['string'] = simple_type_class('vl_api_string_t')
+        self.types["string"] = simple_type_class("vl_api_string_t")
         self.replies = set()
         self.events = set()
         self.simple_type_class = simple_type_class
@@ -345,15 +375,15 @@ class JsonParser(object):
         self.messages_by_json[path] = {}
         with open(path) as f:
             j = json.load(f)
-            for k in j['services']:
+            for k in j["services"]:
                 if k in self.services:
                     raise ParseError("Duplicate service `%s'" % k)
-                self.services[k] = j['services'][k]
+                self.services[k] = j["services"][k]
                 self.replies.add(self.services[k]["reply"])
                 if "events" in self.services[k]:
                     for x in self.services[k]["events"]:
                         self.events.add(x)
-            for e in j['enums']:
+            for e in j["enums"]:
                 name = e[0]
                 value_pairs = e[1:-1]
                 enumtype = self.types[e[-1]["enumtype"]]
@@ -365,14 +395,15 @@ class JsonParser(object):
             progress = 0
             last_progress = 0
             while True:
-                for u in j['unions']:
+                for u in j["unions"]:
                     name = u[0]
                     if name in self.unions:
                         progress = progress + 1
                         continue
                     try:
-                        type_pairs = [[self.lookup_type_like_id(t), n]
-                                      for t, n in u[1:]]
+                        type_pairs = [
+                            [self.lookup_type_like_id(t), n] for t, n in u[1:]
+                        ]
                         union = self.union_class(name, type_pairs, 0)
                         progress = progress + 1
                     except ParseError as e:
@@ -381,17 +412,16 @@ class JsonParser(object):
                     self.unions[union.name] = union
                     self.logger.debug("Parsed union: %s" % union)
                     self.unions_by_json[path].append(union)
-                for t in j['types']:
+                for t in j["types"]:
                     if t[0] in self.types:
                         progress = progress + 1
                         continue
                     try:
-                        type_ = self.struct_type_class(t, self,
-                                                       self.field_class,
-                                                       self.logger)
+                        type_ = self.struct_type_class(
+                            t, self, self.field_class, self.logger
+                        )
                         if type_.name in self.types:
-                            raise ParseError(
-                                "Duplicate type `%s'" % type_.name)
+                            raise ParseError("Duplicate type `%s'" % type_.name)
                         progress = progress + 1
                     except ParseError as e:
                         exceptions.append(e)
@@ -399,16 +429,16 @@ class JsonParser(object):
                     self.types[type_.name] = type_
                     self.types_by_json[path].append(type_)
                     self.logger.debug("Parsed type: %s" % type_)
-                for name, body in j['aliases'].items():
+                for name, body in j["aliases"].items():
                     if name in self.aliases:
                         progress = progress + 1
                         continue
-                    if 'length' in body:
-                        array_len = body['length']
+                    if "length" in body:
+                        array_len = body["length"]
                     else:
                         array_len = None
                     try:
-                        t = self.lookup_type_like_id(body['type'])
+                        t = self.lookup_type_like_id(body["type"])
                     except ParseError as e:
                         exceptions.append(e)
                         continue
@@ -430,14 +460,13 @@ class JsonParser(object):
             processed = []
             while True:
                 exceptions = []
-                for m in j['messages']:
+                for m in j["messages"]:
                     if m in processed:
                         continue
                     try:
                         msg = self.message_class(self.logger, m, self)
                         if msg.name in self.messages:
-                            raise ParseError(
-                                "Duplicate message `%s'" % msg.name)
+                            raise ParseError("Duplicate message `%s'" % msg.name)
                     except ParseError as e:
                         exceptions.append(e)
                         continue
@@ -470,7 +499,8 @@ class JsonParser(object):
             return self.aliases[mundane_name]
         raise ParseError(
             "Could not find type, enum or union by magic name `%s' nor by "
-            "mundane name `%s'" % (name, mundane_name))
+            "mundane name `%s'" % (name, mundane_name)
+        )
 
     def is_reply(self, message):
         return message in self.replies
@@ -479,7 +509,7 @@ class JsonParser(object):
         return message in self.events
 
     def get_reply(self, message):
-        return self.messages[self.services[message]['reply']]
+        return self.messages[self.services[message]["reply"]]
 
     def finalize_parsing(self):
         if len(self.messages) == 0:
@@ -493,17 +523,14 @@ class JsonParser(object):
                         try:
                             m.reply = self.get_reply(n)
                             if "stream" in self.services[m.name]:
-                                m.reply_is_stream = \
-                                    self.services[m.name]["stream"]
+                                m.reply_is_stream = self.services[m.name]["stream"]
                             else:
                                 m.reply_is_stream = False
                             m.reply.request = m
                         except:
-                            raise ParseError(
-                                "Cannot find reply to message `%s'" % n)
+                            raise ParseError("Cannot find reply to message `%s'" % n)
                 except ParseError as e:
                     self.exceptions.append(e)
                     remove.append(n)
 
-            self.messages_by_json[jn] = {
-                k: v for k, v in j.items() if k not in remove}
+            self.messages_by_json[jn] = {k: v for k, v in j.items() if k not in remove}

@@ -20,9 +20,7 @@ from framework import VppTestCase, VppTestRunner
 
 
 class TestLoopbackInterfaceCRUD(VppTestCase):
-    """CRUD Loopback
-
-    """
+    """CRUD Loopback"""
 
     @classmethod
     def setUpClass(cls):
@@ -51,9 +49,11 @@ class TestLoopbackInterfaceCRUD(VppTestCase):
         """
         pkts = []
         for i in dst_ifs:
-            p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
-                 IP(src=src_if.remote_ip4, dst=i.local_ip4) /
-                 ICMP(id=i.sw_if_index, type='echo-request'))
+            p = (
+                Ether(dst=src_if.local_mac, src=src_if.remote_mac)
+                / IP(src=src_if.remote_ip4, dst=i.local_ip4)
+                / ICMP(id=i.sw_if_index, type="echo-request")
+            )
             pkts.append(p)
         return pkts
 
@@ -88,15 +88,17 @@ class TestLoopbackInterfaceCRUD(VppTestCase):
             i.config_ip4().admin_up()
 
         # read (check sw if dump, ip4 fib, ip6 fib)
-        if_dump = self.vapi.sw_interface_dump(name_filter_valid=True,
-                                              name_filter='loop')
+        if_dump = self.vapi.sw_interface_dump(
+            name_filter_valid=True, name_filter="loop"
+        )
         fib4_dump = self.vapi.ip_route_dump(0)
         for i in loopbacks:
             self.assertTrue(i.is_interface_config_in_dump(if_dump))
             self.assertTrue(i.is_ip4_entry_in_fib_dump(fib4_dump))
 
-        if_dump = self.vapi.sw_interface_dump(name_filter_valid=True,
-                                              name_filter='loopXYZ')
+        if_dump = self.vapi.sw_interface_dump(
+            name_filter_valid=True, name_filter="loopXYZ"
+        )
         self.assertEqual(len(if_dump), 0)
 
         # check ping
@@ -160,31 +162,29 @@ class TestInterfaceDumpApiLocalOnly(VppTestCase):
         self.assertEqual(rv[0].sw_if_index, 0)
 
     def test_sw_if_index_twiddle0(self):
-        rv = self.vapi.sw_interface_dump(sw_if_index=0xffffffff)
+        rv = self.vapi.sw_interface_dump(sw_if_index=0xFFFFFFFF)
         self.assertEqual(rv[0].sw_if_index, 0)
 
     def test_sw_if_index_1_not_existing(self):
         rv = self.vapi.sw_interface_dump(sw_if_index=1)
-        self.assertEqual(len(rv), 0, 'expected no records.')
+        self.assertEqual(len(rv), 0, "expected no records.")
 
 
 class TestInterfaceDumpApi(VppTestCase):
     """test_interface_crud.TestInterfaceDumpApi"""
 
     def test_sw_if_index_1(self):
-        self.vapi.create_loopback_instance(is_specified=1,
-                                           user_instance=10)
-        self.vapi.create_loopback_instance(is_specified=1,
-                                           user_instance=5)
+        self.vapi.create_loopback_instance(is_specified=1, user_instance=10)
+        self.vapi.create_loopback_instance(is_specified=1, user_instance=5)
 
         # Can I get back the specified record?
         rv = self.vapi.sw_interface_dump(sw_if_index=1)
         self.assertEqual(rv[0].sw_if_index, 1, rv)
 
         # verify 3 interfaces
-        rv = self.vapi.sw_interface_dump(sw_if_index=0xffffffff)
-        self.assertEqual(len(rv), 3, 'Expected 3 interfaces.')
+        rv = self.vapi.sw_interface_dump(sw_if_index=0xFFFFFFFF)
+        self.assertEqual(len(rv), 3, "Expected 3 interfaces.")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)

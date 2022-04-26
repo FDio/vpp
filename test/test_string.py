@@ -7,7 +7,7 @@ from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
 class TestString(VppTestCase):
-    """ String Test Cases """
+    """String Test Cases"""
 
     @classmethod
     def setUpClass(cls):
@@ -24,15 +24,30 @@ class TestString(VppTestCase):
         super(TestString, self).tearDown()
 
     def test_string_unittest(self):
-        """ String unit tests """
-        names = ["memcpy_s",
-                 "clib_memcmp", "clib_memcpy", "clib_memset",
-                 "clib_strcmp", "clib_strncmp", "clib_strncpy",
-                 "clib_strnlen", "clib_strtok",
-                 "memcmp_s", "memcpy_s", "memset_s ",
-                 "strcat_s", "strcmp_s", "strcpy_s",
-                 "strncat_s", "strncmp_s", "strncpy_s",
-                 "strnlen_s", "strstr_s", "strtok_s"]
+        """String unit tests"""
+        names = [
+            "memcpy_s",
+            "clib_memcmp",
+            "clib_memcpy",
+            "clib_memset",
+            "clib_strcmp",
+            "clib_strncmp",
+            "clib_strncpy",
+            "clib_strnlen",
+            "clib_strtok",
+            "memcmp_s",
+            "memcpy_s",
+            "memset_s ",
+            "strcat_s",
+            "strcmp_s",
+            "strcpy_s",
+            "strncat_s",
+            "strncmp_s",
+            "strncpy_s",
+            "strnlen_s",
+            "strstr_s",
+            "strtok_s",
+        ]
 
         for name in names:
             error = self.vapi.cli("test string " + name)
@@ -41,5 +56,5 @@ class TestString(VppTestCase):
                 self.assertNotIn("failed", error)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)
