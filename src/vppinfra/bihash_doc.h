@@ -180,6 +180,23 @@ int BV (clib_bihash_add_or_overwrite_stale) (
   int (*is_stale_cb) (BVT (clib_bihash_kv) *, void *), void *arg);
 
 /**
+ * Add or in-place update a (key,value) pair to a bi-hash table. *
+ *
+ * @param h - the bi-hash table
+ * @param add_v - the (key,value) pair to add or update
+ * @param update_cb - the callback receiving a kv pair and an opaque argument.
+ * When an existing kv pair is found under the same key, this callback is
+ * invoked to update the existing kv pair in-place. If no such a kv pair is
+ * found, the kv pair provided by add_v is added to the hash table.
+ * @param arg - opaque argument passed to update_cb
+ * @returns 0 on success, < 0 on error
+ */
+int
+  BV (clib_bihash_update) (BVT (clib_bihash) * h, BVT (clib_bihash_kv) * add_v,
+			   void (*update_cb) (BVT (clib_bihash_kv) *, void *),
+			   void *arg);
+
+/**
  * Add a (key,value) pair to a bi-hash table, calling a callback on overwrite
  * with the bucket lock held.
  *

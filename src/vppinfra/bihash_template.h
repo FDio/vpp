@@ -336,6 +336,7 @@ static inline uword BV (clib_bihash_get_offset) (BVT (clib_bihash) * h,
 
 #define BIHASH_ADD 1
 #define BIHASH_DEL 0
+#define BIHASH_UPDATE 3
 
 void BV (clib_bihash_init)
   (BVT (clib_bihash) * h, char *name, u32 nbuckets, uword memory_size);
@@ -356,6 +357,11 @@ void BV (clib_bihash_free) (BVT (clib_bihash) * h);
 
 int BV (clib_bihash_add_del) (BVT (clib_bihash) * h,
 			      BVT (clib_bihash_kv) * add_v, int is_add);
+
+int
+  BV (clib_bihash_update) (BVT (clib_bihash) * h, BVT (clib_bihash_kv) * add_v,
+			   void (*update_cb) (BVT (clib_bihash_kv) *, void *),
+			   void *arg);
 
 int BV (clib_bihash_add_del_with_hash) (BVT (clib_bihash) * h,
 					BVT (clib_bihash_kv) * add_v, u64 hash,
