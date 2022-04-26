@@ -344,21 +344,6 @@ wipe-papi:
 wipe-all: wipe wipe-papi wipe-cov
 	@rm -rf $(TEST_BR)
 
-.PHONY: checkstyle-diff
-checkstyle-diff: $(PIP_INSTALL_DONE)
-	@bash -c "source $(VENV_PATH)/bin/activate &&\
-		  python3 -m pip install pycodestyle"
-	@bash -c "source $(VENV_PATH)/bin/activate &&\
-		cd $(WS_ROOT) && git diff --name-only --no-color --relative HEAD~1 ':!*.patch' | grep '.py$$' | xargs -I XXX \
-		pycodestyle --show-source --ignore=W504,E126,E241,E226,E305,E704,E741,E722 -v XXX ||\
-		(echo \"*********************************************************************\" &&\
-		 echo \"* Test framework PEP8 compliance check FAILED (checked changed files)\" &&\
-	         echo \"*********************************************************************\" &&\
-		 false)"
-	@echo "*********************************************************************"
-	@echo "* Test framework PEP8 compliance check passed (checked changed files)"
-	@echo "*********************************************************************"
-
 .PHONY: start-gdb
 start-gdb: sanity
 	@bash -c "source $(VENV_PATH)/bin/activate && python3 -c 'from debug import start_vpp_in_gdb; start_vpp_in_gdb()' $(RUN_TESTS_ARGS)"
@@ -366,15 +351,29 @@ start-gdb: sanity
 .PHONY: checkstyle
 checkstyle: $(PIP_INSTALL_DONE)
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
-		  python3 -m pip install pycodestyle"
+		  python3 -m pip install black"
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
-		pycodestyle --show-source --ignore=W504,E126,E241,E226,E305,E704,E741,E722 -v *.py ||\
-		(echo \"*******************************************************************\" &&\
-		 echo \"* Test framework PEP8 compliance check FAILED (checked all files)\" &&\
-	         echo \"*******************************************************************\" &&\
-		 false)"
+		git ls-files '*.py' | xargs black -t py39 --diff --check ||\
+		(echo \"*************************************************************************\" &&\
+		echo \"* Test framework PEP8 compliance check FAILED (maybe: make test-fixstyle)\" &&\
+		echo \"*************************************************************************\" &&\
+		false)"
 	@echo "*******************************************************************"
-	@echo "* Test framework PEP8 compliance check passed (checked all files)"
+	@echo "* Test framework PEP8 compliance check passed"
+	@echo "*******************************************************************"
+
+.PHONY: fixstyle
+fixstyle: $(PIP_INSTALL_DONE)
+	@bash -c "source $(VENV_PATH)/bin/activate &&\
+		  python3 -m pip install black"
+	@bash -c "source $(VENV_PATH)/bin/activate &&\
+		git ls-files '*.py' | xargs black -t py39 ||\
+		(echo \"*************************************************************************\" &&\
+		echo \"* Test framework PEP8 compliance check FAILED (maybe: make test-fixstyle)\" &&\
+		echo \"*************************************************************************\" &&\
+		false)"
+	@echo "*******************************************************************"
+	@echo "* Test framework PEP8 compliance check passed"
 	@echo "*******************************************************************"
 
 .PHONY: help

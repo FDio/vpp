@@ -66,12 +66,16 @@ class TestIpIrb(VppTestCase):
 
         # Create BD with MAC learning enabled and put interfaces to this BD
         cls.vapi.sw_interface_set_l2_bridge(
-            rx_sw_if_index=cls.bvi0.sw_if_index, bd_id=cls.bd_id,
-            port_type=L2_PORT_TYPE.BVI)
-        cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=cls.pg0.sw_if_index,
-                                            bd_id=cls.bd_id)
-        cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=cls.pg1.sw_if_index,
-                                            bd_id=cls.bd_id)
+            rx_sw_if_index=cls.bvi0.sw_if_index,
+            bd_id=cls.bd_id,
+            port_type=L2_PORT_TYPE.BVI,
+        )
+        cls.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=cls.pg0.sw_if_index, bd_id=cls.bd_id
+        )
+        cls.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=cls.pg1.sw_if_index, bd_id=cls.bd_id
+        )
 
         # Configure IPv4 addresses on BVI interface and routed interface
         cls.bvi0.config_ip4()
@@ -103,8 +107,7 @@ class TestIpIrb(VppTestCase):
     def show_commands_at_teardown(self):
         self.logger.info(self.vapi.cli("show l2patch"))
         self.logger.info(self.vapi.cli("show l2fib verbose"))
-        self.logger.info(self.vapi.cli("show bridge-domain %s detail" %
-                                       self.bd_id))
+        self.logger.info(self.vapi.cli("show bridge-domain %s detail" % self.bd_id))
         self.logger.info(self.vapi.cli("show ip neighbors"))
 
     def create_stream(self, src_ip_if, dst_ip_if, packet_sizes):
@@ -113,19 +116,19 @@ class TestIpIrb(VppTestCase):
             remote_dst_host = choice(dst_ip_if.remote_hosts)
             info = self.create_packet_info(src_ip_if, dst_ip_if)
             payload = self.info_to_payload(info)
-            p = (Ether(dst=src_ip_if.local_mac, src=src_ip_if.remote_mac) /
-                 IP(src=src_ip_if.remote_ip4,
-                    dst=remote_dst_host.ip4) /
-                 UDP(sport=1234, dport=1234) /
-                 Raw(payload))
+            p = (
+                Ether(dst=src_ip_if.local_mac, src=src_ip_if.remote_mac)
+                / IP(src=src_ip_if.remote_ip4, dst=remote_dst_host.ip4)
+                / UDP(sport=1234, dport=1234)
+                / Raw(payload)
+            )
             info.data = p.copy()
             size = packet_sizes[(i // 2) % len(packet_sizes)]
             self.extend_packet(p, size)
             pkts.append(p)
         return pkts
 
-    def create_stream_l2_to_ip(self, src_l2_if, src_ip_if, dst_ip_if,
-                               packet_sizes):
+    def create_stream_l2_to_ip(self, src_l2_if, src_ip_if, dst_ip_if, packet_sizes):
         pkts = []
         for i in range(0, 257):
             info = self.create_packet_info(src_ip_if, dst_ip_if)
@@ -133,12 +136,12 @@ class TestIpIrb(VppTestCase):
 
             host = choice(src_l2_if.remote_hosts)
 
-            p = (Ether(src=host.mac,
-                       dst=src_ip_if.local_mac) /
-                 IP(src=host.ip4,
-                    dst=dst_ip_if.remote_ip4) /
-                 UDP(sport=1234, dport=1234) /
-                 Raw(payload))
+            p = (
+                Ether(src=host.mac, dst=src_ip_if.local_mac)
+                / IP(src=host.ip4, dst=dst_ip_if.remote_ip4)
+                / UDP(sport=1234, dport=1234)
+                / Raw(payload)
+            )
 
             info.data = p.copy()
             size = packet_sizes[(i // 2) % len(packet_sizes)]
@@ -162,8 +165,8 @@ class TestIpIrb(VppTestCase):
             self.assertEqual(payload_info.dst, dst_ip_sw_if_index)
 
             next_info = self.get_next_packet_info_for_interface2(
-                payload_info.src, dst_ip_sw_if_index,
-                last_info[payload_info.src])
+                payload_info.src, dst_ip_sw_if_index, last_info[payload_info.src]
+            )
             last_info[payload_info.src] = next_info
             self.assertTrue(next_info is not None)
             saved_packet = next_info.data
@@ -199,8 +202,8 @@ class TestIpIrb(VppTestCase):
             self.assertEqual(payload_info.dst, dst_ip_sw_if_index)
 
             next_info = self.get_next_packet_info_for_interface2(
-                payload_info.src, dst_ip_sw_if_index,
-                last_info[payload_info.src])
+                payload_info.src, dst_ip_sw_if_index, last_info[payload_info.src]
+            )
             last_info[payload_info.src] = next_info
             self.assertTrue(next_info is not None)
             self.assertEqual(packet_index, next_info.index)
@@ -221,7 +224,7 @@ class TestIpIrb(VppTestCase):
             self.assertEqual(udp.dport, saved_packet[UDP].dport)
 
     def test_ip4_irb_1(self):
-        """ IPv4 IRB test 1
+        """IPv4 IRB test 1
 
         Test scenario:
             - ip traffic from pg2 interface must ends in both pg0 and pg1
@@ -229,8 +232,7 @@ class TestIpIrb(VppTestCase):
             - no l2 entry configured, pg0 and pg1 are same
         """
 
-        stream = self.create_stream(
-            self.pg2, self.bvi0, self.pg_if_packet_sizes)
+        stream = self.create_stream(self.pg2, self.bvi0, self.pg_if_packet_sizes)
         self.pg2.add_stream(stream)
 
         self.pg_enable_capture(self.pg_interfaces)
@@ -248,9 +250,11 @@ class TestIpIrb(VppTestCase):
 
     def send_and_verify_l2_to_ip(self):
         stream1 = self.create_stream_l2_to_ip(
-            self.pg0, self.bvi0, self.pg2, self.pg_if_packet_sizes)
+            self.pg0, self.bvi0, self.pg2, self.pg_if_packet_sizes
+        )
         stream2 = self.create_stream_l2_to_ip(
-            self.pg1, self.bvi0, self.pg2, self.pg_if_packet_sizes)
+            self.pg1, self.bvi0, self.pg2, self.pg_if_packet_sizes
+        )
         self.vapi.cli("clear trace")
         self.pg0.add_stream(stream1)
         self.pg1.add_stream(stream2)
@@ -262,7 +266,7 @@ class TestIpIrb(VppTestCase):
         self.verify_capture_l2_to_ip(self.pg2, self.bvi0, rcvd)
 
     def test_ip4_irb_2(self):
-        """ IPv4 IRB test 2
+        """IPv4 IRB test 2
 
         Test scenario:
             - ip traffic from pg0 and pg1 ends on pg2
@@ -277,5 +281,5 @@ class TestIpIrb(VppTestCase):
         self.pg1.assert_nothing_captured(remark="UU Flood")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)

@@ -8,7 +8,7 @@ from sanity_run_vpp import SanityTestCase
 from shutil import rmtree
 from config import available_cpus
 
-gdb_path = '/usr/bin/gdb'
+gdb_path = "/usr/bin/gdb"
 
 
 def spawn_gdb(binary_path, core_path):
@@ -24,8 +24,9 @@ def spawn_gdb(binary_path, core_path):
         if gdb.isalive():
             raise Exception("GDB refused to die...")
     else:
-        sys.stderr.write("Debugger '%s' does not exist or is not "
-                         "an executable..\n" % gdb_path)
+        sys.stderr.write(
+            "Debugger '%s' does not exist or is not an executable..\n" % gdb_path
+        )
 
 
 def start_vpp_in_gdb():
@@ -33,8 +34,7 @@ def start_vpp_in_gdb():
     # but any test case class could be used ...
     SanityTestCase.set_debug_flags("attach")
     SanityTestCase.tempdir = SanityTestCase.get_tempdir()
-    SanityTestCase.assign_cpus(
-        available_cpus[:SanityTestCase.get_cpus_required()])
+    SanityTestCase.assign_cpus(available_cpus[: SanityTestCase.get_cpus_required()])
     SanityTestCase.setUpConstants()
     vpp_cmdline = SanityTestCase.vpp_cmdline
     print("Hacking cmdline to make VPP interactive.")
@@ -54,5 +54,6 @@ def start_vpp_in_gdb():
         if gdb.isalive():
             raise Exception("GDB refused to die...")
     else:
-        sys.stderr.write("Debugger '%s' does not exist or is not "
-                         "an executable..\n" % gdb_path)
+        sys.stderr.write(
+            "Debugger '%s' does not exist or is not an executable..\n" % gdb_path
+        )
