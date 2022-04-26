@@ -35,6 +35,14 @@ class TestBihash(VppTestCase):
             self.logger.critical(error)
             self.assertNotIn('failed', error)
 
+    def test_bihash_update(self):
+        """ Bihash Update Test """
+        error = self.vapi.cli("test bihash update careful 0 verbose 0")
+
+        if error:
+            self.logger.critical(error)
+            self.assertNotIn('failed', error)
+
     def test_bihash_thread(self):
         """ Bihash Thread Test """
 

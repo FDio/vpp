@@ -462,6 +462,217 @@ test_bihash (bihash_test_main_t * tm)
   return 0;
 }
 
+static void
+do_update (BVT (clib_bihash_kv) * kv, void *arg)
+{
+  kv->value += (u64) arg;
+}
+
+static clib_error_t *
+test_bihash_update (bihash_test_main_t *tm)
+{
+  int i, j;
+  uword *p;
+  uword total_searches;
+  f64 before, delta;
+  BVT (clib_bihash) * h;
+  BVT (clib_bihash_kv) kv;
+  u32 acycle;
+
+  h = &tm->hash;
+
+  BV (clib_bihash_init) (h, "test", tm->nbuckets, tm->hash_memory_size);
+  BV (clib_bihash_set_stats_callback) (h, inc_stats_callback, &tm->stats);
+
+  for (acycle = 0; acycle < tm->ncycles; acycle++)
+    {
+      if ((acycle % tm->report_every_n) == 0)
+	{
+	  fformat (stdout, "Cycle %lld out of %lld...\n", acycle, tm->ncycles);
+
+	  fformat (stdout, "Pick %lld unique %s keys...\n", tm->nitems,
+		   tm->non_random_keys ? "non-random" : "random");
+	}
+
+      for (i = 0; i < tm->nitems; i++)
+	{
+	  u64 rndkey;
+
+	  if (tm->non_random_keys == 0)
+	    {
+
+	    again:
+	      rndkey = random_u64 (&tm->seed);
+
+	      p = hash_get (tm->key_hash, rndkey);
+	      if (p)
+		goto again;
+	    }
+	  else
+	    rndkey = (u64) (i + 1) << 16;
+	  rndkey += acycle;
+
+	  hash_set (tm->key_hash, rndkey, i + 1);
+	  vec_add1 (tm->keys, rndkey);
+	}
+
+      if ((acycle % tm->report_every_n) == 0)
+	fformat (stdout, "Add items...\n");
+
+      for (i = 0; i < tm->nitems; i++)
+	{
+	  kv.key = tm->keys[i];
+	  kv.value = i + 1;
+
+	  BV (clib_bihash_update) (h, &kv, do_update, (void *) (u64) i);
+
+	  if (tm->verbose > 1)
+	    {
+	      fformat (stdout, "--------------------\n");
+	      fformat (stdout, "After adding key %llu value %lld...\n",
+		       tm->keys[i], (u64) (i + 1));
+	      fformat (stdout, "%U", BV (format_bihash), h,
+		       2 /* very verbose */);
+	    }
+	}
+
+      if ((acycle % tm->report_every_n) == 0)
+	{
+	  fformat (stdout, "%U", BV (format_bihash), h, 0 /* very verbose */);
+
+	  fformat (stdout, "Search for items %d times...\n", tm->search_iter);
+	}
+
+      before = clib_time_now (&tm->clib_time);
+
+      for (j = 0; j < tm->search_iter; j++)
+	{
+	  for (i = 0; i < tm->nitems; i++)
+	    {
+	      kv.key = tm->keys[i];
+	      if (BV (clib_bihash_search) (h, &kv, &kv) < 0)
+		{
+		  if (BV (clib_bihash_search) (h, &kv, &kv) < 0)
+		    {
+		      return clib_error_return (
+			0, "[%d] search for key %lld failed unexpectedly\n", i,
+			tm->keys[i]);
+		    }
+		}
+	      if (kv.value != (u64) (i + 1))
+		return clib_error_return (
+		  0, "[%d] search for key %lld returned %lld, not %lld\n", i,
+		  tm->keys, kv.value, (u64) (i + 1));
+	    }
+	}
+
+      if ((acycle % tm->report_every_n) == 0)
+	{
+	  delta = clib_time_now (&tm->clib_time) - before;
+	  total_searches = (uword) tm->search_iter * (uword) tm->nitems;
+
+	  if (delta > 0)
+	    fformat (stdout, "%.f searches per second\n",
+		     ((f64) total_searches) / delta);
+
+	  fformat (stdout, "%lld searches in %.6f seconds\n", total_searches,
+		   delta);
+
+	  fformat (stdout, "Standard E-hash search for items %d times...\n",
+		   tm->search_iter);
+	}
+
+      before = clib_time_now (&tm->clib_time);
+
+      for (j = 0; j < tm->search_iter; j++)
+	{
+	  for (i = 0; i < tm->nitems; i++)
+	    {
+	      p = hash_get (tm->key_hash, tm->keys[i]);
+	      if (p == 0 || p[0] != (uword) (i + 1))
+		return clib_error_return (0, "ugh, couldn't find %lld\n",
+					  tm->keys[i]);
+	    }
+	}
+
+      delta = clib_time_now (&tm->clib_time) - before;
+      total_searches = (uword) tm->search_iter * (uword) tm->nitems;
+
+      if ((acycle % tm->report_every_n) == 0)
+	{
+	  fformat (stdout, "%lld searches in %.6f seconds\n", total_searches,
+		   delta);
+
+	  if (delta > 0)
+	    fformat (stdout, "%.f searches per second\n",
+		     ((f64) total_searches) / delta);
+	  fformat (stdout, "Update items...\n");
+	}
+
+      for (i = 0; i < tm->nitems; i++)
+	{
+	  int rv;
+
+	  kv.key = tm->keys[i];
+	  kv.value = (u64) (i + 1);
+	  rv = BV (clib_bihash_update) (h, &kv, do_update, (void *) (u64) i);
+
+	  if (rv < 0)
+	    return clib_error_return (
+	      0, "update key %lld not ok but should be", tm->keys[i]);
+	}
+
+      for (j = 0; j < tm->search_iter; j++)
+	{
+	  for (i = 0; i < tm->nitems; i++)
+	    {
+	      kv.key = tm->keys[i];
+	      if (BV (clib_bihash_search) (h, &kv, &kv) < 0)
+		{
+		  if (BV (clib_bihash_search) (h, &kv, &kv) < 0)
+		    {
+		      return clib_error_return (
+			0, "[%d] search for key %lld failed unexpectedly\n", i,
+			tm->keys[i]);
+		    }
+		}
+	      if (kv.value != (u64) (i + 1 + i))
+		return clib_error_return (
+		  0, "[%d] search for key %lld returned %lld, not %lld\n", i,
+		  tm->keys, kv.value, (u64) (i + 1 + i));
+	    }
+	}
+
+      if ((acycle % tm->report_every_n) == 0)
+	{
+	  struct rusage r_usage;
+	  getrusage (RUSAGE_SELF, &r_usage);
+	  fformat (stdout, "Kernel RSS: %ld bytes\n", r_usage.ru_maxrss);
+	  fformat (stdout, "%U\n", BV (format_bihash), h, 0 /* verbose */);
+	}
+
+      /* Clean up side-bet hash table and random key vector */
+      hash_free (tm->key_hash);
+      vec_reset_length (tm->keys);
+      /* Recreate hash table if we're going to need it again */
+      if (acycle != (tm->ncycles - 1))
+	tm->key_hash = hash_create (tm->nitems, sizeof (uword));
+    }
+
+  fformat (stdout, "End of run, should be empty...\n");
+
+  fformat (stdout, "%U", BV (format_bihash), h, 0 /* very verbose */);
+
+  fformat (stdout, "Stats:\n%U", format_bihash_stats, h, 1 /* verbose */);
+
+  BV (clib_bihash_free) (h);
+
+  vec_free (tm->keys);
+  hash_free (tm->key_hash);
+
+  return 0;
+}
+
 static clib_error_t *
 test_bihash_command_fn (vlib_main_t * vm,
 			unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -508,6 +719,8 @@ test_bihash_command_fn (vlib_main_t * vm,
 	which = 1;
       else if (unformat (input, "threads %u", &tm->nthreads))
 	which = 2;
+      else if (unformat (input, "update"))
+	which = 3;
       else if (unformat (input, "verbose"))
 	tm->verbose = 1;
       else
@@ -532,6 +745,10 @@ test_bihash_command_fn (vlib_main_t * vm,
 
     case 2:
       error = test_bihash_threads (tm);
+      break;
+
+    case 3:
+      error = test_bihash_update (tm);
       break;
 
     default:
