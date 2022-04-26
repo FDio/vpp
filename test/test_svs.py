@@ -16,7 +16,7 @@ NUM_PKTS = 67
 
 
 class TestSVS(VppTestCase):
-    """ SVS Test Case """
+    """SVS Test Case"""
 
     @classmethod
     def setUpClass(cls):
@@ -61,35 +61,51 @@ class TestSVS(VppTestCase):
         super(TestSVS, self).tearDown()
 
     def test_svs4(self):
-        """ Source VRF Select IP4 """
+        """Source VRF Select IP4"""
 
         #
         # packets destined out of the 3 non-default table interfaces
         #
-        pkts_0 = [(Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-                   IP(src="1.1.1.1", dst=self.pg1.remote_ip4) /
-                   UDP(sport=1234, dport=1234) /
-                   Raw(b'\xa5' * 100)),
-                  (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-                   IP(src="2.2.2.2", dst=self.pg2.remote_ip4) /
-                   UDP(sport=1234, dport=1234) /
-                   Raw(b'\xa5' * 100)),
-                  (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-                   IP(src="3.3.3.3", dst=self.pg3.remote_ip4) /
-                   UDP(sport=1234, dport=1234) /
-                   Raw(b'\xa5' * 100))]
-        pkts_1 = [(Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
-                   IP(src="1.1.1.1", dst=self.pg1.remote_ip4) /
-                   UDP(sport=1234, dport=1234) /
-                   Raw(b'\xa5' * 100)),
-                  (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
-                   IP(src="2.2.2.2", dst=self.pg2.remote_ip4) /
-                   UDP(sport=1234, dport=1234) /
-                   Raw(b'\xa5' * 100)),
-                  (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
-                   IP(src="3.3.3.3", dst=self.pg3.remote_ip4) /
-                   UDP(sport=1234, dport=1234) /
-                   Raw(b'\xa5' * 100))]
+        pkts_0 = [
+            (
+                Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+                / IP(src="1.1.1.1", dst=self.pg1.remote_ip4)
+                / UDP(sport=1234, dport=1234)
+                / Raw(b"\xa5" * 100)
+            ),
+            (
+                Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+                / IP(src="2.2.2.2", dst=self.pg2.remote_ip4)
+                / UDP(sport=1234, dport=1234)
+                / Raw(b"\xa5" * 100)
+            ),
+            (
+                Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+                / IP(src="3.3.3.3", dst=self.pg3.remote_ip4)
+                / UDP(sport=1234, dport=1234)
+                / Raw(b"\xa5" * 100)
+            ),
+        ]
+        pkts_1 = [
+            (
+                Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac)
+                / IP(src="1.1.1.1", dst=self.pg1.remote_ip4)
+                / UDP(sport=1234, dport=1234)
+                / Raw(b"\xa5" * 100)
+            ),
+            (
+                Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac)
+                / IP(src="2.2.2.2", dst=self.pg2.remote_ip4)
+                / UDP(sport=1234, dport=1234)
+                / Raw(b"\xa5" * 100)
+            ),
+            (
+                Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac)
+                / IP(src="3.3.3.3", dst=self.pg3.remote_ip4)
+                / UDP(sport=1234, dport=1234)
+                / Raw(b"\xa5" * 100)
+            ),
+        ]
 
         #
         # before adding the SVS config all these packets are dropped when
@@ -108,7 +124,8 @@ class TestSVS(VppTestCase):
             self.vapi.svs_table_add_del(
                 is_add=1,
                 af=VppEnum.vl_api_address_family_t.ADDRESS_IP4,
-                table_id=table_id)
+                table_id=table_id,
+            )
 
             #
             # map X.0.0.0/8 to each SVS table for lookup in table X
@@ -118,7 +135,8 @@ class TestSVS(VppTestCase):
                     is_add=1,
                     prefix="%d.0.0.0/8" % i,
                     table_id=table_id,
-                    source_table_id=i)
+                    source_table_id=i,
+                )
 
         #
         # Enable SVS on pg0/pg1 using table 1001/1002
@@ -127,12 +145,14 @@ class TestSVS(VppTestCase):
             is_enable=1,
             af=VppEnum.vl_api_address_family_t.ADDRESS_IP4,
             table_id=table_ids[0],
-            sw_if_index=self.pg0.sw_if_index)
+            sw_if_index=self.pg0.sw_if_index,
+        )
         self.vapi.svs_enable_disable(
             is_enable=1,
             af=VppEnum.vl_api_address_family_t.ADDRESS_IP4,
             table_id=table_ids[1],
-            sw_if_index=self.pg1.sw_if_index)
+            sw_if_index=self.pg1.sw_if_index,
+        )
 
         #
         # now all the packets should be delivered out the respective interface
@@ -148,16 +168,20 @@ class TestSVS(VppTestCase):
         # check that if the SVS lookup does not match a route the packet
         # is forwarded using the interface's routing table
         #
-        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-             IP(src=self.pg0.remote_ip4, dst=self.pg0.remote_ip4) /
-             UDP(sport=1234, dport=1234) /
-             Raw(b'\xa5' * 100))
+        p = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IP(src=self.pg0.remote_ip4, dst=self.pg0.remote_ip4)
+            / UDP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 100)
+        )
         self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg0)
 
-        p = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
-             IP(src=self.pg1.remote_ip4, dst=self.pg1.remote_ip4) /
-             UDP(sport=1234, dport=1234) /
-             Raw(b'\xa5' * 100))
+        p = (
+            Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac)
+            / IP(src=self.pg1.remote_ip4, dst=self.pg1.remote_ip4)
+            / UDP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 100)
+        )
         self.send_and_expect(self.pg1, p * NUM_PKTS, self.pg1)
 
         #
@@ -179,12 +203,14 @@ class TestSVS(VppTestCase):
             is_enable=0,
             af=VppEnum.vl_api_address_family_t.ADDRESS_IP4,
             table_id=table_ids[0],
-            sw_if_index=self.pg0.sw_if_index)
+            sw_if_index=self.pg0.sw_if_index,
+        )
         self.vapi.svs_enable_disable(
             is_enable=0,
             af=VppEnum.vl_api_address_family_t.ADDRESS_IP4,
             table_id=table_ids[1],
-            sw_if_index=self.pg1.sw_if_index)
+            sw_if_index=self.pg1.sw_if_index,
+        )
 
         for table_id in table_ids:
             for i in range(1, 4):
@@ -192,43 +218,61 @@ class TestSVS(VppTestCase):
                     is_add=0,
                     prefix="%d.0.0.0/8" % i,
                     table_id=table_id,
-                    source_table_id=0)
+                    source_table_id=0,
+                )
 
             self.vapi.svs_table_add_del(
                 is_add=0,
                 af=VppEnum.vl_api_address_family_t.ADDRESS_IP4,
-                table_id=table_id)
+                table_id=table_id,
+            )
 
     def test_svs6(self):
-        """ Source VRF Select IP6 """
+        """Source VRF Select IP6"""
 
         #
         # packets destined out of the 3 non-default table interfaces
         #
-        pkts_0 = [(Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-                   IPv6(src="2001:1::1", dst=self.pg1.remote_ip6) /
-                   UDP(sport=1234, dport=1234) /
-                   Raw(b'\xa5' * 100)),
-                  (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-                   IPv6(src="2001:2::1", dst=self.pg2.remote_ip6) /
-                   UDP(sport=1234, dport=1234) /
-                   Raw(b'\xa5' * 100)),
-                  (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-                   IPv6(src="2001:3::1", dst=self.pg3.remote_ip6) /
-                   UDP(sport=1234, dport=1234) /
-                   Raw(b'\xa5' * 100))]
-        pkts_1 = [(Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
-                   IPv6(src="2001:1::1", dst=self.pg1.remote_ip6) /
-                   UDP(sport=1234, dport=1234) /
-                   Raw(b'\xa5' * 100)),
-                  (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
-                   IPv6(src="2001:2::1", dst=self.pg2.remote_ip6) /
-                   UDP(sport=1234, dport=1234) /
-                   Raw(b'\xa5' * 100)),
-                  (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
-                   IPv6(src="2001:3::1", dst=self.pg3.remote_ip6) /
-                   UDP(sport=1234, dport=1234) /
-                   Raw(b'\xa5' * 100))]
+        pkts_0 = [
+            (
+                Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+                / IPv6(src="2001:1::1", dst=self.pg1.remote_ip6)
+                / UDP(sport=1234, dport=1234)
+                / Raw(b"\xa5" * 100)
+            ),
+            (
+                Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+                / IPv6(src="2001:2::1", dst=self.pg2.remote_ip6)
+                / UDP(sport=1234, dport=1234)
+                / Raw(b"\xa5" * 100)
+            ),
+            (
+                Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+                / IPv6(src="2001:3::1", dst=self.pg3.remote_ip6)
+                / UDP(sport=1234, dport=1234)
+                / Raw(b"\xa5" * 100)
+            ),
+        ]
+        pkts_1 = [
+            (
+                Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac)
+                / IPv6(src="2001:1::1", dst=self.pg1.remote_ip6)
+                / UDP(sport=1234, dport=1234)
+                / Raw(b"\xa5" * 100)
+            ),
+            (
+                Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac)
+                / IPv6(src="2001:2::1", dst=self.pg2.remote_ip6)
+                / UDP(sport=1234, dport=1234)
+                / Raw(b"\xa5" * 100)
+            ),
+            (
+                Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac)
+                / IPv6(src="2001:3::1", dst=self.pg3.remote_ip6)
+                / UDP(sport=1234, dport=1234)
+                / Raw(b"\xa5" * 100)
+            ),
+        ]
 
         #
         # before adding the SVS config all these packets are dropped when
@@ -247,7 +291,8 @@ class TestSVS(VppTestCase):
             self.vapi.svs_table_add_del(
                 is_add=1,
                 af=VppEnum.vl_api_address_family_t.ADDRESS_IP6,
-                table_id=table_id)
+                table_id=table_id,
+            )
 
             #
             # map X.0.0.0/8 to each SVS table for lookup in table X
@@ -257,7 +302,8 @@ class TestSVS(VppTestCase):
                     is_add=1,
                     prefix="2001:%d::/32" % i,
                     table_id=table_id,
-                    source_table_id=i)
+                    source_table_id=i,
+                )
 
         #
         # Enable SVS on pg0/pg1 using table 1001/1002
@@ -266,12 +312,14 @@ class TestSVS(VppTestCase):
             is_enable=1,
             af=VppEnum.vl_api_address_family_t.ADDRESS_IP6,
             table_id=table_ids[0],
-            sw_if_index=self.pg0.sw_if_index)
+            sw_if_index=self.pg0.sw_if_index,
+        )
         self.vapi.svs_enable_disable(
             is_enable=1,
             af=VppEnum.vl_api_address_family_t.ADDRESS_IP6,
             table_id=table_ids[1],
-            sw_if_index=self.pg1.sw_if_index)
+            sw_if_index=self.pg1.sw_if_index,
+        )
 
         #
         # now all the packets should be delivered out the respective interface
@@ -287,16 +335,20 @@ class TestSVS(VppTestCase):
         # check that if the SVS lookup does not match a route the packet
         # is forwarded using the interface's routing table
         #
-        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-             IPv6(src=self.pg0.remote_ip6, dst=self.pg0.remote_ip6) /
-             UDP(sport=1234, dport=1234) /
-             Raw(b'\xa5' * 100))
+        p = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IPv6(src=self.pg0.remote_ip6, dst=self.pg0.remote_ip6)
+            / UDP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 100)
+        )
         self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg0)
 
-        p = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
-             IPv6(src=self.pg1.remote_ip6, dst=self.pg1.remote_ip6) /
-             UDP(sport=1234, dport=1234) /
-             Raw(b'\xa5' * 100))
+        p = (
+            Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac)
+            / IPv6(src=self.pg1.remote_ip6, dst=self.pg1.remote_ip6)
+            / UDP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 100)
+        )
         self.send_and_expect(self.pg1, p * NUM_PKTS, self.pg1)
 
         #
@@ -318,12 +370,14 @@ class TestSVS(VppTestCase):
             is_enable=0,
             af=VppEnum.vl_api_address_family_t.ADDRESS_IP6,
             table_id=table_ids[0],
-            sw_if_index=self.pg0.sw_if_index)
+            sw_if_index=self.pg0.sw_if_index,
+        )
         self.vapi.svs_enable_disable(
             is_enable=0,
             af=VppEnum.vl_api_address_family_t.ADDRESS_IP6,
             table_id=table_ids[1],
-            sw_if_index=self.pg1.sw_if_index)
+            sw_if_index=self.pg1.sw_if_index,
+        )
 
         for table_id in table_ids:
             for i in range(1, 4):
@@ -331,12 +385,15 @@ class TestSVS(VppTestCase):
                     is_add=0,
                     prefix="2001:%d::/32" % i,
                     table_id=table_id,
-                    source_table_id=0)
+                    source_table_id=0,
+                )
 
             self.vapi.svs_table_add_del(
                 is_add=0,
                 af=VppEnum.vl_api_address_family_t.ADDRESS_IP6,
-                table_id=table_id)
+                table_id=table_id,
+            )
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)

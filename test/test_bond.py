@@ -13,15 +13,13 @@ from vpp_papi import MACAddress, VppEnum
 
 
 class TestBondInterface(VppTestCase):
-    """Bond Test Case
-
-    """
+    """Bond Test Case"""
 
     @classmethod
     def setUpClass(cls):
         super(TestBondInterface, cls).setUpClass()
         # Test variables
-        cls.pkts_per_burst = 257    # Number of packets per burst
+        cls.pkts_per_burst = 257  # Number of packets per burst
         # create 3 pg interfaces
         cls.create_pg_interfaces(range(4))
 
@@ -46,7 +44,7 @@ class TestBondInterface(VppTestCase):
         self.logger.info(self.vapi.ppcli("show interface"))
 
     def test_bond_traffic(self):
-        """ Bond traffic test """
+        """Bond traffic test"""
 
         # topology
         #
@@ -69,12 +67,13 @@ class TestBondInterface(VppTestCase):
             lb=VppEnum.vl_api_bond_lb_algo_t.BOND_API_LB_ALGO_L34,
             numa_only=0,
             use_custom_mac=1,
-            mac_address=mac)
+            mac_address=mac,
+        )
         bond0.add_vpp_config()
         bond0.admin_up()
         self.vapi.sw_interface_add_del_address(
-            sw_if_index=bond0.sw_if_index,
-            prefix="10.10.10.1/24")
+            sw_if_index=bond0.sw_if_index, prefix="10.10.10.1/24"
+        )
 
         self.pg2.config_ip4()
         self.pg2.resolve_arp()
@@ -98,29 +97,39 @@ class TestBondInterface(VppTestCase):
 
         # generate a packet from pg2 -> BondEthernet0 -> pg1
         # BondEthernet0 TX hashes this packet to pg1
-        p2 = (Ether(src=bond0_mac, dst=self.pg2.local_mac) /
-              IP(src=self.pg2.local_ip4, dst="10.10.10.12") /
-              UDP(sport=1235, dport=1235) /
-              Raw(b'\xa5' * 100))
+        p2 = (
+            Ether(src=bond0_mac, dst=self.pg2.local_mac)
+            / IP(src=self.pg2.local_ip4, dst="10.10.10.12")
+            / UDP(sport=1235, dport=1235)
+            / Raw(b"\xa5" * 100)
+        )
         self.pg2.add_stream(p2)
 
         # generate a packet from pg3 -> BondEthernet0 -> pg0
         # BondEthernet0 TX hashes this packet to pg0
         # notice the ip address and ports are different than p2 packet
-        p3 = (Ether(src=bond0_mac, dst=self.pg3.local_mac) /
-              IP(src=self.pg3.local_ip4, dst="10.10.10.11") /
-              UDP(sport=1234, dport=1234) /
-              Raw(b'\xa5' * 100))
+        p3 = (
+            Ether(src=bond0_mac, dst=self.pg3.local_mac)
+            / IP(src=self.pg3.local_ip4, dst="10.10.10.11")
+            / UDP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 100)
+        )
         self.pg3.add_stream(p3)
 
         self.pg_enable_capture(self.pg_interfaces)
 
         # set up the static arp entries pointing to the BondEthernet0 interface
         # so that it does not try to resolve the ip address
-        self.logger.info(self.vapi.cli(
-            "set ip neighbor static BondEthernet0 10.10.10.12 abcd.abcd.0002"))
-        self.logger.info(self.vapi.cli(
-            "set ip neighbor static BondEthernet0 10.10.10.11 abcd.abcd.0004"))
+        self.logger.info(
+            self.vapi.cli(
+                "set ip neighbor static BondEthernet0 10.10.10.12 abcd.abcd.0002"
+            )
+        )
+        self.logger.info(
+            self.vapi.cli(
+                "set ip neighbor static BondEthernet0 10.10.10.11 abcd.abcd.0004"
+            )
+        )
 
         # clear the interface counters
         self.logger.info(self.vapi.cli("clear interfaces"))
@@ -166,14 +175,13 @@ class TestBondInterface(VppTestCase):
         bond0.remove_vpp_config()
 
     def test_bond_add_member(self):
-        """ Bond add_member/detach member test """
+        """Bond add_member/detach member test"""
 
         # create interface (BondEthernet0) and set bond mode to LACP
         self.logger.info("create bond")
         bond0 = VppBondInterface(
-            self,
-            mode=VppEnum.vl_api_bond_mode_t.BOND_API_MODE_LACP,
-            enable_gso=0)
+            self, mode=VppEnum.vl_api_bond_mode_t.BOND_API_MODE_LACP, enable_gso=0
+        )
         bond0.add_vpp_config()
         bond0.admin_up()
 
@@ -187,15 +195,13 @@ class TestBondInterface(VppTestCase):
             # add_member pg0 and pg1 to BondEthernet0
             self.logger.info("bond add_member interface pg0 to BondEthernet0")
             bond0.add_member_vpp_bond_interface(
-                sw_if_index=self.pg0.sw_if_index,
-                is_passive=0,
-                is_long_timeout=0)
+                sw_if_index=self.pg0.sw_if_index, is_passive=0, is_long_timeout=0
+            )
 
             self.logger.info("bond add_member interface pg1 to BondEthernet0")
             bond0.add_member_vpp_bond_interface(
-                sw_if_index=self.pg1.sw_if_index,
-                is_passive=0,
-                is_long_timeout=0)
+                sw_if_index=self.pg1.sw_if_index, is_passive=0, is_long_timeout=0
+            )
             # verify both members in BondEthernet0
             if_dump = self.vapi.sw_member_interface_dump(bond0.sw_if_index)
             self.assertTrue(self.pg0.is_interface_config_in_dump(if_dump))
@@ -222,25 +228,27 @@ class TestBondInterface(VppTestCase):
         bond0.remove_vpp_config()
 
     def test_bond(self):
-        """ Bond add/delete interface test """
+        """Bond add/delete interface test"""
         self.logger.info("Bond add interfaces")
 
         # create interface 1 (BondEthernet0)
         bond0 = VppBondInterface(
-            self, mode=VppEnum.vl_api_bond_mode_t.BOND_API_MODE_LACP)
+            self, mode=VppEnum.vl_api_bond_mode_t.BOND_API_MODE_LACP
+        )
         bond0.add_vpp_config()
         bond0.admin_up()
 
         # create interface 2 (BondEthernet1)
         bond1 = VppBondInterface(
-            self, mode=VppEnum.vl_api_bond_mode_t.BOND_API_MODE_XOR)
+            self, mode=VppEnum.vl_api_bond_mode_t.BOND_API_MODE_XOR
+        )
         bond1.add_vpp_config()
         bond1.admin_up()
 
         # verify both interfaces in the show
         ifs = self.vapi.cli("show interface")
-        self.assertIn('BondEthernet0', ifs)
-        self.assertIn('BondEthernet1', ifs)
+        self.assertIn("BondEthernet0", ifs)
+        self.assertIn("BondEthernet1", ifs)
 
         # verify they are in the dump also
         if_dump = self.vapi.sw_bond_interface_dump(sw_if_index=0xFFFFFFFF)
@@ -255,10 +263,10 @@ class TestBondInterface(VppTestCase):
 
         ifs = self.vapi.cli("show interface")
         # verify BondEthernet0 still in the show
-        self.assertIn('BondEthernet0', ifs)
+        self.assertIn("BondEthernet0", ifs)
 
         # verify BondEthernet1 not in the show
-        self.assertNotIn('BondEthernet1', ifs)
+        self.assertNotIn("BondEthernet1", ifs)
 
         # verify BondEthernet1 is not in the dump
         if_dump = self.vapi.sw_bond_interface_dump(sw_if_index=0xFFFFFFFF)
@@ -275,15 +283,14 @@ class TestBondInterface(VppTestCase):
 
         # verify BondEthernet0 not in the show
         ifs = self.vapi.cli("show interface")
-        self.assertNotIn('BondEthernet0', ifs)
+        self.assertNotIn("BondEthernet0", ifs)
 
         # verify BondEthernet0 is not in the dump
-        if_dump = self.vapi.sw_bond_interface_dump(
-            sw_if_index=bond0.sw_if_index)
+        if_dump = self.vapi.sw_bond_interface_dump(sw_if_index=bond0.sw_if_index)
         self.assertFalse(bond0.is_interface_config_in_dump(if_dump))
 
     def test_bond_link(self):
-        """ Bond hw interface link state test """
+        """Bond hw interface link state test"""
 
         # for convenience
         bond_modes = VppEnum.vl_api_bond_mode_t
@@ -292,16 +299,17 @@ class TestBondInterface(VppTestCase):
         # create interface 1 (BondEthernet0)
         self.logger.info("Create bond interface")
         # use round-robin mode to avoid negotiation required by LACP
-        bond0 = VppBondInterface(self,
-                                 mode=bond_modes.BOND_API_MODE_ROUND_ROBIN)
+        bond0 = VppBondInterface(self, mode=bond_modes.BOND_API_MODE_ROUND_ROBIN)
         bond0.add_vpp_config()
 
         # set bond admin up.
         self.logger.info("set interface BondEthernet0 admin up")
         bond0.admin_up()
         # confirm link up
-        bond0.assert_interface_state(intf_flags.IF_STATUS_API_FLAG_ADMIN_UP,
-                                     intf_flags.IF_STATUS_API_FLAG_LINK_UP)
+        bond0.assert_interface_state(
+            intf_flags.IF_STATUS_API_FLAG_ADMIN_UP,
+            intf_flags.IF_STATUS_API_FLAG_LINK_UP,
+        )
 
         # toggle bond admin state
         self.logger.info("toggle interface BondEthernet0")
@@ -309,13 +317,15 @@ class TestBondInterface(VppTestCase):
         bond0.admin_up()
 
         # confirm link is still up
-        bond0.assert_interface_state(intf_flags.IF_STATUS_API_FLAG_ADMIN_UP,
-                                     intf_flags.IF_STATUS_API_FLAG_LINK_UP)
+        bond0.assert_interface_state(
+            intf_flags.IF_STATUS_API_FLAG_ADMIN_UP,
+            intf_flags.IF_STATUS_API_FLAG_LINK_UP,
+        )
 
         # delete BondEthernet0
         self.logger.info("Deleting BondEthernet0")
         bond0.remove_vpp_config()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)

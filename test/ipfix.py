@@ -1,106 +1,114 @@
 #!/usr/bin/env python3
 # IPFIX support for Scapy (RFC7011)
 
-from scapy.all import bind_layers, FieldLenField, IntField, Packet, \
-    PacketListField, ShortEnumField, ShortField, StrLenField
+from scapy.all import (
+    bind_layers,
+    FieldLenField,
+    IntField,
+    Packet,
+    PacketListField,
+    ShortEnumField,
+    ShortField,
+    StrLenField,
+)
 from scapy.layers.inet import UDP
 
 
 # IPFIX Information Elements http://www.iana.org/assignments/ipfix/ipfix.xhtml
 information_elements = {
-    1:   "octetDeltaCount",
-    2:   "packetDeltaCount",
-    3:   "deltaFlowCount",
-    4:   "protocolIdentifier",
-    5:   "ipClassOfService",
-    6:   "tcpControlBits",
-    7:   "sourceTransportPort",
-    8:   "sourceIPv4Address",
-    9:   "sourceIPv4PrefixLength",
-    10:  "ingressInterface",
-    11:  "destinationTransportPort",
-    12:  "destinationIPv4Address",
-    13:  "destinationIPv4PrefixLength",
-    14:  "egressInterface",
-    15:  "ipNextHopIPv4Address",
-    16:  "bgpSourceAsNumber",
-    17:  "bgpDestinationAsNumber",
-    18:  "bgpNextHopIPv4Address",
-    19:  "postMCastPacketDeltaCount",
-    20:  "postMCastOctetDeltaCount",
-    21:  "flowEndSysUpTime",
-    22:  "flowStartSysUpTime",
-    23:  "postOctetDeltaCount",
-    24:  "postPacketDeltaCount",
-    25:  "minimumIpTotalLength",
-    26:  "maximumIpTotalLength",
-    27:  "sourceIPv6Address",
-    28:  "destinationIPv6Address",
-    29:  "sourceIPv6PrefixLength",
-    30:  "destinationIPv6PrefixLength",
-    31:  "flowLabelIPv6",
-    32:  "icmpTypeCodeIPv4",
-    33:  "igmpType",
-    34:  "samplingInterval",
-    35:  "samplingAlgorithm",
-    36:  "flowActiveTimeout",
-    37:  "flowIdleTimeout",
-    38:  "engineType",
-    39:  "engineId",
-    40:  "exportedOctetTotalCount",
-    41:  "exportedMessageTotalCount",
-    42:  "exportedFlowRecordTotalCount",
-    43:  "ipv4RouterSc",
-    44:  "sourceIPv4Prefix",
-    45:  "destinationIPv4Prefix",
-    46:  "mplsTopLabelType",
-    47:  "mplsTopLabelIPv4Address",
-    48:  "samplerId",
-    49:  "samplerMode",
-    50:  "samplerRandomInterval",
-    51:  "classId",
-    52:  "minimumTTL",
-    53:  "maximumTTL",
-    54:  "fragmentIdentification",
-    55:  "postIpClassOfService",
-    56:  "sourceMacAddress",
-    57:  "postDestinationMacAddress",
-    58:  "vlanId",
-    59:  "postVlanId",
-    60:  "ipVersion",
-    61:  "flowDirection",
-    62:  "ipNextHopIPv6Address",
-    63:  "bgpNextHopIPv6Address",
-    64:  "ipv6ExtensionHeaders",
-    70:  "mplsTopLabelStackSection",
-    71:  "mplsLabelStackSection2",
-    72:  "mplsLabelStackSection3",
-    73:  "mplsLabelStackSection4",
-    74:  "mplsLabelStackSection5",
-    75:  "mplsLabelStackSection6",
-    76:  "mplsLabelStackSection7",
-    77:  "mplsLabelStackSection8",
-    78:  "mplsLabelStackSection9",
-    79:  "mplsLabelStackSection10",
-    80:  "destinationMacAddress",
-    81:  "postSourceMacAddress",
-    82:  "interfaceName",
-    83:  "interfaceDescription",
-    84:  "samplerName",
-    85:  "octetTotalCount",
-    86:  "packetTotalCount",
-    87:  "flagsAndSamplerId",
-    88:  "fragmentOffset",
-    89:  "forwardingStatus",
-    90:  "mplsVpnRouteDistinguisher",
-    91:  "mplsTopLabelPrefixLength",
-    92:  "srcTrafficIndex",
-    93:  "dstTrafficIndex",
-    94:  "applicationDescription",
-    95:  "applicationId",
-    96:  "applicationName",
-    98:  "postIpDiffServCodePoint",
-    99:  "multicastReplicationFactor",
+    1: "octetDeltaCount",
+    2: "packetDeltaCount",
+    3: "deltaFlowCount",
+    4: "protocolIdentifier",
+    5: "ipClassOfService",
+    6: "tcpControlBits",
+    7: "sourceTransportPort",
+    8: "sourceIPv4Address",
+    9: "sourceIPv4PrefixLength",
+    10: "ingressInterface",
+    11: "destinationTransportPort",
+    12: "destinationIPv4Address",
+    13: "destinationIPv4PrefixLength",
+    14: "egressInterface",
+    15: "ipNextHopIPv4Address",
+    16: "bgpSourceAsNumber",
+    17: "bgpDestinationAsNumber",
+    18: "bgpNextHopIPv4Address",
+    19: "postMCastPacketDeltaCount",
+    20: "postMCastOctetDeltaCount",
+    21: "flowEndSysUpTime",
+    22: "flowStartSysUpTime",
+    23: "postOctetDeltaCount",
+    24: "postPacketDeltaCount",
+    25: "minimumIpTotalLength",
+    26: "maximumIpTotalLength",
+    27: "sourceIPv6Address",
+    28: "destinationIPv6Address",
+    29: "sourceIPv6PrefixLength",
+    30: "destinationIPv6PrefixLength",
+    31: "flowLabelIPv6",
+    32: "icmpTypeCodeIPv4",
+    33: "igmpType",
+    34: "samplingInterval",
+    35: "samplingAlgorithm",
+    36: "flowActiveTimeout",
+    37: "flowIdleTimeout",
+    38: "engineType",
+    39: "engineId",
+    40: "exportedOctetTotalCount",
+    41: "exportedMessageTotalCount",
+    42: "exportedFlowRecordTotalCount",
+    43: "ipv4RouterSc",
+    44: "sourceIPv4Prefix",
+    45: "destinationIPv4Prefix",
+    46: "mplsTopLabelType",
+    47: "mplsTopLabelIPv4Address",
+    48: "samplerId",
+    49: "samplerMode",
+    50: "samplerRandomInterval",
+    51: "classId",
+    52: "minimumTTL",
+    53: "maximumTTL",
+    54: "fragmentIdentification",
+    55: "postIpClassOfService",
+    56: "sourceMacAddress",
+    57: "postDestinationMacAddress",
+    58: "vlanId",
+    59: "postVlanId",
+    60: "ipVersion",
+    61: "flowDirection",
+    62: "ipNextHopIPv6Address",
+    63: "bgpNextHopIPv6Address",
+    64: "ipv6ExtensionHeaders",
+    70: "mplsTopLabelStackSection",
+    71: "mplsLabelStackSection2",
+    72: "mplsLabelStackSection3",
+    73: "mplsLabelStackSection4",
+    74: "mplsLabelStackSection5",
+    75: "mplsLabelStackSection6",
+    76: "mplsLabelStackSection7",
+    77: "mplsLabelStackSection8",
+    78: "mplsLabelStackSection9",
+    79: "mplsLabelStackSection10",
+    80: "destinationMacAddress",
+    81: "postSourceMacAddress",
+    82: "interfaceName",
+    83: "interfaceDescription",
+    84: "samplerName",
+    85: "octetTotalCount",
+    86: "packetTotalCount",
+    87: "flagsAndSamplerId",
+    88: "fragmentOffset",
+    89: "forwardingStatus",
+    90: "mplsVpnRouteDistinguisher",
+    91: "mplsTopLabelPrefixLength",
+    92: "srcTrafficIndex",
+    93: "dstTrafficIndex",
+    94: "applicationDescription",
+    95: "applicationId",
+    96: "applicationName",
+    98: "postIpDiffServCodePoint",
+    99: "multicastReplicationFactor",
     100: "className",
     101: "classificationEngineId",
     102: "layer2packetSectionOffset",
@@ -443,24 +451,27 @@ information_elements = {
     471: "maxSessionEntries",
     472: "maxBIBEntries",
     473: "maxEntriesPerUser",
-    475: "maxFragmentsPendingReassembly"
+    475: "maxFragmentsPendingReassembly",
 }
 
 
 class IPFIX(Packet):
     name = "IPFIX"
-    fields_desc = [ShortField("version", 10),
-                   ShortField("length", None),
-                   IntField("exportTime", None),
-                   IntField("sequenceNumber", 1),
-                   IntField("observationDomainID", 1)]
+    fields_desc = [
+        ShortField("version", 10),
+        ShortField("length", None),
+        IntField("exportTime", None),
+        IntField("sequenceNumber", 1),
+        IntField("observationDomainID", 1),
+    ]
 
 
 class FieldSpecifier(Packet):
     name = "Field Specifier"
-    fields_desc = [ShortEnumField(
-        "informationElement", None, information_elements),
-        ShortField("fieldLength", None)]
+    fields_desc = [
+        ShortEnumField("informationElement", None, information_elements),
+        ShortField("fieldLength", None),
+    ]
 
     def extract_padding(self, s):
         return "", s
@@ -468,16 +479,20 @@ class FieldSpecifier(Packet):
 
 class Template(Packet):
     name = "Template"
-    fields_desc = [ShortField("templateID", 256),
-                   FieldLenField("fieldCount", None, count_of="fields"),
-                   PacketListField("templateFields", [], FieldSpecifier,
-                                   count_from=lambda p: p.fieldCount)]
+    fields_desc = [
+        ShortField("templateID", 256),
+        FieldLenField("fieldCount", None, count_of="fields"),
+        PacketListField(
+            "templateFields", [], FieldSpecifier, count_from=lambda p: p.fieldCount
+        ),
+    ]
 
 
 class Data(Packet):
     name = "Data"
     fields_desc = [
-        StrLenField("data", "", length_from=lambda p: p.underlayer.length - 4)]
+        StrLenField("data", "", length_from=lambda p: p.underlayer.length - 4)
+    ]
 
     def extract_padding(self, s):
         return "", s
@@ -485,8 +500,7 @@ class Data(Packet):
 
 class Set(Packet):
     name = "Set"
-    fields_desc = [ShortField("setID", 256),
-                   ShortField("length", None)]
+    fields_desc = [ShortField("setID", 256), ShortField("length", None)]
 
     def guess_payload_class(self, payload):
         if self.setID == 2:
@@ -502,7 +516,7 @@ bind_layers(UDP, IPFIX, dport=4739)
 
 
 class IPFIXDecoder:
-    """ IPFIX data set decoder """
+    """IPFIX data set decoder"""
 
     def __init__(self):
         self._templates = []
@@ -517,11 +531,9 @@ class IPFIXDecoder:
         fields = []
         rec_len = 0
         for field in template.templateFields:
-            fields.append(
-                {'name': field.informationElement, 'len': field.fieldLength})
+            fields.append({"name": field.informationElement, "len": field.fieldLength})
             rec_len += field.fieldLength
-        self._templates.append(
-            {'id': templateID, 'fields': fields, 'rec_len': rec_len})
+        self._templates.append({"id": templateID, "fields": fields, "rec_len": rec_len})
 
     def decode_data_set(self, data_set):
         """
@@ -532,15 +544,15 @@ class IPFIXDecoder:
         """
         data = []
         for template in self._templates:
-            if template['id'] == data_set.setID:
+            if template["id"] == data_set.setID:
                 offset = 0
                 d = data_set[Data].data
-                for i in range(len(d) // template['rec_len']):
+                for i in range(len(d) // template["rec_len"]):
                     record = {}
-                    for field in template['fields']:
-                        f = d[offset:offset + field['len']]
-                        offset += field['len']
-                        record.update({field['name']: f})
+                    for field in template["fields"]:
+                        f = d[offset : offset + field["len"]]
+                        offset += field["len"]
+                        record.update({field["name"]: f})
                     data.append(record)
                 break
         return data
