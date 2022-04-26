@@ -78,13 +78,14 @@ class CpuUtils(object):
             #           1,1,0,0,,1,1,1,0
             if ret != 0:
                 raise RuntimeError(
-                    "Failed to execute ssh command, ret: {} err: {}".format(
-                        ret, stderr))
-            node['cpuinfo'] = list()
+                    "Failed to execute ssh command, ret: {} err: {}".format(ret, stderr)
+                )
+            node["cpuinfo"] = list()
             for line in stdout.split("\n"):
-                if line != '' and line[0] != "#":
-                    node['cpuinfo'].append([CpuUtils.__str2int(x) for x in
-                                            line.split(",")])
+                if line != "" and line[0] != "#":
+                    node["cpuinfo"].append(
+                        [CpuUtils.__str2int(x) for x in line.split(",")]
+                    )
 
     @staticmethod
     def cpu_node_count(node):
@@ -137,13 +138,14 @@ class CpuUtils(object):
 
         if smt_enabled and not smt_used:
             cpu_list_len = len(cpu_list)
-            cpu_list = cpu_list[:cpu_list_len // CpuUtils.NR_OF_THREADS]
+            cpu_list = cpu_list[: cpu_list_len // CpuUtils.NR_OF_THREADS]
 
         return cpu_list
 
     @staticmethod
-    def cpu_slice_of_list_per_node(node, cpu_node, skip_cnt=0, cpu_cnt=0,
-                                   smt_used=False):
+    def cpu_slice_of_list_per_node(
+        node, cpu_node, skip_cnt=0, cpu_cnt=0, smt_used=False
+    ):
         """Return string of node related list of CPU numbers.
 
         :param node: Node dictionary with cpuinfo.
@@ -171,20 +173,20 @@ class CpuUtils(object):
             cpu_cnt = cpu_list_len - skip_cnt
 
         if smt_used:
-            cpu_list_0 = cpu_list[:cpu_list_len // CpuUtils.NR_OF_THREADS]
-            cpu_list_1 = cpu_list[cpu_list_len // CpuUtils.NR_OF_THREADS:]
-            cpu_list = [cpu for cpu in cpu_list_0[skip_cnt:skip_cnt + cpu_cnt]]
-            cpu_list_ex = [cpu for cpu in
-                           cpu_list_1[skip_cnt:skip_cnt + cpu_cnt]]
+            cpu_list_0 = cpu_list[: cpu_list_len // CpuUtils.NR_OF_THREADS]
+            cpu_list_1 = cpu_list[cpu_list_len // CpuUtils.NR_OF_THREADS :]
+            cpu_list = [cpu for cpu in cpu_list_0[skip_cnt : skip_cnt + cpu_cnt]]
+            cpu_list_ex = [cpu for cpu in cpu_list_1[skip_cnt : skip_cnt + cpu_cnt]]
             cpu_list.extend(cpu_list_ex)
         else:
-            cpu_list = [cpu for cpu in cpu_list[skip_cnt:skip_cnt + cpu_cnt]]
+            cpu_list = [cpu for cpu in cpu_list[skip_cnt : skip_cnt + cpu_cnt]]
 
         return cpu_list
 
     @staticmethod
-    def cpu_list_per_node_str(node, cpu_node, skip_cnt=0, cpu_cnt=0, sep=",",
-                              smt_used=False):
+    def cpu_list_per_node_str(
+        node, cpu_node, skip_cnt=0, cpu_cnt=0, sep=",", smt_used=False
+    ):
         """Return string of node related list of CPU numbers.
 
         :param node: Node dictionary with cpuinfo.
@@ -203,15 +205,15 @@ class CpuUtils(object):
         :rtype: str
         """
 
-        cpu_list = CpuUtils.cpu_slice_of_list_per_node(node, cpu_node,
-                                                       skip_cnt=skip_cnt,
-                                                       cpu_cnt=cpu_cnt,
-                                                       smt_used=smt_used)
+        cpu_list = CpuUtils.cpu_slice_of_list_per_node(
+            node, cpu_node, skip_cnt=skip_cnt, cpu_cnt=cpu_cnt, smt_used=smt_used
+        )
         return sep.join(str(cpu) for cpu in cpu_list)
 
     @staticmethod
-    def cpu_range_per_node_str(node, cpu_node, skip_cnt=0, cpu_cnt=0, sep="-",
-                               smt_used=False):
+    def cpu_range_per_node_str(
+        node, cpu_node, skip_cnt=0, cpu_cnt=0, sep="-", smt_used=False
+    ):
         """Return string of node related range of CPU numbers, e.g. 0-4.
 
         :param node: Node dictionary with cpuinfo.
@@ -230,18 +232,16 @@ class CpuUtils(object):
         :rtype: str
         """
 
-        cpu_list = CpuUtils.cpu_slice_of_list_per_node(node, cpu_node,
-                                                       skip_cnt=skip_cnt,
-                                                       cpu_cnt=cpu_cnt,
-                                                       smt_used=smt_used)
+        cpu_list = CpuUtils.cpu_slice_of_list_per_node(
+            node, cpu_node, skip_cnt=skip_cnt, cpu_cnt=cpu_cnt, smt_used=smt_used
+        )
         if smt_used:
             cpu_list_len = len(cpu_list)
-            cpu_list_0 = cpu_list[:cpu_list_len // CpuUtils.NR_OF_THREADS]
-            cpu_list_1 = cpu_list[cpu_list_len // CpuUtils.NR_OF_THREADS:]
-            cpu_range = "{}{}{},{}{}{}".format(cpu_list_0[0], sep,
-                                               cpu_list_0[-1],
-                                               cpu_list_1[0], sep,
-                                               cpu_list_1[-1])
+            cpu_list_0 = cpu_list[: cpu_list_len // CpuUtils.NR_OF_THREADS]
+            cpu_list_1 = cpu_list[cpu_list_len // CpuUtils.NR_OF_THREADS :]
+            cpu_range = "{}{}{},{}{}{}".format(
+                cpu_list_0[0], sep, cpu_list_0[-1], cpu_list_1[0], sep, cpu_list_1[-1]
+            )
         else:
             cpu_range = "{}{}{}".format(cpu_list[0], sep, cpu_list[-1])
 
@@ -260,28 +260,30 @@ class CpuUtils(object):
         cmd = "lscpu"
         ret, stdout, stderr = VPPUtil.exec_command(cmd)
         if ret != 0:
-            raise RuntimeError("lscpu command failed on node {} {}."
-                               .format(node['host'], stderr))
+            raise RuntimeError(
+                "lscpu command failed on node {} {}.".format(node["host"], stderr)
+            )
 
         cpuinfo = {}
-        lines = stdout.split('\n')
+        lines = stdout.split("\n")
         for line in lines:
-            if line != '':
-                linesplit = re.split(r':\s+', line)
+            if line != "":
+                linesplit = re.split(r":\s+", line)
                 cpuinfo[linesplit[0]] = linesplit[1]
 
         cmd = "cat /proc/*/task/*/stat | awk '{print $1" "$2" "$39}'"
         ret, stdout, stderr = VPPUtil.exec_command(cmd)
         if ret != 0:
-            raise RuntimeError("cat command failed on node {} {}."
-                               .format(node['host'], stderr))
+            raise RuntimeError(
+                "cat command failed on node {} {}.".format(node["host"], stderr)
+            )
 
         vpp_processes = {}
-        vpp_lines = re.findall(r'\w+\(vpp_\w+\)\w+', stdout)
+        vpp_lines = re.findall(r"\w+\(vpp_\w+\)\w+", stdout)
         for line in vpp_lines:
-            linesplit = re.split(r'\w+\(', line)[1].split(')')
+            linesplit = re.split(r"\w+\(", line)[1].split(")")
             vpp_processes[linesplit[0]] = linesplit[1]
 
-        cpuinfo['vpp_processes'] = vpp_processes
+        cpuinfo["vpp_processes"] = vpp_processes
 
         return cpuinfo

@@ -16,37 +16,43 @@ from vpp_ip import INVALID_INDEX
 
 
 class TestVxlanGbp(VppTestCase):
-    """ VXLAN GBP Test Case """
+    """VXLAN GBP Test Case"""
 
     @property
     def frame_request(self):
-        """ Ethernet frame modeling a generic request """
-        return (Ether(src='00:00:00:00:00:01', dst='00:00:00:00:00:02') /
-                IP(src='1.2.3.4', dst='4.3.2.1') /
-                UDP(sport=10000, dport=20000) /
-                Raw(b'\xa5' * 100))
+        """Ethernet frame modeling a generic request"""
+        return (
+            Ether(src="00:00:00:00:00:01", dst="00:00:00:00:00:02")
+            / IP(src="1.2.3.4", dst="4.3.2.1")
+            / UDP(sport=10000, dport=20000)
+            / Raw(b"\xa5" * 100)
+        )
 
     @property
     def frame_reply(self):
-        """ Ethernet frame modeling a generic reply """
-        return (Ether(src='00:00:00:00:00:02', dst='00:00:00:00:00:01') /
-                IP(src='4.3.2.1', dst='1.2.3.4') /
-                UDP(sport=20000, dport=10000) /
-                Raw(b'\xa5' * 100))
+        """Ethernet frame modeling a generic reply"""
+        return (
+            Ether(src="00:00:00:00:00:02", dst="00:00:00:00:00:01")
+            / IP(src="4.3.2.1", dst="1.2.3.4")
+            / UDP(sport=20000, dport=10000)
+            / Raw(b"\xa5" * 100)
+        )
 
     def encapsulate(self, pkt, vni):
         """
         Encapsulate the original payload frame by adding VXLAN GBP header with
         its UDP, IP and Ethernet fields
         """
-        return (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
-                IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4) /
-                UDP(sport=self.dport, dport=self.dport, chksum=0) /
-                VXLAN(vni=vni, flags=self.flags, gpflags=self.gpflags,
-                gpid=self.sclass) / pkt)
+        return (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4)
+            / UDP(sport=self.dport, dport=self.dport, chksum=0)
+            / VXLAN(vni=vni, flags=self.flags, gpflags=self.gpflags, gpid=self.sclass)
+            / pkt
+        )
 
     def ip_range(self, start, end):
-        """ range of remote ip's """
+        """range of remote ip's"""
         return ip4_range(self.pg0.remote_ip4, start, end)
 
     def decapsulate(self, pkt):
@@ -54,7 +60,7 @@ class TestVxlanGbp(VppTestCase):
         Decapsulate the original payload frame by removing VXLAN header
         """
         # check if is set G and I flag
-        self.assertEqual(pkt[VXLAN].flags, int('0x88', 16))
+        self.assertEqual(pkt[VXLAN].flags, int("0x88", 16))
         return pkt[VXLAN].payload
 
     # Method for checking VXLAN GBP encapsulation.
@@ -94,28 +100,28 @@ class TestVxlanGbp(VppTestCase):
         ip_range_start = 10
         ip_range_end = ip_range_start + n_ucast_tunnels
         next_hop_address = cls.pg0.remote_ip4
-        for dest_ip4 in ip4_range(cls.pg0.remote_ip4,
-                                  ip_range_start,
-                                  ip_range_end):
+        for dest_ip4 in ip4_range(cls.pg0.remote_ip4, ip_range_start, ip_range_end):
             # add host route so dest_ip4 will not be resolved
-            rip = VppIpRoute(cls, dest_ip4, 32,
-                             [VppRoutePath(next_hop_address,
-                                           INVALID_INDEX)],
-                             register=False)
+            rip = VppIpRoute(
+                cls,
+                dest_ip4,
+                32,
+                [VppRoutePath(next_hop_address, INVALID_INDEX)],
+                register=False,
+            )
             rip.add_vpp_config()
             r = cls.vapi.vxlan_gbp_tunnel_add_del(
                 tunnel={
-                    'src': cls.pg0.local_ip4,
-                    'dst': dest_ip4,
-                    'vni': vni,
-                    'instance': INVALID_INDEX,
-                    'mcast_sw_if_index': INVALID_INDEX,
-                    'mode': 1,
+                    "src": cls.pg0.local_ip4,
+                    "dst": dest_ip4,
+                    "vni": vni,
+                    "instance": INVALID_INDEX,
+                    "mcast_sw_if_index": INVALID_INDEX,
+                    "mode": 1,
                 },
-                is_add=1
+                is_add=1,
             )
-            cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
-                                                bd_id=vni)
+            cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index, bd_id=vni)
 
     # Class method to start the VXLAN GBP test case.
     #  Overrides setUpClass method in VppTestCase class.
@@ -146,33 +152,33 @@ class TestVxlanGbp(VppTestCase):
             # Create VXLAN GBP VTEP on VPP pg0, and put vxlan_gbp_tunnel0 and
             # pg1 into BD.
             cls.single_tunnel_bd = 1
-            cls.single_tunnel_vni = 0xabcde
+            cls.single_tunnel_vni = 0xABCDE
             r = cls.vapi.vxlan_gbp_tunnel_add_del(
                 tunnel={
-                    'src': cls.pg0.local_ip4,
-                    'dst': cls.pg0.remote_ip4,
-                    'vni': cls.single_tunnel_vni,
-                    'instance': INVALID_INDEX,
-                    'mcast_sw_if_index': INVALID_INDEX,
-                    'mode': 1,
+                    "src": cls.pg0.local_ip4,
+                    "dst": cls.pg0.remote_ip4,
+                    "vni": cls.single_tunnel_vni,
+                    "instance": INVALID_INDEX,
+                    "mcast_sw_if_index": INVALID_INDEX,
+                    "mode": 1,
                 },
-                is_add=1
+                is_add=1,
             )
-            cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
-                                                bd_id=cls.single_tunnel_bd)
             cls.vapi.sw_interface_set_l2_bridge(
-                rx_sw_if_index=cls.pg1.sw_if_index,
-                bd_id=cls.single_tunnel_bd)
+                rx_sw_if_index=r.sw_if_index, bd_id=cls.single_tunnel_bd
+            )
+            cls.vapi.sw_interface_set_l2_bridge(
+                rx_sw_if_index=cls.pg1.sw_if_index, bd_id=cls.single_tunnel_bd
+            )
 
             # Setup vni 2 to test multicast flooding
             cls.n_ucast_tunnels = 2
             # Setup vni 3 to test unicast flooding
             cls.ucast_flood_bd = 3
-            cls.create_vxlan_gbp_flood_test_bd(cls.ucast_flood_bd,
-                                               cls.n_ucast_tunnels)
+            cls.create_vxlan_gbp_flood_test_bd(cls.ucast_flood_bd, cls.n_ucast_tunnels)
             cls.vapi.sw_interface_set_l2_bridge(
-                rx_sw_if_index=cls.pg3.sw_if_index,
-                bd_id=cls.ucast_flood_bd)
+                rx_sw_if_index=cls.pg3.sw_if_index, bd_id=cls.ucast_flood_bd
+            )
         except Exception:
             super(TestVxlanGbp, cls).tearDownClass()
             raise
@@ -182,7 +188,7 @@ class TestVxlanGbp(VppTestCase):
         super(TestVxlanGbp, cls).tearDownClass()
 
     def assert_eq_pkts(self, pkt1, pkt2):
-        """ Verify the Ether, IP, UDP, payload are equal in both
+        """Verify the Ether, IP, UDP, payload are equal in both
         packets
         """
         self.assertEqual(pkt1[Ether].src, pkt2[Ether].src)
@@ -194,14 +200,17 @@ class TestVxlanGbp(VppTestCase):
         self.assertEqual(pkt1[Raw], pkt2[Raw])
 
     def test_decap(self):
-        """ Decapsulation test
+        """Decapsulation test
         Send encapsulated frames from pg0
         Verify receipt of decapsulated frames on pg1
         """
-        encapsulated_pkt = self.encapsulate(self.frame_request,
-                                            self.single_tunnel_vni)
+        encapsulated_pkt = self.encapsulate(self.frame_request, self.single_tunnel_vni)
 
-        self.pg0.add_stream([encapsulated_pkt, ])
+        self.pg0.add_stream(
+            [
+                encapsulated_pkt,
+            ]
+        )
 
         self.pg1.enable_capture()
 
@@ -214,7 +223,7 @@ class TestVxlanGbp(VppTestCase):
         self.assert_eq_pkts(pkt, self.frame_request)
 
     def test_encap(self):
-        """ Encapsulation test
+        """Encapsulation test
         Send frames from pg1
         Verify receipt of encapsulated frames on pg0
         """
@@ -233,7 +242,7 @@ class TestVxlanGbp(VppTestCase):
         self.assert_eq_pkts(payload, self.frame_reply)
 
     def test_ucast_flood(self):
-        """ Unicast flood test
+        """Unicast flood test
         Send frames from pg3
         Verify receipt of encapsulated frames on pg0
         """
@@ -251,16 +260,18 @@ class TestVxlanGbp(VppTestCase):
             self.assert_eq_pkts(payload, self.frame_reply)
 
     def test_encap_big_packet(self):
-        """ Encapsulation test send big frame from pg1
+        """Encapsulation test send big frame from pg1
         Verify receipt of encapsulated frames on pg0
         """
 
         self.vapi.sw_interface_set_mtu(self.pg0.sw_if_index, [1500, 0, 0, 0])
 
-        frame = (Ether(src='00:00:00:00:00:02', dst='00:00:00:00:00:01') /
-                 IP(src='4.3.2.1', dst='1.2.3.4') /
-                 UDP(sport=20000, dport=10000) /
-                 Raw(b'\xa5' * 1450))
+        frame = (
+            Ether(src="00:00:00:00:00:02", dst="00:00:00:00:00:01")
+            / IP(src="4.3.2.1", dst="1.2.3.4")
+            / UDP(sport=20000, dport=10000)
+            / Raw(b"\xa5" * 1450)
+        )
 
         self.pg1.add_stream([frame])
 
@@ -276,9 +287,9 @@ class TestVxlanGbp(VppTestCase):
         payload = self.decapsulate(pkt)
         self.assert_eq_pkts(payload, frame)
 
-# Method to define VPP actions before tear down of the test case.
-#  Overrides tearDown method in VppTestCase class.
-#  @param self The object pointer.
+    # Method to define VPP actions before tear down of the test case.
+    #  Overrides tearDown method in VppTestCase class.
+    #  @param self The object pointer.
     def tearDown(self):
         super(TestVxlanGbp, self).tearDown()
 
@@ -289,5 +300,5 @@ class TestVxlanGbp(VppTestCase):
         self.logger.info(self.vapi.cli("show error"))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)

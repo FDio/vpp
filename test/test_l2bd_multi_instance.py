@@ -74,7 +74,7 @@ from util import Host, ppp
 
 
 class TestL2bdMultiInst(VppTestCase):
-    """ L2BD Multi-instance Test Case """
+    """L2BD Multi-instance Test Case"""
 
     @classmethod
     def setUpClass(cls):
@@ -98,9 +98,9 @@ class TestL2bdMultiInst(VppTestCase):
                 bd_ifs = cls.bd_if_range(b + 1)
                 for j in bd_ifs:
                     cls.flows[cls.pg_interfaces[j]] = [
-                        cls.pg_interfaces[x] for x in bd_ifs if x != j]
-                    assert(
-                        len(cls.flows[cls.pg_interfaces[j]]) == ifs_per_bd - 1)
+                        cls.pg_interfaces[x] for x in bd_ifs if x != j
+                    ]
+                    assert len(cls.flows[cls.pg_interfaces[j]]) == ifs_per_bd - 1
 
             # Mapping between packet-generator index and lists of test hosts
             cls.hosts_by_pg_idx = dict()
@@ -158,12 +158,16 @@ class TestL2bdMultiInst(VppTestCase):
                                  addresses for.
         """
         c = hosts_per_if
-        assert(not cls.hosts_by_pg_idx)
+        assert not cls.hosts_by_pg_idx
         for i in range(len(cls.pg_interfaces)):
             pg_idx = cls.pg_interfaces[i].sw_if_index
-            cls.hosts_by_pg_idx[pg_idx] = [Host(
-                "00:00:00:ff:%02x:%02x" % (pg_idx, j + 1),
-                "172.17.1%02u.%u" % (pg_idx, j + 1)) for j in range(c)]
+            cls.hosts_by_pg_idx[pg_idx] = [
+                Host(
+                    "00:00:00:ff:%02x:%02x" % (pg_idx, j + 1),
+                    "172.17.1%02u.%u" % (pg_idx, j + 1),
+                )
+                for j in range(c)
+            ]
 
     @classmethod
     def bd_if_range(cls, b):
@@ -191,13 +195,16 @@ class TestL2bdMultiInst(VppTestCase):
             for j in self.bd_if_range(b):
                 pg_if = self.pg_interfaces[j]
                 self.vapi.sw_interface_set_l2_bridge(
-                    rx_sw_if_index=pg_if.sw_if_index, bd_id=b)
-                self.logger.info("pg-interface %s added to bridge domain ID %d"
-                                 % (pg_if.name, b))
+                    rx_sw_if_index=pg_if.sw_if_index, bd_id=b
+                )
+                self.logger.info(
+                    "pg-interface %s added to bridge domain ID %d" % (pg_if.name, b)
+                )
                 self.pg_in_bd.append(pg_if)
                 hosts = self.hosts_by_pg_idx[pg_if.sw_if_index]
-                packets = [Ether(dst="ff:ff:ff:ff:ff:ff", src=host.mac)
-                           for host in hosts]
+                packets = [
+                    Ether(dst="ff:ff:ff:ff:ff:ff", src=host.mac) for host in hosts
+                ]
                 pg_if.add_stream(packets)
         self.logger.info("Sending broadcast eth frames for MAC learning")
         self.pg_start()
@@ -216,7 +223,8 @@ class TestL2bdMultiInst(VppTestCase):
             for j in self.bd_if_range(b):
                 pg_if = self.pg_interfaces[j]
                 self.vapi.sw_interface_set_l2_bridge(
-                    rx_sw_if_index=pg_if.sw_if_index, bd_id=b, enable=0)
+                    rx_sw_if_index=pg_if.sw_if_index, bd_id=b, enable=0
+                )
                 self.pg_in_bd.remove(pg_if)
             self.vapi.bridge_domain_add_del(bd_id=b, is_add=0)
             self.bd_list.remove(b)
@@ -240,16 +248,20 @@ class TestL2bdMultiInst(VppTestCase):
                 pkt_info = self.create_packet_info(src_if, dst_if)
                 payload = self.info_to_payload(pkt_info)
                 src_host = random.choice(src_hosts)
-                p = (Ether(dst=dst_host.mac, src=src_host.mac) /
-                     IP(src=src_host.ip4, dst=dst_host.ip4) /
-                     UDP(sport=1234, dport=1234) /
-                     Raw(payload))
+                p = (
+                    Ether(dst=dst_host.mac, src=src_host.mac)
+                    / IP(src=src_host.ip4, dst=dst_host.ip4)
+                    / UDP(sport=1234, dport=1234)
+                    / Raw(payload)
+                )
                 pkt_info.data = p.copy()
                 size = random.choice(packet_sizes)
                 self.extend_packet(p, size)
                 pkts.append(p)
-        self.logger.debug("Input stream created for port %s. Length: %u pkt(s)"
-                          % (src_if.name, len(pkts)))
+        self.logger.debug(
+            "Input stream created for port %s. Length: %u pkt(s)"
+            % (src_if.name, len(pkts))
+        )
         return pkts
 
     def verify_capture(self, dst_if):
@@ -268,10 +280,13 @@ class TestL2bdMultiInst(VppTestCase):
                 udp = packet[UDP]
                 info = self.payload_to_info(packet[Raw])
                 self.assertEqual(info.dst, dst)
-                self.logger.debug("Got packet on port %s: src=%u (id=%u)" %
-                                  (dst_if.name, info.src, info.index))
+                self.logger.debug(
+                    "Got packet on port %s: src=%u (id=%u)"
+                    % (dst_if.name, info.src, info.index)
+                )
                 last_info[info.src] = self.get_next_packet_info_for_interface2(
-                    info.src, dst, last_info[info.src])
+                    info.src, dst, last_info[info.src]
+                )
                 pkt_info = last_info[info.src]
                 self.assertTrue(pkt_info is not None)
                 self.assertEqual(info.index, pkt_info.index)
@@ -288,10 +303,13 @@ class TestL2bdMultiInst(VppTestCase):
         remaining = 0
         for src in self.flows[dst_if]:
             remaining_packet = self.get_next_packet_info_for_interface2(
-                src.sw_if_index, dst, last_info[src.sw_if_index])
+                src.sw_if_index, dst, last_info[src.sw_if_index]
+            )
             if remaining_packet is None:
-                s += "Port %u: Packet expected from source %u didn't arrive\n"\
-                     % (dst, src.sw_if_index)
+                s += "Port %u: Packet expected from source %u didn't arrive\n" % (
+                    dst,
+                    src.sw_if_index,
+                )
                 remaining += 1
             self.assertNotEqual(0, remaining, s)
 
@@ -319,8 +337,7 @@ class TestL2bdMultiInst(VppTestCase):
             else:
                 raise ValueError("Unknown feature used: %s" % flag)
             is_set = 1 if args[flag] else 0
-            self.vapi.bridge_flags(bd_id=bd_id, is_set=is_set,
-                                   flags=feature_bitmap)
+            self.vapi.bridge_flags(bd_id=bd_id, is_set=is_set, flags=feature_bitmap)
         self.logger.info("Bridge domain ID %d updated" % bd_id)
 
     def verify_bd(self, bd_id, **args):
@@ -376,7 +393,7 @@ class TestL2bdMultiInst(VppTestCase):
         # Test
         # Create incoming packet streams for packet-generator interfaces
         # for pg_if in self.pg_interfaces:
-        assert(len(self._packet_count_for_dst_if_idx) == 0)
+        assert len(self._packet_count_for_dst_if_idx) == 0
         for pg_if in self.pg_in_bd:
             pkts = self.create_stream(pg_if)
             pg_if.add_stream(pkts)
@@ -391,8 +408,7 @@ class TestL2bdMultiInst(VppTestCase):
             self.verify_capture(pg_if)
 
     def test_l2bd_inst_01(self):
-        """ L2BD Multi-instance test 1 - create 5 BDs
-        """
+        """L2BD Multi-instance test 1 - create 5 BDs"""
         # Config 1
         # Create 5 BDs, put interfaces to these BDs and send MAC learning
         # packets
@@ -408,13 +424,13 @@ class TestL2bdMultiInst(VppTestCase):
         self.delete_bd(5)
 
     def test_l2bd_inst_02(self):
-        """ L2BD Multi-instance test 2 - update data of 5 BDs
-        """
+        """L2BD Multi-instance test 2 - update data of 5 BDs"""
         # Config 2
         # Update data of 5 BDs (disable learn, forward, flood, uu-flood)
         self.create_bd_and_mac_learn(5)
-        self.set_bd_flags(self.bd_list[0], learn=False, forward=False,
-                          flood=False, uu_flood=False)
+        self.set_bd_flags(
+            self.bd_list[0], learn=False, forward=False, flood=False, uu_flood=False
+        )
         self.set_bd_flags(self.bd_list[1], forward=False)
         self.set_bd_flags(self.bd_list[2], flood=False)
         self.set_bd_flags(self.bd_list[3], uu_flood=False)
@@ -423,21 +439,25 @@ class TestL2bdMultiInst(VppTestCase):
         # Verify 2
         # Skipping check of uu_flood as it is not returned by
         # bridge_domain_dump api command
-        self.verify_bd(self.bd_list[0], learn=False, forward=False,
-                       flood=False, uu_flood=False)
-        self.verify_bd(self.bd_list[1], learn=True, forward=False,
-                       flood=True, uu_flood=True)
-        self.verify_bd(self.bd_list[2], learn=True, forward=True,
-                       flood=False, uu_flood=True)
-        self.verify_bd(self.bd_list[3], learn=True, forward=True,
-                       flood=True, uu_flood=False)
-        self.verify_bd(self.bd_list[4], learn=False, forward=True,
-                       flood=True, uu_flood=True)
+        self.verify_bd(
+            self.bd_list[0], learn=False, forward=False, flood=False, uu_flood=False
+        )
+        self.verify_bd(
+            self.bd_list[1], learn=True, forward=False, flood=True, uu_flood=True
+        )
+        self.verify_bd(
+            self.bd_list[2], learn=True, forward=True, flood=False, uu_flood=True
+        )
+        self.verify_bd(
+            self.bd_list[3], learn=True, forward=True, flood=True, uu_flood=False
+        )
+        self.verify_bd(
+            self.bd_list[4], learn=False, forward=True, flood=True, uu_flood=True
+        )
         self.delete_bd(5)
 
     def test_l2bd_inst_03(self):
-        """ L2BD Multi-instance test 3 - delete 2 BDs
-        """
+        """L2BD Multi-instance test 3 - delete 2 BDs"""
         # Config 3
         # Delete 2 BDs
         self.create_bd_and_mac_learn(5)
@@ -454,8 +474,7 @@ class TestL2bdMultiInst(VppTestCase):
         self.delete_bd(3, 3)
 
     def test_l2bd_inst_04(self):
-        """ L2BD Multi-instance test 4 - add 2 BDs
-        """
+        """L2BD Multi-instance test 4 - add 2 BDs"""
         # Config 4
         # Create 5 BDs, put interfaces to these BDs and send MAC learning
         # packets
@@ -471,8 +490,7 @@ class TestL2bdMultiInst(VppTestCase):
         self.delete_bd(2)
 
     def test_l2bd_inst_05(self):
-        """ L2BD Multi-instance test 5 - delete 5 BDs
-        """
+        """L2BD Multi-instance test 5 - delete 5 BDs"""
         # Config 5
         # Delete 5 BDs
         self.create_bd_and_mac_learn(5)
@@ -485,5 +503,5 @@ class TestL2bdMultiInst(VppTestCase):
             self.assertEqual(self.verify_bd(bd_id), 1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)

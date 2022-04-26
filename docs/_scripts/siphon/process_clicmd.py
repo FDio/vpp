@@ -17,6 +17,7 @@
 from . import process, parsers
 import os
 
+
 class SiphonCLICMD(process.Siphon):
 
     name = "clicmd"
@@ -32,37 +33,36 @@ class SiphonCLICMD(process.Siphon):
         return self.page_label(group) + ".rst"
 
     def index_sort_key(self, group):
-        _global = self._cmds['_global']
+        _global = self._cmds["_global"]
         if group not in self._group:
             return group
         (directory, file) = self._group[group]
 
-        if file in _global and 'group_label' in _global[file]:
-            return _global[file]['group_label']
+        if file in _global and "group_label" in _global[file]:
+            return _global[file]["group_label"]
 
-        if directory in _global and 'group_label' in _global[directory]:
-            return _global[directory]['group_label']
+        if directory in _global and "group_label" in _global[directory]:
+            return _global[directory]["group_label"]
 
         return group
 
     def item_sort_key(self, item):
-        return item['value']['path']
+        return item["value"]["path"]
 
     def item_label(self, group, item):
-        return "_".join((
-            self.name,
-            self.sanitize_label(self._cmds[group][item]['value']['path'])
-        ))
+        return "_".join(
+            (self.name, self.sanitize_label(self._cmds[group][item]["value"]["path"]))
+        )
 
     def page_title(self, group):
-        _global = self._cmds['_global']
+        _global = self._cmds["_global"]
         (directory, file) = self._group[group]
 
-        if file and file in _global and 'group_label' in _global[file]:
-            return _global[file]['group_label']
+        if file and file in _global and "group_label" in _global[file]:
+            return _global[file]["group_label"]
 
-        if directory in _global and 'group_label' in _global[directory]:
-            return _global[directory]['group_label']
+        if directory in _global and "group_label" in _global[directory]:
+            return _global[directory]["group_label"]
 
         file_ext = os.path.basename(directory)
         fname, ext = os.path.splitext(file_ext)

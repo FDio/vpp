@@ -17,8 +17,11 @@ import re
 from . import generate
 
 # Register our regexp
-generate.siphon_patterns.append((
-    re.compile("(?P<m>VLIB_CLI_COMMAND)\s*"
-        "[(](?P<name>[a-zA-Z0-9_]+)(,[^)]*)?[)]"),
-    "clicmd"
-))
+generate.siphon_patterns.append(
+    (
+        re.compile(
+            "(?P<m>VLIB_CLI_COMMAND)\s*" "[(](?P<name>[a-zA-Z0-9_]+)(,[^)]*)?[)]"
+        ),
+        "clicmd",
+    )
+)

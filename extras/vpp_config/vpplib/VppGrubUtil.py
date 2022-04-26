@@ -17,11 +17,11 @@ import re
 
 from vpplib.VPPUtil import VPPUtil
 
-__all__ = ['VppGrubUtil']
+__all__ = ["VppGrubUtil"]
 
 
 class VppGrubUtil(object):
-    """ VPP Grub Utilities."""
+    """VPP Grub Utilities."""
 
     def _get_current_cmdline(self):
         """
@@ -32,14 +32,14 @@ class VppGrubUtil(object):
         """
 
         # Get the memory information using /proc/meminfo
-        cmd = 'sudo cat /proc/cmdline'
+        cmd = "sudo cat /proc/cmdline"
         (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
         if ret != 0:
-            raise RuntimeError('{} on node {} {} {}'.
-                               format(cmd, self._node['host'],
-                                      stdout, stderr))
+            raise RuntimeError(
+                "{} on node {} {} {}".format(cmd, self._node["host"], stdout, stderr)
+            )
 
-        self._current_cmdline = stdout.strip('\n')
+        self._current_cmdline = stdout.strip("\n")
 
     def _get_default_cmdline(self):
         """
@@ -50,21 +50,24 @@ class VppGrubUtil(object):
         """
 
         # Get the default grub cmdline
-        rootdir = self._node['rootdir']
-        gfile = self._node['cpu']['grub_config_file']
-        grubcmdline = self._node['cpu']['grubcmdline']
-        cmd = 'cat {}'.format(rootdir + gfile)
+        rootdir = self._node["rootdir"]
+        gfile = self._node["cpu"]["grub_config_file"]
+        grubcmdline = self._node["cpu"]["grubcmdline"]
+        cmd = "cat {}".format(rootdir + gfile)
         (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
         if ret != 0:
-            raise RuntimeError('{} Executing failed on node {} {}'.
-                               format(cmd, self._node['host'], stderr))
+            raise RuntimeError(
+                "{} Executing failed on node {} {}".format(
+                    cmd, self._node["host"], stderr
+                )
+            )
 
         # Get the Default Linux command line, ignoring commented lines
-        lines = stdout.split('\n')
+        lines = stdout.split("\n")
         for line in lines:
-            if line == '' or line[0] == '#':
+            if line == "" or line[0] == "#":
                 continue
-            ldefault = re.findall(r'{}=.+'.format(grubcmdline), line)
+            ldefault = re.findall(r"{}=.+".format(grubcmdline), line)
             if ldefault:
                 self._default_cmdline = ldefault[0]
                 break
@@ -96,9 +99,9 @@ class VppGrubUtil(object):
         :returns: The command line
         :rtype: string
         """
-        grubcmdline = self._node['cpu']['grubcmdline']
+        grubcmdline = self._node["cpu"]["grubcmdline"]
         cmdline = self._default_cmdline
-        value = cmdline.split('{}='.format(grubcmdline))[1]
+        value = cmdline.split("{}=".format(grubcmdline))[1]
         value = value.rstrip('"').lstrip('"')
 
         # jadfix intel_pstate=disable sometimes cause networks to
@@ -111,43 +114,43 @@ class VppGrubUtil(object):
         #    value = '{} intel_pstate=disable'.format(value)
 
         # Replace isolcpus with ours
-        isolcpus = re.findall(r'isolcpus=[\w+\-,]+', value)
+        isolcpus = re.findall(r"isolcpus=[\w+\-,]+", value)
         if not isolcpus:
-            if isolated_cpus != '':
+            if isolated_cpus != "":
                 value = "{} isolcpus={}".format(value, isolated_cpus)
         else:
-            if isolated_cpus != '':
-                value = re.sub(r'isolcpus=[\w+\-,]+',
-                               'isolcpus={}'.format(isolated_cpus),
-                               value)
+            if isolated_cpus != "":
+                value = re.sub(
+                    r"isolcpus=[\w+\-,]+", "isolcpus={}".format(isolated_cpus), value
+                )
             else:
-                value = re.sub(r'isolcpus=[\w+\-,]+', '', value)
+                value = re.sub(r"isolcpus=[\w+\-,]+", "", value)
 
-        nohz = re.findall(r'nohz_full=[\w+\-,]+', value)
+        nohz = re.findall(r"nohz_full=[\w+\-,]+", value)
         if not nohz:
-            if isolated_cpus != '':
+            if isolated_cpus != "":
                 value = "{} nohz_full={}".format(value, isolated_cpus)
         else:
-            if isolated_cpus != '':
-                value = re.sub(r'nohz_full=[\w+\-,]+',
-                               'nohz_full={}'.format(isolated_cpus),
-                               value)
+            if isolated_cpus != "":
+                value = re.sub(
+                    r"nohz_full=[\w+\-,]+", "nohz_full={}".format(isolated_cpus), value
+                )
             else:
-                value = re.sub(r'nohz_full=[\w+\-,]+', '', value)
+                value = re.sub(r"nohz_full=[\w+\-,]+", "", value)
 
-        rcu = re.findall(r'rcu_nocbs=[\w+\-,]+', value)
+        rcu = re.findall(r"rcu_nocbs=[\w+\-,]+", value)
         if not rcu:
-            if isolated_cpus != '':
+            if isolated_cpus != "":
                 value = "{} rcu_nocbs={}".format(value, isolated_cpus)
         else:
-            if isolated_cpus != '':
-                value = re.sub(r'rcu_nocbs=[\w+\-,]+',
-                               'rcu_nocbs={}'.format(isolated_cpus),
-                               value)
+            if isolated_cpus != "":
+                value = re.sub(
+                    r"rcu_nocbs=[\w+\-,]+", "rcu_nocbs={}".format(isolated_cpus), value
+                )
             else:
-                value = re.sub(r'rcu_nocbs=[\w+\-,]+', '', value)
+                value = re.sub(r"rcu_nocbs=[\w+\-,]+", "", value)
 
-        value = value.lstrip(' ').rstrip(' ')
+        value = value.lstrip(" ").rstrip(" ")
         cmdline = '{}="{}"'.format(grubcmdline, value)
         return cmdline
 
@@ -167,69 +170,68 @@ class VppGrubUtil(object):
         if len(vpp_cmdline):
             # Update grub
             # Save the original file
-            rootdir = node['rootdir']
-            grubcmdline = node['cpu']['grubcmdline']
-            ofilename = rootdir + node['cpu']['grub_config_file'] + '.orig'
-            filename = rootdir + node['cpu']['grub_config_file']
+            rootdir = node["rootdir"]
+            grubcmdline = node["cpu"]["grubcmdline"]
+            ofilename = rootdir + node["cpu"]["grub_config_file"] + ".orig"
+            filename = rootdir + node["cpu"]["grub_config_file"]
 
             # Write the output file
             # Does a copy of the original file exist, if not create one
-            (ret, stdout, stderr) = VPPUtil.exec_command(
-                'ls {}'.format(ofilename))
+            (ret, stdout, stderr) = VPPUtil.exec_command("ls {}".format(ofilename))
             if ret != 0:
-                if stdout.strip('\n') != ofilename:
-                    cmd = 'sudo cp {} {}'.format(filename, ofilename)
+                if stdout.strip("\n") != ofilename:
+                    cmd = "sudo cp {} {}".format(filename, ofilename)
                     (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
                     if ret != 0:
-                        raise RuntimeError('{} failed on node {} {}'.
-                                           format(cmd, self._node['host'],
-                                                  stderr))
+                        raise RuntimeError(
+                            "{} failed on node {} {}".format(
+                                cmd, self._node["host"], stderr
+                            )
+                        )
 
             # Get the contents of the current grub config file
-            cmd = 'cat {}'.format(filename)
+            cmd = "cat {}".format(filename)
             (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
             if ret != 0:
-                raise RuntimeError('{} failed on node {} {}'.format(
-                    cmd,
-                    self._node['host'],
-                    stderr))
+                raise RuntimeError(
+                    "{} failed on node {} {}".format(cmd, self._node["host"], stderr)
+                )
 
             # Write the new contents
             # Get the Default Linux command line, ignoring commented lines
             content = ""
-            lines = stdout.split('\n')
+            lines = stdout.split("\n")
             for line in lines:
-                if line == '':
-                    content += line + '\n'
+                if line == "":
+                    content += line + "\n"
                     continue
-                if line[0] == '#':
-                    content += line + '\n'
+                if line[0] == "#":
+                    content += line + "\n"
                     continue
 
-                ldefault = re.findall(r'{}=.+'.format(grubcmdline), line)
+                ldefault = re.findall(r"{}=.+".format(grubcmdline), line)
                 if ldefault:
-                    content += vpp_cmdline + '\n'
+                    content += vpp_cmdline + "\n"
                 else:
-                    content += line + '\n'
+                    content += line + "\n"
 
             content = content.replace(r"`", r"\`")
-            content = content.rstrip('\n')
+            content = content.rstrip("\n")
             cmd = "sudo cat > {0} << EOF\n{1}\n".format(filename, content)
             (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
             if ret != 0:
-                raise RuntimeError('{} failed on node {} {}'.format(
-                    cmd,
-                    self._node['host'],
-                    stderr))
+                raise RuntimeError(
+                    "{} failed on node {} {}".format(cmd, self._node["host"], stderr)
+                )
 
         return vpp_cmdline
 
     def __init__(self, node):
         distro = VPPUtil.get_linux_distro()
-        if distro[0] == 'Ubuntu':
-            node['cpu']['grubcmdline'] = 'GRUB_CMDLINE_LINUX_DEFAULT'
+        if distro[0] == "Ubuntu":
+            node["cpu"]["grubcmdline"] = "GRUB_CMDLINE_LINUX_DEFAULT"
         else:
-            node['cpu']['grubcmdline'] = 'GRUB_CMDLINE_LINUX'
+            node["cpu"]["grubcmdline"] = "GRUB_CMDLINE_LINUX"
 
         self._node = node
         self._current_cmdline = ""

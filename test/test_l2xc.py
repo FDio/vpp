@@ -12,7 +12,7 @@ from util import Host, ppp
 
 
 class TestL2xc(VppTestCase):
-    """ L2XC Test Case """
+    """L2XC Test Case"""
 
     @classmethod
     def setUpClass(cls):
@@ -52,15 +52,19 @@ class TestL2xc(VppTestCase):
 
             # Create bi-directional cross-connects between pg0 and pg1
             cls.vapi.sw_interface_set_l2_xconnect(
-                cls.pg0.sw_if_index, cls.pg1.sw_if_index, enable=1)
+                cls.pg0.sw_if_index, cls.pg1.sw_if_index, enable=1
+            )
             cls.vapi.sw_interface_set_l2_xconnect(
-                cls.pg1.sw_if_index, cls.pg0.sw_if_index, enable=1)
+                cls.pg1.sw_if_index, cls.pg0.sw_if_index, enable=1
+            )
 
             # Create bi-directional cross-connects between pg2 and pg3
             cls.vapi.sw_interface_set_l2_xconnect(
-                cls.pg2.sw_if_index, cls.pg3.sw_if_index, enable=1)
+                cls.pg2.sw_if_index, cls.pg3.sw_if_index, enable=1
+            )
             cls.vapi.sw_interface_set_l2_xconnect(
-                cls.pg3.sw_if_index, cls.pg2.sw_if_index, enable=1)
+                cls.pg3.sw_if_index, cls.pg2.sw_if_index, enable=1
+            )
 
             # mapping between packet-generator index and lists of test hosts
             cls.hosts_by_pg_idx = dict()
@@ -108,7 +112,8 @@ class TestL2xc(VppTestCase):
             for j in range(0, count):
                 host = Host(
                     "00:00:00:ff:%02x:%02x" % (pg_if.sw_if_index, j),
-                    "172.17.1%02x.%u" % (pg_if.sw_if_index, j))
+                    "172.17.1%02x.%u" % (pg_if.sw_if_index, j),
+                )
                 hosts.append(host)
 
     def create_stream(self, src_if, packet_sizes, packets_per_burst):
@@ -127,10 +132,12 @@ class TestL2xc(VppTestCase):
             src_host = random.choice(self.hosts_by_pg_idx[src_if.sw_if_index])
             pkt_info = self.create_packet_info(src_if, dst_if)
             payload = self.info_to_payload(pkt_info)
-            p = (Ether(dst=dst_host.mac, src=src_host.mac) /
-                 IP(src=src_host.ip4, dst=dst_host.ip4) /
-                 UDP(sport=1234, dport=1234) /
-                 Raw(payload))
+            p = (
+                Ether(dst=dst_host.mac, src=src_host.mac)
+                / IP(src=src_host.ip4, dst=dst_host.ip4)
+                / UDP(sport=1234, dport=1234)
+                / Raw(payload)
+            )
             pkt_info.data = p.copy()
             size = random.choice(packet_sizes)
             self.extend_packet(p, size)
@@ -155,11 +162,13 @@ class TestL2xc(VppTestCase):
                 payload_info = self.payload_to_info(packet[Raw])
                 packet_index = payload_info.index
                 self.assertEqual(payload_info.dst, dst_sw_if_index)
-                self.logger.debug("Got packet on port %s: src=%u (id=%u)" %
-                                  (pg_if.name, payload_info.src, packet_index))
+                self.logger.debug(
+                    "Got packet on port %s: src=%u (id=%u)"
+                    % (pg_if.name, payload_info.src, packet_index)
+                )
                 next_info = self.get_next_packet_info_for_interface2(
-                    payload_info.src, dst_sw_if_index,
-                    last_info[payload_info.src])
+                    payload_info.src, dst_sw_if_index, last_info[payload_info.src]
+                )
                 last_info[payload_info.src] = next_info
                 self.assertTrue(next_info is not None)
                 self.assertEqual(packet_index, next_info.index)
@@ -174,18 +183,20 @@ class TestL2xc(VppTestCase):
                 raise
         for i in self.interfaces:
             remaining_packet = self.get_next_packet_info_for_interface2(
-                i, dst_sw_if_index, last_info[i.sw_if_index])
-            self.assertTrue(remaining_packet is None,
-                            "Port %u: Packet expected from source %u didn't"
-                            " arrive" % (dst_sw_if_index, i.sw_if_index))
+                i, dst_sw_if_index, last_info[i.sw_if_index]
+            )
+            self.assertTrue(
+                remaining_packet is None,
+                "Port %u: Packet expected from source %u didn't"
+                " arrive" % (dst_sw_if_index, i.sw_if_index),
+            )
 
     def run_l2xc_test(self, pkts_per_burst):
-        """ L2XC test """
+        """L2XC test"""
 
         # Create incoming packet streams for packet-generator interfaces
         for i in self.interfaces:
-            pkts = self.create_stream(i, self.pg_if_packet_sizes,
-                                      pkts_per_burst)
+            pkts = self.create_stream(i, self.pg_if_packet_sizes, pkts_per_burst)
             i.add_stream(pkts)
 
         # Enable packet capturing and start packet sending
@@ -199,7 +210,7 @@ class TestL2xc(VppTestCase):
             self.verify_capture(i, capture)
 
     def test_l2xc_sl(self):
-        """ L2XC single-loop test
+        """L2XC single-loop test
 
         Test scenario:
             1. config
@@ -213,7 +224,7 @@ class TestL2xc(VppTestCase):
         self.run_l2xc_test(self.sl_pkts_per_burst)
 
     def test_l2xc_dl(self):
-        """ L2XC dual-loop test
+        """L2XC dual-loop test
 
         Test scenario:
             1. config
@@ -227,5 +238,5 @@ class TestL2xc(VppTestCase):
         self.run_l2xc_test(self.dl_pkts_per_burst)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)
