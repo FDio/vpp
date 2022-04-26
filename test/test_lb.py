@@ -32,7 +32,7 @@ from vpp_ip import INVALID_INDEX
 
 
 class TestLB(VppTestCase):
-    """ Load Balancer Test Case """
+    """Load Balancer Test Case"""
 
     @classmethod
     def setUpClass(cls):
@@ -53,18 +53,23 @@ class TestLB(VppTestCase):
                 i.resolve_arp()
                 i.resolve_ndp()
 
-            dst4 = VppIpRoute(cls, "10.0.0.0", 24,
-                              [VppRoutePath(cls.pg1.remote_ip4,
-                                            INVALID_INDEX)],
-                              register=False)
+            dst4 = VppIpRoute(
+                cls,
+                "10.0.0.0",
+                24,
+                [VppRoutePath(cls.pg1.remote_ip4, INVALID_INDEX)],
+                register=False,
+            )
             dst4.add_vpp_config()
-            dst6 = VppIpRoute(cls, "2002::", 16,
-                              [VppRoutePath(cls.pg1.remote_ip6,
-                                            INVALID_INDEX)],
-                              register=False)
+            dst6 = VppIpRoute(
+                cls,
+                "2002::",
+                16,
+                [VppRoutePath(cls.pg1.remote_ip6, INVALID_INDEX)],
+                register=False,
+            )
             dst6.add_vpp_config()
-            cls.vapi.lb_conf(ip4_src_address="39.40.41.42",
-                             ip6_src_address="2004::1")
+            cls.vapi.lb_conf(ip4_src_address="39.40.41.42", ip6_src_address="2004::1")
         except Exception:
             super(TestLB, cls).tearDownClass()
             raise
@@ -80,13 +85,15 @@ class TestLB(VppTestCase):
         self.logger.info(self.vapi.cli("show lb vip verbose"))
 
     def getIPv4Flow(self, id):
-        return (IP(dst="90.0.%u.%u" % (id / 255, id % 255),
-                   src="40.0.%u.%u" % (id / 255, id % 255)) /
-                UDP(sport=10000 + id, dport=20000))
+        return IP(
+            dst="90.0.%u.%u" % (id / 255, id % 255),
+            src="40.0.%u.%u" % (id / 255, id % 255),
+        ) / UDP(sport=10000 + id, dport=20000)
 
     def getIPv6Flow(self, id):
-        return (IPv6(dst="2001::%u" % (id), src="fd00:f00d:ffff::%u" % (id)) /
-                UDP(sport=10000 + id, dport=20000))
+        return IPv6(dst="2001::%u" % (id), src="fd00:f00d:ffff::%u" % (id)) / UDP(
+            sport=10000 + id, dport=20000
+        )
 
     def generatePackets(self, src_if, isv4):
         self.reset_packet_infos()
@@ -95,9 +102,9 @@ class TestLB(VppTestCase):
             info = self.create_packet_info(src_if, self.pg1)
             payload = self.info_to_payload(info)
             ip = self.getIPv4Flow(pktid) if isv4 else self.getIPv6Flow(pktid)
-            packet = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
-                      ip /
-                      Raw(payload))
+            packet = (
+                Ether(dst=src_if.local_mac, src=src_if.remote_mac) / ip / Raw(payload)
+            )
             self.extend_packet(packet, 128)
             info.data = packet.copy()
             pkts.append(packet)
@@ -112,8 +119,9 @@ class TestLB(VppTestCase):
         payload_info = self.payload_to_info(inner[Raw])
         self.info = self.packet_infos[payload_info.index]
         self.assertEqual(payload_info.src, self.pg0.sw_if_index)
-        self.assertEqual(scapy.compat.raw(inner),
-                         scapy.compat.raw(self.info.data[IPver]))
+        self.assertEqual(
+            scapy.compat.raw(inner), scapy.compat.raw(self.info.data[IPver])
+        )
 
     def checkCapture(self, encap, isv4):
         self.pg0.assert_nothing_captured()
@@ -125,7 +133,7 @@ class TestLB(VppTestCase):
             try:
                 asid = 0
                 gre = None
-                if (encap == 'gre4'):
+                if encap == "gre4":
                     ip = p[IP]
                     asid = int(ip.dst.split(".")[3])
                     self.assertEqual(ip.version, 4)
@@ -136,7 +144,7 @@ class TestLB(VppTestCase):
                     self.assertEqual(len(ip.options), 0)
                     gre = p[GRE]
                     self.checkInner(gre, isv4)
-                elif (encap == 'gre6'):
+                elif encap == "gre6":
                     ip = p[IPv6]
                     asid = ip.dst.split(":")
                     asid = asid[len(asid) - 1]
@@ -147,26 +155,26 @@ class TestLB(VppTestCase):
                     self.assertEqual(ip.src, "2004::1")
                     self.assertEqual(
                         socket.inet_pton(socket.AF_INET6, ip.dst),
-                        socket.inet_pton(socket.AF_INET6, "2002::%u" % asid)
+                        socket.inet_pton(socket.AF_INET6, "2002::%u" % asid),
                     )
                     self.assertEqual(ip.nh, 47)
                     # self.assertEqual(len(ip.options), 0)
                     gre = GRE(scapy.compat.raw(p[IPv6].payload))
                     self.checkInner(gre, isv4)
-                elif (encap == 'l3dsr'):
+                elif encap == "l3dsr":
                     ip = p[IP]
                     asid = int(ip.dst.split(".")[3])
                     self.assertEqual(ip.version, 4)
                     self.assertEqual(ip.flags, 0)
                     self.assertEqual(ip.dst, "10.0.0.%u" % asid)
-                    self.assertEqual(ip.tos, 0x1c)
+                    self.assertEqual(ip.tos, 0x1C)
                     self.assertEqual(len(ip.options), 0)
                     self.assert_ip_checksum_valid(p)
                     if ip.proto == IP_PROTOS.tcp:
                         self.assert_tcp_checksum_valid(p)
                     elif ip.proto == IP_PROTOS.udp:
                         self.assert_udp_checksum_valid(p)
-                elif (encap == 'nat4'):
+                elif encap == "nat4":
                     ip = p[IP]
                     asid = int(ip.dst.split(".")[3])
                     self.assertEqual(ip.version, 4)
@@ -176,7 +184,7 @@ class TestLB(VppTestCase):
                     self.assertEqual(len(ip.options), 0)
                     udp = p[UDP]
                     self.assertEqual(udp.dport, 3307)
-                elif (encap == 'nat6'):
+                elif encap == "nat6":
                     ip = p[IPv6]
                     asid = ip.dst.split(":")
                     asid = asid[len(asid) - 1]
@@ -186,7 +194,7 @@ class TestLB(VppTestCase):
                     self.assertEqual(ip.fl, 0)
                     self.assertEqual(
                         socket.inet_pton(socket.AF_INET6, ip.dst),
-                        socket.inet_pton(socket.AF_INET6, "2002::%u" % asid)
+                        socket.inet_pton(socket.AF_INET6, "2002::%u" % asid),
                     )
                     self.assertEqual(ip.nh, 17)
                     self.assertGreaterEqual(ip.hlim, 63)
@@ -202,301 +210,268 @@ class TestLB(VppTestCase):
         for asid in self.ass:
             if load[asid] < int(len(self.packets) / (len(self.ass) * 2)):
                 self.logger.error(
-                    "ASS is not balanced: load[%d] = %d" % (asid, load[asid]))
+                    "ASS is not balanced: load[%d] = %d" % (asid, load[asid])
+                )
                 raise Exception("Load Balancer algorithm is biased")
 
     def test_lb_ip4_gre4(self):
-        """ Load Balancer IP4 GRE4 on vip case """
+        """Load Balancer IP4 GRE4 on vip case"""
         try:
-            self.vapi.cli(
-                "lb vip 90.0.0.0/8 encap gre4")
+            self.vapi.cli("lb vip 90.0.0.0/8 encap gre4")
             for asid in self.ass:
-                self.vapi.cli(
-                    "lb as 90.0.0.0/8 10.0.0.%u"
-                    % (asid))
+                self.vapi.cli("lb as 90.0.0.0/8 10.0.0.%u" % (asid))
 
             self.pg0.add_stream(self.generatePackets(self.pg0, isv4=True))
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
-            self.checkCapture(encap='gre4', isv4=True)
+            self.checkCapture(encap="gre4", isv4=True)
 
         finally:
             for asid in self.ass:
-                self.vapi.cli(
-                    "lb as 90.0.0.0/8 10.0.0.%u del"
-                    % (asid))
-            self.vapi.cli(
-                "lb vip 90.0.0.0/8 encap gre4 del")
+                self.vapi.cli("lb as 90.0.0.0/8 10.0.0.%u del" % (asid))
+            self.vapi.cli("lb vip 90.0.0.0/8 encap gre4 del")
             self.vapi.cli("test lb flowtable flush")
 
     def test_lb_ip6_gre4(self):
-        """ Load Balancer IP6 GRE4 on vip case """
+        """Load Balancer IP6 GRE4 on vip case"""
 
         try:
-            self.vapi.cli(
-                "lb vip 2001::/16 encap gre4")
+            self.vapi.cli("lb vip 2001::/16 encap gre4")
             for asid in self.ass:
-                self.vapi.cli(
-                    "lb as 2001::/16 10.0.0.%u"
-                    % (asid))
+                self.vapi.cli("lb as 2001::/16 10.0.0.%u" % (asid))
 
             self.pg0.add_stream(self.generatePackets(self.pg0, isv4=False))
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
 
-            self.checkCapture(encap='gre4', isv4=False)
+            self.checkCapture(encap="gre4", isv4=False)
         finally:
             for asid in self.ass:
-                self.vapi.cli(
-                    "lb as 2001::/16 10.0.0.%u del"
-                    % (asid))
-            self.vapi.cli(
-                "lb vip 2001::/16 encap gre4 del")
+                self.vapi.cli("lb as 2001::/16 10.0.0.%u del" % (asid))
+            self.vapi.cli("lb vip 2001::/16 encap gre4 del")
             self.vapi.cli("test lb flowtable flush")
 
     def test_lb_ip4_gre6(self):
-        """ Load Balancer IP4 GRE6 on vip case """
+        """Load Balancer IP4 GRE6 on vip case"""
         try:
-            self.vapi.cli(
-                "lb vip 90.0.0.0/8 encap gre6")
+            self.vapi.cli("lb vip 90.0.0.0/8 encap gre6")
             for asid in self.ass:
-                self.vapi.cli(
-                    "lb as 90.0.0.0/8 2002::%u"
-                    % (asid))
+                self.vapi.cli("lb as 90.0.0.0/8 2002::%u" % (asid))
 
             self.pg0.add_stream(self.generatePackets(self.pg0, isv4=True))
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
 
-            self.checkCapture(encap='gre6', isv4=True)
+            self.checkCapture(encap="gre6", isv4=True)
         finally:
             for asid in self.ass:
-                self.vapi.cli(
-                    "lb as 90.0.0.0/8 2002::%u del"
-                    % (asid))
-            self.vapi.cli(
-                "lb vip 90.0.0.0/8 encap gre6 del")
+                self.vapi.cli("lb as 90.0.0.0/8 2002::%u del" % (asid))
+            self.vapi.cli("lb vip 90.0.0.0/8 encap gre6 del")
             self.vapi.cli("test lb flowtable flush")
 
     def test_lb_ip6_gre6(self):
-        """ Load Balancer IP6 GRE6 on vip case """
+        """Load Balancer IP6 GRE6 on vip case"""
         try:
-            self.vapi.cli(
-                "lb vip 2001::/16 encap gre6")
+            self.vapi.cli("lb vip 2001::/16 encap gre6")
             for asid in self.ass:
-                self.vapi.cli(
-                    "lb as 2001::/16 2002::%u"
-                    % (asid))
+                self.vapi.cli("lb as 2001::/16 2002::%u" % (asid))
 
             self.pg0.add_stream(self.generatePackets(self.pg0, isv4=False))
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
 
-            self.checkCapture(encap='gre6', isv4=False)
+            self.checkCapture(encap="gre6", isv4=False)
         finally:
             for asid in self.ass:
-                self.vapi.cli(
-                    "lb as 2001::/16 2002::%u del"
-                    % (asid))
-            self.vapi.cli(
-                "lb vip 2001::/16 encap gre6 del")
+                self.vapi.cli("lb as 2001::/16 2002::%u del" % (asid))
+            self.vapi.cli("lb vip 2001::/16 encap gre6 del")
             self.vapi.cli("test lb flowtable flush")
 
     def test_lb_ip4_gre4_port(self):
-        """ Load Balancer IP4 GRE4 on per-port-vip case """
+        """Load Balancer IP4 GRE4 on per-port-vip case"""
         try:
-            self.vapi.cli(
-                "lb vip 90.0.0.0/8 protocol udp port 20000 encap gre4")
+            self.vapi.cli("lb vip 90.0.0.0/8 protocol udp port 20000 encap gre4")
             for asid in self.ass:
                 self.vapi.cli(
-                    "lb as 90.0.0.0/8 protocol udp port 20000 10.0.0.%u"
-                    % (asid))
+                    "lb as 90.0.0.0/8 protocol udp port 20000 10.0.0.%u" % (asid)
+                )
 
             self.pg0.add_stream(self.generatePackets(self.pg0, isv4=True))
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
-            self.checkCapture(encap='gre4', isv4=True)
+            self.checkCapture(encap="gre4", isv4=True)
 
         finally:
             for asid in self.ass:
                 self.vapi.cli(
-                    "lb as 90.0.0.0/8 protocol udp port 20000 10.0.0.%u del"
-                    % (asid))
-            self.vapi.cli(
-                "lb vip 90.0.0.0/8 protocol udp port 20000 encap gre4 del")
+                    "lb as 90.0.0.0/8 protocol udp port 20000 10.0.0.%u del" % (asid)
+                )
+            self.vapi.cli("lb vip 90.0.0.0/8 protocol udp port 20000 encap gre4 del")
             self.vapi.cli("test lb flowtable flush")
 
     def test_lb_ip6_gre4_port(self):
-        """ Load Balancer IP6 GRE4 on per-port-vip case """
+        """Load Balancer IP6 GRE4 on per-port-vip case"""
 
         try:
-            self.vapi.cli(
-                "lb vip 2001::/16 protocol udp port 20000 encap gre4")
+            self.vapi.cli("lb vip 2001::/16 protocol udp port 20000 encap gre4")
             for asid in self.ass:
                 self.vapi.cli(
-                    "lb as 2001::/16 protocol udp port 20000 10.0.0.%u"
-                    % (asid))
+                    "lb as 2001::/16 protocol udp port 20000 10.0.0.%u" % (asid)
+                )
 
             self.pg0.add_stream(self.generatePackets(self.pg0, isv4=False))
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
 
-            self.checkCapture(encap='gre4', isv4=False)
+            self.checkCapture(encap="gre4", isv4=False)
         finally:
             for asid in self.ass:
                 self.vapi.cli(
-                    "lb as 2001::/16 protocol udp port 20000 10.0.0.%u del"
-                    % (asid))
-            self.vapi.cli(
-                "lb vip 2001::/16 protocol udp port 20000 encap gre4 del")
+                    "lb as 2001::/16 protocol udp port 20000 10.0.0.%u del" % (asid)
+                )
+            self.vapi.cli("lb vip 2001::/16 protocol udp port 20000 encap gre4 del")
             self.vapi.cli("test lb flowtable flush")
 
     def test_lb_ip4_gre6_port(self):
-        """ Load Balancer IP4 GRE6 on per-port-vip case """
+        """Load Balancer IP4 GRE6 on per-port-vip case"""
         try:
-            self.vapi.cli(
-                "lb vip 90.0.0.0/8 protocol udp port 20000 encap gre6")
+            self.vapi.cli("lb vip 90.0.0.0/8 protocol udp port 20000 encap gre6")
             for asid in self.ass:
                 self.vapi.cli(
-                    "lb as 90.0.0.0/8 protocol udp port 20000 2002::%u"
-                    % (asid))
+                    "lb as 90.0.0.0/8 protocol udp port 20000 2002::%u" % (asid)
+                )
 
             self.pg0.add_stream(self.generatePackets(self.pg0, isv4=True))
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
 
-            self.checkCapture(encap='gre6', isv4=True)
+            self.checkCapture(encap="gre6", isv4=True)
         finally:
             for asid in self.ass:
                 self.vapi.cli(
-                    "lb as 90.0.0.0/8 protocol udp port 20000 2002::%u del"
-                    % (asid))
-            self.vapi.cli(
-                "lb vip 90.0.0.0/8 protocol udp port 20000 encap gre6 del")
+                    "lb as 90.0.0.0/8 protocol udp port 20000 2002::%u del" % (asid)
+                )
+            self.vapi.cli("lb vip 90.0.0.0/8 protocol udp port 20000 encap gre6 del")
             self.vapi.cli("test lb flowtable flush")
 
     def test_lb_ip6_gre6_port(self):
-        """ Load Balancer IP6 GRE6 on per-port-vip case """
+        """Load Balancer IP6 GRE6 on per-port-vip case"""
         try:
-            self.vapi.cli(
-                "lb vip 2001::/16 protocol udp port 20000 encap gre6")
+            self.vapi.cli("lb vip 2001::/16 protocol udp port 20000 encap gre6")
             for asid in self.ass:
                 self.vapi.cli(
-                    "lb as 2001::/16 protocol udp port 20000 2002::%u"
-                    % (asid))
+                    "lb as 2001::/16 protocol udp port 20000 2002::%u" % (asid)
+                )
 
             self.pg0.add_stream(self.generatePackets(self.pg0, isv4=False))
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
 
-            self.checkCapture(encap='gre6', isv4=False)
+            self.checkCapture(encap="gre6", isv4=False)
         finally:
             for asid in self.ass:
                 self.vapi.cli(
-                    "lb as 2001::/16 protocol udp port 20000 2002::%u del"
-                    % (asid))
-            self.vapi.cli(
-                "lb vip 2001::/16 protocol udp port 20000 encap gre6 del")
+                    "lb as 2001::/16 protocol udp port 20000 2002::%u del" % (asid)
+                )
+            self.vapi.cli("lb vip 2001::/16 protocol udp port 20000 encap gre6 del")
             self.vapi.cli("test lb flowtable flush")
 
     def test_lb_ip4_l3dsr(self):
-        """ Load Balancer IP4 L3DSR on vip case """
+        """Load Balancer IP4 L3DSR on vip case"""
         try:
-            self.vapi.cli(
-                "lb vip 90.0.0.0/8 encap l3dsr dscp 7")
+            self.vapi.cli("lb vip 90.0.0.0/8 encap l3dsr dscp 7")
             for asid in self.ass:
-                self.vapi.cli(
-                    "lb as 90.0.0.0/8 10.0.0.%u"
-                    % (asid))
+                self.vapi.cli("lb as 90.0.0.0/8 10.0.0.%u" % (asid))
 
             self.pg0.add_stream(self.generatePackets(self.pg0, isv4=True))
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
-            self.checkCapture(encap='l3dsr', isv4=True)
+            self.checkCapture(encap="l3dsr", isv4=True)
 
         finally:
             for asid in self.ass:
-                self.vapi.cli(
-                    "lb as 90.0.0.0/8 10.0.0.%u del"
-                    % (asid))
-            self.vapi.cli(
-                "lb vip 90.0.0.0/8 encap l3dsr"
-                " dscp 7 del")
+                self.vapi.cli("lb as 90.0.0.0/8 10.0.0.%u del" % (asid))
+            self.vapi.cli("lb vip 90.0.0.0/8 encap l3dsr dscp 7 del")
             self.vapi.cli("test lb flowtable flush")
 
     def test_lb_ip4_l3dsr_port(self):
-        """ Load Balancer IP4 L3DSR on per-port-vip case """
+        """Load Balancer IP4 L3DSR on per-port-vip case"""
         try:
             self.vapi.cli(
-                "lb vip 90.0.0.0/8 protocol udp port 20000 encap l3dsr dscp 7")
+                "lb vip 90.0.0.0/8 protocol udp port 20000 encap l3dsr dscp 7"
+            )
             for asid in self.ass:
                 self.vapi.cli(
-                    "lb as 90.0.0.0/8 protocol udp port 20000 10.0.0.%u"
-                    % (asid))
+                    "lb as 90.0.0.0/8 protocol udp port 20000 10.0.0.%u" % (asid)
+                )
 
             self.pg0.add_stream(self.generatePackets(self.pg0, isv4=True))
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
-            self.checkCapture(encap='l3dsr', isv4=True)
+            self.checkCapture(encap="l3dsr", isv4=True)
 
         finally:
             for asid in self.ass:
                 self.vapi.cli(
-                    "lb as 90.0.0.0/8 protocol udp port 20000 10.0.0.%u del"
-                    % (asid))
+                    "lb as 90.0.0.0/8 protocol udp port 20000 10.0.0.%u del" % (asid)
+                )
             self.vapi.cli(
-                "lb vip 90.0.0.0/8 protocol udp port 20000 encap l3dsr"
-                " dscp 7 del")
+                "lb vip 90.0.0.0/8 protocol udp port 20000 encap l3dsr dscp 7 del"
+            )
             self.vapi.cli("test lb flowtable flush")
 
     def test_lb_ip4_nat4_port(self):
-        """ Load Balancer IP4 NAT4 on per-port-vip case """
+        """Load Balancer IP4 NAT4 on per-port-vip case"""
         try:
             self.vapi.cli(
                 "lb vip 90.0.0.0/8 protocol udp port 20000 encap nat4"
-                " type clusterip target_port 3307")
+                " type clusterip target_port 3307"
+            )
             for asid in self.ass:
                 self.vapi.cli(
-                    "lb as 90.0.0.0/8 protocol udp port 20000 10.0.0.%u"
-                    % (asid))
+                    "lb as 90.0.0.0/8 protocol udp port 20000 10.0.0.%u" % (asid)
+                )
 
             self.pg0.add_stream(self.generatePackets(self.pg0, isv4=True))
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
-            self.checkCapture(encap='nat4', isv4=True)
+            self.checkCapture(encap="nat4", isv4=True)
 
         finally:
             for asid in self.ass:
                 self.vapi.cli(
-                    "lb as 90.0.0.0/8 protocol udp port 20000 10.0.0.%u del"
-                    % (asid))
+                    "lb as 90.0.0.0/8 protocol udp port 20000 10.0.0.%u del" % (asid)
+                )
             self.vapi.cli(
                 "lb vip 90.0.0.0/8 protocol udp port 20000 encap nat4"
-                " type clusterip target_port 3307 del")
+                " type clusterip target_port 3307 del"
+            )
             self.vapi.cli("test lb flowtable flush")
 
     def test_lb_ip6_nat6_port(self):
-        """ Load Balancer IP6 NAT6 on per-port-vip case """
+        """Load Balancer IP6 NAT6 on per-port-vip case"""
         try:
             self.vapi.cli(
                 "lb vip 2001::/16 protocol udp port 20000 encap nat6"
-                " type clusterip target_port 3307")
+                " type clusterip target_port 3307"
+            )
             for asid in self.ass:
                 self.vapi.cli(
-                    "lb as 2001::/16 protocol udp port 20000 2002::%u"
-                    % (asid))
+                    "lb as 2001::/16 protocol udp port 20000 2002::%u" % (asid)
+                )
 
             self.pg0.add_stream(self.generatePackets(self.pg0, isv4=False))
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
-            self.checkCapture(encap='nat6', isv4=False)
+            self.checkCapture(encap="nat6", isv4=False)
 
         finally:
             for asid in self.ass:
                 self.vapi.cli(
-                    "lb as 2001::/16 protocol udp port 20000 2002::%u del"
-                    % (asid))
+                    "lb as 2001::/16 protocol udp port 20000 2002::%u del" % (asid)
+                )
             self.vapi.cli(
                 "lb vip 2001::/16 protocol udp port 20000 encap nat6"
-                " type clusterip target_port 3307 del")
+                " type clusterip target_port 3307 del"
+            )
             self.vapi.cli("test lb flowtable flush")

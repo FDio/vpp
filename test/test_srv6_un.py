@@ -8,7 +8,7 @@ from scapy.all import *
 
 
 class TestSRv6uSIDSRH(VppTestCase):
-    """ SRv6 End.uSID w/ SRH """
+    """SRv6 End.uSID w/ SRH"""
 
     @classmethod
     def setUpClass(cls):
@@ -45,30 +45,30 @@ class TestSRv6uSIDSRH(VppTestCase):
 
         pkts = list()
         for d, s in inner:
-            pkt = (Ether() /
-                   IPv6(dst=str(ip6_dst), src=str(ip6_src)) /
-                   IPv6ExtHdrSegmentRouting(segleft=1,
-                                            lastentry=0,
-                                            tag=0,
-                                            addresses=[
-                                                "a1::1",
-                                                "1111:2222:aaaa:bbbb::"]) /
-                   IPv6(dst=d, src=s) /
-                   UDP(sport=1000, dport=23))
+            pkt = (
+                Ether()
+                / IPv6(dst=str(ip6_dst), src=str(ip6_src))
+                / IPv6ExtHdrSegmentRouting(
+                    segleft=1,
+                    lastentry=0,
+                    tag=0,
+                    addresses=["a1::1", "1111:2222:aaaa:bbbb::"],
+                )
+                / IPv6(dst=d, src=s)
+                / UDP(sport=1000, dport=23)
+            )
             self.logger.info(pkt.show2(dump=True))
             pkts.append(pkt)
 
         return pkts
 
     def test_srv6_usid_srh(self):
-        """ test_srv6_usid_srh """
+        """test_srv6_usid_srh"""
         pkts = self.create_packets([("A::1", "B::1"), ("C::1", "D::1")])
 
         self.vapi.cli("set sr encaps source addr A1::1")
-        self.vapi.cli(
-            "sr localsid prefix 1111:2222:aaaa::/48 behavior un 16")
-        self.vapi.cli(
-            "ip route add 1111:2222:bbbb::/48 via {}".format(self.ip6_nhop))
+        self.vapi.cli("sr localsid prefix 1111:2222:aaaa::/48 behavior un 16")
+        self.vapi.cli("ip route add 1111:2222:bbbb::/48 via {}".format(self.ip6_nhop))
 
         self.logger.info(self.vapi.cli("show sr localsids"))
 
@@ -85,12 +85,11 @@ class TestSRv6uSIDSRH(VppTestCase):
 
         for pkt in capture:
             self.logger.info(pkt.show2(dump=True))
-            self.assertEqual(
-                    pkt[IPv6].dst, "1111:2222:bbbb:cccc:dddd:eeee:ffff:0")
+            self.assertEqual(pkt[IPv6].dst, "1111:2222:bbbb:cccc:dddd:eeee:ffff:0")
 
 
 class TestSRv6uSID(VppTestCase):
-    """ SRv6 End.uSID w/o SRH """
+    """SRv6 End.uSID w/o SRH"""
 
     @classmethod
     def setUpClass(cls):
@@ -127,24 +126,24 @@ class TestSRv6uSID(VppTestCase):
 
         pkts = list()
         for d, s in inner:
-            pkt = (Ether() /
-                   IPv6(dst=str(ip6_dst), src=str(ip6_src)) /
-                   IPv6(dst=d, src=s) /
-                   UDP(sport=1000, dport=23))
+            pkt = (
+                Ether()
+                / IPv6(dst=str(ip6_dst), src=str(ip6_src))
+                / IPv6(dst=d, src=s)
+                / UDP(sport=1000, dport=23)
+            )
             self.logger.info(pkt.show2(dump=True))
             pkts.append(pkt)
 
         return pkts
 
     def test_srv6_usid(self):
-        """ test_srv6_usid """
+        """test_srv6_usid"""
         pkts = self.create_packets([("A::1", "B::1"), ("C::1", "D::1")])
 
         self.vapi.cli("set sr encaps source addr A1::1")
-        self.vapi.cli(
-            "sr localsid prefix 1111:2222:aaaa::/48 behavior un 16")
-        self.vapi.cli(
-            "ip route add 1111:2222:bbbb::/48 via {}".format(self.ip6_nhop))
+        self.vapi.cli("sr localsid prefix 1111:2222:aaaa::/48 behavior un 16")
+        self.vapi.cli("ip route add 1111:2222:bbbb::/48 via {}".format(self.ip6_nhop))
 
         self.logger.info(self.vapi.cli("show sr localsids"))
 
@@ -161,12 +160,11 @@ class TestSRv6uSID(VppTestCase):
 
         for pkt in capture:
             self.logger.info(pkt.show2(dump=True))
-            self.assertEqual(
-                    pkt[IPv6].dst, "1111:2222:bbbb:cccc:dddd:eeee:ffff:0")
+            self.assertEqual(pkt[IPv6].dst, "1111:2222:bbbb:cccc:dddd:eeee:ffff:0")
 
 
 class TestSRv6uSIDFlexSRH(VppTestCase):
-    """ SRv6 End.uSID.Flex w/ SRH """
+    """SRv6 End.uSID.Flex w/ SRH"""
 
     @classmethod
     def setUpClass(cls):
@@ -203,30 +201,30 @@ class TestSRv6uSIDFlexSRH(VppTestCase):
 
         pkts = list()
         for d, s in inner:
-            pkt = (Ether() /
-                   IPv6(dst=str(ip6_dst), src=str(ip6_src)) /
-                   IPv6ExtHdrSegmentRouting(segleft=1,
-                                            lastentry=0,
-                                            tag=0,
-                                            addresses=[
-                                                "a1::1",
-                                                "1111:2222:aaaa:bbbb::"]) /
-                   IPv6(dst=d, src=s) /
-                   UDP(sport=1000, dport=23))
+            pkt = (
+                Ether()
+                / IPv6(dst=str(ip6_dst), src=str(ip6_src))
+                / IPv6ExtHdrSegmentRouting(
+                    segleft=1,
+                    lastentry=0,
+                    tag=0,
+                    addresses=["a1::1", "1111:2222:aaaa:bbbb::"],
+                )
+                / IPv6(dst=d, src=s)
+                / UDP(sport=1000, dport=23)
+            )
             self.logger.info(pkt.show2(dump=True))
             pkts.append(pkt)
 
         return pkts
 
     def test_srv6_usid_flex_srh(self):
-        """ test_srv6_usid_flex_srh """
+        """test_srv6_usid_flex_srh"""
         pkts = self.create_packets([("A::1", "B::1"), ("C::1", "D::1")])
 
         self.vapi.cli("set sr encaps source addr A1::1")
-        self.vapi.cli(
-            "sr localsid prefix 1111:2222:aaaa::/48 behavior un.flex 16")
-        self.vapi.cli(
-            "ip route add 1111:2222:bbbb::/48 via {}".format(self.ip6_nhop))
+        self.vapi.cli("sr localsid prefix 1111:2222:aaaa::/48 behavior un.flex 16")
+        self.vapi.cli("ip route add 1111:2222:bbbb::/48 via {}".format(self.ip6_nhop))
 
         self.logger.info(self.vapi.cli("show sr localsids"))
 
@@ -243,12 +241,11 @@ class TestSRv6uSIDFlexSRH(VppTestCase):
 
         for pkt in capture:
             self.logger.info(pkt.show2(dump=True))
-            self.assertEqual(
-                    pkt[IPv6].dst, "1111:2222:bbbb:cccc:dddd:eeee:ffff:0")
+            self.assertEqual(pkt[IPv6].dst, "1111:2222:bbbb:cccc:dddd:eeee:ffff:0")
 
 
 class TestSRv6uSIDFlex(VppTestCase):
-    """ SRv6 End.uSID.Flex w/o SRH """
+    """SRv6 End.uSID.Flex w/o SRH"""
 
     @classmethod
     def setUpClass(cls):
@@ -285,24 +282,24 @@ class TestSRv6uSIDFlex(VppTestCase):
 
         pkts = list()
         for d, s in inner:
-            pkt = (Ether() /
-                   IPv6(dst=str(ip6_dst), src=str(ip6_src)) /
-                   IPv6(dst=d, src=s) /
-                   UDP(sport=1000, dport=23))
+            pkt = (
+                Ether()
+                / IPv6(dst=str(ip6_dst), src=str(ip6_src))
+                / IPv6(dst=d, src=s)
+                / UDP(sport=1000, dport=23)
+            )
             self.logger.info(pkt.show2(dump=True))
             pkts.append(pkt)
 
         return pkts
 
     def test_srv6_usid_flex(self):
-        """ test_srv6_usid_flex """
+        """test_srv6_usid_flex"""
         pkts = self.create_packets([("A::1", "B::1"), ("C::1", "D::1")])
 
         self.vapi.cli("set sr encaps source addr A1::1")
-        self.vapi.cli(
-            "sr localsid prefix 1111:2222:aaaa::/48 behavior un.flex 16")
-        self.vapi.cli(
-            "ip route add 1111:2222:bbbb::/48 via {}".format(self.ip6_nhop))
+        self.vapi.cli("sr localsid prefix 1111:2222:aaaa::/48 behavior un.flex 16")
+        self.vapi.cli("ip route add 1111:2222:bbbb::/48 via {}".format(self.ip6_nhop))
 
         self.logger.info(self.vapi.cli("show sr localsids"))
 
@@ -319,5 +316,4 @@ class TestSRv6uSIDFlex(VppTestCase):
 
         for pkt in capture:
             self.logger.info(pkt.show2(dump=True))
-            self.assertEqual(
-                    pkt[IPv6].dst, "1111:2222:bbbb:cccc:dddd:eeee:ffff:0")
+            self.assertEqual(pkt[IPv6].dst, "1111:2222:bbbb:cccc:dddd:eeee:ffff:0")

@@ -41,8 +41,7 @@ class P2PEthernetAPI(VppTestCase):
         self.p2p_sub_ifs.append(p2p)
 
     def delete_p2p_ethernet(self, parent_if, remote_mac):
-        self.vapi.p2p_ethernet_del(parent_if.sw_if_index,
-                                   mac_pton(remote_mac))
+        self.vapi.p2p_ethernet_del(parent_if.sw_if_index, mac_pton(remote_mac))
 
     def test_api(self):
         """delete/create p2p subif"""
@@ -52,22 +51,22 @@ class P2PEthernetAPI(VppTestCase):
         self.create_p2p_ethernet(self.pg0, 2, "de:ad:00:00:00:02")
         intfs = self.vapi.cli("show interface")
 
-        self.assertIn('pg0.1', intfs)
-        self.assertIn('pg0.2', intfs)
-        self.assertNotIn('pg0.5', intfs)
+        self.assertIn("pg0.1", intfs)
+        self.assertIn("pg0.2", intfs)
+        self.assertNotIn("pg0.5", intfs)
 
         # create pg2.5 subif
         self.create_p2p_ethernet(self.pg0, 5, "de:ad:00:00:00:ff")
         intfs = self.vapi.cli("show interface")
-        self.assertIn('pg0.5', intfs)
+        self.assertIn("pg0.5", intfs)
         # delete pg2.5 subif
         self.delete_p2p_ethernet(self.pg0, "de:ad:00:00:00:ff")
 
         intfs = self.vapi.cli("show interface")
 
-        self.assertIn('pg0.1', intfs)
-        self.assertIn('pg0.2', intfs)
-        self.assertNotIn('pg0.5', intfs)
+        self.assertIn("pg0.1", intfs)
+        self.assertIn("pg0.2", intfs)
+        self.assertNotIn("pg0.5", intfs)
 
         self.logger.info("FFP_TEST_FINISH_0000")
 
@@ -79,22 +78,20 @@ class P2PEthernetAPI(VppTestCase):
         clients = 1000
         mac = int("dead00000000", 16)
 
-        for i in range(1, clients+1):
+        for i in range(1, clients + 1):
             try:
-                macs.append(':'.join(re.findall('..', '{:02x}'.format(
-                    mac+i))))
-                self.vapi.p2p_ethernet_add(self.pg2.sw_if_index,
-                                           mac_pton(macs[i-1]),
-                                           i)
+                macs.append(":".join(re.findall("..", "{:02x}".format(mac + i))))
+                self.vapi.p2p_ethernet_add(
+                    self.pg2.sw_if_index, mac_pton(macs[i - 1]), i
+                )
             except Exception:
-                self.logger.info("Failed to create subif %d %s" % (
-                    i, macs[i-1]))
+                self.logger.info("Failed to create subif %d %s" % (i, macs[i - 1]))
                 raise
 
         intfs = self.vapi.cli("show interface").split("\n")
         count = 0
         for intf in intfs:
-            if intf.startswith('pg2.'):
+            if intf.startswith("pg2."):
                 count += 1
         self.assertEqual(count, clients)
 
@@ -138,11 +135,11 @@ class P2PEthernetIPV6(VppTestCase):
         for p in self.packets:
             self.packets.remove(p)
         self.p2p_sub_ifs.append(
-            self.create_p2p_ethernet(self.pg0, 1,
-                                     self.pg0._remote_hosts[0].mac))
+            self.create_p2p_ethernet(self.pg0, 1, self.pg0._remote_hosts[0].mac)
+        )
         self.p2p_sub_ifs.append(
-            self.create_p2p_ethernet(self.pg0, 2,
-                                     self.pg0._remote_hosts[1].mac))
+            self.create_p2p_ethernet(self.pg0, 2, self.pg0._remote_hosts[1].mac)
+        )
         self.vapi.cli("trace add p2p-ethernet-input 50")
 
     def tearDown(self):
@@ -162,17 +159,17 @@ class P2PEthernetIPV6(VppTestCase):
     def delete_p2p_ethernet(self, p2p):
         p2p.unconfig_ip6()
         p2p.admin_down()
-        self.vapi.p2p_ethernet_del(p2p.parent.sw_if_index,
-                                   p2p.p2p_remote_mac)
+        self.vapi.p2p_ethernet_del(p2p.parent.sw_if_index, p2p.p2p_remote_mac)
 
-    def create_stream(self, src_mac=None, dst_mac=None,
-                      src_ip=None, dst_ip=None, size=None):
+    def create_stream(
+        self, src_mac=None, dst_mac=None, src_ip=None, dst_ip=None, size=None
+    ):
         pkt_size = size
         if size is None:
             pkt_size = random.choice(self.pg_if_packet_sizes)
         p = Ether(src=src_mac, dst=dst_mac)
         p /= IPv6(src=src_ip, dst=dst_ip)
-        p /= (UDP(sport=1234, dport=4321) / Raw(b'\xa5' * 20))
+        p /= UDP(sport=1234, dport=4321) / Raw(b"\xa5" * 20)
         self.extend_packet(p, pkt_size)
         return p
 
@@ -191,16 +188,22 @@ class P2PEthernetIPV6(VppTestCase):
         self.logger.info("FFP_TEST_START_0001")
 
         self.pg0.config_ip6()
-        route_8000 = VppIpRoute(self, "8000::", 64,
-                                [VppRoutePath(self.pg0.remote_ip6,
-                                              self.pg0.sw_if_index)])
+        route_8000 = VppIpRoute(
+            self,
+            "8000::",
+            64,
+            [VppRoutePath(self.pg0.remote_ip6, self.pg0.sw_if_index)],
+        )
         route_8000.add_vpp_config()
 
-        self.packets = [(Ether(dst=self.pg1.local_mac,
-                               src=self.pg1.remote_mac) /
-                         IPv6(src="3001::1", dst="8000::100") /
-                         UDP(sport=1234, dport=1234) /
-                         Raw(b'\xa5' * 100))]
+        self.packets = [
+            (
+                Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac)
+                / IPv6(src="3001::1", dst="8000::100")
+                / UDP(sport=1234, dport=1234)
+                / Raw(b"\xa5" * 100)
+            )
+        ]
         self.send_packets(self.pg1, self.pg0)
 
         self.pg0.unconfig_ip6()
@@ -210,19 +213,25 @@ class P2PEthernetIPV6(VppTestCase):
         """receive ipv6 packet via p2p subinterface"""
         self.logger.info("FFP_TEST_START_0002")
 
-        route_9001 = VppIpRoute(self, "9001::", 64,
-                                [VppRoutePath(self.pg1.remote_ip6,
-                                              self.pg1.sw_if_index)])
+        route_9001 = VppIpRoute(
+            self,
+            "9001::",
+            64,
+            [VppRoutePath(self.pg1.remote_ip6, self.pg1.sw_if_index)],
+        )
         route_9001.add_vpp_config()
 
         self.packets.append(
-            self.create_stream(src_mac=self.pg0._remote_hosts[0].mac,
-                               dst_mac=self.pg0.local_mac,
-                               src_ip=self.p2p_sub_ifs[0].remote_ip6,
-                               dst_ip="9001::100"))
+            self.create_stream(
+                src_mac=self.pg0._remote_hosts[0].mac,
+                dst_mac=self.pg0.local_mac,
+                src_ip=self.p2p_sub_ifs[0].remote_ip6,
+                dst_ip="9001::100",
+            )
+        )
 
         self.send_packets(self.pg0, self.pg1, self.packets)
-        self.assert_packet_counter_equal('p2p-ethernet-input', 1)
+        self.assert_packet_counter_equal("p2p-ethernet-input", 1)
 
         route_9001.remove_vpp_config()
         self.logger.info("FFP_TEST_FINISH_0002")
@@ -233,16 +242,22 @@ class P2PEthernetIPV6(VppTestCase):
 
         self.pg0.config_ip6()
 
-        route_3 = VppIpRoute(self, "9000::", 64,
-                             [VppRoutePath(self.pg1._remote_hosts[0].ip6,
-                                           self.pg1.sw_if_index)])
+        route_3 = VppIpRoute(
+            self,
+            "9000::",
+            64,
+            [VppRoutePath(self.pg1._remote_hosts[0].ip6, self.pg1.sw_if_index)],
+        )
         route_3.add_vpp_config()
 
         self.packets.append(
-            self.create_stream(src_mac="02:03:00:00:ff:ff",
-                               dst_mac=self.pg0.local_mac,
-                               src_ip="a000::100",
-                               dst_ip="9000::100"))
+            self.create_stream(
+                src_mac="02:03:00:00:ff:ff",
+                dst_mac=self.pg0.local_mac,
+                src_ip="a000::100",
+                dst_ip="9000::100",
+            )
+        )
 
         self.send_packets(self.pg0, self.pg1)
 
@@ -256,16 +271,22 @@ class P2PEthernetIPV6(VppTestCase):
         """drop rx packet not matching p2p subinterface"""
         self.logger.info("FFP_TEST_START_0004")
 
-        route_9001 = VppIpRoute(self, "9000::", 64,
-                                [VppRoutePath(self.pg1._remote_hosts[0].ip6,
-                                              self.pg1.sw_if_index)])
+        route_9001 = VppIpRoute(
+            self,
+            "9000::",
+            64,
+            [VppRoutePath(self.pg1._remote_hosts[0].ip6, self.pg1.sw_if_index)],
+        )
         route_9001.add_vpp_config()
 
         self.packets.append(
-            self.create_stream(src_mac="02:03:00:00:ff:ff",
-                               dst_mac=self.pg0.local_mac,
-                               src_ip="a000::100",
-                               dst_ip="9000::100"))
+            self.create_stream(
+                src_mac="02:03:00:00:ff:ff",
+                dst_mac=self.pg0.local_mac,
+                src_ip="a000::100",
+                dst_ip="9000::100",
+            )
+        )
 
         # no packet received
         self.send_packets(self.pg0, self.pg1, count=0)
@@ -277,27 +298,45 @@ class P2PEthernetIPV6(VppTestCase):
 
         self.pg0.config_ip6()
 
-        route_8000 = VppIpRoute(self, "8000::", 64,
-                                [VppRoutePath(self.pg0.remote_hosts[0].ip6,
-                                              self.pg0.sw_if_index)])
+        route_8000 = VppIpRoute(
+            self,
+            "8000::",
+            64,
+            [VppRoutePath(self.pg0.remote_hosts[0].ip6, self.pg0.sw_if_index)],
+        )
         route_8000.add_vpp_config()
-        route_8001 = VppIpRoute(self, "8001::", 64,
-                                [VppRoutePath(
-                                    self.p2p_sub_ifs[0].remote_ip6,
-                                    self.p2p_sub_ifs[0].sw_if_index)])
+        route_8001 = VppIpRoute(
+            self,
+            "8001::",
+            64,
+            [
+                VppRoutePath(
+                    self.p2p_sub_ifs[0].remote_ip6, self.p2p_sub_ifs[0].sw_if_index
+                )
+            ],
+        )
         route_8001.add_vpp_config()
-        route_8002 = VppIpRoute(self, "8002::", 64,
-                                [VppRoutePath(
-                                    self.p2p_sub_ifs[1].remote_ip6,
-                                    self.p2p_sub_ifs[1].sw_if_index)])
+        route_8002 = VppIpRoute(
+            self,
+            "8002::",
+            64,
+            [
+                VppRoutePath(
+                    self.p2p_sub_ifs[1].remote_ip6, self.p2p_sub_ifs[1].sw_if_index
+                )
+            ],
+        )
         route_8002.add_vpp_config()
 
         for i in range(0, 3):
             self.packets.append(
-                self.create_stream(src_mac=self.pg1.remote_mac,
-                                   dst_mac=self.pg1.local_mac,
-                                   src_ip=self.pg1.remote_ip6,
-                                   dst_ip="800%d::100" % i))
+                self.create_stream(
+                    src_mac=self.pg1.remote_mac,
+                    dst_mac=self.pg1.local_mac,
+                    src_ip=self.pg1.remote_ip6,
+                    dst_ip="800%d::100" % i,
+                )
+            )
 
         self.send_packets(self.pg1, self.pg0, count=3)
 
@@ -313,10 +352,13 @@ class P2PEthernetIPV6(VppTestCase):
         self.logger.info("FFP_TEST_START_0006")
 
         self.packets.append(
-            self.create_stream(src_mac="02:03:00:00:ff:ff",
-                               dst_mac=self.pg0.local_mac,
-                               src_ip="a000::100",
-                               dst_ip="9000::100"))
+            self.create_stream(
+                src_mac="02:03:00:00:ff:ff",
+                dst_mac=self.pg0.local_mac,
+                src_ip="a000::100",
+                dst_ip="9000::100",
+            )
+        )
 
         # no packet received
         self.send_packets(self.pg0, self.pg1, count=0)
@@ -360,11 +402,11 @@ class P2PEthernetIPV4(VppTestCase):
         for p in self.packets:
             self.packets.remove(p)
         self.p2p_sub_ifs.append(
-            self.create_p2p_ethernet(self.pg0, 1,
-                                     self.pg0._remote_hosts[0].mac))
+            self.create_p2p_ethernet(self.pg0, 1, self.pg0._remote_hosts[0].mac)
+        )
         self.p2p_sub_ifs.append(
-            self.create_p2p_ethernet(self.pg0, 2,
-                                     self.pg0._remote_hosts[1].mac))
+            self.create_p2p_ethernet(self.pg0, 2, self.pg0._remote_hosts[1].mac)
+        )
         self.vapi.cli("trace add p2p-ethernet-input 50")
 
     def tearDown(self):
@@ -373,14 +415,15 @@ class P2PEthernetIPV4(VppTestCase):
             self.delete_p2p_ethernet(p2p)
         super(P2PEthernetIPV4, self).tearDown()
 
-    def create_stream(self, src_mac=None, dst_mac=None,
-                      src_ip=None, dst_ip=None, size=None):
+    def create_stream(
+        self, src_mac=None, dst_mac=None, src_ip=None, dst_ip=None, size=None
+    ):
         pkt_size = size
         if size is None:
             pkt_size = random.choice(self.pg_if_packet_sizes)
         p = Ether(src=src_mac, dst=dst_mac)
         p /= IP(src=src_ip, dst=dst_ip)
-        p /= (UDP(sport=1234, dport=4321) / Raw(b'\xa5' * 20))
+        p /= UDP(sport=1234, dport=4321) / Raw(b"\xa5" * 20)
         self.extend_packet(p, pkt_size)
         return p
 
@@ -403,27 +446,32 @@ class P2PEthernetIPV4(VppTestCase):
     def delete_p2p_ethernet(self, p2p):
         p2p.unconfig_ip4()
         p2p.admin_down()
-        self.vapi.p2p_ethernet_del(p2p.parent.sw_if_index,
-                                   p2p.p2p_remote_mac)
+        self.vapi.p2p_ethernet_del(p2p.parent.sw_if_index, p2p.p2p_remote_mac)
 
     def test_ip4_rx_p2p_subif(self):
         """receive ipv4 packet via p2p subinterface"""
         self.logger.info("FFP_TEST_START_0002")
 
-        route_9000 = VppIpRoute(self, "9.0.0.0", 16,
-                                [VppRoutePath(self.pg1.remote_ip4,
-                                              self.pg1.sw_if_index)])
+        route_9000 = VppIpRoute(
+            self,
+            "9.0.0.0",
+            16,
+            [VppRoutePath(self.pg1.remote_ip4, self.pg1.sw_if_index)],
+        )
         route_9000.add_vpp_config()
 
         self.packets.append(
-            self.create_stream(src_mac=self.pg0._remote_hosts[0].mac,
-                               dst_mac=self.pg0.local_mac,
-                               src_ip=self.p2p_sub_ifs[0].remote_ip4,
-                               dst_ip="9.0.0.100"))
+            self.create_stream(
+                src_mac=self.pg0._remote_hosts[0].mac,
+                dst_mac=self.pg0.local_mac,
+                src_ip=self.p2p_sub_ifs[0].remote_ip4,
+                dst_ip="9.0.0.100",
+            )
+        )
 
         self.send_packets(self.pg0, self.pg1, self.packets)
 
-        self.assert_packet_counter_equal('p2p-ethernet-input', 1)
+        self.assert_packet_counter_equal("p2p-ethernet-input", 1)
 
         route_9000.remove_vpp_config()
         self.logger.info("FFP_TEST_FINISH_0002")
@@ -432,16 +480,22 @@ class P2PEthernetIPV4(VppTestCase):
         """route rx packet not matching p2p subinterface"""
         self.logger.info("FFP_TEST_START_0003")
 
-        route_9001 = VppIpRoute(self, "9.0.0.0", 24,
-                                [VppRoutePath(self.pg1.remote_ip4,
-                                              self.pg1.sw_if_index)])
+        route_9001 = VppIpRoute(
+            self,
+            "9.0.0.0",
+            24,
+            [VppRoutePath(self.pg1.remote_ip4, self.pg1.sw_if_index)],
+        )
         route_9001.add_vpp_config()
 
         self.packets.append(
-            self.create_stream(src_mac="02:01:00:00:ff:ff",
-                               dst_mac=self.pg0.local_mac,
-                               src_ip="8.0.0.100",
-                               dst_ip="9.0.0.100"))
+            self.create_stream(
+                src_mac="02:01:00:00:ff:ff",
+                dst_mac=self.pg0.local_mac,
+                src_ip="8.0.0.100",
+                dst_ip="9.0.0.100",
+            )
+        )
 
         self.send_packets(self.pg0, self.pg1)
 
@@ -453,28 +507,51 @@ class P2PEthernetIPV4(VppTestCase):
         """send ip4 packet via p2p subinterface"""
         self.logger.info("FFP_TEST_START_0005")
 
-        route_9100 = VppIpRoute(self, "9.1.0.100", 24,
-                                [VppRoutePath(self.pg0.remote_ip4,
-                                              self.pg0.sw_if_index,
-                                              )])
+        route_9100 = VppIpRoute(
+            self,
+            "9.1.0.100",
+            24,
+            [
+                VppRoutePath(
+                    self.pg0.remote_ip4,
+                    self.pg0.sw_if_index,
+                )
+            ],
+        )
         route_9100.add_vpp_config()
-        route_9200 = VppIpRoute(self, "9.2.0.100", 24,
-                                [VppRoutePath(self.p2p_sub_ifs[0].remote_ip4,
-                                              self.p2p_sub_ifs[0].sw_if_index,
-                                              )])
+        route_9200 = VppIpRoute(
+            self,
+            "9.2.0.100",
+            24,
+            [
+                VppRoutePath(
+                    self.p2p_sub_ifs[0].remote_ip4,
+                    self.p2p_sub_ifs[0].sw_if_index,
+                )
+            ],
+        )
         route_9200.add_vpp_config()
-        route_9300 = VppIpRoute(self, "9.3.0.100", 24,
-                                [VppRoutePath(self.p2p_sub_ifs[1].remote_ip4,
-                                              self.p2p_sub_ifs[1].sw_if_index
-                                              )])
+        route_9300 = VppIpRoute(
+            self,
+            "9.3.0.100",
+            24,
+            [
+                VppRoutePath(
+                    self.p2p_sub_ifs[1].remote_ip4, self.p2p_sub_ifs[1].sw_if_index
+                )
+            ],
+        )
         route_9300.add_vpp_config()
 
         for i in range(0, 3):
             self.packets.append(
-                self.create_stream(src_mac=self.pg1.remote_mac,
-                                   dst_mac=self.pg1.local_mac,
-                                   src_ip=self.pg1.remote_ip4,
-                                   dst_ip="9.%d.0.100" % (i+1)))
+                self.create_stream(
+                    src_mac=self.pg1.remote_mac,
+                    dst_mac=self.pg1.local_mac,
+                    src_ip=self.pg1.remote_ip4,
+                    dst_ip="9.%d.0.100" % (i + 1),
+                )
+            )
 
         self.send_packets(self.pg1, self.pg0)
 
@@ -490,15 +567,18 @@ class P2PEthernetIPV4(VppTestCase):
         self.logger.info("FFP_TEST_START_0006")
 
         self.packets.append(
-            self.create_stream(src_mac="02:01:00:00:ff:ff",
-                               dst_mac=self.pg0.local_mac,
-                               src_ip="8.0.0.100",
-                               dst_ip="9.0.0.100"))
+            self.create_stream(
+                src_mac="02:01:00:00:ff:ff",
+                dst_mac=self.pg0.local_mac,
+                src_ip="8.0.0.100",
+                dst_ip="9.0.0.100",
+            )
+        )
 
         # no packet received
         self.send_packets(self.pg0, self.pg1, count=0)
         self.logger.info("FFP_TEST_FINISH_0006")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)
