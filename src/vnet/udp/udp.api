@@ -33,7 +33,7 @@ import "vnet/ip/ip_types.api";
  * @param src_ip - Encap source address
  * @param dst_port - Encap destination port
  * @param src_port - Encap source port
- * @param id - VPP assigned id; ignored in add message, set in dump
+ * @param id - VPP assigned id, used for update and delete
  */
 typedef udp_encap
 {
@@ -42,7 +42,7 @@ typedef udp_encap
   u16 dst_port;
   vl_api_address_t src_ip;
   vl_api_address_t dst_ip;
-  u32 id;
+  u32 id [default=0xffffffff];
 };
 
 enum udp_decap_next_proto

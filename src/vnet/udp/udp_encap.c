@@ -52,25 +52,30 @@ udp_encap_restack (udp_encap_t * ue)
 }
 
 index_t
-udp_encap_add_and_lock (fib_protocol_t proto,
-			index_t fib_index,
-			const ip46_address_t * src_ip,
-			const ip46_address_t * dst_ip,
-			u16 src_port,
+udp_encap_add_and_lock (index_t uei, fib_protocol_t proto, index_t fib_index,
+			const ip46_address_t *src_ip,
+			const ip46_address_t *dst_ip, u16 src_port,
 			u16 dst_port, udp_encap_fixup_flags_t flags)
 {
   udp_encap_t *ue;
   u8 pfx_len = 0;
-  index_t uei;
 
-  pool_get_aligned_zero (udp_encap_pool, ue, CLIB_CACHE_LINE_BYTES);
-  uei = ue - udp_encap_pool;
+  if (INDEX_INVALID == uei)
+    {
+      pool_get_aligned_zero (udp_encap_pool, ue, CLIB_CACHE_LINE_BYTES);
+      uei = ue - udp_encap_pool;
+      fib_node_init (&ue->ue_fib_node, FIB_NODE_TYPE_UDP_ENCAP);
+      fib_node_lock (&ue->ue_fib_node);
+    }
+  else
+    {
+      ue = pool_elt_at_index (udp_encap_pool, uei);
+      fib_entry_untrack (ue->ue_fib_entry_index, ue->ue_fib_sibling);
+    }
 
   vlib_validate_combined_counter (&(udp_encap_counters), uei);
   vlib_zero_combined_counter (&(udp_encap_counters), uei);
 
-  fib_node_init (&ue->ue_fib_node, FIB_NODE_TYPE_UDP_ENCAP);
-  fib_node_lock (&ue->ue_fib_node);
   ue->ue_fib_index = fib_index;
   ue->ue_flags = flags;
   ue->ue_ip_proto = proto;
@@ -418,7 +423,7 @@ udp_encap_cli (vlib_main_t * vm,
   u32 table_id, src_port, dst_port;
   udp_encap_fixup_flags_t flags;
   fib_protocol_t fproto;
-  index_t uei;
+  index_t uei = INDEX_INVALID;
   u8 is_del;
 
   is_del = 0;
@@ -426,7 +431,7 @@ udp_encap_cli (vlib_main_t * vm,
   flags = UDP_ENCAP_FIXUP_NONE;
   fproto = FIB_PROTOCOL_MAX;
   dst_port = 0;
-  uei = ~0;
+  uei = INDEX_INVALID;
 
   /* Get a line of input. */
   if (!unformat_user (main_input, unformat_line_input, line_input))
@@ -465,10 +470,7 @@ udp_encap_cli (vlib_main_t * vm,
 
   if (!is_del && fproto != FIB_PROTOCOL_MAX)
     {
-      u32 fib_index;
-      index_t uei;
-
-      fib_index = fib_table_find (fproto, table_id);
+      u32 fib_index = fib_table_find (fproto, table_id);
 
       if (~0 == fib_index)
 	{
@@ -476,8 +478,7 @@ udp_encap_cli (vlib_main_t * vm,
 	  goto done;
 	}
 
-      uei = udp_encap_add_and_lock (fproto, fib_index,
-				    &src_ip, &dst_ip,
+      uei = udp_encap_add_and_lock (uei, fproto, fib_index, &src_ip, &dst_ip,
 				    src_port, dst_port, flags);
 
       vlib_cli_output (vm, "udp-encap: %d\n", uei);
