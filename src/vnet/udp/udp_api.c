@@ -105,7 +105,7 @@ vl_api_udp_encap_add_t_handler (vl_api_udp_encap_add_t *mp)
   index_t uei;
   int rv = 0;
 
-  uei = INDEX_INVALID;
+  uei = ntohl (mp->udp_encap.id);
   table_id = ntohl (mp->udp_encap.table_id);
 
   itype = ip_address_decode (&mp->udp_encap.src_ip, &src_ip);
@@ -119,11 +119,9 @@ vl_api_udp_encap_add_t_handler (vl_api_udp_encap_add_t *mp)
       goto done;
     }
 
-  uei = udp_encap_add_and_lock (fproto, fib_index,
-				&src_ip, &dst_ip,
-				ntohs (mp->udp_encap.src_port),
-				ntohs (mp->udp_encap.dst_port),
-				UDP_ENCAP_FIXUP_NONE);
+  rv = udp_encap_add_and_lock (
+    &uei, fproto, fib_index, &src_ip, &dst_ip, ntohs (mp->udp_encap.src_port),
+    ntohs (mp->udp_encap.dst_port), UDP_ENCAP_FIXUP_NONE);
 
 done:
   /* *INDENT-OFF* */
