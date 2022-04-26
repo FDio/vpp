@@ -10,7 +10,7 @@ from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 @tag_fixme_vpp_workers
 class TestSession(VppTestCase):
-    """ Session Test Case """
+    """Session Test Case"""
 
     @classmethod
     def setUpClass(cls):
@@ -40,10 +40,12 @@ class TestSession(VppTestCase):
             table_id += 1
 
         # Configure namespaces
-        self.vapi.app_namespace_add_del(namespace_id="0",
-                                        sw_if_index=self.loop0.sw_if_index)
-        self.vapi.app_namespace_add_del(namespace_id="1",
-                                        sw_if_index=self.loop1.sw_if_index)
+        self.vapi.app_namespace_add_del(
+            namespace_id="0", sw_if_index=self.loop0.sw_if_index
+        )
+        self.vapi.app_namespace_add_del(
+            namespace_id="1", sw_if_index=self.loop1.sw_if_index
+        )
 
     def tearDown(self):
         for i in self.lo_interfaces:
@@ -55,31 +57,42 @@ class TestSession(VppTestCase):
         self.vapi.session_enable_disable(is_enable=1)
 
     def test_segment_manager_alloc(self):
-        """ Session Segment Manager Multiple Segment Allocation """
+        """Session Segment Manager Multiple Segment Allocation"""
 
         # Add inter-table routes
-        ip_t01 = VppIpRoute(self, self.loop1.local_ip4, 32,
-                            [VppRoutePath("0.0.0.0",
-                                          0xffffffff,
-                                          nh_table_id=1)])
-        ip_t10 = VppIpRoute(self, self.loop0.local_ip4, 32,
-                            [VppRoutePath("0.0.0.0",
-                                          0xffffffff,
-                                          nh_table_id=0)], table_id=1)
+        ip_t01 = VppIpRoute(
+            self,
+            self.loop1.local_ip4,
+            32,
+            [VppRoutePath("0.0.0.0", 0xFFFFFFFF, nh_table_id=1)],
+        )
+        ip_t10 = VppIpRoute(
+            self,
+            self.loop0.local_ip4,
+            32,
+            [VppRoutePath("0.0.0.0", 0xFFFFFFFF, nh_table_id=0)],
+            table_id=1,
+        )
         ip_t01.add_vpp_config()
         ip_t10.add_vpp_config()
 
         # Start builtin server and client with small private segments
         uri = "tcp://" + self.loop0.local_ip4 + "/1234"
-        error = self.vapi.cli("test echo server appns 0 fifo-size 64 " +
-                              "private-segment-size 1m uri " + uri)
+        error = self.vapi.cli(
+            "test echo server appns 0 fifo-size 64 "
+            + "private-segment-size 1m uri "
+            + uri
+        )
         if error:
             self.logger.critical(error)
             self.assertNotIn("failed", error)
 
-        error = self.vapi.cli("test echo client nclients 100 appns 1 " +
-                              "no-output fifo-size 64 syn-timeout 2 " +
-                              "private-segment-size 1m uri " + uri)
+        error = self.vapi.cli(
+            "test echo client nclients 100 appns 1 "
+            + "no-output fifo-size 64 syn-timeout 2 "
+            + "private-segment-size 1m uri "
+            + uri
+        )
         if error:
             self.logger.critical(error)
             self.assertNotIn("failed", error)
@@ -94,7 +107,7 @@ class TestSession(VppTestCase):
 
 @tag_fixme_vpp_workers
 class TestSessionUnitTests(VppTestCase):
-    """ Session Unit Tests Case """
+    """Session Unit Tests Case"""
 
     @classmethod
     def setUpClass(cls):
@@ -109,7 +122,7 @@ class TestSessionUnitTests(VppTestCase):
         self.vapi.session_enable_disable(is_enable=1)
 
     def test_session(self):
-        """ Session Unit Tests """
+        """Session Unit Tests"""
         error = self.vapi.cli("test session all")
 
         if error:
@@ -123,7 +136,7 @@ class TestSessionUnitTests(VppTestCase):
 
 @tag_run_solo
 class TestSegmentManagerTests(VppTestCase):
-    """ SVM Fifo Unit Tests Case """
+    """SVM Fifo Unit Tests Case"""
 
     @classmethod
     def setUpClass(cls):
@@ -137,7 +150,7 @@ class TestSegmentManagerTests(VppTestCase):
         super(TestSegmentManagerTests, self).setUp()
 
     def test_segment_manager(self):
-        """ Segment manager Tests """
+        """Segment manager Tests"""
         error = self.vapi.cli("test segment-manager all")
 
         if error:
@@ -150,7 +163,7 @@ class TestSegmentManagerTests(VppTestCase):
 
 @tag_run_solo
 class TestSvmFifoUnitTests(VppTestCase):
-    """ SVM Fifo Unit Tests Case """
+    """SVM Fifo Unit Tests Case"""
 
     @classmethod
     def setUpClass(cls):
@@ -164,7 +177,7 @@ class TestSvmFifoUnitTests(VppTestCase):
         super(TestSvmFifoUnitTests, self).setUp()
 
     def test_svm_fifo(self):
-        """ SVM Fifo Unit Tests """
+        """SVM Fifo Unit Tests"""
         error = self.vapi.cli("test svm fifo all")
 
         if error:
@@ -174,5 +187,6 @@ class TestSvmFifoUnitTests(VppTestCase):
     def tearDown(self):
         super(TestSvmFifoUnitTests, self).tearDown()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)

@@ -6,7 +6,7 @@ from framework import VppTestCase, VppTestRunner
 
 
 class TestCrypto(VppTestCase):
-    """ Crypto Test Case """
+    """Crypto Test Case"""
 
     @classmethod
     def setUpClass(cls):
@@ -17,12 +17,13 @@ class TestCrypto(VppTestCase):
         super(TestCrypto, cls).tearDownClass()
 
     def test_crypto(self):
-        """ Crypto Unit Tests """
+        """Crypto Unit Tests"""
         error = self.vapi.cli("test crypto")
 
         if error:
             self.logger.critical(error)
         self.assertNotIn("FAIL", error)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)

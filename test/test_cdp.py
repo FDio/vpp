@@ -4,8 +4,13 @@
 from scapy.packet import Packet
 from scapy.all import ShortField, StrField
 from scapy.layers.l2 import Dot3, LLC, SNAP
-from scapy.contrib.cdp import CDPMsgDeviceID, CDPMsgSoftwareVersion, \
-        CDPMsgPlatform, CDPMsgPortID, CDPv2_HDR
+from scapy.contrib.cdp import (
+    CDPMsgDeviceID,
+    CDPMsgSoftwareVersion,
+    CDPMsgPlatform,
+    CDPMsgPortID,
+    CDPv2_HDR,
+)
 
 from framework import VppTestCase
 from scapy.all import raw
@@ -25,18 +30,17 @@ CDP test.
 
 
 class CustomTLV(Packet):
-    """ Custom TLV protocol layer for scapy """
+    """Custom TLV protocol layer for scapy"""
 
     fields_desc = [
         ShortField("type", 0),
         ShortField("length", 4),
-        StrField("value", "")
-
+        StrField("value", ""),
     ]
 
 
 class TestCDP(VppTestCase):
-    """ CDP Test Case """
+    """CDP Test Case"""
 
     nen_ptr = compile(r"not enabled")
     cdp_ptr = compile(r"^([-\.\w]+)\s+([-\.\w]+)\s+([-\.\w]+)\s+([-\.\w]+)$")
@@ -95,8 +99,9 @@ class TestCDP(VppTestCase):
         length = min(len(system), len(self.device_id))
 
         self.assert_equal(port, self.port_id, "CDP received invalid port id")
-        self.assert_equal(system[:length], self.device_id[:length],
-                          "CDP received invalid device id")
+        self.assert_equal(
+            system[:length], self.device_id[:length], "CDP received invalid device id"
+        )
 
     def test_cdp_underflow_tlv(self):
         self.send_bad_packet(3, ".")
@@ -109,7 +114,8 @@ class TestCDP(VppTestCase):
         self.send_packet(self.create_bad_packet(l, v))
 
         err = self.statistics.get_err_counter(
-            '/err/cdp-input/cdp packets with bad TLVs')
+            "/err/cdp-input/cdp packets with bad TLVs"
+        )
         self.assertTrue(err >= 1, "CDP didn't drop bad packet")
 
     def send_packet(self, packet):
@@ -118,29 +124,30 @@ class TestCDP(VppTestCase):
         self.pg_start()
 
     def create_base_packet(self):
-        packet = (Dot3(src=self.interface.remote_mac,
-                       dst="01:00:0c:cc:cc:cc") /
-                  LLC(dsap=0xaa, ssap=0xaa, ctrl=0x03) /
-                  SNAP()/CDPv2_HDR())
+        packet = (
+            Dot3(src=self.interface.remote_mac, dst="01:00:0c:cc:cc:cc")
+            / LLC(dsap=0xAA, ssap=0xAA, ctrl=0x03)
+            / SNAP()
+            / CDPv2_HDR()
+        )
         return packet
 
     def create_packet(self):
-        packet = (self.create_base_packet() /
-                  CDPMsgDeviceID(val=self.device_id) /
-                  CDPMsgSoftwareVersion(val=self.version) /
-                  CDPMsgPortID(iface=self.port_id) /
-                  CDPMsgPlatform(val=self.platform))
+        packet = (
+            self.create_base_packet()
+            / CDPMsgDeviceID(val=self.device_id)
+            / CDPMsgSoftwareVersion(val=self.version)
+            / CDPMsgPortID(iface=self.port_id)
+            / CDPMsgPlatform(val=self.platform)
+        )
         return packet
 
     def create_bad_packet(self, tl=4, tv=""):
-        packet = (self.create_base_packet() /
-                  CustomTLV(type=1,
-                            length=tl,
-                            value=tv))
+        packet = self.create_base_packet() / CustomTLV(type=1, length=tl, value=tv)
         return packet
 
     def process_cli(self, exp, ptr):
-        for line in self.vapi.cli(exp).split('\n')[1:]:
+        for line in self.vapi.cli(exp).split("\n")[1:]:
             m = ptr.match(line.strip())
             if m:
                 yield m.groups()

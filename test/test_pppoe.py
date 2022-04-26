@@ -15,7 +15,7 @@ from util import ppp, ppc
 
 
 class TestPPPoE(VppTestCase):
-    """ PPPoE Test Case """
+    """PPPoE Test Case"""
 
     @classmethod
     def setUpClass(cls):
@@ -54,8 +54,7 @@ class TestPPPoE(VppTestCase):
         self.logger.info(self.vapi.cli("show ip fib"))
         self.logger.info(self.vapi.cli("show trace"))
 
-    def create_stream_pppoe_discovery(self, src_if, dst_if,
-                                      client_mac, count=1):
+    def create_stream_pppoe_discovery(self, src_if, dst_if, client_mac, count=1):
         packets = []
         for i in range(count):
             # create packet info stored in the test case instance
@@ -63,9 +62,11 @@ class TestPPPoE(VppTestCase):
             # convert the info into packet payload
             payload = self.info_to_payload(info)
             # create the packet itself
-            p = (Ether(dst=src_if.local_mac, src=client_mac) /
-                 PPPoED(sessionid=0) /
-                 Raw(payload))
+            p = (
+                Ether(dst=src_if.local_mac, src=client_mac)
+                / PPPoED(sessionid=0)
+                / Raw(payload)
+            )
             # store a copy of the packet in the packet info
             info.data = p.copy()
             # append the packet to the list
@@ -74,8 +75,7 @@ class TestPPPoE(VppTestCase):
         # return the created packet list
         return packets
 
-    def create_stream_pppoe_lcp(self, src_if, dst_if,
-                                client_mac, session_id, count=1):
+    def create_stream_pppoe_lcp(self, src_if, dst_if, client_mac, session_id, count=1):
         packets = []
         for i in range(count):
             # create packet info stored in the test case instance
@@ -83,10 +83,12 @@ class TestPPPoE(VppTestCase):
             # convert the info into packet payload
             payload = self.info_to_payload(info)
             # create the packet itself
-            p = (Ether(dst=src_if.local_mac, src=client_mac) /
-                 PPPoE(sessionid=session_id) /
-                 PPP(proto=0xc021) /
-                 Raw(payload))
+            p = (
+                Ether(dst=src_if.local_mac, src=client_mac)
+                / PPPoE(sessionid=session_id)
+                / PPP(proto=0xC021)
+                / Raw(payload)
+            )
             # store a copy of the packet in the packet info
             info.data = p.copy()
             # append the packet to the list
@@ -95,8 +97,9 @@ class TestPPPoE(VppTestCase):
         # return the created packet list
         return packets
 
-    def create_stream_pppoe_ip4(self, src_if, dst_if,
-                                client_mac, session_id, client_ip, count=1):
+    def create_stream_pppoe_ip4(
+        self, src_if, dst_if, client_mac, session_id, client_ip, count=1
+    ):
         packets = []
         for i in range(count):
             # create packet info stored in the test case instance
@@ -104,11 +107,13 @@ class TestPPPoE(VppTestCase):
             # convert the info into packet payload
             payload = self.info_to_payload(info)
             # create the packet itself
-            p = (Ether(dst=src_if.local_mac, src=client_mac) /
-                 PPPoE(sessionid=session_id) /
-                 PPP(proto=0x0021) /
-                 IP(src=client_ip, dst=self.dst_ip) /
-                 Raw(payload))
+            p = (
+                Ether(dst=src_if.local_mac, src=client_mac)
+                / PPPoE(sessionid=session_id)
+                / PPP(proto=0x0021)
+                / IP(src=client_ip, dst=self.dst_ip)
+                / Raw(payload)
+            )
             # store a copy of the packet in the packet info
             info.data = p.copy()
             # append the packet to the list
@@ -125,9 +130,11 @@ class TestPPPoE(VppTestCase):
             # convert the info into packet payload
             payload = self.info_to_payload(info)
             # create the packet itself
-            p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
-                 IP(src=dst_ip, dst=client_ip) /
-                 Raw(payload))
+            p = (
+                Ether(dst=src_if.local_mac, src=src_if.remote_mac)
+                / IP(src=dst_ip, dst=client_ip)
+                / Raw(payload)
+            )
             # store a copy of the packet in the packet info
             info.data = p.copy()
             # append the packet to the list
@@ -180,36 +187,39 @@ class TestPPPoE(VppTestCase):
                 raise
 
     def test_PPPoE_Decap(self):
-        """ PPPoE Decap Test """
+        """PPPoE Decap Test"""
 
         self.vapi.cli("clear trace")
 
         #
         # Add a route that resolves the server's destination
         #
-        route_sever_dst = VppIpRoute(self, "100.1.1.100", 32,
-                                     [VppRoutePath(self.pg1.remote_ip4,
-                                                   self.pg1.sw_if_index)])
+        route_sever_dst = VppIpRoute(
+            self,
+            "100.1.1.100",
+            32,
+            [VppRoutePath(self.pg1.remote_ip4, self.pg1.sw_if_index)],
+        )
         route_sever_dst.add_vpp_config()
 
         # Send PPPoE Discovery
-        tx0 = self.create_stream_pppoe_discovery(self.pg0, self.pg1,
-                                                 self.pg0.remote_mac)
+        tx0 = self.create_stream_pppoe_discovery(
+            self.pg0, self.pg1, self.pg0.remote_mac
+        )
         self.pg0.add_stream(tx0)
         self.pg_start()
 
         # Send PPPoE PPP LCP
-        tx1 = self.create_stream_pppoe_lcp(self.pg0, self.pg1,
-                                           self.pg0.remote_mac,
-                                           self.session_id)
+        tx1 = self.create_stream_pppoe_lcp(
+            self.pg0, self.pg1, self.pg0.remote_mac, self.session_id
+        )
         self.pg0.add_stream(tx1)
         self.pg_start()
 
         # Create PPPoE session
-        pppoe_if = VppPppoeInterface(self,
-                                     self.pg0.remote_ip4,
-                                     self.pg0.remote_mac,
-                                     self.session_id)
+        pppoe_if = VppPppoeInterface(
+            self, self.pg0.remote_ip4, self.pg0.remote_mac, self.session_id
+        )
         pppoe_if.add_vpp_config()
         pppoe_if.set_unnumbered(self.pg0.sw_if_index)
 
@@ -217,10 +227,13 @@ class TestPPPoE(VppTestCase):
         # Send tunneled packets that match the created tunnel and
         # are decapped and forwarded
         #
-        tx2 = self.create_stream_pppoe_ip4(self.pg0, self.pg1,
-                                           self.pg0.remote_mac,
-                                           self.session_id,
-                                           self.pg0.remote_ip4)
+        tx2 = self.create_stream_pppoe_ip4(
+            self.pg0,
+            self.pg1,
+            self.pg0.remote_mac,
+            self.session_id,
+            self.pg0.remote_ip4,
+        )
         self.pg0.add_stream(tx2)
 
         self.pg_enable_capture(self.pg_interfaces)
@@ -244,36 +257,39 @@ class TestPPPoE(VppTestCase):
         route_sever_dst.remove_vpp_config()
 
     def test_PPPoE_Encap(self):
-        """ PPPoE Encap Test """
+        """PPPoE Encap Test"""
 
         self.vapi.cli("clear trace")
 
         #
         # Add a route that resolves the server's destination
         #
-        route_sever_dst = VppIpRoute(self, "100.1.1.100", 32,
-                                     [VppRoutePath(self.pg1.remote_ip4,
-                                                   self.pg1.sw_if_index)])
+        route_sever_dst = VppIpRoute(
+            self,
+            "100.1.1.100",
+            32,
+            [VppRoutePath(self.pg1.remote_ip4, self.pg1.sw_if_index)],
+        )
         route_sever_dst.add_vpp_config()
 
         # Send PPPoE Discovery
-        tx0 = self.create_stream_pppoe_discovery(self.pg0, self.pg1,
-                                                 self.pg0.remote_mac)
+        tx0 = self.create_stream_pppoe_discovery(
+            self.pg0, self.pg1, self.pg0.remote_mac
+        )
         self.pg0.add_stream(tx0)
         self.pg_start()
 
         # Send PPPoE PPP LCP
-        tx1 = self.create_stream_pppoe_lcp(self.pg0, self.pg1,
-                                           self.pg0.remote_mac,
-                                           self.session_id)
+        tx1 = self.create_stream_pppoe_lcp(
+            self.pg0, self.pg1, self.pg0.remote_mac, self.session_id
+        )
         self.pg0.add_stream(tx1)
         self.pg_start()
 
         # Create PPPoE session
-        pppoe_if = VppPppoeInterface(self,
-                                     self.pg0.remote_ip4,
-                                     self.pg0.remote_mac,
-                                     self.session_id)
+        pppoe_if = VppPppoeInterface(
+            self, self.pg0.remote_ip4, self.pg0.remote_mac, self.session_id
+        )
         pppoe_if.add_vpp_config()
         pppoe_if.set_unnumbered(self.pg0.sw_if_index)
 
@@ -282,8 +298,9 @@ class TestPPPoE(VppTestCase):
         #  - packets are PPPoE encapped
         #
         self.vapi.cli("clear trace")
-        tx2 = self.create_stream_ip4(self.pg1, self.pg0,
-                                     self.pg0.remote_ip4, self.dst_ip, 65)
+        tx2 = self.create_stream_ip4(
+            self.pg1, self.pg0, self.pg0.remote_ip4, self.dst_ip, 65
+        )
         self.pg1.add_stream(tx2)
 
         self.pg_enable_capture(self.pg_interfaces)
@@ -308,36 +325,39 @@ class TestPPPoE(VppTestCase):
         route_sever_dst.remove_vpp_config()
 
     def test_PPPoE_Add_Twice(self):
-        """ PPPoE Add Same Session Twice Test """
+        """PPPoE Add Same Session Twice Test"""
 
         self.vapi.cli("clear trace")
 
         #
         # Add a route that resolves the server's destination
         #
-        route_sever_dst = VppIpRoute(self, "100.1.1.100", 32,
-                                     [VppRoutePath(self.pg1.remote_ip4,
-                                                   self.pg1.sw_if_index)])
+        route_sever_dst = VppIpRoute(
+            self,
+            "100.1.1.100",
+            32,
+            [VppRoutePath(self.pg1.remote_ip4, self.pg1.sw_if_index)],
+        )
         route_sever_dst.add_vpp_config()
 
         # Send PPPoE Discovery
-        tx0 = self.create_stream_pppoe_discovery(self.pg0, self.pg1,
-                                                 self.pg0.remote_mac)
+        tx0 = self.create_stream_pppoe_discovery(
+            self.pg0, self.pg1, self.pg0.remote_mac
+        )
         self.pg0.add_stream(tx0)
         self.pg_start()
 
         # Send PPPoE PPP LCP
-        tx1 = self.create_stream_pppoe_lcp(self.pg0, self.pg1,
-                                           self.pg0.remote_mac,
-                                           self.session_id)
+        tx1 = self.create_stream_pppoe_lcp(
+            self.pg0, self.pg1, self.pg0.remote_mac, self.session_id
+        )
         self.pg0.add_stream(tx1)
         self.pg_start()
 
         # Create PPPoE session
-        pppoe_if = VppPppoeInterface(self,
-                                     self.pg0.remote_ip4,
-                                     self.pg0.remote_mac,
-                                     self.session_id)
+        pppoe_if = VppPppoeInterface(
+            self, self.pg0.remote_ip4, self.pg0.remote_mac, self.session_id
+        )
         pppoe_if.add_vpp_config()
         pppoe_if.set_unnumbered(self.pg0.sw_if_index)
 
@@ -363,36 +383,39 @@ class TestPPPoE(VppTestCase):
         route_sever_dst.remove_vpp_config()
 
     def test_PPPoE_Del_Twice(self):
-        """ PPPoE Delete Same Session Twice Test """
+        """PPPoE Delete Same Session Twice Test"""
 
         self.vapi.cli("clear trace")
 
         #
         # Add a route that resolves the server's destination
         #
-        route_sever_dst = VppIpRoute(self, "100.1.1.100", 32,
-                                     [VppRoutePath(self.pg1.remote_ip4,
-                                                   self.pg1.sw_if_index)])
+        route_sever_dst = VppIpRoute(
+            self,
+            "100.1.1.100",
+            32,
+            [VppRoutePath(self.pg1.remote_ip4, self.pg1.sw_if_index)],
+        )
         route_sever_dst.add_vpp_config()
 
         # Send PPPoE Discovery
-        tx0 = self.create_stream_pppoe_discovery(self.pg0, self.pg1,
-                                                 self.pg0.remote_mac)
+        tx0 = self.create_stream_pppoe_discovery(
+            self.pg0, self.pg1, self.pg0.remote_mac
+        )
         self.pg0.add_stream(tx0)
         self.pg_start()
 
         # Send PPPoE PPP LCP
-        tx1 = self.create_stream_pppoe_lcp(self.pg0, self.pg1,
-                                           self.pg0.remote_mac,
-                                           self.session_id)
+        tx1 = self.create_stream_pppoe_lcp(
+            self.pg0, self.pg1, self.pg0.remote_mac, self.session_id
+        )
         self.pg0.add_stream(tx1)
         self.pg_start()
 
         # Create PPPoE session
-        pppoe_if = VppPppoeInterface(self,
-                                     self.pg0.remote_ip4,
-                                     self.pg0.remote_mac,
-                                     self.session_id)
+        pppoe_if = VppPppoeInterface(
+            self, self.pg0.remote_ip4, self.pg0.remote_mac, self.session_id
+        )
         pppoe_if.add_vpp_config()
 
         # Delete PPPoE session
@@ -417,57 +440,60 @@ class TestPPPoE(VppTestCase):
         route_sever_dst.remove_vpp_config()
 
     def test_PPPoE_Decap_Multiple(self):
-        """ PPPoE Decap Multiple Sessions Test """
+        """PPPoE Decap Multiple Sessions Test"""
 
         self.vapi.cli("clear trace")
 
         #
         # Add a route that resolves the server's destination
         #
-        route_sever_dst = VppIpRoute(self, "100.1.1.100", 32,
-                                     [VppRoutePath(self.pg1.remote_ip4,
-                                                   self.pg1.sw_if_index)])
+        route_sever_dst = VppIpRoute(
+            self,
+            "100.1.1.100",
+            32,
+            [VppRoutePath(self.pg1.remote_ip4, self.pg1.sw_if_index)],
+        )
         route_sever_dst.add_vpp_config()
 
         # Send PPPoE Discovery 1
-        tx0 = self.create_stream_pppoe_discovery(self.pg0, self.pg1,
-                                                 self.pg0.remote_mac)
+        tx0 = self.create_stream_pppoe_discovery(
+            self.pg0, self.pg1, self.pg0.remote_mac
+        )
         self.pg0.add_stream(tx0)
         self.pg_start()
 
         # Send PPPoE PPP LCP 1
-        tx1 = self.create_stream_pppoe_lcp(self.pg0, self.pg1,
-                                           self.pg0.remote_mac,
-                                           self.session_id)
+        tx1 = self.create_stream_pppoe_lcp(
+            self.pg0, self.pg1, self.pg0.remote_mac, self.session_id
+        )
         self.pg0.add_stream(tx1)
         self.pg_start()
 
         # Create PPPoE session 1
-        pppoe_if1 = VppPppoeInterface(self,
-                                      self.pg0.remote_ip4,
-                                      self.pg0.remote_mac,
-                                      self.session_id)
+        pppoe_if1 = VppPppoeInterface(
+            self, self.pg0.remote_ip4, self.pg0.remote_mac, self.session_id
+        )
         pppoe_if1.add_vpp_config()
         pppoe_if1.set_unnumbered(self.pg0.sw_if_index)
 
         # Send PPPoE Discovery 2
-        tx3 = self.create_stream_pppoe_discovery(self.pg2, self.pg1,
-                                                 self.pg2.remote_mac)
+        tx3 = self.create_stream_pppoe_discovery(
+            self.pg2, self.pg1, self.pg2.remote_mac
+        )
         self.pg2.add_stream(tx3)
         self.pg_start()
 
         # Send PPPoE PPP LCP 2
-        tx4 = self.create_stream_pppoe_lcp(self.pg2, self.pg1,
-                                           self.pg2.remote_mac,
-                                           self.session_id + 1)
+        tx4 = self.create_stream_pppoe_lcp(
+            self.pg2, self.pg1, self.pg2.remote_mac, self.session_id + 1
+        )
         self.pg2.add_stream(tx4)
         self.pg_start()
 
         # Create PPPoE session 2
-        pppoe_if2 = VppPppoeInterface(self,
-                                      self.pg2.remote_ip4,
-                                      self.pg2.remote_mac,
-                                      self.session_id + 1)
+        pppoe_if2 = VppPppoeInterface(
+            self, self.pg2.remote_ip4, self.pg2.remote_mac, self.session_id + 1
+        )
         pppoe_if2.add_vpp_config()
         pppoe_if2.set_unnumbered(self.pg0.sw_if_index)
 
@@ -475,10 +501,13 @@ class TestPPPoE(VppTestCase):
         # Send tunneled packets that match the created tunnel and
         # are decapped and forwarded
         #
-        tx2 = self.create_stream_pppoe_ip4(self.pg0, self.pg1,
-                                           self.pg0.remote_mac,
-                                           self.session_id,
-                                           self.pg0.remote_ip4)
+        tx2 = self.create_stream_pppoe_ip4(
+            self.pg0,
+            self.pg1,
+            self.pg0.remote_mac,
+            self.session_id,
+            self.pg0.remote_ip4,
+        )
         self.pg0.add_stream(tx2)
 
         self.pg_enable_capture(self.pg_interfaces)
@@ -487,10 +516,13 @@ class TestPPPoE(VppTestCase):
         rx2 = self.pg1.get_capture(len(tx2))
         self.verify_decapped_pppoe(self.pg0, rx2, tx2)
 
-        tx5 = self.create_stream_pppoe_ip4(self.pg2, self.pg1,
-                                           self.pg2.remote_mac,
-                                           self.session_id + 1,
-                                           self.pg2.remote_ip4)
+        tx5 = self.create_stream_pppoe_ip4(
+            self.pg2,
+            self.pg1,
+            self.pg2.remote_mac,
+            self.session_id + 1,
+            self.pg2.remote_ip4,
+        )
         self.pg2.add_stream(tx5)
 
         self.pg_enable_capture(self.pg_interfaces)
@@ -515,56 +547,59 @@ class TestPPPoE(VppTestCase):
         route_sever_dst.remove_vpp_config()
 
     def test_PPPoE_Encap_Multiple(self):
-        """ PPPoE Encap Multiple Sessions Test """
+        """PPPoE Encap Multiple Sessions Test"""
 
         self.vapi.cli("clear trace")
 
         #
         # Add a route that resolves the server's destination
         #
-        route_sever_dst = VppIpRoute(self, "100.1.1.100", 32,
-                                     [VppRoutePath(self.pg1.remote_ip4,
-                                                   self.pg1.sw_if_index)])
+        route_sever_dst = VppIpRoute(
+            self,
+            "100.1.1.100",
+            32,
+            [VppRoutePath(self.pg1.remote_ip4, self.pg1.sw_if_index)],
+        )
         route_sever_dst.add_vpp_config()
 
         # Send PPPoE Discovery 1
-        tx0 = self.create_stream_pppoe_discovery(self.pg0, self.pg1,
-                                                 self.pg0.remote_mac)
+        tx0 = self.create_stream_pppoe_discovery(
+            self.pg0, self.pg1, self.pg0.remote_mac
+        )
         self.pg0.add_stream(tx0)
         self.pg_start()
 
         # Send PPPoE PPP LCP 1
-        tx1 = self.create_stream_pppoe_lcp(self.pg0, self.pg1,
-                                           self.pg0.remote_mac,
-                                           self.session_id)
+        tx1 = self.create_stream_pppoe_lcp(
+            self.pg0, self.pg1, self.pg0.remote_mac, self.session_id
+        )
         self.pg0.add_stream(tx1)
         self.pg_start()
 
         # Create PPPoE session 1
-        pppoe_if1 = VppPppoeInterface(self,
-                                      self.pg0.remote_ip4,
-                                      self.pg0.remote_mac,
-                                      self.session_id)
+        pppoe_if1 = VppPppoeInterface(
+            self, self.pg0.remote_ip4, self.pg0.remote_mac, self.session_id
+        )
         pppoe_if1.add_vpp_config()
 
         # Send PPPoE Discovery 2
-        tx3 = self.create_stream_pppoe_discovery(self.pg2, self.pg1,
-                                                 self.pg2.remote_mac)
+        tx3 = self.create_stream_pppoe_discovery(
+            self.pg2, self.pg1, self.pg2.remote_mac
+        )
         self.pg2.add_stream(tx3)
         self.pg_start()
 
         # Send PPPoE PPP LCP 2
-        tx4 = self.create_stream_pppoe_lcp(self.pg2, self.pg1,
-                                           self.pg2.remote_mac,
-                                           self.session_id + 1)
+        tx4 = self.create_stream_pppoe_lcp(
+            self.pg2, self.pg1, self.pg2.remote_mac, self.session_id + 1
+        )
         self.pg2.add_stream(tx4)
         self.pg_start()
 
         # Create PPPoE session 2
-        pppoe_if2 = VppPppoeInterface(self,
-                                      self.pg2.remote_ip4,
-                                      self.pg2.remote_mac,
-                                      self.session_id + 1)
+        pppoe_if2 = VppPppoeInterface(
+            self, self.pg2.remote_ip4, self.pg2.remote_mac, self.session_id + 1
+        )
         pppoe_if2.add_vpp_config()
 
         #
@@ -572,8 +607,9 @@ class TestPPPoE(VppTestCase):
         #  - packets are PPPoE encapped
         #
         self.vapi.cli("clear trace")
-        tx2 = self.create_stream_ip4(self.pg1, self.pg0,
-                                     self.pg0.remote_ip4, self.dst_ip)
+        tx2 = self.create_stream_ip4(
+            self.pg1, self.pg0, self.pg0.remote_ip4, self.dst_ip
+        )
         self.pg1.add_stream(tx2)
 
         self.pg_enable_capture(self.pg_interfaces)
@@ -582,8 +618,9 @@ class TestPPPoE(VppTestCase):
         rx2 = self.pg0.get_capture(len(tx2))
         self.verify_encaped_pppoe(self.pg1, rx2, tx2, self.session_id)
 
-        tx5 = self.create_stream_ip4(self.pg1, self.pg2,
-                                     self.pg2.remote_ip4, self.dst_ip)
+        tx5 = self.create_stream_ip4(
+            self.pg1, self.pg2, self.pg2.remote_ip4, self.dst_ip
+        )
         self.pg1.add_stream(tx5)
 
         self.pg_enable_capture(self.pg_interfaces)
@@ -607,5 +644,6 @@ class TestPPPoE(VppTestCase):
         # Delete a route that resolves the server's destination
         route_sever_dst.remove_vpp_config()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)

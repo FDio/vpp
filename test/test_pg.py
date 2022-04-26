@@ -12,7 +12,7 @@ from framework import VppTestCase, VppTestRunner
 
 
 class TestPgTun(VppTestCase):
-    """ PG Test Case """
+    """PG Test Case"""
 
     def setUp(self):
         super(TestPgTun, self).setUp()
@@ -41,7 +41,7 @@ class TestPgTun(VppTestCase):
         super(TestPgTun, self).tearDown()
 
     def test_pg_tun(self):
-        """ IP[46] Tunnel Mode PG """
+        """IP[46] Tunnel Mode PG"""
 
         #
         # test that we can send and receive IP encap'd packets on the
@@ -50,9 +50,11 @@ class TestPgTun(VppTestCase):
         N_PKTS = 31
 
         # v4 tun to ethernet
-        p = (IP(src=self.pg1.remote_ip4, dst=self.pg0.remote_ip4) /
-             UDP(sport=1234, dport=1234) /
-             Raw('0' * 48))
+        p = (
+            IP(src=self.pg1.remote_ip4, dst=self.pg0.remote_ip4)
+            / UDP(sport=1234, dport=1234)
+            / Raw("0" * 48)
+        )
 
         rxs = self.send_and_expect(self.pg1, p * N_PKTS, self.pg0)
         for rx in rxs:
@@ -60,9 +62,11 @@ class TestPgTun(VppTestCase):
             self.assertEqual(rx[IP].dst, self.pg0.remote_ip4)
 
         # v6 tun to ethernet
-        p = (IPv6(src=self.pg2.remote_ip6, dst=self.pg0.remote_ip6) /
-             UDP(sport=1234, dport=1234) /
-             Raw('0' * 48))
+        p = (
+            IPv6(src=self.pg2.remote_ip6, dst=self.pg0.remote_ip6)
+            / UDP(sport=1234, dport=1234)
+            / Raw("0" * 48)
+        )
 
         rxs = self.send_and_expect(self.pg2, p * N_PKTS, self.pg0)
         for rx in rxs:
@@ -70,10 +74,12 @@ class TestPgTun(VppTestCase):
             self.assertEqual(rx[IPv6].dst, self.pg0.remote_ip6)
 
         # eth to v4 tun
-        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
-             UDP(sport=1234, dport=1234) /
-             Raw('0' * 48))
+        p = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4)
+            / UDP(sport=1234, dport=1234)
+            / Raw("0" * 48)
+        )
 
         rxs = self.send_and_expect(self.pg0, p * N_PKTS, self.pg1)
         for rx in rxs:
@@ -82,10 +88,12 @@ class TestPgTun(VppTestCase):
             self.assertEqual(rx[IP].dst, self.pg1.remote_ip4)
 
         # eth to v6 tun
-        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-             IPv6(src=self.pg0.remote_ip6, dst=self.pg2.remote_ip6) /
-             UDP(sport=1234, dport=1234) /
-             Raw('0' * 48))
+        p = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IPv6(src=self.pg0.remote_ip6, dst=self.pg2.remote_ip6)
+            / UDP(sport=1234, dport=1234)
+            / Raw("0" * 48)
+        )
 
         rxs = self.send_and_expect(self.pg0, p * N_PKTS, self.pg2)
         for rx in rxs:
@@ -94,5 +102,5 @@ class TestPgTun(VppTestCase):
             self.assertEqual(rx[IPv6].dst, self.pg2.remote_ip6)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)

@@ -15,7 +15,7 @@ from scapy.layers.dns import DNSRR, DNS, DNSQR
 
 
 class TestDns(VppTestCase):
-    """ Dns Test Cases """
+    """Dns Test Cases"""
 
     @classmethod
     def setUpClass(cls):
@@ -43,15 +43,19 @@ class TestDns(VppTestCase):
 
         :param VppInterface src_if: Interface to create packet stream for.
         """
-        good_request = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
-                        IP(src=src_if.remote_ip4) /
-                        UDP(sport=1234, dport=53) /
-                        DNS(rd=1, qd=DNSQR(qname="bozo.clown.org")))
+        good_request = (
+            Ether(dst=src_if.local_mac, src=src_if.remote_mac)
+            / IP(src=src_if.remote_ip4)
+            / UDP(sport=1234, dport=53)
+            / DNS(rd=1, qd=DNSQR(qname="bozo.clown.org"))
+        )
 
-        bad_request = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
-                       IP(src=src_if.remote_ip4) /
-                       UDP(sport=1234, dport=53) /
-                       DNS(rd=1, qd=DNSQR(qname="no.clown.org")))
+        bad_request = (
+            Ether(dst=src_if.local_mac, src=src_if.remote_mac)
+            / IP(src=src_if.remote_ip4)
+            / UDP(sport=1234, dport=53)
+            / DNS(rd=1, qd=DNSQR(qname="no.clown.org"))
+        )
         pkts = [good_request, bad_request]
         return pkts
 
@@ -65,14 +69,15 @@ class TestDns(VppTestCase):
         self.logger.info("Verifying capture on interface %s" % dst_if.name)
         for packet in capture:
             dns = packet[DNS]
-            self.assertEqual(dns.an[0].rdata, '1.2.3.4')
+            self.assertEqual(dns.an[0].rdata, "1.2.3.4")
 
     def test_dns_unittest(self):
-        """ DNS Name Resolver Basic Functional Test """
+        """DNS Name Resolver Basic Functional Test"""
 
         # Set up an upstream name resolver. We won't actually go there
         self.vapi.dns_name_server_add_del(
-            is_ip6=0, is_add=1, server_address=IPv4Address(u'8.8.8.8').packed)
+            is_ip6=0, is_add=1, server_address=IPv4Address("8.8.8.8").packed
+        )
 
         # Enable name resolution
         self.vapi.dns_enable_disable(enable=1)
@@ -81,13 +86,13 @@ class TestDns(VppTestCase):
         self.logger.info(self.vapi.cli("dns cache add bozo.clown.org 1.2.3.4"))
 
         # Test the binary API
-        rv = self.vapi.dns_resolve_name(name=b'bozo.clown.org')
-        self.assertEqual(rv.ip4_address, IPv4Address(u'1.2.3.4').packed)
+        rv = self.vapi.dns_resolve_name(name=b"bozo.clown.org")
+        self.assertEqual(rv.ip4_address, IPv4Address("1.2.3.4").packed)
 
         # Configure 127.0.0.1/8 on the pg interface
         self.vapi.sw_interface_add_del_address(
-            sw_if_index=self.pg0.sw_if_index,
-            prefix="127.0.0.1/8")
+            sw_if_index=self.pg0.sw_if_index, prefix="127.0.0.1/8"
+        )
 
         # Send a couple of DNS request packets, one for bozo.clown.org
         # and one for no.clown.org which won't resolve
@@ -102,8 +107,9 @@ class TestDns(VppTestCase):
 
         # Make sure that the cache contents are correct
         str = self.vapi.cli("show dns cache verbose")
-        self.assertIn('1.2.3.4', str)
-        self.assertIn('[P] no.clown.org:', str)
+        self.assertIn("1.2.3.4", str)
+        self.assertIn("[P] no.clown.org:", str)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)

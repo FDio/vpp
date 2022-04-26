@@ -11,7 +11,7 @@ from scapy.packet import Raw
 
 
 class TestMSSClamp(VppTestCase):
-    """ TCP MSS Clamping Test Case """
+    """TCP MSS Clamping Test Case"""
 
     def setUp(self):
         super(TestMSSClamp, self).setUp()
@@ -40,31 +40,34 @@ class TestMSSClamp(VppTestCase):
         tcp_csum = tcp.chksum
         del tcp.chksum
         ip_csum = 0
-        if (rx.haslayer(IP)):
+        if rx.haslayer(IP):
             ip_csum = rx[IP].chksum
             del rx[IP].chksum
 
         opt = tcp.options
-        self.assertEqual(opt[0][0], 'MSS')
+        self.assertEqual(opt[0][0], "MSS")
         self.assertEqual(opt[0][1], expected_mss)
         # recalculate checksums
         rx = rx.__class__(bytes(rx))
         tcp = rx[TCP]
         self.assertEqual(tcp_csum, tcp.chksum)
-        if (rx.haslayer(IP)):
+        if rx.haslayer(IP):
             self.assertEqual(ip_csum, rx[IP].chksum)
 
     def send_and_verify_ip4(self, src_pg, dst_pg, mss, expected_mss):
         # IPv4 TCP packet with the requested MSS option.
         # from a host on src_pg to a host on dst_pg.
-        p = (Ether(dst=src_pg.local_mac,
-                   src=src_pg.remote_mac) /
-             IP(src=src_pg.remote_ip4,
-                dst=dst_pg.remote_ip4) /
-             TCP(sport=1234, dport=1234,
-                 flags="S",
-                 options=[('MSS', (mss)), ('EOL', None)]) /
-             Raw('\xa5' * 100))
+        p = (
+            Ether(dst=src_pg.local_mac, src=src_pg.remote_mac)
+            / IP(src=src_pg.remote_ip4, dst=dst_pg.remote_ip4)
+            / TCP(
+                sport=1234,
+                dport=1234,
+                flags="S",
+                options=[("MSS", (mss)), ("EOL", None)],
+            )
+            / Raw("\xa5" * 100)
+        )
 
         rxs = self.send_and_expect(src_pg, p * 65, dst_pg)
 
@@ -76,14 +79,17 @@ class TestMSSClamp(VppTestCase):
         # IPv6 TCP packet with the requested MSS option.
         # from a host on src_pg to a host on dst_pg.
         #
-        p = (Ether(dst=src_pg.local_mac,
-                   src=src_pg.remote_mac) /
-             IPv6(src=src_pg.remote_ip6,
-                  dst=dst_pg.remote_ip6) /
-             TCP(sport=1234, dport=1234,
-                 flags="S",
-                 options=[('MSS', (mss)), ('EOL', None)]) /
-             Raw('\xa5' * 100))
+        p = (
+            Ether(dst=src_pg.local_mac, src=src_pg.remote_mac)
+            / IPv6(src=src_pg.remote_ip6, dst=dst_pg.remote_ip6)
+            / TCP(
+                sport=1234,
+                dport=1234,
+                flags="S",
+                options=[("MSS", (mss)), ("EOL", None)],
+            )
+            / Raw("\xa5" * 100)
+        )
 
         rxs = self.send_and_expect(src_pg, p * 65, dst_pg)
 
@@ -91,12 +97,16 @@ class TestMSSClamp(VppTestCase):
             self.verify_pkt(rx, expected_mss)
 
     def test_tcp_mss_clamping_ip4_tx(self):
-        """ IP4 TCP MSS Clamping TX """
+        """IP4 TCP MSS Clamping TX"""
 
         # enable the TCP MSS clamping feature to lower the MSS to 1424.
-        self.vapi.mss_clamp_enable_disable(self.pg1.sw_if_index,
-                                           ipv4_mss=1424, ipv6_mss=0,
-                                           ipv4_direction=3, ipv6_direction=0)
+        self.vapi.mss_clamp_enable_disable(
+            self.pg1.sw_if_index,
+            ipv4_mss=1424,
+            ipv6_mss=0,
+            ipv4_direction=3,
+            ipv6_direction=0,
+        )
 
         # Verify that the feature is enabled.
         rv, reply = self.vapi.mss_clamp_get(sw_if_index=self.pg1.sw_if_index)
@@ -107,8 +117,7 @@ class TestMSSClamp(VppTestCase):
         self.send_and_verify_ip4(self.pg0, self.pg1, 1460, 1424)
 
         # check the stats
-        stats = self.statistics.get_counter(
-            '/err/tcp-mss-clamping-ip4-out/clamped')
+        stats = self.statistics.get_counter("/err/tcp-mss-clamping-ip4-out/clamped")
         self.assertEqual(sum(stats), 65)
 
         # Send syn packets with small enough MSS values and verify they are
@@ -117,36 +126,52 @@ class TestMSSClamp(VppTestCase):
 
         # enable the the feature only in TX direction
         # and change the max MSS value
-        self.vapi.mss_clamp_enable_disable(self.pg1.sw_if_index,
-                                           ipv4_mss=1420, ipv6_mss=0,
-                                           ipv4_direction=2, ipv6_direction=0)
+        self.vapi.mss_clamp_enable_disable(
+            self.pg1.sw_if_index,
+            ipv4_mss=1420,
+            ipv6_mss=0,
+            ipv4_direction=2,
+            ipv6_direction=0,
+        )
 
         # Send syn packets and verify that the MSS value is lowered.
         self.send_and_verify_ip4(self.pg0, self.pg1, 1460, 1420)
 
         # enable the the feature only in RX direction
-        self.vapi.mss_clamp_enable_disable(self.pg1.sw_if_index,
-                                           ipv4_mss=1424, ipv6_mss=0,
-                                           ipv4_direction=1, ipv6_direction=0)
+        self.vapi.mss_clamp_enable_disable(
+            self.pg1.sw_if_index,
+            ipv4_mss=1424,
+            ipv6_mss=0,
+            ipv4_direction=1,
+            ipv6_direction=0,
+        )
 
         # Send the packets again and ensure they are unchanged.
         self.send_and_verify_ip4(self.pg0, self.pg1, 1460, 1460)
 
         # disable the feature
-        self.vapi.mss_clamp_enable_disable(self.pg1.sw_if_index,
-                                           ipv4_mss=0, ipv6_mss=0,
-                                           ipv4_direction=0, ipv6_direction=0)
+        self.vapi.mss_clamp_enable_disable(
+            self.pg1.sw_if_index,
+            ipv4_mss=0,
+            ipv6_mss=0,
+            ipv4_direction=0,
+            ipv6_direction=0,
+        )
 
         # Send the packets again and ensure they are unchanged.
         self.send_and_verify_ip4(self.pg0, self.pg1, 1460, 1460)
 
     def test_tcp_mss_clamping_ip4_rx(self):
-        """ IP4 TCP MSS Clamping RX """
+        """IP4 TCP MSS Clamping RX"""
 
         # enable the TCP MSS clamping feature to lower the MSS to 1424.
-        self.vapi.mss_clamp_enable_disable(self.pg1.sw_if_index,
-                                           ipv4_mss=1424, ipv6_mss=0,
-                                           ipv4_direction=3, ipv6_direction=0)
+        self.vapi.mss_clamp_enable_disable(
+            self.pg1.sw_if_index,
+            ipv4_mss=1424,
+            ipv6_mss=0,
+            ipv4_direction=3,
+            ipv6_direction=0,
+        )
 
         # Verify that the feature is enabled.
         rv, reply = self.vapi.mss_clamp_get(sw_if_index=self.pg1.sw_if_index)
@@ -157,8 +182,7 @@ class TestMSSClamp(VppTestCase):
         self.send_and_verify_ip4(self.pg1, self.pg0, 1460, 1424)
 
         # check the stats
-        stats = self.statistics.get_counter(
-            '/err/tcp-mss-clamping-ip4-in/clamped')
+        stats = self.statistics.get_counter("/err/tcp-mss-clamping-ip4-in/clamped")
         self.assertEqual(sum(stats), 65)
 
         # Send syn packets with small enough MSS values and verify they are
@@ -167,36 +191,52 @@ class TestMSSClamp(VppTestCase):
 
         # enable the the feature only in RX direction
         # and change the max MSS value
-        self.vapi.mss_clamp_enable_disable(self.pg1.sw_if_index,
-                                           ipv4_mss=1420, ipv6_mss=0,
-                                           ipv4_direction=1, ipv6_direction=0)
+        self.vapi.mss_clamp_enable_disable(
+            self.pg1.sw_if_index,
+            ipv4_mss=1420,
+            ipv6_mss=0,
+            ipv4_direction=1,
+            ipv6_direction=0,
+        )
 
         # Send syn packets and verify that the MSS value is lowered.
         self.send_and_verify_ip4(self.pg1, self.pg0, 1460, 1420)
 
         # enable the the feature only in TX direction
-        self.vapi.mss_clamp_enable_disable(self.pg1.sw_if_index,
-                                           ipv4_mss=1424, ipv6_mss=0,
-                                           ipv4_direction=2, ipv6_direction=0)
+        self.vapi.mss_clamp_enable_disable(
+            self.pg1.sw_if_index,
+            ipv4_mss=1424,
+            ipv6_mss=0,
+            ipv4_direction=2,
+            ipv6_direction=0,
+        )
 
         # Send the packets again and ensure they are unchanged.
         self.send_and_verify_ip4(self.pg1, self.pg0, 1460, 1460)
 
         # disable the feature
-        self.vapi.mss_clamp_enable_disable(self.pg1.sw_if_index,
-                                           ipv4_mss=0, ipv6_mss=0,
-                                           ipv4_direction=0, ipv6_direction=0)
+        self.vapi.mss_clamp_enable_disable(
+            self.pg1.sw_if_index,
+            ipv4_mss=0,
+            ipv6_mss=0,
+            ipv4_direction=0,
+            ipv6_direction=0,
+        )
 
         # Send the packets again and ensure they are unchanged.
         self.send_and_verify_ip4(self.pg1, self.pg0, 1460, 1460)
 
     def test_tcp_mss_clamping_ip6_tx(self):
-        """ IP6 TCP MSS Clamping TX """
+        """IP6 TCP MSS Clamping TX"""
 
         # enable the TCP MSS clamping feature to lower the MSS to 1424.
-        self.vapi.mss_clamp_enable_disable(self.pg1.sw_if_index,
-                                           ipv4_mss=0, ipv6_mss=1424,
-                                           ipv4_direction=0, ipv6_direction=3)
+        self.vapi.mss_clamp_enable_disable(
+            self.pg1.sw_if_index,
+            ipv4_mss=0,
+            ipv6_mss=1424,
+            ipv4_direction=0,
+            ipv6_direction=3,
+        )
 
         # Verify that the feature is enabled.
         rv, reply = self.vapi.mss_clamp_get(sw_if_index=self.pg1.sw_if_index)
@@ -207,8 +247,7 @@ class TestMSSClamp(VppTestCase):
         self.send_and_verify_ip6(self.pg0, self.pg1, 1460, 1424)
 
         # check the stats
-        stats = self.statistics.get_counter(
-            '/err/tcp-mss-clamping-ip6-out/clamped')
+        stats = self.statistics.get_counter("/err/tcp-mss-clamping-ip6-out/clamped")
         self.assertEqual(sum(stats), 65)
 
         # Send syn packets with small enough MSS values and verify they are
@@ -217,36 +256,52 @@ class TestMSSClamp(VppTestCase):
 
         # enable the the feature only in TX direction
         # and change the max MSS value
-        self.vapi.mss_clamp_enable_disable(self.pg1.sw_if_index,
-                                           ipv4_mss=0, ipv6_mss=1420,
-                                           ipv4_direction=0, ipv6_direction=2)
+        self.vapi.mss_clamp_enable_disable(
+            self.pg1.sw_if_index,
+            ipv4_mss=0,
+            ipv6_mss=1420,
+            ipv4_direction=0,
+            ipv6_direction=2,
+        )
 
         # Send syn packets and verify that the MSS value is lowered.
         self.send_and_verify_ip6(self.pg0, self.pg1, 1460, 1420)
 
         # enable the the feature only in RX direction
-        self.vapi.mss_clamp_enable_disable(self.pg1.sw_if_index,
-                                           ipv4_mss=0, ipv6_mss=1424,
-                                           ipv4_direction=0, ipv6_direction=1)
+        self.vapi.mss_clamp_enable_disable(
+            self.pg1.sw_if_index,
+            ipv4_mss=0,
+            ipv6_mss=1424,
+            ipv4_direction=0,
+            ipv6_direction=1,
+        )
 
         # Send the packets again and ensure they are unchanged.
         self.send_and_verify_ip6(self.pg0, self.pg1, 1460, 1460)
 
         # disable the feature
-        self.vapi.mss_clamp_enable_disable(self.pg1.sw_if_index,
-                                           ipv4_mss=0, ipv6_mss=0,
-                                           ipv4_direction=0, ipv6_direction=0)
+        self.vapi.mss_clamp_enable_disable(
+            self.pg1.sw_if_index,
+            ipv4_mss=0,
+            ipv6_mss=0,
+            ipv4_direction=0,
+            ipv6_direction=0,
+        )
 
         # Send the packets again and ensure they are unchanged.
         self.send_and_verify_ip6(self.pg0, self.pg1, 1460, 1460)
 
     def test_tcp_mss_clamping_ip6_rx(self):
-        """ IP6 TCP MSS Clamping RX """
+        """IP6 TCP MSS Clamping RX"""
 
         # enable the TCP MSS clamping feature to lower the MSS to 1424.
-        self.vapi.mss_clamp_enable_disable(self.pg1.sw_if_index,
-                                           ipv4_mss=0, ipv6_mss=1424,
-                                           ipv4_direction=0, ipv6_direction=3)
+        self.vapi.mss_clamp_enable_disable(
+            self.pg1.sw_if_index,
+            ipv4_mss=0,
+            ipv6_mss=1424,
+            ipv4_direction=0,
+            ipv6_direction=3,
+        )
 
         # Verify that the feature is enabled.
         rv, reply = self.vapi.mss_clamp_get(sw_if_index=self.pg1.sw_if_index)
@@ -257,8 +312,7 @@ class TestMSSClamp(VppTestCase):
         self.send_and_verify_ip6(self.pg1, self.pg0, 1460, 1424)
 
         # check the stats
-        stats = self.statistics.get_counter(
-            '/err/tcp-mss-clamping-ip6-in/clamped')
+        stats = self.statistics.get_counter("/err/tcp-mss-clamping-ip6-in/clamped")
         self.assertEqual(sum(stats), 65)
 
         # Send syn packets with small enough MSS values and verify they are
@@ -267,29 +321,41 @@ class TestMSSClamp(VppTestCase):
 
         # enable the the feature only in RX direction
         # and change the max MSS value
-        self.vapi.mss_clamp_enable_disable(self.pg1.sw_if_index,
-                                           ipv4_mss=0, ipv6_mss=1420,
-                                           ipv4_direction=0, ipv6_direction=1)
+        self.vapi.mss_clamp_enable_disable(
+            self.pg1.sw_if_index,
+            ipv4_mss=0,
+            ipv6_mss=1420,
+            ipv4_direction=0,
+            ipv6_direction=1,
+        )
 
         # Send syn packets and verify that the MSS value is lowered.
         self.send_and_verify_ip6(self.pg1, self.pg0, 1460, 1420)
 
         # enable the the feature only in TX direction
-        self.vapi.mss_clamp_enable_disable(self.pg1.sw_if_index,
-                                           ipv4_mss=0, ipv6_mss=1424,
-                                           ipv4_direction=0, ipv6_direction=2)
+        self.vapi.mss_clamp_enable_disable(
+            self.pg1.sw_if_index,
+            ipv4_mss=0,
+            ipv6_mss=1424,
+            ipv4_direction=0,
+            ipv6_direction=2,
+        )
 
         # Send the packets again and ensure they are unchanged.
         self.send_and_verify_ip6(self.pg1, self.pg0, 1460, 1460)
 
         # disable the feature
-        self.vapi.mss_clamp_enable_disable(self.pg1.sw_if_index,
-                                           ipv4_mss=0, ipv6_mss=0,
-                                           ipv4_direction=0, ipv6_direction=0)
+        self.vapi.mss_clamp_enable_disable(
+            self.pg1.sw_if_index,
+            ipv4_mss=0,
+            ipv6_mss=0,
+            ipv4_direction=0,
+            ipv6_direction=0,
+        )
 
         # Send the packets again and ensure they are unchanged.
         self.send_and_verify_ip6(self.pg1, self.pg0, 1460, 1460)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)

@@ -19,7 +19,7 @@ DEFAULT_VIP = "lb_vip_details(_0=978, context=12, vip=vl_api_lb_ip_addr_t(pfx=IP
 
 
 class TestLbEmptyApi(framework.VppTestCase):
-    """TestLbEmptyApi """
+    """TestLbEmptyApi"""
 
     def test_lb_empty_vip_dump(self):
 
@@ -27,18 +27,18 @@ class TestLbEmptyApi(framework.VppTestCase):
         # lb initializes with a default VIP
         rv = self.vapi.lb_vip_dump()
         # print(rv)
-        self.assertEqual(rv, [], 'Expected: [] Received: %r.' % rv)
+        self.assertEqual(rv, [], "Expected: [] Received: %r." % rv)
 
     def test_lb_empty_as_dump(self):
 
         # no records should return []
         rv = self.vapi.lb_as_dump()
         # print(rv)
-        self.assertEqual(rv, [], 'Expected: [] Received: %r.' % rv)
+        self.assertEqual(rv, [], "Expected: [] Received: %r." % rv)
 
 
 class TestLbApi(framework.VppTestCase):
-    """TestLbApi """
+    """TestLbApi"""
 
     def test_lb_vip_dump(self):
         # add some vips
@@ -49,14 +49,17 @@ class TestLbApi(framework.VppTestCase):
         self.vapi.cli("lb vip 2001::/16 encap gre6")
         rv = self.vapi.lb_vip_dump()
         # print(rv)
-        self.assertEqual(str(rv[-1].vip.pfx), "2001::/16",
-                         'Expected: 2001::/16 Received: %r.' % rv[-1].vip.pfx)
+        self.assertEqual(
+            str(rv[-1].vip.pfx),
+            "2001::/16",
+            "Expected: 2001::/16 Received: %r." % rv[-1].vip.pfx,
+        )
 
         self.vapi.cli("lb vip 2001::/16 del")
 
 
 class TestLbAsApi(framework.VppTestCase):
-    """TestLbAsApi """
+    """TestLbAsApi"""
 
     def test_lb_as_dump(self):
         # add some vips
@@ -70,7 +73,13 @@ class TestLbAsApi(framework.VppTestCase):
         # print(rv)
         rv = self.vapi.lb_as_dump()
         # print(rv)
-        self.assertEqual(str(rv[0].vip.pfx), "2001::/16",
-                         'Expected: "2001::/16" Received: %r.' % rv[0].vip.pfx)
-        self.assertEqual(str(rv[0].app_srv), "2000::1",
-                         'Expected: "2000::1" Received: %r.' % rv[0].app_srv)
+        self.assertEqual(
+            str(rv[0].vip.pfx),
+            "2001::/16",
+            'Expected: "2001::/16" Received: %r.' % rv[0].vip.pfx,
+        )
+        self.assertEqual(
+            str(rv[0].app_srv),
+            "2000::1",
+            'Expected: "2000::1" Received: %r.' % rv[0].app_srv,
+        )

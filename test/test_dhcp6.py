@@ -1,10 +1,24 @@
 from socket import AF_INET6, inet_ntop, inet_pton
 
-from scapy.layers.dhcp6 import DHCP6_Advertise, DHCP6OptClientId, \
-    DHCP6OptStatusCode, DHCP6OptPref, DHCP6OptIA_PD, DHCP6OptIAPrefix, \
-    DHCP6OptServerId, DHCP6_Solicit, DHCP6_Reply, DHCP6_Request, DHCP6_Renew, \
-    DHCP6_Rebind, DUID_LL, DHCP6_Release, DHCP6OptElapsedTime, DHCP6OptIA_NA, \
-    DHCP6OptIAAddress
+from scapy.layers.dhcp6 import (
+    DHCP6_Advertise,
+    DHCP6OptClientId,
+    DHCP6OptStatusCode,
+    DHCP6OptPref,
+    DHCP6OptIA_PD,
+    DHCP6OptIAPrefix,
+    DHCP6OptServerId,
+    DHCP6_Solicit,
+    DHCP6_Reply,
+    DHCP6_Request,
+    DHCP6_Renew,
+    DHCP6_Rebind,
+    DUID_LL,
+    DHCP6_Release,
+    DHCP6OptElapsedTime,
+    DHCP6OptIA_NA,
+    DHCP6OptIAAddress,
+)
 from scapy.layers.inet6 import IPv6, Ether, UDP
 from scapy.utils6 import in6_mactoifaceid
 
@@ -21,7 +35,7 @@ def ip6_normalize(ip6):
 
 
 class TestDHCPv6DataPlane(VppTestCase):
-    """ DHCPv6 Data Plane Test Case """
+    """DHCPv6 Data Plane Test Case"""
 
     @classmethod
     def setUpClass(cls):
@@ -49,25 +63,23 @@ class TestDHCPv6DataPlane(VppTestCase):
         super(TestDHCPv6DataPlane, self).tearDown()
 
     def test_dhcp_ia_na_send_solicit_receive_advertise(self):
-        """ Verify DHCPv6 IA NA Solicit packet and Advertise event """
+        """Verify DHCPv6 IA NA Solicit packet and Advertise event"""
 
         self.vapi.dhcp6_clients_enable_disable(enable=1)
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        address = {'address': '1:2:3::5',
-                   'preferred_time': 60,
-                   'valid_time': 120}
+        address = {"address": "1:2:3::5", "preferred_time": 60, "valid_time": 120}
         self.vapi.dhcp6_send_client_message(
-            server_index=0xffffffff,
+            server_index=0xFFFFFFFF,
             mrc=1,
             msg_type=VppEnum.vl_api_dhcpv6_msg_type_t.DHCPV6_MSG_API_SOLICIT,
             sw_if_index=self.pg0.sw_if_index,
             T1=20,
             T2=40,
             addresses=[address],
-            n_addresses=len(
-                [address]))
+            n_addresses=len([address]),
+        )
         rx_list = self.pg0.get_capture(1)
         self.assertEqual(len(rx_list), 1)
         packet = rx_list[0]
@@ -89,27 +101,27 @@ class TestDHCPv6DataPlane(VppTestCase):
         self.assert_equal(ia_na.T2, 40)
         self.assert_equal(len(ia_na.ianaopts), 1)
         address = ia_na.ianaopts[0]
-        self.assert_equal(address.addr, '1:2:3::5')
+        self.assert_equal(address.addr, "1:2:3::5")
         self.assert_equal(address.preflft, 60)
         self.assert_equal(address.validlft, 120)
 
-        self.vapi.want_dhcp6_reply_events(enable_disable=1,
-                                          pid=os.getpid())
+        self.vapi.want_dhcp6_reply_events(enable_disable=1, pid=os.getpid())
 
         try:
-            ia_na_opts = DHCP6OptIAAddress(addr='7:8::2', preflft=60,
-                                           validlft=120)
-            p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
-                 IPv6(src=util.mk_ll_addr(self.pg0.remote_mac),
-                      dst=self.pg0.local_ip6_ll) /
-                 UDP(sport=547, dport=546) /
-                 DHCP6_Advertise(trid=trid) /
-                 DHCP6OptServerId(duid=self.server_duid) /
-                 DHCP6OptClientId(duid=client_duid) /
-                 DHCP6OptPref(prefval=7) /
-                 DHCP6OptStatusCode(statuscode=1) /
-                 DHCP6OptIA_NA(iaid=1, T1=20, T2=40, ianaopts=ia_na_opts)
-                 )
+            ia_na_opts = DHCP6OptIAAddress(addr="7:8::2", preflft=60, validlft=120)
+            p = (
+                Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+                / IPv6(
+                    src=util.mk_ll_addr(self.pg0.remote_mac), dst=self.pg0.local_ip6_ll
+                )
+                / UDP(sport=547, dport=546)
+                / DHCP6_Advertise(trid=trid)
+                / DHCP6OptServerId(duid=self.server_duid)
+                / DHCP6OptClientId(duid=client_duid)
+                / DHCP6OptPref(prefval=7)
+                / DHCP6OptStatusCode(statuscode=1)
+                / DHCP6OptIA_NA(iaid=1, T1=20, T2=40, ianaopts=ia_na_opts)
+            )
             self.pg0.add_stream([p])
             self.pg_start()
 
@@ -123,36 +135,41 @@ class TestDHCPv6DataPlane(VppTestCase):
             reported_address = ev.addresses[0]
             address = ia_na_opts.getfieldval("addr")
             self.assert_equal(str(reported_address.address), address)
-            self.assert_equal(reported_address.preferred_time,
-                              ia_na_opts.getfieldval("preflft"))
-            self.assert_equal(reported_address.valid_time,
-                              ia_na_opts.getfieldval("validlft"))
+            self.assert_equal(
+                reported_address.preferred_time, ia_na_opts.getfieldval("preflft")
+            )
+            self.assert_equal(
+                reported_address.valid_time, ia_na_opts.getfieldval("validlft")
+            )
 
         finally:
             self.vapi.want_dhcp6_reply_events(enable_disable=0)
         self.vapi.dhcp6_clients_enable_disable(enable=0)
 
     def test_dhcp_pd_send_solicit_receive_advertise(self):
-        """ Verify DHCPv6 PD Solicit packet and Advertise event """
+        """Verify DHCPv6 PD Solicit packet and Advertise event"""
 
         self.vapi.dhcp6_clients_enable_disable(enable=1)
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        prefix = {'prefix': {'address': '1:2:3::', 'len': 50},
-                  'preferred_time': 60,
-                  'valid_time': 120}
+        prefix = {
+            "prefix": {"address": "1:2:3::", "len": 50},
+            "preferred_time": 60,
+            "valid_time": 120,
+        }
         prefixes = [prefix]
         self.vapi.dhcp6_pd_send_client_message(
-            server_index=0xffffffff,
+            server_index=0xFFFFFFFF,
             mrc=1,
             msg_type=VppEnum.vl_api_dhcpv6_msg_type_t.DHCPV6_MSG_API_SOLICIT,
             sw_if_index=self.pg0.sw_if_index,
             T1=20,
             T2=40,
             prefixes=prefixes,
-            n_prefixes=len(prefixes))
+            n_prefixes=len(prefixes),
+        )
         rx_list = self.pg0.get_capture(1)
         self.assertEqual(len(rx_list), 1)
         packet = rx_list[0]
@@ -174,28 +191,30 @@ class TestDHCPv6DataPlane(VppTestCase):
         self.assert_equal(ia_pd.T2, 40)
         self.assert_equal(len(ia_pd.iapdopt), 1)
         prefix = ia_pd.iapdopt[0]
-        self.assert_equal(prefix.prefix, '1:2:3::')
+        self.assert_equal(prefix.prefix, "1:2:3::")
         self.assert_equal(prefix.plen, 50)
         self.assert_equal(prefix.preflft, 60)
         self.assert_equal(prefix.validlft, 120)
 
-        self.vapi.want_dhcp6_pd_reply_events(enable_disable=1,
-                                             pid=os.getpid())
+        self.vapi.want_dhcp6_pd_reply_events(enable_disable=1, pid=os.getpid())
 
         try:
-            ia_pd_opts = DHCP6OptIAPrefix(prefix='7:8::', plen=56, preflft=60,
-                                          validlft=120)
-            p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
-                 IPv6(src=util.mk_ll_addr(self.pg0.remote_mac),
-                      dst=self.pg0.local_ip6_ll) /
-                 UDP(sport=547, dport=546) /
-                 DHCP6_Advertise(trid=trid) /
-                 DHCP6OptServerId(duid=self.server_duid) /
-                 DHCP6OptClientId(duid=client_duid) /
-                 DHCP6OptPref(prefval=7) /
-                 DHCP6OptStatusCode(statuscode=1) /
-                 DHCP6OptIA_PD(iaid=1, T1=20, T2=40, iapdopt=ia_pd_opts)
-                 )
+            ia_pd_opts = DHCP6OptIAPrefix(
+                prefix="7:8::", plen=56, preflft=60, validlft=120
+            )
+            p = (
+                Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+                / IPv6(
+                    src=util.mk_ll_addr(self.pg0.remote_mac), dst=self.pg0.local_ip6_ll
+                )
+                / UDP(sport=547, dport=546)
+                / DHCP6_Advertise(trid=trid)
+                / DHCP6OptServerId(duid=self.server_duid)
+                / DHCP6OptClientId(duid=client_duid)
+                / DHCP6OptPref(prefval=7)
+                / DHCP6OptStatusCode(statuscode=1)
+                / DHCP6OptIA_PD(iaid=1, T1=20, T2=40, iapdopt=ia_pd_opts)
+            )
             self.pg0.add_stream([p])
             self.pg_start()
 
@@ -208,14 +227,17 @@ class TestDHCPv6DataPlane(VppTestCase):
 
             reported_prefix = ev.prefixes[0]
             prefix = ia_pd_opts.getfieldval("prefix")
+            self.assert_equal(str(reported_prefix.prefix).split("/")[0], prefix)
             self.assert_equal(
-                str(reported_prefix.prefix).split('/')[0], prefix)
-            self.assert_equal(int(str(reported_prefix.prefix).split('/')[1]),
-                              ia_pd_opts.getfieldval("plen"))
-            self.assert_equal(reported_prefix.preferred_time,
-                              ia_pd_opts.getfieldval("preflft"))
-            self.assert_equal(reported_prefix.valid_time,
-                              ia_pd_opts.getfieldval("validlft"))
+                int(str(reported_prefix.prefix).split("/")[1]),
+                ia_pd_opts.getfieldval("plen"),
+            )
+            self.assert_equal(
+                reported_prefix.preferred_time, ia_pd_opts.getfieldval("preflft")
+            )
+            self.assert_equal(
+                reported_prefix.valid_time, ia_pd_opts.getfieldval("validlft")
+            )
 
         finally:
             self.vapi.want_dhcp6_pd_reply_events(enable_disable=0)
@@ -224,7 +246,7 @@ class TestDHCPv6DataPlane(VppTestCase):
 
 @tag_run_solo
 class TestDHCPv6IANAControlPlane(VppTestCase):
-    """ DHCPv6 IA NA Control Plane Test Case """
+    """DHCPv6 IA NA Control Plane Test Case"""
 
     @classmethod
     def setUpClass(cls):
@@ -248,18 +270,19 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
         self.T2 = 2
 
         fib = self.vapi.ip_route_dump(0, True)
-        self.initial_addresses = set(self.get_interface_addresses(fib,
-                                                                  self.pg0))
+        self.initial_addresses = set(self.get_interface_addresses(fib, self.pg0))
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        self.vapi.dhcp6_client_enable_disable(sw_if_index=self.pg0.sw_if_index,
-                                              enable=1)
+        self.vapi.dhcp6_client_enable_disable(
+            sw_if_index=self.pg0.sw_if_index, enable=1
+        )
 
     def tearDown(self):
-        self.vapi.dhcp6_client_enable_disable(sw_if_index=self.pg0.sw_if_index,
-                                              enable=0)
+        self.vapi.dhcp6_client_enable_disable(
+            sw_if_index=self.pg0.sw_if_index, enable=0
+        )
 
         for i in self.interfaces:
             i.admin_down()
@@ -302,12 +325,12 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
                 self.trid = packet[msg_type].trid
             ip = packet[IPv6]
             udp = packet[UDP]
-            self.assertEqual(ip.dst, 'ff02::1:2')
+            self.assertEqual(ip.dst, "ff02::1:2")
             self.assertEqual(udp.sport, 546)
             self.assertEqual(udp.dport, 547)
             dhcpv6 = packet[msg_type]
             elapsed_time = dhcpv6[DHCP6OptElapsedTime]
-            if (is_resend):
+            if is_resend:
                 self.assertNotEqual(elapsed_time.elapsedtime, 0)
             else:
                 self.assertEqual(elapsed_time.elapsedtime, 0)
@@ -346,15 +369,15 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
             opt_ia_na = DHCP6OptIA_NA(iaid=1, T1=t1, T2=t2)
         else:
             opt_ia_na = DHCP6OptIA_NA(iaid=1, T1=t1, T2=t2, ianaopts=ianaopts)
-        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
-             IPv6(src=util.mk_ll_addr(self.pg0.remote_mac),
-                  dst=self.pg0.local_ip6_ll) /
-             UDP(sport=547, dport=546) /
-             msg_type(trid=self.trid) /
-             DHCP6OptServerId(duid=self.server_duid) /
-             DHCP6OptClientId(duid=self.client_duid) /
-             opt_ia_na
-             )
+        p = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IPv6(src=util.mk_ll_addr(self.pg0.remote_mac), dst=self.pg0.local_ip6_ll)
+            / UDP(sport=547, dport=546)
+            / msg_type(trid=self.trid)
+            / DHCP6OptServerId(duid=self.server_duid)
+            / DHCP6OptClientId(duid=self.client_duid)
+            / opt_ia_na
+        )
         self.pg0.add_stream([p])
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -366,7 +389,7 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
         self.send_packet(DHCP6_Reply, t1, t2, ianaopts)
 
     def test_T1_and_T2_timeouts(self):
-        """ Test T1 and T2 timeouts """
+        """Test T1 and T2 timeouts"""
 
         self.wait_for_solicit()
         self.send_advertise()
@@ -384,10 +407,9 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
         self.wait_for_rebind()
 
     def test_addresses(self):
-        """ Test handling of addresses """
+        """Test handling of addresses"""
 
-        ia_na_opts = DHCP6OptIAAddress(addr='7:8::2', preflft=1,
-                                       validlft=2)
+        ia_na_opts = DHCP6OptIAAddress(addr="7:8::2", preflft=1, validlft=2)
 
         self.wait_for_solicit()
         self.send_advertise(t1=20, t2=40, ianaopts=ia_na_opts)
@@ -399,7 +421,7 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
         new_addresses = self.get_addresses()
         self.assertEqual(len(new_addresses), 1)
         addr = list(new_addresses)[0]
-        self.assertEqual(addr, '7:8::2')
+        self.assertEqual(addr, "7:8::2")
 
         self.sleep(2)
 
@@ -410,7 +432,7 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
         self.assertEqual(len(new_addresses), 0)
 
     def test_sending_client_messages_solicit(self):
-        """ VPP receives messages from DHCPv6 client """
+        """VPP receives messages from DHCPv6 client"""
 
         self.wait_for_solicit()
         self.send_packet(DHCP6_Solicit)
@@ -421,7 +443,7 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
         self.wait_for_solicit(is_resend=True)
 
     def test_sending_inappropriate_packets(self):
-        """ Server sends messages with inappropriate message types """
+        """Server sends messages with inappropriate message types"""
 
         self.wait_for_solicit()
         self.send_reply()
@@ -434,7 +456,7 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
         self.wait_for_renew()
 
     def test_no_address_available_in_advertise(self):
-        """ Advertise message contains NoAddrsAvail status code """
+        """Advertise message contains NoAddrsAvail status code"""
 
         self.wait_for_solicit()
         noavail = DHCP6OptStatusCode(statuscode=2)  # NoAddrsAvail
@@ -442,12 +464,12 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
         self.wait_for_solicit(is_resend=True)
 
     def test_preferred_greater_than_valid_lifetime(self):
-        """ Preferred lifetime is greater than valid lifetime """
+        """Preferred lifetime is greater than valid lifetime"""
 
         self.wait_for_solicit()
         self.send_advertise()
         self.wait_for_request()
-        ia_na_opts = DHCP6OptIAAddress(addr='7:8::2', preflft=4, validlft=3)
+        ia_na_opts = DHCP6OptIAAddress(addr="7:8::2", preflft=4, validlft=3)
         self.send_reply(ianaopts=ia_na_opts)
 
         self.sleep(0.5)
@@ -459,12 +481,12 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
         self.assertEqual(len(new_addresses), 0)
 
     def test_T1_greater_than_T2(self):
-        """ T1 is greater than T2 """
+        """T1 is greater than T2"""
 
         self.wait_for_solicit()
         self.send_advertise()
         self.wait_for_request()
-        ia_na_opts = DHCP6OptIAAddress(addr='7:8::2', preflft=4, validlft=8)
+        ia_na_opts = DHCP6OptIAAddress(addr="7:8::2", preflft=4, validlft=8)
         self.send_reply(t1=80, t2=40, ianaopts=ia_na_opts)
 
         self.sleep(0.5)
@@ -478,7 +500,7 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
 
 @tag_fixme_vpp_workers
 class TestDHCPv6PDControlPlane(VppTestCase):
-    """ DHCPv6 PD Control Plane Test Case """
+    """DHCPv6 PD Control Plane Test Case"""
 
     @classmethod
     def setUpClass(cls):
@@ -502,22 +524,19 @@ class TestDHCPv6PDControlPlane(VppTestCase):
         self.T2 = 2
 
         fib = self.vapi.ip_route_dump(0, True)
-        self.initial_addresses = set(self.get_interface_addresses(fib,
-                                                                  self.pg1))
+        self.initial_addresses = set(self.get_interface_addresses(fib, self.pg1))
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        self.prefix_group = 'my-pd-prefix-group'
+        self.prefix_group = "my-pd-prefix-group"
 
         self.vapi.dhcp6_pd_client_enable_disable(
-            enable=1,
-            sw_if_index=self.pg0.sw_if_index,
-            prefix_group=self.prefix_group)
+            enable=1, sw_if_index=self.pg0.sw_if_index, prefix_group=self.prefix_group
+        )
 
     def tearDown(self):
-        self.vapi.dhcp6_pd_client_enable_disable(self.pg0.sw_if_index,
-                                                 enable=0)
+        self.vapi.dhcp6_pd_client_enable_disable(self.pg0.sw_if_index, enable=0)
 
         for i in self.interfaces:
             i.admin_down()
@@ -560,12 +579,12 @@ class TestDHCPv6PDControlPlane(VppTestCase):
                 self.trid = packet[msg_type].trid
             ip = packet[IPv6]
             udp = packet[UDP]
-            self.assertEqual(ip.dst, 'ff02::1:2')
+            self.assertEqual(ip.dst, "ff02::1:2")
             self.assertEqual(udp.sport, 546)
             self.assertEqual(udp.dport, 547)
             dhcpv6 = packet[msg_type]
             elapsed_time = dhcpv6[DHCP6OptElapsedTime]
-            if (is_resend):
+            if is_resend:
                 self.assertNotEqual(elapsed_time.elapsedtime, 0)
             else:
                 self.assertEqual(elapsed_time.elapsedtime, 0)
@@ -604,15 +623,15 @@ class TestDHCPv6PDControlPlane(VppTestCase):
             opt_ia_pd = DHCP6OptIA_PD(iaid=1, T1=t1, T2=t2)
         else:
             opt_ia_pd = DHCP6OptIA_PD(iaid=1, T1=t1, T2=t2, iapdopt=iapdopt)
-        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
-             IPv6(src=util.mk_ll_addr(self.pg0.remote_mac),
-                  dst=self.pg0.local_ip6_ll) /
-             UDP(sport=547, dport=546) /
-             msg_type(trid=self.trid) /
-             DHCP6OptServerId(duid=self.server_duid) /
-             DHCP6OptClientId(duid=self.client_duid) /
-             opt_ia_pd
-             )
+        p = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IPv6(src=util.mk_ll_addr(self.pg0.remote_mac), dst=self.pg0.local_ip6_ll)
+            / UDP(sport=547, dport=546)
+            / msg_type(trid=self.trid)
+            / DHCP6OptServerId(duid=self.server_duid)
+            / DHCP6OptClientId(duid=self.client_duid)
+            / opt_ia_pd
+        )
         self.pg0.add_stream([p])
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -624,7 +643,7 @@ class TestDHCPv6PDControlPlane(VppTestCase):
         self.send_packet(DHCP6_Reply, t1, t2, iapdopt)
 
     def test_T1_and_T2_timeouts(self):
-        """ Test T1 and T2 timeouts """
+        """Test T1 and T2 timeouts"""
 
         self.wait_for_solicit()
         self.send_advertise()
@@ -642,18 +661,20 @@ class TestDHCPv6PDControlPlane(VppTestCase):
         self.wait_for_rebind()
 
     def test_prefixes(self):
-        """ Test handling of prefixes """
+        """Test handling of prefixes"""
 
-        address1 = '::2:0:0:0:405/60'
-        address2 = '::76:0:0:0:406/62'
+        address1 = "::2:0:0:0:405/60"
+        address2 = "::76:0:0:0:406/62"
         try:
             self.vapi.ip6_add_del_address_using_prefix(
                 sw_if_index=self.pg1.sw_if_index,
                 address_with_prefix=address1,
-                prefix_group=self.prefix_group)
+                prefix_group=self.prefix_group,
+            )
 
-            ia_pd_opts = DHCP6OptIAPrefix(prefix='7:8::', plen=56, preflft=2,
-                                          validlft=3)
+            ia_pd_opts = DHCP6OptIAPrefix(
+                prefix="7:8::", plen=56, preflft=2, validlft=3
+            )
 
             self.wait_for_solicit()
             self.send_advertise(t1=20, t2=40, iapdopt=ia_pd_opts)
@@ -665,14 +686,15 @@ class TestDHCPv6PDControlPlane(VppTestCase):
             new_addresses = self.get_addresses()
             self.assertEqual(len(new_addresses), 1)
             addr = list(new_addresses)[0]
-            self.assertEqual(addr, '7:8:0:2::405')
+            self.assertEqual(addr, "7:8:0:2::405")
 
             self.sleep(1)
 
             self.vapi.ip6_add_del_address_using_prefix(
                 sw_if_index=self.pg1.sw_if_index,
                 address_with_prefix=address2,
-                prefix_group=self.prefix_group)
+                prefix_group=self.prefix_group,
+            )
 
             self.sleep(1)
 
@@ -683,10 +705,10 @@ class TestDHCPv6PDControlPlane(VppTestCase):
             self.assertEqual(len(new_addresses), 2)
             addr1 = list(new_addresses)[0]
             addr2 = list(new_addresses)[1]
-            if addr1 == '7:8:0:76::406':
+            if addr1 == "7:8:0:76::406":
                 addr1, addr2 = addr2, addr1
-            self.assertEqual(addr1, '7:8:0:2::405')
-            self.assertEqual(addr2, '7:8:0:76::406')
+            self.assertEqual(addr1, "7:8:0:2::405")
+            self.assertEqual(addr2, "7:8:0:76::406")
 
             self.sleep(1)
 
@@ -701,15 +723,19 @@ class TestDHCPv6PDControlPlane(VppTestCase):
                 self.vapi.ip6_add_del_address_using_prefix(
                     sw_if_index=self.pg1.sw_if_index,
                     address_with_prefix=address1,
-                    prefix_group=self.prefix_group, is_add=0)
+                    prefix_group=self.prefix_group,
+                    is_add=0,
+                )
             if address2 is not None:
                 self.vapi.ip6_add_del_address_using_prefix(
                     sw_if_index=self.pg1.sw_if_index,
                     address_with_prefix=address2,
-                    prefix_group=self.prefix_group, is_add=0)
+                    prefix_group=self.prefix_group,
+                    is_add=0,
+                )
 
     def test_sending_client_messages_solicit(self):
-        """ VPP receives messages from DHCPv6 client """
+        """VPP receives messages from DHCPv6 client"""
 
         self.wait_for_solicit()
         self.send_packet(DHCP6_Solicit)
@@ -720,7 +746,7 @@ class TestDHCPv6PDControlPlane(VppTestCase):
         self.wait_for_solicit(is_resend=True)
 
     def test_sending_inappropriate_packets(self):
-        """ Server sends messages with inappropriate message types """
+        """Server sends messages with inappropriate message types"""
 
         self.wait_for_solicit()
         self.send_reply()
@@ -733,7 +759,7 @@ class TestDHCPv6PDControlPlane(VppTestCase):
         self.wait_for_renew()
 
     def test_no_prefix_available_in_advertise(self):
-        """ Advertise message contains NoPrefixAvail status code """
+        """Advertise message contains NoPrefixAvail status code"""
 
         self.wait_for_solicit()
         noavail = DHCP6OptStatusCode(statuscode=6)  # NoPrefixAvail
@@ -741,20 +767,22 @@ class TestDHCPv6PDControlPlane(VppTestCase):
         self.wait_for_solicit(is_resend=True)
 
     def test_preferred_greater_than_valid_lifetime(self):
-        """ Preferred lifetime is greater than valid lifetime """
+        """Preferred lifetime is greater than valid lifetime"""
 
-        address1 = '::2:0:0:0:405/60'
+        address1 = "::2:0:0:0:405/60"
         try:
             self.vapi.ip6_add_del_address_using_prefix(
                 sw_if_index=self.pg1.sw_if_index,
                 address_with_prefix=address1,
-                prefix_group=self.prefix_group)
+                prefix_group=self.prefix_group,
+            )
 
             self.wait_for_solicit()
             self.send_advertise()
             self.wait_for_request()
-            ia_pd_opts = DHCP6OptIAPrefix(prefix='7:8::', plen=56, preflft=4,
-                                          validlft=3)
+            ia_pd_opts = DHCP6OptIAPrefix(
+                prefix="7:8::", plen=56, preflft=4, validlft=3
+            )
             self.send_reply(iapdopt=ia_pd_opts)
 
             self.sleep(0.5)
@@ -770,23 +798,26 @@ class TestDHCPv6PDControlPlane(VppTestCase):
                 sw_if_index=self.pg1.sw_if_index,
                 address_with_prefix=address1,
                 prefix_group=self.prefix_group,
-                is_add=0)
+                is_add=0,
+            )
 
     def test_T1_greater_than_T2(self):
-        """ T1 is greater than T2 """
+        """T1 is greater than T2"""
 
-        address1 = '::2:0:0:0:405/60'
+        address1 = "::2:0:0:0:405/60"
         try:
             self.vapi.ip6_add_del_address_using_prefix(
                 sw_if_index=self.pg1.sw_if_index,
                 address_with_prefix=address1,
-                prefix_group=self.prefix_group)
+                prefix_group=self.prefix_group,
+            )
 
             self.wait_for_solicit()
             self.send_advertise()
             self.wait_for_request()
-            ia_pd_opts = DHCP6OptIAPrefix(prefix='7:8::', plen=56, preflft=4,
-                                          validlft=8)
+            ia_pd_opts = DHCP6OptIAPrefix(
+                prefix="7:8::", plen=56, preflft=4, validlft=8
+            )
             self.send_reply(t1=80, t2=40, iapdopt=ia_pd_opts)
 
             self.sleep(0.5)
@@ -802,4 +833,5 @@ class TestDHCPv6PDControlPlane(VppTestCase):
                 sw_if_index=self.pg1.sw_if_index,
                 prefix_group=self.prefix_group,
                 address_with_prefix=address1,
-                is_add=False)
+                is_add=False,
+            )

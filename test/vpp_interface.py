@@ -49,7 +49,7 @@ class VppInterface(metaclass=abc.ABCMeta):
 
     @property
     def local_ip4_prefix_len(self):
-        """Local IPv4 prefix length """
+        """Local IPv4 prefix length"""
         return self._local_ip4_len
 
     @local_ip4_prefix_len.setter
@@ -58,8 +58,8 @@ class VppInterface(metaclass=abc.ABCMeta):
 
     @property
     def local_ip4_prefix(self):
-        """Local IPv4 prefix """
-        return ("%s/%d" % (self._local_ip4, self._local_ip4_len))
+        """Local IPv4 prefix"""
+        return "%s/%d" % (self._local_ip4, self._local_ip4_len)
 
     @property
     def remote_ip4(self):
@@ -77,7 +77,7 @@ class VppInterface(metaclass=abc.ABCMeta):
 
     @property
     def local_ip6_prefix_len(self):
-        """Local IPv6 prefix length """
+        """Local IPv6 prefix length"""
         return self._local_ip6_len
 
     @local_ip6_prefix_len.setter
@@ -86,8 +86,8 @@ class VppInterface(metaclass=abc.ABCMeta):
 
     @property
     def local_ip6_prefix(self):
-        """Local IPv4 prefix """
-        return ("%s/%d" % (self._local_ip6, self._local_ip6_len))
+        """Local IPv4 prefix"""
+        return "%s/%d" % (self._local_ip6, self._local_ip6_len)
 
     @property
     def remote_ip6(self):
@@ -100,7 +100,9 @@ class VppInterface(metaclass=abc.ABCMeta):
         if not self._local_ip6_ll:
             self._local_ip6_ll = str(
                 self.test.vapi.sw_interface_ip6_get_link_local_address(
-                    self.sw_if_index).ip)
+                    self.sw_if_index
+                ).ip
+            )
         return self._local_ip6_ll
 
     @property
@@ -173,8 +175,7 @@ class VppInterface(metaclass=abc.ABCMeta):
         self._hosts_by_mac = {}
         self._hosts_by_ip4 = {}
         self._hosts_by_ip6 = {}
-        for i in range(
-                2, count + 2):  # 0: network address, 1: local vpp address
+        for i in range(2, count + 2):  # 0: network address, 1: local vpp address
             mac = "02:%02x:00:00:ff:%02x" % (self.sw_if_index, i)
             ip4 = "172.16.%u.%u" % (self.sw_if_index, i)
             ip6 = "fd01:%x::%x" % (self.sw_if_index, i)
@@ -196,14 +197,12 @@ class VppInterface(metaclass=abc.ABCMeta):
 
     def set_mac(self, mac):
         self._local_mac = str(mac)
-        self.test.vapi.sw_interface_set_mac_address(
-            self.sw_if_index, mac.packed)
+        self.test.vapi.sw_interface_set_mac_address(self.sw_if_index, mac.packed)
         return self
 
     def set_sw_if_index(self, sw_if_index):
         if sw_if_index > 255:
-            raise RuntimeError("Don't support sw_if_index values "
-                               "greater than 255.")
+            raise RuntimeError("Don't support sw_if_index values greater than 255.")
         self._sw_if_index = sw_if_index
 
         self.generate_remote_hosts()
@@ -220,10 +219,14 @@ class VppInterface(metaclass=abc.ABCMeta):
         self.has_ip6_config = False
         self.ip6_table_id = 0
 
-        self._local_addr = {socket.AF_INET: self.local_ip4,
-                            socket.AF_INET6: self.local_ip6}
-        self._remote_addr = {socket.AF_INET: self.remote_ip4,
-                             socket.AF_INET6: self.remote_ip6}
+        self._local_addr = {
+            socket.AF_INET: self.local_ip4,
+            socket.AF_INET6: self.local_ip6,
+        }
+        self._remote_addr = {
+            socket.AF_INET: self.remote_ip4,
+            socket.AF_INET6: self.remote_ip6,
+        }
 
         r = self.test.vapi.sw_interface_dump(sw_if_index=self.sw_if_index)
         for intf in r:
@@ -235,15 +238,16 @@ class VppInterface(metaclass=abc.ABCMeta):
         else:
             raise Exception(
                 "Could not find interface with sw_if_index %d "
-                "in interface dump %s" %
-                (self.sw_if_index, moves.reprlib.repr(r)))
+                "in interface dump %s" % (self.sw_if_index, moves.reprlib.repr(r))
+            )
         self._remote_ip6_ll = mk_ll_addr(self.remote_mac)
         self._local_ip6_ll = None
 
     def config_ip4(self):
         """Configure IPv4 address on the VPP interface."""
         self.test.vapi.sw_interface_add_del_address(
-            sw_if_index=self.sw_if_index, prefix=self.local_ip4_prefix)
+            sw_if_index=self.sw_if_index, prefix=self.local_ip4_prefix
+        )
         self.has_ip4_config = True
         return self
 
@@ -252,8 +256,8 @@ class VppInterface(metaclass=abc.ABCMeta):
         try:
             if self.has_ip4_config:
                 self.test.vapi.sw_interface_add_del_address(
-                    sw_if_index=self.sw_if_index,
-                    prefix=self.local_ip4_prefix, is_add=0)
+                    sw_if_index=self.sw_if_index, prefix=self.local_ip4_prefix, is_add=0
+                )
         except AttributeError:
             self.has_ip4_config = False
         self.has_ip4_config = False
@@ -265,15 +269,14 @@ class VppInterface(metaclass=abc.ABCMeta):
         :param vrf_id: The FIB table / VRF ID. (Default value = 0)
         """
         for host in self._remote_hosts:
-            self.test.vapi.ip_neighbor_add_del(self.sw_if_index,
-                                               host.mac,
-                                               host.ip4)
+            self.test.vapi.ip_neighbor_add_del(self.sw_if_index, host.mac, host.ip4)
         return self
 
     def config_ip6(self):
         """Configure IPv6 address on the VPP interface."""
         self.test.vapi.sw_interface_add_del_address(
-            sw_if_index=self.sw_if_index, prefix=self.local_ip6_prefix)
+            sw_if_index=self.sw_if_index, prefix=self.local_ip6_prefix
+        )
         self.has_ip6_config = True
         return self
 
@@ -282,8 +285,8 @@ class VppInterface(metaclass=abc.ABCMeta):
         try:
             if self.has_ip6_config:
                 self.test.vapi.sw_interface_add_del_address(
-                    sw_if_index=self.sw_if_index,
-                    prefix=self.local_ip6_prefix, is_add=0)
+                    sw_if_index=self.sw_if_index, prefix=self.local_ip6_prefix, is_add=0
+                )
         except AttributeError:
             self.has_ip6_config = False
         self.has_ip6_config = False
@@ -295,9 +298,7 @@ class VppInterface(metaclass=abc.ABCMeta):
         :param vrf_id: The FIB table / VRF ID. (Default value = 0)
         """
         for host in self._remote_hosts:
-            self.test.vapi.ip_neighbor_add_del(self.sw_if_index,
-                                               host.mac,
-                                               host.ip6)
+            self.test.vapi.ip_neighbor_add_del(self.sw_if_index, host.mac, host.ip6)
 
     def unconfig(self):
         """Unconfigure IPv6 and IPv4 address on the VPP interface."""
@@ -311,8 +312,7 @@ class VppInterface(metaclass=abc.ABCMeta):
         .. note:: Must be called before configuring IP4 addresses.
         """
         self.ip4_table_id = table_id
-        self.test.vapi.sw_interface_set_table(
-            self.sw_if_index, 0, self.ip4_table_id)
+        self.test.vapi.sw_interface_set_table(self.sw_if_index, 0, self.ip4_table_id)
         return self
 
     def set_table_ip6(self, table_id):
@@ -321,15 +321,14 @@ class VppInterface(metaclass=abc.ABCMeta):
         .. note:: Must be called before configuring IP6 addresses.
         """
         self.ip6_table_id = table_id
-        self.test.vapi.sw_interface_set_table(
-            self.sw_if_index, 1, self.ip6_table_id)
+        self.test.vapi.sw_interface_set_table(self.sw_if_index, 1, self.ip6_table_id)
         return self
 
     def disable_ipv6_ra(self):
         """Configure IPv6 RA suppress on the VPP interface."""
         self.test.vapi.sw_interface_ip6nd_ra_config(
-            sw_if_index=self.sw_if_index,
-            suppress=1)
+            sw_if_index=self.sw_if_index, suppress=1
+        )
         return self
 
     def ip6_ra_config(self, no=0, suppress=0, send_unicast=0):
@@ -338,11 +337,13 @@ class VppInterface(metaclass=abc.ABCMeta):
             sw_if_index=self.sw_if_index,
             is_no=no,
             suppress=suppress,
-            send_unicast=send_unicast)
+            send_unicast=send_unicast,
+        )
         return self
 
-    def ip6_ra_prefix(self, prefix, is_no=0,
-                      off_link=0, no_autoconfig=0, use_default=0):
+    def ip6_ra_prefix(
+        self, prefix, is_no=0, off_link=0, no_autoconfig=0, use_default=0
+    ):
         """Configure IPv6 RA suppress on the VPP interface.
 
         prefix can be a string in the format of '<address>/<length_in_bits>'
@@ -352,21 +353,23 @@ class VppInterface(metaclass=abc.ABCMeta):
             sw_if_index=self.sw_if_index,
             prefix=prefix,
             use_default=use_default,
-            off_link=off_link, no_autoconfig=no_autoconfig,
-            is_no=is_no)
+            off_link=off_link,
+            no_autoconfig=no_autoconfig,
+            is_no=is_no,
+        )
         return self
 
     def admin_up(self):
         """Put interface ADMIN-UP."""
         self.test.vapi.sw_interface_set_flags(
             self.sw_if_index,
-            flags=VppEnum.vl_api_if_status_flags_t.IF_STATUS_API_FLAG_ADMIN_UP)
+            flags=VppEnum.vl_api_if_status_flags_t.IF_STATUS_API_FLAG_ADMIN_UP,
+        )
         return self
 
     def admin_down(self):
         """Put interface ADMIN-down."""
-        self.test.vapi.sw_interface_set_flags(self.sw_if_index,
-                                              flags=0)
+        self.test.vapi.sw_interface_set_flags(self.sw_if_index, flags=0)
         return self
 
     def link_up(self):
@@ -379,14 +382,12 @@ class VppInterface(metaclass=abc.ABCMeta):
 
     def ip6_enable(self):
         """IPv6 Enable interface"""
-        self.test.vapi.sw_interface_ip6_enable_disable(self.sw_if_index,
-                                                       enable=1)
+        self.test.vapi.sw_interface_ip6_enable_disable(self.sw_if_index, enable=1)
         return self
 
     def ip6_disable(self):
         """Put interface ADMIN-DOWN."""
-        self.test.vapi.sw_interface_ip6_enable_disable(self.sw_if_index,
-                                                       enable=0)
+        self.test.vapi.sw_interface_ip6_enable_disable(self.sw_if_index, enable=0)
         return self
 
     def add_sub_if(self, sub_if):
@@ -394,7 +395,7 @@ class VppInterface(metaclass=abc.ABCMeta):
 
         :param sub_if: sub-interface
         """
-        if not hasattr(self, 'sub_if'):
+        if not hasattr(self, "sub_if"):
             self.sub_if = sub_if
         else:
             if isinstance(self.sub_if, list):
@@ -415,30 +416,30 @@ class VppInterface(metaclass=abc.ABCMeta):
 
     def is_ip4_entry_in_fib_dump(self, dump):
         for i in dump:
-            n = IPv4Network(text_type("%s/%d" % (self.local_ip4,
-                                                 self.local_ip4_prefix_len)))
-            if i.route.prefix == n and \
-               i.route.table_id == self.ip4_table_id:
+            n = IPv4Network(
+                text_type("%s/%d" % (self.local_ip4, self.local_ip4_prefix_len))
+            )
+            if i.route.prefix == n and i.route.table_id == self.ip4_table_id:
                 return True
         return False
 
     def set_unnumbered(self, ip_sw_if_index):
-        """ Set the interface to unnumbered via ip_sw_if_index """
-        self.test.vapi.sw_interface_set_unnumbered(ip_sw_if_index,
-                                                   self.sw_if_index)
+        """Set the interface to unnumbered via ip_sw_if_index"""
+        self.test.vapi.sw_interface_set_unnumbered(ip_sw_if_index, self.sw_if_index)
         return self
 
     def unset_unnumbered(self, ip_sw_if_index):
-        """ Unset the interface to unnumbered via ip_sw_if_index """
-        self.test.vapi.sw_interface_set_unnumbered(ip_sw_if_index,
-                                                   self.sw_if_index, is_add=0)
+        """Unset the interface to unnumbered via ip_sw_if_index"""
+        self.test.vapi.sw_interface_set_unnumbered(
+            ip_sw_if_index, self.sw_if_index, is_add=0
+        )
         return self
 
     def set_proxy_arp(self, enable=1):
-        """ Set the interface to enable/disable Proxy ARP """
+        """Set the interface to enable/disable Proxy ARP"""
         self.test.vapi.proxy_arp_intfc_enable_disable(
-            sw_if_index=self.sw_if_index,
-            enable=enable)
+            sw_if_index=self.sw_if_index, enable=enable
+        )
         return self
 
     def query_vpp_config(self):
@@ -447,8 +448,10 @@ class VppInterface(metaclass=abc.ABCMeta):
 
     def get_interface_config_from_dump(self, dump):
         for i in dump:
-            if i.interface_name.rstrip(' \t\r\n\0') == self.name and \
-                    i.sw_if_index == self.sw_if_index:
+            if (
+                i.interface_name.rstrip(" \t\r\n\0") == self.name
+                and i.sw_if_index == self.sw_if_index
+            ):
                 return i
         else:
             return None
@@ -456,34 +459,25 @@ class VppInterface(metaclass=abc.ABCMeta):
     def is_interface_config_in_dump(self, dump):
         return self.get_interface_config_from_dump(dump) is not None
 
-    def assert_interface_state(self, admin_up_down, link_up_down,
-                               expect_event=False):
+    def assert_interface_state(self, admin_up_down, link_up_down, expect_event=False):
         if expect_event:
-            event = self.test.vapi.wait_for_event(timeout=1,
-                                                  name='sw_interface_event')
-            self.test.assert_equal(event.sw_if_index, self.sw_if_index,
-                                   "sw_if_index")
-            self.test.assert_equal((event.flags & 1), admin_up_down,
-                                   "admin state")
-            self.test.assert_equal((event.flags & 2), link_up_down,
-                                   "link state")
+            event = self.test.vapi.wait_for_event(timeout=1, name="sw_interface_event")
+            self.test.assert_equal(event.sw_if_index, self.sw_if_index, "sw_if_index")
+            self.test.assert_equal((event.flags & 1), admin_up_down, "admin state")
+            self.test.assert_equal((event.flags & 2), link_up_down, "link state")
         dump = self.test.vapi.sw_interface_dump()
         if_state = self.get_interface_config_from_dump(dump)
-        self.test.assert_equal((if_state.flags & 1), admin_up_down,
-                               "admin state")
-        self.test.assert_equal((if_state.flags & 2), link_up_down,
-                               "link state")
+        self.test.assert_equal((if_state.flags & 1), admin_up_down, "admin state")
+        self.test.assert_equal((if_state.flags & 2), link_up_down, "link state")
 
     def __str__(self):
         return self.name
 
     def get_rx_stats(self):
-        return (self.test.statistics["/if/rx"]
-                [:, self.sw_if_index].sum_packets())
+        return self.test.statistics["/if/rx"][:, self.sw_if_index].sum_packets()
 
     def get_tx_stats(self):
-        return (self.test.statistics["/if/tx"]
-                [:, self.sw_if_index].sum_packets())
+        return self.test.statistics["/if/tx"][:, self.sw_if_index].sum_packets()
 
     def set_l3_mtu(self, mtu):
         self.test.vapi.sw_interface_set_mtu(self.sw_if_index, [mtu, 0, 0, 0])

@@ -4,11 +4,11 @@ import abc
 
 
 class VppObject(metaclass=abc.ABCMeta):
-    """ Abstract vpp object """
+    """Abstract vpp object"""
 
     @abc.abstractmethod
     def add_vpp_config(self) -> None:
-        """ Add the configuration for this object to vpp. """
+        """Add the configuration for this object to vpp."""
         pass
 
     @abc.abstractmethod
@@ -20,18 +20,18 @@ class VppObject(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def remove_vpp_config(self) -> None:
-        """ Remove the configuration for this object from vpp. """
+        """Remove the configuration for this object from vpp."""
         pass
 
     def object_id(self) -> str:
-        """ Return a unique string representing this object. """
+        """Return a unique string representing this object."""
         return "Undefined. for <%s %s>" % (self.__class__.__name__, id(self))
 
     def __str__(self) -> str:
         return self.object_id()
 
     def __repr__(self) -> str:
-        return '<%s>' % self.object_id()
+        return "<%s>" % self.object_id()
 
     def __hash__(self) -> int:
         return hash(self.object_id())
@@ -49,7 +49,8 @@ class VppObject(metaclass=abc.ABCMeta):
 
 
 class VppObjectRegistry:
-    """ Class which handles automatic configuration cleanup. """
+    """Class which handles automatic configuration cleanup."""
+
     _shared_state = {}
 
     def __init__(self) -> None:
@@ -60,7 +61,7 @@ class VppObjectRegistry:
             self._object_dict = dict()
 
     def register(self, obj: VppObject, logger) -> None:
-        """ Register an object in the registry. """
+        """Register an object in the registry."""
         if obj.object_id() not in self._object_dict:
             self._object_registry.append(obj)
             self._object_dict[obj.object_id()] = obj
@@ -69,7 +70,7 @@ class VppObjectRegistry:
             logger.debug("REG: duplicate add, ignoring (%s)" % obj)
 
     def unregister_all(self, logger) -> None:
-        """ Remove all object registrations from registry. """
+        """Remove all object registrations from registry."""
         logger.debug("REG: removing all object registrations")
         self._object_registry = []
         self._object_dict = dict()
@@ -93,12 +94,14 @@ class VppObjectRegistry:
                     failed.append(obj)
             else:
                 logger.info(
-                    "REG: Skipping removal for %s, configuration not present" %
-                    obj)
+                    "REG: Skipping removal for %s, configuration not present" % obj
+                )
         self.unregister_all(logger)
         if failed:
             logger.error("REG: Couldn't remove configuration for object(s):")
             for obj in failed:
                 logger.error(repr(obj))
-            raise Exception("Couldn't remove configuration for object(s): %s" %
-                            (", ".join(str(x) for x in failed)))
+            raise Exception(
+                "Couldn't remove configuration for object(s): %s"
+                % (", ".join(str(x) for x in failed))
+            )

@@ -16,7 +16,6 @@ import vpp_object
 
 
 class VppLbVip(vpp_object.VppObject):
-
     def __init__(self, test, pfx, sfx, port, protocol):
         self._test = test
         self.pfx = pfx
@@ -25,25 +24,21 @@ class VppLbVip(vpp_object.VppObject):
         self.protocol = protocol
 
     def add_vpp_config(self):
-        self._test_vapi.lb_add_del_vip(pfx=self.pfx,
-                                       sfx=self.pfx,
-                                       port=self.port,
-                                       protocol=self.protocol)
+        self._test_vapi.lb_add_del_vip(
+            pfx=self.pfx, sfx=self.pfx, port=self.port, protocol=self.protocol
+        )
 
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
-        self._test.vapi.lb_add_del_vip(pfx=self.pfx,
-                                       sfx=self.pfx,
-                                       port=self.port,
-                                       protocol=self.protocol,
-                                       is_del=1)
+        self._test.vapi.lb_add_del_vip(
+            pfx=self.pfx, sfx=self.pfx, port=self.port, protocol=self.protocol, is_del=1
+        )
 
     def query_vpp_config(self):
-        details = self._test.vapi.lb_add_del_vip(fx=self.pfx,
-                                                 sfx=self.pfx,
-                                                 port=self.port,
-                                                 protocol=self.protocol)
+        details = self._test.vapi.lb_add_del_vip(
+            fx=self.pfx, sfx=self.pfx, port=self.port, protocol=self.protocol
+        )
         return True if self == details else False
 
 
@@ -60,25 +55,28 @@ class VppLbAs(vpp_object.VppObject):
         self.is_flush = is_flush
 
     def add_vpp_config(self):
-        self._test_vapi.lb_add_del_as(pfx=self.pfx,
-                                      port=self.port,
-                                      protocol=self.protocol,
-                                      app_srv=self.app_srv,
-                                      is_flush=self.is_flush,
-                                      )
+        self._test_vapi.lb_add_del_as(
+            pfx=self.pfx,
+            port=self.port,
+            protocol=self.protocol,
+            app_srv=self.app_srv,
+            is_flush=self.is_flush,
+        )
 
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
-        self._test.vapi.lb_add_del_as(pfx=self.pfx,
-                                      port=self.port,
-                                      protocol=self.protocol,
-                                      app_srv=self.app_srv,
-                                      is_flush=self.is_flush,
-                                      is_del=1)
+        self._test.vapi.lb_add_del_as(
+            pfx=self.pfx,
+            port=self.port,
+            protocol=self.protocol,
+            app_srv=self.app_srv,
+            is_flush=self.is_flush,
+            is_del=1,
+        )
 
     def query_vpp_config(self):
-        details = self._test.vapi.lb_as_dump(pfx=self.pfx,
-                                             port=self.port,
-                                             protocol=self.protocol)
+        details = self._test.vapi.lb_as_dump(
+            pfx=self.pfx, port=self.port, protocol=self.protocol
+        )
         return True if self == details else False

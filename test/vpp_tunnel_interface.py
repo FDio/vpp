@@ -4,7 +4,7 @@ from vpp_interface import VppInterface
 
 
 class VppTunnelInterface(VppInterface, metaclass=abc.ABCMeta):
-    """ VPP tunnel interface abstraction """
+    """VPP tunnel interface abstraction"""
 
     def __init__(self, test, parent_if):
         super(VppTunnelInterface, self).__init__(test)
@@ -24,7 +24,9 @@ class VppTunnelInterface(VppInterface, metaclass=abc.ABCMeta):
     def add_stream(self, pkts):
         return self.parent_if.add_stream(pkts)
 
-    def get_capture(self, expected_count=None, remark=None, timeout=1,
-                    filter_out_fn=is_ipv6_misc):
-        return self.parent_if.get_capture(expected_count, remark, timeout,
-                                          filter_out_fn)
+    def get_capture(
+        self, expected_count=None, remark=None, timeout=1, filter_out_fn=is_ipv6_misc
+    ):
+        return self.parent_if.get_capture(
+            expected_count, remark, timeout, filter_out_fn
+        )

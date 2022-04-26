@@ -8,7 +8,8 @@ from framework import VppDiedError, VppTestCase, KeepAliveReporter
 
 
 class SanityTestCase(VppTestCase):
-    """ Sanity test case - verify whether VPP is able to start """
+    """Sanity test case - verify whether VPP is able to start"""
+
     cpus = [0]
 
     # don't ask to debug SanityTestCase
@@ -43,11 +44,11 @@ def main():
     y.close()
 
     if rc == 0:
-        print('Sanity test case passed.')
+        print("Sanity test case passed.")
     else:
-        print('Sanity test case failed.')
+        print("Sanity test case failed.")
     return rc
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

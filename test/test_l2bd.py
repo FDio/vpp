@@ -13,7 +13,7 @@ from vpp_sub_interface import VppDot1QSubint, VppDot1ADSubint
 
 
 class TestL2bd(VppTestCase):
-    """ L2BD Test Case """
+    """L2BD Test Case"""
 
     @classmethod
     def setUpClass(cls):
@@ -54,8 +54,14 @@ class TestL2bd(VppTestCase):
             # create 2 sub-interfaces for pg1 and pg2
             cls.sub_interfaces = [
                 VppDot1QSubint(cls, cls.pg1, cls.dot1q_tag),
-                VppDot1ADSubint(cls, cls.pg2, cls.dot1ad_sub_id,
-                                cls.dot1ad_outer_tag, cls.dot1ad_inner_tag)]
+                VppDot1ADSubint(
+                    cls,
+                    cls.pg2,
+                    cls.dot1ad_sub_id,
+                    cls.dot1ad_outer_tag,
+                    cls.dot1ad_inner_tag,
+                ),
+            ]
 
             # packet flows mapping pg0 -> pg1, pg2, etc.
             cls.flows = dict()
@@ -73,10 +79,14 @@ class TestL2bd(VppTestCase):
             # Create BD with MAC learning enabled and put interfaces and
             #  sub-interfaces to this BD
             for pg_if in cls.pg_interfaces:
-                sw_if_index = pg_if.sub_if.sw_if_index \
-                    if hasattr(pg_if, 'sub_if') else pg_if.sw_if_index
-                cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=sw_if_index,
-                                                    bd_id=cls.bd_id)
+                sw_if_index = (
+                    pg_if.sub_if.sw_if_index
+                    if hasattr(pg_if, "sub_if")
+                    else pg_if.sw_if_index
+                )
+                cls.vapi.sw_interface_set_l2_bridge(
+                    rx_sw_if_index=sw_if_index, bd_id=cls.bd_id
+                )
 
             # setup all interfaces
             for i in cls.interfaces:
@@ -112,8 +122,9 @@ class TestL2bd(VppTestCase):
         super(TestL2bd, self).tearDown()
         if not self.vpp_dead:
             self.logger.info(self.vapi.ppcli("show l2fib verbose"))
-            self.logger.info(self.vapi.ppcli("show bridge-domain %s detail" %
-                                             self.bd_id))
+            self.logger.info(
+                self.vapi.ppcli("show bridge-domain %s detail" % self.bd_id)
+            )
 
     @classmethod
     def create_hosts_and_learn(cls, count):
@@ -138,10 +149,11 @@ class TestL2bd(VppTestCase):
             for j in range(start_nr, end_nr):
                 host = Host(
                     "00:00:00:ff:%02x:%02x" % (pg_if.sw_if_index, j),
-                    "172.17.1%02x.%u" % (pg_if.sw_if_index, j))
-                packet = (Ether(dst="ff:ff:ff:ff:ff:ff", src=host.mac))
+                    "172.17.1%02x.%u" % (pg_if.sw_if_index, j),
+                )
+                packet = Ether(dst="ff:ff:ff:ff:ff:ff", src=host.mac)
                 hosts.append(host)
-                if hasattr(pg_if, 'sub_if'):
+                if hasattr(pg_if, "sub_if"):
                     packet = pg_if.sub_if.add_dot1_layer(packet)
                 packets.append(packet)
             pg_if.add_stream(packets)
@@ -164,12 +176,14 @@ class TestL2bd(VppTestCase):
             src_host = random.choice(self.hosts_by_pg_idx[src_if.sw_if_index])
             pkt_info = self.create_packet_info(src_if, dst_if)
             payload = self.info_to_payload(pkt_info)
-            p = (Ether(dst=dst_host.mac, src=src_host.mac) /
-                 IP(src=src_host.ip4, dst=dst_host.ip4) /
-                 UDP(sport=1234, dport=1234) /
-                 Raw(payload))
+            p = (
+                Ether(dst=dst_host.mac, src=src_host.mac)
+                / IP(src=src_host.ip4, dst=dst_host.ip4)
+                / UDP(sport=1234, dport=1234)
+                / Raw(payload)
+            )
             pkt_info.data = p.copy()
-            if hasattr(src_if, 'sub_if'):
+            if hasattr(src_if, "sub_if"):
                 p = src_if.sub_if.add_dot1_layer(p)
             size = random.choice(packet_sizes)
             self.extend_packet(p, size)
@@ -196,7 +210,7 @@ class TestL2bd(VppTestCase):
                     if ifc.sw_if_index == src_sw_if_index:
                         src_if = ifc
                         break
-            if hasattr(src_if, 'sub_if'):
+            if hasattr(src_if, "sub_if"):
                 # Check VLAN tags and Ethernet header
                 packet = src_if.sub_if.remove_dot1_layer(packet)
             self.assertTrue(Dot1Q not in packet)
@@ -205,11 +219,13 @@ class TestL2bd(VppTestCase):
                 udp = packet[UDP]
                 packet_index = payload_info.index
                 self.assertEqual(payload_info.dst, dst_sw_if_index)
-                self.logger.debug("Got packet on port %s: src=%u (id=%u)" %
-                                  (pg_if.name, payload_info.src, packet_index))
+                self.logger.debug(
+                    "Got packet on port %s: src=%u (id=%u)"
+                    % (pg_if.name, payload_info.src, packet_index)
+                )
                 next_info = self.get_next_packet_info_for_interface2(
-                    payload_info.src, dst_sw_if_index,
-                    last_info[payload_info.src])
+                    payload_info.src, dst_sw_if_index, last_info[payload_info.src]
+                )
                 last_info[payload_info.src] = next_info
                 self.assertTrue(next_info is not None)
                 self.assertEqual(packet_index, next_info.index)
@@ -224,19 +240,24 @@ class TestL2bd(VppTestCase):
                 raise
         for i in self.pg_interfaces:
             remaining_packet = self.get_next_packet_info_for_interface2(
-                i, dst_sw_if_index, last_info[i.sw_if_index])
+                i, dst_sw_if_index, last_info[i.sw_if_index]
+            )
             self.assertTrue(
                 remaining_packet is None,
-                "Port %u: Packet expected from source %u didn't arrive" %
-                (dst_sw_if_index, i.sw_if_index))
+                "Port %u: Packet expected from source %u didn't arrive"
+                % (dst_sw_if_index, i.sw_if_index),
+            )
 
     def run_l2bd_test(self, pkts_per_burst):
-        """ L2BD MAC learning test """
+        """L2BD MAC learning test"""
 
         # Create incoming packet streams for packet-generator interfaces
         for i in self.pg_interfaces:
-            packet_sizes = self.sub_if_packet_sizes if hasattr(i, 'sub_if') \
+            packet_sizes = (
+                self.sub_if_packet_sizes
+                if hasattr(i, "sub_if")
                 else self.pg_if_packet_sizes
+            )
             pkts = self.create_stream(i, packet_sizes, pkts_per_burst)
             i.add_stream(pkts)
 
@@ -251,7 +272,7 @@ class TestL2bd(VppTestCase):
             self.verify_capture(i, capture)
 
     def test_l2bd_sl(self):
-        """ L2BD MAC learning single-loop test
+        """L2BD MAC learning single-loop test
 
         Test scenario:
             1.config
@@ -268,22 +289,22 @@ class TestL2bd(VppTestCase):
         self.run_l2bd_test(self.sl_pkts_per_burst)
 
     def test_l2bd_dl(self):
-        """ L2BD MAC learning dual-loop test
+        """L2BD MAC learning dual-loop test
 
-         Test scenario:
-            1.config
-                MAC learning enabled
-                learn 100 MAC entries
-                3 interfaces: untagged, dot1q, dot1ad (dot1q used instead of
-                dot1ad in the first version)
+        Test scenario:
+           1.config
+               MAC learning enabled
+               learn 100 MAC entries
+               3 interfaces: untagged, dot1q, dot1ad (dot1q used instead of
+               dot1ad in the first version)
 
-            2.sending l2 eth pkts between 3 interface
-                64B, 512B, 1518B, 9200B (ether_size)
-                burst of 257 pkts per interface
+           2.sending l2 eth pkts between 3 interface
+               64B, 512B, 1518B, 9200B (ether_size)
+               burst of 257 pkts per interface
         """
 
         self.run_l2bd_test(self.dl_pkts_per_burst)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)

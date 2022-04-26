@@ -11,7 +11,7 @@ def check_tuntap_driver_access():
 
 @unittest.skip("Requires root")
 class TestTAP(VppTestCase):
-    """ TAP Test Case """
+    """TAP Test Case"""
 
     def test_tap_add_del(self):
         """Create TAP interface"""
@@ -20,7 +20,7 @@ class TestTAP(VppTestCase):
         self.assertTrue(tap0.query_vpp_config())
 
     def test_tap_dump(self):
-        """ Test api dump w/ and w/o sw_if_index filtering"""
+        """Test api dump w/ and w/o sw_if_index filtering"""
         MAX_INSTANCES = 10
         tap_instances = []
         for instance in range(MAX_INSTANCES):
@@ -29,10 +29,9 @@ class TestTAP(VppTestCase):
             tap_instances.append(i)
         details = self.vapi.sw_interface_tap_v2_dump()
         self.assertEqual(MAX_INSTANCES, len(details))
-        details = self.vapi.sw_interface_tap_v2_dump(
-            tap_instances[5].sw_if_index)
+        details = self.vapi.sw_interface_tap_v2_dump(tap_instances[5].sw_if_index)
         self.assertEqual(1, len(details))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)

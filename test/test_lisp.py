@@ -9,8 +9,14 @@ from scapy.layers.inet import IP, UDP, Ether
 from scapy.layers.inet6 import IPv6
 
 from framework import VppTestCase, VppTestRunner
-from lisp import VppLocalMapping, VppLispAdjacency, VppLispLocator, \
-    VppLispLocatorSet, VppRemoteMapping, LispRemoteLocator
+from lisp import (
+    VppLocalMapping,
+    VppLispAdjacency,
+    VppLispLocator,
+    VppLispLocatorSet,
+    VppRemoteMapping,
+    LispRemoteLocator,
+)
 from util import ppp
 
 # From py_lispnetworking.lisp.py:  # GNU General Public License v2.0
@@ -24,6 +30,8 @@ class LISP_GPE_Header(Packet):
         ByteField("next_proto", 0),
         IntField("iid", 0),
     ]
+
+
 bind_layers(UDP, LISP_GPE_Header, dport=4341)
 bind_layers(UDP, LISP_GPE_Header, sport=4341)
 bind_layers(LISP_GPE_Header, IP, next_proto=1)
@@ -34,8 +42,8 @@ bind_layers(LISP_GPE_Header, Ether, next_proto=3)
 class ForeignAddressFactory(object):
     count = 0
     prefix_len = 24
-    net_template = '10.10.10.{}'
-    net = net_template.format(0) + '/' + str(prefix_len)
+    net_template = "10.10.10.{}"
+    net = net_template.format(0) + "/" + str(prefix_len)
 
     def get_ip4(self):
         if self.count > 255:
@@ -46,13 +54,16 @@ class ForeignAddressFactory(object):
 
 class Driver(metaclass=abc.ABCMeta):
 
-    config_order = ['locator-sets',
-                    'locators',
-                    'local-mappings',
-                    'remote-mappings',
-                    'adjacencies']
+    config_order = [
+        "locator-sets",
+        "locators",
+        "local-mappings",
+        "remote-mappings",
+        "adjacencies",
+    ]
 
     """ Basic class for data driven testing """
+
     def __init__(self, test, test_cases):
         self._test_cases = test_cases
         self._test = test
@@ -65,26 +76,29 @@ class Driver(metaclass=abc.ABCMeta):
     def test(self):
         return self._test
 
-    def create_packet(self, src_if, dst_if, deid, payload=''):
+    def create_packet(self, src_if, dst_if, deid, payload=""):
         """
         Create IPv4 packet
 
         param: src_if
         param: dst_if
         """
-        packet = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
-                  IP(src=src_if.remote_ip4, dst=deid) /
-                  Raw(payload))
+        packet = (
+            Ether(dst=src_if.local_mac, src=src_if.remote_mac)
+            / IP(src=src_if.remote_ip4, dst=deid)
+            / Raw(payload)
+        )
         return packet
 
     @abc.abstractmethod
     def run(self):
-        """ testing procedure """
+        """testing procedure"""
         pass
 
 
 class SimpleDriver(Driver):
-    """ Implements simple test procedure """
+    """Implements simple test procedure"""
+
     def __init__(self, test, test_cases):
         super(SimpleDriver, self).__init__(test, test_cases)
 
@@ -96,27 +110,27 @@ class SimpleDriver(Driver):
         :param dst_loc: destination locator address
         :param capture: list of captured packets
         """
-        self.test.assertEqual(len(capture), 1, "Unexpected number of "
-                              "packets! Expected 1 but {} received"
-                              .format(len(capture)))
+        self.test.assertEqual(
+            len(capture),
+            1,
+            "Unexpected number of "
+            "packets! Expected 1 but {} received".format(len(capture)),
+        )
         packet = capture[0]
         try:
             ip_hdr = packet[IP]
             # assert the values match
             self.test.assertEqual(ip_hdr.src, src_loc, "IP source address")
-            self.test.assertEqual(ip_hdr.dst, dst_loc,
-                                  "IP destination address")
+            self.test.assertEqual(ip_hdr.dst, dst_loc, "IP destination address")
             gpe_hdr = packet[LISP_GPE_Header]
-            self.test.assertEqual(gpe_hdr.next_proto, 1,
-                                  "next_proto is not ipv4!")
+            self.test.assertEqual(gpe_hdr.next_proto, 1, "next_proto is not ipv4!")
             ih = gpe_hdr[IP]
-            self.test.assertEqual(ih.src, self.test.pg0.remote_ip4,
-                                  "unexpected source EID!")
-            self.test.assertEqual(ih.dst, self.test.deid_ip4,
-                                  "unexpected dest EID!")
+            self.test.assertEqual(
+                ih.src, self.test.pg0.remote_ip4, "unexpected source EID!"
+            )
+            self.test.assertEqual(ih.dst, self.test.deid_ip4, "unexpected dest EID!")
         except:
-            self.test.logger.error(ppp("Unexpected or invalid packet:",
-                                   packet))
+            self.test.logger.error(ppp("Unexpected or invalid packet:", packet))
             raise
 
     def configure_tc(self, tc):
@@ -125,26 +139,26 @@ class SimpleDriver(Driver):
                 vpp_object.add_vpp_config()
 
     def run(self, dest):
-        """ Send traffic for each test case and verify that it
-            is encapsulated """
+        """Send traffic for each test case and verify that it
+        is encapsulated"""
         for tc in enumerate(self.test_cases):
-            self.test.logger.info('Running {}'.format(tc[1]['name']))
+            self.test.logger.info("Running {}".format(tc[1]["name"]))
             self.configure_tc(tc[1])
 
-            packet = self.create_packet(self.test.pg0, self.test.pg1, dest,
-                                        'data')
+            packet = self.create_packet(self.test.pg0, self.test.pg1, dest, "data")
             self.test.pg0.add_stream(packet)
             self.test.pg0.enable_capture()
             self.test.pg1.enable_capture()
             self.test.pg_start()
             capture = self.test.pg1.get_capture(1)
-            self.verify_capture(self.test.pg1.local_ip4,
-                                self.test.pg1.remote_ip4, capture)
+            self.verify_capture(
+                self.test.pg1.local_ip4, self.test.pg1.remote_ip4, capture
+            )
             self.test.pg0.assert_nothing_captured()
 
 
 class TestLisp(VppTestCase):
-    """ Basic LISP test """
+    """Basic LISP test"""
 
     @classmethod
     def setUpClass(cls):
@@ -169,26 +183,23 @@ class TestLisp(VppTestCase):
 
         self.deid_ip4_net = self.faf.net
         self.deid_ip4 = self.faf.get_ip4()
-        self.seid_ip4 = '{!s}/{!s}'.format(self.pg0.local_ip4, 32)
+        self.seid_ip4 = "{!s}/{!s}".format(self.pg0.local_ip4, 32)
         self.rloc_ip4 = self.pg1.remote_ip4
 
         test_cases = [
             {
-                'name': 'basic ip4 over ip4',
-                'locator-sets': [VppLispLocatorSet(self, 'ls-4o4')],
-                'locators': [
-                    VppLispLocator(self, self.pg1.sw_if_index, 'ls-4o4')
+                "name": "basic ip4 over ip4",
+                "locator-sets": [VppLispLocatorSet(self, "ls-4o4")],
+                "locators": [VppLispLocator(self, self.pg1.sw_if_index, "ls-4o4")],
+                "local-mappings": [VppLocalMapping(self, self.seid_ip4, "ls-4o4")],
+                "remote-mappings": [
+                    VppRemoteMapping(
+                        self, self.deid_ip4_net, [LispRemoteLocator(self.rloc_ip4)]
+                    )
                 ],
-                'local-mappings': [
-                    VppLocalMapping(self, self.seid_ip4, 'ls-4o4')
-                ],
-                'remote-mappings': [
-                    VppRemoteMapping(self, self.deid_ip4_net,
-                                     [LispRemoteLocator(self.rloc_ip4)])
-                ],
-                'adjacencies': [
+                "adjacencies": [
                     VppLispAdjacency(self, self.seid_ip4, self.deid_ip4_net)
-                ]
+                ],
             }
         ]
         self.test_driver = SimpleDriver(self, test_cases)
@@ -196,7 +207,7 @@ class TestLisp(VppTestCase):
 
 
 class TestLispUT(VppTestCase):
-    """ Lisp UT """
+    """Lisp UT"""
 
     @classmethod
     def setUpClass(cls):
@@ -207,7 +218,7 @@ class TestLispUT(VppTestCase):
         super(TestLispUT, cls).tearDownClass()
 
     def test_fib(self):
-        """ LISP Unit Tests """
+        """LISP Unit Tests"""
         error = self.vapi.cli("test lisp cp")
 
         if error:
@@ -215,5 +226,5 @@ class TestLispUT(VppTestCase):
         self.assertNotIn("Failed", error)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)

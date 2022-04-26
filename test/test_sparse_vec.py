@@ -7,7 +7,7 @@ from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
 class TestSparseVec(VppTestCase):
-    """ SparseVec Test Cases """
+    """SparseVec Test Cases"""
 
     @classmethod
     def setUpClass(cls):
@@ -24,11 +24,12 @@ class TestSparseVec(VppTestCase):
         super(TestSparseVec, self).tearDown()
 
     def test_string_unittest(self):
-        """ SparseVec unit tests """
+        """SparseVec unit tests"""
         error = self.vapi.cli("test sparse_vec")
         if error.find("failed") != -1:
             self.logger.critical("FAILURE in the sparse_vec test")
         self.assertNotIn("failed", error)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)

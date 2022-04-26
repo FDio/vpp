@@ -6,7 +6,7 @@ from framework import tag_fixme_vpp_workers
 
 @tag_fixme_vpp_workers
 class TestCounters(VppTestCase):
-    """ Counters C Unit Tests """
+    """Counters C Unit Tests"""
 
     @classmethod
     def setUpClass(cls):
@@ -23,17 +23,17 @@ class TestCounters(VppTestCase):
         super(TestCounters, self).tearDown()
 
     def test_counter_simple_expand(self):
-        """ Simple Counter Expand """
+        """Simple Counter Expand"""
         error = self.vapi.cli("test counter simple expand")
 
         if error:
             self.logger.critical(error)
-            self.assertNotIn('failed', error)
+            self.assertNotIn("failed", error)
 
     def test_counter_combined_expand(self):
-        """ Combined Counter Expand """
+        """Combined Counter Expand"""
         error = self.vapi.cli("test counter combined expand")
 
         if error:
             self.logger.critical(error)
-            self.assertNotIn('failed', error)
+            self.assertNotIn("failed", error)

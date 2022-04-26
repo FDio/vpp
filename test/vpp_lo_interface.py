@@ -6,7 +6,7 @@ class VppLoInterface(VppInterface, VppObject):
     """VPP loopback interface."""
 
     def __init__(self, test):
-        """ Create VPP loopback interface """
+        """Create VPP loopback interface"""
         super(VppLoInterface, self).__init__(test)
         self.add_vpp_config()
 

@@ -16,7 +16,7 @@ from vpp_ip import INVALID_INDEX
 
 
 class TestGeneve(BridgeDomain, VppTestCase):
-    """ GENEVE Test Case """
+    """GENEVE Test Case"""
 
     def __init__(self, *args):
         BridgeDomain.__init__(self)
@@ -28,14 +28,16 @@ class TestGeneve(BridgeDomain, VppTestCase):
         Encapsulate the original payload frame by adding GENEVE header with its
         UDP, IP and Ethernet fields
         """
-        return (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
-                IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4) /
-                UDP(sport=self.dport, dport=self.dport, chksum=0) /
-                GENEVE(vni=vni) /
-                pkt)
+        return (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4)
+            / UDP(sport=self.dport, dport=self.dport, chksum=0)
+            / GENEVE(vni=vni)
+            / pkt
+        )
 
     def ip_range(self, start, end):
-        """ range of remote ip's """
+        """range of remote ip's"""
         return ip4_range(self.pg0.remote_ip4, start, end)
 
     def encap_mcast(self, pkt, src_ip, src_mac, vni):
@@ -43,11 +45,13 @@ class TestGeneve(BridgeDomain, VppTestCase):
         Encapsulate the original payload frame by adding GENEVE header with its
         UDP, IP and Ethernet fields
         """
-        return (Ether(src=src_mac, dst=self.mcast_mac) /
-                IP(src=src_ip, dst=self.mcast_ip4) /
-                UDP(sport=self.dport, dport=self.dport, chksum=0) /
-                GENEVE(vni=vni) /
-                pkt)
+        return (
+            Ether(src=src_mac, dst=self.mcast_mac)
+            / IP(src=src_ip, dst=self.mcast_ip4)
+            / UDP(sport=self.dport, dport=self.dport, chksum=0)
+            / GENEVE(vni=vni)
+            / pkt
+        )
 
     def decapsulate(self, pkt):
         """
@@ -89,19 +93,20 @@ class TestGeneve(BridgeDomain, VppTestCase):
         ip_range_start = 10
         ip_range_end = ip_range_start + n_ucast_tunnels
         next_hop_address = cls.pg0.remote_ip4
-        for dest_ip4 in ip4_range(next_hop_address, ip_range_start,
-                                  ip_range_end):
+        for dest_ip4 in ip4_range(next_hop_address, ip_range_start, ip_range_end):
             # add host route so dest_ip4 will not be resolved
-            rip = VppIpRoute(cls, dest_ip4, 32,
-                             [VppRoutePath(next_hop_address,
-                                           INVALID_INDEX)],
-                             register=False)
+            rip = VppIpRoute(
+                cls,
+                dest_ip4,
+                32,
+                [VppRoutePath(next_hop_address, INVALID_INDEX)],
+                register=False,
+            )
             rip.add_vpp_config()
             r = cls.vapi.geneve_add_del_tunnel(
-                local_address=cls.pg0.local_ip4, remote_address=dest_ip4,
-                vni=vni)
-            cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
-                                                bd_id=vni)
+                local_address=cls.pg0.local_ip4, remote_address=dest_ip4, vni=vni
+            )
+            cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index, bd_id=vni)
 
     @classmethod
     def add_del_shared_mcast_dst_load(cls, is_add):
@@ -115,9 +120,12 @@ class TestGeneve(BridgeDomain, VppTestCase):
         for vni in range(vni_start, vni_end):
             r = cls.vapi.geneve_add_del_tunnel(
                 local_address=cls.pg0.local_ip4,
-                remote_address=cls.mcast_ip4, mcast_sw_if_index=1,
-                is_add=is_add, vni=vni)
-            if r.sw_if_index == 0xffffffff:
+                remote_address=cls.mcast_ip4,
+                mcast_sw_if_index=1,
+                is_add=is_add,
+                vni=vni,
+            )
+            if r.sw_if_index == 0xFFFFFFFF:
                 raise ValueError("bad sw_if_index: ~0")
 
     @classmethod
@@ -136,13 +144,15 @@ class TestGeneve(BridgeDomain, VppTestCase):
         n_distinct_dst_tunnels = 10
         ip_range_start = 10
         ip_range_end = ip_range_start + n_distinct_dst_tunnels
-        for dest_ip4 in ip4_range(cls.mcast_ip4, ip_range_start,
-                                  ip_range_end):
-            vni = int(dest_ip4.split('.')[3])
-            cls.vapi.geneve_add_del_tunnel(local_address=cls.pg0.local_ip4,
-                                           remote_address=dest_ip4,
-                                           mcast_sw_if_index=1, is_add=is_add,
-                                           vni=vni)
+        for dest_ip4 in ip4_range(cls.mcast_ip4, ip_range_start, ip_range_end):
+            vni = int(dest_ip4.split(".")[3])
+            cls.vapi.geneve_add_del_tunnel(
+                local_address=cls.pg0.local_ip4,
+                remote_address=dest_ip4,
+                mcast_sw_if_index=1,
+                is_add=is_add,
+                vni=vni,
+            )
 
     @classmethod
     def add_mcast_tunnels_load(cls):
@@ -176,34 +186,41 @@ class TestGeneve(BridgeDomain, VppTestCase):
             cls.pg0.resolve_arp()
 
             # Our Multicast address
-            cls.mcast_ip4 = '239.1.1.1'
+            cls.mcast_ip4 = "239.1.1.1"
             cls.mcast_mac = util.mcast_ip_to_mac(cls.mcast_ip4)
 
             # Create GENEVE VTEP on VPP pg0, and put geneve_tunnel0 and pg1
             #  into BD.
-            cls.single_tunnel_vni = 0xabcde
+            cls.single_tunnel_vni = 0xABCDE
             cls.single_tunnel_bd = 1
             r = cls.vapi.geneve_add_del_tunnel(
                 local_address=cls.pg0.local_ip4,
-                remote_address=cls.pg0.remote_ip4, vni=cls.single_tunnel_vni)
-            cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
-                                                bd_id=cls.single_tunnel_bd)
+                remote_address=cls.pg0.remote_ip4,
+                vni=cls.single_tunnel_vni,
+            )
             cls.vapi.sw_interface_set_l2_bridge(
-                rx_sw_if_index=cls.pg1.sw_if_index, bd_id=cls.single_tunnel_bd)
+                rx_sw_if_index=r.sw_if_index, bd_id=cls.single_tunnel_bd
+            )
+            cls.vapi.sw_interface_set_l2_bridge(
+                rx_sw_if_index=cls.pg1.sw_if_index, bd_id=cls.single_tunnel_bd
+            )
 
             # Setup vni 2 to test multicast flooding
             cls.n_ucast_tunnels = 10
             cls.mcast_flood_bd = 2
-            cls.create_geneve_flood_test_bd(cls.mcast_flood_bd,
-                                            cls.n_ucast_tunnels)
+            cls.create_geneve_flood_test_bd(cls.mcast_flood_bd, cls.n_ucast_tunnels)
             r = cls.vapi.geneve_add_del_tunnel(
                 local_address=cls.pg0.local_ip4,
-                remote_address=cls.mcast_ip4, mcast_sw_if_index=1,
-                vni=cls.mcast_flood_bd)
-            cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=r.sw_if_index,
-                                                bd_id=cls.mcast_flood_bd)
+                remote_address=cls.mcast_ip4,
+                mcast_sw_if_index=1,
+                vni=cls.mcast_flood_bd,
+            )
             cls.vapi.sw_interface_set_l2_bridge(
-                rx_sw_if_index=cls.pg2.sw_if_index, bd_id=cls.mcast_flood_bd)
+                rx_sw_if_index=r.sw_if_index, bd_id=cls.mcast_flood_bd
+            )
+            cls.vapi.sw_interface_set_l2_bridge(
+                rx_sw_if_index=cls.pg2.sw_if_index, bd_id=cls.mcast_flood_bd
+            )
 
             # Add and delete mcast tunnels to check stability
             cls.add_shared_mcast_dst_load()
@@ -213,10 +230,10 @@ class TestGeneve(BridgeDomain, VppTestCase):
 
             # Setup vni 3 to test unicast flooding
             cls.ucast_flood_bd = 3
-            cls.create_geneve_flood_test_bd(cls.ucast_flood_bd,
-                                            cls.n_ucast_tunnels)
+            cls.create_geneve_flood_test_bd(cls.ucast_flood_bd, cls.n_ucast_tunnels)
             cls.vapi.sw_interface_set_l2_bridge(
-                rx_sw_if_index=cls.pg3.sw_if_index, bd_id=cls.ucast_flood_bd)
+                rx_sw_if_index=cls.pg3.sw_if_index, bd_id=cls.ucast_flood_bd
+            )
         except Exception:
             super(TestGeneve, cls).tearDownClass()
             raise
@@ -235,7 +252,7 @@ class TestGeneve(BridgeDomain, VppTestCase):
 
 
 class TestGeneveL3(VppTestCase):
-    """ GENEVE L3 Test Case """
+    """GENEVE L3 Test Case"""
 
     @classmethod
     def setUpClass(cls):
@@ -265,43 +282,55 @@ class TestGeneveL3(VppTestCase):
 
     def test_l3_packet(self):
         vni = 1234
-        r = self.vapi.add_node_next(node_name="geneve4-input",
-                                    next_name="ethernet-input")
+        r = self.vapi.add_node_next(
+            node_name="geneve4-input", next_name="ethernet-input"
+        )
         r = self.vapi.geneve_add_del_tunnel2(
             is_add=1,
             local_address=self.pg0.local_ip4,
             remote_address=self.pg0.remote_ip4,
             vni=vni,
             l3_mode=1,
-            decap_next_index=r.next_index)
+            decap_next_index=r.next_index,
+        )
 
         self.vapi.sw_interface_add_del_address(
-            sw_if_index=r.sw_if_index, prefix="10.0.0.1/24")
+            sw_if_index=r.sw_if_index, prefix="10.0.0.1/24"
+        )
 
-        pkt = (Ether(src=self.pg0.remote_mac, dst="d0:0b:ee:d0:00:00") /
-               IP(src='10.0.0.2', dst='10.0.0.1') /
-               ICMP())
+        pkt = (
+            Ether(src=self.pg0.remote_mac, dst="d0:0b:ee:d0:00:00")
+            / IP(src="10.0.0.2", dst="10.0.0.1")
+            / ICMP()
+        )
 
-        encap = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
-                 IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4) /
-                 UDP(sport=6081, dport=6081, chksum=0) /
-                 GENEVE(vni=vni))
+        encap = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4)
+            / UDP(sport=6081, dport=6081, chksum=0)
+            / GENEVE(vni=vni)
+        )
 
-        arp = (Ether(src=self.pg0.remote_mac, dst="d0:0b:ee:d0:00:00") /
-               ARP(op="is-at", hwsrc=self.pg0.remote_mac,
-                   hwdst="d0:0b:ee:d0:00:00", psrc="10.0.0.2",
-                   pdst="10.0.0.1"))
+        arp = Ether(src=self.pg0.remote_mac, dst="d0:0b:ee:d0:00:00") / ARP(
+            op="is-at",
+            hwsrc=self.pg0.remote_mac,
+            hwdst="d0:0b:ee:d0:00:00",
+            psrc="10.0.0.2",
+            pdst="10.0.0.1",
+        )
 
-        rx = self.send_and_expect(self.pg0, encap/pkt*1, self.pg0)
-        rx = self.send_and_assert_no_replies(self.pg0, encap/arp*1, self.pg0)
-        rx = self.send_and_expect(self.pg0, encap/pkt*1, self.pg0)
+        rx = self.send_and_expect(self.pg0, encap / pkt * 1, self.pg0)
+        rx = self.send_and_assert_no_replies(self.pg0, encap / arp * 1, self.pg0)
+        rx = self.send_and_expect(self.pg0, encap / pkt * 1, self.pg0)
         self.assertEqual(rx[0][ICMP].type, 0)  # echo reply
 
         r = self.vapi.geneve_add_del_tunnel2(
             is_add=0,
             local_address=self.pg0.local_ip4,
             remote_address=self.pg0.remote_ip4,
-            vni=vni)
+            vni=vni,
+        )
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)
