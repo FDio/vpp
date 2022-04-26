@@ -8,51 +8,55 @@ from scapy.layers.inet import IP, UDP
 
 
 class BridgeDomain(metaclass=abc.ABCMeta):
-    """ Bridge domain abstraction """
+    """Bridge domain abstraction"""
 
     @property
     def frame_request(self):
-        """ Ethernet frame modeling a generic request """
-        return (Ether(src='00:00:00:00:00:01', dst='00:00:00:00:00:02') /
-                IP(src='1.2.3.4', dst='4.3.2.1') /
-                UDP(sport=10000, dport=20000) /
-                Raw('\xa5' * 100))
+        """Ethernet frame modeling a generic request"""
+        return (
+            Ether(src="00:00:00:00:00:01", dst="00:00:00:00:00:02")
+            / IP(src="1.2.3.4", dst="4.3.2.1")
+            / UDP(sport=10000, dport=20000)
+            / Raw("\xa5" * 100)
+        )
 
     @property
     def frame_reply(self):
-        """ Ethernet frame modeling a generic reply """
-        return (Ether(src='00:00:00:00:00:02', dst='00:00:00:00:00:01') /
-                IP(src='4.3.2.1', dst='1.2.3.4') /
-                UDP(sport=20000, dport=10000) /
-                Raw('\xa5' * 100))
+        """Ethernet frame modeling a generic reply"""
+        return (
+            Ether(src="00:00:00:00:00:02", dst="00:00:00:00:00:01")
+            / IP(src="4.3.2.1", dst="1.2.3.4")
+            / UDP(sport=20000, dport=10000)
+            / Raw("\xa5" * 100)
+        )
 
     @abc.abstractmethod
     def ip_range(self, start, end):
-        """ range of remote ip's """
+        """range of remote ip's"""
         pass
 
     @abc.abstractmethod
     def encap_mcast(self, pkt, src_ip, src_mac, vni):
-        """ Encapsulate mcast packet """
+        """Encapsulate mcast packet"""
         pass
 
     @abc.abstractmethod
     def encapsulate(self, pkt, vni):
-        """ Encapsulate packet """
+        """Encapsulate packet"""
         pass
 
     @abc.abstractmethod
     def decapsulate(self, pkt):
-        """ Decapsulate packet """
+        """Decapsulate packet"""
         pass
 
     @abc.abstractmethod
     def check_encapsulation(self, pkt, vni, local_only=False):
-        """ Verify the encapsulation """
+        """Verify the encapsulation"""
         pass
 
     def assert_eq_pkts(self, pkt1, pkt2):
-        """ Verify the Ether, IP, UDP, payload are equal in both
+        """Verify the Ether, IP, UDP, payload are equal in both
         packets
         """
         self.assertEqual(pkt1[Ether].src, pkt2[Ether].src)
@@ -64,15 +68,18 @@ class BridgeDomain(metaclass=abc.ABCMeta):
         self.assertEqual(pkt1[Raw], pkt2[Raw])
 
     def test_decap(self):
-        """ Decapsulation test
+        """Decapsulation test
         Send encapsulated frames from pg0
         Verify receipt of decapsulated frames on pg1
         """
 
-        encapsulated_pkt = self.encapsulate(self.frame_request,
-                                            self.single_tunnel_vni)
+        encapsulated_pkt = self.encapsulate(self.frame_request, self.single_tunnel_vni)
 
-        self.pg0.add_stream([encapsulated_pkt, ])
+        self.pg0.add_stream(
+            [
+                encapsulated_pkt,
+            ]
+        )
 
         self.pg1.enable_capture()
 
@@ -85,7 +92,7 @@ class BridgeDomain(metaclass=abc.ABCMeta):
         self.assert_eq_pkts(pkt, self.frame_request)
 
     def test_encap(self):
-        """ Encapsulation test
+        """Encapsulation test
         Send frames from pg1
         Verify receipt of encapsulated frames on pg0
         """
@@ -104,7 +111,7 @@ class BridgeDomain(metaclass=abc.ABCMeta):
         self.assert_eq_pkts(payload, self.frame_reply)
 
     def test_ucast_flood(self):
-        """ Unicast flood test
+        """Unicast flood test
         Send frames from pg3
         Verify receipt of encapsulated frames on pg0
         """
@@ -122,7 +129,7 @@ class BridgeDomain(metaclass=abc.ABCMeta):
             self.assert_eq_pkts(payload, self.frame_reply)
 
     def test_mcast_flood(self):
-        """ Multicast flood test
+        """Multicast flood test
         Send frames from pg2
         Verify receipt of encapsulated frames on pg0
         """
@@ -135,14 +142,15 @@ class BridgeDomain(metaclass=abc.ABCMeta):
         # Pick first received frame and check if it's correctly encapsulated.
         out = self.pg0.get_capture(1)
         pkt = out[0]
-        self.check_encapsulation(pkt, self.mcast_flood_bd,
-                                 local_only=False, mcast_pkt=True)
+        self.check_encapsulation(
+            pkt, self.mcast_flood_bd, local_only=False, mcast_pkt=True
+        )
 
         payload = self.decapsulate(pkt)
         self.assert_eq_pkts(payload, self.frame_reply)
 
     def test_mcast_rcv(self):
-        """ Multicast receive test
+        """Multicast receive test
         Send 20 encapsulated frames from pg0 only 10 match unicast tunnels
         Verify receipt of 10 decap frames on pg2
         """
@@ -151,7 +159,8 @@ class BridgeDomain(metaclass=abc.ABCMeta):
         ip_range_end = 30
         mcast_stream = [
             self.encap_mcast(self.frame_request, ip, mac, self.mcast_flood_bd)
-            for ip in self.ip_range(ip_range_start, ip_range_end)]
+            for ip in self.ip_range(ip_range_start, ip_range_end)
+        ]
         self.pg0.add_stream(mcast_stream)
         self.pg2.enable_capture()
         self.pg_start()

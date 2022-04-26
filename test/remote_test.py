@@ -16,10 +16,11 @@ class SerializableClassCopy:
     """
     Empty class used as a basis for a serializable copy of another class.
     """
+
     pass
 
     def __repr__(self):
-        return '<SerializableClassCopy dict=%s>' % self.__dict__
+        return "<SerializableClassCopy dict=%s>" % self.__dict__
 
 
 class RemoteClassAttr:
@@ -32,7 +33,7 @@ class RemoteClassAttr:
         self._remote = remote
 
     def path_to_str(self):
-        return '.'.join(self._path)
+        return ".".join(self._path)
 
     def get_remote_value(self):
         return self._remote._remote_exec(RemoteClass.GET, self.path_to_str())
@@ -44,25 +45,24 @@ class RemoteClassAttr:
         return self._remote._remote_exec(RemoteClass.STR, self.path_to_str())
 
     def __getattr__(self, attr):
-        if attr[0] == '_':
-            if not (attr.startswith('__') and attr.endswith('__')):
-                raise AttributeError('tried to get private attribute: %s ',
-                                     attr)
+        if attr[0] == "_":
+            if not (attr.startswith("__") and attr.endswith("__")):
+                raise AttributeError("tried to get private attribute: %s ", attr)
         self._path.append(attr)
         return self
 
     def __setattr__(self, attr, val):
-        if attr[0] == '_':
-            if not (attr.startswith('__') and attr.endswith('__')):
+        if attr[0] == "_":
+            if not (attr.startswith("__") and attr.endswith("__")):
                 super(RemoteClassAttr, self).__setattr__(attr, val)
                 return
         self._path.append(attr)
-        self._remote._remote_exec(RemoteClass.SETATTR, self.path_to_str(),
-                                  value=val)
+        self._remote._remote_exec(RemoteClass.SETATTR, self.path_to_str(), value=val)
 
     def __call__(self, *args, **kwargs):
-        return self._remote._remote_exec(RemoteClass.CALL, self.path_to_str(),
-                                         *args, **kwargs)
+        return self._remote._remote_exec(
+            RemoteClass.CALL, self.path_to_str(), *args, **kwargs
+        )
 
 
 class RemoteClass(Process):
@@ -98,12 +98,12 @@ class RemoteClass(Process):
             object.terminate()
     """
 
-    GET = 0       # Get attribute remotely
-    CALL = 1      # Call method remotely
-    SETATTR = 2   # Set attribute remotely
-    REPR = 3      # Get representation of a remote object
-    STR = 4       # Get string representation of a remote object
-    QUIT = 5      # Quit remote execution
+    GET = 0  # Get attribute remotely
+    CALL = 1  # Call method remotely
+    SETATTR = 2  # Set attribute remotely
+    REPR = 3  # Get representation of a remote object
+    STR = 4  # Get string representation of a remote object
+    QUIT = 5  # Quit remote execution
 
     PIPE_PARENT = 0  # Parent end of the pipe
     PIPE_CHILD = 1  # Child end of the pipe
@@ -128,16 +128,16 @@ class RemoteClass(Process):
         return self.RemoteClassAttr(self, None)()
 
     def __getattr__(self, attr):
-        if attr[0] == '_' or not self.is_alive():
-            if not (attr.startswith('__') and attr.endswith('__')):
-                if hasattr(super(RemoteClass, self), '__getattr__'):
+        if attr[0] == "_" or not self.is_alive():
+            if not (attr.startswith("__") and attr.endswith("__")):
+                if hasattr(super(RemoteClass, self), "__getattr__"):
                     return super(RemoteClass, self).__getattr__(attr)
-                raise AttributeError('missing: %s', attr)
+                raise AttributeError("missing: %s", attr)
         return RemoteClassAttr(self, attr)
 
     def __setattr__(self, attr, val):
-        if attr[0] == '_' or not self.is_alive():
-            if not (attr.startswith('__') and attr.endswith('__')):
+        if attr[0] == "_" or not self.is_alive():
+            if not (attr.startswith("__") and attr.endswith("__")):
                 super(RemoteClass, self).__setattr__(attr, val)
                 return
         setattr(RemoteClassAttr(self, None), attr, val)
@@ -149,13 +149,11 @@ class RemoteClass(Process):
         # automatically resolve remote objects in the arguments
         mutable_args = list(args)
         for i, val in enumerate(mutable_args):
-            if isinstance(val, RemoteClass) or \
-                    isinstance(val, RemoteClassAttr):
+            if isinstance(val, RemoteClass) or isinstance(val, RemoteClassAttr):
                 mutable_args[i] = val.get_remote_value()
         args = tuple(mutable_args)
         for key, val in kwargs.items():
-            if isinstance(val, RemoteClass) or \
-                    isinstance(val, RemoteClassAttr):
+            if isinstance(val, RemoteClass) or isinstance(val, RemoteClassAttr):
                 kwargs[key] = val.get_remote_value()
         # send request
         args = self._make_serializable(args)
@@ -163,11 +161,11 @@ class RemoteClass(Process):
         self._pipe[RemoteClass.PIPE_PARENT].send((op, path, args, kwargs))
         timeout = self._timeout
         # adjust timeout specifically for the .sleep method
-        if path is not None and path.split('.')[-1] == 'sleep':
+        if path is not None and path.split(".")[-1] == "sleep":
             if args and isinstance(args[0], (long, int)):
                 timeout += args[0]
-            elif 'timeout' in kwargs:
-                timeout += kwargs['timeout']
+            elif "timeout" in kwargs:
+                timeout += kwargs["timeout"]
         if not self._pipe[RemoteClass.PIPE_PARENT].poll(timeout):
             return None
         try:
@@ -222,7 +220,7 @@ class RemoteClass(Process):
             return None
 
     def _serializable(self, obj):
-        """ Test if the given object is serializable """
+        """Test if the given object is serializable"""
         try:
             dumps(obj)
             return True
@@ -243,7 +241,7 @@ class RemoteClass(Process):
         Dictionaries can hold complex values, so we split keys and values into
         separate lists and serialize them individually.
         """
-        if (type(obj) is dict):
+        if type(obj) is dict:
             copy.type = type(obj)
             copy.k_list = list()
             copy.v_list = list()
@@ -255,12 +253,12 @@ class RemoteClass(Process):
         # copy at least serializable attributes and properties
         for name, member in inspect.getmembers(obj):
             # skip private members and non-writable dunder methods.
-            if name[0] == '_':
-                if name in ['__weakref__']:
+            if name[0] == "_":
+                if name in ["__weakref__"]:
                     continue
-                if name in ['__dict__']:
+                if name in ["__dict__"]:
                     continue
-                if not (name.startswith('__') and name.endswith('__')):
+                if not (name.startswith("__") and name.endswith("__")):
                     continue
             if callable(member) and not isinstance(member, property):
                 continue
@@ -281,13 +279,13 @@ class RemoteClass(Process):
             if type(obj) is tuple:
                 rv = tuple(rv)
             return rv
-        elif (isinstance(obj, IntEnum) or isinstance(obj, IntFlag)):
+        elif isinstance(obj, IntEnum) or isinstance(obj, IntFlag):
             return obj.value
         else:
             return self._make_obj_serializable(obj)
 
     def _deserialize_obj(self, obj):
-        if (hasattr(obj, 'type')):
+        if hasattr(obj, "type"):
             if obj.type is dict:
                 _obj = dict()
                 for k, v in zip(obj.k_list, obj.v_list):
@@ -307,19 +305,19 @@ class RemoteClass(Process):
             return self._deserialize_obj(obj)
 
     def start_remote(self):
-        """ Start remote execution """
+        """Start remote execution"""
         self.start()
 
     def quit_remote(self):
-        """ Quit remote execution """
+        """Quit remote execution"""
         self._remote_exec(RemoteClass.QUIT, None)
 
     def get_remote_value(self):
-        """ Get value of a remotely held object """
+        """Get value of a remotely held object"""
         return RemoteClassAttr(self, None).get_remote_value()
 
     def set_request_timeout(self, timeout):
-        """ Change request timeout """
+        """Change request timeout"""
         self._timeout = timeout
 
     def run(self):
@@ -332,17 +330,16 @@ class RemoteClass(Process):
             try:
                 rv = None
                 # get request from the parent process
-                (op, path, args,
-                 kwargs) = self._pipe[RemoteClass.PIPE_CHILD].recv()
+                (op, path, args, kwargs) = self._pipe[RemoteClass.PIPE_CHILD].recv()
                 args = self._deserialize(args)
                 kwargs = self._deserialize(kwargs)
-                path = path.split('.') if path else []
+                path = path.split(".") if path else []
                 if op == RemoteClass.GET:
                     rv = self._get_local_value(path)
                 elif op == RemoteClass.CALL:
                     rv = self._call_local_method(path, *args, **kwargs)
-                elif op == RemoteClass.SETATTR and 'value' in kwargs:
-                    self._set_local_attr(path, kwargs['value'])
+                elif op == RemoteClass.SETATTR and "value" in kwargs:
+                    self._set_local_attr(path, kwargs["value"])
                 elif op == RemoteClass.REPR:
                     rv = self._get_local_repr(path)
                 elif op == RemoteClass.STR:
@@ -362,34 +359,34 @@ class RemoteClass(Process):
 
 @unittest.skip("Remote Vpp Test Case Class")
 class RemoteVppTestCase(VppTestCase):
-    """ Re-use VppTestCase to create remote VPP segment
+    """Re-use VppTestCase to create remote VPP segment
 
-        In your test case::
+    In your test case::
 
-            @classmethod
-            def setUpClass(cls):
-                # fork new process before client connects to VPP
-                cls.remote_test = RemoteClass(RemoteVppTestCase)
+        @classmethod
+        def setUpClass(cls):
+            # fork new process before client connects to VPP
+            cls.remote_test = RemoteClass(RemoteVppTestCase)
 
-                # start remote process
-                cls.remote_test.start_remote()
+            # start remote process
+            cls.remote_test.start_remote()
 
-                # set up your test case
-                super(MyTestCase, cls).setUpClass()
+            # set up your test case
+            super(MyTestCase, cls).setUpClass()
 
-                # set up remote test
-                cls.remote_test.setUpClass(cls.tempdir)
+            # set up remote test
+            cls.remote_test.setUpClass(cls.tempdir)
 
-            @classmethod
-            def tearDownClass(cls):
-                # tear down remote test
-                cls.remote_test.tearDownClass()
+        @classmethod
+        def tearDownClass(cls):
+            # tear down remote test
+            cls.remote_test.tearDownClass()
 
-                # stop remote process
-                cls.remote_test.quit_remote()
+            # stop remote process
+            cls.remote_test.quit_remote()
 
-                # tear down your test case
-                super(MyTestCase, cls).tearDownClass()
+            # tear down your test case
+            super(MyTestCase, cls).tearDownClass()
     """
 
     def __init__(self):
@@ -408,10 +405,10 @@ class RemoteVppTestCase(VppTestCase):
     def setUpClass(cls, tempdir):
         # disable features unsupported in remote VPP
         orig_env = dict(os.environ)
-        if 'STEP' in os.environ:
-            del os.environ['STEP']
-        if 'DEBUG' in os.environ:
-            del os.environ['DEBUG']
+        if "STEP" in os.environ:
+            del os.environ["STEP"]
+        if "DEBUG" in os.environ:
+            del os.environ["DEBUG"]
         cls.tempdir_prefix = os.path.basename(tempdir) + "/"
         super(RemoteVppTestCase, cls).setUpClass()
         os.environ = orig_env
@@ -422,7 +419,7 @@ class RemoteVppTestCase(VppTestCase):
 
     @unittest.skip("Empty test")
     def emptyTest(self):
-        """ Do nothing """
+        """Do nothing"""
         pass
 
     def setTestFunctionInfo(self, name, doc):
