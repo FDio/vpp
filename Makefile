@@ -237,6 +237,7 @@ help:
 	@echo " checkstyle-test-diff - check test framework coding style (only changed files)"
 	@echo " checkstyle-api       - check api for incompatible changes"
 	@echo " fixstyle             - fix coding style"
+	@echo " fixstyle-test        - fix test framework coding style"
 	@echo " doxygen              - DEPRECATED - use 'make docs'"
 	@echo " bootstrap-doxygen    - DEPRECATED"
 	@echo " wipe-doxygen         - DEPRECATED"
@@ -508,7 +509,12 @@ test-checkstyle:
 
 .PHONY: test-checkstyle-diff
 test-checkstyle-diff:
-	@make -C test checkstyle-diff
+	$(warning test-checkstyle-diff is deprecated. Running test-checkstyle.")
+	@make -C test checkstyle
+
+.PHONY: test-fixstyle
+test-fixstyle:
+	@make -C test fixstyle
 
 .PHONY: test-refresh-deps
 test-refresh-deps:
@@ -673,6 +679,9 @@ checkstyle-all: checkstyle-commit checkstyle checkstyle-test
 .PHONY: fixstyle
 fixstyle:
 	@extras/scripts/checkstyle.sh --fix
+
+.PHONY: fixstyle-test
+fixstyle-test: test-fixstyle
 
 .PHONY: checkstyle-api
 checkstyle-api:
