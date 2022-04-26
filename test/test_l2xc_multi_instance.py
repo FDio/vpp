@@ -63,7 +63,7 @@ from util import Host, ppp
 
 
 class TestL2xcMultiInst(VppTestCase):
-    """ L2XC Multi-instance Test Case """
+    """L2XC Multi-instance Test Case"""
 
     @classmethod
     def setUpClass(cls):
@@ -82,8 +82,7 @@ class TestL2xcMultiInst(VppTestCase):
             cls.flows = dict()
             for i in range(len(cls.pg_interfaces)):
                 delta = 1 if i % 2 == 0 else -1
-                cls.flows[cls.pg_interfaces[i]] =\
-                    [cls.pg_interfaces[i + delta]]
+                cls.flows[cls.pg_interfaces[i]] = [cls.pg_interfaces[i + delta]]
 
             # Mapping between packet-generator index and lists of test hosts
             cls.hosts_by_pg_idx = dict()
@@ -151,7 +150,8 @@ class TestL2xcMultiInst(VppTestCase):
             for j in range(start_nr, end_nr):
                 host = Host(
                     "00:00:00:ff:%02x:%02x" % (pg_if.sw_if_index, j),
-                    "172.17.1%02u.%u" % (pg_if.sw_if_index, j))
+                    "172.17.1%02u.%u" % (pg_if.sw_if_index, j),
+                )
                 hosts.append(host)
 
     def create_xconnects(self, count, start=0):
@@ -167,10 +167,12 @@ class TestL2xcMultiInst(VppTestCase):
             rx_if = self.pg_interfaces[i + start]
             delta = 1 if i % 2 == 0 else -1
             tx_if = self.pg_interfaces[i + start + delta]
-            self.vapi.sw_interface_set_l2_xconnect(rx_if.sw_if_index,
-                                                   tx_if.sw_if_index, 1)
-            self.logger.info("Cross-connect from %s to %s created"
-                             % (tx_if.name, rx_if.name))
+            self.vapi.sw_interface_set_l2_xconnect(
+                rx_if.sw_if_index, tx_if.sw_if_index, 1
+            )
+            self.logger.info(
+                "Cross-connect from %s to %s created" % (tx_if.name, rx_if.name)
+            )
             if self.pg_in_xc.count(rx_if) == 0:
                 self.pg_in_xc.append(rx_if)
             if self.pg_not_in_xc.count(rx_if) == 1:
@@ -189,10 +191,12 @@ class TestL2xcMultiInst(VppTestCase):
             rx_if = self.pg_interfaces[i + start]
             delta = 1 if i % 2 == 0 else -1
             tx_if = self.pg_interfaces[i + start + delta]
-            self.vapi.sw_interface_set_l2_xconnect(rx_if.sw_if_index,
-                                                   tx_if.sw_if_index, 0)
-            self.logger.info("Cross-connect from %s to %s deleted"
-                             % (tx_if.name, rx_if.name))
+            self.vapi.sw_interface_set_l2_xconnect(
+                rx_if.sw_if_index, tx_if.sw_if_index, 0
+            )
+            self.logger.info(
+                "Cross-connect from %s to %s deleted" % (tx_if.name, rx_if.name)
+            )
             if self.pg_not_in_xc.count(rx_if) == 0:
                 self.pg_not_in_xc.append(rx_if)
             if self.pg_in_xc.count(rx_if) == 1:
@@ -216,16 +220,20 @@ class TestL2xcMultiInst(VppTestCase):
                 src_host = random.choice(src_hosts)
                 pkt_info = self.create_packet_info(src_if, dst_if)
                 payload = self.info_to_payload(pkt_info)
-                p = (Ether(dst=dst_host.mac, src=src_host.mac) /
-                     IP(src=src_host.ip4, dst=dst_host.ip4) /
-                     UDP(sport=1234, dport=1234) /
-                     Raw(payload))
+                p = (
+                    Ether(dst=dst_host.mac, src=src_host.mac)
+                    / IP(src=src_host.ip4, dst=dst_host.ip4)
+                    / UDP(sport=1234, dport=1234)
+                    / Raw(payload)
+                )
                 pkt_info.data = p.copy()
                 size = random.choice(packet_sizes)
                 self.extend_packet(p, size)
                 pkts.append(p)
-        self.logger.debug("Input stream created for port %s. Length: %u pkt(s)"
-                          % (src_if.name, len(pkts)))
+        self.logger.debug(
+            "Input stream created for port %s. Length: %u pkt(s)"
+            % (src_if.name, len(pkts))
+        )
         return pkts
 
     def verify_capture(self, pg_if, capture):
@@ -246,11 +254,13 @@ class TestL2xcMultiInst(VppTestCase):
                 udp = packet[UDP]
                 packet_index = payload_info.index
                 self.assertEqual(payload_info.dst, dst_sw_if_index)
-                self.logger.debug("Got packet on port %s: src=%u (id=%u)" %
-                                  (pg_if.name, payload_info.src, packet_index))
+                self.logger.debug(
+                    "Got packet on port %s: src=%u (id=%u)"
+                    % (pg_if.name, payload_info.src, packet_index)
+                )
                 next_info = self.get_next_packet_info_for_interface2(
-                    payload_info.src, dst_sw_if_index,
-                    last_info[payload_info.src])
+                    payload_info.src, dst_sw_if_index, last_info[payload_info.src]
+                )
                 last_info[payload_info.src] = next_info
                 self.assertTrue(next_info is not None)
                 self.assertEqual(packet_index, next_info.index)
@@ -265,11 +275,13 @@ class TestL2xcMultiInst(VppTestCase):
                 raise
         for i in self.pg_interfaces:
             remaining_packet = self.get_next_packet_info_for_interface2(
-                i, dst_sw_if_index, last_info[i.sw_if_index])
+                i, dst_sw_if_index, last_info[i.sw_if_index]
+            )
             self.assertTrue(
                 remaining_packet is None,
-                "Port %u: Packet expected from source %u didn't arrive" %
-                (dst_sw_if_index, i.sw_if_index))
+                "Port %u: Packet expected from source %u didn't arrive"
+                % (dst_sw_if_index, i.sw_if_index),
+            )
 
     def run_verify_test(self):
         """
@@ -299,18 +311,17 @@ class TestL2xcMultiInst(VppTestCase):
         # Verify outgoing packet streams per packet-generator interface
         for pg_if in self.pg_interfaces:
             if pg_if in self.pg_in_xc:
-                capture = pg_if.get_capture(
-                    remark="interface is a cross-connect sink")
+                capture = pg_if.get_capture(remark="interface is a cross-connect sink")
                 self.verify_capture(pg_if, capture)
             elif pg_if in self.pg_not_in_xc:
                 pg_if.assert_nothing_captured(
-                    remark="interface is not a cross-connect sink")
+                    remark="interface is not a cross-connect sink"
+                )
             else:
                 raise Exception("Unexpected interface: %s" % pg_if.name)
 
     def test_l2xc_inst_01(self):
-        """ L2XC Multi-instance test 1 - create 10 cross-connects
-        """
+        """L2XC Multi-instance test 1 - create 10 cross-connects"""
         # Config 1
         # Create 10 cross-connects
         self.create_xconnects(10)
@@ -319,8 +330,7 @@ class TestL2xcMultiInst(VppTestCase):
         self.run_verify_test()
 
     def test_l2xc_inst_02(self):
-        """ L2XC Multi-instance test 2 - delete 4 cross-connects
-        """
+        """L2XC Multi-instance test 2 - delete 4 cross-connects"""
         # Config 2
         # Delete 4 cross-connects
         self.delete_xconnects(4)
@@ -329,8 +339,7 @@ class TestL2xcMultiInst(VppTestCase):
         self.run_verify_test()
 
     def test_l2xc_inst_03(self):
-        """ L2BD Multi-instance 3 - add new 4 cross-connects
-        """
+        """L2BD Multi-instance 3 - add new 4 cross-connects"""
         # Config 3
         # Add new 4 cross-connects
         self.create_xconnects(4, start=10)
@@ -339,8 +348,7 @@ class TestL2xcMultiInst(VppTestCase):
         self.run_verify_test()
 
     def test_l2xc_inst_04(self):
-        """ L2XC Multi-instance test 4 - delete 10 cross-connects
-        """
+        """L2XC Multi-instance test 4 - delete 10 cross-connects"""
         # Config 4
         # Delete 10 cross-connects
         self.delete_xconnects(10, start=4)
@@ -349,5 +357,5 @@ class TestL2xcMultiInst(VppTestCase):
         self.run_verify_test()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)
