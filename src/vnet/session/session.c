@@ -1885,7 +1885,7 @@ session_stats_collector_fn (vlib_stats_collector_data_t *d)
 static void
 session_stats_collector_init (void)
 {
-  vlib_stats_collector_reg_t reg;
+  vlib_stats_collector_reg_t reg = {};
 
   reg.entry_index =
     vlib_stats_add_counter_vector ("/sys/session/sessions_per_worker");
