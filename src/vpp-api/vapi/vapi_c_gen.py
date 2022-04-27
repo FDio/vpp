@@ -712,7 +712,7 @@ def gen_json_unified_header(parser, logger, j, io, name):
     sys.stdout = io
     include_guard = "__included_%s" % (
         j.replace(".", "_").replace("/", "_").replace("-", "_").replace(
-            "+", "_"))
+            "+", "_").replace("@", "_"))
     print("#ifndef %s" % include_guard)
     print("#define %s" % include_guard)
     print("")

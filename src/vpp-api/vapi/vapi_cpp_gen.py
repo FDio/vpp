@@ -139,7 +139,8 @@ def gen_json_header(parser, logger, j, io, gen_h_prefix, add_debug_comments):
     sys.stdout = io
     d, f = os.path.split(j)
     include_guard = "__included_hpp_%s" % (
-        f.replace(".", "_").replace("/", "_").replace("-", "_"))
+        f.replace(".", "_").replace("/", "_").replace("-", "_").replace(
+            "@", "_"))
     print("#ifndef %s" % include_guard)
     print("#define %s" % include_guard)
     print("")
