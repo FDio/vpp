@@ -33,6 +33,10 @@
 #include <vnet/interface/tx_queue_funcs.h>
 #include "af_xdp.h"
 
+#ifndef XDP_UMEM_MIN_CHUNK_SIZE
+#define XDP_UMEM_MIN_CHUNK_SIZE 2048
+#endif
+
 af_xdp_main_t af_xdp_main;
 
 typedef struct
@@ -272,8 +276,18 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
       (umem, uword_to_pointer (vm->buffer_main->buffer_mem_start, void *),
        vm->buffer_main->buffer_mem_size, fq, cq, &umem_config))
     {
+      uword sys_page_size = clib_mem_get_page_size ();
       args->rv = VNET_API_ERROR_SYSCALL_ERROR_1;
       args->error = clib_error_return_unix (0, "xsk_umem__create() failed");
+      /* this should mimic the Linux kernel net/xdp/xdp_umem.c:xdp_umem_reg()
+       * check */
+      if (umem_config.frame_size < XDP_UMEM_MIN_CHUNK_SIZE ||
+	  umem_config.frame_size > sys_page_size)
+	args->error = clib_error_return (
+	  args->error,
+	  "(unsupported data-size? (should be between %d and %d))",
+	  XDP_UMEM_MIN_CHUNK_SIZE - sizeof (vlib_buffer_t),
+	  sys_page_size - sizeof (vlib_buffer_t));
       goto err0;
     }
 
