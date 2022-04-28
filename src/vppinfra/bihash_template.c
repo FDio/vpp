@@ -852,7 +852,6 @@ static_always_inline int BV (clib_bihash_add_del_inline_with_hash) (
 				      sizeof (BVT (clib_bihash_kv)));
 		      CLIB_MEMORY_STORE_BARRIER ();
 		      BV (clib_bihash_unlock_bucket) (b);
-		      BV (clib_bihash_increment_stat) (h, BIHASH_STAT_del, 1);
 		      goto free_backing_store;
 		    }
 
