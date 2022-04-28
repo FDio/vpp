@@ -287,13 +287,12 @@ clib_mem_destroy (void)
 {
   mheap_trace_main_t *tm = &mheap_trace_main;
   clib_mem_heap_t *heap = clib_mem_get_heap ();
-  void *base = mspace_least_addr (heap->mspace);
 
   if (tm->enabled && heap->mspace == tm->current_traced_mheap)
     tm->enabled = 0;
 
   destroy_mspace (heap->mspace);
-  clib_mem_vm_unmap (base);
+  clib_mem_vm_unmap (heap);
 }
 
 __clib_export u8 *
