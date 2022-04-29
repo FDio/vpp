@@ -66,8 +66,8 @@ class ToJSON():
         write = self.stream.write
         write('#ifndef included_{}_api_tojson_h\n'.format(self.module))
         write('#define included_{}_api_tojson_h\n'.format(self.module))
-        write('#include <vppinfra/cJSON.h>\n\n')
-        write('#include <vppinfra/jsonformat.h>\n\n')
+        write('#include <vlibmemory/cJSON.h>\n\n')
+        write('#include <vlibmemory/jsonformat.h>\n\n')
         if self.module == 'interface_types':
             write('#define vl_printfun\n')
             write('#include <vnet/interface_types.api.h>\n\n')
@@ -320,8 +320,8 @@ class FromJSON():
         write = self.stream.write
         write('#ifndef included_{}_api_fromjson_h\n'.format(self.module))
         write('#define included_{}_api_fromjson_h\n'.format(self.module))
-        write('#include <vppinfra/cJSON.h>\n\n')
-        write('#include <vppinfra/jsonformat.h>\n\n')
+        write('#include <vlibmemory/cJSON.h>\n\n')
+        write('#include <vlibmemory/jsonformat.h>\n\n')
         write('#pragma GCC diagnostic ignored "-Wunused-label"\n')
 
     def is_base_type(self, t):

@@ -17,7 +17,7 @@
 #define included_json_convert_h
 
 #include <stdbool.h>
-#include <vppinfra/cJSON.h>
+#include <vlibmemory/cJSON.h>
 #include <vnet/ethernet/mac_address.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/ip_types.api_types.h>

@@ -22,7 +22,7 @@
 #include <vlib/vlib.h>
 #include <vlibapi/api_types.h>
 #include <vppinfra/hash.h>
-#include <vppinfra/cJSON.h>
+#include <vlibmemory/cJSON.h>
 
 /* VPP API client includes */
 #include <vpp-api/client/vppapiclient.h>

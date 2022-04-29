@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include <vppinfra/cJSON.h>
+#include <vlibmemory/cJSON.h>
 #include <vnet/ethernet/mac_address.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/ip_format_fns.h>

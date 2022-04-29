@@ -27,7 +27,7 @@
 
 #include <vppinfra/clib_error.h>
 #include <vppinfra/elog.h>
-#include <vppinfra/cJSON.h>
+#include <vlibmemory/cJSON.h>
 #include <vlibapi/api_types.h>
 #include <svm/svm_common.h>
 #include <svm/queue.h>

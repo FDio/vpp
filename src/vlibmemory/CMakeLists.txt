@@ -19,6 +19,8 @@ add_vpp_library (vlibmemory
   memclnt_api.c
   vlib_api_cli.c
   vlib_api.c
+  jsonformat.c
+  cJSON.c
   ../vlibapi/api_shared.c
   ../vlibapi/node_serialize.c
 
@@ -28,6 +30,8 @@ add_vpp_library (vlibmemory
   vl_memory_api_h.h
   socket_client.h
   memory_api.h
+  jsonformat.h
+  cJSON.h
   api.h
   memory_client.h
   socket_api.h
@@ -45,6 +49,8 @@ add_vpp_library (vlibmemoryclient
   memory_shared.c
   memory_client.c
   socket_client.c
+  jsonformat.c
+  cJSON.c
   ../vlibapi/api_shared.c
   ../vlibapi/node_serialize.c
 

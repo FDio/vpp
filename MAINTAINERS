@@ -787,7 +787,7 @@ F:	src/plugins/prom
 cJSON
 I:	cjson
 M:	Ole Troan <ot@cisco.com>
-F:	src/vppinfra/cJSON.[ch]
+F:	src/vlibmemory/cJSON.[ch]
 
 VAT2
 I:	vat2
