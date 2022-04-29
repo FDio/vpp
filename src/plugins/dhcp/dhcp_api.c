@@ -321,7 +321,9 @@ dhcp_compl_event_callback (u32 client_index, const dhcp_client_t * client)
   if (!reg)
     return;
 
-  mp = vl_msg_api_alloc (sizeof (*mp));
+  mp = vl_msg_api_alloc (sizeof (*mp) +
+			 sizeof (vl_api_domain_server_t) *
+			   vec_len (client->domain_server_address));
   mp->client_index = client_index;
   mp->pid = client->pid;
   dhcp_client_lease_encode (&mp->lease, client);
