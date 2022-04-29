@@ -279,8 +279,8 @@ dhcp_client_lease_encode (vl_api_dhcp_lease_t * lease,
 
   lease->count = vec_len (client->domain_server_address);
   for (i = 0; i < lease->count; i++)
-    clib_memcpy (&lease->domain_server[i].address,
-		 (u8 *) & client->domain_server_address[i],
+    clib_memcpy (&lease->domain_server[i].address.un.ip4,
+		 (u8 *) &client->domain_server_address[i],
 		 sizeof (ip4_address_t));
 
   clib_memcpy (&lease->host_mac[0], client->client_hardware_address, 6);
@@ -321,7 +321,9 @@ dhcp_compl_event_callback (u32 client_index, const dhcp_client_t * client)
   if (!reg)
     return;
 
-  mp = vl_msg_api_alloc (sizeof (*mp));
+  mp = vl_msg_api_alloc (sizeof (*mp) +
+			 sizeof (vl_api_domain_server_t) *
+			   vec_len (client->domain_server_address));
   mp->client_index = client_index;
   mp->pid = client->pid;
   dhcp_client_lease_encode (&mp->lease, client);
