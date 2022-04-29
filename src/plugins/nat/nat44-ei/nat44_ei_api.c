@@ -661,6 +661,17 @@ vl_api_nat44_ei_interface_add_del_output_feature_t_handler (
 	  rv = nat44_ei_del_output_interface (sw_if_index);
 	}
     }
+  else
+    {
+      if (mp->is_add)
+	{
+	  rv = nat44_ei_add_interface (sw_if_index, 1);
+	}
+      else
+	{
+	  rv = nat44_ei_del_interface (sw_if_index, 1);
+	}
+    }
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_NAT44_EI_INTERFACE_ADD_DEL_OUTPUT_FEATURE_REPLY);
