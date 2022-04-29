@@ -285,6 +285,21 @@ nat44_ei_not_translate_output_feature (nat44_ei_main_t *nm, ip4_header_t *ip0,
 {
   clib_bihash_kv_8_8_t kv0, value0;
   nat44_ei_interface_t *i;
+  u8 is_rx_intf_inside = 0;
+
+  /* Don't NAT packets received on interfaces other than NAT inside */
+  pool_foreach (i, nm->interfaces)
+    {
+      if ((nat44_ei_interface_is_inside (i)) &&
+          (sw_if_index == i->sw_if_index))
+        {
+          is_rx_intf_inside = 1;
+          break;
+        }
+    }
+
+  if (!is_rx_intf_inside)
+    return 1;
 
   /* src NAT check */
   init_nat_k (&kv0, ip0->src_address, src_port,
@@ -301,8 +316,7 @@ nat44_ei_not_translate_output_feature (nat44_ei_main_t *nm, ip4_header_t *ip0,
       /* hairpinning */
       pool_foreach (i, nm->output_feature_interfaces)
 	{
-	  if ((nat44_ei_interface_is_inside (i)) &&
-	      (sw_if_index == i->sw_if_index))
+	  if (sw_if_index == i->sw_if_index)
 	    return 0;
 	}
       return 1;
