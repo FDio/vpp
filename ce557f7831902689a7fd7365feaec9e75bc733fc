@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b14740c6_cb25e2f2",
+        "filename": "test/Makefile",
+        "patchSetId": 5
+      },
+      "lineNbr": 354,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-05-02T16:45:46Z",
+      "side": 1,
+      "message": "Please install \u0027black\u0027 via $WS_ROOT/test/requirements.txt so that a pinned version is used instead of the latest.",
+      "range": {
+        "startLine": 354,
+        "startChar": 0,
+        "endLine": 354,
+        "endChar": 5
+      },
+      "revId": "ce557f7831902689a7fd7365feaec9e75bc733fc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f61d7dc4_d8a0c45c",
+        "filename": "test/Makefile",
+        "patchSetId": 5
+      },
+      "lineNbr": 368,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-05-02T16:45:46Z",
+      "side": 1,
+      "message": "Please install \u0027black\u0027 via $WS_ROOT/test/requirements.txt so that a pinned version is used instead of the latest.",
+      "range": {
+        "startLine": 368,
+        "startChar": 0,
+        "endLine": 368,
+        "endChar": 3
+      },
+      "revId": "ce557f7831902689a7fd7365feaec9e75bc733fc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
