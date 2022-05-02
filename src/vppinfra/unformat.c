@@ -385,13 +385,39 @@ unformat_line (unformat_input_t * i, va_list * va)
   u8 *line = 0, **result = va_arg (*va, u8 **);
   uword c;
 
-  while ((c = unformat_get_input (i)) != '\n' && c != UNFORMAT_END_OF_INPUT)
+  /* we fail only if we hit EOF immediatelly, as empty line is still a line */
+  if (unformat_is_eof (i))
+    return 0;
+
+  while ((c = unformat_get_input (i)) != UNFORMAT_END_OF_INPUT)
     {
+      if (c == '\\')
+	{
+	  c = unformat_get_input (i);
+
+	  if (c == '\n')
+	    {
+	      vec_add1 (line, ' ');
+	      continue;
+	    }
+
+	  vec_add1 (line, '\\');
+
+	  if (c == UNFORMAT_END_OF_INPUT)
+	    break;
+
+	  vec_add1 (line, c);
+	  continue;
+	}
+
+      if (c == '\n')
+	break;
+
       vec_add1 (line, c);
     }
 
   *result = line;
-  return vec_len (line);
+  return 1;
 }
 
 /* Parse a line ending with \n and return it as an unformat_input_t. */

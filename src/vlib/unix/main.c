@@ -347,8 +347,31 @@ startup_config_process (vlib_main_t * vm,
 
       if (vec_len (buf))
 	{
+	  unformat_input_t line_input;
 	  unformat_init_vector (&sub_input, buf);
-	  vlib_cli_input (vm, &sub_input, 0, 0);
+
+	  /* proccess file line by line untill we reach EOF */
+	  while (!unformat_is_eof (&sub_input))
+	    {
+	      /* unformat one line */
+	      unformat_user (&sub_input, unformat_line_input, &line_input);
+
+	      /* remove leading whitespace if any */
+	      unformat_skip_white_space (&line_input);
+
+	      /* if there is anything left call parser */
+	      if (!unformat_is_eof (&line_input))
+		{
+		  if (vlib_cli_input (vm, &line_input, 0, 0) != 0)
+		    {
+		      /* cli failed - stop */
+		      unformat_free (&line_input);
+		      break;
+		    }
+		}
+	      unformat_free (&line_input);
+	    }
+
 	  /* frees buf for us */
 	  unformat_free (&sub_input);
 	}
