@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "12ad6b04_422dc849",
+        "filename": "src/vnet/session/session_cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 504,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-05-02T15:11:53Z",
+      "side": 0,
+      "message": "This pattern is used in many places so could you provide a bit more details about the issue you\u0027ve hit?",
+      "range": {
+        "startLine": 504,
+        "startChar": 2,
+        "endLine": 504,
+        "endChar": 62
+      },
+      "revId": "6a2868734c2f96186b6bfb705969a5daa702ebb6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
