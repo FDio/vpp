@@ -149,9 +149,16 @@ nat_ed_alloc_addr_and_port (snat_main_t *sm, u32 rx_fib_index,
 {
   if (vec_len (sm->addresses) > 0)
     {
-      u32 s_addr_offset = s_addr.as_u32 % vec_len (sm->addresses);
+      u32 hash = s_addr.as_u32 + (s_addr.as_u32 >> 8) + (s_addr.as_u32 >> 16) +
+		 (s_addr.as_u32 >> 24);
+      u32 s_addr_offset = hash % vec_len (sm->addresses);
       snat_address_t *a, *ja = 0, *ra = 0, *ba = 0;
-      int i;
+      uword *p;
+      int i, r;
+
+      p = hash_get (sm->addresses_by_fib_index, rx_fib_index);
+      if (!p || p[0] == 0)
+	rx_fib_index = ~0;
 
       // output feature
       if (tx_sw_if_index != ~0)
@@ -168,10 +175,12 @@ nat_ed_alloc_addr_and_port (snat_main_t *sm, u32 rx_fib_index,
 			   (d_addr.as_u32 & ip4_main.fib_masks[a->addr_len])))
 
 			{
-			  return nat_ed_alloc_addr_and_port_with_snat_address (
+			  r = nat_ed_alloc_addr_and_port_with_snat_address (
 			    sm, nat_proto, thread_index, a,
 			    sm->port_per_thread, snat_thread_index, s,
 			    outside_addr, outside_port);
+			  if (r == 0 || a->fib_index != ~0)
+			    return r;
 			}
 		      ra = a;
 		    }
@@ -194,10 +203,12 @@ nat_ed_alloc_addr_and_port (snat_main_t *sm, u32 rx_fib_index,
 			   (d_addr.as_u32 & ip4_main.fib_masks[a->addr_len])))
 
 			{
-			  return nat_ed_alloc_addr_and_port_with_snat_address (
+			  r = nat_ed_alloc_addr_and_port_with_snat_address (
 			    sm, nat_proto, thread_index, a,
 			    sm->port_per_thread, snat_thread_index, s,
 			    outside_addr, outside_port);
+			  if (r == 0 || a->fib_index != ~0)
+			    return r;
 			}
 		      ra = a;
 		    }
@@ -227,9 +238,11 @@ nat_ed_alloc_addr_and_port (snat_main_t *sm, u32 rx_fib_index,
 		      (a->net.as_u32 ==
 		       (d_addr.as_u32 & ip4_main.fib_masks[a->addr_len])))
 		    {
-		      return nat_ed_alloc_addr_and_port_with_snat_address (
+		      r = nat_ed_alloc_addr_and_port_with_snat_address (
 			sm, nat_proto, thread_index, a, sm->port_per_thread,
 			snat_thread_index, s, outside_addr, outside_port);
+		      if (r == 0 || a->fib_index != ~0)
+			return r;
 		    }
 		  ja = a;
 		}
@@ -247,9 +260,11 @@ nat_ed_alloc_addr_and_port (snat_main_t *sm, u32 rx_fib_index,
 		      (a->net.as_u32 ==
 		       (d_addr.as_u32 & ip4_main.fib_masks[a->addr_len])))
 		    {
-		      return nat_ed_alloc_addr_and_port_with_snat_address (
+		      r = nat_ed_alloc_addr_and_port_with_snat_address (
 			sm, nat_proto, thread_index, a, sm->port_per_thread,
 			snat_thread_index, s, outside_addr, outside_port);
+		      if (r == 0 || a->fib_index != ~0)
+			return r;
 		    }
 		  ja = a;
 		}

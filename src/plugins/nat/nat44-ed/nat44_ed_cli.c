@@ -612,8 +612,20 @@ nat44_show_addresses_command_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   snat_main_t *sm = &snat_main;
   snat_address_t *ap;
+  u32 fib_index, count;
 
   vlib_cli_output (vm, "NAT44 pool addresses:");
+  hash_foreach (
+    fib_index, count, sm->addresses_by_fib_index, ({
+      if (count == 0)
+	;
+      else if (fib_index != ~0)
+	vlib_cli_output (
+	  vm, "  %u tenant VRF: %u", count,
+	  fib_table_get (fib_index, FIB_PROTOCOL_IP4)->ft_table_id);
+      else
+	vlib_cli_output (vm, "  %u tenant VRF independent", count);
+    }));
   vec_foreach (ap, sm->addresses)
     {
       vlib_cli_output (vm, "%U", format_ip4_address, &ap->addr);
@@ -628,6 +640,17 @@ nat44_show_addresses_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	vlib_cli_output (vm, "  synced with interface address");
     }
   vlib_cli_output (vm, "NAT44 twice-nat pool addresses:");
+  hash_foreach (
+    fib_index, count, sm->twice_nat_addresses_by_fib_index, ({
+      if (count == 0)
+	;
+      else if (fib_index != ~0)
+	vlib_cli_output (
+	  vm, "  %u tenant VRF: %u", count,
+	  fib_table_get (fib_index, FIB_PROTOCOL_IP4)->ft_table_id);
+      else
+	vlib_cli_output (vm, "  %u tenant VRF independent", count);
+    }));
   vec_foreach (ap, sm->twice_nat_addresses)
     {
       vlib_cli_output (vm, "%U", format_ip4_address, &ap->addr);

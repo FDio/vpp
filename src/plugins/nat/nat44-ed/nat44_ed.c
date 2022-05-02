@@ -507,6 +507,7 @@ nat44_ed_add_address (ip4_address_t *addr, u32 vrf_id, u8 twice_nat)
 {
   snat_main_t *sm = &snat_main;
   snat_address_t *ap, *addresses;
+  uword *p;
 
   addresses = twice_nat ? sm->twice_nat_addresses : sm->addresses;
 
@@ -544,6 +545,19 @@ nat44_ed_add_address (ip4_address_t *addr, u32 vrf_id, u8 twice_nat)
 	FIB_PROTOCOL_IP4, vrf_id, sm->fib_src_low);
     }
 
+  /* Increase per-fib address count */
+  if (twice_nat)
+    {
+      p = hash_get (sm->twice_nat_addresses_by_fib_index, ap->fib_index);
+      hash_set (sm->twice_nat_addresses_by_fib_index, ap->fib_index,
+		p ? p[0] + 1 : 1);
+    }
+  else
+    {
+      p = hash_get (sm->addresses_by_fib_index, ap->fib_index);
+      hash_set (sm->addresses_by_fib_index, ap->fib_index, p ? p[0] + 1 : 1);
+    }
+
   if (!twice_nat)
     {
       // if we don't have enabled interface we don't add address
@@ -562,6 +576,7 @@ nat44_ed_del_address (ip4_address_t addr, u8 twice_nat)
   snat_session_t *ses;
   u32 *ses_to_be_removed = 0, *ses_index;
   snat_main_per_thread_data_t *tsm;
+  uword *p;
   int j;
 
   addresses = twice_nat ? sm->twice_nat_addresses : sm->addresses;
@@ -607,6 +622,21 @@ nat44_ed_del_address (ip4_address_t addr, u8 twice_nat)
   if (!twice_nat)
     {
       nat44_ed_add_del_interface_fib_reg_entries (addr, 0);
+    }
+
+  /* Decrease per-fib address count */
+  if (twice_nat)
+    {
+      p = hash_get (sm->twice_nat_addresses_by_fib_index, a->fib_index);
+      if (p)
+	hash_set (sm->twice_nat_addresses_by_fib_index, a->fib_index,
+		  p[0] - 1);
+    }
+  else
+    {
+      p = hash_get (sm->addresses_by_fib_index, a->fib_index);
+      if (p)
+	hash_set (sm->addresses_by_fib_index, a->fib_index, p[0] - 1);
     }
 
   if (a->fib_index != ~0)
@@ -2516,7 +2546,9 @@ nat44_ed_del_addresses ()
     }
   vec_free (vec);
   vec_free (sm->addresses);
+  hash_free (sm->addresses_by_fib_index);
   sm->addresses = 0;
+  sm->addresses_by_fib_index = 0;
 
   vec = vec_dup (sm->twice_nat_addresses);
   vec_foreach (a, vec)
@@ -2529,7 +2561,9 @@ nat44_ed_del_addresses ()
     }
   vec_free (vec);
   vec_free (sm->twice_nat_addresses);
+  hash_free (sm->twice_nat_addresses_by_fib_index);
   sm->twice_nat_addresses = 0;
+  sm->twice_nat_addresses_by_fib_index = 0;
 
   vec_free (sm->addr_to_resolve);
   sm->addr_to_resolve = 0;

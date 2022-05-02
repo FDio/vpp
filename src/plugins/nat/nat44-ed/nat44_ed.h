@@ -550,8 +550,10 @@ typedef struct snat_main_s
 
   /* Vector of outside addresses */
   snat_address_t *addresses;
+  uword *addresses_by_fib_index;
   /* Vector of twice NAT addresses for external hosts */
   snat_address_t *twice_nat_addresses;
+  uword *twice_nat_addresses_by_fib_index;
 
   /* first interface address should be auto-added */
   snat_address_resolve_t *addr_to_resolve;
@@ -931,8 +933,6 @@ int snat_static_mapping_match (vlib_main_t *vm, ip4_address_t match_addr,
 u32 get_thread_idx_by_port (u16 e_port);
 
 u32 nat_calc_bihash_buckets (u32 n_elts);
-
-void nat44_addresses_free (snat_address_t **addresses);
 
 void nat44_ed_sessions_clear ();
 
