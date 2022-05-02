@@ -159,6 +159,46 @@ done:
   return match;
 }
 
+/* Get current command args */
+uword
+unformat_vlib_cli_args (unformat_input_t *i, va_list *va)
+{
+  unformat_input_t *result = va_arg (*va, unformat_input_t *);
+  u8 *line;
+  uword last_c;
+  u32 index = i->index;
+
+  if (unformat_is_eof (i))
+    {
+      unformat_init (result, 0, 0);
+      return 0;
+    }
+
+  /* try to find last non-space character */
+  do
+    {
+      ASSERT (index > 0);
+      last_c = i->buffer[--index];
+    }
+  while (last_c == ' ');
+
+  if (last_c == '\t' || last_c == '\n' || last_c == '\r' || last_c == '\f' ||
+      last_c == '}')
+    {
+      /* current command has no args */
+      unformat_init (result, 0, 0);
+      return 0;
+    }
+
+  if (!unformat_user (i, unformat_line, &line))
+    {
+      unformat_init (result, 0, 0);
+      return 0;
+    }
+  unformat_init_vector (result, line);
+  return 1;
+}
+
 /* Looks for string based sub-input formatted { SUB-INPUT }. */
 uword
 unformat_vlib_cli_sub_input (unformat_input_t * i, va_list * args)
