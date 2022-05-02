@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c27a1ce1_87b09491",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 952,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-05-02T04:40:14Z",
+      "side": 1,
+      "message": "check for vec overflow?",
+      "revId": "9c027235d9e80525a6a1afb26d9bba3d9c46e33b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "75f980e0_d0ca2672",
+        "filename": "src/vnet/ipsec/ipsec.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-05-02T04:40:14Z",
+      "side": 1,
+      "message": "a sparse_vec_t is an option here.",
+      "revId": "9c027235d9e80525a6a1afb26d9bba3d9c46e33b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
