@@ -19,6 +19,7 @@ from vpp_acl import AclRule, VppAcl, VppAclInterface
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_papi import VppEnum
 from util import StatsDiff
+from statistics import variance
 
 
 class TestNAT44ED(VppTestCase):
@@ -2304,14 +2305,16 @@ class TestNAT44ED(VppTestCase):
             raise
 
     def test_outside_address_distribution(self):
-        """Outside address distribution based on source address"""
+        """NAT44ED outside address distribution based on source address"""
 
+        addresses = 65
         x = 100
         nat_addresses = []
-
-        for i in range(1, x):
+        nat_distribution = {}
+        for i in range(1, addresses):
             a = "10.0.0.%d" % i
             nat_addresses.append(a)
+            nat_distribution[a] = set()
 
         self.nat_add_inside_interface(self.pg0)
         self.nat_add_outside_interface(self.pg1)
@@ -2350,16 +2353,11 @@ class TestNAT44ED(VppTestCase):
             self.assertTrue(info is not None)
             self.assertEqual(packet_index, info.index)
             p_sent = info.data
-            packed = socket.inet_aton(p_sent[IP].src)
-            numeric = struct.unpack("!L", packed)[0]
-            numeric = socket.htonl(numeric)
-            a = nat_addresses[(numeric - 1) % len(nat_addresses)]
-            self.assertEqual(
-                a,
-                p_recvd[IP].src,
-                "Invalid packet (src IP %s translated to %s, but expected %s)"
-                % (p_sent[IP].src, p_recvd[IP].src, a),
-            )
+            self.assertIn(p_recvd[IP].src, nat_distribution)
+            nat_distribution[p_recvd[IP].src].add(p_sent[IP].src)
+
+        var = variance(map(len, nat_distribution.values()), x / addresses)
+        self.assertLess(var, 0.33, msg="Too uneven outside address distribution")
 
     def test_dynamic_edge_ports(self):
         """NAT44ED dynamic translation test: edge ports"""
