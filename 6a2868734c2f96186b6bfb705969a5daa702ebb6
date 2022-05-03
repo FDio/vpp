@@ -22,6 +22,30 @@
       "revId": "6a2868734c2f96186b6bfb705969a5daa702ebb6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "052e5bf0_7343db22",
+        "filename": "src/vnet/session/session_cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 504,
+      "author": {
+        "id": 1737
+      },
+      "writtenOn": "2022-05-03T01:49:22Z",
+      "side": 0,
+      "message": "Create a cli file /tmp/a.cli and content as below, and in vpp cli do command: exec /tmp/a.cli\n\nwill get error: show session: unknown input `ping 1.1.1.1\u0027\n\ndev@dev:~/vpp$ cat /tmp/a.cli\nshow session\nping 1.1.1.1\n\nDBGvpp# exec /tmp/a.cli\nshow session: unknown input `ping 1.1.1.1\u0027\n\nYou are right, this pattern used in many places, but it\u0027s a bug. I fixed it in my local project, the patch work well.",
+      "parentUuid": "12ad6b04_422dc849",
+      "range": {
+        "startLine": 504,
+        "startChar": 2,
+        "endLine": 504,
+        "endChar": 62
+      },
+      "revId": "6a2868734c2f96186b6bfb705969a5daa702ebb6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
