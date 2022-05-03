@@ -16,6 +16,58 @@
       "revId": "221d7ff70b196a1ea0fd4d93478847bcfe4f8e3c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e1c1b1d4_1fdc5615",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-05-03T10:57:00Z",
+      "side": 1,
+      "message": "+1",
+      "parentUuid": "eaae0396_5ca470b9",
+      "revId": "221d7ff70b196a1ea0fd4d93478847bcfe4f8e3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4ed46d96_eaece725",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-05-03T10:57:00Z",
+      "side": 1,
+      "message": "It is always good to pass vlib_main_t *vm, even if there is no imminent use",
+      "revId": "221d7ff70b196a1ea0fd4d93478847bcfe4f8e3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0d79417a_45e7abac",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-05-03T10:57:00Z",
+      "side": 1,
+      "message": "We discussed using cookie which will be given back in callback",
+      "revId": "221d7ff70b196a1ea0fd4d93478847bcfe4f8e3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
