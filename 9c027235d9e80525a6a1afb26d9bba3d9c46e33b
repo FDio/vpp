@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "c61dd6a2_6c536fb3",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 952,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-05-03T07:45:50Z",
+      "side": 1,
+      "message": "we could but this is not strictly needed: next_header is 8-bits and I make sure the vector is big enough at init https://gerrit.fd.io/r/c/vpp/+/35941/2/src/vnet/ipsec/ipsec.c#619",
+      "parentUuid": "c27a1ce1_87b09491",
+      "revId": "9c027235d9e80525a6a1afb26d9bba3d9c46e33b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "75f980e0_d0ca2672",
         "filename": "src/vnet/ipsec/ipsec.h",
         "patchSetId": 2
@@ -30,6 +48,24 @@
       "writtenOn": "2022-05-02T04:40:14Z",
       "side": 1,
       "message": "a sparse_vec_t is an option here.",
+      "revId": "9c027235d9e80525a6a1afb26d9bba3d9c46e33b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f927e686_703c3172",
+        "filename": "src/vnet/ipsec/ipsec.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-05-03T07:45:50Z",
+      "side": 1,
+      "message": "I looked at it but as next_header is 8-bytes, this is going to occupy 2*256 bytes so I do not think it is worth it",
+      "parentUuid": "75f980e0_d0ca2672",
       "revId": "9c027235d9e80525a6a1afb26d9bba3d9c46e33b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
