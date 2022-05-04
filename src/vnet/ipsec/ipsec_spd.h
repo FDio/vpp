@@ -16,6 +16,7 @@
 #define __IPSEC_SPD_H__
 
 #include <vlib/vlib.h>
+#include <vnet/ipsec/ipsec_spd_fp.h>
 
 #define foreach_ipsec_spd_policy_type                 \
   _(IP4_OUTBOUND, "ip4-outbound")                     \
