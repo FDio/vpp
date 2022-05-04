@@ -105,6 +105,9 @@ class TestUdpEncap(VppTestCase):
         #
         # construct a UDP encap object through each of the peers
         # v4 through the first two peers, v6 through the second.
+        # The last encap is v4 and is used to check the codepath
+        # where 2 different udp encap objects are processed at the
+        # same time
         #
         udp_encap_0 = VppUdpEncap(self,
                                   self.pg0.local_ip4,
@@ -125,10 +128,15 @@ class TestUdpEncap(VppTestCase):
                                   self.pg3.remote_ip6,
                                   333, 443,
                                   table_id=3)
+        udp_encap_4 = VppUdpEncap(self,
+                                  self.pg0.local_ip4,
+                                  self.pg0.remote_ip4,
+                                  334, 444)
         udp_encap_0.add_vpp_config()
         udp_encap_1.add_vpp_config()
         udp_encap_2.add_vpp_config()
         udp_encap_3.add_vpp_config()
+        udp_encap_4.add_vpp_config()
 
         self.logger.info(self.vapi.cli("sh udp encap"))
 
@@ -136,6 +144,7 @@ class TestUdpEncap(VppTestCase):
         self.assertTrue(find_udp_encap(self, udp_encap_3))
         self.assertTrue(find_udp_encap(self, udp_encap_0))
         self.assertTrue(find_udp_encap(self, udp_encap_1))
+        self.assertTrue(find_udp_encap(self, udp_encap_4))
 
         #
         # Routes via each UDP encap object - all combinations of v4 and v6.
@@ -146,6 +155,16 @@ class TestUdpEncap(VppTestCase):
                           0xFFFFFFFF,
                           type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
                           next_hop_id=udp_encap_0.id,
+                          proto=FibPathProto.FIB_PATH_NH_PROTO_IP4)],
+            table_id=1)
+        # specific route to match encap4, to test encap of 2 packets using 2
+        # different encap
+        route_4o4_2 = VppIpRoute(
+            self, "1.1.0.2", 32,
+            [VppRoutePath("0.0.0.0",
+                          0xFFFFFFFF,
+                          type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
+                          next_hop_id=udp_encap_4.id,
                           proto=FibPathProto.FIB_PATH_NH_PROTO_IP4)],
             table_id=1)
         route_4o6 = VppIpRoute(
@@ -173,21 +192,38 @@ class TestUdpEncap(VppTestCase):
         route_6o6.add_vpp_config()
         route_6o4.add_vpp_config()
         route_4o4.add_vpp_config()
+        route_4o4_2.add_vpp_config()
 
         #
         # 4o4 encap
+        # we add a single packet matching the last encap at the beginning of
+        # the packet vector so that we encap 2 packets with different udp
+        # encap object at the same time
         #
         p_4o4 = (Ether(src=self.pg1.remote_mac,
                        dst=self.pg1.local_mac) /
                  IP(src="2.2.2.2", dst="1.1.0.1") /
                  UDP(sport=1234, dport=1234) /
                  Raw(b'\xa5' * 100))
-        rx = self.send_and_expect(self.pg1, p_4o4*NUM_PKTS, self.pg0)
+        p_4o4_2 = (Ether(src=self.pg1.remote_mac,
+                         dst=self.pg1.local_mac) /
+                   IP(src="2.2.2.2", dst="1.1.0.2") /
+                   UDP(sport=1234, dport=1234) /
+                   Raw(b'\xa5' * 100))
+        rx = self.send_and_expect(
+            self.pg1, p_4o4_2 * 1 + p_4o4 * (NUM_PKTS - 1), self.pg0)
+        # checking encap4 magic packet
+        p = rx.pop(0)
+        self.validate_outer4(p, udp_encap_4)
+        p = IP(p["UDP"].payload.load)
+        self.validate_inner4(p, p_4o4_2)
+        self.assertEqual(udp_encap_4.get_stats()['packets'], 1)
+        # checking remaining packets for encap0
         for p in rx:
             self.validate_outer4(p, udp_encap_0)
             p = IP(p["UDP"].payload.load)
             self.validate_inner4(p, p_4o4)
-        self.assertEqual(udp_encap_0.get_stats()['packets'], NUM_PKTS)
+        self.assertEqual(udp_encap_0.get_stats()['packets'], NUM_PKTS - 1)
 
         #
         # 4o6 encap
