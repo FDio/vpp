@@ -192,7 +192,6 @@ vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t * mp)
 
   regp->name = format (0, "%s", mp->name);
   vec_add1 (regp->name, 0);
-  regp->keepalive = true;
 
   if (am->serialized_message_table_in_shmem == 0)
     am->serialized_message_table_in_shmem =
@@ -216,87 +215,6 @@ vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t * mp)
   rp->message_table = pointer_to_uword (msg_table);
 
   vl_msg_api_send_shmem (q, (u8 *) & rp);
-}
-
-void
-vl_api_memclnt_create_v2_t_handler (vl_api_memclnt_create_v2_t *mp)
-{
-  vl_api_registration_t **regpp;
-  vl_api_registration_t *regp;
-  vl_api_memclnt_create_v2_reply_t *rp;
-  svm_queue_t *q;
-  int rv = 0;
-  void *oldheap;
-  api_main_t *am = vlibapi_get_main ();
-  u8 *msg_table;
-
-  /*
-   * This is tortured. Maintain a vlib-address-space private
-   * pool of client registrations. We use the shared-memory virtual
-   * address of client structure as a handle, to allow direct
-   * manipulation of context quota vbls from the client library.
-   *
-   * This scheme causes trouble w/ API message trace replay, since
-   * some random VA from clib_mem_alloc() certainly won't
-   * occur in the Linux sim. The (very) few places
-   * that care need to use the pool index.
-   *
-   * Putting the registration object(s) into a pool in shared memory and
-   * using the pool index as a handle seems like a great idea.
-   * Unfortunately, each and every reference to that pool would need
-   * to be protected by a mutex:
-   *
-   *     Client                      VLIB
-   *     ------                      ----
-   *     convert pool index to
-   *     pointer.
-   *     <deschedule>
-   *                                 expand pool
-   *                                 <deschedule>
-   *     kaboom!
-   */
-
-  pool_get (am->vl_clients, regpp);
-
-  oldheap = vl_msg_push_heap ();
-  *regpp = clib_mem_alloc (sizeof (vl_api_registration_t));
-
-  regp = *regpp;
-  clib_memset (regp, 0, sizeof (*regp));
-  regp->registration_type = REGISTRATION_TYPE_SHMEM;
-  regp->vl_api_registration_pool_index = regpp - am->vl_clients;
-  regp->vlib_rp = am->vlib_rp;
-  regp->shmem_hdr = am->shmem_hdr;
-  regp->clib_file_index = am->shmem_hdr->clib_file_index;
-
-  q = regp->vl_input_queue = (svm_queue_t *) (uword) mp->input_queue;
-  VL_MSG_API_SVM_QUEUE_UNPOISON (q);
-
-  regp->name = format (0, "%s", mp->name);
-  vec_add1 (regp->name, 0);
-  regp->keepalive = mp->keepalive;
-
-  if (am->serialized_message_table_in_shmem == 0)
-    am->serialized_message_table_in_shmem =
-      vl_api_serialize_message_table (am, 0);
-
-  if (am->vlib_rp != am->vlib_primary_rp)
-    msg_table = vl_api_serialize_message_table (am, 0);
-  else
-    msg_table = am->serialized_message_table_in_shmem;
-
-  vl_msg_pop_heap (oldheap);
-
-  rp = vl_msg_api_alloc (sizeof (*rp));
-  rp->_vl_msg_id = ntohs (VL_API_MEMCLNT_CREATE_V2_REPLY);
-  rp->handle = (uword) regp;
-  rp->index = vl_msg_api_handle_from_index_and_epoch (
-    regp->vl_api_registration_pool_index, am->shmem_hdr->application_restarts);
-  rp->context = mp->context;
-  rp->response = ntohl (rv);
-  rp->message_table = pointer_to_uword (msg_table);
-
-  vl_msg_api_send_shmem (q, (u8 *) &rp);
 }
 
 void
@@ -481,7 +399,6 @@ vl_api_memclnt_keepalive_t_handler (vl_api_memclnt_keepalive_t * mp)
 
 #define foreach_vlib_api_msg                                                  \
   _ (MEMCLNT_CREATE, memclnt_create, 0)                                       \
-  _ (MEMCLNT_CREATE_V2, memclnt_create_v2, 0)                                 \
   _ (MEMCLNT_DELETE, memclnt_delete, 0)                                       \
   _ (MEMCLNT_KEEPALIVE, memclnt_keepalive, 0)                                 \
   _ (MEMCLNT_KEEPALIVE_REPLY, memclnt_keepalive_reply, 0)
@@ -661,10 +578,8 @@ vl_mem_api_dead_client_scan (api_main_t * am, vl_shmem_hdr_t * shm, f64 now)
 
   /* *INDENT-OFF* */
   pool_foreach (regpp, am->vl_clients)  {
-      if (!(*regpp)->keepalive)
-	continue;
       vl_mem_send_client_keepalive_w_reg (am, now, regpp, &dead_indices,
-					  &confused_indices);
+                                          &confused_indices);
   }
   /* *INDENT-ON* */
 
@@ -1029,7 +944,7 @@ vl_api_client_index_to_input_queue (u32 index)
 static clib_error_t *
 setup_memclnt_exit (vlib_main_t * vm)
 {
-  atexit (vl_unmap_shmem_client);
+  atexit (vl_unmap_shmem);
   return 0;
 }
 

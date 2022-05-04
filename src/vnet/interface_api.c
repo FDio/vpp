@@ -1624,27 +1624,23 @@ interface_api_hookup (vlib_main_t * vm)
 {
   api_main_t *am = vlibapi_get_main ();
 
+  /* Mark these APIs as mp safe */
+  am->is_mp_safe[VL_API_SW_INTERFACE_DUMP] = 1;
+  am->is_mp_safe[VL_API_SW_INTERFACE_DETAILS] = 1;
+  am->is_mp_safe[VL_API_SW_INTERFACE_TAG_ADD_DEL] = 1;
+  am->is_mp_safe[VL_API_SW_INTERFACE_SET_INTERFACE_NAME] = 1;
+
+  /* Do not replay VL_API_SW_INTERFACE_DUMP messages */
+  am->api_trace_cfg[VL_API_SW_INTERFACE_DUMP].replay_enable = 0;
+
+  /* Mark these APIs as autoendian */
+  am->is_autoendian[VL_API_SW_INTERFACE_SET_TX_PLACEMENT] = 1;
+  am->is_autoendian[VL_API_SW_INTERFACE_TX_PLACEMENT_GET] = 1;
+
   /*
    * Set up the (msg_name, crc, message-id) table
    */
   REPLY_MSG_ID_BASE = setup_message_id_table ();
-
-  /* Mark these APIs as mp safe */
-  am->is_mp_safe[REPLY_MSG_ID_BASE + VL_API_SW_INTERFACE_DUMP] = 1;
-  am->is_mp_safe[REPLY_MSG_ID_BASE + VL_API_SW_INTERFACE_DETAILS] = 1;
-  am->is_mp_safe[REPLY_MSG_ID_BASE + VL_API_SW_INTERFACE_TAG_ADD_DEL] = 1;
-  am->is_mp_safe[REPLY_MSG_ID_BASE + VL_API_SW_INTERFACE_SET_INTERFACE_NAME] =
-    1;
-
-  /* Do not replay VL_API_SW_INTERFACE_DUMP messages */
-  am->api_trace_cfg[REPLY_MSG_ID_BASE + VL_API_SW_INTERFACE_DUMP]
-    .replay_enable = 0;
-
-  /* Mark these APIs as autoendian */
-  am->is_autoendian[REPLY_MSG_ID_BASE + VL_API_SW_INTERFACE_SET_TX_PLACEMENT] =
-    1;
-  am->is_autoendian[REPLY_MSG_ID_BASE + VL_API_SW_INTERFACE_TX_PLACEMENT_GET] =
-    1;
 
   return 0;
 }

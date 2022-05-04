@@ -44,7 +44,7 @@ extern "C"
  * process). It's not recommended to mix the higher and lower level APIs. Due
  * to version issues, the higher-level APIs are not part of the shared library.
  */
-typedef struct vapi_ctx_s *vapi_ctx_t;
+  typedef struct vapi_ctx_s *vapi_ctx_t;
 
 /**
  * @brief allocate vapi message of given size
@@ -56,7 +56,7 @@ typedef struct vapi_ctx_s *vapi_ctx_t;
  *
  * @return pointer to message or NULL if out of memory
  */
-void *vapi_msg_alloc (vapi_ctx_t ctx, size_t size);
+  void *vapi_msg_alloc (vapi_ctx_t ctx, size_t size);
 
 /**
  * @brief free a vapi message
@@ -66,7 +66,7 @@ void *vapi_msg_alloc (vapi_ctx_t ctx, size_t size);
  * @param ctx opaque vapi context
  * @param msg message to be freed
  */
-void vapi_msg_free (vapi_ctx_t ctx, void *msg);
+  void vapi_msg_free (vapi_ctx_t ctx, void *msg);
 
 /**
  * @brief allocate vapi context
@@ -75,18 +75,18 @@ void vapi_msg_free (vapi_ctx_t ctx, void *msg);
  *
  * @return VAPI_OK on success, other error code on error
  */
-vapi_error_e vapi_ctx_alloc (vapi_ctx_t *result);
+  vapi_error_e vapi_ctx_alloc (vapi_ctx_t * result);
 
 /**
  * @brief free vapi context
  */
-void vapi_ctx_free (vapi_ctx_t ctx);
+  void vapi_ctx_free (vapi_ctx_t ctx);
 
 /**
  * @brief check if message identified by it's message id is known by the vpp to
  * which the connection is open
  */
-bool vapi_is_msg_available (vapi_ctx_t ctx, vapi_msg_id_t type);
+  bool vapi_is_msg_available (vapi_ctx_t ctx, vapi_msg_id_t type);
 
 /**
  * @brief connect to vpp
@@ -101,30 +101,11 @@ bool vapi_is_msg_available (vapi_ctx_t ctx, vapi_msg_id_t type);
  *
  * @return VAPI_OK on success, other error code on error
  */
-vapi_error_e vapi_connect (vapi_ctx_t ctx, const char *name,
-			   const char *chroot_prefix,
-			   int max_outstanding_requests,
-			   int response_queue_size, vapi_mode_e mode,
-			   bool handle_keepalives);
-
-/**
- * @brief connect to vpp from a client in same process
- * @remark This MUST be called from a separate thread. If called
- *         from the main thread, it will deadlock.
- *
- * @param ctx opaque vapi context, must be allocated using vapi_ctx_alloc first
- * @param name application name
- * @param max_outstanding_requests max number of outstanding requests queued
- * @param response_queue_size size of the response queue
- * @param mode mode of operation - blocking or nonblocking
- * @param handle_keepalives - if true, automatically handle memclnt_keepalive
- *
- * @return VAPI_OK on success, other error code on error
- */
-vapi_error_e vapi_connect_from_vpp (vapi_ctx_t ctx, const char *name,
-				    int max_outstanding_requests,
-				    int response_queue_size, vapi_mode_e mode,
-				    bool handle_keepalives);
+  vapi_error_e vapi_connect (vapi_ctx_t ctx, const char *name,
+			     const char *chroot_prefix,
+			     int max_outstanding_requests,
+			     int response_queue_size, vapi_mode_e mode,
+			     bool handle_keepalives);
 
 /**
  * @brief disconnect from vpp
@@ -133,8 +114,7 @@ vapi_error_e vapi_connect_from_vpp (vapi_ctx_t ctx, const char *name,
  *
  * @return VAPI_OK on success, other error code on error
  */
-vapi_error_e vapi_disconnect (vapi_ctx_t ctx);
-vapi_error_e vapi_disconnect_from_vpp (vapi_ctx_t ctx);
+  vapi_error_e vapi_disconnect (vapi_ctx_t ctx);
 
 /**
  * @brief get event file descriptor
@@ -147,7 +127,7 @@ vapi_error_e vapi_disconnect_from_vpp (vapi_ctx_t ctx);
  *
  * @return VAPI_OK on success, other error code on error
  */
-vapi_error_e vapi_get_fd (vapi_ctx_t ctx, int *fd);
+  vapi_error_e vapi_get_fd (vapi_ctx_t ctx, int *fd);
 
 /**
  * @brief low-level api for sending messages to vpp
@@ -160,7 +140,7 @@ vapi_error_e vapi_get_fd (vapi_ctx_t ctx, int *fd);
  *
  * @return VAPI_OK on success, other error code on error
  */
-vapi_error_e vapi_send (vapi_ctx_t ctx, void *msg);
+  vapi_error_e vapi_send (vapi_ctx_t ctx, void *msg);
 
 /**
  * @brief low-level api for atomically sending two messages to vpp - either

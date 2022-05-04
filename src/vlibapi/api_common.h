@@ -75,8 +75,6 @@ typedef struct vl_api_registration_
   /* socket client only */
   u32 server_handle;		/**< Socket client only: server handle */
   u32 server_index;		/**< Socket client only: server index */
-
-  bool keepalive; /**< Dead client scan */
 } vl_api_registration_t;
 
 #define VL_API_INVALID_FI ((u32)~0)
