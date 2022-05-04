@@ -265,8 +265,8 @@ tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
 				 parent_app_api_ctx))
     {
       TLS_DBG (1, "failed to notify app");
-      app_session->session_state = SESSION_STATE_CONNECTING;
-      tls_disconnect (ctx->tls_ctx_handle, vlib_get_thread_index ());
+      session_free (session_get (ctx->c_s_index, ctx->c_thread_index));
+      ctx->no_app_session = 1;
       return -1;
     }
 
