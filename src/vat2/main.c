@@ -239,14 +239,15 @@ print_help (void)
     "Usage: vat2 [OPTION] <message-name> <JSON object>\n"
     "Send API message to VPP and print reply\n"
     "\n"
-    "-d, --debug       Print additional information\n"
-    "-p, --prefix      Specify shared memory prefix to connect to a given VPP "
-    "instance\n"
-    "-f, --file        File containing a JSON object with the arguments for "
-    "the message to send\n"
-    "--dump-apis       List all APIs available in VAT2 (might not reflect "
-    "running VPP)\n"
-    "-t, --template    Print a template JSON object for given API message\n"
+    "-d, --debug                    Print additional information\n"
+    "-p, --prefix <prefix>          Specify shared memory prefix to connect "
+    "to a given VPP instance\n"
+    "-f, --file <filename>          File containing a JSON object with the "
+    "arguments for the message to send\n"
+    "-t, --template <message-name>  Print a template JSON object for given API"
+    " message\n"
+    "--dump-apis                    List all APIs available in VAT2 (might "
+    "not reflect running VPP)\n"
     "\n";
   printf ("%s", help_string);
 }
@@ -255,26 +256,25 @@ int main (int argc, char **argv)
 {
   /* Create a heap of 64MB */
   clib_mem_init (0, 64 << 20);
-  char *filename = 0, *prefix = 0;
+  char *filename = 0, *prefix = 0, *template = 0;
   int index;
   int c;
   opterr = 0;
   cJSON *o = 0;
   int option_index = 0;
   bool dump_api = false;
-  bool template = false;
+  bool debug = false;
   char *msgname = 0;
-  static int debug_flag;
   static struct option long_options[] = {
-    { "debug", no_argument, &debug_flag, 1 },
-    { "prefix", optional_argument, 0, 'p' },
+    { "debug", no_argument, 0, 'd' },
+    { "prefix", required_argument, 0, 'p' },
     { "file", required_argument, 0, 'f' },
     { "dump-apis", no_argument, 0, 0 },
-    { "template", no_argument, 0, 't' },
+    { "template", required_argument, 0, 't' },
     { 0, 0, 0, 0 }
   };
 
-  while ((c = getopt_long (argc, argv, "hdp:f:", long_options,
+  while ((c = getopt_long (argc, argv, "hdp:f:t:", long_options,
 			   &option_index)) != -1)
     {
       switch (c)
@@ -287,7 +287,7 @@ int main (int argc, char **argv)
 	  debug = true;
 	  break;
 	case 't':
-	  template = true;
+	  template = optarg;
 	  break;
 	case 'p':
 	  prefix = optarg;
@@ -302,9 +302,8 @@ int main (int argc, char **argv)
 	  abort ();
 	}
     }
-  debug = debug_flag == 1 ? true : false;
-  DBG ("debug = %d, filename = %s shared memory prefix: %s\n", debug, filename,
-       prefix);
+  DBG ("debug = %d, filename = %s, template = %s, shared memory prefix: %s\n",
+       debug, filename, template, prefix);
 
   for (index = optind; index < argc; index++)
     DBG ("Non-option argument %s\n", argv[index]);
@@ -327,7 +326,7 @@ int main (int argc, char **argv)
 
   if (template)
     {
-      print_template (argv[index]);
+      print_template (template);
       exit (0);
     }
 
