@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0a013dac_87b1f5b7",
+        "filename": "test/test_policer_input.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-05-04T08:45:33Z",
+      "side": 1,
+      "message": "same deal here? Dir is a parameter to apply_vpp_config",
+      "revId": "14f2675d0adb95f565d2c3613717ef9bbb5e764f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
