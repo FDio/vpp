@@ -263,7 +263,7 @@ virtio_device_input_gso_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       u32 n_left_to_next;
       u32 next0 = next_index;
 
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+      vlib_get_new_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
       while (n_left && n_left_to_next)
 	{
@@ -357,6 +357,16 @@ virtio_device_input_gso_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    }
 	  else
 	    {
+	      vlib_next_frame_t *nf;
+	      vlib_frame_t *f;
+	      ethernet_input_frame_t *ef;
+	      nf = vlib_node_runtime_get_next_frame (vm, node, next_index);
+	      f = vlib_get_frame (vm, nf->frame);
+	      f->flags = ETH_INPUT_FRAME_F_SINGLE_SW_IF_IDX;
+
+	      ef = vlib_frame_scalar_args (f);
+	      ef->sw_if_index = vif->sw_if_index;
+	      ef->hw_if_index = vif->hw_if_index;
 	      /* copy feature arc data from template */
 	      b0->current_config_index = bt.current_config_index;
 	      vnet_buffer (b0)->feature_arc_index =
