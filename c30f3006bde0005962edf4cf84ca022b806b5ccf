@@ -16,6 +16,24 @@
       "revId": "c30f3006bde0005962edf4cf84ca022b806b5ccf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "80f4b433_a6483dd1",
+        "filename": "src/plugins/perfmon/dispatch_wrapper.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2022-05-05T13:58:52Z",
+      "side": 0,
+      "message": "So after some investigation and discussion - we concluded that this was the least worst option. \n\nBenoit\u0027s patch was essentially inserting one lock for each counter read before _and_ after each graph node. And that was having a very noticeable performance impact, and negating any positive performance advantage a userspace rdpmc was having. \n\nSo it became a trade off of ignoring the offset value versus continually locking.",
+      "parentUuid": "9652ee44_05a59e63",
+      "revId": "c30f3006bde0005962edf4cf84ca022b806b5ccf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
