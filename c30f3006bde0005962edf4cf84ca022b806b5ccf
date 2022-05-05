@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9652ee44_05a59e63",
+        "filename": "src/plugins/perfmon/dispatch_wrapper.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-05-05T11:16:59Z",
+      "side": 0,
+      "message": "The kernel keeps track of counter overflows within mmap_page-\u003eoffset, so you need to add to _rdpmc value to get a correct value if the counter has overflowed.\n\nSee this commit from Benoît: https://gerrit.fd.io/r/c/vpp/+/33380 + comments above lines 34-40.\n\nHas this not been undone here? It looks like we\u0027re just taking the values straight from _rdpmc again.",
+      "revId": "c30f3006bde0005962edf4cf84ca022b806b5ccf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
