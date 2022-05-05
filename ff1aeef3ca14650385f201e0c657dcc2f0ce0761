@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bfaa2a12_db84bb83",
+        "filename": "src/vlib/cli.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 178,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-05-05T17:17:49Z",
+      "side": 1,
+      "message": "could you convert this to c style comments and move the comment maybe on the line above? Also maybe change it to explain what it does, eg: /* try to find last non-space character */",
+      "range": {
+        "startLine": 178,
+        "startChar": 6,
+        "endLine": 178,
+        "endChar": 25
+      },
+      "revId": "ff1aeef3ca14650385f201e0c657dcc2f0ce0761",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2a51679a_22e0256f",
+        "filename": "src/vlib/cli.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-05-05T17:17:49Z",
+      "side": 1,
+      "message": "Same comment as above",
+      "range": {
+        "startLine": 188,
+        "startChar": 16,
+        "endLine": 188,
+        "endChar": 39
+      },
+      "revId": "ff1aeef3ca14650385f201e0c657dcc2f0ce0761",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
