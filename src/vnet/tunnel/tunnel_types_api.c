@@ -60,9 +60,14 @@ tunnel_flags_decode (vl_api_tunnel_flags_t f, tunnel_flags_t *o)
 }
 
 vl_api_tunnel_flags_t
-tunnel_flags_encode (tunnel_flags_t f)
+tunnel_flags_encode (tunnel_flags_t in)
 {
-  return ((vl_api_tunnel_flags_t) f);
+  vl_api_tunnel_flags_t out = 0;
+
+  if (in & TUNNEL_FLAG_TRACK_MTU)
+    out |= TUNNEL_API_FLAG_TRACK_MTU;
+
+  return (out);
 }
 
 int
