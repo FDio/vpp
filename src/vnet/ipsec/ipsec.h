@@ -25,6 +25,7 @@
 #include <vnet/ipsec/ipsec_spd.h>
 #include <vnet/ipsec/ipsec_spd_policy.h>
 #include <vnet/ipsec/ipsec_sa.h>
+#include <vnet/ipsec/ipsec_spd_fp.h>
 
 #include <vppinfra/bihash_8_16.h>
 
@@ -143,6 +144,11 @@ typedef struct
   ipsec_spd_t *spds;
   /* pool of policies */
   ipsec_policy_t *policies;
+
+  u32 fp_spd_is_enabled;
+  ipsec_fp_mask_type_entry_t *fp_mask_types;
+  u32 fp_lookup_hash_buckets;  /* number of buckets should be power of two */
+  uword fp_lookup_hash_memory; /* used for initialization of bihash table */
 
   /* hash tables of UDP port registrations */
   uword *udp_port_registrations;

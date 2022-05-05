@@ -81,4 +81,11 @@ typedef union
   };
 } ipsec_fp_lookup_value_t;
 
+typedef struct ipsec_policy_t_ ipsec_policy_t;
+
+/**
+ *  @brief add or delete a fast path policy
+ */
+int ipsec_fp_add_del_policy (void *fp_spd, ipsec_policy_t *policy, int is_add);
+
 #endif /* !IPSEC_SPD_FP_H */

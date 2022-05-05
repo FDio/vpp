@@ -14,6 +14,7 @@
  */
 
 #include <vnet/ipsec/ipsec.h>
+#include <vnet/ipsec/ipsec_spd_fp.h>
 
 /**
  * @brief
@@ -23,62 +24,6 @@ vlib_combined_counter_main_t ipsec_spd_policy_counters = {
   .name = "policy",
   .stat_segment_name = "/net/ipsec/policy",
 };
-
-static int
-ipsec_policy_is_equal (ipsec_policy_t * p1, ipsec_policy_t * p2)
-{
-  if (p1->priority != p2->priority)
-    return 0;
-  if (p1->type != p2->type)
-    return (0);
-  if (p1->policy != p2->policy)
-    return (0);
-  if (p1->sa_id != p2->sa_id)
-    return (0);
-  if (p1->protocol != p2->protocol)
-    return (0);
-  if (p1->lport.start != p2->lport.start)
-    return (0);
-  if (p1->lport.stop != p2->lport.stop)
-    return (0);
-  if (p1->rport.start != p2->rport.start)
-    return (0);
-  if (p1->rport.stop != p2->rport.stop)
-    return (0);
-  if (p1->is_ipv6 != p2->is_ipv6)
-    return (0);
-  if (p2->is_ipv6)
-    {
-      if (p1->laddr.start.ip6.as_u64[0] != p2->laddr.start.ip6.as_u64[0])
-	return (0);
-      if (p1->laddr.start.ip6.as_u64[1] != p2->laddr.start.ip6.as_u64[1])
-	return (0);
-      if (p1->laddr.stop.ip6.as_u64[0] != p2->laddr.stop.ip6.as_u64[0])
-	return (0);
-      if (p1->laddr.stop.ip6.as_u64[1] != p2->laddr.stop.ip6.as_u64[1])
-	return (0);
-      if (p1->raddr.start.ip6.as_u64[0] != p2->raddr.start.ip6.as_u64[0])
-	return (0);
-      if (p1->raddr.start.ip6.as_u64[1] != p2->raddr.start.ip6.as_u64[1])
-	return (0);
-      if (p1->raddr.stop.ip6.as_u64[0] != p2->raddr.stop.ip6.as_u64[0])
-	return (0);
-      if (p1->laddr.stop.ip6.as_u64[1] != p2->laddr.stop.ip6.as_u64[1])
-	return (0);
-    }
-  else
-    {
-      if (p1->laddr.start.ip4.as_u32 != p2->laddr.start.ip4.as_u32)
-	return (0);
-      if (p1->laddr.stop.ip4.as_u32 != p2->laddr.stop.ip4.as_u32)
-	return (0);
-      if (p1->raddr.start.ip4.as_u32 != p2->raddr.start.ip4.as_u32)
-	return (0);
-      if (p1->raddr.stop.ip4.as_u32 != p2->raddr.stop.ip4.as_u32)
-	return (0);
-    }
-  return (1);
-}
 
 static int
 ipsec_spd_entry_sort (void *a1, void *a2)
@@ -219,6 +164,17 @@ ipsec_add_del_policy (vlib_main_t * vm,
       else
 	policy->sa_index = INDEX_INVALID;
 
+      /**
+       * Try adding the policy into fast path SPD first. Only adding to
+       * traditional SPD when failed.
+       **/
+      if (im->fp_spd_is_enabled &&
+	  (ipsec_fp_add_del_policy ((void *) &spd->fp_spd, policy, 1) == 0))
+	{
+	  *stat_index = policy->id;
+	  return 0;
+	}
+
       pool_get (im->policies, vp);
       clib_memcpy (vp, policy, sizeof (*vp));
       policy_index = vp - im->policies;
@@ -226,7 +182,6 @@ ipsec_add_del_policy (vlib_main_t * vm,
       vlib_validate_combined_counter (&ipsec_spd_policy_counters,
 				      policy_index);
       vlib_zero_combined_counter (&ipsec_spd_policy_counters, policy_index);
-
       vec_add1 (spd->policies[policy->type], policy_index);
       vec_sort_with_function (spd->policies[policy->type],
 			      ipsec_spd_entry_sort);
@@ -235,6 +190,14 @@ ipsec_add_del_policy (vlib_main_t * vm,
   else
     {
       u32 ii;
+
+      /**
+       * Try to delete the policy from the fast path SPD first. Delete from
+       * traditional SPD when fp delete fails.
+       **/
+      if (im->fp_spd_is_enabled &&
+	  ipsec_fp_add_del_policy ((void *) &spd->fp_spd, policy, 0) == 0)
+	return 0;
 
       vec_foreach_index (ii, (spd->policies[policy->type]))
       {

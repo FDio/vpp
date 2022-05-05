@@ -71,6 +71,7 @@ typedef struct ipsec_policy_t_
   ipsec_policy_action_t policy;
   u32 sa_id;
   u32 sa_index;
+  u32 fp_mask_type_id;
 } ipsec_policy_t;
 
 /**
@@ -90,6 +91,62 @@ extern int ipsec_policy_mk_type (bool is_outbound,
 				 bool is_ipv6,
 				 ipsec_policy_action_t action,
 				 ipsec_spd_policy_type_t * type);
+
+static_always_inline int
+ipsec_policy_is_equal (ipsec_policy_t *p1, ipsec_policy_t *p2)
+{
+  if (p1->priority != p2->priority)
+    return 0;
+  if (p1->type != p2->type)
+    return (0);
+  if (p1->policy != p2->policy)
+    return (0);
+  if (p1->sa_id != p2->sa_id)
+    return (0);
+  if (p1->protocol != p2->protocol)
+    return (0);
+  if (p1->lport.start != p2->lport.start)
+    return (0);
+  if (p1->lport.stop != p2->lport.stop)
+    return (0);
+  if (p1->rport.start != p2->rport.start)
+    return (0);
+  if (p1->rport.stop != p2->rport.stop)
+    return (0);
+  if (p1->is_ipv6 != p2->is_ipv6)
+    return (0);
+  if (p2->is_ipv6)
+    {
+      if (p1->laddr.start.ip6.as_u64[0] != p2->laddr.start.ip6.as_u64[0])
+	return (0);
+      if (p1->laddr.start.ip6.as_u64[1] != p2->laddr.start.ip6.as_u64[1])
+	return (0);
+      if (p1->laddr.stop.ip6.as_u64[0] != p2->laddr.stop.ip6.as_u64[0])
+	return (0);
+      if (p1->laddr.stop.ip6.as_u64[1] != p2->laddr.stop.ip6.as_u64[1])
+	return (0);
+      if (p1->raddr.start.ip6.as_u64[0] != p2->raddr.start.ip6.as_u64[0])
+	return (0);
+      if (p1->raddr.start.ip6.as_u64[1] != p2->raddr.start.ip6.as_u64[1])
+	return (0);
+      if (p1->raddr.stop.ip6.as_u64[0] != p2->raddr.stop.ip6.as_u64[0])
+	return (0);
+      if (p1->laddr.stop.ip6.as_u64[1] != p2->laddr.stop.ip6.as_u64[1])
+	return (0);
+    }
+  else
+    {
+      if (p1->laddr.start.ip4.as_u32 != p2->laddr.start.ip4.as_u32)
+	return (0);
+      if (p1->laddr.stop.ip4.as_u32 != p2->laddr.stop.ip4.as_u32)
+	return (0);
+      if (p1->raddr.start.ip4.as_u32 != p2->raddr.start.ip4.as_u32)
+	return (0);
+      if (p1->raddr.stop.ip4.as_u32 != p2->raddr.stop.ip4.as_u32)
+	return (0);
+    }
+  return (1);
+}
 
 #endif /* __IPSEC_SPD_POLICY_H__ */
 
