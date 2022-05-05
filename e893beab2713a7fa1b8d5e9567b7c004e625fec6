@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c422fd56_02fdddf3",
+        "filename": "src/plugins/perfmon/perfmon.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-05-05T11:24:46Z",
+      "side": 1,
+      "message": "I don\u0027t think this index caching becomes much of an optimisation if we need to read the mmap_page-\u003eoffset every time anyway along with _rdpmc. We might as well just read the index at the same time as previously.",
+      "revId": "e893beab2713a7fa1b8d5e9567b7c004e625fec6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
