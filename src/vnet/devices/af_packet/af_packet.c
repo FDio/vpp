@@ -679,8 +679,11 @@ error:
       fd2 = -1;
     }
   vec_free (host_if_name_dup);
-  memset (apif, 0, sizeof (*apif));
-  pool_put (apm->interfaces, apif);
+  if (apif)
+    {
+      memset (apif, 0, sizeof (*apif));
+      pool_put (apm->interfaces, apif);
+    }
   return ret;
 }
 
