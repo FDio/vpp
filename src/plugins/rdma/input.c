@@ -1025,7 +1025,7 @@ VLIB_NODE_FN (rdma_input_node) (vlib_main_t * vm,
     {
       rdma_device_t *rd;
       rd = vec_elt_at_index (rm->devices, pv[i].dev_instance);
-      if (PREDICT_TRUE (rd->flags & RDMA_DEVICE_F_ADMIN_UP) == 0)
+      if ((rd->flags & RDMA_DEVICE_F_ADMIN_UP) == 0)
 	continue;
 
       if (PREDICT_TRUE (rd->flags & RDMA_DEVICE_F_ERROR))
