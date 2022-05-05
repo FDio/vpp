@@ -214,6 +214,29 @@ virtio_get_len (vnet_virtio_vring_t *vring, const int packed, const int hdr_sz,
     }                                                                         \
   while (0)
 
+static_always_inline void
+virtio_device_input_ethernet (vlib_main_t *vm, vlib_node_runtime_t *node,
+			      const u32 next_index, const u32 sw_if_index,
+			      const u32 hw_if_index)
+{
+  vlib_next_frame_t *nf;
+  vlib_frame_t *f;
+  ethernet_input_frame_t *ef;
+
+  if (PREDICT_FALSE (VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT != next_index))
+    return;
+
+  nf = vlib_node_runtime_get_next_frame (
+    vm, node, VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT);
+  f = vlib_get_frame (vm, nf->frame);
+  f->flags = ETH_INPUT_FRAME_F_SINGLE_SW_IF_IDX;
+
+  ef = vlib_frame_scalar_args (f);
+  ef->sw_if_index = sw_if_index;
+  ef->hw_if_index = hw_if_index;
+  vlib_frame_no_append (f);
+}
+
 static_always_inline uword
 virtio_device_input_gso_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 				vlib_frame_t *frame, virtio_if_t *vif,
@@ -256,7 +279,7 @@ virtio_device_input_gso_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       u32 n_left_to_next;
       u32 next0 = next_index;
 
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+      vlib_get_new_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
       while (n_left && n_left_to_next)
 	{
@@ -386,6 +409,8 @@ virtio_device_input_gso_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  n_rx_packets++;
 	  n_rx_bytes += len;
 	}
+      virtio_device_input_ethernet (vm, node, next_index, vif->sw_if_index,
+				    vif->hw_if_index);
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
   vring->last_used_idx = last;
