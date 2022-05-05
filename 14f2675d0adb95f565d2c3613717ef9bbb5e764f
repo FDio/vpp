@@ -34,6 +34,24 @@
       "revId": "14f2675d0adb95f565d2c3613717ef9bbb5e764f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5865bee2_6a87bf97",
+        "filename": "test/test_policer_input.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-05-05T00:19:07Z",
+      "side": 1,
+      "message": "now that you mention it ... you could do a version 2 that took the direction. but you can do that separately if you choose to.",
+      "parentUuid": "05aa3793_2171de8e",
+      "revId": "14f2675d0adb95f565d2c3613717ef9bbb5e764f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
