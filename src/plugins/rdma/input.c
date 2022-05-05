@@ -1028,7 +1028,7 @@ VLIB_NODE_FN (rdma_input_node) (vlib_main_t * vm,
       if (PREDICT_TRUE (rd->flags & RDMA_DEVICE_F_ADMIN_UP) == 0)
 	continue;
 
-      if (PREDICT_TRUE (rd->flags & RDMA_DEVICE_F_ERROR))
+      if (PREDICT_FALSE (rd->flags & RDMA_DEVICE_F_ERROR))
 	continue;
 
       if (PREDICT_TRUE (rd->flags & RDMA_DEVICE_F_MLX5DV))
