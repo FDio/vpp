@@ -52,6 +52,13 @@ typedef enum __attribute__ ((__packed__))
   FLOW_VARIANT_L2_IP6,
   FLOW_N_VARIANTS,
 } flowprobe_variant_t;
+
+typedef enum __attribute__ ((__packed__))
+{
+  FLOW_DIRECTION_RX = 0,
+  FLOW_DIRECTION_TX,
+  FLOW_DIRECTION_BOTH,
+} flowprobe_direction_t;
 /* *INDENT-ON* */
 
 STATIC_ASSERT (sizeof (flowprobe_variant_t) == 1,
@@ -85,6 +92,7 @@ typedef struct __attribute__ ((aligned (8))) {
   u16 src_port;
   u16 dst_port;
   flowprobe_variant_t which;
+  flowprobe_direction_t direction;
 } flowprobe_key_t;
 /* *INDENT-ON* */
 
@@ -149,6 +157,7 @@ typedef struct
 
   u16 template_per_flow[FLOW_N_VARIANTS];
   u8 *flow_per_interface;
+  u8 *direction_per_interface;
 
   /** convenience vlib_main_t pointer */
   vlib_main_t *vlib_main;

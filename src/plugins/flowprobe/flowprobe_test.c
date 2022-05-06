@@ -93,6 +93,63 @@ api_flowprobe_tx_interface_add_del (vat_main_t * vam)
 }
 
 static int
+api_flowprobe_interface_add_del (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  int enable_disable = 1;
+  u8 which = FLOWPROBE_WHICH_IP4;
+  u8 direction = FLOWPROBE_DIRECTION_TX;
+  u32 sw_if_index = ~0;
+  vl_api_flowprobe_interface_add_del_t *mp;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+	;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	;
+      else if (unformat (i, "disable"))
+	enable_disable = 0;
+      else if (unformat (i, "ip4"))
+	which = FLOWPROBE_WHICH_IP4;
+      else if (unformat (i, "ip6"))
+	which = FLOWPROBE_WHICH_IP6;
+      else if (unformat (i, "l2"))
+	which = FLOWPROBE_WHICH_L2;
+      else if (unformat (i, "rx"))
+	direction = FLOWPROBE_DIRECTION_RX;
+      else if (unformat (i, "tx"))
+	direction = FLOWPROBE_DIRECTION_TX;
+      else if (unformat (i, "both"))
+	direction = FLOWPROBE_DIRECTION_BOTH;
+      else
+	break;
+    }
+
+  if (sw_if_index == ~0)
+    {
+      errmsg ("Missing interface name / explicit sw_if_index number\n");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (FLOWPROBE_INTERFACE_ADD_DEL, mp);
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->is_add = enable_disable;
+  mp->which = which;
+  mp->direction = direction;
+
+  /* Send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static int
 api_flowprobe_params (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
