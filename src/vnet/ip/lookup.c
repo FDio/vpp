@@ -49,6 +49,7 @@
 #include <vnet/dpo/punt_dpo.h>
 #include <vnet/dpo/receive_dpo.h>
 #include <vnet/dpo/ip_null_dpo.h>
+#include <vppinfra/format_table.h>
 
 /**
  * @file
@@ -473,6 +474,8 @@ vnet_show_ip_table_cmd (vlib_main_t *vm, unformat_input_t *main_input,
   fib_table_t *fib, *fibs;
   clib_error_t *error = NULL;
   u32 table_id = ~0, fib_index;
+  table_t _t = {}, *t = &_t;
+
   /* Get a line of input. */
   if (unformat_user (main_input, unformat_line_input, line_input))
     {
@@ -502,15 +505,30 @@ vnet_show_ip_table_cmd (vlib_main_t *vm, unformat_input_t *main_input,
 	}
 
       fib = fib_table_get (fib_index, fproto);
-      vlib_cli_output (vm, "[%3u] table_id:%3u %v", fib->ft_index,
-		       fib->ft_table_id, fib->ft_desc);
+
+      int j = 0;
+
+      table_add_header_col (t, 3, "FIB index", "Table id", "Name");
+      table_format_cell (t, 0, j++, "%10u", fib->ft_index);
+      table_format_cell (t, 0, j++, "%10u", fib->ft_table_id);
+      table_format_cell (t, 0, j++, "%s", fib->ft_desc);
     }
   else
     {
+      int i = 0;
+
+      table_add_header_col (t, 3, "FIB index", "Table_id", "Name");
       pool_foreach (fib, fibs)
-	vlib_cli_output (vm, "[%3u] table_id:%3u %v", fib->ft_index,
-			 fib->ft_table_id, fib->ft_desc);
+	{
+	  int j = 0;
+
+	  table_format_cell (t, i, j++, "%10u", fib->ft_index);
+	  table_format_cell (t, i, j++, "%10u", fib->ft_table_id);
+	  table_format_cell (t, i++, j++, "%s", fib->ft_desc);
+	}
     }
+  vlib_cli_output (vm, "%U", format_table, t);
+  table_free (t);
 
 done:
   return error;
