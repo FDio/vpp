@@ -26,6 +26,7 @@
 #include <vnet/ipsec/ah.h>
 #include <vnet/ipsec/ipsec_tun.h>
 #include <vnet/ipsec/ipsec_itf.h>
+#include <vnet/ipsec/ipsec_spd_fp_lookup.h>
 
 /* Flow cache is sized for 1 million flows with a load factor of .25.
  */
@@ -36,6 +37,7 @@
 #define IPSEC4_SPD_DEFAULT_HASH_NUM_BUCKETS (1 << 22)
 
 ipsec_main_t ipsec_main;
+
 esp_async_post_next_t esp_encrypt_async_next;
 esp_async_post_next_t esp_decrypt_async_next;
 
@@ -639,7 +641,16 @@ ipsec_config (vlib_main_t *vm, unformat_input_t *input)
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "ipv4-outbound-spd-flow-cache on"))
+
+      if (unformat (input, "ipv4-outbound-spd-fp on"))
+	{
+	  im->fp_spd_is_enabled = 1;
+	}
+      else if (unformat (input, "ipv4-outbound-spd-fp off"))
+	{
+	  im->fp_spd_is_enabled = 0;
+	}
+      else if (unformat (input, "ipv4-outbound-spd-flow-cache on"))
 	im->output_flow_cache_flag = 1;
       else if (unformat (input, "ipv4-outbound-spd-flow-cache off"))
 	im->output_flow_cache_flag = 0;
