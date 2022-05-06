@@ -144,6 +144,7 @@ typedef u8 **vlib_stats_string_vector_t;
 vlib_stats_string_vector_t vlib_stats_add_string_vector (char *fmt, ...);
 void vlib_stats_set_string_vector (vlib_stats_string_vector_t *sv, u32 index,
 				   char *fmt, ...);
+void vlib_stats_free_string_vector (vlib_stats_string_vector_t *sv);
 
 /* symlink */
 u32 vlib_stats_add_symlink (u32 entry_index, u32 vector_index, char *fmt, ...);
