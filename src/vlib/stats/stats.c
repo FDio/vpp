@@ -348,6 +348,13 @@ vlib_stats_set_string_vector (vlib_stats_string_vector_t *svp,
   vlib_stats_segment_unlock ();
 }
 
+void
+vlib_stats_free_string_vector (vlib_stats_string_vector_t *sv)
+{
+  vlib_stats_header_t *sh = vec_header (*sv);
+  vlib_stats_remove_entry (sh->entry_index);
+}
+
 u32
 vlib_stats_add_counter_vector (char *fmt, ...)
 {
