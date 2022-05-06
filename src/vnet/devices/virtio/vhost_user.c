@@ -1414,10 +1414,8 @@ vhost_user_term_if (vhost_user_intf_t * vui)
   vhost_user_update_gso_interface_count (vui, 0 /* delete */ );
   vhost_user_update_iface_state (vui);
 
-  FOR_ALL_VHOST_RX_TXQ (q, vui)
-  {
+  for (q = 0; q < vec_len (vui->vrings); q++)
     clib_spinlock_free (&vui->vrings[q].vring_lock);
-  }
 
   if (vui->unix_server_index != ~0)
     {
