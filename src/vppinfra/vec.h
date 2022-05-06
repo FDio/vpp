@@ -383,7 +383,7 @@ _vec_free (void **vp)
 {
   if (vp[0] == 0)
     return;
-  clib_mem_free (vec_header (vp[0]));
+  clib_mem_heap_free (vec_get_heap (vp[0]), vec_header (vp[0]));
   vp[0] = 0;
 }
 
