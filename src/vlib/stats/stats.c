@@ -341,6 +341,7 @@ vlib_stats_set_string_vector (vlib_stats_string_vector_t *svp,
   va_start (va, fmt);
   s = va_format (s, fmt, &va);
   va_end (va);
+  vec_add1 (s, 0);
 
   e->string_vector[vector_index] = s;
 
