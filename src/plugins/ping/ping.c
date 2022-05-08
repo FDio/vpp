@@ -1427,95 +1427,89 @@ ping_ip_address (vlib_main_t * vm,
   u32 verbose = 0;
   f64 ping_interval = PING_DEFAULT_INTERVAL;
   u32 sw_if_index, table_id;
+  unformat_input_t _cli_args, *cli_args = &_cli_args;
 
   table_id = 0;
   ping_ip4 = ping_ip6 = 0;
   sw_if_index = ~0;
 
-  if (unformat (input, "%U", unformat_ip4_address, &a4))
+  unformat_user (input, unformat_vlib_cli_args, cli_args);
+
+  if (unformat (cli_args, "%U", unformat_ip4_address, &a4))
     {
       ping_ip4 = 1;
     }
-  else if (unformat (input, "%U", unformat_ip6_address, &a6))
+  else if (unformat (cli_args, "%U", unformat_ip6_address, &a6))
     {
       ping_ip6 = 1;
     }
-  else if (unformat (input, "ipv4"))
+  else if (unformat (cli_args, "ipv4"))
     {
-      if (unformat (input, "%U", unformat_ip4_address, &a4))
+      if (unformat (cli_args, "%U", unformat_ip4_address, &a4))
 	{
 	  ping_ip4 = 1;
 	}
       else
 	{
-	  error =
-	    clib_error_return (0,
-			       "expecting IPv4 address but got `%U'",
-			       format_unformat_error, input);
+	  error = clib_error_return (0, "expecting IPv4 address but got `%U'",
+				     format_unformat_error, cli_args);
 	}
     }
-  else if (unformat (input, "ipv6"))
+  else if (unformat (cli_args, "ipv6"))
     {
-      if (unformat (input, "%U", unformat_ip6_address, &a6))
+      if (unformat (cli_args, "%U", unformat_ip6_address, &a6))
 	{
 	  ping_ip6 = 1;
 	}
       else
 	{
-	  error =
-	    clib_error_return (0,
-			       "expecting IPv6 address but got `%U'",
-			       format_unformat_error, input);
+	  error = clib_error_return (0, "expecting IPv6 address but got `%U'",
+				     format_unformat_error, cli_args);
 	}
     }
   else
     {
       error =
-	clib_error_return (0,
-			   "expecting IP4/IP6 address `%U'. Usage: ping <addr> [source <intf>] [size <datasz>] [repeat <count>] [verbose]",
-			   format_unformat_error, input);
+	clib_error_return (0, "expecting IP4/IP6 address `%U'. Usage: %s",
+			   format_unformat_error, cli_args, cmd->short_help);
       goto done;
     }
 
   /* allow for the second AF in the same ping */
-  if (!ping_ip4 && (unformat (input, "ipv4")))
+  if (!ping_ip4 && (unformat (cli_args, "ipv4")))
     {
-      if (unformat (input, "%U", unformat_ip4_address, &a4))
+      if (unformat (cli_args, "%U", unformat_ip4_address, &a4))
 	{
 	  ping_ip4 = 1;
 	}
     }
-  else if (!ping_ip6 && (unformat (input, "ipv6")))
+  else if (!ping_ip6 && (unformat (cli_args, "ipv6")))
     {
-      if (unformat (input, "%U", unformat_ip6_address, &a6))
+      if (unformat (cli_args, "%U", unformat_ip6_address, &a6))
 	{
 	  ping_ip6 = 1;
 	}
     }
 
   /* parse the rest of the parameters  in a cycle */
-  while (!unformat_eof (input, NULL))
+  while (!unformat_eof (cli_args, NULL))
     {
-      if (unformat (input, "source"))
+      if (unformat (cli_args, "source"))
 	{
-	  if (!unformat_user
-	      (input, unformat_vnet_sw_interface, vnm, &sw_if_index))
+	  if (!unformat_user (cli_args, unformat_vnet_sw_interface, vnm,
+			      &sw_if_index))
 	    {
-	      error =
-		clib_error_return (0,
-				   "unknown interface `%U'",
-				   format_unformat_error, input);
+	      error = clib_error_return (0, "unknown interface `%U'",
+					 format_unformat_error, cli_args);
 	      goto done;
 	    }
 	}
-      else if (unformat (input, "size"))
+      else if (unformat (cli_args, "size"))
 	{
-	  if (!unformat (input, "%u", &data_len))
+	  if (!unformat (cli_args, "%u", &data_len))
 	    {
-	      error =
-		clib_error_return (0,
-				   "expecting size but got `%U'",
-				   format_unformat_error, input);
+	      error = clib_error_return (0, "expecting size but got `%U'",
+					 format_unformat_error, cli_args);
 	      goto done;
 	    }
 	  if (data_len > PING_MAXIMUM_DATA_SIZE)
@@ -1527,58 +1521,53 @@ ping_ip_address (vlib_main_t * vm,
 	      goto done;
 	    }
 	}
-      else if (unformat (input, "table-id"))
+      else if (unformat (cli_args, "table-id"))
 	{
-	  if (!unformat (input, "%u", &table_id))
+	  if (!unformat (cli_args, "%u", &table_id))
 	    {
-	      error =
-		clib_error_return (0,
-				   "expecting table-id but got `%U'",
-				   format_unformat_error, input);
+	      error = clib_error_return (0, "expecting table-id but got `%U'",
+					 format_unformat_error, cli_args);
 	      goto done;
 	    }
 	}
-      else if (unformat (input, "interval"))
+      else if (unformat (cli_args, "interval"))
 	{
-	  if (!unformat (input, "%f", &ping_interval))
+	  if (!unformat (cli_args, "%f", &ping_interval))
 	    {
-	      error =
-		clib_error_return (0,
-				   "expecting interval (floating point number) got `%U'",
-				   format_unformat_error, input);
+	      error = clib_error_return (
+		0, "expecting interval (floating point number) got `%U'",
+		format_unformat_error, cli_args);
 	      goto done;
 	    }
 	}
-      else if (unformat (input, "repeat"))
+      else if (unformat (cli_args, "repeat"))
 	{
-	  if (!unformat (input, "%u", &ping_repeat))
+	  if (!unformat (cli_args, "%u", &ping_repeat))
 	    {
 	      error =
-		clib_error_return (0,
-				   "expecting repeat count but got `%U'",
-				   format_unformat_error, input);
+		clib_error_return (0, "expecting repeat count but got `%U'",
+				   format_unformat_error, cli_args);
 	      goto done;
 	    }
 	}
-      else if (unformat (input, "burst"))
+      else if (unformat (cli_args, "burst"))
 	{
-	  if (!unformat (input, "%u", &ping_burst))
+	  if (!unformat (cli_args, "%u", &ping_burst))
 	    {
 	      error =
-		clib_error_return (0,
-				   "expecting burst count but got `%U'",
-				   format_unformat_error, input);
+		clib_error_return (0, "expecting burst count but got `%U'",
+				   format_unformat_error, cli_args);
 	      goto done;
 	    }
 	}
-      else if (unformat (input, "verbose"))
+      else if (unformat (cli_args, "verbose"))
 	{
 	  verbose = 1;
 	}
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, input);
+				     format_unformat_error, cli_args);
 	  goto done;
 	}
     }
@@ -1602,6 +1591,7 @@ ping_ip_address (vlib_main_t * vm,
 			 ping_ip6 ? &a6 : NULL, sw_if_index, ping_interval,
 			 ping_repeat, data_len, ping_burst, verbose);
 done:
+  unformat_free (cli_args);
   return error;
 }
 
