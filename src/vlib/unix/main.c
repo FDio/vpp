@@ -347,8 +347,20 @@ startup_config_process (vlib_main_t * vm,
 
       if (vec_len (buf))
 	{
+	  unformat_input_t in;
 	  unformat_init_vector (&sub_input, buf);
-	  vlib_cli_input (vm, &sub_input, 0, 0);
+
+	  while (unformat_user (&sub_input, unformat_vlib_cli_line, &in))
+	    {
+	      if (vlib_cli_input (vm, &in, 0, 0) != 0)
+		{
+		  /* cli failed - stop */
+		  unformat_free (&in);
+		  break;
+		}
+	      unformat_free (&in);
+	    }
+
 	  /* frees buf for us */
 	  unformat_free (&sub_input);
 	}
