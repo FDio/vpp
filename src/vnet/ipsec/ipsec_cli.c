@@ -143,7 +143,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "integ-alg %U",
 			 unformat_ipsec_integ_alg, &integ_alg))
 	;
-      else if (unformat (line_input, " %U", unformat_tunnel, &tun))
+      else if (unformat (line_input, "%U", unformat_tunnel, &tun))
 	{
 	  flags |= IPSEC_SA_FLAG_IS_TUNNEL;
 	  if (AF_IP6 == tunnel_get_af (&tun))

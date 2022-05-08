@@ -199,6 +199,64 @@ unformat_vlib_cli_args (unformat_input_t *i, va_list *va)
   return 1;
 }
 
+uword
+unformat_vlib_cli_line (unformat_input_t *i, va_list *va)
+{
+  unformat_input_t *result = va_arg (*va, unformat_input_t *);
+  u8 *line = 0;
+  uword c;
+  int skip;
+
+next_line:
+  skip = 0;
+
+  /* skip leading whitespace if any */
+  unformat_skip_white_space (i);
+
+  if (unformat_is_eof (i))
+    return 0;
+
+  while ((c = unformat_get_input (i)) != UNFORMAT_END_OF_INPUT)
+    {
+      if (c == '\\')
+	{
+	  c = unformat_get_input (i);
+
+	  if (c == '\n')
+	    {
+	      if (!skip)
+		vec_add1 (line, '\n');
+	      skip = 0;
+	      continue;
+	    }
+
+	  if (!skip)
+	    vec_add1 (line, '\\');
+
+	  if (c == UNFORMAT_END_OF_INPUT)
+	    break;
+
+	  if (!skip)
+	    vec_add1 (line, c);
+	  continue;
+	}
+
+      if (c == '#')
+	skip = 1;
+      else if (c == '\n')
+	break;
+
+      if (!skip)
+	vec_add1 (line, c);
+    }
+
+  if (line == 0)
+    goto next_line;
+
+  unformat_init_vector (result, line);
+  return 1;
+}
+
 /* Looks for string based sub-input formatted { SUB-INPUT }. */
 uword
 unformat_vlib_cli_sub_input (unformat_input_t * i, va_list * args)
