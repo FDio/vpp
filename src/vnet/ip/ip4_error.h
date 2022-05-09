@@ -40,53 +40,61 @@
 #ifndef included_ip_ip4_error_h
 #define included_ip_ip4_error_h
 
-#define foreach_ip4_error						\
-  /* Must be first. */							\
-  _ (NONE, "valid ip4 packets")						\
-									\
-  /* Errors signalled by ip4-input */					\
-  _ (TOO_SHORT, "ip4 length < 20 bytes")				\
-  _ (BAD_LENGTH, "ip4 length > l2 length")				\
-  _ (BAD_CHECKSUM, "bad ip4 checksum")					\
-  _ (VERSION, "ip4 version != 4")					\
-  _ (OPTIONS, "ip4 options present")					\
-  _ (FRAGMENT_OFFSET_ONE, "ip4 fragment offset == 1")			\
-  _ (TIME_EXPIRED, "ip4 ttl <= 1")					\
-									\
-  /* Errors signalled by ip4-rewrite. */				\
-  _ (MTU_EXCEEDED, "ip4 MTU exceeded and DF set")			\
-  _ (DST_LOOKUP_MISS, "ip4 destination lookup miss")			\
-  _ (SRC_LOOKUP_MISS, "ip4 source lookup miss")				\
-  _ (DROP, "ip4 drop")                                                  \
-  _ (PUNT, "ip4 punt")                                                  \
-  _ (SAME_INTERFACE, "ip4 egress interface same as ingress")            \
-									\
-  /* Errors signalled by ip4-local. */					\
-  _ (UNKNOWN_PROTOCOL, "unknown ip protocol")				\
-  _ (TCP_CHECKSUM, "bad tcp checksum")					\
-  _ (UDP_CHECKSUM, "bad udp checksum")					\
-  _ (UDP_LENGTH, "inconsistent udp/ip lengths")				\
-									\
-  /* Spoofed packets in ip4-rewrite-local */                            \
-  _ (SPOOFED_LOCAL_PACKETS, "ip4 spoofed local-address packet drops")   \
-                                                                        \
-  /* Errors signalled by ip4-inacl */                                   \
-  _ (INACL_TABLE_MISS, "input ACL table-miss drops")                    \
-  _ (INACL_SESSION_DENY, "input ACL session deny drops")                \
-  /* Errors singalled by ip4-outacl */                                  \
-  _ (OUTACL_TABLE_MISS, "output ACL table-miss drops")                  \
-  _ (OUTACL_SESSION_DENY, "output ACL session deny drops")              \
-                                                                        \
-  /* Errors from mfib-forward */                                         \
-  _ (RPF_FAILURE, "Multicast RPF check failed")                         \
-                                                                        \
-  /* Errors signalled by ip4-reassembly */                              \
-  _ (REASS_DUPLICATE_FRAGMENT, "duplicate/overlapping fragments")       \
-  _ (REASS_LIMIT_REACHED, "drops due to concurrent reassemblies limit") \
-  _ (REASS_FRAGMENT_CHAIN_TOO_LONG, "fragment chain too long (drop)")   \
-  _ (REASS_NO_BUF, "out of buffers (drop)")                             \
-  _ (REASS_MALFORMED_PACKET, "malformed packets")                       \
-  _ (REASS_INTERNAL_ERROR, "drops due to internal reassembly error")    \
+#define foreach_ip4_error                                                     \
+  /* Must be first. */                                                        \
+  _ (NONE, "valid ip4 packets")                                               \
+                                                                              \
+  /* Errors signalled by ip4-input */                                         \
+  _ (TOO_SHORT, "ip4 length < 20 bytes")                                      \
+  _ (BAD_LENGTH, "ip4 length > l2 length")                                    \
+  _ (BAD_CHECKSUM, "bad ip4 checksum")                                        \
+  _ (VERSION, "ip4 version != 4")                                             \
+  _ (OPTIONS, "ip4 options present")                                          \
+  _ (FRAGMENT_OFFSET_ONE, "ip4 fragment offset == 1")                         \
+  _ (TIME_EXPIRED, "ip4 ttl <= 1")                                            \
+                                                                              \
+  /* Errors signalled by ip4-rewrite. */                                      \
+  _ (MTU_EXCEEDED, "ip4 MTU exceeded and DF set")                             \
+  _ (DST_LOOKUP_MISS, "ip4 destination lookup miss")                          \
+  _ (SRC_LOOKUP_MISS, "ip4 source lookup miss")                               \
+  _ (DROP, "ip4 drop")                                                        \
+  _ (PUNT, "ip4 punt")                                                        \
+  _ (SAME_INTERFACE, "ip4 egress interface same as ingress")                  \
+                                                                              \
+  /* Errors signalled by ip4-local. */                                        \
+  _ (UNKNOWN_PROTOCOL, "unknown ip protocol")                                 \
+  _ (TCP_CHECKSUM, "bad tcp checksum")                                        \
+  _ (UDP_CHECKSUM, "bad udp checksum")                                        \
+  _ (UDP_LENGTH, "inconsistent udp/ip lengths")                               \
+                                                                              \
+  /* Spoofed packets in ip4-rewrite-local */                                  \
+  _ (SPOOFED_LOCAL_PACKETS, "ip4 spoofed local-address packet drops")         \
+                                                                              \
+  /* Errors signalled by ip4-inacl */                                         \
+  _ (INACL_TABLE_MISS, "input ACL table-miss drops")                          \
+  _ (INACL_SESSION_DENY, "input ACL session deny drops")                      \
+  /* Errors singalled by ip4-outacl */                                        \
+  _ (OUTACL_TABLE_MISS, "output ACL table-miss drops")                        \
+  _ (OUTACL_SESSION_DENY, "output ACL session deny drops")                    \
+                                                                              \
+  /* Errors from mfib-forward */                                              \
+  _ (RPF_FAILURE, "Multicast RPF check failed")                               \
+                                                                              \
+  /* Errors signalled by ip4-reassembly */                                    \
+  _ (REASS_DUPLICATE_FRAGMENT, "duplicate/overlapping fragments")             \
+  _ (REASS_LIMIT_REACHED, "drops due to concurrent reassemblies limit")       \
+  _ (REASS_FRAGMENT_CHAIN_TOO_LONG, "fragment chain too long (drop)")         \
+  _ (REASS_NO_BUF, "out of buffers (drop)")                                   \
+  _ (REASS_MALFORMED_PACKET, "malformed packets")                             \
+  _ (REASS_INTERNAL_ERROR, "drops due to internal reassembly error")          \
+  _ (REASS_TIMEOUT, "fragments dropped due to reassembly timeout")            \
+  _ (REASS_HH_BAD_THREAD, "fragments hh to invalid thread")                   \
+  _ (REASS_TO_CUSTOM_APP, "send to custom drop app")                          \
+  _ (REASS_SUCCESS, "successful reassemblies")                                \
+  _ (REASS_FRAGMENTS_REASSEMBLED, "fragments reassembled")                    \
+  _ (REASS_FRAGMENTS_RCVD, "fragments received")                              \
+  _ (REASS_INVALID_BUFFER, "invalid buffer")                                  \
+  _ (REASS_FRAG_NUM_MISMATCH, "fragment mismatch in context")                 \
   _ (REASS_UNSUPP_IP_PROT, "unsupported ip protocol")
 
 typedef enum
