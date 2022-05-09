@@ -164,14 +164,14 @@ uword
 unformat_vlib_cli_args (unformat_input_t *i, va_list *va)
 {
   unformat_input_t *result = va_arg (*va, unformat_input_t *);
-  u8 *line;
-  uword last_c;
+  u8 *line = 0;
+  uword last_c, c;
   u32 index = i->index;
+  int skip;
 
   if (unformat_is_eof (i))
     {
-      unformat_init (result, 0, 0);
-      return 0;
+      goto done;
     }
 
   /* try to find last non-space character */
@@ -186,17 +186,61 @@ unformat_vlib_cli_args (unformat_input_t *i, va_list *va)
       last_c == '}')
     {
       /* current command has no args */
-      unformat_init (result, 0, 0);
-      return 0;
+      goto done;
     }
 
-  if (!unformat_user (i, unformat_line, &line))
+next_line:
+  skip = 0;
+
+  /* skip leading whitespace if any */
+  unformat_skip_white_space (i);
+
+  if (unformat_is_eof (i))
     {
-      unformat_init (result, 0, 0);
-      return 0;
+      /* current command has no args */
+      goto done;
     }
+
+  while ((c = unformat_get_input (i)) != UNFORMAT_END_OF_INPUT)
+    {
+      if (c == '\\')
+	{
+	  c = unformat_get_input (i);
+
+	  if (c == '\n')
+	    {
+	      if (!skip)
+		vec_add1 (line, '\n');
+	      skip = 0;
+	      continue;
+	    }
+
+	  if (!skip)
+	    vec_add1 (line, '\\');
+
+	  if (c == UNFORMAT_END_OF_INPUT)
+	    break;
+
+	  if (!skip)
+	    vec_add1 (line, c);
+	  continue;
+	}
+
+      if (c == '#')
+	skip = 1;
+      else if (c == '\n')
+	break;
+
+      if (!skip)
+	vec_add1 (line, c);
+    }
+
+  if (line == 0)
+    goto next_line;
+
+done:
   unformat_init_vector (result, line);
-  return 1;
+  return line != 0;
 }
 
 /* Looks for string based sub-input formatted { SUB-INPUT }. */
@@ -605,6 +649,8 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 	    }
 	  else
 	    {
+	      unformat_input_t _cli_args, *cli_args = &_cli_args;
+
 	      if (PREDICT_FALSE (vm->elog_trace_cli_commands))
 		{
                   /* *INDENT-OFF* */
@@ -629,7 +675,16 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 				     c - cm->commands, 0 /* before */ );
 
 	      c->hit_counter++;
-	      c_error = c->function (vm, si, c);
+
+	      if (si != &sub_input)
+		unformat_user (si, unformat_vlib_cli_args, cli_args);
+	      else
+		cli_args = si;
+
+	      c_error = c->function (vm, cli_args, c);
+
+	      if (si != &sub_input)
+		unformat_free (cli_args);
 
 	      if (PREDICT_FALSE (vec_len (cm->perf_counter_cbs) != 0))
 		clib_call_callbacks (cm->perf_counter_cbs, cm,
