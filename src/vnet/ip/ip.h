@@ -300,6 +300,70 @@ vlib_buffer_get_ip_fib_index (vlib_buffer_t * b, u8 is_ip4)
 	  : vlib_buffer_get_ip6_fib_index) (b);
 }
 
+/* Iterate pool by index from s to e */
+#define pool_foreach_stepping_index(i, s, e, v, body)                         \
+  for ((i) = (s); (i) < (e); (i)++)                                           \
+    {                                                                         \
+      if (!pool_is_free_index ((v), (i)))                                     \
+	do                                                                    \
+	  {                                                                   \
+	    body;                                                             \
+	  }                                                                   \
+	while (0);                                                            \
+    }
+
+#define sanitize_reass_buffers_add_missing(vm, node, rm, reass, bi0)          \
+  {                                                                           \
+    u32 range_bi = reass->first_bi;                                           \
+    vlib_buffer_t *range_b;                                                   \
+    vnet_buffer_opaque_t *range_vnb;                                          \
+    while (~0 != range_bi)                                                    \
+      {                                                                       \
+	range_b = vlib_get_buffer (vm, range_bi);                             \
+	range_vnb = vnet_buffer (range_b);                                    \
+	u32 bi = range_bi;                                                    \
+	if (~0 != bi)                                                         \
+	  {                                                                   \
+	    if (bi == bi0)                                                    \
+	      bi0 = ~0;                                                       \
+	    if (range_b->flags & VLIB_BUFFER_NEXT_PRESENT)                    \
+	      {                                                               \
+		u32 _bi = bi;                                                 \
+		vlib_buffer_t *_b = vlib_get_buffer (vm, _bi);                \
+		while (_b->flags & VLIB_BUFFER_NEXT_PRESENT)                  \
+		  {                                                           \
+		    if (_b->next_buffer != range_vnb->ip.reass.next_range_bi) \
+		      {                                                       \
+			_bi = _b->next_buffer;                                \
+			_b = vlib_get_buffer (vm, _bi);                       \
+		      }                                                       \
+		    else                                                      \
+		      {                                                       \
+			_b->flags &= ~VLIB_BUFFER_NEXT_PRESENT;               \
+			break;                                                \
+		      }                                                       \
+		  }                                                           \
+	      }                                                               \
+	    range_bi = range_vnb->ip.reass.next_range_bi;                     \
+	  }                                                                   \
+      }                                                                       \
+    if (bi0 != ~0)                                                            \
+      {                                                                       \
+	vlib_buffer_t *fb = vlib_get_buffer (vm, bi0);                        \
+	vnet_buffer_opaque_t *fvnb = vnet_buffer (fb);                        \
+	if (~0 != reass->first_bi)                                            \
+	  {                                                                   \
+	    fvnb->ip.reass.next_range_bi = reass->first_bi;                   \
+	    reass->first_bi = bi0;                                            \
+	  }                                                                   \
+	else                                                                  \
+	  {                                                                   \
+	    reass->first_bi = bi0;                                            \
+	    fvnb->ip.reass.next_range_bi = ~0;                                \
+	  }                                                                   \
+	bi0 = ~0;                                                             \
+      }                                                                       \
+  }
 #endif /* included_ip_main_h */
 
 /*
