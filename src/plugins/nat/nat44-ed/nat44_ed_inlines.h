@@ -699,6 +699,15 @@ is_interface_addr (snat_main_t *sm, vlib_node_runtime_t *node,
     return 0;
 }
 
+always_inline u8
+is_ttl_exceeded (snat_main_t *sm, vlib_node_runtime_t *node, u32 sw_if_index,
+		 ip4_header_t *ip)
+{
+  if (PREDICT_TRUE (ip->ttl > 1))
+    return 0;
+  return !is_interface_addr (sm, node, sw_if_index, ip->dst_address.as_u32);
+}
+
 always_inline void
 nat44_ed_session_reopen (u32 thread_index, snat_session_t *s)
 {
