@@ -143,9 +143,11 @@ vlib_stats_remove_entry (u32 entry_index)
   switch (e->type)
     {
     case STAT_DIR_TYPE_NAME_VECTOR:
+      oldheap = clib_mem_set_heap (sm->heap);
       for (i = 0; i < vec_len (e->string_vector); i++)
 	vec_free (e->string_vector[i]);
       vec_free (e->string_vector);
+      clib_mem_set_heap (oldheap);
       break;
 
     case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
@@ -309,6 +311,7 @@ vlib_stats_set_string_vector (vlib_stats_string_vector_t *svp,
   vlib_stats_entry_t *e = vlib_stats_get_entry (sm, sh->entry_index);
   va_list va;
   u8 *s;
+  void *oldheap;
 
   if (fmt[0] == 0)
     {
@@ -319,7 +322,9 @@ vlib_stats_set_string_vector (vlib_stats_string_vector_t *svp,
 	return;
 
       vlib_stats_segment_lock ();
+      oldheap = vlib_stats_set_heap ();
       vec_free (e->string_vector[vector_index]);
+      clib_mem_set_heap (oldheap);
       vlib_stats_segment_unlock ();
       return;
     }
