@@ -29,10 +29,10 @@
 #include <stddef.h>
 
 #define MSEC_PER_SEC 1000
-#define IP4_REASS_TIMEOUT_DEFAULT_MS 100
-#define IP4_REASS_EXPIRE_WALK_INTERVAL_DEFAULT_MS 10000	// 10 seconds default
+#define IP4_REASS_TIMEOUT_DEFAULT_MS		  200
+#define IP4_REASS_EXPIRE_WALK_INTERVAL_DEFAULT_MS 50 // 50 ms default
 #define IP4_REASS_MAX_REASSEMBLIES_DEFAULT 1024
-#define IP4_REASS_MAX_REASSEMBLY_LENGTH_DEFAULT 3
+#define IP4_REASS_MAX_REASSEMBLY_LENGTH_DEFAULT	  6
 #define IP4_REASS_HT_LOAD_FACTOR (0.75)
 
 #define IP4_REASS_DEBUG_BUFFERS 0
@@ -155,6 +155,8 @@ typedef struct
   ip4_full_reass_t *pool;
   u32 reass_n;
   u32 id_counter;
+  // for pacing the main thread timeouts
+  u32 last_id;
   clib_spinlock_t lock;
 } ip4_full_reass_per_thread_t;
 
@@ -419,59 +421,82 @@ ip4_full_reass_free (ip4_full_reass_main_t * rm,
   return ip4_full_reass_free_ctx (rt, reass);
 }
 
+/* n_left_to_next, and to_next are taken as input params, as this function
+ * could be called from a graphnode, where its managing local copy of these
+ * variables, and ignoring those and still trying to enqueue the buffers
+ * with local variables would cause either buffer leak or corruption */
 always_inline void
 ip4_full_reass_drop_all (vlib_main_t *vm, vlib_node_runtime_t *node,
-			 ip4_full_reass_t *reass)
+			 ip4_full_reass_t *reass, u32 *n_left_to_next,
+			 u32 **to_next)
 {
   u32 range_bi = reass->first_bi;
   vlib_buffer_t *range_b;
   vnet_buffer_opaque_t *range_vnb;
   u32 *to_free = NULL;
+
   while (~0 != range_bi)
     {
       range_b = vlib_get_buffer (vm, range_bi);
       range_vnb = vnet_buffer (range_b);
       u32 bi = range_bi;
-      while (~0 != bi)
+
+      if (range_b->ref_count <= 0)
+	{
+	  vlib_node_increment_counter (vm, node->node_index,
+				       IP4_ERROR_REASS_INVALID_BUFFER, 1);
+	  break;
+	}
+
+      if (~0 != bi)
 	{
 	  vec_add1 (to_free, bi);
-	  vlib_buffer_t *b = vlib_get_buffer (vm, bi);
-	  if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
-	    {
-	      bi = b->next_buffer;
-	      b->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
-	    }
-	  else
-	    {
-	      bi = ~0;
-	    }
 	}
+
       range_bi = range_vnb->ip.reass.next_range_bi;
     }
+
+  if (vec_len (to_free) != reass->fragments_n)
+    vlib_node_increment_counter (vm, node->node_index,
+				 IP4_ERROR_REASS_FRAG_NUM_MISMATCH, 1);
+
   /* send to next_error_index */
-  if (~0 != reass->error_next_index)
+  if (~0 != reass->error_next_index &&
+      reass->error_next_index < node->n_next_nodes)
     {
-      u32 n_left_to_next, *to_next, next_index;
+      u32 next_index;
 
       next_index = reass->error_next_index;
       u32 bi = ~0;
 
+      /* record number of packets sent to custom app */
+      vlib_node_increment_counter (vm, node->node_index,
+				   IP4_ERROR_REASS_TO_CUSTOM_APP,
+				   vec_len (to_free));
+
       while (vec_len (to_free) > 0)
 	{
-	  vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+	  vlib_get_next_frame (vm, node, next_index, *to_next,
+			       (*n_left_to_next));
 
-	  while (vec_len (to_free) > 0 && n_left_to_next > 0)
+	  while (vec_len (to_free) > 0 && (*n_left_to_next) > 0)
 	    {
 	      bi = vec_pop (to_free);
 
 	      if (~0 != bi)
 		{
-		  to_next[0] = bi;
-		  to_next += 1;
-		  n_left_to_next -= 1;
+		  vlib_buffer_t *b = vlib_get_buffer (vm, bi);
+		  if ((b->flags & VLIB_BUFFER_IS_TRACED))
+		    {
+		      ip4_full_reass_add_trace (vm, node, reass, bi,
+						RANGE_DISCARD, 0, ~0);
+		    }
+		  *to_next[0] = bi;
+		  (*to_next) += 1;
+		  (*n_left_to_next) -= 1;
 		}
 	    }
-	  vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+	  vlib_put_next_frame (vm, node, next_index, (*n_left_to_next));
 	}
     }
   else
@@ -492,10 +517,11 @@ ip4_full_reass_init (ip4_full_reass_t * reass)
 }
 
 always_inline ip4_full_reass_t *
-ip4_full_reass_find_or_create (vlib_main_t * vm, vlib_node_runtime_t * node,
-			       ip4_full_reass_main_t * rm,
-			       ip4_full_reass_per_thread_t * rt,
-			       ip4_full_reass_kv_t * kv, u8 * do_handoff)
+ip4_full_reass_find_or_create (vlib_main_t *vm, vlib_node_runtime_t *node,
+			       ip4_full_reass_main_t *rm,
+			       ip4_full_reass_per_thread_t *rt,
+			       ip4_full_reass_kv_t *kv, u8 *do_handoff,
+			       u32 *n_left_to_next, u32 **to_next)
 {
   ip4_full_reass_t *reass;
   f64 now;
@@ -518,7 +544,9 @@ again:
 
       if (now > reass->last_heard + rm->timeout)
 	{
-	  ip4_full_reass_drop_all (vm, node, reass);
+	  vlib_node_increment_counter (vm, node->node_index,
+				       IP4_ERROR_REASS_TIMEOUT, 1);
+	  ip4_full_reass_drop_all (vm, node, reass, n_left_to_next, to_next);
 	  ip4_full_reass_free (rm, rt, reass);
 	  reass = NULL;
 	}
@@ -763,6 +791,16 @@ ip4_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
       *next0 = reass->next_index;
     }
   vnet_buffer (first_b)->ip.reass.estimated_mtu = reass->min_fragment_length;
+
+  /* Keep track of number of successfully reassembled packets and number of
+   * fragments reassembled */
+  vlib_node_increment_counter (vm, node->node_index, IP4_ERROR_REASS_SUCCESS,
+			       1);
+
+  vlib_node_increment_counter (vm, node->node_index,
+			       IP4_ERROR_REASS_FRAGMENTS_REASSEMBLED,
+			       reass->fragments_n);
+
   *error0 = IP4_ERROR_NONE;
   ip4_full_reass_free (rm, rt, reass);
   reass = NULL;
@@ -1151,7 +1189,14 @@ ip4_full_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  const u32 fragment_length =
 	    clib_net_to_host_u16 (ip0->length) - ip4_header_bytes (ip0);
 	  const u32 fragment_last = fragment_first + fragment_length - 1;
-	  if (fragment_first > fragment_last || fragment_first + fragment_length > UINT16_MAX - 20 || (fragment_length < 8 && ip4_get_fragment_more (ip0)))	// 8 is minimum frag length per RFC 791
+
+	  /* Keep track of received fragments */
+	  vlib_node_increment_counter (vm, node->node_index,
+				       IP4_ERROR_REASS_FRAGMENTS_RCVD, 1);
+	  if (fragment_first > fragment_last ||
+	      fragment_first + fragment_length > UINT16_MAX - 20 ||
+	      (fragment_length < 8 && // 8 is minimum frag length per RFC 791
+	       ip4_get_fragment_more (ip0)))
 	    {
 	      next0 = IP4_FULL_REASS_NEXT_DROP;
 	      error0 = IP4_ERROR_REASS_MALFORMED_PACKET;
@@ -1168,9 +1213,8 @@ ip4_full_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    (u64) ip0->dst_address.
 	    as_u32 | (u64) ip0->fragment_id << 32 | (u64) ip0->protocol << 48;
 
-	  ip4_full_reass_t *reass =
-	    ip4_full_reass_find_or_create (vm, node, rm, rt, &kv,
-					   &do_handoff);
+	  ip4_full_reass_t *reass = ip4_full_reass_find_or_create (
+	    vm, node, rm, rt, &kv, &do_handoff, &n_left_to_next, &to_next);
 
 	  if (reass)
 	    {
@@ -1186,6 +1230,13 @@ ip4_full_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      next0 = IP4_FULL_REASS_NEXT_HANDOFF;
 	      vnet_buffer (b0)->ip.reass.owner_thread_index =
 		kv.v.memory_owner_thread_index;
+
+	      if (vnet_buffer (b0)->ip.reass.owner_thread_index >
+		  vlib_num_workers ())
+		{
+		  next0 = IP4_FULL_REASS_NEXT_DROP;
+		  error0 = IP4_ERROR_REASS_HH_BAD_THREAD;
+		}
 	    }
 	  else if (reass)
 	    {
@@ -1212,6 +1263,15 @@ ip4_full_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		  break;
 		case IP4_REASS_RC_INTERNAL_ERROR:
 		  counter = IP4_ERROR_REASS_INTERNAL_ERROR;
+		  /* Sanitization is needed in internal error cases only, as
+		   * the incoming packet is already dropped in other cases,
+		   * also adding bi0 back to the reassembly list, fixes the
+		   * leaking of buffers during internal erros */
+		  sanitize_reass_buffers_add_missing (vm, node, rm, reass,
+						      bi0);
+		  // not sending to custom app, as there is no point in sending
+		  // a list of fragments with internal errors
+		  reass->error_next_index = ~0;
 		  break;
 		}
 
@@ -1219,7 +1279,8 @@ ip4_full_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		{
 		  vlib_node_increment_counter (vm, node->node_index, counter,
 					       1);
-		  ip4_full_reass_drop_all (vm, node, reass);
+		  ip4_full_reass_drop_all (vm, node, reass, &n_left_to_next,
+					   &to_next);
 		  ip4_full_reass_free (rm, rt, reass);
 		  goto next_packet;
 		}
@@ -1259,6 +1320,15 @@ ip4_full_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		{
 		  vnet_feature_next (&next0, b0);
 		}
+
+	      /* Increment the counter to-custom-app also as this fragment is
+	       * also going to application */
+	      if (CUSTOM == type)
+		{
+		  vlib_node_increment_counter (
+		    vm, node->node_index, IP4_ERROR_REASS_TO_CUSTOM_APP, 1);
+		}
+
 	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					       to_next, n_left_to_next,
 					       bi0, next0);
@@ -1405,7 +1475,9 @@ ip4_full_reass_get_nbuckets ()
   u32 nbuckets;
   u8 i;
 
-  nbuckets = (u32) (rm->max_reass_n / IP4_REASS_HT_LOAD_FACTOR);
+  /* need more mem with more workers */
+  nbuckets =
+    (u32) (rm->max_reass_n * vlib_num_workers () / IP4_REASS_HT_LOAD_FACTOR);
 
   for (i = 0; i < 31; i++)
     if ((1 << i) >= nbuckets)
@@ -1587,6 +1659,8 @@ ip4_full_reass_walk_expired (vlib_main_t *vm, vlib_node_runtime_t *node,
       uword thread_index = 0;
       int index;
       const uword nthreads = vlib_num_workers () + 1;
+      u32 n_left_to_next, *to_next;
+
       for (thread_index = 0; thread_index < nthreads; ++thread_index)
 	{
 	  ip4_full_reass_per_thread_t *rt =
@@ -1594,18 +1668,46 @@ ip4_full_reass_walk_expired (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  clib_spinlock_lock (&rt->lock);
 
 	  vec_reset_length (pool_indexes_to_free);
-          pool_foreach_index (index, rt->pool)  {
-                                reass = pool_elt_at_index (rt->pool, index);
-                                if (now > reass->last_heard + rm->timeout)
-                                  {
-                                    vec_add1 (pool_indexes_to_free, index);
-                                  }
-                              }
+
+	  /* Pace the number of timeouts handed per thread,to avoid barrier
+	   * sync issues in real world scenarios */
+
+	  u32 beg = rt->last_id;
+	  /* to ensure we walk at least once per sec per context */
+	  u32 end =
+	    beg + (IP4_REASS_MAX_REASSEMBLIES_DEFAULT *
+		     IP4_REASS_EXPIRE_WALK_INTERVAL_DEFAULT_MS / MSEC_PER_SEC +
+		   1);
+	  if (end > vec_len (rt->pool))
+	    {
+	      end = vec_len (rt->pool);
+	      rt->last_id = 0;
+	    }
+	  else
+	    {
+	      rt->last_id = end;
+	    }
+
+	  pool_foreach_stepping_index (
+	    index, beg, end, rt->pool, ({
+	      reass = pool_elt_at_index (rt->pool, index);
+	      if (now > reass->last_heard + rm->timeout)
+		{
+		  vec_add1 (pool_indexes_to_free, index);
+		}
+	    }));
+
+	  if (vec_len (pool_indexes_to_free))
+	    vlib_node_increment_counter (vm, node->node_index,
+					 IP4_ERROR_REASS_TIMEOUT,
+					 vec_len (pool_indexes_to_free));
+
 	  int *i;
           vec_foreach (i, pool_indexes_to_free)
           {
             ip4_full_reass_t *reass = pool_elt_at_index (rt->pool, i[0]);
-	    ip4_full_reass_drop_all (vm, node, reass);
+	    ip4_full_reass_drop_all (vm, node, reass, &n_left_to_next,
+				     &to_next);
 	    ip4_full_reass_free (rm, rt, reass);
 	  }
 
