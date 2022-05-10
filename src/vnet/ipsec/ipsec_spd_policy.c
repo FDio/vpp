@@ -25,62 +25,6 @@ vlib_combined_counter_main_t ipsec_spd_policy_counters = {
 };
 
 static int
-ipsec_policy_is_equal (ipsec_policy_t * p1, ipsec_policy_t * p2)
-{
-  if (p1->priority != p2->priority)
-    return 0;
-  if (p1->type != p2->type)
-    return (0);
-  if (p1->policy != p2->policy)
-    return (0);
-  if (p1->sa_id != p2->sa_id)
-    return (0);
-  if (p1->protocol != p2->protocol)
-    return (0);
-  if (p1->lport.start != p2->lport.start)
-    return (0);
-  if (p1->lport.stop != p2->lport.stop)
-    return (0);
-  if (p1->rport.start != p2->rport.start)
-    return (0);
-  if (p1->rport.stop != p2->rport.stop)
-    return (0);
-  if (p1->is_ipv6 != p2->is_ipv6)
-    return (0);
-  if (p2->is_ipv6)
-    {
-      if (p1->laddr.start.ip6.as_u64[0] != p2->laddr.start.ip6.as_u64[0])
-	return (0);
-      if (p1->laddr.start.ip6.as_u64[1] != p2->laddr.start.ip6.as_u64[1])
-	return (0);
-      if (p1->laddr.stop.ip6.as_u64[0] != p2->laddr.stop.ip6.as_u64[0])
-	return (0);
-      if (p1->laddr.stop.ip6.as_u64[1] != p2->laddr.stop.ip6.as_u64[1])
-	return (0);
-      if (p1->raddr.start.ip6.as_u64[0] != p2->raddr.start.ip6.as_u64[0])
-	return (0);
-      if (p1->raddr.start.ip6.as_u64[1] != p2->raddr.start.ip6.as_u64[1])
-	return (0);
-      if (p1->raddr.stop.ip6.as_u64[0] != p2->raddr.stop.ip6.as_u64[0])
-	return (0);
-      if (p1->laddr.stop.ip6.as_u64[1] != p2->laddr.stop.ip6.as_u64[1])
-	return (0);
-    }
-  else
-    {
-      if (p1->laddr.start.ip4.as_u32 != p2->laddr.start.ip4.as_u32)
-	return (0);
-      if (p1->laddr.stop.ip4.as_u32 != p2->laddr.stop.ip4.as_u32)
-	return (0);
-      if (p1->raddr.start.ip4.as_u32 != p2->raddr.start.ip4.as_u32)
-	return (0);
-      if (p1->raddr.stop.ip4.as_u32 != p2->raddr.stop.ip4.as_u32)
-	return (0);
-    }
-  return (1);
-}
-
-static int
 ipsec_spd_entry_sort (void *a1, void *a2)
 {
   ipsec_main_t *im = &ipsec_main;
@@ -219,6 +163,21 @@ ipsec_add_del_policy (vlib_main_t * vm,
       else
 	policy->sa_index = INDEX_INVALID;
 
+      /**
+       * Try adding the policy into fast path SPD first. Only adding to
+       * traditional SPD when failed.
+       **/
+      /*  TODO: add ipv6 fast path support for outbound and
+       *  ipv4/v6 inbound support for fast path
+       */
+      if (im->fp_spd_is_enabled &&
+	  (policy->type == IPSEC_SPD_POLICY_IP4_OUTBOUND) &&
+	  (ipsec_fp_add_del_policy ((void *) &spd->fp_spd, policy, 1,
+				    stat_index) == 0))
+	{
+	  return 0;
+	}
+
       pool_get (im->policies, vp);
       clib_memcpy (vp, policy, sizeof (*vp));
       policy_index = vp - im->policies;
@@ -226,7 +185,6 @@ ipsec_add_del_policy (vlib_main_t * vm,
       vlib_validate_combined_counter (&ipsec_spd_policy_counters,
 				      policy_index);
       vlib_zero_combined_counter (&ipsec_spd_policy_counters, policy_index);
-
       vec_add1 (spd->policies[policy->type], policy_index);
       vec_sort_with_function (spd->policies[policy->type],
 			      ipsec_spd_entry_sort);
@@ -235,6 +193,20 @@ ipsec_add_del_policy (vlib_main_t * vm,
   else
     {
       u32 ii;
+
+      /**
+       * Try to delete the policy from the fast path SPD first. Delete from
+       * traditional SPD when fp delete fails.
+       **/
+
+      /*  TODO: add ipv6 fast path support for outbound and
+       *  ipv4/v6 inbound support for fast path
+       */
+      if (im->fp_spd_is_enabled &&
+	  (policy->type == IPSEC_SPD_POLICY_IP4_OUTBOUND) &&
+	  ipsec_fp_add_del_policy ((void *) &spd->fp_spd, policy, 0,
+				   stat_index) == 0)
+	return 0;
 
       vec_foreach_index (ii, (spd->policies[policy->type]))
       {
@@ -251,6 +223,551 @@ ipsec_add_del_policy (vlib_main_t * vm,
     }
 
   return 0;
+}
+
+static_always_inline void
+release_mask_type_index (ipsec_main_t *im, u32 mask_type_index)
+{
+  ipsec_fp_mask_type_entry_t *mte =
+    pool_elt_at_index (im->fp_mask_types, mask_type_index);
+  mte->refcount--;
+  if (mte->refcount == 0)
+    {
+      /* this entry is not in use anymore */
+      ASSERT (clib_memset (mte, 0xae, sizeof (*mte)) == EOK);
+      pool_put (im->fp_mask_types, mte);
+    }
+}
+
+static_always_inline u32
+find_mask_type_index (ipsec_main_t *im, ipsec_fp_5tuple_t *mask)
+{
+  ipsec_fp_mask_type_entry_t *mte;
+
+  pool_foreach (mte, im->fp_mask_types)
+    {
+      if (memcmp (&mte->mask, mask, sizeof (*mask)) == 0)
+	return (mte - im->fp_mask_types);
+    }
+
+  return ~0;
+}
+
+static_always_inline void
+fill_ip6_hash_policy_kv (ipsec_main_t *im, ipsec_fp_5tuple_t *match,
+			 ipsec_fp_5tuple_t *mask, clib_bihash_kv_40_8_t *kv)
+{
+  ipsec_fp_lookup_value_t *kv_val = (ipsec_fp_lookup_value_t *) &kv->value;
+  u64 *pmatch = (u64 *) &match;
+  u64 *pmask = (u64 *) &mask;
+  u64 *pkey = (u64 *) &kv->key;
+
+  *pkey++ = *pmatch++ & *pmask++;
+  *pkey++ = *pmatch++ & *pmask++;
+  *pkey++ = *pmatch++ & *pmask++;
+  *pkey++ = *pmatch++ & *pmask++;
+  *pkey++ = *pmatch++ & *pmask++;
+  *pkey++ = *pmatch++ & *pmask++;
+
+  kv_val->as_u64 = 0;
+}
+
+static_always_inline void
+fill_ip4_hash_policy_kv (ipsec_main_t *im, ipsec_fp_5tuple_t *match,
+			 ipsec_fp_5tuple_t *mask, clib_bihash_kv_16_8_t *kv)
+{
+  ipsec_fp_lookup_value_t *kv_val = (ipsec_fp_lookup_value_t *) &kv->value;
+  u64 *pmatch = (u64 *) &match->laddr;
+  u64 *pmask = (u64 *) &mask->laddr;
+  u64 *pkey = (u64 *) &kv->key;
+
+  *pkey++ = *pmatch++ & *pmask++;
+  *pkey++ = *pmatch++ & *pmask++;
+
+  kv_val->as_u64 = 0;
+}
+
+static_always_inline int
+ipsec_fp_ip4_get_policy_mask (ipsec_policy_t *policy, ipsec_fp_5tuple_t *mask)
+{
+  u32 *pladdr_start = (u32 *) &policy->laddr.start.ip4;
+  u32 *pladdr_stop = (u32 *) &policy->laddr.stop.ip4;
+  u32 *plmask = (u32 *) &mask->laddr;
+  u32 *praddr_start = (u32 *) &policy->raddr.start.ip4;
+  u32 *praddr_stop = (u32 *) &policy->raddr.stop.ip4;
+  u32 *prmask = (u32 *) &mask->raddr;
+
+  /* test if x is not power of 2. The test form is  !((x & (x - 1)) == 0) */
+  if (((*pladdr_stop - *pladdr_start + 1) & (*pladdr_stop - *pladdr_start)))
+    return -1;
+
+  if (((*praddr_stop - *praddr_start + 1) & (*praddr_stop - *praddr_start)))
+    return -1;
+
+  memset (mask, 0, sizeof (mask->l3_zero_pad));
+  memset (plmask, 1, sizeof (*mask) - sizeof (mask->l3_zero_pad));
+
+  *plmask = ~(*pladdr_start ^ *pladdr_stop);
+
+  *prmask = ~(*praddr_start ^ *praddr_stop);
+
+  mask->lport = ~(policy->lport.start ^ policy->lport.stop);
+  mask->rport = ~(policy->rport.start ^ policy->rport.stop);
+  mask->protocol = 0;
+  return 0;
+}
+
+static_always_inline int
+ipsec_fp_ip6_get_policy_mask (ipsec_policy_t *policy, ipsec_fp_5tuple_t *mask)
+{
+  u64 *pladdr_start = (u64 *) &policy->laddr.start;
+  u64 *pladdr_stop = (u64 *) &policy->laddr.stop;
+  u64 *plmask = (u64 *) &mask->laddr;
+  u64 *praddr_start = (u64 *) &policy->raddr.start;
+  u64 *praddr_stop = (u64 *) &policy->raddr.stop;
+  u64 *prmask = (u64 *) &mask->ip6_raddr;
+
+  /* test if x is not power of 2. The test form is  !((x & (x - 1)) == 0) */
+  if (((*pladdr_stop - *pladdr_start + 1) & (*pladdr_stop - *pladdr_start)) &&
+      (((*(pladdr_stop + 1) - *(pladdr_start + 1)) + 1) &
+       (*(pladdr_stop + 1) - *(pladdr_start + 1))))
+    return -1;
+
+  if (((*praddr_stop - *praddr_start + 1) & (*praddr_stop - *praddr_start)) &&
+      (((*(praddr_stop + 1) - *(praddr_start + 1)) + 1) &
+       (*(praddr_stop + 1) - *(praddr_start + 1))))
+    return -1;
+
+  memset (mask, 1, sizeof (ipsec_fp_5tuple_t));
+
+  *plmask++ = ~(*pladdr_start++ ^ *pladdr_stop++);
+  *plmask++ = ~(*pladdr_start++ ^ *pladdr_stop++);
+
+  *prmask++ = ~(*praddr_start++ ^ *praddr_stop++);
+  *prmask++ = ~(*praddr_start++ ^ *praddr_stop++);
+
+  mask->lport = ~(policy->lport.start ^ policy->lport.stop);
+  mask->rport = ~(policy->rport.start ^ policy->rport.stop);
+  mask->protocol = 0;
+  return 0;
+}
+
+static_always_inline void
+ipsec_fp_get_policy_5tuple (ipsec_policy_t *policy, ipsec_fp_5tuple_t *tuple)
+{
+  memset (tuple, 0, sizeof (*tuple));
+  tuple->is_ipv6 = policy->is_ipv6;
+  if (tuple->is_ipv6)
+    {
+      tuple->ip6_laddr = policy->laddr.start.ip6;
+      tuple->ip6_raddr = policy->raddr.start.ip6;
+    }
+  else
+    {
+      tuple->laddr = policy->laddr.start.ip4;
+      tuple->raddr = policy->raddr.start.ip4;
+    }
+  tuple->protocol = policy->protocol;
+
+  if (PREDICT_TRUE ((policy->protocol == IP_PROTOCOL_TCP) ||
+		    (policy->protocol == IP_PROTOCOL_UDP) ||
+		    (policy->protocol == IP_PROTOCOL_SCTP)))
+    {
+      tuple->lport = policy->lport.start;
+      tuple->rport = policy->rport.start;
+    }
+  else
+    {
+      tuple->lport = 0;
+      tuple->rport = 0;
+    }
+}
+
+int
+ipsec_fp_ip4_add_policy (ipsec_main_t *im, ipsec_spd_fp_t *fp_spd,
+			 ipsec_policy_t *policy, u32 *stat_index)
+{
+  u32 mask_index;
+  ipsec_policy_t *vp;
+  ipsec_fp_mask_type_entry_t *mte;
+  u32 policy_index;
+  clib_bihash_kv_16_8_t kv;
+  clib_bihash_kv_16_8_t result;
+  ipsec_fp_lookup_value_t *result_val =
+    (ipsec_fp_lookup_value_t *) &result.value;
+  ipsec_fp_lookup_value_t *key_val = (ipsec_fp_lookup_value_t *) &kv.value;
+
+  ipsec_fp_5tuple_t mask, policy_5tuple;
+  int res;
+  /* u64 hash; */
+
+  if (PREDICT_FALSE (!fp_spd->fp_ip4_lookup_hash_initialized))
+    {
+      clib_bihash_init_16_8 (
+	&fp_spd->fp_ip4_lookup_hash, "SPD_FP ip4 rules lookup bihash",
+	im->fp_lookup_hash_buckets, im->fp_lookup_hash_buckets * 1024);
+      fp_spd->fp_ip4_lookup_hash_initialized = 1;
+    }
+
+  if (ipsec_fp_ip4_get_policy_mask (policy, &mask) != 0)
+    return -1;
+
+  pool_get (im->policies, vp);
+  policy_index = vp - im->policies;
+  vlib_validate_combined_counter (&ipsec_spd_policy_counters, policy_index);
+  vlib_zero_combined_counter (&ipsec_spd_policy_counters, policy_index);
+  *stat_index = policy_index;
+  mask_index = find_mask_type_index (im, &mask);
+
+  if (mask_index == ~0)
+    {
+      /* mask type not found, we need to create a new entry */
+      pool_get (im->fp_mask_types, mte);
+      mask_index = mte - im->fp_mask_types;
+      mte->refcount = 0;
+    }
+  else
+    mte = im->fp_mask_types + mask_index;
+
+  policy->fp_mask_type_id = mask_index;
+  ipsec_fp_ip4_get_policy_mask (policy, &mask);
+  ipsec_fp_get_policy_5tuple (policy, &policy_5tuple);
+
+  fill_ip4_hash_policy_kv (im, &policy_5tuple, &mask, &kv);
+
+  res = clib_bihash_search_inline_2_16_8 (&fp_spd->fp_ip4_lookup_hash, &kv,
+					  &result);
+  if (res != 0)
+    {
+      /* key was not found crate a new entry */
+      vec_add1 (key_val->fp_policies_ids, policy_index);
+      res = clib_bihash_add_del_16_8 (&fp_spd->fp_ip4_lookup_hash, &kv, 1);
+      if (res != 0)
+	goto error;
+    }
+  else
+    {
+
+      if (vec_max_len (result_val->fp_policies_ids) !=
+	  vec_len (result_val->fp_policies_ids))
+	{
+	  /* no need to resize */
+	  vec_add1 (result_val->fp_policies_ids, policy_index);
+	}
+      else
+	{
+	  vec_add1 (result_val->fp_policies_ids, policy_index);
+
+	  res =
+	    clib_bihash_add_del_16_8 (&fp_spd->fp_ip4_lookup_hash, &result, 1);
+
+	  if (res != 0)
+	    goto error;
+	}
+    }
+
+  if (mte->refcount == 0)
+    {
+      clib_memcpy (&mte->mask, &mask, sizeof (mask));
+      mte->refcount = 0;
+      vec_add1 (fp_spd->fp_mask_types[policy->type], mask_index);
+    }
+
+  mte->refcount++;
+  vec_add1 (fp_spd->fp_policies[policy->type], policy_index);
+  clib_memcpy (vp, policy, sizeof (*vp));
+
+  return 0;
+
+error:
+  pool_put (im->policies, vp);
+  release_mask_type_index (im, mask_index);
+  return -1;
+}
+
+int
+ipsec_fp_ip6_add_policy (ipsec_main_t *im, ipsec_spd_fp_t *fp_spd,
+			 ipsec_policy_t *policy, u32 *stat_index)
+{
+
+  u32 mask_index;
+  ipsec_policy_t *vp;
+  ipsec_fp_mask_type_entry_t *mte;
+  u32 policy_index;
+  clib_bihash_kv_40_8_t kv;
+  clib_bihash_kv_40_8_t result;
+  ipsec_fp_lookup_value_t *result_val =
+    (ipsec_fp_lookup_value_t *) &result.value;
+  ipsec_fp_lookup_value_t *key_val = (ipsec_fp_lookup_value_t *) &kv.value;
+
+  ipsec_fp_5tuple_t mask, policy_5tuple;
+  int res;
+  /* u64 hash; */
+
+  if (PREDICT_FALSE (!fp_spd->fp_ip6_lookup_hash_initialized))
+    {
+      clib_bihash_init_40_8 (
+	&fp_spd->fp_ip6_lookup_hash, "SPD_FP ip6 rules lookup bihash",
+	im->fp_lookup_hash_buckets, im->fp_lookup_hash_buckets * 4048);
+
+      fp_spd->fp_ip6_lookup_hash_initialized = 1;
+    }
+
+  if (ipsec_fp_ip6_get_policy_mask (policy, &mask) != 0)
+    return -1;
+
+  pool_get (im->policies, vp);
+  policy_index = vp - im->policies;
+  vlib_validate_combined_counter (&ipsec_spd_policy_counters, policy_index);
+  vlib_zero_combined_counter (&ipsec_spd_policy_counters, policy_index);
+  *stat_index = policy_index;
+  mask_index = find_mask_type_index (im, &mask);
+
+  if (mask_index == ~0)
+    {
+      /* mask type not found, we need to create a new entry */
+      pool_get (im->fp_mask_types, mte);
+      mask_index = mte - im->fp_mask_types;
+      mte->refcount = 0;
+    }
+  else
+    mte = im->fp_mask_types + mask_index;
+
+  policy->fp_mask_type_id = mask_index;
+  ipsec_fp_ip6_get_policy_mask (policy, &mask);
+  ipsec_fp_get_policy_5tuple (policy, &policy_5tuple);
+
+  fill_ip6_hash_policy_kv (im, &policy_5tuple, &mask, &kv);
+
+  res = clib_bihash_search_inline_2_40_8 (&fp_spd->fp_ip6_lookup_hash, &kv,
+					  &result);
+  if (res != 0)
+    {
+      /* key was not found crate a new entry */
+      vec_add1 (key_val->fp_policies_ids, policy_index);
+      res = clib_bihash_add_del_40_8 (&fp_spd->fp_ip6_lookup_hash, &kv, 1);
+      if (res != 0)
+	goto error;
+    }
+  else
+    {
+
+      if (vec_max_len (result_val->fp_policies_ids) !=
+	  vec_len (result_val->fp_policies_ids))
+	{
+	  /* no need to resize */
+	  vec_add1 (result_val->fp_policies_ids, policy_index);
+	}
+      else
+	{
+	  vec_add1 (result_val->fp_policies_ids, policy_index);
+
+	  res =
+	    clib_bihash_add_del_40_8 (&fp_spd->fp_ip6_lookup_hash, &result, 1);
+
+	  if (res != 0)
+	    goto error;
+	}
+    }
+
+  if (mte->refcount == 0)
+    {
+      clib_memcpy (&mte->mask, &mask, sizeof (mask));
+      mte->refcount = 0;
+      vec_add1 (fp_spd->fp_mask_types[policy->type], mask_index);
+    }
+
+  mte->refcount++;
+  vec_add1 (fp_spd->fp_policies[policy->type], policy_index);
+  clib_memcpy (vp, policy, sizeof (*vp));
+
+  return 0;
+
+error:
+  pool_put (im->policies, vp);
+  release_mask_type_index (im, mask_index);
+  return -1;
+}
+
+int
+ipsec_fp_ip6_del_policy (ipsec_main_t *im, ipsec_spd_fp_t *fp_spd,
+			 ipsec_policy_t *policy)
+{
+  int res;
+  ipsec_fp_5tuple_t mask = { 0 }, policy_5tuple;
+  clib_bihash_kv_40_8_t kv;
+  clib_bihash_kv_40_8_t result;
+  ipsec_fp_lookup_value_t *result_val =
+    (ipsec_fp_lookup_value_t *) &result.value;
+
+  ipsec_policy_t *vp;
+  u32 ii, iii, imt;
+
+  ipsec_fp_ip6_get_policy_mask (policy, &mask);
+  ipsec_fp_get_policy_5tuple (policy, &policy_5tuple);
+  fill_ip6_hash_policy_kv (im, &policy_5tuple, &mask, &kv);
+  res = clib_bihash_search_inline_2_40_8 (&fp_spd->fp_ip6_lookup_hash, &kv,
+					  &result);
+  if (res != 0)
+    return -1;
+
+  res = -1;
+  vec_foreach_index (ii, result_val->fp_policies_ids)
+    {
+      vp =
+	pool_elt_at_index (im->policies, *(result_val->fp_policies_ids + ii));
+      if (ipsec_policy_is_equal (vp, policy))
+	{
+	  vec_foreach_index (iii, fp_spd->fp_policies[policy->type])
+	    {
+	      if (*(fp_spd->fp_policies[policy->type] + iii) ==
+		  *(result_val->fp_policies_ids + ii))
+		{
+		  if (vec_len (result_val->fp_policies_ids) == 1)
+		    {
+		      vec_free (result_val->fp_policies_ids);
+		      clib_bihash_add_del_40_8 (&fp_spd->fp_ip6_lookup_hash,
+						&result, 0);
+		    }
+		  else
+		    {
+		      vec_del1 (result_val->fp_policies_ids, ii);
+		    }
+		  vec_del1 (fp_spd->fp_policies[policy->type], iii);
+
+		  vec_foreach_index (imt, fp_spd->fp_mask_types[policy->type])
+		    {
+		      if (*(fp_spd->fp_mask_types[policy->type] + imt) ==
+			  vp->fp_mask_type_id)
+			{
+			  ipsec_fp_mask_type_entry_t *mte = pool_elt_at_index (
+			    im->fp_mask_types, vp->fp_mask_type_id);
+
+			  if (mte->refcount == 1)
+			    vec_del1 (fp_spd->fp_mask_types[policy->type],
+				      imt);
+			  break;
+			}
+		    }
+
+		  res = 0;
+		  break;
+		}
+	    }
+
+	  if (res != 0)
+	    continue;
+	  else
+	    {
+	      release_mask_type_index (im, vp->fp_mask_type_id);
+	      ipsec_sa_unlock (vp->sa_index);
+	      pool_put (im->policies, vp);
+	      return 0;
+	    }
+	}
+    }
+  return -1;
+}
+
+int
+ipsec_fp_ip4_del_policy (ipsec_main_t *im, ipsec_spd_fp_t *fp_spd,
+			 ipsec_policy_t *policy)
+{
+  int res;
+  ipsec_fp_5tuple_t mask = { 0 }, policy_5tuple;
+  clib_bihash_kv_16_8_t kv;
+  clib_bihash_kv_16_8_t result;
+  ipsec_fp_lookup_value_t *result_val =
+    (ipsec_fp_lookup_value_t *) &result.value;
+
+  ipsec_policy_t *vp;
+  u32 ii, iii, imt;
+
+  ipsec_fp_ip4_get_policy_mask (policy, &mask);
+  ipsec_fp_get_policy_5tuple (policy, &policy_5tuple);
+  fill_ip4_hash_policy_kv (im, &policy_5tuple, &mask, &kv);
+  res = clib_bihash_search_inline_2_16_8 (&fp_spd->fp_ip4_lookup_hash, &kv,
+					  &result);
+  if (res != 0)
+    return -1;
+
+  res = -1;
+  vec_foreach_index (ii, result_val->fp_policies_ids)
+    {
+      vp =
+	pool_elt_at_index (im->policies, *(result_val->fp_policies_ids + ii));
+      if (ipsec_policy_is_equal (vp, policy))
+	{
+	  vec_foreach_index (iii, fp_spd->fp_policies[policy->type])
+	    {
+	      if (*(fp_spd->fp_policies[policy->type] + iii) ==
+		  *(result_val->fp_policies_ids + ii))
+		{
+		  if (vec_len (result_val->fp_policies_ids) == 1)
+		    {
+		      vec_free (result_val->fp_policies_ids);
+		      clib_bihash_add_del_16_8 (&fp_spd->fp_ip4_lookup_hash,
+						&result, 0);
+		    }
+		  else
+		    {
+		      vec_del1 (result_val->fp_policies_ids, ii);
+		    }
+		  vec_del1 (fp_spd->fp_policies[policy->type], iii);
+
+		  vec_foreach_index (imt, fp_spd->fp_mask_types[policy->type])
+		    {
+		      if (*(fp_spd->fp_mask_types[policy->type] + imt) ==
+			  vp->fp_mask_type_id)
+			{
+			  ipsec_fp_mask_type_entry_t *mte = pool_elt_at_index (
+			    im->fp_mask_types, vp->fp_mask_type_id);
+
+			  if (mte->refcount == 1)
+			    vec_del1 (fp_spd->fp_mask_types[policy->type],
+				      imt);
+			  break;
+			}
+		    }
+
+		  res = 0;
+		  break;
+		}
+	    }
+
+	  if (res != 0)
+	    continue;
+	  else
+	    {
+	      release_mask_type_index (im, vp->fp_mask_type_id);
+	      ipsec_sa_unlock (vp->sa_index);
+	      pool_put (im->policies, vp);
+	      return 0;
+	    }
+	}
+    }
+  return -1;
+}
+
+int
+ipsec_fp_add_del_policy (void *fp_spd, ipsec_policy_t *policy, int is_add,
+			 u32 *stat_index)
+{
+  ipsec_main_t *im = &ipsec_main;
+
+  if (is_add)
+    if (policy->is_ipv6)
+      return ipsec_fp_ip6_add_policy (im, (ipsec_spd_fp_t *) fp_spd, policy,
+				      stat_index);
+    else
+      return ipsec_fp_ip4_add_policy (im, (ipsec_spd_fp_t *) fp_spd, policy,
+				      stat_index);
+
+  else if (policy->is_ipv6)
+
+    return ipsec_fp_ip6_del_policy (im, (ipsec_spd_fp_t *) fp_spd, policy);
+  else
+    return ipsec_fp_ip4_del_policy (im, (ipsec_spd_fp_t *) fp_spd, policy);
 }
 
 /*
