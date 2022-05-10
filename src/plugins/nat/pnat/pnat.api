@@ -26,6 +26,7 @@ enum pnat_mask
     PNAT_DPORT = 0x8,
     PNAT_COPY_BYTE = 0x10,
     PNAT_CLEAR_BYTE = 0x20,
+    PNAT_PROTO = 0x40,
 };
 
 enum pnat_attachment_point
@@ -65,7 +66,24 @@ autoendian define pnat_binding_add
     vl_api_pnat_rewrite_tuple_t rewrite;
 };
 
+
 autoendian define pnat_binding_add_reply
+{
+    u32 context;
+    i32 retval;
+    u32 binding_index;
+};
+
+autoendian define pnat_binding_add_v2
+{
+    u32 client_index;
+    u32 context;
+    vl_api_pnat_match_tuple_t match;
+    vl_api_pnat_rewrite_tuple_t rewrite;
+};
+
+
+autoendian define pnat_binding_add_v2_reply
 {
     u32 context;
     i32 retval;
