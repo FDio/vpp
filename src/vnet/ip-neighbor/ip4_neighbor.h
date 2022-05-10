@@ -61,6 +61,7 @@ ip4_neighbor_probe (vlib_main_t *vm, vnet_main_t *vnm,
   h0->ip4_over_ethernet[1].ip4 = *dst;
 
   vnet_buffer (b0)->sw_if_index[VLIB_TX] = adj0->rewrite_header.sw_if_index;
+  b0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 
   vlib_buffer_advance (b0, -adj0->rewrite_header.data_bytes);
 

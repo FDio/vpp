@@ -290,6 +290,9 @@ arp_term_l2bd (vlib_main_t * vm,
 	  ethertype0 = clib_net_to_host_u16 (*(u16 *) (l3h0 - 2));
 	  arp0 = (ethernet_arp_header_t *) l3h0;
 
+	  if (p0->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED)
+	    goto next_l2_feature;
+
 	  if (ethertype0 != ETHERNET_TYPE_ARP)
 	    goto check_ip6_nd;
 
