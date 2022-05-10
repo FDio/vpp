@@ -16,6 +16,24 @@
       "revId": "bfd066c891c6fcc7c66325223513b220d9606541",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "33666cdc_15475933",
+        "filename": "test/test_pnat.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 202,
+      "author": {
+        "id": 2740
+      },
+      "writtenOn": "2022-05-10T10:28:07Z",
+      "side": 1,
+      "message": "got it 😊.\n\nThanks for reviewing !!!",
+      "parentUuid": "57350d2d_b4435bfb",
+      "revId": "bfd066c891c6fcc7c66325223513b220d9606541",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
