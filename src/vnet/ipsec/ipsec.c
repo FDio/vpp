@@ -481,6 +481,10 @@ ipsec_init (vlib_main_t * vm)
   if ((error = vlib_call_init_function (vm, ipsec_cli_init)))
     return error;
 
+  im->fp_spd_is_enabled = 0;
+  im->fp_lookup_hash_buckets = IPSEC_FP_HASH_LOOKUP_HASH_BUCKETS;
+  im->fp_lookup_hash_memory = IPSEC_FP_HASH_LOOKUP_HASH_MEMORY;
+
   vec_validate (im->crypto_algs, IPSEC_CRYPTO_N_ALG - 1);
 
   a = im->crypto_algs + IPSEC_CRYPTO_ALG_NONE;
