@@ -56,7 +56,9 @@ static pnat_mask_fast_t pnat_mask2fast(pnat_mask_t lookup_mask) {
         m.as_u64[0] = 0xffffffff00000000;
     if (lookup_mask & PNAT_DA)
         m.as_u64[0] |= 0x00000000ffffffff;
-    m.as_u64[1] = 0xffffffff00000000;
+    m.as_u64[1] = 0x00ffffff00000000;
+    if (lookup_mask & PNAT_PROTO)
+        m.as_u64[1] |= 0xff00000000000000;
     if (lookup_mask & PNAT_SPORT)
         m.as_u64[1] |= 0x00000000ffff0000;
     if (lookup_mask & PNAT_DPORT)
