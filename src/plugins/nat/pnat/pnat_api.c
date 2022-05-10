@@ -36,8 +36,23 @@ static void vl_api_pnat_binding_add_t_handler(vl_api_pnat_binding_add_t *mp) {
     pnat_main_t *pm = &pnat_main;
     vl_api_pnat_binding_add_reply_t *rmp;
     u32 binding_index;
+
+    // for backward compatibility
+    if (mp->match.proto == 0)
+        mp->match.mask |= PNAT_PROTO;
+
     int rv = pnat_binding_add(&mp->match, &mp->rewrite, &binding_index);
     REPLY_MACRO2_END(VL_API_PNAT_BINDING_ADD_REPLY,
+                     ({ rmp->binding_index = binding_index; }));
+}
+
+static void
+vl_api_pnat_binding_add_v2_t_handler(vl_api_pnat_binding_add_t *mp) {
+    pnat_main_t *pm = &pnat_main;
+    vl_api_pnat_binding_add_reply_t *rmp;
+    u32 binding_index;
+    int rv = pnat_binding_add(&mp->match, &mp->rewrite, &binding_index);
+    REPLY_MACRO2_END(VL_API_PNAT_BINDING_ADD_V2_REPLY,
                      ({ rmp->binding_index = binding_index; }));
 }
 

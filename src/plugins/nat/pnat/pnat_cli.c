@@ -122,6 +122,8 @@ uword unformat_pnat_match_tuple(unformat_input_t *input, va_list *args) {
             t->mask |= PNAT_SA;
         else if (unformat(input, "dst %U", unformat_ip4_address, &t->dst))
             t->mask |= PNAT_DA;
+        else if (unformat(input, "proto %U", unformat_ip_protocol, &t->proto))
+            t->mask |= PNAT_PROTO;
         else if (unformat(input, "sport %d", &sport)) {
             if (sport == 0 || sport > 65535)
                 return 0;
@@ -132,9 +134,7 @@ uword unformat_pnat_match_tuple(unformat_input_t *input, va_list *args) {
                 return 0;
             t->mask |= PNAT_DPORT;
             t->dport = dport;
-        } else if (unformat(input, "proto %U", unformat_ip_protocol, &t->proto))
-            ;
-        else
+        } else
             break;
     }
     return 1;
