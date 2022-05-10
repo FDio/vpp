@@ -253,12 +253,18 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* Fall back to linear search if flow cache lookup fails */
 	  if (p0 == NULL)
 	    {
-	      p0 = ipsec_output_policy_match (
-		spd0, ip0->protocol,
-		clib_net_to_host_u32 (ip0->src_address.as_u32),
-		clib_net_to_host_u32 (ip0->dst_address.as_u32),
-		clib_net_to_host_u16 (udp0->src_port),
-		clib_net_to_host_u16 (udp0->dst_port), flow_cache_enabled);
+	      ipsec4_spd_5tuple_t ip4_5tuple = {
+		.ip4_addr = { (ip4_address_t) clib_net_to_host_u32 (
+				ip0->src_address.as_u32),
+			      (ip4_address_t) clib_net_to_host_u32 (
+				ip0->src_address.as_u32) },
+		.port = { clib_net_to_host_u16 (udp0->src_port),
+			  clib_net_to_host_u16 (udp0->dst_port) },
+		.proto = ip0->protocol
+	      };
+
+	      ipsec_output_policy_match_n (spd0, &ip4_5tuple, &p0, 1,
+					   flow_cache_enabled);
 	    }
 	}
       tcp0 = (void *) udp0;
