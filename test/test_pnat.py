@@ -199,5 +199,53 @@ class TestPNAT(VppTestCase):
                                           binding_index=binding_index[i])
             self.vapi.pnat_binding_del(binding_index=binding_index[i])
 
+    def test_pnat_wildcard_proto(self):
+        """ PNAT test wildcard IP protocol"""
+
+        PNAT_IP4_INPUT = VppEnum.vl_api_pnat_attachment_point_t.PNAT_IP4_INPUT
+        PNAT_IP4_OUTPUT = \
+            VppEnum.vl_api_pnat_attachment_point_t.PNAT_IP4_OUTPUT
+
+        tests = [
+            {
+                'input': PNAT_IP4_INPUT,
+                'sw_if_index': self.pg0.sw_if_index,
+                'match': {'mask': 0x42, 'dst': '10.10.10.10'},
+                'rewrite': {'mask': 0x42, 'dst': self.pg1.remote_ip4},
+                'send': (IP(src=self.pg0.remote_ip4, dst='10.10.10.10')),
+                'reply': (IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4))
+            },
+            {
+                'input': PNAT_IP4_OUTPUT,
+                'sw_if_index': self.pg1.sw_if_index,
+                'match': {'mask': 0x41, 'src': self.pg0.remote_ip4},
+                'rewrite': {'mask': 0x41, 'src': '11.11.11.11'},
+                'send': (IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4)),
+                'reply': (IP(src='11.11.11.11', dst=self.pg1.remote_ip4))
+            },
+        ]
+
+        p_ether = Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+        for t in tests:
+            rv = self.vapi.pnat_binding_add(match=t['match'],
+                                            rewrite=t['rewrite'])
+            self.vapi.pnat_binding_attach(sw_if_index=t['sw_if_index'],
+                                          attachment=t['input'],
+                                          binding_index=rv.binding_index)
+
+            reply = t['reply']
+            reply[IP].ttl -= 1
+            rx = self.send_and_expect(self.pg0, p_ether/t['send']*1, self.pg1)
+            for p in rx:
+                # p.show2()
+                self.validate(p[1], reply)
+
+            self.ping_check()
+
+            self.vapi.pnat_binding_detach(sw_if_index=t['sw_if_index'],
+                                          attachment=t['input'],
+                                          binding_index=rv.binding_index)
+            self.vapi.pnat_binding_del(binding_index=rv.binding_index)
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
