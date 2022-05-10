@@ -68,6 +68,8 @@ arp_mk_reply (vnet_main_t * vnm,
   clib_mem_unaligned (&arp0->ip4_over_ethernet[0].ip4.data_u32, u32) =
     if_addr0->data_u32;
 
+  p0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
+
   /* Hardware must be ethernet-like. */
   ASSERT (vec_len (hw_if0->hw_address) == 6);
 
