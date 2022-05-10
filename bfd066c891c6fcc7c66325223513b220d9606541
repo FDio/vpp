@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "57350d2d_b4435bfb",
+        "filename": "test/test_pnat.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 202,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2022-05-10T08:59:36Z",
+      "side": 1,
+      "message": "s/cart/card/g ? :-)",
+      "revId": "bfd066c891c6fcc7c66325223513b220d9606541",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
