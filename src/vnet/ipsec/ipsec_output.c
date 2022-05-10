@@ -74,6 +74,20 @@ ip6_addr_match_range (ip6_address_t * a, ip6_address_t * la,
   return 0;
 }
 
+always_inline void
+ipsec_fp_5tuple_from_ip6_range (ipsec_fp_5tuple_t *tuple, ip6_address_t *la,
+				ip6_address_t *ra, u16 lp, u16 rp, u8 pr)
+
+{
+  clib_memcpy_fast (&tuple->ip6_laddr, la, sizeof (ip6_address_t));
+  clib_memcpy_fast (&tuple->ip6_laddr, la, sizeof (ip6_address_t));
+
+  tuple->lport = lp;
+  tuple->rport = rp;
+  tuple->protocol = pr;
+  tuple->is_ipv6 = 1;
+}
+
 always_inline ipsec_policy_t *
 ipsec6_output_policy_match (ipsec_spd_t * spd,
 			    ip6_address_t * la,
@@ -81,11 +95,23 @@ ipsec6_output_policy_match (ipsec_spd_t * spd,
 {
   ipsec_main_t *im = &ipsec_main;
   ipsec_policy_t *p;
+  ipsec_policy_t *policies[1];
+  ipsec_fp_5tuple_t tuples[1];
+  u32 fp_policy_ids[1];
 
   u32 *i;
 
   if (!spd)
     return 0;
+
+  ipsec_fp_5tuple_from_ip6_range (&tuples[0], la, ra, lp, rp, pr);
+  if (im->fp_spd_is_enabled &&
+      (0 == ipsec_fp_out_policy_match_n (&spd->fp_spd, 1, tuples, policies,
+					 fp_policy_ids, 1)))
+    {
+      p = policies[0];
+      i = fp_policy_ids;
+    }
 
   vec_foreach (i, spd->policies[IPSEC_SPD_POLICY_IP6_OUTBOUND])
   {
@@ -227,12 +253,18 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* Fall back to linear search if flow cache lookup fails */
 	  if (p0 == NULL)
 	    {
-	      p0 = ipsec_output_policy_match (
-		spd0, ip0->protocol,
-		clib_net_to_host_u32 (ip0->src_address.as_u32),
-		clib_net_to_host_u32 (ip0->dst_address.as_u32),
-		clib_net_to_host_u16 (udp0->src_port),
-		clib_net_to_host_u16 (udp0->dst_port), flow_cache_enabled);
+	      ipsec4_spd_5tuple_t ip4_5tuple = {
+		.ip4_addr = { (ip4_address_t) clib_net_to_host_u32 (
+				ip0->src_address.as_u32),
+			      (ip4_address_t) clib_net_to_host_u32 (
+				ip0->src_address.as_u32) },
+		.port = { clib_net_to_host_u16 (udp0->src_port),
+			  clib_net_to_host_u16 (udp0->dst_port) },
+		.proto = ip0->protocol
+	      };
+
+	      ipsec_output_policy_match_n (spd0, &ip4_5tuple, &p0, 1,
+					   flow_cache_enabled);
 	    }
 	}
       tcp0 = (void *) udp0;
