@@ -46,7 +46,19 @@ ipsec_add_del_spd (vlib_main_t * vm, u32 spd_id, int is_add)
 #define _(s,v) vec_free(spd->policies[IPSEC_SPD_POLICY_##s]);
       foreach_ipsec_spd_policy_type
 #undef _
-	pool_put (im->spds, spd);
+	ipsec_spd_fp_t *fp_spd = &spd->fp_spd;
+      if (fp_spd->fp_ip4_lookup_hash_initialized)
+	{
+	  clib_bihash_free_16_8 (&fp_spd->fp_ip4_lookup_hash);
+	  fp_spd->fp_ip4_lookup_hash_initialized = 0;
+	}
+      if (fp_spd->fp_ip6_lookup_hash_initialized)
+	{
+	  clib_bihash_free_40_8 (&fp_spd->fp_ip6_lookup_hash);
+	  fp_spd->fp_ip6_lookup_hash_initialized = 0;
+	}
+
+      pool_put (im->spds, spd);
     }
   else				/* create new SPD */
     {
