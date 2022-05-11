@@ -116,6 +116,9 @@ dpdk_buffer_pool_init (vlib_main_t * vm, vlib_buffer_pool_t * bp)
       mp->populated_size++;
       nmp->populated_size++;
     }
+#if RTE_VERSION >= RTE_VERSION_NUM(22, 3, 0, 0)
+  mp->flags &= ~RTE_MEMPOOL_F_NON_IO;
+#endif
 
   /* call the object initializers */
   rte_mempool_obj_iter (mp, rte_pktmbuf_init, 0);
