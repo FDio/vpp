@@ -1029,7 +1029,7 @@ vl_api_client_index_to_input_queue (u32 index)
 static clib_error_t *
 setup_memclnt_exit (vlib_main_t * vm)
 {
-  atexit (vl_unmap_shmem_client);
+  atexit (vl_unmap_shmem);
   return 0;
 }
 
