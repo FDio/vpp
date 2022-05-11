@@ -351,7 +351,7 @@ start-gdb: sanity
 .PHONY: checkstyle-python-all
 checkstyle-python-all: $(PIP_INSTALL_DONE)
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
-		black -t py39 --diff $(WS_ROOT) ||\
+		black -t py39 --check --diff $(WS_ROOT) ||\
 		(echo \"*************************************************************************\" &&\
 		echo \"* Test framework PEP8 compliance check FAILED (maybe: make fixstyle-python)\" &&\
 		echo \"*************************************************************************\" &&\
