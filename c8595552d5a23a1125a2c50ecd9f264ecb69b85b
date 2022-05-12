@@ -498,6 +498,24 @@
     },
     {
       "key": {
+        "uuid": "b6482cee_ab357b32",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1268,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-05-12T14:00:51Z",
+      "side": 1,
+      "message": "alright so in that case would you mind contributing a patch to change internal errors to more descriptive errors?",
+      "parentUuid": "06a4609a_6862839a",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "8dd9c8cd_e7c68eed",
         "filename": "src/vnet/ip/reass/ip4_full_reass.c",
         "patchSetId": 4
