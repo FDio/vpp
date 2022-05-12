@@ -143,6 +143,24 @@
     },
     {
       "key": {
+        "uuid": "3df923a2_2704dbd4",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 742
+      },
+      "writtenOn": "2022-05-12T13:36:43Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "c919591b_36d0e3df",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b93c4a37_c43c9e0d",
         "filename": "src/vnet/ip/reass/ip4_full_reass.c",
         "patchSetId": 4
@@ -193,6 +211,24 @@
       "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d8621bca_b2eefa69",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 442,
+      "author": {
+        "id": 742
+      },
+      "writtenOn": "2022-05-12T13:36:43Z",
+      "side": 1,
+      "message": "will remove this change as of now",
+      "parentUuid": "674d0959_8e52653e",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -249,6 +285,24 @@
     },
     {
       "key": {
+        "uuid": "10eb1279_8a54c6ed",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 795,
+      "author": {
+        "id": 742
+      },
+      "writtenOn": "2022-05-12T13:36:43Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "d4da9a94_13e4ab6e",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b06e3401_2ffa5738",
         "filename": "src/vnet/ip/reass/ip4_full_reass.c",
         "patchSetId": 4
@@ -299,6 +353,24 @@
       "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f79b9cc0_50c0cab6",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1232,
+      "author": {
+        "id": 742
+      },
+      "writtenOn": "2022-05-12T13:36:43Z",
+      "side": 1,
+      "message": "with other conditions we have see these issues.. but after fixing the buffer leaking and double freeing i would say we are not seeing.. will remove this change",
+      "parentUuid": "5d06119a_be14d4a6",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -390,6 +462,24 @@
     },
     {
       "key": {
+        "uuid": "06a4609a_6862839a",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1268,
+      "author": {
+        "id": 742
+      },
+      "writtenOn": "2022-05-12T13:36:43Z",
+      "side": 1,
+      "message": "internal errors listed are valid ones in the finalize code...and i see most of them are valid ones",
+      "parentUuid": "422e9b0b_c5e24ca7",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "8dd9c8cd_e7c68eed",
         "filename": "src/vnet/ip/reass/ip4_full_reass.c",
         "patchSetId": 4
@@ -475,6 +565,24 @@
       "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "00b891bf_a472ce46",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1478,
+      "author": {
+        "id": 742
+      },
+      "writtenOn": "2022-05-12T13:36:43Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "0d7b9a41_2060ece7",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
