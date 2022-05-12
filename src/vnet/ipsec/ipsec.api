@@ -527,6 +527,21 @@ autoreply define ipsec_set_async_mode {
   bool async_enable;
 };
 
+define ipsec_sa_get_count
+{
+  u32 client_index;
+  u32 context;
+  u32 sa_id;
+};
+
+define ipsec_sa_get_count_reply
+{
+  u32 context;
+  i32 retval;
+  u64 bytes;
+  u64 packets;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")

@@ -1121,6 +1121,36 @@ vl_api_ipsec_set_async_mode_t_handler (vl_api_ipsec_set_async_mode_t * mp)
   REPLY_MACRO (VL_API_IPSEC_SET_ASYNC_MODE_REPLY);
 }
 
+static void
+vl_api_ipsec_sa_get_count_t_handler (vl_api_ipsec_sa_get_count_t *mp)
+{
+  ipsec_main_t *im = &ipsec_main;
+  vl_api_ipsec_sa_get_count_reply_t *rmp;
+  vlib_counter_t counts;
+  uword *p;
+  int rv = 0;
+  u64 packets = 0;
+  u64 bytes = 0;
+
+  p = hash_get (im->sa_index_by_sa_id, ntohl (mp->sa_id));
+
+  if (!p)
+    {
+      rv = INDEX_INVALID;
+      goto done;
+    }
+
+  vlib_get_combined_counter (&ipsec_sa_counters, p[0], &counts);
+  packets = clib_host_to_net_u64 (counts.packets);
+  bytes = clib_host_to_net_u64 (counts.bytes);
+
+done:
+  REPLY_MACRO2 (VL_API_IPSEC_SA_GET_COUNT_REPLY, {
+    rmp->packets = packets;
+    rmp->bytes = bytes;
+  });
+}
+
 #include <vnet/ipsec/ipsec.api.c>
 static clib_error_t *
 ipsec_api_hookup (vlib_main_t * vm)

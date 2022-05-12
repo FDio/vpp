@@ -592,6 +592,18 @@ api_ipsec_spd_add_del (vat_main_t *vam)
   return ret;
 }
 
+static int
+api_ipsec_sa_get_count (vat_main_t *vam)
+{
+  return -1;
+}
+
+static void
+vl_api_ipsec_sa_get_count_reply_t_handler (
+  vl_api_ipsec_sa_get_count_reply_t *mp)
+{
+}
+
 #include <vnet/ipsec/ipsec.api_test.c>
 
 /*
