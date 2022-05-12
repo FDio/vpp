@@ -5,7 +5,7 @@
     used to control the flowprobe plugin
 */
 
-option version = "2.0.0";
+option version = "2.1.0";
 
 import "vnet/interface_types.api";
 
@@ -83,12 +83,93 @@ autoreply define flowprobe_interface_add_del
   option vat_help = "(<intfc> | sw_if_index <if-idx>) [(ip4|ip6|l2)] [(rx|tx|both)] [disable]";
 };
 
+/** \brief Dump interfaces for which IPFIX flow record generation is enabled
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface index to use as filter (0xffffffff is "all")
+*/
+define flowprobe_interface_dump
+{
+  option in_progress;
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index [default=0xffffffff];
+  option vat_help = "[<if-idx>]";
+};
+
+/** \brief Details about IPFIX flow record generation enabled on interface
+    @param context - sender context which was passed in the request
+    @param which - datapath on which to record flows
+    @param direction - direction of recorded flows
+    @param sw_if_index - index of the interface
+*/
+define flowprobe_interface_details
+{
+  option in_progress;
+  u32 context;
+  vl_api_flowprobe_which_t which;
+  vl_api_flowprobe_direction_t direction;
+  vl_api_interface_index_t sw_if_index;
+};
+
 autoreply define flowprobe_params
 {
+  option replaced_by="flowprobe_set_params";
+
   u32 client_index;
   u32 context;
   vl_api_flowprobe_record_flags_t record_flags;
   u32 active_timer;  /* ~0 is off, 0 is default */
   u32 passive_timer; /* ~0 is off, 0 is default */
   option vat_help = "record <[l2] [l3] [l4]> [active <timer> passive <timer>]";
+};
+
+/** \brief Set IPFIX flow record generation parameters
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param record_flags - flags indicating what data to record
+    @param active_timer - time in seconds after which active flow records are
+        to be exported (0 is "off", 0xffffffff is "use default value")
+    @param passive_timer - time in seconds after which passive flow records are
+        to be deleted (0 is "off", 0xffffffff is "use default value")
+*/
+autoreply define flowprobe_set_params
+{
+  option in_progress;
+  u32 client_index;
+  u32 context;
+  vl_api_flowprobe_record_flags_t record_flags;
+  u32 active_timer [default=0xffffffff];
+  u32 passive_timer [default=0xffffffff];
+  option vat_help = "record [l2] [l3] [l4] [active <timer>] [passive <timer>]";
+};
+
+/** \brief Get IPFIX flow record generation parameters
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define flowprobe_get_params
+{
+  option in_progress;
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply to get IPFIX flow record generation parameters
+    @param context - sender context, to match reply w/ request
+    @param retval - error (0 is "no error")
+    @param record_flags - flags indicating what data to record
+    @param active_timer - time in seconds after which active flow records are
+        to be exported (0 is "off")
+    @param passive_timer - time in seconds after which passive flow records are
+        to be deleted (0 is "off")
+*/
+define flowprobe_get_params_reply
+{
+  option in_progress;
+  u32 context;
+  i32 retval;
+  vl_api_flowprobe_record_flags_t record_flags;
+  u32 active_timer;
+  u32 passive_timer;
 };
