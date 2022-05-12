@@ -413,18 +413,77 @@ show_perfmon_stats_command_fn (vlib_main_t *vm, unformat_input_t *input,
 				   vm, j, b->active_type);
 		table_set_cell_align (t, col, -1, TTAA_RIGHT);
 		table_set_cell_fg_color (t, col, -1, TTAC_CYAN);
-		clib_memcpy_fast (&ns, tr->node_stats + j, sizeof (ns));
+
+		if (PREDICT_TRUE (clib_bitmap_is_zero (b->event_disabled)))
+		  clib_memcpy_fast (&ns, tr->node_stats + j, sizeof (ns));
+		/* if some events are not implemented, we need to realign these
+		   to display under the correct column headers */
+		else
+		  {
+		    perfmon_node_stats_t *tr_ns = tr->node_stats + j;
+		    ns.n_calls = tr_ns->n_calls;
+		    ns.n_packets = tr_ns->n_packets;
+		    /* loop through all events in bundle + manually copy into
+		       the correct place, until we've read all values that are
+		       implemented */
+		    int num_enabled_events =
+		      b->n_events -
+		      clib_bitmap_count_set_bits (b->event_disabled);
+		    for (int i = 0, k = 0; k < num_enabled_events; i++)
+		      {
+			if (!clib_bitmap_get (b->event_disabled, i))
+			  {
+			    ns.value[i] = tr_ns->value[k];
+			    k++;
+			  }
+		      }
+		  }
 
 		for (int j = 0; j < n_row; j++)
-		  table_format_cell (t, col, j, "%U", b->format_fn, &ns, j,
-				     b->active_type);
+		  {
+		    if (clib_bitmap_get (b->column_disabled, j))
+		      table_format_cell (t, col, j, "-");
+		    else
+		      table_format_cell (t, col, j, "%U", b->format_fn, &ns, j,
+					 b->active_type);
+		  }
 	      }
 	}
-      else
+      else // b->type != PERFMON_BUNDLE_TYPE_NODE
 	{
-	  for (int j = 0; j < n_row; j++)
-	    table_format_cell (t, i, j, "%U", b->format_fn, r, j,
-			       b->active_type);
+	  if (PREDICT_TRUE (clib_bitmap_is_zero (b->event_disabled)))
+	    {
+	      for (int j = 0; j < n_row; j++)
+		table_format_cell (t, i, j, "%U", b->format_fn, r, j,
+				   b->active_type);
+	    }
+	  /* similarly for THREAD/SYSTEM bundles, if some events are not
+	     implemented, we need to realign readings under column headings */
+	  else
+	    {
+	      perfmon_reading_t aligned_r[b->n_events];
+	      aligned_r->nr = r->nr;
+	      aligned_r->time_enabled = r->time_enabled;
+	      aligned_r->time_running = r->time_running;
+	      int num_enabled_events =
+		b->n_events - clib_bitmap_count_set_bits (b->event_disabled);
+	      for (int i = 0, k = 0; k < num_enabled_events; i++)
+		{
+		  if (!clib_bitmap_get (b->event_disabled, i))
+		    {
+		      aligned_r->value[i] = r->value[k];
+		      k++;
+		    }
+		}
+	      for (int j = 0; j < n_row; j++)
+		{
+		  if (clib_bitmap_get (b->column_disabled, j))
+		    table_format_cell (t, col, j, "-");
+		  else
+		    table_format_cell (t, i, j, "%U", b->format_fn, aligned_r,
+				       j, b->active_type);
+		}
+	    }
 	}
       col++;
     }
