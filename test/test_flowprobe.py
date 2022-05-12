@@ -67,7 +67,7 @@ class VppCFLOW(VppObject):
             l3_flag = VppEnum.vl_api_flowprobe_record_flags_t.FLOWPROBE_RECORD_FLAG_L3
         if "l4" in self._collect.lower():
             l4_flag = VppEnum.vl_api_flowprobe_record_flags_t.FLOWPROBE_RECORD_FLAG_L4
-        self._test.vapi.flowprobe_params(
+        self._test.vapi.flowprobe_set_params(
             record_flags=(l2_flag | l3_flag | l4_flag),
             active_timer=self._active,
             passive_timer=self._passive,
@@ -480,6 +480,77 @@ class Flowprobe(MethodHolder):
 
         ipfix.remove_vpp_config()
         self.logger.info("FFP_TEST_FINISH_0000")
+
+    def test_interface_dump(self):
+        """Dump interfaces with IPFIX flow record generation enabled"""
+        self.logger.info("FFP_TEST_START_0003")
+
+        # Enable feature for 3 interfaces
+        ipfix1 = VppCFLOW(test=self, intf="pg1", datapath="l2", direction="rx")
+        ipfix1.add_vpp_config()
+
+        ipfix2 = VppCFLOW(test=self, intf="pg2", datapath="ip4", direction="tx")
+        ipfix2.enable_flowprobe_feature()
+
+        ipfix3 = VppCFLOW(test=self, intf="pg3", datapath="ip6", direction="both")
+        ipfix3.enable_flowprobe_feature()
+
+        # When request "all", dump should contain all enabled interfaces
+        dump = self.vapi.flowprobe_interface_dump()
+        self.assertEqual(len(dump), 3)
+
+        # Verify 1st interface
+        self.assertEqual(dump[0].sw_if_index, self.pg1.sw_if_index)
+        self.assertEqual(dump[0].which, VppEnum.vl_api_flowprobe_which_t.FLOWPROBE_WHICH_L2)
+        self.assertEqual(dump[0].direction, VppEnum.vl_api_flowprobe_direction_t.FLOWPROBE_DIRECTION_RX)
+
+        # Verify 2nd interface
+        self.assertEqual(dump[1].sw_if_index, self.pg2.sw_if_index)
+        self.assertEqual(dump[1].which, VppEnum.vl_api_flowprobe_which_t.FLOWPROBE_WHICH_IP4)
+        self.assertEqual(dump[1].direction, VppEnum.vl_api_flowprobe_direction_t.FLOWPROBE_DIRECTION_TX)
+
+        # Verify 3rd interface
+        self.assertEqual(dump[2].sw_if_index, self.pg3.sw_if_index)
+        self.assertEqual(dump[2].which, VppEnum.vl_api_flowprobe_which_t.FLOWPROBE_WHICH_IP6)
+        self.assertEqual(dump[2].direction, VppEnum.vl_api_flowprobe_direction_t.FLOWPROBE_DIRECTION_BOTH)
+
+        # When request 2nd interface, dump should contain only the specified interface
+        dump = self.vapi.flowprobe_interface_dump(sw_if_index=self.pg2.sw_if_index)
+        self.assertEqual(len(dump), 1)
+
+        # Verify 2nd interface
+        self.assertEqual(dump[0].sw_if_index, self.pg2.sw_if_index)
+        self.assertEqual(dump[0].which, VppEnum.vl_api_flowprobe_which_t.FLOWPROBE_WHICH_IP4)
+        self.assertEqual(dump[0].direction, VppEnum.vl_api_flowprobe_direction_t.FLOWPROBE_DIRECTION_TX)
+
+        # When request 99th interface, dump should be empty
+        dump = self.vapi.flowprobe_interface_dump(sw_if_index=99)
+        self.assertEqual(len(dump), 0)
+
+        ipfix1.remove_vpp_config()
+        ipfix2.remove_vpp_config()
+        ipfix3.remove_vpp_config()
+        self.logger.info("FFP_TEST_FINISH_0003")
+
+    def test_get_params(self):
+        """Get IPFIX flow record generation parameters"""
+        self.logger.info("FFP_TEST_START_0004")
+
+        # Enable feature for an interface with custom parameters
+        ipfix = VppCFLOW(test=self, active=20, passive=40, layer="l2 l3 l4")
+        ipfix.add_vpp_config()
+
+        # Get and verify parameters
+        params = self.vapi.flowprobe_get_params()
+        self.assertEqual(params.active_timer, 20)
+        self.assertEqual(params.passive_timer, 40)
+        record_flags = VppEnum.vl_api_flowprobe_record_flags_t.FLOWPROBE_RECORD_FLAG_L2
+        record_flags |= VppEnum.vl_api_flowprobe_record_flags_t.FLOWPROBE_RECORD_FLAG_L3
+        record_flags |= VppEnum.vl_api_flowprobe_record_flags_t.FLOWPROBE_RECORD_FLAG_L4
+        self.assertEqual(params.record_flags, record_flags)
+
+        ipfix.remove_vpp_config()
+        self.logger.info("FFP_TEST_FINISH_0004")
 
 
 class DatapathTestsHolder(object):
