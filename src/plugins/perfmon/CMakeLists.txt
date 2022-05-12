@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
+if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*|aarch64.*")
   return()
 endif()
 
@@ -35,6 +35,13 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
     intel/bundle/topdown_icelake.c
     intel/bundle/topdown_metrics.c
     intel/bundle/topdown_tremont.c
+  )
+endif()
+
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64.*")
+  list(APPEND ARCH_PMU_SOURCES
+    arm/dispatch_wrapper.c
+    arm/events.c
   )
 endif()
 

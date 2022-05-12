@@ -26,6 +26,8 @@
 
 #if defined(__x86_64__)
 #include <perfmon/intel/core.h>
+#elif defined(__aarch64__)
+#include <perfmon/arm/events.h>
 #endif
 
 perfmon_main_t perfmon_main;
@@ -148,15 +150,19 @@ perfmon_set (vlib_main_t *vm, perfmon_bundle_t *b)
 
       vec_validate (pm->group_fds, i);
       pm->group_fds[i] = -1;
+      u8 n_events_opened = 0;
 
       for (int j = 0; j < b->n_events; j++)
 	{
 	  int fd;
 	  perfmon_event_t *e = s->events + b->events[j];
+	  if (!e->implemented)
+	    continue;
 	  struct perf_event_attr pe = {
 	    .size = sizeof (struct perf_event_attr),
 	    .type = e->type_from_instance ? in->type : e->type,
 	    .config = e->config,
+	    .config1 = e->config1,
 	    .exclude_kernel = e->exclude_kernel,
 	    .read_format =
 	      (PERF_FORMAT_GROUP | PERF_FORMAT_TOTAL_TIME_ENABLED |
@@ -164,6 +170,7 @@ perfmon_set (vlib_main_t *vm, perfmon_bundle_t *b)
 	    .disabled = 1,
 	  };
 
+	perf_event_open:
 	  log_debug ("perf_event_open pe.type=%u pe.config=0x%x pid=%d "
 		     "cpu=%d group_fd=%d",
 		     pe.type, pe.config, in->pid, in->cpu, pm->group_fds[i]);
@@ -172,8 +179,16 @@ perfmon_set (vlib_main_t *vm, perfmon_bundle_t *b)
 
 	  if (fd == -1)
 	    {
-	      err = clib_error_return_unix (0, "perf_event_open");
-	      goto error;
+	      if (errno == EOPNOTSUPP) // 64b counters not supported on aarch64
+		{
+		  pe.config1 = 2; // retry with 32b counter width
+		  goto perf_event_open;
+		}
+	      else
+		{
+		  err = clib_error_return_unix (0, "perf_event_open");
+		  goto error;
+		}
 	    }
 
 	  vec_add1 (pm->fds_to_close, fd);
@@ -185,23 +200,24 @@ perfmon_set (vlib_main_t *vm, perfmon_bundle_t *b)
 	    {
 	      perfmon_thread_runtime_t *tr;
 	      tr = vec_elt_at_index (pm->thread_runtimes, i);
-	      tr->mmap_pages[j] =
+	      tr->mmap_pages[n_events_opened] =
 		mmap (0, page_size, PROT_READ, MAP_SHARED, fd, 0);
 
-	      if (tr->mmap_pages[j] == MAP_FAILED)
+	      if (tr->mmap_pages[n_events_opened] == MAP_FAILED)
 		{
 		  err = clib_error_return_unix (0, "mmap");
 		  goto error;
 		}
 	    }
+	  n_events_opened++;
 	}
 
-      if (is_node)
+      if (is_node && n_events_opened)
 	{
 	  perfmon_thread_runtime_t *rt;
 	  rt = vec_elt_at_index (pm->thread_runtimes, i);
 	  rt->bundle = b;
-	  rt->n_events = b->n_events;
+	  rt->n_events = n_events_opened;
 	  rt->n_nodes = n_nodes;
 	  rt->preserve_samples = b->preserve_samples;
 	  vec_validate_aligned (rt->node_stats, n_nodes - 1,

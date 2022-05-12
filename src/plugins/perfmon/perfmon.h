@@ -25,6 +25,8 @@
 
 #if defined(__x86_64__)
 #define PERF_MAX_EVENTS 12 /* 4 fixed and 8 programable on ICX */
+#elif defined(__aarch64__)
+#define PERF_MAX_EVENTS 7 /* 6 events + 1 CPU cycle counter */
 #endif
 
 typedef enum
@@ -63,6 +65,8 @@ typedef struct
 {
   u32 type_from_instance : 1;
   u32 exclude_kernel : 1;
+  u32 config1 : 2;
+  u32 implemented : 1;
   union
   {
     u32 type;
@@ -133,6 +137,10 @@ typedef struct perfmon_bundle
 
   u32 events[PERF_MAX_EVENTS];
   u32 n_events;
+  u32 n_columns;
+
+  uword *event_disabled;
+  uword *column_disabled;
 
   u16 preserve_samples;
 
