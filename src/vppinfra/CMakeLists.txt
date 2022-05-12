@@ -61,6 +61,7 @@ set(VPPINFRA_SRCS
   hash.c
   heap.c
   interrupt.c
+  json.c
   jsonformat.c
   longjmp.S
   macros.c
@@ -142,6 +143,7 @@ set(VPPINFRA_HEADERS
   hash.h
   heap.h
   interrupt.h
+  json.h
   jsonformat.h
   lb_hash_hash.h
   llist.h
@@ -243,6 +245,7 @@ if(VPP_BUILD_VPPINFRA_TESTS)
     fpool
     hash
     heap
+    json
     longjmp
     macros
     maplog
