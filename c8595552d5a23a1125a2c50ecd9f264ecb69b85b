@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "8f5b1e4e_13ac801c",
+        "filename": "src/vnet/ip/ip.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 304,
+      "author": {
+        "id": 742
+      },
+      "writtenOn": "2022-05-12T13:10:14Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "178c96f9_2aad9fd9",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6cd3bad7_805ba8d2",
         "filename": "src/vnet/ip/ip.h",
         "patchSetId": 4
@@ -30,6 +48,24 @@
       "writtenOn": "2022-05-12T08:50:41Z",
       "side": 1,
       "message": "this doesn\u0027t belong in ip.h, it\u0027s reassembly code and only used from one place\n\nalso, use inline function instead of #define as macros make it harder to debug",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "29e11191_22e5dde3",
+        "filename": "src/vnet/ip/ip.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 315,
+      "author": {
+        "id": 742
+      },
+      "writtenOn": "2022-05-12T13:10:14Z",
+      "side": 1,
+      "message": "i can change to inline function.. for sure.. its needed in ip.h or equivalent to include in both ip4 and ip6 reassembly functions",
+      "parentUuid": "6cd3bad7_805ba8d2",
       "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "c68bacee_35e855bf",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 742
+      },
+      "writtenOn": "2022-05-12T13:10:14Z",
+      "side": 1,
+      "message": "i can change the title of the commit to misc. as this doesn\u0027t deal with buffer leaks ..as its programmable i can back track as well",
+      "parentUuid": "bfb475bf_e0cfc76e",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "b93c4a37_c43c9e0d",
         "filename": "src/vnet/ip/reass/ip4_full_reass.c",
         "patchSetId": 4
@@ -64,6 +118,24 @@
       "writtenOn": "2022-05-12T08:50:41Z",
       "side": 1,
       "message": "when does this occur? and why shouldn\u0027t we process more ranges in this case? won\u0027t there be a leak?",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9dd3dc1d_6d10e499",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 442,
+      "author": {
+        "id": 742
+      },
+      "writtenOn": "2022-05-12T13:10:14Z",
+      "side": 1,
+      "message": "its one of the case where when things are already freed up.. its more of defensive check.. i can back track this change set if you are against this change",
+      "parentUuid": "b93c4a37_c43c9e0d",
       "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -87,6 +159,24 @@
     },
     {
       "key": {
+        "uuid": "be1496ec_4c0f6baa",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 795,
+      "author": {
+        "id": 742
+      },
+      "writtenOn": "2022-05-12T13:10:14Z",
+      "side": 1,
+      "message": "i was pulling all the changes from our internal repo and making it one commit .. if you strongly advice to split into more than one commit will do",
+      "parentUuid": "76c67158_dad0b7ee",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "b06e3401_2ffa5738",
         "filename": "src/vnet/ip/reass/ip4_full_reass.c",
         "patchSetId": 4
@@ -98,6 +188,24 @@
       "writtenOn": "2022-05-12T08:50:41Z",
       "side": 1,
       "message": "when does this occur? is there a way to avoid it?",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "af37dc8a_219c4727",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1232,
+      "author": {
+        "id": 742
+      },
+      "writtenOn": "2022-05-12T13:10:14Z",
+      "side": 1,
+      "message": "its more of sanity when b0 is already freed and trying to handle these .. again i can back track this defence check if you are against it",
+      "parentUuid": "b06e3401_2ffa5738",
       "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -121,6 +229,24 @@
     },
     {
       "key": {
+        "uuid": "1e54d6df_94ff43a6",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1267,
+      "author": {
+        "id": 742
+      },
+      "writtenOn": "2022-05-12T13:10:14Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "ce7094c6_b71b9f53",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "05343fd3_311e0b2d",
         "filename": "src/vnet/ip/reass/ip4_full_reass.c",
         "patchSetId": 4
@@ -135,6 +261,24 @@
       "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b14e3c0f_2af2145e",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1268,
+      "author": {
+        "id": 742
+      },
+      "writtenOn": "2022-05-12T13:10:14Z",
+      "side": 1,
+      "message": "if its already stitched into the fragment chain, if you drop here, it would become double free again later point of time",
+      "parentUuid": "05343fd3_311e0b2d",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -155,6 +299,24 @@
     },
     {
       "key": {
+        "uuid": "1e6063df_b1a8ede5",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1270,
+      "author": {
+        "id": 742
+      },
+      "writtenOn": "2022-05-12T13:10:14Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "8dd9c8cd_e7c68eed",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f37fbbfc_c2ccd4a5",
         "filename": "src/vnet/ip/reass/ip4_full_reass.c",
         "patchSetId": 4
@@ -166,6 +328,24 @@
       "writtenOn": "2022-05-12T08:50:41Z",
       "side": 1,
       "message": "should be a separate patch",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7f5044d8_65813d0f",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1478,
+      "author": {
+        "id": 742
+      },
+      "writtenOn": "2022-05-12T13:10:14Z",
+      "side": 1,
+      "message": "as acknowledged .. i was pulling all the changes together..let me know how may commits do you want me to split into",
+      "parentUuid": "f37fbbfc_c2ccd4a5",
       "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -186,6 +366,24 @@
       "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "90e09f26_156200ac",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1666,
+      "author": {
+        "id": 742
+      },
+      "writtenOn": "2022-05-12T13:10:14Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "28ff9fe0_08686a12",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
