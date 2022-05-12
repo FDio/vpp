@@ -772,6 +772,82 @@ out:
   REPLY_MACRO (VL_API_FLOWPROBE_INTERFACE_ADD_DEL_REPLY);
 }
 
+static void
+send_flowprobe_interface_details (u32 sw_if_index, u8 which, u8 direction,
+				  vl_api_registration_t *reg, u32 context)
+{
+  flowprobe_main_t *fm = &flowprobe_main;
+  vl_api_flowprobe_interface_details_t *rmp = 0;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  if (!rmp)
+    return;
+  clib_memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id =
+    ntohs (VL_API_FLOWPROBE_INTERFACE_DETAILS + REPLY_MSG_ID_BASE);
+  rmp->context = context;
+
+  rmp->sw_if_index = htonl (sw_if_index);
+
+  if (which == FLOW_VARIANT_IP4)
+    rmp->which = FLOWPROBE_WHICH_IP4;
+  else if (which == FLOW_VARIANT_IP6)
+    rmp->which = FLOWPROBE_WHICH_IP6;
+  else if (which == FLOW_VARIANT_L2)
+    rmp->which = FLOWPROBE_WHICH_L2;
+  else
+    ASSERT (0);
+
+  if (direction == FLOW_DIRECTION_RX)
+    rmp->direction = FLOWPROBE_DIRECTION_RX;
+  else if (direction == FLOW_DIRECTION_TX)
+    rmp->direction = FLOWPROBE_DIRECTION_TX;
+  else if (direction == FLOW_DIRECTION_BOTH)
+    rmp->direction = FLOWPROBE_DIRECTION_BOTH;
+  else
+    ASSERT (0);
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+static void
+vl_api_flowprobe_interface_dump_t_handler (
+  vl_api_flowprobe_interface_dump_t *mp)
+{
+  flowprobe_main_t *fm = &flowprobe_main;
+  vl_api_registration_t *reg;
+  u32 sw_if_index;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  sw_if_index = ntohl (mp->sw_if_index);
+
+  if (sw_if_index == ~0)
+    {
+      u8 *which;
+
+      vec_foreach (which, fm->flow_per_interface)
+	{
+	  if (*which == (u8) ~0)
+	    continue;
+
+	  sw_if_index = which - fm->flow_per_interface;
+	  send_flowprobe_interface_details (
+	    sw_if_index, *which, fm->direction_per_interface[sw_if_index], reg,
+	    mp->context);
+	}
+    }
+  else if (vec_len (fm->flow_per_interface) > sw_if_index &&
+	   fm->flow_per_interface[sw_if_index] != (u8) ~0)
+    {
+      send_flowprobe_interface_details (
+	sw_if_index, fm->flow_per_interface[sw_if_index],
+	fm->direction_per_interface[sw_if_index], reg, mp->context);
+    }
+}
+
 #define vec_neg_search(v,E)         \
 ({              \
   word _v(i) = 0;         \
@@ -792,7 +868,7 @@ flowprobe_params (flowprobe_main_t * fm, u8 record_l2,
   flowprobe_record_t flags = 0;
 
   if (vec_neg_search (fm->flow_per_interface, (u8) ~ 0) != ~0)
-    return ~0;
+    return VNET_API_ERROR_UNSUPPORTED;
 
   if (record_l2)
     flags |= FLOW_RECORD_L2;
@@ -830,6 +906,65 @@ vl_api_flowprobe_params_t_handler (vl_api_flowprobe_params_t * mp)
      clib_net_to_host_u32 (mp->passive_timer));
 
   REPLY_MACRO (VL_API_FLOWPROBE_PARAMS_REPLY);
+}
+
+void
+vl_api_flowprobe_set_params_t_handler (vl_api_flowprobe_set_params_t *mp)
+{
+  flowprobe_main_t *fm = &flowprobe_main;
+  vl_api_flowprobe_set_params_reply_t *rmp;
+  bool record_l2, record_l3, record_l4;
+  u32 active_timer;
+  u32 passive_timer;
+  int rv = 0;
+
+  record_l2 = (mp->record_flags & FLOWPROBE_RECORD_FLAG_L2);
+  record_l3 = (mp->record_flags & FLOWPROBE_RECORD_FLAG_L3);
+  record_l4 = (mp->record_flags & FLOWPROBE_RECORD_FLAG_L4);
+
+  active_timer = clib_net_to_host_u32 (mp->active_timer);
+  passive_timer = clib_net_to_host_u32 (mp->passive_timer);
+
+  if (passive_timer > 0 && active_timer > passive_timer)
+    {
+      clib_warning ("Passive timer must be greater than active timer");
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto out;
+    }
+
+  rv = flowprobe_params (fm, record_l2, record_l3, record_l4, active_timer,
+			 passive_timer);
+  if (rv == VNET_API_ERROR_UNSUPPORTED)
+    clib_warning (
+      "Cannot change params when feature is enabled on some interfaces");
+
+out:
+  REPLY_MACRO (VL_API_FLOWPROBE_SET_PARAMS_REPLY);
+}
+
+void
+vl_api_flowprobe_get_params_t_handler (vl_api_flowprobe_get_params_t *mp)
+{
+  flowprobe_main_t *fm = &flowprobe_main;
+  vl_api_flowprobe_get_params_reply_t *rmp;
+  u8 record_flags = 0;
+  int rv = 0;
+
+  if (fm->record & FLOW_RECORD_L2)
+    record_flags |= FLOWPROBE_RECORD_FLAG_L2;
+  if (fm->record & FLOW_RECORD_L3)
+    record_flags |= FLOWPROBE_RECORD_FLAG_L3;
+  if (fm->record & FLOW_RECORD_L4)
+    record_flags |= FLOWPROBE_RECORD_FLAG_L4;
+
+  // clang-format off
+  REPLY_MACRO2 (VL_API_FLOWPROBE_GET_PARAMS_REPLY,
+  ({
+    rmp->record_flags = record_flags;
+    rmp->active_timer = htonl (fm->active_timer);
+    rmp->passive_timer = htonl (fm->passive_timer);
+  }));
+  // clang-format on
 }
 
 /* *INDENT-OFF* */
@@ -1138,10 +1273,10 @@ VLIB_CLI_COMMAND (flowprobe_enable_disable_command, static) = {
   .function = flowprobe_interface_add_del_feature_command_fn,
 };
 VLIB_CLI_COMMAND (flowprobe_params_command, static) = {
-    .path = "flowprobe params",
-    .short_help =
-    "flowprobe params record <[l2] [l3] [l4]> [active <timer> passive <timer>]",
-    .function = flowprobe_params_command_fn,
+  .path = "flowprobe params",
+  .short_help = "flowprobe params record [l2] [l3] [l4] [active <timer>] "
+		"[passive <timer>]",
+  .function = flowprobe_params_command_fn,
 };
 
 VLIB_CLI_COMMAND (flowprobe_show_feature_command, static) = {
