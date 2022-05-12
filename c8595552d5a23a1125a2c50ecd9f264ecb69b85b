@@ -1,0 +1,191 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "178c96f9_2aad9fd9",
+        "filename": "src/vnet/ip/ip.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 304,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-05-12T08:50:41Z",
+      "side": 1,
+      "message": "I think this should be placed next to pool functions, how does it relate to ip.h code?",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6cd3bad7_805ba8d2",
+        "filename": "src/vnet/ip/ip.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 315,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-05-12T08:50:41Z",
+      "side": 1,
+      "message": "this doesn\u0027t belong in ip.h, it\u0027s reassembly code and only used from one place\n\nalso, use inline function instead of #define as macros make it harder to debug",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bfb475bf_e0cfc76e",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-05-12T08:50:41Z",
+      "side": 1,
+      "message": "I am not sure what is the impact of this change and why is this included in \"fixing buffer leaks\"?",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b93c4a37_c43c9e0d",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 442,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-05-12T08:50:41Z",
+      "side": 1,
+      "message": "when does this occur? and why shouldn\u0027t we process more ranges in this case? won\u0027t there be a leak?",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "76c67158_dad0b7ee",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 795,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-05-12T08:50:41Z",
+      "side": 1,
+      "message": "I\u0027m all for counters, but this they should be in a separate change set to ease the review process",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b06e3401_2ffa5738",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1232,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-05-12T08:50:41Z",
+      "side": 1,
+      "message": "when does this occur? is there a way to avoid it?",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ce7094c6_b71b9f53",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1267,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-05-12T08:50:41Z",
+      "side": 1,
+      "message": "erros-\u003eerrors?",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "05343fd3_311e0b2d",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1268,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-05-12T08:50:41Z",
+      "side": 1,
+      "message": "wouldn\u0027t it be simpler to just drop the offending buffer on internal error and forgo the whole \"search for and insert for it to be dropped later\" operation?",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8dd9c8cd_e7c68eed",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1270,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-05-12T08:50:41Z",
+      "side": 1,
+      "message": "combining two different types of comments next to each other and in the same change set is a new kind of eye sore",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f37fbbfc_c2ccd4a5",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1478,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-05-12T08:50:41Z",
+      "side": 1,
+      "message": "should be a separate patch",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "28ff9fe0_08686a12",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1666,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-05-12T08:50:41Z",
+      "side": 1,
+      "message": "handed -\u003e handled?\n\nalso why is this pacing code part of \"fixing buffer leaks\" change? should be a separate patch",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
