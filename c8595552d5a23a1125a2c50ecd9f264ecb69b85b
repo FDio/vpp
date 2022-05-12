@@ -72,6 +72,24 @@
     },
     {
       "key": {
+        "uuid": "991bd842_1978a758",
+        "filename": "src/vnet/ip/ip.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 315,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-05-12T13:24:41Z",
+      "side": 1,
+      "message": "where is the ip6 change then?",
+      "parentUuid": "29e11191_22e5dde3",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "bfb475bf_e0cfc76e",
         "filename": "src/vnet/ip/reass/ip4_full_reass.c",
         "patchSetId": 4
@@ -101,6 +119,24 @@
       "side": 1,
       "message": "i can change the title of the commit to misc. as this doesn\u0027t deal with buffer leaks ..as its programmable i can back track as well",
       "parentUuid": "bfb475bf_e0cfc76e",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c919591b_36d0e3df",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-05-12T13:24:41Z",
+      "side": 1,
+      "message": "that\u0027s not a real solution though as this is not about \"wrong name\".\n\nwhat you are doing here is mixing 3 different behaviour changes (min fragments, pacing and memory allocation) with some bug fixes.\n\nso I would say 4 is the minimum # of patches to have.\n\nhaving a patch which changes only one thing at a time greatly reduces effort when e.g. backporting patches to older branches, reviewing code, etc.",
+      "parentUuid": "c68bacee_35e855bf",
       "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -142,6 +178,24 @@
     },
     {
       "key": {
+        "uuid": "674d0959_8e52653e",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 442,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-05-12T13:24:41Z",
+      "side": 1,
+      "message": "do you see this counter bumped in your environment? if yes, then it does happen and I would rather have code to have it not happen, if possible (plus a comment explaining when exactly it happens)\n\nhaving safeties \"just in case\" might not be such a smart idea as it adds complexity to the code and when I read such code, I\u0027m thinking \"so if there is this safety here it means this is a legit case which does occur\".",
+      "parentUuid": "9dd3dc1d_6d10e499",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "76c67158_dad0b7ee",
         "filename": "src/vnet/ip/reass/ip4_full_reass.c",
         "patchSetId": 4
@@ -177,6 +231,24 @@
     },
     {
       "key": {
+        "uuid": "d4da9a94_13e4ab6e",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 795,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-05-12T13:24:41Z",
+      "side": 1,
+      "message": "see above",
+      "parentUuid": "be1496ec_4c0f6baa",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "b06e3401_2ffa5738",
         "filename": "src/vnet/ip/reass/ip4_full_reass.c",
         "patchSetId": 4
@@ -206,6 +278,24 @@
       "side": 1,
       "message": "its more of sanity when b0 is already freed and trying to handle these .. again i can back track this defence check if you are against it",
       "parentUuid": "b06e3401_2ffa5738",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5d06119a_be14d4a6",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1232,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-05-12T13:24:41Z",
+      "side": 1,
+      "message": "see above.\n\nI would say this should never happen. No code should write \u003e vlib_num_workers() into the owner_thread_index.\n\nDo you see this counter bumped?",
+      "parentUuid": "af37dc8a_219c4727",
       "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -282,6 +372,24 @@
     },
     {
       "key": {
+        "uuid": "422e9b0b_c5e24ca7",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1268,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-05-12T13:24:41Z",
+      "side": 1,
+      "message": "okay, thinking about this further, this is only a partial fix. I agree that we should be able to recover state so I\u0027m not against this change, but if you see internal error being bumped, it means there is an error in code somewhere as internal errors should never occur. If so, did you figure out where it\u0027s failing for you? It\u0027d be nice to have a patch for that too...",
+      "parentUuid": "b14e3c0f_2af2145e",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "8dd9c8cd_e7c68eed",
         "filename": "src/vnet/ip/reass/ip4_full_reass.c",
         "patchSetId": 4
@@ -346,6 +454,24 @@
       "side": 1,
       "message": "as acknowledged .. i was pulling all the changes together..let me know how may commits do you want me to split into",
       "parentUuid": "f37fbbfc_c2ccd4a5",
+      "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0d7b9a41_2060ece7",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1478,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-05-12T13:24:41Z",
+      "side": 1,
+      "message": "see above",
+      "parentUuid": "7f5044d8_65813d0f",
       "revId": "c8595552d5a23a1125a2c50ecd9f264ecb69b85b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
