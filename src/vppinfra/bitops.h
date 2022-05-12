@@ -38,6 +38,9 @@
 #ifndef included_clib_bitops_h
 #define included_clib_bitops_h
 
+#define SET_BIT(i)    (1 << i)
+#define GET_BIT(n, i) (n >> i) & 1U
+
 static_always_inline uword
 clear_lowest_set_bit (uword x)
 {
