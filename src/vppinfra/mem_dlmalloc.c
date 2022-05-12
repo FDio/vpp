@@ -706,7 +706,6 @@ clib_mem_heap_realloc_aligned (void *heap, void *p, uword new_size,
       clib_mem_unpoison (new, new_size);
       if (old_alloc_size)
 	{
-	  clib_mem_unpoison (p, old_alloc_size);
 	  clib_memcpy_fast (new, p, clib_min (new_size, old_alloc_size));
 	  clib_mem_heap_free (h, p);
 	}
