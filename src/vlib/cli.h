@@ -204,7 +204,6 @@ clib_error_t *vlib_cli_register (struct vlib_main_t *vm,
 clib_error_t *vlib_cli_register_parse_rule (struct vlib_main_t *vm,
 					    vlib_cli_parse_rule_t * c);
 
-uword unformat_vlib_cli_args (unformat_input_t *i, va_list *va);
 unformat_function_t unformat_vlib_cli_line;
 uword unformat_vlib_cli_sub_input (unformat_input_t * i, va_list * args);
 
