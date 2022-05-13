@@ -5,7 +5,6 @@ import shutil
 import os
 import fnmatch
 import unittest
-import argparse
 import time
 import threading
 import traceback
@@ -14,7 +13,6 @@ import re
 from multiprocessing import Process, Pipe, get_context
 from multiprocessing.queues import Queue
 from multiprocessing.managers import BaseManager
-import framework
 from config import config, num_cpus, available_cpus, max_vpp_cpus
 from framework import (
     VppTestRunner,
@@ -28,7 +26,7 @@ from framework import (
     TEST_RUN,
     SKIP_CPU_SHORTAGE,
 )
-from debug import spawn_gdb, start_vpp_in_gdb
+from debug import spawn_gdb
 from log import (
     get_parallel_logger,
     double_line_delim,
@@ -269,7 +267,7 @@ def handle_failed_suite(logger, last_test_temp_dir, vpp_pid, vpp_binary):
     if last_test_temp_dir:
         # Need to create link in case of a timeout or core dump without failure
         lttd = os.path.basename(last_test_temp_dir)
-        link_path = "%s%s-FAILED" % (config.failed_dir, lttd)
+        link_path = os.path.join(config.failed_dir, f"{lttd}-FAILED")
         if not os.path.exists(link_path):
             os.symlink(last_test_temp_dir, link_path)
         logger.error(

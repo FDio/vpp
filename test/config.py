@@ -1,7 +1,6 @@
 import argparse
 import os
 import psutil
-import textwrap
 import time
 
 
@@ -119,7 +118,7 @@ parser.add_argument(
     "--failed-dir",
     action="store",
     type=directory,
-    help="directory containing failed tests",
+    help="directory containing failed tests (default: --tmp-dir)",
 )
 
 filter_help_string = """\
@@ -357,8 +356,7 @@ parser.add_argument(
     "--keep-pcaps",
     action="store_true",
     default=default_keep_pcaps,
-    help="if set, keep all pcap files from a test run"
-    f" (default: {default_keep_pcaps})",
+    help=f"if set, keep all pcap files from a test run (default: {default_keep_pcaps})",
 )
 
 config = parser.parse_args()
@@ -398,6 +396,9 @@ config.test_src_dir = test_dirs
 
 if config.venv_dir is None:
     config.venv_dir = f"{ws}/test/venv"
+
+if config.failed_dir is None:
+    config.failed_dir = f"{config.tmp_dir}"
 
 available_cpus = psutil.Process().cpu_affinity()
 num_cpus = len(available_cpus)
