@@ -29,8 +29,12 @@
 #include <stddef.h>
 
 #define MSEC_PER_SEC 1000
-#define IP4_REASS_TIMEOUT_DEFAULT_MS		  100
-#define IP4_REASS_EXPIRE_WALK_INTERVAL_DEFAULT_MS 10000	// 10 seconds default
+#define IP4_REASS_TIMEOUT_DEFAULT_MS 200
+
+/* As there are only 1024 reass context per thread, either the DDOS attacks
+ * or fractions of real timeouts, would consume these contexts quickly and
+ * running out context space and unable to perform reassembly */
+#define IP4_REASS_EXPIRE_WALK_INTERVAL_DEFAULT_MS 50 // 50 ms default
 #define IP4_REASS_MAX_REASSEMBLIES_DEFAULT 1024
 #define IP4_REASS_MAX_REASSEMBLY_LENGTH_DEFAULT	  3
 #define IP4_REASS_HT_LOAD_FACTOR (0.75)
@@ -155,6 +159,8 @@ typedef struct
   ip4_full_reass_t *pool;
   u32 reass_n;
   u32 id_counter;
+  // for pacing the main thread timeouts
+  u32 last_id;
   clib_spinlock_t lock;
 } ip4_full_reass_per_thread_t;
 
@@ -1699,14 +1705,33 @@ ip4_full_reass_walk_expired (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  vec_reset_length (pool_indexes_to_free);
 
-	  pool_foreach_index (index, rt->pool)
+	  /* Pace the number of timeouts handled per thread,to avoid barrier
+	   * sync issues in real world scenarios */
+
+	  u32 beg = rt->last_id;
+	  /* to ensure we walk at least once per sec per context */
+	  u32 end =
+	    beg + (IP4_REASS_MAX_REASSEMBLIES_DEFAULT *
+		     IP4_REASS_EXPIRE_WALK_INTERVAL_DEFAULT_MS / MSEC_PER_SEC +
+		   1);
+	  if (end > vec_len (rt->pool))
 	    {
+	      end = vec_len (rt->pool);
+	      rt->last_id = 0;
+	    }
+	  else
+	    {
+	      rt->last_id = end;
+	    }
+
+	  pool_foreach_stepping_index (
+	    index, beg, end, rt->pool, ({
 	      reass = pool_elt_at_index (rt->pool, index);
 	      if (now > reass->last_heard + rm->timeout)
 		{
 		  vec_add1 (pool_indexes_to_free, index);
 		}
-	    }
+	    }));
 
 	  if (vec_len (pool_indexes_to_free))
 	    vlib_node_increment_counter (vm, node->node_index,
