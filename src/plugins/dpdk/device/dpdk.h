@@ -202,7 +202,7 @@ typedef struct
   u8 *default_mac_address;
 
   /* maximum supported max frame size */
-  u16 max_supported_frame_size;
+  u32 max_supported_frame_size;
 
   /* due to lack of API to get ethernet max_frame_size we store information
    * deducted from device info */

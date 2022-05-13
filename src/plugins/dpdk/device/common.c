@@ -65,7 +65,7 @@ dpdk_device_setup (dpdk_device_t * xd)
   struct rte_eth_dev_info dev_info;
   struct rte_eth_conf conf = {};
   u64 rxo, txo;
-  u16 max_frame_size;
+  u32 max_frame_size;
   int rv;
   int j;
 
