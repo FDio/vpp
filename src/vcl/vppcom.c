@@ -293,6 +293,12 @@ vcl_session_transport_attr (vcl_worker_t *wrk, vcl_session_t *s, u8 is_get,
   wrk->session_attr_op_rv = -1;
 
   mq = s->vpp_evt_q;
+  if (PREDICT_FALSE (!mq))
+    {
+      wrk->session_attr_op = 0;
+      return wrk->session_attr_op_rv;
+    }
+
   app_alloc_ctrl_evt_to_vpp (mq, app_evt, SESSION_CTRL_EVT_TRANSPORT_ATTR);
   mp = (session_transport_attr_msg_t *) app_evt->evt->data;
   memset (mp, 0, sizeof (*mp));

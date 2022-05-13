@@ -193,6 +193,7 @@ class VCLTestCase(VppTestCase):
             i.unconfig_ip4()
             i.set_table_ip4(0)
             i.admin_down()
+            i.remove_vpp_config()
 
     def thru_host_stack_ipv6_setup(self):
         self.vapi.session_enable_disable(is_enable=1)
@@ -247,7 +248,9 @@ class VCLTestCase(VppTestCase):
         self.vapi.session_enable_disable(is_enable=0)
 
     @unittest.skipUnless(_have_iperf3, "'%s' not found, Skipping.")
-    def thru_host_stack_test(self, server_app, server_args, client_app, client_args):
+    def thru_host_stack_test(
+        self, server_app, server_args, client_app, client_args, expect_result = 0
+    ):
         self.vcl_app_env = {"VCL_APP_SCOPE_GLOBAL": "true"}
 
         self.update_vcl_app_env("1", "1234", self.sapi_server_sock)
@@ -265,12 +268,12 @@ class VCLTestCase(VppTestCase):
         worker_client.join(self.timeout)
 
         try:
-            self.validateResults(worker_client, worker_server, self.timeout)
+            self.validateResults(worker_client, worker_server, self.timeout, expect_result)
         except Exception as error:
             self.fail("Failed with %s" % error)
         self.sleep(self.post_test_sleep)
 
-    def validateResults(self, worker_client, worker_server, timeout):
+    def validateResults(self, worker_client, worker_server, timeout, expect_result = 0):
         if worker_server.process is None:
             raise RuntimeError("worker_server is not running.")
         if os.path.isdir("/proc/{}".format(worker_server.process.pid)):
@@ -295,7 +298,7 @@ class VCLTestCase(VppTestCase):
                 raise
         if error:
             raise RuntimeError("Timeout! Client worker did not finish in %ss" % timeout)
-        self.assert_equal(worker_client.result, 0, "Binary test return code")
+        self.assert_equal(worker_client.result, expect_result, "Binary test return code")
 
 
 class LDPCutThruTestCase(VCLTestCase):
@@ -931,6 +934,17 @@ class LDPThruHostStackIperf(VCLTestCase):
         self.thru_host_stack_test(
             iperf3, self.server_iperf3_args, iperf3, self.client_iperf3_args
         )
+
+    @unittest.skipUnless(_have_iperf3, "'%s' not found, Skipping.")
+    def test_ldp_thru_host_stack_iperf3_mss(self):
+        """run LDP thru host stack iperf3 test with mss option"""
+
+        self.timeout = self.client_iperf3_timeout
+        self.client_iperf3_args.append("-M 1000")
+        self.thru_host_stack_test(
+            iperf3, self.server_iperf3_args, iperf3, self.client_iperf3_args, 1
+        )
+
 
 
 class LDPThruHostStackIperfUdp(VCLTestCase):
