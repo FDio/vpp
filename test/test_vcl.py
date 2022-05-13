@@ -193,6 +193,7 @@ class VCLTestCase(VppTestCase):
             i.unconfig_ip4()
             i.set_table_ip4(0)
             i.admin_down()
+            i.remove_vpp_config()
 
     def thru_host_stack_ipv6_setup(self):
         self.vapi.session_enable_disable(is_enable=1)
@@ -931,6 +932,17 @@ class LDPThruHostStackIperf(VCLTestCase):
         self.thru_host_stack_test(
             iperf3, self.server_iperf3_args, iperf3, self.client_iperf3_args
         )
+
+    @unittest.skipUnless(_have_iperf3, "'%s' not found, Skipping.")
+    def test_ldp_thru_host_stack_iperf3_mss(self):
+        """run LDP thru host stack iperf3 test with mss option"""
+
+        self.timeout = self.client_iperf3_timeout
+        self.client_iperf3_args.append("-M 1000")
+        self.thru_host_stack_test(
+            iperf3, self.server_iperf3_args, iperf3, self.client_iperf3_args
+        )
+
 
 
 class LDPThruHostStackIperfUdp(VCLTestCase):
