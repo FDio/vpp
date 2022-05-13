@@ -1,33 +1,33 @@
 create packet-generator interface pg0
 create packet-generator interface pg1
 
-packet-generator new {
-  name f1
-  limit 10
-  node ip4-input
-  size 64-64
-  worker 0
-  interface pg1
-  data {
-    UDP: 172.16.1.2 -> 172.16.1.3
-    UDP: 3000 -> 37678
-    length 128 checksum 0 incrementing 1
-  }
+packet-generator new {						\
+  name f1							\
+  limit 10							\
+  node ip4-input						\
+  size 64-64							\
+  worker 0							\
+  interface pg1							\
+  data {							\
+    UDP: 172.16.1.2 -> 172.16.1.3				\
+    UDP: 3000 -> 37678						\
+    length 128 checksum 0 incrementing 1			\
+  }								\
 }
 
 
-packet-generator new {
-  name f2
-  limit 10
-  node ip4-input
-  size 64-64
-  interface pg1
-  worker 1
-  data {
-    UDP: 172.16.1.2 -> 172.16.1.3
-    UDP: 3005 -> 38678
-    length 128 checksum 0 incrementing 1
-  }
+packet-generator new {						\
+  name f2							\
+  limit 10							\
+  node ip4-input						\
+  size 64-64							\
+  interface pg1							\
+  worker 1							\
+  data {							\
+    UDP: 172.16.1.2 -> 172.16.1.3				\
+    UDP: 3005 -> 38678						\
+    length 128 checksum 0 incrementing 1			\
+  }								\
 }
 
 nat64 add pool address 172.16.1.3

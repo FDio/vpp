@@ -38,91 +38,91 @@ clear error
 clear run
 clear int
 
-packet-generator new {
-  name decap
-  limit 10
-  size 200-200
-  node ethernet-input
-  interface GigabitEthernet2/2/0
-  data {
-      IP6: 00:50:00:00:00:01 -> 00:50:56:b7:29:7a 
-      L2TP: 11::1 -> 22::2 
-      L2TP: session_id 1 cookie 0xffffffffffffffff 
-      IP4: 00:55:55:55:00:01 -> 00:dd:dd:dd:00:01
-      UDP: 1.2.3.4 -> 5.6.7.8
-      incrementing 8
-  }
+packet-generator new {							\
+  name decap								\
+  limit 10								\
+  size 200-200								\
+  node ethernet-input							\
+  interface GigabitEthernet2/2/0					\
+  data {								\
+      IP6: 00:50:00:00:00:01 -> 00:50:56:b7:29:7a 			\
+      L2TP: 11::1 -> 22::2 						\
+      L2TP: session_id 1 cookie 0xffffffffffffffff 			\
+      IP4: 00:55:55:55:00:01 -> 00:dd:dd:dd:00:01			\
+      UDP: 1.2.3.4 -> 5.6.7.8						\
+      incrementing 8							\
+  }									\
 }
 
-packet-generator new {
-  name decap_bad_sid
-  limit 30
-  size 200-200
-  node ethernet-input
-  interface GigabitEthernet2/2/0
-  data {
-      IP6: 00:50:00:00:00:01 -> 00:50:56:b7:29:7a 
-      L2TP: 11::1 -> 22::2 
-      L2TP: session_id 0x999 cookie 0xffffffffffffffff
-      IP4: 00:55:55:55:00:01 -> 00:dd:dd:dd:00:01
-      UDP: 1.2.3.4 -> 5.6.7.8
-      incrementing 8
-  }
+packet-generator new {							\
+  name decap_bad_sid							\
+  limit 30								\
+  size 200-200								\
+  node ethernet-input							\
+  interface GigabitEthernet2/2/0					\
+  data {								\
+      IP6: 00:50:00:00:00:01 -> 00:50:56:b7:29:7a 			\
+      L2TP: 11::1 -> 22::2 						\
+      L2TP: session_id 0x999 cookie 0xffffffffffffffff			\
+      IP4: 00:55:55:55:00:01 -> 00:dd:dd:dd:00:01			\
+      UDP: 1.2.3.4 -> 5.6.7.8						\
+      incrementing 8							\
+  }									\
 }
 
-packet-generator new {
-  name decap_bad_cookie
-  limit 50
-  size 200-200
-  node ethernet-input
-  interface GigabitEthernet2/2/0
-  data {
-      IP6: 00:50:00:00:00:01 -> 00:50:56:b7:29:7a 
-      L2TP: 11::1 -> 22::2 
-      L2TP: session_id 1 cookie 0x3333ffffffffffff
-      IP4: 00:55:55:55:00:01 -> 00:dd:dd:dd:00:01
-      UDP: 1.2.3.4 -> 5.6.7.8
-      incrementing 8
-  }
+packet-generator new {							\
+  name decap_bad_cookie							\
+  limit 50								\
+  size 200-200								\
+  node ethernet-input							\
+  interface GigabitEthernet2/2/0					\
+  data {								\
+      IP6: 00:50:00:00:00:01 -> 00:50:56:b7:29:7a 			\
+      L2TP: 11::1 -> 22::2 						\
+      L2TP: session_id 1 cookie 0x3333ffffffffffff			\
+      IP4: 00:55:55:55:00:01 -> 00:dd:dd:dd:00:01			\
+      UDP: 1.2.3.4 -> 5.6.7.8						\
+      incrementing 8							\
+  }									\
 }
 
-packet-generator new {
-  name encap
-  limit 100
-  node ethernet-input
-  interface GigabitEthernet2/1/0
-  data {
-      IP4: 0000.5555.0002 -> 00:00:dd:dd:00:02 vlan 1
-      UDP: 1.2.3.4 -> 5.6.7.8
-      incrementing 8
-  }
+packet-generator new {							\
+  name encap								\
+  limit 100								\
+  node ethernet-input							\
+  interface GigabitEthernet2/1/0					\
+  data {								\
+      IP4: 0000.5555.0002 -> 00:00:dd:dd:00:02 vlan 1			\
+      UDP: 1.2.3.4 -> 5.6.7.8						\
+      incrementing 8							\
+  }									\
 }
 
-packet-generator new {
-  name decap_sublayer
-  limit 300
-  size 200-200
-  node ethernet-input
-  interface GigabitEthernet2/2/0
-  data {
-      IP6: 00:50:00:00:00:01 -> 00:50:56:b7:29:7a 
-      L2TP: 11::1 -> 22::3
-      L2TP: session_id 2 cookie 0xffffffffffffffff l2_sublayer 0
-      IP4: 00:55:55:55:00:01 -> 00:dd:dd:dd:00:01
-      UDP: 1.2.3.4 -> 5.6.7.8
-      incrementing 8
-  }
+packet-generator new {							\
+  name decap_sublayer							\
+  limit 300								\
+  size 200-200								\
+  node ethernet-input							\
+  interface GigabitEthernet2/2/0					\
+  data {								\
+      IP6: 00:50:00:00:00:01 -> 00:50:56:b7:29:7a 			\
+      L2TP: 11::1 -> 22::3						\
+      L2TP: session_id 2 cookie 0xffffffffffffffff l2_sublayer 0	\
+      IP4: 00:55:55:55:00:01 -> 00:dd:dd:dd:00:01			\
+      UDP: 1.2.3.4 -> 5.6.7.8						\
+      incrementing 8							\
+  }									\
 }
 
-packet-generator new {
-  name encap_sublayer
-  limit 700
-  node ethernet-input
-  interface GigabitEthernet2/1/0
-  data {
-      IP4: 0000.5555.0002 -> 00:00:dd:dd:00:02 vlan 2
-      UDP: 1.2.3.4 -> 5.6.7.8
-      incrementing 8
-  }
+packet-generator new {							\
+  name encap_sublayer							\
+  limit 700								\
+  node ethernet-input							\
+  interface GigabitEthernet2/1/0					\
+  data {								\
+      IP4: 0000.5555.0002 -> 00:00:dd:dd:00:02 vlan 2			\
+      UDP: 1.2.3.4 -> 5.6.7.8						\
+      incrementing 8							\
+  }									\
 }
 

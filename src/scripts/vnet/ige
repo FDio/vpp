@@ -1,12 +1,12 @@
-packet-generator new {
-  name x
-  limit 1
-  node ip4-lookup
-  size 50-50
-  data {
-    ICMP: 1.0.0.1 -> 1.0.0.3 ttl 1
-    incrementing 30
-  }
+packet-generator new {						\
+  name x							\
+  limit 1							\
+  node ip4-lookup						\
+  size 50-50							\
+  data {							\
+    ICMP: 1.0.0.1 -> 1.0.0.3 ttl 1				\
+    incrementing 30						\
+  }								\
 }
 
 comment { tr add pg-input 100 }

@@ -3366,9 +3366,10 @@ unix_cli_exec (vlib_main_t * vm,
 	       unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   char *file_name;
-  int fd;
-  unformat_input_t sub_input;
+  int fd, rv = 0;
+  unformat_input_t sub_input, in;
   clib_error_t *error;
+  clib_macro_main_t *mm = 0;
   unix_cli_main_t *cm = &unix_cli_main;
   unix_cli_file_t *cf;
   u8 *file_data = 0;
@@ -3405,8 +3406,14 @@ unix_cli_exec (vlib_main_t * vm,
       goto done;
     }
 
+  if (s.st_size < 1)
+    {
+      error = clib_error_return (0, "empty file `%s'", file_name);
+      goto done;
+    }
+
   /* Read the file */
-  vec_validate (file_data, s.st_size);
+  vec_validate (file_data, s.st_size - 1);
 
   if (read (fd, file_data, s.st_size) != s.st_size)
     {
@@ -3416,42 +3423,43 @@ unix_cli_exec (vlib_main_t * vm,
       goto done;
     }
 
-  /* The macro expander expects a c string... */
-  vec_add1 (file_data, 0);
-
   unformat_init_vector (&sub_input, file_data);
 
-  /* Run the file contents through the macro processor */
-  if (vec_len (sub_input.buffer) > 1)
+  /* Initial config process? Use the global macro table. */
+  if (pool_is_free_index (cm->cli_file_pool, cm->current_input_file_index))
+    mm = &cm->macro_main;
+  else
     {
-      u8 *expanded;
-      clib_macro_main_t *mm = 0;
-
-      /* Initial config process? Use the global macro table. */
-      if (pool_is_free_index
-	  (cm->cli_file_pool, cm->current_input_file_index))
-	mm = &cm->macro_main;
-      else
-	{
-	  /* Otherwise, use the per-cli-process macro table */
-	  cf = pool_elt_at_index (cm->cli_file_pool,
-				  cm->current_input_file_index);
-	  mm = &cf->macro_main;
-	}
-
-      expanded = (u8 *) clib_macro_eval (mm,
-					 (i8 *) sub_input.buffer,
-					 1 /* complain */ ,
-					 0 /* level */ ,
-					 8 /* max_level */ );
-      /* Macro processor NULL terminates the return */
-      vec_dec_len (expanded, 1);
-      vec_reset_length (sub_input.buffer);
-      vec_append (sub_input.buffer, expanded);
-      vec_free (expanded);
+      /* Otherwise, use the per-cli-process macro table */
+      cf = pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
+      mm = &cf->macro_main;
     }
 
-  vlib_cli_input (vm, &sub_input, 0, 0);
+  while (rv == 0 && unformat_user (&sub_input, unformat_vlib_cli_line, &in))
+    {
+      /* Run the file contents through the macro processor */
+      if (vec_len (in.buffer) > 1)
+	{
+	  u8 *expanded;
+
+	  /* The macro expander expects a c string... */
+	  vec_add1 (in.buffer, 0);
+
+	  expanded =
+	    (u8 *) clib_macro_eval (mm, (i8 *) in.buffer, 1 /* complain */,
+				    0 /* level */, 8 /* max_level */);
+	  /* Macro processor NULL terminates the return */
+	  vec_dec_len (expanded, 1);
+	  vec_reset_length (in.buffer);
+	  vec_append (in.buffer, expanded);
+	  vec_free (expanded);
+	}
+
+      if ((rv = vlib_cli_input (vm, &in, 0, 0)) != 0)
+	error = clib_error_return (0, "CLI line error: %U",
+				   format_unformat_error, &in);
+      unformat_free (&in);
+    }
   unformat_free (&sub_input);
 
 done:

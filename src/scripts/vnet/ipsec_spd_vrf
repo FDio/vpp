@@ -39,34 +39,34 @@ set ip neighbor pg0.3 192.168.0.2 00:11:22:33:44:55
 
 trace add pg-input 100
 
-packet-generator new {
-  name ipsec2
-  limit 1
-  rate 1e4
-  node ethernet-input
-  interface pg0
-  size 100-100
-  data {
-   IP4: 1.2.3 -> 4.5.6 vlan 1
-   UDP: 10.5.0.1 -> 10.6.0.1
-   UDP: 4321 -> 1234
-    length 72
-    incrementing 100
-  }
+packet-generator new {						\
+  name ipsec2							\
+  limit 1							\
+  rate 1e4							\
+  node ethernet-input						\
+  interface pg0							\
+  size 100-100							\
+  data {							\
+   IP4: 1.2.3 -> 4.5.6 vlan 1					\
+   UDP: 10.5.0.1 -> 10.6.0.1					\
+   UDP: 4321 -> 1234						\
+    length 72							\
+    incrementing 100						\
+  }								\
 }
 
-packet-generator new {
-  name ipsec3
-  limit 1
-  rate 1e4
-  node ethernet-input
-  interface pg0
-  size 100-100
-  data {
-   IP4: 1.2.3 -> 4.5.6 vlan 1
-   UDP: 10.5.0.1 -> 10.6.0.22
-   UDP: 4321 -> 1234
-    length 72
-    incrementing 100
-  }
+packet-generator new {						\
+  name ipsec3							\
+  limit 1							\
+  rate 1e4							\
+  node ethernet-input						\
+  interface pg0							\
+  size 100-100							\
+  data {							\
+   IP4: 1.2.3 -> 4.5.6 vlan 1					\
+   UDP: 10.5.0.1 -> 10.6.0.22					\
+   UDP: 4321 -> 1234						\
+    length 72							\
+    incrementing 100						\
+  }								\
 }

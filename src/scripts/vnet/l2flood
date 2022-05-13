@@ -27,15 +27,14 @@ clear error
 clear run
 clear int
 
-packet-generator new {
-  name flood
-  limit 1
-  node ethernet-input
-  interface GigabitEthernet2/1/0
-  data {
-      IP4: 0050.56b7.7c83 -> ffff.ffff.ffff  vlan 1
-      GRE: 8.0.0.1 -> 1.2.3.3 mpls_unicast 
-  }
-
+packet-generator new {						\
+  name flood							\
+  limit 1							\
+  node ethernet-input						\
+  interface GigabitEthernet2/1/0				\
+  data {							\
+      IP4: 0050.56b7.7c83 -> ffff.ffff.ffff  vlan 1		\
+      GRE: 8.0.0.1 -> 1.2.3.3 mpls_unicast 			\
+  }								\
 }
 

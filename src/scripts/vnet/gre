@@ -26,60 +26,60 @@ set int ip address gre1 ::2/128
 ip route add 192:168:3::0/64 via gre1
 set int state gre1 up
 
-packet-generator new {
-  name gre4-tx
-  limit -1
-  node ip4-input
-  size 64-64
-  interface pg0
-  data {
-    UDP: 192.168.1.2 -> 192.168.3.1
-    UDP: 4321 -> 1234
-      length 128 checksum 0 incrementing 1
-  }
+packet-generator new {						\
+  name gre4-tx							\
+  limit -1							\
+  node ip4-input						\
+  size 64-64							\
+  interface pg0							\
+  data {							\
+    UDP: 192.168.1.2 -> 192.168.3.1				\
+    UDP: 4321 -> 1234						\
+      length 128 checksum 0 incrementing 1			\
+  }								\
 }
 
-packet-generator new {
-  name gre4-rx
-  limit -1
-  node ip6-input
-  size 72-72
-  interface pg1
-  data {
-    GRE: 192:168:2::2 -> 192:168:2::1
-      ip4
-        UDP: 192.168.3.1 -> 192.168.1.2
-        UDP: 1234 -> 4321
-          length 128 checksum 0 incrementing 1
- }
+packet-generator new {						\
+  name gre4-rx							\
+  limit -1							\
+  node ip6-input						\
+  size 72-72							\
+  interface pg1							\
+  data {							\
+    GRE: 192:168:2::2 -> 192:168:2::1				\
+      ip4							\
+        UDP: 192.168.3.1 -> 192.168.1.2				\
+        UDP: 1234 -> 4321					\
+          length 128 checksum 0 incrementing 1			\
+ }								\
 }
 
-packet-generator new {
-  name gre6-tx
-  limit -1
-  node ip6-input
-  size 64-64
-  interface pg0
-  data {
-    UDP: 192:168:1::2 -> 192:168:3::1
-    UDP: 4321 -> 1234
-      length 128 checksum 0 incrementing 1
-  }
+packet-generator new {						\
+  name gre6-tx							\
+  limit -1							\
+  node ip6-input						\
+  size 64-64							\
+  interface pg0							\
+  data {							\
+    UDP: 192:168:1::2 -> 192:168:3::1				\
+    UDP: 4321 -> 1234						\
+      length 128 checksum 0 incrementing 1			\
+  }								\
 }
 
-packet-generator new {
-  name gre6-rx
-  limit -1
-  node ip4-input
-  size 72-72
-  interface pg1
-  data {
-    GRE: 192.168.2.2 -> 192.168.2.1
-      ip6
-        UDP: 192:168:3::1 -> 192:168:1::2
-        UDP: 1234 -> 4321
-          length 128 checksum 0 incrementing 1
- }
+packet-generator new {						\
+  name gre6-rx							\
+  limit -1							\
+  node ip4-input						\
+  size 72-72							\
+  interface pg1							\
+  data {							\
+    GRE: 192.168.2.2 -> 192.168.2.1				\
+      ip6							\
+        UDP: 192:168:3::1 -> 192:168:1::2			\
+        UDP: 1234 -> 4321					\
+          length 128 checksum 0 incrementing 1			\
+ }								\
 }
 
 packet-generator enable

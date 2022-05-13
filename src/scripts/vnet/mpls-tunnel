@@ -1,46 +1,46 @@
-packet-generator new {
-  name x0
-  limit 1
-  node ip4-input
-  size 64-64
-  data {
-    ICMP: 1.0.0.2 -> 2.0.0.2
-    ICMP echo_request
-    incrementing 100
-  }
+packet-generator new {						\
+  name x0							\
+  limit 1							\
+  node ip4-input						\
+  size 64-64							\
+  data {							\
+    ICMP: 1.0.0.2 -> 2.0.0.2					\
+    ICMP echo_request						\
+    incrementing 100						\
+  }								\
 }
-packet-generator new {
-  name x1
-  limit 1
-  node ip4-input
-  size 64-64
-  data {
-    ICMP: 1.0.0.2 -> 2.0.1.2
-    ICMP echo_request
-    incrementing 100
-  }
+packet-generator new {						\
+  name x1							\
+  limit 1							\
+  node ip4-input						\
+  size 64-64							\
+  data {							\
+    ICMP: 1.0.0.2 -> 2.0.1.2					\
+    ICMP echo_request						\
+    incrementing 100						\
+  }								\
 }
-packet-generator new {
-  name x2
-  limit 1
-  node ip4-input
-  size 64-64
-  data {
-    ICMP: 1.0.0.2 -> 2.0.2.2
-    ICMP echo_request
-    incrementing 100
-  }
+packet-generator new {						\
+  name x2							\
+  limit 1							\
+  node ip4-input						\
+  size 64-64							\
+  data {							\
+    ICMP: 1.0.0.2 -> 2.0.2.2					\
+    ICMP echo_request						\
+    incrementing 100						\
+  }								\
 }
-packet-generator new {
-  name x3
-  limit 1
-  node ip4-input
-  size 64-64
-  data {
-    ICMP: 1.0.0.2 -> 2.0.3.2
-    ICMP echo_request
-    incrementing 100
-  }
+packet-generator new {						\
+  name x3							\
+  limit 1							\
+  node ip4-input						\
+  size 64-64							\
+  data {							\
+    ICMP: 1.0.0.2 -> 2.0.3.2					\
+    ICMP echo_request						\
+    incrementing 100						\
+  }								\
 }
 
 
