@@ -3,16 +3,16 @@ srp create-interfaces
 set int hw-class fake-srp0 srp
 set int hw-class fake-srp1 srp
 
-packet-generator new {
-  name x
-  limit 1
-  node ip4-input
-  size 64-64
-  data {
-    ICMP: 1.0.0.2 -> 2.0.0.2
-    ICMP echo_request
-    incrementing 100
-  }
+packet-generator new {						\
+  name x							\
+  limit 1							\
+  node ip4-input						\
+  size 64-64							\
+  data {							\
+    ICMP: 1.0.0.2 -> 2.0.0.2					\
+    ICMP echo_request						\
+    incrementing 100						\
+  }								\
 }
 
 tr add pg-input 100

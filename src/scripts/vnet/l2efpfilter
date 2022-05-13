@@ -45,36 +45,36 @@ clear error
 clear run
 clear int
 
-packet-generator new {
-  name pre_vtr_fail
-  limit 10
-  node ethernet-input
-  interface GigabitEthernet2/1/0
-  data {
-      IP4: 0050.56b7.7c83 -> 00:00:00:00:00:11 vlan 1
-      GRE: 8.0.0.1 -> 1.2.3.3 mpls_unicast 
-  }
+packet-generator new {						\
+  name pre_vtr_fail						\
+  limit 10							\
+  node ethernet-input						\
+  interface GigabitEthernet2/1/0				\
+  data {							\
+      IP4: 0050.56b7.7c83 -> 00:00:00:00:00:11 vlan 1		\
+      GRE: 8.0.0.1 -> 1.2.3.3 mpls_unicast 			\
+  }								\
 }
 
-packet-generator new {
-  name post_vtr_pass
-  limit 20
-  node ethernet-input
-  interface GigabitEthernet2/1/0
-  data {
-      IP4: 0050.56b7.7c83 -> 00:00:00:00:00:22 vlan 2
-      GRE: 8.0.0.1 -> 1.2.3.3 mpls_unicast 
-  }
+packet-generator new {						\
+  name post_vtr_pass						\
+  limit 20							\
+  node ethernet-input						\
+  interface GigabitEthernet2/1/0				\
+  data {							\
+      IP4: 0050.56b7.7c83 -> 00:00:00:00:00:22 vlan 2		\
+      GRE: 8.0.0.1 -> 1.2.3.3 mpls_unicast 			\
+  }								\
 }
 
-packet-generator new {
-  name post_vtr_fail
-  limit 50
-  node ethernet-input
-  interface GigabitEthernet2/1/0
-  data {
-      IP4: 0050.56b7.7c83 -> 00:00:00:00:00:22 vlan 3
-      GRE: 8.0.0.1 -> 1.2.3.3 mpls_unicast 
-  }
+packet-generator new {						\
+  name post_vtr_fail						\
+  limit 50							\
+  node ethernet-input						\
+  interface GigabitEthernet2/1/0				\
+  data {							\
+      IP4: 0050.56b7.7c83 -> 00:00:00:00:00:22 vlan 3		\
+      GRE: 8.0.0.1 -> 1.2.3.3 mpls_unicast 			\
+  }								\
 }
 

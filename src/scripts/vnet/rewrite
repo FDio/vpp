@@ -23,37 +23,37 @@ cle er
 cle int
 cle run
 
-packet-generator new {
-  name toport
-  limit 2
-  node ethernet-input
-  interface GigabitEthernet2/1/0
-  data {
-      IP4: 0050.56b7.7c83 -> 0050.56b7.296d 
-      GRE: 8.0.0.1 -> 1.2.5.6 mpls_unicast 
-  }
+packet-generator new {						\
+  name toport							\
+  limit 2							\
+  node ethernet-input						\
+  interface GigabitEthernet2/1/0				\
+  data {							\
+      IP4: 0050.56b7.7c83 -> 0050.56b7.296d 			\
+      GRE: 8.0.0.1 -> 1.2.5.6 mpls_unicast 			\
+  }								\
 }
 
-packet-generator new {
-  name tovlan
-  limit 2
-  node ethernet-input
-  interface GigabitEthernet2/1/0
-  data {
-      IP4: 0050.56b7.7c83 -> 0050.56b7.296d 
-      GRE: 8.0.0.1 -> 1.2.6.6 mpls_unicast 
-  }
+packet-generator new {						\
+  name tovlan							\
+  limit 2							\
+  node ethernet-input						\
+  interface GigabitEthernet2/1/0				\
+  data {							\
+      IP4: 0050.56b7.7c83 -> 0050.56b7.296d 			\
+      GRE: 8.0.0.1 -> 1.2.6.6 mpls_unicast 			\
+  }								\
 }
 
-packet-generator new {
-  name toqinq
-  limit 2
-  node ethernet-input
-  interface GigabitEthernet2/1/0
-  data {
-      IP4: 0050.56b7.7c83 -> 0050.56b7.296d 
-      GRE: 8.0.0.1 -> 1.2.7.6 mpls_unicast 
-  }
+packet-generator new {						\
+  name toqinq							\
+  limit 2							\
+  node ethernet-input						\
+  interface GigabitEthernet2/1/0				\
+  data {							\
+      IP4: 0050.56b7.7c83 -> 0050.56b7.296d 			\
+      GRE: 8.0.0.1 -> 1.2.7.6 mpls_unicast 			\
+  }								\
 }
 
 

@@ -7,14 +7,14 @@ set int state loop0 up
 
 comment { Packet generator script. Src MAC 00:de:ad:be:ef:01 }
 comment { Dst mac 01:ba:db:ab:be:01 ethtype 0800 }
-packet-generator new {
-    name simple
-    limit 1
-    size 128-128
-    interface loop0
-    node vrrp
-    data {
-        hex 0x00deadbeef0001badbabbe010800 
-        incrementing 30
-    }
+packet-generator new {						\
+    name simple							\
+    limit 1							\
+    size 128-128						\
+    interface loop0						\
+    node vrrp							\
+    data {							\
+        hex 0x00deadbeef0001badbabbe010800 			\
+        incrementing 30						\
+    }								\
 }

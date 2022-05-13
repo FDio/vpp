@@ -1,13 +1,13 @@
-packet-generator new {
-  name x
-  limit 1
-  node ip6-input
-  size 64-64
-  data {
-    ICMP6: ::1 -> ::2
-    ICMP echo_request
-    incrementing 100
-  }
+packet-generator new {						\
+  name x							\
+  limit 1							\
+  node ip6-input						\
+  size 64-64							\
+  data {							\
+    ICMP6: ::1 -> ::2						\
+    ICMP echo_request						\
+    incrementing 100						\
+  }								\
 }
 
 tr add pg-input 100
