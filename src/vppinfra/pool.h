@@ -561,6 +561,18 @@ do {									\
 	 i < vec_len (v);			\
 	 i = pool_get_next_index (v, i))	\
 
+/* Iterate pool by index from s to e */
+#define pool_foreach_stepping_index(i, s, e, v, body)                  \
+  for ((i) = (s); (i) < (e); (i)++)                                    \
+    {                                                                  \
+      if (!pool_is_free_index ((v), (i)))                              \
+        do                                                             \
+          {                                                            \
+            body;                                                      \
+          }                                                            \
+        while (0);                                                     \
+    }
+
 /**
  * @brief Remove all elements from a pool in a safe way
  *
