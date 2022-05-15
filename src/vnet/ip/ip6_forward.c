@@ -198,7 +198,7 @@ ip6_del_interface_prefix_routes (ip6_main_t * im,
   if (!if_prefix)
     {
       clib_warning ("Prefix not found while deleting %U",
-		    format_ip4_address_and_length, address, address_length);
+		    format_ip6_address_and_length, address, address_length);
       return;
     }
 
