@@ -111,8 +111,13 @@ ip6_ll_table_entry_update (const ip6_ll_prefix_t * ilp,
     .frp_flags = flags,
     .frp_sw_if_index = ilp->ilp_sw_if_index,
     .frp_proto = DPO_PROTO_IP6,
+    .frp_fib_index = ~0,
+    .frp_weight = 1,
   };
-  fib_prefix_t fp;
+  fib_prefix_t fp = { 0 };
+
+  if (flags & FIB_ROUTE_PATH_LOCAL)
+    rpath.frp_addr.ip6 = ilp->ilp_addr;
 
   vec_validate_init_empty (ip6_ll_table.ilt_fibs, ilp->ilp_sw_if_index, ~0);
 

@@ -274,7 +274,7 @@ class TestIPv6(TestIPv6ND):
 
     def tearDown(self):
         """Run standard test teardown and log ``show ip6 neighbors``."""
-        for i in self.interfaces:
+        for i in reversed(self.interfaces):
             i.unconfig_ip6()
             i.admin_down()
         for i in self.sub_interfaces:
@@ -1100,6 +1100,8 @@ class TestIPv6(TestIPv6ND):
         self.pg_start()
 
         subitf = VppDot1QSubint(self, self.pg1, 99)
+        self.interfaces.append(subitf)
+        self.sub_interfaces.append(subitf)
 
         subitf.admin_up()
         subitf.config_ip6()
