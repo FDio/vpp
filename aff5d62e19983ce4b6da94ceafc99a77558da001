@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "54ee59e9_0d7e290c",
+        "filename": "src/vppinfra/pool.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 567,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-05-15T10:17:09Z",
+      "side": 1,
+      "message": "use pool_get_next_index to increment, otherwise this is very inefficient.",
+      "revId": "aff5d62e19983ce4b6da94ceafc99a77558da001",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
