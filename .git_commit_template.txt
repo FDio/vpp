@@ -27,7 +27,7 @@
 #               Commits across multiple components should be split.
 #               E.g. ip, fib, nat, acl, host, api
 #
-# Fixes: If type is fix refers to the original commit (optional).
+# Fixes: If type is fix refers to the original commit.
 # Ticket: Refers to JIRA ticket if it exists (optional).
 #
 # --------------------
