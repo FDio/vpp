@@ -61,15 +61,20 @@ update_node_counters (vlib_stats_segment_t *sm)
       vlib_stats_segment_lock ();
       clib_bitmap_foreach (i, bmp)
 	{
-	  vlib_node_t *n = node_dups[0][i];
 	  if (node_data[i].name)
 	    {
 	      vec_free (node_data[i].name);
 	      for (j = 0; j < ARRAY_LEN (node_data->symlinks); j++)
 		vlib_stats_remove_entry (node_data[i].symlinks[j]);
 	    }
-
-	  node_data[i].name = vec_dup (node_dups[0][i]->name);
+	}
+      // We can't merge the loops because a node index corresponding to a given
+      // node name can change between 2 updates. Otherwise, we could add
+      // already existing symlinks or delete valid ones.
+      clib_bitmap_foreach (i, bmp)
+	{
+	  vlib_node_t *n = node_dups[0][i];
+	  node_data[i].name = vec_dup (n->name);
 	  vlib_stats_set_string_vector (&node_names, n->index, "%v", n->name);
 
 	  for (int j = 0; j < ARRAY_LEN (node_counters); j++)
