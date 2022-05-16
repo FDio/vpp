@@ -573,7 +573,8 @@ vmxnet3_event_irq_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h,
       vd->flags |= VMXNET3_DEVICE_F_LINK_UP;
       vd->link_speed = ret >> 16;
       vnet_hw_interface_set_link_speed (vnm, vd->hw_if_index,
-					vd->link_speed * 1000);
+					(vd->link_speed == UINT32_MAX) ?
+					UINT32_MAX : vd->link_speed * 1000);
       vnet_hw_interface_set_flags (vnm, vd->hw_if_index,
 				   VNET_HW_INTERFACE_FLAG_LINK_UP);
     }
@@ -868,7 +869,8 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
   vmxnet3_enable_interrupt (vd);
 
   vnet_hw_interface_set_link_speed (vnm, vd->hw_if_index,
-				    vd->link_speed * 1000);
+				    (vd->link_speed == UINT32_MAX) ?
+				    UINT32_MAX : vd->link_speed * 1000);
   if (vd->flags & VMXNET3_DEVICE_F_LINK_UP)
     vnet_hw_interface_set_flags (vnm, vd->hw_if_index,
 				 VNET_HW_INTERFACE_FLAG_LINK_UP);

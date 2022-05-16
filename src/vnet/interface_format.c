@@ -120,7 +120,7 @@ format_vnet_hw_interface_link_speed (u8 * s, va_list * args)
 {
   u32 link_speed = va_arg (*args, u32);
 
-  if (link_speed == 0)
+  if (link_speed == 0 || link_speed == UINT32_MAX)
     return format (s, "unknown");
 
   if (link_speed >= 1000000)
