@@ -723,6 +723,7 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		}
 	      else
 		{
+		  clib_bitmap_free (pw0->pending_clear_sw_if_index_bitmap);
 		  if (clear_all)
 		    {
 		      /* if we need to clear all, then just clear the interfaces that we are servicing */
