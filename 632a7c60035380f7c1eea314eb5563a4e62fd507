@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "27238594_cbd919c3",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-05-16T17:14:01Z",
+      "side": 1,
+      "message": "What\u0027s the logic for the bihash sizing here?\n\nSince we\u0027re hashing policies, I would have thought the maximum it would need to be is number of policies/BIHASH_KVP_PER_PAGE[1] which is 4.\n\n1: https://fdio-vpp.readthedocs.io/en/latest/gettingstarted/developers/bihash.html#initializing-a-bihash-table",
+      "revId": "632a7c60035380f7c1eea314eb5563a4e62fd507",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
