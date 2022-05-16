@@ -1390,7 +1390,9 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
     }
   if (xd->link.link_speed != prev_link.link_speed)
     vnet_hw_interface_set_link_speed (vnm, xd->hw_if_index,
-				      xd->link.link_speed * 1000);
+				      (xd->link.link_speed == UINT32_MAX) ?
+					      UINT32_MAX :
+					      xd->link.link_speed * 1000);
 
   if (xd->link.link_status != prev_link.link_status)
     {
