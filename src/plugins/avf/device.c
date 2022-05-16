@@ -1169,8 +1169,9 @@ avf_process_one_device (vlib_main_t * vm, avf_device_t * ad, int is_irq)
 	      flags |= (VNET_HW_INTERFACE_FLAG_FULL_DUPLEX |
 			VNET_HW_INTERFACE_FLAG_LINK_UP);
 	      vnet_hw_interface_set_flags (vnm, ad->hw_if_index, flags);
-	      vnet_hw_interface_set_link_speed (vnm, ad->hw_if_index,
-						mbps * 1000);
+	      vnet_hw_interface_set_link_speed (
+		vnm, ad->hw_if_index,
+		(mbps == UINT32_MAX) ? UINT32_MAX : mbps * 1000);
 	      ad->link_speed = mbps;
 	    }
 	  else if (!link_up && (ad->flags & AVF_DEVICE_F_LINK_UP) != 0)
