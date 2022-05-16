@@ -5,6 +5,7 @@ FEATURES=$(git show -s --format=%s --no-color \
     | sed -ne 's/^\([a-z0-9_ -]*\):.*$/\1/p')
 KNOWN_TYPES="feature fix refactor improvement style docs test make"
 TYPE=$(git show -s --format=%b --no-color | sed -ne 's/^Type:[[:space:]]*//p')
+FIXES_COMMIT=$(git show -s --format=%b --no-color | sed -ne 's/^Fixes:[[:space:]]*//p')
 ERR="=============================== ERROR ==============================="
 
 # Chech that subject line contains at least one feature id
@@ -48,6 +49,31 @@ if [ ${is_known} = "false" ] ; then
   echo $ERR
   exit 1
 fi
+
+# check that for type = "fix" there is also a valid "Fixes: XXXX" header
+# and the commit it references is valid
+if [ "${TYPE}" = "fix" ]; then
+	if [ "x${FIXES_COMMIT}" = "x" ]; then
+		echo $ERR
+		echo "Type 'fix' must have a 'Fixes: XXXXX' in the commit message,"
+		echo "where XXXXX must be the git commit ID which introduced the bug."
+		echo "The goal is to communicate:"
+		echo "    'if you have commit XXXXX, you must have this fix.'"
+		echo $ERR
+		exit 1
+	fi
+	if [ ! $(git show "${FIXES_COMMIT}" >/dev/null 2>&1) ]; then
+		echo $ERR
+		echo "Could not find '${FIXES_COMMIT}' in git history."
+		echo "The 'Fixes:' header must specify the git commit ID which"
+		echo "has introduced the bug which required this bugfix."
+		echo "The goal is to communicate:"
+		echo "    'if you have commit XXXXX, you must have this fix.'"
+		echo $ERR
+		exit 1
+	fi
+fi
+
 echo "*******************************************************************"
 echo "* VPP Commit Message Checkstyle Successfully Completed"
 echo "*******************************************************************"
