@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dcbc10c4_86db02ca",
+        "filename": "src/vnet/ipsec/ipsec.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 645,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-05-16T17:14:51Z",
+      "side": 1,
+      "message": "Minor nit: ipv4-outbound-spd-fast-path is clearer to me and not much more verbose",
+      "revId": "01f57dd5e43752104a4e37370200d017b7b274c8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
