@@ -16,6 +16,24 @@
       "revId": "aff5d62e19983ce4b6da94ceafc99a77558da001",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "880ec04b_eafffcc9",
+        "filename": "src/vppinfra/pool.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 567,
+      "author": {
+        "id": 742
+      },
+      "writtenOn": "2022-05-16T16:13:15Z",
+      "side": 1,
+      "message": "Hi Neale, thank you for the comment.. let me see whether this satisfies.. if so would go a head with this..\n#define pool_foreach_stepping_index(i, s, e, v, body)                         \\\n  for ((i) \u003d (s); (i) \u003c (e);                                                  \\\n       (i) \u003d pool_get_next_index (v, i))                                      \\\n    {                                                                         \\\n      if (!pool_is_free_index ((v), (i)))                                     \\\n      do                                                                      \\\n\t{                                                                     \\\n\t  body;                                                               \\\n\t}                                                                     \\\n      while (0);                                                              \\\n    }",
+      "parentUuid": "54ee59e9_0d7e290c",
+      "revId": "aff5d62e19983ce4b6da94ceafc99a77558da001",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
