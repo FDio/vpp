@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "aa4d1f11_6b2e62dc",
+        "filename": "src/vlib/unix/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3458,
+      "author": {
+        "id": 1737
+      },
+      "writtenOn": "2022-05-16T14:00:29Z",
+      "side": 1,
+      "message": "vlib_cli_input is designed to support do multi commands one time.\nThis patch only fixed \u0027exec file\u0027 error, not fixed the issue when vlib_cli_input \ndoing multi commands.\nThere are other places using vlib_cli_input do multi commands, eg, vl_api_cli_t_handler",
+      "revId": "3153f007c0b5954faf880e6404bebf7f0b7777bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
