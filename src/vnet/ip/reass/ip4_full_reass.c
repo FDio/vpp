@@ -1481,7 +1481,9 @@ ip4_full_reass_get_nbuckets ()
   u32 nbuckets;
   u8 i;
 
-  nbuckets = (u32) (rm->max_reass_n / IP4_REASS_HT_LOAD_FACTOR);
+  /* need more mem with more workers */
+  nbuckets = (u32) (rm->max_reass_n * (vlib_num_workers () + 1) /
+		    IP4_REASS_HT_LOAD_FACTOR);
 
   for (i = 0; i < 31; i++)
     if ((1 << i) >= nbuckets)
