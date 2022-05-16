@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e15beb29_9d386f95",
+        "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-05-16T17:14:45Z",
+      "side": 1,
+      "message": "I haven\u0027t been able to match anything using the fast path with the attached script - let me know if I\u0027ve missed anything.\n\nI think there\u0027s two issues with running this script with fast path:\n1. We are adding input rules also to the fast path at `src/vnet/ipsec/ipsec_spd_policy.c:170` however there\u0027s currently no lookup implemented in inbound side. As such any inbound rules added to fast path are \"lost\" and can\u0027t be matched (I\u0027ve also highlighted this in the \"ipsec: add/delete ipsec fast path policy\" commit).\n2. If we change it so only outbound rules are added to fast path, it still doesn\u0027t seem to match the outbound rule here - I haven\u0027t debugged that or reviewed the matching logic yet to understand why.\n\nHere\u0027s the script:\n```\ncreate packet-generator interface pg0\n\nset int ip address pg0 10.10.10.10/24\n\nip route add 30.30.30.30/16 via 10.10.10.10 pg0\nset ip neighbor pg0 30.30.30.30 00:11:22:33:44:55 static count 1\n\nipsec spd add 1\nset interface ipsec spd pg0 1\n\nipsec policy add spd 1 priority 1 inbound action bypass local-ip-range 0.0.0.0 - 255.255.255.255 remote-ip-range 0.0.0.0 - 255.255.255.255\nipsec policy add spd 1 priority 1 outbound action bypass local-ip-range 0.0.0.0 - 255.255.255.255 remote-ip-range 0.0.0.0 - 255.255.255.255\n\nset int state pg0 up\n\ntrace add pg-input 100\n\npacket-generator new {\n  name ipsec\n  limit 1\n  rate 1e4\n  node ip4-input\n  interface pg0\n  size 100-100\n  data {\n   UDP: 20.20.20.20 -\u003e 30.30.30.30\n   UDP: 4321 -\u003e 1234\n    length 72\n    incrementing 100\n  }\n}\n```\n\ntrace output:\n```\n...\n01:52:04:093586: ipsec4-output-feature\n  spd 1 policy -1\n01:52:04:093605: error-drop\n  rx:pg0\n```\n\nAn integration test could catch this type of thing - shouldn\u0027t be too difficult to repurpose `test/test_ipsec_spd_flow_cache_output.py` for something like this.",
+      "revId": "4d433f436e49be164b80aea3f180040095f454c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
