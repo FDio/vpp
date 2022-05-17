@@ -1910,8 +1910,8 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
     .t_mode = TUNNEL_MODE_P2P,
     .t_table_id = 0,
     .t_hop_limit = 255,
-    .t_src = a->local_ip,
-    .t_dst = a->remote_ip,
+    .t_src = a->remote_ip,
+    .t_dst = a->local_ip,
   };
   tunnel_t tun_out = {
     .t_flags = TUNNEL_FLAG_NONE,
@@ -1920,8 +1920,8 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
     .t_mode = TUNNEL_MODE_P2P,
     .t_table_id = 0,
     .t_hop_limit = 255,
-    .t_src = a->remote_ip,
-    .t_dst = a->local_ip,
+    .t_src = a->local_ip,
+    .t_dst = a->remote_ip,
   };
 
   if (~0 == a->sw_if_index)
