@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "0f1d4d14_34aeed10",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2022-05-17T10:38:07Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e1c1b1d4_1fdc5615",
+      "revId": "221d7ff70b196a1ea0fd4d93478847bcfe4f8e3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "4ed46d96_eaece725",
         "filename": "src/vlib/dma/dma.h",
         "patchSetId": 6
@@ -54,6 +72,24 @@
     },
     {
       "key": {
+        "uuid": "136d9d2c_d690200c",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2022-05-17T10:38:07Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4ed46d96_eaece725",
+      "revId": "221d7ff70b196a1ea0fd4d93478847bcfe4f8e3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "0d79417a_45e7abac",
         "filename": "src/vlib/dma/dma.h",
         "patchSetId": 6
@@ -68,6 +104,24 @@
       "revId": "221d7ff70b196a1ea0fd4d93478847bcfe4f8e3c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "11391770_58731419",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2022-05-17T10:38:07Z",
+      "side": 1,
+      "message": "Previously removed as session implementation not use it, now add it back.",
+      "parentUuid": "0d79417a_45e7abac",
+      "revId": "221d7ff70b196a1ea0fd4d93478847bcfe4f8e3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
