@@ -52,6 +52,24 @@
       "revId": "4975a246c4d869861c6a2878e92c3b22cdf6fc47",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cdb2cd95_d8fc5e4f",
+        "filename": "src/plugins/unittest/ipsec_test.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-05-18T14:16:19Z",
+      "side": 1,
+      "message": "Hi Leaf,\n\nI would say let\u0027s remove the functional test completely? We don\u0027t need it at all.\nMy original intention was to remove perf test as well - but seems you liked the idea?\n\nRegards,\nFan",
+      "parentUuid": "7b1a6b9a_fd6566d5",
+      "revId": "4975a246c4d869861c6a2878e92c3b22cdf6fc47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
