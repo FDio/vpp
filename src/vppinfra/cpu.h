@@ -84,6 +84,9 @@ clib_march_select_fn_ptr (clib_march_fn_registration * r)
 #define CLIB_MARCH_FN_POINTER(fn)                                             \
   (__typeof__ (fn) *) clib_march_select_fn_ptr (fn##_march_fn_registrations);
 
+#define CLIB_MARCH_FN_VOID_POINTER(fn)                                        \
+  clib_march_select_fn_ptr (fn##_march_fn_registrations);
+
 #define _CLIB_MARCH_FN_REGISTRATION(fn) \
 static clib_march_fn_registration \
 CLIB_MARCH_SFX(fn##_march_fn_registration) = \
