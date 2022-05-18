@@ -47,7 +47,9 @@
 #include <vppinfra/clib.h>	/* for CLIB_LINUX_KERNEL */
 #include <vppinfra/vector.h>
 #include <vppinfra/error_bootstrap.h>
+#ifdef __SSE4_2__
 #include <vppinfra/memcpy_x86_64.h>
+#endif
 
 #ifdef CLIB_LINUX_KERNEL
 #include <linux/string.h>
@@ -77,7 +79,7 @@ clib_memcpy_fast (void *restrict dst, const void *restrict src, size_t n)
 	  "behaviour");
 #if defined(__COVERITY__)
   return memcpy (dst, src, n);
-#elif defined(__x86_64__)
+#elif defined(__SSE4_2__)
   clib_memcpy_x86_64 (dst, src, n);
   return dst;
 #else
