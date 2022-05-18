@@ -238,8 +238,8 @@ geneve_api_hookup (vlib_main_t * vm)
    */
   geneve_base_msg_id = setup_message_id_table ();
 
-  am->api_trace_cfg[VL_API_GENEVE_ADD_DEL_TUNNEL + REPLY_MSG_ID_BASE].size +=
-    16 * sizeof (u32);
+  vl_msg_api_increase_trace_size (
+    am, VL_API_GENEVE_ADD_DEL_TUNNEL + REPLY_MSG_ID_BASE, 16 * sizeof (u32));
 
   return 0;
 }

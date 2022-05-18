@@ -802,7 +802,7 @@ vl_sock_api_init (vlib_main_t * vm)
     vl_api_##n##_t_endian, vl_api_##n##_t_print, sizeof (vl_api_##n##_t), t,  \
     vl_api_##n##_t_print_json, vl_api_##n##_t_tojson,                         \
     vl_api_##n##_t_fromjson, vl_api_##n##_t_calc_size);                       \
-  am->api_trace_cfg[VL_API_##N].replay_enable = 0;
+  am->messages[VL_API_##N].replay_allowed = 0;
   foreach_vlib_api_msg;
 #undef _
 

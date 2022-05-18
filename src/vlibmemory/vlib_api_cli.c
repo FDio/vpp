@@ -242,7 +242,7 @@ vl_api_message_table_command (vlib_main_t * vm,
     vlib_cli_output (vm, "%-4s %-40s %6s %7s", "ID", "Name", "Bounce",
 		     "MP-safe");
 
-  for (i = 1; i < vec_len (am->msg_names); i++)
+  for (i = 1; i < vec_len (am->messages); i++)
     {
       if (verbose == 0)
 	{
@@ -252,10 +252,10 @@ vl_api_message_table_command (vlib_main_t * vm,
 	}
       else
 	{
-	  vlib_cli_output (vm, "%-4d %-40s %6d %7d", i,
-			   am->msg_names[i] ? am->msg_names[i] :
-			   "  [no handler]", am->message_bounce[i],
-			   am->is_mp_safe[i]);
+	  vlib_cli_output (
+	    vm, "%-4d %-40s %6d %7d", i,
+	    am->msg_names[i] ? am->msg_names[i] : "  [no handler]",
+	    am->messages[i].message_bounce, am->messages[i].is_mp_safe);
 	}
     }
 
@@ -522,7 +522,6 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 
   for (; i <= last_index; i++)
     {
-      trace_cfg_t *cfgp;
       u16 msg_id;
       int size;
 
@@ -547,7 +546,6 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	}
 
       msg_id = msgid_vec[msg_id];
-      cfgp = am->api_trace_cfg + msg_id;
 
       /* Copy the buffer (from the read-only mmap'ed file) */
       vec_validate (tmpbuf, size - 1 + sizeof (uword));
@@ -562,8 +560,8 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	   clib_arch_is_little_endian))
 	{
 	  void (*endian_fp) (void *);
-	  if (msg_id >= vec_len (am->msg_endian_handlers)
-	      || (am->msg_endian_handlers[msg_id] == 0))
+	  if (msg_id >= vec_len (am->messages) ||
+	      (am->messages[msg_id].msg_endian_handler == 0))
 	    {
 	      vlib_cli_output (vm, "Ugh: msg id %d no endian swap\n", msg_id);
 	      munmap (hp, file_size);
@@ -571,7 +569,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	      am->replay_in_progress = 0;
 	      return;
 	    }
-	  endian_fp = am->msg_endian_handlers[msg_id];
+	  endian_fp = am->messages[msg_id].msg_endian_handler;
 	  (*endian_fp) (tmpbuf + sizeof (uword));
 	}
 
@@ -651,21 +649,22 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 
 	case REPLAY:
 	  if (msg_id < vec_len (am->msg_print_handlers) &&
-	      am->msg_print_handlers[msg_id] && cfgp->replay_enable)
+	      am->msg_print_handlers[msg_id] &&
+	      am->messages[msg_id].replay_allowed)
 	    {
 	      void (*handler) (void *, vlib_main_t *);
 
-	      handler = (void *) am->msg_handlers[msg_id];
+	      handler = (void *) am->messages[msg_id].msg_handler;
 
-	      if (!am->is_mp_safe[msg_id])
+	      if (!am->messages[msg_id].is_mp_safe)
 		vl_msg_api_barrier_sync ();
 	      (*handler) (tmpbuf + sizeof (uword), vm);
-	      if (!am->is_mp_safe[msg_id])
+	      if (!am->messages[msg_id].is_mp_safe)
 		vl_msg_api_barrier_release ();
 	    }
 	  else
 	    {
-	      if (cfgp->replay_enable)
+	      if (am->messages[msg_id].replay_allowed)
 		vlib_cli_output (vm, "Skipping msg id %d: no handler\n",
 				 msg_id);
 	      break;
@@ -721,7 +720,7 @@ vl_msg_print_trace (u8 *msg, void *ctx)
       msg = tmpbuf;
 
       void (*endian_fp) (void *);
-      endian_fp = am->msg_endian_handlers[msg_id];
+      endian_fp = am->messages[msg_id].msg_endian_handler;
       (*endian_fp) (tmpbuf);
     }
 
@@ -827,7 +826,6 @@ vl_msg_exec_json_command (vlib_main_t *vm, cJSON *o)
   u16 msg_id;
   void *(*fromjson) (cJSON *, int *);
   int len = 0, rv = -1;
-  trace_cfg_t *cfgp;
   u8 *msg = 0;
 
   cJSON *msg_id_obj = cJSON_GetObjectItem (o, "_msgname");
@@ -862,20 +860,19 @@ vl_msg_exec_json_command (vlib_main_t *vm, cJSON *o)
     }
   vec_free (name_crc);
 
-  cfgp = am->api_trace_cfg + msg_id;
   if (!am->api_trace_cfg)
     {
       vlib_cli_output (vm, "msg id %d no trace config\n", msg_id);
       return rv;
     }
 
-  if (cfgp->replay_enable)
+  if (am->messages[msg_id].replay_allowed)
     {
 
       if (proc_warning)
 	vlib_cli_output (vm, "warning: msg %d has different signature\n");
 
-      fromjson = am->msg_fromjson_handlers[msg_id];
+      fromjson = am->messages[msg_id].msg_fromjson_handler;
       if (!fromjson)
 	{
 	  vlib_cli_output (vm, "missing fromjson convert function! id %d\n",
@@ -894,22 +891,22 @@ vl_msg_exec_json_command (vlib_main_t *vm, cJSON *o)
       if (clib_arch_is_little_endian)
 	{
 	  void (*endian_fp) (void *);
-	  endian_fp = am->msg_endian_handlers[msg_id];
+	  endian_fp = am->messages[msg_id].msg_endian_handler;
 	  (*endian_fp) (msg);
 	}
 
       void (*handler) (void *, vlib_main_t *);
-      handler = (void *) am->msg_handlers[msg_id];
+      handler = (void *) am->messages[msg_id].msg_handler;
       if (!handler)
 	{
 	  vlib_cli_output (vm, "no handler for msg id %d!\n", msg_id);
 	  goto end;
 	}
 
-      if (!am->is_mp_safe[msg_id])
+      if (!am->messages[msg_id].is_mp_safe)
 	vl_msg_api_barrier_sync ();
       (*handler) (msg, vm);
-      if (!am->is_mp_safe[msg_id])
+      if (!am->messages[msg_id].is_mp_safe)
 	vl_msg_api_barrier_release ();
     }
 

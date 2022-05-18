@@ -342,8 +342,8 @@ vxlan_gpe_api_hookup (vlib_main_t * vm)
 {
   api_main_t *am = vlibapi_get_main ();
 
-  am->api_trace_cfg[VL_API_VXLAN_GPE_ADD_DEL_TUNNEL].size +=
-    17 * sizeof (u32);
+  vl_msg_api_increase_trace_size (am, VL_API_VXLAN_GPE_ADD_DEL_TUNNEL,
+				  17 * sizeof (u32));
 
   /*
    * Set up the (msg_name, crc, message-id) table
