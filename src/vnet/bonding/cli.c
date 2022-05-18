@@ -22,6 +22,14 @@
 #include <vnet/bonding/node.h>
 #include <vlib/stats/stats.h>
 
+static clib_error_t *
+bond_eth_set_max_frame_size (vnet_main_t *vnm, vnet_hw_interface_t *hw,
+			     u32 frame_size)
+{
+  /* nothing for now */
+  return 0;
+}
+
 void
 bond_disable_collecting_distributing (vlib_main_t * vm, member_if_t * mif)
 {
@@ -454,6 +462,7 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
   eir.dev_class_index = bond_dev_class.index;
   eir.dev_instance = bif->dev_instance;
   eir.address = bif->hw_address;
+  eir.cb.set_max_frame_size = bond_eth_set_max_frame_size;
   bif->hw_if_index = vnet_eth_register_interface (vnm, &eir);
 
   sw = vnet_get_hw_sw_interface (vnm, bif->hw_if_index);
