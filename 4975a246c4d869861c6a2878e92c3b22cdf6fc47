@@ -34,6 +34,24 @@
       "revId": "4975a246c4d869861c6a2878e92c3b22cdf6fc47",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7b1a6b9a_fd6566d5",
+        "filename": "src/plugins/unittest/ipsec_test.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-05-18T13:29:25Z",
+      "side": 1,
+      "message": "This test only calls `ipsec_output_policy_match` which does fp + linear search, so I\u0027m not sure that it tests flow cache here? \n\nI originally missed the changes in ipsec_output_policy_match since it\u0027s moved files + those changes didn\u0027t show up in the diff. A separate commit moving the functions before making any fast path changes would be better.\n\nIn any case, does the perf test not test the above, seems like this a possible duplicate test that is covered by the perf test anyway.",
+      "parentUuid": "0497545a_74f3a248",
+      "revId": "4975a246c4d869861c6a2878e92c3b22cdf6fc47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
