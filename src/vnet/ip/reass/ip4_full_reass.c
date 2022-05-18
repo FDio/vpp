@@ -453,6 +453,11 @@ ip4_full_reass_drop_all (vlib_main_t *vm, vlib_node_runtime_t *node,
       next_index = reass->error_next_index;
       u32 bi = ~0;
 
+      /* record number of packets sent to custom app */
+      vlib_node_increment_counter (vm, node->node_index,
+				   IP4_ERROR_REASS_TO_CUSTOM_APP,
+				   vec_len (to_free));
+
       while (vec_len (to_free) > 0)
 	{
 	  vlib_get_next_frame (vm, node, next_index, *to_next,
@@ -579,6 +584,8 @@ again:
 
       if (now > reass->last_heard + rm->timeout)
 	{
+	  vlib_node_increment_counter (vm, node->node_index,
+				       IP4_ERROR_REASS_TIMEOUT, 1);
 	  ip4_full_reass_drop_all (vm, node, reass, n_left_to_next, to_next);
 	  ip4_full_reass_free (rm, rt, reass);
 	  reass = NULL;
@@ -824,6 +831,15 @@ ip4_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
       *next0 = reass->next_index;
     }
   vnet_buffer (first_b)->ip.reass.estimated_mtu = reass->min_fragment_length;
+
+  /* Keep track of number of successfully reassembled packets and number of
+   * fragments reassembled */
+  vlib_node_increment_counter (vm, node->node_index, IP4_ERROR_REASS_SUCCESS,
+			       1);
+
+  vlib_node_increment_counter (vm, node->node_index,
+			       IP4_ERROR_REASS_FRAGMENTS_REASSEMBLED,
+			       reass->fragments_n);
 
   *error0 = IP4_ERROR_NONE;
   ip4_full_reass_free (rm, rt, reass);
@@ -1214,6 +1230,10 @@ ip4_full_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    clib_net_to_host_u16 (ip0->length) - ip4_header_bytes (ip0);
 	  const u32 fragment_last = fragment_first + fragment_length - 1;
 
+	  /* Keep track of received fragments */
+	  vlib_node_increment_counter (vm, node->node_index,
+				       IP4_ERROR_REASS_FRAGMENTS_RCVD, 1);
+
 	  if (fragment_first > fragment_last ||
 	      fragment_first + fragment_length > UINT16_MAX - 20 ||
 	      (fragment_length < 8 && // 8 is minimum frag length per RFC 791
@@ -1333,6 +1353,14 @@ ip4_full_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      else if (FEATURE == type && IP4_ERROR_NONE == error0)
 		{
 		  vnet_feature_next (&next0, b0);
+		}
+
+	      /* Increment the counter to-custom-app also as this fragment is
+	       * also going to application */
+	      if (CUSTOM == type)
+		{
+		  vlib_node_increment_counter (
+		    vm, node->node_index, IP4_ERROR_REASS_TO_CUSTOM_APP, 1);
 		}
 
 	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -1680,6 +1708,10 @@ ip4_full_reass_walk_expired (vlib_main_t *vm, vlib_node_runtime_t *node,
 		}
 	    }
 
+	  if (vec_len (pool_indexes_to_free))
+	    vlib_node_increment_counter (vm, node->node_index,
+					 IP4_ERROR_REASS_TIMEOUT,
+					 vec_len (pool_indexes_to_free));
 	  int *i;
           vec_foreach (i, pool_indexes_to_free)
           {
