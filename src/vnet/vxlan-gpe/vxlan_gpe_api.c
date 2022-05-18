@@ -340,10 +340,8 @@ vl_api_vxlan_gpe_tunnel_v2_dump_t_handler (
 static clib_error_t *
 vxlan_gpe_api_hookup (vlib_main_t * vm)
 {
-  api_main_t *am = vlibapi_get_main ();
-
-  am->api_trace_cfg[VL_API_VXLAN_GPE_ADD_DEL_TUNNEL].size +=
-    17 * sizeof (u32);
+  vl_api_msg_increase_trace_size (VL_API_VXLAN_GPE_ADD_DEL_TUNNEL,
+				  17 * sizeof (u32));
 
   /*
    * Set up the (msg_name, crc, message-id) table

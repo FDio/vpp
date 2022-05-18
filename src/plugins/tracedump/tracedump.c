@@ -339,7 +339,6 @@ static clib_error_t *
 tracedump_init (vlib_main_t * vm)
 {
   tracedump_main_t *tdmp = &tracedump_main;
-  api_main_t *am = vlibapi_get_main ();
 
   clib_error_t *error = 0;
 
@@ -349,7 +348,7 @@ tracedump_init (vlib_main_t * vm)
   /* Add our API messages to the global name_crc hash table */
   tdmp->msg_id_base = setup_message_id_table ();
 
-  am->is_mp_safe[tdmp->msg_id_base + VL_API_TRACE_DUMP] = 1;
+  vl_api_msg_set_mp_safe (tdmp->msg_id_base + VL_API_TRACE_DUMP, 1);
 
   return error;
 }

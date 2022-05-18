@@ -1278,10 +1278,8 @@ VL_MSG_API_REAPER_FUNCTION (want_l2_arp_term_events_reaper);
 static clib_error_t *
 l2_api_hookup (vlib_main_t * vm)
 {
-  api_main_t *am = vlibapi_get_main ();
-
   /* Mark VL_API_BRIDGE_DOMAIN_DUMP as mp safe */
-  am->is_mp_safe[VL_API_BRIDGE_DOMAIN_DUMP] = 1;
+  vl_api_msg_set_mp_safe (VL_API_BRIDGE_DOMAIN_DUMP, 1);
 
   /*
    * Set up the (msg_name, crc, message-id) table

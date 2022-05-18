@@ -68,13 +68,12 @@ clib_error_t *
 arping_plugin_api_hookup (vlib_main_t *vm)
 {
   arping_main_t *am = &arping_main;
-  api_main_t *vam = vlibapi_get_main ();
 
   /* ask for a correctly-sized block of API message decode slots */
   am->msg_id_base = setup_message_id_table ();
 
   /* Mark API as mp safe */
-  vam->is_mp_safe[am->msg_id_base + VL_API_ARPING] = 1;
+  vl_api_msg_set_mp_safe (am->msg_id_base + VL_API_ARPING, 1);
 
   return 0;
 }

@@ -352,9 +352,8 @@ vl_api_vxlan_tunnel_v2_dump_t_handler (vl_api_vxlan_tunnel_v2_dump_t *mp)
 static clib_error_t *
 vxlan_api_hookup (vlib_main_t * vm)
 {
-  api_main_t *am = vlibapi_get_main ();
-
-  am->api_trace_cfg[VL_API_VXLAN_ADD_DEL_TUNNEL].size += 16 * sizeof (u32);
+  vl_api_msg_increase_trace_size (VL_API_VXLAN_ADD_DEL_TUNNEL,
+				  16 * sizeof (u32));
 
   /*
    * Set up the (msg_name, crc, message-id) table

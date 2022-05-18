@@ -961,14 +961,13 @@ static void vl_api_output_acl_set_interface_t_handler
 static clib_error_t *
 classify_api_hookup (vlib_main_t * vm)
 {
-  api_main_t *am = vlibapi_get_main ();
-
   /*
    * Trace space for classifier mask+match
    */
-  am->api_trace_cfg[VL_API_CLASSIFY_ADD_DEL_TABLE].size += 5 * sizeof (u32x4);
-  am->api_trace_cfg[VL_API_CLASSIFY_ADD_DEL_SESSION].size +=
-    5 * sizeof (u32x4);
+  vl_api_msg_increase_trace_size (VL_API_CLASSIFY_ADD_DEL_TABLE,
+				  5 * sizeof (u32x4));
+  vl_api_msg_increase_trace_size (VL_API_CLASSIFY_ADD_DEL_SESSION,
+				  5 * sizeof (u32x4));
 
   /*
    * Set up the (msg_name, crc, message-id) table

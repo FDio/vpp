@@ -333,14 +333,12 @@ vl_api_get_f64_increment_by_one_t_handler (
 static clib_error_t *
 vlib_apis_hookup (vlib_main_t *vm)
 {
-  api_main_t *am = vlibapi_get_main ();
-
   /*
    * Set up the (msg_name, crc, message-id) table
    */
   msg_id_base = setup_message_id_table ();
 
-  am->is_mp_safe[VL_API_GET_NODE_GRAPH] = 1;
+  vl_api_msg_set_mp_safe (VL_API_GET_NODE_GRAPH, 1);
   return 0;
 }
 

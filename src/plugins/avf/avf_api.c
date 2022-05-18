@@ -90,12 +90,11 @@ static clib_error_t *
 avf_plugin_api_hookup (vlib_main_t * vm)
 {
   avf_main_t *avm = &avf_main;
-  api_main_t *am = vlibapi_get_main ();
 
   /* ask for a correctly-sized block of API message decode slots */
   avm->msg_id_base = setup_message_id_table ();
 
-  am->is_mp_safe[avm->msg_id_base + VL_API_AVF_DELETE] = 1;
+  vl_api_msg_set_mp_safe (avm->msg_id_base + VL_API_AVF_DELETE, 1);
 
   return 0;
 }

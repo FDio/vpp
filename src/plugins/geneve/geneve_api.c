@@ -231,15 +231,13 @@ static void vl_api_geneve_tunnel_dump_t_handler
 static clib_error_t *
 geneve_api_hookup (vlib_main_t * vm)
 {
-  api_main_t *am = vlibapi_get_main ();
-
   /*
    * Set up the (msg_name, crc, message-id) table
    */
   geneve_base_msg_id = setup_message_id_table ();
 
-  am->api_trace_cfg[VL_API_GENEVE_ADD_DEL_TUNNEL + REPLY_MSG_ID_BASE].size +=
-    16 * sizeof (u32);
+  vl_api_msg_increase_trace_size (
+    VL_API_GENEVE_ADD_DEL_TUNNEL + REPLY_MSG_ID_BASE, 16 * sizeof (u32));
 
   return 0;
 }

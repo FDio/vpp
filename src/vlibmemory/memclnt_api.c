@@ -157,7 +157,6 @@ vl_api_control_ping_t_handler (vl_api_control_ping_t *mp)
 static int
 vlib_api_init (void)
 {
-  api_main_t *am = vlibapi_get_main ();
   vl_msg_api_msg_config_t cfg;
   vl_msg_api_msg_config_t *c = &cfg;
 
@@ -193,8 +192,8 @@ vlib_api_init (void)
   foreach_vlib_api_msg;
 #undef _
 
-  am->is_mp_safe[VL_API_CONTROL_PING] = 1;
-  am->is_mp_safe[VL_API_CONTROL_PING_REPLY] = 1;
+  vl_api_msg_set_mp_safe (VL_API_CONTROL_PING, 1);
+  vl_api_msg_set_mp_safe (VL_API_CONTROL_PING_REPLY, 1);
 
   return 0;
 }
@@ -727,10 +726,10 @@ rpc_api_hookup (vlib_main_t *vm)
   foreach_plugin_trace_msg;
 #undef _
 
-  am->api_trace_cfg[VL_API_TRACE_PLUGIN_MSG_IDS].replay_enable = 0;
+  am->messages[VL_API_TRACE_PLUGIN_MSG_IDS].replay_enable = 0;
 
   /* No reason to halt the parade to create a trace record... */
-  am->is_mp_safe[VL_API_TRACE_PLUGIN_MSG_IDS] = 1;
+  vl_api_msg_set_mp_safe (VL_API_TRACE_PLUGIN_MSG_IDS, 1);
   rpc_call_main_thread_cb_fn = vl_api_rpc_call_main_thread;
   return 0;
 }
