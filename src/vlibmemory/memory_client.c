@@ -377,7 +377,7 @@ vl_client_install_client_message_handlers (void)
     vl_api_##n##_t_endian, vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 0,  \
     vl_api_##n##_t_print_json, vl_api_##n##_t_tojson,                         \
     vl_api_##n##_t_fromjson, vl_api_##n##_t_calc_size);                       \
-  am->api_trace_cfg[VL_API_##N].replay_enable = 0;
+  am->messages[VL_API_##N].replay_allowed = 0;
   foreach_api_msg;
 #undef _
 }
@@ -562,6 +562,8 @@ vl_client_get_first_plugin_msg_id (const char *plugin_name)
   vl_api_get_first_msg_id_t *mp;
   api_main_t *am = vlibapi_get_main ();
   memory_client_main_t *mm = vlibapi_get_memory_client_main ();
+  vl_api_msg_data_t *m =
+    vl_api_get_msg_data (am, VL_API_GET_FIRST_MSG_ID_REPLY);
   f64 timeout;
   void *old_handler;
   clib_time_t clib_time;
@@ -574,12 +576,11 @@ vl_client_get_first_plugin_msg_id (const char *plugin_name)
   clib_time_init (&clib_time);
 
   /* Push this plugin's first_msg_id_reply handler */
-  old_handler = am->msg_handlers[VL_API_GET_FIRST_MSG_ID_REPLY];
-  am->msg_handlers[VL_API_GET_FIRST_MSG_ID_REPLY] = (void *)
-    vl_api_get_first_msg_id_reply_t_handler;
-  if (!am->msg_calc_size_funcs[VL_API_GET_FIRST_MSG_ID_REPLY])
+  old_handler = m->msg_handler;
+  m->msg_handler = (void *) vl_api_get_first_msg_id_reply_t_handler;
+  if (!m->msg_calc_size_func)
     {
-      am->msg_calc_size_funcs[VL_API_GET_FIRST_MSG_ID_REPLY] =
+      m->msg_calc_size_func =
 	(uword (*) (void *)) vl_api_get_first_msg_id_reply_t_calc_size;
     }
 
@@ -608,7 +609,7 @@ vl_client_get_first_plugin_msg_id (const char *plugin_name)
 
     sock_err:
       /* Restore old handler */
-      am->msg_handlers[VL_API_GET_FIRST_MSG_ID_REPLY] = old_handler;
+      m->msg_handler = old_handler;
 
       return -1;
     }
@@ -633,7 +634,7 @@ vl_client_get_first_plugin_msg_id (const char *plugin_name)
 	    }
 	}
       /* Restore old handler */
-      am->msg_handlers[VL_API_GET_FIRST_MSG_ID_REPLY] = old_handler;
+      m->msg_handler = old_handler;
 
       return rv;
     }
@@ -641,7 +642,7 @@ vl_client_get_first_plugin_msg_id (const char *plugin_name)
 result:
 
   /* Restore the old handler */
-  am->msg_handlers[VL_API_GET_FIRST_MSG_ID_REPLY] = old_handler;
+  m->msg_handler = old_handler;
 
   if (rv == (u16) ~ 0)
     clib_warning ("plugin '%s' not registered", plugin_name);

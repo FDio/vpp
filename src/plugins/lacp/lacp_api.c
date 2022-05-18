@@ -125,7 +125,8 @@ lacp_plugin_api_hookup (vlib_main_t * vm)
   lm->msg_id_base = setup_message_id_table ();
 
   /* Mark these APIs as mp safe */
-  am->is_mp_safe[lm->msg_id_base + VL_API_SW_INTERFACE_LACP_DUMP] = 1;
+  vl_api_set_msg_thread_safe (
+    am, lm->msg_id_base + VL_API_SW_INTERFACE_LACP_DUMP, 1);
 
   return 0;
 }
