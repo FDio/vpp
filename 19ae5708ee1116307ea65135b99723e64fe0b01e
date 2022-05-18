@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "91ab22d2_93bb07de",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 170,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2022-05-18T15:48:55Z",
+      "side": 1,
+      "message": "You are right. I\u0027ll correct that.",
+      "parentUuid": "484ebe94_d09b8d8b",
+      "revId": "19ae5708ee1116307ea65135b99723e64fe0b01e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "33369255_00ba986d",
         "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
         "patchSetId": 2
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "ad50c45a_6b14e79e",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 332,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2022-05-18T15:48:55Z",
+      "side": 1,
+      "message": "You are right, I\u0027ll correct that.",
+      "parentUuid": "33369255_00ba986d",
+      "revId": "19ae5708ee1116307ea65135b99723e64fe0b01e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "42975916_d6f68ff5",
         "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
         "patchSetId": 2
@@ -50,6 +86,24 @@
       "revId": "19ae5708ee1116307ea65135b99723e64fe0b01e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5fdcf17e_24d57c88",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 368,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2022-05-18T15:48:55Z",
+      "side": 1,
+      "message": "I\u0027ve discussed the issue with Fan we will use im-\u003efp_lookup_hash_buckets value for both ipv4 and ipv6 implementations.",
+      "parentUuid": "42975916_d6f68ff5",
+      "revId": "19ae5708ee1116307ea65135b99723e64fe0b01e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
