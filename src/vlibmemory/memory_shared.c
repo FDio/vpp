@@ -117,14 +117,16 @@ vl_msg_api_alloc_internal (svm_region_t *vlib_rp, int nbytes, int pool,
 		  if (CLIB_DEBUG > 0)
 		    {
 		      u16 *msg_idp, msg_id;
+		      vl_api_msg_data_t *m;
 		      clib_warning
 			("garbage collect pool %d ring %d index %d", pool, i,
 			 q->head);
 		      msg_idp = (u16 *) (rv->data);
 		      msg_id = clib_net_to_host_u16 (*msg_idp);
-		      if (msg_id < vec_len (vlibapi_get_main ()->msg_names))
+		      m = vl_api_get_msg_data (am, msg_id);
+		      if (m)
 			clib_warning ("msg id %d name %s", (u32) msg_id,
-				      vlibapi_get_main ()->msg_names[msg_id]);
+				      m->name);
 		    }
 		  shmem_hdr->garbage_collects++;
 		  goto collected;
@@ -731,10 +733,7 @@ vl_unmap_shmem_internal (u8 is_client)
 
   is_client ? svm_region_exit_client () : svm_region_exit ();
 
-  /* $$$ more careful cleanup, valgrind run... */
-  vec_free (am->msg_handlers);
-  vec_free (am->msg_endian_handlers);
-  vec_free (am->msg_print_handlers);
+  vec_free (am->msg_data);
 }
 
 void

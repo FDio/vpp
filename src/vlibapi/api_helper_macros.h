@@ -30,7 +30,7 @@
 #define _NATIVE_TO_NETWORK(t, rmp)                                            \
   api_main_t *am = vlibapi_get_main ();                                       \
   void (*endian_fp) (void *);                                                 \
-  endian_fp = am->msg_endian_handlers[t + (REPLY_MSG_ID_BASE)];               \
+  endian_fp = am->msg_data[t + (REPLY_MSG_ID_BASE)].endian_handler;           \
   (*endian_fp) (rmp);
 
 #define REPLY_MACRO(msg)                                                      \

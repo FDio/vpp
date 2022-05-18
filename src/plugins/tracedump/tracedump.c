@@ -349,7 +349,7 @@ tracedump_init (vlib_main_t * vm)
   /* Add our API messages to the global name_crc hash table */
   tdmp->msg_id_base = setup_message_id_table ();
 
-  am->is_mp_safe[tdmp->msg_id_base + VL_API_TRACE_DUMP] = 1;
+  vl_api_set_msg_thread_safe (am, tdmp->msg_id_base + VL_API_TRACE_DUMP, 1);
 
   return error;
 }

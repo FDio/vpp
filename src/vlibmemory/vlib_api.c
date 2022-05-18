@@ -340,7 +340,7 @@ vlib_apis_hookup (vlib_main_t *vm)
    */
   msg_id_base = setup_message_id_table ();
 
-  am->is_mp_safe[VL_API_GET_NODE_GRAPH] = 1;
+  vl_api_set_msg_thread_safe (am, VL_API_GET_NODE_GRAPH, 1);
   return 0;
 }
 

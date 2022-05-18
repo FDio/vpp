@@ -95,7 +95,7 @@ avf_plugin_api_hookup (vlib_main_t * vm)
   /* ask for a correctly-sized block of API message decode slots */
   avm->msg_id_base = setup_message_id_table ();
 
-  am->is_mp_safe[avm->msg_id_base + VL_API_AVF_DELETE] = 1;
+  vl_api_set_msg_thread_safe (am, avm->msg_id_base + VL_API_AVF_DELETE, 1);
 
   return 0;
 }

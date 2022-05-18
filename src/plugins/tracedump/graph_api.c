@@ -252,7 +252,7 @@ graph_api_hookup (vlib_main_t * vm)
 
   gmp->msg_id_base = setup_message_id_table ();
 
-  am->is_mp_safe[gmp->msg_id_base + VL_API_GRAPH_NODE_GET] = 1;
+  vl_api_set_msg_thread_safe (am, gmp->msg_id_base + VL_API_GRAPH_NODE_GET, 1);
 
   return 0;
 }
