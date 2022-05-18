@@ -136,11 +136,11 @@ typedef struct
   void *fromjson;		/**< JSON to binary convert function */
   void *calc_size;		/**< message size calculation */
   int size;			/**< message size  */
-  int traced;			/**< is this message to be traced?  */
-  int replay;			/**< is this message to be replayed?  */
-  int message_bounce;		/**< do not free message after processing */
-  int is_mp_safe;		/**< worker thread barrier required?  */
-  int is_autoendian;		/**< endian conversion required?  */
+  int traced : 1;		/**< is this message to be traced?  */
+  int replay : 1;		/**< is this message to be replayed?  */
+  int message_bounce : 1;	/**< do not free message after processing */
+  int is_mp_safe : 1;		/**< worker thread barrier required?  */
+  int is_autoendian : 1;	/**< endian conversion required?  */
 } vl_msg_api_msg_config_t;
 
 /** Message header structure */
@@ -231,32 +231,60 @@ typedef struct
   char name[64];
 } api_version_t;
 
+typedef struct
+{
+  /** Message handler vector  */
+  void (*msg_handler) (void *);
+
+  /** non-default message cleanup handler vector */
+  void (*msg_cleanup_handler) (void *);
+
+  /** Message name vector */
+  const char *msg_name;
+
+  /** Message convert function vector */
+  cJSON *(*msg_tojson_handler) (void *);
+
+  /** Message convert function vector */
+  void *(*msg_fromjson_handler) (cJSON *, int *);
+
+  /** Message endian handler vector */
+  void (*msg_endian_handler) (void *);
+
+  /** Message print function vector */
+  void (*msg_print_handler) (void *, void *);
+
+  /** Message print function vector in JSON */
+  void (*msg_print_json_handler) (void *, void *);
+
+  /** Message calc size function vector */
+  uword (*msg_calc_size_func) (void *);
+
+  /**< trace size for sanity checking */
+  int trace_size;
+
+  /** Flags */
+  u8 message_bounce : 1; /**> Don't automatically free message buffer vetor */
+  u8 is_mp_safe : 1;	 /**< Message is mp safe vector */
+  u8 is_autoendian : 1;	 /**< Message requires us to do endian conversion */
+  u8 trace_enable : 1;	 /**< trace this message  */
+  u8 replay_allowed : 1; /**< This message can be replayed  */
+
+} vl_api_msg_t;
+
 /** API main structure, used by both vpp and binary API clients */
 typedef struct api_main_t
 {
-  /** Message handler vector  */
-  void (**msg_handlers) (void *);
+  vl_api_msg_t *messages;
 
   /** non-default message cleanup handler vector */
   void (**msg_cleanup_handlers) (void *);
-
-  /** Message endian handler vector */
-  void (**msg_endian_handlers) (void *);
 
   /** Message print function vector */
   void (**msg_print_handlers) (void *, void *);
 
   /** Message print function vector in JSON */
   void (**msg_print_json_handlers) (void *, void *);
-
-  /** Message convert function vector */
-  cJSON *(**msg_tojson_handlers) (void *);
-
-  /** Message convert function vector */
-  void *(**msg_fromjson_handlers) (cJSON *, int *);
-
-  /** Message calc size function vector */
-  uword (**msg_calc_size_funcs) (void *);
 
   /** Message name vector */
   const char **msg_names;
@@ -269,9 +297,6 @@ typedef struct api_main_t
 
   /** Message is mp safe vector */
   u8 *is_mp_safe;
-
-  /** Message requires us to do endian conversion */
-  u8 *is_autoendian;
 
   /** Allocator ring vectors (in shared memory) */
   struct ring_alloc_ *arings;
@@ -409,6 +434,15 @@ always_inline api_main_t *
 vlibapi_get_main (void)
 {
   return my_api_main;
+}
+
+always_inline vl_api_msg_t *
+vl_api_get_msg (u32 msg_id)
+{
+  api_main_t *am = vlibapi_get_main ();
+  if (msg_id >= vec_len (am->messages))
+    return 0;
+  return am->messages + msg_id;
 }
 
 always_inline void

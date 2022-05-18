@@ -533,8 +533,8 @@ vl_mem_api_init (const char *region_name)
    * simply munmap pairwise / private API segments...
    */
   am->message_bounce[VL_API_MEMCLNT_DELETE] = 1;
-  am->is_mp_safe[VL_API_MEMCLNT_KEEPALIVE_REPLY] = 1;
-  am->is_mp_safe[VL_API_MEMCLNT_KEEPALIVE] = 1;
+  vl_msg_api_set_thread_safe (am, VL_API_MEMCLNT_KEEPALIVE_REPLY, 1);
+  vl_msg_api_set_thread_safe (am, VL_API_MEMCLNT_KEEPALIVE, 1);
 
   vlib_set_queue_signal_callback (vm, memclnt_queue_callback);
 
@@ -768,6 +768,7 @@ vl_mem_api_handler_with_vm_node (api_main_t *am, svm_region_t *vlib_rp,
 				 vlib_node_runtime_t *node, u8 is_private)
 {
   u16 id = clib_net_to_host_u16 (*((u16 *) the_msg));
+  vl_api_msg_t *m = vl_api_get_msg (id);
   u8 *(*handler) (void *, void *, void *);
   u8 *(*print_fp) (void *, void *);
   svm_region_t *old_vlib_rp;
@@ -791,9 +792,9 @@ vl_mem_api_handler_with_vm_node (api_main_t *am, svm_region_t *vlib_rp,
 	ed->c = elog_string (am->elog_main, "BOGUS");
     }
 
-  if (id < vec_len (am->msg_handlers) && am->msg_handlers[id])
+  if (m && m->msg_handler)
     {
-      handler = (void *) am->msg_handlers[id];
+      handler = (void *) m->msg_handler;
 
       if (PREDICT_FALSE (am->rx_trace && am->rx_trace->enabled))
 	vl_msg_api_trace (am, am->rx_trace, the_msg);
@@ -829,10 +830,10 @@ vl_mem_api_handler_with_vm_node (api_main_t *am, svm_region_t *vlib_rp,
       if (PREDICT_FALSE (vl_mem_api_fuzz_hook != 0))
 	(*vl_mem_api_fuzz_hook) (id, the_msg);
 
-      if (am->is_autoendian[id])
+      if (m->is_autoendian)
 	{
 	  void (*endian_fp) (void *);
-	  endian_fp = am->msg_endian_handlers[id];
+	  endian_fp = am->messages[id].msg_endian_handler;
 	  (*endian_fp) (the_msg);
 	}
       if (PREDICT_FALSE (vec_len (am->perf_counter_cbs) != 0))

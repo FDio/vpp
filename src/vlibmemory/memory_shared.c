@@ -732,8 +732,6 @@ vl_unmap_shmem_internal (u8 is_client)
   is_client ? svm_region_exit_client () : svm_region_exit ();
 
   /* $$$ more careful cleanup, valgrind run... */
-  vec_free (am->msg_handlers);
-  vec_free (am->msg_endian_handlers);
   vec_free (am->msg_print_handlers);
 }
 

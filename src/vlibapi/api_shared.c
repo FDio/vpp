@@ -233,14 +233,15 @@ vl_msg_api_trace_write_one (api_main_t *am, u8 *msg, FILE *fp)
   vec_validate (tmpmem, msg_length - 1);
   clib_memcpy_fast (tmpmem, msg, msg_length);
   u16 id = clib_net_to_host_u16 (*((u16 *) msg));
+  vl_api_msg_t *m = vl_api_get_msg (id);
 
   void (*endian_fp) (void *);
-  endian_fp = am->msg_endian_handlers[id];
+  endian_fp = m->msg_endian_handler;
   (*endian_fp) (tmpmem);
 
-  if (id < vec_len (am->msg_tojson_handlers) && am->msg_tojson_handlers[id])
+  if (m && m->msg_tojson_handler)
     {
-      tojson_fn = am->msg_tojson_handlers[id];
+      tojson_fn = m->msg_tojson_handler;
       cJSON *o = tojson_fn (tmpmem);
       char *s = cJSON_Print (o);
       slen = strlen (s);
@@ -503,6 +504,7 @@ msg_handler_internal (api_main_t *am, void *the_msg, uword msg_len,
 		      int trace_it, int do_it, int free_it)
 {
   u16 id = clib_net_to_host_u16 (*((u16 *) the_msg));
+  vl_api_msg_t *m = vl_api_get_msg (id);
   u8 *(*print_fp) (void *, void *);
 
   if (PREDICT_FALSE (am->elog_trace_api_messages))
@@ -525,7 +527,7 @@ msg_handler_internal (api_main_t *am, void *the_msg, uword msg_len,
 	ed->c = elog_string (am->elog_main, "BOGUS");
     }
 
-  if (id < vec_len (am->msg_handlers) && am->msg_handlers[id])
+  if (m && m->msg_handler)
     {
       if (trace_it)
 	vl_msg_api_trace (am, am->rx_trace, the_msg);
@@ -546,7 +548,7 @@ msg_handler_internal (api_main_t *am, void *the_msg, uword msg_len,
 
       uword calc_size = 0;
       uword (*calc_size_fp) (void *);
-      calc_size_fp = am->msg_calc_size_funcs[id];
+      calc_size_fp = m->msg_calc_size_func;
       ASSERT (NULL != calc_size_fp);
       if (calc_size_fp)
 	{
@@ -578,10 +580,10 @@ msg_handler_internal (api_main_t *am, void *the_msg, uword msg_len,
 	      vl_msg_api_barrier_sync ();
 	    }
 
-	  if (am->is_autoendian[id])
+	  if (m->is_autoendian)
 	    {
 	      void (*endian_fp) (void *);
-	      endian_fp = am->msg_endian_handlers[id];
+	      endian_fp = m->msg_endian_handler;
 	      (*endian_fp) (the_msg);
 	    }
 
@@ -589,7 +591,7 @@ msg_handler_internal (api_main_t *am, void *the_msg, uword msg_len,
 	    clib_call_callbacks (am->perf_counter_cbs, am, id,
 				 0 /* before */ );
 
-	  (*am->msg_handlers[id]) (the_msg);
+	  (*m->msg_handler) (the_msg);
 
 	  if (PREDICT_FALSE (vec_len (am->perf_counter_cbs) != 0))
 	    clib_call_callbacks (am->perf_counter_cbs, am, id,
@@ -711,18 +713,17 @@ vl_msg_api_cleanup_handler (void *the_msg)
 void
 vl_msg_api_replay_handler (void *the_msg)
 {
-  api_main_t *am = vlibapi_get_main ();
-
   u16 id = clib_net_to_host_u16 (*((u16 *) the_msg));
+  vl_api_msg_t *m = vl_api_get_msg (id);
 
-  if (PREDICT_FALSE (id >= vec_len (am->msg_handlers)))
+  if (PREDICT_FALSE (!m))
     {
       clib_warning ("_vl_msg_id too large: %d\n", id);
       return;
     }
   /* do NOT trace the message... */
-  if (am->msg_handlers[id])
-    (*am->msg_handlers[id]) (the_msg);
+  if (m->msg_handler)
+    (*m->msg_handler) (the_msg);
   /* do NOT free the message buffer... */
 }
 
@@ -747,23 +748,18 @@ vl_msg_api_socket_handler (void *the_msg, uword msg_len)
 
 #define foreach_msg_api_vector                                                \
   _ (msg_names)                                                               \
-  _ (msg_handlers)                                                            \
   _ (msg_cleanup_handlers)                                                    \
-  _ (msg_endian_handlers)                                                     \
   _ (msg_print_handlers)                                                      \
   _ (msg_print_json_handlers)                                                 \
-  _ (msg_tojson_handlers)                                                     \
-  _ (msg_fromjson_handlers)                                                   \
-  _ (msg_calc_size_funcs)                                                     \
   _ (api_trace_cfg)                                                           \
   _ (message_bounce)                                                          \
   _ (is_mp_safe)                                                              \
-  _ (is_autoendian)
 
 void
 vl_msg_api_config (vl_msg_api_msg_config_t * c)
 {
   api_main_t *am = vlibapi_get_main ();
+  vl_api_msg_t *m;
 
   /*
    * This happens during the java core tests if the message
@@ -786,28 +782,29 @@ vl_msg_api_config (vl_msg_api_msg_config_t * c)
   foreach_msg_api_vector;
 #undef _
 
-  if (am->msg_handlers[c->id] && am->msg_handlers[c->id] != c->handler)
-    clib_warning
-      ("BUG: re-registering 'vl_api_%s_t_handler'."
-       "Handler was %llx, replaced by %llx",
-       c->name, am->msg_handlers[c->id], c->handler);
-
   am->msg_names[c->id] = c->name;
-  am->msg_handlers[c->id] = c->handler;
   am->msg_cleanup_handlers[c->id] = c->cleanup;
-  am->msg_endian_handlers[c->id] = c->endian;
   am->msg_print_handlers[c->id] = c->print;
   am->msg_print_json_handlers[c->id] = c->print_json;
-  am->msg_tojson_handlers[c->id] = c->tojson;
-  am->msg_fromjson_handlers[c->id] = c->fromjson;
-  am->msg_calc_size_funcs[c->id] = c->calc_size;
   am->message_bounce[c->id] = c->message_bounce;
   am->is_mp_safe[c->id] = c->is_mp_safe;
-  am->is_autoendian[c->id] = c->is_autoendian;
 
   am->api_trace_cfg[c->id].size = c->size;
   am->api_trace_cfg[c->id].trace_enable = c->traced;
   am->api_trace_cfg[c->id].replay_enable = c->replay;
+  vec_validate (am->messages, c->id);
+  m = vl_api_get_msg (c->id);
+
+  if (m->msg_handler && m->msg_handler != c->handler)
+    clib_warning ("BUG: re-registering 'vl_api_%s_t_handler'."
+		  "Handler was %llx, replaced by %llx",
+		  c->name, m->msg_handler, c->handler);
+  m->msg_handler = c->handler;
+  m->msg_endian_handler = c->endian;
+  m->msg_tojson_handler = c->tojson;
+  m->msg_fromjson_handler = c->fromjson;
+  m->msg_calc_size_func = c->calc_size;
+  m->is_autoendian = c->is_autoendian;
 
   if (!am->msg_id_by_name)
     am->msg_id_by_name = hash_create_string (0, sizeof (uword));
