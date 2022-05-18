@@ -91,8 +91,7 @@ virtio_needs_csum (vlib_buffer_t *b0, vnet_virtio_net_hdr_v1_t *hdr,
 	}
       else
 	{
-	  ethernet_header_t *eh =
-	    (ethernet_header_t *) vlib_buffer_get_current (b0);
+	  ethernet_header_t *eh = (ethernet_header_t *) b0->data;
 	  ethertype = clib_net_to_host_u16 (eh->type);
 	  l2hdr_sz = sizeof (ethernet_header_t);
 
@@ -117,8 +116,7 @@ virtio_needs_csum (vlib_buffer_t *b0, vnet_virtio_net_hdr_v1_t *hdr,
 
       if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP4))
 	{
-	  ip4_header_t *ip4 =
-	    (ip4_header_t *) (vlib_buffer_get_current (b0) + l2hdr_sz);
+	  ip4_header_t *ip4 = (ip4_header_t *) (b0->data + l2hdr_sz);
 	  vnet_buffer (b0)->l4_hdr_offset = l2hdr_sz + ip4_header_bytes (ip4);
 	  *l4_proto = ip4->protocol;
 	  oflags |= VNET_BUFFER_OFFLOAD_F_IP_CKSUM;
@@ -129,8 +127,7 @@ virtio_needs_csum (vlib_buffer_t *b0, vnet_virtio_net_hdr_v1_t *hdr,
 	}
       else if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP6))
 	{
-	  ip6_header_t *ip6 =
-	    (ip6_header_t *) (vlib_buffer_get_current (b0) + l2hdr_sz);
+	  ip6_header_t *ip6 = (ip6_header_t *) (b0->data + l2hdr_sz);
 	  vnet_buffer (b0)->l4_hdr_offset = l2hdr_sz + sizeof (ip6_header_t);
 	  /* FIXME IPv6 EH traversal */
 	  *l4_proto = ip6->protocol;
@@ -142,18 +139,14 @@ virtio_needs_csum (vlib_buffer_t *b0, vnet_virtio_net_hdr_v1_t *hdr,
       if (*l4_proto == IP_PROTOCOL_TCP)
 	{
 	  oflags |= VNET_BUFFER_OFFLOAD_F_TCP_CKSUM;
-	  tcp_header_t *tcp = (tcp_header_t *) (vlib_buffer_get_current (b0) +
-						vnet_buffer
-						(b0)->l4_hdr_offset);
+	  tcp_header_t *tcp =
+	    (tcp_header_t *) (b0->data + vnet_buffer (b0)->l4_hdr_offset);
 	  *l4_hdr_sz = tcp_header_bytes (tcp);
 	}
       else if (*l4_proto == IP_PROTOCOL_UDP)
 	{
 	  oflags |= VNET_BUFFER_OFFLOAD_F_UDP_CKSUM;
-	  udp_header_t *udp = (udp_header_t *) (vlib_buffer_get_current (b0) +
-						vnet_buffer
-						(b0)->l4_hdr_offset);
-	  *l4_hdr_sz = sizeof (*udp);
+	  *l4_hdr_sz = sizeof (udp_header_t);
 	}
       if (oflags)
 	vnet_buffer_offload_flags_set (b0, oflags);
