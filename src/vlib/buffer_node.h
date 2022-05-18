@@ -391,6 +391,20 @@ vlib_buffer_enqueue_to_thread (vlib_main_t *vm, vlib_node_runtime_t *node,
 	       n_packets, drop_on_congestion);
 }
 
+static_always_inline u32
+vlib_buffer_enqueue_to_thread_with_aux (vlib_main_t *vm,
+					vlib_node_runtime_t *node,
+					u32 frame_queue_index,
+					u32 *buffer_indices, u32 *aux,
+					u16 *thread_indices, u32 n_packets,
+					int drop_on_congestion)
+{
+  vlib_buffer_enqueue_to_thread_with_aux_fn_t *fn;
+  fn = vlib_buffer_func_main.buffer_enqueue_to_thread_with_aux_fn;
+  return (fn) (vm, node, frame_queue_index, buffer_indices, aux,
+	       thread_indices, n_packets, drop_on_congestion);
+}
+
 #endif /* included_vlib_buffer_node_h */
 
 /*
