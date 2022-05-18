@@ -363,18 +363,8 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
     return 0;
 
   /* get up to DPDK_RX_BURST_SZ buffers from PMD */
-  while (n_rx_packets < DPDK_RX_BURST_SZ)
-    {
-      u32 n_to_rx = clib_min (DPDK_RX_BURST_SZ - n_rx_packets, 32);
-
-      n = rte_eth_rx_burst (xd->port_id, queue_id, ptd->mbufs + n_rx_packets,
-			    n_to_rx);
-      n_rx_packets += n;
-
-      if (n < n_to_rx)
-	break;
-    }
-
+  n_rx_packets =
+    rte_eth_rx_burst (xd->port_id, queue_id, ptd->mbufs, DPDK_RX_BURST_SZ);
   if (n_rx_packets == 0)
     return 0;
 
