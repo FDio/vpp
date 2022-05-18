@@ -14,33 +14,46 @@ import sys
 # GoVPP API generator generates Go bindings compatible with the local VPP
 #
 
+DefaultGoVppCommit = "16a47ef937b3a5ce6acf45885386062b323c8d25"
+
+
+def version_geq(ver_a, ver_b):
+    major_a, minor_a, patch_a = ver_a.split(".")
+    major_b, minor_b, patch_b = ver_b.split(".")
+    if major_a > major_b:
+        return True
+    elif major_a == major_b and minor_a > minor_b:
+        return True
+    elif major_a == major_b and minor_a == minor_b and patch_a >= patch_b:
+        return True
+    return False
+
+
+def execute(cli, cwd=None):
+    p = subprocess.Popen(
+        cli.split(),
+        cwd=cwd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        universal_newlines=True,
+    )
+    output, error = p.communicate()
+    if p.returncode != 0:
+        print("Command `%s` failed: %d %s" % (cli, p.returncode, error))
+        sys.exit(1)
+    return output, error
+
 
 def get_go_version(go_root):
     # Returns version of the installed Go
-    p = subprocess.Popen(
-        ["./go", "version"],
-        cwd=go_root + "/bin",
-        stdout=subprocess.PIPE,
-        universal_newlines=True,
-    )
-    output, _ = p.communicate()
-    output_fmt = output.replace("go version go", "", 1)
-
-    return output_fmt.rstrip("\n")
+    output, _ = execute("./go version", cwd=go_root + "/bin")
+    return output.replace("go version go", "", 1).rstrip("\n")
 
 
 # Returns version of the installed binary API generator
 def get_binapi_gen_version(go_path):
-    p = subprocess.Popen(
-        ["./binapi-generator", "-version"],
-        cwd=go_path + "/bin",
-        stdout=subprocess.PIPE,
-        universal_newlines=True,
-    )
-    output, _ = p.communicate()
-    output_fmt = output.replace("govpp", "", 1)
-
-    return output_fmt.rstrip("\n")
+    output, _ = execute("./binapi-generator -version", cwd=go_path + "/bin")
+    return output.replace("govpp", "", 1).rstrip("\n")
 
 
 # Verifies local Go installation and installs the latest
@@ -53,7 +66,8 @@ def install_golang(go_root):
         return
 
     filename = (
-        requests.get("https://golang.org/VERSION?m=text").text + ".linux-amd64.tar.gz"
+        requests.get("https://golang.org/VERSION?m=text").text +
+        ".linux-amd64.tar.gz"
     )
     url = "https://dl.google.com/go/" + filename
 
@@ -85,28 +99,25 @@ def install_golang(go_root):
 
     print("Go " + get_go_version(go_root) + " was installed")
 
-
 # Installs latest binary API generator
+
+
 def install_binapi_gen(c, go_root, go_path):
-    os.environ["GO111MODULE"] = "on"
-    if os.path.exists(go_root + "/bin/go") and os.path.isfile(go_root + "/bin/go"):
-        p = subprocess.Popen(
-            ["./go", "get", "git.fd.io/govpp.git/cmd/binapi-generator@" + c],
-            cwd=go_root + "/bin",
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            universal_newlines=True,
-        )
-        _, error = p.communicate()
-        if p.returncode != 0:
-            print("binapi generator installation failed: %d %s" % (p.returncode, error))
-            sys.exit(1)
+    go_version = get_go_version(go_root)
+    if version_geq(go_version, "1.18.0"):
+        execute("./go install git.fd.io/govpp.git/cmd/binapi-generator@" +
+                c, cwd=go_root + "/bin")
+    else:
+        os.environ["GO111MODULE"] = "on"
+        execute("./go get git.fd.io/govpp.git/cmd/binapi-generator@" +
+                c, cwd=go_root + "/bin")
     bg_ver = get_binapi_gen_version(go_path)
     print("Installed binary API generator " + bg_ver)
 
 
 # Creates generated bindings using GoVPP binapigen to the target folder
-def generate_api(output_dir, vpp_dir, api_list, import_prefix, no_source, go_path):
+def generate_api(output_dir, vpp_dir, api_list, import_prefix,
+                 no_source, go_path):
     json_dir = vpp_dir + "/build-root/install-vpp-native/vpp/share/vpp/api"
 
     if not os.path.exists(json_dir):
@@ -118,26 +129,17 @@ def generate_api(output_dir, vpp_dir, api_list, import_prefix, no_source, go_pat
     if output_dir:
         cmd += ["--output-dir=" + output_dir]
     if len(api_list):
-        print("Following API files were requested by 'GO_API_FILES': " + str(api_list))
-        print("Note that dependency requirements may generate " "additional API files")
+        print("Following API files were requested by"
+              " 'GO_API_FILES': " + str(api_list))
+        print("Note that dependency requirements may generate "
+              "additional API files")
         cmd.append(api_list)
     if import_prefix:
         cmd.append("-import-prefix=" + import_prefix)
     if no_source:
         cmd.append("-no-source-path-info")
-    p = subprocess.Popen(
-        cmd,
-        cwd=go_path + "/bin",
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        universal_newlines=True,
-    )
 
-    out = p.communicate()[1]
-    if p.returncode != 0:
-        print("go api generate failed: %d %s" % (p.returncode, out))
-        sys.exit(1)
-
+    _, out = execute(" ".join(cmd), cwd=go_path + "/bin")
     # Print nice output of the binapi generator
     for msg in out.split():
         if "=" in msg:
@@ -146,6 +148,25 @@ def generate_api(output_dir, vpp_dir, api_list, import_prefix, no_source, go_pat
 
     print("\n")
     print("Go API bindings were generated to " + output_dir)
+
+
+def get_go_variables():
+    # go specific environment variables
+    if "GOROOT" in os.environ:
+        go_root = os.environ["GOROOT"]
+    else:
+        go_binary = shutil.which("go")
+        if go_binary != "":
+            go_binary_dir, _ = os.path.split(go_binary)
+            go_root = os.path.join(go_binary_dir, "..")
+        else:
+            go_root = os.environ["HOME"] + "/.go"
+    if "GOPATH" in os.environ:
+        go_path = os.environ["GOPATH"]
+    else:
+        go_path = os.environ["HOME"] + "/go"
+
+    return go_root, go_path
 
 
 def main():
@@ -157,8 +178,8 @@ def main():
     parser.add_argument(
         "-govpp-commit",
         "--govpp-commit",
-        help="GoVPP commit or branch " "(defaults to v0.3.5-45-g671f16c)",
-        default="671f16c",  # fixed GoVPP version
+        help="GoVPP commit or branch ",
+        default=DefaultGoVppCommit,
         type=str,
     )
     parser.add_argument(
@@ -193,22 +214,14 @@ def main():
     )
     args = parser.parse_args()
 
-    # go specific environment variables
-    if "GOROOT" in os.environ:
-        go_root = os.environ["GOROOT"]
-    else:
-        go_binary = shutil.which("go")
-        if go_binary != "":
-            go_binary_dir, _ = os.path.split(go_binary)
-            go_root = os.path.join(go_binary_dir, "..")
-        else:
-            go_root = os.environ["HOME"] + "/.go"
-    if "GOPATH" in os.environ:
-        go_path = os.environ["GOPATH"]
-    else:
-        go_path = os.environ["HOME"] + "/go"
-
+    go_root, go_path = get_go_variables()
     install_golang(go_root)
+
+    if not (os.path.exists(go_root + "/bin/go") and
+            os.path.isfile(go_root + "/bin/go")):
+        print(go_root + "/bin/go does not exist")
+        sys.exit(1)
+
     install_binapi_gen(args.govpp_commit, go_root, go_path)
     generate_api(
         args.output_dir,
