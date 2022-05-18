@@ -34,6 +34,24 @@
       "revId": "aff5d62e19983ce4b6da94ceafc99a77558da001",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6bc52758_2f29a2f9",
+        "filename": "src/vppinfra/pool.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 567,
+      "author": {
+        "id": 742
+      },
+      "writtenOn": "2022-05-18T15:46:17Z",
+      "side": 1,
+      "message": "applied the above changes.. and we still need to check the pool_is_free_index for the first index perspective",
+      "parentUuid": "880ec04b_eafffcc9",
+      "revId": "aff5d62e19983ce4b6da94ceafc99a77558da001",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
