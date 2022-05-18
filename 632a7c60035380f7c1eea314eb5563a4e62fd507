@@ -16,6 +16,24 @@
       "revId": "632a7c60035380f7c1eea314eb5563a4e62fd507",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "93821da0_6825519f",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2022-05-18T09:30:02Z",
+      "side": 1,
+      "message": "I did performance unit tests with values 2^16 and 2^20 and I saw the difference that\u0027s why I kept 2^20. But thanks for suggestion and reasoning. I will change that number to 2^18.",
+      "parentUuid": "27238594_cbd919c3",
+      "revId": "632a7c60035380f7c1eea314eb5563a4e62fd507",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
