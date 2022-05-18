@@ -247,12 +247,12 @@ vl_api_graph_node_get_t_handler (vl_api_graph_node_get_t * mp)
 static clib_error_t *
 graph_api_hookup (vlib_main_t * vm)
 {
-  api_main_t *am = vlibapi_get_main ();
   graph_main_t *gmp = &graph_main;
+  api_main_t *am = vlibapi_get_main ();
 
   gmp->msg_id_base = setup_message_id_table ();
 
-  am->is_mp_safe[gmp->msg_id_base + VL_API_GRAPH_NODE_GET] = 1;
+  vl_msg_api_set_thread_safe (am, gmp->msg_id_base + VL_API_GRAPH_NODE_GET, 1);
 
   return 0;
 }

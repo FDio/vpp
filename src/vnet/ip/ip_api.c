@@ -2115,14 +2115,13 @@ static clib_error_t *
 ip_api_hookup (vlib_main_t * vm)
 {
   api_main_t *am = vlibapi_get_main ();
-
   /*
    * Mark the route add/del API as MP safe
    */
-  am->is_mp_safe[VL_API_IP_ROUTE_ADD_DEL] = 1;
-  am->is_mp_safe[VL_API_IP_ROUTE_ADD_DEL_REPLY] = 1;
-  am->is_mp_safe[VL_API_IP_ROUTE_ADD_DEL_V2] = 1;
-  am->is_mp_safe[VL_API_IP_ROUTE_ADD_DEL_V2_REPLY] = 1;
+  vl_msg_api_set_thread_safe (am, VL_API_IP_ROUTE_ADD_DEL, 1);
+  vl_msg_api_set_thread_safe (am, VL_API_IP_ROUTE_ADD_DEL_REPLY, 1);
+  vl_msg_api_set_thread_safe (am, VL_API_IP_ROUTE_ADD_DEL_V2, 1);
+  vl_msg_api_set_thread_safe (am, VL_API_IP_ROUTE_ADD_DEL_V2_REPLY, 1);
 
   /*
    * Set up the (msg_name, crc, message-id) table

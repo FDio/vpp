@@ -242,20 +242,19 @@ vl_api_message_table_command (vlib_main_t * vm,
     vlib_cli_output (vm, "%-4s %-40s %6s %7s", "ID", "Name", "Bounce",
 		     "MP-safe");
 
-  for (i = 1; i < vec_len (am->msg_names); i++)
+  for (i = 1; i < vec_len (am->messages); i++)
     {
+      vl_api_msg_t *m = vl_api_get_msg (i);
       if (verbose == 0)
 	{
 	  vlib_cli_output (vm, "%-4d %s", i,
-			   am->msg_names[i] ? am->msg_names[i] :
-			   "  [no handler]");
+			   m->msg_name ? m->msg_name : "  [no handler]");
 	}
       else
 	{
 	  vlib_cli_output (vm, "%-4d %-40s %6d %7d", i,
-			   am->msg_names[i] ? am->msg_names[i] :
-			   "  [no handler]", am->message_bounce[i],
-			   am->is_mp_safe[i]);
+			   m->msg_name ? m->msg_name : "  [no handler]",
+			   m->message_bounce, am->messages[i].is_mp_safe);
 	}
     }
 
@@ -510,7 +509,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
       assert_size (file_size_left, clib_max (size, sizeof (u16)));
       msg_id = ntohs (*((u16 *) msg));
       if (msg_id >= vec_len (msgid_vec) ||
-	  msgid_vec[msg_id] >= vec_len (am->api_trace_cfg))
+	  msgid_vec[msg_id] >= vec_len (am->messages))
 	vlib_cli_output (vm, "warning: unknown msg id %d for msg number %d\n",
 			 msg_id, i);
 
@@ -522,7 +521,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 
   for (; i <= last_index; i++)
     {
-      trace_cfg_t *cfgp;
+      vl_api_msg_t *m;
       u16 msg_id;
       int size;
 
@@ -537,7 +536,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
       msg_id = ntohs (*((u16 *) msg));
 
       if (msg_id >= vec_len (msgid_vec) ||
-	  msgid_vec[msg_id] >= vec_len (am->api_trace_cfg))
+	  msgid_vec[msg_id] >= vec_len (am->messages))
 	{
 	  vlib_cli_output (
 	    vm, "warning: unknown msg id %d for msg number %d, skipping\n",
@@ -547,7 +546,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	}
 
       msg_id = msgid_vec[msg_id];
-      cfgp = am->api_trace_cfg + msg_id;
+      m = vl_api_get_msg (msg_id);
 
       /* Copy the buffer (from the read-only mmap'ed file) */
       vec_validate (tmpbuf, size - 1 + sizeof (uword));
@@ -562,8 +561,8 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	   clib_arch_is_little_endian))
 	{
 	  void (*endian_fp) (void *);
-	  if (msg_id >= vec_len (am->msg_endian_handlers)
-	      || (am->msg_endian_handlers[msg_id] == 0))
+	  if (msg_id >= vec_len (am->messages) ||
+	      (am->messages[msg_id].msg_endian_handler == 0))
 	    {
 	      vlib_cli_output (vm, "Ugh: msg id %d no endian swap\n", msg_id);
 	      munmap (hp, file_size);
@@ -571,7 +570,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	      am->replay_in_progress = 0;
 	      return;
 	    }
-	  endian_fp = am->msg_endian_handlers[msg_id];
+	  endian_fp = am->messages[msg_id].msg_endian_handler;
 	  (*endian_fp) (tmpbuf + sizeof (uword));
 	}
 
@@ -585,12 +584,12 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
       switch (which)
 	{
 	case DUMP_JSON:
-	  if (msg_id < vec_len (am->msg_print_json_handlers) &&
-	      am->msg_print_json_handlers[msg_id])
+	  if (msg_id < vec_len (am->messages) &&
+	      am->messages[msg_id].msg_print_json_handler)
 	    {
 	      u8 *(*print_fp) (void *, void *);
 
-	      print_fp = (void *) am->msg_print_json_handlers[msg_id];
+	      print_fp = (void *) am->messages[msg_id].msg_print_json_handler;
 	      (*print_fp) (tmpbuf + sizeof (uword), vm);
 	    }
 	  else
@@ -602,12 +601,12 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	  break;
 
 	case DUMP:
-	  if (msg_id < vec_len (am->msg_print_handlers) &&
-	      am->msg_print_handlers[msg_id])
+	  if (msg_id < vec_len (am->messages) &&
+	      am->messages[msg_id].msg_print_handler)
 	    {
 	      u8 *(*print_fp) (void *, void *);
 
-	      print_fp = (void *) am->msg_print_handlers[msg_id];
+	      print_fp = (void *) am->messages[msg_id].msg_print_handler;
 	      (*print_fp) (tmpbuf + sizeof (uword), vm);
 	    }
 	  else
@@ -619,25 +618,24 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	  break;
 
 	case INITIALIZERS:
-	  if (msg_id < vec_len (am->msg_print_handlers) &&
-	      am->msg_print_handlers[msg_id])
+	  if (msg_id < vec_len (am->messages) &&
+	      am->messages[msg_id].msg_print_handler)
 	    {
 	      u8 *s;
 	      int j;
 	      u8 *(*print_fp) (void *, void *);
 
-	      print_fp = (void *) am->msg_print_handlers[msg_id];
+	      print_fp = (void *) am->messages[msg_id].msg_print_handler;
 
 	      vlib_cli_output (vm, "/*");
 
 	      (*print_fp) (tmpbuf + sizeof (uword), vm);
 	      vlib_cli_output (vm, "*/\n");
 
-	      s = format (0, "static u8 * vl_api_%s_%d[%d] = {",
-			  am->msg_names[msg_id], i,
-			  am->api_trace_cfg[msg_id].size);
+	      s = format (0, "static u8 * vl_api_%s_%d[%d] = {", m->msg_name,
+			  i, m->trace_size);
 
-	      for (j = 0; j < am->api_trace_cfg[msg_id].size; j++)
+	      for (j = 0; j < m->trace_size; j++)
 		{
 		  if ((j & 7) == 0)
 		    s = format (s, "\n    ");
@@ -650,22 +648,22 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	  break;
 
 	case REPLAY:
-	  if (msg_id < vec_len (am->msg_print_handlers) &&
-	      am->msg_print_handlers[msg_id] && cfgp->replay_enable)
+	  if (msg_id < vec_len (am->messages) &&
+	      am->messages[msg_id].msg_print_handler && m->replay_allowed)
 	    {
 	      void (*handler) (void *, vlib_main_t *);
 
-	      handler = (void *) am->msg_handlers[msg_id];
+	      handler = (void *) m->msg_handler;
 
-	      if (!am->is_mp_safe[msg_id])
+	      if (!am->messages[msg_id].is_mp_safe)
 		vl_msg_api_barrier_sync ();
 	      (*handler) (tmpbuf + sizeof (uword), vm);
-	      if (!am->is_mp_safe[msg_id])
+	      if (!am->messages[msg_id].is_mp_safe)
 		vl_msg_api_barrier_release ();
 	    }
 	  else
 	    {
-	      if (cfgp->replay_enable)
+	      if (m->replay_allowed)
 		vlib_cli_output (vm, "Skipping msg id %d: no handler\n",
 				 msg_id);
 	      break;
@@ -709,7 +707,7 @@ vl_msg_print_trace (u8 *msg, void *ctx)
   api_main_t *am = vlibapi_get_main ();
   u16 msg_id = ntohs (*((u16 *) msg));
   void (*print_fp) (void *, void *);
-  void (**handlers) (void *, void *);
+  void (*handler) (void *, void *) = 0;
   u8 is_json = a->is_json;
   u8 *tmpbuf = 0;
 
@@ -721,18 +719,19 @@ vl_msg_print_trace (u8 *msg, void *ctx)
       msg = tmpbuf;
 
       void (*endian_fp) (void *);
-      endian_fp = am->msg_endian_handlers[msg_id];
+      endian_fp = am->messages[msg_id].msg_endian_handler;
       (*endian_fp) (tmpbuf);
     }
 
-  if (is_json)
-    handlers = am->msg_print_json_handlers;
-  else
-    handlers = am->msg_print_handlers;
-
-  if (msg_id < vec_len (handlers) && handlers[msg_id])
+  if (msg_id < vec_len (am->messages))
     {
-      print_fp = (void *) handlers[msg_id];
+      vl_api_msg_t *m = vec_elt_at_index (am->messages, msg_id);
+      handler = is_json ? m->msg_print_json_handler : m->msg_print_handler;
+    }
+
+  if (handler)
+    {
+      print_fp = (void *) handler;
       (*print_fp) (msg, a->vm);
     }
   else
@@ -827,7 +826,7 @@ vl_msg_exec_json_command (vlib_main_t *vm, cJSON *o)
   u16 msg_id;
   void *(*fromjson) (cJSON *, int *);
   int len = 0, rv = -1;
-  trace_cfg_t *cfgp;
+  vl_api_msg_t *m;
   u8 *msg = 0;
 
   cJSON *msg_id_obj = cJSON_GetObjectItem (o, "_msgname");
@@ -849,6 +848,7 @@ vl_msg_exec_json_command (vlib_main_t *vm, cJSON *o)
 
   u8 *name_crc = format (0, "%s_%s%c", name, crc, 0);
   msg_id = vl_msg_find_id_by_name_and_crc (vm, am, (char *) name_crc);
+  m = vl_api_get_msg (msg_id);
   if (msg_id == (u16) ~0)
     {
       msg_id = vl_msg_find_id_by_name (vm, am, name);
@@ -862,20 +862,13 @@ vl_msg_exec_json_command (vlib_main_t *vm, cJSON *o)
     }
   vec_free (name_crc);
 
-  cfgp = am->api_trace_cfg + msg_id;
-  if (!am->api_trace_cfg)
-    {
-      vlib_cli_output (vm, "msg id %d no trace config\n", msg_id);
-      return rv;
-    }
-
-  if (cfgp->replay_enable)
+  if (m->replay_allowed)
     {
 
       if (proc_warning)
 	vlib_cli_output (vm, "warning: msg %d has different signature\n");
 
-      fromjson = am->msg_fromjson_handlers[msg_id];
+      fromjson = am->messages[msg_id].msg_fromjson_handler;
       if (!fromjson)
 	{
 	  vlib_cli_output (vm, "missing fromjson convert function! id %d\n",
@@ -894,22 +887,22 @@ vl_msg_exec_json_command (vlib_main_t *vm, cJSON *o)
       if (clib_arch_is_little_endian)
 	{
 	  void (*endian_fp) (void *);
-	  endian_fp = am->msg_endian_handlers[msg_id];
+	  endian_fp = am->messages[msg_id].msg_endian_handler;
 	  (*endian_fp) (msg);
 	}
 
       void (*handler) (void *, vlib_main_t *);
-      handler = (void *) am->msg_handlers[msg_id];
+      handler = (void *) m->msg_handler;
       if (!handler)
 	{
 	  vlib_cli_output (vm, "no handler for msg id %d!\n", msg_id);
 	  goto end;
 	}
 
-      if (!am->is_mp_safe[msg_id])
+      if (!am->messages[msg_id].is_mp_safe)
 	vl_msg_api_barrier_sync ();
       (*handler) (msg, vm);
-      if (!am->is_mp_safe[msg_id])
+      if (!am->messages[msg_id].is_mp_safe)
 	vl_msg_api_barrier_release ();
     }
 

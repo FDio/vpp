@@ -124,6 +124,30 @@ typedef int (*vl_msg_traverse_trace_fn) (u8 *, void *);
 int vl_msg_traverse_trace (vl_api_trace_t *tp, vl_msg_traverse_trace_fn fn,
 			   void *ctx);
 
+always_inline void
+vl_msg_api_increase_trace_size (api_main_t *am, u32 msg_id, u32 inc)
+{
+  am->messages[msg_id].trace_size += inc;
+}
+
+always_inline void
+vl_msg_api_set_thread_safe (api_main_t *am, u32 msg_id, int v)
+{
+  am->messages[msg_id].is_mp_safe = v != 0;
+}
+
+always_inline void
+vl_msg_api_set_autoendian (api_main_t *am, u32 msg_id, int v)
+{
+  am->messages[msg_id].is_autoendian = v != 0;
+}
+
+always_inline void
+vl_msg_api_set_replay_allowed (api_main_t *am, u32 msg_id, int v)
+{
+  am->messages[msg_id].replay_allowed = v != 0;
+}
+
 #endif /* included_api_h */
 /*
  * fd.io coding-style-patch-verification: ON
