@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "59be2218_b81f810f",
+        "filename": "src/vnet/ipsec/ipsec_output.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 107,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2022-05-18T18:16:10Z",
+      "side": 1,
+      "message": "Indeed we can do that, however idea is to get rid in the end of the function ipsec_output_policy_match and leave only ipsec_output_policy_match_n, and use features like loop unwinding to get better performance. Then also  ipsec4_out_spd_add_flow_cache_entry can be removed for the sake of  ipsec4_out_spd_add_flow_cache_entry_n. In the end  ipsec4_out_spd_add_flow_cache_entry_n should be also rewritten to add cache entries in bursts - then it is better to pass to it one array of arguments instead of five. Rewriting ipsec_flow_cache_entry to work in the burst mode is beyond the scope of this patch, but we can have now at least api we agree on for the future development.",
+      "parentUuid": "7139d926_6c4d06d8",
+      "revId": "4d433f436e49be164b80aea3f180040095f454c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "cbd67239_bfad0313",
         "filename": "src/vnet/ipsec/ipsec_output.h",
         "patchSetId": 2
@@ -33,6 +51,24 @@
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cd333b6f_7a73639d",
+        "filename": "src/vnet/ipsec/ipsec_output.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 333,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2022-05-18T18:16:10Z",
+      "side": 1,
+      "message": "Sure that\u0027s good idea.",
+      "parentUuid": "cbd67239_bfad0313",
+      "revId": "4d433f436e49be164b80aea3f180040095f454c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
