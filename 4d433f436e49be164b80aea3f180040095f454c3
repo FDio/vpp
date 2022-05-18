@@ -2,6 +2,40 @@
   "comments": [
     {
       "key": {
+        "uuid": "7139d926_6c4d06d8",
+        "filename": "src/vnet/ipsec/ipsec_output.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 107,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-05-18T13:33:55Z",
+      "side": 1,
+      "message": "Do we really need to duplicate the entire ipsec4_out_spd_add_flow_cache_entry just to pass in a ipsec4_spd_5tuple_t instead? Why not just pass in the struct members like:\n\nipsec4_out_spd_add_flow_cache_entry (im, ip4_5tuple-\u003eproto, ip4_5tuple-\u003eip4_addr[0].as_u32 ... etc);",
+      "revId": "4d433f436e49be164b80aea3f180040095f454c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cbd67239_bfad0313",
+        "filename": "src/vnet/ipsec/ipsec_output.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 333,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-05-18T13:33:55Z",
+      "side": 1,
+      "message": "As per comment on other patch, can the functions be moved in a separate commit before the fp changes here? That will make it easier to review and see what has changed.",
+      "revId": "4d433f436e49be164b80aea3f180040095f454c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "e15beb29_9d386f95",
         "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
         "patchSetId": 2
