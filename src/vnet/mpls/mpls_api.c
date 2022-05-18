@@ -508,7 +508,8 @@ mpls_api_hookup (vlib_main_t * vm)
   /*
    * Trace space for 8 MPLS encap labels
    */
-  am->api_trace_cfg[VL_API_MPLS_TUNNEL_ADD_DEL].size += 8 * sizeof (u32);
+  vl_msg_api_increase_trace_size (am, VL_API_MPLS_TUNNEL_ADD_DEL,
+				  8 * sizeof (u32));
 
   /*
    * Set up the (msg_name, crc, message-id) table

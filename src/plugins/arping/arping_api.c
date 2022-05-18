@@ -74,7 +74,7 @@ arping_plugin_api_hookup (vlib_main_t *vm)
   am->msg_id_base = setup_message_id_table ();
 
   /* Mark API as mp safe */
-  vam->is_mp_safe[am->msg_id_base + VL_API_ARPING] = 1;
+  vl_msg_api_set_thread_safe (vam, am->msg_id_base + VL_API_ARPING, 1);
 
   return 0;
 }
