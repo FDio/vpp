@@ -75,6 +75,7 @@ typedef struct
 
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
   u32 buffer_index[VLIB_FRAME_SIZE];
+  u32 aux_data[VLIB_FRAME_SIZE];
 }
 vlib_frame_queue_elt_t;
 
@@ -133,7 +134,10 @@ typedef struct
 }
 vlib_frame_queue_t;
 
-typedef struct
+struct vlib_frame_queue_main_t_;
+typedef u32 (vlib_frame_queue_dequeue_fn_t) (
+  vlib_main_t *vm, struct vlib_frame_queue_main_t_ *fqm);
+typedef struct vlib_frame_queue_main_t_
 {
   u32 node_index;
   u32 frame_queue_nelts;
@@ -143,6 +147,7 @@ typedef struct
   /* for frame queue tracing */
   frame_queue_trace_t *frame_queue_traces;
   frame_queue_nelt_counter_t *frame_queue_histogram;
+  vlib_frame_queue_dequeue_fn_t *frame_queue_dequeue_fn;
 } vlib_frame_queue_main_t;
 
 typedef struct

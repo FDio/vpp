@@ -202,7 +202,8 @@ vlib_buffer_enqueue_to_thread_inline (vlib_main_t *vm,
 				      vlib_node_runtime_t *node,
 				      vlib_frame_queue_main_t *fqm,
 				      u32 *buffer_indices, u16 *thread_indices,
-				      u32 n_packets, int drop_on_congestion)
+				      u32 n_packets, int drop_on_congestion,
+				      int with_aux, u32 *aux_data)
 {
   u32 drop_list[VLIB_FRAME_SIZE], n_drop = 0;
   vlib_frame_bitmap_t mask, used_elts = {};
@@ -218,6 +219,9 @@ more:
 
   n_comp = clib_compress_u32 (hf ? hf->buffer_index : drop_list + n_drop,
 			      buffer_indices, mask, n_packets);
+  if (with_aux)
+    clib_compress_u32 (hf ? hf->aux_data : drop_list + n_drop, aux_data, mask,
+		       n_packets);
 
   if (hf)
     {
@@ -269,7 +273,7 @@ CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_thread_fn)
     {
       n_enq += vlib_buffer_enqueue_to_thread_inline (
 	vm, node, fqm, buffer_indices, thread_indices, VLIB_FRAME_SIZE,
-	drop_on_congestion);
+	drop_on_congestion, 0 /* with_aux */, NULL);
       buffer_indices += VLIB_FRAME_SIZE;
       thread_indices += VLIB_FRAME_SIZE;
       n_packets -= VLIB_FRAME_SIZE;
@@ -278,24 +282,58 @@ CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_thread_fn)
   if (n_packets == 0)
     return n_enq;
 
-  n_enq += vlib_buffer_enqueue_to_thread_inline (vm, node, fqm, buffer_indices,
-						 thread_indices, n_packets,
-						 drop_on_congestion);
+  n_enq += vlib_buffer_enqueue_to_thread_inline (
+    vm, node, fqm, buffer_indices, thread_indices, n_packets,
+    drop_on_congestion, 0 /* with_aux */, NULL);
+
+  return n_enq;
+}
+
+u32 __clib_section (".vlib_buffer_enqueue_to_thread_with_aux_fn")
+CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_thread_with_aux_fn)
+(vlib_main_t *vm, vlib_node_runtime_t *node, u32 frame_queue_index,
+ u32 *buffer_indices, u32 *aux, u16 *thread_indices, u32 n_packets,
+ int drop_on_congestion)
+{
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  vlib_frame_queue_main_t *fqm;
+  u32 n_enq = 0;
+
+  fqm = vec_elt_at_index (tm->frame_queue_mains, frame_queue_index);
+
+  while (n_packets >= VLIB_FRAME_SIZE)
+    {
+      n_enq += vlib_buffer_enqueue_to_thread_inline (
+	vm, node, fqm, buffer_indices, thread_indices, VLIB_FRAME_SIZE,
+	drop_on_congestion, 1 /* with_aux */, aux);
+      buffer_indices += VLIB_FRAME_SIZE;
+      thread_indices += VLIB_FRAME_SIZE;
+      n_packets -= VLIB_FRAME_SIZE;
+    }
+
+  if (n_packets == 0)
+    return n_enq;
+
+  n_enq += vlib_buffer_enqueue_to_thread_inline (
+    vm, node, fqm, buffer_indices, thread_indices, n_packets,
+    drop_on_congestion, 1 /* with_aux */, aux);
 
   return n_enq;
 }
 
 CLIB_MARCH_FN_REGISTRATION (vlib_buffer_enqueue_to_thread_fn);
+CLIB_MARCH_FN_REGISTRATION (vlib_buffer_enqueue_to_thread_with_aux_fn);
 
-u32 __clib_section (".vlib_frame_queue_dequeue_fn")
-CLIB_MULTIARCH_FN (vlib_frame_queue_dequeue_fn)
-(vlib_main_t *vm, vlib_frame_queue_main_t *fqm)
+static_always_inline u32
+vlib_frame_queue_dequeue_inline (vlib_main_t *vm, vlib_frame_queue_main_t *fqm,
+				 u8 with_aux)
 {
   u32 thread_id = vm->thread_index;
   vlib_frame_queue_t *fq = fqm->vlib_frame_queues[thread_id];
   u32 mask = fq->nelts - 1;
   vlib_frame_queue_elt_t *elt;
-  u32 n_free, n_copy, *from, *to = 0, processed = 0, vectors = 0;
+  u32 n_free, n_copy, *from, *from_aux, *to = 0, *to_aux = 0, processed = 0,
+					vectors = 0;
   vlib_frame_t *f = 0;
 
   ASSERT (fq);
@@ -352,13 +390,16 @@ CLIB_MULTIARCH_FN (vlib_frame_queue_dequeue_fn)
 	break;
 
       from = elt->buffer_index + elt->offset;
-
+      if (with_aux)
+	from_aux = elt->aux_data + elt->offset;
       ASSERT (elt->offset + elt->n_vectors <= VLIB_FRAME_SIZE);
 
       if (f == 0)
 	{
 	  f = vlib_get_frame_to_node (vm, fqm->node_index);
 	  to = vlib_frame_vector_args (f);
+	  if (with_aux)
+	    to_aux = vlib_frame_aux_args (f);
 	  n_free = VLIB_FRAME_SIZE;
 	}
 
@@ -369,6 +410,12 @@ CLIB_MULTIARCH_FN (vlib_frame_queue_dequeue_fn)
 
       vlib_buffer_copy_indices (to, from, n_copy);
       to += n_copy;
+      if (with_aux)
+	{
+	  vlib_buffer_copy_indices (to_aux, from_aux, n_copy);
+	  to_aux += n_copy;
+	}
+
       n_free -= n_copy;
       vectors += n_copy;
 
@@ -408,7 +455,23 @@ CLIB_MULTIARCH_FN (vlib_frame_queue_dequeue_fn)
   return processed;
 }
 
+u32 __clib_section (".vlib_frame_queue_dequeue_fn")
+CLIB_MULTIARCH_FN (vlib_frame_queue_dequeue_fn)
+(vlib_main_t *vm, vlib_frame_queue_main_t *fqm)
+{
+  return vlib_frame_queue_dequeue_inline (vm, fqm, 0 /* with_aux */);
+}
+
 CLIB_MARCH_FN_REGISTRATION (vlib_frame_queue_dequeue_fn);
+
+u32 __clib_section (".vlib_frame_queue_dequeue_with_aux_fn")
+CLIB_MULTIARCH_FN (vlib_frame_queue_dequeue_with_aux_fn)
+(vlib_main_t *vm, vlib_frame_queue_main_t *fqm)
+{
+  return vlib_frame_queue_dequeue_inline (vm, fqm, 1 /* with_aux */);
+}
+
+CLIB_MARCH_FN_REGISTRATION (vlib_frame_queue_dequeue_with_aux_fn);
 
 #ifndef CLIB_MARCH_VARIANT
 vlib_buffer_func_main_t vlib_buffer_func_main;
@@ -423,8 +486,8 @@ vlib_buffer_funcs_init (vlib_main_t *vm)
     CLIB_MARCH_FN_POINTER (vlib_buffer_enqueue_to_single_next_fn);
   bfm->buffer_enqueue_to_thread_fn =
     CLIB_MARCH_FN_POINTER (vlib_buffer_enqueue_to_thread_fn);
-  bfm->frame_queue_dequeue_fn =
-    CLIB_MARCH_FN_POINTER (vlib_frame_queue_dequeue_fn);
+  bfm->buffer_enqueue_to_thread_with_aux_fn =
+    CLIB_MARCH_FN_POINTER (vlib_buffer_enqueue_to_thread_with_aux_fn);
   return 0;
 }
 
