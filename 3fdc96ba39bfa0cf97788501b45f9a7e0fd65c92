@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "78500265_a9a68f4d",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2022-05-18T07:46:59Z",
+      "side": 1,
+      "message": "Would you be able to describe in more detail the reasoning behind this change?\nThe 10s default is purely a guess, so appreciate a more validated choice, but it would be good to have it documented for posterity.",
+      "revId": "3fdc96ba39bfa0cf97788501b45f9a7e0fd65c92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0d8e934d_59d32ea3",
+        "filename": "src/vnet/ip/reass/ip4_full_reass.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1674,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2022-05-18T07:46:59Z",
+      "side": 1,
+      "message": "s/handed/handled/",
+      "revId": "3fdc96ba39bfa0cf97788501b45f9a7e0fd65c92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
