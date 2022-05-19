@@ -3,10 +3,97 @@
 .. toctree::
 
 Building VPP
-============
+=====================
 
 To get started developing with VPP, you need to get the required VPP sources and then build the packages.
 For more detailed information on the build system please refer to :ref:`buildsystem`.
+
+.. _makesureinstalled:
+
+Install WSL2 and Ubuntu
+--------------------------
+
+Before starting on VPP for Ubuntu, make sure WSL2 and Ubuntu are installed.
+
+To install WSL2 and Ubuntu, run Windows PowerShell as an administrator and enter this in the terminal:
+
+.. code-block:: console
+
+    $ wsl --install
+
+--------------------------
+
+.. _setupinstallationenvironment:
+
+Set Up Installation Environment
+--------------------------------
+Go to the 'resolv.conf' file in Ubuntu's '/etc' folder.
+It should have been automatically generated when Ubuntu was installed; if it doesn't exist, create it.
+Please use 'sudo' to avoid "File resolv.conf is unwritable" errors.
+
+.. code-block:: console
+
+    $ cd /etc
+    $ sudo nano resolv.conf
+
+In the file, add the following content in place of the current 'nameserver X.X.X.X' line:
+
+.. code-block:: console
+
+    nameserver 8.8.8.8
+
+This replaces the DNS nameserver on your machine with the Google DNS service,
+resolving any DNS Internet connection issues.
+
+Note: by default, the 'resolv.conf' file regenerates every time you restart Ubuntu, so your changes won't be saved.
+To keep your changes, run the following command to make 'resolv.conf' immutable:
+
+.. code-block:: console
+
+    $ sudo chattr +i /etc/resolv.conf
+
+
+Now copy the following lines from 'resolv.conf':
+
+.. code-block:: console
+
+    [network]
+    generateResolvConf = false
+
+Then, go to the 'wsl.conf' file in '/etc' and paste the lines there.
+Please use 'sudo' here as well to avoid "File wsl.conf is unwritable" errors.
+
+.. code-block:: console
+
+    $ sudo nano wsl.conf
+
+In order to test your DNS server connection, please ping 8.8.8.8 on the terminal:
+
+.. code-block:: console
+
+    $ ping 8.8.8.8
+    PING 8.8.8.8 (8.8.8.8) 56(84) bytes of data.
+    64 bytes from 8.8.8.8: icmp_seq=1 ttl=116 time=9.58 ms
+    64 bytes from 8.8.8.8: icmp_seq=2 ttl=116 time=45.8 ms
+    64 bytes from 8.8.8.8: icmp_seq=3 ttl=116 time=9.62 ms
+    64 bytes from 8.8.8.8: icmp_seq=4 ttl=116 time=11.4 ms
+    64 bytes from 8.8.8.8: icmp_seq=5 ttl=116 time=12.2 ms
+    64 bytes from 8.8.8.8: icmp_seq=6 ttl=116 time=8.69 ms
+    64 bytes from 8.8.8.8: icmp_seq=7 ttl=116 time=52.4 ms
+    64 bytes from 8.8.8.8: icmp_seq=8 ttl=116 time=11.0 ms
+    ...
+
+While still in /etc, run the following commands:
+
+.. code-block:: console
+
+    $ sudo apt-get update
+    $ sudo apt-get dist-upgrade
+    $ sudo apt-get install --reinstall ca-certificates
+    $ sudo update-ca-certificates
+
+
+Finally, head back to your home directory and jump to 'Get the VPP Sources'.
 
 .. _setupproxies:
 
@@ -44,6 +131,13 @@ installed, by entering the following commands:
     $ dpkg -l | grep DPDK
 
 There should be no output, or no packages shown after the above commands are run.
+
+Please make sure **make** is installed before running the next command.
+If it is not installed, run the following command first:
+
+.. code-block:: console
+
+    $ sudo apt install make
 
 Run the following **make** command to install the dependencies for FD.io VPP.
 
@@ -119,9 +213,19 @@ Use the following **make** command below to build the release version of FD.io V
 
     $ make build-release
 
+Installing External Dependencies
+-------------------------------------------
+At this point, there are still some VPP external dependencies left to install. They could be installed
+using 'make-build', but this only installs them locally in the VPP tree, not in the operating system.
+In order to fix this and save time, run the following command:
 
+.. code-block:: console
+
+    $ make install-ext-deps
+
+-------------------------------------------
 Building Necessary Packages
---------------------------------------------
+-------------------------------------------
 
 The package that needs to be built depends on the type system VPP will be running on:
 
