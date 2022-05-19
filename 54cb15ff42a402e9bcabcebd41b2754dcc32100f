@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b4e0d348_fa2f9da4",
+        "filename": "src/plugins/memif/CMakeLists.txt",
+        "patchSetId": 11
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2022-05-19T10:46:55Z",
+      "side": 1,
+      "message": "why is node.c here twice?",
+      "revId": "54cb15ff42a402e9bcabcebd41b2754dcc32100f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fbf4108f_638c4925",
+        "filename": "src/plugins/memif/device.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2022-05-19T10:46:55Z",
+      "side": 1,
+      "message": "Suggest you define in a macro at the top of the file with an appropriate name.",
+      "revId": "54cb15ff42a402e9bcabcebd41b2754dcc32100f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
