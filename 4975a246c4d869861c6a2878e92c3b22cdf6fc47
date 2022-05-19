@@ -124,6 +124,24 @@
       "revId": "4975a246c4d869861c6a2878e92c3b22cdf6fc47",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c3d234a0_824a3ecb",
+        "filename": "src/plugins/unittest/ipsec_test.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-05-19T08:45:09Z",
+      "side": 1,
+      "message": "Ah yep - true - I was misremembering how it worked it there but you are right. It does show benefits of both.\n\nYour call then - it\u0027s a good demo, so I was leaning towards leaving it in. Maybe it introduces additional maintenance in future, that\u0027s the only downside for including it I can think of.",
+      "parentUuid": "9a73e2f4_77ca4e37",
+      "revId": "4975a246c4d869861c6a2878e92c3b22cdf6fc47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
