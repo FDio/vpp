@@ -106,6 +106,24 @@
       "revId": "4975a246c4d869861c6a2878e92c3b22cdf6fc47",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9a73e2f4_77ca4e37",
+        "filename": "src/plugins/unittest/ipsec_test.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-05-19T08:06:47Z",
+      "side": 1,
+      "message": "Hi Leaf,\n\nThe perf test has a \"warming up\" section that looking up all flows prior to the test starts. This benefits flow cache more than other use cases as this allows the flow cache table are filled and, if the flow entries is smaller than bucket size, resulting in ~100% hit rate in the perf collection time. Actually due to the same reason flow cache maybe slightly faster than fast path when bucket size is very big.",
+      "parentUuid": "f472a02d_8be65a46",
+      "revId": "4975a246c4d869861c6a2878e92c3b22cdf6fc47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
