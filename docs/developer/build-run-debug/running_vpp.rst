@@ -33,6 +33,13 @@ _________________________
 
 With the following commands you can run VPP and then be dropped into the GDB prompt.
 
+Before running either command, please make sure that the 'gdb' package is installed. 
+If it's not installed, run the following command first:
+
+.. code-block:: console
+   
+   $ sudo apt install gdb
+
 Running the release image:
 
 .. code-block:: console
@@ -46,3 +53,4 @@ Running the debug image:
 
    # make debug
    (gdb)
+
