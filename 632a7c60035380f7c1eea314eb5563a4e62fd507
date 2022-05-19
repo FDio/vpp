@@ -70,6 +70,24 @@
       "revId": "632a7c60035380f7c1eea314eb5563a4e62fd507",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c51664cb_7d65ea9b",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2022-05-19T12:11:51Z",
+      "side": 1,
+      "message": "After discussion with Fan we\u0027ve decided to use number suggested by you (256), but at the same time make the number of buckets configurable from the level of startup.conf in same fashion as it is done for flow cache.",
+      "parentUuid": "e79f1a14_22fa8e0b",
+      "revId": "632a7c60035380f7c1eea314eb5563a4e62fd507",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
