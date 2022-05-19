@@ -1172,7 +1172,8 @@ lcp_itf_pair_link_up_down (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
       tap_set_carrier (si->hw_if_index,
 		       (flags & VNET_HW_INTERFACE_FLAG_LINK_UP));
 
-      if (flags & VNET_HW_INTERFACE_FLAG_LINK_UP)
+      if (flags & VNET_HW_INTERFACE_FLAG_LINK_UP &&
+	  hi->link_speed != UINT32_MAX)
 	{
 	  tap_set_speed (si->hw_if_index, hi->link_speed / 1000);
 	}
