@@ -52,6 +52,24 @@
       "revId": "632a7c60035380f7c1eea314eb5563a4e62fd507",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e79f1a14_22fa8e0b",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2022-05-19T09:14:31Z",
+      "side": 1,
+      "message": "Regarding value of course you are right, 2 \u003c\u003c 20 is obvious typo. I\u0027ll correct that. We do testing for 1M policies and that\u0027s the number we want to be handled reasonably. That\u0027s why number of buckets is so big.",
+      "parentUuid": "4c6e13b2_19554c57",
+      "revId": "632a7c60035380f7c1eea314eb5563a4e62fd507",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
