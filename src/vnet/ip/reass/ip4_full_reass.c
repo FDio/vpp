@@ -1724,14 +1724,14 @@ ip4_full_reass_walk_expired (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      rt->last_id = end;
 	    }
 
-	  pool_foreach_stepping_index (
-	    index, beg, end, rt->pool, ({
-	      reass = pool_elt_at_index (rt->pool, index);
-	      if (now > reass->last_heard + rm->timeout)
-		{
-		  vec_add1 (pool_indexes_to_free, index);
-		}
-	    }));
+	  pool_foreach_stepping_index (index, beg, end, rt->pool)
+	  {
+	    reass = pool_elt_at_index (rt->pool, index);
+	    if (now > reass->last_heard + rm->timeout)
+	      {
+		vec_add1 (pool_indexes_to_free, index);
+	      }
+	  }
 
 	  if (vec_len (pool_indexes_to_free))
 	    vlib_node_increment_counter (vm, node->node_index,
