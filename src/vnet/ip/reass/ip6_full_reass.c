@@ -165,6 +165,7 @@ typedef struct
   u32 fq_index;
   u32 fq_local_index;
   u32 fq_feature_index;
+  u32 fq_custom_index;
 
   // reference count for enabling/disabling feature - per interface
   u32 *feature_use_refcount_per_intf;
@@ -187,6 +188,13 @@ typedef enum
   IP6_FULL_REASSEMBLY_NEXT_HANDOFF,
   IP6_FULL_REASSEMBLY_N_NEXT,
 } ip6_full_reass_next_t;
+
+typedef enum
+{
+  NORMAL,
+  FEATURE,
+  CUSTOM
+} ip6_full_reass_node_type_t;
 
 typedef enum
 {
@@ -1402,6 +1410,30 @@ VNET_FEATURE_INIT (ip6_full_reassembly_feature, static) = {
     .runs_after = 0,
 };
 
+VLIB_NODE_FN (ip6_full_reass_node_custom)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return ip6_full_reassembly_inline (vm, node, frame, false /* is_feature */,
+				     true /* is_custom_app */,
+				     false /* is_local */);
+}
+
+VLIB_REGISTER_NODE (ip6_full_reass_node_custom) = {
+    .name = "ip6-full-reassembly-custom",
+    .vector_size = sizeof (u32),
+    .format_trace = format_ip6_full_reass_trace,
+    .n_errors = ARRAY_LEN (ip6_full_reassembly_error_strings),
+    .error_strings = ip6_full_reassembly_error_strings,
+    .n_next_nodes = IP6_FULL_REASSEMBLY_N_NEXT,
+    .next_nodes =
+        {
+                [IP6_FULL_REASSEMBLY_NEXT_INPUT] = "ip6-input",
+                [IP6_FULL_REASSEMBLY_NEXT_DROP] = "ip6-drop",
+                [IP6_FULL_REASSEMBLY_NEXT_ICMP_ERROR] = "ip6-icmp-error",
+                [IP6_FULL_REASSEMBLY_NEXT_HANDOFF] = "ip6-full-reass-custom-hoff",
+        },
+};
+
 #ifndef CLIB_MARCH_VARIANT
 static u32
 ip6_full_reass_get_nbuckets ()
@@ -1554,6 +1586,8 @@ ip6_full_reass_init_function (vlib_main_t * vm)
     vlib_frame_queue_main_init (ip6_local_full_reass_node.index, 0);
   rm->fq_feature_index =
     vlib_frame_queue_main_init (ip6_full_reass_node_feature.index, 0);
+  rm->fq_custom_index =
+    vlib_frame_queue_main_init (ip6_full_reass_node_custom.index, 0);
 
   rm->feature_use_refcount_per_intf = NULL;
   return error;
@@ -1827,7 +1861,8 @@ format_ip6_full_reassembly_handoff_trace (u8 * s, va_list * args)
 
 always_inline uword
 ip6_full_reassembly_handoff_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
-				    vlib_frame_t *frame, bool is_feature,
+				    vlib_frame_t *frame,
+				    ip6_full_reass_node_type_t type,
 				    bool is_local)
 {
   ip6_full_reass_main_t *rm = &ip6_full_reass_main;
@@ -1844,12 +1879,9 @@ ip6_full_reassembly_handoff_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   b = bufs;
   ti = thread_indices;
 
-  if (is_feature)
+  switch (type)
     {
-      fq_index = rm->fq_feature_index;
-    }
-  else
-    {
+    case NORMAL:
       if (is_local)
 	{
 	  fq_index = rm->fq_local_index;
@@ -1858,8 +1890,17 @@ ip6_full_reassembly_handoff_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	{
 	  fq_index = rm->fq_index;
 	}
+      break;
+    case FEATURE:
+      fq_index = rm->fq_feature_index;
+      break;
+    case CUSTOM:
+      fq_index = rm->fq_custom_index;
+      break;
+    default:
+      clib_warning ("Unexpected `type' (%d)!", type);
+      ASSERT (0);
     }
-
   while (n_left_from > 0)
     {
       ti[0] = vnet_buffer (b[0])->ip.reass.owner_thread_index;
@@ -1891,8 +1932,8 @@ VLIB_NODE_FN (ip6_full_reassembly_handoff_node) (vlib_main_t * vm,
 						 vlib_node_runtime_t * node,
 						 vlib_frame_t * frame)
 {
-  return ip6_full_reassembly_handoff_inline (
-    vm, node, frame, false /* is_feature */, false /* is_local */);
+  return ip6_full_reassembly_handoff_inline (vm, node, frame, NORMAL,
+					     false /* is_local */);
 }
 
 VLIB_REGISTER_NODE (ip6_full_reassembly_handoff_node) = {
@@ -1912,8 +1953,8 @@ VLIB_REGISTER_NODE (ip6_full_reassembly_handoff_node) = {
 VLIB_NODE_FN (ip6_local_full_reassembly_handoff_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return ip6_full_reassembly_handoff_inline (
-    vm, node, frame, false /* is_feature */, true /* is_feature */);
+  return ip6_full_reassembly_handoff_inline (vm, node, frame, NORMAL,
+					     true /* is_feature */);
 }
 
 VLIB_REGISTER_NODE (ip6_local_full_reassembly_handoff_node) = {
@@ -1933,12 +1974,33 @@ VLIB_REGISTER_NODE (ip6_local_full_reassembly_handoff_node) = {
 VLIB_NODE_FN (ip6_full_reassembly_feature_handoff_node) (vlib_main_t * vm,
                                vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  return ip6_full_reassembly_handoff_inline (
-    vm, node, frame, true /* is_feature */, false /* is_local */);
+  return ip6_full_reassembly_handoff_inline (vm, node, frame, FEATURE,
+					     false /* is_local */);
 }
 
 VLIB_REGISTER_NODE (ip6_full_reassembly_feature_handoff_node) = {
   .name = "ip6-full-reass-feature-hoff",
+  .vector_size = sizeof (u32),
+  .n_errors = ARRAY_LEN(ip6_full_reassembly_handoff_error_strings),
+  .error_strings = ip6_full_reassembly_handoff_error_strings,
+  .format_trace = format_ip6_full_reassembly_handoff_trace,
+
+  .n_next_nodes = 1,
+
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
+
+VLIB_NODE_FN (ip6_full_reassembly_custom_handoff_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return ip6_full_reassembly_handoff_inline (vm, node, frame, CUSTOM,
+					     false /* is_local */);
+}
+
+VLIB_REGISTER_NODE (ip6_full_reassembly_custom_handoff_node) = {
+  .name = "ip6-full-reass-custom-hoff",
   .vector_size = sizeof (u32),
   .n_errors = ARRAY_LEN(ip6_full_reassembly_handoff_error_strings),
   .error_strings = ip6_full_reassembly_handoff_error_strings,
