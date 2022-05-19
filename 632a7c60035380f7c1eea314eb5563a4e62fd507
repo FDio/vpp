@@ -34,6 +34,24 @@
       "revId": "632a7c60035380f7c1eea314eb5563a4e62fd507",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4c6e13b2_19554c57",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-05-19T07:46:02Z",
+      "side": 1,
+      "message": "2^18 is still 262144, which would mean we\u0027re expecting 1 million entries in fast path? I think that is unlikely for most use cases, is it not? We shouldn\u0027t copy the flow cache logic here.\n\nI don\u0027t know what a sane default would be. My suggestion would be somewhere in the region of 1024 records - so 1024/4 \u003d 256 buckets (BIHASH_KVP_PER_PAGE in 16_8 and 40_8 is 4). That would cover a lot of use cases without being too big, but not too small that bihash will have to keep splitting/expanding. Then we can add a user provided config option as well for use cases expecting many more policies in fast path.\n\nMaybe someone else has a better idea for a default value.\n\nBy the way 2^20 is (1 \u003c\u003c 20), not (2 \u003c\u003c 20) as you have here.",
+      "parentUuid": "93821da0_6825519f",
+      "revId": "632a7c60035380f7c1eea314eb5563a4e62fd507",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
