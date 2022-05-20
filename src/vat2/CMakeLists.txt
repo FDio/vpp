@@ -47,6 +47,7 @@ add_vpp_executable(test_vat2 ENABLE_EXPORTS NO_INSTALL
   vlibmemoryclient
   svm
   vppinfra
+  vlibapi
   vppapiclient
   Threads::Threads
   dl
