@@ -18,7 +18,7 @@
 #ifndef SRC_VLIBMEMORY_MEMORY_CLIENT_H_
 #define SRC_VLIBMEMORY_MEMORY_CLIENT_H_
 
-#include <vlibmemory/memory_shared.h>
+#include <vlibapi/memory_shared.h>
 #include <setjmp.h>
 
 /*
