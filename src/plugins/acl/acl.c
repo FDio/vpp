@@ -36,7 +36,6 @@
 #include <acl/acl.api_enum.h>
 #include <acl/acl.api_types.h>
 
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 
 #include "fa_node.h"
 #include "public_inlines.h"

@@ -300,7 +300,6 @@ Set up message handlers about as follows:
        #undef vl_endianfun
 
        /* instantiate all the print functions we know about */
-       #define vl_print(handle, ...)
        #define vl_printfun
        #include <vpp/api/vpe_all_api_h.h>
        #undef vl_printfun
