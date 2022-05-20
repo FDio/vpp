@@ -28,7 +28,6 @@
 #undef vl_typedefs
 
 /* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_printfun
@@ -504,18 +503,21 @@ vl_mem_api_init (const char *region_name)
   if ((rv = vl_map_shmem (region_name, 1 /* is_vlib */ )) < 0)
     return rv;
 
-#define _(N,n,t) do {                                            \
-    c->id = VL_API_##N;                                         \
-    c->name = #n;                                               \
-    c->handler = vl_api_##n##_t_handler;                        \
-    c->cleanup = vl_noop_handler;                               \
-    c->endian = vl_api_##n##_t_endian;                          \
-    c->print = vl_api_##n##_t_print;                            \
-    c->size = sizeof(vl_api_##n##_t);                           \
-    c->traced = t; /* trace, so these msgs print */             \
-    c->replay = 0; /* don't replay client create/delete msgs */ \
-    c->message_bounce = 0; /* don't bounce this message */	\
-    vl_msg_api_config(c);} while (0);
+#define _(N, n, t)                                                            \
+  do                                                                          \
+    {                                                                         \
+      c->id = VL_API_##N;                                                     \
+      c->name = #n;                                                           \
+      c->handler = vl_api_##n##_t_handler;                                    \
+      c->endian = vl_api_##n##_t_endian;                                      \
+      c->format_fn = vl_api_##n##_t_format;                                   \
+      c->size = sizeof (vl_api_##n##_t);                                      \
+      c->traced = t;	     /* trace, so these msgs print */                 \
+      c->replay = 0;	     /* don't replay client create/delete msgs */     \
+      c->message_bounce = 0; /* don't bounce this message */                  \
+      vl_msg_api_config (c);                                                  \
+    }                                                                         \
+  while (0);
 
   foreach_vlib_api_msg;
 #undef _
@@ -770,7 +772,6 @@ vl_mem_api_handler_with_vm_node (api_main_t *am, svm_region_t *vlib_rp,
   u16 id = clib_net_to_host_u16 (*((u16 *) the_msg));
   vl_api_msg_data_t *m = vl_api_get_msg_data (am, id);
   u8 *(*handler) (void *, void *, void *);
-  u8 *(*print_fp) (void *, void *);
   svm_region_t *old_vlib_rp;
   void *save_shmem_hdr;
   int is_mp_safe = 1;
@@ -802,15 +803,7 @@ vl_mem_api_handler_with_vm_node (api_main_t *am, svm_region_t *vlib_rp,
       if (PREDICT_FALSE (am->msg_print_flag))
 	{
 	  fformat (stdout, "[%d]: %s\n", id, m->name);
-	  print_fp = (void *) am->msg_data[id].print_handler;
-	  if (print_fp == 0)
-	    {
-	      fformat (stdout, "  [no registered print fn for msg %d]\n", id);
-	    }
-	  else
-	    {
-	      (*print_fp) (the_msg, vm);
-	    }
+	  fformat (stdout, "%U", format_vl_api_msg_text, am, id, the_msg);
 	}
       is_mp_safe = am->msg_data[id].is_mp_safe;
 
