@@ -44,9 +44,10 @@ add_vpp_executable(test_vat2 ENABLE_EXPORTS NO_INSTALL
   DEPENDS api_headers
 
   LINK_LIBRARIES
-  vlibmemoryclient
-  svm
   vppinfra
+  vlibmemoryclient
+  vlibapi
+  svm
   vppapiclient
   Threads::Threads
   dl

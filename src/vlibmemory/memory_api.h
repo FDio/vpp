@@ -23,7 +23,7 @@
 #include <svm/queue.h>
 #include <vlib/vlib.h>
 #include <vlibapi/api.h>
-#include <vlibmemory/memory_shared.h>
+#include <vlibapi/memory_shared.h>
 
 svm_queue_t *vl_api_client_index_to_input_queue (u32 index);
 int vl_mem_api_init (const char *region_name);
