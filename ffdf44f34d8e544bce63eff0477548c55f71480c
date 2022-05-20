@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f6964bb4_d4cabd24",
+        "filename": "src/vppinfra/pool.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 565,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-05-20T13:29:24Z",
+      "side": 1,
+      "message": "I don\u0027t like this macro\n\nWhat if somebody writes\n\nif (...) pool_foreach_stepping_index(...); ?",
+      "revId": "ffdf44f34d8e544bce63eff0477548c55f71480c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
