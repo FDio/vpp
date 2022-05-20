@@ -1669,10 +1669,11 @@ update_per_vrf_sessions_vec (u32 fib_index, int is_del)
 		vec_del1 (sm->fibs, fib - sm->fibs);
 		expire_per_vrf_sessions (fib_index);
 	      }
-	    return;
 	  }
 	else
 	  fib->ref_count++;
+
+	return;
       }
   }
   if (!is_del)
