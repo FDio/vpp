@@ -1373,9 +1373,20 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
       ed->new_link_state = (u8) xd->link.link_status;
     }
 
-  if ((xd->link.link_duplex != prev_link.link_duplex))
+  hw_flags_chg = ((xd->link.link_duplex != prev_link.link_duplex) ||
+		  (xd->link.link_status != prev_link.link_status));
+
+  if (xd->link.link_speed != prev_link.link_speed)
+    vnet_hw_interface_set_link_speed (vnm, xd->hw_if_index,
+				      (xd->link.link_speed == UINT32_MAX) ?
+					      UINT32_MAX :
+					      xd->link.link_speed * 1000);
+
+  if (hw_flags_chg)
     {
-      hw_flags_chg = 1;
+      if (xd->link.link_status)
+	hw_flags |= VNET_HW_INTERFACE_FLAG_LINK_UP;
+
       switch (xd->link.link_duplex)
 	{
 	case RTE_ETH_LINK_HALF_DUPLEX:
@@ -1387,23 +1398,7 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
 	default:
 	  break;
 	}
-    }
-  if (xd->link.link_speed != prev_link.link_speed)
-    vnet_hw_interface_set_link_speed (vnm, xd->hw_if_index,
-				      (xd->link.link_speed == UINT32_MAX) ?
-					      UINT32_MAX :
-					      xd->link.link_speed * 1000);
 
-  if (xd->link.link_status != prev_link.link_status)
-    {
-      hw_flags_chg = 1;
-
-      if (xd->link.link_status)
-	hw_flags |= VNET_HW_INTERFACE_FLAG_LINK_UP;
-    }
-
-  if (hw_flags_chg)
-    {
       if (LINK_STATE_ELOGS)
 	{
 	  ELOG_TYPE_DECLARE (e) =
