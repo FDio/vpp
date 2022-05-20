@@ -30,17 +30,15 @@
 #include <lb/lb.api_enum.h>
 #include <lb/lb.api_types.h>
 
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 
 #define REPLY_MSG_ID_BASE lbm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
-/* Macro to finish up custom dump fns */
-#define FINISH                                  \
-    vec_add1 (s, 0);                            \
-    vl_print (handle, (char *)s);               \
-    vec_free (s);                               \
-    return handle;
+#define FINISH                                                                \
+  vec_add1 (s, 0);                                                            \
+  vlib_cli_output (handle, (char *) s);                                       \
+  vec_free (s);                                                               \
+  return handle;
 
 static void
 vl_api_lb_conf_t_handler

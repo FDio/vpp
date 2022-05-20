@@ -35,7 +35,6 @@
 #undef vl_typedefs
 
 /* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_printfun
@@ -798,9 +797,8 @@ vl_sock_api_init (vlib_main_t * vm)
 
 #define _(N, n, t)                                                            \
   vl_msg_api_set_handlers (                                                   \
-    VL_API_##N, #n, vl_api_##n##_t_handler, vl_noop_handler,                  \
-    vl_api_##n##_t_endian, vl_api_##n##_t_print, sizeof (vl_api_##n##_t), t,  \
-    vl_api_##n##_t_print_json, vl_api_##n##_t_tojson,                         \
+    VL_API_##N, #n, vl_api_##n##_t_handler, vl_api_##n##_t_endian,            \
+    vl_api_##n##_t_format, sizeof (vl_api_##n##_t), t, vl_api_##n##_t_tojson, \
     vl_api_##n##_t_fromjson, vl_api_##n##_t_calc_size);                       \
   am->msg_data[VL_API_##N].replay_allowed = 0;
   foreach_vlib_api_msg;
