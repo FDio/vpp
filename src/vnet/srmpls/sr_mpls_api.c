@@ -29,7 +29,6 @@
 #include <vnet/srmpls/sr_mpls.api_enum.h>
 #include <vnet/srmpls/sr_mpls.api_types.h>
 
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 
 #define vl_api_version(n, v) static u32 api_version = v;
 #include <vnet/srmpls/sr_mpls.api.h>
@@ -194,12 +193,11 @@ sr_mpls_api_hookup (vlib_main_t * vm)
   vec_free (name);
 
 #define _(N, n)                                                               \
-  vl_msg_api_set_handlers (                                                   \
-    REPLY_MSG_ID_BASE + VL_API_##N, #n, vl_api_##n##_t_handler,               \
-    vl_noop_handler, vl_api_##n##_t_endian, vl_api_##n##_t_print,             \
-    sizeof (vl_api_##n##_t), 1, vl_api_##n##_t_print_json,                    \
-    vl_api_##n##_t_tojson, vl_api_##n##_t_fromjson,                           \
-    vl_api_##n##_t_calc_size);
+  vl_msg_api_set_handlers (REPLY_MSG_ID_BASE + VL_API_##N, #n,                \
+			   vl_api_##n##_t_handler, vl_api_##n##_t_endian,     \
+			   vl_api_##n##_t_format, sizeof (vl_api_##n##_t), 1, \
+			   vl_api_##n##_t_tojson, vl_api_##n##_t_fromjson,    \
+			   vl_api_##n##_t_calc_size);
   foreach_vpe_api_msg;
 #undef _
 
@@ -209,9 +207,8 @@ sr_mpls_api_hookup (vlib_main_t * vm)
    */
   vl_msg_api_set_handlers (
     REPLY_MSG_ID_BASE + VL_API_SR_MPLS_POLICY_ADD, "sr_mpls_policy_add",
-    vl_api_sr_mpls_policy_add_t_handler, vl_noop_handler,
-    vl_api_sr_mpls_policy_add_t_endian, vl_api_sr_mpls_policy_add_t_print, 256,
-    1, vl_api_sr_mpls_policy_add_t_print_json,
+    vl_api_sr_mpls_policy_add_t_handler, vl_api_sr_mpls_policy_add_t_endian,
+    vl_api_sr_mpls_policy_add_t_format, 256, 1,
     vl_api_sr_mpls_policy_add_t_tojson, vl_api_sr_mpls_policy_add_t_fromjson,
     vl_api_sr_mpls_policy_add_t_calc_size);
 
@@ -221,9 +218,8 @@ sr_mpls_api_hookup (vlib_main_t * vm)
    */
   vl_msg_api_set_handlers (
     REPLY_MSG_ID_BASE + VL_API_SR_MPLS_POLICY_MOD, "sr_mpls_policy_mod",
-    vl_api_sr_mpls_policy_mod_t_handler, vl_noop_handler,
-    vl_api_sr_mpls_policy_mod_t_endian, vl_api_sr_mpls_policy_mod_t_print, 256,
-    1, vl_api_sr_mpls_policy_mod_t_print_json,
+    vl_api_sr_mpls_policy_mod_t_handler, vl_api_sr_mpls_policy_mod_t_endian,
+    vl_api_sr_mpls_policy_mod_t_format, 256, 1,
     vl_api_sr_mpls_policy_mod_t_tojson, vl_api_sr_mpls_policy_mod_t_fromjson,
     vl_api_sr_mpls_policy_mod_t_calc_size);
 

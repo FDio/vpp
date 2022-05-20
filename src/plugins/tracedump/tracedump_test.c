@@ -235,7 +235,6 @@ api_trace_clear_capture (vat_main_t * vam)
 
 
 
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_endianfun
 #include <tracedump/tracedump.api.h>
 #undef vl_endianfun
@@ -251,9 +250,8 @@ manual_setup_message_id_table (vat_main_t * vam)
 {
   vl_msg_api_set_handlers (
     VL_API_TRACE_DETAILS + tracedump_test_main.msg_id_base, "trace_details",
-    vl_api_trace_details_t_handler, vl_noop_handler,
-    vl_api_trace_details_t_endian, vl_api_trace_details_t_print,
-    sizeof (vl_api_trace_details_t), 1, vl_api_trace_details_t_print_json,
+    vl_api_trace_details_t_handler, vl_api_trace_details_t_endian,
+    vl_api_trace_details_t_format, sizeof (vl_api_trace_details_t), 1,
     vl_api_trace_details_t_tojson, vl_api_trace_details_t_fromjson,
     vl_api_trace_details_t_calc_size);
 }
