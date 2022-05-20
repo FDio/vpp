@@ -1,0 +1,140 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "53d5362f_a9f00374",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-05-20T09:11:02Z",
+      "side": 1,
+      "message": "VLIB_*",
+      "revId": "a48d1ca800a9106891c06e4c6622c847696f9c58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c28cb4ac_37a4922f",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-05-20T09:11:02Z",
+      "side": 1,
+      "message": "it is backend job to deal with data, no ring needed here...",
+      "revId": "a48d1ca800a9106891c06e4c6622c847696f9c58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e15de7e8_774efabb",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 198,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-05-20T09:11:02Z",
+      "side": 1,
+      "message": "use inline function instead",
+      "revId": "a48d1ca800a9106891c06e4c6622c847696f9c58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9da2cff6_75956ec2",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 211,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-05-20T09:11:02Z",
+      "side": 1,
+      "message": "use inline function instead",
+      "revId": "a48d1ca800a9106891c06e4c6622c847696f9c58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e2839944_2f712edc",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 222,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-05-20T09:11:02Z",
+      "side": 1,
+      "message": "use inline function instead",
+      "revId": "a48d1ca800a9106891c06e4c6622c847696f9c58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cb203f51_e01713aa",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 231,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-05-20T09:11:02Z",
+      "side": 1,
+      "message": "use inline function instead",
+      "revId": "a48d1ca800a9106891c06e4c6622c847696f9c58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "64d7bf43_f80fc156",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 315,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-05-20T09:11:02Z",
+      "side": 1,
+      "message": "I think this also belongs to backend....",
+      "revId": "a48d1ca800a9106891c06e4c6622c847696f9c58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "76595482_736df617",
+        "filename": "src/vlib/dma/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-05-20T09:11:02Z",
+      "side": 1,
+      "message": "it should be STATE_DISABLED up to the point there is really something to poll....",
+      "revId": "a48d1ca800a9106891c06e4c6622c847696f9c58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
