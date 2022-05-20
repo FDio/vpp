@@ -171,10 +171,6 @@ void vl_msg_api_trace_only (void *the_msg, uword msg_len);
 void vl_msg_api_cleanup_handler (void *the_msg);
 void vl_msg_api_replay_handler (void *the_msg);
 void vl_msg_api_socket_handler (void *the_msg, uword msg_len);
-void vl_msg_api_set_handlers (int msg_id, char *msg_name, void *handler,
-			      void *endian, format_function_t *format,
-			      int msg_size, int traced, void *tojson,
-			      void *fromjson, void *validate_size);
 void vl_msg_api_clean_handlers (int msg_id);
 void vl_msg_api_config (vl_msg_api_msg_config_t *);
 void vl_msg_api_set_cleanup_handler (int msg_id, void *fp);
