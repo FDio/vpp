@@ -193,11 +193,18 @@ sr_mpls_api_hookup (vlib_main_t * vm)
   vec_free (name);
 
 #define _(N, n)                                                               \
-  vl_msg_api_set_handlers (REPLY_MSG_ID_BASE + VL_API_##N, #n,                \
-			   vl_api_##n##_t_handler, vl_api_##n##_t_endian,     \
-			   vl_api_##n##_t_format, sizeof (vl_api_##n##_t), 1, \
-			   vl_api_##n##_t_tojson, vl_api_##n##_t_fromjson,    \
-			   vl_api_##n##_t_calc_size);
+  vl_msg_api_config (&(vl_msg_api_msg_config_t){                              \
+    .id = REPLY_MSG_ID_BASE + VL_API_##N,                                     \
+    .name = #n,                                                               \
+    .handler = vl_api_##n##_t_handler,                                        \
+    .endian = vl_api_##n##_t_endian,                                          \
+    .format_fn = vl_api_##n##_t_format,                                       \
+    .size = sizeof (vl_api_##n##_t),                                          \
+    .traced = 1,                                                              \
+    .tojson = vl_api_##n##_t_tojson,                                          \
+    .fromjson = vl_api_##n##_t_fromjson,                                      \
+    .calc_size = vl_api_##n##_t_calc_size,                                    \
+  });
   foreach_vpe_api_msg;
 #undef _
 
@@ -205,23 +212,34 @@ sr_mpls_api_hookup (vlib_main_t * vm)
    * Manually register the sr policy add msg, so we trace enough bytes
    * to capture a typical segment list
    */
-  vl_msg_api_set_handlers (
-    REPLY_MSG_ID_BASE + VL_API_SR_MPLS_POLICY_ADD, "sr_mpls_policy_add",
-    vl_api_sr_mpls_policy_add_t_handler, vl_api_sr_mpls_policy_add_t_endian,
-    vl_api_sr_mpls_policy_add_t_format, 256, 1,
-    vl_api_sr_mpls_policy_add_t_tojson, vl_api_sr_mpls_policy_add_t_fromjson,
-    vl_api_sr_mpls_policy_add_t_calc_size);
-
+  vl_msg_api_config (&(vl_msg_api_msg_config_t){
+    .id = REPLY_MSG_ID_BASE + VL_API_SR_MPLS_POLICY_ADD,
+    .name = "sr_mpls_policy_add",
+    .handler = vl_api_sr_mpls_policy_add_t_handler,
+    .endian = vl_api_sr_mpls_policy_add_t_endian,
+    .format_fn = vl_api_sr_mpls_policy_add_t_format,
+    .size = 256,
+    .traced = 1,
+    .tojson = vl_api_sr_mpls_policy_add_t_tojson,
+    .fromjson = vl_api_sr_mpls_policy_add_t_fromjson,
+    .calc_size = vl_api_sr_mpls_policy_add_t_calc_size,
+  });
   /*
    * Manually register the sr policy mod msg, so we trace enough bytes
    * to capture a typical segment list
    */
-  vl_msg_api_set_handlers (
-    REPLY_MSG_ID_BASE + VL_API_SR_MPLS_POLICY_MOD, "sr_mpls_policy_mod",
-    vl_api_sr_mpls_policy_mod_t_handler, vl_api_sr_mpls_policy_mod_t_endian,
-    vl_api_sr_mpls_policy_mod_t_format, 256, 1,
-    vl_api_sr_mpls_policy_mod_t_tojson, vl_api_sr_mpls_policy_mod_t_fromjson,
-    vl_api_sr_mpls_policy_mod_t_calc_size);
+  vl_msg_api_config (&(vl_msg_api_msg_config_t){
+    .id = REPLY_MSG_ID_BASE + VL_API_SR_MPLS_POLICY_MOD,
+    .name = "sr_mpls_policy_mod",
+    .handler = vl_api_sr_mpls_policy_mod_t_handler,
+    .endian = vl_api_sr_mpls_policy_mod_t_endian,
+    .format_fn = vl_api_sr_mpls_policy_mod_t_format,
+    .size = 256,
+    .traced = 1,
+    .tojson = vl_api_sr_mpls_policy_mod_t_tojson,
+    .fromjson = vl_api_sr_mpls_policy_mod_t_fromjson,
+    .calc_size = vl_api_sr_mpls_policy_mod_t_calc_size,
+  });
 
   /*
    * Set up the (msg_name, crc, message-id) table

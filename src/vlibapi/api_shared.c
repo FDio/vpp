@@ -781,36 +781,6 @@ vl_msg_api_config (vl_msg_api_msg_config_t * c)
   hash_set_mem (am->msg_id_by_name, c->name, c->id);
 }
 
-/*
- * vl_msg_api_set_handlers
- * preserve the old API for a while
- */
-void
-vl_msg_api_set_handlers (int id, char *name, void *handler, void *endian,
-			 format_function_t *format, int size, int traced,
-			 void *tojson, void *fromjson, void *calc_size)
-{
-  vl_msg_api_msg_config_t cfg;
-  vl_msg_api_msg_config_t *c = &cfg;
-
-  clib_memset (c, 0, sizeof (*c));
-
-  c->id = id;
-  c->name = name;
-  c->handler = handler;
-  c->endian = endian;
-  c->format_fn = format;
-  c->traced = traced;
-  c->replay = 1;
-  c->message_bounce = 0;
-  c->is_mp_safe = 0;
-  c->is_autoendian = 0;
-  c->tojson = tojson;
-  c->fromjson = fromjson;
-  c->calc_size = calc_size;
-  vl_msg_api_config (c);
-}
-
 void
 vl_msg_api_clean_handlers (int msg_id)
 {
