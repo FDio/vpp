@@ -20,7 +20,7 @@
 
 #include <vppinfra/file.h>
 #include <vppinfra/time.h>
-#include <vlibmemory/memory_shared.h>
+#include <vlibapi/memory_shared.h>
 
 typedef struct
 {
