@@ -44,7 +44,6 @@
 #undef vl_calcsizefun
 
 /* instantiate all the print functions we know about */
-#define vl_print(handle, ...) clib_warning (__VA_ARGS__)
 #define vl_printfun
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_printfun
@@ -153,11 +152,6 @@ vl_api_memclnt_create_reply_t_handler (vl_api_memclnt_create_reply_t * mp)
       unserialize_cstring (sm, (char **) &name_and_crc);
       hash_set_mem (am->msg_index_by_name_and_crc, name_and_crc, msg_index);
     }
-}
-
-static void
-noop_handler (void *notused)
-{
 }
 
 void vl_msg_api_send_shmem (svm_queue_t * q, u8 * elem);
@@ -373,9 +367,8 @@ vl_client_install_client_message_handlers (void)
   api_main_t *am = vlibapi_get_main ();
 #define _(N, n)                                                               \
   vl_msg_api_set_handlers (                                                   \
-    VL_API_##N, #n, vl_api_##n##_t_handler, noop_handler,                     \
-    vl_api_##n##_t_endian, vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 0,  \
-    vl_api_##n##_t_print_json, vl_api_##n##_t_tojson,                         \
+    VL_API_##N, #n, vl_api_##n##_t_handler, vl_api_##n##_t_endian,            \
+    vl_api_##n##_t_format, sizeof (vl_api_##n##_t), 0, vl_api_##n##_t_tojson, \
     vl_api_##n##_t_fromjson, vl_api_##n##_t_calc_size);                       \
   am->msg_data[VL_API_##N].replay_allowed = 0;
   foreach_api_msg;

@@ -531,10 +531,7 @@ msg_handler_internal (api_main_t *am, void *the_msg, uword msg_len,
       if (am->msg_print_flag)
 	{
 	  fformat (stdout, "[%d]: %s\n", id, m->name);
-	  if (m->print_handler)
-	    m->print_handler (the_msg, stdout);
-	  else
-	    fformat (stdout, "  [no registered print fn]\n");
+	  fformat (stdout, "%U", format_vl_api_msg_text, am, id, the_msg);
 	}
 
       uword calc_size = 0;
@@ -769,8 +766,7 @@ vl_msg_api_config (vl_msg_api_msg_config_t * c)
   m->handler = c->handler;
   m->cleanup_handler = c->cleanup;
   m->endian_handler = c->endian;
-  m->print_handler = c->print;
-  m->print_json_handler = c->print_json;
+  m->format_fn = c->format_fn;
   m->tojson_handler = c->tojson;
   m->fromjson_handler = c->fromjson;
   m->calc_size_func = c->calc_size;
@@ -793,10 +789,9 @@ vl_msg_api_config (vl_msg_api_msg_config_t * c)
  * preserve the old API for a while
  */
 void
-vl_msg_api_set_handlers (int id, char *name, void *handler, void *cleanup,
-			 void *endian, void *print, int size, int traced,
-			 void *print_json, void *tojson, void *fromjson,
-			 void *calc_size)
+vl_msg_api_set_handlers (int id, char *name, void *handler, void *endian,
+			 format_function_t *format, int size, int traced,
+			 void *tojson, void *fromjson, void *calc_size)
 {
   vl_msg_api_msg_config_t cfg;
   vl_msg_api_msg_config_t *c = &cfg;
@@ -806,9 +801,8 @@ vl_msg_api_set_handlers (int id, char *name, void *handler, void *cleanup,
   c->id = id;
   c->name = name;
   c->handler = handler;
-  c->cleanup = cleanup;
   c->endian = endian;
-  c->print = print;
+  c->format_fn = format;
   c->traced = traced;
   c->replay = 1;
   c->message_bounce = 0;
@@ -816,7 +810,6 @@ vl_msg_api_set_handlers (int id, char *name, void *handler, void *cleanup,
   c->is_autoendian = 0;
   c->tojson = tojson;
   c->fromjson = fromjson;
-  c->print_json = print_json;
   c->calc_size = calc_size;
   vl_msg_api_config (c);
 }
@@ -883,12 +876,6 @@ vl_msg_api_trace_get (api_main_t * am, vl_api_trace_which_t which)
       return 0;
     }
 }
-
-void
-vl_noop_handler (void *mp)
-{
-}
-
 
 static u8 post_mortem_dump_enabled;
 

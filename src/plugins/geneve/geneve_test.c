@@ -41,13 +41,11 @@ geneve_test_main_t geneve_test_main;
 #define __plugin_msg_base geneve_test_main.msg_id_base
 #include <vlibapi/vat_helper_macros.h>
 
-/* Macro to finish up custom dump fns */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define FINISH                                  \
-    vec_add1 (s, 0);                            \
-    vl_print (handle, (char *)s);               \
-    vec_free (s);                               \
-    return handle;
+#define FINISH                                                                \
+  vec_add1 (s, 0);                                                            \
+  vlib_cli_output (handle, (char *) s);                                       \
+  vec_free (s);                                                               \
+  return handle;
 
 static void vl_api_geneve_add_del_tunnel_reply_t_handler
   (vl_api_geneve_add_del_tunnel_reply_t * mp)

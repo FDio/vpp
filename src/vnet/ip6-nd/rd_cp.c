@@ -72,8 +72,6 @@ enum
   RD_CP_EVENT_INTERRUPT,
 };
 
-#define vl_api_ip6_nd_address_autoconfig_t_print vl_noop_handler
-
 static void
 router_solicitation_start_stop (u32 sw_if_index, u8 start)
 {

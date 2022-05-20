@@ -28,7 +28,6 @@
 #include <mactime/mactime.api_enum.h>
 #include <mactime/mactime.api_types.h>
 
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 
 #define REPLY_MSG_ID_BASE mm->msg_id_base
 #include <vlibapi/api_helper_macros.h>

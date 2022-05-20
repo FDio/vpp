@@ -14,6 +14,7 @@
 add_vpp_library (vlibapi
   SOURCES
   api_shared.c
+  api_format.c
   node_serialize.c
   memory_shared.c
 

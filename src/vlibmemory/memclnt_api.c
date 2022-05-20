@@ -48,7 +48,6 @@
 #undef vl_typedefs
 
 /* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_printfun
@@ -175,10 +174,8 @@ vlib_api_init (void)
       c->id = VL_API_##N;                                                     \
       c->name = #n;                                                           \
       c->handler = vl_api_##n##_t_handler;                                    \
-      c->cleanup = vl_noop_handler;                                           \
       c->endian = vl_api_##n##_t_endian;                                      \
-      c->print = vl_api_##n##_t_print;                                        \
-      c->print_json = vl_api_##n##_t_print_json;                              \
+      c->format_fn = vl_api_##n##_t_format;                                   \
       c->tojson = vl_api_##n##_t_tojson;                                      \
       c->fromjson = vl_api_##n##_t_fromjson;                                  \
       c->calc_size = vl_api_##n##_t_calc_size;                                \
@@ -711,18 +708,16 @@ rpc_api_hookup (vlib_main_t *vm)
   api_main_t *am = vlibapi_get_main ();
 #define _(N, n)                                                               \
   vl_msg_api_set_handlers (                                                   \
-    VL_API_##N, #n, vl_api_##n##_t_handler, vl_noop_handler, vl_noop_handler, \
-    vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 0 /* do not trace */,      \
-    vl_api_##n##_t_print_json, vl_api_##n##_t_tojson,                         \
+    VL_API_##N, #n, vl_api_##n##_t_handler, 0, vl_api_##n##_t_format,         \
+    sizeof (vl_api_##n##_t), 0 /* do not trace */, vl_api_##n##_t_tojson,     \
     vl_api_##n##_t_fromjson, vl_api_##n##_t_calc_size);
   foreach_rpc_api_msg;
 #undef _
 
 #define _(N, n)                                                               \
   vl_msg_api_set_handlers (                                                   \
-    VL_API_##N, #n, vl_api_##n##_t_handler, vl_noop_handler, vl_noop_handler, \
-    vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1 /* do trace */,          \
-    vl_api_##n##_t_print_json, vl_api_##n##_t_tojson,                         \
+    VL_API_##N, #n, vl_api_##n##_t_handler, 0, vl_api_##n##_t_format,         \
+    sizeof (vl_api_##n##_t), 1 /* do trace */, vl_api_##n##_t_tojson,         \
     vl_api_##n##_t_fromjson, vl_api_##n##_t_calc_size);
   foreach_plugin_trace_msg;
 #undef _
