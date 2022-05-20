@@ -31,14 +31,11 @@
 #include <lacp/lacp.api_enum.h>
 #include <lacp/lacp.api_types.h>
 
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-
-/* Macro to finish up custom dump fns */
-#define FINISH                                  \
-    vec_add1 (s, 0);                            \
-    vl_print (handle, (char *)s);               \
-    vec_free (s);                               \
-    return handle;
+#define FINISH                                                                \
+  vec_add1 (s, 0);                                                            \
+  vlib_cli_output (handle, (char *) s);                                       \
+  vec_free (s);                                                               \
+  return handle;
 
 #define REPLY_MSG_ID_BASE lm->msg_id_base
 #include <vlibapi/api_helper_macros.h>

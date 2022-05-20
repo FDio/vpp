@@ -90,13 +90,11 @@ VNET_FEATURE_INIT (flowprobe_output_l2, static) = {
 };
 /* *INDENT-ON* */
 
-/* Macro to finish up custom dump fns */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define FINISH                                  \
-    vec_add1 (s, 0);                            \
-    vl_print (handle, (char *)s);               \
-    vec_free (s);                               \
-    return handle;
+#define FINISH                                                                \
+  vec_add1 (s, 0);                                                            \
+  vlib_cli_output (handle, (char *) s);                                       \
+  vec_free (s);                                                               \
+  return handle;
 
 static inline ipfix_field_specifier_t *
 flowprobe_template_ip4_fields (ipfix_field_specifier_t * f)

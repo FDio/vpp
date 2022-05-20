@@ -581,40 +581,24 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
       switch (which)
 	{
 	case DUMP_JSON:
-	  if (m && m->print_json_handler)
-	    {
-	      m->print_json_handler (tmpbuf + sizeof (uword), vm);
-	    }
-	  else
-	    {
-	      vlib_cli_output (vm, "Skipping msg id %d: no JSON print fcn\n",
-			       msg_id);
-	      break;
-	    }
+	  vlib_cli_output (vm, "%U", format_vl_api_msg_json, am, msg_id,
+			   tmpbuf + sizeof (uword));
 	  break;
 
 	case DUMP:
-	  if (m && m->print_handler)
-	    {
-	      m->print_handler (tmpbuf + sizeof (uword), vm);
-	    }
-	  else
-	    {
-	      vlib_cli_output (vm, "Skipping msg id %d: no print fcn\n",
-			       msg_id);
-	      break;
-	    }
+	  vlib_cli_output (vm, "%U", format_vl_api_msg_text, am, msg_id,
+			   tmpbuf + sizeof (uword));
 	  break;
 
 	case INITIALIZERS:
-	  if (m && m->print_handler)
+	  if (m)
 	    {
 	      u8 *s;
 	      int j;
 
-	      vlib_cli_output (vm, "/*");
+	      vlib_cli_output (vm, "/*%U*/", format_vl_api_msg_text, am,
+			       msg_id, tmpbuf + sizeof (uword));
 
-	      m->print_handler (tmpbuf + sizeof (uword), vm);
 	      vlib_cli_output (vm, "*/\n");
 
 	      s = format (0, "static u8 * vl_api_%s_%d[%d] = {", m->name, i,
@@ -633,7 +617,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	  break;
 
 	case REPLAY:
-	  if (m && m->print_handler && m->replay_allowed)
+	  if (m && m->handler && m->replay_allowed)
 	    {
 	      if (!m->is_mp_safe)
 		vl_msg_api_barrier_sync ();
@@ -687,7 +671,6 @@ vl_msg_print_trace (u8 *msg, void *ctx)
   api_main_t *am = vlibapi_get_main ();
   u16 msg_id = ntohs (*((u16 *) msg));
   vl_api_msg_data_t *m = vl_api_get_msg_data (am, msg_id);
-  void (*handler) (void *, void *) = 0;
   u8 is_json = a->is_json;
   u8 *tmpbuf = 0;
 
@@ -707,12 +690,9 @@ vl_msg_print_trace (u8 *msg, void *ctx)
       m->endian_handler (tmpbuf);
     }
 
-  handler = is_json ? m->print_json_handler : m->print_handler;
-
-  if (handler)
-    handler (msg, a->vm);
-  else
-    vlib_cli_output (a->vm, "Skipping msg id %d: no print fcn\n", msg_id);
+  vlib_cli_output (a->vm, "%U\n",
+		   is_json ? format_vl_api_msg_json : format_vl_api_msg_text,
+		   am, msg_id, msg);
 
   vec_free (tmpbuf);
   return 0;
@@ -865,11 +845,14 @@ vl_msg_exec_json_command (vlib_main_t *vm, cJSON *o)
 	  goto end;
 	}
 
-      if (!m->is_mp_safe)
-	vl_msg_api_barrier_sync ();
-      m->handler (msg);
-      if (!m->is_mp_safe)
-	vl_msg_api_barrier_release ();
+      if (m->handler)
+	{
+	  if (!m->is_mp_safe)
+	    vl_msg_api_barrier_sync ();
+	  m->handler (msg);
+	  if (!m->is_mp_safe)
+	    vl_msg_api_barrier_release ();
+	}
     }
 
   rv = 0;

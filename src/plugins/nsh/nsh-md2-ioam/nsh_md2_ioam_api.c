@@ -38,7 +38,6 @@
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
 #include <nsh/nsh.api.h>
 #undef vl_printfun
