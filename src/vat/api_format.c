@@ -69,11 +69,6 @@
 #undef vl_calcsizefun
 
 /* instantiate all the print functions we know about */
-#if VPP_API_TEST_BUILTIN == 0
-#define vl_print(handle, ...)
-#else
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#endif
 #define vl_printfun
 #include <vlibmemory/memclnt.api.h>
 #undef vl_printfun
@@ -563,9 +558,6 @@ ip_set (ip46_address_t * dst, void *src, u8 is_ip4)
 		      sizeof (ip6_address_t));
 }
 
-
-#define vl_api_bridge_domain_details_t_endian vl_noop_handler
-#define vl_api_bridge_domain_details_t_print vl_noop_handler
 
 static void vl_api_get_first_msg_id_reply_t_handler
   (vl_api_get_first_msg_id_reply_t * mp)
@@ -2742,9 +2734,8 @@ vat_api_hookup (vat_main_t * vam)
 {
 #define _(N, n)                                                               \
   vl_msg_api_set_handlers (                                                   \
-    VL_API_##N + 1, #n, vl_api_##n##_t_handler_uni, vl_noop_handler,          \
-    vl_api_##n##_t_endian, vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1,  \
-    vl_api_##n##_t_print_json, vl_api_##n##_t_tojson,                         \
+    VL_API_##N + 1, #n, vl_api_##n##_t_handler_uni, vl_api_##n##_t_endian,    \
+    vl_api_##n##_t_format, sizeof (vl_api_##n##_t), 1, vl_api_##n##_t_tojson, \
     vl_api_##n##_t_fromjson, vl_api_##n##_t_calc_size);
   foreach_vpe_api_reply_msg;
 #if VPP_API_TEST_BUILTIN == 0

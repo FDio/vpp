@@ -148,6 +148,9 @@ vl_api_allow_msg_replay (api_main_t *am, u32 msg_id, int v)
   am->msg_data[msg_id].replay_allowed = v != 0;
 }
 
+format_function_t format_vl_api_msg_text;
+format_function_t format_vl_api_msg_json;
+
 #endif /* included_api_h */
 /*
  * fd.io coding-style-patch-verification: ON

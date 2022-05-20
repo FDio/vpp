@@ -1028,9 +1028,9 @@ def printfun(objs, stream, modulename):
 """
 
     signature = """\
-static inline void *vl_api_{name}_t_print{suffix} (vl_api_{name}_t *a, void *handle)
+static inline u8 *vl_api_{name}_t_format (u8 *s,  va_list *args)
 {{
-    u8 *s = 0;
+    __attribute__((unused)) vl_api_{name}_t *a = va_arg (*args, vl_api_{name}_t *);
     u32 indent __attribute__((unused)) = 2;
     int i __attribute__((unused));
 """
@@ -1041,27 +1041,14 @@ static inline void *vl_api_{name}_t_print{suffix} (vl_api_{name}_t *a, void *han
     pp = Printfun(stream)
     for t in objs:
         if t.manual_print:
-            write("/***** manual: vl_api_%s_t_print  *****/\n\n" % t.name)
+            write("/***** manual: vl_api_%s_t_format *****/\n\n" % t.name)
             continue
         write(signature.format(name=t.name, suffix=""))
         write("    /* Message definition: vl_api_{}_t: */\n".format(t.name))
         write('    s = format(s, "vl_api_%s_t:");\n' % t.name)
         for o in t.block:
             pp.print_obj(o, stream)
-        write("    vec_add1(s, 0);\n")
-        write("    vl_print (handle, (char *)s);\n")
-        write("    vec_free (s);\n")
-        write("    return handle;\n")
-        write("}\n\n")
-
-        write(signature.format(name=t.name, suffix="_json"))
-        write("    cJSON * o = vl_api_{}_t_tojson(a);\n".format(t.name))
-        write("    (void)s;\n")
-        write("    char *out = cJSON_Print(o);\n")
-        write("    vl_print(handle, out);\n")
-        write("    cJSON_Delete(o);\n")
-        write("    cJSON_free(out);\n")
-        write("    return handle;\n")
+        write("    return s;\n")
         write("}\n\n")
 
     write("\n#endif")
@@ -1103,7 +1090,7 @@ static inline u8 *format_vl_api_{name}_t (u8 *s, va_list * args)
             continue
 
         if t.manual_print:
-            write("/***** manual: vl_api_%s_t_print  *****/\n\n" % t.name)
+            write("/***** manual: vl_api_%s_t_format *****/\n\n" % t.name)
             continue
 
         if t.__class__.__name__ == "Using":
@@ -1525,7 +1512,6 @@ def generate_c_boilerplate(services, defines, counters, file_crc, module, stream
 #undef vl_calsizefun
 
 /* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
 #include "{module}.api.h"
 #undef vl_printfun
@@ -1556,12 +1542,10 @@ def generate_c_boilerplate(services, defines, counters, file_crc, module, stream
             " {{.id = VL_API_{ID} + msg_id_base,\n"
             '   .name = "{n}",\n'
             "   .handler = vl_api_{n}_t_handler,\n"
-            "   .cleanup = vl_noop_handler,\n"
             "   .endian = vl_api_{n}_t_endian,\n"
-            "   .print = vl_api_{n}_t_print,\n"
+            "   .format_fn = vl_api_{n}_t_format,\n"
             "   .traced = 1,\n"
             "   .replay = 1,\n"
-            "   .print_json = vl_api_{n}_t_print_json,\n"
             "   .tojson = vl_api_{n}_t_tojson,\n"
             "   .fromjson = vl_api_{n}_t_fromjson,\n"
             "   .calc_size = vl_api_{n}_t_calc_size,\n"
@@ -1577,12 +1561,10 @@ def generate_c_boilerplate(services, defines, counters, file_crc, module, stream
                 "{{.id = VL_API_{ID} + msg_id_base,\n"
                 '  .name = "{n}",\n'
                 "  .handler = 0,\n"
-                "  .cleanup = vl_noop_handler,\n"
                 "  .endian = vl_api_{n}_t_endian,\n"
-                "  .print = vl_api_{n}_t_print,\n"
+                "  .format_fn = vl_api_{n}_t_format,\n"
                 "  .traced = 1,\n"
                 "  .replay = 1,\n"
-                "  .print_json = vl_api_{n}_t_print_json,\n"
                 "  .tojson = vl_api_{n}_t_tojson,\n"
                 "  .fromjson = vl_api_{n}_t_fromjson,\n"
                 "  .calc_size = vl_api_{n}_t_calc_size,\n"
@@ -1631,7 +1613,6 @@ def generate_c_test_boilerplate(services, defines, file_crc, module, plugin, str
 #undef vl_calsizefun
 
 /* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
 #include "{module}.api.h"
 #undef vl_printfun
@@ -1678,8 +1659,8 @@ def generate_c_test_boilerplate(services, defines, file_crc, module, plugin, str
                 continue
             write("static void\n")
             write("vl_api_{n}_t_handler (vl_api_{n}_t * mp) {{\n".format(n=e))
-            write('    vl_print(0, "{n} event called:");\n'.format(n=e))
-            write("    vl_api_{n}_t_print(mp, 0);\n".format(n=e))
+            write('    vlib_cli_output(0, "{n} event called:");\n'.format(n=e))
+            write("    vlib_cli_output(0, \"%U\", vl_api_{n}_t_format, mp);\n".format(n=e))
             write("}\n")
 
     write("static void\n")
@@ -1689,11 +1670,9 @@ def generate_c_test_boilerplate(services, defines, file_crc, module, plugin, str
             "   vl_msg_api_set_handlers(VL_API_{ID} + msg_id_base, "
             '                           "{n}",\n'
             "                           vl_api_{n}_t_handler, "
-            "                           vl_noop_handler,\n"
             "                           vl_api_{n}_t_endian, "
-            "                           vl_api_{n}_t_print,\n"
+            "                           vl_api_{n}_t_format,\n"
             "                           sizeof(vl_api_{n}_t), 1,\n"
-            "                           vl_api_{n}_t_print_json,\n"
             "                           vl_api_{n}_t_tojson,\n"
             "                           vl_api_{n}_t_fromjson,\n"
             "                           vl_api_{n}_t_calc_size);\n".format(
@@ -1720,11 +1699,9 @@ def generate_c_test_boilerplate(services, defines, file_crc, module, plugin, str
                 "   vl_msg_api_set_handlers(VL_API_{ID} + msg_id_base, "
                 '                          "{n}",\n'
                 "                           vl_api_{n}_t_handler, "
-                "                           vl_noop_handler,\n"
                 "                           vl_api_{n}_t_endian, "
-                "                           vl_api_{n}_t_print,\n"
+                "                           vl_api_{n}_t_format,\n"
                 "                           sizeof(vl_api_{n}_t), 1,\n"
-                "                           vl_api_{n}_t_print_json,\n"
                 "                           vl_api_{n}_t_tojson,\n"
                 "                           vl_api_{n}_t_fromjson,\n"
                 "                           vl_api_{n}_t_calc_size);\n".format(
@@ -1968,7 +1945,6 @@ def generate_c_test2_boilerplate(services, defines, module, stream):
 #include "{module}.api.h"
 #undef vl_calsizefun
 
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
 #include "{module}.api.h"
 #undef vl_printfun

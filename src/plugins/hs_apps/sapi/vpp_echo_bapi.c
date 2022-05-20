@@ -556,7 +556,6 @@ _(APPLICATION_DETACH_REPLY, application_detach_reply)            \
 _(APP_ADD_CERT_KEY_PAIR_REPLY, app_add_cert_key_pair_reply)      \
 _(APP_DEL_CERT_KEY_PAIR_REPLY, app_del_cert_key_pair_reply)
 
-#define vl_print(handle, ...) fformat (handle, __VA_ARGS__)
 #define vl_endianfun
 #include <vnet/session/session.api.h>
 #undef vl_endianfun
@@ -586,12 +585,11 @@ echo_api_hookup (echo_main_t * em)
     return;
 
 #define _(N, n)                                                               \
-  vl_msg_api_set_handlers (                                                   \
-    REPLY_MSG_ID_BASE + VL_API_##N, #n, vl_api_##n##_t_handler,               \
-    vl_noop_handler, vl_api_##n##_t_endian, vl_api_##n##_t_print,             \
-    sizeof (vl_api_##n##_t), 1, vl_api_##n##_t_print_json,                    \
-    vl_api_##n##_t_tojson, vl_api_##n##_t_fromjson,                           \
-    vl_api_##n##_t_calc_size);
+  vl_msg_api_set_handlers (REPLY_MSG_ID_BASE + VL_API_##N, #n,                \
+			   vl_api_##n##_t_handler, vl_api_##n##_t_endian,     \
+			   vl_api_##n##_t_format, sizeof (vl_api_##n##_t), 1, \
+			   vl_api_##n##_t_tojson, vl_api_##n##_t_fromjson,    \
+			   vl_api_##n##_t_calc_size);
   foreach_quic_echo_msg;
 #undef _
 }
