@@ -23,7 +23,6 @@
 #include <tlsopenssl/tls_openssl.api_enum.h>
 #include <tlsopenssl/tls_openssl.api_types.h>
 
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 
 #define REPLY_MSG_ID_BASE om->msg_id_base
 #include <vlibapi/api_helper_macros.h>
