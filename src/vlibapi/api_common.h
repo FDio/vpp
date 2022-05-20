@@ -122,8 +122,7 @@ typedef struct
   void *handler;		/**< the message handler  */
   void *cleanup;		/**< non-default message cleanup handler */
   void *endian;			/**< message endian function  */
-  void *print;			/**< message print function  */
-  void *print_json;		/**< message print function (JSON format)  */
+  void *format_fn;		/**< message format function  */
   void *tojson;			/**< binary to JSON convert function */
   void *fromjson;		/**< JSON to binary convert function */
   void *calc_size;		/**< message size calculation */
@@ -173,10 +172,9 @@ void vl_msg_api_cleanup_handler (void *the_msg);
 void vl_msg_api_replay_handler (void *the_msg);
 void vl_msg_api_socket_handler (void *the_msg, uword msg_len);
 void vl_msg_api_set_handlers (int msg_id, char *msg_name, void *handler,
-			      void *cleanup, void *endian, void *print,
-			      int msg_size, int traced, void *print_json,
-			      void *tojson, void *fromjson,
-			      void *validate_size);
+			      void *endian, format_function_t *format,
+			      int msg_size, int traced, void *tojson,
+			      void *fromjson, void *validate_size);
 void vl_msg_api_clean_handlers (int msg_id);
 void vl_msg_api_config (vl_msg_api_msg_config_t *);
 void vl_msg_api_set_cleanup_handler (int msg_id, void *fp);
@@ -191,7 +189,6 @@ void vl_msg_api_barrier_trace_context (const char *context)
 #define vl_msg_api_barrier_trace_context(X)
 #endif
 void vl_msg_api_free (void *);
-void vl_noop_handler (void *mp);
 void vl_msg_api_increment_missing_client_counter (void);
 void vl_msg_api_post_mortem_dump (void);
 void vl_msg_api_post_mortem_dump_enable_disable (int enable);
@@ -234,6 +231,9 @@ typedef struct
   /** Message name vector */
   const char *name;
 
+  /** Message format function */
+  format_function_t *format_fn;
+
   /** Message convert function vector */
   cJSON *(*tojson_handler) (void *);
 
@@ -242,12 +242,6 @@ typedef struct
 
   /** Message endian handler vector */
   void (*endian_handler) (void *);
-
-  /** Message print function vector */
-  void (*print_handler) (void *, void *);
-
-  /** Message print function vector in JSON */
-  void (*print_json_handler) (void *, void *);
 
   /** Message calc size function vector */
   uword (*calc_size_func) (void *);
