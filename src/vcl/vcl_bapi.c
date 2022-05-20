@@ -302,11 +302,18 @@ vcl_bapi_hookup (void)
     return;
 
 #define _(N, n)                                                               \
-  vl_msg_api_set_handlers (REPLY_MSG_ID_BASE + VL_API_##N, #n,                \
-			   vl_api_##n##_t_handler, vl_api_##n##_t_endian,     \
-			   vl_api_##n##_t_format, sizeof (vl_api_##n##_t), 1, \
-			   vl_api_##n##_t_tojson, vl_api_##n##_t_fromjson,    \
-			   vl_api_##n##_t_calc_size);
+  vl_msg_api_config (&(vl_msg_api_msg_config_t){                              \
+    .id = REPLY_MSG_ID_BASE + VL_API_##N,                                     \
+    .name = #n,                                                               \
+    .handler = vl_api_##n##_t_handler,                                        \
+    .endian = vl_api_##n##_t_endian,                                          \
+    .format_fn = vl_api_##n##_t_format,                                       \
+    .size = sizeof (vl_api_##n##_t),                                          \
+    .traced = 1,                                                              \
+    .tojson = vl_api_##n##_t_tojson,                                          \
+    .fromjson = vl_api_##n##_t_fromjson,                                      \
+    .calc_size = vl_api_##n##_t_calc_size,                                    \
+  });
   foreach_sock_msg;
 #undef _
 }

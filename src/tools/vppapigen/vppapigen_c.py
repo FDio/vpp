@@ -1669,17 +1669,18 @@ def generate_c_test_boilerplate(services, defines, file_crc, module, plugin, str
     write("setup_message_id_table (vat_main_t * vam, u16 msg_id_base) {\n")
     for s in services:
         write(
-            "   vl_msg_api_set_handlers(VL_API_{ID} + msg_id_base, "
-            '                           "{n}",\n'
-            "                           vl_api_{n}_t_handler, "
-            "                           vl_api_{n}_t_endian, "
-            "                           vl_api_{n}_t_format,\n"
-            "                           sizeof(vl_api_{n}_t), 1,\n"
-            "                           vl_api_{n}_t_tojson,\n"
-            "                           vl_api_{n}_t_fromjson,\n"
-            "                           vl_api_{n}_t_calc_size);\n".format(
-                n=s.reply, ID=s.reply.upper()
-            )
+            "   vl_msg_api_config (&(vl_msg_api_msg_config_t){{\n"
+            "    .id = VL_API_{ID} + msg_id_base,\n"
+            '    .name = "{n}",\n'
+            "    .handler = vl_api_{n}_t_handler,\n"
+            "    .endian = vl_api_{n}_t_endian,\n"
+            "    .format_fn = vl_api_{n}_t_format,\n"
+            "    .size = sizeof(vl_api_{n}_t),\n"
+            "    .traced = 1,\n"
+            "    .tojson = vl_api_{n}_t_tojson,\n"
+            "    .fromjson = vl_api_{n}_t_fromjson,\n"
+            "    .calc_size = vl_api_{n}_t_calc_size,\n"
+            "   }});".format(n=s.reply, ID=s.reply.upper())
         )
         write(
             '   hash_set_mem (vam->function_by_name, "{n}", api_{n});\n'.format(
@@ -1698,17 +1699,18 @@ def generate_c_test_boilerplate(services, defines, file_crc, module, plugin, str
         # Events
         for e in s.events:
             write(
-                "   vl_msg_api_set_handlers(VL_API_{ID} + msg_id_base, "
-                '                          "{n}",\n'
-                "                           vl_api_{n}_t_handler, "
-                "                           vl_api_{n}_t_endian, "
-                "                           vl_api_{n}_t_format,\n"
-                "                           sizeof(vl_api_{n}_t), 1,\n"
-                "                           vl_api_{n}_t_tojson,\n"
-                "                           vl_api_{n}_t_fromjson,\n"
-                "                           vl_api_{n}_t_calc_size);\n".format(
-                    n=e, ID=e.upper()
-                )
+                "   vl_msg_api_config (&(vl_msg_api_msg_config_t){{\n"
+                "    .id = VL_API_{ID} + msg_id_base,\n"
+                '    .name = "{n}",\n'
+                "    .handler = vl_api_{n}_t_handler,\n"
+                "    .endian = vl_api_{n}_t_endian,\n"
+                "    .format_fn = vl_api_{n}_t_format,\n"
+                "    .size = sizeof(vl_api_{n}_t),\n"
+                "    .traced = 1,\n"
+                "    .tojson = vl_api_{n}_t_tojson,\n"
+                "    .fromjson = vl_api_{n}_t_fromjson,\n"
+                "    .calc_size = vl_api_{n}_t_calc_size,\n"
+                "   }});".format(n=e, ID=e.upper())
             )
 
     write("}\n")

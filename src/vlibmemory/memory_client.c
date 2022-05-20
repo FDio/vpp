@@ -366,10 +366,18 @@ vl_client_install_client_message_handlers (void)
 {
   api_main_t *am = vlibapi_get_main ();
 #define _(N, n)                                                               \
-  vl_msg_api_set_handlers (                                                   \
-    VL_API_##N, #n, vl_api_##n##_t_handler, vl_api_##n##_t_endian,            \
-    vl_api_##n##_t_format, sizeof (vl_api_##n##_t), 0, vl_api_##n##_t_tojson, \
-    vl_api_##n##_t_fromjson, vl_api_##n##_t_calc_size);                       \
+  vl_msg_api_config (&(vl_msg_api_msg_config_t){                              \
+    .id = VL_API_##N,                                                         \
+    .name = #n,                                                               \
+    .handler = vl_api_##n##_t_handler,                                        \
+    .endian = vl_api_##n##_t_endian,                                          \
+    .format_fn = vl_api_##n##_t_format,                                       \
+    .size = sizeof (vl_api_##n##_t),                                          \
+    .traced = 0,                                                              \
+    .tojson = vl_api_##n##_t_tojson,                                          \
+    .fromjson = vl_api_##n##_t_fromjson,                                      \
+    .calc_size = vl_api_##n##_t_calc_size,                                    \
+  });                                                                         \
   am->msg_data[VL_API_##N].replay_allowed = 0;
   foreach_api_msg;
 #undef _
