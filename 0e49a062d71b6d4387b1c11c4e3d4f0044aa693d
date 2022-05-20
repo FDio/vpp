@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "91774c96_63473cd7",
+        "filename": "src/vnet/devices/af_packet/af_packet.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-05-20T12:44:28Z",
+      "side": 1,
+      "message": "shouldn\u0027t it be 0 and 2 according to the enum above?",
+      "revId": "0e49a062d71b6d4387b1c11c4e3d4f0044aa693d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
