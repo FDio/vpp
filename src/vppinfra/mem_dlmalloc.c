@@ -698,6 +698,11 @@ clib_mem_heap_realloc_aligned (void *heap, void *p, uword new_size,
       mspace_realloc_in_place (h->mspace, p, new_size))
     {
       clib_mem_unpoison (p, new_size);
+      if (PREDICT_FALSE (h->flags & CLIB_MEM_HEAP_F_TRACED))
+	{
+	  mheap_put_trace (pointer_to_uword (p), old_alloc_size);
+	  mheap_get_trace (pointer_to_uword (p), clib_mem_size (p));
+	}
     }
   else
     {
