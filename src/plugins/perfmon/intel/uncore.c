@@ -220,4 +220,5 @@ PERFMON_REGISTER_SOURCE (intel_uncore) = {
   .n_events = INTEL_UNCORE_N_EVENTS,
   .init_fn = intel_uncore_init,
   .format_config = format_intel_core_config,
+  .bundle_support = intel_bundle_supported,
 };

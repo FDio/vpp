@@ -23,7 +23,9 @@
 #include <vppinfra/cpu.h>
 #include <vlib/vlib.h>
 
+#if defined(__x86_64__)
 #define PERF_MAX_EVENTS 12 /* 4 fixed and 8 programable on ICX */
+#endif
 
 typedef enum
 {
@@ -86,11 +88,14 @@ typedef struct
 } perfmon_instance_type_t;
 
 struct perfmon_source;
-extern vlib_node_function_t *perfmon_dispatch_wrappers[PERF_MAX_EVENTS + 1];
+typedef struct perfmon_bundle perfmon_bundle_t;
 
 typedef clib_error_t *(perfmon_source_init_fn_t) (vlib_main_t *vm,
 						  struct perfmon_source *);
 typedef perfmon_event_type_t (perfmon_source_get_event_type) (u32 event);
+typedef u8 (perfmon_source_bundle_support_t) (perfmon_bundle_t *);
+typedef clib_error_t *(perfmon_source_config_dispatch_wrapper_t) (
+  perfmon_bundle_t *b, vlib_node_function_t **dispatch_wrapper);
 
 typedef struct perfmon_source
 {
@@ -103,9 +108,9 @@ typedef struct perfmon_source
   format_function_t *format_config;
   perfmon_source_get_event_type *get_event_type;
   perfmon_source_init_fn_t *init_fn;
+  perfmon_source_bundle_support_t *bundle_support;
+  perfmon_source_config_dispatch_wrapper_t *config_dispatch_wrapper;
 } perfmon_source_t;
-
-struct perfmon_bundle;
 
 typedef clib_error_t *(perfmon_bundle_init_fn_t) (vlib_main_t *vm,
 						  struct perfmon_bundle *);

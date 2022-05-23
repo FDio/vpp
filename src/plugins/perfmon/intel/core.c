@@ -16,6 +16,7 @@
 #include <vnet/vnet.h>
 #include <perfmon/perfmon.h>
 #include <perfmon/intel/core.h>
+#include <perfmon/intel/dispatch_wrapper.h>
 #include <linux/perf_event.h>
 
 static perfmon_event_t events[] = {
@@ -95,6 +96,53 @@ intel_core_get_event_type (u32 event)
     return PERFMON_EVENT_TYPE_GENERAL;
 }
 
+static u8
+is_enough_counters (perfmon_bundle_t *b)
+{
+  u8 bl[PERFMON_EVENT_TYPE_MAX];
+  u8 cpu[PERFMON_EVENT_TYPE_MAX];
+
+  clib_memset (&bl, 0, sizeof (bl));
+  clib_memset (&cpu, 0, sizeof (cpu));
+
+  /* how many does this uarch support */
+  if (!clib_get_pmu_counter_count (&cpu[PERFMON_EVENT_TYPE_FIXED],
+				   &cpu[PERFMON_EVENT_TYPE_GENERAL]))
+    return 0;
+
+  /* how many does the bundle require */
+  for (u16 i = 0; i < b->n_events; i++)
+    {
+      /* if source allows us to identify events, otherwise assume general */
+      if (b->src->get_event_type)
+	bl[b->src->get_event_type (b->events[i])]++;
+      else
+	bl[PERFMON_EVENT_TYPE_GENERAL]++;
+    }
+
+  /* consciously ignoring pseudo events here */
+  return cpu[PERFMON_EVENT_TYPE_GENERAL] >= bl[PERFMON_EVENT_TYPE_GENERAL] &&
+	 cpu[PERFMON_EVENT_TYPE_FIXED] >= bl[PERFMON_EVENT_TYPE_FIXED];
+}
+
+u8
+intel_bundle_supported (perfmon_bundle_t *b)
+{
+  perfmon_cpu_supports_t *supports = b->cpu_supports;
+
+  if (!is_enough_counters (b))
+    return 0;
+
+  if (!b->cpu_supports)
+    return 1;
+
+  for (int i = 0; i < b->n_cpu_supports; ++i)
+    if (supports[i].cpu_supports ())
+      return 1;
+
+  return 0;
+}
+
 PERFMON_REGISTER_SOURCE (intel_core) = {
   .name = "intel-core",
   .description = "intel arch core events",
@@ -103,4 +151,6 @@ PERFMON_REGISTER_SOURCE (intel_core) = {
   .init_fn = intel_core_init,
   .get_event_type = intel_core_get_event_type,
   .format_config = format_intel_core_config,
+  .bundle_support = intel_bundle_supported,
+  .config_dispatch_wrapper = intel_config_dispatch_wrapper,
 };
