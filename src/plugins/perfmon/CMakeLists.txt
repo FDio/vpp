@@ -15,12 +15,8 @@ if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
   return()
 endif()
 
-add_vpp_plugin(perfmon
-  SOURCES
-  cli.c
-  dispatch_wrapper.c
-  linux.c
-  perfmon.c
+list(APPEND ARCH_PMU_SOURCES
+  intel/dispatch_wrapper.c
   intel/core.c
   intel/uncore.c
   intel/bundle/backend_bound_core.c
@@ -38,6 +34,14 @@ add_vpp_plugin(perfmon
   intel/bundle/topdown_icelake.c
   intel/bundle/topdown_metrics.c
   intel/bundle/topdown_tremont.c
+)
+
+add_vpp_plugin(perfmon
+  SOURCES
+  cli.c
+  linux.c
+  perfmon.c
+  ${ARCH_PMU_SOURCES}
 
   COMPONENT
   vpp-plugin-devtools
