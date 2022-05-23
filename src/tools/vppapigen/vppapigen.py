@@ -362,7 +362,7 @@ class Enum(Processable):
         self.vla = False
         self.manual_print = False
 
-        count = 0
+        count = -1
         block2 = []
         block3 = []
         bc_set = False
