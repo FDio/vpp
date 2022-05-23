@@ -288,6 +288,30 @@
     },
     {
       "key": {
+        "uuid": "2451f05f_cc979ede",
+        "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-05-23T14:27:20Z",
+      "side": 1,
+      "message": "dispatch_wrapper.c is now very different again with the index caching etc so I\u0027ve kept them separate. I\u0027ve used both the #ifdef you suggested above and an extern that pulls in the definition from the arch specific dispatch_wrapper.c file though. See what you think: https://gerrit.fd.io/r/c/vpp/+/36191",
+      "parentUuid": "9ad9321f_ea771efe",
+      "range": {
+        "startLine": 103,
+        "startChar": 0,
+        "endLine": 103,
+        "endChar": 25
+      },
+      "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "4d2e8231_4a165eef",
         "filename": "src/plugins/perfmon/cli.c",
         "patchSetId": 1
@@ -405,6 +429,24 @@
       "side": 1,
       "message": "Probably. I think in theory it\u0027s possible some Arm CPUs may have less than this, but I need to do some digging. In practice 6 event + 1 cycle seems common.",
       "parentUuid": "b6e4fae8_d9ca4d4c",
+      "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cedcde83_f32b7936",
+        "filename": "src/plugins/perfmon/perfmon.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-05-23T14:27:20Z",
+      "side": 1,
+      "message": "Due to some quirks of how Arm opens events on Linux, it\u0027s not always exactly possible to determine how many counters are available. It\u0027s actually possible to open more events than physical counters, and the kernel will rotate them over the available counters over time (if I understood it correctly). Also since other user applications can open userspace counters alongside VPP they might not be available anyway. On Arm the only way is to attempt to open all events per core as a group, this will then fail to add each additional event to the group if there are not enough counters available.\n\nI don\u0027t personally think that\u0027s ideal but it\u0027s what we have to work with at the moment.\n\nSo I think what we currently have in perfmon is fine for Arm - if there are not enough counters available for a particular bundle, perf_event_open will fail since it does use groups per core/thread (and then `perfmon start` will fail to open that bundle).",
+      "parentUuid": "de4f9a41_e294aebc",
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
