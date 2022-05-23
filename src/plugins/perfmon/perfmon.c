@@ -24,7 +24,14 @@
 
 #include <perfmon/perfmon.h>
 
+#if defined(__x86_64__)
+#include <perfmon/intel/core.h>
+#endif
+
 perfmon_main_t perfmon_main;
+extern clib_error_t *
+arch_config_dispatch_wrapper (perfmon_bundle_t *b,
+			      vlib_node_function_t **dispatch_wrapper);
 
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
@@ -213,33 +220,6 @@ error:
   return err;
 }
 
-static_always_inline u32
-perfmon_mmap_read_index (const struct perf_event_mmap_page *mmap_page)
-{
-  u32 idx;
-  u32 seq;
-
-  /* See documentation in /usr/include/linux/perf_event.h, for more details
-   * but the 2 main important things are:
-   *  1) if seq != mmap_page->lock, it means the kernel is currently updating
-   *     the user page and we need to read it again
-   *  2) if idx == 0, it means the perf event is currently turned off and we
-   *     just need to read the kernel-updated 'offset', otherwise we must also
-   *     add the current hw value (hence rdmpc) */
-  do
-    {
-      seq = mmap_page->lock;
-      CLIB_COMPILER_BARRIER ();
-
-      idx = mmap_page->index;
-
-      CLIB_COMPILER_BARRIER ();
-    }
-  while (mmap_page->lock != seq);
-
-  return idx;
-}
-
 clib_error_t *
 perfmon_start (vlib_main_t *vm, perfmon_bundle_t *b)
 {
@@ -266,27 +246,17 @@ perfmon_start (vlib_main_t *vm, perfmon_bundle_t *b)
     }
   if (b->active_type == PERFMON_BUNDLE_TYPE_NODE)
     {
-      for (int i = 0; i < vec_len (pm->thread_runtimes); i++)
+      vlib_node_function_t *dispatch_wrapper = NULL;
+      err = arch_config_dispatch_wrapper (b, &dispatch_wrapper);
+      if (err || !dispatch_wrapper)
 	{
-	  perfmon_thread_runtime_t *tr;
-	  tr = vec_elt_at_index (pm->thread_runtimes, i);
-
-	  for (int j = 0; j < b->n_events; j++)
-	    {
-	      tr->indexes[j] = perfmon_mmap_read_index (tr->mmap_pages[j]);
-
-	      /* if a zero index is returned generate error */
-	      if (!tr->indexes[j])
-		{
-		  perfmon_reset (vm);
-		  return clib_error_return (0, "invalid rdpmc index");
-		}
-	    }
+	  perfmon_reset (vm);
+	  return err;
 	}
 
       for (int i = 0; i < vlib_get_n_threads (); i++)
-	vlib_node_set_dispatch_wrapper (
-	  vlib_get_main_by_index (i), perfmon_dispatch_wrappers[b->n_events]);
+	vlib_node_set_dispatch_wrapper (vlib_get_main_by_index (i),
+					dispatch_wrapper);
     }
   pm->sample_time = vlib_time_now (vm);
   pm->is_running = 1;
@@ -321,53 +291,6 @@ perfmon_stop (vlib_main_t *vm)
 
   pm->is_running = 0;
   pm->sample_time = vlib_time_now (vm) - pm->sample_time;
-  return 0;
-}
-
-static_always_inline u8
-is_enough_counters (perfmon_bundle_t *b)
-{
-  u8 bl[PERFMON_EVENT_TYPE_MAX];
-  u8 cpu[PERFMON_EVENT_TYPE_MAX];
-
-  clib_memset (&bl, 0, sizeof (bl));
-  clib_memset (&cpu, 0, sizeof (cpu));
-
-  /* how many does this uarch support */
-  if (!clib_get_pmu_counter_count (&cpu[PERFMON_EVENT_TYPE_FIXED],
-				   &cpu[PERFMON_EVENT_TYPE_GENERAL]))
-    return 0;
-
-  /* how many does the bundle require */
-  for (u16 i = 0; i < b->n_events; i++)
-    {
-      /* if source allows us to identify events, otherwise assume general */
-      if (b->src->get_event_type)
-	bl[b->src->get_event_type (b->events[i])]++;
-      else
-	bl[PERFMON_EVENT_TYPE_GENERAL]++;
-    }
-
-  /* consciously ignoring pseudo events here */
-  return cpu[PERFMON_EVENT_TYPE_GENERAL] >= bl[PERFMON_EVENT_TYPE_GENERAL] &&
-	 cpu[PERFMON_EVENT_TYPE_FIXED] >= bl[PERFMON_EVENT_TYPE_FIXED];
-}
-
-static_always_inline u8
-is_bundle_supported (perfmon_bundle_t *b)
-{
-  perfmon_cpu_supports_t *supports = b->cpu_supports;
-
-  if (!is_enough_counters (b))
-    return 0;
-
-  if (!b->cpu_supports)
-    return 1;
-
-  for (int i = 0; i < b->n_cpu_supports; ++i)
-    if (supports[i].cpu_supports ())
-      return 1;
-
   return 0;
 }
 

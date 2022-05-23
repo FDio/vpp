@@ -25,6 +25,8 @@
 
 #include <perfmon/perfmon.h>
 
+vlib_node_function_t *perfmon_dispatch_wrappers[PERF_MAX_EVENTS + 1];
+
 static_always_inline void
 perfmon_read_pmcs (u64 *counters, u32 *indexes, u8 n_counters)
 {
@@ -74,6 +76,68 @@ perfmon_dispatch_wrapper_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
     }
 
   return rv;
+}
+
+static_always_inline u32
+perfmon_mmap_read_index (const struct perf_event_mmap_page *mmap_page)
+{
+  u32 idx;
+  u32 seq;
+
+  /* See documentation in /usr/include/linux/perf_event.h, for more details
+   * but the 2 main important things are:
+   *  1) if seq != mmap_page->lock, it means the kernel is currently updating
+   *     the user page and we need to read it again
+   *  2) if idx == 0, it means the perf event is currently turned off and we
+   *     just need to read the kernel-updated 'offset', otherwise we must also
+   *     add the current hw value (hence rdmpc) */
+  do
+    {
+      seq = mmap_page->lock;
+      CLIB_COMPILER_BARRIER ();
+
+      idx = mmap_page->index;
+
+      CLIB_COMPILER_BARRIER ();
+    }
+  while (mmap_page->lock != seq);
+
+  return idx;
+}
+
+static_always_inline clib_error_t *
+read_mmap_indexes (perfmon_bundle_t *b)
+{
+  perfmon_main_t *pm = &perfmon_main;
+  for (int i = 0; i < vec_len (pm->thread_runtimes); i++)
+    {
+      perfmon_thread_runtime_t *tr;
+      tr = vec_elt_at_index (pm->thread_runtimes, i);
+
+      for (int j = 0; j < b->n_events; j++)
+	{
+	  tr->indexes[j] = perfmon_mmap_read_index (tr->mmap_pages[j]);
+
+	  /* if a zero index is returned generate error */
+	  if (!tr->indexes[j])
+	    {
+	      return clib_error_return (0, "invalid rdpmc index");
+	    }
+	}
+    }
+  return 0;
+}
+
+clib_error_t *
+arch_config_dispatch_wrapper (perfmon_bundle_t *b,
+			      vlib_node_function_t **dispatch_wrapper)
+{
+  clib_error_t *err = 0;
+  if ((err = read_mmap_indexes (b)) != 0)
+    return err;
+
+  (*dispatch_wrapper) = perfmon_dispatch_wrappers[b->n_events];
+  return 0;
 }
 
 #define foreach_n_events                                                      \

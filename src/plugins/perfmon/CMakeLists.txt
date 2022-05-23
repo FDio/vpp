@@ -15,29 +15,35 @@ if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
   return()
 endif()
 
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
+  list(APPEND ARCH_PMU_SOURCES
+    intel/dispatch_wrapper.c
+    intel/core.c
+    intel/uncore.c
+    intel/bundle/backend_bound_core.c
+    intel/bundle/backend_bound_mem.c
+    intel/bundle/branch_mispred.c
+    intel/bundle/cache_hit_miss.c
+    intel/bundle/frontend_bound_bw_src.c
+    intel/bundle/frontend_bound_bw_uops.c
+    intel/bundle/frontend_bound_lat.c
+    intel/bundle/iio_bw.c
+    intel/bundle/inst_and_clock.c
+    intel/bundle/load_blocks.c
+    intel/bundle/mem_bw.c
+    intel/bundle/power_license.c
+    intel/bundle/topdown_icelake.c
+    intel/bundle/topdown_metrics.c
+    intel/bundle/topdown_tremont.c
+  )
+endif()
+
 add_vpp_plugin(perfmon
   SOURCES
   cli.c
-  dispatch_wrapper.c
   linux.c
   perfmon.c
-  intel/core.c
-  intel/uncore.c
-  intel/bundle/backend_bound_core.c
-  intel/bundle/backend_bound_mem.c
-  intel/bundle/branch_mispred.c
-  intel/bundle/cache_hit_miss.c
-  intel/bundle/frontend_bound_bw_src.c
-  intel/bundle/frontend_bound_bw_uops.c
-  intel/bundle/frontend_bound_lat.c
-  intel/bundle/iio_bw.c
-  intel/bundle/inst_and_clock.c
-  intel/bundle/load_blocks.c
-  intel/bundle/mem_bw.c
-  intel/bundle/power_license.c
-  intel/bundle/topdown_icelake.c
-  intel/bundle/topdown_metrics.c
-  intel/bundle/topdown_tremont.c
+  ${ARCH_PMU_SOURCES}
 
   COMPONENT
   vpp-plugin-devtools

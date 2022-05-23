@@ -23,7 +23,9 @@
 #include <vppinfra/cpu.h>
 #include <vlib/vlib.h>
 
+#if defined(__x86_64__)
 #define PERF_MAX_EVENTS 12 /* 4 fixed and 8 programable on ICX */
+#endif
 
 typedef enum
 {
@@ -86,7 +88,6 @@ typedef struct
 } perfmon_instance_type_t;
 
 struct perfmon_source;
-extern vlib_node_function_t *perfmon_dispatch_wrappers[PERF_MAX_EVENTS + 1];
 
 typedef clib_error_t *(perfmon_source_init_fn_t) (vlib_main_t *vm,
 						  struct perfmon_source *);
