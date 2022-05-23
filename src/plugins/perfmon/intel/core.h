@@ -16,6 +16,8 @@
 #ifndef __perfmon_intel_h
 #define __perfmon_intel_h
 
+u8 intel_bundle_supported (perfmon_bundle_t *b);
+
 #define PERF_INTEL_CODE(event, umask, edge, any, inv, cmask)                  \
   ((event) | (umask) << 8 | (edge) << 18 | (any) << 21 | (inv) << 23 |        \
    (cmask) << 24)
