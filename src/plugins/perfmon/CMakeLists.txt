@@ -42,6 +42,14 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64.*")
   list(APPEND ARCH_PMU_SOURCES
     arm/dispatch_wrapper.c
     arm/events.c
+    arm/bundle/inst_clock.c
+    arm/bundle/cache_data.c
+    arm/bundle/cache_inst.c
+    arm/bundle/cache_data_tlb.c
+    arm/bundle/cache_inst_tlb.c
+    arm/bundle/mem_access.c
+    arm/bundle/branch_pred.c
+    arm/bundle/stall.c
   )
 endif()
 
