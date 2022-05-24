@@ -1572,6 +1572,9 @@ vlib_worker_thread_fn (void *arg)
 
   ASSERT (vm->thread_index == vlib_get_thread_index ());
 
+  vm->cpu_id = clib_get_current_cpu_id ();
+  vm->numa_node = clib_get_current_numa_node ();
+
   vlib_worker_thread_init (w);
   clib_time_init (&vm->clib_time);
   clib_mem_set_heap (w->thread_mheap);

@@ -476,8 +476,8 @@ clib_pmalloc_alloc_aligned_on_numa (clib_pmalloc_main_t * pm, uword size,
   return clib_pmalloc_alloc_inline (pm, 0, size, align, numa_node);
 }
 
-void *
-clib_pmalloc_alloc_aligned (clib_pmalloc_main_t * pm, uword size, uword align)
+__clib_export void *
+clib_pmalloc_alloc_aligned (clib_pmalloc_main_t *pm, uword size, uword align)
 {
   return clib_pmalloc_alloc_inline (pm, 0, size, align,
 				    CLIB_PMALLOC_NUMA_LOCAL);
