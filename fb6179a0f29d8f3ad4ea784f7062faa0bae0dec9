@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7bd67f50_3a6931fe",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 8
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-05-24T11:13:15Z",
+      "side": 1,
+      "message": "Adding comment here so it doesn\u0027t get lost:\n\nA general issue is that policies added to fast path no longer show up in `show ipsec spd` output. We could show them there with an additional field `fast path: yes` or something like that. Some changes in `vnet/ipsec/ipsec_cli.c` would be needed for that.",
+      "revId": "fb6179a0f29d8f3ad4ea784f7062faa0bae0dec9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3867cb2c_63c12ccb",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 384,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-05-24T11:13:15Z",
+      "side": 1,
+      "message": "Bihash docs[1] suggests \"the amount of memory selected should easily contain all of the records, with a generous allowance for hash collisions\". I think this is missing allowance for collisions.\n\nI don\u0027t know what a \"generous allowance\" is - seems for some other 16_8 bihash in code they are using num_buckets * 1024.\n\nIf my calculation is correct sizeof (clib_bihash_kv_16_8_t) \u003d 196 * BIHASH_KVP_PER_PAGE \u003d 784, so bumping this to 1024 seems reasonable to me.\n\n1: https://fdio-vpp.readthedocs.io/en/latest/gettingstarted/developers/bihash.html#initializing-a-bihash-table",
+      "revId": "fb6179a0f29d8f3ad4ea784f7062faa0bae0dec9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3770b050_15aa0e9b",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 489,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-05-24T11:13:15Z",
+      "side": 1,
+      "message": "As above, I think this also needs some allowance for collisions.",
+      "revId": "fb6179a0f29d8f3ad4ea784f7062faa0bae0dec9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
