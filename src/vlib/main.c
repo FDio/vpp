@@ -1857,6 +1857,8 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
   vlib_node_main_t *nm = &vm->node_main;
 
   vm->queue_signal_callback = placeholder_queue_signal_callback;
+  vm->cpu_id = clib_get_current_cpu_id ();
+  vm->numa_node = clib_get_current_numa_node ();
 
   /* Reconfigure event log which is enabled very early */
   if (vgm->configured_elog_ring_size &&
