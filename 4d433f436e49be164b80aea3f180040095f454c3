@@ -104,6 +104,24 @@
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8651062a_278526d6",
+        "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-05-24T10:52:48Z",
+      "side": 1,
+      "message": "Did you resolve this comment? I think it\u0027s not yet resolved. The above script still does not work with the latest patch set for me. The packet is not matching in the fast path.\n\n```\nDBGvpp# show error\n   Count                  Node                              Reason               Severity \n         1             null-node                      blackholed packets           error  \n         1       ipsec4-output-feature             IPSec policy (no match)         error \n...\n\n```\n\n+\n\n```\nDBGvpp# show trace\n...\n00:00:07:828651: ipsec4-output-feature\n  spd 1 policy -1\n```",
+      "parentUuid": "5c10df85_6d6fdb5e",
+      "revId": "4d433f436e49be164b80aea3f180040095f454c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
