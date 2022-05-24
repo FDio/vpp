@@ -140,6 +140,24 @@
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4af33411_4dcf38c6",
+        "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-05-24T12:22:38Z",
+      "side": 1,
+      "message": "Yes - it\u0027s fixed 1) but it hasn\u0027t resolved 2). See my original comment.\n\nRun the attached script and then `packet-generator enable` in CLI to send traffic, see if you can reproduce.",
+      "parentUuid": "32a1857e_eca7731d",
+      "revId": "4d433f436e49be164b80aea3f180040095f454c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
