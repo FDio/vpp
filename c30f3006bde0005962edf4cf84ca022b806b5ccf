@@ -34,6 +34,24 @@
       "revId": "c30f3006bde0005962edf4cf84ca022b806b5ccf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1499024c_47b40d7a",
+        "filename": "src/plugins/perfmon/dispatch_wrapper.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-05-24T09:12:09Z",
+      "side": 0,
+      "message": "Sure, thanks. That\u0027s interesting. I\u0027m not seeing a significant performance impact on Arm. I guess that might be some quirk of how x86 is updating the mmap page regularly, so the sequence lock value was changing a lot and causing the read to keep looping/spinning there (?). Otherwise the \"lock\" is just a read from memory and comparison so shouldn\u0027t cost too much.\n\nIf I\u0027m correct in saying perf counters are 48 bit on Intel, then overflows are less of a concern there. Older Arm systems have 32 bit counters which overflow more regularly so we can\u0027t ignore the offset.",
+      "parentUuid": "80f4b433_a6483dd1",
+      "revId": "c30f3006bde0005962edf4cf84ca022b806b5ccf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
