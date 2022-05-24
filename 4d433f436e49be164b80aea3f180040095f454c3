@@ -122,6 +122,24 @@
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "32a1857e_eca7731d",
+        "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2022-05-24T12:15:39Z",
+      "side": 1,
+      "message": "Please recheck with latest patchset (8) there have been added lines\n171 !(policy-\u003etype \u003d\u003d IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT ||\n172 policy-\u003etype \u003d\u003d IPSEC_SPD_POLICY_IP4_INBOUND_BYPASS ||\n173 policy-\u003etype \u003d\u003d IPSEC_SPD_POLICY_IP4_INBOUND_DISCARD ||\n174 policy-\u003etype \u003d\u003d IPSEC_SPD_POLICY_IP6_INBOUND_PROTECT ||\n175 policy-\u003etype \u003d\u003d IPSEC_SPD_POLICY_IP6_INBOUND_BYPASS ||\n176 policy-\u003etype \u003d\u003d IPSEC_SPD_POLICY_IP6_INBOUND_DISCARD)\nwhich should prevent inbound policies from beeing added to fast path spd. Meanwhile I will try to reproduce your results as well.",
+      "parentUuid": "8651062a_278526d6",
+      "revId": "4d433f436e49be164b80aea3f180040095f454c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
