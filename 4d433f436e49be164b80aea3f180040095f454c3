@@ -158,6 +158,24 @@
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "65257104_e6124309",
+        "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2022-05-24T13:12:03Z",
+      "side": 1,
+      "message": "This is the output for your script on the latest patch set. Also I\u0027ve addopted flow cache python test for fast path and outbound policies are still matched correctly.\n\nNo packets in trace buffer\n------------------- Start of thread 1 vpp_wk_0 -------------------\nPacket 1\n\n\n\n00:00:25:969553: pg-input\nstream ipsec, 100 bytes, sw_if_index 3\ncurrent data 0, length 100, buffer-pool 0, ref-count 1, trace handle 0x1000000\nUDP: 20.20.20.20 -\u003e 30.30.30.30\ntos 0x00, ttl 64, length 100, checksum 0x1626 dscp CS0 ecn NON_ECN\nfragment id 0x0000\nUDP: 4321 -\u003e 1234\nlength 72, checksum 0xa143\n00:00:25:970990: ip4-input\nUDP: 20.20.20.20 -\u003e 30.30.30.30\ntos 0x00, ttl 64, length 100, checksum 0x1626 dscp CS0 ecn NON_ECN\nfragment id 0x0000\nUDP: 4321 -\u003e 1234\nlength 72, checksum 0xa143\n00:00:25:971017: ipsec4-input-feature\nUDP: sa_id 0 spd 1 policy 0 spi 66051 (0x00010203) seq 67438087\n00:00:25:971030: ip4-lookup\nfib 0 dpo-idx 2 flow hash: 0x00000000\nUDP: 20.20.20.20 -\u003e 30.30.30.30\ntos 0x00, ttl 64, length 100, checksum 0x1626 dscp CS0 ecn NON_ECN\nfragment id 0x0000\nUDP: 4321 -\u003e 1234\nlength 72, checksum 0xa143\n00:00:25:971046: ip4-rewrite\ntx_sw_if_index 3 dpo-idx 2 : ipv4 via 30.30.30.30 pg0: mtu:9000 next:3 flags:[features ] 00112233445502fe117ecb860800 flow hash: 0x00000000\n00000000: 00112233445502fe117ecb86080045000064000000003f111726141414141e1e\n00000020: 1e1e10e104d20048a143000102030405060708090a0b0c0d0e0f1011\n00:00:25:971055: ipsec4-output-feature\nspd 1 policy 1\n00:00:25:971073: pg0-output\npg0\nIP4: 02:fe:11:7e:cb:86 -\u003e 00:11:22:33:44:55\nUDP: 20.20.20.20 -\u003e 30.30.30.30\ntos 0x00, ttl 63, length 100, checksum 0x1726 dscp CS0 ecn NON_ECN\nfragment id 0x0000\nUDP: 4321 -\u003e 1234\nlength 72, checksum 0xa143\n00:00:25:971100: pg0-tx\nbuffer 0xffffdb: current data -14, length 114, buffer-pool 0, ref-count 1, trace handle 0x1000000\nip4\nIP4: 02:fe:11:7e:cb:86 -\u003e 00:11:22:33:44:55\nUDP: 20.20.20.20 -\u003e 30.30.30.30\ntos 0x00, ttl 63, length 100, checksum 0x1726 dscp CS0 ecn NON_ECN\nfragment id 0x0000\nUDP: 4321 -\u003e 1234\nlength 72, checksum 0xa143",
+      "parentUuid": "4af33411_4dcf38c6",
+      "revId": "4d433f436e49be164b80aea3f180040095f454c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
