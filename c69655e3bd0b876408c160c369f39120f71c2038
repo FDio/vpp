@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a096ecd_22989d20",
+        "filename": "src/vat/ip_types.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-05-24T18:12:46Z",
+      "side": 0,
+      "message": "I think this line needs to be added to the successful unformat() cases below as the address section [0] of the structure will be uninitialized without it.\n\n[0] https://github.com/FDio/vpp/blob/b28652ed7ab016177593b059390f2e99e6af2961/src/vnet/ip/ip_types.h#L81",
+      "range": {
+        "startLine": 45,
+        "startChar": 0,
+        "endLine": 45,
+        "endChar": 5
+      },
+      "revId": "c69655e3bd0b876408c160c369f39120f71c2038",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "edc6f5bf_79fcf099",
+        "filename": "src/vnet/ip/ip_types.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-05-24T18:12:46Z",
+      "side": 0,
+      "message": "Same comment here.",
+      "range": {
+        "startLine": 45,
+        "startChar": 0,
+        "endLine": 45,
+        "endChar": 5
+      },
+      "revId": "c69655e3bd0b876408c160c369f39120f71c2038",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
