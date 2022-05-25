@@ -153,8 +153,8 @@ format_ipsec_replay_window (u8 * s, va_list * args)
   return s;
 }
 
-u8 *
-format_ipsec_policy (u8 * s, va_list * args)
+static u8 *
+format_ipsec_policy_with_suffix (u8 *s, va_list *args, u8 *suffix)
 {
   u32 pi = va_arg (*args, u32);
   ip46_type_t ip_type = IP46_TYPE_IP4;
@@ -180,6 +180,9 @@ format_ipsec_policy (u8 * s, va_list * args)
     {
       s = format (s, " sa %u", p->sa_id);
     }
+  if (suffix)
+    s = format (s, " %s", suffix);
+
   if (p->is_ipv6)
     {
       ip_type = IP46_TYPE_IP6;
@@ -201,6 +204,18 @@ format_ipsec_policy (u8 * s, va_list * args)
 }
 
 u8 *
+format_ipsec_policy (u8 *s, va_list *args)
+{
+  return format_ipsec_policy_with_suffix (s, args, 0);
+}
+
+u8 *
+format_ipsec_policy_fp (u8 *s, va_list *args)
+{
+  return format_ipsec_policy_with_suffix (s, args, (u8 *) "<fast-path>");
+}
+
+u8 *
 format_ipsec_spd (u8 * s, va_list * args)
 {
   u32 si = va_arg (*args, u32);
@@ -218,12 +233,16 @@ format_ipsec_spd (u8 * s, va_list * args)
 
   s = format (s, "spd %u", spd->id);
 
-#define _(v, n)                                                 \
-  s = format (s, "\n %s:", n);                                  \
-  vec_foreach(i, spd->policies[IPSEC_SPD_POLICY_##v])           \
-  {                                                             \
-    s = format (s, "\n %U", format_ipsec_policy, *i);           \
-  }
+#define _(v, n)                                                               \
+  s = format (s, "\n %s:", n);                                                \
+  vec_foreach (i, spd->policies[IPSEC_SPD_POLICY_##v])                        \
+    {                                                                         \
+      s = format (s, "\n %U", format_ipsec_policy, *i);                       \
+    }                                                                         \
+  vec_foreach (i, spd->fp_spd.fp_policies[IPSEC_SPD_POLICY_##v])              \
+    {                                                                         \
+      s = format (s, "\n %U", format_ipsec_policy_fp, *i);                    \
+    }
   foreach_ipsec_spd_policy_type;
 #undef _
 
