@@ -54,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "e55392cd_2853f489",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-05-25T09:06:01Z",
+      "side": 1,
+      "message": "Actually - forget this. The issue is not with PROTECT/BYPASS/DISCARD policies but with the matching logic.\n\nThe condition could still be simplified to: (policy-\u003etype \u003d\u003d IPSEC_SPD_POLICY_IP4_OUTBOUND || policy-\u003etype \u003d\u003d IPSEC_SPD_POLICY_IP6_OUTBOUND)",
+      "parentUuid": "ea6cb8fc_290ce976",
+      "revId": "fb6179a0f29d8f3ad4ea784f7062faa0bae0dec9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5c56363a_fed0e9a6",
         "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
         "patchSetId": 8
