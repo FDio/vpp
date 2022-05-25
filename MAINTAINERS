@@ -41,6 +41,7 @@ F:	src/vnet/bonding/
 Sphinx Documents
 I:	docs
 M:	John DeNisco <jdenisco@cisco.com>
+M:	Dave Wallace <dwallacelf@gmail.com>
 F:	docs/
 
 Infrastructure Library

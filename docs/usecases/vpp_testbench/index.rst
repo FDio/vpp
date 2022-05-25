@@ -10,7 +10,7 @@ back-and-forth (i.e. ICMP echo/ping requests and HTTP GET requests).
 The intent of this example is to provide a relatively simple example of
 connecting containers via VPP and allowing others to use it as a springboard of
 sorts for their own projects and examples. Besides Docker and a handful of
-common Linux command-line utlities, not much else is required to build this
+common Linux command-line utilities, not much else is required to build this
 example (due to most of the dependencies being lumped inside the containers
 themselves).
 
@@ -60,7 +60,7 @@ project.
   other scripts in this project. Intended to be sourced (i.e. not intended to
   be run directly). Some of the helper functions are used at run-time within
   the containers, while others are intended to be run in the default namespace
-  on the host operating system to help with run-time configuration/bringup of
+  on the host operating system to help with run-time configuration/bring up of
   the testbench.
 * ``Dockerfile.vpp_testbench``: used to build the various Docker images used in
   this project (i.e. so VPP, our test tools, etc.; are all encapsulated within
@@ -81,7 +81,7 @@ Getting Started
 ^^^^^^^^^^^^^^^
 
 First, we'll assume you are running on a Ubuntu 20.04 x86_64 setup (either on a
-bare metal host or in a virtual machine), and have acquirec a copy of the
+bare metal host or in a virtual machine), and have acquired a copy of the
 project files (either by cloning the VPP git repository, or duplicating them
 from :ref:`sec_file_listings_vpp_testbench`). Now, just run ``make``. The
 process should take a few minutes as it pulls the baseline Ubuntu Docker image,
@@ -96,11 +96,11 @@ can be cleaned-up via ``make stop``, and the whole process of starting,
 testing, stopping, etc.; can be repeated as needed.
 
 In addition to starting up the containers, ``make start`` will establish
-variaous types of links/connections between the two containers, making use of
+various types of links/connections between the two containers, making use of
 both the Linux network stack, as well as VPP, to handle the "plumbing"
 involved. This is to allow various types of connections between the two
 containers, and to allow the reader to experiment with them (i.e. using
-``vppctl`` to congfigure or trace packets going over VPP-managed links, use
+``vppctl`` to configure or trace packets going over VPP-managed links, use
 traditional Linux command line utilities like ``tcpdump``, ``iproute2``,
 ``ping``, etc.; to accomplish similar tasks over links managed purely by the
 Linux network stack, etc.). Later labs will also encourage readers to compare
@@ -177,4 +177,3 @@ entrypoint_server.sh
    :caption: entrypoint_server.sh
    :language: shell
    :linenos:
-

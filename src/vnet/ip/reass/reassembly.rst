@@ -20,14 +20,14 @@ impractical to parse headers which are split over multiple vnet
 buffers, vnet_buffer_chain_linearize() is called after reassembly so
 that L2/L3/L4 headers can be found in first buffer. Full reassembly
 is costly and shouldn't be used unless necessary. Full reassembly is by
-default enabled for both ipv4 and ipv6 traffic for "forus" traffic
+default enabled for both ipv4 and ipv6 "for us" traffic
 - that is packets aimed at VPP addresses. This can be disabled via API
-if desired, in which case "forus" fragments are dropped.
+if desired, in which case "for us" fragments are dropped.
 
 2. Shallow (virtual) reassembly allows various classifying and/or
 translating features to work with fragments without having to
 understand fragmentation. It works by extracting L4 data and adding
-them to vnet_buffer for each packet/fragment passing throught SVR
+them to vnet_buffer for each packet/fragment passing through SVR
 nodes. This operation is performed for both fragments and regular
 packets, allowing consuming code to treat all packets in same way. SVR
 caches incoming packet fragments (buffers) until first fragment is
@@ -42,7 +42,7 @@ Multi-worker behaviour
 Both reassembly types deal with fragments arriving on different workers
 via handoff mechanism. All reassembly contexts are stored in pools.
 Bihash mapping 5-tuple key to a value containing pool index and thread
-index is used for lookups. When a lookup finds an existing reasembly on
+index is used for lookups. When a lookup finds an existing reassembly on
 a different thread, it hands off the fragment to that thread. If lookup
 fails, a new reassembly context is created and current worker becomes
 owner of that context. Further fragments received on other worker
@@ -64,7 +64,7 @@ fragments per packet.
 Custom applications
 ^^^^^^^^^^^^^^^^^^^
 
-Both reassembly features allow to be used by custom applicatind which
+Both reassembly features allow to be used by custom application which
 are not part of VPP source tree. Be it patches or 3rd party plugins,
 they can build their own graph paths by using "-custom*" versions of
 nodes. Reassembly then reads next_index and error_next_index for each
