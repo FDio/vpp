@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "e3032ae7_5b5df4d1",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 181,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2022-05-25T15:13:00Z",
+      "side": 1,
+      "message": "Change args + n_transfers to \"dst,src,size\" multiple pairs. Application no need to collect IO vectors, in replace application use dma transfer template which updated by backend.",
+      "parentUuid": "31a49de1_8476abf4",
+      "revId": "edbec364d0218c60877ffb27b1cbbf5657c4ff42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "bd649b08_bc94d527",
         "filename": "src/vlib/dma/dma.h",
         "patchSetId": 2
@@ -30,6 +48,24 @@
       "writtenOn": "2022-05-24T15:58:16Z",
       "side": 1,
       "message": "What is the point of having this function? If client code wants to do CPU memcpy, it can do that by directly calling clib_memcpy_fast.\nIf backend is doing that as fallback action, then API doesn\u0027t need to be exposed here....",
+      "revId": "edbec364d0218c60877ffb27b1cbbf5657c4ff42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b3362a7e_b2fe1e94",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 192,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2022-05-25T15:13:00Z",
+      "side": 1,
+      "message": "The purpose of this function is for keep the sequence of dma transfer requests.\nWhen backend told no space by invalid driver_data pointer, dma node still can request the backend to record CPU copy transfers. Thus callback can follow the same sequence as the vlib_dma_transfer calling sequence.",
+      "parentUuid": "bd649b08_bc94d527",
       "revId": "edbec364d0218c60877ffb27b1cbbf5657c4ff42",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true

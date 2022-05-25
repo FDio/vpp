@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "606efa07_e930a326",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2022-05-25T15:13:00Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "53d5362f_a9f00374",
+      "revId": "a48d1ca800a9106891c06e4c6622c847696f9c58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c28cb4ac_37a4922f",
         "filename": "src/vlib/dma/dma.h",
         "patchSetId": 1
@@ -33,6 +51,24 @@
       "revId": "a48d1ca800a9106891c06e4c6622c847696f9c58",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "033eee71_25c5192c",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2022-05-25T15:13:00Z",
+      "side": 1,
+      "message": "Hi Damjan,\nIf data ring management role is in backend, DMA node need to retrieve the available batch desc address from backend. Backend driver should protect those descs while backend device is accessing them.\nI will add one more backend callback function like get_avail_template for this purpose. \n\nProcess in vlib_dma_transfer will like:\ncall get_avail_template for checking whether has available batch desc\nupdate descs in batch based on template\ncall dma_tranfser with updated template\n\nHow about this idea?\n\nThanks,\nMarvin",
+      "parentUuid": "c28cb4ac_37a4922f",
+      "revId": "a48d1ca800a9106891c06e4c6622c847696f9c58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "0d025ec9_51ca3141",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 198,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2022-05-25T15:13:00Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e15de7e8_774efabb",
+      "revId": "a48d1ca800a9106891c06e4c6622c847696f9c58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9da2cff6_75956ec2",
         "filename": "src/vlib/dma/dma.h",
         "patchSetId": 1
@@ -67,6 +121,24 @@
       "revId": "a48d1ca800a9106891c06e4c6622c847696f9c58",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "908726db_e7f1b72c",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 211,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2022-05-25T15:13:00Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9da2cff6_75956ec2",
+      "revId": "a48d1ca800a9106891c06e4c6622c847696f9c58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -87,6 +159,24 @@
     },
     {
       "key": {
+        "uuid": "92a0fa97_62c880b3",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 222,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2022-05-25T15:13:00Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e2839944_2f712edc",
+      "revId": "a48d1ca800a9106891c06e4c6622c847696f9c58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "cb203f51_e01713aa",
         "filename": "src/vlib/dma/dma.h",
         "patchSetId": 1
@@ -104,6 +194,24 @@
     },
     {
       "key": {
+        "uuid": "0796d6ac_14a3051c",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 231,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2022-05-25T15:13:00Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "cb203f51_e01713aa",
+      "revId": "a48d1ca800a9106891c06e4c6622c847696f9c58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "64d7bf43_f80fc156",
         "filename": "src/vlib/dma/dma.h",
         "patchSetId": 1
@@ -118,6 +226,24 @@
       "revId": "a48d1ca800a9106891c06e4c6622c847696f9c58",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d65c87ac_450a4e08",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 315,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2022-05-25T15:13:00Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "64d7bf43_f80fc156",
+      "revId": "a48d1ca800a9106891c06e4c6622c847696f9c58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
