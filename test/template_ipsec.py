@@ -1888,6 +1888,10 @@ class IPSecIPv4Fwd(VppTestCase):
         policy_type,
         remove=False,
         all_ips=False,
+	remote_port_start=0,
+        remote_port_stop=65535,
+        local_port_start=0,
+        local_port_stop=65535,
     ):
         spd = VppIpsecSpd(self, spd_id)
 
@@ -1914,6 +1918,10 @@ class IPSecIPv4Fwd(VppTestCase):
             priority=priority,
             policy=self.get_policy(policy_type),
             is_outbound=is_out,
+            remote_port_start=remote_port_start,
+            remote_port_stop=remote_port_stop,
+            local_port_start=local_port_start,
+            local_port_stop=local_port_stop,
         )
 
         if remove is False:
