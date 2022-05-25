@@ -55,7 +55,7 @@ typedef struct
 extern vlib_combined_counter_main_t ipsec_spd_policy_counters;
 
 /**
- * @brief A Secruity Policy. An entry in an SPD
+ * @brief A Security Policy. An entry in an SPD
  */
 typedef struct ipsec_policy_t_
 {

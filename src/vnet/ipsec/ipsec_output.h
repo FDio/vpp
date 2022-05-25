@@ -331,13 +331,13 @@ ipsec_output_policy_match (ipsec_spd_t *spd, u8 pr, u32 la, u32 ra, u16 lp,
     return 0;
 
   ipsec_fp_5tuple_from_ip4_range (&tuples[0], la, ra, lp, rp, pr);
-
   if (im->fp_spd_is_enabled &&
       (1 == ipsec_fp_out_policy_match_n (&spd->fp_spd, 0, tuples, policies,
 					 fp_policy_ids, 1)))
     {
       p = policies[0];
       i = fp_policy_ids;
+
       if (PREDICT_FALSE ((pr != IP_PROTOCOL_TCP) && (pr != IP_PROTOCOL_UDP) &&
 			 (pr != IP_PROTOCOL_SCTP)))
 	{
