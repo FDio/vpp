@@ -72,6 +72,24 @@
     },
     {
       "key": {
+        "uuid": "b6e506b9_edae8f9c",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2022-05-25T13:17:35Z",
+      "side": 1,
+      "message": "We\u0027ve dediced with Fan to support only outbound ip4 as ip6 hasen\u0027t been tested much and your findings already show ip6 implmentation may need bugfixing. So idea is to write test and enable it in next patch.",
+      "parentUuid": "e55392cd_2853f489",
+      "revId": "fb6179a0f29d8f3ad4ea784f7062faa0bae0dec9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5c56363a_fed0e9a6",
         "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
         "patchSetId": 8
