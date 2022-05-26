@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cf01d91b_82de3d59",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 9
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-05-26T08:25:32Z",
+      "side": 1,
+      "message": "Just a couple of general questions about fast path, that could be added to commit message:\n\nWhat is fast path? How does it work?\n\nWhat type of policies e.g. IP/port ranges, can a user expect to be added/covered by fast path? What will not be covered?\n\nThis will also help testing once we identify what we are expecting to be added to fast path and what shouldn\u0027t be.",
+      "revId": "e100f1acd61abab6b29e44e0e60c07525cec499f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
