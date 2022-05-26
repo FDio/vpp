@@ -373,6 +373,7 @@ fooC
 foreach
 formatter
 Fortville
+frontend
 fs
 fusermount
 Gbe
@@ -566,6 +567,7 @@ L3XC
 labelled
 lacp
 lagrange
+lan
 LB
 lc
 lcov
@@ -613,6 +615,7 @@ loopback
 Loopback
 loopId
 lpc
+lru
 lshw
 lstack
 lt
