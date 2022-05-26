@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8ccdaeaa_4ae21515",
+        "filename": "src/vlib/dma/dma.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2022-05-26T10:09:42Z",
+      "side": 1,
+      "message": "do we need stdbool?",
+      "revId": "ccf3e56809c1be074f3f268cfc6eff6533f322ce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e9d16c5e_9dd3790e",
+        "filename": "src/vlib/dma/dma.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 118,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2022-05-26T10:09:42Z",
+      "side": 1,
+      "message": "Why the spinlock required to traverse the array?",
+      "revId": "ccf3e56809c1be074f3f268cfc6eff6533f322ce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "36860e1a_6659882b",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 168,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2022-05-26T10:09:42Z",
+      "side": 1,
+      "message": "DMA_DRIVER_DATE should be DMA_DRIVER_DATA no?",
+      "revId": "ccf3e56809c1be074f3f268cfc6eff6533f322ce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d6d605ea_8db3e7e6",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 174,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2022-05-26T10:09:42Z",
+      "side": 1,
+      "message": "worth adding parenthesis to clarify expected precedence",
+      "revId": "ccf3e56809c1be074f3f268cfc6eff6533f322ce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6cada9dd_7c08b1dc",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 187,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2022-05-26T10:09:42Z",
+      "side": 1,
+      "message": "should be abstracted into the engine itself, if DSA engine runs out of resources it should take care of fail over.",
+      "revId": "ccf3e56809c1be074f3f268cfc6eff6533f322ce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
