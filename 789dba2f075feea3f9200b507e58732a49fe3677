@@ -53,6 +53,24 @@
     },
     {
       "key": {
+        "uuid": "43f2d8bd_59728491",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 510,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2022-05-26T09:49:47Z",
+      "side": 1,
+      "message": "My mistake it should be 2048 according to your formula. That is pow of 2 bigger than sizeof(kv) * KVP * NO_OF_COLLISIONS. I\u0027ll add defines with descriptions, so there are no magic numbers.",
+      "parentUuid": "10e347c0_b9838ef5",
+      "revId": "789dba2f075feea3f9200b507e58732a49fe3677",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "7813ad15_fa2faac5",
         "filename": "test/test_ipsec_spd_fp_output.py",
         "patchSetId": 1
