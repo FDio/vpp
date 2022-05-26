@@ -25,6 +25,7 @@ For more on plugins please refer to :ref:`add_plugin`.
     lldp
     nat64
     nat44_ei_ha
+    nat44_ed_doc
     pnat
     lb
     lacp
