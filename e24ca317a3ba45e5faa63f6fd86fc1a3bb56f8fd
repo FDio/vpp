@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6e22d5d5_12ab6217",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-05-26T17:21:34Z",
+      "side": 1,
+      "message": "client should know itself how many transfers it requested,cookie should be enough.",
+      "revId": "e24ca317a3ba45e5faa63f6fd86fc1a3bb56f8fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b1b56107_e5e63345",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-05-26T17:21:34Z",
+      "side": 1,
+      "message": "cookie should be uword, as client may want to pass pointer....",
+      "revId": "e24ca317a3ba45e5faa63f6fd86fc1a3bb56f8fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9f62be79_80a037e6",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-05-26T17:21:34Z",
+      "side": 1,
+      "message": "dma state should be backend specific, infra really don\u0027t care what is the state of device or devices which are handled by backend code.",
+      "revId": "e24ca317a3ba45e5faa63f6fd86fc1a3bb56f8fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f1f292b0_679a0501",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-05-26T17:21:34Z",
+      "side": 1,
+      "message": "backend is just set of callbacks, all information here is backend specific and should not be part of the infra.\nbackend simply says if it can deal with specific config or not. If it can deal with config, infra will just pass config index to application. application will use that config index to enqueue transfers and to submit batch. batch submission is just a simple function call to backend.",
+      "revId": "e24ca317a3ba45e5faa63f6fd86fc1a3bb56f8fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c070d71c_164e94da",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-05-26T17:21:34Z",
+      "side": 1,
+      "message": "I dont think infra should impose desc layout or size. This needs to be backend specific.",
+      "revId": "e24ca317a3ba45e5faa63f6fd86fc1a3bb56f8fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
