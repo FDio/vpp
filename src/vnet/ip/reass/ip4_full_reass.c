@@ -476,7 +476,7 @@ ip4_full_reass_drop_all (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      if (~0 != bi)
 		{
 		  vlib_buffer_t *b = vlib_get_buffer (vm, bi);
-		  if ((b->flags & VLIB_BUFFER_IS_TRACED))
+		  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
 		    {
 		      ip4_full_reass_add_trace (vm, node, reass, bi,
 						RANGE_DISCARD, 0, ~0);
