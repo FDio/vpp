@@ -58,8 +58,8 @@ vlib_stats_register_mem_heap (clib_mem_heap_t *heap)
   vlib_stats_validate (idx, 0, STAT_MEM_RELEASABLE);
 
   /* Create symlink */
-  vlib_stats_add_symlink (idx, STAT_MEM_TOTAL, "/mem/%s/used", heap->name);
-  vlib_stats_add_symlink (idx, STAT_MEM_USED, "/mem/%s/total", heap->name);
+  vlib_stats_add_symlink (idx, STAT_MEM_USED, "/mem/%s/used", heap->name);
+  vlib_stats_add_symlink (idx, STAT_MEM_TOTAL, "/mem/%s/total", heap->name);
   vlib_stats_add_symlink (idx, STAT_MEM_FREE, "/mem/%s/free", heap->name);
 
   r.private_data = vec_len (memory_heaps_vec) - 1;
