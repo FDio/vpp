@@ -1888,7 +1888,12 @@ class IPSecIPv4Fwd(VppTestCase):
         policy_type,
         remove=False,
         all_ips=False,
-	remote_port_start=0,
+        ip_range=False,
+        local_ip_start=ip_address("0.0.0.0"),
+        local_ip_stop=ip_address("255.255.255.255"),
+        remote_ip_start=ip_address("0.0.0.0"),
+        remote_ip_stop=ip_address("255.255.255.255"),
+        remote_port_start=0,
         remote_port_stop=65535,
         local_port_start=0,
         local_port_stop=65535,
@@ -1900,6 +1905,13 @@ class IPSecIPv4Fwd(VppTestCase):
             src_range_high = ip_address("255.255.255.255")
             dst_range_low = ip_address("0.0.0.0")
             dst_range_high = ip_address("255.255.255.255")
+
+        elif ip_range:
+            src_range_low = local_ip_start
+            src_range_high = local_ip_stop
+            dst_range_low = remote_ip_start
+            dst_range_high = remote_ip_stop
+
         else:
             src_range_low = src_if.remote_ip4
             src_range_high = src_if.remote_ip4
