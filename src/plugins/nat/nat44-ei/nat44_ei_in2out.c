@@ -1345,7 +1345,7 @@ nat44_ei_in2out_node_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       next0 = next1 = NAT44_EI_IN2OUT_NEXT_LOOKUP;
 
-      if (PREDICT_FALSE (ip0->ttl == 1))
+      if (PREDICT_FALSE (!is_output_feature && ip0->ttl == 1))
 	{
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 	  icmp4_error_set_vnet_buffer (b0, ICMP4_time_exceeded,
@@ -1564,7 +1564,7 @@ nat44_ei_in2out_node_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       rx_fib_index1 =
 	vec_elt (nm->ip4_main->fib_index_by_sw_if_index, rx_sw_if_index1);
 
-      if (PREDICT_FALSE (ip1->ttl == 1))
+      if (PREDICT_FALSE (!is_output_feature && ip1->ttl == 1))
 	{
 	  vnet_buffer (b1)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 	  icmp4_error_set_vnet_buffer (b1, ICMP4_time_exceeded,
@@ -1811,7 +1811,7 @@ nat44_ei_in2out_node_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       rx_fib_index0 =
 	vec_elt (nm->ip4_main->fib_index_by_sw_if_index, rx_sw_if_index0);
 
-      if (PREDICT_FALSE (ip0->ttl == 1))
+      if (PREDICT_FALSE (!is_output_feature && ip0->ttl == 1))
 	{
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 	  icmp4_error_set_vnet_buffer (b0, ICMP4_time_exceeded,
