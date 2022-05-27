@@ -16,6 +16,24 @@
       "revId": "e100f1acd61abab6b29e44e0e60c07525cec499f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "85322011_2d7bf4a1",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 9
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2022-05-27T17:44:40Z",
+      "side": 1,
+      "message": "I will update the commit message.",
+      "parentUuid": "cf01d91b_82de3d59",
+      "revId": "e100f1acd61abab6b29e44e0e60c07525cec499f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
