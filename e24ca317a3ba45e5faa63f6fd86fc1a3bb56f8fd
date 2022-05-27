@@ -19,6 +19,23 @@
     },
     {
       "key": {
+        "uuid": "6af7acd9_1bdbe80d",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2022-05-27T07:45:57Z",
+      "side": 1,
+      "message": "ok, cookie format will change to pointer. Removed useless transfers argument.",
+      "revId": "e24ca317a3ba45e5faa63f6fd86fc1a3bb56f8fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b1b56107_e5e63345",
         "filename": "src/vlib/dma/dma.h",
         "patchSetId": 4
@@ -33,6 +50,24 @@
       "revId": "e24ca317a3ba45e5faa63f6fd86fc1a3bb56f8fd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1e3532ac_e623e8cf",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2022-05-27T07:45:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b1b56107_e5e63345",
+      "revId": "e24ca317a3ba45e5faa63f6fd86fc1a3bb56f8fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -53,6 +88,23 @@
     },
     {
       "key": {
+        "uuid": "af19d379_54632e5b",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2022-05-27T07:45:57Z",
+      "side": 1,
+      "message": "Backend node will maintain the status of each device. Device allocation will be in backend node. Also removed backend assignment logic in dma node.",
+      "revId": "e24ca317a3ba45e5faa63f6fd86fc1a3bb56f8fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f1f292b0_679a0501",
         "filename": "src/vlib/dma/dma.h",
         "patchSetId": 4
@@ -70,6 +122,23 @@
     },
     {
       "key": {
+        "uuid": "d131edaf_75acf1b0",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2022-05-27T07:45:57Z",
+      "side": 1,
+      "message": "Removed backend specific stuffs in dma node. Current working model is like the description.",
+      "revId": "e24ca317a3ba45e5faa63f6fd86fc1a3bb56f8fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c070d71c_164e94da",
         "filename": "src/vlib/dma/dma.h",
         "patchSetId": 4
@@ -84,6 +153,24 @@
       "revId": "e24ca317a3ba45e5faa63f6fd86fc1a3bb56f8fd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b18e5842_b6415bee",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2022-05-27T07:45:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c070d71c_164e94da",
+      "revId": "e24ca317a3ba45e5faa63f6fd86fc1a3bb56f8fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
