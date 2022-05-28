@@ -2376,6 +2376,67 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
 }
 
 static int
+sfifo_test_fifo_segment_over_max_chunk (int __clib_unused verbose)
+{
+  u32 fifo_size = (1 << FS_MAX_LOG2_CHUNK_SZ) + (1 << 20), i;
+  fifo_segment_main_t *sm = &segment_main;
+  fifo_segment_create_args_t _a, *a = &_a;
+  u8 *test_data = 0, *data_buf = 0;
+  uword n_free_chunk_bytes;
+  fifo_segment_t *fs;
+  svm_fifo_t *f;
+  int rv;
+
+  clib_memset (a, 0, sizeof (*a));
+  a->segment_name = "fifo-test-over-max-chunk";
+  a->segment_size = 32 << 20;
+  a->segment_type = SSVM_SEGMENT_PRIVATE;
+
+  rv = fifo_segment_create (sm, a);
+  SFIFO_TEST (!rv, "svm_fifo_segment_create returned %d", rv);
+
+  fs = fifo_segment_get_segment (sm, a->new_segment_indices[0]);
+  fs->h->pct_first_alloc = 100;
+
+  f = fifo_segment_alloc_fifo (fs, fifo_size, FIFO_SEGMENT_RX_FIFO);
+  SFIFO_TEST (f != 0, "alloc fifo larger than max chunk");
+  SFIFO_TEST (svm_fifo_size (f) == fifo_size, "fifo size should be %u is %u", fifo_size,
+	      svm_fifo_size (f));
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
+
+  validate_test_and_buf_vecs (&test_data, &data_buf, fifo_size);
+
+  rv = svm_fifo_enqueue (f, fifo_size, test_data);
+  SFIFO_TEST (rv == fifo_size, "enq should succeed %u", rv);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
+
+  rv = svm_fifo_dequeue (f, fifo_size, data_buf);
+  SFIFO_TEST (rv == fifo_size, "deq should succeed %u", rv);
+  rv = compare_data (data_buf, test_data, 0, fifo_size, &i);
+  if (rv)
+    SFIFO_TEST (0, "[%u] dequeued %u expected %u", i, data_buf[i], test_data[i]);
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
+
+  fifo_segment_free_fifo (fs, f);
+  n_free_chunk_bytes = fifo_segment_fl_chunk_bytes (fs);
+
+  f = fifo_segment_alloc_fifo (fs, fifo_size, FIFO_SEGMENT_RX_FIFO);
+  SFIFO_TEST (f != 0, "alloc fifo larger than max chunk with cached chunks");
+  SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
+  fifo_segment_free_fifo (fs, f);
+
+  rv = fifo_segment_fl_chunk_bytes (fs);
+  SFIFO_TEST (rv == n_free_chunk_bytes, "free chunk bytes expected %lu is %u", n_free_chunk_bytes,
+	      rv);
+
+  vec_free (test_data);
+  vec_free (data_buf);
+  fifo_segment_delete (sm, fs);
+  vec_free (a->new_segment_indices);
+  return 0;
+}
+
+static int
 sfifo_test_fifo_segment_slave (int verbose)
 {
   fifo_segment_create_args_t _a, *a = &_a;
@@ -2709,6 +2770,11 @@ sfifo_test_fifo_segment (vlib_main_t * vm, unformat_input_t * input)
 	  if ((rv = sfifo_test_fifo_segment_fifo_grow (verbose)))
 	    return -1;
 	}
+      else if (unformat (input, "max chunk"))
+	{
+	  if ((rv = sfifo_test_fifo_segment_over_max_chunk (verbose)))
+	    return -1;
+	}
       else if (unformat (input, "prealloc"))
 	{
 	  if ((rv = sfifo_test_fifo_segment_prealloc (verbose)))
@@ -2721,6 +2787,8 @@ sfifo_test_fifo_segment (vlib_main_t * vm, unformat_input_t * input)
 	  if ((rv = sfifo_test_fifo_segment_mempig (verbose)))
 	    return -1;
 	  if ((rv = sfifo_test_fifo_segment_fifo_grow (verbose)))
+	    return -1;
+	  if ((rv = sfifo_test_fifo_segment_over_max_chunk (verbose)))
 	    return -1;
 	  if ((rv = sfifo_test_fifo_segment_prealloc (verbose)))
 	    return -1;
