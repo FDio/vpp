@@ -466,8 +466,9 @@ fifo_segment_main_init (fifo_segment_main_t * sm, u64 baseva,
 static inline u32
 fs_freelist_for_size (u32 size)
 {
-  if (PREDICT_FALSE (size < FIFO_SEGMENT_MIN_FIFO_SIZE))
-    return 0;
+  //  if (PREDICT_FALSE (size < FIFO_SEGMENT_MIN_FIFO_SIZE))
+  //    return 0;
+  size = clib_max (size, FS_MIN_CHUNK_SZ);
   return clib_min (max_log2 (size) - FIFO_SEGMENT_MIN_LOG2_FIFO_SIZE,
 		   FS_CHUNK_VEC_LEN - 1);
 }
@@ -490,8 +491,8 @@ fs_chunk_size_is_valid (fifo_segment_header_t * fsh, u32 size)
 }
 
 svm_fifo_chunk_t *
-fs_try_alloc_multi_chunk (fifo_segment_header_t * fsh,
-			  fifo_segment_slice_t * fss, u32 data_bytes)
+fss_fl_try_alloc_multi_chunk (fifo_segment_header_t *fsh,
+			      fifo_segment_slice_t *fss, u32 data_bytes)
 {
   u32 fl_index, fl_size, n_alloc = 0, req_bytes = data_bytes;
   svm_fifo_chunk_t *c, *first = 0, *next;
@@ -656,63 +657,80 @@ fsh_try_alloc_fifo_hdr (fifo_segment_header_t *fsh, fifo_segment_slice_t *fss)
 }
 
 static svm_fifo_chunk_t *
-fsh_try_alloc_chunk (fifo_segment_header_t * fsh,
-		     fifo_segment_slice_t * fss, u32 data_bytes)
+fs_try_alloc_chunk_slow (fifo_segment_header_t *fsh, fifo_segment_slice_t *fss,
+			 u32 fl_index, u32 chunk_sz, u32 data_bytes)
 {
-  svm_fifo_chunk_t *c;
-  u32 fl_index;
+  u32 batch = FIFO_SEGMENT_ALLOC_BATCH_SIZE;
+  svm_fifo_chunk_t *c = 0;
+  uword n_free;
 
-  fl_index = fs_freelist_for_size (data_bytes);
+  n_free = fsh_n_free_bytes (fsh);
 
-free_list:
-  c = fss_chunk_free_list_pop (fsh, fss, fl_index);
-  if (c)
+  /* If segment still has enough space, try to allocate batch of chunks */
+  if (chunk_sz <= n_free)
     {
-      c->next = 0;
-      fss_fl_chunk_bytes_sub (fss, fs_freelist_index_to_size (fl_index));
-      fsh_cached_bytes_sub (fsh, fs_freelist_index_to_size (fl_index));
-    }
-  else
-    {
-      u32 chunk_size, batch = FIFO_SEGMENT_ALLOC_BATCH_SIZE;
-      uword n_free;
-
-      chunk_size = fs_freelist_index_to_size (fl_index);
-      n_free = fsh_n_free_bytes (fsh);
-
-      if (chunk_size <= n_free)
+      batch = chunk_sz * batch <= n_free ? batch : 1;
+      if (!fsh_try_alloc_chunk_batch (fsh, fss, fl_index, batch))
 	{
-	  batch = chunk_size * batch <= n_free ? batch : 1;
-	  if (!fsh_try_alloc_chunk_batch (fsh, fss, fl_index, batch))
-	    goto free_list;
-	}
-      /* Failed to allocate larger chunk, try to allocate multi-chunk
-       * that is close to what was actually requested */
-      if (data_bytes <= fss_fl_chunk_bytes (fss))
-	{
-	  c = fs_try_alloc_multi_chunk (fsh, fss, data_bytes);
-	  if (c)
-	    goto done;
-	  batch = n_free / FIFO_SEGMENT_MIN_FIFO_SIZE;
-	  if (!batch || fsh_try_alloc_chunk_batch (fsh, fss, 0, batch))
-	    goto done;
-	}
-      if (data_bytes <= fss_fl_chunk_bytes (fss) + n_free)
-	{
-	  u32 min_size = FIFO_SEGMENT_MIN_FIFO_SIZE;
-	  if (n_free < min_size)
-	    goto done;
-	  batch = (data_bytes - fss_fl_chunk_bytes (fss)) / min_size;
-	  batch = clib_min (batch + 1, n_free / min_size);
-	  if (fsh_try_alloc_chunk_batch (fsh, fss, 0, batch))
-	    goto done;
-	  c = fs_try_alloc_multi_chunk (fsh, fss, data_bytes);
+	  c = fss_chunk_free_list_pop (fsh, fss, fl_index);
+	  c->next = 0;
+	  fss_fl_chunk_bytes_sub (fss, chunk_sz);
+	  fsh_cached_bytes_sub (fsh, chunk_sz);
+	  return c;
 	}
     }
 
-done:
+  /* Failed to allocate larger chunk, try to allocate multi-chunk
+   * that is close to what was actually requested */
+  if (data_bytes <= fss_fl_chunk_bytes (fss))
+    {
+      c = fss_fl_try_alloc_multi_chunk (fsh, fss, data_bytes);
+      if (c)
+	return c;
+      batch = n_free / FIFO_SEGMENT_MIN_FIFO_SIZE;
+      if (!batch || fsh_try_alloc_chunk_batch (fsh, fss, 0, batch))
+	return 0;
+    }
+
+  if (data_bytes <= fss_fl_chunk_bytes (fss) + n_free)
+    {
+      u32 min_size = FIFO_SEGMENT_MIN_FIFO_SIZE;
+      if (n_free < min_size)
+	return 0;
+      batch = (data_bytes - fss_fl_chunk_bytes (fss)) / min_size;
+      batch = clib_min (batch + 1, n_free / min_size);
+      if (fsh_try_alloc_chunk_batch (fsh, fss, 0, batch))
+	return 0;
+      c = fss_fl_try_alloc_multi_chunk (fsh, fss, data_bytes);
+    }
 
   return c;
+}
+
+always_inline svm_fifo_chunk_t *
+fsh_try_alloc_chunk (fifo_segment_header_t *fsh, fifo_segment_slice_t *fss,
+		     u32 data_bytes)
+{
+  u32 fl_index, chunk_sz;
+  svm_fifo_chunk_t *c;
+
+  fl_index = fs_freelist_for_size (data_bytes);
+  chunk_sz = fs_freelist_index_to_size (fl_index);
+
+  /* If requested length less than max chunk size try free list */
+  if (PREDICT_TRUE (data_bytes <= chunk_sz))
+    {
+      c = fss_chunk_free_list_pop (fsh, fss, fl_index);
+      if (c)
+	{
+	  c->next = 0;
+	  fss_fl_chunk_bytes_sub (fss, chunk_sz);
+	  fsh_cached_bytes_sub (fsh, chunk_sz);
+	  return c;
+	}
+    }
+
+  return fs_try_alloc_chunk_slow (fsh, fss, fl_index, chunk_sz, data_bytes);
 }
 
 /**
