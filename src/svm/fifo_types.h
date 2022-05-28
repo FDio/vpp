@@ -24,6 +24,7 @@
 #define FS_MIN_LOG2_CHUNK_SZ 12 /**< also min fifo size */
 #define FS_MAX_LOG2_CHUNK_SZ 22 /**< 4MB max chunk size */
 #define FS_CHUNK_VEC_LEN     11 /**< number of chunk sizes */
+#define FS_MIN_CHUNK_SZ	     (1 << FS_MIN_LOG2_CHUNK_SZ)
 
 STATIC_ASSERT ((FS_MAX_LOG2_CHUNK_SZ - FS_MIN_LOG2_CHUNK_SZ) ==
 		 FS_CHUNK_VEC_LEN - 1,
